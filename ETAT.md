@@ -25,7 +25,9 @@ Then open http://localhost:5173 and pick an identity on the landing screen.
 > `bun` — `npm`/`node` will fail with "command not found". `bun x tsc --noEmit`
 > typechecks; `bun run build` builds.
 
-State: **Lot 0 complete.** Branch `main`, all of M1–M8 committed.
+State: **Lot 0 complete.** Branch `main`, last commit `d04ca34`
+("Lot 0: Lo Yanum visual POC — 16 screens, four roles, no backend").
+All of M1–M8 done; working tree clean apart from later edits to this file.
 
 ---
 
