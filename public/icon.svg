@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Lo Yanum">
+  <rect width="512" height="512" rx="112" fill="#1c2038"/>
+  <path d="M256 84c-52 30-100 44-136 46v146c0 88 58 132 136 152 78-20 136-64 136-152V130c-36-2-84-16-136-46z"
+        fill="none" stroke="#c5ab80" stroke-width="24" stroke-linejoin="round"/>
+  <circle cx="256" cy="252" r="42" fill="none" stroke="#f4f0e7" stroke-width="20"/>
+  <path d="M182 252c22-34 48-52 74-52s52 18 74 52c-22 34-48 52-74 52s-52-18-74-52z"
+        fill="none" stroke="#f4f0e7" stroke-width="20" stroke-linejoin="round"/>
+</svg>

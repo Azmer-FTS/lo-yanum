@@ -1,0 +1,420 @@
+{
+  "app": {
+    "name": "לא ינום",
+    "verse": "הִנֵּה לֹא יָנוּם וְלֹא יִישָׁן שׁוֹמֵר יִשְׂרָאֵל",
+    "verseRef": "תהלים קכ\"א, ד",
+    "tagline": "תיאום שמירות מתנדבים בחוות הנגב"
+  },
+
+  "common": {
+    "search": "חיפוש",
+    "searchFarms": "חיפוש חווה, יישוב או איש קשר",
+    "filter": "סינון",
+    "all": "הכול",
+    "cancel": "ביטול",
+    "save": "שמירה",
+    "close": "סגירה",
+    "back": "חזרה",
+    "none": "אין",
+    "copy": "העתקה",
+    "copied": "הועתק",
+    "call": "חיוג",
+    "whatsapp": "וואטסאפ",
+    "sms": "מסרון",
+    "navigate": "ניווט",
+    "openInWaze": "פתיחה בוויז",
+    "openInMaps": "פתיחה במפות",
+    "km": "ק\"מ",
+    "minutesShort": "דק'",
+    "hoursShort": "ש'",
+    "notes": "הערות",
+    "details": "פרטים",
+    "confirm": "אישור",
+    "confirmed": "אושר",
+    "notConfirmed": "לא אושר",
+    "today": "היום",
+    "yesterday": "אתמול",
+    "tomorrow": "מחר",
+    "at": "בשעה",
+    "from": "מ־",
+    "to": "עד",
+    "minutesAgo": "לפני {{count}} דק'",
+    "hoursAgo": "לפני {{count}} שעות",
+    "resultsCount": "{{count}} תוצאות",
+    "showMore": "הצגת עוד",
+    "showLess": "הצגת פחות",
+    "required": "שדה חובה",
+    "sent": "נשלח",
+    "clear": "ניקוי"
+  },
+
+  "roles": {
+    "coordinator": "רכז",
+    "farmer": "חקלאי",
+    "volunteer": "מתנדב",
+    "driver": "נהג"
+  },
+
+  "nav": {
+    "dashboard": "לוח בקרה",
+    "farms": "חוות",
+    "map": "מפה",
+    "route": "תכנון מסלול",
+    "volunteers": "מתנדבים",
+    "missions": "שמירות",
+    "incidents": "יומן אירועים",
+    "tonight": "הלילה בחווה",
+    "myGuards": "השמירות שלי",
+    "myGuard": "השמירה שלי",
+    "myTrip": "ההסעה שלי",
+    "report": "דיווח אירוע",
+    "sectionMain": "ניהול",
+    "sectionField": "שטח"
+  },
+
+  "login": {
+    "title": "כניסה לגרסת הדגמה",
+    "subtitle": "בחרו זהות כדי לראות את המערכת מנקודת המבט שלה",
+    "enter": "כניסה",
+    "pocNotice": "גרסת עיצוב בלבד — הנתונים מדומים ואינם נשמרים",
+    "coordinatorEntry": "כניסה כרכז"
+  },
+
+  "devbar": {
+    "viewAs": "צפייה בתור",
+    "reset": "איפוס נתונים",
+    "hint": "סרגל הדגמה — לא יופיע בגרסה האמיתית",
+    "backToLogin": "מסך פתיחה"
+  },
+
+  "farmStatus": {
+    "to_contact": "ליצירת קשר",
+    "contacted": "נוצר קשר",
+    "visited": "בוקרה",
+    "verbal_ok": "הסכמה בעל־פה",
+    "signed": "חתמה",
+    "active": "פעילה",
+    "declined": "סירבה"
+  },
+
+  "farmType": {
+    "agriculture": "חקלאות",
+    "livestock": "בעלי חיים",
+    "mixed": "מעורבת"
+  },
+
+  "phoneType": {
+    "smartphone": "סמארטפון",
+    "kosher": "כשר"
+  },
+
+  "volunteerStatus": {
+    "active": "פעיל",
+    "inactive": "לא פעיל"
+  },
+
+  "missionStatus": {
+    "planned": "מתוכננת",
+    "in_progress": "בביצוע",
+    "completed": "הושלמה",
+    "return_not_confirmed": "חזרה לא אושרה"
+  },
+
+  "severity": {
+    "observation": "תצפית",
+    "suspicious": "חשוד",
+    "urgent": "דחוף"
+  },
+
+  "incidentSource": {
+    "volunteer": "מתנדב",
+    "farmer": "חקלאי",
+    "coordinator": "רכז"
+  },
+
+  "commitment": {
+    "title": "התחייבויות בעל החווה",
+    "shelter": "מקום לינה",
+    "water": "מים",
+    "food": "אוכל",
+    "other": "אחר",
+    "fulfilled": "מוכן",
+    "pending": "ממתין",
+    "reminderTitle": "מה סוכם שתספקו למתנדבים",
+    "reminderNote": "המתנדבים מגיעים בהתנדבות מלאה. התנאים הבסיסיים הם חלק מההסכם."
+  },
+
+  "dashboard": {
+    "title": "לוח בקרה",
+    "greeting": "ערב טוב",
+    "farmsByStatus": "חוות לפי סטטוס",
+    "nextVisits": "הביקורים הקרובים",
+    "noNextVisits": "אין ביקורים מתוכננים",
+    "alerts": "התראות פעילות",
+    "noAlerts": "אין התראות פעילות",
+    "volunteerStats": "מתנדבים",
+    "tonightGuards": "שמירות הלילה",
+    "noTonightGuards": "לא מתוכננות שמירות הלילה",
+    "totalFarms": "סה\"כ חוות",
+    "activeFarms": "חוות פעילות",
+    "openIncidents": "אירועים פתוחים"
+  },
+
+  "alerts": {
+    "urgent_incident": "אירוע דחוף",
+    "return_not_confirmed": "חזרת קבוצה לא אושרה",
+    "returnDetail": "הנהג לא אישר איסוף בבוקר"
+  },
+
+  "farms": {
+    "title": "חוות",
+    "count": "{{count}} חוות",
+    "empty": "לא נמצאו חוות",
+    "filterStatus": "סטטוס",
+    "filterType": "סוג",
+    "farmArea": "שטח מעובד",
+    "grazingArea": "שטח מרעה",
+    "hectares": "דונם",
+    "contacts": "אנשי קשר",
+    "primaryContact": "איש קשר ראשי",
+    "pipeline": "התקדמות",
+    "agreements": "הסכמים",
+    "noAgreements": "טרם נחתם הסכם",
+    "signedBy": "נחתם על ידי",
+    "anchorPoints": "נקודות עיגון",
+    "noAnchorPoints": "טרם הוגדרו נקודות עיגון",
+    "lastVisit": "ביקור אחרון",
+    "nextVisit": "ביקור הבא",
+    "noVisitYet": "טרם בוקרה",
+    "location": "מיקום",
+    "recentIncidents": "אירועים אחרונים",
+    "guardHistory": "שמירות בחווה"
+  },
+
+  "anchor": {
+    "title": "נקודת עיגון",
+    "instructions": "הנחיות לשומרים",
+    "access": "תיאור הגעה",
+    "coordinates": "קואורדינטות",
+    "messages": "הודעות מוכנות לשליחה",
+    "smartphoneMessage": "נוסח לסמארטפון",
+    "smartphoneHint": "כולל קישור ניווט בוויז",
+    "kosherMessage": "נוסח לטלפון כשר",
+    "kosherHint": "טקסט בלבד — תיאור דרך, קואורדינטות וטלפונים",
+    "copyMessage": "העתקת הנוסח",
+    "sendWhatsapp": "שליחה בוואטסאפ",
+    "sendSms": "שליחה כמסרון",
+    "messageTitle": "שמירה — לא ינום",
+    "labelFarm": "חווה",
+    "labelAnchor": "נקודת עיגון",
+    "labelArrival": "הגעה",
+    "labelNavigation": "ניווט",
+    "labelAccess": "דרך ההגעה",
+    "labelCoordinates": "נקודת ציון",
+    "labelInstructions": "הנחיות",
+    "labelPhones": "טלפונים",
+    "labelFarmer": "בעל החווה",
+    "labelDriver": "נהג",
+    "labelCoordinator": "רכז"
+  },
+
+  "map": {
+    "title": "מפת חוות",
+    "legend": "מקרא",
+    "farmsShown": "{{count}} חוות על המפה",
+    "openFarm": "פתיחת כרטיס החווה",
+    "placeholder": "תצוגת מפה",
+    "anchorPoint": "נקודת עיגון",
+    "myPosition": "המיקום שלי"
+  },
+
+  "route": {
+    "title": "תכנון מסלול ביקורים",
+    "subtitle": "בחרו חוות — הסדר מחושב לפי הקרוב ביותר, מירושלים",
+    "origin": "נקודת מוצא",
+    "originName": "ירושלים",
+    "selectFarms": "בחירת חוות",
+    "selected": "{{count}} נבחרו",
+    "clearSelection": "ניקוי בחירה",
+    "order": "סדר הנסיעה",
+    "leg": "מהתחנה הקודמת",
+    "totalDistance": "מרחק כולל",
+    "returnLeg": "חזרה לנקודת המוצא",
+    "roundTrip": "הלוך ושוב",
+    "estimatedDrive": "זמן נסיעה משוער",
+    "openInGoogleMaps": "פתיחת המסלול בגוגל מפות",
+    "emptySelection": "בחרו לפחות חווה אחת כדי לתכנן מסלול",
+    "suggestPending": "בחירה מהירה: חוות הממתינות לביקור"
+  },
+
+  "volunteers": {
+    "title": "מתנדבים",
+    "count": "{{count}} מתנדבים",
+    "empty": "לא נמצאו מתנדבים",
+    "groupByYeshiva": "לפי ישיבה",
+    "filterStatus": "סטטוס",
+    "filterPhone": "סוג טלפון",
+    "filterLocality": "יישוב",
+    "age": "גיל",
+    "guardsCount": "שמירות",
+    "guardsCountLong": "{{count}} שמירות",
+    "yeshiva": "ישיבה",
+    "locality": "יישוב",
+    "archive": "העברה ללא פעילים",
+    "reactivate": "החזרה לפעילים",
+    "archiveTitle": "העברת מתנדב ללא פעילים",
+    "archiveReason": "סיבה",
+    "archiveReasonPlaceholder": "לדוגמה: גיוס למילואים, פציעה, סיום לימודים",
+    "inactiveReason": "סיבת אי־פעילות",
+    "groupPhoneHolder": "טלפון הקבוצה",
+    "statsSmartphone": "סמארטפון",
+    "statsKosher": "טלפון כשר"
+  },
+
+  "missions": {
+    "title": "שמירות",
+    "count": "{{count}} שמירות",
+    "empty": "אין שמירות להצגה",
+    "upcoming": "קרובות",
+    "past": "עברו",
+    "farm": "חווה",
+    "anchorPoint": "נקודת עיגון",
+    "date": "תאריך",
+    "team": "קבוצת השמירה",
+    "driver": "נהג",
+    "noDriver": "טרם שובץ נהג",
+    "timeline": "ציר זמן",
+    "startAt": "תחילת שמירה",
+    "endAt": "סיום מתוכנן",
+    "arrivalConfirmed": "אישור הגעה",
+    "endConfirmed": "אישור סיום",
+    "dropoff": "הורדה",
+    "pickup": "איסוף",
+    "dropoffCount": "{{count}} הורדו",
+    "pickupCount": "{{count}} נאספו",
+    "awaiting": "ממתין",
+    "countMismatch": "אי־התאמה במספר המתנדבים",
+    "expectedCount": "משובצים: {{count}}",
+    "openMission": "פתיחת השמירה"
+  },
+
+  "incidents": {
+    "title": "יומן אירועים",
+    "count": "{{count}} אירועים",
+    "empty": "לא נרשמו אירועים",
+    "filterFarm": "חווה",
+    "filterSeverity": "חומרה",
+    "filterDate": "מאז",
+    "dateAll": "כל הזמנים",
+    "dateWeek": "שבוע אחרון",
+    "dateMonth": "חודש אחרון",
+    "openOnly": "פתוחים בלבד",
+    "reportedBy": "דווח על ידי",
+    "reportedAt": "מועד הדיווח",
+    "position": "מיקום הדיווח",
+    "noPosition": "לא נרשם מיקום",
+    "thread": "מעקב",
+    "noEntries": "אין רשומות מעקב",
+    "addEntry": "הוספת רשומה",
+    "entryPlaceholder": "לדוגמה: משטרה עודכנה 02:14",
+    "resolve": "סגירת אירוע",
+    "reopen": "פתיחה מחדש",
+    "resolved": "טופל",
+    "open": "פתוח",
+    "linkedMission": "שמירה מקושרת"
+  },
+
+  "report": {
+    "title": "דיווח אירוע",
+    "subtitle": "הדיווח נשמר ומועבר לרכז מיד",
+    "severity": "רמת חומרה",
+    "severityHelpObservation": "משהו ראוי לתיעוד, ללא סכנה",
+    "severityHelpSuspicious": "תנועה או ממצא חשוד",
+    "severityHelpUrgent": "סכנה מיידית או פריצה בעיצומה",
+    "description": "מה קרה",
+    "descriptionPlaceholder": "תארו בקצרה מה ראיתם, היכן ומתי",
+    "photo": "צילום",
+    "photoPlaceholder": "הוספת תמונה (בגרסה הבאה)",
+    "position": "מיקום",
+    "positionAuto": "המיקום נלכד אוטומטית",
+    "positionUnavailable": "לא נמצא מיקום",
+    "submit": "שליחת הדיווח",
+    "success": "הדיווח נשלח לרכז",
+    "another": "דיווח נוסף",
+    "emergencyTitle": "לפני הכול — התקשרו",
+    "emergencyNote": "הדיווח באפליקציה מתעד את האירוע. בשעת סכנה החיוג קודם לכול."
+  },
+
+  "emergency": {
+    "police": "משטרה",
+    "ambulance": "מד\"א",
+    "fire": "כיבוי אש",
+    "regionalSecurity": "קב\"ט מועצה"
+  },
+
+  "farmer": {
+    "tonightTitle": "הלילה בחווה",
+    "noGuardTonight": "אין שמירה מתוכננת הלילה בחווה",
+    "noGuardTonightHint": "השמירה הבאה תוצג כאן ברגע שתשובץ",
+    "guardTeam": "השומרים אצלכם הלילה",
+    "expectedArrival": "הגעה צפויה",
+    "arrived": "הקבוצה הגיעה",
+    "notArrivedYet": "טרם הגיעו",
+    "guardEnded": "השמירה הסתיימה",
+    "guardInProgress": "השמירה בעיצומה",
+    "driverTitle": "נהג ההסעה",
+    "anchorTitle": "נקודת העיגון",
+    "myGuardsTitle": "השמירות בחווה",
+    "upcoming": "קרובות",
+    "past": "עברו",
+    "noUpcoming": "אין שמירות מתוכננות",
+    "noPast": "אין שמירות קודמות",
+    "reportCta": "דיווח על אירוע"
+  },
+
+  "volunteer": {
+    "title": "השמירה שלי",
+    "noMission": "אין לכם שמירה משובצת כרגע",
+    "noMissionHint": "כשתשובצו לשמירה היא תופיע כאן עם כל פרטי ההגעה",
+    "farmTitle": "החווה",
+    "anchorTitle": "נקודת העיגון",
+    "instructions": "הנחיות",
+    "contactsTitle": "טלפונים",
+    "team": "הקבוצה שלכם",
+    "groupPhoneNote": "אתם מחזיקי טלפון הקבוצה — האישורים נרשמים עבור כל הקבוצה",
+    "notGroupPhoneNote": "מחזיק טלפון הקבוצה הוא {{name}} — האישורים נרשמים דרכו",
+    "confirmArrival": "הגענו",
+    "confirmEnd": "סיום שמירה",
+    "arrivalDone": "הגעה אושרה",
+    "endDone": "סיום אושר",
+    "arrivedAt": "אושרה הגעה",
+    "endedAt": "אושר סיום",
+    "reportCta": "דיווח אירוע"
+  },
+
+  "driver": {
+    "title": "ההסעה שלי",
+    "noTrip": "אין לכם הסעה משובצת כרגע",
+    "noTripHint": "כשתשובצו להסעה היא תופיע כאן עם רשימת הנוסעים",
+    "pickupList": "רשימת איסוף",
+    "destination": "יעד",
+    "expectedCount": "מספר מתנדבים משובצים",
+    "confirmDropoff": "אישור הורדה בשטח",
+    "confirmPickup": "אישור איסוף בבוקר",
+    "dropoffDone": "הורדה אושרה",
+    "pickupDone": "איסוף אושר",
+    "howMany": "כמה מתנדבים?",
+    "mismatchTitle": "המספר אינו תואם",
+    "mismatchBody": "משובצים {{expected}}, אושרו {{actual}}. עדכנו את הרכז מיד.",
+    "callCoordinator": "חיוג לרכז",
+    "morningPickup": "איסוף בוקר",
+    "seats": "מקומות",
+    "vehicle": "רכב"
+  },
+
+  "a11y": {
+    "openMenu": "פתיחת תפריט",
+    "closeMenu": "סגירת תפריט",
+    "map": "מפה"
+  }
+}

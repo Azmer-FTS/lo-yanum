@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- Self-hosted Rubik (variable, 300–700) ------------------------------- */
+
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/rubik-hebrew.woff2') format('woff2');
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC,
+    U+FB1D-FB4F;
+}
+
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/rubik-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
+    U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/rubik-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* --- Base ---------------------------------------------------------------- */
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-sand-50 font-sans text-night-950 antialiased;
+    /* Reserve the notch / home-indicator insets for the standalone PWA. */
+    padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+  }
+
+  /* Numbers, phone numbers and coordinates must read LTR inside RTL text. */
+  .ltr-nums {
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-night-500 ring-offset-2 ring-offset-sand-50;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-sand-200/70 bg-white shadow-card;
+  }
+
+  .card-pad {
+    @apply p-4 sm:p-5;
+  }
+
+  .section-title {
+    @apply text-sm font-semibold text-night-900;
+  }
+
+  .muted {
+    @apply text-sm text-night-950/55;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5
+           text-sm font-medium transition-colors disabled:cursor-not-allowed
+           disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-night-800 text-white hover:bg-night-700;
+  }
+
+  .btn-secondary {
+    @apply btn border border-sand-300 bg-white text-night-900 hover:bg-sand-100;
+  }
+
+  .btn-ghost {
+    @apply btn text-night-800 hover:bg-sand-100;
+  }
+
+  .btn-big {
+    @apply w-full rounded-2xl px-5 py-4 text-base font-semibold;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-sand-300 bg-white px-3.5 py-2.5 text-sm
+           text-night-950 placeholder:text-night-950/35
+           focus:border-night-500 focus:outline-none focus:ring-1 focus:ring-night-500;
+  }
+
+  /* Scroll container that keeps horizontal overflow out of the page body. */
+  .scroll-x {
+    @apply -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0;
+    scrollbar-width: thin;
+  }
+}
+
+/* --- MapLibre ------------------------------------------------------------ */
+
+.maplibregl-map {
+  font-family: 'Rubik', system-ui, sans-serif;
+}
+
+/* MapLibre attribution/controls are authored LTR; keep them that way. */
+.maplibregl-ctrl-bottom-right,
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-top-right,
+.maplibregl-ctrl-top-left {
+  direction: ltr;
+}

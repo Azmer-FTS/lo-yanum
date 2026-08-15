@@ -1,0 +1,227 @@
+import { useTranslation } from 'react-i18next'
+import { Link, Navigate, useParams } from 'react-router-dom'
+
+import {
+  COORDINATOR,
+  buildKosherMessage,
+  buildSmartphoneMessage,
+  formatCoords,
+  getAnchorPoint,
+  getFarm,
+  getUpcomingMissionViews,
+  smsHref,
+  wazeUrl,
+  whatsappHref,
+} from '@core/index'
+import type { AnchorMessageInput, AnchorMessageLabels } from '@core/index'
+
+import { Icon } from '../../components/Icon'
+import { MapView } from '../../components/MapView'
+import { CopyButton, PageHeader, Section } from '../../components/primitives'
+import { useCoreValue } from '../../hooks/useCore'
+import { useLocale } from '../../hooks/useLocale'
+
+function MessageCard({
+  title,
+  hint,
+  body,
+  phone,
+  channel,
+}: {
+  title: string
+  hint: string
+  body: string
+  phone: string | null
+  channel: 'whatsapp' | 'sms'
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <div className="rounded-2xl border border-sand-200 bg-sand-50/60 p-4">
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold">{title}</h3>
+          <p className="muted mt-0.5">{hint}</p>
+        </div>
+        <CopyButton value={body} label={t('anchor.copyMessage')} />
+      </div>
+
+      {/* Read-only textarea: selectable everywhere, including where the
+          Clipboard API is blocked (plain http on a phone). */}
+      <textarea
+        readOnly
+        value={body}
+        rows={Math.min(18, body.split('\n').length + 1)}
+        dir="rtl"
+        className="w-full resize-y rounded-xl border border-sand-300 bg-white p-3 font-sans text-sm leading-relaxed text-night-950"
+      />
+
+      {phone && (
+        <a
+          href={
+            channel === 'whatsapp'
+              ? whatsappHref(phone, body)
+              : smsHref(phone, body)
+          }
+          target={channel === 'whatsapp' ? '_blank' : undefined}
+          rel="noreferrer"
+          className="btn-secondary mt-2.5 w-full sm:w-auto"
+        >
+          <Icon name={channel === 'whatsapp' ? 'whatsapp' : 'message'} size={16} />
+          {t(channel === 'whatsapp' ? 'anchor.sendWhatsapp' : 'anchor.sendSms')}
+        </a>
+      )}
+    </div>
+  )
+}
+
+export function AnchorSheetScreen() {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const { farmId = '', anchorId = '' } = useParams()
+
+  const farm = useCoreValue(() => getFarm(farmId))
+  const anchor = useCoreValue(() => getAnchorPoint(anchorId))
+
+  // The next guard planned at this anchor point supplies the arrival time and
+  // the driver's number; without one the message still generates, minus those.
+  const nextMission = useCoreValue(
+    () =>
+      getUpcomingMissionViews().find(
+        (v) => v.mission.anchorPointId === anchorId,
+      ) ?? null,
+  )
+
+  if (!farm || !anchor || anchor.farmId !== farm.id) {
+    return <Navigate to="/coordinator/farms" replace />
+  }
+
+  const labels: AnchorMessageLabels = {
+    title: t('anchor.messageTitle'),
+    farm: t('anchor.labelFarm'),
+    anchorPoint: t('anchor.labelAnchor'),
+    arrival: t('anchor.labelArrival'),
+    navigation: t('anchor.labelNavigation'),
+    access: t('anchor.labelAccess'),
+    coordinates: t('anchor.labelCoordinates'),
+    instructions: t('anchor.labelInstructions'),
+    phones: t('anchor.labelPhones'),
+    farmer: t('anchor.labelFarmer'),
+    driver: t('anchor.labelDriver'),
+    coordinator: t('anchor.labelCoordinator'),
+  }
+
+  const input: AnchorMessageInput = {
+    farm,
+    anchorPoint: anchor,
+    mission: nextMission?.mission ?? null,
+    driver: nextMission?.driver ?? null,
+    farmerContact: farm.contacts.find((c) => c.isPrimary) ?? null,
+    coordinatorName: COORDINATOR.name,
+    coordinatorPhone: COORDINATOR.phone,
+    locale,
+  }
+
+  const smartphoneBody = buildSmartphoneMessage(input, labels)
+  const kosherBody = buildKosherMessage(input, labels)
+
+  // Prefill the send buttons with whoever holds the group phone, when known.
+  const groupPhoneHolder =
+    nextMission?.volunteers.find((v) => v.isGroupPhone)?.volunteer ?? null
+  const kosherRecipient =
+    nextMission?.volunteers.find((v) => v.volunteer.phoneType === 'kosher')
+      ?.volunteer ?? null
+
+  return (
+    <>
+      <Link
+        to={`/coordinator/farms/${farm.id}`}
+        className="mb-3 inline-flex items-center gap-1.5 text-sm text-night-950/55 hover:text-night-900"
+      >
+        <Icon name="chevron" size={15} className="ltr:-scale-x-100" />
+        {farm.name}
+      </Link>
+
+      <PageHeader
+        title={anchor.name}
+        subtitle={`${t('anchor.title')} · ${farm.name}`}
+        actions={
+          <a
+            href={wazeUrl(anchor.position)}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-secondary"
+          >
+            <Icon name="pin" size={16} />
+            {t('common.openInWaze')}
+          </a>
+        }
+      />
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="flex flex-col gap-4 lg:col-span-2">
+          <Section title={t('anchor.messages')}>
+            <div className="flex flex-col gap-4">
+              <MessageCard
+                title={t('anchor.smartphoneMessage')}
+                hint={t('anchor.smartphoneHint')}
+                body={smartphoneBody}
+                phone={groupPhoneHolder?.phone ?? null}
+                channel="whatsapp"
+              />
+              <MessageCard
+                title={t('anchor.kosherMessage')}
+                hint={t('anchor.kosherHint')}
+                body={kosherBody}
+                phone={kosherRecipient?.phone ?? null}
+                channel="sms"
+              />
+            </div>
+          </Section>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <Section title={t('map.title')}>
+            <MapView
+              ariaLabel={t('a11y.map')}
+              className="h-52 w-full"
+              interactive={false}
+              center={anchor.position}
+              zoom={13}
+              markers={[
+                {
+                  id: anchor.id,
+                  position: anchor.position,
+                  color: '#1c2038',
+                  title: anchor.name,
+                },
+              ]}
+            />
+            <p className="ltr-nums muted mt-2">
+              {formatCoords(anchor.position)}
+            </p>
+          </Section>
+
+          <Section title={t('anchor.access')}>
+            <p className="text-sm leading-relaxed text-night-950/80">
+              {anchor.accessDescription}
+            </p>
+          </Section>
+
+          <Section title={t('anchor.instructions')}>
+            <ul className="flex flex-col gap-2">
+              {anchor.instructions.map((line, i) => (
+                <li key={i} className="flex gap-2.5 text-sm text-night-950/80">
+                  <span className="mt-0.5 shrink-0 text-night-700">
+                    <Icon name="check" size={15} />
+                  </span>
+                  {line}
+                </li>
+              ))}
+            </ul>
+          </Section>
+        </div>
+      </div>
+    </>
+  )
+}

@@ -1,0 +1,21 @@
+{
+  "name": "לא ינום",
+  "short_name": "לא ינום",
+  "description": "כלי תיאום שמירות בחוות הנגב",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fbf9f5",
+  "theme_color": "#1c2038",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
