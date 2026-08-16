@@ -43,21 +43,42 @@ export default {
           // fill amber is far too light to read as text on paper.
           ink: token('accent-ink'),
         },
+        // Lot 0.7: every semantic hue is a PAIR. The bare name is the vivid
+        // fill (dot, marker, bar, gradient stop); `-ink` is the same identity
+        // as legible TEXT on that colour's own tint. Using the vivid token as
+        // chip text is the one mistake this split exists to prevent.
         status: {
           success: token('status-success'),
+          'success-ink': token('status-success-ink'),
           warn: token('status-warn'),
+          'warn-ink': token('status-warn-ink'),
           danger: token('status-danger'),
+          'danger-ink': token('status-danger-ink'),
           info: token('status-info'),
+          'info-ink': token('status-info-ink'),
+          violet: token('status-violet'),
+          'violet-ink': token('status-violet-ink'),
         },
         farm: {
           'to-contact': token('farm-to-contact'),
+          'to-contact-ink': token('farm-to-contact-ink'),
           contacted: token('farm-contacted'),
+          'contacted-ink': token('farm-contacted-ink'),
           visited: token('farm-visited'),
+          'visited-ink': token('farm-visited-ink'),
           'verbal-ok': token('farm-verbal-ok'),
+          'verbal-ok-ink': token('farm-verbal-ok-ink'),
           signed: token('farm-signed'),
+          'signed-ink': token('farm-signed-ink'),
           active: token('farm-active'),
+          'active-ink': token('farm-active-ink'),
           declined: token('farm-declined'),
+          'declined-ink': token('farm-declined-ink'),
         },
+      },
+      backgroundImage: {
+        'gradient-accent': 'var(--gradient-accent)',
+        'gradient-hero': 'var(--gradient-hero)',
       },
       borderRadius: {
         sm: 'var(--radius-sm)',
@@ -71,6 +92,7 @@ export default {
         card: 'var(--shadow-card)',
         lift: 'var(--shadow-lift)',
         accent: 'var(--shadow-accent)',
+        glow: 'var(--shadow-glow)',
       },
       transitionTimingFunction: {
         out: 'var(--ease-out)',
@@ -121,6 +143,16 @@ export default {
           'var(--text-micro-size)',
           { lineHeight: 'var(--text-micro-height)' },
         ],
+        // KPI figures. Deliberately outside the body scale: a control room is
+        // read at a glance, and the numbers have to be the loudest thing on it.
+        metric: [
+          'var(--text-metric-size)',
+          {
+            lineHeight: 'var(--text-metric-height)',
+            letterSpacing: 'var(--text-metric-tracking)',
+            fontWeight: '700',
+          },
+        ],
       },
       screens: {
         xs: '390px',
@@ -131,18 +163,28 @@ export default {
           from: { opacity: '0', transform: 'translateY(4px)' },
           to: { opacity: '1', transform: 'none' },
         },
+        /** Entry animation for staggered list items — see `.stagger`. */
+        rise: {
+          from: { opacity: '0', transform: 'translateY(8px)' },
+          to: { opacity: '1', transform: 'none' },
+        },
         shimmer: {
           '100%': { transform: 'translateX(-100%)' },
         },
+        /**
+         * Halo on a "live" dot. `currentColor` rather than a fixed token so one
+         * keyframe serves every status — the dot sets its own colour.
+         */
         'pulse-ring': {
-          '0%': { boxShadow: '0 0 0 0 rgb(var(--status-success) / 0.5)' },
-          '70%': { boxShadow: '0 0 0 6px rgb(var(--status-success) / 0)' },
-          '100%': { boxShadow: '0 0 0 0 rgb(var(--status-success) / 0)' },
+          '0%': { boxShadow: '0 0 0 0 currentColor', opacity: '1' },
+          '70%': { boxShadow: '0 0 0 5px transparent', opacity: '0.85' },
+          '100%': { boxShadow: '0 0 0 0 transparent', opacity: '1' },
         },
       },
       animation: {
         'fade-in': 'fade-in var(--duration-slow) var(--ease-out)',
-        'pulse-ring': 'pulse-ring 2s ease-out infinite',
+        rise: 'rise var(--duration-slow) var(--ease-out) both',
+        'pulse-ring': 'pulse-ring 1.9s var(--ease-out) infinite',
       },
     },
   },

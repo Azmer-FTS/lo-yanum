@@ -3,6 +3,46 @@ import type { LatLng } from './types'
 /** Jerusalem — the coordinator's home base, origin of every planned route. */
 export const HOME_BASE: LatLng = { lat: 31.7683, lng: 35.2137 }
 
+/**
+ * Gazetteer of the localities volunteers and drivers live in.
+ *
+ * Real coordinates of real towns, not fixture data — which is why this sits in
+ * geo.ts rather than under mock/. `src/core/dispatch.ts` needs it to turn a
+ * volunteer's `locality` string into a distance, and dispatch must not depend
+ * on the mock layer.
+ *
+ * A locality that is absent here simply scores no distance component (see
+ * `positionOfLocality`); it never throws, because a roster imported from a
+ * spreadsheet will always contain a town nobody anticipated.
+ */
+export const LOCALITY_POSITIONS: Readonly<Record<string, LatLng>> = {
+  ירושלים: { lat: 31.7683, lng: 35.2137 },
+  'אלון שבות': { lat: 31.6519, lng: 35.1281 },
+  אפרת: { lat: 31.6547, lng: 35.1519 },
+  'מעלה אדומים': { lat: 31.7772, lng: 35.2983 },
+  'בית שמש': { lat: 31.7497, lng: 34.9886 },
+  'מודיעין עילית': { lat: 31.9319, lng: 35.0428 },
+  שדרות: { lat: 31.5241, lng: 34.5964 },
+  נתיבות: { lat: 31.4222, lng: 34.5889 },
+  אופקים: { lat: 31.3144, lng: 34.6206 },
+  'באר שבע': { lat: 31.2518, lng: 34.7913 },
+  להבים: { lat: 31.3714, lng: 34.8172 },
+  עומר: { lat: 31.2686, lng: 34.8489 },
+  מיתר: { lat: 31.3231, lng: 34.9339 },
+  אשקלון: { lat: 31.6688, lng: 34.5743 },
+  אשדוד: { lat: 31.8014, lng: 34.6435 },
+  ניצן: { lat: 31.7228, lng: 34.6089 },
+  'קרית גת': { lat: 31.6100, lng: 34.7642 },
+  ירוחם: { lat: 30.9878, lng: 34.9297 },
+  דימונה: { lat: 31.0686, lng: 35.0333 },
+  רחובות: { lat: 31.8928, lng: 34.8113 },
+}
+
+/** Coordinates for a locality name, or null when it is not in the gazetteer. */
+export function positionOfLocality(locality: string): LatLng | null {
+  return LOCALITY_POSITIONS[locality.trim()] ?? null
+}
+
 const EARTH_RADIUS_KM = 6371
 
 const toRad = (deg: number): number => (deg * Math.PI) / 180

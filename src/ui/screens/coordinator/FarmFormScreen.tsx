@@ -299,7 +299,7 @@ export function FarmFormScreen() {
                   <button
                     type="button"
                     onClick={() => removeContact(i)}
-                    className="btn-ghost py-1.5 text-status-danger hover:bg-status-danger/10"
+                    className="btn-ghost py-1.5 text-status-danger-ink hover:bg-status-danger/10"
                   >
                     <Icon name="trash" size={15} />
                     {t('form.removeContact')}

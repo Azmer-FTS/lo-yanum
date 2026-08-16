@@ -14,10 +14,12 @@ import {
 } from './components/layouts'
 import { useCoreValue } from './hooks/useCore'
 import { LandingScreen } from './screens/LandingScreen'
+import { StyleguideScreen } from './screens/StyleguideScreen'
 import { DriverTripScreen } from './screens/driver/DriverTripScreen'
 import { FarmerGuardsScreen } from './screens/farmer/FarmerGuardsScreen'
 import { FarmerReportScreen } from './screens/farmer/FarmerReportScreen'
 import { FarmerTonightScreen } from './screens/farmer/FarmerTonightScreen'
+import { AgendaScreen } from './screens/coordinator/AgendaScreen'
 import { AnchorFormScreen } from './screens/coordinator/AnchorFormScreen'
 import { AnchorSheetScreen } from './screens/coordinator/AnchorSheetScreen'
 import { DashboardScreen } from './screens/coordinator/DashboardScreen'
@@ -27,6 +29,7 @@ import { FarmsListScreen } from './screens/coordinator/FarmsListScreen'
 import { IncidentDetailScreen } from './screens/coordinator/IncidentDetailScreen'
 import { IncidentsScreen } from './screens/coordinator/IncidentsScreen'
 import { MissionDetailScreen } from './screens/coordinator/MissionDetailScreen'
+import { MissionWizardScreen } from './screens/coordinator/MissionWizardScreen'
 import { MissionsScreen } from './screens/coordinator/MissionsScreen'
 import { RoutePlannerScreen } from './screens/coordinator/RoutePlannerScreen'
 import { VolunteersScreen } from './screens/coordinator/VolunteersScreen'
@@ -60,6 +63,11 @@ export default function App() {
     <HashRouter>
       <Routes>
         <Route path="/" element={<LandingScreen />} />
+
+        {/* D1 — token demonstration page. Hidden: not in any navigation, no
+            role gate, rendered outside every layout so the tokens are seen on
+            their own rather than through a shell. */}
+        <Route path="/styleguide" element={<StyleguideScreen />} />
 
         <Route
           path="/coordinator"
@@ -97,7 +105,10 @@ export default function App() {
               </Suspense>
             }
           />
+          <Route path="agenda" element={<AgendaScreen />} />
           <Route path="missions" element={<MissionsScreen />} />
+          {/* Static segment before the :missionId param, or "new" is read as an id. */}
+          <Route path="missions/new" element={<MissionWizardScreen />} />
           <Route path="missions/:missionId" element={<MissionDetailScreen />} />
           <Route path="incidents" element={<IncidentsScreen />} />
           <Route

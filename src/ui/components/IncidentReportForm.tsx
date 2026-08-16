@@ -34,11 +34,11 @@ const SEVERITY_ICON: Record<IncidentSeverity, IconName> = {
 /** Full-bleed solid fills: unmistakable at a glance, no colour-matching needed. */
 const SEVERITY_BUTTON: Record<IncidentSeverity, string> = {
   observation:
-    'bg-status-success/15 text-status-success border-status-success/50 hover:bg-status-success/25',
+    'bg-status-success/15 text-status-success-ink border-status-success/50 hover:bg-status-success/25',
   suspicious:
-    'bg-status-warn/15 text-status-warn border-status-warn/50 hover:bg-status-warn/25',
+    'bg-status-warn/15 text-status-warn-ink border-status-warn/50 hover:bg-status-warn/25',
   urgent:
-    'bg-status-danger/20 text-status-danger border-status-danger/60 hover:bg-status-danger/30',
+    'bg-status-danger/20 text-status-danger-ink border-status-danger/60 hover:bg-status-danger/30',
 }
 
 export interface ReportContext {
@@ -129,7 +129,7 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
     if (severity !== 'urgent') {
       return (
         <div className="flex animate-fade-in flex-col items-center gap-3 rounded-lg border border-status-success/40 bg-status-success/10 px-6 py-12 text-center">
-          <span className="text-status-success">
+          <span className="text-status-success-ink">
             <Icon name="check" size={38} />
           </span>
           <p className="text-heading text-content-primary">
@@ -147,7 +147,7 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
     return (
       <div className="animate-fade-in">
         <div className="rounded-lg border border-status-danger/50 bg-status-danger/10 p-5 text-center">
-          <span className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-pill bg-status-danger/20 text-status-danger">
+          <span className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-pill bg-status-danger/20 text-status-danger-ink">
             <Icon name="check" size={30} />
           </span>
           <p className="text-title text-content-primary">

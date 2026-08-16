@@ -40,7 +40,7 @@ export function ContactButtons({
         rel="noreferrer"
         aria-label={`${t('common.whatsapp')} ${name}`}
         className="flex h-10 w-10 items-center justify-center rounded-md border border-edge-strong
-                   text-status-success transition-all duration-fast ease-out
+                   text-status-success-ink transition-all duration-fast ease-out
                    hover:bg-status-success/10 active:scale-95"
       >
         <Icon name="whatsapp" size={18} />
@@ -132,7 +132,7 @@ export function CallRow({
             rel="noreferrer"
             aria-label={`${t('common.whatsapp')} ${name}`}
             className="flex h-11 w-11 items-center justify-center rounded-md border border-edge-strong
-                       text-status-success transition-all duration-fast ease-out
+                       text-status-success-ink transition-all duration-fast ease-out
                        hover:bg-status-success/10 active:scale-95"
           >
             <Icon name="whatsapp" size={19} />

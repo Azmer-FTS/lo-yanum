@@ -2,19 +2,14 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
-import {
-  DAY,
-  formatDateTime,
-  getVisibleFarms,
-  getVisibleIncidentViews,
-} from '@core/index'
+import { DAY, formatDateTime, getVisibleIncidentViews } from '@core/index'
 import type { IncidentSeverity } from '@core/index'
 
 import { ChevronForward } from '../../components/Icon'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { SeverityChip, readToken } from '../../components/badges'
-import { EmptyState, FilterPill } from '../../components/primitives'
+import { EmptyState, FilterPill, FilterRow } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
@@ -46,9 +41,7 @@ export function IncidentsScreen() {
   const navigate = useNavigate()
 
   const views = useCoreValue(getVisibleIncidentViews)
-  const farms = useCoreValue(getVisibleFarms)
 
-  const [farmId, setFarmId] = useState(ALL)
   const [severity, setSeverity] = useState<IncidentSeverity | null>(null)
   const [since, setSince] = useState(ALL)
   const [openOnly, setOpenOnly] = useState(false)
@@ -63,13 +56,12 @@ export function IncidentsScreen() {
           : null
 
     return views.filter(({ incident }) => {
-      if (farmId !== ALL && incident.farmId !== farmId) return false
       if (severity !== null && incident.severity !== severity) return false
       if (openOnly && incident.resolved) return false
       if (cutoff && new Date(incident.reportedAt).getTime() < cutoff) return false
       return true
     })
-  }, [views, farmId, severity, since, openOnly])
+  }, [views, severity, since, openOnly])
 
   const markers: MapMarker[] = useMemo(
     () =>
@@ -129,7 +121,18 @@ export function IncidentsScreen() {
         </p>
       </header>
 
-      <div className="mb-4 flex flex-wrap gap-1.5">
+      {/* D7.3 — one row, every pill counted.
+          The twelve per-farm pills are gone: they were longer than the list
+          they filtered, and clicking a marker on the map is a faster way to
+          narrow to one farm than reading twelve names. */}
+      <FilterRow
+        active={severity !== null || openOnly || since !== ALL}
+        onClear={() => {
+          setSeverity(null)
+          setOpenOnly(false)
+          setSince(ALL)
+        }}
+      >
         {SEVERITIES.map((s) => (
           <FilterPill
             key={s}
@@ -140,7 +143,12 @@ export function IncidentsScreen() {
             {t(`severity.${s}`)}
           </FilterPill>
         ))}
-        <FilterPill active={openOnly} onClick={() => setOpenOnly(!openOnly)}>
+        <span className="mx-0.5 h-4 w-px shrink-0 bg-edge-subtle" />
+        <FilterPill
+          active={openOnly}
+          onClick={() => setOpenOnly(!openOnly)}
+          count={views.filter((v) => !v.incident.resolved).length}
+        >
           {t('incidents.openOnly')}
         </FilterPill>
         {(['week', 'month'] as const).map((w) => (
@@ -148,25 +156,23 @@ export function IncidentsScreen() {
             key={w}
             active={since === w}
             onClick={() => setSince(since === w ? ALL : w)}
+            count={
+              views.filter(
+                (v) =>
+                  new Date(v.incident.reportedAt).getTime() >=
+                  Date.now() - (w === 'week' ? 7 : 30) * DAY,
+              ).length
+            }
           >
             {t(w === 'week' ? 'incidents.dateWeek' : 'incidents.dateMonth')}
           </FilterPill>
         ))}
-        {farms.map((f) => (
-          <FilterPill
-            key={f.id}
-            active={farmId === f.id}
-            onClick={() => setFarmId(farmId === f.id ? ALL : f.id)}
-          >
-            {f.name}
-          </FilterPill>
-        ))}
-      </div>
+      </FilterRow>
 
       {filtered.length === 0 ? (
         <EmptyState icon="alert" title={t('incidents.empty')} />
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="stagger flex flex-col gap-2">
           {filtered.map(({ incident, farm }) => {
             const active = incident.id === hoveredId
             return (
@@ -191,7 +197,7 @@ export function IncidentsScreen() {
                       {farm.name}
                     </span>
                     {!incident.resolved && (
-                      <span className="chip bg-status-warn/15 text-status-warn">
+                      <span className="chip bg-status-warn/15 text-status-warn-ink">
                         {t('incidents.open')}
                       </span>
                     )}

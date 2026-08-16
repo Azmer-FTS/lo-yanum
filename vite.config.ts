@@ -15,7 +15,9 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    // Honour PORT so a second dev server can be started alongside the first
+    // (agent sessions, side-by-side theme comparison) without editing config.
+    port: Number(process.env.PORT) || 5173,
     host: true,
   },
 })

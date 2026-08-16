@@ -1,20 +1,23 @@
+import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useParams } from 'react-router-dom'
 
 import {
   formatDate,
-  formatDateTime,
   formatTime,
   formatWeekday,
+  getIncidentsForMission,
   getMissionView,
 } from '@core/index'
 import { getPresenceRows } from '@core/index'
-import type { MissionLeg, MissionView } from '@core/index'
+import type { Incident, MissionLeg, MissionView } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { ContactActions, ContactButtons } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
+import { Timeline } from '../../components/Timeline'
+import type { TimelineEntry } from '../../components/Timeline'
 import {
   ConfirmationChip,
   MissionStatusChip,
@@ -30,38 +33,114 @@ import {
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
-function TimelineStep({
-  label,
-  at,
-  done,
-  locale,
-}: {
-  label: string
-  at: string | null
-  done: boolean
-  locale: string
-}) {
-  const { t } = useTranslation()
+/**
+ * D6.2 — THE NIGHT, AS A SEQUENCE.
+ *
+ * Eight steps from "created" to "everybody home", each with the instant it
+ * actually happened or an em dash if it has not. The FIRST step without a
+ * timestamp is marked `current`: that is the thing everyone is waiting on, and
+ * at 03:00 it should be answerable at a glance.
+ *
+ * Incidents reported during the guard are spliced in at their real time rather
+ * than listed separately — "the police were called at 02:14, between the
+ * arrival and the end of the guard" is the shape of the information.
+ *
+ * `pickedUpAt` and `completedAt` look redundant and are not: the first is the
+ * driver saying he has everyone, the second is that claim reconciling with the
+ * group holder's. The gap between them is the failure this programme exists to
+ * catch, so the timeline shows both.
+ */
+function buildMissionTimeline(
+  view: MissionView,
+  incidents: Incident[],
+  t: TFunction,
+): TimelineEntry[] {
+  const { mission } = view
+  const marked = mission.assignments.filter(
+    (a) => a.outbound.driver !== null || a.outbound.group !== null,
+  ).length
+  const total = mission.assignments.length
 
-  return (
-    <li className="flex items-start gap-3 pb-4 last:pb-0">
-      <span
-        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-pill ${
-          done
-            ? 'bg-status-success/15 text-status-success'
-            : 'border border-dashed border-edge-strong text-content-muted'
-        }`}
-      >
-        <Icon name={done ? 'check' : 'clock'} size={15} />
-      </span>
-      <div>
-        <p className="text-caption font-medium">{label}</p>
-        <p className="ltr-nums muted">
-          {at ? formatDateTime(at, locale) : t('missions.awaiting')}
-        </p>
-      </div>
-    </li>
-  )
+  const steps: TimelineEntry[] = [
+    {
+      id: 'created',
+      label: t('timeline.created'),
+      at: mission.createdAt,
+      icon: 'plus',
+      state: 'done',
+      tone: 'accent',
+    },
+    {
+      id: 'confirmations',
+      label: t('timeline.confirmations'),
+      // A count, not an instant: there is no single moment at which a group
+      // "became confirmed", and inventing one would be a lie on the record.
+      at: null,
+      detail: t('timeline.confirmationsDetail', { confirmed: marked, total }),
+      icon: 'users',
+      state: marked === total && total > 0 ? 'done' : 'pending',
+      tone: 'default',
+    },
+    {
+      id: 'dropped',
+      label: t('timeline.droppedOff'),
+      at: mission.droppedOffAt,
+      icon: 'car',
+      state: mission.droppedOffAt ? 'done' : 'pending',
+      tone: 'default',
+    },
+    {
+      id: 'arrived',
+      label: t('timeline.arrived'),
+      at: mission.arrivalConfirmedAt,
+      icon: 'check',
+      state: mission.arrivalConfirmedAt ? 'done' : 'pending',
+      tone: 'success',
+    },
+    ...incidents.map((incident) => ({
+      id: `incident-${incident.id}`,
+      label: t('timeline.incident'),
+      at: incident.reportedAt,
+      detail: incident.description,
+      author: incident.reporterName,
+      icon: 'alert' as const,
+      state: 'done' as const,
+      tone: (incident.severity === 'urgent' ? 'danger' : 'warn') as
+        | 'danger'
+        | 'warn',
+    })),
+    {
+      id: 'guard-end',
+      label: t('timeline.guardEnd'),
+      at: mission.endConfirmedAt,
+      icon: 'moon',
+      state: mission.endConfirmedAt ? 'done' : 'pending',
+      tone: 'default',
+    },
+    {
+      id: 'picked-up',
+      label: t('timeline.pickedUp'),
+      at: mission.pickedUpAt,
+      icon: 'car',
+      state: mission.pickedUpAt ? 'done' : 'pending',
+      tone: 'default',
+    },
+    {
+      id: 'all-home',
+      label: t('timeline.allHome'),
+      at: mission.completedAt,
+      icon: 'home',
+      state: mission.completedAt ? 'done' : 'pending',
+      tone: 'success',
+    },
+  ]
+
+  // Promote the first unreached step. Done in one pass afterwards so splicing
+  // incidents in cannot shift which step counts as "now".
+  const next = steps.find((s) => s.state === 'pending')
+  if (next) next.state = 'current'
+
+  return steps
 }
 
 function TeamList({ view }: { view: MissionView }) {
@@ -175,11 +254,13 @@ export function MissionDetailScreen() {
   const locale = useLocale()
   const { missionId = '' } = useParams()
   const view = useCoreValue(() => getMissionView(missionId))
+  const missionIncidents = useCoreValue(() => getIncidentsForMission(missionId))
 
   if (!view) return <Navigate to="/coordinator/missions" replace />
 
   const { mission, farm, anchorPoint, driver, volunteers } = view
   const assigned = volunteers.length
+  const timeline = buildMissionTimeline(view, missionIncidents, t)
 
   return (
     <>
@@ -208,8 +289,12 @@ export function MissionDetailScreen() {
         </div>
       )}
 
+      {/* `min-w-0` on both columns: a grid item defaults to `min-width:auto`,
+          so the 22rem minimum on the presence table propagated all the way up
+          and pushed the page 40 px wider than a 390 px phone. Without it the
+          `.scroll-x` wrapper never gets to be the scroll container. */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-4 lg:col-span-2">
+        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
           <Section title={t('common.details')}>
             <dl>
               <KeyValue
@@ -267,28 +352,13 @@ export function MissionDetailScreen() {
           </Section>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <Section title={t('missions.timeline')}>
-            <ol>
-              <TimelineStep
-                label={t('missions.startAt')}
-                at={mission.startAt}
-                done
-                locale={locale}
-              />
-              <TimelineStep
-                label={t('missions.arrivalConfirmed')}
-                at={mission.arrivalConfirmedAt}
-                done={mission.arrivalConfirmedAt !== null}
-                locale={locale}
-              />
-              <TimelineStep
-                label={t('missions.endConfirmed')}
-                at={mission.endConfirmedAt}
-                done={mission.endConfirmedAt !== null}
-                locale={locale}
-              />
-            </ol>
+            {/* Dated, not clock-only: a guard is created days before it starts
+                and runs 21:00 → 05:00 across midnight, so bare times put
+                "created 11:46" below "dropped off 11:40" and read as a
+                sequence error. */}
+            <Timeline withDate entries={timeline} />
           </Section>
 
           <Section title={t('presence.rosterTitle')}>

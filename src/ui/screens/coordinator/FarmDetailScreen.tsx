@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useParams } from 'react-router-dom'
 
@@ -7,17 +8,22 @@ import {
   formatDateTime,
   getAnchorPointsForFarm,
   getFarm,
+  getFarmVisitsForFarm,
   getVisibleIncidentViews,
   getVisibleMissionViews,
   googleMapsPointUrl,
+  now,
 } from '@core/index'
 import type { CommitmentKind, Farm, FarmStatus } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { ContactActions } from '../../components/ContactActions'
+import { FarmVisitModal } from '../../components/FarmVisitModal'
 import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
+import { Timeline } from '../../components/Timeline'
+import type { TimelineEntry } from '../../components/Timeline'
 import {
   FarmStatusChip,
   MissionStatusChip,
@@ -42,12 +48,21 @@ const COMMITMENT_ICON: Record<CommitmentKind, IconName> = {
   other: 'plus',
 }
 
+/**
+ * The pipeline as a row of pills.
+ *
+ * The current step is a TINT plus a dot, not a solid fill with near-black text.
+ * Three of the seven pipeline hues cannot legibly carry 11px text on a solid
+ * fill (see the `text-on-accent on solid <hue>` checks in `bun run contrast`),
+ * and a stepper where two of the steps are readable and five are not is worse
+ * than one that is uniformly quiet.
+ */
 function StatusStepper({ status }: { status: FarmStatus }) {
   const { t } = useTranslation()
 
   if (status === 'declined') {
     return (
-      <div className="rounded-md border border-status-danger/40 bg-status-danger/10 px-4 py-3 text-caption font-medium text-status-danger">
+      <div className="rounded-md border border-status-danger/40 bg-status-danger/10 px-4 py-3 text-caption font-semibold text-status-danger-ink">
         {t('farmStatus.declined')}
       </div>
     )
@@ -63,18 +78,32 @@ function StatusStepper({ status }: { status: FarmStatus }) {
         return (
           <li key={step} className="flex shrink-0 items-center gap-1">
             <div
-              className={`flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-micro font-medium transition-colors duration-base ${
-                current
-                  ? 'text-content-on-accent'
-                  : done
-                    ? 'bg-surface-high text-content-secondary'
-                    : 'bg-surface-sunken text-content-muted'
-              }`}
+              className={`flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-micro font-semibold
+                          transition-all duration-base ${
+                            current
+                              ? 'text-content-primary ring-1'
+                              : done
+                                ? 'bg-surface-high text-content-secondary'
+                                : 'bg-surface-sunken text-content-muted'
+                          }`}
               style={
-                current ? { backgroundColor: readStatusColor(step) } : undefined
+                current
+                  ? {
+                      backgroundColor: `color-mix(in srgb, ${readStatusColor(step)} 18%, transparent)`,
+                      // Ring colour is inline because it is data-driven; the
+                      // token itself still comes from tokens.css.
+                      boxShadow: `0 0 0 1px ${readStatusColor(step)}`,
+                    }
+                  : undefined
               }
             >
               {done && <Icon name="check" size={12} />}
+              {current && (
+                <span
+                  className="inline-block h-1.5 w-1.5 rounded-pill"
+                  style={{ backgroundColor: readStatusColor(step) }}
+                />
+              )}
               {t(`farmStatus.${step}`)}
             </div>
             {i < FARM_PIPELINE.length - 1 && (
@@ -91,12 +120,13 @@ function StatusStepper({ status }: { status: FarmStatus }) {
   )
 }
 
-function FarmInfo({ farm }: { farm: Farm }) {
+/** D7.4 — the facts, two dense columns, no 40-character label column. */
+function FarmFacts({ farm }: { farm: Farm }) {
   const { t } = useTranslation()
   const locale = useLocale()
 
   return (
-    <dl>
+    <dl className="grid gap-x-5 sm:grid-cols-2">
       <KeyValue label={t('farms.filterType')} value={t(`farmType.${farm.type}`)} />
       <KeyValue label={t('volunteers.locality')} value={farm.locality} />
       <KeyValue
@@ -136,6 +166,7 @@ export function FarmDetailScreen() {
 
   const farm = useCoreValue(() => getFarm(farmId))
   const anchors = useCoreValue(() => getAnchorPointsForFarm(farmId))
+  const visits = useCoreValue(() => getFarmVisitsForFarm(farmId))
   const incidents = useCoreValue(() =>
     getVisibleIncidentViews().filter((v) => v.incident.farmId === farmId),
   )
@@ -143,7 +174,55 @@ export function FarmDetailScreen() {
     getVisibleMissionViews().filter((v) => v.mission.farmId === farmId),
   )
 
+  const [newVisit, setNewVisit] = useState(false)
+  const [editVisitId, setEditVisitId] = useState<string | null>(null)
+
   if (!farm) return <Navigate to="/coordinator/farms" replace />
+
+  /**
+   * D6.3 — the farm's recent life in one strip: last guard, last incident, last
+   * visit, next visit. Four heterogeneous records merged and sorted by time,
+   * because "what has been going on at this farm" is a chronological question
+   * and answering it from three separate cards means reading three dates and
+   * doing the sort in your head.
+   */
+  const nowMs = now().getTime()
+  const activity: TimelineEntry[] = [
+    ...missions.slice(0, 2).map((v) => ({
+      id: `m-${v.mission.id}`,
+      label: t('timeline.lastGuard'),
+      at: v.mission.startAt,
+      detail: `${v.anchorPoint.name} · ${v.volunteers.length}`,
+      icon: 'shield' as const,
+      state: 'done' as const,
+      tone: 'default' as const,
+    })),
+    ...incidents.slice(0, 2).map(({ incident }) => ({
+      id: `i-${incident.id}`,
+      label: t('timeline.lastIncident'),
+      at: incident.reportedAt,
+      detail: incident.description,
+      icon: 'alert' as const,
+      state: 'done' as const,
+      tone: (incident.severity === 'urgent' ? 'danger' : 'warn') as
+        | 'danger'
+        | 'warn',
+    })),
+    ...visits.map((visit) => {
+      const future = new Date(visit.at).getTime() > nowMs
+      return {
+        id: `v-${visit.id}`,
+        label: t(future ? 'timeline.nextVisit' : 'timeline.lastVisit'),
+        at: visit.at,
+        detail: visit.note,
+        icon: 'pin' as const,
+        state: (future ? 'current' : 'done') as 'current' | 'done',
+        tone: 'accent' as const,
+      }
+    }),
+  ]
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+    .slice(0, 6)
 
   return (
     <>
@@ -154,6 +233,14 @@ export function FarmDetailScreen() {
         actions={
           <>
             <FarmStatusChip status={farm.status} />
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setNewVisit(true)}
+            >
+              <Icon name="calendar" size={15} />
+              {t('agenda.planVisit')}
+            </button>
             <Link to={`/coordinator/farms/${farm.id}/edit`} className="btn-secondary">
               <Icon name="edit" size={15} />
               {t('common.edit')}
@@ -166,18 +253,21 @@ export function FarmDetailScreen() {
         <StatusStepper status={farm.status} />
       </Section>
 
-      {/* R3: the map is a real block, not a thumbnail — ~40% of the width on
-          desktop, and the first card on mobile. */}
+      {/* D7.4 — the map is the dominant block (3/5), the facts and the activity
+          timeline share the remaining 2/5 as compact panels. Previously the
+          map was 2/5 and the facts sprawled across 3/5 of a wide screen as a
+          two-item-per-row list, which wasted the widest column on the page. */}
       <div className="mb-4 grid gap-4 lg:grid-cols-5">
         <Section
-          className="lg:col-span-2"
+          className="lg:col-span-3"
           title={t('farms.location')}
+          padded={false}
           action={
             <a
               href={googleMapsPointUrl(farm.position)}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-micro font-medium text-accent-ink hover:underline"
+              className="inline-flex items-center gap-1 text-micro font-semibold text-accent-ink hover:underline"
             >
               <Icon name="external" size={13} />
               {t('common.openInMaps')}
@@ -186,7 +276,7 @@ export function FarmDetailScreen() {
         >
           <MapView
             ariaLabel={t('a11y.map')}
-            className="h-72 w-full lg:h-[26rem]"
+            className="h-80 w-full lg:h-[32rem]"
             center={farm.position}
             zoom={12}
             markers={[
@@ -207,18 +297,40 @@ export function FarmDetailScreen() {
               })),
             ]}
           />
-          <p className="muted mt-2">{t('farms.zonesPlaceholder')}</p>
         </Section>
 
-        <div className="flex flex-col gap-4 lg:col-span-3">
+        <div className="flex flex-col gap-4 lg:col-span-2">
           <Section title={t('common.details')}>
-            <FarmInfo farm={farm} />
+            <FarmFacts farm={farm} />
           </Section>
 
+          <Section
+            title={t('timeline.farmActivity')}
+            action={
+              <button
+                type="button"
+                onClick={() => setNewVisit(true)}
+                className="text-micro font-semibold text-accent-ink hover:underline"
+              >
+                {t('agenda.planVisit')}
+              </button>
+            }
+          >
+            {activity.length === 0 ? (
+              <EmptyState icon="history" title={t('timeline.noActivity')} />
+            ) : (
+              <Timeline withDate entries={activity} />
+            )}
+          </Section>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="flex flex-col gap-4 lg:col-span-2">
           <Section title={t('farms.contacts')}>
-            <ul className="divide-y divide-edge-subtle">
+            <ul className="grid gap-x-5 sm:grid-cols-2">
               {farm.contacts.map((contact) => (
-                <li key={contact.id} className="flex items-center gap-3">
+                <li key={contact.id} className="flex items-center gap-3 py-1.5">
                   <Avatar photo={contact.photo} name={contact.name} size="md" />
                   <ContactActions
                     className="flex-1"
@@ -234,11 +346,7 @@ export function FarmDetailScreen() {
               ))}
             </ul>
           </Section>
-        </div>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-4 lg:col-span-2">
           <Section
             title={t('farms.anchorPoints')}
             action={
@@ -287,15 +395,17 @@ export function FarmDetailScreen() {
             {farm.commitments.length === 0 ? (
               <EmptyState title={t('common.none')} />
             ) : (
-              <ul className="flex flex-col gap-2">
+              <ul className="grid gap-2 sm:grid-cols-2">
                 {farm.commitments.map((c, i) => (
                   <li
                     key={`${c.kind}-${i}`}
-                    className="flex items-start gap-3 rounded-md border border-edge-subtle px-3.5 py-3"
+                    className="flex items-start gap-3 rounded-md border border-edge-subtle px-3 py-2.5"
                   >
                     <span
                       className={`mt-0.5 ${
-                        c.fulfilled ? 'text-status-success' : 'text-status-warn'
+                        c.fulfilled
+                          ? 'text-status-success-ink'
+                          : 'text-status-warn-ink'
                       }`}
                     >
                       <Icon name={COMMITMENT_ICON[c.kind]} size={18} />
@@ -309,8 +419,8 @@ export function FarmDetailScreen() {
                     <span
                       className={`chip shrink-0 ${
                         c.fulfilled
-                          ? 'bg-status-success/15 text-status-success'
-                          : 'bg-status-warn/15 text-status-warn'
+                          ? 'bg-status-success/15 text-status-success-ink'
+                          : 'bg-status-warn/15 text-status-warn-ink'
                       }`}
                     >
                       {t(
@@ -350,6 +460,57 @@ export function FarmDetailScreen() {
         </div>
 
         <div className="flex flex-col gap-4">
+          <Section
+            title={t('agenda.visits')}
+            action={
+              <button
+                type="button"
+                onClick={() => setNewVisit(true)}
+                className="btn-ghost py-1.5"
+              >
+                <Icon name="plus" size={14} />
+                {t('agenda.planVisit')}
+              </button>
+            }
+          >
+            {visits.length === 0 ? (
+              <EmptyState icon="calendar" title={t('agenda.noVisits')} />
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {visits.map((visit) => (
+                  <li key={visit.id}>
+                    <button
+                      type="button"
+                      onClick={() => setEditVisitId(visit.id)}
+                      className="flex w-full items-start gap-2.5 rounded-md border border-edge-subtle px-3 py-2 text-start
+                                 transition-all duration-fast hover:border-accent/50 hover:bg-surface-high"
+                    >
+                      <span
+                        className={`mt-0.5 ${
+                          visit.done
+                            ? 'text-status-success-ink'
+                            : 'text-status-violet-ink'
+                        }`}
+                      >
+                        <Icon name={visit.done ? 'check' : 'calendar'} size={16} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="ltr-nums block text-caption font-medium text-content-primary">
+                          {formatDateTime(visit.at, locale)}
+                        </span>
+                        {visit.note && (
+                          <span className="muted mt-0.5 block line-clamp-2">
+                            {visit.note}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+
           <Section title={t('farms.agreements')}>
             {farm.agreements.length === 0 ? (
               <EmptyState icon="document" title={t('farms.noAgreements')} />
@@ -411,6 +572,19 @@ export function FarmDetailScreen() {
           </Section>
         </div>
       </div>
+
+      {newVisit && (
+        <FarmVisitModal
+          defaultFarmId={farm.id}
+          onClose={() => setNewVisit(false)}
+        />
+      )}
+      {editVisitId && (
+        <FarmVisitModal
+          visitId={editVisitId}
+          onClose={() => setEditVisitId(null)}
+        />
+      )}
     </>
   )
 }

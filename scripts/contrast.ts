@@ -1,29 +1,38 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
+import {
+  AA_NON_TEXT,
+  AA_TEXT,
+  compositeOver,
+  contrastRatio,
+  parseChannels,
+} from '../src/core/contrast'
+import type { Rgb } from '../src/core/contrast'
+
 /**
- * WCAG contrast audit over the design tokens (A13).
+ * WCAG contrast audit over the design tokens (A13 / A19).
  *
  * Parses src/styles/tokens.css, reconstructs BOTH palettes, and checks every
- * foreground/background pair the UI actually renders — including tinted chips,
- * whose real background is the surface composited with an alpha wash of the
- * status colour, not the raw surface.
+ * foreground/background pair the UI actually renders. The maths itself lives in
+ * @core/contrast, which the /styleguide screen also imports — so the ratios
+ * printed in the browser are the ratios this gate enforces, by construction.
  *
  * Exits non-zero if anything fails, so it can gate a build.
  */
 
 const TOKENS = path.resolve('src/styles/tokens.css')
 
-type Rgb = [number, number, number]
 type Palette = Record<string, Rgb>
 
 /** Extract `--name: r g b;` declarations from one CSS block. */
 function parseBlock(css: string): Palette {
   const out: Palette = {}
-  const re = /--([a-z0-9-]+):\s*(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})\s*;/gi
+  const re = /--([a-z0-9-]+):\s*(\d{1,3}\s+\d{1,3}\s+\d{1,3})\s*;/gi
   let m: RegExpExecArray | null
   while ((m = re.exec(css))) {
-    out[m[1]] = [Number(m[2]), Number(m[3]), Number(m[4])]
+    const rgb = parseChannels(m[2])
+    if (rgb) out[m[1]] = rgb
   }
   return out
 }
@@ -52,44 +61,35 @@ function readPalettes(css: string): { light: Palette; dark: Palette } {
   return { light, dark: { ...light, ...darkOverrides } }
 }
 
-const srgbToLinear = (c: number): number => {
-  const s = c / 255
-  return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
-}
-
-function luminance([r, g, b]: Rgb): number {
-  return (
-    0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b)
-  )
-}
-
-function ratio(fg: Rgb, bg: Rgb): number {
-  const a = luminance(fg)
-  const b = luminance(bg)
-  const [hi, lo] = a > b ? [a, b] : [b, a]
-  return (hi + 0.05) / (lo + 0.05)
-}
-
-/** Composite `fg` over `bg` at the given alpha — how a tinted chip really looks. */
-function over(fg: Rgb, bg: Rgb, alpha: number): Rgb {
-  return [0, 1, 2].map((i) =>
-    Math.round(fg[i] * alpha + bg[i] * (1 - alpha)),
-  ) as Rgb
-}
-
 interface Check {
   label: string
   fg: string
   bg: string
-  /** Alpha wash of `fg` laid over `bg` before measuring. 0 = plain surface. */
-  tint?: number
+  /**
+   * Token whose 15 % wash sits between `fg` and `bg` — how a tinted chip really
+   * renders. Lot 0.7 split vivid fills from ink text, so the tint colour and
+   * the text colour are now DIFFERENT tokens and the check must say which.
+   */
+  tintWith?: string
+  tintAlpha?: number
   /** 4.5 for body text, 3.0 for large text and UI components (WCAG AA). */
   min: number
 }
 
-const SURFACES = ['surface-base', 'surface-raised', 'surface-overlay', 'surface-high']
-const STATUS = ['status-success', 'status-warn', 'status-danger', 'status-info']
-const FARM = [
+const SURFACES = [
+  'surface-base',
+  'surface-raised',
+  'surface-overlay',
+  'surface-high',
+]
+
+/** Every semantic hue, as the vivid/ink pair the components consume. */
+const HUES = [
+  'status-success',
+  'status-warn',
+  'status-danger',
+  'status-info',
+  'status-violet',
   'farm-to-contact',
   'farm-contacted',
   'farm-visited',
@@ -105,50 +105,70 @@ function buildChecks(theme: 'light' | 'dark'): Check[] {
   // Body text on every surface it can land on.
   for (const bg of SURFACES) {
     for (const fg of ['text-primary', 'text-secondary', 'text-muted']) {
-      checks.push({ label: `${fg} on ${bg}`, fg, bg, min: 4.5 })
+      checks.push({ label: `${fg} on ${bg}`, fg, bg, min: AA_TEXT })
     }
     // Accent used as foreground (links, active nav, inline emphasis).
-    checks.push({ label: `accent-ink on ${bg}`, fg: 'accent-ink', bg, min: 4.5 })
-  }
-
-  // Text sitting on a solid accent fill (primary buttons).
-  checks.push({
-    label: 'text-on-accent on accent',
-    fg: 'text-on-accent',
-    bg: 'accent',
-    min: 4.5,
-  })
-  checks.push({
-    label: 'text-on-accent on accent-strong',
-    fg: 'text-on-accent',
-    bg: 'accent-strong',
-    min: 4.5,
-  })
-  checks.push({
-    label: 'text-on-accent on accent-dim',
-    fg: 'text-on-accent',
-    bg: 'accent-dim',
-    min: 4.5,
-  })
-
-  // Chips: coloured text on a 15% wash of the same colour over the card.
-  for (const c of [...STATUS, ...FARM]) {
     checks.push({
-      label: `${c} chip on surface-raised`,
-      fg: c,
-      bg: 'surface-raised',
-      tint: 0.15,
-      min: 4.5,
+      label: `accent-ink on ${bg}`,
+      fg: 'accent-ink',
+      bg,
+      min: AA_TEXT,
     })
   }
 
-  // Status colours as non-text UI (map markers, dots, borders) need 3:1.
-  for (const c of [...STATUS, ...FARM]) {
+  // Text sitting on a solid accent fill (primary buttons, all three states).
+  for (const bg of ['accent', 'accent-strong', 'accent-dim']) {
     checks.push({
-      label: `${c} marker on surface-base`,
-      fg: c,
+      label: `text-on-accent on ${bg}`,
+      fg: 'text-on-accent',
+      bg,
+      min: AA_TEXT,
+    })
+  }
+
+  // Accent as an active-pill label: accent-ink on a 15 % accent wash.
+  checks.push({
+    label: 'accent-ink on accent chip',
+    fg: 'accent-ink',
+    bg: 'surface-raised',
+    tintWith: 'accent',
+    min: AA_TEXT,
+  })
+
+  // CHIPS — the vivid/ink pair. Ink text over the vivid colour's own 15 % wash.
+  for (const hue of HUES) {
+    checks.push({
+      label: `${hue} chip (ink on 15% tint)`,
+      fg: `${hue}-ink`,
+      bg: 'surface-raised',
+      tintWith: hue,
+      min: AA_TEXT,
+    })
+  }
+
+  // VIVID as non-text UI (map markers, list dots, severity bars) needs 3:1
+  // against the page it sits on.
+  for (const hue of HUES) {
+    checks.push({
+      label: `${hue} dot on surface-base`,
+      fg: hue,
       bg: 'surface-base',
-      min: 3,
+      min: AA_NON_TEXT,
+    })
+  }
+
+  // …and a vivid is also a SOLID FILL that carries near-black text: the route
+  // step number inside a map marker, the chosen presence button, a solid pill.
+  // Together with the check above this pins each light vivid into a narrow
+  // luminance window — dark enough to be seen on the page, light enough to be
+  // written on. That window is why the light palette is saturated rather than
+  // inky, and dropping this check is how it would silently drift back.
+  for (const hue of HUES) {
+    checks.push({
+      label: `text-on-accent on solid ${hue}`,
+      fg: 'text-on-accent',
+      bg: hue,
+      min: AA_TEXT,
     })
   }
 
@@ -167,6 +187,12 @@ function buildChecks(theme: 'light' | 'dark'): Check[] {
     // invisible on near-black); light also has shadow and border to lean on.
     min: theme === 'dark' ? 1.25 : 1.05,
   })
+  checks.push({
+    label: 'surface-high vs surface-raised (hover row)',
+    fg: 'surface-high',
+    bg: 'surface-raised',
+    min: 1.04,
+  })
 
   return checks
 }
@@ -174,25 +200,28 @@ function buildChecks(theme: 'light' | 'dark'): Check[] {
 function run(themeName: string, palette: Palette): number {
   console.log(`\n  ${themeName.toUpperCase()}`)
   console.log(
-    `  ${'pair'.padEnd(44)} ${'ratio'.padStart(7)}  ${'min'.padStart(4)}  result`,
+    `  ${'pair'.padEnd(46)} ${'ratio'.padStart(7)}  ${'min'.padStart(4)}  result`,
   )
-  console.log(`  ${'-'.repeat(70)}`)
+  console.log(`  ${'-'.repeat(72)}`)
 
   let failures = 0
   for (const c of buildChecks(themeName as 'light' | 'dark')) {
     const fg = palette[c.fg]
     const bg = palette[c.bg]
-    if (!fg || !bg) {
-      console.log(`  ${c.label.padEnd(44)} ${'—'.padStart(7)}        MISSING TOKEN`)
+    const tint = c.tintWith ? palette[c.tintWith] : undefined
+    if (!fg || !bg || (c.tintWith && !tint)) {
+      console.log(
+        `  ${c.label.padEnd(46)} ${'—'.padStart(7)}        MISSING TOKEN`,
+      )
       failures++
       continue
     }
-    const realBg = c.tint ? over(fg, bg, c.tint) : bg
-    const r = ratio(fg, realBg)
+    const realBg = tint ? compositeOver(tint, bg, c.tintAlpha ?? 0.15) : bg
+    const r = contrastRatio(fg, realBg)
     const pass = r >= c.min
     if (!pass) failures++
     console.log(
-      `  ${c.label.padEnd(44)} ${r.toFixed(2).padStart(7)}  ${String(c.min).padStart(4)}  ${
+      `  ${c.label.padEnd(46)} ${r.toFixed(2).padStart(7)}  ${String(c.min).padStart(4)}  ${
         pass ? 'PASS' : 'FAIL'
       }`,
     )

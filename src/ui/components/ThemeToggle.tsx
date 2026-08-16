@@ -20,7 +20,14 @@ const ICON: Record<ThemeChoice, IconName> = {
  * ("follow the system") is invisible in a two-state toggle — the user cannot
  * tell whether dark is their choice or their OS's.
  */
-export function ThemeToggle({ compact = false }: { compact?: boolean }) {
+export function ThemeToggle({
+  compact = false,
+  /** Stack the three segments — only the collapsed desktop rail needs this. */
+  vertical = false,
+}: {
+  compact?: boolean
+  vertical?: boolean
+}) {
   const { t } = useTranslation()
   const { choice, setChoice } = useTheme()
 
@@ -28,7 +35,11 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
     <div
       role="group"
       aria-label={t('theme.label')}
-      className="inline-flex rounded-md border border-edge-subtle bg-surface-sunken p-0.5"
+      // Vertical is for the collapsed rail only: three segments side by side
+      // are wider than 4.5 rem and spilled over the rail's edge onto the map.
+      className={`inline-flex rounded-md border border-edge-subtle bg-surface-sunken p-0.5 ${
+        vertical ? 'flex-col' : ''
+      }`}
     >
       {THEME_CHOICES.map((option) => {
         const active = choice === option

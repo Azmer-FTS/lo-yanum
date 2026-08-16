@@ -14,12 +14,28 @@ import type { MapMarker } from './MapView'
  * The coordinator thinks in geography, so on every major screen the map is a
  * first-class half of the layout rather than a thumbnail in a sidebar.
  *
- * Desktop: map on the visual LEFT at ~2/3, full height; the list panel takes
- * the remaining ~1/3 and scrolls independently. The document order is
- * list-then-map (so a screen reader hears the content first) and the visual
- * order is flipped with `flex-row-reverse`, which in an RTL document puts the
- * map on the left.
+ * D2 — THE MAP IS ALWAYS ON THE PHYSICAL LEFT.
+ * ---------------------------------------------
+ * Geography left, content right — in every language, RTL included. This is a
+ * deliberate exception to the "everything is logical/flippable" rule: a map is
+ * not text, and mirroring the whole screen for Hebrew moved the map to the
+ * right, which the product owner reads as a different app rather than as a
+ * translated one.
  *
+ * Getting there needs both direction variants, because the same
+ * `flex-direction` produces opposite physical results per writing mode. The
+ * DOM order is list-then-map (a screen reader should hear the content first),
+ * so:
+ *   RTL  + `row`          → first child at the right  → map physically left ✓
+ *   LTR  + `row-reverse`  → first child at the right  → map physically left ✓
+ * `rtl:` outranks the bare class on specificity (`[dir='rtl'] .x`), so the
+ * order they appear in the class string does not matter.
+ *
+ * For the same reason the divider between the two panels is a PHYSICAL
+ * `border-r` on the map: the map's right edge is the seam in both directions,
+ * and a logical `border-e` would jump to its outer edge in RTL.
+ *
+ * Ratio: 2/3 map, 1/3 content.
  * Mobile: the same single map becomes a collapsible ~40vh block above the list.
  *
  * The map is rendered EXACTLY ONCE and repositioned with CSS. Rendering a
@@ -30,6 +46,20 @@ import type { MapMarker } from './MapView'
  * `hoveredId` / `selectedId` down and receives `onHover` / `onSelect` back, so
  * a list row and its marker are always the same object to the user.
  */
+
+/**
+ * How much of the row the CONTENT column takes.
+ *
+ * `third` is the list screens: the map is the subject and the list annotates it.
+ * `half` is the dashboard, where the decisions column carries as much weight as
+ * the geography.
+ */
+export type ContentWidth = 'third' | 'half'
+
+const CONTENT_WIDTH: Record<ContentWidth, string> = {
+  third: 'lg:w-1/3',
+  half: 'lg:w-1/2',
+}
 
 export interface MapPanelProps {
   markers: MapMarker[]
@@ -47,6 +77,7 @@ export interface MapPanelProps {
   /** The list / content panel. */
   children: ReactNode
   ariaLabel: string
+  contentWidth?: ContentWidth
 }
 
 export function MapPanel({
@@ -60,14 +91,20 @@ export function MapPanel({
   detail,
   children,
   ariaLabel,
+  contentWidth = 'third',
 }: MapPanelProps) {
   const { t } = useTranslation()
   const [openOnMobile, setOpenOnMobile] = useState(true)
 
   return (
-    <div className="flex min-h-dvh flex-col lg:h-dvh lg:min-h-0 lg:flex-row-reverse">
-      {/* List panel — first in the DOM, visually second on desktop. */}
-      <div className="order-2 min-w-0 flex-1 overflow-y-auto px-4 py-5 lg:order-none lg:w-[34%] lg:max-w-lg lg:flex-none lg:px-5">
+    // `--shell-bottom` is the height of the sticky dev toolbar. Without
+    // subtracting it, a full-`dvh` map column is taller than the space actually
+    // available and the floating legend renders behind the toolbar.
+    <div className="flex min-h-dvh flex-col lg:h-[calc(100dvh-var(--shell-bottom))] lg:min-h-0 lg:flex-row-reverse lg:rtl:flex-row">
+      {/* List panel — first in the DOM, physically on the right on desktop. */}
+      <div
+        className={`order-2 min-w-0 flex-1 overflow-y-auto px-4 pb-24 pt-5 lg:order-none lg:flex-none lg:px-5 lg:pb-5 ${CONTENT_WIDTH[contentWidth]}`}
+      >
         {children}
       </div>
 
@@ -96,7 +133,7 @@ export function MapPanel({
         </div>
 
         <div
-          className={`relative w-full border-e-edge-subtle lg:h-full lg:border-e ${
+          className={`relative w-full border-edge-subtle lg:h-full lg:border-r ${
             openOnMobile ? 'h-[40dvh]' : 'h-0 overflow-hidden'
           } lg:!h-full`}
         >

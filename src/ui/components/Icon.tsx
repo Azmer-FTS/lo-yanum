@@ -61,6 +61,9 @@ export type IconName =
   | 'camera2'
   | 'image'
   | 'user'
+  | 'calendar'
+  | 'flag'
+  | 'send'
 
 type Props = SVGProps<SVGSVGElement> & { name: IconName; size?: number }
 
@@ -303,6 +306,25 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <circle cx="12" cy="8.5" r="3.6" />
       <path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+      <path d="M3.5 9.5h17M8 3.5V6.5M16 3.5V6.5" />
+      <path d="M7.5 13h.01M12 13h.01M16.5 13h.01M7.5 16.5h.01M12 16.5h.01" />
+    </>
+  ),
+  flag: (
+    <>
+      <path d="M5.5 21V3.5" />
+      <path d="M5.5 4.5h11l-2 3.5 2 3.5h-11" />
+    </>
+  ),
+  send: (
+    <>
+      <path d="M20.5 3.5 3.5 10.2l6.9 2.4 2.4 6.9z" />
+      <path d="M10.4 12.6 20.5 3.5" />
     </>
   ),
 }

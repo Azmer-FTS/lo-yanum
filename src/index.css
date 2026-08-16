@@ -140,10 +140,18 @@
     @apply p-4 sm:p-5;
   }
 
-  /* Interactive card: lifts slightly on hover. */
+  /* Interactive card: lifts slightly on hover. The 1px translate is what makes
+     a hover read as "this is a control" rather than "this changed colour". */
   .card-interactive {
     @apply card transition-all duration-base ease-out
-           hover:border-edge-strong hover:shadow-lift;
+           hover:-translate-y-px hover:border-edge-strong hover:shadow-lift;
+  }
+
+  /* Hero surface for the one card per screen that carries the identity. The
+     gradient lives on the FILL only — never behind text that needs to be read
+     at 13px. */
+  .card-hero {
+    @apply rounded-lg border border-edge-subtle bg-gradient-hero shadow-card;
   }
 
   /* Sub-label used INSIDE a card. Structural section headings are rendered by
@@ -160,7 +168,14 @@
 
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1
-           text-micro font-medium;
+           text-micro font-semibold;
+  }
+
+  /* A "live" state marks itself with a pulsing dot rather than a louder colour:
+     motion says "right now" in a way that no static hue can. */
+  .live-dot {
+    @apply inline-block h-1.5 w-1.5 shrink-0 animate-pulse-ring rounded-pill;
+    background-color: currentColor;
   }
 
   /* --- Buttons ----------------------------------------------------------- */
@@ -173,9 +188,10 @@
            disabled:pointer-events-none disabled:opacity-40;
   }
 
+  /* The primary action is the one gradient fill in the system. */
   .btn-primary {
-    @apply btn bg-accent text-content-on-accent shadow-accent
-           hover:bg-accent-strong active:bg-accent-dim;
+    @apply btn bg-gradient-accent text-content-on-accent shadow-accent
+           hover:shadow-glow hover:brightness-105 active:brightness-95;
   }
 
   .btn-secondary {
@@ -211,18 +227,25 @@
     @apply mb-1.5 block text-caption font-medium text-content-secondary;
   }
 
-  /* --- Filter bar (R3: one horizontal bar above every list screen) ------- */
+  /* --- Filter bar (D7.3: ONE discreet row, every pill carries its count) -- */
 
   .filter-pill {
     @apply inline-flex shrink-0 items-center gap-1.5 rounded-pill border
-           border-edge-subtle bg-surface-high px-3 py-1.5 text-caption
+           border-transparent bg-surface-high px-2.5 py-1 text-micro
            font-medium text-content-secondary
            transition-all duration-fast ease-out
            hover:border-edge-strong hover:text-content-primary;
   }
 
+  /* The active pill is unmistakable: accent border, accent wash, accent ink.
+     A pill that only changes its background reads as "hovered", not "on". */
   .filter-pill-active {
-    @apply border-accent/60 bg-accent/15 text-accent-ink;
+    @apply border-accent bg-accent/15 font-semibold text-accent-ink;
+  }
+
+  /* The count inside a pill. Tabular so a row of pills has a steady rhythm. */
+  .filter-count {
+    @apply numeric rounded-pill bg-content-primary/10 px-1.5 text-micro font-semibold;
   }
 
   /* --- Scroll containers ------------------------------------------------- */
@@ -259,12 +282,62 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   STAGGERED LIST ENTRY
+   ---------------------------------------------------------------------------
+   `<ul className="stagger">` and every direct child rises in, one after the
+   next. Written as explicit nth-child rules because CSS cannot derive a delay
+   from the child index: `calc(var(--stagger-step) * n)` has no `n` to read.
+   Ten steps then a flat ceiling — past ~340 ms the eye stops reading it as a
+   sequence and starts reading it as lag, and a 300-row roster must not take
+   ten seconds to appear.
+   --------------------------------------------------------------------------- */
+
+.stagger > * {
+  animation: rise var(--duration-slow) var(--ease-out) both;
+  animation-delay: calc(var(--stagger-step) * 10);
+}
+
+.stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger > *:nth-child(2) {
+  animation-delay: calc(var(--stagger-step) * 1);
+}
+.stagger > *:nth-child(3) {
+  animation-delay: calc(var(--stagger-step) * 2);
+}
+.stagger > *:nth-child(4) {
+  animation-delay: calc(var(--stagger-step) * 3);
+}
+.stagger > *:nth-child(5) {
+  animation-delay: calc(var(--stagger-step) * 4);
+}
+.stagger > *:nth-child(6) {
+  animation-delay: calc(var(--stagger-step) * 5);
+}
+.stagger > *:nth-child(7) {
+  animation-delay: calc(var(--stagger-step) * 6);
+}
+.stagger > *:nth-child(8) {
+  animation-delay: calc(var(--stagger-step) * 7);
+}
+.stagger > *:nth-child(9) {
+  animation-delay: calc(var(--stagger-step) * 8);
+}
+.stagger > *:nth-child(10) {
+  animation-delay: calc(var(--stagger-step) * 9);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    /* Without this the stagger delays survive and the list appears to hang
+       before rendering — the exact opposite of what the preference asks for. */
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
   }
 }

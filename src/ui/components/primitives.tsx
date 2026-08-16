@@ -151,8 +151,8 @@ export function Stat({
 }) {
   const toneClass = {
     default: 'text-content-primary',
-    alert: 'text-status-danger',
-    good: 'text-status-success',
+    alert: 'text-status-danger-ink',
+    good: 'text-status-success-ink',
     accent: 'text-accent-ink',
   }[tone]
 
@@ -236,7 +236,13 @@ export function FilterBar({
   )
 }
 
-/** A single toggleable pill inside a FilterBar. */
+/**
+ * A single toggleable pill inside a FilterRow.
+ *
+ * D7.3 — the count is part of the pill, not a separate legend. "פעילה 4" tells
+ * the coordinator both what the filter is and whether pressing it is worth the
+ * tap; a pill that reveals an empty list on click is a wasted interaction.
+ */
 export function FilterPill({
   active,
   onClick,
@@ -259,10 +265,52 @@ export function FilterPill({
     >
       {dot}
       {children}
-      {count !== undefined && (
-        <span className="numeric text-micro opacity-60">{count}</span>
-      )}
+      {count !== undefined && <span className="filter-count">{count}</span>}
     </button>
+  )
+}
+
+/**
+ * D7.3 — ONE discreet filter row, shared by every list screen.
+ *
+ * Replaces the per-screen ad-hoc pill rows, which had drifted into different
+ * heights, different spacings and — on the incident log — a twelve-pill farm
+ * selector that was longer than the list it filtered.
+ *
+ * The clear button appears only when something is actually filtered. A
+ * permanently visible "clear" implies there is always something to clear, and
+ * costs a tap target on a 390 px row for no reason.
+ */
+export function FilterRow({
+  children,
+  active,
+  onClear,
+  trailing,
+}: {
+  children: ReactNode
+  /** True when at least one filter is on. */
+  active: boolean
+  onClear: () => void
+  trailing?: ReactNode
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-1.5">
+      {children}
+      {active && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="filter-pill border-edge-strong text-content-primary hover:border-status-danger"
+        >
+          <Icon name="close" size={11} />
+          {t('common.clear')}
+        </button>
+      )}
+      {trailing && (
+        <div className="ms-auto flex items-center gap-1.5">{trailing}</div>
+      )}
+    </div>
   )
 }
 
@@ -448,10 +496,10 @@ export function Callout({
   children?: ReactNode
 }) {
   const tones = {
-    warn: 'border-status-warn/40 bg-status-warn/10 text-status-warn',
-    danger: 'border-status-danger/40 bg-status-danger/10 text-status-danger',
-    info: 'border-status-info/40 bg-status-info/10 text-status-info',
-    success: 'border-status-success/40 bg-status-success/10 text-status-success',
+    warn: 'border-status-warn/40 bg-status-warn/10 text-status-warn-ink',
+    danger: 'border-status-danger/40 bg-status-danger/10 text-status-danger-ink',
+    info: 'border-status-info/40 bg-status-info/10 text-status-info-ink',
+    success: 'border-status-success/40 bg-status-success/10 text-status-success-ink',
   }
   return (
     <div className={`rounded-lg border p-4 ${tones[tone]}`}>

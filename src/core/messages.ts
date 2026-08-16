@@ -142,6 +142,64 @@ export function buildKosherMessage(
   return parts.join('\n')
 }
 
+// --- D5: the recruitment ask -----------------------------------------------
+
+export interface InvitationLabels {
+  title: string
+  greeting: string
+  farm: string
+  date: string
+  time: string
+  meeting: string
+  ask: string
+  signature: string
+}
+
+export interface InvitationInput {
+  volunteerName: string
+  farm: Farm
+  anchorPoint: AnchorPoint
+  startAt: string
+  endAt: string
+  coordinatorName: string
+  coordinatorPhone: string
+  locale: string
+}
+
+/**
+ * The message a coordinator sends when ASKING someone to stand guard — short,
+ * answerable, and identical whether it goes out over WhatsApp or SMS.
+ *
+ * Deliberately NOT the briefing message. The briefing (see
+ * `buildSmartphoneMessage`) carries navigation links, access descriptions and
+ * every phone number, and it is sent once the guard is staffed. Sending all of
+ * that to someone who has not yet said yes buries the only question that
+ * matters. No link here either: this text has to read the same on a kosher
+ * phone, and the answer comes back by phone call regardless.
+ */
+export function buildInvitationMessage(
+  input: InvitationInput,
+  labels: InvitationLabels,
+): string {
+  const { farm, anchorPoint, startAt, endAt, locale } = input
+
+  return [
+    labels.title,
+    '',
+    `${labels.greeting} ${input.volunteerName},`,
+    line(labels.farm, `${farm.name}, ${farm.locality}`),
+    line(labels.date, formatDate(startAt, locale)),
+    line(
+      labels.time,
+      `${formatTime(startAt, locale)}–${formatTime(endAt, locale)}`,
+    ),
+    line(labels.meeting, anchorPoint.name),
+    '',
+    labels.ask,
+    `${labels.signature} ${input.coordinatorName} ${input.coordinatorPhone}`,
+  ].join('\n')
+}
+
 // --- Outgoing links --------------------------------------------------------
 
 const digits = (phone: string): string => phone.replace(/\D/g, '')

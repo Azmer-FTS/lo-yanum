@@ -13,11 +13,12 @@ import {
 import type { MissionStatus } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
+import { CreateGuardButton } from '../../components/CreateGuardFab'
 import { ChevronForward, Icon } from '../../components/Icon'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { MissionStatusChip, readToken } from '../../components/badges'
-import { EmptyState, FilterPill } from '../../components/primitives'
+import { EmptyState, FilterPill, FilterRow } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
@@ -103,14 +104,22 @@ export function MissionsScreen() {
         </ul>
       }
     >
-      <header className="mb-4">
-        <h1 className="text-title text-content-primary">{t('missions.title')}</h1>
-        <p className="muted mt-1">
-          {t('missions.count', { count: list.length })}
-        </p>
+      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-title text-content-primary">
+            {t('missions.title')}
+          </h1>
+          <p className="muted mt-1">
+            {t('missions.count', { count: list.length })}
+          </p>
+        </div>
+        <CreateGuardButton className="btn-primary hidden lg:inline-flex" />
       </header>
 
-      <div className="mb-4 flex flex-wrap gap-1.5">
+      {/* D7.3 — the upcoming/past switch and the status filter share one row.
+          Status counts are computed against the ACTIVE tab, so a pill's number
+          is what pressing it would actually show. */}
+      <FilterRow active={status !== null} onClear={() => setStatus(null)}>
         <FilterPill
           active={tab === 'upcoming'}
           onClick={() => setTab('upcoming')}
@@ -125,22 +134,29 @@ export function MissionsScreen() {
         >
           {t('missions.past')}
         </FilterPill>
-        <span className="h-5 w-px shrink-0 bg-edge-strong" />
-        {STATUSES.map((s) => (
-          <FilterPill
-            key={s}
-            active={status === s}
-            onClick={() => setStatus(status === s ? null : s)}
-          >
-            {t(`missionStatus.${s}`)}
-          </FilterPill>
-        ))}
-      </div>
+        <span className="mx-0.5 h-4 w-px shrink-0 bg-edge-subtle" />
+        {STATUSES.map((s) => {
+          const count = (tab === 'upcoming' ? upcoming : past).filter(
+            (v) => v.mission.status === s,
+          ).length
+          if (count === 0) return null
+          return (
+            <FilterPill
+              key={s}
+              active={status === s}
+              onClick={() => setStatus(status === s ? null : s)}
+              count={count}
+            >
+              {t(`missionStatus.${s}`)}
+            </FilterPill>
+          )
+        })}
+      </FilterRow>
 
       {list.length === 0 ? (
         <EmptyState icon="shield" title={t('missions.empty')} />
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="stagger flex flex-col gap-2">
           {list.map((view) => {
             const { mission, farm, anchorPoint, driver, volunteers } = view
             const active = mission.id === hoveredId
@@ -171,7 +187,7 @@ export function MissionsScreen() {
                     </span>
                     <MissionStatusChip status={mission.status} />
                     {mismatch && (
-                      <span className="chip bg-status-warn/15 text-status-warn">
+                      <span className="chip bg-status-warn/15 text-status-warn-ink">
                         <Icon name="alert" size={11} />
                         {t('alerts.presence_mismatch')}
                       </span>

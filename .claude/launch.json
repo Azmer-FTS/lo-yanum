@@ -4,8 +4,12 @@
     {
       "name": "lo-yanum",
       "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "dev"],
-      "port": 5173
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 5173,
+      "autoPort": true
     }
   ]
 }

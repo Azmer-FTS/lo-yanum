@@ -27,11 +27,11 @@ export function Field({
     <label className={`block ${className}`}>
       <span className="label">
         {label}
-        {required && <span className="text-status-danger"> *</span>}
+        {required && <span className="text-status-danger-ink"> *</span>}
       </span>
       {children}
       {error ? (
-        <span className="mt-1 block text-micro text-status-danger">{error}</span>
+        <span className="mt-1 block text-micro text-status-danger-ink">{error}</span>
       ) : (
         hint && <span className="mt-1 block text-micro text-content-muted">{hint}</span>
       )}
@@ -199,7 +199,9 @@ export function FormActions({
   onSubmit: () => void
 }) {
   return (
-    <div className="sticky bottom-0 -mx-4 mt-2 flex justify-end gap-2 border-t border-edge-subtle bg-surface-base/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+    // `bottom-[--shell-bottom]` clears the sticky demo toolbar. At plain
+    // `bottom-0` the submit button sat underneath it at every viewport.
+    <div className="sticky bottom-[var(--shell-bottom)] -mx-4 mt-2 flex justify-end gap-2 border-t border-edge-subtle bg-surface-base/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
       <button type="button" className="btn-secondary" onClick={onCancel}>
         {cancelLabel}
       </button>

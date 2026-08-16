@@ -14,6 +14,8 @@ import {
 
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
+import { Timeline } from '../../components/Timeline'
+import type { TimelineEntry } from '../../components/Timeline'
 import { SeverityChip, readToken } from '../../components/badges'
 import {
   KeyValue,
@@ -33,6 +35,46 @@ export function IncidentDetailScreen() {
   if (!view) return <Navigate to="/coordinator/incidents" replace />
 
   const { incident, farm } = view
+
+  /**
+   * The whole life of the incident as one ordered thread. The closing step is
+   * always rendered — pending when the incident is still open — because "not
+   * yet resolved" is the single most important fact on this screen and an
+   * absent row states it far less clearly than an empty one.
+   */
+  const timeline: TimelineEntry[] = [
+    {
+      id: 'reported',
+      label: t('timeline.reported'),
+      at: incident.reportedAt,
+      author: `${incident.reporterName} · ${t(`incidentSource.${incident.source}`)}`,
+      detail: incident.description,
+      icon: 'alert',
+      state: 'done',
+      tone: incident.severity === 'urgent' ? 'danger' : 'warn',
+    },
+    ...incident.entries.map((e) => ({
+      id: e.id,
+      label: e.text,
+      at: e.at,
+      author: e.author,
+      icon: 'message' as const,
+      state: 'done' as const,
+      tone: 'default' as const,
+    })),
+    {
+      id: 'resolution',
+      label: t(incident.resolved ? 'timeline.resolved' : 'timeline.open'),
+      // No `resolvedAt` in the model — the last follow-up entry is the closest
+      // honest stand-in, and an unresolved incident correctly shows "—".
+      at: incident.resolved
+        ? (incident.entries.at(-1)?.at ?? incident.reportedAt)
+        : null,
+      icon: incident.resolved ? 'check' : 'clock',
+      state: incident.resolved ? 'done' : 'current',
+      tone: incident.resolved ? 'success' : 'warn',
+    },
+  ]
 
   const submitEntry = () => {
     const text = entry.trim()
@@ -102,26 +144,14 @@ export function IncidentDetailScreen() {
             </dl>
           </Section>
 
+          {/* D6.1 — report → actions → resolution, as one continuous thread.
+              The follow-up entries are not a separate list from the report and
+              the closure: they are the middle of the same story, and rendering
+              them as three blocks was what made the screen hard to read. */}
           <Section title={t('incidents.thread')}>
-            {incident.entries.length === 0 ? (
-              <p className="muted">{t('incidents.noEntries')}</p>
-            ) : (
-              <ol className="flex flex-col">
-                {incident.entries.map((e) => (
-                  <li key={e.id} className="flex gap-3 pb-4 last:pb-0">
-                    <span className="mt-1 flex h-2.5 w-2.5 shrink-0 rounded-pill bg-accent" />
-                    <div>
-                      <p className="text-caption text-content-secondary">{e.text}</p>
-                      <p className="ltr-nums muted mt-0.5">
-                        {e.author} · {formatDateTime(e.at, locale)}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            )}
+            <Timeline withDate entries={timeline} />
 
-            <div className="mt-3 flex flex-col gap-2 border-t border-edge-subtle pt-3 sm:flex-row">
+            <div className="mt-4 flex flex-col gap-2 border-t border-edge-subtle pt-3 sm:flex-row">
               <input
                 type="text"
                 className="input"

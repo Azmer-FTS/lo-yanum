@@ -69,11 +69,11 @@ export function VolunteerGuardScreen() {
       <div className="mb-4 flex flex-col gap-2">
         {mission.arrivalConfirmedAt ? (
           <div className="flex items-center justify-between gap-3 rounded-lg border border-status-success/40 bg-status-success/10 px-4 py-3.5">
-            <span className="flex items-center gap-2 text-caption font-semibold text-status-success">
+            <span className="flex items-center gap-2 text-caption font-semibold text-status-success-ink">
               <Icon name="check" size={18} />
               {t('volunteer.arrivalDone')}
             </span>
-            <span className="ltr-nums text-micro text-status-success/70">
+            <span className="ltr-nums text-micro text-status-success-ink/70">
               {formatTime(mission.arrivalConfirmedAt, locale)}
             </span>
           </div>

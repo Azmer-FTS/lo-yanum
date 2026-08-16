@@ -152,7 +152,7 @@ export function PresenceRoster({
                       rel="noreferrer"
                       aria-label={`${t('common.whatsapp')} ${row.volunteer.name}`}
                       className="flex h-11 w-11 items-center justify-center rounded-md border border-edge-strong
-                                 text-status-success transition-all duration-fast ease-out
+                                 text-status-success-ink transition-all duration-fast ease-out
                                  hover:bg-status-success/10 active:scale-95"
                     >
                       <Icon name="whatsapp" size={19} />
@@ -171,7 +171,7 @@ export function PresenceRoster({
                               transition-all duration-fast ease-out active:scale-[0.98] ${
                                 chosen === 'present'
                                   ? 'bg-status-success text-content-on-accent shadow-card'
-                                  : 'border border-status-success/40 text-status-success hover:bg-status-success/10'
+                                  : 'border border-status-success/40 text-status-success-ink hover:bg-status-success/10'
                               }`}
                 >
                   <Icon name="check" size={17} />
@@ -185,7 +185,7 @@ export function PresenceRoster({
                               transition-all duration-fast ease-out active:scale-[0.98] ${
                                 chosen === 'absent'
                                   ? 'bg-status-danger text-content-on-accent shadow-card'
-                                  : 'border border-status-danger/40 text-status-danger hover:bg-status-danger/10'
+                                  : 'border border-status-danger/40 text-status-danger-ink hover:bg-status-danger/10'
                               }`}
                 >
                   <Icon name="close" size={17} />
@@ -201,7 +201,7 @@ export function PresenceRoster({
                     {t('presence.driverSays')}:{' '}
                     <span
                       className={
-                        row.leg.driver === 'absent' ? 'text-status-danger' : ''
+                        row.leg.driver === 'absent' ? 'text-status-danger-ink' : ''
                       }
                     >
                       {t(`confirm.${row.leg.driver ?? 'pending'}`)}
@@ -213,7 +213,7 @@ export function PresenceRoster({
                     {t('presence.groupSays')}:{' '}
                     <span
                       className={
-                        row.leg.group === 'absent' ? 'text-status-danger' : ''
+                        row.leg.group === 'absent' ? 'text-status-danger-ink' : ''
                       }
                     >
                       {t(`confirm.${row.leg.group ?? 'pending'}`)}
@@ -222,7 +222,7 @@ export function PresenceRoster({
                 )}
                 {row.volunteer.phoneType === 'smartphone' &&
                   row.leg.self !== null && (
-                    <span className="text-status-success">
+                    <span className="text-status-success-ink">
                       {t('presence.selfSays')}: {t(`confirm.${row.leg.self}`)}
                     </span>
                   )}
@@ -260,7 +260,7 @@ export function PresenceRoster({
       </ul>
 
       {pending === 0 ? (
-        <p className="flex items-center justify-center gap-2 rounded-md bg-status-success/10 py-2.5 text-caption font-medium text-status-success">
+        <p className="flex items-center justify-center gap-2 rounded-md bg-status-success/10 py-2.5 text-caption font-medium text-status-success-ink">
           <Icon name="check" size={15} />
           {t('presence.allConfirmed')}
         </p>

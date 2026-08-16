@@ -228,38 +228,31 @@ export function RoutePlannerScreen() {
         </div>
       </section>
 
-      {/* Navigation hand-off: BOTH apps, because coverage and routing quality
-          differ by area in the Negev and neither wins everywhere. */}
+      {/* D7.2 — NAVIGATION HAND-OFF, ASYMMETRIC ON PURPOSE.
+          The two apps are not two equivalent buttons, because they do not offer
+          the same thing: Google Maps takes the whole route in ONE link, Waze
+          needs one link per stop. Presenting them as a matched pair of buttons
+          implied a parity that does not exist and hid the step list underneath.
+          Now Waze is a single titled block holding its numbered list, and the
+          Google Maps action sits beside that block as one line. */}
       {route.stops.length > 0 && (
         <section className="mb-6">
           <h2 className="pb-2.5 text-section text-content-primary">
             {t('common.navigate')}
           </h2>
 
-          <div className="grid grid-cols-2 gap-2">
-            <a
-              href={wazeSteps[0]?.url}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-primary btn-big justify-center"
-            >
-              <Icon name="pin" size={18} />
-              {t('route.openInWaze')}
-            </a>
-            <a
-              href={mapsUrl ?? undefined}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-secondary btn-big justify-center"
-            >
-              <Icon name="external" size={18} />
-              {t('route.openInGoogleMaps')}
-            </a>
-          </div>
+          <div className="card card-pad">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/15 text-accent-ink">
+                <Icon name="pin" size={15} />
+              </span>
+              <p className="text-caption font-semibold text-content-primary">
+                {t('route.wazeBlockTitle')}
+              </p>
+            </div>
+            <p className="muted mb-2.5">{t('route.wazeStepByStep')}</p>
 
-          <div className="card card-pad mt-3">
-            <p className="muted mb-2">{t('route.wazeStepByStep')}</p>
-            <ul className="flex flex-col gap-1.5">
+            <ol className="flex flex-col gap-1">
               {wazeSteps.map((step) => (
                 <li key={step.order}>
                   <a
@@ -270,10 +263,10 @@ export function RoutePlannerScreen() {
                       setHoveredId(route.stops[step.order - 1]?.farm.id ?? null)
                     }
                     onMouseLeave={() => setHoveredId(null)}
-                    className="flex items-center gap-2.5 rounded-md border border-edge-subtle px-3 py-2
-                               transition-all duration-fast hover:border-accent/50 hover:bg-surface-high"
+                    className="flex items-center gap-2.5 rounded-md px-2 py-1.5
+                               transition-all duration-fast hover:bg-surface-high"
                   >
-                    <span className="numeric flex h-6 w-6 shrink-0 items-center justify-center rounded-pill bg-surface-high text-micro font-bold text-content-primary">
+                    <span className="numeric flex h-5 w-5 shrink-0 items-center justify-center rounded-pill bg-gradient-accent text-micro font-bold text-content-on-accent">
                       {step.order}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-caption text-content-primary">
@@ -281,14 +274,24 @@ export function RoutePlannerScreen() {
                     </span>
                     <Icon
                       name="external"
-                      size={14}
+                      size={13}
                       className="shrink-0 text-content-muted"
                     />
                   </a>
                 </li>
               ))}
-            </ul>
+            </ol>
           </div>
+
+          <a
+            href={mapsUrl ?? undefined}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-secondary mt-2 w-full justify-center"
+          >
+            <Icon name="external" size={16} />
+            {t('route.openInGoogleMaps')}
+          </a>
         </section>
       )}
     </MapPanel>

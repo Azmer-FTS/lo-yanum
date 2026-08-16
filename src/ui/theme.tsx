@@ -52,7 +52,10 @@ function applyToDocument(choice: ThemeChoice): void {
   const resolved = resolveTheme(choice, systemPrefersDark())
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) {
-    meta.setAttribute('content', resolved === 'dark' ? '#0D1524' : '#F6F3ED')
+    // The two `--surface-base` values. Duplicated as literals because the meta
+    // tag needs a colour before any stylesheet has necessarily applied; keep
+    // them in step with tokens.css by hand.
+    meta.setAttribute('content', resolved === 'dark' ? '#0C1220' : '#F2F4F8')
   }
 }
 

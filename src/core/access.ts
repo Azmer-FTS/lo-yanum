@@ -1,6 +1,7 @@
-import { isTonight, now } from './clock'
+import { DAY, isTonight, now } from './clock'
 import { _raw, getSession } from './store'
 import type {
+  AgendaEvent,
   AnchorPoint,
   ConfirmationState,
   DashboardAlert,
@@ -8,6 +9,7 @@ import type {
   Farm,
   FarmStatus,
   FarmStatusCount,
+  FarmVisit,
   Incident,
   IncidentView,
   LegConfirmation,
@@ -344,10 +346,102 @@ export function getVisibleIncidentViews(): IncidentView[] {
   })
 }
 
+/** D6.2 — incidents reported during one guard, oldest first for the timeline. */
+export function getIncidentsForMission(missionId: string): Incident[] {
+  return getVisibleIncidents()
+    .filter((i) => i.missionId === missionId)
+    .sort(
+      (a, b) =>
+        new Date(a.reportedAt).getTime() - new Date(b.reportedAt).getTime(),
+    )
+}
+
 export function getIncidentView(incidentId: string): IncidentView | null {
   return (
     getVisibleIncidentViews().find((v) => v.incident.id === incidentId) ?? null
   )
+}
+
+// --- D4: farm visits & the agenda ------------------------------------------
+
+/** Visits on farms this session can see, soonest first. */
+export function getVisibleFarmVisits(): FarmVisit[] {
+  const farmIds = new Set(getVisibleFarms().map((f) => f.id))
+  return _raw()
+    .farmVisits.filter((v) => farmIds.has(v.farmId))
+    .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
+}
+
+export function getFarmVisitsForFarm(farmId: string): FarmVisit[] {
+  if (!getFarm(farmId)) return []
+  return getVisibleFarmVisits().filter((v) => v.farmId === farmId)
+}
+
+export function getFarmVisit(visitId: string): FarmVisit | null {
+  return getVisibleFarmVisits().find((v) => v.id === visitId) ?? null
+}
+
+/**
+ * Everything that belongs on the calendar between two instants, ordered.
+ *
+ * Guards and visits are flattened into ONE shape here rather than in the
+ * calendar component, so the agenda screen, the dashboard widget and any future
+ * export all place events by the same rules. The half-open window `[from, to)`
+ * is deliberate: a guard that ends at exactly midnight belongs to the night
+ * that started it, not to the next day.
+ */
+export function getAgendaEvents(from: Date, to: Date): AgendaEvent[] {
+  const fromMs = from.getTime()
+  const toMs = to.getTime()
+  const events: AgendaEvent[] = []
+
+  for (const view of getVisibleMissionViews()) {
+    const at = new Date(view.mission.startAt).getTime()
+    if (at < fromMs || at >= toMs) continue
+    events.push({
+      id: view.mission.id,
+      kind: 'mission',
+      at: view.mission.startAt,
+      endAt: view.mission.endAt,
+      title: view.farm.name,
+      subtitle: view.anchorPoint.name,
+      href: `/coordinator/missions/${view.mission.id}`,
+      missionStatus: view.mission.status,
+      done: false,
+      farmId: view.farm.id,
+    })
+  }
+
+  const farms = getVisibleFarms()
+  for (const visit of getVisibleFarmVisits()) {
+    const at = new Date(visit.at).getTime()
+    if (at < fromMs || at >= toMs) continue
+    const farm = farms.find((f) => f.id === visit.farmId)
+    if (!farm) continue
+    events.push({
+      id: visit.id,
+      kind: 'visit',
+      at: visit.at,
+      endAt: visit.at,
+      title: farm.name,
+      subtitle: visit.note,
+      href: `/coordinator/farms/${farm.id}`,
+      missionStatus: null,
+      done: visit.done,
+      farmId: farm.id,
+    })
+  }
+
+  return events.sort(
+    (a, b) => new Date(a.at).getTime() - new Date(b.at).getTime(),
+  )
+}
+
+/** The next few entries from now on — the dashboard's compact agenda strip. */
+export function getUpcomingAgendaEvents(limit = 3, days = 30): AgendaEvent[] {
+  const from = now()
+  const to = new Date(from.getTime() + days * DAY)
+  return getAgendaEvents(from, to).slice(0, limit)
 }
 
 // --- R6: nominative presence ----------------------------------------------

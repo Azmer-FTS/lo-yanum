@@ -241,9 +241,57 @@ export interface Mission {
   driverId: string | null
   arrivalConfirmedAt: string | null
   endConfirmedAt: string | null
+
+  // --- D6.2: the night's timeline ------------------------------------------
+  //
+  // Four instants the guard actually passes through. They exist because a
+  // timeline built only from `arrivalConfirmedAt` / `endConfirmedAt` had to
+  // print "—" against steps that had demonstrably happened. Each is stamped by
+  // exactly one transition in store.ts and by nothing else.
+
+  /** When the coordinator created the guard. */
+  createdAt: string
+  /** Every volunteer marked on the OUTBOUND leg — the group is on site. */
+  droppedOffAt: string | null
+  /** Every volunteer marked on the INBOUND leg — the driver has them. */
+  pickedUpAt: string | null
+  /**
+   * The inbound reconciliation closed with no disagreement.
+   *
+   * Distinct from `pickedUpAt` on purpose: "the driver says he has everyone"
+   * and "the driver and the group holder agree he has everyone" are different
+   * claims, and the gap between them is precisely what this programme exists
+   * to catch.
+   */
+  completedAt: string | null
 }
 
 export type MissionLeg = 'outbound' | 'inbound'
+
+// ---------------------------------------------------------------------------
+// Farm visits (ביקורי חווה) — D4
+// ---------------------------------------------------------------------------
+
+/**
+ * A planned or completed visit by the coordinator to a farm.
+ *
+ * Introduced in Lot 0.7 because the agenda needed something to put in the
+ * calendar besides guards, and "the coordinator is driving to Har Amasa on
+ * Tuesday" was previously representable only as a bare date on the farm record.
+ *
+ * `Farm.nextVisitAt` still exists and still drives the route planner and the
+ * dashboard, but it is now a DERIVED CACHE of these rows — recomputed by the
+ * store after every visit mutation, and written by nothing else. See
+ * `syncNextVisit` in store.ts.
+ */
+export interface FarmVisit {
+  id: string
+  farmId: string
+  /** ISO datetime of the visit. */
+  at: string
+  note: string
+  done: boolean
+}
 
 // ---------------------------------------------------------------------------
 // Incidents (אירועים)
@@ -318,6 +366,29 @@ export interface DashboardAlert {
    * itself — the coordinator should never have to navigate to place the call.
    */
   contacts: Array<{ name: string; phone: string; roleKey: string }>
+}
+
+/** D4 — one entry in the agenda, whatever kind of thing it is. */
+export type AgendaEventKind = 'mission' | 'visit'
+
+export interface AgendaEvent {
+  id: string
+  kind: AgendaEventKind
+  /** ISO datetime the entry starts. */
+  at: string
+  /** ISO datetime it ends. Equal to `at` for point events like a visit. */
+  endAt: string
+  /** Farm name — the thing a coordinator scans for. */
+  title: string
+  /** Anchor point, or the visit note. */
+  subtitle: string
+  /** Route to open on click. */
+  href: string
+  /** Present only for `kind: 'mission'`; the UI colours the entry by it. */
+  missionStatus: MissionStatus | null
+  /** Present only for `kind: 'visit'`. */
+  done: boolean
+  farmId: string
 }
 
 export interface VolunteerStats {

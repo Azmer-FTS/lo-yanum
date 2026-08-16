@@ -4,6 +4,7 @@ import { FARMS } from './mock/farms'
 import { INCIDENTS } from './mock/incidents'
 import { MISSIONS } from './mock/missions'
 import { DRIVERS, VOLUNTEERS } from './mock/people'
+import { FARM_VISITS } from './mock/visits'
 import type {
   AnchorPoint,
   Driver,
@@ -11,11 +12,13 @@ import type {
   FarmContact,
   FarmStatus,
   FarmType,
+  FarmVisit,
   Incident,
   IncidentSeverity,
   IncidentSource,
   LatLng,
   Mission,
+  MissionAssignment,
   MissionLeg,
   PhoneType,
   PresenceMark,
@@ -24,6 +27,7 @@ import type {
   Volunteer,
   VolunteerStatus,
 } from './types'
+import { EMPTY_LEG } from './types'
 
 /**
  * In-memory store for the POC.
@@ -41,6 +45,7 @@ interface StoreData {
   anchorPoints: AnchorPoint[]
   missions: Mission[]
   incidents: Incident[]
+  farmVisits: FarmVisit[]
   session: Session
 }
 
@@ -53,6 +58,7 @@ const initial = (): StoreData => ({
   anchorPoints: clone(ANCHOR_POINTS),
   missions: clone(MISSIONS),
   incidents: clone(INCIDENTS),
+  farmVisits: clone(FARM_VISITS),
   session: { role: 'coordinator', entityId: null },
 })
 
@@ -177,6 +183,26 @@ function legFullyMarked(mission: Mission, leg: MissionLeg): boolean {
   )
 }
 
+/**
+ * D6.2 — stamp the timeline instants a leg transition implies.
+ *
+ * Called from every path that can change a leg's completeness, so a timestamp
+ * can never be missed by one caller and set by another. Each stamp is
+ * write-once: re-marking a volunteer must not rewrite the moment the group
+ * actually got on site.
+ */
+function stampLegTimestamps(mission: Mission): void {
+  if (mission.droppedOffAt === null && legFullyMarked(mission, 'outbound')) {
+    mission.droppedOffAt = iso(now())
+  }
+  if (mission.pickedUpAt === null && legFullyMarked(mission, 'inbound')) {
+    mission.pickedUpAt = iso(now())
+  }
+  if (mission.completedAt === null && mission.status === 'completed') {
+    mission.completedAt = iso(now())
+  }
+}
+
 /** Volunteer action: the guard is over for the whole group. */
 export function confirmGuardEnd(missionId: string): void {
   withMission(missionId, (m) => {
@@ -184,6 +210,7 @@ export function confirmGuardEnd(missionId: string): void {
     m.status = legFullyMarked(m, 'inbound')
       ? 'completed'
       : 'return_not_confirmed'
+    stampLegTimestamps(m)
   })
 }
 
@@ -212,6 +239,7 @@ export function setPresence(
     if (leg === 'inbound' && m.endConfirmedAt && legFullyMarked(m, 'inbound')) {
       m.status = 'completed'
     }
+    stampLegTimestamps(m)
   })
 }
 
@@ -342,6 +370,123 @@ export function updateVolunteer(
   if (index === -1) return
   data.volunteers[index] = { ...data.volunteers[index], ...draft }
   commit()
+}
+
+// --- D4: farm visits -------------------------------------------------------
+
+export interface FarmVisitDraft {
+  farmId: string
+  at: string
+  note: string
+  done: boolean
+}
+
+/**
+ * Recompute `Farm.nextVisitAt` from the visit rows.
+ *
+ * `nextVisitAt` predates FarmVisit and is read by the route planner, the
+ * dashboard and the farm card. Rather than leave two independent sources of
+ * truth, it is now a DERIVED CACHE with exactly one writer: this function,
+ * called after every visit mutation. Nothing else in the codebase assigns to
+ * it, which is what keeps "the agenda says Tuesday" and "the farm card says
+ * Tuesday" from ever disagreeing.
+ */
+function syncNextVisit(farmId: string): void {
+  const farm = data.farms.find((f) => f.id === farmId)
+  if (!farm) return
+
+  const t = now().getTime()
+  const upcoming = data.farmVisits
+    .filter(
+      (v) => v.farmId === farmId && !v.done && new Date(v.at).getTime() >= t,
+    )
+    .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
+
+  farm.nextVisitAt = upcoming[0]?.at ?? null
+}
+
+export function createFarmVisit(draft: FarmVisitDraft): FarmVisit {
+  const visit: FarmVisit = { id: nextId('visit'), ...draft }
+  data.farmVisits = [...data.farmVisits, visit]
+  syncNextVisit(visit.farmId)
+  commit()
+  return visit
+}
+
+export function updateFarmVisit(visitId: string, draft: FarmVisitDraft): void {
+  const index = data.farmVisits.findIndex((v) => v.id === visitId)
+  if (index === -1) return
+  const previousFarmId = data.farmVisits[index].farmId
+  data.farmVisits[index] = { ...data.farmVisits[index], ...draft }
+  syncNextVisit(previousFarmId)
+  if (draft.farmId !== previousFarmId) syncNextVisit(draft.farmId)
+  commit()
+}
+
+export function deleteFarmVisit(visitId: string): void {
+  const visit = data.farmVisits.find((v) => v.id === visitId)
+  if (!visit) return
+  data.farmVisits = data.farmVisits.filter((v) => v.id !== visitId)
+  syncNextVisit(visit.farmId)
+  commit()
+}
+
+// --- D5: create a guard ----------------------------------------------------
+
+export interface MissionDraft {
+  farmId: string
+  anchorPointId: string
+  startAt: string
+  endAt: string
+  /** In shortlist order. The first one carries the group phone by default. */
+  volunteerIds: string[]
+  driverId: string | null
+}
+
+/**
+ * Create a guard from the wizard's result.
+ *
+ * The group phone goes to the first SMARTPHONE holder in the list, falling back
+ * to the first volunteer. That fallback is a deliberate visible compromise: a
+ * group of kosher-phone holders with no smartphone between them is a real
+ * scheduling problem, and the mission should exist so the coordinator can SEE
+ * it, not be silently rejected by a form.
+ */
+export function createMission(draft: MissionDraft): Mission {
+  const chosen = draft.volunteerIds
+    .map((id) => data.volunteers.find((v) => v.id === id))
+    .filter((v): v is Volunteer => v !== undefined)
+
+  const holderId =
+    chosen.find((v) => v.phoneType === 'smartphone')?.id ?? chosen[0]?.id ?? null
+
+  const assignments: MissionAssignment[] = chosen.map((v) => ({
+    volunteerId: v.id,
+    isGroupPhone: v.id === holderId,
+    outbound: { ...EMPTY_LEG },
+    inbound: { ...EMPTY_LEG },
+  }))
+
+  const mission: Mission = {
+    id: nextId('mission'),
+    farmId: draft.farmId,
+    anchorPointId: draft.anchorPointId,
+    startAt: draft.startAt,
+    endAt: draft.endAt,
+    status: 'planned',
+    assignments,
+    driverId: draft.driverId,
+    arrivalConfirmedAt: null,
+    endConfirmedAt: null,
+    createdAt: iso(now()),
+    droppedOffAt: null,
+    pickedUpAt: null,
+    completedAt: null,
+  }
+
+  data.missions = [mission, ...data.missions]
+  commit()
+  return mission
 }
 
 /** Bulk append from the CSV/XLSX import wizard (R5.4). */

@@ -86,8 +86,8 @@ export function FarmerTonightScreen() {
                       mission.endConfirmedAt
                         ? 'bg-content-muted/15 text-content-muted'
                         : mission.arrivalConfirmedAt
-                          ? 'bg-status-success/15 text-status-success'
-                          : 'bg-status-warn/15 text-status-warn'
+                          ? 'bg-status-success/15 text-status-success-ink'
+                          : 'bg-status-warn/15 text-status-warn-ink'
                     }`}
                   >
                     {t(

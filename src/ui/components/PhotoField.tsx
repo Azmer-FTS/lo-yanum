@@ -113,7 +113,7 @@ export function PhotoField({
               <button
                 type="button"
                 onClick={() => onChange(null)}
-                className="btn-ghost py-2 text-status-danger hover:bg-status-danger/10"
+                className="btn-ghost py-2 text-status-danger-ink hover:bg-status-danger/10"
               >
                 <Icon name="trash" size={15} />
                 {t('photo.remove')}

@@ -14,7 +14,7 @@ import {
   FarmStatusDot,
   readStatusColor,
 } from '../../components/badges'
-import { EmptyState, FilterPill } from '../../components/primitives'
+import { EmptyState, FilterPill, FilterRow } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 
 const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
@@ -178,33 +178,48 @@ export function FarmsListScreen() {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        {STATUSES.map((s) => (
-          <FilterPill
-            key={s}
-            active={status === s}
-            onClick={() => setStatus(status === s ? null : s)}
-            dot={<FarmStatusDot status={s} />}
-            count={farms.filter((f) => f.status === s).length}
-          >
-            {t(`farmStatus.${s}`)}
-          </FilterPill>
-        ))}
+      {/* D7.3 — one row. Statuses that no farm is in are dropped rather than
+          shown at zero: an unpressable pill is noise, and the legend on the map
+          already accounts for the full pipeline. */}
+      <FilterRow
+        active={status !== null || type !== null}
+        onClear={() => {
+          setStatus(null)
+          setType(null)
+        }}
+      >
+        {STATUSES.map((s) => {
+          const count = farms.filter((f) => f.status === s).length
+          if (count === 0) return null
+          return (
+            <FilterPill
+              key={s}
+              active={status === s}
+              onClick={() => setStatus(status === s ? null : s)}
+              dot={<FarmStatusDot status={s} />}
+              count={count}
+            >
+              {t(`farmStatus.${s}`)}
+            </FilterPill>
+          )
+        })}
+        <span className="mx-0.5 h-4 w-px shrink-0 bg-edge-subtle" />
         {TYPES.map((ft) => (
           <FilterPill
             key={ft}
             active={type === ft}
             onClick={() => setType(type === ft ? null : ft)}
+            count={farms.filter((f) => f.type === ft).length}
           >
             {t(`farmType.${ft}`)}
           </FilterPill>
         ))}
-      </div>
+      </FilterRow>
 
       {filtered.length === 0 ? (
         <EmptyState icon="farm" title={t('farms.empty')} />
       ) : (
-        <ul className="flex flex-col gap-1.5">
+        <ul className="stagger flex flex-col gap-1.5">
           {filtered.map((farm) => {
             const active = farm.id === hoveredId || farm.id === selectedId
             return (

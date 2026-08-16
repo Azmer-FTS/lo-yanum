@@ -22,11 +22,17 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 
 | Command | What it does |
 |---|---|
-| `bun run dev` | Dev server on :5173 |
+| `bun run dev` | Dev server on :5173 (honours `PORT` so a second one can run alongside) |
 | `bun run build` | Typecheck + production build to `dist/` |
 | `bun run typecheck` | `tsc --noEmit` |
-| `bun run contrast` | WCAG audit of the design tokens (A13) — fails the build on a regression |
-| `bun run screenshots` | Regenerate `docs/screenshots/` (dev server must be running) |
+| `bun run contrast` | WCAG audit of the design tokens (A13/A19) — fails the build on a regression |
+| `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
+| `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 64 checks |
+| `bun run layout` | 390 px overflow + pinned-overlap sweep over all 22 screens (A24) — needs a dev server |
+| `bun run screenshots` | Regenerate `docs/screenshots/` — needs a dev server |
+
+> The three browser scripts take `BASE_URL`, e.g.
+> `BASE_URL=http://localhost:62807 bun run layout`.
 
 > **Toolchain:** this machine has **no Node.js**. Bun is at `/usr/local/bin/bun`
 > (Homebrew, Intel prefix `/usr/local`). `npm`/`node` fail with "command not
@@ -36,7 +42,7 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **Lot 0.6 complete.** Branch `main`.
+State: **Lot 0.7 complete.** Branch `main`.
 
 ---
 
@@ -63,217 +69,285 @@ smartphone holder who acts for the group.
 |---|---|---|
 | Lot 0 | Visual POC — 16 screens, mock data, role switcher | ✅ Done |
 | Lot 0.5 | "Night Watch" redesign, editing flows, nominative confirmation | ✅ Done |
-| **Lot 0.6** | Map-first everywhere, light/dark themes, hierarchy, photos, tap-to-call | ✅ **Done** |
+| Lot 0.6 | Map-first everywhere, light/dark themes, hierarchy, photos, tap-to-call | ✅ Done |
+| **Lot 0.7** | Command-centre palette, agenda, guard wizard, timelines | ✅ **Done** |
 | Lot 1 | Supabase: schema, auth, RLS mirroring `/src/core/access.ts`, Storage for photos | Not started |
 | Lot 2 | Offline-first sync | Not started |
 | Lot 3 | Real agreement signing + PDF storage | Not started |
-| Lot 4 | Scheduling assistance | Not started |
+| Lot 4 | Scheduling assistance (promote `dispatch.ts` from proposal to automation) | Not started |
 | Lot 5 | Notifications (SMS gateway for kosher phones, push for smartphones) | Not started |
 | Lot 6 | EN + FR translations | Not started |
 
 ---
 
-## 4. Lot 0.6 — delivered
+## 4. Lot 0.7 — delivered
 
 | # | Scope | State |
 |---|---|---|
-| C1 | Reusable `MapPanel`; map-first on farms, route planner, incidents, missions | ✅ |
-| C2 | Light / dark / system themes, per-role defaults, persisted | ✅ |
-| C3 | Section headings lifted out of their cards | ✅ |
-| C4 | Dashboard restructured around a full-height map column | ✅ |
-| C5 | Photos on people and farms, capture + import, avatars everywhere | ✅ |
-| C6 | Tap-to-call on every field-screen person | ✅ |
-| C7 | Verification pass, screenshots, deployment | ✅ |
+| D1 | Command-centre palette (vivid/ink token pairs), gradients, stagger, `/styleguide` | ✅ |
+| D2 | The map is on the PHYSICAL left in both writing directions | ✅ |
+| D3 | Dashboard rebuilt as a control room: KPI strip, dominant alerts, agenda widget | ✅ |
+| D4 | Agenda screen (week + month), `FarmVisit` object, dashboard widget | ✅ |
+| D5 | Guard-staffing wizard, scored proposal, phone round, driver, recap | ✅ |
+| D6 | Timelines on incident, mission and farm | ✅ |
+| D7 | Rail collapse control on top, single Waze block, counted filters, farm-card rebalance, 390 px sweep | ✅ |
+| D8 | Verification, screenshots, deployment | ✅ |
 
 ### Acceptance criteria
 
-`accept06.ts` (see §7) asserts A4–A7, A10, A12, A14, A15 against `@core`
-directly; A8/A16/A17 were measured in-browser; A13 is `bun run contrast`.
+Four scripts carry them: `bun run accept` (A4–A7, A9, A10, A12, A14, A15,
+A20–A23 against `@core`), `bun run contrast` (A13/A19), `bun run dispatch`
+(A21), `bun run layout` (A24). The rest are visual and referenced to the
+captures in §5.
 
 | # | Criterion | State |
 |---|---|---|
-| A1 | Zero hardcoded UI strings in `/src/ui` | ✅ grep clean |
-| A2 | `/src/core` free of React/DOM | ✅ clean — photo *maths* is pure; canvas capture lives in `ui/PhotoField.tsx` |
-| A3 | Screens navigable, RTL, at 390 / 1280 px | ✅ screenshots |
+| A1 | Zero hardcoded UI strings in `/src/ui` | ✅ grep clean (one Hebrew string survives, inside a code comment) |
+| A2 | `/src/core` free of React/DOM | ✅ grep clean — `contrast.ts` and `dispatch.ts` are pure maths |
+| A3 | Screens navigable, RTL, at 390 / 1280 px | ✅ screenshots + `bun run layout` |
 | A4 | Role isolation enforced in core | ✅ 12 farms / 300 volunteers vs 1 farm / 0 roster |
 | A5 | Both anchor message formats | ✅ Waze link vs zero-link kosher text |
-| A6 | Nearest-neighbour + Google Maps multi-stop URL | ✅ 10 stops |
-| A7 | Urgent report → coordinator + farmer | ✅ |
+| A6 | Nearest-neighbour + Google Maps multi-stop URL | ✅ 10 stops, 10 waypoints |
+| A7 | Urgent report → coordinator + farmer, and no one else | ✅ |
 | A8 | Volunteers table smooth at 300 rows | ✅ 16 800 px of scroll as ~22 DOM rows |
-| A9 | Import wizard flags 2 duplicates + 1 missing phone | ✅ `samples/a9-test-import.csv` |
+| A9 | Import wizard flags 2 duplicates + 1 missing phone | ✅ `samples/a9-test-import.csv`, asserted in `accept` |
 | A10 | Mismatch visible driver ↔ group ↔ coordinator | ✅ seeded on שמואל וייס, 3 call contacts |
 | A11 | Deployed URL works on mobile | ✅ https://azmer-fts.github.io/lo-yanum/ |
-| A12 | Theme toggle works, persists, correct per-role defaults | ✅ coordinator→light, field→dark, stored per role |
+| A12 | Theme toggle works, persists, correct per-role defaults | ✅ coordinator→light, field→dark |
 | A13 | Contrast table printed, all AA | ✅ `bun run contrast` — see §6 |
-| A14 | Photo capture + import; avatars on all listed surfaces | ✅ mixed state: 149/300 volunteers, 4/6 drivers |
-| A15 | Every field-screen number is a working `tel:` link | ✅ |
-| A16 | List ↔ marker hover synchronised both ways | ✅ marker 20→30 px on row hover; row tints on marker hover |
-| A17 | Live trace on every tick; both Waze and Google Maps links valid | ✅ 10 numbered markers + dashed polyline |
+| A14 | Photo capture + import; avatars everywhere | ✅ 149/300 volunteers, 4/6 drivers |
+| A15 | Every field-screen number is a working `tel:` link | ✅ all 300 |
+| A16 | List ↔ marker hover synchronised both ways | ✅ marker 20→30 px on row hover |
+| A17 | Live trace on every tick; both Waze and Maps links valid | ✅ 10 numbered markers + dashed polyline |
+| **A18** | **Map physically LEFT on the dashboard + 4 map-first screens** | ✅ captures 1, 2, 11–14 |
+| **A19** | **/styleguide shows the new palette with AA ratios printed** | ✅ captures 9, 10 — every ratio computed by `@core/contrast` |
+| **A20** | **Wizard playable: create → scored list → refusal → promotion → complete → visible** | ✅ 17 browser assertions, see §7 |
+| **A21** | **`dispatch.ts` scoring tested by script** | ✅ `bun run dispatch` — 27 checks over distance, equity, pairing |
+| **A22** | **Agenda week + month, visit created from an empty slot** | ✅ captures 5, 6 + browser assertion |
+| **A23** | **Timelines on incident, mission and farm** | ✅ captures 7, 8, 15 |
+| **A24** | **Zero overflow / pinned overlap at 390 px on every screen** | ✅ `bun run layout` — 22/22 |
 
-### Screenshots — `docs/screenshots/`
+---
 
-| Screen | 390 px | 1280 px |
-|---|---|---|
-| Dashboard (light) | [mobile](docs/screenshots/1-dashboard-light-mobile.png) | [desktop](docs/screenshots/1-dashboard-light-desktop.png) |
-| Dashboard (dark) | [mobile](docs/screenshots/2-dashboard-dark-mobile.png) | [desktop](docs/screenshots/2-dashboard-dark-desktop.png) |
-| Farms, map-first | [mobile](docs/screenshots/3-farms-map-first-mobile.png) | [desktop](docs/screenshots/3-farms-map-first-desktop.png) |
-| Route planner + trace | [mobile](docs/screenshots/4-route-planner-mobile.png) | [desktop](docs/screenshots/4-route-planner-desktop.png) |
-| Incidents, map-first | [mobile](docs/screenshots/5-incidents-map-first-mobile.png) | [desktop](docs/screenshots/5-incidents-map-first-desktop.png) |
-| Driver roster + avatars | [mobile](docs/screenshots/6-driver-roster-mobile.png) | [desktop](docs/screenshots/6-driver-roster-desktop.png) |
-| Volunteers table | [mobile](docs/screenshots/7-volunteers-table-mobile.png) | [desktop](docs/screenshots/7-volunteers-table-desktop.png) |
+## 5. Screenshots — `docs/screenshots/`
+
+Every row exists at both `-mobile` (390 px) and `-desktop` (1280 px).
+
+| # | Screen |
+|---|---|
+| 1 / 2 | Dashboard, control room — light / dark |
+| 3 / 4 | Guard wizard, scored-proposal step — light / dark |
+| 5 / 6 | Agenda, week view — light / dark |
+| 7 / 8 | Mission detail with the night timeline — light / dark |
+| 9 / 10 | `/styleguide`, full page — light / dark |
+| 11 | Farms, map-first |
+| 12 | Route planner with the live trace |
+| 13 | Incidents, map-first |
+| 14 | Missions, map-first |
+| 15 | Farm card, rebalanced, with its activity timeline |
+| 16 | Driver roster |
+| 17 | Volunteers table |
 
 > Map screens need ~6 s to settle (WebGL init + OSM tiles + `fitBounds`). The
 > capture script waits; screenshotting sooner yields an empty map.
 
 ---
 
-## 5. Standing decisions
+## 6. Standing decisions
 
-Lot 0 decisions 1–13 and Lot 0.5 decisions 14–20 all still hold. New:
+Lot 0 decisions 1–13, Lot 0.5 decisions 14–20 and Lot 0.6 decisions 21–31 all
+still hold, **except 22 and 23, which decision 32 generalises**. New:
 
-21. **Two palettes, one set of semantic names.** `tokens.css` holds the LIGHT
-    palette on `:root` and the DARK overrides under `[data-theme='dark']` plus
-    a `prefers-color-scheme` copy for "system". **No component ever branches on
-    the theme** — `surface-raised` means "the card surface" in both. Adding a
-    colour means adding a token in both blocks, never a conditional in a
-    component.
+32. **EVERY semantic hue is a PAIR: `--x` (vivid) and `--x-ink` (text).**
+    The vivid token is the FILL — dot, marker, severity bar, gradient stop.
+    The ink token is the same identity darkened (in light) or lightened (in
+    dark) until it is legible as TEXT on that colour's own 15 % wash. Lot 0.6
+    had one token doing both jobs, and "legible as 11px text on paper" is the
+    constraint that dragged the whole palette toward mud — which is exactly
+    what the product owner saw as "dated". A chip is therefore always
+    `bg-x/15 text-x-ink`; using the vivid as text is the one mistake the split
+    exists to prevent. Decision 22 (`accent`/`accent-ink`) is this rule's
+    first instance.
 
-22. **`accent` (fill) and `accent-ink` (text) are different tokens.** The brand
-    amber is legible as a button fill in both themes but unreadable as text on
-    paper. Splitting them is what let the identity survive the light theme;
-    `text-accent-ink` is the only correct class for accent-coloured text.
+33. **A light vivid lives in a NARROW luminance window, and the audit pins it
+    there.** It must be dark enough to clear 3:1 against the page (it is a dot)
+    *and* light enough for near-black `--text-on-accent` to clear 4.5:1 on top
+    of it (it is also a solid fill carrying a route-step number). `bun run
+    contrast` checks both ends for all twelve hues. Slate, fuchsia and violet
+    failed the second check at Lot 0.6 levels; raising them is what let the
+    light palette be saturated instead of inky.
 
-23. **Light hover BRIGHTENS the amber.** Darkening it (the usual reflex) drops
-    the near-black button label below AA — measured 3.68:1 before the fix.
+34. **The map is on the PHYSICAL left, in every writing direction.** The one
+    deliberate exception to "everything is logical and flippable": geography
+    left, content right. It needs both direction variants, because the same
+    `flex-direction` produces opposite physical results per writing mode —
+    RTL + `row` and LTR + `row-reverse` both put the map on the left with a
+    list-then-map DOM order. The divider is a PHYSICAL `border-r` for the same
+    reason. The agenda grid is the counter-example and is NOT flipped: a
+    calendar is read like text, so RTL's natural first-cell-on-the-right is
+    correct there.
 
-24. **Contrast is enforced by a script, not by eye.** `bun run contrast` parses
-    the tokens, reconstructs both palettes, and checks text, chips (composited
-    over their own 15 % tint), markers and elevation steps. It exits non-zero on
-    failure. Because it parses `--token: r g b;` triplets, **the channel format
-    in tokens.css is load-bearing** — a hex value there breaks both the audit
-    and every Tailwind `/opacity` utility.
+35. **`Farm.nextVisitAt` is a DERIVED CACHE of `FarmVisit` rows.** One writer:
+    `syncNextVisit` in store.ts, called after every visit mutation. The field
+    predates the agenda and is read by the route planner, the dashboard and
+    the farm card; deriving it rather than maintaining it in parallel is what
+    stops "the agenda says Tuesday" and "the farm card says Tuesday" from
+    disagreeing.
 
-25. **Section headings live above their card** (`<Section>` renders them
-    outside). Cards contain content only; `.section-title` is now just a
-    sub-label used *inside* a card.
+36. **The dispatch ranking is a PROPOSAL and shows its reasoning.** Score =
+    100 − 0.45/km − 1.2/guard-served + 12 for a shared yeshiva, with
+    availability applied as a FILTER before scoring (an unavailable person must
+    not merely rank low). Deterministic, ties break on id. The UI prints the
+    three components as chips: a coordinator who cannot see why a name is first
+    will not trust the list and will go back to their notebook.
 
-26. **One map instance per screen.** `MapPanel` renders the map once and moves
-    it with CSS. Rendering a desktop copy and a mobile copy created two WebGL
-    contexts and two sets of tile requests, one permanently invisible.
+37. **A refusal promotes, it does not delete.** The shortlist is longer than
+    the requirement (`shortlistSize`), and marking someone as declined drops
+    them, adds them to the exclusion set, and pulls the next-best candidate
+    into the freed slot in the same action. The gauge counts CONFIRMED people
+    only.
 
-27. **Map framing is keyed on geometry, never on the marker array.** Hover
-    restyling produces a new markers array on every pointer move; re-running
-    `fitBounds` on that re-framed the map continuously.
+38. **`pickedUpAt` and `completedAt` are different facts.** The first is the
+    driver saying he has everyone; the second is that claim reconciling with
+    the group holder's, with no mismatch. The gap between them is the failure
+    the whole programme exists to catch, so the mission timeline shows both
+    steps even though they usually coincide.
 
-28. **`readToken()` emits `rgb(r, g, b)` with commas.** Tokens are stored space-
-    separated for Tailwind, but MapLibre's colour parser only accepts the legacy
-    comma form — the modern syntax throws inside the style-load handler.
+39. **`--shell-bottom` is MEASURED, not declared.** The demo toolbar publishes
+    its own height through a `ResizeObserver`; every sticky footer and every
+    full-height map column offsets by it. A hard-coded 2.75 rem was 5 px short
+    at 390 px, where the bar wraps — which is exactly the width where the
+    overlap matters. Lot 1 deletes the toolbar and the variable falls back to
+    its token default.
 
-29. **`avatarHue` uses FNV-1a + an avalanche finalizer.** The classic
-    `h * 31 + c` maps near-identical strings to near-identical outputs, so
-    sequential ids ("drv-01"…"drv-06") all landed on the same side of any
-    threshold and adjacent volunteers got indistinguishable avatar colours.
-    The finalizer must re-normalise with `>>> 0` before the modulo — `^=` yields
-    a *signed* int in JS and the hue came out negative.
-
-30. **Photos are data URIs in the mock store, downscaled to 512 px before
-    storage.** A phone photo is 3–8 MB; a handful would make the store
-    unusable. **Lot 1 replaces the value with a Supabase Storage key** — the
-    model already just carries `photo: string | null`, so nothing else changes.
-
-31. **Waze gets step-by-step links, Google Maps gets one multi-stop URL.** Waze
-    has no multi-stop URL scheme, so rather than silently dropping stops the
-    planner emits one link per farm in visit order. Both apps are offered
-    because coverage and routing quality differ by area in the Negev.
-
----
-
-## 6. Contrast audit (A13)
-
-`bun run contrast` — all pairs meet WCAG AA. Tightest margins:
-
-| Pair | Light | Dark | Min |
-|---|---|---|---|
-| `text-muted` on `surface-high` | 4.72 | 5.15 | 4.5 |
-| `text-muted` on `surface-raised` | 5.31 | 5.66 | 4.5 |
-| `text-on-accent` on `accent-dim` | 4.76 | 8.29 | 4.5 |
-| status/farm chips on their own 15 % tint | ≥ 4.72 | ≥ 4.95 | 4.5 |
-| `surface-raised` vs `surface-base` (elevation) | 1.11 | 1.38 | 1.05 / 1.25 |
-
-Elevation is held to a stricter threshold in dark: a drop-shadow is invisible
-on near-black, so the card must separate from the page by luminance alone. In
-light it also has a shadow and a border to lean on.
+40. **Timelines print "—", they do not hide unreached steps.** An empty slot in
+    a sequence is information ("nobody has confirmed the pick-up"); collapsing
+    it destroys that. The first unreached step is marked `current` and gets the
+    accent ring, so "what are we waiting on" is answerable without reading.
 
 ---
 
 ## 7. Verification scripts
 
-- **`scripts/contrast.ts`** (committed, `bun run contrast`) — the A13 audit.
-- **`accept06.ts`** (scratchpad, recreate from §4) — imports `@core/index`,
-  switches `setSession()` between roles, asserts A4–A7, A10, A12, A14, A15.
-  It drives core rather than the DOM, which is what proves the role gate lives
-  in the data layer.
-- **A8/A16/A17** were measured in-browser. Note when writing such probes:
-  React delegates `onMouseEnter` through a **bubbling `mouseover`**, so a raw
-  non-bubbling `mouseenter` will not trigger it; map markers use a plain
-  `addEventListener` and do respond to the native event.
+All four are committed and runnable.
+
+- **`scripts/contrast.ts`** (`bun run contrast`) — the A13/A19 audit. Parses
+  `tokens.css`, reconstructs both palettes, and checks text, chips (ink over
+  the vivid's own 15 % tint), dots, solid fills and elevation steps. The maths
+  lives in `@core/contrast`, which the `/styleguide` screen also imports — so
+  the ratios shown in the browser are the ratios this gate enforces.
+- **`scripts/dispatch.ts`** (`bun run dispatch`) — A21. Hand-built fixtures,
+  one case per scoring rule, plus determinism and the refusal-promotes case.
+- **`scripts/accept.ts`** (`bun run accept`) — A4–A23 through `@core`.
+  Promoted from a scratchpad file this lot. Driving the business layer is the
+  point: a browser test cannot distinguish "the screen does not show it" from
+  "the session cannot read it".
+- **`scripts/layout.ts`** (`bun run layout`) — A24. Walks all 22 screens at
+  390 px and asserts no horizontal overflow, no element wider than the
+  viewport, and no two pinned elements overlapping. It caught two real bugs:
+  the sticky form footer sitting under the demo toolbar, and a `min-width:auto`
+  grid item letting the presence table push the page 40 px wide.
+
+The interactive half of A20 was played in the browser with a throw-away
+Playwright script (17 assertions: ordering, auto-fill, refusal, promotion,
+gauge, creation, and the guard appearing in the list). Recreate it from §4 if
+the wizard changes.
+
+Note when writing such probes: React delegates `onMouseEnter` through a
+**bubbling `mouseover`**, so a raw non-bubbling `mouseenter` will not trigger
+it; map markers use a plain `addEventListener` and do respond to the native
+event.
 
 ---
 
-## 8. Source of truth
+## 8. Contrast audit (A13/A19)
+
+`bun run contrast` — 118 pairs, all meet WCAG AA. Tightest margins:
+
+| Pair | Light | Dark | Min |
+|---|---|---|---|
+| `farm-visited` dot on the page | 3.14 | 7.60 | 3 |
+| `status-warn` / `farm-contacted` dot on the page | 3.19 | 11.20 | 3 |
+| `text-on-accent` on solid `status-info` | 4.53 | 8.66 | 4.5 |
+| `text-on-accent` on solid `status-danger` | 4.70 | 6.89 | 4.5 |
+| `status-info` chip (ink on 15 % tint) | 5.71 | 4.84 | 4.5 |
+| `text-muted` on `surface-high` | 4.93 | 4.95 | 4.5 |
+| `border-subtle` on `surface-base` | 1.26 | 1.95 | 1.2 |
+| `surface-raised` vs `surface-base` (elevation) | 1.10 | 1.34 | 1.05 / 1.25 |
+
+The two tightest rows are the two ends of the window decision 33 describes: a
+dot has to be dark enough to be seen on the page (3.14) while the same colour
+has to be light enough to be written on (4.53). Both are within 5 % of their
+threshold, which is the point — the palette is as saturated as AA allows.
+
+Elevation is held to a stricter threshold in dark: a drop-shadow is invisible
+on near-black, so the card must separate from the page by luminance alone.
+
+---
+
+## 9. Source of truth
 
 ```
-src/styles/tokens.css     ★ BOTH PALETTES + radius/motion/type. No hex anywhere else.
+src/styles/tokens.css     ★ BOTH PALETTES. Vivid/ink pairs, gradients, radius,
+                            motion, type. No hex anywhere else.
 
 src/core/                 PURE TS — no React, no DOM
-  types.ts                Domain types, LegConfirmation, resolveConfirmation
+  types.ts                Domain types, LegConfirmation, FarmVisit, AgendaEvent
   access.ts               ★ THE ROLE GATE. Every screen reads through it.
   store.ts                Observable store + mutations. `_raw()` is access.ts-only.
-  theme.ts                Theme POLICY (defaults per role, resolution). No storage.
-  photo.ts                Initials, avatar hash, placeholder portraits, size limits.
-  import.ts               CSV/XLSX validation rules (no SheetJS)
-  routing.ts              Nearest-neighbour, Google Maps URL, Waze step links, polyline
-  geo.ts clock.ts config.ts sessions.ts messages.ts
+  dispatch.ts             ★ GUARD SCORING (D5). Pure, deterministic, tested.
+  contrast.ts             WCAG maths, shared by the audit script and /styleguide
+  clock.ts                Time + calendar arithmetic (DST-safe, Sunday-first)
+  geo.ts                  Haversine, LOCALITY_POSITIONS gazetteer, bounds
+  theme.ts                Theme POLICY (defaults per role). No storage.
+  photo.ts import.ts routing.ts messages.ts config.ts sessions.ts
   mock/                   farms(12) · people(300 volunteers, 6 drivers) ·
                           generate.ts (seeded PRNG) · anchors(4) · missions(6,
-                          one seeded mismatch) · incidents(5)
+                          one seeded mismatch) · incidents(5) · visits.ts
 
 src/locales/he.json       ★ ALL UI COPY. en/fr intentionally {}.
 
 src/ui/
   theme.tsx               Theme APPLICATION: localStorage + data-theme + matchMedia
-  components/             MapPanel (map-first shell) · MapCanvas/MapView (lazy) ·
-                          Avatar · PhotoField (camera + import + downscale) ·
-                          PresenceRoster · ThemeToggle · badges (readToken) ·
-                          primitives · fields · layouts · ContactActions
-  screens/coordinator/    Dashboard · FarmsList(map-first) · FarmDetail · FarmForm ·
-                          AnchorSheet · AnchorForm · RoutePlanner(map-first) ·
-                          Volunteers · VolunteerFormModal · ImportWizard ·
-                          Missions(map-first) · MissionDetail ·
-                          Incidents(map-first) · IncidentDetail
+  components/             MapPanel (map-first shell, D2) · MapCanvas/MapView (lazy) ·
+                          Timeline (D6) · FarmVisitModal (D4) · CreateGuardFab (D3.4) ·
+                          Avatar · PhotoField · PresenceRoster · ThemeToggle ·
+                          badges (vivid/ink) · primitives · fields · layouts ·
+                          ContactActions
+  screens/StyleguideScreen.tsx   ★ /styleguide (D1), hidden route
+  screens/coordinator/    Dashboard(control room) · Agenda(D4) · MissionWizard(D5) ·
+                          FarmsList · FarmDetail · FarmForm · AnchorSheet ·
+                          AnchorForm · RoutePlanner · Volunteers ·
+                          VolunteerFormModal · ImportWizard · Missions ·
+                          MissionDetail · Incidents · IncidentDetail
   screens/farmer|volunteer|driver/
 ```
 
 ---
 
-## 9. Known limitations (not regressions)
+## 10. Known limitations (not regressions)
 
-- **State is in memory only.** A reload resets everything, including photos and
-  anything created through the forms.
-- **Placeholder portraits are synthetic SVGs**, deliberately obviously so. Real
-  uploads work through the form; the *fixtures* are generated.
+- **State is in memory only.** A reload resets everything, including photos,
+  created guards and planned visits.
+- **The wizard sends nothing.** Messages are generated and copyable; responses
+  are typed in by the coordinator. That is the Lot 5 boundary.
+- **Placeholder portraits are synthetic SVGs**, deliberately obviously so.
 - **"Pick on map" on the anchor form is a disabled placeholder**; coordinates
   are typed.
 - **Route polyline is straight segments**, not road geometry — there is no
   routing service. It exists to make the ORDER legible, not to navigate by.
+- **`LOCALITY_POSITIONS` covers the 20 towns the fixtures use.** A locality
+  outside it is charged a flat 80 km rather than scoring zero, and reports
+  `distanceKm: null` so the UI shows "—" instead of a fabricated number.
+- **The agenda has no drag-and-drop.** Events are opened and edited, not moved.
 - **Two chunks exceed Vite's 500 kB warning** (MapLibre ~806 kB, SheetJS
-  ~500 kB). Both are split and lazily fetched; the initial bundle is ~130 kB
+  ~500 kB). Both are split and lazily fetched; the initial bundle is ~146 kB
   gzipped.
 - **OSM raster tiles** — must move to a keyed vector provider in Lot 1.
 
 ---
 
-## 10. Open questions
+## 11. Open questions
 
 1. When driver and group holder disagree, who should be called first? The
    dashboard currently offers volunteer, driver and group holder as equals.
@@ -285,14 +359,21 @@ src/ui/
    confirms arrival, or only once they are on site?
 5. Are anchor-point instructions per-anchor, or should some be programme-wide
    defaults inherited by every anchor?
+6. **Are the dispatch weights right?** 0.45/km vs 1.2/guard means ~2.7 km of
+   travel is worth one guard of seniority. That ratio is a guess and should be
+   checked against how the coordinator actually chooses.
+7. **Should a refusal be remembered across guards?** Right now the exclusion
+   set is per-wizard-session; someone who declines three nights running still
+   ranks first on the fourth.
 
 ---
 
-## 11. Next step
+## 12. Next step
 
 **Lot 1 — Supabase.** Translate `src/core/access.ts` into RLS policies one
 function at a time; the bodies are written to make that a direct transcription.
-`src/core/import.ts` is written to be re-runnable server-side unchanged, and
+`src/core/import.ts` is written to be re-runnable server-side unchanged,
+`src/core/dispatch.ts` is a candidate for a Postgres function verbatim, and
 `photo: string | null` becomes a Storage object key.
 
 Do **not** add Supabase, auth or offline sync before Lot 1 is explicitly begun.

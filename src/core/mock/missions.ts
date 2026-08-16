@@ -14,6 +14,20 @@ import type { LegConfirmation, Mission, MissionAssignment, PresenceMark } from '
 
 const future = (days: number) => guardNight(days)
 
+/**
+ * D6.2 timeline defaults. A planned guard has been CREATED and nothing else;
+ * spelling that out here rather than defaulting in the type keeps every
+ * fixture's timeline explicit and reviewable.
+ */
+const notYet = (createdHoursBeforeStart: number, startAt: string) => ({
+  createdAt: new Date(
+    new Date(startAt).getTime() - createdHoursBeforeStart * 3_600_000,
+  ).toISOString(),
+  droppedOffAt: null,
+  pickedUpAt: null,
+  completedAt: null,
+})
+
 const leg = (
   driver: PresenceMark | null = null,
   group: PresenceMark | null = null,
@@ -49,6 +63,10 @@ export const MISSIONS: Mission[] = [
     driverId: 'drv-03',
     arrivalConfirmedAt: hoursFromNow(-1.8),
     endConfirmedAt: null,
+    createdAt: hoursFromNow(-50),
+    droppedOffAt: hoursFromNow(-2.1),
+    pickedUpAt: null,
+    completedAt: null,
   },
 
   // Starting later tonight — nobody has moved yet, every mark still pending.
@@ -67,6 +85,7 @@ export const MISSIONS: Mission[] = [
     driverId: 'drv-05',
     arrivalConfirmedAt: null,
     endConfirmedAt: null,
+    ...notYet(30, hoursFromNow(4)),
   },
 
   // Last night: the group ended the guard, went out fine, but the morning
@@ -86,6 +105,10 @@ export const MISSIONS: Mission[] = [
     driverId: 'drv-06',
     arrivalConfirmedAt: hoursFromNow(-29.8),
     endConfirmedAt: hoursFromNow(-22),
+    createdAt: hoursFromNow(-78),
+    droppedOffAt: hoursFromNow(-30.2),
+    pickedUpAt: null,
+    completedAt: null,
   },
 
   // Two nights ago, closed cleanly — both legs fully confirmed on both sides.
@@ -108,6 +131,10 @@ export const MISSIONS: Mission[] = [
     driverId: 'drv-01',
     arrivalConfirmedAt: hoursFromNow(-53.8),
     endConfirmedAt: hoursFromNow(-46),
+    createdAt: hoursFromNow(-102),
+    droppedOffAt: hoursFromNow(-54.2),
+    pickedUpAt: hoursFromNow(-45.6),
+    completedAt: hoursFromNow(-45.4),
   },
 
   {
@@ -120,6 +147,7 @@ export const MISSIONS: Mission[] = [
     driverId: 'drv-01',
     arrivalConfirmedAt: null,
     endConfirmedAt: null,
+    ...notYet(48, future(2).startAt),
   },
 
   {
@@ -136,5 +164,6 @@ export const MISSIONS: Mission[] = [
     driverId: null,
     arrivalConfirmedAt: null,
     endConfirmedAt: null,
+    ...notYet(72, future(4).startAt),
   },
 ]

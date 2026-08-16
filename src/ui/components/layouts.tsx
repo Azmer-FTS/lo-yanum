@@ -5,6 +5,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { COORDINATOR, getMyDisplayName, getSession } from '@core/index'
 
 import { useCoreValue } from '../hooks/useCore'
+import { CreateGuardFab } from './CreateGuardFab'
 import { DevToolbar } from './DevToolbar'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
@@ -19,6 +20,7 @@ interface NavItem {
 
 const COORDINATOR_NAV: NavItem[] = [
   { to: '/coordinator', icon: 'dashboard', labelKey: 'nav.dashboard', end: true },
+  { to: '/coordinator/agenda', icon: 'calendar', labelKey: 'nav.agenda' },
   { to: '/coordinator/farms', icon: 'farm', labelKey: 'nav.farms' },
   { to: '/coordinator/route', icon: 'route', labelKey: 'nav.route' },
   { to: '/coordinator/volunteers', icon: 'users', labelKey: 'nav.volunteers' },
@@ -26,8 +28,12 @@ const COORDINATOR_NAV: NavItem[] = [
   { to: '/coordinator/incidents', icon: 'alert', labelKey: 'nav.incidents' },
 ]
 
-/** Routes that manage their own full-bleed canvas and must not be padded. */
+/**
+ * Routes that manage their own full-bleed canvas and must not be padded.
+ * Every map-first screen, plus the dashboard since D3 made it one.
+ */
 const BLEED_ROUTES = [
+  '/coordinator',
   '/coordinator/farms',
   '/coordinator/route',
   '/coordinator/missions',
@@ -109,8 +115,9 @@ export function CoordinatorLayout() {
       <div className="flex flex-1">
         {/* Desktop rail — full-bleed: no max-width wrapper anywhere. */}
         <aside
-          className={`sticky top-0 hidden h-dvh shrink-0 flex-col gap-5 border-e border-edge-subtle
-                      bg-surface-raised px-3 py-4 transition-[width] duration-base ease-out lg:flex ${
+          className={`sticky top-0 hidden h-[calc(100dvh-var(--shell-bottom))] shrink-0 flex-col gap-4
+                      overflow-y-auto border-e border-edge-subtle bg-surface-raised px-3 py-4
+                      transition-[width] duration-base ease-out lg:flex ${
                         expanded ? 'w-60' : 'w-[4.5rem]'
                       }`}
         >
@@ -118,27 +125,34 @@ export function CoordinatorLayout() {
             <Brand compact={!expanded} />
           </div>
 
+          {/* D7.1 — the collapse control belongs directly under the logo.
+              At the foot of the rail it read as part of the user block and was
+              routinely missed; it is a property of the rail, so it sits with
+              the rail's own header. */}
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-label={t(expanded ? 'nav.collapse' : 'nav.expand')}
+            className={`-mt-2 flex items-center gap-2 rounded-md border border-edge-subtle px-3 py-1.5
+                        text-content-muted transition-all duration-fast
+                        hover:border-edge-strong hover:bg-surface-high hover:text-content-primary ${
+                          expanded ? '' : 'justify-center px-0'
+                        }`}
+          >
+            <Icon name={expanded ? 'collapse' : 'expand'} size={16} />
+            {expanded && (
+              <span className="text-caption">{t('nav.collapse')}</span>
+            )}
+          </button>
+
           <nav className="flex flex-col gap-1">
             {COORDINATOR_NAV.map((item) => navLink(item, expanded))}
           </nav>
 
           <div className="mt-auto flex flex-col gap-2">
             <div className={expanded ? '' : 'flex justify-center'}>
-              <ThemeToggle compact={!expanded} />
+              <ThemeToggle compact={!expanded} vertical={!expanded} />
             </div>
-
-            <button
-              type="button"
-              onClick={() => setExpanded((v) => !v)}
-              aria-label={t(expanded ? 'nav.collapse' : 'nav.expand')}
-              className="flex items-center justify-center gap-2 rounded-md px-3 py-2 text-content-muted
-                         transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
-            >
-              <Icon name={expanded ? 'collapse' : 'expand'} size={17} />
-              {expanded && (
-                <span className="text-caption">{t('nav.collapse')}</span>
-              )}
-            </button>
 
             <div
               className={`rounded-md bg-surface-high p-2.5 ${expanded ? '' : 'text-center'}`}
@@ -180,12 +194,17 @@ export function CoordinatorLayout() {
 
           <main
             className={
-              bleed ? 'flex-1' : 'flex-1 px-4 py-5 sm:px-6 sm:py-6 2xl:px-8'
+              bleed
+                ? 'flex-1'
+                : 'flex-1 px-4 pb-24 pt-5 sm:px-6 sm:pt-6 lg:pb-6 2xl:px-8'
             }
           >
             <Outlet />
           </main>
         </div>
+
+        {/* D3.4 — persistent on the dashboard, the guard list and the agenda. */}
+        <CreateGuardFab />
       </div>
 
       {menuOpen && (

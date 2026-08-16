@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
@@ -27,6 +28,34 @@ export function DevToolbar() {
   const presets = useCoreValue(listSessionPresets)
   const session = useCoreValue(getSession)
   const currentId = presetIdOf(session)
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  /**
+   * Publish this bar's real height as `--shell-bottom`.
+   *
+   * Every sticky footer and every full-height map column has to sit above it,
+   * and its height is NOT constant: the row wraps on a narrow phone, so a
+   * hard-coded offset overlaps by a few pixels at exactly the width where it
+   * matters most. Measuring makes the offset exact at any width, and when
+   * Lot 1 deletes this component the variable falls back to its token default.
+   */
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const publish = () => {
+      document.documentElement.style.setProperty(
+        '--shell-bottom',
+        `${el.getBoundingClientRect().height}px`,
+      )
+    }
+    publish()
+    const observer = new ResizeObserver(publish)
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      document.documentElement.style.removeProperty('--shell-bottom')
+    }
+  }, [])
 
   const onPick = (id: string) => {
     const preset = presets.find((p) => p.id === id)
@@ -39,7 +68,7 @@ export function DevToolbar() {
   // single sticky container with the field tab bar instead of the two fighting
   // over `bottom-0`.
   return (
-    <div className="border-t border-edge-strong bg-surface-sunken">
+    <div ref={ref} className="border-t border-edge-strong bg-surface-sunken">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
         <span className="flex items-center gap-1.5 text-micro font-medium text-content-muted">
           <Icon name="switch" size={14} />

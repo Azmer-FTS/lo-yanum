@@ -43,7 +43,7 @@ function StepBar({ current }: { current: Step }) {
                 active
                   ? 'bg-accent text-content-on-accent'
                   : done
-                    ? 'bg-status-success/20 text-status-success'
+                    ? 'bg-status-success/20 text-status-success-ink'
                     : 'bg-surface-high text-content-muted'
               }`}
             >
@@ -338,11 +338,11 @@ export function ImportWizardScreen() {
       {step === 'preview' && analysis && (
         <Section title={t('import.stepPreview')}>
           <div className="mb-3 flex flex-wrap items-center gap-3">
-            <span className="chip bg-status-success/15 text-status-success">
+            <span className="chip bg-status-success/15 text-status-success-ink">
               {t('import.willImport')}
               <span className="numeric">{analysis.importable.length}</span>
             </span>
-            <span className="chip bg-status-danger/15 text-status-danger">
+            <span className="chip bg-status-danger/15 text-status-danger-ink">
               {t('import.willSkip')}
               <span className="numeric">{analysis.rejected.length}</span>
             </span>
@@ -460,14 +460,14 @@ function PreviewRow({ row }: { row: ParsedRow }) {
         {bad ? (
           <span className="flex flex-wrap gap-1">
             {row.problems.map((p) => (
-              <span key={p} className="chip bg-status-danger/20 text-status-danger">
+              <span key={p} className="chip bg-status-danger/20 text-status-danger-ink">
                 <Icon name="alert" size={11} />
                 {t(`import.${p}`)}
               </span>
             ))}
           </span>
         ) : (
-          <span className="chip bg-status-success/15 text-status-success">
+          <span className="chip bg-status-success/15 text-status-success-ink">
             <Icon name="check" size={11} />
             {t('import.noProblems')}
           </span>

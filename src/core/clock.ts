@@ -48,6 +48,111 @@ export function guardNight(
   }
 }
 
+// --- Calendar arithmetic (D4) ----------------------------------------------
+//
+// All of it is local-time and DST-safe: `setDate`/`setHours` on a Date object
+// go through the calendar, whereas adding `n * DAY` milliseconds silently
+// shifts by an hour across a DST boundary and lands an event on the wrong day.
+
+/** THE WEEK STARTS ON SUNDAY. Israel, and every Hebrew calendar in print. */
+export const WEEK_START_DAY = 0
+
+export function addDays(d: Date, days: number): Date {
+  const out = new Date(d)
+  out.setDate(out.getDate() + days)
+  return out
+}
+
+export function addMonths(d: Date, months: number): Date {
+  const out = new Date(d)
+  out.setDate(1)
+  out.setMonth(out.getMonth() + months)
+  return out
+}
+
+/** Local midnight on the Sunday of `d`'s week. */
+export function startOfWeek(d: Date): Date {
+  const out = new Date(d)
+  out.setHours(0, 0, 0, 0)
+  out.setDate(out.getDate() - ((out.getDay() - WEEK_START_DAY + 7) % 7))
+  return out
+}
+
+/** Local midnight on the 1st of `d`'s month. */
+export function startOfMonth(d: Date): Date {
+  const out = new Date(d)
+  out.setHours(0, 0, 0, 0)
+  out.setDate(1)
+  return out
+}
+
+/**
+ * The 6×7 block a month grid renders: from the Sunday on or before the 1st,
+ * always 42 days. Fixed at six weeks so the grid never changes height between
+ * months — a calendar that reflows as you page through it is unreadable.
+ */
+export function monthGridStart(d: Date): Date {
+  return startOfWeek(startOfMonth(d))
+}
+
+export const MONTH_GRID_DAYS = 42
+
+export function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
+}
+
+/** `YYYY-MM-DD` in LOCAL time — `toISOString()` would shift across midnight. */
+export function localDayKey(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** Parse a `YYYY-MM-DD` day key back into local midnight. */
+export function fromDayKey(key: string): Date {
+  const [y, m, d] = key.split('-').map(Number)
+  return new Date(y, (m ?? 1) - 1, d ?? 1)
+}
+
+/** A local wall-clock time on a given calendar day, as an ISO string. */
+export function atTimeOn(day: Date, hours: number, minutes = 0): string {
+  const out = new Date(day)
+  out.setHours(hours, minutes, 0, 0)
+  return iso(out)
+}
+
+export function formatMonthYear(d: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    month: 'long',
+    year: 'numeric',
+  }).format(d)
+}
+
+export function formatWeekdayShort(d: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(d)
+}
+
+/**
+ * "לפני 25 דק'" — relative time, as the alert list needs it.
+ *
+ * `Intl.RelativeTimeFormat` rather than hand-built strings: it is ECMAScript
+ * (so /src/core stays pure), and it gets Hebrew's dual and plural forms right,
+ * which a `{{count}}` template does not.
+ */
+export function formatRelative(atIso: string, locale: string, from: Date = now()): string {
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+  const deltaMs = new Date(atIso).getTime() - from.getTime()
+  const minutes = Math.round(deltaMs / MINUTE)
+
+  if (Math.abs(minutes) < 60) return rtf.format(minutes, 'minute')
+  const hours = Math.round(deltaMs / HOUR)
+  if (Math.abs(hours) < 24) return rtf.format(hours, 'hour')
+  return rtf.format(Math.round(deltaMs / DAY), 'day')
+}
+
 /** An ISO timestamp `h` hours from now (negative for the past). */
 export function hoursFromNow(h: number): string {
   return iso(new Date(now().getTime() + h * HOUR))
