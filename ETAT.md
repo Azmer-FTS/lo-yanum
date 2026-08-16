@@ -15,7 +15,7 @@ ETAT.md and continue."**
 ## 1. Resume command
 
 ```bash
-cd "/Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM" && bun install && bun run dev
+bun install && bun run dev
 ```
 
 Then open http://localhost:5173 and pick an identity on the landing screen.
