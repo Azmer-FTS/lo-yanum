@@ -14,13 +14,9 @@ export type { MapMarker, MapViewProps } from './MapCanvas'
  */
 const MapCanvas = lazy(() => import('./MapCanvas'))
 
+/** Shimmer placeholder while the MapLibre chunk downloads (R2: skeletons). */
 function MapSkeleton({ className }: { className: string }) {
-  return (
-    <div
-      className={`animate-pulse rounded-2xl bg-sand-200 ${className}`}
-      aria-hidden="true"
-    />
-  )
+  return <div className={`skeleton rounded-lg ${className}`} aria-hidden="true" />
 }
 
 export function MapView(props: MapViewProps) {

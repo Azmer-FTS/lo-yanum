@@ -11,29 +11,65 @@ import type {
 import { Icon } from './Icon'
 
 /**
- * Status colours live here and nowhere else — the map markers, the list chips
- * and the detail headers all read from the same table, so a status can never
- * look green in one screen and amber in another.
+ * Status presentation, defined exactly once.
+ *
+ * Chips, list dots, table cells and map markers all read from here, so a status
+ * can never be green in one screen and amber in another. Colours resolve from
+ * the design tokens — no hex literals in this file or any other component.
  */
 
-export const FARM_STATUS_COLOR: Record<FarmStatus, string> = {
-  to_contact: '#9aa3b8',
-  contacted: '#e0a325',
-  visited: '#d3781f',
-  verbal_ok: '#5b8ac9',
-  signed: '#4b63b6',
-  active: '#2f8f5b',
-  declined: '#b4483f',
+/** Token name per farm status; `readStatusColor` resolves it to a real colour. */
+const FARM_STATUS_TOKEN: Record<FarmStatus, string> = {
+  to_contact: '--farm-to-contact',
+  contacted: '--farm-contacted',
+  visited: '--farm-visited',
+  verbal_ok: '--farm-verbal-ok',
+  signed: '--farm-signed',
+  active: '--farm-active',
+  declined: '--farm-declined',
 }
 
+/**
+ * MapLibre markers are raw DOM built outside React, so they need a concrete
+ * colour string rather than a Tailwind class. This reads the token's computed
+ * value off :root — the token file stays the single source of truth.
+ */
+export function readStatusColor(status: FarmStatus): string {
+  if (typeof window === 'undefined') return 'rgb(139 149 173)'
+  const channels = getComputedStyle(document.documentElement)
+    .getPropertyValue(FARM_STATUS_TOKEN[status])
+    .trim()
+  return channels ? `rgb(${channels})` : 'rgb(139 149 173)'
+}
+
+/** Resolve any token to a colour string, for the same DOM-outside-React cases. */
+export function readToken(name: string): string {
+  if (typeof window === 'undefined') return 'rgb(245 158 11)'
+  const channels = getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim()
+  return channels ? `rgb(${channels})` : 'rgb(245 158 11)'
+}
+
+/** Tinted chip: coloured text on a 15% wash of the same colour. */
 const FARM_STATUS_CLASS: Record<FarmStatus, string> = {
-  to_contact: 'bg-slate-100 text-slate-700',
-  contacted: 'bg-amber-100 text-amber-800',
-  visited: 'bg-orange-100 text-orange-800',
-  verbal_ok: 'bg-sky-100 text-sky-800',
-  signed: 'bg-indigo-100 text-indigo-800',
-  active: 'bg-emerald-100 text-emerald-800',
-  declined: 'bg-rose-100 text-rose-800',
+  to_contact: 'bg-farm-to-contact/15 text-farm-to-contact',
+  contacted: 'bg-farm-contacted/15 text-farm-contacted',
+  visited: 'bg-farm-visited/15 text-farm-visited',
+  verbal_ok: 'bg-farm-verbal-ok/15 text-farm-verbal-ok',
+  signed: 'bg-farm-signed/15 text-farm-signed',
+  active: 'bg-farm-active/15 text-farm-active',
+  declined: 'bg-farm-declined/15 text-farm-declined',
+}
+
+const FARM_STATUS_DOT: Record<FarmStatus, string> = {
+  to_contact: 'bg-farm-to-contact',
+  contacted: 'bg-farm-contacted',
+  visited: 'bg-farm-visited',
+  verbal_ok: 'bg-farm-verbal-ok',
+  signed: 'bg-farm-signed',
+  active: 'bg-farm-active',
+  declined: 'bg-farm-declined',
 }
 
 export function FarmStatusChip({ status }: { status: FarmStatus }) {
@@ -48,17 +84,16 @@ export function FarmStatusChip({ status }: { status: FarmStatus }) {
 export function FarmStatusDot({ status }: { status: FarmStatus }) {
   return (
     <span
-      className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-      style={{ backgroundColor: FARM_STATUS_COLOR[status] }}
+      className={`inline-block h-2.5 w-2.5 shrink-0 rounded-pill ${FARM_STATUS_DOT[status]}`}
     />
   )
 }
 
 const MISSION_STATUS_CLASS: Record<MissionStatus, string> = {
-  planned: 'bg-sky-100 text-sky-800',
-  in_progress: 'bg-emerald-100 text-emerald-800',
-  completed: 'bg-slate-100 text-slate-700',
-  return_not_confirmed: 'bg-rose-100 text-rose-800',
+  planned: 'bg-status-info/15 text-status-info',
+  in_progress: 'bg-status-success/15 text-status-success',
+  completed: 'bg-content-muted/15 text-content-muted',
+  return_not_confirmed: 'bg-status-danger/15 text-status-danger',
 }
 
 export function MissionStatusChip({ status }: { status: MissionStatus }) {
@@ -66,7 +101,7 @@ export function MissionStatusChip({ status }: { status: MissionStatus }) {
   return (
     <span className={`chip ${MISSION_STATUS_CLASS[status]}`}>
       {status === 'in_progress' && (
-        <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600" />
+        <span className="inline-block h-1.5 w-1.5 animate-pulse-ring rounded-pill bg-status-success" />
       )}
       {t(`missionStatus.${status}`)}
     </span>
@@ -74,15 +109,22 @@ export function MissionStatusChip({ status }: { status: MissionStatus }) {
 }
 
 export const SEVERITY_CLASS: Record<IncidentSeverity, string> = {
-  observation: 'bg-slate-100 text-slate-700',
-  suspicious: 'bg-amber-100 text-amber-800',
-  urgent: 'bg-rose-100 text-rose-800',
+  observation: 'bg-status-success/15 text-status-success',
+  suspicious: 'bg-status-warn/15 text-status-warn',
+  urgent: 'bg-status-danger/15 text-status-danger',
 }
 
 export const SEVERITY_ACCENT: Record<IncidentSeverity, string> = {
-  observation: 'border-slate-300',
-  suspicious: 'border-amber-400',
-  urgent: 'border-rose-500',
+  observation: 'border-s-status-success',
+  suspicious: 'border-s-status-warn',
+  urgent: 'border-s-status-danger',
+}
+
+/** Solid fills for the R7 severity picker — huge, unmistakable at 2 AM. */
+export const SEVERITY_SOLID: Record<IncidentSeverity, string> = {
+  observation: 'bg-status-success text-content-on-accent',
+  suspicious: 'bg-status-warn text-content-on-accent',
+  urgent: 'bg-status-danger text-content-on-accent',
 }
 
 export function SeverityChip({ severity }: { severity: IncidentSeverity }) {
@@ -101,10 +143,11 @@ export function PhoneTypeChip({ type }: { type: PhoneType }) {
     <span
       className={`chip ${
         type === 'kosher'
-          ? 'bg-sand-200 text-sand-900'
-          : 'bg-night-100 text-night-800'
+          ? 'bg-accent/15 text-accent'
+          : 'bg-status-info/15 text-status-info'
       }`}
     >
+      <Icon name={type === 'kosher' ? 'phoneBasic' : 'phone'} size={11} />
       {t(`phoneType.${type}`)}
     </span>
   )
@@ -116,11 +159,39 @@ export function VolunteerStatusChip({ status }: { status: VolunteerStatus }) {
     <span
       className={`chip ${
         status === 'active'
-          ? 'bg-emerald-100 text-emerald-800'
-          : 'bg-slate-100 text-slate-600'
+          ? 'bg-status-success/15 text-status-success'
+          : 'bg-content-muted/15 text-content-muted'
       }`}
     >
       {t(`volunteerStatus.${status}`)}
+    </span>
+  )
+}
+
+/** R6: per-person confirmation state, shown side by side in mission detail. */
+export function ConfirmationChip({
+  state,
+}: {
+  state: 'present' | 'absent' | 'pending' | 'mismatch'
+}) {
+  const { t } = useTranslation()
+  const map = {
+    present: 'bg-status-success/15 text-status-success',
+    absent: 'bg-status-danger/15 text-status-danger',
+    pending: 'bg-content-muted/15 text-content-muted',
+    mismatch: 'bg-status-warn/20 text-status-warn ring-1 ring-status-warn/50',
+  } as const
+  const icon = {
+    present: 'check',
+    absent: 'close',
+    pending: 'clock',
+    mismatch: 'alert',
+  } as const
+
+  return (
+    <span className={`chip ${map[state]}`}>
+      <Icon name={icon[state]} size={12} />
+      {t(`confirm.${state}`)}
     </span>
   )
 }

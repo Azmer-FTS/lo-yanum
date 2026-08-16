@@ -6,10 +6,11 @@ import { Icon } from './Icon'
 
 /**
  * Call / WhatsApp / SMS for one person. On a phone these are the whole point of
- * the app, so the call target is a large tap area and the number is always
- * rendered LTR inside the RTL layout.
+ * the app, so the call target is a large tap area and the number always renders
+ * LTR inside the RTL layout.
  */
-/** The three action buttons on their own — for rows that already show a name. */
+
+/** The three action buttons alone — for rows that already show a name. */
 export function ContactButtons({
   name,
   phone,
@@ -27,7 +28,8 @@ export function ContactButtons({
       <a
         href={telHref(phone)}
         aria-label={`${t('common.call')} ${name}`}
-        className="flex h-10 w-10 items-center justify-center rounded-xl bg-night-800 text-white transition-colors hover:bg-night-700"
+        className="flex h-10 w-10 items-center justify-center rounded-md bg-accent text-content-on-accent
+                   transition-all duration-fast ease-out hover:bg-accent-strong active:scale-95"
       >
         <Icon name="phone" size={18} />
       </a>
@@ -36,14 +38,18 @@ export function ContactButtons({
         target="_blank"
         rel="noreferrer"
         aria-label={`${t('common.whatsapp')} ${name}`}
-        className="flex h-10 w-10 items-center justify-center rounded-xl border border-sand-300 text-emerald-700 transition-colors hover:bg-sand-100"
+        className="flex h-10 w-10 items-center justify-center rounded-md border border-edge-strong
+                   text-status-success transition-all duration-fast ease-out
+                   hover:bg-status-success/10 active:scale-95"
       >
         <Icon name="whatsapp" size={18} />
       </a>
       <a
         href={smsHref(phone, message)}
         aria-label={`${t('common.sms')} ${name}`}
-        className="flex h-10 w-10 items-center justify-center rounded-xl border border-sand-300 text-night-800 transition-colors hover:bg-sand-100"
+        className="flex h-10 w-10 items-center justify-center rounded-md border border-edge-strong
+                   text-content-secondary transition-all duration-fast ease-out
+                   hover:bg-surface-high hover:text-content-primary active:scale-95"
       >
         <Icon name="message" size={18} />
       </a>
@@ -63,11 +69,15 @@ export function ContactActions({
   message?: string
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-2">
+    <div className="flex items-center justify-between gap-3 py-2.5">
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-night-950">{name}</p>
-        <p className="ltr-nums text-xs text-night-950/50">{phone}</p>
-        {role && <p className="truncate text-xs text-night-950/50">{role}</p>}
+        <p className="truncate text-caption font-medium text-content-primary">
+          {name}
+        </p>
+        <p className="ltr-nums text-micro text-content-muted">{phone}</p>
+        {role && (
+          <p className="truncate text-micro text-content-muted">{role}</p>
+        )}
       </div>
       <ContactButtons name={name} phone={phone} message={message} />
     </div>
@@ -87,16 +97,21 @@ export function CallRow({
   return (
     <a
       href={telHref(phone)}
-      className="flex items-center gap-3 rounded-xl border border-sand-200 px-3.5 py-3 transition-colors hover:bg-sand-100"
+      className="flex items-center gap-3 rounded-md border border-edge-subtle bg-surface-raised px-3.5 py-3
+                 transition-all duration-fast ease-out hover:border-accent/40 hover:bg-surface-high active:scale-[0.99]"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-night-100 text-night-800">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent/15 text-accent">
         <Icon name="phone" size={18} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-xs text-night-950/50">{label}</span>
-        <span className="block truncate text-sm font-medium">{name}</span>
+        <span className="block text-micro text-content-muted">{label}</span>
+        <span className="block truncate text-caption font-medium text-content-primary">
+          {name}
+        </span>
       </span>
-      <span className="ltr-nums shrink-0 text-sm text-night-950/60">{phone}</span>
+      <span className="ltr-nums shrink-0 text-caption text-content-secondary">
+        {phone}
+      </span>
     </a>
   )
 }

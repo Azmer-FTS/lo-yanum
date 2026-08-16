@@ -5,7 +5,6 @@
     "verseRef": "תהלים קכ\"א, ד",
     "tagline": "תיאום שמירות מתנדבים בחוות הנגב"
   },
-
   "common": {
     "search": "חיפוש",
     "searchFarms": "חיפוש חווה, יישוב או איש קשר",
@@ -45,16 +44,30 @@
     "showLess": "הצגת פחות",
     "required": "שדה חובה",
     "sent": "נשלח",
-    "clear": "ניקוי"
+    "clear": "ניקוי",
+    "edit": "עריכה",
+    "create": "יצירה",
+    "add": "הוספה",
+    "remove": "הסרה",
+    "saved": "נשמר",
+    "next": "הבא",
+    "previous": "הקודם",
+    "finish": "סיום",
+    "step": "שלב {{current}} מתוך {{total}}",
+    "optional": "רשות",
+    "unknown": "לא ידוע",
+    "never": "מעולם",
+    "sortBy": "מיון לפי",
+    "expandAll": "פתיחת הכול",
+    "collapseAll": "סגירת הכול",
+    "showingOf": "מוצגים {{shown}} מתוך {{total}}"
   },
-
   "roles": {
     "coordinator": "רכז",
     "farmer": "חקלאי",
     "volunteer": "מתנדב",
     "driver": "נהג"
   },
-
   "nav": {
     "dashboard": "לוח בקרה",
     "farms": "חוות",
@@ -69,9 +82,11 @@
     "myTrip": "ההסעה שלי",
     "report": "דיווח אירוע",
     "sectionMain": "ניהול",
-    "sectionField": "שטח"
+    "sectionField": "שטח",
+    "collapse": "כיווץ התפריט",
+    "expand": "הרחבת התפריט",
+    "groupRoster": "הקבוצה שלי"
   },
-
   "login": {
     "title": "כניסה לגרסת הדגמה",
     "subtitle": "בחרו זהות כדי לראות את המערכת מנקודת המבט שלה",
@@ -79,14 +94,12 @@
     "pocNotice": "גרסת עיצוב בלבד — הנתונים מדומים ואינם נשמרים",
     "coordinatorEntry": "כניסה כרכז"
   },
-
   "devbar": {
     "viewAs": "צפייה בתור",
     "reset": "איפוס נתונים",
     "hint": "סרגל הדגמה — לא יופיע בגרסה האמיתית",
     "backToLogin": "מסך פתיחה"
   },
-
   "farmStatus": {
     "to_contact": "ליצירת קשר",
     "contacted": "נוצר קשר",
@@ -96,42 +109,35 @@
     "active": "פעילה",
     "declined": "סירבה"
   },
-
   "farmType": {
     "agriculture": "חקלאות",
     "livestock": "בעלי חיים",
     "mixed": "מעורבת"
   },
-
   "phoneType": {
     "smartphone": "סמארטפון",
     "kosher": "כשר"
   },
-
   "volunteerStatus": {
     "active": "פעיל",
     "inactive": "לא פעיל"
   },
-
   "missionStatus": {
     "planned": "מתוכננת",
     "in_progress": "בביצוע",
     "completed": "הושלמה",
     "return_not_confirmed": "חזרה לא אושרה"
   },
-
   "severity": {
     "observation": "תצפית",
     "suspicious": "חשוד",
     "urgent": "דחוף"
   },
-
   "incidentSource": {
     "volunteer": "מתנדב",
     "farmer": "חקלאי",
     "coordinator": "רכז"
   },
-
   "commitment": {
     "title": "התחייבויות בעל החווה",
     "shelter": "מקום לינה",
@@ -143,7 +149,6 @@
     "reminderTitle": "מה סוכם שתספקו למתנדבים",
     "reminderNote": "המתנדבים מגיעים בהתנדבות מלאה. התנאים הבסיסיים הם חלק מההסכם."
   },
-
   "dashboard": {
     "title": "לוח בקרה",
     "greeting": "ערב טוב",
@@ -159,13 +164,14 @@
     "activeFarms": "חוות פעילות",
     "openIncidents": "אירועים פתוחים"
   },
-
   "alerts": {
     "urgent_incident": "אירוע דחוף",
     "return_not_confirmed": "חזרת קבוצה לא אושרה",
-    "returnDetail": "הנהג לא אישר איסוף בבוקר"
+    "returnDetail": "הנהג לא אישר איסוף בבוקר",
+    "presence_mismatch": "אי־התאמה בדיווח נוכחות",
+    "mismatchDetail": "הנהג ומחזיק טלפון הקבוצה דיווחו הפוך על {{name}}",
+    "callNow": "חיוג מיידי"
   },
-
   "farms": {
     "title": "חוות",
     "count": "{{count}} חוות",
@@ -188,9 +194,13 @@
     "noVisitYet": "טרם בוקרה",
     "location": "מיקום",
     "recentIncidents": "אירועים אחרונים",
-    "guardHistory": "שמירות בחווה"
+    "guardHistory": "שמירות בחווה",
+    "new": "חווה חדשה",
+    "edit": "עריכת חווה",
+    "searchPlaceholder": "חיפוש חווה, יישוב או איש קשר",
+    "zonesPlaceholder": "שכבת גבולות החלקות תתווסף בשלב הבא",
+    "openFullMap": "מפה מלאה"
   },
-
   "anchor": {
     "title": "נקודת עיגון",
     "instructions": "הנחיות לשומרים",
@@ -215,9 +225,10 @@
     "labelPhones": "טלפונים",
     "labelFarmer": "בעל החווה",
     "labelDriver": "נהג",
-    "labelCoordinator": "רכז"
+    "labelCoordinator": "רכז",
+    "new": "נקודת עיגון חדשה",
+    "edit": "עריכת נקודת עיגון"
   },
-
   "map": {
     "title": "מפת חוות",
     "legend": "מקרא",
@@ -227,7 +238,6 @@
     "anchorPoint": "נקודת עיגון",
     "myPosition": "המיקום שלי"
   },
-
   "route": {
     "title": "תכנון מסלול ביקורים",
     "subtitle": "בחרו חוות — הסדר מחושב לפי הקרוב ביותר, מירושלים",
@@ -246,7 +256,6 @@
     "emptySelection": "בחרו לפחות חווה אחת כדי לתכנן מסלול",
     "suggestPending": "בחירה מהירה: חוות הממתינות לביקור"
   },
-
   "volunteers": {
     "title": "מתנדבים",
     "count": "{{count}} מתנדבים",
@@ -268,9 +277,25 @@
     "inactiveReason": "סיבת אי־פעילות",
     "groupPhoneHolder": "טלפון הקבוצה",
     "statsSmartphone": "סמארטפון",
-    "statsKosher": "טלפון כשר"
+    "statsKosher": "טלפון כשר",
+    "colName": "שם",
+    "colYeshiva": "ישיבה",
+    "colLocality": "יישוב",
+    "colPhone": "טלפון",
+    "colGuards": "שמירות",
+    "colStatus": "סטטוס",
+    "colLastActivity": "פעילות אחרונה",
+    "colActions": "פעולות",
+    "new": "מתנדב חדש",
+    "edit": "עריכת מתנדב",
+    "import": "ייבוא מקובץ",
+    "history": "היסטוריית שמירות",
+    "neverActive": "טרם שמר",
+    "noHistory": "אין שמירות רשומות",
+    "groupToggle": "קיבוץ לפי ישיבה",
+    "flatList": "רשימה שטוחה",
+    "searchPlaceholder": "חיפוש לפי שם, ישיבה, יישוב או טלפון"
   },
-
   "missions": {
     "title": "שמירות",
     "count": "{{count}} שמירות",
@@ -297,7 +322,6 @@
     "expectedCount": "משובצים: {{count}}",
     "openMission": "פתיחת השמירה"
   },
-
   "incidents": {
     "title": "יומן אירועים",
     "count": "{{count}} אירועים",
@@ -323,7 +347,6 @@
     "open": "פתוח",
     "linkedMission": "שמירה מקושרת"
   },
-
   "report": {
     "title": "דיווח אירוע",
     "subtitle": "הדיווח נשמר ומועבר לרכז מיד",
@@ -342,16 +365,24 @@
     "success": "הדיווח נשלח לרכז",
     "another": "דיווח נוסף",
     "emergencyTitle": "לפני הכול — התקשרו",
-    "emergencyNote": "הדיווח באפליקציה מתעד את האירוע. בשעת סכנה החיוג קודם לכול."
+    "emergencyNote": "הדיווח באפליקציה מתעד את האירוע. בשעת סכנה החיוג קודם לכול.",
+    "stepSeverity": "מה רמת האירוע?",
+    "stepDetails": "פרטי האירוע",
+    "changeSeverity": "שינוי רמה",
+    "urgentDoneTitle": "הדיווח נשמר — עכשיו התקשרו",
+    "urgentDoneBody": "הדיווח תועד ונשלח לרכז. הפעולה החשובה עכשיו היא שיחת טלפון.",
+    "callFarmer": "חיוג לבעל החווה",
+    "callCoordinator": "חיוג לרכז",
+    "callPolice": "חיוג למשטרה",
+    "doneAndBack": "חזרה למסך הראשי",
+    "dictateHint": "אפשר להכתיב בקול באמצעות מקלדת הטלפון"
   },
-
   "emergency": {
     "police": "משטרה",
     "ambulance": "מד\"א",
     "fire": "כיבוי אש",
     "regionalSecurity": "קב\"ט מועצה"
   },
-
   "farmer": {
     "tonightTitle": "הלילה בחווה",
     "noGuardTonight": "אין שמירה מתוכננת הלילה בחווה",
@@ -371,7 +402,6 @@
     "noPast": "אין שמירות קודמות",
     "reportCta": "דיווח על אירוע"
   },
-
   "volunteer": {
     "title": "השמירה שלי",
     "noMission": "אין לכם שמירה משובצת כרגע",
@@ -391,7 +421,6 @@
     "endedAt": "אושר סיום",
     "reportCta": "דיווח אירוע"
   },
-
   "driver": {
     "title": "ההסעה שלי",
     "noTrip": "אין לכם הסעה משובצת כרגע",
@@ -411,10 +440,122 @@
     "seats": "מקומות",
     "vehicle": "רכב"
   },
-
   "a11y": {
     "openMenu": "פתיחת תפריט",
     "closeMenu": "סגירת תפריט",
-    "map": "מפה"
+    "map": "מפה",
+    "sortColumn": "מיון לפי {{column}}"
+  },
+  "confirm": {
+    "present": "נאסף",
+    "absent": "לא הגיע",
+    "pending": "ממתין",
+    "mismatch": "אי־התאמה"
+  },
+  "presence": {
+    "outbound": "נסיעה לחווה",
+    "inbound": "חזרה בבוקר",
+    "driverSays": "דיווח הנהג",
+    "groupSays": "דיווח הקבוצה",
+    "selfSays": "אישור אישי",
+    "markPresent": "נאסף",
+    "markAbsent": "לא הגיע",
+    "withUs": "איתנו",
+    "notWithUs": "לא איתנו",
+    "iAmAboard": "אני ברכב",
+    "iAmAboardDone": "אישרת שאתה ברכב",
+    "rosterTitle": "אישור נוכחות שמי",
+    "rosterHint": "אשרו עבור כל אחד מחברי הקבוצה — מי שנושא טלפון כשר אינו יכול לאשר בעצמו",
+    "driverHint": "סמנו כל מתנדב בנפרד. המספר לבדו לא מספיק — צריך לדעת מי חסר.",
+    "mismatchOn": "אי־התאמה על {{name}}",
+    "mismatchExplain": "הנהג סימן \"{{driver}}\" והקבוצה סימנה \"{{group}}\". בררו טלפונית מיד.",
+    "allConfirmed": "כל הקבוצה אושרה",
+    "waitingFor": "ממתין ל־{{count}} מתנדבים",
+    "changeMark": "שינוי סימון",
+    "legDone": "הלג הושלם"
+  },
+  "form": {
+    "sectionIdentity": "זיהוי החווה",
+    "sectionContacts": "אנשי קשר",
+    "sectionAreas": "שטחים",
+    "sectionStatus": "סטטוס",
+    "sectionNotes": "הערות",
+    "sectionLocation": "מיקום",
+    "name": "שם",
+    "locality": "יישוב",
+    "region": "אזור",
+    "type": "סוג",
+    "status": "סטטוס",
+    "lat": "קו רוחב",
+    "lng": "קו אורך",
+    "pickOnMap": "בחירה על המפה",
+    "pickOnMapHint": "בחירה ויזואלית תתווסף בשלב הבא — בינתיים הזינו ידנית",
+    "farmArea": "שטח מעובד (דונם)",
+    "grazingArea": "שטח מרעה (דונם)",
+    "notes": "הערות",
+    "contactName": "שם",
+    "contactPhone": "טלפון",
+    "contactRole": "תפקיד",
+    "contactPrimary": "איש קשר ראשי",
+    "addContact": "הוספת איש קשר",
+    "removeContact": "הסרת איש קשר",
+    "noContacts": "טרם נוספו אנשי קשר",
+    "age": "גיל",
+    "phone": "טלפון",
+    "phoneType": "סוג טלפון",
+    "yeshiva": "ישיבה",
+    "inactiveReason": "סיבת אי־פעילות",
+    "anchorName": "שם נקודת העיגון",
+    "instructions": "הנחיות לשומרים",
+    "instructionsHint": "שורה אחת לכל הנחיה",
+    "accessDescription": "תיאור הגעה (לטלפון כשר)",
+    "accessHint": "טקסט שניתן לקרוא ולעקוב אחריו בלי מפה ובלי אינטרנט",
+    "required": "שדה חובה",
+    "invalidPhone": "מספר טלפון לא תקין",
+    "invalidNumber": "מספר לא תקין",
+    "savedFarm": "החווה נשמרה",
+    "savedVolunteer": "המתנדב נשמר",
+    "savedAnchor": "נקודת העיגון נשמרה"
+  },
+  "import": {
+    "title": "ייבוא מתנדבים מקובץ",
+    "subtitle": "אקסל או CSV — מיפוי עמודות, זיהוי כפילויות ובדיקת שגיאות לפני הייבוא",
+    "stepUpload": "העלאת קובץ",
+    "stepMapping": "מיפוי עמודות",
+    "stepPreview": "בדיקה ואישור",
+    "stepDone": "סיום",
+    "dropzone": "גררו לכאן קובץ, או לחצו לבחירה",
+    "dropzoneHint": "נתמכים: ‎.csv‎, ‎.xlsx‎, ‎.xls",
+    "downloadTemplate": "הורדת קובץ לדוגמה",
+    "fileLoaded": "נטענו {{rows}} שורות מתוך {{file}}",
+    "mappingHint": "התאימו כל עמודה בקובץ לשדה במערכת. עמודות שאינן נחוצות — בחרו \"התעלם\".",
+    "detectedColumn": "עמודה בקובץ",
+    "targetField": "שדה במערכת",
+    "ignore": "התעלם",
+    "fieldName": "שם",
+    "fieldPhone": "טלפון",
+    "fieldYeshiva": "ישיבה",
+    "fieldLocality": "יישוב",
+    "fieldAge": "גיל",
+    "fieldPhoneType": "סוג טלפון",
+    "previewHint": "שורות עם שגיאה לא ייובאו. אפשר לחזור אחורה ולתקן את המיפוי.",
+    "willImport": "ייובאו",
+    "willSkip": "יידלגו",
+    "errMissingName": "חסר שם",
+    "errMissingPhone": "חסר טלפון",
+    "errBadPhone": "פורמט טלפון שגוי",
+    "errDuplicate": "טלפון קיים כבר במערכת",
+    "errDuplicateInFile": "טלפון מופיע פעמיים בקובץ",
+    "rowNumber": "שורה",
+    "problems": "בעיות",
+    "noProblems": "תקין",
+    "confirmImport": "ייבוא {{count}} מתנדבים",
+    "successTitle": "הייבוא הושלם",
+    "successBody": "נוספו {{imported}} מתנדבים. {{skipped}} שורות נדלגו בגלל שגיאות.",
+    "importAnother": "ייבוא קובץ נוסף",
+    "backToList": "חזרה לרשימה",
+    "parseError": "לא הצלחנו לקרוא את הקובץ. ודאו שזהו קובץ CSV או Excel תקין.",
+    "emptyFile": "הקובץ ריק או שאין בו שורות נתונים.",
+    "mapAtLeast": "יש למפות לפחות שם וטלפון כדי להמשיך."
   }
 }

@@ -14,7 +14,7 @@ import {
 import { CallRow } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
-import { MissionStatusChip } from '../../components/badges'
+import { MissionStatusChip, readToken } from '../../components/badges'
 import {
   Callout,
   EmptyState,
@@ -73,21 +73,21 @@ export function FarmerTonightScreen() {
                 title={t('farmer.guardTeam')}
                 action={<MissionStatusChip status={mission.status} />}
               >
-                <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                  <span className="flex items-center gap-1.5 text-night-950/70">
+                <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption">
+                  <span className="flex items-center gap-1.5 text-content-secondary">
                     <Icon name="clock" size={15} />
                     {t('farmer.expectedArrival')}{' '}
-                    <span className="ltr-nums font-medium text-night-950">
+                    <span className="ltr-nums font-medium text-content-primary">
                       {formatTime(mission.startAt, locale)}
                     </span>
                   </span>
                   <span
                     className={`chip ${
                       mission.endConfirmedAt
-                        ? 'bg-slate-100 text-slate-700'
+                        ? 'bg-content-muted/15 text-content-muted'
                         : mission.arrivalConfirmedAt
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-amber-100 text-amber-800'
+                          ? 'bg-status-success/15 text-status-success'
+                          : 'bg-status-warn/15 text-status-warn'
                     }`}
                   >
                     {t(
@@ -133,14 +133,14 @@ export function FarmerTonightScreen() {
                     href={wazeUrl(anchorPoint.position)}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-night-700 hover:underline"
+                    className="inline-flex items-center gap-1 text-micro font-medium text-accent hover:underline"
                   >
                     <Icon name="pin" size={13} />
                     {t('common.openInWaze')}
                   </a>
                 }
               >
-                <p className="mb-2 text-sm font-medium">{anchorPoint.name}</p>
+                <p className="mb-2 text-caption font-medium">{anchorPoint.name}</p>
                 <MapView
                   ariaLabel={t('a11y.map')}
                   className="h-44 w-full"
@@ -151,7 +151,8 @@ export function FarmerTonightScreen() {
                     {
                       id: anchorPoint.id,
                       position: anchorPoint.position,
-                      color: '#1c2038',
+                      color: readToken('--accent'),
+                  emphasis: true,
                       title: anchorPoint.name,
                     },
                   ]}

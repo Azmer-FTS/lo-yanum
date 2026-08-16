@@ -18,10 +18,11 @@ import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
 import {
-  FARM_STATUS_COLOR,
   FarmStatusChip,
   MissionStatusChip,
   SeverityChip,
+  readStatusColor,
+  readToken,
 } from '../../components/badges'
 import {
   EmptyState,
@@ -45,7 +46,7 @@ function StatusStepper({ status }: { status: FarmStatus }) {
 
   if (status === 'declined') {
     return (
-      <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">
+      <div className="rounded-md border border-status-danger/40 bg-status-danger/10 px-4 py-3 text-caption font-medium text-status-danger">
         {t('farmStatus.declined')}
       </div>
     )
@@ -61,15 +62,15 @@ function StatusStepper({ status }: { status: FarmStatus }) {
         return (
           <li key={step} className="flex shrink-0 items-center gap-1">
             <div
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
+              className={`flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-micro font-medium transition-colors duration-base ${
                 current
-                  ? 'text-white'
+                  ? 'text-content-on-accent'
                   : done
-                    ? 'bg-sand-200 text-night-900'
-                    : 'bg-sand-100 text-night-950/40'
+                    ? 'bg-surface-high text-content-secondary'
+                    : 'bg-surface-sunken text-content-muted'
               }`}
               style={
-                current ? { backgroundColor: FARM_STATUS_COLOR[step] } : undefined
+                current ? { backgroundColor: readStatusColor(step) } : undefined
               }
             >
               {done && <Icon name="check" size={12} />}
@@ -78,7 +79,7 @@ function StatusStepper({ status }: { status: FarmStatus }) {
             {i < FARM_PIPELINE.length - 1 && (
               <span
                 className={`block h-px w-4 ${
-                  done ? 'bg-sand-400' : 'bg-sand-200'
+                  done ? 'bg-edge-strong' : 'bg-edge-subtle'
                 }`}
               />
             )}
@@ -119,9 +120,7 @@ function FarmInfo({ farm }: { farm: Farm }) {
       <KeyValue
         label={t('farms.nextVisit')}
         value={
-          farm.nextVisitAt
-            ? formatDate(farm.nextVisitAt, locale)
-            : t('common.none')
+          farm.nextVisitAt ? formatDate(farm.nextVisitAt, locale) : t('common.none')
         }
         ltr={farm.nextVisitAt !== null}
       />
@@ -147,32 +146,76 @@ export function FarmDetailScreen() {
 
   return (
     <>
-      <Link
-        to="/coordinator/farms"
-        className="mb-3 inline-flex items-center gap-1.5 text-sm text-night-950/55 hover:text-night-900"
-      >
-        <Icon name="chevron" size={15} className="ltr:-scale-x-100" />
-        {t('farms.title')}
-      </Link>
-
       <PageHeader
         title={farm.name}
         subtitle={`${farm.locality} · ${farm.region}`}
-        actions={<FarmStatusChip status={farm.status} />}
+        back={{ to: '/coordinator/farms', label: t('farms.title') }}
+        actions={
+          <>
+            <FarmStatusChip status={farm.status} />
+            <Link to={`/coordinator/farms/${farm.id}/edit`} className="btn-secondary">
+              <Icon name="edit" size={15} />
+              {t('common.edit')}
+            </Link>
+          </>
+        }
       />
 
       <Section title={t('farms.pipeline')} className="mb-4">
         <StatusStepper status={farm.status} />
       </Section>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-4 lg:col-span-2">
+      {/* R3: the map is a real block, not a thumbnail — ~40% of the width on
+          desktop, and the first card on mobile. */}
+      <div className="mb-4 grid gap-4 lg:grid-cols-5">
+        <Section
+          className="lg:col-span-2"
+          title={t('farms.location')}
+          action={
+            <a
+              href={googleMapsPointUrl(farm.position)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-micro font-medium text-accent hover:underline"
+            >
+              <Icon name="external" size={13} />
+              {t('common.openInMaps')}
+            </a>
+          }
+        >
+          <MapView
+            ariaLabel={t('a11y.map')}
+            className="h-72 w-full lg:h-[26rem]"
+            center={farm.position}
+            zoom={12}
+            markers={[
+              {
+                id: farm.id,
+                position: farm.position,
+                color: readStatusColor(farm.status),
+                title: farm.name,
+                subtitle: farm.locality,
+                emphasis: true,
+              },
+              ...anchors.map((a) => ({
+                id: a.id,
+                position: a.position,
+                color: readToken('--accent'),
+                title: a.name,
+                subtitle: t('anchor.title'),
+              })),
+            ]}
+          />
+          <p className="muted mt-2">{t('farms.zonesPlaceholder')}</p>
+        </Section>
+
+        <div className="flex flex-col gap-4 lg:col-span-3">
           <Section title={t('common.details')}>
             <FarmInfo farm={farm} />
           </Section>
 
           <Section title={t('farms.contacts')}>
-            <ul className="divide-y divide-sand-200">
+            <ul className="divide-y divide-edge-subtle">
               {farm.contacts.map((contact) => (
                 <li key={contact.id}>
                   <ContactActions
@@ -188,6 +231,54 @@ export function FarmDetailScreen() {
               ))}
             </ul>
           </Section>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="flex flex-col gap-4 lg:col-span-2">
+          <Section
+            title={t('farms.anchorPoints')}
+            action={
+              <Link
+                to={`/coordinator/farms/${farm.id}/anchors/new`}
+                className="btn-ghost py-1.5"
+              >
+                <Icon name="plus" size={14} />
+                {t('anchor.new')}
+              </Link>
+            }
+          >
+            {anchors.length === 0 ? (
+              <EmptyState icon="pin" title={t('farms.noAnchorPoints')} />
+            ) : (
+              <ul className="divide-y divide-edge-subtle">
+                {anchors.map((anchor) => (
+                  <li key={anchor.id} className="flex items-center gap-1">
+                    <div className="min-w-0 flex-1">
+                      <RowLink
+                        to={`/coordinator/farms/${farm.id}/anchors/${anchor.id}`}
+                      >
+                        <p className="text-caption font-medium text-content-primary">
+                          {anchor.name}
+                        </p>
+                        <p className="muted mt-0.5 line-clamp-1">
+                          {anchor.accessDescription}
+                        </p>
+                      </RowLink>
+                    </div>
+                    <Link
+                      to={`/coordinator/farms/${farm.id}/anchors/${anchor.id}/edit`}
+                      aria-label={t('anchor.edit')}
+                      title={t('anchor.edit')}
+                      className="shrink-0 rounded-sm p-2 text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
+                    >
+                      <Icon name="edit" size={16} />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
 
           <Section title={t('commitment.title')}>
             {farm.commitments.length === 0 ? (
@@ -197,17 +288,17 @@ export function FarmDetailScreen() {
                 {farm.commitments.map((c, i) => (
                   <li
                     key={`${c.kind}-${i}`}
-                    className="flex items-start gap-3 rounded-xl border border-sand-200 px-3.5 py-3"
+                    className="flex items-start gap-3 rounded-md border border-edge-subtle px-3.5 py-3"
                   >
                     <span
                       className={`mt-0.5 ${
-                        c.fulfilled ? 'text-emerald-600' : 'text-amber-600'
+                        c.fulfilled ? 'text-status-success' : 'text-status-warn'
                       }`}
                     >
                       <Icon name={COMMITMENT_ICON[c.kind]} size={18} />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">
+                      <p className="text-caption font-medium text-content-primary">
                         {t(`commitment.${c.kind}`)}
                       </p>
                       <p className="muted mt-0.5">{c.detail}</p>
@@ -215,33 +306,14 @@ export function FarmDetailScreen() {
                     <span
                       className={`chip shrink-0 ${
                         c.fulfilled
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-amber-100 text-amber-800'
+                          ? 'bg-status-success/15 text-status-success'
+                          : 'bg-status-warn/15 text-status-warn'
                       }`}
                     >
-                      {t(c.fulfilled ? 'commitment.fulfilled' : 'commitment.pending')}
+                      {t(
+                        c.fulfilled ? 'commitment.fulfilled' : 'commitment.pending',
+                      )}
                     </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-
-          <Section title={t('farms.anchorPoints')}>
-            {anchors.length === 0 ? (
-              <EmptyState icon="pin" title={t('farms.noAnchorPoints')} />
-            ) : (
-              <ul className="divide-y divide-sand-200">
-                {anchors.map((anchor) => (
-                  <li key={anchor.id}>
-                    <RowLink
-                      to={`/coordinator/farms/${farm.id}/anchors/${anchor.id}`}
-                    >
-                      <p className="text-sm font-medium">{anchor.name}</p>
-                      <p className="muted mt-0.5 line-clamp-1">
-                        {anchor.accessDescription}
-                      </p>
-                    </RowLink>
                   </li>
                 ))}
               </ul>
@@ -252,12 +324,12 @@ export function FarmDetailScreen() {
             {missions.length === 0 ? (
               <EmptyState icon="shield" title={t('missions.empty')} />
             ) : (
-              <ul className="divide-y divide-sand-200">
+              <ul className="divide-y divide-edge-subtle">
                 {missions.map((view) => (
                   <li key={view.mission.id}>
                     <RowLink to={`/coordinator/missions/${view.mission.id}`}>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="ltr-nums text-sm font-medium">
+                        <span className="ltr-nums text-caption font-medium text-content-primary">
                           {formatDate(view.mission.startAt, locale)}
                         </span>
                         <MissionStatusChip status={view.mission.status} />
@@ -275,43 +347,6 @@ export function FarmDetailScreen() {
         </div>
 
         <div className="flex flex-col gap-4">
-          <Section
-            title={t('farms.location')}
-            action={
-              <a
-                href={googleMapsPointUrl(farm.position)}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-medium text-night-700 hover:underline"
-              >
-                <Icon name="external" size={13} />
-                {t('common.openInMaps')}
-              </a>
-            }
-          >
-            <MapView
-              ariaLabel={t('a11y.map')}
-              className="h-56 w-full"
-              interactive={false}
-              center={farm.position}
-              zoom={11}
-              markers={[
-                {
-                  id: farm.id,
-                  position: farm.position,
-                  color: FARM_STATUS_COLOR[farm.status],
-                  title: farm.name,
-                },
-                ...anchors.map((a) => ({
-                  id: a.id,
-                  position: a.position,
-                  color: '#1c2038',
-                  title: a.name,
-                })),
-              ]}
-            />
-          </Section>
-
           <Section title={t('farms.agreements')}>
             {farm.agreements.length === 0 ? (
               <EmptyState icon="document" title={t('farms.noAgreements')} />
@@ -320,13 +355,13 @@ export function FarmDetailScreen() {
                 {farm.agreements.map((a) => (
                   <li
                     key={a.id}
-                    className="flex items-center gap-3 rounded-xl border border-sand-200 px-3.5 py-3"
+                    className="flex items-center gap-3 rounded-md border border-edge-subtle px-3.5 py-3"
                   >
-                    <span className="text-night-700">
+                    <span className="text-accent">
                       <Icon name="document" size={19} />
                     </span>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
+                      <p className="truncate text-caption font-medium text-content-primary">
                         {a.fileName}
                       </p>
                       <p className="muted">
@@ -343,7 +378,7 @@ export function FarmDetailScreen() {
           </Section>
 
           <Section title={t('common.notes')}>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-night-950/75">
+            <p className="whitespace-pre-line text-caption leading-relaxed text-content-secondary">
               {farm.notes || t('common.none')}
             </p>
           </Section>
@@ -352,17 +387,17 @@ export function FarmDetailScreen() {
             {incidents.length === 0 ? (
               <EmptyState icon="alert" title={t('incidents.empty')} />
             ) : (
-              <ul className="divide-y divide-sand-200">
+              <ul className="divide-y divide-edge-subtle">
                 {incidents.slice(0, 4).map(({ incident }) => (
                   <li key={incident.id}>
                     <RowLink to={`/coordinator/incidents/${incident.id}`}>
                       <div className="flex items-center gap-2">
                         <SeverityChip severity={incident.severity} />
-                        <span className="ltr-nums text-xs text-night-950/45">
+                        <span className="ltr-nums text-micro text-content-muted">
                           {formatDateTime(incident.reportedAt, locale)}
                         </span>
                       </div>
-                      <p className="mt-1 line-clamp-2 text-sm text-night-950/75">
+                      <p className="mt-1 line-clamp-2 text-caption text-content-secondary">
                         {incident.description}
                       </p>
                     </RowLink>

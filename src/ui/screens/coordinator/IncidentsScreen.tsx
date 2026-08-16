@@ -7,7 +7,8 @@ import type { IncidentSeverity } from '@core/index'
 import { SEVERITY_ACCENT, SeverityChip } from '../../components/badges'
 import {
   EmptyState,
-  FilterSelect,
+  FilterBar,
+  FilterPill,
   PageHeader,
   RowLink,
 } from '../../components/primitives'
@@ -53,48 +54,42 @@ export function IncidentsScreen() {
         subtitle={t('incidents.count', { count: filtered.length })}
       />
 
-      <div className="card card-pad mb-4 flex flex-wrap items-center gap-3">
-        <FilterSelect
-          label={t('incidents.filterFarm')}
-          value={farmId}
-          onChange={setFarmId}
-          options={[
-            { value: ALL, label: t('common.all') },
-            ...farms.map((f) => ({ value: f.id, label: f.name })),
-          ]}
-        />
-        <FilterSelect
-          label={t('incidents.filterSeverity')}
-          value={severity}
-          onChange={setSeverity}
-          options={[
-            { value: ALL, label: t('common.all') },
-            ...SEVERITIES.map((s) => ({
-              value: s,
-              label: t(`severity.${s}`),
-            })),
-          ]}
-        />
-        <FilterSelect
-          label={t('incidents.filterDate')}
-          value={since}
-          onChange={setSince}
-          options={[
-            { value: ALL, label: t('incidents.dateAll') },
-            { value: 'week', label: t('incidents.dateWeek') },
-            { value: 'month', label: t('incidents.dateMonth') },
-          ]}
-        />
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={openOnly}
-            onChange={(e) => setOpenOnly(e.target.checked)}
-            className="h-4 w-4 rounded border-sand-400 text-night-800 focus:ring-night-500"
-          />
+      <FilterBar>
+        {SEVERITIES.map((sev) => (
+          <FilterPill
+            key={sev}
+            active={severity === sev}
+            onClick={() => setSeverity(severity === sev ? ALL : sev)}
+            count={views.filter((v) => v.incident.severity === sev).length}
+          >
+            {t(`severity.${sev}`)}
+          </FilterPill>
+        ))}
+        <span className="h-5 w-px shrink-0 bg-edge-strong" />
+        <FilterPill active={openOnly} onClick={() => setOpenOnly(!openOnly)}>
           {t('incidents.openOnly')}
-        </label>
-      </div>
+        </FilterPill>
+        <span className="h-5 w-px shrink-0 bg-edge-strong" />
+        {(['week', 'month'] as const).map((w) => (
+          <FilterPill
+            key={w}
+            active={since === w}
+            onClick={() => setSince(since === w ? ALL : w)}
+          >
+            {t(w === 'week' ? 'incidents.dateWeek' : 'incidents.dateMonth')}
+          </FilterPill>
+        ))}
+        <span className="h-5 w-px shrink-0 bg-edge-strong" />
+        {farms.map((f) => (
+          <FilterPill
+            key={f.id}
+            active={farmId === f.id}
+            onClick={() => setFarmId(farmId === f.id ? ALL : f.id)}
+          >
+            {f.name}
+          </FilterPill>
+        ))}
+      </FilterBar>
 
       {filtered.length === 0 ? (
         <EmptyState icon="alert" title={t('incidents.empty')} />
@@ -108,21 +103,21 @@ export function IncidentsScreen() {
               <RowLink to={`/coordinator/incidents/${incident.id}`}>
                 <div className="flex flex-wrap items-center gap-2">
                   <SeverityChip severity={incident.severity} />
-                  <span className="text-sm font-medium">{farm.name}</span>
+                  <span className="text-caption font-medium">{farm.name}</span>
                   <span
                     className={`chip ${
                       incident.resolved
-                        ? 'bg-slate-100 text-slate-600'
-                        : 'bg-amber-100 text-amber-800'
+                        ? 'bg-content-muted/15 text-content-muted'
+                        : 'bg-status-warn/15 text-status-warn'
                     }`}
                   >
                     {t(incident.resolved ? 'incidents.resolved' : 'incidents.open')}
                   </span>
-                  <span className="ltr-nums ms-auto text-xs text-night-950/40">
+                  <span className="ltr-nums ms-auto text-micro text-content-muted">
                     {formatDateTime(incident.reportedAt, locale)}
                   </span>
                 </div>
-                <p className="mt-1 line-clamp-2 text-sm text-night-950/75">
+                <p className="mt-1 line-clamp-2 text-caption text-content-secondary">
                   {incident.description}
                 </p>
                 <p className="muted mt-1">

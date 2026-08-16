@@ -142,6 +142,8 @@ export interface Volunteer {
   /** Required when status is 'inactive'. */
   inactiveReason: string | null
   notes: string
+  /** ISO datetime of the last guard served — the roster's "last activity". */
+  lastActivityAt: string | null
 }
 
 export interface Driver {
@@ -163,10 +165,61 @@ export type MissionStatus =
   | 'completed'
   | 'return_not_confirmed'
 
+// --- Nominative presence confirmation (R6) ---------------------------------
+
+/** What someone asserted about one person on one leg of the journey. */
+export type PresenceMark = 'present' | 'absent'
+
+/** Who asserted it. Three independent channels, deliberately not merged. */
+export type PresenceSource = 'driver' | 'group' | 'self'
+
+/**
+ * One journey leg for one volunteer.
+ *
+ * Counters were replaced by per-person marks because "5 of 6" tells the
+ * coordinator that someone is missing but not *who* — and at 05:00 in the
+ * desert that distinction is the whole point.
+ *
+ * `driver` and `group` are the two authoritative channels and are compared
+ * against each other. `self` exists only for volunteers who carry a smartphone;
+ * kosher-phone holders physically cannot self-confirm, which is exactly why the
+ * group-phone holder confirms nominatively on their behalf.
+ */
+export interface LegConfirmation {
+  driver: PresenceMark | null
+  group: PresenceMark | null
+  self: PresenceMark | null
+}
+
+export type ConfirmationState = 'present' | 'absent' | 'pending' | 'mismatch'
+
+/**
+ * Reconcile one leg into a single state.
+ * Driver and group disagreeing is a `mismatch` — it raises an alert rather
+ * than silently picking a winner.
+ */
+export function resolveConfirmation(leg: LegConfirmation): ConfirmationState {
+  const { driver, group } = leg
+  if (driver !== null && group !== null && driver !== group) return 'mismatch'
+  const decided = driver ?? group
+  if (decided === null) return 'pending'
+  return decided
+}
+
+export const EMPTY_LEG: LegConfirmation = {
+  driver: null,
+  group: null,
+  self: null,
+}
+
 export interface MissionAssignment {
   volunteerId: string
   /** Exactly one assignment per mission carries the group's smartphone. */
   isGroupPhone: boolean
+  /** Evening trip out to the farm. */
+  outbound: LegConfirmation
+  /** Morning trip home. */
+  inbound: LegConfirmation
 }
 
 export interface Mission {
@@ -182,9 +235,9 @@ export interface Mission {
   driverId: string | null
   arrivalConfirmedAt: string | null
   endConfirmedAt: string | null
-  dropoffConfirmedCount: number | null
-  pickupConfirmedCount: number | null
 }
+
+export type MissionLeg = 'outbound' | 'inbound'
 
 // ---------------------------------------------------------------------------
 // Incidents (אירועים)
@@ -239,7 +292,10 @@ export interface FarmStatusCount {
   count: number
 }
 
-export type AlertKind = 'urgent_incident' | 'return_not_confirmed'
+export type AlertKind =
+  | 'urgent_incident'
+  | 'return_not_confirmed'
+  | 'presence_mismatch'
 
 export interface DashboardAlert {
   id: string
@@ -249,6 +305,13 @@ export interface DashboardAlert {
   detail: string
   /** In-app route to open when the alert is tapped. */
   href: string
+  /** Severity ordering for the dashboard: higher sorts first. */
+  weight: number
+  /**
+   * People to reach immediately, rendered as one-tap call buttons on the alert
+   * itself — the coordinator should never have to navigate to place the call.
+   */
+  contacts: Array<{ name: string; phone: string; roleKey: string }>
 }
 
 export interface VolunteerStats {

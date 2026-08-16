@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Suspense, lazy } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { getSession, homeRouteFor } from '@core/index'
@@ -17,9 +18,11 @@ import { DriverTripScreen } from './screens/driver/DriverTripScreen'
 import { FarmerGuardsScreen } from './screens/farmer/FarmerGuardsScreen'
 import { FarmerReportScreen } from './screens/farmer/FarmerReportScreen'
 import { FarmerTonightScreen } from './screens/farmer/FarmerTonightScreen'
+import { AnchorFormScreen } from './screens/coordinator/AnchorFormScreen'
 import { AnchorSheetScreen } from './screens/coordinator/AnchorSheetScreen'
 import { DashboardScreen } from './screens/coordinator/DashboardScreen'
 import { FarmDetailScreen } from './screens/coordinator/FarmDetailScreen'
+import { FarmFormScreen } from './screens/coordinator/FarmFormScreen'
 import { FarmsListScreen } from './screens/coordinator/FarmsListScreen'
 import { GlobalMapScreen } from './screens/coordinator/GlobalMapScreen'
 import { IncidentDetailScreen } from './screens/coordinator/IncidentDetailScreen'
@@ -29,7 +32,15 @@ import { MissionsScreen } from './screens/coordinator/MissionsScreen'
 import { RoutePlannerScreen } from './screens/coordinator/RoutePlannerScreen'
 import { VolunteersScreen } from './screens/coordinator/VolunteersScreen'
 import { VolunteerGuardScreen } from './screens/volunteer/VolunteerGuardScreen'
+import { VolunteerRosterScreen } from './screens/volunteer/VolunteerRosterScreen'
 import { VolunteerReportScreen } from './screens/volunteer/VolunteerReportScreen'
+
+/** Coordinator-only and rarely opened — keep it out of the initial bundle. */
+const ImportWizardScreen = lazy(() =>
+  import('./screens/coordinator/ImportWizardScreen').then((m) => ({
+    default: m.ImportWizardScreen,
+  })),
+)
 
 /**
  * Navigation-level half of the role gate. The data-level half — the half that
@@ -61,14 +72,33 @@ export default function App() {
         >
           <Route index element={<DashboardScreen />} />
           <Route path="farms" element={<FarmsListScreen />} />
+          {/* Static segments before the :farmId param, or "new" is read as an id. */}
+          <Route path="farms/new" element={<FarmFormScreen />} />
           <Route path="farms/:farmId" element={<FarmDetailScreen />} />
+          <Route path="farms/:farmId/edit" element={<FarmFormScreen />} />
+          <Route
+            path="farms/:farmId/anchors/new"
+            element={<AnchorFormScreen />}
+          />
           <Route
             path="farms/:farmId/anchors/:anchorId"
             element={<AnchorSheetScreen />}
           />
+          <Route
+            path="farms/:farmId/anchors/:anchorId/edit"
+            element={<AnchorFormScreen />}
+          />
           <Route path="map" element={<GlobalMapScreen />} />
           <Route path="route" element={<RoutePlannerScreen />} />
           <Route path="volunteers" element={<VolunteersScreen />} />
+          <Route
+            path="volunteers/import"
+            element={
+              <Suspense fallback={<div className="skeleton h-96 rounded-lg" />}>
+                <ImportWizardScreen />
+              </Suspense>
+            }
+          />
           <Route path="missions" element={<MissionsScreen />} />
           <Route path="missions/:missionId" element={<MissionDetailScreen />} />
           <Route path="incidents" element={<IncidentsScreen />} />
@@ -102,6 +132,7 @@ export default function App() {
           }
         >
           <Route index element={<VolunteerGuardScreen />} />
+          <Route path="roster" element={<VolunteerRosterScreen />} />
           <Route path="report" element={<VolunteerReportScreen />} />
           <Route path="*" element={<Navigate to="/volunteer" replace />} />
         </Route>

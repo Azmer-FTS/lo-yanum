@@ -12,20 +12,35 @@ export function PageHeader({
   title,
   subtitle,
   actions,
+  back,
 }: {
   title: string
   subtitle?: string
   actions?: ReactNode
+  /** Breadcrumb link back to the parent list. */
+  back?: { to: string; label: string }
 }) {
   return (
-    <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-xl font-semibold text-night-950 sm:text-2xl">
-          {title}
-        </h1>
-        {subtitle && <p className="muted mt-1">{subtitle}</p>}
+    <header className="mb-6">
+      {back && (
+        <Link
+          to={back.to}
+          className="mb-2 inline-flex items-center gap-1.5 text-caption text-content-muted
+                     transition-colors duration-fast hover:text-content-primary"
+        >
+          <Icon name="chevron" size={14} className="ltr:-scale-x-100" />
+          {back.label}
+        </Link>
+      )}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-title text-content-primary">{title}</h1>
+          {subtitle && <p className="muted mt-1">{subtitle}</p>}
+        </div>
+        {actions && (
+          <div className="flex flex-wrap items-center gap-2">{actions}</div>
+        )}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
     </header>
   )
 }
@@ -35,14 +50,16 @@ export function Section({
   action,
   children,
   className = '',
+  padded = true,
 }: {
   title?: string
   action?: ReactNode
   children: ReactNode
   className?: string
+  padded?: boolean
 }) {
   return (
-    <section className={`card card-pad ${className}`}>
+    <section className={`card ${padded ? 'card-pad' : ''} ${className}`}>
       {(title || action) && (
         <div className="mb-3 flex items-center justify-between gap-3">
           {title && <h2 className="section-title">{title}</h2>}
@@ -66,13 +83,16 @@ export function EmptyState({
   action?: ReactNode
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-sand-300 bg-sand-50/60 px-6 py-10 text-center">
-      <span className="text-night-950/25">
-        <Icon name={icon} size={28} />
+    <div
+      className="flex animate-fade-in flex-col items-center gap-2 rounded-lg border border-dashed
+                 border-edge-subtle bg-surface-raised/40 px-6 py-12 text-center"
+    >
+      <span className="text-content-muted/50">
+        <Icon name={icon} size={30} />
       </span>
-      <p className="text-sm font-medium text-night-950/70">{title}</p>
+      <p className="text-caption font-medium text-content-secondary">{title}</p>
       {hint && <p className="muted max-w-xs">{hint}</p>}
-      {action && <div className="mt-2">{action}</div>}
+      {action && <div className="mt-3">{action}</div>}
     </div>
   )
 }
@@ -87,10 +107,10 @@ export function KeyValue({
   ltr?: boolean
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 py-1.5">
+    <div className="flex items-baseline justify-between gap-4 border-b border-edge-subtle/60 py-2 last:border-0">
       <dt className="muted shrink-0">{label}</dt>
       <dd
-        className={`text-sm font-medium text-night-950 ${
+        className={`text-caption font-medium text-content-primary ${
           ltr ? 'ltr-nums' : ''
         } text-end`}
       >
@@ -104,45 +124,127 @@ export function Stat({
   label,
   value,
   tone = 'default',
+  icon,
 }: {
   label: string
   value: ReactNode
-  tone?: 'default' | 'alert' | 'good'
+  tone?: 'default' | 'alert' | 'good' | 'accent'
+  icon?: IconName
 }) {
-  const toneClass =
-    tone === 'alert'
-      ? 'text-rose-700'
-      : tone === 'good'
-        ? 'text-emerald-700'
-        : 'text-night-900'
+  const toneClass = {
+    default: 'text-content-primary',
+    alert: 'text-status-danger',
+    good: 'text-status-success',
+    accent: 'text-accent',
+  }[tone]
+
   return (
-    <div className="card card-pad">
-      <p className="muted">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold tabular-nums ${toneClass}`}>
-        {value}
-      </p>
+    <div className="card card-pad flex items-center gap-3">
+      {icon && (
+        <span
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-high ${toneClass}`}
+        >
+          <Icon name={icon} size={19} />
+        </span>
+      )}
+      <div className="min-w-0">
+        <p className="muted truncate">{label}</p>
+        <p className={`numeric mt-1 text-title ${toneClass}`}>{value}</p>
+      </div>
     </div>
   )
 }
 
 /** List row that navigates. Chevron follows the writing direction. */
-export function RowLink({
-  to,
-  children,
-}: {
-  to: string
-  children: ReactNode
-}) {
+export function RowLink({ to, children }: { to: string; children: ReactNode }) {
   return (
     <Link
       to={to}
-      className="flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-sand-100"
+      className="flex items-center gap-3 rounded-md px-3 py-3 transition-colors duration-fast ease-out hover:bg-surface-high"
     >
       <div className="min-w-0 flex-1">{children}</div>
-      <span className="shrink-0 text-night-950/30">
+      <span className="shrink-0 text-content-muted/60">
         <ChevronForward />
       </span>
     </Link>
+  )
+}
+
+// --- Filter bar (R3) -------------------------------------------------------
+
+/**
+ * The single horizontal filter bar used above every list screen — farms,
+ * volunteers, missions, incidents. Replaces the Lot 0 side panels so the
+ * content gets the full width, and so the four screens behave identically.
+ */
+export function FilterBar({
+  search,
+  onSearch,
+  searchPlaceholder,
+  children,
+  trailing,
+}: {
+  search?: string
+  onSearch?: (v: string) => void
+  searchPlaceholder?: string
+  /** Filter pill groups. */
+  children?: ReactNode
+  /** Right-aligned actions (create, import, view toggle…). */
+  trailing?: ReactNode
+}) {
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-edge-subtle bg-surface-raised/70 p-2.5 backdrop-blur">
+      {onSearch && (
+        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+          <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
+            <Icon name="search" size={16} />
+          </span>
+          <input
+            type="search"
+            className="input py-2 ps-9"
+            value={search ?? ''}
+            placeholder={searchPlaceholder}
+            onChange={(e) => onSearch(e.target.value)}
+          />
+        </div>
+      )}
+      <div className="scroll-x flex min-w-0 flex-1 items-center gap-2 py-0.5">
+        {children}
+      </div>
+      {trailing && (
+        <div className="flex shrink-0 items-center gap-2">{trailing}</div>
+      )}
+    </div>
+  )
+}
+
+/** A single toggleable pill inside a FilterBar. */
+export function FilterPill({
+  active,
+  onClick,
+  children,
+  dot,
+  count,
+}: {
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+  dot?: ReactNode
+  count?: number
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`filter-pill ${active ? 'filter-pill-active' : ''}`}
+    >
+      {dot}
+      {children}
+      {count !== undefined && (
+        <span className="numeric text-micro opacity-60">{count}</span>
+      )}
+    </button>
   )
 }
 
@@ -168,7 +270,7 @@ export function CopyButton({
       await navigator.clipboard.writeText(value)
     } catch {
       // Clipboard API is unavailable over plain http on some devices; the
-      // textarea below stays selectable so the text can still be copied.
+      // textarea beside this button stays selectable as a fallback.
     }
     setCopied(true)
     window.clearTimeout(timer.current)
@@ -177,7 +279,7 @@ export function CopyButton({
 
   return (
     <button type="button" onClick={copy} className={className}>
-      <Icon name={copied ? 'check' : 'copy'} size={16} />
+      <Icon name={copied ? 'check' : 'copy'} size={15} />
       {copied ? t('common.copied') : (label ?? t('common.copy'))}
     </button>
   )
@@ -193,16 +295,16 @@ export function Toggle({
   onChange: (v: string) => void
 }) {
   return (
-    <div className="inline-flex rounded-xl border border-sand-300 bg-white p-1">
+    <div className="inline-flex rounded-md border border-edge-subtle bg-surface-sunken p-1">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
-          className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+          className={`rounded-sm px-3 py-1.5 text-caption font-medium transition-all duration-fast ease-out ${
             o.value === value
-              ? 'bg-night-800 text-white'
-              : 'text-night-950/60 hover:text-night-900'
+              ? 'bg-accent text-content-on-accent'
+              : 'text-content-muted hover:text-content-primary'
           }`}
         >
           {o.label}
@@ -223,8 +325,8 @@ export function SearchInput({
 }) {
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-night-950/35">
-        <Icon name="search" size={18} />
+      <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
+        <Icon name="search" size={17} />
       </span>
       <input
         type="search"
@@ -270,10 +372,12 @@ export function Modal({
   title,
   onClose,
   children,
+  wide = false,
 }: {
   title: string
   onClose: () => void
   children: ReactNode
+  wide?: boolean
 }) {
   const { t } = useTranslation()
 
@@ -286,19 +390,22 @@ export function Modal({
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-night-950/40 p-0 sm:items-center sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-surface-sunken/80 p-0 backdrop-blur-sm sm:items-center sm:p-6">
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-lg rounded-t-3xl bg-white p-5 shadow-lift sm:rounded-2xl"
+        className={`max-h-[90dvh] w-full animate-fade-in overflow-y-auto rounded-t-xl border border-edge-strong
+                    bg-surface-overlay p-5 shadow-lift sm:rounded-xl ${
+                      wide ? 'max-w-3xl' : 'max-w-lg'
+                    }`}
       >
         <div className="mb-4 flex items-center justify-between gap-4">
-          <h2 className="text-base font-semibold">{title}</h2>
+          <h2 className="text-heading text-content-primary">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-night-950/50 hover:bg-sand-100"
+            className="rounded-sm p-1.5 text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
             aria-label={t('common.close')}
           >
             <Icon name="close" size={18} />
@@ -310,30 +417,42 @@ export function Modal({
   )
 }
 
-/** Small inline banner used for alerts and mismatch warnings. */
+/** Inline banner for alerts, mismatches and emphasis. */
 export function Callout({
   tone = 'warn',
   icon = 'alert',
   title,
   children,
 }: {
-  tone?: 'warn' | 'danger' | 'info'
+  tone?: 'warn' | 'danger' | 'info' | 'success'
   icon?: IconName
   title: string
   children?: ReactNode
 }) {
   const tones = {
-    warn: 'border-amber-300 bg-amber-50 text-amber-900',
-    danger: 'border-rose-300 bg-rose-50 text-rose-900',
-    info: 'border-sky-300 bg-sky-50 text-sky-900',
+    warn: 'border-status-warn/40 bg-status-warn/10 text-status-warn',
+    danger: 'border-status-danger/40 bg-status-danger/10 text-status-danger',
+    info: 'border-status-info/40 bg-status-info/10 text-status-info',
+    success: 'border-status-success/40 bg-status-success/10 text-status-success',
   }
   return (
-    <div className={`rounded-2xl border p-4 ${tones[tone]}`}>
-      <p className="flex items-center gap-2 text-sm font-semibold">
-        <Icon name={icon} size={17} />
+    <div className={`rounded-lg border p-4 ${tones[tone]}`}>
+      <p className="flex items-center gap-2 text-caption font-semibold">
+        <Icon name={icon} size={16} />
         {title}
       </p>
-      {children && <div className="mt-1.5 text-sm">{children}</div>}
+      {children && (
+        <div className="mt-1.5 text-caption text-content-secondary">
+          {children}
+        </div>
+      )}
     </div>
+  )
+}
+
+/** Skeleton block used while a lazy chunk (the map) is still arriving. */
+export function Skeleton({ className = '' }: { className?: string }) {
+  return (
+    <div className={`skeleton rounded-lg ${className}`} aria-hidden="true" />
   )
 }

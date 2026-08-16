@@ -39,10 +39,10 @@ export function DevToolbar() {
   // single sticky container with the field tab bar instead of the two fighting
   // over `bottom-0`.
   return (
-    <div className="border-t border-night-800 bg-night-950 text-white">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
-        <span className="flex items-center gap-1.5 text-xs font-medium text-white/60">
-          <Icon name="switch" size={15} />
+    <div className="border-t border-edge-strong bg-surface-sunken">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
+        <span className="flex items-center gap-1.5 text-micro font-medium text-content-muted">
+          <Icon name="switch" size={14} />
           {t('devbar.viewAs')}
         </span>
 
@@ -50,8 +50,8 @@ export function DevToolbar() {
           value={currentId}
           onChange={(e) => onPick(e.target.value)}
           aria-label={t('devbar.viewAs')}
-          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-night-900 px-3 py-1.5 text-sm text-white
-                     focus:border-white/40 focus:outline-none sm:flex-none sm:min-w-64"
+          className="min-w-0 flex-1 rounded-sm border border-edge-strong bg-surface-raised px-3 py-1.5 text-caption
+                     text-content-primary transition-colors duration-fast focus:border-accent focus:outline-none sm:min-w-64 sm:flex-none"
         >
           {ROLE_ORDER.map((role) => {
             const group = presets.filter((p) => p.role === role)
@@ -76,7 +76,7 @@ export function DevToolbar() {
             resetStore()
             navigate(homeRouteFor(getSession().role))
           }}
-          className="rounded-lg px-2.5 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+          className="rounded-sm px-2.5 py-1.5 text-micro text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
         >
           {t('devbar.reset')}
         </button>
@@ -84,12 +84,12 @@ export function DevToolbar() {
         <button
           type="button"
           onClick={() => navigate('/')}
-          className="rounded-lg px-2.5 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+          className="rounded-sm px-2.5 py-1.5 text-micro text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
         >
           {t('devbar.backToLogin')}
         </button>
 
-        <span className="ms-auto hidden text-xs text-white/35 lg:block">
+        <span className="ms-auto hidden text-micro text-content-muted/60 lg:block">
           {t('devbar.hint')}
         </span>
       </div>

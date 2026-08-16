@@ -2,6 +2,7 @@ import { isTonight, now } from './clock'
 import { _raw, getSession } from './store'
 import type {
   AnchorPoint,
+  ConfirmationState,
   DashboardAlert,
   Driver,
   Farm,
@@ -9,12 +10,14 @@ import type {
   FarmStatusCount,
   Incident,
   IncidentView,
+  LegConfirmation,
   Mission,
+  MissionLeg,
   MissionView,
   Volunteer,
   VolunteerStats,
 } from './types'
-import { FARM_PIPELINE } from './types'
+import { FARM_PIPELINE, resolveConfirmation } from './types'
 
 /**
  * ROLE-FILTERED DATA ACCESS — the single gate between the store and the UI.
@@ -347,19 +350,106 @@ export function getIncidentView(incidentId: string): IncidentView | null {
   )
 }
 
+// --- R6: nominative presence ----------------------------------------------
+
+export interface PresenceRow {
+  volunteer: Volunteer
+  isGroupPhone: boolean
+  leg: LegConfirmation
+  state: ConfirmationState
+}
+
+/** The roster for one leg of one mission, already reconciled. */
+export function getPresenceRows(
+  mission: Mission,
+  leg: MissionLeg,
+): PresenceRow[] {
+  const volunteers = _raw().volunteers
+  return mission.assignments.flatMap((a) => {
+    const volunteer = volunteers.find((v) => v.id === a.volunteerId)
+    if (!volunteer) return []
+    return [
+      {
+        volunteer,
+        isGroupPhone: a.isGroupPhone,
+        leg: a[leg],
+        state: resolveConfirmation(a[leg]),
+      },
+    ]
+  })
+}
+
+export interface PresenceMismatch {
+  mission: Mission
+  farm: Farm
+  volunteer: Volunteer
+  leg: MissionLeg
+  driverName: string
+  driverPhone: string
+  groupHolderName: string
+  groupHolderPhone: string
+}
+
+/**
+ * Every driver-vs-group disagreement currently visible to this session.
+ *
+ * This is the alert that matters most: it means one specific named person is
+ * unaccounted for, and two people who were both there disagree about it.
+ */
+export function getPresenceMismatches(): PresenceMismatch[] {
+  const d = _raw()
+  const out: PresenceMismatch[] = []
+  const legs: MissionLeg[] = ['outbound', 'inbound']
+
+  for (const mission of getVisibleMissions()) {
+    const farm = d.farms.find((f) => f.id === mission.farmId)
+    if (!farm) continue
+
+    const driver = d.drivers.find((dr) => dr.id === mission.driverId)
+    const holderId = mission.assignments.find((a) => a.isGroupPhone)?.volunteerId
+    const holder = d.volunteers.find((v) => v.id === holderId)
+
+    for (const leg of legs) {
+      for (const a of mission.assignments) {
+        if (resolveConfirmation(a[leg]) !== 'mismatch') continue
+        const volunteer = d.volunteers.find((v) => v.id === a.volunteerId)
+        if (!volunteer) continue
+        out.push({
+          mission,
+          farm,
+          volunteer,
+          leg,
+          driverName: driver?.name ?? '',
+          driverPhone: driver?.phone ?? '',
+          groupHolderName: holder?.name ?? '',
+          groupHolderPhone: holder?.phone ?? '',
+        })
+      }
+    }
+  }
+
+  return out
+}
+
 // --- Dashboard -------------------------------------------------------------
 
 /**
- * Live alerts, most urgent first. Scoped like everything else, so the farmer
- * dashboard could reuse it and see only his own farm's alerts.
+ * Live alerts, most severe first. Scoped like everything else, so the farmer
+ * view reuses it and sees only his own farm's alerts.
+ *
+ * Every alert carries its own call list, so the coordinator can dial from the
+ * dashboard without navigating anywhere.
  */
 export function getAlerts(): DashboardAlert[] {
   const alerts: DashboardAlert[] = []
+  const d = _raw()
   const farms = getVisibleFarms()
   const farmName = (id: string) => farms.find((f) => f.id === id)?.name ?? ''
 
   for (const incident of getVisibleIncidents()) {
     if (incident.severity !== 'urgent' || incident.resolved) continue
+    const farm = farms.find((f) => f.id === incident.farmId)
+    const primary = farm?.contacts.find((c) => c.isPrimary)
     alerts.push({
       id: `alert-${incident.id}`,
       kind: 'urgent_incident',
@@ -367,11 +457,53 @@ export function getAlerts(): DashboardAlert[] {
       at: incident.reportedAt,
       detail: incident.description,
       href: `/coordinator/incidents/${incident.id}`,
+      weight: 30,
+      contacts: primary
+        ? [
+            {
+              name: primary.name,
+              phone: primary.phone,
+              roleKey: 'anchor.labelFarmer',
+            },
+          ]
+        : [],
+    })
+  }
+
+  for (const m of getPresenceMismatches()) {
+    alerts.push({
+      id: `alert-mismatch-${m.mission.id}-${m.volunteer.id}-${m.leg}`,
+      kind: 'presence_mismatch',
+      farmName: m.farm.name,
+      at: m.mission.startAt,
+      detail: m.volunteer.name,
+      href: `/coordinator/missions/${m.mission.id}`,
+      weight: 20,
+      contacts: [
+        {
+          name: m.volunteer.name,
+          phone: m.volunteer.phone,
+          roleKey: 'roles.volunteer',
+        },
+        m.driverPhone && {
+          name: m.driverName,
+          phone: m.driverPhone,
+          roleKey: 'anchor.labelDriver',
+        },
+        m.groupHolderPhone && {
+          name: m.groupHolderName,
+          phone: m.groupHolderPhone,
+          roleKey: 'volunteers.groupPhoneHolder',
+        },
+      ].filter(Boolean) as DashboardAlert['contacts'],
     })
   }
 
   for (const mission of getVisibleMissions()) {
     if (mission.status !== 'return_not_confirmed') continue
+    const driver = d.drivers.find((dr) => dr.id === mission.driverId)
+    const holderId = mission.assignments.find((a) => a.isGroupPhone)?.volunteerId
+    const holder = d.volunteers.find((v) => v.id === holderId)
     alerts.push({
       id: `alert-${mission.id}`,
       kind: 'return_not_confirmed',
@@ -379,10 +511,24 @@ export function getAlerts(): DashboardAlert[] {
       at: mission.endAt,
       detail: '',
       href: `/coordinator/missions/${mission.id}`,
+      weight: 10,
+      contacts: [
+        driver && {
+          name: driver.name,
+          phone: driver.phone,
+          roleKey: 'anchor.labelDriver',
+        },
+        holder && {
+          name: holder.name,
+          phone: holder.phone,
+          roleKey: 'volunteers.groupPhoneHolder',
+        },
+      ].filter(Boolean) as DashboardAlert['contacts'],
     })
   }
 
   return alerts.sort(
-    (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
+    (a, b) =>
+      b.weight - a.weight || new Date(b.at).getTime() - new Date(a.at).getTime(),
   )
 }

@@ -15,7 +15,11 @@ import {
 import { CallRow } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
-import { MissionStatusChip, PhoneTypeChip } from '../../components/badges'
+import {
+  MissionStatusChip,
+  PhoneTypeChip,
+  readToken,
+} from '../../components/badges'
 import {
   Callout,
   EmptyState,
@@ -63,12 +67,12 @@ export function VolunteerGuardScreen() {
           the only thing the group phone holder needs to reach. */}
       <div className="mb-4 flex flex-col gap-2">
         {mission.arrivalConfirmedAt ? (
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3.5">
-            <span className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-status-success/40 bg-status-success/10 px-4 py-3.5">
+            <span className="flex items-center gap-2 text-caption font-semibold text-status-success">
               <Icon name="check" size={18} />
               {t('volunteer.arrivalDone')}
             </span>
-            <span className="ltr-nums text-xs text-emerald-900/70">
+            <span className="ltr-nums text-micro text-status-success/70">
               {formatTime(mission.arrivalConfirmedAt, locale)}
             </span>
           </div>
@@ -85,12 +89,12 @@ export function VolunteerGuardScreen() {
         )}
 
         {mission.endConfirmedAt ? (
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-sand-300 bg-sand-100 px-4 py-3.5">
-            <span className="flex items-center gap-2 text-sm font-semibold">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-edge-strong bg-surface-high px-4 py-3.5">
+            <span className="flex items-center gap-2 text-caption font-semibold">
               <Icon name="check" size={18} />
               {t('volunteer.endDone')}
             </span>
-            <span className="ltr-nums text-xs text-night-950/50">
+            <span className="ltr-nums text-micro text-content-muted">
               {formatTime(mission.endConfirmedAt, locale)}
             </span>
           </div>
@@ -121,14 +125,14 @@ export function VolunteerGuardScreen() {
               href={wazeUrl(anchorPoint.position)}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-medium text-night-700 hover:underline"
+              className="inline-flex items-center gap-1 text-micro font-medium text-accent hover:underline"
             >
               <Icon name="pin" size={13} />
               {t('common.openInWaze')}
             </a>
           }
         >
-          <p className="mb-2 text-sm font-medium">{anchorPoint.name}</p>
+          <p className="mb-2 text-caption font-medium">{anchorPoint.name}</p>
           <MapView
             ariaLabel={t('a11y.map')}
             className="h-44 w-full"
@@ -139,12 +143,13 @@ export function VolunteerGuardScreen() {
               {
                 id: anchorPoint.id,
                 position: anchorPoint.position,
-                color: '#1c2038',
+                color: readToken('--accent'),
+                  emphasis: true,
                 title: anchorPoint.name,
               },
             ]}
           />
-          <p className="mt-2 text-sm leading-relaxed text-night-950/70">
+          <p className="mt-2 text-caption leading-relaxed text-content-secondary">
             {anchorPoint.accessDescription}
           </p>
         </Section>
@@ -152,8 +157,8 @@ export function VolunteerGuardScreen() {
         <Section title={t('volunteer.instructions')}>
           <ul className="flex flex-col gap-2">
             {anchorPoint.instructions.map((line, i) => (
-              <li key={i} className="flex gap-2.5 text-sm text-night-950/80">
-                <span className="mt-0.5 shrink-0 text-night-700">
+              <li key={i} className="flex gap-2.5 text-caption text-content-secondary">
+                <span className="mt-0.5 shrink-0 text-accent">
                   <Icon name="check" size={15} />
                 </span>
                 {line}
@@ -187,16 +192,16 @@ export function VolunteerGuardScreen() {
         </Section>
 
         <Section title={t('volunteer.team')}>
-          <ul className="divide-y divide-sand-200">
+          <ul className="divide-y divide-edge-subtle">
             {volunteers.map(({ volunteer, isGroupPhone }) => (
               <li
                 key={volunteer.id}
                 className="flex flex-wrap items-center gap-2 py-2.5"
               >
-                <span className="text-sm font-medium">{volunteer.name}</span>
+                <span className="text-caption font-medium">{volunteer.name}</span>
                 <PhoneTypeChip type={volunteer.phoneType} />
                 {isGroupPhone && (
-                  <span className="chip bg-night-900 text-white">
+                  <span className="chip bg-accent text-content-on-accent">
                     <Icon name="phone" size={11} />
                     {t('volunteers.groupPhoneHolder')}
                   </span>

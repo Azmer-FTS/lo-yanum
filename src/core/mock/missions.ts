@@ -1,5 +1,6 @@
 import { guardNight, hoursFromNow } from '../clock'
-import type { Mission } from '../types'
+import { EMPTY_LEG } from '../types'
+import type { LegConfirmation, Mission, MissionAssignment, PresenceMark } from '../types'
 
 /**
  * 6 missions covering every status.
@@ -13,8 +14,26 @@ import type { Mission } from '../types'
 
 const future = (days: number) => guardNight(days)
 
+const leg = (
+  driver: PresenceMark | null = null,
+  group: PresenceMark | null = null,
+  self: PresenceMark | null = null,
+): LegConfirmation => ({ driver, group, self })
+
+/** Assignment helper — keeps the mission literals readable. */
+const who = (
+  volunteerId: string,
+  isGroupPhone: boolean,
+  outbound: LegConfirmation = { ...EMPTY_LEG },
+  inbound: LegConfirmation = { ...EMPTY_LEG },
+): MissionAssignment => ({ volunteerId, isGroupPhone, outbound, inbound })
+
 export const MISSIONS: Mission[] = [
   // Under way right now — drives the volunteer, driver and farmer live views.
+  //
+  // ⚠️ vol-03 carries the SEEDED MISMATCH (A10): the driver marked him picked
+  // up, the group-phone holder says he is not with them. Neither side is
+  // overridden — it surfaces as an alert with one-tap call buttons.
   {
     id: 'mission-01',
     farmId: 'farm-01',
@@ -23,18 +42,16 @@ export const MISSIONS: Mission[] = [
     endAt: hoursFromNow(6),
     status: 'in_progress',
     assignments: [
-      { volunteerId: 'vol-01', isGroupPhone: true },
-      { volunteerId: 'vol-02', isGroupPhone: false },
-      { volunteerId: 'vol-03', isGroupPhone: false },
+      who('vol-001', true, leg('present', 'present', 'present')),
+      who('vol-002', false, leg('present', 'present')),
+      who('vol-003', false, leg('present', 'absent')),
     ],
     driverId: 'drv-03',
     arrivalConfirmedAt: hoursFromNow(-1.8),
     endConfirmedAt: null,
-    dropoffConfirmedCount: 3,
-    pickupConfirmedCount: null,
   },
 
-  // Starting later tonight — still "planned", nobody has moved yet.
+  // Starting later tonight — nobody has moved yet, every mark still pending.
   {
     id: 'mission-02',
     farmId: 'farm-03',
@@ -43,19 +60,17 @@ export const MISSIONS: Mission[] = [
     endAt: hoursFromNow(12),
     status: 'planned',
     assignments: [
-      { volunteerId: 'vol-07', isGroupPhone: true },
-      { volunteerId: 'vol-08', isGroupPhone: false },
-      { volunteerId: 'vol-09', isGroupPhone: false },
+      who('vol-007', true),
+      who('vol-008', false),
+      who('vol-009', false),
     ],
     driverId: 'drv-05',
     arrivalConfirmedAt: null,
     endConfirmedAt: null,
-    dropoffConfirmedCount: null,
-    pickupConfirmedCount: null,
   },
 
-  // Last night: the group ended the guard but the driver never confirmed the
-  // morning pick-up — this is the alert the coordinator must chase.
+  // Last night: the group ended the guard, went out fine, but the morning
+  // return was never confirmed by anyone — the alert the coordinator chases.
   {
     id: 'mission-03',
     farmId: 'farm-01',
@@ -64,18 +79,16 @@ export const MISSIONS: Mission[] = [
     endAt: hoursFromNow(-22),
     status: 'return_not_confirmed',
     assignments: [
-      { volunteerId: 'vol-20', isGroupPhone: true },
-      { volunteerId: 'vol-19', isGroupPhone: false },
-      { volunteerId: 'vol-21', isGroupPhone: false },
+      who('vol-020', true, leg('present', 'present', 'present')),
+      who('vol-019', false, leg('present', 'present')),
+      who('vol-021', false, leg('present', 'present')),
     ],
     driverId: 'drv-06',
     arrivalConfirmedAt: hoursFromNow(-29.8),
     endConfirmedAt: hoursFromNow(-22),
-    dropoffConfirmedCount: 3,
-    pickupConfirmedCount: null,
   },
 
-  // Two nights ago, closed cleanly.
+  // Two nights ago, closed cleanly — both legs fully confirmed on both sides.
   {
     id: 'mission-04',
     farmId: 'farm-02',
@@ -84,14 +97,17 @@ export const MISSIONS: Mission[] = [
     endAt: hoursFromNow(-46),
     status: 'completed',
     assignments: [
-      { volunteerId: 'vol-13', isGroupPhone: true },
-      { volunteerId: 'vol-14', isGroupPhone: false },
+      who(
+        'vol-013',
+        true,
+        leg('present', 'present', 'present'),
+        leg('present', 'present', 'present'),
+      ),
+      who('vol-014', false, leg('present', 'present'), leg('present', 'present')),
     ],
     driverId: 'drv-01',
     arrivalConfirmedAt: hoursFromNow(-53.8),
     endConfirmedAt: hoursFromNow(-46),
-    dropoffConfirmedCount: 2,
-    pickupConfirmedCount: 2,
   },
 
   {
@@ -100,15 +116,10 @@ export const MISSIONS: Mission[] = [
     anchorPointId: 'anchor-03',
     ...future(2),
     status: 'planned',
-    assignments: [
-      { volunteerId: 'vol-16', isGroupPhone: true },
-      { volunteerId: 'vol-17', isGroupPhone: false },
-    ],
+    assignments: [who('vol-016', true), who('vol-017', false)],
     driverId: 'drv-01',
     arrivalConfirmedAt: null,
     endConfirmedAt: null,
-    dropoffConfirmedCount: null,
-    pickupConfirmedCount: null,
   },
 
   {
@@ -118,14 +129,12 @@ export const MISSIONS: Mission[] = [
     ...future(4),
     status: 'planned',
     assignments: [
-      { volunteerId: 'vol-22', isGroupPhone: true },
-      { volunteerId: 'vol-23', isGroupPhone: false },
-      { volunteerId: 'vol-19', isGroupPhone: false },
+      who('vol-022', true),
+      who('vol-023', false),
+      who('vol-019', false),
     ],
     driverId: null,
     arrivalConfirmedAt: null,
     endConfirmedAt: null,
-    dropoffConfirmedCount: null,
-    pickupConfirmedCount: null,
   },
 ]

@@ -7,6 +7,7 @@ import {
   formatWeekday,
   getPastMissionViews,
   getUpcomingMissionViews,
+  resolveConfirmation,
 } from '@core/index'
 import type { MissionView } from '@core/index'
 
@@ -14,9 +15,10 @@ import { Icon } from '../../components/Icon'
 import { MissionStatusChip } from '../../components/badges'
 import {
   EmptyState,
+  FilterBar,
+  FilterPill,
   PageHeader,
   RowLink,
-  Toggle,
 } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
@@ -26,19 +28,22 @@ export function MissionRow({ view }: { view: MissionView }) {
   const locale = useLocale()
   const { mission, farm, anchorPoint, driver, volunteers } = view
 
-  const assigned = volunteers.length
-  const dropped = mission.dropoffConfirmedCount
-  const mismatch = dropped !== null && dropped !== assigned
+  // A driver-vs-group disagreement on any person, either leg, flags the row.
+  const mismatch = mission.assignments.some(
+    (a) =>
+      resolveConfirmation(a.outbound) === 'mismatch' ||
+      resolveConfirmation(a.inbound) === 'mismatch',
+  )
 
   return (
     <RowLink to={`/coordinator/missions/${mission.id}`}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium">{farm.name}</span>
+        <span className="text-caption font-medium">{farm.name}</span>
         <MissionStatusChip status={mission.status} />
         {mismatch && (
-          <span className="chip bg-rose-100 text-rose-800">
+          <span className="chip bg-status-warn/15 text-status-warn">
             <Icon name="alert" size={12} />
-            {t('missions.countMismatch')}
+            {t('alerts.presence_mismatch')}
           </span>
         )}
       </div>
@@ -75,22 +80,29 @@ export function MissionsScreen() {
       <PageHeader
         title={t('missions.title')}
         subtitle={t('missions.count', { count: list.length })}
-        actions={
-          <Toggle
-            value={tab}
-            onChange={(v) => setTab(v as 'upcoming' | 'past')}
-            options={[
-              { value: 'upcoming', label: t('missions.upcoming') },
-              { value: 'past', label: t('missions.past') },
-            ]}
-          />
-        }
       />
+
+      <FilterBar>
+        <FilterPill
+          active={tab === 'upcoming'}
+          onClick={() => setTab('upcoming')}
+          count={upcoming.length}
+        >
+          {t('missions.upcoming')}
+        </FilterPill>
+        <FilterPill
+          active={tab === 'past'}
+          onClick={() => setTab('past')}
+          count={past.length}
+        >
+          {t('missions.past')}
+        </FilterPill>
+      </FilterBar>
 
       {list.length === 0 ? (
         <EmptyState icon="shield" title={t('missions.empty')} />
       ) : (
-        <ul className="card divide-y divide-sand-200 p-1.5">
+        <ul className="card divide-y divide-edge-subtle p-1.5">
           {list.map((view) => (
             <li key={view.mission.id}>
               <MissionRow view={view} />

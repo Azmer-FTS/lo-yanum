@@ -10,6 +10,7 @@ export * from './clock'
 export * from './geo'
 export * from './routing'
 export * from './messages'
+export * from './import'
 export * from './access'
 export * from './sessions'
 export * from './config'
@@ -24,10 +25,22 @@ export {
   setIncidentResolved,
   confirmArrival,
   confirmGuardEnd,
-  confirmDropoff,
-  confirmPickup,
+  setPresence,
   archiveVolunteer,
   reactivateVolunteer,
   setCommitmentFulfilled,
+  createFarm,
+  updateFarm,
+  newContactId,
+  createAnchorPoint,
+  updateAnchorPoint,
+  createVolunteer,
+  updateVolunteer,
+  importVolunteers,
 } from './store'
-export type { NewIncidentInput } from './store'
+export type {
+  NewIncidentInput,
+  FarmDraft,
+  AnchorDraft,
+  VolunteerDraft,
+} from './store'

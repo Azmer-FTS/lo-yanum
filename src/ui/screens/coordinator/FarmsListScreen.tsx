@@ -1,21 +1,21 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { FARM_PIPELINE, getVisibleFarms } from '@core/index'
 import type { FarmStatus, FarmType } from '@core/index'
 
+import { Icon } from '../../components/Icon'
 import { FarmStatusChip, FarmStatusDot } from '../../components/badges'
 import {
   EmptyState,
-  FilterSelect,
+  FilterBar,
+  FilterPill,
   PageHeader,
   RowLink,
-  SearchInput,
 } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 
-const ALL = 'all'
 const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
 const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed']
 
@@ -26,13 +26,13 @@ export function FarmsListScreen() {
   // The dashboard links here with ?status=… — keep that in the URL so the
   // filtered list is shareable and survives a refresh.
   const [params, setParams] = useSearchParams()
-  const status = params.get('status') ?? ALL
-  const [type, setType] = useState<string>(ALL)
+  const status = (params.get('status') as FarmStatus | null) ?? null
+  const [type, setType] = useState<FarmType | null>(null)
   const [query, setQuery] = useState('')
 
-  const setStatus = (value: string) => {
+  const setStatus = (value: FarmStatus | null) => {
     const next = new URLSearchParams(params)
-    if (value === ALL) next.delete('status')
+    if (value === null) next.delete('status')
     else next.set('status', value)
     setParams(next, { replace: true })
   }
@@ -40,8 +40,8 @@ export function FarmsListScreen() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return farms.filter((farm) => {
-      if (status !== ALL && farm.status !== status) return false
-      if (type !== ALL && farm.type !== type) return false
+      if (status !== null && farm.status !== status) return false
+      if (type !== null && farm.type !== type) return false
       if (!q) return true
       return (
         farm.name.toLowerCase().includes(q) ||
@@ -56,50 +56,58 @@ export function FarmsListScreen() {
     <>
       <PageHeader
         title={t('farms.title')}
-        subtitle={t('farms.count', { count: filtered.length })}
+        subtitle={t('common.showingOf', {
+          shown: filtered.length,
+          total: farms.length,
+        })}
+        actions={
+          <Link to="/coordinator/farms/new" className="btn-primary">
+            <Icon name="plus" size={15} />
+            {t('farms.new')}
+          </Link>
+        }
       />
 
-      <div className="card card-pad mb-4 flex flex-col gap-3">
-        <SearchInput
-          value={query}
-          onChange={setQuery}
-          placeholder={t('common.searchFarms')}
-        />
-        <div className="flex flex-wrap gap-3">
-          <FilterSelect
-            label={t('farms.filterStatus')}
-            value={status}
-            onChange={setStatus}
-            options={[
-              { value: ALL, label: t('common.all') },
-              ...STATUSES.map((s) => ({
-                value: s,
-                label: t(`farmStatus.${s}`),
-              })),
-            ]}
-          />
-          <FilterSelect
-            label={t('farms.filterType')}
-            value={type}
-            onChange={setType}
-            options={[
-              { value: ALL, label: t('common.all') },
-              ...TYPES.map((s) => ({ value: s, label: t(`farmType.${s}`) })),
-            ]}
-          />
-        </div>
-      </div>
+      <FilterBar
+        search={query}
+        onSearch={setQuery}
+        searchPlaceholder={t('farms.searchPlaceholder')}
+      >
+        {STATUSES.map((s) => (
+          <FilterPill
+            key={s}
+            active={status === s}
+            onClick={() => setStatus(status === s ? null : s)}
+            dot={<FarmStatusDot status={s} />}
+            count={farms.filter((f) => f.status === s).length}
+          >
+            {t(`farmStatus.${s}`)}
+          </FilterPill>
+        ))}
+        <span className="h-5 w-px shrink-0 bg-edge-strong" />
+        {TYPES.map((ft) => (
+          <FilterPill
+            key={ft}
+            active={type === ft}
+            onClick={() => setType(type === ft ? null : ft)}
+          >
+            {t(`farmType.${ft}`)}
+          </FilterPill>
+        ))}
+      </FilterBar>
 
       {filtered.length === 0 ? (
         <EmptyState icon="farm" title={t('farms.empty')} />
       ) : (
-        <ul className="card divide-y divide-sand-200 p-1.5">
+        <ul className="card divide-y divide-edge-subtle p-1.5">
           {filtered.map((farm) => (
             <li key={farm.id}>
               <RowLink to={`/coordinator/farms/${farm.id}`}>
                 <div className="flex flex-wrap items-center gap-2">
                   <FarmStatusDot status={farm.status} />
-                  <span className="text-sm font-medium">{farm.name}</span>
+                  <span className="text-caption font-medium text-content-primary">
+                    {farm.name}
+                  </span>
                   <FarmStatusChip status={farm.status} />
                 </div>
                 <p className="muted mt-0.5">

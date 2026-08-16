@@ -40,6 +40,22 @@ export type IconName =
   | 'switch'
   | 'external'
   | 'moon'
+  | 'phoneBasic'
+  | 'edit'
+  | 'trash'
+  | 'upload'
+  | 'download'
+  | 'sort'
+  | 'sortAsc'
+  | 'sortDesc'
+  | 'chevronDown'
+  | 'userPlus'
+  | 'history'
+  | 'eye'
+  | 'layers'
+  | 'expand'
+  | 'collapse'
+  | 'sparkle'
 
 type Props = SVGProps<SVGSVGElement> & { name: IconName; size?: number }
 
@@ -184,6 +200,74 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   moon: <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" />,
+  // A feature phone: small screen, keypad. Distinguishes "kosher" handsets.
+  phoneBasic: (
+    <>
+      <rect x="7" y="2.5" width="10" height="19" rx="2" />
+      <path d="M9.5 5.5h5v4h-5z" />
+      <path d="M10 13h.01M12 13h.01M14 13h.01M10 16h.01M12 16h.01M14 16h.01M10 19h.01M12 19h.01M14 19h.01" />
+    </>
+  ),
+  edit: (
+    <>
+      <path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z" />
+      <path d="M15 6l3 3" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M4 6.5h16M9.5 6.5V4h5v2.5" />
+      <path d="M6.5 6.5 7.5 20h9l1-13.5" />
+      <path d="M10.5 10v6M13.5 10v6" />
+    </>
+  ),
+  upload: (
+    <>
+      <path d="M12 16V4M8 7.5 12 3.5l4 4" />
+      <path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" />
+    </>
+  ),
+  download: (
+    <>
+      <path d="M12 3.5v12M8 11.5l4 4 4-4" />
+      <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+    </>
+  ),
+  sort: <path d="M8 8.5 11 5l3 3.5M8 15.5 11 19l3-3.5" />,
+  sortAsc: <path d="M7 14.5 12 9l5 5.5" />,
+  sortDesc: <path d="M7 9.5 12 15l5-5.5" />,
+  chevronDown: <path d="M5.5 9.5 12 16l6.5-6.5" />,
+  userPlus: (
+    <>
+      <circle cx="9.5" cy="8" r="3.2" />
+      <path d="M3.5 20a6 6 0 0 1 12 0" />
+      <path d="M18.5 8v6M15.5 11h6" />
+    </>
+  ),
+  history: (
+    <>
+      <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" />
+      <path d="M3.5 4.5V10H9" />
+      <path d="M12 8v4.4l3 1.8" />
+    </>
+  ),
+  eye: (
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  layers: (
+    <>
+      <path d="m12 3 8.5 4.5L12 12 3.5 7.5z" />
+      <path d="m4 12 8 4.2 8-4.2M4 16.3l8 4.2 8-4.2" />
+    </>
+  ),
+  expand: <path d="M9 4H4v5M15 20h5v-5M4 15v5h5M20 9V4h-5" />,
+  collapse: <path d="M4 9h5V4M20 15h-5v5M9 20v-5H4M15 4v5h5" />,
+  sparkle: (
+    <path d="M12 3.5 13.8 9l5.5 1.8-5.5 1.8L12 18.1l-1.8-5.5L4.7 10.8 10.2 9z" />
+  ),
 }
 
 export function Icon({ name, size = 20, ...rest }: Props) {

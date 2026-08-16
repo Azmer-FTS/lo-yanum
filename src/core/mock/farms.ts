@@ -20,14 +20,14 @@ export const FARMS: Farm[] = [
       {
         id: 'contact-01a',
         name: 'אליהו בן־חמו',
-        phone: '052-8841203',
+        phone: '052-0000001',
         role: 'בעל החווה',
         isPrimary: true,
       },
       {
         id: 'contact-01b',
         name: 'שרה בן־חמו',
-        phone: '054-7712098',
+        phone: '054-0000002',
         role: 'שותפה',
         isPrimary: false,
       },
@@ -71,7 +71,7 @@ export const FARMS: Farm[] = [
       {
         id: 'contact-02a',
         name: 'יונתן אשל',
-        phone: '050-3320774',
+        phone: '050-0000003',
         role: 'בעל החווה',
         isPrimary: true,
       },
@@ -111,14 +111,14 @@ export const FARMS: Farm[] = [
       {
         id: 'contact-03a',
         name: 'משה קדוש',
-        phone: '053-9014466',
+        phone: '053-0000004',
         role: 'בעל החווה',
         isPrimary: true,
       },
       {
         id: 'contact-03b',
         name: 'רון קדוש',
-        phone: '058-6620311',
+        phone: '058-0000005',
         role: 'בן, אחראי לילות',
         isPrimary: false,
       },
@@ -159,7 +159,7 @@ export const FARMS: Farm[] = [
       {
         id: 'contact-04a',
         name: 'דוד אלמליח',
-        phone: '052-4470989',
+        phone: '052-0000006',
         role: 'בעל החווה',
         isPrimary: true,
       },
@@ -195,14 +195,14 @@ export const FARMS: Farm[] = [
       {
         id: 'contact-05a',
         name: 'איציק פרץ',
-        phone: '050-8812340',
+        phone: '050-0000007',
         role: 'בעל החווה',
         isPrimary: true,
       },
       {
         id: 'contact-05b',
         name: 'ליאור פרץ',
-        phone: '054-2298113',
+        phone: '054-0000008',
         role: 'מנהל עבודה',
         isPrimary: false,
       },
@@ -227,7 +227,7 @@ export const FARMS: Farm[] = [
       {
         id: 'contact-06a',
         name: 'נועם שגיא',
-        phone: '058-7734120',
+        phone: '058-0000009',
         role: 'בעל החווה',
         isPrimary: true,
       },
@@ -252,7 +252,7 @@ export const FARMS: Farm[] = [
       {
         id: 'contact-07a',
         name: 'עמית דרור',
-        phone: '052-6098431',
+        phone: '052-0000010',
         role: 'בעל החווה',
         isPrimary: true,
       },
@@ -277,21 +277,21 @@ export const FARMS: Farm[] = [
       {
         id: 'contact-08a',
         name: 'שמעון ביטון',
-        phone: '050-4451207',
+        phone: '050-0000011',
         role: 'בעל החווה',
         isPrimary: true,
       },
       {
         id: 'contact-08b',
         name: 'אורי ביטון',
-        phone: '053-3390142',
+        phone: '053-0000012',
         role: 'רועה',
         isPrimary: false,
       },
       {
         id: 'contact-08c',
         name: 'מרים ביטון',
-        phone: '054-9902287',
+        phone: '054-0000013',
         role: 'רכזת התנדבות אזורית',
         isPrimary: false,
       },
@@ -316,7 +316,7 @@ export const FARMS: Farm[] = [
       {
         id: 'contact-09a',
         name: 'רפי אוחיון',
-        phone: '052-3318876',
+        phone: '052-0000014',
         role: 'בעל החווה',
         isPrimary: true,
       },
@@ -341,7 +341,7 @@ export const FARMS: Farm[] = [
       {
         id: 'contact-10a',
         name: 'גיא ורדי',
-        phone: '054-8830115',
+        phone: '054-0000015',
         role: 'בעל החווה',
         isPrimary: true,
       },
@@ -366,7 +366,7 @@ export const FARMS: Farm[] = [
       {
         id: 'contact-11a',
         name: 'אבי שרעבי',
-        phone: '050-7761093',
+        phone: '050-0000016',
         role: 'מנהל החווה',
         isPrimary: true,
       },
@@ -391,7 +391,7 @@ export const FARMS: Farm[] = [
       {
         id: 'contact-12a',
         name: 'יוסי נחמיאס',
-        phone: '052-2204487',
+        phone: '052-0000017',
         role: 'בעל החווה',
         isPrimary: true,
       },

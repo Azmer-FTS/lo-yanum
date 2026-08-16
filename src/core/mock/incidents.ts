@@ -10,7 +10,7 @@ export const INCIDENTS: Incident[] = [
     farmId: 'farm-01',
     missionId: 'mission-01',
     source: 'volunteer',
-    reporterId: 'vol-01',
+    reporterId: 'vol-001',
     reporterName: 'אריאל כהן',
     severity: 'urgent',
     description:
@@ -74,7 +74,7 @@ export const INCIDENTS: Incident[] = [
     farmId: 'farm-02',
     missionId: 'mission-04',
     source: 'volunteer',
-    reporterId: 'vol-13',
+    reporterId: 'vol-013',
     reporterName: 'אורי מלכה',
     severity: 'observation',
     description:

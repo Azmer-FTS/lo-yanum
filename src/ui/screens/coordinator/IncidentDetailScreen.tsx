@@ -14,7 +14,7 @@ import {
 
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
-import { SeverityChip } from '../../components/badges'
+import { SeverityChip, readToken } from '../../components/badges'
 import {
   KeyValue,
   PageHeader,
@@ -45,7 +45,7 @@ export function IncidentDetailScreen() {
     <>
       <Link
         to="/coordinator/incidents"
-        className="mb-3 inline-flex items-center gap-1.5 text-sm text-night-950/55 hover:text-night-900"
+        className="mb-3 inline-flex items-center gap-1.5 text-caption text-content-muted hover:text-content-primary"
       >
         <Icon name="chevron" size={15} className="ltr:-scale-x-100" />
         {t('incidents.title')}
@@ -59,7 +59,7 @@ export function IncidentDetailScreen() {
             <SeverityChip severity={incident.severity} />
             <button
               type="button"
-              className="btn-secondary py-2 text-xs"
+              className="btn-secondary py-2 text-micro"
               onClick={() => setIncidentResolved(incident.id, !incident.resolved)}
             >
               {t(incident.resolved ? 'incidents.reopen' : 'incidents.resolve')}
@@ -71,10 +71,10 @@ export function IncidentDetailScreen() {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="flex flex-col gap-4 lg:col-span-2">
           <Section title={t('report.description')}>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-night-950/85">
+            <p className="whitespace-pre-line text-caption leading-relaxed text-content-secondary">
               {incident.description}
             </p>
-            <dl className="mt-3 border-t border-sand-200 pt-2">
+            <dl className="mt-3 border-t border-edge-subtle pt-2">
               <KeyValue
                 label={t('incidents.reportedBy')}
                 value={`${incident.reporterName} · ${t(
@@ -109,9 +109,9 @@ export function IncidentDetailScreen() {
               <ol className="flex flex-col">
                 {incident.entries.map((e) => (
                   <li key={e.id} className="flex gap-3 pb-4 last:pb-0">
-                    <span className="mt-1 flex h-2.5 w-2.5 shrink-0 rounded-full bg-night-400" />
+                    <span className="mt-1 flex h-2.5 w-2.5 shrink-0 rounded-pill bg-accent" />
                     <div>
-                      <p className="text-sm text-night-950/85">{e.text}</p>
+                      <p className="text-caption text-content-secondary">{e.text}</p>
                       <p className="ltr-nums muted mt-0.5">
                         {e.author} · {formatDateTime(e.at, locale)}
                       </p>
@@ -121,7 +121,7 @@ export function IncidentDetailScreen() {
               </ol>
             )}
 
-            <div className="mt-3 flex flex-col gap-2 border-t border-sand-200 pt-3 sm:flex-row">
+            <div className="mt-3 flex flex-col gap-2 border-t border-edge-subtle pt-3 sm:flex-row">
               <input
                 type="text"
                 className="input"
@@ -157,9 +157,13 @@ export function IncidentDetailScreen() {
                   {
                     id: incident.id,
                     position: incident.position,
-                    color:
-                      incident.severity === 'urgent' ? '#b4483f' : '#e0a325',
+                    color: readToken(
+                      incident.severity === 'urgent'
+                        ? '--status-danger'
+                        : '--status-warn',
+                    ),
                     title: farm.name,
+                    emphasis: true,
                   },
                 ]}
               />
@@ -171,7 +175,7 @@ export function IncidentDetailScreen() {
                   href={googleMapsPointUrl(incident.position)}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-xs font-medium text-night-700 hover:underline"
+                  className="inline-flex items-center gap-1 text-micro font-medium text-accent hover:underline"
                 >
                   <Icon name="external" size={13} />
                   {t('common.openInMaps')}

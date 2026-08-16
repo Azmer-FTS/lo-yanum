@@ -8,12 +8,18 @@ import {
   formatWeekday,
   getMissionView,
 } from '@core/index'
-import type { MissionView } from '@core/index'
+import { getPresenceRows } from '@core/index'
+import type { MissionLeg, MissionView } from '@core/index'
 
 import { ContactActions, ContactButtons } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
-import { MissionStatusChip, PhoneTypeChip } from '../../components/badges'
+import {
+  ConfirmationChip,
+  MissionStatusChip,
+  PhoneTypeChip,
+  readToken,
+} from '../../components/badges'
 import {
   Callout,
   KeyValue,
@@ -39,16 +45,16 @@ function TimelineStep({
   return (
     <li className="flex items-start gap-3 pb-4 last:pb-0">
       <span
-        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-pill ${
           done
-            ? 'bg-emerald-100 text-emerald-700'
-            : 'border border-dashed border-sand-400 text-night-950/30'
+            ? 'bg-status-success/15 text-status-success'
+            : 'border border-dashed border-edge-strong text-content-muted'
         }`}
       >
         <Icon name={done ? 'check' : 'clock'} size={15} />
       </span>
       <div>
-        <p className="text-sm font-medium">{label}</p>
+        <p className="text-caption font-medium">{label}</p>
         <p className="ltr-nums muted">
           {at ? formatDateTime(at, locale) : t('missions.awaiting')}
         </p>
@@ -57,54 +63,18 @@ function TimelineStep({
   )
 }
 
-function CountRow({
-  label,
-  actual,
-  expected,
-}: {
-  label: string
-  actual: number | null
-  expected: number
-}) {
-  const { t } = useTranslation()
-  const mismatch = actual !== null && actual !== expected
-
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-sand-200 px-3.5 py-3">
-      <span className="text-sm font-medium">{label}</span>
-      {actual === null ? (
-        <span className="chip bg-sand-100 text-night-950/60">
-          {t('missions.awaiting')}
-        </span>
-      ) : (
-        <span
-          className={`chip ${
-            mismatch
-              ? 'bg-rose-100 text-rose-800'
-              : 'bg-emerald-100 text-emerald-800'
-          }`}
-        >
-          <span className="ltr-nums tabular-nums">
-            {actual} / {expected}
-          </span>
-        </span>
-      )}
-    </div>
-  )
-}
-
 function TeamList({ view }: { view: MissionView }) {
   const { t } = useTranslation()
 
   return (
-    <ul className="divide-y divide-sand-200">
+    <ul className="divide-y divide-edge-subtle">
       {view.volunteers.map(({ volunteer, isGroupPhone }) => (
         <li key={volunteer.id}>
           <div className="flex flex-wrap items-center gap-2 pt-2">
-            <span className="text-sm font-medium">{volunteer.name}</span>
+            <span className="text-caption font-medium">{volunteer.name}</span>
             <PhoneTypeChip type={volunteer.phoneType} />
             {isGroupPhone && (
-              <span className="chip bg-night-900 text-white">
+              <span className="chip bg-accent text-content-on-accent">
                 <Icon name="phone" size={11} />
                 {t('volunteers.groupPhoneHolder')}
               </span>
@@ -123,6 +93,76 @@ function TeamList({ view }: { view: MissionView }) {
   )
 }
 
+/**
+ * R6 — the coordinator's reconciliation view: what the driver said and what the
+ * group holder said, per person, side by side, for both legs. A disagreement
+ * shows as an amber `mismatch` chip rather than being resolved silently.
+ */
+function PresenceMatrix({ view }: { view: MissionView }) {
+  const { t } = useTranslation()
+  const legs: MissionLeg[] = ['outbound', 'inbound']
+
+  return (
+    <div className="flex flex-col gap-4">
+      {legs.map((leg) => {
+        const rows = getPresenceRows(view.mission, leg)
+        return (
+          <div key={leg}>
+            <p className="section-title mb-2">{t(`presence.${leg}`)}</p>
+            <div className="scroll-x">
+              <table className="w-full min-w-[22rem] border-collapse text-caption">
+                <thead>
+                  <tr className="text-micro uppercase tracking-wide text-content-muted">
+                    <th className="p-2 text-start font-semibold">
+                      {t('volunteers.colName')}
+                    </th>
+                    <th className="p-2 text-start font-semibold">
+                      {t('presence.driverSays')}
+                    </th>
+                    <th className="p-2 text-start font-semibold">
+                      {t('presence.groupSays')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr
+                      key={row.volunteer.id}
+                      className={`border-t border-edge-subtle ${
+                        row.state === 'mismatch' ? 'bg-status-warn/10' : ''
+                      }`}
+                    >
+                      <td className="p-2">
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-medium text-content-primary">
+                            {row.volunteer.name}
+                          </span>
+                          {row.isGroupPhone && (
+                            <Icon name="phone" size={11} className="text-accent" />
+                          )}
+                          {row.state === 'mismatch' && (
+                            <ConfirmationChip state="mismatch" />
+                          )}
+                        </span>
+                      </td>
+                      <td className="p-2">
+                        <ConfirmationChip state={row.leg.driver ?? 'pending'} />
+                      </td>
+                      <td className="p-2">
+                        <ConfirmationChip state={row.leg.group ?? 'pending'} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function MissionDetailScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -138,7 +178,7 @@ export function MissionDetailScreen() {
     <>
       <Link
         to="/coordinator/missions"
-        className="mb-3 inline-flex items-center gap-1.5 text-sm text-night-950/55 hover:text-night-900"
+        className="mb-3 inline-flex items-center gap-1.5 text-caption text-content-muted hover:text-content-primary"
       >
         <Icon name="chevron" size={15} className="ltr:-scale-x-100" />
         {t('missions.title')}
@@ -244,19 +284,8 @@ export function MissionDetailScreen() {
             </ol>
           </Section>
 
-          <Section title={`${t('missions.dropoff')} / ${t('missions.pickup')}`}>
-            <div className="flex flex-col gap-2">
-              <CountRow
-                label={t('missions.dropoff')}
-                actual={mission.dropoffConfirmedCount}
-                expected={assigned}
-              />
-              <CountRow
-                label={t('missions.pickup')}
-                actual={mission.pickupConfirmedCount}
-                expected={assigned}
-              />
-            </div>
+          <Section title={t('presence.rosterTitle')}>
+            <PresenceMatrix view={view} />
           </Section>
 
           <Section title={t('map.title')}>
@@ -270,7 +299,8 @@ export function MissionDetailScreen() {
                 {
                   id: anchorPoint.id,
                   position: anchorPoint.position,
-                  color: '#1c2038',
+                  color: readToken('--accent'),
+                  emphasis: true,
                   title: anchorPoint.name,
                 },
               ]}

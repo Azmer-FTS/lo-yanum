@@ -1,0 +1,110 @@
+/* =========================================================================
+   LO YANUM — "NIGHT WATCH" DESIGN TOKENS
+   =========================================================================
+   THE single source of truth for colour, elevation, radius, motion and type.
+   No component may contain a hardcoded hex value; everything below is exposed
+   to Tailwind through tailwind.config.js.
+
+   Colours are stored as SPACE-SEPARATED RGB CHANNELS, not hex, so Tailwind can
+   apply opacity modifiers to them: the config wraps each one as
+   `rgb(var(--token) / <alpha-value>)`, which makes `bg-surface-raised/60` and
+   `text-accent/70` work exactly like they do for built-in colours. A hex value
+   here would silently break every `/opacity` utility in the app.
+
+   Concept: a guard standing watch at 2 AM. Near-black blue ground, surfaces
+   that lift out of it by luminance rather than by borders, and a single warm
+   amber — the colour of a fire or a torch — reserved for the actions that
+   matter. Nothing in this app is ever plain white.
+   ========================================================================= */
+
+:root {
+  /* --- Ground and surfaces (ascending elevation) ----------------------- */
+  --surface-sunken: 8 13 24; /* #080D18 — wells, inputs, code blocks     */
+  --surface-base: 11 18 32; /* #0B1220 — the page itself                */
+  --surface-raised: 17 26 46; /* #111A2E — cards                          */
+  --surface-overlay: 22 33 59; /* #16213B — sticky bars, popovers, modals  */
+  --surface-high: 27 40 70; /* #1B2846 — desktop tables, hover rows     */
+
+  /* --- Borders ---------------------------------------------------------- */
+  --border-subtle: 30 42 68; /* #1E2A44 — default card / divider edge    */
+  --border-strong: 46 62 96; /* #2E3E60 — inputs, focused containers     */
+
+  /* --- Text (warm off-white, never pure #FFF — it glares at night) ------ */
+  --text-primary: 244 239 228; /* #F4EFE4 */
+  --text-secondary: 184 192 212; /* #B8C0D4 */
+  --text-muted: 124 135 159; /* #7C879F */
+  --text-on-accent: 26 18 6; /* #1A1206 — near-black, for amber fills   */
+
+  /* --- Accent: fire / torch amber. Primary actions and highlights only. -- */
+  --accent: 245 158 11; /* #F59E0B */
+  --accent-strong: 251 191 36; /* #FBBF24 — hover / active                 */
+  --accent-dim: 180 116 8; /* #B47408 — pressed, disabled fills        */
+
+  /* --- Semantic status (tuned for contrast on the dark ground) ---------- */
+  --status-success: 52 211 153; /* #34D399 */
+  --status-warn: 251 191 36; /* #FBBF24 */
+  --status-danger: 248 113 113; /* #F87171 */
+  --status-info: 96 165 250; /* #60A5FA */
+
+  /* --- Farm pipeline statuses ------------------------------------------
+     Consumed by chips, list dots AND map markers, so a status can never be
+     green in one place and amber in another. */
+  --farm-to-contact: 139 149 173; /* #8B95AD */
+  --farm-contacted: 251 191 36; /* #FBBF24 */
+  --farm-visited: 251 146 60; /* #FB923C */
+  --farm-verbal-ok: 96 165 250; /* #60A5FA */
+  --farm-signed: 167 139 250; /* #A78BFA */
+  --farm-active: 52 211 153; /* #34D399 */
+  --farm-declined: 248 113 113; /* #F87171 */
+
+  /* --- Elevation -------------------------------------------------------
+     Dark UIs cannot use grey drop-shadows to signal lift — they vanish. These
+     combine a deep black shadow for depth with a 1px top highlight (inset) so
+     a card reads as catching light from above. */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.28),
+    inset 0 1px 0 rgb(255 255 255 / 0.04);
+  --shadow-lift: 0 4px 12px rgb(0 0 0 / 0.45), 0 16px 40px rgb(0 0 0 / 0.4),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --shadow-accent: 0 4px 14px rgb(245 158 11 / 0.28);
+
+  /* --- Radii ------------------------------------------------------------ */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  /* --- Motion ----------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-base: 180ms;
+  --duration-slow: 220ms;
+
+  /* --- Type scale -------------------------------------------------------
+     Line-heights tighten as size grows. Numeric-heavy styles get their own
+     tighter leading so counters and tables do not look airy and loose. */
+  --font-sans: 'Rubik', system-ui, -apple-system, sans-serif;
+
+  --text-display-size: clamp(2.5rem, 7vw, 4rem);
+  --text-display-height: 1.05;
+  --text-display-tracking: -0.03em;
+
+  --text-title-size: 1.5rem;
+  --text-title-height: 1.2;
+  --text-title-tracking: -0.015em;
+
+  --text-heading-size: 1.125rem;
+  --text-heading-height: 1.3;
+
+  --text-body-size: 0.9375rem;
+  --text-body-height: 1.6;
+
+  --text-caption-size: 0.8125rem;
+  --text-caption-height: 1.45;
+
+  --text-micro-size: 0.6875rem;
+  --text-micro-height: 1.4;
+
+  /* Counters and table figures: tight, so a column of numbers scans fast. */
+  --text-numeric-height: 1.1;
+}

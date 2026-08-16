@@ -8,13 +8,21 @@ import type {
   AnchorPoint,
   Driver,
   Farm,
+  FarmContact,
+  FarmStatus,
+  FarmType,
   Incident,
   IncidentSeverity,
   IncidentSource,
   LatLng,
   Mission,
+  MissionLeg,
+  PhoneType,
+  PresenceMark,
+  PresenceSource,
   Session,
   Volunteer,
+  VolunteerStatus,
 } from './types'
 
 /**
@@ -162,28 +170,48 @@ export function confirmArrival(missionId: string): void {
   })
 }
 
+/** True once every assignment has at least one mark on the given leg. */
+function legFullyMarked(mission: Mission, leg: MissionLeg): boolean {
+  return mission.assignments.every(
+    (a) => a[leg].driver !== null || a[leg].group !== null,
+  )
+}
+
 /** Volunteer action: the guard is over for the whole group. */
 export function confirmGuardEnd(missionId: string): void {
   withMission(missionId, (m) => {
     m.endConfirmedAt = iso(now())
-    m.status =
-      m.pickupConfirmedCount === null ? 'return_not_confirmed' : 'completed'
+    m.status = legFullyMarked(m, 'inbound')
+      ? 'completed'
+      : 'return_not_confirmed'
   })
 }
 
-/** Driver action: this many volunteers were dropped at the anchor point. */
-export function confirmDropoff(missionId: string, count: number): void {
+/**
+ * R6: record one nominative presence mark.
+ *
+ * Marks are never merged or overwritten across sources — the driver's answer
+ * and the group holder's answer are stored side by side precisely so a
+ * disagreement can be detected instead of silently resolved.
+ */
+export function setPresence(
+  missionId: string,
+  volunteerId: string,
+  leg: MissionLeg,
+  source: PresenceSource,
+  mark: PresenceMark | null,
+): void {
   withMission(missionId, (m) => {
-    m.dropoffConfirmedCount = count
-    if (m.status === 'planned') m.status = 'in_progress'
-  })
-}
+    const assignment = m.assignments.find((a) => a.volunteerId === volunteerId)
+    if (!assignment) return
+    assignment[leg][source] = mark
 
-/** Driver action: this many volunteers were picked up in the morning. */
-export function confirmPickup(missionId: string, count: number): void {
-  withMission(missionId, (m) => {
-    m.pickupConfirmedCount = count
-    if (m.endConfirmedAt) m.status = 'completed'
+    if (leg === 'outbound' && m.status === 'planned') {
+      m.status = 'in_progress'
+    }
+    if (leg === 'inbound' && m.endConfirmedAt && legFullyMarked(m, 'inbound')) {
+      m.status = 'completed'
+    }
   })
 }
 
@@ -212,4 +240,117 @@ export function setCommitmentFulfilled(
   if (!farm || !farm.commitments[index]) return
   farm.commitments[index].fulfilled = fulfilled
   commit()
+}
+
+// --- R5: create / edit -----------------------------------------------------
+//
+// These write straight into the in-memory store, so edits persist for the
+// session and disappear on reload. In Lot 1 each becomes a Supabase mutation;
+// the signatures are shaped to survive that swap unchanged.
+
+export interface FarmDraft {
+  name: string
+  locality: string
+  region: string
+  type: FarmType
+  status: FarmStatus
+  position: LatLng
+  farmHectares: number
+  grazingHectares: number
+  contacts: FarmContact[]
+  notes: string
+}
+
+export function createFarm(draft: FarmDraft): Farm {
+  const farm: Farm = {
+    id: nextId('farm'),
+    ...draft,
+    commitments: [],
+    agreements: [],
+    lastVisitAt: null,
+    nextVisitAt: null,
+  }
+  data.farms = [farm, ...data.farms]
+  commit()
+  return farm
+}
+
+export function updateFarm(farmId: string, draft: FarmDraft): void {
+  const index = data.farms.findIndex((f) => f.id === farmId)
+  if (index === -1) return
+  data.farms[index] = { ...data.farms[index], ...draft }
+  commit()
+}
+
+export function newContactId(): string {
+  return nextId('contact')
+}
+
+export interface AnchorDraft {
+  farmId: string
+  name: string
+  position: LatLng
+  instructions: string[]
+  accessDescription: string
+}
+
+export function createAnchorPoint(draft: AnchorDraft): AnchorPoint {
+  const anchor: AnchorPoint = { id: nextId('anchor'), ...draft }
+  data.anchorPoints = [...data.anchorPoints, anchor]
+  commit()
+  return anchor
+}
+
+export function updateAnchorPoint(anchorId: string, draft: AnchorDraft): void {
+  const index = data.anchorPoints.findIndex((a) => a.id === anchorId)
+  if (index === -1) return
+  data.anchorPoints[index] = { ...data.anchorPoints[index], ...draft }
+  commit()
+}
+
+export interface VolunteerDraft {
+  name: string
+  age: number
+  phone: string
+  phoneType: PhoneType
+  yeshiva: string
+  locality: string
+  status: VolunteerStatus
+  inactiveReason: string | null
+  notes: string
+}
+
+export function createVolunteer(draft: VolunteerDraft): Volunteer {
+  const volunteer: Volunteer = {
+    id: nextId('vol'),
+    ...draft,
+    guardsCount: 0,
+    lastActivityAt: null,
+  }
+  data.volunteers = [volunteer, ...data.volunteers]
+  commit()
+  return volunteer
+}
+
+export function updateVolunteer(
+  volunteerId: string,
+  draft: VolunteerDraft,
+): void {
+  const index = data.volunteers.findIndex((v) => v.id === volunteerId)
+  if (index === -1) return
+  data.volunteers[index] = { ...data.volunteers[index], ...draft }
+  commit()
+}
+
+/** Bulk append from the CSV/XLSX import wizard (R5.4). */
+export function importVolunteers(drafts: VolunteerDraft[]): number {
+  const created = drafts.map((draft, i) => ({
+    id: `${nextId('vol')}-${i}`,
+    ...draft,
+    guardsCount: 0,
+    lastActivityAt: null,
+  }))
+  data.volunteers = [...created, ...data.volunteers]
+  commit()
+  return created.length
 }

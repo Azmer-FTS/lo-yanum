@@ -3,7 +3,7 @@
 export const COORDINATOR = {
   id: 'coord-01',
   name: 'דוד לוי',
-  phone: '052-8123400',
+  phone: '052-0000049',
   role: 'רכז אזורי — נגב',
 } as const
 
@@ -21,5 +21,5 @@ export const EMERGENCY_NUMBERS: EmergencyNumber[] = [
   { key: 'police', number: '100' },
   { key: 'ambulance', number: '101' },
   { key: 'fire', number: '102' },
-  { key: 'regionalSecurity', number: '08-6564444' },
+  { key: 'regionalSecurity', number: '08-0000050' },
 ]

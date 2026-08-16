@@ -5,6 +5,8 @@ import { useEffect, useRef } from 'react'
 import { HOME_BASE, boundsOf } from '@core/index'
 import type { LatLng } from '@core/index'
 
+import { readToken } from './badges'
+
 /**
  * MapLibre GL over raster OpenStreetMap tiles.
  *
@@ -34,6 +36,8 @@ export interface MapMarker {
   color: string
   title: string
   subtitle?: string
+  /** Render larger — used for the focal point of a detail map. */
+  emphasis?: boolean
   onSelect?: () => void
 }
 
@@ -52,15 +56,23 @@ function markerElement(marker: MapMarker): HTMLElement {
   const el = document.createElement('button')
   el.type = 'button'
   el.setAttribute('aria-label', marker.title)
+  const ring = readToken('--surface-base')
   el.style.cssText = [
-    'width:22px',
-    'height:22px',
+    `width:${marker.emphasis ? 26 : 20}px`,
+    `height:${marker.emphasis ? 26 : 20}px`,
     'border-radius:999px',
-    'border:2.5px solid #fff',
+    `border:3px solid ${ring}`,
     'cursor:pointer',
-    'box-shadow:0 1px 6px rgba(28,32,56,.45)',
+    'box-shadow:0 0 0 1px rgba(255,255,255,.18), 0 2px 10px rgba(0,0,0,.6)',
+    'transition:transform 150ms cubic-bezier(.16,1,.3,1)',
     `background:${marker.color}`,
   ].join(';')
+  el.addEventListener('mouseenter', () => {
+    el.style.transform = 'scale(1.25)'
+  })
+  el.addEventListener('mouseleave', () => {
+    el.style.transform = 'none'
+  })
   return el
 }
 
@@ -121,9 +133,9 @@ export default function MapCanvas({
       if (marker.subtitle !== undefined) {
         instance.setPopup(
           new maplibregl.Popup({ offset: 16, closeButton: false }).setHTML(
-            `<div style="font-family:Rubik,system-ui,sans-serif;direction:rtl;text-align:start">
+            `<div style="font-family:var(--font-sans);direction:rtl;text-align:start">
                <strong style="display:block;font-size:13px">${escapeHtml(marker.title)}</strong>
-               <span style="font-size:12px;opacity:.65">${escapeHtml(marker.subtitle)}</span>
+               <span style="font-size:12px;opacity:.6">${escapeHtml(marker.subtitle)}</span>
              </div>`,
           ),
         )
@@ -160,7 +172,7 @@ export default function MapCanvas({
       ref={containerRef}
       role="application"
       aria-label={ariaLabel}
-      className={`overflow-hidden rounded-2xl bg-sand-200 ${className}`}
+      className={`map-night overflow-hidden rounded-lg bg-surface-sunken ${className}`}
     />
   )
 }

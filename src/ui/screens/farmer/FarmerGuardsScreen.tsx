@@ -33,9 +33,9 @@ function GuardCard({ view }: { view: MissionView }) {
   const { mission, anchorPoint, volunteers, driver } = view
 
   return (
-    <li className="rounded-xl border border-sand-200 px-3.5 py-3">
+    <li className="rounded-md border border-edge-subtle px-3.5 py-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="ltr-nums text-sm font-medium">
+        <span className="ltr-nums text-caption font-medium">
           {formatDate(mission.startAt, locale)}
         </span>
         <span className="muted">{formatWeekday(mission.startAt, locale)}</span>
@@ -95,17 +95,17 @@ export function FarmerGuardsScreen() {
 
         {/* Discreet, not accusatory: a reminder of what was agreed. */}
         {farm.commitments.length > 0 && (
-          <section className="rounded-2xl border border-sand-300 bg-sand-100/70 p-4">
-            <h2 className="text-sm font-semibold text-night-900">
+          <section className="rounded-lg border border-edge-strong bg-surface-high/70 p-4">
+            <h2 className="text-caption font-semibold text-content-primary">
               {t('commitment.reminderTitle')}
             </h2>
             <ul className="mt-2.5 flex flex-col gap-2">
               {farm.commitments.map((c, i) => (
                 <li
                   key={`${c.kind}-${i}`}
-                  className="flex items-start gap-2.5 text-sm"
+                  className="flex items-start gap-2.5 text-caption"
                 >
-                  <span className="mt-0.5 shrink-0 text-night-700">
+                  <span className="mt-0.5 shrink-0 text-accent">
                     <Icon name={COMMITMENT_ICON[c.kind]} size={16} />
                   </span>
                   <span className="min-w-0">
@@ -117,7 +117,7 @@ export function FarmerGuardsScreen() {
                 </li>
               ))}
             </ul>
-            <p className="mt-3 text-xs leading-relaxed text-night-950/55">
+            <p className="mt-3 text-micro leading-relaxed text-content-muted">
               {t('commitment.reminderNote')}
             </p>
           </section>

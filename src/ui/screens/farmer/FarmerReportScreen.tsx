@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
 import {
+  COORDINATOR,
   getMyContactName,
   getMyFarm,
   getSession,
@@ -36,6 +37,9 @@ export function FarmerReportScreen() {
           reporterName: name ?? '',
           capturePosition: false,
           fallbackPosition: farm.position,
+          showPhoto: true,
+          coordinatorName: COORDINATOR.name,
+          coordinatorPhone: COORDINATOR.phone,
         }}
       />
     </>

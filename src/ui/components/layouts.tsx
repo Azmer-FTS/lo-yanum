@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import { COORDINATOR, getMyDisplayName, getSession } from '@core/index'
 
@@ -26,85 +26,151 @@ const COORDINATOR_NAV: NavItem[] = [
   { to: '/coordinator/incidents', icon: 'alert', labelKey: 'nav.incidents' },
 ]
 
+/** Routes that manage their own full-bleed canvas and must not be padded. */
+const BLEED_ROUTES = ['/coordinator/map']
+
 function Brand({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation()
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-night-900 text-sand-300">
+    <div className="flex min-w-0 items-center gap-2.5">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent/15 text-accent ring-1 ring-accent/25">
         <Icon name="shield" size={19} />
       </span>
-      <div className="leading-tight">
-        <p className="text-base font-semibold text-night-950">{t('app.name')}</p>
-        {!compact && (
-          <p className="text-[11px] text-night-950/45">{t('app.tagline')}</p>
-        )}
-      </div>
+      {!compact && (
+        <div className="min-w-0 leading-tight">
+          <p className="truncate text-heading text-content-primary">
+            {t('app.name')}
+          </p>
+          <p className="truncate text-micro text-content-muted">
+            {t('app.tagline')}
+          </p>
+        </div>
+      )}
     </div>
   )
 }
 
-const navClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-    isActive
-      ? 'bg-night-900 text-white'
-      : 'text-night-950/65 hover:bg-sand-100 hover:text-night-950'
-  }`
-
 /**
- * Coordinator shell: a real sidebar on desktop, a slide-over on tablet and
- * phone. The coordinator is the only role that works from a laptop.
+ * COORDINATOR SHELL — full-bleed on desktop (R3).
+ *
+ * No max-width container: at ≥1280px the content uses the whole screen, which
+ * is the point of a back-office. The sidebar is a slim icon rail that expands
+ * on demand (and remembers the choice for the session); below `lg` it becomes
+ * a slide-over.
  */
 export function CoordinatorLayout() {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const { pathname } = useLocation()
 
-  const nav = (
-    <nav className="flex flex-col gap-1">
-      {COORDINATOR_NAV.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          end={item.end}
-          className={navClass}
-          onClick={() => setMenuOpen(false)}
-        >
-          <Icon name={item.icon} size={18} />
-          {t(item.labelKey)}
-        </NavLink>
-      ))}
-    </nav>
+  const bleed = BLEED_ROUTES.some((r) => pathname === r)
+
+  // Close the mobile slide-over whenever the route changes.
+  useEffect(() => setMenuOpen(false), [pathname])
+
+  const navLink = (item: NavItem, showLabel: boolean) => (
+    <NavLink
+      key={item.to}
+      to={item.to}
+      end={item.end}
+      title={showLabel ? undefined : t(item.labelKey)}
+      className={({ isActive }) =>
+        `group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-caption font-medium
+         transition-all duration-fast ease-out ${
+           isActive
+             ? 'bg-accent/15 text-accent'
+             : 'text-content-secondary hover:bg-surface-high hover:text-content-primary'
+         } ${showLabel ? '' : 'justify-center px-0'}`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {/* Active marker on the inline-start edge — flips with direction. */}
+          <span
+            className={`absolute inset-y-1.5 start-0 w-0.5 rounded-pill bg-accent transition-opacity duration-fast ${
+              isActive ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+          <Icon name={item.icon} size={19} />
+          {showLabel && <span className="truncate">{t(item.labelKey)}</span>}
+        </>
+      )}
+    </NavLink>
   )
 
   return (
-    <div className="flex min-h-dvh flex-col bg-sand-50">
-      <div className="flex flex-1 lg:mx-auto lg:w-full lg:max-w-7xl">
-        {/* Desktop sidebar */}
-        <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-6 border-e border-sand-200 bg-white px-4 py-5 lg:flex">
-          <Brand />
-          {nav}
-          <div className="mt-auto rounded-xl bg-sand-100 p-3">
-            <p className="text-xs font-medium text-night-950/70">
-              {COORDINATOR.name}
-            </p>
-            <p className="text-[11px] text-night-950/45">{COORDINATOR.role}</p>
+    <div className="flex min-h-dvh flex-col bg-surface-base">
+      <div className="flex flex-1">
+        {/* Desktop rail — full-bleed: no max-width wrapper anywhere. */}
+        <aside
+          className={`sticky top-0 hidden h-dvh shrink-0 flex-col gap-5 border-e border-edge-subtle
+                      bg-surface-raised px-3 py-4 transition-[width] duration-base ease-out lg:flex ${
+                        expanded ? 'w-60' : 'w-[4.5rem]'
+                      }`}
+        >
+          <div className={expanded ? '' : 'flex justify-center'}>
+            <Brand compact={!expanded} />
+          </div>
+
+          <nav className="flex flex-col gap-1">
+            {COORDINATOR_NAV.map((item) => navLink(item, expanded))}
+          </nav>
+
+          <div className="mt-auto flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-label={t(expanded ? 'nav.collapse' : 'nav.expand')}
+              className="flex items-center justify-center gap-2 rounded-md px-3 py-2 text-content-muted
+                         transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
+            >
+              <Icon name={expanded ? 'collapse' : 'expand'} size={17} />
+              {expanded && (
+                <span className="text-caption">{t('nav.collapse')}</span>
+              )}
+            </button>
+
+            <div
+              className={`rounded-md bg-surface-high p-2.5 ${expanded ? '' : 'text-center'}`}
+            >
+              {expanded ? (
+                <>
+                  <p className="truncate text-caption font-medium text-content-primary">
+                    {COORDINATOR.name}
+                  </p>
+                  <p className="truncate text-micro text-content-muted">
+                    {COORDINATOR.role}
+                  </p>
+                </>
+              ) : (
+                <span className="text-caption font-semibold text-accent">
+                  {COORDINATOR.name.slice(0, 1)}
+                </span>
+              )}
+            </div>
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Mobile / tablet top bar */}
-          <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-sand-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
-            <Brand compact />
+          <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-edge-subtle bg-surface-overlay/95 px-4 py-3 backdrop-blur lg:hidden">
+            <Brand />
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
               aria-label={t('a11y.openMenu')}
-              className="rounded-xl p-2 text-night-900 hover:bg-sand-100"
+              className="rounded-md p-2 text-content-secondary transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
             >
               <Icon name="menu" />
             </button>
           </header>
 
-          <main className="flex-1 px-4 py-5 sm:px-6 sm:py-6">
+          <main
+            className={
+              bleed ? 'flex-1' : 'flex-1 px-4 py-5 sm:px-6 sm:py-6 2xl:px-8'
+            }
+          >
             <Outlet />
           </main>
         </div>
@@ -115,22 +181,24 @@ export function CoordinatorLayout() {
           <button
             type="button"
             aria-label={t('a11y.closeMenu')}
-            className="absolute inset-0 bg-night-950/40"
+            className="absolute inset-0 bg-surface-sunken/80 backdrop-blur-sm"
             onClick={() => setMenuOpen(false)}
           />
-          <div className="absolute inset-y-0 start-0 flex w-72 max-w-[85%] flex-col gap-6 bg-white px-4 py-5 shadow-lift">
-            <div className="flex items-center justify-between">
-              <Brand compact />
+          <div className="absolute inset-y-0 start-0 flex w-72 max-w-[85%] animate-fade-in flex-col gap-5 border-e border-edge-strong bg-surface-raised px-3 py-4 shadow-lift">
+            <div className="flex items-center justify-between px-1">
+              <Brand />
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
                 aria-label={t('a11y.closeMenu')}
-                className="rounded-lg p-1.5 text-night-950/50 hover:bg-sand-100"
+                className="rounded-sm p-1.5 text-content-muted hover:bg-surface-high hover:text-content-primary"
               >
                 <Icon name="close" size={18} />
               </button>
             </div>
-            {nav}
+            <nav className="flex flex-col gap-1">
+              {COORDINATOR_NAV.map((item) => navLink(item, true))}
+            </nav>
           </div>
         </div>
       )}
@@ -143,8 +211,11 @@ export function CoordinatorLayout() {
 }
 
 /**
- * Field shell for farmer / volunteer / driver: a single narrow column with a
- * bottom tab bar. These screens live on a phone, in the dark, one-handed.
+ * FIELD SHELL — farmer / volunteer / driver.
+ *
+ * One narrow column with a bottom tab bar. These screens live on a phone, in
+ * the dark, one-handed. The tab bar and the dev toolbar share a single sticky
+ * footer so they stack rather than fight over `bottom-0`.
  */
 export function FieldLayout({ items }: { items: NavItem[] }) {
   const { t } = useTranslation()
@@ -152,13 +223,15 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
   const name = useCoreValue(getMyDisplayName)
 
   return (
-    <div className="flex min-h-dvh flex-col bg-sand-50">
-      <header className="sticky top-0 z-30 border-b border-sand-200 bg-white/95 px-4 py-3 backdrop-blur">
+    <div className="flex min-h-dvh flex-col bg-surface-base">
+      <header className="sticky top-0 z-30 border-b border-edge-subtle bg-surface-overlay/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
-          <Brand compact />
-          <div className="text-end leading-tight">
-            <p className="text-sm font-medium text-night-950">{name}</p>
-            <p className="text-[11px] text-night-950/45">
+          <Brand />
+          <div className="min-w-0 text-end leading-tight">
+            <p className="truncate text-caption font-medium text-content-primary">
+              {name}
+            </p>
+            <p className="text-micro text-content-muted">
               {t(`roles.${session.role}`)}
             </p>
           </div>
@@ -169,10 +242,8 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
         <Outlet />
       </main>
 
-      {/* Tab bar and dev toolbar share one sticky footer so they stack instead
-          of overlapping at `bottom-0`. */}
       <div className="sticky bottom-0 z-30">
-        <nav className="border-t border-sand-200 bg-white/95 backdrop-blur">
+        <nav className="border-t border-edge-subtle bg-surface-overlay/95 backdrop-blur">
           <div className="mx-auto flex max-w-2xl">
             {items.map((item) => (
               <NavLink
@@ -180,9 +251,12 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `flex flex-1 flex-col items-center gap-0.5 px-2 py-2.5 text-[11px] font-medium transition-colors ${
-                    isActive ? 'text-night-900' : 'text-night-950/45'
-                  }`
+                  `flex flex-1 flex-col items-center gap-1 px-2 py-2.5 text-micro font-medium
+                   transition-colors duration-fast ease-out ${
+                     isActive
+                       ? 'text-accent'
+                       : 'text-content-muted hover:text-content-secondary'
+                   }`
                 }
               >
                 <Icon name={item.icon} size={21} />
@@ -205,6 +279,7 @@ export const FARMER_NAV: NavItem[] = [
 
 export const VOLUNTEER_NAV: NavItem[] = [
   { to: '/volunteer', icon: 'shield', labelKey: 'nav.myGuard', end: true },
+  { to: '/volunteer/roster', icon: 'users', labelKey: 'nav.groupRoster' },
   { to: '/volunteer/report', icon: 'alert', labelKey: 'nav.report' },
 ]
 

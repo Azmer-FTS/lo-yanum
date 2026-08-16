@@ -1,3 +1,5 @@
+@import './styles/tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -41,18 +43,30 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    color-scheme: dark;
+    background-color: rgb(var(--surface-base));
   }
 
   body {
-    @apply bg-sand-50 font-sans text-night-950 antialiased;
+    @apply bg-surface-base font-sans text-body text-content-primary antialiased;
     /* Reserve the notch / home-indicator insets for the standalone PWA. */
     padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
   }
 
-  /* Numbers, phone numbers and coordinates must read LTR inside RTL text. */
+  /* Numbers, phone numbers and coordinates must read LTR inside RTL text.
+     A ratio like "3 / 12" has to be ONE run of this class — two separate runs
+     get reordered by the bidi algorithm and display backwards. */
   .ltr-nums {
     direction: ltr;
     unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Counter / table figures: tabular and tightly led so a column scans fast. */
+  .numeric {
+    font-variant-numeric: tabular-nums;
+    line-height: var(--text-numeric-height);
+    letter-spacing: -0.01em;
   }
 
   button,
@@ -61,70 +75,189 @@
   }
 
   :focus-visible {
-    @apply outline-none ring-2 ring-night-500 ring-offset-2 ring-offset-sand-50;
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-surface-base;
+  }
+
+  ::selection {
+    background-color: rgb(var(--accent) / 0.3);
+  }
+
+  /* Dark scrollbars — a default light one is a bright stripe on every panel. */
+  * {
+    scrollbar-color: rgb(var(--border-strong)) transparent;
+    scrollbar-width: thin;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--border-strong));
+    border-radius: var(--radius-pill);
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--text-muted));
+    background-clip: content-box;
+  }
+
+  /* Native form controls default to a light palette; force them dark. */
+  select option {
+    background-color: rgb(var(--surface-overlay));
+    color: rgb(var(--text-primary));
   }
 }
 
 @layer components {
+  /* --- Containers -------------------------------------------------------- */
+
   .card {
-    @apply rounded-2xl border border-sand-200/70 bg-white shadow-card;
+    @apply rounded-lg border border-edge-subtle bg-surface-raised shadow-card;
   }
 
   .card-pad {
     @apply p-4 sm:p-5;
   }
 
+  /* Interactive card: lifts slightly on hover. */
+  .card-interactive {
+    @apply card transition-all duration-base ease-out
+           hover:border-edge-strong hover:shadow-lift;
+  }
+
   .section-title {
-    @apply text-sm font-semibold text-night-900;
+    @apply text-caption font-semibold uppercase tracking-wide text-content-muted;
   }
 
   .muted {
-    @apply text-sm text-night-950/55;
+    @apply text-caption text-content-muted;
   }
+
+  /* --- Chips ------------------------------------------------------------- */
 
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+    @apply inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1
+           text-micro font-medium;
   }
 
+  /* --- Buttons ----------------------------------------------------------- */
+
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5
-           text-sm font-medium transition-colors disabled:cursor-not-allowed
-           disabled:opacity-50;
+    @apply inline-flex select-none items-center justify-center gap-2
+           rounded-md px-4 py-2.5 text-caption font-semibold
+           transition-all duration-fast ease-out
+           active:scale-[0.98]
+           disabled:pointer-events-none disabled:opacity-40;
   }
 
   .btn-primary {
-    @apply btn bg-night-800 text-white hover:bg-night-700;
+    @apply btn bg-accent text-content-on-accent shadow-accent
+           hover:bg-accent-strong active:bg-accent-dim;
   }
 
   .btn-secondary {
-    @apply btn border border-sand-300 bg-white text-night-900 hover:bg-sand-100;
+    @apply btn border border-edge-strong bg-surface-high text-content-primary
+           hover:border-accent/50 hover:bg-surface-overlay;
   }
 
   .btn-ghost {
-    @apply btn text-night-800 hover:bg-sand-100;
+    @apply btn text-content-secondary hover:bg-surface-high hover:text-content-primary;
   }
 
-  .btn-big {
-    @apply w-full rounded-2xl px-5 py-4 text-base font-semibold;
+  .btn-danger {
+    @apply btn bg-status-danger text-content-on-accent hover:brightness-110;
   }
+
+  /* Field-role primary action: thumb-sized, one-handed, in the dark. */
+  .btn-big {
+    @apply w-full rounded-lg px-5 py-4 text-heading;
+  }
+
+  /* --- Inputs ------------------------------------------------------------ */
 
   .input {
-    @apply w-full rounded-xl border border-sand-300 bg-white px-3.5 py-2.5 text-sm
-           text-night-950 placeholder:text-night-950/35
-           focus:border-night-500 focus:outline-none focus:ring-1 focus:ring-night-500;
+    @apply w-full rounded-md border border-edge-strong bg-surface-sunken
+           px-3.5 py-2.5 text-caption text-content-primary
+           transition-colors duration-fast ease-out
+           placeholder:text-content-muted/70
+           hover:border-edge-strong
+           focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent;
   }
 
-  /* Scroll container that keeps horizontal overflow out of the page body. */
+  .label {
+    @apply mb-1.5 block text-caption font-medium text-content-secondary;
+  }
+
+  /* --- Filter bar (R3: one horizontal bar above every list screen) ------- */
+
+  .filter-pill {
+    @apply inline-flex shrink-0 items-center gap-1.5 rounded-pill border
+           border-edge-subtle bg-surface-high px-3 py-1.5 text-caption
+           font-medium text-content-secondary
+           transition-all duration-fast ease-out
+           hover:border-edge-strong hover:text-content-primary;
+  }
+
+  .filter-pill-active {
+    @apply border-accent/60 bg-accent/15 text-accent;
+  }
+
+  /* --- Scroll containers ------------------------------------------------- */
+
+  /* Wide content scrolls inside itself; the page body never scrolls sideways. */
   .scroll-x {
     @apply -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0;
-    scrollbar-width: thin;
+  }
+
+  /* --- Skeletons --------------------------------------------------------- */
+
+  .skeleton {
+    @apply relative overflow-hidden bg-surface-high;
+  }
+
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(100%);
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      rgb(var(--text-primary) / 0.05),
+      transparent
+    );
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
 /* --- MapLibre ------------------------------------------------------------ */
 
 .maplibregl-map {
-  font-family: 'Rubik', system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* MapLibre attribution/controls are authored LTR; keep them that way. */
@@ -133,4 +266,61 @@
 .maplibregl-ctrl-top-right,
 .maplibregl-ctrl-top-left {
   direction: ltr;
+}
+
+/* The default map chrome is white-on-white; restyle it into the night palette. */
+.maplibregl-ctrl-group {
+  background: rgb(var(--surface-overlay)) !important;
+  border: 1px solid rgb(var(--border-strong)) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid rgb(var(--border-subtle)) !important;
+}
+
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1) brightness(1.6);
+}
+
+.maplibregl-ctrl-group button:hover {
+  background: rgb(var(--surface-high)) !important;
+}
+
+.maplibregl-ctrl-attrib {
+  background: rgb(var(--surface-overlay) / 0.85) !important;
+  color: rgb(var(--text-muted)) !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: rgb(var(--text-secondary)) !important;
+}
+
+.maplibregl-ctrl-attrib-button {
+  filter: invert(1) brightness(1.6);
+}
+
+.maplibregl-popup-content {
+  background: rgb(var(--surface-overlay)) !important;
+  color: rgb(var(--text-primary)) !important;
+  border: 1px solid rgb(var(--border-strong)) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-lift) !important;
+  padding: 10px 12px !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: rgb(var(--surface-overlay)) !important;
+  border-bottom-color: rgb(var(--surface-overlay)) !important;
+}
+
+/* OSM raster tiles are a daylight map. Invert + hue-rotate turns them into a
+   night map (dark ground, light roads) without needing a paid dark tile style.
+   Only the GL canvas is filtered — markers are DOM siblings, so their token
+   colours stay true. */
+.map-night .maplibregl-canvas {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9)
+    saturate(0.75);
 }

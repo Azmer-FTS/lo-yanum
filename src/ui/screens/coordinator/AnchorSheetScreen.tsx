@@ -17,6 +17,7 @@ import type { AnchorMessageInput, AnchorMessageLabels } from '@core/index'
 
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
+import { readToken } from '../../components/badges'
 import { CopyButton, PageHeader, Section } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
@@ -37,10 +38,10 @@ function MessageCard({
   const { t } = useTranslation()
 
   return (
-    <div className="rounded-2xl border border-sand-200 bg-sand-50/60 p-4">
+    <div className="rounded-lg border border-edge-subtle bg-surface-raised/40 p-4">
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold">{title}</h3>
+          <h3 className="text-caption font-semibold">{title}</h3>
           <p className="muted mt-0.5">{hint}</p>
         </div>
         <CopyButton value={body} label={t('anchor.copyMessage')} />
@@ -53,7 +54,7 @@ function MessageCard({
         value={body}
         rows={Math.min(18, body.split('\n').length + 1)}
         dir="rtl"
-        className="w-full resize-y rounded-xl border border-sand-300 bg-white p-3 font-sans text-sm leading-relaxed text-night-950"
+        className="w-full resize-y rounded-md border border-edge-strong bg-surface-raised p-3 font-sans text-caption leading-relaxed text-content-primary"
       />
 
       {phone && (
@@ -136,7 +137,7 @@ export function AnchorSheetScreen() {
     <>
       <Link
         to={`/coordinator/farms/${farm.id}`}
-        className="mb-3 inline-flex items-center gap-1.5 text-sm text-night-950/55 hover:text-night-900"
+        className="mb-3 inline-flex items-center gap-1.5 text-caption text-content-muted hover:text-content-primary"
       >
         <Icon name="chevron" size={15} className="ltr:-scale-x-100" />
         {farm.name}
@@ -192,7 +193,8 @@ export function AnchorSheetScreen() {
                 {
                   id: anchor.id,
                   position: anchor.position,
-                  color: '#1c2038',
+                  color: readToken('--accent'),
+                  emphasis: true,
                   title: anchor.name,
                 },
               ]}
@@ -203,7 +205,7 @@ export function AnchorSheetScreen() {
           </Section>
 
           <Section title={t('anchor.access')}>
-            <p className="text-sm leading-relaxed text-night-950/80">
+            <p className="text-caption leading-relaxed text-content-secondary">
               {anchor.accessDescription}
             </p>
           </Section>
@@ -211,8 +213,8 @@ export function AnchorSheetScreen() {
           <Section title={t('anchor.instructions')}>
             <ul className="flex flex-col gap-2">
               {anchor.instructions.map((line, i) => (
-                <li key={i} className="flex gap-2.5 text-sm text-night-950/80">
-                  <span className="mt-0.5 shrink-0 text-night-700">
+                <li key={i} className="flex gap-2.5 text-caption text-content-secondary">
+                  <span className="mt-0.5 shrink-0 text-accent">
                     <Icon name="check" size={15} />
                   </span>
                   {line}
