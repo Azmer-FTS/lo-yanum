@@ -281,7 +281,7 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
         )}
 
         <div className="flex items-center gap-2 rounded-md border border-edge-subtle bg-surface-raised px-3.5 py-3">
-          <span className="text-accent">
+          <span className="text-accent-ink">
             <Icon name="pin" size={17} />
           </span>
           <span className="text-caption text-content-secondary">

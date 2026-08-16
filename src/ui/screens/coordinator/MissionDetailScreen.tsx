@@ -11,6 +11,7 @@ import {
 import { getPresenceRows } from '@core/index'
 import type { MissionLeg, MissionView } from '@core/index'
 
+import { Avatar } from '../../components/Avatar'
 import { ContactActions, ContactButtons } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
@@ -71,6 +72,12 @@ function TeamList({ view }: { view: MissionView }) {
       {view.volunteers.map(({ volunteer, isGroupPhone }) => (
         <li key={volunteer.id}>
           <div className="flex flex-wrap items-center gap-2 pt-2">
+            <Avatar
+              photo={volunteer.photo}
+              name={volunteer.name}
+              size="sm"
+              ring={isGroupPhone}
+            />
             <span className="text-caption font-medium">{volunteer.name}</span>
             <PhoneTypeChip type={volunteer.phoneType} />
             {isGroupPhone && (
@@ -138,7 +145,7 @@ function PresenceMatrix({ view }: { view: MissionView }) {
                             {row.volunteer.name}
                           </span>
                           {row.isGroupPhone && (
-                            <Icon name="phone" size={11} className="text-accent" />
+                            <Icon name="phone" size={11} className="text-accent-ink" />
                           )}
                           {row.state === 'mismatch' && (
                             <ConfirmationChip state="mismatch" />

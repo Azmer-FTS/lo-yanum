@@ -11,7 +11,9 @@ import {
 } from '@core/index'
 import type { FarmContact, FarmDraft, FarmStatus, FarmType } from '@core/index'
 
+import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
+import { PhotoField } from '../../components/PhotoField'
 import {
   FormActions,
   FormSection,
@@ -22,6 +24,28 @@ import {
 } from '../../components/fields'
 import { PageHeader } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
+
+/** Compact camera/import pair for an inline contact row. */
+function PhotoCompact({
+  value,
+  onChange,
+}: {
+  value: string | null
+  onChange: (v: string | null) => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="min-w-0 flex-1">
+      <PhotoField
+        label={t('photo.personLabel')}
+        value={value}
+        onChange={onChange}
+        name="?"
+        hint={t('photo.hint')}
+      />
+    </div>
+  )
+}
 
 const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
 const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed']
@@ -60,6 +84,7 @@ export function FarmFormScreen() {
     existing?.contacts ?? [],
   )
   const [notes, setNotes] = useState(existing?.notes ?? '')
+  const [photo, setPhoto] = useState<string | null>(existing?.photo ?? null)
   const [touched, setTouched] = useState(false)
 
   const num = (v: string) => (v.trim() === '' ? NaN : Number(v))
@@ -105,6 +130,7 @@ export function FarmFormScreen() {
         name: '',
         phone: '',
         role: '',
+        photo: null,
         // The first contact added is the one who can sign in as FARMER.
         isPrimary: prev.length === 0,
       },
@@ -132,6 +158,7 @@ export function FarmFormScreen() {
     if (!valid) return
 
     const draft: FarmDraft = {
+      photo,
       name: name.trim(),
       locality: locality.trim(),
       region: region.trim(),
@@ -179,6 +206,15 @@ export function FarmFormScreen() {
 
       <div className="flex flex-col gap-4">
         <FormSection title={t('form.sectionIdentity')}>
+          <div className="md:col-span-2">
+            <PhotoField
+              label={t('photo.farmLabel')}
+              value={photo}
+              onChange={setPhoto}
+              name={name}
+              shape="square"
+            />
+          </div>
           <TextField
             label={t('form.name')}
             value={name}
@@ -219,6 +255,13 @@ export function FarmFormScreen() {
                 key={contact.id}
                 className="rounded-md border border-edge-subtle bg-surface-sunken/60 p-3 md:col-span-2"
               >
+                <div className="mb-3 flex items-center gap-3">
+                  <Avatar photo={contact.photo} name={contact.name || '?'} size="md" />
+                  <PhotoCompact
+                    value={contact.photo}
+                    onChange={(v) => patchContact(i, { photo: v })}
+                  />
+                </div>
                 <div className="grid gap-3 md:grid-cols-3">
                   <TextField
                     label={t('form.contactName')}

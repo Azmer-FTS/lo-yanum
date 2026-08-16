@@ -167,6 +167,7 @@ export function toVolunteerDrafts(
   rows: ParsedRow[],
   defaults: ImportDefaults,
 ): Array<{
+  photo: string | null
   name: string
   age: number
   phone: string
@@ -178,6 +179,7 @@ export function toVolunteerDrafts(
   notes: string
 }> {
   return rows.map((r) => ({
+    photo: null,
     name: r.name,
     age: r.age ?? 20,
     phone: r.phone,

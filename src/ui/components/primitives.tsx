@@ -45,28 +45,46 @@ export function PageHeader({
   )
 }
 
+/**
+ * C3 — the section heading lives ABOVE the card, not inside it.
+ *
+ * Burying a 13px uppercase label inside the card made every block look the
+ * same weight, so the page had no scannable structure. The heading now sits
+ * outside at the `section` scale, with generous space above it and tight space
+ * below, so it visually belongs to the card it introduces. The card itself
+ * holds content only.
+ */
 export function Section({
   title,
   action,
   children,
   className = '',
   padded = true,
+  /** Suppress the top margin when the section opens a column. */
+  flush = false,
 }: {
   title?: string
   action?: ReactNode
   children: ReactNode
   className?: string
   padded?: boolean
+  flush?: boolean
 }) {
   return (
-    <section className={`card ${padded ? 'card-pad' : ''} ${className}`}>
+    <section className={className}>
       {(title || action) && (
-        <div className="mb-3 flex items-center justify-between gap-3">
-          {title && <h2 className="section-title">{title}</h2>}
+        <div
+          className={`flex items-end justify-between gap-3 pb-2.5 ${
+            flush ? '' : 'pt-1'
+          }`}
+        >
+          {title && (
+            <h2 className="text-section text-content-primary">{title}</h2>
+          )}
           {action}
         </div>
       )}
-      {children}
+      <div className={`card ${padded ? 'card-pad' : ''}`}>{children}</div>
     </section>
   )
 }
@@ -135,7 +153,7 @@ export function Stat({
     default: 'text-content-primary',
     alert: 'text-status-danger',
     good: 'text-status-success',
-    accent: 'text-accent',
+    accent: 'text-accent-ink',
   }[tone]
 
   return (

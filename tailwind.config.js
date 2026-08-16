@@ -38,6 +38,10 @@ export default {
           DEFAULT: token('accent'),
           strong: token('accent-strong'),
           dim: token('accent-dim'),
+          // `accent` is the FILL; `accent-ink` is the same identity used as
+          // foreground text. They diverge sharply in the light theme, where the
+          // fill amber is far too light to read as text on paper.
+          ink: token('accent-ink'),
         },
         status: {
           success: token('status-success'),
@@ -82,6 +86,14 @@ export default {
           {
             lineHeight: 'var(--text-display-height)',
             letterSpacing: 'var(--text-display-tracking)',
+            fontWeight: '600',
+          },
+        ],
+        section: [
+          'var(--text-section-size)',
+          {
+            lineHeight: 'var(--text-section-height)',
+            letterSpacing: 'var(--text-section-tracking)',
             fontWeight: '600',
           },
         ],

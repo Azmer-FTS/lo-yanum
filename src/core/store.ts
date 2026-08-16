@@ -249,6 +249,7 @@ export function setCommitmentFulfilled(
 // the signatures are shaped to survive that swap unchanged.
 
 export interface FarmDraft {
+  photo: string | null
   name: string
   locality: string
   region: string
@@ -309,6 +310,7 @@ export function updateAnchorPoint(anchorId: string, draft: AnchorDraft): void {
 }
 
 export interface VolunteerDraft {
+  photo: string | null
   name: string
   age: number
   phone: string

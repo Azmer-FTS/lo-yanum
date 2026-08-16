@@ -1,93 +1,109 @@
 /* =========================================================================
-   LO YANUM — "NIGHT WATCH" DESIGN TOKENS
+   LO YANUM — DESIGN TOKENS (light + dark)
    =========================================================================
    THE single source of truth for colour, elevation, radius, motion and type.
-   No component may contain a hardcoded hex value; everything below is exposed
-   to Tailwind through tailwind.config.js.
+   No component may contain a hardcoded colour; everything below is exposed to
+   Tailwind through tailwind.config.js.
 
-   Colours are stored as SPACE-SEPARATED RGB CHANNELS, not hex, so Tailwind can
-   apply opacity modifiers to them: the config wraps each one as
-   `rgb(var(--token) / <alpha-value>)`, which makes `bg-surface-raised/60` and
-   `text-accent/70` work exactly like they do for built-in colours. A hex value
-   here would silently break every `/opacity` utility in the app.
+   COLOURS ARE SPACE-SEPARATED RGB CHANNELS, NOT HEX.
+   The config wraps each as `rgb(var(--token) / <alpha-value>)`, which is what
+   makes `bg-surface-raised/60` and `text-accent/70` work. A hex value here
+   silently breaks every `/opacity` utility in the app. The contrast audit
+   (`bun run contrast`) also parses these triplets, so the format is load-bearing.
 
-   Concept: a guard standing watch at 2 AM. Near-black blue ground, surfaces
-   that lift out of it by luminance rather than by borders, and a single warm
-   amber — the colour of a fire or a torch — reserved for the actions that
-   matter. Nothing in this app is ever plain white.
+   THEMING
+   -------
+   `:root`                     → LIGHT palette (the default).
+   `[data-theme='dark']`       → DARK overrides, applied when the user picks dark.
+   `prefers-color-scheme`      → the same dark overrides for the "system" choice,
+                                 guarded so an explicit light choice still wins.
+
+   Only VALUES change between themes; no component ever branches on the theme.
+   Semantic names stay stable: `surface-raised` is "the card surface" in both.
+
+   Concept: a guard standing watch. Warm off-white paper by day for desk work,
+   near-black blue by night for the field, and one amber — the colour of a fire
+   or a torch — carried through both as the identity thread.
    ========================================================================= */
 
 :root {
-  /* --- Ground and surfaces (ascending elevation) ----------------------- */
-  --surface-sunken: 8 13 24; /* #080D18 — wells, inputs, code blocks     */
-  --surface-base: 11 18 32; /* #0B1220 — the page itself                */
-  --surface-raised: 17 26 46; /* #111A2E — cards                          */
-  --surface-overlay: 22 33 59; /* #16213B — sticky bars, popovers, modals  */
-  --surface-high: 27 40 70; /* #1B2846 — desktop tables, hover rows     */
+  /* ---------------------------------------------------------------------
+     LIGHT — coordinator back-office default. Clean off-white paper, not the
+     pure #FFF page that turns a data table into a light box.
+     --------------------------------------------------------------------- */
 
-  /* --- Borders ---------------------------------------------------------- */
-  --border-subtle: 30 42 68; /* #1E2A44 — default card / divider edge    */
-  --border-strong: 46 62 96; /* #2E3E60 — inputs, focused containers     */
+  /* Surfaces, ascending elevation. In light, cards rise toward white. */
+  --surface-sunken: 232 227 217; /* #E8E3D9 — inputs, wells                */
+  --surface-base: 246 243 237; /* #F6F3ED — the page itself              */
+  --surface-raised: 255 255 255; /* #FFFFFF — cards                        */
+  --surface-overlay: 255 255 255; /* #FFFFFF — modals, sticky bars          */
+  --surface-high: 237 233 225; /* #EDE9E1 — table headers, hover rows    */
 
-  /* --- Text (warm off-white, never pure #FFF — it glares at night) ------ */
-  --text-primary: 244 239 228; /* #F4EFE4 */
-  --text-secondary: 184 192 212; /* #B8C0D4 */
-  --text-muted: 124 135 159; /* #7C879F */
-  --text-on-accent: 26 18 6; /* #1A1206 — near-black, for amber fills   */
+  --border-subtle: 221 214 201; /* #DDD6C9 */
+  --border-strong: 184 174 156; /* #B8AE9C */
 
-  /* --- Accent: fire / torch amber. Primary actions and highlights only. -- */
-  --accent: 245 158 11; /* #F59E0B */
-  --accent-strong: 251 191 36; /* #FBBF24 — hover / active                 */
-  --accent-dim: 180 116 8; /* #B47408 — pressed, disabled fills        */
+  --text-primary: 24 27 36; /* #181B24 */
+  --text-secondary: 68 76 94; /* #444C5E */
+  --text-muted: 96 105 125; /* #60697D */
+  --text-on-accent: 28 18 4; /* #1C1204 — near-black, for amber fills */
 
-  /* --- Semantic status (tuned for contrast on the dark ground) ---------- */
-  --status-success: 52 211 153; /* #34D399 */
-  --status-warn: 251 191 36; /* #FBBF24 */
-  --status-danger: 248 113 113; /* #F87171 */
-  --status-info: 96 165 250; /* #60A5FA */
+  /* Brand amber. `accent` is the FILL (buttons, active pills, markers).
+     `accent-ink` is the same identity used as FOREGROUND text on a surface —
+     it must be dark enough to read on paper, which the fill amber is not. */
+  --accent: 217 119 6; /* #D97706 — fill                        */
+  --accent-strong: 239 142 18; /* #EF8E12 — hover: BRIGHTENS, see note  */
+  --accent-dim: 196 106 5; /* #C46A05 — pressed                     */
+  --accent-ink: 138 74 0; /* #8A4A00 — accent AS TEXT             */
 
-  /* --- Farm pipeline statuses ------------------------------------------
-     Consumed by chips, list dots AND map markers, so a status can never be
-     green in one place and amber in another. */
-  --farm-to-contact: 139 149 173; /* #8B95AD */
-  --farm-contacted: 251 191 36; /* #FBBF24 */
-  --farm-visited: 251 146 60; /* #FB923C */
-  --farm-verbal-ok: 96 165 250; /* #60A5FA */
-  --farm-signed: 167 139 250; /* #A78BFA */
-  --farm-active: 52 211 153; /* #34D399 */
-  --farm-declined: 248 113 113; /* #F87171 */
+  /* Semantic status. Dark enough to read as chip text on their own tint. */
+  --status-success: 15 110 66; /* #0F6E42 */
+  --status-warn: 141 84 4; /* #8D5404 */
+  --status-danger: 176 32 36; /* #B02024 */
+  --status-info: 21 92 165; /* #155CA5 */
 
-  /* --- Elevation -------------------------------------------------------
-     Dark UIs cannot use grey drop-shadows to signal lift — they vanish. These
-     combine a deep black shadow for depth with a 1px top highlight (inset) so
-     a card reads as catching light from above. */
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.28),
-    inset 0 1px 0 rgb(255 255 255 / 0.04);
-  --shadow-lift: 0 4px 12px rgb(0 0 0 / 0.45), 0 16px 40px rgb(0 0 0 / 0.4),
-    inset 0 1px 0 rgb(255 255 255 / 0.06);
-  --shadow-accent: 0 4px 14px rgb(245 158 11 / 0.28);
+  /* Farm pipeline. Consumed by chips, list dots AND map markers, so a status
+     can never be green in one place and amber in another. */
+  --farm-to-contact: 88 96 114; /* #586072 */
+  --farm-contacted: 141 84 4; /* #8D5404 */
+  --farm-visited: 154 68 12; /* #9A440C */
+  --farm-verbal-ok: 21 92 165; /* #155CA5 */
+  --farm-signed: 104 62 181; /* #683EB5 */
+  --farm-active: 15 110 66; /* #0F6E42 */
+  --farm-declined: 176 32 36; /* #B02024 */
 
-  /* --- Radii ------------------------------------------------------------ */
+  /* Elevation: on paper a soft grey drop-shadow reads correctly. */
+  --shadow-card: 0 1px 2px rgb(60 50 30 / 0.06), 0 2px 8px rgb(60 50 30 / 0.06);
+  --shadow-lift: 0 4px 10px rgb(60 50 30 / 0.1), 0 12px 32px rgb(60 50 30 / 0.12);
+  --shadow-accent: 0 3px 10px rgb(217 119 6 / 0.3);
+
+  /* Daylight map: OSM tiles are already a day map, so barely touch them. */
+  --map-filter: saturate(0.9) brightness(1.02);
+
+  /* --- Theme-independent ------------------------------------------------ */
+
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-pill: 999px;
 
-  /* --- Motion ----------------------------------------------------------- */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --duration-fast: 150ms;
   --duration-base: 180ms;
   --duration-slow: 220ms;
 
-  /* --- Type scale -------------------------------------------------------
-     Line-heights tighten as size grows. Numeric-heavy styles get their own
-     tighter leading so counters and tables do not look airy and loose. */
   --font-sans: 'Rubik', system-ui, -apple-system, sans-serif;
 
+  /* Type scale. Line-height tightens as size grows; numeric styles get their
+     own tighter leading so a column of figures scans fast. */
   --text-display-size: clamp(2.5rem, 7vw, 4rem);
   --text-display-height: 1.05;
   --text-display-tracking: -0.03em;
+
+  /* C3: section headings sit ABOVE their card and must carry real weight. */
+  --text-section-size: 1.25rem;
+  --text-section-height: 1.25;
+  --text-section-tracking: -0.01em;
 
   --text-title-size: 1.5rem;
   --text-title-height: 1.2;
@@ -105,6 +121,111 @@
   --text-micro-size: 0.6875rem;
   --text-micro-height: 1.4;
 
-  /* Counters and table figures: tight, so a column of numbers scans fast. */
   --text-numeric-height: 1.1;
+}
+
+/* ---------------------------------------------------------------------------
+   DARK — field default (volunteer / driver / farmer), night use.
+   Rebuilt for contrast: every surface step is clearly separated by luminance,
+   and muted text was lightened until it passes AA on the CARD, not just on the
+   page background — which is where it actually renders.
+   --------------------------------------------------------------------------- */
+
+[data-theme='dark'] {
+  --surface-sunken: 7 12 22; /* #070C16 */
+  --surface-base: 13 21 36; /* #0D1524 */
+  --surface-raised: 32 48 76; /* #20304C — a clear step above the page */
+  --surface-overlay: 42 60 93; /* #2A3C5D */
+  --surface-high: 44 62 93; /* #2C3E5D — hover / table headers  */
+
+  --border-subtle: 51 69 101; /* #334565 */
+  --border-strong: 79 101 140; /* #4F658C */
+
+  --text-primary: 245 241 232; /* #F5F1E8 — warm off-white, never pure  */
+  --text-secondary: 205 213 230; /* #CDD5E6 */
+  --text-muted: 168 180 204; /* #A8B4CC — lightened to clear AA on
+                                every surface, not just the page */
+  --text-on-accent: 28 18 4; /* #1C1204 */
+
+  --accent: 245 158 11; /* #F59E0B — fill                        */
+  --accent-strong: 251 191 36; /* #FBBF24 */
+  --accent-dim: 180 116 8; /* #B47408 */
+  --accent-ink: 251 191 36; /* #FBBF24 — bright enough to be text    */
+
+  --status-success: 74 222 155; /* #4ADE9B */
+  --status-warn: 252 200 70; /* #FCC846 */
+  --status-danger: 252 143 143; /* #FC8F8F */
+  --status-info: 125 185 255; /* #7DB9FF */
+
+  --farm-to-contact: 168 179 202; /* #A8B3CA */
+  --farm-contacted: 252 200 70; /* #FCC846 */
+  --farm-visited: 253 164 96; /* #FDA460 */
+  --farm-verbal-ok: 125 185 255; /* #7DB9FF */
+  --farm-signed: 188 165 253; /* #BCA5FD */
+  --farm-active: 74 222 155; /* #4ADE9B */
+  --farm-declined: 252 143 143; /* #FC8F8F */
+
+  /* On dark, a grey drop-shadow vanishes: use deep black plus a 1px inset top
+     highlight so a card reads as catching light from above. */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.28),
+    inset 0 1px 0 rgb(255 255 255 / 0.05);
+  --shadow-lift: 0 4px 12px rgb(0 0 0 / 0.45), 0 16px 40px rgb(0 0 0 / 0.4),
+    inset 0 1px 0 rgb(255 255 255 / 0.07);
+  --shadow-accent: 0 4px 14px rgb(245 158 11 / 0.28);
+
+  /* Night map: invert + hue-rotate turns the daylight OSM raster into a dark
+     map. Heavy desaturation is deliberate — without it the inverted Negev goes
+     a loud orange that fights the amber accent. */
+  --map-filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.88)
+    saturate(0.25);
+}
+
+/*
+ * The "system" choice sets no data-theme attribute at all, so the OS preference
+ * decides. The :not() guard means an explicit light choice still wins on a
+ * machine set to dark.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --surface-sunken: 7 12 22;
+    --surface-base: 13 21 36;
+    --surface-raised: 32 48 76;
+    --surface-overlay: 42 60 93;
+    --surface-high: 44 62 93;
+
+    --border-subtle: 51 69 101;
+    --border-strong: 79 101 140;
+
+    --text-primary: 245 241 232;
+    --text-secondary: 205 213 230;
+    --text-muted: 168 180 204;
+    --text-on-accent: 28 18 4;
+
+    --accent: 245 158 11;
+    --accent-strong: 251 191 36;
+    --accent-dim: 180 116 8;
+    --accent-ink: 251 191 36;
+
+    --status-success: 74 222 155;
+    --status-warn: 252 200 70;
+    --status-danger: 252 143 143;
+    --status-info: 125 185 255;
+
+    --farm-to-contact: 168 179 202;
+    --farm-contacted: 252 200 70;
+    --farm-visited: 253 164 96;
+    --farm-verbal-ok: 125 185 255;
+    --farm-signed: 188 165 253;
+    --farm-active: 74 222 155;
+    --farm-declined: 252 143 143;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.28),
+      inset 0 1px 0 rgb(255 255 255 / 0.05);
+    --shadow-lift: 0 4px 12px rgb(0 0 0 / 0.45), 0 16px 40px rgb(0 0 0 / 0.4),
+      inset 0 1px 0 rgb(255 255 255 / 0.07);
+    --shadow-accent: 0 4px 14px rgb(245 158 11 / 0.28);
+
+    --map-filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.88)
+      saturate(0.25);
+  }
 }

@@ -175,7 +175,7 @@ export function IncidentDetailScreen() {
                   href={googleMapsPointUrl(incident.position)}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-micro font-medium text-accent hover:underline"
+                  className="inline-flex items-center gap-1 text-micro font-medium text-accent-ink hover:underline"
                 >
                   <Icon name="external" size={13} />
                   {t('common.openInMaps')}

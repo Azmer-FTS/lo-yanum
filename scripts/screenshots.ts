@@ -31,14 +31,23 @@ interface Shot {
    * in the middle of the page.
    */
   fullPage?: boolean
+  /** Force a theme rather than using the role default. */
+  theme?: 'light' | 'dark' | 'system'
+  /** Route planner: tick the pending farms so the live trace is drawn. */
+  selectRoute?: boolean
 }
 
+/** Every map screen needs real settle time: WebGL init + OSM tiles + fitBounds. */
+const MAP_SETTLE = 6000
+
 const SHOTS: Shot[] = [
-  { name: '1-dashboard', session: 'coordinator', hash: '#/coordinator' },
-  { name: '2-global-map', session: 'coordinator', hash: '#/coordinator/map', settleMs: 3500 },
-  { name: '3-volunteers-table', session: 'coordinator', hash: '#/coordinator/volunteers' },
-  { name: '4-farm-form', session: 'coordinator', hash: '#/coordinator/farms/farm-01/edit' },
-  { name: '5-volunteer-my-guard', session: 'volunteer:vol-001', hash: '#/volunteer', settleMs: 3000 },
+  { name: '1-dashboard-light', session: 'coordinator', hash: '#/coordinator', theme: 'light', settleMs: MAP_SETTLE },
+  { name: '2-dashboard-dark', session: 'coordinator', hash: '#/coordinator', theme: 'dark', settleMs: MAP_SETTLE },
+  { name: '3-farms-map-first', session: 'coordinator', hash: '#/coordinator/farms', settleMs: MAP_SETTLE },
+  { name: '4-route-planner', session: 'coordinator', hash: '#/coordinator/route', settleMs: MAP_SETTLE, selectRoute: true },
+  { name: '5-incidents-map-first', session: 'coordinator', hash: '#/coordinator/incidents', settleMs: MAP_SETTLE },
+  { name: '6-driver-roster', session: 'driver:drv-03', hash: '#/driver', settleMs: 3500 },
+  { name: '7-volunteers-table', session: 'coordinator', hash: '#/coordinator/volunteers', settleMs: 1500 },
 ]
 
 async function main() {
@@ -64,13 +73,48 @@ async function main() {
       await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'networkidle' })
       await page.waitForSelector('select', { state: 'attached' })
 
+      if (shot.theme) {
+        await page.evaluate((th) => {
+          for (const role of ['coordinator', 'farmer', 'volunteer', 'driver']) {
+            localStorage.setItem(`lo-yanum:theme:${role}`, th)
+          }
+        }, shot.theme)
+        await page.reload({ waitUntil: 'networkidle' })
+        await page.waitForSelector('select', { state: 'attached' })
+      } else {
+        await page.evaluate(() => {
+          Object.keys(localStorage)
+            .filter((k) => k.startsWith('lo-yanum:theme'))
+            .forEach((k) => localStorage.removeItem(k))
+        })
+      }
+
       // Then pick the identity through the toolbar, exactly as a user would.
       await page.selectOption('select', shot.session)
       await page.waitForTimeout(400)
 
+      if (shot.theme) {
+        await page.evaluate((th) => {
+          localStorage.setItem('lo-yanum:theme:coordinator', th)
+          localStorage.setItem('lo-yanum:theme:driver', th)
+          localStorage.setItem('lo-yanum:theme:volunteer', th)
+        }, shot.theme)
+      }
+
       await page.evaluate((h) => {
         window.location.hash = h
       }, shot.hash)
+      await page.waitForTimeout(1200)
+
+      if (shot.selectRoute) {
+        await page.evaluate(() => {
+          const btn = [...document.querySelectorAll('button')].find((b) =>
+            b.textContent?.includes('בחירה מהירה'),
+          )
+          ;(btn as HTMLButtonElement | undefined)?.click()
+        })
+      }
+
       await page.waitForTimeout(shot.settleMs ?? 1200)
 
       const file = path.join(OUT, `${shot.name}-${vp.name}.png`)

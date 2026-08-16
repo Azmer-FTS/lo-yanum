@@ -3,13 +3,14 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Lo Yanum — farm guard coordination tool (Lot 0.5: Night Watch POC)",
+  "description": "Lo Yanum — farm guard coordination tool (Lot 0.6: map-first, themed POC)",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "screenshots": "bun run scripts/screenshots.ts"
+    "screenshots": "bun run scripts/screenshots.ts",
+    "contrast": "bun run scripts/contrast.ts"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.9",

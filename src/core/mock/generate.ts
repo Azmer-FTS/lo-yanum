@@ -143,6 +143,7 @@ export function generateVolunteers(
       inactiveReason: inactive ? pick(rng, INACTIVE_REASONS) : null,
       notes: pick(rng, NOTE_POOL),
       lastActivityAt,
+      photo: null,
     })
   }
 

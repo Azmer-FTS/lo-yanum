@@ -233,7 +233,7 @@ export function ImportWizardScreen() {
                             : 'border-edge-strong hover:border-accent/60 hover:bg-surface-high/50'
                         }`}
           >
-            <span className="text-accent">
+            <span className="text-accent-ink">
               <Icon name="upload" size={34} />
             </span>
             <p className="text-heading text-content-primary">

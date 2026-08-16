@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { createVolunteer, updateVolunteer } from '@core/index'
 import type { PhoneType, Volunteer, VolunteerDraft, VolunteerStatus } from '@core/index'
 
+import { PhotoField } from '../../components/PhotoField'
 import {
   SelectField,
   TextArea,
@@ -39,6 +40,7 @@ export function VolunteerFormModal({
     volunteer?.inactiveReason ?? '',
   )
   const [notes, setNotes] = useState(volunteer?.notes ?? '')
+  const [photo, setPhoto] = useState<string | null>(volunteer?.photo ?? null)
   const [touched, setTouched] = useState(false)
 
   const ageNum = Number(age)
@@ -68,6 +70,7 @@ export function VolunteerFormModal({
     if (!valid) return
 
     const draft: VolunteerDraft = {
+      photo,
       name: name.trim(),
       age: Number.isFinite(ageNum) && ageNum > 0 ? ageNum : 20,
       phone: phone.trim(),
@@ -93,6 +96,14 @@ export function VolunteerFormModal({
       wide
     >
       <div className="grid gap-4 md:grid-cols-2">
+        <div className="md:col-span-2">
+          <PhotoField
+            label={t('photo.personLabel')}
+            value={photo}
+            onChange={setPhoto}
+            name={name}
+          />
+        </div>
         <TextField
           label={t('form.name')}
           value={name}

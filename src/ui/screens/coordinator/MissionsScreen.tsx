@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 
 import {
   formatDate,
@@ -9,80 +10,107 @@ import {
   getUpcomingMissionViews,
   resolveConfirmation,
 } from '@core/index'
-import type { MissionView } from '@core/index'
+import type { MissionStatus } from '@core/index'
 
-import { Icon } from '../../components/Icon'
-import { MissionStatusChip } from '../../components/badges'
-import {
-  EmptyState,
-  FilterBar,
-  FilterPill,
-  PageHeader,
-  RowLink,
-} from '../../components/primitives'
+import { Avatar } from '../../components/Avatar'
+import { ChevronForward, Icon } from '../../components/Icon'
+import { MapPanel, withInteraction } from '../../components/MapPanel'
+import type { MapMarker } from '../../components/MapView'
+import { MissionStatusChip, readToken } from '../../components/badges'
+import { EmptyState, FilterPill } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
-export function MissionRow({ view }: { view: MissionView }) {
-  const { t } = useTranslation()
-  const locale = useLocale()
-  const { mission, farm, anchorPoint, driver, volunteers } = view
-
-  // A driver-vs-group disagreement on any person, either leg, flags the row.
-  const mismatch = mission.assignments.some(
-    (a) =>
-      resolveConfirmation(a.outbound) === 'mismatch' ||
-      resolveConfirmation(a.inbound) === 'mismatch',
-  )
-
-  return (
-    <RowLink to={`/coordinator/missions/${mission.id}`}>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-caption font-medium">{farm.name}</span>
-        <MissionStatusChip status={mission.status} />
-        {mismatch && (
-          <span className="chip bg-status-warn/15 text-status-warn">
-            <Icon name="alert" size={12} />
-            {t('alerts.presence_mismatch')}
-          </span>
-        )}
-      </div>
-
-      <p className="muted mt-0.5">
-        <span className="ltr-nums">{formatDate(mission.startAt, locale)}</span>{' '}
-        · {formatWeekday(mission.startAt, locale)} ·{' '}
-        <span className="ltr-nums">
-          {formatTime(mission.startAt, locale)}–{formatTime(mission.endAt, locale)}
-        </span>
-      </p>
-
-      <p className="muted mt-0.5 truncate">
-        {anchorPoint.name} · {volunteers.map((v) => v.volunteer.name).join(', ')}
-        {driver ? ` · ${driver.name}` : ` · ${t('missions.noDriver')}`}
-      </p>
-    </RowLink>
-  )
+const STATUS_TOKEN: Record<MissionStatus, string> = {
+  planned: '--status-info',
+  in_progress: '--status-success',
+  completed: '--text-muted',
+  // Amber, not red: the group is probably fine and nobody confirmed — that is
+  // an alert to chase, not an emergency.
+  return_not_confirmed: '--status-warn',
 }
 
+const STATUSES: MissionStatus[] = [
+  'in_progress',
+  'planned',
+  'return_not_confirmed',
+  'completed',
+]
+
+/**
+ * C1.4 — missions, map-first.
+ *
+ * Guards are plotted on their ANCHOR POINTS, not on the farm centroid, because
+ * that is where the group physically is.
+ */
 export function MissionsScreen() {
   const { t } = useTranslation()
+  const locale = useLocale()
+  const navigate = useNavigate()
+
   const upcoming = useCoreValue(getUpcomingMissionViews)
   const past = useCoreValue(getPastMissionViews)
-  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming')
 
-  const list = useMemo(
-    () => (tab === 'upcoming' ? upcoming : past),
-    [tab, upcoming, past],
+  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming')
+  const [status, setStatus] = useState<MissionStatus | null>(null)
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+
+  const list = useMemo(() => {
+    const base = tab === 'upcoming' ? upcoming : past
+    return status === null ? base : base.filter((v) => v.mission.status === status)
+  }, [tab, upcoming, past, status])
+
+  const markers: MapMarker[] = useMemo(
+    () =>
+      list.map((view) =>
+        withInteraction(
+          {
+            id: view.mission.id,
+            position: view.anchorPoint.position,
+            color: readToken(STATUS_TOKEN[view.mission.status]),
+            title: view.farm.name,
+            subtitle: view.anchorPoint.name,
+            kind: 'mission',
+            pulse: view.mission.status === 'return_not_confirmed',
+          },
+          { hoveredId, selectedId: null },
+          {
+            onHover: setHoveredId,
+            onSelect: () => navigate(`/coordinator/missions/${view.mission.id}`),
+          },
+        ),
+      ),
+    [list, hoveredId, navigate],
   )
 
   return (
-    <>
-      <PageHeader
-        title={t('missions.title')}
-        subtitle={t('missions.count', { count: list.length })}
-      />
+    <MapPanel
+      ariaLabel={t('map.missionsMap')}
+      markers={markers}
+      legend={
+        <ul className="flex flex-col gap-1.5">
+          {STATUSES.map((s) => (
+            <li key={s} className="flex items-center gap-2">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-pill"
+                style={{ backgroundColor: readToken(STATUS_TOKEN[s]) }}
+              />
+              <span className="text-caption text-content-secondary">
+                {t(`missionStatus.${s}`)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      }
+    >
+      <header className="mb-4">
+        <h1 className="text-title text-content-primary">{t('missions.title')}</h1>
+        <p className="muted mt-1">
+          {t('missions.count', { count: list.length })}
+        </p>
+      </header>
 
-      <FilterBar>
+      <div className="mb-4 flex flex-wrap gap-1.5">
         <FilterPill
           active={tab === 'upcoming'}
           onClick={() => setTab('upcoming')}
@@ -97,19 +125,99 @@ export function MissionsScreen() {
         >
           {t('missions.past')}
         </FilterPill>
-      </FilterBar>
+        <span className="h-5 w-px shrink-0 bg-edge-strong" />
+        {STATUSES.map((s) => (
+          <FilterPill
+            key={s}
+            active={status === s}
+            onClick={() => setStatus(status === s ? null : s)}
+          >
+            {t(`missionStatus.${s}`)}
+          </FilterPill>
+        ))}
+      </div>
 
       {list.length === 0 ? (
         <EmptyState icon="shield" title={t('missions.empty')} />
       ) : (
-        <ul className="card divide-y divide-edge-subtle p-1.5">
-          {list.map((view) => (
-            <li key={view.mission.id}>
-              <MissionRow view={view} />
-            </li>
-          ))}
+        <ul className="flex flex-col gap-2">
+          {list.map((view) => {
+            const { mission, farm, anchorPoint, driver, volunteers } = view
+            const active = mission.id === hoveredId
+            const mismatch = mission.assignments.some(
+              (a) =>
+                resolveConfirmation(a.outbound) === 'mismatch' ||
+                resolveConfirmation(a.inbound) === 'mismatch',
+            )
+
+            return (
+              <li key={mission.id}>
+                <button
+                  type="button"
+                  onMouseEnter={() => setHoveredId(mission.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onFocus={() => setHoveredId(mission.id)}
+                  onBlur={() => setHoveredId(null)}
+                  onClick={() => navigate(`/coordinator/missions/${mission.id}`)}
+                  className={`w-full rounded-md border px-3 py-2.5 text-start transition-all duration-fast ease-out ${
+                    active
+                      ? 'border-accent/60 bg-accent/10'
+                      : 'border-edge-subtle hover:bg-surface-high'
+                  }`}
+                >
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-caption font-medium text-content-primary">
+                      {farm.name}
+                    </span>
+                    <MissionStatusChip status={mission.status} />
+                    {mismatch && (
+                      <span className="chip bg-status-warn/15 text-status-warn">
+                        <Icon name="alert" size={11} />
+                        {t('alerts.presence_mismatch')}
+                      </span>
+                    )}
+                  </span>
+
+                  <span className="muted mt-1 block">
+                    <span className="ltr-nums">
+                      {formatDate(mission.startAt, locale)}
+                    </span>{' '}
+                    · {formatWeekday(mission.startAt, locale)} ·{' '}
+                    <span className="ltr-nums">
+                      {formatTime(mission.startAt, locale)}–
+                      {formatTime(mission.endAt, locale)}
+                    </span>
+                  </span>
+
+                  <span className="muted mt-0.5 block truncate">
+                    {anchorPoint.name}
+                    {driver ? ` · ${driver.name}` : ` · ${t('missions.noDriver')}`}
+                  </span>
+
+                  {/* Faces, not just names: the coordinator recognises the team
+                      at a glance (C5.3). */}
+                  <span className="mt-2 flex items-center gap-1.5">
+                    {volunteers.slice(0, 5).map(({ volunteer }) => (
+                      <Avatar
+                        key={volunteer.id}
+                        photo={volunteer.photo}
+                        name={volunteer.name}
+                        size="xs"
+                      />
+                    ))}
+                    {volunteers.length > 5 && (
+                      <span className="numeric text-micro text-content-muted">
+                        +{volunteers.length - 5}
+                      </span>
+                    )}
+                    <ChevronForward size={13} />
+                  </span>
+                </button>
+              </li>
+            )
+          })}
         </ul>
       )}
-    </>
+    </MapPanel>
   )
 }

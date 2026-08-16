@@ -53,7 +53,7 @@ export function LandingScreen() {
 
       <div className="relative mx-auto flex min-h-dvh w-full max-w-3xl flex-col justify-center px-5 py-12 sm:py-16">
         <header className="text-center">
-          <span className="mx-auto mb-7 flex h-16 w-16 items-center justify-center rounded-lg bg-accent/15 text-accent shadow-accent ring-1 ring-accent/30">
+          <span className="mx-auto mb-7 flex h-16 w-16 items-center justify-center rounded-lg bg-accent/15 text-accent-ink shadow-accent ring-1 ring-accent/30">
             <Icon name="shield" size={34} />
           </span>
 
@@ -67,7 +67,7 @@ export function LandingScreen() {
             <p className="text-title font-normal leading-loose text-content-primary/90 sm:text-[1.75rem]">
               {t('app.verse')}
             </p>
-            <p className="mt-3 text-caption tracking-wide text-accent/80">
+            <p className="mt-3 text-caption tracking-wide text-accent-ink/80">
               {t('app.verseRef')}
             </p>
             <span
@@ -94,7 +94,7 @@ export function LandingScreen() {
 
               return (
                 <div key={role} className="card card-pad">
-                  <p className="mb-3 flex items-center gap-2 text-caption font-semibold text-accent">
+                  <p className="mb-3 flex items-center gap-2 text-caption font-semibold text-accent-ink">
                     <Icon name={ROLE_ICON[role]} size={17} />
                     {t(`roles.${role}`)}
                   </p>
@@ -117,7 +117,7 @@ export function LandingScreen() {
                             </span>
                           )}
                         </span>
-                        <span className="shrink-0 text-content-muted transition-colors duration-fast group-hover:text-accent">
+                        <span className="shrink-0 text-content-muted transition-colors duration-fast group-hover:text-accent-ink">
                           <Icon
                             name="chevron"
                             size={16}

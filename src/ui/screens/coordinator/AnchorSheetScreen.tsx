@@ -214,7 +214,7 @@ export function AnchorSheetScreen() {
             <ul className="flex flex-col gap-2">
               {anchor.instructions.map((line, i) => (
                 <li key={i} className="flex gap-2.5 text-caption text-content-secondary">
-                  <span className="mt-0.5 shrink-0 text-accent">
+                  <span className="mt-0.5 shrink-0 text-accent-ink">
                     <Icon name="check" size={15} />
                   </span>
                   {line}

@@ -1,5 +1,6 @@
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import {
   formatDate,
@@ -15,32 +16,34 @@ import {
 } from '@core/index'
 import type { DashboardAlert } from '@core/index'
 
+import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
+import { MapView } from '../../components/MapView'
+import type { MapMarker } from '../../components/MapView'
 import {
   FarmStatusChip,
   FarmStatusDot,
   MissionStatusChip,
+  readStatusColor,
+  readToken,
 } from '../../components/badges'
-import {
-  EmptyState,
-  PageHeader,
-  RowLink,
-  Section,
-  Stat,
-} from '../../components/primitives'
+import { EmptyState, Stat } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
 const ALERT_TONE: Record<DashboardAlert['kind'], string> = {
-  urgent_incident: 'border-status-danger/40 bg-status-danger/10 text-status-danger',
-  presence_mismatch: 'border-status-warn/40 bg-status-warn/10 text-status-warn',
-  return_not_confirmed: 'border-status-warn/30 bg-status-warn/5 text-status-warn',
+  urgent_incident: 'border-status-danger/50 bg-status-danger/10',
+  presence_mismatch: 'border-status-warn/50 bg-status-warn/10',
+  return_not_confirmed: 'border-status-warn/35 bg-status-warn/5',
 }
 
-/**
- * An alert carries its own call list, so the coordinator can dial the people
- * involved straight from the dashboard rather than navigating first (R6).
- */
+const ALERT_ICON_TONE: Record<DashboardAlert['kind'], string> = {
+  urgent_incident: 'text-status-danger',
+  presence_mismatch: 'text-status-warn',
+  return_not_confirmed: 'text-status-warn',
+}
+
+/** An alert carries its own call list, so the coordinator dials without navigating. */
 function AlertCard({ alert }: { alert: DashboardAlert }) {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -53,15 +56,15 @@ function AlertCard({ alert }: { alert: DashboardAlert }) {
         : alert.detail
 
   return (
-    <li className={`rounded-lg border p-4 ${ALERT_TONE[alert.kind]}`}>
+    <li className={`rounded-md border p-3.5 ${ALERT_TONE[alert.kind]}`}>
       <Link to={alert.href} className="block">
         <div className="flex items-start gap-3">
-          <span className="mt-0.5 shrink-0">
+          <span className={`mt-0.5 shrink-0 ${ALERT_ICON_TONE[alert.kind]}`}>
             <Icon name="alert" size={18} />
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-x-2">
-              <span className="text-caption font-semibold">
+              <span className="text-caption font-semibold text-content-primary">
                 {t(`alerts.${alert.kind}`)}
               </span>
               <span className="text-micro text-content-muted">
@@ -79,18 +82,18 @@ function AlertCard({ alert }: { alert: DashboardAlert }) {
       </Link>
 
       {alert.contacts.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2 border-t border-current/15 pt-3">
+        <div className="mt-3 flex flex-wrap gap-2 border-t border-edge-subtle pt-3">
           {alert.contacts.map((c) => (
             <a
               key={`${c.phone}-${c.roleKey}`}
               href={telHref(c.phone)}
-              className="inline-flex items-center gap-2 rounded-pill bg-surface-overlay px-3 py-1.5
+              className="inline-flex items-center gap-2 rounded-pill bg-surface-high px-3 py-1.5
                          text-micro font-medium text-content-primary
-                         transition-all duration-fast ease-out hover:bg-surface-high active:scale-95"
+                         transition-all duration-fast ease-out hover:bg-accent hover:text-content-on-accent active:scale-95"
             >
               <Icon name="phone" size={13} />
               {c.name}
-              <span className="text-content-muted">{t(c.roleKey)}</span>
+              <span className="opacity-60">{t(c.roleKey)}</span>
             </a>
           ))}
         </div>
@@ -99,9 +102,18 @@ function AlertCard({ alert }: { alert: DashboardAlert }) {
   )
 }
 
+/**
+ * C4 — the dashboard is a map plus a single column of decisions.
+ *
+ * Desktop: the map is a full-height column on the visual left (~1/3), carrying
+ * every farm coloured by status plus the open urgent incidents. The rest is one
+ * KPI row, then alerts, then what to do next — no statistics stranded at the
+ * bottom of the page where nobody scrolls.
+ */
 export function DashboardScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
+  const navigate = useNavigate()
 
   const farms = useCoreValue(getVisibleFarms)
   const statusCounts = useCoreValue(getFarmStatusCounts)
@@ -109,38 +121,79 @@ export function DashboardScreen() {
   const alerts = useCoreValue(getAlerts)
   const tonight = useCoreValue(getTonightMissionViews)
   const stats = useCoreValue(getVolunteerStats)
-  const openIncidents = useCoreValue(
-    () => getVisibleIncidents().filter((i) => !i.resolved).length,
+  const openIncidents = useCoreValue(() =>
+    getVisibleIncidents().filter((i) => !i.resolved),
   )
 
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
   const activeFarms = farms.filter((f) => f.status === 'active').length
 
+  const markers: MapMarker[] = useMemo(() => {
+    const farmMarkers = farms.map((farm) => ({
+      id: farm.id,
+      position: farm.position,
+      color: readStatusColor(farm.status),
+      title: farm.name,
+      subtitle: farm.locality,
+      kind: 'farm' as const,
+      emphasis: farm.id === hoveredId,
+      onHover: setHoveredId,
+      onSelect: () => navigate(`/coordinator/farms/${farm.id}`),
+    }))
+
+    const urgentMarkers = openIncidents
+      .filter((i) => i.severity === 'urgent' && i.position !== null)
+      .map((incident) => ({
+        id: `inc-${incident.id}`,
+        position: incident.position as { lat: number; lng: number },
+        color: readToken('--status-danger'),
+        title: t('severity.urgent'),
+        subtitle: incident.reporterName,
+        kind: 'incident' as const,
+        pulse: true,
+        onSelect: () => navigate(`/coordinator/incidents/${incident.id}`),
+      }))
+
+    return [...farmMarkers, ...urgentMarkers]
+  }, [farms, openIncidents, hoveredId, navigate, t])
+
   return (
-    <>
-      <PageHeader title={t('dashboard.title')} subtitle={t('app.tagline')} />
+    <div className="flex flex-col gap-4 lg:h-[calc(100dvh-3rem)] lg:flex-row-reverse">
+      {/* Decisions column, 2/3 */}
+      <div className="min-w-0 flex-1 overflow-y-auto pe-0.5">
+        <header className="mb-4">
+          <h1 className="text-title text-content-primary">
+            {t('dashboard.title')}
+          </h1>
+          <p className="muted mt-1">{t('app.tagline')}</p>
+        </header>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label={t('dashboard.totalFarms')} value={farms.length} icon="farm" />
-        <Stat
-          label={t('dashboard.activeFarms')}
-          value={activeFarms}
-          tone="good"
-          icon="shield"
-        />
-        <Stat label={t('volunteers.title')} value={stats.active} icon="users" />
-        <Stat
-          label={t('dashboard.openIncidents')}
-          value={openIncidents}
-          tone={openIncidents > 0 ? 'alert' : 'default'}
-          icon="alert"
-        />
-      </div>
+        {/* ONE KPI row — nothing statistical is left stranded at the bottom. */}
+        <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <Stat label={t('dashboard.totalFarms')} value={farms.length} icon="farm" />
+          <Stat
+            label={t('dashboard.activeFarms')}
+            value={activeFarms}
+            tone="good"
+            icon="shield"
+          />
+          <Stat label={t('volunteers.title')} value={stats.active} icon="users" />
+          <Stat
+            label={t('dashboard.openIncidents')}
+            value={openIncidents.length}
+            tone={openIncidents.length > 0 ? 'alert' : 'default'}
+            icon="alert"
+          />
+        </div>
 
-      {/* Alerts first: they are the reason the coordinator opens the app. */}
-      <div className="mt-4 grid gap-4 xl:grid-cols-3">
-        <Section title={t('dashboard.alerts')} className="xl:col-span-2">
+        <section className="mb-6">
+          <h2 className="pb-2.5 text-section text-content-primary">
+            {t('dashboard.alerts')}
+          </h2>
           {alerts.length === 0 ? (
-            <EmptyState icon="check" title={t('dashboard.noAlerts')} />
+            <div className="card card-pad">
+              <EmptyState icon="check" title={t('dashboard.noAlerts')} />
+            </div>
           ) : (
             <ul className="flex flex-col gap-2">
               {alerts.map((alert) => (
@@ -148,131 +201,165 @@ export function DashboardScreen() {
               ))}
             </ul>
           )}
-        </Section>
+        </section>
 
-        <Section title={t('dashboard.farmsByStatus')}>
-          <ul className="flex flex-col gap-0.5">
-            {statusCounts.map(({ status, count }) => (
-              <li key={status}>
-                <Link
-                  to={`/coordinator/farms?status=${status}`}
-                  className="flex items-center gap-2.5 rounded-sm px-2 py-1.5 transition-colors duration-fast hover:bg-surface-high"
-                >
-                  <FarmStatusDot status={status} />
-                  <span className="flex-1 text-caption text-content-secondary">
-                    {t(`farmStatus.${status}`)}
-                  </span>
-                  <span className="numeric text-caption font-semibold text-content-primary">
-                    {count}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      </div>
-
-      <div className="mt-4 grid gap-4 xl:grid-cols-3">
-        <Section title={t('dashboard.tonightGuards')} className="xl:col-span-2">
-          {tonight.length === 0 ? (
-            <EmptyState title={t('dashboard.noTonightGuards')} />
-          ) : (
-            <ul className="divide-y divide-edge-subtle">
-              {tonight.map((view) => (
-                <li key={view.mission.id}>
-                  <RowLink to={`/coordinator/missions/${view.mission.id}`}>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-caption font-medium text-content-primary">
-                        {view.farm.name}
+        <section className="mb-6">
+          <h2 className="pb-2.5 text-section text-content-primary">
+            {t('dashboard.tonightGuards')}
+          </h2>
+          <div className="card card-pad">
+            {tonight.length === 0 ? (
+              <EmptyState title={t('dashboard.noTonightGuards')} />
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {tonight.map((view) => (
+                  <li key={view.mission.id}>
+                    <Link
+                      to={`/coordinator/missions/${view.mission.id}`}
+                      className="flex items-center gap-3 rounded-md px-2 py-2 transition-colors duration-fast hover:bg-surface-high"
+                    >
+                      <span className="flex -space-x-2 rtl:space-x-reverse">
+                        {view.volunteers.slice(0, 3).map(({ volunteer }) => (
+                          <Avatar
+                            key={volunteer.id}
+                            photo={volunteer.photo}
+                            name={volunteer.name}
+                            size="xs"
+                          />
+                        ))}
                       </span>
-                      <MissionStatusChip status={view.mission.status} />
-                    </div>
-                    <p className="muted mt-0.5">
-                      {view.anchorPoint.name} ·{' '}
-                      <span className="ltr-nums">
-                        {formatTime(view.mission.startAt, locale)}
-                      </span>{' '}
-                      · {view.volunteers.map((v) => v.volunteer.name).join(', ')}
-                    </p>
-                  </RowLink>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
-
-        <Section
-          title={t('dashboard.nextVisits')}
-          action={
-            <Link
-              to="/coordinator/route"
-              className="text-micro font-medium text-accent hover:underline"
-            >
-              {t('nav.route')}
-            </Link>
-          }
-        >
-          {nextVisits.length === 0 ? (
-            <EmptyState title={t('dashboard.noNextVisits')} />
-          ) : (
-            <ul className="divide-y divide-edge-subtle">
-              {nextVisits.map((farm) => (
-                <li key={farm.id}>
-                  <RowLink to={`/coordinator/farms/${farm.id}`}>
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-caption font-medium text-content-primary">
-                        {farm.name}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="text-caption font-medium text-content-primary">
+                            {view.farm.name}
+                          </span>
+                          <MissionStatusChip status={view.mission.status} />
+                        </span>
+                        <span className="muted mt-0.5 block truncate">
+                          {view.anchorPoint.name} ·{' '}
+                          <span className="ltr-nums">
+                            {formatTime(view.mission.startAt, locale)}
+                          </span>
+                        </span>
                       </span>
-                      <FarmStatusChip status={farm.status} />
-                    </div>
-                    <p className="muted mt-0.5">
-                      {farm.locality} ·{' '}
-                      <span className="ltr-nums">
-                        {formatDate(farm.nextVisitAt as string, locale)}
-                      </span>
-                    </p>
-                  </RowLink>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
-      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
 
-      <Section title={t('dashboard.volunteerStats')} className="mt-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { label: t('volunteerStatus.active'), value: stats.active },
-            { label: t('volunteerStatus.inactive'), value: stats.inactive },
-            { label: t('volunteers.statsSmartphone'), value: stats.smartphone },
-            { label: t('volunteers.statsKosher'), value: stats.kosher },
-          ].map((row) => (
-            <div
-              key={row.label}
-              className="rounded-md bg-surface-high px-3.5 py-3"
-            >
-              <p className="muted">{row.label}</p>
-              <p className="numeric mt-1 text-title text-content-primary">
-                {row.value}
-              </p>
+        <div className="mb-6 grid gap-4 xl:grid-cols-2">
+          <section>
+            <div className="flex items-end justify-between gap-3 pb-2.5">
+              <h2 className="text-section text-content-primary">
+                {t('dashboard.nextVisits')}
+              </h2>
+              <Link
+                to="/coordinator/route"
+                className="text-micro font-medium text-accent-ink hover:underline"
+              >
+                {t('nav.route')}
+              </Link>
             </div>
-          ))}
-        </div>
+            <div className="card card-pad">
+              {nextVisits.length === 0 ? (
+                <EmptyState title={t('dashboard.noNextVisits')} />
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {nextVisits.map((farm) => (
+                    <li key={farm.id}>
+                      <Link
+                        to={`/coordinator/farms/${farm.id}`}
+                        onMouseEnter={() => setHoveredId(farm.id)}
+                        onMouseLeave={() => setHoveredId(null)}
+                        className={`flex items-center gap-3 rounded-md px-2 py-2 transition-colors duration-fast ${
+                          hoveredId === farm.id
+                            ? 'bg-accent/10'
+                            : 'hover:bg-surface-high'
+                        }`}
+                      >
+                        <Avatar
+                          photo={farm.photo}
+                          name={farm.name}
+                          size="sm"
+                          shape="square"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-2">
+                            <span className="truncate text-caption font-medium text-content-primary">
+                              {farm.name}
+                            </span>
+                            <FarmStatusChip status={farm.status} />
+                          </span>
+                          <span className="muted mt-0.5 block">
+                            {farm.locality} ·{' '}
+                            <span className="ltr-nums">
+                              {formatDate(farm.nextVisitAt as string, locale)}
+                            </span>
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
 
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {stats.byYeshiva.map((row) => (
-            <li
-              key={row.yeshiva}
-              className="chip border border-edge-subtle bg-surface-high text-content-secondary"
-            >
-              {row.yeshiva}
-              <span className="numeric font-semibold text-content-primary">
-                {row.count}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Section>
-    </>
+          <section>
+            <h2 className="pb-2.5 text-section text-content-primary">
+              {t('dashboard.farmsByStatus')}
+            </h2>
+            <div className="card card-pad">
+              <ul className="flex flex-col gap-0.5">
+                {statusCounts.map(({ status, count }) => (
+                  <li key={status}>
+                    <Link
+                      to={`/coordinator/farms?status=${status}`}
+                      className="flex items-center gap-2.5 rounded-sm px-2 py-1.5 transition-colors duration-fast hover:bg-surface-high"
+                    >
+                      <FarmStatusDot status={status} />
+                      <span className="flex-1 text-caption text-content-secondary">
+                        {t(`farmStatus.${status}`)}
+                      </span>
+                      <span className="numeric text-caption font-semibold text-content-primary">
+                        {count}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-3 grid grid-cols-2 gap-2 border-t border-edge-subtle pt-3">
+                <div>
+                  <p className="muted">{t('volunteers.statsSmartphone')}</p>
+                  <p className="numeric text-heading text-content-primary">
+                    {stats.smartphone}
+                  </p>
+                </div>
+                <div>
+                  <p className="muted">{t('volunteers.statsKosher')}</p>
+                  <p className="numeric text-heading text-accent-ink">
+                    {stats.kosher}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      {/* Map column, 1/3, full height on desktop; a prominent block on mobile. */}
+      <div className="order-first h-64 shrink-0 sm:h-80 lg:order-none lg:h-auto lg:w-[32%] lg:max-w-md">
+        <MapView
+          ariaLabel={t('map.farmsMap')}
+          className="h-full w-full"
+          markers={markers}
+          fit
+        />
+      </div>
+    </div>
   )
 }

@@ -1,4 +1,4 @@
-import { HOME_BASE, haversineKm } from './geo'
+import { HOME_BASE, haversineKm, wazeUrl } from './geo'
 import type { Farm, LatLng } from './types'
 
 export interface RouteStop {
@@ -98,6 +98,43 @@ export function googleMapsRouteUrl(
   }
 
   return `https://www.google.com/maps/dir/?${params.toString()}`
+}
+
+export interface WazeStep {
+  order: number
+  farmName: string
+  url: string
+}
+
+/**
+ * Waze has no multi-stop URL scheme — a single link can only carry one
+ * destination. So instead of silently dropping stops, produce one link per
+ * farm, in visit order, and let the coordinator tap them as they go.
+ *
+ * Google Maps keeps its single multi-stop URL (see googleMapsRouteUrl), which
+ * is why the planner offers both: coverage and routing quality differ by area,
+ * and neither app wins everywhere in the Negev.
+ */
+export function wazeStepLinks(route: PlannedRoute): WazeStep[] {
+  return route.stops.map((stop) => ({
+    order: stop.order,
+    farmName: stop.farm.name,
+    url: wazeUrl(stop.farm.position),
+  }))
+}
+
+/**
+ * The polyline drawn on the planner map: origin → each stop in order → back.
+ * Straight segments, not road geometry — this POC has no routing service, and
+ * the shape is there to make the ORDER legible, not to navigate by.
+ */
+export function routePolyline(route: PlannedRoute): LatLng[] {
+  if (route.stops.length === 0) return []
+  return [
+    route.origin,
+    ...route.stops.map((s) => s.farm.position),
+    route.origin,
+  ]
 }
 
 /** Rough drive-time estimate: Negev road factor 1.35 over a 72 km/h average. */

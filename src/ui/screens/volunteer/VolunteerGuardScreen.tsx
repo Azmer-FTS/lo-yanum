@@ -12,6 +12,7 @@ import {
   wazeUrl,
 } from '@core/index'
 
+import { Avatar } from '../../components/Avatar'
 import { CallRow } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
@@ -125,7 +126,7 @@ export function VolunteerGuardScreen() {
               href={wazeUrl(anchorPoint.position)}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-micro font-medium text-accent hover:underline"
+              className="inline-flex items-center gap-1 text-micro font-medium text-accent-ink hover:underline"
             >
               <Icon name="pin" size={13} />
               {t('common.openInWaze')}
@@ -158,7 +159,7 @@ export function VolunteerGuardScreen() {
           <ul className="flex flex-col gap-2">
             {anchorPoint.instructions.map((line, i) => (
               <li key={i} className="flex gap-2.5 text-caption text-content-secondary">
-                <span className="mt-0.5 shrink-0 text-accent">
+                <span className="mt-0.5 shrink-0 text-accent-ink">
                   <Icon name="check" size={15} />
                 </span>
                 {line}
@@ -173,6 +174,7 @@ export function VolunteerGuardScreen() {
               <CallRow
                 name={farmerContact.name}
                 phone={farmerContact.phone}
+                photo={farmerContact.photo}
                 label={t('anchor.labelFarmer')}
               />
             )}
@@ -180,6 +182,7 @@ export function VolunteerGuardScreen() {
               <CallRow
                 name={driver.name}
                 phone={driver.phone}
+                photo={driver.photo}
                 label={t('anchor.labelDriver')}
               />
             )}
@@ -194,10 +197,13 @@ export function VolunteerGuardScreen() {
         <Section title={t('volunteer.team')}>
           <ul className="divide-y divide-edge-subtle">
             {volunteers.map(({ volunteer, isGroupPhone }) => (
-              <li
-                key={volunteer.id}
-                className="flex flex-wrap items-center gap-2 py-2.5"
-              >
+              <li key={volunteer.id} className="flex items-center gap-3 py-2.5">
+                <Avatar
+                  photo={volunteer.photo}
+                  name={volunteer.name}
+                  size="sm"
+                  ring={isGroupPhone}
+                />
                 <span className="text-caption font-medium">{volunteer.name}</span>
                 <PhoneTypeChip type={volunteer.phoneType} />
                 {isGroupPhone && (

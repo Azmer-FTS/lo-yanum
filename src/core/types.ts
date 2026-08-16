@@ -73,6 +73,8 @@ export interface FarmContact {
   name: string
   phone: string
   role: string
+  /** Data URI in Lot 0.6; a Supabase Storage key from Lot 1 (see core/photo.ts). */
+  photo: string | null
   /** The contact that may sign in as FARMER for this farm. */
   isPrimary: boolean
 }
@@ -101,6 +103,8 @@ export interface Farm {
   notes: string
   lastVisitAt: string | null
   nextVisitAt: string | null
+  /** Photo of the place itself. */
+  photo: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -144,6 +148,7 @@ export interface Volunteer {
   notes: string
   /** ISO datetime of the last guard served — the roster's "last activity". */
   lastActivityAt: string | null
+  photo: string | null
 }
 
 export interface Driver {
@@ -153,6 +158,7 @@ export interface Driver {
   vehicle: string
   seats: number
   locality: string
+  photo: string | null
 }
 
 // ---------------------------------------------------------------------------

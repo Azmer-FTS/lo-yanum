@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 
 import { smsHref, telHref, whatsappHref } from '@core/index'
 
+import { Avatar } from './Avatar'
 import { Icon } from './Icon'
 
 /**
@@ -62,14 +63,16 @@ export function ContactActions({
   phone,
   role,
   message,
+  className = '',
 }: {
   name: string
   phone: string
   role?: string
   message?: string
+  className?: string
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-2.5">
+    <div className={`flex items-center justify-between gap-3 py-2.5 ${className}`}>
       <div className="min-w-0">
         <p className="truncate text-caption font-medium text-content-primary">
           {name}
@@ -85,33 +88,65 @@ export function ContactActions({
 }
 
 /** Call-only variant for the field screens, where one tap is the whole story. */
+/**
+ * C6 — the field-screen contact row. A face, a name, the number, and a call
+ * button that IS the whole row. A phone number on a field screen must never be
+ * dead text: at 02:00 the only useful action is one tap to dial.
+ */
 export function CallRow({
   name,
   phone,
   label,
+  photo,
+  whatsapp = false,
 }: {
   name: string
   phone: string
   label: string
+  photo?: string | null
+  /** Offer WhatsApp too — smartphone holders only. */
+  whatsapp?: boolean
 }) {
+  const { t } = useTranslation()
+
   return (
-    <a
-      href={telHref(phone)}
-      className="flex items-center gap-3 rounded-md border border-edge-subtle bg-surface-raised px-3.5 py-3
-                 transition-all duration-fast ease-out hover:border-accent/40 hover:bg-surface-high active:scale-[0.99]"
-    >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent/15 text-accent">
-        <Icon name="phone" size={18} />
-      </span>
-      <span className="min-w-0 flex-1">
+    <div className="flex items-center gap-3 rounded-md border border-edge-subtle bg-surface-raised px-3 py-2.5">
+      <Avatar photo={photo} name={name} size="md" />
+      <a
+        href={telHref(phone)}
+        className="min-w-0 flex-1 rounded-sm transition-opacity duration-fast active:opacity-70"
+      >
         <span className="block text-micro text-content-muted">{label}</span>
         <span className="block truncate text-caption font-medium text-content-primary">
           {name}
         </span>
-      </span>
-      <span className="ltr-nums shrink-0 text-caption text-content-secondary">
-        {phone}
-      </span>
-    </a>
+        <span className="ltr-nums block text-micro text-content-secondary">
+          {phone}
+        </span>
+      </a>
+      <div className="flex shrink-0 items-center gap-1.5">
+        {whatsapp && (
+          <a
+            href={whatsappHref(phone)}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`${t('common.whatsapp')} ${name}`}
+            className="flex h-11 w-11 items-center justify-center rounded-md border border-edge-strong
+                       text-status-success transition-all duration-fast ease-out
+                       hover:bg-status-success/10 active:scale-95"
+          >
+            <Icon name="whatsapp" size={19} />
+          </a>
+        )}
+        <a
+          href={telHref(phone)}
+          aria-label={`${t('common.call')} ${name}`}
+          className="flex h-11 w-11 items-center justify-center rounded-md bg-accent text-content-on-accent
+                     transition-all duration-fast ease-out hover:bg-accent-strong active:scale-95"
+        >
+          <Icon name="phone" size={19} />
+        </a>
+      </div>
+    </div>
   )
 }

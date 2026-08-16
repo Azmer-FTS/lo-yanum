@@ -35,20 +35,28 @@ const FARM_STATUS_TOKEN: Record<FarmStatus, string> = {
  * value off :root — the token file stays the single source of truth.
  */
 export function readStatusColor(status: FarmStatus): string {
-  if (typeof window === 'undefined') return 'rgb(139 149 173)'
-  const channels = getComputedStyle(document.documentElement)
-    .getPropertyValue(FARM_STATUS_TOKEN[status])
-    .trim()
-  return channels ? `rgb(${channels})` : 'rgb(139 149 173)'
+  return readToken(FARM_STATUS_TOKEN[status], 'rgb(139, 149, 173)')
 }
 
-/** Resolve any token to a colour string, for the same DOM-outside-React cases. */
-export function readToken(name: string): string {
-  if (typeof window === 'undefined') return 'rgb(245 158 11)'
+/**
+ * Resolve any colour token to a concrete string, for the DOM-outside-React
+ * cases (MapLibre markers and paint properties).
+ *
+ * Emits the COMMA form `rgb(r, g, b)`. The tokens are stored as space-separated
+ * channels for Tailwind's `<alpha-value>` support, but MapLibre's own colour
+ * parser only accepts the legacy comma syntax — feeding it `rgb(246 243 237)`
+ * throws inside the style-load handler and silently kills tile rendering.
+ */
+export function readToken(name: string, fallback = 'rgb(245, 158, 11)'): string {
+  if (typeof window === 'undefined') return fallback
   const channels = getComputedStyle(document.documentElement)
     .getPropertyValue(name)
     .trim()
-  return channels ? `rgb(${channels})` : 'rgb(245 158 11)'
+  if (!channels) return fallback
+  const parts = channels.split(/\s+/)
+  return parts.length >= 3
+    ? `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`
+    : fallback
 }
 
 /** Tinted chip: coloured text on a 15% wash of the same colour. */
@@ -143,7 +151,7 @@ export function PhoneTypeChip({ type }: { type: PhoneType }) {
     <span
       className={`chip ${
         type === 'kosher'
-          ? 'bg-accent/15 text-accent'
+          ? 'bg-accent/15 text-accent-ink'
           : 'bg-status-info/15 text-status-info'
       }`}
     >

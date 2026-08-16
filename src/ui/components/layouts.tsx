@@ -8,6 +8,7 @@ import { useCoreValue } from '../hooks/useCore'
 import { DevToolbar } from './DevToolbar'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
+import { ThemeToggle } from './ThemeToggle'
 
 interface NavItem {
   to: string
@@ -19,7 +20,6 @@ interface NavItem {
 const COORDINATOR_NAV: NavItem[] = [
   { to: '/coordinator', icon: 'dashboard', labelKey: 'nav.dashboard', end: true },
   { to: '/coordinator/farms', icon: 'farm', labelKey: 'nav.farms' },
-  { to: '/coordinator/map', icon: 'map', labelKey: 'nav.map' },
   { to: '/coordinator/route', icon: 'route', labelKey: 'nav.route' },
   { to: '/coordinator/volunteers', icon: 'users', labelKey: 'nav.volunteers' },
   { to: '/coordinator/missions', icon: 'shield', labelKey: 'nav.missions' },
@@ -27,13 +27,18 @@ const COORDINATOR_NAV: NavItem[] = [
 ]
 
 /** Routes that manage their own full-bleed canvas and must not be padded. */
-const BLEED_ROUTES = ['/coordinator/map']
+const BLEED_ROUTES = [
+  '/coordinator/farms',
+  '/coordinator/route',
+  '/coordinator/missions',
+  '/coordinator/incidents',
+]
 
 function Brand({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation()
   return (
     <div className="flex min-w-0 items-center gap-2.5">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent/15 text-accent ring-1 ring-accent/25">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent/15 text-accent-ink ring-1 ring-accent/25">
         <Icon name="shield" size={19} />
       </span>
       {!compact && (
@@ -79,7 +84,7 @@ export function CoordinatorLayout() {
         `group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-caption font-medium
          transition-all duration-fast ease-out ${
            isActive
-             ? 'bg-accent/15 text-accent'
+             ? 'bg-accent/15 text-accent-ink'
              : 'text-content-secondary hover:bg-surface-high hover:text-content-primary'
          } ${showLabel ? '' : 'justify-center px-0'}`
       }
@@ -118,6 +123,10 @@ export function CoordinatorLayout() {
           </nav>
 
           <div className="mt-auto flex flex-col gap-2">
+            <div className={expanded ? '' : 'flex justify-center'}>
+              <ThemeToggle compact={!expanded} />
+            </div>
+
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
@@ -144,7 +153,7 @@ export function CoordinatorLayout() {
                   </p>
                 </>
               ) : (
-                <span className="text-caption font-semibold text-accent">
+                <span className="text-caption font-semibold text-accent-ink">
                   {COORDINATOR.name.slice(0, 1)}
                 </span>
               )}
@@ -156,14 +165,17 @@ export function CoordinatorLayout() {
           {/* Mobile / tablet top bar */}
           <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-edge-subtle bg-surface-overlay/95 px-4 py-3 backdrop-blur lg:hidden">
             <Brand />
-            <button
+            <div className="flex items-center gap-2">
+              <ThemeToggle compact />
+              <button
               type="button"
               onClick={() => setMenuOpen(true)}
               aria-label={t('a11y.openMenu')}
               className="rounded-md p-2 text-content-secondary transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
             >
               <Icon name="menu" />
-            </button>
+              </button>
+            </div>
           </header>
 
           <main
@@ -227,13 +239,16 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
       <header className="sticky top-0 z-30 border-b border-edge-subtle bg-surface-overlay/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
           <Brand />
-          <div className="min-w-0 text-end leading-tight">
-            <p className="truncate text-caption font-medium text-content-primary">
-              {name}
-            </p>
-            <p className="text-micro text-content-muted">
-              {t(`roles.${session.role}`)}
-            </p>
+          <div className="flex items-center gap-3">
+            <ThemeToggle compact />
+            <div className="min-w-0 text-end leading-tight">
+              <p className="truncate text-caption font-medium text-content-primary">
+                {name}
+              </p>
+              <p className="text-micro text-content-muted">
+                {t(`roles.${session.role}`)}
+              </p>
+            </div>
           </div>
         </div>
       </header>
@@ -254,7 +269,7 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
                   `flex flex-1 flex-col items-center gap-1 px-2 py-2.5 text-micro font-medium
                    transition-colors duration-fast ease-out ${
                      isActive
-                       ? 'text-accent'
+                       ? 'text-accent-ink'
                        : 'text-content-muted hover:text-content-secondary'
                    }`
                 }

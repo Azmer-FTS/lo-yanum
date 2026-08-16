@@ -93,7 +93,7 @@ export function DriverTripScreen() {
               href={wazeUrl(anchorPoint.position)}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-caption font-medium text-accent hover:underline"
+              className="inline-flex items-center gap-1 text-caption font-medium text-accent-ink hover:underline"
             >
               <Icon name="pin" size={13} />
               {t('common.openInWaze')}

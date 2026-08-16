@@ -106,6 +106,8 @@ export function FarmerTonightScreen() {
                       key={volunteer.id}
                       name={volunteer.name}
                       phone={volunteer.phone}
+                      photo={volunteer.photo}
+                      whatsapp={volunteer.phoneType === 'smartphone'}
                       label={
                         isGroupPhone
                           ? t('volunteers.groupPhoneHolder')
@@ -121,6 +123,7 @@ export function FarmerTonightScreen() {
                   <CallRow
                     name={driver.name}
                     phone={driver.phone}
+                    photo={driver.photo}
                     label={driver.vehicle}
                   />
                 </Section>
@@ -133,7 +136,7 @@ export function FarmerTonightScreen() {
                     href={wazeUrl(anchorPoint.position)}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-micro font-medium text-accent hover:underline"
+                    className="inline-flex items-center gap-1 text-micro font-medium text-accent-ink hover:underline"
                   >
                     <Icon name="pin" size={13} />
                     {t('common.openInWaze')}

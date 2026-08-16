@@ -56,6 +56,11 @@ export type IconName =
   | 'expand'
   | 'collapse'
   | 'sparkle'
+  | 'sun'
+  | 'display'
+  | 'camera2'
+  | 'image'
+  | 'user'
 
 type Props = SVGProps<SVGSVGElement> & { name: IconName; size?: number }
 
@@ -267,6 +272,38 @@ const PATHS: Record<IconName, ReactNode> = {
   collapse: <path d="M4 9h5V4M20 15h-5v5M9 20v-5H4M15 4v5h5" />,
   sparkle: (
     <path d="M12 3.5 13.8 9l5.5 1.8-5.5 1.8L12 18.1l-1.8-5.5L4.7 10.8 10.2 9z" />
+  ),
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" />
+    </>
+  ),
+  display: (
+    <>
+      <rect x="3" y="4" width="18" height="12.5" rx="2" />
+      <path d="M9 20h6M12 16.5V20" />
+    </>
+  ),
+  camera2: (
+    <>
+      <path d="M4 8.5h3L8.5 6h7L17 8.5h3v10H4z" />
+      <circle cx="12" cy="13" r="3.2" />
+      <path d="M19 6.5h-2" />
+    </>
+  ),
+  image: (
+    <>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <circle cx="9" cy="10" r="1.8" />
+      <path d="m4.5 17 4.5-4.5 3.5 3.5 3-2.5 4 4" />
+    </>
+  ),
+  user: (
+    <>
+      <circle cx="12" cy="8.5" r="3.6" />
+      <path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" />
+    </>
   ),
 }
 

@@ -14,6 +14,8 @@ export * from './import'
 export * from './access'
 export * from './sessions'
 export * from './config'
+export * from './theme'
+export * from './photo'
 export {
   subscribe,
   getVersion,

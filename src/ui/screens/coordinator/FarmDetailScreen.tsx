@@ -13,6 +13,7 @@ import {
 } from '@core/index'
 import type { CommitmentKind, Farm, FarmStatus } from '@core/index'
 
+import { Avatar } from '../../components/Avatar'
 import { ContactActions } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
@@ -176,7 +177,7 @@ export function FarmDetailScreen() {
               href={googleMapsPointUrl(farm.position)}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-micro font-medium text-accent hover:underline"
+              className="inline-flex items-center gap-1 text-micro font-medium text-accent-ink hover:underline"
             >
               <Icon name="external" size={13} />
               {t('common.openInMaps')}
@@ -217,8 +218,10 @@ export function FarmDetailScreen() {
           <Section title={t('farms.contacts')}>
             <ul className="divide-y divide-edge-subtle">
               {farm.contacts.map((contact) => (
-                <li key={contact.id}>
+                <li key={contact.id} className="flex items-center gap-3">
+                  <Avatar photo={contact.photo} name={contact.name} size="md" />
                   <ContactActions
+                    className="flex-1"
                     name={contact.name}
                     phone={contact.phone}
                     role={
@@ -357,7 +360,7 @@ export function FarmDetailScreen() {
                     key={a.id}
                     className="flex items-center gap-3 rounded-md border border-edge-subtle px-3.5 py-3"
                   >
-                    <span className="text-accent">
+                    <span className="text-accent-ink">
                       <Icon name="document" size={19} />
                     </span>
                     <div className="min-w-0">

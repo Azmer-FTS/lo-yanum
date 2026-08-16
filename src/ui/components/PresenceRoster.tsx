@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import { setPresence, telHref } from '@core/index'
+import { setPresence, telHref, whatsappHref } from '@core/index'
 import type {
   MissionLeg,
   PresenceMark,
@@ -9,6 +9,7 @@ import type {
 } from '@core/index'
 import type { PresenceRow } from '@core/index'
 
+import { Avatar } from './Avatar'
 import { Icon } from './Icon'
 import { PhoneTypeChip } from './badges'
 import { Callout } from './primitives'
@@ -107,26 +108,56 @@ export function PresenceRoster({
                   : 'border-edge-subtle bg-surface-raised'
               }`}
             >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
+              {/* C6: a face, a name and a CALL button on one line — the driver
+                  never has to open a sub-screen to reach someone. */}
+              <div className="flex items-center gap-3">
+                <Avatar
+                  photo={row.volunteer.photo}
+                  name={row.volunteer.name}
+                  size="md"
+                  ring={row.isGroupPhone}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-caption font-medium text-content-primary">
                       {row.volunteer.name}
                     </span>
                     <PhoneTypeChip type={row.volunteer.phoneType} />
                     {row.isGroupPhone && (
-                      <span className="chip bg-accent/15 text-accent">
+                      <span className="chip bg-accent/15 text-accent-ink">
                         <Icon name="phone" size={10} />
                         {t('volunteers.groupPhoneHolder')}
                       </span>
                     )}
                   </div>
+                  <span className="ltr-nums mt-0.5 block text-micro text-content-muted">
+                    {row.volunteer.phone}
+                  </span>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
                   <a
                     href={telHref(row.volunteer.phone)}
-                    className="ltr-nums mt-0.5 inline-block text-micro text-content-muted hover:text-accent"
+                    aria-label={`${t('common.call')} ${row.volunteer.name}`}
+                    className="flex h-11 w-11 items-center justify-center rounded-md bg-accent text-content-on-accent
+                               transition-all duration-fast ease-out hover:bg-accent-strong active:scale-95"
                   >
-                    {row.volunteer.phone}
+                    <Icon name="phone" size={19} />
                   </a>
+                  {/* WhatsApp only for smartphone holders — a kosher phone has
+                      no app to open. */}
+                  {row.volunteer.phoneType === 'smartphone' && (
+                    <a
+                      href={whatsappHref(row.volunteer.phone)}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`${t('common.whatsapp')} ${row.volunteer.name}`}
+                      className="flex h-11 w-11 items-center justify-center rounded-md border border-edge-strong
+                                 text-status-success transition-all duration-fast ease-out
+                                 hover:bg-status-success/10 active:scale-95"
+                    >
+                      <Icon name="whatsapp" size={19} />
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -213,8 +244,8 @@ export function PresenceRoster({
                   }
                   className={`mt-2 w-full rounded-md px-3 py-2.5 text-caption font-semibold transition-all duration-fast ${
                     row.leg.self === 'present'
-                      ? 'bg-accent/20 text-accent'
-                      : 'border border-accent/40 text-accent hover:bg-accent/10'
+                      ? 'bg-accent/20 text-accent-ink'
+                      : 'border border-accent/40 text-accent-ink hover:bg-accent/10'
                   }`}
                 >
                   <Icon name="check" size={15} className="me-1.5 inline" />

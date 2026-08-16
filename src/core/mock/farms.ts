@@ -1,4 +1,5 @@
 import { atTime } from '../clock'
+import { placeholderPhoto, seedHasPhoto } from '../photo'
 import type { Farm } from '../types'
 
 /**
@@ -23,6 +24,7 @@ export const FARMS: Farm[] = [
         phone: '052-0000001',
         role: 'בעל החווה',
         isPrimary: true,
+        photo: null,
       },
       {
         id: 'contact-01b',
@@ -30,6 +32,7 @@ export const FARMS: Farm[] = [
         phone: '054-0000002',
         role: 'שותפה',
         isPrimary: false,
+        photo: null,
       },
     ],
     commitments: [
@@ -54,6 +57,7 @@ export const FARMS: Farm[] = [
       },
     ],
     notes: 'הכניסה מהשער הצפוני בלבד. הכלבים משוחררים אחרי חצות — להודיע בהגעה.',
+    photo: null,
     lastVisitAt: atTime(-21, 10, 0),
     nextVisitAt: atTime(9, 10, 0),
   },
@@ -74,6 +78,7 @@ export const FARMS: Farm[] = [
         phone: '050-0000003',
         role: 'בעל החווה',
         isPrimary: true,
+        photo: null,
       },
     ],
     commitments: [
@@ -94,6 +99,7 @@ export const FARMS: Farm[] = [
       },
     ],
     notes: 'גניבות חוזרות של ציוד השקיה בחלקה המזרחית. מצלמה אחת מושבתת.',
+    photo: null,
     lastVisitAt: atTime(-12, 14, 30),
     nextVisitAt: atTime(16, 9, 0),
   },
@@ -114,6 +120,7 @@ export const FARMS: Farm[] = [
         phone: '053-0000004',
         role: 'בעל החווה',
         isPrimary: true,
+        photo: null,
       },
       {
         id: 'contact-03b',
@@ -121,6 +128,7 @@ export const FARMS: Farm[] = [
         phone: '058-0000005',
         role: 'בן, אחראי לילות',
         isPrimary: false,
+        photo: null,
       },
     ],
     commitments: [
@@ -142,6 +150,7 @@ export const FARMS: Farm[] = [
       },
     ],
     notes: 'קליטה סלולרית אפסית בחלקות המערביות. תיאום טלפוני לפני יציאה.',
+    photo: null,
     lastVisitAt: atTime(-8, 11, 0),
     nextVisitAt: atTime(12, 10, 30),
   },
@@ -162,6 +171,7 @@ export const FARMS: Farm[] = [
         phone: '052-0000006',
         role: 'בעל החווה',
         isPrimary: true,
+        photo: null,
       },
     ],
     commitments: [
@@ -178,6 +188,7 @@ export const FARMS: Farm[] = [
       },
     ],
     notes: 'חתם השבוע. להשלים מיגון ללינה לפני שיבוץ שמירה ראשונה.',
+    photo: null,
     lastVisitAt: atTime(-11, 13, 0),
     nextVisitAt: atTime(4, 15, 0),
   },
@@ -198,6 +209,7 @@ export const FARMS: Farm[] = [
         phone: '050-0000007',
         role: 'בעל החווה',
         isPrimary: true,
+        photo: null,
       },
       {
         id: 'contact-05b',
@@ -205,11 +217,13 @@ export const FARMS: Farm[] = [
         phone: '054-0000008',
         role: 'מנהל עבודה',
         isPrimary: false,
+        photo: null,
       },
     ],
     commitments: [],
     agreements: [],
     notes: 'הסכים בעל־פה. מבקש לראות את נוסח ההסכם לפני חתימה. לחזור בעוד שבוע.',
+    photo: null,
     lastVisitAt: atTime(-6, 9, 30),
     nextVisitAt: atTime(2, 9, 30),
   },
@@ -230,11 +244,13 @@ export const FARMS: Farm[] = [
         phone: '058-0000009',
         role: 'בעל החווה',
         isPrimary: true,
+        photo: null,
       },
     ],
     commitments: [],
     agreements: [],
     notes: 'ביקור ראשון בוצע. מעוניין אך חושש מנוכחות זרים בלילה. לשלוח המלצות.',
+    photo: null,
     lastVisitAt: atTime(-4, 12, 15),
     nextVisitAt: atTime(6, 12, 0),
   },
@@ -255,11 +271,13 @@ export const FARMS: Farm[] = [
         phone: '052-0000010',
         role: 'בעל החווה',
         isPrimary: true,
+        photo: null,
       },
     ],
     commitments: [],
     agreements: [],
     notes: 'רחוק מאוד ממרכז ההסעות. לבדוק היתכנות נהג מאילת.',
+    photo: null,
     lastVisitAt: atTime(-17, 11, 45),
     nextVisitAt: null,
   },
@@ -280,6 +298,7 @@ export const FARMS: Farm[] = [
         phone: '050-0000011',
         role: 'בעל החווה',
         isPrimary: true,
+        photo: null,
       },
       {
         id: 'contact-08b',
@@ -287,6 +306,7 @@ export const FARMS: Farm[] = [
         phone: '053-0000012',
         role: 'רועה',
         isPrimary: false,
+        photo: null,
       },
       {
         id: 'contact-08c',
@@ -294,11 +314,13 @@ export const FARMS: Farm[] = [
         phone: '054-0000013',
         role: 'רכזת התנדבות אזורית',
         isPrimary: false,
+        photo: null,
       },
     ],
     commitments: [],
     agreements: [],
     notes: 'שיחת טלפון ראשונה. ביקש לתאם ביקור אחרי חג. עדיפות גבוהה — פריצות חוזרות.',
+    photo: null,
     lastVisitAt: null,
     nextVisitAt: atTime(3, 8, 30),
   },
@@ -319,11 +341,13 @@ export const FARMS: Farm[] = [
         phone: '052-0000014',
         role: 'בעל החווה',
         isPrimary: true,
+        photo: null,
       },
     ],
     commitments: [],
     agreements: [],
     notes: 'השאיר הודעה קולית, טרם חזר. לנסות שוב בשעות הבוקר.',
+    photo: null,
     lastVisitAt: null,
     nextVisitAt: atTime(5, 8, 0),
   },
@@ -344,11 +368,13 @@ export const FARMS: Farm[] = [
         phone: '054-0000015',
         role: 'בעל החווה',
         isPrimary: true,
+        photo: null,
       },
     ],
     commitments: [],
     agreements: [],
     notes: 'הופנה על ידי חוות נאות חלוצה. טרם נוצר קשר.',
+    photo: null,
     lastVisitAt: null,
     nextVisitAt: atTime(1, 9, 0),
   },
@@ -369,11 +395,13 @@ export const FARMS: Farm[] = [
         phone: '050-0000016',
         role: 'מנהל החווה',
         isPrimary: true,
+        photo: null,
       },
     ],
     commitments: [],
     agreements: [],
     notes: 'חווה גדולה, שלוש חלקות מרוחקות. לברר מי בעל הסמכות לחתום.',
+    photo: null,
     lastVisitAt: null,
     nextVisitAt: atTime(1, 13, 30),
   },
@@ -394,12 +422,30 @@ export const FARMS: Farm[] = [
         phone: '052-0000017',
         role: 'בעל החווה',
         isPrimary: true,
+        photo: null,
       },
     ],
     commitments: [],
     agreements: [],
     notes: 'מעדיף חברת שמירה בתשלום. ביקש לא לפנות שוב השנה.',
+    photo: null,
     lastVisitAt: atTime(-33, 10, 0),
     nextVisitAt: null,
   },
 ]
+
+/**
+ * Roughly half the farms and contacts carry a picture, chosen deterministically
+ * so the UI can be judged in its real mixed state — some rows with a photo,
+ * some falling back to initials (C5.4).
+ */
+for (const farm of FARMS) {
+  if (seedHasPhoto(farm.id, 0.55)) {
+    farm.photo = placeholderPhoto(farm.id, 'place')
+  }
+  for (const contact of farm.contacts) {
+    if (seedHasPhoto(contact.id, 0.5)) {
+      contact.photo = placeholderPhoto(contact.id, 'person')
+    }
+  }
+}

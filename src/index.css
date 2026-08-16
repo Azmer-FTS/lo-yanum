@@ -43,8 +43,14 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
-    color-scheme: dark;
+    /* Overridden per theme below so native widgets, form controls and the
+       default scrollbar follow the palette instead of fighting it. */
+    color-scheme: light;
     background-color: rgb(var(--surface-base));
+  }
+
+  html[data-theme='dark'] {
+    color-scheme: dark;
   }
 
   body {
@@ -109,10 +115,17 @@
     background-clip: content-box;
   }
 
-  /* Native form controls default to a light palette; force them dark. */
+  /* Native option lists ignore most styling; at least match the surface. */
   select option {
     background-color: rgb(var(--surface-overlay));
     color: rgb(var(--text-primary));
+  }
+}
+
+/* Kept outside @layer: a nested @media inside a layer trips the CSS minifier. */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) {
+    color-scheme: dark;
   }
 }
 
@@ -133,6 +146,8 @@
            hover:border-edge-strong hover:shadow-lift;
   }
 
+  /* Sub-label used INSIDE a card. Structural section headings are rendered by
+     <Section>, above the card, at the `section` scale (C3). */
   .section-title {
     @apply text-caption font-semibold uppercase tracking-wide text-content-muted;
   }
@@ -207,7 +222,7 @@
   }
 
   .filter-pill-active {
-    @apply border-accent/60 bg-accent/15 text-accent;
+    @apply border-accent/60 bg-accent/15 text-accent-ink;
   }
 
   /* --- Scroll containers ------------------------------------------------- */
@@ -254,6 +269,29 @@
   }
 }
 
+/* Pulsing halo for unresolved urgent incidents. Rendered as a pseudo-element so
+   the animation never scales the marker's own hit area. */
+.map-marker-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+  border: 2px solid var(--pulse-color);
+  animation: marker-pulse 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes marker-pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+
 /* --- MapLibre ------------------------------------------------------------ */
 
 .maplibregl-map {
@@ -280,8 +318,21 @@
   border-top: 1px solid rgb(var(--border-subtle)) !important;
 }
 
-.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+/* MapLibre ships black control glyphs; invert them only where the chrome is
+   dark, otherwise they disappear into a light panel. */
+[data-theme='dark'] .maplibregl-ctrl-group button .maplibregl-ctrl-icon,
+[data-theme='dark'] .maplibregl-ctrl-attrib-button {
   filter: invert(1) brightness(1.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light'])
+    .maplibregl-ctrl-group
+    button
+    .maplibregl-ctrl-icon,
+  :root:not([data-theme='light']) .maplibregl-ctrl-attrib-button {
+    filter: invert(1) brightness(1.6);
+  }
 }
 
 .maplibregl-ctrl-group button:hover {
@@ -298,10 +349,6 @@
   color: rgb(var(--text-secondary)) !important;
 }
 
-.maplibregl-ctrl-attrib-button {
-  filter: invert(1) brightness(1.6);
-}
-
 .maplibregl-popup-content {
   background: rgb(var(--surface-overlay)) !important;
   color: rgb(var(--text-primary)) !important;
@@ -316,14 +363,10 @@
   border-bottom-color: rgb(var(--surface-overlay)) !important;
 }
 
-/* OSM raster tiles are a daylight map. Invert + hue-rotate turns them into a
-   night map (dark ground, light roads) without needing a paid dark tile style.
-   Only the GL canvas is filtered — markers are DOM siblings, so their token
-   colours stay true. */
+/* The tile filter is a THEME TOKEN: the dark theme inverts the daylight OSM
+   raster into a night map, the light theme barely touches it. Only the GL
+   canvas is filtered — markers are DOM siblings, so their token colours stay
+   true in both themes. */
 .map-night .maplibregl-canvas {
-  /* Heavy desaturation is deliberate: inverted OSM turns the Negev's sand and
-     military-zone hatching into a loud orange that competes with the amber
-     accent and the status markers. Neutral terrain, coloured pins. */
-  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.88)
-    saturate(0.25);
+  filter: var(--map-filter);
 }

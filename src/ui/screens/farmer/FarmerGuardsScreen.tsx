@@ -105,7 +105,7 @@ export function FarmerGuardsScreen() {
                   key={`${c.kind}-${i}`}
                   className="flex items-start gap-2.5 text-caption"
                 >
-                  <span className="mt-0.5 shrink-0 text-accent">
+                  <span className="mt-0.5 shrink-0 text-accent-ink">
                     <Icon name={COMMITMENT_ICON[c.kind]} size={16} />
                   </span>
                   <span className="min-w-0">

@@ -1,4 +1,5 @@
 import { DAY, iso, now } from '../clock'
+import { placeholderPhoto, seedHasPhoto } from '../photo'
 import type { Driver, Volunteer } from '../types'
 import { generateVolunteers } from './generate'
 
@@ -35,6 +36,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: 'אחראי קבוצה ותיק. מכיר את כל נקודות העיגון ברמת נגב.',
     lastActivityAt: seedActivity(1),
+    photo: null,
   },
   {
     id: 'vol-002',
@@ -49,6 +51,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: '',
     lastActivityAt: seedActivity(2),
+    photo: null,
   },
   {
     id: 'vol-003',
@@ -63,6 +66,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: 'חובש מוסמך.',
     lastActivityAt: seedActivity(3),
+    photo: null,
   },
   {
     id: 'vol-004',
@@ -77,6 +81,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: '',
     lastActivityAt: seedActivity(4),
+    photo: null,
   },
   {
     id: 'vol-005',
@@ -91,6 +96,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: 'גיוס לשירות מילואים ממושך',
     notes: 'לחזור אליו בסוף הזמן.',
     lastActivityAt: seedActivity(5),
+    photo: null,
   },
   {
     id: 'vol-006',
@@ -105,6 +111,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: '',
     lastActivityAt: seedActivity(6),
+    photo: null,
   },
   {
     id: 'vol-007',
@@ -119,6 +126,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: 'אחראי קבוצה. נהג מלווה בשעת הצורך.',
     lastActivityAt: seedActivity(7),
+    photo: null,
   },
   {
     id: 'vol-008',
@@ -133,6 +141,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: '',
     lastActivityAt: seedActivity(8),
+    photo: null,
   },
   {
     id: 'vol-009',
@@ -147,6 +156,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: 'התנדבות ראשונה בחודש שעבר.',
     lastActivityAt: seedActivity(9),
+    photo: null,
   },
   {
     id: 'vol-010',
@@ -161,6 +171,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: '',
     lastActivityAt: seedActivity(10),
+    photo: null,
   },
   {
     id: 'vol-011',
@@ -175,6 +186,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: 'סיים לימודים ועבר לישיבה אחרת',
     notes: '',
     lastActivityAt: seedActivity(11),
+    photo: null,
   },
   {
     id: 'vol-012',
@@ -189,6 +201,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: '',
     lastActivityAt: seedActivity(12),
+    photo: null,
   },
   {
     id: 'vol-013',
@@ -203,6 +216,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: 'הוותיק בקבוצה. איש קשר מול נהגים.',
     lastActivityAt: seedActivity(13),
+    photo: null,
   },
   {
     id: 'vol-014',
@@ -217,6 +231,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: '',
     lastActivityAt: seedActivity(14),
+    photo: null,
   },
   {
     id: 'vol-015',
@@ -231,6 +246,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: '',
     lastActivityAt: seedActivity(15),
+    photo: null,
   },
   {
     id: 'vol-016',
@@ -245,6 +261,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: 'רישיון לנשק, מאושר על ידי קב״ט האזור.',
     lastActivityAt: seedActivity(16),
+    photo: null,
   },
   {
     id: 'vol-017',
@@ -259,6 +276,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: '',
     lastActivityAt: seedActivity(17),
+    photo: null,
   },
   {
     id: 'vol-018',
@@ -273,6 +291,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: 'פציעה בברך, בשיקום',
     notes: 'ביקש לחזור בעוד חודשיים.',
     lastActivityAt: seedActivity(18),
+    photo: null,
   },
   {
     id: 'vol-019',
@@ -287,6 +306,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: '',
     lastActivityAt: seedActivity(19),
+    photo: null,
   },
   {
     id: 'vol-020',
@@ -301,6 +321,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: 'אחראי קבוצה.',
     lastActivityAt: seedActivity(20),
+    photo: null,
   },
   {
     id: 'vol-021',
@@ -315,6 +336,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: '',
     lastActivityAt: seedActivity(21),
+    photo: null,
   },
   {
     id: 'vol-022',
@@ -329,6 +351,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: '',
     lastActivityAt: seedActivity(22),
+    photo: null,
   },
   {
     id: 'vol-023',
@@ -343,6 +366,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: '',
     lastActivityAt: seedActivity(23),
+    photo: null,
   },
   {
     id: 'vol-024',
@@ -357,6 +381,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: 'אילוצי לימודים — זמין שוב בזמן קיץ',
     notes: '',
     lastActivityAt: seedActivity(24),
+    photo: null,
   },
   {
     id: 'vol-025',
@@ -371,6 +396,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     inactiveReason: null,
     notes: '',
     lastActivityAt: seedActivity(25),
+    photo: null,
   },
 ]
 
@@ -392,6 +418,7 @@ export const DRIVERS: Driver[] = [
     vehicle: 'טרנזיט לבן, 88-441-02',
     seats: 8,
     locality: 'באר שבע',
+    photo: null,
   },
   {
     id: 'drv-02',
@@ -400,6 +427,7 @@ export const DRIVERS: Driver[] = [
     vehicle: 'קאדי אפור, 61-903-77',
     seats: 6,
     locality: 'אופקים',
+    photo: null,
   },
   {
     id: 'drv-03',
@@ -408,6 +436,7 @@ export const DRIVERS: Driver[] = [
     vehicle: 'ספרינטר כחול, 24-118-90',
     seats: 12,
     locality: 'ירושלים',
+    photo: null,
   },
   {
     id: 'drv-04',
@@ -416,6 +445,7 @@ export const DRIVERS: Driver[] = [
     vehicle: 'טריטון 4×4, 70-556-31',
     seats: 4,
     locality: 'ירוחם',
+    photo: null,
   },
   {
     id: 'drv-05',
@@ -424,6 +454,7 @@ export const DRIVERS: Driver[] = [
     vehicle: 'ויאנו שחור, 39-882-15',
     seats: 7,
     locality: 'נתיבות',
+    photo: null,
   },
   {
     id: 'drv-06',
@@ -432,5 +463,19 @@ export const DRIVERS: Driver[] = [
     vehicle: 'טרנספורטר לבן, 15-334-88',
     seats: 8,
     locality: 'אשקלון',
+    photo: null,
   },
 ]
+
+// Deterministic mixed state: ~45% of volunteers and ~65% of drivers have a
+// picture, the rest fall back to initials.
+for (const volunteer of VOLUNTEERS) {
+  if (seedHasPhoto(volunteer.id, 0.45)) {
+    volunteer.photo = placeholderPhoto(volunteer.id, 'person')
+  }
+}
+for (const driver of DRIVERS) {
+  if (seedHasPhoto(driver.id, 0.65)) {
+    driver.photo = placeholderPhoto(driver.id, 'person')
+  }
+}

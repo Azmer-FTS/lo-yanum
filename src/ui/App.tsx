@@ -24,7 +24,6 @@ import { DashboardScreen } from './screens/coordinator/DashboardScreen'
 import { FarmDetailScreen } from './screens/coordinator/FarmDetailScreen'
 import { FarmFormScreen } from './screens/coordinator/FarmFormScreen'
 import { FarmsListScreen } from './screens/coordinator/FarmsListScreen'
-import { GlobalMapScreen } from './screens/coordinator/GlobalMapScreen'
 import { IncidentDetailScreen } from './screens/coordinator/IncidentDetailScreen'
 import { IncidentsScreen } from './screens/coordinator/IncidentsScreen'
 import { MissionDetailScreen } from './screens/coordinator/MissionDetailScreen'
@@ -88,7 +87,6 @@ export default function App() {
             path="farms/:farmId/anchors/:anchorId/edit"
             element={<AnchorFormScreen />}
           />
-          <Route path="map" element={<GlobalMapScreen />} />
           <Route path="route" element={<RoutePlannerScreen />} />
           <Route path="volunteers" element={<VolunteersScreen />} />
           <Route
