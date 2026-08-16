@@ -49,9 +49,13 @@ function StepBar({ current }: { current: Step }) {
             >
               {done ? <Icon name="check" size={13} /> : i + 1}
             </span>
+            {/* Four Hebrew labels do not fit at 390 px — below `sm` only the
+                current step is named, the rest are numbered circles. */}
             <span
               className={`truncate text-caption ${
-                active ? 'font-medium text-content-primary' : 'text-content-muted'
+                active
+                  ? 'font-medium text-content-primary'
+                  : 'hidden text-content-muted sm:inline'
               }`}
             >
               {t(`import.step${step[0].toUpperCase()}${step.slice(1)}`)}
