@@ -321,6 +321,9 @@
    Only the GL canvas is filtered — markers are DOM siblings, so their token
    colours stay true. */
 .map-night .maplibregl-canvas {
-  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9)
-    saturate(0.75);
+  /* Heavy desaturation is deliberate: inverted OSM turns the Negev's sand and
+     military-zone hatching into a loud orange that competes with the amber
+     accent and the status markers. Neutral terrain, coloured pins. */
+  filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.88)
+    saturate(0.25);
 }
