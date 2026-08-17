@@ -136,12 +136,12 @@ function FarmFacts({ farm }: { farm: Farm }) {
       <KeyValue label={t('volunteers.locality')} value={farm.locality} />
       <KeyValue
         label={t('farms.farmArea')}
-        value={`${farm.farmHectares} ${t('farms.hectares')}`}
+        value={`${farm.farmDunams} ${t('farms.dunams')}`}
         ltr
       />
       <KeyValue
         label={t('farms.grazingArea')}
-        value={`${farm.grazingHectares} ${t('farms.hectares')}`}
+        value={`${farm.grazingDunams} ${t('farms.dunams')}`}
         ltr
       />
       <KeyValue

@@ -102,7 +102,7 @@ await page.waitForTimeout(1200)
 const emptyState = await bodyText(page)
 check(
   'no empty select — a callout takes its place',
-  emptyState.includes('לחווה זו אין עדיין נקודת עיגון'),
+  emptyState.includes('לחווה זו אין עדיין עמדת שמירה'),
 )
 check(
   'the callout points at the map',
@@ -166,7 +166,7 @@ check(
 const afterCreate = await bodyText(page)
 check(
   'the point is named and listed',
-  afterCreate.includes('נקודת עיגון 1'),
+  afterCreate.includes('עמדת שמירה 1'),
 )
 check(
   'it is marked as the rendezvous',

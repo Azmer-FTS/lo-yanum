@@ -74,11 +74,11 @@ export function FarmFormScreen() {
   )
   const [lat, setLat] = useState(String(existing?.position.lat ?? ''))
   const [lng, setLng] = useState(String(existing?.position.lng ?? ''))
-  const [farmHectares, setFarmHectares] = useState(
-    String(existing?.farmHectares ?? ''),
+  const [farmDunams, setFarmHectares] = useState(
+    String(existing?.farmDunams ?? ''),
   )
-  const [grazingHectares, setGrazingHectares] = useState(
-    String(existing?.grazingHectares ?? ''),
+  const [grazingDunams, setGrazingHectares] = useState(
+    String(existing?.grazingDunams ?? ''),
   )
   const [contacts, setContacts] = useState<FarmContact[]>(
     existing?.contacts ?? [],
@@ -165,9 +165,9 @@ export function FarmFormScreen() {
       type,
       status,
       position: { lat: num(lat), lng: num(lng) },
-      farmHectares: Number.isFinite(num(farmHectares)) ? num(farmHectares) : 0,
-      grazingHectares: Number.isFinite(num(grazingHectares))
-        ? num(grazingHectares)
+      farmDunams: Number.isFinite(num(farmDunams)) ? num(farmDunams) : 0,
+      grazingDunams: Number.isFinite(num(grazingDunams))
+        ? num(grazingDunams)
         : 0,
       contacts: contacts.map((c) => ({
         ...c,
@@ -313,14 +313,14 @@ export function FarmFormScreen() {
         <FormSection title={t('form.sectionAreas')}>
           <TextField
             label={t('form.farmArea')}
-            value={farmHectares}
+            value={farmDunams}
             onChange={setFarmHectares}
             type="number"
             ltr
           />
           <TextField
             label={t('form.grazingArea')}
-            value={grazingHectares}
+            value={grazingDunams}
             onChange={setGrazingHectares}
             type="number"
             ltr

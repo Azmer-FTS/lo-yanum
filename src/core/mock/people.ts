@@ -34,7 +34,7 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
     guardsCount: 24,
     status: 'active',
     inactiveReason: null,
-    notes: 'אחראי קבוצה ותיק. מכיר את כל נקודות העיגון ברמת נגב.',
+    notes: 'אחראי קבוצה ותיק. מכיר את כל עמדות השמירה ברמת נגב.',
     lastActivityAt: seedActivity(1),
     photo: null,
   },

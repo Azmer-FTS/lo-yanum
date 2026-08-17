@@ -15,8 +15,8 @@ export const FARMS: Farm[] = [
     type: 'mixed',
     status: 'active',
     position: { lat: 31.0583, lng: 34.6531 },
-    farmHectares: 42,
-    grazingHectares: 310,
+    farmDunams: 420,
+    grazingDunams: 3100,
     contacts: [
       {
         id: 'contact-01a',
@@ -69,8 +69,8 @@ export const FARMS: Farm[] = [
     type: 'agriculture',
     status: 'active',
     position: { lat: 30.8712, lng: 34.7954 },
-    farmHectares: 65,
-    grazingHectares: 0,
+    farmDunams: 650,
+    grazingDunams: 0,
     contacts: [
       {
         id: 'contact-02a',
@@ -111,8 +111,8 @@ export const FARMS: Farm[] = [
     type: 'agriculture',
     status: 'active',
     position: { lat: 30.9371, lng: 34.3862 },
-    farmHectares: 88,
-    grazingHectares: 0,
+    farmDunams: 880,
+    grazingDunams: 0,
     contacts: [
       {
         id: 'contact-03a',
@@ -162,8 +162,8 @@ export const FARMS: Farm[] = [
     type: 'livestock',
     status: 'signed',
     position: { lat: 30.9824, lng: 34.7063 },
-    farmHectares: 18,
-    grazingHectares: 640,
+    farmDunams: 180,
+    grazingDunams: 6400,
     contacts: [
       {
         id: 'contact-04a',
@@ -200,8 +200,8 @@ export const FARMS: Farm[] = [
     type: 'agriculture',
     status: 'verbal_ok',
     position: { lat: 30.9873, lng: 34.9294 },
-    farmHectares: 30,
-    grazingHectares: 0,
+    farmDunams: 300,
+    grazingDunams: 0,
     contacts: [
       {
         id: 'contact-05a',
@@ -235,8 +235,8 @@ export const FARMS: Farm[] = [
     type: 'livestock',
     status: 'visited',
     position: { lat: 30.6472, lng: 34.9218 },
-    farmHectares: 12,
-    grazingHectares: 480,
+    farmDunams: 120,
+    grazingDunams: 4800,
     contacts: [
       {
         id: 'contact-06a',
@@ -262,8 +262,8 @@ export const FARMS: Farm[] = [
     type: 'mixed',
     status: 'visited',
     position: { lat: 29.9836, lng: 35.0197 },
-    farmHectares: 24,
-    grazingHectares: 220,
+    farmDunams: 240,
+    grazingDunams: 2200,
     contacts: [
       {
         id: 'contact-07a',
@@ -289,8 +289,8 @@ export const FARMS: Farm[] = [
     type: 'livestock',
     status: 'contacted',
     position: { lat: 31.3591, lng: 35.0812 },
-    farmHectares: 9,
-    grazingHectares: 390,
+    farmDunams: 90,
+    grazingDunams: 3900,
     contacts: [
       {
         id: 'contact-08a',
@@ -332,8 +332,8 @@ export const FARMS: Farm[] = [
     type: 'agriculture',
     status: 'contacted',
     position: { lat: 31.2051, lng: 34.9221 },
-    farmHectares: 54,
-    grazingHectares: 0,
+    farmDunams: 540,
+    grazingDunams: 0,
     contacts: [
       {
         id: 'contact-09a',
@@ -359,8 +359,8 @@ export const FARMS: Farm[] = [
     type: 'mixed',
     status: 'to_contact',
     position: { lat: 30.7921, lng: 34.4718 },
-    farmHectares: 16,
-    grazingHectares: 150,
+    farmDunams: 160,
+    grazingDunams: 1500,
     contacts: [
       {
         id: 'contact-10a',
@@ -386,8 +386,8 @@ export const FARMS: Farm[] = [
     type: 'agriculture',
     status: 'to_contact',
     position: { lat: 31.2013, lng: 34.5293 },
-    farmHectares: 120,
-    grazingHectares: 0,
+    farmDunams: 1200,
+    grazingDunams: 0,
     contacts: [
       {
         id: 'contact-11a',
@@ -413,8 +413,8 @@ export const FARMS: Farm[] = [
     type: 'agriculture',
     status: 'declined',
     position: { lat: 30.7772, lng: 35.2464 },
-    farmHectares: 37,
-    grazingHectares: 0,
+    farmDunams: 370,
+    grazingDunams: 0,
     contacts: [
       {
         id: 'contact-12a',

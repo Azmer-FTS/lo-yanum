@@ -95,8 +95,8 @@ export interface Farm {
   type: FarmType
   status: FarmStatus
   position: LatLng
-  farmHectares: number
-  grazingHectares: number
+  farmDunams: number
+  grazingDunams: number
   contacts: FarmContact[]
   commitments: FarmCommitment[]
   agreements: Agreement[]

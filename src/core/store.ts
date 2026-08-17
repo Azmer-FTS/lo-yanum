@@ -284,8 +284,8 @@ export interface FarmDraft {
   type: FarmType
   status: FarmStatus
   position: LatLng
-  farmHectares: number
-  grazingHectares: number
+  farmDunams: number
+  grazingDunams: number
   contacts: FarmContact[]
   notes: string
 }
