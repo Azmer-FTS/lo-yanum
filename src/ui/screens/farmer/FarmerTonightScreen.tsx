@@ -17,7 +17,7 @@ import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
 import { ZoneLegend, zonePolygons } from '../../components/zones'
 import { meetColor } from '../../components/meet'
-import { MissionStatusChip, readToken } from '../../components/badges'
+import { MissionStatusChip, postColor } from '../../components/badges'
 import {
   Callout,
   EmptyState,
@@ -160,7 +160,7 @@ export function FarmerTonightScreen() {
                       {
                         id: anchorPoint.id,
                         position: anchorPoint.position,
-                        color: readToken('--accent'),
+                        color: postColor(),
                         kind: 'anchor',
                         emphasis: true,
                         title: anchorPoint.name,

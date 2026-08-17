@@ -23,7 +23,7 @@ import {
   ConfirmationChip,
   MissionStatusChip,
   PhoneTypeChip,
-  readToken,
+  postColor,
 } from '../../components/badges'
 import {
   Callout,
@@ -362,7 +362,7 @@ export function MissionDetailScreen() {
                   {
                     id: anchorPoint.id,
                     position: anchorPoint.position,
-                    color: readToken('--accent'),
+                    color: postColor(),
                     kind: 'anchor',
                     emphasis: true,
                     badge: additionalAnchorPoints.length > 0 ? '1' : undefined,
@@ -372,7 +372,7 @@ export function MissionDetailScreen() {
                   ...additionalAnchorPoints.map((extra, i) => ({
                     id: extra.id,
                     position: extra.position,
-                    color: readToken('--accent'),
+                    color: postColor(),
                     kind: 'anchor' as const,
                     badge: String(i + 2),
                     title: extra.name,

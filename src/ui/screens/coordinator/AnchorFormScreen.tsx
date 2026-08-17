@@ -14,7 +14,7 @@ import type { AnchorDraft, LatLng } from '@core/index'
 
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
-import { readStatusColor, readToken } from '../../components/badges'
+import { farmMarkerColor, postColor } from '../../components/badges'
 import {
   FormActions,
   FormSection,
@@ -119,7 +119,7 @@ export function AnchorFormScreen() {
                 {
                   id: 'farm',
                   position: farm.position,
-                  color: readStatusColor(farm.status),
+                  color: farmMarkerColor(),
                   title: farm.name,
                   subtitle: farm.locality,
                   kind: 'farm',
@@ -127,7 +127,7 @@ export function AnchorFormScreen() {
                 {
                   id: 'anchor-preview',
                   position,
-                  color: readToken('--accent'),
+                  color: postColor(),
                   title: name || t('anchor.title'),
                   kind: 'anchor',
                   emphasis: true,

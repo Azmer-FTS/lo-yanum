@@ -63,9 +63,16 @@ const mapBox = async (page: Page) => {
   return box
 }
 
-/** Anchor pins are the square markers; the farm centroid is a disc. */
+/**
+ * G7bis.1 — a guard post is a TEARDROP pin (viewBox 0 0 24 32) whose head
+ * carries the shield glyph or a rank badge; the farm centroid is a disc
+ * (viewBox 0 0 24 24) and the car's stops are the teardrops carrying the car
+ * glyph (path starting "M5 11"), excluded here.
+ */
 const anchorPins = (page: Page): Locator =>
-  page.locator('.maplibregl-marker[style*="border-radius: var(--radius-field)"]')
+  page.locator(
+    '.maplibregl-marker:has(svg[viewBox="0 0 24 32"]):not(:has(path[d^="M5 11"]))',
+  )
 
 const browser = await chromium.launch()
 const context = await browser.newContext({

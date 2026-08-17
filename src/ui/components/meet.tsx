@@ -7,7 +7,7 @@ import type { AnchorPoint, Farm, LatLng } from '@core/index'
 import { Icon } from './Icon'
 import { MapView } from './MapView'
 import type { MapMarker } from './MapView'
-import { readStatusColor, readToken } from './badges'
+import { MarkerSwatch, farmMarkerColor, postColor, readToken } from './badges'
 
 /**
  * G8 — MEETING POINTS ARE WHERE THE CAR GOES; THE GUARD POST IS WHERE THE
@@ -79,7 +79,7 @@ export function MeetPointsEditor({
     {
       id: farm.id,
       position: farm.position,
-      color: readStatusColor(farm.status),
+      color: farmMarkerColor(),
       title: farm.name,
       subtitle: farm.locality,
       kind: 'farm',
@@ -87,7 +87,7 @@ export function MeetPointsEditor({
     ...anchors.map((a, i) => ({
       id: a.id,
       position: a.position,
-      color: readToken('--accent'),
+      color: postColor(),
       title: a.name,
       subtitle: t('anchor.title'),
       kind: 'anchor' as const,
@@ -290,30 +290,23 @@ export function PointLegend({
     <div
       className={`pointer-events-none flex flex-col gap-1 rounded-field border border-edge-subtle bg-surface-overlay/90 px-2.5 py-2 shadow-card backdrop-blur ${className}`}
     >
+      {/* G7bis.1 — each entry repeats its marker's SHAPE: forest disc for the
+          farm, amber pin for a guard post, blue pin for the car's stops. */}
       {showFarm && (
         <span className="flex items-center gap-1.5 text-micro text-content-secondary">
-          <span
-            className="inline-block h-2.5 w-2.5 rounded-pill"
-            style={{ backgroundColor: readToken('--accent-dim') }}
-          />
+          <MarkerSwatch shape="disc" color={farmMarkerColor()} />
           {t('meet.legendFarm')}
         </span>
       )}
       {showPost && (
         <span className="flex items-center gap-1.5 text-micro text-content-secondary">
-          <span
-            className="inline-block h-2.5 w-2.5 rounded-field"
-            style={{ backgroundColor: readToken('--accent') }}
-          />
+          <MarkerSwatch shape="pin" color={postColor()} />
           {t('anchor.title')}
         </span>
       )}
       {showMeet && (
         <span className="flex items-center gap-1.5 text-micro text-content-secondary">
-          <span
-            className="inline-block h-2.5 w-2.5 rounded-pill"
-            style={{ backgroundColor: meetColor() }}
-          />
+          <MarkerSwatch shape="pin" color={meetColor()} />
           {t('meet.pickup')}
         </span>
       )}

@@ -7,7 +7,8 @@ import { Icon } from './Icon'
 import { MapView } from './MapView'
 import type { MapMarker, MapPolygon } from './MapView'
 import { ZoneLegend, zoneColor } from './zones'
-import { readStatusColor, readToken } from './badges'
+import { PointLegend } from './meet'
+import { farmMarkerColor, postColor } from './badges'
 
 /**
  * F2 / F6 — THE MAP THAT CREATES ANCHOR POINTS.
@@ -161,7 +162,9 @@ export function AnchorMap({
       {
         id: farm.id,
         position: farm.position,
-        color: readStatusColor(farm.status),
+        // G7bis.1 — the farm's identity pastille: forest, always. Its status
+        // lives in the chips beside the map, not in the pin's colour.
+        color: farmMarkerColor(),
         title: farm.name,
         subtitle: farm.locality,
         kind: 'farm' as const,
@@ -171,7 +174,7 @@ export function AnchorMap({
         return {
           id: anchor.id,
           position: anchor.position,
-          color: readToken('--accent'),
+          color: postColor(),
           title: anchor.name,
           subtitle: t('anchor.title'),
           kind: 'anchor' as const,
@@ -351,10 +354,12 @@ export function AnchorMap({
         )}
       </div>
 
-      <ZoneLegend
-        zones={zones}
-        className="absolute bottom-16 end-3 z-10 sm:bottom-3 sm:end-auto sm:start-3"
-      />
+      {/* G7bis.1 — one legend stack: what the point shapes mean, then what the
+          painted ground means. */}
+      <div className="absolute bottom-16 end-3 z-10 flex flex-col gap-1.5 sm:bottom-3 sm:end-auto sm:start-3">
+        <PointLegend showFarm showPost showMeet={false} />
+        <ZoneLegend zones={zones} />
+      </div>
 
       {/* The control sits ON the map, because the map is what it is about. The
           empty case is louder on purpose: with no points yet, this banner IS

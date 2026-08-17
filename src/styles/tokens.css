@@ -159,6 +159,12 @@
   --zone-grazing: 15 142 117; /* #0F8E75 brand teal, darkened */
   --status-violet: 143 99 232; /* #8F63E8 violet               */
 
+  /* G7bis.1 — the farm's identity pastille on every map: the charter's own
+     forest in daylight, lifted to the sage the night raster needs. A separate
+     token rather than an alias of --brand-forest because the brand value has
+     no night variant and a marker must. */
+  --marker-farm: 11 61 44; /* #0B3D2C brand forest */
+
   /* …and the same identities as TEXT on their own 15 % tint. */
   --status-success-ink: 10 100 85; /* #0A6455 */
   --status-warn-ink: 126 78 3; /* #7E4E03 */
@@ -386,6 +392,10 @@
   --status-info: 79 182 224; /* #4FB6E0 */
   --status-violet: 178 149 250; /* #B295FA */
 
+  /* G7bis.1 — the farm pastille at night: the forest family lifted to read on
+     the inverted raster (same reasoning as --zone-boundary above). */
+  --marker-farm: 154 201 173; /* #9AC9AD */
+
   --status-success-ink: 52 201 166;
   --status-warn-ink: 232 169 60;
   --status-danger-ink: 255 174 153; /* #FFAE99 */
@@ -479,6 +489,12 @@
     --status-danger: 255 129 99;
     --status-info: 79 182 224;
     --status-violet: 178 149 250;
+
+    /* The map-ground tokens were missing here since G1 — a system-dark user
+       kept the daylight forest outlines on the night raster. */
+    --zone-boundary: 154 201 173;
+    --zone-grazing: 52 201 166;
+    --marker-farm: 154 201 173;
 
     --status-success-ink: 52 201 166;
     --status-warn-ink: 232 169 60;

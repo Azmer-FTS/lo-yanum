@@ -65,6 +65,57 @@ export function readToken(name: string, fallback = 'rgb(240, 140, 0)'): string {
     : fallback
 }
 
+/**
+ * G7bis.1 — the marker colour vocabulary, one function per point kind so a map
+ * can never paint a guard post in the farm's green. The farm's pastille is the
+ * charter forest (theme-aware token); a guard post is AMBER — the watch-fire
+ * colour, far from both the accent olive and the meet-point blue.
+ */
+export function farmMarkerColor(): string {
+  return readToken('--marker-farm')
+}
+
+export function postColor(): string {
+  return readToken('--status-warn')
+}
+
+/**
+ * G7bis.1 — a legend swatch that repeats the MARKER'S SHAPE, not just its
+ * colour. A legend of identical dots explains nothing once the markers
+ * themselves stopped being dots.
+ */
+export function MarkerSwatch({
+  shape,
+  color,
+}: {
+  shape: 'disc' | 'pin' | 'triangle'
+  color: string
+}) {
+  if (shape === 'disc') {
+    return (
+      <span
+        className="inline-block h-2.5 w-2.5 shrink-0 rounded-pill"
+        style={{ backgroundColor: color }}
+      />
+    )
+  }
+  if (shape === 'triangle') {
+    return (
+      <svg viewBox="0 0 24 24" className="h-3 w-3 shrink-0" aria-hidden="true">
+        <path d="M12 2.6 22.6 20.9H1.4Z" fill={color} />
+      </svg>
+    )
+  }
+  return (
+    <svg viewBox="0 0 24 32" className="h-3.5 w-3 shrink-0" aria-hidden="true">
+      <path
+        d="M12 1C5.9 1 1 5.9 1 12c0 8.1 11 19 11 19s11-10.9 11-19C23 5.9 18.1 1 12 1z"
+        fill={color}
+      />
+    </svg>
+  )
+}
+
 /** Tinted chip: INK text on a 15 % wash of the matching VIVID colour. */
 const FARM_STATUS_CLASS: Record<FarmStatus, string> = {
   to_contact: 'bg-farm-to-contact/15 text-farm-to-contact-ink',

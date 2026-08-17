@@ -126,19 +126,42 @@ export interface MapViewProps {
 }
 
 const SIZE: Record<MarkerKind, number> = {
-  farm: 20,
-  anchor: 18,
-  incident: 20,
+  farm: 26,
+  anchor: 30,
+  incident: 24,
   mission: 22,
   origin: 22,
   pin: 30,
-  vertex: 14,
-  car: 26,
+  vertex: 12,
+  car: 28,
 }
 
-/** G8 — the meeting-point glyph: a car, drawn inside the disc. */
+/** The kinds drawn as a bottom-anchored teardrop rather than a centred shape. */
+const PIN_KINDS: ReadonlyArray<MarkerKind> = ['pin', 'anchor', 'car']
+
+const TEARDROP =
+  'M12 1C5.9 1 1 5.9 1 12c0 8.1 11 19 11 19s11-10.9 11-19C23 5.9 18.1 1 12 1z'
+
+/** G8 — the meeting-point glyph: a car. */
 const CAR_PATH =
   'M5 11l1.3-3.3A2 2 0 0 1 8.2 6h7.6a2 2 0 0 1 1.9 1.7L19 11m-14 0h14m-14 0a1.6 1.6 0 0 0-1.6 1.6V16a1 1 0 0 0 1 1H6m13-6a1.6 1.6 0 0 1 1.6 1.6V16a1 1 0 0 1-1 1H18m-12 0v1.4a.6.6 0 0 0 .6.6h1.2a.6.6 0 0 0 .6-.6V17m-2.4 0h2.4m9.6 0v1.4a.6.6 0 0 1-.6.6h-1.2a.6.6 0 0 1-.6-.6V17m2.4 0H16m-8.5-3.5h.01m8.99 0h.01'
+
+/**
+ * G7bis.1 — the glyph each kind carries, copied from Icon.tsx so the DOM built
+ * outside React speaks the same visual vocabulary as the rest of the UI. A
+ * marker is no longer "a coloured dot": the FARM is a barn on its disc, a
+ * guard POST is a shield on its pin, the car's stops carry the car, and an
+ * incident is a warning triangle — recognisable by shape before colour, which
+ * is what colour-blindness and a sun-washed iPad both require.
+ */
+const GLYPH: Partial<Record<MarkerKind, string>> = {
+  farm: 'M3 10.5 12 4l9 6.5M5 10v10h14V10M9.5 20v-5h5v5',
+  mission:
+    'M12 3c-2.6 1.6-5 2.3-7 2.4v7.2c0 4.4 2.9 6.8 7 8.4 4.1-1.6 7-4 7-8.4V5.4c-2-.1-4.4-.8-7-2.4z',
+  anchor:
+    'M12 3c-2.6 1.6-5 2.3-7 2.4v7.2c0 4.4 2.9 6.8 7 8.4 4.1-1.6 7-4 7-8.4V5.4c-2-.1-4.4-.8-7-2.4z',
+  car: CAR_PATH,
+}
 
 function markerElement(marker: MapMarker): HTMLElement {
   const el = document.createElement('button')
@@ -146,12 +169,14 @@ function markerElement(marker: MapMarker): HTMLElement {
   el.setAttribute('aria-label', marker.title)
 
   const kind = marker.kind ?? 'farm'
+  const ring = readToken('--surface-base')
 
   if (kind === 'vertex') {
-    // G1 — a polygon-vertex handle. The VISIBLE square is small so a ring of
-    // them does not bury the polygon, but the hit area is the full 44 px a
-    // fingertip needs (G11): the button is padded and transparent, the handle
-    // is an inner box.
+    // G1 — a polygon-vertex handle: a small ROUND grip (G7bis.1 — the raw
+    // square read as debris next to the new pins). The VISIBLE dot is small so
+    // a ring of them does not bury the polygon, but the hit area is the full
+    // 44 px a fingertip needs (G11): the button is padded and transparent, the
+    // handle is an inner dot.
     const visual = marker.emphasis ? SIZE.vertex + 4 : SIZE.vertex
     el.style.cssText = [
       'width:44px',
@@ -168,10 +193,9 @@ function markerElement(marker: MapMarker): HTMLElement {
     handle.style.cssText = [
       `width:${visual}px`,
       `height:${visual}px`,
-      // Same scale value the anchor square uses — the gate allows no literals.
-      'border-radius:var(--radius-field)',
+      'border-radius:var(--radius-pill)',
       `background:${marker.color}`,
-      `border:2.5px solid ${readToken('--surface-base')}`,
+      `border:2.5px solid ${ring}`,
       'box-shadow:0 1px 6px rgba(0,0,0,.45)',
       'pointer-events:none',
       'transition:width 120ms,height 120ms',
@@ -180,14 +204,15 @@ function markerElement(marker: MapMarker): HTMLElement {
     return el
   }
 
-  if (kind === 'pin') {
-    // G2 — a LOCATION is a real pin, not another disc. The teardrop points at
-    // the exact spot (the marker is bottom-anchored, see the Marker options),
-    // which is the whole reason to use the shape: "the farm is here", not
-    // "the farm is roughly under this dot".
-    const w = marker.emphasis ? 36 : SIZE.pin
+  if (PIN_KINDS.includes(kind)) {
+    // G2 / G7bis.1 — a POINT ON THE GROUND is a real pin, not another disc.
+    // The teardrop points at the exact spot (the marker is bottom-anchored,
+    // see the Marker options): "the group stands here", not "roughly under
+    // this dot". The head carries the kind's glyph — shield for a guard post,
+    // car for a meeting point — or the rank badge when the caller numbers the
+    // stops, or a plain dot for the generic location pin.
+    const w = marker.emphasis ? SIZE[kind] + 6 : SIZE[kind]
     const h = Math.round((w * 4) / 3)
-    const ring = readToken('--surface-base')
     el.style.cssText = [
       `width:${w}px`,
       `height:${h}px`,
@@ -196,56 +221,91 @@ function markerElement(marker: MapMarker): HTMLElement {
       'border:none',
       `cursor:${marker.draggable ? 'grab' : 'pointer'}`,
       'display:block',
-      'filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))',
-      'transition:width 150ms cubic-bezier(.16,1,.3,1),height 150ms cubic-bezier(.16,1,.3,1)',
+      marker.emphasis
+        ? 'filter:drop-shadow(0 0 3px rgba(255,255,255,.4)) drop-shadow(0 4px 8px rgba(0,0,0,.55))'
+        : 'filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))',
+      'transition:width 150ms cubic-bezier(.16,1,.3,1),height 150ms cubic-bezier(.16,1,.3,1),filter 150ms',
     ].join(';')
+    const head = marker.badge
+      ? `<text x="12" y="15.6" text-anchor="middle" font-family="var(--font-sans)"
+               font-size="10.5" font-weight="700" fill="${ring}">${escapeHtml(marker.badge)}</text>`
+      : GLYPH[kind]
+        ? `<g fill="none" stroke="${ring}" stroke-width="2.4" stroke-linecap="round"
+              stroke-linejoin="round" transform="translate(5.4 5.4) scale(0.55)">
+             <path d="${GLYPH[kind]}"/>
+           </g>`
+        : `<circle cx="12" cy="12" r="4.2" fill="${ring}"/>`
     el.innerHTML = `
       <svg viewBox="0 0 24 32" width="${w}" height="${h}" aria-hidden="true">
-        <path d="M12 1C5.9 1 1 5.9 1 12c0 8.1 11 19 11 19s11-10.9 11-19C23 5.9 18.1 1 12 1z"
-              fill="${marker.color}" stroke="${ring}" stroke-width="1.6"/>
-        <circle cx="12" cy="12" r="4.2" fill="${ring}"/>
+        <path d="${TEARDROP}" fill="${marker.color}" stroke="${ring}" stroke-width="1.6"/>
+        ${head}
       </svg>`
-    return el
-  }
-  const base = SIZE[kind]
-  const size = marker.emphasis ? base + 10 : base
-  const ring = readToken('--surface-base')
-
-  el.style.cssText = [
-    `width:${size}px`,
-    `height:${size}px`,
-    // Anchor points are square-ish so they read as infrastructure rather than
-    // as another farm; everything else is a disc. Both radii come from the
-    // scale — a marker is built outside React but is still part of the system,
-    // and `bun run tokens` refuses a literal here.
-    kind === 'anchor'
-      ? 'border-radius:var(--radius-field)'
-      : 'border-radius:var(--radius-pill)',
-    `border:3px solid ${ring}`,
-    'cursor:pointer',
-    'display:flex',
-    'align-items:center',
-    'justify-content:center',
-    'font-family:var(--font-sans)',
-    'font-weight:700',
-    `font-size:${Math.max(9, size - 12)}px`,
-    `color:${readToken('--text-on-accent')}`,
-    marker.emphasis
-      ? 'box-shadow:0 0 0 3px rgba(255,255,255,.35), 0 4px 14px rgba(0,0,0,.55); z-index:5'
-      : 'box-shadow:0 0 0 1px rgba(255,255,255,.18), 0 2px 10px rgba(0,0,0,.5)',
-    'transition:width 150ms cubic-bezier(.16,1,.3,1),height 150ms cubic-bezier(.16,1,.3,1),box-shadow 150ms',
-    `background:${marker.color}`,
-  ].join(';')
-
-  if (kind === 'car') {
-    // The disc styling above already applies; the glyph replaces the badge.
+  } else if (kind === 'incident') {
+    // G7bis.1 — an incident is a WARNING TRIANGLE, the shape every road sign
+    // has already taught. Severity keeps the colour scale it always had.
+    const s = marker.emphasis ? SIZE.incident + 8 : SIZE.incident
+    el.style.cssText = [
+      `width:${s}px`,
+      `height:${s}px`,
+      'padding:0',
+      'background:transparent',
+      'border:none',
+      'cursor:pointer',
+      'display:block',
+      marker.emphasis
+        ? 'filter:drop-shadow(0 0 3px rgba(255,255,255,.4)) drop-shadow(0 4px 8px rgba(0,0,0,.55))'
+        : 'filter:drop-shadow(0 2px 5px rgba(0,0,0,.45))',
+      'transition:width 150ms cubic-bezier(.16,1,.3,1),height 150ms cubic-bezier(.16,1,.3,1),filter 150ms',
+    ].join(';')
     el.innerHTML = `
-      <svg viewBox="0 0 24 24" width="${Math.round(size * 0.66)}" height="${Math.round(size * 0.66)}" aria-hidden="true"
-           fill="none" stroke="${readToken('--text-on-accent')}" stroke-width="1.8"
-           stroke-linecap="round" stroke-linejoin="round">
-        <path d="${CAR_PATH}"/>
+      <svg viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true">
+        <path d="M12 2.6 22.6 20.9H1.4Z" fill="${marker.color}" stroke="${ring}"
+              stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M12 9.6v4.6M12 17.1v.2" fill="none" stroke="${ring}"
+              stroke-width="2" stroke-linecap="round"/>
       </svg>`
-  } else if (marker.badge) el.textContent = marker.badge
+  } else {
+    // The disc kinds: the farm's identity pastille (barn glyph), a guard on
+    // the missions map (shield), the route's origin. A numbered badge wins
+    // over the glyph — the number IS the information on a route.
+    const base = SIZE[kind]
+    const size = marker.emphasis ? base + 10 : base
+
+    el.style.cssText = [
+      `width:${size}px`,
+      `height:${size}px`,
+      // The radius comes from the scale — a marker is built outside React but
+      // is still part of the system, and `bun run tokens` refuses a literal.
+      'border-radius:var(--radius-pill)',
+      `border:3px solid ${ring}`,
+      'cursor:pointer',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'font-family:var(--font-sans)',
+      'font-weight:700',
+      `font-size:${Math.max(9, size - 12)}px`,
+      `color:${readToken('--text-on-accent')}`,
+      marker.emphasis
+        ? 'box-shadow:0 0 0 3px rgba(255,255,255,.35), 0 4px 14px rgba(0,0,0,.55); z-index:5'
+        : 'box-shadow:0 0 0 1px rgba(255,255,255,.18), 0 2px 10px rgba(0,0,0,.5)',
+      'transition:width 150ms cubic-bezier(.16,1,.3,1),height 150ms cubic-bezier(.16,1,.3,1),box-shadow 150ms',
+      `background:${marker.color}`,
+    ].join(';')
+
+    if (marker.badge) {
+      el.textContent = marker.badge
+    } else if (GLYPH[kind]) {
+      // The glyph strokes in the RING colour, not `--text-on-accent`: the farm
+      // disc is brand forest in light, and a near-black ink on it is invisible.
+      el.innerHTML = `
+        <svg viewBox="0 0 24 24" width="${Math.round(size * 0.62)}" height="${Math.round(size * 0.62)}" aria-hidden="true"
+             fill="none" stroke="${ring}" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="${GLYPH[kind]}"/>
+        </svg>`
+    }
+  }
 
   if (marker.pulse) {
     // A CSS halo cannot live on the marker itself (it would scale the hit
@@ -446,7 +506,7 @@ export default function MapCanvas({
         draggable: marker.draggable ?? false,
         // A teardrop points with its TIP; centre-anchoring it would report a
         // position half a pin height south of where the user aimed.
-        anchor: marker.kind === 'pin' ? 'bottom' : 'center',
+        anchor: PIN_KINDS.includes(marker.kind ?? 'farm') ? 'bottom' : 'center',
       })
         .setLngLat([marker.position.lng, marker.position.lat])
         .addTo(map)

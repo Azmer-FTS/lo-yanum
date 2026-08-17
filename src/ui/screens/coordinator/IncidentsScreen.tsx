@@ -8,7 +8,7 @@ import type { IncidentSeverity } from '@core/index'
 import { ChevronForward } from '../../components/Icon'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
-import { SeverityChip, readToken } from '../../components/badges'
+import { MarkerSwatch, SeverityChip, readToken } from '../../components/badges'
 import {
   EmptyState,
   FilterPill,
@@ -107,9 +107,11 @@ export function IncidentsScreen() {
         <ul className="flex flex-col gap-1.5">
           {SEVERITIES.map((s) => (
             <li key={s} className="flex items-center gap-2">
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-pill"
-                style={{ backgroundColor: readToken(SEVERITY_TOKEN[s]) }}
+              {/* G7bis.1 — the legend repeats the marker's warning-triangle
+                  shape, not a dot the map no longer shows. */}
+              <MarkerSwatch
+                shape="triangle"
+                color={readToken(SEVERITY_TOKEN[s])}
               />
               <span className="text-caption text-content-secondary">
                 {t(`severity.${s}`)}
