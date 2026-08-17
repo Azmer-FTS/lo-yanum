@@ -45,12 +45,14 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **Lot 0.10 IN PROGRESS — 8 of 14 sections done, one commit each.**
+State: **Lot 0.10 IN PROGRESS — 11 of 17 sections done, one commit each.**
 Branch `main`, NOT yet pushed (deploy happens at G12).
 
 > **LOT 0.10 RESUME POINT.** The lot's full spec is the user prompt titled
-> "LOT 0.10 (VERSION FINALE UNIQUE)"; its section order is
-> G0 → G2 → G1 → G8 → G5 → G3 → G4 → G6 → **G9 → G7 → G10 → G11 → G12 → G13**.
+> "LOT 0.10 (VERSION FINALE UNIQUE)", AMENDED mid-lot by the prompt "AJOUT AU
+> LOT 0.10 EN COURS — G7bis" (2026-08-18, after product-owner review of the
+> farm-detail screenshots). Section order is G0 → G2 → G1 → G8 → G5 → G3 →
+> G4 → G6 → G7bis.1-3 → **G9 (incl. G7bis.4) → G7 → G10 → G11 → G12 → G13**.
 >
 > DONE (each is one commit, in git log order): G0 (עמדת שמירה rename +
 > dunams), G2 (PinMap + AutocompleteField + farm-form audit), G1 (FarmZone
@@ -63,24 +65,47 @@ Branch `main`, NOT yet pushed (deploy happens at G12).
 > 3-of-5 dialog, ?resume= wizard pre-fill, updateMissionStaffing,
 > escalating dashboard alerts), G6 (GeneralMeeting object/modal, 3-type
 > agenda + chooser, day view, visit/meeting drag-and-drop — guards
-> deliberately not draggable).
+> deliberately not draggable), G7bis.1 (marker iconography: shape+glyph+
+> colour per point kind, --marker-farm token, postColor()/farmMarkerColor(),
+> shape-true legends via MarkerSwatch, wizard.ts selector updated), G7bis.2
+> (fullscreen working mode on AnchorMap/meet/PinMap/mission-detail maps —
+> fullscreen.tsx, ResizeObserver in MapCanvas, armed modes eat Esc first),
+> G7bis.3 (farm detail as two tracks from xl: 60 % map-at-56dvh + posts +
+> guards + incidents, 40 % identity/contacts + CollapsibleSection blocks with
+> sessionStorage memory; one column below xl BECAUSE iPad portrait is 1032).
 >
 > REMAINING: G9 (planner↔agenda bridge: tour object, קבע פגישה, "היום
-> שלי" itinerary block), G7 (full-page window-virtualised tables + sticky
-> headers + volunteer columns + display-scale KPIs — replaces F5.5 for the
-> BIG tables only), G10 (templates.ts source of truth + הורד תבנית xlsx
-> generator + farms/drivers import with Waze-link parsing + מיקום חסר
+> שלי" itinerary block) — **now includes G7bis.4**: a "צור מסלול ליום זה"
+> button on the agenda's day view AND on each week-view day (hover/menu
+> action) opening the היום שלי block computed for THAT day, same engine
+> with the date as a parameter; G7 (full-page window-virtualised tables +
+> sticky headers + volunteer columns + display-scale KPIs — replaces F5.5
+> for the BIG tables only), G10 (templates.ts source of truth + הורד תבנית
+> xlsx generator + farms/drivers import with Waze-link parsing + מיקום חסר
 > badge), G11 (iPad 1032×1376 / 1376×1032 + iPhone 402×874 perfection,
-> safe areas), G12 (A1–A30 re-run + NEW A31–A44 + light/dark captures +
-> full ETAT rewrite + deploy), G13 (tag `poc-final` + frozen copy at
-> /poc/ + immutability rule).
+> safe areas), G12 (A1–A30 re-run + NEW A31–A44 **+ A47–A50 from the G7bis
+> amendment** + light/dark captures + full ETAT rewrite + deploy), G13 (tag
+> `poc-final` + frozen copy at /poc/ + immutability rule).
+>
+> The G7bis amendment's acceptance criteria, to fold into G12's run:
+> · A47 — the 4 point kinds are visually distinct (shape+icon+colour),
+>   captures on farm detail AND mission detail.
+> · A48 — fullscreen operational on farm detail and the wizard; a zone drawn
+>   END-TO-END in fullscreen at iPad portrait 1032×1376. (Already exercised
+>   by hand this session; needs its scripted/captured proof at G12.)
+> · A49 — farm detail two columns at 1280 and iPad landscape, one column
+>   with folding blocks at iPad portrait/402, map ≥50vh, alignments checked
+>   by `bun run layout`.
+> · A50 — "צור מסלול ליום זה" from the day view of a FUTURE day shows that
+>   day's itinerary with its events (lands with G9).
 >
 > Verification note for G12: `bun run accept` was already adapted (driver
 > scoping via drivers[], three agenda kinds); `bun run wizard` passes with
-> the pre-composition flow. The G4.3 note "real push needs a backend
-> (Lots 1+)" must survive into the final ETAT. A41's simple-version
-> documentation: guards don't drag by design; visits/meetings drag on
-> desktop, and each modal's date field is the mobile move.
+> the pre-composition flow AND the G7bis.1 teardrop markers (selector now
+> matches teardrop+glyph, not the retired square). The G4.3 note "real push
+> needs a backend (Lots 1+)" must survive into the final ETAT. A41's
+> simple-version documentation: guards don't drag by design; visits/meetings
+> drag on desktop, and each modal's date field is the mobile move.
 
 > **Deployed and verified.** The first two attempts failed on `deploy-pages`
 > with `HTTP 503` while githubstatus.com had Actions and API Requests at *major
