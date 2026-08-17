@@ -231,7 +231,21 @@ export interface MissionAssignment {
 export interface Mission {
   id: string
   farmId: string
+  /**
+   * THE RENDEZVOUS. Where the driver drops the group and where every generated
+   * message points. Exactly one, always.
+   */
   anchorPointId: string
+  /**
+   * F2 — the other positions this guard covers during the night.
+   *
+   * A group of four regularly splits, or moves from the gate to the water tower
+   * at 01:00, and the coordinator needs the guard to say so. Kept SEPARATE from
+   * `anchorPointId` rather than collapsing both into a list, because the two
+   * facts are different: the rendezvous is a logistics commitment the driver and
+   * the messages depend on, the rest are places to be. Empty for most guards.
+   */
+  additionalAnchorPointIds: string[]
   /** ISO datetime of the expected arrival at the anchor point. */
   startAt: string
   /** ISO datetime of the expected morning pick-up. */
@@ -331,7 +345,10 @@ export interface Incident {
 export interface MissionView {
   mission: Mission
   farm: Farm
+  /** The rendezvous. */
   anchorPoint: AnchorPoint
+  /** F2 — the other positions covered, in the order they were checked. */
+  additionalAnchorPoints: AnchorPoint[]
   driver: Driver | null
   volunteers: Array<{ volunteer: Volunteer; isGroupPhone: boolean }>
 }

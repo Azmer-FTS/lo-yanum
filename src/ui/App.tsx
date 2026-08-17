@@ -100,7 +100,7 @@ export default function App() {
           <Route
             path="volunteers/import"
             element={
-              <Suspense fallback={<div className="skeleton h-96 rounded-lg" />}>
+              <Suspense fallback={<div className="skeleton h-96 rounded-card" />}>
                 <ImportWizardScreen />
               </Suspense>
             }

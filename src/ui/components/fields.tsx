@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 
 /**
@@ -121,6 +122,19 @@ export function TextArea({
   )
 }
 
+/**
+ * F1 — A SELECT IS NEVER A DEAD END.
+ *
+ * The rule this component enforces, and the bug that produced it: a required
+ * "anchor point" select rendered EMPTY for a farm that had none, so the step
+ * could not be completed and nothing on the screen said how to fix it. An empty
+ * `<select>` is the worst possible affordance — it looks like a control that
+ * has not loaded yet, so the user waits.
+ *
+ * `emptyAction` is therefore not a nicety: when there is nothing to choose, the
+ * select is REPLACED by the way to create something. Every required select in
+ * the app either has an enum for options (which cannot be empty) or passes one.
+ */
 export function SelectField<T extends string>({
   label,
   value,
@@ -130,6 +144,8 @@ export function SelectField<T extends string>({
   error,
   required,
   className = '',
+  emptyAction,
+  emptyLabel,
 }: {
   label: string
   value: T
@@ -139,7 +155,29 @@ export function SelectField<T extends string>({
   error?: string
   required?: boolean
   className?: string
+  /** Rendered INSTEAD of the select when there is nothing to choose from. */
+  emptyAction?: ReactNode
+  emptyLabel?: string
 }) {
+  if (options.length === 0 && emptyAction) {
+    return (
+      <Field
+        label={label}
+        error={error}
+        hint={hint}
+        required={required}
+        className={className}
+      >
+        <div className="flex flex-col items-start gap-2 rounded-field border border-dashed border-edge-strong px-3.5 py-3">
+          {emptyLabel && (
+            <p className="text-caption text-content-secondary">{emptyLabel}</p>
+          )}
+          {emptyAction}
+        </div>
+      </Field>
+    )
+  }
+
   return (
     <Field
       label={label}
@@ -159,6 +197,104 @@ export function SelectField<T extends string>({
           </option>
         ))}
       </select>
+    </Field>
+  )
+}
+
+/**
+ * F1 — the other half of the rule: a list that is CORRECT but incomplete.
+ *
+ * The yeshiva field offers the yeshivot already in the roster, which is right
+ * almost always and useless the first time a volunteer arrives from a new one —
+ * and on an empty database it offers nothing at all. Rather than choosing
+ * between a free-text field (which fragments the data into six spellings of the
+ * same yeshiva) and a closed list (which cannot accept the seventh), this is
+ * both: pick a known value, or switch to typing and add one.
+ *
+ * It opens in TYPING mode when the list is empty, so the first-run case needs no
+ * extra click.
+ */
+export function SelectOrCreateField({
+  label,
+  value,
+  options,
+  onChange,
+  createLabel,
+  backLabel,
+  hint,
+  error,
+  required,
+  className = '',
+}: {
+  label: string
+  value: string
+  options: string[]
+  onChange: (v: string) => void
+  createLabel: string
+  backLabel: string
+  hint?: string
+  error?: string
+  required?: boolean
+  className?: string
+}) {
+  const [typing, setTyping] = useState(
+    options.length === 0 || (value !== '' && !options.includes(value)),
+  )
+
+  return (
+    <Field
+      label={label}
+      error={error}
+      hint={hint}
+      required={required}
+      className={className}
+    >
+      {typing ? (
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            className={`input ${error ? 'border-status-danger' : ''}`}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          {options.length > 0 && (
+            <button
+              type="button"
+              className="btn-ghost shrink-0 py-1.5 text-micro"
+              onClick={() => {
+                setTyping(false)
+                onChange(options[0])
+              }}
+            >
+              {backLabel}
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <select
+            className={`input ${error ? 'border-status-danger' : ''}`}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          >
+            {options.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn-ghost shrink-0 py-1.5 text-micro"
+            onClick={() => {
+              setTyping(true)
+              onChange('')
+            }}
+          >
+            {createLabel}
+          </button>
+        </div>
+      )}
     </Field>
   )
 }

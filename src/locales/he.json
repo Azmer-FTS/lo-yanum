@@ -175,7 +175,8 @@
     "returnDetail": "הנהג לא אישר איסוף בבוקר",
     "presence_mismatch": "אי־התאמה בדיווח נוכחות",
     "mismatchDetail": "הנהג ומחזיק טלפון הקבוצה דיווחו הפוך על {{name}}",
-    "callNow": "חיוג מיידי"
+    "callNow": "חיוג מיידי",
+    "needsAction": "דורש טיפול"
   },
   "farms": {
     "title": "חוות",
@@ -204,7 +205,8 @@
     "edit": "עריכת חווה",
     "searchPlaceholder": "חיפוש חווה, יישוב או איש קשר",
     "zonesPlaceholder": "שכבת גבולות החלקות תתווסף בשלב הבא",
-    "openFullMap": "מפה מלאה"
+    "openFullMap": "מפה מלאה",
+    "createFirst": "יצירת חווה"
   },
   "anchor": {
     "title": "נקודת עיגון",
@@ -232,7 +234,23 @@
     "labelDriver": "נהג",
     "labelCoordinator": "רכז",
     "new": "נקודת עיגון חדשה",
-    "edit": "עריכת נקודת עיגון"
+    "edit": "עריכת נקודת עיגון",
+    "mapHintCreate": "לחצו על המפה להוספת נקודת עיגון",
+    "mapHintDrag": "גררו נקודה כדי לדייק את מיקומה",
+    "defaultName": "נקודת עיגון {{n}}",
+    "rendezvous": "נקודת מפגש עם הנהג",
+    "forThisGuard": "נקודות למשמרת זו",
+    "additionalPositions": "עמדות נוספות בלילה",
+    "deletePoint": "מחיקת הנקודה",
+    "deleteBlocked": "לא ניתן למחוק — הנקודה משמשת שמירה קיימת",
+    "accessLater": "אפשר להשלים לפני שליחת ההודעות",
+    "noneYet": "לחווה זו אין עדיין נקודת עיגון",
+    "createOnMap": "הוסיפו נקודה על המפה",
+    "pickExisting": "נקודה קיימת",
+    "createdAndChosen": "הנקודה נוצרה ונבחרה למשמרת",
+    "pointDetails": "פרטי הנקודה",
+    "positionOnMap": "המיקום נקבע על המפה",
+    "coversPositions": "{{count}} עמדות"
   },
   "map": {
     "title": "מפת חוות",
@@ -248,7 +266,10 @@
     "incidentsMap": "מפת האירועים",
     "missionsMap": "מפת השמירות",
     "routeMap": "מפת המסלול",
-    "hoverHint": "ריחוף על שורה מדגיש את הסימון במפה"
+    "hoverHint": "ריחוף על שורה מדגיש את הסימון במפה",
+    "gestureDesktop": "שינוי זום: Ctrl + גלילה",
+    "gestureMac": "שינוי זום: ⌘ + גלילה",
+    "gestureMobile": "הזיזו את המפה בשתי אצבעות"
   },
   "route": {
     "title": "תכנון מסלול ביקורים",
@@ -534,7 +555,9 @@
     "invalidNumber": "מספר לא תקין",
     "savedFarm": "החווה נשמרה",
     "savedVolunteer": "המתנדב נשמר",
-    "savedAnchor": "נקודת העיגון נשמרה"
+    "savedAnchor": "נקודת העיגון נשמרה",
+    "addNew": "חדש",
+    "chooseExisting": "מהרשימה"
   },
   "import": {
     "title": "ייבוא מתנדבים מקובץ",
@@ -633,7 +656,12 @@
     "hueWarn": "ענבר חם",
     "hueDanger": "אדום אלמוג",
     "hueInfo": "כחול שמיים",
-    "hueViolet": "סגול"
+    "hueViolet": "סגול",
+    "critical": "כתום ארצנו — מצבים קריטיים",
+    "criticalHint": "הכתום #EF4F28 שמור לאירוע דחוף, לשיחת חירום, לפעולה בלתי הפיכה ולשני מצבים שבהם מתנדב אינו מאותר. שום שימוש אחר.",
+    "criticalCard": "כרטיס התראה דחופה: פס כתום, צל כתום, תג מלא.",
+    "radius": "עיגול פינות — שלושה ערכים",
+    "radiusHint": "שדות 6px, כרטיסים 14px, כפתורים וצ׳יפים גלולה. אין ערך רביעי בשום מקום."
   },
   "timeline": {
     "now": "עכשיו",
@@ -711,6 +739,11 @@
     "inviteGreeting": "שלום",
     "inviteTime": "שעות",
     "inviteAsk": "האם תוכל להצטרף? אשמח לתשובה בהקדם.",
-    "inviteSignature": "בברכה,"
+    "inviteSignature": "בברכה,",
+    "noFarms": "אין עדיין חוות רשומות",
+    "noFarmsHint": "יש להוסיף חווה אחת לפחות לפני גיוס משמרת",
+    "anchorSection": "נקודת עיגון",
+    "anchorChooseHint": "סמנו את הנקודות שהמשמרת מכסה. הראשונה היא נקודת המפגש עם הנהג.",
+    "whenSection": "מועד והיקף"
   }
 }

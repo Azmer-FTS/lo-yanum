@@ -4,6 +4,7 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 
 import {
   FARM_PIPELINE,
+  createAnchorPoint,
   formatDate,
   formatDateTime,
   getAnchorPointsForFarm,
@@ -13,15 +14,16 @@ import {
   getVisibleMissionViews,
   googleMapsPointUrl,
   now,
+  patchAnchorPoint,
 } from '@core/index'
-import type { CommitmentKind, Farm, FarmStatus } from '@core/index'
+import type { CommitmentKind, Farm, FarmStatus, LatLng } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { ContactActions } from '../../components/ContactActions'
 import { FarmVisitModal } from '../../components/FarmVisitModal'
 import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
-import { MapView } from '../../components/MapView'
+import { AnchorMap } from '../../components/AnchorMap'
 import { Timeline } from '../../components/Timeline'
 import type { TimelineEntry } from '../../components/Timeline'
 import {
@@ -29,7 +31,6 @@ import {
   MissionStatusChip,
   SeverityChip,
   readStatusColor,
-  readToken,
 } from '../../components/badges'
 import {
   EmptyState,
@@ -62,7 +63,7 @@ function StatusStepper({ status }: { status: FarmStatus }) {
 
   if (status === 'declined') {
     return (
-      <div className="rounded-md border border-status-danger/40 bg-status-danger/10 px-4 py-3 text-caption font-semibold text-status-danger-ink">
+      <div className="rounded-field border border-status-danger/40 bg-status-danger/10 px-4 py-3 text-caption font-semibold text-status-danger-ink">
         {t('farmStatus.declined')}
       </div>
     )
@@ -126,7 +127,11 @@ function FarmFacts({ farm }: { farm: Farm }) {
   const locale = useLocale()
 
   return (
-    <dl className="grid gap-x-5 sm:grid-cols-2">
+    /* F5.2 — `sm:` is a VIEWPORT query, not a container one: two columns are
+       right when these facts have the page, and cramped in the 38 % side panel
+       they now live in beside the map. One column from `lg` up, two again only
+       once the panel itself is genuinely wide. */
+    <dl className="grid gap-x-5 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
       <KeyValue label={t('farms.filterType')} value={t(`farmType.${farm.type}`)} />
       <KeyValue label={t('volunteers.locality')} value={farm.locality} />
       <KeyValue
@@ -176,6 +181,7 @@ export function FarmDetailScreen() {
 
   const [newVisit, setNewVisit] = useState(false)
   const [editVisitId, setEditVisitId] = useState<string | null>(null)
+  const [selectedAnchorId, setSelectedAnchorId] = useState<string | null>(null)
 
   if (!farm) return <Navigate to="/coordinator/farms" replace />
 
@@ -253,75 +259,110 @@ export function FarmDetailScreen() {
         <StatusStepper status={farm.status} />
       </Section>
 
-      {/* D7.4 — the map is the dominant block (3/5), the facts and the activity
-          timeline share the remaining 2/5 as compact panels. Previously the
-          map was 2/5 and the facts sprawled across 3/5 of a wide screen as a
-          two-item-per-row list, which wasted the widest column on the page. */}
-      <div className="mb-4 grid gap-4 lg:grid-cols-5">
-        <Section
-          className="lg:col-span-3"
-          title={t('farms.location')}
-          padded={false}
-          action={
-            <a
-              href={googleMapsPointUrl(farm.position)}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-micro font-semibold text-accent-ink hover:underline"
-            >
-              <Icon name="external" size={13} />
-              {t('common.openInMaps')}
-            </a>
-          }
-        >
-          <MapView
-            ariaLabel={t('a11y.map')}
-            className="h-80 w-full lg:h-[32rem]"
-            center={farm.position}
-            zoom={12}
-            markers={[
-              {
-                id: farm.id,
-                position: farm.position,
-                color: readStatusColor(farm.status),
-                title: farm.name,
-                subtitle: farm.locality,
-                emphasis: true,
-              },
-              ...anchors.map((a) => ({
-                id: a.id,
-                position: a.position,
-                color: readToken('--accent'),
-                title: a.name,
-                subtitle: t('anchor.title'),
-              })),
-            ]}
-          />
-        </Section>
-
-        <div className="flex flex-col gap-4 lg:col-span-2">
-          <Section title={t('common.details')}>
+      {/* F6.1 — THE MAP IS THE INSTRUMENT HERE TOO, AND IT IS BIG.
+          It used to be a 3/5 column at 32 rem: large enough to look at, too
+          small to work in, and completely inert — the anchor points were drawn
+          on it but only editable through a separate form two clicks away. It
+          now takes the app's map-first gabarit (geography on the PHYSICAL left,
+          decision 34) at full column height, and it is the same editable
+          surface the wizard uses: click to drop a point, drag to move one.
+          The facts and the anchor-point list sit beside it, because they are
+          what the map is about. */}
+      <div className="mb-4 flex flex-col gap-4 lg:h-[34rem] lg:flex-row-reverse lg:rtl:flex-row">
+        <div className="order-2 flex min-w-0 flex-col gap-4 lg:order-none lg:w-[38%] lg:overflow-y-auto lg:pe-1">
+          <Section title={t('common.details')} flush>
             <FarmFacts farm={farm} />
           </Section>
 
           <Section
-            title={t('timeline.farmActivity')}
+            title={t('farms.anchorPoints')}
             action={
-              <button
-                type="button"
-                onClick={() => setNewVisit(true)}
-                className="text-micro font-semibold text-accent-ink hover:underline"
+              <a
+                href={googleMapsPointUrl(farm.position)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-micro font-semibold text-accent-ink hover:underline"
               >
-                {t('agenda.planVisit')}
-              </button>
+                <Icon name="external" size={13} />
+                {t('common.openInMaps')}
+              </a>
             }
           >
-            {activity.length === 0 ? (
-              <EmptyState icon="history" title={t('timeline.noActivity')} />
+            {anchors.length === 0 ? (
+              /* F1 — no anchor point is not an empty list, it is a missing
+                 thing with a way to make it. The map beside this is that way. */
+              <EmptyState
+                icon="pin"
+                title={t('farms.noAnchorPoints')}
+                hint={t('anchor.mapHintCreate')}
+              />
             ) : (
-              <Timeline withDate entries={activity} />
+              <ul className="flex flex-col gap-1.5">
+                {anchors.map((anchor) => (
+                  <li
+                    key={anchor.id}
+                    className={`flex items-center gap-1 rounded-field border px-1 transition-colors duration-fast ${
+                      anchor.id === selectedAnchorId
+                        ? 'border-accent bg-accent/10'
+                        : 'border-transparent'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAnchorId(anchor.id)}
+                      className="min-w-0 flex-1 px-2 py-2 text-start"
+                    >
+                      <span className="block truncate text-caption font-medium text-content-primary">
+                        {anchor.name}
+                      </span>
+                      {/* `line-clamp-1` supplies its own `display:-webkit-box`;
+                          adding `block` next to it silently un-clamps the line
+                          and a four-line access description shoves the list. */}
+                      <span className="muted mt-0.5 line-clamp-1">
+                        {anchor.accessDescription || t('anchor.accessLater')}
+                      </span>
+                    </button>
+                    <Link
+                      to={`/coordinator/farms/${farm.id}/anchors/${anchor.id}`}
+                      aria-label={t('common.details')}
+                      title={t('common.details')}
+                      className="shrink-0 rounded-field p-2 text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
+                    >
+                      <Icon name="document" size={16} />
+                    </Link>
+                    <Link
+                      to={`/coordinator/farms/${farm.id}/anchors/${anchor.id}/edit`}
+                      aria-label={t('anchor.edit')}
+                      title={t('anchor.edit')}
+                      className="shrink-0 rounded-field p-2 text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
+                    >
+                      <Icon name="edit" size={16} />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             )}
           </Section>
+        </div>
+
+        <div className="order-1 h-[46dvh] min-w-0 lg:order-none lg:h-full lg:flex-1">
+          <AnchorMap
+            farm={farm}
+            anchors={anchors}
+            selectedId={selectedAnchorId}
+            onSelect={setSelectedAnchorId}
+            onCreate={(position: LatLng) => {
+              const created = createAnchorPoint({
+                farmId: farm.id,
+                name: t('anchor.defaultName', { n: anchors.length + 1 }),
+                position,
+                instructions: [],
+                accessDescription: '',
+              })
+              setSelectedAnchorId(created.id)
+            }}
+            onMove={(id, position) => patchAnchorPoint(id, { position })}
+          />
         </div>
       </div>
 
@@ -352,50 +393,6 @@ export function FarmDetailScreen() {
             </ul>
           </Section>
 
-          <Section
-            title={t('farms.anchorPoints')}
-            action={
-              <Link
-                to={`/coordinator/farms/${farm.id}/anchors/new`}
-                className="btn-ghost py-1.5"
-              >
-                <Icon name="plus" size={14} />
-                {t('anchor.new')}
-              </Link>
-            }
-          >
-            {anchors.length === 0 ? (
-              <EmptyState icon="pin" title={t('farms.noAnchorPoints')} />
-            ) : (
-              <ul className="divide-y divide-edge-subtle">
-                {anchors.map((anchor) => (
-                  <li key={anchor.id} className="flex items-center gap-1">
-                    <div className="min-w-0 flex-1">
-                      <RowLink
-                        to={`/coordinator/farms/${farm.id}/anchors/${anchor.id}`}
-                      >
-                        <p className="text-caption font-medium text-content-primary">
-                          {anchor.name}
-                        </p>
-                        <p className="muted mt-0.5 line-clamp-1">
-                          {anchor.accessDescription}
-                        </p>
-                      </RowLink>
-                    </div>
-                    <Link
-                      to={`/coordinator/farms/${farm.id}/anchors/${anchor.id}/edit`}
-                      aria-label={t('anchor.edit')}
-                      title={t('anchor.edit')}
-                      className="shrink-0 rounded-sm p-2 text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
-                    >
-                      <Icon name="edit" size={16} />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-
           <Section title={t('commitment.title')}>
             {farm.commitments.length === 0 ? (
               <EmptyState title={t('common.none')} />
@@ -404,7 +401,7 @@ export function FarmDetailScreen() {
                 {farm.commitments.map((c, i) => (
                   <li
                     key={`${c.kind}-${i}`}
-                    className="flex items-start gap-3 rounded-md border border-edge-subtle px-3 py-2.5"
+                    className="flex items-start gap-3 rounded-field border border-edge-subtle px-3 py-2.5"
                   >
                     <span
                       className={`mt-0.5 ${
@@ -466,6 +463,26 @@ export function FarmDetailScreen() {
 
         <div className="flex min-w-0 flex-col gap-4">
           <Section
+            title={t('timeline.farmActivity')}
+            flush
+            action={
+              <button
+                type="button"
+                onClick={() => setNewVisit(true)}
+                className="text-micro font-semibold text-accent-ink hover:underline"
+              >
+                {t('agenda.planVisit')}
+              </button>
+            }
+          >
+            {activity.length === 0 ? (
+              <EmptyState icon="history" title={t('timeline.noActivity')} />
+            ) : (
+              <Timeline withDate entries={activity} />
+            )}
+          </Section>
+
+          <Section
             title={t('agenda.visits')}
             action={
               <button
@@ -487,7 +504,7 @@ export function FarmDetailScreen() {
                     <button
                       type="button"
                       onClick={() => setEditVisitId(visit.id)}
-                      className="flex w-full items-start gap-2.5 rounded-md border border-edge-subtle px-3 py-2 text-start
+                      className="flex w-full items-start gap-2.5 rounded-field border border-edge-subtle px-3 py-2 text-start
                                  transition-all duration-fast hover:border-accent/50 hover:bg-surface-high"
                     >
                       <span
@@ -524,7 +541,7 @@ export function FarmDetailScreen() {
                 {farm.agreements.map((a) => (
                   <li
                     key={a.id}
-                    className="flex items-center gap-3 rounded-md border border-edge-subtle px-3.5 py-3"
+                    className="flex items-center gap-3 rounded-field border border-edge-subtle px-3.5 py-3"
                   >
                     <span className="text-accent-ink">
                       <Icon name="document" size={19} />

@@ -106,11 +106,17 @@ export function FarmStatusDot({ status }: { status: FarmStatus }) {
   )
 }
 
+/**
+ * F4 — `return_not_confirmed` is one of the two CRITICAL states: it means a
+ * group left a farm and nobody has said they got home. It carries the charter
+ * orange as a solid fill, not a wash, because it is the one mission state a
+ * coordinator must never scroll past.
+ */
 const MISSION_STATUS_CLASS: Record<MissionStatus, string> = {
   planned: 'bg-status-info/15 text-status-info-ink',
   in_progress: 'bg-status-success/15 text-status-success-ink',
   completed: 'bg-content-muted/15 text-content-muted',
-  return_not_confirmed: 'bg-status-danger/15 text-status-danger-ink',
+  return_not_confirmed: 'bg-critical text-content-on-accent',
 }
 
 export function MissionStatusChip({ status }: { status: MissionStatus }) {
@@ -125,24 +131,32 @@ export function MissionStatusChip({ status }: { status: MissionStatus }) {
   )
 }
 
+/**
+ * F4 — THE דחוף BADGE IS THE CHARTER ORANGE, SOLID.
+ *
+ * The other two severities stay tinted. An urgent incident is not "the same
+ * chip, darker": it is the thing the whole programme exists to catch, and it
+ * gets the association's loud CTA colour at full strength so it separates from
+ * a page of green at arm's length.
+ */
 export const SEVERITY_CLASS: Record<IncidentSeverity, string> = {
   observation: 'bg-status-success/15 text-status-success-ink',
   suspicious: 'bg-status-warn/15 text-status-warn-ink',
-  urgent: 'bg-status-danger/15 text-status-danger-ink',
+  urgent: 'bg-critical text-content-on-accent',
 }
 
 /** The thick inline-start bar on an incident row / alert card. */
 export const SEVERITY_ACCENT: Record<IncidentSeverity, string> = {
   observation: 'border-s-status-success',
   suspicious: 'border-s-status-warn',
-  urgent: 'border-s-status-danger',
+  urgent: 'border-s-critical',
 }
 
 /** Solid fills for the R7 severity picker — huge, unmistakable at 2 AM. */
 export const SEVERITY_SOLID: Record<IncidentSeverity, string> = {
   observation: 'bg-status-success text-content-on-accent',
   suspicious: 'bg-status-warn text-content-on-accent',
-  urgent: 'bg-status-danger text-content-on-accent',
+  urgent: 'bg-critical text-content-on-accent',
 }
 
 export function SeverityChip({ severity }: { severity: IncidentSeverity }) {
@@ -193,12 +207,15 @@ export function ConfirmationChip({
   state: 'present' | 'absent' | 'pending' | 'mismatch'
 }) {
   const { t } = useTranslation()
+  // F4 — `mismatch` is the second CRITICAL state: the driver and the group
+  // holder disagree about who is on the bus. Solid charter orange; `absent`
+  // stays an ordinary danger wash, because "he did not come" is a known fact
+  // and "we do not agree on whether he came" is not.
   const map = {
     present: 'bg-status-success/15 text-status-success-ink',
     absent: 'bg-status-danger/15 text-status-danger-ink',
     pending: 'bg-content-muted/15 text-content-muted',
-    mismatch:
-      'bg-status-warn/20 text-status-warn-ink ring-1 ring-status-warn/50',
+    mismatch: 'bg-critical text-content-on-accent',
   } as const
   const icon = {
     present: 'check',

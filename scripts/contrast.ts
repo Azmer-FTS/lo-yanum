@@ -81,6 +81,9 @@ const SURFACES = [
   'surface-raised',
   'surface-overlay',
   'surface-high',
+  // Lot 0.9 / F3 — fields no longer sit on the green wash, so the surface every
+  // typed character lands on is its own token and has to be audited as one.
+  'surface-field',
 ]
 
 /** Every semantic hue, as the vivid/ink pair the components consume. */
@@ -184,6 +187,53 @@ function buildChecks(theme: 'light' | 'dark'): Check[] {
       min: AA_TEXT,
     })
   }
+
+  /**
+   * F3 — A FIELD IS A BORDER NOW, SO THE BORDER IS LOAD-BEARING.
+   *
+   * With the tinted background gone, `--border-strong` is the ONLY thing that
+   * says "you can type here". 1.8 rather than the 1.2 a decorative card edge
+   * gets: this hairline carries meaning, and the moment somebody softens it to
+   * `border-subtle` for tidiness the field stops being findable.
+   */
+  checks.push({
+    label: 'border-strong on surface-field (the field edge)',
+    fg: 'border-strong',
+    bg: 'surface-field',
+    min: 1.8,
+  })
+  checks.push({
+    label: 'surface-field vs surface-raised (field in a card)',
+    fg: 'surface-field',
+    bg: 'surface-raised',
+    // Light deliberately scores 1.00 here — a white field on a white card is
+    // the intended look and the border does the separating. Only dark, where
+    // the field is a well below the card, has to carry a luminance step.
+    min: theme === 'dark' ? 1.2 : 1.0,
+  })
+
+  /**
+   * F4 — THE CRITICAL ROLE. Theme-independent, so both themes check the same
+   * fill; what changes is the page it is measured against.
+   */
+  checks.push({
+    label: 'text-on-accent on solid critical',
+    fg: 'text-on-accent',
+    bg: 'critical',
+    min: AA_TEXT,
+  })
+  checks.push({
+    label: 'critical bar on surface-raised',
+    fg: 'critical',
+    bg: 'surface-raised',
+    min: AA_NON_TEXT,
+  })
+  checks.push({
+    label: 'critical marker on surface-base',
+    fg: 'critical',
+    bg: 'surface-base',
+    min: AA_NON_TEXT,
+  })
 
   // Card edges must be perceivable against the page.
   checks.push({

@@ -33,7 +33,8 @@ function GuardCard({ view }: { view: MissionView }) {
   const { mission, anchorPoint, volunteers, driver } = view
 
   return (
-    <li className="rounded-md border border-edge-subtle px-3.5 py-3">
+    /* F5.3 — floats above the page instead of melting into it (dark). */
+    <li className="tile px-3.5 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="ltr-nums text-caption font-medium">
           {formatDate(mission.startAt, locale)}
@@ -95,7 +96,7 @@ export function FarmerGuardsScreen() {
 
         {/* Discreet, not accusatory: a reminder of what was agreed. */}
         {farm.commitments.length > 0 && (
-          <section className="rounded-lg border border-edge-strong bg-surface-high/70 p-4">
+          <section className="rounded-card border border-edge-strong bg-surface-high/70 p-4">
             <h2 className="text-caption font-semibold text-content-primary">
               {t('commitment.reminderTitle')}
             </h2>

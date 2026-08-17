@@ -102,7 +102,7 @@ export function PresenceRoster({
           return (
             <li
               key={row.volunteer.id}
-              className={`rounded-lg border p-3 transition-colors duration-fast ${
+              className={`rounded-card border p-3 transition-colors duration-fast ${
                 mismatch
                   ? 'border-status-warn/60 bg-status-warn/10'
                   : 'border-edge-subtle bg-surface-raised'
@@ -138,7 +138,7 @@ export function PresenceRoster({
                   <a
                     href={telHref(row.volunteer.phone)}
                     aria-label={`${t('common.call')} ${row.volunteer.name}`}
-                    className="flex h-11 w-11 items-center justify-center rounded-md bg-accent text-content-on-accent
+                    className="flex h-11 w-11 items-center justify-center rounded-field bg-accent text-content-on-accent
                                transition-all duration-fast ease-out hover:bg-accent-strong active:scale-95"
                   >
                     <Icon name="phone" size={19} />
@@ -151,7 +151,7 @@ export function PresenceRoster({
                       target="_blank"
                       rel="noreferrer"
                       aria-label={`${t('common.whatsapp')} ${row.volunteer.name}`}
-                      className="flex h-11 w-11 items-center justify-center rounded-md border border-edge-strong
+                      className="flex h-11 w-11 items-center justify-center rounded-field border border-edge-strong
                                  text-status-success-ink transition-all duration-fast ease-out
                                  hover:bg-status-success/10 active:scale-95"
                     >
@@ -167,7 +167,7 @@ export function PresenceRoster({
                   type="button"
                   onClick={() => mark(row.volunteer.id, 'present')}
                   aria-pressed={chosen === 'present'}
-                  className={`flex items-center justify-center gap-2 rounded-md px-3 py-3 text-caption font-semibold
+                  className={`flex items-center justify-center gap-2 rounded-field px-3 py-3 text-caption font-semibold
                               transition-all duration-fast ease-out active:scale-[0.98] ${
                                 chosen === 'present'
                                   ? 'bg-status-success text-content-on-accent shadow-card'
@@ -181,7 +181,7 @@ export function PresenceRoster({
                   type="button"
                   onClick={() => mark(row.volunteer.id, 'absent')}
                   aria-pressed={chosen === 'absent'}
-                  className={`flex items-center justify-center gap-2 rounded-md px-3 py-3 text-caption font-semibold
+                  className={`flex items-center justify-center gap-2 rounded-field px-3 py-3 text-caption font-semibold
                               transition-all duration-fast ease-out active:scale-[0.98] ${
                                 chosen === 'absent'
                                   ? 'bg-status-danger text-content-on-accent shadow-card'
@@ -242,7 +242,7 @@ export function PresenceRoster({
                       row.leg.self === 'present' ? null : 'present',
                     )
                   }
-                  className={`mt-2 w-full rounded-md px-3 py-2.5 text-caption font-semibold transition-all duration-fast ${
+                  className={`mt-2 w-full rounded-field px-3 py-2.5 text-caption font-semibold transition-all duration-fast ${
                     row.leg.self === 'present'
                       ? 'bg-accent/20 text-accent-ink'
                       : 'border border-accent/40 text-accent-ink hover:bg-accent/10'
@@ -260,7 +260,7 @@ export function PresenceRoster({
       </ul>
 
       {pending === 0 ? (
-        <p className="flex items-center justify-center gap-2 rounded-md bg-status-success/10 py-2.5 text-caption font-medium text-status-success-ink">
+        <p className="flex items-center justify-center gap-2 rounded-field bg-status-success/10 py-2.5 text-caption font-medium text-status-success-ink">
           <Icon name="check" size={15} />
           {t('presence.allConfirmed')}
         </p>

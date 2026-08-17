@@ -1,7 +1,7 @@
 import { chromium } from 'playwright'
 
 /**
- * A24 — systematic 390 px overlap sweep.
+ * A24 + A30 — systematic 390 px sweep.
  *
  * Walks every screen at phone width and asserts three things that a human
  * eyeballing screenshots reliably misses:
@@ -24,7 +24,19 @@ const WIDTH = 390
 const HEIGHT = 844
 
 /** Every screen a coordinator or a field user can reach. */
-const ROUTES: Array<{ name: string; hash: string; session?: string }> = [
+const ROUTES: Array<{
+  name: string
+  hash: string
+  session?: string
+  /**
+   * A30 exemption, with its reason printed in the run so it can never be a
+   * silent cap. Only one screen qualifies and only one ever should: a page
+   * whose PURPOSE is to be an exhaustive catalogue is long because of what it
+   * is, not because a list escaped its container. Every other screen is held to
+   * the limit, including the ones that legitimately run to four screenfuls.
+   */
+  tallOnPurpose?: string
+}> = [
   { name: 'dashboard', hash: '#/coordinator' },
   { name: 'agenda', hash: '#/coordinator/agenda' },
   { name: 'farms', hash: '#/coordinator/farms' },
@@ -39,7 +51,11 @@ const ROUTES: Array<{ name: string; hash: string; session?: string }> = [
   { name: 'mission-detail', hash: '#/coordinator/missions/mission-01' },
   { name: 'incidents', hash: '#/coordinator/incidents' },
   { name: 'incident-detail', hash: '#/coordinator/incidents/inc-01' },
-  { name: 'styleguide', hash: '#/styleguide' },
+  {
+    name: 'styleguide',
+    hash: '#/styleguide',
+    tallOnPurpose: 'a token catalogue is meant to be scrolled end to end',
+  },
   { name: 'farmer-tonight', hash: '#/farmer', session: 'farmer:contact-01a' },
   { name: 'farmer-guards', hash: '#/farmer/guards', session: 'farmer:contact-01a' },
   { name: 'farmer-report', hash: '#/farmer/report', session: 'farmer:contact-01a' },
@@ -54,6 +70,10 @@ interface Report {
   innerWidth: number
   wide: Array<{ tag: string; cls: string; width: number }>
   collisions: Array<{ a: string; b: string }>
+  /** A30 — page height as a multiple of the viewport. */
+  heightRatio: number
+  /** A30 — long tables/lists with no bounded scroll container above them. */
+  uncontained: Array<{ tag: string; rows: number }>
 }
 
 /**
@@ -109,13 +129,60 @@ function audit(): Report {
     }
   }
 
+  /**
+   * A30 — A TABLE OR LIST MUST NOT BE THE THING THAT SETS THE PAGE HEIGHT.
+   *
+   * Walks up from every table and every list past 20 rows looking for an
+   * ancestor that actually scrolls — `overflow-y: auto|scroll` AND a content
+   * height greater than its own box. The second half matters: a container with
+   * `overflow-y:auto` and no height limit does not scroll, it grows, and it
+   * would otherwise satisfy a naive check while the page still stretched.
+   */
+  const uncontained = [...document.querySelectorAll('table, ul, ol')]
+    .filter((el) => {
+      const rows =
+        el.tagName === 'TABLE'
+          ? el.querySelectorAll('tbody tr').length
+          : el.children.length
+      if (rows <= 20) return false
+      let p: HTMLElement | null = el.parentElement
+      while (p && p !== document.body) {
+        const cs = getComputedStyle(p)
+        const scrolls = cs.overflowY === 'auto' || cs.overflowY === 'scroll'
+        if (scrolls && p.scrollHeight > p.clientHeight + 4) return false
+        p = p.parentElement
+      }
+      return true
+    })
+    .map((el) => ({
+      tag: label(el),
+      rows:
+        el.tagName === 'TABLE'
+          ? el.querySelectorAll('tbody tr').length
+          : el.children.length,
+    }))
+
   return {
     scrollWidth: document.documentElement.scrollWidth,
     innerWidth: vw,
     wide,
     collisions,
+    heightRatio:
+      document.documentElement.scrollHeight / Math.max(1, window.innerHeight),
+    uncontained,
   }
 }
+
+/**
+ * How many screenfuls a page may be before it counts as "stretched".
+ *
+ * Six is generous on purpose — a detail screen legitimately runs long, and the
+ * failure this catches is the other kind: a page whose length is a function of
+ * how many rows happen to exist, where the screen's own sticky footer ends up
+ * far below the fold. Before F5.5 the import preview rendered every row of the
+ * file, so its height was whatever the coordinator happened to upload.
+ */
+const MAX_SCREENFULS = 6
 
 const browser = await chromium.launch()
 const context = await browser.newContext({
@@ -129,16 +196,18 @@ page.setDefaultNavigationTimeout(120_000)
 page.setDefaultTimeout(60_000)
 
 console.log(`Layout sweep at ${WIDTH} px — ${ROUTES.length} screens`)
-console.log(`  ${'screen'.padEnd(20)} ${'scrollW'.padStart(8)}  result`)
+console.log(
+  `  ${'screen'.padEnd(20)} ${'scrollW'.padStart(8)} ${'screens'.padStart(8)}  result`,
+)
 console.log(`  ${'-'.repeat(62)}`)
 
 let failures = 0
 
-await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'networkidle' })
+await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
 
 for (const route of ROUTES) {
   // Pick the identity through the dev toolbar, exactly as a user would.
-  await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'networkidle' })
+  await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
   await page.waitForSelector('select', { state: 'attached' })
   await page.selectOption('select', route.session ?? 'coordinator')
   await page.waitForTimeout(300)
@@ -151,19 +220,37 @@ for (const route of ROUTES) {
 
   const report = (await page.evaluate(audit)) as Report
   const overflow = report.scrollWidth > report.innerWidth + 1
-  const ok = !overflow && report.wide.length === 0 && report.collisions.length === 0
+  const tooTall =
+    report.heightRatio > MAX_SCREENFULS && !route.tallOnPurpose
+  const ok =
+    !overflow &&
+    !tooTall &&
+    report.wide.length === 0 &&
+    report.collisions.length === 0 &&
+    report.uncontained.length === 0
   if (!ok) failures++
 
   console.log(
-    `  ${route.name.padEnd(20)} ${String(report.scrollWidth).padStart(8)}  ${
-      ok ? 'PASS' : 'FAIL'
-    }`,
+    `  ${route.name.padEnd(20)} ${String(report.scrollWidth).padStart(8)} ${report.heightRatio
+      .toFixed(1)
+      .padStart(8)}  ${ok ? 'PASS' : 'FAIL'}`,
   )
   for (const w of report.wide) {
     console.log(`      wider than viewport: ${w.tag} (${w.width}px)`)
   }
   for (const c of report.collisions) {
     console.log(`      pinned overlap: ${c.a}  ×  ${c.b}`)
+  }
+  for (const u of report.uncontained) {
+    console.log(`      A30 uncontained list: ${u.tag} (${u.rows} rows)`)
+  }
+  if (tooTall) {
+    console.log(
+      `      A30 page is ${report.heightRatio.toFixed(1)} screenfuls (max ${MAX_SCREENFULS})`,
+    )
+  }
+  if (route.tallOnPurpose && report.heightRatio > MAX_SCREENFULS) {
+    console.log(`      A30 exempt: ${route.tallOnPurpose}`)
   }
 }
 
@@ -174,4 +261,6 @@ if (failures > 0) {
   console.log(`  ${failures} screen(s) FAILED.`)
   process.exit(1)
 }
-console.log('  No overflow and no pinned-element overlap on any screen.')
+console.log(
+  '  No overflow, no pinned-element overlap, no uncontained list (A24 + A30).',
+)

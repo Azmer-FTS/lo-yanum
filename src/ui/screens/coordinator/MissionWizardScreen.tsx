@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
@@ -8,7 +8,9 @@ import {
   buildInvitationMessage,
   buildKosherMessage,
   buildSmartphoneMessage,
+  createAnchorPoint,
   createMission,
+  deleteAnchorPoint,
   formatDate,
   formatTime,
   fromDayKey,
@@ -19,6 +21,7 @@ import {
   getVolunteers,
   localDayKey,
   now,
+  patchAnchorPoint,
   rankCandidates,
   rankDrivers,
   shortlistSize,
@@ -27,18 +30,25 @@ import {
   whatsappHref,
 } from '@core/index'
 import type {
+  AnchorPoint,
   CandidateScore,
   DriverScore,
+  LatLng,
   SolicitationState,
   Volunteer,
 } from '@core/index'
 
+import { AnchorMap } from '../../components/AnchorMap'
 import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
-import { MapView } from '../../components/MapView'
-import { PhoneTypeChip, readToken } from '../../components/badges'
-import { SelectField, TextField } from '../../components/fields'
-import { CopyButton, EmptyState, Section } from '../../components/primitives'
+import { PhoneTypeChip } from '../../components/badges'
+import { SelectField, TextArea, TextField } from '../../components/fields'
+import {
+  Callout,
+  CopyButton,
+  EmptyState,
+  Section,
+} from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
@@ -58,9 +68,35 @@ import { useLocale } from '../../hooks/useLocale'
  * the next-best name up automatically. The gauge counts CONFIRMED people only —
  * a shortlist of six with two confirmations is two, not six.
  *
+ * ── LOT 0.9 ─────────────────────────────────────────────────────────────────
+ *
+ * F1/F2 — STEP 1 IS MAP-FIRST, AND THE MAP IS THE INSTRUMENT.
+ *
+ * The bug that forced this: picking a farm with no anchor point rendered the
+ * required "נקודת עיגון" select EMPTY, with no way to create one without
+ * abandoning the half-filled wizard. A mandatory field that cannot be satisfied
+ * is not validation, it is a wall — and the general rule it produced now holds
+ * everywhere in the app: WHEN A REQUIRED VALUE IS MISSING, THE UI OFFERS THE
+ * WAY TO CREATE IT ON THE SPOT.
+ *
+ * So the step adopts the app's map-first gabarit — geography on the physical
+ * left, the form on the right — a click on the map drops an anchor point, pins
+ * are draggable until the guard is committed, and several points can be checked
+ * for one night because a group of four routinely covers two positions. The
+ * select survives as a shortcut for picking the RENDEZVOUS among the points
+ * already chosen, which is a real job; it is no longer the only door.
+ *
+ * F5.3/F5.4 — the stepper is sticky at the top and the actions are sticky at
+ * the foot, so only the middle scrolls; and the candidate lists lost their
+ * enclosing card, because rows the same colour as the card they sit in do not
+ * read as rows.
+ *
  * All solicitation state is local to this component on purpose. Until the guard
  * is created, nothing about it belongs in the store: a coordinator who backs out
- * halfway through should leave no trace behind.
+ * halfway through should leave no trace behind. ANCHOR POINTS ARE THE ONE
+ * EXCEPTION and are written immediately — they belong to the farm, not to this
+ * guard, and a point mapped during a phone call is worth keeping even if the
+ * call ends with "not this week".
  */
 
 type Step = 1 | 2 | 3 | 4 | 5
@@ -121,7 +157,7 @@ function CandidateRow({
 }) {
   const { volunteer } = candidate
   return (
-    <li className="rounded-md border border-edge-subtle bg-surface-raised p-3 transition-all duration-fast hover:border-edge-strong">
+    <li className="tile-interactive p-3">
       <div className="flex items-start gap-3">
         <Avatar photo={volunteer.photo} name={volunteer.name} size="md" />
         <div className="min-w-0 flex-1">
@@ -145,6 +181,102 @@ function CandidateRow({
   )
 }
 
+/**
+ * F2 — the mini-record for the point the coordinator just dropped.
+ *
+ * It writes straight through to the store on every keystroke rather than
+ * collecting a draft and saving it: the point already exists (the click created
+ * it), so there is no unsaved state to lose, and the pin's label on the map
+ * updates as the name is typed — which is what makes the panel and the map read
+ * as one object rather than two.
+ *
+ * `accessDescription` is REQUIRED on the standalone anchor form and deliberately
+ * optional here — a coordinator on the phone should not have to compose driving
+ * directions before they can staff a night. The debt is made visible instead:
+ * the recap warns that the kosher-phone message is incomplete until it is
+ * written, because that message is the only thing a volunteer without a map
+ * will ever see.
+ */
+function AnchorEditor({
+  anchor,
+  onClose,
+  onDelete,
+  blockedNote,
+}: {
+  anchor: AnchorPoint
+  onClose: () => void
+  onDelete: () => void
+  blockedNote: string | null
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <div className="card card-pad">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className="text-heading text-content-primary">
+          {t('anchor.pointDetails')}
+        </h3>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t('common.close')}
+          className="rounded-field p-1.5 text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
+        >
+          <Icon name="close" size={17} />
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <TextField
+          label={t('form.anchorName')}
+          value={anchor.name}
+          required
+          onChange={(name) => patchAnchorPoint(anchor.id, { name })}
+        />
+        <TextArea
+          label={t('form.instructions')}
+          rows={3}
+          value={anchor.instructions.join('\n')}
+          hint={t('form.instructionsHint')}
+          onChange={(v) =>
+            patchAnchorPoint(anchor.id, {
+              instructions: v
+                .split('\n')
+                .map((l) => l.trim())
+                .filter(Boolean),
+            })
+          }
+        />
+        <TextArea
+          label={`${t('form.accessDescription')} · ${t('common.optional')}`}
+          rows={3}
+          value={anchor.accessDescription}
+          hint={t('anchor.accessLater')}
+          onChange={(accessDescription) =>
+            patchAnchorPoint(anchor.id, { accessDescription })
+          }
+        />
+
+        <p className="muted flex items-center gap-1.5">
+          <Icon name="pin" size={13} />
+          {t('anchor.positionOnMap')}
+        </p>
+
+        {blockedNote && <Callout tone="warn" title={blockedNote} />}
+
+        <button
+          type="button"
+          onClick={onDelete}
+          className="btn-ghost self-start py-1.5 text-micro text-status-danger-ink hover:bg-status-danger/10"
+        >
+          <Icon name="close" size={13} />
+          {t('anchor.deletePoint')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function MissionWizardScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -161,19 +293,77 @@ export function MissionWizardScreen() {
   // --- Step 1 state --------------------------------------------------------
   const [farmId, setFarmId] = useState(farms[0]?.id ?? '')
   const anchors = useCoreValue(() => getAnchorPointsForFarm(farmId))
-  const [anchorId, setAnchorId] = useState('')
-  const [dayKey, setDayKey] = useState(
-    params.get('date') ?? localDayKey(now()),
-  )
+
+  /**
+   * The anchor points this guard covers, IN ORDER. The first is the rendezvous
+   * the driver is sent to and the one every generated message names; the rest
+   * are positions the group moves between during the night.
+   */
+  const [anchorIds, setAnchorIds] = useState<string[]>([])
+  const [openAnchorId, setOpenAnchorId] = useState<string | null>(null)
+  const [deleteBlocked, setDeleteBlocked] = useState<string | null>(null)
+
+  const [dayKey, setDayKey] = useState(params.get('date') ?? localDayKey(now()))
   const [startHour, setStartHour] = useState('21:00')
   const [endHour, setEndHour] = useState('05:00')
   const [required, setRequired] = useState(2)
 
   const farm = farms.find((f) => f.id === farmId) ?? null
-  // Falling back to the farm's first anchor keeps step 1 answerable with two
-  // clicks on the common path, while still letting it be changed.
-  const anchor =
-    anchors.find((a) => a.id === anchorId) ?? anchors[0] ?? null
+
+  /**
+   * Changing the farm re-seeds the selection with that farm's first point.
+   *
+   * Keyed on the FARM, not on the anchor list: re-seeding whenever `anchors`
+   * changed would fight the coordinator every time they dropped a second pin,
+   * silently snapping the choice back to point 1.
+   */
+  useEffect(() => {
+    setAnchorIds(anchors.length > 0 ? [anchors[0].id] : [])
+    setOpenAnchorId(null)
+    setDeleteBlocked(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [farmId])
+
+  const chosenAnchors = anchorIds.flatMap((id) => {
+    const a = anchors.find((x) => x.id === id)
+    return a ? [a] : []
+  })
+  const anchor = chosenAnchors[0] ?? null
+  const openAnchor = anchors.find((a) => a.id === openAnchorId) ?? null
+
+  /** F2 — a click on the map creates the point, selects it, and opens it. */
+  const createAnchorAt = (position: LatLng) => {
+    if (!farm) return
+    const created = createAnchorPoint({
+      farmId: farm.id,
+      name: t('anchor.defaultName', { n: anchors.length + 1 }),
+      position,
+      instructions: [],
+      accessDescription: '',
+    })
+    setAnchorIds((prev) => [...prev, created.id])
+    setOpenAnchorId(created.id)
+    setDeleteBlocked(null)
+  }
+
+  const toggleAnchor = (id: string) =>
+    setAnchorIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    )
+
+  const removeAnchor = (id: string) => {
+    if (!deleteAnchorPoint(id)) {
+      setDeleteBlocked(t('anchor.deleteBlocked'))
+      return
+    }
+    setAnchorIds((prev) => prev.filter((x) => x !== id))
+    setOpenAnchorId(null)
+    setDeleteBlocked(null)
+  }
+
+  /** Promote a point to rendezvous: it becomes first, the rest keep their order. */
+  const setRendezvous = (id: string) =>
+    setAnchorIds((prev) => [id, ...prev.filter((x) => x !== id)])
 
   const { startAt, endAt } = useMemo(() => {
     const day = fromDayKey(dayKey)
@@ -253,9 +443,7 @@ export function MissionWizardScreen() {
     const v = byId.get(id)
     return v ? [v] : []
   })
-  const confirmed = shortlisted.filter(
-    (v) => responses[v.id] === 'confirmed',
-  )
+  const confirmed = shortlisted.filter((v) => responses[v.id] === 'confirmed')
   const target = shortlistSize(required)
 
   const addCandidate = (id: string) =>
@@ -342,6 +530,7 @@ export function MissionWizardScreen() {
     const mission = createMission({
       farmId: farm.id,
       anchorPointId: anchor.id,
+      additionalAnchorPointIds: anchorIds.slice(1),
       startAt,
       endAt,
       volunteerIds: confirmed.map((v) => v.id),
@@ -367,6 +556,7 @@ export function MissionWizardScreen() {
         id: createdMissionId ?? 'draft',
         farmId: farm.id,
         anchorPointId: anchor.id,
+        additionalAnchorPointIds: anchorIds.slice(1),
         startAt,
         endAt,
         status: 'planned' as const,
@@ -406,6 +596,7 @@ export function MissionWizardScreen() {
   }, [
     farm,
     anchor,
+    anchorIds,
     drivers,
     driverId,
     driverState,
@@ -428,16 +619,20 @@ export function MissionWizardScreen() {
         {t('missions.title')}
       </Link>
 
-      <header className="mb-5">
-        <h1 className="text-title text-content-primary">
-          {t('wizard.title')}
-        </h1>
+      <header className="mb-4">
+        <h1 className="text-title text-content-primary">{t('wizard.title')}</h1>
         <p className="muted mt-1">{t('wizard.subtitle')}</p>
       </header>
 
-      {/* Stepper. Below `sm` only the current label is spelled out — five
-          Hebrew labels on a 390 px row is unreadable at any font size. */}
-      <ol className="mb-5 flex items-center gap-1 overflow-x-auto pb-1">
+      {/* F5.4 — the stepper is STICKY. It answers "where am I and how much is
+          left", which is a question that arrives halfway down a long list of
+          candidates — i.e. exactly where the old static one had scrolled away.
+          `--shell-top` is the phone header's MEASURED height and is 0 on
+          desktop, where the shell has no top bar at all, so this needs no
+          breakpoint of its own.
+          Below `sm` only the current label is spelled out — five Hebrew labels
+          on a 390 px row is unreadable at any font size. */}
+      <ol className="sticky top-[var(--shell-top)] z-30 -mx-4 mb-4 flex items-center gap-1 overflow-x-auto border-b border-edge-subtle bg-surface-base/95 px-4 py-2.5 backdrop-blur sm:-mx-6 sm:px-6">
         {([1, 2, 3, 4, 5] as Step[]).map((s, i) => {
           const done = s < step
           const current = s === step
@@ -472,42 +667,65 @@ export function MissionWizardScreen() {
       </ol>
 
       {/* ---------------------------------------------------------------- 1 */}
-      {step === 1 && (
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="flex flex-col gap-4 lg:col-span-2">
-            <Section title={t('wizard.stepWhat')}>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <SelectField
-                  label={t('missions.farm')}
-                  value={farmId}
-                  onChange={(v) => {
-                    setFarmId(v)
-                    setAnchorId('')
-                  }}
-                  required
-                  options={farms.map((f) => ({
-                    value: f.id,
-                    label: `${f.name} · ${f.locality}`,
-                  }))}
-                />
-                <SelectField
-                  label={t('missions.anchorPoint')}
-                  value={anchor?.id ?? ''}
-                  onChange={setAnchorId}
-                  required
-                  hint={anchors.length === 0 ? t('farms.noAnchorPoints') : undefined}
-                  options={anchors.map((a) => ({ value: a.id, label: a.name }))}
-                />
-                <label className="block">
-                  <span className="label">{t('missions.date')}</span>
-                  <input
-                    type="date"
-                    className="input ltr-nums text-start"
-                    value={dayKey}
-                    onChange={(e) => setDayKey(e.target.value)}
+      {step === 1 &&
+        (farm === null ? (
+          /* F1 — the outermost dead end of all: no farms at all. Even here the
+             screen offers the way forward instead of an empty select. */
+          <div className="card card-pad">
+            <EmptyState
+              icon="farm"
+              title={t('wizard.noFarms')}
+              hint={t('wizard.noFarmsHint')}
+              action={
+                <Link to="/coordinator/farms/new" className="btn-primary">
+                  <Icon name="plus" size={15} />
+                  {t('farms.createFirst')}
+                </Link>
+              }
+            />
+          </div>
+        ) : (
+          /* F2 — the map-first gabarit, as on every other major screen: the map
+             is on the PHYSICAL left in both writing directions (decision 34).
+             The DOM order is form-then-map so a screen reader hears the
+             decisions first; RTL + `row` and LTR + `row-reverse` both then put
+             the map on the left. */
+          <div className="flex flex-col gap-4 lg:h-[calc(100dvh-var(--shell-top)-var(--shell-bottom)-18rem)] lg:min-h-[24rem] lg:flex-row-reverse lg:rtl:flex-row">
+            <div className="order-2 flex min-w-0 flex-col gap-4 lg:order-none lg:w-[42%] lg:overflow-y-auto lg:pe-1">
+              <Section title={t('wizard.whenSection')} flush>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <SelectField
+                    label={t('missions.farm')}
+                    value={farmId}
+                    onChange={setFarmId}
+                    required
+                    className="sm:col-span-2"
+                    options={farms.map((f) => ({
+                      value: f.id,
+                      label: `${f.name} · ${f.locality}`,
+                    }))}
                   />
-                </label>
-                <div className="grid grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="label">{t('missions.date')}</span>
+                    <input
+                      type="date"
+                      className="input ltr-nums text-start"
+                      value={dayKey}
+                      onChange={(e) => setDayKey(e.target.value)}
+                    />
+                  </label>
+                  <TextField
+                    label={t('wizard.required')}
+                    type="number"
+                    ltr
+                    value={String(required)}
+                    onChange={(v) =>
+                      setRequired(Math.max(1, Math.min(12, Number(v) || 1)))
+                    }
+                    hint={t('wizard.requiredHint', {
+                      count: shortlistSize(required),
+                    })}
+                  />
                   <label className="block">
                     <span className="label">{t('missions.startAt')}</span>
                     <input
@@ -527,68 +745,155 @@ export function MissionWizardScreen() {
                     />
                   </label>
                 </div>
-                <TextField
-                  label={t('wizard.required')}
-                  type="number"
-                  ltr
-                  value={String(required)}
-                  onChange={(v) =>
-                    setRequired(Math.max(1, Math.min(12, Number(v) || 1)))
-                  }
-                  hint={t('wizard.requiredHint', { count: shortlistSize(required) })}
-                />
-              </div>
-            </Section>
-          </div>
+              </Section>
 
-          <Section title={t('map.title')} padded={false}>
-            {destination ? (
-              <MapView
-                ariaLabel={t('a11y.map')}
-                className="h-64 w-full lg:h-80"
-                interactive={false}
-                center={destination}
-                zoom={11}
-                markers={[
-                  {
-                    id: 'target',
-                    position: destination,
-                    color: readToken('--accent'),
-                    title: anchor?.name ?? farm?.name ?? '',
-                    emphasis: true,
-                  },
-                ]}
+              <Section title={t('wizard.anchorSection')}>
+                {anchors.length === 0 ? (
+                  /* F1 — THE DEAD END, REPLACED. No select at all when there is
+                     nothing to select: an empty dropdown reads as a loading bug,
+                     while this says what to do and points at the thing that does
+                     it. The chevron is flipped in BOTH directions because it
+                     points at the map, which is physically left either way. */
+                  <Callout tone="info" icon="pin" title={t('anchor.noneYet')}>
+                    <span className="flex items-center gap-2 font-semibold text-accent-ink">
+                      <Icon name="chevron" size={15} className="-scale-x-100" />
+                      {t('anchor.createOnMap')}
+                    </span>
+                  </Callout>
+                ) : (
+                  <>
+                    <p className="muted mb-2.5">
+                      {t('wizard.anchorChooseHint')}
+                    </p>
+                    <ul className="flex flex-col gap-1.5">
+                      {anchors.map((a) => {
+                        const rank = anchorIds.indexOf(a.id)
+                        return (
+                          <li
+                            key={a.id}
+                            className={`flex items-center gap-2.5 rounded-field border px-3 py-2 transition-colors duration-fast ${
+                              rank >= 0
+                                ? 'border-accent bg-accent/10'
+                                : 'border-edge-subtle hover:border-edge-strong'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="check"
+                              checked={rank >= 0}
+                              onChange={() => toggleAnchor(a.id)}
+                              aria-label={a.name}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setOpenAnchorId(a.id)}
+                              className="min-w-0 flex-1 text-start"
+                            >
+                              <span className="block truncate text-caption font-medium text-content-primary">
+                                {a.name}
+                              </span>
+                              {rank === 0 && (
+                                <span className="muted block">
+                                  {t('anchor.rendezvous')}
+                                </span>
+                              )}
+                            </button>
+                            {rank >= 0 && (
+                              <span className="chip bg-accent text-content-on-accent">
+                                <span className="numeric">{rank + 1}</span>
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setOpenAnchorId(a.id)}
+                              aria-label={t('anchor.edit')}
+                              className="shrink-0 rounded-field p-1.5 text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
+                            >
+                              <Icon name="edit" size={15} />
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ul>
+
+                    {/* The select survives, with a job it can actually do:
+                        WHICH of the chosen points the driver is sent to. It
+                        only appears once that is a real question. */}
+                    {chosenAnchors.length > 1 && (
+                      <div className="mt-3">
+                        <SelectField
+                          label={t('anchor.rendezvous')}
+                          value={anchorIds[0] ?? ''}
+                          onChange={setRendezvous}
+                          required
+                          options={chosenAnchors.map((a) => ({
+                            value: a.id,
+                            label: a.name,
+                          }))}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </Section>
+
+              {openAnchor && (
+                <AnchorEditor
+                  anchor={openAnchor}
+                  blockedNote={deleteBlocked}
+                  onClose={() => {
+                    setOpenAnchorId(null)
+                    setDeleteBlocked(null)
+                  }}
+                  onDelete={() => removeAnchor(openAnchor.id)}
+                />
+              )}
+            </div>
+
+            <div className="order-1 h-[42dvh] min-w-0 lg:order-none lg:h-full lg:flex-1">
+              <AnchorMap
+                farm={farm}
+                anchors={anchors}
+                chosenIds={anchorIds}
+                selectedId={openAnchorId}
+                onSelect={setOpenAnchorId}
+                onCreate={createAnchorAt}
+                onMove={(id, position) => patchAnchorPoint(id, { position })}
               />
-            ) : (
-              <div className="p-4">
-                <EmptyState icon="pin" title={t('farms.noAnchorPoints')} />
-              </div>
-            )}
-          </Section>
-        </div>
-      )}
+            </div>
+          </div>
+        ))}
 
       {/* ---------------------------------------------------------------- 2 */}
       {step === 2 && (
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid items-start gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <Section
               title={t('wizard.stepProposal')}
-              padded={false}
+              bare
+              flush
               action={
-                <button type="button" className="btn-ghost py-1.5" onClick={autoFill}>
+                <button
+                  type="button"
+                  className="btn-ghost py-1.5"
+                  onClick={autoFill}
+                >
                   <Icon name="sparkle" size={14} />
                   {t('wizard.autoFill')}
                 </button>
               }
             >
-              <p className="muted px-4 pt-4">{t('wizard.proposalHint')}</p>
+              <p className="muted mb-2.5">{t('wizard.proposalHint')}</p>
               {ranking.length === 0 ? (
-                <div className="p-4">
-                  <EmptyState icon="users" title={t('volunteers.empty')} />
-                </div>
+                <EmptyState icon="users" title={t('volunteers.empty')} />
               ) : (
-                <ul className="stagger flex flex-col gap-2 p-3">
+                /* F5.5 — twelve rows today and unbounded tomorrow, so the list
+                   scrolls inside itself rather than stretching the page past
+                   its own sticky footer. */
+                <ul
+                  className="stagger list-scroll flex flex-col gap-2 pe-1"
+                  style={{ '--list-max': '32rem' } as React.CSSProperties}
+                >
                   {ranking.slice(0, 12).map((candidate) => (
                     <CandidateRow
                       key={candidate.volunteer.id}
@@ -610,7 +915,7 @@ export function MissionWizardScreen() {
             </Section>
           </div>
 
-          <Section title={t('wizard.shortlist')}>
+          <Section title={t('wizard.shortlist')} flush>
             <p className="muted mb-2">
               {t('wizard.shortlistCount', {
                 count: shortlist.length,
@@ -624,7 +929,7 @@ export function MissionWizardScreen() {
                 {shortlisted.map((v) => (
                   <li
                     key={v.id}
-                    className="flex items-center gap-2 rounded-md bg-surface-high px-2 py-1.5"
+                    className="flex items-center gap-2 rounded-field bg-surface-high px-2 py-1.5"
                   >
                     <Avatar photo={v.photo} name={v.name} size="xs" />
                     <span className="min-w-0 flex-1 truncate text-caption text-content-primary">
@@ -636,7 +941,7 @@ export function MissionWizardScreen() {
                       onClick={() =>
                         setShortlist((prev) => prev.filter((x) => x !== v.id))
                       }
-                      className="rounded-sm p-1 text-content-muted hover:text-status-danger-ink"
+                      className="rounded-field p-1 text-content-muted hover:text-status-danger-ink"
                     >
                       <Icon name="close" size={13} />
                     </button>
@@ -656,9 +961,9 @@ export function MissionWizardScreen() {
             required={required}
             label={t('wizard.gauge')}
           />
-          <Section title={t('wizard.stepSolicit')} padded={false}>
-            <p className="muted px-4 pt-4">{t('wizard.solicitHint')}</p>
-            <ul className="stagger flex flex-col gap-2 p-3">
+          <Section title={t('wizard.stepSolicit')} bare flush>
+            <p className="muted mb-2.5">{t('wizard.solicitHint')}</p>
+            <ul className="stagger flex flex-col gap-2">
               {shortlisted.map((volunteer) => {
                 const candidate =
                   ranking.find((c) => c.volunteer.id === volunteer.id) ?? null
@@ -668,10 +973,10 @@ export function MissionWizardScreen() {
                 return (
                   <li
                     key={volunteer.id}
-                    className={`rounded-md border p-3 transition-all duration-fast ${
+                    className={`tile p-3 transition-all duration-fast ${
                       state === 'confirmed'
                         ? 'border-status-success/50 bg-status-success/5'
-                        : 'border-edge-subtle bg-surface-raised'
+                        : ''
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -687,7 +992,9 @@ export function MissionWizardScreen() {
                           </span>
                           <PhoneTypeChip type={volunteer.phoneType} />
                           <span className={`chip ${STATE_CLASS[state]}`}>
-                            {state === 'pending' && <span className="live-dot" />}
+                            {state === 'pending' && (
+                              <span className="live-dot" />
+                            )}
                             {t(`wizard.state_${state}`)}
                           </span>
                         </div>
@@ -739,7 +1046,9 @@ export function MissionWizardScreen() {
                         <div className="mt-2 flex flex-wrap gap-2 border-t border-edge-subtle pt-2">
                           <button
                             type="button"
-                            onClick={() => setResponse(volunteer.id, 'confirmed')}
+                            onClick={() =>
+                              setResponse(volunteer.id, 'confirmed')
+                            }
                             className={`btn py-1.5 text-micro ${
                               state === 'confirmed'
                                 ? 'bg-status-success text-content-on-accent'
@@ -780,7 +1089,7 @@ export function MissionWizardScreen() {
             </ul>
 
             {declined.length > 0 && (
-              <p className="muted border-t border-edge-subtle px-4 py-3">
+              <p className="muted mt-2.5">
                 {t('wizard.declinedCount', { count: declined.length })}
               </p>
             )}
@@ -790,18 +1099,18 @@ export function MissionWizardScreen() {
 
       {/* ---------------------------------------------------------------- 4 */}
       {step === 4 && (
-        <Section title={t('wizard.stepDriver')} padded={false}>
-          <p className="muted px-4 pt-4">{t('wizard.driverHint')}</p>
-          <ul className="stagger flex flex-col gap-2 p-3">
+        <Section title={t('wizard.stepDriver')} bare flush>
+          <p className="muted mb-2.5">{t('wizard.driverHint')}</p>
+          <ul className="stagger flex flex-col gap-2">
             {driverRanking.map(({ driver, distanceKm, tooFewSeats }) => {
               const chosen = driverId === driver.id
               return (
                 <li
                   key={driver.id}
-                  className={`rounded-md border p-3 ${
+                  className={`tile p-3 ${
                     chosen && driverState === 'confirmed'
                       ? 'border-status-success/50 bg-status-success/5'
-                      : 'border-edge-subtle bg-surface-raised'
+                      : ''
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -892,15 +1201,13 @@ export function MissionWizardScreen() {
               )
             })}
           </ul>
-          <p className="muted border-t border-edge-subtle px-4 py-3">
-            {t('wizard.driverOptional')}
-          </p>
+          <p className="muted mt-2.5">{t('wizard.driverOptional')}</p>
         </Section>
       )}
 
       {/* ---------------------------------------------------------------- 5 */}
       {step === 5 && farm && anchor && (
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid items-start gap-4 lg:grid-cols-3">
           <div className="flex flex-col gap-4 lg:col-span-2">
             <div className="card-hero card-pad">
               <p className="flex items-center gap-2 text-caption font-semibold text-status-success-ink">
@@ -914,6 +1221,15 @@ export function MissionWizardScreen() {
                 {formatDate(startAt, locale)} · {formatTime(startAt, locale)}–
                 {formatTime(endAt, locale)}
               </p>
+              {chosenAnchors.length > 1 && (
+                <p className="muted mt-1">
+                  {t('anchor.additionalPositions')}:{' '}
+                  {chosenAnchors
+                    .slice(1)
+                    .map((a) => a.name)
+                    .join(' · ')}
+                </p>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
                 {createdMissionId && (
                   <Link
@@ -928,6 +1244,21 @@ export function MissionWizardScreen() {
                 </Link>
               </div>
             </div>
+
+            {/* F2 — the debt taken on when a point was dropped mid-call. The
+                kosher message is the only thing a volunteer without a map ever
+                sees, so an empty access description is worth saying out loud
+                here rather than discovering at 21:00. */}
+            {chosenAnchors.some((a) => a.accessDescription.trim() === '') && (
+              <Callout tone="warn" icon="alert" title={t('anchor.accessLater')}>
+                <Link
+                  to={`/coordinator/farms/${farm.id}/anchors/${anchor.id}/edit`}
+                  className="font-semibold text-accent-ink hover:underline"
+                >
+                  {t('anchor.edit')}
+                </Link>
+              </Callout>
+            )}
 
             <Section title={t('missions.team')}>
               <ul className="flex flex-col gap-1.5">
@@ -951,7 +1282,7 @@ export function MissionWizardScreen() {
                   title={t('anchor.smartphoneMessage')}
                   action={<CopyButton value={recap.smartphone} />}
                 >
-                  <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-md bg-surface-sunken p-3 text-micro text-content-secondary">
+                  <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-field bg-surface-high p-3 text-micro text-content-secondary">
                     {recap.smartphone}
                   </pre>
                 </Section>
@@ -959,7 +1290,7 @@ export function MissionWizardScreen() {
                   title={t('anchor.kosherMessage')}
                   action={<CopyButton value={recap.kosher} />}
                 >
-                  <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-md bg-surface-sunken p-3 text-micro text-content-secondary">
+                  <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-field bg-surface-high p-3 text-micro text-content-secondary">
                     {recap.kosher}
                   </pre>
                 </Section>
@@ -989,7 +1320,10 @@ export function MissionWizardScreen() {
           </span>
 
           {step === 4 ? (
-            <button type="button" className="btn-primary" onClick={finish}>
+            /* F4 — the one irreversible commit in the app takes the charter
+               orange. Everything before it is undone by pressing "back"; this
+               creates a guard, and volunteers start being told about it. */
+            <button type="button" className="btn-critical" onClick={finish}>
               <Icon name="check" size={15} />
               {t('wizard.finish')}
             </button>
@@ -1025,7 +1359,10 @@ function GaugeBar({
   label: string
 }) {
   const full = confirmed >= required
-  const pct = Math.min(100, Math.round((confirmed / Math.max(1, required)) * 100))
+  const pct = Math.min(
+    100,
+    Math.round((confirmed / Math.max(1, required)) * 100),
+  )
 
   return (
     <div className="card card-pad mb-4">

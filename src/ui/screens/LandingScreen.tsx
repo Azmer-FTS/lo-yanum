@@ -81,7 +81,7 @@ export function LandingScreen() {
           </h1>
 
           {/* THE BRAND PLATE. The site's hero wash, minus the photograph. */}
-          <div className="mx-auto mt-8 max-w-xl rounded-xl bg-gradient-brand px-6 py-8 shadow-lift sm:px-10 sm:py-10">
+          <div className="mx-auto mt-8 max-w-xl rounded-card bg-gradient-brand px-6 py-8 shadow-lift sm:px-10 sm:py-10">
             <p className="font-brand text-title font-normal leading-loose text-content-on-brand sm:text-[1.75rem]">
               {t('app.verse')}
             </p>
@@ -122,7 +122,7 @@ export function LandingScreen() {
                         key={preset.id}
                         type="button"
                         onClick={() => enter(preset)}
-                        className="group flex items-center justify-between gap-3 rounded-md px-3 py-2.5 text-start
+                        className="group flex items-center justify-between gap-3 rounded-field px-3 py-2.5 text-start
                                    transition-all duration-fast ease-out hover:bg-surface-high active:scale-[0.99]"
                       >
                         <span className="min-w-0">

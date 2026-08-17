@@ -155,7 +155,7 @@ export function MapPanel({
 
           {legend && (
             <div className="pointer-events-none absolute bottom-3 start-3 z-10 hidden lg:block">
-              <div className="pointer-events-auto rounded-lg border border-edge-strong bg-surface-overlay/95 p-3 shadow-lift backdrop-blur">
+              <div className="pointer-events-auto rounded-card border border-edge-strong bg-surface-overlay/95 p-3 shadow-lift backdrop-blur">
                 {legend}
               </div>
             </div>

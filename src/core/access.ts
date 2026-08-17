@@ -129,6 +129,12 @@ export function toMissionView(mission: Mission): MissionView | null {
     mission,
     farm,
     anchorPoint,
+    // `flatMap` rather than `map(...).filter()`: an id that no longer resolves
+    // must vanish, not become an `undefined` hole the screens have to guard.
+    additionalAnchorPoints: mission.additionalAnchorPointIds.flatMap((id) => {
+      const extra = d.anchorPoints.find((a) => a.id === id)
+      return extra ? [extra] : []
+    }),
     driver: d.drivers.find((dr) => dr.id === mission.driverId) ?? null,
     volunteers: mission.assignments.flatMap((a) => {
       const volunteer = d.volunteers.find((v) => v.id === a.volunteerId)

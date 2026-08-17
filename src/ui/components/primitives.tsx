@@ -62,6 +62,17 @@ export function Section({
   padded = true,
   /** Suppress the top margin when the section opens a column. */
   flush = false,
+  /**
+   * F5.3 — drop the card, keep the heading.
+   *
+   * For a section whose CONTENT is already a set of cards. Nesting
+   * `surface-raised` rows inside a `surface-raised` card is what made the guard
+   * lists read as one grey slab: the rows and their container were the same
+   * colour, so the only thing separating two guards was a 1 px line. With the
+   * container gone the page shows through between the rows and they read as
+   * separate objects — which is what they are.
+   */
+  bare = false,
 }: {
   title?: string
   action?: ReactNode
@@ -69,6 +80,7 @@ export function Section({
   className?: string
   padded?: boolean
   flush?: boolean
+  bare?: boolean
 }) {
   return (
     <section className={className}>
@@ -84,7 +96,11 @@ export function Section({
           {action}
         </div>
       )}
-      <div className={`card ${padded ? 'card-pad' : ''}`}>{children}</div>
+      {bare ? (
+        children
+      ) : (
+        <div className={`card ${padded ? 'card-pad' : ''}`}>{children}</div>
+      )}
     </section>
   )
 }
@@ -102,7 +118,7 @@ export function EmptyState({
 }) {
   return (
     <div
-      className="flex animate-fade-in flex-col items-center gap-2 rounded-lg border border-dashed
+      className="flex animate-fade-in flex-col items-center gap-2 rounded-card border border-dashed
                  border-edge-subtle bg-surface-raised/40 px-6 py-12 text-center"
     >
       <span className="text-content-muted/50">
@@ -160,7 +176,7 @@ export function Stat({
     <div className="card card-pad flex items-center gap-3">
       {icon && (
         <span
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-surface-high ${toneClass}`}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-field bg-surface-high ${toneClass}`}
         >
           <Icon name={icon} size={19} />
         </span>
@@ -178,7 +194,7 @@ export function RowLink({ to, children }: { to: string; children: ReactNode }) {
   return (
     <Link
       to={to}
-      className="flex items-center gap-3 rounded-md px-3 py-3 transition-colors duration-fast ease-out hover:bg-surface-high"
+      className="flex items-center gap-3 rounded-field px-3 py-3 transition-colors duration-fast ease-out hover:bg-surface-high"
     >
       <div className="min-w-0 flex-1">{children}</div>
       <span className="shrink-0 text-content-muted/60">
@@ -211,7 +227,7 @@ export function FilterBar({
   trailing?: ReactNode
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-edge-subtle bg-surface-raised/70 p-2.5 backdrop-blur">
+    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-card border border-edge-subtle bg-surface-raised/70 p-2.5 backdrop-blur">
       {onSearch && (
         <div className="relative min-w-0 flex-1 sm:max-w-xs">
           <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
@@ -314,6 +330,38 @@ export function FilterRow({
   )
 }
 
+/**
+ * F5.5 — the foot of a progressively-rendered list.
+ *
+ * Prints the count BEFORE the button, because "מוצגים 20 מתוך 137" is the
+ * information; the button is only useful once you know that. Renders nothing at
+ * all when everything is on screen — a permanent "show more" that does nothing
+ * teaches people to ignore it.
+ */
+export function LoadMore({
+  shown,
+  total,
+  onMore,
+}: {
+  shown: number
+  total: number
+  onMore: () => void
+}) {
+  const { t } = useTranslation()
+  if (shown >= total) return null
+  return (
+    <div className="flex items-center gap-3 py-3">
+      <span className="numeric text-micro text-content-muted">
+        {t('common.showingOf', { shown, total })}
+      </span>
+      <button type="button" onClick={onMore} className="btn-secondary py-1.5 text-micro">
+        <Icon name="chevronDown" size={14} />
+        {t('common.showMore')}
+      </button>
+    </div>
+  )
+}
+
 // --- Interaction -----------------------------------------------------------
 
 export function CopyButton({
@@ -361,13 +409,13 @@ export function Toggle({
   onChange: (v: string) => void
 }) {
   return (
-    <div className="inline-flex rounded-md border border-edge-subtle bg-surface-sunken p-1">
+    <div className="inline-flex rounded-field border border-edge-subtle bg-surface-field p-1">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
-          className={`rounded-sm px-3 py-1.5 text-caption font-medium transition-all duration-fast ease-out ${
+          className={`rounded-field px-3 py-1.5 text-caption font-medium transition-all duration-fast ease-out ${
             o.value === value
               ? 'bg-accent text-content-on-accent'
               : 'text-content-muted hover:text-content-primary'
@@ -461,8 +509,8 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`max-h-[90dvh] w-full animate-fade-in overflow-y-auto rounded-t-xl border border-edge-strong
-                    bg-surface-overlay p-5 shadow-lift sm:rounded-xl ${
+        className={`max-h-[90dvh] w-full animate-fade-in overflow-y-auto rounded-t-card border border-edge-strong
+                    bg-surface-overlay p-5 shadow-lift sm:rounded-card ${
                       wide ? 'max-w-3xl' : 'max-w-lg'
                     }`}
       >
@@ -471,7 +519,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-sm p-1.5 text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
+            className="rounded-field p-1.5 text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
             aria-label={t('common.close')}
           >
             <Icon name="close" size={18} />
@@ -502,7 +550,7 @@ export function Callout({
     success: 'border-status-success/40 bg-status-success/10 text-status-success-ink',
   }
   return (
-    <div className={`rounded-lg border p-4 ${tones[tone]}`}>
+    <div className={`rounded-card border p-4 ${tones[tone]}`}>
       <p className="flex items-center gap-2 text-caption font-semibold">
         <Icon name={icon} size={16} />
         {title}
@@ -519,6 +567,6 @@ export function Callout({
 /** Skeleton block used while a lazy chunk (the map) is still arriving. */
 export function Skeleton({ className = '' }: { className?: string }) {
   return (
-    <div className={`skeleton rounded-lg ${className}`} aria-hidden="true" />
+    <div className={`skeleton rounded-card ${className}`} aria-hidden="true" />
   )
 }

@@ -37,7 +37,7 @@ export function ThemeToggle({
       aria-label={t('theme.label')}
       // Vertical is for the collapsed rail only: three segments side by side
       // are wider than 4.5 rem and spilled over the rail's edge onto the map.
-      className={`inline-flex rounded-md border border-edge-subtle bg-surface-sunken p-0.5 ${
+      className={`inline-flex rounded-field border border-edge-subtle bg-surface-field p-0.5 ${
         vertical ? 'flex-col' : ''
       }`}
     >
@@ -50,7 +50,7 @@ export function ThemeToggle({
             onClick={() => setChoice(option)}
             aria-pressed={active}
             title={t(`theme.${option}`)}
-            className={`flex items-center gap-1.5 rounded-sm px-2 py-1.5 text-micro font-medium
+            className={`flex items-center gap-1.5 rounded-field px-2 py-1.5 text-micro font-medium
                         transition-all duration-fast ease-out ${
                           active
                             ? 'bg-accent text-content-on-accent'

@@ -1,6 +1,7 @@
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useMemo, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { HOME_BASE, boundsOf } from '@core/index'
 import type { LatLng } from '@core/index'
@@ -50,6 +51,15 @@ export interface MapMarker {
   pulse?: boolean
   /** Step number for route planning; rendered inside the marker. */
   badge?: string
+  /**
+   * F2 — the pin can be dragged to a new position.
+   *
+   * Only anchor points use this, and only while the guard they belong to is
+   * still being composed: once a group has been told where to stand, moving the
+   * pin under them is not an edit, it is a lie.
+   */
+  draggable?: boolean
+  onDragEnd?: (position: LatLng) => void
   onSelect?: () => void
   onHover?: (id: string | null) => void
 }
@@ -65,6 +75,25 @@ export interface MapViewProps {
   interactive?: boolean
   className?: string
   ariaLabel: string
+  /**
+   * F2 — a click on empty map, and the long-press that means the same thing on
+   * a phone. Setting it also turns the cursor into a crosshair, which is the
+   * only affordance a map has for "this is armed".
+   */
+  onMapClick?: (position: LatLng) => void
+  /**
+   * F6.2 — COOPERATIVE GESTURES, for a map EMBEDDED IN A SCROLLING PAGE.
+   *
+   * The maps on the detail screens went from 12 rem to 24 rem this lot, which
+   * makes them usable and creates a new problem: at that size a one-finger
+   * swipe on a phone lands on the map far more often than not, and the map eats
+   * the gesture, so the page appears frozen. Cooperative gestures reserve
+   * one-finger drag for the PAGE and ask for two fingers (or ctrl+scroll) for
+   * the map — which is the behaviour every embedded map on the web has, and the
+   * reason this is a prop rather than a default: the full-height map columns,
+   * where the map IS the page, must keep the single-finger pan.
+   */
+  cooperative?: boolean
 }
 
 const SIZE: Record<MarkerKind, number> = {
@@ -89,8 +118,12 @@ function markerElement(marker: MapMarker): HTMLElement {
     `width:${size}px`,
     `height:${size}px`,
     // Anchor points are square-ish so they read as infrastructure rather than
-    // as another farm; everything else is a disc.
-    kind === 'anchor' ? 'border-radius:5px' : 'border-radius:999px',
+    // as another farm; everything else is a disc. Both radii come from the
+    // scale — a marker is built outside React but is still part of the system,
+    // and `bun run tokens` refuses a literal here.
+    kind === 'anchor'
+      ? 'border-radius:var(--radius-field)'
+      : 'border-radius:var(--radius-pill)',
     `border:3px solid ${ring}`,
     'cursor:pointer',
     'display:flex',
@@ -116,6 +149,8 @@ function markerElement(marker: MapMarker): HTMLElement {
     el.style.setProperty('--pulse-color', marker.color)
   }
 
+  if (marker.draggable) el.style.cursor = 'grab'
+
   if (marker.onHover) {
     el.addEventListener('mouseenter', () => marker.onHover?.(marker.id))
     el.addEventListener('mouseleave', () => marker.onHover?.(null))
@@ -133,10 +168,23 @@ export default function MapCanvas({
   interactive = true,
   className = 'h-full w-full',
   ariaLabel,
+  onMapClick,
+  cooperative = false,
 }: MapViewProps) {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markersRef = useRef<maplibregl.Marker[]>([])
+  /**
+   * The map is created once and never re-created, so its click handler has to
+   * be registered once too — but the callback it should invoke changes on every
+   * parent render. A ref is what lets one permanent listener always call the
+   * CURRENT handler; closing over the prop instead would pin the listener to
+   * whatever `onMapClick` was at mount, i.e. to the first farm the wizard
+   * happened to show.
+   */
+  const clickRef = useRef(onMapClick)
+  clickRef.current = onMapClick
   // Latest requested polyline. Held in a ref so the map's own `load` handler
   // can apply it the moment the source exists, whatever order things mounted in.
   const lineRef = useRef<LatLng[] | undefined>(line)
@@ -152,6 +200,14 @@ export default function MapCanvas({
       zoom,
       interactive,
       attributionControl: { compact: true },
+      cooperativeGestures: cooperative,
+      // MapLibre ships the gesture hint in English; the app is Hebrew-only and
+      // the string is real UI, so it comes from the locale file like the rest.
+      locale: {
+        'CooperativeGesturesHandler.WindowsHelpText': t('map.gestureDesktop'),
+        'CooperativeGesturesHandler.MacHelpText': t('map.gestureMac'),
+        'CooperativeGesturesHandler.MobileHelpText': t('map.gestureMobile'),
+      },
     })
 
     if (interactive) {
@@ -192,6 +248,15 @@ export default function MapCanvas({
       applyLine(map, lineRef.current)
     })
 
+    // F2 — placing a point. `contextmenu` is the same gesture on a phone: a
+    // long press. MapLibre already separates a click from the end of a pan, so
+    // this never fires because somebody dragged the map.
+    const place = (e: maplibregl.MapMouseEvent) => {
+      clickRef.current?.({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+    }
+    map.on('click', place)
+    map.on('contextmenu', place)
+
     mapRef.current = map
     return () => {
       map.remove()
@@ -212,9 +277,28 @@ export default function MapCanvas({
       const el = markerElement(marker)
       if (marker.onSelect) el.addEventListener('click', marker.onSelect)
 
-      const instance = new maplibregl.Marker({ element: el })
+      // A marker sits in the map container, so its click bubbles to the
+      // container and MapLibre reports it as a map click too. Without this,
+      // tapping an existing anchor point ALSO drops a new one underneath it.
+      el.addEventListener('click', (e) => e.stopPropagation())
+
+      const instance = new maplibregl.Marker({
+        element: el,
+        draggable: marker.draggable ?? false,
+      })
         .setLngLat([marker.position.lng, marker.position.lat])
         .addTo(map)
+
+      if (marker.draggable) {
+        instance.on('dragstart', () => {
+          el.style.cursor = 'grabbing'
+        })
+        instance.on('dragend', () => {
+          el.style.cursor = 'grab'
+          const { lat, lng } = instance.getLngLat()
+          marker.onDragEnd?.({ lat, lng })
+        })
+      }
 
       // MapLibre stamps its own generic "Map marker" label on the element, so
       // the real name has to be re-applied after it is added.
@@ -263,34 +347,46 @@ export default function MapCanvas({
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map) return
-
-    if (fit) {
-      const points = [...markers.map((m) => m.position), ...(line ?? [])]
-      const b = boundsOf(points)
-      if (b) {
-        map.fitBounds(
-          [
-            [b[0], b[1]],
-            [b[2], b[3]],
-          ],
-          { padding: 48, duration: 400, maxZoom: 13 },
-        )
-        return
-      }
-    }
-    if (center) {
-      map.jumpTo({ center: [center.lng, center.lat], zoom })
-    }
+    if (!map || !fit) return
+    const points = [...markers.map((m) => m.position), ...(line ?? [])]
+    const b = boundsOf(points)
+    if (!b) return
+    map.fitBounds(
+      [
+        [b[0], b[1]],
+        [b[2], b[3]],
+      ],
+      { padding: 48, duration: 400, maxZoom: 13 },
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frameKey, fit, center, zoom])
+  }, [frameKey, fit])
+
+  /**
+   * Centring is keyed on the CENTRE, not on the markers.
+   *
+   * F2 made this matter: an editable map re-renders on every drag, and while
+   * the two behaviours shared one effect a dropped pin re-ran `jumpTo` and
+   * snapped the view back — so the user's own edit undid their pan. The centre
+   * changing is the only thing that should move the camera on a centred map;
+   * `fit` maps keep their own effect above.
+   */
+  const centreKey = center ? `${center.lat},${center.lng}` : ''
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || fit || !center) return
+    map.jumpTo({ center: [center.lng, center.lat], zoom })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [centreKey, zoom, fit])
 
   return (
     <div
       ref={containerRef}
       role="application"
       aria-label={ariaLabel}
-      className={`map-night overflow-hidden rounded-lg bg-surface-sunken ${className}`}
+      className={`map-night overflow-hidden rounded-card bg-surface-sunken ${
+        onMapClick ? '[&_.maplibregl-canvas]:cursor-crosshair' : ''
+      } ${className}`}
     />
   )
 }

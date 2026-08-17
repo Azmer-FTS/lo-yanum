@@ -56,6 +56,23 @@ const clickText = async (page: Page, text: string) => {
   await page.waitForTimeout(700)
 }
 
+/**
+ * F1/F2 — drive the wizard into the state the criterion is about: a farm with
+ * no anchor point, and a point created by clicking the map.
+ *
+ * `farm-05` has none in the fixtures. The click is placed at 42 %/40 % of the
+ * map so the pin lands clear of both the zoom controls and the hint banner at
+ * the foot of the frame.
+ */
+const dropAnchorOnEmptyFarm = async (page: Page) => {
+  await page.selectOption('main select', 'farm-05')
+  await page.waitForTimeout(2500)
+  const box = await page.locator('[role="application"]').first().boundingBox()
+  if (!box) return
+  await page.mouse.click(box.x + box.width * 0.42, box.y + box.height * 0.4)
+  await page.waitForTimeout(1200)
+}
+
 const SHOTS: Shot[] = [
   // D3 — the control room, in both palettes.
   { name: '1-dashboard-light', session: 'coordinator', hash: '#/coordinator', theme: 'light', settleMs: MAP_SETTLE },
@@ -131,18 +148,71 @@ const SHOTS: Shot[] = [
   // stays a decision rather than an accident.
   { name: '21-landing-light', session: 'coordinator', hash: '#/', theme: 'light', settleMs: 1500, fullPage: true },
   { name: '22-landing-dark', session: 'coordinator', hash: '#/', theme: 'dark', settleMs: 1500, fullPage: true },
+
+  // --- LOT 0.9 — the finishing pass -----------------------------------------
+  //
+  // F1/F2 — the step that used to be a dead end. Driven all the way to the
+  // interesting state: a farm with NO anchor point is selected and a pin is
+  // dropped on the map, so the capture shows the fix rather than the fixture
+  // that hid the bug.
+  {
+    name: '23-wizard-step1-map-light',
+    session: 'coordinator',
+    hash: '#/coordinator/missions/new',
+    theme: 'light',
+    settleMs: MAP_SETTLE,
+    drive: dropAnchorOnEmptyFarm,
+  },
+  {
+    name: '24-wizard-step1-map-dark',
+    session: 'coordinator',
+    hash: '#/coordinator/missions/new',
+    theme: 'dark',
+    settleMs: MAP_SETTLE,
+    drive: dropAnchorOnEmptyFarm,
+  },
+
+  // F6.1 — the farm detail at the map-first gabarit, in both themes.
+  { name: '25-farm-detail-dark', session: 'coordinator', hash: '#/coordinator/farms/farm-01', theme: 'dark', settleMs: MAP_SETTLE },
+
+  // F3 — the lightened form: white fields, one hairline, 6 px corners.
+  { name: '26-farm-form-light', session: 'coordinator', hash: '#/coordinator/farms/farm-01/edit', theme: 'light', settleMs: 1800 },
+  { name: '27-farm-form-dark', session: 'coordinator', hash: '#/coordinator/farms/farm-01/edit', theme: 'dark', settleMs: 1800 },
 ]
 
-/** Navigate to the shell and wait for the dev toolbar, retrying once. */
+/**
+ * Navigate to the shell and wait for the dev toolbar, retrying once.
+ *
+ * `load` rather than `networkidle`, and the readiness signal is the toolbar's
+ * own `<select>`. Two reasons `networkidle` was the wrong gate: Vite holds an
+ * HMR websocket open for the life of the page, and every map screen streams
+ * OSM tiles for as long as it is on screen — so "the network went quiet" is a
+ * condition this app can legitimately never reach. A 40-shot run against a
+ * loaded machine hit that and lost the whole desktop pass at shot 10.
+ */
 async function gotoShell(page: Page): Promise<void> {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'networkidle' })
+      await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
       await page.waitForSelector('select', { state: 'attached' })
       return
     } catch (error) {
-      if (attempt === 1) throw error
+      if (attempt === 2) throw error
       console.log('  (shell navigation timed out, retrying)')
+    }
+  }
+}
+
+/** Same reasoning as `gotoShell`: wait for the toolbar, not for silence. */
+async function reloadShell(page: Page): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await page.reload({ waitUntil: 'load' })
+      await page.waitForSelector('select', { state: 'attached' })
+      return
+    } catch (error) {
+      if (attempt === 2) throw error
+      console.log('  (reload timed out, retrying)')
     }
   }
 }
@@ -171,7 +241,7 @@ async function main() {
       // already the coordinator, so RequireRole lets us straight in.
       //
       // Retried once: a 40-shot run on a loaded machine will occasionally miss
-      // the `networkidle` window, and losing the whole capture set to one slow
+      // the readiness window, and losing the whole capture set to one slow
       // navigation is not worth the strictness.
       await gotoShell(page)
 
@@ -181,8 +251,7 @@ async function main() {
             localStorage.setItem(`lo-yanum:theme:${role}`, th)
           }
         }, shot.theme)
-        await page.reload({ waitUntil: 'networkidle' })
-        await page.waitForSelector('select', { state: 'attached' })
+        await reloadShell(page)
       } else {
         await page.evaluate(() => {
           Object.keys(localStorage)

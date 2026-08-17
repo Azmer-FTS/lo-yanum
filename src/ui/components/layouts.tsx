@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import { COORDINATOR, getMyDisplayName, getSession } from '@core/index'
 
 import { useCoreValue } from '../hooks/useCore'
+import { usePublishedHeight } from '../hooks/useShellMetrics'
 import { CreateGuardFab } from './CreateGuardFab'
 import { DevToolbar } from './DevToolbar'
 import { Icon } from './Icon'
@@ -99,6 +100,9 @@ export function CoordinatorLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const { pathname } = useLocation()
+  // F5.4 — the wizard's sticky stepper offsets by this bar's real height.
+  const topBarRef = useRef<HTMLElement | null>(null)
+  usePublishedHeight(topBarRef, '--shell-top')
 
   const bleed = BLEED_ROUTES.some((r) => pathname === r)
 
@@ -112,7 +116,7 @@ export function CoordinatorLayout() {
       end={item.end}
       title={showLabel ? undefined : t(item.labelKey)}
       className={({ isActive }) =>
-        `group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-caption font-medium
+        `group relative flex items-center gap-3 rounded-field px-3 py-2.5 text-caption font-medium
          transition-all duration-fast ease-out ${
            isActive
              ? 'bg-accent/15 text-accent-ink'
@@ -158,7 +162,7 @@ export function CoordinatorLayout() {
             type="button"
             onClick={() => setExpanded((v) => !v)}
             aria-label={t(expanded ? 'nav.collapse' : 'nav.expand')}
-            className={`-mt-2 flex items-center gap-2 rounded-md border border-edge-subtle px-3 py-1.5
+            className={`-mt-2 flex items-center gap-2 rounded-field border border-edge-subtle px-3 py-1.5
                         text-content-muted transition-all duration-fast
                         hover:border-edge-strong hover:bg-surface-high hover:text-content-primary ${
                           expanded ? '' : 'justify-center px-0'
@@ -180,7 +184,7 @@ export function CoordinatorLayout() {
             </div>
 
             <div
-              className={`rounded-md bg-surface-high p-2.5 ${expanded ? '' : 'text-center'}`}
+              className={`rounded-field bg-surface-high p-2.5 ${expanded ? '' : 'text-center'}`}
             >
               {expanded ? (
                 <>
@@ -202,7 +206,10 @@ export function CoordinatorLayout() {
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Mobile / tablet top bar */}
-          <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-edge-subtle bg-surface-overlay/95 px-4 py-3 backdrop-blur lg:hidden">
+          <header
+            ref={topBarRef}
+            className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-edge-subtle bg-surface-overlay/95 px-4 py-3 backdrop-blur lg:hidden"
+          >
             <Brand />
             <div className="flex items-center gap-2">
               <ThemeToggle compact />
@@ -210,7 +217,7 @@ export function CoordinatorLayout() {
               type="button"
               onClick={() => setMenuOpen(true)}
               aria-label={t('a11y.openMenu')}
-              className="rounded-md p-2 text-content-secondary transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
+              className="rounded-field p-2 text-content-secondary transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
             >
               <Icon name="menu" />
               </button>
@@ -247,7 +254,7 @@ export function CoordinatorLayout() {
                 type="button"
                 onClick={() => setMenuOpen(false)}
                 aria-label={t('a11y.closeMenu')}
-                className="rounded-sm p-1.5 text-content-muted hover:bg-surface-high hover:text-content-primary"
+                className="rounded-field p-1.5 text-content-muted hover:bg-surface-high hover:text-content-primary"
               >
                 <Icon name="close" size={18} />
               </button>

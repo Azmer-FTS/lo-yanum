@@ -179,8 +179,8 @@ export function IncidentDetailScreen() {
             <>
               <MapView
                 ariaLabel={t('a11y.map')}
-                className="h-52 w-full"
-                interactive={false}
+                className="h-72 w-full lg:h-[24rem]"
+                cooperative
                 center={incident.position}
                 zoom={13}
                 markers={[

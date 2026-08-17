@@ -195,7 +195,7 @@ function PresenceMatrix({ view }: { view: MissionView }) {
         return (
           <div key={leg}>
             <p className="section-title mb-2">{t(`presence.${leg}`)}</p>
-            <div className="scroll-x">
+            <div className="table-scroll">
               <table className="w-full min-w-[22rem] border-collapse text-caption">
                 <thead>
                   <tr className="text-micro uppercase tracking-wide text-content-muted">
@@ -258,7 +258,14 @@ export function MissionDetailScreen() {
 
   if (!view) return <Navigate to="/coordinator/missions" replace />
 
-  const { mission, farm, anchorPoint, driver, volunteers } = view
+  const {
+    mission,
+    farm,
+    anchorPoint,
+    additionalAnchorPoints,
+    driver,
+    volunteers,
+  } = view
   const assigned = volunteers.length
   const timeline = buildMissionTimeline(view, missionIncidents, t)
 
@@ -293,9 +300,80 @@ export function MissionDetailScreen() {
           so the 22rem minimum on the presence table propagated all the way up
           and pushed the page 40 px wider than a 390 px phone. Without it the
           `.scroll-x` wrapper never gets to be the scroll container. */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid items-start gap-4 lg:grid-cols-3">
+        {/* F5.2 — THE WIDE COLUMN GETS THE DENSE BLOCKS.
+            It was the other way round: five key/value rows had two thirds of a
+            1280 px screen while the presence matrix — a table with a 22 rem
+            minimum, four columns and one row per volunteer — was squeezed into
+            the remaining third and scrolled sideways inside itself. Width now
+            goes where the content is: the roster, the presence grid and the
+            map. The facts, the driver and the timeline read fine in a column
+            and stay in the narrow track. */}
         <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
-          <Section title={t('common.details')}>
+<Section title={t('missions.team')}>
+            <TeamList view={view} />
+          </Section>
+
+<Section title={t('presence.rosterTitle')}>
+            <PresenceMatrix view={view} />
+          </Section>
+
+          {/* F6.2 — 12 rem of map is a picture of a map. This one is big
+              enough to pan and read, and it carries the F2 case: a guard that
+              covers more than one position shows ALL of them, numbered, with 1
+              on the rendezvous the driver was sent to. */}
+          <Section
+            title={t('map.title')}
+            padded={false}
+            action={
+              view.mission.additionalAnchorPointIds.length > 0 ? (
+                <span className="chip bg-accent/15 text-accent-ink">
+                  <Icon name="pin" size={11} />
+                  {t('anchor.coversPositions', {
+                    count: 1 + additionalAnchorPoints.length,
+                  })}
+                </span>
+              ) : undefined
+            }
+          >
+            <MapView
+              ariaLabel={t('a11y.map')}
+              className="h-72 w-full lg:h-[24rem]"
+              cooperative
+              fit
+              markers={[
+                {
+                  id: anchorPoint.id,
+                  position: anchorPoint.position,
+                  color: readToken('--accent'),
+                  kind: 'anchor',
+                  emphasis: true,
+                  badge: additionalAnchorPoints.length > 0 ? '1' : undefined,
+                  title: anchorPoint.name,
+                  subtitle: t('anchor.rendezvous'),
+                },
+                ...additionalAnchorPoints.map((extra, i) => ({
+                  id: extra.id,
+                  position: extra.position,
+                  color: readToken('--accent'),
+                  kind: 'anchor' as const,
+                  badge: String(i + 2),
+                  title: extra.name,
+                  subtitle: t('anchor.additionalPositions'),
+                })),
+              ]}
+            />
+            {additionalAnchorPoints.length > 0 && (
+              <p className="muted border-t border-edge-subtle px-4 py-3">
+                {t('anchor.additionalPositions')}:{' '}
+                {additionalAnchorPoints.map((a) => a.name).join(' · ')}
+              </p>
+            )}
+          </Section>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-4">
+<Section title={t('common.details')}>
             <dl>
               <KeyValue
                 label={t('missions.farm')}
@@ -333,11 +411,7 @@ export function MissionDetailScreen() {
             </dl>
           </Section>
 
-          <Section title={t('missions.team')}>
-            <TeamList view={view} />
-          </Section>
-
-          <Section title={t('missions.driver')}>
+<Section title={t('missions.driver')}>
             {driver ? (
               <>
                 <p className="muted mb-1">
@@ -350,38 +424,13 @@ export function MissionDetailScreen() {
               <p className="muted">{t('missions.noDriver')}</p>
             )}
           </Section>
-        </div>
 
-        <div className="flex min-w-0 flex-col gap-4">
-          <Section title={t('missions.timeline')}>
+<Section title={t('missions.timeline')}>
             {/* Dated, not clock-only: a guard is created days before it starts
                 and runs 21:00 → 05:00 across midnight, so bare times put
                 "created 11:46" below "dropped off 11:40" and read as a
                 sequence error. */}
             <Timeline withDate entries={timeline} />
-          </Section>
-
-          <Section title={t('presence.rosterTitle')}>
-            <PresenceMatrix view={view} />
-          </Section>
-
-          <Section title={t('map.title')}>
-            <MapView
-              ariaLabel={t('a11y.map')}
-              className="h-48 w-full"
-              interactive={false}
-              center={anchorPoint.position}
-              zoom={12}
-              markers={[
-                {
-                  id: anchorPoint.id,
-                  position: anchorPoint.position,
-                  color: readToken('--accent'),
-                  emphasis: true,
-                  title: anchorPoint.name,
-                },
-              ]}
-            />
           </Section>
         </div>
       </div>

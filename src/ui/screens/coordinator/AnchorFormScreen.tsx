@@ -12,7 +12,7 @@ import type { AnchorDraft } from '@core/index'
 
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
-import { readToken } from '../../components/badges'
+import { readStatusColor, readToken } from '../../components/badges'
 import {
   FormActions,
   FormSection,
@@ -114,20 +114,54 @@ export function AnchorFormScreen() {
           />
         </FormSection>
 
-        <FormSection
-          title={t('form.sectionLocation')}
-          action={
-            <button
-              type="button"
-              disabled
-              title={t('form.pickOnMapHint')}
-              className="btn-ghost py-1.5 opacity-50"
-            >
-              <Icon name="pin" size={15} />
-              {t('form.pickOnMap')}
-            </button>
-          }
-        >
+        {/* F6 — THE MAP IS THE COORDINATE FIELD NOW.
+            This screen used to carry a 14 rem preview and a DISABLED "pick on
+            map" button, which is the worst of both: a map too small to read and
+            a control that admits it does nothing, next to two decimal-degree
+            fields nobody can fill from memory. The map is now the primary input
+            — click to place, drag to adjust — and the numbers below it are the
+            read-out, still typeable for the case where a farmer dictates
+            coordinates over the phone. */}
+        <FormSection title={t('form.sectionLocation')}>
+          <div className="md:col-span-2">
+            <MapView
+              ariaLabel={t('a11y.map')}
+              className="h-[46dvh] min-h-[20rem] w-full lg:h-[30rem]"
+              center={position}
+              zoom={14}
+              onMapClick={(p) => {
+                setLat(String(p.lat.toFixed(5)))
+                setLng(String(p.lng.toFixed(5)))
+              }}
+              markers={[
+                {
+                  id: 'farm',
+                  position: farm.position,
+                  color: readStatusColor(farm.status),
+                  title: farm.name,
+                  subtitle: farm.locality,
+                  kind: 'farm',
+                },
+                {
+                  id: 'anchor-preview',
+                  position,
+                  color: readToken('--accent'),
+                  title: name || t('anchor.title'),
+                  kind: 'anchor',
+                  emphasis: true,
+                  draggable: true,
+                  onDragEnd: (p) => {
+                    setLat(String(p.lat.toFixed(5)))
+                    setLng(String(p.lng.toFixed(5)))
+                  },
+                },
+              ]}
+            />
+            <p className="muted mt-2 flex items-center gap-1.5">
+              <Icon name="pin" size={14} />
+              {t('anchor.mapHintDrag')}
+            </p>
+          </div>
           <TextField
             label={t('form.lat')}
             value={lat}
@@ -145,26 +179,7 @@ export function AnchorFormScreen() {
             type="number"
             ltr
             required
-            hint={t('form.pickOnMapHint')}
           />
-          <div className="md:col-span-2">
-            <MapView
-              ariaLabel={t('a11y.map')}
-              className="h-56 w-full"
-              interactive={false}
-              center={position}
-              zoom={13}
-              markers={[
-                {
-                  id: 'anchor-preview',
-                  position,
-                  color: readToken('--accent'),
-                  title: name || t('anchor.title'),
-                  emphasis: true,
-                },
-              ]}
-            />
-          </div>
         </FormSection>
 
         <FormSection title={t('anchor.instructions')}>

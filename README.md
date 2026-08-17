@@ -4,8 +4,9 @@
 
 Coordination tool for a volunteer farm-protection programme in the Negev, built
 for **[Artzenu](https://artzenu.org.il)** (ארצנו) and its שומרים בחוות programme.
-**Lot 0.8: the app wears the Artzenu brand charter — palette, typography and mark
-extracted from the association's own site. Full UI, realistic mock data, no backend.**
+**Lot 0.9: the UX/UI finishing pass — the guard wizard builds its own anchor
+points on the map, form fields lost their tint, one radius scale, and the
+charter's orange finally does a job. Full UI, realistic mock data, no backend.**
 
 **Live preview: https://azmer-fts.github.io/lo-yanum/**
 
@@ -25,9 +26,11 @@ bun install && bun run dev
 | `bun run build` | Typecheck + production build to `dist/` |
 | `bun run typecheck` | `tsc --noEmit` |
 | `bun run contrast` | WCAG audit of the design tokens |
+| `bun run tokens` | One radius scale, no tinted field, the orange only where it is allowed |
 | `bun run dispatch` | Verify the guard-scoring rules |
 | `bun run accept` | Acceptance criteria, driven through the business layer |
-| `bun run layout` | 390 px overflow sweep over every screen (dev server must be running) |
+| `bun run layout` | 390 px overflow + uncontained-list sweep over every screen (dev server must be running) |
+| `bun run wizard` | Play the guard wizard from a farm with no anchor point (dev server must be running) |
 | `bun run screenshots` | Regenerate `docs/screenshots/` (dev server must be running) |
 | `bun run brand-reference` | Re-capture `docs/brand/` from the live artzenu.org.il (needs the internet) |
 
@@ -44,8 +47,12 @@ of which maps 1:1 to a future Supabase RLS policy. All UI copy lives in
 `src/locales/he.json`; every colour lives in `src/styles/tokens.css`, which holds
 both the light and dark palettes under the same semantic names — each hue as a
 `--x` fill / `--x-ink` text pair. Four `--brand-*` tokens quote the Artzenu
-charter verbatim and everything else is derived from them; the hidden
-`/styleguide` route shows the whole system with its measured contrast ratios.
+charter verbatim and everything else is derived from them; a fifth, `--critical`,
+is the association's orange promoted to a role with a short, statically enforced
+list of call sites. Corners come from a three-value scale that
+`tailwind.config.js` REPLACES Tailwind's own with, so a fourth value cannot
+compile. The hidden `/styleguide` route shows the whole system with its measured
+contrast ratios.
 
 **Where the colours and fonts come from: [docs/brand-artzenu.md](docs/brand-artzenu.md)** —
 provenance for every value, the three places WCAG AA forced an adjustment, and

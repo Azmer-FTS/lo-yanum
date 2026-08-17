@@ -337,6 +337,44 @@ export function updateAnchorPoint(anchorId: string, draft: AnchorDraft): void {
   commit()
 }
 
+/**
+ * F2 — a partial update, because dragging a pin must not need a whole draft.
+ *
+ * `updateAnchorPoint` takes the full `AnchorDraft`, which is right for a form
+ * and wrong for a map: the map knows a new latitude and nothing else, and
+ * routing a drag through the form's shape means every drag rewrites the access
+ * description with whatever the caller happened to be holding.
+ */
+export function patchAnchorPoint(
+  anchorId: string,
+  patch: Partial<Omit<AnchorPoint, 'id' | 'farmId'>>,
+): void {
+  const index = data.anchorPoints.findIndex((a) => a.id === anchorId)
+  if (index === -1) return
+  data.anchorPoints[index] = { ...data.anchorPoints[index], ...patch }
+  commit()
+}
+
+/**
+ * Remove an anchor point — the undo for a pin dropped by accident.
+ *
+ * REFUSES if any guard still points at it, and says so by returning false. A
+ * mission whose rendezvous no longer resolves is invisible: `toMissionView`
+ * returns null for it and the guard silently disappears from every screen. The
+ * caller is expected to surface the refusal rather than swallow it.
+ */
+export function deleteAnchorPoint(anchorId: string): boolean {
+  const used = data.missions.some(
+    (m) =>
+      m.anchorPointId === anchorId ||
+      m.additionalAnchorPointIds.includes(anchorId),
+  )
+  if (used) return false
+  data.anchorPoints = data.anchorPoints.filter((a) => a.id !== anchorId)
+  commit()
+  return true
+}
+
 export interface VolunteerDraft {
   photo: string | null
   name: string
@@ -436,6 +474,8 @@ export function deleteFarmVisit(visitId: string): void {
 export interface MissionDraft {
   farmId: string
   anchorPointId: string
+  /** F2 — other positions covered during the night. Defaults to none. */
+  additionalAnchorPointIds?: string[]
   startAt: string
   endAt: string
   /** In shortlist order. The first one carries the group phone by default. */
@@ -471,6 +511,11 @@ export function createMission(draft: MissionDraft): Mission {
     id: nextId('mission'),
     farmId: draft.farmId,
     anchorPointId: draft.anchorPointId,
+    // Never let the rendezvous appear twice: it is already `anchorPointId`, and
+    // a duplicate would render the same pin twice on every map.
+    additionalAnchorPointIds: (draft.additionalAnchorPointIds ?? []).filter(
+      (id) => id !== draft.anchorPointId,
+    ),
     startAt: draft.startAt,
     endAt: draft.endAt,
     status: 'planned',

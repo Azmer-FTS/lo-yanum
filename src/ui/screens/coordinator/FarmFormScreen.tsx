@@ -253,7 +253,7 @@ export function FarmFormScreen() {
             contacts.map((contact, i) => (
               <div
                 key={contact.id}
-                className="rounded-md border border-edge-subtle bg-surface-sunken/60 p-3 md:col-span-2"
+                className="rounded-field border border-edge-subtle bg-surface-high p-3 md:col-span-2"
               >
                 <div className="mb-3 flex items-center gap-3">
                   <Avatar photo={contact.photo} name={contact.name || '?'} size="md" />

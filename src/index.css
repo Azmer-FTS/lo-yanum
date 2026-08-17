@@ -261,7 +261,7 @@
   /* --- Containers -------------------------------------------------------- */
 
   .card {
-    @apply rounded-lg border border-edge-subtle bg-surface-raised shadow-card;
+    @apply rounded-card border border-edge-subtle bg-surface-raised shadow-card;
   }
 
   .card-pad {
@@ -279,7 +279,43 @@
      gradient lives on the FILL only — never behind text that needs to be read
      at 13px. */
   .card-hero {
-    @apply rounded-lg border border-edge-subtle bg-gradient-hero shadow-card;
+    @apply rounded-card border border-edge-subtle bg-gradient-hero shadow-card;
+  }
+
+  /**
+   * F5.3 — A ROW THAT FLOATS.
+   *
+   * The bug this fixes: a list of guards was a `.card` container whose rows
+   * were ALSO `bg-surface-raised`, so the rows were invisible and the block
+   * read as one undifferentiated slab — worst in dark, where `surface-raised`
+   * and `surface-base` are 1.29 apart and there is no drop-shadow to lean on.
+   *
+   * The fix is to stop nesting surfaces: a scannable list has NO card behind
+   * it (`<Section bare>`), and each row is itself a small card with the long
+   * Artzenu shadow. The page shows through between the rows, which is what
+   * makes them read as separate objects.
+   */
+  .tile {
+    @apply rounded-field border border-edge-subtle bg-surface-raised shadow-card;
+  }
+
+  .tile-interactive {
+    @apply tile transition-all duration-fast ease-out
+           hover:-translate-y-px hover:border-edge-strong hover:shadow-lift;
+  }
+
+  /**
+   * F5.5 — A LIST THAT CAN OUTGROW THE SCREEN SCROLLS INSIDE ITSELF.
+   *
+   * A page whose height is a function of how much data happens to exist has no
+   * layout: the sticky footer is 4 000 px away and the eye has nothing to
+   * anchor on. Any list that can pass ~20 rows lives in one of these, and
+   * `--list-max` lets a screen tune the height without inventing a new class.
+   * `overscroll-contain` stops the page from taking over the scroll at the end.
+   */
+  .list-scroll {
+    @apply overflow-y-auto overscroll-contain;
+    max-height: var(--list-max, 26rem);
   }
 
   /* Sub-label used INSIDE a card. Structural section headings are rendered by
@@ -339,6 +375,40 @@
     @apply btn bg-status-danger text-content-on-accent hover:brightness-110;
   }
 
+  /* --- F4: THE CRITICAL ROLE --------------------------------------------- */
+
+  /**
+   * The charter orange, and the only three shapes it is allowed to take.
+   *
+   * Its call sites are a closed list, checked by `bun run tokens`:
+   *   · an unresolved URGENT incident — the dashboard alert card, its badge,
+   *     and the urgent choice in the report form;
+   *   · an EMERGENCY CALL button on a field report screen;
+   *   · the one IRREVERSIBLE commit in the app, "צור משמרת" at the end of the
+   *     wizard;
+   *   · the two states that mean a volunteer is unaccounted for — a return not
+   *     confirmed, and a driver/group mismatch.
+   *
+   * Ordinary errors, refusals and delete buttons keep `status-danger`. The
+   * distinction is not decorative: if every red-ish thing were orange, the four
+   * things above would stop being findable, which is the whole point of them.
+   */
+  .btn-critical {
+    @apply btn bg-critical text-content-on-accent shadow-critical
+           hover:brightness-110 active:brightness-95;
+  }
+
+  .chip-critical {
+    @apply chip bg-critical text-content-on-accent;
+  }
+
+  /* A 4 px inline-start bar plus the tinted drop. The bar survives being
+     skimmed at arm's length; a background wash does not. */
+  .card-critical {
+    @apply rounded-card border border-s-4 border-critical/45 border-s-critical
+           bg-surface-raised shadow-critical;
+  }
+
   /* Field-role primary action: thumb-sized, one-handed, in the dark. Keeps the
      pill from `.btn` — a full-width pill is the site's own CTA at scale, and at
      56 px tall it is well past the 44 px target. */
@@ -348,17 +418,41 @@
 
   /* --- Inputs ------------------------------------------------------------ */
 
-  /* The site's inputs are 30 px pills too, and this is where the charter is
-     deliberately NOT followed: a pill input steals ~15 px of its own start
-     padding, and a form of twelve pills has no left edge for the eye to run
-     down. Radius stays at `md` — documented in docs/brand-artzenu.md. */
+  /**
+   * F3 — THE FIELD IS QUIET. It is a BORDER, not a block of colour.
+   *
+   * Lot 0.8 gave every input the charter's green wash as a background. Twelve
+   * of them down the farm form turned the page into a stack of coloured bars
+   * with no hierarchy: the required field and the optional one were equally
+   * loud, and the wash competed with the section panels that use the same
+   * colour to mean something. So:
+   *
+   *   · background — `--surface-field`, untinted in both themes;
+   *   · rest       — one thin `--border-strong` hairline, and nothing else;
+   *   · focus      — the border turns ACCENT and a 2 px accent ring at 25 %
+   *                  opacity spreads outward. Colour AND a halo, so focus is
+   *                  visible to someone who cannot separate the two greens;
+   *   · radius     — `field` (6 px). The charter's own inputs are 30 px pills
+   *                  and this is the one place the app does not follow it: a
+   *                  pill spends ~15 px of its own start padding, and a column
+   *                  of twelve gives the eye no left edge to run down. Pills
+   *                  are spent on buttons, filters and badges instead.
+   */
   .input {
-    @apply w-full rounded-md border border-edge-strong bg-surface-sunken
-           px-3.5 py-2.5 text-caption text-content-primary
+    @apply w-full rounded-field border border-edge-strong bg-surface-field
+           px-3 py-2 text-caption text-content-primary
            transition-colors duration-fast ease-out
            placeholder:text-content-muted/70
-           hover:border-edge-strong
-           focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent;
+           hover:border-accent/60
+           focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25;
+  }
+
+  /* A checkbox in the same language as `.input`. Left as a NATIVE control on
+     purpose — `accent-color` is what makes it pick up the brand olive while
+     keeping the platform's own hit area and keyboard behaviour, which a
+     hand-drawn box loses. */
+  .check {
+    @apply h-4 w-4 shrink-0 cursor-pointer accent-accent;
   }
 
   .label {
@@ -391,6 +485,26 @@
   /* Wide content scrolls inside itself; the page body never scrolls sideways. */
   .scroll-x {
     @apply -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0;
+  }
+
+  /**
+   * F5.5 — A TABLE LIVES IN A BOX, IN BOTH AXES.
+   *
+   * `.scroll-x` solved the horizontal half in Lot 0.6 and left the vertical one
+   * open, which is how the import preview could render four hundred rows and
+   * push the page's own sticky footer far below the fold. This caps the height
+   * too, and pins the header row so the columns are still labelled at row 90.
+   */
+  .table-scroll {
+    @apply overflow-auto overscroll-contain rounded-field border border-edge-subtle;
+    max-height: var(--list-max, 26rem);
+  }
+
+  .table-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: rgb(var(--surface-high));
   }
 
   /* --- Skeletons --------------------------------------------------------- */
@@ -486,7 +600,7 @@
   content: '';
   position: absolute;
   inset: -4px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 2px solid var(--pulse-color);
   animation: marker-pulse 1.8s ease-out infinite;
   pointer-events: none;
@@ -521,7 +635,7 @@
 .maplibregl-ctrl-group {
   background: rgb(var(--surface-overlay)) !important;
   border: 1px solid rgb(var(--border-strong)) !important;
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--radius-card) !important;
   box-shadow: var(--shadow-card) !important;
 }
 
@@ -553,7 +667,7 @@
 .maplibregl-ctrl-attrib {
   background: rgb(var(--surface-overlay) / 0.85) !important;
   color: rgb(var(--text-muted)) !important;
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--radius-field) !important;
 }
 
 .maplibregl-ctrl-attrib a {
@@ -564,7 +678,7 @@
   background: rgb(var(--surface-overlay)) !important;
   color: rgb(var(--text-primary)) !important;
   border: 1px solid rgb(var(--border-strong)) !important;
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--radius-card) !important;
   box-shadow: var(--shadow-lift) !important;
   padding: 10px 12px !important;
 }

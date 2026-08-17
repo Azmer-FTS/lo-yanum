@@ -12,6 +12,21 @@ const token = (name) => `rgb(var(--${name}) / <alpha-value>)`
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
+    /**
+     * F3 — REPLACES Tailwind's radius scale rather than extending it.
+     *
+     * Three roles, three values, documented at `--radius-*` in tokens.css. The
+     * replacement is the point: `rounded-md`, `rounded-full`, `rounded-2xl` and
+     * every arbitrary `rounded-[9px]` now fail to compile, so "one scale" is a
+     * property of the build instead of a rule somebody has to remember. Adding
+     * a fourth value here is how the drift Lot 0.8 shipped would come back.
+     */
+    borderRadius: {
+      none: '0',
+      field: 'var(--radius-field)',
+      card: 'var(--radius-card)',
+      pill: 'var(--radius-pill)',
+    },
     extend: {
       fontFamily: {
         sans: 'var(--font-sans)',
@@ -27,6 +42,9 @@ export default {
           raised: token('surface-raised'),
           overlay: token('surface-overlay'),
           high: token('surface-high'),
+          // F3: the untinted field surface. Only `.input` and the controls
+          // that behave like one may use it.
+          field: token('surface-field'),
         },
         edge: {
           subtle: token('border-subtle'),
@@ -50,6 +68,10 @@ export default {
           teal: token('brand-teal'),
           orange: token('brand-orange'),
         },
+        // F4 — the charter orange as a ROLE, not as a palette entry. Its call
+        // sites are a closed list enforced by `bun run tokens`; reach for
+        // `status-danger` for ordinary errors and refusals.
+        critical: token('critical'),
         accent: {
           DEFAULT: token('accent'),
           strong: token('accent-strong'),
@@ -100,19 +122,14 @@ export default {
         // louder than the app.
         'gradient-brand': 'var(--gradient-brand)',
       },
-      borderRadius: {
-        sm: 'var(--radius-sm)',
-        md: 'var(--radius-md)',
-        lg: 'var(--radius-lg)',
-        xl: 'var(--radius-xl)',
-        '2xl': 'var(--radius-xl)',
-        pill: 'var(--radius-pill)',
-      },
       boxShadow: {
         card: 'var(--shadow-card)',
         lift: 'var(--shadow-lift)',
         accent: 'var(--shadow-accent)',
         glow: 'var(--shadow-glow)',
+        // F4: the one shadow tinted with the critical hue, so an urgent card
+        // reads as urgent even before its border is parsed.
+        critical: 'var(--shadow-critical)',
       },
       transitionTimingFunction: {
         out: 'var(--ease-out)',

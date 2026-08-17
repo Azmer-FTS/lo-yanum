@@ -25,15 +25,17 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 | `bun run dev` | Dev server on :5173 (honours `PORT` so a second one can run alongside) |
 | `bun run build` | Typecheck + production build to `dist/` |
 | `bun run typecheck` | `tsc --noEmit` |
-| `bun run contrast` | WCAG audit of the design tokens (A13/A19) — fails the build on a regression |
+| `bun run contrast` | WCAG audit of the design tokens (A13/A19) — 133 pairs, fails the build on a regression |
+| `bun run tokens` | **A28/A29** — one radius scale, no tinted field, orange only where it is allowed. No browser needed |
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 64 checks |
-| `bun run layout` | 390 px overflow + pinned-overlap sweep over all 22 screens (A24) — needs a dev server |
+| `bun run layout` | **A24 + A30** — 390 px overflow, pinned overlap and uncontained-list sweep over all 22 screens — needs a dev server |
+| `bun run wizard` | **A27** — the guard wizard played from a farm with NO anchor point, 24 checks — needs a dev server |
 | `bun run screenshots` | Regenerate `docs/screenshots/` — needs a dev server |
 | `bun run brand-reference` | Re-capture `docs/brand/` from the live artzenu.org.il — needs the internet, NOT a dev server |
 
-> The three browser scripts take `BASE_URL`, e.g.
-> `BASE_URL=http://localhost:62807 bun run layout`.
+> The four browser scripts (`layout`, `wizard`, `screenshots`, `brand-reference`)
+> take `BASE_URL`, e.g. `BASE_URL=http://localhost:62807 bun run layout`.
 
 > **Toolchain:** this machine has **no Node.js**. Bun is at `/usr/local/bin/bun`
 > (Homebrew, Intel prefix `/usr/local`). `npm`/`node` fail with "command not
@@ -43,7 +45,7 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **Lot 0.8 complete.** Branch `main`.
+State: **Lot 0.9 complete.** Branch `main`.
 
 ---
 
@@ -72,7 +74,8 @@ smartphone holder who acts for the group.
 | Lot 0.5 | "Night Watch" redesign, editing flows, nominative confirmation | ✅ Done |
 | Lot 0.6 | Map-first everywhere, light/dark themes, hierarchy, photos, tap-to-call | ✅ Done |
 | Lot 0.7 | Command-centre palette, agenda, guard wizard, timelines | ✅ Done |
-| **Lot 0.8** | **Artzenu brand charter — palette, typography, mark** | ✅ **Done** |
+| Lot 0.8 | Artzenu brand charter — palette, typography, mark | ✅ Done |
+| **Lot 0.9** | **UX/UI finishing: guard wizard, fields, rhythm, maps** | ✅ **Done** |
 | Lot 1 | Supabase: schema, auth, RLS mirroring `/src/core/access.ts`, Storage for photos | Not started |
 | Lot 2 | Offline-first sync | Not started |
 | Lot 3 | Real agreement signing + PDF storage | Not started |
@@ -82,7 +85,53 @@ smartphone holder who acts for the group.
 
 ---
 
-## 4. Lot 0.8 — delivered
+## 4. Lot 0.9 — delivered
+
+The Artzenu charter was validated in principle and its EXECUTION tightened. One
+blocking bug was fixed, and it is the one that shaped the whole lot.
+
+| # | Scope | State |
+|---|---|---|
+| F1 | The guard wizard is no longer a dead end: a farm with no anchor point had a required, EMPTY select | ✅ |
+| F2 | Wizard step 1 rebuilt map-first — a click on the map CREATES an anchor point, pins are draggable, several points per guard | ✅ |
+| F3 | One radius scale (field 6 px / card 14 px / pill), fields untinted, focus = accent border + ring | ✅ |
+| F4 | The charter orange promoted to a `critical` ROLE with a closed, enforced list of call sites | ✅ |
+| F5 | Row alignment, density rebalance, rows that float, sticky stepper + actions, contained and progressive lists | ✅ |
+| F6 | Every map big enough to read and work in; the farm detail and the anchor form became editing surfaces | ✅ |
+| F7 | A1–A26 re-run, A27–A30 added, 54 captures, ETAT, deploy | ✅ |
+
+### Lot 0.9 in one paragraph
+
+The bug: choosing a farm with no anchor point rendered a mandatory select with
+nothing in it and no way to add anything, so the wizard could not be finished and
+nothing on screen said why. The fix was not a better message — it was to make the
+map the instrument. Step 1 now uses the app's own map-first gabarit, a click
+drops an anchor point, a drag moves it, and a guard can carry several because a
+group of four routinely covers two positions in a night. That rule generalised to
+the whole app: **when a required value is missing, the interface offers the way to
+create it on the spot.** Around it, the execution was tightened — fields lost the
+green wash and became a hairline on white, five radii became three that the build
+enforces, the charter's orange finally appears on screen in the four places where
+being loud is the point, lists that used to melt into the page now float above it,
+and every map is big enough to be worked in.
+
+### What actually changed, screen by screen (F5.2)
+
+| Screen | Was | Is |
+|---|---|---|
+| Guard wizard, step 1 | one form column, a 20 rem inert map in a sidebar | map-first: map ~58 % on the physical left, form 42 %, both bounded to the viewport so only the middle scrolls |
+| Guard wizard, steps 2–4 | rows on `surface-raised` inside a `surface-raised` card | `<Section bare>` + `.tile` rows that float; the 12-row proposal scrolls inside itself |
+| Guard detail | five key/value rows in the 2/3 column, the presence MATRIX squeezed into the 1/3 | dense blocks (roster, presence grid, 24 rem map) take the wide track; facts, driver and timeline take the narrow one |
+| Farm detail | 32 rem map in a 3/5 column, anchor points editable only two screens away | map-first at full column height, anchor points beside it, click-to-create and drag-to-move |
+| Farm detail, facts | two columns inside a 38 % panel (`sm:` is a VIEWPORT query, not a container one) | one column from `lg`, two again only at `2xl` |
+| Anchor form | 14 rem preview + a DISABLED "pick on map" button | the map IS the coordinate field; the numbers are the read-out |
+| Import preview | every row of the file rendered straight down the page — a 300-row import put the wizard's own action bar far below the fold | height-capped box, pinned header, 20 rows at a time |
+| Guards / incidents / farms lists | a hairline border and no fill — invisible in dark | `.tile-interactive`: card surface, the long Artzenu drop, progressive loading |
+| Mission / incident / field maps | 11–13 rem thumbnails | 16–24 rem, and interactive with cooperative gestures so the page still scrolls |
+
+---
+
+## 4b. Lot 0.8 — delivered
 
 | # | Scope | State |
 |---|---|---|
@@ -108,7 +157,7 @@ screen changed structurally.
 
 ---
 
-## 4b. Lot 0.7 — delivered
+## 4c. Lot 0.7 — delivered
 
 | # | Scope | State |
 |---|---|---|
@@ -161,7 +210,16 @@ captures in §5.
 
 ## 5. Screenshots — `docs/screenshots/`
 
-Every row exists at both `-mobile` (390 px) and `-desktop` (1280 px).
+Every row exists at both `-mobile` (390 px) and `-desktop` (1280 px) — 27 rows,
+54 files.
+
+> Captures are taken against the PRODUCTION BUILD (`bun run build` then
+> `bun run preview`), not the dev server. Lot 0.9 lost two full runs to
+> `networkidle` timeouts on a loaded machine: the dev server transforms every
+> module per request and Vite holds an HMR websocket open for the life of the
+> page, so "the network went quiet" is a state this app can legitimately never
+> reach. The scripts now wait for the dev toolbar's `<select>` instead, and a
+> static server removes the load entirely.
 
 | # | Screen |
 |---|---|
@@ -180,6 +238,14 @@ Every row exists at both `-mobile` (390 px) and `-desktop` (1280 px).
 | **18** | **Farms map-first — DARK, the re-tuned night tile filter** |
 | **19 / 20** | **Volunteer "my guard" — light / dark** |
 | **21 / 22** | **Landing: the Artzenu mark, the brand plate, the verse — light / dark** |
+| **23 / 24** | **Wizard step 1 — a farm with NO anchor point, and a pin dropped on the map — light / dark** |
+| **25** | **Farm detail — DARK, the map-first gabarit** |
+| **26 / 27** | **Farm form — the lightened fields — light / dark** |
+
+> 23 and 24 are DRIVEN captures: the script selects `farm-05`, which has no
+> anchor point in the fixtures, then clicks the map. Capturing the route as it
+> loads would show the fixture that hid the bug for two lots — the first farm in
+> the list happens to have anchor points — rather than the fix.
 
 > 11 and 18 are the same screen in the two themes, and they exist as a pair
 > because the day/night tile filter is a token that changed this lot. 21 and 22
@@ -193,10 +259,94 @@ Every row exists at both `-mobile` (390 px) and `-desktop` (1280 px).
 
 ## 6. Standing decisions
 
-Lot 0 decisions 1–13, Lot 0.5 decisions 14–20, Lot 0.6 decisions 21–31 and
-Lot 0.7 decisions 32–40 all still hold, **except 22 and 23, which decision 32
-generalises**. Decisions 32–34 survived Lot 0.8 unchanged and are what made it
-cheap — only VALUES moved. New:
+Lot 0 decisions 1–13, Lot 0.5 decisions 14–20, Lot 0.6 decisions 21–31, Lot 0.7
+decisions 32–40 and Lot 0.8 decisions 41–46 all still hold, **except 22 and 23,
+which decision 32 generalises, and 46, which decision 47 supersedes.** Decisions
+32–34 survived two lots unchanged and are why both were cheap. New:
+
+47. **THE RADIUS SCALE IS THREE VALUES, AND THE BUILD ENFORCES IT.**
+    `field` 6 px (inputs, list rows, icon buttons), `card` 14 px (cards,
+    sections, modals, map frames), `pill` (CTA buttons, filters, chips). Lot 0.8
+    shipped five steps plus the pill and the app used all six, so nothing read
+    as a family: a 10 px chip beside a 14 px input inside an 18 px card.
+    `tailwind.config.js` now declares `borderRadius` on `theme` rather than
+    `theme.extend`, which REPLACES Tailwind's own scale — `rounded-md`,
+    `rounded-full` and every arbitrary bracket value fail to compile. This
+    supersedes decision 46, whose conclusion (the pill is spent on controls, not
+    containers) survives; only the number of steps changed. `bun run tokens`
+    checks the raw-CSS half the compiler cannot see.
+
+48. **A FIELD IS A BORDER, NOT A BLOCK OF COLOUR.** Every input sat on the
+    charter's green wash; twelve down the farm form turned the page into a stack
+    of coloured bars where the required field and the optional one were equally
+    loud, and the wash competed with the panels that use the same colour to mean
+    something. Fields moved to `--surface-field` — white in light, a plain dark
+    well in dark, untinted in both — with one `--border-strong` hairline at rest
+    and an accent border plus a 25 % ring on focus. The wash keeps its job as
+    `--surface-high` on SECTIONS and informational panels. The consequence is
+    audited: the hairline is now load-bearing, so `bun run contrast` pins it at
+    1.8 against the field.
+
+49. **THE CHARTER ORANGE IS A ROLE WITH A CLOSED LIST OF CALL SITES.**
+    `#EF4F28` was in the token file and never on the screen: it was aliased onto
+    `--status-danger`, which the UI only ever renders as a 15 % wash or as its
+    darkened ink. `--critical` is that orange promoted to a role, theme-
+    independent like the brand plate, and it is allowed in exactly four kinds of
+    place — an unresolved urgent incident, an emergency call, the ONE
+    irreversible commit in the app ("צור משמרת"), and the two states that mean a
+    volunteer is unaccounted for (return not confirmed, driver/group mismatch).
+    `bun run tokens` holds a per-file allow-list WITH the reason and checks it in
+    both directions, so an entry that stops applying is a failure too. Ordinary
+    errors, refusals and delete buttons keep `status-danger`: if everything
+    red-ish were orange, the four things above would stop being findable, which
+    is the entire value of the colour.
+
+50. **WHEN A REQUIRED VALUE IS MISSING, THE INTERFACE OFFERS THE WAY TO CREATE
+    IT.** The generalisation of the F1 bug. An empty `<select>` is the worst
+    affordance in the set — it looks like a control that has not loaded, so the
+    user waits. `SelectField` therefore takes `emptyAction`, which REPLACES the
+    select when there is nothing to choose; `SelectOrCreateField` covers the
+    other case, a list that is correct but not closed (the yeshiva field, where
+    a free-text box fragments the data into six spellings and a fixed list
+    cannot accept the seventh). Every required select in the app now either has
+    an enum for options — which cannot be empty — or an escape.
+
+51. **THE MAP IS AN INSTRUMENT, NOT AN ILLUSTRATION.** A click on the map
+    creates an anchor point, a drag moves one, and both work on the wizard, the
+    farm detail and the anchor form through one shared `AnchorMap`. Two
+    consequences worth knowing before touching `MapCanvas`: a marker's DOM click
+    has to `stopPropagation`, or tapping an existing pin drops a second one
+    underneath it; and the framing effect had to split in two, because a
+    `center`-driven `jumpTo` keyed on the markers snapped the camera back after
+    every drag, so the user's own edit undid their pan. Any map still embedded
+    in a scrolling page takes `cooperative`, which reserves the one-finger drag
+    for the page.
+
+52. **A GUARD CAN COVER MORE THAN ONE POSITION, AND ONE OF THEM IS THE
+    RENDEZVOUS.** `Mission.anchorPointId` stays exactly one — it is a logistics
+    commitment the driver and every generated message depend on — and
+    `additionalAnchorPointIds` carries the rest. Collapsing both into a list was
+    the obvious move and the wrong one: "where the driver drops the group" and
+    "where the group stands at 01:00" are different facts, and a screen that has
+    to guess which element of the array is the first is a screen that will guess
+    wrong.
+
+53. **NESTED SURFACES ARE THE BUG; ROWS FLOAT.** A list of guards was a `.card`
+    whose rows were also `bg-surface-raised`, so the rows were invisible and the
+    block read as one slab — worst in dark, where the two surfaces are 1.29
+    apart and there is no drop-shadow to lean on. A scannable list now has NO
+    card behind it (`<Section bare>`) and each row is itself a small card with
+    the long Artzenu drop, so the page shows through between them.
+
+54. **A LIST THAT CAN PASS ~20 ROWS IS CONTAINED AND PROGRESSIVE.** The
+    volunteers table has been virtualised since Lot 0 because 300 rows are
+    obviously 300 rows; the dangerous lists are the ones that look short in the
+    fixtures and are bounded by nothing. They get `.list-scroll` /
+    `.table-scroll` (a capped box with a pinned header) and `useProgressive`
+    (20 rows, then "show more" with the count). A hook rather than the
+    virtualiser because these rows are not a fixed height, and measuring them
+    costs more than not rendering the ones nobody has scrolled to. `bun run
+    layout` fails any screen past six screenfuls at 390 px.
 
 41. **THE PALETTE IS THE ARTZENU CHARTER, AND ITS PROVENANCE IS WRITTEN DOWN.**
     Four tokens (`--brand-forest` `#0B3D2C`, `--brand-olive` `#476E34`,
@@ -339,7 +489,21 @@ All four are committed and runnable.
   can check is not a charter; these are the pictures the claims are checked
   against. Writes JPEG on purpose — a full-page PNG of a site built on landscape
   photography is ~5 MB of repo for no gain.
-- **`scripts/layout.ts`** (`bun run layout`) — A24. Walks all 22 screens at
+- **`scripts/tokens.ts`** (`bun run tokens`) — A28 + A29. A static gate over
+  `src/`, and the only one that needs neither a browser nor a running app. Both
+  rules it enforces are rules about RESTRAINT, which is what a codebase loses
+  quietly: nobody adds a fifth radius or a second orange on purpose, they add one
+  because the component in front of them needed it and the rule lived in a
+  document. Strips comments before matching, so the prose describing a rule is
+  not read as a violation of it.
+- **`scripts/wizard.ts`** (`bun run wizard`) — A27, 24 checks. Plays the guard
+  wizard from a farm with NO anchor point: the callout instead of a dead select,
+  the click that creates the point, the rename that reaches the pin's label, the
+  drag, the scored proposal, the refusal-promotes case, the gauge, the orange
+  commit button and the recap that names the point drawn in step 1. This is the
+  test A20 should have been: A20 passed throughout the bug's life because the
+  fixtures list a farm WITH anchor points first.
+- **`scripts/layout.ts`** (`bun run layout`) — A24 + A30. Walks all 22 screens at
   390 px and asserts no horizontal overflow, no element wider than the
   viewport, and no two pinned elements overlapping. It caught two real bugs:
   the sticky form footer sitting under the demo toolbar, and a `min-width:auto`
@@ -347,12 +511,22 @@ All four are committed and runnable.
   THIRD: Mekomi is a wider face than Rubik, and that alone was enough for the
   farm-card grid's `min-width: auto` tracks to push the page to 397 px. Both
   tracks now carry `min-w-0`. This is the script that pays for itself every lot —
-  a 7 px overflow is invisible in a screenshot.
+  a 7 px overflow is invisible in a screenshot. Lot 0.9 added the VERTICAL half
+  (A30): page height as a multiple of the viewport, capped at six, plus a walk up
+  from every table and every 20-plus-row list looking for an ancestor that
+  genuinely scrolls — `overflow-y:auto` AND a content height greater than its own
+  box, because a container with `auto` and no height limit does not scroll, it
+  grows, and would otherwise satisfy a naive check while the page still
+  stretched. `/styleguide` carries the single exemption, printed in the run.
 
-The interactive half of A20 was played in the browser with a throw-away
-Playwright script (17 assertions: ordering, auto-fill, refusal, promotion,
-gauge, creation, and the guard appearing in the list). Recreate it from §4 if
-the wizard changes.
+A20's interactive half is now committed as `scripts/wizard.ts` rather than
+recreated from notes each lot — it was a throw-away script for two lots and that
+is precisely how the F1 dead end survived them.
+
+A trap that cost time while writing it: reading candidate names from every `<li>`
+on the page also picks up the STICKY STEPPER, whose steps are list items with a
+semibold label. "A refusal removed מה ומתי" was a green-looking assertion about
+nothing. The selector is scoped to `li[class*="tile"]`, the rows themselves.
 
 Note when writing such probes: React delegates `onMouseEnter` through a
 **bubbling `mouseover`**, so a raw non-bubbling `mouseenter` will not trigger
@@ -363,9 +537,10 @@ event.
 
 ## 8. Contrast audit (A13/A19)
 
-`bun run contrast` — **122 pairs on the Artzenu palette, all meet WCAG AA.**
-Four pairs were added this lot: the brand plate's ink against both ends of
-`--gradient-brand`, in both themes. Tightest margins:
+`bun run contrast` — **133 pairs on the Artzenu palette, all meet WCAG AA.**
+Eleven pairs were added this lot: text and the field hairline on the new
+`--surface-field`, the field's luminance step inside a card, and the `critical`
+role as a solid fill, a bar and a marker. Tightest margins:
 
 | Pair | Light | Dark | Min |
 |---|---|---|---|
@@ -378,6 +553,10 @@ Four pairs were added this lot: the brand plate's ink against both ends of
 | `text-muted` on `surface-high` | 4.84 | 4.92 | 4.5 |
 | `text-on-brand` on `brand-olive` (plate, lightest stop) | 5.59 | 5.59 | 4.5 |
 | `text-on-accent` on solid `status-danger` (charter orange) | 5.22 | 7.69 | 4.5 |
+| `border-strong` on `surface-field` (the field edge) | 1.97 | 3.15 | 1.8 |
+| `surface-field` vs `surface-raised` (field in a card) | 1.00 | 1.27 | 1.0 / 1.2 |
+| `text-on-accent` on solid `critical` | 5.22 | 5.22 | 4.5 |
+| `critical` marker on `surface-base` | 3.29 | 5.08 | 3 |
 | `border-subtle` on `surface-base` | 1.23 | 2.00 | 1.2 |
 | `surface-raised` vs `surface-base` (elevation) | 1.10 | 1.29 | 1.05 / 1.25 |
 
@@ -389,7 +568,12 @@ allows, and the charter's own orange `#EF4F28` fits inside that window
 unmodified.
 
 Elevation is held to a stricter threshold in dark: a drop-shadow is invisible
-on near-black, so the card must separate from the page by luminance alone.
+on near-black, so the card must separate from the page by luminance alone. The
+same reasoning added the field step this lot: with the tinted background gone,
+`--border-strong` is the ONLY thing that says "you can type here", so it is
+audited at 1.8 rather than at the 1.2 a decorative card edge gets — and in dark
+the field additionally has to sit a measurable step below the card it is in.
+`--surface-field` was darkened from `#0E2419` to `#091910` to clear that.
 
 ---
 
@@ -403,16 +587,22 @@ docs/brand/               Reference plates from the live site (bun run brand-ref
 
 src/styles/tokens.css     ★ BOTH PALETTES. The four --brand-* tokens quote the
                             charter verbatim; the rest is derived. Vivid/ink
-                            pairs, gradients, radius, motion, type. No hex
-                            anywhere else.
+                            pairs, --critical (the orange as a ROLE),
+                            --surface-field, THE THREE-VALUE RADIUS SCALE,
+                            gradients, motion, type. No hex anywhere else.
 public/fonts/             8 self-hosted brand woff2 (atlas-*, mekomi-*) + 3 Rubik
 public/artzenu-mark.png   The association's mark, grey+alpha, painted as a CSS
                             MASK so it takes a token colour in both themes
 
 src/core/                 PURE TS — no React, no DOM
-  types.ts                Domain types, LegConfirmation, FarmVisit, AgendaEvent
+  types.ts                Domain types, LegConfirmation, FarmVisit, AgendaEvent.
+                          Mission.anchorPointId is THE RENDEZVOUS;
+                          additionalAnchorPointIds are the night's other posts.
   access.ts               ★ THE ROLE GATE. Every screen reads through it.
   store.ts                Observable store + mutations. `_raw()` is access.ts-only.
+                          patchAnchorPoint (a drag knows a position, not a draft)
+                          and deleteAnchorPoint (refuses if a guard still points
+                          at it, and SAYS SO).
   dispatch.ts             ★ GUARD SCORING (D5). Pure, deterministic, tested.
   contrast.ts             WCAG maths, shared by the audit script and /styleguide
   clock.ts                Time + calendar arithmetic (DST-safe, Sunday-first)
@@ -427,12 +617,20 @@ src/locales/he.json       ★ ALL UI COPY. en/fr intentionally {}.
 
 src/index.css             ★ @font-face for both brand faces; the brand face bound
                             to the type SCALE (unlayered, after utilities, on
-                            purpose); .btn/.input/.artzenu-mark
+                            purpose); .btn/.input/.check/.artzenu-mark;
+                            .tile + .tile-interactive (F5.3, rows that float);
+                            .list-scroll + .table-scroll (F5.5);
+                            .btn-critical/.chip-critical/.card-critical (F4)
 src/ui/
   theme.tsx               Theme APPLICATION: localStorage + data-theme + matchMedia.
                           The theme-color meta READS --surface-base rather than
                           restating it (Lot 0.8 found two stale literals there).
-  components/             MapPanel (map-first shell, D2) · MapCanvas/MapView (lazy) ·
+  hooks/                  useCore · useLocale ·
+                          useShellMetrics (publishes --shell-top / --shell-bottom,
+                          decision 39) · useProgressive (F5.5)
+  components/             AnchorMap ★ (F2 — the map that CREATES anchor points,
+                          shared by the wizard, the farm detail and the form) ·
+                          MapPanel (map-first shell, D2) · MapCanvas/MapView (lazy) ·
                           Timeline (D6) · FarmVisitModal (D4) · CreateGuardFab (D3.4) ·
                           Avatar · PhotoField · PresenceRoster · ThemeToggle ·
                           badges (vivid/ink) · primitives · fields · layouts ·
@@ -455,14 +653,21 @@ src/ui/
 - **The wizard sends nothing.** Messages are generated and copyable; responses
   are typed in by the coordinator. That is the Lot 5 boundary.
 - **Placeholder portraits are synthetic SVGs**, deliberately obviously so.
-- **"Pick on map" on the anchor form is a disabled placeholder**; coordinates
-  are typed.
 - **Route polyline is straight segments**, not road geometry — there is no
   routing service. It exists to make the ORDER legible, not to navigate by.
 - **`LOCALITY_POSITIONS` covers the 20 towns the fixtures use.** A locality
   outside it is charged a flat 80 km rather than scoring zero, and reports
   `distanceKm: null` so the UI shows "—" instead of a fabricated number.
 - **The agenda has no drag-and-drop.** Events are opened and edited, not moved.
+- **An anchor point created from the wizard has an EMPTY access description.**
+  Deliberate — a coordinator on the phone should not have to compose driving
+  directions before staffing a night — and the debt is surfaced twice: a warning
+  on the wizard's recap and a placeholder in the farm-detail list. It matters
+  because that text is the only thing a kosher-phone volunteer ever sees.
+- **`deleteAnchorPoint` refuses when a guard still points at the anchor.** It
+  returns `false` and the wizard shows why. Reassigning the guard first is a
+  Lot 1 flow; deleting anyway would make the mission invisible, since
+  `toMissionView` returns null when its anchor cannot be resolved.
 - **Two chunks exceed Vite's 500 kB warning** (MapLibre ~806 kB, SheetJS
   ~500 kB). Both are split and lazily fetched; the initial bundle is ~146 kB
   gzipped.
@@ -497,7 +702,20 @@ src/ui/
    covered: delete the `atlas-*`/`mekomi-*` files. That is the whole change — the
    stacks in `--font-brand` / `--font-sans` already fall through to the
    self-hosted Rubik, and nothing else in the app depends on them.
-9. **Is the sea meant to be violet on the night map?** The single hue rotation
+9. **Should a pin dropped on the map be armed by default, or behind a mode?**
+   Step 1 arms click-to-place as soon as the step opens, which is what makes the
+   dead end impossible and also means a mis-tap while panning creates a point.
+   The mitigation is that the point is immediately open in the panel with a
+   delete button. If coordinators report junk points, the fix is an explicit
+   "add a point" toggle — not a confirmation dialog, which would put a modal
+   between the user and the gesture that is supposed to be direct.
+
+10. **Should a guard's additional positions carry their own times?** F2 models
+    "the group covers the gate and the water tower"; it does not model "the gate
+    until 01:00, then the water tower". The coordinator asked for the first;
+    whether the second is real is worth checking before Lot 1 fixes the schema.
+
+11. **Is the sea meant to be violet on the night map?** The single hue rotation
    that lands the Negev on forest green necessarily throws the Mediterranean the
    other way (`docs/brand-artzenu.md` §3). It is desaturated almost to neutral
    and only a corner of the frame, but if the coordinator finds it distracting
@@ -515,7 +733,15 @@ function at a time; the bodies are written to make that a direct transcription.
 
 Do **not** add Supabase, auth or offline sync before Lot 1 is explicitly begun.
 
-Two Lot 0.8 items to carry in: settle open question 8 (font licences) before any
-real user sees the app, and move off OSM raster tiles to a keyed vector provider
-— a vector style can be themed in the charter's greens directly instead of being
-approximated with a CSS `hue-rotate` on a raster.
+Three items to carry in:
+
+1. **Settle open question 8 (font licences)** before any real user sees the app.
+2. **Move off OSM raster tiles to a keyed vector provider.** A vector style can
+   be themed in the charter's greens directly instead of being approximated with
+   a CSS `hue-rotate` on a raster — and Lot 0.9 raised the stakes: the maps are
+   now the primary input on three screens, not decoration.
+3. **`additionalAnchorPointIds` needs a schema decision.** It is a `string[]` on
+   the mission today; in Postgres it is either an array column or a join table,
+   and the join table is almost certainly right (it wants an order and, later, a
+   time window per position). `anchorPointId` stays a plain FK either way —
+   see decision 52.

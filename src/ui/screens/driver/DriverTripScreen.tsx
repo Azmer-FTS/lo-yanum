@@ -108,8 +108,8 @@ export function DriverTripScreen() {
           </p>
           <MapView
             ariaLabel={t('a11y.map')}
-            className="mt-3 h-44 w-full"
-            interactive={false}
+            className="mt-3 h-64 w-full"
+            cooperative
             center={anchorPoint.position}
             zoom={12}
             markers={[

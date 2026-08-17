@@ -50,8 +50,9 @@ const MISSION_TONE: Record<MissionStatus, string> = {
   in_progress:
     'border-s-status-success bg-status-success/10 text-status-success-ink',
   completed: 'border-s-content-muted bg-content-muted/10 text-content-muted',
+  // F4 — critical state: a group that has not confirmed it got home.
   return_not_confirmed:
-    'border-s-status-danger bg-status-danger/10 text-status-danger-ink',
+    'border-s-critical bg-critical/10 text-status-danger-ink',
 }
 
 const VISIT_TONE =
@@ -61,7 +62,7 @@ const DOT_TONE: Record<MissionStatus, string> = {
   planned: 'bg-status-info',
   in_progress: 'bg-status-success',
   completed: 'bg-content-muted',
-  return_not_confirmed: 'bg-status-danger',
+  return_not_confirmed: 'bg-critical',
 }
 
 function toneOf(event: AgendaEvent): string {
@@ -86,7 +87,7 @@ function EventPill({
     <button
       type="button"
       onClick={() => onOpen(event)}
-      className={`w-full rounded-sm border-s-[3px] px-1.5 py-1 text-start
+      className={`w-full rounded-field border-s-[3px] px-1.5 py-1 text-start
                   transition-all duration-fast ease-out hover:brightness-95 ${toneOf(event)}`}
     >
       <span className="flex items-center gap-1">
@@ -117,12 +118,12 @@ function SlotMenu({
 
   return (
     <div
-      className="absolute inset-x-1 top-full z-30 mt-1 animate-fade-in rounded-md border
+      className="absolute inset-x-1 top-full z-30 mt-1 animate-fade-in rounded-field border
                  border-edge-strong bg-surface-overlay p-1 shadow-lift"
     >
       <button
         type="button"
-        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-start text-micro
+        className="flex w-full items-center gap-2 rounded-field px-2 py-1.5 text-start text-micro
                    font-medium text-content-primary hover:bg-surface-high"
         onClick={() => {
           onClose()
@@ -134,7 +135,7 @@ function SlotMenu({
       </button>
       <button
         type="button"
-        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-start text-micro
+        className="flex w-full items-center gap-2 rounded-field px-2 py-1.5 text-start text-micro
                    font-medium text-content-primary hover:bg-surface-high"
         onClick={() => {
           onClose()
@@ -217,14 +218,14 @@ export function AgendaScreen() {
 
       {/* One control row: period navigation on one side, view switch on the
           other. Sticky so paging through months never scrolls it away. */}
-      <div className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-2 rounded-lg border
+      <div className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-2 rounded-card border
                       border-edge-subtle bg-surface-overlay/95 p-2 backdrop-blur">
         <div className="flex items-center gap-1">
           <button
             type="button"
             aria-label={t('agenda.previous')}
             onClick={() => step(-1)}
-            className="rounded-sm p-1.5 text-content-secondary hover:bg-surface-high hover:text-content-primary"
+            className="rounded-field p-1.5 text-content-secondary hover:bg-surface-high hover:text-content-primary"
           >
             <Icon name="chevron" size={16} className="ltr:-scale-x-100" />
           </button>
@@ -239,7 +240,7 @@ export function AgendaScreen() {
             type="button"
             aria-label={t('agenda.next')}
             onClick={() => step(1)}
-            className="rounded-sm p-1.5 text-content-secondary hover:bg-surface-high hover:text-content-primary"
+            className="rounded-field p-1.5 text-content-secondary hover:bg-surface-high hover:text-content-primary"
           >
             <Icon name="chevron" size={16} className="rtl:-scale-x-100" />
           </button>
@@ -315,7 +316,7 @@ export function AgendaScreen() {
           return (
             <div
               key={key}
-              className={`relative flex flex-col rounded-md border p-1.5 transition-colors duration-fast ${
+              className={`relative flex flex-col rounded-field border p-1.5 transition-colors duration-fast ${
                 isToday
                   ? 'border-accent bg-accent/5'
                   : 'border-edge-subtle bg-surface-raised'
@@ -358,7 +359,7 @@ export function AgendaScreen() {
                 type="button"
                 aria-label={t('agenda.addOn', { date: formatDate(day.toISOString(), locale) })}
                 onClick={() => setOpenSlot(openSlot === key ? null : key)}
-                className={`mt-1 flex items-center justify-center gap-1 rounded-sm border border-dashed
+                className={`mt-1 flex items-center justify-center gap-1 rounded-field border border-dashed
                             border-edge-subtle py-1 text-micro text-content-muted transition-all duration-fast
                             hover:border-accent hover:text-accent-ink ${
                               dayEvents.length > 0 ? 'opacity-0 focus:opacity-100 hover:opacity-100' : ''

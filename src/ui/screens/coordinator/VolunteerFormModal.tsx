@@ -7,6 +7,7 @@ import type { PhoneType, Volunteer, VolunteerDraft, VolunteerStatus } from '@cor
 import { PhotoField } from '../../components/PhotoField'
 import {
   SelectField,
+  SelectOrCreateField,
   TextArea,
   TextField,
   isValidPhone,
@@ -138,11 +139,15 @@ export function VolunteerFormModal({
           type="number"
           ltr
         />
-        <SelectField
+        {/* F1 — the roster's yeshivot are a suggestion, not a closed world:
+            the first volunteer from a new yeshiva must not be unenterable. */}
+        <SelectOrCreateField
           label={t('form.yeshiva')}
           value={yeshiva}
           onChange={setYeshiva}
-          options={yeshivot.map((y) => ({ value: y, label: y }))}
+          options={yeshivot}
+          createLabel={t('form.addNew')}
+          backLabel={t('form.chooseExisting')}
         />
         <TextField
           label={t('form.locality')}

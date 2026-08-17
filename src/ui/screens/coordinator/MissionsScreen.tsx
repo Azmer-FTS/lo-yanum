@@ -18,7 +18,13 @@ import { ChevronForward, Icon } from '../../components/Icon'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { MissionStatusChip, readToken } from '../../components/badges'
-import { EmptyState, FilterPill, FilterRow } from '../../components/primitives'
+import {
+  EmptyState,
+  FilterPill,
+  FilterRow,
+  LoadMore,
+} from '../../components/primitives'
+import { useProgressive } from '../../hooks/useProgressive'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
@@ -26,9 +32,12 @@ const STATUS_TOKEN: Record<MissionStatus, string> = {
   planned: '--status-info',
   in_progress: '--status-success',
   completed: '--text-muted',
-  // Amber, not red: the group is probably fine and nobody confirmed — that is
-  // an alert to chase, not an emergency.
-  return_not_confirmed: '--status-warn',
+  // F4 — the charter orange. This was amber, on the reading that "the group is
+  // probably fine and nobody confirmed" is a chase rather than an emergency;
+  // the product owner overruled it, and rightly: a guard that ends without
+  // anyone saying the group got home is the exact failure this programme
+  // exists to catch, and it should be the loudest marker on the map.
+  return_not_confirmed: '--critical',
 }
 
 const STATUSES: MissionStatus[] = [
@@ -60,6 +69,8 @@ export function MissionsScreen() {
     const base = tab === 'upcoming' ? upcoming : past
     return status === null ? base : base.filter((v) => v.mission.status === status)
   }, [tab, upcoming, past, status])
+
+  const page = useProgressive(list)
 
   const markers: MapMarker[] = useMemo(
     () =>
@@ -157,7 +168,7 @@ export function MissionsScreen() {
         <EmptyState icon="shield" title={t('missions.empty')} />
       ) : (
         <ul className="stagger flex flex-col gap-2">
-          {list.map((view) => {
+          {page.visible.map((view) => {
             const { mission, farm, anchorPoint, driver, volunteers } = view
             const active = mission.id === hoveredId
             const mismatch = mission.assignments.some(
@@ -175,10 +186,13 @@ export function MissionsScreen() {
                   onFocus={() => setHoveredId(mission.id)}
                   onBlur={() => setHoveredId(null)}
                   onClick={() => navigate(`/coordinator/missions/${mission.id}`)}
-                  className={`w-full rounded-md border px-3 py-2.5 text-start transition-all duration-fast ease-out ${
-                    active
-                      ? 'border-accent/60 bg-accent/10'
-                      : 'border-edge-subtle hover:bg-surface-high'
+                  /* F5.3 — a guard is a CARD, not a bordered region of the
+                     page. These rows carried a subtle border and no fill, which
+                     in dark is a 1 px line on near-black: the whole list read
+                     as one grey slab and the product owner could not tell where
+                     one guard ended and the next began. */
+                  className={`tile-interactive w-full px-3 py-2.5 text-start ${
+                    active ? 'border-accent/60 bg-accent/10' : ''
                   }`}
                 >
                   <span className="flex flex-wrap items-center gap-2">
@@ -187,7 +201,8 @@ export function MissionsScreen() {
                     </span>
                     <MissionStatusChip status={mission.status} />
                     {mismatch && (
-                      <span className="chip bg-status-warn/15 text-status-warn-ink">
+                      /* F4 — a driver/group disagreement is a critical state. */
+                      <span className="chip-critical">
                         <Icon name="alert" size={11} />
                         {t('alerts.presence_mismatch')}
                       </span>
@@ -234,6 +249,8 @@ export function MissionsScreen() {
           })}
         </ul>
       )}
+      {/* F5.5 — a season of guards is hundreds of rows. */}
+      <LoadMore shown={page.shown} total={page.total} onMore={page.more} />
     </MapPanel>
   )
 }

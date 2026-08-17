@@ -79,7 +79,7 @@ export function DevToolbar() {
           value={currentId}
           onChange={(e) => onPick(e.target.value)}
           aria-label={t('devbar.viewAs')}
-          className="min-w-0 flex-1 rounded-sm border border-edge-strong bg-surface-raised px-3 py-1.5 text-caption
+          className="min-w-0 flex-1 rounded-field border border-edge-strong bg-surface-raised px-3 py-1.5 text-caption
                      text-content-primary transition-colors duration-fast focus:border-accent focus:outline-none sm:min-w-64 sm:flex-none"
         >
           {ROLE_ORDER.map((role) => {
@@ -105,7 +105,7 @@ export function DevToolbar() {
             resetStore()
             navigate(homeRouteFor(getSession().role))
           }}
-          className="rounded-sm px-2.5 py-1.5 text-micro text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
+          className="rounded-field px-2.5 py-1.5 text-micro text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
         >
           {t('devbar.reset')}
         </button>
@@ -113,7 +113,7 @@ export function DevToolbar() {
         <button
           type="button"
           onClick={() => navigate('/')}
-          className="rounded-sm px-2.5 py-1.5 text-micro text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
+          className="rounded-field px-2.5 py-1.5 text-micro text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
         >
           {t('devbar.backToLogin')}
         </button>

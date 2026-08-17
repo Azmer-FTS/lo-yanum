@@ -16,7 +16,7 @@ const MapCanvas = lazy(() => import('./MapCanvas'))
 
 /** Shimmer placeholder while the MapLibre chunk downloads (R2: skeletons). */
 function MapSkeleton({ className }: { className: string }) {
-  return <div className={`skeleton rounded-lg ${className}`} aria-hidden="true" />
+  return <div className={`skeleton rounded-card ${className}`} aria-hidden="true" />
 }
 
 export function MapView(props: MapViewProps) {

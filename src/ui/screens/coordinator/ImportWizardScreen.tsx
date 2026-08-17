@@ -15,6 +15,8 @@ import type { ImportField, ParsedRow } from '@core/index'
 
 import { Icon } from '../../components/Icon'
 import { SelectField } from '../../components/fields'
+import { LoadMore } from '../../components/primitives'
+import { useProgressive } from '../../hooks/useProgressive'
 import {
   Callout,
   EmptyState,
@@ -157,6 +159,11 @@ export function ImportWizardScreen() {
     [step, matrix, mapping, volunteers],
   )
 
+  // Hooks cannot be conditional, so this runs with an empty list until the
+  // preview step produces one — which is also why `useProgressive` resets on
+  // length rather than on identity.
+  const preview = useProgressive(analysis?.rows ?? [])
+
   const canMap =
     mapping.includes('name') && mapping.includes('phone')
 
@@ -226,7 +233,7 @@ export function ImportWizardScreen() {
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click()
             }}
-            className={`flex cursor-pointer flex-col items-center gap-3 rounded-lg border-2 border-dashed
+            className={`flex cursor-pointer flex-col items-center gap-3 rounded-card border-2 border-dashed
                         px-6 py-16 text-center transition-all duration-base ease-out ${
                           dragging
                             ? 'border-accent bg-accent/10'
@@ -276,7 +283,7 @@ export function ImportWizardScreen() {
             {headers.map((header, i) => (
               <div
                 key={`${header}-${i}`}
-                className="rounded-md border border-edge-subtle bg-surface-sunken/60 p-3"
+                className="rounded-field border border-edge-subtle bg-surface-high p-3"
               >
                 <p className="mb-1 text-micro text-content-muted">
                   {t('import.detectedColumn')}
@@ -349,7 +356,12 @@ export function ImportWizardScreen() {
             <span className="muted">{t('import.previewHint')}</span>
           </div>
 
-          <div className="scroll-x rounded-md border border-edge-subtle">
+          {/* F5.5 / A30 — an import is routinely 300 rows and this table used
+              to render every one of them straight down the page, which put the
+              wizard's own action bar thousands of pixels below the fold. It now
+              lives in a box with a pinned header, and the rows arrive 20 at a
+              time. */}
+          <div className="table-scroll">
             <table className="w-full min-w-[44rem] border-collapse text-caption">
               <thead>
                 <tr className="bg-surface-high/60 text-micro uppercase tracking-wide text-content-muted">
@@ -374,12 +386,17 @@ export function ImportWizardScreen() {
                 </tr>
               </thead>
               <tbody>
-                {analysis.rows.map((row) => (
+                {preview.visible.map((row) => (
                   <PreviewRow key={row.rowNumber} row={row} />
                 ))}
               </tbody>
             </table>
           </div>
+          <LoadMore
+            shown={preview.shown}
+            total={preview.total}
+            onMore={preview.more}
+          />
 
           <div className="mt-5 flex flex-wrap justify-between gap-2">
             <button

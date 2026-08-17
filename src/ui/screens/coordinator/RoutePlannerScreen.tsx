@@ -154,7 +154,7 @@ export function RoutePlannerScreen() {
                 <label
                   onMouseEnter={() => setHoveredId(farm.id)}
                   onMouseLeave={() => setHoveredId(null)}
-                  className={`flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-2 transition-colors duration-fast ${
+                  className={`flex cursor-pointer items-center gap-2.5 rounded-field px-2 py-2 transition-colors duration-fast ${
                     hoveredId === farm.id ? 'bg-accent/10' : 'hover:bg-surface-high'
                   }`}
                 >
@@ -162,7 +162,7 @@ export function RoutePlannerScreen() {
                     type="checkbox"
                     checked={selected.has(farm.id)}
                     onChange={() => toggle(farm.id)}
-                    className="h-4 w-4 shrink-0 accent-accent"
+                    className="check"
                   />
                   <FarmStatusDot status={farm.status} />
                   <span className="min-w-0 flex-1 truncate text-caption text-content-primary">
@@ -191,7 +191,7 @@ export function RoutePlannerScreen() {
                     key={stop.farm.id}
                     onMouseEnter={() => setHoveredId(stop.farm.id)}
                     onMouseLeave={() => setHoveredId(null)}
-                    className={`flex items-center gap-2.5 rounded-md px-1.5 py-1.5 transition-colors duration-fast ${
+                    className={`flex items-center gap-2.5 rounded-field px-1.5 py-1.5 transition-colors duration-fast ${
                       hoveredId === stop.farm.id ? 'bg-accent/10' : ''
                     }`}
                   >
@@ -243,7 +243,7 @@ export function RoutePlannerScreen() {
 
           <div className="card card-pad">
             <div className="mb-2 flex items-center gap-2">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/15 text-accent-ink">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-field bg-accent/15 text-accent-ink">
                 <Icon name="pin" size={15} />
               </span>
               <p className="text-caption font-semibold text-content-primary">
@@ -263,7 +263,7 @@ export function RoutePlannerScreen() {
                       setHoveredId(route.stops[step.order - 1]?.farm.id ?? null)
                     }
                     onMouseLeave={() => setHoveredId(null)}
-                    className="flex items-center gap-2.5 rounded-md px-2 py-1.5
+                    className="flex items-center gap-2.5 rounded-field px-2 py-1.5
                                transition-all duration-fast hover:bg-surface-high"
                   >
                     <span className="numeric flex h-5 w-5 shrink-0 items-center justify-center rounded-pill bg-gradient-accent text-micro font-bold text-content-on-accent">

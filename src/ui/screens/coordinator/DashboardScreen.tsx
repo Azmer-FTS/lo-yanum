@@ -63,27 +63,34 @@ import { useLocale } from '../../hooks/useLocale'
  * A thick inline-start bar rather than a tinted card: the bar survives being
  * skimmed at arm's length, a background wash does not. Severity is carried by
  * the bar, the icon and the chip together, never by colour alone.
+ *
+ * F4 — ALL THREE ALERT KINDS ARE THE CHARTER ORANGE, AT TWO INTENSITIES.
+ *
+ * Every alert that reaches this block is one of the states F4 names critical:
+ * an unresolved urgent incident, a driver and a group holder who disagree, or a
+ * group that has not confirmed it got home. So the hue is the same for all
+ * three and the INTENSITY carries the difference — an urgent incident takes the
+ * full `.card-critical` (solid orange icon, solid badge, orange-tinted drop),
+ * the two "somebody is unaccounted for" states take the bar and the tint on an
+ * ordinary card. Same alarm, two volumes, one colour to look for.
  */
 const ALERT_STYLE: Record<
   DashboardAlert['kind'],
-  { bar: string; icon: string; chip: string; iconName: IconName }
+  { icon: string; chip: string; iconName: IconName }
 > = {
   urgent_incident: {
-    bar: 'border-s-status-danger',
-    icon: 'bg-status-danger/15 text-status-danger-ink',
-    chip: 'bg-status-danger/15 text-status-danger-ink',
+    icon: 'bg-critical text-content-on-accent',
+    chip: 'chip-critical',
     iconName: 'alert',
   },
   presence_mismatch: {
-    bar: 'border-s-status-warn',
-    icon: 'bg-status-warn/15 text-status-warn-ink',
-    chip: 'bg-status-warn/15 text-status-warn-ink',
+    icon: 'bg-critical/15 text-status-danger-ink',
+    chip: 'bg-critical/15 text-status-danger-ink',
     iconName: 'users',
   },
   return_not_confirmed: {
-    bar: 'border-s-status-warn',
-    icon: 'bg-status-warn/15 text-status-warn-ink',
-    chip: 'bg-status-warn/15 text-status-warn-ink',
+    icon: 'bg-critical/15 text-status-danger-ink',
+    chip: 'bg-critical/15 text-status-danger-ink',
     iconName: 'car',
   },
 }
@@ -103,12 +110,15 @@ function AlertCard({ alert }: { alert: DashboardAlert }) {
 
   return (
     <li
-      className={`overflow-hidden rounded-lg border border-s-4 border-edge-subtle bg-surface-raised
-                  shadow-card transition-all duration-base ease-out hover:shadow-lift ${style.bar}`}
+      className={`overflow-hidden transition-all duration-base ease-out hover:shadow-lift ${
+        urgent
+          ? 'card-critical'
+          : 'rounded-card border border-s-4 border-critical/35 border-s-critical bg-surface-raised shadow-card'
+      }`}
     >
       <div className="flex items-start gap-3 p-3.5">
         <span
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${style.icon}`}
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-field ${style.icon}`}
         >
           <Icon name={style.iconName} size={20} />
         </span>
@@ -118,10 +128,14 @@ function AlertCard({ alert }: { alert: DashboardAlert }) {
             <span className="text-caption font-bold text-content-primary">
               {t(`alerts.${alert.kind}`)}
             </span>
-            {urgent && (
-              <span className={`chip ${style.chip}`}>
+            {urgent ? (
+              <span className={style.chip}>
                 <span className="live-dot" />
-                {t('incidents.open')}
+                {t('severity.urgent')}
+              </span>
+            ) : (
+              <span className={`chip ${style.chip}`}>
+                {t('alerts.needsAction')}
               </span>
             )}
             {/* Relative time, not a clock reading: "25 minutes ago" is the
@@ -200,7 +214,7 @@ function Kpi({
       <span className="flex items-center justify-between gap-2">
         <span className={`numeric text-metric ${toneClass}`}>{value}</span>
         <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-high ${toneClass}`}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-field bg-surface-high ${toneClass}`}
         >
           <Icon name={icon} size={16} />
         </span>
@@ -216,7 +230,7 @@ const EVENT_DOT: Record<MissionStatus | 'visit', string> = {
   planned: 'bg-status-info',
   in_progress: 'bg-status-success',
   completed: 'bg-content-muted',
-  return_not_confirmed: 'bg-status-danger',
+  return_not_confirmed: 'bg-critical',
   visit: 'bg-status-violet',
 }
 
@@ -280,7 +294,7 @@ function AgendaWidget() {
               <li key={key}>
                 <Link
                   to="/coordinator/agenda"
-                  className={`flex flex-col items-center gap-1 rounded-md py-1.5 transition-colors duration-fast ${
+                  className={`flex flex-col items-center gap-1 rounded-field py-1.5 transition-colors duration-fast ${
                     isToday
                       ? 'bg-accent/15 ring-1 ring-accent'
                       : 'hover:bg-surface-high'
@@ -317,7 +331,7 @@ function AgendaWidget() {
               <li key={e.id}>
                 <Link
                   to={e.kind === 'visit' ? '/coordinator/agenda' : e.href}
-                  className="flex items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors duration-fast hover:bg-surface-high"
+                  className="flex items-center gap-2 rounded-field px-1.5 py-1.5 transition-colors duration-fast hover:bg-surface-high"
                 >
                   <span
                     className={`inline-block h-2 w-2 shrink-0 rounded-pill ${dotOf(e)}`}
@@ -391,7 +405,9 @@ export function DashboardScreen() {
       .map((incident) => ({
         id: `inc-${incident.id}`,
         position: incident.position as { lat: number; lng: number },
-        color: readToken('--status-danger'),
+        // F4 — an unresolved urgent incident is the charter orange on the map
+        // too, so the marker and its dashboard card are the same object.
+        color: readToken('--critical'),
         title: t('severity.urgent'),
         subtitle: incident.reporterName,
         kind: 'incident' as const,
@@ -507,7 +523,7 @@ export function DashboardScreen() {
                 <li key={view.mission.id}>
                   <Link
                     to={`/coordinator/missions/${view.mission.id}`}
-                    className="flex items-center gap-3 rounded-md px-2 py-2 transition-colors duration-fast hover:bg-surface-high"
+                    className="flex items-center gap-3 rounded-field px-2 py-2 transition-colors duration-fast hover:bg-surface-high"
                   >
                     <span className="flex -space-x-2 rtl:space-x-reverse">
                       {view.volunteers.slice(0, 3).map(({ volunteer }) => (
@@ -551,7 +567,7 @@ export function DashboardScreen() {
               <li key={status}>
                 <Link
                   to={`/coordinator/farms?status=${status}`}
-                  className="flex items-center gap-2.5 rounded-sm px-1.5 py-1.5 transition-colors duration-fast hover:bg-surface-high"
+                  className="flex items-center gap-2.5 rounded-field px-1.5 py-1.5 transition-colors duration-fast hover:bg-surface-high"
                 >
                   <FarmStatusDot status={status} />
                   <span className="flex-1 truncate text-caption text-content-secondary">

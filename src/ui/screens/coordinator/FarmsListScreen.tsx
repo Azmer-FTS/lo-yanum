@@ -14,7 +14,13 @@ import {
   FarmStatusDot,
   readStatusColor,
 } from '../../components/badges'
-import { EmptyState, FilterPill, FilterRow } from '../../components/primitives'
+import {
+  EmptyState,
+  FilterPill,
+  FilterRow,
+  LoadMore,
+} from '../../components/primitives'
+import { useProgressive } from '../../hooks/useProgressive'
 import { useCoreValue } from '../../hooks/useCore'
 
 const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
@@ -63,6 +69,8 @@ export function FarmsListScreen() {
     })
   }, [farms, status, type, query])
 
+  const page = useProgressive(filtered)
+
   const markers: MapMarker[] = useMemo(
     () =>
       filtered.map((farm) =>
@@ -105,7 +113,7 @@ export function FarmsListScreen() {
       }
       detail={
         selected && (
-          <div className="animate-fade-in rounded-lg border border-edge-strong bg-surface-overlay/95 p-4 shadow-lift backdrop-blur">
+          <div className="animate-fade-in rounded-card border border-edge-strong bg-surface-overlay/95 p-4 shadow-lift backdrop-blur">
             <div className="flex items-start gap-3">
               <Avatar
                 photo={selected.photo}
@@ -125,7 +133,7 @@ export function FarmsListScreen() {
                 type="button"
                 onClick={() => setSelectedId(null)}
                 aria-label={t('common.close')}
-                className="shrink-0 rounded-sm p-1 text-content-muted hover:bg-surface-high hover:text-content-primary"
+                className="shrink-0 rounded-field p-1 text-content-muted hover:bg-surface-high hover:text-content-primary"
               >
                 <Icon name="close" size={16} />
               </button>
@@ -220,7 +228,7 @@ export function FarmsListScreen() {
         <EmptyState icon="farm" title={t('farms.empty')} />
       ) : (
         <ul className="stagger flex flex-col gap-1.5">
-          {filtered.map((farm) => {
+          {page.visible.map((farm) => {
             const active = farm.id === hoveredId || farm.id === selectedId
             return (
               <li key={farm.id}>
@@ -231,12 +239,11 @@ export function FarmsListScreen() {
                   onFocus={() => setHoveredId(farm.id)}
                   onBlur={() => setHoveredId(null)}
                   onClick={() => navigate(`/coordinator/farms/${farm.id}`)}
-                  className={`flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-start
-                              transition-all duration-fast ease-out ${
-                                active
-                                  ? 'border-accent/60 bg-accent/10'
-                                  : 'border-transparent hover:bg-surface-high'
-                              }`}
+                  /* F5.3 — a farm row is a card. A transparent border on the
+                     page surface gave the list no edges at all. */
+                  className={`tile-interactive flex w-full items-center gap-3 px-3 py-2.5 text-start ${
+                    active ? 'border-accent/60 bg-accent/10' : ''
+                  }`}
                 >
                   <Avatar
                     photo={farm.photo}
@@ -264,6 +271,7 @@ export function FarmsListScreen() {
           })}
         </ul>
       )}
+      <LoadMore shown={page.shown} total={page.total} onMore={page.more} />
     </MapPanel>
   )
 }

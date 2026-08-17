@@ -38,7 +38,7 @@ function MessageCard({
   const { t } = useTranslation()
 
   return (
-    <div className="rounded-lg border border-edge-subtle bg-surface-raised/40 p-4">
+    <div className="rounded-card border border-edge-subtle bg-surface-raised/40 p-4">
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="text-caption font-semibold">{title}</h3>
@@ -54,7 +54,7 @@ function MessageCard({
         value={body}
         rows={Math.min(18, body.split('\n').length + 1)}
         dir="rtl"
-        className="w-full resize-y rounded-md border border-edge-strong bg-surface-raised p-3 font-sans text-caption leading-relaxed text-content-primary"
+        className="w-full resize-y rounded-field border border-edge-strong bg-surface-raised p-3 font-sans text-caption leading-relaxed text-content-primary"
       />
 
       {phone && (
@@ -185,8 +185,8 @@ export function AnchorSheetScreen() {
           <Section title={t('map.title')}>
             <MapView
               ariaLabel={t('a11y.map')}
-              className="h-52 w-full"
-              interactive={false}
+              className="h-72 w-full lg:h-[24rem]"
+              cooperative
               center={anchor.position}
               zoom={13}
               markers={[

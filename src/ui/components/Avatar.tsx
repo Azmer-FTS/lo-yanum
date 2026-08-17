@@ -30,7 +30,7 @@ export function Avatar({
   shape?: 'circle' | 'square'
   ring?: boolean
 }) {
-  const radius = shape === 'circle' ? 'rounded-pill' : 'rounded-md'
+  const radius = shape === 'circle' ? 'rounded-pill' : 'rounded-field'
   const ringClass = ring ? 'ring-2 ring-accent/50' : 'ring-1 ring-edge-subtle'
   const base = `${SIZES[size]} ${radius} ${ringClass} shrink-0 overflow-hidden`
 

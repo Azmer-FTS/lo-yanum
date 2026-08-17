@@ -29,7 +29,7 @@ export function ContactButtons({
       <a
         href={telHref(phone)}
         aria-label={`${t('common.call')} ${name}`}
-        className="flex h-10 w-10 items-center justify-center rounded-md bg-accent text-content-on-accent
+        className="flex h-10 w-10 items-center justify-center rounded-field bg-accent text-content-on-accent
                    transition-all duration-fast ease-out hover:bg-accent-strong active:scale-95"
       >
         <Icon name="phone" size={18} />
@@ -39,7 +39,7 @@ export function ContactButtons({
         target="_blank"
         rel="noreferrer"
         aria-label={`${t('common.whatsapp')} ${name}`}
-        className="flex h-10 w-10 items-center justify-center rounded-md border border-edge-strong
+        className="flex h-10 w-10 items-center justify-center rounded-field border border-edge-strong
                    text-status-success-ink transition-all duration-fast ease-out
                    hover:bg-status-success/10 active:scale-95"
       >
@@ -48,7 +48,7 @@ export function ContactButtons({
       <a
         href={smsHref(phone, message)}
         aria-label={`${t('common.sms')} ${name}`}
-        className="flex h-10 w-10 items-center justify-center rounded-md border border-edge-strong
+        className="flex h-10 w-10 items-center justify-center rounded-field border border-edge-strong
                    text-content-secondary transition-all duration-fast ease-out
                    hover:bg-surface-high hover:text-content-primary active:scale-95"
       >
@@ -110,11 +110,11 @@ export function CallRow({
   const { t } = useTranslation()
 
   return (
-    <div className="flex items-center gap-3 rounded-md border border-edge-subtle bg-surface-raised px-3 py-2.5">
+    <div className="flex items-center gap-3 rounded-field border border-edge-subtle bg-surface-raised px-3 py-2.5">
       <Avatar photo={photo} name={name} size="md" />
       <a
         href={telHref(phone)}
-        className="min-w-0 flex-1 rounded-sm transition-opacity duration-fast active:opacity-70"
+        className="min-w-0 flex-1 rounded-field transition-opacity duration-fast active:opacity-70"
       >
         <span className="block text-micro text-content-muted">{label}</span>
         <span className="block truncate text-caption font-medium text-content-primary">
@@ -131,7 +131,7 @@ export function CallRow({
             target="_blank"
             rel="noreferrer"
             aria-label={`${t('common.whatsapp')} ${name}`}
-            className="flex h-11 w-11 items-center justify-center rounded-md border border-edge-strong
+            className="flex h-11 w-11 items-center justify-center rounded-field border border-edge-strong
                        text-status-success-ink transition-all duration-fast ease-out
                        hover:bg-status-success/10 active:scale-95"
           >
@@ -141,7 +141,7 @@ export function CallRow({
         <a
           href={telHref(phone)}
           aria-label={`${t('common.call')} ${name}`}
-          className="flex h-11 w-11 items-center justify-center rounded-md bg-accent text-content-on-accent
+          className="flex h-11 w-11 items-center justify-center rounded-field bg-accent text-content-on-accent
                      transition-all duration-fast ease-out hover:bg-accent-strong active:scale-95"
         >
           <Icon name="phone" size={19} />

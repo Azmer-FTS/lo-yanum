@@ -146,7 +146,7 @@ function Ratio({ value, min }: { value: number; min: number }) {
 function SurfaceSwatch({ name, palette }: { name: string; palette: Palette }) {
   const rgb = palette[name] ?? BLACK
   return (
-    <div className="overflow-hidden rounded-md border border-edge-subtle">
+    <div className="overflow-hidden rounded-field border border-edge-subtle">
       <div className="h-14 w-full" style={{ backgroundColor: css(rgb) }} />
       <div className="bg-surface-raised px-2.5 py-2">
         <p className="truncate text-micro font-semibold text-content-primary">
@@ -364,8 +364,33 @@ export function StyleguideScreen() {
               <SurfaceSwatch key={n} name={n} palette={palette} />
             ))}
           </div>
-          <div className="mt-3 h-16 rounded-lg bg-gradient-accent shadow-accent" />
+          <div className="mt-3 h-16 rounded-card bg-gradient-accent shadow-accent" />
           <p className="muted mt-1.5">{t('styleguide.gradientHint')}</p>
+        </Block>
+
+        {/* F4 — the charter orange, and the closed list of places it is
+            allowed to appear. Documented HERE rather than only in a comment
+            because the whole point of the role is that a reviewer can check it:
+            `bun run tokens` enforces the list, this shows what it buys. */}
+        <Block title={t('styleguide.critical')} hint={t('styleguide.criticalHint')}>
+          <div className="card card-pad flex flex-wrap items-center gap-3">
+            <button type="button" className="btn-critical">
+              <Icon name="check" size={15} />
+              {t('wizard.finish')}
+            </button>
+            <span className="chip-critical">
+              <Icon name="alert" size={12} />
+              {t('severity.urgent')}
+            </span>
+            <span className="chip-critical">{t('missionStatus.return_not_confirmed')}</span>
+            <span className="chip-critical">{t('confirm.mismatch')}</span>
+          </div>
+          <div className="card-critical mt-3 p-4">
+            <p className="text-caption font-semibold text-content-primary">
+              {t('alerts.urgent_incident')}
+            </p>
+            <p className="muted mt-1">{t('styleguide.criticalCard')}</p>
+          </div>
         </Block>
 
         <Block title={t('styleguide.status')} hint={t('styleguide.statusHint')}>
@@ -475,6 +500,37 @@ export function StyleguideScreen() {
               {t('farmStatus.active')}
               <span className="filter-count">4</span>
             </span>
+          </div>
+        </Block>
+
+        {/* F3 — the three radii and the field style, side by side. A scale is
+            only a scale if you can see the steps next to each other. */}
+        <Block title={t('styleguide.radius')} hint={t('styleguide.radiusHint')}>
+          <div className="card card-pad grid gap-3 sm:grid-cols-3">
+            <div className="flex flex-col gap-2">
+              <span className="h-12 rounded-field border border-edge-strong bg-surface-field" />
+              <span className="muted">field · 6px</span>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="h-12 rounded-card border border-edge-subtle bg-surface-high" />
+              <span className="muted">card · 14px</span>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="h-12 rounded-pill bg-gradient-accent" />
+              <span className="muted">pill</span>
+            </div>
+          </div>
+          <div className="card card-pad mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="label">{t('form.name')}</span>
+              <input className="input" defaultValue={t('app.name')} />
+            </label>
+            <label className="block">
+              <span className="label">{t('form.locality')}</span>
+              <select className="input" defaultValue="a">
+                <option value="a">{t('common.all')}</option>
+              </select>
+            </label>
           </div>
         </Block>
 

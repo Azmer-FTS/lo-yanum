@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 import {
   createFarmVisit,
@@ -91,6 +92,14 @@ export function FarmVisitModal({
             value: f.id,
             label: `${f.name} · ${f.locality}`,
           }))}
+          // F1 — planning a visit to nothing is not a validation error, it is a
+          // missing farm. Offer the farm.
+          emptyLabel={t('wizard.noFarms')}
+          emptyAction={
+            <Link to="/coordinator/farms/new" className="btn-primary">
+              {t('farms.createFirst')}
+            </Link>
+          }
         />
 
         <label className="block">
@@ -111,7 +120,7 @@ export function FarmVisitModal({
           placeholder={t('agenda.notePlaceholder')}
         />
 
-        <label className="flex cursor-pointer items-center gap-2.5 rounded-md bg-surface-high px-3 py-2.5">
+        <label className="flex cursor-pointer items-center gap-2.5 rounded-field bg-surface-high px-3 py-2.5">
           <input
             type="checkbox"
             checked={done}

@@ -31,14 +31,20 @@ const SEVERITY_ICON: Record<IncidentSeverity, IconName> = {
   urgent: 'alert',
 }
 
-/** Full-bleed solid fills: unmistakable at a glance, no colour-matching needed. */
+/**
+ * Full-bleed tints: unmistakable at a glance, no colour-matching needed.
+ *
+ * F4 — only `urgent` reaches for `critical`, the charter orange. The other two
+ * keep the ordinary semantic hues, and that gap IS the design: three buttons in
+ * three shades of alarm would give the thumb nothing to aim at in the dark.
+ */
 const SEVERITY_BUTTON: Record<IncidentSeverity, string> = {
   observation:
     'bg-status-success/15 text-status-success-ink border-status-success/50 hover:bg-status-success/25',
   suspicious:
     'bg-status-warn/15 text-status-warn-ink border-status-warn/50 hover:bg-status-warn/25',
   urgent:
-    'bg-status-danger/20 text-status-danger-ink border-status-danger/60 hover:bg-status-danger/30',
+    'bg-critical/20 text-status-danger-ink border-critical/60 hover:bg-critical/30',
 }
 
 export interface ReportContext {
@@ -128,7 +134,7 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
   if (step === 'sent') {
     if (severity !== 'urgent') {
       return (
-        <div className="flex animate-fade-in flex-col items-center gap-3 rounded-lg border border-status-success/40 bg-status-success/10 px-6 py-12 text-center">
+        <div className="flex animate-fade-in flex-col items-center gap-3 rounded-card border border-status-success/40 bg-status-success/10 px-6 py-12 text-center">
           <span className="text-status-success-ink">
             <Icon name="check" size={38} />
           </span>
@@ -146,8 +152,8 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
     const police = EMERGENCY_NUMBERS.find((n) => n.key === 'police')
     return (
       <div className="animate-fade-in">
-        <div className="rounded-lg border border-status-danger/50 bg-status-danger/10 p-5 text-center">
-          <span className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-pill bg-status-danger/20 text-status-danger-ink">
+        <div className="rounded-card border border-critical/50 bg-critical/10 p-5 text-center">
+          <span className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-pill bg-critical/20 text-status-danger-ink">
             <Icon name="check" size={30} />
           </span>
           <p className="text-title text-content-primary">
@@ -162,8 +168,10 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
           {police && (
             <a
               href={telHref(police.number)}
-              className="flex items-center justify-center gap-3 rounded-lg bg-status-danger px-5 py-5
-                         text-heading font-bold text-content-on-accent shadow-lift
+              // F4 — the emergency call. The one solid orange on this screen,
+              // and the reason the confirmation panel around it stays a tint.
+              className="flex items-center justify-center gap-3 rounded-card bg-critical px-5 py-5
+                         text-heading font-bold text-content-on-accent shadow-critical
                          transition-transform duration-fast active:scale-[0.98]"
             >
               <Icon name="phone" size={24} />
@@ -175,7 +183,7 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
           {context.farmerPhone && (
             <a
               href={telHref(context.farmerPhone)}
-              className="flex items-center justify-center gap-3 rounded-lg bg-accent px-5 py-5
+              className="flex items-center justify-center gap-3 rounded-card bg-accent px-5 py-5
                          text-heading font-bold text-content-on-accent shadow-accent
                          transition-transform duration-fast active:scale-[0.98]"
             >
@@ -186,7 +194,7 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
 
           <a
             href={telHref(context.coordinatorPhone)}
-            className="flex items-center justify-center gap-3 rounded-lg border border-edge-strong
+            className="flex items-center justify-center gap-3 rounded-card border border-edge-strong
                        bg-surface-high px-5 py-5 text-heading font-bold text-content-primary
                        transition-transform duration-fast active:scale-[0.98]"
           >
@@ -219,7 +227,7 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
                 setSeverity(s)
                 setStep('details')
               }}
-              className={`flex w-full items-center gap-4 rounded-lg border-2 px-5 py-6 text-start
+              className={`flex w-full items-center gap-4 rounded-card border-2 px-5 py-6 text-start
                           transition-all duration-fast ease-out active:scale-[0.99] ${SEVERITY_BUTTON[s]}`}
             >
               <Icon name={SEVERITY_ICON[s]} size={30} />
@@ -273,14 +281,14 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
 
         {context.showPhoto && (
           <Section title={t('report.photo')}>
-            <div className="flex items-center gap-3 rounded-md border border-dashed border-edge-strong px-4 py-5 text-content-muted">
+            <div className="flex items-center gap-3 rounded-field border border-dashed border-edge-strong px-4 py-5 text-content-muted">
               <Icon name="camera" size={22} />
               <span className="text-caption">{t('report.photoPlaceholder')}</span>
             </div>
           </Section>
         )}
 
-        <div className="flex items-center gap-2 rounded-md border border-edge-subtle bg-surface-raised px-3.5 py-3">
+        <div className="flex items-center gap-2 rounded-field border border-edge-subtle bg-surface-raised px-3.5 py-3">
           <span className="text-accent-ink">
             <Icon name="pin" size={17} />
           </span>
@@ -300,9 +308,7 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
           onClick={submit}
           disabled={description.trim().length === 0}
           className={`btn-big ${
-            severity === 'urgent'
-              ? 'btn bg-status-danger text-content-on-accent shadow-lift hover:brightness-110'
-              : 'btn-primary'
+            severity === 'urgent' ? 'btn-critical' : 'btn-primary'
           }`}
         >
           <Icon name="upload" size={19} />

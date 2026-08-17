@@ -146,8 +146,8 @@ export function FarmerTonightScreen() {
                 <p className="mb-2 text-caption font-medium">{anchorPoint.name}</p>
                 <MapView
                   ariaLabel={t('a11y.map')}
-                  className="h-44 w-full"
-                  interactive={false}
+                  className="h-64 w-full"
+                  cooperative
                   center={anchorPoint.position}
                   zoom={13}
                   markers={[

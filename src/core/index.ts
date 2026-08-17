@@ -37,6 +37,8 @@ export {
   updateFarm,
   newContactId,
   createAnchorPoint,
+  patchAnchorPoint,
+  deleteAnchorPoint,
   updateAnchorPoint,
   createVolunteer,
   updateVolunteer,

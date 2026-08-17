@@ -75,17 +75,51 @@
    */
   --text-on-brand: 244 250 245; /* #F4FAF5 */
 
+  /**
+   * F4 — THE CHARTER ORANGE, GIVEN A JOB.
+   *
+   * `--brand-orange` is the association's single loud CTA and, until this lot,
+   * the app never actually showed it: it was aliased onto `--status-danger`,
+   * which the UI only ever renders as a 15 % wash or as its darkened `-ink`, so
+   * the loudest colour in the charter was present in the token file and absent
+   * from the screen.
+   *
+   * `--critical` is that orange promoted to a ROLE with a short, closed list of
+   * call sites (see `.btn-critical` / `.chip-critical` / `.card-critical` in
+   * index.css): an unresolved urgent incident, an emergency call, the one
+   * irreversible button that commits a guard, and the two states that mean a
+   * volunteer is unaccounted for. `bun run tokens` fails the build if it turns
+   * up anywhere else — the whole value of a loud colour is that it is rare.
+   *
+   * Theme-independent, exactly like the brand plate: an emergency does not
+   * change colour at night. It carries `--text-on-accent` at 5.22:1.
+   */
+  --critical: 239 79 40; /* #EF4F28 — brand orange, verbatim */
+
   /* ---------------------------------------------------------------------
      LIGHT — coordinator daylight default. Green-tinted paper, white cards,
      forest-green ink: the site's own arrangement.
      --------------------------------------------------------------------- */
 
   /* Surfaces, ascending elevation. In light, cards rise toward white. */
-  --surface-sunken: 223 235 221; /* #DFEBDD — inputs, wells             */
+  --surface-sunken: 223 235 221; /* #DFEBDD — wells, scrims             */
   --surface-base: 241 246 239; /* #F1F6EF — the page itself           */
   --surface-raised: 255 255 255; /* #FFFFFF — cards, as on the site     */
   --surface-overlay: 255 255 255; /* #FFFFFF — modals, sticky bars       */
   --surface-high: 233 242 234; /* #E9F2EA — the CHARTER's own wash    */
+
+  /**
+   * THE FIELD SURFACE (Lot 0.9 / F3). Its whole job is to be NEUTRAL.
+   *
+   * Every input, select and textarea used to sit on `--surface-sunken`, the
+   * green wash — twelve of them down a form turned the page into a stack of
+   * coloured bars and buried the one field that actually mattered. A field is
+   * now white paper (light) / a plain dark well (dark), and it is the BORDER
+   * that says "you can type here". The charter wash #E9F2EA survives as
+   * `--surface-high` and is spent on SECTIONS and informational panels, which
+   * is where a tint carries meaning instead of noise.
+   */
+  --surface-field: 255 255 255; /* #FFFFFF — untinted, on purpose      */
 
   --border-subtle: 211 226 208; /* #D3E2D0 */
   --border-strong: 169 191 164; /* #A9BFA4 */
@@ -154,6 +188,9 @@
   --shadow-lift: 0 6px 16px rgb(11 61 44 / 0.1), 0 18px 40px rgb(11 61 44 / 0.16);
   --shadow-accent: 0 3px 12px rgb(110 149 88 / 0.36);
   --shadow-glow: 0 0 0 1px rgb(110 149 88 / 0.3), 0 6px 24px rgb(110 149 88 / 0.2);
+  /* F4: the long Artzenu drop, tinted with the critical hue. */
+  --shadow-critical: 0 2px 8px rgb(239 79 40 / 0.2),
+    0 12px 32px -8px rgb(239 79 40 / 0.3);
 
   /* Hero gradients. NEVER applied to text — only to fills (primary buttons,
      the dashboard hero strip, KPI accents). 158° is the site's own angle. */
@@ -187,14 +224,32 @@
 
   /* --- Theme-independent ------------------------------------------------ */
 
-  /* Generous radii. The charter is a 30 px-pill language (buttons, inputs and
-     icon circles all fully rounded), so these went UP one step from Lot 0.7 —
-     but a data table with 30 px corners stops being scannable, so pills are
-     spent on CONTROLS (see `.btn` in index.css) and containers stay boxes. */
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 18px; /* cards */
-  --radius-xl: 26px;
+  /**
+   * THE RADIUS SCALE — THREE VALUES, AND NOTHING ELSE (Lot 0.9 / F3).
+   *
+   * Lot 0.8 shipped five steps (10/14/18/26/pill) and the app used all of them
+   * plus the pill, so nothing read as a family: a 10 px chip sat next to a
+   * 14 px input inside an 18 px card. The scale is now three values, each tied
+   * to a ROLE rather than to a size, and every corner in the app is one of them:
+   *
+   *   field — inputs, selects, textareas, list rows, icon buttons, tiles.
+   *           Deliberately small. The charter's own inputs are 30 px pills and
+   *           this is the one place the app does not follow, for the reason
+   *           written at `.input` in index.css: a column of pills gives the eye
+   *           no left edge to run down.
+   *   card  — cards, sections, modals, map frames, panels. Inside the 12–16 px
+   *           the charter's own cards sit in.
+   *   pill  — CTA buttons, filter pills, chips, badges, dots. The charter's
+   *           control language, spent where it belongs.
+   *
+   * There is no fourth value anywhere in the app, and `tailwind.config.js`
+   * REPLACES Tailwind's borderRadius scale rather than extending it — so the
+   * old sm/md/lg/xl names, the default full, and any arbitrary bracket value no
+   * longer compile, and the rule is enforced by the build rather than by
+   * discipline. `bun run tokens` re-checks it.
+   */
+  --radius-field: 6px;
+  --radius-card: 14px;
   --radius-pill: 999px;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -213,6 +268,15 @@
    * legend renders behind the bar. Lot 1 deletes the toolbar and this becomes 0.
    */
   --shell-bottom: 2.75rem;
+
+  /**
+   * Height of the shell's own sticky header, published by the coordinator top
+   * bar (F5.4). Zero here because the DESKTOP shell has no top bar at all — the
+   * rail is beside the content, not above it — so a sticky element that offsets
+   * by this variable lands flush at the top of the viewport on desktop and
+   * exactly under the bar on a phone, with no breakpoint of its own.
+   */
+  --shell-top: 0px;
 
   /**
    * TWO brand faces, split on a measured fact rather than on taste.
@@ -284,6 +348,9 @@
   --surface-raised: 18 48 36; /* #123024 — a clear step above */
   --surface-overlay: 23 59 44; /* #173B2C */
   --surface-high: 27 68 51; /* #1B4433 — hover / headers   */
+  /* A field is a WELL in dark: below the card it sits in, above the page, and
+     with none of the green wash the old `--surface-sunken` fields carried. */
+  --surface-field: 9 25 16; /* #091910 */
 
   --border-subtle: 36 80 60; /* #24503C */
   --border-strong: 69 119 92; /* #45775C */
@@ -337,6 +404,8 @@
   --shadow-accent: 0 4px 16px rgb(143 190 115 / 0.3);
   --shadow-glow: 0 0 0 1px rgb(143 190 115 / 0.32),
     0 8px 28px rgb(143 190 115 / 0.22);
+  --shadow-critical: 0 2px 10px rgb(239 79 40 / 0.28),
+    0 14px 36px -8px rgb(0 0 0 / 0.5);
 
   --gradient-hero: linear-gradient(
     158deg,
@@ -377,6 +446,7 @@
     --surface-raised: 18 48 36;
     --surface-overlay: 23 59 44;
     --surface-high: 27 68 51;
+    --surface-field: 9 25 16;
 
     --border-subtle: 36 80 60;
     --border-strong: 69 119 92;

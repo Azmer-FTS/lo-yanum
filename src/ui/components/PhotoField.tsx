@@ -85,7 +85,7 @@ export function PhotoField({
         <div className="relative">
           <Avatar photo={value} name={name || '?'} size="xl" shape={shape} />
           {busy && (
-            <span className="absolute inset-0 flex items-center justify-center rounded-md bg-surface-sunken/70">
+            <span className="absolute inset-0 flex items-center justify-center rounded-field bg-surface-sunken/70">
               <Icon name="clock" size={20} className="animate-pulse" />
             </span>
           )}

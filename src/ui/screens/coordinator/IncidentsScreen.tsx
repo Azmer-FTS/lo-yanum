@@ -9,7 +9,13 @@ import { ChevronForward } from '../../components/Icon'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { SeverityChip, readToken } from '../../components/badges'
-import { EmptyState, FilterPill, FilterRow } from '../../components/primitives'
+import {
+  EmptyState,
+  FilterPill,
+  FilterRow,
+  LoadMore,
+} from '../../components/primitives'
+import { useProgressive } from '../../hooks/useProgressive'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
@@ -19,13 +25,15 @@ const SEVERITIES: IncidentSeverity[] = ['urgent', 'suspicious', 'observation']
 const SEVERITY_TOKEN: Record<IncidentSeverity, string> = {
   observation: '--status-success',
   suspicious: '--status-warn',
-  urgent: '--status-danger',
+  // F4 — an unresolved urgent incident is the charter orange, on the map and
+  // in the list, so the marker and the row are recognisably the same object.
+  urgent: '--critical',
 }
 
 const SEVERITY_EDGE: Record<IncidentSeverity, string> = {
   observation: 'border-s-status-success',
   suspicious: 'border-s-status-warn',
-  urgent: 'border-s-status-danger',
+  urgent: 'border-s-critical',
 }
 
 /**
@@ -62,6 +70,8 @@ export function IncidentsScreen() {
       return true
     })
   }, [views, severity, since, openOnly])
+
+  const page = useProgressive(filtered)
 
   const markers: MapMarker[] = useMemo(
     () =>
@@ -173,7 +183,7 @@ export function IncidentsScreen() {
         <EmptyState icon="alert" title={t('incidents.empty')} />
       ) : (
         <ul className="stagger flex flex-col gap-2">
-          {filtered.map(({ incident, farm }) => {
+          {page.visible.map(({ incident, farm }) => {
             const active = incident.id === hoveredId
             return (
               <li key={incident.id}>
@@ -184,12 +194,11 @@ export function IncidentsScreen() {
                   onFocus={() => setHoveredId(incident.id)}
                   onBlur={() => setHoveredId(null)}
                   onClick={() => navigate(`/coordinator/incidents/${incident.id}`)}
-                  className={`w-full border-s-4 px-3 py-2.5 text-start ${SEVERITY_EDGE[incident.severity]}
-                              rounded-md border border-y border-e transition-all duration-fast ease-out ${
-                                active
-                                  ? 'border-accent/60 bg-accent/10'
-                                  : 'border-edge-subtle hover:bg-surface-high'
-                              }`}
+                  /* F5.3 — the row floats: card surface, soft drop, and the
+                     severity bar on top of it rather than instead of it. */
+                  className={`tile-interactive w-full border-s-4 px-3 py-2.5 text-start ${
+                    SEVERITY_EDGE[incident.severity]
+                  } ${active ? 'border-accent/60 bg-accent/10' : ''}`}
                 >
                   <span className="flex flex-wrap items-center gap-2">
                     <SeverityChip severity={incident.severity} />
@@ -219,6 +228,7 @@ export function IncidentsScreen() {
           })}
         </ul>
       )}
+      <LoadMore shown={page.shown} total={page.total} onMore={page.more} />
     </MapPanel>
   )
 }
