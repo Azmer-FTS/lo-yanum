@@ -335,7 +335,9 @@
     "hoverHint": "ריחוף על שורה מדגיש את הסימון במפה",
     "gestureDesktop": "שינוי זום: Ctrl + גלילה",
     "gestureMac": "שינוי זום: ⌘ + גלילה",
-    "gestureMobile": "הזיזו את המפה בשתי אצבעות"
+    "gestureMobile": "הזיזו את המפה בשתי אצבעות",
+    "fullscreen": "מסך מלא",
+    "exitFullscreen": "יציאה ממסך מלא"
   },
   "route": {
     "title": "תכנון מסלול ביקורים",

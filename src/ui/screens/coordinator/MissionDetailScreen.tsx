@@ -17,6 +17,11 @@ import { ContactActions, ContactButtons } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
 import { PointLegend, meetColor } from '../../components/meet'
+import {
+  FullscreenToggle,
+  fullscreenShell,
+  useMapFullscreen,
+} from '../../components/fullscreen'
 import { Timeline } from '../../components/Timeline'
 import type { TimelineEntry } from '../../components/Timeline'
 import {
@@ -256,6 +261,7 @@ export function MissionDetailScreen() {
   const { missionId = '' } = useParams()
   const view = useCoreValue(() => getMissionView(missionId))
   const missionIncidents = useCoreValue(() => getIncidentsForMission(missionId))
+  const mapFullscreen = useMapFullscreen()
 
   if (!view) return <Navigate to="/coordinator/missions" replace />
 
@@ -352,10 +358,20 @@ export function MissionDetailScreen() {
               ) : undefined
             }
           >
-            <div className="relative">
+            <div className={fullscreenShell(mapFullscreen.active, 'relative')}>
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end p-3">
+                <FullscreenToggle
+                  active={mapFullscreen.active}
+                  onToggle={mapFullscreen.toggle}
+                />
+              </div>
               <MapView
                 ariaLabel={t('a11y.map')}
-                className="h-72 w-full lg:h-[24rem]"
+                className={
+                  mapFullscreen.active
+                    ? 'h-full w-full'
+                    : 'h-72 w-full lg:h-[24rem]'
+                }
                 cooperative
                 fit
                 markers={[

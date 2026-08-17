@@ -476,8 +476,15 @@ export default function MapCanvas({
       dblClickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng })
     })
 
+    // G7bis.2 — the fullscreen mode swaps the CONTAINER's size without any
+    // window resize, and this MapLibre build only listens for the latter. The
+    // observer keeps the GL canvas glued to whatever box the container takes.
+    const resizeObserver = new ResizeObserver(() => map.resize())
+    resizeObserver.observe(containerRef.current)
+
     mapRef.current = map
     return () => {
+      resizeObserver.disconnect()
       map.remove()
       mapRef.current = null
     }

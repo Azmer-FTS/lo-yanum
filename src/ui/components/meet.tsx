@@ -8,6 +8,7 @@ import { Icon } from './Icon'
 import { MapView } from './MapView'
 import type { MapMarker } from './MapView'
 import { MarkerSwatch, farmMarkerColor, postColor, readToken } from './badges'
+import { FullscreenToggle, fullscreenShell, useMapFullscreen } from './fullscreen'
 
 /**
  * G8 — MEETING POINTS ARE WHERE THE CAR GOES; THE GUARD POST IS WHERE THE
@@ -51,6 +52,8 @@ export function MeetPointsEditor({
 }) {
   const { t } = useTranslation()
   const [armed, setArmed] = useState<Armed>(null)
+  // G7bis.2 — an armed placement owns Esc; an idle Esc leaves fullscreen.
+  const fullscreen = useMapFullscreen(armed !== null)
   const [customReturn, setCustomReturn] = useState(
     value.returnPickupPoint !== null || value.returnDropoffPoint !== null,
   )
@@ -152,7 +155,16 @@ export function MeetPointsEditor({
   ]
 
   return (
-    <div>
+    // G7bis.2 — the fullscreen shell wraps the TOOLBAR AND the map together:
+    // the buttons are the editing tools, and a fullscreen map whose tools
+    // stayed behind on the page would be a picture again.
+    <div
+      className={
+        fullscreen.active
+          ? `${fullscreenShell(true, '')} flex flex-col`
+          : undefined
+      }
+    >
       <div className="mb-2 flex flex-wrap items-center gap-2">
         {value.pickupPoint ? (
           <button
@@ -214,10 +226,12 @@ export function MeetPointsEditor({
         </label>
       </div>
 
-      <div className="relative">
+      <div className={fullscreen.active ? 'relative min-h-0 flex-1' : 'relative'}>
         <MapView
           ariaLabel={t('a11y.map')}
-          className={`${className} rounded-card transition-shadow duration-base ${
+          className={`${
+            fullscreen.active ? 'h-full w-full' : className
+          } rounded-card transition-shadow duration-base ${
             armed ? 'ring-2 ring-accent' : ''
           }`}
           center={farm.position}
@@ -225,6 +239,12 @@ export function MeetPointsEditor({
           markers={markers}
           onMapClick={armed ? place : undefined}
         />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end p-3">
+          <FullscreenToggle
+            active={fullscreen.active}
+            onToggle={fullscreen.toggle}
+          />
+        </div>
         {armed && (
           <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10">
             <div className="pointer-events-auto flex items-center gap-3 rounded-card border border-accent bg-surface-overlay/95 px-3.5 py-2.5 shadow-glow backdrop-blur">

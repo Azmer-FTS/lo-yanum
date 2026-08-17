@@ -7,6 +7,7 @@ import type { LatLng } from '@core/index'
 import { Icon } from './Icon'
 import { MapView } from './MapView'
 import { readToken } from './badges'
+import { FullscreenToggle, fullscreenShell, useMapFullscreen } from './fullscreen'
 
 /**
  * G2 — A LOCATION IS ENTERED BY PLACING A PIN, NEVER BY TYPING DEGREES.
@@ -44,6 +45,8 @@ export function PinMap({
   const { t } = useTranslation()
   const [rearming, setRearming] = useState(false)
   const armed = rearming || value === null
+  // G7bis.2 — Esc cancels a re-arm before it leaves fullscreen.
+  const fullscreen = useMapFullscreen(rearming)
 
   // The camera is STATE, not a mirror of the pin: re-centring on every drag
   // would snap the map back under the user's finger (see decision 51). It
@@ -71,7 +74,13 @@ export function PinMap({
 
   return (
     <div>
-      <div className={`relative ${className}`}>
+      <div className={fullscreenShell(fullscreen.active, `relative ${className}`)}>
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end p-3">
+          <FullscreenToggle
+            active={fullscreen.active}
+            onToggle={fullscreen.toggle}
+          />
+        </div>
         <MapView
           ariaLabel={t('a11y.map')}
           className={`h-full w-full rounded-card transition-shadow duration-base ${

@@ -9,6 +9,7 @@ import type { MapMarker, MapPolygon } from './MapView'
 import { ZoneLegend, zoneColor } from './zones'
 import { PointLegend } from './meet'
 import { farmMarkerColor, postColor } from './badges'
+import { FullscreenToggle, fullscreenShell, useMapFullscreen } from './fullscreen'
 
 /**
  * F2 / F6 — THE MAP THAT CREATES ANCHOR POINTS.
@@ -102,6 +103,11 @@ export function AnchorMap({
 
   const [mode, setMode] = useState<Mode>({ kind: 'idle' })
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
+  // G7bis.2 — while a mode is armed (or a zone selected), Esc belongs to IT;
+  // only an idle Esc leaves the fullscreen room.
+  const fullscreen = useMapFullscreen(
+    mode.kind !== 'idle' || selectedZoneId !== null,
+  )
 
   const drawing = mode.kind === 'drawing' ? mode : null
   const arming = mode.kind === 'placing'
@@ -277,7 +283,7 @@ export function AnchorMap({
   const active = mode.kind !== 'idle'
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={fullscreenShell(fullscreen.active, `relative ${className}`)}>
       <MapView
         ariaLabel={t('a11y.map')}
         className={`h-full w-full rounded-card transition-shadow duration-base ${
@@ -300,6 +306,11 @@ export function AnchorMap({
       />
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-2 p-3">
+        <FullscreenToggle
+          active={fullscreen.active}
+          onToggle={fullscreen.toggle}
+          className="self-end"
+        />
         {overlay && <div className="pointer-events-auto">{overlay}</div>}
 
         {/* G1 — the zone-drawing toolbar. Explicit modes, one per kind. */}
