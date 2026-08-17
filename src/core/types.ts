@@ -494,8 +494,24 @@ export interface DashboardAlert {
   contacts: Array<{ name: string; phone: string; roleKey: string }>
 }
 
+/**
+ * G6 — a general meeting: not tied to a farm, not a guard. A call with a
+ * donor, a municipality sit-down, a supplier pickup. Free-text location
+ * because these happen anywhere.
+ */
+export interface GeneralMeeting {
+  id: string
+  title: string
+  at: string
+  endAt: string
+  location: string
+  /** Who the meeting is with — person or organisation, free text. */
+  person: string
+  note: string
+}
+
 /** D4 — one entry in the agenda, whatever kind of thing it is. */
-export type AgendaEventKind = 'mission' | 'visit'
+export type AgendaEventKind = 'mission' | 'visit' | 'meeting'
 
 export interface AgendaEvent {
   id: string
@@ -514,7 +530,8 @@ export interface AgendaEvent {
   missionStatus: MissionStatus | null
   /** Present only for `kind: 'visit'`. */
   done: boolean
-  farmId: string
+  /** Null for general meetings — they belong to no farm. */
+  farmId: string | null
 }
 
 export interface VolunteerStats {

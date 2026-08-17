@@ -288,7 +288,7 @@ section('A22 — farm visits are real objects and reach the agenda')
   )
   const events = getAgendaEvents(new Date(), new Date(Date.now() + 3 * 86_400_000))
   check('and the agenda shows it', events.some((e) => e.id === visit.id && e.kind === 'visit'))
-  check('the compact widget mixes both kinds', new Set(getUpcomingAgendaEvents(10).map((e) => e.kind)).size === 2)
+  check('the compact widget mixes all three kinds', new Set(getUpcomingAgendaEvents(10).map((e) => e.kind)).size === 3, 'G6: guards, farm visits and general meetings share one stream')
 
   setSession({ role: 'farmer', entityId: 'contact-01a' })
   check('a farmer sees only his own farm\'s visits', getFarmVisitsForFarm('farm-07').length === 0)

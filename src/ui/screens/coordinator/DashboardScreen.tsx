@@ -251,16 +251,18 @@ function Kpi({
 
 // --- Agenda widget ---------------------------------------------------------
 
-const EVENT_DOT: Record<MissionStatus | 'visit', string> = {
+const EVENT_DOT: Record<MissionStatus | 'visit' | 'meeting', string> = {
   recruiting: 'bg-status-warn',
   planned: 'bg-status-info',
   in_progress: 'bg-status-success',
   completed: 'bg-content-muted',
   return_not_confirmed: 'bg-critical',
   visit: 'bg-status-violet',
+  meeting: 'bg-farm-visited',
 }
 
-const dotOf = (e: AgendaEvent) => EVENT_DOT[e.missionStatus ?? 'visit']
+const dotOf = (e: AgendaEvent) =>
+  EVENT_DOT[e.missionStatus ?? (e.kind === 'meeting' ? 'meeting' : 'visit')]
 
 /** D4 — the compact agenda: a seven-day strip plus the next three entries. */
 function AgendaWidget() {

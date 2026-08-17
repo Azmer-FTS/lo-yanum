@@ -4,6 +4,10 @@ import { useNavigate } from 'react-router-dom'
 
 import {
   MONTH_GRID_DAYS,
+  updateFarmVisit,
+  updateGeneralMeeting,
+  getFarmVisit,
+  getGeneralMeeting,
   addDays,
   addMonths,
   atTimeOn,
@@ -21,6 +25,7 @@ import {
 import type { AgendaEvent, MissionStatus } from '@core/index'
 
 import { CreateGuardButton } from '../../components/CreateGuardFab'
+import { GeneralMeetingModal } from '../../components/GeneralMeetingModal'
 import { Icon } from '../../components/Icon'
 import { FarmVisitModal } from '../../components/FarmVisitModal'
 import { useCoreValue } from '../../hooks/useCore'
@@ -42,7 +47,7 @@ import { useLocale } from '../../hooks/useLocale'
  * actions the dashboard offers: staff a guard, or plan a visit.
  */
 
-type View = 'week' | 'month'
+type View = 'week' | 'month' | 'day'
 
 /** Event colour, resolved from the same status tokens the rest of the app uses. */
 const MISSION_TONE: Record<MissionStatus, string> = {
@@ -60,6 +65,10 @@ const MISSION_TONE: Record<MissionStatus, string> = {
 const VISIT_TONE =
   'border-s-status-violet bg-status-violet/10 text-status-violet-ink'
 
+/** G6 — the third event type, in the magenta the palette already audits. */
+const MEETING_TONE =
+  'border-s-farm-visited bg-farm-visited/10 text-farm-visited-ink'
+
 const DOT_TONE: Record<MissionStatus, string> = {
   recruiting: 'bg-status-warn',
   planned: 'bg-status-info',
@@ -69,14 +78,20 @@ const DOT_TONE: Record<MissionStatus, string> = {
 }
 
 function toneOf(event: AgendaEvent): string {
-  return event.missionStatus ? MISSION_TONE[event.missionStatus] : VISIT_TONE
+  if (event.missionStatus) return MISSION_TONE[event.missionStatus]
+  return event.kind === 'meeting' ? MEETING_TONE : VISIT_TONE
 }
 
 function dotOf(event: AgendaEvent): string {
-  return event.missionStatus
-    ? DOT_TONE[event.missionStatus]
-    : 'bg-status-violet'
+  if (event.missionStatus) return DOT_TONE[event.missionStatus]
+  return event.kind === 'meeting' ? 'bg-farm-visited' : 'bg-status-violet'
 }
+
+const KIND_ICON = {
+  mission: 'shield',
+  visit: 'pin',
+  meeting: 'users',
+} as const
 
 function EventPill({
   event,
@@ -86,15 +101,27 @@ function EventPill({
   onOpen: (event: AgendaEvent) => void
 }) {
   const locale = useLocale()
+  // G6.4 — visits and meetings drag to another day; guards do not (a staffed
+  // night is a commitment, not a block to slide).
+  const draggable = event.kind !== 'mission'
   return (
     <button
       type="button"
+      draggable={draggable}
+      onDragStart={
+        draggable
+          ? (e) => {
+              e.dataTransfer.setData('text/plain', `${event.kind}:${event.id}`)
+              e.dataTransfer.effectAllowed = 'move'
+            }
+          : undefined
+      }
       onClick={() => onOpen(event)}
       className={`w-full rounded-field border-s-[3px] px-1.5 py-1 text-start
                   transition-all duration-fast ease-out hover:brightness-95 ${toneOf(event)}`}
     >
       <span className="flex items-center gap-1">
-        <Icon name={event.kind === 'mission' ? 'shield' : 'pin'} size={10} />
+        <Icon name={KIND_ICON[event.kind]} size={10} />
         <span className="ltr-nums text-micro font-semibold">
           {formatTime(event.at, locale)}
         </span>
@@ -106,15 +133,17 @@ function EventPill({
   )
 }
 
-/** The two things a coordinator can put on an empty slot. */
+/** G6.2 — the three things a coordinator can put on an empty slot. */
 function SlotMenu({
   day,
   onClose,
   onPlanVisit,
+  onPlanMeeting,
 }: {
   day: Date
   onClose: () => void
   onPlanVisit: (day: Date) => void
+  onPlanMeeting: (day: Date) => void
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -148,6 +177,18 @@ function SlotMenu({
         <Icon name="pin" size={13} className="text-status-violet-ink" />
         {t('agenda.planVisit')}
       </button>
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 rounded-field px-2 py-1.5 text-start text-micro
+                   font-medium text-content-primary hover:bg-surface-high"
+        onClick={() => {
+          onClose()
+          onPlanMeeting(day)
+        }}
+      >
+        <Icon name="users" size={13} className="text-farm-visited-ink" />
+        {t('meeting.new')}
+      </button>
     </div>
   )
 }
@@ -160,12 +201,23 @@ export function AgendaScreen() {
   const [view, setView] = useState<View>('week')
   const [anchor, setAnchor] = useState(() => now())
   const [openSlot, setOpenSlot] = useState<string | null>(null)
-  const [visitDay, setVisitDay] = useState<Date | null>(null)
+  const [visitAt, setVisitAt] = useState<string | null>(null)
   const [editVisitId, setEditVisitId] = useState<string | null>(null)
+  const [meetingAt, setMeetingAt] = useState<string | null>(null)
+  const [editMeetingId, setEditMeetingId] = useState<string | null>(null)
+  const [headerMenu, setHeaderMenu] = useState(false)
 
   const today = now()
 
   const { days, from, to } = useMemo(() => {
+    if (view === 'day') {
+      const start = new Date(
+        anchor.getFullYear(),
+        anchor.getMonth(),
+        anchor.getDate(),
+      )
+      return { days: [start], from: start, to: addDays(start, 1) }
+    }
     if (view === 'week') {
       const start = startOfWeek(anchor)
       return {
@@ -197,17 +249,56 @@ export function AgendaScreen() {
   }, [events])
 
   const step = (direction: number) =>
-    setAnchor((d) => (view === 'week' ? addDays(d, 7 * direction) : addMonths(d, direction)))
+    setAnchor((d) =>
+      view === 'day'
+        ? addDays(d, direction)
+        : view === 'week'
+          ? addDays(d, 7 * direction)
+          : addMonths(d, direction),
+    )
 
   const openEvent = (event: AgendaEvent) => {
     if (event.kind === 'visit') setEditVisitId(event.id)
+    else if (event.kind === 'meeting') setEditMeetingId(event.id)
     else navigate(event.href)
   }
 
+  /**
+   * G6.4 — moving an event, desktop half: HTML drag-and-drop onto another
+   * day keeps the time of day and changes the date. Guards are deliberately
+   * NOT draggable — a staffed night is a commitment with volunteers and a
+   * driver attached, not a block to slide. The mobile half is the date field
+   * in each event's own modal.
+   */
+  const dropOnDay = (payload: string, day: Date) => {
+    const [kind, id] = payload.split(':')
+    const moveTo = (iso: string) => {
+      const src = new Date(iso)
+      return atTimeOn(day, src.getHours(), src.getMinutes())
+    }
+    if (kind === 'visit') {
+      const visit = getFarmVisit(id)
+      if (visit) updateFarmVisit(id, { ...visit, at: moveTo(visit.at) })
+    } else if (kind === 'meeting') {
+      const meeting = getGeneralMeeting(id)
+      if (meeting) {
+        const delta =
+          new Date(meeting.endAt).getTime() - new Date(meeting.at).getTime()
+        const at = moveTo(meeting.at)
+        updateGeneralMeeting(id, {
+          at,
+          endAt: new Date(new Date(at).getTime() + delta).toISOString(),
+        })
+      }
+    }
+  }
+
   const periodLabel =
-    view === 'week'
-      ? `${formatMonthYear(days[0], locale)}`
-      : formatMonthYear(addDays(from, 10), locale)
+    view === 'day'
+      ? formatDate(days[0].toISOString(), locale)
+      : view === 'week'
+        ? `${formatMonthYear(days[0], locale)}`
+        : formatMonthYear(addDays(from, 10), locale)
 
   return (
     <>
@@ -216,7 +307,38 @@ export function AgendaScreen() {
           <h1 className="text-title text-content-primary">{t('agenda.title')}</h1>
           <p className="muted mt-1">{t('agenda.subtitle')}</p>
         </div>
-        <CreateGuardButton className="btn-primary hidden lg:inline-flex" />
+        <div className="relative flex items-center gap-2">
+          {/* G6.2 — one button, three event types. */}
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => setHeaderMenu((v) => !v)}
+          >
+            <Icon name="plus" size={15} />
+            {t('agenda.addEvent')}
+          </button>
+          {headerMenu && (
+            <>
+              <button
+                type="button"
+                aria-label={t('common.close')}
+                className="fixed inset-0 z-20 cursor-default"
+                onClick={() => setHeaderMenu(false)}
+              />
+              <div className="absolute end-0 top-full z-30">
+                <div className="relative w-56">
+                  <SlotMenu
+                    day={anchor}
+                    onClose={() => setHeaderMenu(false)}
+                    onPlanVisit={(d) => setVisitAt(atTimeOn(d, 10, 0))}
+                    onPlanMeeting={(d) => setMeetingAt(atTimeOn(d, 10, 0))}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+          <CreateGuardButton className="btn-secondary hidden lg:inline-flex" />
+        </div>
       </header>
 
       {/* One control row: period navigation on one side, view switch on the
@@ -254,7 +376,7 @@ export function AgendaScreen() {
         </p>
 
         <div className="ms-auto flex items-center gap-1.5">
-          {(['week', 'month'] as const).map((v) => (
+          {(['day', 'week', 'month'] as const).map((v) => (
             <button
               key={v}
               type="button"
@@ -290,8 +412,76 @@ export function AgendaScreen() {
             {t('agenda.visit')}
           </span>
         </li>
+        <li className="flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-pill bg-farm-visited" />
+          <span className="text-micro text-content-secondary">
+            {t('meeting.title')}
+          </span>
+        </li>
       </ul>
 
+      {/* G6.3 — THE DAY VIEW: an hour ladder from 06:00 to 23:00. Every hour
+          row is also a quick-create target, because "put something at 15:00
+          tomorrow" is the whole reason to open a day. */}
+      {view === 'day' && (
+        <div className="card divide-y divide-edge-subtle">
+          {Array.from({ length: 18 }, (_, i) => i + 6).map((hour) => {
+            const key = localDayKey(days[0])
+            const hourEvents = (byDay.get(key) ?? []).filter(
+              (e) => new Date(e.at).getHours() === hour,
+            )
+            const slotKey = `${key}-${hour}`
+            return (
+              <div key={hour} className="relative flex min-h-12 gap-3 px-3 py-1.5">
+                <span className="numeric ltr-nums w-12 shrink-0 pt-1 text-micro text-content-muted">
+                  {String(hour).padStart(2, '0')}:00
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  {hourEvents.map((event) => (
+                    <EventPill key={event.id} event={event} onOpen={openEvent} />
+                  ))}
+                  <button
+                    type="button"
+                    aria-label={t('agenda.addOn', {
+                      date: `${String(hour).padStart(2, '0')}:00`,
+                    })}
+                    onClick={() =>
+                      setOpenSlot(openSlot === slotKey ? null : slotKey)
+                    }
+                    className={`flex items-center gap-1 rounded-field border border-dashed border-edge-subtle
+                                px-2 py-0.5 text-micro text-content-muted transition-all duration-fast
+                                hover:border-accent hover:text-accent-ink ${
+                                  hourEvents.length > 0
+                                    ? 'opacity-0 hover:opacity-100 focus:opacity-100'
+                                    : ''
+                                }`}
+                  >
+                    <Icon name="plus" size={11} />
+                  </button>
+                </div>
+                {openSlot === slotKey && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label={t('common.close')}
+                      className="fixed inset-0 z-20 cursor-default"
+                      onClick={() => setOpenSlot(null)}
+                    />
+                    <SlotMenu
+                      day={days[0]}
+                      onClose={() => setOpenSlot(null)}
+                      onPlanVisit={(d) => setVisitAt(atTimeOn(d, hour, 0))}
+                      onPlanMeeting={(d) => setMeetingAt(atTimeOn(d, hour, 0))}
+                    />
+                  </>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {view !== 'day' && (
       <div
         className={`grid gap-1.5 ${
           view === 'week' ? 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-7' : 'grid-cols-7'
@@ -319,6 +509,11 @@ export function AgendaScreen() {
           return (
             <div
               key={key}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault()
+                dropOnDay(e.dataTransfer.getData('text/plain'), day)
+              }}
               className={`relative flex flex-col rounded-field border p-1.5 transition-colors duration-fast ${
                 isToday
                   ? 'border-accent bg-accent/5'
@@ -328,13 +523,19 @@ export function AgendaScreen() {
               }`}
             >
               <div className="mb-1 flex items-center justify-between gap-1">
-                <span
-                  className={`numeric text-caption font-bold ${
+                {/* G6.3 — the day number opens the day view. */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAnchor(day)
+                    setView('day')
+                  }}
+                  className={`numeric rounded-field px-1 text-caption font-bold transition-colors duration-fast hover:bg-surface-high ${
                     isToday ? 'text-accent-ink' : 'text-content-primary'
                   }`}
                 >
                   {day.getDate()}
-                </span>
+                </button>
                 {view === 'week' && (
                   <span className="text-micro text-content-muted">
                     {formatWeekdayShort(day, locale)}
@@ -385,7 +586,8 @@ export function AgendaScreen() {
                   <SlotMenu
                     day={day}
                     onClose={() => setOpenSlot(null)}
-                    onPlanVisit={(d) => setVisitDay(d)}
+                    onPlanVisit={(d) => setVisitAt(atTimeOn(d, 10, 0))}
+                    onPlanMeeting={(d) => setMeetingAt(atTimeOn(d, 10, 0))}
                   />
                 </>
               )}
@@ -404,17 +606,27 @@ export function AgendaScreen() {
           )
         })}
       </div>
+      )}
 
-      {visitDay && (
-        <FarmVisitModal
-          defaultAt={atTimeOn(visitDay, 10, 0)}
-          onClose={() => setVisitDay(null)}
-        />
+      {visitAt && (
+        <FarmVisitModal defaultAt={visitAt} onClose={() => setVisitAt(null)} />
       )}
       {editVisitId && (
         <FarmVisitModal
           visitId={editVisitId}
           onClose={() => setEditVisitId(null)}
+        />
+      )}
+      {meetingAt && (
+        <GeneralMeetingModal
+          defaultAt={meetingAt}
+          onClose={() => setMeetingAt(null)}
+        />
+      )}
+      {editMeetingId && (
+        <GeneralMeetingModal
+          meetingId={editMeetingId}
+          onClose={() => setEditMeetingId(null)}
         />
       )}
     </>

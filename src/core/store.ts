@@ -5,7 +5,7 @@ import { FARM_ZONES } from './mock/zones'
 import { INCIDENTS } from './mock/incidents'
 import { MISSIONS } from './mock/missions'
 import { DRIVERS, VOLUNTEERS } from './mock/people'
-import { FARM_VISITS } from './mock/visits'
+import { FARM_VISITS, GENERAL_MEETINGS } from './mock/visits'
 import type {
   Agreement,
   AnchorPoint,
@@ -18,6 +18,7 @@ import type {
   FarmVisit,
   FarmZone,
   FarmZoneKind,
+  GeneralMeeting,
   Incident,
   IncidentSeverity,
   IncidentSource,
@@ -47,6 +48,7 @@ import { DEFAULT_AVAILABILITY, EMPTY_LEG } from './types'
 
 interface StoreData {
   farms: Farm[]
+  generalMeetings: GeneralMeeting[]
   farmZones: FarmZone[]
   volunteers: Volunteer[]
   drivers: Driver[]
@@ -61,6 +63,7 @@ const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T
 
 const initial = (): StoreData => ({
   farms: clone(FARMS),
+  generalMeetings: clone(GENERAL_MEETINGS),
   farmZones: clone(FARM_ZONES),
   volunteers: clone(VOLUNTEERS),
   drivers: clone(DRIVERS),
@@ -616,6 +619,37 @@ function syncNextVisit(farmId: string): void {
     .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
 
   farm.nextVisitAt = upcoming[0]?.at ?? null
+}
+
+export interface GeneralMeetingDraft {
+  title: string
+  at: string
+  endAt: string
+  location: string
+  person: string
+  note: string
+}
+
+export function createGeneralMeeting(draft: GeneralMeetingDraft): GeneralMeeting {
+  const meeting: GeneralMeeting = { id: nextId('meet'), ...draft }
+  data.generalMeetings = [...data.generalMeetings, meeting]
+  commit()
+  return meeting
+}
+
+export function updateGeneralMeeting(
+  meetingId: string,
+  draft: Partial<GeneralMeetingDraft>,
+): void {
+  const index = data.generalMeetings.findIndex((m) => m.id === meetingId)
+  if (index === -1) return
+  data.generalMeetings[index] = { ...data.generalMeetings[index], ...draft }
+  commit()
+}
+
+export function deleteGeneralMeeting(meetingId: string): void {
+  data.generalMeetings = data.generalMeetings.filter((m) => m.id !== meetingId)
+  commit()
 }
 
 export function createFarmVisit(draft: FarmVisitDraft): FarmVisit {

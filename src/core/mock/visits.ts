@@ -1,4 +1,5 @@
-import type { FarmVisit } from '../types'
+import { atTime } from '../clock'
+import type { FarmVisit, GeneralMeeting } from '../types'
 import { FARMS } from './farms'
 
 /**
@@ -50,3 +51,37 @@ export const FARM_VISITS: FarmVisit[] = FARMS.flatMap((farm, i) => {
 
   return rows
 })
+
+/**
+ * G6 — a few general meetings so the third event type exists on first load:
+ * one today-ish, one later this week, one next week.
+ */
+export const GENERAL_MEETINGS: GeneralMeeting[] = [
+  {
+    id: 'meet-01',
+    title: 'פגישה עם קרן התורמים',
+    at: atTime(1, 11, 0),
+    endAt: atTime(1, 12, 30),
+    location: 'משרדי ארצנו, ירושלים',
+    person: 'שרה גולדשטיין',
+    note: 'עדכון רבעוני על תוכנית השמירה.',
+  },
+  {
+    id: 'meet-02',
+    title: 'תיאום עם מוקד המשטרה',
+    at: atTime(3, 9, 30),
+    endAt: atTime(3, 10, 15),
+    location: 'תחנת באר שבע',
+    person: 'רס"ר יואב כהן',
+    note: 'נוהל דיווח אירועים חמורים.',
+  },
+  {
+    id: 'meet-03',
+    title: 'איסוף ציוד — פנסי ראש',
+    at: atTime(8, 16, 0),
+    endAt: atTime(8, 16, 45),
+    location: 'מחסן החירום, עומר',
+    person: 'עמותת ציוד לחיילים',
+    note: '',
+  },
+]

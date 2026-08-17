@@ -260,6 +260,17 @@
     "armedHint": "לחצו על המפה למיקום הנקודה",
     "escToCancel": "Esc לביטול"
   },
+  "meeting": {
+    "title": "פגישה כללית",
+    "new": "פגישה כללית חדשה",
+    "edit": "עריכת פגישה",
+    "titleField": "כותרת",
+    "startField": "התחלה",
+    "endField": "שעת סיום",
+    "locationField": "מקום",
+    "personField": "איש קשר / ארגון",
+    "delete": "מחיקת הפגישה"
+  },
   "avail": {
     "noNights": "לא בלילות",
     "noDays": "לא בימים",
@@ -769,8 +780,10 @@
   "agenda": {
     "title": "יומן",
     "subtitle": "שמירות מתוכננות וביקורי חוות, שבוע או חודש",
+    "day": "יום",
     "week": "שבוע",
     "month": "חודש",
+    "addEvent": "אירוע",
     "previous": "הקודם",
     "next": "הבא",
     "visit": "ביקור חווה",

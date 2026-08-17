@@ -53,6 +53,9 @@ export {
   createFarmVisit,
   updateFarmVisit,
   deleteFarmVisit,
+  createGeneralMeeting,
+  updateGeneralMeeting,
+  deleteGeneralMeeting,
   createMission,
   updateMissionStaffing,
 } from './store'
@@ -64,5 +67,6 @@ export type {
   AnchorDraft,
   VolunteerDraft,
   FarmVisitDraft,
+  GeneralMeetingDraft,
   MissionDraft,
 } from './store'

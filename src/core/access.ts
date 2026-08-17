@@ -11,6 +11,7 @@ import type {
   FarmStatusCount,
   FarmVisit,
   FarmZone,
+  GeneralMeeting,
   Incident,
   IncidentView,
   LegConfirmation,
@@ -420,6 +421,16 @@ export function getFarmVisit(visitId: string): FarmVisit | null {
  * is deliberate: a guard that ends at exactly midnight belongs to the night
  * that started it, not to the next day.
  */
+export function getVisibleGeneralMeetings(): GeneralMeeting[] {
+  return getSession().role === 'coordinator' ? _raw().generalMeetings : []
+}
+
+export function getGeneralMeeting(meetingId: string): GeneralMeeting | null {
+  return (
+    getVisibleGeneralMeetings().find((m) => m.id === meetingId) ?? null
+  )
+}
+
 export function getAgendaEvents(from: Date, to: Date): AgendaEvent[] {
   const fromMs = from.getTime()
   const toMs = to.getTime()
@@ -444,6 +455,25 @@ export function getAgendaEvents(from: Date, to: Date): AgendaEvent[] {
       missionStatus: view.mission.status,
       done: false,
       farmId: view.farm.id,
+    })
+  }
+
+  // G6 — general meetings are the coordinator's own diary: no other role
+  // sees them, exactly like the visit-planning surface.
+  for (const meeting of getVisibleGeneralMeetings()) {
+    const at = new Date(meeting.at).getTime()
+    if (at < fromMs || at >= toMs) continue
+    events.push({
+      id: meeting.id,
+      kind: 'meeting',
+      at: meeting.at,
+      endAt: meeting.endAt,
+      title: meeting.title,
+      subtitle: [meeting.location, meeting.person].filter(Boolean).join(' · '),
+      href: '/coordinator/agenda',
+      missionStatus: null,
+      done: false,
+      farmId: null,
     })
   }
 
