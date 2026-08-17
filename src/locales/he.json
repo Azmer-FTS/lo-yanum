@@ -255,6 +255,20 @@
     "armedHint": "לחצו על המפה למיקום הנקודה",
     "escToCancel": "Esc לביטול"
   },
+  "zone": {
+    "drawBoundary": "צייר גבול חווה",
+    "drawGrazing": "צייר שטח מרעה",
+    "boundary": "גבול החווה",
+    "grazing": "שטח מרעה",
+    "drawingBoundary": "מציירים גבול חווה",
+    "drawingGrazing": "מציירים שטח מרעה",
+    "drawingHint": "כל לחיצה מוסיפה פינה · לחיצה כפולה סוגרת",
+    "vertexCount": "{{count}} פינות",
+    "closePolygon": "סגור פוליגון",
+    "deleteZone": "מחיקת האזור",
+    "doneEditing": "סיום עריכה",
+    "vertex": "פינת אזור"
+  },
   "pin": {
     "markerLabel": "המיקום שנבחר",
     "placeHint": "לחצו על המפה להצבת הסיכה",

@@ -10,6 +10,7 @@ import type {
   FarmStatus,
   FarmStatusCount,
   FarmVisit,
+  FarmZone,
   Incident,
   IncidentView,
   LegConfirmation,
@@ -248,6 +249,16 @@ export function getNextFarmVisits(limit = 5): Farm[] {
 }
 
 // --- Anchor points ---------------------------------------------------------
+
+export function getFarmZonesForFarm(farmId: string): FarmZone[] {
+  if (!getFarm(farmId)) return []
+  return _raw().farmZones.filter((z) => z.farmId === farmId)
+}
+
+export function getAllVisibleFarmZones(): FarmZone[] {
+  const farmIds = new Set(getVisibleFarms().map((f) => f.id))
+  return _raw().farmZones.filter((z) => farmIds.has(z.farmId))
+}
 
 export function getAnchorPointsForFarm(farmId: string): AnchorPoint[] {
   if (!getFarm(farmId)) return []

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { AnchorPoint, Farm, LatLng } from '@core/index'
+import type { AnchorPoint, Farm, FarmZone, FarmZoneKind, LatLng } from '@core/index'
 
 import { Icon } from './Icon'
 import { MapView } from './MapView'
-import type { MapMarker } from './MapView'
+import type { MapMarker, MapPolygon } from './MapView'
+import { ZoneLegend, zoneColor } from './zones'
 import { readStatusColor, readToken } from './badges'
 
 /**
@@ -29,9 +30,16 @@ import { readStatusColor, readToken } from './badges'
  * everywhere they appear.
  *
  * Read-only is the default: pass `onCreate` / `onMove` to enable editing. Even
- * then placement is an ARMED MODE — see the comment on `arming` below. A map
+ * then placement is an ARMED MODE — see the comment on `mode` below. A map
  * that silently accepts pins wherever a coordinator happens to tap while panning
  * is worse than one that does nothing.
+ *
+ * G1 adds the farm's two kinds of GROUND to the same instrument: pass `zones`
+ * to draw them, and `onZoneCreate` / `onZoneRingChange` / `onZoneDelete` to
+ * edit them. Drawing is armed the same way point placement is — a "draw"
+ * button per kind, then each click is a vertex, and the polygon is closed
+ * explicitly (button or double-click). Selecting a zone turns its vertices
+ * into draggable handles.
  */
 
 export interface AnchorMapProps {
@@ -53,10 +61,26 @@ export interface AnchorMapProps {
   onCreate?: (position: LatLng) => void
   /** Arm drag-to-move. Omit to pin the points where they are. */
   onMove?: (id: string, position: LatLng) => void
+  /** G1 — the farm's zones, drawn under the markers. */
+  zones?: FarmZone[]
+  /** G1 — enable the zone-drawing toolbar. */
+  onZoneCreate?: (kind: FarmZoneKind, ring: LatLng[]) => void
+  onZoneRingChange?: (id: string, ring: LatLng[]) => void
+  onZoneDelete?: (id: string) => void
   className?: string
   /** Extra controls floated over the top of the map. */
   overlay?: React.ReactNode
 }
+
+/**
+ * One armed mode at a time: placing a point, or drawing one kind of zone.
+ * A single discriminated state instead of two booleans, because "armed for a
+ * point AND drawing a boundary" is not a thing a click could satisfy.
+ */
+type Mode =
+  | { kind: 'idle' }
+  | { kind: 'placing' }
+  | { kind: 'drawing'; zone: FarmZoneKind; draft: LatLng[] }
 
 export function AnchorMap({
   farm,
@@ -66,10 +90,43 @@ export function AnchorMap({
   onSelect,
   onCreate,
   onMove,
+  zones = [],
+  onZoneCreate,
+  onZoneRingChange,
+  onZoneDelete,
   className = 'h-full w-full',
   overlay,
 }: AnchorMapProps) {
   const { t } = useTranslation()
+
+  const [mode, setMode] = useState<Mode>({ kind: 'idle' })
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
+
+  const drawing = mode.kind === 'drawing' ? mode : null
+  const arming = mode.kind === 'placing'
+  const zonesEditable = Boolean(onZoneCreate)
+  const selectedZone =
+    zonesEditable && selectedZoneId
+      ? (zones.find((z) => z.id === selectedZoneId) ?? null)
+      : null
+
+  useEffect(() => {
+    if (mode.kind === 'idle' && !selectedZoneId) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setMode({ kind: 'idle' })
+      setSelectedZoneId(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mode.kind, selectedZoneId])
+
+  // Disarm when the map stops being about the same farm: an armed mode carried
+  // across a farm change would drop the next point (or vertex) on the wrong one.
+  useEffect(() => {
+    setMode({ kind: 'idle' })
+    setSelectedZoneId(null)
+  }, [farm.id])
 
   /**
    * Memoised on a SIGNATURE, not on the array.
@@ -79,6 +136,12 @@ export function AnchorMap({
    * recreated on every keystroke in the panel next to the map. The signature
    * covers exactly what changes a pin's appearance or position.
    */
+  const draftKey = drawing
+    ? drawing.draft.map((v) => `${v.lat},${v.lng}`).join(';')
+    : ''
+  const selectedRingKey = selectedZone
+    ? selectedZone.ring.map((v) => `${v.lat},${v.lng}`).join(';')
+    : ''
   const signature = [
     farm.id,
     farm.status,
@@ -89,6 +152,8 @@ export function AnchorMap({
     chosenIds.join(','),
     selectedId ?? '',
     onMove ? 'drag' : 'fixed',
+    drawing ? `draw:${drawing.zone}:${draftKey}` : '',
+    selectedZone ? `zone:${selectedZone.id}:${selectedRingKey}` : '',
   ].join('#')
 
   const markers: MapMarker[] = useMemo(
@@ -121,116 +186,263 @@ export function AnchorMap({
           onSelect: onSelect ? () => onSelect(anchor.id) : undefined,
         }
       }),
+      // G1 — the vertices being drawn right now.
+      ...(drawing?.draft ?? []).map((v, i) => ({
+        id: `draft-${i}`,
+        position: v,
+        color: zoneColor(drawing?.zone ?? 'farm_boundary'),
+        title: t('zone.vertex'),
+        kind: 'vertex' as const,
+      })),
+      // G1 — the selected zone's vertices, draggable to reshape it.
+      ...(selectedZone?.ring ?? []).map((v, i) => ({
+        id: `vertex-${selectedZone?.id}-${i}`,
+        position: v,
+        color: zoneColor(selectedZone?.kind ?? 'farm_boundary'),
+        title: t('zone.vertex'),
+        kind: 'vertex' as const,
+        draggable: Boolean(onZoneRingChange),
+        onDragEnd: onZoneRingChange
+          ? (position: LatLng) => {
+              if (!selectedZone) return
+              const ring = selectedZone.ring.map((p, j) =>
+                j === i ? position : p,
+              )
+              onZoneRingChange(selectedZone.id, ring)
+            }
+          : undefined,
+      })),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [signature],
   )
 
-  /**
-   * PLACEMENT IS AN ARMED MODE, NOT A LIVE CLICK (Lot 0.9 follow-up).
-   *
-   * Shipped first as "any click on the map drops a point", which is what made
-   * the dead end impossible and also meant a mis-tap while panning created
-   * junk. The product owner's answer: an explicit "add a point" button arms the
-   * mode, the NEXT click places the pin, and the mode disarms itself
-   * immediately afterwards — one button press buys exactly one point.
-   *
-   * Three things make the armed state legible rather than modal-feeling: the
-   * canvas takes a crosshair cursor (a side effect of `onMapClick` being passed
-   * at all, which is why it is passed ONLY while armed), the map gains an accent
-   * ring, and the banner swaps its instruction. Escape cancels, because a mode
-   * you cannot leave with the keyboard is a trap.
-   */
-  const [arming, setArming] = useState(false)
+  const polygons: MapPolygon[] = useMemo(
+    () => [
+      ...zones.map((z) => ({
+        id: z.id,
+        ring: z.ring,
+        color: zoneColor(z.kind),
+        emphasis: z.id === selectedZoneId,
+      })),
+      ...(drawing && drawing.draft.length >= 3
+        ? [
+            {
+              id: 'draft',
+              ring: drawing.draft,
+              color: zoneColor(drawing.zone),
+              emphasis: true,
+            },
+          ]
+        : []),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      zones.map((z) => `${z.id}:${z.kind}:${z.ring.length}`).join('|'),
+      zones
+        .map((z) => z.ring.map((v) => `${v.lat},${v.lng}`).join(';'))
+        .join('|'),
+      selectedZoneId,
+      drawing ? `${drawing.zone}:${draftKey}` : '',
+    ],
+  )
 
-  useEffect(() => {
-    if (!arming) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setArming(false)
+  const handleMapClick = (position: LatLng) => {
+    if (drawing) {
+      setMode({ ...drawing, draft: [...drawing.draft, position] })
+      return
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [arming])
+    if (arming) {
+      onCreate?.(position)
+      setMode({ kind: 'idle' })
+    }
+  }
 
-  // Disarm when the map stops being about the same farm: an armed mode carried
-  // across a farm change would drop the next point on the wrong one.
-  useEffect(() => setArming(false), [farm.id])
+  const closeDraft = (dropLast = false) => {
+    if (!drawing) return
+    const ring = dropLast ? drawing.draft.slice(0, -1) : drawing.draft
+    if (ring.length >= 3) onZoneCreate?.(drawing.zone, ring)
+    setMode({ kind: 'idle' })
+  }
 
-  const place = (position: LatLng) => {
-    onCreate?.(position)
-    setArming(false)
+  const startDrawing = (zone: FarmZoneKind) => {
+    setSelectedZoneId(null)
+    setMode({ kind: 'drawing', zone, draft: [] })
   }
 
   const empty = anchors.length === 0
+  const active = mode.kind !== 'idle'
 
   return (
     <div className={`relative ${className}`}>
       <MapView
         ariaLabel={t('a11y.map')}
         className={`h-full w-full rounded-card transition-shadow duration-base ${
-          arming ? 'ring-2 ring-accent' : ''
+          active ? 'ring-2 ring-accent' : ''
         }`}
         center={farm.position}
         zoom={13}
         markers={markers}
-        onMapClick={onCreate && arming ? place : undefined}
+        polygons={polygons}
+        onMapClick={active ? handleMapClick : undefined}
+        // A double-click while drawing closes the ring. It has already fired
+        // two plain clicks — the first was a real vertex, the second a
+        // duplicate a few pixels away — so the duplicate is dropped.
+        onMapDblClick={drawing ? () => closeDraft(true) : undefined}
+        onPolygonClick={
+          zonesEditable && !active
+            ? (id) => setSelectedZoneId((cur) => (cur === id ? null : id))
+            : undefined
+        }
       />
 
-      {overlay && (
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 p-3">
-          <div className="pointer-events-auto">{overlay}</div>
-        </div>
-      )}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-2 p-3">
+        {overlay && <div className="pointer-events-auto">{overlay}</div>}
+
+        {/* G1 — the zone-drawing toolbar. Explicit modes, one per kind. */}
+        {zonesEditable && !active && (
+          <div className="pointer-events-auto flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => startDrawing('farm_boundary')}
+              className="btn-secondary py-1.5 text-micro"
+            >
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-pill"
+                style={{ backgroundColor: zoneColor('farm_boundary') }}
+              />
+              {t('zone.drawBoundary')}
+            </button>
+            <button
+              type="button"
+              onClick={() => startDrawing('grazing_area')}
+              className="btn-secondary py-1.5 text-micro"
+            >
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-pill"
+                style={{ backgroundColor: zoneColor('grazing_area') }}
+              />
+              {t('zone.drawGrazing')}
+            </button>
+            {selectedZone && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onZoneDelete?.(selectedZone.id)
+                    setSelectedZoneId(null)
+                  }}
+                  className="btn-secondary py-1.5 text-micro text-status-danger-ink"
+                >
+                  <Icon name="trash" size={13} />
+                  {t('zone.deleteZone')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedZoneId(null)}
+                  className="btn-secondary py-1.5 text-micro"
+                >
+                  <Icon name="check" size={13} />
+                  {t('zone.doneEditing')}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      <ZoneLegend
+        zones={zones}
+        className="absolute bottom-16 end-3 z-10 sm:bottom-3 sm:end-auto sm:start-3"
+      />
 
       {/* The control sits ON the map, because the map is what it is about. The
           empty case is louder on purpose: with no points yet, this banner IS
           the only route forward. */}
-      {onCreate && (
+      {(onCreate || drawing) && (
         <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10">
           <div
             className={`pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card px-3.5 py-2.5 backdrop-blur ${
-              arming || empty
+              active || empty
                 ? 'border border-accent bg-surface-overlay/95 shadow-glow'
                 : 'border border-edge-subtle bg-surface-overlay/90 shadow-card'
             }`}
           >
             <span className="shrink-0 text-accent-ink">
-              <Icon name={arming ? 'pin' : 'plus'} size={17} />
+              <Icon
+                name={drawing ? 'edit' : arming ? 'pin' : 'plus'}
+                size={17}
+              />
             </span>
 
             <p className="min-w-0 flex-1 text-caption text-content-secondary">
               <span className="font-semibold text-content-primary">
-                {t(arming ? 'anchor.armedHint' : 'anchor.mapHintCreate')}
+                {drawing
+                  ? t(
+                      drawing.zone === 'farm_boundary'
+                        ? 'zone.drawingBoundary'
+                        : 'zone.drawingGrazing',
+                    )
+                  : t(arming ? 'anchor.armedHint' : 'anchor.mapHintCreate')}
               </span>
               <span className="block text-micro text-content-muted">
-                {arming
-                  ? t('anchor.escToCancel')
-                  : onMove && !empty
-                    ? t('anchor.mapHintDrag')
-                    : ''}
+                {drawing
+                  ? `${t('zone.drawingHint')} · ${t('zone.vertexCount', {
+                      count: drawing.draft.length,
+                    })} · ${t('anchor.escToCancel')}`
+                  : arming
+                    ? t('anchor.escToCancel')
+                    : onMove && !empty
+                      ? t('anchor.mapHintDrag')
+                      : ''}
               </span>
             </p>
 
-            {arming ? (
+            {drawing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => closeDraft()}
+                  disabled={drawing.draft.length < 3}
+                  className="btn-primary shrink-0 py-1.5 text-micro"
+                >
+                  <Icon name="check" size={13} />
+                  {t('zone.closePolygon')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode({ kind: 'idle' })}
+                  className="btn-secondary shrink-0 py-1.5 text-micro"
+                >
+                  <Icon name="close" size={13} />
+                  {t('common.cancel')}
+                </button>
+              </>
+            ) : arming ? (
               <button
                 type="button"
-                onClick={() => setArming(false)}
+                onClick={() => setMode({ kind: 'idle' })}
                 className="btn-secondary shrink-0 py-1.5 text-micro"
               >
                 <Icon name="close" size={13} />
                 {t('common.cancel')}
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={() => setArming(true)}
-                className={`shrink-0 py-1.5 text-micro ${
-                  empty ? 'btn-primary' : 'btn-secondary'
-                }`}
-              >
-                <Icon name="plus" size={13} />
-                {t('anchor.addPoint')}
-              </button>
+              onCreate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedZoneId(null)
+                    setMode({ kind: 'placing' })
+                  }}
+                  className={`shrink-0 py-1.5 text-micro ${
+                    empty ? 'btn-primary' : 'btn-secondary'
+                  }`}
+                >
+                  <Icon name="plus" size={13} />
+                  {t('anchor.addPoint')}
+                </button>
+              )
             )}
           </div>
         </div>

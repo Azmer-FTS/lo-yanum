@@ -15,6 +15,7 @@ import {
   formatTime,
   fromDayKey,
   getAnchorPointsForFarm,
+  getFarmZonesForFarm,
   getVisibleFarms,
   getVisibleMissions,
   getDrivers,
@@ -22,6 +23,9 @@ import {
   localDayKey,
   now,
   patchAnchorPoint,
+  createFarmZone,
+  updateFarmZoneRing,
+  deleteFarmZone,
   rankCandidates,
   rankDrivers,
   shortlistSize,
@@ -293,6 +297,7 @@ export function MissionWizardScreen() {
   // --- Step 1 state --------------------------------------------------------
   const [farmId, setFarmId] = useState(farms[0]?.id ?? '')
   const anchors = useCoreValue(() => getAnchorPointsForFarm(farmId))
+  const zones = useCoreValue(() => getFarmZonesForFarm(farmId))
 
   /**
    * The anchor points this guard covers, IN ORDER. The first is the rendezvous
@@ -859,6 +864,12 @@ export function MissionWizardScreen() {
                 onSelect={setOpenAnchorId}
                 onCreate={createAnchorAt}
                 onMove={(id, position) => patchAnchorPoint(id, { position })}
+                zones={zones}
+                onZoneCreate={(kind, ring) =>
+                  farm && createFarmZone({ farmId: farm.id, kind, ring })
+                }
+                onZoneRingChange={updateFarmZoneRing}
+                onZoneDelete={deleteFarmZone}
               />
             </div>
           </div>

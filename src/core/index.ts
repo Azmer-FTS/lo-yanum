@@ -35,6 +35,9 @@ export {
   setCommitmentFulfilled,
   createFarm,
   updateFarm,
+  createFarmZone,
+  updateFarmZoneRing,
+  deleteFarmZone,
   newContactId,
   newAgreementId,
   createAnchorPoint,
@@ -52,6 +55,7 @@ export {
 export type {
   NewIncidentInput,
   FarmDraft,
+  FarmZoneDraft,
   AnchorDraft,
   VolunteerDraft,
   FarmVisitDraft,

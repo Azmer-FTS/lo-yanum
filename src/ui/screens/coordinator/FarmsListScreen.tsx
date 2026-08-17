@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
-import { FARM_PIPELINE, getVisibleFarms } from '@core/index'
+import { FARM_PIPELINE, getAllVisibleFarmZones, getVisibleFarms } from '@core/index'
 import type { FarmStatus, FarmType } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
@@ -20,6 +20,7 @@ import {
   FilterRow,
   LoadMore,
 } from '../../components/primitives'
+import { ZoneLegend, zonePolygons } from '../../components/zones'
 import { useProgressive } from '../../hooks/useProgressive'
 import { useCoreValue } from '../../hooks/useCore'
 
@@ -37,6 +38,7 @@ export function FarmsListScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const farms = useCoreValue(getVisibleFarms)
+  const zones = useCoreValue(getAllVisibleFarmZones)
 
   // The dashboard links here with ?status=… — keep it in the URL so a filtered
   // list stays shareable and survives a refresh.
@@ -96,7 +98,10 @@ export function FarmsListScreen() {
     <MapPanel
       ariaLabel={t('map.farmsMap')}
       markers={markers}
+      polygons={zonePolygons(zones)}
       legend={
+        <>
+        <ZoneLegend zones={zones} className="mb-2" />
         <ul className="flex flex-col gap-1.5">
           {STATUSES.map((s) => (
             <li key={s} className="flex items-center gap-2">
@@ -110,6 +115,7 @@ export function FarmsListScreen() {
             </li>
           ))}
         </ul>
+        </>
       }
       detail={
         selected && (

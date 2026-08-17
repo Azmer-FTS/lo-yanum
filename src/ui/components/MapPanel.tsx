@@ -6,7 +6,7 @@ import type { LatLng } from '@core/index'
 
 import { Icon } from './Icon'
 import { MapView } from './MapView'
-import type { MapMarker } from './MapView'
+import type { MapMarker, MapPolygon } from './MapView'
 
 /**
  * C1 — THE MAP-FIRST SHELL.
@@ -63,6 +63,8 @@ const CONTENT_WIDTH: Record<ContentWidth, string> = {
 
 export interface MapPanelProps {
   markers: MapMarker[]
+  /** G1 — farm-zone polygons drawn beneath the markers. */
+  polygons?: MapPolygon[]
   /** Optional polyline (route planner) drawn beneath the markers. */
   line?: LatLng[]
   center?: LatLng
@@ -82,6 +84,7 @@ export interface MapPanelProps {
 
 export function MapPanel({
   markers,
+  polygons,
   line,
   center,
   zoom,
@@ -141,6 +144,7 @@ export function MapPanel({
             ariaLabel={ariaLabel}
             className="h-full w-full rounded-none"
             markers={markers}
+            polygons={polygons}
             line={line}
             center={center}
             zoom={zoom}

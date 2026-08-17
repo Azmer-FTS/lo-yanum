@@ -5,6 +5,7 @@ import {
   COORDINATOR,
   formatDateTime,
   formatTime,
+  getFarmZonesForFarm,
   getMyFarm,
   getTonightMissionViews,
   getVisibleIncidents,
@@ -14,6 +15,7 @@ import {
 import { CallRow } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
+import { ZoneLegend, zonePolygons } from '../../components/zones'
 import { MissionStatusChip, readToken } from '../../components/badges'
 import {
   Callout,
@@ -29,6 +31,7 @@ export function FarmerTonightScreen() {
   const locale = useLocale()
 
   const farm = useCoreValue(getMyFarm)
+  const zones = useCoreValue(() => (farm ? getFarmZonesForFarm(farm.id) : []))
   const tonight = useCoreValue(getTonightMissionViews)
   // Urgent, still-open events on this farm — including one a volunteer filed
   // minutes ago from the guard currently under way.
@@ -144,22 +147,29 @@ export function FarmerTonightScreen() {
                 }
               >
                 <p className="mb-2 text-caption font-medium">{anchorPoint.name}</p>
-                <MapView
-                  ariaLabel={t('a11y.map')}
-                  className="h-64 w-full"
-                  cooperative
-                  center={anchorPoint.position}
-                  zoom={13}
-                  markers={[
-                    {
-                      id: anchorPoint.id,
-                      position: anchorPoint.position,
-                      color: readToken('--accent'),
-                  emphasis: true,
-                      title: anchorPoint.name,
-                    },
-                  ]}
-                />
+                <div className="relative">
+                  <MapView
+                    ariaLabel={t('a11y.map')}
+                    className="h-64 w-full"
+                    cooperative
+                    center={anchorPoint.position}
+                    zoom={13}
+                    polygons={zonePolygons(zones)}
+                    markers={[
+                      {
+                        id: anchorPoint.id,
+                        position: anchorPoint.position,
+                        color: readToken('--accent'),
+                        emphasis: true,
+                        title: anchorPoint.name,
+                      },
+                    ]}
+                  />
+                  <ZoneLegend
+                    zones={zones}
+                    className="absolute bottom-2 start-2 z-10"
+                  />
+                </div>
               </Section>
             </div>
           ))}

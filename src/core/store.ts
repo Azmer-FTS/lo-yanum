@@ -1,6 +1,7 @@
 import { iso, now } from './clock'
 import { ANCHOR_POINTS } from './mock/anchors'
 import { FARMS } from './mock/farms'
+import { FARM_ZONES } from './mock/zones'
 import { INCIDENTS } from './mock/incidents'
 import { MISSIONS } from './mock/missions'
 import { DRIVERS, VOLUNTEERS } from './mock/people'
@@ -15,6 +16,8 @@ import type {
   FarmStatus,
   FarmType,
   FarmVisit,
+  FarmZone,
+  FarmZoneKind,
   Incident,
   IncidentSeverity,
   IncidentSource,
@@ -42,6 +45,7 @@ import { EMPTY_LEG } from './types'
 
 interface StoreData {
   farms: Farm[]
+  farmZones: FarmZone[]
   volunteers: Volunteer[]
   drivers: Driver[]
   anchorPoints: AnchorPoint[]
@@ -55,6 +59,7 @@ const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T
 
 const initial = (): StoreData => ({
   farms: clone(FARMS),
+  farmZones: clone(FARM_ZONES),
   volunteers: clone(VOLUNTEERS),
   drivers: clone(DRIVERS),
   anchorPoints: clone(ANCHOR_POINTS),
@@ -319,6 +324,34 @@ export function newContactId(): string {
 
 export function newAgreementId(): string {
   return nextId('agr')
+}
+
+// --- Farm zones (G1) -------------------------------------------------------
+
+export interface FarmZoneDraft {
+  farmId: string
+  kind: FarmZoneKind
+  ring: LatLng[]
+}
+
+export function createFarmZone(draft: FarmZoneDraft): FarmZone {
+  const zone: FarmZone = { id: nextId('zone'), ...draft }
+  data.farmZones = [...data.farmZones, zone]
+  commit()
+  return zone
+}
+
+/** A drag knows the whole ring it produced; replacing it is the mutation. */
+export function updateFarmZoneRing(zoneId: string, ring: LatLng[]): void {
+  const index = data.farmZones.findIndex((z) => z.id === zoneId)
+  if (index === -1) return
+  data.farmZones[index] = { ...data.farmZones[index], ring }
+  commit()
+}
+
+export function deleteFarmZone(zoneId: string): void {
+  data.farmZones = data.farmZones.filter((z) => z.id !== zoneId)
+  commit()
 }
 
 export interface AnchorDraft {

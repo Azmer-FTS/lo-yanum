@@ -36,7 +36,14 @@ const OSM_STYLE: maplibregl.StyleSpecification = {
 }
 
 /** What a marker represents — drives its silhouette. */
-export type MarkerKind = 'farm' | 'anchor' | 'incident' | 'mission' | 'origin' | 'pin'
+export type MarkerKind =
+  | 'farm'
+  | 'anchor'
+  | 'incident'
+  | 'mission'
+  | 'origin'
+  | 'pin'
+  | 'vertex'
 
 export interface MapMarker {
   id: string
@@ -64,8 +71,24 @@ export interface MapMarker {
   onHover?: (id: string | null) => void
 }
 
+/**
+ * G1 — a farm zone painted on the map: crisp outline, ~9 % fill of the same
+ * colour. Emphasis (the polygon being edited) doubles the outline and deepens
+ * the fill.
+ */
+export interface MapPolygon {
+  id: string
+  ring: LatLng[]
+  color: string
+  emphasis?: boolean
+}
+
 export interface MapViewProps {
   markers: MapMarker[]
+  /** G1 — zone polygons, under the markers and the route line. */
+  polygons?: MapPolygon[]
+  /** A click that lands INSIDE a polygon (fires alongside onMapClick). */
+  onPolygonClick?: (id: string) => void
   /** Ordered points for an optional route polyline. */
   line?: LatLng[]
   center?: LatLng
@@ -81,6 +104,11 @@ export interface MapViewProps {
    * only affordance a map has for "this is armed".
    */
   onMapClick?: (position: LatLng) => void
+  /**
+   * G1 — closing a polygon with a double-click. While set, MapLibre's own
+   * double-click zoom is suspended so the gesture means exactly one thing.
+   */
+  onMapDblClick?: (position: LatLng) => void
   /**
    * F6.2 — COOPERATIVE GESTURES, for a map EMBEDDED IN A SCROLLING PAGE.
    *
@@ -103,6 +131,7 @@ const SIZE: Record<MarkerKind, number> = {
   mission: 22,
   origin: 22,
   pin: 30,
+  vertex: 14,
 }
 
 function markerElement(marker: MapMarker): HTMLElement {
@@ -111,6 +140,39 @@ function markerElement(marker: MapMarker): HTMLElement {
   el.setAttribute('aria-label', marker.title)
 
   const kind = marker.kind ?? 'farm'
+
+  if (kind === 'vertex') {
+    // G1 — a polygon-vertex handle. The VISIBLE square is small so a ring of
+    // them does not bury the polygon, but the hit area is the full 44 px a
+    // fingertip needs (G11): the button is padded and transparent, the handle
+    // is an inner box.
+    const visual = marker.emphasis ? SIZE.vertex + 4 : SIZE.vertex
+    el.style.cssText = [
+      'width:44px',
+      'height:44px',
+      'padding:0',
+      'background:transparent',
+      'border:none',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      `cursor:${marker.draggable ? 'grab' : 'pointer'}`,
+    ].join(';')
+    const handle = document.createElement('span')
+    handle.style.cssText = [
+      `width:${visual}px`,
+      `height:${visual}px`,
+      // Same scale value the anchor square uses — the gate allows no literals.
+      'border-radius:var(--radius-field)',
+      `background:${marker.color}`,
+      `border:2.5px solid ${readToken('--surface-base')}`,
+      'box-shadow:0 1px 6px rgba(0,0,0,.45)',
+      'pointer-events:none',
+      'transition:width 120ms,height 120ms',
+    ].join(';')
+    el.appendChild(handle)
+    return el
+  }
 
   if (kind === 'pin') {
     // G2 — a LOCATION is a real pin, not another disc. The teardrop points at
@@ -190,6 +252,8 @@ function markerElement(marker: MapMarker): HTMLElement {
 
 export default function MapCanvas({
   markers,
+  polygons,
+  onPolygonClick,
   line,
   center,
   zoom = 8,
@@ -198,6 +262,7 @@ export default function MapCanvas({
   className = 'h-full w-full',
   ariaLabel,
   onMapClick,
+  onMapDblClick,
   cooperative = false,
 }: MapViewProps) {
   const { t } = useTranslation()
@@ -214,9 +279,23 @@ export default function MapCanvas({
    */
   const clickRef = useRef(onMapClick)
   clickRef.current = onMapClick
+  const polygonClickRef = useRef(onPolygonClick)
+  polygonClickRef.current = onPolygonClick
+  const dblClickRef = useRef(onMapDblClick)
+  dblClickRef.current = onMapDblClick
+
+  // Double-click has one meaning at a time: close the ring, or zoom. The
+  // handler's presence decides which.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    if (onMapDblClick) map.doubleClickZoom.disable()
+    else map.doubleClickZoom.enable()
+  }, [onMapDblClick])
   // Latest requested polyline. Held in a ref so the map's own `load` handler
   // can apply it the moment the source exists, whatever order things mounted in.
   const lineRef = useRef<LatLng[] | undefined>(line)
+  const polygonsRef = useRef<MapPolygon[] | undefined>(polygons)
 
   // Create the map once.
   useEffect(() => {
@@ -244,6 +323,37 @@ export default function MapCanvas({
     }
 
     map.on('load', () => {
+      // G1 — zone polygons, declared before the route so the line and the
+      // markers always paint above the ground they describe.
+      map.addSource('zones', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      })
+      map.addLayer({
+        id: 'zones-fill',
+        type: 'fill',
+        source: 'zones',
+        paint: {
+          'fill-color': ['get', 'color'],
+          'fill-opacity': ['case', ['get', 'emphasis'], 0.18, 0.09],
+        },
+      })
+      map.addLayer({
+        id: 'zones-line',
+        type: 'line',
+        source: 'zones',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': ['case', ['get', 'emphasis'], 3.5, 2],
+        },
+      })
+      map.on('click', 'zones-fill', (e) => {
+        const id = e.features?.[0]?.properties?.id as string | undefined
+        if (id) polygonClickRef.current?.(id)
+      })
+      applyPolygons(map, polygonsRef.current)
+
       // Declared up-front with an empty source so route updates are a cheap
       // setData() rather than an add/remove layer cycle on every keystroke.
       map.addSource('route', {
@@ -283,8 +393,14 @@ export default function MapCanvas({
     const place = (e: maplibregl.MapMouseEvent) => {
       clickRef.current?.({ lat: e.lngLat.lat, lng: e.lngLat.lng })
     }
+    if (dblClickRef.current) map.doubleClickZoom.disable()
     map.on('click', place)
     map.on('contextmenu', place)
+    map.on('dblclick', (e) => {
+      if (!dblClickRef.current) return
+      e.preventDefault()
+      dblClickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+    })
 
     mapRef.current = map
     return () => {
@@ -362,6 +478,12 @@ export default function MapCanvas({
     if (map) applyLine(map, line)
   }, [line])
 
+  useEffect(() => {
+    polygonsRef.current = polygons
+    const map = mapRef.current
+    if (map) applyPolygons(map, polygons)
+  }, [polygons])
+
   /**
    * Frame the content.
    *
@@ -421,6 +543,36 @@ export default function MapCanvas({
       } ${className}`}
     />
   )
+}
+
+/** Push the zone polygons into the pre-declared `zones` source. */
+function applyPolygons(
+  map: maplibregl.Map,
+  polygons: MapPolygon[] | undefined,
+): void {
+  const source = map.getSource('zones') as maplibregl.GeoJSONSource | undefined
+  if (!source) return
+  source.setData({
+    type: 'FeatureCollection',
+    features: (polygons ?? [])
+      .filter((p) => p.ring.length >= 3)
+      .map((p) => ({
+        type: 'Feature',
+        properties: {
+          id: p.id,
+          color: p.color,
+          emphasis: p.emphasis ?? false,
+        },
+        geometry: {
+          type: 'Polygon',
+          // GeoJSON wants an explicitly closed ring; the domain type keeps it
+          // implicit so a vertex drag never has to touch two array slots.
+          coordinates: [
+            [...p.ring, p.ring[0]].map((v) => [v.lng, v.lat]),
+          ],
+        },
+      })),
+  })
 }
 
 /** Push a polyline into the pre-declared `route` source, if it exists yet. */

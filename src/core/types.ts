@@ -108,7 +108,29 @@ export interface Farm {
 }
 
 // ---------------------------------------------------------------------------
-// Anchor points (נקודות עיגון) — where a guard group is dropped off
+// Farm zones — the two kinds of ground a farm is made of
+// ---------------------------------------------------------------------------
+
+/**
+ * G1 — what a drawn polygon MEANS. The farm boundary is the holding itself
+ * (buildings, pens, cultivated plots); the grazing area is where the herd
+ * actually roams at night, which is routinely an order of magnitude larger
+ * and is where the guards and the incidents are. They are separate kinds
+ * rather than one list with a flag because every consumer treats them
+ * differently: colour, legend, and eventually alert rules.
+ */
+export type FarmZoneKind = 'farm_boundary' | 'grazing_area'
+
+export interface FarmZone {
+  id: string
+  farmId: string
+  kind: FarmZoneKind
+  /** Vertex ring, implicitly closed — the last vertex joins the first. */
+  ring: LatLng[]
+}
+
+// ---------------------------------------------------------------------------
+// Anchor points (עמדות שמירה in the UI) — where a guard group is dropped off
 // ---------------------------------------------------------------------------
 
 export interface AnchorPoint {

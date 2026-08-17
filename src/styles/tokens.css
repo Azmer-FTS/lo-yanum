@@ -150,6 +150,13 @@
   --status-warn: 192 122 8; /* #C07A08 ochre                */
   --status-danger: 239 79 40; /* #EF4F28 CHARTER orange       */
   --status-info: 15 134 184; /* #0F86B8 lake blue            */
+
+  /* G1 — farm-zone polygons on the map. Outline colours; the fill is the
+     same value at ~9 % opacity, painted by MapLibre. The boundary is the
+     charter's own forest, the grazing area its teal — far enough apart in
+     hue to survive on an OSM raster in both themes. */
+  --zone-boundary: 11 61 44; /* #0B3D2C brand forest */
+  --zone-grazing: 15 142 117; /* #0F8E75 brand teal, darkened */
   --status-violet: 143 99 232; /* #8F63E8 violet               */
 
   /* …and the same identities as TEXT on their own 15 % tint. */
@@ -370,6 +377,12 @@
   --status-success: 52 201 166; /* #34C9A6 */
   --status-warn: 232 169 60; /* #E8A93C */
   --status-danger: 255 129 99; /* #FF8163 */
+
+  /* G1 — zone outlines on the night map: the forest boundary lightens to a
+     sage that reads on the inverted raster, the teal brightens with the rest
+     of the hue family. */
+  --zone-boundary: 154 201 173; /* #9AC9AD */
+  --zone-grazing: 52 201 166; /* #34C9A6 */
   --status-info: 79 182 224; /* #4FB6E0 */
   --status-violet: 178 149 250; /* #B295FA */
 

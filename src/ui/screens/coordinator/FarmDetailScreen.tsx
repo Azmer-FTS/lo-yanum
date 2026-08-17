@@ -5,10 +5,14 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import {
   FARM_PIPELINE,
   createAnchorPoint,
+  createFarmZone,
+  deleteFarmZone,
   formatDate,
   formatDateTime,
   getAnchorPointsForFarm,
   getFarm,
+  getFarmZonesForFarm,
+  updateFarmZoneRing,
   getFarmVisitsForFarm,
   getVisibleIncidentViews,
   getVisibleMissionViews,
@@ -171,6 +175,7 @@ export function FarmDetailScreen() {
 
   const farm = useCoreValue(() => getFarm(farmId))
   const anchors = useCoreValue(() => getAnchorPointsForFarm(farmId))
+  const zones = useCoreValue(() => getFarmZonesForFarm(farmId))
   const visits = useCoreValue(() => getFarmVisitsForFarm(farmId))
   const incidents = useCoreValue(() =>
     getVisibleIncidentViews().filter((v) => v.incident.farmId === farmId),
@@ -362,6 +367,12 @@ export function FarmDetailScreen() {
               setSelectedAnchorId(created.id)
             }}
             onMove={(id, position) => patchAnchorPoint(id, { position })}
+            zones={zones}
+            onZoneCreate={(kind, ring) =>
+              createFarmZone({ farmId: farm.id, kind, ring })
+            }
+            onZoneRingChange={updateFarmZoneRing}
+            onZoneDelete={deleteFarmZone}
           />
         </div>
       </div>
