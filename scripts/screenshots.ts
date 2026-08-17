@@ -60,20 +60,22 @@ const clickText = async (page: Page, text: string) => {
  * F1/F2 — drive the wizard into the state the criterion is about: a farm with
  * no anchor point, and a point created by clicking the map.
  *
- * `farm-05` has none in the fixtures. The click is placed at 42 %/40 % of the
- * map so the pin lands clear of both the zoom controls and the hint banner at
- * the foot of the frame.
+ * `farm-05` has none in the fixtures. Placement is an armed mode, so the button
+ * comes first; the click is then placed at 42 %/40 % of the map so the pin lands
+ * clear of both the zoom controls and the banner at the foot of the frame.
  */
 const dropAnchorOnEmptyFarm = async (page: Page) => {
   await page.selectOption('main select', 'farm-05')
   await page.waitForTimeout(2500)
+  await clickText(page, 'הוסף נקודה')
+  await page.waitForTimeout(500)
   const box = await page.locator('[role="application"]').first().boundingBox()
   if (!box) return
   await page.mouse.click(box.x + box.width * 0.42, box.y + box.height * 0.4)
   await page.waitForTimeout(1200)
 }
 
-const SHOTS: Shot[] = [
+const ALL_SHOTS: Shot[] = [
   // D3 — the control room, in both palettes.
   { name: '1-dashboard-light', session: 'coordinator', hash: '#/coordinator', theme: 'light', settleMs: MAP_SETTLE },
   { name: '2-dashboard-dark', session: 'coordinator', hash: '#/coordinator', theme: 'dark', settleMs: MAP_SETTLE },
@@ -179,6 +181,16 @@ const SHOTS: Shot[] = [
   { name: '26-farm-form-light', session: 'coordinator', hash: '#/coordinator/farms/farm-01/edit', theme: 'light', settleMs: 1800 },
   { name: '27-farm-form-dark', session: 'coordinator', hash: '#/coordinator/farms/farm-01/edit', theme: 'dark', settleMs: 1800 },
 ]
+
+/**
+ * `SHOTS=23,24 bun run screenshots` re-captures a subset by leading number.
+ * Added when one interaction changed and 54 files did not need to move; with
+ * the variable unset the full set runs exactly as before.
+ */
+const ONLY = (process.env.SHOTS ?? '').split(',').filter(Boolean)
+const SHOTS = ONLY.length
+  ? ALL_SHOTS.filter((shot) => ONLY.some((n) => shot.name.startsWith(`${n}-`)))
+  : ALL_SHOTS
 
 /**
  * Navigate to the shell and wait for the dev toolbar, retrying once.

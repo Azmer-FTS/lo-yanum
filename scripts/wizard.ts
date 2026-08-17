@@ -16,7 +16,8 @@ import type { Locator, Page } from 'playwright'
  *
  *   1  pick a farm with no anchor point → no dead select, a callout instead,
  *      and "next" refuses;
- *   2  click the map → the point is created, selected, and named;
+ *   2  a click on an UNARMED map does nothing; "add a point" then a click →
+ *      the point is created, selected and named, and the mode disarms itself;
  *   3  rename it in the panel → the map label follows;
  *   4  drag the pin → the stored position moves;
  *   5  "next" now allows, the scored proposal appears, auto-fill takes it;
@@ -126,10 +127,41 @@ console.log('  Step 1 — the map creates the point')
 console.log('  ' + '-'.repeat(68))
 
 const box = await mapBox(page)
+
+// Placement is an ARMED MODE. This half of the check is the product owner's
+// actual request: a coordinator panning the map must not leave points behind.
+await page.mouse.click(box.x + box.width * 0.6, box.y + box.height * 0.55)
+await page.waitForTimeout(700)
+check(
+  'a click on an UNARMED map creates nothing',
+  (await anchorPins(page).count()) === 0,
+)
+
+await clickText(page, 'הוסף נקודה')
+await page.waitForTimeout(400)
+check(
+  'pressing "add a point" arms the map',
+  await page.evaluate(() => document.body.innerText.includes('לחצו על המפה למיקום הנקודה')),
+)
+
 await page.mouse.click(box.x + box.width * 0.42, box.y + box.height * 0.4)
 await page.waitForTimeout(1200)
 
-check('a click on the map created a pin', (await anchorPins(page).count()) === 1)
+check('the next click creates a pin', (await anchorPins(page).count()) === 1)
+check(
+  'and the mode disarms itself — one press buys one point',
+  await page.evaluate(
+    () => !document.body.innerText.includes('לחצו על המפה למיקום הנקודה'),
+  ),
+)
+
+// A second click while disarmed must not add a second point.
+await page.mouse.click(box.x + box.width * 0.62, box.y + box.height * 0.62)
+await page.waitForTimeout(700)
+check(
+  'a further click adds nothing until re-armed',
+  (await anchorPins(page).count()) === 1,
+)
 
 const afterCreate = await bodyText(page)
 check(

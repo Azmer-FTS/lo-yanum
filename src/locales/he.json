@@ -250,7 +250,10 @@
     "createdAndChosen": "הנקודה נוצרה ונבחרה למשמרת",
     "pointDetails": "פרטי הנקודה",
     "positionOnMap": "המיקום נקבע על המפה",
-    "coversPositions": "{{count}} עמדות"
+    "coversPositions": "{{count}} עמדות",
+    "addPoint": "הוסף נקודה",
+    "armedHint": "לחצו על המפה למיקום הנקודה",
+    "escToCancel": "Esc לביטול"
   },
   "map": {
     "title": "מפת חוות",

@@ -30,7 +30,7 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 64 checks |
 | `bun run layout` | **A24 + A30** — 390 px overflow, pinned overlap and uncontained-list sweep over all 22 screens — needs a dev server |
-| `bun run wizard` | **A27** — the guard wizard played from a farm with NO anchor point, 24 checks — needs a dev server |
+| `bun run wizard` | **A27** — the guard wizard played from a farm with NO anchor point, 28 checks — needs a dev server |
 | `bun run screenshots` | Regenerate `docs/screenshots/` — needs a dev server |
 | `bun run brand-reference` | Re-capture `docs/brand/` from the live artzenu.org.il — needs the internet, NOT a dev server |
 
@@ -322,9 +322,10 @@ which decision 32 generalises, and 46, which decision 47 supersedes.** Decisions
     cannot accept the seventh). Every required select in the app now either has
     an enum for options — which cannot be empty — or an escape.
 
-51. **THE MAP IS AN INSTRUMENT, NOT AN ILLUSTRATION.** A click on the map
-    creates an anchor point, a drag moves one, and both work on the wizard, the
-    farm detail and the anchor form through one shared `AnchorMap`. Two
+51. **THE MAP IS AN INSTRUMENT, NOT AN ILLUSTRATION.** The map creates anchor
+    points and a drag moves one, on the wizard, the farm detail and the anchor
+    form, through one shared `AnchorMap`. **Placement is an ARMED MODE** — see
+    decision 55, which the product owner asked for after seeing 0.9. Two
     consequences worth knowing before touching `MapCanvas`: a marker's DOM click
     has to `stopPropagation`, or tapping an existing pin drops a second one
     underneath it; and the framing effect had to split in two, because a
@@ -340,7 +341,8 @@ which decision 32 generalises, and 46, which decision 47 supersedes.** Decisions
     the obvious move and the wrong one: "where the driver drops the group" and
     "where the group stands at 01:00" are different facts, and a screen that has
     to guess which element of the array is the first is a screen that will guess
-    wrong.
+    wrong. **The product owner has since confirmed the rendezvous stays unique,
+    and asked for time windows on the others — decision 56.**
 
 53. **NESTED SURFACES ARE THE BUG; ROWS FLOAT.** A list of guards was a `.card`
     whose rows were also `bg-surface-raised`, so the rows were invisible and the
@@ -358,6 +360,43 @@ which decision 32 generalises, and 46, which decision 47 supersedes.** Decisions
     virtualiser because these rows are not a fixed height, and measuring them
     costs more than not rendering the ones nobody has scrolled to. `bun run
     layout` fails any screen past six screenfuls at 390 px.
+
+55. **PLACING A POINT IS AN ARMED MODE, AND ONE PRESS BUYS ONE POINT.**
+    Lot 0.9 shipped "any click on the map creates a point", which is what made
+    the dead end impossible and also meant a mis-tap while panning left junk
+    behind. The product owner's ruling, applied here: a "הוסף נקודה" button arms
+    the map, the NEXT click places the pin, and the mode disarms itself
+    immediately — so a coordinator who wants two points presses the button
+    twice, deliberately, and a coordinator who wants to pan just pans.
+
+    Three signals carry the armed state, because a mode nobody can see is a
+    mode nobody can leave: the canvas takes a crosshair cursor, the map gains an
+    accent ring, and the banner swaps its instruction for "click the map to
+    place the point · Esc to cancel". Escape works, and changing farm disarms —
+    an armed mode carried across a farm change would drop the next point on the
+    wrong farm. Mechanically the mode IS the `onMapClick` prop: it is passed to
+    `MapView` only while armed, which is also where the crosshair comes from, so
+    there is no second source of truth to drift.
+
+    `bun run wizard` asserts all four halves — an unarmed click creates nothing,
+    the button arms, the next click creates, and a further click adds nothing
+    until re-armed. The first of those is the one the product owner actually
+    asked for; the others are what stops a fix from becoming a new trap.
+
+56. **EACH ADDITIONAL POSITION MAY CARRY ITS OWN TIME WINDOW — LOT 1.**
+    Answered and NOT yet built: the schema is Lot 1's to fix, and inventing a
+    shape now in the mock store would be the thing Lot 1 has to undo. The
+    decision itself is settled, so build to it:
+
+    · The rendezvous (`anchorPointId`) stays unique and time-less — it is the
+      guard's own start, and the driver and the messages already carry it.
+    · Every ADDITIONAL position may carry an OPTIONAL window. Empty means the
+      whole night, which must stay the default: most guards have no schedule and
+      a form that demands two times per position would make the common case
+      worse to serve the rare one.
+    · This is what settles the `additionalAnchorPointIds` shape flagged in §12:
+      an array column cannot hold a per-row window, so it is a JOIN TABLE
+      (mission_id, anchor_point_id, position, starts_at NULL, ends_at NULL).
 
 41. **THE PALETTE IS THE ARTZENU CHARTER, AND ITS PROVENANCE IS WRITTEN DOWN.**
     Four tokens (`--brand-forest` `#0B3D2C`, `--brand-olive` `#476E34`,
@@ -481,7 +520,7 @@ which decision 32 generalises, and 46, which decision 47 supersedes.** Decisions
 
 ## 7. Verification scripts
 
-All four are committed and runnable.
+All seven are committed and runnable.
 
 - **`scripts/contrast.ts`** (`bun run contrast`) — the A13/A19 audit. Parses
   `tokens.css`, reconstructs both palettes, and checks text, chips (ink over
@@ -507,10 +546,10 @@ All four are committed and runnable.
   because the component in front of them needed it and the rule lived in a
   document. Strips comments before matching, so the prose describing a rule is
   not read as a violation of it.
-- **`scripts/wizard.ts`** (`bun run wizard`) — A27, 24 checks. Plays the guard
+- **`scripts/wizard.ts`** (`bun run wizard`) — A27, 28 checks. Plays the guard
   wizard from a farm with NO anchor point: the callout instead of a dead select,
-  the click that creates the point, the rename that reaches the pin's label, the
-  drag, the scored proposal, the refusal-promotes case, the gauge, the orange
+  the armed-mode placement in all four of its halves (decision 55), the rename
+  that reaches the pin's label, the drag, the scored proposal, the refusal-promotes case, the gauge, the orange
   commit button and the recap that names the point drawn in step 1. This is the
   test A20 should have been: A20 passed throughout the bug's life because the
   fixtures list a farm WITH anchor points first.
@@ -713,20 +752,7 @@ src/ui/
    covered: delete the `atlas-*`/`mekomi-*` files. That is the whole change — the
    stacks in `--font-brand` / `--font-sans` already fall through to the
    self-hosted Rubik, and nothing else in the app depends on them.
-9. **Should a pin dropped on the map be armed by default, or behind a mode?**
-   Step 1 arms click-to-place as soon as the step opens, which is what makes the
-   dead end impossible and also means a mis-tap while panning creates a point.
-   The mitigation is that the point is immediately open in the panel with a
-   delete button. If coordinators report junk points, the fix is an explicit
-   "add a point" toggle — not a confirmation dialog, which would put a modal
-   between the user and the gesture that is supposed to be direct.
-
-10. **Should a guard's additional positions carry their own times?** F2 models
-    "the group covers the gate and the water tower"; it does not model "the gate
-    until 01:00, then the water tower". The coordinator asked for the first;
-    whether the second is real is worth checking before Lot 1 fixes the schema.
-
-11. **Is the sea meant to be violet on the night map?** The single hue rotation
+9. **Is the sea meant to be violet on the night map?** The single hue rotation
    that lands the Negev on forest green necessarily throws the Mediterranean the
    other way (`docs/brand-artzenu.md` §3). It is desaturated almost to neutral
    and only a corner of the frame, but if the coordinator finds it distracting
@@ -751,8 +777,10 @@ Three items to carry in:
    be themed in the charter's greens directly instead of being approximated with
    a CSS `hue-rotate` on a raster — and Lot 0.9 raised the stakes: the maps are
    now the primary input on three screens, not decoration.
-3. **`additionalAnchorPointIds` needs a schema decision.** It is a `string[]` on
-   the mission today; in Postgres it is either an array column or a join table,
-   and the join table is almost certainly right (it wants an order and, later, a
-   time window per position). `anchorPointId` stays a plain FK either way —
-   see decision 52.
+3. **`additionalAnchorPointIds` becomes a JOIN TABLE, and it is no longer a
+   judgement call.** Decision 56 settled it: each additional position may carry
+   an optional time window, which an array column cannot hold. Shape:
+   `mission_anchor_points (mission_id, anchor_point_id, position, starts_at
+   NULL, ends_at NULL)`. `anchorPointId` stays a plain FK on `missions` — see
+   decision 52. The UI for the windows is Lot 1 work; nothing in the mock store
+   should grow a half-guessed version of it before then.
