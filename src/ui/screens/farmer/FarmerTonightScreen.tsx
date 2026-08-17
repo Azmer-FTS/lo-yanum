@@ -16,6 +16,7 @@ import { CallRow } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
 import { ZoneLegend, zonePolygons } from '../../components/zones'
+import { meetColor } from '../../components/meet'
 import { MissionStatusChip, readToken } from '../../components/badges'
 import {
   Callout,
@@ -160,8 +161,18 @@ export function FarmerTonightScreen() {
                         id: anchorPoint.id,
                         position: anchorPoint.position,
                         color: readToken('--accent'),
+                        kind: 'anchor',
                         emphasis: true,
                         title: anchorPoint.name,
+                      },
+                      // G8 — the farmer finishes the trip: he needs to know
+                      // where the car will actually stop.
+                      {
+                        id: 'dropoff',
+                        position: mission.dropoffPoint ?? farm.position,
+                        color: meetColor(),
+                        kind: 'car' as const,
+                        title: t('meet.dropoff'),
                       },
                     ]}
                   />

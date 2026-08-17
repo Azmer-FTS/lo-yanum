@@ -110,6 +110,7 @@ export function AnchorSheetScreen() {
     farmer: t('anchor.labelFarmer'),
     driver: t('anchor.labelDriver'),
     coordinator: t('anchor.labelCoordinator'),
+    pickup: t('meet.labelPickup'),
   }
 
   const input: AnchorMessageInput = {

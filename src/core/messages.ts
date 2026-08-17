@@ -29,6 +29,8 @@ export interface AnchorMessageLabels {
   farmer: string
   driver: string
   coordinator: string
+  /** G8 — the in-town meeting point line ("איסוף"). */
+  pickup: string
 }
 
 export interface AnchorMessageInput {
@@ -46,7 +48,7 @@ const line = (label: string, value: string): string => `${label}: ${value}`
 
 function scheduleLine(
   input: AnchorMessageInput,
-  labels: AnchorMessageLabels,
+  labels: { arrival: string },
 ): string | null {
   if (!input.mission) return null
   const { startAt } = input.mission
@@ -75,26 +77,40 @@ function phoneLines(
   return lines
 }
 
+/**
+ * G8 — where a volunteer actually GOES: the in-town pickup when the mission
+ * has one, the guard post otherwise. The navigation link always points here —
+ * sending a volunteer's own car to the 4×4 track behind the farm is precisely
+ * the mistake the pickup point exists to prevent.
+ */
+function volunteerRendezvous(input: AnchorMessageInput) {
+  return input.mission?.pickupPoint ?? input.anchorPoint.position
+}
+
 /** Short, link-first message for a volunteer carrying a smartphone. */
 export function buildSmartphoneMessage(
   input: AnchorMessageInput,
   labels: AnchorMessageLabels,
 ): string {
-  const { farm, anchorPoint } = input
+  const { farm, anchorPoint, mission } = input
 
   const parts: string[] = [
     labels.title,
     '',
     line(labels.farm, `${farm.name}, ${farm.locality}`),
-    line(labels.anchorPoint, anchorPoint.name),
   ]
+  // Both facts, in travel order: where you are picked up, where you stand.
+  if (mission?.pickupPoint) {
+    parts.push(line(labels.pickup, formatCoords(mission.pickupPoint)))
+  }
+  parts.push(line(labels.anchorPoint, anchorPoint.name))
 
   const schedule = scheduleLine(input, labels)
   if (schedule) parts.push(schedule)
 
   parts.push(
     '',
-    line(labels.navigation, wazeUrl(anchorPoint.position)),
+    line(labels.navigation, wazeUrl(volunteerRendezvous(input))),
     '',
     `${labels.instructions}:`,
     ...anchorPoint.instructions.map((i) => `• ${i}`),
@@ -114,13 +130,16 @@ export function buildKosherMessage(
   input: AnchorMessageInput,
   labels: AnchorMessageLabels,
 ): string {
-  const { farm, anchorPoint } = input
+  const { farm, anchorPoint, mission } = input
 
   const parts: string[] = [
     labels.title,
     line(labels.farm, `${farm.name}, ${farm.locality}`),
-    line(labels.anchorPoint, anchorPoint.name),
   ]
+  if (mission?.pickupPoint) {
+    parts.push(line(labels.pickup, formatCoords(mission.pickupPoint)))
+  }
+  parts.push(line(labels.anchorPoint, anchorPoint.name))
 
   const schedule = scheduleLine(input, labels)
   if (schedule) parts.push(schedule)
@@ -130,7 +149,7 @@ export function buildKosherMessage(
     `${labels.access}:`,
     anchorPoint.accessDescription,
     '',
-    line(labels.coordinates, formatCoords(anchorPoint.position)),
+    line(labels.coordinates, formatCoords(volunteerRendezvous(input))),
     '',
     `${labels.instructions}:`,
     ...anchorPoint.instructions.map((i, n) => `${n + 1}. ${i}`),
@@ -138,6 +157,69 @@ export function buildKosherMessage(
     `${labels.phones}:`,
     ...phoneLines(input, labels),
   )
+
+  return parts.join('\n')
+}
+
+// --- G8: the driver's own briefing ------------------------------------------
+
+export interface DriverMessageLabels {
+  title: string
+  farm: string
+  pickup: string
+  dropoff: string
+  arrival: string
+  navigation: string
+  passengers: string
+  phones: string
+  farmer: string
+  coordinator: string
+}
+
+/**
+ * G8 — the driver's route is pickup → dropoff, never the guard post. His
+ * navigation link points at the DROPOFF (the farm-side stop his car can
+ * actually reach); the pickup is spelled out first because that is where his
+ * evening starts.
+ */
+export function buildDriverMessage(
+  input: AnchorMessageInput & { passengerNames: string[] },
+  labels: DriverMessageLabels,
+): string {
+  const { farm, anchorPoint, mission } = input
+  const pickup = mission?.pickupPoint ?? null
+  const dropoff = mission?.dropoffPoint ?? farm.position
+
+  const parts: string[] = [
+    labels.title,
+    '',
+    line(labels.farm, `${farm.name}, ${farm.locality}`),
+  ]
+  if (pickup) parts.push(line(labels.pickup, formatCoords(pickup)))
+  parts.push(line(labels.dropoff, formatCoords(dropoff)))
+
+  const schedule = scheduleLine(input, labels)
+  if (schedule) parts.push(schedule)
+
+  parts.push('', line(labels.navigation, wazeUrl(dropoff)))
+
+  if (input.passengerNames.length > 0) {
+    parts.push('', `${labels.passengers}:`, ...input.passengerNames.map((n) => `• ${n}`))
+  }
+
+  const contactLines: string[] = []
+  if (input.farmerContact) {
+    contactLines.push(
+      line(labels.farmer, `${input.farmerContact.name} ${input.farmerContact.phone}`),
+    )
+  }
+  contactLines.push(
+    line(labels.coordinator, `${input.coordinatorName} ${input.coordinatorPhone}`),
+  )
+  parts.push('', `${labels.phones}:`, ...contactLines)
+
+  // The guard post never appears as a destination — only as context.
+  void anchorPoint
 
   return parts.join('\n')
 }

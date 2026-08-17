@@ -44,6 +44,7 @@ export type MarkerKind =
   | 'origin'
   | 'pin'
   | 'vertex'
+  | 'car'
 
 export interface MapMarker {
   id: string
@@ -132,7 +133,12 @@ const SIZE: Record<MarkerKind, number> = {
   origin: 22,
   pin: 30,
   vertex: 14,
+  car: 26,
 }
+
+/** G8 — the meeting-point glyph: a car, drawn inside the disc. */
+const CAR_PATH =
+  'M5 11l1.3-3.3A2 2 0 0 1 8.2 6h7.6a2 2 0 0 1 1.9 1.7L19 11m-14 0h14m-14 0a1.6 1.6 0 0 0-1.6 1.6V16a1 1 0 0 0 1 1H6m13-6a1.6 1.6 0 0 1 1.6 1.6V16a1 1 0 0 1-1 1H18m-12 0v1.4a.6.6 0 0 0 .6.6h1.2a.6.6 0 0 0 .6-.6V17m-2.4 0h2.4m9.6 0v1.4a.6.6 0 0 1-.6.6h-1.2a.6.6 0 0 1-.6-.6V17m2.4 0H16m-8.5-3.5h.01m8.99 0h.01'
 
 function markerElement(marker: MapMarker): HTMLElement {
   const el = document.createElement('button')
@@ -231,7 +237,15 @@ function markerElement(marker: MapMarker): HTMLElement {
     `background:${marker.color}`,
   ].join(';')
 
-  if (marker.badge) el.textContent = marker.badge
+  if (kind === 'car') {
+    // The disc styling above already applies; the glyph replaces the badge.
+    el.innerHTML = `
+      <svg viewBox="0 0 24 24" width="${Math.round(size * 0.66)}" height="${Math.round(size * 0.66)}" aria-hidden="true"
+           fill="none" stroke="${readToken('--text-on-accent')}" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="${CAR_PATH}"/>
+      </svg>`
+  } else if (marker.badge) el.textContent = marker.badge
 
   if (marker.pulse) {
     // A CSS halo cannot live on the marker itself (it would scale the hit

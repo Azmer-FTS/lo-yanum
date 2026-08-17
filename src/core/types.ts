@@ -268,6 +268,21 @@ export interface Mission {
    * the messages depend on, the rest are places to be. Empty for most guards.
    */
   additionalAnchorPointIds: string[]
+  /**
+   * G8 — THE CAR STOPS WHERE THE CAR CAN GO, WHICH IS NOT THE GUARD POST.
+   *
+   * `pickupPoint` is where the group boards in town before the night;
+   * `dropoffPoint` is where the private car actually stops at the farm end —
+   * the gate, the track head — from which the farmer's 4×4 or a walk covers
+   * the rest. Null `dropoffPoint` means the farm's own pin. The return legs
+   * default to the same two points, inverted: `returnPickupPoint` /
+   * `returnDropoffPoint` are only non-null when the coordinator overrides
+   * that.
+   */
+  pickupPoint: LatLng | null
+  dropoffPoint: LatLng | null
+  returnPickupPoint: LatLng | null
+  returnDropoffPoint: LatLng | null
   /** ISO datetime of the expected arrival at the anchor point. */
   startAt: string
   /** ISO datetime of the expected morning pick-up. */

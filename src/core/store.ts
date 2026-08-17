@@ -515,6 +515,11 @@ export interface MissionDraft {
   anchorPointId: string
   /** F2 — other positions covered during the night. Defaults to none. */
   additionalAnchorPointIds?: string[]
+  /** G8 — meeting points; see the Mission type. All default to null. */
+  pickupPoint?: LatLng | null
+  dropoffPoint?: LatLng | null
+  returnPickupPoint?: LatLng | null
+  returnDropoffPoint?: LatLng | null
   startAt: string
   endAt: string
   /** In shortlist order. The first one carries the group phone by default. */
@@ -555,6 +560,10 @@ export function createMission(draft: MissionDraft): Mission {
     additionalAnchorPointIds: (draft.additionalAnchorPointIds ?? []).filter(
       (id) => id !== draft.anchorPointId,
     ),
+    pickupPoint: draft.pickupPoint ?? null,
+    dropoffPoint: draft.dropoffPoint ?? null,
+    returnPickupPoint: draft.returnPickupPoint ?? null,
+    returnDropoffPoint: draft.returnDropoffPoint ?? null,
     startAt: draft.startAt,
     endAt: draft.endAt,
     status: 'planned',

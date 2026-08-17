@@ -43,6 +43,8 @@ import type {
 } from '@core/index'
 
 import { AnchorMap } from '../../components/AnchorMap'
+import { MeetPointsEditor } from '../../components/meet'
+import type { MeetPoints } from '../../components/meet'
 import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
 import { PhoneTypeChip } from '../../components/badges'
@@ -393,6 +395,13 @@ export function MissionWizardScreen() {
 
   // --- Step 4 state --------------------------------------------------------
   const [driverId, setDriverId] = useState<string | null>(null)
+  // G8 — the transport's meeting points, edited beside the driver choice.
+  const [meet, setMeet] = useState<MeetPoints>({
+    pickupPoint: null,
+    dropoffPoint: null,
+    returnPickupPoint: null,
+    returnDropoffPoint: null,
+  })
   const [driverState, setDriverState] = useState<SolicitationState>('idle')
   const [declinedDrivers, setDeclinedDrivers] = useState<string[]>([])
 
@@ -540,6 +549,7 @@ export function MissionWizardScreen() {
       endAt,
       volunteerIds: confirmed.map((v) => v.id),
       driverId: driverState === 'confirmed' ? driverId : null,
+      ...meet,
     })
     setCreatedMissionId(mission.id)
     setStep(5)
@@ -562,6 +572,7 @@ export function MissionWizardScreen() {
         farmId: farm.id,
         anchorPointId: anchor.id,
         additionalAnchorPointIds: anchorIds.slice(1),
+        ...meet,
         startAt,
         endAt,
         status: 'planned' as const,
@@ -593,6 +604,7 @@ export function MissionWizardScreen() {
       farmer: t('anchor.labelFarmer'),
       driver: t('anchor.labelDriver'),
       coordinator: t('anchor.labelCoordinator'),
+      pickup: t('meet.labelPickup'),
     }
     return {
       smartphone: buildSmartphoneMessage(input, labels),
@@ -602,6 +614,7 @@ export function MissionWizardScreen() {
     farm,
     anchor,
     anchorIds,
+    meet,
     drivers,
     driverId,
     driverState,
@@ -1213,6 +1226,24 @@ export function MissionWizardScreen() {
             })}
           </ul>
           <p className="muted mt-2.5">{t('wizard.driverOptional')}</p>
+        </Section>
+      )}
+
+      {/* G8 — where the car meets the group, and where it stops at the farm.
+          Lives on the driver step because it is the DRIVER'S geography; the
+          guard's own is settled in step 1. */}
+      {step === 4 && farm && (
+        <Section
+          title={t('meet.sectionTitle')}
+          className="mt-4"
+        >
+          <p className="muted mb-3">{t('meet.sectionHint')}</p>
+          <MeetPointsEditor
+            farm={farm}
+            anchors={chosenAnchors}
+            value={meet}
+            onChange={setMeet}
+          />
         </Section>
       )}
 

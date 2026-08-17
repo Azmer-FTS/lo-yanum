@@ -15,8 +15,9 @@ import type { MissionLeg } from '@core/index'
 import { CallRow } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
+import { meetColor } from '../../components/meet'
 import { PresenceRoster } from '../../components/PresenceRoster'
-import { MissionStatusChip, readToken } from '../../components/badges'
+import { MissionStatusChip } from '../../components/badges'
 import {
   EmptyState,
   PageHeader,
@@ -90,7 +91,7 @@ export function DriverTripScreen() {
           title={t('driver.destination')}
           action={
             <a
-              href={wazeUrl(anchorPoint.position)}
+              href={wazeUrl(mission.dropoffPoint ?? farm.position)}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 text-caption font-medium text-accent-ink hover:underline"
@@ -100,8 +101,11 @@ export function DriverTripScreen() {
             </a>
           }
         >
+          {/* G8 — the driver sees HIS OWN geography: the pickup in town and
+              the farm-side stop. The guard post is not his destination and is
+              deliberately not on this map. */}
           <p className="text-caption font-medium text-content-primary">
-            {anchorPoint.name}
+            {t('meet.dropoff')}
           </p>
           <p className="muted mt-0.5">
             {farm.name} · {farm.locality}
@@ -110,18 +114,44 @@ export function DriverTripScreen() {
             ariaLabel={t('a11y.map')}
             className="mt-3 h-64 w-full"
             cooperative
-            center={anchorPoint.position}
+            fit={mission.pickupPoint !== null}
+            center={mission.dropoffPoint ?? farm.position}
             zoom={12}
             markers={[
+              ...(mission.pickupPoint
+                ? [
+                    {
+                      id: 'pickup',
+                      position: mission.pickupPoint,
+                      color: meetColor(),
+                      kind: 'car' as const,
+                      title: t('meet.pickup'),
+                    },
+                  ]
+                : []),
               {
-                id: anchorPoint.id,
-                position: anchorPoint.position,
-                color: readToken('--accent'),
-                title: anchorPoint.name,
+                id: 'dropoff',
+                position: mission.dropoffPoint ?? farm.position,
+                color: meetColor(),
+                kind: 'car' as const,
+                title: t('meet.dropoff'),
                 emphasis: true,
               },
             ]}
           />
+          {mission.pickupPoint && (
+            <p className="muted mt-2">
+              {t('meet.pickup')}:{' '}
+              <a
+                href={wazeUrl(mission.pickupPoint)}
+                target="_blank"
+                rel="noreferrer"
+                className="text-accent-ink hover:underline"
+              >
+                {t('common.openInWaze')}
+              </a>
+            </p>
+          )}
           <p className="mt-3 text-caption leading-relaxed text-content-secondary">
             {anchorPoint.accessDescription}
           </p>

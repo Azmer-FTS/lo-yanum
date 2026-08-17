@@ -16,6 +16,7 @@ import { Avatar } from '../../components/Avatar'
 import { ContactActions, ContactButtons } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
+import { PointLegend, meetColor } from '../../components/meet'
 import { Timeline } from '../../components/Timeline'
 import type { TimelineEntry } from '../../components/Timeline'
 import {
@@ -336,33 +337,61 @@ export function MissionDetailScreen() {
               ) : undefined
             }
           >
-            <MapView
-              ariaLabel={t('a11y.map')}
-              className="h-72 w-full lg:h-[24rem]"
-              cooperative
-              fit
-              markers={[
-                {
-                  id: anchorPoint.id,
-                  position: anchorPoint.position,
-                  color: readToken('--accent'),
-                  kind: 'anchor',
-                  emphasis: true,
-                  badge: additionalAnchorPoints.length > 0 ? '1' : undefined,
-                  title: anchorPoint.name,
-                  subtitle: t('anchor.rendezvous'),
-                },
-                ...additionalAnchorPoints.map((extra, i) => ({
-                  id: extra.id,
-                  position: extra.position,
-                  color: readToken('--accent'),
-                  kind: 'anchor' as const,
-                  badge: String(i + 2),
-                  title: extra.name,
-                  subtitle: t('anchor.additionalPositions'),
-                })),
-              ]}
-            />
+            <div className="relative">
+              <MapView
+                ariaLabel={t('a11y.map')}
+                className="h-72 w-full lg:h-[24rem]"
+                cooperative
+                fit
+                markers={[
+                  {
+                    id: anchorPoint.id,
+                    position: anchorPoint.position,
+                    color: readToken('--accent'),
+                    kind: 'anchor',
+                    emphasis: true,
+                    badge: additionalAnchorPoints.length > 0 ? '1' : undefined,
+                    title: anchorPoint.name,
+                    subtitle: t('anchor.rendezvous'),
+                  },
+                  ...additionalAnchorPoints.map((extra, i) => ({
+                    id: extra.id,
+                    position: extra.position,
+                    color: readToken('--accent'),
+                    kind: 'anchor' as const,
+                    badge: String(i + 2),
+                    title: extra.name,
+                    subtitle: t('anchor.additionalPositions'),
+                  })),
+                  // G8 — the transport's own geography, in the meet colour.
+                  ...(mission.pickupPoint
+                    ? [
+                        {
+                          id: 'pickup',
+                          position: mission.pickupPoint,
+                          color: meetColor(),
+                          kind: 'car' as const,
+                          title: t('meet.pickup'),
+                        },
+                      ]
+                    : []),
+                  {
+                    id: 'dropoff',
+                    position: mission.dropoffPoint ?? farm.position,
+                    color: meetColor(),
+                    kind: 'car' as const,
+                    title: t('meet.dropoff'),
+                    subtitle: mission.dropoffPoint
+                      ? undefined
+                      : t('meet.dropoffDefault'),
+                  },
+                ]}
+              />
+              <PointLegend
+                showFarm={false}
+                className="absolute bottom-2 start-2 z-10"
+              />
+            </div>
             {additionalAnchorPoints.length > 0 && (
               <p className="muted border-t border-edge-subtle px-4 py-3">
                 {t('anchor.additionalPositions')}:{' '}

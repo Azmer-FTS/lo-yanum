@@ -255,6 +255,27 @@
     "armedHint": "לחצו על המפה למיקום הנקודה",
     "escToCancel": "Esc לביטול"
   },
+  "meet": {
+    "pickup": "נקודת איסוף",
+    "dropoff": "נקודת עצירה בחווה",
+    "dropoffDefault": "ברירת מחדל: סיכת החווה",
+    "returnPickup": "איסוף חזרה",
+    "returnDropoff": "הורדה חזרה",
+    "setPickup": "קבע נקודת איסוף",
+    "removePickup": "הסר נקודת איסוף",
+    "resetDropoff": "אפס לסיכת החווה",
+    "returnInverted": "חזרה באותן נקודות (הפוך)",
+    "armedHint": "לחצו על המפה למיקום הנקודה",
+    "notSet": "לא הוגדרה",
+    "legendFarm": "החווה",
+    "sectionTitle": "נקודות מפגש להסעה",
+    "sectionHint": "המתנדבים נאספים בעיר בנקודה אחת; הרכב עוצר בכניסה לחווה — לא בעמדת השמירה",
+    "labelPickup": "איסוף",
+    "labelDropoff": "עצירה בחווה",
+    "driverMessageTitle": "הסעת שמירה — פרטי נסיעה",
+    "passengers": "נוסעים",
+    "copyDriverMessage": "העתקת הודעת נהג"
+  },
   "zone": {
     "drawBoundary": "צייר גבול חווה",
     "drawGrazing": "צייר שטח מרעה",
