@@ -3,12 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 
 import {
+  NEGEV_CENTER,
   createAnchorPoint,
+  formatCoords,
   getAnchorPoint,
   getFarm,
   updateAnchorPoint,
 } from '@core/index'
-import type { AnchorDraft } from '@core/index'
+import type { AnchorDraft, LatLng } from '@core/index'
 
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
@@ -34,12 +36,10 @@ export function AnchorFormScreen() {
 
   const [name, setName] = useState(existing?.name ?? '')
   // Default a new anchor to the farm's own coordinates — it is always within a
-  // few hundred metres, so this is a better starting point than an empty field.
-  const [lat, setLat] = useState(
-    String(existing?.position.lat ?? farm?.position.lat ?? ''),
-  )
-  const [lng, setLng] = useState(
-    String(existing?.position.lng ?? farm?.position.lng ?? ''),
+  // few hundred metres, so this is a better starting point than an empty map.
+  const [position, setPosition] = useState<LatLng>(
+    existing?.position ??
+      farm?.position ?? { lat: NEGEV_CENTER.lat, lng: NEGEV_CENTER.lng },
   )
   const [instructions, setInstructions] = useState(
     (existing?.instructions ?? []).join('\n'),
@@ -51,28 +51,13 @@ export function AnchorFormScreen() {
 
   if (!farm) return <Navigate to="/coordinator/farms" replace />
 
-  const num = (v: string) => (v.trim() === '' ? NaN : Number(v))
-
   const errors = {
     name: !name.trim() ? t('form.required') : undefined,
-    lat:
-      !Number.isFinite(num(lat)) || num(lat) < -90 || num(lat) > 90
-        ? t('form.invalidNumber')
-        : undefined,
-    lng:
-      !Number.isFinite(num(lng)) || num(lng) < -180 || num(lng) > 180
-        ? t('form.invalidNumber')
-        : undefined,
     // Without this, a kosher-phone volunteer gets an SMS he cannot act on.
     accessDescription: !accessDescription.trim() ? t('form.required') : undefined,
   }
   const valid = Object.values(errors).every((e) => e === undefined)
   const show = (k: keyof typeof errors) => (touched ? errors[k] : undefined)
-
-  const position = {
-    lat: Number.isFinite(num(lat)) ? num(lat) : farm.position.lat,
-    lng: Number.isFinite(num(lng)) ? num(lng) : farm.position.lng,
-  }
 
   const submit = () => {
     setTouched(true)
@@ -81,7 +66,7 @@ export function AnchorFormScreen() {
     const draft: AnchorDraft = {
       farmId: farm.id,
       name: name.trim(),
-      position: { lat: num(lat), lng: num(lng) },
+      position,
       instructions: instructions
         .split('\n')
         .map((l) => l.trim())
@@ -127,12 +112,9 @@ export function AnchorFormScreen() {
             <MapView
               ariaLabel={t('a11y.map')}
               className="h-[46dvh] min-h-[20rem] w-full lg:h-[30rem]"
-              center={position}
+              center={farm.position}
               zoom={14}
-              onMapClick={(p) => {
-                setLat(String(p.lat.toFixed(5)))
-                setLng(String(p.lng.toFixed(5)))
-              }}
+              onMapClick={setPosition}
               markers={[
                 {
                   id: 'farm',
@@ -150,36 +132,19 @@ export function AnchorFormScreen() {
                   kind: 'anchor',
                   emphasis: true,
                   draggable: true,
-                  onDragEnd: (p) => {
-                    setLat(String(p.lat.toFixed(5)))
-                    setLng(String(p.lng.toFixed(5)))
-                  },
+                  onDragEnd: setPosition,
                 },
               ]}
             />
+            {/* G2.2 — the coordinates are a read-out, not an input. */}
             <p className="muted mt-2 flex items-center gap-1.5">
               <Icon name="pin" size={14} />
               {t('anchor.mapHintDrag')}
+              <span className="ltr-nums ms-auto" dir="ltr">
+                {formatCoords(position)}
+              </span>
             </p>
           </div>
-          <TextField
-            label={t('form.lat')}
-            value={lat}
-            onChange={setLat}
-            error={show('lat')}
-            type="number"
-            ltr
-            required
-          />
-          <TextField
-            label={t('form.lng')}
-            value={lng}
-            onChange={setLng}
-            error={show('lng')}
-            type="number"
-            ltr
-            required
-          />
         </FormSection>
 
         <FormSection title={t('anchor.instructions')}>

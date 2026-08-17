@@ -255,6 +255,12 @@
     "armedHint": "לחצו על המפה למיקום הנקודה",
     "escToCancel": "Esc לביטול"
   },
+  "pin": {
+    "markerLabel": "המיקום שנבחר",
+    "placeHint": "לחצו על המפה להצבת הסיכה",
+    "dragHint": "גררו את הסיכה לדיוק המיקום",
+    "rePlace": "מיקום מחדש"
+  },
   "map": {
     "title": "מפת חוות",
     "legend": "מקרא",
@@ -529,10 +535,14 @@
     "region": "אזור",
     "type": "סוג",
     "status": "סטטוס",
-    "lat": "קו רוחב",
-    "lng": "קו אורך",
-    "pickOnMap": "בחירה על המפה",
-    "pickOnMapHint": "בחירה ויזואלית תתווסף בשלב הבא — בינתיים הזינו ידנית",
+    "sectionFarmLocation": "מיקום החווה",
+    "pinRequired": "הציבו סיכה על המפה — חווה נשמרת רק עם מיקום",
+    "addCommitment": "הוספת התחייבות",
+    "commitmentKind": "סוג",
+    "commitmentDetail": "פירוט",
+    "addAgreement": "הוספת הסכם",
+    "signedAt": "תאריך חתימה",
+    "agreementFileName": "הסכם — {{name}}.pdf",
     "farmArea": "שטח החווה (דונם)",
     "grazingArea": "שטח מרעה (דונם)",
     "notes": "הערות",

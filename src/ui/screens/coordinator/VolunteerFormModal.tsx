@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { createVolunteer, updateVolunteer } from '@core/index'
+import { LOCALITY_POSITIONS, createVolunteer, updateVolunteer } from '@core/index'
 import type { PhoneType, Volunteer, VolunteerDraft, VolunteerStatus } from '@core/index'
 
 import { PhotoField } from '../../components/PhotoField'
 import {
+  AutocompleteField,
   SelectField,
   SelectOrCreateField,
   TextArea,
@@ -149,10 +150,11 @@ export function VolunteerFormModal({
           createLabel={t('form.addNew')}
           backLabel={t('form.chooseExisting')}
         />
-        <TextField
+        <AutocompleteField
           label={t('form.locality')}
           value={locality}
           onChange={setLocality}
+          options={Object.keys(LOCALITY_POSITIONS)}
           error={show('locality')}
           required
         />

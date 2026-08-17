@@ -36,6 +36,7 @@ export {
   createFarm,
   updateFarm,
   newContactId,
+  newAgreementId,
   createAnchorPoint,
   patchAnchorPoint,
   deleteAnchorPoint,

@@ -6,9 +6,11 @@ import { MISSIONS } from './mock/missions'
 import { DRIVERS, VOLUNTEERS } from './mock/people'
 import { FARM_VISITS } from './mock/visits'
 import type {
+  Agreement,
   AnchorPoint,
   Driver,
   Farm,
+  FarmCommitment,
   FarmContact,
   FarmStatus,
   FarmType,
@@ -287,6 +289,8 @@ export interface FarmDraft {
   farmDunams: number
   grazingDunams: number
   contacts: FarmContact[]
+  commitments: FarmCommitment[]
+  agreements: Agreement[]
   notes: string
 }
 
@@ -294,8 +298,6 @@ export function createFarm(draft: FarmDraft): Farm {
   const farm: Farm = {
     id: nextId('farm'),
     ...draft,
-    commitments: [],
-    agreements: [],
     lastVisitAt: null,
     nextVisitAt: null,
   }
@@ -313,6 +315,10 @@ export function updateFarm(farmId: string, draft: FarmDraft): void {
 
 export function newContactId(): string {
   return nextId('contact')
+}
+
+export function newAgreementId(): string {
+  return nextId('agr')
 }
 
 export interface AnchorDraft {

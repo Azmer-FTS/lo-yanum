@@ -82,6 +82,124 @@ export function TextField({
   )
 }
 
+/**
+ * G2.3 — locality type-ahead over the gazetteer.
+ *
+ * Free text is TOLERATED on purpose: the gazetteer covers the towns the
+ * fixtures know, and a roster will always contain one it does not. The field
+ * therefore never blocks — it only makes the known spelling one keystroke
+ * cheaper than a new one, which is the entire defence against six spellings of
+ * the same town (the same reasoning as SelectOrCreateField, inverted: typing
+ * is the primary mode and the list assists it).
+ */
+export function AutocompleteField({
+  label,
+  value,
+  onChange,
+  options,
+  error,
+  hint,
+  required,
+  placeholder,
+  className = '',
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  options: string[]
+  error?: string
+  hint?: string
+  required?: boolean
+  placeholder?: string
+  className?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const [highlight, setHighlight] = useState(0)
+
+  const query = value.trim()
+  const matches = (
+    query === '' ? options : options.filter((o) => o.includes(query))
+  ).slice(0, 8)
+  // Exactly the typed value is not a suggestion, it is the state we are in.
+  const suggestions = matches.filter((m) => m !== query)
+  const showList = open && suggestions.length > 0
+
+  const pick = (v: string) => {
+    onChange(v)
+    setOpen(false)
+  }
+
+  return (
+    <Field
+      label={label}
+      error={error}
+      hint={hint}
+      required={required}
+      className={`relative ${className}`}
+    >
+      <input
+        type="text"
+        role="combobox"
+        aria-expanded={showList}
+        aria-autocomplete="list"
+        className={`input ${error ? 'border-status-danger' : ''}`}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => {
+          onChange(e.target.value)
+          setOpen(true)
+          setHighlight(0)
+        }}
+        onFocus={() => setOpen(true)}
+        // Delayed so a click on a suggestion wins over the blur that closes it.
+        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+        onKeyDown={(e) => {
+          if (!showList) return
+          if (e.key === 'ArrowDown') {
+            e.preventDefault()
+            setHighlight((h) => Math.min(h + 1, suggestions.length - 1))
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault()
+            setHighlight((h) => Math.max(h - 1, 0))
+          } else if (e.key === 'Enter') {
+            e.preventDefault()
+            pick(suggestions[Math.min(highlight, suggestions.length - 1)])
+          } else if (e.key === 'Escape') {
+            setOpen(false)
+          }
+        }}
+      />
+      {showList && (
+        <ul
+          role="listbox"
+          className="absolute inset-x-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-field border border-edge-subtle bg-surface-overlay shadow-card"
+        >
+          {suggestions.map((o, i) => (
+            <li key={o} role="option" aria-selected={i === highlight}>
+              <button
+                type="button"
+                className={`block w-full px-3.5 py-2 text-start text-caption transition-colors duration-fast ${
+                  i === highlight
+                    ? 'bg-accent/10 text-content-primary'
+                    : 'text-content-secondary hover:bg-surface-high'
+                }`}
+                onMouseEnter={() => setHighlight(i)}
+                // Mousedown, not click: it fires before the input's blur.
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  pick(o)
+                }}
+              >
+                {o}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Field>
+  )
+}
+
 export function TextArea({
   label,
   value,

@@ -4,6 +4,14 @@ import type { LatLng } from './types'
 export const HOME_BASE: LatLng = { lat: 31.7683, lng: 35.2137 }
 
 /**
+ * Where a location map looks before anything is placed on it — the programme's
+ * own ground (the northern Negev around Beer Sheva), not the coordinator's
+ * desk. A new farm's pin map opening on Jerusalem would start every farm
+ * 100 km from where it is.
+ */
+export const NEGEV_CENTER: LatLng = { lat: 31.27, lng: 34.79 }
+
+/**
  * Gazetteer of the localities volunteers and drivers live in.
  *
  * Real coordinates of real towns, not fixture data — which is why this sits in

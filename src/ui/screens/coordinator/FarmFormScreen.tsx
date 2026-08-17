@@ -4,17 +4,37 @@ import { useNavigate, useParams } from 'react-router-dom'
 
 import {
   FARM_PIPELINE,
+  LOCALITY_POSITIONS,
+  NEGEV_CENTER,
   createFarm,
   getFarm,
+  fromDayKey,
+  iso,
+  localDayKey,
+  newAgreementId,
   newContactId,
+  now,
+  positionOfLocality,
   updateFarm,
 } from '@core/index'
-import type { FarmContact, FarmDraft, FarmStatus, FarmType } from '@core/index'
+import type {
+  Agreement,
+  CommitmentKind,
+  FarmCommitment,
+  FarmContact,
+  FarmDraft,
+  FarmStatus,
+  FarmType,
+  LatLng,
+} from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
 import { PhotoField } from '../../components/PhotoField'
+import { PinMap } from '../../components/PinMap'
 import {
+  AutocompleteField,
+  Field,
   FormActions,
   FormSection,
   SelectField,
@@ -72,8 +92,15 @@ export function FarmFormScreen() {
   const [status, setStatus] = useState<FarmStatus>(
     existing?.status ?? 'to_contact',
   )
-  const [lat, setLat] = useState(String(existing?.position.lat ?? ''))
-  const [lng, setLng] = useState(String(existing?.position.lng ?? ''))
+  const [position, setPosition] = useState<LatLng | null>(
+    existing?.position ?? null,
+  )
+  const [commitments, setCommitments] = useState<FarmCommitment[]>(
+    existing?.commitments ?? [],
+  )
+  const [agreements, setAgreements] = useState<Agreement[]>(
+    existing?.agreements ?? [],
+  )
   const [farmDunams, setFarmHectares] = useState(
     String(existing?.farmDunams ?? ''),
   )
@@ -92,14 +119,8 @@ export function FarmFormScreen() {
   const errors = {
     name: !name.trim() ? t('form.required') : undefined,
     locality: !locality.trim() ? t('form.required') : undefined,
-    lat:
-      !Number.isFinite(num(lat)) || num(lat) < -90 || num(lat) > 90
-        ? t('form.invalidNumber')
-        : undefined,
-    lng:
-      !Number.isFinite(num(lng)) || num(lng) < -180 || num(lng) > 180
-        ? t('form.invalidNumber')
-        : undefined,
+    // A37 — a farm exists only where its pin is: no pin, no farm.
+    position: !position ? t('form.pinRequired') : undefined,
   }
   const contactErrors = contacts.map((c) => ({
     name: !c.name.trim() ? t('form.required') : undefined,
@@ -157,6 +178,8 @@ export function FarmFormScreen() {
     setTouched(true)
     if (!valid) return
 
+    if (!position) return
+
     const draft: FarmDraft = {
       photo,
       name: name.trim(),
@@ -164,7 +187,9 @@ export function FarmFormScreen() {
       region: region.trim(),
       type,
       status,
-      position: { lat: num(lat), lng: num(lng) },
+      position,
+      commitments: commitments.map((c) => ({ ...c, detail: c.detail.trim() })),
+      agreements: agreements.map((a) => ({ ...a, signedBy: a.signedBy.trim() })),
       farmDunams: Number.isFinite(num(farmDunams)) ? num(farmDunams) : 0,
       grazingDunams: Number.isFinite(num(grazingDunams))
         ? num(grazingDunams)
@@ -222,10 +247,11 @@ export function FarmFormScreen() {
             error={show('name')}
             required
           />
-          <TextField
+          <AutocompleteField
             label={t('form.locality')}
             value={locality}
             onChange={setLocality}
+            options={Object.keys(LOCALITY_POSITIONS)}
             error={show('locality')}
             required
           />
@@ -327,26 +353,178 @@ export function FarmFormScreen() {
           />
         </FormSection>
 
-        <FormSection title={t('form.sectionLocation')}>
-          <TextField
-            label={t('form.lat')}
-            value={lat}
-            onChange={setLat}
-            error={show('lat')}
-            type="number"
-            ltr
-            required
-          />
-          <TextField
-            label={t('form.lng')}
-            value={lng}
-            onChange={setLng}
-            error={show('lng')}
-            type="number"
-            ltr
-            required
-            hint={t('form.pickOnMapHint')}
-          />
+        {/* G2.1 — the coordinates are not typed, they are pointed at. The map
+            follows the locality field while no pin exists, so typing the town
+            first puts the right hills on screen before the click. */}
+        <FormSection title={t('form.sectionFarmLocation')}>
+          <div className="md:col-span-2">
+            <PinMap
+              value={position}
+              onChange={setPosition}
+              fallbackCenter={positionOfLocality(locality) ?? NEGEV_CENTER}
+              error={show('position')}
+            />
+          </div>
+        </FormSection>
+
+        {/* G2.4 — the detail screen shows commitments and agreements, so the
+            form must be able to write them: a datum with no way in is either
+            dead weight or a lie. Real agreement signing (PDF, signature) is
+            Lot 3; this records the FACT of one. */}
+        <FormSection
+          title={t('commitment.title')}
+          action={
+            <button
+              type="button"
+              onClick={() =>
+                setCommitments((prev) => [
+                  ...prev,
+                  { kind: 'shelter', detail: '', fulfilled: false },
+                ])
+              }
+              className="btn-ghost py-1.5"
+            >
+              <Icon name="plus" size={15} />
+              {t('form.addCommitment')}
+            </button>
+          }
+        >
+          {commitments.length === 0 ? (
+            <p className="muted md:col-span-2">{t('common.none')}</p>
+          ) : (
+            commitments.map((c, i) => (
+              <div
+                key={i}
+                className="rounded-field border border-edge-subtle bg-surface-high p-3 md:col-span-2"
+              >
+                <div className="grid gap-3 md:grid-cols-2">
+                  <SelectField<CommitmentKind>
+                    label={t('form.commitmentKind')}
+                    value={c.kind}
+                    onChange={(kind) =>
+                      setCommitments((prev) =>
+                        prev.map((x, j) => (j === i ? { ...x, kind } : x)),
+                      )
+                    }
+                    options={(
+                      ['shelter', 'water', 'food', 'other'] as CommitmentKind[]
+                    ).map((k) => ({ value: k, label: t(`commitment.${k}`) }))}
+                  />
+                  <TextField
+                    label={t('form.commitmentDetail')}
+                    value={c.detail}
+                    onChange={(detail) =>
+                      setCommitments((prev) =>
+                        prev.map((x, j) => (j === i ? { ...x, detail } : x)),
+                      )
+                    }
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <label className="flex items-center gap-2 text-caption text-content-secondary">
+                    <input
+                      type="checkbox"
+                      checked={c.fulfilled}
+                      onChange={(e) =>
+                        setCommitments((prev) =>
+                          prev.map((x, j) =>
+                            j === i ? { ...x, fulfilled: e.target.checked } : x,
+                          ),
+                        )
+                      }
+                      className="check"
+                    />
+                    {t('commitment.fulfilled')}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCommitments((prev) => prev.filter((_, j) => j !== i))
+                    }
+                    className="btn-ghost py-1.5 text-status-danger-ink hover:bg-status-danger/10"
+                  >
+                    <Icon name="trash" size={15} />
+                    {t('common.remove')}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </FormSection>
+
+        <FormSection
+          title={t('farms.agreements')}
+          action={
+            <button
+              type="button"
+              onClick={() =>
+                setAgreements((prev) => [
+                  ...prev,
+                  {
+                    id: newAgreementId(),
+                    signedAt: iso(now()),
+                    signedBy: '',
+                    fileName: t('form.agreementFileName', {
+                      name: name.trim() || '—',
+                    }),
+                  },
+                ])
+              }
+              className="btn-ghost py-1.5"
+            >
+              <Icon name="plus" size={15} />
+              {t('form.addAgreement')}
+            </button>
+          }
+        >
+          {agreements.length === 0 ? (
+            <p className="muted md:col-span-2">{t('farms.noAgreements')}</p>
+          ) : (
+            agreements.map((a, i) => (
+              <div
+                key={a.id}
+                className="rounded-field border border-edge-subtle bg-surface-high p-3 md:col-span-2"
+              >
+                <div className="grid gap-3 md:grid-cols-2">
+                  <TextField
+                    label={t('farms.signedBy')}
+                    value={a.signedBy}
+                    onChange={(signedBy) =>
+                      setAgreements((prev) =>
+                        prev.map((x, j) => (j === i ? { ...x, signedBy } : x)),
+                      )
+                    }
+                  />
+                  <Field label={t('form.signedAt')}>
+                    <input
+                      type="date"
+                      className="input ltr-nums"
+                      value={localDayKey(new Date(a.signedAt))}
+                      onChange={(e) => {
+                        if (!e.target.value) return
+                        const signedAt = iso(fromDayKey(e.target.value))
+                        setAgreements((prev) =>
+                          prev.map((x, j) => (j === i ? { ...x, signedAt } : x)),
+                        )
+                      }}
+                    />
+                  </Field>
+                </div>
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setAgreements((prev) => prev.filter((_, j) => j !== i))
+                    }
+                    className="btn-ghost py-1.5 text-status-danger-ink hover:bg-status-danger/10"
+                  >
+                    <Icon name="trash" size={15} />
+                    {t('common.remove')}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </FormSection>
 
         <FormSection title={t('form.sectionStatus')}>

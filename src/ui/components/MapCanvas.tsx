@@ -36,7 +36,7 @@ const OSM_STYLE: maplibregl.StyleSpecification = {
 }
 
 /** What a marker represents — drives its silhouette. */
-export type MarkerKind = 'farm' | 'anchor' | 'incident' | 'mission' | 'origin'
+export type MarkerKind = 'farm' | 'anchor' | 'incident' | 'mission' | 'origin' | 'pin'
 
 export interface MapMarker {
   id: string
@@ -102,6 +102,7 @@ const SIZE: Record<MarkerKind, number> = {
   incident: 20,
   mission: 22,
   origin: 22,
+  pin: 30,
 }
 
 function markerElement(marker: MapMarker): HTMLElement {
@@ -110,6 +111,34 @@ function markerElement(marker: MapMarker): HTMLElement {
   el.setAttribute('aria-label', marker.title)
 
   const kind = marker.kind ?? 'farm'
+
+  if (kind === 'pin') {
+    // G2 — a LOCATION is a real pin, not another disc. The teardrop points at
+    // the exact spot (the marker is bottom-anchored, see the Marker options),
+    // which is the whole reason to use the shape: "the farm is here", not
+    // "the farm is roughly under this dot".
+    const w = marker.emphasis ? 36 : SIZE.pin
+    const h = Math.round((w * 4) / 3)
+    const ring = readToken('--surface-base')
+    el.style.cssText = [
+      `width:${w}px`,
+      `height:${h}px`,
+      'padding:0',
+      'background:transparent',
+      'border:none',
+      `cursor:${marker.draggable ? 'grab' : 'pointer'}`,
+      'display:block',
+      'filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))',
+      'transition:width 150ms cubic-bezier(.16,1,.3,1),height 150ms cubic-bezier(.16,1,.3,1)',
+    ].join(';')
+    el.innerHTML = `
+      <svg viewBox="0 0 24 32" width="${w}" height="${h}" aria-hidden="true">
+        <path d="M12 1C5.9 1 1 5.9 1 12c0 8.1 11 19 11 19s11-10.9 11-19C23 5.9 18.1 1 12 1z"
+              fill="${marker.color}" stroke="${ring}" stroke-width="1.6"/>
+        <circle cx="12" cy="12" r="4.2" fill="${ring}"/>
+      </svg>`
+    return el
+  }
   const base = SIZE[kind]
   const size = marker.emphasis ? base + 10 : base
   const ring = readToken('--surface-base')
@@ -285,6 +314,9 @@ export default function MapCanvas({
       const instance = new maplibregl.Marker({
         element: el,
         draggable: marker.draggable ?? false,
+        // A teardrop points with its TIP; centre-anchoring it would report a
+        // position half a pin height south of where the user aimed.
+        anchor: marker.kind === 'pin' ? 'bottom' : 'center',
       })
         .setLngLat([marker.position.lng, marker.position.lat])
         .addTo(map)
