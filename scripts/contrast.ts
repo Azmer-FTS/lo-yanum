@@ -126,6 +126,19 @@ function buildChecks(theme: 'light' | 'dark'): Check[] {
     })
   }
 
+  // THE BRAND PLATE (Lot 0.8). `--gradient-brand` runs brand-olive → forest, so
+  // its LIGHTEST stop is the worst case the verse can land on. Checking both
+  // ends is what keeps someone from "brightening the plate a little" and
+  // quietly taking Tehillim 121:4 below AA.
+  for (const bg of ['brand-olive', 'brand-forest']) {
+    checks.push({
+      label: `text-on-brand on ${bg}`,
+      fg: 'text-on-brand',
+      bg,
+      min: AA_TEXT,
+    })
+  }
+
   // Accent as an active-pill label: accent-ink on a 15 % accent wash.
   checks.push({
     label: 'accent-ink on accent chip',

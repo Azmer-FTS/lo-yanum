@@ -15,6 +15,10 @@ export default {
     extend: {
       fontFamily: {
         sans: 'var(--font-sans)',
+        // Lot 0.8: the Artzenu heading face (Atlas). Applied to the display /
+        // title / section / heading steps of the scale in index.css rather than
+        // per call-site, because the face is a property of the STEP.
+        brand: 'var(--font-brand)',
       },
       colors: {
         surface: {
@@ -33,6 +37,18 @@ export default {
           secondary: token('text-secondary'),
           muted: token('text-muted'),
           'on-accent': token('text-on-accent'),
+          // Lot 0.8: the brand plate is a deep forest wash in BOTH themes, so
+          // its ink is theme-independent too. Only for `bg-gradient-brand`.
+          'on-brand': token('text-on-brand'),
+        },
+        // The Artzenu charter, verbatim — for the few places that must quote the
+        // association's own colours (the brand plate, the mark) rather than the
+        // app's semantic roles. Prefer a semantic token everywhere else.
+        brand: {
+          forest: token('brand-forest'),
+          olive: token('brand-olive'),
+          teal: token('brand-teal'),
+          orange: token('brand-orange'),
         },
         accent: {
           DEFAULT: token('accent'),
@@ -79,6 +95,10 @@ export default {
       backgroundImage: {
         'gradient-accent': 'var(--gradient-accent)',
         'gradient-hero': 'var(--gradient-hero)',
+        // The full-brand plate: forest/olive, the site's own hero wash. Used by
+        // the landing screen only — it is the one surface that is allowed to be
+        // louder than the app.
+        'gradient-brand': 'var(--gradient-brand)',
       },
       borderRadius: {
         sm: 'var(--radius-sm)',

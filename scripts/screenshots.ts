@@ -98,7 +98,9 @@ const SHOTS: Shot[] = [
   { name: '10-styleguide-dark', session: 'coordinator', hash: '#/styleguide', theme: 'dark', settleMs: 1500, fullPage: true },
 
   // D2 — the map on the physical left, on the remaining map-first screens.
-  { name: '11-farms-map-first', session: 'coordinator', hash: '#/coordinator/farms', settleMs: MAP_SETTLE },
+  // Lot 0.8 pins the theme here: the day/night TILE FILTER changed with the
+  // charter, and a capture that inherits the role default cannot show it.
+  { name: '11-farms-map-first', session: 'coordinator', hash: '#/coordinator/farms', theme: 'light', settleMs: MAP_SETTLE },
   {
     name: '12-route-planner',
     session: 'coordinator',
@@ -115,6 +117,20 @@ const SHOTS: Shot[] = [
   // Field roles, unchanged in scope but re-verified against the new palette.
   { name: '16-driver-roster', session: 'driver:drv-03', hash: '#/driver', settleMs: 3500 },
   { name: '17-volunteers-table', session: 'coordinator', hash: '#/coordinator/volunteers', settleMs: 1500 },
+
+  // --- LOT 0.8 — the charter pairs -------------------------------------------
+  // The night tile filter, on the same screen as capture 11.
+  { name: '18-farms-map-first-dark', session: 'coordinator', hash: '#/coordinator/farms', theme: 'dark', settleMs: MAP_SETTLE },
+
+  // The volunteer's own guard: the field role that spends the night in the app.
+  { name: '19-volunteer-guard-light', session: 'volunteer:vol-001', hash: '#/volunteer', theme: 'light', settleMs: 3500 },
+  { name: '20-volunteer-guard-dark', session: 'volunteer:vol-001', hash: '#/volunteer', theme: 'dark', settleMs: 3500 },
+
+  // The shop window: the Artzenu mark, the brand plate and the verse. The plate
+  // is deliberately IDENTICAL in both themes, and capturing both is how that
+  // stays a decision rather than an accident.
+  { name: '21-landing-light', session: 'coordinator', hash: '#/', theme: 'light', settleMs: 1500, fullPage: true },
+  { name: '22-landing-dark', session: 'coordinator', hash: '#/', theme: 'dark', settleMs: 1500, fullPage: true },
 ]
 
 /** Navigate to the shell and wait for the dev toolbar, retrying once. */

@@ -4,7 +4,89 @@
 @tailwind components;
 @tailwind utilities;
 
-/* --- Self-hosted Rubik (variable, 300–700) ------------------------------- */
+/* ===========================================================================
+   SELF-HOSTED ARTZENU BRAND FONTS (Lot 0.8)
+   ===========================================================================
+   אטלס (Atlas) and מקומי (Mekomi) are the two faces declared by the Artzenu
+   Elementor kit. They are self-hosted from /public/fonts for the same reason
+   Rubik is: the field roles work in the Negev with no coverage, and a CDN
+   @import is a blank screen at 02:00 on a farm track.
+
+   The families are renamed to Latin identifiers here (the site declares them
+   under their Hebrew names); the FILES are the association's own, fetched from
+   artzenu.org.il/wp-content/uploads. See docs/brand-artzenu.md — including the
+   licence question that has to be settled before Lot 1 ships to real users.
+
+   Weights follow the site's own mapping: Atlas light 200 / regular 400 /
+   medium 500 / bold 600 / black 800; Mekomi regular 400 / medium 500 /
+   bold 600–700. `swap` everywhere, so Rubik renders first and nothing blocks.
+   --------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: 'Artzenu Atlas';
+  font-style: normal;
+  font-weight: 200;
+  font-display: swap;
+  src: url('/fonts/atlas-light.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Artzenu Atlas';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/atlas-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Artzenu Atlas';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/atlas-medium.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Artzenu Atlas';
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url('/fonts/atlas-bold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Artzenu Atlas';
+  font-style: normal;
+  font-weight: 800 900;
+  font-display: swap;
+  src: url('/fonts/atlas-black.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Artzenu Mekomi';
+  font-style: normal;
+  font-weight: 300 400;
+  font-display: swap;
+  src: url('/fonts/mekomi-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Artzenu Mekomi';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/mekomi-medium.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Artzenu Mekomi';
+  font-style: normal;
+  font-weight: 600 900;
+  font-display: swap;
+  src: url('/fonts/mekomi-bold.woff2') format('woff2');
+}
+
+/* --- Self-hosted Rubik (variable, 300–700) — now the FALLBACK ------------ */
 
 @font-face {
   font-family: 'Rubik';
@@ -129,6 +211,52 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   THE BRAND FACE, BOUND TO THE TYPE SCALE (Lot 0.8)
+   ---------------------------------------------------------------------------
+   Atlas is applied to the four HEADING steps and nowhere else. Two deliberate
+   choices are encoded here:
+
+   · It is bound to the SCALE, not to call sites. Tailwind's `fontSize` plugin
+     can carry a line-height, a tracking and a weight but not a family, so the
+     step utilities are extended here instead of adding `font-brand` to 46
+     components — where the next new heading would forget it.
+
+   · These rules are UNLAYERED and sit after `@tailwind utilities`, which is
+     what lets them win at equal specificity. A `@layer components` block would
+     be hoisted above the utilities and lose.
+
+   `text-metric` is POINTEDLY absent: KPI figures stay in Mekomi, the only one
+   of the two faces with tabular digits (see --font-brand in tokens.css).
+   --------------------------------------------------------------------------- */
+
+.text-display,
+.text-section,
+.text-title,
+.text-heading {
+  font-family: var(--font-brand);
+}
+
+/* The association's mark, drawn as a MASK rather than an image. The source PNG
+   is white-on-transparent (the site's own header asset), so painting it through
+   a mask lets it take a TOKEN colour and stay legible in both themes — an
+   <img> would be white-on-white the moment the light theme is picked. */
+.artzenu-mark {
+  display: block;
+  background-color: currentColor;
+  mask-image: url('/artzenu-mark.png');
+  -webkit-mask-image: url('/artzenu-mark.png');
+  mask-size: contain;
+  -webkit-mask-size: contain;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-position: center;
+  /* 321 × 160 in the source; the ratio keeps it from being squashed at any
+     height the header picks. */
+  aspect-ratio: 321 / 160;
+}
+
 @layer components {
   /* --- Containers -------------------------------------------------------- */
 
@@ -180,9 +308,13 @@
 
   /* --- Buttons ----------------------------------------------------------- */
 
+  /* The charter's control shape is a PILL: every button and every input on
+     artzenu.org.il is `border-radius: 30px`. Buttons take it literally (the
+     horizontal padding goes up a step so a pill does not pinch its label);
+     inputs deliberately do NOT — see `.input`. */
   .btn {
     @apply inline-flex select-none items-center justify-center gap-2
-           rounded-md px-4 py-2.5 text-caption font-semibold
+           rounded-pill px-5 py-2.5 text-caption font-semibold
            transition-all duration-fast ease-out
            active:scale-[0.98]
            disabled:pointer-events-none disabled:opacity-40;
@@ -207,13 +339,19 @@
     @apply btn bg-status-danger text-content-on-accent hover:brightness-110;
   }
 
-  /* Field-role primary action: thumb-sized, one-handed, in the dark. */
+  /* Field-role primary action: thumb-sized, one-handed, in the dark. Keeps the
+     pill from `.btn` — a full-width pill is the site's own CTA at scale, and at
+     56 px tall it is well past the 44 px target. */
   .btn-big {
-    @apply w-full rounded-lg px-5 py-4 text-heading;
+    @apply w-full px-6 py-4 text-heading;
   }
 
   /* --- Inputs ------------------------------------------------------------ */
 
+  /* The site's inputs are 30 px pills too, and this is where the charter is
+     deliberately NOT followed: a pill input steals ~15 px of its own start
+     padding, and a form of twelve pills has no left edge for the eye to run
+     down. Radius stays at `md` — documented in docs/brand-artzenu.md. */
   .input {
     @apply w-full rounded-md border border-edge-strong bg-surface-sunken
            px-3.5 py-2.5 text-caption text-content-primary

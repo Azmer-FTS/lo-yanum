@@ -325,8 +325,13 @@ export function FarmDetailScreen() {
         </div>
       </div>
 
+      {/* `min-w-0` on BOTH tracks is load-bearing, not tidying: a grid item's
+          default `min-width: auto` refuses to shrink below its content, so one
+          unbreakable run anywhere inside pushes the whole page sideways. Lot 0.8
+          made the body face wider (Mekomi over Rubik) and that was enough to
+          take this column 7 px past 390. `bun run layout` is what caught it. */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-4 lg:col-span-2">
+        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
           <Section title={t('farms.contacts')}>
             <ul className="grid gap-x-5 sm:grid-cols-2">
               {farm.contacts.map((contact) => (
@@ -459,7 +464,7 @@ export function FarmDetailScreen() {
           </Section>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <Section
             title={t('agenda.visits')}
             action={

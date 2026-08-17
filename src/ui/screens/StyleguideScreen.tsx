@@ -90,17 +90,29 @@ const BLACK: Rgb = [0, 0, 0]
  * values even when dark is stored — and since nothing else re-renders, the
  * swatches then stay light on a dark page. Holding the palette in state makes
  * the theme change the trigger rather than a race.
+ *
+ * The `requestAnimationFrame` is the other half of that, and it is not
+ * optional. React flushes effects CHILD-FIRST, so on a live theme switch this
+ * hook runs BEFORE the provider higher up the tree has restamped `data-theme` —
+ * the read lands one theme behind and the whole page prints the wrong hexes
+ * next to the right colours. Deferring to the next frame puts the read after
+ * the attribute is on the element and after style recalculation. It only shows
+ * up when the theme is switched IN the page (a reload happens to win the race),
+ * which is exactly what a reviewer does on this screen.
  */
 function usePalette(resolved: string): Palette {
   const [palette, setPalette] = useState<Palette>({})
 
   useEffect(() => {
-    const root = getComputedStyle(document.documentElement)
-    const next: Palette = {}
-    for (const name of ALL_TOKENS) {
-      next[name] = parseChannels(root.getPropertyValue(`--${name}`)) ?? BLACK
-    }
-    setPalette(next)
+    const frame = requestAnimationFrame(() => {
+      const root = getComputedStyle(document.documentElement)
+      const next: Palette = {}
+      for (const name of ALL_TOKENS) {
+        next[name] = parseChannels(root.getPropertyValue(`--${name}`)) ?? BLACK
+      }
+      setPalette(next)
+    })
+    return () => cancelAnimationFrame(frame)
   }, [resolved])
 
   return palette

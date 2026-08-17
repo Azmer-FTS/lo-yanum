@@ -30,6 +30,7 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 64 checks |
 | `bun run layout` | 390 px overflow + pinned-overlap sweep over all 22 screens (A24) — needs a dev server |
 | `bun run screenshots` | Regenerate `docs/screenshots/` — needs a dev server |
+| `bun run brand-reference` | Re-capture `docs/brand/` from the live artzenu.org.il — needs the internet, NOT a dev server |
 
 > The three browser scripts take `BASE_URL`, e.g.
 > `BASE_URL=http://localhost:62807 bun run layout`.
@@ -42,7 +43,7 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **Lot 0.7 complete.** Branch `main`.
+State: **Lot 0.8 complete.** Branch `main`.
 
 ---
 
@@ -70,7 +71,8 @@ smartphone holder who acts for the group.
 | Lot 0 | Visual POC — 16 screens, mock data, role switcher | ✅ Done |
 | Lot 0.5 | "Night Watch" redesign, editing flows, nominative confirmation | ✅ Done |
 | Lot 0.6 | Map-first everywhere, light/dark themes, hierarchy, photos, tap-to-call | ✅ Done |
-| **Lot 0.7** | Command-centre palette, agenda, guard wizard, timelines | ✅ **Done** |
+| Lot 0.7 | Command-centre palette, agenda, guard wizard, timelines | ✅ Done |
+| **Lot 0.8** | **Artzenu brand charter — palette, typography, mark** | ✅ **Done** |
 | Lot 1 | Supabase: schema, auth, RLS mirroring `/src/core/access.ts`, Storage for photos | Not started |
 | Lot 2 | Offline-first sync | Not started |
 | Lot 3 | Real agreement signing + PDF storage | Not started |
@@ -80,7 +82,33 @@ smartphone holder who acts for the group.
 
 ---
 
-## 4. Lot 0.7 — delivered
+## 4. Lot 0.8 — delivered
+
+| # | Scope | State |
+|---|---|---|
+| E1 | Charter extracted from the site's real Elementor CSS, logo decoded, both brand fonts parsed; `docs/brand-artzenu.md` + `docs/brand/` reference plates | ✅ |
+| E2 | Both palettes rebuilt on the Artzenu gamut; Atlas + Mekomi self-hosted; pill controls; mark on the landing and the rail; day/night map filter re-tuned | ✅ |
+| E3 | 122 contrast pairs AA, `/styleguide` re-validated, A1–A24 re-run, 44 captures, deployed | ✅ |
+
+**The document to read before touching colour or type is
+[`docs/brand-artzenu.md`](docs/brand-artzenu.md).** It carries the provenance of
+every value, the three AA adjustments, and the font-licence question that Lot 1
+has to settle.
+
+### Lot 0.8 in one paragraph
+
+The app now looks like Artzenu's own tool. `--text-primary` is the association's
+heading green `#0B3D2C`, the accent is its button olive `#6E9558`, `danger` is
+its CTA orange `#EF4F28` unmodified, and the surfaces are its pale green wash
+`#E9F2EA` diluted into paper. Headings are set in אטלס (Atlas) and everything
+else — including every number — in מקומי (Mekomi), both self-hosted from the
+association's own files. Dark is derived rather than borrowed: the same hues on
+forest-night surfaces in the `#0B3D2C` family, replacing Lot 0.7's navy. No
+screen changed structurally.
+
+---
+
+## 4b. Lot 0.7 — delivered
 
 | # | Scope | State |
 |---|---|---|
@@ -113,14 +141,16 @@ captures in §5.
 | A9 | Import wizard flags 2 duplicates + 1 missing phone | ✅ `samples/a9-test-import.csv`, asserted in `accept` |
 | A10 | Mismatch visible driver ↔ group ↔ coordinator | ✅ seeded on שמואל וייס, 3 call contacts |
 | A11 | Deployed URL works on mobile | ✅ https://azmer-fts.github.io/lo-yanum/ |
+| **A25** | **Every colour and type value traces to artzenu.org.il** | ✅ `docs/brand-artzenu.md` §1–§2 — extracted from the site's Elementor kit, not eyeballed |
+| **A26** | **The two brand faces are self-hosted and cover the verse** | ✅ 8 woff2 in `public/fonts`; Atlas and Mekomi both cover Tehillim 121:4 including nikkud and shin/sin dots |
 | A12 | Theme toggle works, persists, correct per-role defaults | ✅ coordinator→light, field→dark |
-| A13 | Contrast table printed, all AA | ✅ `bun run contrast` — see §6 |
+| A13 | Contrast table printed, all AA | ✅ `bun run contrast` — 122 pairs on the Artzenu palette, see §8 |
 | A14 | Photo capture + import; avatars everywhere | ✅ 149/300 volunteers, 4/6 drivers |
 | A15 | Every field-screen number is a working `tel:` link | ✅ all 300 |
 | A16 | List ↔ marker hover synchronised both ways | ✅ marker 20→30 px on row hover |
 | A17 | Live trace on every tick; both Waze and Maps links valid | ✅ 10 numbered markers + dashed polyline |
 | **A18** | **Map physically LEFT on the dashboard + 4 map-first screens** | ✅ captures 1, 2, 11–14 |
-| **A19** | **/styleguide shows the new palette with AA ratios printed** | ✅ captures 9, 10 — every ratio computed by `@core/contrast` |
+| **A19** | **/styleguide shows the new palette with AA ratios printed** | ✅ captures 9, 10 — every ratio computed by `@core/contrast`. Re-validated on the charter; a live theme switch now re-reads the palette (see decision 45) |
 | **A20** | **Wizard playable: create → scored list → refusal → promotion → complete → visible** | ✅ 17 browser assertions, see §7 |
 | **A21** | **`dispatch.ts` scoring tested by script** | ✅ `bun run dispatch` — 27 checks over distance, equity, pairing |
 | **A22** | **Agenda week + month, visit created from an empty slot** | ✅ captures 5, 6 + browser assertion |
@@ -147,6 +177,14 @@ Every row exists at both `-mobile` (390 px) and `-desktop` (1280 px).
 | 15 | Farm card, rebalanced, with its activity timeline |
 | 16 | Driver roster |
 | 17 | Volunteers table |
+| **18** | **Farms map-first — DARK, the re-tuned night tile filter** |
+| **19 / 20** | **Volunteer "my guard" — light / dark** |
+| **21 / 22** | **Landing: the Artzenu mark, the brand plate, the verse — light / dark** |
+
+> 11 and 18 are the same screen in the two themes, and they exist as a pair
+> because the day/night tile filter is a token that changed this lot. 21 and 22
+> are also a pair on purpose: the brand plate is IDENTICAL in both, and only two
+> captures make that visibly a decision rather than an oversight.
 
 > Map screens need ~6 s to settle (WebGL init + OSM tiles + `fitBounds`). The
 > capture script waits; screenshotting sooner yields an empty map.
@@ -155,8 +193,61 @@ Every row exists at both `-mobile` (390 px) and `-desktop` (1280 px).
 
 ## 6. Standing decisions
 
-Lot 0 decisions 1–13, Lot 0.5 decisions 14–20 and Lot 0.6 decisions 21–31 all
-still hold, **except 22 and 23, which decision 32 generalises**. New:
+Lot 0 decisions 1–13, Lot 0.5 decisions 14–20, Lot 0.6 decisions 21–31 and
+Lot 0.7 decisions 32–40 all still hold, **except 22 and 23, which decision 32
+generalises**. Decisions 32–34 survived Lot 0.8 unchanged and are what made it
+cheap — only VALUES moved. New:
+
+41. **THE PALETTE IS THE ARTZENU CHARTER, AND ITS PROVENANCE IS WRITTEN DOWN.**
+    Four tokens (`--brand-forest` `#0B3D2C`, `--brand-olive` `#476E34`,
+    `--brand-teal` `#14A185`, `--brand-orange` `#EF4F28`) quote the
+    association's declared Elementor globals verbatim; everything else is
+    derived from them. `docs/brand-artzenu.md` records where each value was read
+    and every place AA forced a change. The rule this replaces is "pick a nice
+    palette": the app is the association's tool and has to be recognisable as
+    such, so a colour question is now answered by reading the site, not by
+    taste. Re-extract with `bun run brand-reference` if artzenu.org.il is
+    redesigned.
+
+42. **THE FILL KEEPS THE BRAND COLOUR; THE INK MOVES.** Three charter values
+    could not be used unmodified: olive with white text is 3.44:1, the teal is
+    too light to be a dot on the pale page, and the orange is far too light to
+    be text. In every case the FILL was left alone and the ink was adjusted
+    (`--text-on-accent` is now a near-black GREEN, `#06140E`). The one exception
+    is `status-success`, where the dot check left no room and `#14A185` had to
+    become `#0F8E75` — the charter value survives as `--brand-teal` and returns
+    bright in dark. Copying the site's own AA failures was never an option.
+
+43. **TWO BRAND FACES, SPLIT ON A MEASUREMENT.** אטלס (Atlas) sets
+    display/title/section/heading; מקומי (Mekomi) sets everything else,
+    INCLUDING every number. Not a stylistic preference: Atlas ships proportional
+    figures with a 54 % advance spread and NO `tnum` feature, so
+    `font-variant-numeric: tabular-nums` is inert in it — measured at 22.41 px
+    of spread at 100 px in the browser, against 0.00 px for Mekomi. This app is
+    a column of numbers. Both faces are Artzenu's, so the split stays inside the
+    charter; Rubik is demoted to fallback and kept only for that.
+
+44. **THE BRAND PLATE IS THE SAME IN BOTH THEMES.** `--gradient-brand` is the
+    site's own hero wash (olive → forest, 158°) and does not have a night
+    variant, because a brand does not. Its ink therefore cannot come from
+    `--text-primary`, so there is exactly one theme-independent ink token,
+    `--text-on-brand`, and the audit pins it against the gradient's LIGHTEST
+    stop — otherwise "brighten the plate a little" silently takes Tehillim 121:4
+    below AA.
+
+45. **THE STYLEGUIDE READS THE PALETTE ONE FRAME LATE, ON PURPOSE.** React
+    flushes effects child-first, so the screen's `getComputedStyle` used to run
+    BEFORE the provider above it restamped `data-theme` — printing one theme's
+    hexes next to the other theme's colours. A reload happened to win the race,
+    which is why it survived Lot 0.7's captures and only appeared when a
+    reviewer switched theme in the page. The `requestAnimationFrame` in
+    `usePalette` is the fix and is load-bearing.
+
+46. **THE PILL IS SPENT ON CONTROLS, NOT CONTAINERS.** The charter is a 30 px
+    pill language on buttons AND inputs. Buttons take it literally; `.input`
+    deliberately stays at `--radius-md`, because a pill spends ~15 px of its own
+    start padding and a twelve-field form of pills gives the eye no left edge to
+    run down. Cards and tables stay boxes for the same reason.
 
 32. **EVERY semantic hue is a PAIR: `--x` (vivid) and `--x-ink` (text).**
     The vivid token is the FILL — dot, marker, severity bar, gradient stop.
@@ -242,11 +333,21 @@ All four are committed and runnable.
   Promoted from a scratchpad file this lot. Driving the business layer is the
   point: a browser test cannot distinguish "the screen does not show it" from
   "the session cannot read it".
+- **`scripts/brand-reference.ts`** (`bun run brand-reference`) — the reference
+  plates behind `docs/brand-artzenu.md`. Needs the internet, not a dev server.
+  The palette itself comes from the site's CSS, but a written charter no human
+  can check is not a charter; these are the pictures the claims are checked
+  against. Writes JPEG on purpose — a full-page PNG of a site built on landscape
+  photography is ~5 MB of repo for no gain.
 - **`scripts/layout.ts`** (`bun run layout`) — A24. Walks all 22 screens at
   390 px and asserts no horizontal overflow, no element wider than the
   viewport, and no two pinned elements overlapping. It caught two real bugs:
   the sticky form footer sitting under the demo toolbar, and a `min-width:auto`
-  grid item letting the presence table push the page 40 px wide.
+  grid item letting the presence table push the page 40 px wide. Lot 0.8 caught a
+  THIRD: Mekomi is a wider face than Rubik, and that alone was enough for the
+  farm-card grid's `min-width: auto` tracks to push the page to 397 px. Both
+  tracks now carry `min-w-0`. This is the script that pays for itself every lot —
+  a 7 px overflow is invisible in a screenshot.
 
 The interactive half of A20 was played in the browser with a throw-away
 Playwright script (17 assertions: ordering, auto-fill, refusal, promotion,
@@ -262,23 +363,30 @@ event.
 
 ## 8. Contrast audit (A13/A19)
 
-`bun run contrast` — 118 pairs, all meet WCAG AA. Tightest margins:
+`bun run contrast` — **122 pairs on the Artzenu palette, all meet WCAG AA.**
+Four pairs were added this lot: the brand plate's ink against both ends of
+`--gradient-brand`, in both themes. Tightest margins:
 
 | Pair | Light | Dark | Min |
 |---|---|---|---|
-| `farm-visited` dot on the page | 3.14 | 7.60 | 3 |
-| `status-warn` / `farm-contacted` dot on the page | 3.19 | 11.20 | 3 |
-| `text-on-accent` on solid `status-info` | 4.53 | 8.66 | 4.5 |
-| `text-on-accent` on solid `status-danger` | 4.70 | 6.89 | 4.5 |
-| `status-info` chip (ink on 15 % tint) | 5.71 | 4.84 | 4.5 |
-| `text-muted` on `surface-high` | 4.93 | 4.95 | 4.5 |
-| `border-subtle` on `surface-base` | 1.26 | 1.95 | 1.2 |
-| `surface-raised` vs `surface-base` (elevation) | 1.10 | 1.34 | 1.05 / 1.25 |
+| `status-warn` / `farm-contacted` dot on the page | 3.18 | 8.87 | 3 |
+| `farm-visited` dot on the page | 3.56 | 6.88 | 3 |
+| `text-on-accent` on solid `status-violet` / `farm-signed` | 4.59 | 7.69 | 4.5 |
+| `text-on-accent` on solid `status-info` / `farm-verbal-ok` | 4.60 | 8.17 | 4.5 |
+| `text-on-accent` on solid `status-success` | 4.62 | 9.02 | 4.5 |
+| `status-info` chip (ink on 15 % tint) | 6.11 | 4.67 | 4.5 |
+| `text-muted` on `surface-high` | 4.84 | 4.92 | 4.5 |
+| `text-on-brand` on `brand-olive` (plate, lightest stop) | 5.59 | 5.59 | 4.5 |
+| `text-on-accent` on solid `status-danger` (charter orange) | 5.22 | 7.69 | 4.5 |
+| `border-subtle` on `surface-base` | 1.23 | 2.00 | 1.2 |
+| `surface-raised` vs `surface-base` (elevation) | 1.10 | 1.29 | 1.05 / 1.25 |
 
-The two tightest rows are the two ends of the window decision 33 describes: a
-dot has to be dark enough to be seen on the page (3.14) while the same colour
-has to be light enough to be written on (4.53). Both are within 5 % of their
-threshold, which is the point — the palette is as saturated as AA allows.
+The two ends of the window decision 33 describes are still what binds the light
+palette: a dot has to be dark enough to be seen on the page (3.18) while the
+same colour has to be light enough to be written on (4.59). Both are within 3 %
+of their threshold, which is the point — the palette is as saturated as AA
+allows, and the charter's own orange `#EF4F28` fits inside that window
+unmodified.
 
 Elevation is held to a stricter threshold in dark: a drop-shadow is invisible
 on near-black, so the card must separate from the page by luminance alone.
@@ -288,8 +396,18 @@ on near-black, so the card must separate from the page by luminance alone.
 ## 9. Source of truth
 
 ```
-src/styles/tokens.css     ★ BOTH PALETTES. Vivid/ink pairs, gradients, radius,
-                            motion, type. No hex anywhere else.
+docs/brand-artzenu.md     ★ THE CHARTER. Provenance of every colour and font
+                            value, the three AA adjustments, the licence
+                            question. READ BEFORE touching colour or type.
+docs/brand/               Reference plates from the live site (bun run brand-reference)
+
+src/styles/tokens.css     ★ BOTH PALETTES. The four --brand-* tokens quote the
+                            charter verbatim; the rest is derived. Vivid/ink
+                            pairs, gradients, radius, motion, type. No hex
+                            anywhere else.
+public/fonts/             8 self-hosted brand woff2 (atlas-*, mekomi-*) + 3 Rubik
+public/artzenu-mark.png   The association's mark, grey+alpha, painted as a CSS
+                            MASK so it takes a token colour in both themes
 
 src/core/                 PURE TS — no React, no DOM
   types.ts                Domain types, LegConfirmation, FarmVisit, AgendaEvent
@@ -307,8 +425,13 @@ src/core/                 PURE TS — no React, no DOM
 
 src/locales/he.json       ★ ALL UI COPY. en/fr intentionally {}.
 
+src/index.css             ★ @font-face for both brand faces; the brand face bound
+                            to the type SCALE (unlayered, after utilities, on
+                            purpose); .btn/.input/.artzenu-mark
 src/ui/
-  theme.tsx               Theme APPLICATION: localStorage + data-theme + matchMedia
+  theme.tsx               Theme APPLICATION: localStorage + data-theme + matchMedia.
+                          The theme-color meta READS --surface-base rather than
+                          restating it (Lot 0.8 found two stale literals there).
   components/             MapPanel (map-first shell, D2) · MapCanvas/MapView (lazy) ·
                           Timeline (D6) · FarmVisitModal (D4) · CreateGuardFab (D3.4) ·
                           Avatar · PhotoField · PresenceRoster · ThemeToggle ·
@@ -365,6 +488,20 @@ src/ui/
 7. **Should a refusal be remembered across guards?** Right now the exclusion
    set is per-wizard-session; someone who declines three nights running still
    ranks first on the fourth.
+8. **⚠️ BLOCKING FOR REAL USERS — do the Artzenu font licences cover this app?**
+   אטלס (Atlas) and מקומי (Mekomi) are commercial Hebrew typefaces. The eight
+   woff2 files in `public/fonts` are the association's own, taken from the
+   association's own site, for the association's own tool — but a web licence
+   covering `artzenu.org.il` does not automatically extend to a second
+   application. Confirm with Artzenu before Lot 1 ships. Rollback if it is not
+   covered: delete the `atlas-*`/`mekomi-*` files. That is the whole change — the
+   stacks in `--font-brand` / `--font-sans` already fall through to the
+   self-hosted Rubik, and nothing else in the app depends on them.
+9. **Is the sea meant to be violet on the night map?** The single hue rotation
+   that lands the Negev on forest green necessarily throws the Mediterranean the
+   other way (`docs/brand-artzenu.md` §3). It is desaturated almost to neutral
+   and only a corner of the frame, but if the coordinator finds it distracting
+   the fix is a keyed vector provider in Lot 1, not another rotation.
 
 ---
 
@@ -377,3 +514,8 @@ function at a time; the bodies are written to make that a direct transcription.
 `photo: string | null` becomes a Storage object key.
 
 Do **not** add Supabase, auth or offline sync before Lot 1 is explicitly begun.
+
+Two Lot 0.8 items to carry in: settle open question 8 (font licences) before any
+real user sees the app, and move off OSM raster tiles to a keyed vector provider
+— a vector style can be themed in the charter's greens directly instead of being
+approximated with a CSS `hue-rotate` on a raster.

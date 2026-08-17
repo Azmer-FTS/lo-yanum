@@ -21,124 +21,180 @@
    Only VALUES change between themes; no component ever branches on the theme.
    Semantic names stay stable: `surface-raised` is "the card surface" in both.
 
-   ── LOT 0.7: "MODERN COMMAND CENTRE" ────────────────────────────────────
-   The palette was rebuilt to read as a monitoring console rather than a
-   back-office. Three rules carry the whole change:
+   ── LOT 0.8: THE ARTZENU CHARTER ────────────────────────────────────────
+   The app belongs to Artzenu (artzenu.org.il), which runs שומרים בחוות, so it
+   has to look like the association's own tool rather than a generic console.
+   Every value below traces to the site's real Elementor kit — extracted from
+   wp-content/uploads/elementor/css/post-15.css, not eyeballed. The provenance
+   table, and every place AA forced an adjustment, is in docs/brand-artzenu.md.
 
-   1. VIVID / INK SPLIT. Every status now has TWO tokens: `--status-x` is the
-      vivid colour used as a fill (dot, marker, bar, gradient stop) and
-      `--status-x-ink` is the same identity darkened until it is legible as
-      TEXT on that colour's own 15 % tint. The previous single token had to
-      satisfy both jobs at once, and "legible as small text on paper" is what
-      dragged every colour towards mud. Splitting them is what let the light
-      theme get its saturation back. Same principle as `accent` / `accent-ink`
-      (Lot 0.6, decision 22) — now applied across the board.
+   The four `--brand-*` tokens ARE the charter, verbatim. They exist so that
+   gradients and washes can be composed from the association's own values
+   instead of from hexes copied into a component. Everything else is those four
+   colours pushed into the luminance windows the audit enforces.
 
-   2. LIGHT IS A TINTED SLATE, NOT WARM PAPER. A faintly blue-grey page makes
-      the amber identity and the status hues pop instead of muddying into the
-      background; cards stay pure white so they read as raised planes.
+   The structure from Lot 0.7 is untouched, and it is what made this lot cheap:
 
-   3. DARK KEEPS THE VIVIDS BRIGHT. Where light uses the ~600 level of a hue,
-      dark uses the ~400 level: on a deep navy those read as the saturated
-      pastels the brief asks for, and they are bright enough to be text, so in
-      dark `--status-x-ink` is simply `--status-x`.
+   1. VIVID / INK SPLIT. Every status has TWO tokens: `--status-x` is the vivid
+      colour used as a fill (dot, marker, bar, gradient stop) and
+      `--status-x-ink` is the same identity pushed until it is legible as TEXT
+      on that colour's own 15 % tint. This is exactly the mechanism that let the
+      charter's own orange survive contact with AA: the FILL keeps the brand
+      value (#EF4F28, untouched), and only the ink moves.
+
+   2. LIGHT IS A TINTED PAPER — now tinted GREEN, not blue-grey. The page
+      carries a faint wash of the association's pale green (#E9F2EA, the site's
+      own input background), and cards stay pure white exactly as on the site.
+
+   3. DARK IS DERIVED, NOT BORROWED. The site is light-only, so there is no dark
+      charter to copy. Dark is built by keeping the Artzenu hues and dropping
+      the surfaces to forest-night greens in the same family as #0B3D2C — the
+      previous generic navy would have read as a different product.
    ========================================================================= */
 
 :root {
   /* ---------------------------------------------------------------------
-     LIGHT — coordinator back-office default. A faintly tinted slate page, not
-     the pure #FFF that turns a data table into a light box.
+     THE ARTZENU CHARTER, VERBATIM.
+     These four are the association's declared global colours, and they are the
+     only values in this file that are quoted rather than derived. They are
+     theme-independent on purpose: the brand does not change at night, only the
+     surfaces it sits on do. Compose washes and gradients FROM these.
+     --------------------------------------------------------------------- */
+  --brand-forest: 11 61 44; /* #0B3D2C — every heading on the site       */
+  --brand-olive: 71 110 52; /* #476E34 — button hover, gradient start    */
+  --brand-teal: 20 161 133; /* #14A185 — links, stacked icons            */
+  --brand-orange: 239 79 40; /* #EF4F28 — the one loud CTA               */
+
+  /**
+   * The ONLY ink allowed on the brand plate, and theme-independent like the
+   * charter itself. `--gradient-brand` is a deep forest wash in BOTH themes —
+   * the association's hero does not have a night variant and should not get an
+   * invented one — so the ink on it cannot come from `--text-primary`, which is
+   * near-black in light. The audit pins it against the gradient's lightest
+   * stop (`--brand-olive`), which is the worst case it can land on.
+   */
+  --text-on-brand: 244 250 245; /* #F4FAF5 */
+
+  /* ---------------------------------------------------------------------
+     LIGHT — coordinator daylight default. Green-tinted paper, white cards,
+     forest-green ink: the site's own arrangement.
      --------------------------------------------------------------------- */
 
   /* Surfaces, ascending elevation. In light, cards rise toward white. */
-  --surface-sunken: 228 233 241; /* #E4E9F1 — inputs, wells             */
-  --surface-base: 242 244 248; /* #F2F4F8 — the page itself           */
-  --surface-raised: 255 255 255; /* #FFFFFF — cards                     */
+  --surface-sunken: 223 235 221; /* #DFEBDD — inputs, wells             */
+  --surface-base: 241 246 239; /* #F1F6EF — the page itself           */
+  --surface-raised: 255 255 255; /* #FFFFFF — cards, as on the site     */
   --surface-overlay: 255 255 255; /* #FFFFFF — modals, sticky bars       */
-  --surface-high: 233 237 244; /* #E9EDF4 — table headers, hover rows */
+  --surface-high: 233 242 234; /* #E9F2EA — the CHARTER's own wash    */
 
-  --border-subtle: 211 220 233; /* #D3DCE9 */
-  --border-strong: 176 187 204; /* #B0BBCC */
+  --border-subtle: 211 226 208; /* #D3E2D0 */
+  --border-strong: 169 191 164; /* #A9BFA4 */
 
-  --text-primary: 15 23 41; /* #0F1729 — deep navy ink */
-  --text-secondary: 61 71 90; /* #3D475A */
-  --text-muted: 91 102 122; /* #5B667A */
-  --text-on-accent: 26 18 4; /* #1A1204 — near-black, for amber fills */
+  /* Ink. `text-primary` IS the charter's heading colour — the site sets every
+     h1–h6 to #0B3D2C, and adopting it as the app's primary ink is the single
+     change that makes a screenshot read as Artzenu. */
+  --text-primary: 11 61 44; /* #0B3D2C — brand forest */
+  --text-secondary: 47 74 62; /* #2F4A3E */
+  --text-muted: 86 110 96; /* #566E60 */
+  --text-on-accent: 6 20 14; /* #06140E — near-black green, for olive fills */
 
-  /* Brand amber. `accent` is the FILL (buttons, active pills, markers).
-     `accent-ink` is the same identity used as FOREGROUND text on a surface —
-     it must be dark enough to read on paper, which the fill amber is not. */
-  --accent: 240 140 0; /* #F08C00 — fill                       */
-  --accent-strong: 255 163 26; /* #FFA31A — hover: BRIGHTENS, see note */
-  --accent-dim: 209 122 0; /* #D17A00 — pressed                    */
-  --accent-ink: 154 78 0; /* #9A4E00 — accent AS TEXT             */
+  /* Brand olive. `accent` is the FILL (buttons, FAB, active pills, markers) and
+     is the site's literal button background; `accent-ink` is the site's literal
+     button-HOVER olive, which is where the same identity has to go to be
+     readable as text on paper. The site puts white on the fill at 3.4:1; we put
+     near-black on it at 5.5:1 instead — same brand colour, legible ink. */
+  --accent: 110 149 88; /* #6E9558 — CHARTER accent, fill       */
+  --accent-strong: 134 175 107; /* #86AF6B — hover: BRIGHTENS            */
+  --accent-dim: 101 138 80; /* #658A50 — pressed                    */
+  --accent-ink: 71 110 52; /* #476E34 — CHARTER olive, AS TEXT     */
 
-  /* Semantic status — VIVID (dots, markers, bars, gradient stops). */
-  --status-success: 5 150 105; /* #059669 emerald */
-  --status-warn: 207 112 5; /* #CF7005 amber   */
-  --status-danger: 240 50 92; /* #F0325C coral   */
-  --status-info: 2 132 199; /* #0284C7 sky     */
-  --status-violet: 147 102 248; /* #9366F8 violet  */
+  /* Semantic status — VIVID (dots, markers, bars, gradient stops). Warmed and
+     pulled toward the charter's temperature; `danger` is the charter's own
+     orange, unmodified, and `success` is the charter's teal dropped just far
+     enough to clear 3:1 as a dot on the pale green page. */
+  --status-success: 15 142 117; /* #0F8E75 brand teal, darkened */
+  --status-warn: 192 122 8; /* #C07A08 ochre                */
+  --status-danger: 239 79 40; /* #EF4F28 CHARTER orange       */
+  --status-info: 15 134 184; /* #0F86B8 lake blue            */
+  --status-violet: 143 99 232; /* #8F63E8 violet               */
 
   /* …and the same identities as TEXT on their own 15 % tint. */
-  --status-success-ink: 4 106 66; /* #046A42 */
-  --status-warn-ink: 138 74 2; /* #8A4A02 */
-  --status-danger-ink: 165 16 52; /* #A51034 */
-  --status-info-ink: 7 94 150; /* #075E96 */
-  --status-violet-ink: 91 33 182; /* #5B21B6 */
+  --status-success-ink: 10 100 85; /* #0A6455 */
+  --status-warn-ink: 126 78 3; /* #7E4E03 */
+  --status-danger-ink: 166 42 17; /* #A62A11 */
+  --status-info-ink: 11 92 127; /* #0B5C7F */
+  --status-violet-ink: 91 52 168; /* #5B34A8 */
 
   /* Farm pipeline. Consumed by chips, list dots AND map markers, so a status
      can never be green in one place and amber in another. Seven distinct hues
-     around the wheel, ordered so two adjacent pipeline steps never share one. */
-  --farm-to-contact: 120 136 159; /* #78889F slate   */
-  --farm-contacted: 207 112 5; /* #CF7005 amber   */
-  --farm-visited: 217 70 239; /* #D946EF fuchsia */
-  --farm-verbal-ok: 2 132 199; /* #0284C7 sky     */
-  --farm-signed: 147 102 248; /* #9366F8 violet  */
-  --farm-active: 5 150 105; /* #059669 emerald */
-  --farm-declined: 240 50 92; /* #F0325C coral   */
+     around the wheel, ordered so two adjacent pipeline steps never share one.
+     `to-contact` is a GREEN-grey now: a blue-grey on a green page reads as a
+     foreign element rather than as "not started yet". */
+  --farm-to-contact: 110 132 120; /* #6E8478 sage-grey */
+  --farm-contacted: 192 122 8; /* #C07A08 ochre     */
+  --farm-visited: 210 77 171; /* #D24DAB magenta   */
+  --farm-verbal-ok: 15 134 184; /* #0F86B8 lake blue */
+  --farm-signed: 143 99 232; /* #8F63E8 violet    */
+  --farm-active: 15 142 117; /* #0F8E75 teal      */
+  --farm-declined: 239 79 40; /* #EF4F28 orange    */
 
-  --farm-to-contact-ink: 65 78 97; /* #414E61 */
-  --farm-contacted-ink: 138 74 2; /* #8A4A02 */
-  --farm-visited-ink: 134 20 148; /* #861494 */
-  --farm-verbal-ok-ink: 7 94 150; /* #075E96 */
-  --farm-signed-ink: 91 33 182; /* #5B21B6 */
-  --farm-active-ink: 4 106 66; /* #046A42 */
-  --farm-declined-ink: 165 16 52; /* #A51034 */
+  --farm-to-contact-ink: 60 80 69; /* #3C5045 */
+  --farm-contacted-ink: 126 78 3; /* #7E4E03 */
+  --farm-visited-ink: 140 33 112; /* #8C2170 */
+  --farm-verbal-ok-ink: 11 92 127; /* #0B5C7F */
+  --farm-signed-ink: 91 52 168; /* #5B34A8 */
+  --farm-active-ink: 10 100 85; /* #0A6455 */
+  --farm-declined-ink: 166 42 17; /* #A62A11 */
 
-  /* Elevation: a navy-tinted shadow, not neutral grey — a grey shadow on a
-     tinted page reads as dirt, a shadow that shares the page's hue reads as
-     depth. */
-  --shadow-card: 0 1px 2px rgb(20 33 71 / 0.05), 0 3px 10px rgb(20 33 71 / 0.07);
-  --shadow-lift: 0 6px 16px rgb(20 33 71 / 0.1), 0 18px 40px rgb(20 33 71 / 0.14);
-  --shadow-accent: 0 3px 12px rgb(240 140 0 / 0.32);
-  --shadow-glow: 0 0 0 1px rgb(240 140 0 / 0.25), 0 6px 24px rgb(240 140 0 / 0.18);
+  /* Elevation: a FOREST-tinted shadow, not neutral grey — a grey shadow on a
+     green-tinted page reads as dirt, a shadow that shares the page's hue reads
+     as depth. The long, soft, offset drop is the site's own signature
+     (`0 10px 35px -10px rgba(0,0,0,.15)` on its cards). */
+  --shadow-card: 0 1px 2px rgb(11 61 44 / 0.05), 0 4px 12px rgb(11 61 44 / 0.08);
+  --shadow-lift: 0 6px 16px rgb(11 61 44 / 0.1), 0 18px 40px rgb(11 61 44 / 0.16);
+  --shadow-accent: 0 3px 12px rgb(110 149 88 / 0.36);
+  --shadow-glow: 0 0 0 1px rgb(110 149 88 / 0.3), 0 6px 24px rgb(110 149 88 / 0.2);
 
   /* Hero gradients. NEVER applied to text — only to fills (primary buttons,
-     the dashboard hero strip, KPI accents). */
+     the dashboard hero strip, KPI accents). 158° is the site's own angle. */
   --gradient-accent: linear-gradient(
-    135deg,
+    158deg,
     rgb(var(--accent-strong)) 0%,
     rgb(var(--accent)) 55%,
     rgb(var(--accent-dim)) 100%
   );
   --gradient-hero: linear-gradient(
-    135deg,
+    158deg,
     rgb(var(--surface-raised)) 0%,
-    rgb(var(--accent) / 0.12) 60%,
-    rgb(var(--status-info) / 0.14) 100%
+    rgb(var(--accent) / 0.14) 60%,
+    rgb(var(--brand-teal) / 0.14) 100%
   );
 
-  /* Daylight map: OSM tiles are already a day map, so barely touch them. */
-  --map-filter: saturate(0.92) brightness(1.02) contrast(1.02);
+  /* The landing/verse plate. The site's own hero treatment is a deep forest
+     gradient over a landscape photograph; this is that gradient without the
+     photograph, and it is the one place in the app that goes full brand. */
+  --gradient-brand: linear-gradient(
+    158deg,
+    rgb(var(--brand-olive)) 0%,
+    rgb(var(--brand-forest)) 100%
+  );
+
+  /* Daylight map: OSM tiles are already a day map, so barely touch them. The
+     small POSITIVE rotation nudges the raster's beiges toward olive so the
+     Negev sits in the charter's temperature; rotating the other way turns the
+     desert pink, which was the first thing tried and the first thing rejected. */
+  --map-filter: saturate(0.9) brightness(1.03) contrast(1.02) hue-rotate(8deg);
 
   /* --- Theme-independent ------------------------------------------------ */
 
-  /* Generous radii — the single cheapest signal that a UI is contemporary. */
-  --radius-sm: 9px;
-  --radius-md: 12px;
-  --radius-lg: 16px; /* cards */
-  --radius-xl: 22px;
+  /* Generous radii. The charter is a 30 px-pill language (buttons, inputs and
+     icon circles all fully rounded), so these went UP one step from Lot 0.7 —
+     but a data table with 30 px corners stops being scannable, so pills are
+     spent on CONTROLS (see `.btn` in index.css) and containers stay boxes. */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px; /* cards */
+  --radius-xl: 26px;
   --radius-pill: 999px;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -158,25 +214,43 @@
    */
   --shell-bottom: 2.75rem;
 
-  --font-sans: 'Rubik', system-ui, -apple-system, sans-serif;
+  /**
+   * TWO brand faces, split on a measured fact rather than on taste.
+   *
+   * `--font-brand` is אטלס (Atlas), the site's heading face — every h1–h6 on
+   * artzenu.org.il. It carries display, title, section and heading here.
+   *
+   * `--font-sans` is מקומי (Mekomi), the site's BUTTON face, and it carries
+   * everything else: body, caption, micro, tables, KPI figures. The reason is
+   * not stylistic — Atlas ships PROPORTIONAL figures and no `tnum` feature (its
+   * digit advances run 412–636/1000, a 54 % spread), so a column of counts or a
+   * phone number set in it will not align. Mekomi's digits are monospaced by
+   * default AND it exposes `tnum`. This app is a column of numbers, so the
+   * numbers get the face that can set them. Both are Artzenu fonts, so the
+   * split stays inside the charter; Rubik survives only as the fallback.
+   */
+  --font-brand: 'Artzenu Atlas', 'Artzenu Mekomi', 'Rubik', system-ui, sans-serif;
+  --font-sans: 'Artzenu Mekomi', 'Rubik', system-ui, -apple-system, sans-serif;
 
   /* Type scale. Line-height tightens as size grows; numeric styles get their
-     own tighter leading so a column of figures scans fast. */
+     own tighter leading so a column of figures scans fast. Atlas runs slightly
+     larger on the body than Rubik at the same px, and its headings are tighter
+     — the site sets every heading at 1.1em, which is where these now sit. */
   --text-display-size: clamp(2.5rem, 7vw, 4rem);
   --text-display-height: 1.05;
-  --text-display-tracking: -0.03em;
+  --text-display-tracking: -0.02em;
 
   /* C3: section headings sit ABOVE their card and must carry real weight. */
   --text-section-size: 1.25rem;
-  --text-section-height: 1.25;
-  --text-section-tracking: -0.01em;
+  --text-section-height: 1.2;
+  --text-section-tracking: -0.005em;
 
   --text-title-size: 1.5rem;
-  --text-title-height: 1.2;
-  --text-title-tracking: -0.015em;
+  --text-title-height: 1.15;
+  --text-title-tracking: -0.01em;
 
   --text-heading-size: 1.125rem;
-  --text-heading-height: 1.3;
+  --text-heading-height: 1.25;
 
   --text-body-size: 0.9375rem;
   --text-body-height: 1.6;
@@ -187,71 +261,72 @@
   --text-micro-size: 0.6875rem;
   --text-micro-height: 1.4;
 
-  /* KPI figures: big, tight, tabular. */
+  /* KPI figures: big, tight, tabular. Set in Mekomi — see --font-sans. */
   --text-metric-size: 2rem;
   --text-metric-height: 1;
-  --text-metric-tracking: -0.03em;
+  --text-metric-tracking: -0.02em;
 
   --text-numeric-height: 1.1;
 }
 
 /* ---------------------------------------------------------------------------
-   DARK — field default (volunteer / driver / farmer), and the control-room
-   look for the coordinator at night. Deep navy, every surface step separated
-   by luminance alone (a drop-shadow is invisible on near-black), and the
-   status hues taken UP to their bright level so they read as saturated
+   DARK — field default (volunteer / driver / farmer), and the night look for
+   the coordinator. DERIVED from the charter, not borrowed from elsewhere: the
+   surfaces are the #0B3D2C forest taken down to night levels, every step
+   separated by luminance alone (a drop-shadow is invisible on near-black), and
+   the Artzenu hues taken UP to their bright level so they read as saturated
    pastels rather than dimming into the background.
    --------------------------------------------------------------------------- */
 
 [data-theme='dark'] {
-  --surface-sunken: 8 13 25; /* #080D19 */
-  --surface-base: 12 18 32; /* #0C1220 — deep night blue */
-  --surface-raised: 32 44 70; /* #202C46 — a clear step above the page */
-  --surface-overlay: 39 53 83; /* #273553 */
-  --surface-high: 42 58 90; /* #2A3A5A — hover / table headers */
+  --surface-sunken: 4 16 11; /* #04100B */
+  --surface-base: 7 24 15; /* #07180F — forest night      */
+  --surface-raised: 18 48 36; /* #123024 — a clear step above */
+  --surface-overlay: 23 59 44; /* #173B2C */
+  --surface-high: 27 68 51; /* #1B4433 — hover / headers   */
 
-  --border-subtle: 51 69 104; /* #334568 */
-  --border-strong: 84 106 145; /* #546A91 */
+  --border-subtle: 36 80 60; /* #24503C */
+  --border-strong: 69 119 92; /* #45775C */
 
-  --text-primary: 240 244 252; /* #F0F4FC */
-  --text-secondary: 198 208 226; /* #C6D0E2 */
-  --text-muted: 158 172 197; /* #9EACC5 — clears AA on every surface */
-  --text-on-accent: 26 18 4; /* #1A1204 */
+  --text-primary: 235 244 238; /* #EBF4EE */
+  --text-secondary: 194 216 201; /* #C2D8C9 */
+  --text-muted: 154 180 165; /* #9AB4A5 — clears AA on every surface */
+  --text-on-accent: 6 20 14; /* #06140E */
 
-  --accent: 251 146 12; /* #FB920C */
-  --accent-strong: 253 186 55; /* #FDBA37 */
-  --accent-dim: 198 112 8; /* #C67008 */
-  --accent-ink: 253 186 55; /* #FDBA37 — bright enough to be text */
+  --accent: 143 190 115; /* #8FBE73 — olive at night level */
+  --accent-strong: 169 210 144; /* #A9D290 */
+  --accent-dim: 110 149 88; /* #6E9558 — the charter value    */
+  --accent-ink: 169 210 144; /* #A9D290 — bright enough to be text */
 
-  /* Bright level of each hue: vivid on navy, and legible as text, so the
-     `-ink` variants collapse onto the vivid values. */
-  --status-success: 52 211 153; /* #34D399 */
-  --status-warn: 251 191 36; /* #FBBF24 */
-  --status-danger: 251 113 133; /* #FB7185 */
-  --status-info: 56 189 248; /* #38BDF8 */
-  --status-violet: 167 139 250; /* #A78BFA */
+  /* Bright level of each hue: vivid on forest, and legible as text, so the
+     `-ink` variants mostly collapse onto the vivid values. */
+  --status-success: 52 201 166; /* #34C9A6 */
+  --status-warn: 232 169 60; /* #E8A93C */
+  --status-danger: 255 129 99; /* #FF8163 */
+  --status-info: 79 182 224; /* #4FB6E0 */
+  --status-violet: 178 149 250; /* #B295FA */
 
-  --status-success-ink: 52 211 153;
-  --status-warn-ink: 251 191 36;
-  --status-danger-ink: 253 164 175; /* #FDA4AF */
-  --status-info-ink: 56 189 248;
-  --status-violet-ink: 196 181 253; /* #C4B5FD */
+  --status-success-ink: 52 201 166;
+  --status-warn-ink: 232 169 60;
+  --status-danger-ink: 255 174 153; /* #FFAE99 */
+  --status-info-ink: 79 182 224;
+  --status-violet-ink: 207 186 253; /* #CFBAFD */
 
-  --farm-to-contact: 148 163 191; /* #94A3BF */
-  --farm-contacted: 251 191 36; /* #FBBF24 */
-  --farm-visited: 232 121 249; /* #E879F9 */
-  --farm-verbal-ok: 56 189 248; /* #38BDF8 */
-  --farm-signed: 167 139 250; /* #A78BFA */
-  --farm-active: 52 211 153; /* #34D399 */
-  --farm-declined: 251 113 133; /* #FB7185 */
+  --farm-to-contact: 141 165 152; /* #8DA598 */
+  --farm-contacted: 232 169 60; /* #E8A93C */
+  --farm-visited: 232 119 198; /* #E877C6 */
+  --farm-verbal-ok: 79 182 224; /* #4FB6E0 */
+  --farm-signed: 178 149 250; /* #B295FA */
+  --farm-active: 52 201 166; /* #34C9A6 */
+  --farm-declined: 255 129 99; /* #FF8163 */
 
-  --farm-to-contact-ink: 183 194 214; /* #B7C2D6 */
-  --farm-contacted-ink: 251 191 36;
-  --farm-visited-ink: 240 171 252; /* #F0ABFC */
-  --farm-verbal-ok-ink: 56 189 248;
-  --farm-signed-ink: 196 181 253; /* #C4B5FD */
-  --farm-active-ink: 52 211 153;
-  --farm-declined-ink: 253 164 175; /* #FDA4AF */
+  --farm-to-contact-ink: 176 196 184; /* #B0C4B8 */
+  --farm-contacted-ink: 232 169 60;
+  --farm-visited-ink: 243 165 220; /* #F3A5DC */
+  --farm-verbal-ok-ink: 79 182 224;
+  --farm-signed-ink: 207 186 253; /* #CFBAFD */
+  --farm-active-ink: 52 201 166;
+  --farm-declined-ink: 255 174 153; /* #FFAE99 */
 
   /* On dark, a grey drop-shadow vanishes: use deep black plus a 1px inset top
      highlight so a card reads as catching light from above. */
@@ -259,21 +334,35 @@
     inset 0 1px 0 rgb(255 255 255 / 0.06);
   --shadow-lift: 0 6px 14px rgb(0 0 0 / 0.5), 0 20px 44px rgb(0 0 0 / 0.42),
     inset 0 1px 0 rgb(255 255 255 / 0.08);
-  --shadow-accent: 0 4px 16px rgb(251 146 12 / 0.3);
-  --shadow-glow: 0 0 0 1px rgb(251 146 12 / 0.3), 0 8px 28px rgb(251 146 12 / 0.22);
+  --shadow-accent: 0 4px 16px rgb(143 190 115 / 0.3);
+  --shadow-glow: 0 0 0 1px rgb(143 190 115 / 0.32),
+    0 8px 28px rgb(143 190 115 / 0.22);
 
   --gradient-hero: linear-gradient(
-    135deg,
+    158deg,
     rgb(var(--surface-raised)) 0%,
     rgb(var(--accent) / 0.16) 60%,
-    rgb(var(--status-info) / 0.2) 100%
+    rgb(var(--brand-teal) / 0.2) 100%
+  );
+
+  /* In dark the landing plate can be the site's gradient almost literally —
+     the charter's own hero is a dark forest wash, so this is the one token that
+     needed no derivation at all. */
+  --gradient-brand: linear-gradient(
+    158deg,
+    rgb(var(--brand-olive) / 0.62) 0%,
+    rgb(var(--brand-forest)) 100%
   );
 
   /* Night map: invert + hue-rotate turns the daylight OSM raster into a dark
-     map. Heavy desaturation is deliberate — without it the inverted Negev goes
-     a loud orange that fights the amber accent. */
-  --map-filter: invert(1) hue-rotate(180deg) brightness(0.82) contrast(0.9)
-    saturate(0.24);
+     map. The rotation is derived, not guessed: OSM's desert beige (~#F0E4CE)
+     inverts to a dark blue at hue ~220°, and -80° is what lands that on the
+     forest green at ~140°. The same rotation necessarily throws the
+     Mediterranean the other way (its inverse sits at ~14° and ends up violet),
+     which is what the heavy desaturation is for — the sea calms to a neutral
+     while the Negev keeps its green cast. Lot 0.7 rotated 180° for navy. */
+  --map-filter: invert(1) hue-rotate(-80deg) brightness(0.82) contrast(0.92)
+    saturate(0.22) sepia(0.12);
 }
 
 /*
@@ -283,69 +372,75 @@
  */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --surface-sunken: 8 13 25;
-    --surface-base: 12 18 32;
-    --surface-raised: 32 44 70;
-    --surface-overlay: 39 53 83;
-    --surface-high: 42 58 90;
+    --surface-sunken: 4 16 11;
+    --surface-base: 7 24 15;
+    --surface-raised: 18 48 36;
+    --surface-overlay: 23 59 44;
+    --surface-high: 27 68 51;
 
-    --border-subtle: 51 69 104;
-    --border-strong: 84 106 145;
+    --border-subtle: 36 80 60;
+    --border-strong: 69 119 92;
 
-    --text-primary: 240 244 252;
-    --text-secondary: 198 208 226;
-    --text-muted: 158 172 197;
-    --text-on-accent: 26 18 4;
+    --text-primary: 235 244 238;
+    --text-secondary: 194 216 201;
+    --text-muted: 154 180 165;
+    --text-on-accent: 6 20 14;
 
-    --accent: 251 146 12;
-    --accent-strong: 253 186 55;
-    --accent-dim: 198 112 8;
-    --accent-ink: 253 186 55;
+    --accent: 143 190 115;
+    --accent-strong: 169 210 144;
+    --accent-dim: 110 149 88;
+    --accent-ink: 169 210 144;
 
-    --status-success: 52 211 153;
-    --status-warn: 251 191 36;
-    --status-danger: 251 113 133;
-    --status-info: 56 189 248;
-    --status-violet: 167 139 250;
+    --status-success: 52 201 166;
+    --status-warn: 232 169 60;
+    --status-danger: 255 129 99;
+    --status-info: 79 182 224;
+    --status-violet: 178 149 250;
 
-    --status-success-ink: 52 211 153;
-    --status-warn-ink: 251 191 36;
-    --status-danger-ink: 253 164 175; /* #FDA4AF */
-    --status-info-ink: 56 189 248;
-    --status-violet-ink: 196 181 253; /* #C4B5FD */
+    --status-success-ink: 52 201 166;
+    --status-warn-ink: 232 169 60;
+    --status-danger-ink: 255 174 153;
+    --status-info-ink: 79 182 224;
+    --status-violet-ink: 207 186 253;
 
-    --farm-to-contact: 148 163 191;
-    --farm-contacted: 251 191 36;
-    --farm-visited: 232 121 249;
-    --farm-verbal-ok: 56 189 248;
-    --farm-signed: 167 139 250;
-    --farm-active: 52 211 153;
-    --farm-declined: 251 113 133;
+    --farm-to-contact: 141 165 152;
+    --farm-contacted: 232 169 60;
+    --farm-visited: 232 119 198;
+    --farm-verbal-ok: 79 182 224;
+    --farm-signed: 178 149 250;
+    --farm-active: 52 201 166;
+    --farm-declined: 255 129 99;
 
-    --farm-to-contact-ink: 183 194 214; /* #B7C2D6 */
-    --farm-contacted-ink: 251 191 36;
-    --farm-visited-ink: 240 171 252; /* #F0ABFC */
-    --farm-verbal-ok-ink: 56 189 248;
-    --farm-signed-ink: 196 181 253; /* #C4B5FD */
-    --farm-active-ink: 52 211 153;
-    --farm-declined-ink: 253 164 175; /* #FDA4AF */
+    --farm-to-contact-ink: 176 196 184;
+    --farm-contacted-ink: 232 169 60;
+    --farm-visited-ink: 243 165 220;
+    --farm-verbal-ok-ink: 79 182 224;
+    --farm-signed-ink: 207 186 253;
+    --farm-active-ink: 52 201 166;
+    --farm-declined-ink: 255 174 153;
 
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.45), 0 4px 16px rgb(0 0 0 / 0.3),
       inset 0 1px 0 rgb(255 255 255 / 0.06);
     --shadow-lift: 0 6px 14px rgb(0 0 0 / 0.5), 0 20px 44px rgb(0 0 0 / 0.42),
       inset 0 1px 0 rgb(255 255 255 / 0.08);
-    --shadow-accent: 0 4px 16px rgb(251 146 12 / 0.3);
-    --shadow-glow: 0 0 0 1px rgb(251 146 12 / 0.3),
-      0 8px 28px rgb(251 146 12 / 0.22);
+    --shadow-accent: 0 4px 16px rgb(143 190 115 / 0.3);
+    --shadow-glow: 0 0 0 1px rgb(143 190 115 / 0.32),
+      0 8px 28px rgb(143 190 115 / 0.22);
 
     --gradient-hero: linear-gradient(
-      135deg,
+      158deg,
       rgb(var(--surface-raised)) 0%,
       rgb(var(--accent) / 0.16) 60%,
-      rgb(var(--status-info) / 0.2) 100%
+      rgb(var(--brand-teal) / 0.2) 100%
     );
 
-    --map-filter: invert(1) hue-rotate(180deg) brightness(0.82) contrast(0.9)
-      saturate(0.24);
+    --gradient-brand: linear-gradient(
+      158deg,
+      rgb(var(--brand-olive) / 0.62) 0%,
+      rgb(var(--brand-forest)) 100%
+    );
+
+    --map-filter: invert(1) hue-rotate(-80deg) brightness(0.82) contrast(0.92)
+      saturate(0.22) sepia(0.12);
   }
 }

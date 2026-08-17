@@ -48,14 +48,16 @@ function applyToDocument(choice: ThemeChoice): void {
   if (choice === 'system') root.removeAttribute('data-theme')
   else root.setAttribute('data-theme', choice)
 
-  // Keep the PWA / browser chrome colour in step with the palette.
-  const resolved = resolveTheme(choice, systemPrefersDark())
+  // Keep the PWA / browser chrome colour in step with the palette. READ the
+  // token rather than restating it: Lot 0.8 found the two literals that used to
+  // live here still holding Lot 0.7's navy, because nothing fails when a meta
+  // tag drifts. The attribute above is already set, so the computed value is the
+  // resolved theme's `--surface-base`; only the boot value in index.html is a
+  // literal now, and being one frame stale there is invisible.
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) {
-    // The two `--surface-base` values. Duplicated as literals because the meta
-    // tag needs a colour before any stylesheet has necessarily applied; keep
-    // them in step with tokens.css by hand.
-    meta.setAttribute('content', resolved === 'dark' ? '#0C1220' : '#F2F4F8')
+    const base = getComputedStyle(root).getPropertyValue('--surface-base').trim()
+    if (base) meta.setAttribute('content', `rgb(${base})`)
   }
 }
 

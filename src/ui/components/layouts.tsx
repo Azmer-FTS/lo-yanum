@@ -40,11 +40,29 @@ const BLEED_ROUTES = [
   '/coordinator/incidents',
 ]
 
-function Brand({ compact = false }: { compact?: boolean }) {
+/**
+ * `imprint` adds the Artzenu mark at the far end of the header (Lot 0.8). It is
+ * opt-in rather than always-on because the two places that get it — the
+ * expanded desktop rail and the slide-over — are the only headers with spare
+ * width. The mobile top bar and the field header already carry a theme toggle
+ * and a name at 390 px, and A24 does not forgive 40 px of wordmark there.
+ */
+function Brand({
+  compact = false,
+  imprint = false,
+}: {
+  compact?: boolean
+  imprint?: boolean
+}) {
   const { t } = useTranslation()
   return (
-    <div className="flex min-w-0 items-center gap-2.5">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent/15 text-accent-ink ring-1 ring-accent/25">
+    <div
+      // `flex-1` only when expanded: it is what gives `ms-auto` on the imprint
+      // something to push against, but on the COLLAPSED rail it would defeat
+      // the wrapper's `justify-center` and shove the shield to the inline start.
+      className={`flex min-w-0 items-center gap-2.5 ${compact ? '' : 'flex-1'}`}
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-pill bg-accent/15 text-accent-ink ring-1 ring-accent/25">
         <Icon name="shield" size={19} />
       </span>
       {!compact && (
@@ -56,6 +74,13 @@ function Brand({ compact = false }: { compact?: boolean }) {
             {t('app.tagline')}
           </p>
         </div>
+      )}
+      {imprint && !compact && (
+        <span
+          role="img"
+          aria-label={t('app.org')}
+          className="artzenu-mark ms-auto h-5 shrink-0 text-content-muted"
+        />
       )}
     </div>
   )
@@ -122,7 +147,7 @@ export function CoordinatorLayout() {
                       }`}
         >
           <div className={expanded ? '' : 'flex justify-center'}>
-            <Brand compact={!expanded} />
+            <Brand compact={!expanded} imprint />
           </div>
 
           {/* D7.1 — the collapse control belongs directly under the logo.
@@ -217,7 +242,7 @@ export function CoordinatorLayout() {
           />
           <div className="absolute inset-y-0 start-0 flex w-72 max-w-[85%] animate-fade-in flex-col gap-5 border-e border-edge-strong bg-surface-raised px-3 py-4 shadow-lift">
             <div className="flex items-center justify-between px-1">
-              <Brand />
+              <Brand imprint />
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
