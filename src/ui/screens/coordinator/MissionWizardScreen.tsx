@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
@@ -148,6 +149,35 @@ function ScoreBar({ candidate }: { candidate: CandidateScore }) {
         <span className="chip bg-status-violet/15 text-status-violet-ink">
           <Icon name="users" size={10} />
           {t('wizard.pairBonus')}
+        </span>
+      )}
+      {/* G3.4 — stated preferences. Quiet when they merely exist; warn when
+          THIS night runs against one (the soft filter made visible). */}
+      {(
+        [
+          ['nights', 'avail.noNights'],
+          ['days', 'avail.noDays'],
+          ['weekends', 'avail.noWeekends'],
+        ] as const
+      ).map(([key, labelKey]) =>
+        candidate.volunteer.availability?.[key] === false ? (
+          <span
+            key={key}
+            className={`chip ${
+              candidate.availabilityMismatches.includes(key)
+                ? 'bg-status-warn/15 text-status-warn-ink'
+                : 'bg-surface-high text-content-muted'
+            }`}
+          >
+            <Icon name="clock" size={10} />
+            {t(labelKey)}
+          </span>
+        ) : null,
+      )}
+      {candidate.availabilityMismatches.includes('date') && (
+        <span className="chip bg-status-warn/15 text-status-warn-ink">
+          <Icon name="clock" size={10} />
+          {t('avail.excludedDate')}
         </span>
       )}
     </div>
@@ -390,6 +420,12 @@ export function MissionWizardScreen() {
 
   // --- Steps 2–3 state -----------------------------------------------------
   const [shortlist, setShortlist] = useState<string[]>([])
+  // G3.2 — search + organisation filter over the candidate list.
+  const [searchQ, setSearchQ] = useState('')
+  const [filterYeshiva, setFilterYeshiva] = useState('')
+  // G3.1 — the pre-composition runs once per wizard, not on every visit to
+  // step 2: coming back from step 3 must not overwrite manual edits.
+  const preComposedRef = useRef(false)
   const [responses, setResponses] = useState<Record<string, SolicitationState>>(
     {},
   )
@@ -458,6 +494,70 @@ export function MissionWizardScreen() {
     () => new Map(volunteers.map((v) => [v.id, v])),
     [volunteers],
   )
+
+  /**
+   * G3.1 — PRE-COMPOSITION. The wizard proposes a COMPLETE team of the
+   * requested size, already checked, the moment step 2 opens. Picked
+   * iteratively — choose the best candidate, re-rank, choose again — so the
+   * pairing bonus can pull a yeshiva together, which one-shot top-N cannot.
+   */
+  const preCompose = () => {
+    if (!destination) return
+    const picked: string[] = []
+    for (let i = 0; i < required; i++) {
+      const r = rankCandidates({
+        volunteers,
+        destination,
+        startAt,
+        endAt,
+        missions,
+        chosenIds: picked,
+        excludedIds: declined,
+      })
+      if (r.length === 0) break
+      picked.push(r[0].volunteer.id)
+    }
+    setShortlist(picked)
+  }
+
+  useEffect(() => {
+    if (step !== 2 || preComposedRef.current) return
+    preComposedRef.current = true
+    if (shortlist.length === 0) preCompose()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step])
+
+  // G3.2 — the search and the organisation filter narrow the RANKED list;
+  // the ranking itself is untouched, so order still means score.
+  const allYeshivot = useMemo(
+    () => [...new Set(volunteers.map((v) => v.yeshiva))].sort(),
+    [volunteers],
+  )
+  const visibleRanking = useMemo(() => {
+    const q = searchQ.trim()
+    return ranking.filter(
+      (c) =>
+        (q === '' ||
+          c.volunteer.name.includes(q) ||
+          c.volunteer.yeshiva.includes(q) ||
+          c.volunteer.locality.includes(q)) &&
+        (filterYeshiva === '' || c.volunteer.yeshiva === filterYeshiva),
+    )
+  }, [ranking, searchQ, filterYeshiva])
+
+  const candidateScrollRef = useRef<HTMLDivElement | null>(null)
+  const candidateVirtualizer = useVirtualizer({
+    count: visibleRanking.length,
+    getScrollElement: () => candidateScrollRef.current,
+    // Measured after render (chips wrap unpredictably); this is the guess.
+    estimateSize: () => 116,
+    overscan: 8,
+  })
+
+  const startOver = () => {
+    setShortlist([])
+    setResponses({})
+  }
 
   const shortlisted = shortlist.flatMap((id) => {
     const v = byId.get(id)
@@ -981,44 +1081,110 @@ export function MissionWizardScreen() {
               bare
               flush
               action={
-                <button
-                  type="button"
-                  className="btn-ghost py-1.5"
-                  onClick={autoFill}
-                >
-                  <Icon name="sparkle" size={14} />
-                  {t('wizard.autoFill')}
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* G3.1 — the team arrives pre-composed; this is the way back
+                      to an empty slate. */}
+                  <button
+                    type="button"
+                    className="btn-ghost py-1.5"
+                    onClick={startOver}
+                  >
+                    <Icon name="close" size={14} />
+                    {t('wizard.startOver')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost py-1.5"
+                    onClick={autoFill}
+                  >
+                    <Icon name="sparkle" size={14} />
+                    {t('wizard.autoFill')}
+                  </button>
+                </div>
               }
             >
               <p className="muted mb-2.5">{t('wizard.proposalHint')}</p>
-              {ranking.length === 0 ? (
+
+              {/* G3.2 — search + organisation filter, above the candidates. */}
+              <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
+                    <Icon name="search" size={14} />
+                  </span>
+                  <input
+                    type="search"
+                    className="input ps-9"
+                    placeholder={t('wizard.searchPlaceholder')}
+                    value={searchQ}
+                    onChange={(e) => setSearchQ(e.target.value)}
+                  />
+                </div>
+                <select
+                  className="input w-auto"
+                  value={filterYeshiva}
+                  onChange={(e) => setFilterYeshiva(e.target.value)}
+                  aria-label={t('wizard.filterOrg')}
+                >
+                  <option value="">{t('wizard.allOrgs')}</option>
+                  {allYeshivot.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {visibleRanking.length === 0 ? (
                 <EmptyState icon="users" title={t('volunteers.empty')} />
               ) : (
-                /* F5.5 — twelve rows today and unbounded tomorrow, so the list
-                   scrolls inside itself rather than stretching the page past
-                   its own sticky footer. */
-                <ul
-                  className="stagger list-scroll flex flex-col gap-2 pe-1"
+                /* G3.3 — the WHOLE ranked roster is reachable: virtualised
+                   inside its own scroll box, so the 300th candidate is a
+                   scroll away and the DOM stays a couple dozen rows. */
+                <div
+                  ref={candidateScrollRef}
+                  className="list-scroll pe-1"
                   style={{ '--list-max': '32rem' } as React.CSSProperties}
                 >
-                  {ranking.slice(0, 12).map((candidate) => (
-                    <CandidateRow
-                      key={candidate.volunteer.id}
-                      candidate={candidate}
-                      action={
-                        <button
-                          type="button"
-                          className="btn-secondary py-1.5 text-micro"
-                          onClick={() => addCandidate(candidate.volunteer.id)}
+                  <div
+                    className="relative"
+                    style={{ height: candidateVirtualizer.getTotalSize() }}
+                  >
+                    {candidateVirtualizer.getVirtualItems().map((item) => {
+                      const candidate = visibleRanking[item.index]
+                      return (
+                        <div
+                          key={candidate.volunteer.id}
+                          data-index={item.index}
+                          ref={candidateVirtualizer.measureElement}
+                          style={{
+                            position: 'absolute',
+                            insetInlineStart: 0,
+                            insetInlineEnd: 0,
+                            top: 0,
+                            transform: `translateY(${item.start}px)`,
+                            paddingBottom: '0.5rem',
+                          }}
                         >
-                          <Icon name="plus" size={13} />
-                          {t('wizard.add')}
-                        </button>
-                      }
-                    />
-                  ))}
-                </ul>
+                          <CandidateRow
+                            candidate={candidate}
+                            action={
+                              <button
+                                type="button"
+                                className="btn-secondary py-1.5 text-micro"
+                                onClick={() =>
+                                  addCandidate(candidate.volunteer.id)
+                                }
+                              >
+                                <Icon name="plus" size={13} />
+                                {t('wizard.add')}
+                              </button>
+                            }
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
               )}
             </Section>
           </div>
@@ -1027,7 +1193,7 @@ export function MissionWizardScreen() {
             <p className="muted mb-2">
               {t('wizard.shortlistCount', {
                 count: shortlist.length,
-                target,
+                target: required,
               })}
             </p>
             {shortlisted.length === 0 ? (

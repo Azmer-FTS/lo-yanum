@@ -1,4 +1,5 @@
 import { haversineKm, positionOfLocality } from './geo'
+import { DEFAULT_AVAILABILITY } from './types'
 import type { Driver, LatLng, Mission, Volunteer } from './types'
 
 /**
@@ -49,6 +50,18 @@ export const EQUITY_WEIGHT = 1.2
 export const PAIR_BONUS = 12
 
 /**
+ * G3.4 — points lost per availability-preference mismatch. A SOFT signal on
+ * purpose: "prefers not to" must rank someone down, not disappear them — the
+ * coordinator can still call, and often does when the list runs dry. An
+ * explicitly excluded DATE is charged harder: that is a stated "not that
+ * night", the closest thing preferences have to a no.
+ */
+export const AVAILABILITY_PENALTY = 18
+export const EXCLUDED_DATE_PENALTY = 40
+
+export type AvailabilityMismatch = 'nights' | 'days' | 'weekends' | 'date'
+
+/**
  * Distance charged to a volunteer whose locality is not in the gazetteer.
  * A flat mid-range penalty rather than 0: an unknown town must not silently
  * out-rank a known nearby one.
@@ -62,6 +75,8 @@ export interface ScoreBreakdown {
   equity: number
   /** Positive — the same-yeshiva bonus, or 0. */
   pairing: number
+  /** Negative — G3.4 availability-preference mismatches, or 0. */
+  availability: number
 }
 
 export interface CandidateScore {
@@ -72,6 +87,8 @@ export interface CandidateScore {
   breakdown: ScoreBreakdown
   /** Drives the "travels with X" hint in the UI. */
   sameYeshivaAsChosen: boolean
+  /** G3.4 — which stated preferences this night runs against. */
+  availabilityMismatches: AvailabilityMismatch[]
 }
 
 export interface RankCandidatesInput {
@@ -101,6 +118,40 @@ function overlaps(
     new Date(aStart).getTime() < new Date(bEnd).getTime() &&
     new Date(bStart).getTime() < new Date(aEnd).getTime()
   )
+}
+
+/**
+ * G3.4 — where this night runs against a volunteer's stated preferences.
+ *
+ * The mission's character is read off its start: a guard beginning after
+ * 18:00 or before 05:00 is a night; a start on Friday or Saturday is a
+ * weekend (the Israeli one). Local time throughout — the preference and the
+ * mission live in the same country.
+ */
+export function availabilityMismatchesFor(
+  volunteer: Volunteer,
+  startAt: string,
+  endAt: string,
+): AvailabilityMismatch[] {
+  // Defensive: rows imported from a spreadsheet (or older fixtures) may not
+  // carry preferences yet; absent means unconstrained.
+  const prefs = volunteer.availability ?? DEFAULT_AVAILABILITY
+  const out: AvailabilityMismatch[] = []
+  const start = new Date(startAt)
+
+  const hour = start.getHours()
+  const isNight = hour >= 18 || hour < 5
+  if (isNight && !prefs.nights) out.push('nights')
+  if (!isNight && !prefs.days) out.push('days')
+
+  const day = start.getDay()
+  if ((day === 5 || day === 6) && !prefs.weekends) out.push('weekends')
+
+  const key = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`
+  if (prefs.excludedDates.includes(key)) out.push('date')
+
+  void endAt // a multi-day window may refine this in a later lot
+  return out
 }
 
 /** Ids of volunteers already standing guard during the given window. */
@@ -149,19 +200,36 @@ export function rankCandidates(input: RankCandidatesInput): CandidateScore[] {
 
       const sameYeshivaAsChosen = chosenYeshivot.has(volunteer.yeshiva)
 
+      const availabilityMismatches = availabilityMismatchesFor(
+        volunteer,
+        input.startAt,
+        input.endAt,
+      )
+      const availabilityPenalty = availabilityMismatches.reduce(
+        (sum, m) =>
+          sum + (m === 'date' ? EXCLUDED_DATE_PENALTY : AVAILABILITY_PENALTY),
+        0,
+      )
+
       const breakdown: ScoreBreakdown = {
         distance: -chargedKm * DISTANCE_WEIGHT,
         equity: -volunteer.guardsCount * EQUITY_WEIGHT,
         pairing: sameYeshivaAsChosen ? PAIR_BONUS : 0,
+        availability: -availabilityPenalty,
       }
 
       return {
         volunteer,
         distanceKm,
         score:
-          100 + breakdown.distance + breakdown.equity + breakdown.pairing,
+          100 +
+          breakdown.distance +
+          breakdown.equity +
+          breakdown.pairing +
+          breakdown.availability,
         breakdown,
         sameYeshivaAsChosen,
+        availabilityMismatches,
       }
     })
 
