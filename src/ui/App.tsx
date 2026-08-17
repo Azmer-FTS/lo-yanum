@@ -16,6 +16,7 @@ import { useCoreValue } from './hooks/useCore'
 import { LandingScreen } from './screens/LandingScreen'
 import { StyleguideScreen } from './screens/StyleguideScreen'
 import { DriverTripScreen } from './screens/driver/DriverTripScreen'
+import { DriversScreen } from './screens/coordinator/DriversScreen'
 import { FarmerGuardsScreen } from './screens/farmer/FarmerGuardsScreen'
 import { FarmerReportScreen } from './screens/farmer/FarmerReportScreen'
 import { FarmerTonightScreen } from './screens/farmer/FarmerTonightScreen'
@@ -97,6 +98,7 @@ export default function App() {
           />
           <Route path="route" element={<RoutePlannerScreen />} />
           <Route path="volunteers" element={<VolunteersScreen />} />
+          <Route path="drivers" element={<DriversScreen />} />
           <Route
             path="volunteers/import"
             element={

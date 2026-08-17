@@ -94,7 +94,7 @@ section('A4 — role isolation is enforced in the data layer')
   check('volunteer sees no roster', getVolunteers().length === 0)
 
   as({ role: 'driver', entityId: 'drv-03' })
-  check('driver sees only the guards he drives', getVisibleMissionViews().every((v) => v.mission.driverId === 'drv-03'))
+  check('driver sees only the guards he drives', getVisibleMissionViews().length > 0 && getVisibleMissionViews().every((v) => v.mission.drivers.some((d) => d.driverId === 'drv-03')))
 }
 
 // --- A5: two message formats -------------------------------------------------

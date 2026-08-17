@@ -22,7 +22,13 @@ const seedActivity = (n: number): string =>
  * id, so their details are authored rather than generated — a demo needs
  * believable people at the centre of it.
  */
-const NAMED_VOLUNTEERS: Volunteer[] = [
+/** Literal fixtures predate G5/G3; the new fields are hydrated below. */
+type VolunteerSeed = Omit<
+  Volunteer,
+  'hasLicense' | 'hasCar' | 'canDrive' | 'availability'
+>
+
+const NAMED_SEEDS: VolunteerSeed[] = [
   {
     id: 'vol-001',
     name: 'אריאל כהן',
@@ -405,6 +411,32 @@ const NAMED_VOLUNTEERS: Volunteer[] = [
  * The roster has to be big enough to prove the virtualised table stays
  * smooth, and deterministic so it is identical on every reload.
  */
+/**
+ * G5.2 — three of the named volunteers double as drivers (licence + car +
+ * agreement), so the dual hat is visible on people the demo actually shows.
+ */
+const CAN_DRIVE_IDS = new Set(['vol-004', 'vol-009', 'vol-014'])
+const HAS_LICENSE_IDS = new Set([
+  ...CAN_DRIVE_IDS,
+  'vol-002',
+  'vol-006',
+  'vol-011',
+  'vol-017',
+])
+
+const NAMED_VOLUNTEERS: Volunteer[] = NAMED_SEEDS.map((seed) => ({
+  ...seed,
+  hasLicense: HAS_LICENSE_IDS.has(seed.id),
+  hasCar: CAN_DRIVE_IDS.has(seed.id),
+  canDrive: CAN_DRIVE_IDS.has(seed.id),
+  availability: {
+    nights: true,
+    days: true,
+    weekends: seed.id !== 'vol-006',
+    excludedDates: [],
+  },
+}))
+
 export const VOLUNTEERS: Volunteer[] = [
   ...NAMED_VOLUNTEERS,
   ...generateVolunteers(275, YESHIVOT, NAMED_VOLUNTEERS.length),
@@ -419,6 +451,9 @@ export const DRIVERS: Driver[] = [
     seats: 8,
     locality: 'באר שבע',
     photo: null,
+    availabilityNote: 'זמין רוב הערבים, עדיף תיאום יום מראש.',
+    notes: '',
+    volunteerId: null,
   },
   {
     id: 'drv-02',
@@ -428,6 +463,9 @@ export const DRIVERS: Driver[] = [
     seats: 6,
     locality: 'אופקים',
     photo: null,
+    availabilityNote: "א׳–ה׳ בערב בלבד.",
+    notes: '',
+    volunteerId: null,
   },
   {
     id: 'drv-03',
@@ -437,6 +475,9 @@ export const DRIVERS: Driver[] = [
     seats: 12,
     locality: 'ירושלים',
     photo: null,
+    availabilityNote: 'גם נסיעות ארוכות מירושלים.',
+    notes: '',
+    volunteerId: null,
   },
   {
     id: 'drv-04',
@@ -446,6 +487,9 @@ export const DRIVERS: Driver[] = [
     seats: 4,
     locality: 'ירוחם',
     photo: null,
+    availabilityNote: 'בעיקר סופי שבוע.',
+    notes: '',
+    volunteerId: null,
   },
   {
     id: 'drv-05',
@@ -455,6 +499,9 @@ export const DRIVERS: Driver[] = [
     seats: 7,
     locality: 'נתיבות',
     photo: null,
+    availabilityNote: 'זמין בהתראה קצרה.',
+    notes: '',
+    volunteerId: null,
   },
   {
     id: 'drv-06',
@@ -464,8 +511,30 @@ export const DRIVERS: Driver[] = [
     seats: 8,
     locality: 'אשקלון',
     photo: null,
+    availabilityNote: 'לא זמין בחגים.',
+    notes: '',
+    volunteerId: null,
   },
 ]
+
+// G5.2 — the dual hats: one Driver row per canDrive volunteer, linked by
+// volunteerId. Same human, both rosters, seats of a private car.
+const VOLUNTEER_DRIVERS: Driver[] = NAMED_VOLUNTEERS.filter(
+  (v) => v.canDrive,
+).map((v, i) => ({
+  id: `drv-v${String(i + 1).padStart(2, '0')}`,
+  name: v.name,
+  phone: v.phone,
+  vehicle: '',
+  seats: 4,
+  locality: v.locality,
+  photo: v.photo,
+    availabilityNote: '',
+  notes: '',
+  volunteerId: v.id,
+}))
+
+DRIVERS.push(...VOLUNTEER_DRIVERS)
 
 // Deterministic mixed state: ~45% of volunteers and ~65% of drivers have a
 // picture, the rest fall back to initials.

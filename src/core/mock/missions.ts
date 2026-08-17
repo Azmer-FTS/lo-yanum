@@ -70,7 +70,13 @@ export const MISSIONS: Mission[] = [
       who('vol-002', false, leg('present', 'present')),
       who('vol-003', false, leg('present', 'absent')),
     ],
-    driverId: 'drv-03',
+    drivers: [
+      {
+        driverId: 'drv-03',
+        passengerVolunteerIds: ['vol-001', 'vol-002', 'vol-003'],
+        confirmed: true,
+      },
+    ],
     arrivalConfirmedAt: hoursFromNow(-1.8),
     endConfirmedAt: null,
     createdAt: hoursFromNow(-50),
@@ -97,7 +103,20 @@ export const MISSIONS: Mission[] = [
       who('vol-008', false),
       who('vol-009', false),
     ],
-    driverId: 'drv-05',
+    // G5.3 — the seeded TWO-CAR night: drv-05's Viano is in the shop, so a
+    // dual-hat volunteer covers the overflow. Each confirms his own list.
+    drivers: [
+      {
+        driverId: 'drv-05',
+        passengerVolunteerIds: ['vol-007', 'vol-008'],
+        confirmed: true,
+      },
+      {
+        driverId: 'drv-v01',
+        passengerVolunteerIds: ['vol-009'],
+        confirmed: false,
+      },
+    ],
     arrivalConfirmedAt: null,
     endConfirmedAt: null,
     ...notYet(30, hoursFromNow(4)),
@@ -122,7 +141,13 @@ export const MISSIONS: Mission[] = [
       who('vol-019', false, leg('present', 'present')),
       who('vol-021', false, leg('present', 'present')),
     ],
-    driverId: 'drv-06',
+    drivers: [
+      {
+        driverId: 'drv-06',
+        passengerVolunteerIds: ['vol-020', 'vol-019', 'vol-021'],
+        confirmed: true,
+      },
+    ],
     arrivalConfirmedAt: hoursFromNow(-29.8),
     endConfirmedAt: hoursFromNow(-22),
     createdAt: hoursFromNow(-78),
@@ -153,7 +178,13 @@ export const MISSIONS: Mission[] = [
       ),
       who('vol-014', false, leg('present', 'present'), leg('present', 'present')),
     ],
-    driverId: 'drv-01',
+    drivers: [
+      {
+        driverId: 'drv-01',
+        passengerVolunteerIds: ['vol-013', 'vol-014'],
+        confirmed: true,
+      },
+    ],
     arrivalConfirmedAt: hoursFromNow(-53.8),
     endConfirmedAt: hoursFromNow(-46),
     createdAt: hoursFromNow(-102),
@@ -174,7 +205,13 @@ export const MISSIONS: Mission[] = [
     ...future(2),
     status: 'planned',
     assignments: [who('vol-016', true), who('vol-017', false)],
-    driverId: 'drv-01',
+    drivers: [
+      {
+        driverId: 'drv-01',
+        passengerVolunteerIds: ['vol-016', 'vol-017'],
+        confirmed: true,
+      },
+    ],
     arrivalConfirmedAt: null,
     endConfirmedAt: null,
     ...notYet(48, future(2).startAt),
@@ -196,7 +233,7 @@ export const MISSIONS: Mission[] = [
       who('vol-023', false),
       who('vol-019', false),
     ],
-    driverId: null,
+    drivers: [],
     arrivalConfirmedAt: null,
     endConfirmedAt: null,
     ...notYet(72, future(4).startAt),

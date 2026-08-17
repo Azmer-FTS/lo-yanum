@@ -106,7 +106,9 @@ export function getVisibleMissions(): Mission[] {
       )
       break
     case 'driver':
-      scoped = all.filter((m) => m.driverId === s.entityId)
+      scoped = all.filter((m) =>
+        m.drivers.some((dr) => dr.driverId === s.entityId),
+      )
       break
   }
 
@@ -136,7 +138,18 @@ export function toMissionView(mission: Mission): MissionView | null {
       const extra = d.anchorPoints.find((a) => a.id === id)
       return extra ? [extra] : []
     }),
-    driver: d.drivers.find((dr) => dr.id === mission.driverId) ?? null,
+    // G5.3 — hydrate each car: its driver row and its passenger rows.
+    drivers: mission.drivers.flatMap((entry) => {
+      const driver = d.drivers.find((dr) => dr.id === entry.driverId)
+      if (!driver) return []
+      const passengers = entry.passengerVolunteerIds.flatMap((id) => {
+        const v = d.volunteers.find((x) => x.id === id)
+        return v ? [v] : []
+      })
+      return [{ driver, passengers, confirmed: entry.confirmed }]
+    }),
+    driver:
+      d.drivers.find((dr) => dr.id === mission.drivers[0]?.driverId) ?? null,
     volunteers: mission.assignments.flatMap((a) => {
       const volunteer = d.volunteers.find((v) => v.id === a.volunteerId)
       return volunteer ? [{ volunteer, isGroupPhone: a.isGroupPhone }] : []
@@ -516,7 +529,6 @@ export function getPresenceMismatches(): PresenceMismatch[] {
     const farm = d.farms.find((f) => f.id === mission.farmId)
     if (!farm) continue
 
-    const driver = d.drivers.find((dr) => dr.id === mission.driverId)
     const holderId = mission.assignments.find((a) => a.isGroupPhone)?.volunteerId
     const holder = d.volunteers.find((v) => v.id === holderId)
 
@@ -525,6 +537,12 @@ export function getPresenceMismatches(): PresenceMismatch[] {
         if (resolveConfirmation(a[leg]) !== 'mismatch') continue
         const volunteer = d.volunteers.find((v) => v.id === a.volunteerId)
         if (!volunteer) continue
+        // G5.3 — the answerable driver is the one whose car he rides in.
+        const carEntry =
+          mission.drivers.find((dr) =>
+            dr.passengerVolunteerIds.includes(a.volunteerId),
+          ) ?? mission.drivers[0]
+        const driver = d.drivers.find((dr) => dr.id === carEntry?.driverId)
         out.push({
           mission,
           farm,
@@ -612,7 +630,9 @@ export function getAlerts(): DashboardAlert[] {
 
   for (const mission of getVisibleMissions()) {
     if (mission.status !== 'return_not_confirmed') continue
-    const driver = d.drivers.find((dr) => dr.id === mission.driverId)
+    const driver = d.drivers.find(
+      (dr) => dr.id === mission.drivers[0]?.driverId,
+    )
     const holderId = mission.assignments.find((a) => a.isGroupPhone)?.volunteerId
     const holder = d.volunteers.find((v) => v.id === holderId)
     alerts.push({

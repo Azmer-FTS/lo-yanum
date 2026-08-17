@@ -61,7 +61,7 @@ export function listSessionPresets(): SessionPreset[] {
   }
 
   for (const driver of d.drivers) {
-    if (!d.missions.some((m) => m.driverId === driver.id)) continue
+    if (!d.missions.some((m) => m.drivers.some((dr) => dr.driverId === driver.id))) continue
     presets.push({
       id: `driver:${driver.id}`,
       role: 'driver',

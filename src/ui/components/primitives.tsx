@@ -14,7 +14,7 @@ export function PageHeader({
   actions,
   back,
 }: {
-  title: string
+  title: ReactNode
   subtitle?: string
   actions?: ReactNode
   /** Breadcrumb link back to the parent list. */

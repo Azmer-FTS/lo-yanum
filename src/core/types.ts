@@ -171,6 +171,32 @@ export interface Volunteer {
   /** ISO datetime of the last guard served — the roster's "last activity". */
   lastActivityAt: string | null
   photo: string | null
+  /** G5.2 — driving licence + own car; both true makes him markable as a driver. */
+  hasLicense: boolean
+  hasCar: boolean
+  /** G5.2 — "יכול לשמש כנהג": maintains a linked Driver row while true. */
+  canDrive: boolean
+  /**
+   * G3.4 — slot preferences, applied as a SOFT signal in scoring, never as a
+   * hard filter: an empty object means "whenever needed", which is the common
+   * case and must stay the cheap one.
+   */
+  availability: VolunteerAvailability
+}
+
+export interface VolunteerAvailability {
+  nights: boolean
+  days: boolean
+  weekends: boolean
+  /** Day keys (YYYY-MM-DD) the volunteer has excluded. */
+  excludedDates: string[]
+}
+
+export const DEFAULT_AVAILABILITY: VolunteerAvailability = {
+  nights: true,
+  days: true,
+  weekends: true,
+  excludedDates: [],
 }
 
 export interface Driver {
@@ -181,6 +207,28 @@ export interface Driver {
   seats: number
   locality: string
   photo: string | null
+  /** Free-text availability ("א׳–ה׳ בערב, לא שישי"). */
+  availabilityNote: string
+  notes: string
+  /**
+   * G5.2 — THE DUAL HAT IS ONE HUMAN. A volunteer with a licence and a car
+   * can be marked "יכול לשמש כנהג"; that materialises a Driver row LINKED to
+   * the volunteer through this id, so he appears in both rosters without
+   * existing twice. Null for career drivers.
+   */
+  volunteerId: string | null
+}
+
+/**
+ * G5.3 — one driver's slice of a mission's transport. Confirmation is PER
+ * DRIVER, and covers exactly HIS passengers: with two cars on the road,
+ * "the driver confirmed" is not a fact, it is two facts.
+ */
+export interface MissionDriver {
+  driverId: string
+  /** The volunteers this driver carries, in boarding order. */
+  passengerVolunteerIds: string[]
+  confirmed: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -289,7 +337,13 @@ export interface Mission {
   endAt: string
   status: MissionStatus
   assignments: MissionAssignment[]
-  driverId: string | null
+  /**
+   * G5.3 — the night's transport, one entry per car. Empty means no driver
+   * arranged (a volunteer self-drives, or the farmer collects). Replaces the
+   * single `driverId` of Lots 0–0.9, because one car frequently is not enough
+   * and "which driver has whom" must be a stored fact, not an inference.
+   */
+  drivers: MissionDriver[]
   arrivalConfirmedAt: string | null
   endConfirmedAt: string | null
 
@@ -386,6 +440,13 @@ export interface MissionView {
   anchorPoint: AnchorPoint
   /** F2 — the other positions covered, in the order they were checked. */
   additionalAnchorPoints: AnchorPoint[]
+  /** G5.3 — hydrated transport, one entry per car. */
+  drivers: Array<{
+    driver: Driver
+    passengers: Volunteer[]
+    confirmed: boolean
+  }>
+  /** The first car's driver — most guards have exactly one. */
   driver: Driver | null
   volunteers: Array<{ volunteer: Volunteer; isGroupPhone: boolean }>
 }

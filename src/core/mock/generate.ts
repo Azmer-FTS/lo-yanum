@@ -130,6 +130,18 @@ export function generateVolunteers(
             ),
           )
 
+    // G5.2 — licence and car, seeded to a realistic yeshiva-age spread:
+    // roughly half hold a licence, a fifth of those bring their own car.
+    const hasLicense = rng() < 0.5
+    const hasCar = hasLicense && rng() < 0.22
+    // A handful of car owners have already agreed to double as drivers.
+    const canDrive = hasCar && rng() < 0.3
+
+    // G3.4 — most volunteers are simply available; a visible minority carry
+    // real constraints so the wizard's soft filter has something to show.
+    const nightsOnly = rng() < 0.12
+    const noWeekends = !nightsOnly && rng() < 0.15
+
     out.push({
       id: `vol-${String(n).padStart(3, '0')}`,
       name,
@@ -144,6 +156,15 @@ export function generateVolunteers(
       notes: pick(rng, NOTE_POOL),
       lastActivityAt,
       photo: null,
+      hasLicense,
+      hasCar,
+      canDrive,
+      availability: {
+        nights: true,
+        days: !nightsOnly,
+        weekends: !noWeekends,
+        excludedDates: [],
+      },
     })
   }
 

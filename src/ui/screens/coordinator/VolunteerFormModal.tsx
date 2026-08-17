@@ -2,7 +2,14 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { LOCALITY_POSITIONS, createVolunteer, updateVolunteer } from '@core/index'
-import type { PhoneType, Volunteer, VolunteerDraft, VolunteerStatus } from '@core/index'
+import { DEFAULT_AVAILABILITY } from '@core/index'
+import type {
+  PhoneType,
+  Volunteer,
+  VolunteerAvailability,
+  VolunteerDraft,
+  VolunteerStatus,
+} from '@core/index'
 
 import { PhotoField } from '../../components/PhotoField'
 import {
@@ -42,6 +49,14 @@ export function VolunteerFormModal({
     volunteer?.inactiveReason ?? '',
   )
   const [notes, setNotes] = useState(volunteer?.notes ?? '')
+  // G5.2 — licence / car / dual hat.
+  const [hasLicense, setHasLicense] = useState(volunteer?.hasLicense ?? false)
+  const [hasCar, setHasCar] = useState(volunteer?.hasCar ?? false)
+  const [canDrive, setCanDrive] = useState(volunteer?.canDrive ?? false)
+  // G3.4 — slot preferences.
+  const [availability, setAvailability] = useState<VolunteerAvailability>(
+    volunteer?.availability ?? { ...DEFAULT_AVAILABILITY },
+  )
   const [photo, setPhoto] = useState<string | null>(volunteer?.photo ?? null)
   const [touched, setTouched] = useState(false)
 
@@ -82,6 +97,11 @@ export function VolunteerFormModal({
       status,
       inactiveReason: status === 'inactive' ? inactiveReason.trim() : null,
       notes: notes.trim(),
+      hasLicense,
+      hasCar,
+      // The dual hat needs both halves; unchecking either revokes it.
+      canDrive: canDrive && hasLicense && hasCar,
+      availability,
     }
 
     if (volunteer) updateVolunteer(volunteer.id, draft)
@@ -176,6 +196,84 @@ export function VolunteerFormModal({
             required
           />
         )}
+        {/* G5.2 — the driving block: licence, car, and — only when both are
+            there to stand on — the dual hat that mirrors this volunteer into
+            the drivers roster. */}
+        <div className="flex flex-col gap-2 md:col-span-2">
+          <span className="label">{t('driver.vehicle')}</span>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <label className="flex items-center gap-2 text-caption text-content-secondary">
+              <input
+                type="checkbox"
+                className="check"
+                checked={hasLicense}
+                onChange={(e) => setHasLicense(e.target.checked)}
+              />
+              {t('form.hasLicense')}
+            </label>
+            <label className="flex items-center gap-2 text-caption text-content-secondary">
+              <input
+                type="checkbox"
+                className="check"
+                checked={hasCar}
+                onChange={(e) => setHasCar(e.target.checked)}
+              />
+              {t('form.hasCar')}
+            </label>
+            <label
+              className={`flex items-center gap-2 text-caption ${
+                hasLicense && hasCar
+                  ? 'text-content-secondary'
+                  : 'text-content-muted'
+              }`}
+            >
+              <input
+                type="checkbox"
+                className="check"
+                disabled={!(hasLicense && hasCar)}
+                checked={canDrive && hasLicense && hasCar}
+                onChange={(e) => setCanDrive(e.target.checked)}
+              />
+              {t('form.canDrive')}
+            </label>
+          </div>
+          {hasLicense && hasCar && (
+            <p className="muted">{t('form.canDriveHint')}</p>
+          )}
+        </div>
+
+        {/* G3.4 — availability preferences; everything on = no constraint. */}
+        <div className="flex flex-col gap-2 md:col-span-2">
+          <span className="label">{t('form.availabilityLabel')}</span>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            {(
+              [
+                ['nights', 'form.availNights'],
+                ['days', 'form.availDays'],
+                ['weekends', 'form.availWeekends'],
+              ] as const
+            ).map(([key, labelKey]) => (
+              <label
+                key={key}
+                className="flex items-center gap-2 text-caption text-content-secondary"
+              >
+                <input
+                  type="checkbox"
+                  className="check"
+                  checked={availability[key]}
+                  onChange={(e) =>
+                    setAvailability((prev) => ({
+                      ...prev,
+                      [key]: e.target.checked,
+                    }))
+                  }
+                />
+                {t(labelKey)}
+              </label>
+            ))}
+          </div>
+        </div>
+
         <TextArea
           label={t('form.notes')}
           value={notes}

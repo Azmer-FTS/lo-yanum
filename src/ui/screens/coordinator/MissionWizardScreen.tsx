@@ -6,6 +6,7 @@ import {
   COORDINATOR,
   atTimeOn,
   buildInvitationMessage,
+  buildDriverMessage,
   buildKosherMessage,
   buildSmartphoneMessage,
   createAnchorPoint,
@@ -38,6 +39,7 @@ import type {
   CandidateScore,
   DriverScore,
   LatLng,
+  MissionDriver,
   SolicitationState,
   Volunteer,
 } from '@core/index'
@@ -394,7 +396,11 @@ export function MissionWizardScreen() {
   const [declined, setDeclined] = useState<string[]>([])
 
   // --- Step 4 state --------------------------------------------------------
-  const [driverId, setDriverId] = useState<string | null>(null)
+  // G5.3 — several cars can serve one night: the selection is a map of
+  // driverId → solicitation state, not a single id.
+  const [driverSel, setDriverSel] = useState<Record<string, SolicitationState>>(
+    {},
+  )
   // G8 — the transport's meeting points, edited beside the driver choice.
   const [meet, setMeet] = useState<MeetPoints>({
     pickupPoint: null,
@@ -402,7 +408,6 @@ export function MissionWizardScreen() {
     returnPickupPoint: null,
     returnDropoffPoint: null,
   })
-  const [driverState, setDriverState] = useState<SolicitationState>('idle')
   const [declinedDrivers, setDeclinedDrivers] = useState<string[]>([])
 
   const [createdMissionId, setCreatedMissionId] = useState<string | null>(null)
@@ -453,11 +458,57 @@ export function MissionWizardScreen() {
     () => new Map(volunteers.map((v) => [v.id, v])),
     [volunteers],
   )
+
   const shortlisted = shortlist.flatMap((id) => {
     const v = byId.get(id)
     return v ? [v] : []
   })
   const confirmed = shortlisted.filter((v) => responses[v.id] === 'confirmed')
+
+  /**
+   * G5.3 — CAPACITY IS THE SORT KEY. Drivers whose car covers the whole group
+   * come first (in dispatch-score order); the rest follow, biggest car first,
+   * because their only use is in a two-car combination.
+   */
+  const neededSeats = confirmed.length || shortlist.length || required
+  const sortedDrivers = useMemo(() => {
+    const covering = driverRanking.filter((d) => d.driver.seats >= neededSeats)
+    const partial = driverRanking
+      .filter((d) => d.driver.seats < neededSeats)
+      .sort((a, b) => b.driver.seats - a.driver.seats)
+    return [...covering, ...partial]
+  }, [driverRanking, neededSeats])
+  const noSingleCar =
+    driverRanking.length > 0 &&
+    driverRanking.every((d) => d.driver.seats < neededSeats)
+
+  const confirmedDriverIds = Object.entries(driverSel)
+    .filter(([, st]) => st === 'confirmed')
+    .map(([id]) => id)
+  // Keep ranking order — the split below assigns passengers car by car.
+  const confirmedDrivers = sortedDrivers
+    .filter((d) => confirmedDriverIds.includes(d.driver.id))
+    .map((d) => d.driver)
+  const seatsCovered = confirmedDrivers.reduce((sum, d) => sum + d.seats, 0)
+
+  /**
+   * G5.3 — each driver carries HIS OWN list: passengers are dealt greedily
+   * into the confirmed cars in seat order, so the wizard, the recap message
+   * and the mission row all agree on who rides with whom.
+   */
+  const missionDrivers: MissionDriver[] = useMemo(() => {
+    const passengerIds = confirmed.map((v) => v.id)
+    let cursor = 0
+    return confirmedDrivers.map((driver) => {
+      const take = passengerIds.slice(cursor, cursor + driver.seats)
+      cursor += take.length
+      return {
+        driverId: driver.id,
+        passengerVolunteerIds: take,
+        confirmed: true,
+      }
+    })
+  }, [confirmedDrivers, confirmed])
   const target = shortlistSize(required)
 
   const addCandidate = (id: string) =>
@@ -548,7 +599,7 @@ export function MissionWizardScreen() {
       startAt,
       endAt,
       volunteerIds: confirmed.map((v) => v.id),
-      driverId: driverState === 'confirmed' ? driverId : null,
+      drivers: missionDrivers,
       ...meet,
     })
     setCreatedMissionId(mission.id)
@@ -559,7 +610,7 @@ export function MissionWizardScreen() {
 
   const recap = useMemo(() => {
     if (!farm || !anchor) return null
-    const driver = drivers.find((d) => d.id === driverId) ?? null
+    const driver = confirmedDrivers[0] ?? null
     const input = {
       farm,
       anchorPoint: anchor,
@@ -577,7 +628,7 @@ export function MissionWizardScreen() {
         endAt,
         status: 'planned' as const,
         assignments: [],
-        driverId,
+        drivers: missionDrivers,
         arrivalConfirmedAt: null,
         endConfirmedAt: null,
         createdAt: startAt,
@@ -585,7 +636,7 @@ export function MissionWizardScreen() {
         pickedUpAt: null,
         completedAt: null,
       },
-      driver: driverState === 'confirmed' ? driver : null,
+      driver,
       farmerContact: farm.contacts.find((c) => c.isPrimary) ?? null,
       coordinatorName: COORDINATOR.name,
       coordinatorPhone: COORDINATOR.phone,
@@ -606,18 +657,51 @@ export function MissionWizardScreen() {
       coordinator: t('anchor.labelCoordinator'),
       pickup: t('meet.labelPickup'),
     }
+    // G8/G5 — one driver briefing PER CAR, each listing its own passengers.
+    const driverMessages = missionDrivers.flatMap((entry) => {
+      const d = confirmedDrivers.find((x) => x.id === entry.driverId)
+      if (!d) return []
+      return [
+        {
+          driver: d,
+          body: buildDriverMessage(
+            {
+              ...input,
+              driver: d,
+              passengerNames: entry.passengerVolunteerIds.map(
+                (id) => byId.get(id)?.name ?? id,
+              ),
+            },
+            {
+              title: t('meet.driverMessageTitle'),
+              farm: t('anchor.labelFarm'),
+              pickup: t('meet.labelPickup'),
+              dropoff: t('meet.labelDropoff'),
+              arrival: t('anchor.labelArrival'),
+              navigation: t('anchor.labelNavigation'),
+              passengers: t('meet.passengers'),
+              phones: t('anchor.labelPhones'),
+              farmer: t('anchor.labelFarmer'),
+              coordinator: t('anchor.labelCoordinator'),
+            },
+          ),
+        },
+      ]
+    })
+
     return {
       smartphone: buildSmartphoneMessage(input, labels),
       kosher: buildKosherMessage(input, labels),
+      driverMessages,
     }
   }, [
     farm,
     anchor,
     anchorIds,
     meet,
-    drivers,
-    driverId,
-    driverState,
+    confirmedDrivers,
+    missionDrivers,
+    byId,
     startAt,
     endAt,
     createdMissionId,
@@ -1123,18 +1207,55 @@ export function MissionWizardScreen() {
 
       {/* ---------------------------------------------------------------- 4 */}
       {step === 4 && (
-        <Section title={t('wizard.stepDriver')} bare flush>
+        <Section
+          title={t('driver.volunteerDrivers')}
+          bare
+          flush
+          action={
+            <span className="text-accent-ink">
+              <Icon name="steering" size={22} />
+            </span>
+          }
+        >
           <p className="muted mb-2.5">{t('wizard.driverHint')}</p>
+
+          {/* G5.3 — the seat gauge and, when no car is big enough, the
+              two-car call-out. */}
+          <div className="mb-2.5 flex flex-wrap items-center gap-2">
+            <span
+              className={`chip ${
+                seatsCovered >= neededSeats && confirmedDrivers.length > 0
+                  ? 'bg-status-success/15 text-status-success-ink'
+                  : 'bg-surface-high text-content-secondary'
+              }`}
+            >
+              <Icon name="car" size={11} />
+              {t('driver.seatsGauge', {
+                covered: seatsCovered,
+                needed: neededSeats,
+              })}
+            </span>
+            {noSingleCar && (
+              <span className="chip bg-status-warn/15 text-status-warn-ink">
+                <Icon name="alert" size={11} />
+                {t('driver.twoNeeded')}
+              </span>
+            )}
+          </div>
+
           <ul className="stagger flex flex-col gap-2">
-            {driverRanking.map(({ driver, distanceKm, tooFewSeats }) => {
-              const chosen = driverId === driver.id
+            {sortedDrivers.map(({ driver, distanceKm }) => {
+              const state = driverSel[driver.id] ?? 'idle'
+              const chosen = state === 'confirmed'
+              const covers = driver.seats >= neededSeats
+              const carEntry = missionDrivers.find(
+                (d) => d.driverId === driver.id,
+              )
               return (
                 <li
                   key={driver.id}
                   className={`tile p-3 ${
-                    chosen && driverState === 'confirmed'
-                      ? 'border-status-success/50 bg-status-success/5'
-                      : ''
+                    chosen ? 'border-status-success/50 bg-status-success/5' : ''
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -1152,38 +1273,60 @@ export function MissionWizardScreen() {
                               : `${distanceKm.toFixed(0)} ${t('common.km')}`}
                           </span>
                         </span>
-                        <span
-                          className={`chip ${
-                            tooFewSeats
-                              ? 'bg-status-warn/15 text-status-warn-ink'
-                              : 'bg-surface-high text-content-secondary'
-                          }`}
-                        >
-                          <Icon name="car" size={10} />
-                          <span className="numeric">{driver.seats}</span>
-                          {t('driver.seats')}
-                        </span>
-                        {chosen && (
-                          <span className={`chip ${STATE_CLASS[driverState]}`}>
-                            {driverState === 'pending' && (
-                              <span className="live-dot" />
-                            )}
-                            {t(`wizard.state_${driverState}`)}
+                        {covers ? (
+                          <span className="chip bg-status-success/15 text-status-success-ink">
+                            <Icon name="car" size={10} />
+                            {t('driver.coversAll', { seats: driver.seats })}
+                          </span>
+                        ) : (
+                          <span className="chip bg-status-warn/15 text-status-warn-ink">
+                            <Icon name="car" size={10} />
+                            <span className="numeric">{driver.seats}</span>
+                            {t('driver.seats')}
+                          </span>
+                        )}
+                        {driver.volunteerId && (
+                          <span className="chip bg-status-violet/15 text-status-violet-ink">
+                            <Icon name="shield" size={10} />
+                            {t('driver.alsoVolunteer')}
+                          </span>
+                        )}
+                        {state !== 'idle' && (
+                          <span className={`chip ${STATE_CLASS[state]}`}>
+                            {state === 'pending' && <span className="live-dot" />}
+                            {t(`wizard.state_${state}`)}
                           </span>
                         )}
                       </div>
                       <p className="muted mt-0.5 truncate">
-                        {driver.vehicle} · {driver.locality} ·{' '}
+                        {driver.vehicle || t('driver.privateCar')} ·{' '}
+                        {driver.locality} ·{' '}
                         <span className="ltr-nums">{driver.phone}</span>
                       </p>
+
+                      {/* G5.3 — HIS passengers, so "who rides with whom" is
+                          settled here, not in the parking lot. */}
+                      {chosen && carEntry && carEntry.passengerVolunteerIds.length > 0 && (
+                        <p className="muted mt-1.5">
+                          {t('driver.hisPassengers')}:{' '}
+                          {carEntry.passengerVolunteerIds
+                            .map((id) => byId.get(id)?.name ?? id)
+                            .join(', ')}
+                        </p>
+                      )}
 
                       <div className="mt-2 flex flex-wrap gap-2">
                         <a
                           href={telHref(driver.phone)}
-                          onClick={() => {
-                            setDriverId(driver.id)
-                            setDriverState('pending')
-                          }}
+                          onClick={() =>
+                            setDriverSel((prev) => ({
+                              ...prev,
+                              [driver.id]:
+                                prev[driver.id] === 'confirmed'
+                                  ? 'confirmed'
+                                  : 'pending',
+                            }))
+                          }
                           className="btn-secondary py-1.5 text-micro"
                         >
                           <Icon name="phone" size={13} />
@@ -1191,12 +1334,17 @@ export function MissionWizardScreen() {
                         </a>
                         <button
                           type="button"
-                          onClick={() => {
-                            setDriverId(driver.id)
-                            setDriverState('confirmed')
-                          }}
+                          onClick={() =>
+                            setDriverSel((prev) => ({
+                              ...prev,
+                              [driver.id]:
+                                prev[driver.id] === 'confirmed'
+                                  ? 'idle'
+                                  : 'confirmed',
+                            }))
+                          }
                           className={`btn py-1.5 text-micro ${
-                            chosen && driverState === 'confirmed'
+                            chosen
                               ? 'bg-status-success text-content-on-accent'
                               : 'border border-status-success/40 text-status-success-ink hover:bg-status-success/10'
                           }`}
@@ -1208,10 +1356,11 @@ export function MissionWizardScreen() {
                           type="button"
                           onClick={() => {
                             setDeclinedDrivers((prev) => [...prev, driver.id])
-                            if (driverId === driver.id) {
-                              setDriverId(null)
-                              setDriverState('idle')
-                            }
+                            setDriverSel((prev) => {
+                              const next = { ...prev }
+                              delete next[driver.id]
+                              return next
+                            })
                           }}
                           className="btn border border-status-danger/40 py-1.5 text-micro text-status-danger-ink hover:bg-status-danger/10"
                         >
@@ -1336,6 +1485,17 @@ export function MissionWizardScreen() {
                     {recap.kosher}
                   </pre>
                 </Section>
+                {recap.driverMessages.map(({ driver: d, body }) => (
+                  <Section
+                    key={d.id}
+                    title={`${t('meet.copyDriverMessage')} — ${d.name}`}
+                    action={<CopyButton value={body} />}
+                  >
+                    <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-field bg-surface-high p-3 text-micro text-content-secondary">
+                      {body}
+                    </pre>
+                  </Section>
+                ))}
               </>
             )}
           </div>

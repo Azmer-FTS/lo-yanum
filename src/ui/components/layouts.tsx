@@ -25,6 +25,7 @@ const COORDINATOR_NAV: NavItem[] = [
   { to: '/coordinator/farms', icon: 'farm', labelKey: 'nav.farms' },
   { to: '/coordinator/route', icon: 'route', labelKey: 'nav.route' },
   { to: '/coordinator/volunteers', icon: 'users', labelKey: 'nav.volunteers' },
+  { to: '/coordinator/drivers', icon: 'steering', labelKey: 'nav.drivers' },
   { to: '/coordinator/missions', icon: 'shield', labelKey: 'nav.missions' },
   { to: '/coordinator/incidents', icon: 'alert', labelKey: 'nav.incidents' },
 ]

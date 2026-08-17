@@ -205,7 +205,7 @@ export function rankDrivers(input: RankDriversInput): DriverScore[] {
   const busy = new Set(
     input.missions
       .filter((m) => overlaps(input.startAt, input.endAt, m.startAt, m.endAt))
-      .map((m) => m.driverId)
+      .flatMap((m) => m.drivers.map((dr) => dr.driverId))
       .filter((id): id is string => id !== null),
   )
 

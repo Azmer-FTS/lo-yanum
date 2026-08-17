@@ -24,15 +24,17 @@ import type {
   LatLng,
   Mission,
   MissionAssignment,
+  MissionDriver,
   MissionLeg,
   PhoneType,
   PresenceMark,
   PresenceSource,
   Session,
   Volunteer,
+  VolunteerAvailability,
   VolunteerStatus,
 } from './types'
-import { EMPTY_LEG } from './types'
+import { DEFAULT_AVAILABILITY, EMPTY_LEG } from './types'
 
 /**
  * In-memory store for the POC.
@@ -425,16 +427,27 @@ export interface VolunteerDraft {
   status: VolunteerStatus
   inactiveReason: string | null
   notes: string
+  /** G5.2 — licence / car / dual-hat flags. Default false. */
+  hasLicense?: boolean
+  hasCar?: boolean
+  canDrive?: boolean
+  /** G3.4 — slot preferences. Defaults to "whenever needed". */
+  availability?: VolunteerAvailability
 }
 
 export function createVolunteer(draft: VolunteerDraft): Volunteer {
   const volunteer: Volunteer = {
     id: nextId('vol'),
-    ...draft,
     guardsCount: 0,
     lastActivityAt: null,
+    hasLicense: false,
+    hasCar: false,
+    canDrive: false,
+    availability: { ...DEFAULT_AVAILABILITY },
+    ...draft,
   }
   data.volunteers = [volunteer, ...data.volunteers]
+  syncVolunteerDriver(volunteer)
   commit()
   return volunteer
 }
@@ -446,7 +459,95 @@ export function updateVolunteer(
   const index = data.volunteers.findIndex((v) => v.id === volunteerId)
   if (index === -1) return
   data.volunteers[index] = { ...data.volunteers[index], ...draft }
+  syncVolunteerDriver(data.volunteers[index])
   commit()
+}
+
+/**
+ * G5.2 — keep the dual hat honest: ONE human, two roster rows, one source of
+ * truth. While `canDrive` is true a linked Driver row exists and mirrors the
+ * volunteer's identity fields; when it goes false the row goes with it. The
+ * mirrored row keeps its own vehicle/seats/notes once created — those are
+ * driver facts, not volunteer facts.
+ */
+function syncVolunteerDriver(volunteer: Volunteer): void {
+  const linked = data.drivers.find((d) => d.volunteerId === volunteer.id)
+  if (volunteer.canDrive && !linked) {
+    data.drivers = [
+      ...data.drivers,
+      {
+        id: nextId('driver'),
+        name: volunteer.name,
+        phone: volunteer.phone,
+        // Vehicle description is the driver's to fill in; empty renders as
+        // the UI's "private car" fallback.
+        vehicle: '',
+        seats: 4,
+        locality: volunteer.locality,
+        photo: volunteer.photo,
+        availabilityNote: '',
+        notes: '',
+        volunteerId: volunteer.id,
+      },
+    ]
+  } else if (volunteer.canDrive && linked) {
+    linked.name = volunteer.name
+    linked.phone = volunteer.phone
+    linked.locality = volunteer.locality
+    linked.photo = volunteer.photo
+  } else if (!volunteer.canDrive && linked) {
+    data.drivers = data.drivers.filter((d) => d.id !== linked.id)
+  }
+}
+
+// --- G5.1: driver create/edit ----------------------------------------------
+
+export interface DriverDraft {
+  photo: string | null
+  name: string
+  phone: string
+  vehicle: string
+  seats: number
+  locality: string
+  availabilityNote: string
+  notes: string
+}
+
+export function createDriver(draft: DriverDraft): Driver {
+  const driver: Driver = { id: nextId('driver'), volunteerId: null, ...draft }
+  data.drivers = [driver, ...data.drivers]
+  commit()
+  return driver
+}
+
+export function updateDriver(driverId: string, draft: DriverDraft): void {
+  const index = data.drivers.findIndex((d) => d.id === driverId)
+  if (index === -1) return
+  data.drivers[index] = { ...data.drivers[index], ...draft }
+  // The mirror runs both ways for identity fields — the human is one.
+  const linkedVolunteerId = data.drivers[index].volunteerId
+  if (linkedVolunteerId) {
+    const volunteer = data.volunteers.find((v) => v.id === linkedVolunteerId)
+    if (volunteer) {
+      volunteer.name = draft.name
+      volunteer.phone = draft.phone
+      volunteer.locality = draft.locality
+      volunteer.photo = draft.photo
+    }
+  }
+  commit()
+}
+
+/** G5.3 — one driver confirming HIS car's passengers. */
+export function setMissionDriverConfirmed(
+  missionId: string,
+  driverId: string,
+  confirmed: boolean,
+): void {
+  withMission(missionId, (m) => {
+    const entry = m.drivers.find((d) => d.driverId === driverId)
+    if (entry) entry.confirmed = confirmed
+  })
 }
 
 // --- D4: farm visits -------------------------------------------------------
@@ -524,7 +625,8 @@ export interface MissionDraft {
   endAt: string
   /** In shortlist order. The first one carries the group phone by default. */
   volunteerIds: string[]
-  driverId: string | null
+  /** G5.3 — one entry per car; [] means no driver arranged. */
+  drivers?: MissionDriver[]
 }
 
 /**
@@ -568,7 +670,7 @@ export function createMission(draft: MissionDraft): Mission {
     endAt: draft.endAt,
     status: 'planned',
     assignments,
-    driverId: draft.driverId,
+    drivers: draft.drivers ?? [],
     arrivalConfirmedAt: null,
     endConfirmedAt: null,
     createdAt: iso(now()),
@@ -584,11 +686,15 @@ export function createMission(draft: MissionDraft): Mission {
 
 /** Bulk append from the CSV/XLSX import wizard (R5.4). */
 export function importVolunteers(drafts: VolunteerDraft[]): number {
-  const created = drafts.map((draft, i) => ({
+  const created: Volunteer[] = drafts.map((draft, i) => ({
     id: `${nextId('vol')}-${i}`,
-    ...draft,
     guardsCount: 0,
     lastActivityAt: null,
+    hasLicense: false,
+    hasCar: false,
+    canDrive: false,
+    availability: { ...DEFAULT_AVAILABILITY },
+    ...draft,
   }))
   data.volunteers = [...created, ...data.volunteers]
   commit()

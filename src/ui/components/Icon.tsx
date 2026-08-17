@@ -32,6 +32,7 @@ export type IconName =
   | 'food'
   | 'home'
   | 'car'
+  | 'steering'
   | 'plus'
   | 'search'
   | 'filter'
@@ -165,6 +166,13 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="m4 10.5 8-6.5 8 6.5" />
       <path d="M6 9.8V20h12V9.8" />
+    </>
+  ),
+  steering: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M3.2 10.5 9 12M14.9 12l5.9-1.5M12 15v6" />
     </>
   ),
   car: (

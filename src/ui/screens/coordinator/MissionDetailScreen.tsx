@@ -259,14 +259,8 @@ export function MissionDetailScreen() {
 
   if (!view) return <Navigate to="/coordinator/missions" replace />
 
-  const {
-    mission,
-    farm,
-    anchorPoint,
-    additionalAnchorPoints,
-    driver,
-    volunteers,
-  } = view
+  const { mission, farm, anchorPoint, additionalAnchorPoints, volunteers } =
+    view
   const assigned = volunteers.length
   const timeline = buildMissionTimeline(view, missionIncidents, t)
 
@@ -440,17 +434,52 @@ export function MissionDetailScreen() {
             </dl>
           </Section>
 
-<Section title={t('missions.driver')}>
-            {driver ? (
-              <>
-                <p className="muted mb-1">
-                  {driver.vehicle} · {driver.seats} {t('driver.seats')} ·{' '}
-                  {driver.locality}
-                </p>
-                <ContactActions name={driver.name} phone={driver.phone} />
-              </>
-            ) : (
+<Section title={t('driver.volunteerDrivers')}>
+            {/* G5.3 — one block per car. Confirmation is per driver: with two
+                cars on the road, "the transport is confirmed" is two facts. */}
+            {view.drivers.length === 0 ? (
               <p className="muted">{t('missions.noDriver')}</p>
+            ) : (
+              <ul className="flex flex-col gap-3">
+                {view.drivers.map(({ driver: d, passengers, confirmed }) => (
+                  <li
+                    key={d.id}
+                    className="rounded-field border border-edge-subtle p-3"
+                  >
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <span
+                        className={`chip ${
+                          confirmed
+                            ? 'bg-status-success/15 text-status-success-ink'
+                            : 'bg-status-warn/15 text-status-warn-ink'
+                        }`}
+                      >
+                        <Icon name={confirmed ? 'check' : 'clock'} size={10} />
+                        {t(
+                          confirmed
+                            ? 'wizard.state_confirmed'
+                            : 'wizard.state_pending',
+                        )}
+                      </span>
+                      <span className="chip bg-surface-high text-content-secondary">
+                        <Icon name="car" size={10} />
+                        <span className="numeric">{d.seats}</span>
+                        {t('driver.seats')}
+                      </span>
+                    </div>
+                    <p className="muted mb-1">
+                      {d.vehicle || t('driver.privateCar')} · {d.locality}
+                    </p>
+                    <ContactActions name={d.name} phone={d.phone} />
+                    {passengers.length > 0 && (
+                      <p className="muted mt-1.5">
+                        {t('driver.hisPassengers')}:{' '}
+                        {passengers.map((v) => v.name).join(', ')}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
             )}
           </Section>
 

@@ -35,9 +35,19 @@ export function DriverTripScreen() {
   const view = useCoreValue(getMyActiveMissionView)
   const [leg, setLeg] = useState<MissionLeg>('outbound')
 
-  const rows = useCoreValue(() =>
+  const allRows = useCoreValue(() =>
     view ? getPresenceRows(view.mission, leg) : [],
   )
+  // G5.3 — a driver marks HIS OWN passengers, nobody else's: with two cars
+  // on one night, the other list is the other driver's responsibility.
+  const myPassengerIds = new Set(
+    view?.mission.drivers.find((d) => d.driverId === driver?.id)
+      ?.passengerVolunteerIds ?? [],
+  )
+  const rows =
+    myPassengerIds.size > 0
+      ? allRows.filter((r) => myPassengerIds.has(r.volunteer.id))
+      : allRows
 
   if (!view || !driver) {
     return (
