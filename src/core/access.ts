@@ -434,7 +434,12 @@ export function getAgendaEvents(from: Date, to: Date): AgendaEvent[] {
       at: view.mission.startAt,
       endAt: view.mission.endAt,
       title: view.farm.name,
-      subtitle: view.anchorPoint.name,
+      // G4.2 — the agenda carries the recruiting gauge too: an amber block
+      // labelled 2/5 says "not staffed yet" without opening anything.
+      subtitle:
+        view.mission.status === 'recruiting'
+          ? `${view.mission.assignments.length}/${view.mission.requiredVolunteers} · ${view.anchorPoint.name}`
+          : view.anchorPoint.name,
       href: `/coordinator/missions/${view.mission.id}`,
       missionStatus: view.mission.status,
       done: false,
@@ -655,6 +660,26 @@ export function getAlerts(): DashboardAlert[] {
           roleKey: 'volunteers.groupPhoneHolder',
         },
       ].filter(Boolean) as DashboardAlert['contacts'],
+    })
+  }
+
+  // G4.3 — guards still recruiting, urgency growing as the night nears.
+  // A POC of the reminder loop: real push notifications need a backend
+  // (Lots 1+); until then the dashboard's alert centre IS the reminder.
+  const nowMs = now().getTime()
+  for (const mission of getVisibleMissions()) {
+    if (mission.status !== 'recruiting') continue
+    const hoursLeft = (new Date(mission.startAt).getTime() - nowMs) / 3_600_000
+    alerts.push({
+      id: `alert-recruit-${mission.id}`,
+      kind: 'recruiting',
+      farmName: farmName(mission.farmId),
+      at: mission.startAt,
+      detail: `${mission.assignments.length}/${mission.requiredVolunteers}`,
+      href: `/coordinator/missions/new?resume=${mission.id}`,
+      // <6h outranks a mismatch; <24h sits between; further out stays low.
+      weight: hoursLeft < 6 ? 9 : hoursLeft < 24 ? 7 : 4,
+      contacts: [],
     })
   }
 

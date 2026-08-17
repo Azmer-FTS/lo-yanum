@@ -12,6 +12,8 @@ import {
   buildSmartphoneMessage,
   createAnchorPoint,
   createMission,
+  getMission,
+  updateMissionStaffing,
   deleteAnchorPoint,
   formatDate,
   formatTime,
@@ -56,6 +58,7 @@ import {
   Callout,
   CopyButton,
   EmptyState,
+  Modal,
   Section,
 } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
@@ -357,6 +360,10 @@ export function MissionWizardScreen() {
    * silently snapping the choice back to point 1.
    */
   useEffect(() => {
+    if (skipReseedRef.current) {
+      skipReseedRef.current = false
+      return
+    }
     setAnchorIds(anchors.length > 0 ? [anchors[0].id] : [])
     setOpenAnchorId(null)
     setDeleteBlocked(null)
@@ -447,6 +454,11 @@ export function MissionWizardScreen() {
   const [declinedDrivers, setDeclinedDrivers] = useState<string[]>([])
 
   const [createdMissionId, setCreatedMissionId] = useState<string | null>(null)
+  // G4.1 — the 3-of-5 dialog.
+  const [showPartialDialog, setShowPartialDialog] = useState(false)
+  // G4.2 — reopening a recruiting mission pre-fills the whole wizard.
+  const resumeMissionId = params.get('resume')
+  const skipReseedRef = useRef(false)
 
   const destination = anchor?.position ?? farm?.position ?? null
 
@@ -688,10 +700,23 @@ export function MissionWizardScreen() {
 
   const canLeaveStep1 = farm !== null && anchor !== null && required > 0
   const canLeaveStep2 = shortlist.length > 0
-  const canLeaveStep3 = confirmed.length >= required
 
   const finish = () => {
     if (!farm || !anchor) return
+    if (resumeMissionId) {
+      // G4.2 — completing a draft: the mission already exists, its team is
+      // replaced (marks kept) and the amber status clears.
+      updateMissionStaffing(
+        resumeMissionId,
+        confirmed.map((v) => v.id),
+        missionDrivers,
+        'planned',
+        required,
+      )
+      setCreatedMissionId(resumeMissionId)
+      setStep(5)
+      return
+    }
     const mission = createMission({
       farmId: farm.id,
       anchorPointId: anchor.id,
@@ -700,11 +725,82 @@ export function MissionWizardScreen() {
       endAt,
       volunteerIds: confirmed.map((v) => v.id),
       drivers: missionDrivers,
+      requiredVolunteers: required,
       ...meet,
     })
     setCreatedMissionId(mission.id)
     setStep(5)
   }
+
+  /**
+   * G4.1a — "המשך להמתין": the guard is SAVED as it stands, amber, and the
+   * coordinator is free to go do something else. Recruitment continues from
+   * anywhere the mission shows.
+   */
+  const finishAsRecruiting = () => {
+    if (!farm || !anchor) return
+    if (resumeMissionId) {
+      updateMissionStaffing(
+        resumeMissionId,
+        confirmed.map((v) => v.id),
+        missionDrivers,
+        'recruiting',
+        required,
+      )
+    } else {
+      createMission({
+        farmId: farm.id,
+        anchorPointId: anchor.id,
+        additionalAnchorPointIds: anchorIds.slice(1),
+        startAt,
+        endAt,
+        volunteerIds: confirmed.map((v) => v.id),
+        drivers: missionDrivers,
+        requiredVolunteers: required,
+        status: 'recruiting',
+        ...meet,
+      })
+    }
+    navigate('/coordinator/missions')
+  }
+
+  // G4.2 — pre-fill everything from the mission being resumed. Runs once.
+  useEffect(() => {
+    if (!resumeMissionId) return
+    const m = getMission(resumeMissionId)
+    if (!m) return
+    skipReseedRef.current = true
+    preComposedRef.current = true
+    setFarmId(m.farmId)
+    setAnchorIds([m.anchorPointId, ...m.additionalAnchorPointIds])
+    const start = new Date(m.startAt)
+    const end = new Date(m.endAt)
+    setDayKey(localDayKey(start))
+    setStartHour(
+      `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
+    )
+    setEndHour(
+      `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`,
+    )
+    setRequired(m.requiredVolunteers)
+    setShortlist(m.assignments.map((a) => a.volunteerId))
+    setResponses(
+      Object.fromEntries(
+        m.assignments.map((a) => [a.volunteerId, 'confirmed' as const]),
+      ),
+    )
+    setMeet({
+      pickupPoint: m.pickupPoint,
+      dropoffPoint: m.dropoffPoint,
+      returnPickupPoint: m.returnPickupPoint,
+      returnDropoffPoint: m.returnDropoffPoint,
+    })
+    setDriverSel(
+      Object.fromEntries(m.drivers.map((d) => [d.driverId, 'confirmed' as const])),
+    )
+    setStep(2)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumeMissionId])
 
   // --- Recap messages ------------------------------------------------------
 
@@ -727,6 +823,7 @@ export function MissionWizardScreen() {
         startAt,
         endAt,
         status: 'planned' as const,
+        requiredVolunteers: required,
         assignments: [],
         drivers: missionDrivers,
         arrivalConfirmedAt: null,
@@ -1209,6 +1306,18 @@ export function MissionWizardScreen() {
                     <span className="min-w-0 flex-1 truncate text-caption text-content-primary">
                       {v.name}
                     </span>
+                    {/* G4.1b — after a phone round, who answered is visible
+                        right here, so "replace candidates" lands on a marked
+                        list rather than a memory test. */}
+                    {responses[v.id] === 'confirmed' ? (
+                      <span className="chip bg-status-success/15 text-status-success-ink">
+                        <Icon name="check" size={10} />
+                      </span>
+                    ) : responses[v.id] === 'pending' ? (
+                      <span className="chip bg-status-warn/15 text-status-warn-ink">
+                        {t('wizard.noAnswerYet')}
+                      </span>
+                    ) : null}
                     <button
                       type="button"
                       aria-label={t('common.remove')}
@@ -1668,6 +1777,68 @@ export function MissionWizardScreen() {
         </div>
       )}
 
+      {/* G4.1 — the 3-of-5 choice. Three doors, none of them a wall. */}
+      {showPartialDialog && (
+        <Modal
+          title={t('wizard.partialTitle', {
+            confirmed: confirmed.length,
+            required,
+          })}
+          onClose={() => setShowPartialDialog(false)}
+        >
+          <p className="muted mb-4">{t('wizard.partialBody')}</p>
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              className="btn-secondary justify-start"
+              onClick={finishAsRecruiting}
+            >
+              <Icon name="clock" size={15} />
+              <span className="text-start">
+                {t('wizard.partialWait')}
+                <span className="block text-micro font-normal text-content-muted">
+                  {t('wizard.partialWaitHint')}
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              className="btn-secondary justify-start"
+              onClick={() => {
+                setShowPartialDialog(false)
+                setStep(2)
+              }}
+            >
+              <Icon name="users" size={15} />
+              <span className="text-start">
+                {t('wizard.partialReplace')}
+                <span className="block text-micro font-normal text-content-muted">
+                  {t('wizard.partialReplaceHint')}
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              className="btn-primary justify-start"
+              onClick={() => {
+                setShowPartialDialog(false)
+                setStep(4)
+              }}
+            >
+              <Icon name="check" size={15} />
+              <span className="text-start">
+                {t('wizard.partialProceed')}
+                <span className="block text-micro font-normal text-content-muted">
+                  {t('wizard.partialProceedHint', {
+                    confirmed: confirmed.length,
+                  })}
+                </span>
+              </span>
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {/* Sticky footer navigation, offset above the sticky demo toolbar. */}
       {step < 5 && (
         <div className="sticky bottom-[var(--shell-bottom)] z-30 -mx-4 mt-5 flex items-center gap-2 border-t border-edge-subtle bg-surface-overlay/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
@@ -1701,10 +1872,17 @@ export function MissionWizardScreen() {
               className="btn-primary"
               disabled={
                 (step === 1 && !canLeaveStep1) ||
-                (step === 2 && !canLeaveStep2) ||
-                (step === 3 && !canLeaveStep3)
+                (step === 2 && !canLeaveStep2)
               }
-              onClick={() => setStep((s) => (s + 1) as Step)}
+              onClick={() => {
+                // G4.1 — "next" is ALWAYS active on the phone-round step. An
+                // incomplete gauge opens a choice, not a wall.
+                if (step === 3 && confirmed.length < required) {
+                  setShowPartialDialog(true)
+                  return
+                }
+                setStep((s) => (s + 1) as Step)
+              }}
             >
               {t('common.next')}
               <Icon name="chevron" size={15} className="rtl:-scale-x-100" />

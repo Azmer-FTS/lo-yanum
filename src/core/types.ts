@@ -236,6 +236,13 @@ export interface MissionDriver {
 // ---------------------------------------------------------------------------
 
 export type MissionStatus =
+  /**
+   * G4 — the guard exists but its team does not, yet. A coordinator can
+   * always leave the wizard with a partial roster and keep recruiting from
+   * anywhere the mission shows; the status is what makes that state VISIBLE
+   * instead of a silent gap.
+   */
+  | 'recruiting'
   | 'planned'
   | 'in_progress'
   | 'completed'
@@ -336,6 +343,8 @@ export interface Mission {
   /** ISO datetime of the expected morning pick-up. */
   endAt: string
   status: MissionStatus
+  /** G4 — how many volunteers this night NEEDS; the gauge's denominator. */
+  requiredVolunteers: number
   assignments: MissionAssignment[]
   /**
    * G5.3 — the night's transport, one entry per car. Empty means no driver
@@ -465,6 +474,8 @@ export type AlertKind =
   | 'urgent_incident'
   | 'return_not_confirmed'
   | 'presence_mismatch'
+  /** G4.3 — a guard still recruiting, urgency growing as the night nears. */
+  | 'recruiting'
 
 export interface DashboardAlert {
   id: string

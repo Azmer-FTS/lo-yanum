@@ -29,6 +29,7 @@ import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
 const STATUS_TOKEN: Record<MissionStatus, string> = {
+  recruiting: '--status-warn',
   planned: '--status-info',
   in_progress: '--status-success',
   completed: '--text-muted',
@@ -200,6 +201,14 @@ export function MissionsScreen() {
                       {farm.name}
                     </span>
                     <MissionStatusChip status={mission.status} />
+                    {mission.status === 'recruiting' && (
+                      <span className="chip bg-status-warn/15 text-status-warn-ink">
+                        <span className="numeric ltr-nums">
+                          {mission.assignments.length}/
+                          {mission.requiredVolunteers}
+                        </span>
+                      </span>
+                    )}
                     {mismatch && (
                       /* F4 — a driver/group disagreement is a critical state. */
                       <span className="chip-critical">

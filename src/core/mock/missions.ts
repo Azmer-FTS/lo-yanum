@@ -64,6 +64,7 @@ export const MISSIONS: Mission[] = [
     returnDropoffPoint: null,
     startAt: hoursFromNow(-2),
     endAt: hoursFromNow(6),
+    requiredVolunteers: 3,
     status: 'in_progress',
     assignments: [
       who('vol-001', true, leg('present', 'present', 'present')),
@@ -97,6 +98,7 @@ export const MISSIONS: Mission[] = [
     returnDropoffPoint: null,
     startAt: hoursFromNow(4),
     endAt: hoursFromNow(12),
+    requiredVolunteers: 3,
     status: 'planned',
     assignments: [
       who('vol-007', true),
@@ -135,6 +137,7 @@ export const MISSIONS: Mission[] = [
     returnDropoffPoint: null,
     startAt: hoursFromNow(-30),
     endAt: hoursFromNow(-22),
+    requiredVolunteers: 3,
     status: 'return_not_confirmed',
     assignments: [
       who('vol-020', true, leg('present', 'present', 'present')),
@@ -168,6 +171,7 @@ export const MISSIONS: Mission[] = [
     returnDropoffPoint: null,
     startAt: hoursFromNow(-54),
     endAt: hoursFromNow(-46),
+    requiredVolunteers: 2,
     status: 'completed',
     assignments: [
       who(
@@ -203,6 +207,7 @@ export const MISSIONS: Mission[] = [
     returnPickupPoint: null,
     returnDropoffPoint: null,
     ...future(2),
+    requiredVolunteers: 2,
     status: 'planned',
     assignments: [who('vol-016', true), who('vol-017', false)],
     drivers: [
@@ -227,6 +232,7 @@ export const MISSIONS: Mission[] = [
     returnPickupPoint: null,
     returnDropoffPoint: null,
     ...future(4),
+    requiredVolunteers: 3,
     status: 'planned',
     assignments: [
       who('vol-022', true),

@@ -78,6 +78,11 @@ const ALERT_STYLE: Record<
   DashboardAlert['kind'],
   { icon: string; chip: string; iconName: IconName }
 > = {
+  recruiting: {
+    icon: 'bg-status-warn/15 text-status-warn-ink',
+    chip: 'bg-status-warn/15 text-status-warn-ink',
+    iconName: 'users',
+  },
   urgent_incident: {
     icon: 'bg-critical text-content-on-accent',
     chip: 'chip-critical',
@@ -99,14 +104,22 @@ function AlertCard({ alert }: { alert: DashboardAlert }) {
   const { t } = useTranslation()
   const locale = useLocale()
   const style = ALERT_STYLE[alert.kind]
-  const urgent = alert.kind === 'urgent_incident'
+  // G4.3 — a recruiting guard ESCALATES: amber while the night is far,
+  // critical orange inside six hours (weight 9 is set by access.ts). The
+  // urgent-incident treatment is reused so "loud" stays one language.
+  const critical =
+    alert.kind === 'urgent_incident' ||
+    (alert.kind === 'recruiting' && alert.weight >= 9)
+  const urgent = critical
 
   const detail =
     alert.kind === 'presence_mismatch'
       ? t('alerts.mismatchDetail', { name: alert.detail })
       : alert.kind === 'return_not_confirmed'
         ? t('alerts.returnDetail')
-        : alert.detail
+        : alert.kind === 'recruiting'
+          ? t('alerts.recruitingDetail', { detail: alert.detail })
+          : alert.detail
 
   return (
     <li
@@ -128,7 +141,15 @@ function AlertCard({ alert }: { alert: DashboardAlert }) {
             <span className="text-caption font-bold text-content-primary">
               {t(`alerts.${alert.kind}`)}
             </span>
-            {urgent ? (
+            {alert.kind === 'recruiting' ? (
+              <span
+                className={
+                  critical ? 'chip-critical' : `chip ${style.chip}`
+                }
+              >
+                <span className="numeric ltr-nums">{alert.detail}</span>
+              </span>
+            ) : urgent ? (
               <span className={style.chip}>
                 <span className="live-dot" />
                 {t('severity.urgent')}
@@ -174,7 +195,11 @@ function AlertCard({ alert }: { alert: DashboardAlert }) {
               to={alert.href}
               className="ms-auto inline-flex items-center gap-1 text-micro font-semibold text-accent-ink hover:underline"
             >
-              {t('common.details')}
+              {t(
+                alert.kind === 'recruiting'
+                  ? 'alerts.completeRecruitment'
+                  : 'common.details',
+              )}
               <Icon name="chevron" size={12} className="rtl:-scale-x-100" />
             </Link>
           </div>
@@ -227,6 +252,7 @@ function Kpi({
 // --- Agenda widget ---------------------------------------------------------
 
 const EVENT_DOT: Record<MissionStatus | 'visit', string> = {
+  recruiting: 'bg-status-warn',
   planned: 'bg-status-info',
   in_progress: 'bg-status-success',
   completed: 'bg-content-muted',

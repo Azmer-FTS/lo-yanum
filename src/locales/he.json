@@ -127,6 +127,7 @@
     "inactive": "לא פעיל"
   },
   "missionStatus": {
+    "recruiting": "בגיוס",
     "planned": "מתוכננת",
     "in_progress": "בביצוע",
     "completed": "הושלמה",
@@ -177,7 +178,10 @@
     "presence_mismatch": "אי־התאמה בדיווח נוכחות",
     "mismatchDetail": "הנהג ומחזיק טלפון הקבוצה דיווחו הפוך על {{name}}",
     "callNow": "חיוג מיידי",
-    "needsAction": "דורש טיפול"
+    "needsAction": "דורש טיפול",
+    "recruiting": "משמרת בגיוס",
+    "recruitingDetail": "אישרו {{detail}} — המשמרת עדיין לא מאוישת",
+    "completeRecruitment": "השלם גיוס"
   },
   "farms": {
     "title": "חוות",
@@ -795,6 +799,17 @@
     "proposalHint": "הדירוג לפי מרחק מהיישוב לחווה, מספר שמירות קודמות ושותפות לישיבה. הוספת מועמד מעדכנת מיד את הניקוד של השאר.",
     "autoFill": "מילוי אוטומטי",
     "startOver": "התחל מאפס",
+    "partialTitle": "רק {{confirmed}} מתוך {{required}} אישרו. מה תרצה לעשות?",
+    "partialBody": "אפשר להמשיך לגייס מאוחר יותר — המשמרת לא תלך לאיבוד.",
+    "partialWait": "המשך להמתין",
+    "partialWaitHint": "המשמרת תישמר בסטטוס \"בגיוס\" ואפשר לחזור אליה מכל מקום",
+    "partialReplace": "החלף מועמדים",
+    "partialReplaceHint": "חזרה לרשימת המועמדים — מי שלא ענה מסומן",
+    "partialProceed": "המשך כך",
+    "partialProceedHint": "ממשיכים עם {{confirmed}} שאישרו",
+    "noAnswerYet": "לא ענה עדיין",
+    "resumeRecruitment": "השלם גיוס",
+    "recruitingGauge": "{{confirmed}} מתוך {{required}} אישרו",
     "searchPlaceholder": "חיפוש לפי שם, ישיבה או יישוב",
     "filterOrg": "סינון לפי ארגון",
     "allOrgs": "כל הארגונים",

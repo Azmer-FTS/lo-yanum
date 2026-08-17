@@ -113,6 +113,7 @@ export function FarmStatusDot({ status }: { status: FarmStatus }) {
  * coordinator must never scroll past.
  */
 const MISSION_STATUS_CLASS: Record<MissionStatus, string> = {
+  recruiting: 'bg-status-warn/15 text-status-warn-ink',
   planned: 'bg-status-info/15 text-status-info-ink',
   in_progress: 'bg-status-success/15 text-status-success-ink',
   completed: 'bg-content-muted/15 text-content-muted',

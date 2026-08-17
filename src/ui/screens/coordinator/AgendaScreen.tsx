@@ -46,6 +46,8 @@ type View = 'week' | 'month'
 
 /** Event colour, resolved from the same status tokens the rest of the app uses. */
 const MISSION_TONE: Record<MissionStatus, string> = {
+  // G4 — a guard still being staffed reads amber wherever it appears.
+  recruiting: 'border-s-status-warn bg-status-warn/10 text-status-warn-ink',
   planned: 'border-s-status-info bg-status-info/10 text-status-info-ink',
   in_progress:
     'border-s-status-success bg-status-success/10 text-status-success-ink',
@@ -59,6 +61,7 @@ const VISIT_TONE =
   'border-s-status-violet bg-status-violet/10 text-status-violet-ink'
 
 const DOT_TONE: Record<MissionStatus, string> = {
+  recruiting: 'bg-status-warn',
   planned: 'bg-status-info',
   in_progress: 'bg-status-success',
   completed: 'bg-content-muted',

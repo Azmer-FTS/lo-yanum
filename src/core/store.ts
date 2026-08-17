@@ -538,6 +538,41 @@ export function updateDriver(driverId: string, draft: DriverDraft): void {
   commit()
 }
 
+/**
+ * G4 — resuming a recruitment: the mission's team is REPLACED with the new
+ * roster, keeping the presence marks of anyone who survived the reshuffle.
+ * Also the path that turns 'recruiting' into 'planned' when the gauge fills.
+ */
+export function updateMissionStaffing(
+  missionId: string,
+  volunteerIds: string[],
+  drivers: MissionDriver[],
+  status: 'planned' | 'recruiting',
+  requiredVolunteers?: number,
+): void {
+  withMission(missionId, (m) => {
+    const chosen = volunteerIds
+      .map((id) => data.volunteers.find((v) => v.id === id))
+      .filter((v): v is Volunteer => v !== undefined)
+    const holderId =
+      chosen.find((v) => v.phoneType === 'smartphone')?.id ?? chosen[0]?.id
+    m.assignments = chosen.map((v) => {
+      const existing = m.assignments.find((a) => a.volunteerId === v.id)
+      return {
+        volunteerId: v.id,
+        isGroupPhone: v.id === holderId,
+        outbound: existing?.outbound ?? { ...EMPTY_LEG },
+        inbound: existing?.inbound ?? { ...EMPTY_LEG },
+      }
+    })
+    m.drivers = drivers
+    m.status = status
+    if (requiredVolunteers !== undefined) {
+      m.requiredVolunteers = requiredVolunteers
+    }
+  })
+}
+
 /** G5.3 — one driver confirming HIS car's passengers. */
 export function setMissionDriverConfirmed(
   missionId: string,
@@ -627,6 +662,10 @@ export interface MissionDraft {
   volunteerIds: string[]
   /** G5.3 — one entry per car; [] means no driver arranged. */
   drivers?: MissionDriver[]
+  /** G4 — the requested team size (gauge denominator). */
+  requiredVolunteers?: number
+  /** G4 — 'recruiting' when leaving the wizard with a partial team. */
+  status?: 'planned' | 'recruiting'
 }
 
 /**
@@ -668,9 +707,10 @@ export function createMission(draft: MissionDraft): Mission {
     returnDropoffPoint: draft.returnDropoffPoint ?? null,
     startAt: draft.startAt,
     endAt: draft.endAt,
-    status: 'planned',
+    status: draft.status ?? 'planned',
     assignments,
     drivers: draft.drivers ?? [],
+    requiredVolunteers: draft.requiredVolunteers ?? assignments.length,
     arrivalConfirmedAt: null,
     endConfirmedAt: null,
     createdAt: iso(now()),

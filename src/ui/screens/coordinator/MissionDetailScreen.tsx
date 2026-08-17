@@ -283,6 +283,27 @@ export function MissionDetailScreen() {
         actions={<MissionStatusChip status={mission.status} />}
       />
 
+      {/* G4.2 — a recruiting guard says so loudly, shows its gauge, and
+          offers the way back into the wizard, pre-filled. */}
+      {mission.status === 'recruiting' && (
+        <div className="mb-4">
+          <Callout tone="warn" title={t('alerts.recruiting')}>
+            <span className="flex flex-wrap items-center gap-3">
+              {t('wizard.recruitingGauge', {
+                confirmed: mission.assignments.length,
+                required: mission.requiredVolunteers,
+              })}
+              <Link
+                to={`/coordinator/missions/new?resume=${mission.id}`}
+                className="btn-primary py-1.5 text-micro"
+              >
+                {t('wizard.resumeRecruitment')}
+              </Link>
+            </span>
+          </Callout>
+        </div>
+      )}
+
       {mission.status === 'return_not_confirmed' && (
         <div className="mb-4">
           <Callout tone="danger" title={t('alerts.return_not_confirmed')}>

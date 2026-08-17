@@ -54,6 +54,7 @@ export {
   updateFarmVisit,
   deleteFarmVisit,
   createMission,
+  updateMissionStaffing,
 } from './store'
 export type {
   NewIncidentInput,
