@@ -45,7 +45,42 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **Lot 0.9 complete, pushed and live.** Branch `main`.
+State: **Lot 0.10 IN PROGRESS — 8 of 14 sections done, one commit each.**
+Branch `main`, NOT yet pushed (deploy happens at G12).
+
+> **LOT 0.10 RESUME POINT.** The lot's full spec is the user prompt titled
+> "LOT 0.10 (VERSION FINALE UNIQUE)"; its section order is
+> G0 → G2 → G1 → G8 → G5 → G3 → G4 → G6 → **G9 → G7 → G10 → G11 → G12 → G13**.
+>
+> DONE (each is one commit, in git log order): G0 (עמדת שמירה rename +
+> dunams), G2 (PinMap + AutocompleteField + farm-form audit), G1 (FarmZone
+> model/editor/tokens `--zone-*`), G8 (Mission pickup/dropoff points, 'car'
+> marker, meet.tsx, buildDriverMessage), G5 (Mission.drivers[] replaces
+> driverId, DriversScreen + DriverFormModal, dual-hat volunteerId link,
+> capacity-sorted wizard step 4), G3 (pre-composed step 2, search + org
+> filter, virtualised candidate list, availability soft-scoring in
+> dispatch.ts), G4 ('recruiting' MissionStatus + requiredVolunteers,
+> 3-of-5 dialog, ?resume= wizard pre-fill, updateMissionStaffing,
+> escalating dashboard alerts), G6 (GeneralMeeting object/modal, 3-type
+> agenda + chooser, day view, visit/meeting drag-and-drop — guards
+> deliberately not draggable).
+>
+> REMAINING: G9 (planner↔agenda bridge: tour object, קבע פגישה, "היום
+> שלי" itinerary block), G7 (full-page window-virtualised tables + sticky
+> headers + volunteer columns + display-scale KPIs — replaces F5.5 for the
+> BIG tables only), G10 (templates.ts source of truth + הורד תבנית xlsx
+> generator + farms/drivers import with Waze-link parsing + מיקום חסר
+> badge), G11 (iPad 1032×1376 / 1376×1032 + iPhone 402×874 perfection,
+> safe areas), G12 (A1–A30 re-run + NEW A31–A44 + light/dark captures +
+> full ETAT rewrite + deploy), G13 (tag `poc-final` + frozen copy at
+> /poc/ + immutability rule).
+>
+> Verification note for G12: `bun run accept` was already adapted (driver
+> scoping via drivers[], three agenda kinds); `bun run wizard` passes with
+> the pre-composition flow. The G4.3 note "real push needs a backend
+> (Lots 1+)" must survive into the final ETAT. A41's simple-version
+> documentation: guards don't drag by design; visits/meetings drag on
+> desktop, and each modal's date field is the mobile move.
 
 > **Deployed and verified.** The first two attempts failed on `deploy-pages`
 > with `HTTP 503` while githubstatus.com had Actions and API Requests at *major
