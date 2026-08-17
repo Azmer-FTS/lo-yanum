@@ -365,18 +365,20 @@ export function AnchorMap({
         )}
       </div>
 
-      {/* G7bis.1 — one legend stack: what the point shapes mean, then what the
-          painted ground means. */}
-      <div className="absolute bottom-16 end-3 z-10 flex flex-col gap-1.5 sm:bottom-3 sm:end-auto sm:start-3">
+      {/* One bottom overlay for the legends AND the banner: stacked in a
+          column so the legend can never slide behind the banner, whose height
+          varies with the viewport (it wraps to three lines at 402 px). */}
+      <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 flex flex-col items-end gap-2 sm:items-start">
+        {/* G7bis.1 — one legend stack: what the point shapes mean, then what
+            the painted ground means. */}
         <PointLegend showFarm showPost showMeet={false} />
         <ZoneLegend zones={zones} />
-      </div>
 
-      {/* The control sits ON the map, because the map is what it is about. The
-          empty case is louder on purpose: with no points yet, this banner IS
-          the only route forward. */}
-      {(onCreate || drawing) && (
-        <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10">
+        {/* The control sits ON the map, because the map is what it is about.
+            The empty case is louder on purpose: with no points yet, this
+            banner IS the only route forward. */}
+        {(onCreate || drawing) && (
+          <div className="w-full self-stretch">
           <div
             className={`pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card px-3.5 py-2.5 backdrop-blur ${
               active || empty
@@ -461,8 +463,9 @@ export function AnchorMap({
               )
             )}
           </div>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

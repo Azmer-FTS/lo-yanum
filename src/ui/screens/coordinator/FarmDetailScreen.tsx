@@ -37,6 +37,7 @@ import {
   readStatusColor,
 } from '../../components/badges'
 import {
+  CollapsibleSection,
   EmptyState,
   KeyValue,
   PageHeader,
@@ -132,10 +133,10 @@ function FarmFacts({ farm }: { farm: Farm }) {
 
   return (
     /* F5.2 — `sm:` is a VIEWPORT query, not a container one: two columns are
-       right when these facts have the page, and cramped in the 38 % side panel
-       they now live in beside the map. One column from `lg` up, two again only
-       once the panel itself is genuinely wide. */
-    <dl className="grid gap-x-5 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
+       right when these facts have the page (below `xl` they do), and cramped
+       in the 40 % side column they live in from `xl` up (G7bis.3). Two again
+       only at `2xl`, once that column is genuinely wide. */
+    <dl className="grid gap-x-5 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
       <KeyValue label={t('farms.filterType')} value={t(`farmType.${farm.type}`)} />
       <KeyValue label={t('volunteers.locality')} value={farm.locality} />
       <KeyValue
@@ -168,6 +169,24 @@ function FarmFacts({ farm }: { farm: Farm }) {
   )
 }
 
+/**
+ * G7bis.3 — the compact identity card: where the farm stands in the pipeline,
+ * then the facts. Rendered twice (main column below `xl`, side column from
+ * `xl`) because the mobile order is "map, identity, everything else" and no
+ * grid can interleave two wrapper columns.
+ */
+function FarmIdentity({ farm }: { farm: Farm }) {
+  const { t } = useTranslation()
+  return (
+    <Section title={t('common.details')} flush>
+      <div className="mb-3 border-b border-edge-subtle pb-3">
+        <StatusStepper status={farm.status} />
+      </div>
+      <FarmFacts farm={farm} />
+    </Section>
+  )
+}
+
 export function FarmDetailScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -187,6 +206,23 @@ export function FarmDetailScreen() {
   const [newVisit, setNewVisit] = useState(false)
   const [editVisitId, setEditVisitId] = useState<string | null>(null)
   const [selectedAnchorId, setSelectedAnchorId] = useState<string | null>(null)
+
+  // G7bis.3 — the secondary blocks open by default only where two columns
+  // exist to absorb them; on one narrow column they start folded. Read once:
+  // resizing mid-visit should not re-fold what the user arranged.
+  const [wideDefault] = useState(() =>
+    window.matchMedia('(min-width: 1280px)').matches,
+  )
+  // The map is collapsible on the one-column layouts (open by default), and
+  // simply always there from `xl` up.
+  const [mapOpen, setMapOpen] = useState(
+    () => sessionStorage.getItem('farm-detail:map') !== '0',
+  )
+  const toggleMap = () =>
+    setMapOpen((v) => {
+      sessionStorage.setItem('farm-detail:map', v ? '0' : '1')
+      return !v
+    })
 
   if (!farm) return <Navigate to="/coordinator/farms" replace />
 
@@ -260,24 +296,69 @@ export function FarmDetailScreen() {
         }
       />
 
-      <Section title={t('farms.pipeline')} className="mb-4">
-        <StatusStepper status={farm.status} />
-      </Section>
-
-      {/* F6.1 — THE MAP IS THE INSTRUMENT HERE TOO, AND IT IS BIG.
-          It used to be a 3/5 column at 32 rem: large enough to look at, too
-          small to work in, and completely inert — the anchor points were drawn
-          on it but only editable through a separate form two clicks away. It
-          now takes the app's map-first gabarit (geography on the PHYSICAL left,
-          decision 34) at full column height, and it is the same editable
-          surface the wizard uses: click to drop a point, drag to move one.
-          The facts and the anchor-point list sit beside it, because they are
-          what the map is about. */}
-      <div className="mb-4 flex flex-col gap-4 lg:h-[34rem] lg:flex-row-reverse lg:rtl:flex-row">
-        <div className="order-2 flex min-w-0 flex-col gap-4 lg:order-none lg:w-[38%] lg:overflow-y-auto lg:pe-1">
-          <Section title={t('common.details')} flush>
-            <FarmFacts farm={farm} />
+      {/* G7bis.3 — A WORKING PAGE, NOT A MOSAIC.
+          Two columns from `xl` (1280 — an iPad PORTRAIT is 1032 and must stay
+          one column): the 60 % main track is what the coordinator works WITH —
+          the big editable map, the guard posts it draws, the guards, the
+          incidents. The 40 % track is what they look things up IN — identity,
+          contacts, and the reference blocks, which fold. `min-w-0` on both
+          tracks is load-bearing (see bun run layout's history with this page). */}
+      <div className="grid items-start gap-x-5 gap-y-4 xl:grid-cols-[3fr_2fr]">
+        <div className="flex min-w-0 flex-col gap-4">
+          {/* F6.1 / G7bis.3 — THE MAP IS THE INSTRUMENT, AND NOW IT IS BIG.
+              Same editable surface the wizard uses (click to drop a guard
+              post, drag to move one, draw zones), at a working height and one
+              button away from the whole viewport (G7bis.2). Collapsible on the
+              one-column layouts so the page can become a list when the errand
+              is not geographic — open by default, because it usually is. */}
+          <Section
+            title={t('map.title')}
+            flush
+            bare
+            action={
+              <button
+                type="button"
+                onClick={toggleMap}
+                aria-expanded={mapOpen}
+                className="btn-ghost py-1.5 xl:hidden"
+              >
+                <Icon name={mapOpen ? 'collapse' : 'expand'} size={14} />
+                {t(mapOpen ? 'map.collapse' : 'map.expand')}
+              </button>
+            }
+          >
+            <div className={`${mapOpen ? '' : 'hidden xl:block'} h-[56dvh]`}>
+              <AnchorMap
+                farm={farm}
+                anchors={anchors}
+                selectedId={selectedAnchorId}
+                onSelect={setSelectedAnchorId}
+                onCreate={(position: LatLng) => {
+                  const created = createAnchorPoint({
+                    farmId: farm.id,
+                    name: t('anchor.defaultName', { n: anchors.length + 1 }),
+                    position,
+                    instructions: [],
+                    accessDescription: '',
+                  })
+                  setSelectedAnchorId(created.id)
+                }}
+                onMove={(id, position) => patchAnchorPoint(id, { position })}
+                zones={zones}
+                onZoneCreate={(kind, ring) =>
+                  createFarmZone({ farmId: farm.id, kind, ring })
+                }
+                onZoneRingChange={updateFarmZoneRing}
+                onZoneDelete={deleteFarmZone}
+              />
+            </div>
           </Section>
+
+          {/* One-column order is "map, identity, the rest" — the identity
+              card renders here below `xl` and in the side column above it. */}
+          <div className="xl:hidden">
+            <FarmIdentity farm={farm} />
+          </div>
 
           <Section
             title={t('farms.anchorPoints')}
@@ -295,7 +376,7 @@ export function FarmDetailScreen() {
           >
             {anchors.length === 0 ? (
               /* F1 — no anchor point is not an empty list, it is a missing
-                 thing with a way to make it. The map beside this is that way. */
+                 thing with a way to make it. The map above this is that way. */
               <EmptyState
                 icon="pin"
                 title={t('farms.noAnchorPoints')}
@@ -348,44 +429,64 @@ export function FarmDetailScreen() {
               </ul>
             )}
           </Section>
+
+          <Section title={t('farms.guardHistory')}>
+            {missions.length === 0 ? (
+              <EmptyState icon="shield" title={t('missions.empty')} />
+            ) : (
+              <ul className="divide-y divide-edge-subtle">
+                {missions.map((view) => (
+                  <li key={view.mission.id}>
+                    <RowLink to={`/coordinator/missions/${view.mission.id}`}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="ltr-nums text-caption font-medium text-content-primary">
+                          {formatDate(view.mission.startAt, locale)}
+                        </span>
+                        <MissionStatusChip status={view.mission.status} />
+                      </div>
+                      <p className="muted mt-0.5">
+                        {view.anchorPoint.name} ·{' '}
+                        {view.volunteers.map((v) => v.volunteer.name).join(', ')}
+                      </p>
+                    </RowLink>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+
+          <Section title={t('farms.recentIncidents')}>
+            {incidents.length === 0 ? (
+              <EmptyState icon="alert" title={t('incidents.empty')} />
+            ) : (
+              <ul className="divide-y divide-edge-subtle">
+                {incidents.slice(0, 4).map(({ incident }) => (
+                  <li key={incident.id}>
+                    <RowLink to={`/coordinator/incidents/${incident.id}`}>
+                      <div className="flex items-center gap-2">
+                        <SeverityChip severity={incident.severity} />
+                        <span className="ltr-nums text-micro text-content-muted">
+                          {formatDateTime(incident.reportedAt, locale)}
+                        </span>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-caption text-content-secondary">
+                        {incident.description}
+                      </p>
+                    </RowLink>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
         </div>
 
-        <div className="order-1 h-[46dvh] min-w-0 lg:order-none lg:h-full lg:flex-1">
-          <AnchorMap
-            farm={farm}
-            anchors={anchors}
-            selectedId={selectedAnchorId}
-            onSelect={setSelectedAnchorId}
-            onCreate={(position: LatLng) => {
-              const created = createAnchorPoint({
-                farmId: farm.id,
-                name: t('anchor.defaultName', { n: anchors.length + 1 }),
-                position,
-                instructions: [],
-                accessDescription: '',
-              })
-              setSelectedAnchorId(created.id)
-            }}
-            onMove={(id, position) => patchAnchorPoint(id, { position })}
-            zones={zones}
-            onZoneCreate={(kind, ring) =>
-              createFarmZone({ farmId: farm.id, kind, ring })
-            }
-            onZoneRingChange={updateFarmZoneRing}
-            onZoneDelete={deleteFarmZone}
-          />
-        </div>
-      </div>
+        <div className="flex min-w-0 flex-col gap-4">
+          <div className="hidden xl:block">
+            <FarmIdentity farm={farm} />
+          </div>
 
-      {/* `min-w-0` on BOTH tracks is load-bearing, not tidying: a grid item's
-          default `min-width: auto` refuses to shrink below its content, so one
-          unbreakable run anywhere inside pushes the whole page sideways. Lot 0.8
-          made the body face wider (Mekomi over Rubik) and that was enough to
-          take this column 7 px past 390. `bun run layout` is what caught it. */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
           <Section title={t('farms.contacts')}>
-            <ul className="grid gap-x-5 sm:grid-cols-2">
+            <ul className="grid gap-x-5 sm:grid-cols-2 xl:grid-cols-1">
               {farm.contacts.map((contact) => (
                 <li key={contact.id} className="flex items-center gap-3 py-1.5">
                   <Avatar photo={contact.photo} name={contact.name} size="md" />
@@ -404,11 +505,15 @@ export function FarmDetailScreen() {
             </ul>
           </Section>
 
-          <Section title={t('commitment.title')}>
+          <CollapsibleSection
+            storageKey="farm-detail:commitments"
+            title={t('commitment.title')}
+            defaultOpen={wideDefault}
+          >
             {farm.commitments.length === 0 ? (
               <EmptyState title={t('common.none')} />
             ) : (
-              <ul className="grid gap-2 sm:grid-cols-2">
+              <ul className="grid gap-2">
                 {farm.commitments.map((c, i) => (
                   <li
                     key={`${c.kind}-${i}`}
@@ -444,57 +549,56 @@ export function FarmDetailScreen() {
                 ))}
               </ul>
             )}
-          </Section>
+          </CollapsibleSection>
 
-          <Section title={t('farms.guardHistory')}>
-            {missions.length === 0 ? (
-              <EmptyState icon="shield" title={t('missions.empty')} />
+          <CollapsibleSection
+            storageKey="farm-detail:agreements"
+            title={t('farms.agreements')}
+            defaultOpen={wideDefault}
+          >
+            {farm.agreements.length === 0 ? (
+              <EmptyState icon="document" title={t('farms.noAgreements')} />
             ) : (
-              <ul className="divide-y divide-edge-subtle">
-                {missions.map((view) => (
-                  <li key={view.mission.id}>
-                    <RowLink to={`/coordinator/missions/${view.mission.id}`}>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="ltr-nums text-caption font-medium text-content-primary">
-                          {formatDate(view.mission.startAt, locale)}
-                        </span>
-                        <MissionStatusChip status={view.mission.status} />
-                      </div>
-                      <p className="muted mt-0.5">
-                        {view.anchorPoint.name} ·{' '}
-                        {view.volunteers.map((v) => v.volunteer.name).join(', ')}
+              <ul className="flex flex-col gap-2">
+                {farm.agreements.map((a) => (
+                  <li
+                    key={a.id}
+                    className="flex items-center gap-3 rounded-field border border-edge-subtle px-3.5 py-3"
+                  >
+                    <span className="text-accent-ink">
+                      <Icon name="document" size={19} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-caption font-medium text-content-primary">
+                        {a.fileName}
                       </p>
-                    </RowLink>
+                      <p className="muted">
+                        {t('farms.signedBy')} {a.signedBy} ·{' '}
+                        <span className="ltr-nums">
+                          {formatDate(a.signedAt, locale)}
+                        </span>
+                      </p>
+                    </div>
                   </li>
                 ))}
               </ul>
             )}
-          </Section>
-        </div>
+          </CollapsibleSection>
 
-        <div className="flex min-w-0 flex-col gap-4">
-          <Section
-            title={t('timeline.farmActivity')}
-            flush
-            action={
-              <button
-                type="button"
-                onClick={() => setNewVisit(true)}
-                className="text-micro font-semibold text-accent-ink hover:underline"
-              >
-                {t('agenda.planVisit')}
-              </button>
-            }
+          <CollapsibleSection
+            storageKey="farm-detail:notes"
+            title={t('common.notes')}
+            defaultOpen={wideDefault}
           >
-            {activity.length === 0 ? (
-              <EmptyState icon="history" title={t('timeline.noActivity')} />
-            ) : (
-              <Timeline withDate entries={activity} />
-            )}
-          </Section>
+            <p className="whitespace-pre-line text-caption leading-relaxed text-content-secondary">
+              {farm.notes || t('common.none')}
+            </p>
+          </CollapsibleSection>
 
-          <Section
+          <CollapsibleSection
+            storageKey="farm-detail:visits"
             title={t('agenda.visits')}
+            defaultOpen={wideDefault}
             action={
               <button
                 type="button"
@@ -542,67 +646,19 @@ export function FarmDetailScreen() {
                 ))}
               </ul>
             )}
-          </Section>
+          </CollapsibleSection>
 
-          <Section title={t('farms.agreements')}>
-            {farm.agreements.length === 0 ? (
-              <EmptyState icon="document" title={t('farms.noAgreements')} />
+          <CollapsibleSection
+            storageKey="farm-detail:activity"
+            title={t('timeline.farmActivity')}
+            defaultOpen={wideDefault}
+          >
+            {activity.length === 0 ? (
+              <EmptyState icon="history" title={t('timeline.noActivity')} />
             ) : (
-              <ul className="flex flex-col gap-2">
-                {farm.agreements.map((a) => (
-                  <li
-                    key={a.id}
-                    className="flex items-center gap-3 rounded-field border border-edge-subtle px-3.5 py-3"
-                  >
-                    <span className="text-accent-ink">
-                      <Icon name="document" size={19} />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-caption font-medium text-content-primary">
-                        {a.fileName}
-                      </p>
-                      <p className="muted">
-                        {t('farms.signedBy')} {a.signedBy} ·{' '}
-                        <span className="ltr-nums">
-                          {formatDate(a.signedAt, locale)}
-                        </span>
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <Timeline withDate entries={activity} />
             )}
-          </Section>
-
-          <Section title={t('common.notes')}>
-            <p className="whitespace-pre-line text-caption leading-relaxed text-content-secondary">
-              {farm.notes || t('common.none')}
-            </p>
-          </Section>
-
-          <Section title={t('farms.recentIncidents')}>
-            {incidents.length === 0 ? (
-              <EmptyState icon="alert" title={t('incidents.empty')} />
-            ) : (
-              <ul className="divide-y divide-edge-subtle">
-                {incidents.slice(0, 4).map(({ incident }) => (
-                  <li key={incident.id}>
-                    <RowLink to={`/coordinator/incidents/${incident.id}`}>
-                      <div className="flex items-center gap-2">
-                        <SeverityChip severity={incident.severity} />
-                        <span className="ltr-nums text-micro text-content-muted">
-                          {formatDateTime(incident.reportedAt, locale)}
-                        </span>
-                      </div>
-                      <p className="mt-1 line-clamp-2 text-caption text-content-secondary">
-                        {incident.description}
-                      </p>
-                    </RowLink>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
+          </CollapsibleSection>
         </div>
       </div>
 

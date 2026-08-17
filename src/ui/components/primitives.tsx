@@ -105,6 +105,81 @@ export function Section({
   )
 }
 
+/**
+ * G7bis.3 — a Section whose heading is also its switch.
+ *
+ * The farm detail's secondary blocks (commitments, agreements, notes, visits)
+ * are reference material: consulted sometimes, in the way always — worst on an
+ * iPad portrait column where four half-empty cards push the incidents below
+ * three screenfuls. Collapsed they cost one line each. The state is remembered
+ * PER SESSION (sessionStorage), so reopening the same farm mid-shift keeps the
+ * coordinator's arrangement without persisting a stale layout into next month.
+ *
+ * The chevron sits ON the heading, and the whole heading is the hit area —
+ * a 14 px chevron alone is not a target a thumb can be asked to hit (G11).
+ */
+export function CollapsibleSection({
+  storageKey,
+  title,
+  defaultOpen,
+  action,
+  children,
+  className = '',
+  padded = true,
+  bare = false,
+}: {
+  /** sessionStorage key; also what makes the memory per-block. */
+  storageKey: string
+  title: string
+  /** First-visit state — callers pass "am I on a wide viewport". */
+  defaultOpen: boolean
+  action?: ReactNode
+  children: ReactNode
+  className?: string
+  padded?: boolean
+  bare?: boolean
+}) {
+  const [open, setOpen] = useState<boolean>(() => {
+    const stored = sessionStorage.getItem(storageKey)
+    return stored !== null ? stored === '1' : defaultOpen
+  })
+
+  const toggle = () =>
+    setOpen((v) => {
+      sessionStorage.setItem(storageKey, v ? '0' : '1')
+      return !v
+    })
+
+  return (
+    <section className={className}>
+      <div className="flex items-end justify-between gap-3 pb-2.5">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          className="group flex min-w-0 items-center gap-1.5 text-start"
+        >
+          <span
+            className={`text-content-muted transition-transform duration-fast group-hover:text-content-primary ${
+              open ? '' : 'ltr:-rotate-90 rtl:rotate-90'
+            }`}
+          >
+            <Icon name="chevronDown" size={15} />
+          </span>
+          <h2 className="truncate text-section text-content-primary">{title}</h2>
+        </button>
+        {action}
+      </div>
+      {open &&
+        (bare ? (
+          children
+        ) : (
+          <div className={`card ${padded ? 'card-pad' : ''}`}>{children}</div>
+        ))}
+    </section>
+  )
+}
+
 export function EmptyState({
   icon = 'moon',
   title,
