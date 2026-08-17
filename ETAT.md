@@ -45,26 +45,18 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **Lot 0.9 complete and pushed.** Branch `main`, commit `688b77e`.
+State: **Lot 0.9 complete, pushed and live.** Branch `main`.
 
-> ⚠️ **THE LOT 0.9 DEPLOYMENT IS STILL PENDING, AND NOT BECAUSE OF THIS REPO.**
-> The commit is on `main` and the workflow's BUILD step succeeded — the artefact
-> was produced. `actions/deploy-pages@v4` then failed twice with
-> `HTTP 503 … is githubstatus.com reporting a Pages outage?`, and it was:
-> githubstatus.com had Actions and API Requests at *major outage* and Pages at
-> *degraded performance* throughout. Three retries at two-minute intervals found
-> Pages still degraded.
+> **Deployed and verified.** The first two attempts failed on `deploy-pages`
+> with `HTTP 503` while githubstatus.com had Actions and API Requests at *major
+> outage*; the third run went through and the live bundle was checked for Lot 0.9
+> code (the map's "click to add a point" string and `btn-critical` are both in
+> it). If a future deploy fails the same way, it is GitHub, not this repo — wait
+> and re-run.
 >
-> **To finish: re-run the workflow once GitHub is healthy.** Nothing to rebuild
-> and nothing to fix here.
->
-> ```bash
-> gh run rerun 32042562703 --failed     # or: gh workflow run "Deploy to GitHub Pages"
-> ```
->
-> Until then the live URL serves **Lot 0.8**. Note that pushing needs the repo
-> owner's account: `gh auth switch --user Azmer-FTS` (the machine's default
-> account is `mgnamsellem`, which gets a 403 on this repo).
+> Pushing needs the repo owner's account: `gh auth switch --user Azmer-FTS`. The
+> machine's default account is `mgnamsellem`, which gets a 403 on this repo — a
+> minute lost to that error once already.
 
 ---
 
@@ -744,10 +736,7 @@ src/ui/
 
 ## 12. Next step
 
-**First, one loose end from Lot 0.9:** re-run the Pages deployment (see the
-warning in §1). It failed on a GitHub outage, not on anything in this repo.
-
-**Then Lot 1 — Supabase.** Translate `src/core/access.ts` into RLS policies one
+**Lot 1 — Supabase.** Translate `src/core/access.ts` into RLS policies one
 function at a time; the bodies are written to make that a direct transcription.
 `src/core/import.ts` is written to be re-runnable server-side unchanged,
 `src/core/dispatch.ts` is a candidate for a Postgres function verbatim, and
