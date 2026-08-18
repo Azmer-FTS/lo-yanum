@@ -45,7 +45,7 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **Lot 0.10 IN PROGRESS — 11 of 17 sections done, one commit each.**
+State: **Lot 0.10 IN PROGRESS — 13 of 18 sections done, one commit each.**
 Branch `main`, NOT yet pushed (deploy happens at G12).
 
 > **LOT 0.10 RESUME POINT.** The lot's full spec is the user prompt titled
@@ -72,13 +72,25 @@ Branch `main`, NOT yet pushed (deploy happens at G12).
 > fullscreen.tsx, ResizeObserver in MapCanvas, armed modes eat Esc first),
 > G7bis.3 (farm detail as two tracks from xl: 60 % map-at-56dvh + posts +
 > guards + incidents, 40 % identity/contacts + CollapsibleSection blocks with
-> sessionStorage memory; one column below xl BECAUSE iPad portrait is 1032).
+> sessionStorage memory; one column below xl BECAUSE iPad portrait is 1032),
+> **G9** (planner↔agenda bridge: Tour object upserted per day + buildDayPlan
+> engine in core/tours.ts folding the drive around meetings/visits as walls
+> — guard missions shown but deliberately NOT walls; "היום שלי" block on
+> dashboard + agenda day view; planner takes ?date=, lists the day's
+> constraints, saves/deletes the tour, arrival time per stop; קביעת פגישות
+> panel with per-stop call + pre-filled visit modal; suggestions by cheapest
+> triangle-detour insertion; G7bis.4 "צור מסלול ליום זה" from day view and
+> every week/month day menu — A50 flow works, scripted proof due at G12),
+> **G9bis** (guard cancellation A45/A46: 'cancelled' status + required
+> reason from closed list + note, cancelMission snapshots per-recipient
+> notices (volunteers, drivers, farmer) with buildCancellationMessage and
+> sent-tracking; reactivation to 'recruiting' resets driver confirmations
+> and banners "reconfirm everything"; cancelled guards excluded from
+> tonight/upcoming/past AT THE ACCESSOR, surfaced only in the missions
+> screen's בוטלו tab and struck-through in the agenda; mission-07 seeded
+> cancelled).
 >
-> REMAINING: G9 (planner↔agenda bridge: tour object, קבע פגישה, "היום
-> שלי" itinerary block) — **now includes G7bis.4**: a "צור מסלול ליום זה"
-> button on the agenda's day view AND on each week-view day (hover/menu
-> action) opening the היום שלי block computed for THAT day, same engine
-> with the date as a parameter; G7 (full-page window-virtualised tables +
+> REMAINING: G7 (full-page window-virtualised tables +
 > sticky headers + volunteer columns + display-scale KPIs — replaces F5.5
 > for the BIG tables only), G10 (templates.ts source of truth + הורד תבנית
 > xlsx generator + farms/drivers import with Waze-link parsing + מיקום חסר
