@@ -70,6 +70,8 @@ export interface AnchorMapProps {
   onZoneRingChange?: (id: string, ring: LatLng[]) => void
   onZoneDelete?: (id: string) => void
   className?: string
+  /** G14c — square corners for the full-bleed map-first column. */
+  flush?: boolean
   /** Extra controls floated over the top of the map. */
   overlay?: React.ReactNode
 }
@@ -97,6 +99,7 @@ export function AnchorMap({
   onZoneRingChange,
   onZoneDelete,
   className = 'h-full w-full',
+  flush = false,
   overlay,
 }: AnchorMapProps) {
   const { t } = useTranslation()
@@ -286,9 +289,9 @@ export function AnchorMap({
     <div className={fullscreenShell(fullscreen.active, `relative ${className}`)}>
       <MapView
         ariaLabel={t('a11y.map')}
-        className={`h-full w-full rounded-card transition-shadow duration-base ${
-          active ? 'ring-2 ring-accent' : ''
-        }`}
+        className={`h-full w-full transition-shadow duration-base ${
+          flush && !fullscreen.active ? 'rounded-none' : 'rounded-card'
+        } ${active ? 'ring-2 ring-accent' : ''}`}
         center={farm.position}
         zoom={13}
         markers={markers}

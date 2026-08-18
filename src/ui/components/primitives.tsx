@@ -264,6 +264,73 @@ export function Stat({
   )
 }
 
+/**
+ * G14d — A KPI CARD THAT *IS* THE FILTER. The number cards above the big
+ * rosters used to be decoration repeating what pills below them already did;
+ * now the card is the control: click filters the list, the active card takes
+ * the accent ring, and the redundant pills are gone. Shared by volunteers,
+ * drivers and farms so the three screens stay one gesture.
+ */
+export function KpiFilter({
+  label,
+  value,
+  icon,
+  dot,
+  hint,
+  tone = 'default',
+  active,
+  onClick,
+}: {
+  label: string
+  value: ReactNode
+  tone?: 'default' | 'alert' | 'good' | 'accent'
+  icon?: IconName
+  /** Status dot shown before the label (the farm cards). */
+  dot?: ReactNode
+  /** Small second line under the label — e.g. the status's dunam total. */
+  hint?: ReactNode
+  active: boolean
+  onClick: () => void
+}) {
+  const toneClass = {
+    default: 'text-content-primary',
+    alert: 'text-status-danger-ink',
+    good: 'text-status-success-ink',
+    accent: 'text-accent-ink',
+  }[tone]
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`card-interactive flex min-w-0 items-center gap-2.5 p-3 text-start ${
+        active ? 'bg-accent/10 ring-2 ring-accent' : ''
+      }`}
+    >
+      {icon && (
+        <span
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-field bg-surface-high ${toneClass}`}
+        >
+          <Icon name={icon} size={17} />
+        </span>
+      )}
+      <span className="min-w-0">
+        <span className={`numeric block text-title ${toneClass}`}>{value}</span>
+        <span className="muted flex items-center gap-1.5 truncate leading-tight">
+          {dot}
+          {label}
+        </span>
+        {hint && (
+          <span className="block truncate text-micro leading-tight text-content-muted/80">
+            {hint}
+          </span>
+        )}
+      </span>
+    </button>
+  )
+}
+
 /** List row that navigates. Chevron follows the writing direction. */
 export function RowLink({ to, children }: { to: string; children: ReactNode }) {
   return (

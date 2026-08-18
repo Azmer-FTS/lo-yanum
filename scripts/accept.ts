@@ -12,6 +12,7 @@ import {
   getAlerts,
   getAnchorPointsForFarm,
   getDrivers,
+  getDunamKpis,
   getFarmVisitsForFarm,
   getIncidentsForMission,
   getMission,
@@ -315,6 +316,25 @@ section('A23 — every timeline has real data behind it')
   check('incidents attach to their guard', getIncidentsForMission('mission-01').length >= 1)
   const incident = getVisibleIncidents().find((i) => i.entries.length > 0)
   check('an incident has follow-up entries with authors', incident !== undefined && incident.entries.every((e) => e.author !== ''))
+}
+
+// --- A52 (G14a): the strategic dunam KPIs ------------------------------------
+
+section('A52 — the dashboard dunam KPIs recompute from the mocks')
+{
+  as(COORD)
+  const farms = getVisibleFarms()
+  const sum = (list: typeof farms) =>
+    list.reduce((s, f) => s + f.farmDunams + f.grazingDunams, 0)
+  const guarded = sum(farms.filter((f) => f.status === 'signed' || f.status === 'active'))
+  const potential = sum(
+    farms.filter((f) => f.status !== 'signed' && f.status !== 'active' && f.status !== 'declined'),
+  )
+  const kpis = getDunamKpis()
+  check('guarded dunams = signed + active, recomputed', kpis.guardedDunams === guarded && guarded > 0, `${kpis.guardedDunams}`)
+  check('potential dunams = pipeline minus declined, recomputed', kpis.potentialDunams === potential && potential > 0, `${kpis.potentialDunams}`)
+  const declined = sum(farms.filter((f) => f.status === 'declined'))
+  check('declined ground counts in NEITHER number', kpis.guardedDunams + kpis.potentialDunams + declined === sum(farms))
 }
 
 // --- Regression: archiving still works ----------------------------------------

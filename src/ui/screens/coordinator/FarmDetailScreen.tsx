@@ -9,6 +9,7 @@ import {
   deleteFarmZone,
   formatDate,
   formatDateTime,
+  formatRelative,
   getAnchorPointsForFarm,
   getFarm,
   getFarmZonesForFarm,
@@ -20,7 +21,13 @@ import {
   now,
   patchAnchorPoint,
 } from '@core/index'
-import type { CommitmentKind, Farm, FarmStatus, LatLng } from '@core/index'
+import type {
+  Agreement,
+  CommitmentKind,
+  Farm,
+  FarmStatus,
+  LatLng,
+} from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { ContactActions } from '../../components/ContactActions'
@@ -77,14 +84,18 @@ function StatusStepper({ status }: { status: FarmStatus }) {
   const currentIndex = FARM_PIPELINE.indexOf(status)
 
   return (
-    <ol className="scroll-x flex items-center gap-1">
+    // G14c — `p-1 -m-1` gives the current pill's ring (a box-shadow) room to
+    // paint inside the scroll container: flush against the clip edge it was
+    // shaved off and the pill read as truncated. `whitespace-nowrap` keeps a
+    // two-word status on one line instead of clipping mid-word.
+    <ol className="scroll-x -m-1 flex items-center gap-1 p-1">
       {FARM_PIPELINE.map((step, i) => {
         const done = i < currentIndex
         const current = i === currentIndex
         return (
           <li key={step} className="flex shrink-0 items-center gap-1">
             <div
-              className={`flex items-center gap-1.5 rounded-pill px-3 py-1.5 text-micro font-semibold
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-pill px-3 py-1.5 text-micro font-semibold
                           transition-all duration-base ${
                             current
                               ? 'text-content-primary ring-1'
@@ -126,29 +137,17 @@ function StatusStepper({ status }: { status: FarmStatus }) {
   )
 }
 
-/** D7.4 — the facts, two dense columns, no 40-character label column. */
+/** D7.4 — the facts left over once the key-numbers band (G14c) took the big
+ *  ones: type, locality, last visit. Dunams and the next visit live in the
+ *  band now — repeating them here would be two sources for one number. */
 function FarmFacts({ farm }: { farm: Farm }) {
   const { t } = useTranslation()
   const locale = useLocale()
 
   return (
-    /* F5.2 — `sm:` is a VIEWPORT query, not a container one: two columns are
-       right when these facts have the page (below `xl` they do), and cramped
-       in the 40 % side column they live in from `xl` up (G7bis.3). Two again
-       only at `2xl`, once that column is genuinely wide. */
-    <dl className="grid gap-x-5 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+    <dl className="grid gap-x-5 sm:grid-cols-2">
       <KeyValue label={t('farms.filterType')} value={t(`farmType.${farm.type}`)} />
       <KeyValue label={t('volunteers.locality')} value={farm.locality} />
-      <KeyValue
-        label={t('farms.farmArea')}
-        value={`${farm.farmDunams} ${t('farms.dunams')}`}
-        ltr
-      />
-      <KeyValue
-        label={t('farms.grazingArea')}
-        value={`${farm.grazingDunams} ${t('farms.dunams')}`}
-        ltr
-      />
       <KeyValue
         label={t('farms.lastVisit')}
         value={
@@ -158,22 +157,141 @@ function FarmFacts({ farm }: { farm: Farm }) {
         }
         ltr={farm.lastVisitAt !== null}
       />
-      <KeyValue
-        label={t('farms.nextVisit')}
-        value={
-          farm.nextVisitAt ? formatDate(farm.nextVisitAt, locale) : t('common.none')
-        }
-        ltr={farm.nextVisitAt !== null}
-      />
     </dl>
   )
 }
 
 /**
- * G7bis.3 — the compact identity card: where the farm stands in the pipeline,
- * then the facts. Rendered twice (main column below `xl`, side column from
- * `xl`) because the mobile order is "map, identity, everything else" and no
- * grid can interleave two wrapper columns.
+ * G14c — THE KEY-NUMBERS BAND. The first thing in the content column: the
+ * two dunam figures big (the PO reads acreage the way a treasurer reads a
+ * balance), then status, next visit and last activity as the three facts a
+ * phone call about this farm actually needs.
+ */
+function KeyNumbers({
+  farm,
+  lastActivityAt,
+}: {
+  farm: Farm
+  lastActivityAt: string | null
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+
+  return (
+    <div className="card card-pad grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 2xl:grid-cols-5">
+      <div className="min-w-0">
+        <p className="numeric text-metric text-content-primary">
+          {farm.farmDunams.toLocaleString(locale)}
+        </p>
+        <p className="muted mt-0.5 leading-tight">{t('farms.farmArea')}</p>
+      </div>
+      <div className="min-w-0">
+        <p className="numeric text-metric text-content-primary">
+          {farm.grazingDunams.toLocaleString(locale)}
+        </p>
+        <p className="muted mt-0.5 leading-tight">{t('farms.grazingArea')}</p>
+      </div>
+      <div className="min-w-0">
+        <FarmStatusChip status={farm.status} />
+        <p className="muted mt-1 leading-tight">{t('farms.statusLabel')}</p>
+      </div>
+      <div className="min-w-0">
+        <p className="ltr-nums truncate text-heading font-semibold text-content-primary">
+          {farm.nextVisitAt
+            ? formatDate(farm.nextVisitAt, locale)
+            : t('common.none')}
+        </p>
+        <p className="muted mt-0.5 leading-tight">{t('farms.nextVisit')}</p>
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-heading font-semibold text-content-primary">
+          {lastActivityAt
+            ? formatRelative(lastActivityAt, locale)
+            : t('common.none')}
+        </p>
+        <p className="muted mt-0.5 leading-tight">{t('farms.lastActivity')}</p>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * G14c — the signed agreement becomes a document you can OPEN, not a line of
+ * metadata: view, download, share. The file is the repo's mock PDF — Lot 3
+ * brings real signed documents; the three actions are the flow being proven.
+ * Share prefers the Web Share API (the coordinator is on a phone half the
+ * time) and falls back to a WhatsApp text with the link.
+ */
+function AgreementActions({
+  agreement,
+  farmName,
+}: {
+  agreement: Agreement
+  farmName: string
+}) {
+  const { t } = useTranslation()
+  const url = new URL(
+    `${import.meta.env.BASE_URL}mock-agreement.pdf`,
+    window.location.href,
+  ).toString()
+
+  const share = () => {
+    if (navigator.share) {
+      navigator
+        .share({ title: agreement.fileName, url })
+        .catch(() => {/* user dismissed the sheet — nothing to do */})
+    } else {
+      window.open(
+        `https://wa.me/?text=${encodeURIComponent(
+          `${farmName} — ${agreement.fileName}\n${url}`,
+        )}`,
+        '_blank',
+        'noreferrer',
+      )
+    }
+  }
+
+  const iconBtn =
+    'flex h-9 w-9 shrink-0 items-center justify-center rounded-field text-content-muted ' +
+    'transition-colors duration-fast hover:bg-surface-high hover:text-content-primary'
+
+  return (
+    <div className="flex shrink-0 items-center gap-0.5">
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        title={t('farms.agreementView')}
+        aria-label={t('farms.agreementView')}
+        className={iconBtn}
+      >
+        <Icon name="eye" size={17} />
+      </a>
+      <a
+        href={url}
+        download={agreement.fileName}
+        title={t('farms.agreementDownload')}
+        aria-label={t('farms.agreementDownload')}
+        className={iconBtn}
+      >
+        <Icon name="download" size={17} />
+      </a>
+      <button
+        type="button"
+        onClick={share}
+        title={t('farms.agreementShare')}
+        aria-label={t('farms.agreementShare')}
+        className={iconBtn}
+      >
+        <Icon name="send" size={17} />
+      </button>
+    </div>
+  )
+}
+
+/**
+ * G7bis.3 / G14c — the identity card: where the farm stands in the pipeline,
+ * then the leftover facts.
  */
 function FarmIdentity({ farm }: { farm: Farm }) {
   const { t } = useTranslation()
@@ -271,96 +389,66 @@ export function FarmDetailScreen() {
     .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
     .slice(0, 6)
 
+  // G14c — "last activity" is the newest PAST entry; the sort above puts a
+  // planned future visit first, and "next Tuesday" is not an activity yet.
+  const lastActivityAt =
+    activity.find((e) => e.at !== null && new Date(e.at).getTime() <= nowMs)
+      ?.at ?? null
+
   return (
     <>
-      <PageHeader
-        title={farm.name}
-        subtitle={`${farm.locality} · ${farm.region}`}
-        back={{ to: '/coordinator/farms', label: t('farms.title') }}
-        actions={
-          <>
-            <FarmStatusChip status={farm.status} />
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => setNewVisit(true)}
-            >
-              <Icon name="calendar" size={15} />
-              {t('agenda.planVisit')}
-            </button>
-            <Link to={`/coordinator/farms/${farm.id}/edit`} className="btn-secondary">
-              <Icon name="edit" size={15} />
-              {t('common.edit')}
-            </Link>
-          </>
-        }
-      />
-
-      {/* G7bis.3 — A WORKING PAGE, NOT A MOSAIC.
-          Two columns from `xl` (1280 — an iPad PORTRAIT is 1032 and must stay
-          one column): the 60 % main track is what the coordinator works WITH —
-          the big editable map, the guard posts it draws, the guards, the
-          incidents. The 40 % track is what they look things up IN — identity,
-          contacts, and the reference blocks, which fold. `min-w-0` on both
-          tracks is load-bearing (see bun run layout's history with this page). */}
-      <div className="grid items-start gap-x-5 gap-y-4 xl:grid-cols-[3fr_2fr]">
-        <div className="flex min-w-0 flex-col gap-4">
-          {/* F6.1 / G7bis.3 — THE MAP IS THE INSTRUMENT, AND NOW IT IS BIG.
-              Same editable surface the wizard uses (click to drop a guard
-              post, drag to move one, draw zones), at a working height and one
-              button away from the whole viewport (G7bis.2). Collapsible on the
-              one-column layouts so the page can become a list when the errand
-              is not geographic — open by default, because it usually is. */}
-          <Section
-            title={t('map.title')}
-            flush
-            bare
-            action={
-              <button
-                type="button"
-                onClick={toggleMap}
-                aria-expanded={mapOpen}
-                className="btn-ghost py-1.5 xl:hidden"
-              >
-                <Icon name={mapOpen ? 'collapse' : 'expand'} size={14} />
-                {t(mapOpen ? 'map.collapse' : 'map.expand')}
-              </button>
+      {/* G14c — THE FARM DETAIL IS MAP-FIRST, like every other geographic
+          screen: map physically LEFT at full column height (~58 %), content
+          on the right, only the content scrolls. Two columns from `xl`
+          (1280 — an iPad PORTRAIT is 1032 and must stay one column, A49);
+          below that the map is a collapsible block above the content, same
+          as MapPanel's mobile reading. */}
+      <div className="flex min-h-dvh flex-col xl:h-[calc(100dvh-var(--shell-bottom))] xl:min-h-0 xl:flex-row-reverse xl:rtl:flex-row">
+        {/* Content — first in the DOM, physically right from xl. */}
+        <div className="order-2 min-w-0 flex-1 overflow-y-auto px-4 pb-24 pt-5 xl:order-none xl:w-[42%] xl:flex-none xl:px-5 xl:pb-5">
+          <PageHeader
+            title={farm.name}
+            subtitle={`${farm.locality} · ${farm.region}`}
+            back={{ to: '/coordinator/farms', label: t('farms.title') }}
+            actions={
+              <>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setNewVisit(true)}
+                >
+                  <Icon name="calendar" size={15} />
+                  {t('agenda.planVisit')}
+                </button>
+                <Link
+                  to={`/coordinator/farms/${farm.id}/edit`}
+                  className="btn-secondary"
+                >
+                  <Icon name="edit" size={15} />
+                  {t('common.edit')}
+                </Link>
+              </>
             }
-          >
-            <div className={`${mapOpen ? '' : 'hidden xl:block'} h-[56dvh]`}>
-              <AnchorMap
-                farm={farm}
-                anchors={anchors}
-                selectedId={selectedAnchorId}
-                onSelect={setSelectedAnchorId}
-                onCreate={(position: LatLng) => {
-                  const created = createAnchorPoint({
-                    farmId: farm.id,
-                    name: t('anchor.defaultName', { n: anchors.length + 1 }),
-                    position,
-                    instructions: [],
-                    accessDescription: '',
-                  })
-                  setSelectedAnchorId(created.id)
-                }}
-                onMove={(id, position) => patchAnchorPoint(id, { position })}
-                zones={zones}
-                onZoneCreate={(kind, ring) =>
-                  createFarmZone({ farmId: farm.id, kind, ring })
-                }
-                onZoneRingChange={updateFarmZoneRing}
-                onZoneDelete={deleteFarmZone}
-              />
-            </div>
-          </Section>
+          />
 
-          {/* One-column order is "map, identity, the rest" — the identity
-              card renders here below `xl` and in the side column above it. */}
-          <div className="xl:hidden">
+          <div className="flex flex-col gap-4">
+            {/* G14c — the numbers first, big; the long reading below. */}
+            <KeyNumbers farm={farm} lastActivityAt={lastActivityAt} />
+
             <FarmIdentity farm={farm} />
-          </div>
 
-          <Section
+            {/* G14c — the recent-activity strip moved up from the fold: "what
+                has been going on here" is the second question after the
+                numbers, not an appendix. */}
+            <Section title={t('timeline.farmActivity')}>
+              {activity.length === 0 ? (
+                <EmptyState icon="history" title={t('timeline.noActivity')} />
+              ) : (
+                <Timeline withDate entries={activity} />
+              )}
+            </Section>
+
+            <Section
             title={t('farms.anchorPoints')}
             action={
               <a
@@ -478,12 +566,6 @@ export function FarmDetailScreen() {
               </ul>
             )}
           </Section>
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-4">
-          <div className="hidden xl:block">
-            <FarmIdentity farm={farm} />
-          </div>
 
           <Section title={t('farms.contacts')}>
             <ul className="grid gap-x-5 sm:grid-cols-2 xl:grid-cols-1">
@@ -568,7 +650,7 @@ export function FarmDetailScreen() {
                     <span className="text-accent-ink">
                       <Icon name="document" size={19} />
                     </span>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-caption font-medium text-content-primary">
                         {a.fileName}
                       </p>
@@ -579,6 +661,8 @@ export function FarmDetailScreen() {
                         </span>
                       </p>
                     </div>
+                    {/* G14c — view / download / share, right on the row. */}
+                    <AgreementActions agreement={a} farmName={farm.name} />
                   </li>
                 ))}
               </ul>
@@ -647,18 +731,58 @@ export function FarmDetailScreen() {
               </ul>
             )}
           </CollapsibleSection>
+          </div>
+        </div>
 
-          <CollapsibleSection
-            storageKey="farm-detail:activity"
-            title={t('timeline.farmActivity')}
-            defaultOpen={wideDefault}
+        {/* Map — one instance, physically LEFT from xl, full column height.
+            F6.1/G7bis — the same editable surface as before: click drops a
+            guard post, zones draw and edit, fullscreen one button away. */}
+        <div className="order-1 flex flex-col xl:order-none xl:flex-1">
+          <div className="flex items-center justify-between gap-2 border-b border-edge-subtle bg-surface-overlay px-4 py-2 xl:hidden">
+            <span className="text-caption font-medium text-content-secondary">
+              {t('map.title')}
+            </span>
+            <button
+              type="button"
+              onClick={toggleMap}
+              className="btn-ghost py-1.5 text-micro"
+              aria-expanded={mapOpen}
+            >
+              <Icon name={mapOpen ? 'collapse' : 'expand'} size={14} />
+              {t(mapOpen ? 'map.collapse' : 'map.expand')}
+            </button>
+          </div>
+
+          <div
+            className={`relative w-full border-edge-subtle xl:border-r ${
+              mapOpen ? 'h-[45dvh]' : 'h-0 overflow-hidden'
+            } xl:!h-full`}
           >
-            {activity.length === 0 ? (
-              <EmptyState icon="history" title={t('timeline.noActivity')} />
-            ) : (
-              <Timeline withDate entries={activity} />
-            )}
-          </CollapsibleSection>
+            <AnchorMap
+              flush
+              farm={farm}
+              anchors={anchors}
+              selectedId={selectedAnchorId}
+              onSelect={setSelectedAnchorId}
+              onCreate={(position: LatLng) => {
+                const created = createAnchorPoint({
+                  farmId: farm.id,
+                  name: t('anchor.defaultName', { n: anchors.length + 1 }),
+                  position,
+                  instructions: [],
+                  accessDescription: '',
+                })
+                setSelectedAnchorId(created.id)
+              }}
+              onMove={(id, position) => patchAnchorPoint(id, { position })}
+              zones={zones}
+              onZoneCreate={(kind, ring) =>
+                createFarmZone({ farmId: farm.id, kind, ring })
+              }
+              onZoneRingChange={updateFarmZoneRing}
+              onZoneDelete={deleteFarmZone}
+            />
+          </div>
         </div>
       </div>
 

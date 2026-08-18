@@ -8,6 +8,7 @@ import {
   formatTime,
   getAgendaEvents,
   getAlerts,
+  getDunamKpis,
   getFarmStatusCounts,
   getTonightMissionViews,
   getUpcomingAgendaEvents,
@@ -45,11 +46,12 @@ import { useLocale } from '../../hooks/useLocale'
  * Half map, half decisions. Reading order down the right column is the order a
  * coordinator actually works in:
  *
+ *   0. THE TWO DUNAM KPIs (G14a) — how much ground the programme covers and
+ *      how much is still on the table. The association's budget number: big,
+ *      first, before anything operational.
  *   1. KPI strip — is the programme in a normal state? Four numbers, big.
- *   2. OPEN ALERTS — is anything wrong RIGHT NOW? This block is deliberately
- *      the loudest thing on the screen. In Lot 0.6 an urgent incident was a
- *      small tag competing with five other cards; an emergency has to dominate,
- *      or the layout is lying about priority.
+ *   2. OPEN ALERTS — is anything wrong RIGHT NOW? Compact full-colour rows
+ *      (G14b), collapsed by default; a click opens the details and actions.
  *   3. AGENDA — what is coming. Seven days of dots plus the next three entries.
  *   4. Tonight's guards, then the pipeline. Reference, not decisions.
  *
@@ -104,14 +106,14 @@ const ALERT_STYLE: Record<
 function AlertCard({ alert }: { alert: DashboardAlert }) {
   const { t } = useTranslation()
   const locale = useLocale()
+  // G14b — collapsed by default: the compact reading is the alarm, the
+  // details and the call list cost one click.
+  const [open, setOpen] = useState(false)
   const style = ALERT_STYLE[alert.kind]
   // G4.3 — a recruiting guard ESCALATES: amber while the night is far,
   // critical orange inside six hours (weight 9 is set by access.ts). The
   // urgent-incident treatment is reused so "loud" stays one language.
-  const critical =
-    alert.kind === 'urgent_incident' ||
-    (alert.kind === 'recruiting' && alert.weight >= 9)
-  const urgent = critical
+  const critical = alert.kind !== 'recruiting' || alert.weight >= 9
 
   const detail =
     alert.kind === 'presence_mismatch'
@@ -123,89 +125,108 @@ function AlertCard({ alert }: { alert: DashboardAlert }) {
           : alert.detail
 
   return (
-    <li
-      className={`overflow-hidden transition-all duration-base ease-out hover:shadow-lift ${
-        urgent
-          ? 'card-critical'
-          : 'rounded-card border border-s-4 border-critical/35 border-s-critical bg-surface-raised shadow-card'
-      }`}
-    >
-      <div className="flex items-start gap-3 p-3.5">
-        <span
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-field ${style.icon}`}
-        >
-          <Icon name={style.iconName} size={20} />
+    <li className="overflow-hidden rounded-card shadow-card transition-shadow duration-base hover:shadow-lift">
+      {/* G14b — the compact line is FULL COLOUR: the severity is the fill,
+          not a chip on a white card. Critical orange for the unaccounted
+          states, amber for a staffing gap; icon + title + relative time and
+          nothing else. `text-content-on-accent` is audited on both fills. */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className={`flex w-full items-center gap-2.5 px-3.5 py-2.5 text-start text-content-on-accent
+                    transition-all duration-fast ease-out active:scale-[0.995] ${
+                      critical
+                        ? 'bg-critical hover:bg-critical/90'
+                        : 'bg-status-warn hover:bg-status-warn/90'
+                    }`}
+      >
+        <Icon name={style.iconName} size={17} className="shrink-0" />
+        <span className="min-w-0 flex-1 truncate text-caption font-bold">
+          {t(`alerts.${alert.kind}`)}
+          <span className="font-medium"> · {alert.farmName}</span>
         </span>
+        {/* Relative time, not a clock reading: "25 minutes ago" is the
+            question a coordinator is actually asking. */}
+        <span className="shrink-0 text-micro font-semibold opacity-90">
+          {formatRelative(alert.at, locale)}
+        </span>
+        <Icon
+          name="chevron"
+          size={14}
+          className={`shrink-0 transition-transform duration-fast ${
+            open ? 'rotate-90' : 'rtl:-scale-x-100'
+          }`}
+        />
+      </button>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-caption font-bold text-content-primary">
-              {t(`alerts.${alert.kind}`)}
-            </span>
-            {alert.kind === 'recruiting' ? (
-              <span
-                className={
-                  critical ? 'chip-critical' : `chip ${style.chip}`
-                }
-              >
-                <span className="numeric ltr-nums">{alert.detail}</span>
-              </span>
-            ) : urgent ? (
-              <span className={style.chip}>
-                <span className="live-dot" />
-                {t('severity.urgent')}
-              </span>
-            ) : (
-              <span className={`chip ${style.chip}`}>
-                {t('alerts.needsAction')}
-              </span>
-            )}
-            {/* Relative time, not a clock reading: "25 minutes ago" is the
-                question a coordinator is actually asking. */}
-            <span className="ms-auto text-micro text-content-muted">
-              {formatRelative(alert.at, locale)}
-            </span>
-          </div>
+      {open && (
+        <div className="flex items-start gap-3 bg-surface-raised p-3.5">
+          <span
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-field ${style.icon}`}
+          >
+            <Icon name={style.iconName} size={20} />
+          </span>
 
-          <p className="mt-0.5 text-caption font-medium text-content-secondary">
-            {alert.farmName}
-          </p>
-          {detail && (
-            <p className="mt-1 line-clamp-2 text-caption text-content-secondary">
-              {detail}
-            </p>
-          )}
-
-          {/* Every alert carries its own call list: the coordinator should
-              never have to navigate in order to place the call. */}
-          <div className="mt-2.5 flex flex-wrap items-center gap-2">
-            {alert.contacts.map((c) => (
-              <a
-                key={`${c.phone}-${c.roleKey}`}
-                href={telHref(c.phone)}
-                className="inline-flex items-center gap-1.5 rounded-pill bg-surface-high px-3 py-1.5
-                           text-micro font-semibold text-content-primary transition-all duration-fast ease-out
-                           hover:bg-gradient-accent hover:text-content-on-accent active:scale-95"
-              >
-                <Icon name="phone" size={13} />
-                {c.name}
-                <span className="font-normal opacity-70">{t(c.roleKey)}</span>
-              </a>
-            ))}
-            <Link
-              to={alert.href}
-              className="ms-auto inline-flex items-center gap-1 text-micro font-semibold text-accent-ink hover:underline"
-            >
-              {t(
-                alert.kind === 'recruiting'
-                  ? 'alerts.completeRecruitment'
-                  : 'common.details',
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <p className="text-caption font-medium text-content-secondary">
+                {alert.farmName}
+              </p>
+              {alert.kind === 'recruiting' ? (
+                <span
+                  className={critical ? 'chip-critical' : `chip ${style.chip}`}
+                >
+                  <span className="numeric ltr-nums">{alert.detail}</span>
+                </span>
+              ) : critical && alert.kind === 'urgent_incident' ? (
+                <span className={style.chip}>
+                  <span className="live-dot" />
+                  {t('severity.urgent')}
+                </span>
+              ) : (
+                <span className={`chip ${style.chip}`}>
+                  {t('alerts.needsAction')}
+                </span>
               )}
-              <Icon name="chevron" size={12} className="rtl:-scale-x-100" />
-            </Link>
+            </div>
+            {detail && (
+              <p className="mt-1 text-caption text-content-secondary">
+                {detail}
+              </p>
+            )}
+
+            {/* Every alert carries its own call list: the coordinator should
+                never have to navigate in order to place the call. */}
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              {alert.contacts.map((c) => (
+                <a
+                  key={`${c.phone}-${c.roleKey}`}
+                  href={telHref(c.phone)}
+                  className="inline-flex items-center gap-1.5 rounded-pill bg-surface-high px-3 py-1.5
+                             text-micro font-semibold text-content-primary transition-all duration-fast ease-out
+                             hover:bg-gradient-accent hover:text-content-on-accent active:scale-95"
+                >
+                  <Icon name="phone" size={13} />
+                  {c.name}
+                  <span className="font-normal opacity-70">{t(c.roleKey)}</span>
+                </a>
+              ))}
+              <Link
+                to={alert.href}
+                className="ms-auto inline-flex items-center gap-1 text-micro font-semibold text-accent-ink hover:underline"
+              >
+                {t(
+                  alert.kind === 'recruiting'
+                    ? 'alerts.completeRecruitment'
+                    : 'common.details',
+                )}
+                <Icon name="chevron" size={12} className="rtl:-scale-x-100" />
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </li>
   )
 }
@@ -397,6 +418,7 @@ export function DashboardScreen() {
   const navigate = useNavigate()
 
   const farms = useCoreValue(getVisibleFarms)
+  const dunams = useCoreValue(getDunamKpis)
   const statusCounts = useCoreValue(getFarmStatusCounts)
   const alerts = useCoreValue(getAlerts)
   const tonight = useCoreValue(getTonightMissionViews)
@@ -483,6 +505,34 @@ export function DashboardScreen() {
         {/* Desktop half of the persistent action; the phone gets the FAB. */}
         <CreateGuardButton className="btn-primary hidden lg:inline-flex" />
       </header>
+
+      {/* 0 — G14a: the two strategic dunam KPIs, before anything operational.
+          These are the association's budget numbers, so they are the biggest
+          figures on the screen and they come first. */}
+      <div className="mb-2.5 grid grid-cols-2 gap-2.5">
+        <Link to="/coordinator/farms" className="card-interactive min-w-0 p-4">
+          <span className="numeric text-display block text-status-success-ink">
+            {dunams.guardedDunams.toLocaleString(locale)}
+          </span>
+          <span className="mt-1 block text-caption font-semibold leading-tight text-content-primary">
+            {t('dashboard.guardedDunams')}
+          </span>
+          <span className="muted mt-0.5 block leading-tight">
+            {t('dashboard.guardedDunamsHint')}
+          </span>
+        </Link>
+        <Link to="/coordinator/farms" className="card-interactive min-w-0 p-4">
+          <span className="numeric text-display block text-accent-ink">
+            {dunams.potentialDunams.toLocaleString(locale)}
+          </span>
+          <span className="mt-1 block text-caption font-semibold leading-tight text-content-primary">
+            {t('dashboard.potentialDunams')}
+          </span>
+          <span className="muted mt-0.5 block leading-tight">
+            {t('dashboard.potentialDunamsHint')}
+          </span>
+        </Link>
+      </div>
 
       {/* 1 — KPI strip. */}
       <div className="mb-5 grid grid-cols-2 gap-2.5 xl:grid-cols-4">

@@ -41,7 +41,9 @@ const SRC = path.resolve('src')
 
 // --- A28: the radius scale --------------------------------------------------
 
-const ALLOWED_RADIUS = new Set(['field', 'card', 'pill', 'none', 't-card'])
+// `t-none` joined with G14d: a table card whose top corners are square where
+// it meets the sticky column header above it — still radius 0, not a new step.
+const ALLOWED_RADIUS = new Set(['field', 'card', 'pill', 'none', 't-card', 't-none'])
 
 /** Radius CUSTOM PROPERTIES that may exist in tokens.css. */
 const ALLOWED_RADIUS_VARS = new Set(['field', 'card', 'pill'])

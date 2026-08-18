@@ -23,6 +23,7 @@ import {
   EmptyState,
   FilterPill,
   FilterRow,
+  KpiFilter,
   LoadMore,
 } from '../../components/primitives'
 import { ZoneLegend, zonePolygons } from '../../components/zones'
@@ -43,6 +44,7 @@ const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed']
  */
 export function FarmsListScreen() {
   const { t } = useTranslation()
+  const locale = useLocale()
   const navigate = useNavigate()
   const farms = useCoreValue(getVisibleFarms)
   const zones = useCoreValue(getAllVisibleFarmZones)
@@ -109,6 +111,37 @@ export function FarmsListScreen() {
 
   const selected = filtered.find((f) => f.id === selectedId) ?? null
 
+  /**
+   * G14d — one KPI card per status IN USE, count big and the status's dunam
+   * total underneath ("how much ground is at this stage"), and the card IS
+   * the filter: it replaces the status pills. Statuses at zero are dropped,
+   * same rule as the pills they replace.
+   */
+  const statusKpis = STATUSES.map((s) => {
+    const inStatus = farms.filter((f) => f.status === s)
+    return {
+      status: s,
+      count: inStatus.length,
+      dunams: inStatus.reduce((sum, f) => sum + f.farmDunams + f.grazingDunams, 0),
+    }
+  }).filter((k) => k.count > 0)
+
+  const kpiGrid = (
+    <div className="mb-3 grid grid-cols-2 gap-2 xl:grid-cols-3">
+      {statusKpis.map((k) => (
+        <KpiFilter
+          key={k.status}
+          label={t(`farmStatus.${k.status}`)}
+          value={k.count}
+          dot={<FarmStatusDot status={k.status} />}
+          hint={t('farms.kpiDunams', { n: k.dunams.toLocaleString(locale) })}
+          active={status === k.status}
+          onClick={() => setStatus(status === k.status ? null : k.status)}
+        />
+      ))}
+    </div>
+  )
+
   const header = (
     <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div>
@@ -168,22 +201,8 @@ export function FarmsListScreen() {
         setType(null)
       }}
     >
-      {STATUSES.map((s) => {
-        const count = farms.filter((f) => f.status === s).length
-        if (count === 0) return null
-        return (
-          <FilterPill
-            key={s}
-            active={status === s}
-            onClick={() => setStatus(status === s ? null : s)}
-            dot={<FarmStatusDot status={s} />}
-            count={count}
-          >
-            {t(`farmStatus.${s}`)}
-          </FilterPill>
-        )
-      })}
-      <span className="mx-0.5 h-4 w-px shrink-0 bg-edge-subtle" />
+      {/* G14d — the status pills are gone: the KPI cards above carry status
+          filtering now. Only the type pills remain, they have no card. */}
       {TYPES.map((ft) => (
         <FilterPill
           key={ft}
@@ -200,10 +219,19 @@ export function FarmsListScreen() {
   // G7 — the full-page table reading, outside the map shell entirely.
   if (view === 'table') {
     return (
-      <>
-        {header}
-        {searchBox}
-        {filterRow}
+      <div className="px-4 pb-24 pt-5 sm:px-6 lg:pb-6">
+        {/* G14d/A51 — the whole top rides the page from lg, column headers
+            included, same construction as the volunteers roster. */}
+        <div
+          className="-mx-4 bg-surface-base px-4 sm:-mx-6 sm:px-6 lg:sticky lg:z-20"
+          style={{ top: 'var(--shell-top, 0px)' }}
+        >
+          {header}
+          {kpiGrid}
+          {searchBox}
+          {filterRow}
+          {filtered.length > 0 && <FarmsTableHead />}
+        </div>
         {filtered.length === 0 ? (
           <EmptyState icon="farm" title={t('farms.empty')} />
         ) : (
@@ -212,7 +240,7 @@ export function FarmsListScreen() {
             onOpen={(id) => navigate(`/coordinator/farms/${id}`)}
           />
         )}
-      </>
+      </div>
     )
   }
 
@@ -283,12 +311,17 @@ export function FarmsListScreen() {
         )
       }
     >
-      {header}
-      {searchBox}
-      {/* D7.3 — one row. Statuses that no farm is in are dropped rather than
-          shown at zero: an unpressable pill is noise, and the legend on the map
-          already accounts for the full pipeline. */}
-      {filterRow}
+      {/* G14d — title, KPI-filters and search ride the panel's own scroll
+          from lg, so the controls survive a long filtered list. */}
+      <div
+        className="-mx-4 bg-surface-base px-4 lg:sticky lg:-mx-5 lg:z-20 lg:px-5"
+        style={{ top: 'var(--shell-top, 0px)' }}
+      >
+        {header}
+        {kpiGrid}
+        {searchBox}
+        {filterRow}
+      </div>
 
       {filtered.length === 0 ? (
         <EmptyState icon="farm" title={t('farms.empty')} />
@@ -350,6 +383,47 @@ const TABLE_ROW_HEIGHT = 56
  * volunteers table; 12 fixture farms do not need it, the hundreds a real
  * import brings do, and the table must not change shape when they arrive.
  */
+const HeaderCell = ({
+  label,
+  className = '',
+}: {
+  label: string
+  className?: string
+}) => (
+  <span
+    className={`text-micro font-semibold uppercase tracking-wide text-content-muted ${className}`}
+  >
+    {label}
+  </span>
+)
+
+/** G14d — the column header row, rendered inside the parent's sticky block
+ *  so title, KPI-filters, search and columns pin as ONE unit (A51). */
+function FarmsTableHead() {
+  const { t } = useTranslation()
+  return (
+    <div
+      className="hidden items-center gap-3 rounded-t-card border-b border-edge-subtle
+                 bg-surface-overlay/95 px-4 py-2.5 backdrop-blur lg:flex"
+    >
+      <HeaderCell label={t('missions.farm')} className="w-56" />
+      <HeaderCell label={t('volunteers.colLocality')} className="w-32" />
+      <HeaderCell label={t('farms.colRegion')} className="w-32" />
+      <HeaderCell label={t('farms.colType')} className="w-24" />
+      <HeaderCell label={t('farms.colStatus')} className="w-32" />
+      <HeaderCell
+        label={t('farms.colDunams')}
+        className="hidden w-36 xl:block"
+      />
+      <HeaderCell
+        label={t('farms.colContacts')}
+        className="hidden w-20 xl:block"
+      />
+      <HeaderCell label={t('farms.nextVisit')} className="w-28" />
+    </div>
+  )
+}
+
 function FarmsTable({
   farms,
   onOpen,
@@ -365,45 +439,10 @@ function FarmsTable({
     () => TABLE_ROW_HEIGHT,
   )
 
-  const HeaderCell = ({
-    label,
-    className = '',
-  }: {
-    label: string
-    className?: string
-  }) => (
-    <span
-      className={`text-micro font-semibold uppercase tracking-wide text-content-muted ${className}`}
-    >
-      {label}
-    </span>
-  )
-
   const dunams = (n: number) => n.toLocaleString(locale)
 
   return (
-    <div className="card">
-      <div
-        className="sticky z-10 hidden items-center gap-3 rounded-t-card border-b border-edge-subtle
-                   bg-surface-overlay/95 px-4 py-2.5 backdrop-blur lg:flex"
-        style={{ top: 'var(--shell-top, 0px)' }}
-      >
-        <HeaderCell label={t('missions.farm')} className="w-56" />
-        <HeaderCell label={t('volunteers.colLocality')} className="w-32" />
-        <HeaderCell label={t('farms.colRegion')} className="w-32" />
-        <HeaderCell label={t('farms.colType')} className="w-24" />
-        <HeaderCell label={t('farms.colStatus')} className="w-32" />
-        <HeaderCell
-          label={t('farms.colDunams')}
-          className="hidden w-36 xl:block"
-        />
-        <HeaderCell
-          label={t('farms.colContacts')}
-          className="hidden w-20 xl:block"
-        />
-        <HeaderCell label={t('farms.nextVisit')} className="w-28" />
-      </div>
-
+    <div className="card lg:rounded-t-none">
       <div
         ref={listRef}
         style={{ height: virtualizer.getTotalSize(), position: 'relative' }}

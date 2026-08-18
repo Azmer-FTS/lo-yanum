@@ -534,6 +534,19 @@ export interface FarmStatusCount {
   count: number
 }
 
+/**
+ * G14 — the association's two budget numbers, in dunams. "Guarded" is the
+ * ground the programme actually covers (signed or active entities); the
+ * "potential" is everything still in the pipeline that has not refused.
+ * Declined entities count in neither: they are not coming.
+ */
+export interface DunamKpis {
+  /** farm + grazing dunams over entities whose status is signed or active. */
+  guardedDunams: number
+  /** farm + grazing dunams over non-signed, non-declined entities. */
+  potentialDunams: number
+}
+
 export type AlertKind =
   | 'urgent_incident'
   | 'return_not_confirmed'
@@ -598,11 +611,26 @@ export interface AgendaEvent {
   farmId: string | null
 }
 
+/** G14d — the driver roster's KPI-filters, computed at the accessor. */
+export interface DriverStats {
+  total: number
+  /** Sum of seats over the whole roster: the fleet's carrying capacity. */
+  totalSeats: number
+  /** Vans and minibuses — seats ≥ 7, the vehicles that move a whole group. */
+  sevenPlusSeats: number
+  /** Not booked on any of tonight's guards. */
+  freeTonight: number
+}
+
 export interface VolunteerStats {
   total: number
   active: number
   inactive: number
   smartphone: number
   kosher: number
+  /** G14d — holds a licence AND has a car: can self-transport to a guard. */
+  licenseCar: number
+  /** G14d — never guarded yet: the outreach list. */
+  neverGuarded: number
   byYeshiva: Array<{ yeshiva: string; count: number }>
 }

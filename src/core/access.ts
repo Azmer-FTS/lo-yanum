@@ -8,6 +8,8 @@ import type {
   ConfirmationState,
   DashboardAlert,
   Driver,
+  DriverStats,
+  DunamKpis,
   Farm,
   FarmStatus,
   FarmStatusCount,
@@ -276,6 +278,23 @@ export function getFarmStatusCounts(): FarmStatusCount[] {
   }))
 }
 
+/**
+ * G14 — the two strategic dunam KPIs (A52). Computed here rather than in the
+ * dashboard because the accept script recomputes them from the mocks and the
+ * two must be the same function, not two implementations that agree today.
+ */
+export function getDunamKpis(): DunamKpis {
+  const guarded: FarmStatus[] = ['signed', 'active']
+  let guardedDunams = 0
+  let potentialDunams = 0
+  for (const f of getVisibleFarms()) {
+    const dunams = f.farmDunams + f.grazingDunams
+    if (guarded.includes(f.status)) guardedDunams += dunams
+    else if (f.status !== 'declined') potentialDunams += dunams
+  }
+  return { guardedDunams, potentialDunams }
+}
+
 /** Farms with a scheduled visit, soonest first — the coordinator's to-do. */
 export function getNextFarmVisits(limit = 5): Farm[] {
   return getVisibleFarms()
@@ -341,12 +360,42 @@ export function getVolunteerStats(): VolunteerStats {
     inactive: volunteers.filter((v) => v.status === 'inactive').length,
     smartphone: volunteers.filter((v) => v.phoneType === 'smartphone').length,
     kosher: volunteers.filter((v) => v.phoneType === 'kosher').length,
+    licenseCar: volunteers.filter((v) => v.hasLicense && v.hasCar).length,
+    neverGuarded: volunteers.filter((v) => v.guardsCount === 0).length,
     byYeshiva: yeshivot
       .map((yeshiva) => ({
         yeshiva,
         count: volunteers.filter((v) => v.yeshiva === yeshiva).length,
       }))
       .sort((a, b) => b.count - a.count),
+  }
+}
+
+/**
+ * G14d — the driver roster's four instruments. "Free tonight" reads tonight's
+ * missions through the same accessor the dashboard uses, so a cancelled guard
+ * releases its driver here too (G9bis excludes cancelled at the accessor).
+ */
+/** Driver ids booked on one of tonight's guards — the "free tonight" filter's
+ *  complement, shared by the stats and the roster's own filtering. */
+export function getTonightBookedDriverIds(): string[] {
+  return [
+    ...new Set(
+      getTonightMissionViews().flatMap((v) =>
+        v.mission.drivers.map((d) => d.driverId),
+      ),
+    ),
+  ]
+}
+
+export function getDriverStats(): DriverStats {
+  const drivers = getDrivers()
+  const bookedTonight = new Set(getTonightBookedDriverIds())
+  return {
+    total: drivers.length,
+    totalSeats: drivers.reduce((sum, d) => sum + d.seats, 0),
+    sevenPlusSeats: drivers.filter((d) => d.seats >= 7).length,
+    freeTonight: drivers.filter((d) => !bookedTonight.has(d.id)).length,
   }
 }
 

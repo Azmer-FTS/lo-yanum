@@ -1,12 +1,24 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { getDrivers, telHref, whatsappHref } from '@core/index'
+import {
+  getDrivers,
+  getDriverStats,
+  getTonightBookedDriverIds,
+  telHref,
+  whatsappHref,
+} from '@core/index'
 import type { Driver } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
-import { EmptyState, PageHeader, SearchInput } from '../../components/primitives'
+import {
+  EmptyState,
+  KpiFilter,
+  PageHeader,
+  SearchInput,
+  Stat,
+} from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useWindowTable } from '../../hooks/useWindowTable'
 import { DriverFormModal } from './DriverFormModal'
@@ -30,22 +42,33 @@ const ROW_HEIGHT = 56
 export function DriversScreen() {
   const { t } = useTranslation()
   const drivers = useCoreValue(getDrivers)
+  const stats = useCoreValue(getDriverStats)
+  const bookedTonight = useCoreValue(getTonightBookedDriverIds)
 
   const [query, setQuery] = useState('')
+  // G14d — the two KPI-filters: big vehicles, free tonight.
+  const [sevenPlus, setSevenPlus] = useState(false)
+  const [freeTonight, setFreeTonight] = useState(false)
   const [editing, setEditing] = useState<Driver | null>(null)
   const [creating, setCreating] = useState(false)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return drivers
-    return drivers.filter(
-      (d) =>
+    const booked = new Set(bookedTonight)
+    return drivers.filter((d) => {
+      if (sevenPlus && d.seats < 7) return false
+      if (freeTonight && booked.has(d.id)) return false
+      if (!q) return true
+      return (
         d.name.toLowerCase().includes(q) ||
         d.locality.toLowerCase().includes(q) ||
         d.vehicle.toLowerCase().includes(q) ||
-        d.phone.replace(/\D/g, '').includes(q.replace(/\D/g, '') || ' '),
-    )
-  }, [drivers, query])
+        d.phone.replace(/\D/g, '').includes(q.replace(/\D/g, '') || ' ')
+      )
+    })
+  }, [drivers, query, sevenPlus, freeTonight, bookedTonight])
+
+  const anyFilter = sevenPlus || freeTonight
 
   const { listRef, virtualizer, margin } = useWindowTable(
     filtered.length,
@@ -68,48 +91,98 @@ export function DriversScreen() {
 
   return (
     <>
-      <PageHeader
-        title={
-          <span className="flex items-center gap-2.5">
-            <span className="text-accent-ink">
-              <Icon name="steering" size={26} />
+      {/* G14d/A51 — the whole top rides the page from lg, exactly like the
+          volunteers roster: title, KPI-filters, search, column headers. */}
+      <div
+        className="-mx-4 bg-surface-base px-4 sm:-mx-6 sm:px-6 2xl:-mx-8 2xl:px-8 lg:sticky lg:z-20"
+        style={{ top: 'var(--shell-top, 0px)' }}
+      >
+        <PageHeader
+          title={
+            <span className="flex items-center gap-2.5">
+              <span className="text-accent-ink">
+                <Icon name="steering" size={26} />
+              </span>
+              {t('driver.volunteerDrivers')}
             </span>
-            {t('driver.volunteerDrivers')}
-          </span>
-        }
-        subtitle={t('driver.rosterSubtitle')}
-        actions={
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => setCreating(true)}
-          >
-            <Icon name="userPlus" size={15} />
-            {t('driver.addDriver')}
-          </button>
-        }
-      />
+          }
+          subtitle={t('driver.rosterSubtitle')}
+          actions={
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => setCreating(true)}
+            >
+              <Icon name="userPlus" size={15} />
+              {t('driver.addDriver')}
+            </button>
+          }
+        />
 
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <div className="w-full sm:w-80">
-          <SearchInput
-            value={query}
-            onChange={setQuery}
-            placeholder={t('common.search')}
+        {/* G14d — the cards are the filters. "Total" clears; the seat sum is
+            a reading, not a filter, so it stays a plain Stat. */}
+        <div className="mb-3 grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+          <KpiFilter
+            label={t('driver.statsTotal')}
+            value={stats.total}
+            icon="steering"
+            active={!anyFilter}
+            onClick={() => {
+              setSevenPlus(false)
+              setFreeTonight(false)
+            }}
+          />
+          <Stat
+            label={t('driver.statsSeats')}
+            value={stats.totalSeats}
+            tone="accent"
+            icon="users"
+          />
+          <KpiFilter
+            label={t('driver.statsSevenPlus')}
+            value={stats.sevenPlusSeats}
+            icon="car"
+            active={sevenPlus}
+            onClick={() => setSevenPlus((v) => !v)}
+          />
+          <KpiFilter
+            label={t('driver.statsFreeTonight')}
+            value={stats.freeTonight}
+            tone="good"
+            icon="moon"
+            active={freeTonight}
+            onClick={() => setFreeTonight((v) => !v)}
           />
         </div>
-        <p className="muted">{t('driver.count', { count: filtered.length })}</p>
-      </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState icon="car" title={t('driver.empty')} />
-      ) : (
-        <div className="card">
-          {/* G7 — sticky column header, same construction as the volunteers. */}
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <div className="w-full sm:w-80">
+            <SearchInput
+              value={query}
+              onChange={setQuery}
+              placeholder={t('common.search')}
+            />
+          </div>
+          <p className="muted">{t('driver.count', { count: filtered.length })}</p>
+          {anyFilter && (
+            <button
+              type="button"
+              onClick={() => {
+                setSevenPlus(false)
+                setFreeTonight(false)
+              }}
+              className="filter-pill border-edge-strong text-content-primary hover:border-status-danger"
+            >
+              <Icon name="close" size={11} />
+              {t('common.clear')}
+            </button>
+          )}
+        </div>
+
+        {filtered.length > 0 && (
           <div
-            className="sticky z-10 hidden items-center gap-3 rounded-t-card border-b border-edge-subtle
+            className="hidden items-center gap-3 rounded-t-card border-b border-edge-subtle
                        bg-surface-overlay/95 px-4 py-2.5 backdrop-blur lg:flex"
-            style={{ top: 'var(--shell-top, 0px)' }}
           >
             <HeaderCell label={t('volunteers.colName')} className="w-56" />
             <HeaderCell label={t('driver.vehicle')} className="w-52" />
@@ -125,7 +198,13 @@ export function DriversScreen() {
               className="ms-auto"
             />
           </div>
+        )}
+      </div>
 
+      {filtered.length === 0 ? (
+        <EmptyState icon="car" title={t('driver.empty')} />
+      ) : (
+        <div className="card lg:rounded-t-none">
           <div
             ref={listRef}
             style={{ height: virtualizer.getTotalSize(), position: 'relative' }}

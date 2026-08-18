@@ -42,6 +42,15 @@ const BLEED_ROUTES = [
   '/coordinator/incidents',
 ]
 
+/**
+ * G14c — the farm DETAIL is map-first too, so it manages its own canvas like
+ * the list screens. `new`, `edit` and the anchor sub-routes stay padded forms.
+ */
+const isBleedPath = (pathname: string) =>
+  BLEED_ROUTES.some((r) => pathname === r) ||
+  (/^\/coordinator\/farms\/[^/]+$/.test(pathname) &&
+    pathname !== '/coordinator/farms/new')
+
 function Brand({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation()
   return (
@@ -84,7 +93,7 @@ export function CoordinatorLayout() {
   const topBarRef = useRef<HTMLElement | null>(null)
   usePublishedHeight(topBarRef, '--shell-top')
 
-  const bleed = BLEED_ROUTES.some((r) => pathname === r)
+  const bleed = isBleedPath(pathname)
 
   // Close the mobile slide-over whenever the route changes.
   useEffect(() => setMenuOpen(false), [pathname])
