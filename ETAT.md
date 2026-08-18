@@ -45,7 +45,7 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **Lot 0.10 IN PROGRESS — 13 of 18 sections done, one commit each.**
+State: **Lot 0.10 IN PROGRESS — 14 of 18 sections done, one commit each.**
 Branch `main`, NOT yet pushed (deploy happens at G12).
 
 > **LOT 0.10 RESUME POINT.** The lot's full spec is the user prompt titled
@@ -88,11 +88,19 @@ Branch `main`, NOT yet pushed (deploy happens at G12).
 > and banners "reconfirm everything"; cancelled guards excluded from
 > tonight/upcoming/past AT THE ACCESSOR, surfaced only in the missions
 > screen's בוטלו tab and struck-through in the agenda; mission-07 seeded
-> cancelled).
+> cancelled), **G7** (full-page tables: useWindowTable hook — WINDOW
+> virtualisation with a measured scrollMargin, because the naive
+> `offsetTop ?? 0` draws rows ~1000px below their slot and blanks the page;
+> sticky column headers at `top: var(--shell-top)` with NO overflow-hidden
+> ancestor; volunteers gain licence+car icons and a compressed availability
+> column at xl; DriversScreen rebuilt as the same table; farms gain a
+> מפה/טבלה toggle whose table reading is full-page OUTSIDE the map shell
+> because a table cannot live in the shell's one-third panel — the map
+> stays the default so A18 holds; dashboard KPIs moved to text-display;
+> scripts/layout.ts now sweeps 23 screens: drivers added, volunteers
+> A30-exempt with the reason printed).
 >
-> REMAINING: G7 (full-page window-virtualised tables +
-> sticky headers + volunteer columns + display-scale KPIs — replaces F5.5
-> for the BIG tables only), G10 (templates.ts source of truth + הורד תבנית
+> REMAINING: G10 (templates.ts source of truth + הורד תבנית
 > xlsx generator + farms/drivers import with Waze-link parsing + מיקום חסר
 > badge), G11 (iPad 1032×1376 / 1376×1032 + iPhone 402×874 perfection,
 > safe areas), G12 (A1–A30 re-run + NEW A31–A44 **+ A47–A50 from the G7bis
