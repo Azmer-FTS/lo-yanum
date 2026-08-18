@@ -45,8 +45,8 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **Lot 0.10 IN PROGRESS — 18 sections done (PO decisions, G14, G15
-landed 2026-08-19), one commit each. Next: G16.**
+State: **Lot 0.10 IN PROGRESS — 19 sections done (PO decisions, G14, G15,
+G16 landed 2026-08-19), one commit each. Next: G10.**
 Branch `main`, NOT yet pushed (deploy happens at G12).
 
 > **SPEC GAP RESOLVED (2026-08-19).** The product owner re-sent the missing
@@ -219,10 +219,23 @@ Branch `main`, NOT yet pushed (deploy happens at G12).
 > (מוזן ידנית chip + "back to the map's sum", or the sum named as source),
 > typing flips the flag, updateFarm resyncs on submit; farm-08 grazing =
 > 3900 is the seeded override; the DASHBOARD dunam KPIs now read the synced
-> values — the seed numbers changed, A52 recomputes so it stays green).
+> values — the seed numbers changed, A52 recomputes so it stays green),
+> **G16** (סוג יישות on Farm — `entityKind?: 'farm'|'moshav'|'other'`,
+> absent = farm, read via `entityKindOf`; new 'moshav' MarkerKind with a
+> village glyph (`entityMarkerKind` in badges.tsx swapped in at every farm
+> marker call site incl. dashboard/farms/route/anchor-form/meet); FOUR zone
+> tints — `--zone-boundary-moshav`/`--zone-grazing-moshav` blues in both
+> themes + the system-dark media block; zoneColor/zoneLabelKey/zonePolygons/
+> ZoneLegend take the entity (legend shows up to 4 rows on mixed maps, the
+> single-entity form on the detail screen via `entity` prop); adapted labels
+> גבול היישוב / שטח היישוב / צייר גבול יישוב + PointLegend המושב; farms list
+> gained the מושבים KPI-filter (dunam-weighted) and the form the סוג יישות
+> select (FarmDraft carries it); mocks: farm-13 מושב רתמים ADJOINS farm-01's
+> grazing at 34.672°E (the A55 adjacency), farm-14 מושב באר חיל contacted;
+> accept: A4 farm count 12→14, new A55 section — 77 checks green; layout 23
+> screens + wizard 28 + tokens/contrast/dispatch/build all green).
 >
-> REMAINING (in this order): **G16** (full spec in the SPEC GAP
-> RESOLVED note above), G10 (templates.ts source of
+> REMAINING (in this order): G10 (templates.ts source of
 > truth + הורד תבנית xlsx generator + farms/drivers import with Waze-link
 > parsing + מיקום חסר badge **+ the סוג יישות column from G16**), **G18** (threat zones + attack vectors, coordinator-only: new zone
 > type "אזור איום" drawn like other zones in an explicit mode, red/orange
