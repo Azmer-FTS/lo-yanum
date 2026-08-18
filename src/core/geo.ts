@@ -69,6 +69,41 @@ export function haversineKm(a: LatLng, b: LatLng): number {
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)))
 }
 
+/**
+ * G15 — geodesic area of a vertex ring, in DUNAMS (1 dunam = 1000 m²).
+ *
+ * Chamberlain–Duquette spherical excess (the formula turf.js uses): each edge
+ * contributes `Δλ · (2 + sin φ₁ + sin φ₂)`, and half the absolute total times
+ * R² is the area — so winding direction does not matter, and neither does the
+ * ring being explicitly closed (the last vertex joins the first, same
+ * convention as FarmZone.ring). Under 3 vertices there is no surface.
+ */
+export function ringAreaDunams(ring: LatLng[]): number {
+  if (ring.length < 3) return 0
+  const R_M = EARTH_RADIUS_KM * 1000
+  let sum = 0
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i]
+    const b = ring[(i + 1) % ring.length]
+    sum += toRad(b.lng - a.lng) * (2 + Math.sin(toRad(a.lat)) + Math.sin(toRad(b.lat)))
+  }
+  const areaM2 = Math.abs((sum * R_M * R_M) / 2)
+  return areaM2 / 1000
+}
+
+/**
+ * G15 — the ring's vertex average: where the move handle and the live area
+ * label sit. Not a true centroid, but stable, cheap, and inside every convex
+ * ring — which hand-drawn field polygons overwhelmingly are.
+ */
+export function ringCenter(ring: LatLng[]): LatLng {
+  const n = Math.max(1, ring.length)
+  return {
+    lat: ring.reduce((s, p) => s + p.lat, 0) / n,
+    lng: ring.reduce((s, p) => s + p.lng, 0) / n,
+  }
+}
+
 /** Decimal degrees, 5 dp (~1 m) — the form used in SMS to kosher phones. */
 export function formatCoords(p: LatLng): string {
   return `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`

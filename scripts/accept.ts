@@ -14,6 +14,8 @@ import {
   getDrivers,
   getDunamKpis,
   getFarmVisitsForFarm,
+  getFarmZonesForFarm,
+  ringAreaDunams,
   getIncidentsForMission,
   getMission,
   getMyFarm,
@@ -335,6 +337,62 @@ section('A52 — the dashboard dunam KPIs recompute from the mocks')
   check('potential dunams = pipeline minus declined, recomputed', kpis.potentialDunams === potential && potential > 0, `${kpis.potentialDunams}`)
   const declined = sum(farms.filter((f) => f.status === 'declined'))
   check('declined ground counts in NEITHER number', kpis.guardedDunams + kpis.potentialDunams + declined === sum(farms))
+}
+
+// --- A54 (G15): the geodesic dunam area and its auto-fill ---------------------
+
+section('A54 — geodesic dunam area is right, and the store keeps fields in sync')
+{
+  // A 0.01° × 0.01° "square" at the programme's latitude: ~1113 m tall,
+  // ~951 m wide, ≈ 1059 dunams. Planar reference computed independently.
+  const lat = 31.27
+  const lng = 34.79
+  const d = 0.01
+  const square = [
+    { lat, lng },
+    { lat: lat + d, lng },
+    { lat: lat + d, lng: lng + d },
+    { lat, lng: lng + d },
+  ]
+  const area = ringAreaDunams(square)
+  const side = 111_320 * d
+  const expected = (side * side * Math.cos(((lat + d / 2) * Math.PI) / 180)) / 1000
+  check(
+    'a known square lands within 1 % of the planar reference',
+    Math.abs(area - expected) / expected < 0.01,
+    `${area.toFixed(1)} vs ${expected.toFixed(1)} dunams`,
+  )
+  check(
+    'winding direction does not matter',
+    Math.abs(ringAreaDunams([...square].reverse()) - area) < 1e-9,
+  )
+  check('under three vertices there is no surface', ringAreaDunams(square.slice(0, 2)) === 0)
+  const moved = square.map((p) => ({ lat: p.lat + 0.05, lng: p.lng - 0.03 }))
+  check(
+    'translating the ring (the move handle) barely changes its area',
+    Math.abs(ringAreaDunams(moved) - area) / area < 0.01,
+  )
+
+  as(COORD)
+  const farm01 = getVisibleFarms().find((f) => f.id === 'farm-01')!
+  const sumOf = (farmId: string, kind: 'farm_boundary' | 'grazing_area') =>
+    Math.round(
+      getFarmZonesForFarm(farmId)
+        .filter((z) => z.kind === kind)
+        .reduce((s, z) => s + ringAreaDunams(z.ring), 0),
+    )
+  check(
+    'a farm with zones carries the zone sum as its dunams',
+    farm01.farmDunams === sumOf('farm-01', 'farm_boundary') &&
+      farm01.grazingDunams === sumOf('farm-01', 'grazing_area'),
+    `${farm01.farmDunams} / ${farm01.grazingDunams}`,
+  )
+  const farm08 = getVisibleFarms().find((f) => f.id === 'farm-08')!
+  check(
+    'a manual override (מוזן ידנית) survives the sync',
+    farm08.grazingDunamsManual === true && farm08.grazingDunams === 3900,
+    `${farm08.grazingDunams}`,
+  )
 }
 
 // --- Regression: archiving still works ----------------------------------------

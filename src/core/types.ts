@@ -97,6 +97,14 @@ export interface Farm {
   position: LatLng
   farmDunams: number
   grazingDunams: number
+  /**
+   * G15 — true when the coordinator TYPED the value ("מוזן ידנית"); false or
+   * absent means the number is the zone sum and the store keeps it in sync
+   * with the drawn polygons (see syncZoneDunams). Optional so fixtures and
+   * imports predating the flag stay valid — absent reads as automatic.
+   */
+  farmDunamsManual?: boolean
+  grazingDunamsManual?: boolean
   contacts: FarmContact[]
   commitments: FarmCommitment[]
   agreements: Agreement[]

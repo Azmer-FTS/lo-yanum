@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { ringAreaDunams, ringCenter } from '@core/index'
 import type { AnchorPoint, Farm, FarmZone, FarmZoneKind, LatLng } from '@core/index'
 
 import { Icon } from './Icon'
@@ -69,6 +70,13 @@ export interface AnchorMapProps {
   onZoneCreate?: (kind: FarmZoneKind, ring: LatLng[]) => void
   onZoneRingChange?: (id: string, ring: LatLng[]) => void
   onZoneDelete?: (id: string) => void
+  /**
+   * G15 — CONTROLLED zone selection, for a screen that also lists the zones
+   * beside the map (the farm detail's "ערוך" buttons). Pass both or neither;
+   * when absent the map keeps its own internal selection, as before.
+   */
+  selectedZoneId?: string | null
+  onZoneSelectionChange?: (id: string | null) => void
   className?: string
   /** G14c — square corners for the full-bleed map-first column. */
   flush?: boolean
@@ -98,6 +106,8 @@ export function AnchorMap({
   onZoneCreate,
   onZoneRingChange,
   onZoneDelete,
+  selectedZoneId: controlledZoneId,
+  onZoneSelectionChange,
   className = 'h-full w-full',
   flush = false,
   overlay,
@@ -105,7 +115,18 @@ export function AnchorMap({
   const { t } = useTranslation()
 
   const [mode, setMode] = useState<Mode>({ kind: 'idle' })
-  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
+  // G15 — selection is controlled when the parent passes the pair, internal
+  // otherwise. One variable + one setter downstream, whichever the source.
+  const [internalZoneId, setInternalZoneId] = useState<string | null>(null)
+  const zoneControlled = controlledZoneId !== undefined
+  const selectedZoneId = zoneControlled ? controlledZoneId : internalZoneId
+  const setSelectedZoneId = (
+    next: string | null | ((cur: string | null) => string | null),
+  ) => {
+    const value = typeof next === 'function' ? next(selectedZoneId) : next
+    if (zoneControlled) onZoneSelectionChange?.(value)
+    else setInternalZoneId(value)
+  }
   // G7bis.2 — while a mode is armed (or a zone selected), Esc belongs to IT;
   // only an idle Esc leaves the fullscreen room.
   const fullscreen = useMapFullscreen(
@@ -206,13 +227,15 @@ export function AnchorMap({
         title: t('zone.vertex'),
         kind: 'vertex' as const,
       })),
-      // G1 — the selected zone's vertices, draggable to reshape it.
+      // G1 — the selected zone's vertices, draggable to reshape it. Emphasis
+      // separates a REAL vertex from the smaller G15 midpoint grips between.
       ...(selectedZone?.ring ?? []).map((v, i) => ({
         id: `vertex-${selectedZone?.id}-${i}`,
         position: v,
         color: zoneColor(selectedZone?.kind ?? 'farm_boundary'),
         title: t('zone.vertex'),
         kind: 'vertex' as const,
+        emphasis: true,
         draggable: Boolean(onZoneRingChange),
         onDragEnd: onZoneRingChange
           ? (position: LatLng) => {
@@ -224,6 +247,83 @@ export function AnchorMap({
             }
           : undefined,
       })),
+      // G15 — a small grip on the MIDDLE of each edge: clicking it inserts a
+      // vertex right there, ready to drag. This is how a 5-point sketch grows
+      // into the field's real shape without redrawing it.
+      ...(selectedZone && onZoneRingChange
+        ? selectedZone.ring.map((v, i) => {
+            const next = selectedZone.ring[(i + 1) % selectedZone.ring.length]
+            const mid = {
+              lat: (v.lat + next.lat) / 2,
+              lng: (v.lng + next.lng) / 2,
+            }
+            return {
+              id: `midpoint-${selectedZone.id}-${i}`,
+              position: mid,
+              color: zoneColor(selectedZone.kind),
+              title: t('zone.addVertex'),
+              kind: 'vertex' as const,
+              onSelect: () => {
+                const ring = [...selectedZone.ring]
+                ring.splice(i + 1, 0, mid)
+                onZoneRingChange(selectedZone.id, ring)
+              },
+            }
+          })
+        : []),
+      // G15 — the whole-polygon MOVE handle at the ring's centre: dragging it
+      // translates every vertex by the same delta.
+      ...(selectedZone && onZoneRingChange
+        ? [
+            {
+              id: `zone-move-${selectedZone.id}`,
+              position: ringCenter(selectedZone.ring),
+              color: zoneColor(selectedZone.kind),
+              title: t('zone.moveZone'),
+              kind: 'move' as const,
+              draggable: true,
+              onDragEnd: (position: LatLng) => {
+                const from = ringCenter(selectedZone.ring)
+                const dLat = position.lat - from.lat
+                const dLng = position.lng - from.lng
+                onZoneRingChange(
+                  selectedZone.id,
+                  selectedZone.ring.map((p) => ({
+                    lat: p.lat + dLat,
+                    lng: p.lng + dLng,
+                  })),
+                )
+              },
+            },
+          ]
+        : []),
+      // G15 — the LIVE area read-out, riding the polygon being drawn/edited.
+      ...(drawing && drawing.draft.length >= 3
+        ? [
+            {
+              id: 'draft-area',
+              position: ringCenter(drawing.draft),
+              color: zoneColor(drawing.zone),
+              title: t('zone.areaDunams', {
+                n: Math.round(ringAreaDunams(drawing.draft)).toLocaleString('he-IL'),
+              }),
+              kind: 'label' as const,
+            },
+          ]
+        : []),
+      ...(selectedZone
+        ? [
+            {
+              id: `zone-area-${selectedZone.id}`,
+              position: ringCenter(selectedZone.ring),
+              color: zoneColor(selectedZone.kind),
+              title: t('zone.areaDunams', {
+                n: Math.round(ringAreaDunams(selectedZone.ring)).toLocaleString('he-IL'),
+              }),
+              kind: 'label' as const,
+            },
+          ]
+        : []),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [signature],
@@ -343,6 +443,26 @@ export function AnchorMap({
             </button>
             {selectedZone && (
               <>
+                {/* G15 — the panel's half of the live read-out: which zone is
+                    being edited, and how big it currently is. */}
+                <span className="flex items-center gap-1.5 rounded-pill border border-edge-subtle bg-surface-overlay/95 px-3 py-1.5 text-micro font-semibold text-content-primary shadow-card backdrop-blur">
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-pill"
+                    style={{ backgroundColor: zoneColor(selectedZone.kind) }}
+                  />
+                  {t(
+                    selectedZone.kind === 'farm_boundary'
+                      ? 'zone.boundary'
+                      : 'zone.grazing',
+                  )}
+                  <span className="numeric ltr-nums">
+                    {t('zone.areaDunams', {
+                      n: Math.round(
+                        ringAreaDunams(selectedZone.ring),
+                      ).toLocaleString('he-IL'),
+                    })}
+                  </span>
+                </span>
                 <button
                   type="button"
                   onClick={() => {
@@ -410,7 +530,15 @@ export function AnchorMap({
                 {drawing
                   ? `${t('zone.drawingHint')} · ${t('zone.vertexCount', {
                       count: drawing.draft.length,
-                    })} · ${t('anchor.escToCancel')}`
+                    })}${
+                      drawing.draft.length >= 3
+                        ? ` · ${t('zone.areaDunams', {
+                            n: Math.round(
+                              ringAreaDunams(drawing.draft),
+                            ).toLocaleString('he-IL'),
+                          })}`
+                        : ''
+                    } · ${t('anchor.escToCancel')}`
                   : arming
                     ? t('anchor.escToCancel')
                     : onMove && !empty

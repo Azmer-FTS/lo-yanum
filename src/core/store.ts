@@ -1,4 +1,5 @@
 import { iso, now } from './clock'
+import { ringAreaDunams } from './geo'
 import { ANCHOR_POINTS } from './mock/anchors'
 import { FARMS } from './mock/farms'
 import { FARM_ZONES } from './mock/zones'
@@ -66,7 +67,7 @@ interface StoreData {
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T
 
-const initial = (): StoreData => ({
+const initial = (): StoreData => seedZoneDunams({
   farms: clone(FARMS),
   generalMeetings: clone(GENERAL_MEETINGS),
   farmZones: clone(FARM_ZONES),
@@ -79,6 +80,33 @@ const initial = (): StoreData => ({
   tours: clone(TOURS),
   session: { role: 'coordinator', entityId: null },
 })
+
+/**
+ * G15 — the fixtures' dunam figures were hand-estimated before the polygons
+ * existed; at seed the drawn ground wins (unless a farm is flagged manual),
+ * so the map, the form and the dashboard KPIs agree from the first render.
+ */
+function seedZoneDunams(seed: StoreData): StoreData {
+  const sums = new Map<string, { boundary: number; grazing: number }>()
+  for (const z of seed.farmZones) {
+    const entry = sums.get(z.farmId) ?? { boundary: 0, grazing: 0 }
+    if (z.kind === 'farm_boundary') entry.boundary += ringAreaDunams(z.ring)
+    else entry.grazing += ringAreaDunams(z.ring)
+    sums.set(z.farmId, entry)
+  }
+  seed.farms = seed.farms.map((f) => {
+    const s = sums.get(f.id)
+    if (!s) return f
+    return {
+      ...f,
+      farmDunams:
+        !f.farmDunamsManual && s.boundary > 0 ? Math.round(s.boundary) : f.farmDunams,
+      grazingDunams:
+        !f.grazingDunamsManual && s.grazing > 0 ? Math.round(s.grazing) : f.grazingDunams,
+    }
+  })
+  return seed
+}
 
 let data: StoreData = initial()
 
@@ -304,6 +332,9 @@ export interface FarmDraft {
   position: LatLng
   farmDunams: number
   grazingDunams: number
+  /** G15 — see Farm: true = the coordinator typed the value. */
+  farmDunamsManual?: boolean
+  grazingDunamsManual?: boolean
   contacts: FarmContact[]
   commitments: FarmCommitment[]
   agreements: Agreement[]
@@ -326,6 +357,9 @@ export function updateFarm(farmId: string, draft: FarmDraft): void {
   const index = data.farms.findIndex((f) => f.id === farmId)
   if (index === -1) return
   data.farms[index] = { ...data.farms[index], ...draft }
+  // G15 — a submit that RELEASES an override (manual flag back to false)
+  // gets the zone sum back immediately, through the one writer.
+  syncZoneDunams(farmId)
   commit()
 }
 
@@ -345,9 +379,35 @@ export interface FarmZoneDraft {
   ring: LatLng[]
 }
 
+/**
+ * G15 — ONE WRITER for the auto-filled dunam fields, same pattern as
+ * `syncNextVisit` (decision 35): every zone mutation funnels through here, so
+ * "the map says 430 dunams" and "the form says 430 dunams" cannot disagree.
+ * A field the coordinator typed (its `*Manual` flag) is never overwritten,
+ * and a kind with NO zones left says nothing — deleting the last polygon
+ * must not zero a number that predates the drawing.
+ */
+function syncZoneDunams(farmId: string): void {
+  const farm = data.farms.find((f) => f.id === farmId)
+  if (!farm) return
+  const zones = data.farmZones.filter((z) => z.farmId === farmId)
+  const sumOf = (kind: FarmZoneKind): number | null => {
+    const of = zones.filter((z) => z.kind === kind)
+    if (of.length === 0) return null
+    return Math.round(of.reduce((s, z) => s + ringAreaDunams(z.ring), 0))
+  }
+  const boundary = sumOf('farm_boundary')
+  const grazing = sumOf('grazing_area')
+  const next = { ...farm }
+  if (!farm.farmDunamsManual && boundary !== null) next.farmDunams = boundary
+  if (!farm.grazingDunamsManual && grazing !== null) next.grazingDunams = grazing
+  data.farms = data.farms.map((f) => (f.id === farmId ? next : f))
+}
+
 export function createFarmZone(draft: FarmZoneDraft): FarmZone {
   const zone: FarmZone = { id: nextId('zone'), ...draft }
   data.farmZones = [...data.farmZones, zone]
+  syncZoneDunams(draft.farmId)
   commit()
   return zone
 }
@@ -357,11 +417,14 @@ export function updateFarmZoneRing(zoneId: string, ring: LatLng[]): void {
   const index = data.farmZones.findIndex((z) => z.id === zoneId)
   if (index === -1) return
   data.farmZones[index] = { ...data.farmZones[index], ring }
+  syncZoneDunams(data.farmZones[index].farmId)
   commit()
 }
 
 export function deleteFarmZone(zoneId: string): void {
+  const zone = data.farmZones.find((z) => z.id === zoneId)
   data.farmZones = data.farmZones.filter((z) => z.id !== zoneId)
+  if (zone) syncZoneDunams(zone.farmId)
   commit()
 }
 

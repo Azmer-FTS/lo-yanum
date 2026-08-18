@@ -45,6 +45,8 @@ export type MarkerKind =
   | 'pin'
   | 'vertex'
   | 'car'
+  | 'label'
+  | 'move'
 
 export interface MapMarker {
   id: string
@@ -134,6 +136,8 @@ const SIZE: Record<MarkerKind, number> = {
   pin: 30,
   vertex: 12,
   car: 28,
+  label: 0,
+  move: 26,
 }
 
 /** The kinds drawn as a bottom-anchored teardrop rather than a centred shape. */
@@ -161,6 +165,8 @@ const GLYPH: Partial<Record<MarkerKind, string>> = {
   anchor:
     'M12 3c-2.6 1.6-5 2.3-7 2.4v7.2c0 4.4 2.9 6.8 7 8.4 4.1-1.6 7-4 7-8.4V5.4c-2-.1-4.4-.8-7-2.4z',
   car: CAR_PATH,
+  // G15 — the whole-polygon move handle: a four-way arrow cross.
+  move: 'M12 2v20M2 12h20M12 2l-2.5 2.5M12 2l2.5 2.5M12 22l-2.5-2.5M12 22l2.5-2.5M2 12l2.5-2.5M2 12l2.5 2.5M22 12l-2.5-2.5M22 12l-2.5 2.5',
 }
 
 function markerElement(marker: MapMarker): HTMLElement {
@@ -170,6 +176,29 @@ function markerElement(marker: MapMarker): HTMLElement {
 
   const kind = marker.kind ?? 'farm'
   const ring = readToken('--surface-base')
+
+  if (kind === 'label') {
+    // G15 — a READ-OUT, not a control: the live area chip riding a polygon.
+    // pointer-events:none so panning and vertex drags pass straight through;
+    // the colour identifies which zone the number belongs to.
+    el.style.cssText = [
+      'pointer-events:none',
+      'border:none',
+      'padding:2px 9px',
+      'border-radius:var(--radius-pill)',
+      `background:${marker.color}`,
+      `color:${readToken('--text-on-accent')}`,
+      'font-family:var(--font-sans)',
+      'font-size:11.5px',
+      'font-weight:700',
+      'font-variant-numeric:tabular-nums',
+      'white-space:nowrap',
+      'box-shadow:0 1px 6px rgba(0,0,0,.35)',
+    ].join(';')
+    el.textContent = marker.title
+    el.tabIndex = -1
+    return el
+  }
 
   if (kind === 'vertex') {
     // G1 — a polygon-vertex handle: a small ROUND grip (G7bis.1 — the raw
@@ -514,6 +543,9 @@ export default function MapCanvas({
         // A teardrop points with its TIP; centre-anchoring it would report a
         // position half a pin height south of where the user aimed.
         anchor: PIN_KINDS.includes(marker.kind ?? 'farm') ? 'bottom' : 'center',
+        // G15 — the area chip floats ABOVE its anchor so it never buries the
+        // move handle that shares the polygon's centre.
+        offset: marker.kind === 'label' ? [0, -26] : [0, 0],
       })
         .setLngLat([marker.position.lng, marker.position.lat])
         .addTo(map)

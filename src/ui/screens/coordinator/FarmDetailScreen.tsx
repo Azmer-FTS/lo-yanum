@@ -20,6 +20,7 @@ import {
   googleMapsPointUrl,
   now,
   patchAnchorPoint,
+  ringAreaDunams,
 } from '@core/index'
 import type {
   Agreement,
@@ -35,6 +36,7 @@ import { FarmVisitModal } from '../../components/FarmVisitModal'
 import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
 import { AnchorMap } from '../../components/AnchorMap'
+import { zoneColor } from '../../components/zones'
 import { Timeline } from '../../components/Timeline'
 import type { TimelineEntry } from '../../components/Timeline'
 import {
@@ -183,13 +185,28 @@ function KeyNumbers({
         <p className="numeric text-metric text-content-primary">
           {farm.farmDunams.toLocaleString(locale)}
         </p>
-        <p className="muted mt-0.5 leading-tight">{t('farms.farmArea')}</p>
+        <p className="muted mt-0.5 leading-tight">
+          {t('farms.farmArea')}
+          {/* G15 — the override is a VISIBLE fact, not a hidden flag. */}
+          {farm.farmDunamsManual && (
+            <span className="chip ms-1.5 bg-status-warn/15 text-status-warn-ink">
+              {t('zone.manualOverride')}
+            </span>
+          )}
+        </p>
       </div>
       <div className="min-w-0">
         <p className="numeric text-metric text-content-primary">
           {farm.grazingDunams.toLocaleString(locale)}
         </p>
-        <p className="muted mt-0.5 leading-tight">{t('farms.grazingArea')}</p>
+        <p className="muted mt-0.5 leading-tight">
+          {t('farms.grazingArea')}
+          {farm.grazingDunamsManual && (
+            <span className="chip ms-1.5 bg-status-warn/15 text-status-warn-ink">
+              {t('zone.manualOverride')}
+            </span>
+          )}
+        </p>
       </div>
       <div className="min-w-0">
         <FarmStatusChip status={farm.status} />
@@ -324,6 +341,9 @@ export function FarmDetailScreen() {
   const [newVisit, setNewVisit] = useState(false)
   const [editVisitId, setEditVisitId] = useState<string | null>(null)
   const [selectedAnchorId, setSelectedAnchorId] = useState<string | null>(null)
+  // G15 — zone selection lives HERE so the list's "ערוך" buttons and the
+  // map's own clicks drive the same state.
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
 
   // G7bis.3 — the secondary blocks open by default only where two columns
   // exist to absorb them; on one narrow column they start folded. Read once:
@@ -512,6 +532,64 @@ export function FarmDetailScreen() {
                     >
                       <Icon name="edit" size={16} />
                     </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+
+          {/* G15 — the ground list: every drawn zone with its live area, and
+              an "ערוך" that selects it on the map with its handles up. */}
+          <Section title={t('zone.zonesTitle')}>
+            {zones.length === 0 ? (
+              <EmptyState icon="map" title={t('zone.noZones')} />
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {zones.map((z) => (
+                  <li
+                    key={z.id}
+                    className={`flex items-center gap-2.5 rounded-field border px-3 py-2 transition-colors duration-fast ${
+                      z.id === selectedZoneId
+                        ? 'border-accent bg-accent/10'
+                        : 'border-edge-subtle'
+                    }`}
+                  >
+                    <span
+                      className="inline-block h-2.5 w-4 shrink-0 border"
+                      style={{
+                        borderColor: zoneColor(z.kind),
+                        backgroundColor: `color-mix(in srgb, ${zoneColor(z.kind)} 18%, transparent)`,
+                      }}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-caption font-medium text-content-primary">
+                        {t(
+                          z.kind === 'farm_boundary'
+                            ? 'zone.boundary'
+                            : 'zone.grazing',
+                        )}
+                      </span>
+                      <span className="muted numeric block">
+                        {t('zone.areaDunams', {
+                          n: Math.round(ringAreaDunams(z.ring)).toLocaleString(
+                            locale,
+                          ),
+                        })}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedZoneId(
+                          z.id === selectedZoneId ? null : z.id,
+                        )
+                        if (!mapOpen) toggleMap()
+                      }}
+                      className="btn-secondary shrink-0 py-1.5 text-micro"
+                    >
+                      <Icon name="edit" size={13} />
+                      {t('zone.edit')}
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -762,6 +840,8 @@ export function FarmDetailScreen() {
               flush
               farm={farm}
               anchors={anchors}
+              selectedZoneId={selectedZoneId}
+              onZoneSelectionChange={setSelectedZoneId}
               selectedId={selectedAnchorId}
               onSelect={setSelectedAnchorId}
               onCreate={(position: LatLng) => {

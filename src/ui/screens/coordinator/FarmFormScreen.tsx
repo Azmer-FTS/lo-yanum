@@ -8,6 +8,8 @@ import {
   NEGEV_CENTER,
   createFarm,
   getFarm,
+  getFarmZonesForFarm,
+  ringAreaDunams,
   fromDayKey,
   iso,
   localDayKey,
@@ -77,6 +79,46 @@ const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed']
  * areas → status → notes. Saving writes to the mock store, so the change is
  * visible everywhere for the rest of the session.
  */
+/** G15 — the provenance line under a dunam field: override chip + the way
+ *  back to the zone sum, or the sum's name when it is the live source. */
+function DunamSourceRow({
+  manual,
+  autoSum,
+  onAuto,
+}: {
+  manual: boolean
+  autoSum: number | null
+  onAuto: (sum: number) => void
+}) {
+  const { t } = useTranslation()
+  if (manual) {
+    return (
+      <div className="mt-1 flex flex-wrap items-center gap-2">
+        <span className="chip bg-status-warn/15 text-status-warn-ink">
+          {t('zone.manualOverride')}
+        </span>
+        {autoSum !== null && (
+          <button
+            type="button"
+            onClick={() => onAuto(autoSum)}
+            className="text-micro font-semibold text-accent-ink hover:underline"
+          >
+            {t('zone.backToAuto')} (
+            <span className="numeric ltr-nums">{autoSum}</span>)
+          </button>
+        )}
+      </div>
+    )
+  }
+  if (autoSum === null) return null
+  return (
+    <p className="muted mt-1">
+      {t('zone.autoFromZones')} ·{' '}
+      <span className="numeric ltr-nums">{autoSum}</span>
+    </p>
+  )
+}
+
 export function FarmFormScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -107,6 +149,20 @@ export function FarmFormScreen() {
   const [grazingDunams, setGrazingHectares] = useState(
     String(existing?.grazingDunams ?? ''),
   )
+  // G15 — typing in a dunam field flips it to "מוזן ידנית"; the button under
+  // the field hands it back to the zone sum.
+  const [farmManual, setFarmManual] = useState(
+    Boolean(existing?.farmDunamsManual),
+  )
+  const [grazingManual, setGrazingManual] = useState(
+    Boolean(existing?.grazingDunamsManual),
+  )
+  const zones = useCoreValue(() => (farmId ? getFarmZonesForFarm(farmId) : []))
+  const zoneSum = (kind: 'farm_boundary' | 'grazing_area'): number | null => {
+    const of = zones.filter((z) => z.kind === kind)
+    if (of.length === 0) return null
+    return Math.round(of.reduce((s, z) => s + ringAreaDunams(z.ring), 0))
+  }
   const [contacts, setContacts] = useState<FarmContact[]>(
     existing?.contacts ?? [],
   )
@@ -194,6 +250,8 @@ export function FarmFormScreen() {
       grazingDunams: Number.isFinite(num(grazingDunams))
         ? num(grazingDunams)
         : 0,
+      farmDunamsManual: farmManual,
+      grazingDunamsManual: grazingManual,
       contacts: contacts.map((c) => ({
         ...c,
         name: c.name.trim(),
@@ -337,20 +395,49 @@ export function FarmFormScreen() {
         </FormSection>
 
         <FormSection title={t('form.sectionAreas')}>
-          <TextField
-            label={t('form.farmArea')}
-            value={farmDunams}
-            onChange={setFarmHectares}
-            type="number"
-            ltr
-          />
-          <TextField
-            label={t('form.grazingArea')}
-            value={grazingDunams}
-            onChange={setGrazingHectares}
-            type="number"
-            ltr
-          />
+          {/* G15 — each field says where its number comes from: typed values
+              wear the "מוזן ידנית" chip and can be handed back to the zone
+              sum; automatic values name their source. */}
+          <div>
+            <TextField
+              label={t('form.farmArea')}
+              value={farmDunams}
+              onChange={(v) => {
+                setFarmHectares(v)
+                setFarmManual(true)
+              }}
+              type="number"
+              ltr
+            />
+            <DunamSourceRow
+              manual={farmManual}
+              autoSum={zoneSum('farm_boundary')}
+              onAuto={(sum) => {
+                setFarmManual(false)
+                setFarmHectares(String(sum))
+              }}
+            />
+          </div>
+          <div>
+            <TextField
+              label={t('form.grazingArea')}
+              value={grazingDunams}
+              onChange={(v) => {
+                setGrazingHectares(v)
+                setGrazingManual(true)
+              }}
+              type="number"
+              ltr
+            />
+            <DunamSourceRow
+              manual={grazingManual}
+              autoSum={zoneSum('grazing_area')}
+              onAuto={(sum) => {
+                setGrazingManual(false)
+                setGrazingHectares(String(sum))
+              }}
+            />
+          </div>
         </FormSection>
 
         {/* G2.1 — the coordinates are not typed, they are pointed at. The map

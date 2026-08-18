@@ -290,7 +290,10 @@ export const FARMS: Farm[] = [
     status: 'contacted',
     position: { lat: 31.3591, lng: 35.0812 },
     farmDunams: 90,
+    // G15 — the one seeded OVERRIDE: the farmer's own grazing figure, kept
+    // over the drawn sum so the "מוזן ידנית" state is visible in the mocks.
     grazingDunams: 3900,
+    grazingDunamsManual: true,
     contacts: [
       {
         id: 'contact-08a',

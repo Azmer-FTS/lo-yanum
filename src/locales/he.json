@@ -358,7 +358,16 @@
     "closePolygon": "סגור פוליגון",
     "deleteZone": "מחיקת האזור",
     "doneEditing": "סיום עריכה",
-    "vertex": "פינת אזור"
+    "vertex": "פינת אזור",
+    "addVertex": "הוספת פינה על הצלע",
+    "moveZone": "הזזת האזור כולו",
+    "areaDunams": "{{n}} דונם",
+    "edit": "ערוך",
+    "zonesTitle": "אזורי הקרקע",
+    "noZones": "טרם צוירו אזורים — ציירו גבול או שטח מרעה על המפה",
+    "manualOverride": "מוזן ידנית",
+    "autoFromZones": "מחושב מהמפה",
+    "backToAuto": "חזרה לחישוב מהמפה"
   },
   "pin": {
     "markerLabel": "המיקום שנבחר",
