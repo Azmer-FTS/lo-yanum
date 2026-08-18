@@ -145,7 +145,7 @@ const ALL_SHOTS: Shot[] = [
   { name: '19-volunteer-guard-light', session: 'volunteer:vol-001', hash: '#/volunteer', theme: 'light', settleMs: 3500 },
   { name: '20-volunteer-guard-dark', session: 'volunteer:vol-001', hash: '#/volunteer', theme: 'dark', settleMs: 3500 },
 
-  // The shop window: the Artzenu mark, the brand plate and the verse. The plate
+  // The shop window: לא ינום and the verse on the plate (A60 — no mark). The plate
   // is deliberately IDENTICAL in both themes, and capturing both is how that
   // stays a decision rather than an accident.
   { name: '21-landing-light', session: 'coordinator', hash: '#/', theme: 'light', settleMs: 1500, fullPage: true },

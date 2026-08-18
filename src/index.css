@@ -15,58 +15,11 @@
    · Rubik (variable 300–700) is the BODY/UI face — tables, forms, buttons,
      and every number (its digits are effectively monospaced and it exposes
      `tnum`, which is why it may carry figures and a display face may not).
-   · Frank Ruhl Libre (variable 300–900) is the DISPLAY face — a Hebrew serif
-     whose contrast against Rubik is the identity's one flourish.
-   · Secular One and Heebo are the two ALTERNATIVE display candidates, shown
-     side-by-side in /styleguide for the product owner's arbitrage. Declaring
-     them costs nothing: a face is only fetched when text actually uses it,
-     and only /styleguide does.
+   · Heebo (variable 100–900) is the DISPLAY face — the PO's arbitrage of
+     2026-08-19 (A60). The two other candidates (Frank Ruhl Libre, Secular
+     One) left the bundle with the decision.
    --------------------------------------------------------------------------- */
 
-@font-face {
-  font-family: 'Frank Ruhl Libre';
-  font-style: normal;
-  font-weight: 300 900;
-  font-display: swap;
-  src: url('/fonts/frank-ruhl-libre-hebrew.woff2') format('woff2');
-  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC,
-    U+FB1D-FB4F;
-}
-
-@font-face {
-  font-family: 'Frank Ruhl Libre';
-  font-style: normal;
-  font-weight: 300 900;
-  font-display: swap;
-  src: url('/fonts/frank-ruhl-libre-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-/* Display ALTERNATIVE 1 — used by /styleguide only. */
-@font-face {
-  font-family: 'Secular One';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/secular-one-hebrew.woff2') format('woff2');
-  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC,
-    U+FB1D-FB4F;
-}
-
-@font-face {
-  font-family: 'Secular One';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/secular-one-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-/* Display ALTERNATIVE 2 — used by /styleguide only. */
 @font-face {
   font-family: 'Heebo';
   font-style: normal;
@@ -214,9 +167,10 @@
 }
 
 /* ---------------------------------------------------------------------------
-   THE DISPLAY FACE, BOUND TO THE TYPE SCALE (Lot 0.8, face swapped by G17)
+   THE DISPLAY FACE, BOUND TO THE TYPE SCALE (Lot 0.8, face swapped by G17,
+   arbitrated to Heebo by the PO on 2026-08-19)
    ---------------------------------------------------------------------------
-   Frank Ruhl Libre is applied to the four HEADING steps and nowhere else. Two
+   Heebo is applied to the four HEADING steps and nowhere else. Two
    deliberate choices are encoded here:
 
    · It is bound to the SCALE, not to call sites. Tailwind's `fontSize` plugin
@@ -242,33 +196,14 @@
 /* THE ONE EXCEPTION: a NUMBER at a heading scale stays in the body face —
    Rubik is the only face here with tabular digits, and the dashboard KPIs are
    `numeric text-display`. With the old Atlas subset this worked by accident
-   (its files carried no digits, so figures fell through); Frank Ruhl Libre
-   HAS digits, so the rule must be explicit or the instruments go serif. */
+   (its files carried no digits, so figures fell through); Heebo HAS digits
+   and they are proportional, so the rule must be explicit or the instruments
+   stop aligning. */
 .text-display.numeric,
 .text-section.numeric,
 .text-title.numeric,
 .text-heading.numeric {
   font-family: var(--font-sans);
-}
-
-/* The association's mark, drawn as a MASK rather than an image. The source PNG
-   is white-on-transparent (the site's own header asset), so painting it through
-   a mask lets it take a TOKEN colour and stay legible in both themes — an
-   <img> would be white-on-white the moment the light theme is picked. */
-.artzenu-mark {
-  display: block;
-  background-color: currentColor;
-  mask-image: url('/artzenu-mark.png');
-  -webkit-mask-image: url('/artzenu-mark.png');
-  mask-size: contain;
-  -webkit-mask-size: contain;
-  mask-repeat: no-repeat;
-  -webkit-mask-repeat: no-repeat;
-  mask-position: center;
-  -webkit-mask-position: center;
-  /* 321 × 160 in the source; the ratio keeps it from being squashed at any
-     height the header picks. */
-  aspect-ratio: 321 / 160;
 }
 
 @layer components {

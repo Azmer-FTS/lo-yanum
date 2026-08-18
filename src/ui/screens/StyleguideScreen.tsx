@@ -517,62 +517,33 @@ export function StyleguideScreen() {
           </div>
         </Block>
 
-        {/* G17 — the display-face arbitrage. The three candidates are all
-            self-hosted; only this screen ever renders the two alternatives,
-            so only this screen ever fetches them. The sample line carries
-            nikkud on purpose: the landing verse is the coverage test. */}
+        {/* G17 — the display-face arbitrage is SETTLED (PO, 2026-08-19, A60):
+            Heebo carries the headings; the two other candidates left the
+            bundle with the decision. The sample line carries nikkud on
+            purpose: the landing verse is the coverage test. */}
         <Block title={t('styleguide.faces')} hint={t('styleguide.facesHint')}>
           <div className="flex flex-col gap-3">
-            {(
-              [
-                {
-                  family: "'Frank Ruhl Libre', 'Rubik', sans-serif",
-                  name: 'styleguide.faceFrankName',
-                  note: 'styleguide.faceFrankNote',
-                  chosen: true,
-                },
-                {
-                  family: "'Secular One', 'Rubik', sans-serif",
-                  name: 'styleguide.faceSecularName',
-                  note: 'styleguide.faceSecularNote',
-                  chosen: false,
-                },
-                {
-                  family: "'Heebo', 'Rubik', sans-serif",
-                  name: 'styleguide.faceHeeboName',
-                  note: 'styleguide.faceHeeboNote',
-                  chosen: false,
-                },
-              ] as const
-            ).map((face) => (
-              <div key={face.name} className="card card-pad">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-caption font-semibold text-content-primary">
-                    {t(face.name)}
-                  </p>
-                  <span
-                    className={`chip ${
-                      face.chosen
-                        ? 'bg-accent/15 text-accent-ink'
-                        : 'bg-content-primary/10 text-content-secondary'
-                    }`}
-                  >
-                    {t(face.chosen ? 'styleguide.faceChosen' : 'styleguide.faceAlt')}
-                  </span>
-                </div>
-                <p
-                  className="mt-2 text-content-primary"
-                  style={{
-                    fontFamily: face.family,
-                    fontSize: 'var(--text-title-size)',
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {t('styleguide.faceSample')}
+            <div className="card card-pad">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-caption font-semibold text-content-primary">
+                  {t('styleguide.faceHeeboName')}
                 </p>
-                <p className="muted mt-1.5">{t(face.note)}</p>
+                <span className="chip bg-accent/15 text-accent-ink">
+                  {t('styleguide.faceChosen')}
+                </span>
               </div>
-            ))}
+              <p
+                className="mt-2 text-content-primary"
+                style={{
+                  fontFamily: 'var(--font-brand)',
+                  fontSize: 'var(--text-title-size)',
+                  lineHeight: 1.4,
+                }}
+              >
+                {t('styleguide.faceSample')}
+              </p>
+              <p className="muted mt-1.5">{t('styleguide.faceHeeboNote')}</p>
+            </div>
             <p className="muted">{t('styleguide.faceBody')}</p>
           </div>
         </Block>
