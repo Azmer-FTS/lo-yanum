@@ -45,8 +45,8 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **Lot 0.10 IN PROGRESS — 17 sections done (PO decisions + G14 landed
-2026-08-19), one commit each. Next: G15.**
+State: **Lot 0.10 IN PROGRESS — 18 sections done (PO decisions, G14, G15
+landed 2026-08-19), one commit each. Next: G16.**
 Branch `main`, NOT yet pushed (deploy happens at G12).
 
 > **SPEC GAP RESOLVED (2026-08-19).** The product owner re-sent the missing
@@ -202,9 +202,26 @@ Branch `main`, NOT yet pushed (deploy happens at G12).
 > KPIs + search + column headers — is ONE sticky block at --shell-top with
 > the rows card `lg:rounded-t-none` (`t-none` joined the tokens.ts radius
 > allow-list); below lg it scrolls away, a phone cannot afford a 300 px pin
-> — A51's sticky proof runs at desktop width).
+> — A51's sticky proof runs at desktop width), **G15** (zones are editable
+> ground: click a zone or its ערוך in the farm detail's new zones list →
+> emphasised drag-vertices + midpoint grips that INSERT a vertex + a
+> four-way centre handle that drags the whole ring + delete; zone selection
+> is CONTROLLED on the farm detail (AnchorMap keeps internal state
+> elsewhere); `ringAreaDunams` (spherical excess) + `ringCenter` in
+> @core/geo, tested in accept.ts (±1 % vs planar reference, winding/
+> translation-proof, A54 — 73 checks green); live area chip rides the
+> polygon while drawing/editing via a new non-interactive 'label' marker
+> kind (offset above the move handle) and repeats in banner + toolbar;
+> store gained ONE writer `syncZoneDunams` — every zone mutation AND the
+> seed fold per-kind sums into שטח החווה/שטח מרעה unless flagged
+> `farmDunamsManual`/`grazingDunamsManual` (optional on Farm, so fixtures/
+> imports stay valid); farm form shows each dunam field's provenance
+> (מוזן ידנית chip + "back to the map's sum", or the sum named as source),
+> typing flips the flag, updateFarm resyncs on submit; farm-08 grazing =
+> 3900 is the seeded override; the DASHBOARD dunam KPIs now read the synced
+> values — the seed numbers changed, A52 recomputes so it stays green).
 >
-> REMAINING (in this order): **G15, G16** (full spec in the SPEC GAP
+> REMAINING (in this order): **G16** (full spec in the SPEC GAP
 > RESOLVED note above), G10 (templates.ts source of
 > truth + הורד תבנית xlsx generator + farms/drivers import with Waze-link
 > parsing + מיקום חסר badge **+ the סוג יישות column from G16**), **G18** (threat zones + attack vectors, coordinator-only: new zone
