@@ -44,7 +44,17 @@ const ROUTES: Array<{
   { name: 'farm-form', hash: '#/coordinator/farms/farm-01/edit' },
   { name: 'anchor-sheet', hash: '#/coordinator/farms/farm-01/anchors/anchor-01' },
   { name: 'route-planner', hash: '#/coordinator/route' },
-  { name: 'volunteers', hash: '#/coordinator/volunteers' },
+  {
+    name: 'volunteers',
+    hash: '#/coordinator/volunteers',
+    // G7 — the roster is a WINDOW-virtualised table: the page is the scroll
+    // surface by design, and its height is the roster's 300 rows. The spirit
+    // of A30 (no unbounded DOM) survives in the virtualiser: ~25 DOM rows
+    // however long the list.
+    tallOnPurpose:
+      'G7 window-virtualised table — the page is the scroll surface; DOM rows stay bounded',
+  },
+  { name: 'drivers', hash: '#/coordinator/drivers' },
   { name: 'import', hash: '#/coordinator/volunteers/import' },
   { name: 'missions', hash: '#/coordinator/missions' },
   { name: 'mission-wizard', hash: '#/coordinator/missions/new' },

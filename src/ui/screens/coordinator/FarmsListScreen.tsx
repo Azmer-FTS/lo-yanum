@@ -2,8 +2,13 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
-import { FARM_PIPELINE, getAllVisibleFarmZones, getVisibleFarms } from '@core/index'
-import type { FarmStatus, FarmType } from '@core/index'
+import {
+  FARM_PIPELINE,
+  formatDate,
+  getAllVisibleFarmZones,
+  getVisibleFarms,
+} from '@core/index'
+import type { Farm, FarmStatus, FarmType } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { ChevronForward, Icon } from '../../components/Icon'
@@ -23,6 +28,8 @@ import {
 import { ZoneLegend, zonePolygons } from '../../components/zones'
 import { useProgressive } from '../../hooks/useProgressive'
 import { useCoreValue } from '../../hooks/useCore'
+import { useLocale } from '../../hooks/useLocale'
+import { useWindowTable } from '../../hooks/useWindowTable'
 
 const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
 const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed']
@@ -48,6 +55,14 @@ export function FarmsListScreen() {
   const [query, setQuery] = useState('')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  /**
+   * G7 — two readings of the same roster. The MAP stays the default (A18:
+   * geography first), but a farm file imported at scale needs columns to
+   * scan down, and a table crammed into the map shell's one-third panel is
+   * not a table. The toggle swaps the whole shell: map-first, or a full-page
+   * window-virtualised table like the volunteers'.
+   */
+  const [view, setView] = useState<'map' | 'table'>('map')
 
   const setStatus = (value: FarmStatus | null) => {
     const next = new URLSearchParams(params)
@@ -93,6 +108,113 @@ export function FarmsListScreen() {
   )
 
   const selected = filtered.find((f) => f.id === selectedId) ?? null
+
+  const header = (
+    <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 className="text-title text-content-primary">{t('farms.title')}</h1>
+        <p className="muted mt-1">
+          {t('common.showingOf', {
+            shown: filtered.length,
+            total: farms.length,
+          })}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="hidden items-center gap-1.5 lg:flex">
+          {(['map', 'table'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              aria-pressed={view === v}
+              className={`filter-pill ${view === v ? 'filter-pill-active' : ''}`}
+            >
+              <Icon name={v === 'map' ? 'map' : 'menu'} size={13} />
+              {t(v === 'map' ? 'farms.viewMap' : 'farms.viewTable')}
+            </button>
+          ))}
+        </div>
+        <Link to="/coordinator/farms/new" className="btn-primary">
+          <Icon name="plus" size={15} />
+          {t('farms.new')}
+        </Link>
+      </div>
+    </header>
+  )
+
+  const searchBox = (
+    <div className="mb-3">
+      <div className="relative">
+        <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
+          <Icon name="search" size={16} />
+        </span>
+        <input
+          type="search"
+          className="input py-2 ps-9"
+          value={query}
+          placeholder={t('farms.searchPlaceholder')}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+    </div>
+  )
+
+  const filterRow = (
+    <FilterRow
+      active={status !== null || type !== null}
+      onClear={() => {
+        setStatus(null)
+        setType(null)
+      }}
+    >
+      {STATUSES.map((s) => {
+        const count = farms.filter((f) => f.status === s).length
+        if (count === 0) return null
+        return (
+          <FilterPill
+            key={s}
+            active={status === s}
+            onClick={() => setStatus(status === s ? null : s)}
+            dot={<FarmStatusDot status={s} />}
+            count={count}
+          >
+            {t(`farmStatus.${s}`)}
+          </FilterPill>
+        )
+      })}
+      <span className="mx-0.5 h-4 w-px shrink-0 bg-edge-subtle" />
+      {TYPES.map((ft) => (
+        <FilterPill
+          key={ft}
+          active={type === ft}
+          onClick={() => setType(type === ft ? null : ft)}
+          count={farms.filter((f) => f.type === ft).length}
+        >
+          {t(`farmType.${ft}`)}
+        </FilterPill>
+      ))}
+    </FilterRow>
+  )
+
+  // G7 — the full-page table reading, outside the map shell entirely.
+  if (view === 'table') {
+    return (
+      <>
+        {header}
+        {searchBox}
+        {filterRow}
+        {filtered.length === 0 ? (
+          <EmptyState icon="farm" title={t('farms.empty')} />
+        ) : (
+          <FarmsTable
+            farms={filtered}
+            onOpen={(id) => navigate(`/coordinator/farms/${id}`)}
+          />
+        )}
+      </>
+    )
+  }
 
   return (
     <MapPanel
@@ -161,74 +283,12 @@ export function FarmsListScreen() {
         )
       }
     >
-      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-title text-content-primary">{t('farms.title')}</h1>
-          <p className="muted mt-1">
-            {t('common.showingOf', {
-              shown: filtered.length,
-              total: farms.length,
-            })}
-          </p>
-        </div>
-        <Link to="/coordinator/farms/new" className="btn-primary">
-          <Icon name="plus" size={15} />
-          {t('farms.new')}
-        </Link>
-      </header>
-
-      <div className="mb-3">
-        <div className="relative">
-          <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
-            <Icon name="search" size={16} />
-          </span>
-          <input
-            type="search"
-            className="input py-2 ps-9"
-            value={query}
-            placeholder={t('farms.searchPlaceholder')}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-      </div>
-
+      {header}
+      {searchBox}
       {/* D7.3 — one row. Statuses that no farm is in are dropped rather than
           shown at zero: an unpressable pill is noise, and the legend on the map
           already accounts for the full pipeline. */}
-      <FilterRow
-        active={status !== null || type !== null}
-        onClear={() => {
-          setStatus(null)
-          setType(null)
-        }}
-      >
-        {STATUSES.map((s) => {
-          const count = farms.filter((f) => f.status === s).length
-          if (count === 0) return null
-          return (
-            <FilterPill
-              key={s}
-              active={status === s}
-              onClick={() => setStatus(status === s ? null : s)}
-              dot={<FarmStatusDot status={s} />}
-              count={count}
-            >
-              {t(`farmStatus.${s}`)}
-            </FilterPill>
-          )
-        })}
-        <span className="mx-0.5 h-4 w-px shrink-0 bg-edge-subtle" />
-        {TYPES.map((ft) => (
-          <FilterPill
-            key={ft}
-            active={type === ft}
-            onClick={() => setType(type === ft ? null : ft)}
-            count={farms.filter((f) => f.type === ft).length}
-          >
-            {t(`farmType.${ft}`)}
-          </FilterPill>
-        ))}
-      </FilterRow>
+      {filterRow}
 
       {filtered.length === 0 ? (
         <EmptyState icon="farm" title={t('farms.empty')} />
@@ -279,5 +339,157 @@ export function FarmsListScreen() {
       )}
       <LoadMore shown={page.shown} total={page.total} onMore={page.more} />
     </MapPanel>
+  )
+}
+
+const TABLE_ROW_HEIGHT = 56
+
+/**
+ * G7 — the roster reading of the farms: one row per farm, fixed columns,
+ * window-virtualised with a sticky header. Same construction as the
+ * volunteers table; 12 fixture farms do not need it, the hundreds a real
+ * import brings do, and the table must not change shape when they arrive.
+ */
+function FarmsTable({
+  farms,
+  onOpen,
+}: {
+  farms: Farm[]
+  onOpen: (farmId: string) => void
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+
+  const { listRef, virtualizer, margin } = useWindowTable(
+    farms.length,
+    () => TABLE_ROW_HEIGHT,
+  )
+
+  const HeaderCell = ({
+    label,
+    className = '',
+  }: {
+    label: string
+    className?: string
+  }) => (
+    <span
+      className={`text-micro font-semibold uppercase tracking-wide text-content-muted ${className}`}
+    >
+      {label}
+    </span>
+  )
+
+  const dunams = (n: number) => n.toLocaleString(locale)
+
+  return (
+    <div className="card">
+      <div
+        className="sticky z-10 hidden items-center gap-3 rounded-t-card border-b border-edge-subtle
+                   bg-surface-overlay/95 px-4 py-2.5 backdrop-blur lg:flex"
+        style={{ top: 'var(--shell-top, 0px)' }}
+      >
+        <HeaderCell label={t('missions.farm')} className="w-56" />
+        <HeaderCell label={t('volunteers.colLocality')} className="w-32" />
+        <HeaderCell label={t('farms.colRegion')} className="w-32" />
+        <HeaderCell label={t('farms.colType')} className="w-24" />
+        <HeaderCell label={t('farms.colStatus')} className="w-32" />
+        <HeaderCell
+          label={t('farms.colDunams')}
+          className="hidden w-36 xl:block"
+        />
+        <HeaderCell
+          label={t('farms.colContacts')}
+          className="hidden w-20 xl:block"
+        />
+        <HeaderCell label={t('farms.nextVisit')} className="w-28" />
+      </div>
+
+      <div
+        ref={listRef}
+        style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
+      >
+        {virtualizer.getVirtualItems().map((item) => {
+          const farm = farms[item.index]
+          return (
+            <button
+              key={farm.id}
+              type="button"
+              onClick={() => onOpen(farm.id)}
+              style={{
+                position: 'absolute',
+                insetInlineStart: 0,
+                insetInlineEnd: 0,
+                top: 0,
+                height: item.size,
+                transform: `translateY(${item.start - margin}px)`,
+              }}
+              className="flex items-center border-b border-edge-subtle/50 px-4 text-start
+                         transition-colors duration-fast hover:bg-surface-high/60"
+            >
+              {/* Desktop: dense table row */}
+              <span className="hidden w-full items-center gap-3 lg:flex">
+                <span className="flex w-56 min-w-0 items-center gap-2.5">
+                  <Avatar
+                    photo={farm.photo}
+                    name={farm.name}
+                    size="xs"
+                    shape="square"
+                  />
+                  <span className="truncate text-caption font-medium text-content-primary">
+                    {farm.name}
+                  </span>
+                </span>
+                <span className="w-32 truncate text-caption text-content-secondary">
+                  {farm.locality}
+                </span>
+                <span className="w-32 truncate text-caption text-content-secondary">
+                  {farm.region}
+                </span>
+                <span className="w-24 truncate text-caption text-content-secondary">
+                  {t(`farmType.${farm.type}`)}
+                </span>
+                <span className="w-32">
+                  <FarmStatusChip status={farm.status} />
+                </span>
+                <span className="ltr-nums numeric hidden w-36 text-caption text-content-secondary xl:block">
+                  {dunams(farm.farmDunams)} / {dunams(farm.grazingDunams)}
+                </span>
+                <span className="numeric hidden w-20 text-caption text-content-secondary xl:block">
+                  {farm.contacts.length}
+                </span>
+                <span className="ltr-nums w-28 text-micro text-content-muted">
+                  {farm.nextVisitAt
+                    ? formatDate(farm.nextVisitAt, locale)
+                    : t('farms.noVisitYet')}
+                </span>
+                <ChevronForward size={14} />
+              </span>
+
+              {/* Mobile: the tile shape the map view uses. */}
+              <span className="flex w-full items-center gap-3 lg:hidden">
+                <Avatar
+                  photo={farm.photo}
+                  name={farm.name}
+                  size="sm"
+                  shape="square"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <FarmStatusDot status={farm.status} />
+                    <span className="truncate text-caption font-medium text-content-primary">
+                      {farm.name}
+                    </span>
+                  </span>
+                  <span className="muted mt-0.5 block truncate">
+                    {farm.locality} · {t(`farmType.${farm.type}`)}
+                  </span>
+                </span>
+                <ChevronForward size={15} />
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }

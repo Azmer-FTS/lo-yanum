@@ -238,7 +238,11 @@ function Kpi({
           Side by side, a four-word Hebrew label had ~90 px and truncated to
           "התראות …", which is not a label. */}
       <span className="flex items-center justify-between gap-2">
-        <span className={`numeric text-metric ${toneClass}`}>{value}</span>
+        {/* G7 — DISPLAY scale, not metric. These four numbers are the room's
+            instruments: on the 1376 px wall-mounted reading they were smaller
+            than a section heading. The clamp in --text-display-size keeps
+            them sane on a phone; Mekomi's tabular figures keep them aligned. */}
+        <span className={`numeric text-display ${toneClass}`}>{value}</span>
         <span
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-field bg-surface-high ${toneClass}`}
         >
