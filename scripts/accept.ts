@@ -6,6 +6,7 @@ import {
   buildKosherMessage,
   buildSmartphoneMessage,
   createFarmVisit,
+  entityKindOf,
   createMission,
   defaultThemeFor,
   getAgendaEvents,
@@ -83,7 +84,8 @@ section('A4 — role isolation is enforced in the data layer')
   as(COORD)
   const coordFarms = getVisibleFarms().length
   const coordVolunteers = getVolunteers().length
-  check('coordinator sees every farm', coordFarms === 12, `${coordFarms}`)
+  // 14 since G16: 12 farms + the two mock moshavim.
+  check('coordinator sees every farm', coordFarms === 14, `${coordFarms}`)
   check('coordinator sees the whole roster', coordVolunteers === 300, `${coordVolunteers}`)
 
   as({ role: 'farmer', entityId: 'contact-01a' })
@@ -393,6 +395,27 @@ section('A54 — geodesic dunam area is right, and the store keeps fields in syn
     farm08.grazingDunamsManual === true && farm08.grazingDunams === 3900,
     `${farm08.grazingDunams}`,
   )
+}
+
+// --- A55 (G16): the moshav entity --------------------------------------------
+
+section('A55 — moshavim are entities with the same mechanics')
+{
+  as(COORD)
+  const moshavim = getVisibleFarms().filter((f) => entityKindOf(f) === 'moshav')
+  check('two mock moshavim exist', moshavim.length === 2, moshavim.map((m) => m.name).join(' · '))
+  const retamim = moshavim.find((m) => m.id === 'farm-13')!
+  check('a moshav carries drawn ground like a farm', getFarmZonesForFarm('farm-13').length === 2)
+  check(
+    'its dunams auto-fill from the zones like a farm',
+    retamim.farmDunams > 0 && retamim.grazingDunams > 0,
+    `${retamim.farmDunams} / ${retamim.grazingDunams}`,
+  )
+  // The adjacency the four tints exist for: the moshav's grazing reaches
+  // west to where חוות רתם's grazing ends (~34.672°E).
+  const moshavGrazing = getFarmZonesForFarm('farm-13').find((z) => z.kind === 'grazing_area')!
+  const westEdge = Math.min(...moshavGrazing.ring.map((p) => p.lng))
+  check('מושב רתמים adjoins חוות רתם', Math.abs(westEdge - 34.672) < 0.001, `${westEdge}`)
 }
 
 // --- Regression: archiving still works ----------------------------------------

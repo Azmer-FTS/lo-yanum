@@ -7,7 +7,7 @@ import type { AnchorPoint, Farm, LatLng } from '@core/index'
 import { Icon } from './Icon'
 import { MapView } from './MapView'
 import type { MapMarker } from './MapView'
-import { MarkerSwatch, farmMarkerColor, postColor, readToken } from './badges'
+import { MarkerSwatch, entityMarkerKind, farmMarkerColor, postColor, readToken } from './badges'
 import { FullscreenToggle, fullscreenShell, useMapFullscreen } from './fullscreen'
 
 /**
@@ -85,7 +85,7 @@ export function MeetPointsEditor({
       color: farmMarkerColor(),
       title: farm.name,
       subtitle: farm.locality,
-      kind: 'farm',
+      kind: entityMarkerKind(farm),
     },
     ...anchors.map((a, i) => ({
       id: a.id,
@@ -299,11 +299,14 @@ export function PointLegend({
   showPost = true,
   showMeet = true,
   showFarm = false,
+  entity = 'farm',
   className = '',
 }: {
   showPost?: boolean
   showMeet?: boolean
   showFarm?: boolean
+  /** G16 — names the pastille correctly on a moshav's own map. */
+  entity?: 'farm' | 'moshav' | 'other'
   className?: string
 }) {
   const { t } = useTranslation()
@@ -316,7 +319,7 @@ export function PointLegend({
       {showFarm && (
         <span className="flex items-center gap-1.5 text-micro text-content-secondary">
           <MarkerSwatch shape="disc" color={farmMarkerColor()} />
-          {t('meet.legendFarm')}
+          {t(entity === 'moshav' ? 'meet.legendMoshav' : 'meet.legendFarm')}
         </span>
       )}
       {showPost && (

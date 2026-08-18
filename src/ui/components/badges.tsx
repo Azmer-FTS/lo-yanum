@@ -75,6 +75,17 @@ export function farmMarkerColor(): string {
   return readToken('--marker-farm')
 }
 
+/**
+ * G16 — which SILHOUETTE the entity's pastille takes: the barn disc for a
+ * farm (and 'other'), the village disc for a moshav. Colour stays the shared
+ * forest pastille; the glyph is the distinction, legible before colour.
+ */
+export function entityMarkerKind(farm: {
+  entityKind?: import('@core/index').EntityKind
+}): 'farm' | 'moshav' {
+  return (farm.entityKind ?? 'farm') === 'moshav' ? 'moshav' : 'farm'
+}
+
 export function postColor(): string {
   return readToken('--status-warn')
 }

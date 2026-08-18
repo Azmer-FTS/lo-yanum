@@ -17,6 +17,7 @@ import {
   getFarmVisitsForFarm,
   getVisibleIncidentViews,
   getVisibleMissionViews,
+  entityKindOf,
   googleMapsPointUrl,
   now,
   patchAnchorPoint,
@@ -36,7 +37,7 @@ import { FarmVisitModal } from '../../components/FarmVisitModal'
 import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
 import { AnchorMap } from '../../components/AnchorMap'
-import { zoneColor } from '../../components/zones'
+import { zoneColor, zoneLabelKey } from '../../components/zones'
 import { Timeline } from '../../components/Timeline'
 import type { TimelineEntry } from '../../components/Timeline'
 import {
@@ -186,7 +187,11 @@ function KeyNumbers({
           {farm.farmDunams.toLocaleString(locale)}
         </p>
         <p className="muted mt-0.5 leading-tight">
-          {t('farms.farmArea')}
+          {t(
+            entityKindOf(farm) === 'moshav'
+              ? 'farms.farmAreaMoshav'
+              : 'farms.farmArea',
+          )}
           {/* G15 — the override is a VISIBLE fact, not a hidden flag. */}
           {farm.farmDunamsManual && (
             <span className="chip ms-1.5 bg-status-warn/15 text-status-warn-ink">
@@ -557,17 +562,13 @@ export function FarmDetailScreen() {
                     <span
                       className="inline-block h-2.5 w-4 shrink-0 border"
                       style={{
-                        borderColor: zoneColor(z.kind),
-                        backgroundColor: `color-mix(in srgb, ${zoneColor(z.kind)} 18%, transparent)`,
+                        borderColor: zoneColor(z.kind, entityKindOf(farm)),
+                        backgroundColor: `color-mix(in srgb, ${zoneColor(z.kind, entityKindOf(farm))} 18%, transparent)`,
                       }}
                     />
                     <span className="min-w-0 flex-1">
                       <span className="block text-caption font-medium text-content-primary">
-                        {t(
-                          z.kind === 'farm_boundary'
-                            ? 'zone.boundary'
-                            : 'zone.grazing',
-                        )}
+                        {t(zoneLabelKey(z.kind, entityKindOf(farm)))}
                       </span>
                       <span className="muted numeric block">
                         {t('zone.areaDunams', {

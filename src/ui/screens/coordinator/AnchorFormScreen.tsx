@@ -14,7 +14,7 @@ import type { AnchorDraft, LatLng } from '@core/index'
 
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
-import { farmMarkerColor, postColor } from '../../components/badges'
+import { entityMarkerKind, farmMarkerColor, postColor } from '../../components/badges'
 import {
   FormActions,
   FormSection,
@@ -122,7 +122,7 @@ export function AnchorFormScreen() {
                   color: farmMarkerColor(),
                   title: farm.name,
                   subtitle: farm.locality,
-                  kind: 'farm',
+                  kind: entityMarkerKind(farm),
                 },
                 {
                   id: 'anchor-preview',

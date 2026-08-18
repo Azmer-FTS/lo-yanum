@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { ringAreaDunams, ringCenter } from '@core/index'
+import { entityKindOf, ringAreaDunams, ringCenter } from '@core/index'
 import type { AnchorPoint, Farm, FarmZone, FarmZoneKind, LatLng } from '@core/index'
 
 import { Icon } from './Icon'
 import { MapView } from './MapView'
 import type { MapMarker, MapPolygon } from './MapView'
-import { ZoneLegend, zoneColor } from './zones'
+import { ZoneLegend, zoneColor, zoneLabelKey } from './zones'
 import { PointLegend } from './meet'
-import { farmMarkerColor, postColor } from './badges'
+import { entityMarkerKind, farmMarkerColor, postColor } from './badges'
 import { FullscreenToggle, fullscreenShell, useMapFullscreen } from './fullscreen'
 
 /**
@@ -136,6 +136,9 @@ export function AnchorMap({
   const drawing = mode.kind === 'drawing' ? mode : null
   const arming = mode.kind === 'placing'
   const zonesEditable = Boolean(onZoneCreate)
+  // G16 — a moshav paints its ground in the blue family and its boundary is
+  // "גבול היישוב"; everything mechanical stays identical.
+  const entity = entityKindOf(farm)
   const selectedZone =
     zonesEditable && selectedZoneId
       ? (zones.find((z) => z.id === selectedZoneId) ?? null)
@@ -197,7 +200,7 @@ export function AnchorMap({
         color: farmMarkerColor(),
         title: farm.name,
         subtitle: farm.locality,
-        kind: 'farm' as const,
+        kind: entityMarkerKind(farm),
       },
       ...anchors.map((anchor) => {
         const rank = chosenIds.indexOf(anchor.id)
@@ -223,7 +226,7 @@ export function AnchorMap({
       ...(drawing?.draft ?? []).map((v, i) => ({
         id: `draft-${i}`,
         position: v,
-        color: zoneColor(drawing?.zone ?? 'farm_boundary'),
+        color: zoneColor(drawing?.zone ?? 'farm_boundary', entity),
         title: t('zone.vertex'),
         kind: 'vertex' as const,
       })),
@@ -232,7 +235,7 @@ export function AnchorMap({
       ...(selectedZone?.ring ?? []).map((v, i) => ({
         id: `vertex-${selectedZone?.id}-${i}`,
         position: v,
-        color: zoneColor(selectedZone?.kind ?? 'farm_boundary'),
+        color: zoneColor(selectedZone?.kind ?? 'farm_boundary', entity),
         title: t('zone.vertex'),
         kind: 'vertex' as const,
         emphasis: true,
@@ -260,7 +263,7 @@ export function AnchorMap({
             return {
               id: `midpoint-${selectedZone.id}-${i}`,
               position: mid,
-              color: zoneColor(selectedZone.kind),
+              color: zoneColor(selectedZone.kind, entity),
               title: t('zone.addVertex'),
               kind: 'vertex' as const,
               onSelect: () => {
@@ -278,7 +281,7 @@ export function AnchorMap({
             {
               id: `zone-move-${selectedZone.id}`,
               position: ringCenter(selectedZone.ring),
-              color: zoneColor(selectedZone.kind),
+              color: zoneColor(selectedZone.kind, entity),
               title: t('zone.moveZone'),
               kind: 'move' as const,
               draggable: true,
@@ -303,7 +306,7 @@ export function AnchorMap({
             {
               id: 'draft-area',
               position: ringCenter(drawing.draft),
-              color: zoneColor(drawing.zone),
+              color: zoneColor(drawing.zone, entity),
               title: t('zone.areaDunams', {
                 n: Math.round(ringAreaDunams(drawing.draft)).toLocaleString('he-IL'),
               }),
@@ -316,7 +319,7 @@ export function AnchorMap({
             {
               id: `zone-area-${selectedZone.id}`,
               position: ringCenter(selectedZone.ring),
-              color: zoneColor(selectedZone.kind),
+              color: zoneColor(selectedZone.kind, entity),
               title: t('zone.areaDunams', {
                 n: Math.round(ringAreaDunams(selectedZone.ring)).toLocaleString('he-IL'),
               }),
@@ -334,7 +337,7 @@ export function AnchorMap({
       ...zones.map((z) => ({
         id: z.id,
         ring: z.ring,
-        color: zoneColor(z.kind),
+        color: zoneColor(z.kind, entity),
         emphasis: z.id === selectedZoneId,
       })),
       ...(drawing && drawing.draft.length >= 3
@@ -342,7 +345,7 @@ export function AnchorMap({
             {
               id: 'draft',
               ring: drawing.draft,
-              color: zoneColor(drawing.zone),
+              color: zoneColor(drawing.zone, entity),
               emphasis: true,
             },
           ]
@@ -426,9 +429,9 @@ export function AnchorMap({
             >
               <span
                 className="inline-block h-2.5 w-2.5 rounded-pill"
-                style={{ backgroundColor: zoneColor('farm_boundary') }}
+                style={{ backgroundColor: zoneColor('farm_boundary', entity) }}
               />
-              {t('zone.drawBoundary')}
+              {t(entity === 'moshav' ? 'zone.drawBoundaryMoshav' : 'zone.drawBoundary')}
             </button>
             <button
               type="button"
@@ -437,7 +440,7 @@ export function AnchorMap({
             >
               <span
                 className="inline-block h-2.5 w-2.5 rounded-pill"
-                style={{ backgroundColor: zoneColor('grazing_area') }}
+                style={{ backgroundColor: zoneColor('grazing_area', entity) }}
               />
               {t('zone.drawGrazing')}
             </button>
@@ -448,13 +451,9 @@ export function AnchorMap({
                 <span className="flex items-center gap-1.5 rounded-pill border border-edge-subtle bg-surface-overlay/95 px-3 py-1.5 text-micro font-semibold text-content-primary shadow-card backdrop-blur">
                   <span
                     className="inline-block h-2.5 w-2.5 rounded-pill"
-                    style={{ backgroundColor: zoneColor(selectedZone.kind) }}
+                    style={{ backgroundColor: zoneColor(selectedZone.kind, entity) }}
                   />
-                  {t(
-                    selectedZone.kind === 'farm_boundary'
-                      ? 'zone.boundary'
-                      : 'zone.grazing',
-                  )}
+                  {t(zoneLabelKey(selectedZone.kind, entity))}
                   <span className="numeric ltr-nums">
                     {t('zone.areaDunams', {
                       n: Math.round(
@@ -494,8 +493,8 @@ export function AnchorMap({
       <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 flex flex-col items-end gap-2 sm:items-start">
         {/* G7bis.1 — one legend stack: what the point shapes mean, then what
             the painted ground means. */}
-        <PointLegend showFarm showPost showMeet={false} />
-        <ZoneLegend zones={zones} />
+        <PointLegend showFarm showPost showMeet={false} entity={entity} />
+        <ZoneLegend zones={zones} entity={entity} />
 
         {/* The control sits ON the map, because the map is what it is about.
             The empty case is louder on purpose: with no points yet, this
@@ -521,7 +520,9 @@ export function AnchorMap({
                 {drawing
                   ? t(
                       drawing.zone === 'farm_boundary'
-                        ? 'zone.drawingBoundary'
+                        ? entity === 'moshav'
+                          ? 'zone.drawingBoundaryMoshav'
+                          : 'zone.drawingBoundary'
                         : 'zone.drawingGrazing',
                     )
                   : t(arming ? 'anchor.armedHint' : 'anchor.mapHintCreate')}

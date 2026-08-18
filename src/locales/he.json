@@ -116,6 +116,11 @@
     "livestock": "בעלי חיים",
     "mixed": "מעורבת"
   },
+  "entityKind": {
+    "farm": "חווה",
+    "moshav": "מושב",
+    "other": "אחר"
+  },
   "phoneType": {
     "smartphone": "סמארטפון",
     "kosher": "כשר"
@@ -228,6 +233,8 @@
     "grazingArea": "שטח מרעה",
     "dunams": "דונם",
     "kpiDunams": "{{n}} דונם",
+    "kpiMoshavim": "מושבים",
+    "farmAreaMoshav": "שטח היישוב",
     "viewMap": "מפה",
     "viewTable": "טבלה",
     "colRegion": "אזור",
@@ -338,6 +345,7 @@
     "armedHint": "לחצו על המפה למיקום הנקודה",
     "notSet": "לא הוגדרה",
     "legendFarm": "החווה",
+    "legendMoshav": "המושב",
     "sectionTitle": "נקודות מפגש להסעה",
     "sectionHint": "המתנדבים נאספים בעיר בנקודה אחת; הרכב עוצר בכניסה לחווה — לא בעמדת השמירה",
     "labelPickup": "איסוף",
@@ -348,10 +356,14 @@
   },
   "zone": {
     "drawBoundary": "צייר גבול חווה",
+    "drawBoundaryMoshav": "צייר גבול יישוב",
     "drawGrazing": "צייר שטח מרעה",
     "boundary": "גבול החווה",
+    "boundaryMoshav": "גבול היישוב",
     "grazing": "שטח מרעה",
+    "grazingMoshav": "שטח מרעה — מושב",
     "drawingBoundary": "מציירים גבול חווה",
+    "drawingBoundaryMoshav": "מציירים גבול יישוב",
     "drawingGrazing": "מציירים שטח מרעה",
     "drawingHint": "כל לחיצה מוסיפה פינה · לחיצה כפולה סוגרת",
     "vertexCount": "{{count}} פינות",
@@ -696,6 +708,7 @@
   },
   "form": {
     "sectionIdentity": "זיהוי החווה",
+    "entityKind": "סוג יישות",
     "sectionContacts": "אנשי קשר",
     "sectionAreas": "שטחים",
     "sectionStatus": "סטטוס",

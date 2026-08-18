@@ -19,6 +19,7 @@ import type {
   FarmCommitment,
   FarmContact,
   FarmStatus,
+  EntityKind,
   FarmType,
   FarmVisit,
   FarmZone,
@@ -328,6 +329,8 @@ export interface FarmDraft {
   locality: string
   region: string
   type: FarmType
+  /** G16 — חווה / מושב / אחר; absent = farm. */
+  entityKind?: EntityKind
   status: FarmStatus
   position: LatLng
   farmDunams: number

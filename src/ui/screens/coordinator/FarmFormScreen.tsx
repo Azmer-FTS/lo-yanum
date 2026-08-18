@@ -22,6 +22,7 @@ import {
 import type {
   Agreement,
   CommitmentKind,
+  EntityKind,
   FarmCommitment,
   FarmContact,
   FarmDraft,
@@ -131,6 +132,10 @@ export function FarmFormScreen() {
   const [locality, setLocality] = useState(existing?.locality ?? '')
   const [region, setRegion] = useState(existing?.region ?? '')
   const [type, setType] = useState<FarmType>(existing?.type ?? 'mixed')
+  // G16 — חווה / מושב / אחר. New records default to a farm.
+  const [entityKind, setEntityKind] = useState<EntityKind>(
+    existing?.entityKind ?? 'farm',
+  )
   const [status, setStatus] = useState<FarmStatus>(
     existing?.status ?? 'to_contact',
   )
@@ -242,6 +247,7 @@ export function FarmFormScreen() {
       locality: locality.trim(),
       region: region.trim(),
       type,
+      entityKind,
       status,
       position,
       commitments: commitments.map((c) => ({ ...c, detail: c.detail.trim() })),
@@ -319,6 +325,17 @@ export function FarmFormScreen() {
             value={type}
             onChange={setType}
             options={TYPES.map((v) => ({ value: v, label: t(`farmType.${v}`) }))}
+          />
+          {/* G16 — what KIND of entity this record is. A moshav keeps every
+              mechanic and changes marker, zone tints and boundary wording. */}
+          <SelectField<EntityKind>
+            label={t('form.entityKind')}
+            value={entityKind}
+            onChange={setEntityKind}
+            options={(['farm', 'moshav', 'other'] as EntityKind[]).map((v) => ({
+              value: v,
+              label: t(`entityKind.${v}`),
+            }))}
           />
         </FormSection>
 

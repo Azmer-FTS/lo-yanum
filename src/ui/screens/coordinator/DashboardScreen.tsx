@@ -33,6 +33,7 @@ import type { MapMarker } from '../../components/MapView'
 import {
   FarmStatusDot,
   MissionStatusChip,
+  entityMarkerKind,
   readStatusColor,
   readToken,
 } from '../../components/badges'
@@ -437,7 +438,7 @@ export function DashboardScreen() {
       color: readStatusColor(farm.status),
       title: farm.name,
       subtitle: farm.locality,
-      kind: 'farm' as const,
+      kind: entityMarkerKind(farm),
       emphasis: farm.id === hoveredId,
       onHover: setHoveredId,
       onSelect: () => navigate(`/coordinator/farms/${farm.id}`),

@@ -49,6 +49,20 @@ export type FarmStatus =
 
 export type FarmType = 'agriculture' | 'livestock' | 'mixed'
 
+/**
+ * G16 — what KIND of entity the record is (field-expert feedback): the
+ * programme guards moshavim too, and a moshav is not a farm — different
+ * marker, different zone tints, "גבול היישוב" instead of "גבול החווה".
+ * Same mechanics everywhere else (zones, guards, posts), which is why it is
+ * a field on Farm rather than a parallel type. Optional: absent = 'farm',
+ * so fixtures and imports predating the field stay valid.
+ */
+export type EntityKind = 'farm' | 'moshav' | 'other'
+
+/** The read side of the optional field: absent means a plain farm. */
+export const entityKindOf = (farm: { entityKind?: EntityKind }): EntityKind =>
+  farm.entityKind ?? 'farm'
+
 /** Ordered pipeline used by the status stepper. `declined` is off-pipeline. */
 export const FARM_PIPELINE: readonly FarmStatus[] = [
   'to_contact',
@@ -93,6 +107,8 @@ export interface Farm {
   locality: string
   region: string
   type: FarmType
+  /** G16 — חווה / מושב / אחר. Absent = 'farm' (see entityKindOf). */
+  entityKind?: EntityKind
   status: FarmStatus
   position: LatLng
   farmDunams: number

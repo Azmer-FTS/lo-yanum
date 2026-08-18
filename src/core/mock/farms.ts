@@ -435,6 +435,67 @@ export const FARMS: Farm[] = [
     lastVisitAt: atTime(-33, 10, 0),
     nextVisitAt: null,
   },
+
+  // G16 — the two mock MOSHAVIM. The first deliberately ADJOINS חוות רתם
+  // (farm-01): its grazing ground meets the farm's, which is exactly the
+  // situation the four zone tints exist for (A55). Dunams are 0 here because
+  // the seed fills them from the drawn zones.
+  {
+    id: 'farm-13',
+    name: 'מושב רתמים',
+    locality: 'רתמים',
+    region: 'רמת נגב',
+    type: 'mixed',
+    entityKind: 'moshav',
+    status: 'active',
+    position: { lat: 31.052, lng: 34.6825 },
+    farmDunams: 0,
+    grazingDunams: 0,
+    contacts: [
+      {
+        id: 'contact-13a',
+        name: 'רחל אדרי',
+        phone: '054-0000061',
+        role: 'רבש״צ המושב',
+        isPrimary: true,
+        photo: null,
+      },
+    ],
+    commitments: [],
+    agreements: [],
+    notes: 'גובל בשטח המרעה של חוות רתם ממערב. שער דרומי נעול בלילה.',
+    photo: null,
+    lastVisitAt: atTime(-9, 11, 0),
+    nextVisitAt: null,
+  },
+  {
+    id: 'farm-14',
+    name: 'מושב באר חיל',
+    locality: 'אופקים',
+    region: 'הנגב המערבי',
+    type: 'agriculture',
+    entityKind: 'moshav',
+    status: 'contacted',
+    position: { lat: 31.335, lng: 34.64 },
+    farmDunams: 0,
+    grazingDunams: 0,
+    contacts: [
+      {
+        id: 'contact-14a',
+        name: 'דוד מלכה',
+        phone: '053-0000062',
+        role: 'יו״ר הוועד',
+        isPrimary: true,
+        photo: null,
+      },
+    ],
+    commitments: [],
+    agreements: [],
+    notes: 'שיחה ראשונה התקיימה; מבקשים הצגה בפני הוועד לפני החלטה.',
+    photo: null,
+    lastVisitAt: null,
+    nextVisitAt: null,
+  },
 ]
 
 /**

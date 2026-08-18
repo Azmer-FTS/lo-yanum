@@ -38,6 +38,7 @@ const OSM_STYLE: maplibregl.StyleSpecification = {
 /** What a marker represents — drives its silhouette. */
 export type MarkerKind =
   | 'farm'
+  | 'moshav'
   | 'anchor'
   | 'incident'
   | 'mission'
@@ -129,6 +130,7 @@ export interface MapViewProps {
 
 const SIZE: Record<MarkerKind, number> = {
   farm: 26,
+  moshav: 26,
   anchor: 30,
   incident: 24,
   mission: 22,
@@ -160,6 +162,9 @@ const CAR_PATH =
  */
 const GLYPH: Partial<Record<MarkerKind, string>> = {
   farm: 'M3 10.5 12 4l9 6.5M5 10v10h14V10M9.5 20v-5h5v5',
+  // G16 — a moshav is a VILLAGE: two rooftops on its disc, not one barn.
+  moshav:
+    'M2.5 20v-6l4-3.5 4 3.5v6M10.5 20v-8.5L15.5 7l5 4.5V20M2 20h20M13.5 20v-4h4v4',
   mission:
     'M12 3c-2.6 1.6-5 2.3-7 2.4v7.2c0 4.4 2.9 6.8 7 8.4 4.1-1.6 7-4 7-8.4V5.4c-2-.1-4.4-.8-7-2.4z',
   anchor:

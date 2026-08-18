@@ -21,6 +21,8 @@ const FARM_02: LatLng = { lat: 30.8712, lng: 34.7954 }
 const FARM_04: LatLng = { lat: 30.9824, lng: 34.7063 }
 const FARM_06: LatLng = { lat: 30.6472, lng: 34.9218 }
 const FARM_08: LatLng = { lat: 31.3591, lng: 35.0812 }
+const FARM_13: LatLng = { lat: 31.052, lng: 34.6825 }
+const FARM_14: LatLng = { lat: 31.335, lng: 34.64 }
 
 export const FARM_ZONES: FarmZone[] = [
   // חוות רתם — 420 dunam holding, 3 100 dunam of grazing to the south-east.
@@ -163,6 +165,60 @@ export const FARM_ZONES: FarmZone[] = [
       [-0.0096, 0.0174],
       [-0.0119, 0.0058],
       [-0.0017, 0.0011],
+    ]),
+  },
+
+  // G16 — מושב רתמים, drawn to ADJOIN חוות רתם: the moshav's grazing runs
+  // west to ~34.672°, exactly where farm-01's grazing ends, so the blue and
+  // green families sit side by side on the map (A55).
+  {
+    id: 'zone-11',
+    farmId: 'farm-13',
+    kind: 'farm_boundary',
+    ring: ring(FARM_13, [
+      [0.003, -0.002],
+      [0.003, 0.003],
+      [-0.001, 0.004],
+      [-0.003, 0.002],
+      [-0.003, -0.002],
+      [0, -0.0035],
+    ]),
+  },
+  {
+    id: 'zone-12',
+    farmId: 'farm-13',
+    kind: 'grazing_area',
+    ring: ring(FARM_13, [
+      [0.006, -0.0105],
+      [0.006, -0.003],
+      [-0.006, -0.003],
+      [-0.008, -0.0105],
+    ]),
+  },
+
+  // G16 — מושב באר חיל: a village core and a modest field belt.
+  {
+    id: 'zone-13',
+    farmId: 'farm-14',
+    kind: 'farm_boundary',
+    ring: ring(FARM_14, [
+      [0.0028, -0.0022],
+      [0.0032, 0.0024],
+      [-0.0004, 0.0038],
+      [-0.003, 0.0018],
+      [-0.0026, -0.0024],
+    ]),
+  },
+  {
+    id: 'zone-14',
+    farmId: 'farm-14',
+    kind: 'grazing_area',
+    ring: ring(FARM_14, [
+      [0.0032, 0.0024],
+      [0.0058, 0.0102],
+      [-0.0021, 0.0141],
+      [-0.0063, 0.0072],
+      [-0.0004, 0.0038],
     ]),
   },
 ]

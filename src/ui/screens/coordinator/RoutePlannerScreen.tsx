@@ -30,7 +30,8 @@ import type { IconName } from '../../components/Icon'
 import { FarmVisitModal } from '../../components/FarmVisitModal'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
-import { FarmStatusDot, readStatusColor, readToken } from '../../components/badges'
+import { FarmStatusDot, readStatusColor,
+  entityMarkerKind, readToken } from '../../components/badges'
 import { EmptyState } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
@@ -169,7 +170,7 @@ export function RoutePlannerScreen() {
             color: readToken('--text-muted'),
             title: farm.name,
             subtitle: farm.locality,
-            kind: 'farm',
+            kind: entityMarkerKind(farm),
           },
           { hoveredId, selectedId: null },
           { onHover: setHoveredId, onSelect: () => toggle(farm.id) },
@@ -184,7 +185,7 @@ export function RoutePlannerScreen() {
           color: readStatusColor(stop.farm.status),
           title: `${stop.order}. ${stop.farm.name}`,
           subtitle: stop.farm.locality,
-          kind: 'farm',
+          kind: entityMarkerKind(stop.farm),
           badge: String(stop.order),
         },
         { hoveredId, selectedId: null },

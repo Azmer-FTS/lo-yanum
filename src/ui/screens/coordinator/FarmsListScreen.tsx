@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
   FARM_PIPELINE,
+  entityKindOf,
   formatDate,
   getAllVisibleFarmZones,
   getVisibleFarms,
@@ -17,6 +18,7 @@ import type { MapMarker } from '../../components/MapView'
 import {
   FarmStatusChip,
   FarmStatusDot,
+  entityMarkerKind,
   readStatusColor,
 } from '../../components/badges'
 import {
@@ -54,6 +56,8 @@ export function FarmsListScreen() {
   const [params, setParams] = useSearchParams()
   const status = (params.get('status') as FarmStatus | null) ?? null
   const [type, setType] = useState<FarmType | null>(null)
+  // G16 — the moshav KPI-filter: entity kind joins the list's filters.
+  const [moshavOnly, setMoshavOnly] = useState(false)
   const [query, setQuery] = useState('')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -78,6 +82,7 @@ export function FarmsListScreen() {
     return farms.filter((farm) => {
       if (status !== null && farm.status !== status) return false
       if (type !== null && farm.type !== type) return false
+      if (moshavOnly && entityKindOf(farm) !== 'moshav') return false
       if (!q) return true
       return (
         farm.name.toLowerCase().includes(q) ||
@@ -86,7 +91,7 @@ export function FarmsListScreen() {
         farm.contacts.some((c) => c.name.toLowerCase().includes(q))
       )
     })
-  }, [farms, status, type, query])
+  }, [farms, status, type, moshavOnly, query])
 
   const page = useProgressive(filtered)
 
@@ -100,7 +105,7 @@ export function FarmsListScreen() {
             color: readStatusColor(farm.status),
             title: farm.name,
             subtitle: farm.locality,
-            kind: 'farm',
+            kind: entityMarkerKind(farm),
           },
           { hoveredId, selectedId },
           { onHover: setHoveredId, onSelect: setSelectedId },
@@ -126,6 +131,8 @@ export function FarmsListScreen() {
     }
   }).filter((k) => k.count > 0)
 
+  const moshavim = farms.filter((f) => entityKindOf(f) === 'moshav')
+
   const kpiGrid = (
     <div className="mb-3 grid grid-cols-2 gap-2 xl:grid-cols-3">
       {statusKpis.map((k) => (
@@ -139,6 +146,23 @@ export function FarmsListScreen() {
           onClick={() => setStatus(status === k.status ? null : k.status)}
         />
       ))}
+      {/* G16 — the entity-kind card: how many of these records are moshavim,
+          weighted like the status cards, and the card is the filter. */}
+      {moshavim.length > 0 && (
+        <KpiFilter
+          label={t('farms.kpiMoshavim')}
+          value={moshavim.length}
+          icon="home"
+          tone="accent"
+          hint={t('farms.kpiDunams', {
+            n: moshavim
+              .reduce((sum, f) => sum + f.farmDunams + f.grazingDunams, 0)
+              .toLocaleString(locale),
+          })}
+          active={moshavOnly}
+          onClick={() => setMoshavOnly((v) => !v)}
+        />
+      )}
     </div>
   )
 
@@ -195,10 +219,11 @@ export function FarmsListScreen() {
 
   const filterRow = (
     <FilterRow
-      active={status !== null || type !== null}
+      active={status !== null || type !== null || moshavOnly}
       onClear={() => {
         setStatus(null)
         setType(null)
+        setMoshavOnly(false)
       }}
     >
       {/* G14d — the status pills are gone: the KPI cards above carry status
@@ -248,10 +273,10 @@ export function FarmsListScreen() {
     <MapPanel
       ariaLabel={t('map.farmsMap')}
       markers={markers}
-      polygons={zonePolygons(zones)}
+      polygons={zonePolygons(zones, farms)}
       legend={
         <>
-        <ZoneLegend zones={zones} className="mb-2" />
+        <ZoneLegend zones={zones} farms={farms} className="mb-2" />
         <ul className="flex flex-col gap-1.5">
           {STATUSES.map((s) => (
             <li key={s} className="flex items-center gap-2">

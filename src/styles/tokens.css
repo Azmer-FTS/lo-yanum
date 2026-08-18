@@ -132,6 +132,12 @@
      retired brand greens. */
   --zone-boundary: 30 122 79; /* #1E7A4F farm boundary  */
   --zone-grazing: 47 163 114; /* #2FA372 farm grazing   */
+  /* G16 — the MOSHAV family: blue, clearly apart from the farm greens,
+     because a moshav routinely ADJOINS a farm and their four zone kinds must
+     stay tellable side by side (A55). Same internal logic: boundary dark,
+     grazing the same family lighter. */
+  --zone-boundary-moshav: 29 78 216; /* #1D4ED8 moshav boundary */
+  --zone-grazing-moshav: 96 165 250; /* #60A5FA moshav grazing  */
   --status-violet: 143 99 232; /* #8F63E8 violet               */
 
   /* G7bis.1 — the farm's identity pastille on every map. A deep green:
@@ -349,6 +355,9 @@
   /* G1/G16 — the farm zone family lightened to read on the night raster. */
   --zone-boundary: 123 216 172; /* #7BD8AC */
   --zone-grazing: 69 200 143; /* #45C88F */
+  /* G16 — the moshav blues, lifted the same way for the night raster. */
+  --zone-boundary-moshav: 147 197 253; /* #93C5FD */
+  --zone-grazing-moshav: 96 165 250; /* #60A5FA */
   --status-info: 79 182 224; /* #4FB6E0 */
   --status-violet: 178 149 250; /* #B295FA */
 
@@ -442,6 +451,8 @@
        daylight outlines on the night raster. */
     --zone-boundary: 123 216 172;
     --zone-grazing: 69 200 143;
+    --zone-boundary-moshav: 147 197 253;
+    --zone-grazing-moshav: 96 165 250;
     --marker-farm: 143 201 172;
 
     --status-success-ink: 52 201 166;
