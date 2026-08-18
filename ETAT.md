@@ -45,7 +45,8 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **Lot 0.10 IN PROGRESS — 15 sections done, one commit each.**
+State: **Lot 0.10 IN PROGRESS — 17 sections done (PO decisions + G14 landed
+2026-08-19), one commit each. Next: G15.**
 Branch `main`, NOT yet pushed (deploy happens at G12).
 
 > **SPEC GAP RESOLVED (2026-08-19).** The product owner re-sent the missing
@@ -172,11 +173,39 @@ Branch `main`, NOT yet pushed (deploy happens at G12).
 > green; landing plate now slate (--plate-from/--plate-to, audited);
 > `.numeric` at heading scales explicitly falls back to Rubik because Frank
 > Ruhl Libre HAS digits where Atlas shipped none; contrast/tokens/accept/
-> dispatch/layout/wizard/build all green; captures 1-2/9-10/21-22 refreshed).
+> dispatch/layout/wizard/build all green; captures 1-2/9-10/21-22 refreshed),
+> **PO decisions 2026-08-19** (the Artzenu mark left the repo — landing is
+> לא ינום + verse only, `imprint` prop and `.artzenu-mark` deleted; Heebo is
+> THE display face, Frank Ruhl Libre + Secular One woff2 deleted, /styleguide
+> arbitrage reduced to the verdict; index.html boot theme-color updated to
+> the G17 night value; A60 ready), **G14** (the numbers lead: a) `getDunamKpis`
+> in @core — דונם בשמירה = signed+active, דונם פוטנציאלי = pipeline minus
+> declined — shown as the dashboard's two biggest figures, first, and
+> recomputed independently in scripts/accept.ts (A52, 67 checks green);
+> b) dashboard alerts are compact FULL-COLOUR rows (bg-critical, or amber
+> bg-status-warn for calm recruiting), collapsed by default, click →
+> aria-expanded detail with the call list; c) farm detail became map-first
+> (bleed route via isBleedPath — `new`/`edit`/anchor sub-routes stay padded
+> forms; AnchorMap gained `flush` for square corners; content column
+> xl:w-[42%] scrolls alone; KeyNumbers band first: both dunams at
+> text-metric + status chip + next visit + last activity; stepper ring
+> un-clipped by `-m-1 p-1` on the scroll row + whitespace-nowrap; activity
+> Timeline raised above the fold; AgreementActions = view/download/share —
+> Web Share, wa.me fallback — over public/mock-agreement.pdf, a real 1-page
+> PDF committed as mock; src/vite-env.d.ts added for import.meta.env);
+> d) KpiFilter primitive (the card IS the filter, aria-pressed + accent
+> ring, dot/hint variants) on volunteers (6 KPIs incl. licence+car and
+> never-guarded, VolunteerStats extended), drivers (total-as-clear, seats
+> Stat, 7+ seats, free-tonight via getTonightBookedDriverIds — a cancelled
+> guard releases its driver), farms (per-status cards weighted in dunams,
+> status pills deleted, type pills stay); from lg the WHOLE top — title +
+> KPIs + search + column headers — is ONE sticky block at --shell-top with
+> the rows card `lg:rounded-t-none` (`t-none` joined the tokens.ts radius
+> allow-list); below lg it scrolls away, a phone cannot afford a 300 px pin
+> — A51's sticky proof runs at desktop width).
 >
-> REMAINING (in this order): **G14, G15, G16** (full spec in the SPEC GAP
-> RESOLVED note above, plus the PO decisions — mark retired, Heebo display —
-> which land as their own commit before G14), G10 (templates.ts source of
+> REMAINING (in this order): **G15, G16** (full spec in the SPEC GAP
+> RESOLVED note above), G10 (templates.ts source of
 > truth + הורד תבנית xlsx generator + farms/drivers import with Waze-link
 > parsing + מיקום חסר badge **+ the סוג יישות column from G16**), **G18** (threat zones + attack vectors, coordinator-only: new zone
 > type "אזור איום" drawn like other zones in an explicit mode, red/orange
