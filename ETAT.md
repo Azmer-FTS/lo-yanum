@@ -45,14 +45,30 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **Lot 0.10 IN PROGRESS — 14 of 18 sections done, one commit each.**
+State: **Lot 0.10 IN PROGRESS — 15 sections done, one commit each.**
 Branch `main`, NOT yet pushed (deploy happens at G12).
+
+> **⚠️ SPEC GAP — G14–G16 ARE MISSING FROM THIS FILE.** On 2026-08-18 a
+> user prompt titled "MISE À JOUR DU LOT EN COURS — G17 REMPLACÉ + G18 AJOUTÉ
+> + précisions G16" arrived. It REPLACES a G17, ADDS a G18 and REFINES a G16 —
+> which proves an earlier amendment extended the lot with sections G14–G17 and
+> criteria around A51–A55, and that amendment was never recorded here. Only
+> the 2026-08-18 update's content is known (G17 final spec — now DONE below;
+> G18 full spec — in REMAINING below; the G16 zone-colour precision). **Ask
+> the product owner to re-send the G14–G16 sections before attempting them.**
+> The G16 precision on its own: four zone tints (farm boundary/grazing =
+> family A/A′, moshav boundary/grazing = clearly different family B/B′, e.g.
+> blue/violet), legend updated everywhere, verified with a mock moshav
+> adjacent to a mock farm (A58).
 
 > **LOT 0.10 RESUME POINT.** The lot's full spec is the user prompt titled
 > "LOT 0.10 (VERSION FINALE UNIQUE)", AMENDED mid-lot by the prompt "AJOUT AU
 > LOT 0.10 EN COURS — G7bis" (2026-08-18, after product-owner review of the
-> farm-detail screenshots). Section order is G0 → G2 → G1 → G8 → G5 → G3 →
-> G4 → G6 → G7bis.1-3 → **G9 (incl. G7bis.4) → G7 → G10 → G11 → G12 → G13**.
+> farm-detail screenshots), and by the 2026-08-18 update above. Section order
+> was G0 → G2 → G1 → G8 → G5 → G3 → G4 → G6 → G7bis.1-3 → G9 (incl. G7bis.4)
+> → G7; then **G17 was pulled forward** (an identity change belongs under all
+> later visual work) → **G10 → G18 → G11 → G12 → G13**, with G14–G16 slotted
+> wherever their re-sent spec says.
 >
 > DONE (each is one commit, in git log order): G0 (עמדת שמירה rename +
 > dunams), G2 (PinMap + AutocompleteField + farm-form audit), G1 (FarmZone
@@ -98,14 +114,51 @@ Branch `main`, NOT yet pushed (deploy happens at G12).
 > because a table cannot live in the shell's one-third panel — the map
 > stays the default so A18 holds; dashboard KPIs moved to text-display;
 > scripts/layout.ts now sweeps 23 screens: drivers added, volunteers
-> A30-exempt with the reason printed).
+> A30-exempt with the reason printed), **G17** (the NEUTRAL IDENTITY, PO
+> decision of 2026-08-18 — Artzenu colours AND faces retired: Atlas/Mekomi
+> deleted (licence question closed), Rubik = body/UI/every number, Frank Ruhl
+> Libre (OFL, self-hosted woff2, full nikkud verified on the landing capture)
+> = display, Secular One + Heebo self-hosted as the two /styleguide
+> alternatives awaiting the PO's arbitrage; light = barely-tinted grey page /
+> white cards / grey-black ink, dark = neutral blue-grey, accent = one
+> professional blue, statuses/zones/critical stay vivid; cards/tiles/callouts
+> lost their contour (shadow + luminance only, callouts became start-bar +
+> tint like card-critical), fields KEEP their 1.8-pinned hairline; button
+> hierarchy = primary/danger/critical rectangles at 6px vs secondary/filter
+> pills vs icon call buttons, enforced with the no-contour rule as **A57** in
+> scripts/tokens.ts; body raised one notch (16/13.5/11.5 px) with layout
+> green; landing plate now slate (--plate-from/--plate-to, audited);
+> `.numeric` at heading scales explicitly falls back to Rubik because Frank
+> Ruhl Libre HAS digits where Atlas shipped none; contrast/tokens/accept/
+> dispatch/layout/wizard/build all green; captures 1-2/9-10/21-22 refreshed).
 >
 > REMAINING: G10 (templates.ts source of truth + הורד תבנית
 > xlsx generator + farms/drivers import with Waze-link parsing + מיקום חסר
-> badge), G11 (iPad 1032×1376 / 1376×1032 + iPhone 402×874 perfection,
-> safe areas), G12 (A1–A30 re-run + NEW A31–A44 **+ A47–A50 from the G7bis
-> amendment** + light/dark captures + full ETAT rewrite + deploy), G13 (tag
-> `poc-final` + frozen copy at /poc/ + immutability rule).
+> badge), **G18** (threat zones + attack vectors, coordinator-only: new zone
+> type "אזור איום" drawn like other zones in an explicit mode, red/orange
+> hatched fill + dotted outline, fields intensity נמוך/בינוני/גבוה + note +
+> displayed update date; new object "וקטור איום" = arrow placed in 2 clicks
+> (origin then direction), red, note, editable/deletable; attached to an
+> entity (farm/moshav) OR free at map level; visible on the global map behind
+> a "שכבת איומים" toggle in the filter bar, on entity detail, and on wizard
+> step 1 to place posts FACING the threat; access.ts hides the whole layer
+> from farmer/volunteer/driver — sensitive data, tested; 2 mock zones + 2
+> mock vectors in the Negev consistent with existing farms — criteria A59),
+> G11 (iPad 1032×1376 / 1376×1032 + iPhone 402×874 perfection, safe areas),
+> G12 (A1–A30 re-run + NEW A31–A44 **+ A47–A50 from the G7bis amendment,
+> A56–A59 from the 2026-08-18 update** + light/dark captures incl. styleguide
+> new identity, global map with threat layer on, farm detail with adjacent
+> moshav + threat zone + vector + full ETAT rewrite — §8's contrast table
+> below still shows pre-G17 values and G12 rewrites it — + deploy), G13 (tag
+> `poc-final` + frozen copy at /poc/ + immutability rule). G14–G16: spec
+> missing, see the SPEC GAP note above.
+>
+> G17 notes for G12: open question 8 (Artzenu font licences) is RESOLVED —
+> all faces are OFL. `bun run brand-reference` and docs/brand-artzenu.md are
+> retired/historical (the doc says so in its header). The Artzenu MARK still
+> stands on the landing and the rail: the PO retired colours and faces only —
+> confirm whether the mark stays. A56 asks for a bigger body "si les gates
+> layout passent": done, gates green.
 >
 > The G7bis amendment's acceptance criteria, to fold into G12's run:
 > · A47 — the 4 point kinds are visually distinct (shape+icon+colour),
@@ -352,8 +405,39 @@ Every row exists at both `-mobile` (390 px) and `-desktop` (1280 px) — 27 rows
 
 Lot 0 decisions 1–13, Lot 0.5 decisions 14–20, Lot 0.6 decisions 21–31, Lot 0.7
 decisions 32–40 and Lot 0.8 decisions 41–46 all still hold, **except 22 and 23,
-which decision 32 generalises, and 46, which decision 47 supersedes.** Decisions
+which decision 32 generalises; 46, which decision 47 supersedes; and 41–44,
+which G17's decision 57 retires** (42's fill-keeps-the-colour/ink-moves
+MECHANISM survives — only the charter values it protected are gone). Decisions
 32–34 survived two lots unchanged and are why both were cheap. New:
+
+57. **THE IDENTITY IS NEUTRAL, AND COLOUR IS SPENT ONLY ON MEANING (G17).**
+    Product-owner decision, 2026-08-18: the Artzenu charter — colours AND
+    typefaces — is retired. The page is barely-tinted grey, cards are white,
+    ink is grey-black, dark is the same family on blue-grey, and ONE
+    professional blue carries the accent role. Vivid colour survives exactly
+    where it means something: statuses, severities, badges, primary buttons,
+    markers, zones, the critical role (#EF4F28 stays, now purely semantic).
+    Faces: Rubik for body/UI/every number, Frank Ruhl Libre (OFL,
+    self-hosted) for display — with Secular One and Heebo self-hosted and
+    shown in /styleguide until the PO arbitrates. All the audit MACHINERY of
+    Lots 0.7–0.9 (vivid/ink pairs, luminance windows, the three radii, the
+    critical allow-list) is untouched: the values changed, the rules did not.
+
+58. **A CARD HAS NO CONTOUR; THE FIELD KEEPS ITS HAIRLINE (G17).** Cards,
+    tiles, panels and callouts separate by soft slate shadow plus the
+    luminance step to the page — no border. The two survivors are SEMANTIC:
+    the 4 px start-bar (card-critical, callouts, the mismatch row) and the
+    field's `--border-strong` hairline, which is the field's affordance and
+    stays audited at 1.8. `bun run tokens` (A57) fails any card/tile
+    className that draws a full `border`, and the empty-state dashes are the
+    one allowed exception.
+
+59. **THE SHAPE IS THE BUTTON HIERARCHY (G17).** Major actions — create,
+    confirm, save, danger, emergency — are full-colour RECTANGLES at
+    `--radius-field`; secondary actions, filters, chips and tags are PILLS;
+    call/WhatsApp/SMS are discreet ICON buttons, never a full pill that
+    reads as a CTA (ContactActions may not contain a `btn-*` class — gated).
+    One glance now separates "this commits something" from everything else.
 
 47. **THE RADIUS SCALE IS THREE VALUES, AND THE BUILD ENFORCES IT.**
     `field` 6 px (inputs, list rows, icon buttons), `card` 14 px (cards,
@@ -823,7 +907,10 @@ src/ui/
 7. **Should a refusal be remembered across guards?** Right now the exclusion
    set is per-wizard-session; someone who declines three nights running still
    ranks first on the fourth.
-8. **⚠️ BLOCKING FOR REAL USERS — do the Artzenu font licences cover this app?**
+8. **RESOLVED BY G17 (2026-08-18):** the Artzenu faces are deleted and every
+   self-hosted face is OFL — there is no licence question left. Kept for the
+   record; the original concern follows.
+   **⚠️ (obsolete) — do the Artzenu font licences cover this app?**
    אטלס (Atlas) and מקומי (Mekomi) are commercial Hebrew typefaces. The eight
    woff2 files in `public/fonts` are the association's own, taken from the
    association's own site, for the association's own tool — but a web licence
