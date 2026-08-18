@@ -48,18 +48,60 @@ Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 State: **Lot 0.10 IN PROGRESS — 15 sections done, one commit each.**
 Branch `main`, NOT yet pushed (deploy happens at G12).
 
-> **⚠️ SPEC GAP — G14–G16 ARE MISSING FROM THIS FILE.** On 2026-08-18 a
-> user prompt titled "MISE À JOUR DU LOT EN COURS — G17 REMPLACÉ + G18 AJOUTÉ
-> + précisions G16" arrived. It REPLACES a G17, ADDS a G18 and REFINES a G16 —
-> which proves an earlier amendment extended the lot with sections G14–G17 and
-> criteria around A51–A55, and that amendment was never recorded here. Only
-> the 2026-08-18 update's content is known (G17 final spec — now DONE below;
-> G18 full spec — in REMAINING below; the G16 zone-colour precision). **Ask
-> the product owner to re-send the G14–G16 sections before attempting them.**
-> The G16 precision on its own: four zone tints (farm boundary/grazing =
-> family A/A′, moshav boundary/grazing = clearly different family B/B′, e.g.
-> blue/violet), legend updated everywhere, verified with a mock moshav
-> adjacent to a mock farm (A58).
+> **SPEC GAP RESOLVED (2026-08-19).** The product owner re-sent the missing
+> sections in the prompt "LOT 0.10 — SECTIONS MANQUANTES G14–G16 + DÉCISIONS
+> PO + ORDRE FINAL" and fixed the remaining order:
+> **G14 → G15 → G16 → G10 → G18 → G11 → G12 → G13.**
+> (G16 before G10 on purpose: the סוג יישות column of G10's חוות template
+> depends on the entity type G16 introduces.)
+>
+> Two PO decisions arrived with it (checked at G12 as **A60**):
+> · **The Artzenu MARK is retired** — landing + rail, and the asset leaves
+>   the repo (grep-verified). The landing keeps לא ינום + the verse only.
+>   This closes the "does the mark stay?" question G17 left open.
+> · **Heebo is the display face.** Frank Ruhl Libre and Secular One leave
+>   the final bundle; the /styleguide arbitrage section retires with them.
+>
+> **G14 — NUMBERS AT A GLANCE** (principle: the PO drives — key numbers on
+> top, big; the long reading stays below):
+> · a) DASHBOARD: two strategic KPIs FIRST — "דונם בשמירה" (sum of farm +
+>   grazing dunams over signed/active entities) and "דונם פוטנציאלי" (sum
+>   over non-signed non-refused). The association's budget number: big, first.
+> · b) DASHBOARD ALERTS: compact FULL-COLOUR rows by severity (icon + title
+>   + relative time only), collapsed by default; click → expands to the
+>   current details and actions.
+> · c) FARM DETAIL: map-first gabarit like the other screens — map on the
+>   LEFT at full height (~55-60 %), content right. AT THE TOP of the content:
+>   a key-numbers band in big type (farm dunams / grazing dunams / status /
+>   next visit / last activity). Fix the truncated status pill in the
+>   stepper. Timeline/recent activity raised high. Signed agreement: view
+>   the PDF + download + SHARE (Web Share API / wa.me) — mock embedded PDF.
+> · d) KPI-FILTERS on the lists (volunteers/drivers/farms): the top number
+>   cards BECOME the clickable filters (visible active state, "נקה");
+>   redundant pills deleted; the sticky wraps EVERYTHING at the top (title +
+>   KPI + search + column headers). Enriched: volunteers (active, inactive,
+>   smartphone, kosher, licence+car, never guarded); drivers (total,
+>   cumulative seats, ≥7 seats, available tonight); farms (by status +
+>   dunams).
+>
+> **G15 — ZONE EDITING + LIVE AREA:**
+> · a) Editing an EXISTING polygon must be obvious: click on a zone →
+>   selection → handles (existing) + ADD a vertex on an edge (click the edge
+>   midpoint) + move the whole polygon (drag) + delete. An "ערוך" button per
+>   zone in the list.
+> · b) LIVE AREA: geodesic area in DUNAMS in /src/core/geo.ts (pure,
+>   tested), displayed LIVE while drawing/editing (label on the polygon +
+>   panel). The "שטח החווה"/"שטח מרעה" fields auto-fill (sum per type);
+>   manual override stays possible and is flagged "מוזן ידנית".
+>
+> **G16 — ENTITY TYPE: חווה / מושב** (field-expert feedback): a "סוג יישות"
+> field (חווה / מושב / אחר) — distinct map marker for מושב (village glyph),
+> filter + KPI in the list, adapted labels ("גבול היישוב" when מושב), same
+> zones/guards/posts mechanics. 2 mock moshavim. ZONE COLOURS — 4 distinct
+> tints because a moshav can adjoin a farm: גבול חווה = tint A (outline +
+> ~8 % fill); שטח מרעה חווה = lighter A′; גבול מושב = clearly different
+> tint B; שטח מרעה מושב = B′. Legend updated everywhere; visual check with
+> the mock moshav adjacent to a farm (A58/A55).
 
 > **LOT 0.10 RESUME POINT.** The lot's full spec is the user prompt titled
 > "LOT 0.10 (VERSION FINALE UNIQUE)", AMENDED mid-lot by the prompt "AJOUT AU
@@ -132,9 +174,11 @@ Branch `main`, NOT yet pushed (deploy happens at G12).
 > Ruhl Libre HAS digits where Atlas shipped none; contrast/tokens/accept/
 > dispatch/layout/wizard/build all green; captures 1-2/9-10/21-22 refreshed).
 >
-> REMAINING: G10 (templates.ts source of truth + הורד תבנית
-> xlsx generator + farms/drivers import with Waze-link parsing + מיקום חסר
-> badge), **G18** (threat zones + attack vectors, coordinator-only: new zone
+> REMAINING (in this order): **G14, G15, G16** (full spec in the SPEC GAP
+> RESOLVED note above, plus the PO decisions — mark retired, Heebo display —
+> which land as their own commit before G14), G10 (templates.ts source of
+> truth + הורד תבנית xlsx generator + farms/drivers import with Waze-link
+> parsing + מיקום חסר badge **+ the סוג יישות column from G16**), **G18** (threat zones + attack vectors, coordinator-only: new zone
 > type "אזור איום" drawn like other zones in an explicit mode, red/orange
 > hatched fill + dotted outline, fields intensity נמוך/בינוני/גבוה + note +
 > displayed update date; new object "וקטור איום" = arrow placed in 2 clicks
@@ -146,7 +190,17 @@ Branch `main`, NOT yet pushed (deploy happens at G12).
 > mock vectors in the Negev consistent with existing farms — criteria A59),
 > G11 (iPad 1032×1376 / 1376×1032 + iPhone 402×874 perfection, safe areas),
 > G12 (A1–A30 re-run + NEW A31–A44 **+ A47–A50 from the G7bis amendment,
-> A56–A59 from the 2026-08-18 update** + light/dark captures incl. styleguide
+> A56–A59 from the 2026-08-18 update, A51–A55 + A60 from the 2026-08-19
+> re-send: A51 full sticky + clickable KPI-filters with "נקה" + zero
+> duplicate pill at 300 volunteer rows; A52 correct דונם בשמירה/פוטנציאלי
+> KPIs (recalc script from the mocks) + compact full-colour collapsed
+> alerts expanding on click; A53 map-first farm detail (map left, numbers
+> band, untruncated pill, PDF view/download/share); A54 existing-zone
+> editing (move vertex + add vertex on edge + move polygon) + live dunam
+> area auto-filled with flagged override; A55 moshav entity (distinct
+> marker, adapted labels, list KPI/filter, 4 zone tints legible side by
+> side); A60 Artzenu logo absent from the repo (grep), landing = לא ינום +
+> verse only, one display face in the bundle** + light/dark captures incl. styleguide
 > new identity, global map with threat layer on, farm detail with adjacent
 > moshav + threat zone + vector + full ETAT rewrite — §8's contrast table
 > below still shows pre-G17 values and G12 rewrites it — + deploy), G13 (tag
@@ -155,9 +209,9 @@ Branch `main`, NOT yet pushed (deploy happens at G12).
 >
 > G17 notes for G12: open question 8 (Artzenu font licences) is RESOLVED —
 > all faces are OFL. `bun run brand-reference` and docs/brand-artzenu.md are
-> retired/historical (the doc says so in its header). The Artzenu MARK still
-> stands on the landing and the rail: the PO retired colours and faces only —
-> confirm whether the mark stays. A56 asks for a bigger body "si les gates
+> retired/historical (the doc says so in its header). The Artzenu MARK
+> question is now ANSWERED (2026-08-19 PO decision, A60): it goes — see the
+> SPEC GAP RESOLVED note. A56 asks for a bigger body "si les gates
 > layout passent": done, gates green.
 >
 > The G7bis amendment's acceptance criteria, to fold into G12's run:
