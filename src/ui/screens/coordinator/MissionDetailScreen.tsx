@@ -12,7 +12,13 @@ import {
 import { getPresenceRows } from '@core/index'
 import type { Incident, MissionLeg, MissionView } from '@core/index'
 
+import { useState } from 'react'
+
 import { Avatar } from '../../components/Avatar'
+import {
+  CancelMissionModal,
+  CancellationPanel,
+} from '../../components/cancellation'
 import { ContactActions, ContactButtons } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
@@ -141,10 +147,38 @@ function buildMissionTimeline(
     },
   ]
 
+  // G9bis — the cancellation chapter, spliced in at its real instants. Both
+  // survive a reactivation on purpose: "called off Tuesday, back on
+  // Wednesday" is history the retrospective needs.
+  if (mission.cancelledAt) {
+    steps.push({
+      id: 'cancelled',
+      label: t('timeline.cancelled'),
+      at: mission.cancelledAt,
+      detail: t(`cancel.reason_${mission.cancelReason}`),
+      icon: 'close',
+      state: 'done',
+      tone: 'danger',
+    })
+  }
+  if (mission.reactivatedAt) {
+    steps.push({
+      id: 'reactivated',
+      label: t('timeline.reactivated'),
+      at: mission.reactivatedAt,
+      icon: 'history',
+      state: 'done',
+      tone: 'warn',
+    })
+  }
+
   // Promote the first unreached step. Done in one pass afterwards so splicing
-  // incidents in cannot shift which step counts as "now".
-  const next = steps.find((s) => s.state === 'pending')
-  if (next) next.state = 'current'
+  // incidents in cannot shift which step counts as "now" — and not at all on
+  // a cancelled guard: nothing is "next" on a night that is not happening.
+  if (mission.status !== 'cancelled') {
+    const next = steps.find((s) => s.state === 'pending')
+    if (next) next.state = 'current'
+  }
 
   return steps
 }
@@ -262,6 +296,7 @@ export function MissionDetailScreen() {
   const view = useCoreValue(() => getMissionView(missionId))
   const missionIncidents = useCoreValue(() => getIncidentsForMission(missionId))
   const mapFullscreen = useMapFullscreen()
+  const [cancelling, setCancelling] = useState(false)
 
   if (!view) return <Navigate to="/coordinator/missions" replace />
 
@@ -286,8 +321,44 @@ export function MissionDetailScreen() {
           mission.startAt,
           locale,
         )}`}
-        actions={<MissionStatusChip status={mission.status} />}
+        actions={
+          <span className="flex flex-wrap items-center gap-2">
+            <MissionStatusChip status={mission.status} />
+            {/* G9bis — a night can be called off while it is still a plan.
+                An in-progress guard is aborted by phone, not by button, and a
+                finished one is history. */}
+            {(mission.status === 'planned' ||
+              mission.status === 'recruiting') && (
+              <button
+                type="button"
+                className="btn-ghost text-status-danger-ink hover:bg-status-danger/10"
+                onClick={() => setCancelling(true)}
+              >
+                <Icon name="close" size={14} />
+                {t('cancel.action')}
+              </button>
+            )}
+          </span>
+        }
       />
+
+      {/* G9bis — the cancellation front and centre: banner, per-recipient
+          notices with sent tracking, and the way back to recruitment. */}
+      {mission.status === 'cancelled' && (
+        <div className="mb-4">
+          <CancellationPanel view={view} />
+        </div>
+      )}
+
+      {/* A46 — freshly reactivated: the roster survived, the confirmations
+          did not, and the screen says so before anyone trusts a green chip. */}
+      {mission.status !== 'cancelled' && mission.reactivatedAt && (
+        <div className="mb-4">
+          <Callout tone="warn" title={t('timeline.reactivated')}>
+            {t('cancel.reactivatedBanner')}
+          </Callout>
+        </div>
+      )}
 
       {/* G4.2 — a recruiting guard says so loudly, shows its gauge, and
           offers the way back into the wizard, pre-filled. */}
@@ -529,6 +600,13 @@ export function MissionDetailScreen() {
           </Section>
         </div>
       </div>
+
+      {cancelling && (
+        <CancelMissionModal
+          missionId={mission.id}
+          onClose={() => setCancelling(false)}
+        />
+      )}
     </>
   )
 }

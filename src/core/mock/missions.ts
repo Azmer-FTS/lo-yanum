@@ -42,6 +42,18 @@ const who = (
   inbound: LegConfirmation = { ...EMPTY_LEG },
 ): MissionAssignment => ({ volunteerId, isGroupPhone, outbound, inbound })
 
+/** G9bis defaults — a guard that was never called off. */
+const notCancelled = (): Pick<
+  Mission,
+  'cancelledAt' | 'cancelReason' | 'cancelNote' | 'cancelNotices' | 'reactivatedAt'
+> => ({
+  cancelledAt: null,
+  cancelReason: null,
+  cancelNote: '',
+  cancelNotices: [],
+  reactivatedAt: null,
+})
+
 export const MISSIONS: Mission[] = [
   // Under way right now — drives the volunteer, driver and farmer live views.
   //
@@ -50,6 +62,7 @@ export const MISSIONS: Mission[] = [
   // overridden — it surfaces as an alert with one-tap call buttons.
   {
     id: 'mission-01',
+    ...notCancelled(),
     farmId: 'farm-01',
     anchorPointId: 'anchor-01',
     // Seeds the F2 two-position case: this group meets the driver at the north
@@ -89,6 +102,7 @@ export const MISSIONS: Mission[] = [
   // Starting later tonight — nobody has moved yet, every mark still pending.
   {
     id: 'mission-02',
+    ...notCancelled(),
     farmId: 'farm-03',
     anchorPointId: 'anchor-04',
     additionalAnchorPointIds: [],
@@ -128,6 +142,7 @@ export const MISSIONS: Mission[] = [
   // return was never confirmed by anyone — the alert the coordinator chases.
   {
     id: 'mission-03',
+    ...notCancelled(),
     farmId: 'farm-01',
     anchorPointId: 'anchor-02',
     additionalAnchorPointIds: [],
@@ -162,6 +177,7 @@ export const MISSIONS: Mission[] = [
   // Two nights ago, closed cleanly — both legs fully confirmed on both sides.
   {
     id: 'mission-04',
+    ...notCancelled(),
     farmId: 'farm-02',
     anchorPointId: 'anchor-03',
     additionalAnchorPointIds: [],
@@ -199,6 +215,7 @@ export const MISSIONS: Mission[] = [
 
   {
     id: 'mission-05',
+    ...notCancelled(),
     farmId: 'farm-02',
     anchorPointId: 'anchor-03',
     additionalAnchorPointIds: [],
@@ -222,8 +239,49 @@ export const MISSIONS: Mission[] = [
     ...notYet(48, future(2).startAt),
   },
 
+  // G9bis — the SEEDED CANCELLED GUARD (A45): called off this morning on the
+  // farmer's request. It shows struck-through in the agenda, sits in its own
+  // tab on the missions screen, is absent from every operational view, and its
+  // notice list demos the "who has been told" tracking — the driver is marked
+  // sent, the two volunteers and the farmer are not.
+  {
+    id: 'mission-07',
+    farmId: 'farm-02',
+    anchorPointId: 'anchor-03',
+    additionalAnchorPointIds: [],
+    pickupPoint: null,
+    dropoffPoint: null,
+    returnPickupPoint: null,
+    returnDropoffPoint: null,
+    ...future(3),
+    requiredVolunteers: 2,
+    status: 'cancelled',
+    assignments: [who('vol-025', true), who('vol-026', false)],
+    drivers: [
+      {
+        driverId: 'drv-02',
+        passengerVolunteerIds: ['vol-025', 'vol-026'],
+        confirmed: true,
+      },
+    ],
+    arrivalConfirmedAt: null,
+    endConfirmedAt: null,
+    ...notYet(96, future(3).startAt),
+    cancelledAt: hoursFromNow(-3),
+    cancelReason: 'farmer_request',
+    cancelNote: 'החקלאי מארח קבוצה בחווה בלילה הזה וביקש לדלג.',
+    cancelNotices: [
+      { recipientKind: 'volunteer', recipientId: 'vol-025', sentAt: null },
+      { recipientKind: 'volunteer', recipientId: 'vol-026', sentAt: null },
+      { recipientKind: 'driver', recipientId: 'drv-02', sentAt: hoursFromNow(-2.8) },
+      { recipientKind: 'farmer', recipientId: 'contact-02a', sentAt: null },
+    ],
+    reactivatedAt: null,
+  },
+
   {
     id: 'mission-06',
+    ...notCancelled(),
     farmId: 'farm-03',
     anchorPointId: 'anchor-04',
     additionalAnchorPointIds: [],

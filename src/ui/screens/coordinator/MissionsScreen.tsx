@@ -6,6 +6,7 @@ import {
   formatDate,
   formatTime,
   formatWeekday,
+  getCancelledMissionViews,
   getPastMissionViews,
   getUpcomingMissionViews,
   resolveConfirmation,
@@ -39,6 +40,7 @@ const STATUS_TOKEN: Record<MissionStatus, string> = {
   // anyone saying the group got home is the exact failure this programme
   // exists to catch, and it should be the loudest marker on the map.
   return_not_confirmed: '--critical',
+  cancelled: '--text-muted',
 }
 
 const STATUSES: MissionStatus[] = [
@@ -61,15 +63,21 @@ export function MissionsScreen() {
 
   const upcoming = useCoreValue(getUpcomingMissionViews)
   const past = useCoreValue(getPastMissionViews)
+  // G9bis — cancelled guards live in their OWN tab (A45's distinct stats):
+  // the operational lists exclude them at the accessor level, and this tab is
+  // where a called-off night is found again, read, and reactivated.
+  const cancelled = useCoreValue(getCancelledMissionViews)
 
-  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming')
+  const [tab, setTab] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming')
   const [status, setStatus] = useState<MissionStatus | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
 
+  const byTab = { upcoming, past, cancelled }
   const list = useMemo(() => {
-    const base = tab === 'upcoming' ? upcoming : past
+    const base = byTab[tab]
     return status === null ? base : base.filter((v) => v.mission.status === status)
-  }, [tab, upcoming, past, status])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, upcoming, past, cancelled, status])
 
   const page = useProgressive(list)
 
@@ -146,9 +154,23 @@ export function MissionsScreen() {
         >
           {t('missions.past')}
         </FilterPill>
+        {/* Rendered only when at least one guard was ever called off — an
+            empty "cancelled" tab is a question nobody asked. */}
+        {cancelled.length > 0 && (
+          <FilterPill
+            active={tab === 'cancelled'}
+            onClick={() => {
+              setTab('cancelled')
+              setStatus(null)
+            }}
+            count={cancelled.length}
+          >
+            {t('missions.cancelledTab')}
+          </FilterPill>
+        )}
         <span className="mx-0.5 h-4 w-px shrink-0 bg-edge-subtle" />
         {STATUSES.map((s) => {
-          const count = (tab === 'upcoming' ? upcoming : past).filter(
+          const count = byTab[tab].filter(
             (v) => v.mission.status === s,
           ).length
           if (count === 0) return null
@@ -197,7 +219,13 @@ export function MissionsScreen() {
                   }`}
                 >
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="text-caption font-medium text-content-primary">
+                    <span
+                      className={`text-caption font-medium text-content-primary ${
+                        mission.status === 'cancelled'
+                          ? 'line-through opacity-70'
+                          : ''
+                      }`}
+                    >
                       {farm.name}
                     </span>
                     <MissionStatusChip status={mission.status} />

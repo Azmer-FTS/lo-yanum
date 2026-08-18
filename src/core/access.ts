@@ -173,6 +173,9 @@ export function getMissionView(missionId: string): MissionView | null {
 export function getTonightMissionViews(): MissionView[] {
   const t = now()
   return getVisibleMissionViews()
+    // G9bis — a cancelled guard is not happening: it leaves "tonight" and,
+    // through it, the dashboard, the volunteer and the driver live views.
+    .filter((v) => v.mission.status !== 'cancelled')
     .filter((v) => isTonight(v.mission.startAt, v.mission.endAt, t))
     .sort(
       (a, b) =>
@@ -194,6 +197,7 @@ export function getMyActiveMissionView(): MissionView | null {
 export function getUpcomingMissionViews(): MissionView[] {
   const t = now().getTime()
   return getVisibleMissionViews()
+    .filter((v) => v.mission.status !== 'cancelled')
     .filter((v) => new Date(v.mission.endAt).getTime() > t)
     .sort(
       (a, b) =>
@@ -205,8 +209,28 @@ export function getUpcomingMissionViews(): MissionView[] {
 export function getPastMissionViews(): MissionView[] {
   const t = now().getTime()
   return getVisibleMissionViews().filter(
-    (v) => new Date(v.mission.endAt).getTime() <= t,
+    (v) =>
+      v.mission.status !== 'cancelled' &&
+      new Date(v.mission.endAt).getTime() <= t,
   )
+}
+
+/**
+ * G9bis — the cancelled guards, on their own (A45's "distinct stats").
+ *
+ * NOT a filter the operational lists apply themselves: upcoming, past and
+ * tonight all EXCLUDE cancelled guards at the accessor level, so no screen can
+ * forget to. This list is the one place they surface — the missions screen's
+ * own tab, where reactivation lives — soonest night first.
+ */
+export function getCancelledMissionViews(): MissionView[] {
+  return getVisibleMissionViews()
+    .filter((v) => v.mission.status === 'cancelled')
+    .sort(
+      (a, b) =>
+        new Date(a.mission.startAt).getTime() -
+        new Date(b.mission.startAt).getTime(),
+    )
 }
 
 /** True when the group phone for this mission belongs to the current session. */

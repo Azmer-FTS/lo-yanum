@@ -247,6 +247,53 @@ export type MissionStatus =
   | 'in_progress'
   | 'completed'
   | 'return_not_confirmed'
+  /**
+   * G9bis — the guard was called off. NOT deleted: people were already
+   * booked, messages already went out, and "we cancelled Tuesday at Retem"
+   * is a fact the programme must remember. A cancelled guard leaves every
+   * operational view, shows struck-through in the agenda, and can be
+   * reactivated into 'recruiting' with every confirmation reset.
+   */
+  | 'cancelled'
+
+// --- G9bis: cancellation ----------------------------------------------------
+
+/**
+ * Why a guard was called off — a CLOSED list, because "cancelled" without a
+ * why is useless in the retrospective ("how many nights did we lose to
+ * missing drivers?"). 'other' exists so the list can stay short; it demands
+ * the free-text note instead.
+ */
+export type CancelReason =
+  | 'no_volunteers'
+  | 'no_driver'
+  | 'farmer_request'
+  | 'weather'
+  | 'security_forces'
+  | 'other'
+
+export const CANCEL_REASONS: readonly CancelReason[] = [
+  'no_volunteers',
+  'no_driver',
+  'farmer_request',
+  'weather',
+  'security_forces',
+  'other',
+] as const
+
+/**
+ * One person to inform that the night is off, with the "did I actually tell
+ * them" mark. The RECIPIENTS are stored (they are the people who were booked
+ * at the moment of cancellation); the message TEXT is not — it is rebuilt by
+ * `buildCancellationMessage` so the wording lives in the locale files.
+ */
+export interface CancelNotice {
+  recipientKind: 'volunteer' | 'driver' | 'farmer'
+  /** Volunteer id / driver id / farm-contact id. */
+  recipientId: string
+  /** When the coordinator marked this notice as sent; null = not yet. */
+  sentAt: string | null
+}
 
 // --- Nominative presence confirmation (R6) ---------------------------------
 
@@ -378,6 +425,23 @@ export interface Mission {
    * to catch.
    */
   completedAt: string | null
+
+  // --- G9bis: cancellation ---------------------------------------------------
+  //
+  // The cancellation is a chapter of the mission's history, not a tombstone:
+  // `cancelledAt` + reason survive a reactivation so the timeline can show
+  // both "called off Tuesday 14:02" and "back on Wednesday 09:15".
+
+  /** When the guard was called off; null = never cancelled. */
+  cancelledAt: string | null
+  /** Required at cancellation — see CancelReason. */
+  cancelReason: CancelReason | null
+  /** Free-text detail; the REQUIRED half when the reason is 'other'. */
+  cancelNote: string
+  /** Everyone to inform, snapshotted at cancellation, with sent tracking. */
+  cancelNotices: CancelNotice[]
+  /** When the guard was put back into recruitment; null = still off / never. */
+  reactivatedAt: string | null
 }
 
 export type MissionLeg = 'outbound' | 'inbound'

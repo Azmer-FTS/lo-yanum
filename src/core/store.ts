@@ -11,6 +11,8 @@ import type { Tour } from './tours'
 import type {
   Agreement,
   AnchorPoint,
+  CancelNotice,
+  CancelReason,
   Driver,
   Farm,
   FarmCommitment,
@@ -580,6 +582,92 @@ export function updateMissionStaffing(
   })
 }
 
+// --- G9bis: cancellation ----------------------------------------------------
+
+/**
+ * Call a guard off.
+ *
+ * The reason is REQUIRED by the signature — a cancellation without a why is
+ * not recordable here, which is the whole point (A45). The notice list is
+ * snapshotted NOW, from the people booked at this moment: every assigned
+ * volunteer, every driver with a car on the night, and the farm's primary
+ * contact — the three audiences who are otherwise standing in the dark at
+ * 21:00 for a night that is not happening.
+ */
+export function cancelMission(
+  missionId: string,
+  reason: CancelReason,
+  note: string,
+): void {
+  withMission(missionId, (m) => {
+    const farm = data.farms.find((f) => f.id === m.farmId)
+    const farmerContact =
+      farm?.contacts.find((c) => c.isPrimary) ?? farm?.contacts[0] ?? null
+
+    m.status = 'cancelled'
+    m.cancelledAt = iso(now())
+    m.cancelReason = reason
+    m.cancelNote = note.trim()
+    m.reactivatedAt = null
+    m.cancelNotices = [
+      ...m.assignments.map((a) => ({
+        recipientKind: 'volunteer' as const,
+        recipientId: a.volunteerId,
+        sentAt: null,
+      })),
+      ...m.drivers.map((d) => ({
+        recipientKind: 'driver' as const,
+        recipientId: d.driverId,
+        sentAt: null,
+      })),
+      ...(farmerContact
+        ? [
+            {
+              recipientKind: 'farmer' as const,
+              recipientId: farmerContact.id,
+              sentAt: null,
+            },
+          ]
+        : []),
+    ]
+  })
+}
+
+/** A45 — the coordinator ticking off "this person has been told". */
+export function setCancelNoticeSent(
+  missionId: string,
+  recipientKind: CancelNotice['recipientKind'],
+  recipientId: string,
+  sent: boolean,
+): void {
+  withMission(missionId, (m) => {
+    const notice = m.cancelNotices.find(
+      (n) => n.recipientKind === recipientKind && n.recipientId === recipientId,
+    )
+    if (notice) notice.sentAt = sent ? iso(now()) : null
+  })
+}
+
+/**
+ * A46 — a cancelled guard comes back as a RECRUITMENT, not as a plan.
+ *
+ * Everyone's yes was for a night that was then called off; assuming it still
+ * stands is exactly the mistake this flow exists to prevent. So the roster is
+ * kept (the coordinator should not redial from a blank list) but every
+ * confirmation is reset: drivers to unconfirmed, and the status to
+ * 'recruiting' so the wizard's resume flow and the escalating dashboard
+ * alerts take over. The cancellation chapter stays on the record for the
+ * timeline.
+ */
+export function reactivateMission(missionId: string): void {
+  withMission(missionId, (m) => {
+    if (m.status !== 'cancelled') return
+    m.status = 'recruiting'
+    m.reactivatedAt = iso(now())
+    for (const d of m.drivers) d.confirmed = false
+  })
+}
+
 /** G5.3 — one driver confirming HIS car's passengers. */
 export function setMissionDriverConfirmed(
   missionId: string,
@@ -788,6 +876,11 @@ export function createMission(draft: MissionDraft): Mission {
     droppedOffAt: null,
     pickedUpAt: null,
     completedAt: null,
+    cancelledAt: null,
+    cancelReason: null,
+    cancelNote: '',
+    cancelNotices: [],
+    reactivatedAt: null,
   }
 
   data.missions = [mission, ...data.missions]

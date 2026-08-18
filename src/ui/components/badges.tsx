@@ -169,6 +169,9 @@ const MISSION_STATUS_CLASS: Record<MissionStatus, string> = {
   in_progress: 'bg-status-success/15 text-status-success-ink',
   completed: 'bg-content-muted/15 text-content-muted',
   return_not_confirmed: 'bg-critical text-content-on-accent',
+  // G9bis — muted, NOT danger-tinted: a cancelled guard is an archived fact,
+  // and painting it red would let it compete with the states that need chasing.
+  cancelled: 'bg-content-muted/15 text-content-muted',
 }
 
 export function MissionStatusChip({ status }: { status: MissionStatus }) {

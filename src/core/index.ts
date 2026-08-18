@@ -61,6 +61,9 @@ export {
   updateMissionStaffing,
   saveTour,
   deleteTour,
+  cancelMission,
+  setCancelNoticeSent,
+  reactivateMission,
 } from './store'
 export type {
   NewIncidentInput,

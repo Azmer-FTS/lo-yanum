@@ -61,6 +61,9 @@ const MISSION_TONE: Record<MissionStatus, string> = {
   // F4 — critical state: a group that has not confirmed it got home.
   return_not_confirmed:
     'border-s-critical bg-critical/10 text-status-danger-ink',
+  // G9bis — struck through and muted, but still ON the calendar: the night
+  // was planned, and an empty slot would say it never was.
+  cancelled: 'border-s-content-muted bg-content-muted/10 text-content-muted',
 }
 
 const VISIT_TONE =
@@ -76,6 +79,7 @@ const DOT_TONE: Record<MissionStatus, string> = {
   in_progress: 'bg-status-success',
   completed: 'bg-content-muted',
   return_not_confirmed: 'bg-critical',
+  cancelled: 'bg-content-muted',
 }
 
 function toneOf(event: AgendaEvent): string {
@@ -127,7 +131,13 @@ function EventPill({
           {formatTime(event.at, locale)}
         </span>
       </span>
-      <span className="mt-0.5 block truncate text-micro font-medium">
+      {/* G9bis — a cancelled guard stays on the calendar, struck through:
+          the slot was planned, and erasing it would say it never was. */}
+      <span
+        className={`mt-0.5 block truncate text-micro font-medium ${
+          event.missionStatus === 'cancelled' ? 'line-through opacity-80' : ''
+        }`}
+      >
         {event.title}
       </span>
     </button>
@@ -413,6 +423,7 @@ export function AgendaScreen() {
             ['planned', 'missionStatus.planned'],
             ['in_progress', 'missionStatus.in_progress'],
             ['return_not_confirmed', 'missionStatus.return_not_confirmed'],
+            ['cancelled', 'missionStatus.cancelled'],
           ] as const
         ).map(([status, key]) => (
           <li key={status} className="flex items-center gap-1.5">

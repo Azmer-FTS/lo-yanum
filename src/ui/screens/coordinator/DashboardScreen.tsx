@@ -258,6 +258,7 @@ const EVENT_DOT: Record<MissionStatus | 'visit' | 'meeting', string> = {
   in_progress: 'bg-status-success',
   completed: 'bg-content-muted',
   return_not_confirmed: 'bg-critical',
+  cancelled: 'bg-content-muted',
   visit: 'bg-status-violet',
   meeting: 'bg-farm-visited',
 }

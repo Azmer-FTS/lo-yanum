@@ -282,6 +282,63 @@ export function buildInvitationMessage(
   ].join('\n')
 }
 
+// --- G9bis: the cancellation notice ----------------------------------------
+
+export interface CancellationMessageLabels {
+  title: string
+  greeting: string
+  farm: string
+  date: string
+  reason: string
+  /** "your guard is off, no need to come" — the operative sentence. */
+  ask: string
+  signature: string
+}
+
+export interface CancellationMessageInput {
+  recipientName: string
+  farm: Farm
+  startAt: string
+  /** The reason ALREADY TRANSLATED by the caller — core stores the enum. */
+  reasonLabel: string
+  note: string
+  coordinatorName: string
+  coordinatorPhone: string
+  locale: string
+}
+
+/**
+ * The message that tells one booked person the night is off.
+ *
+ * Same construction rules as the invitation (D5): short, no links, identical
+ * on a kosher phone and a smartphone, the operative sentence on its own line.
+ * The reason IS included — a volunteer whose night evaporates without a why
+ * stops answering the next invitation — and the free-text note rides along
+ * when the coordinator wrote one.
+ */
+export function buildCancellationMessage(
+  input: CancellationMessageInput,
+  labels: CancellationMessageLabels,
+): string {
+  const { farm, startAt, locale } = input
+
+  const parts: string[] = [
+    labels.title,
+    '',
+    `${labels.greeting} ${input.recipientName},`,
+    line(labels.farm, `${farm.name}, ${farm.locality}`),
+    line(labels.date, formatDate(startAt, locale)),
+    line(labels.reason, input.reasonLabel),
+  ]
+  if (input.note) parts.push(input.note)
+  parts.push(
+    '',
+    labels.ask,
+    `${labels.signature} ${input.coordinatorName} ${input.coordinatorPhone}`,
+  )
+  return parts.join('\n')
+}
+
 // --- Outgoing links --------------------------------------------------------
 
 const digits = (phone: string): string => phone.replace(/\D/g, '')
