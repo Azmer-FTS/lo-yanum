@@ -5,88 +5,90 @@
 @tailwind utilities;
 
 /* ===========================================================================
-   SELF-HOSTED ARTZENU BRAND FONTS (Lot 0.8)
+   SELF-HOSTED FONTS (G17 — the neutral identity)
    ===========================================================================
-   אטלס (Atlas) and מקומי (Mekomi) are the two faces declared by the Artzenu
-   Elementor kit. They are self-hosted from /public/fonts for the same reason
-   Rubik is: the field roles work in the Negev with no coverage, and a CDN
-   @import is a blank screen at 02:00 on a farm track.
+   Everything is self-hosted from /public/fonts: the field roles work in the
+   Negev with no coverage, and a CDN @import is a blank screen at 02:00 on a
+   farm track. All faces are free (SIL OFL, via Google Fonts), which is what
+   retired the Lot 0.8 licence question along with the Artzenu faces.
 
-   The families are renamed to Latin identifiers here (the site declares them
-   under their Hebrew names); the FILES are the association's own, fetched from
-   artzenu.org.il/wp-content/uploads. See docs/brand-artzenu.md — including the
-   licence question that has to be settled before Lot 1 ships to real users.
-
-   Weights follow the site's own mapping: Atlas light 200 / regular 400 /
-   medium 500 / bold 600 / black 800; Mekomi regular 400 / medium 500 /
-   bold 600–700. `swap` everywhere, so Rubik renders first and nothing blocks.
+   · Rubik (variable 300–700) is the BODY/UI face — tables, forms, buttons,
+     and every number (its digits are effectively monospaced and it exposes
+     `tnum`, which is why it may carry figures and a display face may not).
+   · Frank Ruhl Libre (variable 300–900) is the DISPLAY face — a Hebrew serif
+     whose contrast against Rubik is the identity's one flourish.
+   · Secular One and Heebo are the two ALTERNATIVE display candidates, shown
+     side-by-side in /styleguide for the product owner's arbitrage. Declaring
+     them costs nothing: a face is only fetched when text actually uses it,
+     and only /styleguide does.
    --------------------------------------------------------------------------- */
 
 @font-face {
-  font-family: 'Artzenu Atlas';
+  font-family: 'Frank Ruhl Libre';
   font-style: normal;
-  font-weight: 200;
+  font-weight: 300 900;
   font-display: swap;
-  src: url('/fonts/atlas-light.woff2') format('woff2');
+  src: url('/fonts/frank-ruhl-libre-hebrew.woff2') format('woff2');
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC,
+    U+FB1D-FB4F;
 }
 
 @font-face {
-  font-family: 'Artzenu Atlas';
+  font-family: 'Frank Ruhl Libre';
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url('/fonts/frank-ruhl-libre-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Display ALTERNATIVE 1 — used by /styleguide only. */
+@font-face {
+  font-family: 'Secular One';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/atlas-regular.woff2') format('woff2');
+  src: url('/fonts/secular-one-hebrew.woff2') format('woff2');
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC,
+    U+FB1D-FB4F;
 }
 
 @font-face {
-  font-family: 'Artzenu Atlas';
+  font-family: 'Secular One';
   font-style: normal;
-  font-weight: 500;
+  font-weight: 400;
   font-display: swap;
-  src: url('/fonts/atlas-medium.woff2') format('woff2');
+  src: url('/fonts/secular-one-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Display ALTERNATIVE 2 — used by /styleguide only. */
+@font-face {
+  font-family: 'Heebo';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/heebo-hebrew.woff2') format('woff2');
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC,
+    U+FB1D-FB4F;
 }
 
 @font-face {
-  font-family: 'Artzenu Atlas';
+  font-family: 'Heebo';
   font-style: normal;
-  font-weight: 600 700;
+  font-weight: 100 900;
   font-display: swap;
-  src: url('/fonts/atlas-bold.woff2') format('woff2');
+  src: url('/fonts/heebo-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-@font-face {
-  font-family: 'Artzenu Atlas';
-  font-style: normal;
-  font-weight: 800 900;
-  font-display: swap;
-  src: url('/fonts/atlas-black.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Artzenu Mekomi';
-  font-style: normal;
-  font-weight: 300 400;
-  font-display: swap;
-  src: url('/fonts/mekomi-regular.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Artzenu Mekomi';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/fonts/mekomi-medium.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Artzenu Mekomi';
-  font-style: normal;
-  font-weight: 600 900;
-  font-display: swap;
-  src: url('/fonts/mekomi-bold.woff2') format('woff2');
-}
-
-/* --- Self-hosted Rubik (variable, 300–700) — now the FALLBACK ------------ */
+/* --- Self-hosted Rubik (variable, 300–700) — the BODY face --------------- */
 
 @font-face {
   font-family: 'Rubik';
@@ -212,10 +214,10 @@
 }
 
 /* ---------------------------------------------------------------------------
-   THE BRAND FACE, BOUND TO THE TYPE SCALE (Lot 0.8)
+   THE DISPLAY FACE, BOUND TO THE TYPE SCALE (Lot 0.8, face swapped by G17)
    ---------------------------------------------------------------------------
-   Atlas is applied to the four HEADING steps and nowhere else. Two deliberate
-   choices are encoded here:
+   Frank Ruhl Libre is applied to the four HEADING steps and nowhere else. Two
+   deliberate choices are encoded here:
 
    · It is bound to the SCALE, not to call sites. Tailwind's `fontSize` plugin
      can carry a line-height, a tracking and a weight but not a family, so the
@@ -226,8 +228,8 @@
      what lets them win at equal specificity. A `@layer components` block would
      be hoisted above the utilities and lose.
 
-   `text-metric` is POINTEDLY absent: KPI figures stay in Mekomi, the only one
-   of the two faces with tabular digits (see --font-brand in tokens.css).
+   `text-metric` is POINTEDLY absent: KPI figures stay in Rubik, the face with
+   tabular digits (see --font-brand in tokens.css).
    --------------------------------------------------------------------------- */
 
 .text-display,
@@ -235,6 +237,18 @@
 .text-title,
 .text-heading {
   font-family: var(--font-brand);
+}
+
+/* THE ONE EXCEPTION: a NUMBER at a heading scale stays in the body face —
+   Rubik is the only face here with tabular digits, and the dashboard KPIs are
+   `numeric text-display`. With the old Atlas subset this worked by accident
+   (its files carried no digits, so figures fell through); Frank Ruhl Libre
+   HAS digits, so the rule must be explicit or the instruments go serif. */
+.text-display.numeric,
+.text-section.numeric,
+.text-title.numeric,
+.text-heading.numeric {
+  font-family: var(--font-sans);
 }
 
 /* The association's mark, drawn as a MASK rather than an image. The source PNG
@@ -260,8 +274,12 @@
 @layer components {
   /* --- Containers -------------------------------------------------------- */
 
+  /* G17 — A CARD HAS NO CONTOUR. Separation is the soft shadow plus the step
+     between the white card and the tinted page; in dark, the luminance step
+     does the work (audited). The one hairline that SURVIVES is the field's —
+     see `.input`: a border on a field is an affordance, on a card it is noise. */
   .card {
-    @apply rounded-card border border-edge-subtle bg-surface-raised shadow-card;
+    @apply rounded-card bg-surface-raised shadow-card;
   }
 
   .card-pad {
@@ -272,14 +290,14 @@
      a hover read as "this is a control" rather than "this changed colour". */
   .card-interactive {
     @apply card transition-all duration-base ease-out
-           hover:-translate-y-px hover:border-edge-strong hover:shadow-lift;
+           hover:-translate-y-px hover:shadow-lift;
   }
 
   /* Hero surface for the one card per screen that carries the identity. The
      gradient lives on the FILL only — never behind text that needs to be read
      at 13px. */
   .card-hero {
-    @apply rounded-card border border-edge-subtle bg-gradient-hero shadow-card;
+    @apply rounded-card bg-gradient-hero shadow-card;
   }
 
   /**
@@ -296,12 +314,12 @@
    * makes them read as separate objects.
    */
   .tile {
-    @apply rounded-field border border-edge-subtle bg-surface-raised shadow-card;
+    @apply rounded-field bg-surface-raised shadow-card;
   }
 
   .tile-interactive {
     @apply tile transition-all duration-fast ease-out
-           hover:-translate-y-px hover:border-edge-strong hover:shadow-lift;
+           hover:-translate-y-px hover:shadow-lift;
   }
 
   /**
@@ -344,10 +362,20 @@
 
   /* --- Buttons ----------------------------------------------------------- */
 
-  /* The charter's control shape is a PILL: every button and every input on
-     artzenu.org.il is `border-radius: 30px`. Buttons take it literally (the
-     horizontal padding goes up a step so a pill does not pinch its label);
-     inputs deliberately do NOT — see `.input`. */
+  /**
+   * G17 — THE SHAPE IS THE HIERARCHY.
+   *
+   *   · MAJOR actions (primary, danger, critical — create, confirm, save,
+   *     emergency): full-colour RECTANGLES at `--radius-field` (~6px). One
+   *     glance separates "this commits something" from everything else.
+   *   · Secondary actions, filters, chips, tags: PILLS.
+   *   · Call / WhatsApp / SMS: a discreet round-or-square ICON button, never
+   *     a full pill that reads as a CTA (see ContactActions).
+   *
+   * The base `.btn` carries the pill; the major variants override it with
+   * `rounded-field`, which wins as the later declaration in the same rule.
+   * `bun run tokens` greps both halves of the rule.
+   */
   .btn {
     @apply inline-flex select-none items-center justify-center gap-2
            rounded-pill px-5 py-2.5 text-caption font-semibold
@@ -356,9 +384,9 @@
            disabled:pointer-events-none disabled:opacity-40;
   }
 
-  /* The primary action is the one gradient fill in the system. */
+  /* The primary action is the one gradient fill in the system — rectangular. */
   .btn-primary {
-    @apply btn bg-gradient-accent text-content-on-accent shadow-accent
+    @apply btn rounded-field bg-gradient-accent text-content-on-accent shadow-accent
            hover:shadow-glow hover:brightness-105 active:brightness-95;
   }
 
@@ -372,7 +400,7 @@
   }
 
   .btn-danger {
-    @apply btn bg-status-danger text-content-on-accent hover:brightness-110;
+    @apply btn rounded-field bg-status-danger text-content-on-accent hover:brightness-110;
   }
 
   /* --- F4: THE CRITICAL ROLE --------------------------------------------- */
@@ -394,7 +422,7 @@
    * things above would stop being findable, which is the whole point of them.
    */
   .btn-critical {
-    @apply btn bg-critical text-content-on-accent shadow-critical
+    @apply btn rounded-field bg-critical text-content-on-accent shadow-critical
            hover:brightness-110 active:brightness-95;
   }
 
@@ -403,15 +431,17 @@
   }
 
   /* A 4 px inline-start bar plus the tinted drop. The bar survives being
-     skimmed at arm's length; a background wash does not. */
+     skimmed at arm's length; a background wash does not. The bar is a
+     SEMANTIC MARKER, not a contour, so it survives G17's border removal —
+     the other three edges have none. */
   .card-critical {
-    @apply rounded-card border border-s-4 border-critical/45 border-s-critical
+    @apply rounded-card border-s-4 border-s-critical
            bg-surface-raised shadow-critical;
   }
 
-  /* Field-role primary action: thumb-sized, one-handed, in the dark. Keeps the
-     pill from `.btn` — a full-width pill is the site's own CTA at scale, and at
-     56 px tall it is well past the 44 px target. */
+  /* Field-role primary action: thumb-sized, one-handed, in the dark. Shape
+     comes from the variant it is combined with (a primary stays a rectangle,
+     a secondary stays a pill); at 56 px tall it is well past the 44 px target. */
   .btn-big {
     @apply w-full px-6 py-4 text-heading;
   }
@@ -496,7 +526,7 @@
    * too, and pins the header row so the columns are still labelled at row 90.
    */
   .table-scroll {
-    @apply overflow-auto overscroll-contain rounded-field border border-edge-subtle;
+    @apply overflow-auto overscroll-contain rounded-field shadow-card;
     max-height: var(--list-max, 26rem);
   }
 

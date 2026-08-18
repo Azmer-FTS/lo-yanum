@@ -110,7 +110,7 @@ export function CallRow({
   const { t } = useTranslation()
 
   return (
-    <div className="flex items-center gap-3 rounded-field border border-edge-subtle bg-surface-raised px-3 py-2.5">
+    <div className="flex items-center gap-3 rounded-field bg-surface-raised px-3 py-2.5 shadow-card">
       <Avatar photo={photo} name={name} size="md" />
       <a
         href={telHref(phone)}

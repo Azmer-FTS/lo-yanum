@@ -247,7 +247,8 @@ export function MeetPointsEditor({
         </div>
         {armed && (
           <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10">
-            <div className="pointer-events-auto flex items-center gap-3 rounded-card border border-accent bg-surface-overlay/95 px-3.5 py-2.5 shadow-glow backdrop-blur">
+            {/* The armed-mode ring comes from shadow-glow's 1px accent spread. */}
+            <div className="pointer-events-auto flex items-center gap-3 rounded-card bg-surface-overlay/95 px-3.5 py-2.5 shadow-glow backdrop-blur">
               <span className="shrink-0 text-accent-ink">
                 <Icon name="pin" size={17} />
               </span>

@@ -241,7 +241,7 @@ export function FarmsListScreen() {
       }
       detail={
         selected && (
-          <div className="animate-fade-in rounded-card border border-edge-strong bg-surface-overlay/95 p-4 shadow-lift backdrop-blur">
+          <div className="animate-fade-in rounded-card bg-surface-overlay/95 p-4 shadow-lift backdrop-blur">
             <div className="flex items-start gap-3">
               <Avatar
                 photo={selected.photo}

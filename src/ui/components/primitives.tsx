@@ -302,7 +302,7 @@ export function FilterBar({
   trailing?: ReactNode
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-card border border-edge-subtle bg-surface-raised/70 p-2.5 backdrop-blur">
+    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-card bg-surface-raised/70 p-2.5 shadow-card backdrop-blur">
       {onSearch && (
         <div className="relative min-w-0 flex-1 sm:max-w-xs">
           <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
@@ -584,7 +584,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`max-h-[90dvh] w-full animate-fade-in overflow-y-auto rounded-t-card border border-edge-strong
+        className={`max-h-[90dvh] w-full animate-fade-in overflow-y-auto rounded-t-card
                     bg-surface-overlay p-5 shadow-lift sm:rounded-card ${
                       wide ? 'max-w-3xl' : 'max-w-lg'
                     }`}
@@ -618,14 +618,16 @@ export function Callout({
   title: string
   children?: ReactNode
 }) {
+  /* G17: a callout is marked by its 4 px inline-start bar plus a tint — the
+     same language as .card-critical — not by a full contour. */
   const tones = {
-    warn: 'border-status-warn/40 bg-status-warn/10 text-status-warn-ink',
-    danger: 'border-status-danger/40 bg-status-danger/10 text-status-danger-ink',
-    info: 'border-status-info/40 bg-status-info/10 text-status-info-ink',
-    success: 'border-status-success/40 bg-status-success/10 text-status-success-ink',
+    warn: 'border-s-status-warn bg-status-warn/10 text-status-warn-ink',
+    danger: 'border-s-status-danger bg-status-danger/10 text-status-danger-ink',
+    info: 'border-s-status-info bg-status-info/10 text-status-info-ink',
+    success: 'border-s-status-success bg-status-success/10 text-status-success-ink',
   }
   return (
-    <div className={`rounded-card border p-4 ${tones[tone]}`}>
+    <div className={`rounded-card border-s-4 p-4 ${tones[tone]}`}>
       <p className="flex items-center gap-2 text-caption font-semibold">
         <Icon name={icon} size={16} />
         {title}

@@ -96,7 +96,7 @@ export function FarmerGuardsScreen() {
 
         {/* Discreet, not accusatory: a reminder of what was agreed. */}
         {farm.commitments.length > 0 && (
-          <section className="rounded-card border border-edge-strong bg-surface-high/70 p-4">
+          <section className="rounded-card bg-surface-high/70 p-4 shadow-card">
             <h2 className="text-caption font-semibold text-content-primary">
               {t('commitment.reminderTitle')}
             </h2>

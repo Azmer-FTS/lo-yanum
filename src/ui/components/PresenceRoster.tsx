@@ -85,7 +85,8 @@ export function PresenceRoster({
             })}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <a href={telHref(row.volunteer.phone)} className="btn-primary py-2">
+            {/* G17: a call action is not a CTA — it stays a discreet pill. */}
+            <a href={telHref(row.volunteer.phone)} className="btn-secondary py-2">
               <Icon name="phone" size={14} />
               {row.volunteer.name}
             </a>
@@ -102,10 +103,10 @@ export function PresenceRoster({
           return (
             <li
               key={row.volunteer.id}
-              className={`rounded-card border p-3 transition-colors duration-fast ${
+              className={`rounded-card p-3 shadow-card transition-colors duration-fast ${
                 mismatch
-                  ? 'border-status-warn/60 bg-status-warn/10'
-                  : 'border-edge-subtle bg-surface-raised'
+                  ? 'border-s-4 border-s-status-warn bg-status-warn/10'
+                  : 'bg-surface-raised'
               }`}
             >
               {/* C6: a face, a name and a CALL button on one line — the driver

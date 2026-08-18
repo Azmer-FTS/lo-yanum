@@ -21,149 +21,122 @@
    Only VALUES change between themes; no component ever branches on the theme.
    Semantic names stay stable: `surface-raised` is "the card surface" in both.
 
-   ── LOT 0.8: THE ARTZENU CHARTER ────────────────────────────────────────
-   The app belongs to Artzenu (artzenu.org.il), which runs שומרים בחוות, so it
-   has to look like the association's own tool rather than a generic console.
-   Every value below traces to the site's real Elementor kit — extracted from
-   wp-content/uploads/elementor/css/post-15.css, not eyeballed. The provenance
-   table, and every place AA forced an adjustment, is in docs/brand-artzenu.md.
+   ── G17: THE NEUTRAL IDENTITY ───────────────────────────────────────────
+   The Artzenu charter (Lot 0.8) is retired by product-owner decision: colours
+   AND typefaces. The identity is now deliberately neutral and professional —
+   a barely-tinted light grey page, white cards, grey-black ink, and a single
+   professional blue reserved for the accent role. The VIVID colours survive
+   only where colour carries meaning: statuses, severities, badges, primary
+   buttons, map markers and zones. Dark is the same arrangement on neutral
+   blue-grey surfaces.
 
-   The four `--brand-*` tokens ARE the charter, verbatim. They exist so that
-   gradients and washes can be composed from the association's own values
-   instead of from hexes copied into a component. Everything else is those four
-   colours pushed into the luminance windows the audit enforces.
-
-   The structure from Lot 0.7 is untouched, and it is what made this lot cheap:
+   The STRUCTURE from Lots 0.7–0.9 is untouched, because it is what every
+   audit hangs off:
 
    1. VIVID / INK SPLIT. Every status has TWO tokens: `--status-x` is the vivid
       colour used as a fill (dot, marker, bar, gradient stop) and
       `--status-x-ink` is the same identity pushed until it is legible as TEXT
-      on that colour's own 15 % tint. This is exactly the mechanism that let the
-      charter's own orange survive contact with AA: the FILL keeps the brand
-      value (#EF4F28, untouched), and only the ink moves.
+      on that colour's own 15 % tint.
 
-   2. LIGHT IS A TINTED PAPER — now tinted GREEN, not blue-grey. The page
-      carries a faint wash of the association's pale green (#E9F2EA, the site's
-      own input background), and cards stay pure white exactly as on the site.
+   2. LIGHT IS A BARELY-TINTED PAPER. The page carries just enough cool grey
+      to let pure-white cards detach from it by shadow alone (G17 removed the
+      card borders, so this step is now load-bearing).
 
-   3. DARK IS DERIVED, NOT BORROWED. The site is light-only, so there is no dark
-      charter to copy. Dark is built by keeping the Artzenu hues and dropping
-      the surfaces to forest-night greens in the same family as #0B3D2C — the
-      previous generic navy would have read as a different product.
+   3. DARK IS THE SAME FAMILY AT NIGHT. Neutral blue-grey surfaces, every
+      elevation step separated by luminance alone — a drop-shadow is invisible
+      on near-black.
    ========================================================================= */
 
 :root {
-  /* ---------------------------------------------------------------------
-     THE ARTZENU CHARTER, VERBATIM.
-     These four are the association's declared global colours, and they are the
-     only values in this file that are quoted rather than derived. They are
-     theme-independent on purpose: the brand does not change at night, only the
-     surfaces it sits on do. Compose washes and gradients FROM these.
-     --------------------------------------------------------------------- */
-  --brand-forest: 11 61 44; /* #0B3D2C — every heading on the site       */
-  --brand-olive: 71 110 52; /* #476E34 — button hover, gradient start    */
-  --brand-teal: 20 161 133; /* #14A185 — links, stacked icons            */
-  --brand-orange: 239 79 40; /* #EF4F28 — the one loud CTA               */
+  /**
+   * THE LANDING PLATE. A deep neutral slate wash behind the verse — the one
+   * surface allowed to be darker and quieter than the app. Theme-independent:
+   * the plate does not change at night, so its ink cannot come from
+   * `--text-primary` either. The two stops exist as triplets so the audit can
+   * pin `--text-on-brand` against BOTH ends of the gradient — the lighter stop
+   * is the worst case the verse can land on.
+   */
+  --plate-from: 62 76 99; /* #3E4C63 */
+  --plate-to: 19 26 38; /* #131A26 */
+  --text-on-brand: 242 245 249; /* #F2F5F9 */
 
   /**
-   * The ONLY ink allowed on the brand plate, and theme-independent like the
-   * charter itself. `--gradient-brand` is a deep forest wash in BOTH themes —
-   * the association's hero does not have a night variant and should not get an
-   * invented one — so the ink on it cannot come from `--text-primary`, which is
-   * near-black in light. The audit pins it against the gradient's lightest
-   * stop (`--brand-olive`), which is the worst case it can land on.
+   * F4 — THE CRITICAL ROLE.
+   *
+   * A loud orange-red with a short, closed list of call sites (see
+   * `.btn-critical` / `.chip-critical` / `.card-critical` in index.css): an
+   * unresolved urgent incident, an emergency call, the one irreversible button
+   * that commits a guard, and the two states that mean a volunteer is
+   * unaccounted for. `bun run tokens` fails the build if it turns up anywhere
+   * else — the whole value of a loud colour is that it is rare.
+   *
+   * Theme-independent: an emergency does not change colour at night. Since
+   * G17 this is a purely semantic value, no longer a brand quotation.
    */
-  --text-on-brand: 244 250 245; /* #F4FAF5 */
-
-  /**
-   * F4 — THE CHARTER ORANGE, GIVEN A JOB.
-   *
-   * `--brand-orange` is the association's single loud CTA and, until this lot,
-   * the app never actually showed it: it was aliased onto `--status-danger`,
-   * which the UI only ever renders as a 15 % wash or as its darkened `-ink`, so
-   * the loudest colour in the charter was present in the token file and absent
-   * from the screen.
-   *
-   * `--critical` is that orange promoted to a ROLE with a short, closed list of
-   * call sites (see `.btn-critical` / `.chip-critical` / `.card-critical` in
-   * index.css): an unresolved urgent incident, an emergency call, the one
-   * irreversible button that commits a guard, and the two states that mean a
-   * volunteer is unaccounted for. `bun run tokens` fails the build if it turns
-   * up anywhere else — the whole value of a loud colour is that it is rare.
-   *
-   * Theme-independent, exactly like the brand plate: an emergency does not
-   * change colour at night. It carries `--text-on-accent` at 5.22:1.
-   */
-  --critical: 239 79 40; /* #EF4F28 — brand orange, verbatim */
+  --critical: 239 79 40; /* #EF4F28 */
 
   /* ---------------------------------------------------------------------
-     LIGHT — coordinator daylight default. Green-tinted paper, white cards,
-     forest-green ink: the site's own arrangement.
+     LIGHT — coordinator daylight default. Barely-tinted grey paper, white
+     cards, grey-black ink.
      --------------------------------------------------------------------- */
 
   /* Surfaces, ascending elevation. In light, cards rise toward white. */
-  --surface-sunken: 223 235 221; /* #DFEBDD — wells, scrims             */
-  --surface-base: 241 246 239; /* #F1F6EF — the page itself           */
-  --surface-raised: 255 255 255; /* #FFFFFF — cards, as on the site     */
+  --surface-sunken: 228 231 235; /* #E4E7EB — wells, scrims             */
+  --surface-base: 243 244 246; /* #F3F4F6 — the page itself           */
+  --surface-raised: 255 255 255; /* #FFFFFF — cards                     */
   --surface-overlay: 255 255 255; /* #FFFFFF — modals, sticky bars       */
-  --surface-high: 233 242 234; /* #E9F2EA — the CHARTER's own wash    */
+  --surface-high: 238 241 244; /* #EEF1F4 — section panels, hover     */
 
   /**
-   * THE FIELD SURFACE (Lot 0.9 / F3). Its whole job is to be NEUTRAL.
-   *
-   * Every input, select and textarea used to sit on `--surface-sunken`, the
-   * green wash — twelve of them down a form turned the page into a stack of
-   * coloured bars and buried the one field that actually mattered. A field is
-   * now white paper (light) / a plain dark well (dark), and it is the BORDER
-   * that says "you can type here". The charter wash #E9F2EA survives as
-   * `--surface-high` and is spent on SECTIONS and informational panels, which
-   * is where a tint carries meaning instead of noise.
+   * THE FIELD SURFACE (Lot 0.9 / F3). Its whole job is to be NEUTRAL: white
+   * paper in light, a plain dark well in dark. It is the BORDER that says
+   * "you can type here" — fields KEEP their hairline through G17, precisely
+   * because cards lost theirs: the hairline is the field's affordance, and it
+   * stays audited at 1.8 against this surface.
    */
   --surface-field: 255 255 255; /* #FFFFFF — untinted, on purpose      */
 
-  --border-subtle: 211 226 208; /* #D3E2D0 */
-  --border-strong: 169 191 164; /* #A9BFA4 */
+  --border-subtle: 216 221 227; /* #D8DDE3 */
+  --border-strong: 166 176 188; /* #A6B0BC */
 
-  /* Ink. `text-primary` IS the charter's heading colour — the site sets every
-     h1–h6 to #0B3D2C, and adopting it as the app's primary ink is the single
-     change that makes a screenshot read as Artzenu. */
-  --text-primary: 11 61 44; /* #0B3D2C — brand forest */
-  --text-secondary: 47 74 62; /* #2F4A3E */
-  --text-muted: 86 110 96; /* #566E60 */
-  --text-on-accent: 6 20 14; /* #06140E — near-black green, for olive fills */
+  /* Ink. Grey-black, faintly cool so it sits with the blue accent — not the
+     green heading ink the retired charter used. */
+  --text-primary: 23 29 38; /* #171D26 */
+  --text-secondary: 58 70 84; /* #3A4654 */
+  --text-muted: 91 104 120; /* #5B6878 */
+  --text-on-accent: 11 18 32; /* #0B1220 — near-black, for accent fills */
 
-  /* Brand olive. `accent` is the FILL (buttons, FAB, active pills, markers) and
-     is the site's literal button background; `accent-ink` is the site's literal
-     button-HOVER olive, which is where the same identity has to go to be
-     readable as text on paper. The site puts white on the fill at 3.4:1; we put
-     near-black on it at 5.5:1 instead — same brand colour, legible ink. */
-  --accent: 110 149 88; /* #6E9558 — CHARTER accent, fill       */
-  --accent-strong: 134 175 107; /* #86AF6B — hover: BRIGHTENS            */
-  --accent-dim: 101 138 80; /* #658A50 — pressed                    */
-  --accent-ink: 71 110 52; /* #476E34 — CHARTER olive, AS TEXT     */
+  /* The accent role: primary buttons, FAB, active pills, markers. A single
+     professional blue. The FILL is medium — dark enough to clear 3:1 as a
+     marker on the page, light enough for near-black ink to clear 4.5:1 on top
+     (decision 33's window) — and `accent-ink` is the same identity darkened
+     until it reads as TEXT on paper. */
+  --accent: 94 134 216; /* #5E86D8 — fill                       */
+  --accent-strong: 123 156 226; /* #7B9CE2 — hover: BRIGHTENS           */
+  --accent-dim: 90 126 207; /* #5A7ECF — pressed                    */
+  --accent-ink: 51 84 159; /* #33549F — the same blue, AS TEXT     */
 
-  /* Semantic status — VIVID (dots, markers, bars, gradient stops). Warmed and
-     pulled toward the charter's temperature; `danger` is the charter's own
-     orange, unmodified, and `success` is the charter's teal dropped just far
-     enough to clear 3:1 as a dot on the pale green page. */
-  --status-success: 15 142 117; /* #0F8E75 brand teal, darkened */
+  /* Semantic status — VIVID (dots, markers, bars, gradient stops). Kept from
+     Lot 0.9: these are meaning, not identity, and they were already tuned to
+     the luminance windows the audit enforces. */
+  --status-success: 15 142 117; /* #0F8E75 */
   --status-warn: 192 122 8; /* #C07A08 ochre                */
-  --status-danger: 239 79 40; /* #EF4F28 CHARTER orange       */
+  --status-danger: 239 79 40; /* #EF4F28                      */
   --status-info: 15 134 184; /* #0F86B8 lake blue            */
 
-  /* G1 — farm-zone polygons on the map. Outline colours; the fill is the
-     same value at ~9 % opacity, painted by MapLibre. The boundary is the
-     charter's own forest, the grazing area its teal — far enough apart in
-     hue to survive on an OSM raster in both themes. */
-  --zone-boundary: 11 61 44; /* #0B3D2C brand forest */
-  --zone-grazing: 15 142 117; /* #0F8E75 brand teal, darkened */
+  /* G1/G16 — farm-zone polygons on the map. Outline colours; the fill is the
+     same value at low opacity, painted by MapLibre. The FARM family is a
+     green pair (boundary dark, grazing the same family lighter) so a farm's
+     two zone kinds read as one entity; the future moshav family (G16) takes a
+     clearly different hue. Greens here are semantic map colours, not the
+     retired brand greens. */
+  --zone-boundary: 30 122 79; /* #1E7A4F farm boundary  */
+  --zone-grazing: 47 163 114; /* #2FA372 farm grazing   */
   --status-violet: 143 99 232; /* #8F63E8 violet               */
 
-  /* G7bis.1 — the farm's identity pastille on every map: the charter's own
-     forest in daylight, lifted to the sage the night raster needs. A separate
-     token rather than an alias of --brand-forest because the brand value has
-     no night variant and a marker must. */
-  --marker-farm: 11 61 44; /* #0B3D2C brand forest */
+  /* G7bis.1 — the farm's identity pastille on every map. A deep green:
+     distinct from every status hue, and consistent with the farm zone family. */
+  --marker-farm: 23 94 59; /* #175E3B */
 
   /* …and the same identities as TEXT on their own 15 % tint. */
   --status-success-ink: 10 100 85; /* #0A6455 */
@@ -175,9 +148,9 @@
   /* Farm pipeline. Consumed by chips, list dots AND map markers, so a status
      can never be green in one place and amber in another. Seven distinct hues
      around the wheel, ordered so two adjacent pipeline steps never share one.
-     `to-contact` is a GREEN-grey now: a blue-grey on a green page reads as a
-     foreign element rather than as "not started yet". */
-  --farm-to-contact: 110 132 120; /* #6E8478 sage-grey */
+     `to-contact` is a neutral blue-grey on the neutral page — "not started
+     yet" should read as absence of colour, not as a hue of its own. */
+  --farm-to-contact: 122 136 153; /* #7A8899 blue-grey */
   --farm-contacted: 192 122 8; /* #C07A08 ochre     */
   --farm-visited: 210 77 171; /* #D24DAB magenta   */
   --farm-verbal-ok: 15 134 184; /* #0F86B8 lake blue */
@@ -185,7 +158,7 @@
   --farm-active: 15 142 117; /* #0F8E75 teal      */
   --farm-declined: 239 79 40; /* #EF4F28 orange    */
 
-  --farm-to-contact-ink: 60 80 69; /* #3C5045 */
+  --farm-to-contact-ink: 60 72 84; /* #3C4854 */
   --farm-contacted-ink: 126 78 3; /* #7E4E03 */
   --farm-visited-ink: 140 33 112; /* #8C2170 */
   --farm-verbal-ok-ink: 11 92 127; /* #0B5C7F */
@@ -193,20 +166,19 @@
   --farm-active-ink: 10 100 85; /* #0A6455 */
   --farm-declined-ink: 166 42 17; /* #A62A11 */
 
-  /* Elevation: a FOREST-tinted shadow, not neutral grey — a grey shadow on a
-     green-tinted page reads as dirt, a shadow that shares the page's hue reads
-     as depth. The long, soft, offset drop is the site's own signature
-     (`0 10px 35px -10px rgba(0,0,0,.15)` on its cards). */
-  --shadow-card: 0 1px 2px rgb(11 61 44 / 0.05), 0 4px 12px rgb(11 61 44 / 0.08);
-  --shadow-lift: 0 6px 16px rgb(11 61 44 / 0.1), 0 18px 40px rgb(11 61 44 / 0.16);
-  --shadow-accent: 0 3px 12px rgb(110 149 88 / 0.36);
-  --shadow-glow: 0 0 0 1px rgb(110 149 88 / 0.3), 0 6px 24px rgb(110 149 88 / 0.2);
-  /* F4: the long Artzenu drop, tinted with the critical hue. */
+  /* Elevation. G17 removed the card borders, so the shadow is now the ONLY
+     separator in light — soft, slate-tinted (a neutral shadow on a neutral
+     page reads as depth), long and low rather than heavy. */
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 4px 14px rgb(15 23 42 / 0.08);
+  --shadow-lift: 0 6px 16px rgb(15 23 42 / 0.1), 0 18px 40px rgb(15 23 42 / 0.16);
+  --shadow-accent: 0 3px 12px rgb(94 134 216 / 0.35);
+  --shadow-glow: 0 0 0 1px rgb(94 134 216 / 0.32), 0 6px 24px rgb(94 134 216 / 0.22);
+  /* F4: the soft drop, tinted with the critical hue. */
   --shadow-critical: 0 2px 8px rgb(239 79 40 / 0.2),
     0 12px 32px -8px rgb(239 79 40 / 0.3);
 
-  /* Hero gradients. NEVER applied to text — only to fills (primary buttons,
-     the dashboard hero strip, KPI accents). 158° is the site's own angle. */
+  /* Accent gradients. NEVER applied to text — only to fills (primary buttons,
+     the dashboard hero strip, KPI accents). */
   --gradient-accent: linear-gradient(
     158deg,
     rgb(var(--accent-strong)) 0%,
@@ -216,49 +188,42 @@
   --gradient-hero: linear-gradient(
     158deg,
     rgb(var(--surface-raised)) 0%,
-    rgb(var(--accent) / 0.14) 60%,
-    rgb(var(--brand-teal) / 0.14) 100%
+    rgb(var(--accent) / 0.1) 60%,
+    rgb(var(--accent-dim) / 0.14) 100%
   );
 
-  /* The landing/verse plate. The site's own hero treatment is a deep forest
-     gradient over a landscape photograph; this is that gradient without the
-     photograph, and it is the one place in the app that goes full brand. */
+  /* The landing/verse plate: a deep neutral slate wash, identical in both
+     themes — see --plate-from/--plate-to above. */
   --gradient-brand: linear-gradient(
     158deg,
-    rgb(var(--brand-olive)) 0%,
-    rgb(var(--brand-forest)) 100%
+    rgb(var(--plate-from)) 0%,
+    rgb(var(--plate-to)) 100%
   );
 
-  /* Daylight map: OSM tiles are already a day map, so barely touch them. The
-     small POSITIVE rotation nudges the raster's beiges toward olive so the
-     Negev sits in the charter's temperature; rotating the other way turns the
-     desert pink, which was the first thing tried and the first thing rejected. */
-  --map-filter: saturate(0.9) brightness(1.03) contrast(1.02) hue-rotate(8deg);
+  /* Daylight map: OSM tiles are already a day map — just calm them slightly
+     so the raster does not out-saturate the markers. No hue rotation: the
+     neutral identity has no colour cast to push the desert toward. */
+  --map-filter: saturate(0.85) brightness(1.02) contrast(1.02);
 
   /* --- Theme-independent ------------------------------------------------ */
 
   /**
    * THE RADIUS SCALE — THREE VALUES, AND NOTHING ELSE (Lot 0.9 / F3).
    *
-   * Lot 0.8 shipped five steps (10/14/18/26/pill) and the app used all of them
-   * plus the pill, so nothing read as a family: a 10 px chip sat next to a
-   * 14 px input inside an 18 px card. The scale is now three values, each tied
-   * to a ROLE rather than to a size, and every corner in the app is one of them:
+   * Each value is tied to a ROLE rather than to a size, and every corner in
+   * the app is one of them:
    *
-   *   field — inputs, selects, textareas, list rows, icon buttons, tiles.
-   *           Deliberately small. The charter's own inputs are 30 px pills and
-   *           this is the one place the app does not follow, for the reason
-   *           written at `.input` in index.css: a column of pills gives the eye
-   *           no left edge to run down.
-   *   card  — cards, sections, modals, map frames, panels. Inside the 12–16 px
-   *           the charter's own cards sit in.
-   *   pill  — CTA buttons, filter pills, chips, badges, dots. The charter's
-   *           control language, spent where it belongs.
+   *   field — inputs, selects, textareas, list rows, icon buttons, tiles,
+   *           and — since G17 — the PRIMARY buttons: a major action (create,
+   *           confirm, save, emergency) is a full-colour rectangle at this
+   *           radius, which is what separates it from the pill controls.
+   *   card  — cards, sections, modals, map frames, panels.
+   *   pill  — secondary buttons, filter pills, chips, badges, dots.
    *
    * There is no fourth value anywhere in the app, and `tailwind.config.js`
    * REPLACES Tailwind's borderRadius scale rather than extending it — so the
-   * old sm/md/lg/xl names, the default full, and any arbitrary bracket value no
-   * longer compile, and the rule is enforced by the build rather than by
+   * old sm/md/lg/xl names, the default full, and any arbitrary bracket value
+   * no longer compile, and the rule is enforced by the build rather than by
    * discipline. `bun run tokens` re-checks it.
    */
   --radius-field: 6px;
@@ -292,27 +257,27 @@
   --shell-top: 0px;
 
   /**
-   * TWO brand faces, split on a measured fact rather than on taste.
+   * TWO faces, split on the same measured fact as before (G17).
    *
-   * `--font-brand` is אטלס (Atlas), the site's heading face — every h1–h6 on
-   * artzenu.org.il. It carries display, title, section and heading here.
+   * `--font-brand` is the DISPLAY face — Frank Ruhl Libre, a free (OFL)
+   * Hebrew serif. It carries display, title, section and heading, where its
+   * serif contrast against the body face gives the neutral identity its
+   * voice. Two commented alternatives (Secular One, Heebo) are self-hosted
+   * too and shown side-by-side in /styleguide for the product owner's call.
    *
-   * `--font-sans` is מקומי (Mekomi), the site's BUTTON face, and it carries
-   * everything else: body, caption, micro, tables, KPI figures. The reason is
-   * not stylistic — Atlas ships PROPORTIONAL figures and no `tnum` feature (its
-   * digit advances run 412–636/1000, a 54 % spread), so a column of counts or a
-   * phone number set in it will not align. Mekomi's digits are monospaced by
-   * default AND it exposes `tnum`. This app is a column of numbers, so the
-   * numbers get the face that can set them. Both are Artzenu fonts, so the
-   * split stays inside the charter; Rubik survives only as the fallback.
+   * `--font-sans` is Rubik — everything else: body, caption, micro, tables,
+   * and EVERY number. Rubik's digits are effectively monospaced and it
+   * exposes `tnum`, so a column of counts or a phone number aligns; a display
+   * face with proportional figures never may carry a number (the Lot 0.8
+   * measurement that created this split still stands).
    */
-  --font-brand: 'Artzenu Atlas', 'Artzenu Mekomi', 'Rubik', system-ui, sans-serif;
-  --font-sans: 'Artzenu Mekomi', 'Rubik', system-ui, -apple-system, sans-serif;
+  --font-brand: 'Frank Ruhl Libre', 'Rubik', system-ui, sans-serif;
+  --font-sans: 'Rubik', system-ui, -apple-system, sans-serif;
 
   /* Type scale. Line-height tightens as size grows; numeric styles get their
-     own tighter leading so a column of figures scans fast. Atlas runs slightly
-     larger on the body than Rubik at the same px, and its headings are tighter
-     — the site sets every heading at 1.1em, which is where these now sit. */
+     own tighter leading so a column of figures scans fast. G17 raised the
+     body step one notch (15 → 16 px, caption 13 → 13.5) after the layout
+     gates stayed green — the field roles read this app on phones at night. */
   --text-display-size: clamp(2.5rem, 7vw, 4rem);
   --text-display-height: 1.05;
   --text-display-tracking: -0.02em;
@@ -329,16 +294,16 @@
   --text-heading-size: 1.125rem;
   --text-heading-height: 1.25;
 
-  --text-body-size: 0.9375rem;
+  --text-body-size: 1rem;
   --text-body-height: 1.6;
 
-  --text-caption-size: 0.8125rem;
+  --text-caption-size: 0.84375rem;
   --text-caption-height: 1.45;
 
-  --text-micro-size: 0.6875rem;
+  --text-micro-size: 0.71875rem;
   --text-micro-height: 1.4;
 
-  /* KPI figures: big, tight, tabular. Set in Mekomi — see --font-sans. */
+  /* KPI figures: big, tight, tabular. Set in Rubik — see --font-sans. */
   --text-metric-size: 2rem;
   --text-metric-height: 1;
   --text-metric-tracking: -0.02em;
@@ -348,53 +313,48 @@
 
 /* ---------------------------------------------------------------------------
    DARK — field default (volunteer / driver / farmer), and the night look for
-   the coordinator. DERIVED from the charter, not borrowed from elsewhere: the
-   surfaces are the #0B3D2C forest taken down to night levels, every step
-   separated by luminance alone (a drop-shadow is invisible on near-black), and
-   the Artzenu hues taken UP to their bright level so they read as saturated
-   pastels rather than dimming into the background.
+   the coordinator. The same neutral identity at night: blue-grey surfaces,
+   every elevation step separated by luminance alone (a drop-shadow is
+   invisible on near-black), and every hue taken UP to its bright level so it
+   reads as saturated pastel rather than dimming into the background.
    --------------------------------------------------------------------------- */
 
 [data-theme='dark'] {
-  --surface-sunken: 4 16 11; /* #04100B */
-  --surface-base: 7 24 15; /* #07180F — forest night      */
-  --surface-raised: 18 48 36; /* #123024 — a clear step above */
-  --surface-overlay: 23 59 44; /* #173B2C */
-  --surface-high: 27 68 51; /* #1B4433 — hover / headers   */
-  /* A field is a WELL in dark: below the card it sits in, above the page, and
-     with none of the green wash the old `--surface-sunken` fields carried. */
-  --surface-field: 9 25 16; /* #091910 */
+  --surface-sunken: 5 8 13; /* #05080D */
+  --surface-base: 11 17 25; /* #0B1119 — blue-grey night    */
+  --surface-raised: 30 40 54; /* #1E2836 — a clear step above */
+  --surface-overlay: 36 47 64; /* #242F40 */
+  --surface-high: 42 54 72; /* #2A3648 — hover / headers    */
+  /* A field is a WELL in dark: below the card it sits in, above the page. */
+  --surface-field: 14 20 31; /* #0E141F */
 
-  --border-subtle: 36 80 60; /* #24503C */
-  --border-strong: 69 119 92; /* #45775C */
+  --border-subtle: 44 58 78; /* #2C3A4E */
+  --border-strong: 85 101 122; /* #55657A */
 
-  --text-primary: 235 244 238; /* #EBF4EE */
-  --text-secondary: 194 216 201; /* #C2D8C9 */
-  --text-muted: 154 180 165; /* #9AB4A5 — clears AA on every surface */
-  --text-on-accent: 6 20 14; /* #06140E */
+  --text-primary: 234 239 245; /* #EAEFF5 */
+  --text-secondary: 195 205 218; /* #C3CDDA */
+  --text-muted: 148 163 181; /* #94A3B5 — clears AA on every surface */
+  --text-on-accent: 11 18 32; /* #0B1220 */
 
-  --accent: 143 190 115; /* #8FBE73 — olive at night level */
-  --accent-strong: 169 210 144; /* #A9D290 */
-  --accent-dim: 110 149 88; /* #6E9558 — the charter value    */
-  --accent-ink: 169 210 144; /* #A9D290 — bright enough to be text */
+  --accent: 143 178 240; /* #8FB2F0 — the blue at night level */
+  --accent-strong: 171 197 245; /* #ABC5F5 */
+  --accent-dim: 110 147 220; /* #6E93DC */
+  --accent-ink: 168 194 242; /* #A8C2F2 — bright enough to be text */
 
-  /* Bright level of each hue: vivid on forest, and legible as text, so the
-     `-ink` variants mostly collapse onto the vivid values. */
+  /* Bright level of each hue: vivid on the night surface, and legible as
+     text, so the `-ink` variants mostly collapse onto the vivid values. */
   --status-success: 52 201 166; /* #34C9A6 */
   --status-warn: 232 169 60; /* #E8A93C */
   --status-danger: 255 129 99; /* #FF8163 */
 
-  /* G1 — zone outlines on the night map: the forest boundary lightens to a
-     sage that reads on the inverted raster, the teal brightens with the rest
-     of the hue family. */
-  --zone-boundary: 154 201 173; /* #9AC9AD */
-  --zone-grazing: 52 201 166; /* #34C9A6 */
+  /* G1/G16 — the farm zone family lightened to read on the night raster. */
+  --zone-boundary: 123 216 172; /* #7BD8AC */
+  --zone-grazing: 69 200 143; /* #45C88F */
   --status-info: 79 182 224; /* #4FB6E0 */
   --status-violet: 178 149 250; /* #B295FA */
 
-  /* G7bis.1 — the farm pastille at night: the forest family lifted to read on
-     the inverted raster (same reasoning as --zone-boundary above). */
-  --marker-farm: 154 201 173; /* #9AC9AD */
+  /* G7bis.1 — the farm pastille at night: the same green family lifted. */
+  --marker-farm: 143 201 172; /* #8FC9AC */
 
   --status-success-ink: 52 201 166;
   --status-warn-ink: 232 169 60;
@@ -402,7 +362,7 @@
   --status-info-ink: 79 182 224;
   --status-violet-ink: 207 186 253; /* #CFBAFD */
 
-  --farm-to-contact: 141 165 152; /* #8DA598 */
+  --farm-to-contact: 141 155 173; /* #8D9BAD */
   --farm-contacted: 232 169 60; /* #E8A93C */
   --farm-visited: 232 119 198; /* #E877C6 */
   --farm-verbal-ok: 79 182 224; /* #4FB6E0 */
@@ -410,7 +370,7 @@
   --farm-active: 52 201 166; /* #34C9A6 */
   --farm-declined: 255 129 99; /* #FF8163 */
 
-  --farm-to-contact-ink: 176 196 184; /* #B0C4B8 */
+  --farm-to-contact-ink: 178 190 205; /* #B2BECD */
   --farm-contacted-ink: 232 169 60;
   --farm-visited-ink: 243 165 220; /* #F3A5DC */
   --farm-verbal-ok-ink: 79 182 224;
@@ -424,37 +384,26 @@
     inset 0 1px 0 rgb(255 255 255 / 0.06);
   --shadow-lift: 0 6px 14px rgb(0 0 0 / 0.5), 0 20px 44px rgb(0 0 0 / 0.42),
     inset 0 1px 0 rgb(255 255 255 / 0.08);
-  --shadow-accent: 0 4px 16px rgb(143 190 115 / 0.3);
-  --shadow-glow: 0 0 0 1px rgb(143 190 115 / 0.32),
-    0 8px 28px rgb(143 190 115 / 0.22);
+  --shadow-accent: 0 4px 16px rgb(143 178 240 / 0.3);
+  --shadow-glow: 0 0 0 1px rgb(143 178 240 / 0.32),
+    0 8px 28px rgb(143 178 240 / 0.22);
   --shadow-critical: 0 2px 10px rgb(239 79 40 / 0.28),
     0 14px 36px -8px rgb(0 0 0 / 0.5);
 
   --gradient-hero: linear-gradient(
     158deg,
     rgb(var(--surface-raised)) 0%,
-    rgb(var(--accent) / 0.16) 60%,
-    rgb(var(--brand-teal) / 0.2) 100%
+    rgb(var(--accent) / 0.14) 60%,
+    rgb(var(--accent-dim) / 0.18) 100%
   );
 
-  /* In dark the landing plate can be the site's gradient almost literally —
-     the charter's own hero is a dark forest wash, so this is the one token that
-     needed no derivation at all. */
-  --gradient-brand: linear-gradient(
-    158deg,
-    rgb(var(--brand-olive) / 0.62) 0%,
-    rgb(var(--brand-forest)) 100%
-  );
+  /* The landing plate is theme-independent (see :root) — no dark override. */
 
-  /* Night map: invert + hue-rotate turns the daylight OSM raster into a dark
-     map. The rotation is derived, not guessed: OSM's desert beige (~#F0E4CE)
-     inverts to a dark blue at hue ~220°, and -80° is what lands that on the
-     forest green at ~140°. The same rotation necessarily throws the
-     Mediterranean the other way (its inverse sits at ~14° and ends up violet),
-     which is what the heavy desaturation is for — the sea calms to a neutral
-     while the Negev keeps its green cast. Lot 0.7 rotated 180° for navy. */
-  --map-filter: invert(1) hue-rotate(-80deg) brightness(0.82) contrast(0.92)
-    saturate(0.22) sepia(0.12);
+  /* Night map: invert turns the daylight OSM raster into a dark map, and the
+     desert beige lands on a deep blue-grey by itself — exactly the neutral
+     night family, so no hue rotation is needed. Heavy desaturation keeps the
+     raster from fighting the markers. */
+  --map-filter: invert(1) brightness(0.85) contrast(0.9) saturate(0.24);
 }
 
 /*
@@ -464,25 +413,25 @@
  */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --surface-sunken: 4 16 11;
-    --surface-base: 7 24 15;
-    --surface-raised: 18 48 36;
-    --surface-overlay: 23 59 44;
-    --surface-high: 27 68 51;
-    --surface-field: 9 25 16;
+    --surface-sunken: 5 8 13;
+    --surface-base: 11 17 25;
+    --surface-raised: 30 40 54;
+    --surface-overlay: 36 47 64;
+    --surface-high: 42 54 72;
+    --surface-field: 14 20 31;
 
-    --border-subtle: 36 80 60;
-    --border-strong: 69 119 92;
+    --border-subtle: 44 58 78;
+    --border-strong: 85 101 122;
 
-    --text-primary: 235 244 238;
-    --text-secondary: 194 216 201;
-    --text-muted: 154 180 165;
-    --text-on-accent: 6 20 14;
+    --text-primary: 234 239 245;
+    --text-secondary: 195 205 218;
+    --text-muted: 148 163 181;
+    --text-on-accent: 11 18 32;
 
-    --accent: 143 190 115;
-    --accent-strong: 169 210 144;
-    --accent-dim: 110 149 88;
-    --accent-ink: 169 210 144;
+    --accent: 143 178 240;
+    --accent-strong: 171 197 245;
+    --accent-dim: 110 147 220;
+    --accent-ink: 168 194 242;
 
     --status-success: 52 201 166;
     --status-warn: 232 169 60;
@@ -490,11 +439,11 @@
     --status-info: 79 182 224;
     --status-violet: 178 149 250;
 
-    /* The map-ground tokens were missing here since G1 — a system-dark user
-       kept the daylight forest outlines on the night raster. */
-    --zone-boundary: 154 201 173;
-    --zone-grazing: 52 201 166;
-    --marker-farm: 154 201 173;
+    /* The map-ground tokens must ride along, or a system-dark user keeps the
+       daylight outlines on the night raster. */
+    --zone-boundary: 123 216 172;
+    --zone-grazing: 69 200 143;
+    --marker-farm: 143 201 172;
 
     --status-success-ink: 52 201 166;
     --status-warn-ink: 232 169 60;
@@ -502,7 +451,7 @@
     --status-info-ink: 79 182 224;
     --status-violet-ink: 207 186 253;
 
-    --farm-to-contact: 141 165 152;
+    --farm-to-contact: 141 155 173;
     --farm-contacted: 232 169 60;
     --farm-visited: 232 119 198;
     --farm-verbal-ok: 79 182 224;
@@ -510,7 +459,7 @@
     --farm-active: 52 201 166;
     --farm-declined: 255 129 99;
 
-    --farm-to-contact-ink: 176 196 184;
+    --farm-to-contact-ink: 178 190 205;
     --farm-contacted-ink: 232 169 60;
     --farm-visited-ink: 243 165 220;
     --farm-verbal-ok-ink: 79 182 224;
@@ -522,24 +471,17 @@
       inset 0 1px 0 rgb(255 255 255 / 0.06);
     --shadow-lift: 0 6px 14px rgb(0 0 0 / 0.5), 0 20px 44px rgb(0 0 0 / 0.42),
       inset 0 1px 0 rgb(255 255 255 / 0.08);
-    --shadow-accent: 0 4px 16px rgb(143 190 115 / 0.3);
-    --shadow-glow: 0 0 0 1px rgb(143 190 115 / 0.32),
-      0 8px 28px rgb(143 190 115 / 0.22);
+    --shadow-accent: 0 4px 16px rgb(143 178 240 / 0.3);
+    --shadow-glow: 0 0 0 1px rgb(143 178 240 / 0.32),
+      0 8px 28px rgb(143 178 240 / 0.22);
 
     --gradient-hero: linear-gradient(
       158deg,
       rgb(var(--surface-raised)) 0%,
-      rgb(var(--accent) / 0.16) 60%,
-      rgb(var(--brand-teal) / 0.2) 100%
+      rgb(var(--accent) / 0.14) 60%,
+      rgb(var(--accent-dim) / 0.18) 100%
     );
 
-    --gradient-brand: linear-gradient(
-      158deg,
-      rgb(var(--brand-olive) / 0.62) 0%,
-      rgb(var(--brand-forest)) 100%
-    );
-
-    --map-filter: invert(1) hue-rotate(-80deg) brightness(0.82) contrast(0.92)
-      saturate(0.22) sepia(0.12);
+    --map-filter: invert(1) brightness(0.85) contrast(0.9) saturate(0.24);
   }
 }

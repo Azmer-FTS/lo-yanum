@@ -68,7 +68,7 @@ export function VolunteerGuardScreen() {
           the only thing the group phone holder needs to reach. */}
       <div className="mb-4 flex flex-col gap-2">
         {mission.arrivalConfirmedAt ? (
-          <div className="flex items-center justify-between gap-3 rounded-card border border-status-success/40 bg-status-success/10 px-4 py-3.5">
+          <div className="flex items-center justify-between gap-3 rounded-card bg-status-success/10 px-4 py-3.5">
             <span className="flex items-center gap-2 text-caption font-semibold text-status-success-ink">
               <Icon name="check" size={18} />
               {t('volunteer.arrivalDone')}
@@ -90,7 +90,7 @@ export function VolunteerGuardScreen() {
         )}
 
         {mission.endConfirmedAt ? (
-          <div className="flex items-center justify-between gap-3 rounded-card border border-edge-strong bg-surface-high px-4 py-3.5">
+          <div className="flex items-center justify-between gap-3 rounded-card bg-surface-high px-4 py-3.5 shadow-card">
             <span className="flex items-center gap-2 text-caption font-semibold">
               <Icon name="check" size={18} />
               {t('volunteer.endDone')}

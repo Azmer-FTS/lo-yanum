@@ -30,7 +30,7 @@ export default {
     extend: {
       fontFamily: {
         sans: 'var(--font-sans)',
-        // Lot 0.8: the Artzenu heading face (Atlas). Applied to the display /
+        // The display face (G17: Frank Ruhl Libre). Applied to the display /
         // title / section / heading steps of the scale in index.css rather than
         // per call-site, because the face is a property of the STEP.
         brand: 'var(--font-brand)',
@@ -55,20 +55,11 @@ export default {
           secondary: token('text-secondary'),
           muted: token('text-muted'),
           'on-accent': token('text-on-accent'),
-          // Lot 0.8: the brand plate is a deep forest wash in BOTH themes, so
-          // its ink is theme-independent too. Only for `bg-gradient-brand`.
+          // The landing plate is a deep slate wash in BOTH themes, so its ink
+          // is theme-independent too. Only for `bg-gradient-brand`.
           'on-brand': token('text-on-brand'),
         },
-        // The Artzenu charter, verbatim — for the few places that must quote the
-        // association's own colours (the brand plate, the mark) rather than the
-        // app's semantic roles. Prefer a semantic token everywhere else.
-        brand: {
-          forest: token('brand-forest'),
-          olive: token('brand-olive'),
-          teal: token('brand-teal'),
-          orange: token('brand-orange'),
-        },
-        // F4 — the charter orange as a ROLE, not as a palette entry. Its call
+        // F4 — the loud orange as a ROLE, not as a palette entry. Its call
         // sites are a closed list enforced by `bun run tokens`; reach for
         // `status-danger` for ordinary errors and refusals.
         critical: token('critical'),

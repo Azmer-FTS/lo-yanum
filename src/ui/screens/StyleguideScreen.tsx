@@ -146,7 +146,7 @@ function Ratio({ value, min }: { value: number; min: number }) {
 function SurfaceSwatch({ name, palette }: { name: string; palette: Palette }) {
   const rgb = palette[name] ?? BLACK
   return (
-    <div className="overflow-hidden rounded-field border border-edge-subtle">
+    <div className="overflow-hidden rounded-field shadow-card">
       <div className="h-14 w-full" style={{ backgroundColor: css(rgb) }} />
       <div className="bg-surface-raised px-2.5 py-2">
         <p className="truncate text-micro font-semibold text-content-primary">
@@ -474,7 +474,9 @@ export function StyleguideScreen() {
           </div>
         </Block>
 
-        <Block title={t('styleguide.buttons')}>
+        {/* G17 — the shape IS the hierarchy: major = rectangle, secondary =
+            pill, call = icon. `bun run tokens` greps the class definitions. */}
+        <Block title={t('styleguide.buttons')} hint={t('styleguide.buttonsHint')}>
           <div className="card card-pad flex flex-wrap items-center gap-2">
             <button type="button" className="btn-primary">
               <Icon name="plus" size={15} />
@@ -500,6 +502,78 @@ export function StyleguideScreen() {
               {t('farmStatus.active')}
               <span className="filter-count">4</span>
             </span>
+            <span
+              aria-hidden
+              className="flex h-10 w-10 items-center justify-center rounded-field bg-accent text-content-on-accent"
+            >
+              <Icon name="phone" size={18} />
+            </span>
+            <span
+              aria-hidden
+              className="flex h-10 w-10 items-center justify-center rounded-field border border-edge-strong text-status-success-ink"
+            >
+              <Icon name="whatsapp" size={18} />
+            </span>
+          </div>
+        </Block>
+
+        {/* G17 — the display-face arbitrage. The three candidates are all
+            self-hosted; only this screen ever renders the two alternatives,
+            so only this screen ever fetches them. The sample line carries
+            nikkud on purpose: the landing verse is the coverage test. */}
+        <Block title={t('styleguide.faces')} hint={t('styleguide.facesHint')}>
+          <div className="flex flex-col gap-3">
+            {(
+              [
+                {
+                  family: "'Frank Ruhl Libre', 'Rubik', sans-serif",
+                  name: 'styleguide.faceFrankName',
+                  note: 'styleguide.faceFrankNote',
+                  chosen: true,
+                },
+                {
+                  family: "'Secular One', 'Rubik', sans-serif",
+                  name: 'styleguide.faceSecularName',
+                  note: 'styleguide.faceSecularNote',
+                  chosen: false,
+                },
+                {
+                  family: "'Heebo', 'Rubik', sans-serif",
+                  name: 'styleguide.faceHeeboName',
+                  note: 'styleguide.faceHeeboNote',
+                  chosen: false,
+                },
+              ] as const
+            ).map((face) => (
+              <div key={face.name} className="card card-pad">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-caption font-semibold text-content-primary">
+                    {t(face.name)}
+                  </p>
+                  <span
+                    className={`chip ${
+                      face.chosen
+                        ? 'bg-accent/15 text-accent-ink'
+                        : 'bg-content-primary/10 text-content-secondary'
+                    }`}
+                  >
+                    {t(face.chosen ? 'styleguide.faceChosen' : 'styleguide.faceAlt')}
+                  </span>
+                </div>
+                <p
+                  className="mt-2 text-content-primary"
+                  style={{
+                    fontFamily: face.family,
+                    fontSize: 'var(--text-title-size)',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {t('styleguide.faceSample')}
+                </p>
+                <p className="muted mt-1.5">{t(face.note)}</p>
+              </div>
+            ))}
+            <p className="muted">{t('styleguide.faceBody')}</p>
           </div>
         </Block>
 
@@ -512,7 +586,7 @@ export function StyleguideScreen() {
               <span className="muted">field · 6px</span>
             </div>
             <div className="flex flex-col gap-2">
-              <span className="h-12 rounded-card border border-edge-subtle bg-surface-high" />
+              <span className="h-12 rounded-card bg-surface-high shadow-card" />
               <span className="muted">card · 14px</span>
             </div>
             <div className="flex flex-col gap-2">

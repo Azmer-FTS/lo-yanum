@@ -129,11 +129,11 @@ function buildChecks(theme: 'light' | 'dark'): Check[] {
     })
   }
 
-  // THE BRAND PLATE (Lot 0.8). `--gradient-brand` runs brand-olive → forest, so
-  // its LIGHTEST stop is the worst case the verse can land on. Checking both
-  // ends is what keeps someone from "brightening the plate a little" and
-  // quietly taking Tehillim 121:4 below AA.
-  for (const bg of ['brand-olive', 'brand-forest']) {
+  // THE LANDING PLATE (G17: a neutral slate wash). `--gradient-brand` runs
+  // plate-from → plate-to, so its LIGHTEST stop is the worst case the verse
+  // can land on. Checking both ends is what keeps someone from "brightening
+  // the plate a little" and quietly taking Tehillim 121:4 below AA.
+  for (const bg of ['plate-from', 'plate-to']) {
     checks.push({
       label: `text-on-brand on ${bg}`,
       fg: 'text-on-brand',

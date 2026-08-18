@@ -134,7 +134,7 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
   if (step === 'sent') {
     if (severity !== 'urgent') {
       return (
-        <div className="flex animate-fade-in flex-col items-center gap-3 rounded-card border border-status-success/40 bg-status-success/10 px-6 py-12 text-center">
+        <div className="flex animate-fade-in flex-col items-center gap-3 rounded-card bg-status-success/10 px-6 py-12 text-center">
           <span className="text-status-success-ink">
             <Icon name="check" size={38} />
           </span>
@@ -152,7 +152,7 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
     const police = EMERGENCY_NUMBERS.find((n) => n.key === 'police')
     return (
       <div className="animate-fade-in">
-        <div className="rounded-card border border-critical/50 bg-critical/10 p-5 text-center">
+        <div className="rounded-card bg-critical/10 p-5 text-center">
           <span className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-pill bg-critical/20 text-status-danger-ink">
             <Icon name="check" size={30} />
           </span>
@@ -170,7 +170,7 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
               href={telHref(police.number)}
               // F4 — the emergency call. The one solid orange on this screen,
               // and the reason the confirmation panel around it stays a tint.
-              className="flex items-center justify-center gap-3 rounded-card bg-critical px-5 py-5
+              className="flex items-center justify-center gap-3 rounded-field bg-critical px-5 py-5
                          text-heading font-bold text-content-on-accent shadow-critical
                          transition-transform duration-fast active:scale-[0.98]"
             >
@@ -183,7 +183,7 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
           {context.farmerPhone && (
             <a
               href={telHref(context.farmerPhone)}
-              className="flex items-center justify-center gap-3 rounded-card bg-accent px-5 py-5
+              className="flex items-center justify-center gap-3 rounded-field bg-accent px-5 py-5
                          text-heading font-bold text-content-on-accent shadow-accent
                          transition-transform duration-fast active:scale-[0.98]"
             >
@@ -194,7 +194,7 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
 
           <a
             href={telHref(context.coordinatorPhone)}
-            className="flex items-center justify-center gap-3 rounded-card border border-edge-strong
+            className="flex items-center justify-center gap-3 rounded-field border border-edge-strong
                        bg-surface-high px-5 py-5 text-heading font-bold text-content-primary
                        transition-transform duration-fast active:scale-[0.98]"
           >
@@ -288,7 +288,7 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
           </Section>
         )}
 
-        <div className="flex items-center gap-2 rounded-field border border-edge-subtle bg-surface-raised px-3.5 py-3">
+        <div className="flex items-center gap-2 rounded-field bg-surface-raised px-3.5 py-3 shadow-card">
           <span className="text-accent-ink">
             <Icon name="pin" size={17} />
           </span>

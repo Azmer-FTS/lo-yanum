@@ -29,12 +29,12 @@ const ROLE_ICON: Record<Role, IconName> = {
  * typographic treatment: display scale, generous leading, and enough
  * surrounding space that nothing competes with it.
  *
- * LOT 0.8 — this is the screen that says whose tool this is. The verse now sits
- * on the BRAND PLATE (`bg-gradient-brand`), which is the association's own hero
- * wash — deep forest under olive, at the site's own 158° — and the Artzenu mark
- * stands above the app name as an imprint. The plate is identical in light and
- * dark on purpose: a brand does not have a night variant, and the ink on it
- * comes from `--text-on-brand` rather than from the theme.
+ * G17 — the identity is neutral now. The verse sits on the LANDING PLATE
+ * (`bg-gradient-brand`), a deep slate wash; the association's mark still
+ * stands above the app name as an imprint (the mark survived the identity
+ * change — only colours and typefaces were retired). The plate is identical
+ * in light and dark on purpose: it does not have a night variant, and the ink
+ * on it comes from `--text-on-brand` rather than from the theme.
  */
 export function LandingScreen() {
   const { t } = useTranslation()
@@ -72,15 +72,14 @@ export function LandingScreen() {
 
           <h1 className="mt-5 flex items-center justify-center gap-3 text-display text-content-primary">
             {/* SOLID, not a 15 % wash: next to 64 px display type a tinted tile
-                reads as a placeholder. A solid olive disc with near-black ink is
-                the charter's own CTA treatment at emblem scale. */}
+                reads as a placeholder. */}
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-accent text-content-on-accent shadow-accent sm:h-14 sm:w-14">
               <Icon name="shield" size={26} />
             </span>
             {t('app.name')}
           </h1>
 
-          {/* THE BRAND PLATE. The site's hero wash, minus the photograph. */}
+          {/* THE LANDING PLATE — the one deliberately dark surface in light. */}
           <div className="mx-auto mt-8 max-w-xl rounded-card bg-gradient-brand px-6 py-8 shadow-lift sm:px-10 sm:py-10">
             <p className="font-brand text-title font-normal leading-loose text-content-on-brand sm:text-[1.75rem]">
               {t('app.verse')}

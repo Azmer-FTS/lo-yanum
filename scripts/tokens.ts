@@ -21,6 +21,18 @@ import * as path from 'node:path'
  *        below, each with the reason it is allowed there. A new file wanting it
  *        has to be added here, deliberately, with a justification — which is the
  *        whole mechanism.
+ *   A57  THE NEUTRAL SURFACES (G17). Two halves:
+ *        · a card/tile never draws a full contour — no standalone `border`
+ *          class next to a card/tile word in a className, and the `.card` /
+ *          `.tile` rules in index.css carry no border of their own. Directional
+ *          borders (`border-b`, `border-s-4`…) stay legal: those are dividers
+ *          and semantic bars, not contours. Dashed stays legal too (the
+ *          empty-state affordance).
+ *        · the shape IS the button hierarchy: the major variants
+ *          (`.btn-primary`, `.btn-danger`, `.btn-critical`) are rectangles at
+ *          `rounded-field`; the secondary ones inherit the pill; and
+ *          ContactActions renders icon buttons only — a `btn-*` class in that
+ *          file means a call action grew back into a CTA.
  *
  * Run: bun run tokens
  */
@@ -191,6 +203,108 @@ if (!inputRule.includes('bg-surface-field')) {
   })
 }
 
+// --- A57: cards have no contour ---------------------------------------------
+
+/**
+ * A className that contains a card/tile word must not ALSO contain the
+ * standalone `border` class (the 1px full contour). Directional borders and
+ * `border-dashed` pass: a divider, a semantic start-bar and the empty-state
+ * dashes are not contours.
+ */
+const CARD_WORDS = new Set([
+  'card',
+  'card-interactive',
+  'card-hero',
+  'card-critical',
+  'tile',
+  'tile-interactive',
+  'rounded-card',
+  'rounded-t-card',
+])
+
+for (const file of files.filter((f) => f.endsWith('.tsx'))) {
+  const source = fs.readFileSync(file, 'utf8')
+  for (const m of source.matchAll(CLASS_ATTR)) {
+    const cls = (m[1] ?? m[2] ?? '').replace(/\$\{[^}]*\}/g, ' ')
+    const words = cls.split(/\s+/).filter(Boolean)
+    if (!words.some((w) => CARD_WORDS.has(w))) continue
+    if (words.includes('border') && !words.includes('border-dashed')) {
+      failures.push({
+        rule: 'A57 card contour',
+        file: rel(file),
+        detail: 'card/tile element draws a full `border` contour',
+      })
+    }
+  }
+}
+
+// The component classes themselves must not reintroduce the contour.
+{
+  const css = fs.readFileSync(path.join(SRC, 'index.css'), 'utf8')
+  for (const sel of ['.card {', '.tile {', '.card-hero {']) {
+    const rule = css.slice(css.indexOf(sel), css.indexOf('}', css.indexOf(sel)))
+    if (/@apply[^;]*\bborder\b/.test(rule)) {
+      failures.push({
+        rule: 'A57 card contour',
+        file: 'index.css',
+        detail: `${sel.replace(' {', '')} applies a border`,
+      })
+    }
+  }
+}
+
+// --- A57: the shape is the button hierarchy ---------------------------------
+
+{
+  const css = fs.readFileSync(path.join(SRC, 'index.css'), 'utf8')
+  const ruleOf = (sel: string) =>
+    css.slice(css.indexOf(`${sel} {`), css.indexOf('}', css.indexOf(`${sel} {`)))
+
+  // Major actions are rectangles.
+  for (const sel of ['.btn-primary', '.btn-danger', '.btn-critical']) {
+    if (!/\brounded-field\b/.test(ruleOf(sel))) {
+      failures.push({
+        rule: 'A57 button shape',
+        file: 'index.css',
+        detail: `${sel} must be rectangular (rounded-field)`,
+      })
+    }
+  }
+  // Secondary controls keep the pill (via .btn or their own declaration).
+  if (!/\brounded-pill\b/.test(ruleOf('.btn'))) {
+    failures.push({
+      rule: 'A57 button shape',
+      file: 'index.css',
+      detail: '.btn must default to the pill',
+    })
+  }
+  for (const sel of ['.btn-secondary', '.btn-ghost']) {
+    if (/\brounded-field\b/.test(ruleOf(sel))) {
+      failures.push({
+        rule: 'A57 button shape',
+        file: 'index.css',
+        detail: `${sel} is a secondary control — it keeps the pill`,
+      })
+    }
+  }
+}
+
+// Call actions are icon buttons, never CTAs: ContactActions may not render a
+// `btn-*` class.
+{
+  const contact = fs.readFileSync(
+    path.join(SRC, 'ui/components/ContactActions.tsx'),
+    'utf8',
+  )
+  if (/\bbtn-(primary|secondary|ghost|danger|critical|big)\b/.test(contact)) {
+    failures.push({
+      rule: 'A57 button shape',
+      file: 'ui/components/ContactActions.tsx',
+      detail: 'call actions are icon buttons — no btn-* here',
+    })
+  }
+}
+
 // --- A29: the orange stays rare ---------------------------------------------
 
 for (const file of files) {
@@ -237,7 +351,9 @@ for (const key of Object.keys(CRITICAL_ALLOWED)) {
 
 // ---------------------------------------------------------------------------
 
-console.log('Token discipline — A28 (one radius scale, no tinted field) + A29 (rare orange)')
+console.log(
+  'Token discipline — A28 (one radius scale, no tinted field) + A29 (rare orange) + A57 (no card contour, shape hierarchy)',
+)
 console.log('')
 console.log(`  radius scale        ${[...ALLOWED_RADIUS_VARS].join(' / ')}`)
 console.log(`  orange call sites   ${Object.keys(CRITICAL_ALLOWED).length} files`)
@@ -255,4 +371,4 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
-console.log('  A28 and A29 hold across src/.')
+console.log('  A28, A29 and A57 hold across src/.')

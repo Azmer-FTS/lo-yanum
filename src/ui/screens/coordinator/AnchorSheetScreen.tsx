@@ -38,7 +38,7 @@ function MessageCard({
   const { t } = useTranslation()
 
   return (
-    <div className="rounded-card border border-edge-subtle bg-surface-raised/40 p-4">
+    <div className="rounded-card bg-surface-raised/40 p-4 shadow-card">
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="text-caption font-semibold">{title}</h3>

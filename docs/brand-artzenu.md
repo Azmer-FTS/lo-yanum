@@ -1,5 +1,13 @@
 # Artzenu brand charter — extraction and adoption (Lot 0.8)
 
+> **⚠️ RETIRED BY G17 (2026-08-18).** The product owner abandoned the Artzenu
+> identity — colours AND typefaces. The app now carries a neutral professional
+> identity (grey page, white borderless cards, one blue accent, Rubik body +
+> Frank Ruhl Libre display, all free/OFL and self-hosted), defined entirely in
+> `src/styles/tokens.css` and demonstrated at `/styleguide`. The Atlas/Mekomi
+> files are deleted, which also closes the font-licence question this document
+> raised. Kept as the historical record of Lot 0.8's extraction work.
+
 The app is built for **Artzenu** (ארצנו, [artzenu.org.il](https://artzenu.org.il)),
 the association that runs **שומרים בחוות**. This document records where the
 association's visual identity actually comes from, how it was translated into
