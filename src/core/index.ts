@@ -10,6 +10,7 @@ export * from './clock'
 export * from './contrast'
 export * from './geo'
 export * from './routing'
+export * from './tours'
 export * from './messages'
 export * from './import'
 export * from './access'
@@ -58,6 +59,8 @@ export {
   deleteGeneralMeeting,
   createMission,
   updateMissionStaffing,
+  saveTour,
+  deleteTour,
 } from './store'
 export type {
   NewIncidentInput,
@@ -69,4 +72,5 @@ export type {
   FarmVisitDraft,
   GeneralMeetingDraft,
   MissionDraft,
+  TourDraft,
 } from './store'

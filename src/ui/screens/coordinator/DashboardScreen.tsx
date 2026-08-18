@@ -25,6 +25,7 @@ import type { AgendaEvent, DashboardAlert, MissionStatus } from '@core/index'
 import { Avatar } from '../../components/Avatar'
 import { CreateGuardButton } from '../../components/CreateGuardFab'
 import { Icon } from '../../components/Icon'
+import { MyDayBlock } from '../../components/MyDayBlock'
 import type { IconName } from '../../components/Icon'
 import { MapPanel } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
@@ -532,6 +533,16 @@ export function DashboardScreen() {
             ))}
           </ul>
         )}
+      </section>
+
+      {/* G9 — "היום שלי": today as the coordinator will drive it. Between the
+          alerts (what is wrong) and the agenda (what is coming), because the
+          field day is what they actually do between the two. */}
+      <section className="mb-5">
+        <h2 className="pb-2 text-section text-content-primary">
+          {t('myday.title')}
+        </h2>
+        <MyDayBlock dayKey={localDayKey(now())} />
       </section>
 
       {/* 3 — Agenda. */}

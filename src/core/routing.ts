@@ -80,15 +80,30 @@ export function googleMapsRouteUrl(
   route: PlannedRoute,
   returnToOrigin = true,
 ): string | null {
-  if (route.stops.length === 0) return null
+  return googleMapsPointsUrl(
+    route.origin,
+    route.stops.map((s) => s.farm.position),
+    returnToOrigin,
+  )
+}
 
-  const points = route.stops.map((s) => s.farm.position)
-  const destination = returnToOrigin ? route.origin : points[points.length - 1]
+/**
+ * Same URL from bare points — for callers (G9's day plan) that hold an ordered
+ * list of positions rather than a PlannedRoute.
+ */
+export function googleMapsPointsUrl(
+  origin: LatLng,
+  points: LatLng[],
+  returnToOrigin = true,
+): string | null {
+  if (points.length === 0) return null
+
+  const destination = returnToOrigin ? origin : points[points.length - 1]
   const waypoints = returnToOrigin ? points : points.slice(0, -1)
 
   const params = new URLSearchParams({
     api: '1',
-    origin: coord(route.origin),
+    origin: coord(origin),
     destination: coord(destination),
     travelmode: 'driving',
   })

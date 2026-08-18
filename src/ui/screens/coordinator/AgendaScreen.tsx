@@ -28,6 +28,7 @@ import { CreateGuardButton } from '../../components/CreateGuardFab'
 import { GeneralMeetingModal } from '../../components/GeneralMeetingModal'
 import { Icon } from '../../components/Icon'
 import { FarmVisitModal } from '../../components/FarmVisitModal'
+import { MyDayBlock } from '../../components/MyDayBlock'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
@@ -188,6 +189,21 @@ function SlotMenu({
       >
         <Icon name="users" size={13} className="text-farm-visited-ink" />
         {t('meeting.new')}
+      </button>
+      {/* G7bis.4 / A50 — from any day, in any view, straight to that day's
+          route: the planner opens parameterised on the date and shows the
+          day's fixed hours as constraints. */}
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 rounded-field px-2 py-1.5 text-start text-micro
+                   font-medium text-content-primary hover:bg-surface-high"
+        onClick={() => {
+          onClose()
+          navigate(`/coordinator/route?date=${localDayKey(day)}`)
+        }}
+      >
+        <Icon name="route" size={13} className="text-accent-ink" />
+        {t('myday.createRoute')}
       </button>
     </div>
   )
@@ -419,6 +435,15 @@ export function AgendaScreen() {
           </span>
         </li>
       </ul>
+
+      {/* G9 — the day as it will be DRIVEN, above the day as it is booked.
+          Same block as the dashboard, keyed on the viewed date (G7bis.4): a
+          future day shows its own itinerary, or the "צור מסלול ליום זה" CTA. */}
+      {view === 'day' && (
+        <div className="mb-3">
+          <MyDayBlock dayKey={localDayKey(days[0])} />
+        </div>
+      )}
 
       {/* G6.3 — THE DAY VIEW: an hour ladder from 06:00 to 23:00. Every hour
           row is also a quick-create target, because "put something at 15:00

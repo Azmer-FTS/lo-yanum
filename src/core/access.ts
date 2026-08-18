@@ -1,5 +1,7 @@
-import { DAY, isTonight, now } from './clock'
+import { DAY, addDays, fromDayKey, isTonight, now } from './clock'
 import { _raw, getSession } from './store'
+import { buildDayPlan } from './tours'
+import type { DayPlan, Tour } from './tours'
 import type {
   AgendaEvent,
   AnchorPoint,
@@ -507,6 +509,30 @@ export function getUpcomingAgendaEvents(limit = 3, days = 30): AgendaEvent[] {
   const from = now()
   const to = new Date(from.getTime() + days * DAY)
   return getAgendaEvents(from, to).slice(0, limit)
+}
+
+// --- G9: tours & the day plan ----------------------------------------------
+
+/** Tours are the coordinator's own diary — no other role plans field days. */
+export function getTourForDay(dayKey: string): Tour | null {
+  if (getSession().role !== 'coordinator') return null
+  return _raw().tours.find((t) => t.dayKey === dayKey) ?? null
+}
+
+/**
+ * The "היום שלי" engine, store-fed: the day's saved tour folded around the
+ * day's fixed hours. The maths lives in tours.ts as a pure function so the
+ * acceptance script can drive it without a browser; this wrapper only
+ * assembles the inputs through the same role gate as everything else.
+ */
+export function getDayPlan(dayKey: string): DayPlan {
+  const day = fromDayKey(dayKey)
+  return buildDayPlan({
+    dayKey,
+    tour: getTourForDay(dayKey),
+    farms: getVisibleFarms(),
+    events: getAgendaEvents(day, addDays(day, 1)),
+  })
 }
 
 // --- R6: nominative presence ----------------------------------------------

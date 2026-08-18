@@ -6,6 +6,8 @@ import { INCIDENTS } from './mock/incidents'
 import { MISSIONS } from './mock/missions'
 import { DRIVERS, VOLUNTEERS } from './mock/people'
 import { FARM_VISITS, GENERAL_MEETINGS } from './mock/visits'
+import { TOURS } from './mock/tours'
+import type { Tour } from './tours'
 import type {
   Agreement,
   AnchorPoint,
@@ -56,6 +58,7 @@ interface StoreData {
   missions: Mission[]
   incidents: Incident[]
   farmVisits: FarmVisit[]
+  tours: Tour[]
   session: Session
 }
 
@@ -71,6 +74,7 @@ const initial = (): StoreData => ({
   missions: clone(MISSIONS),
   incidents: clone(INCIDENTS),
   farmVisits: clone(FARM_VISITS),
+  tours: clone(TOURS),
   session: { role: 'coordinator', entityId: null },
 })
 
@@ -675,6 +679,39 @@ export function deleteFarmVisit(visitId: string): void {
   if (!visit) return
   data.farmVisits = data.farmVisits.filter((v) => v.id !== visitId)
   syncNextVisit(visit.farmId)
+  commit()
+}
+
+// --- G9: tours — the saved field day ----------------------------------------
+
+export interface TourDraft {
+  dayKey: string
+  departAt: string
+  farmIds: string[]
+}
+
+/**
+ * Save a tour — an UPSERT keyed on the day, because a tour IS a calendar day:
+ * "the route for Tuesday" is one object however many times it is re-planned,
+ * and two tours on one day would make the "היום שלי" block ambiguous about
+ * which one the coordinator is actually driving.
+ */
+export function saveTour(draft: TourDraft): Tour {
+  const existing = data.tours.find((t) => t.dayKey === draft.dayKey)
+  if (existing) {
+    existing.departAt = draft.departAt
+    existing.farmIds = [...draft.farmIds]
+    commit()
+    return existing
+  }
+  const tour: Tour = { id: nextId('tour'), ...draft, farmIds: [...draft.farmIds] }
+  data.tours = [...data.tours, tour]
+  commit()
+  return tour
+}
+
+export function deleteTour(dayKey: string): void {
+  data.tours = data.tours.filter((t) => t.dayKey !== dayKey)
   commit()
 }
 
