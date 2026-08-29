@@ -29,13 +29,15 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 | `bun run tokens` | **A28/A29** — one radius scale, no tinted field, orange only where it is allowed. No browser needed |
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 64 checks |
-| `bun run layout` | **A24 + A30** — 390 px overflow, pinned overlap and uncontained-list sweep over all 22 screens — needs a dev server |
+| `bun run layout` | **A24 + A30** — 390 px overflow, pinned overlap and uncontained-list sweep over all 23 screens — needs a dev server |
 | `bun run wizard` | **A27** — the guard wizard played from a farm with NO anchor point, 28 checks — needs a dev server |
+| `bun run touch` | **A63** — every map gesture driven by SYNTHETIC TOUCH at iPad portrait 1032×1376, 32 checks — needs a dev server |
 | `bun run screenshots` | Regenerate `docs/screenshots/` — needs a dev server |
 | `bun run brand-reference` | Re-capture `docs/brand/` from the live artzenu.org.il — needs the internet, NOT a dev server |
 
-> The four browser scripts (`layout`, `wizard`, `screenshots`, `brand-reference`)
-> take `BASE_URL`, e.g. `BASE_URL=http://localhost:62807 bun run layout`.
+> The five browser scripts (`layout`, `wizard`, `touch`, `screenshots`,
+> `brand-reference`) take `BASE_URL`, e.g.
+> `BASE_URL=http://localhost:62807 bun run layout`.
 
 > **Toolchain:** this machine has **no Node.js**. Bun is at `/usr/local/bin/bun`
 > (Homebrew, Intel prefix `/usr/local`). `npm`/`node` fail with "command not
@@ -45,9 +47,94 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **Lot 0.10 IN PROGRESS — 19 sections done (PO decisions, G14, G15,
-G16 landed 2026-08-19), one commit each. Next: G10.**
-Branch `main`, NOT yet pushed (deploy happens at G12).
+State: **FINAL ORDER OF MARCH IN PROGRESS (2026-08-30). PHASE P0 IS DONE —
+the font correction, P0.1, P0.2 and P0.3 landed, one commit each. Next: PHASE
+P1, starting at G10.** Branch `main`, NOT yet pushed (deploy happens at G12).
+
+> **THE FINAL ORDER OF MARCH (product-owner prompt, 2026-08-30).** The product
+> owner starts field work in TWO DAYS on an iPad Pro 13" (+ iPhone). The goal
+> is a REAL tool — online, usable offline — by the end of this order. Four
+> phases, in this order:
+>
+> · **P0** — last UX asks. ✅ DONE (see below).
+> · **P1** — finish the POC: **G10 → G18 → G12 → G13**, specs already in this
+>   file. (G11 is folded into G12's iPad pass; P0.3 already did the touch half.)
+> · **P2** — LOT 1, THE REAL THING: Supabase project `lo-yanum-prod`
+>   (eu-central-1 Frankfurt, PO's org — **ASK BEFORE CREATING**), additive SQL
+>   migrations for the whole mock model, RLS transcribed from `access.ts`
+>   policy by policy, email/password auth with ONE coordinator account (the
+>   PO's email — ask), private `photos` + `agreements` buckets behind signed
+>   URLs, and the OFFLINE LAYER (IndexedDB read cache, an outbox for writes
+>   with a visible "N ממתינים לסנכרון" badge, last-write-wins per changed
+>   field, a service worker pre-caching the Negev OSM tiles ~50–80 MB with a
+>   "רענן מפות לא מקוונות" button in a small הגדרות screen). The mock store
+>   becomes the "demo" implementation behind an interface a Supabase
+>   implementation also satisfies — NO screen changes. The real app starts
+>   EMPTY; /poc keeps the demo data.
+>   Criteria B1–B4.
+> · **P3** — LOT 2 ESSENTIAL: real import into Supabase, real photos
+>   (camera/file → client compression → bucket), agreement signing (finger
+>   canvas → PDF with a clearly-marked PLACEHOLDER agreement text → bucket →
+>   status נחתם), final PWA (manifest, icons, iOS/iPadOS install, הגדרות
+>   page), deployment stays the evolving GitHub Pages URL.
+>   Criteria B5–B8.
+>
+> Then a FINAL REPORT in French: both URLs, phase status, the login
+> credentials to agree with the PO, a numbered field checklist per device, and
+> step-by-step PWA install instructions for the iPad.
+>
+> **PO DECISION, 2026-08-30 — THE DISPLAY FACE IS FRANK RUHL LIBRE**, which
+> REVERSES the 2026-08-19 arbitrage of Heebo. Done in commit 70e4469: the two
+> OFL woff2 came back from `09b43f5^`, `--font-brand` names them, and Heebo
+> left the bundle entirely, so A60 still reads "one display face ships". The
+> numeric escape hatch stays load-bearing — Frank Ruhl Libre HAS digits, so
+> `.text-display.numeric` and its three siblings must keep falling back to
+> Rubik or every KPI goes serif and stops aligning.
+>
+> **P0 — DONE, three commits:**
+> · **P0.1** (5439488) — the map is MODULAR on every map-first screen:
+>   מוסתר / מפוצל / מלא, switchable by visible 44 px buttons, persisted PER
+>   SCREEN in localStorage (`lo-yanum:map-mode:<screenKey>`). `useMapMode` +
+>   `MapModeSwitch` in `ui/components/mapMode.tsx`; `MapPanel` takes a
+>   `screenKey` and the farm detail wires the same hook by hand. `split` is
+>   byte-for-byte the Lot 0.9 reading and stays the default. Screens:
+>   dashboard, farms, farm-detail, route-planner, incidents, missions, plus
+>   volunteers and drivers via P0.2. The map is `display:none` in `hidden`,
+>   NOT unmounted — unmounting tears down the WebGL context and the camera
+>   with it; MapCanvas's ResizeObserver calls `map.resize()` on the way back.
+>   ONE switch is on screen at a time: below the breakpoint the map's own
+>   header bar carries it and the content copy stands down, except in
+>   `hidden` where no bar is left. Not to be confused with `useMapFullscreen`
+>   (a viewport-takeover overlay armed from the map's toolbar) — the two
+>   compose. A61.
+> · **P0.2** (5a344d5) — the two rosters get a map that COUNTS: one bubble per
+>   יישוב, area-proportional (`clusterByLocality` + `bubbleDiameter`, pure, in
+>   @core/geo, tested as A62 in accept.ts), the count written inside, tap to
+>   filter the table. The filter COMPOSES with the KPI-filters and the
+>   existing "ניקוי" clears everything; the tapped town also reads back as a
+>   removable pill so a filter set on the map survives the map scrolling off.
+>   No per-person pin — the programme holds a home town, not an address — and
+>   a locality outside the gazetteer is REPORTED, never dropped. NOT
+>   `MapPanel`: both rosters are G7 window-virtualised tables whose scroll
+>   surface is the page, so the map is a block ABOVE the table
+>   (`ui/components/PeopleMap.tsx`) sharing the switch, the key space and the
+>   hidden rule. The table is UNMOUNTED in `full`, never `display:none` — a
+>   hidden virtualiser measures a scrollMargin of 0 and comes back drawing
+>   rows a page above themselves. New `bubble` marker kind, translucent so
+>   overlapping towns sit in front of each other. Also: VolunteersScreen
+>   carried a literal NUL byte (the `|| '\0'` phone-search sentinel) that made
+>   git treat the file as BINARY and its diffs unreviewable — now a space,
+>   identical behaviour.
+> · **P0.3** (04ba9aa) — the touch pass, and `bun run touch` is its proof.
+>   `wrapForTouch` in MapCanvas leaves every marker's DRAWING alone and
+>   expands its HIT area to 44 px (the trick the G1 vertex grip already used);
+>   teardrops need no offset because their tip is the coordinate and the box
+>   grows upward only. That widening created a trap the script then caught:
+>   markers stop their click reaching the map (decision 51), and at 44 px the
+>   transparent corners swallow taps that look like empty map — so an ARMED
+>   map now suspends the guard for every kind, draggable included, applied to
+>   the finished element in the markers effect so the early-returning vertex
+>   and draft kinds cannot miss it. A63.
 
 > **SPEC GAP RESOLVED (2026-08-19).** The product owner re-sent the missing
 > sections in the prompt "LOT 0.10 — SECTIONS MANQUANTES G14–G16 + DÉCISIONS
@@ -461,7 +548,10 @@ captures in §5.
 | **A21** | **`dispatch.ts` scoring tested by script** | ✅ `bun run dispatch` — 27 checks over distance, equity, pairing |
 | **A22** | **Agenda week + month, visit created from an empty slot** | ✅ captures 5, 6 + browser assertion |
 | **A23** | **Timelines on incident, mission and farm** | ✅ captures 7, 8, 15 |
-| **A24** | **Zero overflow / pinned overlap at 390 px on every screen** | ✅ `bun run layout` — 22/22 |
+| **A24** | **Zero overflow / pinned overlap at 390 px on every screen** | ✅ `bun run layout` — 23/23 |
+| **A61** | **Three map states per map-first screen, persisted (P0.1)** | ✅ dashboard / farms / farm-detail / route / incidents / missions + both rosters; verified by hand at 1032×1376 and 402×874, captures due at G12 |
+| **A62** | **Locality bubbles + tap-filter + נקה on both rosters (P0.2)** | ✅ `bun run accept`, the A62 section (12 checks), plus the tap path in `bun run touch` |
+| **A63** | **Every map gesture by finger at iPad portrait (P0.3)** | ✅ `bun run touch` — 32 checks at 1032×1376 with `hasTouch` and no mouse anywhere |
 
 ---
 
@@ -522,6 +612,44 @@ which decision 32 generalises; 46, which decision 47 supersedes; and 41–44,
 which G17's decision 57 retires** (42's fill-keeps-the-colour/ink-moves
 MECHANISM survives — only the charter values it protected are gone). Decisions
 32–34 survived two lots unchanged and are why both were cheap. New:
+
+60. **THE MAP IS A PANEL THE COORDINATOR SIZES, AND THE CHOICE IS PER SCREEN
+    (P0.1).** Three states — מוסתר / מפוצל / מלא — on every map-first screen,
+    persisted in `localStorage` under `lo-yanum:map-mode:<screenKey>`.
+    `split` remains the default and remains Lot 0.9's exact reading, so no
+    screen changes shape until it is asked to. Lot 0.9's collapse control only
+    existed below `lg`, which is the one width where a 40 dvh map is not in the
+    way; an iPad portrait is 1032 and spent 58 % of the screen on geography
+    while the coordinator read contacts. **The hidden panel is
+    `display:none`, never unmounted** — a torn-down WebGL context takes the
+    camera with it, and a re-created list takes its scroll position and its
+    progressive page. The one exception is a WINDOW-virtualised table, which
+    must be unmounted instead: `display:none` makes it measure a scrollMargin
+    of 0 and come back drawing its rows a page above themselves.
+
+61. **PEOPLE ARE COUNTED BY LOCALITY, NEVER PLACED INDIVIDUALLY (P0.2).**
+    The rosters' map is bubbles on towns, sized by area (sqrt, because the eye
+    reads a disc by area and a linear radius makes 40 people look like four
+    times 10 instead of twice), and a bubble IS a filter that composes with the
+    KPI-filters. The programme holds a home town, not a home address, so a dot
+    on a street would be both wrong and a privacy claim nobody made — the
+    bubble is exactly as precise as the data. A town outside
+    `LOCALITY_POSITIONS` is REPORTED next to the switch, never silently
+    dropped: same contract as `distanceKm: null` in the dispatch scoring. The
+    bubbles are counted from everything EXCEPT the locality filter, or picking
+    a town would collapse the map to one bubble with no way back.
+
+62. **A FINGER NEEDS 44 px, AND AN ARMED MAP OWES IT THE WHOLE SURFACE
+    (P0.3).** Marker VISUALS keep their 22–34 px; the hit box around them
+    grows to 44 (`wrapForTouch`). The consequence is the decision's real half:
+    markers stop their click reaching the map (decision 51), so a wider box is
+    a wider patch of what LOOKS like empty map and silently is not. While
+    `onMapClick` is live the intent is unambiguous — "put the thing HERE" — so
+    every marker goes `pointer-events:none`, draggable ones included; ring
+    reshaping never runs with placement armed, so no grip loses its grab.
+    `bun run touch` drives the whole vocabulary with synthetic touch at
+    1032×1376 and asserts the control that matters: a drag STARTING on a
+    marker still pans the map.
 
 57. **THE IDENTITY IS NEUTRAL, AND COLOUR IS SPENT ONLY ON MEANING (G17).**
     Product-owner decision, 2026-08-18: the Artzenu charter — colours AND
@@ -797,7 +925,7 @@ MECHANISM survives — only the charter values it protected are gone). Decisions
 
 ## 7. Verification scripts
 
-All seven are committed and runnable.
+All eight are committed and runnable.
 
 - **`scripts/contrast.ts`** (`bun run contrast`) — the A13/A19 audit. Parses
   `tokens.css`, reconstructs both palettes, and checks text, chips (ink over
@@ -917,9 +1045,10 @@ src/styles/tokens.css     ★ BOTH PALETTES. The four --brand-* tokens quote the
                             pairs, --critical (the orange as a ROLE),
                             --surface-field, THE THREE-VALUE RADIUS SCALE,
                             gradients, motion, type. No hex anywhere else.
-public/fonts/             8 self-hosted brand woff2 (atlas-*, mekomi-*) + 3 Rubik
-public/artzenu-mark.png   The association's mark, grey+alpha, painted as a CSS
-                            MASK so it takes a token colour in both themes
+public/fonts/             5 self-hosted OFL woff2 — Rubik ×3 (body, every
+                            number) + Frank Ruhl Libre ×2 (display, the PO's
+                            final arbitrage of 2026-08-30). No CDN: a farm
+                            track at 02:00 has no coverage.
 
 src/core/                 PURE TS — no React, no DOM
   types.ts                Domain types, LegConfirmation, FarmVisit, AgendaEvent.
@@ -933,7 +1062,9 @@ src/core/                 PURE TS — no React, no DOM
   dispatch.ts             ★ GUARD SCORING (D5). Pure, deterministic, tested.
   contrast.ts             WCAG maths, shared by the audit script and /styleguide
   clock.ts                Time + calendar arithmetic (DST-safe, Sunday-first)
-  geo.ts                  Haversine, LOCALITY_POSITIONS gazetteer, bounds
+  geo.ts                  Haversine, LOCALITY_POSITIONS gazetteer, bounds,
+                          ringAreaDunams/ringCenter (G15),
+                          clusterByLocality/bubbleDiameter (P0.2)
   theme.ts                Theme POLICY (defaults per role). No storage.
   photo.ts import.ts routing.ts messages.ts config.ts sessions.ts
   mock/                   farms(12) · people(300 volunteers, 6 drivers) ·
@@ -955,7 +1086,9 @@ src/ui/
   hooks/                  useCore · useLocale ·
                           useShellMetrics (publishes --shell-top / --shell-bottom,
                           decision 39) · useProgressive (F5.5)
-  components/             AnchorMap ★ (F2 — the map that CREATES anchor points,
+  components/             mapMode ★ (P0.1 — the three map states, per screen) ·
+                          PeopleMap (P0.2 — the rosters' locality bubbles) ·
+                          AnchorMap ★ (F2 — the map that CREATES anchor points,
                           shared by the wizard, the farm detail and the form) ·
                           MapPanel (map-first shell, D2) · MapCanvas/MapView (lazy) ·
                           Timeline (D6) · FarmVisitModal (D4) · CreateGuardFab (D3.4) ·
@@ -1042,7 +1175,26 @@ src/ui/
 
 ## 12. Next step
 
-**Lot 1 — Supabase.** Translate `src/core/access.ts` into RLS policies one
+**PHASE P1 — finish the POC: G10 → G18 → G12 → G13.** Their specs are in §1's
+resume note, unchanged. Then P2 (Lot 1) and P3 (Lot 2 essential) per the final
+order of march recorded at the top of this file.
+
+**Two things to settle with the product owner BEFORE P2 starts, and they
+block it:**
+
+1. **Confirmation to create the Supabase project** `lo-yanum-prod`
+   (eu-central-1 Frankfurt) under HIS organisation. Expected cost 0 — free
+   tier. The order of march says ask first, so ask first.
+2. **The email address of the one coordinator account.** Auth is
+   email/password and there is exactly one account in phase 1.
+
+Also carry in: the anon key is PUBLIC by design and **the security IS the
+RLS** — that is why P2.2 transcribes `access.ts` policy by policy and why a
+refused anonymous read is criterion B1. Moving to a private repo +
+Cloudflare Pages is a later improvement, explicitly NOT now.
+
+**Lot 1 — Supabase, the transcription notes.** Translate `src/core/access.ts`
+into RLS policies one
 function at a time; the bodies are written to make that a direct transcription.
 `src/core/import.ts` is written to be re-runnable server-side unchanged,
 `src/core/dispatch.ts` is a candidate for a Postgres function verbatim, and
