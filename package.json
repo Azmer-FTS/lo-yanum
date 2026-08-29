@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Lo Yanum \u2014 farm guard coordination tool (Lot 0.9: UX/UI finishing pass)",
+  "description": "Lo Yanum — farm guard coordination tool (Lot 0.9: UX/UI finishing pass)",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -16,7 +16,8 @@
     "layout": "bun run scripts/layout.ts",
     "accept": "bun run scripts/accept.ts",
     "tokens": "bun run scripts/tokens.ts",
-    "wizard": "bun run scripts/wizard.ts"
+    "wizard": "bun run scripts/wizard.ts",
+    "touch": "bun run scripts/touch.ts"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.9",

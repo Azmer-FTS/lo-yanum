@@ -184,6 +184,66 @@ const GLYPH: Partial<Record<MarkerKind, string>> = {
   move: 'M12 2v20M2 12h20M12 2l-2.5 2.5M12 2l2.5 2.5M12 22l-2.5-2.5M12 22l2.5-2.5M2 12l2.5-2.5M2 12l2.5 2.5M22 12l-2.5-2.5M22 12l-2.5 2.5',
 }
 
+/**
+ * P0.3 — A FINGER NEEDS 44 px, AND THE MAP MUST NOT GROW TO GIVE IT.
+ *
+ * Every marker on this map is also a control: a farm disc opens a card, a
+ * bubble filters a roster, a pin drags to a new position, the centre handle
+ * translates a whole polygon. Most of them are drawn between 22 and 34 px,
+ * which is right for the map and wrong for a thumb on an iPad in a truck —
+ * the product owner's actual instrument.
+ *
+ * The visual size is therefore left ALONE and the hit area is expanded around
+ * it, exactly the trick the G1 vertex grip already used: the button becomes a
+ * transparent 44 px box and the drawn marker moves into a child span. Nothing
+ * on screen changes; the target under the finger doubles.
+ *
+ * `anchorBottom` keeps the teardrop kinds honest without a single offset
+ * adjustment: their tip IS the coordinate (see the Marker options), the box
+ * only ever grows UPWARD and sideways, and `align-items:flex-end` keeps the
+ * drawn pin flush with the box's bottom edge. A centre-anchored kind grows
+ * symmetrically and needs nothing either.
+ */
+const TOUCH_MIN = 44
+
+function wrapForTouch(
+  el: HTMLElement,
+  width: number,
+  height: number,
+  anchorBottom: boolean,
+): void {
+  const boxW = Math.max(TOUCH_MIN, width)
+  const boxH = Math.max(TOUCH_MIN, height)
+  if (boxW === width && boxH === height) return
+
+  const visual = document.createElement('span')
+  visual.style.cssText = `${el.style.cssText};position:relative;pointer-events:none;flex:none`
+  visual.innerHTML = el.innerHTML
+  // The halo is a pseudo-element of the DRAWN marker, not of the hit box:
+  // sized to the box it would ring 44 px of empty air.
+  if (el.classList.contains('map-marker-pulse')) {
+    el.classList.remove('map-marker-pulse')
+    visual.classList.add('map-marker-pulse')
+    visual.style.setProperty('--pulse-color', el.style.getPropertyValue('--pulse-color'))
+  }
+
+  const cursor = el.style.cursor || 'pointer'
+  el.innerHTML = ''
+  el.removeAttribute('style')
+  el.style.cssText = [
+    `width:${boxW}px`,
+    `height:${boxH}px`,
+    'padding:0',
+    'background:transparent',
+    'border:none',
+    'display:flex',
+    'justify-content:center',
+    anchorBottom ? 'align-items:flex-end' : 'align-items:center',
+    `cursor:${cursor}`,
+  ].join(';')
+  el.appendChild(visual)
+}
+
 function markerElement(marker: MapMarker): HTMLElement {
   const el = document.createElement('button')
   el.type = 'button'
@@ -191,6 +251,10 @@ function markerElement(marker: MapMarker): HTMLElement {
 
   const kind = marker.kind ?? 'farm'
   const ring = readToken('--surface-base')
+  // P0.3 — filled in by whichever branch draws the marker, then handed to
+  // `wrapForTouch` at the bottom. Declared here so no branch can forget it and
+  // silently ship a 22 px target.
+  let footprint: { w: number; h: number; anchorBottom: boolean } | null = null
 
   if (kind === 'label') {
     // G15 — a READ-OUT, not a control: the live area chip riding a polygon.
@@ -247,6 +311,7 @@ function markerElement(marker: MapMarker): HTMLElement {
       'transition:opacity 150ms,border-width 150ms',
     ].join(';')
     el.textContent = marker.badge ?? ''
+    wrapForTouch(el, d, d, false)
     return el
   }
 
@@ -319,6 +384,7 @@ function markerElement(marker: MapMarker): HTMLElement {
         <path d="${TEARDROP}" fill="${marker.color}" stroke="${ring}" stroke-width="1.6"/>
         ${head}
       </svg>`
+    footprint = { w, h, anchorBottom: true }
   } else if (kind === 'incident') {
     // G7bis.1 — an incident is a WARNING TRIANGLE, the shape every road sign
     // has already taught. Severity keeps the colour scale it always had.
@@ -343,6 +409,7 @@ function markerElement(marker: MapMarker): HTMLElement {
         <path d="M12 9.6v4.6M12 17.1v.2" fill="none" stroke="${ring}"
               stroke-width="2" stroke-linecap="round"/>
       </svg>`
+    footprint = { w: s, h: s, anchorBottom: false }
   } else {
     // The disc kinds: the farm's identity pastille (barn glyph), a guard on
     // the missions map (shield), the route's origin. A numbered badge wins
@@ -384,6 +451,7 @@ function markerElement(marker: MapMarker): HTMLElement {
           <path d="${GLYPH[kind]}"/>
         </svg>`
     }
+    footprint = { w: size, h: size, anchorBottom: false }
   }
 
   if (marker.pulse) {
@@ -394,6 +462,12 @@ function markerElement(marker: MapMarker): HTMLElement {
   }
 
   if (marker.draggable) el.style.cursor = 'grab'
+
+  // P0.3 — LAST, so it inherits the cursor and the pulse class the branches
+  // above set. The teardrops need the bottom anchor; everything else centres.
+  if (footprint) {
+    wrapForTouch(el, footprint.w, footprint.h, footprint.anchorBottom)
+  }
 
   if (marker.onHover) {
     el.addEventListener('mouseenter', () => marker.onHover?.(marker.id))
@@ -580,6 +654,25 @@ export default function MapCanvas({
     for (const m of markersRef.current) m.remove()
     markersRef.current = markers.map((marker) => {
       const el = markerElement(marker)
+
+      // P0.3 — WHILE THE MAP IS ARMED, NO MARKER IS IN THE WAY.
+      //
+      // Every marker stops its click from reaching the map, or tapping a pin
+      // would drop a second one underneath it (decision 51). Widening the hit
+      // boxes to 44 px made that guard expensive: the transparent corners of a
+      // box look like empty map and swallow the tap, so a zone corner placed
+      // near a guard post silently did nothing — a trap, and precisely what
+      // decision 55 exists to prevent.
+      //
+      // An armed map therefore suspends the guard for EVERY kind, draggable
+      // ones included: while `onMapClick` is live the intent is unambiguous
+      // ("put the thing HERE") and a pin under the finger is scenery, not an
+      // ambiguity. Reshaping a ring never runs with placement armed
+      // (AnchorMap passes `onMapClick` only while `mode.kind !== 'idle'`), so
+      // no grip loses its grab. Set out here rather than inside
+      // `markerElement` so the early-returning kinds — the vertex grips and
+      // the draft corners of the ring being drawn — cannot miss it.
+      if (onMapClick) el.style.pointerEvents = 'none'
       if (marker.onSelect) el.addEventListener('click', marker.onSelect)
 
       // A marker sits in the map container, so its click bubbles to the
@@ -627,7 +720,9 @@ export default function MapCanvas({
       }
       return instance
     })
-  }, [markers])
+    // `onMapClick` is in the deps because arming the map changes whether a
+    // marker intercepts a tap — see `markerElement`.
+  }, [markers, onMapClick])
 
   // Sync the route polyline.
   //

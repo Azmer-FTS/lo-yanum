@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth switch --user Azmer-FTS)",
+      "Bash(git push)",
+      "Bash(gh run list:*)",
+      "Bash(gh run watch:*)"
+    ]
+  }
+}
