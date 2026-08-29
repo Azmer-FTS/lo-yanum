@@ -517,16 +517,16 @@ export function StyleguideScreen() {
           </div>
         </Block>
 
-        {/* G17 — the display-face arbitrage is SETTLED (PO, 2026-08-19, A60):
-            Heebo carries the headings; the two other candidates left the
-            bundle with the decision. The sample line carries nikkud on
+        {/* G17 — the display-face arbitrage is SETTLED (PO, 2026-08-30, A60):
+            Frank Ruhl Libre carries the headings; Heebo and Secular One left
+            the bundle with the decision. The sample line carries nikkud on
             purpose: the landing verse is the coverage test. */}
         <Block title={t('styleguide.faces')} hint={t('styleguide.facesHint')}>
           <div className="flex flex-col gap-3">
             <div className="card card-pad">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-caption font-semibold text-content-primary">
-                  {t('styleguide.faceHeeboName')}
+                  {t('styleguide.faceDisplayName')}
                 </p>
                 <span className="chip bg-accent/15 text-accent-ink">
                   {t('styleguide.faceChosen')}
@@ -542,7 +542,7 @@ export function StyleguideScreen() {
               >
                 {t('styleguide.faceSample')}
               </p>
-              <p className="muted mt-1.5">{t('styleguide.faceHeeboNote')}</p>
+              <p className="muted mt-1.5">{t('styleguide.faceDisplayNote')}</p>
             </div>
             <p className="muted">{t('styleguide.faceBody')}</p>
           </div>

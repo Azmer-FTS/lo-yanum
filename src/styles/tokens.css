@@ -265,10 +265,11 @@
   /**
    * TWO faces, split on the same measured fact as before (G17).
    *
-   * `--font-brand` is the DISPLAY face — Heebo, free (OFL), self-hosted,
-   * the product owner's arbitrage of 2026-08-19 (A60). It carries display,
-   * title, section and heading; the two other candidates (Frank Ruhl Libre,
-   * Secular One) left the bundle with the decision.
+   * `--font-brand` is the DISPLAY face — Frank Ruhl Libre, free (OFL),
+   * self-hosted, the product owner's FINAL arbitrage (2026-08-30, which
+   * supersedes the 2026-08-19 pick of Heebo). It carries display, title,
+   * section and heading, where its serif contrast against the body face
+   * gives the neutral identity its voice; Heebo and Secular One are out.
    *
    * `--font-sans` is Rubik — everything else: body, caption, micro, tables,
    * and EVERY number. Rubik's digits are effectively monospaced and it
@@ -276,7 +277,7 @@
    * face with proportional figures never may carry a number (the Lot 0.8
    * measurement that created this split still stands).
    */
-  --font-brand: 'Heebo', 'Rubik', system-ui, sans-serif;
+  --font-brand: 'Frank Ruhl Libre', 'Rubik', system-ui, sans-serif;
   --font-sans: 'Rubik', system-ui, -apple-system, sans-serif;
 
   /* Type scale. Line-height tightens as size grows; numeric styles get their
