@@ -37,6 +37,7 @@ import { FarmVisitModal } from '../../components/FarmVisitModal'
 import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
 import { AnchorMap } from '../../components/AnchorMap'
+import { MapModeSwitch, useMapMode } from '../../components/mapMode'
 import { zoneColor, zoneLabelKey } from '../../components/zones'
 import { Timeline } from '../../components/Timeline'
 import type { TimelineEntry } from '../../components/Timeline'
@@ -356,16 +357,11 @@ export function FarmDetailScreen() {
   const [wideDefault] = useState(() =>
     window.matchMedia('(min-width: 1280px)').matches,
   )
-  // The map is collapsible on the one-column layouts (open by default), and
-  // simply always there from `xl` up.
-  const [mapOpen, setMapOpen] = useState(
-    () => sessionStorage.getItem('farm-detail:map') !== '0',
-  )
-  const toggleMap = () =>
-    setMapOpen((v) => {
-      sessionStorage.setItem('farm-detail:map', v ? '0' : '1')
-      return !v
-    })
+  // P0.1 — the same three-state map the map-first list screens now have, with
+  // the same persisted key space. It replaces Lot 0.9's below-`xl`-only
+  // collapse, which left the coordinator no way to reclaim the 58 % the map
+  // takes on the very screens where he is reading contacts and agreements.
+  const { mode: mapMode, setMode: setMapMode } = useMapMode('farm-detail')
 
   if (!farm) return <Navigate to="/coordinator/farms" replace />
 
@@ -428,9 +424,31 @@ export function FarmDetailScreen() {
           (1280 — an iPad PORTRAIT is 1032 and must stay one column, A49);
           below that the map is a collapsible block above the content, same
           as MapPanel's mobile reading. */}
-      <div className="flex min-h-dvh flex-col xl:h-[calc(100dvh-var(--shell-bottom))] xl:min-h-0 xl:flex-row-reverse xl:rtl:flex-row">
+      <div
+        className={`flex flex-col xl:h-[calc(100dvh-var(--shell-bottom))] xl:min-h-0 xl:flex-row-reverse xl:rtl:flex-row ${
+          mapMode === 'full'
+            ? 'h-[calc(100dvh-var(--shell-top)-var(--shell-bottom))] min-h-0'
+            : 'min-h-dvh'
+        }`}
+      >
         {/* Content — first in the DOM, physically right from xl. */}
-        <div className="order-2 min-w-0 flex-1 overflow-y-auto px-4 pb-24 pt-5 xl:order-none xl:w-[42%] xl:flex-none xl:px-5 xl:pb-5">
+        <div
+          className={`order-2 min-w-0 flex-1 overflow-y-auto px-4 pb-24 pt-5 xl:order-none xl:pb-5 ${
+            mapMode === 'full'
+              ? 'hidden'
+              : mapMode === 'hidden'
+                ? 'xl:w-full xl:px-5'
+                : 'xl:w-[42%] xl:flex-none xl:px-5'
+          }`}
+        >
+          {/* Below `xl` the map's own bar carries the switch (the map is
+              above the content there); in `hidden` there is no bar, so this
+              copy takes over. */}
+          <MapModeSwitch
+            mode={mapMode}
+            onChange={setMapMode}
+            className={`mb-3 flex-wrap ${mapMode === 'hidden' ? '' : 'hidden xl:flex'}`}
+          />
           <PageHeader
             title={farm.name}
             subtitle={`${farm.locality} · ${farm.region}`}
@@ -584,7 +602,9 @@ export function FarmDetailScreen() {
                         setSelectedZoneId(
                           z.id === selectedZoneId ? null : z.id,
                         )
-                        if (!mapOpen) toggleMap()
+                        // Editing a zone is a map action; a hidden map would
+                        // swallow the click silently.
+                        if (mapMode === 'hidden') setMapMode('split')
                       }}
                       className="btn-secondary shrink-0 py-1.5 text-micro"
                     >
@@ -816,25 +836,25 @@ export function FarmDetailScreen() {
         {/* Map — one instance, physically LEFT from xl, full column height.
             F6.1/G7bis — the same editable surface as before: click drops a
             guard post, zones draw and edit, fullscreen one button away. */}
-        <div className="order-1 flex flex-col xl:order-none xl:flex-1">
-          <div className="flex items-center justify-between gap-2 border-b border-edge-subtle bg-surface-overlay px-4 py-2 xl:hidden">
-            <span className="text-caption font-medium text-content-secondary">
+        <div
+          className={`order-1 flex-col xl:order-none xl:flex-1 ${
+            mapMode === 'hidden' ? 'hidden' : 'flex'
+          }`}
+        >
+          <div
+            className={`items-center justify-between gap-2 border-b border-edge-subtle bg-surface-overlay px-4 py-2 ${
+              mapMode === 'full' ? 'flex' : 'flex xl:hidden'
+            }`}
+          >
+            <span className="truncate text-caption font-medium text-content-secondary">
               {t('map.title')}
             </span>
-            <button
-              type="button"
-              onClick={toggleMap}
-              className="btn-ghost py-1.5 text-micro"
-              aria-expanded={mapOpen}
-            >
-              <Icon name={mapOpen ? 'collapse' : 'expand'} size={14} />
-              {t(mapOpen ? 'map.collapse' : 'map.expand')}
-            </button>
+            <MapModeSwitch mode={mapMode} onChange={setMapMode} />
           </div>
 
           <div
             className={`relative w-full border-edge-subtle xl:border-r ${
-              mapOpen ? 'h-[45dvh]' : 'h-0 overflow-hidden'
+              mapMode === 'full' ? 'min-h-0 flex-1' : 'h-[45dvh]'
             } xl:!h-full`}
           >
             <AnchorMap

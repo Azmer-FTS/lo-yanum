@@ -271,6 +271,7 @@ export function FarmsListScreen() {
 
   return (
     <MapPanel
+      screenKey="farms"
       ariaLabel={t('map.farmsMap')}
       markers={markers}
       polygons={zonePolygons(zones, farms)}

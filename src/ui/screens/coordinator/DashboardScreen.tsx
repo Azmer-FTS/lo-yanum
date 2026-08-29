@@ -477,6 +477,7 @@ export function DashboardScreen() {
 
   return (
     <MapPanel
+      screenKey="dashboard"
       ariaLabel={t('map.farmsMap')}
       markers={markers}
       contentWidth="half"

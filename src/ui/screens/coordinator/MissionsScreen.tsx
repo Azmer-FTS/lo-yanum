@@ -106,6 +106,7 @@ export function MissionsScreen() {
 
   return (
     <MapPanel
+      screenKey="missions"
       ariaLabel={t('map.missionsMap')}
       markers={markers}
       legend={

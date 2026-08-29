@@ -201,6 +201,7 @@ export function RoutePlannerScreen() {
 
   return (
     <MapPanel
+      screenKey="route"
       ariaLabel={t('map.routeMap')}
       markers={markers}
       line={line}

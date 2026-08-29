@@ -101,6 +101,7 @@ export function IncidentsScreen() {
 
   return (
     <MapPanel
+      screenKey="incidents"
       ariaLabel={t('map.incidentsMap')}
       markers={markers}
       legend={

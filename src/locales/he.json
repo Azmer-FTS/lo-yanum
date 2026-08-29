@@ -395,8 +395,6 @@
     "placeholder": "תצוגת מפה",
     "anchorPoint": "עמדת שמירה",
     "myPosition": "המיקום שלי",
-    "collapse": "הסתרת המפה",
-    "expand": "הצגת המפה",
     "farmsMap": "מפת החוות",
     "incidentsMap": "מפת האירועים",
     "missionsMap": "מפת השמירות",
@@ -406,7 +404,13 @@
     "gestureMac": "שינוי זום: ⌘ + גלילה",
     "gestureMobile": "הזיזו את המפה בשתי אצבעות",
     "fullscreen": "מסך מלא",
-    "exitFullscreen": "יציאה ממסך מלא"
+    "exitFullscreen": "יציאה ממסך מלא",
+    "modeLabel": "תצוגת המפה",
+    "mode": {
+      "hidden": "מוסתר",
+      "split": "מפוצל",
+      "full": "מלא"
+    }
   },
   "route": {
     "title": "תכנון מסלול ביקורים",

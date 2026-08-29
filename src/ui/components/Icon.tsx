@@ -65,6 +65,7 @@ export type IconName =
   | 'calendar'
   | 'flag'
   | 'send'
+  | 'columns'
 
 type Props = SVGProps<SVGSVGElement> & { name: IconName; size?: number }
 
@@ -140,6 +141,15 @@ const PATHS: Record<IconName, ReactNode> = {
   chevron: <path d="m9.5 5.5 7 6.5-7 6.5" />,
   close: <path d="m5.5 5.5 13 13M18.5 5.5l-13 13" />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  /* P0.1 — the SPLIT state of the map-mode switch: two panes, the narrower
+     one lined like a list, so the three icons read as three layouts rather
+     than as three unrelated actions. */
+  columns: (
+    <>
+      <rect x="3" y="4.5" width="18" height="15" rx="2" />
+      <path d="M13.5 4.5v15M16 9.5h3M16 12.5h3M16 15.5h3" />
+    </>
+  ),
   pin: (
     <>
       <path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z" />
