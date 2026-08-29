@@ -48,6 +48,7 @@ export type MarkerKind =
   | 'car'
   | 'label'
   | 'move'
+  | 'bubble'
 
 export interface MapMarker {
   id: string
@@ -62,6 +63,12 @@ export interface MapMarker {
   pulse?: boolean
   /** Step number for route planning; rendered inside the marker. */
   badge?: string
+  /**
+   * P0.2 — diameter in px, for the `bubble` kind only. The count drives the
+   * size (`bubbleDiameter` in @core/geo), so it cannot come from the SIZE
+   * table like every other kind.
+   */
+  diameter?: number
   /**
    * F2 — the pin can be dragged to a new position.
    *
@@ -140,6 +147,9 @@ const SIZE: Record<MarkerKind, number> = {
   car: 28,
   label: 0,
   move: 26,
+  // P0.2 — a bubble sizes itself from its count; SIZE is only the floor a
+  // caller gets if it forgets to pass one.
+  bubble: 30,
 }
 
 /** The kinds drawn as a bottom-anchored teardrop rather than a centred shape. */
@@ -202,6 +212,41 @@ function markerElement(marker: MapMarker): HTMLElement {
     ].join(';')
     el.textContent = marker.title
     el.tabIndex = -1
+    return el
+  }
+
+  if (kind === 'bubble') {
+    // P0.2 — AGGREGATED PEOPLE. A translucent disc on a town, its area
+    // proportional to how many volunteers or drivers live there, with the
+    // count written inside. Translucent on purpose: bubbles overlap at low
+    // zoom over the Negev's cluster of towns, and an opaque one would erase
+    // its neighbour rather than sit in front of it.
+    //
+    // Selection is loud (a full-opacity fill and a thick ring), because this
+    // marker is a FILTER control: "which town am I looking at" has to be
+    // answerable without reading the pill row below the map.
+    const d = marker.diameter ?? SIZE.bubble
+    el.style.cssText = [
+      `width:${d}px`,
+      `height:${d}px`,
+      'padding:0',
+      'border-radius:var(--radius-pill)',
+      `background:${marker.color}`,
+      `opacity:${marker.emphasis ? '1' : '.72'}`,
+      `border:${marker.emphasis ? 3.5 : 2}px solid ${ring}`,
+      'cursor:pointer',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'font-family:var(--font-sans)',
+      'font-weight:700',
+      'font-variant-numeric:tabular-nums',
+      `font-size:${d >= 46 ? 14 : 11.5}px`,
+      `color:${readToken('--text-on-accent')}`,
+      'box-shadow:0 2px 8px rgba(0,0,0,.35)',
+      'transition:opacity 150ms,border-width 150ms',
+    ].join(';')
+    el.textContent = marker.badge ?? ''
     return el
   }
 

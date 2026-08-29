@@ -141,3 +141,93 @@ export function boundsOf(
 
   return [west - padLng, south - padLat, east + padLng, north + padLat]
 }
+
+/**
+ * P0.2 — PEOPLE ARE COUNTED BY LOCALITY, NEVER PLACED INDIVIDUALLY.
+ *
+ * The coordinator's real question about the roster is geographic — "who can I
+ * pull from tonight, and from where" — and the volunteers/drivers tables
+ * answer it only by sorting a text column. A map answers it at a glance.
+ *
+ * What it deliberately does NOT do is put a pin on a volunteer. The programme
+ * holds a home locality, not a home address, and inventing a dot on a street
+ * would be both wrong and a privacy claim nobody made. A bubble on the town,
+ * sized by how many people it holds, is exactly as precise as the data.
+ *
+ * A locality outside `LOCALITY_POSITIONS` cannot be drawn, and it is REPORTED
+ * rather than dropped: `unplaced` names the towns and `unplacedCount` the
+ * people, so the map never silently claims to show everybody. Same contract as
+ * `distanceKm: null` in the dispatch scoring.
+ *
+ * Sorted by descending count so the biggest bubble is drawn LAST and therefore
+ * on top when two towns overlap at low zoom.
+ */
+export interface LocalityCluster {
+  locality: string
+  count: number
+  position: LatLng
+}
+
+export interface LocalityClusters {
+  /** Drawable towns, ascending by count (the caller draws in order). */
+  clusters: LocalityCluster[]
+  /** Towns absent from the gazetteer, sorted, so the UI can name them. */
+  unplaced: string[]
+  /** How many PEOPLE live in those towns. */
+  unplacedCount: number
+  /** The largest count, so a caller can scale bubbles against it. */
+  max: number
+}
+
+export function clusterByLocality(
+  localities: readonly string[],
+): LocalityClusters {
+  const counts = new Map<string, number>()
+  for (const raw of localities) {
+    const name = raw.trim()
+    if (name === '') continue
+    counts.set(name, (counts.get(name) ?? 0) + 1)
+  }
+
+  const clusters: LocalityCluster[] = []
+  const unplaced: string[] = []
+  let unplacedCount = 0
+
+  for (const [locality, count] of counts) {
+    const position = positionOfLocality(locality)
+    if (position === null) {
+      unplaced.push(locality)
+      unplacedCount += count
+      continue
+    }
+    clusters.push({ locality, count, position })
+  }
+
+  clusters.sort((a, b) =>
+    a.count === b.count ? a.locality.localeCompare(b.locality, 'he') : a.count - b.count,
+  )
+  unplaced.sort((a, b) => a.localeCompare(b, 'he'))
+
+  return {
+    clusters,
+    unplaced,
+    unplacedCount,
+    max: clusters.reduce((m, c) => Math.max(m, c.count), 0),
+  }
+}
+
+/**
+ * The bubble's diameter in pixels, area-proportional to the count.
+ *
+ * SQRT, not linear: the eye reads a disc by its AREA, so a linear radius makes
+ * a town of 40 look four times a town of 10 instead of twice. Bounded at both
+ * ends — under `MIN` the count stops being readable inside the disc, over
+ * `MAX` one town eats the Negev.
+ */
+export function bubbleDiameter(count: number, max: number): number {
+  const MIN = 30
+  const MAX = 68
+  if (max <= 0 || count <= 0) return MIN
+  const ratio = Math.sqrt(count) / Math.sqrt(max)
+  return Math.round(MIN + (MAX - MIN) * ratio)
+}

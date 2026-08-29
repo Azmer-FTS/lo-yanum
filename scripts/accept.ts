@@ -27,6 +27,8 @@ import {
   getVisibleIncidents,
   getVisibleMissionViews,
   getVolunteers,
+  bubbleDiameter,
+  clusterByLocality,
   googleMapsRouteUrl,
   planRoute,
   resetStore,
@@ -416,6 +418,73 @@ section('A55 — moshavim are entities with the same mechanics')
   const moshavGrazing = getFarmZonesForFarm('farm-13').find((z) => z.kind === 'grazing_area')!
   const westEdge = Math.min(...moshavGrazing.ring.map((p) => p.lng))
   check('מושב רתמים adjoins חוות רתם', Math.abs(westEdge - 34.672) < 0.001, `${westEdge}`)
+}
+
+// --- A62 (P0.2): the roster's locality bubbles -------------------------------
+
+section('A62 — volunteers and drivers aggregate by locality, never by person')
+{
+  as(COORD)
+  const volunteers = getVolunteers()
+  const { clusters, unplaced, unplacedCount, max } = clusterByLocality(
+    volunteers.map((v) => v.locality),
+  )
+
+  check(
+    'every volunteer is accounted for — counted or reported unplaced',
+    clusters.reduce((s, c) => s + c.count, 0) + unplacedCount === volunteers.length,
+    `${clusters.reduce((s, c) => s + c.count, 0)} + ${unplacedCount} = ${volunteers.length}`,
+  )
+  check('the fixtures place every volunteer', unplaced.length === 0)
+  check(
+    'no locality is drawn twice',
+    new Set(clusters.map((c) => c.locality)).size === clusters.length,
+    `${clusters.length} bubbles`,
+  )
+  check(
+    'each cluster count matches a straight recount',
+    clusters.every(
+      (c) => c.count === volunteers.filter((v) => v.locality === c.locality).length,
+    ),
+  )
+  check(
+    'clusters are ordered so the biggest is drawn last (on top)',
+    clusters.every((c, i) => i === 0 || clusters[i - 1].count <= c.count),
+    `max ${max}`,
+  )
+
+  // A locality outside the gazetteer must be REPORTED, never dropped.
+  const withGhost = clusterByLocality([...volunteers.map((v) => v.locality), 'עיירה שלא קיימת'])
+  check(
+    'an unknown locality is reported rather than silently dropped',
+    withGhost.unplaced.length === 1 && withGhost.unplacedCount === 1,
+    withGhost.unplaced.join(''),
+  )
+
+  // The bubble is read by AREA, so the diameter is sqrt-scaled and bounded.
+  check(
+    'a lone volunteer still draws a readable bubble',
+    bubbleDiameter(1, 100) === 34,
+    `${bubbleDiameter(1, 100)}`,
+  )
+  check('the largest bubble is the ceiling', bubbleDiameter(100, 100) === 68, `${bubbleDiameter(100, 100)}`)
+  check(
+    'four times the people is twice the radius, not four times',
+    bubbleDiameter(25, 100) === Math.round(30 + 38 * 0.5),
+    `${bubbleDiameter(25, 100)}`,
+  )
+  check(
+    'an empty roster does not divide by zero, and a zero count is the floor',
+    bubbleDiameter(0, 0) === 30 && bubbleDiameter(0, 100) === 30,
+  )
+
+  // The drivers roster runs through the same function.
+  const driverClusters = clusterByLocality(getDrivers().map((d) => d.locality))
+  check(
+    'the drivers roster clusters the same way',
+    driverClusters.clusters.reduce((s, c) => s + c.count, 0) === getDrivers().length,
+    `${driverClusters.clusters.length} towns / ${getDrivers().length} drivers`,
+  )
 }
 
 // --- Regression: archiving still works ----------------------------------------

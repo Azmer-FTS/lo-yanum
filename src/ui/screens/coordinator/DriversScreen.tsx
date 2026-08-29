@@ -19,6 +19,8 @@ import {
   SearchInput,
   Stat,
 } from '../../components/primitives'
+import { PeopleMap } from '../../components/PeopleMap'
+import { useMapMode } from '../../components/mapMode'
 import { useCoreValue } from '../../hooks/useCore'
 import { useWindowTable } from '../../hooks/useWindowTable'
 import { DriverFormModal } from './DriverFormModal'
@@ -49,10 +51,14 @@ export function DriversScreen() {
   // G14d — the two KPI-filters: big vehicles, free tonight.
   const [sevenPlus, setSevenPlus] = useState(false)
   const [freeTonight, setFreeTonight] = useState(false)
+  // P0.2 — set by tapping a bubble on the roster map; composes with the KPIs.
+  const [locality, setLocality] = useState<string | null>(null)
+  const { mode: mapMode, setMode: setMapMode } = useMapMode('drivers')
   const [editing, setEditing] = useState<Driver | null>(null)
   const [creating, setCreating] = useState(false)
 
-  const filtered = useMemo(() => {
+  /** P0.2 — everything except the locality, so the bubbles keep the neighbours. */
+  const beforeLocality = useMemo(() => {
     const q = query.trim().toLowerCase()
     const booked = new Set(bookedTonight)
     return drivers.filter((d) => {
@@ -68,7 +74,26 @@ export function DriversScreen() {
     })
   }, [drivers, query, sevenPlus, freeTonight, bookedTonight])
 
-  const anyFilter = sevenPlus || freeTonight
+  const mapLocalities = useMemo(
+    () => beforeLocality.map((d) => d.locality),
+    [beforeLocality],
+  )
+
+  const filtered = useMemo(
+    () =>
+      locality === null
+        ? beforeLocality
+        : beforeLocality.filter((d) => d.locality === locality),
+    [beforeLocality, locality],
+  )
+
+  const anyFilter = sevenPlus || freeTonight || locality !== null
+
+  const clearFilters = () => {
+    setSevenPlus(false)
+    setFreeTonight(false)
+    setLocality(null)
+  }
 
   const { listRef, virtualizer, margin } = useWindowTable(
     filtered.length,
@@ -93,8 +118,21 @@ export function DriversScreen() {
     <>
       {/* G14d/A51 — the whole top rides the page from lg, exactly like the
           volunteers roster: title, KPI-filters, search, column headers. */}
+      {/* P0.2 — the same roster map as the volunteers', in its own colour. */}
+      <PeopleMap
+        mode={mapMode}
+        onModeChange={setMapMode}
+        localities={mapLocalities}
+        selected={locality}
+        onSelect={setLocality}
+        ariaLabel={t('people.mapDrivers')}
+        tone="drivers"
+      />
+
       <div
-        className="-mx-4 bg-surface-base px-4 sm:-mx-6 sm:px-6 2xl:-mx-8 2xl:px-8 lg:sticky lg:z-20"
+        className={`-mx-4 bg-surface-base px-4 sm:-mx-6 sm:px-6 2xl:-mx-8 2xl:px-8 lg:sticky lg:z-20 ${
+          mapMode === 'full' ? 'hidden' : ''
+        }`}
         style={{ top: 'var(--shell-top, 0px)' }}
       >
         <PageHeader
@@ -127,10 +165,7 @@ export function DriversScreen() {
             value={stats.total}
             icon="steering"
             active={!anyFilter}
-            onClick={() => {
-              setSevenPlus(false)
-              setFreeTonight(false)
-            }}
+            onClick={clearFilters}
           />
           <Stat
             label={t('driver.statsSeats')}
@@ -164,13 +199,21 @@ export function DriversScreen() {
             />
           </div>
           <p className="muted">{t('driver.count', { count: filtered.length })}</p>
+          {/* P0.2 — the tapped bubble reads back as a removable pill. */}
+          {locality !== null && (
+            <button
+              type="button"
+              onClick={() => setLocality(null)}
+              className="filter-pill filter-pill-active"
+            >
+              <Icon name="pin" size={11} />
+              {locality}
+            </button>
+          )}
           {anyFilter && (
             <button
               type="button"
-              onClick={() => {
-                setSevenPlus(false)
-                setFreeTonight(false)
-              }}
+              onClick={clearFilters}
               className="filter-pill border-edge-strong text-content-primary hover:border-status-danger"
             >
               <Icon name="close" size={11} />
@@ -201,7 +244,10 @@ export function DriversScreen() {
         )}
       </div>
 
-      {filtered.length === 0 ? (
+      {/* P0.2/P0.1 — see the volunteers roster: the table is UNMOUNTED in
+          `full`, never `display:none`, or the window virtualiser measures a
+          scrollMargin of 0 and draws its rows a page above themselves. */}
+      {mapMode === 'full' ? null : filtered.length === 0 ? (
         <EmptyState icon="car" title={t('driver.empty')} />
       ) : (
         <div className="card lg:rounded-t-none">
