@@ -1,15 +1,25 @@
 import type { EntityKind, FarmStatus, FarmType, PhoneType } from './types'
+import {
+  STYLE_BODY,
+  STYLE_EXAMPLE,
+  STYLE_HEADER,
+  STYLE_TITLE,
+  STYLE_WRAP,
+  buildWorkbook,
+  sheetName,
+} from './xlsx'
+import type { SheetSpec } from './xlsx'
 
 /**
  * G10 — THE TEMPLATES ARE ONE SOURCE OF TRUTH.
  *
  * Before this file the volunteer import had its columns declared in three
- * places that had to agree by hand: `sampleCsv`'s example rows in
- * `import.ts`, the header list the wizard passed it, and `guessField`'s
- * keyword table. Adding a column meant editing all three, and forgetting one
- * meant a template whose headers the wizard could not recognise — the worst
- * possible bug in an import, because it looks like the coordinator's file is
- * wrong.
+ * places that had to agree by hand: the CSV exporter's example rows in
+ * `import.ts` (since deleted, P0bis.4), the header list the wizard passed it,
+ * and `guessField`'s keyword table. Adding a column meant editing all three,
+ * and forgetting one meant a template whose headers the wizard could not
+ * recognise — the worst possible bug in an import, because it looks like the
+ * coordinator's file is wrong.
  *
  * A template is now a list of COLUMNS, and everything else is derived:
  *
@@ -367,6 +377,84 @@ export function templateMatrix(
     columns.map((c) => label(c.labelKey)),
     ...[0, 1, 2].map((row) => columns.map((c) => c.examples[row])),
   ]
+}
+
+/** How many of the template's own example rows the generated file carries. */
+export const TEMPLATE_EXAMPLE_ROWS = 3
+
+/**
+ * P0bis.4 — THE TEMPLATE AS A REAL WORKBOOK: a data sheet and an instructions
+ * sheet, both right-to-left down to the reading order of each cell.
+ *
+ * The instructions sheet is not decoration. Everything on it answers a
+ * question the coordinator would otherwise answer by guessing and then
+ * discovering at the preview step: may I rename a header (no — that is how
+ * the columns are recognised), are the grey rows data (no), what happens to a
+ * column I add (nothing), and why a shortened map link does not become a pin.
+ * The last one is the single most common surprise in this import.
+ *
+ * The column table repeats each header with its "required" flag and its
+ * example, so the sheet is also the reference for what the first sheet wants.
+ */
+export function templateSheets(
+  kind: ImportKind,
+  label: (key: string) => string,
+): SheetSpec[] {
+  const template = IMPORT_TEMPLATES[kind]
+  const { columns } = template
+
+  const dataRows = [
+    columns.map((c) => ({ value: label(c.labelKey), style: STYLE_HEADER })),
+    ...Array.from({ length: TEMPLATE_EXAMPLE_ROWS }, (_, row) =>
+      columns.map((c) => ({ value: c.examples[row] ?? '', style: STYLE_EXAMPLE })),
+    ),
+  ]
+
+  const rules = ['rule1', 'rule2', 'rule3', 'rule4', 'rule5'].map((k) => [
+    { value: label(`import.${k}`), style: STYLE_WRAP },
+  ])
+
+  const guide = [
+    [{ value: label('import.instructionsTitle'), style: STYLE_TITLE }],
+    [{ value: '', style: STYLE_BODY }],
+    ...rules,
+    [{ value: '', style: STYLE_BODY }],
+    [
+      { value: label('import.colHeader'), style: STYLE_HEADER },
+      { value: label('import.colRequired'), style: STYLE_HEADER },
+      { value: label('import.colExample'), style: STYLE_HEADER },
+    ],
+    ...columns.map((c) => [
+      { value: label(c.labelKey), style: STYLE_BODY },
+      {
+        value: label(c.required ? 'common.required' : 'common.optional'),
+        style: STYLE_BODY,
+      },
+      { value: c.examples[0] ?? '', style: STYLE_EXAMPLE },
+    ]),
+  ]
+
+  return [
+    {
+      name: sheetName(label(template.titleKey), 'Data'),
+      widths: columns.map((c) => c.width ?? 16),
+      rows: dataRows,
+      freezeHeader: true,
+    },
+    {
+      name: sheetName(label('import.sheetInstructions'), 'Info'),
+      widths: [64, 12, 32],
+      rows: guide,
+    },
+  ]
+}
+
+/** The finished .xlsx bytes. Pure — the UI only turns them into a download. */
+export function templateWorkbook(
+  kind: ImportKind,
+  label: (key: string) => string,
+): Uint8Array {
+  return buildWorkbook(templateSheets(kind, label))
 }
 
 // ---------------------------------------------------------------------------

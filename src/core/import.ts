@@ -42,6 +42,8 @@ export {
   guessField,
   requiredFields,
   templateMatrix,
+  templateSheets,
+  templateWorkbook,
 } from './templates'
 
 /** Errors are i18n keys under `import.*`, never user-facing copy. */
@@ -403,17 +405,17 @@ export function toDriverDrafts(
 }
 
 /**
- * The downloadable template, as CSV.
+ * P0bis.4 — THERE IS NO CSV EXPORT, AND THAT IS THE ANSWER.
  *
- * Retained for the fallback path only — G10 generates an .xlsx through
- * SheetJS, which is what the product owner actually opens. Ships with a BOM so
- * Excel reads the Hebrew headers instead of mojibake, the single most common
- * failure when a coordinator double-clicks a UTF-8 CSV on Windows.
+ * `sampleCsv` used to live here, described as "retained for the fallback
+ * path only". It was called from nowhere: G10 replaced it with the generated
+ * workbook and left the function behind. Dead code that documents a fallback
+ * nobody can reach is worse than no fallback — the next reader budgets for a
+ * CSV path that does not exist.
+ *
+ * The app READS an uploaded .csv (SheetJS handles the encoding); it WRITES
+ * only the .xlsx that `@core/xlsx` builds. If a CSV export is ever wanted
+ * back, the two rules it had are worth restoring with it: the column order is
+ * the template's own (`templateMatrix`), and the file must open with a UTF-8
+ * BOM or Excel on a Hebrew Windows machine renders the headers as mojibake.
  */
-export function sampleCsv(matrix: string[][]): string {
-  const escape = (cell: string) =>
-    /[",\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell
-  return (
-    '﻿' + matrix.map((r) => r.map(escape).join(',')).join('\r\n') + '\r\n'
-  )
-}

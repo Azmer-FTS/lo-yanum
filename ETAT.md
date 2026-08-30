@@ -29,6 +29,7 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 | `bun run tokens` | **A28/A29** — one radius scale, no tinted field, orange only where it is allowed. No browser needed |
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 64 checks |
+| `bun run rtl` | **A67** — the generated .xlsx downloaded through the real UI, then opened: both sheets `rightToLeft`, every cell styled, every style right-aligned with `readingOrder="2"`, the header frozen, the instructions sheet complete. 45 checks — needs a dev server |
 | `bun run mapfirst` | **A64** — the exhaustive "map on the LEFT" audit: every route in the app at iPad landscape, each screen printed with whether it carries a map and, if it does, proof the map is the left column. Exemptions print their reason. Needs a dev server |
 | `bun run splitter` | **A65** — the map/content seam driven by MOUSE and by SYNTHETIC TOUCH at iPad landscape: 44 px grip and hit area, live canvas resize, ratio persisted per screen, bounds, double-tap reset. 72 checks — needs a dev server |
 | `bun run layout` | **A24 + A30 + G11** — overflow, pinned overlap and uncontained-list sweep over all 23 screens. `VIEWPORT=phone` (default, 390) / `iphone` (402×874) / `ipad` (1032×1376) / `ipad-ls` (1376×1032) / `all`. Needs a dev server |
@@ -38,7 +39,7 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 | `bun run screenshots` | Regenerate `docs/screenshots/` — needs a dev server |
 | `bun run brand-reference` | Re-capture `docs/brand/` from the live artzenu.org.il — needs the internet, NOT a dev server |
 
-> The eight browser scripts (`mapfirst`, `splitter`, `layout`, `wizard`,
+> The nine browser scripts (`rtl`, `mapfirst`, `splitter`, `layout`, `wizard`,
 > `touch`, `import`, `screenshots`, `brand-reference`) take `BASE_URL`, e.g.
 > `BASE_URL=http://localhost:62807 bun run layout`.
 
@@ -52,10 +53,11 @@ Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 
 State: **FINAL ORDER OF MARCH IN PROGRESS (2026-08-30). PHASE P0 IS DONE.
 PHASE P1: G10, G18 and G12's verification ARE DONE. PHASE P2: P2.2 (schema +
-RLS) IS APPLIED. PHASE P0bis IS IN PROGRESS — P0bis.1 (map on the left
-EVERYWHERE) and P0bis.2 (the draggable seam) ARE DONE and green (A64: 26
-screens; A65: 72 checks). Next: P0bis.3 (the density pass), P0bis.4 (RTL
-xlsx), P0bis.5 (the sending centre), then G13's freeze and P2.3→P3.** One
+RLS) IS APPLIED. PHASE P0bis IS IN PROGRESS — P0bis.1 (map on the
+left EVERYWHERE), P0bis.2 (the draggable seam), P0bis.3 (the density pass)
+and P0bis.4 (a really-RTL .xlsx) ARE DONE and green (A64: 26 screens; A65: 72
+checks; A66: the screen-by-screen table below; A67: 45 checks). Next:
+P0bis.5 (the sending centre), then G13's freeze and P2.3→P3.** One
 commit per unit. Branch `main`.
 
 > **P0bis.1 — THE MAP IS ON THE LEFT ON EVERY SCREEN THAT HAS ONE (frozen PO
@@ -184,6 +186,58 @@ commit per unit. Branch `main`.
 > | farmer/volunteer report | **already optimal** — a form, and `FormSection` now sizes itself to the column |
 > | styleguide | **unchanged by design** — a catalogue is meant to be read end to end (its A30 exemption already says so) |
 > | landing | **unchanged** — one plate, one verse, the identity chooser |
+
+> **P0bis.4 — THE TEMPLATE IS REALLY RTL, AND G10's FLAG NEVER WAS.**
+> · **THE DEFECT.** G10 wrote `sheet['!views'] = [{ RTL: true }]` and called
+>   the template right-to-left. Unzipping the file it produced shows
+>   `<sheetView workbookViewId="0"/>` — no `rightToLeft` — and a `styles.xml`
+>   with ONE default `xf`: the community build of SheetJS writes neither the
+>   view flag nor cell styles (styling is a Pro feature). The coordinator's
+>   template opened left-to-right with left-aligned Hebrew. The product owner
+>   was right, and no flag was going to fix it.
+> · **`src/core/xlsx.ts` — the workbook is written directly.** An .xlsx is a
+>   ZIP of XML and the template is a file whose every part we own. ~330 lines,
+>   pure, no dependency: `rightToLeft="1"` on each sheet view, a frozen header
+>   pane, per-column widths, and five cell styles that are ALL
+>   `horizontal="right"` + `readingOrder="2"`.
+> · **THE READING ORDER IS THE HALF THE VIEW FLAG CANNOT DO.** `rightToLeft`
+>   on the sheet flips the COLUMNS; a cell whose text begins with a Latin
+>   character — a Waze link, an English yeshiva name — still lays out
+>   left-to-right INSIDE itself. `readingOrder="2"` is what fixes that, and
+>   the farms template is mostly links.
+> · **ENTRIES ARE STORED, NOT DEFLATED, ON PURPOSE.** The file is ~15 kB of
+>   XML; a deflate implementation to save 6 kB would be the largest and least
+>   testable part of the unit, and `CompressionStream` is not in every runtime
+>   the verification scripts use. The DOS timestamp is FIXED for the same
+>   reason: the same template must produce the same bytes, or a byte
+>   comparison becomes a test of what time it is.
+> · **A SECOND SHEET, "הוראות מילוי".** Do not rename the headers (that is how
+>   columns are recognised), the grey rows are examples, extra columns are
+>   ignored, required columns must have a value — and the one that costs an
+>   afternoon: a SHORTENED map link carries no coordinates, so the row imports
+>   and is badged מיקום חסר. Then a table of every column with its required
+>   flag and its example.
+> · **AN INVALID ATTRIBUTE WAS CAUGHT BY A THIRD READER, NOT BY US.** The first
+>   version also put `rightToLeft="1"` on `<workbookView>` so the sheet TABS
+>   would start on the right. `CT_BookView` has no such attribute: openpyxl
+>   refused the whole workbook with `unexpected keyword argument
+>   'rightToLeft'`, which is what Excel's repair dialog would have done to the
+>   PO. Right-to-left is a per-SHEET attribute, full stop. A67 now asserts its
+>   ABSENCE from the workbook view, because putting it back is the tempting
+>   mistake.
+> · **THE CSV EXPORT DID NOT EXIST.** `sampleCsv` was in `import.ts`, described
+>   as "retained for the fallback path only", and called from NOWHERE — G10
+>   replaced it and left it behind. Deleted: dead code documenting an
+>   unreachable fallback makes the next reader budget for a path that is not
+>   there. The two rules it carried are written into the comment that replaces
+>   it, in case a CSV export is ever wanted back — the column order is the
+>   template's own, and the file must open with a UTF-8 BOM or Excel on a
+>   Hebrew Windows machine renders the headers as mojibake. The app still
+>   READS an uploaded .csv; SheetJS handles that encoding.
+> · **`bun run import` is the second proof and it was already there:** it
+>   downloads each template, reads it back with SheetJS outside the browser,
+>   refills it and uploads it through the wizard's own file input. 28 checks,
+>   green — so the app can still read its own template.
 
 > **THE FINAL ORDER OF MARCH (product-owner prompt, 2026-08-30).** The product
 > owner starts field work in TWO DAYS on an iPad Pro 13" (+ iPhone). The goal
@@ -831,6 +885,7 @@ captures in §5.
 | **A64** | **The map is on the physical LEFT on every screen that carries one** | ✅ `bun run mapfirst` — 26 screens audited at iPad landscape; every exemption prints its reason |
 | **A65** | **The map/content seam is draggable by finger and by mouse, bounded, persisted, resettable** | ✅ `bun run splitter` — 72 checks over five screens |
 | **A66** | **A density pass over every screen, listed one by one** | ✅ the table in §1's P0bis.3 note — what changed, or why the screen was already optimal |
+| **A67** | **The generated .xlsx is really RTL, verified by re-opening it** | ✅ `bun run rtl` — 45 checks over the three templates; independently confirmed with openpyxl, which is what caught an invalid `workbookView` attribute |
 | **A59** | **The threat layer exists, and is coordinator-only (G18)** | ✅ `bun run accept` A59 section (26 checks over all three roles and all three routes) + the map proof captured by hand |
 | **A61** | **Three map states per map-first screen, persisted (P0.1)** | ✅ dashboard / farms / farm-detail / route / incidents / missions + both rosters; verified by hand at 1032×1376 and 402×874, captures due at G12 |
 | **A62** | **Locality bubbles + tap-filter + נקה on both rosters (P0.2)** | ✅ `bun run accept`, the A62 section (12 checks), plus the tap path in `bun run touch` |
@@ -1419,6 +1474,11 @@ src/core/                 PURE TS — no React, no DOM
                           ringAreaDunams/ringCenter (G15),
                           clusterByLocality/bubbleDiameter (P0.2)
   theme.ts                Theme POLICY (defaults per role). No storage.
+  xlsx.ts                 ★ P0bis.4 — the .xlsx WRITER. Pure: OOXML parts +
+                          a stored-entry ZIP. Real RTL (sheet view AND
+                          readingOrder per cell), frozen header, widths,
+                          five styles. SheetJS reads uploads; it does not
+                          write the template.
   templates.ts            ★ G10 — THE IMPORT COLUMNS, one source of truth.
                           Three templates (volunteers/farms/drivers); the
                           .xlsx, the header guess, the mapping options and

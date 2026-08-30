@@ -15,7 +15,7 @@ import {
   importDrivers,
   importFarms,
   importVolunteers,
-  templateMatrix,
+  templateWorkbook,
   toDriverDrafts,
   toFarmDrafts,
   toVolunteerDrafts,
@@ -208,25 +208,42 @@ export function ImportWizardScreen() {
    * double-clicking one on a Hebrew Windows machine still produces mojibake
    * often enough to have cost an afternoon, the column widths are whatever
    * Excel guesses, and there is nowhere to put the three example rows without
-   * them looking like data. A workbook carries its own encoding, its own
-   * widths, and RTL — so the file the PO downloads is the file he fills in.
+   * them looking like data.
    *
-   * SheetJS is fetched on demand for the same reason the parser is: ~450 kB
-   * has no business in the bundle a volunteer's phone loads.
+   * P0bis.4 — AND IT IS BUILT HERE, NOT BY SheetJS. G10 asked for RTL with
+   * `sheet['!views'] = [{ RTL: true }]`; unzipping the result shows the
+   * community build writes `<sheetView workbookViewId="0"/>` and no cell
+   * styles at all, so the file opened left-to-right with left-aligned Hebrew.
+   * `@core/xlsx` writes the workbook directly — `rightToLeft="1"` on the
+   * sheet AND the workbook view, `readingOrder="2"` on every cell, a frozen
+   * header row and a formatted instructions sheet. It is pure, so
+   * `bun run accept` checks the XML without a browser and `bun run rtl`
+   * re-opens the real download.
+   *
+   * SheetJS stays for READING the file the coordinator uploads back, fetched
+   * on demand: ~450 kB has no business in the bundle a volunteer's phone
+   * loads.
    */
-  const downloadTemplate = async () => {
+  const downloadTemplate = () => {
     setError(null)
     try {
-      const XLSX = await import('xlsx')
-      const matrix = templateMatrix(kind, (key) => t(key))
-      const sheet = XLSX.utils.aoa_to_sheet(matrix)
-      sheet['!cols'] = template.columns.map((c) => ({ wch: c.width ?? 16 }))
-      // The whole sheet reads right-to-left, like every other document this
-      // coordinator opens.
-      sheet['!views'] = [{ RTL: true }]
-      const book = XLSX.utils.book_new()
-      XLSX.utils.book_append_sheet(book, sheet, t(template.titleKey).slice(0, 31))
-      XLSX.writeFile(book, `${template.fileBase}-template.xlsx`)
+      const bytes = templateWorkbook(kind, (key) => t(key))
+      // `.slice()` hands Blob a plain ArrayBuffer: a Uint8Array's buffer is
+      // typed `ArrayBufferLike`, which includes SharedArrayBuffer and is not
+      // a BlobPart.
+      const blob = new Blob([bytes.slice().buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${template.fileBase}-template.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      // Revoked on the next tick: revoking synchronously races the download in
+      // WebKit, which reads the blob after the click handler returns.
+      setTimeout(() => URL.revokeObjectURL(url), 0)
     } catch {
       setError(t('import.templateError'))
     }

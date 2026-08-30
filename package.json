@@ -20,7 +20,8 @@
     "tokens": "bun run scripts/tokens.ts",
     "wizard": "bun run scripts/wizard.ts",
     "touch": "bun run scripts/touch.ts",
-    "import": "bun run scripts/import.ts"
+    "import": "bun run scripts/import.ts",
+    "rtl": "bun run scripts/rtl.ts"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.9",
