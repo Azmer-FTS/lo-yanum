@@ -1095,6 +1095,60 @@ which G17's decision 57 retires** (42's fill-keeps-the-colour/ink-moves
 MECHANISM survives — only the charter values it protected are gone). Decisions
 32–34 survived two lots unchanged and are why both were cheap. New:
 
+71. **THE OFFLINE MAP IS ONE SELF-HOSTED PMTILES FILE, AND THE OSM PRE-CACHE IS
+    ABANDONED FOR GOOD (PO, 2026-08-31 — resolves open question 11).** The
+    written order of march asked for a "רענן מפות לא מקוונות" button that
+    pre-fetched the Negev's raster tiles. It measured at **4 345 requests per
+    device per refresh**, which is a systematic download and is exactly what
+    OpenStreetMap's Tile Usage Policy forbids on donated infrastructure. The
+    product owner accepted the recommendation instead: **Protomaps PMTiles, one
+    file, in a PUBLIC Supabase Storage bucket, read by HTTP range requests, with
+    a MapLibre VECTOR style tinted in the app's own colours — both themes.**
+    That settles three things in one move: no usage policy to breach and no API
+    key; one download instead of four thousand, which is what "offline maps"
+    should have meant from the start; and it retires standing carry-in item 2
+    (the `hue-rotate` on a raster), open since Lot 0.9. The button becomes
+    "download this one file", with a progress indicator and the size shown
+    BEFORE the tap — a coordinator on cellular data must be able to decline.
+    **Scheduled after P2.6/P2.5b and before P3.4.** The browsing cache that
+    P2.5a shipped stays: it costs OSM nothing and it is what covers the ground
+    the coordinator looked at before the big file exists.
+
+72. **THE ACCOUNT'S HARDENING IS THREE DASHBOARD SETTINGS, AND ONE OF THEM
+    CANNOT BE BOUGHT ON THIS TIER (PO, 2026-08-31).** The product owner set,
+    in Supabase's own dashboard: **"Allow new users to sign up" OFF** — phase 1
+    has exactly one account and a sign-up form would be a second door on a
+    programme whose data is farmers' addresses and volunteers' faces; it is
+    reopened deliberately at Lot 4 when farmers and volunteers get logins.
+    **Minimum password length raised to 10.** **Leaked-password protection
+    switched on.**
+    · ⚠️ **THE LEAKED-PASSWORD TOGGLE DID NOT TAKE, AND IT CANNOT ON THE FREE
+      TIER.** `get_advisors(security)` still returns `auth_leaked_password
+      _protection` as WARN after the change, and Supabase's own documentation
+      is explicit: "Leaked password protection is available on the Pro Plan and
+      above." So the lint is NOT a forgotten switch and must stop being read as
+      one — it is a line item on an upgrade, and the mitigation that is
+      actually available is the one already applied: no sign-up, one account,
+      a 10-character minimum, and a password only the PO has ever typed.
+    · ⚠️ **THE JWT EXPIRY COULD NOT BE VERIFIED FROM HERE, AND THE REASON IS A
+      CREDENTIAL BOUNDARY, NOT AN OVERSIGHT.** GoTrue's `jwt_exp` is a
+      management-API setting: it lives in neither the database (so
+      `execute_sql` cannot see it) nor the anonymous surface, the Supabase MCP
+      exposes no auth-configuration tool, and the `supabase` CLI on this
+      machine is authenticated to a DIFFERENT organisation
+      (`uzrwmkwkulcighotovyb`) which cannot see `lo-yanum-prod`
+      (`jkqsqykhquutilldvcsv`). **Read it at Authentication → Sessions → Access
+      token (JWT) expiry; the dashboard's ceiling is 604 800 s = 7 days.**
+    · ★ **AND THE ANTI-LOCKOUT INSURANCE IS NOT THAT NUMBER — IT IS P2.5b.**
+      Worth stating plainly because raising `jwt_exp` looks like it solves the
+      problem and does not. The access token is short-lived by design and the
+      REFRESH token is what carries a session across days; what actually locks
+      a coordinator out of an offline iPad is the client deciding that an
+      access token it cannot refresh means "signed out" and throwing away the
+      local session. P2.5b's requirement — an expired token no longer discards
+      the session, and the client reconnects silently when the network returns
+      — is the fix, and it works whether `jwt_exp` is 3 600 or 604 800.
+
 68. **THE APP HAS TWO MODES AND ONE BUILD-TIME SWITCH, AND THE DEMO MODE IS
     THE DEFAULT (P2.3).** `SUPABASE_CONFIGURED` — both environment variables
     present — is the whole of it. Set: the app requires a session and the role
@@ -1896,8 +1950,14 @@ src/ui/
    covered: delete the `atlas-*`/`mekomi-*` files. That is the whole change — the
    stacks in `--font-brand` / `--font-sans` already fall through to the
    self-hosted Rubik, and nothing else in the app depends on them.
-11. **⚠️ THE "רענן מפות לא מקוונות" BUTTON CANNOT BE BUILT ON OSM, AND THE
-    REASON IS A POLICY, NOT A LIMIT (P2.5a, 2026-08-31).** The order of march
+11. **✅ RESOLVED BY THE PRODUCT OWNER (2026-08-31) — SEE DECISION 71.** The
+    answer is PMTiles, self-hosted, one file, vector, tinted; the OSM
+    pre-cache is abandoned for good. Scheduled after P2.6/P2.5b, before P3.4.
+    The measurement that produced the recommendation is kept below, because it
+    is the whole justification and it will be asked for again.
+
+    **⚠️ (settled) THE "רענן מפות לא מקוונות" BUTTON CANNOT BE BUILT ON OSM, AND
+    THE REASON IS A POLICY, NOT A LIMIT (P2.5a, 2026-08-31).** The order of march
     asks for ~50–80 MB of pre-cached Negev tiles behind a button. The estimate
     was right — measured over the gazetteer's own bbox
     (30.84–32.08 N, 34.42–35.45 E, +0.15° pad):
@@ -2004,13 +2064,15 @@ select auth.uid()::text, private.app_role(), private.is_coordinator() from cfg;
 · dov's uid            → `coordinator`, **true**
 · any other uid        → `null`, **false**
 
-> ⚠️ **ONE DASHBOARD TOGGLE IS STILL OPEN.** `get_advisors(security)` reports
-> `auth_leaked_password_protection` — Supabase can refuse a password known to
-> HaveIBeenPwned, and it is off. It could not have been reported before P2.3,
-> because there was no auth in use to report on. It is a single switch in
-> Authentication → Sign In / Providers → Password settings, it cannot be set
-> from a migration or from the MCP, and with ONE account guarding the whole
-> programme's data it is worth the ten seconds.
+> ✅ **THE DASHBOARD HARDENING IS DONE, AND ONE ITEM OF IT IS NOT PURCHASABLE
+> HERE (PO, 2026-08-31 — decision 72).** Sign-ups are OFF, the minimum password
+> length is 10, and the leaked-password switch was thrown. It did NOT take:
+> `get_advisors(security)` still returns `auth_leaked_password_protection` as
+> WARN, because the feature is **Pro Plan and above** in Supabase's own
+> documentation. Stop reading that lint as a forgotten switch — it is an
+> upgrade line item. The JWT expiry could not be read from this machine
+> (decision 72 says exactly why, and why it is not the anti-lockout insurance
+> anyway — P2.5b is).
 
 > **BEFORE THE NEXT DEPLOY:** the two repository secrets
 > `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` must exist in
@@ -2066,9 +2128,10 @@ app — /poc included — to survive with no network.
 > contradicting "the real app starts EMPTY" head-on. Agreed with the PO on
 > 2026-08-31. **P2.6 → P2.5b.**
 
-> **AND THE TILE PRE-CACHE BUTTON IS A DECISION WAITING ON THE PO** — see open
-> question 11. It is not built, because building it on OSM would breach their
-> Tile Usage Policy. What shipped is a browsing cache instead.
+> **THE TILE PRE-CACHE BUTTON IS DECIDED (PO, 2026-08-31): PMTILES,
+> SELF-HOSTED.** Open question 11 is closed and decision 71 records it. The
+> OSM pre-cache is abandoned for good; what P2.5a shipped — a browsing cache —
+> stays, and the one-file download lands after P2.5b and before P3.4.
 
 **RESUME HERE — P2.6:** the store becomes an INTERFACE, satisfied by a demo
 implementation (the mock fixtures, which is what /poc keeps) and a Supabase
