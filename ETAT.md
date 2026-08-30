@@ -49,9 +49,9 @@ Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
 State: **FINAL ORDER OF MARCH IN PROGRESS (2026-08-30). PHASE P0 IS DONE
-(font correction + P0.1/P0.2/P0.3). PHASE P1 STARTED: G10 IS DONE. Next:
-G18, then G12, then G13.** One commit per unit. Branch `main`, NOT yet pushed
-(deploy happens at G12).
+(font correction + P0.1/P0.2/P0.3). PHASE P1: G10 AND G18 ARE DONE. Next:
+G12 (full re-run + captures + deploy), then G13 (freeze).** One commit per
+unit. Branch `main`, NOT yet pushed (deploy happens at G12).
 
 > **THE FINAL ORDER OF MARCH (product-owner prompt, 2026-08-30).** The product
 > owner starts field work in TWO DAYS on an iPad Pro 13" (+ iPhone). The goal
@@ -59,7 +59,7 @@ G18, then G12, then G13.** One commit per unit. Branch `main`, NOT yet pushed
 > phases, in this order:
 >
 > · **P0** — last UX asks. ✅ DONE (see below).
-> · **P1** — finish the POC: **G10 ✅ → G18 → G12 → G13**, specs already in
+> · **P1** — finish the POC: **G10 ✅ → G18 ✅ → G12 → G13**, specs already in
 >   this file. (G11 is folded into G12's iPad pass; P0.3 already did the touch
 >   half.)
 > · **P2** — LOT 1, THE REAL THING: Supabase project `lo-yanum-prod`
@@ -190,6 +190,59 @@ G18, then G12, then G13.** One commit per unit. Branch `main`, NOT yet pushed
 >   silently wrong — it did here (A9 passed an array where an object was now
 >   expected and lost two checks). Run `bun run accept` after any core
 >   signature change, not just the typecheck.
+>
+> **P1 — G18 IS DONE.** The threat layer, and it is the one genuinely
+> SENSITIVE thing in the model:
+> · **`ThreatZone` and `ThreatVector`** (types.ts), both with `farmId:
+>   string | null` — attached to an entity, or FREE at map level, because a
+>   threat does not respect a fence line and the ones that matter most sit
+>   BETWEEN holdings. Both carry `intensity` (נמוך/בינוני/גבוה) and an
+>   `updatedAt` the STORE stamps on every write, including a vertex drag: a
+>   date a caller supplies is a date a caller can forget to bump, and a threat
+>   map with no age invites acting in 2027 on a 2025 assessment.
+> · **THE GATE IS IN `access.ts`, NOT IN A SCREEN.** `getVisibleThreatZones`,
+>   `getVisibleThreatVectors` and `getThreatsForFarm` return `[]` for every
+>   role but the coordinator. The consequence is deliberate and tested: a
+>   FARMER IS REFUSED THE LAYER FOR HIS OWN FARM. The assessment names
+>   patterns across holdings and is the programme's to hold. A59 exercises all
+>   three roles through all three routes.
+> · `getThreatsForFarm` deliberately includes the FREE shapes as well as the
+>   attached ones — a threat between two holdings is the one a coordinator
+>   most needs while looking at either of them.
+> · **TWO HUES AND A WEIGHT, NOT THREE HUES.** Decision 49 keeps `--critical`
+>   for four meanings and a threat assessment is none of them, so the ladder is
+>   `--status-warn` → `--status-danger` and the third rung is DENSITY: a
+>   double-stripe hatch and a heavier outline. Better encoding anyway —
+>   density survives a sun-washed iPad and colour-blindness.
+> · **THE TEXTURE IS THE POINT.** A hatch (a generated 16 px canvas per
+>   intensity, `fill-pattern`) plus a DASHED outline, so the layer reads as an
+>   overlay rather than as terrain before any colour is decoded — on a map
+>   that already spends four tints on ground (G16).
+> · A vector is TWO map clicks (origin, then target) and renders as two
+>   features: a LineString shaft and a Point head whose `icon-rotate` takes
+>   `bearingDeg` (new, pure, in @core/geo), with `icon-rotation-alignment:
+>   'map'` so a two-finger twist does not leave every arrow lying. The head is
+>   registered at pixelRatio 1: at 2 it came out ~9 px and a vector was
+>   indistinguishable from a line, which defeats the object.
+> · Surfaces: the farm/moshav detail (draw + the editable `ThreatPanel`), the
+>   global farms map behind a remembered **שכבת איומים** toggle (OFF by
+>   default — the global map's job is "where are my farms"), and WIZARD STEP 1
+>   read-only, which is the layer's reason to exist: a post is placed FACING
+>   the approach.
+> · **Creation is only offered on an entity's map, by design.** That is the
+>   one map in the app carrying a drawing instrument; bolting a polygon editor
+>   onto the global reading surface would give the same gesture two homes. The
+>   free-standing case is reached by DETACHING from the panel ("בטל שיוך"),
+>   which covers both states of the model with one editor.
+> · `window.__loYanumMap` is published from MapCanvas's `load` handler — a
+>   handle for the verification scripts, since a MapLibre instance is
+>   otherwise unreachable from outside React. Published on LOAD, not on
+>   create: React's dev-mode double mount would otherwise leave it pointing at
+>   the corpse of the first map.
+> · **Environment note:** the in-app Browser pane stopped loading OSM tiles
+>   part-way through this session and `map.on('load')` never fired there.
+>   Playwright was unaffected. If a map looks empty in the pane, verify with a
+>   script before believing it.
 
 > **SPEC GAP RESOLVED (2026-08-19).** The product owner re-sent the missing
 > sections in the prompt "LOT 0.10 — SECTIONS MANQUANTES G14–G16 + DÉCISIONS
@@ -605,6 +658,7 @@ captures in §5.
 | **A23** | **Timelines on incident, mission and farm** | ✅ captures 7, 8, 15 |
 | **A24** | **Zero overflow / pinned overlap at 390 px on every screen** | ✅ `bun run layout` — 23/23 |
 | **A44** | **One template source, three rosters, a link that becomes a pin (G10)** | ✅ `bun run accept` A44 section (36 checks) + `bun run import` (28 checks: download → fill → upload → find) |
+| **A59** | **The threat layer exists, and is coordinator-only (G18)** | ✅ `bun run accept` A59 section (26 checks over all three roles and all three routes) + the map proof captured by hand |
 | **A61** | **Three map states per map-first screen, persisted (P0.1)** | ✅ dashboard / farms / farm-detail / route / incidents / missions + both rosters; verified by hand at 1032×1376 and 402×874, captures due at G12 |
 | **A62** | **Locality bubbles + tap-filter + נקה on both rosters (P0.2)** | ✅ `bun run accept`, the A62 section (12 checks), plus the tap path in `bun run touch` |
 | **A63** | **Every map gesture by finger at iPad portrait (P0.3)** | ✅ `bun run touch` — 32 checks at 1032×1376 with `hasTouch` and no mouse anywhere |
@@ -668,6 +722,31 @@ which decision 32 generalises; 46, which decision 47 supersedes; and 41–44,
 which G17's decision 57 retires** (42's fill-keeps-the-colour/ink-moves
 MECHANISM survives — only the charter values it protected are gone). Decisions
 32–34 survived two lots unchanged and are why both were cheap. New:
+
+63. **THE THREAT LAYER IS THE ONE SENSITIVE THING, AND ITS GATE IS IN THE DATA
+    LAYER (G18).** A farm's boundary is a fact about the ground; "we assess
+    this wadi as a high-intensity approach" is an assessment about people. It
+    must not reach a farmer's phone, a volunteer's guard card or a driver's
+    trip sheet — and the only way to be sure is for the ACCESSOR to return
+    nothing, not for a screen to omit a section. `getVisibleThreatZones`,
+    `getVisibleThreatVectors` and `getThreatsForFarm` are one rule, in one
+    place, tested through all three roles and all three routes (A59). The
+    consequence is deliberate: **a farmer is refused the layer for his own
+    farm too.** The assessment names patterns across holdings and is the
+    programme's to hold; a farmer who wants to know what is around him is told
+    by a human, on the phone. These are the first two functions Lot 1
+    transcribes into RLS, because they are the two where a wrong policy leaks
+    something that matters.
+
+64. **AN OVERLAY IS A TEXTURE, NOT A FIFTH COLOUR (G18).** The map already
+    spends four tints on ground (G16); a threat zone drawn in a fifth would
+    just be a fifth colour. It is a HATCH with a DASHED outline instead, which
+    reads as "laid over the map" before any colour is decoded. Intensity is
+    two hues and a WEIGHT — `--status-warn` → `--status-danger`, then a
+    double-stripe hatch for `high` — because decision 49 keeps `--critical`
+    for four meanings and a threat assessment is none of them. Density also
+    survives the two things colour does not: a sun-washed iPad and
+    colour-blindness.
 
 60. **THE MAP IS A PANEL THE COORDINATOR SIZES, AND THE CHOICE IS PER SCREEN
     (P0.1).** Three states — מוסתר / מפוצל / מלא — on every map-first screen,
@@ -1129,7 +1208,9 @@ src/core/                 PURE TS — no React, no DOM
   import.ts               Validation only (columns live next door). Problems
                           REJECT; warnings (מיקום חסר) do not.
   photo.ts routing.ts messages.ts config.ts sessions.ts
-  mock/                   farms(12) · people(300 volunteers, 6 drivers) ·
+  mock/                   threats.ts (G18 — 2 zones + 2 vectors, one of each
+                          attached and one free) ·
+                          farms(12) · people(300 volunteers, 6 drivers) ·
                           generate.ts (seeded PRNG) · anchors(4) · missions(6,
                           one seeded mismatch) · incidents(5) · visits.ts
 
@@ -1148,7 +1229,9 @@ src/ui/
   hooks/                  useCore · useLocale ·
                           useShellMetrics (publishes --shell-top / --shell-bottom,
                           decision 39) · useProgressive (F5.5)
-  components/             mapMode ★ (P0.1 — the three map states, per screen) ·
+  components/             threats.tsx + ThreatPanel (G18 — the coordinator-only
+                          layer's vocabulary and its editable list) ·
+                          mapMode ★ (P0.1 — the three map states, per screen) ·
                           PeopleMap (P0.2 — the rosters' locality bubbles) ·
                           AnchorMap ★ (F2 — the map that CREATES anchor points,
                           shared by the wizard, the farm detail and the form) ·

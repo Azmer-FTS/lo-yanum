@@ -22,6 +22,8 @@ import type {
   Mission,
   MissionLeg,
   MissionView,
+  ThreatVector,
+  ThreatZone,
   Volunteer,
   VolunteerStats,
 } from './types'
@@ -317,6 +319,60 @@ export function getFarmZonesForFarm(farmId: string): FarmZone[] {
 export function getAllVisibleFarmZones(): FarmZone[] {
   const farmIds = new Set(getVisibleFarms().map((f) => f.id))
   return _raw().farmZones.filter((z) => farmIds.has(z.farmId))
+}
+
+// --- G18: the threat layer -------------------------------------------------
+
+/**
+ * A59 — THE THREAT LAYER IS COORDINATOR-ONLY, AND THE GATE IS HERE.
+ *
+ * Not in a screen that happens not to render it. A farmer's phone, a
+ * volunteer's guard card and a driver's trip sheet must not be able to obtain
+ * "we assess this wadi as a high-intensity approach" by any route — and the
+ * only way to be sure of that is for the accessor itself to return nothing.
+ * The rule is one line and it is the same line for both shapes, so there is no
+ * second place for it to drift.
+ *
+ * The consequence is deliberate: a farmer cannot be shown the threat map for
+ * his OWN farm either. That is not an oversight. The assessment names patterns
+ * across holdings and is the programme's to hold; a farmer who wants to know
+ * what is around him is told by a human, on the phone.
+ *
+ * These are the two functions Lot 1 transcribes into RLS first, because they
+ * are the two where getting the policy wrong leaks something that matters.
+ */
+function threatLayerVisible(): boolean {
+  return getSession().role === 'coordinator'
+}
+
+export function getVisibleThreatZones(): ThreatZone[] {
+  if (!threatLayerVisible()) return []
+  return _raw().threatZones
+}
+
+export function getVisibleThreatVectors(): ThreatVector[] {
+  if (!threatLayerVisible()) return []
+  return _raw().threatVectors
+}
+
+/**
+ * What is attached to one entity, plus everything FREE at map level.
+ *
+ * The free shapes are included on purpose: a threat between two holdings is
+ * the one a coordinator most needs to see while looking at either of them, and
+ * a screen that showed only `farmId === this` would hide exactly that.
+ */
+export function getThreatsForFarm(farmId: string): {
+  zones: ThreatZone[]
+  vectors: ThreatVector[]
+} {
+  if (!threatLayerVisible() || !getFarm(farmId)) return { zones: [], vectors: [] }
+  return {
+    zones: _raw().threatZones.filter((z) => z.farmId === farmId || z.farmId === null),
+    vectors: _raw().threatVectors.filter(
+      (v) => v.farmId === farmId || v.farmId === null,
+    ),
+  }
 }
 
 export function getAnchorPointsForFarm(farmId: string): AnchorPoint[] {

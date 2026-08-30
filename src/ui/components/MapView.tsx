@@ -2,7 +2,14 @@ import { Suspense, lazy } from 'react'
 
 import type { MapViewProps } from './MapCanvas'
 
-export type { MapMarker, MapPolygon, MapViewProps, MarkerKind } from './MapCanvas'
+export type {
+  MapMarker,
+  MapPolygon,
+  MapThreatVector,
+  MapThreatZone,
+  MapViewProps,
+  MarkerKind,
+} from './MapCanvas'
 
 /**
  * Lazy boundary in front of MapLibre.

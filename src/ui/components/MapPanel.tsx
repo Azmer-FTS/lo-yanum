@@ -2,7 +2,12 @@ import type { ReactNode } from 'react'
 import type { LatLng } from '@core/index'
 
 import { MapView } from './MapView'
-import type { MapMarker, MapPolygon } from './MapView'
+import type {
+  MapMarker,
+  MapPolygon,
+  MapThreatVector,
+  MapThreatZone,
+} from './MapView'
 import { MapModeSwitch, useMapMode } from './mapMode'
 
 /**
@@ -71,6 +76,9 @@ export interface MapPanelProps {
   markers: MapMarker[]
   /** G1 — farm-zone polygons drawn beneath the markers. */
   polygons?: MapPolygon[]
+  /** G18 — the coordinator-only threat overlay, above the ground zones. */
+  threatZones?: MapThreatZone[]
+  threatVectors?: MapThreatVector[]
   /** Optional polyline (route planner) drawn beneath the markers. */
   line?: LatLng[]
   center?: LatLng
@@ -97,6 +105,8 @@ export interface MapPanelProps {
 export function MapPanel({
   markers,
   polygons,
+  threatZones,
+  threatVectors,
   line,
   center,
   zoom,
@@ -180,6 +190,8 @@ export function MapPanel({
             className="h-full w-full rounded-none"
             markers={markers}
             polygons={polygons}
+            threatZones={threatZones}
+            threatVectors={threatVectors}
             line={line}
             center={center}
             zoom={zoom}

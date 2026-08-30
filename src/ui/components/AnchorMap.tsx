@@ -2,14 +2,23 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { entityKindOf, ringAreaDunams, ringCenter } from '@core/index'
-import type { AnchorPoint, Farm, FarmZone, FarmZoneKind, LatLng } from '@core/index'
+import type {
+  AnchorPoint,
+  Farm,
+  FarmZone,
+  FarmZoneKind,
+  LatLng,
+  ThreatVector,
+  ThreatZone,
+} from '@core/index'
 
 import { Icon } from './Icon'
 import { MapView } from './MapView'
 import type { MapMarker, MapPolygon } from './MapView'
+import { ThreatLegend, threatVectorShapes, threatZoneShapes } from './threats'
 import { ZoneLegend, zoneColor, zoneLabelKey } from './zones'
 import { PointLegend } from './meet'
-import { entityMarkerKind, farmMarkerColor, postColor } from './badges'
+import { entityMarkerKind, farmMarkerColor, postColor, readToken } from './badges'
 import { FullscreenToggle, fullscreenShell, useMapFullscreen } from './fullscreen'
 
 /**
@@ -82,6 +91,19 @@ export interface AnchorMapProps {
   flush?: boolean
   /** Extra controls floated over the top of the map. */
   overlay?: React.ReactNode
+  /**
+   * G18 — the threat overlay. Passing the arrays DISPLAYS them; passing the
+   * two create callbacks additionally arms the drawing tools.
+   *
+   * Nothing here checks a role: `access.ts` returns an empty list for anyone
+   * but the coordinator, so a farmer's screen renders an empty overlay by
+   * construction rather than by a condition somebody could forget.
+   */
+  threatZones?: ThreatZone[]
+  threatVectors?: ThreatVector[]
+  onThreatZoneCreate?: (ring: LatLng[]) => void
+  onThreatVectorCreate?: (origin: LatLng, target: LatLng) => void
+  selectedThreatId?: string | null
 }
 
 /**
@@ -93,6 +115,13 @@ type Mode =
   | { kind: 'idle' }
   | { kind: 'placing' }
   | { kind: 'drawing'; zone: FarmZoneKind; draft: LatLng[] }
+  // G18 — a threat zone is drawn exactly like ground, in its own explicit
+  // mode so a coordinator can never draw one by accident.
+  | { kind: 'threatZone'; draft: LatLng[] }
+  // A vector is TWO clicks: where they come from, then where they arrive.
+  // `origin: null` is the first half of the gesture, which is what lets the
+  // banner say which click the map is waiting for.
+  | { kind: 'threatVector'; origin: LatLng | null }
 
 export function AnchorMap({
   farm,
@@ -111,6 +140,11 @@ export function AnchorMap({
   className = 'h-full w-full',
   flush = false,
   overlay,
+  threatZones = [],
+  threatVectors = [],
+  onThreatZoneCreate,
+  onThreatVectorCreate,
+  selectedThreatId = null,
 }: AnchorMapProps) {
   const { t } = useTranslation()
 
@@ -134,6 +168,8 @@ export function AnchorMap({
   )
 
   const drawing = mode.kind === 'drawing' ? mode : null
+  const threatDrawing = mode.kind === 'threatZone' ? mode : null
+  const vectorDrawing = mode.kind === 'threatVector' ? mode : null
   const arming = mode.kind === 'placing'
   const zonesEditable = Boolean(onZoneCreate)
   // G16 — a moshav paints its ground in the blue family and its boundary is
@@ -188,6 +224,12 @@ export function AnchorMap({
     onMove ? 'drag' : 'fixed',
     drawing ? `draw:${drawing.zone}:${draftKey}` : '',
     selectedZone ? `zone:${selectedZone.id}:${selectedRingKey}` : '',
+    threatDrawing
+      ? `threat:${threatDrawing.draft.map((v) => `${v.lat},${v.lng}`).join(';')}`
+      : '',
+    vectorDrawing?.origin
+      ? `vector:${vectorDrawing.origin.lat},${vectorDrawing.origin.lng}`
+      : '',
   ].join('#')
 
   const markers: MapMarker[] = useMemo(
@@ -222,6 +264,28 @@ export function AnchorMap({
           onSelect: onSelect ? () => onSelect(anchor.id) : undefined,
         }
       }),
+      // G18 — the threat ring being drawn, and the vector's origin waiting
+      // for its second click. Both in the danger hue, so a coordinator can
+      // never mistake which kind of shape he is placing.
+      ...(threatDrawing?.draft ?? []).map((v, i) => ({
+        id: `threat-draft-${i}`,
+        position: v,
+        color: readToken('--status-danger'),
+        title: t('zone.vertex'),
+        kind: 'vertex' as const,
+      })),
+      ...(vectorDrawing?.origin
+        ? [
+            {
+              id: 'vector-origin',
+              position: vectorDrawing.origin,
+              color: readToken('--status-danger'),
+              title: t('threat.vectorStep2'),
+              kind: 'vertex' as const,
+              emphasis: true,
+            },
+          ]
+        : []),
       // G1 — the vertices being drawn right now.
       ...(drawing?.draft ?? []).map((v, i) => ({
         id: `draft-${i}`,
@@ -367,10 +431,33 @@ export function AnchorMap({
       setMode({ ...drawing, draft: [...drawing.draft, position] })
       return
     }
+    if (threatDrawing) {
+      setMode({ kind: 'threatZone', draft: [...threatDrawing.draft, position] })
+      return
+    }
+    if (vectorDrawing) {
+      // Two clicks, and the SECOND one commits. Splitting it this way is what
+      // lets the coordinator abandon a half-drawn vector with Esc without
+      // leaving a stray origin behind.
+      if (vectorDrawing.origin === null) {
+        setMode({ kind: 'threatVector', origin: position })
+      } else {
+        onThreatVectorCreate?.(vectorDrawing.origin, position)
+        setMode({ kind: 'idle' })
+      }
+      return
+    }
     if (arming) {
       onCreate?.(position)
       setMode({ kind: 'idle' })
     }
+  }
+
+  const closeThreatDraft = (dropLast = false) => {
+    if (!threatDrawing) return
+    const ring = dropLast ? threatDrawing.draft.slice(0, -1) : threatDrawing.draft
+    if (ring.length >= 3) onThreatZoneCreate?.(ring)
+    setMode({ kind: 'idle' })
   }
 
   const closeDraft = (dropLast = false) => {
@@ -403,7 +490,29 @@ export function AnchorMap({
         // A double-click while drawing closes the ring. It has already fired
         // two plain clicks — the first was a real vertex, the second a
         // duplicate a few pixels away — so the duplicate is dropped.
-        onMapDblClick={drawing ? () => closeDraft(true) : undefined}
+        threatZones={threatZoneShapes(
+          threatZones,
+          selectedThreatId,
+        ).concat(
+          threatDrawing && threatDrawing.draft.length >= 3
+            ? [
+                {
+                  id: 'threat-draft',
+                  ring: threatDrawing.draft,
+                  intensity: 'medium' as const,
+                  emphasis: true,
+                },
+              ]
+            : [],
+        )}
+        threatVectors={threatVectorShapes(threatVectors, selectedThreatId)}
+        onMapDblClick={
+          drawing
+            ? () => closeDraft(true)
+            : threatDrawing
+              ? () => closeThreatDraft(true)
+              : undefined
+        }
         onPolygonClick={
           zonesEditable && !active
             ? (id) => setSelectedZoneId((cur) => (cur === id ? null : id))
@@ -444,6 +553,35 @@ export function AnchorMap({
               />
               {t('zone.drawGrazing')}
             </button>
+            {/* G18 — the two threat tools, only where the caller armed them.
+                Deliberately after the ground buttons and visually apart: they
+                write a different KIND of statement. */}
+            {onThreatZoneCreate && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedZoneId(null)
+                  setMode({ kind: 'threatZone', draft: [] })
+                }}
+                className="btn-secondary py-1.5 text-micro"
+              >
+                <Icon name="alert" size={13} />
+                {t('threat.drawZone')}
+              </button>
+            )}
+            {onThreatVectorCreate && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedZoneId(null)
+                  setMode({ kind: 'threatVector', origin: null })
+                }}
+                className="btn-secondary py-1.5 text-micro"
+              >
+                <Icon name="send" size={13} />
+                {t('threat.addVector')}
+              </button>
+            )}
             {selectedZone && (
               <>
                 {/* G15 — the panel's half of the live read-out: which zone is
@@ -495,11 +633,15 @@ export function AnchorMap({
             the painted ground means. */}
         <PointLegend showFarm showPost showMeet={false} entity={entity} />
         <ZoneLegend zones={zones} entity={entity} />
+        {/* G18 — its own stack, because "what ground is this" and "what is the
+            assessment" are different questions. Renders nothing when the layer
+            is empty, which is what a farmer's session always produces. */}
+        <ThreatLegend zones={threatZones} vectors={threatVectors} />
 
         {/* The control sits ON the map, because the map is what it is about.
             The empty case is louder on purpose: with no points yet, this
             banner IS the only route forward. */}
-        {(onCreate || drawing) && (
+        {(onCreate || drawing || threatDrawing || vectorDrawing) && (
           <div className="w-full self-stretch">
           <div
             className={`pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card px-3.5 py-2.5 backdrop-blur ${
@@ -510,7 +652,15 @@ export function AnchorMap({
           >
             <span className="shrink-0 text-accent-ink">
               <Icon
-                name={drawing ? 'edit' : arming ? 'pin' : 'plus'}
+                name={
+                  drawing || threatDrawing
+                    ? 'edit'
+                    : vectorDrawing
+                      ? 'alert'
+                      : arming
+                        ? 'pin'
+                        : 'plus'
+                }
                 size={17}
               />
             </span>
@@ -525,7 +675,15 @@ export function AnchorMap({
                           : 'zone.drawingBoundary'
                         : 'zone.drawingGrazing',
                     )
-                  : t(arming ? 'anchor.armedHint' : 'anchor.mapHintCreate')}
+                  : threatDrawing
+                    ? t('threat.drawingZone')
+                    : vectorDrawing
+                      ? t(
+                          vectorDrawing.origin === null
+                            ? 'threat.vectorStep1'
+                            : 'threat.vectorStep2',
+                        )
+                      : t(arming ? 'anchor.armedHint' : 'anchor.mapHintCreate')}
               </span>
               <span className="block text-micro text-content-muted">
                 {drawing
@@ -540,15 +698,48 @@ export function AnchorMap({
                           })}`
                         : ''
                     } · ${t('anchor.escToCancel')}`
-                  : arming
-                    ? t('anchor.escToCancel')
-                    : onMove && !empty
-                      ? t('anchor.mapHintDrag')
-                      : ''}
+                  : threatDrawing
+                    ? `${t('zone.drawingHint')} · ${t('zone.vertexCount', {
+                        count: threatDrawing.draft.length,
+                      })} · ${t('anchor.escToCancel')}`
+                    : vectorDrawing || arming
+                      ? t('anchor.escToCancel')
+                      : onMove && !empty
+                        ? t('anchor.mapHintDrag')
+                        : ''}
               </span>
             </p>
 
-            {drawing ? (
+            {threatDrawing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => closeThreatDraft()}
+                  disabled={threatDrawing.draft.length < 3}
+                  className="btn-primary shrink-0 py-1.5 text-micro"
+                >
+                  <Icon name="check" size={13} />
+                  {t('zone.closePolygon')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode({ kind: 'idle' })}
+                  className="btn-secondary shrink-0 py-1.5 text-micro"
+                >
+                  <Icon name="close" size={13} />
+                  {t('common.cancel')}
+                </button>
+              </>
+            ) : vectorDrawing ? (
+              <button
+                type="button"
+                onClick={() => setMode({ kind: 'idle' })}
+                className="btn-secondary shrink-0 py-1.5 text-micro"
+              >
+                <Icon name="close" size={13} />
+                {t('common.cancel')}
+              </button>
+            ) : drawing ? (
               <>
                 <button
                   type="button"

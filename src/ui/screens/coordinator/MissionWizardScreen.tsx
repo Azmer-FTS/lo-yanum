@@ -20,6 +20,7 @@ import {
   fromDayKey,
   getAnchorPointsForFarm,
   getFarmZonesForFarm,
+  getThreatsForFarm,
   getVisibleFarms,
   getVisibleMissions,
   getDrivers,
@@ -335,6 +336,7 @@ export function MissionWizardScreen() {
   const [farmId, setFarmId] = useState(farms[0]?.id ?? '')
   const anchors = useCoreValue(() => getAnchorPointsForFarm(farmId))
   const zones = useCoreValue(() => getFarmZonesForFarm(farmId))
+  const threats = useCoreValue(() => getThreatsForFarm(farmId))
 
   /**
    * The anchor points this guard covers, IN ORDER. The first is the rendezvous
@@ -1169,6 +1171,12 @@ export function MissionWizardScreen() {
                 }
                 onZoneRingChange={updateFarmZoneRing}
                 onZoneDelete={deleteFarmZone}
+                // G18 — the layer's whole point on this screen: a guard post
+                // is placed FACING the approach, and the coordinator cannot
+                // do that from memory. Read-only here — the wizard is not
+                // where an assessment is revised.
+                threatZones={threats.zones}
+                threatVectors={threats.vectors}
               />
             </div>
           </div>

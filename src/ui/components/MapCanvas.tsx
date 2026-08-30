@@ -3,7 +3,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { HOME_BASE, boundsOf } from '@core/index'
+import { HOME_BASE, bearingDeg, boundsOf } from '@core/index'
 import type { LatLng } from '@core/index'
 
 import { readToken } from './badges'
@@ -94,10 +94,41 @@ export interface MapPolygon {
   emphasis?: boolean
 }
 
+/**
+ * G18 — a THREAT ZONE, drawn so it can never be mistaken for ground.
+ *
+ * A farm boundary and a threat assessment are different KINDS of statement,
+ * and on a map where four zone tints already compete, a fifth colour would
+ * just be a fifth colour. So the threat layer changes the TEXTURE: a diagonal
+ * hatch instead of a flat wash, a dashed outline instead of a solid one. That
+ * reads as "this is an overlay, not terrain" before any colour is decoded, and
+ * it survives the two things colour does not — a sun-washed iPad and
+ * colour-blindness.
+ */
+export interface MapThreatZone {
+  id: string
+  ring: LatLng[]
+  /** Drives the hatch tint and the outline. */
+  intensity: 'low' | 'medium' | 'high'
+  emphasis?: boolean
+}
+
+/** G18 — an approach vector: a shaft from origin to target, plus a head. */
+export interface MapThreatVector {
+  id: string
+  origin: LatLng
+  target: LatLng
+  intensity: 'low' | 'medium' | 'high'
+  emphasis?: boolean
+}
+
 export interface MapViewProps {
   markers: MapMarker[]
   /** G1 — zone polygons, under the markers and the route line. */
   polygons?: MapPolygon[]
+  /** G18 — the coordinator-only threat overlay, above the ground zones. */
+  threatZones?: MapThreatZone[]
+  threatVectors?: MapThreatVector[]
   /** A click that lands INSIDE a polygon (fires alongside onMapClick). */
   onPolygonClick?: (id: string) => void
   /** Ordered points for an optional route polyline. */
@@ -480,6 +511,8 @@ function markerElement(marker: MapMarker): HTMLElement {
 export default function MapCanvas({
   markers,
   polygons,
+  threatZones,
+  threatVectors,
   onPolygonClick,
   line,
   center,
@@ -523,6 +556,8 @@ export default function MapCanvas({
   // can apply it the moment the source exists, whatever order things mounted in.
   const lineRef = useRef<LatLng[] | undefined>(line)
   const polygonsRef = useRef<MapPolygon[] | undefined>(polygons)
+  const threatZonesRef = useRef<MapThreatZone[] | undefined>(threatZones)
+  const threatVectorsRef = useRef<MapThreatVector[] | undefined>(threatVectors)
 
   // Create the map once.
   useEffect(() => {
@@ -550,6 +585,12 @@ export default function MapCanvas({
     }
 
     map.on('load', () => {
+      // A handle for the verification scripts. Published on LOAD, not on
+      // create: React's dev-mode double mount creates a map, tears it down and
+      // creates another, and a handle published at create time can point at
+      // the corpse. A loaded map is by definition the live one.
+      ;(window as unknown as { __loYanumMap?: maplibregl.Map }).__loYanumMap = map
+
       // G1 — zone polygons, declared before the route so the line and the
       // markers always paint above the ground they describe.
       map.addSource('zones', {
@@ -580,6 +621,97 @@ export default function MapCanvas({
         if (id) polygonClickRef.current?.(id)
       })
       applyPolygons(map, polygonsRef.current)
+
+      // G18 — THE THREAT OVERLAY, above the ground and below the route.
+      //
+      // The hatch is a generated 8×8 image per intensity rather than a flat
+      // fill: `fill-pattern` is the only way MapLibre draws a texture, and a
+      // texture is what separates "an assessment laid over the map" from "the
+      // ground itself". One image per intensity because a pattern cannot take
+      // a per-feature colour the way `fill-color` can.
+      for (const intensity of ['low', 'medium', 'high'] as const) {
+        const name = `threat-hatch-${intensity}`
+        if (!map.hasImage(name)) {
+          map.addImage(
+            name,
+            hatchImage(threatToken(intensity), intensity === 'high'),
+            { pixelRatio: 2 },
+          )
+        }
+      }
+      if (!map.hasImage('threat-arrow')) {
+        map.addImage(
+          'threat-arrow',
+          arrowImage(threatToken('medium'), readToken('--surface-base')),
+          { pixelRatio: 1 },
+        )
+      }
+
+      map.addSource('threat-zones', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      })
+      map.addLayer({
+        id: 'threat-zones-fill',
+        type: 'fill',
+        source: 'threat-zones',
+        paint: {
+          'fill-pattern': ['get', 'pattern'],
+          'fill-opacity': ['case', ['get', 'emphasis'], 0.95, 0.75],
+        },
+      })
+      map.addLayer({
+        id: 'threat-zones-line',
+        type: 'line',
+        source: 'threat-zones',
+        layout: { 'line-cap': 'butt', 'line-join': 'round' },
+        paint: {
+          'line-color': ['get', 'color'],
+          // The intensity's weight, doubled again when the zone is selected.
+          'line-width': [
+            'case',
+            ['get', 'emphasis'],
+            4.5,
+            ['case', ['==', ['get', 'intensity'], 'high'], 3.2, 2],
+          ],
+          // Dashed, so the boundary of an ASSESSMENT never reads as a fence.
+          'line-dasharray': [2, 1.6],
+        },
+      })
+
+      map.addSource('threat-vectors', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      })
+      map.addLayer({
+        id: 'threat-vectors-line',
+        type: 'line',
+        source: 'threat-vectors',
+        filter: ['==', ['geometry-type'], 'LineString'],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': ['case', ['get', 'emphasis'], 5, 3.5],
+        },
+      })
+      map.addLayer({
+        id: 'threat-vectors-head',
+        type: 'symbol',
+        source: 'threat-vectors',
+        filter: ['==', ['geometry-type'], 'Point'],
+        layout: {
+          'icon-image': 'threat-arrow',
+          'icon-size': ['case', ['get', 'emphasis'], 1.15, 0.9],
+          'icon-rotate': ['get', 'bearing'],
+          // Rotate WITH the map, so a two-finger twist does not leave every
+          // arrow pointing somewhere it does not mean.
+          'icon-rotation-alignment': 'map',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+      })
+
+      applyThreats(map, threatZonesRef.current, threatVectorsRef.current)
 
       // Declared up-front with an empty source so route updates are a cheap
       // setData() rather than an add/remove layer cycle on every keystroke.
@@ -742,6 +874,15 @@ export default function MapCanvas({
     if (map) applyPolygons(map, polygons)
   }, [polygons])
 
+  // G18 — one effect for both shapes: they are one layer to the user, and
+  // toggling "שכבת איומים" changes both at once.
+  useEffect(() => {
+    threatZonesRef.current = threatZones
+    threatVectorsRef.current = threatVectors
+    const map = mapRef.current
+    if (map) applyThreats(map, threatZones, threatVectors)
+  }, [threatZones, threatVectors])
+
   /**
    * Frame the content.
    *
@@ -801,6 +942,158 @@ export default function MapCanvas({
       } ${className}`}
     />
   )
+}
+
+/**
+ * G18 — the intensity's colour.
+ *
+ * TWO hues, not three: decision 49 keeps `--critical` for four meanings and a
+ * threat assessment is none of them. The third step of the ladder is carried
+ * by hatch DENSITY (see `hatchImage`) and outline weight, which is the better
+ * encoding anyway — density survives a sun-washed iPad and colour-blindness.
+ */
+function threatToken(intensity: 'low' | 'medium' | 'high'): string {
+  return readToken(intensity === 'low' ? '--status-warn' : '--status-danger')
+}
+
+/**
+ * A diagonal-hatch tile, drawn once per intensity and handed to MapLibre.
+ *
+ * 16 px at pixelRatio 2 is an 8 px repeat on screen: coarse enough to read as
+ * texture at farm zoom, fine enough not to turn into stripes at region zoom.
+ * The strokes run at 45° and the background is transparent, so the terrain
+ * underneath still shows — a threat zone is an overlay, not a lid.
+ */
+function hatchImage(color: string, dense: boolean): ImageData {
+  const size = 16
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return new ImageData(size, size)
+  ctx.clearRect(0, 0, size, size)
+  ctx.strokeStyle = color
+  ctx.lineWidth = dense ? 4 : 2.5
+  ctx.lineCap = 'square'
+  // Two stripes per tile when dense, one when not — that step IS the third
+  // rung of the intensity ladder. The extra passes at ±size make the stripe
+  // wrap cleanly across the tile seam instead of stopping at the edge.
+  const stripes = dense ? [0, size / 2] : [0]
+  for (const stripe of stripes) {
+    for (const offset of [-size, 0, size]) {
+      ctx.beginPath()
+      ctx.moveTo(offset + stripe, size)
+      ctx.lineTo(offset + stripe + size, 0)
+      ctx.stroke()
+    }
+  }
+  return ctx.getImageData(0, 0, size, size)
+}
+
+/**
+ * A solid arrowhead, pointing NORTH so `icon-rotate` can take a bearing
+ * directly, with a pale outline so it stays legible over its own hatch.
+ *
+ * Drawn at 36 px and registered at pixelRatio 1: at pixelRatio 2 the first
+ * version came out ~9 px on screen and was invisible against the shaft, which
+ * makes a vector indistinguishable from a plain line — and the whole point of
+ * a vector is that it has a direction.
+ */
+function arrowImage(color: string, ring: string): ImageData {
+  const size = 36
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return new ImageData(size, size)
+  ctx.clearRect(0, 0, size, size)
+  ctx.beginPath()
+  ctx.moveTo(size / 2, 3)
+  ctx.lineTo(size - 5, size - 6)
+  ctx.lineTo(size / 2, size - 13)
+  ctx.lineTo(5, size - 6)
+  ctx.closePath()
+  ctx.fillStyle = color
+  ctx.fill()
+  ctx.strokeStyle = ring
+  ctx.lineWidth = 2
+  ctx.lineJoin = 'round'
+  ctx.stroke()
+  return ctx.getImageData(0, 0, size, size)
+}
+
+/**
+ * Push the threat overlay into its two pre-declared sources.
+ *
+ * A vector becomes TWO features — the shaft as a LineString and the head as a
+ * Point carrying its bearing — because MapLibre has no way to put a symbol at
+ * one end of a line. The layers filter on geometry type, so both live in one
+ * source and one `setData`.
+ */
+function applyThreats(
+  map: maplibregl.Map,
+  zones: MapThreatZone[] | undefined,
+  vectors: MapThreatVector[] | undefined,
+): void {
+  const zoneSource = map.getSource('threat-zones') as
+    | maplibregl.GeoJSONSource
+    | undefined
+  if (zoneSource) {
+    zoneSource.setData({
+      type: 'FeatureCollection',
+      features: (zones ?? [])
+        .filter((z) => z.ring.length >= 3)
+        .map((z) => ({
+          type: 'Feature',
+          properties: {
+            id: z.id,
+            color: threatToken(z.intensity),
+            intensity: z.intensity,
+            pattern: `threat-hatch-${z.intensity}`,
+            emphasis: z.emphasis ?? false,
+          },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[...z.ring, z.ring[0]].map((v) => [v.lng, v.lat])],
+          },
+        })),
+    })
+  }
+
+  const vectorSource = map.getSource('threat-vectors') as
+    | maplibregl.GeoJSONSource
+    | undefined
+  if (!vectorSource) return
+  const features = (vectors ?? []).flatMap((v) => {
+    const props = {
+      id: v.id,
+      color: threatToken(v.intensity),
+      emphasis: v.emphasis ?? false,
+      bearing: bearingDeg(v.origin, v.target),
+    }
+    return [
+      {
+        type: 'Feature' as const,
+        properties: props,
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: [
+            [v.origin.lng, v.origin.lat],
+            [v.target.lng, v.target.lat],
+          ],
+        },
+      },
+      {
+        type: 'Feature' as const,
+        properties: props,
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [v.target.lng, v.target.lat],
+        },
+      },
+    ]
+  })
+  vectorSource.setData({ type: 'FeatureCollection', features })
 }
 
 /** Push the zone polygons into the pre-declared `zones` source. */

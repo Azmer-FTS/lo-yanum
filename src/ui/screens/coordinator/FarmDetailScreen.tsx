@@ -6,7 +6,10 @@ import {
   FARM_PIPELINE,
   createAnchorPoint,
   createFarmZone,
+  createThreatVector,
+  createThreatZone,
   deleteFarmZone,
+  getThreatsForFarm,
   formatDate,
   formatDateTime,
   formatRelative,
@@ -38,6 +41,7 @@ import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
 import { AnchorMap } from '../../components/AnchorMap'
 import { MapModeSwitch, useMapMode } from '../../components/mapMode'
+import { ThreatPanel } from '../../components/ThreatPanel'
 import { zoneColor, zoneLabelKey } from '../../components/zones'
 import { Timeline } from '../../components/Timeline'
 import type { TimelineEntry } from '../../components/Timeline'
@@ -336,6 +340,10 @@ export function FarmDetailScreen() {
   const farm = useCoreValue(() => getFarm(farmId))
   const anchors = useCoreValue(() => getAnchorPointsForFarm(farmId))
   const zones = useCoreValue(() => getFarmZonesForFarm(farmId))
+  // G18 — attached to THIS farm plus everything free at map level. A threat
+  // between two holdings is the one a coordinator most needs to see while
+  // looking at either of them (see getThreatsForFarm).
+  const threats = useCoreValue(() => getThreatsForFarm(farmId))
   const visits = useCoreValue(() => getFarmVisitsForFarm(farmId))
   const incidents = useCoreValue(() =>
     getVisibleIncidentViews().filter((v) => v.incident.farmId === farmId),
@@ -350,6 +358,7 @@ export function FarmDetailScreen() {
   // G15 — zone selection lives HERE so the list's "ערוך" buttons and the
   // map's own clicks drive the same state.
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
+  const [selectedThreatId, setSelectedThreatId] = useState<string | null>(null)
 
   // G7bis.3 — the secondary blocks open by default only where two columns
   // exist to absorb them; on one narrow column they start folded. Read once:
@@ -617,6 +626,20 @@ export function FarmDetailScreen() {
             )}
           </Section>
 
+          {/* G18 — directly under the ground it overlays, so the two read as
+              what they are: the terrain, then the assessment about it. */}
+          <ThreatPanel
+            zones={threats.zones}
+            vectors={threats.vectors}
+            selectedId={selectedThreatId}
+            onSelect={(id) => {
+              setSelectedThreatId(id)
+              if (id !== null && mapMode === 'hidden') setMapMode('split')
+            }}
+            farmName={farm.name}
+            currentFarmId={farm.id}
+          />
+
           <Section title={t('farms.guardHistory')}>
             {missions.length === 0 ? (
               <EmptyState icon="shield" title={t('missions.empty')} />
@@ -860,6 +883,31 @@ export function FarmDetailScreen() {
             <AnchorMap
               flush
               farm={farm}
+              threatZones={threats.zones}
+              threatVectors={threats.vectors}
+              selectedThreatId={selectedThreatId}
+              // A shape drawn from a farm's own screen is ATTACHED to it. The
+              // free ones are drawn from the global map, where "which farm?"
+              // has no answer.
+              onThreatZoneCreate={(ring) => {
+                const created = createThreatZone({
+                  farmId: farm.id,
+                  ring,
+                  intensity: 'medium',
+                  note: '',
+                })
+                setSelectedThreatId(created.id)
+              }}
+              onThreatVectorCreate={(origin, target) => {
+                const created = createThreatVector({
+                  farmId: farm.id,
+                  origin,
+                  target,
+                  intensity: 'medium',
+                  note: '',
+                })
+                setSelectedThreatId(created.id)
+              }}
               anchors={anchors}
               selectedZoneId={selectedZoneId}
               onZoneSelectionChange={setSelectedZoneId}

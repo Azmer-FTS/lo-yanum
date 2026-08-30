@@ -323,3 +323,22 @@ export function isUnresolvableLocationLink(raw: string): boolean {
   if (parsePositionInput(v) !== null) return false
   return /goo\.gl|maps\.app|waze\.com|google\.[a-z.]+\/maps|maps\.google/.test(v)
 }
+
+/**
+ * G18 — initial bearing from `a` to `b`, in degrees clockwise from north.
+ *
+ * Used to rotate a threat vector's arrowhead. It is the FORWARD azimuth of a
+ * great circle, not the angle of the straight line on screen: over the ~10 km
+ * a vector spans the two agree to well under a degree, but computing it
+ * properly means the arrow stays right if the map is ever rotated or if
+ * somebody draws a vector across the whole Negev.
+ */
+export function bearingDeg(a: LatLng, b: LatLng): number {
+  const φ1 = toRad(a.lat)
+  const φ2 = toRad(b.lat)
+  const Δλ = toRad(b.lng - a.lng)
+  const y = Math.sin(Δλ) * Math.cos(φ2)
+  const x =
+    Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ)
+  return (((Math.atan2(y, x) * 180) / Math.PI) + 360) % 360
+}

@@ -27,6 +27,14 @@ import {
   getVisibleIncidents,
   getVisibleMissionViews,
   getVolunteers,
+  getVisibleThreatZones,
+  getVisibleThreatVectors,
+  getThreatsForFarm,
+  createThreatZone,
+  createThreatVector,
+  updateThreatZone,
+  deleteThreatZone,
+  bearingDeg,
   bubbleDiameter,
   clusterByLocality,
   IMPORT_KINDS,
@@ -428,6 +436,134 @@ section('A55 — moshavim are entities with the same mechanics')
   const moshavGrazing = getFarmZonesForFarm('farm-13').find((z) => z.kind === 'grazing_area')!
   const westEdge = Math.min(...moshavGrazing.ring.map((p) => p.lng))
   check('מושב רתמים adjoins חוות רתם', Math.abs(westEdge - 34.672) < 0.001, `${westEdge}`)
+}
+
+// --- A59 (G18): the threat layer, and who may not see it ---------------------
+
+section('A59 — the threat layer is coordinator-only, and the gate is in core')
+{
+  as(COORD)
+  const zones = getVisibleThreatZones()
+  const vectors = getVisibleThreatVectors()
+  check('two mock threat zones', zones.length === 2, `${zones.length}`)
+  check('two mock threat vectors', vectors.length === 2, `${vectors.length}`)
+  check(
+    'one of each is attached to an entity and one is free at map level',
+    zones.filter((z) => z.farmId !== null).length === 1 &&
+      zones.filter((z) => z.farmId === null).length === 1 &&
+      vectors.filter((v) => v.farmId !== null).length === 1 &&
+      vectors.filter((v) => v.farmId === null).length === 1,
+  )
+  check(
+    'every shape carries an intensity and a revision date',
+    [...zones, ...vectors].every(
+      (t) =>
+        ['low', 'medium', 'high'].includes(t.intensity) &&
+        !Number.isNaN(new Date(t.updatedAt).getTime()),
+    ),
+  )
+  check(
+    'the fixtures sit inside the Negev, near the farms they describe',
+    zones.every((z) =>
+      z.ring.every((p) => p.lat > 30.5 && p.lat < 31.5 && p.lng > 34.4 && p.lng < 35.2),
+    ),
+  )
+
+  // A farm's own view includes the FREE shapes: a threat between two holdings
+  // is the one a coordinator most needs while looking at either of them.
+  const forFarm01 = getThreatsForFarm('farm-01')
+  check(
+    "a farm's view carries its own shapes plus the free ones",
+    forFarm01.zones.length === 2 && forFarm01.vectors.length === 2,
+    `${forFarm01.zones.length} zones / ${forFarm01.vectors.length} vectors`,
+  )
+  const forFarm02 = getThreatsForFarm('farm-02')
+  check(
+    'a farm with no attached threat still sees the free ones',
+    forFarm02.zones.length === 1 && forFarm02.vectors.length === 1,
+    `${forFarm02.zones.length} / ${forFarm02.vectors.length}`,
+  )
+
+  // THE GATE. Not "the screen does not render it" — the accessor returns
+  // nothing, for every role and every route into the layer.
+  for (const session of [
+    { role: 'farmer', entityId: 'contact-01a' },
+    { role: 'volunteer', entityId: 'vol-001' },
+    { role: 'driver', entityId: 'drv-03' },
+  ] as Session[]) {
+    as(session)
+    check(
+      `${session.role} sees no threat zones`,
+      getVisibleThreatZones().length === 0,
+    )
+    check(
+      `${session.role} sees no threat vectors`,
+      getVisibleThreatVectors().length === 0,
+    )
+    check(
+      `${session.role} cannot reach them through a farm either`,
+      getThreatsForFarm('farm-01').zones.length === 0 &&
+        getThreatsForFarm('farm-01').vectors.length === 0,
+    )
+  }
+  // The farmer is the sharp case: he owns farm-01 and still gets nothing.
+  as({ role: 'farmer', entityId: 'contact-01a' })
+  check(
+    'a farmer is refused the layer for his OWN farm — deliberate, not an oversight',
+    getMyFarm()?.id === 'farm-01' && getThreatsForFarm('farm-01').zones.length === 0,
+  )
+
+  // --- the writers ----------------------------------------------------------
+  as(COORD)
+  const created = createThreatZone({
+    farmId: 'farm-02',
+    ring: [
+      { lat: 30.87, lng: 34.79 },
+      { lat: 30.88, lng: 34.8 },
+      { lat: 30.869, lng: 34.802 },
+    ],
+    intensity: 'low',
+    note: 'בדיקה',
+  })
+  check('a zone can be created', getVisibleThreatZones().length === 3)
+  check('and it is stamped with a revision date', created.updatedAt !== '')
+  const firstStamp = created.updatedAt
+  updateThreatZone(created.id, { intensity: 'high' })
+  const revised = getVisibleThreatZones().find((z) => z.id === created.id)!
+  check('a revision changes the intensity', revised.intensity === 'high')
+  check(
+    'and re-stamps the date — a caller can forget to bump it, the store cannot',
+    revised.updatedAt >= firstStamp,
+  )
+  const vector = createThreatVector({
+    farmId: null,
+    origin: { lat: 30.9, lng: 34.8 },
+    target: { lat: 30.95, lng: 34.75 },
+    intensity: 'medium',
+    note: '',
+  })
+  check('a vector can be created free at map level', vector.farmId === null)
+  deleteThreatZone(created.id)
+  check('and a zone can be deleted', getVisibleThreatZones().length === 2)
+
+  // The arrowhead's rotation. Due north is 0, due east 90 — if this is ever
+  // off by 90 every arrow on the map points at the wrong thing.
+  check(
+    'a vector pointing north bears 0°',
+    Math.abs(bearingDeg({ lat: 31, lng: 34.7 }, { lat: 31.1, lng: 34.7 })) < 0.5,
+    `${bearingDeg({ lat: 31, lng: 34.7 }, { lat: 31.1, lng: 34.7 }).toFixed(2)}`,
+  )
+  check(
+    'a vector pointing east bears 90°',
+    Math.abs(bearingDeg({ lat: 31, lng: 34.7 }, { lat: 31, lng: 34.8 }) - 90) < 0.5,
+    `${bearingDeg({ lat: 31, lng: 34.7 }, { lat: 31, lng: 34.8 }).toFixed(2)}`,
+  )
+  check(
+    'and one pointing west bears 270°',
+    Math.abs(bearingDeg({ lat: 31, lng: 34.8 }, { lat: 31, lng: 34.7 }) - 270) < 0.5,
+    `${bearingDeg({ lat: 31, lng: 34.8 }, { lat: 31, lng: 34.7 }).toFixed(2)}`,
+  )
+  resetStore()
 }
 
 // --- A44 (G10): the templates and the extended import ------------------------

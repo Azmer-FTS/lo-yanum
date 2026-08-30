@@ -8,12 +8,19 @@ import {
   formatDate,
   getAllVisibleFarmZones,
   getVisibleFarms,
+  getVisibleThreatVectors,
+  getVisibleThreatZones,
 } from '@core/index'
 import type { Farm, FarmStatus, FarmType } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { ChevronForward, Icon } from '../../components/Icon'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
+import {
+  ThreatLegend,
+  threatVectorShapes,
+  threatZoneShapes,
+} from '../../components/threats'
 import type { MapMarker } from '../../components/MapView'
 import {
   FarmStatusChip,
@@ -50,6 +57,34 @@ export function FarmsListScreen() {
   const navigate = useNavigate()
   const farms = useCoreValue(getVisibleFarms)
   const zones = useCoreValue(getAllVisibleFarmZones)
+  // G18 — coordinator-only by construction: `access.ts` returns [] for every
+  // other role, so no condition here decides who sees the layer.
+  const threatZones = useCoreValue(getVisibleThreatZones)
+  const threatVectors = useCoreValue(getVisibleThreatVectors)
+  /**
+   * The layer is OFF by default and its state is remembered.
+   *
+   * Off because the global map's job is "where are my farms and how are they
+   * doing", and a hatched overlay across half the Negev competes with that;
+   * remembered because a coordinator working a threat brief this week should
+   * not re-arm it on every navigation. Same key space as P0.1's map mode.
+   */
+  const [threatLayer, setThreatLayer] = useState(() => {
+    try {
+      return localStorage.getItem('lo-yanum:threat-layer') === '1'
+    } catch {
+      return false
+    }
+  })
+  const toggleThreatLayer = () =>
+    setThreatLayer((on) => {
+      try {
+        localStorage.setItem('lo-yanum:threat-layer', on ? '0' : '1')
+      } catch {
+        // A remembered toggle is a convenience, not a requirement.
+      }
+      return !on
+    })
 
   // The dashboard links here with ?status=… — keep it in the URL so a filtered
   // list stays shareable and survives a refresh.
@@ -192,6 +227,23 @@ export function FarmsListScreen() {
             </button>
           ))}
         </div>
+        {/* G18 — the threat layer's switch lives with the view controls,
+            because it IS a view control: it changes what the map is about,
+            not what the list contains. Coordinator-only by construction —
+            with nothing to show, there is nothing to toggle. */}
+        {(threatZones.length > 0 || threatVectors.length > 0) && (
+          <button
+            type="button"
+            onClick={toggleThreatLayer}
+            aria-pressed={threatLayer}
+            className={`filter-pill min-h-11 px-3 ${
+              threatLayer ? 'filter-pill-active' : ''
+            }`}
+          >
+            <Icon name="alert" size={13} />
+            {t('threat.layer')}
+          </button>
+        )}
         {/* G10 — the farms roster gets the same import affordance the
             volunteers one has had since R5.4, pointed at its own template. */}
         <Link to="/coordinator/import/farms" className="btn-secondary">
@@ -281,8 +333,17 @@ export function FarmsListScreen() {
       ariaLabel={t('map.farmsMap')}
       markers={markers}
       polygons={zonePolygons(zones, farms)}
+      threatZones={threatLayer ? threatZoneShapes(threatZones) : []}
+      threatVectors={threatLayer ? threatVectorShapes(threatVectors) : []}
       legend={
         <>
+        {threatLayer && (
+          <ThreatLegend
+            zones={threatZones}
+            vectors={threatVectors}
+            className="mb-2"
+          />
+        )}
         <ZoneLegend zones={zones} farms={farms} className="mb-2" />
         <ul className="flex flex-col gap-1.5">
           {STATUSES.map((s) => (

@@ -154,6 +154,68 @@ export interface FarmZone {
 }
 
 // ---------------------------------------------------------------------------
+// G18 — the threat layer. COORDINATOR ONLY.
+// ---------------------------------------------------------------------------
+
+/**
+ * Where trouble comes from, and how hard.
+ *
+ * This is the one part of the model that is genuinely SENSITIVE. A farm's
+ * boundary is a fact about the ground; "we assess this wadi as a high-intensity
+ * approach" is an assessment about people, and it must not reach a farmer's
+ * phone, a volunteer's guard screen or a driver's trip sheet. `access.ts`
+ * therefore returns an empty list for every role but the coordinator, and A59
+ * tests exactly that — the gate lives in the data layer, not in a screen that
+ * happens not to render it.
+ *
+ * Two shapes, because the field expert describes two different things:
+ *
+ *   · a ZONE is an area under pressure — a wadi, a stretch of the border road,
+ *     the eastern grazing beyond the ridge;
+ *   · a VECTOR is a direction of approach — an arrow from where they come to
+ *     where they arrive. Its whole purpose is to let a coordinator place guard
+ *     posts FACING it, which is why it appears on wizard step 1.
+ *
+ * Both may be attached to an entity (`farmId`) or free at map level
+ * (`farmId: null`): a threat does not respect a fence line, and the ones that
+ * matter most sit BETWEEN holdings.
+ *
+ * `updatedAt` is shown, always. A threat map with no date is worse than none:
+ * it invites a coordinator to act in 2027 on an assessment made in 2025.
+ */
+export type ThreatIntensity = 'low' | 'medium' | 'high'
+
+export const THREAT_INTENSITIES: readonly ThreatIntensity[] = [
+  'low',
+  'medium',
+  'high',
+] as const
+
+export interface ThreatZone {
+  id: string
+  /** null = free at map level, attached to no entity. */
+  farmId: string | null
+  /** Vertex ring, implicitly closed — same convention as FarmZone. */
+  ring: LatLng[]
+  intensity: ThreatIntensity
+  note: string
+  /** ISO datetime of the last revision. Displayed, never hidden. */
+  updatedAt: string
+}
+
+export interface ThreatVector {
+  id: string
+  farmId: string | null
+  /** Where the approach comes FROM — the first click. */
+  origin: LatLng
+  /** Where it points TO — the second. */
+  target: LatLng
+  intensity: ThreatIntensity
+  note: string
+  updatedAt: string
+}
+
+// ---------------------------------------------------------------------------
 // Anchor points (עמדות שמירה in the UI) — where a guard group is dropped off
 // ---------------------------------------------------------------------------
 

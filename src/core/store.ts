@@ -3,6 +3,7 @@ import { ringAreaDunams } from './geo'
 import { ANCHOR_POINTS } from './mock/anchors'
 import { FARMS } from './mock/farms'
 import { FARM_ZONES } from './mock/zones'
+import { THREAT_VECTORS, THREAT_ZONES } from './mock/threats'
 import { INCIDENTS } from './mock/incidents'
 import { MISSIONS } from './mock/missions'
 import { DRIVERS, VOLUNTEERS } from './mock/people'
@@ -37,6 +38,9 @@ import type {
   PresenceMark,
   PresenceSource,
   Session,
+  ThreatIntensity,
+  ThreatVector,
+  ThreatZone,
   Volunteer,
   VolunteerAvailability,
   VolunteerStatus,
@@ -56,6 +60,9 @@ interface StoreData {
   farms: Farm[]
   generalMeetings: GeneralMeeting[]
   farmZones: FarmZone[]
+  /** G18 — the coordinator-only threat layer. */
+  threatZones: ThreatZone[]
+  threatVectors: ThreatVector[]
   volunteers: Volunteer[]
   drivers: Driver[]
   anchorPoints: AnchorPoint[]
@@ -72,6 +79,8 @@ const initial = (): StoreData => seedZoneDunams({
   farms: clone(FARMS),
   generalMeetings: clone(GENERAL_MEETINGS),
   farmZones: clone(FARM_ZONES),
+  threatZones: clone(THREAT_ZONES),
+  threatVectors: clone(THREAT_VECTORS),
   volunteers: clone(VOLUNTEERS),
   drivers: clone(DRIVERS),
   anchorPoints: clone(ANCHOR_POINTS),
@@ -586,6 +595,95 @@ export interface DriverDraft {
   locality: string
   availabilityNote: string
   notes: string
+}
+
+// ---------------------------------------------------------------------------
+// G18 — the threat layer's writers
+// ---------------------------------------------------------------------------
+
+/**
+ * Both shapes carry `updatedAt`, and it is stamped HERE rather than passed in.
+ *
+ * A threat assessment's age is the second thing a coordinator needs to know
+ * about it (the first is what it says), and a date a caller supplies is a date
+ * a caller can forget to bump. Every write refreshes it — including a vertex
+ * drag, because moving a zone IS revising the assessment.
+ */
+export interface ThreatZoneDraft {
+  farmId: string | null
+  ring: LatLng[]
+  intensity: ThreatIntensity
+  note: string
+}
+
+export function createThreatZone(draft: ThreatZoneDraft): ThreatZone {
+  const zone: ThreatZone = {
+    id: nextId('threat'),
+    ...draft,
+    updatedAt: iso(now()),
+  }
+  data.threatZones = [...data.threatZones, zone]
+  commit()
+  return zone
+}
+
+export function updateThreatZone(
+  zoneId: string,
+  patch: Partial<Omit<ThreatZone, 'id' | 'updatedAt'>>,
+): void {
+  const index = data.threatZones.findIndex((z) => z.id === zoneId)
+  if (index === -1) return
+  data.threatZones[index] = {
+    ...data.threatZones[index],
+    ...patch,
+    updatedAt: iso(now()),
+  }
+  data.threatZones = [...data.threatZones]
+  commit()
+}
+
+export function deleteThreatZone(zoneId: string): void {
+  data.threatZones = data.threatZones.filter((z) => z.id !== zoneId)
+  commit()
+}
+
+export interface ThreatVectorDraft {
+  farmId: string | null
+  origin: LatLng
+  target: LatLng
+  intensity: ThreatIntensity
+  note: string
+}
+
+export function createThreatVector(draft: ThreatVectorDraft): ThreatVector {
+  const vector: ThreatVector = {
+    id: nextId('vector'),
+    ...draft,
+    updatedAt: iso(now()),
+  }
+  data.threatVectors = [...data.threatVectors, vector]
+  commit()
+  return vector
+}
+
+export function updateThreatVector(
+  vectorId: string,
+  patch: Partial<Omit<ThreatVector, 'id' | 'updatedAt'>>,
+): void {
+  const index = data.threatVectors.findIndex((v) => v.id === vectorId)
+  if (index === -1) return
+  data.threatVectors[index] = {
+    ...data.threatVectors[index],
+    ...patch,
+    updatedAt: iso(now()),
+  }
+  data.threatVectors = [...data.threatVectors]
+  commit()
+}
+
+export function deleteThreatVector(vectorId: string): void {
+  data.threatVectors = data.threatVectors.filter((v) => v.id !== vectorId)
+  commit()
 }
 
 export function createDriver(draft: DriverDraft): Driver {
