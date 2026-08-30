@@ -1405,8 +1405,9 @@ order of march recorded at the top of this file.
    · publishable key: `sb_publishable_4phO_2UMuhWGKCC8uugRmQ_P_IQqAf_`
      (a legacy JWT `anon` key exists too; prefer the publishable one — it
      rotates independently)
-   · status at creation: ACTIVE_HEALTHY, schema still EMPTY — P2.2's
-     migrations are the next thing that touches it.
+   · status: ACTIVE_HEALTHY. **P2.2 IS APPLIED** — schema + RLS are live and
+     the database is deliberately EMPTY (P2.6: the real app starts with
+     nothing; /poc keeps the demo data).
 
    **The publishable key is PUBLIC BY DESIGN and belongs in the bundle.** That
    is not a compromise, it is how Supabase works: the key identifies the
