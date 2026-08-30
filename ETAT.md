@@ -1896,6 +1896,41 @@ src/ui/
    covered: delete the `atlas-*`/`mekomi-*` files. That is the whole change — the
    stacks in `--font-brand` / `--font-sans` already fall through to the
    self-hosted Rubik, and nothing else in the app depends on them.
+11. **⚠️ THE "רענן מפות לא מקוונות" BUTTON CANNOT BE BUILT ON OSM, AND THE
+    REASON IS A POLICY, NOT A LIMIT (P2.5a, 2026-08-31).** The order of march
+    asks for ~50–80 MB of pre-cached Negev tiles behind a button. The estimate
+    was right — measured over the gazetteer's own bbox
+    (30.84–32.08 N, 34.42–35.45 E, +0.15° pad):
+
+    | zoom | tiles | cumulative | ≈ size @12 kB |
+    |---|---|---|---|
+    | z9–z12 | 313 | 313 | 4 MB |
+    | z13 | 816 | 1 129 | 13 MB |
+    | **z14** | **3 216** | **4 345** | **51 MB** |
+    | z15 | 12 502 | 16 847 | 197 MB — too much |
+
+    **4 345 requests in a burst, per device, per refresh, is exactly what
+    OpenStreetMap's Tile Usage Policy forbids** ("systematic downloads are not
+    permitted"), on infrastructure that is donated. It would also, in
+    practice, get the address blocked. So the button is NOT built, and what
+    shipped instead is the honest half: a BROWSING cache — ground the
+    coordinator has actually looked at stays available offline, which is real
+    and costs OSM nothing.
+
+    **THE RECOMMENDED ANSWER IS PROTOMAPS PMTILES, SELF-HOSTED**, and it is
+    recommended because it settles three things at once: no API key and no
+    usage policy to breach; ONE file to cache rather than four thousand
+    requests, which is what "offline maps" should have meant all along; and it
+    is VECTOR, so the map can finally be themed in the app's own colours
+    instead of approximated with a CSS `hue-rotate` on a raster — which is
+    standing carry-in item 2, still open since Lot 0.9. Hosting is a public
+    Supabase Storage bucket (free tier: 1 GB stored, 5 GB egress; PMTiles reads
+    it with HTTP range requests). Cost: 0. The work is a new map style and a
+    tile-extract step whose toolchain must be checked first.
+    The alternatives are a keyed provider (MapTiler/Stadia — signup, a key,
+    and bulk offline usually needs a paid plan), or keeping the browsing cache
+    and dropping the button.
+
 10. **WILL THE ASSOCIATION FUND THE WHATSAPP BUSINESS API?** P0bis.5's ceiling
     is legal, not technical: no third-party application may send a WhatsApp on
     a user's behalf or create a group for him, so the sending centre hands off
@@ -2020,11 +2055,33 @@ kind of remembering that fails. Writes are coordinator-only in both buckets.
 > change is one added clause in the storage migration, next to the rule it
 > qualifies.
 
-**RESUME HERE — P2.5:** **the offline layer** (THE OFFLINE LAYER — a unit in its own right: IndexedDB read cache, a write
-outbox with the "N ממתינים לסנכרון" badge, last-write-wins per changed field,
-a service worker, ~50–80 MB of pre-cached Negev OSM tiles behind a
-"רענן מפות לא מקוונות" button) → **P2.6** (the store becomes an interface with
-a demo implementation and a Supabase one; the real app starts EMPTY) → **P3**.
+**P2.5a (THE OFFLINE SHELL) IS DONE. `bun run offline` — 11 checks, green.**
+Service worker, offline badge, הגדרות, and one online load is enough for the
+app — /poc included — to survive with no network.
+
+> **P2.5 IS SPLIT, and the reason is a dependency the written order missed.**
+> Its DATA half (IndexedDB read cache, write outbox, last-write-wins) cannot
+> precede P2.6: an outbox flushing to the mock store has nothing to flush, and
+> a read cache over demo fixtures would make a reload PERSIST them —
+> contradicting "the real app starts EMPTY" head-on. Agreed with the PO on
+> 2026-08-31. **P2.6 → P2.5b.**
+
+> **AND THE TILE PRE-CACHE BUTTON IS A DECISION WAITING ON THE PO** — see open
+> question 11. It is not built, because building it on OSM would breach their
+> Tile Usage Policy. What shipped is a browsing cache instead.
+
+**RESUME HERE — P2.6:** the store becomes an INTERFACE, satisfied by a demo
+implementation (the mock fixtures, which is what /poc keeps) and a Supabase
+one. **No screen changes.** The real app starts EMPTY.
+
+Then **P2.5b** — the offline DATA layer: an IndexedDB read cache, a write
+outbox with the "N ממתינים לסנכרון" badge, and last-write-wins per changed
+field. The service worker and the offline shell are already in place (P2.5a);
+what is left is everything that needs to know about identity and about
+conflicts, which is exactly why it waits for P2.6. The tile pre-cache button
+is open question 11, waiting on the PO.
+
+Then **P3**.
 
 Then P2 (Lot 1) and P3 (Lot 2 essential) per the final order of march recorded
 at the top of this file.
