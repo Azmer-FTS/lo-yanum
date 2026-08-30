@@ -231,3 +231,95 @@ export function bubbleDiameter(count: number, max: number): number {
   const ratio = Math.sqrt(count) / Math.sqrt(max)
   return Math.round(MIN + (MAX - MIN) * ratio)
 }
+
+/**
+ * G10 — A SHARED PIN BECOMES A COORDINATE.
+ *
+ * Nobody types latitude and longitude. A coordinator standing at a farm gate
+ * shares the location from Waze or Google Maps — into WhatsApp, into a
+ * spreadsheet cell — and what lands there is a URL. The import has to swallow
+ * whatever that produces, because the alternative is asking a field worker to
+ * transcribe six decimal places from a phone screen, which is how a farm ends
+ * up 40 km into Jordan.
+ *
+ * Recognised, in order of how often they actually turn up:
+ *
+ *   waze.com/ul?ll=30.98,34.67            · the share link Waze produces
+ *   waze.com/ul?ll=30.98%2C34.67          · the same, URL-encoded
+ *   waze.com/live-map/directions?to=ll.30.98%2C34.67
+ *   google.com/maps/@30.98,34.67,15z      · the URL bar
+ *   google.com/maps/search/?api=1&query=30.98,34.67   · our own share format
+ *   google.com/maps/place/.../@30.98,34.67,17z
+ *   maps.app.goo.gl/...                   · NOT resolvable — see below
+ *   "30.98, 34.67"                        · a bare pair, pasted from anywhere
+ *   "30.98 34.67" / "30.98;34.67"
+ *
+ * A SHORTENED link (`maps.app.goo.gl`, `waze.com/ul/h…`) carries no
+ * coordinates at all — the position lives behind an HTTP redirect. Resolving
+ * it would need a network round trip per row from a browser that the target
+ * domain does not CORS-allow, so it returns null and the row is flagged
+ * "מיקום חסר" like any other. Saying "we could not read this one" is the
+ * honest answer; guessing is not.
+ *
+ * Israel's bounding box is checked, not assumed: a link that parses to
+ * something outside it is a mis-parse (a zoom level read as a longitude, a
+ * pair the wrong way round), and a farm silently placed in the Mediterranean
+ * is worse than a farm with no pin.
+ */
+const ISRAEL_BOUNDS = { west: 34.2, east: 35.95, south: 29.4, north: 33.4 }
+
+function inIsrael(lat: number, lng: number): boolean {
+  return (
+    lat >= ISRAEL_BOUNDS.south &&
+    lat <= ISRAEL_BOUNDS.north &&
+    lng >= ISRAEL_BOUNDS.west &&
+    lng <= ISRAEL_BOUNDS.east
+  )
+}
+
+/**
+ * A latitude/longitude pair somewhere in `raw`, or null.
+ *
+ * The pair may be separated by a comma, a semicolon, whitespace, or the
+ * `%2C` a URL-encoded share link carries. Both orders are tried: a bare
+ * "34.67, 30.98" is unambiguous once the Israel box is applied, because only
+ * one of the two readings can be inside it.
+ */
+export function parsePositionInput(raw: string): LatLng | null {
+  const text = raw.trim()
+  if (text === '') return null
+
+  // `%2C` is a comma; `ll.` is Waze's live-map separator. Normalising them
+  // away first means one number-pair regex covers every shape above.
+  const normalised = text
+    .replace(/%2c/gi, ',')
+    .replace(/\bll[.=]/gi, ' ')
+    .replace(/[?&#]/g, ' ')
+
+  // A Google Maps URL carries the zoom as a third number ("…,15z"), and a
+  // place URL carries ids full of digits. Scanning for ADJACENT decimal pairs
+  // and validating them against the box is what keeps those out.
+  const matches = [...normalised.matchAll(/(-?\d{1,3}\.\d{3,})\s*[,;\s]\s*(-?\d{1,3}\.\d{3,})/g)]
+
+  for (const m of matches) {
+    const a = Number(m[1])
+    const b = Number(m[2])
+    if (inIsrael(a, b)) return { lat: a, lng: b }
+    if (inIsrael(b, a)) return { lat: b, lng: a }
+  }
+
+  return null
+}
+
+/**
+ * True when the text LOOKS like a location the coordinator meant to give but
+ * that cannot be resolved — a shortened share link, in practice. The import
+ * uses it to tell "he left the cell empty" apart from "he gave us something
+ * we could not read", which are different conversations to have with him.
+ */
+export function isUnresolvableLocationLink(raw: string): boolean {
+  const v = raw.trim().toLowerCase()
+  if (v === '') return false
+  if (parsePositionInput(v) !== null) return false
+  return /goo\.gl|maps\.app|waze\.com|google\.[a-z.]+\/maps|maps\.google/.test(v)
+}

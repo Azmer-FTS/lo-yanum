@@ -51,6 +51,8 @@ export {
   createVolunteer,
   updateVolunteer,
   importVolunteers,
+  importFarms,
+  importDrivers,
   createFarmVisit,
   updateFarmVisit,
   deleteFarmVisit,

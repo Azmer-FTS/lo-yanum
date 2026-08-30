@@ -192,6 +192,12 @@ export function FarmsListScreen() {
             </button>
           ))}
         </div>
+        {/* G10 — the farms roster gets the same import affordance the
+            volunteers one has had since R5.4, pointed at its own template. */}
+        <Link to="/coordinator/import/farms" className="btn-secondary">
+          <Icon name="upload" size={15} />
+          {t('volunteers.import')}
+        </Link>
         <Link to="/coordinator/farms/new" className="btn-primary">
           <Icon name="plus" size={15} />
           {t('farms.new')}

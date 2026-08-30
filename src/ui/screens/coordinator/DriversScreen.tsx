@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 import {
   getDrivers,
@@ -146,14 +147,20 @@ export function DriversScreen() {
           }
           subtitle={t('driver.rosterSubtitle')}
           actions={
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => setCreating(true)}
-            >
-              <Icon name="userPlus" size={15} />
-              {t('driver.addDriver')}
-            </button>
+            <>
+              <Link to="/coordinator/import/drivers" className="btn-secondary">
+                <Icon name="upload" size={15} />
+                {t('volunteers.import')}
+              </Link>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => setCreating(true)}
+              >
+                <Icon name="userPlus" size={15} />
+                {t('driver.addDriver')}
+              </button>
+            </>
           }
         />
 

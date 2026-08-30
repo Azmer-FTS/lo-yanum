@@ -289,7 +289,7 @@ export function VolunteersScreen() {
           })}
           actions={
             <>
-              <Link to="/coordinator/volunteers/import" className="btn-secondary">
+              <Link to="/coordinator/import/volunteers" className="btn-secondary">
                 <Icon name="upload" size={15} />
                 {t('volunteers.import')}
               </Link>

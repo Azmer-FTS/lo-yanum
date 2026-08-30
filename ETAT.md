@@ -32,11 +32,12 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 | `bun run layout` | **A24 + A30** — 390 px overflow, pinned overlap and uncontained-list sweep over all 23 screens — needs a dev server |
 | `bun run wizard` | **A27** — the guard wizard played from a farm with NO anchor point, 28 checks — needs a dev server |
 | `bun run touch` | **A63** — every map gesture driven by SYNTHETIC TOUCH at iPad portrait 1032×1376, 32 checks — needs a dev server |
+| `bun run import` | **A44** — download each template, fill it, upload it back, find the records; 28 checks — needs a dev server |
 | `bun run screenshots` | Regenerate `docs/screenshots/` — needs a dev server |
 | `bun run brand-reference` | Re-capture `docs/brand/` from the live artzenu.org.il — needs the internet, NOT a dev server |
 
-> The five browser scripts (`layout`, `wizard`, `touch`, `screenshots`,
-> `brand-reference`) take `BASE_URL`, e.g.
+> The six browser scripts (`layout`, `wizard`, `touch`, `import`,
+> `screenshots`, `brand-reference`) take `BASE_URL`, e.g.
 > `BASE_URL=http://localhost:62807 bun run layout`.
 
 > **Toolchain:** this machine has **no Node.js**. Bun is at `/usr/local/bin/bun`
@@ -47,9 +48,10 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **FINAL ORDER OF MARCH IN PROGRESS (2026-08-30). PHASE P0 IS DONE —
-the font correction, P0.1, P0.2 and P0.3 landed, one commit each. Next: PHASE
-P1, starting at G10.** Branch `main`, NOT yet pushed (deploy happens at G12).
+State: **FINAL ORDER OF MARCH IN PROGRESS (2026-08-30). PHASE P0 IS DONE
+(font correction + P0.1/P0.2/P0.3). PHASE P1 STARTED: G10 IS DONE. Next:
+G18, then G12, then G13.** One commit per unit. Branch `main`, NOT yet pushed
+(deploy happens at G12).
 
 > **THE FINAL ORDER OF MARCH (product-owner prompt, 2026-08-30).** The product
 > owner starts field work in TWO DAYS on an iPad Pro 13" (+ iPhone). The goal
@@ -57,8 +59,9 @@ P1, starting at G10.** Branch `main`, NOT yet pushed (deploy happens at G12).
 > phases, in this order:
 >
 > · **P0** — last UX asks. ✅ DONE (see below).
-> · **P1** — finish the POC: **G10 → G18 → G12 → G13**, specs already in this
->   file. (G11 is folded into G12's iPad pass; P0.3 already did the touch half.)
+> · **P1** — finish the POC: **G10 ✅ → G18 → G12 → G13**, specs already in
+>   this file. (G11 is folded into G12's iPad pass; P0.3 already did the touch
+>   half.)
 > · **P2** — LOT 1, THE REAL THING: Supabase project `lo-yanum-prod`
 >   (eu-central-1 Frankfurt, PO's org — **ASK BEFORE CREATING**), additive SQL
 >   migrations for the whole mock model, RLS transcribed from `access.ts`
@@ -135,6 +138,58 @@ P1, starting at G10.** Branch `main`, NOT yet pushed (deploy happens at G12).
 >   map now suspends the guard for every kind, draggable included, applied to
 >   the finished element in the markers effect so the early-returning vertex
 >   and draft kinds cannot miss it. A63.
+>
+> **P1 — G10 IS DONE.** The import stopped being "the volunteers CSV" and
+> became THREE rosters behind one pipeline, at `/coordinator/import/:kind`
+> (the old `/volunteers/import` redirects — it is in the PO's history and in
+> the Lot 0.9 captures). What is worth knowing:
+> · **`src/core/templates.ts` IS THE SOURCE OF TRUTH.** A template is a list
+>   of COLUMNS carrying their own label key, their own aliases, whether they
+>   are required, three example cells and a width. The downloadable file, the
+>   header guess, the mapping step's options and the required-columns check
+>   are all DERIVED from it. Before this the columns were declared in three
+>   places that had to agree by hand, and disagreeing produced a template the
+>   wizard could not read — which looks to the coordinator like HIS file is
+>   wrong.
+> · **`guessField` matches the LONGEST alias first, across the whole
+>   template.** "סוג טלפון" contains "טלפון" and "טלפון איש קשר" contains it
+>   too; a first-match-wins scan in column order imports "כשר" as somebody's
+>   phone number. Sorting by length is what survives someone adding a column.
+>   Same trick for the Hebrew status dictionary, where "נוצר קשר" and
+>   "ליצירת קשר" share "קשר" and reversing them would tell the coordinator he
+>   has already called a farmer he has not.
+> · **THE TEMPLATE IS AN .xlsx**, generated through SheetJS on demand, with
+>   RTL sheet views and per-column widths. A CSV still mojibakes on a Hebrew
+>   Windows machine often enough to matter.
+> · **A SHARED PIN BECOMES A COORDINATE** (`parsePositionInput` in @core/geo):
+>   Waze `?ll=`, its URL-encoded form, live-map `to=ll.`, Google `@lat,lng,15z`,
+>   our own `?query=`, and a bare pair. Validated against an ISRAEL BOUNDING
+>   BOX, which is what stops a zoom level being read as a longitude and what
+>   silently corrects a reversed pair. A SHORTENED link (`maps.app.goo.gl`)
+>   carries no coordinates at all — the position is behind a redirect that a
+>   browser cannot follow cross-origin — so it returns null and
+>   `isUnresolvableLocationLink` says so out loud.
+> · **מיקום חסר IS A WARNING, NOT A REJECTION.** A farm whose link could not
+>   be read still imports, parked on HOME_BASE, badged, and counted in its own
+>   "דורשות השלמה" chip. Refusing it would push the work back into a
+>   spreadsheet when dragging a pin takes four seconds. The preview tells the
+>   three position facts apart — from the link / from the locality
+>   (APPROXIMATE — the middle of a town, routinely 3 km out) / missing —
+>   because they call for three different actions.
+> · Farms de-duplicate BY NAME (they have no phone of their own), volunteers
+>   and drivers by normalised phone. Imported dunams come in flagged MANUAL, so
+>   G15's `syncZoneDunams` will not overwrite the farmer's own claim the first
+>   time somebody draws a zone.
+> · `bun run import` is the criterion's real proof: it downloads each
+>   template, reads it back with SheetJS OUTSIDE the browser, refills it,
+>   uploads it through the wizard's own file input and finds the records in
+>   the roster. 28 checks. Everything between "download" and "upload" is where
+>   an import breaks, and it breaks silently.
+> · **Watch out:** `scripts/` is NOT in tsconfig's `include`, so `bun run
+>   typecheck` does not see it. Changing a @core signature can leave a script
+>   silently wrong — it did here (A9 passed an array where an object was now
+>   expected and lost two checks). Run `bun run accept` after any core
+>   signature change, not just the typecheck.
 
 > **SPEC GAP RESOLVED (2026-08-19).** The product owner re-sent the missing
 > sections in the prompt "LOT 0.10 — SECTIONS MANQUANTES G14–G16 + DÉCISIONS
@@ -549,6 +604,7 @@ captures in §5.
 | **A22** | **Agenda week + month, visit created from an empty slot** | ✅ captures 5, 6 + browser assertion |
 | **A23** | **Timelines on incident, mission and farm** | ✅ captures 7, 8, 15 |
 | **A24** | **Zero overflow / pinned overlap at 390 px on every screen** | ✅ `bun run layout` — 23/23 |
+| **A44** | **One template source, three rosters, a link that becomes a pin (G10)** | ✅ `bun run accept` A44 section (36 checks) + `bun run import` (28 checks: download → fill → upload → find) |
 | **A61** | **Three map states per map-first screen, persisted (P0.1)** | ✅ dashboard / farms / farm-detail / route / incidents / missions + both rosters; verified by hand at 1032×1376 and 402×874, captures due at G12 |
 | **A62** | **Locality bubbles + tap-filter + נקה on both rosters (P0.2)** | ✅ `bun run accept`, the A62 section (12 checks), plus the tap path in `bun run touch` |
 | **A63** | **Every map gesture by finger at iPad portrait (P0.3)** | ✅ `bun run touch` — 32 checks at 1032×1376 with `hasTouch` and no mouse anywhere |
@@ -925,7 +981,7 @@ MECHANISM survives — only the charter values it protected are gone). Decisions
 
 ## 7. Verification scripts
 
-All eight are committed and runnable.
+All nine are committed and runnable.
 
 - **`scripts/contrast.ts`** (`bun run contrast`) — the A13/A19 audit. Parses
   `tokens.css`, reconstructs both palettes, and checks text, chips (ink over
@@ -1066,7 +1122,13 @@ src/core/                 PURE TS — no React, no DOM
                           ringAreaDunams/ringCenter (G15),
                           clusterByLocality/bubbleDiameter (P0.2)
   theme.ts                Theme POLICY (defaults per role). No storage.
-  photo.ts import.ts routing.ts messages.ts config.ts sessions.ts
+  templates.ts            ★ G10 — THE IMPORT COLUMNS, one source of truth.
+                          Three templates (volunteers/farms/drivers); the
+                          .xlsx, the header guess, the mapping options and
+                          the required set are all derived from it.
+  import.ts               Validation only (columns live next door). Problems
+                          REJECT; warnings (מיקום חסר) do not.
+  photo.ts routing.ts messages.ts config.ts sessions.ts
   mock/                   farms(12) · people(300 volunteers, 6 drivers) ·
                           generate.ts (seeded PRNG) · anchors(4) · missions(6,
                           one seeded mismatch) · incidents(5) · visits.ts
@@ -1132,6 +1194,18 @@ src/ui/
   ~500 kB). Both are split and lazily fetched; the initial bundle is ~146 kB
   gzipped.
 - **OSM raster tiles** — must move to a keyed vector provider in Lot 1.
+- **`scripts/` is outside tsconfig's `include`.** `bun run typecheck` covers
+  `src` and `vite.config.ts` only, so a changed @core signature can leave a
+  verification script silently wrong rather than failing to compile. G10 hit
+  this: `analyseImport` gained an options object and A9 went on passing an
+  array, losing two checks without a type error. Always run `bun run accept`
+  after touching a core signature. Widening the include is Lot 1 work — the
+  browser scripts' `page.evaluate` bodies need DOM lib settings that would
+  otherwise leak into the app's own compile.
+- **A shortened map link cannot be resolved client-side.** `maps.app.goo.gl`
+  and `waze.com/ul/h…` carry no coordinates; the position is behind a redirect
+  the target domain does not CORS-allow. The import flags them rather than
+  guessing. Resolving them server-side is a Lot 1 possibility, not a bug.
 
 ---
 

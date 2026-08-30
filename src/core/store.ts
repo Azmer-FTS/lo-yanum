@@ -954,6 +954,42 @@ export function createMission(draft: MissionDraft): Mission {
   return mission
 }
 
+/**
+ * G10 — bulk append from the import wizard, for the two other rosters.
+ *
+ * Deliberately NOT `drafts.map(createFarm)`: each `create*` commits, and 300
+ * commits is 300 renders of a screen nobody is looking at yet. One splice, one
+ * commit, one paint — the same shape `importVolunteers` has had since R5.4.
+ *
+ * A farm gets its zone sums recomputed on the way in: an import carries no
+ * polygons, so `syncZoneDunams` is what makes an imported farm's numbers obey
+ * the same one-writer rule as a drawn one (G15) — the manual flag the draft
+ * sets is what protects a number the farmer actually stated.
+ */
+export function importFarms(drafts: FarmDraft[]): number {
+  const created: Farm[] = drafts.map((draft, i) => ({
+    id: `${nextId('farm')}-${i}`,
+    lastVisitAt: null,
+    nextVisitAt: null,
+    ...draft,
+  }))
+  data.farms = [...data.farms, ...created]
+  for (const farm of created) syncZoneDunams(farm.id)
+  commit()
+  return created.length
+}
+
+export function importDrivers(drafts: DriverDraft[]): number {
+  const created: Driver[] = drafts.map((draft, i) => ({
+    id: `${nextId('driver')}-${i}`,
+    volunteerId: null,
+    ...draft,
+  }))
+  data.drivers = [...data.drivers, ...created]
+  commit()
+  return created.length
+}
+
 /** Bulk append from the CSV/XLSX import wizard (R5.4). */
 export function importVolunteers(drafts: VolunteerDraft[]): number {
   const created: Volunteer[] = drafts.map((draft, i) => ({

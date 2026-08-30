@@ -29,6 +29,16 @@ import {
   getVolunteers,
   bubbleDiameter,
   clusterByLocality,
+  IMPORT_KINDS,
+  IMPORT_TEMPLATES,
+  fieldsFor,
+  guessField,
+  importFarms,
+  isUnresolvableLocationLink,
+  parsePositionInput,
+  requiredFields,
+  templateMatrix,
+  toFarmDrafts,
   googleMapsRouteUrl,
   planRoute,
   resetStore,
@@ -192,7 +202,7 @@ section('A9 — the import wizard flags duplicates and missing phones')
     ['קיים כבר', existing[0].phone],
     ['בלי טלפון', ''],
   ]
-  const analysis = analyseImport(matrix, ['name', 'phone'], existing)
+  const analysis = analyseImport(matrix, ['name', 'phone'], { volunteers: existing })
   check('3 rows are rejected', analysis.rejected.length === 3, `${analysis.rejected.length}`)
   check('2 rows are importable', analysis.importable.length === 2, `${analysis.importable.length}`)
   check('one duplicate WITHIN the file', analysis.rows.some((r) => r.problems.includes('errDuplicateInFile')))
@@ -418,6 +428,195 @@ section('A55 — moshavim are entities with the same mechanics')
   const moshavGrazing = getFarmZonesForFarm('farm-13').find((z) => z.kind === 'grazing_area')!
   const westEdge = Math.min(...moshavGrazing.ring.map((p) => p.lng))
   check('מושב רתמים adjoins חוות רתם', Math.abs(westEdge - 34.672) < 0.001, `${westEdge}`)
+}
+
+// --- A44 (G10): the templates and the extended import ------------------------
+
+section('A44 — one template source, three rosters, and a link that becomes a pin')
+{
+  as(COORD)
+
+  // The template IS the guess table: every header the generated file carries
+  // must map back onto the column it came from, or the coordinator downloads a
+  // sheet the wizard cannot read — the worst bug an import can have, because
+  // it looks like HIS file is wrong.
+  for (const kind of IMPORT_KINDS) {
+    const matrix = templateMatrix(kind, (key) => key)
+    const headers = matrix[0]
+    const columns = IMPORT_TEMPLATES[kind].columns
+    check(
+      `${kind}: the template round-trips through guessField`,
+      headers.every((_, i) => guessField(columns[i].aliases[0], kind) === columns[i].field),
+      `${headers.length} columns`,
+    )
+    check(
+      `${kind}: three example rows, all the same width`,
+      matrix.length === 4 && matrix.every((r) => r.length === columns.length),
+      `${matrix.length} rows × ${columns.length}`,
+    )
+    check(
+      `${kind}: the mapping step offers exactly this template's fields`,
+      fieldsFor(kind).length === columns.length + 1,
+      fieldsFor(kind).join(','),
+    )
+  }
+
+  // The two collisions that a first-match-wins scan would get wrong.
+  check(
+    '"סוג טלפון" is the phone TYPE, not the phone',
+    guessField('סוג טלפון', 'volunteers') === 'phoneType',
+  )
+  check(
+    '"טלפון איש קשר" is the contact phone, not the farm name',
+    guessField('טלפון איש קשר', 'farms') === 'contactPhone',
+  )
+  check(
+    'an unrecognised header is ignored, never guessed',
+    guessField('מספר סידורי פנימי', 'volunteers') === 'ignore',
+  )
+  check(
+    'the farms template carries the G16 entity-kind column',
+    IMPORT_TEMPLATES.farms.columns.some((c) => c.field === 'entityKind'),
+  )
+  check(
+    'a farm needs a name and a locality, never a phone',
+    requiredFields('farms').join(',') === 'name,locality',
+    requiredFields('farms').join(','),
+  )
+
+  // --- the link parser ------------------------------------------------------
+  const near = (p: { lat: number; lng: number } | null, lat: number, lng: number) =>
+    p !== null && Math.abs(p.lat - lat) < 0.002 && Math.abs(p.lng - lng) < 0.002
+
+  check(
+    'a Waze share link becomes a coordinate',
+    near(parsePositionInput('https://waze.com/ul?ll=30.9800,34.6700'), 30.98, 34.67),
+  )
+  check(
+    'so does the URL-encoded form',
+    near(parsePositionInput('https://waze.com/ul?ll=30.9800%2C34.6700&navigate=yes'), 30.98, 34.67),
+  )
+  check(
+    'a Google Maps @-URL becomes a coordinate, and the zoom is not a longitude',
+    near(parsePositionInput('https://www.google.com/maps/@30.9861,34.6720,15z'), 30.9861, 34.672),
+  )
+  check(
+    "our own share format round-trips",
+    near(
+      parsePositionInput('https://www.google.com/maps/search/?api=1&query=31.250000%2C34.790000'),
+      31.25,
+      34.79,
+    ),
+  )
+  check('a bare pair works too', near(parsePositionInput('30.7900, 34.4500'), 30.79, 34.45))
+  check(
+    'a reversed pair is corrected by the Israel box',
+    near(parsePositionInput('34.6700, 30.9800'), 30.98, 34.67),
+  )
+  check(
+    'a coordinate outside Israel is refused, not placed',
+    parsePositionInput('48.8566, 2.3522') === null,
+  )
+  check('an empty cell is not a location', parsePositionInput('') === null)
+  check(
+    'a SHORTENED link is unreadable and says so',
+    parsePositionInput('https://maps.app.goo.gl/AbCdEf123') === null &&
+      isUnresolvableLocationLink('https://maps.app.goo.gl/AbCdEf123'),
+  )
+  check(
+    'a blank cell is not reported as an unreadable link',
+    !isUnresolvableLocationLink(''),
+  )
+
+  // --- a farm import, end to end -------------------------------------------
+  const farmHeaders: Array<'name' | 'entityKind' | 'locality' | 'positionLink' | 'farmStatus'> = [
+    'name',
+    'entityKind',
+    'locality',
+    'positionLink',
+    'farmStatus',
+  ]
+  const farmRows = [
+    ['חוות בדיקה א', 'חווה', 'רתמים', 'https://waze.com/ul?ll=30.9800,34.6700', 'פעילה'],
+    ['מושב בדיקה ב', 'מושב', 'אופקים', '', 'ליצירת קשר'],
+    ['חוות בדיקה ג', 'חווה', 'יישוב שלא בגזטיר', 'https://maps.app.goo.gl/x', 'נוצר קשר'],
+    ['חוות רתם', 'חווה', 'רתמים', '', 'פעילה'],
+    ['', 'חווה', 'רתמים', '', 'פעילה'],
+  ]
+  const farmAnalysis = analyseImport(farmRows, farmHeaders, { farms: getVisibleFarms() }, 'farms')
+
+  check(
+    'a farm with a readable link is positioned from it',
+    farmAnalysis.rows[0].positionSource === 'link' &&
+      near(farmAnalysis.rows[0].position, 30.98, 34.67),
+    farmAnalysis.rows[0].positionSource,
+  )
+  check(
+    'a known locality with no link is positioned APPROXIMATELY, and says which',
+    farmAnalysis.rows[1].positionSource === 'locality' && farmAnalysis.rows[1].position !== null,
+    farmAnalysis.rows[1].positionSource,
+  )
+  check(
+    'an unreadable link on an unknown town is "מיקום חסר" — a WARNING, not a reject',
+    farmAnalysis.rows[2].positionSource === 'none' &&
+      farmAnalysis.rows[2].warnings.includes('warnNoPosition') &&
+      farmAnalysis.rows[2].warnings.includes('warnUnreadableLink') &&
+      farmAnalysis.rows[2].problems.length === 0,
+    farmAnalysis.rows[2].warnings.join(','),
+  )
+  check(
+    'and it still imports',
+    farmAnalysis.importable.some((r) => r.name === 'חוות בדיקה ג'),
+  )
+  check(
+    'the warned rows are counted separately from the rejected ones',
+    farmAnalysis.warned.length === 1 && farmAnalysis.rejected.length === 2,
+    `${farmAnalysis.warned.length} warned / ${farmAnalysis.rejected.length} rejected`,
+  )
+  check(
+    'a farm already in the base is a duplicate BY NAME',
+    farmAnalysis.rows[3].problems.includes('errDuplicate'),
+  )
+  check('a nameless row is rejected', farmAnalysis.rows[4].problems.includes('errMissingName'))
+  check(
+    'סוג יישות is read into the entity kind',
+    farmAnalysis.rows[0].entityKind === 'farm' && farmAnalysis.rows[1].entityKind === 'moshav',
+  )
+  check(
+    'the Hebrew status is read, and "נוצר קשר" is not "ליצירת קשר"',
+    farmAnalysis.rows[0].farmStatus === 'active' &&
+      farmAnalysis.rows[1].farmStatus === 'to_contact' &&
+      farmAnalysis.rows[2].farmStatus === 'contacted',
+    farmAnalysis.rows.map((r) => r.farmStatus).join(','),
+  )
+
+  const before = getVisibleFarms().length
+  const added = importFarms(
+    toFarmDrafts(farmAnalysis.importable, {
+      yeshiva: '',
+      locality: '',
+      fallbackPosition: HOME_BASE,
+    }),
+  )
+  check(
+    'the drafts reach the store',
+    added === farmAnalysis.importable.length &&
+      getVisibleFarms().length === before + added,
+    `${before} → ${getVisibleFarms().length}`,
+  )
+  const parked = getVisibleFarms().find((f) => f.name === 'חוות בדיקה ג')
+  check(
+    'a farm with no position is parked on the base, not at 0°,0°',
+    parked !== undefined && near(parked.position, HOME_BASE.lat, HOME_BASE.lng),
+  )
+  // Re-importing the same sheet must not double the list.
+  const second = analyseImport(farmRows, farmHeaders, { farms: getVisibleFarms() }, 'farms')
+  check(
+    'the same sheet imported twice adds nothing',
+    second.importable.length === 0,
+    `${second.importable.length}`,
+  )
+  resetStore()
 }
 
 // --- A62 (P0.2): the roster's locality bubbles -------------------------------

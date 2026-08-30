@@ -99,13 +99,22 @@ export default function App() {
           <Route path="route" element={<RoutePlannerScreen />} />
           <Route path="volunteers" element={<VolunteersScreen />} />
           <Route path="drivers" element={<DriversScreen />} />
+          {/* G10 — ONE wizard, three templates. The kind lives in the path so
+              a coordinator can be sent straight to the farms import, and so
+              the back link knows which roster he came from. The legacy
+              /volunteers/import URL is kept: it is in the product owner's
+              browser history and in the Lot 0.9 screenshots. */}
           <Route
-            path="volunteers/import"
+            path="import/:kind"
             element={
               <Suspense fallback={<div className="skeleton h-96 rounded-card" />}>
                 <ImportWizardScreen />
               </Suspense>
             }
+          />
+          <Route
+            path="volunteers/import"
+            element={<Navigate to="/coordinator/import/volunteers" replace />}
           />
           <Route path="agenda" element={<AgendaScreen />} />
           <Route path="missions" element={<MissionsScreen />} />

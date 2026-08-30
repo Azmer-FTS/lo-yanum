@@ -1,17 +1,26 @@
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 
 import {
-  IMPORT_FIELDS,
+  HOME_BASE,
+  IMPORT_KINDS,
+  IMPORT_TEMPLATES,
   analyseImport,
+  fieldsFor,
+  getDrivers,
+  getVisibleFarms,
   getVolunteers,
   guessField,
+  importDrivers,
+  importFarms,
   importVolunteers,
-  sampleCsv,
+  templateMatrix,
+  toDriverDrafts,
+  toFarmDrafts,
   toVolunteerDrafts,
 } from '@core/index'
-import type { ImportField, ParsedRow } from '@core/index'
+import type { ImportField, ImportKind, ParsedRow } from '@core/index'
 
 import { Icon } from '../../components/Icon'
 import { SelectField } from '../../components/fields'
@@ -77,16 +86,28 @@ function StepBar({ current }: { current: Step }) {
 }
 
 /**
- * R5.4 — CSV / XLSX import wizard.
+ * R5.4 → G10 — CSV / XLSX import wizard, for THREE rosters.
  *
  * The file is parsed entirely client-side with SheetJS; nothing leaves the
- * browser. All validation lives in @core/import so the same rules can run
- * server-side in Lot 1 unchanged.
+ * browser. All validation lives in @core/import and all COLUMNS in
+ * @core/templates, so the same rules can run server-side in Lot 1 unchanged —
+ * which P3.1 then does, by changing only where the drafts are written.
+ *
+ * The kind comes from the route (`/coordinator/import/:kind`), so the farms
+ * list and the drivers roster can each send the coordinator straight to their
+ * own template instead of to a picker he has to read.
  */
 export function ImportWizardScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { kind: kindParam } = useParams<{ kind: string }>()
   const volunteers = useCoreValue(getVolunteers)
+  const drivers = useCoreValue(getDrivers)
+  const farms = useCoreValue(getVisibleFarms)
+
+  const kind = ((IMPORT_KINDS as readonly string[]).includes(kindParam ?? '')
+    ? kindParam
+    : 'volunteers') as ImportKind
 
   const [step, setStep] = useState<Step>('upload')
   const [fileName, setFileName] = useState('')
@@ -105,6 +126,16 @@ export function ImportWizardScreen() {
     () => [...new Set(volunteers.map((v) => v.yeshiva))].sort(),
     [volunteers],
   )
+
+  const template = IMPORT_TEMPLATES[kind]
+
+  /** Where the wizard sends the coordinator back, per roster. */
+  const BACK: Record<ImportKind, { to: string; labelKey: string }> = {
+    volunteers: { to: '/coordinator/volunteers', labelKey: 'volunteers.title' },
+    farms: { to: '/coordinator/farms', labelKey: 'farms.title' },
+    drivers: { to: '/coordinator/drivers', labelKey: 'driver.volunteerDrivers' },
+  }
+  const back = BACK[kind]
 
   const readFile = async (file: File) => {
     setError(null)
@@ -144,7 +175,7 @@ export function ImportWizardScreen() {
       setFileName(file.name)
       setHeaders(head)
       setMatrix(body)
-      setMapping(head.map(guessField))
+      setMapping(head.map((h) => guessField(h, kind)))
       setStep('mapping')
     } catch {
       setError(t('import.parseError'))
@@ -154,9 +185,9 @@ export function ImportWizardScreen() {
   const analysis = useMemo(
     () =>
       step === 'preview' || step === 'done'
-        ? analyseImport(matrix, mapping, volunteers)
+        ? analyseImport(matrix, mapping, { volunteers, drivers, farms }, kind)
         : null,
-    [step, matrix, mapping, volunteers],
+    [step, matrix, mapping, volunteers, drivers, farms, kind],
   )
 
   // Hooks cannot be conditional, so this runs with an empty list until the
@@ -164,46 +195,110 @@ export function ImportWizardScreen() {
   // length rather than on identity.
   const preview = useProgressive(analysis?.rows ?? [])
 
-  const canMap =
-    mapping.includes('name') && mapping.includes('phone')
+  // G10 — the required set comes from the template, not from a hard-coded
+  // pair: a farm has no phone of its own and would never pass the old check.
+  const canMap = template.columns
+    .filter((c) => c.required)
+    .every((c) => mapping.includes(c.field))
 
-  const downloadTemplate = () => {
-    const csv = sampleCsv([
-      t('import.fieldName'),
-      t('import.fieldPhone'),
-      t('import.fieldYeshiva'),
-      t('import.fieldLocality'),
-      t('import.fieldAge'),
-      t('import.fieldPhoneType'),
-    ])
-    const url = URL.createObjectURL(
-      new Blob([csv], { type: 'text/csv;charset=utf-8' }),
-    )
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'lo-yanum-volunteers-template.csv'
-    a.click()
-    URL.revokeObjectURL(url)
+  /**
+   * G10 — THE TEMPLATE IS AN .xlsx, GENERATED FROM `templates.ts`.
+   *
+   * A CSV was the Lot 0 answer and it is the wrong file to hand a coordinator:
+   * double-clicking one on a Hebrew Windows machine still produces mojibake
+   * often enough to have cost an afternoon, the column widths are whatever
+   * Excel guesses, and there is nowhere to put the three example rows without
+   * them looking like data. A workbook carries its own encoding, its own
+   * widths, and RTL — so the file the PO downloads is the file he fills in.
+   *
+   * SheetJS is fetched on demand for the same reason the parser is: ~450 kB
+   * has no business in the bundle a volunteer's phone loads.
+   */
+  const downloadTemplate = async () => {
+    setError(null)
+    try {
+      const XLSX = await import('xlsx')
+      const matrix = templateMatrix(kind, (key) => t(key))
+      const sheet = XLSX.utils.aoa_to_sheet(matrix)
+      sheet['!cols'] = template.columns.map((c) => ({ wch: c.width ?? 16 }))
+      // The whole sheet reads right-to-left, like every other document this
+      // coordinator opens.
+      sheet['!views'] = [{ RTL: true }]
+      const book = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(book, sheet, t(template.titleKey).slice(0, 31))
+      XLSX.writeFile(book, `${template.fileBase}-template.xlsx`)
+    } catch {
+      setError(t('import.templateError'))
+    }
   }
 
   const runImport = () => {
     if (!analysis) return
-    const drafts = toVolunteerDrafts(analysis.importable, {
+    const defaults = {
       yeshiva: yeshivot[0] ?? '',
       locality: '',
-    })
-    const imported = importVolunteers(drafts)
+      // A farm whose position could not be read is parked on the programme's
+      // own base rather than at 0°,0° in the Gulf of Guinea — it sits with the
+      // others until somebody drags it, and its "מיקום חסר" badge says so.
+      fallbackPosition: HOME_BASE,
+    }
+    const rows = analysis.importable
+    const imported =
+      kind === 'farms'
+        ? importFarms(toFarmDrafts(rows, defaults))
+        : kind === 'drivers'
+          ? importDrivers(toDriverDrafts(rows, defaults))
+          : importVolunteers(toVolunteerDrafts(rows, defaults))
     setResult({ imported, skipped: analysis.rejected.length })
     setStep('done')
+  }
+
+  // An unknown `:kind` is a mistyped URL, not a screen. Redirect rather than
+  // render a wizard whose template nobody chose.
+  if (kindParam !== undefined && kindParam !== kind) {
+    return <Navigate to={`/coordinator/import/${kind}`} replace />
   }
 
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
         title={t('import.title')}
-        subtitle={t('import.subtitle')}
-        back={{ to: '/coordinator/volunteers', label: t('volunteers.title') }}
+        subtitle={t(template.titleKey)}
+        back={{ to: back.to, label: t(back.labelKey) }}
       />
+
+      {/* G10 — the three templates are one tap apart. A coordinator who lands
+          here from the volunteers list and realises he meant the farms sheet
+          should not have to go back out through two screens. Switching resets
+          the wizard: a mapping guessed for one template is meaningless
+          against another's columns. */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {IMPORT_KINDS.map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => {
+              if (k === kind) return
+              setStep('upload')
+              setResult(null)
+              setMatrix([])
+              setHeaders([])
+              setMapping([])
+              setFileName('')
+              setError(null)
+              navigate(`/coordinator/import/${k}`)
+            }}
+            aria-pressed={k === kind}
+            className={`filter-pill min-h-11 px-3 ${k === kind ? 'filter-pill-active' : ''}`}
+          >
+            <Icon
+              name={k === 'farms' ? 'farm' : k === 'drivers' ? 'steering' : 'users'}
+              size={14}
+            />
+            {t(IMPORT_TEMPLATES[k].titleKey)}
+          </button>
+        ))}
+      </div>
 
       <StepBar current={step} />
 
@@ -263,12 +358,19 @@ export function ImportWizardScreen() {
 
           <button
             type="button"
-            onClick={downloadTemplate}
+            onClick={() => void downloadTemplate()}
             className="btn-secondary mt-4 w-full sm:w-auto"
           >
             <Icon name="download" size={15} />
             {t('import.downloadTemplate')}
           </button>
+          <p className="muted mt-2">
+            {t('import.templateColumns', {
+              columns: template.columns
+                .map((c) => t(c.labelKey))
+                .join(' · '),
+            })}
+          </p>
         </Section>
       )}
 
@@ -297,12 +399,18 @@ export function ImportWizardScreen() {
                   onChange={(v) =>
                     setMapping((prev) => prev.map((m, j) => (j === i ? v : m)))
                   }
-                  options={IMPORT_FIELDS.map((f) => ({
+                  // G10 — only the fields THIS template has. Offering a
+                  // farm's "סוג יישות" while mapping a driver sheet is an
+                  // invitation to a mapping that silently imports nothing.
+                  options={fieldsFor(kind).map((f) => ({
                     value: f,
                     label:
                       f === 'ignore'
                         ? t('import.ignore')
-                        : t(`import.field${f[0].toUpperCase()}${f.slice(1)}`),
+                        : t(
+                            template.columns.find((c) => c.field === f)
+                              ?.labelKey ?? 'import.ignore',
+                          ),
                   }))}
                 />
                 {/* Sample value, so a mis-mapped column is obvious here rather
@@ -318,7 +426,15 @@ export function ImportWizardScreen() {
 
           {!canMap && (
             <div className="mt-4">
-              <Callout tone="warn" title={t('import.mapAtLeast')} />
+              <Callout
+                tone="warn"
+                title={t('import.mapRequired', {
+                  columns: template.columns
+                    .filter((c) => c.required)
+                    .map((c) => t(c.labelKey))
+                    .join(' · '),
+                })}
+              />
             </div>
           )}
 
@@ -353,6 +469,16 @@ export function ImportWizardScreen() {
               {t('import.willSkip')}
               <span className="numeric">{analysis.rejected.length}</span>
             </span>
+            {/* G10 — rows that WILL import and still need a hand afterwards.
+                Counted separately from the rejects because the coordinator
+                does something different about them: he imports, then drops
+                the pins. */}
+            {analysis.warned.length > 0 && (
+              <span className="chip bg-status-warn/15 text-status-warn-ink">
+                {t('import.willWarn')}
+                <span className="numeric">{analysis.warned.length}</span>
+              </span>
+            )}
             <span className="muted">{t('import.previewHint')}</span>
           </div>
 
@@ -371,11 +497,19 @@ export function ImportWizardScreen() {
                   <th className="p-2 text-start font-semibold">
                     {t('import.fieldName')}
                   </th>
+                  {/* G10 — the third column is what the roster is ABOUT: a
+                      volunteer's phone, a farm's position, a driver's car. */}
                   <th className="p-2 text-start font-semibold">
-                    {t('import.fieldPhone')}
+                    {t(
+                      kind === 'farms'
+                        ? 'import.fieldPositionLink'
+                        : kind === 'drivers'
+                          ? 'import.fieldVehicle'
+                          : 'import.fieldPhone',
+                    )}
                   </th>
                   <th className="p-2 text-start font-semibold">
-                    {t('import.fieldYeshiva')}
+                    {t(kind === 'volunteers' ? 'import.fieldYeshiva' : 'import.fieldPhone')}
                   </th>
                   <th className="p-2 text-start font-semibold">
                     {t('import.fieldLocality')}
@@ -387,7 +521,7 @@ export function ImportWizardScreen() {
               </thead>
               <tbody>
                 {preview.visible.map((row) => (
-                  <PreviewRow key={row.rowNumber} row={row} />
+                  <PreviewRow key={row.rowNumber} row={row} kind={kind} />
                 ))}
               </tbody>
             </table>
@@ -458,9 +592,48 @@ export function ImportWizardScreen() {
   )
 }
 
-function PreviewRow({ row }: { row: ParsedRow }) {
+function PreviewRow({ row, kind }: { row: ParsedRow; kind: ImportKind }) {
   const { t } = useTranslation()
   const bad = row.problems.length > 0
+
+  /**
+   * G10 — WHERE THE POSITION CAME FROM, SAID OUT LOUD.
+   *
+   * Three different facts wear three different chips, because they call for
+   * three different actions: a link that parsed is done; a position inferred
+   * from the locality gazetteer is APPROXIMATE and the farm sits at the middle
+   * of a town rather than at its gate; and "מיקום חסר" is a pin to drop later.
+   * Collapsing them into "ok / not ok" would hide the middle one, which is the
+   * one that looks right on the map and is 3 km out.
+   */
+  const positionChip = () => {
+    if (kind !== 'farms') return null
+    if (row.positionSource === 'link') {
+      return (
+        <span className="chip bg-status-success/15 text-status-success-ink">
+          <Icon name="pin" size={11} />
+          {t('import.posFromLink')}
+        </span>
+      )
+    }
+    if (row.positionSource === 'locality') {
+      return (
+        <span className="chip bg-status-info/15 text-status-info-ink">
+          <Icon name="pin" size={11} />
+          {t('import.posFromLocality')}
+        </span>
+      )
+    }
+    return (
+      <span className="chip bg-status-warn/15 text-status-warn-ink">
+        <Icon name="alert" size={11} />
+        {t('import.warnNoPosition')}
+      </span>
+    )
+  }
+
+  const third = kind === 'drivers' ? row.vehicle : row.phone
+  const fourth = kind === 'volunteers' ? row.yeshiva : row.phone || row.contactPhone
 
   return (
     <tr
@@ -470,8 +643,14 @@ function PreviewRow({ row }: { row: ParsedRow }) {
     >
       <td className="numeric p-2 text-content-muted">{row.rowNumber}</td>
       <td className="p-2 text-content-primary">{row.name || '—'}</td>
-      <td className="ltr-nums p-2 text-content-secondary">{row.phone || '—'}</td>
-      <td className="p-2 text-content-secondary">{row.yeshiva || '—'}</td>
+      <td className="p-2 text-content-secondary">
+        {kind === 'farms' ? (
+          positionChip()
+        ) : (
+          <span className={kind === 'drivers' ? '' : 'ltr-nums'}>{third || '—'}</span>
+        )}
+      </td>
+      <td className="ltr-nums p-2 text-content-secondary">{fourth || '—'}</td>
       <td className="p-2 text-content-secondary">{row.locality || '—'}</td>
       <td className="p-2">
         {bad ? (
@@ -480,6 +659,15 @@ function PreviewRow({ row }: { row: ParsedRow }) {
               <span key={p} className="chip bg-status-danger/20 text-status-danger-ink">
                 <Icon name="alert" size={11} />
                 {t(`import.${p}`)}
+              </span>
+            ))}
+          </span>
+        ) : row.warnings.length > 0 ? (
+          <span className="flex flex-wrap gap-1">
+            {row.warnings.map((w) => (
+              <span key={w} className="chip bg-status-warn/15 text-status-warn-ink">
+                <Icon name="alert" size={11} />
+                {t(`import.${w}`)}
               </span>
             ))}
           </span>

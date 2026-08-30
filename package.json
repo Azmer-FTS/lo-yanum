@@ -17,7 +17,8 @@
     "accept": "bun run scripts/accept.ts",
     "tokens": "bun run scripts/tokens.ts",
     "wizard": "bun run scripts/wizard.ts",
-    "touch": "bun run scripts/touch.ts"
+    "touch": "bun run scripts/touch.ts",
+    "import": "bun run scripts/import.ts"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.9",
