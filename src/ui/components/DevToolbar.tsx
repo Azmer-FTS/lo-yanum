@@ -13,6 +13,7 @@ import {
 } from '@core/index'
 import type { Role } from '@core/index'
 
+import { SUPABASE_CONFIGURED } from '../../data/config'
 import { useCoreValue } from '../hooks/useCore'
 import { Icon } from './Icon'
 
@@ -23,6 +24,16 @@ const ROLE_ORDER: Role[] = ['coordinator', 'farmer', 'volunteer', 'driver']
  * nothing else in the app imports either.
  */
 export function DevToolbar() {
+  /**
+   * P2.3 — GONE IN A REAL BUILD. This bar hands out farmer, volunteer and
+   * driver sessions on mock people; behind a real login that is not a
+   * convenience, it is a way to be someone else. The flag is a build-time
+   * constant, so returning before the hooks can never change their order — and
+   * `--shell-bottom` falling back to its token default is what the effect
+   * below was already written to allow.
+   */
+  if (SUPABASE_CONFIGURED) return null
+
   const { t } = useTranslation()
   const navigate = useNavigate()
   const presets = useCoreValue(listSessionPresets)

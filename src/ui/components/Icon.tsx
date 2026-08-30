@@ -66,6 +66,7 @@ export type IconName =
   | 'calendar'
   | 'flag'
   | 'send'
+  | 'logout'
   | 'columns'
 
 type Props = SVGProps<SVGSVGElement> & { name: IconName; size?: number }
@@ -353,6 +354,19 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M20.5 3.5 3.5 10.2l6.9 2.4 2.4 6.9z" />
       <path d="M10.4 12.6 20.5 3.5" />
+    </>
+  ),
+  /**
+   * The one DIRECTIONAL icon besides `chevron`: an arrow leaving a door frame.
+   * Drawn left-to-right and mirrored at the call site with `rtl:-scale-x-100`,
+   * exactly as `ChevronForward` does — in Hebrew "out" is to the left, and an
+   * unmirrored arrow would point back into the app it is leaving.
+   */
+  logout: (
+    <>
+      <path d="M9.5 4.5H6A1.5 1.5 0 0 0 4.5 6v12A1.5 1.5 0 0 0 6 19.5h3.5" />
+      <path d="m15 8.5 3.5 3.5-3.5 3.5" />
+      <path d="M18.5 12h-9" />
     </>
   ),
 }

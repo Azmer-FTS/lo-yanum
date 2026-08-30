@@ -31,8 +31,18 @@ jobs:
       - name: Typecheck
         run: bun x tsc --noEmit
 
+      # P2.3 — the deployed app is a REAL build: it requires a Supabase session.
+      # Both values are public by design (the publishable key names the project
+      # and authorises nothing; the security is the RLS), but they live in
+      # repository secrets rather than in the tree so that rotating the key is
+      # one settings change and not a commit. If either secret is missing the
+      # build still succeeds and ships DEMO MODE — which is why `bun run auth`
+      # asserts the login screen exists rather than trusting the deploy.
       - name: Build
         run: bun x vite build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
       - uses: actions/configure-pages@v5
 

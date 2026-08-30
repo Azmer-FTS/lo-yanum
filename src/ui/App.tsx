@@ -5,6 +5,8 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { getSession, homeRouteFor } from '@core/index'
 import type { Role } from '@core/index'
 
+import { SUPABASE_CONFIGURED } from '../data/config'
+
 import {
   CoordinatorLayout,
   DRIVER_NAV,
@@ -12,8 +14,10 @@ import {
   FieldLayout,
   VOLUNTEER_NAV,
 } from './components/layouts'
+import { useAuth } from './hooks/useAuth'
 import { useCoreValue } from './hooks/useCore'
 import { LandingScreen } from './screens/LandingScreen'
+import { AuthSplash, LoginScreen } from './screens/LoginScreen'
 import { StyleguideScreen } from './screens/StyleguideScreen'
 import { DriverTripScreen } from './screens/driver/DriverTripScreen'
 import { DriversScreen } from './screens/coordinator/DriversScreen'
@@ -59,11 +63,42 @@ function RequireRole({ role, children }: { role: Role; children: ReactNode }) {
   return <>{children}</>
 }
 
+/**
+ * P2.3 — THE GATE, AND IT IS OUTSIDE THE ROUTER ON PURPOSE.
+ *
+ * In a build pointed at Supabase, an unauthenticated visitor does not get a
+ * router at all: no route exists to be typed, bookmarked or deep-linked into,
+ * so there is no list of exceptions to keep correct as screens are added. The
+ * navigation-level role gate below and the data-level gate in `@core/access`
+ * are unchanged; this is a third, coarser ring outside both.
+ *
+ * In a build WITHOUT the two environment variables — demo mode, which is what
+ * the frozen /poc is and what every verification script drives — `status` is
+ * `disabled` and this function returns the app exactly as P0bis left it.
+ */
 export default function App() {
+  const auth = useAuth()
+
+  if (auth.status === 'loading') return <AuthSplash />
+  if (auth.status === 'signed-out') return <LoginScreen />
+
   return (
     <HashRouter>
       <Routes>
-        <Route path="/" element={<LandingScreen />} />
+        {/* The identity picker is a DEMO artefact: it hands out farmer,
+            volunteer and driver sessions on mock people. A real signed-in
+            coordinator has exactly one identity, so the front door opens
+            straight onto his control room. */}
+        <Route
+          path="/"
+          element={
+            SUPABASE_CONFIGURED ? (
+              <Navigate to="/coordinator" replace />
+            ) : (
+              <LandingScreen />
+            )
+          }
+        />
 
         {/* D1 — token demonstration page. Hidden: not in any navigation, no
             role gate, rendered outside every layout so the tokens are seen on

@@ -4,6 +4,8 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 import { COORDINATOR, getMyDisplayName, getSession } from '@core/index'
 
+import { signOut } from '../../data/auth'
+import { useAuth } from '../hooks/useAuth'
 import { useCoreValue } from '../hooks/useCore'
 import { usePublishedHeight } from '../hooks/useShellMetrics'
 import { CreateGuardFab } from './CreateGuardFab'
@@ -102,6 +104,74 @@ function Brand({ compact = false }: { compact?: boolean }) {
  * on demand (and remembers the choice for the session); below `lg` it becomes
  * a slide-over.
  */
+/**
+ * P2.3 — WHO AM I, AND HOW DO I LEAVE.
+ *
+ * In demo mode this is what it always was: the coordinator's name on a tile,
+ * because there is nothing to leave. In a real build it also carries the
+ * signed-in address and the way out — and the way out belongs HERE, at the
+ * foot of the rail with the identity it ends, rather than buried in a settings
+ * screen this app does not have.
+ *
+ * The address is `dir="ltr"`: an email in an RTL paragraph renders its domain
+ * before its mailbox, which is not a cosmetic problem when the whole point of
+ * the line is to let someone check WHICH account he is in.
+ */
+function AccountBlock({ expanded }: { expanded: boolean }) {
+  const { t } = useTranslation()
+  const auth = useAuth()
+  const signedIn = auth.status === 'signed-in'
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div
+        className={`rounded-field bg-surface-high p-2.5 ${expanded ? '' : 'text-center'}`}
+      >
+        {expanded ? (
+          <>
+            <p className="truncate text-caption font-medium text-content-primary">
+              {COORDINATOR.name}
+            </p>
+            {signedIn ? (
+              <p
+                dir="ltr"
+                title={auth.email ?? undefined}
+                className="truncate text-start text-micro text-content-muted"
+              >
+                {auth.email}
+              </p>
+            ) : (
+              <p className="truncate text-micro text-content-muted">
+                {COORDINATOR.role}
+              </p>
+            )}
+          </>
+        ) : (
+          <span className="text-caption font-semibold text-accent-ink">
+            {COORDINATOR.name.slice(0, 1)}
+          </span>
+        )}
+      </div>
+
+      {signedIn && (
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          title={expanded ? undefined : t('auth.signOut')}
+          data-testid="sign-out"
+          className={`flex items-center gap-2 rounded-field px-3 py-2 text-caption text-content-muted
+                      transition-colors duration-fast hover:bg-surface-high hover:text-content-primary ${
+                        expanded ? '' : 'justify-center px-0'
+                      }`}
+        >
+          <Icon name="logout" size={17} className="rtl:-scale-x-100" />
+          {expanded && <span>{t('auth.signOut')}</span>}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export function CoordinatorLayout() {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -190,24 +260,7 @@ export function CoordinatorLayout() {
               <ThemeToggle compact={!expanded} vertical={!expanded} />
             </div>
 
-            <div
-              className={`rounded-field bg-surface-high p-2.5 ${expanded ? '' : 'text-center'}`}
-            >
-              {expanded ? (
-                <>
-                  <p className="truncate text-caption font-medium text-content-primary">
-                    {COORDINATOR.name}
-                  </p>
-                  <p className="truncate text-micro text-content-muted">
-                    {COORDINATOR.role}
-                  </p>
-                </>
-              ) : (
-                <span className="text-caption font-semibold text-accent-ink">
-                  {COORDINATOR.name.slice(0, 1)}
-                </span>
-              )}
-            </div>
+            <AccountBlock expanded={expanded} />
           </div>
         </aside>
 
@@ -269,6 +322,12 @@ export function CoordinatorLayout() {
             <nav className="flex flex-col gap-1">
               {COORDINATOR_NAV.map((item) => navLink(item, true))}
             </nav>
+
+            {/* The rail's account block is desktop-only, and a phone is where
+                a shared laptop's coordinator most needs to be able to get out. */}
+            <div className="mt-auto">
+              <AccountBlock expanded />
+            </div>
           </div>
         </div>
       )}

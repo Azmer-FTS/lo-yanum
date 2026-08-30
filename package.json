@@ -6,6 +6,7 @@
   "description": "Lo Yanum — farm guard coordination tool (Lot 0.9: UX/UI finishing pass)",
   "scripts": {
     "dev": "vite",
+    "dev:real": "vite --mode real",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -22,9 +23,11 @@
     "touch": "bun run scripts/touch.ts",
     "import": "bun run scripts/import.ts",
     "rtl": "bun run scripts/rtl.ts",
-    "outreach": "bun run scripts/outreach.ts"
+    "outreach": "bun run scripts/outreach.ts",
+    "auth": "bun run scripts/auth.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.4",
     "@tanstack/react-virtual": "^3.14.9",
     "i18next": "^23.16.8",
     "maplibre-gl": "^4.7.1",

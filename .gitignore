@@ -3,3 +3,12 @@ dist/
 .DS_Store
 *.local
 .vite/
+
+# P2.3 — the local Supabase config. The VALUES are public by design; the file
+# is ignored so that rotating the key is not a commit. `.env.example` carries
+# what is worth sharing, and explains why the name is `.env.real` and not
+# `.env` (Vite auto-loads `.env` in every mode, which would break every other
+# verification gate).
+.env
+.env.local
+.env.real

@@ -20,15 +20,26 @@ bun install && bun run dev
 
 Open http://localhost:5173 and pick an identity on the landing screen.
 
+**That is DEMO MODE, and it is the default on purpose.** `bun run dev` shows the
+POC's identity picker on the mock store, with no login, because that is what
+every browser verification gate drives. **`bun run dev:real` is the real app**:
+it reads `.env.real` (see `.env.example`), requires a Supabase session, and hides
+the role switcher. The file is called `.env.real` and NOT `.env` for one
+load-bearing reason — Vite auto-loads `.env` in every mode, so a `.env` here
+would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`,
+`wizard`, `import` and `layout` into runs against a login form.
+
 | Command | What it does |
 |---|---|
-| `bun run dev` | Dev server on :5173 (honours `PORT` so a second one can run alongside) |
+| `bun run dev` | Dev server on :5173, **DEMO MODE** (honours `PORT` so a second one can run alongside) |
+| `bun run dev:real` | The same server in **REAL MODE** — reads `.env.real`, requires a Supabase login |
 | `bun run build` | Typecheck + production build to `dist/` |
 | `bun run typecheck` | `tsc --noEmit` |
 | `bun run contrast` | WCAG audit of the design tokens (A13/A19) — 133 pairs, fails the build on a regression |
 | `bun run tokens` | **A28/A29** — one radius scale, no tinted field, orange only where it is allowed. No browser needed |
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
-| `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 64 checks |
+| `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 150 checks |
+| `bun run auth` | **A70** — the door (P2.3). Starts its OWN two dev servers, one in each mode, and compares them: real mode shows the login form and nothing else on 8 routes, refuses a wrong password IN HEBREW, gives an unknown address the SAME message, leaves no token behind; demo mode is byte-for-byte P0bis. Then B1 without a browser — 26 tables anonymously closed, an anonymous coordinator-grant INSERT refused, the three policy helpers 404. 20 checks — **needs no dev server, and never needs the password** |
 | `bun run outreach` | **A68 + A69** — the sending centre and the WhatsApp group kit, read off the rendered DOM: the right channel per phone type, prefilled `wa.me` / `sms:` / `mailto:` links DECODED and checked, the grouped SMS and email, the sent tick surviving navigation, and the kit's three copies. 25 checks — needs a dev server |
 | `bun run rtl` | **A67** — the generated .xlsx downloaded through the real UI, then opened: both sheets `rightToLeft`, every cell styled, every style right-aligned with `readingOrder="2"`, the header frozen, the instructions sheet complete. 45 checks — needs a dev server |
 | `bun run mapfirst` | **A64** — the exhaustive "map on the LEFT" audit: every route in the app at iPad landscape, each screen printed with whether it carries a map and, if it does, proof the map is the left column. Exemptions print their reason. Needs a dev server |
@@ -43,7 +54,11 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 > The ten browser scripts (`outreach`, `rtl`, `mapfirst`, `splitter`, `layout`,
 > `wizard`, `touch`, `import`, `screenshots`, `brand-reference`) take
 > `BASE_URL`, e.g.
-> `BASE_URL=http://localhost:62807 bun run layout`.
+> `BASE_URL=http://localhost:62807 bun run layout`. **`auth` is the exception**:
+> it starts and stops its own two servers, on `REAL_PORT` (5199) and
+> `DEMO_PORT` (5198), because its entire claim is a COMPARISON between the two
+> modes and half-remembering which server was which is how that claim goes
+> wrong.
 
 > **Toolchain:** this machine has **no Node.js**. Bun is at `/usr/local/bin/bun`
 > (Homebrew, Intel prefix `/usr/local`). `npm`/`node` fail with "command not
@@ -63,7 +78,9 @@ left EVERYWHERE), P0bis.2 (the draggable seam), P0bis.3 (the density pass)
 and P0bis.4 (a really-RTL .xlsx) ARE DONE and green (A64: 26 screens; A65: 72
 checks; A66: the screen-by-screen table below; A67: 45 checks). Next:
 P0bis.5 IS DONE (a, b and c). **PHASE P0bis IS COMPLETE, AND G13 HAS FROZEN
-THE POC.** Next: P2.3 (auth) → P2.4 → P2.5 → P2.6 → P3.** One
+THE POC.** **P2.3 (AUTH) IS DONE** — the deployed app requires a Supabase
+session, A70 is green at 20 checks, and the initial bundle grew by 1.6 kB
+gzipped rather than 103. Next: P2.4 → P2.5 → P2.6 → P3.** One
 commit per unit. Branch `main`.
 
 > **P0bis.1 — THE MAP IS ON THE LEFT ON EVERY SCREEN THAT HAS ONE (frozen PO
@@ -1069,6 +1086,56 @@ which G17's decision 57 retires** (42's fill-keeps-the-colour/ink-moves
 MECHANISM survives — only the charter values it protected are gone). Decisions
 32–34 survived two lots unchanged and are why both were cheap. New:
 
+68. **THE APP HAS TWO MODES AND ONE BUILD-TIME SWITCH, AND THE DEMO MODE IS
+    THE DEFAULT (P2.3).** `SUPABASE_CONFIGURED` — both environment variables
+    present — is the whole of it. Set: the app requires a session and the role
+    switcher does not exist. Unset: the app is byte-for-byte what P0bis left,
+    on the mock store, with the identity picker. This was not the obvious
+    shape; the obvious shape was "auth is on, tests log in". It is the right
+    one because **every browser gate in this repository drives the real UI**,
+    and the day P2.6 makes the real app start EMPTY, a gate that logs in would
+    be asserting things about an empty database. Demo mode keeps `accept`,
+    `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`, `wizard`, `import` and
+    `layout` testing the app rather than the login. It is also what /poc IS.
+    The consequence that has to be respected: **the config file is
+    `.env.real`, never `.env`**, because Vite auto-loads `.env` in every mode
+    and one such file would flip every gate at once.
+
+69. **THE GATE IS OUTSIDE THE ROUTER, AND SUPABASE ARRIVES IN ITS OWN CHUNK
+    (P2.3).** Two decisions that look like implementation detail and are not.
+    (a) An unauthenticated visitor to a real build does not get a router at
+    all — no route exists to be typed, bookmarked or deep-linked into, so
+    there is no exceptions list to keep correct as screens are added. A70
+    proves it over eight routes including `/styleguide`. The two older gates
+    are untouched: navigation-level `RequireRole`, and the one that actually
+    matters, `@core/access` — now mirrored in RLS. (b) `@supabase/supabase-js`
+    is behind `import()`. Imported statically it took the initial bundle from
+    190 kB to 249 kB gzipped, because it carries postgrest, storage, functions
+    and realtime whether a screen uses them or not. Behind a dynamic import
+    the entry grew **1.6 kB** and the 58 kB chunk is fetched in parallel in
+    real mode and NEVER in demo mode. The app is opened on a farm track at
+    02:00 on one bar of signal; that number is not a vanity metric.
+
+70. **THE APP NEVER CREATES AN ACCOUNT AND NEVER SETS A PASSWORD (P2.3).**
+    There is no sign-up form, no "forgot password" link, and no invitation
+    sent from here — and none of the three is an omission. Phase 1 has ONE
+    account; it was created in Supabase's own dashboard by the product owner,
+    who is the only person who has ever typed its password. Sending the
+    invitation email would have required the `service_role` key, which is
+    never fetched, never committed and never reaches the client, so it was
+    never on the table. A recovery flow means an email link, an email link
+    means parsing a token out of the URL hash, and **the hash is this app's
+    router** — which is also why `detectSessionInUrl` is off. When there is a
+    second account, that is the moment to build it properly. Two smaller rules
+    ride along: a wrong password and an unknown address give the SAME message
+    (telling them apart tells an attacker which addresses exist, and A70
+    asserts the two strings are equal), and **the account and the ROLE are two
+    separate facts** — `app_users` says "a user with no row here is nobody",
+    so `20260830000400_coordinator_grant.sql` grants the role by EMAIL lookup
+    and RAISES if the account does not exist yet, because an `insert … select`
+    over nothing succeeds silently and would leave a coordinator signing in to
+    26 empty tables with every gate green.
+
 65. **THE MAP IS ON THE PHYSICAL LEFT ON EVERY SCREEN THAT CARRIES ONE, AND
     ONE SHELL ENFORCES IT (P0bis.1).** Product-owner rule, frozen 2026-08-30.
     Decision 34 said "the map is on the physical left"; it was only ever
@@ -1432,7 +1499,7 @@ MECHANISM survives — only the charter values it protected are gone). Decisions
 
 ## 7. Verification scripts
 
-All nine are committed and runnable.
+All ten are committed and runnable.
 
 - **`scripts/contrast.ts`** (`bun run contrast`) — the A13/A19 audit. Parses
   `tokens.css`, reconstructs both palettes, and checks text, chips (ink over
@@ -1458,6 +1525,22 @@ All nine are committed and runnable.
   because the component in front of them needed it and the rule lived in a
   document. Strips comments before matching, so the prose describing a rule is
   not read as a violation of it.
+- **`scripts/auth.ts`** (`bun run auth`) — A70, 20 checks, P2.3's gate. The
+  only script that starts its own servers: one per mode, on 5199 and 5198, so
+  the two are compared inside a single run. **It never needs the password**,
+  and that constraint shaped it — the account's password belongs to the
+  product owner and must not reach this repository, this script or an agent.
+  What is left to assert without one turns out to be most of what matters:
+  that a stranger gets the login form on all eight routes tried and nothing
+  else, that a refusal says so in Hebrew and leaves no token in storage, that
+  a wrong password and an unknown address produce the SAME string, that demo
+  mode still hands out the role switcher every other gate depends on, and —
+  with no browser at all — B1: 26 tables anonymously closed, an anonymous
+  INSERT that would grant itself `coordinator` refused with 42501, and the
+  three policy helpers 404 rather than reachable. One trap is written into the
+  script: an unknown table name returns 404 from PostgREST, which the first
+  version read as "refused" — so a misspelling PASSED. A 404 is now a
+  FAILURE, and the table list is the full 26 rather than the ones remembered.
 - **`scripts/wizard.ts`** (`bun run wizard`) — A27, 28 checks. Plays the guard
   wizard from a farm with NO anchor point: the callout instead of a dead select,
   the armed-mode placement in all four of its halves (decision 55), the rename
@@ -1600,6 +1683,17 @@ src/core/                 PURE TS — no React, no DOM
                           generate.ts (seeded PRNG) · anchors(4) · missions(6,
                           one seeded mismatch) · incidents(5) · visits.ts
 
+src/data/                 ★ P2.3 — THE BACKEND LAYER. Neither pure-TS core nor
+                            React UI, so it is neither.
+  config.ts               SUPABASE_CONFIGURED / URL / key. IMPORTS NOTHING —
+                          the mode is needed in the first frame, and this
+                          module must never drag supabase-js onto that path.
+  client.ts               getSupabase(), memoised, behind a DYNAMIC import
+                          (decision 69b). Never fetched in demo mode.
+  auth.ts                 The session as the app sees it: a subscribe/snapshot
+                          pair shaped like @core/store's, no React. signIn /
+                          signOut. NO signUp, and there is not meant to be one.
+
 src/locales/he.json       ★ ALL UI COPY. en/fr intentionally {}.
 
 src/index.css             ★ @font-face for both brand faces; the brand face bound
@@ -1635,6 +1729,10 @@ src/ui/
                           Avatar · PhotoField · PresenceRoster · ThemeToggle ·
                           badges (vivid/ink) · primitives · fields · layouts ·
                           ContactActions
+  screens/LoginScreen.tsx        ★ P2.3 — the real front door + AuthSplash.
+                          Only ever rendered in a real build; the landing
+                          screen's identity picker stays with the POC.
+  hooks/useAuth.ts        useSyncExternalStore over src/data/auth
   screens/StyleguideScreen.tsx   ★ /styleguide (D1), hidden route
   screens/coordinator/    Dashboard(control room) · Agenda(D4) · MissionWizard(D5) ·
                           FarmsList · FarmDetail · FarmForm · AnchorSheet ·
@@ -1648,8 +1746,16 @@ src/ui/
 
 ## 10. Known limitations (not regressions)
 
-- **State is in memory only.** A reload resets everything, including photos,
-  created guards and planned visits.
+- **State is in memory only, IN BOTH MODES.** A reload resets everything,
+  including photos, created guards and planned visits.
+- ⚠️ **A SIGNED-IN COORDINATOR STILL SEES THE MOCK DATA.** P2.3 put a real door
+  on the building; it did not change what is inside. The 12 farms, the 300
+  volunteers and the 6 guards behind the login are the same fixtures the POC
+  shows, and nothing typed there reaches Supabase — the database is
+  deliberately EMPTY. **P2.6 is the unit that swaps the store**, and until it
+  lands, do not read anything behind the login as real. This is the single
+  most misleading state the project will pass through, which is why it is
+  written here rather than left to be inferred.
 - **The wizard sends nothing.** Messages are generated and copyable; responses
   are typed in by the coordinator. That is the Lot 5 boundary.
 - **Placeholder portraits are synthetic SVGs**, deliberately obviously so.
@@ -1668,9 +1774,14 @@ src/ui/
   returns `false` and the wizard shows why. Reassigning the guard first is a
   Lot 1 flow; deleting anyway would make the mission invisible, since
   `toMissionView` returns null when its anchor cannot be resolved.
-- **Two chunks exceed Vite's 500 kB warning** (MapLibre ~806 kB, SheetJS
-  ~500 kB). Both are split and lazily fetched; the initial bundle is ~146 kB
-  gzipped.
+- **Two chunks exceed Vite's 500 kB warning** (MapLibre ~818 kB, SheetJS
+  ~500 kB). Both are split and lazily fetched. **The initial bundle is 192 kB
+  gzipped** — the "~146 kB" carried here through several lots was stale: the
+  frozen P0bis build measures 190 kB, so P2.3 added 1.6 kB, not 46. Supabase
+  is a third split chunk (58 kB gzipped), fetched only in a real build.
+- **A real build has ONE account and no way to make another.** No sign-up, no
+  password reset, no invitation. Deliberate — see decision 70 — and the thing
+  to build first when a second person needs a login.
 - **OSM raster tiles** — must move to a keyed vector provider in Lot 1.
 - **`scripts/` is outside tsconfig's `include`.** `bun run typecheck` covers
   `src` and `vite.config.ts` only, so a changed @core signature can leave a
@@ -1752,19 +1863,44 @@ commits, all gates green, deployed and verified live:
 · the app, and it keeps moving — https://azmer-fts.github.io/lo-yanum/
 · the FROZEN poc, never redeployed — https://azmer-fts.github.io/lo-yanum/poc/
 
-**RESUME HERE — P2.3, AUTH.** The first thing it needs is a decision only the
-product owner can make, so ASK BEFORE ACTING:
+**P2.3 (AUTH) IS DONE. `bun run auth` — 20 checks, green.** The deployed app
+requires a Supabase session; `/poc` stays open on demo data; the identity
+picker and the role switcher exist only in a demo build.
 
-> **P2.3 sends a Supabase invitation email to `dov@serialkolors.com`.** That is
-> a real message to a real person, and the account it creates is the one that
-> will own the real data. Confirm with the PO that he wants it sent NOW and is
-> at his mailbox, then send it — **never set a password on his behalf**; he
-> chooses it in Supabase's own flow. The invitation link expires, so sending it
-> a week early wastes it.
+**The invitation email was never sent, and the reason is a standing decision,
+not a failure.** `auth/v1/invite` requires the `service_role` key, which this
+project never fetches, never commits and never lets near the client; the
+Supabase MCP exposes no auth-admin tool either. The product owner therefore
+created the account himself, in **Authentication → Users → Add user → Create
+new user**, choosing his own password with **Auto Confirm User** ticked. That
+is Supabase's own flow, it needs no redirect-URL configuration, and no link
+expires. **Nobody but the PO has ever typed that password; do not ask for it,
+and no gate needs it.** See decision 70.
 
-Then, in order: **P2.3** (login screen, persistent session, sign-out in the
-rail; the real app requires the session, `/poc` stays open on demo data) →
-**P2.4** (private `photos` + `agreements` buckets, signed URLs) → **P2.5**
+> ⚠️ **THE ONE STEP THAT IS NOT CODE.** An auth account is not yet a
+> coordinator: `app_users` is where a login becomes somebody, and the schema
+> says so — "a user with no row here is nobody". Apply
+> `supabase/migrations/20260830000400_coordinator_grant.sql`, which looks the
+> account up BY EMAIL and RAISES if it is not there. Verify with
+> `select email, role from auth.users u join app_users a on a.user_id = u.id;`
+> — one row, `coordinator`. Skipping it produces the worst possible symptom: a
+> coordinator who signs in successfully and sees 26 empty tables with no error.
+
+> **BEFORE THE NEXT DEPLOY:** the two repository secrets
+> `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` must exist in
+> GitHub → Settings → Secrets and variables → Actions. Both values are public
+> by design (`.env.example` carries them); they are secrets so that rotating
+> the key is a settings change and not a commit. **If either is missing the
+> build still SUCCEEDS and silently ships DEMO MODE** — the mock store, the
+> role switcher, no login. Check the deployed site shows the login form.
+
+⚠️ **AND UNTIL P2.6 LANDS, THE LOGIN GUARDS MOCK DATA.** P2.3 built the door,
+not the rooms: a signed-in coordinator sees the same 12 farms and 300
+volunteers the POC shows, and nothing he types reaches Supabase. The database
+is deliberately empty. Say so to anyone who is shown the deployed app before
+P2.6.
+
+**RESUME HERE — P2.4:** (private `photos` + `agreements` buckets, signed URLs) → **P2.5**
 (THE OFFLINE LAYER — a unit in its own right: IndexedDB read cache, a write
 outbox with the "N ממתינים לסנכרון" badge, last-write-wins per changed field,
 a service worker, ~50–80 MB of pre-cached Negev OSM tiles behind a
@@ -1800,9 +1936,13 @@ at the top of this file.
    the client.** If any future step seems to need it in the browser, that step
    is wrong.
 2. **The coordinator account is `dov@serialkolors.com`.** One account in
-   phase 1. **Never set the password**: invite the address and let the PO
-   choose it in Supabase's own flow. No credential is ever typed into this
-   app or committed.
+   phase 1. **Never set the password**: it is created by the PO himself in
+   Supabase's own dashboard (Authentication → Users → Add user → Create new
+   user, Auto Confirm User ticked) and he is the only person who has ever
+   typed it. No credential is ever typed into this app, committed, or given to
+   an agent — and no verification gate needs one. The account is only half the
+   grant: `app_users` is where a login becomes a coordinator, and that half is
+   `20260830000400_coordinator_grant.sql`.
 
 Also carry in: the anon key is PUBLIC by design and **the security IS the
 RLS** — that is why P2.2 transcribes `access.ts` policy by policy and why a
