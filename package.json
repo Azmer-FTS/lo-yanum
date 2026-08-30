@@ -24,7 +24,8 @@
     "import": "bun run scripts/import.ts",
     "rtl": "bun run scripts/rtl.ts",
     "outreach": "bun run scripts/outreach.ts",
-    "auth": "bun run scripts/auth.ts"
+    "auth": "bun run scripts/auth.ts",
+    "storage": "bun run scripts/storage.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",

@@ -40,6 +40,7 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 150 checks |
 | `bun run auth` | **A70** — the door (P2.3). Starts its OWN two dev servers, one in each mode, and compares them: real mode shows the login form and nothing else on 8 routes, refuses a wrong password IN HEBREW, gives an unknown address the SAME message, leaves no token behind; demo mode is byte-for-byte P0bis. Then B1 without a browser — 26 tables anonymously closed, an anonymous coordinator-grant INSERT refused, the three policy helpers 404. 20 checks — **needs no dev server, and never needs the password** |
+| `bun run storage` | **A71** — the two private buckets (P2.4): no public route on either (`NoSuchBucket`, the one proof that does not depend on them being empty), no bucket or object enumeration, no signed URL minted for a stranger, no anonymous upload. 10 checks — no browser, no dev server, no password |
 | `bun run outreach` | **A68 + A69** — the sending centre and the WhatsApp group kit, read off the rendered DOM: the right channel per phone type, prefilled `wa.me` / `sms:` / `mailto:` links DECODED and checked, the grouped SMS and email, the sent tick surviving navigation, and the kit's three copies. 25 checks — needs a dev server |
 | `bun run rtl` | **A67** — the generated .xlsx downloaded through the real UI, then opened: both sheets `rightToLeft`, every cell styled, every style right-aligned with `readingOrder="2"`, the header frozen, the instructions sheet complete. 45 checks — needs a dev server |
 | `bun run mapfirst` | **A64** — the exhaustive "map on the LEFT" audit: every route in the app at iPad landscape, each screen printed with whether it carries a map and, if it does, proof the map is the left column. Exemptions print their reason. Needs a dev server |
@@ -80,7 +81,9 @@ checks; A66: the screen-by-screen table below; A67: 45 checks). Next:
 P0bis.5 IS DONE (a, b and c). **PHASE P0bis IS COMPLETE, AND G13 HAS FROZEN
 THE POC.** **P2.3 (AUTH) IS DONE** — the deployed app requires a Supabase
 session, A70 is green at 20 checks, and the initial bundle grew by 1.6 kB
-gzipped rather than 103. Next: P2.4 → P2.5 → P2.6 → P3.** One
+gzipped rather than 103. **P2.4 (STORAGE) IS DONE** — two private buckets, one
+read rule that asks the existing RLS rather than restating it, A71 green at 10
+checks. Next: P2.5 → P2.6 → P3.** One
 commit per unit. Branch `main`.
 
 > **P0bis.1 — THE MAP IS ON THE LEFT ON EVERY SCREEN THAT HAS ONE (frozen PO
@@ -1499,7 +1502,7 @@ MECHANISM survives — only the charter values it protected are gone). Decisions
 
 ## 7. Verification scripts
 
-All ten are committed and runnable.
+All eleven are committed and runnable.
 
 - **`scripts/contrast.ts`** (`bun run contrast`) — the A13/A19 audit. Parses
   `tokens.css`, reconstructs both palettes, and checks text, chips (ink over
@@ -1541,6 +1544,21 @@ All ten are committed and runnable.
   script: an unknown table name returns 404 from PostgREST, which the first
   version read as "refused" — so a misspelling PASSED. A 404 is now a
   FAILURE, and the table list is the full 26 rather than the ones remembered.
+- **`scripts/storage.ts`** (`bun run storage`) — A71, 10 checks, P2.4's gate.
+  It is short because most of what it wanted to assert turned out to be
+  unprovable without a password, and saying so was better than dressing it up.
+  Both buckets are EMPTY, so on almost every endpoint "refused" and "there is
+  nothing there" are the same answer — the exact trap P2.2's migration comment
+  records. **One endpoint escapes it, and the gate is built on that one:** a
+  PUBLIC bucket answers a missing object with `NoSuchKey`, a PRIVATE one with
+  `NoSuchBucket`, because for an anonymous caller the public route does not
+  exist at all. That answer does not depend on the contents. Around it: no
+  bucket or object enumeration, no signed URL minted for a stranger (a leak
+  would show as a `token=` in the response), no anonymous upload — refused with
+  "new row violates row-level security policy". **What it CANNOT prove, printed
+  in every run:** that a farmer reaches his own agreement and not his
+  neighbour's, and that a volunteer reaches the group he is standing with.
+  Both need a signed-in caller.
 - **`scripts/wizard.ts`** (`bun run wizard`) — A27, 28 checks. Plays the guard
   wizard from a farm with NO anchor point: the callout instead of a dead select,
   the armed-mode placement in all four of its halves (decision 55), the rename
@@ -1693,6 +1711,11 @@ src/data/                 ★ P2.3 — THE BACKEND LAYER. Neither pure-TS core n
   auth.ts                 The session as the app sees it: a subscribe/snapshot
                           pair shaped like @core/store's, no React. signIn /
                           signOut. NO signUp, and there is not meant to be one.
+  storage.ts              ★ P2.4 — the key builders (photoKey/agreementKey, the
+                          shape the storage policies read) and BATCHED signed
+                          URLs with a TTL cache. 300 portraits is one round
+                          trip, not 300. Cleared on sign-out: a signed URL
+                          outlives the session that minted it.
 
 src/locales/he.json       ★ ALL UI COPY. en/fr intentionally {}.
 
@@ -1779,6 +1802,10 @@ src/ui/
   gzipped** — the "~146 kB" carried here through several lots was stale: the
   frozen P0bis build measures 190 kB, so P2.3 added 1.6 kB, not 46. Supabase
   is a third split chunk (58 kB gzipped), fetched only in a real build.
+- **The buckets exist and are closed, but nothing writes to them yet.** P2.4
+  built the doors and the signing helper; the camera capture and the agreement
+  PDF are P3, and the components still read `photo` straight through. So the
+  buckets are EMPTY, which is also why A71 can only prove the anonymous half.
 - **A real build has ONE account and no way to make another.** No sign-up, no
   password reset, no invitation. Deliberate — see decision 70 — and the thing
   to build first when a second person needs a login.
@@ -1900,8 +1927,36 @@ volunteers the POC shows, and nothing he types reaches Supabase. The database
 is deliberately empty. Say so to anyone who is shown the deployed app before
 P2.6.
 
-**RESUME HERE — P2.4:** (private `photos` + `agreements` buckets, signed URLs) → **P2.5**
-(THE OFFLINE LAYER — a unit in its own right: IndexedDB read cache, a write
+**P2.4 (STORAGE) IS DONE. `bun run storage` — 10 checks, green.** Two PRIVATE
+buckets, applied as `20260830000500_storage.sql`:
+
+| Bucket | Key shape | Limits |
+|---|---|---|
+| `photos` | `<kind>/<id>/<filename>`, kind ∈ entities/contacts/volunteers/drivers | 5 MB, jpeg/png/webp |
+| `agreements` | `<entity_id>/<agreement_id>.pdf` | 20 MB, pdf |
+
+The id is a FOLDER, not a filename stem, so replacing a portrait busts every
+cached signed URL without touching the row that points at it — and so
+`storage.foldername(name)[1]/[2]` gives the policies the kind and the id.
+
+**THE READ RULE IS ONE POLICY: "you may see the photo of anything you may
+see."** It does not restate who may read a volunteer, it ASKS —
+`exists (select 1 from volunteers where id = …)` — and Postgres applies RLS to
+tables referenced inside a policy expression, so that `exists` is answered by
+the policies P2.2 already transcribed from `access.ts`. Nobody has to remember
+to update the storage file when an access rule changes, which is exactly the
+kind of remembering that fails. Writes are coordinator-only in both buckets.
+`get_advisors(security)` returns no lints.
+
+> **This resolves ETAT open question 4 by preserving today's behaviour, and it
+> should be said rather than slipped in:** a farmer CAN see the faces of the
+> volunteers coming to his farm from the moment the guard is planned. That is
+> what `FarmerTonightScreen` already renders and what P2.2 already grants for
+> their NAMES. If the answer is meant to be "only once they are on site", the
+> change is one added clause in the storage migration, next to the rule it
+> qualifies.
+
+**RESUME HERE — P2.5:** **the offline layer** (THE OFFLINE LAYER — a unit in its own right: IndexedDB read cache, a write
 outbox with the "N ממתינים לסנכרון" badge, last-write-wins per changed field,
 a service worker, ~50–80 MB of pre-cached Negev OSM tiles behind a
 "רענן מפות לא מקוונות" button) → **P2.6** (the store becomes an interface with
