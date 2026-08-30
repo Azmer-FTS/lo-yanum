@@ -1737,9 +1737,42 @@ src/ui/
 
 ## 12. Next step
 
-**PHASE P1 — finish the POC: G10 → G18 → G12 → G13.** Their specs are in §1's
-resume note, unchanged. Then P2 (Lot 1) and P3 (Lot 2 essential) per the final
-order of march recorded at the top of this file.
+**PHASE P0bis IS COMPLETE AND THE POC IS FROZEN (G13).** Five units, five
+commits, all gates green, deployed and verified live:
+
+| Unit | What it did | Its gate |
+|---|---|---|
+| P0bis.1 | the map is on the physical LEFT on every screen that has one | `mapfirst` — 26 screens |
+| P0bis.2 | the map/content seam is a draggable splitter | `splitter` — 72 checks |
+| P0bis.3 | the density pass, screen by screen | the table in §1 |
+| P0bis.4 | the generated .xlsx is really RTL | `rtl` — 45 checks |
+| P0bis.5 | the email field, the sending centre, the group kit | `outreach` — 25 checks |
+
+**THE TWO URLS, both verified 200 after the G13 deploy:**
+· the app, and it keeps moving — https://azmer-fts.github.io/lo-yanum/
+· the FROZEN poc, never redeployed — https://azmer-fts.github.io/lo-yanum/poc/
+
+**RESUME HERE — P2.3, AUTH.** The first thing it needs is a decision only the
+product owner can make, so ASK BEFORE ACTING:
+
+> **P2.3 sends a Supabase invitation email to `dov@serialkolors.com`.** That is
+> a real message to a real person, and the account it creates is the one that
+> will own the real data. Confirm with the PO that he wants it sent NOW and is
+> at his mailbox, then send it — **never set a password on his behalf**; he
+> chooses it in Supabase's own flow. The invitation link expires, so sending it
+> a week early wastes it.
+
+Then, in order: **P2.3** (login screen, persistent session, sign-out in the
+rail; the real app requires the session, `/poc` stays open on demo data) →
+**P2.4** (private `photos` + `agreements` buckets, signed URLs) → **P2.5**
+(THE OFFLINE LAYER — a unit in its own right: IndexedDB read cache, a write
+outbox with the "N ממתינים לסנכרון" badge, last-write-wins per changed field,
+a service worker, ~50–80 MB of pre-cached Negev OSM tiles behind a
+"רענן מפות לא מקוונות" button) → **P2.6** (the store becomes an interface with
+a demo implementation and a Supabase one; the real app starts EMPTY) → **P3**.
+
+Then P2 (Lot 1) and P3 (Lot 2 essential) per the final order of march recorded
+at the top of this file.
 
 **Both P2 blockers are ANSWERED (product owner, 2026-08-30):**
 
