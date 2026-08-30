@@ -417,7 +417,14 @@ export function SelectOrCreateField({
   )
 }
 
-/** Two-column responsive form section: stacks below `md`. */
+/**
+ * Two-column form section — and P0bis.3: the two columns appear when THIS
+ * SECTION is wide enough, not when the viewport is. The forms now live in a
+ * panel whose width the coordinator drags (P0bis.2) and in modals capped at
+ * 32 rem, so a `md:` breakpoint was answering a question about the window
+ * that nothing on screen was asking. Children that must take the whole row
+ * say `col-span-full`, which is inert in the one-column reading.
+ */
 export function FormSection({
   title,
   children,
@@ -428,12 +435,12 @@ export function FormSection({
   action?: ReactNode
 }) {
   return (
-    <section className="card card-pad">
+    <section className="panel-scope card card-pad">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="section-title">{title}</h2>
         {action}
       </div>
-      <div className="grid gap-4 md:grid-cols-2">{children}</div>
+      <div className="form-grid">{children}</div>
     </section>
   )
 }

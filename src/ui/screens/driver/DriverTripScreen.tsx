@@ -73,6 +73,28 @@ export function DriverTripScreen() {
         actions={<MissionStatusChip status={mission.status} />}
       />
 
+      {/* P0bis.3a — THE TWO NUMBERS A DRIVER ACTUALLY NEEDS, BIG. He reads
+          this at the wheel, in the dark: what time he leaves and how many
+          people he is collecting. Both existed on the screen — one as a
+          subtitle, the other as the length of a list — which is not the same
+          as being readable at a glance. */}
+      <div className="card card-pad metric-band mb-4">
+        <div className="min-w-0">
+          <p className="numeric ltr-nums text-metric text-content-primary">
+            {formatTime(mission.startAt, locale)}
+          </p>
+          <p className="muted mt-0.5 leading-tight">{t('missions.startAt')}</p>
+        </div>
+        <div className="min-w-0">
+          <p className="numeric text-metric text-content-primary">
+            {rows.length}
+          </p>
+          <p className="muted mt-0.5 leading-tight">
+            {t('driver.hisPassengers')}
+          </p>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-4">
         {/* The roster comes first: it is what the driver opens the app to do. */}
         <Section

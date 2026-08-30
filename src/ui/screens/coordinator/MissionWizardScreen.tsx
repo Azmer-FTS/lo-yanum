@@ -1014,7 +1014,7 @@ export function MissionWizardScreen() {
               className="order-2 flex min-w-0 flex-col gap-4 lg:order-none lg:w-[var(--content-w)] lg:flex-none lg:overflow-y-auto lg:pe-1"
             >
               <Section title={t('wizard.whenSection')} flush>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="auto-cols gap-3 [--col-min:13rem]">
                   <SelectField
                     label={t('missions.farm')}
                     value={farmId}
@@ -1388,7 +1388,12 @@ export function MissionWizardScreen() {
           />
           <Section title={t('wizard.stepSolicit')} bare flush>
             <p className="muted mb-2.5">{t('wizard.solicitHint')}</p>
-            <ul className="stagger flex flex-col gap-2">
+            {/* P0bis.3b — the candidate cards go TWO PER ROW on a wide
+                screen. The wizard runs full-page, so a one-column list of
+                twelve short cards spends most of an iPad on nothing while the
+                coordinator scrolls past the twelfth name he is ringing. */}
+            <div className="panel-scope">
+              <ul className="stagger pair-grid gap-2">
               {shortlisted.map((volunteer) => {
                 const candidate =
                   ranking.find((c) => c.volunteer.id === volunteer.id) ?? null
@@ -1511,7 +1516,8 @@ export function MissionWizardScreen() {
                   </li>
                 )
               })}
-            </ul>
+              </ul>
+            </div>
 
             {declined.length > 0 && (
               <p className="muted mt-2.5">
@@ -1560,7 +1566,12 @@ export function MissionWizardScreen() {
             )}
           </div>
 
-          <ul className="stagger flex flex-col gap-2">
+            {/* P0bis.3b — the candidate cards go TWO PER ROW on a wide
+                screen. The wizard runs full-page, so a one-column list of
+                twelve short cards spends most of an iPad on nothing while the
+                coordinator scrolls past the twelfth name he is ringing. */}
+            <div className="panel-scope">
+              <ul className="stagger pair-grid gap-2">
             {sortedDrivers.map(({ driver, distanceKm }) => {
               const state = driverSel[driver.id] ?? 'idle'
               const chosen = state === 'confirmed'
@@ -1690,7 +1701,8 @@ export function MissionWizardScreen() {
                 </li>
               )
             })}
-          </ul>
+              </ul>
+            </div>
           <p className="muted mt-2.5">{t('wizard.driverOptional')}</p>
         </Section>
       )}

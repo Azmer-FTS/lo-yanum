@@ -174,7 +174,7 @@ export function DriversScreen() {
 
         {/* G14d — the cards are the filters. "Total" clears; the seat sum is
             a reading, not a filter, so it stays a plain Stat. */}
-        <div className="mb-3 grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+        <div className="auto-cols mb-3 gap-2.5 [--col-min:8.5rem]">
           <KpiFilter
             label={t('driver.statsTotal')}
             value={stats.total}

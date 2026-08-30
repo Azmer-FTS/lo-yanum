@@ -651,7 +651,11 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`max-h-[90dvh] w-full animate-fade-in overflow-y-auto rounded-t-card
+        // P0bis.3 — `panel-scope`: a modal's form lays itself out against the
+        // DIALOG's width, not the window's. A `md:grid-cols-2` inside a 32 rem
+        // dialog gave two 15 rem columns on any desktop, which is the reading
+        // the breakpoint existed to prevent.
+        className={`panel-scope max-h-[90dvh] w-full animate-fade-in overflow-y-auto rounded-t-card
                     bg-surface-overlay p-5 shadow-lift sm:rounded-card ${
                       wide ? 'max-w-3xl' : 'max-w-lg'
                     }`}

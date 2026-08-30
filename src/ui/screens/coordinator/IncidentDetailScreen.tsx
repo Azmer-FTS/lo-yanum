@@ -152,12 +152,24 @@ export function IncidentDetailScreen() {
         }
       />
 
-      <div className="flex flex-col gap-4">
+      <div className="panel-scope flex flex-col gap-4">
+        {/* P0bis.3a/b — WHAT HAPPENED IS THE HEADLINE, and the four facts
+            about the report go BESIDE it rather than crammed under it in a
+            key/value list the eye reads last. The report itself is set one
+            size up: on this screen it is the content, not an attribute. */}
+        <div className="pair-grid">
           <Section title={t('report.description')}>
-            <p className="whitespace-pre-line text-caption leading-relaxed text-content-secondary">
+            <p className="whitespace-pre-line text-body leading-relaxed text-content-primary">
               {incident.description}
             </p>
-            <dl className="mt-3 border-t border-edge-subtle pt-2">
+          </Section>
+
+          <Section title={t('common.details')}>
+            <dl>
+              <KeyValue
+                label={t('report.severity')}
+                value={<SeverityChip severity={incident.severity} />}
+              />
               <KeyValue
                 label={t('incidents.reportedBy')}
                 value={`${incident.reporterName} · ${t(
@@ -184,6 +196,7 @@ export function IncidentDetailScreen() {
               )}
             </dl>
           </Section>
+        </div>
 
           {/* D6.1 — report → actions → resolution, as one continuous thread.
               The follow-up entries are not a separate list from the report and

@@ -162,6 +162,15 @@ check(
   'the upload reached the mapping step',
   (await bodyText(page)).includes('מיפוי עמודות'),
 )
+/**
+ * The preview's counts are a LABEL and a NUMBER, and P0bis.3a swapped their
+ * order — the figure is now read first, at metric size, because it is the
+ * decision this screen asks for. The assertion is about the pair, not about
+ * which of the two the DOM happens to emit first, so it accepts either.
+ */
+const counts = (text: string, label: string, n: number) =>
+  new RegExp(`(${label}\\s*${n}|${n}\\s*${label})`).test(text)
+
 check(
   'every column of our own template was guessed',
   (await unmappedColumns(page)).length === 0,
@@ -171,8 +180,9 @@ check(
 check('"next" is allowed', await clickText(page, 'הבא'))
 await page.waitForTimeout(1200)
 const volPreview = await bodyText(page)
-check('two rows will import', /ייובאו\s*2/.test(volPreview.replace(/\s+/g, ' ')), '')
-check('one row will be skipped', /יידלגו\s*1/.test(volPreview.replace(/\s+/g, ' ')), '')
+const volFlat = volPreview.replace(/\s+/g, ' ')
+check('two rows will import', counts(volFlat, 'ייובאו', 2), '')
+check('one row will be skipped', counts(volFlat, 'יידלגו', 1), '')
 
 check('the import runs', await clickText(page, 'ייבוא'))
 await page.waitForTimeout(1500)
@@ -264,7 +274,7 @@ check(
 check('"next" is allowed for farms', await clickText(page, 'הבא'))
 await page.waitForTimeout(1200)
 const farmPreview = (await bodyText(page)).replace(/\s+/g, ' ')
-check('three rows will import', /ייובאו 3/.test(farmPreview), '')
+check('three rows will import', counts(farmPreview, 'ייובאו', 3), '')
 check(
   'the Waze row is positioned from its link',
   farmPreview.includes('מיקום מהקישור'),
@@ -275,7 +285,7 @@ check(
 )
 check(
   'the shortened-link row wears מיקום חסר and still imports',
-  farmPreview.includes('מיקום חסר') && /דורשות השלמה 1/.test(farmPreview),
+  farmPreview.includes('מיקום חסר') && counts(farmPreview, 'דורשות השלמה', 1),
   '',
 )
 

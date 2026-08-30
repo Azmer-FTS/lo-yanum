@@ -169,7 +169,7 @@ export function FarmsListScreen() {
   const moshavim = farms.filter((f) => entityKindOf(f) === 'moshav')
 
   const kpiGrid = (
-    <div className="mb-3 grid grid-cols-2 gap-2 xl:grid-cols-3">
+    <div className="auto-cols mb-3 gap-2 [--col-min:9rem]">
       {statusKpis.map((k) => (
         <KpiFilter
           key={k.status}
@@ -419,7 +419,12 @@ export function FarmsListScreen() {
       {filtered.length === 0 ? (
         <EmptyState icon="farm" title={t('farms.empty')} />
       ) : (
-        <ul className="stagger flex flex-col gap-1.5">
+        // P0bis.3b — two farm cards per row as soon as the panel can hold
+        // two. In the map reading the panel is a third of the screen, so this
+        // is normally one column; it earns its keep the moment the seam is
+        // dragged, which is exactly when a stretched row looks emptiest.
+        <div className="panel-scope">
+          <ul className="stagger pair-grid gap-1.5">
           {page.visible.map((farm) => {
             const active = farm.id === hoveredId || farm.id === selectedId
             return (
@@ -461,7 +466,8 @@ export function FarmsListScreen() {
               </li>
             )
           })}
-        </ul>
+          </ul>
+        </div>
       )}
       <LoadMore shown={page.shown} total={page.total} onMore={page.more} />
     </MapPanel>

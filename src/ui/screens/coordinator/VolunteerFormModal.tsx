@@ -117,8 +117,8 @@ export function VolunteerFormModal({
       onClose={onClose}
       wide
     >
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="md:col-span-2">
+      <div className="form-grid">
+        <div className="col-span-full">
           <PhotoField
             label={t('photo.personLabel')}
             value={photo}
@@ -199,7 +199,7 @@ export function VolunteerFormModal({
         {/* G5.2 — the driving block: licence, car, and — only when both are
             there to stand on — the dual hat that mirrors this volunteer into
             the drivers roster. */}
-        <div className="flex flex-col gap-2 md:col-span-2">
+        <div className="flex flex-col gap-2 col-span-full">
           <span className="label">{t('driver.vehicle')}</span>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <label className="flex items-center gap-2 text-caption text-content-secondary">
@@ -243,7 +243,7 @@ export function VolunteerFormModal({
         </div>
 
         {/* G3.4 — availability preferences; everything on = no constraint. */}
-        <div className="flex flex-col gap-2 md:col-span-2">
+        <div className="flex flex-col gap-2 col-span-full">
           <span className="label">{t('form.availabilityLabel')}</span>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             {(
@@ -279,7 +279,7 @@ export function VolunteerFormModal({
           value={notes}
           onChange={setNotes}
           rows={3}
-          className="md:col-span-2"
+          className="col-span-full"
         />
       </div>
 

@@ -185,7 +185,13 @@ export function IncidentsScreen() {
       {filtered.length === 0 ? (
         <EmptyState icon="alert" title={t('incidents.empty')} />
       ) : (
-        <ul className="stagger flex flex-col gap-2">
+        // P0bis.3b — the cards go TWO PER ROW as soon as the panel can hold
+        // two. Stretched to the full width of a widened panel each row becomes
+        // a mostly-empty band, which is the "unjustified emptiness" the
+        // density pass exists to remove; `panel-scope` makes that a question
+        // about the panel rather than about the window.
+        <div className="panel-scope">
+          <ul className="stagger pair-grid gap-2">
           {page.visible.map(({ incident, farm }) => {
             const active = incident.id === hoveredId
             return (
@@ -230,6 +236,7 @@ export function IncidentsScreen() {
             )
           })}
         </ul>
+      </div>
       )}
       <LoadMore shown={page.shown} total={page.total} onMore={page.more} />
     </MapPanel>

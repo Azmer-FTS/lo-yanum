@@ -511,7 +511,7 @@ export function DashboardScreen() {
       {/* 0 — G14a: the two strategic dunam KPIs, before anything operational.
           These are the association's budget numbers, so they are the biggest
           figures on the screen and they come first. */}
-      <div className="mb-2.5 grid grid-cols-2 gap-2.5">
+      <div className="auto-cols mb-2.5 gap-2.5 [--col-min:11rem]">
         <Link to="/coordinator/farms" className="card-interactive min-w-0 p-4">
           <span className="numeric text-display block text-status-success-ink">
             {dunams.guardedDunams.toLocaleString(locale)}
@@ -537,7 +537,7 @@ export function DashboardScreen() {
       </div>
 
       {/* 1 — KPI strip. */}
-      <div className="mb-5 grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+      <div className="auto-cols mb-5 gap-2.5 [--col-min:8.5rem]">
         <Kpi
           label={t('dashboard.activeFarms')}
           value={activeFarms}
@@ -605,7 +605,13 @@ export function DashboardScreen() {
       {/* 3 — Agenda. */}
       <AgendaWidget />
 
-      {/* 4 — Tonight, then the pipeline. Reference, not decisions. */}
+      {/* 4 — Tonight, then the pipeline. Reference, not decisions — and
+          P0bis.3b: two reference blocks side by side once the panel can hold
+          them, instead of two more screenfuls under the decisions. The wide
+          threshold, not the ordinary one: both carry lists, and a 18 rem
+          column of "farm · 21:00 · 4 people" wraps every row. */}
+      <div className="panel-scope">
+        <div className="pair-grid-wide">
       <section className="mb-5">
         <h2 className="pb-2 text-section text-content-primary">
           {t('dashboard.tonightGuards')}
@@ -658,7 +664,7 @@ export function DashboardScreen() {
           {t('dashboard.farmsByStatus')}
         </h2>
         <div className="card card-pad">
-          <ul className="grid gap-x-4 sm:grid-cols-2">
+          <ul className="auto-cols gap-x-4 [--col-min:12rem]">
             {statusCounts.map(({ status, count }) => (
               <li key={status}>
                 <Link
@@ -693,6 +699,8 @@ export function DashboardScreen() {
           </div>
         </div>
       </section>
+        </div>
+      </div>
     </MapPanel>
   )
 }

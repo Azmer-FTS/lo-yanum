@@ -450,6 +450,14 @@ export function AgendaScreen() {
       {/* G9 — the day as it will be DRIVEN, above the day as it is booked.
           Same block as the dashboard, keyed on the viewed date (G7bis.4): a
           future day shows its own itinerary, or the "צור מסלול ליום זה" CTA. */}
+      {/* P0bis.3b — on the DAY view the itinerary and the hour ladder go side
+          by side once the page is wide enough. They are read together — "this
+          is the drive, these are the slots it has to fit between" — and
+          stacked, the ladder starts below the fold. The calendar itself (week
+          and month) is untouched: it is read like text and is deliberately not
+          re-laid out. */}
+      <div className="panel-scope">
+        <div className="pair-grid-wide">
       {view === 'day' && (
         <div className="mb-3">
           <MyDayBlock dayKey={localDayKey(days[0])} />
@@ -516,6 +524,8 @@ export function AgendaScreen() {
           })}
         </div>
       )}
+        </div>
+      </div>
 
       {view !== 'day' && (
       <div

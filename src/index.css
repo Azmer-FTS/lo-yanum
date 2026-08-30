@@ -500,6 +500,98 @@
 }
 
 /* ---------------------------------------------------------------------------
+   P0bis.3 — TWO PER ROW WHEN THE PANEL CAN AFFORD IT, MEASURED ON THE PANEL
+   ---------------------------------------------------------------------------
+   The density pass' rule: a block with little in it goes BESIDE its neighbour
+   instead of stretching down the page. The question "is there room" is not a
+   question about the viewport any more — P0bis.2 made the content column a
+   width the coordinator drags, so the same 1376 px screen can leave the panel
+   700 px or 340 px. A `2xl:grid-cols-2` would pair two blocks into a column
+   too narrow to hold them the moment the map is widened.
+
+   So the query is a CONTAINER query, asked of the panel: `.panel-scope`
+   declares the measuring box and `.pair-grid` inside it goes to two columns
+   only when that box is at least 44 rem. Outside any `.panel-scope` a
+   `.pair-grid` stays one column, which is the safe reading.
+
+   `container-type: inline-size` also makes the element a containing block for
+   absolutely positioned descendants, so it is applied to small, deliberate
+   wrappers — never to `main`, whose descendants include the `fixed` modals.
+   --------------------------------------------------------------------------- */
+
+.panel-scope {
+  container-type: inline-size;
+}
+
+.pair-grid {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* The key-numbers band at the top of a context screen (P0bis.3a: "he drives"
+   — the numbers first, big). `auto-fit` + a 9 rem floor needs no query at all:
+   it lays out against the width it actually has, which is the width the
+   coordinator just dragged the splitter to. */
+.metric-band {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+/* The same idea for any strip of small cards — KPI rows, status counts. The
+   floor is per-site (`[--col-min:8.5rem]`) because a KPI tile and a dunam
+   card are not the same width. `auto-fit` asks no question and needs no
+   container: it lays out against the width it has, which is what a dragged
+   panel changes underneath it. Before P0bis.2 a `xl:grid-cols-4` was merely
+   coarse; now it is WRONG — the viewport is `xl` while the panel it lays out
+   in can be a quarter of the screen. */
+.auto-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--col-min, 9rem), 1fr));
+}
+
+/* A form section is its own measuring box: two columns when IT is wide
+   enough, one when it is not, whether it sits in a 50 % panel or a modal. */
+.form-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@container (min-width: 30rem) {
+  .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.pair-grid-wide {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* 36 rem is two readable columns of text or chips. Anything that needs more —
+   two tables, two rosters — asks for `.pair-grid-wide` rather than making
+   every pair on every screen wait for the same generous width. */
+@container (min-width: 36rem) {
+  .pair-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* A block that must keep the full width of the row inside a paired grid —
+     a wide table, a map — says so rather than being pulled out of the grid. */
+  .pair-span {
+    grid-column: 1 / -1;
+  }
+}
+
+@container (min-width: 50rem) {
+  .pair-grid-wide {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ---------------------------------------------------------------------------
    STAGGERED LIST ENTRY
    ---------------------------------------------------------------------------
    `<ul className="stagger">` and every direct child rises in, one after the

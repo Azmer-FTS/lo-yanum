@@ -94,7 +94,7 @@ export function GeneralMeetingModal({
           error={touched ? titleError : undefined}
           required
         />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="form-grid">
           <Field label={t('meeting.startField')} required>
             <input
               type="datetime-local"

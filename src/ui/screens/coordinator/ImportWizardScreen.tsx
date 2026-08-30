@@ -381,7 +381,7 @@ export function ImportWizardScreen() {
           </p>
           <p className="muted mb-4">{t('import.mappingHint')}</p>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="auto-cols gap-3 [--col-min:13rem]">
             {headers.map((header, i) => (
               <div
                 key={`${header}-${i}`}
@@ -460,27 +460,42 @@ export function ImportWizardScreen() {
 
       {step === 'preview' && analysis && (
         <Section title={t('import.stepPreview')}>
-          <div className="mb-3 flex flex-wrap items-center gap-3">
-            <span className="chip bg-status-success/15 text-status-success-ink">
-              {t('import.willImport')}
-              <span className="numeric">{analysis.importable.length}</span>
-            </span>
-            <span className="chip bg-status-danger/15 text-status-danger-ink">
-              {t('import.willSkip')}
-              <span className="numeric">{analysis.rejected.length}</span>
-            </span>
-            {/* G10 — rows that WILL import and still need a hand afterwards.
-                Counted separately from the rejects because the coordinator
-                does something different about them: he imports, then drops
-                the pins. */}
+          {/* P0bis.3a — THE THREE COUNTS ARE THE DECISION, so they are read
+              as numbers rather than as three chips in a row of prose. "412
+              will import, 6 will be skipped, 11 need a pin" is the whole
+              question this screen asks, and it was set at chip size.
+              G10 — the warned rows are counted APART from the rejects because
+              the coordinator does something different about them: he imports,
+              then drops the pins. */}
+          <div className="metric-band mb-3 rounded-card bg-surface-high p-4">
+            <div className="min-w-0">
+              <p className="numeric text-metric text-status-success-ink">
+                {analysis.importable.length}
+              </p>
+              <p className="muted mt-0.5 leading-tight">
+                {t('import.willImport')}
+              </p>
+            </div>
+            <div className="min-w-0">
+              <p className="numeric text-metric text-status-danger-ink">
+                {analysis.rejected.length}
+              </p>
+              <p className="muted mt-0.5 leading-tight">
+                {t('import.willSkip')}
+              </p>
+            </div>
             {analysis.warned.length > 0 && (
-              <span className="chip bg-status-warn/15 text-status-warn-ink">
-                {t('import.willWarn')}
-                <span className="numeric">{analysis.warned.length}</span>
-              </span>
+              <div className="min-w-0">
+                <p className="numeric text-metric text-status-warn-ink">
+                  {analysis.warned.length}
+                </p>
+                <p className="muted mt-0.5 leading-tight">
+                  {t('import.willWarn')}
+                </p>
+              </div>
             )}
-            <span className="muted">{t('import.previewHint')}</span>
           </div>
+          <p className="muted mb-3">{t('import.previewHint')}</p>
 
           {/* F5.5 / A30 — an import is routinely 300 rows and this table used
               to render every one of them straight down the page, which put the

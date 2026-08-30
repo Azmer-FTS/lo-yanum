@@ -200,7 +200,12 @@ export function AnchorSheetScreen() {
 
       <div className="flex flex-col gap-4">
           <Section title={t('anchor.messages')}>
-            <div className="flex flex-col gap-4">
+            {/* P0bis.3b — the two messages SIDE BY SIDE once the panel can
+                hold them. They are the same briefing written twice, once with
+                links and once without, and the coordinator's actual job here
+                is to check they say the same thing. */}
+            <div className="panel-scope">
+              <div className="pair-grid">
               <MessageCard
                 title={t('anchor.smartphoneMessage')}
                 hint={t('anchor.smartphoneHint')}
@@ -215,9 +220,12 @@ export function AnchorSheetScreen() {
                 phone={kosherRecipient?.phone ?? null}
                 channel="sms"
               />
+              </div>
             </div>
           </Section>
 
+          <div className="panel-scope">
+            <div className="pair-grid">
           <Section title={t('anchor.access')}>
             <p className="text-caption leading-relaxed text-content-secondary">
               {anchor.accessDescription}
@@ -236,6 +244,8 @@ export function AnchorSheetScreen() {
               ))}
             </ul>
           </Section>
+            </div>
+          </div>
       </div>
         </>
       )}

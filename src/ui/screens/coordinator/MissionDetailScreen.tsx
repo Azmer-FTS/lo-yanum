@@ -230,14 +230,22 @@ function PresenceMatrix({ view }: { view: MissionView }) {
   const legs: MissionLeg[] = ['outbound', 'inbound']
 
   return (
-    <div className="flex flex-col gap-4">
+    // P0bis.3b — the two legs SIDE BY SIDE once the panel can hold them. They
+    // are the same three columns twice and the coordinator's question is a
+    // comparison ("who is confirmed out but not back"), which a stacked pair
+    // makes him scroll to answer. The container query measures the PANEL, not
+    // the viewport, because P0bis.2 made the panel a width he drags.
+    <div className="pair-grid">
       {legs.map((leg) => {
         const rows = getPresenceRows(view.mission, leg)
         return (
           <div key={leg}>
             <p className="section-title mb-2">{t(`presence.${leg}`)}</p>
             <div className="table-scroll">
-              <table className="w-full min-w-[22rem] border-collapse text-caption">
+              {/* P0bis.3b — 17 rem, not 22: the two legs have to fit BESIDE
+                  each other in the panel, and the three columns are a name and
+                  two chips. `.table-scroll` still catches a long name. */}
+              <table className="w-full min-w-[17rem] border-collapse text-caption">
                 <thead>
                   <tr className="text-micro uppercase tracking-wide text-content-muted">
                     <th className="p-2 text-start font-semibold">
@@ -480,14 +488,63 @@ export function MissionDetailScreen() {
           so the 22rem minimum on the presence table propagated all the way up
           and pushed the page 40 px wider than a 390 px phone. Without it the
           `.scroll-x` wrapper never gets to be the scroll container. */}
-      <div className="flex flex-col gap-4">
-<Section title={t('missions.team')}>
-            <TeamList view={view} />
-          </Section>
+      {/* P0bis.3a — THE NIGHT'S OWN NUMBERS, FIRST AND BIG. The header carries
+          the farm and the date; what the coordinator needs before anything
+          else is the two times, how many people and how many cars. Reading
+          them off a key/value list four blocks down is the thing this band
+          exists to stop. */}
+      <div className="card card-pad metric-band mb-4">
+        <div className="min-w-0">
+          <p className="numeric ltr-nums text-metric text-content-primary">
+            {formatTime(mission.startAt, locale)}
+          </p>
+          <p className="muted mt-0.5 leading-tight">{t('missions.startAt')}</p>
+        </div>
+        <div className="min-w-0">
+          <p className="numeric ltr-nums text-metric text-content-primary">
+            {formatTime(mission.endAt, locale)}
+          </p>
+          <p className="muted mt-0.5 leading-tight">{t('missions.endAt')}</p>
+        </div>
+        <div className="min-w-0">
+          <p className="numeric text-metric text-content-primary">{assigned}</p>
+          <p className="muted mt-0.5 leading-tight">{t('missions.team')}</p>
+        </div>
+        <div className="min-w-0">
+          <p className="numeric text-metric text-content-primary">
+            {view.drivers.length}
+          </p>
+          <p className="muted mt-0.5 leading-tight">
+            {t('driver.volunteerDrivers')}
+          </p>
+        </div>
+        <div className="min-w-0">
+          <p className="numeric text-metric text-content-primary">
+            {1 + additionalAnchorPoints.length}
+          </p>
+          {/* The COUNT is the number; the rendezvous is named under it,
+              because "how many posts" and "which one the driver goes to" are
+              two different questions and only the first is a metric. */}
+          <p className="muted mt-0.5 truncate leading-tight">
+            {t('map.anchorPoint')} · {anchorPoint.name}
+          </p>
+        </div>
+      </div>
 
-<Section title={t('presence.rosterTitle')}>
-            <PresenceMatrix view={view} />
-          </Section>
+      {/* P0bis.3b — `panel-scope` is the measuring box for every `pair-grid`
+          below it. It is a deliberate wrapper rather than the whole content
+          column: `container-type` makes an element a containing block for
+          `fixed` descendants, and the screen's modal must stay the viewport's. */}
+      <div className="panel-scope flex flex-col gap-4">
+        <Section title={t('missions.team')}>
+          <TeamList view={view} />
+        </Section>
+
+        <Section title={t('presence.rosterTitle')}>
+          <PresenceMatrix view={view} />
+        </Section>
+
+        <div className="pair-grid">
 <Section title={t('common.details')}>
             <dl>
               <KeyValue
@@ -512,17 +569,16 @@ export function MissionDetailScreen() {
                   </Link>
                 }
               />
-              <KeyValue
-                label={t('missions.startAt')}
-                value={formatTime(mission.startAt, locale)}
-                ltr
-              />
-              <KeyValue
-                label={t('missions.endAt')}
-                value={formatTime(mission.endAt, locale)}
-                ltr
-              />
-              <KeyValue label={t('missions.team')} value={assigned} ltr />
+              {/* P0bis.3c — the two times and the head count moved UP into the
+                  band; repeating them here would be the same three numbers
+                  twice on one screen. What is left is the two links, which is
+                  what this block is actually for. */}
+              {additionalAnchorPoints.length > 0 && (
+                <KeyValue
+                  label={t('anchor.additionalPositions')}
+                  value={additionalAnchorPoints.map((a) => a.name).join(' · ')}
+                />
+              )}
             </dl>
           </Section>
 
@@ -574,8 +630,9 @@ export function MissionDetailScreen() {
               </ul>
             )}
           </Section>
+        </div>
 
-<Section title={t('missions.timeline')}>
+        <Section title={t('missions.timeline')}>
             {/* Dated, not clock-only: a guard is created days before it starts
                 and runs 21:00 → 05:00 across midnight, so bare times put
                 "created 11:46" below "dropped off 11:40" and read as a
@@ -583,12 +640,6 @@ export function MissionDetailScreen() {
             <Timeline withDate entries={timeline} />
           </Section>
       </div>
-      {additionalAnchorPoints.length > 0 && (
-        <p className="muted mt-3">
-          {t('anchor.additionalPositions')}:{' '}
-          {additionalAnchorPoints.map((a) => a.name).join(' · ')}
-        </p>
-      )}
           </>
         )}
       </MapSplit>

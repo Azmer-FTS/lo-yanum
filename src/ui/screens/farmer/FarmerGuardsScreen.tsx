@@ -69,7 +69,12 @@ export function FarmerGuardsScreen() {
     <>
       <PageHeader title={t('farmer.myGuardsTitle')} subtitle={farm.name} />
 
-      <div className="flex flex-col gap-4">
+      {/* P0bis.3b — "coming" and "past" side by side once the column can hold
+          two. The field shell is a phone column, so on the phone this is the
+          same single stack it always was; on the iPad the farmer stops
+          scrolling past his whole future to reach last week. */}
+      <div className="panel-scope">
+        <div className="pair-grid">
         <Section title={t('farmer.upcoming')}>
           {upcoming.length === 0 ? (
             <EmptyState icon="moon" title={t('farmer.noUpcoming')} />
@@ -93,6 +98,9 @@ export function FarmerGuardsScreen() {
             </ul>
           )}
         </Section>
+        </div>
+
+        <div className="mt-4" />
 
         {/* Discreet, not accusatory: a reminder of what was agreed. */}
         {farm.commitments.length > 0 && (

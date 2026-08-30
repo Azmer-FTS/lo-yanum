@@ -320,7 +320,7 @@ export function FarmFormScreen() {
 
       <div className="flex flex-col gap-4">
         <FormSection title={t('form.sectionIdentity')}>
-          <div className="md:col-span-2">
+          <div className="col-span-full">
             <PhotoField
               label={t('photo.farmLabel')}
               value={photo}
@@ -374,12 +374,12 @@ export function FarmFormScreen() {
           }
         >
           {contacts.length === 0 ? (
-            <p className="muted md:col-span-2">{t('form.noContacts')}</p>
+            <p className="muted col-span-full">{t('form.noContacts')}</p>
           ) : (
             contacts.map((contact, i) => (
               <div
                 key={contact.id}
-                className="rounded-field border border-edge-subtle bg-surface-high p-3 md:col-span-2"
+                className="rounded-field border border-edge-subtle bg-surface-high p-3 col-span-full"
               >
                 <div className="mb-3 flex items-center gap-3">
                   <Avatar photo={contact.photo} name={contact.name || '?'} size="md" />
@@ -388,7 +388,7 @@ export function FarmFormScreen() {
                     onChange={(v) => patchContact(i, { photo: v })}
                   />
                 </div>
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="auto-cols gap-3 [--col-min:9rem]">
                   <TextField
                     label={t('form.contactName')}
                     value={contact.name}
@@ -505,14 +505,14 @@ export function FarmFormScreen() {
           }
         >
           {commitments.length === 0 ? (
-            <p className="muted md:col-span-2">{t('common.none')}</p>
+            <p className="muted col-span-full">{t('common.none')}</p>
           ) : (
             commitments.map((c, i) => (
               <div
                 key={i}
-                className="rounded-field border border-edge-subtle bg-surface-high p-3 md:col-span-2"
+                className="rounded-field border border-edge-subtle bg-surface-high p-3 col-span-full"
               >
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="auto-cols gap-3 [--col-min:13rem]">
                   <SelectField<CommitmentKind>
                     label={t('form.commitmentKind')}
                     value={c.kind}
@@ -593,14 +593,14 @@ export function FarmFormScreen() {
           }
         >
           {agreements.length === 0 ? (
-            <p className="muted md:col-span-2">{t('farms.noAgreements')}</p>
+            <p className="muted col-span-full">{t('farms.noAgreements')}</p>
           ) : (
             agreements.map((a, i) => (
               <div
                 key={a.id}
-                className="rounded-field border border-edge-subtle bg-surface-high p-3 md:col-span-2"
+                className="rounded-field border border-edge-subtle bg-surface-high p-3 col-span-full"
               >
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="auto-cols gap-3 [--col-min:13rem]">
                   <TextField
                     label={t('farms.signedBy')}
                     value={a.signedBy}
@@ -660,7 +660,7 @@ export function FarmFormScreen() {
             value={notes}
             onChange={setNotes}
             rows={4}
-            className="md:col-span-2"
+            className="col-span-full"
           />
         </FormSection>
 

@@ -152,7 +152,7 @@ export function AnchorFormScreen() {
             onChange={setName}
             error={show('name')}
             required
-            className="md:col-span-2"
+            className="col-span-full"
           />
         </FormSection>
 
@@ -163,7 +163,7 @@ export function AnchorFormScreen() {
             onChange={setInstructions}
             rows={6}
             hint={t('form.instructionsHint')}
-            className="md:col-span-2"
+            className="col-span-full"
           />
         </FormSection>
 
@@ -176,7 +176,7 @@ export function AnchorFormScreen() {
             rows={5}
             hint={t('form.accessHint')}
             required
-            className="md:col-span-2"
+            className="col-span-full"
           />
         </FormSection>
 

@@ -78,8 +78,8 @@ export function DriverFormModal({
       onClose={onClose}
       wide
     >
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="md:col-span-2">
+      <div className="form-grid">
+        <div className="col-span-full">
           <PhotoField
             label={t('photo.personLabel')}
             value={photo}
@@ -136,7 +136,7 @@ export function DriverFormModal({
           value={notes}
           onChange={setNotes}
           rows={3}
-          className="md:col-span-2"
+          className="col-span-full"
         />
       </div>
 

@@ -129,6 +129,62 @@ commit per unit. Branch `main`.
 >   pointer's ABSOLUTE position, so the expected value is exact and the
 >   assertion is now written against the model rather than against a delta.
 
+> **P0bis.3 — THE DENSITY PASS, SCREEN BY SCREEN (A66).** Three rules from the
+> product owner: (a) the context's key information at the top, BIG — "he
+> drives"; (b) blocks with little in them go TWO PER ROW instead of stretching
+> down the page, and re-stack when narrow; (c) no unjustified emptiness.
+>
+> **THE MEASUREMENT MOVED FROM THE VIEWPORT TO THE BOX, AND IT HAD TO.**
+> P0bis.2 made the content column a width the coordinator drags, so a
+> `xl:grid-cols-4` stopped being merely coarse and became WRONG: the viewport
+> is `xl` while the panel it lays out in may be a quarter of the screen. Three
+> utilities in `index.css` replace the breakpoints inside panels:
+> · `.auto-cols` + `[--col-min:…]` — `repeat(auto-fit, minmax(min, 1fr))`. Asks
+>   no question and needs no container: it lays out against the width it has.
+>   KPI strips, dunam cards, status counts.
+> · `.metric-band` — the same thing at a 9 rem floor, for a key-numbers band.
+> · `.pair-grid` (36 rem) / `.pair-grid-wide` (50 rem) inside a `.panel-scope`
+>   — CONTAINER queries. Used where two columns need a real judgement about
+>   room.
+> · `.form-grid` — a `FormSection` is its own measuring box now, so a form is
+>   two columns when THE SECTION is wide enough. `md:col-span-2` became
+>   `col-span-full` at all 17 call sites (inert in the one-column reading).
+> · **`container-type: inline-size` also makes an element a containing block
+>   for `fixed` descendants**, so `.panel-scope` is always a small deliberate
+>   wrapper — never `main`, and never an ancestor of a modal. `Modal`'s own
+>   dialog carries it, which fixes a pre-existing mismatch: a `md:grid-cols-2`
+>   inside a 32 rem dialog gave two 15 rem columns on any desktop.
+>
+> **Screen by screen — every screen in the app, including the ones that did not
+> change and why:**
+>
+> | Screen | What the density pass did |
+> |---|---|
+> | dashboard | dunam pair + KPI strip → `auto-cols` (they were `grid-cols-2 xl:grid-cols-4` in a HALF-width panel); "tonight" and "farms by status" pair on a wide panel |
+> | agenda | DAY view: the itinerary and the hour ladder side by side (`pair-grid-wide`) — stacked, the ladder started below the fold. Week and month grids UNTOUCHED: a calendar is read like text (decision 34) and it is full-width, so its breakpoints are honest |
+> | farms list | KPI strip → `auto-cols`; farm cards pair as soon as the panel can hold two |
+> | farm detail | KeyNumbers → `.metric-band` (was `sm:grid-cols-3 2xl:grid-cols-5` in a 42 % panel); identity and contacts → `auto-cols`; the SIX lower blocks — guard history, incidents, contacts, commitments, agreement, visits — pair, which is where the screen's five screenfuls came from |
+> | farm form | every `FormSection` container-queried; the three dunam fields → `auto-cols`; the pin map is the left panel (P0bis.1), so the form no longer has a 46 dvh hole in its middle |
+> | anchor sheet | the two messages side by side — they are the same briefing written twice and the job here is checking they agree; access + instructions pair |
+> | anchor form | `FormSection` container-queried; the map is the left panel |
+> | route planner | the four panels (pick farms / order / meetings / navigate) pair — four short lists that were four screenfuls |
+> | volunteers | KPI strip → `auto-cols` (was `sm:grid-cols-3 xl:grid-cols-6`); the map is the left panel |
+> | drivers | KPI strip → `auto-cols`; map left |
+> | import wizard | **the three counts became the headline**: "412 will import / 6 skipped / 11 need a pin" was set at chip size and IS the decision the screen asks for; the mapping grids container-queried |
+> | missions list | guard cards pair |
+> | mission detail | **the PO's own model**: a key-numbers band (start, end, team, cars, posts) FIRST; the two confirmation tables (נסיעה לחווה / חזרה בבוקר) SIDE BY SIDE — the question is a comparison and stacked it costs a scroll; details + drivers pair; the three facts now in the band deleted from the details list |
+> | incident detail | the report is the headline and set one size up; the four facts about it move BESIDE it instead of under it; thread full width |
+> | incidents list | incident cards pair |
+> | guard wizard | step 1 gets the draggable seam; step 3 (phone round) and step 4 (drivers) cards pair — the wizard is full-page and a one-column list of twelve short cards spends most of an iPad on nothing. Steps 2 and 5 ALREADY optimal: 2/3 + 1/3 at `lg`, full-page, so the viewport breakpoint is the honest one |
+> | driver trip | a two-number band: departure time and head count. Both existed — one as a subtitle, one as the length of a list — which is not the same as readable at the wheel |
+> | farmer guards | "coming" and "past" pair; on the phone the field column is narrow and it stays one stack |
+> | farmer tonight | **already optimal** — the arrival time and the status chip are the first things in the guard card, which is the whole question a farmer opens the app with |
+> | volunteer guard | **already optimal** — the two big confirmation buttons are deliberately the first thing on the screen (in the dark, at 21:00, it is the only thing the group-phone holder needs to reach). A numbers band above them would push the one control down |
+> | volunteer roster | **already optimal** — one section, one list |
+> | farmer/volunteer report | **already optimal** — a form, and `FormSection` now sizes itself to the column |
+> | styleguide | **unchanged by design** — a catalogue is meant to be read end to end (its A30 exemption already says so) |
+> | landing | **unchanged** — one plate, one verse, the identity chooser |
+
 > **THE FINAL ORDER OF MARCH (product-owner prompt, 2026-08-30).** The product
 > owner starts field work in TWO DAYS on an iPad Pro 13" (+ iPhone). The goal
 > is a REAL tool — online, usable offline — by the end of this order. Four
@@ -774,6 +830,7 @@ captures in §5.
 | **A44** | **One template source, three rosters, a link that becomes a pin (G10)** | ✅ `bun run accept` A44 section (36 checks) + `bun run import` (28 checks: download → fill → upload → find) |
 | **A64** | **The map is on the physical LEFT on every screen that carries one** | ✅ `bun run mapfirst` — 26 screens audited at iPad landscape; every exemption prints its reason |
 | **A65** | **The map/content seam is draggable by finger and by mouse, bounded, persisted, resettable** | ✅ `bun run splitter` — 72 checks over five screens |
+| **A66** | **A density pass over every screen, listed one by one** | ✅ the table in §1's P0bis.3 note — what changed, or why the screen was already optimal |
 | **A59** | **The threat layer exists, and is coordinator-only (G18)** | ✅ `bun run accept` A59 section (26 checks over all three roles and all three routes) + the map proof captured by hand |
 | **A61** | **Three map states per map-first screen, persisted (P0.1)** | ✅ dashboard / farms / farm-detail / route / incidents / missions + both rosters; verified by hand at 1032×1376 and 402×874, captures due at G12 |
 | **A62** | **Locality bubbles + tap-filter + נקה on both rosters (P0.2)** | ✅ `bun run accept`, the A62 section (12 checks), plus the tap path in `bun run touch` |

@@ -153,7 +153,7 @@ function FarmFacts({ farm }: { farm: Farm }) {
   const locale = useLocale()
 
   return (
-    <dl className="grid gap-x-5 sm:grid-cols-2">
+    <dl className="auto-cols gap-x-5 [--col-min:13rem]">
       <KeyValue label={t('farms.filterType')} value={t(`farmType.${farm.type}`)} />
       <KeyValue label={t('volunteers.locality')} value={farm.locality} />
       <KeyValue
@@ -186,7 +186,7 @@ function KeyNumbers({
   const locale = useLocale()
 
   return (
-    <div className="card card-pad grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 2xl:grid-cols-5">
+    <div className="card card-pad metric-band">
       <div className="min-w-0">
         <p className="numeric text-metric text-content-primary">
           {farm.farmDunams.toLocaleString(locale)}
@@ -677,6 +677,14 @@ export function FarmDetailScreen() {
             currentFarmId={farm.id}
           />
 
+          {/* P0bis.3b — THE LOWER HALF PAIRS UP. Guard history, incidents,
+              contacts, commitments, the agreement and the visits are each a
+              short list; stacked they turn the panel into five screenfuls of
+              mostly-empty column. They go two per row as soon as the panel can
+              hold two, which — the panel being draggable now — is a question
+              only the panel can answer. */}
+          <div className="panel-scope">
+            <div className="pair-grid">
           <Section title={t('farms.guardHistory')}>
             {missions.length === 0 ? (
               <EmptyState icon="shield" title={t('missions.empty')} />
@@ -727,7 +735,7 @@ export function FarmDetailScreen() {
           </Section>
 
           <Section title={t('farms.contacts')}>
-            <ul className="grid gap-x-5 sm:grid-cols-2 xl:grid-cols-1">
+            <ul className="auto-cols gap-x-5 [--col-min:15rem]">
               {farm.contacts.map((contact) => (
                 <li key={contact.id} className="flex items-center gap-3 py-1.5">
                   <Avatar photo={contact.photo} name={contact.name} size="md" />
@@ -890,6 +898,8 @@ export function FarmDetailScreen() {
               </ul>
             )}
           </CollapsibleSection>
+          </div>
+          </div>
           </div>
           </>
         )}

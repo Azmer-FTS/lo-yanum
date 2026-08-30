@@ -315,6 +315,13 @@ export function RoutePlannerScreen() {
         </div>
       </section>
 
+      {/* P0bis.3b — the planner's four panels — pick the farms, read the
+          order, book the meetings, hand the route to Waze — are each a short
+          list. Two per row as soon as the panel can hold two, which stops the
+          screen being four screenfuls of half-empty column on the one screen
+          whose whole job is to be read while driving is being planned. */}
+      <div className="panel-scope">
+        <div className="pair-grid">
       <section className="mb-4">
         <div className="flex items-end justify-between gap-3 pb-2.5">
           <h2 className="text-section text-content-primary">
@@ -585,6 +592,8 @@ export function RoutePlannerScreen() {
           </a>
         </section>
       )}
+        </div>
+      </div>
 
       {meetingFor && (
         <FarmVisitModal

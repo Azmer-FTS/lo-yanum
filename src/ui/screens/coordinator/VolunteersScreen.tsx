@@ -314,7 +314,7 @@ export function VolunteersScreen() {
 
         {/* G14d — the number cards ARE the filters now (A51): active state on
             the card itself, and the old status/phone pills are gone. */}
-        <div className="mb-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
+        <div className="auto-cols mb-3 gap-2.5 [--col-min:7.5rem]">
           <KpiFilter
             label={t('volunteerStatus.active')}
             value={stats.active}
