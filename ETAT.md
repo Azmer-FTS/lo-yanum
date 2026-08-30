@@ -49,7 +49,10 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 > (Homebrew, Intel prefix `/usr/local`). `npm`/`node` fail with "command not
 > found".
 
-**Live preview:** https://azmer-fts.github.io/lo-yanum/
+**Live preview (the app, and it keeps moving):**
+https://azmer-fts.github.io/lo-yanum/
+**The FROZEN POC (G13, never redeployed):**
+https://azmer-fts.github.io/lo-yanum/poc/
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
@@ -59,8 +62,8 @@ RLS) IS APPLIED. PHASE P0bis IS IN PROGRESS — P0bis.1 (map on the
 left EVERYWHERE), P0bis.2 (the draggable seam), P0bis.3 (the density pass)
 and P0bis.4 (a really-RTL .xlsx) ARE DONE and green (A64: 26 screens; A65: 72
 checks; A66: the screen-by-screen table below; A67: 45 checks). Next:
-P0bis.5 IS DONE (a, b and c). **PHASE P0bis IS COMPLETE.** Next: G13 (tag
-`poc-final`, the frozen /poc copy), then P2.3 → P3.** One
+P0bis.5 IS DONE (a, b and c). **PHASE P0bis IS COMPLETE, AND G13 HAS FROZEN
+THE POC.** Next: P2.3 (auth) → P2.4 → P2.5 → P2.6 → P3.** One
 commit per unit. Branch `main`.
 
 > **P0bis.1 — THE MAP IS ON THE LEFT ON EVERY SCREEN THAT HAS ONE (frozen PO
@@ -322,6 +325,22 @@ commit per unit. Branch `main`.
 >   that list that silently never joins would leave the coordinator believing
 >   somebody is in the group when he is not, which is the exact failure the
 >   centre exists to prevent. They are covered by the grouped SMS instead.
+
+> **G13 — THE POC IS FROZEN.** Tag `poc-final`, and a byte-for-byte copy of the
+> built app committed at `public/poc/`, served from
+> https://azmer-fts.github.io/lo-yanum/poc/ .
+> · **WHY `public/` AND NOT A SECOND DEPLOY.** Vite copies `public/` verbatim
+>   into `dist/`, so the snapshot rides along with every later build without
+>   being rebuilt. A second Pages deployment would have been a second thing to
+>   keep working; a committed directory is inert by construction.
+> · **IT WORKS FROM A SUBDIRECTORY BECAUSE `base` IS `'./'`** — every asset
+>   path in the built `index.html` is relative, and the router is a HashRouter,
+>   so `/poc/#/coordinator` resolves without a second build. Verified by
+>   serving `dist/` locally and opening the sub-path before pushing.
+> · **NEVER `cp dist/. public/poc/` A SECOND TIME.** After the first freeze
+>   `dist/` CONTAINS `poc/`, so copying it back nests a snapshot inside a
+>   snapshot. `public/poc/FROZEN.md` says so, in the one place somebody about
+>   to do it will be looking.
 
 > **THE FINAL ORDER OF MARCH (product-owner prompt, 2026-08-30).** The product
 > owner starts field work in TWO DAYS on an iPad Pro 13" (+ iPhone). The goal
