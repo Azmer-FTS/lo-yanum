@@ -31,13 +31,24 @@ const ring = (center: LatLng, offsets: Array<[number, number]>): LatLng[] =>
     lng: +(center.lng + dLng).toFixed(6),
   }))
 
+/**
+ * P2.6b — the `updatedAt` literals are UTC with milliseconds, like every
+ * timestamp the app itself produces (`iso()` is `Date.toISOString()`).
+ *
+ * They were `+03:00` offset literals until A74 caught it. Nothing was wrong
+ * with the INSTANTS — they render identically in Israel — but they were the
+ * only two spellings of a timestamp in the whole store, and a snapshot holding
+ * two spellings is a snapshot whose structural diff reports changes that did
+ * not happen the moment the same value comes back from Postgres in the other
+ * one. One spelling, everywhere.
+ */
 export const THREAT_ZONES: ThreatZone[] = [
   {
     id: 'threat-01',
     farmId: 'farm-01',
     intensity: 'high',
     note: 'ואדי מזרחית לחוות רתם — כניסות חוזרות בשעות הלילה המאוחרות, בעיקר בסופי שבוע. הרכב נעצר על הדרך החקלאית ומשם רגלית.',
-    updatedAt: '2026-08-11T09:00:00+03:00',
+    updatedAt: '2026-08-11T06:00:00.000Z',
     ring: ring(FARM_01, [
       [0.0041, 0.0062],
       [0.0018, 0.0121],
@@ -54,7 +65,7 @@ export const THREAT_ZONES: ThreatZone[] = [
     farmId: null,
     intensity: 'medium',
     note: 'שטח פתוח בין מעלה עבדת לנאות חלוצה — תנועת רכבים לא מזוהים לאורך הדרך הלא־סלולה. אין דיווח על חדירה, אך התדירות עלתה.',
-    updatedAt: '2026-07-28T18:30:00+03:00',
+    updatedAt: '2026-07-28T15:30:00.000Z',
     ring: ring(FARM_04, [
       [-0.0402, 0.0281],
       [-0.0511, 0.0464],
@@ -76,7 +87,7 @@ export const THREAT_VECTORS: ThreatVector[] = [
     target: { lat: 31.0596, lng: 34.6572 },
     intensity: 'high',
     note: 'ציר הכניסה העיקרי — מהוואדי מערבה אל שטח המרעה.',
-    updatedAt: '2026-08-11T09:00:00+03:00',
+    updatedAt: '2026-08-11T06:00:00.000Z',
   },
   {
     id: 'vector-02',
@@ -85,6 +96,6 @@ export const THREAT_VECTORS: ThreatVector[] = [
     target: { lat: 30.9418, lng: 34.7702 },
     intensity: 'medium',
     note: 'מכביש הגבול צפונה־מערבה לכיוון אשלים.',
-    updatedAt: '2026-08-02T21:10:00+03:00',
+    updatedAt: '2026-08-02T18:10:00.000Z',
   },
 ]
