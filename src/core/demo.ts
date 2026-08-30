@@ -96,3 +96,23 @@ export const emptyData = (): StoreData => ({
   tours: [],
   session: { role: 'coordinator', entityId: null },
 })
+
+/**
+ * The empty snapshot as a BACKEND, installed synchronously by a real build
+ * before the data layer has finished loading.
+ *
+ * It exists for one frame's worth of reason and it is a load-bearing frame:
+ * `installSupabaseStore` lives in `src/data`, which pulls in the row mapper and
+ * — through it — the Supabase client chunk, so it can only be imported
+ * asynchronously if demo builds are not to carry it. Between the module's
+ * request and its arrival the store would otherwise still be holding the DEMO
+ * fixtures, and the real app would flash twelve farms it does not have. So the
+ * real entry point installs THIS first, synchronously, and the Supabase backend
+ * replaces it a tick later. Nothing can be mutated in that tick: there is no
+ * session yet, and without one the app renders a login form.
+ */
+export const EMPTY_BACKEND: StoreBackend = {
+  name: 'empty',
+  persists: false,
+  seed: emptyData,
+}

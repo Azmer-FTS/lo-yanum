@@ -14,6 +14,7 @@ import {
   FieldLayout,
   VOLUNTEER_NAV,
 } from './components/layouts'
+import { DataBanner } from './components/DataBanner'
 import { useAuth } from './hooks/useAuth'
 import { useCoreValue } from './hooks/useCore'
 import { LandingScreen } from './screens/LandingScreen'
@@ -85,6 +86,9 @@ export default function App() {
 
   return (
     <HashRouter>
+      {/* Outside <Routes>, so a data-layer failure is visible on whichever
+          screen the coordinator happens to be on rather than on one of them. */}
+      <DataBanner />
       <Routes>
         {/* The identity picker is a DEMO artefact: it hands out farmer,
             volunteer and driver sessions on mock people. A real signed-in

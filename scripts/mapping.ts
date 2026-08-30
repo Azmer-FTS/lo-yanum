@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'node:fs'
+
 import { COLLECTIONS } from '../src/core/backend'
 import type { Collection, StoreData } from '../src/core/backend'
 import { DEMO_BACKEND } from '../src/core/demo'
@@ -325,6 +327,125 @@ section('4 — the empty shapes, which is what the real app starts with')
   )
   const diff = firstDifference(canon('farms', bare), canon('farms', back))
   check('a farm with no contact, no commitment and no photo', diff === null, diff ?? 'identical')
+}
+
+// --- 5. The mapper's columns against the migrations in this repository -----
+
+section('5 — every column the mapper writes exists, and every required one is written')
+
+{
+  /**
+   * ★ THIS IS THE CHECK THAT WOULD HAVE CAUGHT THE DRIFT ON ITS OWN.
+   *
+   * P0bis.5a put an `email` on three types and P0bis.5b put an `event` on the
+   * outreach notice; neither reached the schema, and nothing noticed for a
+   * fortnight because the app was still running on the mock store and had
+   * never tried to write a volunteer's address to Postgres. A round trip
+   * through `toRows`/`fromRows` cannot catch that either — it never touches
+   * the database. So the migrations are parsed instead, and both directions
+   * are asserted:
+   *
+   *   · a column the mapper writes that does not exist → a rejected INSERT the
+   *     first time somebody edits that record, in production, offline;
+   *   · a NOT NULL column with no default that the mapper does not write → the
+   *     same rejection, from the other side.
+   *
+   * It parses OUR OWN migrations, which are ours to keep parseable. It is not
+   * a general SQL reader and does not need to be.
+   */
+  const sql = readdirSync('supabase/migrations')
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .map((f) => readFileSync(`supabase/migrations/${f}`, 'utf8'))
+    .join('\n')
+    // Strip line comments: several of them contain the word `add column` in
+    // prose, and a comment is not a schema.
+    .replace(/^\s*--.*$/gm, '')
+
+  /** table → column → whether an INSERT may omit it. */
+  const schema = new Map<string, Map<string, boolean>>()
+  const columnsOf = (table: string): Map<string, boolean> => {
+    let cols = schema.get(table)
+    if (!cols) {
+      cols = new Map()
+      schema.set(table, cols)
+    }
+    return cols
+  }
+
+  const NOT_A_COLUMN = /^(primary|foreign|unique|constraint|check|exclude)\b/i
+  for (const m of sql.matchAll(/create table (\w+)\s*\(([\s\S]*?)\n\);/g)) {
+    const cols = columnsOf(m[1])
+    for (const line of m[2].split('\n')) {
+      const body = line.trim().replace(/,$/, '')
+      if (!body || NOT_A_COLUMN.test(body)) continue
+      const name = body.split(/\s+/)[0]
+      if (!/^\w+$/.test(name)) continue
+      const required = /\bnot null\b/i.test(body) && !/\bdefault\b/i.test(body)
+      cols.set(name, !required)
+    }
+  }
+  for (const m of sql.matchAll(
+    /alter table (\w+)\s+add column (?:if not exists )?(\w+)([^;]*);/g,
+  )) {
+    const required = /\bnot null\b/i.test(m[3]) && !/\bdefault\b/i.test(m[3])
+    columnsOf(m[1]).set(m[2], !required)
+  }
+
+  check(
+    'the migrations parsed into a schema at all',
+    schema.size >= 26,
+    `${schema.size} tables, ${[...schema.values()].reduce((n, c) => n + c.size, 0)} columns`,
+  )
+
+  /** Maintained by the database, never by the client. */
+  const SERVER_OWNED = new Set(['created_at', 'updated_at'])
+
+  const unknown: string[] = []
+  const unwritten: string[] = []
+
+  for (const collection of COLLECTIONS) {
+    const mapping = MAPPINGS[collection] as Mapping<unknown>
+    const sample = (data[collection] as unknown[])[0]
+    if (sample === undefined) continue
+    for (const { table, rows } of mapping.toRows(sample)) {
+      const cols = schema.get(table)
+      if (!cols) {
+        unknown.push(`${table} (no such table)`)
+        continue
+      }
+      const written = new Set(rows.length > 0 ? Object.keys(rows[0]) : [])
+      // An aggregate whose child list happens to be empty in the fixtures
+      // writes no row, so there is nothing to check against for that table.
+      if (written.size > 0) {
+        for (const column of written) {
+          if (!cols.has(column)) unknown.push(`${table}.${column}`)
+        }
+        for (const [column, optional] of cols) {
+          if (optional || SERVER_OWNED.has(column) || written.has(column)) continue
+          unwritten.push(`${table}.${column}`)
+        }
+      }
+    }
+  }
+
+  check(
+    'every column the mapper writes exists in a migration',
+    unknown.length === 0,
+    unknown.length ? unknown.join(', ') : 'no phantom columns',
+  )
+  check(
+    'and every NOT NULL column with no default is written',
+    unwritten.length === 0,
+    unwritten.length ? unwritten.join(', ') : 'no column would reject an insert',
+  )
+  check(
+    'the P2.6 catch-up columns are present',
+    ['volunteers', 'drivers', 'entity_contacts'].every((t) => schema.get(t)?.has('email')) &&
+      schema.get('cancel_notices')?.has('event') === true &&
+      schema.get('entity_commitments')?.has('position') === true,
+    'email ×3, cancel_notices.event, entity_commitments.position',
+  )
 }
 
 // ===========================================================================
