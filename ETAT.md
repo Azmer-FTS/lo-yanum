@@ -1904,14 +1904,37 @@ is Supabase's own flow, it needs no redirect-URL configuration, and no link
 expires. **Nobody but the PO has ever typed that password; do not ask for it,
 and no gate needs it.** See decision 70.
 
-> ⚠️ **THE ONE STEP THAT IS NOT CODE.** An auth account is not yet a
-> coordinator: `app_users` is where a login becomes somebody, and the schema
-> says so — "a user with no row here is nobody". Apply
-> `supabase/migrations/20260830000400_coordinator_grant.sql`, which looks the
-> account up BY EMAIL and RAISES if it is not there. Verify with
-> `select email, role from auth.users u join app_users a on a.user_id = u.id;`
-> — one row, `coordinator`. Skipping it produces the worst possible symptom: a
-> coordinator who signs in successfully and sees 26 empty tables with no error.
+**THE ACCOUNT EXISTS AND IS HABILITATED (2026-08-30).**
+`dov@serialkolors.com`, uid `c9617ce1-8914-4795-bc53-56bab7b30fa5`, created and
+auto-confirmed by the PO in the dashboard; `20260830000400_coordinator_grant.sql`
+applied on top. An auth account is not yet a coordinator — `app_users` is where a
+login becomes somebody, and the schema says "a user with no row here is nobody" —
+so skipping that migration produces the worst possible symptom: a successful
+sign-in onto 26 empty tables with no error anywhere.
+
+**HOW THE GRANT WAS VERIFIED WITHOUT THE PASSWORD**, and the same query re-runs
+any time the question comes back. Every coordinator policy is literally
+`using (private.is_coordinator())`, so proving that function is proving the
+path:
+
+```sql
+with cfg as materialized (
+  select set_config('request.jwt.claims',
+           '{"sub":"<uid>","role":"authenticated"}', true) as a
+)
+select auth.uid()::text, private.app_role(), private.is_coordinator() from cfg;
+```
+
+· dov's uid            → `coordinator`, **true**
+· any other uid        → `null`, **false**
+
+> ⚠️ **ONE DASHBOARD TOGGLE IS STILL OPEN.** `get_advisors(security)` reports
+> `auth_leaked_password_protection` — Supabase can refuse a password known to
+> HaveIBeenPwned, and it is off. It could not have been reported before P2.3,
+> because there was no auth in use to report on. It is a single switch in
+> Authentication → Sign In / Providers → Password settings, it cannot be set
+> from a migration or from the MCP, and with ONE account guarding the whole
+> programme's data it is worth the ten seconds.
 
 > **BEFORE THE NEXT DEPLOY:** the two repository secrets
 > `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` must exist in
