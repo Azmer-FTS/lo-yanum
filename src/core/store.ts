@@ -1,14 +1,8 @@
+import { changesBetween, indexOf } from './backend'
+import type { StoreBackend, StoreData, StoreIndex } from './backend'
 import { iso, now } from './clock'
+import { DEMO_BACKEND } from './demo'
 import { ringAreaDunams } from './geo'
-import { ANCHOR_POINTS } from './mock/anchors'
-import { FARMS } from './mock/farms'
-import { FARM_ZONES } from './mock/zones'
-import { THREAT_VECTORS, THREAT_ZONES } from './mock/threats'
-import { INCIDENTS } from './mock/incidents'
-import { MISSIONS } from './mock/missions'
-import { DRIVERS, VOLUNTEERS } from './mock/people'
-import { FARM_VISITS, GENERAL_MEETINGS } from './mock/visits'
-import { TOURS } from './mock/tours'
 import type { Tour } from './tours'
 import type {
   Agreement,
@@ -48,77 +42,29 @@ import type {
 import { DEFAULT_AVAILABILITY, EMPTY_LEG } from './types'
 
 /**
- * In-memory store for the POC.
+ * P2.6 — THE STORE, AND IT NO LONGER OWNS ITS DATA.
  *
  * Deliberately NOT a React context: it is a plain observable so that /src/core
- * stays framework-free. The UI binds to it with `useSyncExternalStore`, and in
- * Lot 1 the same surface is re-implemented on top of Supabase queries +
- * realtime subscriptions without the screens changing.
+ * stays framework-free. The UI binds to it with `useSyncExternalStore`.
+ *
+ * What P2.6 changed is WHERE the snapshot comes from and what happens after a
+ * mutation. Both now belong to a `StoreBackend` (see ./backend): the demo one
+ * seeds the mock fixtures and persists nothing, the Supabase one seeds empty,
+ * hydrates from Postgres and writes through. The 53 mutations below are
+ * IDENTICAL under both — they mutate the snapshot and commit, exactly as they
+ * did before — which is what makes "no screen changes" true rather than hoped.
  */
 
-interface StoreData {
-  farms: Farm[]
-  generalMeetings: GeneralMeeting[]
-  farmZones: FarmZone[]
-  /** G18 — the coordinator-only threat layer. */
-  threatZones: ThreatZone[]
-  threatVectors: ThreatVector[]
-  volunteers: Volunteer[]
-  drivers: Driver[]
-  anchorPoints: AnchorPoint[]
-  missions: Mission[]
-  incidents: Incident[]
-  farmVisits: FarmVisit[]
-  tours: Tour[]
-  session: Session
-}
-
-const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T
-
-const initial = (): StoreData => seedZoneDunams({
-  farms: clone(FARMS),
-  generalMeetings: clone(GENERAL_MEETINGS),
-  farmZones: clone(FARM_ZONES),
-  threatZones: clone(THREAT_ZONES),
-  threatVectors: clone(THREAT_VECTORS),
-  volunteers: clone(VOLUNTEERS),
-  drivers: clone(DRIVERS),
-  anchorPoints: clone(ANCHOR_POINTS),
-  missions: clone(MISSIONS),
-  incidents: clone(INCIDENTS),
-  farmVisits: clone(FARM_VISITS),
-  tours: clone(TOURS),
-  session: { role: 'coordinator', entityId: null },
-})
+let backend: StoreBackend = DEMO_BACKEND
+let data: StoreData = backend.seed()
 
 /**
- * G15 — the fixtures' dunam figures were hand-estimated before the polygons
- * existed; at seed the drawn ground wins (unless a farm is flagged manual),
- * so the map, the form and the dashboard KPIs agree from the first render.
+ * The structural index the write-through diff is taken against — see
+ * `indexOf`. Null whenever the backend persists nothing, which is what keeps
+ * demo mode (and therefore /poc and every browser gate) on exactly the code
+ * path it had before P2.6.
  */
-function seedZoneDunams(seed: StoreData): StoreData {
-  const sums = new Map<string, { boundary: number; grazing: number }>()
-  for (const z of seed.farmZones) {
-    const entry = sums.get(z.farmId) ?? { boundary: 0, grazing: 0 }
-    if (z.kind === 'farm_boundary') entry.boundary += ringAreaDunams(z.ring)
-    else entry.grazing += ringAreaDunams(z.ring)
-    sums.set(z.farmId, entry)
-  }
-  seed.farms = seed.farms.map((f) => {
-    const s = sums.get(f.id)
-    if (!s) return f
-    return {
-      ...f,
-      farmDunams:
-        !f.farmDunamsManual && s.boundary > 0 ? Math.round(s.boundary) : f.farmDunams,
-      grazingDunams:
-        !f.grazingDunamsManual && s.grazing > 0 ? Math.round(s.grazing) : f.grazingDunams,
-    }
-  })
-  return seed
-}
-
-let data: StoreData = initial()
+let index: StoreIndex | null = backend.persists ? indexOf(data) : null
 
 // --- Observable plumbing ---------------------------------------------------
 
@@ -126,6 +72,12 @@ let version = 0
 const listeners = new Set<() => void>()
 
 function commit(): void {
+  if (index !== null) {
+    const next = indexOf(data)
+    const changes = changesBetween(index, next)
+    index = next
+    if (changes.length > 0) backend.onChange?.(changes)
+  }
   version += 1
   for (const fn of listeners) fn()
 }
@@ -159,9 +111,54 @@ export function setSession(session: Session): void {
   commit()
 }
 
+/**
+ * Back to the backend's seed.
+ *
+ * A TEST AND DEMO OPERATION, and it is written not to write: the index is
+ * rebuilt from the fresh snapshot BEFORE the commit, so the diff sees nothing
+ * and nothing is pushed. `bun run accept` calls it between sections; a real
+ * mode that reset itself into 26 DELETEs would be a different kind of tool.
+ */
 export function resetStore(): void {
-  data = initial()
+  data = backend.seed()
+  index = backend.persists ? indexOf(data) : null
   commit()
+}
+
+/**
+ * Swap the implementation. Called ONCE, before the first render, and only from
+ * outside /src/core — the core cannot know which of the two builds is running
+ * (`SUPABASE_CONFIGURED` lives in src/data), and giving it the ability to find
+ * out would be the import that ends the "core does no I/O" invariant.
+ */
+export function installBackend(next: StoreBackend): void {
+  backend = next
+  data = next.seed()
+  index = next.persists ? indexOf(data) : null
+  version += 1
+  for (const fn of listeners) fn()
+}
+
+/** The installed backend's name — 'demo' | 'supabase'. Diagnostics only. */
+export function backendName(): string {
+  return backend.name
+}
+
+/**
+ * HYDRATION — replace the whole snapshot without writing a word back.
+ *
+ * This is how the Supabase backend fills the empty app it seeded, and how a
+ * P2.5b cache restores a reload. The index is rebuilt from the incoming data
+ * rather than diffed against it, ON PURPOSE: what just arrived FROM the server
+ * must never be echoed back TO it, and a hydration that produced 3 000 changes
+ * would do exactly that on every reconnect.
+ */
+export function replaceSnapshot(next: StoreData): void {
+  const session = data.session
+  data = { ...next, session }
+  index = backend.persists ? indexOf(data) : null
+  version += 1
+  for (const fn of listeners) fn()
 }
 
 // --- Mutations -------------------------------------------------------------

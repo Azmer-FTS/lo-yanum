@@ -40,6 +40,7 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run tokens` | **A28/A29** — one radius scale, no tinted field, orange only where it is allowed. No browser needed |
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 150 checks |
+| `bun run persist` | **A73** — the store interface (P2.6a). Drives all 45 exported mutations through a RECORDING backend and asserts what each one writes: the fan-outs (a zone rewrites the farm's dunams, the dual hat materialises a driver, a visit rewrites `nextVisitAt`), the ones that mutate IN PLACE and an identity diff would silently lose, and the three things that must never be written (a session change, a reset, a hydration). 84 checks — no browser, no dev server, no network |
 | `bun run auth` | **A70** — the door (P2.3). Starts its OWN two dev servers, one in each mode, and compares them: real mode shows the login form and nothing else on 8 routes, refuses a wrong password IN HEBREW, gives an unknown address the SAME message, leaves no token behind; demo mode is byte-for-byte P0bis. Then B1 without a browser — 26 tables anonymously closed, an anonymous coordinator-grant INSERT refused, the three policy helpers 404. 20 checks — **needs no dev server, and never needs the password** |
 | `bun run offline` | **A72** — the offline shell (P2.5a). The ONLY gate that BUILDS the app and serves the build, because the service worker is production-only: the worker takes control, one online load is enough to survive being pulled offline, ★ **a Supabase read offline FAILS** (nothing from the API is ever cached), looked-at ground is still there, the badge comes and goes, the frozen /poc comes back as ITSELF, and a real build shows its door rather than a browser error. 11 checks — **no dev server; it makes its own** |
 | `bun run storage` | **A71** — the two private buckets (P2.4): no public route on either (`NoSuchBucket`, the one proof that does not depend on them being empty), no bucket or object enumeration, no signed URL minted for a stranger, no anonymous upload. 10 checks — no browser, no dev server, no password |
@@ -1095,6 +1096,37 @@ which G17's decision 57 retires** (42's fill-keeps-the-colour/ink-moves
 MECHANISM survives — only the charter values it protected are gone). Decisions
 32–34 survived two lots unchanged and are why both were cheap. New:
 
+73. **THE WRITE-THROUGH IS DERIVED FROM THE SNAPSHOT, NEVER DECLARED BY THE
+    MUTATION (P2.6a).** The obvious design is to have each of the 53 mutations
+    say which rows it touched. It is also the one that breaks, and this store
+    shows why in its own source. **Mutations FAN OUT:** `createFarmZone` writes
+    a zone AND the farm's dunam totals (G15's one writer); `createVolunteer`
+    writes a volunteer AND may materialise a driver (G5.2's dual hat);
+    `createFarmVisit` writes a visit AND the farm's `nextVisitAt` cache
+    (decision 35); `updateDriver` writes a driver AND mirrors four fields back
+    onto a volunteer. **And half of them write IN PLACE:**
+    `setIncidentResolved` sets a field on an object the array still holds by
+    the same reference, as does every `withMission` caller — so an identity
+    diff would report NOTHING for them, which is the worst failure available
+    here because it is silent and it loses exactly the mutations a night in the
+    field produces. So `commit()` takes a structural diff instead: one
+    `JSON.stringify` per aggregate, about a thousand short rows, a few
+    milliseconds, once per user action. A mutation added in P3 persists
+    correctly without its author knowing this file exists. `bun run persist`
+    is what keeps the diff structural.
+
+74. **THE BACKEND IS CHOSEN FROM OUTSIDE /src/core, AND THE DEMO ONE IS THE
+    DEFAULT (P2.6a).** `store.ts` holds one `StoreBackend` and starts with the
+    demo implementation, so `bun run accept`, `bun run dispatch` and all eleven
+    browser gates keep driving the fixtures with no configuration and no
+    knowledge that P2.6 happened. Real mode calls `installBackend` once, before
+    the first render, from `src/data` — the core cannot make that choice
+    itself, because `SUPABASE_CONFIGURED` lives in `src/data/config.ts` and the
+    import that would let core read it is the import that ends the "core does
+    no I/O" invariant. **`persists: false` on the demo backend is not a
+    micro-optimisation:** with it false the diff never runs at all, so demo
+    mode — /poc included — executes byte-for-byte the code it did before P2.6.
+
 71. **THE OFFLINE MAP IS ONE SELF-HOSTED PMTILES FILE, AND THE OSM PRE-CACHE IS
     ABANDONED FOR GOOD (PO, 2026-08-31 — resolves open question 11).** The
     written order of march asked for a "רענן מפות לא מקוונות" button that
@@ -1581,6 +1613,16 @@ All twelve are committed and runnable.
   can check is not a charter; these are the pictures the claims are checked
   against. Writes JPEG on purpose — a full-page PNG of a site built on landscape
   photography is ~5 MB of repo for no gain.
+- **`scripts/persist.ts`** (`bun run persist`) — A73, 84 checks, P2.6a's gate.
+  It exists to protect ONE decision: that the write-through learns what to
+  write by taking a STRUCTURAL diff of the snapshot, never from 53 hand-written
+  declarations (decision 73). The day that diff is "optimised" into a reference
+  comparison, every mutation that writes in place — `setIncidentResolved`,
+  every `withMission` caller, `archiveVolunteer`, `setCommitmentFulfilled` —
+  starts persisting nothing, silently, and surfaces a week later as a night of
+  presence marks that never left the iPad. Section 7 of the script is the other
+  half: it re-reads `src/core/index.ts` and fails if a mutation was exported
+  without a line in the gate, so the coverage cannot rot.
 - **`scripts/tokens.ts`** (`bun run tokens`) — A28 + A29. A static gate over
   `src/`, and the only one that needs neither a browser nor a running app. Both
   rules it enforces are rules about RESTRAINT, which is what a codebase loses

@@ -18,6 +18,7 @@
     "mapfirst": "bun run scripts/mapfirst.ts",
     "splitter": "bun run scripts/splitter.ts",
     "accept": "bun run scripts/accept.ts",
+    "persist": "bun run scripts/persist.ts",
     "tokens": "bun run scripts/tokens.ts",
     "wizard": "bun run scripts/wizard.ts",
     "touch": "bun run scripts/touch.ts",
