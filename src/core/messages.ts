@@ -284,60 +284,15 @@ export function buildInvitationMessage(
 
 // --- G9bis: the cancellation notice ----------------------------------------
 
-export interface CancellationMessageLabels {
-  title: string
-  greeting: string
-  farm: string
-  date: string
-  reason: string
-  /** "your guard is off, no need to come" — the operative sentence. */
-  ask: string
-  signature: string
-}
-
-export interface CancellationMessageInput {
-  recipientName: string
-  farm: Farm
-  startAt: string
-  /** The reason ALREADY TRANSLATED by the caller — core stores the enum. */
-  reasonLabel: string
-  note: string
-  coordinatorName: string
-  coordinatorPhone: string
-  locale: string
-}
-
 /**
- * The message that tells one booked person the night is off.
+ * P0bis.5b — THE CANCELLATION MESSAGE MOVED, IT DID NOT DISAPPEAR.
  *
- * Same construction rules as the invitation (D5): short, no links, identical
- * on a kosher phone and a smartphone, the operative sentence on its own line.
- * The reason IS included — a volunteer whose night evaporates without a why
- * stops answering the next invitation — and the free-text note rides along
- * when the coordinator wrote one.
+ * G9bis had a builder here for the one event it covered. The sending centre
+ * covers three, and a second builder that produced a nearly-identical message
+ * for one of them would drift from the other two within a lot.
+ * `buildOutreachMessage` in `@core/outreach` is the single writer now; its
+ * `cancelled` branch is this message, with the reason and the note.
  */
-export function buildCancellationMessage(
-  input: CancellationMessageInput,
-  labels: CancellationMessageLabels,
-): string {
-  const { farm, startAt, locale } = input
-
-  const parts: string[] = [
-    labels.title,
-    '',
-    `${labels.greeting} ${input.recipientName},`,
-    line(labels.farm, `${farm.name}, ${farm.locality}`),
-    line(labels.date, formatDate(startAt, locale)),
-    line(labels.reason, input.reasonLabel),
-  ]
-  if (input.note) parts.push(input.note)
-  parts.push(
-    '',
-    labels.ask,
-    `${labels.signature} ${input.coordinatorName} ${input.coordinatorPhone}`,
-  )
-  return parts.join('\n')
-}
 
 // --- Outgoing links --------------------------------------------------------
 
@@ -353,8 +308,30 @@ export function telHref(phone: string): string {
   return `tel:${digits(phone)}`
 }
 
-export function smsHref(phone: string, body?: string): string {
-  const base = `sms:${digits(phone)}`
+/**
+ * `sms:` for one recipient or several.
+ *
+ * P0bis.5b — THE COMMA IS LOAD-BEARING AND `digits()` USED TO EAT IT. The
+ * grouped SMS hands this several numbers so one message reaches every
+ * kosher phone at once; passing "053...,050..." through `digits` produced
+ * `sms:0530000019050000002` — a single number that belongs to nobody, in a
+ * link that looks perfectly well-formed. `bun run outreach` caught it, which
+ * is the entire reason that gate decodes the hrefs instead of checking that
+ * the buttons exist.
+ *
+ * The `?&body=` is not a typo: iOS needs the stray `&` before the first
+ * parameter or it drops the body.
+ */
+export function smsHref(
+  phone: string | readonly string[],
+  body?: string,
+): string {
+  const list = Array.isArray(phone) ? phone : String(phone).split(',')
+  const numbers = list
+    .map((p) => digits(String(p)))
+    .filter(Boolean)
+    .join(',')
+  const base = `sms:${numbers}`
   return body ? `${base}?&body=${encodeURIComponent(body)}` : base
 }
 

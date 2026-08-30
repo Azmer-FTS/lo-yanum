@@ -385,9 +385,24 @@ export const CANCEL_REASONS: readonly CancelReason[] = [
  * One person to inform that the night is off, with the "did I actually tell
  * them" mark. The RECIPIENTS are stored (they are the people who were booked
  * at the moment of cancellation); the message TEXT is not — it is rebuilt by
- * `buildCancellationMessage` so the wording lives in the locale files.
+ * `buildOutreachMessage` so the wording lives in the locale files.
  */
-export interface CancelNotice {
+/**
+ * P0bis.5b — ONE "HAS THIS PERSON BEEN TOLD" MARK, FOR THREE EVENTS.
+ *
+ * G9bis stored a `CancelNotice[]` — a SNAPSHOT of who existed at cancel time,
+ * pre-populated by `cancelMission`. Two things were wrong with that and both
+ * matter on the screen whose whole job is "who still has to be told": a driver
+ * added after the cancellation never appeared, and the creation and update
+ * events had no mechanism at all.
+ *
+ * So the recipient LIST is derived from the mission every time
+ * (`outreachRecipients`), and only the ticks are stored. An entry exists here
+ * only once somebody has been ticked; its absence means "not yet", which is
+ * also the default for a person who did not exist an hour ago.
+ */
+export interface OutreachNotice {
+  event: 'created' | 'updated' | 'cancelled'
   recipientKind: 'volunteer' | 'driver' | 'farmer'
   /** Volunteer id / driver id / farm-contact id. */
   recipientId: string
@@ -539,7 +554,8 @@ export interface Mission {
   /** Free-text detail; the REQUIRED half when the reason is 'other'. */
   cancelNote: string
   /** Everyone to inform, snapshotted at cancellation, with sent tracking. */
-  cancelNotices: CancelNotice[]
+  /** P0bis.5b — the sent ticks, for all three events. */
+  outreach: OutreachNotice[]
   /** When the guard was put back into recruitment; null = still off / never. */
   reactivatedAt: string | null
 }

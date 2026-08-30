@@ -45,12 +45,12 @@ const who = (
 /** G9bis defaults — a guard that was never called off. */
 const notCancelled = (): Pick<
   Mission,
-  'cancelledAt' | 'cancelReason' | 'cancelNote' | 'cancelNotices' | 'reactivatedAt'
+  'cancelledAt' | 'cancelReason' | 'cancelNote' | 'outreach' | 'reactivatedAt'
 > => ({
   cancelledAt: null,
   cancelReason: null,
   cancelNote: '',
-  cancelNotices: [],
+  outreach: [],
   reactivatedAt: null,
 })
 
@@ -270,11 +270,15 @@ export const MISSIONS: Mission[] = [
     cancelledAt: hoursFromNow(-3),
     cancelReason: 'farmer_request',
     cancelNote: 'החקלאי מארח קבוצה בחווה בלילה הזה וביקש לדלג.',
-    cancelNotices: [
-      { recipientKind: 'volunteer', recipientId: 'vol-025', sentAt: null },
-      { recipientKind: 'volunteer', recipientId: 'vol-026', sentAt: null },
-      { recipientKind: 'driver', recipientId: 'drv-02', sentAt: hoursFromNow(-2.8) },
-      { recipientKind: 'farmer', recipientId: 'contact-02a', sentAt: null },
+    // P0bis.5b — only the TICKS are stored now; the recipient list is derived
+    // from the mission. The one driver already told, the rest not yet.
+    outreach: [
+      {
+        event: 'cancelled',
+        recipientKind: 'driver',
+        recipientId: 'drv-02',
+        sentAt: hoursFromNow(-2.8),
+      },
     ],
     reactivatedAt: null,
   },

@@ -844,7 +844,7 @@ export function MissionWizardScreen() {
         cancelledAt: null,
         cancelReason: null,
         cancelNote: '',
-        cancelNotices: [],
+        outreach: [],
         reactivatedAt: null,
       },
       driver,

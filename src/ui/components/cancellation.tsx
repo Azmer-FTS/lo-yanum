@@ -3,19 +3,15 @@ import { useTranslation } from 'react-i18next'
 
 import {
   CANCEL_REASONS,
-  COORDINATOR,
-  buildCancellationMessage,
   cancelMission,
   formatDateTime,
   reactivateMission,
-  setCancelNoticeSent,
-  smsHref,
-  whatsappHref,
 } from '@core/index'
-import type { CancelNotice, CancelReason, MissionView } from '@core/index'
+import type { CancelReason, MissionView } from '@core/index'
 
 import { Icon } from './Icon'
-import { CopyButton, Modal } from './primitives'
+import { OutreachPanel } from './outreach'
+import { Modal } from './primitives'
 import { SelectField, TextArea } from './fields'
 import { useLocale } from '../hooks/useLocale'
 
@@ -110,93 +106,23 @@ export function CancelMissionModal({
   )
 }
 
-interface Recipient {
-  notice: CancelNotice
-  name: string
-  phone: string
-  roleKey: string
-  /** WhatsApp works only where a smartphone does. */
-  smartphone: boolean
-}
-
-/** Resolve each stored notice back to a person the coordinator can reach. */
-function recipientsOf(view: MissionView): Recipient[] {
-  return view.mission.cancelNotices.flatMap((notice) => {
-    if (notice.recipientKind === 'volunteer') {
-      const row = view.volunteers.find(
-        (v) => v.volunteer.id === notice.recipientId,
-      )
-      if (!row) return []
-      return [
-        {
-          notice,
-          name: row.volunteer.name,
-          phone: row.volunteer.phone,
-          roleKey: 'roles.volunteer',
-          smartphone: row.volunteer.phoneType === 'smartphone',
-        },
-      ]
-    }
-    if (notice.recipientKind === 'driver') {
-      const row = view.drivers.find((d) => d.driver.id === notice.recipientId)
-      if (!row) return []
-      return [
-        {
-          notice,
-          name: row.driver.name,
-          phone: row.driver.phone,
-          roleKey: 'anchor.labelDriver',
-          smartphone: true,
-        },
-      ]
-    }
-    const contact = view.farm.contacts.find((c) => c.id === notice.recipientId)
-    if (!contact) return []
-    return [
-      {
-        notice,
-        name: contact.name,
-        phone: contact.phone,
-        roleKey: 'anchor.labelFarmer',
-        smartphone: true,
-      },
-    ]
-  })
-}
-
+/**
+ * G9bis + P0bis.5b — THE AFTERMATH, AND WHO STILL HAS TO BE TOLD.
+ *
+ * The banner is this panel's own; the notices list is `OutreachPanel` with its
+ * event pinned to `cancelled`. G9bis had a hand-written copy of that list, and
+ * two things were wrong with the copy the moment the sending centre existed
+ * beside it: it offered WhatsApp or SMS but never email, and it drew its
+ * recipients from a SNAPSHOT taken at cancel time, so a driver added
+ * afterwards was invisible on the one screen whose job is "who has not been
+ * told". One list, derived from the mission, three channels.
+ */
 export function CancellationPanel({ view }: { view: MissionView }) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const [openFor, setOpenFor] = useState<string | null>(null)
 
-  const { mission, farm } = view
+  const { mission } = view
   if (!mission.cancelledAt || !mission.cancelReason) return null
-
-  const recipients = recipientsOf(view)
-  const sent = recipients.filter((r) => r.notice.sentAt !== null).length
-
-  const messageFor = (r: Recipient): string =>
-    buildCancellationMessage(
-      {
-        recipientName: r.name,
-        farm,
-        startAt: mission.startAt,
-        reasonLabel: t(`cancel.reason_${mission.cancelReason}`),
-        note: mission.cancelNote,
-        coordinatorName: COORDINATOR.name,
-        coordinatorPhone: COORDINATOR.phone,
-        locale,
-      },
-      {
-        title: t('cancel.msgTitle'),
-        greeting: t('cancel.msgGreeting'),
-        farm: t('anchor.labelFarm'),
-        date: t('missions.date'),
-        reason: t('cancel.reasonLabel'),
-        ask: t('cancel.msgAsk'),
-        signature: t('cancel.msgSignature'),
-      },
-    )
 
   return (
     <div className="card overflow-hidden">
@@ -221,126 +147,17 @@ export function CancellationPanel({ view }: { view: MissionView }) {
         )}
       </div>
 
-      {/* A45 — the notices, with the sent-count doing the nagging. */}
       <div className="p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-caption font-semibold text-content-primary">
-            {t('cancel.messagesTitle')}
-          </p>
-          <span
-            className={`chip ${
-              sent === recipients.length
-                ? 'bg-status-success/15 text-status-success-ink'
-                : 'bg-status-warn/15 text-status-warn-ink'
-            }`}
-          >
-            <span className="numeric ltr-nums">
-              {t('cancel.noticesProgress', {
-                sent,
-                total: recipients.length,
-              })}
-            </span>
-          </span>
-        </div>
-        <p className="muted mt-1">{t('cancel.messagesHint')}</p>
+        <p className="mb-1 text-caption font-semibold text-content-primary">
+          {t('cancel.messagesTitle')}
+        </p>
 
-        <ul className="mt-2.5 flex flex-col divide-y divide-edge-subtle">
-          {recipients.map((r) => {
-            const key = `${r.notice.recipientKind}-${r.notice.recipientId}`
-            const body = messageFor(r)
-            const isSent = r.notice.sentAt !== null
-            return (
-              <li key={key} className="py-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setOpenFor(openFor === key ? null : key)}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-start"
-                  >
-                    <Icon
-                      name={openFor === key ? 'chevronDown' : 'chevron'}
-                      size={13}
-                      className={`shrink-0 text-content-muted ${
-                        openFor === key ? '' : 'rtl:-scale-x-100'
-                      }`}
-                    />
-                    <span className="truncate text-caption font-medium text-content-primary">
-                      {r.name}
-                    </span>
-                    <span className="chip bg-surface-high text-content-secondary">
-                      {t(r.roleKey)}
-                    </span>
-                  </button>
-
-                  <CopyButton value={body} className="btn-ghost py-1 text-micro" />
-                  {r.smartphone ? (
-                    <a
-                      href={whatsappHref(r.phone, body)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn-ghost py-1 text-micro"
-                    >
-                      <Icon name="whatsapp" size={13} />
-                      {t('common.whatsapp')}
-                    </a>
-                  ) : (
-                    <a href={smsHref(r.phone, body)} className="btn-ghost py-1 text-micro">
-                      <Icon name="message" size={13} />
-                      {t('common.sms')}
-                    </a>
-                  )}
-
-                  {isSent ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCancelNoticeSent(
-                          mission.id,
-                          r.notice.recipientKind,
-                          r.notice.recipientId,
-                          false,
-                        )
-                      }
-                      title={t('cancel.unmarkSent')}
-                      className="chip bg-status-success/15 text-status-success-ink"
-                    >
-                      <Icon name="check" size={11} />
-                      {t('cancel.sentAt', {
-                        when: formatDateTime(r.notice.sentAt as string, locale),
-                      })}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCancelNoticeSent(
-                          mission.id,
-                          r.notice.recipientKind,
-                          r.notice.recipientId,
-                          true,
-                        )
-                      }
-                      className="btn-secondary py-1 text-micro"
-                    >
-                      <Icon name="check" size={13} />
-                      {t('cancel.markSent')}
-                    </button>
-                  )}
-                </div>
-
-                {openFor === key && (
-                  <pre
-                    className="mt-2 whitespace-pre-wrap rounded-field bg-surface-high p-3
-                               font-sans text-caption text-content-secondary"
-                    dir="rtl"
-                  >
-                    {body}
-                  </pre>
-                )}
-              </li>
-            )
-          })}
-        </ul>
+        <OutreachPanel
+          view={view}
+          event="cancelled"
+          note={mission.cancelNote}
+          reasonLabel={t(`cancel.reason_${mission.cancelReason}`)}
+        />
 
         {/* A46 — the way back: recruiting, with every yes to re-earn. */}
         <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-edge-subtle pt-3">

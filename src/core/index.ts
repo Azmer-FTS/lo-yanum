@@ -12,6 +12,7 @@ export * from './geo'
 export * from './routing'
 export * from './tours'
 export * from './messages'
+export * from './outreach'
 export * from './import'
 export * from './access'
 export * from './dispatch'
@@ -70,7 +71,7 @@ export {
   saveTour,
   deleteTour,
   cancelMission,
-  setCancelNoticeSent,
+  setOutreachSent,
   reactivateMission,
 } from './store'
 export type {

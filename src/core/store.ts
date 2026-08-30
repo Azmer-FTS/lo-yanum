@@ -13,7 +13,7 @@ import type { Tour } from './tours'
 import type {
   Agreement,
   AnchorPoint,
-  CancelNotice,
+  OutreachNotice,
   CancelReason,
   Driver,
   Farm,
@@ -777,51 +777,46 @@ export function cancelMission(
   note: string,
 ): void {
   withMission(missionId, (m) => {
-    const farm = data.farms.find((f) => f.id === m.farmId)
-    const farmerContact =
-      farm?.contacts.find((c) => c.isPrimary) ?? farm?.contacts[0] ?? null
-
     m.status = 'cancelled'
     m.cancelledAt = iso(now())
     m.cancelReason = reason
     m.cancelNote = note.trim()
     m.reactivatedAt = null
-    m.cancelNotices = [
-      ...m.assignments.map((a) => ({
-        recipientKind: 'volunteer' as const,
-        recipientId: a.volunteerId,
-        sentAt: null,
-      })),
-      ...m.drivers.map((d) => ({
-        recipientKind: 'driver' as const,
-        recipientId: d.driverId,
-        sentAt: null,
-      })),
-      ...(farmerContact
-        ? [
-            {
-              recipientKind: 'farmer' as const,
-              recipientId: farmerContact.id,
-              sentAt: null,
-            },
-          ]
-        : []),
-    ]
+    // P0bis.5b — the recipient LIST is no longer snapshotted here: it is
+    // derived from the mission by `outreachRecipients` every time the sending
+    // centre renders, so a driver added after the cancellation is on the list
+    // instead of silently missing from it. Only the ticks are stored, and a
+    // cancellation starts with none.
+    m.outreach = m.outreach.filter((n) => n.event !== 'cancelled')
   })
 }
 
-/** A45 — the coordinator ticking off "this person has been told". */
-export function setCancelNoticeSent(
+/**
+ * A45/P0bis.5b — the coordinator ticking off "this person has been told".
+ *
+ * An UPSERT, because the tick is the only record that exists: there is no
+ * pre-populated row to find. Un-ticking removes the entry rather than nulling
+ * it, so "no entry" means exactly one thing.
+ */
+export function setOutreachSent(
   missionId: string,
-  recipientKind: CancelNotice['recipientKind'],
+  event: OutreachNotice['event'],
+  recipientKind: OutreachNotice['recipientKind'],
   recipientId: string,
   sent: boolean,
 ): void {
   withMission(missionId, (m) => {
-    const notice = m.cancelNotices.find(
-      (n) => n.recipientKind === recipientKind && n.recipientId === recipientId,
+    const rest = m.outreach.filter(
+      (n) =>
+        !(
+          n.event === event &&
+          n.recipientKind === recipientKind &&
+          n.recipientId === recipientId
+        ),
     )
-    if (notice) notice.sentAt = sent ? iso(now()) : null
+    m.outreach = sent
+      ? [...rest, { event, recipientKind, recipientId, sentAt: iso(now()) }]
+      : rest
   })
 }
 
@@ -1056,7 +1051,7 @@ export function createMission(draft: MissionDraft): Mission {
     cancelledAt: null,
     cancelReason: null,
     cancelNote: '',
-    cancelNotices: [],
+    outreach: [],
     reactivatedAt: null,
   }
 

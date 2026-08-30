@@ -10,7 +10,12 @@ import {
   getMissionView,
 } from '@core/index'
 import { getPresenceRows } from '@core/index'
-import type { Incident, MissionLeg, MissionView } from '@core/index'
+import type {
+  Incident,
+  MissionLeg,
+  MissionView,
+  OutreachEvent,
+} from '@core/index'
 
 import { useState } from 'react'
 
@@ -19,6 +24,7 @@ import {
   CancelMissionModal,
   CancellationPanel,
 } from '../../components/cancellation'
+import { OutreachPanel } from '../../components/outreach'
 import { ContactActions, ContactButtons } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { MapSplit } from '../../components/MapSplit'
@@ -306,6 +312,11 @@ export function MissionDetailScreen() {
   const missionIncidents = useCoreValue(() => getIncidentsForMission(missionId))
   const mapFullscreen = useMapFullscreen()
   const [cancelling, setCancelling] = useState(false)
+  // P0bis.5b — which announcement the sending centre is composing. A guard is
+  // created once and changed many times, so "created" is the default only
+  // until somebody switches; the choice is not persisted because it is a
+  // property of the moment, not of the guard.
+  const [outreachEvent, setOutreachEvent] = useState<OutreachEvent>('created')
 
   if (!view) return <Navigate to="/coordinator/missions" replace />
 
@@ -631,6 +642,21 @@ export function MissionDetailScreen() {
             )}
           </Section>
         </div>
+
+        {/* P0bis.5b — THE SENDING CENTRE. Not offered on a cancelled guard:
+            its own panel above carries the same list with the event pinned to
+            the cancellation, and two copies of "who has been told" on one
+            screen is how the two stop agreeing. */}
+        {mission.status !== 'cancelled' && (
+          <Section title={t('outreach.title')}>
+            <OutreachPanel
+              view={view}
+              event={outreachEvent}
+              onEventChange={setOutreachEvent}
+              events={['created', 'updated']}
+            />
+          </Section>
+        )}
 
         <Section title={t('missions.timeline')}>
             {/* Dated, not clock-only: a guard is created days before it starts

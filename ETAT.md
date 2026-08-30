@@ -29,6 +29,7 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 | `bun run tokens` | **A28/A29** — one radius scale, no tinted field, orange only where it is allowed. No browser needed |
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 64 checks |
+| `bun run outreach` | **A68 + A69** — the sending centre and the WhatsApp group kit, read off the rendered DOM: the right channel per phone type, prefilled `wa.me` / `sms:` / `mailto:` links DECODED and checked, the grouped SMS and email, the sent tick surviving navigation, and the kit's three copies. 25 checks — needs a dev server |
 | `bun run rtl` | **A67** — the generated .xlsx downloaded through the real UI, then opened: both sheets `rightToLeft`, every cell styled, every style right-aligned with `readingOrder="2"`, the header frozen, the instructions sheet complete. 45 checks — needs a dev server |
 | `bun run mapfirst` | **A64** — the exhaustive "map on the LEFT" audit: every route in the app at iPad landscape, each screen printed with whether it carries a map and, if it does, proof the map is the left column. Exemptions print their reason. Needs a dev server |
 | `bun run splitter` | **A65** — the map/content seam driven by MOUSE and by SYNTHETIC TOUCH at iPad landscape: 44 px grip and hit area, live canvas resize, ratio persisted per screen, bounds, double-tap reset. 72 checks — needs a dev server |
@@ -39,8 +40,9 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 | `bun run screenshots` | Regenerate `docs/screenshots/` — needs a dev server |
 | `bun run brand-reference` | Re-capture `docs/brand/` from the live artzenu.org.il — needs the internet, NOT a dev server |
 
-> The nine browser scripts (`rtl`, `mapfirst`, `splitter`, `layout`, `wizard`,
-> `touch`, `import`, `screenshots`, `brand-reference`) take `BASE_URL`, e.g.
+> The ten browser scripts (`outreach`, `rtl`, `mapfirst`, `splitter`, `layout`,
+> `wizard`, `touch`, `import`, `screenshots`, `brand-reference`) take
+> `BASE_URL`, e.g.
 > `BASE_URL=http://localhost:62807 bun run layout`.
 
 > **Toolchain:** this machine has **no Node.js**. Bun is at `/usr/local/bin/bun`
@@ -57,8 +59,8 @@ RLS) IS APPLIED. PHASE P0bis IS IN PROGRESS — P0bis.1 (map on the
 left EVERYWHERE), P0bis.2 (the draggable seam), P0bis.3 (the density pass)
 and P0bis.4 (a really-RTL .xlsx) ARE DONE and green (A64: 26 screens; A65: 72
 checks; A66: the screen-by-screen table below; A67: 45 checks). Next:
-P0bis.5a (the email field) IS DONE. Next: P0bis.5b (the sending centre and the
-WhatsApp group helper), then G13's freeze and P2.3→P3.** One
+P0bis.5 IS DONE (a, b and c). **PHASE P0bis IS COMPLETE.** Next: G13 (tag
+`poc-final`, the frozen /poc copy), then P2.3 → P3.** One
 commit per unit. Branch `main`.
 
 > **P0bis.1 — THE MAP IS ON THE LEFT ON EVERY SCREEN THAT HAS ONE (frozen PO
@@ -271,6 +273,55 @@ commit per unit. Branch `main`.
 >   longest-key-first rule `guessField` needs, and for the same reason: "איש
 >   קשר" is a substring of "טלפון איש קשר", so a first-match-wins scan puts the
 >   contact's NAME in the phone column. It did, on the first run.
+
+> **P0bis.5b/c — THE SENDING CENTRE, AND THE LAW THAT SHAPES IT.**
+> · **NO THIRD-PARTY APP MAY SEND A WHATSAPP OR AN SMS FOR A USER, OR CREATE A
+>   WHATSAPP GROUP FOR HIM.** That is not a limitation of this build; it is the
+>   platform. The WhatsApp Business API can — paid, behind Meta's approval —
+>   and is recorded in §11 as a future step IF the association funds it. So
+>   every button here is a HAND-OFF: it opens the coordinator's own app with
+>   the message already written and he presses send. **Email is the exception**
+>   — a server can send it, and P3.3bis will. The screen says all of this out
+>   loud, because a coordinator who does not know why nothing sends itself
+>   assumes the app is broken.
+> · **THE TICK IS THE ONLY RECORD THAT EXISTS.** The app cannot know a message
+>   was sent, so the screen is a CHECKLIST, not a status. That checklist is
+>   what stands between a decision at 16:00 and a volunteer at a farm gate at
+>   21:30 for a night that is not happening.
+> · **`src/core/outreach.ts`** — pure: `channelsFor` (smartphone → WhatsApp,
+>   kosher → SMS, **plus** email when there is an address),
+>   `outreachRecipients`, `smsGroupRecipients`, `emailRecipients`,
+>   `buildOutreachMessage` (one writer for all three events; the kosher branch
+>   carries NO LINK — a phone with no browser turns a Waze URL into 60
+>   characters of noise in a 160-character SMS), `buildGroupKit`.
+> · **THE RECIPIENT LIST IS DERIVED, NOT SNAPSHOTTED.** G9bis stored a
+>   `CancelNotice[]` pre-populated at cancel time; a driver added afterwards
+>   was then invisible on the very screen whose job is "who has not been told".
+>   `Mission.cancelNotices` became `Mission.outreach` — TICKS ONLY, one entry
+>   per person actually ticked, keyed by event — and the list is recomputed
+>   from the mission every render. `setCancelNoticeSent` → `setOutreachSent`,
+>   an upsert; un-ticking DELETES the entry, so "no entry" means exactly one
+>   thing.
+> · **ONE MESSAGE WRITER, NOT TWO.** `buildCancellationMessage` is gone: a
+>   second builder producing a nearly-identical message for one of three events
+>   drifts from the other two within a lot. The cancellation panel keeps its
+>   banner and delegates its list to the same `OutreachPanel`, which is also
+>   how the cancellation gained the email channel it never had.
+> · **A REAL DEFECT THE GATE FOUND, AND IT WAS INVISIBLE.** `smsHref` ran its
+>   argument through `digits()`, which strips everything that is not a digit —
+>   including the COMMA that separates recipients. The grouped SMS produced
+>   `sms:0530000019050000002`: a single number belonging to nobody, inside a
+>   link that looks perfectly well-formed. A test that checked the button
+>   exists would have passed; A68 decodes the href, so it failed.
+> · **THE GROUP KIT (P0bis.5c).** Three copies and three pastes: the name
+>   (`שמירה <entity> <date>`), the numbers, the opening message, with the
+>   three-step guide beside them. The numbers are INTERNATIONAL (`+972…`) —
+>   WhatsApp's own participant search matches nothing else — and include the
+>   coordinator, because a group he is not in is a group he cannot read at
+>   02:00. **Kosher phones are EXCLUDED and named as excluded**: a number in
+>   that list that silently never joins would leave the coordinator believing
+>   somebody is in the group when he is not, which is the exact failure the
+>   centre exists to prevent. They are covered by the grouped SMS instead.
 
 > **THE FINAL ORDER OF MARCH (product-owner prompt, 2026-08-30).** The product
 > owner starts field work in TWO DAYS on an iPad Pro 13" (+ iPhone). The goal
@@ -919,6 +970,8 @@ captures in §5.
 | **A65** | **The map/content seam is draggable by finger and by mouse, bounded, persisted, resettable** | ✅ `bun run splitter` — 72 checks over five screens |
 | **A66** | **A density pass over every screen, listed one by one** | ✅ the table in §1's P0bis.3 note — what changed, or why the screen was already optimal |
 | **A67** | **The generated .xlsx is really RTL, verified by re-opening it** | ✅ `bun run rtl` — 45 checks over the three templates; independently confirmed with openpyxl, which is what caught an invalid `workbookView` attribute |
+| **A68** | **Three channels, chosen by phone type and address, with valid prefilled links** | ✅ `bun run outreach` — the hrefs are DECODED and checked, not merely present |
+| **A69** | **The group kit's three copied elements are correct** | ✅ same run — international numbers, the coordinator included, kosher phones excluded AND named |
 | **A59** | **The threat layer exists, and is coordinator-only (G18)** | ✅ `bun run accept` A59 section (26 checks over all three roles and all three routes) + the map proof captured by hand |
 | **A61** | **Three map states per map-first screen, persisted (P0.1)** | ✅ dashboard / farms / farm-detail / route / incidents / missions + both rosters; verified by hand at 1032×1376 and 402×874, captures due at G12 |
 | **A62** | **Locality bubbles + tap-filter + נקה on both rosters (P0.2)** | ✅ `bun run accept`, the A62 section (12 checks), plus the tap path in `bun run touch` |
@@ -1518,6 +1571,9 @@ src/core/                 PURE TS — no React, no DOM
                           the required set are all derived from it.
   import.ts               Validation only (columns live next door). Problems
                           REJECT; warnings (מיקום חסר) do not.
+  outreach.ts             ★ P0bis.5 — the sending centre's brain. Channel per
+                          phone type, one message writer for the three
+                          events, the WhatsApp group kit. Pure.
   photo.ts routing.ts messages.ts config.ts sessions.ts
   mock/                   threats.ts (G18 — 2 zones + 2 vectors, one of each
                           attached and one free) ·
@@ -1642,6 +1698,16 @@ src/ui/
    covered: delete the `atlas-*`/`mekomi-*` files. That is the whole change — the
    stacks in `--font-brand` / `--font-sans` already fall through to the
    self-hosted Rubik, and nothing else in the app depends on them.
+10. **WILL THE ASSOCIATION FUND THE WHATSAPP BUSINESS API?** P0bis.5's ceiling
+    is legal, not technical: no third-party application may send a WhatsApp on
+    a user's behalf or create a group for him, so the sending centre hands off
+    to the coordinator's own apps. The WhatsApp Business API removes that
+    ceiling — messages sent by the server, groups created programmatically —
+    at a monthly cost and behind Meta's business verification. It is a
+    PRODUCT decision with a price attached, not an engineering one, and
+    nothing in the app has to change until the answer is yes. Email is
+    already on the automatic path (P3.3bis) and needs no such permission.
+
 9. **Is the sea meant to be violet on the night map?** The single hue rotation
    that lands the Negev on forest green necessarily throws the Mediterranean the
    other way (`docs/brand-artzenu.md` §3). It is desaturated almost to neutral
