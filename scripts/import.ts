@@ -113,6 +113,27 @@ async function downloadTemplate(kind: string): Promise<string[][]> {
 }
 
 /** Write `rows` under `headers` to a new workbook and return its path. */
+/**
+ * Build a row in the DOWNLOADED template's own column order from a
+ * label → value map, filling every unnamed column with ''.
+ *
+ * P0bis.5a added an email column to all three templates, and the fixtures here
+ * were positional arrays: every one of them silently shifted by one and three
+ * checks failed for a reason that had nothing to do with what they test. A
+ * fixture keyed by the header is a fixture that survives the next column.
+ */
+function row(headers: string[], values: Record<string, string>): string[] {
+  // LONGEST KEY FIRST — the same rule `guessField` needs, for the same reason:
+  // "איש קשר" is a substring of "טלפון איש קשר" and of "מייל איש קשר", so a
+  // first-match-wins scan puts the contact's NAME in the phone column. This
+  // fixture got that wrong on its first run.
+  const keys = Object.keys(values).sort((a, b) => b.length - a.length)
+  return headers.map((h) => {
+    const key = keys.find((k) => h.includes(k))
+    return key ? values[key] : ''
+  })
+}
+
 function writeSheet(name: string, headers: string[], rows: string[][]): string {
   const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows])
   const book = XLSX.utils.book_new()
@@ -147,14 +168,43 @@ check(
   volTemplate.length === 4,
   `${volTemplate.length} rows`,
 )
-check('and six columns', volTemplate[0].length === 6, volTemplate[0].join(' · '))
+check(
+  'and one column per template field',
+  volTemplate[0].length === 7,
+  volTemplate[0].join(' · '),
+)
 
 const volHeaders = volTemplate[0]
 const volPath = writeSheet('volunteers-filled', volHeaders, [
-  ['בדיקה ראשון', '050-0007001', 'סמארטפון', 'ישיבת שדרות', 'שדרות', '21'],
-  ['בדיקה שני', '050-0007002', 'כשר', 'ישיבת שדרות', 'נתיבות', '22'],
+  row(volHeaders, {
+    שם: 'בדיקה ראשון',
+    טלפון: '050-0007001',
+    'סוג טלפון': 'סמארטפון',
+    מייל: 'bdika1@example.co.il',
+    ישיבה: 'ישיבת שדרות',
+    יישוב: 'שדרות',
+    גיל: '21',
+  }),
+  row(volHeaders, {
+    שם: 'בדיקה שני',
+    טלפון: '050-0007002',
+    'סוג טלפון': 'כשר',
+    // P0bis.5a — NOT an address. The row must still import, with a warning:
+    // an optional field cannot cost somebody his place on the roster.
+    מייל: 'not-an-email',
+    ישיבה: 'ישיבת שדרות',
+    יישוב: 'נתיבות',
+    גיל: '22',
+  }),
   // Same phone as the row above: the in-file duplicate must be caught.
-  ['בדיקה כפול', '050-0007002', 'כשר', 'ישיבת שדרות', 'נתיבות', '23'],
+  row(volHeaders, {
+    שם: 'בדיקה כפול',
+    טלפון: '050-0007002',
+    'סוג טלפון': 'כשר',
+    ישיבה: 'ישיבת שדרות',
+    יישוב: 'נתיבות',
+    גיל: '23',
+  }),
 ])
 
 await upload(volPath)
@@ -183,6 +233,10 @@ const volPreview = await bodyText(page)
 const volFlat = volPreview.replace(/\s+/g, ' ')
 check('two rows will import', counts(volFlat, 'ייובאו', 2), '')
 check('one row will be skipped', counts(volFlat, 'יידלגו', 1), '')
+check(
+  'a malformed email warns and does not reject the row',
+  volFlat.includes('כתובת מייל לא תקינה'),
+)
 
 check('the import runs', await clickText(page, 'ייבוא'))
 await page.waitForTimeout(1500)
@@ -216,48 +270,37 @@ check(
 // name · entityKind · locality · region · positionLink · farmType · farmStatus
 // · farmDunams · grazingDunams · contactName · contactPhone · notes
 const farmPath = writeSheet('farms-filled', farmHeaders, [
-  [
-    'חוות בדיקת ייבוא',
-    'חווה',
-    'רתמים',
-    'רמת נגב',
-    'https://waze.com/ul?ll=30.9800,34.6700',
-    'מעורבת',
-    'פעילה',
-    '120',
-    '900',
-    'איש קשר בדיקה',
-    '052-0007101',
-    '',
-  ],
-  [
-    'מושב בדיקת ייבוא',
-    'מושב',
-    'אופקים',
-    'מרחבים',
-    '',
-    'חקלאות',
-    'ליצירת קשר',
-    '',
-    '',
-    '',
-    '',
-    '',
-  ],
-  [
-    'חוות ללא מיקום',
-    'חווה',
-    'יישוב שאינו בגזטיר',
-    'רמת נגב',
-    'https://maps.app.goo.gl/AbCdEf',
-    'בעלי חיים',
-    'נוצר קשר',
-    '',
-    '',
-    '',
-    '',
-    '',
-  ],
+  row(farmHeaders, {
+    'שם החווה': 'חוות בדיקת ייבוא',
+    'סוג יישות': 'חווה',
+    יישוב: 'רתמים',
+    אזור: 'רמת נגב',
+    'קישור מיקום': 'https://waze.com/ul?ll=30.9800,34.6700',
+    'סוג חווה': 'מעורבת',
+    סטטוס: 'פעילה',
+    'שטח החווה': '120',
+    'שטח מרעה': '900',
+    'איש קשר': 'איש קשר בדיקה',
+    'טלפון איש קשר': '052-0007101',
+    'מייל איש קשר': 'kesher@example.co.il',
+  }),
+  row(farmHeaders, {
+    'שם החווה': 'מושב בדיקת ייבוא',
+    'סוג יישות': 'מושב',
+    יישוב: 'אופקים',
+    אזור: 'מרחבים',
+    'סוג חווה': 'חקלאות',
+    סטטוס: 'ליצירת קשר',
+  }),
+  row(farmHeaders, {
+    'שם החווה': 'חוות ללא מיקום',
+    'סוג יישות': 'חווה',
+    יישוב: 'יישוב שאינו בגזטיר',
+    אזור: 'רמת נגב',
+    'קישור מיקום': 'https://maps.app.goo.gl/AbCdEf',
+    'סוג חווה': 'בעלי חיים',
+    סטטוס: 'נוצר קשר',
+  }),
 ])
 
 await upload(farmPath)
@@ -308,9 +351,23 @@ section('3 — drivers: the third template')
 const driverTemplate = await downloadTemplate('drivers')
 const driverHeaders = driverTemplate[0]
 const driverPath = writeSheet('drivers-filled', driverHeaders, [
-  ['נהג בדיקה', '052-0007201', 'מרצדס ספרינטר', '9', 'באר שבע', 'כל ערב'],
+  row(driverHeaders, {
+    שם: 'נהג בדיקה',
+    טלפון: '052-0007201',
+    מייל: 'nahag@example.co.il',
+    רכב: 'מרצדס ספרינטר',
+    מקומות: '9',
+    יישוב: 'באר שבע',
+    זמינות: 'כל ערב',
+  }),
   // A capacity nobody has: rejected, not silently clamped.
-  ['נהג עם ספסלים', '052-0007202', 'אוטובוס', '900', 'אופקים', ''],
+  row(driverHeaders, {
+    שם: 'נהג עם ספסלים',
+    טלפון: '052-0007202',
+    רכב: 'אוטובוס',
+    מקומות: '900',
+    יישוב: 'אופקים',
+  }),
 ])
 
 await upload(driverPath)
@@ -322,7 +379,7 @@ check(
 check('"next" is allowed for drivers', await clickText(page, 'הבא'))
 await page.waitForTimeout(1200)
 const driverPreview = (await bodyText(page)).replace(/\s+/g, ' ')
-check('one row will import', /ייובאו 1/.test(driverPreview), '')
+check('one row will import', counts(driverPreview, 'ייובאו', 1), '')
 check(
   'an impossible seat count is rejected, not clamped',
   driverPreview.includes('מספר מקומות שגוי'),

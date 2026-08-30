@@ -57,7 +57,8 @@ RLS) IS APPLIED. PHASE P0bis IS IN PROGRESS — P0bis.1 (map on the
 left EVERYWHERE), P0bis.2 (the draggable seam), P0bis.3 (the density pass)
 and P0bis.4 (a really-RTL .xlsx) ARE DONE and green (A64: 26 screens; A65: 72
 checks; A66: the screen-by-screen table below; A67: 45 checks). Next:
-P0bis.5 (the sending centre), then G13's freeze and P2.3→P3.** One
+P0bis.5a (the email field) IS DONE. Next: P0bis.5b (the sending centre and the
+WhatsApp group helper), then G13's freeze and P2.3→P3.** One
 commit per unit. Branch `main`.
 
 > **P0bis.1 — THE MAP IS ON THE LEFT ON EVERY SCREEN THAT HAS ONE (frozen PO
@@ -236,8 +237,40 @@ commit per unit. Branch `main`.
 >   READS an uploaded .csv; SheetJS handles that encoding.
 > · **`bun run import` is the second proof and it was already there:** it
 >   downloads each template, reads it back with SheetJS outside the browser,
->   refills it and uploads it through the wizard's own file input. 28 checks,
+>   refills it and uploads it through the wizard's own file input. 29 checks,
 >   green — so the app can still read its own template.
+
+> **P0bis.5a — THE EMAIL FIELD, AND WHY IT IS OPTIONAL EVERYWHERE.**
+> · `email: string` on **Volunteer, Driver and FarmContact**; `''` means "no
+>   address", which is a FACT about that person, not a missing value. It stays
+>   optional by design: a yeshiva student with a kosher phone frequently has no
+>   address, and a required field would either block his import or invite a
+>   fake one — worse than nothing, because it looks like a channel that works.
+> · `normalizeEmail` / `isEmail` / `mailtoHref` in `@core/messages`, beside the
+>   phone helpers. The check is deliberately NOT RFC 5322: that grammar accepts
+>   what no server delivers and rejects what every server does, and the two
+>   mistakes do not cost the same. A false reject loses a real address read off
+>   a business card; a false accept bounces one message.
+> · Forms (volunteer, driver, farm contacts), both xlsx templates, the import
+>   pipeline, and a column at `2xl` on both rosters — plus an envelope in
+>   `ContactActions`, rendered ONLY when there is an address.
+> · **A MALFORMED ADDRESS IS A WARNING, NOT A REJECTION** (`warnBadEmail`),
+>   the same rule as מיקום חסר: the value is dropped and the coordinator is
+>   told. Importing `0501234567` as an address would create a channel that
+>   silently never delivers.
+> · **THE FIXTURE NEARLY RE-ROLLED ITSELF.** The first version derived the
+>   generated volunteers' addresses from `rng()`. Every other field in
+>   `generate.ts` comes out of ONE seeded sequence, so drawing one extra number
+>   shifted every subsequent draw and silently re-rolled all 275 volunteers —
+>   different localities, different phone types, 254 active became 250. It is
+>   derived from the INDEX now. The only reason it was caught is that
+>   `bun run accept` prints the number.
+> · **`scripts/import.ts`'s fixtures are keyed by HEADER now, not positional.**
+>   Adding one column shifted three arrays and failed three checks for a reason
+>   unrelated to what they test. The keyed version needs the same
+>   longest-key-first rule `guessField` needs, and for the same reason: "איש
+>   קשר" is a substring of "טלפון איש קשר", so a first-match-wins scan puts the
+>   contact's NAME in the phone column. It did, on the first run.
 
 > **THE FINAL ORDER OF MARCH (product-owner prompt, 2026-08-30).** The product
 > owner starts field work in TWO DAYS on an iPad Pro 13" (+ iPhone). The goal

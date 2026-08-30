@@ -506,6 +506,8 @@ export interface VolunteerDraft {
   age: number
   phone: string
   phoneType: PhoneType
+  /** P0bis.5a — optional; '' means "no address", not "unknown". */
+  email?: string
   yeshiva: string
   locality: string
   status: VolunteerStatus
@@ -524,6 +526,7 @@ export function createVolunteer(draft: VolunteerDraft): Volunteer {
     id: nextId('vol'),
     guardsCount: 0,
     lastActivityAt: null,
+    email: '',
     hasLicense: false,
     hasCar: false,
     canDrive: false,
@@ -563,6 +566,8 @@ function syncVolunteerDriver(volunteer: Volunteer): void {
         id: nextId('driver'),
         name: volunteer.name,
         phone: volunteer.phone,
+        // The dual hat is ONE human: the same address, kept in step below.
+        email: volunteer.email,
         // Vehicle description is the driver's to fill in; empty renders as
         // the UI's "private car" fallback.
         vehicle: '',
@@ -577,6 +582,7 @@ function syncVolunteerDriver(volunteer: Volunteer): void {
   } else if (volunteer.canDrive && linked) {
     linked.name = volunteer.name
     linked.phone = volunteer.phone
+    linked.email = volunteer.email
     linked.locality = volunteer.locality
     linked.photo = volunteer.photo
   } else if (!volunteer.canDrive && linked) {
@@ -590,6 +596,8 @@ export interface DriverDraft {
   photo: string | null
   name: string
   phone: string
+  /** P0bis.5a — optional; '' means "no address". */
+  email?: string
   vehicle: string
   seats: number
   locality: string
@@ -687,7 +695,12 @@ export function deleteThreatVector(vectorId: string): void {
 }
 
 export function createDriver(draft: DriverDraft): Driver {
-  const driver: Driver = { id: nextId('driver'), volunteerId: null, ...draft }
+  const driver: Driver = {
+    id: nextId('driver'),
+    volunteerId: null,
+    email: '',
+    ...draft,
+  }
   data.drivers = [driver, ...data.drivers]
   commit()
   return driver
@@ -1081,6 +1094,7 @@ export function importDrivers(drafts: DriverDraft[]): number {
   const created: Driver[] = drafts.map((draft, i) => ({
     id: `${nextId('driver')}-${i}`,
     volunteerId: null,
+    email: '',
     ...draft,
   }))
   data.drivers = [...data.drivers, ...created]
@@ -1094,6 +1108,7 @@ export function importVolunteers(drafts: VolunteerDraft[]): number {
     id: `${nextId('vol')}-${i}`,
     guardsCount: 0,
     lastActivityAt: null,
+    email: '',
     hasLicense: false,
     hasCar: false,
     canDrive: false,

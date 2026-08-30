@@ -148,6 +148,20 @@ export function generateVolunteers(
       age: int(rng, 18, 26),
       phone: `${prefix}-000${String(n).padStart(4, '0')}`,
       phoneType,
+      // P0bis.5a — most smartphone holders have an address, few kosher-phone
+      // holders do; the sending centre exists because the channels differ.
+      //
+      // Derived from the INDEX, deliberately not from `rng()`. Every other
+      // field in this generator comes out of one seeded sequence, so drawing
+      // one more number here would shift every subsequent draw and silently
+      // re-roll all 275 volunteers — different localities, different phone
+      // types, a different active count. The first version of this line did
+      // exactly that (254 active became 250) and the only reason it was
+      // caught is that `bun run accept` prints the number.
+      email:
+        (phoneType === 'smartphone' ? n % 6 !== 0 : n % 5 === 0)
+          ? `vol-${String(n).padStart(3, '0')}@example.co.il`
+          : '',
       yeshiva: pick(rng, yeshivot),
       locality: pick(rng, LOCALITIES),
       guardsCount,

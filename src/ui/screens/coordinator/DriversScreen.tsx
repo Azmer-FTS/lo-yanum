@@ -7,6 +7,7 @@ import {
   getDriverStats,
   getTonightBookedDriverIds,
   telHref,
+  mailtoHref,
   whatsappHref,
 } from '@core/index'
 import type { Driver } from '@core/index'
@@ -247,6 +248,11 @@ export function DriversScreen() {
             <HeaderCell label={t('driver.seats')} className="w-16" />
             <HeaderCell label={t('volunteers.colLocality')} className="w-32" />
             <HeaderCell label={t('volunteers.colPhone')} className="w-36" />
+            {/* P0bis.5a — the address, at 2xl only; see the volunteers roster. */}
+            <HeaderCell
+              label={t('form.email')}
+              className="hidden w-48 2xl:block"
+            />
             <HeaderCell
               label={t('driver.availabilityNote')}
               className="hidden flex-1 xl:block"
@@ -315,6 +321,20 @@ export function DriversScreen() {
                     <span className="ltr-nums w-36 whitespace-nowrap text-micro text-content-secondary">
                       {d.phone}
                     </span>
+                    <span className="hidden w-48 min-w-0 2xl:block">
+                      {d.email ? (
+                        <a
+                          href={mailtoHref(d.email)}
+                          dir="ltr"
+                          title={d.email}
+                          className="ltr-nums block truncate text-micro text-content-secondary hover:text-accent-ink hover:underline"
+                        >
+                          {d.email}
+                        </a>
+                      ) : (
+                        <span className="text-micro text-content-muted/50">—</span>
+                      )}
+                    </span>
                     <span className="hidden min-w-0 flex-1 truncate text-micro text-content-muted xl:block">
                       {d.availabilityNote || '—'}
                     </span>
@@ -337,6 +357,16 @@ export function DriversScreen() {
                       >
                         <Icon name="whatsapp" size={16} />
                       </a>
+                      {d.email && (
+                        <a
+                          href={mailtoHref(d.email)}
+                          aria-label={t('common.email')}
+                          title={d.email}
+                          className="rounded-field p-1.5 text-content-muted transition-colors duration-fast hover:bg-surface-overlay hover:text-content-primary"
+                        >
+                          <Icon name="mail" size={16} />
+                        </a>
+                      )}
                       <button
                         type="button"
                         onClick={() => setEditing(d)}

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import { smsHref, telHref, whatsappHref } from '@core/index'
+import { mailtoHref, smsHref, telHref, whatsappHref } from '@core/index'
 
 import { Avatar } from './Avatar'
 import { Icon } from './Icon'
@@ -15,12 +15,21 @@ import { Icon } from './Icon'
 export function ContactButtons({
   name,
   phone,
+  email,
   message,
+  subject,
 }: {
   name: string
   phone: string
-  /** Optional prefilled body for the WhatsApp / SMS actions. */
+  /**
+   * P0bis.5a — rendered ONLY when there is an address. An always-present mail
+   * button that opens `mailto:` with no recipient is worse than no button: it
+   * looks like the channel exists.
+   */
+  email?: string
+  /** Optional prefilled body for the WhatsApp / SMS / email actions. */
   message?: string
+  subject?: string
 }) {
   const { t } = useTranslation()
 
@@ -54,6 +63,18 @@ export function ContactButtons({
       >
         <Icon name="message" size={18} />
       </a>
+      {email ? (
+        <a
+          href={mailtoHref(email, subject, message)}
+          aria-label={`${t('common.email')} ${name}`}
+          title={email}
+          className="flex h-10 w-10 items-center justify-center rounded-field border border-edge-strong
+                     text-content-secondary transition-all duration-fast ease-out
+                     hover:bg-surface-high hover:text-content-primary active:scale-95"
+        >
+          <Icon name="mail" size={18} />
+        </a>
+      ) : null}
     </div>
   )
 }
@@ -61,14 +82,18 @@ export function ContactButtons({
 export function ContactActions({
   name,
   phone,
+  email,
   role,
   message,
+  subject,
   className = '',
 }: {
   name: string
   phone: string
+  email?: string
   role?: string
   message?: string
+  subject?: string
   className?: string
 }) {
   return (
@@ -78,11 +103,22 @@ export function ContactActions({
           {name}
         </p>
         <p className="ltr-nums text-micro text-content-muted">{phone}</p>
+        {email && (
+          <p className="ltr-nums truncate text-micro text-content-muted" dir="ltr">
+            {email}
+          </p>
+        )}
         {role && (
           <p className="truncate text-micro text-content-muted">{role}</p>
         )}
       </div>
-      <ContactButtons name={name} phone={phone} message={message} />
+      <ContactButtons
+        name={name}
+        phone={phone}
+        email={email}
+        message={message}
+        subject={subject}
+      />
     </div>
   )
 }

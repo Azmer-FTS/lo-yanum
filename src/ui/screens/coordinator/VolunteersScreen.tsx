@@ -7,6 +7,7 @@ import {
   formatDate,
   getVolunteerStats,
   getVolunteers,
+  mailtoHref,
   reactivateVolunteer,
 } from '@core/index'
 import type { PhoneType, Volunteer, VolunteerStatus } from '@core/index'
@@ -434,6 +435,14 @@ export function VolunteersScreen() {
             <span className="w-40 text-micro font-semibold uppercase tracking-wide text-content-muted">
               {t('volunteers.colPhone')}
             </span>
+            {/* P0bis.5a — the address, at 2xl only. It is a column the
+                coordinator scans rarely and a channel the sending centre uses
+                constantly, so it earns a place on the widest reading and
+                nowhere else; below that its absence is visible as a struck
+                envelope in the actions. */}
+            <span className="hidden w-48 text-micro font-semibold uppercase tracking-wide text-content-muted 2xl:block">
+              {t('form.email')}
+            </span>
             {/* G7 — the staffing columns: can he drive, when can he come.
                 xl-only; at lg the row is already full and these answers live
                 one click away in the form. */}
@@ -581,6 +590,20 @@ export function VolunteersScreen() {
                         <span className="ltr-nums whitespace-nowrap text-micro text-content-secondary">
                           {v.phone}
                         </span>
+                      </span>
+                      <span className="hidden w-48 items-center gap-1.5 2xl:flex">
+                        {v.email ? (
+                          <a
+                            href={mailtoHref(v.email)}
+                            dir="ltr"
+                            title={v.email}
+                            className="ltr-nums truncate text-micro text-content-secondary hover:text-accent-ink hover:underline"
+                          >
+                            {v.email}
+                          </a>
+                        ) : (
+                          <span className="text-micro text-content-muted/50">—</span>
+                        )}
                       </span>
                       {/* G7 — licence + car at a glance: green means "has it",
                           the faded icon means "does not", so a column of 300

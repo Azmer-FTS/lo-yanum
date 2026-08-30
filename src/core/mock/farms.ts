@@ -20,6 +20,7 @@ export const FARMS: Farm[] = [
     contacts: [
       {
         id: 'contact-01a',
+        email: 'contact-01a@example.co.il',
         name: 'אליהו בן־חמו',
         phone: '052-0000001',
         role: 'בעל החווה',
@@ -28,6 +29,7 @@ export const FARMS: Farm[] = [
       },
       {
         id: 'contact-01b',
+        email: 'contact-01b@example.co.il',
         name: 'שרה בן־חמו',
         phone: '054-0000002',
         role: 'שותפה',
@@ -74,6 +76,7 @@ export const FARMS: Farm[] = [
     contacts: [
       {
         id: 'contact-02a',
+        email: 'contact-02a@example.co.il',
         name: 'יונתן אשל',
         phone: '050-0000003',
         role: 'בעל החווה',
@@ -116,6 +119,7 @@ export const FARMS: Farm[] = [
     contacts: [
       {
         id: 'contact-03a',
+        email: '',
         name: 'משה קדוש',
         phone: '053-0000004',
         role: 'בעל החווה',
@@ -124,6 +128,7 @@ export const FARMS: Farm[] = [
       },
       {
         id: 'contact-03b',
+        email: '',
         name: 'רון קדוש',
         phone: '058-0000005',
         role: 'בן, אחראי לילות',
@@ -167,6 +172,7 @@ export const FARMS: Farm[] = [
     contacts: [
       {
         id: 'contact-04a',
+        email: 'contact-04a@example.co.il',
         name: 'דוד אלמליח',
         phone: '052-0000006',
         role: 'בעל החווה',
@@ -205,6 +211,7 @@ export const FARMS: Farm[] = [
     contacts: [
       {
         id: 'contact-05a',
+        email: 'contact-05a@example.co.il',
         name: 'איציק פרץ',
         phone: '050-0000007',
         role: 'בעל החווה',
@@ -213,6 +220,7 @@ export const FARMS: Farm[] = [
       },
       {
         id: 'contact-05b',
+        email: 'contact-05b@example.co.il',
         name: 'ליאור פרץ',
         phone: '054-0000008',
         role: 'מנהל עבודה',
@@ -240,6 +248,7 @@ export const FARMS: Farm[] = [
     contacts: [
       {
         id: 'contact-06a',
+        email: '',
         name: 'נועם שגיא',
         phone: '058-0000009',
         role: 'בעל החווה',
@@ -267,6 +276,7 @@ export const FARMS: Farm[] = [
     contacts: [
       {
         id: 'contact-07a',
+        email: 'contact-07a@example.co.il',
         name: 'עמית דרור',
         phone: '052-0000010',
         role: 'בעל החווה',
@@ -297,6 +307,7 @@ export const FARMS: Farm[] = [
     contacts: [
       {
         id: 'contact-08a',
+        email: 'contact-08a@example.co.il',
         name: 'שמעון ביטון',
         phone: '050-0000011',
         role: 'בעל החווה',
@@ -305,6 +316,7 @@ export const FARMS: Farm[] = [
       },
       {
         id: 'contact-08b',
+        email: 'contact-08b@example.co.il',
         name: 'אורי ביטון',
         phone: '053-0000012',
         role: 'רועה',
@@ -313,6 +325,7 @@ export const FARMS: Farm[] = [
       },
       {
         id: 'contact-08c',
+        email: 'contact-08c@example.co.il',
         name: 'מרים ביטון',
         phone: '054-0000013',
         role: 'רכזת התנדבות אזורית',
@@ -340,6 +353,7 @@ export const FARMS: Farm[] = [
     contacts: [
       {
         id: 'contact-09a',
+        email: '',
         name: 'רפי אוחיון',
         phone: '052-0000014',
         role: 'בעל החווה',
@@ -367,6 +381,7 @@ export const FARMS: Farm[] = [
     contacts: [
       {
         id: 'contact-10a',
+        email: 'contact-10a@example.co.il',
         name: 'גיא ורדי',
         phone: '054-0000015',
         role: 'בעל החווה',
@@ -394,6 +409,7 @@ export const FARMS: Farm[] = [
     contacts: [
       {
         id: 'contact-11a',
+        email: 'contact-11a@example.co.il',
         name: 'אבי שרעבי',
         phone: '050-0000016',
         role: 'מנהל החווה',
@@ -421,6 +437,7 @@ export const FARMS: Farm[] = [
     contacts: [
       {
         id: 'contact-12a',
+        email: '',
         name: 'יוסי נחמיאס',
         phone: '052-0000017',
         role: 'בעל החווה',
@@ -454,6 +471,7 @@ export const FARMS: Farm[] = [
     contacts: [
       {
         id: 'contact-13a',
+        email: 'contact-13a@example.co.il',
         name: 'רחל אדרי',
         phone: '054-0000061',
         role: 'רבש״צ המושב',
@@ -482,6 +500,7 @@ export const FARMS: Farm[] = [
     contacts: [
       {
         id: 'contact-14a',
+        email: 'contact-14a@example.co.il',
         name: 'דוד מלכה',
         phone: '053-0000062',
         role: 'יו״ר הוועד',

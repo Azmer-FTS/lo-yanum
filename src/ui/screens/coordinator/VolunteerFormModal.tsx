@@ -1,7 +1,13 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { LOCALITY_POSITIONS, createVolunteer, updateVolunteer } from '@core/index'
+import {
+  LOCALITY_POSITIONS,
+  createVolunteer,
+  isEmail,
+  normalizeEmail,
+  updateVolunteer,
+} from '@core/index'
 import { DEFAULT_AVAILABILITY } from '@core/index'
 import type {
   PhoneType,
@@ -40,6 +46,9 @@ export function VolunteerFormModal({
   const [phoneType, setPhoneType] = useState<PhoneType>(
     volunteer?.phoneType ?? 'smartphone',
   )
+  // P0bis.5a — optional, and validated only if filled: a blank address is a
+  // fact about this person, not an omission to nag about.
+  const [email, setEmail] = useState(volunteer?.email ?? '')
   const [yeshiva, setYeshiva] = useState(volunteer?.yeshiva ?? yeshivot[0] ?? '')
   const [locality, setLocality] = useState(volunteer?.locality ?? '')
   const [status, setStatus] = useState<VolunteerStatus>(
@@ -73,6 +82,8 @@ export function VolunteerFormModal({
         ? t('form.invalidNumber')
         : undefined,
     locality: !locality.trim() ? t('form.required') : undefined,
+    email:
+      email.trim() && !isEmail(email) ? t('form.invalidEmail') : undefined,
     // An inactive volunteer without a reason is how a roster rots: nobody
     // remembers six months later why the person was taken off the list.
     inactiveReason:
@@ -92,6 +103,7 @@ export function VolunteerFormModal({
       age: Number.isFinite(ageNum) && ageNum > 0 ? ageNum : 20,
       phone: phone.trim(),
       phoneType,
+      email: normalizeEmail(email),
       yeshiva,
       locality: locality.trim(),
       status,
@@ -142,6 +154,16 @@ export function VolunteerFormModal({
           ltr
           required
           placeholder="050-0000000"
+        />
+        <TextField
+          label={t('form.email')}
+          value={email}
+          onChange={setEmail}
+          error={show('email')}
+          type="email"
+          ltr
+          placeholder="name@example.co.il"
+          hint={t('form.emailHint')}
         />
         <SelectField<PhoneType>
           label={t('form.phoneType')}

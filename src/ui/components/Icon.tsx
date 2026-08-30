@@ -11,6 +11,7 @@ import type { ReactNode, SVGProps } from 'react'
  */
 
 export type IconName =
+  | 'mail'
   | 'dashboard'
   | 'farm'
   | 'map'
@@ -123,6 +124,15 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M3.8 20.2 5 16.4A8.2 8.2 0 1 1 8 19.2z" />
       <path d="M9 9c0 3 2.6 5.6 5.6 5.6l1-1.4-2-1-.9 1a5 5 0 0 1-2.3-2.3l1-.9-1-2z" />
+    </>
+  ),
+  // P0bis.5a — the email channel. An envelope, deliberately unlike `message`
+  // (a speech bubble): the two are different channels on the same screen and
+  // must not be told apart by their label alone.
+  mail: (
+    <>
+      <rect x="3" y="5.5" width="18" height="13" rx="2" />
+      <path d="M3.5 7l8.5 6 8.5-6" />
     </>
   ),
   message: (

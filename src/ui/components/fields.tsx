@@ -59,7 +59,7 @@ export function TextField({
   hint?: string
   required?: boolean
   placeholder?: string
-  type?: 'text' | 'tel' | 'number'
+  type?: 'text' | 'tel' | 'number' | 'email'
   ltr?: boolean
   className?: string
 }) {

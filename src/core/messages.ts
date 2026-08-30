@@ -362,3 +362,49 @@ export function whatsappHref(phone: string, body?: string): string {
   const base = `https://wa.me/${toInternational(phone)}`
   return body ? `${base}?text=${encodeURIComponent(body)}` : base
 }
+
+/**
+ * P0bis.5a — AN ADDRESS IS ACCEPTED LENIENTLY AND CHECKED SHALLOWLY.
+ *
+ * Deliberately not RFC 5322: that grammar accepts things no mail server does
+ * and rejects things every mail server delivers, and the cost of the two
+ * mistakes here is not symmetric. A false REJECT loses a real address the
+ * coordinator typed off a business card; a false ACCEPT bounces one message.
+ * So: something, an `@`, something with a dot in it, no spaces.
+ *
+ * Lower-cased and trimmed, because the same address arrives from a form, a
+ * spreadsheet and a phone call in three different casings and they must
+ * de-duplicate as one.
+ */
+export function normalizeEmail(raw: string): string {
+  const value = raw.trim().toLowerCase()
+  return isEmail(value) ? value : ''
+}
+
+export function isEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim())
+}
+
+/**
+ * A `mailto:` with a prefilled subject and body.
+ *
+ * The recipients are joined with commas, which every mail client understands;
+ * `encodeURIComponent` would eat the separator, so only the query values are
+ * encoded. A message body carries newlines, and those MUST be percent-encoded
+ * or the client truncates at the first one.
+ */
+export function mailtoHref(
+  to: string | readonly string[],
+  subject?: string,
+  body?: string,
+): string {
+  const list = (Array.isArray(to) ? to : [to as string]).filter(Boolean)
+  const query = [
+    subject ? `subject=${encodeURIComponent(subject)}` : '',
+    body ? `body=${encodeURIComponent(body)}` : '',
+  ]
+    .filter(Boolean)
+    .join('&')
+  const base = `mailto:${list.join(',')}`
+  return query ? `${base}?${query}` : base
+}

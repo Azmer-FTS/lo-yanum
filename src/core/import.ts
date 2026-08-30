@@ -1,4 +1,5 @@
 import { isUnresolvableLocationLink, parsePositionInput, positionOfLocality } from './geo'
+import { normalizeEmail } from './messages'
 import {
   readEntityKind,
   readFarmStatus,
@@ -65,7 +66,18 @@ export type ImportProblem =
  * dropping a pin on the map later — which is the easier of the two by a mile.
  * The badge is a to-do, not a rejection.
  */
-export type ImportWarning = 'warnNoPosition' | 'warnUnreadableLink'
+export type ImportWarning =
+  | 'warnNoPosition'
+  | 'warnUnreadableLink'
+  /**
+   * P0bis.5a — a cell in the email column that is not an address. A WARNING,
+   * never a rejection: the address is optional, so refusing the row would
+   * throw away a volunteer over a field he did not have to fill. The value is
+   * dropped and the coordinator is told, which is the only honest pair —
+   * importing "0501234567" as an email address would create a channel that
+   * silently never delivers.
+   */
+  | 'warnBadEmail'
 
 export interface ParsedRow {
   /** 1-based row number in the source file, including the header row. */
@@ -77,6 +89,8 @@ export interface ParsedRow {
   locality: string
   age: number | null
   phoneType: PhoneType
+  /** Normalised and validated; '' when absent OR unreadable (see warnings). */
+  email: string
   // --- farms ---------------------------------------------------------------
   entityKind: EntityKind
   region: string
@@ -90,6 +104,7 @@ export interface ParsedRow {
   grazingDunams: number
   contactName: string
   contactPhone: string
+  contactEmail: string
   notes: string
   // --- drivers -------------------------------------------------------------
   vehicle: string
@@ -223,6 +238,20 @@ export function analyseImport(
       if (position === null) warnings.push('warnNoPosition')
     }
 
+    // --- P0bis.5a: the address ---------------------------------------------
+    // Both columns are read the same way and warn the same way; only one of
+    // them is ever populated for a given template.
+    const rawEmail = cell(raw, 'email')
+    const email = normalizeEmail(rawEmail)
+    const rawContactEmail = cell(raw, 'contactEmail')
+    const contactEmail = normalizeEmail(rawContactEmail)
+    if (
+      (rawEmail !== '' && email === '') ||
+      (rawContactEmail !== '' && contactEmail === '')
+    ) {
+      warnings.push('warnBadEmail')
+    }
+
     const row: ParsedRow = {
       // +2: the header row, plus 1-based numbering, so the number matches what
       // the coordinator sees in Excel.
@@ -233,6 +262,7 @@ export function analyseImport(
       locality,
       age: ageNum,
       phoneType: readPhoneType(cell(raw, 'phoneType')),
+      email,
       entityKind: readEntityKind(cell(raw, 'entityKind')),
       region: cell(raw, 'region'),
       farmType: readFarmType(cell(raw, 'farmType')),
@@ -243,6 +273,7 @@ export function analyseImport(
       grazingDunams: readNumber(cell(raw, 'grazingDunams')) ?? 0,
       contactName: cell(raw, 'contactName'),
       contactPhone: cell(raw, 'contactPhone'),
+      contactEmail,
       notes: cell(raw, 'notes'),
       vehicle: cell(raw, 'vehicle'),
       seats: seatsNum ?? 0,
@@ -286,6 +317,7 @@ export function toVolunteerDrafts(
 ): Array<{
   photo: string | null
   name: string
+  email: string
   age: number
   phone: string
   phoneType: PhoneType
@@ -298,6 +330,7 @@ export function toVolunteerDrafts(
   return rows.map((r) => ({
     photo: null,
     name: r.name,
+    email: r.email,
     age: r.age ?? 20,
     phone: r.phone,
     phoneType: r.phoneType,
@@ -364,6 +397,7 @@ export function toFarmDrafts(
               name: r.contactName || r.name,
               role: '',
               phone: r.contactPhone,
+              email: r.contactEmail,
               isPrimary: true,
               photo: null,
             },
@@ -382,6 +416,7 @@ export function toDriverDrafts(
 ): Array<{
   photo: string | null
   name: string
+  email: string
   phone: string
   vehicle: string
   seats: number
@@ -392,6 +427,7 @@ export function toDriverDrafts(
   return rows.map((r) => ({
     photo: null,
     name: r.name,
+    email: r.email,
     phone: r.phone,
     vehicle: r.vehicle,
     // A driver with no stated capacity is not a driver anyone can staff a

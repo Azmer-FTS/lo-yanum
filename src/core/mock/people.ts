@@ -25,7 +25,7 @@ const seedActivity = (n: number): string =>
 /** Literal fixtures predate G5/G3; the new fields are hydrated below. */
 type VolunteerSeed = Omit<
   Volunteer,
-  'hasLicense' | 'hasCar' | 'canDrive' | 'availability'
+  'hasLicense' | 'hasCar' | 'canDrive' | 'availability' | 'email'
 >
 
 const NAMED_SEEDS: VolunteerSeed[] = [
@@ -424,8 +424,28 @@ const HAS_LICENSE_IDS = new Set([
   'vol-017',
 ])
 
+/**
+ * P0bis.5a — WHO HAS AN EMAIL ADDRESS, AND WHY IT MATTERS THAT SOME DO NOT.
+ *
+ * The sending centre picks a channel per person, and its whole point is that
+ * the three channels are not interchangeable. A fixture where everybody has an
+ * address would demo beautifully and hide the case that actually occurs: a
+ * yeshiva student with a kosher phone, no smartphone, and no address either —
+ * for whom the only channel is an SMS, grouped with the other kosher phones.
+ *
+ * So: smartphone holders nearly all have one, kosher-phone holders rarely do.
+ * Deterministic from the id, because a fixture that changes between runs makes
+ * a verification script flaky rather than thorough.
+ */
+const seedEmail = (id: string, phoneType: string): string => {
+  const n = Number(id.replace(/\D/g, '')) || 0
+  const has = phoneType === 'smartphone' ? n % 8 !== 0 : n % 5 === 0
+  return has ? `${id}@example.co.il` : ''
+}
+
 const NAMED_VOLUNTEERS: Volunteer[] = NAMED_SEEDS.map((seed) => ({
   ...seed,
+  email: seedEmail(seed.id, seed.phoneType),
   hasLicense: HAS_LICENSE_IDS.has(seed.id),
   hasCar: CAN_DRIVE_IDS.has(seed.id),
   canDrive: CAN_DRIVE_IDS.has(seed.id),
@@ -445,6 +465,7 @@ export const VOLUNTEERS: Volunteer[] = [
 export const DRIVERS: Driver[] = [
   {
     id: 'drv-01',
+    email: 'drv-01@example.co.il',
     name: 'חיים סויסה',
     phone: '052-0000043',
     vehicle: 'טרנזיט לבן, 88-441-02',
@@ -457,6 +478,7 @@ export const DRIVERS: Driver[] = [
   },
   {
     id: 'drv-02',
+    email: 'drv-02@example.co.il',
     name: 'ניסים אמסלם',
     phone: '050-0000044',
     vehicle: 'קאדי אפור, 61-903-77',
@@ -469,6 +491,7 @@ export const DRIVERS: Driver[] = [
   },
   {
     id: 'drv-03',
+    email: 'drv-03@example.co.il',
     name: 'ברוך זילברמן',
     phone: '054-0000045',
     vehicle: 'ספרינטר כחול, 24-118-90',
@@ -481,6 +504,7 @@ export const DRIVERS: Driver[] = [
   },
   {
     id: 'drv-04',
+    email: '',
     name: 'עופר בן־דוד',
     phone: '053-0000046',
     vehicle: 'טריטון 4×4, 70-556-31',
@@ -493,6 +517,7 @@ export const DRIVERS: Driver[] = [
   },
   {
     id: 'drv-05',
+    email: 'drv-05@example.co.il',
     name: 'שלומי דרעי',
     phone: '052-0000047',
     vehicle: 'ויאנו שחור, 39-882-15',
@@ -505,6 +530,7 @@ export const DRIVERS: Driver[] = [
   },
   {
     id: 'drv-06',
+    email: 'drv-06@example.co.il',
     name: 'יעקב אלבז',
     phone: '058-0000048',
     vehicle: 'טרנספורטר לבן, 15-334-88',
@@ -525,6 +551,8 @@ const VOLUNTEER_DRIVERS: Driver[] = NAMED_VOLUNTEERS.filter(
   id: `drv-v${String(i + 1).padStart(2, '0')}`,
   name: v.name,
   phone: v.phone,
+  // The dual hat is ONE human: the same address, not a second one.
+  email: v.email,
   vehicle: '',
   seats: 4,
   locality: v.locality,

@@ -11,6 +11,7 @@ import {
   getFarmZonesForFarm,
   ringAreaDunams,
   fromDayKey,
+  isEmail,
   iso,
   localDayKey,
   newAgreementId,
@@ -191,11 +192,14 @@ export function FarmFormScreen() {
       : !isValidPhone(c.phone)
         ? t('form.invalidPhone')
         : undefined,
+    // P0bis.5a — optional, checked only when filled.
+    email:
+      c.email.trim() && !isEmail(c.email) ? t('form.invalidEmail') : undefined,
   }))
 
   const valid =
     Object.values(errors).every((e) => e === undefined) &&
-    contactErrors.every((e) => !e.name && !e.phone)
+    contactErrors.every((e) => !e.name && !e.phone && !e.email)
 
   const show = (key: keyof typeof errors) => (touched ? errors[key] : undefined)
 
@@ -212,6 +216,7 @@ export function FarmFormScreen() {
         id: newContactId(),
         name: '',
         phone: '',
+        email: '',
         role: '',
         photo: null,
         // The first contact added is the one who can sign in as FARMER.
@@ -404,6 +409,15 @@ export function FarmFormScreen() {
                     type="tel"
                     ltr
                     required
+                  />
+                  <TextField
+                    label={t('form.contactEmail')}
+                    value={contact.email}
+                    onChange={(v) => patchContact(i, { email: v })}
+                    error={touched ? contactErrors[i]?.email : undefined}
+                    type="email"
+                    ltr
+                    placeholder="name@example.co.il"
                   />
                   <TextField
                     label={t('form.contactRole')}

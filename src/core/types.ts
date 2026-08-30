@@ -86,6 +86,8 @@ export interface FarmContact {
   id: string
   name: string
   phone: string
+  /** P0bis.5a — optional; see the note on `Volunteer.email`. */
+  email: string
   role: string
   /** Data URI in Lot 0.6; a Supabase Storage key from Lot 1 (see core/photo.ts). */
   photo: string | null
@@ -247,6 +249,16 @@ export interface Volunteer {
   age: number
   phone: string
   phoneType: PhoneType
+  /**
+   * P0bis.5a — OPTIONAL, AND IT WILL STAY OPTIONAL. Email is the one channel
+   * this programme can send AUTOMATICALLY (P3.3bis): no third-party app may
+   * send a WhatsApp or an SMS on a user's behalf, so those stay one-tap
+   * hand-offs while email becomes a server-side send. But a yeshiva student
+   * with a kosher phone frequently has no address at all, and a required
+   * field would either block his import or invite a fake one — which is worse
+   * than no address, because it looks like a channel that works.
+   */
+  email: string
   yeshiva: string
   locality: string
   guardsCount: number
@@ -289,6 +301,8 @@ export interface Driver {
   id: string
   name: string
   phone: string
+  /** P0bis.5a — optional; see the note on `Volunteer.email`. */
+  email: string
   vehicle: string
   seats: number
   locality: string

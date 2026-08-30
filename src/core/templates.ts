@@ -61,6 +61,7 @@ export type ImportField =
   | 'locality'
   | 'age'
   | 'phoneType'
+  | 'email'
   // farms
   | 'entityKind'
   | 'region'
@@ -71,6 +72,7 @@ export type ImportField =
   | 'grazingDunams'
   | 'contactName'
   | 'contactPhone'
+  | 'contactEmail'
   | 'notes'
   // drivers
   | 'vehicle'
@@ -126,6 +128,16 @@ const VOLUNTEER_COLUMNS: readonly TemplateColumn[] = [
     aliases: ['סוג טלפון', 'סוג מכשיר', 'כשר', 'phone type', 'kosher'],
     examples: ['סמארטפון', 'כשר', 'כשר'],
     width: 14,
+  },
+  {
+    field: 'email',
+    labelKey: 'import.fieldEmail',
+    // P0bis.5a — "מייל" is a substring of nothing else here, and "email" has
+    // to beat "mail" in somebody's English header. Longest-alias-first
+    // (`guessField`) sorts that out on its own.
+    aliases: ['כתובת מייל', 'דואר אלקטרוני', 'אימייל', 'מייל', 'email', 'mail'],
+    examples: ['david@example.co.il', '', 'moshe@example.co.il'],
+    width: 26,
   },
   {
     field: 'yeshiva',
@@ -252,6 +264,21 @@ const FARM_COLUMNS: readonly TemplateColumn[] = [
     width: 16,
   },
   {
+    field: 'contactEmail',
+    labelKey: 'import.fieldContactEmail',
+    aliases: [
+      'מייל איש קשר',
+      'כתובת מייל',
+      'דואר אלקטרוני',
+      'אימייל',
+      'מייל',
+      'contact email',
+      'email',
+    ],
+    examples: ['eli@example.co.il', '', 'yossi@example.co.il'],
+    width: 26,
+  },
+  {
     field: 'notes',
     labelKey: 'import.fieldNotes',
     aliases: ['הערות', 'notes', 'remarks'],
@@ -276,6 +303,13 @@ const DRIVER_COLUMNS: readonly TemplateColumn[] = [
     required: true,
     examples: ['052-0000043', '050-0000044', '054-0000045'],
     width: 16,
+  },
+  {
+    field: 'email',
+    labelKey: 'import.fieldEmail',
+    aliases: ['כתובת מייל', 'דואר אלקטרוני', 'אימייל', 'מייל', 'email', 'mail'],
+    examples: ['haim@example.co.il', '', 'baruch@example.co.il'],
+    width: 26,
   },
   {
     field: 'vehicle',

@@ -1,7 +1,13 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { LOCALITY_POSITIONS, createDriver, updateDriver } from '@core/index'
+import {
+  LOCALITY_POSITIONS,
+  createDriver,
+  isEmail,
+  normalizeEmail,
+  updateDriver,
+} from '@core/index'
 import type { Driver, DriverDraft } from '@core/index'
 
 import { PhotoField } from '../../components/PhotoField'
@@ -25,6 +31,8 @@ export function DriverFormModal({
 
   const [name, setName] = useState(driver?.name ?? '')
   const [phone, setPhone] = useState(driver?.phone ?? '')
+  // P0bis.5a — optional; see the volunteer form.
+  const [email, setEmail] = useState(driver?.email ?? '')
   const [locality, setLocality] = useState(driver?.locality ?? '')
   const [vehicle, setVehicle] = useState(driver?.vehicle ?? '')
   const [seats, setSeats] = useState(String(driver?.seats ?? 4))
@@ -44,6 +52,8 @@ export function DriverFormModal({
         ? t('form.invalidPhone')
         : undefined,
     locality: !locality.trim() ? t('form.required') : undefined,
+    email:
+      email.trim() && !isEmail(email) ? t('form.invalidEmail') : undefined,
     seats:
       !Number.isFinite(seatsNum) || seatsNum < 1 || seatsNum > 60
         ? t('form.invalidNumber')
@@ -60,6 +70,7 @@ export function DriverFormModal({
       photo,
       name: name.trim(),
       phone: phone.trim(),
+      email: normalizeEmail(email),
       locality: locality.trim(),
       vehicle: vehicle.trim(),
       seats: seatsNum,
@@ -102,6 +113,16 @@ export function DriverFormModal({
           type="tel"
           ltr
           required
+        />
+        <TextField
+          label={t('form.email')}
+          value={email}
+          onChange={setEmail}
+          error={show('email')}
+          type="email"
+          ltr
+          placeholder="name@example.co.il"
+          hint={t('form.emailHint')}
         />
         <AutocompleteField
           label={t('form.locality')}
