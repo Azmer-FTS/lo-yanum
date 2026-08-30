@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { LatLng } from '@core/index'
 
+import { MapSplit } from './MapSplit'
 import { MapView } from './MapView'
 import type {
   MapMarker,
@@ -8,50 +9,18 @@ import type {
   MapThreatVector,
   MapThreatZone,
 } from './MapView'
-import { MapModeSwitch, useMapMode } from './mapMode'
 
 /**
- * C1 — THE MAP-FIRST SHELL.
+ * C1 — THE MAP-FIRST SHELL FOR THE LIST SCREENS.
  *
  * The coordinator thinks in geography, so on every major screen the map is a
  * first-class half of the layout rather than a thumbnail in a sidebar.
  *
- * D2 — THE MAP IS ALWAYS ON THE PHYSICAL LEFT.
- * ---------------------------------------------
- * Geography left, content right — in every language, RTL included. This is a
- * deliberate exception to the "everything is logical/flippable" rule: a map is
- * not text, and mirroring the whole screen for Hebrew moved the map to the
- * right, which the product owner reads as a different app rather than as a
- * translated one.
- *
- * Getting there needs both direction variants, because the same
- * `flex-direction` produces opposite physical results per writing mode. The
- * DOM order is list-then-map (a screen reader should hear the content first),
- * so:
- *   RTL  + `row`          → first child at the right  → map physically left ✓
- *   LTR  + `row-reverse`  → first child at the right  → map physically left ✓
- * `rtl:` outranks the bare class on specificity (`[dir='rtl'] .x`), so the
- * order they appear in the class string does not matter.
- *
- * For the same reason the divider between the two panels is a PHYSICAL
- * `border-r` on the map: the map's right edge is the seam in both directions,
- * and a logical `border-e` would jump to its outer edge in RTL.
- *
- * Ratio: 2/3 map, 1/3 content — in the `split` state.
- *
- * P0.1 — THREE STATES, NOT A MOBILE-ONLY COLLAPSE.
- * ------------------------------------------------
- * `screenKey` gives the panel a persisted `hidden`/`split`/`full` mode (see
- * `mapMode.tsx`) and the switch that drives it, at every width. Lot 0.9's
- * collapse button only existed below `lg`, which is the one width where the
- * map was not in the way. `split` stays the default and is byte-for-byte the
- * Lot 0.9 reading, so no screen changes shape until the coordinator asks.
- *
- * Mobile: in `split` the single map is a ~40vh block above the list.
- *
- * The map is rendered EXACTLY ONCE and repositioned with CSS. Rendering a
- * desktop copy and a mobile copy would create two WebGL contexts and two sets
- * of tile requests per screen — one of them permanently invisible.
+ * The LAYOUT itself now lives in `MapSplit` (P0bis.1) — map physically left in
+ * both writing directions, three persisted states, the draggable seam — and is
+ * shared with every other screen that carries a map. What is left here is what
+ * is specific to a map-first LIST: the markers, the floating legend, the
+ * overlay controls and the selected-marker card.
  *
  * Hover/selection is synchronised in BOTH directions by the parent: it passes
  * `hoveredId` / `selectedId` down and receives `onHover` / `onSelect` back, so
@@ -67,9 +36,9 @@ import { MapModeSwitch, useMapMode } from './mapMode'
  */
 export type ContentWidth = 'third' | 'half'
 
-const CONTENT_WIDTH: Record<ContentWidth, string> = {
-  third: 'lg:w-1/3',
-  half: 'lg:w-1/2',
+const CONTENT_PERCENT: Record<ContentWidth, number> = {
+  third: 33.3333,
+  half: 50,
 }
 
 export interface MapPanelProps {
@@ -119,78 +88,13 @@ export function MapPanel({
   contentWidth = 'third',
   screenKey,
 }: MapPanelProps) {
-  const { mode, setMode } = useMapMode(screenKey)
-
   return (
-    // `--shell-bottom` is the height of the sticky dev toolbar. Without
-    // subtracting it, a full-`dvh` map column is taller than the space actually
-    // available and the floating legend renders behind the toolbar.
-    <div
-      className={`flex flex-col lg:h-[calc(100dvh-var(--shell-bottom))] lg:min-h-0 lg:flex-row-reverse lg:rtl:flex-row ${
-        // In `full` below `lg` the map IS the screen, so the shell is pinned
-        // to the viewport instead of growing with a list that is not there.
-        mode === 'full'
-          ? 'h-[calc(100dvh-var(--shell-top)-var(--shell-bottom))] min-h-0'
-          : 'min-h-dvh'
-      }`}
-    >
-      {/* List panel — first in the DOM, physically on the right on desktop.
-          In `full` it is `hidden` rather than unmounted: a list that is
-          re-created loses its scroll position and its progressive page. */}
-      <div
-        className={`order-2 min-w-0 flex-1 overflow-y-auto px-4 pb-24 pt-5 lg:order-none lg:pb-5 ${
-          mode === 'full'
-            ? 'hidden'
-            : mode === 'hidden'
-              ? 'lg:w-full lg:px-5'
-              : `lg:flex-none lg:px-5 ${CONTENT_WIDTH[contentWidth]}`
-        }`}
-      >
-        {/* One switch on screen at a time. Below `lg` the map sits ABOVE the
-            content, so its own bar carries the control and this copy stands
-            down — except in `hidden`, where there is no bar to carry it. */}
-        <MapModeSwitch
-          mode={mode}
-          onChange={setMode}
-          className={`mb-3 flex-wrap ${mode === 'hidden' ? '' : 'hidden lg:flex'}`}
-        />
-        {children}
-      </div>
-
-      {/* Map — ONE instance, never remounted. `hidden` keeps the WebGL context
-          and the camera; MapCanvas's ResizeObserver calls `map.resize()` on
-          the way back. */}
-      <div
-        className={`order-1 flex-col lg:order-none lg:flex-1 ${
-          mode === 'hidden' ? 'hidden' : 'flex'
-        } ${
-          // BELOW `lg` the row is a COLUMN, so `lg:flex-1` does nothing and a
-          // `flex-1` map inside an unflexed parent collapses to nothing —
-          // which is what the first `full`-mode capture at 390 px showed: an
-          // empty grey band with the legend riding up over the header.
-          mode === 'full' ? 'min-h-0 flex-1' : ''
-        }`}
-      >
-        {/* In `full` the switch is the only chrome the map has left, so it
-            rides the map's own header bar at every width. Below `lg` the bar
-            carries it in `split` too — the map is above the content there,
-            and a control below a 40vh map is a control nobody finds. */}
-        <div
-          className={`items-center justify-between gap-2 border-b border-edge-subtle bg-surface-overlay px-4 py-2 ${
-            mode === 'full' ? 'flex' : 'flex lg:hidden'
-          }`}
-        >
-          <span className="truncate text-caption font-medium text-content-secondary">
-            {ariaLabel}
-          </span>
-          <MapModeSwitch mode={mode} onChange={setMode} />
-        </div>
-
-        <div
-          className={`relative w-full border-edge-subtle lg:h-full lg:border-r ${
-            mode === 'full' ? 'min-h-0 flex-1' : 'h-[40dvh]'
-          } lg:!h-full`}
-        >
+    <MapSplit
+      screenKey={screenKey}
+      ariaLabel={ariaLabel}
+      contentPercent={CONTENT_PERCENT[contentWidth]}
+      map={({ mode }) => (
+        <>
           <MapView
             ariaLabel={ariaLabel}
             className="h-full w-full rounded-none"
@@ -233,9 +137,11 @@ export function MapPanel({
               <div className="pointer-events-auto">{detail}</div>
             </div>
           )}
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    >
+      {() => children}
+    </MapSplit>
   )
 }
 

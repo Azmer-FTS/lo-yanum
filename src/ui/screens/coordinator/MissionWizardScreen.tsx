@@ -49,6 +49,8 @@ import type {
 } from '@core/index'
 
 import { AnchorMap } from '../../components/AnchorMap'
+import { PanelSplitter } from '../../components/splitter'
+import { useMapRatio } from '../../components/mapMode'
 import { MeetPointsEditor } from '../../components/meet'
 import type { MeetPoints } from '../../components/meet'
 import { Avatar } from '../../components/Avatar'
@@ -331,6 +333,11 @@ export function MissionWizardScreen() {
   const missions = useCoreValue(getVisibleMissions)
 
   const [step, setStep] = useState<Step>(1)
+  // P0bis.2 — step 1's own map/form seam, remembered under the same key space
+  // as every other screen's. 42 % form is the Lot 0.9 reading and the default
+  // a double-tap on the handle returns to.
+  const stepOneRef = useRef<HTMLDivElement | null>(null)
+  const stepOneRatio = useMapRatio('mission-wizard', 42)
 
   // --- Step 1 state --------------------------------------------------------
   const [farmId, setFarmId] = useState(farms[0]?.id ?? '')
@@ -996,8 +1003,16 @@ export function MissionWizardScreen() {
              The DOM order is form-then-map so a screen reader hears the
              decisions first; RTL + `row` and LTR + `row-reverse` both then put
              the map on the left. */
-          <div className="flex flex-col gap-4 lg:h-[calc(100dvh-var(--shell-top)-var(--shell-bottom)-18rem)] lg:min-h-[24rem] lg:flex-row-reverse lg:rtl:flex-row">
-            <div className="order-2 flex min-w-0 flex-col gap-4 lg:order-none lg:w-[42%] lg:overflow-y-auto lg:pe-1">
+          <div
+            ref={stepOneRef}
+            data-map-shell="mission-wizard"
+            style={{ ['--content-w' as string]: `${stepOneRatio.ratio}%` }}
+            className="flex flex-col gap-4 lg:h-[calc(100dvh-var(--shell-top)-var(--shell-bottom)-18rem)] lg:min-h-[24rem] lg:flex-row-reverse lg:rtl:flex-row"
+          >
+            <div
+              data-map-content=""
+              className="order-2 flex min-w-0 flex-col gap-4 lg:order-none lg:w-[var(--content-w)] lg:flex-none lg:overflow-y-auto lg:pe-1"
+            >
               <Section title={t('wizard.whenSection')} flush>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <SelectField
@@ -1156,7 +1171,21 @@ export function MissionWizardScreen() {
               )}
             </div>
 
-            <div className="order-1 h-[42dvh] min-w-0 lg:order-none lg:h-full lg:flex-1">
+            {/* P0bis.2 — the wizard's step 1 is map-first too (F2), so it gets
+                the same draggable seam as every other map-first screen. It is
+                not a `MapSplit` because it lives inside the stepper's own
+                height budget, which is why the splitter had to be its own
+                component rather than a MapSplit detail. */}
+            <PanelSplitter
+              {...stepOneRatio}
+              shellRef={stepOneRef}
+              className="hidden lg:flex"
+            />
+
+            <div
+              data-map-panel=""
+              className="order-1 h-[42dvh] min-w-0 lg:order-none lg:h-full lg:flex-1"
+            >
               <AnchorMap
                 farm={farm}
                 anchors={anchors}

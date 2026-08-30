@@ -13,6 +13,7 @@ import {
 import type { AnchorDraft, LatLng } from '@core/index'
 
 import { Icon } from '../../components/Icon'
+import { MapSplit } from '../../components/MapSplit'
 import { MapView } from '../../components/MapView'
 import { entityMarkerKind, farmMarkerColor, postColor } from '../../components/badges'
 import {
@@ -79,8 +80,64 @@ export function AnchorFormScreen() {
     navigate(`/coordinator/farms/${farm.id}`)
   }
 
+  /* F6/P0bis.1 — THE MAP IS THE COORDINATE FIELD, AND IT IS ON THE LEFT.
+     This screen used to carry a 14 rem preview and a DISABLED "pick on map"
+     button, which is the worst of both: a map too small to read next to two
+     decimal-degree fields nobody can fill from memory. The map is the primary
+     input — click to place, drag to adjust — so under the frozen gabarit it
+     takes the left panel and the form reads beside it, which also means the
+     pin stays visible while the access description is being written about it. */
+  const mapBody = (
+    <>
+      <MapView
+        ariaLabel={t('a11y.map')}
+        className="h-full w-full rounded-none"
+        center={farm.position}
+        zoom={14}
+        onMapClick={setPosition}
+        markers={[
+          {
+            id: 'farm',
+            position: farm.position,
+            color: farmMarkerColor(),
+            title: farm.name,
+            subtitle: farm.locality,
+            kind: entityMarkerKind(farm),
+          },
+          {
+            id: 'anchor-preview',
+            position,
+            color: postColor(),
+            title: name || t('anchor.title'),
+            kind: 'anchor',
+            emphasis: true,
+            draggable: true,
+            onDragEnd: setPosition,
+          },
+        ]}
+      />
+      {/* G2.2 — the coordinates are a read-out, not an input. */}
+      <p className="pointer-events-none absolute inset-x-3 bottom-3 z-10 flex items-center gap-1.5 rounded-card bg-surface-overlay/95 px-3 py-2 text-micro text-content-secondary shadow-card backdrop-blur">
+        <Icon name="pin" size={14} />
+        {t('anchor.mapHintDrag')}
+        <span className="ltr-nums ms-auto" dir="ltr">
+          {formatCoords(position)}
+        </span>
+      </p>
+    </>
+  )
+
   return (
-    <div className="mx-auto max-w-5xl">
+    <MapSplit
+      screenKey="anchor-form"
+      ariaLabel={t('form.sectionLocation')}
+      breakpoint="xl"
+      contentPercent={50}
+      splitHeight="h-[42dvh] min-h-[18rem]"
+      map={() => mapBody}
+    >
+      {() => (
+        <>
       <PageHeader
         title={t(isEdit ? 'anchor.edit' : 'anchor.new')}
         subtitle={farm.name}
@@ -97,54 +154,6 @@ export function AnchorFormScreen() {
             required
             className="md:col-span-2"
           />
-        </FormSection>
-
-        {/* F6 — THE MAP IS THE COORDINATE FIELD NOW.
-            This screen used to carry a 14 rem preview and a DISABLED "pick on
-            map" button, which is the worst of both: a map too small to read and
-            a control that admits it does nothing, next to two decimal-degree
-            fields nobody can fill from memory. The map is now the primary input
-            — click to place, drag to adjust — and the numbers below it are the
-            read-out, still typeable for the case where a farmer dictates
-            coordinates over the phone. */}
-        <FormSection title={t('form.sectionLocation')}>
-          <div className="md:col-span-2">
-            <MapView
-              ariaLabel={t('a11y.map')}
-              className="h-[46dvh] min-h-[20rem] w-full lg:h-[30rem]"
-              center={farm.position}
-              zoom={14}
-              onMapClick={setPosition}
-              markers={[
-                {
-                  id: 'farm',
-                  position: farm.position,
-                  color: farmMarkerColor(),
-                  title: farm.name,
-                  subtitle: farm.locality,
-                  kind: entityMarkerKind(farm),
-                },
-                {
-                  id: 'anchor-preview',
-                  position,
-                  color: postColor(),
-                  title: name || t('anchor.title'),
-                  kind: 'anchor',
-                  emphasis: true,
-                  draggable: true,
-                  onDragEnd: setPosition,
-                },
-              ]}
-            />
-            {/* G2.2 — the coordinates are a read-out, not an input. */}
-            <p className="muted mt-2 flex items-center gap-1.5">
-              <Icon name="pin" size={14} />
-              {t('anchor.mapHintDrag')}
-              <span className="ltr-nums ms-auto" dir="ltr">
-                {formatCoords(position)}
-              </span>
-            </p>
-          </div>
         </FormSection>
 
         <FormSection title={t('anchor.instructions')}>
@@ -178,6 +187,8 @@ export function AnchorFormScreen() {
           onSubmit={submit}
         />
       </div>
-    </div>
+        </>
+      )}
+    </MapSplit>
   )
 }

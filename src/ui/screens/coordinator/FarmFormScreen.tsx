@@ -34,6 +34,7 @@ import type {
 import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
 import { PhotoField } from '../../components/PhotoField'
+import { MapSplit } from '../../components/MapSplit'
 import { PinMap } from '../../components/PinMap'
 import {
   AutocompleteField,
@@ -279,8 +280,32 @@ export function FarmFormScreen() {
   const cancel = () =>
     navigate(isEdit && farmId ? `/coordinator/farms/${farmId}` : '/coordinator/farms')
 
+  /* G2.1/P0bis.1 — the coordinates are not typed, they are pointed at, and
+     under the frozen gabarit the pin map is the LEFT panel rather than a block
+     halfway down the form. That is also the better form: the map follows the
+     locality field while no pin exists, so typing the town puts the right
+     hills on screen, and the pin stays visible while the rest is filled in. */
+  const mapBody = (
+    <PinMap
+      flush
+      value={position}
+      onChange={setPosition}
+      fallbackCenter={positionOfLocality(locality) ?? NEGEV_CENTER}
+      error={show('position')}
+    />
+  )
+
   return (
-    <div className="mx-auto max-w-5xl">
+    <MapSplit
+      screenKey="farm-form"
+      ariaLabel={t('form.sectionFarmLocation')}
+      breakpoint="xl"
+      contentPercent={50}
+      splitHeight="h-[42dvh] min-h-[18rem]"
+      map={() => mapBody}
+    >
+      {() => (
+        <>
       <PageHeader
         title={t(isEdit ? 'farms.edit' : 'farms.new')}
         subtitle={isEdit ? existing?.name : undefined}
@@ -453,20 +478,6 @@ export function FarmFormScreen() {
                 setGrazingManual(false)
                 setGrazingHectares(String(sum))
               }}
-            />
-          </div>
-        </FormSection>
-
-        {/* G2.1 — the coordinates are not typed, they are pointed at. The map
-            follows the locality field while no pin exists, so typing the town
-            first puts the right hills on screen before the click. */}
-        <FormSection title={t('form.sectionFarmLocation')}>
-          <div className="md:col-span-2">
-            <PinMap
-              value={position}
-              onChange={setPosition}
-              fallbackCenter={positionOfLocality(locality) ?? NEGEV_CENTER}
-              error={show('position')}
             />
           </div>
         </FormSection>
@@ -660,6 +671,8 @@ export function FarmFormScreen() {
           onSubmit={submit}
         />
       </div>
-    </div>
+        </>
+      )}
+    </MapSplit>
   )
 }

@@ -40,7 +40,7 @@ import { FarmVisitModal } from '../../components/FarmVisitModal'
 import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
 import { AnchorMap } from '../../components/AnchorMap'
-import { MapModeSwitch, useMapMode } from '../../components/mapMode'
+import { MapSplit } from '../../components/MapSplit'
 import { ThreatPanel } from '../../components/ThreatPanel'
 import { zoneColor, zoneLabelKey } from '../../components/zones'
 import { Timeline } from '../../components/Timeline'
@@ -366,11 +366,6 @@ export function FarmDetailScreen() {
   const [wideDefault] = useState(() =>
     window.matchMedia('(min-width: 1280px)').matches,
   )
-  // P0.1 — the same three-state map the map-first list screens now have, with
-  // the same persisted key space. It replaces Lot 0.9's below-`xl`-only
-  // collapse, which left the coordinator no way to reclaim the 58 % the map
-  // takes on the very screens where he is reading contacts and agreements.
-  const { mode: mapMode, setMode: setMapMode } = useMapMode('farm-detail')
 
   if (!farm) return <Navigate to="/coordinator/farms" replace />
 
@@ -425,39 +420,81 @@ export function FarmDetailScreen() {
     activity.find((e) => e.at !== null && new Date(e.at).getTime() <= nowMs)
       ?.at ?? null
 
+  /* P0bis.1 — the editable map, hoisted so the shell below reads as what it
+     is: content and map, in that DOM order, with MapSplit putting the map on
+     the physical left. F6.1/G7bis — the same surface as before: a click drops
+     a guard post, zones draw and edit, fullscreen is one button away. */
+  const mapBody = (
+    <AnchorMap
+      flush
+      farm={farm}
+      threatZones={threats.zones}
+      threatVectors={threats.vectors}
+      selectedThreatId={selectedThreatId}
+      // A shape drawn from a farm's own screen is ATTACHED to it. The
+      // free ones are drawn from the global map, where "which farm?"
+      // has no answer.
+      onThreatZoneCreate={(ring) => {
+        const created = createThreatZone({
+          farmId: farm.id,
+          ring,
+          intensity: 'medium',
+          note: '',
+        })
+        setSelectedThreatId(created.id)
+      }}
+      onThreatVectorCreate={(origin, target) => {
+        const created = createThreatVector({
+          farmId: farm.id,
+          origin,
+          target,
+          intensity: 'medium',
+          note: '',
+        })
+        setSelectedThreatId(created.id)
+      }}
+      anchors={anchors}
+      selectedZoneId={selectedZoneId}
+      onZoneSelectionChange={setSelectedZoneId}
+      selectedId={selectedAnchorId}
+      onSelect={setSelectedAnchorId}
+      onCreate={(position: LatLng) => {
+        const created = createAnchorPoint({
+          farmId: farm.id,
+          name: t('anchor.defaultName', { n: anchors.length + 1 }),
+          position,
+          instructions: [],
+          accessDescription: '',
+        })
+        setSelectedAnchorId(created.id)
+      }}
+      onMove={(id, position) => patchAnchorPoint(id, { position })}
+      zones={zones}
+      onZoneCreate={(kind, ring) =>
+        createFarmZone({ farmId: farm.id, kind, ring })
+      }
+      onZoneRingChange={updateFarmZoneRing}
+      onZoneDelete={deleteFarmZone}
+    />
+  )
+
   return (
     <>
-      {/* G14c — THE FARM DETAIL IS MAP-FIRST, like every other geographic
-          screen: map physically LEFT at full column height (~58 %), content
-          on the right, only the content scrolls. Two columns from `xl`
-          (1280 — an iPad PORTRAIT is 1032 and must stay one column, A49);
-          below that the map is a collapsible block above the content, same
-          as MapPanel's mobile reading. */}
-      <div
-        className={`flex flex-col xl:h-[calc(100dvh-var(--shell-bottom))] xl:min-h-0 xl:flex-row-reverse xl:rtl:flex-row ${
-          mapMode === 'full'
-            ? 'h-[calc(100dvh-var(--shell-top)-var(--shell-bottom))] min-h-0'
-            : 'min-h-dvh'
-        }`}
+      {/* G14c/P0bis.1 — THE FARM DETAIL IS MAP-FIRST like every other screen
+          that carries a map: map physically LEFT at full column height,
+          content on the right, only the content scrolls. It breaks at `xl`
+          rather than `lg` because the content column here is a form-dense
+          reading and an iPad PORTRAIT is 1032 (A49). */}
+      <MapSplit
+        screenKey="farm-detail"
+        ariaLabel={t('map.title')}
+        breakpoint="xl"
+        contentPercent={42}
+        splitHeight="h-[45dvh]"
+        map={() => mapBody}
       >
-        {/* Content — first in the DOM, physically right from xl. */}
-        <div
-          className={`order-2 min-w-0 flex-1 overflow-y-auto px-4 pb-24 pt-5 xl:order-none xl:pb-5 ${
-            mapMode === 'full'
-              ? 'hidden'
-              : mapMode === 'hidden'
-                ? 'xl:w-full xl:px-5'
-                : 'xl:w-[42%] xl:flex-none xl:px-5'
-          }`}
-        >
-          {/* Below `xl` the map's own bar carries the switch (the map is
-              above the content there); in `hidden` there is no bar, so this
-              copy takes over. */}
-          <MapModeSwitch
-            mode={mapMode}
-            onChange={setMapMode}
-            className={`mb-3 flex-wrap ${mapMode === 'hidden' ? '' : 'hidden xl:flex'}`}
-          />
+        {({ mode: mapMode, setMode: setMapMode }) => (
+          <>
           <PageHeader
             title={farm.name}
             subtitle={`${farm.locality} · ${farm.region}`}
@@ -854,90 +891,9 @@ export function FarmDetailScreen() {
             )}
           </CollapsibleSection>
           </div>
-        </div>
-
-        {/* Map — one instance, physically LEFT from xl, full column height.
-            F6.1/G7bis — the same editable surface as before: click drops a
-            guard post, zones draw and edit, fullscreen one button away. */}
-        <div
-          className={`order-1 flex-col xl:order-none xl:flex-1 ${
-            mapMode === 'hidden' ? 'hidden' : 'flex'
-          } ${
-            // See MapPanel: below `xl` the row is a column, so the map column
-            // needs its own flex-1 or the `full` state collapses.
-            mapMode === 'full' ? 'min-h-0 flex-1' : ''
-          }`}
-        >
-          <div
-            className={`items-center justify-between gap-2 border-b border-edge-subtle bg-surface-overlay px-4 py-2 ${
-              mapMode === 'full' ? 'flex' : 'flex xl:hidden'
-            }`}
-          >
-            <span className="truncate text-caption font-medium text-content-secondary">
-              {t('map.title')}
-            </span>
-            <MapModeSwitch mode={mapMode} onChange={setMapMode} />
-          </div>
-
-          <div
-            className={`relative w-full border-edge-subtle xl:border-r ${
-              mapMode === 'full' ? 'min-h-0 flex-1' : 'h-[45dvh]'
-            } xl:!h-full`}
-          >
-            <AnchorMap
-              flush
-              farm={farm}
-              threatZones={threats.zones}
-              threatVectors={threats.vectors}
-              selectedThreatId={selectedThreatId}
-              // A shape drawn from a farm's own screen is ATTACHED to it. The
-              // free ones are drawn from the global map, where "which farm?"
-              // has no answer.
-              onThreatZoneCreate={(ring) => {
-                const created = createThreatZone({
-                  farmId: farm.id,
-                  ring,
-                  intensity: 'medium',
-                  note: '',
-                })
-                setSelectedThreatId(created.id)
-              }}
-              onThreatVectorCreate={(origin, target) => {
-                const created = createThreatVector({
-                  farmId: farm.id,
-                  origin,
-                  target,
-                  intensity: 'medium',
-                  note: '',
-                })
-                setSelectedThreatId(created.id)
-              }}
-              anchors={anchors}
-              selectedZoneId={selectedZoneId}
-              onZoneSelectionChange={setSelectedZoneId}
-              selectedId={selectedAnchorId}
-              onSelect={setSelectedAnchorId}
-              onCreate={(position: LatLng) => {
-                const created = createAnchorPoint({
-                  farmId: farm.id,
-                  name: t('anchor.defaultName', { n: anchors.length + 1 }),
-                  position,
-                  instructions: [],
-                  accessDescription: '',
-                })
-                setSelectedAnchorId(created.id)
-              }}
-              onMove={(id, position) => patchAnchorPoint(id, { position })}
-              zones={zones}
-              onZoneCreate={(kind, ring) =>
-                createFarmZone({ farmId: farm.id, kind, ring })
-              }
-              onZoneRingChange={updateFarmZoneRing}
-              onZoneDelete={deleteFarmZone}
-            />
-          </div>
-        </div>
-      </div>
+          </>
+        )}
+      </MapSplit>
 
       {newVisit && (
         <FarmVisitModal

@@ -16,7 +16,7 @@ import { ContactButtons } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { PhoneTypeChip, VolunteerStatusChip } from '../../components/badges'
 import { PeopleMap } from '../../components/PeopleMap'
-import { useMapMode } from '../../components/mapMode'
+import { MapSplit } from '../../components/MapSplit'
 import {
   EmptyState,
   FilterBar,
@@ -75,7 +75,6 @@ export function VolunteersScreen() {
   // P0.2 — the locality filter is set by tapping a bubble on the map, and it
   // composes with every KPI-filter above it.
   const [locality, setLocality] = useState<string | null>(null)
-  const { mode: mapMode, setMode: setMapMode } = useMapMode('volunteers')
   const [sort, setSort] = useState<SortState>({ key: 'name', dir: 'asc' })
   const [grouped, setGrouped] = useState(false)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -262,23 +261,31 @@ export function VolunteersScreen() {
           control. Below lg it scrolls away — a phone cannot afford a 300 px
           pin. `bg-surface-base` + the negative margins make it opaque out to
           the shell's own padding, or the rows would show at the sides. */}
-      {/* P0.2 — the roster's map, ABOVE the sticky block so it scrolls away
-          with the rest of the header rather than pinning 38dvh of geography
-          over the rows. */}
-      <PeopleMap
-        mode={mapMode}
-        onModeChange={setMapMode}
-        localities={mapLocalities}
-        selected={locality}
-        onSelect={setLocality}
+      {/* P0bis.1 — the roster joins the map-first gabarit: bubbles on the
+          physical LEFT, the table on the right. `scroll="page"` is what makes
+          that possible without undoing G7 — the WINDOW stays the scroll
+          container and the MAP column is the sticky one. */}
+      <MapSplit
+        screenKey="volunteers"
         ariaLabel={t('people.mapVolunteers')}
-        tone="volunteers"
-      />
-
+        scroll="page"
+        contentInFull="unmount"
+        contentPercent={62}
+        splitHeight="h-[38dvh] min-h-64"
+        map={() => (
+          <PeopleMap
+            localities={mapLocalities}
+            selected={locality}
+            onSelect={setLocality}
+            ariaLabel={t('people.mapVolunteers')}
+            tone="volunteers"
+          />
+        )}
+      >
+        {() => (
+          <>
       <div
-        className={`-mx-4 bg-surface-base px-4 sm:-mx-6 sm:px-6 2xl:-mx-8 2xl:px-8 lg:sticky lg:z-20 ${
-          mapMode === 'full' ? 'hidden' : ''
-        }`}
+        className="-mx-4 bg-surface-base px-4 lg:-mx-5 lg:px-5 lg:sticky lg:z-20"
         style={{ top: 'var(--shell-top, 0px)' }}
       >
         <PageHeader
@@ -458,11 +465,11 @@ export function VolunteersScreen() {
         )}
       </div>
 
-      {/* P0.2/P0.1 — in `full` the map IS the screen; the table is unmounted
-          rather than hidden here because a window-virtualised list whose
-          container is `display:none` measures a scrollMargin of 0 and would
-          come back drawing its rows a page above themselves. */}
-      {mapMode === 'full' ? null : filtered.length === 0 ? (
+      {/* MapSplit unmounts this whole column in `full` (`contentInFull`)
+          rather than hiding it: a window-virtualised list whose container is
+          `display:none` measures a scrollMargin of 0 and comes back drawing
+          its rows a page above themselves. */}
+      {filtered.length === 0 ? (
         <EmptyState icon="users" title={t('volunteers.empty')} />
       ) : (
         <div className="card lg:rounded-t-none">
@@ -665,6 +672,9 @@ export function VolunteersScreen() {
           </div>
         </div>
       )}
+          </>
+        )}
+      </MapSplit>
 
       {archiving && (
         <ArchiveDialog volunteer={archiving} onClose={() => setArchiving(null)} />

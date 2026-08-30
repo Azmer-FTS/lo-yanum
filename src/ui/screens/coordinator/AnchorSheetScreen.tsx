@@ -16,6 +16,7 @@ import {
 import type { AnchorMessageInput, AnchorMessageLabels } from '@core/index'
 
 import { Icon } from '../../components/Icon'
+import { MapSplit } from '../../components/MapSplit'
 import { MapView } from '../../components/MapView'
 import { readToken } from '../../components/badges'
 import { CopyButton, PageHeader, Section } from '../../components/primitives'
@@ -134,8 +135,45 @@ export function AnchorSheetScreen() {
     nextMission?.volunteers.find((v) => v.volunteer.phoneType === 'kosher')
       ?.volunteer ?? null
 
-  return (
+  /* P0bis.1 — the anchor sheet joins the gabarit: the post on the physical
+     LEFT, the two messages that will be sent about it on the right. This is
+     the screen a coordinator reads WHILE on the phone, so the geography and
+     the text he is dictating belong side by side rather than one under the
+     other. */
+  const mapBody = (
     <>
+      <MapView
+        ariaLabel={t('a11y.map')}
+        className="h-full w-full rounded-none"
+        center={anchor.position}
+        zoom={13}
+        markers={[
+          {
+            id: anchor.id,
+            position: anchor.position,
+            color: readToken('--accent'),
+            emphasis: true,
+            title: anchor.name,
+          },
+        ]}
+      />
+      <p className="ltr-nums pointer-events-none absolute bottom-3 start-3 z-10 rounded-card bg-surface-overlay/95 px-3 py-1.5 text-micro text-content-secondary shadow-card backdrop-blur">
+        {formatCoords(anchor.position)}
+      </p>
+    </>
+  )
+
+  return (
+    <MapSplit
+      screenKey="anchor-sheet"
+      ariaLabel={t('map.title')}
+      breakpoint="xl"
+      contentPercent={58}
+      splitHeight="h-[38dvh]"
+      map={() => mapBody}
+    >
+      {() => (
+        <>
       <Link
         to={`/coordinator/farms/${farm.id}`}
         className="mb-3 inline-flex items-center gap-1.5 text-caption text-content-muted hover:text-content-primary"
@@ -160,8 +198,7 @@ export function AnchorSheetScreen() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-4 lg:col-span-2">
+      <div className="flex flex-col gap-4">
           <Section title={t('anchor.messages')}>
             <div className="flex flex-col gap-4">
               <MessageCard
@@ -179,30 +216,6 @@ export function AnchorSheetScreen() {
                 channel="sms"
               />
             </div>
-          </Section>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <Section title={t('map.title')}>
-            <MapView
-              ariaLabel={t('a11y.map')}
-              className="h-72 w-full lg:h-[24rem]"
-              cooperative
-              center={anchor.position}
-              zoom={13}
-              markers={[
-                {
-                  id: anchor.id,
-                  position: anchor.position,
-                  color: readToken('--accent'),
-                  emphasis: true,
-                  title: anchor.name,
-                },
-              ]}
-            />
-            <p className="ltr-nums muted mt-2">
-              {formatCoords(anchor.position)}
-            </p>
           </Section>
 
           <Section title={t('anchor.access')}>
@@ -223,8 +236,9 @@ export function AnchorSheetScreen() {
               ))}
             </ul>
           </Section>
-        </div>
       </div>
-    </>
+        </>
+      )}
+    </MapSplit>
   )
 }

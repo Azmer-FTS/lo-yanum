@@ -32,6 +32,7 @@ export function PinMap({
   emptyZoom = 10,
   error,
   className = 'h-[46dvh] min-h-[20rem] w-full',
+  flush = false,
 }: {
   value: LatLng | null
   onChange: (position: LatLng) => void
@@ -41,6 +42,12 @@ export function PinMap({
   emptyZoom?: number
   error?: string
   className?: string
+  /**
+   * P0bis.1 — the pin map fills a `MapSplit` panel: square corners, no outer
+   * block, and the validation message becomes an overlay because there is no
+   * "below the map" left to put it in.
+   */
+  flush?: boolean
 }) {
   const { t } = useTranslation()
   const [rearming, setRearming] = useState(false)
@@ -73,8 +80,13 @@ export function PinMap({
   }
 
   return (
-    <div>
-      <div className={fullscreenShell(fullscreen.active, `relative ${className}`)}>
+    <div className={flush ? 'relative h-full w-full' : undefined}>
+      <div
+        className={fullscreenShell(
+          fullscreen.active,
+          `relative ${flush ? 'h-full w-full' : className}`,
+        )}
+      >
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end p-3">
           <FullscreenToggle
             active={fullscreen.active}
@@ -83,7 +95,9 @@ export function PinMap({
         </div>
         <MapView
           ariaLabel={t('a11y.map')}
-          className={`h-full w-full rounded-card transition-shadow duration-base ${
+          className={`h-full w-full transition-shadow duration-base ${
+            flush && !fullscreen.active ? 'rounded-none' : 'rounded-card'
+          } ${
             armed ? 'ring-2 ring-accent' : error ? 'ring-2 ring-status-danger' : ''
           }`}
           center={center}
@@ -163,9 +177,14 @@ export function PinMap({
         </div>
       </div>
 
-      {error && (
-        <p className="mt-1 text-micro text-status-danger-ink">{error}</p>
-      )}
+      {error &&
+        (flush ? (
+          <p className="pointer-events-none absolute inset-x-3 top-3 z-10 rounded-card bg-status-danger/15 px-3 py-1.5 text-micro text-status-danger-ink shadow-card backdrop-blur">
+            {error}
+          </p>
+        ) : (
+          <p className="mt-1 text-micro text-status-danger-ink">{error}</p>
+        ))}
     </div>
   )
 }

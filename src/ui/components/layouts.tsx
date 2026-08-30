@@ -32,24 +32,42 @@ const COORDINATOR_NAV: NavItem[] = [
 
 /**
  * Routes that manage their own full-bleed canvas and must not be padded.
- * Every map-first screen, plus the dashboard since D3 made it one.
+ *
+ * P0bis.1 — this is now simply "every screen that carries a map". The frozen
+ * rule put the map-first gabarit on the two rosters, the mission and incident
+ * details, the anchor sheet and both map-carrying forms, and a map-first
+ * screen supplies its own padding inside `MapSplit`'s content column. The one
+ * screen NOT on the list that has a map is the guard wizard, whose step 1 is
+ * map-first inside its own stepper shell (Lot 0.9 F2) — the shell's padding is
+ * what keeps the stepper aligned with steps 2–4.
  */
 const BLEED_ROUTES = [
   '/coordinator',
   '/coordinator/farms',
   '/coordinator/route',
+  '/coordinator/volunteers',
+  '/coordinator/drivers',
   '/coordinator/missions',
   '/coordinator/incidents',
 ]
 
 /**
- * G14c — the farm DETAIL is map-first too, so it manages its own canvas like
- * the list screens. `new`, `edit` and the anchor sub-routes stay padded forms.
+ * The map-first sub-routes: farm detail AND the farm form (`new` / `edit`),
+ * the anchor sheet and the anchor form, the mission detail — but NOT
+ * `missions/new`, which is the wizard — and the incident detail.
  */
+const BLEED_PATTERNS = [
+  /^\/coordinator\/farms\/[^/]+$/,
+  /^\/coordinator\/farms\/[^/]+\/edit$/,
+  /^\/coordinator\/farms\/[^/]+\/anchors\/.+$/,
+  /^\/coordinator\/incidents\/[^/]+$/,
+]
+
 const isBleedPath = (pathname: string) =>
   BLEED_ROUTES.some((r) => pathname === r) ||
-  (/^\/coordinator\/farms\/[^/]+$/.test(pathname) &&
-    pathname !== '/coordinator/farms/new')
+  BLEED_PATTERNS.some((r) => r.test(pathname)) ||
+  (/^\/coordinator\/missions\/[^/]+$/.test(pathname) &&
+    pathname !== '/coordinator/missions/new')
 
 function Brand({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation()

@@ -21,6 +21,7 @@ import {
 } from '../../components/cancellation'
 import { ContactActions, ContactButtons } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
+import { MapSplit } from '../../components/MapSplit'
 import { MapView } from '../../components/MapView'
 import { PointLegend, meetColor } from '../../components/meet'
 import {
@@ -305,8 +306,94 @@ export function MissionDetailScreen() {
   const assigned = volunteers.length
   const timeline = buildMissionTimeline(view, missionIncidents, t)
 
+  /* P0bis.1 — the mission's own geography, on the physical LEFT like every
+     other map in the app. F6.2: a guard that covers more than one position
+     shows ALL of them, numbered, with 1 on the rendezvous the driver was sent
+     to, and the transport's pickup/dropoff in the meet colour. */
+  const mapBody = (
+    <div className={fullscreenShell(mapFullscreen.active, 'relative h-full w-full')}>
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-3">
+        {additionalAnchorPoints.length > 0 ? (
+          <span className="chip pointer-events-auto bg-surface-overlay/95 text-accent-ink shadow-card backdrop-blur">
+            <Icon name="pin" size={11} />
+            {t('anchor.coversPositions', {
+              count: 1 + additionalAnchorPoints.length,
+            })}
+          </span>
+        ) : (
+          <span />
+        )}
+        <FullscreenToggle
+          active={mapFullscreen.active}
+          onToggle={mapFullscreen.toggle}
+        />
+      </div>
+              <MapView
+                ariaLabel={t('a11y.map')}
+                className="h-full w-full rounded-none"
+                cooperative
+                fit
+                markers={[
+                  {
+                    id: anchorPoint.id,
+                    position: anchorPoint.position,
+                    color: postColor(),
+                    kind: 'anchor',
+                    emphasis: true,
+                    badge: additionalAnchorPoints.length > 0 ? '1' : undefined,
+                    title: anchorPoint.name,
+                    subtitle: t('anchor.rendezvous'),
+                  },
+                  ...additionalAnchorPoints.map((extra, i) => ({
+                    id: extra.id,
+                    position: extra.position,
+                    color: postColor(),
+                    kind: 'anchor' as const,
+                    badge: String(i + 2),
+                    title: extra.name,
+                    subtitle: t('anchor.additionalPositions'),
+                  })),
+                  // G8 — the transport's own geography, in the meet colour.
+                  ...(mission.pickupPoint
+                    ? [
+                        {
+                          id: 'pickup',
+                          position: mission.pickupPoint,
+                          color: meetColor(),
+                          kind: 'car' as const,
+                          title: t('meet.pickup'),
+                        },
+                      ]
+                    : []),
+                  {
+                    id: 'dropoff',
+                    position: mission.dropoffPoint ?? farm.position,
+                    color: meetColor(),
+                    kind: 'car' as const,
+                    title: t('meet.dropoff'),
+                    subtitle: mission.dropoffPoint
+                      ? undefined
+                      : t('meet.dropoffDefault'),
+                  },
+                ]}
+              />
+      <PointLegend showFarm={false} className="absolute bottom-2 start-2 z-10" />
+    </div>
+  )
+
+
   return (
     <>
+      <MapSplit
+        screenKey="mission-detail"
+        ariaLabel={t('map.title')}
+        breakpoint="xl"
+        contentPercent={55}
+        splitHeight="h-[40dvh]"
+        map={() => mapBody}
+      >
+        {() => (
+          <>
       <Link
         to="/coordinator/missions"
         className="mb-3 inline-flex items-center gap-1.5 text-caption text-content-muted hover:text-content-primary"
@@ -393,16 +480,7 @@ export function MissionDetailScreen() {
           so the 22rem minimum on the presence table propagated all the way up
           and pushed the page 40 px wider than a 390 px phone. Without it the
           `.scroll-x` wrapper never gets to be the scroll container. */}
-      <div className="grid items-start gap-4 lg:grid-cols-3">
-        {/* F5.2 — THE WIDE COLUMN GETS THE DENSE BLOCKS.
-            It was the other way round: five key/value rows had two thirds of a
-            1280 px screen while the presence matrix — a table with a 22 rem
-            minimum, four columns and one row per volunteer — was squeezed into
-            the remaining third and scrolled sideways inside itself. Width now
-            goes where the content is: the roster, the presence grid and the
-            map. The facts, the driver and the timeline read fine in a column
-            and stay in the narrow track. */}
-        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
+      <div className="flex flex-col gap-4">
 <Section title={t('missions.team')}>
             <TeamList view={view} />
           </Section>
@@ -410,100 +488,6 @@ export function MissionDetailScreen() {
 <Section title={t('presence.rosterTitle')}>
             <PresenceMatrix view={view} />
           </Section>
-
-          {/* F6.2 — 12 rem of map is a picture of a map. This one is big
-              enough to pan and read, and it carries the F2 case: a guard that
-              covers more than one position shows ALL of them, numbered, with 1
-              on the rendezvous the driver was sent to. */}
-          <Section
-            title={t('map.title')}
-            padded={false}
-            action={
-              view.mission.additionalAnchorPointIds.length > 0 ? (
-                <span className="chip bg-accent/15 text-accent-ink">
-                  <Icon name="pin" size={11} />
-                  {t('anchor.coversPositions', {
-                    count: 1 + additionalAnchorPoints.length,
-                  })}
-                </span>
-              ) : undefined
-            }
-          >
-            <div className={fullscreenShell(mapFullscreen.active, 'relative')}>
-              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end p-3">
-                <FullscreenToggle
-                  active={mapFullscreen.active}
-                  onToggle={mapFullscreen.toggle}
-                />
-              </div>
-              <MapView
-                ariaLabel={t('a11y.map')}
-                className={
-                  mapFullscreen.active
-                    ? 'h-full w-full'
-                    : 'h-72 w-full lg:h-[24rem]'
-                }
-                cooperative
-                fit
-                markers={[
-                  {
-                    id: anchorPoint.id,
-                    position: anchorPoint.position,
-                    color: postColor(),
-                    kind: 'anchor',
-                    emphasis: true,
-                    badge: additionalAnchorPoints.length > 0 ? '1' : undefined,
-                    title: anchorPoint.name,
-                    subtitle: t('anchor.rendezvous'),
-                  },
-                  ...additionalAnchorPoints.map((extra, i) => ({
-                    id: extra.id,
-                    position: extra.position,
-                    color: postColor(),
-                    kind: 'anchor' as const,
-                    badge: String(i + 2),
-                    title: extra.name,
-                    subtitle: t('anchor.additionalPositions'),
-                  })),
-                  // G8 — the transport's own geography, in the meet colour.
-                  ...(mission.pickupPoint
-                    ? [
-                        {
-                          id: 'pickup',
-                          position: mission.pickupPoint,
-                          color: meetColor(),
-                          kind: 'car' as const,
-                          title: t('meet.pickup'),
-                        },
-                      ]
-                    : []),
-                  {
-                    id: 'dropoff',
-                    position: mission.dropoffPoint ?? farm.position,
-                    color: meetColor(),
-                    kind: 'car' as const,
-                    title: t('meet.dropoff'),
-                    subtitle: mission.dropoffPoint
-                      ? undefined
-                      : t('meet.dropoffDefault'),
-                  },
-                ]}
-              />
-              <PointLegend
-                showFarm={false}
-                className="absolute bottom-2 start-2 z-10"
-              />
-            </div>
-            {additionalAnchorPoints.length > 0 && (
-              <p className="muted border-t border-edge-subtle px-4 py-3">
-                {t('anchor.additionalPositions')}:{' '}
-                {additionalAnchorPoints.map((a) => a.name).join(' · ')}
-              </p>
-            )}
-          </Section>
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-4">
 <Section title={t('common.details')}>
             <dl>
               <KeyValue
@@ -598,8 +582,16 @@ export function MissionDetailScreen() {
                 sequence error. */}
             <Timeline withDate entries={timeline} />
           </Section>
-        </div>
       </div>
+      {additionalAnchorPoints.length > 0 && (
+        <p className="muted mt-3">
+          {t('anchor.additionalPositions')}:{' '}
+          {additionalAnchorPoints.map((a) => a.name).join(' · ')}
+        </p>
+      )}
+          </>
+        )}
+      </MapSplit>
 
       {cancelling && (
         <CancelMissionModal

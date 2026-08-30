@@ -29,6 +29,8 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 | `bun run tokens` | **A28/A29** — one radius scale, no tinted field, orange only where it is allowed. No browser needed |
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 64 checks |
+| `bun run mapfirst` | **A64** — the exhaustive "map on the LEFT" audit: every route in the app at iPad landscape, each screen printed with whether it carries a map and, if it does, proof the map is the left column. Exemptions print their reason. Needs a dev server |
+| `bun run splitter` | **A65** — the map/content seam driven by MOUSE and by SYNTHETIC TOUCH at iPad landscape: 44 px grip and hit area, live canvas resize, ratio persisted per screen, bounds, double-tap reset. 72 checks — needs a dev server |
 | `bun run layout` | **A24 + A30 + G11** — overflow, pinned overlap and uncontained-list sweep over all 23 screens. `VIEWPORT=phone` (default, 390) / `iphone` (402×874) / `ipad` (1032×1376) / `ipad-ls` (1376×1032) / `all`. Needs a dev server |
 | `bun run wizard` | **A27** — the guard wizard played from a farm with NO anchor point, 28 checks — needs a dev server |
 | `bun run touch` | **A63** — every map gesture driven by SYNTHETIC TOUCH at iPad portrait 1032×1376, 32 checks — needs a dev server |
@@ -36,8 +38,8 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 | `bun run screenshots` | Regenerate `docs/screenshots/` — needs a dev server |
 | `bun run brand-reference` | Re-capture `docs/brand/` from the live artzenu.org.il — needs the internet, NOT a dev server |
 
-> The six browser scripts (`layout`, `wizard`, `touch`, `import`,
-> `screenshots`, `brand-reference`) take `BASE_URL`, e.g.
+> The eight browser scripts (`mapfirst`, `splitter`, `layout`, `wizard`,
+> `touch`, `import`, `screenshots`, `brand-reference`) take `BASE_URL`, e.g.
 > `BASE_URL=http://localhost:62807 bun run layout`.
 
 > **Toolchain:** this machine has **no Node.js**. Bun is at `/usr/local/bin/bun`
@@ -48,12 +50,84 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
-State: **FINAL ORDER OF MARCH IN PROGRESS (2026-08-30). PHASE P0 IS DONE
-(font correction + P0.1/P0.2/P0.3). PHASE P1: G10, G18 AND G12's verification
-ARE DONE — 68 captures regenerated, the layout sweep green at FOUR viewports,
-every gate green. Next: G12's deploy, then G13 (freeze).** Phase P2 has a
-head start: the Supabase project exists and both migrations are WRITTEN but
-NOT YET APPLIED. One commit per unit. Branch `main`.
+State: **FINAL ORDER OF MARCH IN PROGRESS (2026-08-30). PHASE P0 IS DONE.
+PHASE P1: G10, G18 and G12's verification ARE DONE. PHASE P2: P2.2 (schema +
+RLS) IS APPLIED. PHASE P0bis IS IN PROGRESS — P0bis.1 (map on the left
+EVERYWHERE) and P0bis.2 (the draggable seam) ARE DONE and green (A64: 26
+screens; A65: 72 checks). Next: P0bis.3 (the density pass), P0bis.4 (RTL
+xlsx), P0bis.5 (the sending centre), then G13's freeze and P2.3→P3.** One
+commit per unit. Branch `main`.
+
+> **P0bis.1 — THE MAP IS ON THE LEFT ON EVERY SCREEN THAT HAS ONE (frozen PO
+> rule).** Five screens obeyed the map-first gabarit and eight others put the
+> map ON TOP of the content, which is the same information in two places
+> depending on the route you arrived by. What was done:
+> · **`ui/components/MapSplit.tsx` IS NOW THE ONE SHELL.** `MapPanel` and the
+>   farm detail each carried a hand-written copy of the layout and the copies
+>   had already drifted (one breaks at `lg`, the other at `xl`). Both now
+>   delegate. It takes a `breakpoint` (`lg`/`xl`), a `contentPercent`, and a
+>   render prop for each half that receives `{ mode, setMode }` — the farm
+>   detail needs the setter, because selecting a zone there has to bring a
+>   hidden map back.
+> · **TWO SCROLL STRATEGIES, AND THE SECOND ONE IS WHY THE ROSTERS COULD JOIN
+>   AT ALL.** `scroll="panel"` is Lot 0.9's reading: the content column is its
+>   own scroll container. `scroll="page"` keeps the WINDOW as the scroll
+>   container and makes the MAP column `sticky` instead. P0.2's note "WHY NOT
+>   MapPanel" was right — a G7 window-virtualised table inside an
+>   `overflow-y-auto` column measures its scrollMargin against the wrong box
+>   and draws its rows a page above themselves — so the shell grew a second
+>   strategy rather than the screen a second layout. `PeopleMap` is now just
+>   the map; the bubbles are the left panel and the 300-row table is the right
+>   one, with G7 untouched.
+> · Converted, each named in the A64 run: **volunteers, drivers, mission
+>   detail, incident detail, anchor sheet, anchor form (both routes), farm form
+>   (new + edit)**. Already compliant: dashboard, farms, route planner,
+>   missions, incidents, farm detail, wizard step 1.
+> · **`contentInFull: 'unmount'`** exists for the two rosters only, and for the
+>   same virtualiser reason: everything else is `display:none` in `full`, which
+>   is what preserves a list's scroll position and its progressive page.
+> · **The bleed list became "every screen that carries a map".** A map-first
+>   screen pads itself inside MapSplit's content column, so `isBleedPath` grew
+>   the two rosters, the two detail routes, the anchor routes and the farm
+>   form. The incident detail is the one screen that can go BOTH ways — an
+>   incident with no position has no map — so its mapless branch supplies the
+>   padding the shell no longer does.
+> · **The FIELD screens (farmer/volunteer/driver) are the printed exception.**
+>   Their shell is a `max-w-2xl` phone column at every width, which IS the
+>   narrow responsive form the rule allows; splitting 672 px in two would be
+>   worse on the phone those screens exist for. A64 prints the reason on every
+>   run rather than skipping them silently. **This is the one judgement call in
+>   P0bis.1 and it is the PO's to overturn.**
+> · `PinMap` gained `flush` (square corners, error as an overlay) so the farm
+>   form's pin can fill a panel, the same trick `AnchorMap` already had.
+>
+> **P0bis.2 — THE SEAM BETWEEN THE TWO PANELS IS A CONTROL.**
+> · `ui/components/splitter.tsx` — `PanelSplitter`, a `role="separator"` with
+>   pointer events (mouse AND finger through one code path), `touch-action:
+>   none` (load-bearing: without it the first millimetre of a drag is claimed
+>   by the page's own scroll and the handle never sees the rest), pointer
+>   capture, arrow/Home/End keys, and a double-tap reset.
+> · **A COMPONENT, NOT A `MapSplit` DETAIL, ON PURPOSE.** The wizard's step 1
+>   is map-first but lives inside the stepper's own height budget; had the
+>   splitter been private to MapSplit, that screen would have been the one
+>   exception to a rule that was just frozen.
+> · **THE RATIO IS THE CONTENT'S SHARE, 25–75, PERSISTED PER SCREEN** under
+>   `lo-yanum:map-ratio:<screenKey>` — the mode's own key space. Storing the
+>   CONTENT's share is what makes the drag one formula in both writing
+>   directions: the content column is always the physical right one
+>   (decision 34), so its width is "the shell's right edge minus the pointer",
+>   with no per-direction sign. The bounds are not decoration — past either end
+>   one panel stops being a panel and starts being a stripe.
+> · Published as `--content-w` on the shell and consumed as
+>   `lg:w-[var(--content-w)]`, because a `lg:w-1/3` cannot be dragged.
+> · The map canvas follows inside the same gesture — MapCanvas's ResizeObserver
+>   was already there — and A65 asserts it: the canvas grows by exactly what
+>   the content lost, on all five screens.
+> · **A65 caught a real trap in its own first draft**, worth keeping: asserting
+>   "the content shrank by the pixels dragged" fails on any row with a `gap`
+>   between the panels (the wizard has one). The ratio is computed from the
+>   pointer's ABSOLUTE position, so the expected value is exact and the
+>   assertion is now written against the model rather than against a delta.
 
 > **THE FINAL ORDER OF MARCH (product-owner prompt, 2026-08-30).** The product
 > owner starts field work in TWO DAYS on an iPad Pro 13" (+ iPhone). The goal
@@ -698,6 +772,8 @@ captures in §5.
 | **A23** | **Timelines on incident, mission and farm** | ✅ captures 7, 8, 15 |
 | **A24** | **Zero overflow / pinned overlap at 390 px on every screen** | ✅ `bun run layout` — 23/23 |
 | **A44** | **One template source, three rosters, a link that becomes a pin (G10)** | ✅ `bun run accept` A44 section (36 checks) + `bun run import` (28 checks: download → fill → upload → find) |
+| **A64** | **The map is on the physical LEFT on every screen that carries one** | ✅ `bun run mapfirst` — 26 screens audited at iPad landscape; every exemption prints its reason |
+| **A65** | **The map/content seam is draggable by finger and by mouse, bounded, persisted, resettable** | ✅ `bun run splitter` — 72 checks over five screens |
 | **A59** | **The threat layer exists, and is coordinator-only (G18)** | ✅ `bun run accept` A59 section (26 checks over all three roles and all three routes) + the map proof captured by hand |
 | **A61** | **Three map states per map-first screen, persisted (P0.1)** | ✅ dashboard / farms / farm-detail / route / incidents / missions + both rosters; verified by hand at 1032×1376 and 402×874, captures due at G12 |
 | **A62** | **Locality bubbles + tap-filter + נקה on both rosters (P0.2)** | ✅ `bun run accept`, the A62 section (12 checks), plus the tap path in `bun run touch` |
@@ -775,6 +851,32 @@ which decision 32 generalises; 46, which decision 47 supersedes; and 41–44,
 which G17's decision 57 retires** (42's fill-keeps-the-colour/ink-moves
 MECHANISM survives — only the charter values it protected are gone). Decisions
 32–34 survived two lots unchanged and are why both were cheap. New:
+
+65. **THE MAP IS ON THE PHYSICAL LEFT ON EVERY SCREEN THAT CARRIES ONE, AND
+    ONE SHELL ENFORCES IT (P0bis.1).** Product-owner rule, frozen 2026-08-30.
+    Decision 34 said "the map is on the physical left"; it was only ever
+    applied to the five screens that happened to use `MapPanel`, and the other
+    eight put the map above the content. The same fact in two places depending
+    on the route is what makes an app feel like several apps. `MapSplit` is
+    now the single implementation — including the two G7 rosters, which needed
+    a `page` scroll strategy (sticky MAP, window scroll) rather than an
+    exception. The exceptions that remain are printed on every `bun run
+    mapfirst`: screens with NO map (the agenda, deliberately — a calendar is
+    read like text), and the FIELD shell, whose `max-w-2xl` column IS the
+    narrow responsive form the rule allows.
+
+66. **THE SEAM IS A CONTROL, AND THE RATIO IS THE CONTENT'S SHARE (P0bis.2).**
+    The three map states answer "do I want geography at all"; the ratio answers
+    "how much", and the honest answer changes by screen and by hour. Stored as
+    the CONTENT's percentage of the row, 25–75, per screen, in the mode's key
+    space. Storing the CONTENT's share rather than the map's is what makes the
+    drag ONE formula in both writing directions — the content column is always
+    the physical right one, so its width is "the shell's right edge minus the
+    pointer". The bounds are load-bearing: past either end a panel becomes a
+    stripe, and a splitter that can be dragged into a dead end will be, on a
+    moving vehicle. `PanelSplitter` is a component rather than a `MapSplit`
+    detail so the guard wizard — map-first but inside its own stepper shell —
+    is not the one screen a just-frozen rule skips.
 
 63. **THE THREAT LAYER IS THE ONE SENSITIVE THING, AND ITS GATE IS IN THE DATA
     LAYER (G18).** A farm's boundary is a fact about the ground; "we assess
@@ -1288,13 +1390,22 @@ src/ui/
   hooks/                  useCore · useLocale ·
                           useShellMetrics (publishes --shell-top / --shell-bottom,
                           decision 39) · useProgressive (F5.5)
-  components/             threats.tsx + ThreatPanel (G18 — the coordinator-only
+  components/             MapSplit ★ (P0bis.1 — THE map-first shell: map on the
+                          physical left, three modes, two scroll strategies,
+                          the draggable seam. Every screen with a map uses it,
+                          MapPanel included) ·
+                          splitter.tsx (P0bis.2 — PanelSplitter, mouse+finger,
+                          also used by the wizard's own step-1 shell) ·
+                          threats.tsx + ThreatPanel (G18 — the coordinator-only
                           layer's vocabulary and its editable list) ·
-                          mapMode ★ (P0.1 — the three map states, per screen) ·
-                          PeopleMap (P0.2 — the rosters' locality bubbles) ·
+                          mapMode ★ (P0.1 — the three map states, per screen;
+                          P0bis.2 — useMapRatio, the persisted seam ratio) ·
+                          PeopleMap (P0.2 — the rosters' locality bubbles;
+                          P0bis.1 — now just the map, inside MapSplit) ·
                           AnchorMap ★ (F2 — the map that CREATES anchor points,
                           shared by the wizard, the farm detail and the form) ·
-                          MapPanel (map-first shell, D2) · MapCanvas/MapView (lazy) ·
+                          MapPanel (the map-first LIST shell — markers, legend, overlay,
+                          selected-marker card — over MapSplit) · MapCanvas/MapView (lazy) ·
                           Timeline (D6) · FarmVisitModal (D4) · CreateGuardFab (D3.4) ·
                           Avatar · PhotoField · PresenceRoster · ThemeToggle ·
                           badges (vivid/ink) · primitives · fields · layouts ·

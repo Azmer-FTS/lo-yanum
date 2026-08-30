@@ -13,6 +13,7 @@ import {
 } from '@core/index'
 
 import { Icon } from '../../components/Icon'
+import { MapSplit } from '../../components/MapSplit'
 import { MapView } from '../../components/MapView'
 import { Timeline } from '../../components/Timeline'
 import type { TimelineEntry } from '../../components/Timeline'
@@ -83,7 +84,48 @@ export function IncidentDetailScreen() {
     setEntry('')
   }
 
-  return (
+  /* P0bis.1 — an incident that HAS a position is a map-first screen like every
+     other: the ground on the physical left, the thread on the right. One that
+     does not keeps the plain reading — there is no map to put anywhere. */
+  const mapBody = incident.position && (
+    <>
+      <MapView
+        ariaLabel={t('a11y.map')}
+        className="h-full w-full rounded-none"
+        center={incident.position}
+        zoom={13}
+        markers={[
+          {
+            id: incident.id,
+            position: incident.position,
+            color: readToken(
+              incident.severity === 'urgent'
+                ? '--status-danger'
+                : '--status-warn',
+            ),
+            title: farm.name,
+            emphasis: true,
+          },
+        ]}
+      />
+      <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 flex justify-between gap-2">
+        <span className="ltr-nums pointer-events-auto rounded-card bg-surface-overlay/95 px-3 py-1.5 text-micro text-content-secondary shadow-card backdrop-blur">
+          {formatCoords(incident.position)}
+        </span>
+        <a
+          href={googleMapsPointUrl(incident.position)}
+          target="_blank"
+          rel="noreferrer"
+          className="btn-secondary pointer-events-auto min-h-11 shadow-card"
+        >
+          <Icon name="external" size={13} />
+          {t('common.openInMaps')}
+        </a>
+      </div>
+    </>
+  )
+
+  const content = (
     <>
       <Link
         to="/coordinator/incidents"
@@ -110,8 +152,7 @@ export function IncidentDetailScreen() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-4 lg:col-span-2">
+      <div className="flex flex-col gap-4">
           <Section title={t('report.description')}>
             <p className="whitespace-pre-line text-caption leading-relaxed text-content-secondary">
               {incident.description}
@@ -172,51 +213,35 @@ export function IncidentDetailScreen() {
               </button>
             </div>
           </Section>
-        </div>
-
-        <Section title={t('incidents.position')}>
-          {incident.position ? (
-            <>
-              <MapView
-                ariaLabel={t('a11y.map')}
-                className="h-72 w-full lg:h-[24rem]"
-                cooperative
-                center={incident.position}
-                zoom={13}
-                markers={[
-                  {
-                    id: incident.id,
-                    position: incident.position,
-                    color: readToken(
-                      incident.severity === 'urgent'
-                        ? '--status-danger'
-                        : '--status-warn',
-                    ),
-                    title: farm.name,
-                    emphasis: true,
-                  },
-                ]}
-              />
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <span className="ltr-nums muted">
-                  {formatCoords(incident.position)}
-                </span>
-                <a
-                  href={googleMapsPointUrl(incident.position)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-micro font-medium text-accent-ink hover:underline"
-                >
-                  <Icon name="external" size={13} />
-                  {t('common.openInMaps')}
-                </a>
-              </div>
-            </>
-          ) : (
+        {!incident.position && (
+          <Section title={t('incidents.position')}>
             <p className="muted">{t('incidents.noPosition')}</p>
-          )}
-        </Section>
+          </Section>
+        )}
       </div>
     </>
+  )
+
+  // The route is full-bleed (it usually carries a map), so the mapless
+  // reading has to supply the padding the shell no longer does.
+  if (!mapBody) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 pb-24 pt-5 sm:px-6 sm:pt-6 lg:pb-6">
+        {content}
+      </div>
+    )
+  }
+
+  return (
+    <MapSplit
+      screenKey="incident-detail"
+      ariaLabel={t('incidents.position')}
+      breakpoint="xl"
+      contentPercent={55}
+      splitHeight="h-[40dvh]"
+      map={() => mapBody}
+    >
+      {() => content}
+    </MapSplit>
   )
 }

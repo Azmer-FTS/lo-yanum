@@ -14,6 +14,8 @@
     "contrast": "bun run scripts/contrast.ts",
     "dispatch": "bun run scripts/dispatch.ts",
     "layout": "bun run scripts/layout.ts",
+    "mapfirst": "bun run scripts/mapfirst.ts",
+    "splitter": "bun run scripts/splitter.ts",
     "accept": "bun run scripts/accept.ts",
     "tokens": "bun run scripts/tokens.ts",
     "wizard": "bun run scripts/wizard.ts",

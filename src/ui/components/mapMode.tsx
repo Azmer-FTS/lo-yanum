@@ -59,6 +59,79 @@ export interface MapModeState {
   setMode: (mode: MapMode) => void
 }
 
+/**
+ * P0bis.2 — THE SEAM IS DRAGGABLE, AND THE RATIO IS REMEMBERED PER SCREEN.
+ *
+ * The three states answer "do I want geography at all"; the ratio answers "how
+ * much", and the honest answer changes by screen and by task. A fixed 2/3 map
+ * is right on the incidents map and wrong on a 300-row roster, and the product
+ * owner is the only one who knows which he is doing today.
+ *
+ * The value stored is the CONTENT column's percentage of the row, bounded to
+ * 25–75: past either end one of the two panels stops being usable and starts
+ * being a stripe, and a splitter that can be dragged into a dead end is a
+ * splitter that gets dragged into one on a moving vehicle.
+ *
+ * Same key space and same failure mode as the mode itself: persistence is a
+ * convenience, and losing it must not break the screen.
+ */
+export const RATIO_MIN = 25
+export const RATIO_MAX = 75
+
+const ratioKey = (screenKey: string) => `lo-yanum:map-ratio:${screenKey}`
+
+export const clampRatio = (value: number) =>
+  Math.min(RATIO_MAX, Math.max(RATIO_MIN, value))
+
+function readRatio(screenKey: string, fallback: number): number {
+  try {
+    const raw = localStorage.getItem(ratioKey(screenKey))
+    if (raw === null) return fallback
+    const n = Number(raw)
+    return Number.isFinite(n) ? clampRatio(n) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+export interface MapRatioState {
+  /** Percentage of the row taken by the CONTENT column. */
+  ratio: number
+  setRatio: (ratio: number) => void
+  /** Back to the screen's own default — the double-tap gesture. */
+  reset: () => void
+}
+
+export function useMapRatio(screenKey: string, fallback: number): MapRatioState {
+  const [ratio, setRatioState] = useState<number>(() =>
+    readRatio(screenKey, fallback),
+  )
+
+  const setRatio = useCallback(
+    (next: number) => {
+      const clamped = clampRatio(next)
+      setRatioState(clamped)
+      try {
+        localStorage.setItem(ratioKey(screenKey), String(Math.round(clamped * 10) / 10))
+      } catch {
+        // See useMapMode: persistence is a convenience.
+      }
+    },
+    [screenKey],
+  )
+
+  const reset = useCallback(() => {
+    setRatioState(fallback)
+    try {
+      localStorage.removeItem(ratioKey(screenKey))
+    } catch {
+      // Same.
+    }
+  }, [screenKey, fallback])
+
+  return { ratio, setRatio, reset }
+}
+
 export function useMapMode(screenKey: string): MapModeState {
   const [mode, setModeState] = useState<MapMode>(() => readMode(screenKey))
 
