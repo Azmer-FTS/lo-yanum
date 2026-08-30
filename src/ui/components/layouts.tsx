@@ -5,6 +5,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { COORDINATOR, getMyDisplayName, getSession } from '@core/index'
 
 import { signOut } from '../../data/auth'
+import { useOnline } from '../offline'
 import { useAuth } from '../hooks/useAuth'
 import { useCoreValue } from '../hooks/useCore'
 import { usePublishedHeight } from '../hooks/useShellMetrics'
@@ -30,6 +31,8 @@ const COORDINATOR_NAV: NavItem[] = [
   { to: '/coordinator/drivers', icon: 'steering', labelKey: 'nav.drivers' },
   { to: '/coordinator/missions', icon: 'shield', labelKey: 'nav.missions' },
   { to: '/coordinator/incidents', icon: 'alert', labelKey: 'nav.incidents' },
+  // P2.5a — last in the rail on purpose: it is consulted, not worked in.
+  { to: '/coordinator/settings', icon: 'switch', labelKey: 'nav.settings' },
 ]
 
 /**
@@ -104,6 +107,34 @@ function Brand({ compact = false }: { compact?: boolean }) {
  * on demand (and remembers the choice for the session); below `lg` it becomes
  * a slide-over.
  */
+/**
+ * P2.5a — THE ONE PIECE OF SHELL CHROME THAT IS ONLY EVER THERE WHEN IT MATTERS.
+ *
+ * There is no "online" indicator, deliberately. A green dot that is green
+ * ninety-nine times out of a hundred is read as decoration by the hundredth
+ * time, which is the one time it changes. This renders NOTHING while there is
+ * a network and is unmissable when there is not — which, on the way to a farm
+ * in the northern Negev, is a state the coordinator enters and leaves several
+ * times an hour and must never have to guess at.
+ */
+function OfflineBadge({ compact = false }: { compact?: boolean }) {
+  const { t } = useTranslation()
+  const online = useOnline()
+  if (online) return null
+
+  return (
+    <span
+      data-testid="offline-badge"
+      title={t('settings.connection.offline')}
+      className={`inline-flex items-center gap-1.5 rounded-pill bg-status-warn/15 px-2.5 py-1
+                  text-micro font-semibold text-status-warn-ink ${compact ? 'px-1.5' : ''}`}
+    >
+      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-pill bg-status-warn" />
+      {!compact && t('settings.connection.badge')}
+    </span>
+  )
+}
+
 /**
  * P2.3 — WHO AM I, AND HOW DO I LEAVE.
  *
@@ -257,6 +288,9 @@ export function CoordinatorLayout() {
 
           <div className="mt-auto flex flex-col gap-2">
             <div className={expanded ? '' : 'flex justify-center'}>
+              <OfflineBadge compact={!expanded} />
+            </div>
+            <div className={expanded ? '' : 'flex justify-center'}>
               <ThemeToggle compact={!expanded} vertical={!expanded} />
             </div>
 
@@ -272,6 +306,7 @@ export function CoordinatorLayout() {
           >
             <Brand />
             <div className="flex items-center gap-2">
+              <OfflineBadge />
               <ThemeToggle compact />
               <button
               type="button"
@@ -357,6 +392,7 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
           <Brand />
           <div className="flex items-center gap-3">
+            <OfflineBadge />
             <ThemeToggle compact />
             <div className="min-w-0 text-end leading-tight">
               <p className="truncate text-caption font-medium text-content-primary">

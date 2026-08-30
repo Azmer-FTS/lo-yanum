@@ -31,8 +31,9 @@ import { chromium } from 'playwright'
  *     `max-w-2xl` phone column at every width — that IS the narrow responsive
  *     form the rule explicitly allows, and a 672 px column split in two would
  *     be worse on the phone these screens exist for.
- *   · The screens with NO map. The agenda is the named one: a calendar is read
- *     like text and is deliberately not flipped (decision 34).
+ *   · The screens with NO map. Two are named: the agenda, because a calendar is
+ *     read like text and is deliberately not flipped (decision 34), and
+ *     הגדרות, which is a form about the device rather than about the ground.
  *
  * Run against a live dev server:
  *   BASE_URL=http://localhost:5173 bun run mapfirst
@@ -84,6 +85,12 @@ const ROUTES: Route[] = [
   { name: 'mission-detail', hash: '#/coordinator/missions/mission-01' },
   { name: 'incidents', hash: '#/coordinator/incidents' },
   { name: 'incident-detail', hash: '#/coordinator/incidents/inc-01' },
+  {
+    name: 'settings',
+    hash: '#/coordinator/settings',
+    expectNoMap:
+      'P2.5a — הגדרות is read like a form: connection, held ground, account',
+  },
   {
     name: 'mission-wizard',
     hash: '#/coordinator/missions/new',

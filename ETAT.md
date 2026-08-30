@@ -33,6 +33,7 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 |---|---|
 | `bun run dev` | Dev server on :5173, **DEMO MODE** (honours `PORT` so a second one can run alongside) |
 | `bun run dev:real` | The same server in **REAL MODE** — reads `.env.real`, requires a Supabase login |
+| `bun run preview` | Serve `dist/`. **The only way to see the service worker**, which never registers in dev |
 | `bun run build` | Typecheck + production build to `dist/` |
 | `bun run typecheck` | `tsc --noEmit` |
 | `bun run contrast` | WCAG audit of the design tokens (A13/A19) — 133 pairs, fails the build on a regression |
@@ -40,6 +41,7 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 150 checks |
 | `bun run auth` | **A70** — the door (P2.3). Starts its OWN two dev servers, one in each mode, and compares them: real mode shows the login form and nothing else on 8 routes, refuses a wrong password IN HEBREW, gives an unknown address the SAME message, leaves no token behind; demo mode is byte-for-byte P0bis. Then B1 without a browser — 26 tables anonymously closed, an anonymous coordinator-grant INSERT refused, the three policy helpers 404. 20 checks — **needs no dev server, and never needs the password** |
+| `bun run offline` | **A72** — the offline shell (P2.5a). The ONLY gate that BUILDS the app and serves the build, because the service worker is production-only: the worker takes control, one online load is enough to survive being pulled offline, ★ **a Supabase read offline FAILS** (nothing from the API is ever cached), looked-at ground is still there, the badge comes and goes, the frozen /poc comes back as ITSELF, and a real build shows its door rather than a browser error. 11 checks — **no dev server; it makes its own** |
 | `bun run storage` | **A71** — the two private buckets (P2.4): no public route on either (`NoSuchBucket`, the one proof that does not depend on them being empty), no bucket or object enumeration, no signed URL minted for a stranger, no anonymous upload. 10 checks — no browser, no dev server, no password |
 | `bun run outreach` | **A68 + A69** — the sending centre and the WhatsApp group kit, read off the rendered DOM: the right channel per phone type, prefilled `wa.me` / `sms:` / `mailto:` links DECODED and checked, the grouped SMS and email, the sent tick surviving navigation, and the kit's three copies. 25 checks — needs a dev server |
 | `bun run rtl` | **A67** — the generated .xlsx downloaded through the real UI, then opened: both sheets `rightToLeft`, every cell styled, every style right-aligned with `readingOrder="2"`, the header frozen, the instructions sheet complete. 45 checks — needs a dev server |
@@ -83,7 +85,11 @@ THE POC.** **P2.3 (AUTH) IS DONE** — the deployed app requires a Supabase
 session, A70 is green at 20 checks, and the initial bundle grew by 1.6 kB
 gzipped rather than 103. **P2.4 (STORAGE) IS DONE** — two private buckets, one
 read rule that asks the existing RLS rather than restating it, A71 green at 10
-checks. Next: P2.5 → P2.6 → P3.** One
+checks. **P2.5a (THE OFFLINE SHELL) IS DONE** — service worker, offline badge,
+הגדרות, A72 green at 11 checks. **P2.5 IS SPLIT** (PO decision, 2026-08-31): its
+DATA half cannot precede P2.6, because an outbox flushing to a mock store and an
+IndexedDB cache persisting demo data would contradict "the real app starts
+EMPTY". Next: P2.6 → P2.5b → P3.** One
 commit per unit. Branch `main`.
 
 > **P0bis.1 — THE MAP IS ON THE LEFT ON EVERY SCREEN THAT HAS ONE (frozen PO
@@ -1502,7 +1508,7 @@ MECHANISM survives — only the charter values it protected are gone). Decisions
 
 ## 7. Verification scripts
 
-All eleven are committed and runnable.
+All twelve are committed and runnable.
 
 - **`scripts/contrast.ts`** (`bun run contrast`) — the A13/A19 audit. Parses
   `tokens.css`, reconstructs both palettes, and checks text, chips (ink over
@@ -1544,6 +1550,21 @@ All eleven are committed and runnable.
   script: an unknown table name returns 404 from PostgREST, which the first
   version read as "refused" — so a misspelling PASSED. A 404 is now a
   FAILURE, and the table list is the full 26 rather than the ones remembered.
+- **`scripts/offline.ts`** (`bun run offline`) — A72, 11 checks, P2.5a's gate.
+  The only script that BUILDS: the worker is `import.meta.env.PROD`-only, so a
+  dev server would prove nothing and a stale `dist/` would prove something
+  about last week. It builds twice — a demo build and a real one — and serves
+  each with `vite preview`. **The check the file exists for is a check about
+  NOT caching:** offline, a request to the Supabase origin must FAIL. A cached
+  REST answer is a stale fact about tonight and a cached auth response is
+  somebody else's session on a shared iPad; the only correct offline story for
+  data is P2.5b's outbox, which knows about identity and last-write-wins, and a
+  service worker knows about neither. Two traps are written into it: the
+  offline badge is asserted VISIBLE and not merely PRESENT (both shells render
+  one, CSS hides the wrong one, and counting DOM nodes would have asserted
+  `=== 1` against a truthful `2` — which is how a gate ends up being "fixed" by
+  breaking the app); and /poc must come back as ITSELF offline, which is the
+  navigation fallback's one hard case.
 - **`scripts/storage.ts`** (`bun run storage`) — A71, 10 checks, P2.4's gate.
   It is short because most of what it wanted to assert turned out to be
   unprovable without a password, and saying so was better than dressing it up.
@@ -1719,6 +1740,15 @@ src/data/                 ★ P2.3 — THE BACKEND LAYER. Neither pure-TS core n
 
 src/locales/he.json       ★ ALL UI COPY. en/fr intentionally {}.
 
+public/sw.js              ★ P2.5a — THE SERVICE WORKER. Hand-written, no
+                            Workbox: navigations network-first (a deploy must
+                            be picked up), hashed assets and fonts cache-first,
+                            map tiles cache-first as a BROWSING cache, and
+                            NOTHING from Supabase, ever.
+src/ui/offline.ts         ★ P2.5a — registration (PROD only, which is what
+                            keeps the other gates honest), useOnline,
+                            useOfflineMaps.
+
 src/index.css             ★ @font-face for both brand faces; the brand face bound
                             to the type SCALE (unlayered, after utilities, on
                             purpose); .btn/.input/.check/.artzenu-mark;
@@ -1806,6 +1836,17 @@ src/ui/
   built the doors and the signing helper; the camera capture and the agreement
   PDF are P3, and the components still read `photo` straight through. So the
   buckets are EMPTY, which is also why A71 can only prove the anonymous half.
+- **The offline shell needs ONE online load first.** The worker caches what it
+  sees rather than a build-time precache manifest, so a device that has never
+  opened the app online has nothing to fall back on. After one load it is
+  fully offline-capable, /poc included.
+- ⚠️ **AN EXPIRED TOKEN OFFLINE LOCKS THE COORDINATOR OUT.** Supabase's default
+  access token lives one hour; refreshing it needs the network. A coordinator
+  who has been offline longer than that is signed out and cannot sign back in
+  until he has signal. The mitigation is a dashboard setting (a longer JWT
+  expiry) plus P2.5b holding the session rather than discarding it on a failed
+  refresh. Written here because it is exactly the failure that will happen in
+  the field first, and it is invisible from a desk.
 - **A real build has ONE account and no way to make another.** No sign-up, no
   password reset, no invitation. Deliberate — see decision 70 — and the thing
   to build first when a second person needs a login.

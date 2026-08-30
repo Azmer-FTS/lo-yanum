@@ -167,6 +167,7 @@ try {
     '#/coordinator/volunteers',
     '#/coordinator/farms',
     '#/coordinator/missions',
+    '#/coordinator/settings',
     '#/farmer',
     '#/volunteer',
     '#/driver',

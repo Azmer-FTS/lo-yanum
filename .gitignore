@@ -12,3 +12,7 @@ dist/
 .env
 .env.local
 .env.real
+
+# P2.5a — the offline gate builds into these; they are never deployed.
+dist-offline-demo/
+dist-offline-real/

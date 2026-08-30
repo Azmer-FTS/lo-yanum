@@ -37,6 +37,7 @@ import { MissionDetailScreen } from './screens/coordinator/MissionDetailScreen'
 import { MissionWizardScreen } from './screens/coordinator/MissionWizardScreen'
 import { MissionsScreen } from './screens/coordinator/MissionsScreen'
 import { RoutePlannerScreen } from './screens/coordinator/RoutePlannerScreen'
+import { SettingsScreen } from './screens/coordinator/SettingsScreen'
 import { VolunteersScreen } from './screens/coordinator/VolunteersScreen'
 import { VolunteerGuardScreen } from './screens/volunteer/VolunteerGuardScreen'
 import { VolunteerRosterScreen } from './screens/volunteer/VolunteerRosterScreen'
@@ -156,6 +157,7 @@ export default function App() {
           {/* Static segment before the :missionId param, or "new" is read as an id. */}
           <Route path="missions/new" element={<MissionWizardScreen />} />
           <Route path="missions/:missionId" element={<MissionDetailScreen />} />
+          <Route path="settings" element={<SettingsScreen />} />
           <Route path="incidents" element={<IncidentsScreen />} />
           <Route
             path="incidents/:incidentId"

@@ -95,6 +95,10 @@ const ROUTES: Array<{
   { name: 'mission-detail', hash: '#/coordinator/missions/mission-01' },
   { name: 'incidents', hash: '#/coordinator/incidents' },
   { name: 'incident-detail', hash: '#/coordinator/incidents/inc-01' },
+  // P2.5a — הגדרות. A screen added without being added here is a screen this
+  // sweep silently stops covering, which is the failure mode a hard-coded list
+  // has.
+  { name: 'settings', hash: '#/coordinator/settings' },
   {
     name: 'styleguide',
     hash: '#/styleguide',
