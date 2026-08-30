@@ -180,6 +180,104 @@ const ALL_SHOTS: Shot[] = [
   // F3 — the lightened form: white fields, one hairline, 6 px corners.
   { name: '26-farm-form-light', session: 'coordinator', hash: '#/coordinator/farms/farm-01/edit', theme: 'light', settleMs: 1800 },
   { name: '27-farm-form-dark', session: 'coordinator', hash: '#/coordinator/farms/farm-01/edit', theme: 'dark', settleMs: 1800 },
+
+  // --- LOT 0.10 / the final order of march ----------------------------------
+
+  // A61 (P0.1) — the map's three states. Three captures of ONE screen,
+  // because the criterion is that the same screen has three readings; a
+  // single capture of the default would prove nothing that 11 does not.
+  {
+    name: '28-map-mode-hidden',
+    session: 'coordinator',
+    hash: '#/coordinator/farms',
+    theme: 'light',
+    settleMs: MAP_SETTLE,
+    drive: (page) => clickText(page, 'מוסתר'),
+  },
+  {
+    name: '29-map-mode-full',
+    session: 'coordinator',
+    hash: '#/coordinator/farms',
+    theme: 'light',
+    settleMs: MAP_SETTLE,
+    drive: async (page) => {
+      await clickText(page, 'מלא')
+      // The map has to resize into the reclaimed column before the shutter.
+      await page.waitForTimeout(2500)
+    },
+  },
+
+  // A62 (P0.2) — the roster's locality bubbles, with one town TAPPED so the
+  // capture shows the filter rather than just the decoration.
+  {
+    name: '30-roster-bubbles',
+    session: 'coordinator',
+    hash: '#/coordinator/volunteers',
+    theme: 'light',
+    settleMs: MAP_SETTLE,
+    drive: async (page) => {
+      const bubbles = page.locator('.maplibregl-marker')
+      const count = await bubbles.count()
+      if (count === 0) return
+      // The biggest bubble is drawn last, so it is the one on top.
+      await bubbles.nth(count - 1).click()
+      await page.waitForTimeout(1500)
+    },
+  },
+
+  // A44 (G10) — the farms import, stopped on the preview where the three
+  // position outcomes are visible side by side.
+  {
+    name: '31-import-farms',
+    session: 'coordinator',
+    hash: '#/coordinator/import/farms',
+    theme: 'light',
+    settleMs: 2000,
+  },
+
+  // A59 (G18) — the threat layer on the global map, both themes. The toggle
+  // is off by default, so the capture has to arm it.
+  {
+    name: '32-threat-layer-light',
+    session: 'coordinator',
+    hash: '#/coordinator/farms',
+    theme: 'light',
+    settleMs: MAP_SETTLE,
+    drive: async (page) => {
+      await clickText(page, 'שכבת איומים')
+      await page.waitForTimeout(2500)
+    },
+  },
+  {
+    name: '33-threat-layer-dark',
+    session: 'coordinator',
+    hash: '#/coordinator/farms',
+    theme: 'dark',
+    settleMs: MAP_SETTLE,
+    drive: async (page) => {
+      await clickText(page, 'שכבת איומים')
+      await page.waitForTimeout(2500)
+    },
+  },
+
+  // A55 + A59 together — חוות רתם carries the hatched zone AND the vector,
+  // and מושב רתמים adjoins its grazing, so one frame shows the four ground
+  // tints and the overlay that must stay tellable from all of them.
+  {
+    name: '34-farm-detail-threats',
+    session: 'coordinator',
+    hash: '#/coordinator/farms/farm-01',
+    theme: 'light',
+    settleMs: MAP_SETTLE,
+    drive: async (page) => {
+      await page.evaluate(() => {
+        const map = (window as unknown as { __loYanumMap?: { jumpTo: (o: unknown) => void } })
+          .__loYanumMap
+        map?.jumpTo({ center: [34.665, 31.056], zoom: 13.4 })
+      })
+      await page.waitForTimeout(3500)
+    },
+  },
 ]
 
 /**
@@ -256,6 +354,30 @@ async function main() {
       // the readiness window, and losing the whole capture set to one slow
       // navigation is not worth the strictness.
       await gotoShell(page)
+
+      /**
+       * P0.1/G18 — RESET THE REMEMBERED VIEW STATE BEFORE EVERY SHOT.
+       *
+       * The map mode and the threat toggle are persisted per screen, which is
+       * the whole point of them — and it means a driven shot leaks its state
+       * into every later capture of the same route. It did: shot 29 left the
+       * farms map on `full`, and 32 (the threat layer) came out as an empty
+       * full-screen map with the toggle it was supposed to press hidden
+       * behind the content column it had just closed.
+       *
+       * A capture set has to be order-independent or it is not a reference.
+       */
+      await page.evaluate(() => {
+        Object.keys(localStorage)
+          .filter(
+            (k) =>
+              k.startsWith('lo-yanum:map-mode') ||
+              k === 'lo-yanum:threat-layer',
+          )
+          .forEach((k) => localStorage.removeItem(k))
+        sessionStorage.clear()
+      })
+      await reloadShell(page)
 
       if (shot.theme) {
         await page.evaluate((th) => {

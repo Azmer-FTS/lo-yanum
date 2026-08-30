@@ -29,7 +29,7 @@ Open http://localhost:5173 and pick an identity on the landing screen.
 | `bun run tokens` | **A28/A29** — one radius scale, no tinted field, orange only where it is allowed. No browser needed |
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 64 checks |
-| `bun run layout` | **A24 + A30** — 390 px overflow, pinned overlap and uncontained-list sweep over all 23 screens — needs a dev server |
+| `bun run layout` | **A24 + A30 + G11** — overflow, pinned overlap and uncontained-list sweep over all 23 screens. `VIEWPORT=phone` (default, 390) / `iphone` (402×874) / `ipad` (1032×1376) / `ipad-ls` (1376×1032) / `all`. Needs a dev server |
 | `bun run wizard` | **A27** — the guard wizard played from a farm with NO anchor point, 28 checks — needs a dev server |
 | `bun run touch` | **A63** — every map gesture driven by SYNTHETIC TOUCH at iPad portrait 1032×1376, 32 checks — needs a dev server |
 | `bun run import` | **A44** — download each template, fill it, upload it back, find the records; 28 checks — needs a dev server |
@@ -49,9 +49,11 @@ Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
 
 State: **FINAL ORDER OF MARCH IN PROGRESS (2026-08-30). PHASE P0 IS DONE
-(font correction + P0.1/P0.2/P0.3). PHASE P1: G10 AND G18 ARE DONE. Next:
-G12 (full re-run + captures + deploy), then G13 (freeze).** One commit per
-unit. Branch `main`, NOT yet pushed (deploy happens at G12).
+(font correction + P0.1/P0.2/P0.3). PHASE P1: G10, G18 AND G12's verification
+ARE DONE — 68 captures regenerated, the layout sweep green at FOUR viewports,
+every gate green. Next: G12's deploy, then G13 (freeze).** Phase P2 has a
+head start: the Supabase project exists and both migrations are WRITTEN but
+NOT YET APPLIED. One commit per unit. Branch `main`.
 
 > **THE FINAL ORDER OF MARCH (product-owner prompt, 2026-08-30).** The product
 > owner starts field work in TWO DAYS on an iPad Pro 13" (+ iPhone). The goal
@@ -243,6 +245,44 @@ unit. Branch `main`, NOT yet pushed (deploy happens at G12).
 >   part-way through this session and `map.on('load')` never fired there.
 >   Playwright was unaffected. If a map looks empty in the pane, verify with a
 >   script before believing it.
+>
+> **P1 — G12 IN PROGRESS.** Two real defects were found by the capture run
+> itself, both fixed before the set was regenerated:
+> · **The map column COLLAPSED in `full` mode below the breakpoint.**
+>   `lg:flex-1` does nothing while the row is still a column, so the map fell
+>   to zero height and the floating legend rode up over the page header. It
+>   had never been seen because the hand test of `full` was at 1032, which is
+>   ≥ `lg`. Both MapPanel and the farm detail now carry `min-h-0 flex-1` in
+>   `full`.
+> · **The capture set was ORDER-DEPENDENT.** Shot 29 leaves the farms map on
+>   `full` in localStorage (that persistence is the point of P0.1), so shot 32
+>   — the threat layer — opened full-screen with the toggle it was supposed to
+>   press hidden behind the content column it had just closed. Every shot now
+>   clears `lo-yanum:map-mode:*`, `lo-yanum:threat-layer` and sessionStorage
+>   before it runs. A reference set that depends on its own order is not a
+>   reference.
+> · `bun run layout` gained VIEWPORTS (G11 folded in): `phone` 390 (default),
+>   `iphone` 402×874, `ipad` 1032×1376, `ipad-ls` 1376×1032, or `all`. The
+>   screenful cap travels with the viewport, because the same page is fewer
+>   screenfuls on a taller device.
+> · That sweep found one thing, and it was a FALSE POSITIVE IN THE AUDIT, not
+>   a defect in the app: at 402×874 the mission detail's presence table put its
+>   `sticky` header under the demo toolbar and A24 called it a pinned overlap.
+>   A sticky header inside a `.table-scroll` box is pinned to THAT BOX — the
+>   page scroll separates it from the toolbar like any ordinary element — so
+>   the check now skips any sticky element with a scroll-container ancestor.
+>   Deliberately NOT conditional on whether that ancestor currently overflows:
+>   a box holding three rows today holds thirty tomorrow, and a layout gate
+>   whose verdict depends on how much data is in the fixtures is not a gate.
+>   `position: fixed` is still always in scope, and so is the volunteers
+>   roster's column header — G7 made the WINDOW its scroll container, so it
+>   really is viewport-pinned, which is the case the check exists for.
+> · `public/manifest.webmanifest` carried the PRE-G17 forest greens
+>   (`#07180F`) as its theme and background colour — the installed PWA would
+>   have flashed the retired identity on every launch. Now `#0B1119`, the G17
+>   night surface. `orientation` went from `portrait-primary` to `any`: the
+>   one device this app exists for is an iPad that gets read in landscape and
+>   drawn on in portrait, and rotate-locking it would be a field defect.
 
 > **SPEC GAP RESOLVED (2026-08-19).** The product owner re-sent the missing
 > sections in the prompt "LOT 0.10 — SECTIONS MANQUANTES G14–G16 + DÉCISIONS
@@ -667,8 +707,8 @@ captures in §5.
 
 ## 5. Screenshots — `docs/screenshots/`
 
-Every row exists at both `-mobile` (390 px) and `-desktop` (1280 px) — 27 rows,
-54 files.
+Every row exists at both `-mobile` (390 px) and `-desktop` (1280 px) — 34 rows,
+68 files.
 
 > Captures are taken against the PRODUCTION BUILD (`bun run build` then
 > `bun run preview`), not the dev server. Lot 0.9 lost two full runs to
@@ -698,6 +738,19 @@ Every row exists at both `-mobile` (390 px) and `-desktop` (1280 px) — 27 rows
 | **23 / 24** | **Wizard step 1 — a farm with NO anchor point, and a pin dropped on the map — light / dark** |
 | **25** | **Farm detail — DARK, the map-first gabarit** |
 | **26 / 27** | **Farm form — the lightened fields — light / dark** |
+| **28** | **A61 — the farms map with the map HIDDEN (P0.1)** |
+| **29** | **A61 — the same screen with the map FULL** |
+| **30** | **A62 — the volunteers roster's locality bubbles, one town tapped** |
+| **31** | **A44 — the farms import wizard and its template columns (G10)** |
+| **32 / 33** | **A59 — the global map with the threat layer armed — light / dark** |
+| **34** | **A55 + A59 — חוות רתם with its hatched threat zone, its vector, and מושב רתמים adjoining** |
+
+> 28–30, 32 and 33 are DRIVEN too, and for the same reason 23/24 are: the
+> criterion in each case is a STATE, not a screen. 28 and 29 capture the same
+> route twice because the point of A61 is that one screen has three readings —
+> a capture of the default proves nothing that 11 does not. 30 taps the largest
+> bubble so the frame shows the filter rather than the decoration. 32 and 33
+> arm the threat toggle, which is off by default.
 
 > 23 and 24 are DRIVEN captures: the script selects `farm-05`, which has no
 > anchor point in the fixtures, then clicks the map. Capturing the route as it
@@ -1127,43 +1180,49 @@ event.
 
 ## 8. Contrast audit (A13/A19)
 
-`bun run contrast` — **133 pairs on the Artzenu palette, all meet WCAG AA.**
-Eleven pairs were added this lot: text and the field hairline on the new
-`--surface-field`, the field's luminance step inside a card, and the `critical`
-role as a solid fill, a bar and a marker. Tightest margins:
+`bun run contrast` — **70 pairs on the G17 neutral palette, all meet WCAG AA.**
+Rewritten at G12: §8 had carried the pre-G17 Artzenu numbers since Lot 0.8, so
+every value below was stale by two identity changes. The MACHINERY did not
+change — the vivid/ink split (decision 32), the luminance window (33), the
+field hairline pinned at 1.8 (48) — only the values it now measures.
+
+Tightest margins, ordered by how close the worse theme sits to its threshold:
 
 | Pair | Light | Dark | Min |
 |---|---|---|---|
-| `status-warn` / `farm-contacted` dot on the page | 3.18 | 8.87 | 3 |
-| `farm-visited` dot on the page | 3.56 | 6.88 | 3 |
-| `text-on-accent` on solid `status-violet` / `farm-signed` | 4.59 | 7.69 | 4.5 |
-| `text-on-accent` on solid `status-info` / `farm-verbal-ok` | 4.60 | 8.17 | 4.5 |
-| `text-on-accent` on solid `status-success` | 4.62 | 9.02 | 4.5 |
-| `status-info` chip (ink on 15 % tint) | 6.11 | 4.67 | 4.5 |
-| `text-muted` on `surface-high` | 4.84 | 4.92 | 4.5 |
-| `text-on-brand` on `brand-olive` (plate, lightest stop) | 5.59 | 5.59 | 4.5 |
-| `text-on-accent` on solid `status-danger` (charter orange) | 5.22 | 7.69 | 4.5 |
+| `surface-field` vs `surface-raised` (field in a card) | 1.00 | 1.24 | 1.0 / 1.2 |
+| `text-on-accent` on solid `status-violet` / `farm-signed` | 4.56 | 7.64 | 4.5 |
+| `text-on-accent` on solid `status-info` / `farm-verbal-ok` | 4.57 | 8.11 | 4.5 |
+| `text-on-accent` on solid `status-success` / `farm-active` | 4.59 | 8.96 | 4.5 |
+| `border-subtle` on `surface-base` | 1.24 | 1.64 | 1.2 |
+| `surface-raised` vs `surface-base` (elevation) | 1.10 | 1.27 | 1.05 / 1.25 |
+| `text-on-accent` on `accent-dim` | 4.74 | 6.13 | 4.5 |
+| `text-muted` on `surface-high` | 5.01 | 4.75 | 4.5 |
+| `status-warn` / `farm-contacted` dot on the page | 3.17 | 9.18 | 3 |
+| `text-on-accent` on solid `farm-visited` | 4.81 | 7.03 | 4.5 |
+| `surface-high` vs `surface-raised` (hover row) | 1.13 | 1.22 | 1.04 |
+| `farm-verbal-ok` chip (ink on 15 % tint) | 6.11 | 4.89 | 4.5 |
 | `border-strong` on `surface-field` (the field edge) | 1.97 | 3.15 | 1.8 |
-| `surface-field` vs `surface-raised` (field in a card) | 1.00 | 1.27 | 1.0 / 1.2 |
-| `text-on-accent` on solid `critical` | 5.22 | 5.22 | 4.5 |
-| `critical` marker on `surface-base` | 3.29 | 5.08 | 3 |
-| `border-subtle` on `surface-base` | 1.23 | 2.00 | 1.2 |
-| `surface-raised` vs `surface-base` (elevation) | 1.10 | 1.29 | 1.05 / 1.25 |
+| `critical` marker on `surface-base` | 3.28 | 5.25 | 3 |
 
 The two ends of the window decision 33 describes are still what binds the light
-palette: a dot has to be dark enough to be seen on the page (3.18) while the
-same colour has to be light enough to be written on (4.59). Both are within 3 %
-of their threshold, which is the point — the palette is as saturated as AA
-allows, and the charter's own orange `#EF4F28` fits inside that window
-unmodified.
+palette, and they are still within ~2 % of their thresholds: a dot has to be
+dark enough to be seen on the page (3.17) while the same hue has to be light
+enough to be written on (4.56). That is the point — the palette is as saturated
+as AA allows. The charter's orange `#EF4F28` survives G17 as `--critical` and
+still fits inside that window unmodified, which is why decision 49's role could
+be kept when the rest of the charter was retired.
 
 Elevation is held to a stricter threshold in dark: a drop-shadow is invisible
-on near-black, so the card must separate from the page by luminance alone. The
-same reasoning added the field step this lot: with the tinted background gone,
-`--border-strong` is the ONLY thing that says "you can type here", so it is
-audited at 1.8 rather than at the 1.2 a decorative card edge gets — and in dark
-the field additionally has to sit a measurable step below the card it is in.
-`--surface-field` was darkened from `#0E2419` to `#091910` to clear that.
+on near-black, so the card separates from the page by luminance alone (1.27
+against a 1.25 floor). The same reasoning governs the field: with the tinted
+background gone (decision 48), `--border-strong` is the ONLY thing that says
+"you can type here", so it is audited at 1.8 rather than at the 1.2 a
+decorative edge gets — and in dark the field additionally has to sit a
+measurable step below the card containing it.
+
+G18 added no pair: the threat layer spends `--status-warn` and
+`--status-danger`, both already audited as fills, dots and chips.
 
 ---
 
@@ -1338,9 +1397,28 @@ order of march recorded at the top of this file.
 
 **Both P2 blockers are ANSWERED (product owner, 2026-08-30):**
 
-1. **Creating `lo-yanum-prod` is APPROVED** — eu-central-1 (Frankfurt), the
-   PO's own Supabase organisation, free tier, expected cost 0. If the account
-   holds more than one organisation, ask which before creating.
+1. **`lo-yanum-prod` EXISTS.** Created 2026-08-30 in the PO's only Supabase
+   organisation (`Azmer-FTS`, id `jkqsqykhquutilldvcsv`), region
+   **eu-central-1** (Frankfurt), free tier, cost confirmed at **0/month**.
+   · project ref: **`lvrptqmkjikkkhcxocbe`**
+   · API URL: `https://lvrptqmkjikkkhcxocbe.supabase.co`
+   · publishable key: `sb_publishable_4phO_2UMuhWGKCC8uugRmQ_P_IQqAf_`
+     (a legacy JWT `anon` key exists too; prefer the publishable one — it
+     rotates independently)
+   · status at creation: ACTIVE_HEALTHY, schema still EMPTY — P2.2's
+     migrations are the next thing that touches it.
+
+   **The publishable key is PUBLIC BY DESIGN and belongs in the bundle.** That
+   is not a compromise, it is how Supabase works: the key identifies the
+   project, it does not authorise anything. **THE SECURITY IS THE RLS**, which
+   is why P2.2 transcribes `access.ts` policy by policy and why B1's proof is
+   an anonymous read being REFUSED. It goes in `.env` locally and in a GitHub
+   Actions secret for the build; both are read through `VITE_SUPABASE_URL` /
+   `VITE_SUPABASE_PUBLISHABLE_KEY`.
+
+   **The service-role key is never fetched, never committed and never reaches
+   the client.** If any future step seems to need it in the browser, that step
+   is wrong.
 2. **The coordinator account is `dov@serialkolors.com`.** One account in
    phase 1. **Never set the password**: invite the address and let the PO
    choose it in Supabase's own flow. No credential is ever typed into this

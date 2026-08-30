@@ -20,8 +20,42 @@ import { chromium } from 'playwright'
  */
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173'
-const WIDTH = 390
-const HEIGHT = 844
+
+/**
+ * G11/G12 — THE SWEEP IS NOT PHONE-ONLY ANY MORE.
+ *
+ * 390 px is where a layout breaks most obviously, and it was the only width
+ * this ran at for three lots. But the product owner's instrument is a 13" iPad
+ * Pro, and its two orientations are the widths this app is actually used at:
+ * 1032 portrait is the narrowest place the two-column gabarits still have to
+ * work (which is why the farm detail's second column starts at `xl`/1280, not
+ * at `lg`), and 1376 landscape is where a sticky block has the most room to
+ * get pinned over something.
+ *
+ *   VIEWPORT=phone   390 × 844   — the original sweep, still the default
+ *   VIEWPORT=ipad    1032 × 1376 — iPad Pro 13" PORTRAIT
+ *   VIEWPORT=ipad-ls 1376 × 1032 — iPad Pro 13" LANDSCAPE
+ *   VIEWPORT=iphone  402 × 874   — iPhone 16 Pro, the second device
+ *   VIEWPORT=all     runs all four in sequence
+ *
+ * A30's screenful cap is width-dependent by nature — the same page is fewer
+ * screenfuls on a taller viewport — so the limit travels with the viewport
+ * rather than being one global number.
+ */
+const VIEWPORTS = {
+  phone: { width: 390, height: 844, maxScreenfuls: 6 },
+  iphone: { width: 402, height: 874, maxScreenfuls: 6 },
+  ipad: { width: 1032, height: 1376, maxScreenfuls: 5 },
+  'ipad-ls': { width: 1376, height: 1032, maxScreenfuls: 6 },
+} as const
+
+type ViewportName = keyof typeof VIEWPORTS
+
+const REQUESTED = (process.env.VIEWPORT ?? 'phone') as ViewportName | 'all'
+const RUNS: ViewportName[] =
+  REQUESTED === 'all'
+    ? (Object.keys(VIEWPORTS) as ViewportName[])
+    : [REQUESTED in VIEWPORTS ? (REQUESTED as ViewportName) : 'phone']
 
 /** Every screen a coordinator or a field user can reach. */
 const ROUTES: Array<{
@@ -114,12 +148,45 @@ function audit(): Report {
     }))
     .slice(0, 6)
 
-  // Only PINNED elements can overlap without the page scrolling them apart.
+  /**
+   * Only VIEWPORT-pinned elements can overlap without the page scrolling them
+   * apart — and "sticky" alone does not mean viewport-pinned.
+   *
+   * A sticky `<th>` inside a `.table-scroll` box is pinned to THAT BOX: it
+   * moves with the page like everything else, so scrolling separates it from
+   * the demo toolbar exactly as it separates any two ordinary elements. The
+   * iPad sweep caught this as a false positive on the mission detail, where
+   * the presence matrix's own header happened to land under the toolbar at
+   * 402×874 and nowhere else — a coincidence of one viewport height, not a
+   * defect.
+   *
+   * So an element is only a candidate if NOTHING between it and the document
+   * establishes a scroll container. That is the CSS rule itself — `sticky`
+   * resolves against the nearest scrolling ancestor — and it is deliberately
+   * NOT conditional on whether that ancestor currently overflows: a
+   * `.table-scroll` holding three rows today holds thirty tomorrow, and a
+   * layout gate whose verdict depends on how much data happens to be in the
+   * fixtures is not a gate.
+   *
+   * The volunteers roster's column header stays in scope: G7 made the WINDOW
+   * its scroll container, so it really is pinned to the viewport at
+   * `--shell-top`. That is the case this check exists for.
+   */
+  const boxPinned = (el: Element): boolean => {
+    let node = el.parentElement
+    while (node && node !== document.body && node !== document.documentElement) {
+      if (/(auto|scroll)/.test(getComputedStyle(node).overflowY)) return true
+      node = node.parentElement
+    }
+    return false
+  }
+
   const pinned = [...document.querySelectorAll('body *')].filter((el) => {
     const pos = getComputedStyle(el).position
     if (pos !== 'fixed' && pos !== 'sticky') return false
     const r = el.getBoundingClientRect()
-    return r.width > 0 && r.height > 0
+    if (r.width <= 0 || r.height <= 0) return false
+    return pos === 'fixed' || !boxPinned(el)
   })
 
   const collisions: Array<{ a: string; b: string }> = []
@@ -184,84 +251,93 @@ function audit(): Report {
 }
 
 /**
- * How many screenfuls a page may be before it counts as "stretched".
+ * The screenful cap lives on each VIEWPORT (see the table at the top), because
+ * the same page is fewer screenfuls on a taller device and one global number
+ * would either be slack on a phone or wrong on an iPad.
  *
- * Six is generous on purpose — a detail screen legitimately runs long, and the
+ * It is generous on purpose — a detail screen legitimately runs long, and the
  * failure this catches is the other kind: a page whose length is a function of
  * how many rows happen to exist, where the screen's own sticky footer ends up
  * far below the fold. Before F5.5 the import preview rendered every row of the
  * file, so its height was whatever the coordinator happened to upload.
  */
-const MAX_SCREENFULS = 6
-
 const browser = await chromium.launch()
-const context = await browser.newContext({
-  viewport: { width: WIDTH, height: HEIGHT },
-  locale: 'he-IL',
-  permissions: ['geolocation'],
-  geolocation: { latitude: 31.0611, longitude: 34.6552 },
-})
-const page = await context.newPage()
-page.setDefaultNavigationTimeout(120_000)
-page.setDefaultTimeout(60_000)
-
-console.log(`Layout sweep at ${WIDTH} px — ${ROUTES.length} screens`)
-console.log(
-  `  ${'screen'.padEnd(20)} ${'scrollW'.padStart(8)} ${'screens'.padStart(8)}  result`,
-)
-console.log(`  ${'-'.repeat(62)}`)
 
 let failures = 0
 
-await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
+for (const name of RUNS) {
+  const vp = VIEWPORTS[name]
+  const context = await browser.newContext({
+    viewport: { width: vp.width, height: vp.height },
+    locale: 'he-IL',
+    permissions: ['geolocation'],
+    geolocation: { latitude: 31.0611, longitude: 34.6552 },
+  })
+  const page = await context.newPage()
+  page.setDefaultNavigationTimeout(120_000)
+  page.setDefaultTimeout(60_000)
 
-for (const route of ROUTES) {
-  // Pick the identity through the dev toolbar, exactly as a user would.
-  await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
-  await page.waitForSelector('select', { state: 'attached' })
-  await page.selectOption('select', route.session ?? 'coordinator')
-  await page.waitForTimeout(300)
-
-  await page.evaluate((h) => {
-    window.location.hash = h
-  }, route.hash)
-  // Map screens need real settle time before their canvas has a size.
-  await page.waitForTimeout(3000)
-
-  const report = (await page.evaluate(audit)) as Report
-  const overflow = report.scrollWidth > report.innerWidth + 1
-  const tooTall =
-    report.heightRatio > MAX_SCREENFULS && !route.tallOnPurpose
-  const ok =
-    !overflow &&
-    !tooTall &&
-    report.wide.length === 0 &&
-    report.collisions.length === 0 &&
-    report.uncontained.length === 0
-  if (!ok) failures++
-
+  console.log('')
   console.log(
-    `  ${route.name.padEnd(20)} ${String(report.scrollWidth).padStart(8)} ${report.heightRatio
-      .toFixed(1)
-      .padStart(8)}  ${ok ? 'PASS' : 'FAIL'}`,
+    `Layout sweep at ${vp.width}×${vp.height} (${name}) — ${ROUTES.length} screens`,
   )
-  for (const w of report.wide) {
-    console.log(`      wider than viewport: ${w.tag} (${w.width}px)`)
-  }
-  for (const c of report.collisions) {
-    console.log(`      pinned overlap: ${c.a}  ×  ${c.b}`)
-  }
-  for (const u of report.uncontained) {
-    console.log(`      A30 uncontained list: ${u.tag} (${u.rows} rows)`)
-  }
-  if (tooTall) {
+  console.log(
+    `  ${'screen'.padEnd(20)} ${'scrollW'.padStart(8)} ${'screens'.padStart(8)}  result`,
+  )
+  console.log(`  ${'-'.repeat(62)}`)
+
+  await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
+
+  for (const route of ROUTES) {
+    // Pick the identity through the dev toolbar, exactly as a user would.
+    await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
+    await page.waitForSelector('select', { state: 'attached' })
+    await page.selectOption('select', route.session ?? 'coordinator')
+    await page.waitForTimeout(300)
+
+    await page.evaluate((h) => {
+      window.location.hash = h
+    }, route.hash)
+    // Map screens need real settle time before their canvas has a size.
+    await page.waitForTimeout(3000)
+
+    const report = (await page.evaluate(audit)) as Report
+    const overflow = report.scrollWidth > report.innerWidth + 1
+    const tooTall =
+      report.heightRatio > vp.maxScreenfuls && !route.tallOnPurpose
+    const ok =
+      !overflow &&
+      !tooTall &&
+      report.wide.length === 0 &&
+      report.collisions.length === 0 &&
+      report.uncontained.length === 0
+    if (!ok) failures++
+
     console.log(
-      `      A30 page is ${report.heightRatio.toFixed(1)} screenfuls (max ${MAX_SCREENFULS})`,
+      `  ${route.name.padEnd(20)} ${String(report.scrollWidth).padStart(8)} ${report.heightRatio
+        .toFixed(1)
+        .padStart(8)}  ${ok ? 'PASS' : 'FAIL'}`,
     )
+    for (const w of report.wide) {
+      console.log(`      wider than viewport: ${w.tag} (${w.width}px)`)
+    }
+    for (const c of report.collisions) {
+      console.log(`      pinned overlap: ${c.a}  ×  ${c.b}`)
+    }
+    for (const u of report.uncontained) {
+      console.log(`      A30 uncontained list: ${u.tag} (${u.rows} rows)`)
+    }
+    if (tooTall) {
+      console.log(
+        `      A30 page is ${report.heightRatio.toFixed(1)} screenfuls (max ${vp.maxScreenfuls})`,
+      )
+    }
+    if (route.tallOnPurpose && report.heightRatio > vp.maxScreenfuls) {
+      console.log(`      A30 exempt: ${route.tallOnPurpose}`)
+    }
   }
-  if (route.tallOnPurpose && report.heightRatio > MAX_SCREENFULS) {
-    console.log(`      A30 exempt: ${route.tallOnPurpose}`)
-  }
+
+  await context.close()
 }
 
 await browser.close()

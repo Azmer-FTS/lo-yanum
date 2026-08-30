@@ -862,6 +862,10 @@ export function FarmDetailScreen() {
         <div
           className={`order-1 flex-col xl:order-none xl:flex-1 ${
             mapMode === 'hidden' ? 'hidden' : 'flex'
+          } ${
+            // See MapPanel: below `xl` the row is a column, so the map column
+            // needs its own flex-1 or the `full` state collapses.
+            mapMode === 'full' ? 'min-h-0 flex-1' : ''
           }`}
         >
           <div

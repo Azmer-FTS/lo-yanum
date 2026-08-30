@@ -163,6 +163,12 @@ export function MapPanel({
       <div
         className={`order-1 flex-col lg:order-none lg:flex-1 ${
           mode === 'hidden' ? 'hidden' : 'flex'
+        } ${
+          // BELOW `lg` the row is a COLUMN, so `lg:flex-1` does nothing and a
+          // `flex-1` map inside an unflexed parent collapses to nothing —
+          // which is what the first `full`-mode capture at 390 px showed: an
+          // empty grey band with the legend riding up over the header.
+          mode === 'full' ? 'min-h-0 flex-1' : ''
         }`}
       >
         {/* In `full` the switch is the only chrome the map has left, so it
@@ -210,7 +216,13 @@ export function MapPanel({
                 mode === 'full' ? 'block' : 'hidden'
               }`}
             >
-              <div className="pointer-events-auto rounded-card bg-surface-overlay/95 p-3 shadow-lift backdrop-blur">
+              {/* P0.1 — `full` is the one state where a phone shows the legend
+                  at all (below `lg` it is hidden, because a 40dvh map cannot
+                  spare the room). Capped and scrollable so it annotates the
+                  map instead of covering a third of it: the farms legend runs
+                  to eleven rows once the four zone tints and the seven
+                  statuses are both on. */}
+              <div className="pointer-events-auto max-h-[42dvh] overflow-y-auto rounded-card bg-surface-overlay/95 p-3 shadow-lift backdrop-blur lg:max-h-none">
                 {legend}
               </div>
             </div>
