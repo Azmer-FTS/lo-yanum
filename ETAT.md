@@ -1253,14 +1253,15 @@ src/ui/
 resume note, unchanged. Then P2 (Lot 1) and P3 (Lot 2 essential) per the final
 order of march recorded at the top of this file.
 
-**Two things to settle with the product owner BEFORE P2 starts, and they
-block it:**
+**Both P2 blockers are ANSWERED (product owner, 2026-08-30):**
 
-1. **Confirmation to create the Supabase project** `lo-yanum-prod`
-   (eu-central-1 Frankfurt) under HIS organisation. Expected cost 0 — free
-   tier. The order of march says ask first, so ask first.
-2. **The email address of the one coordinator account.** Auth is
-   email/password and there is exactly one account in phase 1.
+1. **Creating `lo-yanum-prod` is APPROVED** — eu-central-1 (Frankfurt), the
+   PO's own Supabase organisation, free tier, expected cost 0. If the account
+   holds more than one organisation, ask which before creating.
+2. **The coordinator account is `dov@serialkolors.com`.** One account in
+   phase 1. **Never set the password**: invite the address and let the PO
+   choose it in Supabase's own flow. No credential is ever typed into this
+   app or committed.
 
 Also carry in: the anon key is PUBLIC by design and **the security IS the
 RLS** — that is why P2.2 transcribes `access.ts` policy by policy and why a
