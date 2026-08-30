@@ -2074,6 +2074,37 @@ app — /poc included — to survive with no network.
 implementation (the mock fixtures, which is what /poc keeps) and a Supabase
 one. **No screen changes.** The real app starts EMPTY.
 
+**MEASURE IT BEFORE STARTING: 53 mutations, 52 accessors, 2 743 lines across
+`store.ts` + `access.ts` + `types.ts`.** This is the largest unit in P2 and the
+only one that can silently break every screen at once.
+
+★ **THE CONSTRAINT THAT DECIDES THE WHOLE DESIGN, and it is not obvious.**
+"No screen changes" and "reads come from Postgres" are only compatible one
+way. Every screen reads through `access.ts` **synchronously** — `useCoreValue`
+re-runs a selector on each store version bump — so the Supabase implementation
+**must not make reads async**. It has to keep the same in-memory snapshot the
+mock store keeps, HYDRATE it from Supabase once, and WRITE THROUGH on every
+mutation, bumping the version exactly as `store.ts` does today. Turning the 52
+accessors into promises would mean touching every screen, which is the one
+thing this unit is forbidden to do.
+
+That shape is also why P2.5b comes after: the snapshot the Supabase
+implementation holds is precisely the thing IndexedDB persists, and the
+write-through path is precisely where the outbox is inserted. Getting P2.6's
+shape right makes P2.5b small; getting it wrong makes P2.5b impossible.
+
+Sequence that keeps the gates honest: define the interface and move the CURRENT
+behaviour behind it as the demo implementation FIRST, and prove `accept` (150)
+plus every browser gate still green before a single line of Supabase reading is
+written. Only then add the second implementation. The 26 tables map to a nested
+domain model — `Farm` carries contacts/zones/agreements/commitments, `Mission`
+carries assignments/drivers/passengers/presence marks — so hydration is a
+handful of joins assembled in TS, not 26 independent fetches.
+
+The database is EMPTY, so the first correct result of the Supabase
+implementation is every screen showing its empty state. That is success, not a
+bug — and it is the moment P3's real import stops being optional.
+
 Then **P2.5b** — the offline DATA layer: an IndexedDB read cache, a write
 outbox with the "N ממתינים לסנכרון" badge, and last-write-wins per changed
 field. The service worker and the offline shell are already in place (P2.5a);
