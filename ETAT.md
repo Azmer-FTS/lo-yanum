@@ -2208,7 +2208,104 @@ app — /poc included — to survive with no network.
 > OSM pre-cache is abandoned for good; what P2.5a shipped — a browsing cache —
 > stays, and the one-file download lands after P2.5b and before P3.4.
 
-**RESUME HERE — P2.6:** the store becomes an INTERFACE, satisfied by a demo
+**P2.6 (THE REAL SWITCH) IS DONE, IN TWO HALVES AND FOUR COMMITS.**
+`bun run persist` — 84 · `bun run mapping` — 33 · `bun run live` — 46.
+
+| Half | What it did | Its gate |
+|---|---|---|
+| P2.6a | the store became an INTERFACE; the current behaviour moved behind it as the demo implementation, and NOTHING changed | `persist` 84 + every pre-existing gate re-run green |
+| P2.6b | the Supabase implementation: empty first frame, one hydration, a serial write-through | `mapping` 33 + `live` 46 |
+
+**THE ORDER WAS THE POINT AND IT PAID.** P2.6a shipped with the demo backend
+still the default and all eleven browser gates re-run green BEFORE a line of
+Supabase reading existed, so when P2.6b broke something there was exactly one
+place it could have come from. `accept` 150, `dispatch` 27, `mapfirst` 27
+screens, `splitter` 72, `wizard` 28, `touch` 32, `import` 29, `rtl` 45,
+`outreach` 25, `layout` at four viewports, `auth` 20, `storage` 10,
+`offline` 11 — all green at P2.6a, all green again at the end.
+
+**THE FOUR FILES, AND WHAT EACH ONE IS FOR:**
+· `src/core/backend.ts` — the interface, and the change derivation. Decisions
+  73 and 74 are written out in it at length because they are the two that a
+  later reader would otherwise undo.
+· `src/core/demo.ts` — the fixtures, moved out of `store.ts` at last, plus
+  `emptyData()` and `EMPTY_BACKEND`.
+· `src/data/rows.ts` — the ONE place that knows both shapes. 26 tables, both
+  directions, and nothing else in the app knows a column name.
+· `src/data/store.ts` — the Supabase backend.
+
+**THREE THINGS IN `src/data/store.ts` THAT ARE NOT OBVIOUS:**
+· **Reads PAGE.** PostgREST caps a select at 1 000 rows and does it SILENTLY:
+  a roster of 1 200 volunteers comes back as 1 000 and looks complete.
+· **Writes are ONE SERIAL QUEUE.** Creating a farm and immediately drawing a
+  zone on it emits two changes a millisecond apart, and a zone whose entity
+  does not exist yet is a REJECTED insert, not a slow one.
+· **Child tables are cleared in REVERSE and inserted FORWARD.**
+  `presence_marks` references `mission_assignments`; `mission_driver_passengers`
+  references `mission_drivers`. The other order is refused, correctly.
+
+**`onWriteFailed` IS A NAMED SEAM WITH A PLACEHOLDER BODY, ON PURPOSE.** P2.5b
+replaces its body — outbox in, badge up — and nothing else. The alternative, a
+try/catch inlined in a loop, is a thing somebody would have to find again.
+
+**`DataBanner` IS THE ONE ADDITION TO THE SHELL, AND IT EXISTS FOR THE FAILURE
+THIS FILE ALREADY NAMED AS THE WORST AVAILABLE:** signed in with no `app_users`
+row looks exactly like a database nobody has imported into — 26 empty screens
+and not one error. It loads its module lazily, so a demo build never fetches
+the data layer at all.
+
+★ **WHAT `bun run mapping` FOUND ON ITS FIRST RUN, which is the argument for
+having written it before trusting the mapper.** Two of them, and neither could
+have been noticed by any gate that existed, because nothing had ever tried to
+write a volunteer's address to Postgres:
+1. **THE SCHEMA HAD FALLEN BEHIND `types.ts` BY TWO UNITS.** P0bis.5a's
+   optional `email` never reached `volunteers`, `drivers` or
+   `entity_contacts`; P0bis.5b's outreach `event` never reached
+   `cancel_notices`. `20260831000100_p26_catchup.sql`, applied 2026-08-31 with
+   the PO's explicit approval and verified by introspection.
+2. **TWO THREAT FIXTURES SPELLED `updatedAt` AS A `+03:00` OFFSET LITERAL**
+   where every other timestamp in the store is UTC. Same instant, renders
+   identically — and a snapshot holding two spellings of one timestamp is a
+   structural diff reporting a change that did not happen, the moment the same
+   value comes back from Postgres in the other spelling.
+
+★ **AND `scripts/samples.ts` EXISTS BECAUSE OF WHAT THE FIRST DRAFT COULD NOT
+SEE.** Reading only the FIRST aggregate of each collection is the obvious
+version: an aggregate whose child list is empty writes no row, so that child's
+table is never probed at all. `cancel_notices` was exactly that — no fixture
+guard carries an outreach tick, because a tick is something a coordinator does
+rather than something a fixture is — **and it was also the table the catch-up
+had to change. The one table nobody could see was the one that was wrong.**
+
+★ **`bun run live` NEEDS NO PASSWORD, AND THE REASON IS ONE PROPERTY OF
+POSTGREST:** `?select=` is resolved against the schema BEFORE row-level
+security runs. A missing column comes back 400/42703 naming itself; an existing
+one comes back `[]`, the rows being exactly what RLS refuses. So the
+DEPLOYMENT can be asked what the migration FILES only claim — and the files say
+what was written, not what was applied. 24 tables column by column, 15 enums
+label by label, `app_users` closed to a stranger. Nothing crosses the wire that
+is not already public in these migrations.
+
+⚠️ **THE ONE THING P2.6 DOES NOT PROVE, STATED PLAINLY: THE WRITE PATH
+END-TO-END.** Everything above proves the mapper is lossless, that the live
+schema accepts every column and every enum label the mapper writes, and that
+every mutation emits the right aggregates. What is NOT under an automated gate
+is "the coordinator edits a farm, it reaches Postgres, and it is still there
+after a reload" — because that needs a session, and a session needs a password.
+The PO's password must never reach this repository (decision 70); there is **no
+Docker on this machine**, so `supabase start` and a local stack are not
+available; and self sign-up is now off (decision 72). **The PO agreed on
+2026-08-31 to create a disposable test account** — the same one `bun run
+storage` has been asking for since P2.4. Until it exists, verify by hand at
+first sign-in: sign in, create a farm, reload, check it is still there.
+
+
+---
+
+**THE ORIGINAL P2.6 BRIEF IS KEPT BELOW**, because the constraint it names is
+the one that decided the design and will be asked about again.
+
+**(delivered) P2.6:** the store becomes an INTERFACE, satisfied by a demo
 implementation (the mock fixtures, which is what /poc keeps) and a Supabase
 one. **No screen changes.** The real app starts EMPTY.
 
