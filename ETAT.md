@@ -4289,6 +4289,28 @@ lot plan's. Eleven points, then the rest of P3:
 | **then** | **signature (finger AND stylus)** | ✅ **§21** — `SignaturePad`, Pointer Events + PRESSURE, one nullable column, and `bun run touch` counts INK at `pointerType=pen` |
 | | photos → P3.3bis automatic email → the final PWA → the agreement PDF | ⬜ **NOT DONE — see §22** |
 
+### ✅ DEPLOYED, AND VERIFIED ON THE ARTEFACT RATHER THAN ASSUMED
+
+Run **33418177741**, `success`. Checked on the deployed files themselves, not on
+the tree:
+
+· **The door renders in Hebrew** and the password field is real — so this is a
+  REAL build, not the silent demo fallback, confirmed again by
+  `sb_publishable_` appearing **once** in the bundle.
+· **The three `theme-color` tags are served in the right order** —
+  `#F3F4F6 @light`, `#0B1119 @dark`, then the unscoped one, which `theme.tsx`
+  had already rewritten in the live page to `rgb(243 244 246)`. ★ **That is the
+  proof `:not([media])` works**: the runtime wrote to the third and left the two
+  media-scoped ones alone (§15.3).
+· **`apple-mobile-web-app-status-bar-style` appears ZERO times as a tag** —
+  option A ships and option B stays one commented line away (§15.4).
+· **In the stylesheet**: `@media (pointer: coarse){input…,select,textarea{
+  font-size:1rem!important}}` (point 2), `html,body{overscroll-behavior-y:none}`
+  (point 4a), `html[data-standalone][data-statusbar=translucent] body:before{
+  z-index:50}` (option B, ready), and `--map-filter` **zero** times.
+· **In the bundle**: `לא מקוון`, `משכו לרענון`, `בעלי חיים`, `דוח תוכנית`,
+  `חתימה`, `האם אתה בטוח` — points 3, 4, 6, 7, 8 and the signature, all shipped.
+
 ### ✅ EVERY GATE, RE-RUN AT THE END OF THE SESSION
 
 `accept` **162** · `deletion` **61** (new) · `report` **86** (new) · `persist`
