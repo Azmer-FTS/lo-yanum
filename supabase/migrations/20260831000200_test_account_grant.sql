@@ -1,0 +1,47 @@
+-- ===========================================================================
+-- A76 — THE DISPOSABLE TEST ACCOUNT'S GRANT. ⚠️ DELETE THIS BEFORE P3.1.
+-- ===========================================================================
+--
+-- P2.6 is proved everywhere except on the one claim that matters most in the
+-- field: that a coordinator's edit reaches Postgres and is still there after a
+-- reload. Proving it needs a session; a session needs an account. The product
+-- owner's password must never reach this repository (decision 70), there is no
+-- Docker on the build machine so `supabase start` is unavailable, and self
+-- sign-up is off (decision 72). `bun run storage` has been asking for a
+-- disposable test account since P2.4 for exactly this reason.
+--
+-- Created by the product owner in the dashboard on 2026-08-31, auto-confirmed:
+--   dov+test@serialkolors.com — 304d2f3b-90ca-43dc-bfac-1361c8184303
+--
+-- ⚠️⚠️ THIS ACCOUNT IS A SECOND DOOR ONTO THE PROGRAMME'S DATA, AND IT IS ONLY
+-- ACCEPTABLE WHILE THE DATABASE IS EMPTY.
+--
+-- It carries the `coordinator` role, which is total read and write over every
+-- farmer's phone number, every volunteer's face and the threat layer. Today
+-- that is a grant over nothing: the database has never been imported into.
+-- From P3.1 — the real import — it stops being a grant over nothing, and the
+-- account has to be gone BEFORE that, not after.
+--
+-- ★ DELETING IT IS TWO ACTIONS AND BOTH ARE REQUIRED. Deleting only the auth
+--   user leaves an orphan grant row that the next account created with the
+--   same uid would inherit; deleting only the grant leaves an account that can
+--   still sign in and see the `no-grant` banner, which is harmless but is not
+--   what "deleted" means.
+--
+--     1. Supabase dashboard → Authentication → Users → dov+test@… → Delete user
+--     2. delete from app_users where user_id = '304d2f3b-90ca-43dc-bfac-1361c8184303';
+--        (the FK is `on delete cascade`, so step 1 does this too — run it
+--         anyway and check it returns 0 rows, because "probably cascaded" is
+--         not a thing to be probably about)
+--
+--   Then `bun run write` fails at its first check, loudly, which is the
+--   intended end state: the gate exists for the window before P3.1 and says so
+--   when that window closes.
+--
+-- The password is disposable, was chosen by the product owner for this purpose
+-- alone, and IS NOT IN THIS REPOSITORY. `bun run write` reads it from
+-- `TEST_PASSWORD` or from `.env.test`, which is git-ignored.
+
+insert into app_users (user_id, role, entity_ref)
+values ('304d2f3b-90ca-43dc-bfac-1361c8184303', 'coordinator', null)
+on conflict (user_id) do update set role = excluded.role;

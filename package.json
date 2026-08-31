@@ -21,6 +21,7 @@
     "persist": "bun run scripts/persist.ts",
     "mapping": "bun run scripts/mapping.ts",
     "live": "bun run scripts/live.ts",
+    "write": "bun run scripts/write.ts",
     "tokens": "bun run scripts/tokens.ts",
     "wizard": "bun run scripts/wizard.ts",
     "touch": "bun run scripts/touch.ts",

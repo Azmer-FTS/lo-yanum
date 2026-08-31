@@ -13,6 +13,12 @@ dist/
 .env.local
 .env.real
 
+# A76 — the DISPOSABLE TEST ACCOUNT's password, and nothing else. It is the
+# only credential this project has ever had on disk, it belongs to an account
+# that must be deleted before P3.1, and it must never be committed. See
+# supabase/migrations/20260831000200_test_account_grant.sql.
+.env.test
+
 # P2.5a — the offline gate builds into these; they are never deployed.
 dist-offline-demo/
 dist-offline-real/

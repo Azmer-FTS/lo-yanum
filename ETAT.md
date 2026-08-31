@@ -40,6 +40,7 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run tokens` | **A28/A29** — one radius scale, no tinted field, orange only where it is allowed. No browser needed |
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 150 checks |
+| `bun run write` | **A76** — ⚠️ **THE WRITE PATH, END TO END, AGAINST THE REAL DATABASE** (P2.6b). Signs in as a DISPOSABLE test account, writes 17 aggregates across all 25 tables through `applyChanges` — the app's own function, not a copy — reads them back through `hydrateFrom`, compares, writes again to prove an update is not a duplicate, then deletes everything and proves the database is exactly as it was found. Every id begins `a76-`. 35 checks — needs `.env.test`, which is git-ignored. ⚠️ **THE ACCOUNT MUST BE DELETED BEFORE P3.1** |
 | `bun run live` | **A75** — the LIVE schema against the mapper (P2.6b), and **it needs no password**. PostgREST resolves `?select=` against the schema BEFORE applying RLS, so an anonymous request names a missing column (400/42703) and an existing one answers `[]`. 24 tables probed column by column, 15 enums probed label by label, `app_users` closed to a stranger. 46 checks — needs the internet, not a dev server |
 | `bun run mapping` | **A74** — the mapper (P2.6b). Drives all 380 fixture aggregates out through `toRows` and back through `fromRows` and fails on any difference, then parses this repository's OWN migrations and asserts both directions of the column contract: no column the mapper writes is missing, no `not null`-without-default column goes unwritten. 32 checks — no browser, no dev server, no network |
 | `bun run persist` | **A73** — the store interface (P2.6a). Drives all 45 exported mutations through a RECORDING backend and asserts what each one writes: the fan-outs (a zone rewrites the farm's dunams, the dual hat materialises a driver, a visit rewrites `nextVisitAt`), the ones that mutate IN PLACE and an identity diff would silently lose, and the three things that must never be written (a session change, a reset, a hydration). 84 checks — no browser, no dev server, no network |
@@ -99,6 +100,17 @@ with `types.ts` (two units of drift, found by A74 on its first run). A73 green
 at 84, A74 at 33, A75 at 46 — and every pre-existing gate re-run green. **Next:
 P2.5b → PMTiles (decision 71) → P3.** One
 commit per unit. Branch `main`.
+
+> ⚠️⚠️ **STANDING REMINDER, AND IT HAS A DEADLINE: DELETE THE TEST ACCOUNT
+> BEFORE P3.1.** `dov+test@serialkolors.com`
+> (`304d2f3b-90ca-43dc-bfac-1361c8184303`) exists so that `bun run write` can
+> prove the write path against Frankfurt, and it carries a `coordinator` grant
+> — total read and write over the whole programme. That is a grant over
+> NOTHING while the database is empty and a second door onto real farmers'
+> phone numbers the moment P3.1 imports them. **Delete the auth user, delete
+> its `app_users` row, delete `.env.test`, and say so in that session's final
+> report.** `supabase/migrations/20260831000200_test_account_grant.sql` has the
+> two commands.
 
 > **P0bis.1 — THE MAP IS ON THE LEFT ON EVERY SCREEN THAT HAS ONE (frozen PO
 > rule).** Five screens obeyed the map-first gabarit and eight others put the
@@ -1640,6 +1652,24 @@ All twelve are committed and runnable.
   a database and cannot know the schema is behind. The single family of
   differences it tolerates is listed at the top of the file — three optional
   `Farm` fields that are `not null` in the schema — and nothing else.
+- **`scripts/write.ts`** (`bun run write`) + **`scripts/fixture.ts`** — A76, 35
+  checks, and the one claim P2.6 could not make on its own. A73 proves every
+  mutation reports the right aggregates, A74 that the mapper is lossless in
+  memory, A75 that the live schema accepts every column — **none of them proves
+  the sentence a coordinator cares about: "I changed something and it is still
+  there."** This does, against Frankfurt, driving `applyChanges` and
+  `hydrateFrom` themselves rather than a re-implementation of them (which is
+  why `src/data/write.ts` takes a client as an argument instead of reaching for
+  the app's).
+  `fixture.ts` is a whole programme in miniature — one instance of every shape
+  that has its own table, column or ordering rule: the driver/group
+  DISAGREEMENT that R6 must not merge, two cars with their own passenger lists,
+  an extra position kept separate from the rendezvous, three outreach events
+  with one un-sent, three commitments whose ORDER an index addresses, an
+  incident log whose ids do not sort chronologically, a threat vector attached
+  to nothing. **Every id begins `a76-`**, which is what makes the cleanup a
+  statement rather than a hope — and is why it does not reuse the demo
+  fixtures, whose ids are exactly the ones a real import would use.
 - **`scripts/live.ts`** (`bun run live`) — A75, 46 checks, and the answer to
   "the repository says the column exists; does Frankfurt?". A74 reads the
   migration FILES, which say what was WRITTEN, not what was APPLIED — a
@@ -2291,8 +2321,32 @@ what was written, not what was applied. 24 tables column by column, 15 enums
 label by label, `app_users` closed to a stranger. Nothing crosses the wire that
 is not already public in these migrations.
 
-⚠️ **THE ONE THING P2.6 DOES NOT PROVE, STATED PLAINLY: THE WRITE PATH
-END-TO-END.** Everything above proves the mapper is lossless, that the live
+✅ **THE WRITE PATH IS NOW PROVED END TO END — `bun run write`, 35 checks,
+against Frankfurt (2026-08-31).** Sign in → the grant resolves → 17 aggregates
+across all 25 tables go in through `applyChanges` → come back through
+`hydrateFrom` identical → a second write UPDATES rather than duplicates and a
+removed child is really gone → everything is deleted and the database is
+exactly as the run found it. Re-run twice: idempotent, and it leaves nothing.
+
+⚠️⚠️ **AND THE ACCOUNT THAT MADE THAT POSSIBLE MUST BE DELETED BEFORE P3.1.**
+`dov+test@serialkolors.com`, uid `304d2f3b-90ca-43dc-bfac-1361c8184303`,
+created by the PO in the dashboard on 2026-08-31 for this purpose alone, with
+a disposable password that lives in `.env.test` and is **git-ignored**. It
+carries the `coordinator` grant, which is total read and write over every
+farmer's phone number, every volunteer's face and the threat layer. **Today
+that is a grant over nothing, because the database is empty. From the first
+imported farm it is a second door onto the programme's data.** Two steps, both
+required, both written out in
+`supabase/migrations/20260831000200_test_account_grant.sql`:
+  1. dashboard → Authentication → Users → `dov+test@…` → Delete user
+  2. `delete from app_users where user_id = '304d2f3b-…';` — run it and check
+     it returns 0 rows, because "probably cascaded" is not a thing to be
+     probably about
+Then delete `.env.test`. `bun run write` will fail at its first check, loudly:
+**that is the intended end state, not a regression.** The final report of the
+session that does P3.1 must confirm the deletion.
+
+**(historical) THE GAP THIS CLOSED, kept because the reasoning recurs:** Everything above proves the mapper is lossless, that the live
 schema accepts every column and every enum label the mapper writes, and that
 every mutation emits the right aggregates. What is NOT under an automated gate
 is "the coordinator edits a farm, it reaches Postgres, and it is still there
