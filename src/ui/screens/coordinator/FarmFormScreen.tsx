@@ -39,6 +39,7 @@ import type {
 import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
 import { PhotoField } from '../../components/PhotoField'
+import { SignaturePad } from '../../components/SignaturePad'
 import { MapSplit } from '../../components/MapSplit'
 import { PinMap } from '../../components/PinMap'
 import {
@@ -761,7 +762,32 @@ export function FarmFormScreen() {
                     />
                   </Field>
                 </div>
-                <div className="mt-2 flex justify-end">
+                {/* ★ P3.3 / PO POINT 9 — THE SIGNATURE, AND THE PENCIL IS
+                    THE NATURAL TOOL FOR IT. A name written with a fingertip on
+                    glass is a scrawl, and a farmer is being asked to sign. The
+                    pad is Pointer Events throughout and uses the Pencil's
+                    PRESSURE where the device reports it. */}
+                <div className="mt-3">
+                  <p className="label">{t('signature.title')}</p>
+                  <SignaturePad
+                    value={a.signature ?? null}
+                    onChange={(signature) =>
+                      setAgreements((prev) =>
+                        prev.map((x, j) => (j === i ? { ...x, signature } : x)),
+                      )
+                    }
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span
+                    className={`chip ${
+                      a.signature
+                        ? 'bg-status-success/15 text-status-success-ink'
+                        : 'bg-surface-high text-content-muted'
+                    }`}
+                  >
+                    {a.signature ? t('signature.signed') : t('signature.missing')}
+                  </span>
                   <button
                     type="button"
                     onClick={() =>

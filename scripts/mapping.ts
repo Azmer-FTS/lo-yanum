@@ -60,6 +60,19 @@ function canon(collection: Collection, value: unknown): unknown {
     v.entityKind ??= 'farm'
     v.farmDunamsManual ??= false
     v.grazingDunamsManual ??= false
+    /**
+     * P3.3 — the same family as the three above: OPTIONAL in the domain model
+     * (every agreement recorded before the signature pad existed was signed on
+     * paper) and NULLABLE in the schema, so the round trip hands back an
+     * explicit `null` where the fixture has nothing. `undefined` and `null`
+     * both read as "not signed in the app" everywhere in the UI — see the
+     * migration's note on why the column is not `not null default ''`.
+     */
+    for (const a of (v.agreements ?? []) as Array<Record<string, unknown>>) {
+      a.signature ??= null
+    }
+    /** PO POINT 6 — and the head count, for the same reason. */
+    v.livestock ??= null
   }
   return v
 }

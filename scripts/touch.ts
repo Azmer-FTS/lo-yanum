@@ -737,6 +737,107 @@ if ((await penInserts.count()) > 0) {
   check('★ a STYLUS tap on a midpoint grip inserts a corner', false, 'no midpoint grips found')
 }
 
+// --- 10e. the SIGNATURE, with the stylus --------------------------------------
+
+/**
+ * ★★ THE PRODUCT OWNER'S ACCEPTANCE CRITERION NAMES THIS EXPLICITLY: point 9
+ *    is verified at `pointerType=pen` on drawing, on vertex editing, on a pin
+ *    **AND ON THE SIGNATURE**. It is the one interaction where the Pencil is
+ *    not a preference — a name written with a fingertip on glass is a scrawl,
+ *    and a farmer is being asked to sign an agreement.
+ *
+ * ★ AND IT CHECKS THE CANVAS HAS INK, not that a handler fired. The pad's whole
+ *   job is pixels; an event listener that runs and draws nothing is exactly the
+ *   failure a stylus would produce if the component branched on `touches`.
+ */
+section('10e — SIGNING with an Apple Pencil, and the canvas really has ink')
+
+await page.evaluate(() => {
+  window.location.hash = '#/coordinator/farms/farm-01/edit'
+})
+await page.waitForTimeout(3500)
+
+// The agreements section is far down a long form.
+const added = await penTapText(page, cdp, 'הוספת הסכם')
+check('"הוספת הסכם" is reachable by STYLUS', added)
+await page.waitForTimeout(800)
+
+const pad = page.locator('[data-testid="signature-pad"]').first()
+const padCount = await pad.count()
+check('the agreement offers a signature pad', padCount > 0, `${padCount}`)
+
+if (padCount > 0) {
+  await pad.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(400)
+  const box = await pad.boundingBox()
+  if (box) {
+    const blank = await page.evaluate(() => {
+      const c = document.querySelector('[data-testid="signature-pad"]') as HTMLCanvasElement
+      const ctx = c.getContext('2d')!
+      const d = ctx.getImageData(0, 0, c.width, c.height).data
+      let ink = 0
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 0) ink++
+      return ink
+    })
+    check('the pad starts blank', blank === 0, `${blank} inked pixels`)
+
+    // A signature: three strokes, with the stylus.
+    const y = box.y + box.height / 2
+    await penDrag(
+      cdp,
+      { x: box.x + box.width * 0.2, y },
+      { x: box.x + box.width * 0.45, y: y - 30 },
+      20,
+    )
+    await penDrag(
+      cdp,
+      { x: box.x + box.width * 0.45, y: y - 30 },
+      { x: box.x + box.width * 0.62, y: y + 26 },
+      20,
+    )
+    await penDrag(
+      cdp,
+      { x: box.x + box.width * 0.62, y: y + 26 },
+      { x: box.x + box.width * 0.82, y: y - 12 },
+      20,
+    )
+    await page.waitForTimeout(500)
+
+    const inked = await page.evaluate(() => {
+      const c = document.querySelector('[data-testid="signature-pad"]') as HTMLCanvasElement
+      const ctx = c.getContext('2d')!
+      const d = ctx.getImageData(0, 0, c.width, c.height).data
+      let ink = 0
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 0) ink++
+      return ink
+    })
+    check(
+      '★ a STYLUS really draws on the signature pad',
+      inked > 500,
+      `${inked} inked pixels`,
+    )
+
+    // And the form knows it is signed.
+    check(
+      '★ and the agreement records that it is signed',
+      (await bodyText(page)).includes('חתום'),
+    )
+
+    // Clearing gets the blank pad back, by stylus.
+    check('"ניקוי" is reachable by STYLUS', await penTapText(page, cdp, 'ניקוי'))
+    await page.waitForTimeout(600)
+    const cleared = await page.evaluate(() => {
+      const c = document.querySelector('[data-testid="signature-pad"]') as HTMLCanvasElement
+      const ctx = c.getContext('2d')!
+      const d = ctx.getImageData(0, 0, c.width, c.height).data
+      let ink = 0
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 0) ink++
+      return ink
+    })
+    check('and clearing really empties it', cleared === 0, `${cleared} inked pixels`)
+  }
+}
+
 await browser.close()
 
 console.log('')

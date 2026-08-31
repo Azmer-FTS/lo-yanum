@@ -174,6 +174,15 @@ export interface Agreement {
   signedBy: string
   /** Mock document reference — no real file in Lot 0. */
   fileName: string
+  /**
+   * P3.3 — the signature itself, drawn on the device.
+   *
+   * A PNG data URI today, exactly as `photo` is (`core/photo.ts`), and a
+   * Storage object key in the `agreements` bucket the day the real PDF is
+   * generated. Optional: every agreement recorded before this field existed is
+   * a real agreement, signed on paper, and must not be shown as unsigned.
+   */
+  signature?: string | null
 }
 
 export interface Farm {

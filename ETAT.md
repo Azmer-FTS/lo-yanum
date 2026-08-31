@@ -4088,6 +4088,82 @@ exempt with reasons. `docs/screenshots/empty/`.
 
 ---
 
+## 21. P3.3 — THE SIGNATURE, AND IT IS WHAT COMPLETES POINT 9's ACCEPTANCE
+
+The product owner's criterion names it: *point 9 is verified at
+`pointerType=pen` on drawing, on vertex editing, on a pin **AND ON THE
+SIGNATURE***. There was no signature anywhere in this app when that was
+written — `public/mock-agreement.pdf` is a static file and the agreements
+section recorded only the FACT of a signing. So the criterion could not be met
+without building it.
+
+### 21.1 ★ THE STYLUS IS NOT A SECOND-CLASS INPUT HERE — IT IS THE NATURAL ONE
+
+Everywhere else in this app the Pencil is a preference. On a signature it is
+not: **a name written with a fingertip on glass is a scrawl**, and a farmer is
+being asked to sign an agreement. So `ui/components/SignaturePad.tsx` is
+Pointer Events from its first line — `pen`, `touch` and `mouse` all draw, and
+nothing branches on which.
+
+★ **PRESSURE IS USED WHERE THE DEVICE OFFERS IT.** `PointerEvent.pressure` is
+  0.5 for a mouse and for most touches, and a real value under an Apple Pencil,
+  so the stroke thins and thickens the way handwriting does and falls back to a
+  constant width everywhere else. **Four lines, and it is the difference between
+  a signature and a trace.**
+
+★ **`getCoalescedEvents()` WHERE IT EXISTS.** A Pencil samples far faster than
+  the display refreshes and the browser batches those samples into one
+  `pointermove`. Drawing only the last one turns a curve into a polygon at
+  speed; asking for the coalesced list draws every sample the hardware took.
+
+★ **THE CANVAS IS SIZED TO ITS BOX × `devicePixelRatio`.** A canvas sized in CSS
+  only is drawn at 1× and stretched — on a Retina iPad that is exactly the blur
+  a signature must not have.
+
+⚠️ **`touch-action: none` IS ON THE CANVAS AND NOWHERE ELSE.** Without it the
+  first millimetre of a stroke scrolls the page instead of drawing. **It must
+  never spread to a text field**: `touch-action: none` on an input is what
+  breaks iOS SCRIBBLE, which is how the product owner writes with the same
+  Pencil (§16.4). The only other one in this codebase is the splitter's grip.
+
+### 21.2 · One nullable column, and the judgement is in the word "nullable"
+
+`Agreement.signature?: string | null` — a PNG data URI today, exactly as
+`photo` is (`core/photo.ts`), and an object key in P2.4's private `agreements`
+bucket the day the real PDF is generated. `20260831000500_agreement_signature.sql`,
+applied: `alter table agreements add column if not exists signature text`.
+
+★ **NULLABLE, AND THAT IS THE WHOLE OF THE MIGRATION'S JUDGEMENT.** Every
+  agreement already recorded was signed **on PAPER** — that is what a signed
+  agreement has meant in this programme until today. A `not null default ''`
+  would have turned each of them into "signed, and here is a zero-length image",
+  which the farm detail would then render as a blank signature box. **Absent
+  means "not signed in the app", never "not signed".**
+
+⚠️ `bun run mapping` caught the other half of the same thought immediately:
+`farm-01 → agreements.0.signature: undefined ≠ null`. The optional-in-domain /
+nullable-in-schema family already had three members on `Farm` (`entityKind`,
+`farmDunamsManual`, `grazingDunamsManual`) and its canon now covers this one and
+point 6's `livestock` too — **33/33**.
+
+### 21.3 · `bun run touch` section 10e — and it counts INK, not events
+
+★ **THE PAD'S WHOLE JOB IS PIXELS.** An event listener that runs and draws
+  nothing is exactly the failure a stylus would produce if the component
+  branched on `touches`, and it would pass any assertion about handlers firing.
+  So the gate reads the canvas back: blank before, **> 500 inked pixels after
+  three stylus strokes**, the agreement showing `חתום`, and the pad empty again
+  after `ניקוי` — every step driven at `pointerType: 'pen'`.
+
+⚠️ **WHAT IS *NOT* DONE OF P3.3, stated plainly:** the signature is stored as a
+data URI on the agreement and shown on the form. **It is not yet drawn into a
+generated PDF** — that is the rest of P3.3, and §19.1's note applies to it
+directly: the report's canvas-into-PDF writer is the machinery that will carry
+it, and an agreement PDF wants selectable text, which is the case that needs the
+font pipeline.
+
+---
+
 ## ⏭️ RESUME HERE — THE PRODUCT OWNER'S SECOND RETURN, IN HIS ORDER
 
 > ✅ **PMTILES IS DONE AND DEPLOYED (§12ter), and verified on the artefact
@@ -4133,7 +4209,8 @@ lot plan's. Eleven points, then the rest of P3:
 | **3** | the network-state pill on every screen | ✅ **§20.1** — one indicator at the root; the cause of his not seeing it was the collapsed rail |
 | **4** | clean pull-to-refresh, native overscroll off | ✅ **§20.2** — panel only, Pointer Events (stylus), verified at `pointerType=pen` |
 | **5** | a pass over the empty states | ✅ **§20.3** — `bun run empty` (A81) censuses 10 screens against an EMPTY store; the stump he named is fixed |
-| **then** | photos → signature (finger AND stylus) → P3.3bis automatic email → the final PWA → deployment → the French report | ⬜ |
+| **then** | **signature (finger AND stylus)** | ✅ **§21** — `SignaturePad`, Pointer Events + PRESSURE, one nullable column, and `bun run touch` counts INK at `pointerType=pen` |
+| | photos → P3.3bis automatic email → the final PWA → the agreement PDF | ⬜ **NOT DONE — see §22** |
 
 **The acceptance rule he set, and it is the one that governs all eleven:** every
 point lands **by a gate or by a capture**. Point 2 EXTENDS a permanent gate.

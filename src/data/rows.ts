@@ -208,6 +208,10 @@ const farmMapping: Mapping<Farm> = {
         signed_at: a.signedAt,
         signed_by: a.signedBy,
         file_name: a.fileName,
+        // P3.3 — null and not '' when unsigned: the column is nullable and the
+        // domain field is `string | null | undefined`, so an empty string here
+        // would come back as a signature that is a zero-length image.
+        signature: a.signature ?? null,
         position,
       })),
     },
@@ -266,6 +270,7 @@ const farmMapping: Mapping<Farm> = {
         signedAt: ts(r.signed_at),
         signedBy: str(r.signed_by),
         fileName: str(r.file_name),
+        signature: nullableStr(r.signature),
       }),
     ),
     notes: str(p.notes),
