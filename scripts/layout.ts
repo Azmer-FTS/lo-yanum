@@ -612,6 +612,15 @@ function audit(): Report {
       const r = el.getBoundingClientRect()
       if (r.height <= 0 || r.width <= 0) continue
       if (Math.abs(r.bottom - window.innerHeight) > 1.5) continue
+      // ★ A MODAL OVERLAY IS NOT "OCCUPIED FOOT", and the first run of this
+      //   invariant said it was — `div.fixed.inset-0` reaches the bottom of the
+      //   viewport by definition, so every modal screen reported the whole
+      //   window height as taken. It covers the shell on purpose (see
+      //   `data-overlay` in primitives.tsx) and the shell underneath is laid
+      //   out exactly as it was; what this measures is what the SHELL reserves.
+      if (el.hasAttribute('data-overlay') || el.closest('[data-overlay]') !== null) {
+        continue
+      }
       if (r.height > footOccupied) {
         footOccupied = r.height
         footOccupant = label(el)

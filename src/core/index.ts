@@ -21,6 +21,7 @@ export * from './config'
 export * from './theme'
 export * from './photo'
 export * from './deletion'
+export * from './report'
 export {
   subscribe,
   getVersion,

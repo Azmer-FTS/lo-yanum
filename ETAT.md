@@ -46,6 +46,7 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run mapping` | **A74** — the mapper (P2.6b). Drives all 380 fixture aggregates out through `toRows` and back through `fromRows` and fails on any difference, then parses this repository's OWN migrations and asserts both directions of the column contract: no column the mapper writes is missing, no `not null`-without-default column goes unwritten. 32 checks — no browser, no dev server, no network |
 | `bun run persist` | **A73** — the store interface (P2.6a). Drives all 45 exported mutations through a RECORDING backend and asserts what each one writes: the fan-outs (a zone rewrites the farm's dunams, the dual hat materialises a driver, a visit rewrites `nextVisitAt`), the ones that mutate IN PLACE and an identity diff would silently lose, and the three things that must never be written (a session change, a reset, a hydration). 84 checks — no browser, no dev server, no network |
 | `bun run auth` | **A70** — the door (P2.3). Starts its OWN two dev servers, one in each mode, and compares them: real mode shows the login form and nothing else on 8 routes, refuses a wrong password IN HEBREW, gives an unknown address the SAME message, leaves no token behind; demo mode is byte-for-byte P0bis. Then B1 without a browser — 26 tables anonymously closed, an anonymous coordinator-grant INSERT refused, the three policy helpers 404. 20 checks — **needs no dev server, and never needs the password** |
+| `bun run report` | **A80** — PO point 7c: **the report and the dashboard cannot disagree.** Every field of `ProgrammeReport` against the accessor the dashboard itself renders, with the figures that have no accessor yet re-derived INDEPENDENTLY — over THREE stores: the fixtures, an EMPTY programme (where `guardedHeads === null` is proved) and the fixtures with a moshav, a kosher volunteer, a visit and an urgent incident added. Plus the check that keeps it true: the renderer may import only a TYPE from the domain, so it cannot read the store. 86 checks — no browser, no dev server, no network |
 | `bun run deletion` | **A79** — PO point 8: deleting a record. Free deletion with its dependencies LISTED, a motivated refusal on operational history with the blockers named and counted, the store refusing as well as the dialog, the whole cascade reaching the backend as `json: null`, and two checks that keep it honest over time — every `DeletableKind` has a call site in the UI, and every one of them asks first. 61 checks — no browser, no dev server, no network |
 | `bun run basemap` | **PO point 0** — `bun run basemap <file> <key>`: the resumable (TUS) upload a 94 MB archive needs, and then it VERIFIES the public object — length byte-for-byte, 206 on a range, `PMTiles` in the first seven bytes, and a 64 kB slice from the MIDDLE compared against the local file. ⛔ Needs a coordinator token (`BASEMAP_TOKEN`); see §14.4 |
 | `bun run offline` | **A72 + A78** — the offline shell (P2.5a) AND the signed-in offline session (P2.5b). The ONLY gate that BUILDS the app and serves the build, because the service worker is production-only: the worker takes control, one online load is enough to survive being pulled offline, ★ **a Supabase read offline FAILS** (nothing from the API is ever cached), looked-at ground is still there, the badge comes and goes, the frozen /poc comes back as ITSELF, and a real build shows its door rather than a browser error. **P2.5b added the only claim in this project that cannot be made outside a real browser**: signed in, IndexedDB really holds the snapshot, a token that cannot be refreshed offline does NOT end the session, the network coming back re-asks and a refusal DOES end it, and an explicit sign-out empties the device. **PO return 3 (2026-08-31) added the other half of the same scenario**: the reopened offline app SHOWS ITS OFFLINE BADGE, and the door explains the one thing that genuinely needs a network — `אין חיבור לאינטרנט — נדרש חיבור להתחברות ראשונה` — before a password is typed, and again instead of a generic server error if one is. **And PMTiles folded in the claim the whole map unit exists for**: the basemap answers a RANGE request with no network at all (the Cache API refuses a 206, so the worker holds ONE archive and slices it), what comes back is the archive rather than an error page, and the map really draws from it. **19 checks and ONE SKIP is the green result since P3.1 (§13)** — the last section needs `.env.test` and the disposable account is gone, which is the intended end state. It was 33 before. **No dev server; it makes its own** |
@@ -3790,6 +3791,146 @@ before.
 
 ---
 
+## 19. POINT 7 — THE EMPLOYER'S REPORT. A REAL PDF, IN HEBREW, WITH NO PDF LIBRARY
+
+### 19.1 ⚠️ THE BRIEF SAID "THE SAME PDF LIB AS THE AGREEMENTS" AND THERE IS NO SUCH LIB
+
+`public/mock-agreement.pdf` is a **static file checked into the repository**.
+Nothing in this project has ever GENERATED a PDF. So this unit had to choose
+one, and the choice is the part worth keeping.
+
+★ **EVERY JS PDF LIBRARY FAILS THE SAME WAY ON THIS APP: HEBREW.** `jspdf` and
+  `pdf-lib` both draw text with an embedded font, and the PDF base-14 fonts have
+  no Hebrew at all. Either would need a Hebrew TTF embedded and subset — this
+  project self-hosts **WOFF2**, which neither accepts — plus a **bidi pass by
+  hand** for every line that mixes a Hebrew label with a Latin digit. That is a
+  font pipeline and a bidi implementation, to print eleven numbers.
+
+★★ **SO THE TEXT IS DRAWN BY THE BROWSER, ON A CANVAS, AND THE PDF CARRIES THE
+   RESULT AS ONE IMAGE.** The browser already shapes Hebrew, already does bidi,
+   already has the app's own self-hosted faces loaded and already understands
+   `direction: rtl`. **A PDF whose page content is a single JPEG XObject needs
+   no font embedding whatsoever** — which is why `src/ui/report/pdf.ts` is a
+   hundred lines, has no dependency, and works offline.
+
+⚠️ **THE COST, STATED RATHER THAN GLOSSED:** the text is not selectable and the
+file is ~100 kB rather than ~20. For a one-page sheet of large figures that a
+director reads on a phone and forwards, that is the right trade. **If a future
+requirement needs selectable text** — a searchable archive, a contract — **this
+is the decision to revisit, and it will need the font pipeline.**
+
+★ **AND IT IS A REAL `File`**, which is what makes 7b possible at all: the Web
+  Share API carries files, and on an iPad that is one tap to Mail or WhatsApp. A
+  print-to-PDF flow would have looked similar and produced nothing a share sheet
+  or a script could hold.
+
+**Two things the first run got wrong and the browser said so:**
+
+· ⚠️ **THE TITLE CAME OUT AS `xfixŁxŠ x°xŁxIx€xŽx°` IN THE READER'S TITLE BAR.**
+  A literal `(…)` string in a PDF is PDFDocEncoding — Latin-1 with a few
+  substitutions — and has **no Hebrew**. The portable answer is a HEX string of
+  **UTF-16BE with a byte-order mark**, which every reader since PDF 1.0
+  understands. ASCII still takes the literal form so the file stays greppable.
+· The cross-reference table's offsets are counted in **BYTES**, so the body is
+  built as an array of byte-strings and measured as it goes. Computing the
+  offsets afterwards from a joined string would be wrong the moment a JPEG
+  contains a sequence that is not one character.
+
+### 19.2 · 7a — the one-pager, and the brief is a severe spec
+
+*"Readable by a director in thirty seconds"* rules out a table. A director
+reading a page in thirty seconds reads **numbers** — six or seven, large, one
+word under each — and everything else is context he looks at only if a number
+surprises him. So the sheet is three bands:
+
+1. **the ground**, in the biggest type on the page — dunams guarded, dunams
+   potential, ★ **and the head count, drawn only if somebody has been asked**;
+2. **the programme** — entities, farms, moshavim, active volunteers (with the
+   smartphone/kosher split under it), drivers and seats, guards done (total, and
+   in the window), guards planned, visits planned;
+3. **the detail, small** — entities by status, incidents by severity over 30
+   days, in the three severity colours.
+
+Identity at the top: **לא ינום** in the display face, the verse discreet under
+it (also in the display face — it is scripture, not a caption), the date on the
+other side, and the verse reference in the footer. Always **white paper**: this
+is a document that gets printed and forwarded, and the dark theme has no
+business on it.
+
+★ **POINT 6's RULE SURVIVES ONTO THE PAGE.** No head count means the tile is
+  **not drawn**, rather than drawn as a zero. A funder reads this sheet.
+
+Verified in the browser on the real artefact: a **97 kB** PDF, `%PDF-1.4`, valid
+trailer, one page, Hebrew and RTL correct throughout, title `דוח תוכנית` in the
+reader's own title bar.
+
+### 19.3 · 7b — three ways out, and one of them is a lie if you let it be
+
+The PDF is **built once** and then offered three ways — build-per-button would
+mean three renders and three chances for the numbers to differ between what he
+shared and what he downloaded.
+
+· **שיתוף** — `navigator.share({ files })`. ★ `navigator.canShare` is ASKED
+  rather than assumed: Safari on an iPad answers yes and hands the sheet to Mail
+  and WhatsApp, which is the product owner's "one gesture"; a desktop Chrome
+  without it answers no and **the button is not drawn at all** rather than
+  throwing when pressed.
+· **הורדה** — the file, on the device.
+· **שלח במייל** — ⚠️ **`mailto:` CANNOT CARRY AN ATTACHMENT.** No mail client
+  accepts one from a URL, and pretending otherwise is how a coordinator sends an
+  empty message believing the report is on it. So this **downloads the file
+  first and says so**, then opens a pre-filled draft **with the figures in the
+  body** — so the mail is useful even if he never attaches anything.
+
+**כתובת דוחות** lives in הגדרות, saved on blur. It is `localStorage` and not the
+database on purpose: it is needed **with no network** (a value that has to be
+fetched is missing exactly when he needs it), and it is a preference about one
+device, in the same class as the theme and the seam ratio.
+
+⚠️ **P3.3bis — THE AUTOMATIC SEND WILL NEED IT SERVER-SIDE.** An edge function
+cannot read a browser's `localStorage`, so when the monthly email is built this
+becomes a row (a `settings` table, or a column on `app_users`) and
+`report/recipient.ts` becomes its cache. **Written down now rather than
+discovered then.**
+
+### 19.4 ★★ 7c — `bun run report` (A80), 86 checks, and it runs on THREE stores
+
+The product owner's condition: the PDF's figures are the **same core accessors**
+as the dashboard, with **no parallel recalculation**, and **a script proving the
+equality**.
+
+★ **THE FAILURE THIS PREVENTS IS SPECIFIC AND NOT HYPOTHETICAL.** A report gets
+  written months after the screen it summarises, by somebody reading the
+  dashboard and re-deriving what he sees. The two agree the day it is written
+  and drift the first time a status is added or "active" comes to mean something
+  slightly different. **Two numbers with one name is worse than one number**,
+  because the director quotes whichever he has and the coordinator defends the
+  other.
+
+So `src/core/report.ts` holds the NUMBERS and nothing else — no layout, no PDF,
+no DOM — and every field is `getDunamKpis()`, `getVolunteerStats()`,
+`getDriverStats()`, `getFarmStatusCounts()`, the functions the dashboard already
+renders. Where a figure genuinely has no accessor yet (completed guards in the
+window, incidents by severity), it is derived **there, once**, so the dashboard
+could adopt it rather than the report growing a second arithmetic.
+
+★ **AND THE GATE RUNS ON THREE STORES, NOT ONE**: the fixtures, an **EMPTY**
+  programme — because zero is where a report lies most easily, and the empty one
+  is where `guardedHeads === null` is proved — and the fixtures with a moshav, a
+  kosher volunteer, a planned visit and an urgent incident added under them. **An
+  equality that only holds on the demo data holds by coincidence.**
+
+★★ **AND THE CHECK THAT KEEPS 7c TRUE WHEN NOBODY IS LOOKING:** the renderer is
+   read and required to import **only a TYPE** from the domain. With no value
+   imported from `@core`, `draw.ts` **cannot read the store**, so there is
+   nothing for it to recompute even by accident. ⚠️ The first draft of that check
+   grepped for `get…(` and flagged `getComputedStyle`, `getContext` and
+   `getPropertyValue` — the three DOM calls a canvas renderer cannot do without.
+   The import list is the exact instrument; a regex over call sites was a
+   near-miss.
+
+---
+
 ## ⏭️ RESUME HERE — THE PRODUCT OWNER'S SECOND RETURN, IN HIS ORDER
 
 > ✅ **PMTILES IS DONE AND DEPLOYED (§12ter), and verified on the artefact
@@ -3831,7 +3972,7 @@ lot plan's. Eleven points, then the rest of P3:
 | **9** | **Apple Pencil** on every map interaction — he draws with a stylus | ✅ **§16.4** — audited, and `bun run touch` is 45 checks with a `pointerType=pen` pass |
 | **8** | **delete** a record — there is no way to correct a typo today | ✅ **§17** — one policy, one dialog, `bun run deletion` 61 checks; A73 grew to 94 |
 | **6** | **livestock** head-count per entity — funding depends on it | ✅ **§18** — form, detail, dashboard, .xlsx, import, `entity_livestock` applied; `accept` 162, `live` 48 |
-| **7** | **the employer's PDF report**, sendable in one gesture | ⬜ |
+| **7** | **the employer's PDF report**, sendable in one gesture | ✅ **§19** — a real PDF with no PDF library; `bun run report` 86 checks on three stores |
 | **3** | the network-state pill on every screen | ⬜ |
 | **4** | clean pull-to-refresh, native overscroll off | ⬜ |
 | **5** | a pass over the empty states | ⬜ |

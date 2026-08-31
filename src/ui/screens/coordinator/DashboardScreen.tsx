@@ -24,6 +24,8 @@ import {
 import type { AgendaEvent, DashboardAlert, MissionStatus } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
+import { ReportButton } from '../../report/ReportButton'
+import { readReportRecipient } from '../../report/recipient'
 import { CreateGuardButton } from '../../components/CreateGuardFab'
 import { Icon } from '../../components/Icon'
 import { MyDayBlock } from '../../components/MyDayBlock'
@@ -505,6 +507,10 @@ export function DashboardScreen() {
           <p className="muted mt-1">{t('app.tagline')}</p>
         </div>
         {/* Desktop half of the persistent action; the phone gets the FAB. */}
+        {/* PO POINT 7 — the employer's report, beside the one operational
+            action. It is a `btn-secondary`: creating a guard is the job, the
+            report is the paperwork. */}
+        <ReportButton recipient={readReportRecipient()} />
         <CreateGuardButton className="btn-primary hidden lg:inline-flex" />
       </header>
 

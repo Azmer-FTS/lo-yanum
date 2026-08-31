@@ -6,6 +6,7 @@ import { signOut } from '../../../data/auth'
 import { Icon } from '../../components/Icon'
 import { Callout, KeyValue, PageHeader, Section } from '../../components/primitives'
 import { DisplayDiagnostics } from '../../components/DisplayDiagnostics'
+import { readReportRecipient, writeReportRecipient } from '../../report/recipient'
 import { useAuth } from '../../hooks/useAuth'
 import { megabytes, useOfflineMaps, useOnline } from '../../offline'
 import { BASEMAP_URL, basemapAssets } from '../../components/basemap'
@@ -39,6 +40,9 @@ export function SettingsScreen() {
   const { held, bytes, downloadBytes, active, progress, download, clear } =
     useOfflineMaps(BASEMAP_URL, BASEMAP_ASSETS)
   const [clearing, setClearing] = useState(false)
+  // PO POINT 7b — where "שלח במייל" points, and P3.3bis's destination too.
+  const [recipient, setRecipient] = useState(() => readReportRecipient())
+  const [recipientSaved, setRecipientSaved] = useState(false)
 
   const onClear = async () => {
     setClearing(true)
@@ -162,6 +166,37 @@ export function SettingsScreen() {
             <p className="muted mt-1">{t('settings.offline.inactiveHint')}</p>
           </>
         )}
+      </Section>
+
+      {/* PO POINT 7b — the address the report is sent to. One field, saved on
+          blur rather than behind a button: a settings screen with a single
+          input and a Save next to it is a screen people leave without
+          pressing it. */}
+      <Section title={t('report.recipientLabel')} className="mt-6">
+        <label className="label" htmlFor="report-recipient">
+          {t('report.recipientLabel')}
+        </label>
+        <input
+          id="report-recipient"
+          type="email"
+          dir="ltr"
+          inputMode="email"
+          autoComplete="email"
+          className="input"
+          data-testid="report-recipient"
+          value={recipient}
+          onChange={(e) => {
+            setRecipient(e.target.value)
+            setRecipientSaved(false)
+          }}
+          onBlur={() => {
+            writeReportRecipient(recipient)
+            setRecipientSaved(true)
+          }}
+        />
+        <p className="muted mt-1.5">
+          {recipientSaved ? t('report.recipientSaved') : t('report.recipientHint')}
+        </p>
       </Section>
 
       {/* Not a green tick. Until the outbox exists, a change made with no
