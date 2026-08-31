@@ -43,7 +43,33 @@ export function isStandalone(): boolean {
   }
 }
 
+/**
+ * PO POINT 1 — WHICH OF THE TWO STATUS-BAR TREATMENTS IS IN FORCE, STAMPED SO
+ * CSS CAN ASK.
+ *
+ * ★ IT IS READ OFF THE META TAG RATHER THAN CONFIGURED SEPARATELY, so the one
+ *   line in `index.html` that switches option A for option B cannot get out of
+ *   step with the CSS that has to change with it. Uncomment the tag and the
+ *   scrim follows; nothing else moves.
+ *
+ * `black-translucent` puts the content under the system bar and forces the
+ * clock and battery to WHITE in both themes. The light theme's `--surface-base`
+ * is `#F3F4F6`, so the gradient that protects those glyphs cannot be the page's
+ * own background any more — it has to be a dark scrim, in both themes. That is
+ * the visible cost of option B, and `index.css` spends it in one rule.
+ */
+export function statusBarStyle(): string {
+  if (typeof document === 'undefined') return ''
+  const meta = document.querySelector<HTMLMetaElement>(
+    'meta[name="apple-mobile-web-app-status-bar-style"]',
+  )
+  return meta?.content?.trim() ?? ''
+}
+
 export function applyDisplayMode(): void {
   if (typeof document === 'undefined') return
   if (isStandalone()) document.documentElement.setAttribute('data-standalone', '')
+  if (statusBarStyle() === 'black-translucent') {
+    document.documentElement.setAttribute('data-statusbar', 'translucent')
+  }
 }

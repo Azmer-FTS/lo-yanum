@@ -54,7 +54,12 @@ function applyToDocument(choice: ThemeChoice): void {
   // tag drifts. The attribute above is already set, so the computed value is the
   // resolved theme's `--surface-base`; only the boot value in index.html is a
   // literal now, and being one frame stale there is invisible.
-  const meta = document.querySelector('meta[name="theme-color"]')
+  // `:not([media])` — PO point 1. index.html now carries two media-scoped
+  // `theme-color` tags for the installed app's status bar, which iOS reads at
+  // launch, plus this unscoped one for anything that honours a live change.
+  // Selecting the first `theme-color` would overwrite the light-scheme tag and
+  // put the dark navy back behind the clock in the light theme.
+  const meta = document.querySelector('meta[name="theme-color"]:not([media])')
   if (meta) {
     const base = getComputedStyle(root).getPropertyValue('--surface-base').trim()
     if (base) meta.setAttribute('content', `rgb(${base})`)

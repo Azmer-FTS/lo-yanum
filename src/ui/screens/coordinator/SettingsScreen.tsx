@@ -5,6 +5,7 @@ import { SUPABASE_CONFIGURED } from '../../../data/config'
 import { signOut } from '../../../data/auth'
 import { Icon } from '../../components/Icon'
 import { Callout, KeyValue, PageHeader, Section } from '../../components/primitives'
+import { DisplayDiagnostics } from '../../components/DisplayDiagnostics'
 import { useAuth } from '../../hooks/useAuth'
 import { megabytes, useOfflineMaps, useOnline } from '../../offline'
 import { BASEMAP_URL, basemapAssets } from '../../components/basemap'
@@ -192,6 +193,11 @@ export function SettingsScreen() {
           <p className="muted">{t('settings.account.demo')}</p>
         )}
       </Section>
+
+      {/* PO POINT 1 — REMOVABLE IN ONE MOVE: delete this line and the import.
+          It is here so the product owner can read his own iPad's insets
+          instead of anybody guessing at them from a simulation. */}
+      <DisplayDiagnostics />
     </div>
   )
 }

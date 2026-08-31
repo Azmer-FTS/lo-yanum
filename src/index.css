@@ -150,6 +150,37 @@
   }
 
   /**
+   * ⚖️ PO POINT 1, OPTION B — THE SCRIM, AND IT IS THE PRICE OF THE OPTION
+   * RATHER THAN A DECORATION.
+   *
+   * `apple-mobile-web-app-status-bar-style: black-translucent` is what makes
+   * the content reach the top of the display on iOS and what makes
+   * `env(safe-area-inset-top)` non-zero at all — and it also forces the clock,
+   * the battery and the signal bars to WHITE, permanently, in both themes.
+   * The gradient above is the page's own background: in the light theme that
+   * is `#F3F4F6`, so option B without this rule is white glyphs on near-white,
+   * which is worse than the band it was meant to fix.
+   *
+   * ★ SO THE SCRIM IS DARK IN BOTH THEMES, AND THAT IS THE HONEST COST TO
+   *   ARBITRATE ON: a permanent dark strip across the top of the light theme,
+   *   in exchange for content that runs edge to edge. It is not a compromise
+   *   that can be tuned away — iOS decides the glyph colour and gives CSS no
+   *   say in it.
+   *
+   * It uses the DARK palette's own `--surface-base` written out, not a token,
+   * because it must not follow the theme: a token would swap back to near-white
+   * in the light theme, which is exactly the failure this rule exists for.
+   */
+  html[data-standalone][data-statusbar='translucent'] body::before {
+    background: linear-gradient(
+      to bottom,
+      rgb(11 17 25 / 0.86) 0%,
+      rgb(11 17 25 / 0.62) 55%,
+      rgb(11 17 25 / 0) 100%
+    );
+  }
+
+  /**
    * P3.4 — "START UNDER THE SYSTEM ZONE", AND WHY IT IS NOT A CLASS HERE.
    *
    * Every bar the shell pins to the top — the desktop rail, the two sticky
@@ -485,6 +516,63 @@
            placeholder:text-content-muted/70
            hover:border-accent/60
            focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25;
+  }
+
+  /**
+   * ★★ PO POINT 2 (2026-08-31) — THE PARASITIC SCROLL ON THE FARM FORM, AND
+   *    THIS ONE RULE IS THE WHOLE CAUSE.
+   *
+   *    The symptom he reported is a page that moves LEFT-RIGHT **and**
+   *    UP-DOWN under the thumb, on the farm form, on a real iPad, in the
+   *    installed app — and nowhere else. Open question 7bis, unreproduced
+   *    since §12bis.5 and unreproducible in every gate this project has,
+   *    including a Chromium sweep at the exact viewport.
+   *
+   *    ★ **iOS ZOOMS THE PAGE WHEN A FOCUSED FIELD'S FONT IS UNDER 16 px.**
+   *      Not the field — THE PAGE. Every WebKit on iOS does it, Safari and
+   *      installed PWA alike, and there is no way to opt a field out of it
+   *      except by giving it 16 px. `.input` is `text-caption`, which is
+   *      **13.5 px** (`--text-caption-size: 0.84375rem`), so the first tap on
+   *      "שם החווה" scaled the whole document by 16 / 13.5 ≈ **1.19** — and a
+   *      document 19 % wider than the visual viewport pans in BOTH axES under
+   *      a finger. That is the horizontal movement AND the vertical one, from
+   *      one cause, on exactly the screens that have fields.
+   *
+   *    ★ WHY NO GATE COULD EVER HAVE SEEN IT. The zoom is an iOS behaviour,
+   *      not a WebKit-the-engine behaviour: Playwright's desktop WebKit does
+   *      not do it, so even running the sweep in Safari's engine — which this
+   *      session added, and which was the right thing to try — reports a
+   *      perfectly still page. What IS checkable is the CONDITION, and it is
+   *      exact rather than approximate: a focusable form control under 16 px.
+   *      `bun run layout` now fails on one, on every touch viewport.
+   *
+   *    ★ AND THE LEGIBILITY IS NOT A TRADE. iOS was already rendering these
+   *      fields at ~16 px — it just got there by scaling the entire document
+   *      instead. Declaring 16 px gives the same apparent size with the page
+   *      standing still. Coarse pointers only, so P0bis.3's density survives
+   *      on the desktop where no such zoom exists.
+   *
+   *    `text-size-adjust` is set with it: it stops iOS inflating text in the
+   *    other direction, which is a separate WebKit habit and one that has
+   *    bitten this kind of layout before.
+   */
+  @media (pointer: coarse) {
+    /* ★ `!important`, ON PURPOSE, AND IT IS THE ONE IN THIS FILE.
+       The fields carry Tailwind's own `text-caption` utility, which is a CLASS
+       and beats any element selector however it is written. Raising the
+       specificity by hand — `html body select` — still loses to a single
+       class, and moving the rule between layers makes it depend on Tailwind's
+       internal sort order, which is not something to bet a device bug on.
+       This is a hard device constraint rather than a style preference: below
+       16 px iOS takes the page away from the user, and no utility anywhere in
+       the app has a good reason to overrule that. */
+    input:not([type='checkbox']):not([type='radio']):not([type='hidden']),
+    select,
+    textarea {
+      font-size: 1rem !important;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
   }
 
   /* A checkbox in the same language as `.input`. Left as a NATIVE control on

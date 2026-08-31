@@ -304,6 +304,7 @@ export function VolunteersScreen() {
               <button
                 type="button"
                 onClick={() => setEditing('new')}
+                data-testid="volunteer-new"
                 className="btn-primary"
               >
                 <Icon name="userPlus" size={15} />

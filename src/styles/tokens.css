@@ -262,27 +262,37 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
   /**
-   * Height reserved at the foot of the coordinator shell for whatever is
-   * pinned there. A full-`dvh` map column has to subtract it, or its floating
-   * legend renders behind the bar.
+   * TWO VARIABLES AT THE FOOT OF THE SHELL, BECAUSE THERE ARE TWO QUESTIONS
+   * AND ANSWERING BOTH WITH ONE NUMBER IS WHAT PUT A BAND ON THE PRODUCT
+   * OWNER'S iPAD (his point 1, 2026-08-31).
    *
-   * ★ PO RETURN 6 (2026-08-31) — THE DEFAULT IS THE SAFE AREA, NOT A GUESS AT
-   *   THE DEMO BAR'S HEIGHT, AND THAT WAS A REAL BUG. The value used to be
-   *   `2.75rem`, an estimate of `DevToolbar`'s height, on the reasoning that
-   *   the bar publishes its MEASURED height over the top of it. But P2.3 made
-   *   that bar return `null` in a real build — so in the real app the effect
-   *   that publishes never ran, the estimate stood, and every `100dvh` column
-   *   stopped 44 px short of the bottom of the screen. What the product owner
-   *   saw was a grey band under the rail, on every screen, reserving space for
-   *   a control that no longer exists.
+   * ★ `--shell-foot` — HOW MANY PIXELS AT THE BOTTOM ARE PHYSICALLY OCCUPIED.
+   *   This is what a full-`dvh` column subtracts. Zero by default, because in
+   *   a REAL build nothing is pinned to the foot of the coordinator shell at
+   *   all: P2.3 made `DevToolbar` return `null`, and PO return 6 removed its
+   *   empty wrapper with it. `DevToolbar` still publishes its MEASURED height
+   *   here in demo mode.
    *
-   *   So the default is now what a shell with NOTHING pinned at its foot
-   *   actually owes: the iOS home-indicator inset, zero everywhere else. Demo
-   *   mode still overwrites it with `DevToolbar`'s measured height — and that
-   *   bar now carries the same inset as its own bottom padding, so the
-   *   measurement keeps including it.
+   * ★ `--shell-bottom` — HOW FAR UP A FLOATING CONTROL MUST START. That is a
+   *   different number: with a bar it is the bar; with NO bar it is the iOS
+   *   home indicator, which occupies no layout space but does take taps. Hence
+   *   `max()` and not a sum — the demo bar already paints under the indicator
+   *   with its own `pb-[var(--safe-bottom)]`, so adding the two would push
+   *   every sticky footer 20 px off the bar it is sitting on.
+   *
+   * ⚠️ **PO RETURN 6 FIXED HALF OF THIS AND THE OTHER HALF SURVIVED INTO THE
+   *   REAL DEVICE.** That return killed a hard-coded `2.75rem` estimate of the
+   *   demo bar's height and replaced it with `var(--safe-bottom)` — right for
+   *   a floating control, WRONG for a column, and columns are what consume it
+   *   on eleven of the twelve call sites. So on the iPad every `100dvh` map
+   *   column stopped ~20 px short of the display and painted the shell's own
+   *   `--surface-base` in the gap: the "petite bande résiduelle" he reported
+   *   at the foot of the installed app. It reserved space for a home indicator
+   *   that needs none — the indicator is a translucent pill drawn OVER the
+   *   app, and iOS's own convention is that content runs under it.
    */
-  --shell-bottom: var(--safe-bottom);
+  --shell-foot: 0px;
+  --shell-bottom: max(var(--shell-foot), var(--safe-bottom));
 
   /**
    * Height of the shell's own sticky header, published by the coordinator top

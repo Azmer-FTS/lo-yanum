@@ -1,4 +1,5 @@
-import { chromium } from 'playwright'
+import { chromium, webkit } from 'playwright'
+import type { Page } from 'playwright'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
@@ -28,6 +29,25 @@ import * as path from 'node:path'
 const BASE = process.env.BASE_URL ?? 'http://localhost:5173'
 
 /**
+ * ★ PO POINT 2 (2026-08-31) — `ENGINE=webkit` RUNS THE WHOLE SWEEP IN SAFARI'S
+ *   ENGINE, AND THAT IS THE HALF THAT WAS MISSING.
+ *
+ *   The product owner's instrument is an iPad. Every browser on iOS is WebKit,
+ *   including the installed PWA — and this sweep has run in Chromium since the
+ *   day it was written. His question 7bis ("the page moves left and right, and
+ *   up and down, on the farm form") was never reproduced here, and a
+ *   layout-engine difference is the first place to look for a symptom that one
+ *   engine has and the other does not: WebKit and Blink disagree about
+ *   `100dvh` inside a flex column, about `position: sticky` in an
+ *   `overflow: hidden` ancestor, and about whether a `container-type` element
+ *   contains an absolutely positioned child.
+ *
+ *   `ENGINE=webkit bun run layout` — same routes, same assertions, Safari's
+ *   engine. Playwright's WebKit build is already on this machine.
+ */
+const ENGINE = process.env.ENGINE === 'webkit' ? 'webkit' : 'chromium'
+
+/**
  * G11/G12 — THE SWEEP IS NOT PHONE-ONLY ANY MORE.
  *
  * 390 px is where a layout breaks most obviously, and it was the only width
@@ -47,6 +67,16 @@ const BASE = process.env.BASE_URL ?? 'http://localhost:5173'
  * A30's screenful cap is width-dependent by nature — the same page is fewer
  * screenfuls on a taller viewport — so the limit travels with the viewport
  * rather than being one global number.
+ */
+/**
+ * ★ PO POINT 2 — `touch: true` ON ALL FOUR, and it is not a detail.
+ *
+ * Every viewport in this table is a real touch device — two iPhones and an
+ * iPad in both orientations — and until now the sweep drove all four with a
+ * mouse pointer. `(pointer: coarse)` therefore never matched, so a rule
+ * written FOR those devices was invisible to the gate that is supposed to
+ * cover them. The 16 px field rule (`index.css`, PO point 2) is exactly such a
+ * rule, and so is anything that follows it.
  */
 const VIEWPORTS = {
   phone: { width: 390, height: 844, maxScreenfuls: 6, statusInset: 47, bottomInset: 34 },
@@ -88,7 +118,41 @@ const VIEWPORTS = {
  *     SCROLL under the system zone — that is what the gradient is for — but
  *     nothing may come to REST there, because iOS takes the taps.
  */
-const STANDALONE = process.env.STANDALONE === '1'
+/**
+ * ⚠️ PO POINT 1 (2026-08-31) — `STANDALONE=1` IS A SIMULATION OF OPTION B, AND
+ * IT TOOK A REAL iPAD TO NOTICE.
+ *
+ * The block above is true and was never the whole truth. The insets it stamps
+ * are the ones a real iPad reports **only when the app is laid out under the
+ * system bar** — which on iOS happens only with
+ * `apple-mobile-web-app-status-bar-style: black-translucent`, a tag this app
+ * deliberately does not carry (§12bis.7). Without it iOS puts the web view
+ * BELOW the bar, there is no unsafe area at the top, and
+ * `env(safe-area-inset-top)` is **0**. Every rule that scales by
+ * `--status-inset` then collapses — including the gradient, which is why the
+ * product owner installed the app and saw no gradient at all.
+ *
+ * So there are two installed configurations and the gate now runs both:
+ *
+ *   `STANDALONE=1`    — option B's geometry: the device's real top inset.
+ *   `STANDALONE=ios`  — ★ OPTION A, WHICH IS WHAT SHIPS TODAY: `data-standalone`
+ *                       stamped, top inset **0**, home-indicator inset real.
+ *                       The bottom inset is NOT zeroed, because the status-bar
+ *                       tag has nothing to do with the home indicator — iOS
+ *                       reports that one either way, and it is the half that
+ *                       produced the band at the foot.
+ *
+ * `STATUSBAR=translucent` additionally stamps `data-statusbar='translucent'`,
+ * which is what switches the gradient to option B's dark scrim. It is only
+ * meaningful with `STANDALONE=1`, and it exists so the captures the product
+ * owner is arbitrating on are of the real rule rather than of a mock-up.
+ */
+const STANDALONE = process.env.STANDALONE === '1' || process.env.STANDALONE === 'ios'
+/** Option A: installed, and the top inset really is zero. */
+const REAL_IOS = process.env.STANDALONE === 'ios'
+/** Option B's scrim, for the arbitration captures. */
+const TRANSLUCENT = process.env.STATUSBAR === 'translucent'
+const STANDALONE_MODE = REAL_IOS ? 'ios' : TRANSLUCENT ? 'translucent' : 'simulated'
 
 type ViewportName = keyof typeof VIEWPORTS
 
@@ -144,13 +208,36 @@ const ROUTES: Array<{
    * the limit, including the ones that legitimately run to four screenfuls.
    */
   tallOnPurpose?: string
+  /**
+   * ★ PO POINT 2 — A SCREEN THAT IS NOT A URL.
+   *
+   * The product owner asked for the form screens to join the permanent sweep,
+   * and half of them are not routes: the volunteer and driver forms are
+   * MODALS, and steps 2–4 of the guard wizard are states of one route. A sweep
+   * that can only reach what has a hash is a sweep that will always be missing
+   * exactly the screens where a stray `min-width` hurts most, because a form
+   * is the one place a coordinator's thumb is already busy.
+   *
+   * So a route may carry a function that puts the app in the state it means.
+   * It runs after the navigation and before the audit, and it must SETTLE —
+   * an audit taken mid-transition measures an element that is still animating.
+   */
+  open?: (page: Page) => Promise<void>
+  /** Printed instead of a result when `open` could not reach the state. */
+  reached?: boolean
 }> = [
   { name: 'dashboard', hash: '#/coordinator' },
   { name: 'agenda', hash: '#/coordinator/agenda' },
   { name: 'farms', hash: '#/coordinator/farms' },
   { name: 'farm-detail', hash: '#/coordinator/farms/farm-01' },
   { name: 'farm-form', hash: '#/coordinator/farms/farm-01/edit' },
+  // PO POINT 2 — CREATION AND EDITION ARE DIFFERENT SCREENS in the way that
+  // matters here: the empty form has no zones drawn, so its map column is a
+  // different height and its content column a different length.
+  { name: 'farm-form-new', hash: '#/coordinator/farms/new' },
   { name: 'anchor-sheet', hash: '#/coordinator/farms/farm-01/anchors/anchor-01' },
+  { name: 'anchor-form', hash: '#/coordinator/farms/farm-01/anchors/anchor-01/edit' },
+  { name: 'anchor-form-new', hash: '#/coordinator/farms/farm-01/anchors/new' },
   { name: 'route-planner', hash: '#/coordinator/route' },
   {
     name: 'volunteers',
@@ -163,9 +250,68 @@ const ROUTES: Array<{
       'G7 window-virtualised table — the page is the scroll surface; DOM rows stay bounded',
   },
   { name: 'drivers', hash: '#/coordinator/drivers' },
+  {
+    name: 'volunteer-modal',
+    hash: '#/coordinator/volunteers',
+    // The roster is still underneath, and it is the SAME exemption as the
+    // `volunteers` route above — opening a modal over a screen does not change
+    // why that screen is long.
+    tallOnPurpose:
+      'G7 window-virtualised table underneath — the page is the scroll surface',
+    open: async (page) => {
+      await page.locator('[data-testid="volunteer-new"]').first().click()
+      await page.waitForSelector('[role="dialog"]', { timeout: 10_000 })
+      await page.waitForTimeout(600)
+    },
+  },
+  {
+    name: 'driver-modal',
+    hash: '#/coordinator/drivers',
+    open: async (page) => {
+      await page.locator('[data-testid="driver-edit"]').first().click()
+      await page.waitForSelector('[role="dialog"]', { timeout: 10_000 })
+      await page.waitForTimeout(600)
+    },
+  },
   { name: 'import', hash: '#/coordinator/volunteers/import' },
   { name: 'missions', hash: '#/coordinator/missions' },
   { name: 'mission-wizard', hash: '#/coordinator/missions/new' },
+  /**
+   * ★ STEPS 2, 3 AND 4 WITHOUT DRIVING THE MAP, and the shortcut is the app's
+   *   own rather than a test-only door: `?resume=<missionId>` is what "המשך
+   *   גיוס" on a mission detail links to (`MissionDetailScreen`), and it lands
+   *   the wizard on step 2 with a real mission's farm, window, shortlist,
+   *   responses and drivers already in it. From there `הבא` is simply enabled.
+   *   `bun run wizard` still plays step 1 by hand — that gate is about the
+   *   scoring, this one is about the geometry.
+   */
+  {
+    name: 'wizard-step-2',
+    hash: '#/coordinator/missions/new?resume=mission-01',
+    open: async (page) => {
+      await page.waitForTimeout(900)
+    },
+  },
+  {
+    name: 'wizard-step-3',
+    hash: '#/coordinator/missions/new?resume=mission-01',
+    open: async (page) => {
+      await page.waitForTimeout(900)
+      await page.locator('[data-testid="wizard-next"]').first().click()
+      await page.waitForTimeout(900)
+    },
+  },
+  {
+    name: 'wizard-step-4',
+    hash: '#/coordinator/missions/new?resume=mission-01',
+    open: async (page) => {
+      await page.waitForTimeout(900)
+      for (let i = 0; i < 2; i++) {
+        await page.locator('[data-testid="wizard-next"]').first().click()
+        await page.waitForTimeout(900)
+      }
+    },
+  },
   { name: 'mission-detail', hash: '#/coordinator/missions/mission-01' },
   { name: 'incidents', hash: '#/coordinator/incidents' },
   { name: 'incident-detail', hash: '#/coordinator/incidents/inc-01' },
@@ -205,12 +351,28 @@ interface Report {
   heightRatio: number
   /** A30 — long tables/lists with no bounded scroll container above them. */
   uncontained: Array<{ tag: string; rows: number }>
+  /**
+   * ★ PO POINT 2 — focusable form controls whose font is under 16 px, which is
+   * the exact condition under which iOS zooms the WHOLE PAGE on focus and
+   * leaves it panning in both axes. See `index.css`.
+   */
+  smallFields: Array<{ tag: string; size: number }>
+  coarsePointer: boolean
   /** P3.4 — null unless the page is stamped as the installed app. */
   standalone: null | {
     inset: number
     gradientHeight: number
     /** Controls inside a viewport-pinned bar that sit in the system zone. */
     underTheClock: Array<{ tag: string; top: number }>
+    /**
+     * PO POINT 1 — the band at the FOOT. `--shell-foot` is what every
+     * `100dvh` column subtracts, so it has to equal what is really occupied
+     * down there. See `footBand` in the audit for why this is the invariant.
+     */
+    shellFoot: number
+    shellFootDefault: number
+    footOccupied: number
+    footOccupant: string
   }
 }
 
@@ -299,6 +461,18 @@ function audit(): Report {
     for (let j = i + 1; j < pinned.length; j++) {
       const a = pinned[i]
       const b = pinned[j]
+      // PO POINT 2 — a modal overlay covering the shell is the POINT of a
+      // modal, not a defect. `data-overlay` is set by `primitives.tsx`'s
+      // `Modal` and by nothing else, so this exempts exactly the deliberate
+      // case and still catches two bars that found each other by accident.
+      if (
+        a.hasAttribute('data-overlay') ||
+        b.hasAttribute('data-overlay') ||
+        a.closest('[data-overlay]') !== null ||
+        b.closest('[data-overlay]') !== null
+      ) {
+        continue
+      }
       // A parent and its own pinned child are not a collision.
       if (a.contains(b) || b.contains(a)) continue
       const ra = a.getBoundingClientRect()
@@ -354,9 +528,8 @@ function audit(): Report {
   const de2 = document.documentElement
   let standalone: Report['standalone'] = null
   if (de2.hasAttribute('data-standalone')) {
-    const inset = parseFloat(
-      getComputedStyle(de2).getPropertyValue('--status-inset') || '0',
-    )
+    const cs2 = getComputedStyle(de2)
+    const inset = parseFloat(cs2.getPropertyValue('--status-inset') || '0')
     const before = getComputedStyle(document.body, '::before')
     const gradientHeight = parseFloat(before.height || '0')
 
@@ -387,10 +560,106 @@ function audit(): Report {
       }
     }
 
-    standalone = { inset, gradientHeight, underTheClock: underTheClock.slice(0, 6) }
+    /**
+     * ★ PO POINT 1 — THE BAND AT THE FOOT, AS AN INVARIANT RATHER THAN AS A
+     *   PIXEL COMPARISON.
+     *
+     *   `--shell-foot` is subtracted by every full-`dvh` column in the app, so
+     *   it is a CLAIM: "this many pixels at the bottom of the display are
+     *   already taken". If nothing is actually down there the claim is false
+     *   and the difference is painted in the shell's own `--surface-base` —
+     *   which is the residual band the product owner reported at the foot of
+     *   the installed app, and which PO return 6 half-fixed by replacing a
+     *   hard-coded `2.75rem` with `var(--safe-bottom)`: still a number, still
+     *   nothing there.
+     *
+     *   So: what is REALLY occupied at the bottom is the tallest
+     *   viewport-pinned element whose bottom edge is at the bottom of the
+     *   viewport, and `--shell-foot` must equal it. Zero in a real build,
+     *   `DevToolbar`'s measured height in demo. The home-indicator inset is
+     *   deliberately NOT part of this — the indicator is a translucent pill
+     *   drawn OVER the app and iOS's own convention is that content runs under
+     *   it; clearing it is `--shell-bottom`'s job, and that is the check above.
+     */
+    const shellFoot = parseFloat(cs2.getPropertyValue('--shell-foot') || '0') || 0
+
+    /**
+     * ★★ AND THE ONE THAT ACTUALLY CATCHES THE PRODUCT OWNER'S BUG, because
+     *    the invariant above CANNOT — the sweep runs in DEMO mode, where
+     *    `DevToolbar` really is pinned at the foot and really does publish its
+     *    height, so the claim and the occupant agree and the check passes.
+     *    His iPad runs a REAL build, where `DevToolbar` returns `null` (P2.3)
+     *    and `--shell-foot` falls back to its TOKEN DEFAULT with nothing down
+     *    there at all. That default is the whole defect: it used to be
+     *    `2.75rem` (PO return 6), then `var(--safe-bottom)`, and both are a
+     *    number of pixels reserved for something that is not there.
+     *
+     *    So the default is measured directly: drop the inline override for one
+     *    frame, read what `tokens.css` alone would give, and put it back. That
+     *    is precisely what a real build computes, obtained without building
+     *    one — and it must be ZERO, because a shell with nothing pinned at its
+     *    foot owes nothing. Synchronous, within one frame, nothing paints.
+     */
+    const inlineFoot = de2.style.getPropertyValue('--shell-foot')
+    de2.style.removeProperty('--shell-foot')
+    const shellFootDefault =
+      parseFloat(getComputedStyle(de2).getPropertyValue('--shell-foot') || '0') || 0
+    if (inlineFoot) de2.style.setProperty('--shell-foot', inlineFoot)
+
+    let footOccupied = 0
+    let footOccupant = 'nothing'
+    for (const el of pinned) {
+      const r = el.getBoundingClientRect()
+      if (r.height <= 0 || r.width <= 0) continue
+      if (Math.abs(r.bottom - window.innerHeight) > 1.5) continue
+      if (r.height > footOccupied) {
+        footOccupied = r.height
+        footOccupant = label(el)
+      }
+    }
+
+    standalone = {
+      inset,
+      gradientHeight,
+      underTheClock: underTheClock.slice(0, 6),
+      shellFoot,
+      shellFootDefault,
+      footOccupied,
+      footOccupant,
+    }
+  }
+
+  /**
+   * ★ PO POINT 2 — THE CONDITION FOR iOS'S FOCUS ZOOM, WHICH IS THE ONE THING
+   *   ABOUT IT A GATE CAN ACTUALLY CHECK.
+   *
+   *   iOS scales the entire document when a focused field's font is below
+   *   16 px; the zoomed document is then wider than the visual viewport and
+   *   pans left-right and up-down under the thumb. No desktop engine does
+   *   this, so the SYMPTOM is unreachable from here and the CONDITION is
+   *   exact. Checked only where a coarse pointer really is in play, because
+   *   the rule that fixes it is scoped to those pointers and the desktop
+   *   density is deliberate (P0bis.3).
+   *
+   *   `type=hidden`, checkboxes and radios are excluded: iOS does not zoom for
+   *   a control it cannot type into, and a checkbox has no text at all.
+   */
+  const coarsePointer = window.matchMedia('(pointer: coarse)').matches
+  const smallFields: Array<{ tag: string; size: number }> = []
+  if (coarsePointer) {
+    for (const el of document.querySelectorAll('input, select, textarea')) {
+      const type = (el as HTMLInputElement).type
+      if (type === 'hidden' || type === 'checkbox' || type === 'radio') continue
+      const r = el.getBoundingClientRect()
+      if (r.width <= 0 || r.height <= 0) continue
+      const size = parseFloat(getComputedStyle(el).fontSize || '16')
+      if (size < 15.99) smallFields.push({ tag: label(el), size: Math.round(size * 10) / 10 })
+    }
   }
 
   return {
+    smallFields: smallFields.slice(0, 6),
+    coarsePointer,
     scrollWidth: document.documentElement.scrollWidth,
     innerWidth: vw,
     scrollRange,
@@ -414,7 +683,7 @@ function audit(): Report {
  * far below the fold. Before F5.5 the import preview rendered every row of the
  * file, so its height was whatever the coordinator happened to upload.
  */
-const browser = await chromium.launch()
+const browser = await (ENGINE === 'webkit' ? webkit : chromium).launch()
 
 let failures = 0
 
@@ -422,6 +691,9 @@ for (const name of RUNS) {
   const vp = VIEWPORTS[name]
   const context = await browser.newContext({
     viewport: { width: vp.width, height: vp.height },
+    // PO POINT 2 — see VIEWPORTS. All four are touch devices.
+    hasTouch: true,
+    isMobile: ENGINE === 'chromium' ? vp.width < 768 : undefined,
     locale: 'he-IL',
     permissions: ['geolocation'],
     geolocation: { latitude: 31.0611, longitude: 34.6552 },
@@ -431,7 +703,7 @@ for (const name of RUNS) {
   // every document, which is what makes it survive the sweep's re-navigations.
   if (STANDALONE) {
     await context.addInitScript(
-      ([top, bottom]: [number, number]) => {
+      ([top, bottom, translucent]: [number, number, boolean]) => {
         const set = () => {
           const de = document.documentElement
           // ★ AND IT IS NULL ON THE FIRST CALL, which is how the first draft of
@@ -445,6 +717,7 @@ for (const name of RUNS) {
           //   which is the difference between a gate and a decoration.
           if (!de) return false
           de.setAttribute('data-standalone', '')
+          if (translucent) de.setAttribute('data-statusbar', 'translucent')
           de.style.setProperty('--status-inset', `${top}px`)
           de.style.setProperty('--safe-bottom', `${bottom}px`)
           return true
@@ -454,7 +727,13 @@ for (const name of RUNS) {
           document.addEventListener('DOMContentLoaded', set, { once: true })
         }
       },
-      [vp.statusInset, vp.bottomInset] as [number, number],
+      // PO POINT 1 — option A reports NO top inset, and the home indicator is
+      // reported either way.
+      [REAL_IOS ? 0 : vp.statusInset, vp.bottomInset, TRANSLUCENT] as [
+        number,
+        number,
+        boolean,
+      ],
     )
   }
 
@@ -466,7 +745,9 @@ for (const name of RUNS) {
   console.log(
     `Layout sweep at ${vp.width}×${vp.height} (${name}) — ${ROUTES.length} screens${
       STANDALONE
-        ? ` — INSTALLED APP (status inset ${vp.statusInset}px, home indicator ${vp.bottomInset}px)`
+        ? ` — INSTALLED APP [${STANDALONE_MODE}] (status inset ${
+            REAL_IOS ? 0 : vp.statusInset
+          }px, home indicator ${vp.bottomInset}px)`
         : ''
     }`,
   )
@@ -489,6 +770,31 @@ for (const name of RUNS) {
     }, route.hash)
     // Map screens need real settle time before their canvas has a size.
     await page.waitForTimeout(3000)
+
+    /**
+     * PO POINT 2 — put the app in the state the route MEANS, when that state is
+     * not a URL: open a modal, walk the wizard forward.
+     *
+     * ★ IT FAILS THE SCREEN RATHER THAN SKIPPING IT. A setup step that throws
+     *   means the control it was looking for is gone or renamed, and a sweep
+     *   that quietly stops covering the volunteer form the day its button gets
+     *   a new testid is worse than no coverage at all, because the run still
+     *   says PASS.
+     */
+    if (route.open) {
+      try {
+        await route.open(page)
+      } catch (err) {
+        failures++
+        console.log(
+          `  ${route.name.padEnd(20)} ${'—'.padEnd(8)} ${'—'.padStart(8)} ${'—'.padStart(8)}  FAIL`,
+        )
+        console.log(
+          `      PO POINT 2 could not reach the state: ${String(err).slice(0, 120)}`,
+        )
+        continue
+      }
+    }
 
     /**
      * PO return 5 — the seam, if this screen has one AT THIS WIDTH. Below the
@@ -531,12 +837,25 @@ for (const name of RUNS) {
         STANDALONE &&
         (sa === null || Math.abs(sa.gradientHeight - sa.inset * 1.25) > 1)
       const clockCovered = first && STANDALONE && (sa?.underTheClock.length ?? 0) > 0
+      // ★ PO POINT 2 — the condition for iOS's focus zoom. Judged at the
+      // default stop: it is a property of the screen's CSS, not of the seam.
+      const zoomOnFocus = first && report.smallFields.length > 0
+      // PO POINT 1 — `--shell-foot` claims pixels at the bottom of the display
+      // are taken. If nothing is down there the claim is false and the gap is
+      // painted in `--surface-base`: the residual band on his iPad.
+      const footBand =
+        first &&
+        STANDALONE &&
+        sa !== null &&
+        (Math.abs(sa.shellFoot - sa.footOccupied) > 1.5 || sa.shellFootDefault > 0.5)
 
       const ok =
         !overflow &&
         !tooTall &&
         !gradientWrong &&
         !clockCovered &&
+        !footBand &&
+        !zoomOnFocus &&
         (!first ||
           (report.wide.length === 0 &&
             report.collisions.length === 0 &&
@@ -566,6 +885,11 @@ for (const name of RUNS) {
       for (const u of report.uncontained) {
         console.log(`      A30 uncontained list: ${u.tag} (${u.rows} rows)`)
       }
+      for (const f of report.smallFields) {
+        console.log(
+          `      PO POINT 2 field at ${f.size}px — iOS will ZOOM THE PAGE on focus: ${f.tag}`,
+        )
+      }
       if (tooTall) {
         console.log(
           `      A30 page is ${report.heightRatio.toFixed(1)} screenfuls (max ${vp.maxScreenfuls})`,
@@ -584,6 +908,15 @@ for (const name of RUNS) {
       for (const c of sa?.underTheClock ?? []) {
         console.log(`      P3.4 control under the status bar: ${c.tag} at y=${c.top}`)
       }
+      if (footBand && sa !== null) {
+        console.log(
+          `      PO POINT 1 band at the foot: --shell-foot claims ${sa.shellFoot}px, ` +
+            `${sa.footOccupant} occupies ${sa.footOccupied}px` +
+            (sa.shellFootDefault > 0.5
+              ? `; and its TOKEN DEFAULT is ${sa.shellFootDefault}px, which is what a REAL build gets with nothing pinned down there`
+              : ''),
+        )
+      }
     }
   }
 
@@ -593,7 +926,11 @@ for (const name of RUNS) {
    * gradient reads as a wash or as a band.
    */
   if (STANDALONE) {
-    const shotDir = path.resolve('docs/screenshots/standalone')
+    const shotDir = path.resolve(
+      REAL_IOS || TRANSLUCENT
+        ? 'docs/screenshots/statusbar'
+        : 'docs/screenshots/standalone',
+    )
     fs.mkdirSync(shotDir, { recursive: true })
     for (const theme of ['light', 'dark'] as const) {
       // Back to the coordinator FIRST. The sweep leaves the session on
@@ -629,7 +966,7 @@ for (const name of RUNS) {
        * under the zone rather than the top of a screen that happens to be
        * empty there.
        */
-      await page.evaluate((mode) => {
+      await page.evaluate(({ mode, translucent }: { mode: string; translucent: boolean }) => {
         window.scrollTo(0, 260)
         document.querySelectorAll('[data-mock-statusbar]').forEach((el) => el.remove())
         const inset = parseFloat(
@@ -643,14 +980,21 @@ for (const name of RUNS) {
           'display:flex', 'align-items:center', 'justify-content:space-between',
           'padding:0 18px', 'font:600 13px/1 -apple-system,system-ui,sans-serif',
           'letter-spacing:.02em',
-          `color:${mode === 'light' ? '#000' : '#fff'}`,
+          // ★ OPTION B TAKES THE CHOICE AWAY. `black-translucent` forces the
+          //   clock and the battery to WHITE whatever the theme, which is the
+          //   single fact the arbitration turns on — so the capture draws
+          //   white glyphs in BOTH themes rather than the flattering ones.
+          `color:${translucent ? '#fff' : mode === 'light' ? '#000' : '#fff'}`,
         ].join(';')
         bar.innerHTML = '<span>02:14</span><span>■■□ ⌁ 78%</span>'
         document.body.appendChild(bar)
-      }, theme)
+      }, { mode: theme, translucent: TRANSLUCENT })
       await page.waitForTimeout(600)
 
-      const file = path.join(shotDir, `${name}-${theme}.png`)
+      const file = path.join(
+        shotDir,
+        `${name}-${theme}${STANDALONE_MODE === 'simulated' ? '' : `-${STANDALONE_MODE}`}.png`,
+      )
       await page.screenshot({ path: file })
       console.log(`  captured ${path.relative(process.cwd(), file)}`)
     }

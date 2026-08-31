@@ -3229,6 +3229,321 @@ FAIL  ★ and the ground is really there at חיפה (Haifa), offline
 
 ---
 
+## 15. POINT 1 — THE INSTALLED iPAD'S INSETS. ONE FIX, ONE ARBITRATION, ONE INSTRUMENT
+
+The product owner installed the PWA cleanly on a real iPad Pro 13" and got:
+a solid band at the top with the content not reaching under the system bar, no
+gradient, the same in both themes — and a small residual band at the foot.
+**Four separate things, and they have three different causes.** All four are
+answered below; one of them is his to decide.
+
+### 15.1 · `viewport-fit=cover` — checked on the ARTEFACT, and it is not the cause
+
+Fetched from `https://azmer-fts.github.io/lo-yanum/` rather than read off the
+tree: `<meta name="viewport" content="width=device-width, initial-scale=1.0,
+viewport-fit=cover">` **is served**. So is `apple-mobile-web-app-capable`.
+`apple-mobile-web-app-status-bar-style` is **absent**, which is §12bis.7's
+deliberate choice and, it turns out, the cause of three of the four symptoms.
+
+### 15.2 ★ THE CAUSE OF THE TOP THREE, AND IT IS ONE FACT ABOUT iOS
+
+**Without `apple-mobile-web-app-status-bar-style: black-translucent`, iOS lays
+an installed web app BELOW the status bar.** There is then no unsafe area at
+the top — iOS already inset the whole web view — so
+**`env(safe-area-inset-top)` is `0`**.
+
+Everything follows from that single zero:
+
+| what he saw | why |
+|---|---|
+| the content does not extend under the bar | iOS put the view below it. By design, without the tag. |
+| **no gradient at all** | `body::before` is `height: calc(var(--status-inset) * 1.25)`. `--status-inset` is `env(safe-area-inset-top)`. **Zero × 1.25 = zero.** The rule is correct and had nothing to draw. |
+| the band is identical in light and dark | those pixels are painted by **iOS**, not by the app, from `theme-color` — which iOS reads AT LAUNCH. `theme.tsx` keeps that tag in step with the palette at RUNTIME, far too late for a home-screen app, so what showed was the boot literal `#0B1119` in both themes. |
+
+★ **AND IT EXPLAINS WHY EVERY GATE WAS GREEN.** `STANDALONE=1` STAMPS
+  `--status-inset` with a real device's number, because Playwright can emulate
+  a viewport and will never emulate a notch. That simulation was always honest
+  about being one — and what it simulates turns out to be **option B's**
+  geometry, the configuration this app does not ship. The gate was measuring a
+  layout nobody runs.
+
+### 15.3 · WHAT WAS FIXED WITHOUT ASKING: the status bar now follows the scheme
+
+`index.html` carries three `theme-color` tags instead of one:
+
+```html
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F3F4F6" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#0B1119" />
+<meta name="theme-color" content="#0B1119" />
+```
+
+★ **THE ORDER IS THE WHOLE MECHANISM.** A browser takes the FIRST
+  `theme-color` whose `media` matches, and an unscoped tag matches everything —
+  so an unscoped tag placed first would shadow both media tags permanently. Last,
+  it is the fallback, and `theme.tsx` now selects
+  `meta[name="theme-color"]:not([media])` so a live theme change cannot
+  overwrite the two above it.
+
+⚠️ **Its limit, stated rather than glossed:** it follows the SYSTEM scheme, not
+the app's own choice. A coordinator who forces dark on a light iPad gets a
+light status bar. That is the ceiling of what meta tags can express, it is
+strictly better than one wrong colour in both directions, and the way past it
+is the arbitration below.
+
+### 15.4 ⚖️ THE ARBITRATION — ONE COMMENTED LINE IN `index.html`
+
+**OPTION A — what ships today.** The app sits below an opaque system bar. The
+bar now takes the right colour per scheme (15.3). The content does not reach
+the top of the display and there is no gradient, because with an opaque bar
+there is nothing for a gradient to protect.
+
+**OPTION B — `apple-mobile-web-app-status-bar-style: black-translucent`.** The
+app fills the screen, `env(safe-area-inset-top)` becomes real, the content runs
+under the bar and the gradient appears and follows the theme — **everything he
+asked for at the top.** The price is fixed and CSS gets no say in it: **iOS
+forces the clock, the battery and the signal bars to WHITE, permanently, in
+both themes.** Against the light theme's `#F3F4F6` that is white on near-white,
+so option B also switches the gradient to a **dark scrim in both themes**
+(`index.css`, `html[data-statusbar='translucent']`).
+
+★ **SO THE REAL QUESTION IS ONE SENTENCE:** *is an edge-to-edge app worth a
+  permanent dark strip across the top of the light theme?* That is the whole
+  trade, it cannot be tuned away, and it is his call and not this session's.
+
+**It is BUILT, not described.** `standalone.ts` reads the meta tag and stamps
+`data-statusbar='translucent'`; the scrim rule keys off that. Uncommenting one
+line in `index.html` switches the whole app. And the gate can stamp the same
+attribute, so the captures are of the real rule:
+
+`docs/screenshots/statusbar/` — `ipad-{light,dark}-ios.png` (option A) and
+`ipad-{light,dark}-translucent.png` (option B), plus `ipad-ls-*`. ★ The mock
+clock in the option-B captures is drawn **white in BOTH themes**, because that
+is what iOS will do; a capture that drew a flattering dark clock on the light
+theme would have hidden the entire cost being arbitrated.
+
+### 15.5 ★ THE BAND AT THE FOOT WAS A REAL BUG, AND PO RETURN 6 HAD FIXED ONLY HALF OF IT
+
+`--shell-bottom` answered two different questions with one number:
+
+· **how many pixels at the bottom are physically occupied** — what a
+  full-`dvh` column must subtract;
+· **how far up a floating control must start** — which, with nothing pinned
+  down there, is the iOS home indicator.
+
+Return 6 replaced a hard-coded `2.75rem` with `var(--safe-bottom)`. Right for
+the second question, **wrong for the first — and eleven of the twelve call
+sites were asking the first.** So on the iPad every `100dvh` map column stopped
+~20 px above the display and painted the shell's own `--surface-base` in the
+gap. **The residual band.** It reserved space for a home indicator that needs
+none: the indicator is a translucent pill drawn OVER the app, and iOS's own
+convention is that content runs under it.
+
+Two tokens now, and the split is the fix:
+
+```css
+--shell-foot: 0px;                                        /* what is OCCUPIED */
+--shell-bottom: max(var(--shell-foot), var(--safe-bottom)); /* what a CONTROL clears */
+```
+
+`max()` and not a sum: the demo bar already paints under the indicator with its
+own `pb-[var(--safe-bottom)]`, so adding the two would push every sticky footer
+20 px off the bar it is sitting on. Column sites moved to `--shell-foot`;
+`CreateGuardFab` and the two sticky form footers keep `--shell-bottom`. The
+desktop rail takes `--shell-foot` for its HEIGHT and `--safe-bottom` as
+PADDING, so its surface reaches the display edge while the account block at its
+foot stays out of the indicator's strip.
+
+### 15.6 ★★ AND THE GATE FOUND A SECOND, UNRELATED DEFECT THE MOMENT IT COULD SEE
+
+`bun run layout STANDALONE=…` now asserts a foot-band invariant:
+**`--shell-foot` must equal what is really occupied at the bottom of the
+viewport.** It failed on the first run — on all seven FIELD screens:
+
+```
+PO POINT 1 band at the foot: --shell-foot claims 69px,
+                             div.sticky.bottom-0.z-30 occupies 131.09px
+```
+
+★ `DevToolbar` published ITS OWN height, which was right for as long as it was
+  the only thing down there. In `FieldLayout` it is not — **the tab bar and the
+  toolbar share ONE sticky container** — so the shell claimed 69 px while
+  131 px was taken and **62 px of every full-`dvh` column sat behind the tab
+  bar** on the farmer's, the volunteer's and the driver's screens. Nobody had
+  reported it. The CONTAINER measures itself now, so whatever it comes to hold
+  is included by construction.
+
+**And a second assertion catches the ORIGINAL bug, which the first one cannot:**
+the sweep runs in DEMO mode, where the bar really is pinned and the claim and
+the occupant agree. So the audit also drops the inline override for one frame
+and reads **the TOKEN DEFAULT** — precisely what a real build computes, without
+building one — and requires it to be **zero**. That value was `2.75rem`, then
+`var(--safe-bottom)`; it is the defect itself, and it is now a failing line.
+
+### 15.7 · `STANDALONE=ios` — the configuration he actually runs
+
+`bun run layout` gained a second installed mode. `STANDALONE=1` stamps the
+device's real top inset (option B's geometry). **`STANDALONE=ios` stamps
+`data-standalone` with a top inset of ZERO and the home-indicator inset
+unchanged** — option A, which is what ships, and which is the layout on his
+iPad this morning. The bottom inset is deliberately not zeroed: the status-bar
+tag has nothing to do with the home indicator, iOS reports that one either way,
+and it is the half that produced the band.
+
+### 15.8 · THE INSTRUMENT — אבחון תצוגה, in הגדרות, and removable in one move
+
+`src/ui/components/DisplayDiagnostics.tsx`, a collapsed `<details>` at the foot
+of הגדרות. It reports, on his device: the four `env(safe-area-inset-*)` values,
+the five tokens derived from them, the gradient's computed height, whether
+there is a gradient at all, `navigator.standalone`, `display-mode`,
+`data-standalone`, `data-theme`, `prefers-color-scheme`, and the **viewport,
+status-bar-style and theme-color meta tags as served** — plus a copy button, so
+twenty rows come back as text rather than as a photograph of a screen.
+
+★ **IT READS `env()` DIRECTLY, THROUGH A PROBE ELEMENT, NOT THE TOKENS.** The
+  tokens are what the app consumes and they can be overridden — by the gate, by
+  a future rule — so a panel that reported the tokens would faithfully report
+  the SIMULATION and prove nothing. Both are shown side by side, and a
+  disagreement between them IS the finding.
+
+**To remove it: delete the file and the two lines in `SettingsScreen.tsx` that
+render it.** Nothing else imports it.
+
+---
+
+## 16. POINTS 2 AND 9 — THE PARASITIC SCROLL IS FOUND, AND THE PENCIL IS GATED
+
+### 16.1 ★★ POINT 2 — OPEN QUESTION 7bis IS CLOSED, AND THE CAUSE IS ONE NUMBER
+
+**`.input` was `text-caption` — 13.5 px — and iOS ZOOMS THE WHOLE PAGE when a
+focused field's font is under 16 px.**
+
+Not the field. **The page.** Every WebKit on iOS does it, Safari and installed
+PWA alike, and there is no way to opt a field out of it except by giving it
+16 px. `--text-caption-size` is `0.84375rem`, so the coordinator's first tap on
+"שם החווה" scaled the document by 16 / 13.5 ≈ **1.19**. A document 19 % wider
+than the visual viewport pans in BOTH axes under a finger.
+
+★ **THAT IS THE WHOLE SYMPTOM, FROM ONE CAUSE.** "The page moves left-right AND
+  up-down" — both. "On the farm form" — and on every screen with a field, which
+  is why it looked like a form bug. "Installed, on the iPad" — because no
+  desktop browser does this. Open since §12bis.5 and unreproducible in three
+  sessions of looking, because the instrument was always a desktop engine.
+
+**The fix, and it costs nothing in legibility:**
+
+```css
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='hidden']),
+  select, textarea { font-size: 1rem !important; -webkit-text-size-adjust: 100%; }
+}
+```
+
+★ **iOS WAS ALREADY RENDERING THESE FIELDS AT ~16 px** — it just got there by
+  scaling the entire document. Declaring 16 px gives the same apparent size
+  with the page standing still. Coarse pointers only, so P0bis.3's desktop
+  density survives untouched.
+
+★ **`!important`, AND IT IS THE ONLY ONE IN `index.css`.** The fields carry
+  Tailwind's `text-caption`, which is a CLASS and beats any element selector
+  however it is written; raising specificity by hand still loses, and moving
+  between layers would make a device bug depend on Tailwind's internal sort
+  order. This is a hard device constraint, not a style preference: below 16 px
+  iOS takes the page away from the user.
+
+### 16.2 ★ AND THE GATE THAT MAKES IT PERMANENT, PLUS THE ONE THAT COULD NOT
+
+**`ENGINE=webkit bun run layout` runs the whole sweep in Safari's engine.** It
+was the right thing to try — the product owner's every browser is WebKit — and
+Playwright's WebKit build was already on this machine. It reported a perfectly
+still page.
+
+★ **BECAUSE THE ZOOM IS AN iOS BEHAVIOUR, NOT A WEBKIT-THE-ENGINE BEHAVIOUR.**
+  Desktop WebKit does not do it. **The symptom is unreachable from here; the
+  CONDITION is exact.** So the sweep asserts the condition: **no focusable form
+  control may compute under 16 px**, on every touch viewport, on every screen.
+  On its first run it failed on **twenty-three of the thirty-two screens** and
+  named the control each time. WebKit stays in the gate regardless — it is a
+  second engine over the whole app and it costs one env var.
+
+★ **AND ALL FOUR VIEWPORTS NOW RUN WITH `hasTouch: true`**, which they should
+  always have done: two iPhones and an iPad in both orientations are touch
+  devices, and `(pointer: coarse)` had never matched, so a rule written FOR
+  those devices was invisible to the gate that covers them.
+
+### 16.3 · THE FORM SCREENS JOINED THE PERMANENT SWEEP — including the ones that are not URLs
+
+The product owner asked for the form screens on the four viewports. Half of
+them are not routes, so a route may now carry an `open(page)` step that puts
+the app in the state it means. **A setup step that throws FAILS the screen
+rather than skipping it** — a sweep that quietly stops covering the volunteer
+form the day its button is renamed is worse than no coverage, because the run
+still says PASS.
+
+`ROUTES` went from 24 to 32: `farm-form-new`, `anchor-form`, `anchor-form-new`,
+`volunteer-modal`, `driver-modal`, `wizard-step-2`, `wizard-step-3`,
+`wizard-step-4`.
+
+★ **STEPS 2–4 WITHOUT DRIVING THE MAP, and the shortcut is the app's own rather
+  than a test-only door**: `?resume=<missionId>` is what "המשך גיוס" links to
+  on a mission detail, and it lands the wizard on step 2 with a real mission's
+  farm, window, shortlist, responses and drivers already in it. From there
+  `הבא` is simply enabled. `bun run wizard` still plays step 1 by hand — that
+  gate is about the scoring, this one about the geometry.
+
+Three `data-testid`s were added for it (`volunteer-new`, `driver-edit`,
+`wizard-next`) and `Modal` gained `data-overlay`, because a modal covering the
+shell is the POINT of a modal and the sweep's "no pinned element covers
+another" rule had to be told which overlap is deliberate.
+
+⚠️ **THE VERTICAL HALF IS POINT 4 AND IS NOT CLOSED HERE.** The 1.19× zoom
+explains the up-down movement he saw *on the form*; the rubber-band overscroll
+of the whole shell is a separate thing and is point 4's unit.
+
+### 16.4 ★ POINT 9 — THE APPLE PENCIL, AUDITED THEN GATED
+
+**The audit first, because it decides what the gate has to prove.** Every map
+interaction in this app goes through MapLibre's own event system (`click`,
+`contextmenu`, `dblclick`, and `Marker({draggable})`) or through the splitter,
+which has used **Pointer Events since it was written**. On iOS an Apple Pencil
+produces `touch` events AND `PointerEvent`s with `pointerType: 'pen'`, so
+MapLibre's handlers see it. Nothing in this app branches on `pointerType` and
+nothing depends on a finger-only gesture.
+
+★ **AND THE ONE THING THAT COULD HAVE BEEN A WALL IS NOT ONE: NO INTERACTION
+  IS REACHABLE ONLY BY DOUBLE-TAP.** Closing a drawn ring has **"סגור פוליגון"**
+  beside the double-tap shortcut (`AnchorMap.tsx`); the seam's double-tap reset
+  has **Enter and Space**; placing a point is a single tap on an armed map. The
+  double-taps are shortcuts for a thumb, never the only door.
+
+**`bun run touch` grew section 10 — the same vocabulary, with a stylus.**
+`Input.dispatchMouseEvent` takes a `pointerType`, so the gate dispatches real
+`PointerEvent`s with `pointerType: 'pen'`. **32 checks → 45, all green:**
+
+| with a stylus | result |
+|---|---|
+| ★ the page really receives `pointerType="pen"` | PASS — `pen` |
+| a stylus tap places a guard post | PASS — 1 → 2 |
+| a stylus stroke drags it | PASS — Δ 90, −68 |
+| four stylus taps are four corners | PASS — `4 פינות` |
+| ★ **"סגור פוליגון" closes the ring — no double-tap required** | PASS |
+| a vertex follows the stylus | PASS — Δ −70, 55 |
+| a stylus tap on a midpoint grip inserts a corner | PASS — 5 → 6 |
+
+⚠️ **WHAT A GREEN RUN DOES NOT SAY, so nobody reads more into it:** iOS's own
+gesture layer is not simulated. A Pencil on glass has tilt, pressure and hover
+that no protocol reproduces, and a stylus does not raise the long-press callout
+a finger raises. The audit above is what covers that half; the gate covers
+"does the interaction respond to a pointer that is not a finger", which is the
+question that decides whether he can work.
+
+★ **SCRIBBLE IS SAFE TODAY AND IS A CONSTRAINT ON POINT 4.** `touch-action:
+  none` appears in exactly one place in this codebase — the splitter's grip,
+  where it is load-bearing — and on no field anywhere. **Point 4 must not put
+  `touch-action: none` or a blanket `preventDefault` on a text input**, or
+  handwriting into a field stops working on the one device this app is for.
+
+---
+
 ## ⏭️ RESUME HERE — THE PRODUCT OWNER'S SECOND RETURN, IN HIS ORDER
 
 > ✅ **PMTILES IS DONE AND DEPLOYED (§12ter), and verified on the artefact
@@ -3265,9 +3580,9 @@ lot plan's. Eleven points, then the rest of P3:
 |---|---|---|
 | **P3.1 fin** | delete the test account, all three steps | ✅ **DONE — §13** |
 | **0** | offline basemap: **ALL ISRAEL**, not the southern bbox | 🟡 **cut, health-checked, gated — ⛔ THE UPLOAD NEEDS THE PO, §14.4** |
-| **1** | installed-iPad bug: the safe-area insets do not apply IN REAL | ⬜ |
-| **2** | reproduced bug: parasitic scroll on the farm form, both axes | ⬜ |
-| **9** | **Apple Pencil** on every map interaction — he draws with a stylus | ⬜ |
+| **1** | installed-iPad bug: the safe-area insets do not apply IN REAL | ✅ **§15** — cause found, foot band fixed (+ a second defect the new gate caught), instrument shipped; ⚖️ **ONE ARBITRATION FOR THE PO** |
+| **2** | reproduced bug: parasitic scroll on the farm form, both axes | ✅ **§16.1–16.3** — cause found (iOS zooms the page under 16 px), fixed, gated on 32 screens × 4 viewports × 2 engines |
+| **9** | **Apple Pencil** on every map interaction — he draws with a stylus | ✅ **§16.4** — audited, and `bun run touch` is 45 checks with a `pointerType=pen` pass |
 | **8** | **delete** a record — there is no way to correct a typo today | ⬜ |
 | **6** | **livestock** head-count per entity — funding depends on it | ⬜ |
 | **7** | **the employer's PDF report**, sendable in one gesture | ⬜ |

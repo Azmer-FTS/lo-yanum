@@ -103,6 +103,105 @@ async function touchDrag(
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
 }
 
+/**
+ * ★★ PO POINT 9 (2026-08-31) — THE APPLE PENCIL, AND WHY IT IS A DIFFERENT
+ *    INPUT FROM THE FINGER THIS FILE WAS WRITTEN FOR.
+ *
+ *    The product owner draws his zones with a stylus on an iPad Pro, not with
+ *    a thumb. On iOS the Pencil produces `PointerEvent`s whose `pointerType`
+ *    is **`pen`** — and MapLibre, this app's editing handles, and every
+ *    `onClick` in the tree have only ever been driven here by
+ *    `Input.dispatchTouchEvent`, which produces `touch` and nothing else. A
+ *    handler that branches on `pointerType`, or one that only ever sees the
+ *    touch stream, is a handler that could be perfectly green in section 4
+ *    above and dead under a stylus.
+ *
+ * ★ CDP's `Input.dispatchMouseEvent` TAKES A `pointerType`, which is what
+ *   makes this checkable at all. Chrome's protocol accepts `'mouse' | 'pen'`
+ *   and dispatches a real `PointerEvent` with `pointerType: 'pen'` plus the
+ *   compatibility mouse events a stylus also generates. It is a simulation and
+ *   it is honest about being one — a Pencil on glass has tilt, pressure and
+ *   hover that no protocol reproduces — but it settles the ONE question that
+ *   actually decides whether the coordinator can work: does the interaction
+ *   respond to a pointer that is not a finger.
+ *
+ * ⚠️ AND THE THING IT DOES **NOT** ASSERT, stated so nobody reads more into a
+ *   green run than is there: iOS's own gesture layer. A stylus does not raise
+ *   the long-press callout a finger raises, and a double-tap is genuinely hard
+ *   to perform with one. That is why the audit that came with this section
+ *   matters as much as the section: **no map interaction in this app is
+ *   reachable only by double-tap.** Closing a drawn ring has "סגור פוליגון"
+ *   next to the double-tap shortcut; the seam's double-tap reset has Enter and
+ *   Space; placing a point is a single tap, armed. See ETAT §16.
+ */
+const PEN = { pointerType: 'pen' as const, button: 'left' as const, clickCount: 1 }
+
+/** One stylus contact, down and up, in place. */
+async function penTap(cdp: CDPSession, x: number, y: number): Promise<void> {
+  const p = { x: Math.round(x), y: Math.round(y) }
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...p, ...PEN, buttons: 0 })
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...p, ...PEN, buttons: 1 })
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...p, ...PEN, buttons: 0 })
+}
+
+/** A stylus stroke: down, dragged in increments, up. */
+async function penDrag(
+  cdp: CDPSession,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  steps = 14,
+): Promise<void> {
+  const at = (i: number) => ({
+    x: Math.round(from.x + ((to.x - from.x) * i) / steps),
+    y: Math.round(from.y + ((to.y - from.y) * i) / steps),
+  })
+  await cdp.send('Input.dispatchMouseEvent', {
+    type: 'mouseMoved',
+    ...at(0),
+    ...PEN,
+    buttons: 0,
+  })
+  await cdp.send('Input.dispatchMouseEvent', {
+    type: 'mousePressed',
+    ...at(0),
+    ...PEN,
+    buttons: 1,
+  })
+  for (let i = 1; i <= steps; i++) {
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      ...at(i),
+      ...PEN,
+      buttons: 1,
+    })
+  }
+  await cdp.send('Input.dispatchMouseEvent', {
+    type: 'mouseReleased',
+    ...at(steps),
+    ...PEN,
+    buttons: 0,
+  })
+}
+
+/** `tapText`, with the stylus. */
+async function penTapText(page: Page, cdp: CDPSession, text: string): Promise<boolean> {
+  const rect = await page.evaluate((label) => {
+    const el = [...document.querySelectorAll('button, a')].find(
+      (b) =>
+        !(b as HTMLButtonElement).disabled &&
+        (b as HTMLElement).offsetParent !== null &&
+        b.textContent?.includes(label),
+    )
+    if (!el) return null
+    el.scrollIntoView({ block: 'center' })
+    const r = el.getBoundingClientRect()
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+  }, text)
+  if (!rect) return false
+  await penTap(cdp, rect.x, rect.y)
+  return true
+}
+
 const centreOf = async (locator: Locator) => {
   const box = await locator.boundingBox()
   if (!box) throw new Error('element has no box')
@@ -483,6 +582,160 @@ check(
   Math.abs(controlAfter.x - controlBefore.x) > 60,
   `Δ ${Math.round(controlAfter.x - controlBefore.x)}`,
 )
+
+/**
+ * ★★ 10 — THE SAME VOCABULARY, WITH A STYLUS (PO point 9).
+ *
+ * The three interactions the product owner named: drawing a zone end to end,
+ * editing its vertices, and placing a pin. Nothing here is a variant of a
+ * check above — they are the same claims, re-made through
+ * `pointerType: 'pen'`, because "it works by finger" is not evidence about the
+ * instrument he actually holds.
+ *
+ * ★ EVERY RECORD-PROBE ALSO RECORDS WHAT THE PAGE SAW. A stylus that produces
+ *   no `pointerType: 'pen'` event at all would make every check below fail for
+ *   the wrong reason, so the first thing this section does is confirm the
+ *   simulation reached the DOM.
+ */
+section('10 — the same vocabulary with an APPLE PENCIL (pointerType=pen)')
+
+await page.evaluate(() => {
+  window.location.hash = '#/coordinator/farms/farm-02'
+})
+await page.waitForTimeout(4500)
+await scrollToMap(page)
+
+// Does a pen event reach the page at all? Listen, poke, report.
+await page.evaluate(() => {
+  ;(window as unknown as { __penSeen?: string[] }).__penSeen = []
+  const seen = (window as unknown as { __penSeen: string[] }).__penSeen
+  document.addEventListener(
+    'pointerdown',
+    (e) => seen.push((e as PointerEvent).pointerType),
+    true,
+  )
+})
+const probeMap = await mapBox(page)
+await penTap(cdp, probeMap.x + probeMap.width * 0.5, probeMap.y + probeMap.height * 0.2)
+await page.waitForTimeout(500)
+const penTypes = await page.evaluate(
+  () => (window as unknown as { __penSeen: string[] }).__penSeen,
+)
+check(
+  '★ the page really receives pointerType="pen"',
+  penTypes.includes('pen'),
+  penTypes.join(', ') || 'nothing at all',
+)
+
+// --- 10a. placing a pin with the stylus -------------------------------------
+
+const penPostsBefore = await anchorPins(page).count()
+check('"הוסף נקודה" is reachable by STYLUS', await penTapText(page, cdp, 'הוסף נקודה'))
+await page.waitForTimeout(500)
+await scrollToMap(page)
+const penArmMap = await mapBox(page)
+await penTap(cdp, penArmMap.x + penArmMap.width * 0.3, penArmMap.y + penArmMap.height * 0.7)
+await page.waitForTimeout(1500)
+const penPostsAfter = await anchorPins(page).count()
+check(
+  '★ a STYLUS tap places a guard post',
+  penPostsAfter === penPostsBefore + 1,
+  `${penPostsBefore} → ${penPostsAfter}`,
+)
+
+// --- 10b. dragging that pin with the stylus ---------------------------------
+
+const penPin = anchorPins(page).last()
+const penPinFrom = await centreOf(penPin)
+await penDrag(
+  cdp,
+  { x: penPinFrom.x, y: penPinFrom.y + 8 },
+  { x: penPinFrom.x + 90, y: penPinFrom.y - 60 },
+)
+await page.waitForTimeout(1200)
+const penPinTo = await centreOf(anchorPins(page).last())
+check(
+  '★ and a STYLUS stroke drags it',
+  Math.abs(penPinTo.x - penPinFrom.x) > 30 || Math.abs(penPinTo.y - penPinFrom.y) > 30,
+  `Δ ${Math.round(penPinTo.x - penPinFrom.x)}, ${Math.round(penPinTo.y - penPinFrom.y)}`,
+)
+
+// --- 10c. drawing a whole zone with the stylus ------------------------------
+
+check('"צייר שטח מרעה" is reachable by STYLUS', await penTapText(page, cdp, 'צייר שטח מרעה'))
+await page.waitForTimeout(600)
+await scrollToMap(page)
+check(
+  'the drawing mode arms under the stylus',
+  (await bodyText(page)).includes('מציירים שטח מרעה'),
+)
+
+const penDrawMap = await mapBox(page)
+for (const [fx, fy] of [
+  [0.36, 0.3],
+  [0.6, 0.3],
+  [0.62, 0.52],
+  [0.34, 0.5],
+] as Array<[number, number]>) {
+  await penTap(cdp, penDrawMap.x + penDrawMap.width * fx, penDrawMap.y + penDrawMap.height * fy)
+  await page.waitForTimeout(600)
+}
+check(
+  '★ four STYLUS taps are four corners',
+  (await bodyText(page)).includes('4 פינות'),
+  (await bodyText(page)).match(/\d+ פינות/)?.[0] ?? '—',
+)
+
+/**
+ * ★ AND IT CLOSES WITHOUT A DOUBLE-TAP, which is the product owner's condition
+ *   in so many words. The double-tap shortcut still exists for a finger; the
+ *   button is what a stylus uses, and it is what this asserts.
+ */
+check(
+  '★ "סגור פוליגון" closes the ring by STYLUS — no double-tap required',
+  await penTapText(page, cdp, 'סגור פוליגון'),
+)
+await scrollToMap(page)
+await page.waitForTimeout(1500)
+check(
+  'the zone joined the farm',
+  !(await bodyText(page)).includes('מציירים שטח מרעה'),
+)
+
+// --- 10d. editing a vertex with the stylus ----------------------------------
+
+check('"ערוך" opens the ring by STYLUS', await penTapText(page, cdp, 'ערוך'))
+await page.waitForTimeout(1200)
+await scrollToMap(page)
+
+const penGrips = page.locator('.maplibregl-marker[aria-label*="פינת אזור"]')
+const penGripsBefore = await penGrips.count()
+check('the ring shows its vertex grips', penGripsBefore > 0, `${penGripsBefore}`)
+
+const penGripFrom = await centreOf(penGrips.first())
+await penDrag(cdp, penGripFrom, { x: penGripFrom.x - 70, y: penGripFrom.y + 55 })
+await page.waitForTimeout(1200)
+const penGripTo = await centreOf(penGrips.first())
+check(
+  '★ a vertex follows the STYLUS',
+  Math.abs(penGripTo.x - penGripFrom.x) > 25 ||
+    Math.abs(penGripTo.y - penGripFrom.y) > 25,
+  `Δ ${Math.round(penGripTo.x - penGripFrom.x)}, ${Math.round(penGripTo.y - penGripFrom.y)}`,
+)
+
+const penInserts = page.locator('.maplibregl-marker[aria-label*="הוספת פינה"]')
+if ((await penInserts.count()) > 0) {
+  const penMid = await centreOf(penInserts.first())
+  await penTap(cdp, penMid.x, penMid.y)
+  await page.waitForTimeout(1200)
+  check(
+    '★ a STYLUS tap on a midpoint grip inserts a corner',
+    (await penGrips.count()) === penGripsBefore + 1,
+    `${penGripsBefore} → ${await penGrips.count()}`,
+  )
+} else {
+  check('★ a STYLUS tap on a midpoint grip inserts a corner', false, 'no midpoint grips found')
+}
 
 await browser.close()
 

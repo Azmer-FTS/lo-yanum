@@ -646,7 +646,14 @@ export function Modal({
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-surface-sunken/80 p-0 backdrop-blur-sm sm:items-center sm:p-6">
+    // `data-overlay` — PO POINT 2. A modal's whole job is to cover the shell,
+    // so the layout sweep's "no pinned element covers another" rule has to be
+    // told this one is deliberate. The attribute says so on the element rather
+    // than in a class list the gate would have to pattern-match.
+    <div
+      data-overlay=""
+      className="fixed inset-0 z-50 flex items-end justify-center bg-surface-sunken/80 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+    >
       <div
         role="dialog"
         aria-modal="true"

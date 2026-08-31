@@ -247,6 +247,21 @@ export function CoordinatorLayout() {
   const topBarRef = useRef<HTMLElement | null>(null)
   usePublishedHeight(topBarRef, '--shell-top')
 
+  /**
+   * PO POINT 1 — `--shell-foot` IS THE WHOLE PINNED FOOT, NOT ONE COMPONENT
+   * INSIDE IT.
+   *
+   * `DevToolbar` used to publish its own height, which was right for as long
+   * as it was the only thing down there. It is not, in `FieldLayout`: the tab
+   * bar and the toolbar share ONE sticky container, and the gate's new
+   * foot-band invariant caught the shell claiming 69 px while 131 px was
+   * occupied — a 62 px strip of every full-`dvh` column hidden behind the tab
+   * bar. So the CONTAINER measures itself, and whatever it comes to hold is
+   * included by construction.
+   */
+  const footRef = useRef<HTMLDivElement | null>(null)
+  usePublishedHeight(footRef, '--shell-foot')
+
   const bleed = isBleedPath(pathname)
 
   // Close the mobile slide-over whenever the route changes.
@@ -292,8 +307,16 @@ export function CoordinatorLayout() {
           // shield below it has to start UNDER the clock rather than behind it.
           // The inset is ADDED to the rail's own `py-4`, which is why the top
           // padding is written out rather than left to `py-4` (see index.css).
-          className={`sticky top-0 hidden h-[calc(100dvh-var(--shell-bottom))] shrink-0 flex-col gap-4
-                      overflow-y-auto border-e border-edge-subtle bg-surface-raised px-3 pb-4
+          // PO POINT 1 — AND THE SAME SENTENCE APPLIES AT THE OTHER END. The
+          // rail's SURFACE has to reach the bottom edge of the display, or a
+          // strip of `--surface-base` shows under it; but the account block at
+          // its foot is a CONTROL, and iOS takes the taps in the home
+          // indicator's strip. So the height subtracts `--shell-foot` (zero in
+          // a real build — nothing is pinned down there) and the inset is
+          // PADDING, added to the rail's own `pb-4`.
+          className={`sticky top-0 hidden h-[calc(100dvh-var(--shell-foot))] shrink-0 flex-col gap-4
+                      overflow-y-auto border-e border-edge-subtle bg-surface-raised px-3
+                      pb-[calc(var(--safe-bottom)+1rem)]
                       pt-[calc(var(--status-inset)+1rem)]
                       transition-[width] duration-base ease-out lg:flex ${
                         expanded ? 'w-60' : 'w-[4.5rem]'
@@ -427,7 +450,7 @@ export function CoordinatorLayout() {
           is nothing pinned to the foot of this shell, and nothing here to
           say so. */}
       {!SUPABASE_CONFIGURED && (
-        <div className="sticky bottom-0 z-40">
+        <div ref={footRef} className="sticky bottom-0 z-40">
           <DevToolbar />
         </div>
       )}
@@ -446,6 +469,12 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
   const { t } = useTranslation()
   const session = useCoreValue(getSession)
   const name = useCoreValue(getMyDisplayName)
+
+  // PO POINT 1 — the tab bar AND the demo toolbar share this container, so the
+  // container is what knows how many pixels at the foot are taken. See the
+  // same hook in `CoordinatorLayout` for why it moved off `DevToolbar`.
+  const fieldFootRef = useRef<HTMLDivElement | null>(null)
+  usePublishedHeight(fieldFootRef, '--shell-foot')
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-base">
@@ -472,7 +501,7 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
         <Outlet />
       </main>
 
-      <div className="sticky bottom-0 z-30">
+      <div ref={fieldFootRef} className="sticky bottom-0 z-30">
         {/* PO return 6 — in DEMO mode `DevToolbar` sits below this bar and
             carries the home-indicator inset itself; in a real build this IS the
             bottom-most element, so it takes the inset on. Exactly one of the

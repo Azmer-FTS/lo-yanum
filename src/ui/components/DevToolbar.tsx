@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
@@ -29,8 +28,8 @@ export function DevToolbar() {
    * driver sessions on mock people; behind a real login that is not a
    * convenience, it is a way to be someone else. The flag is a build-time
    * constant, so returning before the hooks can never change their order — and
-   * `--shell-bottom` falling back to its token default is what the effect
-   * below was already written to allow.
+   * `--shell-foot` is published by the sticky container in `layouts.tsx`, and
+   * that container is not rendered in a real build either.
    */
   if (SUPABASE_CONFIGURED) return null
 
@@ -39,34 +38,20 @@ export function DevToolbar() {
   const presets = useCoreValue(listSessionPresets)
   const session = useCoreValue(getSession)
   const currentId = presetIdOf(session)
-  const ref = useRef<HTMLDivElement | null>(null)
 
   /**
-   * Publish this bar's real height as `--shell-bottom`.
+   * ⚠️ PO POINT 1 — THIS BAR NO LONGER PUBLISHES `--shell-foot`, AND THE
+   *   REASON IS A DEFECT THE GATE FOUND THE MOMENT IT COULD SEE IT.
    *
-   * Every sticky footer and every full-height map column has to sit above it,
-   * and its height is NOT constant: the row wraps on a narrow phone, so a
-   * hard-coded offset overlaps by a few pixels at exactly the width where it
-   * matters most. Measuring makes the offset exact at any width, and when
-   * Lot 1 deletes this component the variable falls back to its token default.
+   *   It published its own height, which was right for as long as it was the
+   *   only thing pinned at the foot of the shell. In `FieldLayout` it is not:
+   *   the tab bar and this bar share ONE sticky container, so the shell
+   *   claimed 69 px while 131 px was occupied, and 62 px of every full-`dvh`
+   *   column sat behind the tab bar. The CONTAINER measures itself now
+   *   (`layouts.tsx`, `usePublishedHeight(footRef, '--shell-foot')`), which
+   *   includes whatever it comes to hold rather than whatever somebody
+   *   remembered to add up.
    */
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const publish = () => {
-      document.documentElement.style.setProperty(
-        '--shell-bottom',
-        `${el.getBoundingClientRect().height}px`,
-      )
-    }
-    publish()
-    const observer = new ResizeObserver(publish)
-    observer.observe(el)
-    return () => {
-      observer.disconnect()
-      document.documentElement.style.removeProperty('--shell-bottom')
-    }
-  }, [])
 
   const onPick = (id: string) => {
     const preset = presets.find((p) => p.id === id)
@@ -79,15 +64,12 @@ export function DevToolbar() {
   // single sticky container with the field tab bar instead of the two fighting
   // over `bottom-0`.
   //
-  // PO return 6 — the home-indicator inset is PADDING ON THIS BAR rather than
-  // on a wrapper, for one reason: `--shell-bottom` is this element's MEASURED
-  // height, so anything the bar has to sit above has to be inside the box being
-  // measured. Put the inset on a parent and the bar renders under the home
-  // indicator while every sticky footer in the app clears a bar that is 34 px
-  // taller than the one it can see.
+  // PO return 6 — the home-indicator inset is PADDING ON THIS BAR so its
+  // SURFACE runs under the indicator rather than stopping above it. The
+  // measurement that matters is now the sticky container's (PO point 1), and
+  // this padding is inside that container, so it is still counted.
   return (
     <div
-      ref={ref}
       className="border-t border-edge-strong bg-surface-sunken pb-[var(--safe-bottom)]"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">

@@ -1007,7 +1007,7 @@ export function MissionWizardScreen() {
             ref={stepOneRef}
             data-map-shell="mission-wizard"
             style={{ ['--content-w' as string]: `${stepOneRatio.ratio}%` }}
-            className="flex flex-col gap-4 lg:h-[calc(100dvh-var(--shell-top)-var(--shell-bottom)-18rem)] lg:min-h-[24rem] lg:flex-row-reverse lg:rtl:flex-row"
+            className="flex flex-col gap-4 lg:h-[calc(100dvh-var(--shell-top)-var(--shell-foot)-18rem)] lg:min-h-[24rem] lg:flex-row-reverse lg:rtl:flex-row"
           >
             <div
               data-map-content=""
@@ -1924,6 +1924,7 @@ export function MissionWizardScreen() {
             <button
               type="button"
               className="btn-primary"
+              data-testid="wizard-next"
               disabled={
                 (step === 1 && !canLeaveStep1) ||
                 (step === 2 && !canLeaveStep2)

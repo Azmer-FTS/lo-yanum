@@ -128,7 +128,7 @@ interface BreakpointClasses {
 const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
   lg: {
     shellPanel:
-      'flex flex-col lg:h-[calc(100dvh-var(--shell-bottom))] lg:min-h-0 lg:flex-row-reverse lg:pt-[var(--shell-top)] lg:rtl:flex-row',
+      'flex flex-col lg:h-[calc(100dvh-var(--shell-foot))] lg:min-h-0 lg:flex-row-reverse lg:pt-[var(--shell-top)] lg:rtl:flex-row',
     shellPage:
       'flex flex-col lg:flex-row-reverse lg:items-start lg:pt-[var(--shell-top)] lg:rtl:flex-row',
     contentPanel:
@@ -138,17 +138,17 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
     contentSplit: 'lg:w-[var(--content-w)] lg:flex-none lg:px-5',
     mapCol: 'order-1 flex-col lg:order-none lg:min-w-0 lg:flex-1',
     mapColPage:
-      'lg:sticky lg:top-[var(--shell-top)] lg:h-[calc(100dvh-var(--shell-top)-var(--shell-bottom))] lg:self-start',
+      'lg:sticky lg:top-[var(--shell-top)] lg:h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] lg:self-start',
     mapBox: 'relative w-full border-edge-subtle lg:h-full lg:border-r lg:!h-full',
     bar: 'flex lg:hidden',
     switchInContent: 'hidden lg:flex',
     splitter: 'hidden lg:flex',
     splitterPage:
-      'lg:sticky lg:top-[var(--shell-top)] lg:h-[calc(100dvh-var(--shell-top)-var(--shell-bottom))] lg:self-start',
+      'lg:sticky lg:top-[var(--shell-top)] lg:h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] lg:self-start',
   },
   xl: {
     shellPanel:
-      'flex flex-col lg:pt-[var(--shell-top)] xl:h-[calc(100dvh-var(--shell-bottom))] xl:min-h-0 xl:flex-row-reverse xl:rtl:flex-row',
+      'flex flex-col lg:pt-[var(--shell-top)] xl:h-[calc(100dvh-var(--shell-foot))] xl:min-h-0 xl:flex-row-reverse xl:rtl:flex-row',
     shellPage:
       'flex flex-col lg:pt-[var(--shell-top)] xl:flex-row-reverse xl:items-start xl:rtl:flex-row',
     contentPanel:
@@ -158,13 +158,13 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
     contentSplit: 'xl:w-[var(--content-w)] xl:flex-none xl:px-5',
     mapCol: 'order-1 flex-col xl:order-none xl:min-w-0 xl:flex-1',
     mapColPage:
-      'xl:sticky xl:top-[var(--shell-top)] xl:h-[calc(100dvh-var(--shell-top)-var(--shell-bottom))] xl:self-start',
+      'xl:sticky xl:top-[var(--shell-top)] xl:h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] xl:self-start',
     mapBox: 'relative w-full border-edge-subtle xl:h-full xl:border-r xl:!h-full',
     bar: 'flex xl:hidden',
     switchInContent: 'hidden xl:flex',
     splitter: 'hidden xl:flex',
     splitterPage:
-      'xl:sticky xl:top-[var(--shell-top)] xl:h-[calc(100dvh-var(--shell-top)-var(--shell-bottom))] xl:self-start',
+      'xl:sticky xl:top-[var(--shell-top)] xl:h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] xl:self-start',
   },
 }
 
@@ -231,7 +231,7 @@ export function MapSplit({
         // pinned to the viewport instead of growing with a list that is not
         // there. `min-h-dvh` otherwise, so a short list still fills the page.
         mode === 'full'
-          ? 'h-[calc(100dvh-var(--shell-top)-var(--shell-bottom))] min-h-0'
+          ? 'h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] min-h-0'
           : 'min-h-dvh'
       }`}
     >

@@ -372,6 +372,7 @@ export function DriversScreen() {
                         onClick={() => setEditing(d)}
                         aria-label={t('common.edit')}
                         title={t('common.edit')}
+                        data-testid="driver-edit"
                         className="rounded-field p-1.5 text-content-muted transition-colors duration-fast hover:bg-surface-overlay hover:text-content-primary"
                       >
                         <Icon name="edit" size={16} />

@@ -23,7 +23,61 @@
            requirement read from the other end. If he wants edge-to-edge badly
            enough to accept a permanently dark scrim at the top of the light
            theme, this is the one line that changes. -->
+    <!-- PO POINT 1 (2026-08-31) — THE STATUS BAR IS THE SAME IN BOTH THEMES ON
+         A REAL INSTALLED iPAD, and one unscoped meta tag is why.
+
+         iOS reads `theme-color` for the installed app's status bar AT LAUNCH.
+         `theme.tsx` keeps the unscoped tag below in step with the palette at
+         runtime, which is right for a browser tab and arrives far too late for
+         a home-screen app — so what the product owner saw was the boot literal,
+         `#0B1119`, painted behind the clock in the LIGHT theme too.
+
+         ★ MEDIA-SCOPED TAGS FIRST, UNSCOPED LAST, AND THE ORDER IS THE WHOLE
+           MECHANISM. A browser takes the FIRST `theme-color` whose `media`
+           matches; an unscoped tag matches everything, so an unscoped tag
+           placed first would shadow both of these permanently. Last, it is the
+           fallback for anything that ignores `media` — and it is the one
+           `theme.tsx` writes to, selected as `:not([media])` precisely so a
+           live theme change cannot overwrite these two.
+
+         ⚠️ IT FOLLOWS THE SYSTEM SCHEME, NOT THE APP'S OWN CHOICE. A
+           coordinator who forces the dark theme on a light iPad gets a light
+           status bar. That is the limit of what meta tags can express, it is
+           strictly better than one wrong colour in both directions, and the
+           way past it is `black-translucent` below. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F3F4F6" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B1119" />
     <meta name="theme-color" content="#0B1119" />
+
+    <!-- ⚖️ PO POINT 1 — THE ARBITRATION, AND IT IS ONE LINE.
+
+         Uncommenting the tag below is OPTION B. It is not commented out
+         because it is worse; it is commented out because it is the product
+         owner's call and he asked to see both.
+
+         OPTION A (what ships today, tag absent): iOS lays the web app BELOW
+         the status bar. The bar is opaque, the system draws the clock in
+         whatever contrasts with `theme-color`, and — the part he reported —
+         `env(safe-area-inset-top)` IS THEREFORE ZERO. There is no unsafe area,
+         because iOS already inset the whole view. Every rule in this app that
+         scales by `--status-inset` collapses to nothing, including the
+         gradient, which is why there was no gradient to see. Nothing is
+         broken; the app simply never reaches the top of the display.
+
+         OPTION B (`black-translucent`): the web app fills the screen, the
+         insets become real, the content runs under the bar and the gradient
+         appears and follows the theme. The price is fixed and not negotiable
+         by CSS: iOS forces the clock, the battery and the signal bars to
+         WHITE, permanently, in both themes. Against the light theme's
+         `#F3F4F6` that is white on near-white, so option B also switches the
+         gradient to a DARK scrim in both themes (`index.css`,
+         `html[data-statusbar='translucent']`) — a permanent dark strip at the
+         top of the light theme, which is the cost stated plainly.
+
+         Captures of both, iPad Pro 13" portrait and landscape, light and
+         dark: `docs/screenshots/statusbar/`. -->
+    <!-- <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" /> -->
+
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="לא ינום" />
