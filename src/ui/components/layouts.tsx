@@ -5,6 +5,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { COORDINATOR, getMyDisplayName, getSession } from '@core/index'
 
 import { signOut } from '../../data/auth'
+import { useDataState } from '../hooks/useDataState'
 import { useOnline } from '../offline'
 import { useAuth } from '../hooks/useAuth'
 import { useCoreValue } from '../hooks/useCore'
@@ -131,6 +132,39 @@ function OfflineBadge({ compact = false }: { compact?: boolean }) {
     >
       <span aria-hidden="true" className="h-1.5 w-1.5 rounded-pill bg-status-warn" />
       {!compact && t('settings.connection.badge')}
+    </span>
+  )
+}
+
+/**
+ * P2.5b — "N ממתינים לסנכרון", AND IT IS THE ONLY THING THE OFFLINE DATA LAYER
+ * SAYS OUT LOUD.
+ *
+ * Same rule as `OfflineBadge` above and for the same reason: nothing is
+ * rendered while there is nothing waiting. A permanent "synced ✓" would be
+ * read as decoration by the time it mattered.
+ *
+ * ★ WHAT IT COUNTS IS AGGREGATES, NOT ACTIONS. Editing the same guard six
+ *   times on a farm track leaves ONE entry in the outbox — it is keyed by
+ *   `collection/id` and coalesces — so this says 1, which is also the number
+ *   of things that are actually different from the server. A count of six
+ *   would be true about the coordinator's afternoon and false about his data.
+ */
+function SyncBadge({ compact = false }: { compact?: boolean }) {
+  const { t } = useTranslation()
+  const data = useDataState()
+  const count = data?.pending ?? 0
+  if (count === 0) return null
+
+  return (
+    <span
+      data-testid="sync-badge"
+      title={t('data.sync.title', { count })}
+      className={`inline-flex items-center gap-1.5 rounded-pill bg-status-info/15 px-2.5 py-1
+                  text-micro font-semibold text-status-info-ink ${compact ? 'px-1.5' : ''}`}
+    >
+      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-pill bg-status-info" />
+      {compact ? count : t('data.sync.badge', { count })}
     </span>
   )
 }
@@ -289,6 +323,7 @@ export function CoordinatorLayout() {
           <div className="mt-auto flex flex-col gap-2">
             <div className={expanded ? '' : 'flex justify-center'}>
               <OfflineBadge compact={!expanded} />
+              <SyncBadge compact={!expanded} />
             </div>
             <div className={expanded ? '' : 'flex justify-center'}>
               <ThemeToggle compact={!expanded} vertical={!expanded} />
@@ -307,6 +342,8 @@ export function CoordinatorLayout() {
             <Brand />
             <div className="flex items-center gap-2">
               <OfflineBadge />
+            <SyncBadge />
+              <SyncBadge />
               <ThemeToggle compact />
               <button
               type="button"
@@ -393,6 +430,7 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
           <Brand />
           <div className="flex items-center gap-3">
             <OfflineBadge />
+            <SyncBadge />
             <ThemeToggle compact />
             <div className="min-w-0 text-end leading-tight">
               <p className="truncate text-caption font-medium text-content-primary">
