@@ -4646,6 +4646,21 @@ made at RUNTIME.
   night before a demonstration, to fix a case that only arises when somebody
   forces a theme against his own device. **His call, not a session's.**
 
+### 24.8 ✅ DEPLOYED, AND VERIFIED ON THE ARTEFACT RATHER THAN ASSUMED
+
+Run **33451853216**, `success`, `headSha 7911052`. Measured on the deployed
+files with HTML comments stripped, because a commented tag greps the same as a
+live one:
+
+| | measured |
+|---|---|
+| `apple-mobile-web-app-status-bar-style` | ✅ exactly one ACTIVE tag, `content="default"` |
+| `viewport-fit=cover` | ✅ 1 active |
+| option B's scrim in the stylesheet | ✅ **gone** — `assets/index-GAJZYos_.css` contains `data-statusbar` **0** times and the dark scrim's colour **0** times |
+| `sw.js` served | ✅ `TransformStream` ×2, `storageEstimate` ×7 — the streaming, quota-aware download is what ships |
+| the bundle | `assets/index-MQ5mES-Q.js` — carries `אחסון פנוי במכשיר`, `שמירה קבועה`, `הניסיון האחרון`, `ההורדה לא הושלמה` and the `map-attempt` key |
+| the 20-second test page | ✅ `https://azmer-fts.github.io/lo-yanum/themebar-test.html` answers **200** |
+
 ### 24.7 ⛔ WHAT THE PRODUCT OWNER STILL HAS TO DO, AND IT HAS NOT CHANGED
 
 Nothing in this session touched §14.4. The one act is the upload:
