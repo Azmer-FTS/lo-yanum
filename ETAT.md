@@ -40,6 +40,8 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run tokens` | **A28/A29** — one radius scale, no tinted field, orange only where it is allowed. No browser needed |
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 150 checks |
+| `bun run live` | **A75** — the LIVE schema against the mapper (P2.6b), and **it needs no password**. PostgREST resolves `?select=` against the schema BEFORE applying RLS, so an anonymous request names a missing column (400/42703) and an existing one answers `[]`. 24 tables probed column by column, 15 enums probed label by label, `app_users` closed to a stranger. 46 checks — needs the internet, not a dev server |
+| `bun run mapping` | **A74** — the mapper (P2.6b). Drives all 380 fixture aggregates out through `toRows` and back through `fromRows` and fails on any difference, then parses this repository's OWN migrations and asserts both directions of the column contract: no column the mapper writes is missing, no `not null`-without-default column goes unwritten. 32 checks — no browser, no dev server, no network |
 | `bun run persist` | **A73** — the store interface (P2.6a). Drives all 45 exported mutations through a RECORDING backend and asserts what each one writes: the fan-outs (a zone rewrites the farm's dunams, the dual hat materialises a driver, a visit rewrites `nextVisitAt`), the ones that mutate IN PLACE and an identity diff would silently lose, and the three things that must never be written (a session change, a reset, a hydration). 84 checks — no browser, no dev server, no network |
 | `bun run auth` | **A70** — the door (P2.3). Starts its OWN two dev servers, one in each mode, and compares them: real mode shows the login form and nothing else on 8 routes, refuses a wrong password IN HEBREW, gives an unknown address the SAME message, leaves no token behind; demo mode is byte-for-byte P0bis. Then B1 without a browser — 26 tables anonymously closed, an anonymous coordinator-grant INSERT refused, the three policy helpers 404. 20 checks — **needs no dev server, and never needs the password** |
 | `bun run offline` | **A72** — the offline shell (P2.5a). The ONLY gate that BUILDS the app and serves the build, because the service worker is production-only: the worker takes control, one online load is enough to survive being pulled offline, ★ **a Supabase read offline FAILS** (nothing from the API is ever cached), looked-at ground is still there, the badge comes and goes, the frozen /poc comes back as ITSELF, and a real build shows its door rather than a browser error. 11 checks — **no dev server; it makes its own** |
@@ -1623,6 +1625,37 @@ All twelve are committed and runnable.
   presence marks that never left the iPad. Section 7 of the script is the other
   half: it re-reads `src/core/index.ts` and fails if a mutation was exported
   without a line in the gate, so the coverage cannot rot.
+- **`scripts/mapping.ts`** (`bun run mapping`) — A74, 32 checks, P2.6b's gate.
+  `src/data/rows.ts` is 26 hand-written column lists, which is exactly the kind
+  of code that is 98 % right and whose missing 2 % is a farmer's phone number
+  that silently stops arriving. Section 2 round-trips every aggregate in the
+  fixtures; section 5 reads the migrations. **Section 5 is the one that earns
+  its keep**: it would have found P0bis.5a's `email` and P0bis.5b's `event` on
+  its own, without anyone thinking to look, because a round trip never touches
+  a database and cannot know the schema is behind. The single family of
+  differences it tolerates is listed at the top of the file — three optional
+  `Farm` fields that are `not null` in the schema — and nothing else.
+- **`scripts/live.ts`** (`bun run live`) — A75, 46 checks, and the answer to
+  "the repository says the column exists; does Frankfurt?". A74 reads the
+  migration FILES, which say what was WRITTEN, not what was APPLIED — a
+  migration that failed halfway or a branch never merged leaves the repo
+  agreeing with itself while the deployment disagrees, and the first thing to
+  notice is a coordinator whose edit vanished. This asks the deployment,
+  anonymously, using the one property that makes it possible: **PostgREST
+  parses `?select=` against the schema before RLS runs.** A missing column
+  comes back 400 with its own name; an existing one comes back `[]`, the rows
+  being what RLS refuses. Nothing crosses the wire that is not already public
+  in these migrations. The `[]` assertion grows teeth the day P3 imports real
+  data: today it is what an empty table returns anyway, from the first
+  imported farm it is RLS working and a row would be the leak.
+- **`scripts/samples.ts`** — not a gate; the column list A74 and A75 both ask
+  their different answerers about. It exists because reading only the FIRST
+  aggregate of each collection is the obvious version and hides in a specific
+  way: an aggregate whose child list is empty writes no row, so that child's
+  table is never probed. `cancel_notices` was exactly that — no fixture guard
+  carries an outreach tick, because a tick is something a coordinator does —
+  and it was also the table P2.6's catch-up had to change. **The one table
+  nobody could see was the one that was wrong.**
 - **`scripts/tokens.ts`** (`bun run tokens`) — A28 + A29. A static gate over
   `src/`, and the only one that needs neither a browser nor a running app. Both
   rules it enforces are rules about RESTRAINT, which is what a codebase loses

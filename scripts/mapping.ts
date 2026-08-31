@@ -6,6 +6,8 @@ import { DEMO_BACKEND } from '../src/core/demo'
 import { MAPPINGS, tablesOf } from '../src/data/rows'
 import type { Mapping, Row } from '../src/data/rows'
 
+import { writtenColumns } from './samples'
+
 /**
  * A74 — THE 26 TABLES AND THE NESTED MODEL SAY THE SAME THING (P2.6b).
  *
@@ -403,31 +405,32 @@ section('5 — every column the mapper writes exists, and every required one is 
 
   const unknown: string[] = []
   const unwritten: string[] = []
+  const unprobed: string[] = []
 
-  for (const collection of COLLECTIONS) {
-    const mapping = MAPPINGS[collection] as Mapping<unknown>
-    const sample = (data[collection] as unknown[])[0]
-    if (sample === undefined) continue
-    for (const { table, rows } of mapping.toRows(sample)) {
-      const cols = schema.get(table)
-      if (!cols) {
-        unknown.push(`${table} (no such table)`)
-        continue
-      }
-      const written = new Set(rows.length > 0 ? Object.keys(rows[0]) : [])
-      // An aggregate whose child list happens to be empty in the fixtures
-      // writes no row, so there is nothing to check against for that table.
-      if (written.size > 0) {
-        for (const column of written) {
-          if (!cols.has(column)) unknown.push(`${table}.${column}`)
-        }
-        for (const [column, optional] of cols) {
-          if (optional || SERVER_OWNED.has(column) || written.has(column)) continue
-          unwritten.push(`${table}.${column}`)
-        }
-      }
+  for (const [table, written] of writtenColumns()) {
+    const cols = schema.get(table)
+    if (!cols) {
+      unknown.push(`${table} (no such table)`)
+      continue
+    }
+    if (written.size === 0) {
+      unprobed.push(table)
+      continue
+    }
+    for (const column of written) {
+      if (!cols.has(column)) unknown.push(`${table}.${column}`)
+    }
+    for (const [column, optional] of cols) {
+      if (optional || SERVER_OWNED.has(column) || written.has(column)) continue
+      unwritten.push(`${table}.${column}`)
     }
   }
+
+  check(
+    'no table is left unchecked because no sample happens to fill it',
+    unprobed.length === 0,
+    unprobed.length ? `add a sample in scripts/samples.ts: ${unprobed.join(', ')}` : 'all filled',
+  )
 
   check(
     'every column the mapper writes exists in a migration',
