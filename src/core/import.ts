@@ -1,9 +1,11 @@
 import { isUnresolvableLocationLink, parsePositionInput, positionOfLocality } from './geo'
+import { keepsLivestock } from './types'
 import { normalizeEmail } from './messages'
 import {
   readEntityKind,
   readFarmStatus,
   readFarmType,
+  readLivestockKind,
   readPhoneType,
   requiredFields,
 } from './templates'
@@ -15,6 +17,7 @@ import type {
   FarmStatus,
   FarmType,
   LatLng,
+  LivestockLine,
   PhoneType,
   Volunteer,
   VolunteerStatus,
@@ -105,6 +108,8 @@ export interface ParsedRow {
   contactName: string
   contactPhone: string
   contactEmail: string
+  /** PO POINT 6 — the three type/count pairs, folded back into a list. */
+  livestock: LivestockLine[]
   notes: string
   // --- drivers -------------------------------------------------------------
   vehicle: string
@@ -193,6 +198,29 @@ export function analyseImport(
     return i === -1 ? '' : (row[i] ?? '').toString().trim()
   }
 
+  /**
+   * PO POINT 6 — the three type/count pairs, folded back into a list.
+   *
+   * ★ A PAIR NEEDS BOTH HALVES. A type with no number is a coordinator who
+   *   started typing and stopped; a number with no type is a number nobody
+   *   can spend. Either way the pair is dropped rather than guessed at — and
+   *   `readLivestockKind` keeps an unrecognised word as `other` with the word
+   *   itself, so nothing is silently reclassified.
+   */
+  const readLivestock = (
+    raw: string[],
+    read: (row: string[], field: ImportField) => string,
+  ): LivestockLine[] => {
+    const out: LivestockLine[] = []
+    for (const n of ['1', '2', '3'] as const) {
+      const parsed = readLivestockKind(read(raw, `livestockKind${n}` as ImportField))
+      const heads = readNumber(read(raw, `livestockHeads${n}` as ImportField))
+      if (!parsed || heads === null || heads <= 0) continue
+      out.push({ kind: parsed.kind, label: parsed.label, heads })
+    }
+    return out
+  }
+
   const rows: ParsedRow[] = matrix.map((raw, index) => {
     const name = cell(raw, 'name')
     const phone = cell(raw, 'phone')
@@ -274,6 +302,7 @@ export function analyseImport(
       contactName: cell(raw, 'contactName'),
       contactPhone: cell(raw, 'contactPhone'),
       contactEmail,
+      livestock: readLivestock(raw, cell),
       notes: cell(raw, 'notes'),
       vehicle: cell(raw, 'vehicle'),
       seats: seatsNum ?? 0,
@@ -373,6 +402,7 @@ export function toFarmDrafts(
   grazingDunamsManual?: boolean
   contacts: Farm['contacts']
   commitments: Farm['commitments']
+  livestock: LivestockLine[]
   agreements: Farm['agreements']
   notes: string
 }> {
@@ -404,6 +434,9 @@ export function toFarmDrafts(
           ]
         : [],
     commitments: [],
+    // PO POINT 6 — an entity that is not `livestock`/`mixed` never carries a
+    // head count, whatever the spreadsheet said. The type column governs.
+    livestock: keepsLivestock({ type: r.farmType }) ? r.livestock : [],
     agreements: [],
     notes: r.notes,
   }))

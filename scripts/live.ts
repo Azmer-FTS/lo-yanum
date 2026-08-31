@@ -160,6 +160,14 @@ section('3 — the closed sets, spelled the way the mapper spells them')
     ['zones', 'kind', ['farm_boundary', 'grazing_area']],
     ['threat_zones', 'intensity', ['low', 'medium', 'high']],
     ['entity_commitments', 'kind', ['shelter', 'water', 'food', 'other']],
+    // PO POINT 6 — the head count's species list, live against the database.
+    // A closed list is what keeps the funding totals addable, so a label the
+    // app spells and Postgres has never heard of is a silent write failure.
+    [
+      'entity_livestock',
+      'kind',
+      ['cattle', 'sheep', 'goats', 'camels', 'horses', 'poultry', 'other'],
+    ],
   ]
   for (const [table, column, values] of cases) {
     const answers = await Promise.all(

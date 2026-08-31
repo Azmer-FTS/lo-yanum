@@ -17,6 +17,13 @@ export const FARMS: Farm[] = [
     position: { lat: 31.0583, lng: 34.6531 },
     farmDunams: 420,
     grazingDunams: 3100,
+    // PO POINT 6 — the head count. Only on `livestock` / `mixed` entities, and
+    // deliberately NOT on all of them: a farm with no rows is a farm nobody has
+    // been asked yet, which is the state the app has to render honestly.
+    livestock: [
+      { kind: 'sheep', label: '', heads: 820 },
+      { kind: 'cattle', label: '', heads: 140 },
+    ],
     contacts: [
       {
         id: 'contact-01a',
@@ -169,6 +176,11 @@ export const FARMS: Farm[] = [
     position: { lat: 30.9824, lng: 34.7063 },
     farmDunams: 180,
     grazingDunams: 6400,
+    livestock: [
+      { kind: 'goats', label: '', heads: 310 },
+      { kind: 'camels', label: '', heads: 22 },
+      { kind: 'other', label: 'יענים', heads: 40 },
+    ],
     contacts: [
       {
         id: 'contact-04a',

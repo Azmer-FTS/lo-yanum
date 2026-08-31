@@ -130,8 +130,11 @@ check(
   for (const c of COLLECTIONS) for (const t of tablesOf(c)) tables.add(t)
   check(
     'and between them they cover the schema',
-    tables.size === 25,
-    `${tables.size} tables (26 minus app_users, which is identity, not data)`,
+    // PO POINT 6 added `entity_livestock`: 27 tables in the schema, minus
+    // `app_users`, which is who a login speaks for rather than data the app
+    // writes.
+    tables.size === 26,
+    `${tables.size} tables (27 minus app_users, which is identity, not data)`,
   )
   check(
     'app_users is NOT one of them',
@@ -376,7 +379,13 @@ section('5 — every column the mapper writes exists, and every required one is 
   }
 
   const NOT_A_COLUMN = /^(primary|foreign|unique|constraint|check|exclude)\b/i
-  for (const m of sql.matchAll(/create table (\w+)\s*\(([\s\S]*?)\n\);/g)) {
+  // `if not exists` is optional in the source: PO point 6's migration is
+  // written re-runnable (like P2.4's policies), and a parser that only knows
+  // the bare form silently stops seeing a table the moment somebody writes the
+  // safer version of the same statement.
+  for (const m of sql.matchAll(
+    /create table (?:if not exists )?(\w+)\s*\(([\s\S]*?)\n\);/g,
+  )) {
     const cols = columnsOf(m[1])
     for (const line of m[2].split('\n')) {
       const body = line.trim().replace(/,$/, '')

@@ -27,7 +27,7 @@ import type {
   Volunteer,
   VolunteerStats,
 } from './types'
-import { FARM_PIPELINE, resolveConfirmation } from './types'
+import { FARM_PIPELINE, resolveConfirmation, totalHeads } from './types'
 
 /**
  * ROLE-FILTERED DATA ACCESS — the single gate between the store and the UI.
@@ -289,12 +289,17 @@ export function getDunamKpis(): DunamKpis {
   const guarded: FarmStatus[] = ['signed', 'active']
   let guardedDunams = 0
   let potentialDunams = 0
+  // PO POINT 6 — counted over the SAME entities as `guardedDunams`, so the two
+  // numbers on the dashboard are two facts about one set rather than two sets.
+  let guardedHeads = 0
   for (const f of getVisibleFarms()) {
     const dunams = f.farmDunams + f.grazingDunams
-    if (guarded.includes(f.status)) guardedDunams += dunams
-    else if (f.status !== 'declined') potentialDunams += dunams
+    if (guarded.includes(f.status)) {
+      guardedDunams += dunams
+      guardedHeads += totalHeads(f) ?? 0
+    } else if (f.status !== 'declined') potentialDunams += dunams
   }
-  return { guardedDunams, potentialDunams }
+  return { guardedDunams, potentialDunams, guardedHeads }
 }
 
 /** Farms with a scheduled visit, soonest first — the coordinator's to-do. */

@@ -3679,6 +3679,117 @@ point 8 refuses — the abandoned-wizard case has to be created as `recruiting`.
 
 ---
 
+## 18. POINT 6 — THE HEAD COUNT. AND THE WHOLE FEATURE TURNS ON `null` vs `0`
+
+The programme is funded partly on the livestock it protects. Until now the app
+could say how much GROUND was under guard and **nothing at all about the animals
+standing on it**, which is the number the association's director is asked for by
+people who do not care how many dunams a wadi covers.
+
+### 18.1 ★ IT IS A LIST, NOT A NUMBER — AND ABSENT IS NOT ZERO
+
+**A list**, because "500 head" answers nothing: 500 sheep and 500 head of cattle
+are different sums of money, different night risks and different pens. The field
+expert names the species; the app does not invent a unit that averages them.
+
+`LivestockKind` is a CLOSED list — `cattle · sheep · goats · camels · horses ·
+poultry · other` — because a closed list is what keeps the totals **addable**
+across entities, and the funding number is a sum. ★ `other` carries **its own
+label** rather than being a bucket, so a coordinator never has to lie about an
+ostrich farm; the import keeps the word he typed.
+
+★★ **AND THE LOAD-BEARING DECISION IS `totalHeads()` RETURNING `null`.**
+
+  · no rows = **nobody has been asked**
+  · a row saying `0` = **there are none**
+
+  Those are different facts and the app must never conflate them, because this
+  is a funding figure. **A tile reading "0 ראשים" states something nobody has
+  established.** So `totalHeads` is nullable, the detail banner is hidden on
+  null, the dashboard tile is hidden at zero, and the mapper hands back
+  `undefined` rather than `[]` when the child table is empty — an empty array
+  would round-trip as "asked, and the answer was none".
+
+  ⚠️ It is also why the migration **backfills nothing**: a `default 0` row per
+  entity would have destroyed the distinction on the way in.
+
+★ **AND THE QUESTION IS ONLY ASKED OF AN ENTITY THAT KEEPS ANIMALS**
+  (`keepsLivestock` — `livestock` or `משולב`). An arable holding has no head
+  count, and a form that asks anyway is a form that trains the coordinator to
+  skip a section. The form section appears and disappears as he changes the
+  type, live.
+
+### 18.2 · Where it shows, end to end
+
+| surface | what it does |
+|---|---|
+| **the form** | a collapsible-style `בעלי חיים` section, one row per species, `הוספת שורה` / `הסרת השורה`, the free label only on `אחר`, a running total. A row with no head count is dropped on save rather than saved as a zero. |
+| **the detail** | a tile in the metric band, beside the two dunam figures, with the breakdown under it — `צאן־כבשים 820 · בקר 140`. Verified in the browser: **960** on `farm-01`. |
+| **the dashboard** | a third budget tile, `ראשים בשמירה`, ★ **hidden at zero**. Verified: **1,332**. |
+| **the .xlsx template** | three type/count pairs. |
+| **the import** | `readLivestockKind` reads the Hebrew label, the English key, or anything close. |
+| **the database** | `entity_livestock`, additive, applied. |
+| **the report** | point 7 reads the same accessor. |
+
+★ **THREE PAIRS IN THE SPREADSHEET, AND THREE IS THE RIGHT NUMBER.** A cell
+  cannot hold a list, so the pairs are flattened. Three because that is what a
+  real holding has — cattle and sheep, occasionally with a poultry house — and
+  because a fourth pair would add two empty columns to every row of every import
+  for a case the coordinator finishes by hand on the form in ten seconds.
+
+★ **A PAIR NEEDS BOTH HALVES.** A type with no number is somebody who started
+  typing and stopped; a number with no type is a number nobody can spend. Either
+  way the pair is dropped rather than guessed. And an unrecognised word becomes
+  `other` **with the word kept** — `יענים` stays `יענים`, because turning it
+  into `sheep` would put ostriches in the sheep column of a funding report.
+
+★ **AND THE ENTITY TYPE GOVERNS THE IMPORT.** A spreadsheet row that names a
+  head count on an arable holding does not get one. The column the coordinator
+  filled in about the entity's TYPE is the one that decides.
+
+### 18.3 · `entity_livestock` — additive, and its RLS is transcribed not inherited
+
+`supabase/migrations/20260831000400_entity_livestock.sql`, **applied**.
+
+A CHILD TABLE, not a column and not JSON — the same shape `entity_commitments`
+has, for the same reason: the domain object has no id of its own, the row needs
+one, and `position` is what the form edits. The id is minted from the parent and
+the position (`farm-01:l0`): stable across writes, reproducible from nothing
+stored, which is what lets the offline outbox carry an edit without having
+invented an id offline.
+
+★ **THE RLS IS SPELLED OUT RATHER THAN INHERITED, because a head count is a
+  fact about a farmer's ASSETS.** Coordinator: all. Farmer: his own entity's
+  rows, and nothing else. Volunteer and driver: nothing. Same rule as
+  `entity_commitments`, said out loud.
+
+**Nothing existing is altered** — no table, no column, no policy, no enum. An
+older client that has never heard of livestock reads and writes exactly as
+before.
+
+### 18.4 ⚠️ THREE GATES CAUGHT SOMETHING, WHICH IS WHY THEY EXIST
+
+· **`bun run mapping` (A74) reported `entity_livestock (no such table)`** while
+  the migration sat on disk — its migration parser only knew
+  `create table X (`, and this file is written `create table if not exists`
+  (re-runnable, like P2.4's policies). ★ **A parser that silently stops seeing a
+  table because somebody wrote the SAFER version of the same statement is worse
+  than one that fails**, so the parser learned the optional clause.
+· **Then it reported `add a sample: entity_livestock`** — no fixture farm had a
+  head count, so the round trip was never exercising the new table at all.
+  `farm-01` and `farm-04` now carry one, which is also what the product owner
+  demonstrates on tomorrow. Deliberately **not** all of them: an entity with no
+  rows is the state the app has to render honestly.
+· **`bun run live` (A75) now probes the table and its enum against Frankfurt** —
+  6 columns, 7 labels — because a species the app spells and Postgres has never
+  heard of is a silent write failure. **48 checks.**
+
+`accept` is **162** (was 150), and the twelve new ones are almost all about
+`null` vs `0`, because that is the thing a later session will be tempted to
+"simplify".
+
+---
+
 ## ⏭️ RESUME HERE — THE PRODUCT OWNER'S SECOND RETURN, IN HIS ORDER
 
 > ✅ **PMTILES IS DONE AND DEPLOYED (§12ter), and verified on the artefact
@@ -3719,7 +3830,7 @@ lot plan's. Eleven points, then the rest of P3:
 | **2** | reproduced bug: parasitic scroll on the farm form, both axes | ✅ **§16.1–16.3** — cause found (iOS zooms the page under 16 px), fixed, gated on 32 screens × 4 viewports × 2 engines |
 | **9** | **Apple Pencil** on every map interaction — he draws with a stylus | ✅ **§16.4** — audited, and `bun run touch` is 45 checks with a `pointerType=pen` pass |
 | **8** | **delete** a record — there is no way to correct a typo today | ✅ **§17** — one policy, one dialog, `bun run deletion` 61 checks; A73 grew to 94 |
-| **6** | **livestock** head-count per entity — funding depends on it | ⬜ |
+| **6** | **livestock** head-count per entity — funding depends on it | ✅ **§18** — form, detail, dashboard, .xlsx, import, `entity_livestock` applied; `accept` 162, `live` 48 |
 | **7** | **the employer's PDF report**, sendable in one gesture | ⬜ |
 | **3** | the network-state pill on every screen | ⬜ |
 | **4** | clean pull-to-refresh, native overscroll off | ⬜ |

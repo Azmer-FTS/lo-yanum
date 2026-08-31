@@ -981,7 +981,13 @@
     "emptyFile": "הקובץ ריק או שאין בו שורות נתונים.",
     "templateError": "לא הצלחנו ליצור את קובץ הגיבוי. נסו שוב.",
     "templateColumns": "עמודות הגיבוי: {{columns}}",
-    "mapRequired": "חובה למפות: {{columns}}"
+    "mapRequired": "חובה למפות: {{columns}}",
+    "fieldLivestockKind": "סוג בעלי חיים",
+    "fieldLivestockHeads": "מספר ראשים",
+    "fieldLivestockKind2": "סוג בעלי חיים 2",
+    "fieldLivestockHeads2": "מספר ראשים 2",
+    "fieldLivestockKind3": "סוג בעלי חיים 3",
+    "fieldLivestockHeads3": "מספר ראשים 3"
   },
   "theme": {
     "label": "ערכת נושא",
@@ -1237,6 +1243,29 @@
       "keepSignatory": "איש הקשר חתום על הסכם. שנו את פרטיו במקום למחוק אותו.",
       "keepVisit": "ביקור שבוצע הוא היסטוריה. אפשר לערוך את ההערה שלו.",
       "cancelMission": "השתמשו ב\"ביטול שמירה\" — הרשומה והסיבה נשמרות."
+    }
+  },
+  "livestock": {
+    "section": "בעלי חיים",
+    "hint": "רשימה רשותית. המימון תלוי גם בבעלי החיים שנשמרים",
+    "kind": "סוג",
+    "heads": "מספר ראשים",
+    "label": "פירוט",
+    "labelPlaceholder": "למשל: יענים",
+    "add": "הוספת שורה",
+    "remove": "הסרת השורה",
+    "total": "סה\"כ ראשים",
+    "totalGuarded": "ראשים בשמירה",
+    "none": "לא נשאל",
+    "empty": "לא הוזנו בעלי חיים",
+    "kinds": {
+      "cattle": "בקר",
+      "sheep": "צאן־כבשים",
+      "goats": "עיזים",
+      "camels": "גמלים",
+      "horses": "סוסים",
+      "poultry": "לול־עופות",
+      "other": "אחר"
     }
   }
 }

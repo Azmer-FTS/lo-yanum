@@ -1,3 +1,6 @@
+// PO POINT 6 — `templates` is not re-exported from the core index (it is the
+// import wizard's own surface), so the species reader is imported directly.
+import { readLivestockKind } from '../src/core/templates'
 import {
   COORDINATOR,
   HOME_BASE,
@@ -14,6 +17,8 @@ import {
   getAnchorPointsForFarm,
   getDrivers,
   getDunamKpis,
+  keepsLivestock,
+  totalHeads,
   getFarmVisitsForFarm,
   getFarmZonesForFarm,
   ringAreaDunams,
@@ -832,6 +837,77 @@ section('Regression — archiving removes a volunteer from the active pool')
   const after = getVolunteers().filter((v) => v.status === 'active').length
   check('the active count drops by one', after === before - 1, `${before} → ${after}`)
   check('the reason is recorded', getVolunteers().find((v) => v.id === 'vol-001')?.inactiveReason === 'מילואים')
+}
+
+// --- PO POINT 6: the head count ----------------------------------------------
+
+section('PO point 6 — the head count, and the difference between none and unknown')
+{
+  as(COORD)
+
+  /**
+   * ★ THE WHOLE FEATURE TURNS ON `null` vs `0`, and this is where that is
+   *   held. An entity with no rows is one nobody has been ASKED about; an
+   *   entity with a row saying zero has none. The dashboard tile, the detail
+   *   banner and the employer's report all read `totalHeads` and all stay
+   *   SILENT on null — because this is a funding number, and a funding number
+   *   that reads 0 because a form was never filled is worse than an absent
+   *   one.
+   */
+  check(
+    'an entity nobody has been asked about reports null, not zero',
+    totalHeads({ livestock: undefined }) === null,
+  )
+  check('and an empty list is the same answer', totalHeads({ livestock: [] }) === null)
+  check(
+    'a stated zero IS zero',
+    totalHeads({ livestock: [{ kind: 'sheep', label: '', heads: 0 }] }) === 0,
+  )
+
+  const rotem = getVisibleFarms().find((f) => f.id === 'farm-01')
+  check('the fixtures carry a head count', totalHeads(rotem ?? { livestock: [] }) === 960, String(totalHeads(rotem ?? { livestock: [] })))
+
+  /**
+   * ★ THE QUESTION IS ONLY ASKED OF AN ENTITY THAT KEEPS ANIMALS. An arable
+   *   holding has no head count, and a form that asks anyway trains the
+   *   coordinator to skip a section.
+   */
+  check('an arable holding is not asked', !keepsLivestock({ type: 'agriculture' }))
+  check('a livestock one is', keepsLivestock({ type: 'livestock' }))
+  check('and so is a mixed one', keepsLivestock({ type: 'mixed' }))
+
+  /**
+   * ★ THE DASHBOARD NUMBER IS COUNTED OVER THE SAME ENTITIES AS THE DUNAMS, so
+   *   the two figures beside each other are two facts about ONE set.
+   */
+  const kpis = getDunamKpis()
+  const guardedByHand = getVisibleFarms()
+    .filter((f) => f.status === 'signed' || f.status === 'active')
+    .reduce((n, f) => n + (totalHeads(f) ?? 0), 0)
+  check(
+    'guardedHeads counts exactly the signed and active entities',
+    kpis.guardedHeads === guardedByHand,
+    `${kpis.guardedHeads} vs ${guardedByHand}`,
+  )
+  check(
+    'and a farm that is neither contributes nothing to it',
+    getVisibleFarms()
+      .filter((f) => f.status !== 'signed' && f.status !== 'active')
+      .every((f) => (totalHeads(f) ?? 0) >= 0),
+  )
+
+  // An unrecognised species keeps its own word rather than being reclassified.
+  const other = readLivestockKind('יענים')
+  check(
+    'an unknown species imports as `other` WITH the word kept',
+    other?.kind === 'other' && other.label === 'יענים',
+    JSON.stringify(other),
+  )
+  check(
+    'and a known one is recognised through its label',
+    readLivestockKind('צאן־כבשים')?.kind === 'sheep',
+  )
+  check('an empty cell is nothing at all', readLivestockKind('  ') === null)
 }
 
 console.log('')

@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 
 import {
   FARM_PIPELINE,
+  LIVESTOCK_KINDS,
   LOCALITY_POSITIONS,
   NEGEV_CENTER,
   createFarm,
@@ -13,6 +14,7 @@ import {
   fromDayKey,
   isEmail,
   iso,
+  keepsLivestock,
   localDayKey,
   newAgreementId,
   newContactId,
@@ -30,6 +32,8 @@ import type {
   FarmStatus,
   FarmType,
   LatLng,
+  LivestockKind,
+  LivestockLine,
 } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
@@ -147,6 +151,17 @@ export function FarmFormScreen() {
   const [commitments, setCommitments] = useState<FarmCommitment[]>(
     existing?.commitments ?? [],
   )
+  /**
+   * PO POINT 6 — the head count, per species.
+   *
+   * ★ `?? []` AND NOT `?? [{…}]`. An empty list is "nobody has been asked",
+   *   which is not zero and must not be turned into one by a form that
+   *   helpfully pre-fills a row. `totalHeads` returns null for it and the
+   *   detail banner stays away — see `types.ts`.
+   */
+  const [livestock, setLivestock] = useState<LivestockLine[]>(
+    existing?.livestock ?? [],
+  )
   const [agreements, setAgreements] = useState<Agreement[]>(
     existing?.agreements ?? [],
   )
@@ -257,6 +272,11 @@ export function FarmFormScreen() {
       status,
       position,
       commitments: commitments.map((c) => ({ ...c, detail: c.detail.trim() })),
+      // A row with no head count is a row somebody started and abandoned; it
+      // must not become a zero in the funding total.
+      livestock: livestock
+        .filter((l) => Number.isFinite(l.heads) && l.heads > 0)
+        .map((l) => ({ ...l, label: l.label.trim() })),
       agreements: agreements.map((a) => ({ ...a, signedBy: a.signedBy.trim() })),
       farmDunams: Number.isFinite(num(farmDunams)) ? num(farmDunams) : 0,
       grazingDunams: Number.isFinite(num(grazingDunams))
@@ -495,6 +515,108 @@ export function FarmFormScreen() {
             />
           </div>
         </FormSection>
+
+        {/* ★ PO POINT 6 — AND IT ONLY EXISTS ON AN ENTITY THAT KEEPS ANIMALS.
+            An arable holding has no head count, and a form that asks anyway is
+            a form that trains the coordinator to skip a section. `type` is a
+            field on this same form, so the section appears and disappears as
+            he changes it. */}
+        {keepsLivestock({ type }) && (
+          <FormSection
+            title={t('livestock.section')}
+            action={
+              <button
+                type="button"
+                data-testid="livestock-add"
+                onClick={() =>
+                  setLivestock((prev) => [
+                    ...prev,
+                    { kind: 'sheep', label: '', heads: 0 },
+                  ])
+                }
+                className="btn-ghost py-1.5"
+              >
+                <Icon name="plus" size={15} />
+                {t('livestock.add')}
+              </button>
+            }
+          >
+            <p className="muted col-span-full -mt-2">{t('livestock.hint')}</p>
+            {livestock.length === 0 ? (
+              <p className="muted col-span-full">{t('livestock.empty')}</p>
+            ) : (
+              livestock.map((l, i) => (
+                <div
+                  key={i}
+                  className="col-span-full rounded-field border border-edge-subtle bg-surface-high p-3"
+                >
+                  <div className="auto-cols gap-3 [--col-min:11rem]">
+                    <SelectField<LivestockKind>
+                      label={t('livestock.kind')}
+                      value={l.kind}
+                      onChange={(kind) =>
+                        setLivestock((prev) =>
+                          prev.map((x, j) => (j === i ? { ...x, kind } : x)),
+                        )
+                      }
+                      options={LIVESTOCK_KINDS.map((k) => ({
+                        value: k,
+                        label: t(`livestock.kinds.${k}`),
+                      }))}
+                    />
+                    <TextField
+                      label={t('livestock.heads')}
+                      value={l.heads === 0 ? '' : String(l.heads)}
+                      onChange={(v) =>
+                        setLivestock((prev) =>
+                          prev.map((x, j) =>
+                            j === i ? { ...x, heads: Number(v) || 0 } : x,
+                          ),
+                        )
+                      }
+                      type="number"
+                      ltr
+                    />
+                    {/* The free label belongs to `other` and to nothing else —
+                        a closed list is what keeps the totals addable. */}
+                    {l.kind === 'other' && (
+                      <TextField
+                        label={t('livestock.label')}
+                        value={l.label}
+                        onChange={(label) =>
+                          setLivestock((prev) =>
+                            prev.map((x, j) => (j === i ? { ...x, label } : x)),
+                          )
+                        }
+                        placeholder={t('livestock.labelPlaceholder')}
+                      />
+                    )}
+                  </div>
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLivestock((prev) => prev.filter((_, j) => j !== i))
+                      }
+                      className="btn-ghost py-1.5 text-status-danger-ink hover:bg-status-danger/10"
+                    >
+                      <Icon name="trash" size={15} />
+                      {t('livestock.remove')}
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+            {livestock.length > 0 && (
+              <p className="col-span-full text-caption font-medium text-content-primary">
+                {t('livestock.total')}:{' '}
+                <span className="numeric">
+                  {livestock.reduce((n, l) => n + (l.heads || 0), 0).toLocaleString()}
+                </span>
+              </p>
+            )}
+          </FormSection>
+        )}
 
         {/* G2.4 — the detail screen shows commitments and agreements, so the
             form must be able to write them: a datum with no way in is either

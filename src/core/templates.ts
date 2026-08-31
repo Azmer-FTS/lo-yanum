@@ -1,4 +1,4 @@
-import type { EntityKind, FarmStatus, FarmType, PhoneType } from './types'
+import type { EntityKind, FarmStatus, FarmType, LivestockKind, PhoneType } from './types'
 import {
   STYLE_BODY,
   STYLE_EXAMPLE,
@@ -73,6 +73,13 @@ export type ImportField =
   | 'contactName'
   | 'contactPhone'
   | 'contactEmail'
+  // PO POINT 6 — three type/count pairs; see FARM_COLUMNS for why three.
+  | 'livestockKind1'
+  | 'livestockHeads1'
+  | 'livestockKind2'
+  | 'livestockHeads2'
+  | 'livestockKind3'
+  | 'livestockHeads3'
   | 'notes'
   // drivers
   | 'vehicle'
@@ -277,6 +284,60 @@ const FARM_COLUMNS: readonly TemplateColumn[] = [
     ],
     examples: ['eli@example.co.il', '', 'yossi@example.co.il'],
     width: 26,
+  },
+  /**
+   * ★ PO POINT 6 (2026-08-31) — THE HEAD COUNT COMES IN AS PAIRS, AND THREE
+   *   OF THEM IS THE RIGHT NUMBER.
+   *
+   *   A spreadsheet cannot hold a list in a cell, so the pairs are flattened:
+   *   type / count, three times. Three because that is what a real holding
+   *   has — a mixed farm is cattle and sheep, occasionally with a poultry
+   *   house — and because a fourth pair would add two empty columns to every
+   *   row of every import for a case the coordinator can finish by hand on
+   *   the form. `parseLivestock` (import.ts) reads the type column loosely:
+   *   the Hebrew label, the English key, or anything close enough.
+   */
+  {
+    field: 'livestockKind1',
+    labelKey: 'import.fieldLivestockKind',
+    aliases: ['סוג בעלי חיים', 'בעלי חיים', 'סוג בעלי חיים 1', 'livestock', 'livestock kind'],
+    examples: ['בקר', 'צאן־כבשים', ''],
+    width: 16,
+  },
+  {
+    field: 'livestockHeads1',
+    labelKey: 'import.fieldLivestockHeads',
+    aliases: ['מספר ראשים', 'ראשים', 'מספר ראשים 1', 'heads'],
+    examples: ['120', '800', ''],
+    width: 12,
+  },
+  {
+    field: 'livestockKind2',
+    labelKey: 'import.fieldLivestockKind2',
+    aliases: ['סוג בעלי חיים 2', 'livestock kind 2'],
+    examples: ['צאן־כבשים', '', ''],
+    width: 16,
+  },
+  {
+    field: 'livestockHeads2',
+    labelKey: 'import.fieldLivestockHeads2',
+    aliases: ['מספר ראשים 2', 'heads 2'],
+    examples: ['450', '', ''],
+    width: 12,
+  },
+  {
+    field: 'livestockKind3',
+    labelKey: 'import.fieldLivestockKind3',
+    aliases: ['סוג בעלי חיים 3', 'livestock kind 3'],
+    examples: ['לול־עופות', '', ''],
+    width: 16,
+  },
+  {
+    field: 'livestockHeads3',
+    labelKey: 'import.fieldLivestockHeads3',
+    aliases: ['מספר ראשים 3', 'heads 3'],
+    examples: ['9000', '', ''],
+    width: 12,
   },
   {
     field: 'notes',
@@ -533,6 +594,62 @@ const FARM_TYPE_HINTS: ReadonlyArray<[string, FarmType]> = [
 export function readFarmType(raw: string): FarmType {
   const v = raw.trim().toLowerCase()
   return FARM_TYPE_HINTS.find(([hint]) => v.includes(hint))?.[1] ?? 'mixed'
+}
+
+/**
+ * PO POINT 6 — reading a species out of somebody else's spreadsheet.
+ *
+ * ★ ORDER MATTERS AND IT IS NOT ALPHABETICAL. `צאן` is a substring of nothing
+ *   here, but `עוף`/`לול` and `בקר` are both written a dozen ways, and the
+ *   Hebrew hyphen in `צאן־כבשים` is a MAQAF (U+05BE), not an ASCII dash — a
+ *   coordinator typing the label by hand will use whichever his keyboard
+ *   gives him, so both are listed rather than normalised away.
+ *
+ * ★ AND AN UNRECOGNISED WORD BECOMES `other` WITH THE WORD KEPT, never a
+ *   silent drop. "יענים" is a real answer; turning it into `sheep` because
+ *   nothing matched would put ostriches in the sheep column of a funding
+ *   report.
+ */
+const LIVESTOCK_HINTS: ReadonlyArray<[string, LivestockKind]> = [
+  ['צאן־כבשים', 'sheep'],
+  ['צאן-כבשים', 'sheep'],
+  ['כבשים', 'sheep'],
+  ['כבש', 'sheep'],
+  ['צאן', 'sheep'],
+  ['sheep', 'sheep'],
+  ['בקר', 'cattle'],
+  ['פרות', 'cattle'],
+  ['פרה', 'cattle'],
+  ['cattle', 'cattle'],
+  ['cow', 'cattle'],
+  ['עיזים', 'goats'],
+  ['עז', 'goats'],
+  ['goat', 'goats'],
+  ['גמלים', 'camels'],
+  ['גמל', 'camels'],
+  ['camel', 'camels'],
+  ['סוסים', 'horses'],
+  ['סוס', 'horses'],
+  ['horse', 'horses'],
+  ['לול־עופות', 'poultry'],
+  ['לול-עופות', 'poultry'],
+  ['עופות', 'poultry'],
+  ['לול', 'poultry'],
+  ['תרנגול', 'poultry'],
+  ['poultry', 'poultry'],
+  ['chicken', 'poultry'],
+]
+
+/** `null` when the cell is empty; `other` (with the word kept) when unknown. */
+export function readLivestockKind(raw: string): {
+  kind: LivestockKind
+  label: string
+} | null {
+  const v = raw.trim()
+  if (v === '') return null
+  const lower = v.toLowerCase()
+  const hit = LIVESTOCK_HINTS.find(([hint]) => lower.includes(hint))
+  return hit ? { kind: hit[1], label: '' } : { kind: 'other', label: v }
 }
 
 /**

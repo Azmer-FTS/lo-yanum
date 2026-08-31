@@ -534,6 +534,28 @@ export function DashboardScreen() {
             {t('dashboard.potentialDunamsHint')}
           </span>
         </Link>
+        {/* ★ PO POINT 6 — the third budget number, and it is HIDDEN AT ZERO.
+            The funding depends on the livestock as well as on the ground, but
+            zero here means "no entity under guard has been asked yet", not
+            "there are no animals". A tile reading 0 would put a number nobody
+            has established next to two that are measured. */}
+        {dunams.guardedHeads > 0 && (
+          <Link
+            to="/coordinator/farms"
+            data-testid="kpi-guarded-heads"
+            className="card-interactive min-w-0 p-4"
+          >
+            <span className="numeric text-display block text-content-primary">
+              {dunams.guardedHeads.toLocaleString(locale)}
+            </span>
+            <span className="mt-1 block text-caption font-semibold leading-tight text-content-primary">
+              {t('livestock.totalGuarded')}
+            </span>
+            <span className="muted mt-0.5 block leading-tight">
+              {t('dashboard.guardedDunamsHint')}
+            </span>
+          </Link>
+        )}
       </div>
 
       {/* 1 — KPI strip. */}

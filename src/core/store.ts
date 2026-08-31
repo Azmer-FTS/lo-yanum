@@ -14,6 +14,7 @@ import type {
   Farm,
   FarmCommitment,
   FarmContact,
+  LivestockLine,
   FarmStatus,
   EntityKind,
   FarmType,
@@ -347,6 +348,8 @@ export interface FarmDraft {
   grazingDunamsManual?: boolean
   contacts: FarmContact[]
   commitments: FarmCommitment[]
+  /** PO POINT 6 — the head count, per species. Absent = never asked. */
+  livestock?: LivestockLine[]
   agreements: Agreement[]
   notes: string
 }

@@ -73,6 +73,79 @@ export const FARM_PIPELINE: readonly FarmStatus[] = [
   'active',
 ] as const
 
+/**
+ * PO POINT 6 (2026-08-31) — HOW MANY HEAD, AND OF WHAT.
+ *
+ * ★ THE FUNDING DEPENDS ON IT. The programme is paid partly on the livestock
+ *   it protects, and the association's director is asked for that number by
+ *   people who do not care how many dunams a wadi covers. Until now the app
+ *   could say how much GROUND was under guard and nothing at all about the
+ *   animals standing on it.
+ *
+ * ★ IT IS A LIST, NOT A NUMBER, because "500 head" answers nothing: 500 sheep
+ *   and 500 head of cattle are different sums of money, different night risks
+ *   and different pens. The field expert names the species; the app does not
+ *   invent a unit that averages them.
+ *
+ * ★ AND `other` CARRIES ITS OWN LABEL rather than being a bucket. A closed
+ *   list keeps the totals addable; the free label keeps the coordinator from
+ *   having to lie about an ostrich farm.
+ *
+ * Optional on `Farm`, like `entityKind` before it: absent means nobody has
+ * been asked yet, which is NOT the same as zero and must never be rendered as
+ * a zero.
+ */
+export type LivestockKind =
+  | 'cattle'
+  | 'sheep'
+  | 'goats'
+  | 'camels'
+  | 'horses'
+  | 'poultry'
+  | 'other'
+
+export const LIVESTOCK_KINDS: readonly LivestockKind[] = [
+  'cattle',
+  'sheep',
+  'goats',
+  'camels',
+  'horses',
+  'poultry',
+  'other',
+] as const
+
+export interface LivestockLine {
+  kind: LivestockKind
+  /** Free text, and only meaningful for `other`. */
+  label: string
+  heads: number
+}
+
+/**
+ * Total head on an entity, or null when nobody has been asked.
+ *
+ * ★ `null` AND NOT `0`, and the distinction is the whole reason this returns
+ *   a nullable. A farm with no livestock row is a farm nobody has asked about
+ *   the animals on; a farm with a row saying `0` is a farm that has none. A
+ *   banner that renders "0 ראשים" for the first is a banner that states a fact
+ *   nobody has established, and the funding number is built out of these.
+ */
+export function totalHeads(farm: { livestock?: LivestockLine[] }): number | null {
+  const lines = farm.livestock
+  if (!lines || lines.length === 0) return null
+  return lines.reduce((sum, l) => sum + (Number.isFinite(l.heads) ? l.heads : 0), 0)
+}
+
+/**
+ * Whether an entity is one the livestock question is even asked of.
+ *
+ * The product owner's own wording: `בעלי חיים` or `משולב`. An arable holding
+ * has no head count, and a form that asks it anyway is a form that trains the
+ * coordinator to skip a section.
+ */
+export const keepsLivestock = (farm: { type: FarmType }): boolean =>
+  farm.type === 'livestock' || farm.type === 'mixed'
+
 export type CommitmentKind = 'shelter' | 'water' | 'food' | 'other'
 
 export interface FarmCommitment {
@@ -125,6 +198,12 @@ export interface Farm {
   grazingDunamsManual?: boolean
   contacts: FarmContact[]
   commitments: FarmCommitment[]
+  /**
+   * PO POINT 6 — the head count, per species. Optional: absent means nobody
+   * has been asked, which is not zero. Only meaningful on a `livestock` or
+   * `mixed` entity (`keepsLivestock`).
+   */
+  livestock?: LivestockLine[]
   agreements: Agreement[]
   notes: string
   lastVisitAt: string | null
@@ -661,6 +740,15 @@ export interface DunamKpis {
   guardedDunams: number
   /** farm + grazing dunams over non-signed, non-declined entities. */
   potentialDunams: number
+  /**
+   * PO POINT 6 — head of livestock on the entities actually under guard.
+   *
+   * ★ ZERO MEANS "NOBODY HAS BEEN ASKED", and the dashboard tile is hidden at
+   *   zero rather than showing it. The same reasoning as `totalHeads`: this is
+   *   a funding number, and a funding number that reads 0 because a form was
+   *   never filled is worse than one that is absent.
+   */
+  guardedHeads: number
 }
 
 export type AlertKind =

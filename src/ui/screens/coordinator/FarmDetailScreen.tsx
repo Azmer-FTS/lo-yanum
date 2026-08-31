@@ -26,6 +26,7 @@ import {
   now,
   patchAnchorPoint,
   ringAreaDunams,
+  totalHeads,
 } from '@core/index'
 import type {
   Agreement,
@@ -186,9 +187,10 @@ function KeyNumbers({
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
+  const heads = totalHeads(farm)
 
   return (
-    <div className="card card-pad metric-band">
+    <div className="card card-pad metric-band" data-testid="farm-key-numbers">
       <div className="min-w-0">
         <p className="numeric text-metric text-content-primary">
           {farm.farmDunams.toLocaleString(locale)}
@@ -220,6 +222,30 @@ function KeyNumbers({
           )}
         </p>
       </div>
+      {/* ★ PO POINT 6 — THE HEAD COUNT SITS WITH THE DUNAMS BECAUSE IT
+          ANSWERS THE SAME QUESTION: how much is under guard here. It is
+          rendered ONLY when somebody has actually been asked — `totalHeads`
+          returns null for an entity with no rows, and a "0 ראשים" tile would
+          state a fact nobody has established, on a number the funding is
+          built out of. */}
+      {heads !== null && (
+        <div className="min-w-0">
+          <p className="numeric text-metric text-content-primary">
+            {heads.toLocaleString(locale)}
+          </p>
+          <p className="muted mt-0.5 leading-tight">
+            {t('livestock.total')}
+            <span className="block text-micro">
+              {(farm.livestock ?? [])
+                .map(
+                  (l) =>
+                    `${l.kind === 'other' && l.label ? l.label : t(`livestock.kinds.${l.kind}`)} ${l.heads.toLocaleString(locale)}`,
+                )
+                .join(' · ')}
+            </span>
+          </p>
+        </div>
+      )}
       <div className="min-w-0">
         <FarmStatusChip status={farm.status} />
         <p className="muted mt-1 leading-tight">{t('farms.statusLabel')}</p>

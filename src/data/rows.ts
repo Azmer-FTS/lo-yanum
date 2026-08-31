@@ -6,6 +6,7 @@ import type {
   Driver,
   Farm,
   FarmCommitment,
+  LivestockLine,
   FarmContact,
   FarmVisit,
   FarmZone,
@@ -132,6 +133,10 @@ const farmMapping: Mapping<Farm> = {
   children: [
     { table: 'entity_contacts', fk: 'entity_id' },
     { table: 'entity_commitments', fk: 'entity_id' },
+    // PO POINT 6 — the same shape as commitments, and for the same reason:
+    // the domain object has no id, the row needs one, and `position` is what
+    // orders them on the way back.
+    { table: 'entity_livestock', fk: 'entity_id' },
     { table: 'agreements', fk: 'entity_id' },
   ],
   toRows: (f) => [
@@ -185,6 +190,17 @@ const farmMapping: Mapping<Farm> = {
       })),
     },
     {
+      table: 'entity_livestock',
+      rows: (f.livestock ?? []).map((l, position) => ({
+        id: `${f.id}:l${position}`,
+        entity_id: f.id,
+        kind: l.kind,
+        label: l.label,
+        heads: l.heads,
+        position,
+      })),
+    },
+    {
       table: 'agreements',
       rows: f.agreements.map((a, position) => ({
         id: a.id,
@@ -227,6 +243,23 @@ const farmMapping: Mapping<Farm> = {
         fulfilled: bool(r.fulfilled),
       }),
     ),
+    /**
+     * ★ `undefined` WHEN THERE ARE NO ROWS, NOT `[]`, and it is the same
+     *   distinction the whole feature turns on: absent means nobody has been
+     *   asked, and `totalHeads` returns null for it so the dashboard and the
+     *   report can stay silent rather than state a zero nobody established.
+     *   An empty array would round-trip as "asked, and the answer was none".
+     */
+    livestock:
+      ordered(kids.entity_livestock).length === 0
+        ? undefined
+        : ordered(kids.entity_livestock).map(
+            (r): LivestockLine => ({
+              kind: str(r.kind, 'other') as LivestockLine['kind'],
+              label: str(r.label),
+              heads: num(r.heads),
+            }),
+          ),
     agreements: ordered(kids.agreements).map(
       (r): Agreement => ({
         id: str(r.id),
