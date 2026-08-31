@@ -41,12 +41,12 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 150 checks |
 | `bun run sync` | **A77** — the offline data layer's rules (P2.5b): the cache restores what was on screen, six edits to one guard coalesce to ONE outbox entry, the oldest flushes first, a FAILED flush keeps everything, a deletion survives as a deletion, and signing out clears both stores while losing the network clears neither. 28 checks — no browser, no dev server, no network |
-| `bun run write` | **A76** — ⚠️ **THE WRITE PATH, END TO END, AGAINST THE REAL DATABASE** (P2.6b). Signs in as a DISPOSABLE test account, writes 17 aggregates across all 25 tables through `applyChanges` — the app's own function, not a copy — reads them back through `hydrateFrom`, compares, writes again to prove an update is not a duplicate, then deletes everything and proves the database is exactly as it was found. Every id begins `a76-`. Section 6 replays a P2.5b outbox into the real database. 38 checks — needs `.env.test`, which is git-ignored. ⚠️ **THE ACCOUNT MUST BE DELETED BEFORE P3.1** |
+| `bun run write` | **A76** — ⚠️ **THE WRITE PATH, END TO END, AGAINST THE REAL DATABASE** (P2.6b). Signs in as a DISPOSABLE test account, writes 17 aggregates across all 25 tables through `applyChanges` — the app's own function, not a copy — reads them back through `hydrateFrom`, compares, writes again to prove an update is not a duplicate, then deletes everything and proves the database is exactly as it was found. Every id begins `a76-`. Section 6 replays a P2.5b outbox into the real database. 38 checks — needed `.env.test`. ⚠️⚠️ **THE ACCOUNT WAS DELETED IN P3.1 (§13), SO THIS GATE NOW FAILS AT ITS FIRST CHECK AND THAT IS THE GREEN RESULT.** It is kept because it documents the write path and because a future session with its own disposable account can run it again |
 | `bun run live` | **A75** — the LIVE schema against the mapper (P2.6b), and **it needs no password**. PostgREST resolves `?select=` against the schema BEFORE applying RLS, so an anonymous request names a missing column (400/42703) and an existing one answers `[]`. 24 tables probed column by column, 15 enums probed label by label, `app_users` closed to a stranger. 46 checks — needs the internet, not a dev server |
 | `bun run mapping` | **A74** — the mapper (P2.6b). Drives all 380 fixture aggregates out through `toRows` and back through `fromRows` and fails on any difference, then parses this repository's OWN migrations and asserts both directions of the column contract: no column the mapper writes is missing, no `not null`-without-default column goes unwritten. 32 checks — no browser, no dev server, no network |
 | `bun run persist` | **A73** — the store interface (P2.6a). Drives all 45 exported mutations through a RECORDING backend and asserts what each one writes: the fan-outs (a zone rewrites the farm's dunams, the dual hat materialises a driver, a visit rewrites `nextVisitAt`), the ones that mutate IN PLACE and an identity diff would silently lose, and the three things that must never be written (a session change, a reset, a hydration). 84 checks — no browser, no dev server, no network |
 | `bun run auth` | **A70** — the door (P2.3). Starts its OWN two dev servers, one in each mode, and compares them: real mode shows the login form and nothing else on 8 routes, refuses a wrong password IN HEBREW, gives an unknown address the SAME message, leaves no token behind; demo mode is byte-for-byte P0bis. Then B1 without a browser — 26 tables anonymously closed, an anonymous coordinator-grant INSERT refused, the three policy helpers 404. 20 checks — **needs no dev server, and never needs the password** |
-| `bun run offline` | **A72 + A78** — the offline shell (P2.5a) AND the signed-in offline session (P2.5b). The ONLY gate that BUILDS the app and serves the build, because the service worker is production-only: the worker takes control, one online load is enough to survive being pulled offline, ★ **a Supabase read offline FAILS** (nothing from the API is ever cached), looked-at ground is still there, the badge comes and goes, the frozen /poc comes back as ITSELF, and a real build shows its door rather than a browser error. **P2.5b added the only claim in this project that cannot be made outside a real browser**: signed in, IndexedDB really holds the snapshot, a token that cannot be refreshed offline does NOT end the session, the network coming back re-asks and a refusal DOES end it, and an explicit sign-out empties the device. **PO return 3 (2026-08-31) added the other half of the same scenario**: the reopened offline app SHOWS ITS OFFLINE BADGE, and the door explains the one thing that genuinely needs a network — `אין חיבור לאינטרנט — נדרש חיבור להתחברות ראשונה` — before a password is typed, and again instead of a generic server error if one is. **And PMTiles folded in the claim the whole map unit exists for**: the basemap answers a RANGE request with no network at all (the Cache API refuses a 206, so the worker holds ONE archive and slices it), what comes back is the archive rather than an error page, and the map really draws from it. 33 checks — **no dev server; it makes its own**. Its last section SKIPS without `.env.test`, which is the intended end state after P3.1 |
+| `bun run offline` | **A72 + A78** — the offline shell (P2.5a) AND the signed-in offline session (P2.5b). The ONLY gate that BUILDS the app and serves the build, because the service worker is production-only: the worker takes control, one online load is enough to survive being pulled offline, ★ **a Supabase read offline FAILS** (nothing from the API is ever cached), looked-at ground is still there, the badge comes and goes, the frozen /poc comes back as ITSELF, and a real build shows its door rather than a browser error. **P2.5b added the only claim in this project that cannot be made outside a real browser**: signed in, IndexedDB really holds the snapshot, a token that cannot be refreshed offline does NOT end the session, the network coming back re-asks and a refusal DOES end it, and an explicit sign-out empties the device. **PO return 3 (2026-08-31) added the other half of the same scenario**: the reopened offline app SHOWS ITS OFFLINE BADGE, and the door explains the one thing that genuinely needs a network — `אין חיבור לאינטרנט — נדרש חיבור להתחברות ראשונה` — before a password is typed, and again instead of a generic server error if one is. **And PMTiles folded in the claim the whole map unit exists for**: the basemap answers a RANGE request with no network at all (the Cache API refuses a 206, so the worker holds ONE archive and slices it), what comes back is the archive rather than an error page, and the map really draws from it. **19 checks and ONE SKIP is the green result since P3.1 (§13)** — the last section needs `.env.test` and the disposable account is gone, which is the intended end state. It was 33 before. **No dev server; it makes its own** |
 | `bun run storage` | **A71** — the two private buckets (P2.4): no public route on either (`NoSuchBucket`, the one proof that does not depend on them being empty), no bucket or object enumeration, no signed URL minted for a stranger, no anonymous upload. 10 checks — no browser, no dev server, no password |
 | `bun run outreach` | **A68 + A69** — the sending centre and the WhatsApp group kit, read off the rendered DOM: the right channel per phone type, prefilled `wa.me` / `sms:` / `mailto:` links DECODED and checked, the grouped SMS and email, the sent tick surviving navigation, and the kit's three copies. 25 checks — needs a dev server |
 | `bun run rtl` | **A67** — the generated .xlsx downloaded through the real UI, then opened: both sheets `rightToLeft`, every cell styled, every style right-aligned with `readingOrder="2"`, the header frozen, the instructions sheet complete. 45 checks — needs a dev server |
@@ -144,20 +144,23 @@ closes open question 9 — the glyphs, sprites and the RTL plugin vendored so th
 map needs NO external host, and a real "download the map" button whose service
 worker synthesises 206s out of one cached archive. `offline` green at **33**,
 `mapfirst` 27, `splitter` 72, `touch` 32 — **and it is DEPLOYED and verified
-live**. Next: **P3**, and its first
-act is deleting the test account. One
+live**. **P3.1's test-account deletion IS DONE (§13).** Next: the product
+owner's SECOND RETURN of 2026-08-31 — eleven points in his order, listed in the
+RESUME block at the foot of this file, then the rest of P3. One
 commit per unit. Branch `main`.
 
-> ⚠️⚠️ **STANDING REMINDER, AND IT HAS A DEADLINE: DELETE THE TEST ACCOUNT
-> BEFORE P3.1.** `dov+test@serialkolors.com`
-> (`304d2f3b-90ca-43dc-bfac-1361c8184303`) exists so that `bun run write` can
-> prove the write path against Frankfurt, and it carries a `coordinator` grant
-> — total read and write over the whole programme. That is a grant over
-> NOTHING while the database is empty and a second door onto real farmers'
-> phone numbers the moment P3.1 imports them. **Delete the auth user, delete
-> its `app_users` row, delete `.env.test`, and say so in that session's final
-> report.** `supabase/migrations/20260831000200_test_account_grant.sql` has the
-> two commands.
+> ✅✅ **THE STANDING REMINDER IS DISCHARGED (2026-08-31). THE TEST ACCOUNT IS
+> GONE — auth user, `app_users` row and `.env.test`, all three verified by a
+> RE-READ rather than assumed. See §13.** `dov+test@serialkolors.com`
+> (`304d2f3b-90ca-43dc-bfac-1361c8184303`) existed so that `bun run write` could
+> prove the write path against Frankfurt, and it carried a `coordinator` grant —
+> total read and write over the whole programme, which was a grant over NOTHING
+> while the database was empty and would have been a second door onto real
+> farmers' phone numbers the moment P3.1 imported them. It no longer exists.
+> ⚠️ **THE CONSEQUENCE, AND IT IS NOT A REGRESSION:** `bun run write` now FAILS
+> at its first check and `bun run offline` now reports **19/19 with its last
+> section SKIPPED**. Those are the green results. Do not "repair" either one,
+> and do not re-create the account.
 
 > **P0bis.1 — THE MAP IS ON THE LEFT ON EVERY SCREEN THAT HAS ONE (frozen PO
 > rule).** Five screens obeyed the map-first gabarit and eight others put the
@@ -3029,7 +3032,69 @@ positions × 4 viewports, browser AND installed), `mapfirst` 27, `splitter` 72,
 
 ---
 
-## ⏭️ RESUME HERE — P3.1 (AND IT STARTS BY DELETING THE TEST ACCOUNT)
+## 13. ⛔ P3.1 (FIN) — THE TEST ACCOUNT IS GONE. ALL THREE STEPS, VERIFIED (2026-08-31)
+
+**`dov+test@serialkolors.com` (`304d2f3b-90ca-43dc-bfac-1361c8184303`) NO LONGER
+EXISTS ANYWHERE.** Not in `auth`, not in `app_users`, not on this machine. The
+countdown that has been at the top of this file since P2.6b is over, and the
+`coordinator` grant that was a second door onto real farmers' phone numbers is
+closed BEFORE the first farmer is imported rather than after.
+
+| step | who | result |
+|---|---|---|
+| 1 · `auth.users` | ⛔ **THE PRODUCT OWNER**, dashboard → Authentication → Users → Delete user | ✅ done by him before this session |
+| 2 · `app_users` | this session, `delete from app_users where user_id = '304d2f3b-…'` | ✅ ran, then **RE-READ: 0 rows** |
+| 3 · `.env.test` | this session, `rm .env.test` | ✅ gone; it was never tracked (`.gitignore:20`) |
+
+★ **STEP 2's DELETE MATCHED NOTHING, AND THAT IS THE POINT OF HAVING RE-READ.**
+  The `app_users` row had ALREADY gone with the auth user — the FK cascades. But
+  "probably cascaded" was exactly the thing this file said not to be probably
+  about, so the statement was run anyway and the count taken afterwards. **The
+  proof is the second query, not the first.** In one read:
+
+  `app_users` rows for that id **0** · `auth.users` rows for that id **0** ·
+  `auth.users` with an email like `dov+test%` **0** · leftover
+  `auth.identities` **0** · leftover `auth.sessions` **0** ·
+  and the whole of `auth.users` is now **1 row — `dov@serialkolors.com`**,
+  holding the one `coordinator` grant in `app_users`.
+
+**AND THE TWO GATES BEHAVE AS THIS FILE PREDICTED, which is how "deleted" was
+confirmed from the outside as well as from the database:**
+
+· `bun run write` **FAILS AT ITS FIRST CHECK, LOUDLY** — *"A76 needs the
+  DISPOSABLE test account, and only that one… If the account has already been
+  deleted before P3.1, that is the intended end state and this gate is meant to
+  stop working."* Exit code 1. **This is not a regression and must never be
+  "fixed".**
+· `bun run offline` is **19/19 with its last section SKIPPED** — *"(no
+  `.env.test` — the disposable account is gone, which is the end state)"*. It
+  was 33/33 with the account; the 14 checks that are gone are the signed-in
+  P2.5b half, and they are gone by design. **19/19 with one SKIP is now the
+  green result for `offline`.**
+
+### ⚠️ TWO RECORDS THE PRODUCT OWNER LEFT ON THE LIVE DATABASE, AND THEY ARE HIS
+
+The database is NOT empty any more, and it is worth knowing why before P3.1's
+import runs:
+
+| table | id | name | created |
+|---|---|---|---|
+| `entities` | `farm-mth9x977-2` | `Kjuyh` | 2026-08-31 13:28 UTC |
+| `drivers` | `driver-mth9l8zu-1` | `Yu` | 2026-08-31 13:19 UTC |
+
+Both are keyboard-mash names typed by the PO while trying the deployed app, and
+both post-date the write gate's last run. ★ **NEITHER IS AN `a76-` ID, which is
+the check that matters** — A76 stamps every record it creates with an `a76-`
+prefix and deletes them all, and there are **zero** of them left. The write gate
+cleaned up after itself exactly as it claims to.
+
+They are the PO's own data, so this session did not delete them. **They are also
+the perfect first demonstration of point 8's delete button**, and that is what
+they are being kept for.
+
+---
+
+## ⏭️ RESUME HERE — THE PRODUCT OWNER'S SECOND RETURN, IN HIS ORDER
 
 > ✅ **PMTILES IS DONE AND DEPLOYED (§12ter), and verified on the artefact
 > rather than on the tree** — signed in on the live app, 2026-08-31: the map's
@@ -3048,32 +3113,40 @@ positions × 4 viewports, browser AND installed), `mapfirst` 27, `splitter` 72,
 > is the reasoning that will be asked about again. **It is not the next unit.
 > The next unit is immediately below.**
 
-### ⛔ P3.1 OPENS WITH AN IRREVERSIBLE ACT THAT IS NOT YOURS TO DO ALONE
+### ✅ P3.1's IRREVERSIBLE ACT IS DONE — SEE §13, AND DO NOT RE-OPEN IT
 
-**DELETE THE TEST ACCOUNT BEFORE IMPORTING A SINGLE REAL FARMER.** This is the
-deadline the standing reminder at the top of this file has been counting down
-to, and it is the first thing P3.1 does — not the last.
+The three steps are complete and verified (§13). **`bun run write` failing at
+its first check and `bun run offline` reporting 19/19 with one SKIP are now the
+GREEN results for those two gates.** Anybody who "fixes" either of them has
+re-created the second door onto real farmers' phone numbers that §13 closed.
 
-`dov+test@serialkolors.com` (`304d2f3b-90ca-43dc-bfac-1361c8184303`) carries a
-`coordinator` grant: total read and write over the whole programme. That is a
-grant over NOTHING while the database is empty, and **a second door onto real
-farmers' phone numbers the moment P3.1 imports them.**
+### 📋 THE ORDER OF MARCH THE PRODUCT OWNER GAVE ON 2026-08-31 (SECOND RETURN)
 
-Three steps, and only two of them can be done from here:
+**He presents the app TO THE ASSOCIATION'S TEAM TOMORROW.** That is the deadline
+every item below is sized against, and it is why the order is his and not the
+lot plan's. Eleven points, then the rest of P3:
 
-1. ⛔ **THE PRODUCT OWNER, IN THE DASHBOARD** — Authentication → Users →
-   `dov+test@…` → Delete user. There is no way to do this without the
-   service-role key, which this project never fetches. **Ask him; do not look
-   for a way around it.**
-2. `delete from app_users where user_id = '304d2f3b-90ca-43dc-bfac-1361c8184303';`
-   — run it and CHECK IT RETURNS 0 ROWS afterwards, because "probably cascaded"
-   is not a thing to be probably about.
-3. Delete `.env.test`.
+| # | in one line | state |
+|---|---|---|
+| **P3.1 fin** | delete the test account, all three steps | ✅ **DONE — §13** |
+| **0** | offline basemap: **ALL ISRAEL**, not the southern bbox | ⬜ |
+| **1** | installed-iPad bug: the safe-area insets do not apply IN REAL | ⬜ |
+| **2** | reproduced bug: parasitic scroll on the farm form, both axes | ⬜ |
+| **9** | **Apple Pencil** on every map interaction — he draws with a stylus | ⬜ |
+| **8** | **delete** a record — there is no way to correct a typo today | ⬜ |
+| **6** | **livestock** head-count per entity — funding depends on it | ⬜ |
+| **7** | **the employer's PDF report**, sendable in one gesture | ⬜ |
+| **3** | the network-state pill on every screen | ⬜ |
+| **4** | clean pull-to-refresh, native overscroll off | ⬜ |
+| **5** | a pass over the empty states | ⬜ |
+| **then** | photos → signature (finger AND stylus) → P3.3bis automatic email → the final PWA → deployment → the French report | ⬜ |
 
-`bun run write` will then fail at its first check, loudly. **That is the
-intended end state, not a regression**, and `bun run offline`'s last section
-SKIPS rather than failing. The final report of the session that does this must
-confirm the deletion in so many words.
+**The acceptance rule he set, and it is the one that governs all eleven:** every
+point lands **by a gate or by a capture**. Point 2 EXTENDS a permanent gate.
+Point 1 delivers either a fix or an arbitration WITH captures. Point 0 replays
+B3 on two cities far apart. Point 7c PROVES the PDF and the dashboard cannot
+disagree. Point 9 is verified at `pointerType=pen` on drawing, on vertex
+editing, on a pin AND on the signature.
 
 ### THEN P3, IN THE WRITTEN ORDER OF MARCH
 
