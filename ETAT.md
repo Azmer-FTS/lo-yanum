@@ -92,7 +92,12 @@ checks. **P2.5a (THE OFFLINE SHELL) IS DONE** — service worker, offline badge,
 הגדרות, A72 green at 11 checks. **P2.5 IS SPLIT** (PO decision, 2026-08-31): its
 DATA half cannot precede P2.6, because an outbox flushing to a mock store and an
 IndexedDB cache persisting demo data would contradict "the real app starts
-EMPTY". Next: P2.6 → P2.5b → P3.** One
+EMPTY". **P2.6 (THE REAL SWITCH) IS DONE** — the store is an interface with a
+demo and a Supabase implementation, the real app starts EMPTY, the write-through
+is derived from a structural diff rather than declared, and the schema caught up
+with `types.ts` (two units of drift, found by A74 on its first run). A73 green
+at 84, A74 at 33, A75 at 46 — and every pre-existing gate re-run green. **Next:
+P2.5b → PMTiles (decision 71) → P3.** One
 commit per unit. Branch `main`.
 
 > **P0bis.1 — THE MAP IS ON THE LEFT ON EVERY SCREEN THAT HAS ONE (frozen PO
