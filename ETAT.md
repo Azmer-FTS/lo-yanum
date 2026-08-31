@@ -46,13 +46,13 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run mapping` | **A74** — the mapper (P2.6b). Drives all 380 fixture aggregates out through `toRows` and back through `fromRows` and fails on any difference, then parses this repository's OWN migrations and asserts both directions of the column contract: no column the mapper writes is missing, no `not null`-without-default column goes unwritten. 32 checks — no browser, no dev server, no network |
 | `bun run persist` | **A73** — the store interface (P2.6a). Drives all 45 exported mutations through a RECORDING backend and asserts what each one writes: the fan-outs (a zone rewrites the farm's dunams, the dual hat materialises a driver, a visit rewrites `nextVisitAt`), the ones that mutate IN PLACE and an identity diff would silently lose, and the three things that must never be written (a session change, a reset, a hydration). 84 checks — no browser, no dev server, no network |
 | `bun run auth` | **A70** — the door (P2.3). Starts its OWN two dev servers, one in each mode, and compares them: real mode shows the login form and nothing else on 8 routes, refuses a wrong password IN HEBREW, gives an unknown address the SAME message, leaves no token behind; demo mode is byte-for-byte P0bis. Then B1 without a browser — 26 tables anonymously closed, an anonymous coordinator-grant INSERT refused, the three policy helpers 404. 20 checks — **needs no dev server, and never needs the password** |
-| `bun run offline` | **A72 + A78** — the offline shell (P2.5a) AND the signed-in offline session (P2.5b). The ONLY gate that BUILDS the app and serves the build, because the service worker is production-only: the worker takes control, one online load is enough to survive being pulled offline, ★ **a Supabase read offline FAILS** (nothing from the API is ever cached), looked-at ground is still there, the badge comes and goes, the frozen /poc comes back as ITSELF, and a real build shows its door rather than a browser error. **P2.5b added the only claim in this project that cannot be made outside a real browser**: signed in, IndexedDB really holds the snapshot, a token that cannot be refreshed offline does NOT end the session, the network coming back re-asks and a refusal DOES end it, and an explicit sign-out empties the device. 24 checks — **no dev server; it makes its own**. Its last section SKIPS without `.env.test`, which is the intended end state after P3.1 |
+| `bun run offline` | **A72 + A78** — the offline shell (P2.5a) AND the signed-in offline session (P2.5b). The ONLY gate that BUILDS the app and serves the build, because the service worker is production-only: the worker takes control, one online load is enough to survive being pulled offline, ★ **a Supabase read offline FAILS** (nothing from the API is ever cached), looked-at ground is still there, the badge comes and goes, the frozen /poc comes back as ITSELF, and a real build shows its door rather than a browser error. **P2.5b added the only claim in this project that cannot be made outside a real browser**: signed in, IndexedDB really holds the snapshot, a token that cannot be refreshed offline does NOT end the session, the network coming back re-asks and a refusal DOES end it, and an explicit sign-out empties the device. **PO return 3 (2026-08-31) added the other half of the same scenario**: the reopened offline app SHOWS ITS OFFLINE BADGE, and the door explains the one thing that genuinely needs a network — `אין חיבור לאינטרנט — נדרש חיבור להתחברות ראשונה` — before a password is typed, and again instead of a generic server error if one is. 27 checks — **no dev server; it makes its own**. Its last section SKIPS without `.env.test`, which is the intended end state after P3.1 |
 | `bun run storage` | **A71** — the two private buckets (P2.4): no public route on either (`NoSuchBucket`, the one proof that does not depend on them being empty), no bucket or object enumeration, no signed URL minted for a stranger, no anonymous upload. 10 checks — no browser, no dev server, no password |
 | `bun run outreach` | **A68 + A69** — the sending centre and the WhatsApp group kit, read off the rendered DOM: the right channel per phone type, prefilled `wa.me` / `sms:` / `mailto:` links DECODED and checked, the grouped SMS and email, the sent tick surviving navigation, and the kit's three copies. 25 checks — needs a dev server |
 | `bun run rtl` | **A67** — the generated .xlsx downloaded through the real UI, then opened: both sheets `rightToLeft`, every cell styled, every style right-aligned with `readingOrder="2"`, the header frozen, the instructions sheet complete. 45 checks — needs a dev server |
 | `bun run mapfirst` | **A64** — the exhaustive "map on the LEFT" audit: every route in the app at iPad landscape, each screen printed with whether it carries a map and, if it does, proof the map is the left column. Exemptions print their reason. Needs a dev server |
 | `bun run splitter` | **A65** — the map/content seam driven by MOUSE and by SYNTHETIC TOUCH at iPad landscape: 44 px grip and hit area, live canvas resize, ratio persisted per screen, bounds, double-tap reset. 72 checks — needs a dev server |
-| `bun run layout` | **A24 + A30 + G11** — overflow, pinned overlap and uncontained-list sweep over all 23 screens. `VIEWPORT=phone` (default, 390) / `iphone` (402×874) / `ipad` (1032×1376) / `ipad-ls` (1376×1032) / `all`. Needs a dev server |
+| `bun run layout` | **A24 + A30 + G11 + PO returns 5 and 7** — overflow, pinned overlap and uncontained-list sweep over all 24 screens, now **at three positions of the map/content seam** (the screen's own default, 25 %, 75 %) reached by focusing the real `role="separator"` and pressing `End`/`Home` — one page load, three ratios. Horizontal scroll is measured TWICE: `scrollWidth`, and the document's real scroll range, because this app is RTL and its overflow goes LEFT into negative `scrollLeft`. `VIEWPORT=phone` (default, 390) / `iphone` (402×874) / `ipad` (1032×1376) / `ipad-ls` (1376×1032) / `all`. **`STANDALONE=1` runs the whole sweep as the INSTALLED APP** — stamps `data-standalone` and the real devices' safe-area insets, asserts the status-bar gradient's height and that no control inside a viewport-pinned bar rests in the system zone, and captures `docs/screenshots/standalone/`. Needs a dev server |
 | `bun run wizard` | **A27** — the guard wizard played from a farm with NO anchor point, 28 checks — needs a dev server |
 | `bun run touch` | **A63** — every map gesture driven by SYNTHETIC TOUCH at iPad portrait 1032×1376, 32 checks — needs a dev server |
 | `bun run import` | **A44** — download each template, fill it, upload it back, find the records; 28 checks — needs a dev server |
@@ -83,6 +83,12 @@ ref **zero times**, which is what "frozen" has to mean.
 https://azmer-fts.github.io/lo-yanum/poc/
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
 `main` via `.github/workflows/deploy.yml`.
+**And `.github/workflows/keepalive.yml` (PO return 4) pings the Supabase REST
+API every two days** so the free project is never paused for inactivity. ⚠️ It
+becomes pointless and should be DELETED the day the project moves to a paid
+plan; and GitHub disables scheduled workflows in a public repository after 60
+days with no commits, so a two-month pause in the work pauses the database a
+week later. See §12bis.4.
 
 State: **FINAL ORDER OF MARCH IN PROGRESS (2026-08-30). PHASE P0 IS DONE.
 PHASE P1: G10, G18 and G12's verification ARE DONE. PHASE P2: P2.2 (schema +
@@ -107,8 +113,13 @@ at 84, A74 at 33, A75 at 46 — and every pre-existing gate re-run green. **P2.5
 cache, a coalescing write outbox, the "N ממתינים לסנכרון" badge, a documented
 conflict rule, and a session that no longer ends because a token could not be
 refreshed on a farm track. A77 green at 28, A78 folded into A72 at 24, A76 at
-38. **Criterion B2 is complete. Next:
-PMTiles (decision 71) → P3.** One
+38. **Criterion B2 is complete.** **THE PRODUCT OWNER'S SEVEN RETURNS OF
+2026-08-31 ARE DONE** (§12bis): the password eye, the remembered address, the
+offline door — which JOINS criterion B2 — the Supabase keep-alive workflow, the
+horizontal-scroll rule now permanent in `bun run layout` at three splitter
+ratios, the grey band at the foot of the real app (its cause was a token, not a
+component), and P3.4's installed-app status bar with `STANDALONE=1 bun run
+layout` behind it. **Next: PMTiles (decision 71) → P3.** One
 commit per unit. Branch `main`.
 
 > ⚠️⚠️ **STANDING REMINDER, AND IT HAS A DEADLINE: DELETE THE TEST ACCOUNT
@@ -1039,7 +1050,8 @@ captures in §5.
 | **A21** | **`dispatch.ts` scoring tested by script** | ✅ `bun run dispatch` — 27 checks over distance, equity, pairing |
 | **A22** | **Agenda week + month, visit created from an empty slot** | ✅ captures 5, 6 + browser assertion |
 | **A23** | **Timelines on incident, mission and farm** | ✅ captures 7, 8, 15 |
-| **A24** | **Zero overflow / pinned overlap at 390 px on every screen** | ✅ `bun run layout` — 23/23 |
+| **A24** | **Zero PAGE-LEVEL horizontal scroll on every screen, at every width AND at every splitter ratio; no pinned overlap** | ✅ `bun run layout` — 24 screens × 3 seam positions, `VIEWPORT=all`. **Widened by PO return 5 (2026-08-31)**: the seam is a dimension, and the scroll is measured by really scrolling as well as by `scrollWidth`, because RTL overflow goes LEFT |
+| **A79** | **The INSTALLED app clears the system status bar: the gradient is there, and no control rests under the clock** | ✅ `STANDALONE=1 bun run layout` — the whole sweep re-run with `data-standalone` and the real devices' safe-area insets stamped; captures in `docs/screenshots/standalone/` (PO return 7) |
 | **A44** | **One template source, three rosters, a link that becomes a pin (G10)** | ✅ `bun run accept` A44 section (36 checks) + `bun run import` (28 checks: download → fill → upload → find) |
 | **A64** | **The map is on the physical LEFT on every screen that carries one** | ✅ `bun run mapfirst` — 26 screens audited at iPad landscape; every exemption prints its reason |
 | **A65** | **The map/content seam is draggable by finger and by mouse, bounded, persisted, resettable** | ✅ `bun run splitter` — 72 checks over five screens |
@@ -1066,6 +1078,16 @@ Every row exists at both `-mobile` (390 px) and `-desktop` (1280 px) — 34 rows
 > page, so "the network went quiet" is a state this app can legitimately never
 > reach. The scripts now wait for the dev toolbar's `<select>` instead, and a
 > static server removes the load entirely.
+
+> **`docs/screenshots/standalone/` is a SECOND set and a different question**
+> (P3.4, PO return 7). Produced by `STANDALONE=1 bun run layout`, one light and
+> one dark per viewport, showing the app as the INSTALLED app with a simulated
+> status bar drawn over it. The glyphs in that mock are in the colour iOS will
+> actually pick — dark on the light palette, light on the dark one, because the
+> system chooses them against `theme-color` and theme.tsx keeps that equal to
+> the resolved `--surface-base` — so what the picture answers is the only
+> question the assertions cannot: **is the clock readable over the gradient.**
+> The page is scrolled before the shot, so there is real content under it.
 
 | # | Screen |
 |---|---|
@@ -1784,6 +1806,20 @@ All twelve are committed and runnable.
   box, because a container with `auto` and no height limit does not scroll, it
   grows, and would otherwise satisfy a naive check while the page still
   stretched. `/styleguide` carries the single exemption, printed in the run.
+  **The product owner's return of 2026-08-31 added the two dimensions it was
+  missing, and both immediately found something.** The SEAM: the sweep now
+  measures each screen at three positions of the map/content splitter, reached
+  by focusing the real `role="separator"` and pressing `End` / `Home` — one page
+  load, three ratios, and the ratio the app applies rather than a number seeded
+  into `localStorage`. Screens with no seam at that width print `no seam` rather
+  than silently collapsing the dimension. And the INSTALLED APP: `STANDALONE=1`
+  re-runs everything with `data-standalone` and the real devices' safe-area
+  insets stamped on `<html>` — which is possible only because `tokens.css` reads
+  `env(safe-area-inset-*)` once into `--status-inset` / `--safe-bottom` and every
+  rule in the app reads those. It found `CreateGuardFab` sitting ON the demo bar
+  once that bar took the home-indicator inset, and — the one nobody would have
+  found by looking — `PanelSplitter` and MapLibre's zoom buttons in the top
+  24 px of every map screen. See §12bis.5 and §12bis.7.
 
 A20's interactive half is now committed as `scripts/wizard.ts` rather than
 recreated from notes each lot — it was a throw-away script for two lots and that
@@ -2088,6 +2124,18 @@ src/ui/
 7. **Should a refusal be remembered across guards?** Right now the exclusion
    set is per-wizard-session; someone who declines three nights running still
    ranks first on the fourth.
+7bis. **⚠️ OPEN, AND IT NEEDS THE PO — the horizontal scroll of PO return 5 was
+   never reproduced here.** Before anything was changed, the demo build was
+   swept for page-level horizontal scroll at 320, 390, 768, 1024, 1100, 1280,
+   1376, 1440 and 1920 px, at splitter ratios 25 / 50 / 75, over sixteen
+   screens, on **Chromium AND WebKit** — WebKit being the engine on his iPad —
+   measuring both `scrollWidth` and the document's real scroll range. Nothing
+   scrolled. A genuine latent defect was found and fixed on the way (`min-w-0`
+   missing on `MapSplit`'s map column, §12bis.5) and the rule is now permanent
+   in `bun run layout`, but **a green gate is not the same as a reproduction.**
+   What would settle it: the SCREEN, the WINDOW WIDTH, whether the app was in a
+   browser tab or installed, and whether the rail was expanded — that last is
+   the one axis the sweep still does not drive.
 8. **RESOLVED BY G17 (2026-08-18):** the Artzenu faces are deleted and every
    self-hosted face is OFL — there is no licence question left. Kept for the
    record; the original concern follows.
@@ -2454,7 +2502,317 @@ to anything above them.
 
 ---
 
+## 12bis. PO RETURNS OF 2026-08-31 — the seven points, and what each cost
+
+The product owner tested the deployed app: he signed in, closed it, put the
+iPad in aeroplane mode and reopened it. Seven points came back. Four of them
+were features, two were defects he could see, and one — the seventh — is the
+finish on the installed app. All seven are done and every one of them is under
+a gate or a capture. **They are recorded here as one unit because they were
+tested as one session and because three of them turned out to share a cause.**
+
+### 1 · The eye on the password — `LoginScreen`
+
+A 20-character password typed on an iPad keyboard, at night, into a field that
+shows dots, is a login attempt with a coin flip in it — and three failures in a
+row are a rate limit (`auth.errors.rateLimit` exists precisely because that
+happens). The reveal button is a real **44 × 44 px** target, `aria-pressed` so
+a screen reader can ask the CURRENT state rather than only be told it changed,
+and `אין/הצג סיסמה` as its label in both directions.
+
+★ **ITS POSITION IS PHYSICAL, NOT LOGICAL, AND THAT IS THE ONE INTERESTING
+  LINE IN IT.** The field is `dir="ltr"` — a password is typed in Latin
+  characters whatever the interface language — so its text always begins at the
+  PHYSICAL left and grows right, in Hebrew and in English alike. Pinning the
+  button with `end-*` follows the PAGE's direction and lands it on top of the
+  first characters in one of the two. `right-0` / `pr-12` is the side the text
+  never starts on, in both.
+
+### 2 · The remembered address — `data/auth.ts`, `lo-yanum:last-email`
+
+Written on every successful settle — a fresh sign-in AND a session restored
+from storage, because the claim is "the last address that got in" and a
+restored session got in. Read ONCE, as `useState`'s initial value, so the field
+stays a plain editable input rather than one that fights anybody typing a
+different address. `autocomplete="username"` and `autocomplete="current-
+password"` were already correct and are unchanged; the iOS keychain was always
+able to fill this form.
+
+★ **IT DELIBERATELY SURVIVES AN EXPLICIT SIGN-OUT, which is the one place it
+  parts company with `LAST_SESSION_KEY`.** That key is an ACTIVE SESSION and
+  clearing it is the whole of "I have finished with this iPad" (P2.5b's
+  asymmetry). This one is a form default, and clearing it would make the
+  feature useless in exactly the flow it exists for: sign out at the end of a
+  night, come back the next evening, find the field filled. Phase 1 has ONE
+  account. **If a shared device ever has to forget the address too, that is a
+  "forget this address" control next to the field, not a silent wipe on
+  sign-out** — and it is the PO's call, not a change to make quietly.
+
+### 3 · The offline door — joins criterion B2
+
+Two halves, and the first was already true. `bun run offline` has proved since
+P2.5b that an offline RELOAD keeps the coordinator inside the app with his
+cache and no login form — which IS the PO's scenario (session established, app
+closed, aeroplane mode, app reopened). What was missing:
+
+· **the offline badge on the reopened app.** Being let in is only reassuring if
+  the app also admits WHY the numbers might be an hour old. Now asserted.
+· **the door's own message.** A first sign-in genuinely cannot happen without a
+  network — the password is checked by Supabase and by nothing on the device —
+  and that is a structural limit the app is allowed to have. What it is not
+  allowed to do is dress it up as a server problem: *"אין חיבור לשרת. בדקו את
+  החיבור ונסו שוב"* is advice, and it is advice that cannot be followed by
+  someone in a wadi. The screen now says
+  **`אין חיבור לאינטרנט — נדרש חיבור להתחברות ראשונה`**, ABOVE the button and
+  before a password has been typed and lost, and says the same thing rather
+  than the generic one if he submits anyway.
+
+### 4 · The Supabase keep-alive — `.github/workflows/keepalive.yml`
+
+A free project is paused after roughly a week of inactivity, and the first
+thing that happens is the coordinator's login failing at the hour he can do
+least about it. A scheduled `GET /rest/v1/entities?select=id&limit=1` with the
+PUBLISHABLE key, every two days.
+
+★ **THE FORM OF THE REQUEST IS THE WHOLE DESIGN.** It had to be one that
+  provably reaches POSTGRES, not one a gateway can answer alone. PostgREST
+  resolves `?select=` against the schema and then runs a real query; the
+  anonymous role has no policy on `entities` (P2.2, criterion B1), so RLS
+  filters every row out and the answer is **`200 []`** — measured, not assumed.
+  That answer is both the success case and the proof: the database woke up,
+  planned a query, applied its policies and answered, and nothing was read
+  because there is nothing anonymous may read. `/auth/v1/health` is GoTrue and
+  says nothing about the database; `/rest/v1/` is refused outright (401, "Only
+  secret API keys can be used for this endpoint") before Postgres is consulted.
+  Both were tried against the live project.
+
+Every two days and not every six: it leaves two whole misfires' worth of margin
+inside the seven-day window, and GitHub's scheduler is explicitly best-effort.
+A 2xx passes; a **4xx passes with a warning**, because a processed request is
+still an awake database and this must not fail at 06:12 over something that is
+not an outage; only silence and a 5xx fail, because those are the shapes a
+PAUSED project has. Both paths were run locally against the real project before
+committing.
+
+⚠️ **DELETE THIS FILE THE DAY THE PROJECT GOES PAID.** Paid projects are not
+paused for inactivity, so it becomes a request that costs egress and proves
+nothing.
+
+⚠️ **AND THE ONE THING IT CANNOT DO FOR ITSELF:** GitHub disables scheduled
+workflows in a PUBLIC repository after 60 days with no commits. If work on Lo
+Yanum stops for two months, this stops with it and the project pauses a week
+later. `workflow_dispatch` is the manual way back.
+
+### 5 · The horizontal scroll — and what the sweep found
+
+**THE RULE IS NOW PERMANENT AND ABSOLUTE: no screen may scroll horizontally at
+the PAGE level, at any width and at any position of the splitter.** A wide
+table scrolling inside its own `.table-scroll` box stays legitimate; the whole
+document sliding sideways never is. `bun run layout` enforces it.
+
+★ **THE SEAM IS A DIMENSION OF THE SWEEP, AND IT COSTS NO EXTRA PAGE LOADS.**
+  `PanelSplitter` is a `role="separator"` with `End` → 25 % and `Home` → 75 %,
+  so the gate FOCUSES THE REAL CONTROL and presses two keys, measuring the
+  screen's own default as the third stop. Seeding `lo-yanum:map-ratio:*` would
+  have cost three page loads per screen — and the sweep's entire runtime is
+  page loads — and would have tested the number a test wrote into storage
+  rather than the ratio the app applies. Screens with no seam at that width
+  print `no seam` rather than silently collapsing the dimension to one.
+
+★ **TWO INSTRUMENTS, BECAUSE `scrollWidth` ALONE IS NOT ENOUGH IN AN RTL APP.**
+  Overflow in Hebrew goes LEFT, into negative `scrollLeft`. The audit now also
+  asks the document to move — `scrollLeft = -99999`, then `+99999`, then back,
+  within one frame — and reports how far it went. Zero on a healthy screen in
+  both directions.
+
+**WHAT WAS FIXED:** `MapSplit`'s MAP column never carried `min-w-0` while the
+content column has since Lot 0.9 — an asymmetry with no reason behind it and
+the exact shape of the reported defect. A flex item's `min-width` defaults to
+`auto` ("never shrink below your own content's minimum"), and a map canvas is
+the worst possible thing to leave under that rule: MapLibre sizes the
+`<canvas>` in device pixels from a ResizeObserver, so during a drag there is
+always a frame where the canvas is as wide as the panel USED to be. With
+`min-width: auto` that frame is a page that scrolls. It cannot shrink anything
+that was not already meant to shrink — `flex-1` is `flex: 1 1 0%`, so the
+declared basis was already zero and `auto` was only overriding it from below.
+
+⚠️ **AND THE HONEST PART: THE SYMPTOM DID NOT REPRODUCE HERE, and the PO should
+know that before he reads a green gate as "fixed".** Before touching anything,
+the demo build was swept for page-level horizontal scroll at **320, 390, 768,
+1024, 1100, 1280, 1376, 1440 and 1920 px**, at splitter ratios **25 / 50 / 75**,
+over sixteen screens, on **Chromium AND WebKit** (WebKit is the engine on his
+iPad), measuring both `scrollWidth` and the real scroll range. **Nothing
+scrolled.** So: the `min-w-0` fix is a real latent defect closed and a
+plausible cause of exactly what he saw, the gate is permanent and green, and
+the reproduction is still open. **If it recurs, the two things worth writing
+down are the SCREEN and the WINDOW WIDTH** — and whether the rail was expanded,
+which is the one axis this sweep does not yet drive.
+
+### 6 · The grey band at the foot of the real app — a token, not a component
+
+**THE CAUSE WAS `--shell-bottom: 2.75rem` IN `tokens.css`, AND IT IS THE MOST
+INSTRUCTIVE THING IN THIS WHOLE UNIT.** That value was an ESTIMATE of
+`DevToolbar`'s height, deliberately left as a default on the reasoning that the
+bar publishes its MEASURED height over the top of it (standing decision 39: the
+offset is measured, not declared). Then P2.3 made that bar `return null` in a
+real build — correctly, it hands out other people's identities — and with the
+component gone, the effect that publishes never ran, **the estimate stood, and
+every `100dvh` column in the real app stopped 44 px short of the bottom of the
+screen.** What the PO saw as a grey band under the rail was the page's own
+`surface-base` showing through a gap reserved for a control that no longer
+exists.
+
+★ **THE LESSON IS NOT "THE NUMBER WAS WRONG". IT IS THAT A FALLBACK FOR A
+  MEASUREMENT IS A LIE THE MOMENT THE THING BEING MEASURED CAN BE ABSENT.** The
+  default is now what a shell with nothing pinned at its foot actually owes —
+  the iOS home-indicator inset, zero everywhere else — and `DevToolbar` carries
+  that inset as its own bottom padding so the demo measurement still includes
+  it.
+
+Three smaller things went with it:
+· the `sticky bottom-0` WRAPPER around `DevToolbar` is gone in a real build
+  too. It was not the band — an empty sticky box has no height — but "the bar
+  is removed and its container is still in the tree" is how a second band gets
+  added back by the next person to put something in it.
+· `FieldLayout`'s tab bar takes the home-indicator inset when it is the
+  bottom-most element (a real build) and does not when `DevToolbar` is below it
+  (demo). Exactly one of the two ever pads.
+· **a duplicated `<SyncBadge />`** in the coordinator's mobile header, rendering
+  the pending-sync pill twice at phone and iPad-portrait widths. Found while
+  reading the file, unrelated to anything the PO reported.
+
+`/poc` keeps its demo bar untouched — it is a separate frozen bundle (G13) and
+nothing in this unit is deployed to it.
+
+### 7 · The installed app's status bar — P3.4
+
+In the installed app there is no browser toolbar: the page runs to the top edge
+of the display and the system draws the clock, the battery and the signal bars
+on the app's own pixels. Four parts:
+
+· **A gradient**, `body::before`, `--status-inset × 1.25` tall, from the page's
+  own `surface-base` to transparent — so it follows both themes with no second
+  palette. It is `body::before` and not an element in the tree because
+  P0bis.3's `.panel-scope` wrappers carry `container-type: inline-size`, which
+  makes them containing blocks for `fixed` descendants; a JSX overlay would
+  have to be hoisted to a root nobody may nest and kept there by discipline.
+  **The height is a MULTIPLIER and not "the inset plus 8 px"**: a literal
+  addition is right on an iPhone and draws an 8 px band across every desktop
+  PWA, where there is no bar to sit under. Scaling collapses to nothing.
+· **Every pinned bar clears the system zone** — the rail, both sticky headers,
+  the slide-over — by ADDING the inset to its own padding. The first draft of
+  this was a `.safe-top` class in `index.css` and it was quietly wrong: those
+  bars carry `py-3`/`py-4`, a rule that sets `padding-top` REPLACES the
+  utility's, and `.safe-top` would have won on specificity and thrown the bar's
+  own breathing room away — leaving the brand jammed against the clock on
+  exactly the device this is for.
+· **Content starts below the zone and scrolls under it.** `lg:` only: below the
+  breakpoint the content sits under a header that already pads, past it there
+  is no header at all and the first card of every screen would come to REST
+  under the clock, where iOS takes the taps.
+· **`--shell-top` falls back to the inset**, which needed one more change:
+  `usePublishedHeight` now REMOVES its property when the measured element is
+  zero-height instead of writing `0px`. The coordinator's top bar is
+  `lg:hidden`, so on a desktop or a landscape iPad it measures 0 — and writing
+  `0px` pinned an inline style over the token default with no way back to it.
+
+★ **THE SWEEP FOUND THREE CONTROLS IN THE SYSTEM ZONE THAT NOBODY WOULD HAVE
+  FOUND BY LOOKING, AND ONE OF THEM WAS THE SEAM.** The first version of the
+  assertion asked only about controls inside viewport-PINNED bars and passed
+  everything; the first capture then showed MapLibre's zoom buttons sitting in
+  the top 24 px of every map screen. Widened to "every interactive element at
+  REST in the zone" — the page is at the top of its scroll, so what it finds is
+  what a coordinator ARRIVING on a screen cannot press — it found:
+  · **`PanelSplitter`**, `self-stretch` from y=0. The one control P0bis.2
+    exists to let him drag, with its top 24 px under the clock.
+  · **MapLibre's zoom buttons**, and the farm detail's map overlay button.
+  · **`CreateGuardFab`**, at a hard-coded `bottom-16` chosen to clear the demo
+    toolbar — **the same anti-pattern as the `--shell-bottom` default in
+    point 6**, and it failed the same way the moment that bar grew by an
+    iPhone's home-indicator inset: the button landed ON the bar. It is now
+    `bottom-[calc(var(--shell-bottom)+1.25rem)]`, so the only number left to
+    choose is the gap.
+
+  The first three are fixed at the source rather than one by one: **the
+  MapSplit SHELL takes the inset** (`lg:pt-[var(--shell-top)]`, both scroll
+  strategies), so every column and the seam between them begins below the
+  system zone from one declaration — and `box-sizing: border-box` means the
+  `panel` strategy's declared `100dvh − --shell-bottom` still ends where it did.
+  The `page` strategy's map column and seam are additionally
+  `sticky top-[var(--shell-top)]`, which was right all along and does not
+  double up.
+
+★ **AND THE SWEEP THEN CAUGHT THE FIRST ATTEMPT AT THAT FIX BEING HALF RIGHT,
+  WHICH IS THE BEST THING IT DID ALL UNIT.** The inset was written as `xl:` on
+  the `xl` variant and `lg:` on the `lg` one — which reads as obviously correct
+  and is wrong. At **iPad PORTRAIT, 1032 px**, the four `xl` screens (farm
+  detail, farm form, anchor sheet, mission detail) are still STACKED, so an
+  `xl:` offset has not kicked in — while the coordinator's top bar is
+  `lg:hidden` and has ALREADY gone. Four screens with no header and no offset,
+  and the map's own bar — carrying the three-state mode switch — sitting under
+  the clock. The question the padding answers is **"is there a shell header
+  above me", which `lg` decides, not "how does this screen lay its map out",
+  which is what the variant is about.** Both variants now use `lg:`, and the
+  comment in `MapSplit.tsx` says why, because it will read as a copy-paste slip
+  to the next person.
+
+★ **AND THE WHOLE OF IT IS SIMULABLE, WHICH IS WHY THE INSETS ARE TOKENS.**
+  Playwright can emulate a viewport, a locale, a colour scheme and a position;
+  **it cannot emulate a notch, and no flag will make it.** So `tokens.css` reads
+  `env(safe-area-inset-*)` ONCE into `--status-inset` / `--safe-bottom` and
+  every rule in the app reads those. `STANDALONE=1 bun run layout` stamps
+  `data-standalone` and the two variables with the real devices' numbers (59 px
+  on an iPhone 16 Pro, 47 px on the 390-class phones, 24 px on an iPad Pro) and
+  runs the ENTIRE sweep as the installed app, asserting the gradient's height
+  and that **no control inside a viewport-pinned bar rests in the system zone**.
+  Captures land in `docs/screenshots/standalone/`.
+
+★ **ONE JUDGEMENT CALL, AND IT IS THE PO'S TO OVERTURN:
+  `apple-mobile-web-app-status-bar-style: black-translucent` IS NOT USED.** It
+  is the only way on iOS to force content edge-to-edge under the bar — and it
+  also forces the clock and the battery to WHITE, permanently. The
+  coordinator's default theme is LIGHT (`defaultThemeFor`), so that trade buys
+  an edge-to-edge bar and pays for it with an unreadable clock for the one
+  person in phase 1 who has an account; and "adapt the gradient to both themes"
+  is the same requirement read from the other end. What is used instead is
+  `viewport-fit=cover` plus a `theme-color` that theme.tsx already keeps in step
+  with the resolved `--surface-base`, so the status-bar region is the app's own
+  background in whichever theme is showing — never a white band — and the
+  system picks contrasting glyphs against it. `mobile-web-app-capable` and
+  `apple-mobile-web-app-capable` were added; the status-bar-style line is one
+  line in `index.html` if he wants the other trade.
+
+### What was re-run, and what it cost
+
+**Every gate, green.** `typecheck`, `tokens`, `contrast`, `accept` (150),
+`dispatch` (27), `sync` (28), `persist` (84), `mapping` (33), `auth` (20),
+`offline` (**27**, up from 24), `layout` (24 screens × 3 seam positions ×
+4 viewports, in BOTH the browser and the installed app), `mapfirst` (27),
+`splitter` (72), `touch` (32), `wizard` (28), `outreach`, `rtl`, `import` (29).
+
+`mapfirst`, `splitter` and `touch` were not optional here and would not be for
+the next unit either: this one changed `MapSplit`, and ETAT has named those
+three as the thing to run first on any map change since P0bis.
+
+**Verified against the real project, not against a mock**: points 1, 2 and 3
+were driven through a real build signed in as the disposable test account —
+the address is remembered across a sign-out AND a reload, the password field
+comes back empty, `lo-yanum:last-session` is cleared, and the reveal button
+measures exactly 44 × 44. The keep-alive's script body was executed verbatim
+against Frankfurt (`200 []`) and against an unresolvable host (three attempts,
+exit 1), so both halves of its verdict are measured rather than reasoned.
+
+---
+
 ## ⏭️ RESUME HERE — PMTILES (decision 71), THEN P3
+
+> **The resume point is UNCHANGED by the product owner's returns of
+> 2026-08-31.** All seven are delivered and gated (§12bis); none of them
+> touched the map's tile source, which is what this unit is about. The one
+> thing to carry in: **§12bis.5's horizontal-scroll symptom was never
+> reproduced** (open question 7bis) — if it turns up again it will most likely
+> turn up on a map screen, so it is worth watching for while MapCanvas is being
+> rebuilt here.
 
 **THE UNIT IN ONE SENTENCE:** replace the OSM raster basemap with one
 self-hosted Protomaps PMTiles file of southern Israel, served from a PUBLIC

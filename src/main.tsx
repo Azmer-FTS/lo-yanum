@@ -10,6 +10,7 @@ import './index.css'
 import App from './ui/App'
 import { DEFAULT_LANGUAGE, applyLanguage } from './ui/i18n'
 import { registerServiceWorker } from './ui/offline'
+import { applyDisplayMode } from './ui/standalone'
 import { initTheme } from './ui/theme'
 
 /**
@@ -34,6 +35,11 @@ if (SUPABASE_CONFIGURED) {
 applyLanguage(DEFAULT_LANGUAGE)
 // Stamp the theme before React mounts, or the app flashes the wrong palette.
 initTheme(getSession().role)
+// P3.4 — and the display mode with it, for the same reason: the status-bar
+// treatment is a `[data-standalone]` rule, so the attribute has to be on
+// `<html>` before the first paint or the installed app flashes a shell with a
+// 47 px hole in it.
+applyDisplayMode()
 
 const container = document.getElementById('root')
 if (!container) throw new Error('Root container #root not found')

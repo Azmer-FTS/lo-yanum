@@ -78,8 +78,18 @@ export function DevToolbar() {
   // Not sticky itself: the layouts decide where the bar sits, so it can share a
   // single sticky container with the field tab bar instead of the two fighting
   // over `bottom-0`.
+  //
+  // PO return 6 — the home-indicator inset is PADDING ON THIS BAR rather than
+  // on a wrapper, for one reason: `--shell-bottom` is this element's MEASURED
+  // height, so anything the bar has to sit above has to be inside the box being
+  // measured. Put the inset on a parent and the bar renders under the home
+  // indicator while every sticky footer in the app clears a bar that is 34 px
+  // taller than the one it can see.
   return (
-    <div ref={ref} className="border-t border-edge-strong bg-surface-sunken">
+    <div
+      ref={ref}
+      className="border-t border-edge-strong bg-surface-sunken pb-[var(--safe-bottom)]"
+    >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
         <span className="flex items-center gap-1.5 text-micro font-medium text-content-muted">
           <Icon name="switch" size={14} />

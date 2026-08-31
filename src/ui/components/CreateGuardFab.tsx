@@ -37,8 +37,16 @@ export function CreateGuardFab() {
       to="/coordinator/missions/new"
       aria-label={t('missions.create')}
       title={t('missions.create')}
-      // `bottom-16` clears the sticky dev toolbar.
-      className="fixed bottom-16 end-4 z-40 flex h-14 w-14 items-center justify-center rounded-pill
+      // PO return 6 / P3.4 — CLEARS WHATEVER IS AT THE FOOT OF THE SHELL, BY
+      // MEASUREMENT. This was `bottom-16`, a hard-coded 4 rem chosen to clear
+      // the demo toolbar — the same anti-pattern as the `--shell-bottom` token
+      // default that produced the grey band, and it failed the same way the
+      // moment the toolbar grew by an iPhone's home-indicator inset: the
+      // standalone sweep caught the button sitting ON the bar. `--shell-bottom`
+      // is the bar's real height (or the bare home-indicator inset in a real
+      // build, where there is no bar), so the gap above it is the only number
+      // left to choose.
+      className="fixed bottom-[calc(var(--shell-bottom)+1.25rem)] end-4 z-40 flex h-14 w-14 items-center justify-center rounded-pill
                  bg-gradient-accent text-content-on-accent shadow-accent
                  transition-all duration-base ease-out active:scale-95 lg:hidden"
     >

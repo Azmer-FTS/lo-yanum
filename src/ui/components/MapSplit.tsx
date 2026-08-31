@@ -50,12 +50,64 @@ import { PanelSplitter } from './splitter'
  * P0bis.2 (`ratio` + `onRatioChange` below). Below the breakpoint the width is
  * not applied at all — the stack is the responsive form and stays it.
  */
+/**
+ * P3.4 (PO RETURN 7) — WHERE THE INSTALLED APP'S TOP INSET IS PAID, AND WHY IT
+ * IS PAID IN TWO DIFFERENT PLACES FOR THE TWO SCROLL STRATEGIES.
+ *
+ * The standalone sweep found two controls resting in the status-bar zone on
+ * every map-first screen: MapLibre's own zoom buttons, and — worse, because it
+ * is the seam the whole of P0bis.2 exists to let him drag — the splitter,
+ * which is `self-stretch` and therefore started at y=0.
+ *
+ The answer is `pt-[var(--shell-top)]` ON THE SHELL, for both
+ * scroll strategies: every column and the seam between them then begins below
+ * the system zone from one declaration, and `box-sizing: border-box` means the
+ * `panel` strategy's declared `100dvh - --shell-bottom` still ends where it
+ * did. The `page` strategy's map column and seam are additionally
+ * `sticky top-[var(--shell-top)]`, which was right all along and does not
+ * double up: at rest the padding already puts them there, and on scroll the
+ * sticky pins them to the same line.
+ *
+ * ★ AND THE BREAKPOINT ON THAT PADDING IS `lg` ON BOTH VARIANTS, INCLUDING THE
+ *   `xl` ONE. It looks like a copy-paste slip and it is the opposite: the
+ *   question this answers is "is there a shell header above me", and that is
+ *   decided by `lg:hidden` on the coordinator's top bar — NOT by the screen's
+ *   own map breakpoint. The standalone sweep found the gap at iPad PORTRAIT,
+ *   1032 px: the four `xl` screens are still STACKED there, so an `xl:` offset
+ *   had not kicked in, while the header had already gone — and the map's own
+ *   bar, with the three-state mode switch on it, sat under the clock.
+ *
+ * Outside the installed app `--shell-top` is 0 on these screens (the
+ * coordinator's top bar is `lg:hidden`, so it publishes nothing — see
+ * `usePublishedHeight`) and every one of these rules is inert.
+ */
 export type MapSplitScroll = 'panel' | 'page'
 export type MapSplitBreakpoint = 'lg' | 'xl'
 
 /**
  * Tailwind scans the SOURCE for literal class names, so a breakpoint cannot be
  * interpolated into a class string. Both variants are written out.
+ */
+/**
+ * PO RETURN 5 (2026-08-31) — `min-w-0` ON BOTH COLUMNS, NOT JUST THE CONTENT.
+ *
+ * A flex item's `min-width` defaults to `auto`, which means "never shrink
+ * below your own content's minimum". The content column has carried `min-w-0`
+ * since Lot 0.9 and the MAP column never did — an asymmetry with no reason
+ * behind it, and the exact shape of the defect the product owner reported: at
+ * some seam positions the row refuses to fit and the whole PAGE slides
+ * sideways, rather than the panel clipping its own content.
+ *
+ * A map canvas is the worst possible thing to leave under `min-width: auto`.
+ * MapLibre sizes the `<canvas>` in device pixels and re-sizes it from a
+ * ResizeObserver, so during a drag there is always a frame in which the canvas
+ * is still as wide as the panel USED to be. With `min-width: auto` that frame
+ * is a page that scrolls; with `min-w-0` it is a panel that clips for one
+ * frame and nobody sees it.
+ *
+ * It cannot shrink anything that was not already meant to shrink: `flex-1` is
+ * `flex: 1 1 0%`, so the declared basis is already zero and `auto` was only
+ * ever overriding it from below.
  */
 interface BreakpointClasses {
   shellPanel: string
@@ -76,15 +128,15 @@ interface BreakpointClasses {
 const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
   lg: {
     shellPanel:
-      'flex flex-col lg:h-[calc(100dvh-var(--shell-bottom))] lg:min-h-0 lg:flex-row-reverse lg:rtl:flex-row',
+      'flex flex-col lg:h-[calc(100dvh-var(--shell-bottom))] lg:min-h-0 lg:flex-row-reverse lg:pt-[var(--shell-top)] lg:rtl:flex-row',
     shellPage:
-      'flex flex-col lg:flex-row-reverse lg:rtl:flex-row lg:items-start',
+      'flex flex-col lg:flex-row-reverse lg:items-start lg:pt-[var(--shell-top)] lg:rtl:flex-row',
     contentPanel:
       'order-2 min-w-0 flex-1 overflow-y-auto px-4 pb-24 pt-5 lg:order-none lg:pb-5',
     contentPage: 'order-2 min-w-0 flex-1 px-4 pb-24 pt-5 lg:order-none lg:pb-5',
     contentHidden: 'lg:w-full lg:px-5',
     contentSplit: 'lg:w-[var(--content-w)] lg:flex-none lg:px-5',
-    mapCol: 'order-1 flex-col lg:order-none lg:flex-1',
+    mapCol: 'order-1 flex-col lg:order-none lg:min-w-0 lg:flex-1',
     mapColPage:
       'lg:sticky lg:top-[var(--shell-top)] lg:h-[calc(100dvh-var(--shell-top)-var(--shell-bottom))] lg:self-start',
     mapBox: 'relative w-full border-edge-subtle lg:h-full lg:border-r lg:!h-full',
@@ -96,15 +148,15 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
   },
   xl: {
     shellPanel:
-      'flex flex-col xl:h-[calc(100dvh-var(--shell-bottom))] xl:min-h-0 xl:flex-row-reverse xl:rtl:flex-row',
+      'flex flex-col lg:pt-[var(--shell-top)] xl:h-[calc(100dvh-var(--shell-bottom))] xl:min-h-0 xl:flex-row-reverse xl:rtl:flex-row',
     shellPage:
-      'flex flex-col xl:flex-row-reverse xl:rtl:flex-row xl:items-start',
+      'flex flex-col lg:pt-[var(--shell-top)] xl:flex-row-reverse xl:items-start xl:rtl:flex-row',
     contentPanel:
       'order-2 min-w-0 flex-1 overflow-y-auto px-4 pb-24 pt-5 xl:order-none xl:pb-5',
     contentPage: 'order-2 min-w-0 flex-1 px-4 pb-24 pt-5 xl:order-none xl:pb-5',
     contentHidden: 'xl:w-full xl:px-5',
     contentSplit: 'xl:w-[var(--content-w)] xl:flex-none xl:px-5',
-    mapCol: 'order-1 flex-col xl:order-none xl:flex-1',
+    mapCol: 'order-1 flex-col xl:order-none xl:min-w-0 xl:flex-1',
     mapColPage:
       'xl:sticky xl:top-[var(--shell-top)] xl:h-[calc(100dvh-var(--shell-top)-var(--shell-bottom))] xl:self-start',
     mapBox: 'relative w-full border-edge-subtle xl:h-full xl:border-r xl:!h-full',

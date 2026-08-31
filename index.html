@@ -4,8 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!-- Boot value only: theme.tsx replaces this with the resolved
-         `--surface-base` as soon as the palette is applied. G17 night. -->
+         `--surface-base` as soon as the palette is applied. G17 night.
+
+         P3.4 — AND IT IS ALSO THE INSTALLED APP'S STATUS BAR. iOS paints the
+         status-bar region with this colour, so keeping it in step with the
+         palette is what stops the "full white band" the product owner saw: the
+         band is the app's own background in whichever theme is showing, and
+         the system picks contrasting glyphs against it.
+
+         ★ `apple-mobile-web-app-status-bar-style: black-translucent` is the
+           OTHER way to do this and is deliberately NOT used. It does put the
+           content under the bar on iOS — and it also forces the clock and the
+           battery to WHITE, permanently. The coordinator's default theme is
+           LIGHT (theme.tsx, `defaultThemeFor`), so that trade buys an
+           edge-to-edge bar and pays for it with an unreadable clock for the one
+           person in phase 1 who has an account. The product owner's own brief
+           asks for a gradient "adapted to both themes", which is the same
+           requirement read from the other end. If he wants edge-to-edge badly
+           enough to accept a permanently dark scrim at the top of the light
+           theme, this is the one line that changes. -->
     <meta name="theme-color" content="#0B1119" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="לא ינום" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="./icon.svg" />
     <link rel="apple-touch-icon" href="./icon.svg" />

@@ -97,6 +97,81 @@
     padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
   }
 
+  /**
+   * P3.4 (PO return 7) — THE STATUS-BAR GRADIENT, INSTALLED APP ONLY.
+   *
+   * In the installed app there is no browser toolbar: the page runs to the top
+   * edge of the display and the system draws the clock, the battery and the
+   * signal bars ON the app's own pixels. Whatever happens to be scrolling
+   * under them at that moment decides whether they can be read — a table
+   * header, a photograph, a map. The fix is the one the Claude app uses: a
+   * short, soft wash of the page's own background at the very top, opaque
+   * where the glyphs are and gone by the time it reaches the content.
+   *
+   * ★ `body::before` AND NOT AN ELEMENT IN THE TREE. It has to be `fixed` to
+   *   the viewport, and P0bis.3's `.panel-scope` wrappers carry
+   *   `container-type: inline-size`, which makes them containing blocks for
+   *   `fixed` descendants — so a JSX overlay would have to be hoisted to a
+   *   root nobody may put a panel above and kept there by discipline. `body`
+   *   has no transform, no filter and no containment, so its pseudo-element
+   *   really is pinned to the viewport, and there is no component for anybody
+   *   to nest wrongly.
+   *
+   * ★ THE HEIGHT IS THE INSET TIMES 1.25, AND THE MULTIPLIER IS THE POINT.
+   *   The product owner asked for "the inset plus a few px", and a literal
+   *   `+ 8px` is right on an iPhone and WRONG on every surface whose inset is
+   *   zero — a desktop PWA, an Android device with no cut-out — where it draws
+   *   an 8 px band across the top of the app to protect glyphs that are not
+   *   there. Scaling instead gives ~12 px of extra fade on iOS's 47 px inset
+   *   and collapses to nothing when there is no bar to sit under.
+   *
+   * ★ z-20, WHICH IS UNDER THE SHELL'S OWN HEADERS (z-30). A sticky header is
+   *   already an opaque band at the top of the screen and already carries the
+   *   inset as padding (`.safe-top` below), so it protects the glyphs by
+   *   itself; painting the gradient over it would put a second, slightly
+   *   different tone on top of a surface that is already correct. Where there
+   *   IS no header — the desktop rail's content column, every map-first screen
+   *   past `lg` — the gradient is what does the work.
+   */
+  html[data-standalone] body::before {
+    content: '';
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline: 0;
+    z-index: 20;
+    height: calc(var(--status-inset) * 1.25);
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      rgb(var(--surface-base)) 0%,
+      rgb(var(--surface-base) / 0.92) 55%,
+      rgb(var(--surface-base) / 0) 100%
+    );
+  }
+
+  /**
+   * P3.4 — "START UNDER THE SYSTEM ZONE", AND WHY IT IS NOT A CLASS HERE.
+   *
+   * Every bar the shell pins to the top — the desktop rail, the two sticky
+   * headers, the mobile slide-over — pads itself by `--status-inset` so its
+   * surface still runs edge to edge under the clock (no white band) while its
+   * buttons sit below it and stay tappable. And because `--shell-top` is the
+   * coordinator header's MEASURED height (F5.4), a header that pads this way
+   * publishes a `--shell-top` that already includes the inset, which is what
+   * keeps the wizard's stepper and every map column aligned with no second
+   * variable.
+   *
+   * ★ THE FIRST DRAFT OF THIS WAS A `.safe-top` CLASS IN THIS FILE AND IT WAS
+   *   WRONG, quietly. Those bars carry `py-3` / `py-4`, and a rule that sets
+   *   `padding-top` REPLACES the utility's — so `.safe-top` would have won on
+   *   specificity and thrown the bar's own 12 or 16 px of breathing room away,
+   *   leaving the brand jammed against the clock on exactly the device this is
+   *   for. The padding has to ADD to what the element already declares, and
+   *   the only place that knows what that is, is the element. So the call
+   *   sites carry `pt-[calc(var(--status-inset)+1rem)]` and this file carries
+   *   the reason.
+   */
+
   /* Numbers, phone numbers and coordinates must read LTR inside RTL text.
      A ratio like "3 / 12" has to be ONE run of this class — two separate runs
      get reordered by the bidi algorithm and display backwards. */

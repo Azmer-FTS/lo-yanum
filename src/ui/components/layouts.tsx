@@ -5,6 +5,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { COORDINATOR, getMyDisplayName, getSession } from '@core/index'
 
 import { signOut } from '../../data/auth'
+import { SUPABASE_CONFIGURED } from '../../data/config'
 import { useDataState } from '../hooks/useDataState'
 import { useOnline } from '../offline'
 import { useAuth } from '../hooks/useAuth'
@@ -286,8 +287,14 @@ export function CoordinatorLayout() {
       <div className="flex flex-1">
         {/* Desktop rail — full-bleed: no max-width wrapper anywhere. */}
         <aside
+          // P3.4 — in the installed app the rail runs to the top edge of the
+          // display, so its own surface is what the clock is drawn on, and the
+          // shield below it has to start UNDER the clock rather than behind it.
+          // The inset is ADDED to the rail's own `py-4`, which is why the top
+          // padding is written out rather than left to `py-4` (see index.css).
           className={`sticky top-0 hidden h-[calc(100dvh-var(--shell-bottom))] shrink-0 flex-col gap-4
-                      overflow-y-auto border-e border-edge-subtle bg-surface-raised px-3 py-4
+                      overflow-y-auto border-e border-edge-subtle bg-surface-raised px-3 pb-4
+                      pt-[calc(var(--status-inset)+1rem)]
                       transition-[width] duration-base ease-out lg:flex ${
                         expanded ? 'w-60' : 'w-[4.5rem]'
                       }`}
@@ -337,30 +344,36 @@ export function CoordinatorLayout() {
           {/* Mobile / tablet top bar */}
           <header
             ref={topBarRef}
-            className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-edge-subtle bg-surface-overlay/95 px-4 py-3 backdrop-blur lg:hidden"
+            className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-edge-subtle bg-surface-overlay/95 px-4 pb-3 pt-[calc(var(--status-inset)+0.75rem)] backdrop-blur lg:hidden"
           >
             <Brand />
             <div className="flex items-center gap-2">
               <OfflineBadge />
-            <SyncBadge />
               <SyncBadge />
               <ThemeToggle compact />
               <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              aria-label={t('a11y.openMenu')}
-              className="rounded-field p-2 text-content-secondary transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
-            >
-              <Icon name="menu" />
+                type="button"
+                onClick={() => setMenuOpen(true)}
+                aria-label={t('a11y.openMenu')}
+                className="rounded-field p-2 text-content-secondary transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
+              >
+                <Icon name="menu" />
               </button>
             </div>
           </header>
 
+          {/* P3.4 — `lg:pt-[…status-inset…]` AND ONLY AT `lg`.
+              Below it this column sits under the sticky header, which already
+              carries the inset; past it there IS no header — the rail is
+              beside the content, not above it — so the first card of every
+              screen would start at y=0, under the installed app's clock. The
+              content still SCROLLS under the system zone, which is what the
+              gradient is for; it just does not START there. */}
           <main
             className={
               bleed
                 ? 'flex-1'
-                : 'flex-1 px-4 pb-24 pt-5 sm:px-6 sm:pt-6 lg:pb-6 2xl:px-8'
+                : 'flex-1 px-4 pb-24 pt-5 sm:px-6 sm:pt-6 lg:pb-6 lg:pt-[calc(var(--status-inset)+1.5rem)] 2xl:px-8'
             }
           >
             <Outlet />
@@ -379,7 +392,7 @@ export function CoordinatorLayout() {
             className="absolute inset-0 bg-surface-sunken/80 backdrop-blur-sm"
             onClick={() => setMenuOpen(false)}
           />
-          <div className="absolute inset-y-0 start-0 flex w-72 max-w-[85%] animate-fade-in flex-col gap-5 border-e border-edge-strong bg-surface-raised px-3 py-4 shadow-lift">
+          <div className="absolute inset-y-0 start-0 flex w-72 max-w-[85%] animate-fade-in flex-col gap-5 border-e border-edge-strong bg-surface-raised px-3 pb-4 pt-[calc(var(--status-inset)+1rem)] shadow-lift">
             <div className="flex items-center justify-between px-1">
               <Brand />
               <button
@@ -404,9 +417,20 @@ export function CoordinatorLayout() {
         </div>
       )}
 
-      <div className="sticky bottom-0 z-40">
-        <DevToolbar />
-      </div>
+      {/* PO RETURN 6 — THE WRAPPER GOES TOO, NOT JUST THE BAR.
+          `DevToolbar` has returned `null` in a real build since P2.3, which
+          left this `sticky bottom-0` container rendering as an empty box. It
+          was not the grey band the product owner saw — that was the
+          `--shell-bottom` token (see tokens.css) — but "the bar is removed and
+          its container is still in the tree" is how a second band gets added
+          back by the next person to put something in it. In a real build there
+          is nothing pinned to the foot of this shell, and nothing here to
+          say so. */}
+      {!SUPABASE_CONFIGURED && (
+        <div className="sticky bottom-0 z-40">
+          <DevToolbar />
+        </div>
+      )}
     </div>
   )
 }
@@ -425,7 +449,7 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-base">
-      <header className="sticky top-0 z-30 border-b border-edge-subtle bg-surface-overlay/95 px-4 py-3 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-edge-subtle bg-surface-overlay/95 px-4 pb-3 pt-[calc(var(--status-inset)+0.75rem)] backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
           <Brand />
           <div className="flex items-center gap-3">
@@ -449,7 +473,16 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
       </main>
 
       <div className="sticky bottom-0 z-30">
-        <nav className="border-t border-edge-subtle bg-surface-overlay/95 backdrop-blur">
+        {/* PO return 6 — in DEMO mode `DevToolbar` sits below this bar and
+            carries the home-indicator inset itself; in a real build this IS the
+            bottom-most element, so it takes the inset on. Exactly one of the
+            two ever pads, which is why this is a condition and not a class on
+            both. */}
+        <nav
+          className={`border-t border-edge-subtle bg-surface-overlay/95 backdrop-blur ${
+            SUPABASE_CONFIGURED ? 'pb-[var(--safe-bottom)]' : ''
+          }`}
+        >
           <div className="mx-auto flex max-w-2xl">
             {items.map((item) => (
               <NavLink

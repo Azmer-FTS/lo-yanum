@@ -111,6 +111,44 @@ const isOffline = (): boolean =>
   typeof navigator !== 'undefined' && navigator.onLine === false
 
 /**
+ * PO RETURN 2 (2026-08-31) — THE LAST ADDRESS THAT SIGNED IN, AND ONLY THE
+ * ADDRESS.
+ *
+ * The coordinator types his email on an iPad keyboard, in the dark, before
+ * every night. It is not a credential — it is on the rail of every screen he
+ * has ever seen and in the "from" line of every message the programme sends —
+ * so remembering it costs nothing and saves the one piece of typing that is
+ * both long and error-prone. **The password is never stored, by this app or
+ * anywhere near it.**
+ *
+ * ★ AND IT DELIBERATELY SURVIVES AN EXPLICIT SIGN-OUT, which is the one place
+ *   it parts company with `LAST_SESSION_KEY` above. That key is an ACTIVE
+ *   SESSION and clearing it is the whole of "I have finished with this iPad";
+ *   this one is a form default, and clearing it would make the feature useless
+ *   in exactly the flow it exists for — sign out at the end of a night, come
+ *   back the next evening, find the field filled. Phase 1 has ONE account. If
+ *   a shared device ever has to forget the address too, that is a "forget this
+ *   address" control next to the field, not a silent wipe on sign-out.
+ */
+const LAST_EMAIL_KEY = 'lo-yanum:last-email'
+
+export function readRememberedEmail(): string {
+  try {
+    return localStorage.getItem(LAST_EMAIL_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function rememberEmail(email: string | null): void {
+  try {
+    if (email && email.trim() !== '') localStorage.setItem(LAST_EMAIL_KEY, email.trim())
+  } catch {
+    // A browser refusing storage still signs in; it just never prefills.
+  }
+}
+
+/**
  * What to publish when Supabase says there is no session.
  *
  * Online, that is the truth and it is a sign-out. Offline, with a remembered
@@ -176,6 +214,11 @@ if (SUPABASE_CONFIGURED) {
         return
       }
       writeLastSession({ userId: user.id, email: user.email ?? null })
+      // PO return 2 — the address the login form prefills next time. Written
+      // here rather than in `signIn` so a session RESTORED from storage keeps
+      // it current too; the claim is "the last address that got in", and a
+      // restored session got in.
+      rememberEmail(user.email ?? null)
       publish({
         status: 'signed-in',
         email: user.email ?? null,

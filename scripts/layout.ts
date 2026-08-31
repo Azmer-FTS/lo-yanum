@@ -1,4 +1,6 @@
 import { chromium } from 'playwright'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 
 /**
  * A24 + A30 — systematic 390 px sweep.
@@ -6,9 +8,13 @@ import { chromium } from 'playwright'
  * Walks every screen at phone width and asserts three things that a human
  * eyeballing screenshots reliably misses:
  *
- *   1. NO HORIZONTAL OVERFLOW. `scrollWidth > innerWidth` means something is
- *      wider than the phone — the single most common cause of "the layout is
- *      broken on my phone".
+ *   1. NO HORIZONTAL OVERFLOW, AT EVERY SPLITTER RATIO. `scrollWidth >
+ *      innerWidth` means something is wider than the screen — the single most
+ *      common cause of "the layout is broken on my phone". Since the product
+ *      owner's return of 2026-08-31 this is checked at THREE positions of the
+ *      map/content seam rather than one, because the seam is a control the
+ *      coordinator drags all day and a layout that only holds at its default
+ *      ratio is a layout that breaks in use. See `RATIO_STOPS` below.
  *   2. NO ELEMENT WIDER THAN THE VIEWPORT, reported by name, so an overflow is
  *      traceable to the component that caused it rather than to the page.
  *   3. NO STICKY/FIXED BAR COVERING ANOTHER. Two elements pinned to the bottom
@@ -43,11 +49,46 @@ const BASE = process.env.BASE_URL ?? 'http://localhost:5173'
  * rather than being one global number.
  */
 const VIEWPORTS = {
-  phone: { width: 390, height: 844, maxScreenfuls: 6 },
-  iphone: { width: 402, height: 874, maxScreenfuls: 6 },
-  ipad: { width: 1032, height: 1376, maxScreenfuls: 5 },
-  'ipad-ls': { width: 1376, height: 1032, maxScreenfuls: 6 },
+  phone: { width: 390, height: 844, maxScreenfuls: 6, statusInset: 47, bottomInset: 34 },
+  iphone: { width: 402, height: 874, maxScreenfuls: 6, statusInset: 59, bottomInset: 34 },
+  ipad: { width: 1032, height: 1376, maxScreenfuls: 5, statusInset: 24, bottomInset: 20 },
+  'ipad-ls': { width: 1376, height: 1032, maxScreenfuls: 6, statusInset: 24, bottomInset: 20 },
 } as const
+
+/**
+ * P3.4 (PO RETURN 7) — `STANDALONE=1` RUNS THE WHOLE SWEEP AS THE INSTALLED
+ * APP.
+ *
+ * ★ THE INSTALLED APP IS A DIFFERENT LAYOUT AND NOTHING WAS EVER MEASURING IT.
+ *   Added to the home screen there is no browser toolbar: the page runs to the
+ *   top edge of the display and the system draws the clock, the battery and
+ *   the signal bars on the app's own pixels. Every sticky bar in the shell has
+ *   to start below that zone or its buttons are under glyphs iOS reserves the
+ *   taps for — and none of it is visible in a browser tab, which is the only
+ *   place this sweep has ever run.
+ *
+ * ★ IT IS SIMULABLE BECAUSE THE INSETS ARE TOKENS, NOT `env()` CALLS.
+ *   Playwright can emulate a viewport, a locale, a colour scheme and a
+ *   position; it cannot emulate a notch, and there is no flag that will make
+ *   it. So `tokens.css` reads `env(safe-area-inset-*)` ONCE into
+ *   `--status-inset` / `--safe-bottom` and every rule in the app reads those —
+ *   which turns "does the installed app's chrome clear the status bar" from a
+ *   claim only a physical iPad can settle into two custom properties and an
+ *   attribute. The numbers above are the real devices': 59 px on an iPhone 16
+ *   Pro, 47 px on the 390-class phones, 24 px on an iPad Pro, and the
+ *   home-indicator insets under them.
+ *
+ * What it asserts, on every screen, on top of everything the ordinary sweep
+ * already does:
+ *   · the status-bar gradient exists and is the height it is meant to be —
+ *     `--status-inset × 1.25`, so it collapses to nothing where there is no
+ *     bar to sit under;
+ *   · NO CONTROL IS UNDER THE CLOCK. Every viewport-pinned bar's buttons,
+ *     links and fields start at or below the inset. Content is allowed to
+ *     SCROLL under the system zone — that is what the gradient is for — but
+ *     nothing may come to REST there, because iOS takes the taps.
+ */
+const STANDALONE = process.env.STANDALONE === '1'
 
 type ViewportName = keyof typeof VIEWPORTS
 
@@ -56,6 +97,39 @@ const RUNS: ViewportName[] =
   REQUESTED === 'all'
     ? (Object.keys(VIEWPORTS) as ViewportName[])
     : [REQUESTED in VIEWPORTS ? (REQUESTED as ViewportName) : 'phone']
+
+/**
+ * PO RETURN 5 (2026-08-31) — THE SEAM IS A DIMENSION OF THE SWEEP.
+ *
+ * ★ THE RULE, AND IT IS ABSOLUTE: **no screen may scroll horizontally AT THE
+ *   PAGE LEVEL, at any width and at any position of the splitter.** A wide
+ *   table scrolling INSIDE its own `.table-scroll` box is legitimate and is
+ *   not what this measures; the whole document sliding left and right is not,
+ *   ever. The product owner hit it on his iPad — "notably when the splitter
+ *   gives more room to the map, and also in a very narrow window" — and a
+ *   defect that depends on where a draggable control happens to be sitting is
+ *   a defect a one-position sweep cannot see.
+ *
+ * ★ THE THREE STOPS ARE REACHED BY DRIVING THE REAL CONTROL, NOT BY SEEDING
+ *   `localStorage`. `PanelSplitter` is a `role="separator"` with `End` →
+ *   `RATIO_MIN` (25 %), `Home` → `RATIO_MAX` (75 %); the screen starts at its
+ *   own default, which is the third stop. That buys two things a seeded
+ *   `lo-yanum:map-ratio:*` key does not: it costs ONE page load per screen
+ *   instead of three — the sweep's whole runtime is page loads — and it tests
+ *   the ratio the app actually applies rather than the number a test wrote
+ *   into storage and hoped was read.
+ *
+ * ★ AND IT IS SKIPPED WHERE THERE IS NO SEAM, out loud. Below the `lg`/`xl`
+ *   breakpoint the splitter is `display:none` and the two panels are stacked,
+ *   and several screens have no map at all. Those measure once and print
+ *   `(no splitter)` — a dimension that silently collapses to one is how a
+ *   sweep reports coverage it does not have.
+ */
+const RATIO_STOPS = [
+  { label: 'default', key: null },
+  { label: '25%', key: 'End' },
+  { label: '75%', key: 'Home' },
+] as const
 
 /** Every screen a coordinator or a field user can reach. */
 const ROUTES: Array<{
@@ -116,12 +190,28 @@ const ROUTES: Array<{
 interface Report {
   scrollWidth: number
   innerWidth: number
+  /**
+   * PO return 5 — HOW FAR THE DOCUMENT CAN ACTUALLY BE SLID, measured by
+   * trying to slide it. `scrollWidth` is the usual instrument and it is not
+   * enough here: this app is RTL, so its overflow goes LEFT, into negative
+   * `scrollLeft` — and "the page moves sideways under my thumb" is a claim
+   * about scrolling, so the honest way to test it is to scroll. Zero on a
+   * healthy screen in both directions.
+   */
+  scrollRange: number
   wide: Array<{ tag: string; cls: string; width: number }>
   collisions: Array<{ a: string; b: string }>
   /** A30 — page height as a multiple of the viewport. */
   heightRatio: number
   /** A30 — long tables/lists with no bounded scroll container above them. */
   uncontained: Array<{ tag: string; rows: number }>
+  /** P3.4 — null unless the page is stamped as the installed app. */
+  standalone: null | {
+    inset: number
+    gradientHeight: number
+    /** Controls inside a viewport-pinned bar that sit in the system zone. */
+    underTheClock: Array<{ tag: string; top: number }>
+  }
 }
 
 /**
@@ -138,6 +228,17 @@ function audit(): Report {
       .join('.')}`
 
   const vw = window.innerWidth
+
+  // PO return 5 — ask the document to move, put it back, and report how far it
+  // went. Synchronous and within one frame, so nothing the user could see.
+  const de = document.documentElement
+  const restore = de.scrollLeft
+  de.scrollLeft = -99999
+  const minScroll = de.scrollLeft
+  de.scrollLeft = 99999
+  const maxScroll = de.scrollLeft
+  de.scrollLeft = restore
+  const scrollRange = Math.abs(maxScroll - minScroll)
 
   const wide = [...document.querySelectorAll('body *')]
     .filter((el) => {
@@ -243,9 +344,57 @@ function audit(): Report {
           : el.children.length,
     }))
 
+  /**
+   * P3.4 — the installed app's top zone, measured only when the page says it
+   * is the installed app. `pinned` above is already "viewport-pinned and not
+   * merely sticky inside a scroll box", which is exactly the set of bars whose
+   * position does not change when the page scrolls — so a control inside one
+   * of them that is in the system zone is in the system zone permanently.
+   */
+  const de2 = document.documentElement
+  let standalone: Report['standalone'] = null
+  if (de2.hasAttribute('data-standalone')) {
+    const inset = parseFloat(
+      getComputedStyle(de2).getPropertyValue('--status-inset') || '0',
+    )
+    const before = getComputedStyle(document.body, '::before')
+    const gradientHeight = parseFloat(before.height || '0')
+
+    /**
+     * ★ EVERY CONTROL AT REST IN THE ZONE, NOT JUST THE ONES IN PINNED BARS.
+     *
+     * The first draft asked only about viewport-pinned bars and passed — and
+     * the very first capture showed the map's own zoom buttons sitting in the
+     * top 24 px. They are `absolute` inside a map panel that reaches the top
+     * of the display, which is not a pinned bar and is just as unreachable:
+     * iOS takes taps in the status-bar strip whatever drew the pixels under
+     * them.
+     *
+     * "At rest" is the whole qualification. The page is at the top of its
+     * scroll when this runs, so what this finds is what a coordinator ARRIVING
+     * on the screen cannot press. Content he scrolls up there afterwards is
+     * his own doing and is exactly what the gradient exists for.
+     */
+    const underTheClock: Array<{ tag: string; top: number }> = []
+    for (const el of document.querySelectorAll(
+      'button, a[href], input, select, textarea, [role="separator"], [role="button"]',
+    )) {
+      const r = el.getBoundingClientRect()
+      if (r.width <= 0 || r.height <= 0) continue
+      if (getComputedStyle(el).visibility === 'hidden') continue
+      if (r.top < inset - 0.5 && r.bottom > 0) {
+        underTheClock.push({ tag: label(el), top: Math.round(r.top) })
+      }
+    }
+
+    standalone = { inset, gradientHeight, underTheClock: underTheClock.slice(0, 6) }
+  }
+
   return {
     scrollWidth: document.documentElement.scrollWidth,
     innerWidth: vw,
+    scrollRange,
+    standalone,
     wide,
     collisions,
     heightRatio:
@@ -277,18 +426,54 @@ for (const name of RUNS) {
     permissions: ['geolocation'],
     geolocation: { latitude: 31.0611, longitude: 34.6552 },
   })
+  // P3.4 — stamp the installed-app facts BEFORE the app's own boot script, so
+  // the first paint is already the standalone layout. `addInitScript` runs on
+  // every document, which is what makes it survive the sweep's re-navigations.
+  if (STANDALONE) {
+    await context.addInitScript(
+      ([top, bottom]: [number, number]) => {
+        const set = () => {
+          const de = document.documentElement
+          // ★ AND IT IS NULL ON THE FIRST CALL, which is how the first draft of
+          //   this silently measured a browser tab and reported it as an
+          //   installed app. `addInitScript` runs at DOCUMENT CREATION — before
+          //   the parser has produced an `<html>` element — so the immediate
+          //   pass is the OPTIONAL one and the listener is the load-bearing
+          //   one. It failed loudly (every screen FAILED on a missing
+          //   gradient) only because the assertion was written to treat an
+          //   absent gradient as a defect rather than as "not applicable",
+          //   which is the difference between a gate and a decoration.
+          if (!de) return false
+          de.setAttribute('data-standalone', '')
+          de.style.setProperty('--status-inset', `${top}px`)
+          de.style.setProperty('--safe-bottom', `${bottom}px`)
+          return true
+        }
+        if (!set()) {
+          document.addEventListener('readystatechange', set, { once: false })
+          document.addEventListener('DOMContentLoaded', set, { once: true })
+        }
+      },
+      [vp.statusInset, vp.bottomInset] as [number, number],
+    )
+  }
+
   const page = await context.newPage()
   page.setDefaultNavigationTimeout(120_000)
   page.setDefaultTimeout(60_000)
 
   console.log('')
   console.log(
-    `Layout sweep at ${vp.width}×${vp.height} (${name}) — ${ROUTES.length} screens`,
+    `Layout sweep at ${vp.width}×${vp.height} (${name}) — ${ROUTES.length} screens${
+      STANDALONE
+        ? ` — INSTALLED APP (status inset ${vp.statusInset}px, home indicator ${vp.bottomInset}px)`
+        : ''
+    }`,
   )
   console.log(
-    `  ${'screen'.padEnd(20)} ${'scrollW'.padStart(8)} ${'screens'.padStart(8)}  result`,
+    `  ${'screen'.padEnd(20)} ${'seam'.padEnd(8)} ${'scrollW'.padStart(8)} ${'screens'.padStart(8)}  result`,
   )
-  console.log(`  ${'-'.repeat(62)}`)
+  console.log(`  ${'-'.repeat(72)}`)
 
   await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
 
@@ -305,39 +490,169 @@ for (const name of RUNS) {
     // Map screens need real settle time before their canvas has a size.
     await page.waitForTimeout(3000)
 
-    const report = (await page.evaluate(audit)) as Report
-    const overflow = report.scrollWidth > report.innerWidth + 1
-    const tooTall =
-      report.heightRatio > vp.maxScreenfuls && !route.tallOnPurpose
-    const ok =
-      !overflow &&
-      !tooTall &&
-      report.wide.length === 0 &&
-      report.collisions.length === 0 &&
-      report.uncontained.length === 0
-    if (!ok) failures++
+    /**
+     * PO return 5 — the seam, if this screen has one AT THIS WIDTH. Below the
+     * breakpoint it is `display:none`, so `isVisible` and not `count`: a
+     * splitter in the tree that nobody can see is a splitter nobody can drag.
+     */
+    const seam = page.locator('[data-panel-splitter]').first()
+    const hasSeam = (await seam.count()) > 0 && (await seam.isVisible())
+    const stops = hasSeam ? RATIO_STOPS : [RATIO_STOPS[0]]
 
-    console.log(
-      `  ${route.name.padEnd(20)} ${String(report.scrollWidth).padStart(8)} ${report.heightRatio
-        .toFixed(1)
-        .padStart(8)}  ${ok ? 'PASS' : 'FAIL'}`,
-    )
-    for (const w of report.wide) {
-      console.log(`      wider than viewport: ${w.tag} (${w.width}px)`)
-    }
-    for (const c of report.collisions) {
-      console.log(`      pinned overlap: ${c.a}  ×  ${c.b}`)
-    }
-    for (const u of report.uncontained) {
-      console.log(`      A30 uncontained list: ${u.tag} (${u.rows} rows)`)
-    }
-    if (tooTall) {
+    for (const stop of stops) {
+      if (stop.key !== null) {
+        await seam.focus()
+        await seam.press(stop.key)
+        // The width is a CSS variable on the shell, so the reflow is one
+        // frame — but the map canvas resizes off a ResizeObserver, and it is
+        // the canvas that has been the wide element before.
+        await page.waitForTimeout(700)
+      }
+
+      const report = (await page.evaluate(audit)) as Report
+      // Two instruments for one claim, because neither alone is enough here:
+      // `scrollWidth` is the conventional one, and the scroll range is what
+      // catches RTL overflow, which goes left into negative `scrollLeft`.
+      const overflow =
+        report.scrollWidth > report.innerWidth + 1 || report.scrollRange > 1
+      // The A30/A24 structural checks are a property of the SCREEN, not of
+      // where the seam happens to be, and re-reporting them three times would
+      // turn one defect into three lines. They are judged at the default stop;
+      // the other two stops are the horizontal rule the product owner asked
+      // for, and only that.
+      const first = stop === RATIO_STOPS[0]
+      const tooTall =
+        first && report.heightRatio > vp.maxScreenfuls && !route.tallOnPurpose
+      // P3.4 — the installed app's two extra rules, judged at the default
+      // stop like every other structural check.
+      const sa = report.standalone
+      const gradientWrong =
+        first &&
+        STANDALONE &&
+        (sa === null || Math.abs(sa.gradientHeight - sa.inset * 1.25) > 1)
+      const clockCovered = first && STANDALONE && (sa?.underTheClock.length ?? 0) > 0
+
+      const ok =
+        !overflow &&
+        !tooTall &&
+        !gradientWrong &&
+        !clockCovered &&
+        (!first ||
+          (report.wide.length === 0 &&
+            report.collisions.length === 0 &&
+            report.uncontained.length === 0))
+      if (!ok) failures++
+
+      const seamLabel = hasSeam ? stop.label : 'no seam'
       console.log(
-        `      A30 page is ${report.heightRatio.toFixed(1)} screenfuls (max ${vp.maxScreenfuls})`,
+        `  ${(first ? route.name : '').padEnd(20)} ${seamLabel.padEnd(8)} ${String(
+          report.scrollWidth,
+        ).padStart(8)} ${(first ? report.heightRatio.toFixed(1) : '').padStart(8)}  ${
+          ok ? 'PASS' : 'FAIL'
+        }`,
       )
+      if (overflow) {
+        console.log(
+          `      HORIZONTAL SCROLL: scrollWidth ${report.scrollWidth} vs window ${report.innerWidth}, slid ${report.scrollRange}px`,
+        )
+      }
+      if (!first) continue
+      for (const w of report.wide) {
+        console.log(`      wider than viewport: ${w.tag} (${w.width}px)`)
+      }
+      for (const c of report.collisions) {
+        console.log(`      pinned overlap: ${c.a}  ×  ${c.b}`)
+      }
+      for (const u of report.uncontained) {
+        console.log(`      A30 uncontained list: ${u.tag} (${u.rows} rows)`)
+      }
+      if (tooTall) {
+        console.log(
+          `      A30 page is ${report.heightRatio.toFixed(1)} screenfuls (max ${vp.maxScreenfuls})`,
+        )
+      }
+      if (route.tallOnPurpose && report.heightRatio > vp.maxScreenfuls) {
+        console.log(`      A30 exempt: ${route.tallOnPurpose}`)
+      }
+      if (gradientWrong) {
+        console.log(
+          sa === null
+            ? '      P3.4 the page was never stamped as the installed app'
+            : `      P3.4 status gradient is ${sa.gradientHeight}px, expected ${sa.inset * 1.25}px`,
+        )
+      }
+      for (const c of sa?.underTheClock ?? []) {
+        console.log(`      P3.4 control under the status bar: ${c.tag} at y=${c.top}`)
+      }
     }
-    if (route.tallOnPurpose && report.heightRatio > vp.maxScreenfuls) {
-      console.log(`      A30 exempt: ${route.tallOnPurpose}`)
+  }
+
+  /**
+   * P3.4 — AND THE CAPTURES THE PRODUCT OWNER ASKED FOR, in both themes.
+   * Assertions say a bar clears the clock; only a picture says whether the
+   * gradient reads as a wash or as a band.
+   */
+  if (STANDALONE) {
+    const shotDir = path.resolve('docs/screenshots/standalone')
+    fs.mkdirSync(shotDir, { recursive: true })
+    for (const theme of ['light', 'dark'] as const) {
+      // Back to the coordinator FIRST. The sweep leaves the session on
+      // whatever the last route needed — `driver:drv-03` — and a driver's role
+      // default is the dark palette, so a capture taken without this is the
+      // wrong screen in the wrong theme, which is what the first one was.
+      await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
+      await page.waitForSelector('select', { state: 'attached' })
+      await page.selectOption('select', 'coordinator')
+      await page.waitForTimeout(400)
+      await page.evaluate((h) => {
+        window.location.hash = h
+      }, '#/coordinator/farms')
+      await page.waitForTimeout(3500)
+      await page.evaluate((value) => {
+        document.documentElement.setAttribute('data-theme', value)
+      }, theme)
+
+      /**
+       * A SIMULATED STATUS BAR, DRAWN ONLY FOR THE CAPTURE, AND LABELLED.
+       *
+       * The assertions above already say the gradient is the right height and
+       * that no control rests under it. The one thing they cannot say is
+       * whether a clock is READABLE on top of it, which is the entire reason
+       * the product owner asked for this — and a screenshot of an empty 24 px
+       * strip answers that question with nothing. So the glyphs are drawn in
+       * the colour iOS will actually use: the system picks them against
+       * `theme-color`, which theme.tsx keeps equal to the resolved
+       * `--surface-base`, so they are DARK on the light palette and LIGHT on
+       * the dark one. That is the design being checked, not a decoration.
+       *
+       * The page is also scrolled first, so there is real content passing
+       * under the zone rather than the top of a screen that happens to be
+       * empty there.
+       */
+      await page.evaluate((mode) => {
+        window.scrollTo(0, 260)
+        document.querySelectorAll('[data-mock-statusbar]').forEach((el) => el.remove())
+        const inset = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue('--status-inset'),
+        )
+        const bar = document.createElement('div')
+        bar.setAttribute('data-mock-statusbar', '')
+        bar.style.cssText = [
+          'position:fixed', 'top:0', 'left:0', 'right:0',
+          `height:${inset}px`, 'z-index:2147483647', 'pointer-events:none',
+          'display:flex', 'align-items:center', 'justify-content:space-between',
+          'padding:0 18px', 'font:600 13px/1 -apple-system,system-ui,sans-serif',
+          'letter-spacing:.02em',
+          `color:${mode === 'light' ? '#000' : '#fff'}`,
+        ].join(';')
+        bar.innerHTML = '<span>02:14</span><span>■■□ ⌁ 78%</span>'
+        document.body.appendChild(bar)
+      }, theme)
+      await page.waitForTimeout(600)
+
+      const file = path.join(shotDir, `${name}-${theme}.png`)
+      await page.screenshot({ path: file })
+      console.log(`  captured ${path.relative(process.cwd(), file)}`)
     }
   }
 
@@ -352,5 +667,6 @@ if (failures > 0) {
   process.exit(1)
 }
 console.log(
-  '  No overflow, no pinned-element overlap, no uncontained list (A24 + A30).',
+  '  No horizontal scroll at any splitter ratio, no pinned-element overlap,',
 )
+console.log('  no uncontained list (A24 + A30 + PO return 5).')

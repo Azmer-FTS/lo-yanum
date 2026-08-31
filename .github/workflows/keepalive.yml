@@ -1,0 +1,145 @@
+# Keep the Supabase project awake (PO return 4, 2026-08-31)
+#
+# WHY THIS EXISTS
+# ---------------
+# `lo-yanum-prod` is on Supabase's FREE tier, and a free project is PAUSED
+# after roughly a week with no activity. A paused project does not answer, so
+# the first thing that happens is the coordinator's login failing — at the
+# hour he is least able to do anything about it, and with no way to tell that
+# from a real outage. Un-pausing is a dashboard click, but it is a click
+# somebody has to know to make.
+#
+# So: a scheduled, deliberately tiny request every two days. Two days and not
+# six is the point — it leaves two whole misfires' worth of margin inside the
+# seven-day window, and GitHub's scheduler is explicitly best-effort about
+# when (and, under load, whether) a cron fires.
+#
+# WHAT THE REQUEST IS, AND WHY THIS FORM
+# --------------------------------------
+# `GET /rest/v1/entities?select=id&limit=1` with the PUBLISHABLE key. It is
+# the same anonymous request any visitor's browser makes, and it is chosen
+# because it is the one that provably reaches POSTGRES:
+#
+#   · PostgREST resolves `?select=` against the schema and then runs a real
+#     query. RLS filters every row out — the anonymous role has no policy on
+#     `entities` (P2.2, criterion B1) — so the answer is `200 []`.
+#   · `200 []` is therefore both the SUCCESS case and the PROOF: the database
+#     woke up, planned a query, applied its policies and answered. Nothing is
+#     read, because there is nothing anonymous may read.
+#   · The alternatives were worse. `/auth/v1/health` is answered by GoTrue and
+#     says nothing about the database. `/rest/v1/` is refused outright (401,
+#     "Only secret API keys can be used for this endpoint") before Postgres is
+#     ever consulted. A request that a gateway can answer alone is not a
+#     request that keeps a database awake.
+#
+# The service-role key is NOT used here and must never be: it would be a
+# secret in a workflow that needs no secrets to do its job.
+#
+# WHEN TO DELETE THIS FILE
+# ------------------------
+# The moment the project moves to a PAID plan. Paid projects are not paused
+# for inactivity, so this becomes a request that costs egress and proves
+# nothing. See ETAT.md.
+#
+# ⚠️ AND THE ONE THING THIS CANNOT DO FOR ITSELF: GitHub disables scheduled
+#    workflows in a PUBLIC repository after 60 days with no commits. If work
+#    on Lo Yanum ever stops for two months, this stops with it — and the
+#    Supabase project pauses a week later. `workflow_dispatch` below is the
+#    manual way back, and re-enabling the schedule is a button in the Actions
+#    tab.
+
+name: Supabase keep-alive
+
+on:
+  schedule:
+    # 06:12 UTC on every second day of the month. The odd minute is on
+    # purpose: GitHub queues the top of the hour heavily, and a job that
+    # queues is a job that may be dropped.
+    - cron: '12 6 */2 * *'
+  workflow_dispatch:
+
+# No repository contents are read and nothing is written back.
+permissions: {}
+
+# One at a time; a manual run while a scheduled one is in flight is a
+# duplicate, not an emergency.
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the REST API
+        env:
+          # The same two repository secrets the deploy uses. Both values are
+          # PUBLIC by design — the publishable key names the project and
+          # authorises nothing, the security is the RLS — but they live in
+          # secrets so that rotating the key stays one settings change.
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_KEY}" ]; then
+            echo "::error::VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY are not set."
+            echo "Set both under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+          # The project ref is the first label of the host, and it is the one
+          # part of the URL worth printing: it says WHICH project was kept
+          # awake without putting the key in a public log.
+          ref="$(printf '%s' "${SUPABASE_URL}" | sed -E 's#^https?://##; s#\..*$##')"
+          endpoint="${SUPABASE_URL}/rest/v1/entities?select=id&limit=1"
+
+          echo "Project : ${ref}"
+          echo "Endpoint: /rest/v1/entities?select=id&limit=1"
+          echo ""
+
+          # --max-time, not the default: a paused project can hang rather than
+          # refuse, and a job that hangs for six hours is a job whose failure
+          # nobody reads. Three tries, because one dropped packet is not an
+          # outage — and a 4xx is an ANSWER, so it is not retried.
+          attempt=1
+          code=000
+          body=''
+          while [ "${attempt}" -le 3 ]; do
+            body="$(curl --silent --show-error \
+                         --connect-timeout 10 --max-time 30 \
+                         --write-out '\n%{http_code}' \
+                         --header "apikey: ${SUPABASE_KEY}" \
+                         --header "Authorization: Bearer ${SUPABASE_KEY}" \
+                         "${endpoint}" || true)"
+            code="$(printf '%s' "${body}" | tail -n1)"
+            body="$(printf '%s' "${body}" | sed '$d')"
+
+            echo "attempt ${attempt}: HTTP ${code}"
+            case "${code}" in
+              000|5*) attempt=$((attempt + 1)); sleep 10 ;;
+              *)      break ;;
+            esac
+          done
+
+          echo "Response: ${body}"
+          echo ""
+
+          # WHAT COUNTS AS ALIVE. A 2xx is the expected `200 []`. A 4xx is
+          # also a processed request — PostgREST looked at the query and said
+          # no — and that is still the database being awake, so it passes with
+          # a warning rather than failing the job at 06:12 over something that
+          # is not an outage. Only silence (000) and a 5xx are failures: those
+          # are the shapes a PAUSED project has.
+          case "${code}" in
+            2*)
+              echo "::notice::Supabase project ${ref} answered ${code} — awake."
+              ;;
+            4*)
+              echo "::warning::Supabase project ${ref} answered ${code} — processed, so the project is awake, but this is not the expected 200. Check whether the publishable key was rotated or the RLS on entities changed."
+              ;;
+            *)
+              echo "::error::Supabase project ${ref} did not answer (HTTP ${code}). It may be PAUSED — open the dashboard and restore it, then re-run this workflow."
+              exit 1
+              ;;
+          esac

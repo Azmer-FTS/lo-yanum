@@ -337,6 +337,42 @@ try {
       .catch(() => false)
     check('the login screen renders with no network', doorOffline)
 
+    /**
+     * PO RETURN 3 (2026-08-31) — AND IT SAYS WHY, IN HEBREW, BEFORE THE
+     * ATTEMPT.
+     *
+     * A first sign-in genuinely cannot happen without a network: the password
+     * is checked by Supabase and by nothing on the device. That is a
+     * structural limit and the app is allowed to have it. What it is not
+     * allowed to do is dress it up as a server problem — "no connection to the
+     * server, check your connection and try again" is advice, and it is advice
+     * that cannot be followed by someone in a wadi. The screen now says the
+     * true thing, and says it above the button rather than after a password
+     * has been typed and lost.
+     */
+    const OFFLINE_MSG = 'אין חיבור לאינטרנט — נדרש חיבור להתחברות ראשונה'
+    const noticeText = await realPage
+      .textContent('[data-testid="login-offline"]', { timeout: 5_000 })
+      .catch(() => null)
+    check(
+      '★ the door explains the offline case BEFORE a password is typed',
+      (noticeText ?? '').includes(OFFLINE_MSG),
+      noticeText ?? 'no notice',
+    )
+
+    // And the same message, not the generic one, if he tries anyway.
+    await realPage.fill('input[name="email"]', 'someone@example.com')
+    await realPage.fill('input[name="password"]', 'not-a-real-password')
+    await realPage.click('button[type="submit"]')
+    const errText = await realPage
+      .textContent('[data-testid="login-error"]', { timeout: 10_000 })
+      .catch(() => null)
+    check(
+      'and an attempt offline gets that message, not a generic server error',
+      (errText ?? '').includes(OFFLINE_MSG),
+      errText ?? 'no error shown',
+    )
+
     await realContext.close()
 
     // ------------------------------------------- P2.5b: signed in, offline ---
@@ -423,6 +459,20 @@ try {
             .$('[data-testid="login-form"]')
             .then((el) => el !== null)
           check('and the login form is NOT what a coordinator with no signal sees', !loginShown)
+
+          /**
+           * PO return 3 — AND HE CAN SEE THAT HE IS OFFLINE, which is the
+           * other half of the scenario he actually lived: session established,
+           * app closed, aeroplane mode, app reopened. Being let in is only
+           * reassuring if the app also admits WHY the numbers might be an hour
+           * old. `OfflineBadge` renders nothing when there is a network, on
+           * purpose (P2.5a), so its presence here is the whole assertion.
+           */
+          const badgeOffline = await page
+            .waitForSelector('[data-testid="offline-badge"]', { timeout: 10_000 })
+            .then(() => true)
+            .catch(() => false)
+          check('★ and the offline badge is visible on the reopened app', badgeOffline)
 
           const seenOffline = await page
             .waitForSelector('text=חוות א76', { timeout: 20_000 })

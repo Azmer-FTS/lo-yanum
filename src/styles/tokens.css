@@ -247,11 +247,43 @@
   --stagger-step: 34ms;
 
   /**
-   * Height reserved at the foot of the coordinator shell for the sticky demo
-   * toolbar. A full-`dvh` map column has to subtract it, or its floating
-   * legend renders behind the bar. Lot 1 deletes the toolbar and this becomes 0.
+   * P3.4 (PO return 7) — THE TWO SYSTEM INSETS, AS TOKENS.
+   *
+   * `env(safe-area-inset-*)` read ONCE, here, and referred to as variables
+   * everywhere else. That is not tidiness, it is what makes the installed
+   * app's chrome VERIFIABLE: Playwright can emulate a viewport, a locale and a
+   * colour scheme, and it cannot emulate a notch — but it can set a custom
+   * property. Every rule that offsets for the status bar or the home indicator
+   * reads these, so a gate sets two variables and gets a faithful iPhone
+   * without an iPhone. On a real device they are `env()` and nothing has
+   * changed; on a desktop and in a browser tab they are 0 and every rule that
+   * uses them is inert.
    */
-  --shell-bottom: 2.75rem;
+  --status-inset: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /**
+   * Height reserved at the foot of the coordinator shell for whatever is
+   * pinned there. A full-`dvh` map column has to subtract it, or its floating
+   * legend renders behind the bar.
+   *
+   * ★ PO RETURN 6 (2026-08-31) — THE DEFAULT IS THE SAFE AREA, NOT A GUESS AT
+   *   THE DEMO BAR'S HEIGHT, AND THAT WAS A REAL BUG. The value used to be
+   *   `2.75rem`, an estimate of `DevToolbar`'s height, on the reasoning that
+   *   the bar publishes its MEASURED height over the top of it. But P2.3 made
+   *   that bar return `null` in a real build — so in the real app the effect
+   *   that publishes never ran, the estimate stood, and every `100dvh` column
+   *   stopped 44 px short of the bottom of the screen. What the product owner
+   *   saw was a grey band under the rail, on every screen, reserving space for
+   *   a control that no longer exists.
+   *
+   *   So the default is now what a shell with NOTHING pinned at its foot
+   *   actually owes: the iOS home-indicator inset, zero everywhere else. Demo
+   *   mode still overwrites it with `DevToolbar`'s measured height — and that
+   *   bar now carries the same inset as its own bottom padding, so the
+   *   measurement keeps including it.
+   */
+  --shell-bottom: var(--safe-bottom);
 
   /**
    * Height of the shell's own sticky header, published by the coordinator top
@@ -495,4 +527,26 @@
 
     --map-filter: invert(1) brightness(0.85) contrast(0.9) saturate(0.24);
   }
+}
+
+/* ---------------------------------------------------------------------------
+   P3.4 (PO return 7) — THE INSTALLED APP'S TOP INSET, AS A SHELL METRIC.
+   ---------------------------------------------------------------------------
+   `--shell-top` is "the y below which anything pinned to the top of the screen
+   must start". On a phone that is the coordinator header's measured height
+   (F5.4), and in the installed app that header carries the status-bar inset as
+   padding, so the measurement already includes it.
+
+   ★ ON THE DESKTOP RAIL THERE IS NO HEADER AT ALL — it is `lg:hidden`, so it
+     measures zero and publishes nothing (see `usePublishedHeight`, which now
+     REMOVES the property at zero rather than writing `0px`, precisely so this
+     default can be reached). Without this rule every `sticky top-[var(--shell-
+     top)]` map column in the installed app would start at y=0, under the clock.
+
+   Zero everywhere else, including a browser tab, where the browser's own
+   toolbar is above the page and `env()` is zero anyway.
+   --------------------------------------------------------------------------- */
+
+:root[data-standalone] {
+  --shell-top: var(--status-inset);
 }

@@ -2,9 +2,10 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { signIn } from '../../data/auth'
+import { readRememberedEmail, signIn } from '../../data/auth'
 import type { SignInError } from '../../data/auth'
 import { Icon } from '../components/Icon'
+import { useOnline } from '../offline'
 
 const ERROR_KEY: Record<SignInError, string> = {
   credentials: 'auth.errors.credentials',
@@ -30,10 +31,15 @@ const ERROR_KEY: Record<SignInError, string> = {
  */
 export function LoginScreen() {
   const { t } = useTranslation()
-  const [email, setEmail] = useState('')
+  // PO return 2 — the address the last successful sign-in used. Read ONCE, as
+  // the initial value, so the field stays a plain editable input: prefilling it
+  // on every render would fight anybody typing a different address.
+  const [email, setEmail] = useState(readRememberedEmail)
   const [password, setPassword] = useState('')
+  const [reveal, setReveal] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const online = useOnline()
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -41,6 +47,17 @@ export function LoginScreen() {
 
     if (email.trim() === '' || password === '') {
       setError('auth.errors.missing')
+      return
+    }
+
+    // PO return 3 — DO NOT EVEN TRY WITHOUT A NETWORK, AND SAY WHY.
+    // A first sign-in needs Supabase; there is no way around that and it is a
+    // structural limit, not a bug. What IS a bug is spending fifteen seconds
+    // on a fetch that cannot resolve and then answering "no connection to the
+    // server, check your connection and try again" — advice for a server
+    // problem, given to someone whose problem is that he is in a wadi.
+    if (!online) {
+      setError('auth.errors.offline')
       return
     }
 
@@ -54,7 +71,13 @@ export function LoginScreen() {
     }
     setBusy(false)
     setPassword('')
-    setError(ERROR_KEY[result.error])
+    // A retryable-fetch failure that happens while the device reports itself
+    // offline is the same situation as above, reached a different way.
+    setError(
+      result.error === 'network' && !online
+        ? 'auth.errors.offline'
+        : ERROR_KEY[result.error],
+    )
   }
 
   return (
@@ -119,19 +142,78 @@ export function LoginScreen() {
             />
           </label>
 
+          {/* PO RETURN 1 — THE EYE.
+              A 20-character password typed on an iPad keyboard, at night, into
+              a field that shows dots, is a login attempt with a coin flip in
+              it — and three failures in a row are a rate limit. The control is
+              a real 44 px target (P0.3), not a 16 px glyph.
+
+              THE POSITION IS PHYSICAL, NOT LOGICAL, AND THAT IS DELIBERATE.
+              The field is `dir="ltr"` — a password is typed in Latin
+              characters whatever the interface language — so its text always
+              begins at the PHYSICAL left and grows right, in Hebrew and in
+              English alike. Pinning the button with `end-*` would follow the
+              PAGE's direction and land it on top of the first characters in
+              one of the two. `right`/`pr` is the side the text never starts
+              on, in both. */}
           <label className="mt-3 block">
             <span className="label">{t('auth.password')}</span>
-            <input
-              type="password"
-              name="password"
-              autoComplete="current-password"
-              dir="ltr"
-              className="input text-start"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={busy}
-            />
+            <div className="relative">
+              <input
+                type={reveal ? 'text' : 'password'}
+                name="password"
+                autoComplete="current-password"
+                dir="ltr"
+                className="input text-start pr-12"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={busy}
+              />
+              <button
+                type="button"
+                onClick={() => setReveal((v) => !v)}
+                // `aria-pressed` and not just a changing label: a screen
+                // reader user has to be able to ask what the CURRENT state is,
+                // not only be told it changed.
+                aria-pressed={reveal}
+                aria-label={t(reveal ? 'auth.hidePassword' : 'auth.showPassword')}
+                title={t(reveal ? 'auth.hidePassword' : 'auth.showPassword')}
+                data-testid="password-reveal"
+                disabled={busy}
+                // `top-1/2 -translate-y-1/2` and NOT `inset-y-0`: the target
+                // has to be 44 px (P0.3) and the field is 38, so stretching it
+                // to the field's height would shrink the target and pinning it
+                // to both edges with an explicit height just drops it to the
+                // top and hangs 6 px below the box. Centred, it is 44 px tall
+                // whatever the field is.
+                className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-field
+                           text-content-muted transition-colors duration-fast
+                           hover:text-content-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent
+                           disabled:opacity-50"
+              >
+                <Icon name={reveal ? 'eyeOff' : 'eye'} size={19} />
+              </button>
+            </div>
           </label>
+
+          {/* PO RETURN 3 — SAID BEFORE THE ATTEMPT, NOT AFTER IT.
+              The first sign-in on a device is the one thing in this app that
+              genuinely cannot happen without a network, and the honest place
+              to say so is above the button, before the coordinator types a
+              password he is about to lose. Once he is in, P2.5b's cached
+              session means he never sees this screen offline again. */}
+          {!online && (
+            <p
+              data-testid="login-offline"
+              className="mt-4 flex items-start gap-2 rounded-field bg-status-warn/10 px-3 py-2 text-caption text-status-warn-ink"
+            >
+              <span
+                aria-hidden="true"
+                className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-pill bg-status-warn"
+              />
+              {t('auth.errors.offline')}
+            </p>
+          )}
 
           {/* `role="alert"` and not just red text: the one thing a screen
               reader must announce on this screen is why the door did not open. */}
