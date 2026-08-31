@@ -259,7 +259,14 @@ const ROUTES: Array<{
     tallOnPurpose:
       'G7 window-virtualised table underneath — the page is the scroll surface',
     open: async (page) => {
-      await page.locator('[data-testid="volunteer-new"]').first().click()
+      // ★ `:visible`, AND IT IS NOT A DETAIL. These screens render BOTH a
+      //   desktop table row and a mobile card for every record, and CSS hides
+      //   one of the two. `.first()` picks the first in DOM ORDER — the
+      //   desktop one — which at 390 px is `display:none`, and clicking a
+      //   hidden element waits sixty seconds and then fails. It failed on both
+      //   phone viewports and passed on both iPad ones, which is exactly the
+      //   shape of this mistake.
+      await page.locator('[data-testid="volunteer-new"]:visible').first().click()
       await page.waitForSelector('[role="dialog"]', { timeout: 10_000 })
       await page.waitForTimeout(600)
     },
@@ -268,7 +275,7 @@ const ROUTES: Array<{
     name: 'driver-modal',
     hash: '#/coordinator/drivers',
     open: async (page) => {
-      await page.locator('[data-testid="driver-edit"]').first().click()
+      await page.locator('[data-testid="driver-edit"]:visible').first().click()
       await page.waitForSelector('[role="dialog"]', { timeout: 10_000 })
       await page.waitForTimeout(600)
     },
@@ -297,7 +304,7 @@ const ROUTES: Array<{
     hash: '#/coordinator/missions/new?resume=mission-01',
     open: async (page) => {
       await page.waitForTimeout(900)
-      await page.locator('[data-testid="wizard-next"]').first().click()
+      await page.locator('[data-testid="wizard-next"]:visible').first().click()
       await page.waitForTimeout(900)
     },
   },
@@ -307,7 +314,7 @@ const ROUTES: Array<{
     open: async (page) => {
       await page.waitForTimeout(900)
       for (let i = 0; i < 2; i++) {
-        await page.locator('[data-testid="wizard-next"]').first().click()
+        await page.locator('[data-testid="wizard-next"]:visible').first().click()
         await page.waitForTimeout(900)
       }
     },
