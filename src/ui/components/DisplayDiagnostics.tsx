@@ -169,13 +169,13 @@ export function DisplayDiagnostics() {
   return (
     <details
       data-testid="display-diagnostics"
-      className="mt-6 rounded-md border border-edge-subtle bg-surface-raised"
+      className="mt-6 rounded-card bg-surface-raised/40 shadow-card"
     >
       <summary className="cursor-pointer select-none px-4 py-3 text-caption font-medium text-content-secondary">
         אבחון תצוגה (זמני)
       </summary>
 
-      <div className="border-t border-edge-subtle px-4 py-3">
+      <div className="px-4 pb-4">
         <p className="muted mb-3">
           מה שהמכשיר עצמו מדווח. שורות ה־env הן המקור, שאר השורות נגזרות מהן.
         </p>

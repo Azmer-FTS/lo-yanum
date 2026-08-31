@@ -4,13 +4,14 @@ import { Link } from 'react-router-dom'
 
 import {
   createFarmVisit,
-  deleteFarmVisit,
+  deleteFarmVisitChecked,
   getFarmVisit,
   getVisibleFarms,
   updateFarmVisit,
 } from '@core/index'
 
 import { SelectField, TextArea } from './fields'
+import { useConfirmDelete } from './ConfirmDelete'
 import { Icon } from './Icon'
 import { Modal } from './primitives'
 import { useCoreValue } from '../hooks/useCore'
@@ -41,6 +42,9 @@ export function FarmVisitModal({
   onClose: () => void
 }) {
   const { t } = useTranslation()
+  // PO POINT 8 — every deletion in this app now asks first. Before this,
+  // each of these buttons deleted on the FIRST TAP.
+  const del = useConfirmDelete()
   const farms = useCoreValue(getVisibleFarms)
   const existing = useCoreValue(() => (visitId ? getFarmVisit(visitId) : null))
 
@@ -137,10 +141,15 @@ export function FarmVisitModal({
             <button
               type="button"
               className="btn-ghost me-auto text-status-danger-ink hover:bg-status-danger/10"
-              onClick={() => {
-                deleteFarmVisit(existing.id)
-                onClose()
-              }}
+              data-testid="visit-delete"
+              onClick={() =>
+                del.ask(
+                  'farmVisit',
+                  existing.id,
+                  () => deleteFarmVisitChecked(existing.id),
+                  { after: onClose },
+                )
+              }
             >
               <Icon name="trash" size={15} />
               {t('common.remove')}
@@ -159,6 +168,7 @@ export function FarmVisitModal({
           </button>
         </div>
       </div>
+      {del.dialog}
     </Modal>
   )
 }

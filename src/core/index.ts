@@ -20,6 +20,7 @@ export * from './sessions'
 export * from './config'
 export * from './theme'
 export * from './photo'
+export * from './deletion'
 export {
   subscribe,
   getVersion,
@@ -37,6 +38,16 @@ export {
   setCommitmentFulfilled,
   createFarm,
   updateFarm,
+  // PO POINT 8 — the deletions, every one of them refusal-aware.
+  deleteFarm,
+  deleteVolunteer,
+  deleteDriver,
+  deleteFarmContact,
+  deleteMission,
+  clearMissionMeetingPoints,
+  deleteFarmZoneChecked,
+  deleteFarmVisitChecked,
+  deleteTourById,
   createFarmZone,
   createThreatZone,
   updateThreatZone,

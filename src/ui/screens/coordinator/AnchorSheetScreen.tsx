@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams, useNavigate } from 'react-router-dom'
 
 import {
+  deleteAnchorPoint,
   COORDINATOR,
   buildKosherMessage,
   buildSmartphoneMessage,
@@ -19,6 +20,7 @@ import { Icon } from '../../components/Icon'
 import { MapSplit } from '../../components/MapSplit'
 import { MapView } from '../../components/MapView'
 import { readToken } from '../../components/badges'
+import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { CopyButton, PageHeader, Section } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
@@ -80,6 +82,10 @@ function MessageCard({
 export function AnchorSheetScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
+  const navigate = useNavigate()
+  // PO POINT 8 — a guard post dropped in the wrong field, undone from its own
+  // sheet rather than only from inside the wizard.
+  const del = useConfirmDelete()
   const { farmId = '', anchorId = '' } = useParams()
 
   const farm = useCoreValue(() => getFarm(farmId))
@@ -164,6 +170,7 @@ export function AnchorSheetScreen() {
   )
 
   return (
+    <>
     <MapSplit
       screenKey="anchor-sheet"
       ariaLabel={t('map.title')}
@@ -186,15 +193,30 @@ export function AnchorSheetScreen() {
         title={anchor.name}
         subtitle={`${t('anchor.title')} · ${farm.name}`}
         actions={
-          <a
-            href={wazeUrl(anchor.position)}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-secondary"
-          >
-            <Icon name="pin" size={16} />
-            {t('common.openInWaze')}
-          </a>
+          <>
+            <a
+              href={wazeUrl(anchor.position)}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-secondary"
+            >
+              <Icon name="pin" size={16} />
+              {t('common.openInWaze')}
+            </a>
+            <button
+              type="button"
+              data-testid="delete-anchor"
+              className="btn-ghost text-status-danger-ink hover:bg-status-danger/10"
+              onClick={() =>
+                del.ask('anchorPoint', anchor.id, () => deleteAnchorPoint(anchor.id), {
+                  after: () => navigate(`/coordinator/farms/${farm.id}`),
+                })
+              }
+            >
+              <Icon name="trash" size={16} />
+              {t('deletion.action')}
+            </button>
+          </>
         }
       />
 
@@ -250,5 +272,7 @@ export function AnchorSheetScreen() {
         </>
       )}
     </MapSplit>
+    {del.dialog}
+    </>
   )
 }

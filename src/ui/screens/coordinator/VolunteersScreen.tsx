@@ -8,11 +8,13 @@ import {
   getVolunteerStats,
   getVolunteers,
   mailtoHref,
+  deleteVolunteer,
   reactivateVolunteer,
 } from '@core/index'
 import type { PhoneType, Volunteer, VolunteerStatus } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
+import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { ContactButtons } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { PhoneTypeChip, VolunteerStatusChip } from '../../components/badges'
@@ -81,6 +83,8 @@ export function VolunteersScreen() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
   const [archiving, setArchiving] = useState<Volunteer | null>(null)
+  // PO POINT 8 — the delete the product owner had no way to perform.
+  const del = useConfirmDelete()
   const [editing, setEditing] = useState<Volunteer | null | 'new'>(null)
   const [history, setHistory] = useState<Volunteer | null>(null)
 
@@ -658,7 +662,7 @@ export function VolunteersScreen() {
                         />
                         {v.status === 'active' ? (
                           <RowAction
-                            icon="trash"
+                            icon="close"
                             label={t('volunteers.archive')}
                             onClick={() => setArchiving(v)}
                           />
@@ -669,6 +673,21 @@ export function VolunteersScreen() {
                             onClick={() => reactivateVolunteer(v.id)}
                           />
                         )}
+                        {/* PO POINT 8 — DELETE IS NOT ARCHIVE, and until now
+                            the archive action wore the bin icon, which is
+                            exactly the confusion this row had to stop making.
+                            Archiving keeps a volunteer's nights; deleting is
+                            for the row that was typed by mistake, and it is
+                            refused the moment he has a night. */}
+                        <RowAction
+                          icon="trash"
+                          danger
+                          testId="volunteer-delete"
+                          label={t('deletion.action')}
+                          onClick={() =>
+                            del.ask('volunteer', v.id, () => deleteVolunteer(v.id))
+                          }
+                        />
                       </span>
                     </div>
 
@@ -700,6 +719,7 @@ export function VolunteersScreen() {
         )}
       </MapSplit>
 
+      {del.dialog}
       {archiving && (
         <ArchiveDialog volunteer={archiving} onClose={() => setArchiving(null)} />
       )}
@@ -721,10 +741,15 @@ function RowAction({
   icon,
   label,
   onClick,
+  testId,
+  danger = false,
 }: {
-  icon: 'edit' | 'history' | 'trash' | 'check'
+  icon: 'edit' | 'history' | 'trash' | 'check' | 'close'
   label: string
   onClick: () => void
+  testId?: string
+  /** PO POINT 8 — a delete is not the same weight as a history button. */
+  danger?: boolean
 }) {
   return (
     <button
@@ -732,8 +757,12 @@ function RowAction({
       onClick={onClick}
       title={label}
       aria-label={label}
-      className="rounded-field p-1.5 text-content-muted transition-colors duration-fast
-                 hover:bg-surface-overlay hover:text-content-primary"
+      data-testid={testId}
+      className={`rounded-field p-1.5 transition-colors duration-fast ${
+        danger
+          ? 'text-content-muted hover:bg-status-danger/10 hover:text-status-danger-ink'
+          : 'text-content-muted hover:bg-surface-overlay hover:text-content-primary'
+      }`}
     >
       <Icon name={icon} size={16} />
     </button>

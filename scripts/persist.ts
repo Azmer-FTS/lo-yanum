@@ -21,9 +21,18 @@ import {
   createThreatVector,
   createThreatZone,
   createVolunteer,
+  clearMissionMeetingPoints,
   deleteAnchorPoint,
+  deleteDriver,
+  deleteFarm,
+  deleteFarmContact,
   deleteFarmVisit,
+  deleteFarmVisitChecked,
   deleteFarmZone,
+  deleteFarmZoneChecked,
+  deleteMission,
+  deleteTourById,
+  deleteVolunteer,
   deleteGeneralMeeting,
   deleteThreatVector,
   deleteThreatZone,
@@ -590,6 +599,146 @@ emits(
 emits('deleteTour', () => deleteTour('2027-01-01'), [], [
   ['tours', _raw().tours.find((t) => t.dayKey === '2027-01-01')?.id ?? 'gone'],
 ])
+
+/**
+ * PO POINT 8 (2026-08-31) — the deletions, driven through the recorder like
+ * everything else.
+ *
+ * ★ THEY ARE HERE BECAUSE THIS GATE PUT THEM HERE. Section 7 below cross-checks
+ *   the names @core exports against the names actually driven, and it failed
+ *   the moment `core/deletion.ts` landed — nine new mutations, none exercised.
+ *   That is precisely the failure mode it exists for, and it caught it on the
+ *   first run rather than in the field.
+ *
+ * ★ AND WHAT `emits` PROVES HERE IS THE THING P2.5b's OUTBOX DEPENDS ON: a
+ *   deletion reaches the backend as `json: null`, for the CASCADE as well as
+ *   for the row. `bun run deletion` asserts the policy; this asserts the wire.
+ */
+{
+  // ★ `agreements: []` IS LOAD-BEARING. `farmDraft()` copies the fixture
+  //   farm's SIGNED AGREEMENT, and a signed agreement is one of point 8's
+  //   blockers — so a doomed farm cloned from it is refused, correctly, and
+  //   this gate would be asserting the wrong thing.
+  const doomed = createFarm({ ...farmDraft(), name: 'A73 למחיקה', agreements: [] })
+  const doomedZone = createFarmZone({
+    farmId: doomed.id,
+    kind: 'grazing_area',
+    ring: [
+      { lat: 31.2, lng: 34.7 },
+      { lat: 31.21, lng: 34.7 },
+      { lat: 31.21, lng: 34.71 },
+    ],
+  })
+  emits('deleteFarmZoneChecked', () => void deleteFarmZoneChecked(doomedZone.id), [], [
+    ['farmZones', doomedZone.id],
+  ])
+
+  const doomedVisit = createFarmVisit({
+    farmId: doomed.id,
+    at: '2027-06-01T09:00:00.000Z',
+    note: 'A73',
+    done: false,
+  })
+  emits('deleteFarmVisitChecked', () => void deleteFarmVisitChecked(doomedVisit.id), [], [
+    ['farmVisits', doomedVisit.id],
+  ])
+
+  const doomedTour = saveTour({
+    dayKey: '2027-04-04',
+    departAt: '2027-04-04T07:00:00.000Z',
+    farmIds: [doomed.id],
+  })
+  emits('deleteTourById', () => void deleteTourById(doomedTour.id), [], [
+    ['tours', doomedTour.id],
+  ])
+
+  // The entity last, so its cascade has something to take with it.
+  const doomedAnchor = createAnchorPoint({
+    farmId: doomed.id,
+    name: 'A73 עמדה',
+    position: { lat: 31.205, lng: 34.705 },
+    instructions: [],
+    accessDescription: '',
+  })
+  emits('deleteFarm', () => void deleteFarm(doomed.id), [], [
+    ['farms', doomed.id],
+    ['anchorPoints', doomedAnchor.id],
+  ])
+
+  const doomedVolunteer = createVolunteer({
+    photo: null,
+    name: 'A73 למחיקה',
+    age: 21,
+    phone: '0500000073',
+    phoneType: 'smartphone',
+    yeshiva: 'A73',
+    locality: 'באר שבע',
+    status: 'active',
+    inactiveReason: null,
+    notes: '',
+    hasLicense: true,
+    hasCar: true,
+    canDrive: true,
+  })
+  const dualDriver = _raw().drivers.find((d) => d.volunteerId === doomedVolunteer.id)!
+  // The DRIVER first: deleting it also writes `canDrive: false` back onto the
+  // volunteer, which is a fan-out this gate exists to catch.
+  emits(
+    'deleteDriver',
+    () => void deleteDriver(dualDriver.id),
+    [['volunteers', doomedVolunteer.id]],
+    [['drivers', dualDriver.id]],
+  )
+  emits('deleteVolunteer', () => void deleteVolunteer(doomedVolunteer.id), [], [
+    ['volunteers', doomedVolunteer.id],
+  ])
+
+  // A contact off a farm that stays: the FARM is what changes, not a row of
+  // its own — contacts are embedded, which is why this looks different.
+  {
+    const host = _raw().farms.find((f) => f.contacts.length > 1)!
+    const victim = host.contacts[host.contacts.length - 1]
+    emits('deleteFarmContact', () => void deleteFarmContact(victim.id), [['farms', host.id]])
+  }
+
+  // A guard that was abandoned in the wizard, and one that was not.
+  {
+    const live = _raw().missions.find((m) => m.status !== 'cancelled')!
+    const changes = drive('deleteMission (refused)', () => void deleteMission(live.id))
+    check(
+      'deleteMission REFUSES a real guard and writes nothing',
+      changes.length === 0 && _raw().missions.some((m) => m.id === live.id),
+      `${changes.length} change(s)`,
+    )
+  }
+  {
+    const abandoned = createMission({
+      farmId: _raw().farms[0].id,
+      anchorPointId: _raw().anchorPoints[0].id,
+      additionalAnchorPointIds: [],
+      startAt: '2027-05-01T20:00:00.000Z',
+      endAt: '2027-05-02T05:00:00.000Z',
+      requiredVolunteers: 3,
+      volunteerIds: [],
+      drivers: [],
+      // `recruiting` IS the draft in this model — there is no `draft` status
+      // (G4). `createMission` defaults to `planned`, which is a guard somebody
+      // scheduled, and point 8 refuses those.
+      status: 'recruiting',
+      pickupPoint: { lat: 31.25, lng: 34.79 },
+      dropoffPoint: { lat: 31.26, lng: 34.8 },
+      returnPickupPoint: null,
+      returnDropoffPoint: null,
+      notes: '',
+    })
+    emits('clearMissionMeetingPoints', () => void clearMissionMeetingPoints(abandoned.id), [
+      ['missions', abandoned.id],
+    ])
+    emits('deleteMission', () => void deleteMission(abandoned.id), [], [
+      ['missions', abandoned.id],
+    ])
+  }
+}
 
 // Imports ------------------------------------------------------------------
 {

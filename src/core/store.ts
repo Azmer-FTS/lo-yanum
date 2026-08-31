@@ -1,4 +1,5 @@
 import { changesBetween, indexOf } from './backend'
+import { deletionPlan } from './deletion'
 import type { StoreBackend, StoreData, StoreIndex } from './backend'
 import { iso, now } from './clock'
 import { DEMO_BACKEND } from './demo'
@@ -1110,4 +1111,163 @@ export function importVolunteers(drafts: VolunteerDraft[]): number {
   data.volunteers = [...created, ...data.volunteers]
   commit()
   return created.length
+}
+
+// --- PO POINT 8 (2026-08-31): deleting a record ------------------------------
+
+/**
+ * ★ EVERY ONE OF THESE ASKS `deletionPlan` FIRST, AND REFUSES ON ITS ANSWER.
+ *
+ * The policy lives in `./deletion` and nowhere else. These functions do not
+ * re-derive it, do not take a `force` flag, and return `false` rather than
+ * throwing — a refusal is an ordinary outcome the screen has to render, not an
+ * exception. Putting the check here rather than only in the dialog is what
+ * makes the rule true of the STORE: a future screen, an import, a script, all
+ * hit the same wall.
+ *
+ * ★ AND THEY WRITE NOTHING SPECIAL FOR THE OUTBOX. P2.6 derives changes by
+ *   diffing the snapshot (`backend.ts`), so a row that stops being in an array
+ *   becomes `{ collection, id, json: null }` by construction — which is exactly
+ *   what P2.5b's outbox stores and what `bun run sync` already asserts survives
+ *   a reload as a DELETION. Deleting offline therefore needed no new machinery
+ *   at all, which is the payoff of having derived changes instead of declaring
+ *   them.
+ */
+
+/**
+ * An entity, and everything hanging off it.
+ *
+ * The cascade is written out rather than left to Postgres because the LOCAL
+ * cache has no foreign keys: `on delete cascade` in
+ * `20260830000100_schema.sql` cleans the database, and this cleans the device.
+ * Both are needed, and the app is the one the coordinator is looking at.
+ */
+export function deleteFarm(farmId: string): boolean {
+  if (!deletionPlan('entity', farmId).allowed) return false
+  data.farms = data.farms.filter((f) => f.id !== farmId)
+  data.farmZones = data.farmZones.filter((z) => z.farmId !== farmId)
+  data.anchorPoints = data.anchorPoints.filter((a) => a.farmId !== farmId)
+  data.threatZones = data.threatZones.filter((z) => z.farmId !== farmId)
+  data.threatVectors = data.threatVectors.filter((v) => v.farmId !== farmId)
+  data.farmVisits = data.farmVisits.filter((v) => v.farmId !== farmId)
+  // A tour is a DAY, not a farm, so it loses a stop rather than being deleted —
+  // and a tour left with no stops is an empty plan the coordinator can drop
+  // himself. Rewriting the array rather than mutating it in place so the diff
+  // in `backend.ts` sees the tour as changed.
+  data.tours = data.tours.map((t) =>
+    t.farmIds.includes(farmId)
+      ? { ...t, farmIds: t.farmIds.filter((id) => id !== farmId) }
+      : t,
+  )
+  commit()
+  return true
+}
+
+/**
+ * A volunteer, and the driver row his dual hat materialised (G5.2).
+ *
+ * One human, one deletion. Leaving the driver behind would put a name in the
+ * driver roster that belongs to nobody and that no volunteer screen can reach.
+ */
+export function deleteVolunteer(volunteerId: string): boolean {
+  if (!deletionPlan('volunteer', volunteerId).allowed) return false
+  data.volunteers = data.volunteers.filter((v) => v.id !== volunteerId)
+  data.drivers = data.drivers.filter((d) => d.volunteerId !== volunteerId)
+  commit()
+  return true
+}
+
+export function deleteDriver(driverId: string): boolean {
+  if (!deletionPlan('driver', driverId).allowed) return false
+  const driver = data.drivers.find((d) => d.id === driverId)
+  data.drivers = data.drivers.filter((d) => d.id !== driverId)
+  // ★ THE DUAL HAT COMES OFF THE VOLUNTEER TOO. Deleting the driver row while
+  //   `canDrive` stays true means the next `updateVolunteer` materialises the
+  //   driver again — the deletion would undo itself, silently, the first time
+  //   somebody edited a phone number.
+  if (driver?.volunteerId) {
+    const i = data.volunteers.findIndex((v) => v.id === driver.volunteerId)
+    if (i !== -1) data.volunteers[i] = { ...data.volunteers[i], canDrive: false }
+  }
+  commit()
+  return true
+}
+
+/** One contact off an entity's card. */
+export function deleteFarmContact(contactId: string): boolean {
+  if (!deletionPlan('contact', contactId).allowed) return false
+  const index = data.farms.findIndex((f) =>
+    f.contacts.some((c) => c.id === contactId),
+  )
+  if (index === -1) return false
+  data.farms[index] = {
+    ...data.farms[index],
+    contacts: data.farms[index].contacts.filter((c) => c.id !== contactId),
+  }
+  commit()
+  return true
+}
+
+/**
+ * G8's meeting points are FIELDS on a guard, not records, so "delete the
+ * meeting point" is clearing them — and the guard falls back to what it did
+ * before anybody overrode it: the entity's own pin.
+ */
+export function clearMissionMeetingPoints(missionId: string): boolean {
+  const index = data.missions.findIndex((m) => m.id === missionId)
+  if (index === -1) return false
+  data.missions[index] = {
+    ...data.missions[index],
+    pickupPoint: null,
+    dropoffPoint: null,
+    returnPickupPoint: null,
+    returnDropoffPoint: null,
+  }
+  commit()
+  return true
+}
+
+/**
+ * A guard that was abandoned in the wizard — see `isUnsolicitedDraft`.
+ *
+ * Every other guard is CANCELLED, which `cancelMission` already does and which
+ * keeps the record, the reason and the night.
+ */
+export function deleteMission(missionId: string): boolean {
+  if (!deletionPlan('mission', missionId).allowed) return false
+  data.missions = data.missions.filter((m) => m.id !== missionId)
+  // An incident always belongs to the ENTITY; its `missionId` is a pointer that
+  // has to stop pointing rather than take the incident with it. Same shape as
+  // `on delete set null` in the schema.
+  data.incidents = data.incidents.map((i) =>
+    i.missionId === missionId ? { ...i, missionId: null } : i,
+  )
+  commit()
+  return true
+}
+
+/** The refusal-aware wrappers for the deletions that already existed. */
+export function deleteFarmZoneChecked(zoneId: string): boolean {
+  if (!deletionPlan('farmZone', zoneId).allowed) return false
+  deleteFarmZone(zoneId)
+  return true
+}
+
+export function deleteFarmVisitChecked(visitId: string): boolean {
+  if (!deletionPlan('farmVisit', visitId).allowed) return false
+  deleteFarmVisit(visitId)
+  return true
+}
+
+/**
+ * A tour is a plan for one day and carries no history of its own, so this is
+ * the id-keyed twin of `deleteTour(dayKey)` rather than a new rule.
+ */
+export function deleteTourById(tourId: string): boolean {
+  const tour = data.tours.find((t) => t.id === tourId)
+  if (!tour) return false
+  if (!deletionPlan('tour', tourId).allowed) return false
+  data.tours = data.tours.filter((t) => t.id !== tourId)
+  commit()
+  return true
 }

@@ -46,6 +46,8 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run mapping` | **A74** — the mapper (P2.6b). Drives all 380 fixture aggregates out through `toRows` and back through `fromRows` and fails on any difference, then parses this repository's OWN migrations and asserts both directions of the column contract: no column the mapper writes is missing, no `not null`-without-default column goes unwritten. 32 checks — no browser, no dev server, no network |
 | `bun run persist` | **A73** — the store interface (P2.6a). Drives all 45 exported mutations through a RECORDING backend and asserts what each one writes: the fan-outs (a zone rewrites the farm's dunams, the dual hat materialises a driver, a visit rewrites `nextVisitAt`), the ones that mutate IN PLACE and an identity diff would silently lose, and the three things that must never be written (a session change, a reset, a hydration). 84 checks — no browser, no dev server, no network |
 | `bun run auth` | **A70** — the door (P2.3). Starts its OWN two dev servers, one in each mode, and compares them: real mode shows the login form and nothing else on 8 routes, refuses a wrong password IN HEBREW, gives an unknown address the SAME message, leaves no token behind; demo mode is byte-for-byte P0bis. Then B1 without a browser — 26 tables anonymously closed, an anonymous coordinator-grant INSERT refused, the three policy helpers 404. 20 checks — **needs no dev server, and never needs the password** |
+| `bun run deletion` | **A79** — PO point 8: deleting a record. Free deletion with its dependencies LISTED, a motivated refusal on operational history with the blockers named and counted, the store refusing as well as the dialog, the whole cascade reaching the backend as `json: null`, and two checks that keep it honest over time — every `DeletableKind` has a call site in the UI, and every one of them asks first. 61 checks — no browser, no dev server, no network |
+| `bun run basemap` | **PO point 0** — `bun run basemap <file> <key>`: the resumable (TUS) upload a 94 MB archive needs, and then it VERIFIES the public object — length byte-for-byte, 206 on a range, `PMTiles` in the first seven bytes, and a 64 kB slice from the MIDDLE compared against the local file. ⛔ Needs a coordinator token (`BASEMAP_TOKEN`); see §14.4 |
 | `bun run offline` | **A72 + A78** — the offline shell (P2.5a) AND the signed-in offline session (P2.5b). The ONLY gate that BUILDS the app and serves the build, because the service worker is production-only: the worker takes control, one online load is enough to survive being pulled offline, ★ **a Supabase read offline FAILS** (nothing from the API is ever cached), looked-at ground is still there, the badge comes and goes, the frozen /poc comes back as ITSELF, and a real build shows its door rather than a browser error. **P2.5b added the only claim in this project that cannot be made outside a real browser**: signed in, IndexedDB really holds the snapshot, a token that cannot be refreshed offline does NOT end the session, the network coming back re-asks and a refusal DOES end it, and an explicit sign-out empties the device. **PO return 3 (2026-08-31) added the other half of the same scenario**: the reopened offline app SHOWS ITS OFFLINE BADGE, and the door explains the one thing that genuinely needs a network — `אין חיבור לאינטרנט — נדרש חיבור להתחברות ראשונה` — before a password is typed, and again instead of a generic server error if one is. **And PMTiles folded in the claim the whole map unit exists for**: the basemap answers a RANGE request with no network at all (the Cache API refuses a 206, so the worker holds ONE archive and slices it), what comes back is the archive rather than an error page, and the map really draws from it. **19 checks and ONE SKIP is the green result since P3.1 (§13)** — the last section needs `.env.test` and the disposable account is gone, which is the intended end state. It was 33 before. **No dev server; it makes its own** |
 | `bun run storage` | **A71** — the two private buckets (P2.4): no public route on either (`NoSuchBucket`, the one proof that does not depend on them being empty), no bucket or object enumeration, no signed URL minted for a stranger, no anonymous upload. 10 checks — no browser, no dev server, no password |
 | `bun run outreach` | **A68 + A69** — the sending centre and the WhatsApp group kit, read off the rendered DOM: the right channel per phone type, prefilled `wa.me` / `sms:` / `mailto:` links DECODED and checked, the grouped SMS and email, the sent tick surviving navigation, and the kit's three copies. 25 checks — needs a dev server |
@@ -3544,6 +3546,139 @@ question that decides whether he can work.
 
 ---
 
+## 17. POINT 8 — DELETING A RECORD. ONE POLICY, ONE DIALOG, 61 CHECKS
+
+The product owner had no way to correct a typo. There was no delete button
+anywhere for an entity, a volunteer or a driver — and ★ **every deletion the app
+DID have fired on the FIRST TAP with no confirmation at all**: a zone, a guard
+post, a visit, a meeting, a tour, a threat zone. That second finding is his rule
+"TOUJOURS avec confirmation" read backwards, and it was found by wiring the
+first one.
+
+### 17.1 ★ THE RULE IS NOT "WHO MAY DELETE", IT IS "HAS THIS HAPPENED YET"
+
+`src/core/deletion.ts`. One function — `deletionPlan(kind, id)` — and every
+consumer renders its answer rather than deriving its own.
+
+A farm typed twice, a volunteer whose name went in wrong, a guard post dropped
+in the wrong field: those are MISTAKES, and a mistake has no history. A record
+with **operational history** — guards done or planned, incidents, a signed
+agreement — is not a typo; it is a fact about a night somebody worked, and
+deleting it silently rewrites what the programme did.
+
+★ **AND A REFUSAL SAYS *WHAT* IS IN THE WAY.** "3 שמירות מתוכננות" tells a
+  coordinator standing in a field what to cancel. "לא ניתן למחוק" tells him to
+  phone somebody.
+
+| kind | refused when | the alternative offered |
+|---|---|---|
+| **entity** (חווה/מושב) | live guards · incidents · a signed agreement | change its status, or cancel the guards first |
+| **volunteer** | assigned to a live guard · named in an incident | **archive him** (לא פעיל) — the nights are kept |
+| **driver** | carrying anybody on a live guard | dual hat → *take the driver hat off*; career driver → cancel the trips |
+| **guard post** | ANY guard points at it, cancelled included | cancel those guards first |
+| **contact** | he is the `signedBy` on an agreement | edit him instead |
+| **visit** | it already happened (`done`) | it is history; edit the note |
+| **guard** | always — ★ **a guard is CANCELLED, not deleted** | `בוטלה`, which keeps the record AND the reason |
+| zone · threat zone · threat vector · meeting · tour | never — none of them carries a history of its own | — |
+
+★ **A CANCELLED GUARD DOES NOT BLOCK, and that is deliberate.** `בוטלה` is
+  already the record of a night that did not happen. Holding a farm hostage to
+  a guard the coordinator himself called off would make "cancel, then delete" —
+  the alternative this module offers — a road to nowhere.
+
+★ **THE GUARD POST IS THE ONE PLACE "ANY GUARD" MEANS ANY, cancelled included.**
+  `toMissionView` returns `null` for a guard whose rendezvous does not resolve,
+  so deleting the post would not delete the guard — it would make it INVISIBLE.
+  That is worse than a refusal, and it is why this rule is stricter than the
+  others.
+
+★ **THERE IS NO `draft` STATUS IN THIS MODEL** — G4's `recruiting` IS the
+  draft. So "a guard nobody was ever asked to attend" is a fact about the
+  OUTREACH, not about a column: `recruiting`, nobody assigned, no driver, no
+  message sent. One message out and it is a promise, whatever the status says.
+
+### 17.2 · POINT 8d — THE NAME TYPED BACK, AND ONLY WHERE IT IS EARNED
+
+The reinforced confirmation appears **only for an entity that has DRAWN ZONES**.
+The drawing is the one expensive thing on these records: a boundary and a
+grazing ground are twenty minutes of a finger on a map at the side of a road,
+while everything else was typed in ninety seconds and can be typed again.
+
+★ Asking for the name everywhere would make it a reflex, **and a reflex
+  confirmation is not a confirmation.**
+
+### 17.3 · ONE DIALOG, AND THE REFUSAL IS *IN* IT
+
+`ui/components/ConfirmDelete.tsx` plus `useConfirmDelete()` — `del.ask(kind, id,
+perform)` and `{del.dialog}`, two lines per call site, because a rule that costs
+five lines of state per button is a rule somebody skips.
+
+★ **THE REFUSAL IS THE SAME DIALOG, NOT AN ERROR AFTERWARDS.** He taps מחיקה
+  and is told why and what to do instead **before he has confirmed anything**. A
+  confirm-then-fail flow makes a coordinator agree to something that was never
+  going to happen.
+
+★ **AND `deleteFarm` / `deleteVolunteer` / … ASK THE POLICY THEMSELVES**, return
+  `false` rather than throwing, and take no `force` flag. The wall is in the
+  STORE, so a future screen, an import or a script hits it too — and the dialog
+  surfaces a late refusal (a guard landing between the plan and the tap) rather
+  than swallowing it.
+
+**Wired on:** the entity (its detail header, with the retype step), the guard
+post (its own sheet, and inside the wizard), the volunteer and the driver (row
+actions, both the table and the mobile card), zones, threat zones and vectors,
+visits, meetings, tours. ⚠️ **The volunteer row's ARCHIVE action wore the BIN
+icon** until this unit — exactly the confusion between "keep his nights" and
+"he was never here" that point 8 exists to end. It is `close` now, and the bin
+means the bin.
+
+### 17.4 ★ POINT 8c NEEDED NO NEW MACHINERY, AND THAT IS P2.6 PAYING OFF
+
+A deletion travels through the offline outbox with **nothing written for it**.
+P2.6 DERIVES changes by diffing the snapshot (`backend.ts`), so a row that stops
+being in an array becomes `{ collection, id, json: null }` **by construction —
+for the cascade as well as for the row the coordinator pressed**. `bun run sync`
+already proves a `json: null` survives a reload as a deletion.
+
+The SQL half was already there too, and it lines up with the policy rather than
+fighting it: `20260830000100_schema.sql` carries 27 `on delete cascade`s, and —
+★ **the two that matter here** — `on delete restrict` on `missions.guard_post_id`
+and on `mission_drivers.driver_id`. **The database refuses exactly what
+`deletionPlan` refuses.** The app-level cascade is written out anyway, because
+the LOCAL cache has no foreign keys: Postgres cleans the database, this cleans
+the device, and the device is what the coordinator is looking at.
+
+### 17.5 · `bun run deletion` — A79, 61 checks, no browser
+
+Free deletion with the dependencies listed · a motivated refusal on history with
+the blockers named and counted · the store refusing as well as the dialog · the
+whole cascade reaching the backend as deletions · the dual hat · a visit done vs
+a visit planned · a guard refused in favour of cancellation · a stale id
+reporting NOT FOUND rather than "refused".
+
+★ **AND TWO CHECKS THAT KEEP IT HONEST OVER TIME**, because a policy answering
+  for twelve kinds proves nothing if the coordinator can reach four: **every
+  `DeletableKind` must have a call site in the UI**, and **every one of them
+  must go through the dialog**. 10 kinds, 13 confirmation call sites.
+
+★ **AND THE DUAL HAT WOULD HAVE BITTEN SILENTLY.** Deleting a driver row while
+  the volunteer's `canDrive` stayed true means the next `updateVolunteer`
+  materialises the driver AGAIN — the deletion undoes itself the first time
+  somebody fixes a phone number. `deleteDriver` takes the hat off, and the gate
+  edits the volunteer afterwards to prove the row stays gone.
+
+⚠️ **`bun run persist` (A73) FAILED THE MOMENT THIS LANDED, WHICH IS ITS JOB.**
+Its section 7 cross-checks the names `@core` exports against the names actually
+driven: *"NOT DRIVEN: deleteFarm, deleteVolunteer, deleteDriver, …"* — nine new
+mutations, none exercised. Driving them found two more things worth keeping:
+`farmDraft()` copies the fixture farm's **signed agreement**, so a cloned test
+farm is refused (correctly, and the gate was asserting the wrong thing until it
+passed `agreements: []`); and `createMission` defaults to **`planned`**, which
+point 8 refuses — the abandoned-wizard case has to be created as `recruiting`.
+**94/94 now.**
+
+---
+
 ## ⏭️ RESUME HERE — THE PRODUCT OWNER'S SECOND RETURN, IN HIS ORDER
 
 > ✅ **PMTILES IS DONE AND DEPLOYED (§12ter), and verified on the artefact
@@ -3583,7 +3718,7 @@ lot plan's. Eleven points, then the rest of P3:
 | **1** | installed-iPad bug: the safe-area insets do not apply IN REAL | ✅ **§15** — cause found, foot band fixed (+ a second defect the new gate caught), instrument shipped; ⚖️ **ONE ARBITRATION FOR THE PO** |
 | **2** | reproduced bug: parasitic scroll on the farm form, both axes | ✅ **§16.1–16.3** — cause found (iOS zooms the page under 16 px), fixed, gated on 32 screens × 4 viewports × 2 engines |
 | **9** | **Apple Pencil** on every map interaction — he draws with a stylus | ✅ **§16.4** — audited, and `bun run touch` is 45 checks with a `pointerType=pen` pass |
-| **8** | **delete** a record — there is no way to correct a typo today | ⬜ |
+| **8** | **delete** a record — there is no way to correct a typo today | ✅ **§17** — one policy, one dialog, `bun run deletion` 61 checks; A73 grew to 94 |
 | **6** | **livestock** head-count per entity — funding depends on it | ⬜ |
 | **7** | **the employer's PDF report**, sendable in one gesture | ⬜ |
 | **3** | the network-state pill on every screen | ⬜ |

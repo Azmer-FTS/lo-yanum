@@ -30,7 +30,7 @@ import {
   patchAnchorPoint,
   createFarmZone,
   updateFarmZoneRing,
-  deleteFarmZone,
+  deleteFarmZoneChecked,
   rankCandidates,
   rankDrivers,
   shortlistSize,
@@ -54,6 +54,7 @@ import { useMapRatio } from '../../components/mapMode'
 import { MeetPointsEditor } from '../../components/meet'
 import type { MeetPoints } from '../../components/meet'
 import { Avatar } from '../../components/Avatar'
+import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
 import { PhoneTypeChip } from '../../components/badges'
 import { SelectField, TextArea, TextField } from '../../components/fields'
@@ -332,6 +333,8 @@ export function MissionWizardScreen() {
   const drivers = useCoreValue(getDrivers)
   const missions = useCoreValue(getVisibleMissions)
 
+  // PO POINT 8 — the guard post and the zone both delete through the one dialog.
+  const del = useConfirmDelete()
   const [step, setStep] = useState<Step>(1)
   // P0bis.2 — step 1's own map/form seam, remembered under the same key space
   // as every other screen's. 42 % form is the Lot 0.9 reading and the default
@@ -406,15 +409,31 @@ export function MissionWizardScreen() {
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     )
 
-  const removeAnchor = (id: string) => {
-    if (!deleteAnchorPoint(id)) {
-      setDeleteBlocked(t('anchor.deleteBlocked'))
-      return
-    }
-    setAnchorIds((prev) => prev.filter((x) => x !== id))
-    setOpenAnchorId(null)
-    setDeleteBlocked(null)
-  }
+  /**
+   * PO POINT 8 — the confirmation is the dialog now, and the refusal is INSIDE
+   * it rather than as a banner after the fact. `setDeleteBlocked` stays for the
+   * case the store refuses anyway (a guard landed between the plan and the
+   * tap), which is the one thing a dialog cannot pre-empt.
+   */
+  const removeAnchor = (id: string) =>
+    del.ask(
+      'anchorPoint',
+      id,
+      () => {
+        if (!deleteAnchorPoint(id)) {
+          setDeleteBlocked(t('anchor.deleteBlocked'))
+          return false
+        }
+        return true
+      },
+      {
+        after: () => {
+          setAnchorIds((prev) => prev.filter((x) => x !== id))
+          setOpenAnchorId(null)
+          setDeleteBlocked(null)
+        },
+      },
+    )
 
   /** Promote a point to rendezvous: it becomes first, the rest keep their order. */
   const setRendezvous = (id: string) =>
@@ -1199,7 +1218,9 @@ export function MissionWizardScreen() {
                   farm && createFarmZone({ farmId: farm.id, kind, ring })
                 }
                 onZoneRingChange={updateFarmZoneRing}
-                onZoneDelete={deleteFarmZone}
+                onZoneDelete={(id) =>
+                  del.ask('farmZone', id, () => deleteFarmZoneChecked(id))
+                }
                 // G18 — the layer's whole point on this screen: a guard post
                 // is placed FACING the approach, and the coordinator cannot
                 // do that from memory. Read-only here — the wizard is not
@@ -1945,6 +1966,7 @@ export function MissionWizardScreen() {
           )}
         </div>
       )}
+      {del.dialog}
     </>
   )
 }

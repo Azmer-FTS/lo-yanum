@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 import {
+  deleteDriver,
   getDrivers,
   getDriverStats,
   getTonightBookedDriverIds,
@@ -13,6 +14,7 @@ import {
 import type { Driver } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
+import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
 import {
   EmptyState,
@@ -56,6 +58,8 @@ export function DriversScreen() {
   // P0.2 — set by tapping a bubble on the roster map; composes with the KPIs.
   const [locality, setLocality] = useState<string | null>(null)
   const [editing, setEditing] = useState<Driver | null>(null)
+  // PO POINT 8.
+  const del = useConfirmDelete()
   const [creating, setCreating] = useState(false)
 
   /** P0.2 — everything except the locality, so the bubbles keep the neighbours. */
@@ -377,6 +381,21 @@ export function DriversScreen() {
                       >
                         <Icon name="edit" size={16} />
                       </button>
+                      {/* PO POINT 8 — refused while he is driving anybody, and
+                          for a DUAL HAT the alternative offered is to take the
+                          driver hat off rather than to delete a volunteer. */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          del.ask('driver', d.id, () => deleteDriver(d.id))
+                        }
+                        aria-label={t('deletion.action')}
+                        title={t('deletion.action')}
+                        data-testid="driver-delete"
+                        className="rounded-field p-1.5 text-content-muted transition-colors duration-fast hover:bg-status-danger/10 hover:text-status-danger-ink"
+                      >
+                        <Icon name="trash" size={16} />
+                      </button>
                     </span>
                   </div>
 
@@ -412,9 +431,21 @@ export function DriversScreen() {
                         type="button"
                         onClick={() => setEditing(d)}
                         aria-label={t('common.edit')}
+                        data-testid="driver-edit"
                         className="rounded-field p-2 text-content-muted hover:bg-surface-high hover:text-content-primary"
                       >
                         <Icon name="edit" size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          del.ask('driver', d.id, () => deleteDriver(d.id))
+                        }
+                        aria-label={t('deletion.action')}
+                        data-testid="driver-delete"
+                        className="rounded-field p-2 text-content-muted hover:bg-status-danger/10 hover:text-status-danger-ink"
+                      >
+                        <Icon name="trash" size={16} />
                       </button>
                     </span>
                   </div>
@@ -429,6 +460,7 @@ export function DriversScreen() {
       </MapSplit>
 
       {creating && <DriverFormModal driver={null} onClose={() => setCreating(false)} />}
+      {del.dialog}
       {editing && (
         <DriverFormModal driver={editing} onClose={() => setEditing(null)} />
       )}

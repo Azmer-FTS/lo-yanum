@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 
 import {
   FARM_PIPELINE,
@@ -8,7 +8,8 @@ import {
   createFarmZone,
   createThreatVector,
   createThreatZone,
-  deleteFarmZone,
+  deleteFarm,
+  deleteFarmZoneChecked,
   getThreatsForFarm,
   formatDate,
   formatDateTime,
@@ -35,6 +36,7 @@ import type {
 } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
+import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { ContactActions } from '../../components/ContactActions'
 import { FarmVisitModal } from '../../components/FarmVisitModal'
 import { Icon } from '../../components/Icon'
@@ -335,7 +337,10 @@ function FarmIdentity({ farm }: { farm: Farm }) {
 export function FarmDetailScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
+  const navigate = useNavigate()
   const { farmId = '' } = useParams()
+  // PO POINT 8 — one dialog for every deletion this screen offers.
+  const del = useConfirmDelete()
 
   const farm = useCoreValue(() => getFarm(farmId))
   const anchors = useCoreValue(() => getAnchorPointsForFarm(farmId))
@@ -474,7 +479,7 @@ export function FarmDetailScreen() {
         createFarmZone({ farmId: farm.id, kind, ring })
       }
       onZoneRingChange={updateFarmZoneRing}
-      onZoneDelete={deleteFarmZone}
+      onZoneDelete={(id) => del.ask('farmZone', id, () => deleteFarmZoneChecked(id))}
     />
   )
 
@@ -516,6 +521,23 @@ export function FarmDetailScreen() {
                   <Icon name="edit" size={15} />
                   {t('common.edit')}
                 </Link>
+                {/* PO POINT 8 — the way back from a farm entered twice. It is
+                    a `btn-ghost` in the danger ink rather than a red button:
+                    the action has to EXIST, and it must not be the loudest
+                    thing on a screen whose job is the farm. */}
+                <button
+                  type="button"
+                  data-testid="delete-entity"
+                  className="btn-ghost text-status-danger-ink hover:bg-status-danger/10"
+                  onClick={() =>
+                    del.ask('entity', farm.id, () => deleteFarm(farm.id), {
+                      after: () => navigate('/coordinator/farms'),
+                    })
+                  }
+                >
+                  <Icon name="trash" size={15} />
+                  {t('deletion.action')}
+                </button>
               </>
             }
           />
@@ -917,6 +939,7 @@ export function FarmDetailScreen() {
           onClose={() => setEditVisitId(null)}
         />
       )}
+      {del.dialog}
     </>
   )
 }

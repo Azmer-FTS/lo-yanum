@@ -25,6 +25,7 @@ import {
 } from '@core/index'
 import type { AgendaEvent, Farm } from '@core/index'
 
+import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
 import { FarmVisitModal } from '../../components/FarmVisitModal'
@@ -67,6 +68,8 @@ function toTimeInput(isoValue: string): string {
  */
 export function RoutePlannerScreen() {
   const { t } = useTranslation()
+  // PO POINT 8 — a saved tour used to be deleted on the first tap.
+  const del = useConfirmDelete()
   const locale = useLocale()
   const [params, setParams] = useSearchParams()
 
@@ -243,10 +246,18 @@ export function RoutePlannerScreen() {
                 <button
                   type="button"
                   className="btn-ghost text-status-danger-ink hover:bg-status-danger/10"
-                  onClick={() => {
-                    deleteTour(dayKey)
-                    setSelected(new Set())
-                  }}
+                  data-testid="tour-delete"
+                  onClick={() =>
+                    del.ask(
+                      'tour',
+                      savedTour.id,
+                      () => {
+                        deleteTour(dayKey)
+                        return true
+                      },
+                      { after: () => setSelected(new Set()) },
+                    )
+                  }
                 >
                   <Icon name="trash" size={14} />
                   {t('route.deleteTour')}
@@ -608,6 +619,7 @@ export function RoutePlannerScreen() {
           onClose={() => setEditVisitId(null)}
         />
       )}
+      {del.dialog}
     </MapPanel>
   )
 }

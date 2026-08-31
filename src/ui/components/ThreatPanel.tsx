@@ -11,6 +11,7 @@ import {
 } from '@core/index'
 import type { ThreatIntensity, ThreatVector, ThreatZone } from '@core/index'
 
+import { useConfirmDelete } from './ConfirmDelete'
 import { Icon } from './Icon'
 import { ThreatIntensityChip } from './threats'
 import { EmptyState, Section } from './primitives'
@@ -52,6 +53,9 @@ export function ThreatPanel({
   currentFarmId?: string
 }) {
   const { t } = useTranslation()
+  // PO POINT 8 — every deletion in this app now asks first. Before this,
+  // each of these buttons deleted on the FIRST TAP.
+  const del = useConfirmDelete()
   const locale = useLocale()
 
   const empty = zones.length === 0 && vectors.length === 0
@@ -162,10 +166,22 @@ export function ThreatPanel({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    deleteThreatZone(z.id)
-                    if (z.id === selectedId) onSelect(null)
-                  }}
+                  onClick={() =>
+                    del.ask(
+                      'threatZone',
+                      z.id,
+                      () => {
+                        deleteThreatZone(z.id)
+                        return true
+                      },
+                      {
+                        label: t('threat.deleteZone'),
+                        after: () => {
+                          if (z.id === selectedId) onSelect(null)
+                        },
+                      },
+                    )
+                  }
                   aria-label={t('threat.deleteZone')}
                   className="btn-ghost shrink-0 py-1.5 text-micro text-status-danger-ink"
                 >
@@ -220,10 +236,22 @@ export function ThreatPanel({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    deleteThreatVector(v.id)
-                    if (v.id === selectedId) onSelect(null)
-                  }}
+                  onClick={() =>
+                    del.ask(
+                      'threatVector',
+                      v.id,
+                      () => {
+                        deleteThreatVector(v.id)
+                        return true
+                      },
+                      {
+                        label: t('threat.deleteVector'),
+                        after: () => {
+                          if (v.id === selectedId) onSelect(null)
+                        },
+                      },
+                    )
+                  }
                   aria-label={t('threat.deleteVector')}
                   className="btn-ghost shrink-0 py-1.5 text-micro text-status-danger-ink"
                 >
@@ -255,6 +283,7 @@ export function ThreatPanel({
           ))}
         </ul>
       )}
+      {del.dialog}
     </Section>
   )
 }

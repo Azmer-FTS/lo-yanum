@@ -10,6 +10,7 @@ import {
 } from '@core/index'
 
 import { AutocompleteField, Field, TextArea, TextField } from './fields'
+import { useConfirmDelete } from './ConfirmDelete'
 import { Icon } from './Icon'
 import { Modal } from './primitives'
 import { useCoreValue } from '../hooks/useCore'
@@ -33,6 +34,9 @@ export function GeneralMeetingModal({
   onClose: () => void
 }) {
   const { t } = useTranslation()
+  // PO POINT 8 — every deletion in this app now asks first. Before this,
+  // each of these buttons deleted on the FIRST TAP.
+  const del = useConfirmDelete()
   const existing = useCoreValue(() =>
     meetingId ? getGeneralMeeting(meetingId) : null,
   )
@@ -136,10 +140,18 @@ export function GeneralMeetingModal({
           <button
             type="button"
             className="btn-ghost text-status-danger-ink hover:bg-status-danger/10"
-            onClick={() => {
-              deleteGeneralMeeting(existing.id)
-              onClose()
-            }}
+            data-testid="meeting-delete"
+            onClick={() =>
+              del.ask(
+                'generalMeeting',
+                existing.id,
+                () => {
+                  deleteGeneralMeeting(existing.id)
+                  return true
+                },
+                { after: onClose },
+              )
+            }
           >
             <Icon name="trash" size={15} />
             {t('meeting.delete')}
@@ -154,6 +166,7 @@ export function GeneralMeetingModal({
           </button>
         </div>
       </div>
+      {del.dialog}
     </Modal>
   )
 }
