@@ -1844,6 +1844,28 @@ G18 added no pair: the threat layer spends `--status-warn` and
 
 ---
 
+## 8b. Field documentation — `docs/terrain.md`
+
+**Written for the product owner and the coordinator, not for developers**, and
+kept out of this file on purpose: `ETAT.md` is the memory of HOW the thing is
+built, and a coordinator standing in a farmyard needs neither. It carries the
+two addresses and what each is for, the first-connection procedure with the
+five things to check the very first time, a numbered field check-list PER
+DEVICE (the coordinator's iPad, his phone, a fixed workstation — and the
+explicit "nothing to do" for farmers, volunteers and drivers, who have no
+account in phase 1), the iPad PWA installation in nine steps, and a two-column
+table of what does and does not work with no network.
+
+Two things in it are worth knowing about even from here, because they are
+counter-intuitive and a coordinator will meet both:
+· **Installing the PWA and then signing in IN SAFARI does not sign you in.**
+  The installed app has its own storage. Sign in from the icon.
+· **Do not sign out before going into the field.** Signing out deliberately
+  wipes the cache and any pending writes — that is what protects a shared
+  iPad, and it is exactly the wrong reflex before driving into the Negev.
+
+---
+
 ## 9. Source of truth
 
 ```
@@ -2412,14 +2434,91 @@ The database is EMPTY, so the first correct result of the Supabase
 implementation is every screen showing its empty state. That is success, not a
 bug — and it is the moment P3's real import stops being optional.
 
-Then **P2.5b** — the offline DATA layer: an IndexedDB read cache, a write
-outbox with the "N ממתינים לסנכרון" badge, and last-write-wins per changed
-field. The service worker and the offline shell are already in place (P2.5a);
-what is left is everything that needs to know about identity and about
-conflicts, which is exactly why it waits for P2.6. The tile pre-cache button
-is open question 11, waiting on the PO.
+**(delivered) P2.5b** — the offline DATA layer: an IndexedDB read cache, a
+coalescing write outbox with the "N ממתינים לסנכרון" badge, a documented
+conflict rule, and an offline session. `sync` 28, `write` 38, `offline` 24.
+**Criterion B2 is complete.** One correction to the written brief, recorded
+because it was a judgement call: the brief said "last-write-wins **per changed
+field**"; what shipped is **per AGGREGATE**, and the reasoning is written out
+at length above `flushOutbox` in `src/data/cache.ts`. In short: the change
+record P2.6 already produces IS the aggregate, phase 1 has exactly ONE
+account so the only way to conflict is one person on two devices, and a
+field-level merge cannot be explained to the person it surprises. If the PO
+wants field-level, it is a change to `flushOutbox` and to `applyChanges`, not
+to anything above them.
 
-Then **P3**.
+---
+
+## ⏭️ RESUME HERE — PMTILES (decision 71), THEN P3
+
+**THE UNIT IN ONE SENTENCE:** replace the OSM raster basemap with one
+self-hosted Protomaps PMTiles file of southern Israel, served from a PUBLIC
+Supabase Storage bucket, styled as vector in the app's own colours in BOTH
+themes, and downloadable in full behind the "רענן מפות לא מקוונות" button.
+
+**IT CLOSES THREE THINGS AT ONCE, which is why it is worth its size:**
+· criterion B3 revised — a basemap that is usable offline after ONE download
+  rather than four thousand requests OSM's policy forbids (decision 71);
+· standing carry-in item 2, open since Lot 0.9 — the map can finally be
+  themed in the charter's greens instead of approximated with a CSS
+  `hue-rotate` on a raster;
+· open question 9 — the violet Mediterranean, which is a symptom of that same
+  `hue-rotate` and disappears with it.
+
+**THE ORDER TO DO IT IN, and the two places it will stop and need the PO:**
+
+1. **THE EXTRACT.** `pmtiles extract` (the Protomaps Go CLI) pulls only the
+   byte ranges it needs out of a public daily planet build, so the bbox comes
+   down in the tens-to-low-hundreds of MB rather than the planet's 100 GB.
+   bbox: the gazetteer's own, padded — **34.27→35.60 E, 30.69→32.23 N**.
+   ⚠️ **APPROVAL 1: this needs a Go binary downloaded onto the machine.** The
+   session's classifier refuses unattended downloads of executables, and it is
+   right to. Ask before starting the unit, not halfway through it.
+   Sanity-check the result before uploading anything: open it, confirm the
+   zoom range covers z6–z14 (z14 is where a farm track is legible and where
+   the raster estimate topped out at 51 MB), and confirm the size.
+2. **THE BUCKET.** A PUBLIC Storage bucket, and it is the first public thing
+   in this project — say so in its migration next to the two private ones
+   from P2.4, because "why is this one public" is the question a reviewer will
+   ask and the answer is "it is a map of Israel, it contains nothing about
+   anybody". PMTiles reads it with HTTP **range requests**, so the bucket must
+   answer `206`; check that before writing any client code.
+   ⚠️ **APPROVAL 2: the upload.** Free tier is 1 GB stored / 5 GB egress and
+   the standard upload caps at 50 MB — over that it is a resumable (TUS)
+   upload. Cost stays 0.
+3. **THE STYLE.** `pmtiles` + `maplibre-gl` already in `package.json`;
+   `protomaps-themes-base` is the shortest path to a correct vector style, but
+   the COLOURS must come from `src/styles/tokens.css` and not from its
+   presets — one style function, two palettes, the same tokens the rest of the
+   app is contrast-audited against. Run `bun run contrast` on whatever is
+   added.
+4. **THE SWAP.** `src/ui/components/MapCanvas.tsx` is the only file that
+   should need to change. ★ **AND IT IS THE RISK OF THE WHOLE UNIT:** the map
+   is on 27 screens, and `mapfirst` (27), `splitter` (72) and `touch` (32) all
+   drive it. Run those three FIRST, before anything else, on every change.
+5. **THE BUTTON.** In הגדרות, next to P2.5a's tile-cache report. It must show
+   THE SIZE BEFORE THE TAP — a coordinator on cellular data has to be able to
+   decline — then a real progress indicator, then the held state. The service
+   worker already has the caching machinery; what is new is one big file
+   rather than many small ones, so it wants its own cache name and its own
+   "drop it" button.
+6. **DELETE THE `hue-rotate`.** It is the point of the exercise. `bun run
+   offline`'s tile assertions and `docs/brand-artzenu.md` §3 both talk about
+   it and both need rewriting when it goes.
+
+**AND THE GATE:** extend `bun run offline` (it already builds and serves a real
+build) rather than writing a tenth browser script — the claim is "the basemap
+is there with no network", which is the same claim A72 already makes about the
+shell.
+
+Then **P3**, in the written order of march: P3.1 real import, photos,
+signature, P3.3bis automatic email, the final PWA, deployment.
+
+⚠️ **AND P3.1 IS THE DEADLINE ON THE TEST ACCOUNT** — see the reminder at the
+top of this file. Delete `dov+test@serialkolors.com`, its `app_users` row and
+`.env.test` BEFORE importing a single real farmer, and confirm it in that
+session's report.
+
 
 Then P2 (Lot 1) and P3 (Lot 2 essential) per the final order of march recorded
 at the top of this file.
