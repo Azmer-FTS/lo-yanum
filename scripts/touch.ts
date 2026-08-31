@@ -762,6 +762,12 @@ const added = await penTapText(page, cdp, 'הוספת הסכם')
 check('"הוספת הסכם" is reachable by STYLUS', added)
 await page.waitForTimeout(800)
 
+// ★ THE PAD IS BEHIND A BUTTON NOW (A30 — a 200 px canvas per agreement pushed
+//   the farm form past six screenfuls at 390 px, and a farmer signs when he is
+//   asked to rather than because a form scrolled past a blank rectangle).
+check('"חתימה" opens the pad by STYLUS', await penTapText(page, cdp, 'חתימה'))
+await page.waitForTimeout(700)
+
 const pad = page.locator('[data-testid="signature-pad"]').first()
 const padCount = await pad.count()
 check('the agreement offers a signature pad', padCount > 0, `${padCount}`)

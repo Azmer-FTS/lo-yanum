@@ -4164,7 +4164,57 @@ font pipeline.
 
 ---
 
-## ⏭️ RESUME HERE — THE PRODUCT OWNER'S SECOND RETURN, IN HIS ORDER
+## 22. ⛔ WHAT IS *NOT* DONE, AND WHAT EACH ONE ACTUALLY NEEDS
+
+The eleven points of the product owner's second return are delivered (§13–§21),
+and the signature with them. **This is the honest remainder**, written so the
+next session starts from it rather than rediscovering it.
+
+### 22.1 ⛔ POINT 0's UPLOAD — one minute of the product owner's time
+
+The archive is cut, health-checked on seven cities and gated (§14). Only the
+94 MB upload is missing, and it needs a coordinator session that no longer
+exists on this machine — which is what P3.1 was for. **§14.4 has the two ways
+out.** `bun run offline` carries the failing Haifa line until then, on purpose.
+
+### 22.2 ⚖️ POINT 1's ARBITRATION — one commented line, and it is his call
+
+Option A ships. Option B is built, behind
+`apple-mobile-web-app-status-bar-style: black-translucent` in `index.html`, and
+the captures of both are in `docs/screenshots/statusbar/`. **The instrument that
+settles it is `אבחון תצוגה` in הגדרות** (§15.8) — he reads his own iPad's four
+insets and sends them back. See §15.4 for the one sentence the decision reduces
+to.
+
+### 22.3 · The rest of P3, and what each is really blocked on
+
+| what | state | what it actually needs |
+|---|---|---|
+| **real photos** | not started | capture/import → compression → the private `photos` bucket → signed URLs → a thumbnail cache. `core/photo.ts` already holds the data-URI-today / object-key-tomorrow contract, and P2.4's bucket is already private and coordinator-only. **The work is the pipeline, not the model.** |
+| **the agreement PDF** | ⚠️ half | the signature is captured, stored and shown (§21), and **not yet drawn into a generated PDF**. §19.1 is the machinery that will carry it — and an agreement wants SELECTABLE text, which is exactly the case that needs the font pipeline that section declined. **Read §19.1 before choosing.** |
+| **P3.3bis — the automatic email** | not started | an edge function, and the sending provider's account (ask him then). ★ **AND THE RECIPIENT HAS TO MOVE SERVER-SIDE**: `report/recipient.ts` is `localStorage`, which an edge function cannot read. A `settings` table or a column on `app_users`, with that module becoming its cache. §19.3. |
+| **the final PWA pass** | ⚠️ partial | the manifest, the icon and the service worker all work and are gated. What is left is the polish: real icon sizes rather than one SVG, a maskable variant, and the `הגדרות` screen's last section. |
+| **P3.1's real import** | ready, waiting on data | `bun run import` already drives download → fill → upload → find, 29 checks, and `core/import.ts` was written to be re-runnable server-side unchanged. **This is a data question, not a code question.** |
+
+### 22.4 ⚠️ TWO THINGS TO CARRY IN THAT ARE NOT TASKS
+
+★ **`bun run write` FAILING AND `bun run offline` REPORTING 19/19 WITH A SKIP
+  ARE THE GREEN RESULTS.** They are the shape of the test account being gone.
+  Anybody who "repairs" either has re-created the second door onto real
+  farmers' phone numbers.
+
+★ **THE GAZETTEER IS STILL SOUTHERN.** `core/geo.ts`'s `LOCALITY_POSITIONS` has
+  21 towns, all Negev and Jerusalem-corridor. It is what places a volunteer with
+  no coordinates and what scores travel distance (`core/dispatch.ts`). **The
+  programme is national now** — the basemap is (§14), the tagline is, the data
+  is not. Nothing is broken today because there is no northern volunteer yet;
+  the day one is imported, he lands nowhere and is charged the
+  not-in-the-gazetteer distance. **This is the cheapest high-value follow-up in
+  the file.**
+
+---
+
+## ⏭️ RESUME HERE — THE SECOND RETURN IS DELIVERED; §22 IS WHAT IS LEFT
 
 > ✅ **PMTILES IS DONE AND DEPLOYED (§12ter), and verified on the artefact
 > rather than on the tree** — signed in on the live app, 2026-08-31: the map's
@@ -4182,6 +4232,17 @@ font pipeline.
 > to it and because the reasoning about approvals and about the raster surface
 > is the reasoning that will be asked about again. **It is not the next unit.
 > The next unit is immediately below.**
+
+> ✅ **ALL ELEVEN POINTS OF THE PRODUCT OWNER'S SECOND RETURN ARE DELIVERED
+> (§13–§20), AND THE SIGNATURE WITH THEM (§21).** Two things wait on HIM and
+> nothing else: **point 0's 94 MB upload** (§14.4 — one minute, two ways) and
+> **point 1's arbitration** (§15.4 — one sentence, and `אבחון תצוגה` in הגדרות
+> is the instrument that answers it). **§22 is the honest remainder of P3**,
+> with what each item is actually blocked on.
+>
+> **The French report for him is `docs/RAPPORT-2026-08-31.md`** — the two URLs,
+> the test account confirmed gone, first-login, the iPad install guide and a
+> numbered field checklist by device.
 
 ### ✅ P3.1's IRREVERSIBLE ACT IS DONE — SEE §13, AND DO NOT RE-OPEN IT
 

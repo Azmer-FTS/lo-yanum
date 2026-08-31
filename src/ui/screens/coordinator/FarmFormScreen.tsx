@@ -163,6 +163,8 @@ export function FarmFormScreen() {
   const [livestock, setLivestock] = useState<LivestockLine[]>(
     existing?.livestock ?? [],
   )
+  /** P3.3 — which agreement's pad is open. One at a time; see the note below. */
+  const [openSignature, setOpenSignature] = useState<string | null>(null)
   const [agreements, setAgreements] = useState<Agreement[]>(
     existing?.agreements ?? [],
   )
@@ -525,6 +527,20 @@ export function FarmFormScreen() {
         {keepsLivestock({ type }) && (
           <FormSection
             title={t('livestock.section')}
+            // PO POINT 6 asked for a collapsible section, and A30 insisted:
+            // with the rows open the farm form was 6.1 screenfuls at 390 px.
+            // Closed it still SAYS the total, which is the fact; only the
+            // editing folds away.
+            storageKey={`farm-form-livestock:${farmId ?? 'new'}`}
+            defaultOpen={false}
+            summary={
+              livestock.length > 0 ? (
+                <span className="chip ms-2 bg-surface-high text-content-secondary">
+                  {livestock.reduce((n, l) => n + (l.heads || 0), 0).toLocaleString()}{' '}
+                  {t('livestock.total')}
+                </span>
+              ) : null
+            }
             action={
               <button
                 type="button"
@@ -766,27 +782,49 @@ export function FarmFormScreen() {
                     THE NATURAL TOOL FOR IT. A name written with a fingertip on
                     glass is a scrawl, and a farmer is being asked to sign. The
                     pad is Pointer Events throughout and uses the Pencil's
-                    PRESSURE where the device reports it. */}
-                <div className="mt-3">
-                  <p className="label">{t('signature.title')}</p>
-                  <SignaturePad
-                    value={a.signature ?? null}
-                    onChange={(signature) =>
-                      setAgreements((prev) =>
-                        prev.map((x, j) => (j === i ? { ...x, signature } : x)),
-                      )
-                    }
-                  />
-                </div>
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <span
-                    className={`chip ${
-                      a.signature
-                        ? 'bg-status-success/15 text-status-success-ink'
-                        : 'bg-surface-high text-content-muted'
-                    }`}
-                  >
-                    {a.signature ? t('signature.signed') : t('signature.missing')}
+                    PRESSURE where the device reports it.
+
+                    ★ BEHIND A BUTTON, and A30 is why: a 200 px canvas per
+                    agreement pushed the farm form past six screenfuls at
+                    390 px. It is also better as a deliberate act — a farmer
+                    signs when he is asked to, not because a form scrolled past
+                    a blank rectangle. The signed/unsigned chip below is always
+                    on screen, so nothing is hidden, only folded. */}
+                {openSignature === a.id && (
+                  <div className="mt-3">
+                    <p className="label">{t('signature.title')}</p>
+                    <SignaturePad
+                      value={a.signature ?? null}
+                      onChange={(signature) =>
+                        setAgreements((prev) =>
+                          prev.map((x, j) => (j === i ? { ...x, signature } : x)),
+                        )
+                      }
+                    />
+                  </div>
+                )}
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={`chip ${
+                        a.signature
+                          ? 'bg-status-success/15 text-status-success-ink'
+                          : 'bg-surface-high text-content-muted'
+                      }`}
+                    >
+                      {a.signature ? t('signature.signed') : t('signature.missing')}
+                    </span>
+                    <button
+                      type="button"
+                      data-testid="signature-open"
+                      className="btn-ghost py-1.5"
+                      onClick={() =>
+                        setOpenSignature((cur) => (cur === a.id ? null : a.id))
+                      }
+                    >
+                      <Icon name="edit" size={15} />
+                      {t('signature.title')}
+                    </button>
                   </span>
                   <button
                     type="button"

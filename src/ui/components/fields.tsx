@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 
+import { Icon } from './Icon'
+
 /**
  * Form field primitives shared by every create/edit flow (R5).
  *
@@ -425,22 +427,87 @@ export function SelectOrCreateField({
  * that nothing on screen was asking. Children that must take the whole row
  * say `col-span-full`, which is inert in the one-column reading.
  */
+/**
+ * ★ PO POINT 6 ASKED FOR A COLLAPSIBLE SECTION, AND A30 INSISTED.
+ *
+ *   The livestock rows and the signature pads made the farm form **6.1
+ *   screenfuls at 390 px** — over A30's cap of six, caught by `bun run layout`
+ *   the first time it ran after both landed. A page that long on a phone is a
+ *   page whose foot nobody reaches, which is what the cap is for.
+ *
+ * ★ AND COLLAPSED IS NOT HIDDEN, WHICH IS THE WHOLE OF THE DESIGN. A closed
+ *   section carries its own SUMMARY in the heading — the head count, the number
+ *   of contacts — so the fact is still on screen and only the editing is folded
+ *   away. A collapsible section that says nothing when closed is a section the
+ *   coordinator opens every time to check whether it was empty.
+ *
+ * `sessionStorage`, like `CollapsibleSection`: reopening the same farm mid-shift
+ * keeps his arrangement without persisting a stale layout into next month.
+ */
 export function FormSection({
   title,
   children,
   action,
+  storageKey,
+  defaultOpen = true,
+  summary,
 }: {
   title: string
   children: ReactNode
   action?: ReactNode
+  /** Present = collapsible. Absent = the plain section it has always been. */
+  storageKey?: string
+  defaultOpen?: boolean
+  /** Shown in the heading while CLOSED — the fact, without the editing. */
+  summary?: ReactNode
 }) {
+  const [open, setOpen] = useState<boolean>(() => {
+    if (!storageKey) return true
+    try {
+      const stored = sessionStorage.getItem(storageKey)
+      return stored !== null ? stored === '1' : defaultOpen
+    } catch {
+      return defaultOpen
+    }
+  })
+
+  const toggle = () =>
+    setOpen((v) => {
+      try {
+        sessionStorage.setItem(storageKey ?? '', v ? '0' : '1')
+      } catch {
+        // Private browsing: the section still opens, it just does not remember.
+      }
+      return !v
+    })
+
   return (
     <section className="panel-scope card card-pad">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="section-title">{title}</h2>
-        {action}
+        {storageKey ? (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-expanded={open}
+            data-testid={`section-${storageKey}`}
+            className="group flex min-w-0 flex-1 items-center gap-1.5 text-start"
+          >
+            <span
+              className={`text-content-muted transition-transform duration-fast group-hover:text-content-primary ${
+                open ? '' : 'ltr:-rotate-90 rtl:rotate-90'
+              }`}
+            >
+              <Icon name="chevronDown" size={16} />
+            </span>
+            <h2 className="section-title">{title}</h2>
+            {!open && summary}
+          </button>
+        ) : (
+          <h2 className="section-title">{title}</h2>
+        )}
+        {(!storageKey || open) && action}
       </div>
-      <div className="form-grid">{children}</div>
+      {(!storageKey || open) && <div className="form-grid">{children}</div>}
     </section>
   )
 }
