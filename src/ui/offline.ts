@@ -63,6 +63,66 @@ interface WorkerAnswer {
   error?: string
   progress?: number
   total?: number
+  /* PO return 2026-09-01 — everything a failure has to be able to say. */
+  status?: number
+  detail?: string
+  received?: number
+  expected?: number
+  stored?: number
+  droppedOld?: boolean
+  assetsHeld?: number
+  assetsMissed?: number
+  usage?: number
+  quota?: number
+}
+
+/**
+ * PO RETURN 2026-09-01 — WHAT THE LAST DOWNLOAD ACTUALLY DID, KEPT.
+ *
+ * ★ HIS WORDING WAS "PLUS JAMAIS D'ÉCHEC MUET", and a result that only exists
+ *   while the screen is open is still nearly mute: the coordinator taps, walks
+ *   away, comes back and finds the same old size with nothing to explain it.
+ *   So the verdict is written to `localStorage` and read back on mount.
+ */
+export interface MapAttempt {
+  ok: boolean
+  /** 'network' | 'http' | 'quota' | 'store' | 'truncated' — named, never blank. */
+  error?: string
+  status?: number
+  detail?: string
+  received?: number
+  expected?: number
+  stored?: number
+  droppedOld?: boolean
+  assetsHeld?: number
+  assetsMissed?: number
+  usage?: number
+  quota?: number
+  /** The archive it was an attempt AT, by name. */
+  archive: string
+  /** Epoch ms, so the screen can say WHEN rather than just what. */
+  at: number
+}
+
+const ATTEMPT_KEY = 'lo-yanum:map-attempt'
+
+function readAttempt(): MapAttempt | null {
+  try {
+    const raw = localStorage.getItem(ATTEMPT_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as MapAttempt
+    return typeof parsed?.at === 'number' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function writeAttempt(attempt: MapAttempt): void {
+  try {
+    localStorage.setItem(ATTEMPT_KEY, JSON.stringify(attempt))
+  } catch {
+    // Private browsing, or a full device. The in-memory copy still shows.
+  }
 }
 
 /**
@@ -138,6 +198,25 @@ export interface OfflineMaps {
   /** The archive this build asks for, by name. */
   wantedArchive: string
   /**
+   * ★ WHAT THE LAST ATTEMPT DID, AND WHY IT IS A FIELD RATHER THAN A TOAST.
+   *   Kept across mounts (localStorage), so a coordinator who tapped, walked
+   *   away and came back still finds out that the download refused and why.
+   */
+  attempt: MapAttempt | null
+  /** Bytes received so far in the RUNNING download; null when none is. */
+  received: number | null
+  /** What the running download expects in total; null when unknown. */
+  expected: number | null
+  /** Device storage as the browser reports it. 0 when it will not say. */
+  usage: number
+  quota: number
+  /**
+   * Whether the browser has promised not to evict this origin's storage.
+   * ★ IT MATTERS FOR A 94 MB ARCHIVE: without it, Safari may reclaim the whole
+   *   cache under pressure, and the coordinator finds out on a farm track.
+   */
+  persisted: boolean | null
+  /**
    * ★ THE SIZE BEFORE THE TAP. The product owner's own condition: a
    *   coordinator on cellular data at the edge of coverage has to be able to
    *   DECLINE. Read with a HEAD request rather than hard-coded, so a re-cut
@@ -176,6 +255,12 @@ export function useOfflineMaps(url: string, assets: string[] = []): OfflineMaps 
   const [downloadBytes, setDownloadBytes] = useState<number | null>(null)
   const [active, setActive] = useState(false)
   const [progress, setProgress] = useState<number | null>(null)
+  const [received, setReceived] = useState<number | null>(null)
+  const [expected, setExpected] = useState<number | null>(null)
+  const [usage, setUsage] = useState(0)
+  const [quota, setQuota] = useState(0)
+  const [persisted, setPersisted] = useState<boolean | null>(null)
+  const [attempt, setAttempt] = useState<MapAttempt | null>(() => readAttempt())
 
   /**
    * ★ THE URL GOES WITH THE QUESTION. Without it the worker can only answer
@@ -190,7 +275,30 @@ export function useOfflineMaps(url: string, assets: string[] = []): OfflineMaps 
     setBytes(answer?.bytes ?? 0)
     setStale(Boolean(answer?.stale))
     setHeldArchive(archiveName(answer?.heldUrl) || null)
+    setUsage(answer?.usage ?? 0)
+    setQuota(answer?.quota ?? 0)
   }, [url])
+
+  /**
+   * Has the browser promised to keep this origin's storage?
+   *
+   * ★ `persist()` AND NOT ONLY `persisted()`, AND IT IS ASKED FROM THE PAGE
+   *   BECAUSE THE WORKER CANNOT. Safari grants it silently to an INSTALLED web
+   *   app and refuses it in a tab, which is exactly the distinction that
+   *   matters: the coordinator's device is the installed one. Refusal is not
+   *   an error and does not block anything — it is reported.
+   */
+  const askPersistence = useCallback(async () => {
+    try {
+      const storage = navigator.storage
+      if (!storage?.persisted) return
+      let granted = await storage.persisted()
+      if (!granted && storage.persist) granted = await storage.persist()
+      setPersisted(granted)
+    } catch {
+      setPersisted(null)
+    }
+  }, [])
 
   /**
    * How big the download would be, asked of the server rather than assumed.
@@ -204,8 +312,17 @@ export function useOfflineMaps(url: string, assets: string[] = []): OfflineMaps 
     let cancelled = false
     void fetch(url, { method: 'HEAD' })
       .then((r) => {
-        const length = Number(r.headers.get('content-length') || '0')
-        if (!cancelled) setDownloadBytes(length > 0 ? length : null)
+        /**
+         * ★ `r.ok` FIRST, AND IT IS NOT PEDANTRY. Supabase answers a missing
+         *   object with `400` and an 88-byte JSON body, so reading
+         *   `content-length` off a failed HEAD gave 88 — a button offering to
+         *   download "0.1 MB" of a map that does not exist. A refusal has to
+         *   read as a refusal.
+         */
+        const length = r.ok ? Number(r.headers.get('content-length') || '0') : 0
+        // A PMTiles archive is megabytes. Anything under a megabyte on this
+        // URL is an error page wearing a content-length.
+        if (!cancelled) setDownloadBytes(length > 1_000_000 ? length : null)
       })
       .catch(() => {
         if (!cancelled) setDownloadBytes(null)
@@ -227,26 +344,59 @@ export function useOfflineMaps(url: string, assets: string[] = []): OfflineMaps 
     const controller = navigator.serviceWorker?.controller
     if (!controller) return false
     setProgress(0)
+    setReceived(0)
+    setExpected(null)
+    // Asked before the download and not after: an origin that may be evicted
+    // is an origin that can lose 94 MB between the tap and the drive.
+    await askPersistence()
 
-    const finished = await new Promise<boolean>((resolve) => {
+    const verdict = await new Promise<WorkerAnswer>((resolve) => {
       const onMessage = (event: MessageEvent) => {
         const data = event.data as WorkerAnswer | undefined
         if (data?.type !== 'DOWNLOAD_MAP') return
         if (typeof data.progress === 'number' && data.total) {
           setProgress(Math.min(1, data.progress / data.total))
+          setReceived(data.progress)
+          setExpected(data.total)
           return
         }
         navigator.serviceWorker.removeEventListener('message', onMessage)
-        resolve(Boolean(data.ok))
+        resolve(data as WorkerAnswer)
       }
       navigator.serviceWorker.addEventListener('message', onMessage)
       controller.postMessage({ type: 'DOWNLOAD_MAP', url, assets })
     })
 
+    /**
+     * ★ THE VERDICT IS RECORDED WHATEVER IT IS. This is the whole of "no more
+     *   silent failures": success and every named failure land in the same
+     *   record, with the bytes, the ceiling and the archive it was for.
+     */
+    const record: MapAttempt = {
+      ok: Boolean(verdict.ok),
+      error: verdict.error,
+      status: verdict.status,
+      detail: verdict.detail,
+      received: verdict.received ?? verdict.bytes,
+      expected: verdict.expected,
+      stored: verdict.stored,
+      droppedOld: verdict.droppedOld,
+      assetsHeld: verdict.assetsHeld,
+      assetsMissed: verdict.assetsMissed,
+      usage: verdict.usage,
+      quota: verdict.quota,
+      archive: archiveName(url),
+      at: Date.now(),
+    }
+    setAttempt(record)
+    writeAttempt(record)
+
     setProgress(null)
+    setReceived(null)
+    setExpected(null)
     await refresh()
-    return finished
-  }, [url, assets, refresh])
+    return record.ok
+  }, [url, assets, refresh, askPersistence])
 
   const clear = useCallback(async () => {
     const answer = await askWorker('CLEAR_MAP')
@@ -254,11 +404,28 @@ export function useOfflineMaps(url: string, assets: string[] = []): OfflineMaps 
     setBytes(answer?.bytes ?? 0)
     setStale(false)
     setHeldArchive(null)
+    setUsage(answer?.usage ?? 0)
+    setQuota(answer?.quota ?? 0)
   }, [])
 
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  useEffect(() => {
+    // Report-only on mount: `persisted()` is a question, `persist()` is only
+    // asked when a download is about to happen (in `download` above).
+    let cancelled = false
+    void navigator.storage
+      ?.persisted?.()
+      .then((value) => {
+        if (!cancelled) setPersisted(value)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return {
     held,
@@ -266,6 +433,12 @@ export function useOfflineMaps(url: string, assets: string[] = []): OfflineMaps 
     stale,
     heldArchive,
     wantedArchive: archiveName(url),
+    attempt,
+    received,
+    expected,
+    usage,
+    quota,
+    persisted,
     downloadBytes,
     active,
     progress,

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="TBTEST">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F3F4F6">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B1119">
+<meta name="theme-color" content="#F3F4F6">
+<title>TBTEST — theme-color</title>
+<!--
+  ⚖️ PO POINT 1, THE LAST OPEN QUESTION — 20 SECONDS ON A REAL iPAD.
+
+  Does iPadOS repaint an INSTALLED web app's status bar when `theme-color` is
+  changed at RUNTIME, in `default` (non-translucent) mode?
+
+  This project's own evidence says NO — on 2026-08-31 the product owner saw the
+  boot literal painted behind the clock in the light theme, although theme.tsx
+  had already rewritten the tag. It could not be re-verified on iPadOS 26 in
+  this session: the simulator needs a device grant a non-interactive session
+  cannot obtain.
+
+  HOW TO SETTLE IT: open this page on the iPad, Share → Add to Home Screen,
+  launch it FROM THE HOME SCREEN (not from Safari), then tap GO DARK. If the
+  strip behind the clock turns dark, iPadOS honours a live change and the app
+  can follow the coordinator's chosen theme. If it does not move, the answer is
+  no and the dossier is closed.
+
+  DELETE THIS FILE once the question is settled. It ships because a 3 kB page
+  he can tap is worth more than a question nobody can reach.
+-->
+<style>
+ html,body{margin:0;height:100%;font:600 28px/1.4 -apple-system,system-ui,sans-serif}
+ body{background:#F3F4F6;color:#111;transition:none}
+ body.dark{background:#0B1119;color:#eee}
+ .wrap{padding:40px}
+ button{font-size:26px;padding:18px 26px;margin:10px 8px 0 0;border-radius:12px;border:2px solid #888;background:#fff}
+ #state{margin-top:24px;font-size:20px;font-weight:400}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>theme-color live test</h1>
+<p style="font-size:19px;font-weight:400">Add to Home Screen, launch from there, then tap GO DARK and watch the strip behind the clock.</p>
+<button id="toDark">GO DARK</button>
+<button id="toLight">GO LIGHT</button>
+<button id="rebuild">REBUILD ALL TAGS DARK</button>
+<div id="state"></div>
+</div>
+<script>
+function setAll(color, alsoMedia){
+  document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){
+    if (alsoMedia || !m.hasAttribute('media')) m.setAttribute('content', color)
+  })
+}
+function report(){
+  var out = []
+  document.querySelectorAll('meta[name="theme-color"]').forEach(function(m,i){
+    out.push(i+': media='+(m.getAttribute('media')||'none')+' content='+m.content)
+  })
+  out.push('standalone='+(window.navigator.standalone===true))
+  out.push('display-mode standalone='+window.matchMedia('(display-mode: standalone)').matches)
+  out.push('safe-area-top='+getComputedStyle(document.documentElement).getPropertyValue('--sat'))
+  document.getElementById('state').textContent = out.join('\n')
+}
+document.documentElement.style.setProperty('--sat','env(safe-area-inset-top)')
+document.getElementById('toDark').onclick=function(){document.body.classList.add('dark');setAll('#0B1119',false);report()}
+document.getElementById('toLight').onclick=function(){document.body.classList.remove('dark');setAll('#F3F4F6',false);report()}
+document.getElementById('rebuild').onclick=function(){
+  document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.remove()})
+  var m=document.createElement('meta'); m.name='theme-color'; m.content='#B91C1C'
+  document.head.appendChild(m)
+  document.body.classList.add('dark'); report()
+}
+report()
+</script>
+</body>
+</html>

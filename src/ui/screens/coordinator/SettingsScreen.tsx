@@ -48,6 +48,12 @@ export function SettingsScreen() {
     progress,
     download,
     clear,
+    attempt,
+    received,
+    expected,
+    usage,
+    quota,
+    persisted,
   } = useOfflineMaps(BASEMAP_URL, BASEMAP_ASSETS)
   const [clearing, setClearing] = useState(false)
   // PO POINT 7b — where "שלח במייל" points, and P3.3bis's destination too.
@@ -114,7 +120,7 @@ export function SettingsScreen() {
                 value={wantedArchive}
                 ltr
               />
-              {stale && heldArchive && (
+              {heldArchive && heldArchive !== wantedArchive && (
                 <KeyValue
                   label={t('settings.offline.archiveHeld')}
                   value={heldArchive}
@@ -128,6 +134,43 @@ export function SettingsScreen() {
                   ltr
                 />
               )}
+              {/* ★ PO RETURN 2026-09-01 — THE DEVICE'S OWN CEILING, PRINTED.
+                  Safari's quota is a fraction of free disk rather than a fixed
+                  number, so "will 94 MB fit" is a question only this device can
+                  answer, and it is the first thing to look at when a download
+                  refuses. */}
+              {quota > 0 && (
+                <KeyValue
+                  label={t('settings.offline.storage')}
+                  value={`${megabytes(usage)} / ${megabytes(quota)} MB`}
+                  ltr
+                />
+              )}
+              {persisted !== null && (
+                <KeyValue
+                  label={t('settings.offline.persisted')}
+                  value={t(
+                    persisted
+                      ? 'settings.offline.persistedYes'
+                      : 'settings.offline.persistedNo',
+                  )}
+                />
+              )}
+              {/* ★★ WHAT THE LAST ATTEMPT DID. "Plus jamais d'échec muet" is
+                  his wording, and this row is the whole of it: every tap ends
+                  in a verdict that is written down, success included. */}
+              {attempt && (
+                <KeyValue
+                  label={t('settings.offline.lastAttempt')}
+                  value={
+                    attempt.ok
+                      ? t('settings.offline.attemptOk', {
+                          size: megabytes(attempt.stored ?? attempt.received ?? 0),
+                        })
+                      : t('settings.offline.attemptFailed')
+                  }
+                />
+              )}
             </dl>
             <p className="muted mt-3">{t('settings.offline.explain')}</p>
 
@@ -135,6 +178,38 @@ export function SettingsScreen() {
               <div className="mt-3">
                 <Callout tone="warn" title={t('settings.offline.staleTitle')}>
                   {t('settings.offline.staleHint', { archive: wantedArchive })}
+                </Callout>
+              </div>
+            )}
+
+            {/* ★★ THE FAILURE, NAMED, WITH ITS NUMBERS. Each error code says a
+                different thing because each one has a different remedy: no
+                room is not a broken connection is not a truncated stream. */}
+            {attempt && !attempt.ok && (
+              <div className="mt-3" data-testid="map-error">
+                <Callout tone="danger" title={t('settings.offline.failTitle')}>
+                  {t(`settings.offline.fail.${attempt.error ?? 'unknown'}`, {
+                    defaultValue: t('settings.offline.fail.unknown', {
+                      detail: attempt.detail ?? attempt.error ?? '—',
+                    }),
+                    status: attempt.status ?? 0,
+                    detail: attempt.detail ?? '—',
+                    archive: attempt.archive,
+                    received: megabytes(attempt.received ?? 0),
+                    expected: megabytes(attempt.expected ?? 0),
+                    free: megabytes(
+                      Math.max(0, (attempt.quota ?? 0) - (attempt.usage ?? 0)),
+                    ),
+                    needed: megabytes(attempt.expected ?? 0),
+                  })}
+                </Callout>
+              </div>
+            )}
+
+            {attempt?.ok && (attempt.assetsMissed ?? 0) > 0 && (
+              <div className="mt-3">
+                <Callout tone="warn" title={t('settings.offline.assetsTitle')}>
+                  {t('settings.offline.assetsHint', { count: attempt.assetsMissed })}
                 </Callout>
               </div>
             )}
@@ -157,9 +232,15 @@ export function SettingsScreen() {
               >
                 <Icon name="download" size={16} />
                 {busy
-                  ? t('settings.offline.downloading', {
-                      percent: Math.round((progress ?? 0) * 100),
-                    })
+                  ? expected
+                    ? t('settings.offline.downloadingSized', {
+                        percent: Math.round((progress ?? 0) * 100),
+                        received: megabytes(received ?? 0),
+                        expected: megabytes(expected),
+                      })
+                    : t('settings.offline.downloading', {
+                        percent: Math.round((progress ?? 0) * 100),
+                      })
                   : downloadBytes === null
                     ? t('settings.offline.download')
                     : t('settings.offline.downloadSized', {

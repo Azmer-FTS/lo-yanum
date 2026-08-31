@@ -184,50 +184,25 @@
   }
 
   /**
-   * ⚖️ PO POINT 1, OPTION B — THE SCRIM, AND IT IS THE PRICE OF THE OPTION
-   * RATHER THAN A DECORATION.
+   * ⚖️ PO POINT 1 — OPTION B's SCRIM WAS HERE, AND IT IS DELETED (2026-09-01).
    *
-   * `apple-mobile-web-app-status-bar-style: black-translucent` is what makes
-   * the content reach the top of the display on iOS and what makes
-   * `env(safe-area-inset-top)` non-zero at all — and it also forces the clock,
-   * the battery and the signal bars to WHITE, permanently, in both themes.
-   * The gradient above is the page's own background: in the light theme that
-   * is `#F3F4F6`, so option B without this rule is white glyphs on near-white,
-   * which is worse than the band it was meant to fix.
+   * `apple-mobile-web-app-status-bar-style: black-translucent` shipped for one
+   * build. On a real installed iPad the product owner saw what the option
+   * always cost: a permanent DARK band across the top of the LIGHT theme, and
+   * nothing visible at all in the dark theme — a dark scrim over a dark
+   * surface. He refused the trade.
    *
-   * ★ SO THE SCRIM IS DARK IN BOTH THEMES, AND THAT IS THE HONEST COST TO
-   *   ARBITRATE ON: a permanent dark strip across the top of the light theme,
-   *   in exchange for content that runs edge to edge. It is not a compromise
-   *   that can be tuned away — iOS decides the glyph colour and gives CSS no
-   *   say in it.
+   * ★ SO THE RULE IS REMOVED RATHER THAN LEFT BEHIND AN ATTRIBUTE NOTHING
+   *   SETS. `index.html` now carries `content="default"`, which means iOS lays
+   *   the app BELOW the status bar, `--status-inset` is 0, and the gradient
+   *   above collapses to nothing on its own. The captures of both options are
+   *   kept in `docs/screenshots/statusbar/` as the record of the decision.
    *
-   * It uses the DARK palette's own `--surface-base` written out, not a token,
-   * because it must not follow the theme: a token would swap back to near-white
-   * in the light theme, which is exactly the failure this rule exists for.
+   * `standalone.ts` still reads the meta and would still stamp
+   * `data-statusbar='translucent'` if anybody set it back — that mechanism is
+   * cheap and is what kept the CSS and the tag from drifting apart. What is
+   * gone is the tone, because the decision is made.
    */
-  html[data-standalone][data-statusbar='translucent'] body::before {
-    /**
-     * ★★ AND IT HAS TO SIT ABOVE THE SHELL'S HEADERS, WHICH THE DEFAULT DOES
-     *    NOT — a difference the arbitration captures found rather than the
-     *    reasoning.
-     *
-     *    The base gradient is `z-20`, deliberately UNDER the sticky headers
-     *    (z-30): a header is already an opaque band that carries the inset as
-     *    padding, so it protects the glyphs by itself and a second tone over it
-     *    would be wrong. **Under option B that argument collapses**, because
-     *    iOS forces the glyphs WHITE and a light header is then white on
-     *    near-white. The first capture showed exactly that: a rail and a
-     *    content column painting over the scrim and the clock disappearing into
-     *    them. So in option B the scrim goes above everything the shell pins.
-     */
-    z-index: 50;
-    background: linear-gradient(
-      to bottom,
-      rgb(11 17 25 / 0.86) 0%,
-      rgb(11 17 25 / 0.62) 55%,
-      rgb(11 17 25 / 0) 100%
-    );
-  }
 
   /**
    * P3.4 — "START UNDER THE SYSTEM ZONE", AND WHY IT IS NOT A CLASS HERE.

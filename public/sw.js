@@ -204,6 +204,28 @@ function isApi(url) {
   return url.hostname.endsWith('.supabase.co') || url.hostname.endsWith('.supabase.in')
 }
 
+/**
+ * How much room there is, asked of the browser rather than assumed.
+ *
+ * ★ IT IS THE ONE FACT THAT DECIDES WHETHER A 94 MB ARCHIVE CAN LAND, and it
+ *   was never asked before (PO return, 2026-09-01). Safari's quota is a
+ *   fraction of free disk rather than a fixed number, so it differs between
+ *   two iPads of the same model — which is precisely why guessing is wrong and
+ *   why the settings screen now prints the answer.
+ *
+ * `estimate()` exists in a service worker as well as in a page. It returns
+ * zeros where it is unimplemented, and every caller treats `quota === 0` as
+ * "unknown, do not refuse on this basis".
+ */
+async function storageEstimate() {
+  try {
+    const estimate = await self.navigator?.storage?.estimate?.()
+    return { usage: Number(estimate?.usage || 0), quota: Number(estimate?.quota || 0) }
+  } catch {
+    return { usage: 0, quota: 0 }
+  }
+}
+
 async function cacheFirst(request, cacheName) {
   const cache = await caches.open(cacheName)
   const hit = await cache.match(request)
@@ -281,8 +303,16 @@ self.addEventListener('message', (event) => {
       (async () => {
         const cache = await caches.open(MAP_CACHE)
         const keys = await cache.keys()
+        const room = await storageEstimate()
         if (keys.length === 0) {
-          reply({ held: false, bytes: 0, heldUrl: null, stale: false })
+          reply({
+            held: false,
+            bytes: 0,
+            heldUrl: null,
+            stale: false,
+            usage: room.usage,
+            quota: room.quota,
+          })
           return
         }
 
@@ -320,94 +350,200 @@ self.addEventListener('message', (event) => {
           bytes: blob ? blob.size : 0,
           heldUrl: entry.url,
           stale: Boolean(wanted) && !match,
+          usage: room.usage,
+          quota: room.quota,
         })
       })(),
     )
   }
 
   /**
-   * Download the whole archive, once, with progress.
+   * PO RETURN, 2026-09-01 — DOWNLOAD THE ARCHIVE, AND **NEVER FAIL SILENTLY**.
    *
-   * ★ IT REPORTS PROGRESS BY READING THE BODY ITSELF rather than by trusting
-   *   `content-length` and a timer. 42 MB on a cellular connection at the edge
-   *   of coverage is minutes, and a progress bar that is a guess is worse than
-   *   none — the coordinator has to be able to tell "still going" from "stuck"
-   *   before he starts driving.
+   * The previous version had three faults and the product owner met all three
+   * on a real iPad in one evening.
    *
-   * ★ AND IT CACHES A RECONSTRUCTED 200, not the streamed response: the body
-   *   has already been consumed to count it, so what is stored is the bytes
-   *   that were actually received. If the stream broke halfway, the length
-   *   check below refuses to store a truncated archive — a half-file would
-   *   pass `held: true` and then fail every range request in the field.
+   * ★ 1. IT BUFFERED THE WHOLE ARCHIVE IN MEMORY. Every chunk went into an
+   *      array and became one `Blob` at the end. That is fine at 42 MB and is
+   *      exactly the shape that dies at 94 MB inside a service worker on a
+   *      tablet — and it dies at 80 % of the progress bar, after the minutes
+   *      the coordinator already spent. **It now STREAMS through a
+   *      `TransformStream` straight into `cache.put`**, counting bytes as they
+   *      pass. Nothing bigger than one chunk is ever held.
+   *
+   * ★ 2. IT ASKED FOR ROOM IT HAD NOT CHECKED, AND IT ASKED FOR IT TWICE. The
+   *      old archive was deleted only AFTER a successful download, so the peak
+   *      requirement was old + new — 137 MB to end up holding 94. On a device
+   *      whose quota is a fraction of free space that is the difference
+   *      between fitting and not. It now calls `navigator.storage.estimate()`
+   *      BEFORE the download, drops the superseded archive first when the two
+   *      would not fit together, and **refuses with a stated reason** rather
+   *      than starting a download that cannot land.
+   *
+   * ★ 3. EVERY FAILURE LOOKED LIKE A SHRUG. `reply({ok:false, error:'network'})`
+   *      for all of them, and the screen showed nothing at all. **Each failure
+   *      now names itself** — `http` with its status, `quota` with the usage
+   *      and the ceiling, `truncated` with received vs expected, `store` with
+   *      the exception's own name — and the settings screen prints it.
+   *
+   * ★ AND WHAT IS STORED IS VERIFIED BY READING IT BACK. A stream that ends
+   *   early can still resolve `cache.put`; the check is the stored object's
+   *   own length against `content-length`, and a mismatch DELETES the entry.
+   *   A half archive that reports `held: true` fails every range request in
+   *   the field, which is the worst of the three outcomes.
    */
   if (data.type === 'DOWNLOAD_MAP' && typeof data.url === 'string') {
     event.waitUntil(
       (async () => {
-        try {
-          const response = await fetch(data.url, { cache: 'reload' })
-          if (!response.ok || !response.body) {
-            reply({ ok: false, error: 'fetch' })
-            return
+        const wanted = new URL(data.url, self.location.href).href
+        const cache = await caches.open(MAP_CACHE)
+        const dropWanted = async () => {
+          for (const key of await cache.keys()) {
+            if (key.url === wanted) await cache.delete(key)
           }
-          const expected = Number(response.headers.get('content-length') || '0')
-          const reader = response.body.getReader()
-          const chunks = []
-          let received = 0
-          for (;;) {
-            const { done, value } = await reader.read()
-            if (done) break
-            chunks.push(value)
-            received += value.byteLength
-            reply({ progress: received, total: expected })
-          }
-          if (expected > 0 && received !== expected) {
-            reply({ ok: false, error: 'truncated', progress: received, total: expected })
-            return
-          }
-          /**
-           * ★ AND THE STYLE'S OWN ASSETS GO WITH IT, because "the map is
-           *   downloaded" has to mean the map DRAWS. The archive is the
-           *   geometry; the sprite sheet and the glyph ranges are how it
-           *   becomes a picture, and a coordinator who tapped a button that
-           *   said 40.6 MB does not then want to discover that the labels
-           *   needed a network too.
-           *
-           *   The page sends the list rather than the worker guessing it: the
-           *   style is built in `basemap.ts` and only it knows which sprite
-           *   and which fontstacks this build asks for. Failures here are
-           *   swallowed on purpose — a missing glyph range is a label in a
-           *   fallback face, not a reason to fail a 40 MB download.
-           */
-          if (Array.isArray(data.assets)) {
-            const shell = await caches.open(SHELL_CACHE)
-            await Promise.all(
-              data.assets.map((href) =>
-                fetch(href)
-                  .then((r) => (r.ok ? shell.put(href, r) : undefined))
-                  .catch(() => undefined),
-              ),
-            )
-          }
-
-          const cache = await caches.open(MAP_CACHE)
-          // One archive at a time: a re-cut map is a NEW url, and keeping the
-          // old one would silently double the device's map storage.
-          for (const key of await cache.keys()) await cache.delete(key)
-          await cache.put(
-            data.url,
-            new Response(new Blob(chunks), {
-              status: 200,
-              headers: {
-                'content-type': 'application/octet-stream',
-                'content-length': String(received),
-                'accept-ranges': 'bytes',
-              },
-            }),
-          )
-          reply({ ok: true, bytes: received })
-        } catch {
-          reply({ ok: false, error: 'network' })
         }
+        const fail = async (error, extra) => {
+          const room = await storageEstimate()
+          reply({ ok: false, error, usage: room.usage, quota: room.quota, ...extra })
+        }
+
+        let response
+        try {
+          response = await fetch(data.url, { cache: 'reload' })
+        } catch (error) {
+          await fail('network', { detail: String((error && error.message) || error) })
+          return
+        }
+
+        if (!response.ok || !response.body) {
+          await fail('http', { status: response.status })
+          return
+        }
+
+        const expected = Number(response.headers.get('content-length') || '0')
+
+        // ---- room, asked before the minutes are spent rather than after ----
+        let droppedOld = false
+        const before = await storageEstimate()
+        if (expected > 0 && before.quota > 0) {
+          // ×1.1: the archive is not the only thing that will be written while
+          // it downloads, and a check that leaves no margin is a check that
+          // passes and then throws.
+          if (before.quota - before.usage < expected * 1.1) {
+            for (const key of await cache.keys()) {
+              if (key.url !== wanted) {
+                await cache.delete(key)
+                droppedOld = true
+              }
+            }
+          }
+          const after = await storageEstimate()
+          if (after.quota - after.usage < expected) {
+            await fail('quota', { expected, droppedOld })
+            return
+          }
+        }
+
+        // ---- the stream, counted on its way past rather than collected ----
+        let received = 0
+        const counted = response.body.pipeThrough(
+          new TransformStream({
+            transform(chunk, controller) {
+              received += chunk.byteLength
+              reply({ progress: received, total: expected })
+              controller.enqueue(chunk)
+            },
+          }),
+        )
+
+        const headers = {
+          'content-type': 'application/octet-stream',
+          'accept-ranges': 'bytes',
+        }
+        if (expected > 0) headers['content-length'] = String(expected)
+
+        try {
+          await cache.put(wanted, new Response(counted, { status: 200, headers }))
+        } catch (error) {
+          const name = (error && error.name) || 'unknown'
+          await dropWanted()
+          await fail(name === 'QuotaExceededError' ? 'quota' : 'store', {
+            detail: String((error && error.message) || name),
+            received,
+            expected,
+            droppedOld,
+          })
+          return
+        }
+
+        // ---- read it back: what is on the device, not what was sent --------
+        const stored = await cache.match(wanted)
+        const storedBytes = stored ? (await stored.blob()).size : 0
+        if (expected > 0 && (received !== expected || storedBytes !== expected)) {
+          await dropWanted()
+          await fail('truncated', {
+            received,
+            expected,
+            stored: storedBytes,
+            droppedOld,
+          })
+          return
+        }
+
+        // ---- only now is the superseded archive certainly unnecessary ------
+        for (const key of await cache.keys()) {
+          if (key.url !== wanted) {
+            await cache.delete(key)
+            droppedOld = true
+          }
+        }
+
+        /**
+         * ★ AND THE STYLE'S OWN ASSETS GO WITH IT, because "the map is
+         *   downloaded" has to mean the map DRAWS. The archive is the
+         *   geometry; the sprite sheet and the glyph ranges are how it becomes
+         *   a picture, and a coordinator who tapped a button that said 94 MB
+         *   does not then want to discover that the labels needed a network.
+         *
+         *   The page sends the list rather than the worker guessing it: the
+         *   style is built in `basemap.ts` and only it knows which sprite and
+         *   which fontstacks this build asks for. Failures here are swallowed
+         *   on purpose — a missing glyph range is a label in a fallback face,
+         *   not a reason to fail an archive that landed. They are COUNTED
+         *   though, and the count is reported, because "the map is held but
+         *   three glyph ranges are not" is a real state and used to be silent.
+         */
+        let assetsHeld = 0
+        let assetsMissed = 0
+        if (Array.isArray(data.assets)) {
+          const shell = await caches.open(SHELL_CACHE)
+          await Promise.all(
+            data.assets.map((href) =>
+              fetch(href)
+                .then(async (r) => {
+                  if (!r.ok) throw new Error(String(r.status))
+                  await shell.put(href, r)
+                  assetsHeld += 1
+                })
+                .catch(() => {
+                  assetsMissed += 1
+                }),
+            ),
+          )
+        }
+
+        const room = await storageEstimate()
+        reply({
+          ok: true,
+          bytes: storedBytes,
+          expected,
+          heldUrl: wanted,
+          droppedOld,
+          assetsHeld,
+          assetsMissed,
+          usage: room.usage,
+          quota: room.quota,
+        })
       })(),
     )
   }
@@ -416,7 +552,8 @@ self.addEventListener('message', (event) => {
     event.waitUntil(
       (async () => {
         await caches.delete(MAP_CACHE)
-        reply({ held: false, bytes: 0 })
+        const room = await storageEstimate()
+        reply({ held: false, bytes: 0, heldUrl: null, stale: false, usage: room.usage, quota: room.quota })
       })(),
     )
   }

@@ -22,7 +22,11 @@
            asks for a gradient "adapted to both themes", which is the same
            requirement read from the other end. If he wants edge-to-edge badly
            enough to accept a permanently dark scrim at the top of the light
-           theme, this is the one line that changes. -->
+           theme, this is the one line that changes.
+
+           ⚠️ IT WAS TRIED — one build on 2026-09-01 — AND REFUSED ON A REAL
+             iPAD. The paragraph above turned out to be exactly right about the
+             cost. See the closed arbitration below the theme-color tags. -->
     <!-- PO POINT 1 (2026-08-31) — THE STATUS BAR IS THE SAME IN BOTH THEMES ON
          A REAL INSTALLED iPAD, and one unscoped meta tag is why.
 
@@ -49,36 +53,35 @@
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0B1119" />
     <meta name="theme-color" content="#0B1119" />
 
-    <!-- ⚖️ PO POINT 1 — THE ARBITRATION, SETTLED 2026-09-01: OPTION B SHIPS.
+    <!-- ⚖️ PO POINT 1 — THE ARBITRATION IS CLOSED, 2026-09-01 (second look):
+         OPTION A. `default`, AND THE TAG IS EXPLICIT RATHER THAN ABSENT.
 
-         The tag below WAS commented out — not because option B is worse, but
-         because it was the product owner's call and he asked to see both. He
-         has seen both, and on 2026-09-01 he asked for the meta to be PRESENT
-         on the artefact. The cost stated in option B below is therefore
-         accepted, deliberately, and is not a defect to report later.
+         Option B (`black-translucent`) was tried in production for one build
+         and the product owner rejected it ON A REAL INSTALLED iPAD, with the
+         reason that settles it:
 
-         OPTION A (what ships today, tag absent): iOS lays the web app BELOW
-         the status bar. The bar is opaque, the system draws the clock in
-         whatever contrasts with `theme-color`, and — the part he reported —
-         `env(safe-area-inset-top)` IS THEREFORE ZERO. There is no unsafe area,
-         because iOS already inset the whole view. Every rule in this app that
-         scales by `--status-inset` collapses to nothing, including the
-         gradient, which is why there was no gradient to see. Nothing is
-         broken; the app simply never reaches the top of the display.
+           · in the LIGHT theme the scrim is a DARK band across the top of a
+             light app — he called it ugly, and he is right; it is the cost the
+             option was always going to charge, seen at full size rather than
+             in a capture;
+           · in the DARK theme there is no visible gradient at all — a dark
+             scrim over a dark surface is invisible, which is correct
+             behaviour and looks like a bug.
 
-         OPTION B (`black-translucent`): the web app fills the screen, the
-         insets become real, the content runs under the bar and the gradient
-         appears and follows the theme. The price is fixed and not negotiable
-         by CSS: iOS forces the clock, the battery and the signal bars to
-         WHITE, permanently, in both themes. Against the light theme's
-         `#F3F4F6` that is white on near-white, so option B also switches the
-         gradient to a DARK scrim in both themes (`index.css`,
-         `html[data-statusbar='translucent']`) — a permanent dark strip at the
-         top of the light theme, which is the cost stated plainly.
+         ★ SO THE TRADE IS REFUSED AND THE DOSSIER IS CLOSED. `default` puts
+           the web app BELOW the status bar: the bar is opaque, iOS paints it
+           with `theme-color` and picks contrasting glyphs itself,
+           `env(safe-area-inset-top)` is 0, and every rule that scales by
+           `--status-inset` collapses to nothing — including the gradient,
+           which is what "remove the gradient" means in practice. Option B's
+           dark scrim rule is DELETED from `index.css` rather than left behind
+           a flag; a rule nothing can reach is a rule that rots.
 
-         Captures of both, iPad Pro 13" portrait and landscape, light and
-         dark: `docs/screenshots/statusbar/`. -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+         ⚠️ IT IS WRITTEN OUT AS `default` INSTEAD OF BEING DELETED. Absent and
+           `default` behave identically on iOS, and a tag that states the
+           decision is what stops this being re-litigated by the next person
+           who reads the file and finds nothing there. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

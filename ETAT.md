@@ -56,7 +56,7 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run rtl` | **A67** — the generated .xlsx downloaded through the real UI, then opened: both sheets `rightToLeft`, every cell styled, every style right-aligned with `readingOrder="2"`, the header frozen, the instructions sheet complete. 45 checks — needs a dev server |
 | `bun run mapfirst` | **A64** — the exhaustive "map on the LEFT" audit: every route in the app at iPad landscape, each screen printed with whether it carries a map and, if it does, proof the map is the left column. Exemptions print their reason. Needs a dev server |
 | `bun run splitter` | **A65** — the map/content seam driven by MOUSE and by SYNTHETIC TOUCH at iPad landscape: 44 px grip and hit area, live canvas resize, ratio persisted per screen, bounds, double-tap reset. 72 checks — needs a dev server |
-| `bun run layout` | **A24 + A30 + G11 + PO returns 5 and 7** — overflow, pinned overlap and uncontained-list sweep over all 24 screens, now **at three positions of the map/content seam** (the screen's own default, 25 %, 75 %) reached by focusing the real `role="separator"` and pressing `End`/`Home` — one page load, three ratios. Horizontal scroll is measured TWICE: `scrollWidth`, and the document's real scroll range, because this app is RTL and its overflow goes LEFT into negative `scrollLeft`. `VIEWPORT=phone` (default, 390) / `iphone` (402×874) / `ipad` (1032×1376) / `ipad-ls` (1376×1032) / `all`. **`STANDALONE=1` runs the whole sweep as the INSTALLED APP** — stamps `data-standalone` and the real devices' safe-area insets, asserts the status-bar gradient's height and that no control inside a viewport-pinned bar rests in the system zone, and captures `docs/screenshots/standalone/`. ★ **`STANDALONE=1` is the configuration that actually SHIPS since 2026-09-01** (§23.3 — option B): installed, the device's real top inset, the scrim over the shell. **`STANDALONE=ios` is option A's geometry, kept** because top inset **0** is the case every `--status-inset` rule has to survive. ★ **`ENGINE=webkit` runs the whole thing in Safari's engine** (PO point 2), which is every browser on his iPad. `STATUSBAR=translucent` stamps option B's scrim for the arbitration captures. **32 routes** — the form screens joined, including the ones that are not URLs (both modals, wizard steps 2–4). Needs a dev server |
+| `bun run layout` | **A24 + A30 + G11 + PO returns 5 and 7** — overflow, pinned overlap and uncontained-list sweep over all 24 screens, now **at three positions of the map/content seam** (the screen's own default, 25 %, 75 %) reached by focusing the real `role="separator"` and pressing `End`/`Home` — one page load, three ratios. Horizontal scroll is measured TWICE: `scrollWidth`, and the document's real scroll range, because this app is RTL and its overflow goes LEFT into negative `scrollLeft`. `VIEWPORT=phone` (default, 390) / `iphone` (402×874) / `ipad` (1032×1376) / `ipad-ls` (1376×1032) / `all`. **`STANDALONE=1` runs the whole sweep as the INSTALLED APP** — stamps `data-standalone` and the real devices' safe-area insets, asserts the status-bar gradient's height and that no control inside a viewport-pinned bar rests in the system zone, and captures `docs/screenshots/standalone/`. ★ **`STANDALONE=ios` is the configuration that actually SHIPS** (option A, and it went the other way for exactly one day — §24.5): installed, top inset **0**, home indicator real. `STANDALONE=1` is option B's geometry, kept as the case where an inset really exists. ★ **`ENGINE=webkit` runs the whole thing in Safari's engine** (PO point 2), which is every browser on his iPad. `STATUSBAR=translucent` stamps option B's scrim for the arbitration captures. **32 routes** — the form screens joined, including the ones that are not URLs (both modals, wizard steps 2–4). Needs a dev server |
 | `bun run wizard` | **A27** — the guard wizard played from a farm with NO anchor point, 28 checks — needs a dev server |
 | `bun run touch` | **A63 + PO point 9** — every map gesture driven by SYNTHETIC TOUCH at iPad portrait 1032×1376, **and then the same vocabulary again with an APPLE PENCIL** (`Input.dispatchMouseEvent` with `pointerType: 'pen'`): drawing a zone end to end, closing it by BUTTON rather than by double-tap, editing a vertex, inserting a corner, placing and dragging a pin — **and signing**, where the check counts INKED PIXELS rather than trusting a handler to have fired. **52 checks** — needs a dev server |
 | `bun run import` | **A44** — download each template, fill it, upload it back, find the records; 28 checks — needs a dev server |
@@ -4200,13 +4200,17 @@ there — so the upload is now the ONLY thing left, and the next deploy after it
 ships the national map by itself. Until then the job log carries a warning
 saying which archive it fell back to.
 
-### 22.2 ✅ POINT 1's ARBITRATION — SETTLED 2026-09-01: OPTION B SHIPS (§23.3)
+### 22.2 ✅ POINT 1's ARBITRATION — CLOSED 2026-09-01: **OPTION A** (§24.5)
 
-⚠️ **THE PARAGRAPH BELOW IS THE HISTORICAL STATE AND IS KEPT FOR ITS
-REASONING.** The product owner asked on 2026-09-01 for the meta to be PRESENT
-on the artefact; the tag is uncommented, option B ships, and the permanent dark
-scrim at the top of the light theme is an accepted cost rather than a defect to
-report. See §23.3.
+**Option B shipped for exactly one build and was refused on a real installed
+iPad**: a dark band across the top of the light theme, and nothing visible at
+all in the dark one. `index.html` carries `content="default"`, option B's scrim
+rule is deleted from `index.css`, and the dossier is closed. §24.5 has the
+reasoning and §24.6 has the one question left open (a dynamic `theme-color`),
+with the 3 kB page that settles it in twenty seconds.
+
+⚠️ **THE TWO PARAGRAPHS BELOW ARE HISTORICAL AND ARE KEPT FOR THEIR
+REASONING.**
 
 Option A ships. Option B is built, behind
 `apple-mobile-web-app-status-bar-style: black-translucent` in `index.html`, and
@@ -4311,6 +4315,10 @@ it to his team.
   which is why the workflow check in §23.5 pins the exact length.**
 
 ### 23.3 · SYMPTOM 2 — THE TOP BAR. OPTION A WAS STILL SHIPPING, AND NOW IT IS NOT
+
+> ⚠️ **SUPERSEDED THE SAME DAY BY §24.5.** Option B shipped for one build, the
+> product owner saw it on a real iPad and refused it. `default` ships. The
+> section is kept because the cost it states is exactly the cost he then met.
 
 Also not a deployment failure. `apple-mobile-web-app-status-bar-style` was
 never uncommented, because §15.4 made it HIS call and he had asked to see both
@@ -4435,10 +4443,235 @@ check is an equality against the measured byte count for that reason.
 
 ---
 
+---
+
+## 24. ⛔ THE SECOND REPORT OF 2026-09-01 — THE BANDEAU IS CLOSED, AND THE ARCHIVE WAS NEVER UPLOADED
+
+Two returns in one evening. The status bar is now a decision rather than a
+question, and the map has a root cause that is **proved from the database**
+rather than inferred from an HTTP probe.
+
+### 24.1 ★★ THE MAP — THE BUCKET HOLDS EXACTLY ONE OBJECT, AND IT IS THE OLD ONE
+
+Asked of Postgres, not of the CDN:
+
+```sql
+select bucket_id, name, (metadata->>'size')::bigint, created_at
+  from storage.objects;
+```
+```
+basemap | negev-20260829-z14.pmtiles | 42560293 | 2026-08-31 12:26:06+00
+```
+
+**ONE ROW.** No `israel-…` under any name, no half-finished upload, no second
+folder, nothing created since 12:26 on 2026-08-31. `HEAD` on the national key
+answers **400** with an 88-byte JSON body; a range request answers 400 as well.
+
+★ **SO §14.4 IS STILL THE WHOLE OF IT: THE UPLOAD HAS NOT HAPPENED.** And the
+  probe built in §23.5 called it correctly on its very first run — the deploy
+  job log of 2026-08-31 22:16 UTC reads `length: 88 (expected 94268129)`,
+  `range: HTTP 400`, and it fell back to the southern extract **with a
+  warning**. The instrument was right; there was simply nothing new to point
+  at.
+
+⚠️ **THE "~75 Mo" SEEN DURING THE DOWNLOAD IS NOT A BYTE COUNT THIS APP HAS
+  EVER SHOWN.** The label was `מוריד… {{percent}}%` — a PERCENTAGE, with no MB
+  figure anywhere in the string. 75 % of the southern archive is 32 MB, and the
+  archive it was downloading was the only one that exists. **That ambiguity is
+  a real defect and it is fixed in §24.3**: the label now carries `X / Y MB`
+  beside the percent, so a number on that screen can never again be read as
+  something it is not.
+
+⚠️ **AND 175 MB IS CORRECTED FOR THE SECOND TIME.** The national cut is
+  **94 268 129 bytes** (§14.1). Nothing in this project has ever measured 175.
+
+### 24.2 · The bucket's headers, CORS and the CDN — measured, and none of them is a cause
+
+| | `negev-20260829-z14.pmtiles` |
+|---|---|
+| status | `200` |
+| `content-length` | `42 560 293` |
+| `accept-ranges` | `bytes` |
+| a range request | **`206`**, `content-range: bytes 0-15/42560293` |
+| `access-control-allow-origin` | `*` |
+| `cache-control` | `no-cache` |
+
+★ **AND THERE IS NO CDN CACHE TO PURGE OR VARY, BY CONSTRUCTION.** The free
+  tier serves `cache-control: no-cache` whatever is stored on the object, and
+  the key carries the OSM build date, so a replacement map is a NEW URL. **A
+  CDN cannot serve a stale answer for a name it has never been asked for** —
+  which is exactly why the naming rule in §14.4 is worth keeping.
+
+### 24.3 ★★ NO MORE SILENT FAILURES — WHAT הגדרות NOW SAYS
+
+His wording was *plus jamais d'échec muet*. The screen now states, in this
+order:
+
+| row | what it answers |
+|---|---|
+| `מפת ישראל במכשיר` | held / **שמורה גרסה ישנה** / not held — and "held" means THIS archive |
+| `קובץ המפה` | **the archive this build asks for, by name** — the requested key |
+| `השמור במכשיר` | the archive actually on the device, when it differs |
+| `גודל` | its size, in the same decimal MB as the bucket's `content-length` |
+| `אחסון פנוי במכשיר` | `usage / quota` from `navigator.storage.estimate()` |
+| `שמירה קבועה` | whether the browser promised not to evict it |
+| `הניסיון האחרון` | **succeeded (with the bytes stored) or failed** |
+
+and, when the last attempt failed, a DANGER callout that names the failure:
+
+· `quota` — not enough room, with what was needed and what is free;
+· `http` — the server's status and the archive it was for;
+· `network` — the connection dropped, and the previous map was not deleted;
+· `truncated` — received vs expected, and the partial file was deleted;
+· `store` — the exception's own name.
+
+★ **THE VERDICT IS WRITTEN TO `localStorage` AND READ BACK ON MOUNT.** A result
+  that lives only while the screen is open is still nearly mute: the
+  coordinator taps, walks away, comes back and finds the same old size with
+  nothing to explain it. `lo-yanum:map-attempt` is one small record and it is
+  the difference between "it did not work" and "it refused, for this reason, at
+  this time".
+
+★ **AND A FAILED `HEAD` NO LONGER BECOMES A SIZE.** Supabase answers a missing
+  object with `400` and an 88-byte body; the button read `content-length` off
+  it without checking `r.ok`, so a missing archive could have offered itself as
+  a 0.1 MB download. It now requires `ok` **and** a length over a megabyte,
+  because a PMTiles archive is megabytes and anything smaller on that URL is an
+  error page wearing a `content-length`.
+
+### 24.4 ★ AND THE DOWNLOAD ITSELF WAS BUILT FOR 42 MB, NOT FOR 94
+
+Three faults, all of which only bite at the larger size — which is why they
+have never been seen and would all have been met on the first real attempt:
+
+1. ★ **IT BUFFERED THE WHOLE ARCHIVE IN MEMORY.** Every chunk went into an
+   array and became one `Blob` at the end. That is survivable at 42 MB and is
+   the shape that dies at 94 MB inside a service worker on a tablet — **at
+   about 80 % of the progress bar**, after the minutes the coordinator has
+   already spent. It now streams through a `TransformStream` straight into
+   `cache.put`, counting bytes as they pass; nothing larger than one chunk is
+   ever held.
+2. ★ **IT ASKED FOR ROOM IT HAD NOT CHECKED, AND FOR TWICE WHAT IT NEEDED.**
+   The old archive was deleted only AFTER a successful download, so the peak
+   requirement was old + new — **137 MB to end up holding 94**. Safari's quota
+   is a fraction of free disk rather than a fixed number, so that is the
+   difference between fitting and not on a device nobody here can inspect. It
+   now calls `estimate()` BEFORE starting, drops the superseded archive first
+   when the two would not fit together, and **refuses with a stated reason**
+   rather than beginning a download that cannot land.
+3. ★ **AND WHAT IS STORED IS VERIFIED BY READING IT BACK.** A stream that ends
+   early can still resolve `cache.put`. The check is the stored object's own
+   length against `content-length`, and a mismatch **deletes the entry** — a
+   half archive that reports `held: true` fails every range request in the
+   field, which is the worst of the three outcomes.
+
+★ **PERSISTENCE IS REQUESTED FROM THE PAGE BEFORE THE DOWNLOAD.**
+  `navigator.storage.persist()` is Window-only, so the worker cannot ask.
+  Safari grants it silently to an INSTALLED web app and refuses it in a tab,
+  which is exactly the distinction that matters here. A refusal blocks nothing;
+  it is reported, because an origin that may be evicted is an origin that can
+  lose 94 MB between the tap and the drive.
+
+★ **THE STYLE'S MISSING ASSETS ARE COUNTED NOW TOO.** "The map is held but
+  three glyph ranges are not" is a real state and used to be silent; it is a
+  warning callout, not a failure, because a label in a fallback face is not a
+  reason to fail an archive that landed.
+
+### 24.5 ⚖️ THE BANDEAU — OPTION B IS REFUSED, AND THE DOSSIER IS CLOSED
+
+One build of option B was enough. On a real installed iPad the product owner
+saw exactly what §15.4 said it would cost, and refused the trade:
+
+· in the LIGHT theme the scrim is a **dark band across the top of a light
+  app** — he called it ugly, and that is the cost seen at full size rather
+  than in a capture;
+· in the DARK theme **there is no visible gradient at all** — a dark scrim on
+  a dark surface is invisible, which is correct behaviour and reads as a bug.
+
+**`index.html` now carries `content="default"`, written out rather than
+deleted** — absent and `default` behave identically on iOS, and a tag that
+states the decision is what stops the next reader re-litigating it. **Option
+B's scrim rule is DELETED from `index.css`** rather than left behind an
+attribute nothing sets; a rule nothing can reach is a rule that rots. The
+captures of both options stay in `docs/screenshots/statusbar/` as the record.
+
+★ **AND "REMOVE THE GRADIENT" IS SATISFIED BY THE SAME LINE.** In `default`
+  mode iOS lays the app BELOW the bar, `env(safe-area-inset-top)` is 0,
+  `--status-inset` is 0, and the base gradient's height — `--status-inset ×
+  1.25` — collapses to nothing on its own. The base rule is KEPT because it is
+  correct where an inset really exists (an Android PWA reports one), and it
+  draws nothing on the device this is about.
+
+★ **`STANDALONE=ios` IS THE SHIPPING CONFIGURATION AGAIN**, and `layout.ts`'s
+  own comment says so. It went the other way for exactly one day.
+
+### 24.6 ⚠️ THE DYNAMIC `theme-color` QUESTION — WHAT IS KNOWN, WHAT COULD NOT BE TESTED, AND THE TEST ITSELF
+
+**What is already true and shipping:** the installed app's status bar follows
+the SYSTEM colour scheme, because `index.html` carries two media-scoped
+`theme-color` tags read at launch (§12bis.7) — light bar with black glyphs on a
+light iPad, dark bar with white glyphs on a dark one. **That is the behaviour
+he described wanting, for the case that actually occurs.**
+
+**What is not:** a coordinator who FORCES a theme against his system scheme
+gets the system's bar. Fixing that needs iOS to honour a `theme-color` change
+made at RUNTIME.
+
+⚠️ **THIS PROJECT'S OWN REAL-DEVICE EVIDENCE SAYS IT DOES NOT.** On 2026-08-31
+  he saw the boot literal `#0B1119` painted behind the clock **in the light
+  theme**, although `theme.tsx` had already rewritten the tag — which is what
+  "read at launch, live changes ignored" looks like.
+
+⚠️ **AND IT COULD NOT BE RE-VERIFIED ON iPADOS 26 IN THIS SESSION, WHICH IS
+  STATED RATHER THAN PAPERED OVER.** An iPad Pro 13" (M5) simulator on iOS 26.3
+  is on this machine and was booted; `xcrun simctl` can screenshot it but
+  cannot TAP, and driving "Add to Home Screen" needs the simulator panel, whose
+  device access a non-interactive session cannot be granted. Without a
+  home-screen launch there is no installed status bar to look at, so the
+  experiment was not run and no claim is made about it.
+
+★ **SO THE TEST SHIPS INSTEAD, AS ONE 3 kB PAGE HE CAN TAP:**
+  `public/themebar-test.html` → **https://azmer-fts.github.io/lo-yanum/themebar-test.html**.
+  Add to Home Screen, launch it FROM THE HOME SCREEN, tap **GO DARK**. If the
+  strip behind the clock follows, iPadOS honours a live change; if it does not,
+  the answer is no. It is linked from nowhere and is meant to be **deleted once
+  the question is settled**.
+
+⚠️ **AND IF THE ANSWER TURNS OUT TO BE "NO", THERE IS STILL ONE MECHANISM THAT
+  WOULD WORK, AND IT IS RECORDED HERE RATHER THAN BUILT TONIGHT.** The service
+  worker already serves every navigation; it could rewrite the served HTML's
+  `theme-color` to the coordinator's stored choice, so the NEXT launch starts
+  with the right bar. It is perhaps forty lines. It also puts a text transform
+  on the navigation path — the one path whose failure is a white screen — the
+  night before a demonstration, to fix a case that only arises when somebody
+  forces a theme against his own device. **His call, not a session's.**
+
+### 24.7 ⛔ WHAT THE PRODUCT OWNER STILL HAS TO DO, AND IT HAS NOT CHANGED
+
+Nothing in this session touched §14.4. The one act is the upload:
+
+> **Storage → `basemap` → Upload file → `basemap/israel-20260831-z14.pmtiles`**,
+> key exactly that name. The dashboard uploads resumably, so 94 MB is fine.
+
+Then any push — or *Actions → Deploy to GitHub Pages → Run workflow* — and the
+build points at it by itself (§23.5). Then, on the iPad, one tap on
+`רענון מפות לא מקוונות`. **And if anything then goes wrong, the screen will say
+what** (§24.3), which is the whole point of this session.
+
+---
+
 ## ⏭️ RESUME HERE — THE SECOND RETURN IS DELIVERED; §22 IS WHAT IS LEFT
 
-> ⛔ **READ §23 FIRST. IT IS THE MOST RECENT UNIT AND IT CORRECTS A CONCLUSION A
-> FRESH SESSION WOULD OTHERWISE REACH.** The product owner reported on
+> ⛔ **READ §24 FIRST, THEN §23. §24 IS THE MOST RECENT UNIT.** Two things it
+> settles, and a fresh session would get both wrong from the tree alone:
+> **the status bar is OPTION A again** — `default`, option B tried for one
+> build and refused on a real iPad (§24.5) — and **the national archive has
+> still never been uploaded**, proved from `storage.objects`, which holds
+> exactly one row and it is the southern extract (§24.1). Everything else in
+> §24 is instrumentation so that the next failure says what it was.
+>
+> ⛔ **READ §23 SECOND. IT CORRECTS A CONCLUSION A FRESH SESSION WOULD
+> OTHERWISE REACH.** The product owner reported on
 > 2026-09-01 that "part of the session never reached production". It did — the
 > deploy is fine, and eleven commits with no workflow run beside them is simply
 > what ONE PUSH looks like in `gh run list`. Three symptoms, three unrelated
@@ -4494,7 +4727,7 @@ lot plan's. Eleven points, then the rest of P3:
 |---|---|---|
 | **P3.1 fin** | delete the test account, all three steps | ✅ **DONE — §13** |
 | **0** | offline basemap: **ALL ISRAEL**, not the southern bbox | 🟡 **cut, health-checked, gated — ⛔ THE UPLOAD NEEDS THE PO, §14.4.** The key change is automatic once it lands (§23.5); the upload is the only act left |
-| **1** | installed-iPad bug: the safe-area insets do not apply IN REAL | ✅ **§15** — cause found, foot band fixed (+ a second defect the new gate caught), instrument shipped; ⚖️ the arbitration is **SETTLED 2026-09-01 — OPTION B SHIPS, §23.3** |
+| **1** | installed-iPad bug: the safe-area insets do not apply IN REAL | ✅ **§15** — cause found, foot band fixed, instrument shipped; ⚖️ the arbitration is **CLOSED 2026-09-01 — OPTION A, §24.5** (option B shipped for one build and he refused it) |
 | **2** | reproduced bug: parasitic scroll on the farm form, both axes | ✅ **§16.1–16.3** — cause found (iOS zooms the page under 16 px), fixed, gated on 32 screens × 4 viewports × 2 engines |
 | **9** | **Apple Pencil** on every map interaction — he draws with a stylus | ✅ **§16.4** — audited, and `bun run touch` is 45 checks with a `pointerType=pen` pass |
 | **8** | **delete** a record — there is no way to correct a typo today | ✅ **§17** — one policy, one dialog, `bun run deletion` 61 checks; A73 grew to 94 |
