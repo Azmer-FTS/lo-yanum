@@ -56,7 +56,7 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run rtl` | **A67** — the generated .xlsx downloaded through the real UI, then opened: both sheets `rightToLeft`, every cell styled, every style right-aligned with `readingOrder="2"`, the header frozen, the instructions sheet complete. 45 checks — needs a dev server |
 | `bun run mapfirst` | **A64** — the exhaustive "map on the LEFT" audit: every route in the app at iPad landscape, each screen printed with whether it carries a map and, if it does, proof the map is the left column. Exemptions print their reason. Needs a dev server |
 | `bun run splitter` | **A65** — the map/content seam driven by MOUSE and by SYNTHETIC TOUCH at iPad landscape: 44 px grip and hit area, live canvas resize, ratio persisted per screen, bounds, double-tap reset. 72 checks — needs a dev server |
-| `bun run layout` | **A24 + A30 + G11 + PO returns 5 and 7** — overflow, pinned overlap and uncontained-list sweep over all 24 screens, now **at three positions of the map/content seam** (the screen's own default, 25 %, 75 %) reached by focusing the real `role="separator"` and pressing `End`/`Home` — one page load, three ratios. Horizontal scroll is measured TWICE: `scrollWidth`, and the document's real scroll range, because this app is RTL and its overflow goes LEFT into negative `scrollLeft`. `VIEWPORT=phone` (default, 390) / `iphone` (402×874) / `ipad` (1032×1376) / `ipad-ls` (1376×1032) / `all`. **`STANDALONE=1` runs the whole sweep as the INSTALLED APP** — stamps `data-standalone` and the real devices' safe-area insets, asserts the status-bar gradient's height and that no control inside a viewport-pinned bar rests in the system zone, and captures `docs/screenshots/standalone/`. ★ **`STANDALONE=ios` is the configuration that actually SHIPS** (PO point 1): installed, top inset **0**, home indicator real. ★ **`ENGINE=webkit` runs the whole thing in Safari's engine** (PO point 2), which is every browser on his iPad. `STATUSBAR=translucent` stamps option B's scrim for the arbitration captures. **32 routes** — the form screens joined, including the ones that are not URLs (both modals, wizard steps 2–4). Needs a dev server |
+| `bun run layout` | **A24 + A30 + G11 + PO returns 5 and 7** — overflow, pinned overlap and uncontained-list sweep over all 24 screens, now **at three positions of the map/content seam** (the screen's own default, 25 %, 75 %) reached by focusing the real `role="separator"` and pressing `End`/`Home` — one page load, three ratios. Horizontal scroll is measured TWICE: `scrollWidth`, and the document's real scroll range, because this app is RTL and its overflow goes LEFT into negative `scrollLeft`. `VIEWPORT=phone` (default, 390) / `iphone` (402×874) / `ipad` (1032×1376) / `ipad-ls` (1376×1032) / `all`. **`STANDALONE=1` runs the whole sweep as the INSTALLED APP** — stamps `data-standalone` and the real devices' safe-area insets, asserts the status-bar gradient's height and that no control inside a viewport-pinned bar rests in the system zone, and captures `docs/screenshots/standalone/`. ★ **`STANDALONE=1` is the configuration that actually SHIPS since 2026-09-01** (§23.3 — option B): installed, the device's real top inset, the scrim over the shell. **`STANDALONE=ios` is option A's geometry, kept** because top inset **0** is the case every `--status-inset` rule has to survive. ★ **`ENGINE=webkit` runs the whole thing in Safari's engine** (PO point 2), which is every browser on his iPad. `STATUSBAR=translucent` stamps option B's scrim for the arbitration captures. **32 routes** — the form screens joined, including the ones that are not URLs (both modals, wizard steps 2–4). Needs a dev server |
 | `bun run wizard` | **A27** — the guard wizard played from a farm with NO anchor point, 28 checks — needs a dev server |
 | `bun run touch` | **A63 + PO point 9** — every map gesture driven by SYNTHETIC TOUCH at iPad portrait 1032×1376, **and then the same vocabulary again with an APPLE PENCIL** (`Input.dispatchMouseEvent` with `pointerType: 'pen'`): drawing a zone end to end, closing it by BUTTON rather than by double-tap, editing a vertex, inserting a corner, placing and dragging a pin — **and signing**, where the check counts INKED PIXELS rather than trusting a handler to have fired. **52 checks** — needs a dev server |
 | `bun run import` | **A44** — download each template, fill it, upload it back, find the records; 28 checks — needs a dev server |
@@ -4193,7 +4193,20 @@ The archive is cut, health-checked on seven cities and gated (§14). Only the
 exists on this machine — which is what P3.1 was for. **§14.4 has the two ways
 out.** `bun run offline` carries the failing Haifa line until then, on purpose.
 
-### 22.2 ⚖️ POINT 1's ARBITRATION — one commented line, and it is his call
+✅ **UPDATE 2026-09-01 (§23.5): THE ONE-LINE KEY CHANGE IS NO LONGER A SECOND
+ACT ANYBODY HAS TO REMEMBER.** The deploy workflow HEADs the national key,
+requires its exact length and a `206`, and points the build at it when it is
+there — so the upload is now the ONLY thing left, and the next deploy after it
+ships the national map by itself. Until then the job log carries a warning
+saying which archive it fell back to.
+
+### 22.2 ✅ POINT 1's ARBITRATION — SETTLED 2026-09-01: OPTION B SHIPS (§23.3)
+
+⚠️ **THE PARAGRAPH BELOW IS THE HISTORICAL STATE AND IS KEPT FOR ITS
+REASONING.** The product owner asked on 2026-09-01 for the meta to be PRESENT
+on the artefact; the tag is uncommented, option B ships, and the permanent dark
+scrim at the top of the light theme is an accepted cost rather than a defect to
+report. See §23.3.
 
 Option A ships. Option B is built, behind
 `apple-mobile-web-app-status-bar-style: black-translucent` in `index.html`, and
@@ -4230,7 +4243,180 @@ to.
 
 ---
 
+---
+
+## 23. ⛔ THE PRODUCT OWNER'S DEPLOYMENT REPORT, 2026-09-01 — THREE SYMPTOMS, THREE CAUSES, AND THE DEPLOY WAS NOT ONE OF THEM
+
+He reinstalled cleanly on the iPad — PWA deleted, Safari reloaded twice, app
+re-added, maps re-downloaded — and got three things back: **הגדרות still
+reports 42.6 MB** of offline map, **the top bar is still opaque**, and **the
+farm form still slides under a thumb**. His reading was that part of the
+previous session never reached production.
+
+★ **IT REACHED PRODUCTION. Every commit is on `main`, the workflow ran and
+  succeeded on the head of that push, and two of the three fixes are IN the
+  deployed files — measured on the artefact, byte for byte.** Three symptoms,
+  three unrelated causes, and the pipeline is not any of them.
+
+### 23.1 · What the ARTEFACT says, not the tree (2026-09-01)
+
+| asked | measured on the deployed files |
+|---|---|
+| are the commits on `main`? | ✅ `78b92a9` is both `HEAD` and `origin/main`; the working tree was clean |
+| did a deploy run **after** them? | ✅ run **33418468454**, `success`, `headSha 78b92a9` — the deployed artefact IS that tree |
+| `viewport-fit=cover` served? | ✅ present in the served HTML |
+| `black-translucent` served? | ❌ **present four times INSIDE HTML COMMENTS, zero times as an active tag** |
+| point 2's 16 px fix served? | ✅ `@media (pointer: coarse){input…{font-size:1rem!important…}}` is in `assets/index-DcyTXYP_.css` |
+| is it a REAL build, not the demo fallback? | ✅ `sb_publishable_…` appears in `assets/index-WJj6Fq0O.js` |
+| which archive does the bundle ask for? | **`negev-20260829-z14.pmtiles`** — the SOUTHERN extract |
+| what does the bucket serve on that key? | `200`, `content-length: 42 560 293` |
+| what does it serve on the national key? | **`400`** — `israel-20260831-z14.pmtiles` IS NOT IN THE BUCKET |
+
+★ **AND THE REASON IT LOOKED LIKE A PIPELINE THAT HAD STOPPED FIRING IS WORTH
+  WRITING DOWN, because the next person will read the same list and reach the
+  same wrong conclusion.** `gh run list` shows no run for eleven of that
+  evening's commits. **They were pushed together.** GitHub creates ONE workflow
+  run per PUSH, on its head commit — not one per commit. Eleven commits with no
+  run beside them is what a single push looks like from the outside. The check
+  that settles it is `gh run view <id> --json headSha`, and it named the head
+  of that push.
+
+### 23.2 ★★ SYMPTOM 1 — THE 42.6 MB. §14.4 WAS STILL TRUE, AND NOTHING HAD FAILED
+
+**42.6 MB is `42 560 293` bytes in decimal MB, and that is byte for byte what
+the bucket serves for `negev-20260829-z14.pmtiles`.** The device was right, his
+re-download was right, the deploy was right. The national archive **was never
+uploaded** — §14.4, still true that morning — and the key in the app was
+**deliberately** left on the southern extract until it was, precisely so that
+flipping it early could not take the map off the app the night before he shows
+it to his team.
+
+★ **SO THE DEFECT IS NOT THE MAP. IT IS THAT NONE OF THIS WAS VISIBLE FROM THE
+  PRODUCT.** The plan was two acts by two people — his upload, then a one-line
+  key change in a session that might not happen the same day — and in between,
+  the app's own words already promised the national map: `settings.offline`'s
+  `state` reads **מפת ישראל במכשיר** and `explain` reads **מפת ישראל כולה**,
+  both written when §14 cut the archive. A coordinator was told "the whole map
+  of Israel" and shown a size that belonged to a quarter of it, with nothing on
+  the screen able to tell the two apart. **A size cannot distinguish "the map
+  you asked for" from "a map". A name can.** Fixed three ways in §23.5.
+
+⚠️ **ONE NUMBER TO CORRECT BEFORE ANYBODY GOES LOOKING FOR IT: THE NATIONAL
+  ARCHIVE IS 94 MB, NOT 175.** `basemap/israel-20260831-z14.pmtiles` is
+  **94 268 129 bytes** (§14.1, measured when it was cut) — 3.6× the area of the
+  southern extract for 2.2× the bytes, because the ground added is sea, the
+  Negev's empty south and the Arava, and a vector tile costs what is ON it. A
+  HEAD on the public object will read **~94.3 MB** when this lands. **Anything
+  near 175 MB on that key would mean a different file and should be refused,
+  which is why the workflow check in §23.5 pins the exact length.**
+
+### 23.3 · SYMPTOM 2 — THE TOP BAR. OPTION A WAS STILL SHIPPING, AND NOW IT IS NOT
+
+Also not a deployment failure. `apple-mobile-web-app-status-bar-style` was
+never uncommented, because §15.4 made it HIS call and he had asked to see both
+options captured. **He has now asked for the meta to be PRESENT on the
+artefact. Option B ships as of this session**, and §15.4's arbitration is
+closed.
+
+The cost is unchanged and is accepted rather than discovered: iOS forces the
+clock, the battery and the signal bars to **WHITE in both themes**, so
+`index.css`'s `html[data-standalone][data-statusbar='translucent']` rule lays a
+dark scrim under them — **a permanent dark strip at the top of the LIGHT
+theme**. Nothing else moved: `standalone.ts` reads the decision off the meta tag
+itself (§15), so the scrim follows the one line that changed.
+
+★ **AND THE THREE SYMPTOMS §15.2 PREDICTED SHOULD NOW GO WITH IT** — the
+  content reaches the top of the display, `env(safe-area-inset-top)` stops
+  being 0, and the gradient has something to draw.
+
+### 23.4 · SYMPTOM 3 — THE PARASITIC SCROLL. THE FIX IS ON HIS DEVICE, VERIFIED
+
+The 16 px rule of §16.1 **is in the deployed stylesheet** — quoted from
+`assets/index-DcyTXYP_.css` above — and navigations are network-first
+(`sw.js`), so his reinstall cannot have been served an older shell. The cause
+that was found is fixed, deployed and on his iPad.
+
+⚠️ **SO IF IT PERSISTS, IT IS A DIFFERENT CAUSE, AND THE FOUR FACTS THAT NAME
+  IT ARE THE ONES OPEN QUESTION 7bis ALREADY ASKS FOR** — which axis, whether
+  the keyboard was up, portrait or landscape, and whether the rail was
+  expanded. **The one that matters most is the keyboard**: the layout sweep
+  drives 32 screens at four viewports in two engines with no software keyboard
+  in existence, so a shell that is taller than the VISUAL viewport while iOS
+  holds a field above the keyboard is the one shape of this bug the instrument
+  cannot see. It is not fixed here and it is not claimed to be.
+
+### 23.5 · WHAT CHANGED TONIGHT — FOUR CHANGES, AND WHY EACH IS THE ONE IT IS
+
+**1. `index.html` — option B, one line.** §23.3.
+
+**2. `public/sw.js` — "held" now means THIS archive, not "some archive".**
+`MAP_STATS` used to answer about `keys[0]`, whatever happened to be cached. The
+page now NAMES the archive this build asks for and the worker answers about
+that one, adding `heldUrl` and `stale`. A page that asks without a url — an old
+tab against a new worker — still gets the old, looser answer.
+
+**3. `src/ui/offline.ts` + `SettingsScreen` — the screen names the map, and its
+megabytes are the same megabytes as everybody else's.**
+· A `קובץ המפה` row: the archive this build asks for, by name.
+· When a previous cut is held: the state reads **שמורה גרסה ישנה**, a second
+  row names what is on the device, and a callout says to tap רענון.
+· ★ **`megabytes()` is decimal MB (10⁶) instead of MiB (2²⁰).** The same
+  42 560 293 bytes read as **40.6 MB** on the device and **42.6 MB** everywhere
+  else — the bucket's `content-length`, the Supabase dashboard, this file, his
+  own message. A 5 % gap on the exact number a coordinator uses to decide
+  whether the map he holds is the map he was promised. The label says MB, so
+  the arithmetic is now the one the label means.
+
+**4. `.github/workflows/deploy.yml` — the BUILD asks the bucket which archive to
+point at.** This is the structural half, and it is what stops this recurring.
+The step HEADs `israel-20260831-z14.pmtiles`, requires `content-length ==
+94 268 129` **exactly** and a `206` on a range request — the one thing PMTiles
+cannot work without — and only then sets `VITE_BASEMAP_URL`. Otherwise it falls
+back to the compiled-in key and **says so as a workflow warning**, because a
+silent fallback is how this started. `basemap.ts` already treats an empty
+override as absent, so nothing in the source had to change.
+
+★ **THE CONSEQUENCE, STATED PLAINLY: the moment the archive is in the bucket,
+  the next deploy ships it. No second session, no one-line commit to
+  remember.** And if the upload is partial, the length check refuses it rather
+  than shipping a truncated archive that would fail every range request in the
+  field.
+
+### 23.6 ⛔ WHAT IS STILL HIS, AND IT IS STILL ONE MINUTE
+
+**Nothing about this changed §14.4.** Writes to the `basemap` bucket are
+coordinator-only, the one coordinator's password only he has ever typed, and
+that is decision 70 rather than an obstacle to route around. So:
+
+1. ⛔ **Storage → `basemap` → Upload file →
+   `basemap/israel-20260831-z14.pmtiles`**, key exactly that. The dashboard
+   uploads resumably, so 94 MB is fine.
+2. Then **re-run the deploy** — Actions → *Deploy to GitHub Pages* → *Run
+   workflow*, or any push. The build then picks the national archive up by
+   itself and the job log says which one it chose.
+3. Then, on the iPad, **once**: הגדרות → `רענון מפות לא מקוונות`. The screen
+   will name `israel-20260831-z14.pmtiles` and report ~94.3 MB, and the worker
+   drops the old archive as it stores the new one.
+
+★ **AND `bun run offline`'s Haifa line is what closes it** — 0 features
+  rendered today, and it is the first thing that goes green when the national
+  archive lands. **Do not silence it.**
+
+---
+
 ## ⏭️ RESUME HERE — THE SECOND RETURN IS DELIVERED; §22 IS WHAT IS LEFT
+
+> ⛔ **READ §23 FIRST. IT IS THE MOST RECENT UNIT AND IT CORRECTS A CONCLUSION A
+> FRESH SESSION WOULD OTHERWISE REACH.** The product owner reported on
+> 2026-09-01 that "part of the session never reached production". It did — the
+> deploy is fine, and eleven commits with no workflow run beside them is simply
+> what ONE PUSH looks like in `gh run list`. Three symptoms, three unrelated
+> causes, all measured on the artefact. §23.6 is the ONE act still his: the
+> 94 MB upload. The key change that used to follow it is now automatic.
+>
+> ⚠️ **AND ONE NUMBER: the national archive is 94 MB (94 268 129 bytes), not
+> 175.** If a HEAD on `israel-20260831-z14.pmtiles` ever reads ~175 MB, that is
+> a different file and the deploy's length check will refuse it.
 
 > ✅ **PMTILES IS DONE AND DEPLOYED (§12ter), and verified on the artefact
 > rather than on the tree** — signed in on the live app, 2026-08-31: the map's
@@ -4276,8 +4462,8 @@ lot plan's. Eleven points, then the rest of P3:
 | # | in one line | state |
 |---|---|---|
 | **P3.1 fin** | delete the test account, all three steps | ✅ **DONE — §13** |
-| **0** | offline basemap: **ALL ISRAEL**, not the southern bbox | 🟡 **cut, health-checked, gated — ⛔ THE UPLOAD NEEDS THE PO, §14.4** |
-| **1** | installed-iPad bug: the safe-area insets do not apply IN REAL | ✅ **§15** — cause found, foot band fixed (+ a second defect the new gate caught), instrument shipped; ⚖️ **ONE ARBITRATION FOR THE PO** |
+| **0** | offline basemap: **ALL ISRAEL**, not the southern bbox | 🟡 **cut, health-checked, gated — ⛔ THE UPLOAD NEEDS THE PO, §14.4.** The key change is automatic once it lands (§23.5); the upload is the only act left |
+| **1** | installed-iPad bug: the safe-area insets do not apply IN REAL | ✅ **§15** — cause found, foot band fixed (+ a second defect the new gate caught), instrument shipped; ⚖️ the arbitration is **SETTLED 2026-09-01 — OPTION B SHIPS, §23.3** |
 | **2** | reproduced bug: parasitic scroll on the farm form, both axes | ✅ **§16.1–16.3** — cause found (iOS zooms the page under 16 px), fixed, gated on 32 screens × 4 viewports × 2 engines |
 | **9** | **Apple Pencil** on every map interaction — he draws with a stylus | ✅ **§16.4** — audited, and `bun run touch` is 45 checks with a `pointerType=pen` pass |
 | **8** | **delete** a record — there is no way to correct a typo today | ✅ **§17** — one policy, one dialog, `bun run deletion` 61 checks; A73 grew to 94 |

@@ -135,22 +135,40 @@ const VIEWPORTS = {
  * So there are two installed configurations and the gate now runs both:
  *
  *   `STANDALONE=1`    — option B's geometry: the device's real top inset.
- *   `STANDALONE=ios`  — ★ OPTION A, WHICH IS WHAT SHIPS TODAY: `data-standalone`
- *                       stamped, top inset **0**, home-indicator inset real.
- *                       The bottom inset is NOT zeroed, because the status-bar
- *                       tag has nothing to do with the home indicator — iOS
- *                       reports that one either way, and it is the half that
- *                       produced the band at the foot.
+ *   `STANDALONE=ios`  — option A: `data-standalone` stamped, top inset **0**,
+ *                       home-indicator inset real. The bottom inset is NOT
+ *                       zeroed, because the status-bar tag has nothing to do
+ *                       with the home indicator — iOS reports that one either
+ *                       way, and it is the half that produced the band at the
+ *                       foot.
  *
  * `STATUSBAR=translucent` additionally stamps `data-statusbar='translucent'`,
- * which is what switches the gradient to option B's dark scrim. It is only
- * meaningful with `STANDALONE=1`, and it exists so the captures the product
- * owner is arbitrating on are of the real rule rather than of a mock-up.
+ * which is what switches the gradient to option B's dark scrim. It exists so
+ * the captures the product owner arbitrated on are of the real rule rather
+ * than of a mock-up.
+ *
+ * ★★ WHICH OF THE TWO SHIPS CHANGED ON 2026-09-01, AND THIS COMMENT IS THE
+ *    PLACE THAT WOULD OTHERWISE GO STALE (ETAT §23.3). The product owner chose
+ *    OPTION B: `index.html` now carries
+ *    `apple-mobile-web-app-status-bar-style: black-translucent` as a live tag.
+ *
+ *    · **`STANDALONE=1` IS NOW THE SHIPPING CONFIGURATION** — installed, the
+ *      device's real top inset, the scrim over the shell.
+ *    · **`STANDALONE=ios` IS KEPT AS THE HISTORICAL OPTION-A GEOMETRY.** It
+ *      still runs and still passes, and it is still worth running: it is the
+ *      only configuration in which `--status-inset` is 0, which is the case
+ *      every rule that scales by it has to survive.
+ *    · **`STATUSBAR=translucent` IS NOW LARGELY REDUNDANT.** `standalone.ts`
+ *      reads the decision off the meta tag, so the app stamps
+ *      `data-statusbar='translucent'` by itself in every browser, this one
+ *      included. The env var is left in place because it is what the
+ *      arbitration captures were taken with and because it is the one way to
+ *      ask for the scrim if the tag is ever commented out again.
  */
 const STANDALONE = process.env.STANDALONE === '1' || process.env.STANDALONE === 'ios'
-/** Option A: installed, and the top inset really is zero. */
+/** Option A's geometry — historical since 2026-09-01: installed, top inset 0. */
 const REAL_IOS = process.env.STANDALONE === 'ios'
-/** Option B's scrim, for the arbitration captures. */
+/** Option B's scrim. The app now stamps it itself; see the note above. */
 const TRANSLUCENT = process.env.STATUSBAR === 'translucent'
 const STANDALONE_MODE = REAL_IOS ? 'ios' : TRANSLUCENT ? 'translucent' : 'simulated'
 

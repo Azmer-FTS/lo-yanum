@@ -282,12 +282,45 @@ self.addEventListener('message', (event) => {
         const cache = await caches.open(MAP_CACHE)
         const keys = await cache.keys()
         if (keys.length === 0) {
-          reply({ held: false, bytes: 0 })
+          reply({ held: false, bytes: 0, heldUrl: null, stale: false })
           return
         }
-        const held = await cache.match(keys[0])
-        const blob = held ? await held.blob() : null
-        reply({ held: true, bytes: blob ? blob.size : 0, url: keys[0].url })
+
+        /**
+         * ★★ "HELD" MEANS **THIS** ARCHIVE, NOT "SOME ARCHIVE" — AND THE
+         *    DIFFERENCE IS A BUG THE PRODUCT OWNER FOUND ON A REAL iPAD.
+         *
+         *    This used to answer `held: true` for whatever happened to be in
+         *    the cache. The archive's name carries the OSM build date, so a
+         *    device that downloaded a previous cut keeps answering "held" with
+         *    that cut's size — 42.6 MB of the old southern extract, reported
+         *    on a screen whose own words say "the whole map of Israel". The
+         *    screen was telling the truth about the cache and lying about the
+         *    map, and no amount of re-tapping the button could show it: the
+         *    page had no way to tell that the two names differed.
+         *
+         *    So the page now NAMES the archive this build asks for, and the
+         *    worker answers about that one. `stale` is the case that matters:
+         *    something is held, it is not what this build wants, and the
+         *    coordinator has to be told rather than reassured.
+         *
+         *    A page that asks without a url — an older tab against a newer
+         *    worker — still gets the old, looser answer.
+         */
+        const wanted =
+          typeof data.url === 'string'
+            ? new URL(data.url, self.location.href).href
+            : null
+        const match = wanted ? keys.find((key) => key.url === wanted) : keys[0]
+        const entry = match || keys[0]
+        const stored = await cache.match(entry)
+        const blob = stored ? await stored.blob() : null
+        reply({
+          held: Boolean(match),
+          bytes: blob ? blob.size : 0,
+          heldUrl: entry.url,
+          stale: Boolean(wanted) && !match,
+        })
       })(),
     )
   }

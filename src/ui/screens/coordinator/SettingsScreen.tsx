@@ -37,8 +37,18 @@ export function SettingsScreen() {
   const { t } = useTranslation()
   const online = useOnline()
   const auth = useAuth()
-  const { held, bytes, downloadBytes, active, progress, download, clear } =
-    useOfflineMaps(BASEMAP_URL, BASEMAP_ASSETS)
+  const {
+    held,
+    bytes,
+    stale,
+    heldArchive,
+    wantedArchive,
+    downloadBytes,
+    active,
+    progress,
+    download,
+    clear,
+  } = useOfflineMaps(BASEMAP_URL, BASEMAP_ASSETS)
   const [clearing, setClearing] = useState(false)
   // PO POINT 7b — where "שלח במייל" points, and P3.3bis's destination too.
   const [recipient, setRecipient] = useState(() => readReportRecipient())
@@ -78,14 +88,40 @@ export function SettingsScreen() {
       <Section title={t('settings.offline.title')} className="mt-6">
         {active ? (
           <>
+            {/* ★ THE SCREEN NAMES THE ARCHIVE, AND THAT IS THE POINT OF THIS
+                BLOCK RATHER THAN A DETAIL OF IT.
+
+                The product owner read "42.6 MB" off this screen after a clean
+                reinstall and a re-download, and it was TRUE — of the previous
+                southern extract, which is what the deployed build was still
+                pointed at. A size on its own cannot distinguish "the map you
+                asked for" from "a map"; a name that carries the ground and the
+                OSM build date can, and it is the one thing he can compare
+                against the bucket without opening a console. */}
             <dl>
               <KeyValue
                 label={t('settings.offline.state')}
                 value={
-                  held ? t('settings.offline.held') : t('settings.offline.none')
+                  held
+                    ? t('settings.offline.held')
+                    : stale
+                      ? t('settings.offline.stale')
+                      : t('settings.offline.none')
                 }
               />
-              {held && bytes > 0 && (
+              <KeyValue
+                label={t('settings.offline.archive')}
+                value={wantedArchive}
+                ltr
+              />
+              {stale && heldArchive && (
+                <KeyValue
+                  label={t('settings.offline.archiveHeld')}
+                  value={heldArchive}
+                  ltr
+                />
+              )}
+              {bytes > 0 && (
                 <KeyValue
                   label={t('settings.offline.size')}
                   value={`${megabytes(bytes)} MB`}
@@ -94,6 +130,14 @@ export function SettingsScreen() {
               )}
             </dl>
             <p className="muted mt-3">{t('settings.offline.explain')}</p>
+
+            {stale && (
+              <div className="mt-3">
+                <Callout tone="warn" title={t('settings.offline.staleTitle')}>
+                  {t('settings.offline.staleHint', { archive: wantedArchive })}
+                </Callout>
+              </div>
+            )}
 
             {/* ★ THE SIZE IS ON THE BUTTON, NOT BEHIND IT.
                 The product owner's condition, and the reason it is worded as a

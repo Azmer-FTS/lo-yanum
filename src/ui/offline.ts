@@ -55,6 +55,10 @@ interface WorkerAnswer {
   type: string
   held?: boolean
   bytes?: number
+  /** The archive actually in the cache, whichever one it is. */
+  heldUrl?: string | null
+  /** Something is held and it is NOT the archive this build asks for. */
+  stale?: boolean
   ok?: boolean
   error?: string
   progress?: number
@@ -112,10 +116,27 @@ function askWorker(
  * whole bbox or it does not, and its size is a fact rather than an estimate.
  */
 export interface OfflineMaps {
-  /** null while unknown, or when no worker is controlling this page. */
+  /**
+   * null while unknown, or when no worker is controlling this page.
+   *
+   * ★ IT MEANS "THE ARCHIVE THIS BUILD ASKS FOR IS HELD", not "some archive
+   *   is held" — see `stale`, and the note in `sw.js`'s `MAP_STATS`.
+   */
   held: boolean | null
   /** Bytes actually held on the device. 0 when nothing is. */
   bytes: number
+  /**
+   * ★ SOMETHING IS HELD AND IT IS THE WRONG MAP. The archive's name carries
+   *   the OSM build date it was cut from, so replacing the map is a new URL —
+   *   and a device that downloaded the previous one keeps it until it is told.
+   *   This is what lets the screen say so instead of reporting the old cut's
+   *   size under a label that promises the new one.
+   */
+  stale: boolean
+  /** The archive on the device, by name. null when there is none. */
+  heldArchive: string | null
+  /** The archive this build asks for, by name. */
+  wantedArchive: string
   /**
    * ★ THE SIZE BEFORE THE TAP. The product owner's own condition: a
    *   coordinator on cellular data at the edge of coverage has to be able to
@@ -132,20 +153,44 @@ export interface OfflineMaps {
   clear: () => Promise<void>
 }
 
+/**
+ * An archive URL as the one thing a coordinator can compare on a screen: its
+ * file name. `negev-20260829-z14.pmtiles` and `israel-20260831-z14.pmtiles`
+ * differ in the two places that matter — the ground and the OSM build date —
+ * and both are in the name on purpose.
+ */
+export function archiveName(url: string | null | undefined): string {
+  if (!url) return ''
+  try {
+    return decodeURIComponent(new URL(url, location.href).pathname.split('/').pop() || '')
+  } catch {
+    return ''
+  }
+}
+
 export function useOfflineMaps(url: string, assets: string[] = []): OfflineMaps {
   const [held, setHeld] = useState<boolean | null>(null)
   const [bytes, setBytes] = useState(0)
+  const [stale, setStale] = useState(false)
+  const [heldArchive, setHeldArchive] = useState<string | null>(null)
   const [downloadBytes, setDownloadBytes] = useState<number | null>(null)
   const [active, setActive] = useState(false)
   const [progress, setProgress] = useState<number | null>(null)
 
+  /**
+   * ★ THE URL GOES WITH THE QUESTION. Without it the worker can only answer
+   *   "is anything held", which is the question that let a device report the
+   *   size of a superseded archive as though it were the current map.
+   */
   const refresh = useCallback(async () => {
     const controlled = Boolean(navigator.serviceWorker?.controller)
     setActive(controlled)
-    const answer = await askWorker('MAP_STATS')
+    const answer = await askWorker('MAP_STATS', 3000, { url })
     setHeld(answer ? Boolean(answer.held) : null)
     setBytes(answer?.bytes ?? 0)
-  }, [])
+    setStale(Boolean(answer?.stale))
+    setHeldArchive(archiveName(answer?.heldUrl) || null)
+  }, [url])
 
   /**
    * How big the download would be, asked of the server rather than assumed.
@@ -207,16 +252,41 @@ export function useOfflineMaps(url: string, assets: string[] = []): OfflineMaps 
     const answer = await askWorker('CLEAR_MAP')
     setHeld(answer ? Boolean(answer.held) : false)
     setBytes(answer?.bytes ?? 0)
+    setStale(false)
+    setHeldArchive(null)
   }, [])
 
   useEffect(() => {
     void refresh()
   }, [refresh])
 
-  return { held, bytes, downloadBytes, active, progress, refresh, download, clear }
+  return {
+    held,
+    bytes,
+    stale,
+    heldArchive,
+    wantedArchive: archiveName(url),
+    downloadBytes,
+    active,
+    progress,
+    refresh,
+    download,
+    clear,
+  }
 }
 
-/** Bytes as MB, for a screen read one-handed in the dark. */
+/**
+ * Bytes as MB, for a screen read one-handed in the dark.
+ *
+ * ★ DECIMAL MB (10⁶), NOT MIB (2²⁰), AND THE REASON IS RECONCILIATION.
+ *   Every other number anybody will hold this one against is decimal: the
+ *   `content-length` the bucket reports, the size the Supabase dashboard
+ *   prints next to the object, the figure in ETAT. Dividing by 1 048 576 made
+ *   the same 42 560 293 bytes read as "40.6 MB" on the device and "42.6 MB"
+ *   everywhere else — a 5 % gap, on the exact number a coordinator uses to
+ *   decide whether the map he holds is the map he was promised. The label says
+ *   MB, so the arithmetic is now the one the label means.
+ */
 export function megabytes(bytes: number): string {
-  return (bytes / (1024 * 1024)).toFixed(1)
+  return (bytes / 1e6).toFixed(1)
 }

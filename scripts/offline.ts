@@ -255,7 +255,10 @@ try {
   check(
     'and the WHOLE archive is on the device, not a truncated one',
     heldBytes > 40_000_000,
-    `${(heldBytes / 1024 / 1024).toFixed(1)} MB held`,
+    // Decimal MB, the same arithmetic the app itself now prints (§23.5): a
+    // gate that reports 40.6 while the screen reports 42.6 for the same bytes
+    // is a gate that makes a real discrepancy harder to see, not easier.
+    `${(heldBytes / 1e6).toFixed(1)} MB held`,
   )
 
   // --------------------------------------------------------------- offline --

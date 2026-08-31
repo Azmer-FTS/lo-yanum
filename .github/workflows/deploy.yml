@@ -31,6 +31,60 @@ jobs:
       - name: Typecheck
         run: bun x tsc --noEmit
 
+      # PO POINT 0 (2026-09-01) — WHICH BASEMAP THIS BUILD POINTS AT IS DECIDED
+      # BY THE BUCKET, NOT BY A CONSTANT SOMEBODY HAS TO REMEMBER TO EDIT.
+      #
+      # WHY THIS STEP EXISTS. The national archive (all of Israel, 94 MB) can
+      # only be uploaded by the product owner — writes to the `basemap` bucket
+      # are coordinator-only and the one coordinator's password is his alone
+      # (ETAT §14.4). So the source constant was deliberately left pointing at
+      # the previous SOUTHERN extract, "until the object exists".
+      #
+      # ★ AND THAT IS EXACTLY THE BUG HE THEN FOUND ON HIS iPAD: a deploy that
+      #   succeeded, an app whose own words say "the whole map of Israel", and
+      #   42.6 MB of the Negev on the device. Nothing had failed. The upload
+      #   and the one-line key change were two acts by two people, and the
+      #   second one waits on a session that may not happen the same day.
+      #
+      # So the build ASKS THE BUCKET. If the national archive is there, at
+      # exactly the length it was measured at, and the bucket answers a range
+      # request with 206 — which is the one thing PMTiles cannot work without —
+      # the build points at it. Otherwise it falls back to the compiled-in key
+      # and says so loudly, because a silent fallback is how this started.
+      #
+      # ⚠️ THE LENGTH IS EXACT ON PURPOSE. A re-cut archive is a NEW name (the
+      #    OSM build date is in it), so a different length on this name means a
+      #    truncated or partial upload, and shipping that would take the map
+      #    off the app entirely. Update both values here when the map is re-cut.
+      - name: Resolve the basemap archive
+        id: basemap
+        run: |
+          set -euo pipefail
+
+          bucket='https://lvrptqmkjikkkhcxocbe.supabase.co/storage/v1/object/public/basemap'
+          key='israel-20260831-z14.pmtiles'
+          expected=94268129
+
+          headers="$(curl --silent --show-error --head --max-time 30 "${bucket}/${key}" || true)"
+          length="$(printf '%s' "${headers}" | tr -d '\r' \
+                    | awk 'tolower($1) == "content-length:" { print $2 }' | tail -n1)"
+
+          range="$(curl --silent --output /dev/null --max-time 30 \
+                        --header 'Range: bytes=0-15' \
+                        --write-out '%{http_code}' "${bucket}/${key}" || true)"
+
+          echo "key      : ${key}"
+          echo "length   : ${length:-<absent>} (expected ${expected})"
+          echo "range    : HTTP ${range} (expected 206)"
+
+          if [ "${length:-0}" = "${expected}" ] && [ "${range}" = "206" ]; then
+            echo "url=${bucket}/${key}" >> "$GITHUB_OUTPUT"
+            echo "::notice::Basemap: ${key} is in the bucket at ${expected} bytes and serves 206 — this build points at the NATIONAL archive."
+          else
+            echo "url=" >> "$GITHUB_OUTPUT"
+            echo "::warning::Basemap: ${key} is not usable in the bucket yet (length ${length:-absent}, range ${range}). This build falls back to the key compiled into src/ui/components/basemap.ts — the SOUTHERN extract. See ETAT §14.4: the upload is the product owner's."
+          fi
+
       # P2.3 — the deployed app is a REAL build: it requires a Supabase session.
       # Both values are public by design (the publishable key names the project
       # and authorises nothing; the security is the RLS), but they live in
@@ -43,6 +97,9 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          # Empty when the national archive is not in the bucket yet, and an
+          # empty string is falsy — `basemap.ts` then keeps its own default.
+          VITE_BASEMAP_URL: ${{ steps.basemap.outputs.url }}
 
       - uses: actions/configure-pages@v5
 
