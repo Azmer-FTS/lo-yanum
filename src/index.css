@@ -820,10 +820,18 @@
   border-bottom-color: rgb(var(--surface-overlay)) !important;
 }
 
-/* The tile filter is a THEME TOKEN: the dark theme inverts the daylight OSM
-   raster into a night map, the light theme barely touches it. Only the GL
-   canvas is filtered — markers are DOM siblings, so their token colours stay
-   true in both themes. */
-.map-night .maplibregl-canvas {
-  filter: var(--map-filter);
-}
+/* PMTILES (decision 71) — `.map-night` AND `--map-filter` ARE GONE, AND THAT
+   WAS THE POINT OF THE UNIT.
+
+   The rule here used to be `filter: var(--map-filter)` on the GL canvas: the
+   dark theme INVERTED a daylight OSM raster to make a night map. It worked the
+   way a filter works — on every pixel, including the ones that meant
+   something. `invert(1)` on a blue Mediterranean is a violet Mediterranean,
+   which is exactly what open question 9 reported, and no amount of tuning the
+   filter could have fixed it without also moving the desert.
+
+   A vector style has a colour per feature, so there is nothing to approximate
+   and nothing to filter: `ui/components/basemap.ts` writes the water, the sand
+   and the roads from `tokens.css` directly, once per theme. Open question 9 is
+   closed by deletion rather than by adjustment, which is the only honest way
+   to close it. */

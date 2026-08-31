@@ -7,33 +7,25 @@ import { HOME_BASE, bearingDeg, boundsOf } from '@core/index'
 import type { LatLng } from '@core/index'
 
 import { readToken } from './badges'
+import { buildBasemapStyle, registerPmtilesProtocol, resolvedThemeOf } from './basemap'
 
 /**
- * MapLibre GL over raster OpenStreetMap tiles.
+ * MapLibre GL over a self-hosted Protomaps PMTiles vector basemap.
  *
  * Raster OSM rather than a vector style so the POC needs no tile-provider API
  * key. Lot 1 should move to a keyed vector provider — the public OSM tile
  * servers are not meant for production traffic.
  *
- * The tile canvas is filtered by `--map-filter`, a THEME token: the dark theme
- * inverts the daylight raster into a night map. Markers are DOM siblings of the
+ * The basemap is VECTOR and themed per feature from `tokens.css` (see
+ * `basemap.ts`); there is no canvas filter any more. Markers are DOM siblings of the
  * canvas, so the filter never touches their colours.
  */
 
-const OSM_STYLE: maplibregl.StyleSpecification = {
-  version: 8,
-  sources: {
-    osm: {
-      type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      maxzoom: 19,
-      attribution:
-        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    },
-  },
-  layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
-}
+// PMTILES (decision 71) — the raster OSM style that used to live here is gone.
+// `basemap.ts` builds a VECTOR style from `tokens.css`, and the `pmtiles://`
+// protocol is registered once for the page rather than per map: this module is
+// imported by seven screens and MapLibre throws on a second registration.
+registerPmtilesProtocol()
 
 /** What a marker represents — drives its silhouette. */
 export type MarkerKind =
@@ -565,7 +557,7 @@ export default function MapCanvas({
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: OSM_STYLE,
+      style: buildBasemapStyle(resolvedThemeOf()),
       center: [center?.lng ?? HOME_BASE.lng, center?.lat ?? HOME_BASE.lat],
       zoom,
       interactive,
@@ -584,13 +576,26 @@ export default function MapCanvas({
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }))
     }
 
-    map.on('load', () => {
-      // A handle for the verification scripts. Published on LOAD, not on
-      // create: React's dev-mode double mount creates a map, tears it down and
-      // creates another, and a handle published at create time can point at
-      // the corpse. A loaded map is by definition the live one.
-      ;(window as unknown as { __loYanumMap?: maplibregl.Map }).__loYanumMap = map
-
+    /**
+     * PMTILES — THE PROGRAMME'S OWN SOURCES AND LAYERS, AS A FUNCTION THAT CAN
+     * BE RUN MORE THAN ONCE.
+     *
+     * ★ THIS EXTRACTION IS THE WHOLE RISK OF THE VECTOR SWAP, AND IT IS WHY IT
+     *   IS DONE HERE RATHER THAN DISCOVERED LATER. With a raster basemap the
+     *   theme was a CSS `filter` on the canvas, so switching light/dark never
+     *   touched MapLibre at all. A vector style has a colour per feature, so
+     *   the switch is a `setStyle` — **and `setStyle` throws away every source
+     *   and layer the app added.** Four sources and ten layers: zones, threat
+     *   zones, threat vectors, the route. On 27 screens.
+     *
+     *   So the setup is a named function called from BOTH `load` and, once,
+     *   after each `setStyle`. It was already written to be re-runnable
+     *   without knowing it: every layer reads its data from a ref rather than
+     *   from a closure over props, because P0.1 needed the handler to "apply
+     *   it the moment the source exists, whatever order things mounted in".
+     *   That property is what makes this safe.
+     */
+    const installProgrammeLayers = () => {
       // G1 — zone polygons, declared before the route so the line and the
       // markers always paint above the ground they describe.
       map.addSource('zones', {
@@ -744,6 +749,16 @@ export default function MapCanvas({
 
       // Apply whatever line was requested while the style was still loading.
       applyLine(map, lineRef.current)
+    }
+
+    map.on('load', () => {
+      // A handle for the verification scripts. Published on LOAD, not on
+      // create: React's dev-mode double mount creates a map, tears it down and
+      // creates another, and a handle published at create time can point at
+      // the corpse. A loaded map is by definition the live one.
+      ;(window as unknown as { __loYanumMap?: maplibregl.Map }).__loYanumMap = map
+
+      installProgrammeLayers()
     })
 
     // F2 — placing a point. `contextmenu` is the same gesture on a phone: a
@@ -767,9 +782,53 @@ export default function MapCanvas({
     const resizeObserver = new ResizeObserver(() => map.resize())
     resizeObserver.observe(containerRef.current)
 
+    /**
+     * PMTILES — THE THEME SWITCH IS NOW A `setStyle`, AND THIS IS WHAT PUTS THE
+     * PROGRAMME'S LAYERS BACK.
+     *
+     * The raster basemap was themed with a CSS `filter` on the canvas, so
+     * light/dark never reached MapLibre and there was nothing to observe. A
+     * vector style holds its colours per layer, so the palette changing means
+     * a new style — and a new style is a blank map until
+     * `installProgrammeLayers` runs again.
+     *
+     * ★ WATCHED ON `<html>` RATHER THAN SUBSCRIBED FROM REACT, for the same
+     *   reason `resolvedThemeOf` reads the DOM: `theme.tsx` stamps
+     *   `data-theme`, the "system" choice stamps nothing and lets the media
+     *   query decide, and this component is mounted by seven screens that do
+     *   not all sit under the same provider. The attribute and the media query
+     *   are the two things that can actually change the answer, so they are
+     *   the two things watched.
+     *
+     * ★ AND IT ONLY ACTS ON A REAL CHANGE. `data-theme` is re-stamped on every
+     *   role change and on every re-application of the same choice; rebuilding
+     *   a 42 MB-backed style for an attribute that was set to the value it
+     *   already had would drop every tile on screen for no reason.
+     */
+    let painted = resolvedThemeOf()
+    const repaint = () => {
+      const next = resolvedThemeOf()
+      if (next === painted) return
+      painted = next
+      map.setStyle(buildBasemapStyle(next))
+      // `setStyle` is asynchronous: the sources cannot be added back until the
+      // new style is in place, and `styledata` is where MapLibre says so.
+      map.once('styledata', installProgrammeLayers)
+    }
+
+    const themeObserver = new MutationObserver(repaint)
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    })
+    const systemDark = window.matchMedia?.('(prefers-color-scheme: dark)')
+    systemDark?.addEventListener('change', repaint)
+
     mapRef.current = map
     return () => {
       resizeObserver.disconnect()
+      themeObserver.disconnect()
+      systemDark?.removeEventListener('change', repaint)
       map.remove()
       mapRef.current = null
     }
@@ -937,7 +996,7 @@ export default function MapCanvas({
       ref={containerRef}
       role="application"
       aria-label={ariaLabel}
-      className={`map-night overflow-hidden rounded-card bg-surface-sunken ${
+      className={`overflow-hidden rounded-card bg-surface-sunken ${
         onMapClick ? '[&_.maplibregl-canvas]:cursor-crosshair' : ''
       } ${className}`}
     />

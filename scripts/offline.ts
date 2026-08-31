@@ -6,6 +6,7 @@ import { applyChanges } from '../src/data/write'
 
 import { fixtureChanges, fixtureDeletions } from './fixture'
 
+
 /**
  * A72 — THE OFFLINE SHELL (P2.5a).
  *
@@ -187,14 +188,75 @@ try {
   await page.goto(`${demo.url}/#/coordinator`, { waitUntil: 'load' })
   await page.waitForSelector('nav a[href*="#/coordinator"]', { timeout: 20_000 })
 
-  // Ask for two real tiles the way browsing does, so the tile rule has
-  // something to have cached. Two, not six thousand — see ETAT on why bulk
-  // pre-fetching against OSM is a policy question and not a technical one.
-  const TILE = 'https://tile.openstreetmap.org/10/609/418.png'
-  await page.evaluate(async (url) => {
-    await fetch(url, { mode: 'no-cors' })
-  }, TILE)
-  await page.waitForTimeout(800)
+  /**
+   * PMTILES (decision 71) — SEED THE OFFLINE MAP THROUGH THE REAL BUTTON.
+   *
+   * ★ AND THE BUTTON IS THE ONLY WAY IT CAN BE SEEDED, WHICH IS THE DESIGN
+   *   RATHER THAN A TEST CONVENIENCE. Browsing the map online caches nothing:
+   *   PMTiles reads by RANGE request and `cache.put()` refuses a 206 outright,
+   *   so there is no accidental path into the offline cache. The coordinator
+   *   taps, having been told the size, or he has no map. Driving the button
+   *   here tests the promise the settings screen actually makes.
+   */
+  /**
+   * The archive's URL is read off the RUNNING MAP rather than restated here.
+   * A gate carrying its own copy of a URL is a gate that keeps passing after
+   * the app has stopped using it — and this one has to name the exact bytes
+   * the service worker was asked to hold.
+   */
+  await page.goto(`${demo.url}/#/coordinator/farms`, { waitUntil: 'load' })
+  await page.waitForTimeout(6000)
+  const basemapUrl = await page.evaluate(() => {
+    const m = (
+      window as unknown as {
+        __loYanumMap?: { getStyle: () => { sources: Record<string, { url?: string }> } }
+      }
+    ).__loYanumMap
+    const url = m?.getStyle().sources.protomaps?.url ?? ''
+    return url.replace(/^pmtiles:\/\//, '')
+  })
+  check('the map is reading a PMTiles archive', basemapUrl.endsWith('.pmtiles'), basemapUrl)
+
+  await page.goto(`${demo.url}/#/coordinator/settings`, { waitUntil: 'load' })
+  await page.waitForTimeout(1200)
+
+  // The size has to be on the button BEFORE it is pressed — the product
+  // owner's own condition, so that a coordinator on cellular data can decline.
+  const downloadButton = page.locator('[data-testid="download-map"]')
+  const buttonLabel = (await downloadButton.textContent()) ?? ''
+  check(
+    '★ the offline-map button states its SIZE before it is tapped',
+    /\d+(\.\d+)?\s*MB/.test(buttonLabel),
+    buttonLabel.trim(),
+  )
+
+  await downloadButton.click()
+  // 42 MB from Frankfurt; generous, and it fails loudly rather than hanging.
+  const downloaded = await page
+    .waitForFunction(
+      () => {
+        const el = document.querySelector('[data-testid="download-map"]')
+        return el !== null && !/%/.test(el.textContent ?? '')
+      },
+      undefined,
+      { timeout: 180_000 },
+    )
+    .then(() => true)
+    .catch(() => false)
+  check('the archive downloads through the button', downloaded)
+
+  const heldBytes = await page.evaluate(async () => {
+    const cache = await caches.open('lo-yanum-basemap')
+    const keys = await cache.keys()
+    if (keys.length === 0) return 0
+    const hit = await cache.match(keys[0])
+    return hit ? (await hit.blob()).size : 0
+  })
+  check(
+    'and the WHOLE archive is on the device, not a truncated one',
+    heldBytes > 40_000_000,
+    `${(heldBytes / 1024 / 1024).toFixed(1)} MB held`,
+  )
 
   // --------------------------------------------------------------- offline --
   section('PULLED OFFLINE')
@@ -219,15 +281,85 @@ try {
     `${badgesVisible} visible of ${await page.locator('[data-testid="offline-badge"]').count()} in the DOM`,
   )
 
-  const tileOffline = await page.evaluate(async (url) => {
+  /**
+   * ★ THE CLAIM THIS UNIT EXISTS FOR: THE GROUND IS THERE WITH NO NETWORK.
+   *
+   * And it is tested the way the map actually reads it — a RANGE request, not
+   * a plain GET. That distinction is the whole of the service worker's new
+   * job: the Cache API cannot store a 206, so what is held is one complete
+   * archive and the worker SLICES it. A gate that asked for the whole file
+   * would pass while every tile request in the field failed.
+   */
+  const rangeOffline = await page.evaluate(async (url) => {
     try {
-      const res = await fetch(url, { mode: 'no-cors' })
-      return res.type === 'opaque' || res.ok
-    } catch {
-      return false
+      const res = await fetch(url, { headers: { Range: 'bytes=0-16383' } })
+      const buf = await res.arrayBuffer()
+      const magic = new TextDecoder().decode(new Uint8Array(buf.slice(0, 7)))
+      return { status: res.status, bytes: buf.byteLength, magic }
+    } catch (e) {
+      return { status: 0, bytes: 0, magic: String(e).slice(0, 60) }
     }
-  }, TILE)
-  check('ground already looked at is still there', tileOffline, TILE)
+  }, basemapUrl)
+  check(
+    '★ the basemap answers a RANGE request with no network at all',
+    rangeOffline.status === 206 && rangeOffline.bytes === 16384,
+    `HTTP ${rangeOffline.status}, ${rangeOffline.bytes} bytes`,
+  )
+  check(
+    'and what comes back is the archive, not an error page',
+    rangeOffline.magic === 'PMTiles',
+    rangeOffline.magic,
+  )
+
+  /**
+   * The archive answering is not the same as the MAP DRAWING, and the
+   * difference is the style's own assets — the sprite sheet and the glyph
+   * ranges. A MapLibre style with no sprite loads nothing at all, so this is
+   * the check that turns "the bytes are there" into "he can see where he is".
+   *
+   * It WAITS rather than sampling once: the style is fetched from three
+   * caches and settles in its own time. And when it fails it says WHICH asset
+   * was missing, because "the map is not drawn" on its own sent the first
+   * investigation to the wrong file.
+   */
+  const mapDrawnOffline = await page
+    .waitForFunction(
+      () => {
+        const m = (
+          window as unknown as { __loYanumMap?: { isStyleLoaded: () => boolean } }
+        ).__loYanumMap
+        return Boolean(m?.isStyleLoaded())
+      },
+      undefined,
+      { timeout: 25_000 },
+    )
+    .then(() => true)
+    .catch(() => false)
+
+  let missing = ''
+  if (!mapDrawnOffline) {
+    missing = await page.evaluate(async () => {
+      const wanted = [
+        'sprites/light.json',
+        'sprites/light.png',
+        'sprites/dark.json',
+        'fonts/Noto%20Sans%20Regular/0-255.pbf',
+        'fonts/Noto%20Sans%20Regular/1280-1535.pbf',
+        'mapbox-gl-rtl-text.js',
+      ]
+      const out: string[] = []
+      for (const name of wanted) {
+        const url = new URL('basemap-assets/', document.baseURI).toString() + name
+        const hit = await caches.match(url)
+        if (!hit) out.push(name)
+      }
+      const mapPresent = Boolean(
+        (window as unknown as { __loYanumMap?: unknown }).__loYanumMap,
+      )
+      return `map handle: ${mapPresent}; uncached: ${out.join(', ') || 'none'}`
+    })
+  }
+  check('and the map itself is drawn from it', mapDrawnOffline, missing)
 
   // ★ the check this file exists for
   if (SUPABASE_URL !== '' && SUPABASE_KEY !== '') {
@@ -289,19 +421,22 @@ try {
   await page.goto(`${demo.url}/#/coordinator/settings`, { waitUntil: 'load' })
   await page.waitForTimeout(800)
   const settingsText = await page.evaluate(() => document.body.innerText)
-  check('the settings screen names the held ground', settingsText.includes('אריחי מפה') || settingsText.includes('עדיין לא נשמר'))
+  check(
+    'the settings screen says the map is held, and how big it is',
+    settingsText.includes('שמורה במכשיר') && /\d+(\.\d+)?\s*MB/.test(settingsText),
+  )
 
   const clearButton = page.locator('[data-testid="clear-tiles"]')
   if ((await clearButton.count()) === 1 && (await clearButton.isEnabled())) {
     await clearButton.click()
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(1200)
     const emptied = await page.evaluate(async () => {
-      const cache = await caches.open('lo-yanum-tiles-v1')
+      const cache = await caches.open('lo-yanum-basemap')
       return (await cache.keys()).length
     })
-    check('clearing really empties the tile cache', emptied === 0, String(emptied))
+    check('clearing really empties the map cache', emptied === 0, String(emptied))
   } else {
-    check('clearing really empties the tile cache', false, 'the button was not offerable')
+    check('clearing really empties the map cache', false, 'the button was not offerable')
   }
 
   await context.close()

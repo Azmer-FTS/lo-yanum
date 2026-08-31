@@ -209,7 +209,6 @@
   /* Daylight map: OSM tiles are already a day map — just calm them slightly
      so the raster does not out-saturate the markers. No hue rotation: the
      neutral identity has no colour cast to push the desert toward. */
-  --map-filter: saturate(0.85) brightness(1.02) contrast(1.02);
 
   /* --- Theme-independent ------------------------------------------------ */
 
@@ -440,11 +439,6 @@
 
   /* The landing plate is theme-independent (see :root) — no dark override. */
 
-  /* Night map: invert turns the daylight OSM raster into a dark map, and the
-     desert beige lands on a deep blue-grey by itself — exactly the neutral
-     night family, so no hue rotation is needed. Heavy desaturation keeps the
-     raster from fighting the markers. */
-  --map-filter: invert(1) brightness(0.85) contrast(0.9) saturate(0.24);
 }
 
 /*
@@ -525,7 +519,6 @@
       rgb(var(--accent-dim) / 0.18) 100%
     );
 
-    --map-filter: invert(1) brightness(0.85) contrast(0.9) saturate(0.24);
   }
 }
 

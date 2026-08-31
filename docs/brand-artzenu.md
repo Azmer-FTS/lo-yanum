@@ -256,7 +256,16 @@ The charter's control shape is a 30 px pill, on buttons *and* inputs.
 
 Lucide is kept (the site has no icon set of its own), at unchanged sizes.
 
-The MapLibre tile filter is a theme token and both ends were re-tuned:
+> **⚠️ THE TILE FILTER BELOW IS DELETED (PMTiles, decision 71, 2026-08-31).**
+> The basemap is no longer a raster and there is nothing to filter: it is a
+> self-hosted Protomaps vector archive, and `src/ui/components/basemap.ts`
+> writes the water, the sand, the roads and the labels from `tokens.css`
+> directly, once per theme. `--map-filter` and `.map-night` are gone from the
+> tree. **Kept below because the paragraph diagnoses its own successor's
+> reason for existing**, and because ETAT's open question 9 was answered by it
+> for three lots without anybody noticing that the answer was written down.
+
+The MapLibre tile filter was a theme token and both ends were re-tuned:
 
 ```css
 /* day */   saturate(0.9) brightness(1.03) contrast(1.02) hue-rotate(8deg)
@@ -271,6 +280,15 @@ the other way (its inverse sits at ~14° and ends up violet) — that is what th
 heavy desaturation is for. The day rotation is *positive*: rotating the other
 way turns the Negev pink, which was the first thing tried and the first thing
 rejected.
+
+★ **AND THAT SENTENCE IN THE MIDDLE IS OPEN QUESTION 9, ANSWERED IN 2026-08-18
+AND FILED UNDER THE WRONG HEADING.** "Its inverse sits at ~14° and ends up
+violet" IS the violet Mediterranean the product owner reported; the question
+stayed open because the answer lived in a brand document rather than in the
+question. A filter acts on every pixel including the ones that meant
+something, so no amount of tuning could have kept the desert green AND the sea
+blue — the two hues are on opposite sides of the rotation. It is closed by
+DELETION rather than by adjustment, which was the only honest way to close it.
 
 ### The mark in the app
 

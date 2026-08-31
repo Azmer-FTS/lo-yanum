@@ -213,12 +213,27 @@ export function installSupabaseStore(): void {
   // An explicit sign-out empties the device. An expired token does not — see
   // the note on LAST_SESSION_KEY in ./auth, which is where that asymmetry is
   // argued.
+  /** The user id the current snapshot was loaded for, or null. */
+  let loadedFor: string | null = null
+
   onSignOut(async () => {
+    // ★ FIRST, AND BEFORE THE CLEAR: ANY LOAD STILL IN FLIGHT IS NOW VOID.
+    //
+    //   `signOut()` in ./auth runs these handlers BEFORE it tells Supabase,
+    //   so the auth state has NOT changed yet and `sync()` has not run. A
+    //   `load()` sitting between `hydrateFrom` and its `cache.put` therefore
+    //   still believes its session is current — it resumes after the clear
+    //   below and fills the cache straight back up with the data of the person
+    //   who just left. On a shared iPad that is precisely the failure the
+    //   P2.5b asymmetry exists to prevent.
+    //
+    //   The first version of this guard checked the auth state instead and did
+    //   not close the window at all, for exactly this reason: the signal that
+    //   a load is void is the sign-out STARTING, not the auth state finishing.
+    loadedFor = null
     await cache.clear()
     publish({ pending: 0, stale: false, message: null })
   })
-
-  let loadedFor: string | null = null
 
   /**
    * ★ THE ORDER OF THE FOUR STEPS IS THE WHOLE OF P2.5b, and each one is
@@ -239,7 +254,29 @@ export function installSupabaseStore(): void {
    *      start begins from the server's version rather than from a local
    *      history of edits.
    */
-  const load = async (): Promise<void> => {
+  /**
+   * ★ AND A FIFTH THING, FOUND BY `bun run offline` ON A LOADED MACHINE
+   *   (2026-08-31) — `load` TAKES THE IDENTITY IT IS LOADING FOR, AND CHECKS
+   *   IT IS STILL CURRENT BEFORE IT WRITES.
+   *
+   *   Step 4 is `cache.clear()` then `cache.put()`. `onSignOut` above also
+   *   calls `cache.clear()`. If a sign-out lands in the window between
+   *   `hydrateFrom` returning and step 4 writing — a second or two on a fast
+   *   connection, longer on a slow one — the sequence is: sign-out empties the
+   *   cache, then this function fills it straight back up with the data of the
+   *   person who just left. **On a shared iPad that is the exact failure the
+   *   whole P2.5b asymmetry exists to prevent**, and it is invisible: the app
+   *   shows the login form, and the next person's cold start restores somebody
+   *   else's farms.
+   *
+   *   It went unnoticed because it is a race and the gate usually won it. It
+   *   lost on a machine that happened to be busy, which is the only reason it
+   *   was ever seen — and is why the check is worth keeping exactly as it is.
+   */
+  const load = async (userId: string): Promise<void> => {
+    /** Has the session this load belongs to ended while we were waiting? */
+    const abandoned = () => loadedFor !== userId
+
     const restored = restoreSnapshot(await cache.getAll('aggregates'))
     if (restored) {
       replaceSnapshot(restored)
@@ -265,8 +302,15 @@ export function installSupabaseStore(): void {
     await flushPending()
 
     const fresh = await hydrateFrom(client)
+    // The last and only place it matters: everything above this line is a READ.
+    if (abandoned()) return
     replaceSnapshot(fresh)
     await cache.clear('aggregates')
+    if (abandoned()) {
+      // Signed out DURING the write. Leave nothing rather than half of it.
+      await cache.clear('aggregates')
+      return
+    }
     await cache.put('aggregates', snapshotRecords(fresh, new Date().toISOString()))
     publish({ status: 'ready', stale: false, message: null })
   }
@@ -289,7 +333,7 @@ export function installSupabaseStore(): void {
     if (loadedFor === auth.userId) return
     loadedFor = auth.userId
 
-    void load().catch((error: unknown) => {
+    void load(auth.userId).catch((error: unknown) => {
       // Offline is the COMMON case here, not a bug. With a cache behind us the
       // app is already usable and says `stale`; without one there is nothing
       // to show and the banner has to say so.

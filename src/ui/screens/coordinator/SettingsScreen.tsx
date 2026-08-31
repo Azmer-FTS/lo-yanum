@@ -6,7 +6,8 @@ import { signOut } from '../../../data/auth'
 import { Icon } from '../../components/Icon'
 import { Callout, KeyValue, PageHeader, Section } from '../../components/primitives'
 import { useAuth } from '../../hooks/useAuth'
-import { AVERAGE_TILE_BYTES, useOfflineMaps, useOnline } from '../../offline'
+import { megabytes, useOfflineMaps, useOnline } from '../../offline'
+import { BASEMAP_URL, basemapAssets } from '../../components/basemap'
 
 /**
  * P2.5a — הגדרות.
@@ -23,21 +24,28 @@ import { AVERAGE_TILE_BYTES, useOfflineMaps, useOnline } from '../../offline'
  * P2.5b's outbox exists, a change made offline is lost on reload, and the sync
  * card says exactly that rather than showing a reassuring green tick.
  */
+/**
+ * Computed once at module scope: the list never changes for a given build, and
+ * a fresh array on every render would re-fire the download callback's identity
+ * for no reason.
+ */
+const BASEMAP_ASSETS = basemapAssets()
+
 export function SettingsScreen() {
   const { t } = useTranslation()
   const online = useOnline()
   const auth = useAuth()
-  const { tileCount, active, clear } = useOfflineMaps()
+  const { held, bytes, downloadBytes, active, progress, download, clear } =
+    useOfflineMaps(BASEMAP_URL, BASEMAP_ASSETS)
   const [clearing, setClearing] = useState(false)
-
-  const approxMb =
-    tileCount === null ? null : (tileCount * AVERAGE_TILE_BYTES) / (1024 * 1024)
 
   const onClear = async () => {
     setClearing(true)
     await clear()
     setClearing(false)
   }
+
+  const busy = progress !== null
 
   return (
     <div className="mx-auto w-full max-w-2xl">
@@ -67,32 +75,83 @@ export function SettingsScreen() {
           <>
             <dl>
               <KeyValue
-                label={t('settings.offline.title')}
+                label={t('settings.offline.state')}
                 value={
-                  tileCount === null || tileCount === 0
-                    ? t('settings.offline.none')
-                    : t('settings.offline.held', { count: tileCount })
+                  held ? t('settings.offline.held') : t('settings.offline.none')
                 }
               />
-              {approxMb !== null && tileCount !== null && tileCount > 0 && (
+              {held && bytes > 0 && (
                 <KeyValue
-                  label={t('settings.offline.approxSize', { size: '' }).trim()}
-                  value={`${approxMb.toFixed(1)} MB`}
+                  label={t('settings.offline.size')}
+                  value={`${megabytes(bytes)} MB`}
                   ltr
                 />
               )}
             </dl>
             <p className="muted mt-3">{t('settings.offline.explain')}</p>
-            <button
-              type="button"
-              onClick={() => void onClear()}
-              disabled={clearing || tileCount === null || tileCount === 0}
-              data-testid="clear-tiles"
-              className="btn-secondary mt-4"
-            >
-              <Icon name="trash" size={16} />
-              {t('settings.offline.clear')}
-            </button>
+
+            {/* ★ THE SIZE IS ON THE BUTTON, NOT BEHIND IT.
+                The product owner's condition, and the reason it is worded as a
+                download rather than as a toggle: a coordinator on cellular
+                data at the edge of coverage has to be able to DECLINE, and he
+                can only decline something whose cost he was told first. When
+                the size could not be read — no network, which is also when the
+                download cannot happen — the button says so instead of
+                inventing a number. */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void download()}
+                disabled={busy || !online}
+                data-testid="download-map"
+                className="btn-primary"
+              >
+                <Icon name="download" size={16} />
+                {busy
+                  ? t('settings.offline.downloading', {
+                      percent: Math.round((progress ?? 0) * 100),
+                    })
+                  : downloadBytes === null
+                    ? t('settings.offline.download')
+                    : t('settings.offline.downloadSized', {
+                        size: megabytes(downloadBytes),
+                      })}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void onClear()}
+                disabled={clearing || busy || !held}
+                data-testid="clear-tiles"
+                className="btn-secondary"
+              >
+                <Icon name="trash" size={16} />
+                {t('settings.offline.clear')}
+              </button>
+            </div>
+
+            {/* A real indicator, not a spinner: 42 MB at the edge of coverage
+                is minutes, and "still going" has to be distinguishable from
+                "stuck" before somebody starts driving. */}
+            {busy && (
+              <div
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round((progress ?? 0) * 100)}
+                data-testid="map-progress"
+                className="mt-3 h-1.5 w-full overflow-hidden rounded-pill bg-surface-high"
+              >
+                <span
+                  className="block h-full rounded-pill bg-accent transition-[width] duration-base ease-out"
+                  style={{ width: `${Math.round((progress ?? 0) * 100)}%` }}
+                />
+              </div>
+            )}
+
+            {!online && !held && (
+              <p className="muted mt-3">{t('settings.offline.needsNetwork')}</p>
+            )}
           </>
         ) : (
           <>

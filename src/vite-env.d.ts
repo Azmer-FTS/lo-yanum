@@ -13,6 +13,13 @@
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string
   readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string
+  /**
+   * PMTiles — an OVERRIDE, not a requirement. The basemap archive's public URL
+   * has a default in `ui/components/basemap.ts` precisely so that demo mode —
+   * which reads no env file, and which is what every browser gate drives — has
+   * a working map. Set this only to point at a re-cut archive or a local file.
+   */
+  readonly VITE_BASEMAP_URL?: string
 }
 
 interface ImportMeta {

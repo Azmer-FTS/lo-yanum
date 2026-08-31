@@ -53,7 +53,12 @@ export function useOnline(): boolean {
 
 interface WorkerAnswer {
   type: string
-  count?: number
+  held?: boolean
+  bytes?: number
+  ok?: boolean
+  error?: string
+  progress?: number
+  total?: number
 }
 
 /**
@@ -66,7 +71,11 @@ interface WorkerAnswer {
  * answers, and a settings screen that spins forever is worse than one that
  * says "not available".
  */
-function askWorker(type: string, timeoutMs = 3000): Promise<WorkerAnswer | null> {
+function askWorker(
+  type: string,
+  timeoutMs = 3000,
+  payload: Record<string, unknown> = {},
+): Promise<WorkerAnswer | null> {
   return new Promise((resolve) => {
     const controller = navigator.serviceWorker?.controller
     if (!controller) {
@@ -89,51 +98,125 @@ function askWorker(type: string, timeoutMs = 3000): Promise<WorkerAnswer | null>
 
     const timer = setTimeout(() => done(null), timeoutMs)
     navigator.serviceWorker.addEventListener('message', onMessage)
-    controller.postMessage({ type })
+    controller.postMessage({ type, ...payload })
   })
 }
 
+/**
+ * PMTILES — THE OFFLINE MAP IS ONE FILE, SO THIS ANSWERS "HELD OR NOT".
+ *
+ * It replaces a hook that reported a COUNT of raster tiles and multiplied it
+ * by an average to guess megabytes. That number was honest about its own
+ * imprecision and still useless: 3 812 tiles does not tell a coordinator
+ * whether the track to a particular farm is among them. One archive covers the
+ * whole bbox or it does not, and its size is a fact rather than an estimate.
+ */
 export interface OfflineMaps {
   /** null while unknown, or when no worker is controlling this page. */
-  tileCount: number | null
+  held: boolean | null
+  /** Bytes actually held on the device. 0 when nothing is. */
+  bytes: number
+  /**
+   * ★ THE SIZE BEFORE THE TAP. The product owner's own condition: a
+   *   coordinator on cellular data at the edge of coverage has to be able to
+   *   DECLINE. Read with a HEAD request rather than hard-coded, so a re-cut
+   *   archive cannot make the screen lie. null when it could not be asked.
+   */
+  downloadBytes: number | null
   /** True once a worker controls the page — i.e. offline actually works. */
   active: boolean
+  /** 0–1 while a download is running, null otherwise. */
+  progress: number | null
   refresh: () => Promise<void>
+  download: () => Promise<boolean>
   clear: () => Promise<void>
 }
 
-export function useOfflineMaps(): OfflineMaps {
-  const [tileCount, setTileCount] = useState<number | null>(null)
+export function useOfflineMaps(url: string, assets: string[] = []): OfflineMaps {
+  const [held, setHeld] = useState<boolean | null>(null)
+  const [bytes, setBytes] = useState(0)
+  const [downloadBytes, setDownloadBytes] = useState<number | null>(null)
   const [active, setActive] = useState(false)
+  const [progress, setProgress] = useState<number | null>(null)
 
   const refresh = useCallback(async () => {
     const controlled = Boolean(navigator.serviceWorker?.controller)
     setActive(controlled)
-    const answer = await askWorker('TILE_STATS')
-    setTileCount(answer?.count ?? null)
+    const answer = await askWorker('MAP_STATS')
+    setHeld(answer ? Boolean(answer.held) : null)
+    setBytes(answer?.bytes ?? 0)
   }, [])
 
+  /**
+   * How big the download would be, asked of the server rather than assumed.
+   *
+   * A HEAD costs one request and needs a network — which is fine, because a
+   * coordinator with no network cannot download the map either. Failing
+   * quietly to null is deliberate: the screen then says it cannot tell, rather
+   * than showing a number it made up.
+   */
+  useEffect(() => {
+    let cancelled = false
+    void fetch(url, { method: 'HEAD' })
+      .then((r) => {
+        const length = Number(r.headers.get('content-length') || '0')
+        if (!cancelled) setDownloadBytes(length > 0 ? length : null)
+      })
+      .catch(() => {
+        if (!cancelled) setDownloadBytes(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [url])
+
+  /**
+   * Run the download, following the worker's progress messages.
+   *
+   * Not `askWorker`: that helper resolves on the FIRST reply, and this
+   * conversation is many replies — one per chunk — followed by a verdict. A
+   * 42 MB download at the edge of coverage is minutes, and the whole point of
+   * the progress is that it keeps arriving.
+   */
+  const download = useCallback(async (): Promise<boolean> => {
+    const controller = navigator.serviceWorker?.controller
+    if (!controller) return false
+    setProgress(0)
+
+    const finished = await new Promise<boolean>((resolve) => {
+      const onMessage = (event: MessageEvent) => {
+        const data = event.data as WorkerAnswer | undefined
+        if (data?.type !== 'DOWNLOAD_MAP') return
+        if (typeof data.progress === 'number' && data.total) {
+          setProgress(Math.min(1, data.progress / data.total))
+          return
+        }
+        navigator.serviceWorker.removeEventListener('message', onMessage)
+        resolve(Boolean(data.ok))
+      }
+      navigator.serviceWorker.addEventListener('message', onMessage)
+      controller.postMessage({ type: 'DOWNLOAD_MAP', url, assets })
+    })
+
+    setProgress(null)
+    await refresh()
+    return finished
+  }, [url, assets, refresh])
+
   const clear = useCallback(async () => {
-    const answer = await askWorker('CLEAR_TILES')
-    setTileCount(answer?.count ?? 0)
+    const answer = await askWorker('CLEAR_MAP')
+    setHeld(answer ? Boolean(answer.held) : false)
+    setBytes(answer?.bytes ?? 0)
   }, [])
 
   useEffect(() => {
     void refresh()
   }, [refresh])
 
-  return { tileCount, active, refresh, clear }
+  return { held, bytes, downloadBytes, active, progress, refresh, download, clear }
 }
 
-/**
- * A rough size for a count of raster tiles.
- *
- * Deliberately approximate and LABELLED as approximate in the UI: Cache
- * Storage will not tell a page how many bytes it holds, and
- * `navigator.storage.estimate()` reports the whole origin — every cache, plus
- * IndexedDB, plus whatever the browser counts today. Twelve kilobytes is the
- * observed average for OSM raster over the Negev, where most tiles are mostly
- * empty desert. A number that says "about" is more useful than a precise
- * number about the wrong thing.
- */
-export const AVERAGE_TILE_BYTES = 12 * 1024
+/** Bytes as MB, for a screen read one-handed in the dark. */
+export function megabytes(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(1)
+}

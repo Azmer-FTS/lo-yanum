@@ -46,7 +46,7 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run mapping` | **A74** — the mapper (P2.6b). Drives all 380 fixture aggregates out through `toRows` and back through `fromRows` and fails on any difference, then parses this repository's OWN migrations and asserts both directions of the column contract: no column the mapper writes is missing, no `not null`-without-default column goes unwritten. 32 checks — no browser, no dev server, no network |
 | `bun run persist` | **A73** — the store interface (P2.6a). Drives all 45 exported mutations through a RECORDING backend and asserts what each one writes: the fan-outs (a zone rewrites the farm's dunams, the dual hat materialises a driver, a visit rewrites `nextVisitAt`), the ones that mutate IN PLACE and an identity diff would silently lose, and the three things that must never be written (a session change, a reset, a hydration). 84 checks — no browser, no dev server, no network |
 | `bun run auth` | **A70** — the door (P2.3). Starts its OWN two dev servers, one in each mode, and compares them: real mode shows the login form and nothing else on 8 routes, refuses a wrong password IN HEBREW, gives an unknown address the SAME message, leaves no token behind; demo mode is byte-for-byte P0bis. Then B1 without a browser — 26 tables anonymously closed, an anonymous coordinator-grant INSERT refused, the three policy helpers 404. 20 checks — **needs no dev server, and never needs the password** |
-| `bun run offline` | **A72 + A78** — the offline shell (P2.5a) AND the signed-in offline session (P2.5b). The ONLY gate that BUILDS the app and serves the build, because the service worker is production-only: the worker takes control, one online load is enough to survive being pulled offline, ★ **a Supabase read offline FAILS** (nothing from the API is ever cached), looked-at ground is still there, the badge comes and goes, the frozen /poc comes back as ITSELF, and a real build shows its door rather than a browser error. **P2.5b added the only claim in this project that cannot be made outside a real browser**: signed in, IndexedDB really holds the snapshot, a token that cannot be refreshed offline does NOT end the session, the network coming back re-asks and a refusal DOES end it, and an explicit sign-out empties the device. **PO return 3 (2026-08-31) added the other half of the same scenario**: the reopened offline app SHOWS ITS OFFLINE BADGE, and the door explains the one thing that genuinely needs a network — `אין חיבור לאינטרנט — נדרש חיבור להתחברות ראשונה` — before a password is typed, and again instead of a generic server error if one is. 27 checks — **no dev server; it makes its own**. Its last section SKIPS without `.env.test`, which is the intended end state after P3.1 |
+| `bun run offline` | **A72 + A78** — the offline shell (P2.5a) AND the signed-in offline session (P2.5b). The ONLY gate that BUILDS the app and serves the build, because the service worker is production-only: the worker takes control, one online load is enough to survive being pulled offline, ★ **a Supabase read offline FAILS** (nothing from the API is ever cached), looked-at ground is still there, the badge comes and goes, the frozen /poc comes back as ITSELF, and a real build shows its door rather than a browser error. **P2.5b added the only claim in this project that cannot be made outside a real browser**: signed in, IndexedDB really holds the snapshot, a token that cannot be refreshed offline does NOT end the session, the network coming back re-asks and a refusal DOES end it, and an explicit sign-out empties the device. **PO return 3 (2026-08-31) added the other half of the same scenario**: the reopened offline app SHOWS ITS OFFLINE BADGE, and the door explains the one thing that genuinely needs a network — `אין חיבור לאינטרנט — נדרש חיבור להתחברות ראשונה` — before a password is typed, and again instead of a generic server error if one is. **And PMTiles folded in the claim the whole map unit exists for**: the basemap answers a RANGE request with no network at all (the Cache API refuses a 206, so the worker holds ONE archive and slices it), what comes back is the archive rather than an error page, and the map really draws from it. 33 checks — **no dev server; it makes its own**. Its last section SKIPS without `.env.test`, which is the intended end state after P3.1 |
 | `bun run storage` | **A71** — the two private buckets (P2.4): no public route on either (`NoSuchBucket`, the one proof that does not depend on them being empty), no bucket or object enumeration, no signed URL minted for a stranger, no anonymous upload. 10 checks — no browser, no dev server, no password |
 | `bun run outreach` | **A68 + A69** — the sending centre and the WhatsApp group kit, read off the rendered DOM: the right channel per phone type, prefilled `wa.me` / `sms:` / `mailto:` links DECODED and checked, the grouped SMS and email, the sent tick surviving navigation, and the kit's three copies. 25 checks — needs a dev server |
 | `bun run rtl` | **A67** — the generated .xlsx downloaded through the real UI, then opened: both sheets `rightToLeft`, every cell styled, every style right-aligned with `readingOrder="2"`, the header frozen, the instructions sheet complete. 45 checks — needs a dev server |
@@ -137,7 +137,14 @@ offline door — which JOINS criterion B2 — the Supabase keep-alive workflow, 
 horizontal-scroll rule now permanent in `bun run layout` at three splitter
 ratios, the grey band at the foot of the real app (its cause was a token, not a
 component), and P3.4's installed-app status bar with `STANDALONE=1 bun run
-layout` behind it. **Next: PMTiles (decision 71) → P3.** One
+layout` behind it. **PMTILES (decision 71) IS DONE** (§12ter): a 42 MB
+self-hosted Protomaps archive in the project's first PUBLIC bucket, a vector
+style written from `tokens.css` in both themes, the `hue-rotate` deleted — which
+closes open question 9 — the glyphs, sprites and the RTL plugin vendored so the
+map needs NO external host, and a real "download the map" button whose service
+worker synthesises 206s out of one cached archive. `offline` green at **33**,
+`mapfirst` 27, `splitter` 72, `touch` 32. ⚠️ **NOT YET DEPLOYED — that is the
+next session's first job.** Then **P3**. One
 commit per unit. Branch `main`.
 
 > ⚠️⚠️ **STANDING REMINDER, AND IT HAS A DEADLINE: DELETE THE TEST ACCOUNT
@@ -2901,21 +2908,146 @@ revalidate cheaply rather than re-downloading from origin — but it means
 **step 5's service-worker cache is not only about being offline. It is what
 makes the ONLINE path fast too**, and it should be built as such.
 
+### 3–6 · The style, the swap, the button, and the filter that is gone
+
+**`src/ui/components/basemap.ts` is the whole of the style**, and every colour
+in it is a `tokens.css` variable read off `:root` at build time of the style.
+
+★ **NOT "THE CHARTER'S GREENS" — THE BRIEF WAS STALE AND FOLLOWING IT WOULD
+  HAVE BEEN ACTIVELY WRONG.** The brief predates **G17 (2026-08-18)**, which
+  retired the Artzenu palette for the neutral blue-grey identity. Today
+  `--zone-boundary` (#1E7A4F), `--zone-grazing` (#2FA372) and `--marker-farm`
+  (#175E3B) are GREEN, because green is what a farm's ground MEANS on this
+  map. A green basemap would have put every zone on top of its own colour and
+  made the one thing the coordinator is looking at unfindable. So the basemap
+  is deliberately QUIET — surface tones for land, border greys for roads, the
+  app's ink for labels — and everything saturated on screen belongs to the
+  programme. Water is the single hue spent, and it is `--accent` at 0.28 rather
+  than the accent itself, because the accent is what a MARKER is.
+
+★ **`setStyle` THROWS AWAY EVERY SOURCE AND LAYER THE APP ADDED, and that is
+  the whole risk of the swap.** With a raster the theme was a CSS filter on the
+  canvas and light/dark never reached MapLibre. A vector style holds its
+  colours per layer, so the theme switch is a `setStyle` — and four sources and
+  ten layers (zones, threat zones, threat vectors, the route) vanish with it,
+  on 27 screens. The `load` handler is therefore extracted into
+  `installProgrammeLayers`, called from `load` AND once after every `setStyle`.
+  **It was already safe to re-run without anybody knowing**: P0.1 had written
+  every layer to read its data from a REF rather than a closure, so that the
+  handler could "apply it the moment the source exists, whatever order things
+  mounted in". That property is what made this a extraction rather than a
+  rewrite.
+
+★ **THE HUE-ROTATE IS DELETED, AND OPEN QUESTION 9 CLOSES WITH IT.**
+  `--map-filter` (three declarations) and `.map-night` are gone.
+  `docs/brand-artzenu.md` §3 turned out to contain the ANSWER to question 9,
+  written in 2026-08-18 and filed under the wrong heading: *"its inverse sits
+  at ~14° and ends up violet"*. That IS the violet Mediterranean. A filter acts
+  on every pixel including the ones that meant something, and the desert and
+  the sea sit on opposite sides of the rotation — so no tuning could ever have
+  fixed one without breaking the other. Closed by deletion, which was the only
+  honest way.
+
+★ **AND THE FIRST WORKING VERSION WAS QUIETLY NOT AN OFFLINE MAP.** It rendered
+  perfectly and made **nine requests to `protomaps.github.io`** — two sprite
+  files and seven glyph ranges. Criterion B3 would have failed on the first
+  farm track, after 42 MB had been downloaded precisely so it would not. Caught
+  by watching the NETWORK rather than by looking at the map. Vendored into
+  `public/basemap-assets/`: both sprite sheets and **five** glyph ranges per
+  weight rather than the three the first viewport asked for — Latin, Latin-ext,
+  **Hebrew** and **Arabic**, plus punctuation. 1.2 MB, in the same `public/`
+  where G17 already self-hosts the app's OFL faces for the same stated reason.
+
+★ **AND HEBREW RENDERED BACKWARDS UNTIL THE RTL PLUGIN WENT IN.** MapLibre does
+  not shape right-to-left text itself. The first capture read
+  `סייגטלפה מיהוראל`; with `@mapbox/mapbox-gl-rtl-text` vendored next to the
+  glyphs it reads `השטחים הפלסטיניים`, `באר שבע`, `דימונה`, `מצפה רמון`. A
+  Hebrew app whose map is in mirror-writing would have been worse than the
+  raster it replaced.
+
+**THE BUTTON (step 5) — and the service worker underneath it.**
+
+★ **THE CACHE API REFUSES A 206, WHICH DECIDES THE WHOLE DESIGN.** PMTiles
+  reads by range request and `cache.put()` rejects partial responses outright,
+  so the thousands of ranges can never be stored one by one. The only workable
+  shape: hold ONE complete archive and SYNTHESISE the 206s in the worker. It
+  slices a **Blob**, not an ArrayBuffer — `arrayBuffer()` would pull 42 MB into
+  the worker's memory several times a second on an iPad, where `blob.slice()`
+  stays backed by the browser's storage.
+
+★ **A CONSEQUENCE WORTH STATING: BROWSING THE MAP ONLINE CACHES NOTHING.**
+  There is no accidental path into the offline cache. The coordinator taps,
+  having been told the size, or he has no map — which is the honest version of
+  an offline map, and the one a settings screen can make a promise about.
+
+★ **THE ONE EXCEPTION TO "NOTHING FROM SUPABASE IS EVER CACHED"** is drawn as
+  narrowly as it can be: the PUBLIC object path of the `basemap` bucket, and
+  nothing else. `/rest/v1/…`, `/auth/v1/…` and both private buckets stay
+  uncacheable, so P2.5a's rule — and the gate's assertion of it — survive intact.
+
+The הגדרות block now says **held or not held** and **how many bytes**, and the
+button carries **the size before the tap** (read with a HEAD request, not
+hard-coded, so a re-cut archive cannot make the screen lie). It replaces a
+report that counted raster tiles and multiplied by an average: "3 812 tiles"
+is a number nobody can act on — it does not say whether the track to a
+particular farm is in it.
+
+### And one defect that was NOT this unit's, found because this unit ran
+
+⚠️ **`bun run offline` FAILED "signing out empties the device" on a loaded
+machine, and it was a REAL P2.5b RACE rather than a flake.** `load()` ends with
+`cache.clear()` then `cache.put()`; `onSignOut` also calls `cache.clear()`. A
+sign-out landing between `hydrateFrom` returning and that write meant: the
+sign-out empties the cache, and then the in-flight load fills it straight back
+up **with the data of the person who just left**. On a shared iPad that is
+exactly the failure the whole P2.5b asymmetry exists to prevent, and it is
+invisible — the app shows the login form, and the next person's cold start
+restores somebody else's farms.
+
+★ **AND THE FIRST FIX WAS WRONG IN AN INSTRUCTIVE WAY.** It guarded on the AUTH
+  STATE, which never fires in time: `signOut()` runs its handlers BEFORE it
+  tells Supabase, so the auth state has not changed and `sync()` has not run
+  while the window is open. **The signal that a load is void is the sign-out
+  STARTING, not the auth state finishing** — so `onSignOut` now clears
+  `loadedFor` as its first act, before the cache.
+
+It went unnoticed for a lot because it is a race and the gate usually won it.
+It lost on a machine busy running four browsers, which is the only reason it
+was ever seen.
+
 ### What is left in this unit
 
-Steps **3 (the style, in the app's own tokens, both themes)**, **4 (the swap in
-`MapCanvas`)**, **5 (the הגדרות download button)** and **6 (delete the
-`hue-rotate`)** — plus extending `bun run offline` rather than writing a tenth
-browser script. **Run `mapfirst`, `splitter` and `touch` FIRST on every change
-to `MapCanvas`**; the surface that has to move with the raster assumption is
-mapped in the brief below.
+Nothing in the brief. Steps 1–6 are done and `bun run offline` is **33/33**.
+What is NOT done and is the next session's first job: **the deployed app still
+serves the OLD bundle** — this work is committed but the redeploy and its
+live verification have not happened yet.
 
 ---
 
-## ⏭️ RESUME HERE — PMTILES (decision 71), THEN P3
+## ⏭️ RESUME HERE — REDEPLOY, THEN P3
 
-> **The resume point is UNCHANGED by the product owner's returns of
-> 2026-08-31.** All seven are delivered and gated (§12bis); none of them
+> ⚠️ **PMTILES IS DONE (§12ter) AND NOT YET DEPLOYED. THE FIRST JOB OF THE NEXT
+> SESSION IS THE REDEPLOY AND ITS LIVE VERIFICATION**, in that order and
+> verified rather than assumed, exactly as the two deploys before it were:
+>
+> ```bash
+> git push origin main   # deploy.yml runs on every push
+> ```
+>
+> Then check the ARTEFACT, not the tree: the deployed stylesheet must no longer
+> contain `--map-filter`, the bundle must contain `pmtiles`, and
+> `https://…/storage/v1/object/public/basemap/negev-20260829-z14.pmtiles` must
+> still answer a range request with **206**. The frozen `/poc` keeps its RASTER
+> map and its own bundle — it is never rebuilt, and it is the one place OSM
+> tiles legitimately survive.
+>
+> **The brief below is KEPT AS WRITTEN, with its two stale points corrected in
+> place**, because §12ter refers back to it and because the reasoning about
+> approvals and about the raster surface is the reasoning that will be asked
+> about again.
+
+> **The product owner's returns of 2026-08-31 are delivered (§12bis) and did
+> not change this unit.** All seven are delivered and gated (§12bis); none of them
 > touched the map's tile source, which is what this unit is about. The one
 > thing to carry in: **§12bis.5's horizontal-scroll symptom was never
 > reproduced** (open question 7bis) — if it turns up again it will most likely
