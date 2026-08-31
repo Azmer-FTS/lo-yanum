@@ -2852,9 +2852,14 @@ themes, and downloadable in full behind the "רענן מפות לא מקוונו
    byte ranges it needs out of a public daily planet build, so the bbox comes
    down in the tens-to-low-hundreds of MB rather than the planet's 100 GB.
    bbox: the gazetteer's own, padded — **34.27→35.60 E, 30.69→32.23 N**.
-   ⚠️ **APPROVAL 1: this needs a Go binary downloaded onto the machine.** The
+   ⚠️ **APPROVAL 1: this needs the `pmtiles` executable on the machine.** The
    session's classifier refuses unattended downloads of executables, and it is
    right to. Ask before starting the unit, not halfway through it.
+   ✅ **CHECKED 2026-08-31 — IT IS IN HOMEBREW, so there is no raw GitHub
+   release download to argue about.** `brew info pmtiles` → **stable 1.31.2,
+   bottled, homebrew-core, BSD-3-Clause**, and Homebrew is already how `bun`
+   got onto this machine (`/usr/local/bin`, Intel prefix). `brew install
+   pmtiles` is the form to ask for.
    Sanity-check the result before uploading anything: open it, confirm the
    zoom range covers z6–z14 (z14 is where a farm track is legible and where
    the raster estimate topped out at 51 MB), and confirm the size.
@@ -2867,14 +2872,32 @@ themes, and downloadable in full behind the "רענן מפות לא מקוונו
    ⚠️ **APPROVAL 2: the upload.** Free tier is 1 GB stored / 5 GB egress and
    the standard upload caps at 50 MB — over that it is a resumable (TUS)
    upload. Cost stays 0.
-3. **THE STYLE.** `pmtiles` + `maplibre-gl` already in `package.json`;
+3. **THE STYLE.** ⚠️ **CORRECTION 2026-08-31 — THIS BRIEF WAS WRONG AND A
+   FRESH SESSION WOULD HAVE BELIEVED IT.** Only `maplibre-gl` is in
+   `package.json`; **`pmtiles` is NOT a dependency and is not in `bun.lock`**
+   (checked: `ls node_modules | grep pmtiles` is empty, `grep -c pmtiles
+   bun.lock` is 0). The unit therefore adds TWO ordinary npm dependencies —
+   `pmtiles` (the JS protocol adapter MapLibre needs to read an archive over
+   range requests, which is a different thing from the Go CLI in step 1) and
+   `protomaps-themes-base`. Neither is an executable download.
    `protomaps-themes-base` is the shortest path to a correct vector style, but
    the COLOURS must come from `src/styles/tokens.css` and not from its
    presets — one style function, two palettes, the same tokens the rest of the
    app is contrast-audited against. Run `bun run contrast` on whatever is
    added.
 4. **THE SWAP.** `src/ui/components/MapCanvas.tsx` is the only file that
-   should need to change. ★ **AND IT IS THE RISK OF THE WHOLE UNIT:** the map
+   should need to change **for the style itself** — the surface is small and
+   exact: `OSM_STYLE` (one `const`, `src/ui/components/MapCanvas.tsx:23`) and
+   the single `style: OSM_STYLE` that consumes it. But the RASTER assumption
+   leaks into three more places that have to move with it, mapped 2026-08-31 so
+   the next session does not discover them one failing gate at a time:
+   · `public/sw.js` — `TILE_HOSTS = ['tile.openstreetmap.org']` and
+     `TILE_CACHE`. One archive read by range requests is not "many small
+     tiles", and step 5 already says it wants its own cache name.
+   · `scripts/offline.ts` — `TILE` is a hard-coded
+     `https://tile.openstreetmap.org/10/609/418.png`, asserted twice.
+   · `src/index.css:828` + `tokens.css` (three `--map-filter` declarations) —
+     the `hue-rotate` of step 6. ★ **AND IT IS THE RISK OF THE WHOLE UNIT:** the map
    is on 27 screens, and `mapfirst` (27), `splitter` (72) and `touch` (32) all
    drive it. Run those three FIRST, before anything else, on every change.
 5. **THE BUTTON.** In הגדרות, next to P2.5a's tile-cache report. It must show
