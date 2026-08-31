@@ -74,7 +74,25 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 
 **Live preview (the app, and it keeps moving):**
 https://azmer-fts.github.io/lo-yanum/
-**DEPLOYED 2026-08-31 WITH P2.6 + P2.5b, and verified live rather than
+**REDEPLOYED 2026-08-31 WITH THE PO'S SEVEN RETURNS, and verified live rather
+than assumed** — on the deployed page itself: the reveal button measures
+**44 × 44**, the password field really flips `password` → `text`, its
+`aria-label` is `הסתר סיסמה`, `autocomplete` is `username` /
+`current-password`, and pulling the browser offline puts
+`אין חיבור לאינטרנט — נדרש חיבור להתחברות ראשונה` on the door. In the shipped
+files: the stylesheet carries `--shell-bottom: var(--safe-bottom)` (point 6's
+grey band is gone from the artefact, not just from the tree) and the
+`html[data-standalone] body:before` gradient; the bundle carries the project
+ref, `lo-yanum:last-email` and the Hebrew offline string; **`black-translucent`
+appears only inside the explanatory comment and as no meta tag**, which is the
+whole of the judgement call in §12bis.7. The frozen `/poc` bundle still
+contains the project ref **zero** times.
+**AND THE KEEP-ALIVE RAN FOR REAL** (`workflow_dispatch`, run 33390602694):
+`attempt 1: HTTP 200`, `Response: []`, and the two secrets masked as `***` in
+the public log while the project ref still prints — which is what the `sed` on
+the host was for.
+
+**(previous) DEPLOYED 2026-08-31 WITH P2.6 + P2.5b, and verified live rather than
 assumed:** the app's bundle CONTAINS the project ref (so the build is REAL and
 not the silent demo fallback the note below warns about) and the deployed page
 renders the Hebrew login form; the frozen `/poc` bundle contains the project
