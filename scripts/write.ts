@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { COLLECTIONS } from '../src/core/backend'
 import type { Collection } from '../src/core/backend'
+import { flushOutbox, memoryCache, toRecords } from '../src/data/cache'
 import { applyChanges, hydrateFrom, readGrantFrom } from '../src/data/write'
 
 import { fixtureChanges, fixtureData, fixtureDeletions, ownRows } from './fixture'
@@ -354,9 +355,64 @@ section('5 — writing twice')
   )
 }
 
-// --- 6. Clean up, and prove it -------------------------------------------
+// --- 6. The outbox, replayed for real -------------------------------------
 
-section('6 — everything this run wrote is removed')
+section('6 — P2.5b: what was written offline actually lands')
+
+{
+  /**
+   * A77 proves the outbox's RULES against a memory cache. This proves the one
+   * thing a memory cache cannot: that what the outbox held is accepted by
+   * Postgres when it is finally replayed. Same two functions the app uses —
+   * `flushOutbox` with `applyChanges` as its sender — so the seam between them
+   * is exercised rather than assumed.
+   */
+  const cache = memoryCache()
+  const offlineFarm = fixtureData().farms[0]
+  offlineFarm.notes = 'נכתב ללא רשת'
+  const offlineVisit = fixtureData().farmVisits[0]
+  offlineVisit.note = 'נכתב ללא רשת'
+
+  // Queued NEWEST FIRST on purpose: the flush has to reorder them, because a
+  // visit written before its farm exists is a rejected insert.
+  await cache.put(
+    'outbox',
+    toRecords(
+      [{ collection: 'farmVisits', id: offlineVisit.id, json: JSON.stringify(offlineVisit) }],
+      '2026-08-31T09:00:00.000Z',
+    ),
+  )
+  await cache.put(
+    'outbox',
+    toRecords(
+      [{ collection: 'farms', id: offlineFarm.id, json: JSON.stringify(offlineFarm) }],
+      '2026-08-31T04:00:00.000Z',
+    ),
+  )
+
+  const flushed = await flushOutbox(cache, (changes) => applyChanges(client, changes))
+  check(
+    'the outbox flushed to the real database',
+    flushed.sent === 2 && flushed.failed === null,
+    flushed.failed ?? `${flushed.sent} sent`,
+  )
+  check('and emptied itself only after that', flushed.pending === 0)
+
+  const back = ownRows(await hydrateFrom(client))
+  const farm = (back.farms as Array<{ id: string; notes: string }>)[0]
+  const visit = (back.farmVisits as Array<{ id: string; note: string }>).find(
+    (v) => v.id === offlineVisit.id,
+  )
+  check(
+    'the edit made with no network is on the server',
+    farm?.notes === 'נכתב ללא רשת' && visit?.note === 'נכתב ללא רשת',
+    `${farm?.notes ?? '—'} / ${visit?.note ?? '—'}`,
+  )
+}
+
+// --- 7. Clean up, and prove it -------------------------------------------
+
+section('7 — everything this run wrote is removed')
 
 {
   let error: string | null = null

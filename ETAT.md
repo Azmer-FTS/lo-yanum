@@ -40,7 +40,8 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run tokens` | **A28/A29** — one radius scale, no tinted field, orange only where it is allowed. No browser needed |
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — 150 checks |
-| `bun run write` | **A76** — ⚠️ **THE WRITE PATH, END TO END, AGAINST THE REAL DATABASE** (P2.6b). Signs in as a DISPOSABLE test account, writes 17 aggregates across all 25 tables through `applyChanges` — the app's own function, not a copy — reads them back through `hydrateFrom`, compares, writes again to prove an update is not a duplicate, then deletes everything and proves the database is exactly as it was found. Every id begins `a76-`. 35 checks — needs `.env.test`, which is git-ignored. ⚠️ **THE ACCOUNT MUST BE DELETED BEFORE P3.1** |
+| `bun run sync` | **A77** — the offline data layer's rules (P2.5b): the cache restores what was on screen, six edits to one guard coalesce to ONE outbox entry, the oldest flushes first, a FAILED flush keeps everything, a deletion survives as a deletion, and signing out clears both stores while losing the network clears neither. 28 checks — no browser, no dev server, no network |
+| `bun run write` | **A76** — ⚠️ **THE WRITE PATH, END TO END, AGAINST THE REAL DATABASE** (P2.6b). Signs in as a DISPOSABLE test account, writes 17 aggregates across all 25 tables through `applyChanges` — the app's own function, not a copy — reads them back through `hydrateFrom`, compares, writes again to prove an update is not a duplicate, then deletes everything and proves the database is exactly as it was found. Every id begins `a76-`. Section 6 replays a P2.5b outbox into the real database. 38 checks — needs `.env.test`, which is git-ignored. ⚠️ **THE ACCOUNT MUST BE DELETED BEFORE P3.1** |
 | `bun run live` | **A75** — the LIVE schema against the mapper (P2.6b), and **it needs no password**. PostgREST resolves `?select=` against the schema BEFORE applying RLS, so an anonymous request names a missing column (400/42703) and an existing one answers `[]`. 24 tables probed column by column, 15 enums probed label by label, `app_users` closed to a stranger. 46 checks — needs the internet, not a dev server |
 | `bun run mapping` | **A74** — the mapper (P2.6b). Drives all 380 fixture aggregates out through `toRows` and back through `fromRows` and fails on any difference, then parses this repository's OWN migrations and asserts both directions of the column contract: no column the mapper writes is missing, no `not null`-without-default column goes unwritten. 32 checks — no browser, no dev server, no network |
 | `bun run persist` | **A73** — the store interface (P2.6a). Drives all 45 exported mutations through a RECORDING backend and asserts what each one writes: the fan-outs (a zone rewrites the farm's dunams, the dual hat materialises a driver, a visit rewrites `nextVisitAt`), the ones that mutate IN PLACE and an identity diff would silently lose, and the three things that must never be written (a session change, a reset, a hydration). 84 checks — no browser, no dev server, no network |
@@ -1652,7 +1653,15 @@ All twelve are committed and runnable.
   a database and cannot know the schema is behind. The single family of
   differences it tolerates is listed at the top of the file — three optional
   `Farm` fields that are `not null` in the schema — and nothing else.
-- **`scripts/write.ts`** (`bun run write`) + **`scripts/fixture.ts`** — A76, 35
+- **`scripts/sync.ts`** (`bun run sync`) — A77, 28 checks. Every rule the
+  offline layer makes to a coordinator on a farm track at 02:00, asserted
+  rather than argued for in a comment nobody re-reads. It drives the real
+  functions against `memoryCache()`, which satisfies the same `CacheStore`
+  contract IndexedDB does — so what a browser is left to prove is only that
+  IndexedDB works, which is one assertion rather than twenty. The check worth
+  knowing about: **a failed flush keeps everything**, because an entry is
+  removed only once the server has actually taken it.
+- **`scripts/write.ts`** (`bun run write`) + **`scripts/fixture.ts`** — A76, 38
   checks, and the one claim P2.6 could not make on its own. A73 proves every
   mutation reports the right aggregates, A74 that the mapper is lossless in
   memory, A75 that the live schema accepts every column — **none of them proves
