@@ -1,5 +1,10 @@
+import { createClient } from '@supabase/supabase-js'
 import { chromium } from 'playwright'
 import type { Browser, BrowserContext, Page } from 'playwright'
+
+import { applyChanges } from '../src/data/write'
+
+import { fixtureChanges, fixtureDeletions } from './fixture'
 
 /**
  * A72 — THE OFFLINE SHELL (P2.5a).
@@ -27,6 +32,19 @@ import type { Browser, BrowserContext, Page } from 'playwright'
  *   7  a real build's LOGIN screen renders offline as well: a coordinator who
  *      reopens the app with no signal must see the door, not a browser error.
  *
+ * P2.5b added an eighth, and it is the only claim in this project that cannot
+ * be made anywhere but in a real browser:
+ *
+ *   8  ★ SIGNED IN, THE APP SURVIVES LOSING THE NETWORK — AND SIGNING OUT
+ *      LEAVES NOTHING BEHIND. A77 proves every rule of the cache and the
+ *      outbox against a memory implementation of the same contract; A76 proves
+ *      the writes land. Neither can prove that INDEXEDDB itself holds the
+ *      snapshot, that the session is not thrown away when the token cannot be
+ *      refreshed, or that an explicit sign-out really empties the device. This
+ *      does, and it needs the disposable test account (`.env.test`) — which
+ *      MUST BE DELETED BEFORE P3.1. Without it this section SKIPS rather than
+ *      fails, because that deletion is the intended end state.
+ *
  *   bun run offline
  */
 
@@ -48,9 +66,9 @@ function section(title: string): void {
   console.log(`  ${'-'.repeat(title.length)}`)
 }
 
-async function readEnvReal(): Promise<Record<string, string>> {
+async function readEnv(name: string): Promise<Record<string, string>> {
   const out: Record<string, string> = {}
-  const file = Bun.file('.env.real')
+  const file = Bun.file(name)
   if (!(await file.exists())) return out
   for (const line of (await file.text()).split('\n')) {
     const trimmed = line.trim()
@@ -126,11 +144,15 @@ async function waitForController(page: Page, timeoutMs = 20_000): Promise<boolea
 console.log('A72 — the offline shell: one online load is enough')
 console.log('  building… (this gate serves a real production build, not a dev server)')
 
-const fileEnv = await readEnvReal()
+const fileEnv = await readEnv('.env.real')
 const SUPABASE_URL =
   process.env.VITE_SUPABASE_URL ?? fileEnv.VITE_SUPABASE_URL ?? ''
 const SUPABASE_KEY =
   process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? fileEnv.VITE_SUPABASE_PUBLISHABLE_KEY ?? ''
+
+const testEnvFile = await readEnv('.env.test')
+const TEST_EMAIL = process.env.TEST_EMAIL ?? testEnvFile.TEST_EMAIL ?? ''
+const TEST_PASSWORD = process.env.TEST_PASSWORD ?? testEnvFile.TEST_PASSWORD ?? ''
 
 const demo = await buildAndServe('dist-offline-demo', PORT, {})
 
@@ -316,6 +338,198 @@ try {
     check('the login screen renders with no network', doorOffline)
 
     await realContext.close()
+
+    // ------------------------------------------- P2.5b: signed in, offline ---
+    section('SIGNED IN, THE APP SURVIVES LOSING THE NETWORK (P2.5b)')
+
+    if (TEST_EMAIL === '' || TEST_PASSWORD === '') {
+      console.log('  SKIP  (no .env.test — the disposable account is gone, which is the end state)')
+    } else {
+      // Seed something worth caching, through the app's OWN writer, with ids
+      // that begin `a76-` so the cleanup below is a statement and not a hope.
+      const seeder = createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      })
+      const { error: seedAuth } = await seeder.auth.signInWithPassword({
+        email: TEST_EMAIL,
+        password: TEST_PASSWORD,
+      })
+      check('the disposable account signs in (for seeding)', seedAuth === null, seedAuth?.message ?? '')
+
+      if (!seedAuth) {
+        await applyChanges(seeder, fixtureChanges())
+        try {
+          const ctx = await browser.newContext({
+            viewport: { width: 1280, height: 900 },
+            locale: 'he-IL',
+          })
+          const page = await ctx.newPage()
+          page.setDefaultTimeout(30_000)
+
+          await page.goto(`${real.url}/#/`, { waitUntil: 'load' })
+          await page.waitForSelector('[data-testid="login-form"]')
+          await page.fill('input[name="email"]', TEST_EMAIL)
+          await page.fill('input[name="password"]', TEST_PASSWORD)
+          await page.click('button[type="submit"]')
+
+          const shell = await page
+            .waitForSelector('[data-testid="sign-out"]', { timeout: 30_000 })
+            .then(() => true)
+            .catch(() => false)
+          check('signing in through the form opens the app', shell)
+
+          await page.goto(`${real.url}/#/coordinator/farms`, { waitUntil: 'load' })
+          const seenOnline = await page
+            .waitForSelector('text=חוות א76', { timeout: 30_000 })
+            .then(() => true)
+            .catch(() => false)
+          check('the seeded entity is on screen, from the server', seenOnline)
+
+          // The cache is written on the same queue as the hydration; give it
+          // the tick it needs rather than racing it.
+          const cached = await page.waitForFunction(
+            () =>
+              new Promise<number>((resolve) => {
+                const request = indexedDB.open('lo-yanum')
+                request.onerror = () => resolve(-1)
+                request.onsuccess = () => {
+                  const db = request.result
+                  if (!db.objectStoreNames.contains('aggregates')) {
+                    resolve(0)
+                    return
+                  }
+                  const count = db.transaction('aggregates').objectStore('aggregates').count()
+                  count.onsuccess = () => resolve(count.result)
+                  count.onerror = () => resolve(-1)
+                }
+              }).then((n) => (n > 0 ? n : false)),
+            undefined,
+            { timeout: 20_000 },
+          ).then((h) => h.jsonValue()).catch(() => 0)
+          check('IndexedDB really holds the snapshot', Number(cached) > 10, `${String(cached)} aggregates`)
+
+          // ★ THE ONE THAT MATTERS. Offline, reloaded: the coordinator must get
+          //   his farms, not a login form he cannot possibly satisfy.
+          await ctx.setOffline(true)
+          await page.goto(`${real.url}/#/coordinator/farms`, { waitUntil: 'load' })
+
+          const stillIn = await page
+            .waitForSelector('[data-testid="sign-out"]', { timeout: 30_000 })
+            .then(() => true)
+            .catch(() => false)
+          check('an offline reload keeps the coordinator inside the app', stillIn)
+
+          const loginShown = await page
+            .$('[data-testid="login-form"]')
+            .then((el) => el !== null)
+          check('and the login form is NOT what a coordinator with no signal sees', !loginShown)
+
+          const seenOffline = await page
+            .waitForSelector('text=חוות א76', { timeout: 20_000 })
+            .then(() => true)
+            .catch(() => false)
+          check('the data is still there, out of the cache', seenOffline)
+
+          /**
+           * ★ AND NOW THE CASE THE RELOAD ABOVE DOES NOT ACTUALLY REACH.
+           *
+           * A reload a minute after signing in still has a valid access token
+           * in storage, so `getSession()` answers from localStorage and never
+           * touches the network — which proves the app reloads offline, and
+           * proves nothing about the token EXPIRING offline. That is the case
+           * that ends a night, and it is the one `resolveSignedOut` exists for.
+           *
+           * Emptying supabase-js's own storage key reproduces it exactly:
+           * `getSession()` then has nothing to answer with and no network to
+           * refresh from, which is what an expired token offline amounts to.
+           * The app must stay open on the remembered identity.
+           */
+          await page.evaluate(() => {
+            localStorage.removeItem('lo-yanum:auth')
+          })
+          await page.goto(`${real.url}/#/coordinator/farms`, { waitUntil: 'load' })
+          const survivedExpiry = await page
+            .waitForSelector('[data-testid="sign-out"]', { timeout: 30_000 })
+            .then(() => true)
+            .catch(() => false)
+          check('★ a token that cannot be refreshed offline does NOT end the session', survivedExpiry)
+          check(
+            'and the cached data is still what the screen shows',
+            await page
+              .waitForSelector('text=חוות א76', { timeout: 20_000 })
+              .then(() => true)
+              .catch(() => false),
+          )
+
+          /**
+           * ★ AND THE OTHER HALF OF THE SAME RULE: online, ASKED, and refused
+           *   is a real sign-out. Keeping a session forever because the device
+           *   once had one would be a device that can never be handed over.
+           */
+          await ctx.setOffline(false)
+          const askedAndRefused = await page
+            .waitForSelector('[data-testid="login-form"]', { timeout: 30_000 })
+            .then(() => true)
+            .catch(() => false)
+          check(
+            '★ but the network coming back re-asks, and a refusal DOES end it',
+            askedAndRefused,
+          )
+
+          // Back in for the sign-out half.
+          await page.fill('input[name="email"]', TEST_EMAIL)
+          await page.fill('input[name="password"]', TEST_PASSWORD)
+          await page.click('button[type="submit"]')
+          await page.waitForSelector('[data-testid="sign-out"]', { timeout: 30_000 })
+
+          // Signing out is the OTHER half of the asymmetry, and it is the half
+          // that protects the next person on a shared iPad.
+          await page.goto(`${real.url}/#/coordinator`, { waitUntil: 'load' })
+          await page.waitForSelector('[data-testid="sign-out"]')
+          page.once('dialog', (d) => {
+            void d.accept()
+          })
+          await page.click('[data-testid="sign-out"]')
+          const doorBack = await page
+            .waitForSelector('[data-testid="login-form"]', { timeout: 30_000 })
+            .then(() => true)
+            .catch(() => false)
+          check('signing out shows the door again', doorBack)
+
+          const leftOver = await page.evaluate(
+            () =>
+              new Promise<number>((resolve) => {
+                const request = indexedDB.open('lo-yanum')
+                request.onerror = () => resolve(-1)
+                request.onsuccess = () => {
+                  const db = request.result
+                  if (!db.objectStoreNames.contains('aggregates')) {
+                    resolve(0)
+                    return
+                  }
+                  const count = db.transaction('aggregates').objectStore('aggregates').count()
+                  count.onsuccess = () => resolve(count.result)
+                  count.onerror = () => resolve(-1)
+                }
+              }),
+          )
+          check(
+            '★ and it empties the device — nothing for the next person',
+            leftOver === 0,
+            `${leftOver} aggregate(s) left in IndexedDB`,
+          )
+          check(
+            'the remembered identity goes with it',
+            (await page.evaluate(() => localStorage.getItem('lo-yanum:last-session'))) === null,
+          )
+
+          await ctx.close()
+        } finally {
+          await applyChanges(seeder, fixtureDeletions())
+          await seeder.auth.signOut()
+        }
+      }
+    }
   }
 } finally {
   if (browser) await browser.close()
