@@ -2822,6 +2822,96 @@ exit 1), so both halves of its verdict are measured rather than reasoned.
 
 ---
 
+## 12ter. PMTILES — STEPS 1 AND 2 ARE DONE (2026-08-31)
+
+**THE EXTRACT AND THE BUCKET ARE REAL AND MEASURED.** Both of the brief's
+approval gates were put to the product owner before anything started, and both
+were answered: `brew install pmtiles`, and a standing yes for the upload under
+200 MB.
+
+### 1 · The extract — 42 MB, and the dry run is why that number was cheap
+
+`pmtiles` **1.31.2** from **homebrew-core** (bottled, BSD-3-Clause) — not a raw
+GitHub release, because Homebrew already provides `bun` on this machine.
+
+★ **`pmtiles extract --dry-run` ANSWERS "HOW BIG" WITHOUT DOWNLOADING ANYTHING**,
+  which is what turned the size question from a commitment into a lookup. It
+  was used to compare two candidates before a byte was fetched:
+
+  | zoom | archive | notes |
+  |---|---|---|
+  | z0–**z14** | **42 MB** | ✅ chosen |
+  | z0–z15 | 88 MB | doubles it, and crosses Supabase's 50 MB standard-upload cap into a resumable TUS upload |
+
+  **z14 is much less of a compromise than the raster estimate made it sound,
+  and this is the reason worth keeping:** MapLibre OVERZOOMS vector data by
+  re-drawing the geometry, so past z14 lines and labels stay sharp. A raster
+  past its maximum zoom just blurs. The brief's "z14 is where a farm track is
+  legible" was a hard ceiling for raster and is a soft one here.
+
+  Source: `https://build.protomaps.com/20260829.pmtiles` (the daily planet
+  build; every date probed answered a range request with 206). bbox as the
+  brief specified — `34.27,30.69,35.60,32.23`.
+
+**Checked before uploading, as the brief insisted:** spec v3, tile type `mvt`,
+bounds exactly the bbox, **min zoom 0 / max zoom 14**, `clustered: true`, OSM
+data of 2026-08-29, attribution present. And not just the header — a real z14
+tile at the Negev centre (`14/9775/6692`) decodes to **43 KB** across **9
+vector layers**: `boundaries, buildings, earth, landcover, landuse, places,
+pois, roads, water`. `roads` is the one that matters at 02:00.
+
+### 2 · The bucket — the first PUBLIC one in this project
+
+`supabase/migrations/20260831000300_basemap_bucket.sql`, applied. The migration
+answers "why is this one public" next to P2.4's two private ones rather than in
+a file nobody opens: it holds a picture of ground that is already public and
+nothing about anybody in the programme.
+
+★ **THE PO'S SIZE CEILING IS A COLUMN.** `file_size_limit = 209715200` IS the
+  "under 200 MB" he authorised, so a future replacement that blows past it is
+  refused by the database rather than by whether somebody remembered the
+  conversation.
+
+★ **THERE IS DELIBERATELY NO SELECT POLICY.** A public bucket is served from
+  `/storage/v1/object/public/…`, a path that does not consult
+  `storage.objects` at all — a permissive read policy here would look like the
+  thing granting access while the `public` flag did the granting. Writes are
+  coordinator-only, like both private buckets, which is what let the upload
+  happen through a normal session and **without the service-role key this
+  project never fetches**.
+
+**Uploaded and verified end to end** — `basemap/negev-20260829-z14.pmtiles`,
+the key stamped with the OSM build date so a replacement is a new URL:
+
+| check | result |
+|---|---|
+| public URL | `HTTP 200` |
+| `content-length` | **42 560 293** — byte-identical to the local file |
+| `accept-ranges` | `bytes` |
+| range `0-16383` | **206**, 16 384 bytes |
+| range mid-file | **206**, 256 bytes |
+| first 7 bytes | `PMTiles` — the archive survived the round trip |
+
+⚠️ **AND ONE MEASURED LIMITATION, recorded rather than fought:** the custom
+`cache-control: public, max-age=31536000, immutable` IS stored on the object
+(`storage.objects.metadata->>'cacheControl'` confirms it) but the public
+endpoint serves **`cache-control: no-cache`** on the free tier. There is an
+`ETag` and Cloudflare reports `cf-cache-status: REVALIDATED`, so range requests
+revalidate cheaply rather than re-downloading from origin — but it means
+**step 5's service-worker cache is not only about being offline. It is what
+makes the ONLINE path fast too**, and it should be built as such.
+
+### What is left in this unit
+
+Steps **3 (the style, in the app's own tokens, both themes)**, **4 (the swap in
+`MapCanvas`)**, **5 (the הגדרות download button)** and **6 (delete the
+`hue-rotate`)** — plus extending `bun run offline` rather than writing a tenth
+browser script. **Run `mapfirst`, `splitter` and `touch` FIRST on every change
+to `MapCanvas`**; the surface that has to move with the raster assumption is
+mapped in the brief below.
+
+---
+
 ## ⏭️ RESUME HERE — PMTILES (decision 71), THEN P3
 
 > **The resume point is UNCHANGED by the product owner's returns of
