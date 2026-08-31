@@ -3029,7 +3029,7 @@ positions × 4 viewports, browser AND installed), `mapfirst` 27, `splitter` 72,
 
 ---
 
-## ⏭️ RESUME HERE — P3
+## ⏭️ RESUME HERE — P3.1 (AND IT STARTS BY DELETING THE TEST ACCOUNT)
 
 > ✅ **PMTILES IS DONE AND DEPLOYED (§12ter), and verified on the artefact
 > rather than on the tree** — signed in on the live app, 2026-08-31: the map's
@@ -3042,10 +3042,51 @@ positions × 4 viewports, browser AND installed), `mapfirst` 27, `splitter` 72,
 > `type: "raster"` from an `osm` source and contains `pmtiles` zero times** —
 > it is never rebuilt, and it is the one place OSM tiles legitimately survive.
 >
-> **The brief below is KEPT AS WRITTEN, with its two stale points corrected in
-> place**, because §12ter refers back to it and because the reasoning about
-> approvals and about the raster surface is the reasoning that will be asked
-> about again.
+> **The PMTiles brief further down is KEPT AS WRITTEN, with its two stale
+> points corrected in place and marked DELIVERED**, because §12ter refers back
+> to it and because the reasoning about approvals and about the raster surface
+> is the reasoning that will be asked about again. **It is not the next unit.
+> The next unit is immediately below.**
+
+### ⛔ P3.1 OPENS WITH AN IRREVERSIBLE ACT THAT IS NOT YOURS TO DO ALONE
+
+**DELETE THE TEST ACCOUNT BEFORE IMPORTING A SINGLE REAL FARMER.** This is the
+deadline the standing reminder at the top of this file has been counting down
+to, and it is the first thing P3.1 does — not the last.
+
+`dov+test@serialkolors.com` (`304d2f3b-90ca-43dc-bfac-1361c8184303`) carries a
+`coordinator` grant: total read and write over the whole programme. That is a
+grant over NOTHING while the database is empty, and **a second door onto real
+farmers' phone numbers the moment P3.1 imports them.**
+
+Three steps, and only two of them can be done from here:
+
+1. ⛔ **THE PRODUCT OWNER, IN THE DASHBOARD** — Authentication → Users →
+   `dov+test@…` → Delete user. There is no way to do this without the
+   service-role key, which this project never fetches. **Ask him; do not look
+   for a way around it.**
+2. `delete from app_users where user_id = '304d2f3b-90ca-43dc-bfac-1361c8184303';`
+   — run it and CHECK IT RETURNS 0 ROWS afterwards, because "probably cascaded"
+   is not a thing to be probably about.
+3. Delete `.env.test`.
+
+`bun run write` will then fail at its first check, loudly. **That is the
+intended end state, not a regression**, and `bun run offline`'s last section
+SKIPS rather than failing. The final report of the session that does this must
+confirm the deletion in so many words.
+
+### THEN P3, IN THE WRITTEN ORDER OF MARCH
+
+P3.1 the real import → photos → signature → P3.3bis the automatic email → the
+final PWA pass → deployment. `src/core/import.ts` was written to be re-runnable
+server-side unchanged, and `bun run import` (29 checks) already drives
+download → fill → upload → find against the templates, so P3.1 is a data
+question rather than a code question.
+
+⚠️ **AND THE ONE THING TO CARRY IN FROM THIS SESSION:** the horizontal-scroll
+symptom of §12bis.5 was never reproduced (open question 7bis). If it returns,
+the four facts worth writing down are the SCREEN, the WINDOW WIDTH, browser tab
+vs installed, and whether the rail was expanded.
 
 > **The product owner's returns of 2026-08-31 are delivered (§12bis) and did
 > not change this unit.** All seven are delivered and gated (§12bis); none of them
@@ -3054,6 +3095,10 @@ positions × 4 viewports, browser AND installed), `mapfirst` 27, `splitter` 72,
 > reproduced** (open question 7bis) — if it turns up again it will most likely
 > turn up on a map screen, so it is worth watching for while MapCanvas is being
 > rebuilt here.
+
+> ✅ **DELIVERED 2026-08-31 — everything from here to the end of this section
+> is the historical brief, kept for its reasoning. See §12ter for what was
+> actually built and what the brief got wrong.**
 
 **THE UNIT IN ONE SENTENCE:** replace the OSM raster basemap with one
 self-hosted Protomaps PMTiles file of southern Israel, served from a PUBLIC
