@@ -74,6 +74,11 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 
 **Live preview (the app, and it keeps moving):**
 https://azmer-fts.github.io/lo-yanum/
+**DEPLOYED 2026-08-31 WITH P2.6 + P2.5b, and verified live rather than
+assumed:** the app's bundle CONTAINS the project ref (so the build is REAL and
+not the silent demo fallback the note below warns about) and the deployed page
+renders the Hebrew login form; the frozen `/poc` bundle contains the project
+ref **zero times**, which is what "frozen" has to mean.
 **The FROZEN POC (G13, never redeployed):**
 https://azmer-fts.github.io/lo-yanum/poc/
 Public repo: https://github.com/Azmer-FTS/lo-yanum — deploys on every push to
