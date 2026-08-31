@@ -4289,6 +4289,25 @@ lot plan's. Eleven points, then the rest of P3:
 | **then** | **signature (finger AND stylus)** | ✅ **§21** — `SignaturePad`, Pointer Events + PRESSURE, one nullable column, and `bun run touch` counts INK at `pointerType=pen` |
 | | photos → P3.3bis automatic email → the final PWA → the agreement PDF | ⬜ **NOT DONE — see §22** |
 
+### ✅ EVERY GATE, RE-RUN AT THE END OF THE SESSION
+
+`accept` **162** · `deletion` **61** (new) · `report` **86** (new) · `persist`
+**94** · `report`/`mapping` **33** · `live` **48** · `sync` **28** · `dispatch`
+**27** · `storage` **10** · `tokens` · `contrast` · `typecheck` · `build`
+— and with a browser: `touch` **52** (13 of them at `pointerType=pen`) ·
+`splitter` **72** · `rtl` **45** · `import` **29** · `wizard` **28** ·
+`outreach` **25** · `mapfirst` **27 screens** · `empty` **10 screens** (new) ·
+`layout` green on **all four viewports in Chromium**, on **iPad and iPad
+landscape in WebKit**, in **`STANDALONE=ios`** (the configuration that actually
+ships) in both orientations, in `STANDALONE=1`, and in both `STATUSBAR=translucent`
+capture runs.
+
+⚠️ **The two RED results that are correct:** `bun run write` fails at its first
+check (the test account is gone — §13), and `bun run offline` is **20/21 with
+one KNOWN failure**: `★ and the ground is really there at חיפה (Haifa),
+offline — 0 features rendered`. **That line IS point 0**, and it goes green the
+day the national archive is uploaded (§14.4). Neither is to be "repaired".
+
 **The acceptance rule he set, and it is the one that governs all eleven:** every
 point lands **by a gate or by a capture**. Point 2 EXTENDS a permanent gate.
 Point 1 delivers either a fix or an arbitration WITH captures. Point 0 replays
