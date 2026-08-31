@@ -4398,6 +4398,37 @@ that is decision 70 rather than an obstacle to route around. So:
    will name `israel-20260831-z14.pmtiles` and report ~94.3 MB, and the worker
    drops the old archive as it stores the new one.
 
+### 23.7 ✅ DEPLOYED, AND VERIFIED ON THE ARTEFACT RATHER THAN ASSUMED
+
+Run **33445374987**, `success`, `headSha 64332a8`. Checked on the deployed
+files themselves:
+
+| | measured |
+|---|---|
+| `apple-mobile-web-app-status-bar-style` | ✅ **1 ACTIVE tag** with comments stripped — option B really ships |
+| `viewport-fit=cover` | ✅ 1 active |
+| the three `theme-color` tags | ✅ media-scoped first, unscoped last |
+| the new bundle | `assets/index-DZVeADJ5.js` — carries `קובץ המפה`, `שמורה גרסה ישנה`, `השמור במכשיר` and `1e6` |
+| a REAL build | ✅ `sb_publishable_…` appears once |
+| `sw.js` served | ✅ carries the `stale` / `heldUrl` answer |
+| the archive the bundle asks for | `negev-20260829-z14.pmtiles` — correct, and it is what §23.6 changes |
+
+★ **AND THE NEW WORKFLOW STEP DID ITS JOB ON ITS FIRST RUN**, which is the
+  half that matters:
+
+```
+key      : israel-20260831-z14.pmtiles
+length   : 88 (expected 94268129)
+range    : HTTP 400 (expected 206)
+##[warning]Basemap: israel-20260831-z14.pmtiles is not usable in the bucket yet
+           (length 88, range 400). This build falls back to the key compiled
+           into src/ui/components/basemap.ts — the SOUTHERN extract.
+```
+
+`length: 88` is the length of Supabase's JSON *not found* body, and it is
+exactly the kind of number a `-gt` comparison would have waved through. The
+check is an equality against the measured byte count for that reason.
+
 ★ **AND `bun run offline`'s Haifa line is what closes it** — 0 features
   rendered today, and it is the first thing that goes green when the national
   archive lands. **Do not silence it.**
