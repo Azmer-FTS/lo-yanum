@@ -361,6 +361,68 @@ try {
   }
   check('and the map itself is drawn from it', mapDrawnOffline, missing)
 
+  /**
+   * ★ CRITERION B3, REPLAYED ON TWO CITIES 190 km APART (product owner's
+   *   point 0, 2026-08-31).
+   *
+   *   The programme is NATIONAL — the Negev today, the north and
+   *   Yehuda-Shomron next — and an archive cut to a southern bbox passes
+   *   every check above while showing a coordinator in Haifa a blank grey
+   *   rectangle. One city proves the plumbing; TWO cities, far apart, prove
+   *   the COVERAGE, and that is the only thing that distinguishes a national
+   *   extract from a regional one.
+   *
+   * ★ AND IT ASKS THE MAP WHAT IT ACTUALLY DREW, not whether it finished
+   *   loading. `isStyleLoaded()` above is true over empty ground. This flies
+   *   to the city, waits for `idle`, and counts RENDERED FEATURES from the
+   *   `roads` layer — roads being the thing that matters at 02:00, and the
+   *   thing a bbox miss removes first.
+   */
+  const B3_CITIES: [string, number, number][] = [
+    ['באר שבע (Beer Sheva)', 31.2518, 34.7913],
+    ['חיפה (Haifa)', 32.794, 34.9896],
+  ]
+  for (const [cityName, lat, lng] of B3_CITIES) {
+    const drawn = await page.evaluate(
+      async ([lat, lng]) => {
+        const m = (
+          window as unknown as {
+            __loYanumMap?: {
+              jumpTo: (o: unknown) => void
+              once: (e: string, f: () => void) => void
+              queryRenderedFeatures: () => { sourceLayer?: string }[]
+            }
+          }
+        ).__loYanumMap
+        if (!m) return { total: 0, roads: 0, error: 'no map handle' }
+        m.jumpTo({ center: [lng, lat], zoom: 13 })
+        await new Promise<void>((resolve) => {
+          let settled = false
+          const done = () => {
+            if (!settled) {
+              settled = true
+              resolve()
+            }
+          }
+          m.once('idle', done)
+          setTimeout(done, 20_000)
+        })
+        const feats = m.queryRenderedFeatures()
+        return {
+          total: feats.length,
+          roads: feats.filter((f) => f.sourceLayer === 'roads').length,
+          error: '',
+        }
+      },
+      [lat, lng],
+    )
+    check(
+      `★ and the ground is really there at ${cityName}, offline`,
+      drawn.roads > 0,
+      drawn.error || `${drawn.total} features rendered, ${drawn.roads} of them roads`,
+    )
+  }
+
   // ★ the check this file exists for
   if (SUPABASE_URL !== '' && SUPABASE_KEY !== '') {
     const supabaseOffline = await page.evaluate(

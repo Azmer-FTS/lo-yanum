@@ -22,3 +22,8 @@ dist/
 # P2.5a — the offline gate builds into these; they are never deployed.
 dist-offline-demo/
 dist-offline-real/
+
+# The PMTiles archives. 94 MB of OpenStreetMap-derived basemap: it belongs in
+# the public Storage bucket, not in a git repository with a 100 MB file cap.
+# `bun run basemap <file> <key>` is how it gets there.
+basemap/

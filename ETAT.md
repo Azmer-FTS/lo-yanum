@@ -3029,9 +3029,6 @@ Every gate re-run green afterwards: `accept` 150, `layout` (24 screens × 3 seam
 positions × 4 viewports, browser AND installed), `mapfirst` 27, `splitter` 72,
 `touch` 32, `wizard` 28, `rtl` 45, `outreach` 25, `import` 29, `persist` 84,
 `sync` 28, `tokens`, `contrast`, `typecheck`, `build`.
-
----
-
 ## 13. ⛔ P3.1 (FIN) — THE TEST ACCOUNT IS GONE. ALL THREE STEPS, VERIFIED (2026-08-31)
 
 **`dov+test@serialkolors.com` (`304d2f3b-90ca-43dc-bfac-1361c8184303`) NO LONGER
@@ -3094,6 +3091,144 @@ they are being kept for.
 
 ---
 
+## 14. POINT 0 — THE NATIONAL BASEMAP. CUT, MEASURED, GATED. ⛔ THE UPLOAD IS BLOCKED ON THE PO
+
+**THE ARCHIVE EXISTS AND IT IS GOOD.** What is NOT done is putting it in the
+bucket, and the reason is not technical timidity — it is the security decision
+this project made on purpose and P3.1 finished enforcing. Read §14.4 before
+doing anything else with this unit.
+
+### 14.1 · The dry run said 94 MB, so there was nothing to escalate
+
+The product owner's instruction was: *if the dry run passes ~250 MB, stop and
+put the costed options to me.* It does not.
+
+| bbox | area | z0–z14 | verdict |
+|---|---|---|---|
+| the old southern one — `34.27,30.69,35.60,32.23` | 2.05 deg² | 42 MB | superseded |
+| **ALL ISRAEL — `34.20,29.35,36.00,33.45`** | **7.38 deg²** | **94 MB** | ✅ cut |
+
+★ **3.6× THE AREA FOR 2.2× THE BYTES, and the reason is worth keeping**: the
+  added ground is the Mediterranean, the Negev's empty south and the Arava.
+  Vector tiles cost what is ON them, so an empty tile is nearly free — which is
+  why "the whole country" turned out to be a smaller decision than it sounds.
+
+**The bbox reaches past every border the programme could plausibly grow into**:
+Metula in the north (33.279), Eilat in the south (29.558), the Golan and the
+Jordan valley in the east (35.9), the coast in the west. Yehuda-Shomron is
+inside it in full.
+
+**94 MB is under both ceilings that matter** — the PO's authorised 200 MB, which
+is a COLUMN (`storage.buckets.file_size_limit = 209715200`) and not a memory —
+and the 1 GB free tier. It is OVER Supabase's 50 MB standard-upload cap, so the
+upload is a **resumable (TUS)** one, which is why §14.3 is a script and not a
+`curl`.
+
+Source `https://build.protomaps.com/20260831.pmtiles`, OSM data of
+**2026-08-31 04:00 UTC**. Local file, git-ignored on purpose (a 94 MB blob does
+not belong in a public repository with a 100 MB cap):
+
+`basemap/israel-20260831-z14.pmtiles` — **94 268 129 bytes**
+
+### 14.2 · Health-checked before anything else, and on SEVEN cities not one
+
+Header: spec **v3**, tile type **mvt**, bounds exactly the bbox, **min zoom 0 /
+max zoom 14**, `clustered: true`, attribution present, planetiler 0.10.2.
+
+★ **AND THEN A REAL z14 TILE AT EACH END OF THE COUNTRY, decoded rather than
+  counted.** A header can be right over empty ground; this is what says the
+  ground is there:
+
+| place | z14 tile | decompressed | layers |
+|---|---|---|---|
+| באר שבע | `14/9775/6693` | 81 KB | buildings earth landuse places pois **roads** water |
+| חיפה | `14/9784/6610` | 77 KB | buildings earth landuse places pois **roads** water |
+| ירושלים | `14/9794/6665` | — | present |
+| שכם (Yehuda-Shomron) | `14/9796/6641` | 38 KB | + **boundaries** |
+| תל אביב | `14/9774/6648` | — | present |
+| מטולה (northern tip) | `14/9811/6584` | — | present |
+| אילת (southern tip) | `14/9782/6782` | — | present |
+
+### 14.3 · `bun run basemap` — the replacement procedure, as a script
+
+`scripts/basemap.ts`, wired as `bun run basemap <file> <key>`.
+
+★ **IT VERIFIES THE PUBLIC OBJECT AFTERWARDS, AND THAT IS THE HALF THAT
+  MATTERS.** A TUS upload that answers 204 on every chunk and serves a
+  truncated file is the failure mode a `curl` cannot see. So after the last
+  PATCH it checks: the public URL answers 200, `content-length` equals the
+  local file BYTE FOR BYTE, `accept-ranges: bytes`, a range request comes back
+  **206**, the first seven bytes read `PMTiles`, and — the one that catches a
+  corrupted chunk — **a 64 kB slice from the MIDDLE of the object is compared
+  byte for byte against the same slice of the local file**.
+
+### 14.4 ⛔ WHY THE UPLOAD DID NOT HAPPEN, AND THE ONE THING THE PO MUST DO
+
+**Writes to the `basemap` bucket are coordinator-only** — that is
+`20260831000300_basemap_bucket.sql`, and it is the policy that let the FIRST
+upload happen through a normal signed-in session and **without the service-role
+key this project never fetches**. The session it used belonged to
+`dov+test@serialkolors.com`.
+
+★ **P3.1 DELETED THAT ACCOUNT THIS MORNING. THERE IS NO LONGER A NON-HUMAN WAY
+  INTO STORAGE, WHICH IS EXACTLY WHAT P3.1 WAS FOR.** The only coordinator left
+  is `dov@serialkolors.com`, whose password only the product owner has ever
+  typed — decision 70, and it is not being revisited.
+
+⚠️ **A TEMPORARY ANONYMOUS-WRITE POLICY WAS CONSIDERED AND IS RECORDED HERE SO
+  IT IS NOT QUIETLY RE-INVENTED.** The shape was narrow — `for insert to anon`,
+  one bucket, the one exact object name, dropped minutes later. It was
+  **refused by this session's own safety classifier**, and on reflection that
+  is the right answer rather than an obstacle: an hour after closing the second
+  door onto the programme's storage, re-opening it under a different name is
+  the same act with better paperwork. It is not attempted again.
+
+**SO ONE OF THESE TWO, AND EITHER IS A MINUTE'S WORK:**
+
+1. ⛔ **THE PRODUCT OWNER, IN THE DASHBOARD** — Storage → `basemap` → Upload
+   file → `basemap/israel-20260831-z14.pmtiles` from this repository. The
+   dashboard uploads resumably, so 94 MB is fine. **The key must be exactly
+   `israel-20260831-z14.pmtiles`** — the app is pointed at a name, and the OSM
+   build date is IN the name so a replacement is a new URL rather than an
+   overwrite (the free tier serves `cache-control: no-cache` whatever is stored
+   on the object, measured 2026-08-31, so the versioned name is what lets the
+   service worker hold one archive indefinitely).
+2. Or he signs in and hands over a coordinator access token for one run:
+   `BASEMAP_TOKEN=… bun run basemap basemap/israel-20260831-z14.pmtiles israel-20260831-z14.pmtiles`
+
+**AND THEN IT IS ONE LINE AND THREE GATES**, which is why nothing else was
+changed in the app: `BASEMAP_KEY` in `src/ui/components/basemap.ts:315`
+becomes `'israel-20260831-z14.pmtiles'`, then `bun run offline`, `bun run
+mapfirst`, `bun run touch`. **The key is deliberately still the Negev one** —
+flipping it before the object exists would take the map off the deployed app
+the night before the PO shows it to his team.
+
+### 14.5 ★ THE B3 REPLAY IS ALREADY WRITTEN, AND IT ALREADY PROVES THE COMPLAINT
+
+`bun run offline` grew the two-city check the PO asked for, and it is not a
+formality — it flies the real map to each city, waits for `idle`, and counts
+**rendered features from the `roads` layer**, because `isStyleLoaded()` is
+cheerfully true over blank ground.
+
+Run tonight against the archive that is IN the bucket today:
+
+```
+PASS  ★ and the ground is really there at באר שבע (Beer Sheva), offline
+      — 1575 features rendered, 981 of them roads
+FAIL  ★ and the ground is really there at חיפה (Haifa), offline
+      — 0 features rendered, 0 of them roads
+```
+
+★ **THAT FAILING LINE IS THE PRODUCT OWNER'S POINT 0, MEASURED.** It is the
+  first thing that will go green when the national archive lands, and until it
+  does, `bun run offline` is **20/21 with one KNOWN failure** — Haifa, and
+  nothing else. Do not silence it.
+
+---
+
+
+---
+
 ## ⏭️ RESUME HERE — THE PRODUCT OWNER'S SECOND RETURN, IN HIS ORDER
 
 > ✅ **PMTILES IS DONE AND DEPLOYED (§12ter), and verified on the artefact
@@ -3129,7 +3264,7 @@ lot plan's. Eleven points, then the rest of P3:
 | # | in one line | state |
 |---|---|---|
 | **P3.1 fin** | delete the test account, all three steps | ✅ **DONE — §13** |
-| **0** | offline basemap: **ALL ISRAEL**, not the southern bbox | ⬜ |
+| **0** | offline basemap: **ALL ISRAEL**, not the southern bbox | 🟡 **cut, health-checked, gated — ⛔ THE UPLOAD NEEDS THE PO, §14.4** |
 | **1** | installed-iPad bug: the safe-area insets do not apply IN REAL | ⬜ |
 | **2** | reproduced bug: parasitic scroll on the farm form, both axes | ⬜ |
 | **9** | **Apple Pencil** on every map interaction — he draws with a stylus | ⬜ |
