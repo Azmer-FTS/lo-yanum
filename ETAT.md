@@ -3225,8 +3225,10 @@ FAIL  ★ and the ground is really there at חיפה (Haifa), offline
 
 ★ **THAT FAILING LINE IS THE PRODUCT OWNER'S POINT 0, MEASURED.** It is the
   first thing that will go green when the national archive lands, and until it
-  does, `bun run offline` is **20/21 with one KNOWN failure** — Haifa, and
-  nothing else. Do not silence it.
+  does, `bun run offline` is **20/21 with one KNOWN failure and one SKIP** —
+  Haifa, and nothing else. Re-confirmed at the end of the session, after every
+  other change: Beer Sheva 1575 features / 981 roads, Haifa 0 / 0. **Do not
+  silence it.**
 
 ---
 
@@ -3318,6 +3320,17 @@ so option B also switches the gradient to a **dark scrim in both themes**
 `data-statusbar='translucent'`; the scrim rule keys off that. Uncommenting one
 line in `index.html` switches the whole app. And the gate can stamp the same
 attribute, so the captures are of the real rule:
+
+★★ **AND THE FIRST CAPTURE OF OPTION B FOUND SOMETHING THE REASONING HAD
+   MISSED.** The base gradient is `z-20`, deliberately UNDER the shell's sticky
+   headers (z-30): a header is already an opaque band carrying the inset as
+   padding, so it protects the glyphs by itself and a second tone over it would
+   be wrong. **Under option B that argument collapses** — iOS forces the glyphs
+   WHITE, and a light header is then white on near-white. The capture showed
+   exactly that: the rail and the content column painting over the scrim, and
+   the clock disappearing into them. So in option B the scrim goes to `z-50`,
+   above everything the shell pins. **A picture found it; no assertion would
+   have.**
 
 `docs/screenshots/statusbar/` — `ipad-{light,dark}-ios.png` (option A) and
 `ipad-{light,dark}-translucent.png` (option B), plus `ipad-ls-*`. ★ The mock

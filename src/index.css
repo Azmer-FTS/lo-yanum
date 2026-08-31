@@ -206,6 +206,21 @@
    * in the light theme, which is exactly the failure this rule exists for.
    */
   html[data-standalone][data-statusbar='translucent'] body::before {
+    /**
+     * ★★ AND IT HAS TO SIT ABOVE THE SHELL'S HEADERS, WHICH THE DEFAULT DOES
+     *    NOT — a difference the arbitration captures found rather than the
+     *    reasoning.
+     *
+     *    The base gradient is `z-20`, deliberately UNDER the sticky headers
+     *    (z-30): a header is already an opaque band that carries the inset as
+     *    padding, so it protects the glyphs by itself and a second tone over it
+     *    would be wrong. **Under option B that argument collapses**, because
+     *    iOS forces the glyphs WHITE and a light header is then white on
+     *    near-white. The first capture showed exactly that: a rail and a
+     *    content column painting over the scrim and the clock disappearing into
+     *    them. So in option B the scrim goes above everything the shell pins.
+     */
+    z-index: 50;
     background: linear-gradient(
       to bottom,
       rgb(11 17 25 / 0.86) 0%,
