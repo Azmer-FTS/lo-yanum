@@ -143,8 +143,9 @@ style written from `tokens.css` in both themes, the `hue-rotate` deleted — whi
 closes open question 9 — the glyphs, sprites and the RTL plugin vendored so the
 map needs NO external host, and a real "download the map" button whose service
 worker synthesises 206s out of one cached archive. `offline` green at **33**,
-`mapfirst` 27, `splitter` 72, `touch` 32. ⚠️ **NOT YET DEPLOYED — that is the
-next session's first job.** Then **P3**. One
+`mapfirst` 27, `splitter` 72, `touch` 32 — **and it is DEPLOYED and verified
+live**. Next: **P3**, and its first
+act is deleting the test account. One
 commit per unit. Branch `main`.
 
 > ⚠️⚠️ **STANDING REMINDER, AND IT HAS A DEADLINE: DELETE THE TEST ACCOUNT
@@ -3017,29 +3018,29 @@ was ever seen.
 
 ### What is left in this unit
 
-Nothing in the brief. Steps 1–6 are done and `bun run offline` is **33/33**.
-What is NOT done and is the next session's first job: **the deployed app still
-serves the OLD bundle** — this work is committed but the redeploy and its
-live verification have not happened yet.
+**Nothing.** Steps 1–6 are done, `bun run offline` is **33/33**, and it is
+deployed and verified signed-in on the live app — see the RESUME block below
+for exactly what was checked on the artefact.
+
+Every gate re-run green afterwards: `accept` 150, `layout` (24 screens × 3 seam
+positions × 4 viewports, browser AND installed), `mapfirst` 27, `splitter` 72,
+`touch` 32, `wizard` 28, `rtl` 45, `outreach` 25, `import` 29, `persist` 84,
+`sync` 28, `tokens`, `contrast`, `typecheck`, `build`.
 
 ---
 
-## ⏭️ RESUME HERE — REDEPLOY, THEN P3
+## ⏭️ RESUME HERE — P3
 
-> ⚠️ **PMTILES IS DONE (§12ter) AND NOT YET DEPLOYED. THE FIRST JOB OF THE NEXT
-> SESSION IS THE REDEPLOY AND ITS LIVE VERIFICATION**, in that order and
-> verified rather than assumed, exactly as the two deploys before it were:
->
-> ```bash
-> git push origin main   # deploy.yml runs on every push
-> ```
->
-> Then check the ARTEFACT, not the tree: the deployed stylesheet must no longer
-> contain `--map-filter`, the bundle must contain `pmtiles`, and
-> `https://…/storage/v1/object/public/basemap/negev-20260829-z14.pmtiles` must
-> still answer a range request with **206**. The frozen `/poc` keeps its RASTER
-> map and its own bundle — it is never rebuilt, and it is the one place OSM
-> tiles legitimately survive.
+> ✅ **PMTILES IS DONE AND DEPLOYED (§12ter), and verified on the artefact
+> rather than on the tree** — signed in on the live app, 2026-08-31: the map's
+> source is `pmtiles://…/basemap/negev-20260829-z14.pmtiles`, **23 responses,
+> every one a 206**, the style's background is `rgb(243 244 246)` — which is
+> `--surface-base` and therefore proof the tokens really drove it — and
+> `canvasFilter` is `none`, so the `hue-rotate` is gone from what ships. The
+> deployed stylesheet contains `--map-filter` **zero** times; the vendored
+> glyphs, sprites and RTL plugin all serve 200. **The frozen `/poc` still draws
+> `type: "raster"` from an `osm` source and contains `pmtiles` zero times** —
+> it is never rebuilt, and it is the one place OSM tiles legitimately survive.
 >
 > **The brief below is KEPT AS WRITTEN, with its two stale points corrected in
 > place**, because §12ter refers back to it and because the reasoning about
