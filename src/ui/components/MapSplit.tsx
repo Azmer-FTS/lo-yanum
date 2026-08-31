@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 
 import { MapModeSwitch, clampRatio, useMapMode, useMapRatio } from './mapMode'
+import { PullToRefresh } from './PullToRefresh'
 import type { MapModeState } from './mapMode'
 import { PanelSplitter } from './splitter'
 
@@ -248,6 +249,11 @@ export function MapSplit({
                 : c.contentSplit
           }`}
         >
+          {/* ★ PO POINT 4b — THE PULL LIVES HERE AND NOWHERE ELSE ON THIS
+              SCREEN. This column is the panel that scrolls text; the map is
+              the sibling beside it and never moves, which is the whole of the
+              product owner's requirement. */}
+          <PullToRefresh>
           {/* ONE switch on screen at a time. Below the breakpoint the map sits
               ABOVE the content and its own bar carries the control, so this
               copy stands down — except in `hidden`, where there is no bar. */}
@@ -257,6 +263,7 @@ export function MapSplit({
             className={`mb-3 flex-wrap ${mode === 'hidden' ? '' : c.switchInContent}`}
           />
           {children(state)}
+          </PullToRefresh>
         </div>
       )}
 

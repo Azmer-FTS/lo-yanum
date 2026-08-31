@@ -98,6 +98,40 @@
   }
 
   /**
+   * ★★ PO POINT 4a (2026-08-31) — THE PAGE ITSELF NEVER STRETCHES.
+   *
+   *   `overscroll-behavior-y: none` on BOTH `html` and `body`, because a
+   *   browser walks up from the scrolling element and the first ancestor with
+   *   a value wins — declaring it on one of the two is the classic version of
+   *   this fix that does nothing on iOS.
+   *
+   * ★ WHAT IT ACTUALLY STOPS, AND IT IS NOT COSMETIC: the rubber-band. Drag
+   *   down at the top of a map screen and the whole shell — map canvas
+   *   included — lifts off the top of the display and springs back. On an
+   *   installed app there is no browser chrome to absorb it, so what the
+   *   coordinator sees is the app coming loose from the device. It is half of
+   *   what he reported as "the page moves up and down" (point 2 was the other
+   *   half, and a different cause entirely: iOS zooming the page on a field
+   *   under 16 px).
+   *
+   * ⚠️ AND IT IS SCOPED TO THE PAGE, NOT TO EVERY SCROLLER. A panel that
+   *   scrolls its own content keeps its bounce, which is the platform's
+   *   feedback for "this list has ended" and is worth keeping. `PullToRefresh`
+   *   sets `overscroll-behavior-y: contain` on the one panel it drives —
+   *   contain, not none, so the gesture stays inside the panel without the
+   *   list losing its own end-stop.
+   *
+   * ⚠️ NOTHING HERE SETS `touch-action`, and that is deliberate: `touch-action:
+   *   none` on a text field breaks iOS SCRIBBLE, which is how the product
+   *   owner writes with his Pencil (point 9). The only `touch-action: none` in
+   *   this codebase is on the splitter's grip, where it is load-bearing.
+   */
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  /**
    * P3.4 (PO return 7) — THE STATUS-BAR GRADIENT, INSTALLED APP ONLY.
    *
    * In the installed app there is no browser toolbar: the page runs to the top

@@ -6,11 +6,10 @@ import { COORDINATOR, getMyDisplayName, getSession } from '@core/index'
 
 import { signOut } from '../../data/auth'
 import { SUPABASE_CONFIGURED } from '../../data/config'
-import { useDataState } from '../hooks/useDataState'
-import { useOnline } from '../offline'
 import { useAuth } from '../hooks/useAuth'
 import { useCoreValue } from '../hooks/useCore'
 import { usePublishedHeight } from '../hooks/useShellMetrics'
+import { PullToRefresh } from './PullToRefresh'
 import { CreateGuardFab } from './CreateGuardFab'
 import { DevToolbar } from './DevToolbar'
 import { Icon } from './Icon'
@@ -110,65 +109,25 @@ function Brand({ compact = false }: { compact?: boolean }) {
  * a slide-over.
  */
 /**
- * P2.5a — THE ONE PIECE OF SHELL CHROME THAT IS ONLY EVER THERE WHEN IT MATTERS.
+ * ⚠️ `OfflineBadge` AND `SyncBadge` LIVED HERE AND ARE GONE (PO point 3,
+ * 2026-08-31).
  *
- * There is no "online" indicator, deliberately. A green dot that is green
- * ninety-nine times out of a hundred is read as decoration by the hundredth
- * time, which is the one time it changes. This renders NOTHING while there is
- * a network and is unmissable when there is not — which, on the way to a farm
- * in the northern Negev, is a state the coordinator enters and leaves several
- * times an hour and must never have to guess at.
+ * Both rules they were written under SURVIVE, in
+ * `ui/components/NetworkStatus.tsx`, which is the single indicator now:
+ *
+ *   · NOTHING IS RENDERED WHILE THERE IS NOTHING TO SAY. No "connected" tick.
+ *     A green dot that is green ninety-nine times in a hundred is read as
+ *     decoration by the hundredth time, which is the one time it changed.
+ *   · WHAT IS COUNTED IS AGGREGATES, NOT ACTIONS. Editing the same guard six
+ *     times on a farm track leaves ONE outbox entry — it is keyed by
+ *     `collection/id` and coalesces — so the pill says 1, which is also the
+ *     number of things actually different from the server.
+ *
+ * ★ WHAT DID NOT SURVIVE IS WHERE THEY WERE DRAWN, which is the defect. They
+ *   were in the mobile top bar (`lg:hidden`, so absent on an iPad) and at the
+ *   FOOT OF THE COLLAPSED RAIL as a 6 px dot with no text. The product owner
+ *   ran the installed app for a week and never saw the offline state.
  */
-function OfflineBadge({ compact = false }: { compact?: boolean }) {
-  const { t } = useTranslation()
-  const online = useOnline()
-  if (online) return null
-
-  return (
-    <span
-      data-testid="offline-badge"
-      title={t('settings.connection.offline')}
-      className={`inline-flex items-center gap-1.5 rounded-pill bg-status-warn/15 px-2.5 py-1
-                  text-micro font-semibold text-status-warn-ink ${compact ? 'px-1.5' : ''}`}
-    >
-      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-pill bg-status-warn" />
-      {!compact && t('settings.connection.badge')}
-    </span>
-  )
-}
-
-/**
- * P2.5b — "N ממתינים לסנכרון", AND IT IS THE ONLY THING THE OFFLINE DATA LAYER
- * SAYS OUT LOUD.
- *
- * Same rule as `OfflineBadge` above and for the same reason: nothing is
- * rendered while there is nothing waiting. A permanent "synced ✓" would be
- * read as decoration by the time it mattered.
- *
- * ★ WHAT IT COUNTS IS AGGREGATES, NOT ACTIONS. Editing the same guard six
- *   times on a farm track leaves ONE entry in the outbox — it is keyed by
- *   `collection/id` and coalesces — so this says 1, which is also the number
- *   of things that are actually different from the server. A count of six
- *   would be true about the coordinator's afternoon and false about his data.
- */
-function SyncBadge({ compact = false }: { compact?: boolean }) {
-  const { t } = useTranslation()
-  const data = useDataState()
-  const count = data?.pending ?? 0
-  if (count === 0) return null
-
-  return (
-    <span
-      data-testid="sync-badge"
-      title={t('data.sync.title', { count })}
-      className={`inline-flex items-center gap-1.5 rounded-pill bg-status-info/15 px-2.5 py-1
-                  text-micro font-semibold text-status-info-ink ${compact ? 'px-1.5' : ''}`}
-    >
-      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-pill bg-status-info" />
-      {compact ? count : t('data.sync.badge', { count })}
-    </span>
-  )
-}
 
 /**
  * P2.3 — WHO AM I, AND HOW DO I LEAVE.
@@ -350,11 +309,13 @@ export function CoordinatorLayout() {
             {COORDINATOR_NAV.map((item) => navLink(item, expanded))}
           </nav>
 
+          {/* PO POINT 3 — THE TWO BADGES ARE GONE FROM HERE, and that is the
+              point rather than a cleanup. Collapsed, this rail rendered them
+              as a 6 px dot with no text at the bottom of a 1376 px column, and
+              the product owner reported never seeing the offline state on his
+              installed iPad. `NetworkStatus` is mounted once at the root now
+              and floats over every shell. */}
           <div className="mt-auto flex flex-col gap-2">
-            <div className={expanded ? '' : 'flex justify-center'}>
-              <OfflineBadge compact={!expanded} />
-              <SyncBadge compact={!expanded} />
-            </div>
             <div className={expanded ? '' : 'flex justify-center'}>
               <ThemeToggle compact={!expanded} vertical={!expanded} />
             </div>
@@ -371,8 +332,7 @@ export function CoordinatorLayout() {
           >
             <Brand />
             <div className="flex items-center gap-2">
-              <OfflineBadge />
-              <SyncBadge />
+              {/* PO POINT 3 — see the rail above: one indicator, at the root. */}
               <ThemeToggle compact />
               <button
                 type="button"
@@ -392,6 +352,11 @@ export function CoordinatorLayout() {
               screen would start at y=0, under the installed app's clock. The
               content still SCROLLS under the system zone, which is what the
               gradient is for; it just does not START there. */}
+          {/* ★ PO POINT 4b — on a MAP-FIRST route the pull belongs to
+              `MapSplit`'s content column, which is a different element and a
+              different scroll container. Wrapping here as well would nest two
+              of them and arm the outer one on a screen whose map must not
+              move, so `bleed` decides which of the two owns the gesture. */}
           <main
             className={
               bleed
@@ -399,7 +364,7 @@ export function CoordinatorLayout() {
                 : 'flex-1 px-4 pb-24 pt-5 sm:px-6 sm:pt-6 lg:pb-6 lg:pt-[calc(var(--status-inset)+1.5rem)] 2xl:px-8'
             }
           >
-            <Outlet />
+            {bleed ? <Outlet /> : <PullToRefresh><Outlet /></PullToRefresh>}
           </main>
         </div>
 
@@ -482,8 +447,6 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
           <Brand />
           <div className="flex items-center gap-3">
-            <OfflineBadge />
-            <SyncBadge />
             <ThemeToggle compact />
             <div className="min-w-0 text-end leading-tight">
               <p className="truncate text-caption font-medium text-content-primary">

@@ -15,6 +15,7 @@ import {
   VOLUNTEER_NAV,
 } from './components/layouts'
 import { DataBanner } from './components/DataBanner'
+import { NetworkStatus } from './components/NetworkStatus'
 import { useAuth } from './hooks/useAuth'
 import { useCoreValue } from './hooks/useCore'
 import { LandingScreen } from './screens/LandingScreen'
@@ -89,6 +90,10 @@ export default function App() {
       {/* Outside <Routes>, so a data-layer failure is visible on whichever
           screen the coordinator happens to be on rather than on one of them. */}
       <DataBanner />
+      {/* PO POINT 3 — mounted ONCE, at the root, above every shell. "On every
+          screen" has to mean every screen, including the ones nobody
+          remembered when a new layout was added. */}
+      <NetworkStatus />
       <Routes>
         {/* The identity picker is a DEMO artefact: it hands out farmer,
             volunteer and driver sessions on mock people. A real signed-in

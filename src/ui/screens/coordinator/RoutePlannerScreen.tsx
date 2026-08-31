@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import {
   HOME_BASE,
@@ -364,6 +364,26 @@ export function RoutePlannerScreen() {
           </div>
         </div>
 
+        {/* ★ PO POINT 5 — THE STUMP THE CAPTURE FOUND. With an empty
+            programme this was a heading, a "quick pick" link, and an EMPTY
+            1.5 px card: a box with nothing in it under a title, which is
+            exactly the thing the product owner called a crushed stump. It is
+            also the FIRST screen of the real app on his first morning, before
+            a single farm has been imported — so the empty state here carries
+            the way OUT of it rather than only naming the absence. */}
+        {farms.length === 0 ? (
+          <EmptyState
+            icon="farm"
+            title={t('farms.empty')}
+            hint={t('route.emptyFarmsHint')}
+            action={
+              <Link to="/coordinator/farms/new" className="btn-primary">
+                <Icon name="plus" size={15} />
+                {t('farms.new')}
+              </Link>
+            }
+          />
+        ) : (
         <div className="card p-1.5">
           <ul className="max-h-64 overflow-y-auto">
             {farms.map((farm) => (
@@ -391,6 +411,7 @@ export function RoutePlannerScreen() {
             ))}
           </ul>
         </div>
+        )}
       </section>
 
       <section className="mb-4">

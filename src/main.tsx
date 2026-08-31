@@ -32,6 +32,30 @@ if (SUPABASE_CONFIGURED) {
   })
 }
 
+/**
+ * PO POINT 5 (2026-08-31) — A HANDLE FOR `bun run empty`, DEMO BUILDS ONLY.
+ *
+ * ★ IT EXISTS BECAUSE A DYNAMIC `import()` FROM A GATE IS NOT THE SAME MODULE
+ *   INSTANCE. The first version of A81 imported `/src/core/store.ts` from the
+ *   page and emptied it — successfully, and to no effect: `_raw().farms` went
+ *   14 → 0 in the instance the gate held while the app went on rendering
+ *   fourteen farms from its own. Vite serves the app's graph with its own
+ *   module records, and two records mean two module-scope `data` variables.
+ *   Emptying the wrong one is the kind of green run that is worse than a red
+ *   one.
+ *
+ * ★ SO THE APP PUBLISHES THE ACTION, the same way `MapCanvas` publishes
+ *   `__loYanumMap` for the touch and splitter gates. It is one line, it is the
+ *   project's existing idiom for exactly this problem, and `SUPABASE_CONFIGURED`
+ *   keeps it out of a real build entirely — there is nothing to empty there
+ *   anyway, because P2.6b already seeds a real build EMPTY.
+ */
+if (!SUPABASE_CONFIGURED) {
+  ;(
+    window as unknown as { __loYanumEmptyStore?: () => void }
+  ).__loYanumEmptyStore = () => installBackend(EMPTY_BACKEND)
+}
+
 applyLanguage(DEFAULT_LANGUAGE)
 // Stamp the theme before React mounts, or the app flashes the wrong palette.
 initTheme(getSession().role)

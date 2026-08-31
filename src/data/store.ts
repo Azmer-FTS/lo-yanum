@@ -191,6 +191,23 @@ const SUPABASE_BACKEND: StoreBackend = {
  * Appended to the SAME serial queue as the writes, so a flush can never
  * interleave with a mutation the coordinator is making at that moment.
  */
+/**
+ * PO POINT 4 — set by `installSupabaseStore`, null in demo mode.
+ * See `refreshData` below for why it is a hook rather than an export.
+ */
+let refreshImpl: (() => Promise<void>) | null = null
+
+/**
+ * Re-run the whole load for the signed-in user — the pull-to-refresh's action.
+ *
+ * Resolves immediately and harmlessly when there is nothing to refresh: demo
+ * mode, or nobody signed in. The caller shows its own spinner either way, so a
+ * no-op still reads as "I asked".
+ */
+export function refreshData(): Promise<void> {
+  return refreshImpl ? refreshImpl() : Promise.resolve()
+}
+
 export function flushPending(): Promise<void> {
   queue = queue.then(async () => {
     const result = await flushOutbox(cache, sendChanges)
@@ -345,6 +362,30 @@ export function installSupabaseStore(): void {
           : { status: 'error', message },
       )
     })
+  }
+
+  /**
+   * PO POINT 4 (2026-08-31) — RE-HYDRATE ON DEMAND, for the pull-to-refresh.
+   *
+   * ★ IT RESETS `loadedFor` AND CALLS `sync()` RATHER THAN CALLING `load()`
+   *   DIRECTLY, so a manual refresh goes down exactly the same four steps as a
+   *   cold start — restore, flush, hydrate, re-record — instead of a fifth
+   *   path that skips one of them. `loadedFor` is the guard that makes `sync()`
+   *   a no-op for a session it has already loaded; a refresh is precisely the
+   *   request to do it again.
+   *
+   * ★ AND IT IS PUBLISHED THROUGH THE MODULE'S MUTABLE HOOK rather than
+   *   exported directly: `load` and `loadedFor` are closed over inside
+   *   `installSupabaseStore`, and hoisting them to module scope to export a
+   *   function would widen the surface that P2.5b's asymmetry depends on.
+   */
+  refreshImpl = async () => {
+    if (getAuthState().status !== 'signed-in') return
+    loadedFor = null
+    sync()
+    // `sync` fires `load` without awaiting it; the queue is what a caller can
+    // actually wait on, and it is where the flush and the cache writes land.
+    await flushPending()
   }
 
   subscribeAuth(sync)

@@ -193,6 +193,10 @@ export function EmptyState({
 }) {
   return (
     <div
+      // PO POINT 5 — the marker `bun run empty` sweeps for. A block with a
+      // heading and no content has to carry one of these; the gate cannot ask
+      // "is this dignified", but it can ask "is there one here".
+      data-empty-state=""
       className="flex animate-fade-in flex-col items-center gap-2 rounded-card border border-dashed
                  border-edge-subtle bg-surface-raised/40 px-6 py-12 text-center"
     >

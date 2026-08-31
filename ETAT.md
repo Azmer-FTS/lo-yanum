@@ -46,6 +46,7 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run mapping` | **A74** — the mapper (P2.6b). Drives all 380 fixture aggregates out through `toRows` and back through `fromRows` and fails on any difference, then parses this repository's OWN migrations and asserts both directions of the column contract: no column the mapper writes is missing, no `not null`-without-default column goes unwritten. 32 checks — no browser, no dev server, no network |
 | `bun run persist` | **A73** — the store interface (P2.6a). Drives all 45 exported mutations through a RECORDING backend and asserts what each one writes: the fan-outs (a zone rewrites the farm's dunams, the dual hat materialises a driver, a visit rewrites `nextVisitAt`), the ones that mutate IN PLACE and an identity diff would silently lose, and the three things that must never be written (a session change, a reset, a hydration). 84 checks — no browser, no dev server, no network |
 | `bun run auth` | **A70** — the door (P2.3). Starts its OWN two dev servers, one in each mode, and compares them: real mode shows the login form and nothing else on 8 routes, refuses a wrong password IN HEBREW, gives an unknown address the SAME message, leaves no token behind; demo mode is byte-for-byte P0bis. Then B1 without a browser — 26 tables anonymously closed, an anonymous coordinator-grant INSERT refused, the three policy helpers 404. 20 checks — **needs no dev server, and never needs the password** |
+| `bun run empty` | **A81** — PO point 5: every coordinator screen against an **EMPTY programme**, which is the state the real app starts in and the one nobody has ever looked at. A block with a heading and no body must carry an `EmptyState`; a screen with nothing in it must show one somewhere, or be exempt WITH ITS REASON PRINTED. Captures `docs/screenshots/empty/`. Needs a dev server |
 | `bun run report` | **A80** — PO point 7c: **the report and the dashboard cannot disagree.** Every field of `ProgrammeReport` against the accessor the dashboard itself renders, with the figures that have no accessor yet re-derived INDEPENDENTLY — over THREE stores: the fixtures, an EMPTY programme (where `guardedHeads === null` is proved) and the fixtures with a moshav, a kosher volunteer, a visit and an urgent incident added. Plus the check that keeps it true: the renderer may import only a TYPE from the domain, so it cannot read the store. 86 checks — no browser, no dev server, no network |
 | `bun run deletion` | **A79** — PO point 8: deleting a record. Free deletion with its dependencies LISTED, a motivated refusal on operational history with the blockers named and counted, the store refusing as well as the dialog, the whole cascade reaching the backend as `json: null`, and two checks that keep it honest over time — every `DeletableKind` has a call site in the UI, and every one of them asks first. 61 checks — no browser, no dev server, no network |
 | `bun run basemap` | **PO point 0** — `bun run basemap <file> <key>`: the resumable (TUS) upload a 94 MB archive needs, and then it VERIFIES the public object — length byte-for-byte, 206 on a range, `PMTiles` in the first seven bytes, and a 64 kB slice from the MIDDLE compared against the local file. ⛔ Needs a coordinator token (`BASEMAP_TOKEN`); see §14.4 |
@@ -3931,6 +3932,162 @@ could adopt it rather than the report growing a second arithmetic.
 
 ---
 
+## 20. POINTS 3, 4 AND 5 — THE SHELL. AND POINT 3 HAD A CAUSE, NOT A MYSTERY
+
+### 20.1 ★★ WHY HE NEVER SAW THE OFFLINE BADGE THAT ALREADY EXISTED
+
+`OfflineBadge` and `SyncBadge` were rendered in **two** places:
+
+· the **mobile top bar** — which is `lg:hidden`, so **it does not exist on his
+  iPad at all**;
+· the **foot of the desktop rail** — and the rail defaults to **COLLAPSED**
+  (`useState(false)`, 4.5 rem wide), which renders both badges `compact`: **a
+  6 px coloured dot, no text, below the navigation, at the bottom of a 1376 px
+  column.**
+
+It was on screen and it was unfindable. That is a layout fact, and it is why
+the answer is not "make it bigger".
+
+**`ui/components/NetworkStatus.tsx` is one indicator, mounted ONCE at the root**
+(`App.tsx`), viewport-pinned, shell-independent. "On every screen" has to mean
+every screen — including the ones nobody will remember when the next shell is
+added.
+
+| state | what it says |
+|---|---|
+| offline | orange dot · **`לא מקוון`** |
+| writes waiting | info dot · **`N ממתינים לסנכרון`** |
+| loading | pulsing dot · **`מסנכרן…`** |
+| just came back / outbox just drained | green tick · **`מסונכרן`**, for 2 s, then gone |
+| everything normal | **nothing at all** |
+
+★ **IT SAYS NOTHING WHEN THERE IS NOTHING TO SAY**, which is the rule the two
+  badges it replaces were written under and which survives them: a green dot
+  that is green ninety-nine times in a hundred is read as decoration by the
+  hundredth time — the one time it changed.
+
+★ **THE GREEN TICK IS A TRANSITION, NOT A STATE**, so it is held by a timer
+  rather than derived. "N waiting" reaching zero is the only moment worth
+  marking, and it is invisible unless something remembers that it just happened.
+
+★ **AND IT IS `pointer-events-none`.** His word was "never blocking", and a pill
+  floating over a map is exactly the thing that would eat a tap on a zone he is
+  drawing. It is a read-out.
+
+**Unified, and the gate proves it:** the two old components are deleted, and the
+pill carries `data-testid="offline-badge"` while it is offline — so `bun run
+offline`'s "exactly ONE offline badge is visible" now asserts the same sentence
+about **one** indicator instead of two shells fighting over which was showing.
+
+Verified in the browser: `offline` → `לא מקוון`, count **1**; `online` →
+`מסונכרן`, phase `done`; **gone after 2 s**.
+
+⚠️ **AND A ONE-LINE BUG THE CAPTURE CAUGHT:** `inset-inline-0` **is not a
+Tailwind utility** and produced nothing — the pill pinned itself to the inline
+start and sat in the corner over the rail. `start-0 end-0` is the pair that
+exists. Re-measured: centred, 8 px under `--shell-top`.
+
+### 20.2 · Point 4 — the page never stretches, and only the panel pulls
+
+**4a.** `overscroll-behavior-y: none` on **both `html` and `body`** — a browser
+walks up from the scrolling element and the first ancestor with a value wins, so
+declaring it on one of the two is the classic version of this fix that does
+nothing on iOS.
+
+★ **WHAT IT STOPS IS NOT COSMETIC:** drag down at the top of a map screen and
+  the whole shell — map canvas included — lifts off the display and springs
+  back. Installed, there is no browser chrome to absorb it, so what he sees is
+  **the app coming loose from the device**. It is half of "the page moves up and
+  down"; **point 2 was the other half and a completely different cause** (iOS
+  zooming the page on a field under 16 px).
+
+**4b.** `ui/components/PullToRefresh.tsx`, and the requirement is **"and the map
+stays still"**. A page-level pull on a map-first app drags the canvas down with
+it — the one thing a coordinator orients himself by slides off the screen. So
+the native one is off at the page level and the app's is armed **only on the
+panel that scrolls text**: `MapSplit`'s content column on a map-first route, the
+layout's `<main>` on every other. `bleed` decides which of the two owns the
+gesture, so they never nest.
+
+★ **POINTER EVENTS, WHICH IS POINT 9 AND NOT AN INCIDENTAL CHOICE.** He drags
+  with an Apple Pencil as often as with a thumb. `touchstart` would work for the
+  finger and be **dead under the stylus on the gesture he uses most**;
+  `pointerdown` sees `pen`, `touch` and `mouse` alike. **Mouse is deliberately
+  excluded** — a desktop has a reload button, and an accidental drag-to-refresh
+  on a trackpad is a bug.
+
+★ **THE SCROLL CONTAINER IS FOUND, NOT PASSED.** The component walks up to the
+  nearest `overflow-y: auto|scroll` ancestor and falls back to the document.
+  That is what lets one component sit in two very different places without a
+  prop somebody has to remember — and a prop passed wrongly here means the
+  gesture arming halfway down a roster.
+
+★ **IT ARMS ONLY AT THE TOP** (`scrollTop <= 0` at pointer-down and re-checked
+  on the first move), it has resistance (×0.55, capped), and **it refuses
+  honestly with no network**: `אין חיבור — הנתונים מהמטמון`. Pulling offline is
+  not an error and must not look like one.
+
+★ **AND THE DATA LAYER IS IMPORTED LAZILY**, the same reason `useDataState` does
+  it: a static import reaches the row mapper and through it the Supabase client
+  chunk, which would land in the INITIAL bundle of every demo build and every
+  gate. Checked on the built artefact — `store` is still its own 19 kB chunk.
+
+`refreshData()` resets `loadedFor` and calls `sync()` rather than calling
+`load()` directly, so a manual refresh goes down **the same four steps as a cold
+start** — restore, flush, hydrate, re-record — instead of a fifth path that
+skips one.
+
+Verified in the browser with **synthetic `pointerType: 'pen'`**: pull 97 px →
+`שחררו לרענון` → release → `מרענן…`.
+
+### 20.3 ★ Point 5 — the census, and it found the stump he named
+
+`bun run empty` (A81) drives every coordinator screen **against an EMPTY
+programme**.
+
+★★ **THE INSTRUMENT IS AN EMPTY STORE AND IT IS THE ONLY HONEST ONE.** The demo
+   fixtures hold twelve farms, three hundred volunteers and a month of guards,
+   so on `bun run dev` almost nothing is ever empty and a human "reviewing the
+   empty states" reviews the two he can think of. **P3.1 is about to import real
+   farmers into a database that is empty**, so the first screen of the real app
+   is the state nobody has ever looked at.
+
+⚠️ **AND THE FIRST VERSION OF THE GATE WAS GREEN AND WRONG.** It imported
+  `/src/core/store.ts` from the page and emptied it — successfully, and to no
+  effect: `_raw().farms` went 14 → 0 in the gate's module record while the app
+  went on rendering fourteen farms out of its own. Vite serves the app's graph
+  with its own records, and **two records mean two module-scope snapshots**.
+  The app publishes `__loYanumEmptyStore()` in DEMO builds now — the same idiom
+  `MapCanvas` uses for `__loYanumMap`, which the touch and splitter gates have
+  driven for months.
+
+**What it asserts** is narrow on purpose: a `<section>` with a heading and
+almost no body must carry an `EmptyState`; and **a screen with nothing in the
+programme must show at least one empty state anywhere**, or be on an exemption
+list **with its reason printed in the run**. Three are exempt: the **agenda** (a
+calendar is not a list — an empty month is thirty-one dated cells, which is
+already the honest picture), **settings** (facts and controls, no lists), and
+the **import wizard** (step 1 is a drop zone, which is its own empty state).
+
+★★ **AND THE STUMP THE PRODUCT OWNER NAMED IS FIXED.** The route planner's
+   `בחירת חוות` block rendered, with nothing in the programme, as **a heading, a
+   "quick pick" link, and an empty 1.5 px card** — a box with nothing in it,
+   under a title. It now carries an `EmptyState` with the way OUT of it: `חווה
+   חדשה`, because this is the first screen of the real app on his first morning.
+
+⚠️ **AND THE GATE MISSED IT ON THE FIRST RUN, WHICH IS WORTH KEEPING.** The
+  audit subtracted only the `<h2>` from the block's text, so the 33 characters
+  of the "quick pick" link stood in for a body and the block measured as full.
+  **A `Section`'s heading row is `[title, action]` and an action is chrome, not
+  content** — the whole row comes off now. It was a CAPTURE that found the
+  defect, and the capture is why the gate is right.
+
+Census: dashboard 5 blocks / 3 empty states · route planner 2 / 2 · farms,
+volunteers, drivers, missions, incidents 1 each · agenda, settings, import
+exempt with reasons. `docs/screenshots/empty/`.
+
+---
+
 ## ⏭️ RESUME HERE — THE PRODUCT OWNER'S SECOND RETURN, IN HIS ORDER
 
 > ✅ **PMTILES IS DONE AND DEPLOYED (§12ter), and verified on the artefact
@@ -3973,9 +4130,9 @@ lot plan's. Eleven points, then the rest of P3:
 | **8** | **delete** a record — there is no way to correct a typo today | ✅ **§17** — one policy, one dialog, `bun run deletion` 61 checks; A73 grew to 94 |
 | **6** | **livestock** head-count per entity — funding depends on it | ✅ **§18** — form, detail, dashboard, .xlsx, import, `entity_livestock` applied; `accept` 162, `live` 48 |
 | **7** | **the employer's PDF report**, sendable in one gesture | ✅ **§19** — a real PDF with no PDF library; `bun run report` 86 checks on three stores |
-| **3** | the network-state pill on every screen | ⬜ |
-| **4** | clean pull-to-refresh, native overscroll off | ⬜ |
-| **5** | a pass over the empty states | ⬜ |
+| **3** | the network-state pill on every screen | ✅ **§20.1** — one indicator at the root; the cause of his not seeing it was the collapsed rail |
+| **4** | clean pull-to-refresh, native overscroll off | ✅ **§20.2** — panel only, Pointer Events (stylus), verified at `pointerType=pen` |
+| **5** | a pass over the empty states | ✅ **§20.3** — `bun run empty` (A81) censuses 10 screens against an EMPTY store; the stump he named is fixed |
 | **then** | photos → signature (finger AND stylus) → P3.3bis automatic email → the final PWA → deployment → the French report | ⬜ |
 
 **The acceptance rule he set, and it is the one that governs all eleven:** every
