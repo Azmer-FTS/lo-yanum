@@ -5996,3 +5996,55 @@ refuses a "demo" carrying the publishable key.
 ⚠️ It carries mock data and nothing else — invented farms, invented phone
 numbers. `/lo-yanum/poc/` has been public on the same terms since G13. Deleting
 the build step and the `mv` removes it completely.
+
+### 35.4 ✅ AND THE PROOFS WERE TAKEN THERE, 2026-09-02
+
+Deploy `33550787159`, commit `5e4819a`, **success** — five browser gates before
+publication. Then the three new ones re-run **against the deployed URL
+itself**:
+
+```
+BASE_URL=https://azmer-fts.github.io/lo-yanum/demo bun run redraw    → 18/18
+BASE_URL=https://azmer-fts.github.io/lo-yanum/demo bun run overlap   → 72/72
+BASE_URL=https://azmer-fts.github.io/lo-yanum/demo bun run freehand  → 30/30
+```
+
+Read off the deployed page, item by item — `docs/screenshots/deployed/`:
+
+* **מיקומי** present, `44 × 44`, `aria-label = מיקומי`, in the stack;
+* **נקודת מוצא** present with שמור and המיקום שלי, and it WORKS: typing
+  `באר שבע` answers `נשמר. נקודת המוצא: 31.25180, 34.79130`, and the route
+  planner's ★ marker is then named `באר שבע`;
+* **city tiers** — 46 localities rendered, ranks 12 → 7, and the served style's
+  own expression read back: `["case",[">=",["get","population_rank"],12],
+  "rgb(23 29 38)",[">=",…,10],"rgb(58 70 84)","rgb(91 104 120)"]`;
+* **שמור for כתובת דוחות** present;
+* **the stale banner and the debug panel are ABSENT** from the deployed page;
+* **the `.png`** is named AND explained under the file name;
+* **the satellite** — source `maxzoom: 19`, provider
+  `server.arcgisonline.com/…/World_Imagery`, deepest tile actually loaded
+  **z18**;
+* **the brutal zoom-out** — 0 errors, 0 errored tiles, 28/28 · 28/28 · 8/8 ·
+  63/63 probe points, and 412/412 down the ladder;
+* **the Pencil** at both iPad viewports — camera drift **0.0 m** during the
+  stroke, `הקו פושט ל־21 נקודות`, **415 דונם**, and 839 m / 829 m of pan once
+  the mode is off.
+
+**French report: `docs/RAPPORT-2026-09-02.md`.**
+
+### 35.5 ⏭️ WHAT IS LEFT, IN HIS ORDER
+
+Point 9 is done. Next: **8 deletion → 6 livestock → 7 PDF report → 3 network
+indicator → 4 pull-to-refresh → 5 empty states → the rest of P3.**
+
+⚠️ **POINTS 8, 6, 7, 3, 4 AND 5 WERE ALL DELIVERED ON 2026-08-31** (§17–§20)
+and are gated. If they are on his list because he cannot SEE them on the
+deployed app, the demo twin (§35.3) is now the way to check that screen by
+screen — which is a different task from rebuilding them, and the report asks
+him which.
+
+Two things still waiting on one word from him:
+
+* **Esri's terms** (§33). One word reverts to the CC BY 4.0 mosaic.
+* **`negev-20260829-z14.pmtiles`** is still in the Supabase bucket, still
+  inert, still waiting to be deleted.
