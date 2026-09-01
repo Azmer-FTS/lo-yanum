@@ -296,9 +296,22 @@ jobs:
             echo "::error::The demo twin carries its own copy of the basemap. It must be built BEFORE the archive is staged into public/, and pointed at the real app's copy with VITE_BASEMAP_URL. Refusing to deploy."
             exit 1
           fi
-          # And it must really be a DEMO: a real build carries the publishable key.
-          if grep -rq 'sb_publishable_' dist/demo/assets/*.js; then
-            echo "::error::The demo twin was built WITH the Supabase pair, so it is a second real app rather than a demo. Refusing to deploy."
+          # And it must really be a DEMO.
+          #
+          # ⚠️ THE TEST IS THE KEY'S VALUE, NOT ITS PREFIX, AND THE FIRST
+          #    VERSION GOT THAT WRONG AND FAILED THE DEPLOY ON ITSELF.
+          #    `sb_publishable_` appears as a LITERAL inside `@supabase/supabase-js`
+          #    — it is how the library recognises which kind of key it was
+          #    handed — so it is in every build this project has ever produced,
+          #    demo or real. What only a real build carries is a key that has a
+          #    VALUE after that prefix, and a project ref in a `*.supabase.co`
+          #    URL. Both are checked; either one is fatal.
+          if grep -rqE 'sb_publishable_[A-Za-z0-9_-]{20,}' dist/demo/assets/*.js; then
+            echo "::error::The demo twin carries a real publishable key, so it is a second real app rather than a demo. Refusing to deploy."
+            exit 1
+          fi
+          if grep -rqE 'https://[a-z0-9]+\.supabase\.co' dist/demo/assets/*.js; then
+            echo "::error::The demo twin names a Supabase project, so it was built with the pair. Refusing to deploy."
             exit 1
           fi
           echo "::notice::Demo twin: /lo-yanum/demo/ published from this same commit, no Supabase pair, sharing the app's archive."
