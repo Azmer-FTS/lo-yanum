@@ -29,7 +29,6 @@ import {
   totalHeads,
 } from '@core/index'
 import type {
-  Agreement,
   CommitmentKind,
   Farm,
   FarmStatus,
@@ -45,6 +44,7 @@ import type { IconName } from '../../components/Icon'
 import { AnchorMap } from '../../components/AnchorMap'
 import { MapSplit } from '../../components/MapSplit'
 import { ThreatPanel } from '../../components/ThreatPanel'
+import { AgreementActions } from '../../components/AgreementViewer'
 import { zoneColor, zoneLabelKey } from '../../components/zones'
 import { Timeline } from '../../components/Timeline'
 import type { TimelineEntry } from '../../components/Timeline'
@@ -58,11 +58,13 @@ import {
   CollapsibleSection,
   EmptyState,
   KeyValue,
+  LoadingState,
   PageHeader,
   RowLink,
   Section,
 } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
+import { useHydrated } from '../../hooks/useDataState'
 import { useLocale } from '../../hooks/useLocale'
 
 const COMMITMENT_ICON: Record<CommitmentKind, IconName> = {
@@ -271,80 +273,6 @@ function KeyNumbers({
 }
 
 /**
- * G14c — the signed agreement becomes a document you can OPEN, not a line of
- * metadata: view, download, share. The file is the repo's mock PDF — Lot 3
- * brings real signed documents; the three actions are the flow being proven.
- * Share prefers the Web Share API (the coordinator is on a phone half the
- * time) and falls back to a WhatsApp text with the link.
- */
-function AgreementActions({
-  agreement,
-  farmName,
-}: {
-  agreement: Agreement
-  farmName: string
-}) {
-  const { t } = useTranslation()
-  const url = new URL(
-    `${import.meta.env.BASE_URL}mock-agreement.pdf`,
-    window.location.href,
-  ).toString()
-
-  const share = () => {
-    if (navigator.share) {
-      navigator
-        .share({ title: agreement.fileName, url })
-        .catch(() => {/* user dismissed the sheet — nothing to do */})
-    } else {
-      window.open(
-        `https://wa.me/?text=${encodeURIComponent(
-          `${farmName} — ${agreement.fileName}\n${url}`,
-        )}`,
-        '_blank',
-        'noreferrer',
-      )
-    }
-  }
-
-  const iconBtn =
-    'flex h-9 w-9 shrink-0 items-center justify-center rounded-field text-content-muted ' +
-    'transition-colors duration-fast hover:bg-surface-high hover:text-content-primary'
-
-  return (
-    <div className="flex shrink-0 items-center gap-0.5">
-      <a
-        href={url}
-        target="_blank"
-        rel="noreferrer"
-        title={t('farms.agreementView')}
-        aria-label={t('farms.agreementView')}
-        className={iconBtn}
-      >
-        <Icon name="eye" size={17} />
-      </a>
-      <a
-        href={url}
-        download={agreement.fileName}
-        title={t('farms.agreementDownload')}
-        aria-label={t('farms.agreementDownload')}
-        className={iconBtn}
-      >
-        <Icon name="download" size={17} />
-      </a>
-      <button
-        type="button"
-        onClick={share}
-        title={t('farms.agreementShare')}
-        aria-label={t('farms.agreementShare')}
-        className={iconBtn}
-      >
-        <Icon name="send" size={17} />
-      </button>
-    </div>
-  )
-}
-
-/**
  * G7bis.3 / G14c — the identity card: where the farm stands in the pipeline,
  * then the leftover facts.
  */
@@ -398,7 +326,11 @@ export function FarmDetailScreen() {
     window.matchMedia('(min-width: 1280px)').matches,
   )
 
-  if (!farm) return <Navigate to="/coordinator/farms" replace />
+  // N1 (2026-09-02) — a missing record before the snapshot has arrived is
+  // "not loaded yet", never "gone": redirecting here on a reload was how a
+  // coordinator's own farm closed itself. See `useHydrated`.
+  const hydrated = useHydrated()
+  if (!farm) return hydrated ? <Navigate to="/coordinator/farms" replace /> : <LoadingState />
 
   /**
    * D6.3 — the farm's recent life in one strip: last guard, last incident, last

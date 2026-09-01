@@ -135,3 +135,56 @@ export async function signedUrl(bucket: string, key: string): Promise<string | n
 export function clearSignedUrlCache(): void {
   cache.clear()
 }
+
+/**
+ * ORDRE DE NUIT 2026-09-02 (N2) — WRITING INTO A BUCKET, AND LOOKING INTO ONE.
+ *
+ * Three thin calls, no policy re-stated: `agreements_coordinator_write` is
+ * `for all`, so the coordinator may put, list and remove — and a farmer's
+ * client, which never reaches this code, would be refused by the bucket
+ * itself. `upsert` because replacing the association's contract template is
+ * the whole use case; a stale signed URL for the old bytes is dropped here.
+ */
+export async function uploadObject(
+  bucket: string,
+  key: string,
+  file: Blob,
+  contentType: string,
+): Promise<void> {
+  const client = await getSupabase()
+  if (!client) throw new Error('no client')
+  const { error } = await client.storage
+    .from(bucket)
+    .upload(key, file, { upsert: true, contentType, cacheControl: '60' })
+  if (error) throw new Error(error.message)
+  cache.delete(cacheKey(bucket, key))
+}
+
+export interface StoredObject {
+  name: string
+  size: number
+  updatedAt: string | null
+}
+
+/** The objects under one folder, with what a screen wants to print about them. */
+export async function listObjects(bucket: string, folder: string): Promise<StoredObject[]> {
+  const client = await getSupabase()
+  if (!client) return []
+  const { data, error } = await client.storage.from(bucket).list(folder, { limit: 100 })
+  if (error || !data) return []
+  return data
+    .filter((o) => o.id !== null)
+    .map((o) => ({
+      name: o.name,
+      size: Number((o.metadata as { size?: number } | null)?.size ?? 0),
+      updatedAt: o.updated_at ?? null,
+    }))
+}
+
+export async function removeObjects(bucket: string, keys: string[]): Promise<void> {
+  const client = await getSupabase()
+  if (!client) throw new Error('no client')
+  const { error } = await client.storage.from(bucket).remove(keys)
+  if (error) throw new Error(error.message)
+  for (const key of keys) cache.delete(cacheKey(bucket, key))
+}

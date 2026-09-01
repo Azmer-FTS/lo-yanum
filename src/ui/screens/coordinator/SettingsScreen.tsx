@@ -8,6 +8,7 @@ import { signOut } from '../../../data/auth'
 import { Icon } from '../../components/Icon'
 import { Callout, KeyValue, PageHeader, Section } from '../../components/primitives'
 import { readReportRecipient, writeReportRecipient } from '../../report/recipient'
+import { AgreementTemplateSection } from '../../settings/AgreementTemplateSection'
 import {
   originLabel,
   originPosition,
@@ -548,6 +549,9 @@ export function SettingsScreen() {
           </>
         )}
       </Section>
+
+      {/* N2 (2026-09-02) — the association's contract, uploaded once. */}
+      <AgreementTemplateSection />
 
       <Section title={t('settings.account.title')} className="mt-6">
         {SUPABASE_CONFIGURED && auth.status === 'signed-in' ? (
