@@ -7,7 +7,9 @@ import { HOME_BASE, bearingDeg, boundsOf } from '@core/index'
 import type { LatLng } from '@core/index'
 
 import { readToken } from './badges'
+import { BaseSwitcher, readStoredBase } from './BaseSwitcher'
 import { buildBasemapStyle, registerPmtilesProtocol, resolvedThemeOf } from './basemap'
+import type { BasemapBase } from './basemap'
 
 /**
  * MapLibre GL over a self-hosted Protomaps PMTiles vector basemap.
@@ -555,9 +557,19 @@ export default function MapCanvas({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
+    /**
+     * ★ ASKED ONCE. The initial style and the `ground` the switcher starts on
+     *   have to be the same answer, and `readStoredBase` consults
+     *   `navigator.onLine` — which can flip between two calls.
+     */
+    const initialGround = readStoredBase()
+
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: buildBasemapStyle(resolvedThemeOf()),
+      // ★ The stored ground, filtered through the network state — see
+      //   `readStoredBase`. A device left in satellite mode and opened with no
+      //   coverage comes up on the vector archive it is holding.
+      style: buildBasemapStyle(resolvedThemeOf(), initialGround),
       center: [center?.lng ?? HOME_BASE.lng, center?.lat ?? HOME_BASE.lat],
       zoom,
       interactive,
@@ -806,14 +818,55 @@ export default function MapCanvas({
      *   already had would drop every tile on screen for no reason.
      */
     let painted = resolvedThemeOf()
+    let ground: BasemapBase = initialGround
+
+    /**
+     * ★ ONE FUNCTION REBUILDS THE STYLE, AND THERE ARE NOW TWO REASONS TO.
+     *   The palette can change (light/dark) and the GROUND can change (vector
+     *   or satellite, PO request B). Both are a `setStyle`, both therefore
+     *   throw away the programme's four sources and ten layers, and both have
+     *   to put them back. Two separate call sites doing "nearly the same
+     *   thing" is how one of them ends up without the `styledata` handler and
+     *   a coordinator loses his zones by toggling a button.
+     */
+    const applyStyle = () => {
+      map.setStyle(buildBasemapStyle(painted, ground))
+      // `setStyle` is asynchronous: the sources cannot be added back until the
+      // new style is in place, and `styledata` is where MapLibre says so.
+      map.once('styledata', installProgrammeLayers)
+    }
+
     const repaint = () => {
       const next = resolvedThemeOf()
       if (next === painted) return
       painted = next
-      map.setStyle(buildBasemapStyle(next))
-      // `setStyle` is asynchronous: the sources cannot be added back until the
-      // new style is in place, and `styledata` is where MapLibre says so.
-      map.once('styledata', installProgrammeLayers)
+      applyStyle()
+    }
+
+    /**
+     * PO REQUEST B — the ground switch, and only where a map is actually
+     * driven. `interactive: false` is the thumbnail case: a control on a
+     * 120 px preview is a control nobody can hit and a legend nobody asked
+     * for. The switcher's own rules — disabled offline, automatic fallback —
+     * live inside it; see `BaseSwitcher`.
+     */
+    if (interactive) {
+      const switcher = new BaseSwitcher(
+        {
+          group: t('map.base.label'),
+          vector: t('map.base.vector'),
+          satellite: t('map.base.satellite'),
+          offlineHint: t('map.base.offlineHint'),
+          onlineHint: t('map.base.onlineHint'),
+        },
+        ground,
+        (next) => {
+          if (next === ground) return
+          ground = next
+          applyStyle()
+        },
+      )
+      map.addControl(switcher, 'top-left')
     }
 
     const themeObserver = new MutationObserver(repaint)

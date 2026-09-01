@@ -2,7 +2,12 @@ import { Protocol } from 'pmtiles'
 import maplibregl from 'maplibre-gl'
 import { layersWithCustomTheme, namedTheme } from 'protomaps-themes-base'
 import type { Theme } from 'protomaps-themes-base'
-import type { StyleSpecification } from 'maplibre-gl'
+import type {
+  ExpressionSpecification,
+  FilterSpecification,
+  LayerSpecification,
+  StyleSpecification,
+} from 'maplibre-gl'
 
 /**
  * PMTILES (decision 71) — THE BASEMAP, VECTOR, SELF-HOSTED, IN THE APP'S OWN
@@ -458,23 +463,460 @@ export function basemapAssets(): string[] {
   return out
 }
 
-export function buildBasemapStyle(resolved: 'light' | 'dark'): StyleSpecification {
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * A. THE STATE BORDERS — PO REQUEST, 2026-09-01
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Protomaps ships exactly two boundary layers and both are whispers: 0.7 px
+ * for a national border, 0.4 px for everything below it, both in the same grey
+ * as a service road, both dashed the same way. On a map where the operator is
+ * looking for a farm, a border drawn like a driveway is a border he does not
+ * see — which is what the product owner reported.
+ *
+ * ★ WHAT THE ARCHIVE ACTUALLY CARRIES, decoded from the tiles rather than
+ *   assumed from the schema docs (Jerusalem, the Jordan valley and the
+ *   southern line, z8 → z14):
+ *
+ *     kind         "country" | "region" | "county" | "locality"
+ *     kind_detail  2 | 4 | 5 | 6 | 8        (the OSM admin_level)
+ *     disputed     true, and ONLY on some of them
+ *     sort_rank    288 on the disputed ones, 289 otherwise
+ *
+ *   `disputed: true` is present, at kind_detail 2 AND 5, at every zoom from 8
+ *   to 14. That is the fact this design rests on: the distinction the product
+ *   owner asked for is IN THE DATA, so it does not have to be invented, drawn
+ *   by hand, or approximated by geography.
+ *
+ * ★ SO THE LINES SAY THREE DIFFERENT THINGS, and they say them the way OSM's
+ *   own rendering does, because that is the vocabulary anybody looking at this
+ *   map has already learned:
+ *
+ *     settled international line   SOLID, the heaviest line on the basemap
+ *     disputed / armistice line    DASHED, same weight — equal in importance,
+ *                                  explicitly not equal in status
+ *     region / county / locality   thin, finely dotted, quiet
+ *
+ * ★ AND EVERY ONE OF THEM IS DRAWN ON ITS OWN HALO. MapLibre has no line halo,
+ *   so it is a second, wider line underneath in the page's own surface colour.
+ *   It is not decoration: without it a grey border crossing the Mediterranean,
+ *   a built-up area and open sand changes contrast three times along its
+ *   length, and it is exactly the stretches where it disappears that somebody
+ *   needs to read. The halo is what makes ONE line weight work everywhere.
+ *   Each line gets its own so that a dash stays a dash — see `haloDash`.
+ *
+ * ⚠️ THE COLOUR IS INK, NEVER A ZONE COLOUR, AND THAT IS THE SAME RULE AS THE
+ *    REST OF THIS FILE. `--zone-boundary` means "the edge of a farm we work
+ *    with". An administrative line is a different kind of statement and must
+ *    not be mistakable for one at a glance — so it is `--text-secondary`, the
+ *    app's ink: unmistakably darker than any road, and carrying no hue that
+ *    could be read as programme data. The product owner's own drawings stay
+ *    the only saturated things on the map, and they are still painted ON TOP
+ *    of all of this by `installProgrammeLayers`.
+ */
+
+/** The three kinds of line, and the one halo they all sit on. */
+function boundaryLayers(mode: 'vector' | 'imagery'): LayerSpecification[] {
+  /**
+   * Over the vector map: ink on the page. Over imagery: white on black, which
+   * is the only pair that survives an orchard, a rooftop and bare rock in the
+   * same frame.
+   */
+  const ink = mode === 'imagery' ? 'rgb(255 255 255 / 0.95)' : token('--text-secondary', 0.9)
+  const quiet = mode === 'imagery' ? 'rgb(255 255 255 / 0.6)' : token('--text-muted', 0.65)
+  const halo = mode === 'imagery' ? 'rgb(0 0 0 / 0.55)' : token('--surface-base', 0.75)
+
+  /** One ramp for every boundary line, so weight means the same thing at every zoom. */
+  const width = (scale: number): ExpressionSpecification =>
+    [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      4,
+      1.0 * scale,
+      8,
+      1.7 * scale,
+      12,
+      2.6 * scale,
+      16,
+      3.4 * scale,
+    ] as ExpressionSpecification
+
+  /**
+   * ⚠️ A DASH ARRAY IS IN LINE-WIDTHS, NOT PIXELS, so a pattern written for a
+   *    2.6 px line becomes a different pattern on a 1.2 px one. The two below
+   *    are therefore written against their own weights: the disputed line
+   *    reads as a long dash with a clear gap at every zoom, and the regional
+   *    one as a fine dot that never competes with it.
+   */
+  const disputedDash = [2.2, 1.4]
+  const regionalDash = [1.2, 1.6]
+
+  /**
+   * ★★ THE HALO UNDER A DASHED LINE MUST BE DASHED TOO, AND IT WAS NOT — the
+   *    first version of this drew ONE solid halo under all three kinds, and
+   *    over the satellite imagery that turned the armistice line into a SOLID
+   *    BLACK line with white dashes cut into it. The gaps in a dash are meant
+   *    to show the ground; a solid halo fills them with the halo's own colour,
+   *    which inverts exactly the distinction the dash exists to make. Caught by
+   *    looking at the capture, which is the only way this kind of thing is ever
+   *    caught.
+   *
+   * ⚠️ AND THE PATTERN HAS TO BE RESCALED, because a dash array is measured in
+   *    LINE-WIDTHS. A halo 1.9× wider carrying the same numbers would draw
+   *    dashes 1.9× longer and gaps 1.9× wider, so the two would drift apart
+   *    along the line. Dividing by the same factor makes the halo's dashes land
+   *    exactly on the line's.
+   */
+  const HALO = 1.9
+  const haloDash = (dash: number[]): number[] => dash.map((d) => d / HALO)
+
+  const country: ExpressionSpecification = ['<=', ['get', 'kind_detail'], 2]
+  const isDisputed: ExpressionSpecification = ['==', ['get', 'disputed'], true]
+  const regional: FilterSpecification = ['>', ['get', 'kind_detail'], 2] as FilterSpecification
+  const settled: FilterSpecification = ['all', country, ['!', isDisputed]] as FilterSpecification
+  const armistice: FilterSpecification = [
+    'all',
+    ['<=', ['get', 'kind_detail'], 5],
+    isDisputed,
+  ] as FilterSpecification
+
+  return [
+    // ---- region, county, locality: present, quiet, never a state ---------
+    {
+      id: 'lo-boundaries-regional-halo',
+      type: 'line',
+      source: 'protomaps',
+      'source-layer': 'boundaries',
+      filter: regional,
+      paint: {
+        'line-color': halo,
+        'line-width': width(0.45 * HALO),
+        'line-dasharray': haloDash(regionalDash),
+        'line-opacity': 0.7,
+      },
+    } as LayerSpecification,
+    {
+      id: 'lo-boundaries-regional',
+      type: 'line',
+      source: 'protomaps',
+      'source-layer': 'boundaries',
+      filter: regional,
+      paint: {
+        'line-color': quiet,
+        'line-width': width(0.45),
+        'line-dasharray': regionalDash,
+      },
+    } as LayerSpecification,
+
+    // ---- the settled international line ----------------------------------
+    // ★ SOLID, and the heaviest thing on the basemap. Nothing else drawn from
+    //   OpenStreetMap is allowed to be wider.
+    {
+      id: 'lo-boundaries-country-halo',
+      type: 'line',
+      source: 'protomaps',
+      'source-layer': 'boundaries',
+      filter: settled,
+      paint: { 'line-color': halo, 'line-width': width(HALO) },
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+    } as LayerSpecification,
+    {
+      id: 'lo-boundaries-country',
+      type: 'line',
+      source: 'protomaps',
+      'source-layer': 'boundaries',
+      filter: settled,
+      paint: { 'line-color': ink, 'line-width': width(1) },
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+    } as LayerSpecification,
+
+    // ---- the disputed / armistice line -----------------------------------
+    // ★★ The SAME weight, deliberately, and a dash that cannot be confused
+    //    with the regional dot. Equal importance, different status — the
+    //    distinction the product owner asked for, and the one OSM's own
+    //    rendering makes.
+    {
+      id: 'lo-boundaries-disputed-halo',
+      type: 'line',
+      source: 'protomaps',
+      'source-layer': 'boundaries',
+      filter: armistice,
+      paint: {
+        'line-color': halo,
+        'line-width': width(HALO),
+        'line-dasharray': haloDash(disputedDash),
+      },
+      layout: { 'line-cap': 'butt', 'line-join': 'round' },
+    } as LayerSpecification,
+    {
+      id: 'lo-boundaries-disputed',
+      type: 'line',
+      source: 'protomaps',
+      'source-layer': 'boundaries',
+      filter: armistice,
+      paint: {
+        'line-color': ink,
+        'line-width': width(1),
+        'line-dasharray': disputedDash,
+      },
+      layout: { 'line-cap': 'butt', 'line-join': 'round' },
+    } as LayerSpecification,
+  ]
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * B. THE SATELLITE LAYER — PO REQUEST, 2026-09-01. ONLINE ONLY, BY DESIGN.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️⚠️ WHICH PROVIDER, AND WHY IT IS NOT THE ONE IN THE BRIEF.
+ *
+ * The request named Esri's world imagery as an example AND said to verify the
+ * conditions. Verified, 2026-09-01 — and the verification is the reason this
+ * ships pointed somewhere else:
+ *
+ *   · `server.arcgisonline.com/.../World_Imagery` answers anonymously, sends
+ *     `access-control-allow-origin: *`, and serves real sub-metre detail up to
+ *     z17+. Technically it would work today, with one line.
+ *   · Its own service metadata carries NO licence field — only
+ *     `copyrightText`. Esri's published position is that the service is
+ *     covered by their Terms of Use and requires an ArcGIS Online or
+ *     Enterprise licence, and their community answers say plainly that it is
+ *     not free and not for commercial use.
+ *
+ *   That is not a licence this project can grant itself on the product
+ *   owner's behalf, so it is HIS decision and not a default. It is registered
+ *   below, fully written, one word from being switched on.
+ *
+ * ★ WHAT SHIPS INSTEAD: EOX's Sentinel-2 cloudless. The 2016 mosaic is
+ *   published under CC BY 4.0 — a real, named, permissive licence with one
+ *   obligation, attribution, which is honoured in the source's own
+ *   `attribution` string and therefore in MapLibre's attribution control. It
+ *   answers anonymously and sends CORS for this exact origin (measured:
+ *   `access-control-allow-origin: https://azmer-fts.github.io`).
+ *
+ * ⚠️ AND ITS ONE REAL LIMIT, STATED RATHER THAN HIDDEN: Sentinel-2 is 10 m per
+ *    pixel. The service will answer a z17 request, but with 3.7 kB of
+ *    upsampled blur against Esri's 24 kB of actual detail — measured, both, at
+ *    the same tile. So the SOURCE is capped at `maxzoom: 14` and MapLibre
+ *    upsamples visibly past it, which is the honest behaviour: the operator
+ *    sees the imagery going soft instead of being shown invented sharpness.
+ *    Orchards, wadis, bare ground, built-up edges and tracks all read at z13–14
+ *    — which is the scale at which imagery answers "what is the ground like
+ *    around this farm". For "what is in this yard", the answer is Esri's terms
+ *    or a keyed provider, and that is a decision, not an oversight.
+ */
+export interface SatelliteProvider {
+  id: string
+  tiles: string[]
+  /** Past this, MapLibre upsamples rather than requesting detail that is not there. */
+  maxzoom: number
+  /** Rendered by MapLibre's own attribution control. The licence obligation. */
+  attribution: string
+}
+
+export const SATELLITE: SatelliteProvider = {
+  id: 's2cloudless-2016',
+  tiles: ['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg'],
+  maxzoom: 14,
+  attribution:
+    '<a href="https://s2maps.eu">Sentinel-2 cloudless</a> by ' +
+    '<a href="https://eox.at">EOX IT Services GmbH</a> ' +
+    '(Contains modified Copernicus Sentinel data 2016) — CC BY 4.0',
+}
+
+/**
+ * ⛔ NOT WIRED UP, AND THAT IS DELIBERATE. Swapping `SATELLITE` for this is a
+ *    one-line change and it is the product owner's to make, because what it
+ *    changes is not the code but which terms this app is operating under:
+ *
+ *      "Source: Esri, Vantor, Earthstar Geographics, and the GIS User
+ *       Community" — sub-metre over most of Israel, z0–z23, anonymous, CORS
+ *       open; and covered by Esri's Terms of Use, which state an ArcGIS
+ *       licence is required and exclude commercial use.
+ */
+export const SATELLITE_ESRI: SatelliteProvider = {
+  id: 'esri-world-imagery',
+  tiles: [
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  ],
+  maxzoom: 19,
+  attribution:
+    'Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community',
+}
+
+/** Which ground is under the programme's own drawings. */
+export type BasemapBase = 'vector' | 'satellite'
+
+/**
+ * The vector layers that stay ON TOP of the imagery, by id.
+ *
+ * ★ THE GROUND IS THE IMAGERY, SO EVERY LAYER THAT PAINTS GROUND IS DROPPED —
+ *   earth, landcover, landuse, water, buildings and every road casing. What is
+ *   left is the three things imagery cannot say on its own: where the roads
+ *   go, what the places are called, and where the lines on the ground are.
+ *
+ * ⚠️ `pois` IS DELIBERATELY ABSENT. Over a flat page a POI pin is information;
+ *    over aerial imagery it is a field of dots on top of a field of detail,
+ *    and the markers the coordinator actually placed have to win that contest.
+ */
+const OVER_IMAGERY = new Set([
+  'roads_other',
+  'roads_link',
+  'roads_minor_service',
+  'roads_minor',
+  'roads_major',
+  'roads_highway',
+  'roads_rail',
+  'roads_bridges_major',
+  'roads_bridges_highway',
+  'roads_labels_minor',
+  'roads_labels_major',
+  'water_label_ocean',
+  'water_label_lakes',
+  'water_waterway_label',
+  'places_subplace',
+  'places_locality',
+  'places_region',
+  'places_country',
+])
+
+/**
+ * The palette for labels and roads drawn OVER aerial imagery.
+ *
+ * ★ THIS IS NOT THE APP'S PALETTE AND MUST NOT BE. Every token in
+ *   `themeFromTokens` is chosen against the app's own surface; imagery has no
+ *   surface — it is orchard, rooftop, rock and shadow in the same frame, and
+ *   the app's ink vanishes into all four. The only pair that survives is white
+ *   text on a dark halo, which is what every aerial map on earth uses, and the
+ *   reason is contrast rather than convention.
+ *
+ * ⚠️ AND IT IS THE SAME IN LIGHT AND DARK THEME, on purpose: the theme
+ *    describes the app's chrome, not the photograph. A "light mode" satellite
+ *    map with dark labels would be unreadable at exactly the moments a dark
+ *    theme exists for.
+ */
+function imageryTheme(resolved: 'light' | 'dark'): Theme {
+  const base = namedTheme(resolved)
+  const label = 'rgb(255 255 255)'
+  const labelHalo = 'rgb(0 0 0 / 0.85)'
+  const road = 'rgb(255 255 255 / 0.55)'
+
   return {
-    version: 8,
+    ...base,
+    other: road,
+    minor_service: road,
+    minor_a: road,
+    minor_b: road,
+    link: road,
+    major: 'rgb(255 255 255 / 0.75)',
+    highway: 'rgb(255 244 214 / 0.85)',
+    railway: 'rgb(255 255 255 / 0.5)',
+    bridges_major: 'rgb(255 255 255 / 0.75)',
+    bridges_highway: 'rgb(255 244 214 / 0.85)',
+
+    country_label: label,
+    state_label: label,
+    state_label_halo: labelHalo,
+    city_label: label,
+    city_label_halo: labelHalo,
+    subplace_label: 'rgb(255 255 255 / 0.9)',
+    subplace_label_halo: labelHalo,
+    roads_label_major: label,
+    roads_label_major_halo: labelHalo,
+    roads_label_minor: 'rgb(255 255 255 / 0.85)',
+    roads_label_minor_halo: labelHalo,
+    ocean_label: 'rgb(255 255 255 / 0.9)',
+    waterway_label: 'rgb(255 255 255 / 0.9)',
+  }
+}
+
+/**
+ * The style, for one theme and one ground.
+ *
+ * ★ THE PMTILES SOURCE IS DECLARED IN BOTH CASES, and that is not waste: the
+ *   satellite view keeps its roads, its names and its borders from the same
+ *   archive, so the layer that says WHERE YOU ARE keeps working when the
+ *   imagery is slow, and the switch back to `'vector'` needs nothing fetched.
+ */
+export function buildBasemapStyle(
+  resolved: 'light' | 'dark',
+  base: BasemapBase = 'vector',
+): StyleSpecification {
+  const common = {
+    version: 8 as const,
     // Protomaps' layer specs reference sprites and glyphs by these names; both
     // are served by Protomaps' own CDN and are a few kB, unlike the tiles.
     glyphs: assetUrl('fonts/{fontstack}/{range}.pbf'),
     // The sprite sheet follows the palette: Protomaps ships a light and a dark
     // set, and its shields and pictograms are drawn for the ground under them.
     sprite: assetUrl(`sprites/${resolved}`),
-    sources: {
-      protomaps: {
-        type: 'vector',
-        url: `pmtiles://${BASEMAP_URL}`,
-        attribution:
-          '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  }
+
+  const protomaps = {
+    type: 'vector' as const,
+    url: `pmtiles://${BASEMAP_URL}`,
+    attribution:
+      '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  }
+
+  if (base === 'satellite') {
+    const over = layersWithCustomTheme(
+      'protomaps',
+      imageryTheme(resolved),
+      'he',
+    ).filter((l) => OVER_IMAGERY.has(l.id))
+
+    /**
+     * The borders go BETWEEN the roads and the labels, exactly as they do on
+     * the vector map — a name has to stay on top of the line it belongs to.
+     */
+    const firstLabel = over.findIndex((l) => l.type === 'symbol')
+    const cut = firstLabel === -1 ? over.length : firstLabel
+
+    return {
+      ...common,
+      sources: {
+        protomaps,
+        satellite: {
+          type: 'raster',
+          tiles: SATELLITE.tiles,
+          tileSize: 256,
+          maxzoom: SATELLITE.maxzoom,
+          attribution: SATELLITE.attribution,
+        },
       },
-    },
-    layers: layersWithCustomTheme('protomaps', themeFromTokens(resolved), 'he'),
+      layers: [
+        { id: 'satellite', type: 'raster', source: 'satellite' } as LayerSpecification,
+        ...over.slice(0, cut),
+        ...boundaryLayers('imagery'),
+        ...over.slice(cut),
+      ],
+    }
+  }
+
+  const layers = layersWithCustomTheme('protomaps', themeFromTokens(resolved), 'he')
+
+  /**
+   * ★ PROTOMAPS' OWN TWO BOUNDARY LAYERS ARE REPLACED IN PLACE, not hidden and
+   *   not appended. Appending would put a national border on top of every
+   *   label on the map; hiding them and adding elsewhere would leave two dead
+   *   ids for the next person to wonder about. The index they occupied is the
+   *   right index — between the roads and the bridges — so that is where the
+   *   four new ones go.
+   */
+  const at = layers.findIndex((l) => l.id === 'boundaries_country')
+  const kept = layers.filter((l) => l.id !== 'boundaries_country' && l.id !== 'boundaries')
+  const insert = at === -1 ? kept.length : at
+
+  return {
+    ...common,
+    sources: { protomaps },
+    layers: [
+      ...kept.slice(0, insert),
+      ...boundaryLayers('vector'),
+      ...kept.slice(insert),
+    ],
   }
 }

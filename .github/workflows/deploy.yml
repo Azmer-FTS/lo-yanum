@@ -280,6 +280,20 @@ jobs:
       - name: Gate — the basemap in a REAL browser, blank profile
         run: bun run ground
 
+      # ★ A84 — WHAT IS DRAWN ON TOP OF THE ARCHIVE, 2026-09-01. The step above
+      #   proves the ground arrives; this one proves the two things the product
+      #   owner asked for on it are actually RENDERED and not merely
+      #   configured: a settled international border and a disputed / armistice
+      #   line, distinguishable, in light AND dark; and the מפה / לוויין switch,
+      #   including the half that only matters in the field — offline, the
+      #   button is disabled with a stated reason and the map falls back to the
+      #   national vector archive on its own.
+      #
+      # ⚠️ ITS ONE WARNING PATH IS SOMEBODY ELSE'S SERVER BEING DOWN, and never
+      #    this app's wiring — the distinction is written out in the script.
+      - name: Gate — borders and the satellite switch, in a REAL browser
+        run: bun run backdrop
+
       # The captures ARE the report. Kept on every run, pass or fail, so that
       # "the map is cut at the north" is a file he can open rather than a claim.
       - name: The four proofs, as captures

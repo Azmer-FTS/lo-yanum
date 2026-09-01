@@ -34,6 +34,7 @@
     "offline": "bun run scripts/offline.ts",
     "basemap": "bun run scripts/basemap.ts",
     "ground": "bun run scripts/ground.ts",
+    "backdrop": "bun run scripts/backdrop.ts",
     "deletion": "bun run scripts/deletion.ts",
     "report": "bun run scripts/report.ts",
     "empty": "bun run scripts/empty.ts"
