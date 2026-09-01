@@ -4785,6 +4785,15 @@ session's to perform. The moment the object lands, row four closes behind it and
 **no build can ever fall back to a partial extract again.** If he prefers the
 hard version, it is deleting the last `echo ::warning` and its branch.
 
+### 25.6 ✅ POINT 9, REPLAYED RATHER THAN ASSUMED
+
+`bun run touch` re-run on 2026-09-01 against a real dev server: **53/53**,
+including the four criteria the product owner's acceptance rule names —
+`pointerType="pen"` proved to reach the page, then drawing a ring, editing a
+vertex, placing and dragging a pin, and **signing with 2 015 inked pixels
+counted on the canvas** rather than a handler trusted to have fired. Point 9 is
+delivered and stays delivered; nothing in §25 touched it.
+
 ---
 
 ## ⏭️ RESUME HERE — THE SECOND RETURN IS DELIVERED; §22 IS WHAT IS LEFT
