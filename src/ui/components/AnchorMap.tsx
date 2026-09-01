@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { entityKindOf, ringAreaDunams, ringCenter } from '@core/index'
+import {
+  entityKindOf,
+  ringAreaDunams,
+  ringCenter,
+  simplifyRing,
+  simplifyToleranceM,
+  tracedRingIsClosed,
+} from '@core/index'
 import type {
   AnchorPoint,
   Farm,
@@ -114,14 +121,34 @@ export interface AnchorMapProps {
 type Mode =
   | { kind: 'idle' }
   | { kind: 'placing' }
-  | { kind: 'drawing'; zone: FarmZoneKind; draft: LatLng[] }
+  /**
+   * `traced` marks a draft that arrived from a FREEHAND stroke rather than
+   * from taps, and it changes two things (PO point 9b):
+   *
+   *   · the map stops accepting taps as new vertices — the shape is drawn,
+   *     the job now is to ADJUST it, and a stray tap adding a corner in the
+   *     middle of that is the opposite of helpful;
+   *   · and every vertex becomes a draggable grip, which is what "passe en
+   *     mode édition normal, sommets ajustables un par un" asks for.
+   */
+  | { kind: 'drawing'; zone: FarmZoneKind; draft: LatLng[]; traced?: true }
   // G18 — a threat zone is drawn exactly like ground, in its own explicit
   // mode so a coordinator can never draw one by accident.
-  | { kind: 'threatZone'; draft: LatLng[] }
+  | { kind: 'threatZone'; draft: LatLng[]; traced?: true }
   // A vector is TWO clicks: where they come from, then where they arrive.
   // `origin: null` is the first half of the gesture, which is what lets the
   // banner say which click the map is waiting for.
   | { kind: 'threatVector'; origin: LatLng | null }
+  /**
+   * PO POINT 9b — ציור חופשי. The operator TRACES; nothing is committed until
+   * the trace has been simplified into a draft and he has said so.
+   *
+   * ★ IT CARRIES THE SAME `zone` AS `drawing`, plus `'threat'`, because the
+   *   product owner's condition is that freehand works for EVERY kind of area
+   *   and that the kind is chosen BEFORE the trace — exactly as it is today.
+   *   One mode with a subject beats three near-identical modes.
+   */
+  | { kind: 'freehand'; zone: FarmZoneKind | 'threat'; live: LatLng[] }
 
 export function AnchorMap({
   farm,
@@ -149,6 +176,14 @@ export function AnchorMap({
   const { t } = useTranslation()
 
   const [mode, setMode] = useState<Mode>({ kind: 'idle' })
+  /**
+   * PO POINT 9b — is the next zone TRACED or tapped out vertex by vertex?
+   *
+   * A preference rather than a mode: a coordinator who draws with a Pencil
+   * draws the next one with it too, so it survives finishing a zone and is
+   * only cleared by pressing the button again.
+   */
+  const [freehandArmed, setFreehandArmed] = useState(false)
   // G15 — selection is controlled when the parent passes the pair, internal
   // otherwise. One variable + one setter downstream, whichever the source.
   const [internalZoneId, setInternalZoneId] = useState<string | null>(null)
@@ -170,6 +205,7 @@ export function AnchorMap({
   const drawing = mode.kind === 'drawing' ? mode : null
   const threatDrawing = mode.kind === 'threatZone' ? mode : null
   const vectorDrawing = mode.kind === 'threatVector' ? mode : null
+  const tracing = mode.kind === 'freehand' ? mode : null
   const arming = mode.kind === 'placing'
   const zonesEditable = Boolean(onZoneCreate)
   // G16 — a moshav paints its ground in the blue family and its boundary is
@@ -222,7 +258,7 @@ export function AnchorMap({
     chosenIds.join(','),
     selectedId ?? '',
     onMove ? 'drag' : 'fixed',
-    drawing ? `draw:${drawing.zone}:${draftKey}` : '',
+    drawing ? `draw:${drawing.zone}:${drawing.traced ? 'traced' : 'tapped'}:${draftKey}` : '',
     selectedZone ? `zone:${selectedZone.id}:${selectedRingKey}` : '',
     threatDrawing
       ? `threat:${threatDrawing.draft.map((v) => `${v.lat},${v.lng}`).join(';')}`
@@ -273,6 +309,18 @@ export function AnchorMap({
         color: readToken('--status-danger'),
         title: t('zone.vertex'),
         kind: 'vertex' as const,
+        draggable: Boolean(threatDrawing?.traced),
+        onDragEnd: threatDrawing?.traced
+          ? (position: LatLng) =>
+              setMode((current) =>
+                current.kind === 'threatZone'
+                  ? {
+                      ...current,
+                      draft: current.draft.map((p, at) => (at === i ? position : p)),
+                    }
+                  : current,
+              )
+          : undefined,
       })),
       ...(vectorDrawing?.origin
         ? [
@@ -287,12 +335,29 @@ export function AnchorMap({
           ]
         : []),
       // G1 — the vertices being drawn right now.
+      //
+      // ★ A TRACED DRAFT'S VERTICES ARE GRIPS (PO point 9b). A tapped draft's
+      //   are not, and must not be: while the map is armed, MapCanvas
+      //   deliberately makes every marker transparent to clicks so a vertex
+      //   placed near an existing one cannot swallow the next tap.
       ...(drawing?.draft ?? []).map((v, i) => ({
         id: `draft-${i}`,
         position: v,
         color: zoneColor(drawing?.zone ?? 'farm_boundary', entity),
         title: t('zone.vertex'),
         kind: 'vertex' as const,
+        draggable: Boolean(drawing?.traced),
+        onDragEnd: drawing?.traced
+          ? (position: LatLng) =>
+              setMode((current) =>
+                current.kind === 'drawing'
+                  ? {
+                      ...current,
+                      draft: current.draft.map((p, at) => (at === i ? position : p)),
+                    }
+                  : current,
+              )
+          : undefined,
       })),
       // G1 — the selected zone's vertices, draggable to reshape it. Emphasis
       // separates a REAL vertex from the smaller G15 midpoint grips between.
@@ -426,6 +491,47 @@ export function AnchorMap({
     ],
   )
 
+  /**
+   * PO POINT 9b — WHAT THE TRACE BECOMES WHEN THE HAND LIFTS.
+   *
+   * ★ THE TOLERANCE COMES FROM THE CAMERA, so a moshav traced at z12 and a
+   *   paddock traced at z17 both come back with a workable number of
+   *   vertices. `simplifyToleranceM` turns three screen pixels into metres at
+   *   this zoom and this latitude; `core/geo.ts` explains why three.
+   *
+   * ★ AND IT LANDS IN THE ORDINARY DRAFT STATE. The product owner's condition
+   *   is that after simplification the shape "passe en mode édition normal —
+   *   sommets ajustables un par un comme aujourd'hui", so the simplified ring
+   *   becomes exactly the draft that vertex-by-vertex drawing produces: same
+   *   banner, same live area, same בטל, same סיום. There is no third state to
+   *   learn and no second code path to keep in step.
+   */
+  const finishTrace = (trace: LatLng[], zoom: number) => {
+    if (!tracing) return
+    const centre = trace.length > 0 ? trace[0] : farm.position
+    const toleranceM = simplifyToleranceM(zoom, centre.lat)
+
+    // Under three points there is no shape; a stray tap in this mode should
+    // leave the operator where he was rather than opening an empty draft.
+    if (trace.length < 3) {
+      setMode({ kind: 'freehand', zone: tracing.zone, live: [] })
+      return
+    }
+
+    // ★ CLOSED IF THE HAND CAME BACK NEAR ITS START. When it did, the last
+    //   point is the same corner as the first and keeping both leaves a
+    //   hairline notch nobody can see and nobody can drag out.
+    const closed = tracedRingIsClosed(trace, toleranceM)
+    const raw = closed ? trace.slice(0, -1) : trace
+    const ring = simplifyRing(raw, toleranceM)
+
+    if (tracing.zone === 'threat') {
+      setMode({ kind: 'threatZone', draft: ring, traced: true })
+      return
+    }
+    setMode({ kind: 'drawing', zone: tracing.zone, draft: ring, traced: true })
+  }
+
   const handleMapClick = (position: LatLng) => {
     if (drawing) {
       setMode({ ...drawing, draft: [...drawing.draft, position] })
@@ -467,13 +573,42 @@ export function AnchorMap({
     setMode({ kind: 'idle' })
   }
 
+  /**
+   * ★ ONE ENTRY POINT FOR BOTH WAYS OF DRAWING, and the kind is still chosen
+   *   first. PO point 9b's fifth condition is that freehand works for every
+   *   type of area with the type picked BEFORE the stroke — so the type
+   *   buttons keep their meaning and `freehandArmed` only decides which mode
+   *   they open.
+   */
   const startDrawing = (zone: FarmZoneKind) => {
     setSelectedZoneId(null)
-    setMode({ kind: 'drawing', zone, draft: [] })
+    setMode(
+      freehandArmed
+        ? { kind: 'freehand', zone, live: [] }
+        : { kind: 'drawing', zone, draft: [] },
+    )
   }
 
   const empty = anchors.length === 0
   const active = mode.kind !== 'idle'
+  /**
+   * ★ WHEN A TAP ON THE MAP MEANS SOMETHING. Not while a stroke is being
+   *   traced (the pointer handler owns the gesture), and not on a draft that
+   *   CAME from a stroke (its vertices are grips now, not a list being
+   *   appended to).
+   */
+  const acceptsClicks =
+    arming ||
+    vectorDrawing !== null ||
+    (drawing !== null && !drawing.traced) ||
+    (threatDrawing !== null && !threatDrawing.traced)
+  /**
+   * The live surface, while the hand is still moving. Three points is the
+   * floor for an area, so a trace shorter than that reports nothing rather
+   * than zero — "0 dunams" and "not a shape yet" are different statements.
+   */
+  const liveDunams =
+    tracing && tracing.live.length >= 3 ? ringAreaDunams(tracing.live) : null
 
   return (
     <div className={fullscreenShell(fullscreen.active, `relative ${className}`)}>
@@ -486,7 +621,7 @@ export function AnchorMap({
         zoom={13}
         markers={markers}
         polygons={polygons}
-        onMapClick={active ? handleMapClick : undefined}
+        onMapClick={acceptsClicks ? handleMapClick : undefined}
         // A double-click while drawing closes the ring. It has already fired
         // two plain clicks — the first was a real vertex, the second a
         // duplicate a few pixels away — so the duplicate is dropped.
@@ -507,9 +642,9 @@ export function AnchorMap({
         )}
         threatVectors={threatVectorShapes(threatVectors, selectedThreatId)}
         onMapDblClick={
-          drawing
+          drawing && !drawing.traced
             ? () => closeDraft(true)
-            : threatDrawing
+            : threatDrawing && !threatDrawing.traced
               ? () => closeThreatDraft(true)
               : undefined
         }
@@ -519,6 +654,28 @@ export function AnchorMap({
             : undefined
         }
         fullscreen={{ active: fullscreen.active, onToggle: fullscreen.toggle }}
+        /**
+         * PO POINT 9b — while ציור חופשי is armed the map is a drawing
+         * surface: the pan is suspended, a Pencil / finger / mouse traces, and
+         * the release hands back the path. `MapCanvas` owns the gesture and
+         * the live line; this component owns what the path MEANS.
+         */
+        freehand={
+          tracing
+            ? {
+                active: true,
+                color:
+                  tracing.zone === 'threat'
+                    ? readToken('--status-danger')
+                    : zoneColor(tracing.zone, entity),
+                onTrace: (live) =>
+                  setMode((current) =>
+                    current.kind === 'freehand' ? { ...current, live } : current,
+                  ),
+                onEnd: finishTrace,
+              }
+            : undefined
+        }
       />
 
       {/* ★★ PO RETURN 2026-09-02 — THE TOP OF THE MAP HAS ONE OWNER NOW.
@@ -546,8 +703,26 @@ export function AnchorMap({
 
       {/* One bottom overlay for the legends AND the banner: stacked in a
           column so the legend can never slide behind the banner, whose height
-          varies with the viewport (it wraps to three lines at 402 px). */}
-      <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 flex flex-col items-end gap-2 sm:items-start">
+          varies with the viewport (it wraps to three lines at 402 px).
+
+          ⚠️ `bottom-9` AND NOT `bottom-3`, AND THE GATE IS WHY. Moving the
+             drawing tools down here (PO return 2026-09-02) put them straight
+             onto MapLibre's attribution link — `bun run overlap` caught
+             "OpenStreetMap × draw-boundary, 37×6 px" at all four viewports on
+             the first run. That link is a LICENCE OBLIGATION, not decoration,
+             so the bar clears it rather than the other way round: MapLibre's
+             attribution occupies the bottom ~30 px of the map (20 px line box
+             plus a 10 px margin), so the column starts above it.
+
+          ⚠️ AND `pl-[4.5rem]`, FOR THE SAME REASON THE TOP STRIP HAS IT. On a
+             phone the map column is about 40 dvh and this bar is three wrapped
+             rows tall, so its top edge reaches up into the control stack —
+             `bun run overlap` caught "map-tool-zoom-out × הוסף נקודה, 28×30 px"
+             at 390 and 402 px wide. The stack is 44 px on the PHYSICAL left
+             whatever the writing direction, so the reservation is physical
+             too. It costs 72 px of a bar whose buttons already wrap, and it
+             costs nothing at all on the iPad this is drawn on. */}
+      <div className="pointer-events-none absolute inset-x-3 bottom-9 z-10 flex flex-col items-end gap-2 pl-[4.5rem] sm:items-start">
         {/* G7bis.1 — one legend stack: what the point shapes mean, then what
             the painted ground means. */}
         <PointLegend showFarm showPost showMeet={false} entity={entity} />
@@ -580,7 +755,7 @@ export function AnchorMap({
             <span className="shrink-0 text-accent-ink">
               <Icon
                 name={
-                  drawing || threatDrawing
+                  tracing || drawing || threatDrawing
                     ? 'edit'
                     : vectorDrawing
                       ? 'alert'
@@ -594,7 +769,9 @@ export function AnchorMap({
 
             <p className="min-w-0 flex-1 text-caption text-content-secondary">
               <span className="font-semibold text-content-primary">
-                {drawing
+                {tracing
+                  ? t('zone.tracing')
+                  : drawing
                   ? t(
                       drawing.zone === 'farm_boundary'
                         ? entity === 'moshav'
@@ -613,7 +790,28 @@ export function AnchorMap({
                       : t(arming ? 'anchor.armedHint' : 'anchor.mapHintCreate')}
               </span>
               <span className="block text-micro text-content-muted">
-                {drawing
+                {tracing
+                  ? `${t('zone.tracingHint')}${
+                      liveDunams === null
+                        ? ''
+                        : ` · ${t('zone.areaDunams', {
+                            n: Math.round(liveDunams).toLocaleString('he-IL'),
+                          })}`
+                    } · ${t('anchor.escToCancel')}`
+                  : drawing?.traced
+                    ? /* ★ A TRACED DRAFT SAYS WHAT THE ALGORITHM DID. "Your
+                         stroke is now N points, and here is the surface" is
+                         the one sentence that makes an automatic
+                         simplification trustworthy instead of mysterious. */
+                      `${t('zone.simplified', { count: drawing.draft.length })} · ${t(
+                        'zone.areaDunams',
+                        {
+                          n: Math.round(
+                            ringAreaDunams(drawing.draft),
+                          ).toLocaleString('he-IL'),
+                        },
+                      )} · ${t('anchor.escToCancel')}`
+                  : drawing
                   ? `${t('zone.drawingHint')} · ${t('zone.vertexCount', {
                       count: drawing.draft.length,
                     })}${
@@ -637,7 +835,22 @@ export function AnchorMap({
               </span>
             </p>
 
-            {threatDrawing ? (
+            {tracing ? (
+              /* ★ ONE BUTTON, AND IT IS בטל. There is nothing to confirm while
+                 the hand has not drawn yet — the trace itself is the commit —
+                 so the only action here is the way out, which is PO point 9b's
+                 fourth condition: "un tracé raté s'annule d'un bouton avant
+                 validation". */
+              <button
+                type="button"
+                onClick={() => setMode({ kind: 'idle' })}
+                data-testid="freehand-cancel"
+                className="btn-secondary shrink-0 py-1.5 text-micro"
+              >
+                <Icon name="close" size={13} />
+                {t('common.cancel')}
+              </button>
+            ) : threatDrawing ? (
               <>
                 <button
                   type="button"
@@ -737,6 +950,28 @@ export function AnchorMap({
               <span className="text-micro font-semibold text-content-muted">
                 {t('zone.toolsLabel')}
               </span>
+              {/* ★★ PO POINT 9b — ציור חופשי, AND IT IS A MODE SWITCH RATHER
+                  THAN A SIXTH TOOL. The kind of area is still chosen with the
+                  buttons beside it; this decides HOW the ring is produced —
+                  a continuous stroke instead of vertex-by-vertex — which is
+                  why it is pressed FIRST and stays pressed. On a real iPad the
+                  Pencil is the reason it exists: a pen draws, and asking one
+                  to place vertices one tap at a time is asking it to be a
+                  finger. */}
+              <button
+                type="button"
+                /* The row only exists while the map is idle, so there is never
+                   a live trace to tear down here. */
+                onClick={() => setFreehandArmed((armed) => !armed)}
+                data-testid="draw-freehand"
+                aria-pressed={freehandArmed}
+                className={`min-h-[36px] py-1.5 text-micro ${
+                  freehandArmed ? 'btn-primary' : 'btn-secondary'
+                }`}
+              >
+                <Icon name="edit" size={13} />
+                {t('zone.freehand')}
+              </button>
               <button
                 type="button"
                 onClick={() => startDrawing('farm_boundary')}
@@ -769,7 +1004,11 @@ export function AnchorMap({
                   type="button"
                   onClick={() => {
                     setSelectedZoneId(null)
-                    setMode({ kind: 'threatZone', draft: [] })
+                    setMode(
+                      freehandArmed
+                        ? { kind: 'freehand', zone: 'threat', live: [] }
+                        : { kind: 'threatZone', draft: [] },
+                    )
                   }}
                   data-testid="draw-threat-zone"
                   className="btn-secondary min-h-[36px] py-1.5 text-micro"

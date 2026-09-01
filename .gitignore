@@ -44,3 +44,9 @@ dist-backdrop/
 dist-redraw/
 dist-look/
 dist-redraw-probe/
+
+# A86 — the overlap gate builds its own copy.
+dist-overlap/
+
+# A87 — the freehand gate builds its own copy.
+dist-freehand/

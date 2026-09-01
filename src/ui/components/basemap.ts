@@ -527,21 +527,35 @@ export const BASEMAP_URL: string =
 export function basemapAssets(): string[] {
   const stacks = ['Noto Sans Regular', 'Noto Sans Medium', 'Noto Sans Italic']
   /**
-   * ★ SIX RANGES, AND THE SIXTH WAS FOUND BY §31's INVESTIGATION RATHER THAN
-   *   BY READING THE STYLE. `65024-65279` is U+FE00–FEFF — **Arabic
-   *   Presentation Forms-B**, which is where `mapbox-gl-rtl-text` puts every
-   *   shaped Arabic letter. So an Arabic place name on this map does not use
-   *   the Arabic block at all once it has been shaped; it uses this one. It
-   *   was missing, the SPA answered the request with `index.html`, and the
-   *   tile carrying that label was marked errored — which is why Arabic-named
-   *   localities were part of the white patches.
+   * ★★ EIGHT RANGES, AND THE LAST THREE WERE FOUND BY WATCHING THE NETWORK
+   *    RATHER THAN BY READING THE STYLE (§31). Five were vendored; the map was
+   *    asking for eight, and the three it could not have are the reason tiles
+   *    were being marked errored:
+   *
+   *      `65024-65279`  U+FE00–FEFF — **Arabic Presentation Forms-B**, which
+   *                     is where `mapbox-gl-rtl-text` puts every SHAPED Arabic
+   *                     letter. An Arabic place name on this map does not use
+   *                     the Arabic block at all once it has been shaped; it
+   *                     uses this one.
+   *      `64256-64511`  U+FB00–FB4F — **Hebrew Presentation Forms** (pointed
+   *                     letters, wide and final forms) and the Latin
+   *                     ligatures. Same story, in the app's own language.
+   *      `768-1023`     Combining Diacritical Marks and Greek. Latin names in
+   *                     `name:en` carry combining accents constantly.
+   *
+   *    ⚠️ THE LIST IS NOT A GUESS AND MUST NOT BECOME ONE. `bun run redraw`
+   *       records every range the style actually asks for and FAILS if one of
+   *       them is not here — so a re-cut archive that brings a new script into
+   *       frame is a red gate rather than a white patch on his iPad.
    */
   const ranges = [
     '0-255',
     '256-511',
+    '768-1023',
     '1280-1535',
     '1536-1791',
     '8192-8447',
+    '64256-64511',
     '65024-65279',
   ]
   const out = [

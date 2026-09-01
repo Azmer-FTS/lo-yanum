@@ -22,6 +22,10 @@ import {
   getFarmVisitsForFarm,
   getFarmZonesForFarm,
   ringAreaDunams,
+  simplifyPath,
+  simplifyRing,
+  simplifyToleranceM,
+  tracedRingIsClosed,
   getIncidentsForMission,
   getMission,
   getMyFarm,
@@ -908,6 +912,139 @@ section('PO point 6 — the head count, and the difference between none and unkn
     readLivestockKind('צאן־כבשים')?.kind === 'sheep',
   )
   check('an empty cell is nothing at all', readLivestockKind('  ') === null)
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PO POINT 9b — THE FREEHAND SIMPLIFICATION, WITHOUT A BROWSER
+   ══════════════════════════════════════════════════════════════════════════
+
+   The product owner's condition was "algorithme type Douglas-Peucker dans
+   /src/core/geo.ts, pur, testé". It is pure, so it is tested HERE rather than
+   through a map: a browser gate can only say that a trace produced a polygon,
+   and what actually has to be true is arithmetic — the right vertices are
+   kept, the wrong ones are dropped, and the surface survives.
+   ══════════════════════════════════════════════════════════════════════════ */
+section('PO point 9b — a hand-drawn trace becomes a polygon somebody can edit')
+{
+  // A synthetic "hand": a square field, traced with 60 points a side and a
+  // ±1.5 m tremor on every one of them. That is what a Pencil actually emits.
+  const SIDE_M = 400
+  const centre = { lat: 31.42, lng: 34.55 }
+  const dLat = SIDE_M / 111_320
+  const dLng = SIDE_M / (111_320 * Math.cos((centre.lat * Math.PI) / 180))
+  const corners = [
+    { lat: centre.lat - dLat / 2, lng: centre.lng - dLng / 2 },
+    { lat: centre.lat - dLat / 2, lng: centre.lng + dLng / 2 },
+    { lat: centre.lat + dLat / 2, lng: centre.lng + dLng / 2 },
+    { lat: centre.lat + dLat / 2, lng: centre.lng - dLng / 2 },
+  ]
+  // A deterministic tremor: this is a gate, so the same input every run.
+  let seed = 7
+  const jitter = (): number => {
+    seed = (seed * 1103515245 + 12345) % 2147483648
+    return (seed / 2147483648 - 0.5) * 2
+  }
+  const trace: { lat: number; lng: number }[] = []
+  for (let c = 0; c < 4; c++) {
+    const from = corners[c]
+    const to = corners[(c + 1) % 4]
+    for (let i = 0; i < 60; i++) {
+      const t = i / 60
+      trace.push({
+        lat: from.lat + (to.lat - from.lat) * t + (jitter() * 1.5) / 111_320,
+        lng: from.lng + (to.lng - from.lng) * t + (jitter() * 1.5) / 111_320,
+      })
+    }
+  }
+  // The hand comes back to where it started, a couple of metres out.
+  trace.push({ lat: corners[0].lat + 2 / 111_320, lng: corners[0].lng })
+
+  check('the synthetic trace is what a Pencil emits, not a polygon', trace.length === 241)
+
+  const tolerance = simplifyToleranceM(15, centre.lat)
+  /**
+   * ⚠️ THIS BOUND CAUGHT A REAL FACTOR-OF-TWO. The first version of
+   *    `simplifyToleranceM` used 156 543 — the metres-per-pixel constant for
+   *    256 px slippy tiles — while MapLibre's zoom is defined against a 512 px
+   *    tile. It returned 12.2 m at z15 where the truth is 6.1, which is coarse
+   *    enough to cut the corner off a field.
+   */
+  check(
+    'the tolerance at z15 is a few metres, derived from the screen',
+    tolerance > 1 && tolerance < 8,
+    `${tolerance.toFixed(2)} m`,
+  )
+  check(
+    '★ and it SCALES with the zoom — coarse at z12, fine at z17',
+    simplifyToleranceM(12, centre.lat) > simplifyToleranceM(17, centre.lat) * 20,
+    `z12 ${simplifyToleranceM(12, centre.lat).toFixed(1)} m vs z17 ${simplifyToleranceM(17, centre.lat).toFixed(2)} m`,
+  )
+
+  check(
+    '★ the hand coming back near its start is recognised as a closed ring',
+    tracedRingIsClosed(trace, tolerance),
+  )
+  check(
+    'and a genuinely open path is not',
+    !tracedRingIsClosed(trace.slice(0, 90), tolerance),
+  )
+
+  const ring = simplifyRing(trace, tolerance)
+  check(
+    '★★ 241 traced points become a ring somebody can actually edit',
+    ring.length >= 4 && ring.length <= 40,
+    `${ring.length} vertices`,
+  )
+  check(
+    '★ and the four real corners survive — the shape is still the shape',
+    ring.length >= 4 &&
+      corners.every((corner) =>
+        ring.some(
+          (v) =>
+            Math.abs(v.lat - corner.lat) < dLat / 20 &&
+            Math.abs(v.lng - corner.lng) < dLng / 20,
+        ),
+      ),
+    `${ring.length} vertices kept`,
+  )
+
+  const before = ringAreaDunams(trace)
+  const after = ringAreaDunams(ring)
+  check(
+    '★★ THE SURFACE SURVIVES, which is the number the coordinator reads',
+    Math.abs(after - before) / before < 0.02,
+    `${before.toFixed(0)} → ${after.toFixed(0)} dunams (${(((after - before) / before) * 100).toFixed(2)} %)`,
+  )
+  check(
+    'and it is about the 160 dunams a 400 m square is',
+    Math.abs(after - 160) < 8,
+    `${after.toFixed(1)} dunams`,
+  )
+
+  // ⚠️ The cut-point rule: a ring simplified from two DIFFERENT starting
+  //    points must come back the same shape. Without it, wherever the hand
+  //    happened to start becomes a vertex that can never be removed.
+  const rotated = [...trace.slice(97), ...trace.slice(0, 97)]
+  const fromElsewhere = simplifyRing(rotated, tolerance)
+  check(
+    '★★ starting the SAME trace at a different point gives the same shape',
+    Math.abs(ringAreaDunams(fromElsewhere) - after) / after < 0.02 &&
+      Math.abs(fromElsewhere.length - ring.length) <= 3,
+    `${ring.length} vs ${fromElsewhere.length} vertices, ${after.toFixed(0)} vs ${ringAreaDunams(fromElsewhere).toFixed(0)} dunams`,
+  )
+
+  // The degenerate inputs, because this runs on whatever the hand did.
+  check('a two-point trace is returned untouched', simplifyPath(trace.slice(0, 2), 5).length === 2)
+  check('an empty trace is an empty trace', simplifyPath([], 5).length === 0)
+  check(
+    '★ and an absurd tolerance falls back to the trace rather than to a line',
+    simplifyRing(trace, 100_000).length >= 3,
+    `${simplifyRing(trace, 100_000).length} vertices`,
+  )
+  check(
+    'a ring that is already three vertices is left alone',
+    simplifyRing(corners.slice(0, 3), tolerance).length === 3,
+  )
 }
 
 console.log('')

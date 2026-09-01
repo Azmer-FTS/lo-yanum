@@ -104,6 +104,180 @@ export function ringCenter(ring: LatLng[]): LatLng {
   }
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * PO POINT 9b — TURNING A HAND-DRAWN TRACE INTO A POLYGON SOMEBODY CAN EDIT
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * A finger or a Pencil dragged across an iPad emits a point every few
+ * milliseconds: a farm boundary traced in three seconds arrives as three to
+ * six HUNDRED vertices. That is not a polygon a coordinator can adjust, it is
+ * not a polygon worth storing, and every one of those vertices is a grip the
+ * next person has to drag past to reach the one they wanted.
+ *
+ * ★ RAMER–DOUGLAS–PEUCKER, and it is here rather than in the map component
+ *   for the reason every other line in this file is: it is arithmetic on
+ *   coordinates, it has no opinion about React or MapLibre, and it can
+ *   therefore be driven by `bun run accept` without a browser.
+ *
+ * ★ THE PROJECTION IS LOCAL AND THAT IS DELIBERATE. Perpendicular distance in
+ *   RAW degrees is wrong by a factor of `cos(latitude)` — at 31° N a degree of
+ *   longitude is 15 % shorter than a degree of latitude, so a trace simplified
+ *   in degree-space keeps too much detail on one axis and throws away too much
+ *   on the other. Scaling longitude by `cos(lat)` and treating the result as a
+ *   plane is exact enough over the few kilometres a farm spans, and it lets
+ *   the tolerance be stated in METRES, which is the only unit anybody can
+ *   reason about.
+ */
+const METRES_PER_DEGREE_LAT = 111_320
+
+/** Perpendicular distance from `p` to the segment `a`–`b`, in metres. */
+function segmentDistanceM(p: LatLng, a: LatLng, b: LatLng): number {
+  const k = Math.cos(toRad((a.lat + b.lat) / 2))
+  const px = (p.lng - a.lng) * k * METRES_PER_DEGREE_LAT
+  const py = (p.lat - a.lat) * METRES_PER_DEGREE_LAT
+  const bx = (b.lng - a.lng) * k * METRES_PER_DEGREE_LAT
+  const by = (b.lat - a.lat) * METRES_PER_DEGREE_LAT
+
+  const lengthSq = bx * bx + by * by
+  // A degenerate segment (the two ends are the same point) has no direction,
+  // so the distance to it is the distance to the point.
+  if (lengthSq === 0) return Math.hypot(px, py)
+
+  // Clamped, so a point beyond either end measures to the END rather than to
+  // the infinite line — otherwise a hook at the start of a trace measures as
+  // near the segment it is nowhere near.
+  const t = Math.max(0, Math.min(1, (px * bx + py * by) / lengthSq))
+  return Math.hypot(px - t * bx, py - t * by)
+}
+
+/**
+ * Ramer–Douglas–Peucker over an OPEN path, tolerance in metres.
+ *
+ * Iterative rather than recursive: a 4 000-point trace from a slow careful
+ * hand on a large iPad is a real input, and a recursive implementation of this
+ * algorithm is O(n) deep in the worst case — a straight-ish line — which is a
+ * stack overflow in the middle of somebody's farm boundary.
+ */
+export function simplifyPath(points: LatLng[], toleranceM: number): LatLng[] {
+  if (points.length <= 2 || toleranceM <= 0) return [...points]
+
+  const keep = new Array<boolean>(points.length).fill(false)
+  keep[0] = true
+  keep[points.length - 1] = true
+
+  const stack: [number, number][] = [[0, points.length - 1]]
+  while (stack.length > 0) {
+    const [first, last] = stack.pop() as [number, number]
+    let worst = -1
+    let worstAt = -1
+    for (let i = first + 1; i < last; i++) {
+      const d = segmentDistanceM(points[i], points[first], points[last])
+      if (d > worst) {
+        worst = d
+        worstAt = i
+      }
+    }
+    if (worst > toleranceM && worstAt > 0) {
+      keep[worstAt] = true
+      stack.push([first, worstAt], [worstAt, last])
+    }
+  }
+
+  return points.filter((_, i) => keep[i])
+}
+
+/**
+ * The same, for a CLOSED ring — which is what a traced zone is.
+ *
+ * ⚠️ A RING HAS NO ENDS, AND THAT IS NOT A DETAIL. RDP pins the first and last
+ *    points and simplifies between them; run naively on a ring, the arbitrary
+ *    place the user happened to start and stop becomes two vertices that can
+ *    never be removed, and the corner nearest them is systematically
+ *    over-detailed. So the ring is CUT at its two most extreme points — the
+ *    pair furthest apart — and the two halves are simplified independently.
+ *    Where the hand started then has no influence on the result at all.
+ *
+ * The output is an OPEN ring in this project's convention: the last vertex
+ * joins the first implicitly, exactly as `FarmZone.ring` is stored and as
+ * `ringAreaDunams` reads it.
+ */
+export function simplifyRing(ring: LatLng[], toleranceM: number): LatLng[] {
+  if (ring.length <= 3 || toleranceM <= 0) return [...ring]
+
+  // The two points furthest apart, which are the two the eye reads as the
+  // shape's extremes whatever the hand did.
+  let a = 0
+  let b = 0
+  let best = -1
+  for (let i = 0; i < ring.length; i++) {
+    for (let j = i + 1; j < ring.length; j++) {
+      const d = haversineKm(ring[i], ring[j])
+      if (d > best) {
+        best = d
+        a = i
+        b = j
+      }
+    }
+  }
+
+  const first = ring.slice(a, b + 1)
+  const second = [...ring.slice(b), ...ring.slice(0, a + 1)]
+  const out = [
+    ...simplifyPath(first, toleranceM),
+    // Both halves carry the cut points, so the second one's ends are dropped.
+    ...simplifyPath(second, toleranceM).slice(1, -1),
+  ]
+
+  // ★ NEVER RETURNS SOMETHING THAT IS NOT A POLYGON. Three vertices is the
+  //   floor; below it there is no surface and nothing to edit, so an
+  //   over-aggressive tolerance falls back to the trace rather than to a line.
+  return out.length >= 3 ? out : [...ring]
+}
+
+/**
+ * How coarse the simplification should be at a given map zoom, in metres.
+ *
+ * ★ DERIVED FROM THE SCREEN, NOT CHOSEN. At zoom `z` and latitude `lat` a
+ *   MapLibre pixel is `78271.52 · cos(lat) / 2^z` metres. Keeping the
+ *   tolerance at a fixed number of PIXELS means the simplified ring is always
+ *   faithful to what the operator could actually see himself drawing: coarse
+ *   when he traced a whole moshav at z12, fine when he traced a paddock at
+ *   z17. A tolerance in metres fixed across zooms is wrong at one end or the
+ *   other by a factor of thirty.
+ *
+ * ⚠️ THE CONSTANT IS 78 271, NOT 156 543, AND THE DIFFERENCE IS A FACTOR OF
+ *    TWO IN EVERY RESULT. The familiar `156543.03` is metres-per-pixel for
+ *    **256 px** slippy tiles; MapLibre's zoom is defined against a **512 px**
+ *    tile, so the world is 512·2^z pixels wide and the pixel is half as big.
+ *    Taken from the wrong table this function returns 12 m at z15 where the
+ *    truth is 6 — which is a farm's corner cut off, and it was caught by the
+ *    gate rather than by looking at a map.
+ *
+ * ⚠️ 3 PIXELS, AND THE NUMBER IS THE POINT OF THE FUNCTION. Below ~2 px the
+ *    hand's own tremor survives and a boundary comes back with two hundred
+ *    vertices; above ~5 px real corners of a field start being cut. Three is
+ *    the value that leaves a traced farm at roughly 15–40 vertices, which is
+ *    the range the vertex editor was designed for.
+ */
+export function simplifyToleranceM(zoom: number, lat: number): number {
+  const metresPerPixel = (78_271.51696 * Math.cos(toRad(lat))) / Math.pow(2, zoom)
+  return 3 * metresPerPixel
+}
+
+/**
+ * Should a traced ring be treated as closed?
+ *
+ * The gesture ends where the hand lifted, which is never exactly where it
+ * started. Anything within a few metres of the start at this zoom is plainly
+ * meant to be the same corner, and stitching it is what stops a zone having a
+ * one-metre gap nobody can see and nobody can close by hand.
+ */
+export function tracedRingIsClosed(trace: LatLng[], toleranceM: number): boolean {
+  if (trace.length < 3) return false
+  return haversineKm(trace[0], trace[trace.length - 1]) * 1000 <= toleranceM * 4
+}
+
 /** Decimal degrees, 5 dp (~1 m) — the form used in SMS to kosher phones. */
 export function formatCoords(p: LatLng): string {
   return `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`

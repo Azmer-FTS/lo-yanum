@@ -171,6 +171,32 @@ export interface MapViewProps {
    * it, because `interactive: false` skips the whole stack.
    */
   locate?: boolean
+  /**
+   * PO POINT 9b — ציור חופשי. While `active`, a single continuous pointer
+   * gesture TRACES a shape instead of panning the map.
+   *
+   * ★ POINTER EVENTS, WHICH IS POINT 9a's REQUIREMENT MADE STRUCTURAL. The
+   *   handler never asks whether the input was a finger; `pointerType` is
+   *   pen, touch or mouse and all three take the same path. That is the only
+   *   way an Apple Pencil behaves like a finger without a branch somebody has
+   *   to remember to add.
+   */
+  freehand?: {
+    active: boolean
+    /** The zone colour to trace in. */
+    color: string
+    /** Throttled to one animation frame — for the live dunam read-out. */
+    onTrace: (points: LatLng[]) => void
+    /**
+     * The finished trace, on pointer release, WITH the zoom it was drawn at.
+     *
+     * ★ THE ZOOM TRAVELS WITH THE TRACE because the simplification tolerance
+     *   is a number of SCREEN pixels turned into metres, and only the map
+     *   knows what a pixel was worth at the moment the hand lifted. Reading it
+     *   back afterwards would be reading it after the camera may have moved.
+     */
+    onEnd: (points: LatLng[], zoom: number) => void
+  }
 }
 
 const SIZE: Record<MarkerKind, number> = {
@@ -533,6 +559,7 @@ export default function MapCanvas({
   cooperative = false,
   fullscreen,
   locate = true,
+  freehand,
 }: MapViewProps) {
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -562,6 +589,8 @@ export default function MapCanvas({
   fullscreenRef.current = fullscreen
   const locateRef = useRef(locate)
   locateRef.current = locate
+  const freehandRef = useRef(freehand)
+  freehandRef.current = freehand
   const toolsRef = useRef<MapTools | null>(null)
 
   // Double-click has one meaning at a time: close the ring, or zoom. The
@@ -789,6 +818,46 @@ export default function MapCanvas({
       })
 
       // Apply whatever line was requested while the style was still loading.
+      /**
+       * PO POINT 9b — THE LIVE FREEHAND TRACE.
+       *
+       * ★ DRAWN BY MAPLIBRE, NOT BY REACT, and that is the whole reason it is
+       *   a source rather than a hundred markers. A Pencil emits a point every
+       *   few milliseconds; routing each one through a React render would
+       *   rebuild the marker set of the entire screen sixty times a second
+       *   while the operator is drawing, which is exactly when the app must
+       *   not stutter. `setData` on one LineString is a buffer upload.
+       *
+       * Declared here so it comes back after a `setStyle` like everything
+       * else — a trace that vanished because somebody tapped לוויין mid-stroke
+       * would be a bug nobody could reproduce on purpose.
+       */
+      map.addSource('freehand', {
+        type: 'geojson',
+        data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [] } },
+      })
+      map.addLayer({
+        id: 'freehand-casing',
+        type: 'line',
+        source: 'freehand',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': readToken('--surface-base'),
+          'line-width': 7,
+          'line-opacity': 0.85,
+        },
+      })
+      map.addLayer({
+        id: 'freehand-line',
+        type: 'line',
+        source: 'freehand',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': ['coalesce', ['get', 'color'], readToken('--accent')],
+          'line-width': 3.5,
+        },
+      })
+
       applyLine(map, lineRef.current)
     }
 
@@ -1015,6 +1084,176 @@ export default function MapCanvas({
     // `onMapClick` is in the deps because arming the map changes whether a
     // marker intercepts a tap — see `markerElement`.
   }, [markers, onMapClick])
+
+  /**
+   * ═════════════════════════════════════════════════════════════════════════
+   * PO POINT 9b — ציור חופשי: ONE CONTINUOUS GESTURE INSTEAD OF N TAPS.
+   * ═════════════════════════════════════════════════════════════════════════
+   *
+   * The product owner's finding on a real iPad was that the Pencil "poses les
+   * points où il veut" in vertex mode. Vertex-by-vertex is the wrong verb for
+   * a stylus: a pen draws. This effect turns the map into a drawing surface
+   * for as long as the mode is on, and gives it back untouched afterwards.
+   *
+   * ★ ON THE CANVAS, NOT ON THE CONTAINER. The container also holds the
+   *   control stack and the markers; listening there would start a trace when
+   *   the operator reached for the zoom button. The GL canvas is the map
+   *   surface and nothing else.
+   *
+   * ★ AND THE PAN IS GENUINELY SUSPENDED, in the two places it lives: MapLibre
+   *   (`dragPan`, `dragRotate`) and the BROWSER (`touch-action`). Disabling
+   *   only MapLibre leaves iPadOS free to scroll the page under the finger,
+   *   which on a full-height map column looks exactly like the map moving.
+   *   Both are restored on cleanup — including when the component unmounts
+   *   mid-stroke, which is what happens when a coordinator taps away while
+   *   drawing.
+   */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !freehand?.active) return
+    const canvas = map.getCanvas()
+
+    const panWasEnabled = map.dragPan.isEnabled()
+    const rotateWasEnabled = map.dragRotate.isEnabled()
+    const previousTouchAction = canvas.style.touchAction
+    const previousCursor = canvas.style.cursor
+    map.dragPan.disable()
+    map.dragRotate.disable()
+    canvas.style.touchAction = 'none'
+    canvas.style.cursor = 'crosshair'
+
+    let trace: LatLng[] = []
+    let tracing = false
+    let frame = 0
+    let lastX = 0
+    let lastY = 0
+
+    const source = (): maplibregl.GeoJSONSource | undefined =>
+      map.getSource('freehand') as maplibregl.GeoJSONSource | undefined
+
+    const paint = (): void => {
+      source()?.setData({
+        type: 'Feature',
+        properties: { color: freehandRef.current?.color },
+        geometry: {
+          type: 'LineString',
+          coordinates: trace.map((p) => [p.lng, p.lat]),
+        },
+      })
+    }
+
+    const clear = (): void => {
+      source()?.setData({
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'LineString', coordinates: [] },
+      })
+    }
+
+    const at = (event: PointerEvent): LatLng => {
+      const box = canvas.getBoundingClientRect()
+      const point = map.unproject([event.clientX - box.left, event.clientY - box.top])
+      return { lat: point.lat, lng: point.lng }
+    }
+
+    const report = (): void => {
+      if (frame) return
+      // ★ ONE REPORT PER FRAME. The banner needs the live area; React does not
+      //   need three hundred renders a second to show it.
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        freehandRef.current?.onTrace(trace)
+      })
+    }
+
+    const down = (event: PointerEvent): void => {
+      // A second finger during a trace is a pinch the operator did not mean;
+      // the primary pointer owns the stroke from start to finish.
+      if (!event.isPrimary) return
+      event.preventDefault()
+      canvas.setPointerCapture(event.pointerId)
+      tracing = true
+      trace = [at(event)]
+      lastX = event.clientX
+      lastY = event.clientY
+      paint()
+      report()
+    }
+
+    const move = (event: PointerEvent): void => {
+      if (!tracing) return
+      event.preventDefault()
+      // ⚠️ TWO CSS PIXELS. A Pencil reports sub-pixel movement continuously,
+      //    including while it is held still; without this a "stationary" hand
+      //    adds thousands of identical vertices and the simplification below
+      //    is handed noise instead of a path.
+      if (Math.hypot(event.clientX - lastX, event.clientY - lastY) < 2) return
+      lastX = event.clientX
+      lastY = event.clientY
+      trace.push(at(event))
+      paint()
+      report()
+    }
+
+    const up = (event: PointerEvent): void => {
+      if (!tracing) return
+      event.preventDefault()
+      tracing = false
+      if (canvas.hasPointerCapture(event.pointerId)) {
+        canvas.releasePointerCapture(event.pointerId)
+      }
+      const finished = trace
+      trace = []
+      clear()
+      if (frame) {
+        cancelAnimationFrame(frame)
+        frame = 0
+      }
+      freehandRef.current?.onEnd(finished, map.getZoom())
+    }
+
+    const cancel = (): void => {
+      if (!tracing) return
+      tracing = false
+      trace = []
+      clear()
+      freehandRef.current?.onTrace([])
+    }
+
+    canvas.addEventListener('pointerdown', down)
+    canvas.addEventListener('pointermove', move)
+    canvas.addEventListener('pointerup', up)
+    canvas.addEventListener('pointercancel', cancel)
+
+    return () => {
+      canvas.removeEventListener('pointerdown', down)
+      canvas.removeEventListener('pointermove', move)
+      canvas.removeEventListener('pointerup', up)
+      canvas.removeEventListener('pointercancel', cancel)
+      if (frame) cancelAnimationFrame(frame)
+      clear()
+      canvas.style.touchAction = previousTouchAction
+      canvas.style.cursor = previousCursor
+      if (panWasEnabled) map.dragPan.enable()
+      if (rotateWasEnabled) map.dragRotate.enable()
+    }
+    /**
+     * ⚠️⚠️ THE DEPENDENCY IS `active` AND NOTHING ELSE, AND THE FIRST VERSION
+     *      HAD `freehand` IN HERE TOO. That object is created inline in the
+     *      host's JSX, so it is a NEW identity on every render — and this
+     *      effect calls `onTrace`, which sets state, which renders. The effect
+     *      therefore tore itself down and rebuilt itself in the middle of the
+     *      stroke, taking `tracing = true` with it: the listeners survived,
+     *      the stroke did not. The symptom was a trace that drew a few points,
+     *      froze its live area and never produced a polygon, and `bun run
+     *      freehand` is what caught it.
+     *
+     *      Everything that can change while the mode is on — the colour, the
+     *      callbacks — is read through `freehandRef`, which is re-pointed on
+     *      every render without disturbing anything.
+     */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [freehand?.active])
 
   /**
    * PO RETURN 2026-09-02 — repaint the stack when the host's fullscreen state
