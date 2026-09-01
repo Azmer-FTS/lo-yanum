@@ -50,3 +50,6 @@ dist-overlap/
 
 # A87 — the freehand gate builds its own copy.
 dist-freehand/
+
+# The demo twin, built by the deploy and folded into dist/demo (ETAT §35).
+dist-demo/

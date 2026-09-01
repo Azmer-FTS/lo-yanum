@@ -127,22 +127,34 @@ console.log('')
 console.log('  A87 — ציור חופשי, DRIVEN BY AN APPLE PENCIL')
 console.log('  ===========================================')
 
+/**
+ * ★ `BASE_URL` POINTS THIS AT A SERVER SOMEBODY ELSE IS RUNNING — and the one
+ *   that matters is the DEPLOYED demo twin,
+ *   `https://azmer-fts.github.io/lo-yanum/demo`. The product owner's standing
+ *   rule is that nothing is done until it is proved on the deployed URL, and
+ *   this is how these captures are taken there rather than on a local build
+ *   that merely resembles it. With no BASE_URL the gate builds and serves its
+ *   own copy, which is what the deploy pipeline does before publishing.
+ */
 const env = { ...process.env, VITE_SUPABASE_URL: '', VITE_SUPABASE_PUBLISHABLE_KEY: '' }
-const build = Bun.spawn(['bun', 'x', 'vite', 'build', '--outDir', OUT_DIR], {
-  env,
-  stdout: 'ignore',
-  stderr: 'pipe',
-})
-if ((await build.exited) !== 0) {
-  console.error(await new Response(build.stderr).text())
-  throw new Error('vite build failed')
-}
-const serve = Bun.spawn(
-  ['bun', 'x', 'vite', 'preview', '--outDir', OUT_DIR, '--port', String(PORT), '--strictPort'],
-  { env, stdout: 'ignore', stderr: 'ignore' },
-)
-const base = `http://localhost:${PORT}`
-{
+let serve: ReturnType<typeof Bun.spawn> | null = null
+let base = process.env.BASE_URL ?? ''
+
+if (!process.env.BASE_URL) {
+  const build = Bun.spawn(['bun', 'x', 'vite', 'build', '--outDir', OUT_DIR], {
+    env,
+    stdout: 'ignore',
+    stderr: 'pipe',
+  })
+  if ((await build.exited) !== 0) {
+    console.error(await new Response(build.stderr).text())
+    throw new Error('vite build failed')
+  }
+  serve = Bun.spawn(
+    ['bun', 'x', 'vite', 'preview', '--outDir', OUT_DIR, '--port', String(PORT), '--strictPort'],
+    { env, stdout: 'ignore', stderr: 'ignore' },
+  )
+  base = `http://localhost:${PORT}`
   const deadline = Date.now() + 30_000
   for (;;) {
     try {
@@ -154,6 +166,7 @@ const base = `http://localhost:${PORT}`
     await Bun.sleep(300)
   }
 }
+console.log(`  base:   ${base}`)
 
 let browser: Browser | null = null
 try {
@@ -355,7 +368,7 @@ try {
   }
 } finally {
   await browser?.close()
-  serve.kill()
+  serve?.kill()
 }
 
 section('VERDICT')

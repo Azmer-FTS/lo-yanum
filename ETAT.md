@@ -39,7 +39,7 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run contrast` | WCAG audit of the design tokens (A13/A19) — 133 pairs, fails the build on a regression |
 | `bun run tokens` | **A28/A29** — one radius scale, no tinted field, orange only where it is allowed. No browser needed |
 | `bun run dispatch` | Guard-scoring verification (A21) — 27 checks, no browser needed |
-| `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — **162 checks** since PO point 6 added twelve, almost all of them about the difference between a head count that is ZERO and one nobody has been asked for |
+| `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — **176 checks** since PO point 9b added sixteen pure Douglas-Peucker ones, and PO point 6 twelve before that, almost all of them about the difference between a head count that is ZERO and one nobody has been asked for |
 | `bun run sync` | **A77** — the offline data layer's rules (P2.5b): the cache restores what was on screen, six edits to one guard coalesce to ONE outbox entry, the oldest flushes first, a FAILED flush keeps everything, a deletion survives as a deletion, and signing out clears both stores while losing the network clears neither. 28 checks — no browser, no dev server, no network |
 | `bun run write` | **A76** — ⚠️ **THE WRITE PATH, END TO END, AGAINST THE REAL DATABASE** (P2.6b). Signs in as a DISPOSABLE test account, writes 17 aggregates across all 25 tables through `applyChanges` — the app's own function, not a copy — reads them back through `hydrateFrom`, compares, writes again to prove an update is not a duplicate, then deletes everything and proves the database is exactly as it was found. Every id begins `a76-`. Section 6 replays a P2.5b outbox into the real database. 38 checks — needed `.env.test`. ⚠️⚠️ **THE ACCOUNT WAS DELETED IN P3.1 (§13), SO THIS GATE NOW FAILS AT ITS FIRST CHECK AND THAT IS THE GREEN RESULT.** It is kept because it documents the write path and because a future session with its own disposable account can run it again |
 | `bun run live` | **A75** — the LIVE schema against the mapper (P2.6b), and **it needs no password**. PostgREST resolves `?select=` against the schema BEFORE applying RLS, so an anonymous request names a missing column (400/42703) and an existing one answers `[]`. 25 tables probed column by column (PO point 6 added `entity_livestock`), 16 enums probed label by label, `app_users` closed to a stranger. **48 checks** — needs the internet, not a dev server |
@@ -51,6 +51,9 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run deletion` | **A79** — PO point 8: deleting a record. Free deletion with its dependencies LISTED, a motivated refusal on operational history with the blockers named and counted, the store refusing as well as the dialog, the whole cascade reaching the backend as `json: null`, and two checks that keep it honest over time — every `DeletableKind` has a call site in the UI, and every one of them asks first. 61 checks — no browser, no dev server, no network |
 | `bun run basemap` | **PO point 0** — `bun run basemap <file> <key>`: the resumable (TUS) upload a 94 MB archive needs, and then it VERIFIES the public object — length byte-for-byte, 206 on a range, `PMTiles` in the first seven bytes, and a 64 kB slice from the MIDDLE compared against the local file. ⛔ Needs a coordinator token (`BASEMAP_TOKEN`); see §14.4 |
 | `bun run ground` | **A83 — THE BASEMAP, PROVED IN A REAL BROWSER ON A BLANK PROFILE** (the product owner's rule, 2026-09-01), and **the deploy gate runs it on every build**. A FRESH Chromium context — no storage, no service worker, no cache — pointed at a build carrying the same basemap input that deploy resolved, and four proofs and nothing else: **1** the pmtiles URL that actually LEAVES the browser, logged verbatim with its `Range` headers; **2** the `206` and the archive's TOTAL length, read off `content-range` and compared to the register IN BYTES; **3** the הגדרות screen of that same build, naming the same archive and showing the same MB; **4** חיפה (Haifa) at z12, z13 and z14 — features counted, captures written to `docs/screenshots/basemap/`. ⚠️ **It drives a DEMO build and the file says so**: the real app's first screen is a login door whose password only the PO has ever typed (§14.4), no gate can sign in and none should be able to; what decides the basemap is `VITE_BASEMAP_URL` and the constant behind it — the same two inputs in both modes. **It FAILS the deploy** on anything the missing upload does not explain, and on the regression guard; while the national archive is genuinely absent from the bucket it prints Haifa's three empty lines and lets the build through — the same policy as the curl gate above and for the same reason. `GROUND_URL` exists only to exercise the strict branch before the object does, and that branch HAS been exercised (exit 1). **11 checks. Makes its own build; needs the network** |
+| `bun run redraw` | **A85 — THE MAP REPAINTS AFTER A BRUTAL ZOOM-OUT** (PO return B1, 2026-09-02), and the deploy gate runs it. A scripted z14 → z7 **in ONE camera command** at three cities, plus the ladder z13 → z1, plus the reverse. ★ **It refuses `areTilesLoaded()` as evidence** — that returned **true** through the entire bug, which is why nothing caught it. Instead: did MapLibre raise ANY error, is any tile `errored`, and does a grid of probe points *inside the archive's own bounds* actually return rendered features. Its last section drives the empty-stack guard directly and FAILS if the style asks for a glyph range that is not vendored. **18 checks. Makes its own build (or takes `BASE_URL`); needs the network** |
+| `bun run overlap` | **A86 — NO MAP CONTROL COVERS ANOTHER ONE** (PO return C, 2026-09-02), and the deploy gate runs it. Nine map screens × four viewports. ★ **`bun run layout` could never have caught this and was right not to**: its collision test is restricted to VIEWPORT-pinned elements, and the map's controls are pinned to the MAP. This one's frame of reference is the map container, and it found two real collisions on its first two runs — the drawing tools on MapLibre's attribution link, and the control stack on the bottom bar at phone widths. Also enforces the 44 px floor on every stack button. ⚠️ Map MARKERS are excluded, and the reason is written out: a pin slides under any overlay the moment you pan. `ENGINE=webkit`, `VIEWPORT=…`, `BASE_URL=…`. **72 checks** |
+| `bun run freehand` | **A87 — ציור חופשי, DRIVEN BY AN APPLE PENCIL** (PO point 9b), and the deploy gate runs it. A complete stroke through CDP with `pointerType: 'pen'` on every event, at **both** iPad viewports: the stroke becomes a simplified polygon with its surface in dunams, **the map does not move under it** (measured in metres of camera drift), the same stylus drag pans again with the mode off, and a bad stroke cancels leaving no zone and no armed mode. ⚠️ It caught a real bug on its first run — an effect that tore itself down mid-stroke. **30 checks. Makes its own build (or takes `BASE_URL`)** |
 | `bun run offline` | **A72 + A78** — the offline shell (P2.5a) AND the signed-in offline session (P2.5b). The ONLY gate that BUILDS the app and serves the build, because the service worker is production-only: the worker takes control, one online load is enough to survive being pulled offline, ★ **a Supabase read offline FAILS** (nothing from the API is ever cached), looked-at ground is still there, the badge comes and goes, the frozen /poc comes back as ITSELF, and a real build shows its door rather than a browser error. **P2.5b added the only claim in this project that cannot be made outside a real browser**: signed in, IndexedDB really holds the snapshot, a token that cannot be refreshed offline does NOT end the session, the network coming back re-asks and a refusal DOES end it, and an explicit sign-out empties the device. **PO return 3 (2026-08-31) added the other half of the same scenario**: the reopened offline app SHOWS ITS OFFLINE BADGE, and the door explains the one thing that genuinely needs a network — `אין חיבור לאינטרנט — נדרש חיבור להתחברות ראשונה` — before a password is typed, and again instead of a generic server error if one is. **And PMTiles folded in the claim the whole map unit exists for**: the basemap answers a RANGE request with no network at all (the Cache API refuses a 206, so the worker holds ONE archive and slices it), what comes back is the archive rather than an error page, and the map really draws from it. **19 checks and ONE SKIP is the green result since P3.1 (§13)** — the last section needs `.env.test` and the disposable account is gone, which is the intended end state. It was 33 before. **No dev server; it makes its own** |
 | `bun run storage` | **A71** — the two private buckets (P2.4): no public route on either (`NoSuchBucket`, the one proof that does not depend on them being empty), no bucket or object enumeration, no signed URL minted for a stranger, no anonymous upload. 10 checks — no browser, no dev server, no password |
 | `bun run outreach` | **A68 + A69** — the sending centre and the WhatsApp group kit, read off the rendered DOM: the right channel per phone type, prefilled `wa.me` / `sms:` / `mailto:` links DECODED and checked, the grouped SMS and email, the sent tick surviving navigation, and the kit's three copies. 25 checks — needs a dev server |
@@ -5695,3 +5698,301 @@ visible selected state and no 44 px tap target.
   keep a `.png` served extension or §29 returns.
 
 **French report for him: `docs/RAPPORT-BASEMAP-2026-09-01.md` §10 and §11.**
+
+---
+
+## 31. ✅ THE RETURN OF 2026-09-02 — A: FOUR FEATURES THAT WERE NEVER BUILT, AND TWO LEFTOVERS THAT WERE
+
+The product owner opened the deployed app and could not find מיקומי, could not
+find נקודת מוצא in הגדרות, could not see dedicated colours for the big cities,
+and found no save button next to כתובת דוחות. He also found two things that
+should not have been there: the bandeau
+`שינויים נשמרים בזיכרון בלבד ונמחקים ברענון`, and the `אבחון תצוגה (זמני)`
+panel with raw code in it.
+
+### 31.1 ★★ THE HONEST ANSWER, AND IT IS TWO DIFFERENT ANSWERS
+
+**The four missing features were never built, and were never announced.**
+`grep` over this file and over the three French reports finds **no occurrence
+of `מיקומי`, of `נקודת מוצא`, of "grandes villes" or of a save button for the
+report address**. They are new requests, not regressions, and nothing in the
+tree ever claimed otherwise. Saying so is worth more than a fix: four rounds of
+this project have been spent on the gap between what a report says and what an
+iPad shows, and inventing a regression here would have widened it.
+
+**The two leftovers ARE real, and both are the same failure mode — something
+true that stopped being true and that nobody deleted:**
+
+* `settings.sync.notYet` — "changes are kept in memory only and are erased on
+  refresh" — was written for P2.5a and was **false from the day P2.5b's outbox
+  shipped**. A stale warning is worse than no warning: it tells a coordinator
+  not to trust work that is in fact safe.
+* `אבחון תצוגה` was **PO point 1's instrument** (§15.8): a temporary panel
+  printing his iPad's four safe-area insets so the status-bar arbitration could
+  be settled from his own device. §24.5 settled it — option A — on 2026-09-01,
+  which retired the instrument the same day. It was written to come out in one
+  move and it did: one line and one import.
+
+### 31.2 What each one is now
+
+| what | where | how it works |
+|---|---|---|
+| **מיקומי** | a row of the map's control stack, every driven map | `getCurrentPosition` then a `watchPosition`, a pulsing dot that is a DOM marker (so `setStyle` cannot delete it), `easeTo` that **never zooms out**, and a second press that really clears the watch. Denied and unavailable are different words, because they have different remedies |
+| **נקודת מוצא** | הגדרות, with a שמור and a "המיקום שלי" | `ui/settings/origin.ts`. Accepts a gazetteer NAME, a coordinate pair in either order, or anything a maps/Waze link carries a pair inside — the last two through `parsePositionInput`, which already refuses a pair outside Israel's box |
+| **the big cities** | `basemap.ts`, `cityTiers()` | a three-step ink ladder on `places_locality`, cut at `population_rank` **12** and **10** — MEASURED off this archive: 12 is ירושלים / תל אביב–יפו / חיפה, 10 reaches באר שבע. Ink, never a hue: the same standing rule as the borders in §30 |
+| **שמור for כתובת דוחות** | הגדרות | an explicit button **and** the blur still saves, so neither habit loses the value |
+
+⚠️ **`HOME_BASE` WAS NOT COSMETIC.** Every distance, every arrival time and the
+★ marker on the route planner were measured from a CONSTANT reading Jerusalem.
+A coordinator leaving from Beer Sheva was shown a day that starts 100 km from
+his car. `originPosition()` is now what the planner uses, with that constant as
+its default.
+
+### 31.3 ★ HIS ANOMALY: WHY THE FILE ENDS `.png`
+
+**It is deliberate and load-bearing, it is §29, and the screen now says so
+itself.** GitHub Pages sits behind Fastly, Fastly compresses by content-type,
+an unknown extension gets `application/octet-stream`, and that type IS
+compressed — after which a `Range` is applied to the COMPRESSED stream, which
+aims every PMTiles read at the wrong bytes and empties the deep zooms. Measured
+on this host: `image/png`, `font/woff2` and `application/pdf` are left alone.
+The bytes are untouched and sha256-identical to the local cut; only the served
+extension changed, and the real name stays in front of it so the screen prints
+the truth. **Removing the suffix puts the holes back.**
+
+הגדרות now carries that explanation under the file name, so nobody has to ask
+again.
+
+---
+
+## 32. ✅ B1 — THE WHITE PATCHES WERE A MISSING FONT, AND `areTilesLoaded()` SAID TRUE THE WHOLE TIME
+
+Gate: **`bun run redraw`** (A85), in the deploy, **18/18**.
+
+### 32.1 What was eliminated first, and eliminating it is what found the cause
+
+* the **archive** is not corrupt — every failing tile decodes locally into
+  valid MVT with 7–8 layers and the right extents;
+* the **transport** is not the problem — the same tiles fetched by range from
+  the browser are sha256-identical to the local bytes, uncompressed, with the
+  right `content-range` denominator (§29's fix held);
+* the **PMTiles read** is not the problem — instrumented, the protocol handed
+  MapLibre `7/76/51` at 149 834 bytes with the same hash as the local decode;
+* and MapLibre **still** reported `Unimplemented type: 4` on that tile.
+
+### 32.2 ★★ The cause: a single-page app answers a missing font with its own HTML
+
+Protomaps' label block with `lang: 'he'` is **bilingual** — Hebrew on one line
+and, when the local name is in another script, the LOCAL name underneath. At
+z1–z7 that is Greek over Cyprus, Georgian over Georgia, Cyrillic, Ethiopic.
+**Five glyph ranges were vendored.** A range that is not on disk is not a 404
+this app can shrug off: it is an SPA, so **the host answers `200` with
+`index.html`**, MapLibre hands that HTML to its protobuf reader, and the reader
+throws.
+
+★★ **AND A GLYPH FAILURE FAILS THE TILE.** MapLibre marks it `errored`,
+`areTilesLoaded()` goes on returning **true**, and **an errored tile is never
+requested again** — so the hole stays until the camera needs different tiles.
+That is exactly "ça revient après un léger zoom inverse", and it is why every
+existing gate was green.
+
+Measured before the fix, on a build serving the real archive: a scripted
+z14 → z7 left **20 of 35 probe points painting nothing**, with `7/76/51`,
+`6/38/25`, `5/19/12` and `4/9/6` all `errored`.
+
+### 32.3 Two fixes, because either alone leaves the trap armed
+
+1. **One name per place** — `name:he` → `name:en` → the local name, so the map
+   stops ASKING for scripts it does not carry. A Georgian second line is of no
+   use to a Hebrew coordinator anyway.
+2. **A missing range resolves to an EMPTY STACK, never to an HTML page.** The
+   style's `glyphs` URL now goes through a `lo-glyphs://` protocol that fetches
+   the same asset and, on anything that is not a glyph payload, returns zero
+   bytes — which MapLibre reads as "this range has no glyphs" and carries on.
+   **A missing font can never blank a tile again**, which is the part that has
+   to survive the next change to `basemap.ts`.
+
+### 32.4 ★ And three more ranges are vendored, found by watching the network
+
+`768-1023` (combining diacritics + Greek), **`64256-64511` (Hebrew
+Presentation Forms)** and **`65024-65279` (Arabic Presentation Forms-B)**. The
+last two matter more than they look: **`mapbox-gl-rtl-text` shapes Arabic and
+pointed Hebrew INTO those blocks**, so a shaped Arabic place name on this map
+does not use the Arabic block at all — it uses `65024-65279`, which was
+missing. Arabic-named localities were part of the white patches.
+
+⚠️ `bun run redraw` records every range the style actually asks for and FAILS
+if one of them is not vendored, so a re-cut archive bringing a new script into
+frame is a red gate rather than a white patch on his iPad.
+
+---
+
+## 33. ✅ B2 — THE IMAGERY WAS NOT CAPPED TOO LOW, IT WAS THE WRONG PROVIDER
+
+Gate: **`bun run backdrop`**, in the deploy, **23/23**, with two new checks at
+z16 and z17.
+
+His diagnosis was that the raster source's declared `maxzoom` was too low, and
+that Esri World Imagery reaches z18–19 over Israel. The first half is right in
+effect and the second half names a provider this app was not using: §30 shipped
+**Sentinel-2 cloudless at 10 m/px**, whose real ceiling **is z14**. The blur he
+was looking at was not a misconfiguration; it was the whole of what that mosaic
+contains.
+
+★ **SO ESRI SHIPS, ON HIS WORD.** §30 registered it fully written and said the
+word was his; his return names it, states its zoom range and instructs that the
+maxzoom be raised to the provider's real maximum. There is no reading of that
+instruction Sentinel-2 satisfies.
+
+Measured the same day, same tile (Beer Sheva z17): Esri **23 353 bytes** of
+real detail against Sentinel-2's **3 863** of upsampled blur; Esri still
+answers at z18. Both anonymous, both `access-control-allow-origin: *`.
+
+⚠️ **THE TERMS QUESTION IS NOT CLOSED BY CODE.** The imagery is now Esri's,
+under Esri's Terms of Use, which state an ArcGIS licence is required and
+exclude commercial use. Reverting is **one word** — `SATELLITE_S2` on the last
+line of that block — and the CC BY 4.0 mosaic is kept complete and working
+underneath for exactly that reason.
+
+★ The gate no longer trusts the configuration: it settles the camera at z16 and
+z17 and reads the raster source cache, requiring **loaded tiles at those
+canonical zooms**. Under the old cap the deepest tile in that cache could only
+ever be 14.
+
+---
+
+## 34. ✅ C — THE MAP'S CORNER HAD FOUR OWNERS
+
+Gate: **`bun run overlap`** (A86), in the deploy, **72/72** — nine map screens
+× four viewports.
+
+### 34.1 It was a layout fact, not a matter of taste
+
+Four independent things all claimed the top of the canvas:
+
+* MapLibre's `NavigationControl`, added at `top-left`;
+* `BaseSwitcher` (מפה / לוויין), also at `top-left`;
+* `FullscreenToggle`, a React overlay at `self-end` — **which in an RTL
+  document is the PHYSICAL LEFT**, i.e. on top of the two above;
+* and the zone-drawing toolbar, a full-width wrapping row of five buttons
+  across the same strip.
+
+Four parents, one corner, no arbitration. No `z-index` fixes that.
+
+### 34.2 What it is now
+
+* **One control stack** (`MapTools`), vertical, icon-only, 44 px per target,
+  label on `title`/`aria-label`: ground switch, fullscreen, מיקומי, zoom in,
+  zoom out. `NavigationControl` and `BaseSwitcher`'s widget are gone; the
+  offline rules moved into it verbatim.
+* **The drawing tools moved to the bottom bar**, the one that already exists
+  in an editing context — and they render only while the map is IDLE, because
+  five ways to start something else under a half-drawn ring is how a
+  half-drawn ring gets abandoned.
+* **Every top overlay carries `pl-[4.5rem]`**, a PHYSICAL left padding.
+  MapLibre puts `top-left` controls on the physical left whatever the writing
+  direction, so a logical `ps-` clears the wrong side in this RTL app — which
+  is precisely how the collision got here.
+
+### 34.3 ★★ WHY `bun run layout` COULD NEVER HAVE CAUGHT THIS
+
+A24/A30 sweeps 32 routes at four viewports and refuses two pinned bars that
+cover each other — and it was green throughout. It was right to be: **its
+collision test is restricted to VIEWPORT-pinned elements**, because those are
+the only ones the page cannot scroll apart. The map's controls are pinned to
+the MAP. Nothing in the suite had standing to look at them.
+
+A86's frame of reference is the map. It found **two real collisions on its
+first two runs**:
+
+* the drawing tools on MapLibre's **attribution link** (37 × 6 px, all four
+  viewports) — that link is a licence obligation, so the bar moved, not the
+  link;
+* the control stack on the bottom bar at phone widths (28 × 30 px) — the map
+  column is ~40 dvh there and the bar is three wrapped rows tall.
+
+⚠️ Map MARKERS are excluded, and the distinction is what lets this be a hard
+gate: a pin is positioned by its coordinates and slides under any overlay the
+moment the operator pans. Demanding that no control ever cover a pin would
+demand a map with no overlays at all. What is checked is controls covering
+controls, permanently, where no gesture moves them apart.
+
+---
+
+## 35. ✅ POINT 9 — A PEN DRAWS. AND THE PROOFS NOW COME FROM THE DEPLOYED URL
+
+Gates: **`bun run freehand`** (A87) **30/30** at both iPad viewports, and
+**`bun run accept`** **176/176** with sixteen new pure checks.
+
+### 35.1 9a was already delivered and is unchanged
+
+§16 and A63's stylus half (`bun run touch`, 53/53, re-run green after this
+whole reorganisation) drive every map gesture with `pointerType: 'pen'`. Point
+9a is not the thing that was failing on his iPad.
+
+### 35.2 9b — ציור חופשי
+
+His finding was that the Pencil "pose les points où il veut". The diagnosis
+under it is that **vertex-by-vertex is the wrong VERB for a stylus**: a pen
+draws. So there is now a second way to produce a ring — one continuous stroke —
+and the kind of area is still chosen first, exactly as before.
+
+* **`core/geo.ts` gets Ramer–Douglas–Peucker**, iterative rather than recursive
+  (a 4 000-point trace is a real input and the worst case for a recursive
+  version is a straight line, i.e. a stack overflow in the middle of somebody's
+  boundary). Distance is measured in a local plane scaled by `cos(lat)`, so the
+  tolerance is in METRES.
+* ⚠️ **A RING HAS NO ENDS.** RDP pins the first and last points; run naively on
+  a ring, wherever the hand happened to start becomes two vertices that can
+  never be removed. So the ring is cut at its two furthest-apart points and the
+  halves are simplified independently — checked by simplifying the same trace
+  from a different starting index and comparing.
+* **The tolerance is three screen pixels turned into metres at the current
+  zoom**, so a moshav traced at z12 and a paddock traced at z17 both come back
+  workable. ⚠️ **The gate caught a factor of two in it**: `156 543` is the
+  metres-per-pixel constant for **256 px** slippy tiles and MapLibre's zoom is
+  defined against a **512 px** tile. It returned 12 m at z15 where the truth is
+  6 — coarse enough to cut the corner off a field.
+* **The pan is suspended in BOTH places it lives** — MapLibre's `dragPan` and
+  the browser's `touch-action`. Disabling only the first leaves iPadOS free to
+  scroll the page under the finger, which on a full-height map column looks
+  exactly like the map moving.
+* **The live surface is drawn by MapLibre, not by React**: one `setData` on a
+  LineString per animation frame. Routing a Pencil's event rate through a React
+  render would rebuild the screen's markers sixty times a second at exactly the
+  moment the app must not stutter.
+* On release the simplified ring becomes the ordinary draft — same banner, same
+  בטל, same סיום — **with its vertices as draggable grips**, which is "passe en
+  mode édition normal, sommets ajustables un par un".
+
+⚠️⚠️ **THE GATE CAUGHT A SECOND BUG, IN THE GESTURE ITSELF.** The effect took
+`freehand` in its dependency array; that object is created inline in the host's
+JSX, so it is a NEW identity on every render — and the effect calls `onTrace`,
+which sets state, which renders. **It tore itself down in the middle of the
+stroke and took `tracing = true` with it.** The symptom was a trace that drew a
+few points, froze its live area and never produced a polygon. Everything that
+can change while the mode is on is read through a ref instead.
+
+### 35.3 ★★ THE DEMO TWIN — HOW THE PROOFS GET TAKEN ON THE DEPLOYED URL
+
+His standing rule is that nothing is delivered until it is proved on the
+deployed URL. **Everything he asked for this round lives behind the login
+door**, and the one coordinator password is his alone (§14.4) — no gate can
+sign in and none should be able to. For four rounds the captures have therefore
+been taken on local builds that merely RESEMBLE what is deployed, which is
+exactly the class of evidence §29 proved worthless.
+
+So the same commit is now published **twice**: the real app at `/lo-yanum/`,
+and a **demo twin at `/lo-yanum/demo/`** — same source, same bundle, same
+archive, no Supabase pair, therefore the identity picker instead of the door.
+`bun run overlap`, `bun run redraw` and `bun run freehand` all take `BASE_URL`,
+so every capture in the report is taken on a URL he can open himself.
+
+⚠️ It is built **before** the archive is staged into `public/`, and pointed at
+the real app's copy by absolute URL — otherwise a second 94 MB copy lands in
+the Pages payload. Two deploy checks enforce exactly that, plus a third that
+refuses a "demo" carrying the publishable key.
+
+⚠️ It carries mock data and nothing else — invented farms, invented phone
+numbers. `/lo-yanum/poc/` has been public on the same terms since G13. Deleting
+the build step and the `mv` removes it completely.

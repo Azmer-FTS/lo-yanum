@@ -31,6 +31,42 @@ jobs:
       - name: Typecheck
         run: bun x tsc --noEmit
 
+      # ★★ THE DEMO TWIN, AND IT EXISTS TO SATISFY A RULE RATHER THAN TO ADD A
+      #    FEATURE (PO return 2026-09-02, ETAT §35).
+      #
+      # His standing rule is that nothing is delivered until it is proved ON THE
+      # DEPLOYED URL. Everything he asked for this round lives behind the login
+      # door — מיקומי, נקודת מוצא, the שמור button, the reorganised map tools —
+      # and the one coordinator password is his alone (§14.4). No gate can sign
+      # in and none should be able to, so for four rounds the captures have been
+      # taken on local builds that merely RESEMBLE what is deployed. That is
+      # exactly the class of evidence §29 proved worthless.
+      #
+      # So the same commit is published TWICE: the real app at /lo-yanum/, and a
+      # DEMO twin at /lo-yanum/demo/ — same source, same bundle, same map, no
+      # Supabase pair, therefore the identity picker instead of the door. Every
+      # capture in the report is then taken on a URL he can open himself.
+      #
+      # ⚠️ IT IS BUILT BEFORE THE ARCHIVE IS STAGED, ON PURPOSE. `public/` is
+      #    copied wholesale into every build, so building it after the staging
+      #    step would put a SECOND 94 MB copy of the national archive into the
+      #    Pages payload. Instead the demo is pointed at the real app's copy by
+      #    absolute URL — same origin, same object, one download for the host
+      #    and one cache entry for the browser.
+      #
+      # ⚠️ AND IT CARRIES MOCK DATA AND NOTHING ELSE. The fixtures are invented
+      #    farms and invented phone numbers; `/lo-yanum/poc/` has been public on
+      #    the same terms since G13. If that ever stops being acceptable,
+      #    deleting this step and the `mv` below removes it completely.
+      - name: Build — the DEMO twin, so the proofs can be taken on the deployed URL
+        run: bun x vite build --outDir dist-demo
+        env:
+          # ★ DELIBERATELY EMPTY: no Supabase pair is what MAKES it the demo.
+          VITE_SUPABASE_URL: ''
+          VITE_SUPABASE_PUBLISHABLE_KEY: ''
+          # And the archive is the real app's, by absolute URL.
+          VITE_BASEMAP_URL: https://azmer-fts.github.io/lo-yanum/basemap/israel-20260831-z14.pmtiles.png
+
       # PO POINT 0 — WHICH BASEMAP THIS BUILD POINTS AT, AND WHY IT IS NO LONGER
       # A QUESTION. REWRITTEN 2026-09-01; ETAT §27 AND §28 ARE THE MEASUREMENT.
       #
@@ -245,6 +281,28 @@ jobs:
 
           echo "::notice::Basemap gate: the bundle asks for the NATIONAL archive ${live}, and it is in the artefact at ${expected} bytes with the PMTiles magic. Passed."
 
+      # The twin goes in AFTER the gate above, which reads `dist/assets/*.js`
+      # and requires exactly ONE archive name in it. Moving the demo in first
+      # would put a second `assets/` directory in the glob's reach.
+      - name: Fold the demo twin into the Pages payload
+        run: |
+          set -euo pipefail
+          mv dist-demo dist/demo
+          test -f dist/demo/index.html
+          # ★ AND IT MUST NOT HAVE BROUGHT ITS OWN ARCHIVE. 94 MB duplicated is
+          #   a slower deploy and a second thing to keep in step; if this ever
+          #   fires, the demo build ran after the staging step.
+          if [ -e dist/demo/basemap ]; then
+            echo "::error::The demo twin carries its own copy of the basemap. It must be built BEFORE the archive is staged into public/, and pointed at the real app's copy with VITE_BASEMAP_URL. Refusing to deploy."
+            exit 1
+          fi
+          # And it must really be a DEMO: a real build carries the publishable key.
+          if grep -rq 'sb_publishable_' dist/demo/assets/*.js; then
+            echo "::error::The demo twin was built WITH the Supabase pair, so it is a second real app rather than a demo. Refusing to deploy."
+            exit 1
+          fi
+          echo "::notice::Demo twin: /lo-yanum/demo/ published from this same commit, no Supabase pair, sharing the app's archive."
+
       # PO RULE, 2026-09-01 — THE ONLY EVIDENCE HE ACCEPTS ON THE BASEMAP IS A
       # REAL BROWSER ON A BLANK PROFILE. AND IT IS PERMANENT, NOT A ONE-OFF.
       #
@@ -294,6 +352,29 @@ jobs:
       - name: Gate — borders and the satellite switch, in a REAL browser
         run: bun run backdrop
 
+      # ★★ PO RETURN 2026-09-02 — THE THREE GATES HIS RETURN ASKED FOR BY NAME.
+      #
+      #   redraw   B1 — "un dézoom brusque doit remplir la carte sans geste
+      #                  supplémentaire". A scripted z14 → z7 in one gesture at
+      #                  three cities, plus the ladder, plus the guard that
+      #                  stops a missing glyph range from erroring a tile again.
+      #   overlap  C  — "vérifier aux 4 viewports qu'AUCUN contrôle n'en
+      #                  recouvre un autre". Nine map screens × four viewports.
+      #                  `bun run layout` cannot do this: its collision test is
+      #                  restricted to VIEWPORT-pinned elements and the map's
+      #                  controls are pinned to the MAP.
+      #   freehand 9b — a complete Apple Pencil stroke, at both iPad viewports:
+      #                 simplified polygon, surface calculated, pan suspended
+      #                 during and restored after, clean cancellation.
+      - name: Gate — the map repaints after a brutal zoom-out
+        run: bun run redraw
+
+      - name: Gate — no map control covers another, at four viewports
+        run: bun run overlap
+
+      - name: Gate — ציור חופשי, driven by an Apple Pencil
+        run: bun run freehand
+
       # The captures ARE the report. Kept on every run, pass or fail, so that
       # "the map is cut at the north" is a file he can open rather than a claim.
       - name: The four proofs, as captures
@@ -301,7 +382,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: basemap-proofs
-          path: docs/screenshots/basemap/
+          path: |
+            docs/screenshots/basemap/
+            docs/screenshots/overlap/
+            docs/screenshots/freehand/
           if-no-files-found: warn
 
       - uses: actions/configure-pages@v5
