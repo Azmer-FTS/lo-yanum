@@ -388,6 +388,33 @@ jobs:
       - name: Gate — ציור חופשי, driven by an Apple Pencil
         run: bun run freehand
 
+      # ★★ ORDRE DE NUIT 2026-09-02 — N1 AND N2, ON THE REAL BUILD.
+      #
+      #   zones      A88 — an entity created, two zones drawn, a reload, an
+      #                    edit, a moved vertex, an offline draw synced later,
+      #                    a draw DURING a slow hydration: every polygon is
+      #                    still there. It found the redirect-on-reload and
+      #                    the hydration-overwrites-a-fresh-write defects.
+      #   agreement  A89 — the contract PDF opens in a modal with a way out,
+      #                    downloads as a save, never navigates.
+      #
+      # ⚠️ THESE TWO RUN AGAINST `dist/` — THE REAL BUILD, WITH THE PAIR —
+      #    served locally, and they need NO ACCOUNT: every request to
+      #    *.supabase.co is intercepted in the browser and answered by
+      #    scripts/fake-supabase.ts, so the production database is never
+      #    touched by a deploy. That is the only way the real data layer
+      #    (cache, outbox, hydration) can be driven by a gate at all.
+      - name: Gate — the zones survive a reload, and the agreement has a way out (real build)
+        run: |
+          set -euo pipefail
+          bun x vite preview --outDir dist --port 5197 --strictPort > /tmp/preview.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null http://localhost:5197/; then break; fi
+            sleep 1
+          done
+          BASE_URL=http://localhost:5197 bun run zones
+          BASE_URL=http://localhost:5197 bun run agreement
+
       # The captures ARE the report. Kept on every run, pass or fail, so that
       # "the map is cut at the north" is a file he can open rather than a claim.
       - name: The four proofs, as captures
@@ -399,6 +426,8 @@ jobs:
             docs/screenshots/basemap/
             docs/screenshots/overlap/
             docs/screenshots/freehand/
+            docs/screenshots/zones/
+            docs/screenshots/agreement/
           if-no-files-found: warn
 
       - uses: actions/configure-pages@v5
