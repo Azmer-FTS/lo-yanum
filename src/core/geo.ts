@@ -1,3 +1,4 @@
+import { LOCALITIES, findLocality } from './gazetteer'
 import type { LatLng } from './types'
 
 /** Jerusalem — the coordinator's home base, origin of every planned route. */
@@ -23,7 +24,13 @@ export const NEGEV_CENTER: LatLng = { lat: 31.27, lng: 34.79 }
  * `positionOfLocality`); it never throws, because a roster imported from a
  * spreadsheet will always contain a town nobody anticipated.
  */
-export const LOCALITY_POSITIONS: Readonly<Record<string, LatLng>> = {
+/**
+ * N4 (2026-09-02) — THE 21 TOWNS THE FIXTURES WERE WRITTEN AGAINST, kept as
+ * spellings that must keep resolving (`בארי מילכה` is not a CBS locality;
+ * `קרית גת` is spelled `קריית גת` in the register). Everything else — every
+ * recognised locality in the country — comes from `./gazetteer`.
+ */
+const LEGACY_POSITIONS: Readonly<Record<string, LatLng>> = {
   ירושלים: { lat: 31.7683, lng: 35.2137 },
   'אלון שבות': { lat: 31.6519, lng: 35.1281 },
   אפרת: { lat: 31.6547, lng: 35.1519 },
@@ -46,9 +53,25 @@ export const LOCALITY_POSITIONS: Readonly<Record<string, LatLng>> = {
   רחובות: { lat: 31.8928, lng: 34.8113 },
 }
 
+
+/**
+ * Name → position, for every locality in the national gazetteer plus the
+ * legacy spellings above. The form fields offer its keys; the dispatcher and
+ * the import read it through `positionOfLocality`, which is tolerant of how
+ * the name was typed (see `findLocality`).
+ */
+export const LOCALITY_POSITIONS: Readonly<Record<string, LatLng>> = Object.freeze({
+  ...Object.fromEntries(LOCALITIES.map((l) => [l.name, l.position])),
+  ...LEGACY_POSITIONS,
+})
+
 /** Coordinates for a locality name, or null when it is not in the gazetteer. */
 export function positionOfLocality(locality: string): LatLng | null {
-  return LOCALITY_POSITIONS[locality.trim()] ?? null
+  const exact = LOCALITY_POSITIONS[locality.trim()]
+  if (exact) return exact
+  const legacy = LEGACY_POSITIONS[locality.trim()]
+  if (legacy) return legacy
+  return findLocality(locality)?.position ?? null
 }
 
 const EARTH_RADIUS_KM = 6371

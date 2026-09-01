@@ -100,3 +100,14 @@ export type {
   MissionDraft,
   TourDraft,
 } from './store'
+
+export {
+  LOCALITIES,
+  LOCALITY_KIND_LABEL,
+  findLocality,
+  normalizeLocality,
+  searchLocalities,
+} from './gazetteer'
+export type { Locality, LocalityKind } from './gazetteer'
+
+export { photoSource } from './photo'

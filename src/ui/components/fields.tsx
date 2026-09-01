@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 
+import { normalizeLocality } from '@core/index'
+
 import { Icon } from './Icon'
 
 /**
@@ -119,8 +121,19 @@ export function AutocompleteField({
   const [highlight, setHighlight] = useState(0)
 
   const query = value.trim()
+  // N4 (2026-09-02) — tolerant of how Hebrew gets typed (quotes, hyphens,
+  // niqqud, spacing), and what the person is typing the START of comes first.
+  const q = normalizeLocality(query)
   const matches = (
-    query === '' ? options : options.filter((o) => o.includes(query))
+    q === ''
+      ? options
+      : [
+          ...options.filter((o) => normalizeLocality(o).startsWith(q)),
+          ...options.filter((o) => {
+            const n = normalizeLocality(o)
+            return !n.startsWith(q) && n.includes(q)
+          }),
+        ]
   ).slice(0, 8)
   // Exactly the typed value is not a suggestion, it is the state we are in.
   const suggestions = matches.filter((m) => m !== query)
