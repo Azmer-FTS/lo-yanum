@@ -42,7 +42,9 @@
     "report": "bun run scripts/report.ts",
     "empty": "bun run scripts/empty.ts",
     "zones": "bun run scripts/zones.ts",
-    "agreement": "bun run scripts/agreement.ts"
+    "agreement": "bun run scripts/agreement.ts",
+    "demo": "bun run scripts/demo.ts",
+    "gazetteer": "bun run scripts/gazetteer.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "^0.4.0",

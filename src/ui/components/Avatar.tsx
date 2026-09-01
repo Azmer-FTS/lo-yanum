@@ -1,4 +1,4 @@
-import { avatarHue, initialsOf } from '@core/index'
+import { avatarHue, initialsOf, photoSource } from '@core/index'
 
 /**
  * Avatar with a graceful fallback: the photo when there is one, otherwise the
@@ -34,10 +34,11 @@ export function Avatar({
   const ringClass = ring ? 'ring-2 ring-accent/50' : 'ring-1 ring-edge-subtle'
   const base = `${SIZES[size]} ${radius} ${ringClass} shrink-0 overflow-hidden`
 
-  if (photo) {
+  const src = photoSource(photo)
+  if (src) {
     return (
       <img
-        src={photo}
+        src={src}
         alt=""
         loading="lazy"
         decoding="async"

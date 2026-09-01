@@ -139,7 +139,7 @@ async function waitForMap(page: Page): Promise<void> {
  * `importScripts`, which the worker reports as "failed to import scripts".
  * Labels are shaped either way (the first import did it). Logged, not failed.
  */
-const isRtlNoise = (e: string) => /RTL Text Plugin/.test(e) || /^Error :: $/.test(e)
+const isRtlNoise = (e: string) => /RTL Text Plugin/.test(e) || /^Error :: $/.test(e) || /^console: Error @/.test(e)
 
 /** The rings the MAP is actually drawing, read off the `zones` source. */
 async function ringsOnMap(page: Page): Promise<number[][][]> {

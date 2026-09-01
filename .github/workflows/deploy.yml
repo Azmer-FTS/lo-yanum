@@ -414,6 +414,7 @@ jobs:
           done
           BASE_URL=http://localhost:5197 bun run zones
           BASE_URL=http://localhost:5197 bun run agreement
+          BASE_URL=http://localhost:5197 bun run demo
 
       # The captures ARE the report. Kept on every run, pass or fail, so that
       # "the map is cut at the north" is a file he can open rather than a claim.
@@ -428,6 +429,7 @@ jobs:
             docs/screenshots/freehand/
             docs/screenshots/zones/
             docs/screenshots/agreement/
+            docs/screenshots/demo/
           if-no-files-found: warn
 
       - uses: actions/configure-pages@v5

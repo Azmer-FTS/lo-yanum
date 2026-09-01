@@ -79,6 +79,12 @@ export class FakeDb {
   offline = false
   /** Milliseconds to hold every GET before answering — a slow hydration. */
   slowReads = 0
+  /**
+   * `on delete cascade`, as the schema declares it: parent table → the child
+   * tables and the column that points back. Registered by the gate from the
+   * mapper, so the fake forgets children exactly where Postgres would.
+   */
+  cascades = new Map<string, Array<{ table: string; fk: string }>>()
 
   rows(table: string): Row[] {
     let list = this.tables.get(table)
@@ -105,6 +111,10 @@ export class FakeDb {
         if (!list.includes(String(row[key]))) return false
       } else if (value.startsWith('eq.')) {
         if (String(row[key]) !== value.slice(3)) return false
+      } else if (value.startsWith('like.')) {
+        // PostgREST spells the wildcard `*` in the URL; postgrest-js sends `%` as-is.
+        const pattern = value.slice(5).replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/[%*]/g, '.*')
+        if (!new RegExp(`^${pattern}$`).test(String(row[key]))) return false
       } else if (value.startsWith('is.null')) {
         if (row[key] != null) return false
       }
@@ -112,9 +122,20 @@ export class FakeDb {
     return true
   }
 
+  private cascade(table: string, ids: string[]): void {
+    if (ids.length === 0) return
+    for (const child of this.cascades.get(table) ?? []) {
+      const list = this.rows(child.table)
+      const gone = list.filter((r) => ids.includes(String(r[child.fk])))
+      this.tables.set(child.table, list.filter((r) => !ids.includes(String(r[child.fk]))))
+      this.cascade(child.table, gone.map((r) => String(r.id ?? '')).filter(Boolean))
+    }
+  }
+
   handle(method: string, url: URL, headers: Record<string, string>, body: string): {
     status: number
     body: string
+    headers?: Record<string, string>
   } {
     const table = url.pathname.replace(/^.*\/rest\/v1\//, '')
     const params = url.searchParams
@@ -136,11 +157,13 @@ export class FakeDb {
 
     if (method === 'DELETE') {
       const list = this.rows(table)
+      const gone = list.filter((r) => this.matches(r, params))
       const keep = list.filter((r) => !this.matches(r, params))
       const removed = list.length - keep.length
       this.tables.set(table, keep)
+      this.cascade(table, gone.map((r) => String(r.id)))
       this.log.push(`DELETE ${table} -${removed}`)
-      return { status: 204, body: '' }
+      return { status: 204, body: '', headers: { 'content-range': `*/${removed}` } }
     }
 
     if (method === 'POST') {
@@ -228,7 +251,7 @@ export function installFakeSupabase(context: BrowserContext, db: FakeDb): Promis
       if (method === 'GET' && db.slowReads > 0) await Bun.sleep(db.slowReads)
       await route.fulfill({
         status: answer.status,
-        headers: { ...CORS, 'content-type': 'application/json' },
+        headers: { ...CORS, 'content-type': 'application/json', ...(answer.headers ?? {}) },
         body: answer.body,
       })
       return

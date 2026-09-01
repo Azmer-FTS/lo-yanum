@@ -93,3 +93,19 @@ export function placeholderPhoto(seed: string, kind: 'person' | 'place'): string
 export function seedHasPhoto(id: string, share: number): boolean {
   return avatarHue(`photo:${id}`) / 360 < share
 }
+
+/**
+ * ORDRE DE NUIT 2026-09-02 (N3) — A PORTRAIT AS A MARKER.
+ *
+ * `placeholder:<person|place>:<seed>` is what the demo dataset stores instead
+ * of a data URI: forty bytes in the row, and the same stylised initials
+ * portrait generated on the device that would otherwise have travelled as a
+ * kilobyte of SVG in every hydration. Anything else — a data URI, a URL — is
+ * returned untouched, so the reader has exactly one call to make.
+ */
+export function photoSource(value: string | null | undefined): string | null {
+  if (!value) return null
+  if (!value.startsWith('placeholder:')) return value
+  const [, kind, ...rest] = value.split(':')
+  return placeholderPhoto(rest.join(':') || value, kind === 'place' ? 'place' : 'person')
+}
