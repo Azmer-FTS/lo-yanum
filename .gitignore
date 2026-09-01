@@ -34,3 +34,7 @@ dist-ground/
 #   that are the product owner's own evidence. A rule meant to keep 94 MB out
 #   of the repository was quietly keeping the proof out too.
 /basemap/
+
+# The archive the deploy pulls from the release asset into the Pages payload
+# (ETAT §28). Same 94 MB as `/basemap/` above, staged where Vite will copy it.
+/public/basemap/

@@ -97,8 +97,25 @@ self.addEventListener('activate', (event) => {
  */
 function isBasemap(url) {
   return (
-    (url.hostname.endsWith('.supabase.co') || url.hostname.endsWith('.supabase.in')) &&
-    url.pathname.includes('/storage/v1/object/public/basemap/')
+    // ★ SAME ORIGIN FIRST, AND THIS BRANCH IS THE ONE THAT SHIPS (§28). The
+    //   archive is served by GitHub Pages out of `basemap/` next to the app,
+    //   because Supabase's free plan refuses any upload over 50 MiB and the
+    //   national cut is 94.3 MB — measured, ETAT §27. Matched on the `.pmtiles`
+    //   suffix under a `basemap/` directory rather than on a build-time
+    //   constant, so a re-cut archive (a NEW name, by the naming rule) is held
+    //   by a worker that shipped before it existed.
+    //
+    // ⚠️ IT MUST STAY AHEAD OF `isImmutableAsset`, WHICH IS WHY IT IS HERE AND
+    //   NOT THERE. `cacheFirst` calls `cache.put()`, and `cache.put()` REFUSES
+    //   a 206 outright — so routing the archive through the shell cache would
+    //   fail every single range request PMTiles makes. The basemap needs the
+    //   whole-archive-plus-slicing path in `basemapResponse`, and nothing else.
+    (url.origin === self.location.origin &&
+      /\/basemap\/[^/]+\.pmtiles$/.test(url.pathname)) ||
+    // The previous home, kept so that a device still holding the Supabase-hosted
+    // archive keeps answering from cache instead of silently going to network.
+    ((url.hostname.endsWith('.supabase.co') || url.hostname.endsWith('.supabase.in')) &&
+      url.pathname.includes('/storage/v1/object/public/basemap/'))
   )
 }
 
@@ -420,7 +437,19 @@ self.addEventListener('message', (event) => {
           return
         }
 
-        const expected = Number(response.headers.get('content-length') || '0')
+        /**
+         * ★ THE PAGE'S NUMBER IS THE FALLBACK, AND IT HAD TO BECOME ONE (§28).
+         *   `content-length` is present on a HEAD of the archive and absent
+         *   from the streamed GET on its new same-origin home — measured. With
+         *   `expected` at 0 the progress percentage never renders AND the
+         *   truncation check below compares against nothing and passes, which
+         *   is how a half archive would come to report `held: true`. So the
+         *   header wins when it exists and the page's HEAD stands in when it
+         *   does not; 0 only survives if neither knew, and that is honest.
+         */
+        const expected =
+          Number(response.headers.get('content-length') || '0') ||
+          Number(data.expectedBytes || 0)
 
         // ---- room, asked before the minutes are spent rather than after ----
         let droppedOld = false

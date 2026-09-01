@@ -31,59 +31,71 @@ jobs:
       - name: Typecheck
         run: bun x tsc --noEmit
 
-      # PO POINT 0 (2026-09-01) — WHICH BASEMAP THIS BUILD POINTS AT IS DECIDED
-      # BY THE BUCKET, NOT BY A CONSTANT SOMEBODY HAS TO REMEMBER TO EDIT.
+      # PO POINT 0 — WHICH BASEMAP THIS BUILD POINTS AT, AND WHY IT IS NO LONGER
+      # A QUESTION. REWRITTEN 2026-09-01; ETAT §27 AND §28 ARE THE MEASUREMENT.
       #
-      # WHY THIS STEP EXISTS. The national archive (all of Israel, 94 MB) can
-      # only be uploaded by the product owner — writes to the `basemap` bucket
-      # are coordinator-only and the one coordinator's password is his alone
-      # (ETAT §14.4). So the source constant was deliberately left pointing at
-      # the previous SOUTHERN extract, "until the object exists".
+      # This step used to ASK THE SUPABASE BUCKET whether the national archive
+      # was there, and fall back to a southern extract when it was not. It fell
+      # back on every run for three days, and the product owner saw the Negev on
+      # a national programme four times.
       #
-      # ★ AND THAT IS EXACTLY THE BUG HE THEN FOUND ON HIS iPAD: a deploy that
-      #   succeeded, an app whose own words say "the whole map of Israel", and
-      #   42.6 MB of the Negev on the device. Nothing had failed. The upload
-      #   and the one-line key change were two acts by two people, and the
-      #   second one waits on a session that may not happen the same day.
+      # ★ THE ARCHIVE WAS NEVER GOING TO ARRIVE IN THAT BUCKET. `lo-yanum-prod`
+      #   refuses any upload over 52 428 800 bytes (50 MiB) and the national cut
+      #   is 94 268 129. Bounded to the byte: a TUS create declaring exactly
+      #   50 MiB is refused on AUTHORISATION (403); one byte more is refused on
+      #   SIZE (413), before the server looks at who is asking. So the act four
+      #   reports were waiting on was IMPOSSIBLE, not pending — no coordinator
+      #   token and no dashboard could have done it. The bucket's own
+      #   `file_size_limit` is 209 715 200; the cap is the PLAN's.
       #
-      # So the build ASKS THE BUCKET. If the national archive is there, at
-      # exactly the length it was measured at, and the bucket answers a range
-      # request with 206 — which is the one thing PMTiles cannot work without —
-      # the build points at it. Otherwise it falls back to the compiled-in key
-      # and says so loudly, because a silent fallback is how this started.
+      # SO THE ARCHIVE IS SHIPPED WITH THE APP INSTEAD, and there is no longer
+      # anything to resolve. It is stored as a release asset (GitHub allows 2 GB
+      # there), pulled onto the runner, and staged into `public/basemap/` so
+      # that Vite copies it into `dist/` like any other public asset. Pages then
+      # serves it from the app's OWN ORIGIN, which is measured to answer a range
+      # request with 206, `accept-ranges: bytes` and `access-control-allow-origin: *`.
       #
-      # ⚠️ THE LENGTH IS EXACT ON PURPOSE. A re-cut archive is a NEW name (the
-      #    OSM build date is in it), so a different length on this name means a
-      #    truncated or partial upload, and shipping that would take the map
-      #    off the app entirely. Update both values here when the map is re-cut.
-      - name: Resolve the basemap archive
-        id: basemap
+      # ⚠️ THE RELEASE ASSET CANNOT BE THE BROWSER'S URL, AND IT WAS TRIED. It
+      #    serves the right bytes and answers 206, but sends NO
+      #    `access-control-allow-origin`, so a cross-origin PMTiles read fails.
+      #    The release is STORAGE. Pages is the HOST. Do not "simplify" this by
+      #    pointing `basemap.ts` at the release URL.
+      #
+      # ⚠️ THE LENGTH IS EXACT AND THE MAGIC IS CHECKED. A re-cut archive is a
+      #    NEW name (the OSM build date is in it), so a different length on this
+      #    name is a truncated download, and a truncated PMTiles archive is a
+      #    blank map that reports success. Both are hard failures here: better a
+      #    red deploy than a silent one, which is the whole lesson of §27.
+      - name: Stage the basemap archive into the Pages payload
         run: |
           set -euo pipefail
 
-          bucket='https://lvrptqmkjikkkhcxocbe.supabase.co/storage/v1/object/public/basemap'
           key='israel-20260831-z14.pmtiles'
           expected=94268129
+          asset="https://github.com/${GITHUB_REPOSITORY}/releases/download/basemap-israel-20260831/${key}"
 
-          headers="$(curl --silent --show-error --head --max-time 30 "${bucket}/${key}" || true)"
-          length="$(printf '%s' "${headers}" | tr -d '\r' \
-                    | awk 'tolower($1) == "content-length:" { print $2 }' | tail -n1)"
+          mkdir -p public/basemap
+          curl --silent --show-error --location --fail --max-time 600 \
+               --output "public/basemap/${key}" "${asset}"
 
-          range="$(curl --silent --output /dev/null --max-time 30 \
-                        --header 'Range: bytes=0-15' \
-                        --write-out '%{http_code}' "${bucket}/${key}" || true)"
+          actual="$(wc -c < "public/basemap/${key}" | tr -d ' ')"
+          magic="$(head -c 7 "public/basemap/${key}" || true)"
 
-          echo "key      : ${key}"
-          echo "length   : ${length:-<absent>} (expected ${expected})"
-          echo "range    : HTTP ${range} (expected 206)"
+          echo "key    : ${key}"
+          echo "bytes  : ${actual} (expected ${expected})"
+          echo "magic  : ${magic} (expected PMTiles)"
 
-          if [ "${length:-0}" = "${expected}" ] && [ "${range}" = "206" ]; then
-            echo "url=${bucket}/${key}" >> "$GITHUB_OUTPUT"
-            echo "::notice::Basemap: ${key} is in the bucket at ${expected} bytes and serves 206 — this build points at the NATIONAL archive."
-          else
-            echo "url=" >> "$GITHUB_OUTPUT"
-            echo "::warning::Basemap: ${key} is not usable in the bucket yet (length ${length:-absent}, range ${range}). This build falls back to the key compiled into src/ui/components/basemap.ts — the SOUTHERN extract. See ETAT §14.4: the upload is the product owner's."
+          if [ "${actual}" != "${expected}" ]; then
+            echo "::error::Basemap staging: the release asset downloaded ${actual} bytes, not ${expected}. A truncated archive draws a blank map and reports success. Refusing to deploy."
+            exit 1
           fi
+
+          if [ "${magic}" != "PMTiles" ]; then
+            echo "::error::Basemap staging: public/basemap/${key} does not begin with the PMTiles magic (got '${magic}'). Refusing to deploy."
+            exit 1
+          fi
+
+          echo "::notice::Basemap: ${key} staged into the Pages payload at ${expected} bytes — this build carries the NATIONAL archive on its own origin."
 
       # P2.3 — the deployed app is a REAL build: it requires a Supabase session.
       # Both values are public by design (the publishable key names the project
@@ -97,51 +109,46 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          # Empty when the national archive is not in the bucket yet, and an
-          # empty string is falsy — `basemap.ts` then keeps its own default.
-          VITE_BASEMAP_URL: ${{ steps.basemap.outputs.url }}
+          # ★ DELIBERATELY UNSET. The archive now ships inside the payload, so
+          #   the compiled-in constant in `basemap.ts` — resolved against
+          #   `document.baseURI` — is already the right answer, and an override
+          #   here could only point the app AWAY from the map it is shipping
+          #   with. `VITE_BASEMAP_URL` survives for `bun run ground`'s
+          #   `GROUND_URL` branch and for a local re-cut, and nothing else.
 
 
-      # PO POINT 4 (2026-09-01) — THE PERMANENT GATE: WHAT THE BUNDLE ACTUALLY
-      # ASKS FOR HAS TO BE A MAP THAT EXISTS, AND ONCE THE NATIONAL ARCHIVE IS
-      # IN THE BUCKET IT HAS TO BE THAT ONE.
+      # PO POINT 4 — THE PERMANENT GATE: WHAT THE BUNDLE ASKS FOR HAS TO BE THE
+      # NATIONAL MAP, AND IT HAS TO BE IN THE ARTEFACT. Rewritten 2026-09-01.
       #
-      # The step above decides which archive to POINT AT. This one reads the
-      # BUILT FILES and checks what they ended up asking for — which is the
-      # product owner's own condition, and the right one: the resolve step
-      # states an intention, `dist/` is the artefact, and the iPad only ever
-      # sees the artefact. Everything here is measured on `dist/`.
+      # The step above decides what to SHIP. This one reads the BUILT FILES and
+      # checks what they ended up asking for — the product owner's own
+      # condition, and the right one: `dist/` is the artefact, and the iPad only
+      # ever sees the artefact.
       #
-      # ⚠️ THE THRESHOLD IS NOT "> 100 MB", AND THIS IS THE THIRD TIME THE
-      #    NUMBER HAS HAD TO BE CORRECTED IN THIS FILE'S HISTORY. The national
-      #    cut of Israel at z14 is 94 268 129 bytes — 94.3 MB. A "> 100 MB"
-      #    rule would REFUSE THE REAL NATIONAL MAP for ever and pass any
-      #    120 MB extract of anywhere. So the archives are named, one line
-      #    each, with the exact length each was measured at and whether it
-      #    covers the country. Exact equality also catches the failure a
-      #    threshold cannot: a truncated or half-finished upload on a name that
-      #    is already trusted.
+      # ★ IT IS NOW A FLAT "MUST BE NATIONAL", AND THAT IS THE CHANGE. The old
+      #   gate had one branch that warned and shipped: the bundle asking for the
+      #   southern extract while the national archive was missing from the
+      #   bucket. That leniency was correct while the upload was somebody's
+      #   pending act, and it is wrong now that it was never possible (§27) and
+      #   the archive travels inside the payload. There is nobody left to wait
+      #   for, so a build that does not carry the country is a broken pipeline,
+      #   and a broken pipeline must not reach an iPad quietly.
       #
-      # WHAT FAILS THE BUILD, AND WHAT ONLY WARNS
-      #   · the bundle names no archive at all              → FAIL
-      #   · it names an archive nobody has registered       → FAIL
-      #   · the live archive is absent, the wrong length,
-      #     or refuses a range request                      → FAIL
-      #   · the national archive IS usable in the bucket and
-      #     the bundle still asks for a partial extract     → FAIL   ← the regression guard
-      #   · the national archive is NOT uploaded yet and the
-      #     bundle asks for the southern extract            → warn, and deploy
+      # WHAT FAILS THE BUILD
+      #   · the bundle names no archive at all                    → FAIL
+      #   · it names more than one, or one that is not national   → FAIL
+      #   · the archive is not in `dist/` at its exact length     → FAIL
+      #   · what is in `dist/` is not a PMTiles archive           → FAIL
       #
-      # That last line is deliberate and is the only reason this gate is not a
-      # flat "must be national". Failing it today would stop EVERY deploy —
-      # including work that has nothing to do with the map — until an upload
-      # only the product owner can perform. The day it lands, the fourth rule
-      # closes behind it and the pipeline can never fall back again.
+      # ⚠️ THE LENGTH IS EXACT AND NOT A THRESHOLD, AND THIS IS THE FOURTH TIME
+      #    THE NUMBER HAS HAD TO BE CORRECTED IN THIS FILE'S HISTORY. The
+      #    national cut is 94 268 129 bytes — 94.3 MB, NOT 175. A "> 100 MB"
+      #    rule would refuse the real national map for ever and pass any 120 MB
+      #    extract of anywhere. Exact equality also catches what a threshold
+      #    cannot: a truncated copy on a name that is already trusted.
       - name: Gate — the basemap the built bundle asks for
         run: |
           set -euo pipefail
-
-          bucket='https://lvrptqmkjikkkhcxocbe.supabase.co/storage/v1/object/public/basemap'
 
           # The register of cut archives: key, exact bytes, national yes/no.
           # A new cut is a NEW NAME (the OSM build date is in it), so this list
@@ -158,13 +165,10 @@ jobs:
             esac
           }
 
-          is_national() { [ "$1" = "${national_key}" ]; }
-
           # ---- 1. what does the ARTEFACT name? -----------------------------
-          # The URL is a template literal, so minification splits it: the base
-          # and the key are two strings in the file. The KEY is the thing that
-          # survives intact, and it is also the thing a coordinator reads on
-          # the הגדרות screen — the same identifier at both ends.
+          # The URL is built with `new URL()`, so minification leaves the KEY
+          # intact as one string — and it is also the thing a coordinator reads
+          # on the הגדרות screen. The same identifier at both ends.
           keys="$(grep -ohE '[A-Za-z0-9._-]+\.pmtiles' dist/assets/*.js 2>/dev/null | sort -u || true)"
 
           if [ -z "${keys}" ]; then
@@ -175,71 +179,54 @@ jobs:
           echo "archives named in dist/assets/*.js:"
           printf '  %s\n' ${keys}
 
-          # ---- 2. which one is LIVE? ---------------------------------------
-          # `VITE_BASEMAP_URL` wins over the compiled-in default at runtime
-          # (`basemap.ts`), and Vite inlines it as a whole URL — so when the
-          # national key is present in the bundle it IS the one the app uses,
-          # even if the superseded default string survives beside it.
-          live=''
-          for key in ${keys}; do
-            if is_national "${key}"; then live="${key}"; fi
-          done
-
-          if [ -z "${live}" ]; then
-            count="$(printf '%s\n' ${keys} | wc -l | tr -d ' ')"
-            if [ "${count}" != "1" ]; then
-              echo "::error::Basemap gate: the bundle names ${count} different archives and none is the national one, so which the app would use cannot be read off the artefact. Refusing to deploy."
-              exit 1
-            fi
-            live="${keys}"
+          count="$(printf '%s\n' ${keys} | wc -l | tr -d ' ')"
+          if [ "${count}" != "1" ]; then
+            echo "::error::Basemap gate: the bundle names ${count} different archives, so which one the app would use cannot be read off the artefact. Refusing to deploy."
+            exit 1
           fi
 
+          live="${keys}"
           echo "live archive : ${live}"
 
-          # ---- 3. is it registered, and is it really there? ----------------
+          # ---- 2. it must be the NATIONAL one ------------------------------
+          if [ "${live}" != "${national_key}" ]; then
+            echo "::error::Basemap gate: the bundle asks for '${live}', not the national archive ${national_key}. The product owner saw the Negev on a national programme four times; that is the regression this line exists to stop. Refusing to deploy."
+            exit 1
+          fi
+
           if ! expected="$(registered_length "${live}")"; then
-            echo "::error::Basemap gate: '${live}' is not in this workflow's register of cut archives. A new cut must be added here with the exact byte length it was measured at, so that a truncated upload on a trusted name cannot ship. Refusing to deploy."
+            echo "::error::Basemap gate: '${live}' is not in this workflow's register of cut archives. A new cut must be added here with the exact byte length it was measured at, so that a truncated copy on a trusted name cannot ship. Refusing to deploy."
             exit 1
           fi
 
-          headers="$(curl --silent --show-error --head --max-time 60 "${bucket}/${live}" || true)"
-          length="$(printf '%s' "${headers}" | tr -d '\r' \
-                    | awk 'tolower($1) == "content-length:" { print $2 }' | tail -n1)"
-          range="$(curl --silent --output /dev/null --max-time 60 \
-                        --header 'Range: bytes=0-15' \
-                        --write-out '%{http_code}' "${bucket}/${live}" || true)"
+          # ---- 3. and it must actually BE in the artefact -------------------
+          # The whole point of §28: the map is no longer somewhere else that
+          # might answer. It is a file in `dist/`, or the deploy is refused.
+          archive="dist/basemap/${live}"
 
-          echo "length       : ${length:-<absent>} (registered ${expected})"
-          echo "range        : HTTP ${range} (needs 206)"
-
-          if [ "${length:-0}" != "${expected}" ]; then
-            echo "::error::Basemap gate: the bundle asks for '${live}' and the bucket answers ${length:-nothing} bytes, not ${expected}. Either the object is missing, or the upload is partial. A build whose map does not exist must not reach an iPad. Refusing to deploy."
+          if [ ! -f "${archive}" ]; then
+            echo "::error::Basemap gate: the bundle asks for '${live}' and ${archive} does not exist. The build would ship an app whose map is a 404. Refusing to deploy."
             exit 1
           fi
 
-          if [ "${range}" != "206" ]; then
-            echo "::error::Basemap gate: '${live}' does not answer a range request with 206 (got ${range}). PMTiles reads an archive by ranges and nothing else; without this the map is a blank screen. Refusing to deploy."
+          actual="$(wc -c < "${archive}" | tr -d ' ')"
+          magic="$(head -c 7 "${archive}" || true)"
+
+          echo "artefact     : ${archive}"
+          echo "bytes        : ${actual} (registered ${expected})"
+          echo "magic        : ${magic} (expected PMTiles)"
+
+          if [ "${actual}" != "${expected}" ]; then
+            echo "::error::Basemap gate: ${archive} holds ${actual} bytes, not ${expected}. A truncated archive draws a blank map and reports success. Refusing to deploy."
             exit 1
           fi
 
-          # ---- 4. the regression guard -------------------------------------
-          if is_national "${live}"; then
-            echo "::notice::Basemap gate: the bundle asks for the NATIONAL archive ${live}, present at ${expected} bytes and serving 206. Passed."
-            exit 0
-          fi
-
-          nat_len="$(curl --silent --show-error --head --max-time 60 "${bucket}/${national_key}" \
-                     | tr -d '\r' | awk 'tolower($1) == "content-length:" { print $2 }' | tail -n1 || true)"
-          nat_range="$(curl --silent --output /dev/null --max-time 60 \
-                            --header 'Range: bytes=0-15' \
-                            --write-out '%{http_code}' "${bucket}/${national_key}" || true)"
-
-          if [ "${nat_len:-0}" = "${len_israel_20260831_z14}" ] && [ "${nat_range}" = "206" ]; then
-            echo "::error::Basemap gate: ${national_key} IS in the bucket and usable, and this bundle still asks for the partial extract '${live}'. That is the exact regression this gate exists to stop — the product owner saw the Negev on a national programme. Refusing to deploy."
+          if [ "${magic}" != "PMTiles" ]; then
+            echo "::error::Basemap gate: ${archive} does not begin with the PMTiles magic (got '${magic}'). Refusing to deploy."
             exit 1
           fi
 
-          echo "::warning::Basemap gate: the bundle asks for the PARTIAL extract '${live}' (${expected} bytes), which is present and usable — so this build ships and the map draws. But it is the SOUTH, not the country: ${national_key} is still not in the bucket (length ${nat_len:-absent}, range ${nat_range}). The upload is the product owner's, ETAT §14.4. The moment it lands, this warning becomes a failure and the next deploy carries the national map."
+          echo "::notice::Basemap gate: the bundle asks for the NATIONAL archive ${live}, and it is in the artefact at ${expected} bytes with the PMTiles magic. Passed."
 
       # PO RULE, 2026-09-01 — THE ONLY EVIDENCE HE ACCEPTS ON THE BASEMAP IS A
       # REAL BROWSER ON A BLANK PROFILE. AND IT IS PERMANENT, NOT A ONE-OFF.
@@ -263,11 +250,13 @@ jobs:
       #    able to. What decides the basemap is `VITE_BASEMAP_URL` and the
       #    constant behind it — the same two inputs in both modes.
       #
-      # It FAILS the deploy on anything the upload does not explain, and on the
-      # regression guard. While the national archive is genuinely absent from
-      # the bucket it prints Haifa's three empty lines and lets the build
-      # through — the same policy as the gate above, and for the same reason:
-      # the upload is an act no session can perform.
+      # ★ IT NOW FAILS ON ANYTHING AT ALL, and that is the 2026-09-01 change.
+      #    It used to print Haifa's three empty lines and let the build through
+      #    while the national archive was missing from the bucket — correct
+      #    while that upload was somebody's pending act, wrong now that it was
+      #    never possible (§27) and the archive ships inside the payload. Same
+      #    policy as the gate above, and for the same reason: there is nobody
+      #    left to wait for, so an empty Haifa is a broken pipeline.
       - name: Chromium, for the browser gate
         run: bun x playwright install --with-deps chromium
 

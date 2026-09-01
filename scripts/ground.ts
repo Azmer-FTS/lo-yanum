@@ -184,15 +184,31 @@ console.log('')
 console.log('  A83 — THE BASEMAP IN A REAL BROWSER, BLANK PROFILE')
 console.log('  ==================================================')
 
-section('WHAT THE BUCKET HOLDS RIGHT NOW')
+/**
+ * ★ ASKED OF THE PAYLOAD, NOT OF THE BUCKET — AND THAT CHANGED ON 2026-09-01.
+ *
+ *   The archive is no longer in Supabase and cannot be: the project refuses any
+ *   upload over 52 428 800 bytes and the national cut is 94 268 129 (ETAT §27,
+ *   bounded to the byte by a 403/413 boundary). It is served by GitHub Pages
+ *   from the app's own origin, staged into `public/basemap/` — by the deploy
+ *   workflow on a runner, by hand on a laptop — so that Vite copies it into
+ *   `dist/` like any other public asset.
+ *
+ *   So the question "which archive is live" is now answered by the file that is
+ *   about to be BUILT IN, which is strictly closer to the artefact than a
+ *   remote HEAD ever was. That it really serves, and really answers a range
+ *   with 206, is not assumed here either: proof 2 below reads both off the
+ *   request the browser actually makes.
+ */
+section('WHAT THE PAYLOAD HOLDS RIGHT NOW')
 
-const national = await probe(NATIONAL_KEY)
-const nationalUsable =
-  national.length === ARCHIVES[NATIONAL_KEY].bytes && national.range === 206
+const staged = Bun.file(`public/basemap/${NATIONAL_KEY}`)
+const stagedBytes = (await staged.exists()) ? staged.size : 0
+const nationalUsable = stagedBytes === ARCHIVES[NATIONAL_KEY].bytes
 
 console.log(
-  `  ${NATIONAL_KEY}: length ${national.length || '<absent>'} ` +
-    `(registered ${ARCHIVES[NATIONAL_KEY].bytes}), range HTTP ${national.range}`,
+  `  public/basemap/${NATIONAL_KEY}: ${stagedBytes || '<absent>'} bytes ` +
+    `(registered ${ARCHIVES[NATIONAL_KEY].bytes})`,
 )
 
 /**
@@ -212,11 +228,11 @@ console.log(
  *   national key while the object is still absent runs exactly that branch and
  *   it must exit 1. CI never sets it.
  */
-const resolved = process.env.GROUND_URL ?? (nationalUsable ? `${BUCKET}/${NATIONAL_KEY}` : '')
+const resolved = process.env.GROUND_URL ?? ''
 console.log(
   resolved
-    ? `  → building against the NATIONAL archive`
-    : `  → the national archive is not usable in the bucket; building against the compiled-in default`,
+    ? `  → GROUND_URL is set; building against ${resolved}`
+    : `  → building against the compiled-in default (same origin, basemap/${NATIONAL_KEY})`,
 )
 
 const server = await buildAndServe(resolved)
@@ -450,22 +466,29 @@ if (nationalUsable) {
 }
 
 /**
- * ★ THE ONE CASE THAT WARNS INSTEAD OF FAILING, AND IT IS NOT LENIENCE.
- *   The national archive can only be uploaded by the product owner (§14.4),
- *   so failing here would stop every deploy — including work with nothing to
- *   do with the map — on an act no session can perform. What it must never do
- *   is stay quiet: Haifa's three lines above are the failure, printed, and the
- *   moment the object lands the branch above takes over and they become the
- *   condition of shipping.
+ * ⛔ THIS USED TO WARN AND SHIP. IT NOW FAILS, AND §27 IS WHY.
+ *
+ *   The old leniency existed for one reason, written down at the time: the
+ *   national archive could only be put in the bucket by the product owner, so
+ *   failing here would have stopped every deploy — including work with nothing
+ *   to do with the map — on an act no session could perform.
+ *
+ *   That premise is dead. The act was never his to perform either: the upload
+ *   was refused on SIZE, before authorisation, by a plan-level cap no password
+ *   reaches. The archive is now staged into the payload by the deploy itself,
+ *   so a build driving anything other than the national cut is a broken
+ *   pipeline rather than a pending favour — and a broken pipeline must not
+ *   reach an iPad quietly. There is nobody left to wait for.
  */
 console.log('')
-console.warn(
-  `  ⚠️  THIS BUILD DRIVES THE PARTIAL EXTRACT '${liveKey}'.\n` +
-    `     ${NATIONAL_KEY} is not in the bucket (length ${national.length || 'absent'},\n` +
-    `     range HTTP ${national.range}). Haifa is EMPTY above and that is the truth of\n` +
-    `     the product today, not a broken gate. ETAT §14.4 — the upload is the\n` +
-    `     product owner's, and it is the only act between here and a national map.`,
+console.error(
+  `  ⛔ THIS BUILD DRIVES '${liveKey}' RATHER THAN THE NATIONAL ARCHIVE.\n` +
+    `     public/basemap/${NATIONAL_KEY} holds ${stagedBytes || 'nothing'} bytes, and it must\n` +
+    `     hold ${ARCHIVES[NATIONAL_KEY].bytes}. On a runner the deploy stages it from the release\n` +
+    `     asset before building; on a laptop, copy it there by hand. Haifa is EMPTY\n` +
+    `     above and that is the consequence. Refusing to pass.`,
 )
+process.exit(1)
 
 /**
  * Everything except Haifa still has to hold, even on the southern extract:

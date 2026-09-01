@@ -312,10 +312,42 @@ export function registerPmtilesProtocol(): void {
  * (measured 2026-08-31), so a versioned name is what lets the service worker
  * hold one archive indefinitely and drop it only when the name changes.
  */
-export const BASEMAP_KEY = 'negev-20260829-z14.pmtiles'
+export const BASEMAP_KEY = 'israel-20260831-z14.pmtiles'
 
+/**
+ * ★ THE ARCHIVE IS SERVED FROM THE APP'S OWN ORIGIN, AND THAT IS A MEASUREMENT
+ *   RATHER THAN A PREFERENCE (§27, §28).
+ *
+ *   It lived in a public Supabase bucket until 2026-09-01, and it could not go
+ *   on living there: `lo-yanum-prod` refuses any upload over **52 428 800 bytes
+ *   (50 MiB)** and the national cut is **94 268 129**. Bounded to the byte —
+ *   a TUS create declaring exactly 50 MiB is refused on AUTHORISATION (403),
+ *   one byte more is refused on SIZE (413), before it even looks at who is
+ *   asking. So no token and no password could ever have uploaded it. That is
+ *   why four reports in a row promised a national map and shipped the Negev:
+ *   the act everyone was waiting on was impossible, not merely pending.
+ *
+ *   GitHub Pages hosts it instead, next to the app. Measured on the live site:
+ *   a `Range` request comes back `206` with `accept-ranges: bytes` and
+ *   `access-control-allow-origin: *` — the complete list of what PMTiles needs.
+ *   The 94 MB never enters git: the deploy workflow pulls it from a release
+ *   asset into `public/basemap/` before `vite build`, and Vite copies it into
+ *   `dist/`. `.gitignore` keeps the working copy out for the same reason.
+ *
+ * ⚠️ A RELEASE ASSET CANNOT BE THE URL THE BROWSER USES, AND IT WAS TRIED.
+ *   `…/releases/download/…` serves the right 94 268 129 bytes and answers a
+ *   range with 206, but it sends NO `access-control-allow-origin`, so a
+ *   cross-origin PMTiles read from the page fails. Same origin removes the
+ *   question entirely. The release is STORAGE; Pages is the HOST.
+ *
+ * ★ RESOLVED AGAINST `document.baseURI`, exactly like `assetUrl` above and for
+ *   the same two reasons: the deployed sub-path (`/lo-yanum/`) and the hash
+ *   router. No braces here, so the whole thing can go through `new URL()`.
+ */
 const DEFAULT_BASEMAP_URL =
-  `https://lvrptqmkjikkkhcxocbe.supabase.co/storage/v1/object/public/basemap/${BASEMAP_KEY}`
+  typeof document === 'undefined'
+    ? `./basemap/${BASEMAP_KEY}`
+    : new URL(`basemap/${BASEMAP_KEY}`, document.baseURI).toString()
 
 /** Overridable for a re-cut archive or a local file, defaulted for the gates. */
 export const BASEMAP_URL: string =

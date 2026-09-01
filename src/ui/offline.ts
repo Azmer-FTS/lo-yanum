@@ -364,7 +364,30 @@ export function useOfflineMaps(url: string, assets: string[] = []): OfflineMaps 
         resolve(data as WorkerAnswer)
       }
       navigator.serviceWorker.addEventListener('message', onMessage)
-      controller.postMessage({ type: 'DOWNLOAD_MAP', url, assets })
+      /**
+       * ★ `expectedBytes` IS SENT BECAUSE THE STREAM DOES NOT ALWAYS CARRY IT,
+       *   and two things break quietly when it is missing (§28).
+       *
+       *   The worker reads the size off `content-length` on its own streaming
+       *   response. Since the archive moved to the app's own origin that header
+       *   is not always there — measured: the HEAD above returns it, the
+       *   streamed GET does not — and a missing length costs BOTH the progress
+       *   percentage (nothing to divide by, so the button never moves) and the
+       *   truncation guard (a short stream compares against 0 and passes).
+       *   The second one is the dangerous half: a half archive that reports
+       *   `held: true` fails every range request in the field.
+       *
+       *   The page already knows the number — it is the same one on the button
+       *   the coordinator just tapped — so it is sent rather than re-derived.
+       *   The worker still prefers its own `content-length` when it has one;
+       *   this is a floor under the case where it does not.
+       */
+      controller.postMessage({
+        type: 'DOWNLOAD_MAP',
+        url,
+        assets,
+        expectedBytes: downloadBytes ?? 0,
+      })
     })
 
     /**
@@ -396,7 +419,13 @@ export function useOfflineMaps(url: string, assets: string[] = []): OfflineMaps 
     setExpected(null)
     await refresh()
     return record.ok
-  }, [url, assets, refresh, askPersistence])
+    // ★ `downloadBytes` IS A DEPENDENCY AND LEAVING IT OUT WAS A REAL BUG.
+    //   Without it this callback closes over the value from the FIRST render —
+    //   `null`, before the HEAD has answered — so `expectedBytes` above was
+    //   always 0 and the fallback it exists for could never fire. The symptom
+    //   is quiet and specific: the button shows the size, the download works,
+    //   and the percentage never moves.
+  }, [url, assets, refresh, askPersistence, downloadBytes])
 
   const clear = useCallback(async () => {
     const answer = await askWorker('CLEAR_MAP')
