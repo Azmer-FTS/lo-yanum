@@ -33,6 +33,7 @@
     "storage": "bun run scripts/storage.ts",
     "offline": "bun run scripts/offline.ts",
     "basemap": "bun run scripts/basemap.ts",
+    "ground": "bun run scripts/ground.ts",
     "deletion": "bun run scripts/deletion.ts",
     "report": "bun run scripts/report.ts",
     "empty": "bun run scripts/empty.ts"

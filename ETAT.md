@@ -50,6 +50,7 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run report` | **A80** — PO point 7c: **the report and the dashboard cannot disagree.** Every field of `ProgrammeReport` against the accessor the dashboard itself renders, with the figures that have no accessor yet re-derived INDEPENDENTLY — over THREE stores: the fixtures, an EMPTY programme (where `guardedHeads === null` is proved) and the fixtures with a moshav, a kosher volunteer, a visit and an urgent incident added. Plus the check that keeps it true: the renderer may import only a TYPE from the domain, so it cannot read the store. 86 checks — no browser, no dev server, no network |
 | `bun run deletion` | **A79** — PO point 8: deleting a record. Free deletion with its dependencies LISTED, a motivated refusal on operational history with the blockers named and counted, the store refusing as well as the dialog, the whole cascade reaching the backend as `json: null`, and two checks that keep it honest over time — every `DeletableKind` has a call site in the UI, and every one of them asks first. 61 checks — no browser, no dev server, no network |
 | `bun run basemap` | **PO point 0** — `bun run basemap <file> <key>`: the resumable (TUS) upload a 94 MB archive needs, and then it VERIFIES the public object — length byte-for-byte, 206 on a range, `PMTiles` in the first seven bytes, and a 64 kB slice from the MIDDLE compared against the local file. ⛔ Needs a coordinator token (`BASEMAP_TOKEN`); see §14.4 |
+| `bun run ground` | **A83 — THE BASEMAP, PROVED IN A REAL BROWSER ON A BLANK PROFILE** (the product owner's rule, 2026-09-01), and **the deploy gate runs it on every build**. A FRESH Chromium context — no storage, no service worker, no cache — pointed at a build carrying the same basemap input that deploy resolved, and four proofs and nothing else: **1** the pmtiles URL that actually LEAVES the browser, logged verbatim with its `Range` headers; **2** the `206` and the archive's TOTAL length, read off `content-range` and compared to the register IN BYTES; **3** the הגדרות screen of that same build, naming the same archive and showing the same MB; **4** חיפה (Haifa) at z12, z13 and z14 — features counted, captures written to `docs/screenshots/basemap/`. ⚠️ **It drives a DEMO build and the file says so**: the real app's first screen is a login door whose password only the PO has ever typed (§14.4), no gate can sign in and none should be able to; what decides the basemap is `VITE_BASEMAP_URL` and the constant behind it — the same two inputs in both modes. **It FAILS the deploy** on anything the missing upload does not explain, and on the regression guard; while the national archive is genuinely absent from the bucket it prints Haifa's three empty lines and lets the build through — the same policy as the curl gate above and for the same reason. `GROUND_URL` exists only to exercise the strict branch before the object does, and that branch HAS been exercised (exit 1). **11 checks. Makes its own build; needs the network** |
 | `bun run offline` | **A72 + A78** — the offline shell (P2.5a) AND the signed-in offline session (P2.5b). The ONLY gate that BUILDS the app and serves the build, because the service worker is production-only: the worker takes control, one online load is enough to survive being pulled offline, ★ **a Supabase read offline FAILS** (nothing from the API is ever cached), looked-at ground is still there, the badge comes and goes, the frozen /poc comes back as ITSELF, and a real build shows its door rather than a browser error. **P2.5b added the only claim in this project that cannot be made outside a real browser**: signed in, IndexedDB really holds the snapshot, a token that cannot be refreshed offline does NOT end the session, the network coming back re-asks and a refusal DOES end it, and an explicit sign-out empties the device. **PO return 3 (2026-08-31) added the other half of the same scenario**: the reopened offline app SHOWS ITS OFFLINE BADGE, and the door explains the one thing that genuinely needs a network — `אין חיבור לאינטרנט — נדרש חיבור להתחברות ראשונה` — before a password is typed, and again instead of a generic server error if one is. **And PMTiles folded in the claim the whole map unit exists for**: the basemap answers a RANGE request with no network at all (the Cache API refuses a 206, so the worker holds ONE archive and slices it), what comes back is the archive rather than an error page, and the map really draws from it. **19 checks and ONE SKIP is the green result since P3.1 (§13)** — the last section needs `.env.test` and the disposable account is gone, which is the intended end state. It was 33 before. **No dev server; it makes its own** |
 | `bun run storage` | **A71** — the two private buckets (P2.4): no public route on either (`NoSuchBucket`, the one proof that does not depend on them being empty), no bucket or object enumeration, no signed URL minted for a stranger, no anonymous upload. 10 checks — no browser, no dev server, no password |
 | `bun run outreach` | **A68 + A69** — the sending centre and the WhatsApp group kit, read off the rendered DOM: the right channel per phone type, prefilled `wa.me` / `sms:` / `mailto:` links DECODED and checked, the grouped SMS and email, the sent tick surviving navigation, and the kit's three copies. 25 checks — needs a dev server |
@@ -4796,6 +4797,163 @@ delivered and stays delivered; nothing in §25 touched it.
 
 ---
 
+## 26. ⛔ THE FOURTH REPORT OF 2026-09-01 — THE BUG IS **OPEN**, AND IT IS NOT IN THE BASEMAP LOGIC
+
+The product owner's fourth return is the sharpest one and it changes the
+method rather than the diagnosis. He reports the SAME three symptoms on the
+web site in a plain browser (`#/coordinator`, no PWA) and on the iPad — the map
+cut off at the north, הגדרות reporting `negev` and 42.6 MB, and the רענון
+re-downloading 42.6 MB — and he sets a rule:
+
+> **Nothing about this bug may be called fixed on the strength of the code or
+> of a green HEAD. The only evidence accepted is a real browser, blank
+> profile, on the deployed URL, with the network captured.**
+
+★ **THE RULE IS RIGHT AND IT IS NOW THE PROJECT'S.** `bun run ground` (A83)
+  implements it and `.github/workflows/deploy.yml` runs it on every build.
+
+★ **AND BY HIS OWN RULE THE BUG IS OPEN.** It is written here as OPEN. What
+  follows is measured, not argued.
+
+### 26.1 · The four proofs, as they actually came back (2026-09-01)
+
+`bun run ground`, fresh Chromium context, nothing on the device:
+
+| # | he asked for | what the wire said |
+|---|---|---|
+| 1 | the pmtiles URL that really leaves | `…/storage/v1/object/public/basemap/`**`negev-20260829-z14.pmtiles`**, `Range: bytes=0-16383` — and exactly ONE archive is ever requested |
+| 2 | a response over 100 MB | **`206`**, `content-range: bytes 0-16383/`**`42560293`** — 42.6 MB |
+| 3 | הגדרות showing `israel` / ~175 MB | it shows **`negev-20260829-z14.pmtiles`** and the button reads **`רענון מפות לא מקוונות (42.6 MB)`** |
+| 4 | Haifa sharp at z12–z14 | **0 features, 0 roads** at all three zooms — `docs/screenshots/basemap/haifa-z{12,13,14}-negev-20260829-z14.pmtiles.png` |
+
+**Three of his four numbers were already exactly right.** The screen was not
+lying to him; it was telling him the truth about a map nobody has replaced.
+
+### 26.2 ★★ THE CAUSE, AND IT IS THE SAME ONE SINCE §14.4 — THE OBJECT IS NOT IN THE BUCKET
+
+Measured on the pipeline and on the bucket, not on the tree:
+
+· **Deploy run `33475282175`** (head `43b43c8`, `success`, 05:52 UTC) — its
+  *Resolve the basemap archive* step asked the bucket for the national key and
+  logged, verbatim: `length : 88 (expected 94268129)` / `range : HTTP 400`.
+  So `VITE_BASEMAP_URL` was empty and the build kept the compiled-in default.
+· `HEAD …/basemap/israel-20260831-z14.pmtiles` → **`400`**, an 88-byte JSON
+  error. **The national archive has still never been uploaded.**
+· `HEAD …/basemap/negev-20260829-z14.pmtiles` → **`200`, `42 560 293`**.
+· The **deployed** bundle `assets/index-MQ5mES-Q.js`, fetched over the network,
+  names **one** `.pmtiles` string and it is the southern extract.
+
+★ **SO THE THREE SYMPTOMS ARE ONE FACT, NOT THREE BUGS, AND THE LOGIC IS NOT
+  IMPLICATED ANYWHERE.** The app asks for the only map that exists; the screen
+  reports the map it asked for; the refresh downloads the map it reports.
+
+### 26.3 · His three diagnostic questions, answered from the network
+
+1. **Which URL really leaves at map load?** The southern extract — proof 1
+   above. **Where does it come from in the SERVED bundle?** From
+   `BASEMAP_KEY` in `src/ui/components/basemap.ts`, which the build keeps
+   whenever `VITE_BASEMAP_URL` is empty — and the deploy log says why it was
+   empty. It is not a stale reference and there is no second one: the bundle
+   contains exactly one `.pmtiles` name.
+2. **Does the app prefer a stale local file over the network?** **No, and his
+   own report is the proof.** He saw the identical symptom in a plain browser
+   with no PWA and nothing downloaded — a device with nothing on it cannot be
+   preferring anything. The code agrees: `useOfflineMaps` asks the worker about
+   *the URL this build wants* and reports `stale` when the held archive's name
+   differs (הגדרות has a `השמור במכשיר` row for exactly that), and browsing
+   cannot seed the cache at all, because PMTiles reads by range and the Cache
+   API refuses a `206`. **The invalidate-on-version-mismatch behaviour he asks
+   for already exists; it is simply not what is happening.**
+3. **What does רענון download?** The same single URL — the southern extract —
+   which is why it is 42.6 MB. `bun run ground` proves the button's label and
+   the wire agree to the tenth of a megabyte.
+
+### 26.4 ⚠️ ONE NUMBER OF HIS TO CORRECT, FOR THE FOURTH TIME
+
+**The national archive is 94 268 129 bytes — 94.3 MB, not 175.** A ">100 MB"
+acceptance rule would refuse the real map of Israel for ever and wave through
+any 120 MB extract of anywhere. Both gates check **exact equality in bytes**
+against a register, which also catches the half-finished upload a threshold
+cannot. The register is in two places on purpose (`deploy.yml` and
+`scripts/ground.ts`) and they are cross-checked: `ground` reads its answer off
+the running app, so if the two ever disagree, proof 1 fails.
+
+### 26.5 ✅ WHAT WAS BUILT — A83, AND IT IS PERMANENT
+
+`scripts/ground.ts` + three steps in `deploy.yml` (`playwright install
+chromium` → `bun run ground` → the captures uploaded as a run artifact,
+`if: always()`).
+
+★ **WHY IT DRIVES A DEMO BUILD, STATED HERE SO NOBODY "FIXES" IT LATER.** The
+  deployed app's first screen is a login door and the one coordinator's
+  password is the product owner's alone (decision 70, §14.4). **No gate can
+  sign in and none should be able to** — that is what P3.1 closed. What
+  decides the basemap is not the session: it is `VITE_BASEMAP_URL` at build
+  time and the constant behind it, the same two inputs in both modes. So the
+  gate builds the tree with the input the deploy resolved and drives the map
+  behind the only door that opens without a credential. This was verified
+  independently: a blank-profile browser on the deployed URL reaches the
+  Hebrew door and requests no basemap at all.
+
+**Its failing path has been exercised, not assumed.** `GROUND_URL` pointed at
+the national key while the object is still absent runs the strict branch:
+`3 passed, 8 failed`, **exit 1**, every failure named — and the first version
+of the file died there on a raw Playwright timeout instead, which is the exact
+shape of failure this gate exists to abolish. That is fixed: a style that never
+loads is now a named FAIL and the wire is printed anyway.
+
+**The one case that warns instead of failing** is the national archive being
+genuinely absent, and it is not leniency: failing there would stop every
+deploy — including work with nothing to do with the map — on an act no session
+can perform. The moment the object lands, the strict branch takes over and
+Haifa's three lines become a condition of shipping.
+
+### 26.6 ⛔ THE ONE ACT LEFT, AND IT IS STILL HIS — ONE MINUTE
+
+**Supabase dashboard → Storage → `basemap` → Upload file →
+`israel-20260831-z14.pmtiles`** (94 268 129 bytes, in `basemap/` in this
+repository, `.gitignore`d). The name must be exact. The dashboard uploads
+resumably, so 94 MB is fine. Or he hands over a coordinator access token for
+one run: `BASEMAP_TOKEN=… bun run basemap basemap/israel-20260831-z14.pmtiles
+israel-20260831-z14.pmtiles`.
+
+**Nothing else has to happen.** The next deploy resolves the national URL by
+itself (§23.5), the browser gate then demands all four proofs, and the run's
+`basemap-proofs` artifact contains Haifa at z12–z14 with roads on it — or the
+deploy fails.
+
+### 26.7 ⛔ HIS RADICAL MEASURE — DELETE `negev` FROM THE BUCKET — IS **NOT** DONE, AND WHY
+
+He asked for it **after** the four proofs, and the four proofs are not in. Two
+further reasons, both worth writing down:
+
+· **It would take the map off the app entirely.** The southern extract is the
+  only object in the bucket. Deleting it before the national one is uploaded
+  leaves the deployed app — the one he shows his team — with no ground at all,
+  which is worse than a map cut at the north.
+· **No session can delete it anyway.** Writes to `basemap` are coordinator-only
+  and there is no non-human way into storage since P3.1 (§14.4). This session
+  does not delete a stored object of the programme's on its own judgement.
+
+**The right order is: upload → the four proofs go green → then delete the
+southern extract**, and at that point the silent-fallback path he is worried
+about is already impossible: `deploy.yml`'s rule 4 REFUSES to ship a bundle
+asking for the partial extract once the national one is usable.
+
+### 26.8 · On "three fixes announced, three failures"
+
+Two of the three were about the status bar and the form, and both were
+measured on the artefact and one of them (option B) he refused on sight — that
+is §24.5 and it is closed. **The map was never fixed in any of them**, and no
+session claimed the national map was shipping; what was claimed, and what was
+true, is that the pipeline was not at fault (§23). What was missing is that
+**none of it was visible from the product**, and that is the defect this
+section closes: the archive is named on the הגדרות screen (§24.3), the deploy
+log names the fallback (§23.5), and now a real browser on a blank profile says
+so at every deploy, with captures.
+
+---
+
 ## ⏭️ RESUME HERE — THE SECOND RETURN IS DELIVERED; §22 IS WHAT IS LEFT
 
 > ⛔ **READ §25 FIRST. IT IS THE MOST RECENT UNIT AND IT CLOSES A HYPOTHESIS.**
@@ -4809,6 +4967,19 @@ delivered and stays delivered; nothing in §25 touched it.
 > which is 94.3 MB. §25.4 carries the one precision his field instruction needs:
 > `רענון` reports, `הורדה` replaces.
 >
+> ⛔ **READ §26 FIRST. THE BASEMAP BUG IS **OPEN** BY THE PRODUCT OWNER'S OWN
+> RULE, AND THE RULE IS NOW THE PROJECT'S.** Nothing about the map may be
+> called fixed from the code or from a green HEAD: the only evidence is a real
+> browser on a blank profile with the network captured, and that is
+> **`bun run ground`** (A83), which the deploy gate runs on every build. Its
+> four proofs today say `negev-20260829-z14.pmtiles`, `206 … /42560293`,
+> `42.6 MB` on the הגדרות button, and **Haifa empty at z12–z14 with captures**.
+> **The cause is not the basemap logic. `israel-20260831-z14.pmtiles` is still
+> not in the bucket** (`HEAD` → `400`), so the deploy resolves the only object
+> that exists. **§26.6 is the one act left and it is one minute of HIS time.**
+> ⚠️ **And the number is 94.3 MB, not 175** (§26.4). ⛔ **The southern extract
+> was NOT deleted from the bucket** — §26.7 says why, and in which order.
+
 > ⛔ **THEN §24, THEN §23. §24 IS THE UNIT BEFORE THIS ONE.** Two things it
 > settles, and a fresh session would get both wrong from the tree alone:
 > **the status bar is OPTION A again** — `default`, option B tried for one

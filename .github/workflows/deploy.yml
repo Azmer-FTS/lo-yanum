@@ -241,6 +241,49 @@ jobs:
 
           echo "::warning::Basemap gate: the bundle asks for the PARTIAL extract '${live}' (${expected} bytes), which is present and usable — so this build ships and the map draws. But it is the SOUTH, not the country: ${national_key} is still not in the bucket (length ${nat_len:-absent}, range ${nat_range}). The upload is the product owner's, ETAT §14.4. The moment it lands, this warning becomes a failure and the next deploy carries the national map."
 
+      # PO RULE, 2026-09-01 — THE ONLY EVIDENCE HE ACCEPTS ON THE BASEMAP IS A
+      # REAL BROWSER ON A BLANK PROFILE. AND IT IS PERMANENT, NOT A ONE-OFF.
+      #
+      # The two steps above ask the BUCKET and read the BUILT FILES. Both are
+      # true and neither is what he sees: three "it is fixed" reports in a row
+      # were argued from exactly that kind of evidence, and all three were
+      # refused on his iPad. `bun run ground` starts a fresh Chromium profile —
+      # no storage, no service worker, no cache — points it at a build carrying
+      # the same basemap input this deploy resolved, and reports the four
+      # things and nothing else:
+      #
+      #   1  the pmtiles URL that actually leaves the browser, logged verbatim;
+      #   2  the 206 and the archive's TOTAL length, read off `content-range`;
+      #   3  the הגדרות screen naming that same archive and those same MB;
+      #   4  Haifa at z12, z13, z14 — features counted, and captured.
+      #
+      # ⚠️ WHY IT DRIVES A DEMO BUILD: the deployed app's first screen is a
+      #    login door, and the one coordinator's password is the product
+      #    owner's alone (ETAT §14.4). No gate can sign in and none should be
+      #    able to. What decides the basemap is `VITE_BASEMAP_URL` and the
+      #    constant behind it — the same two inputs in both modes.
+      #
+      # It FAILS the deploy on anything the upload does not explain, and on the
+      # regression guard. While the national archive is genuinely absent from
+      # the bucket it prints Haifa's three empty lines and lets the build
+      # through — the same policy as the gate above, and for the same reason:
+      # the upload is an act no session can perform.
+      - name: Chromium, for the browser gate
+        run: bun x playwright install --with-deps chromium
+
+      - name: Gate — the basemap in a REAL browser, blank profile
+        run: bun run ground
+
+      # The captures ARE the report. Kept on every run, pass or fail, so that
+      # "the map is cut at the north" is a file he can open rather than a claim.
+      - name: The four proofs, as captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: basemap-proofs
+          path: docs/screenshots/basemap/
+          if-no-files-found: warn
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
