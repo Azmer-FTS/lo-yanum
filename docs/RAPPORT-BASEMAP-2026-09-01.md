@@ -1,8 +1,14 @@
 # Fond de carte — rapport du 2026-09-01
 
-**Verdict : le bug est OUVERT.** Vos quatre preuves ne sont pas au rapport, et
+**Verdict : ~~le bug est OUVERT~~ → ✅ FERMÉ le 2026-09-01, voir le §9.** Vos quatre preuves ne sont pas au rapport, et
 elles ne peuvent pas y être aujourd'hui. Voici pourquoi, mesuré et non plaidé.
 
+> ✅ **LA CARTE NATIONALE EST EN PRODUCTION (§9).** `grep negev → 0`,
+> `grep israel → 1` sur le bundle servi, l'archive répond `206` sur
+> `94 268 129` octets, et Haïfa a 1 614 routes à z14. Le §1 ci-dessous décrit
+> l'état de ce matin ; il est conservé parce qu'il est la mesure qui a mené à la
+> cause.
+>
 > ⛔ **MISE À JOUR DU 2026-09-01, APRÈS VOTRE CAPTURE EN NAVIGATION PRIVÉE —
 > LISEZ LE §8 AVANT LE §6.** Le §6 vous demande un téléversement dans le
 > tableau de bord Supabase. **Ce téléversement est impossible** : le projet
@@ -247,3 +253,140 @@ permissions de cette session. **Dites « voie 1 » et je la livre en entier** :
 publication de l'archive, `basemap.ts` et `deploy.yml` recâblés, porte de
 déploiement mise à jour, puis les `curl` sur le servi montrant `israel` présent
 et `negev` absent — et enfin vos quatre preuves navigateur sur profil vierge.
+
+---
+
+# 9. ✅ VOIE 1 LIVRÉE — LES CURLS SUR LE SERVI, APRÈS DÉPLOIEMENT
+
+*La carte nationale est en production. Voici les sorties brutes que vous exigez,
+prises sur le site en ligne après la fin réelle du workflow.*
+
+## 9.1 Ce qui a changé, en une phrase
+
+L'archive ne vit plus dans le bucket qui la refuse : **elle voyage avec
+l'application**, servie par GitHub Pages depuis la même origine que l'app. Le
+workflow la récupère d'un asset de Release, la dépose dans le payload, et refuse
+de déployer si elle n'y est pas à l'octet près. Les 94 Mo n'entrent jamais dans
+git.
+
+## 9.2 Le déploiement, avec ses horodatages
+
+Commit `ce6cfcc`, run **33490777710**, `success` à **09h11m33 UTC**. Ses deux
+portes, verbatim :
+
+```
+Basemap: israel-20260831-z14.pmtiles staged into the Pages payload at
+94268129 bytes — this build carries the NATIONAL archive on its own origin.
+
+Basemap gate: the bundle asks for the NATIONAL archive israel-20260831-z14.pmtiles,
+and it is in the artefact at 94268129 bytes with the PMTiles magic. Passed.
+```
+
+## 9.3 ⭐ LES CURLS SUR LE SERVI — VOTRE CONDITION DE CLÔTURE
+
+`curl https://azmer-fts.github.io/lo-yanum/` :
+
+```
+src="./assets/index-CeseSHSi.js"
+```
+
+`curl` de ce bundle (1 624 212 octets, sha256 `fb2ec1eccaf6…`) :
+
+```
+grep -o -i negev  | wc -l  ->  0
+grep -o -i israel | wc -l  ->  1
+```
+
+**`negev` : ZÉRO. `israel` : UN.** L'inverse exact de ce que vous aviez mesuré
+il y a deux heures. Et l'occurrence, en clair :
+
+```js
+const iS="israel-20260831-z14.pmtiles",
+      h6 = typeof document>"u" ? `./basemap/${iS}`
+                               : new URL(`basemap/${iS}`, document.baseURI).toString()
+```
+
+Et l'archive elle-même, servie :
+
+```
+HEAD …/lo-yanum/basemap/israel-20260831-z14.pmtiles
+HTTP/2 200
+content-type: application/octet-stream
+access-control-allow-origin: *
+accept-ranges: bytes
+content-length: 94268129          ← 94,3 Mo, la carte de tout le pays
+
+Range: bytes=0-16383
+HTTP/2 206
+content-range: bytes 0-16383/94268129
+magic: PMTiles
+```
+
+## 9.4 Le navigateur réel, profil vierge, sur le DÉPLOYÉ
+
+Chromium neuf — aucun cache, aucun service worker, aucun IndexedDB — pointé sur
+`https://azmer-fts.github.io/lo-yanum/` :
+
+```
+bundle servi : ./assets/index-CeseSHSi.js
+écran        : לא ינום | הִנֵּה לֹא יָנוּם וְלֹא יִישָׁן שׁוֹמֵר יִשְׂרָאֵל | כניסה למערכת
+requête pmtiles depuis la page :
+  url          https://azmer-fts.github.io/lo-yanum/basemap/israel-20260831-z14.pmtiles
+  status       206
+  contentRange bytes 0-16383/94268129
+  magic        PMTiles
+```
+
+⚠️ **Une seule chose ne peut pas être à ce rapport, et c'est la même que
+d'habitude** : l'écran הגדרות du site déployé est derrière la porte de
+connexion, dont vous seul avez tapé le mot de passe. Aucune session ne peut s'y
+connecter et aucune ne doit pouvoir. Ce que je peux prouver sur le déployé —
+le bundle, la constante, l'archive, le 206, les 94 268 129 octets — est
+ci-dessus. **Ouvrez הגדרות : le fichier doit s'appeler
+`israel-20260831-z14.pmtiles` et le bouton annoncer 94,3 MB.**
+
+## 9.5 Et les quatre preuves navigateur, elles, sont vertes
+
+`bun run ground`, profil vierge, sur un build portant les mêmes entrées de fond
+de carte — **et la porte tourne désormais à chaque déploiement** :
+
+```
+PROOF 1  l'URL qui part vraiment ............ israel-20260831-z14.pmtiles
+PROOF 2  206, longueur totale sur le fil .... 94268129 (94.3 MB)
+PROOF 3  l'écran הגדרות ..................... "רענון מפות לא מקוונות (94.3 MB)"
+PROOF 4  חיפה (Haïfa) dessinée ..... z12: 986 features / 549 routes
+                                     z13: 1668 features / 1163 routes
+                                     z14: 1870 features / 1614 routes
+VERDICT  11 passed, 0 failed
+```
+
+**Haïfa a 1 614 routes sous elle à z14.** Elle en avait zéro ce matin. Captures
+dans l'artefact `basemap-proofs` du run et dans `docs/screenshots/basemap/`.
+
+Et le hors-ligne, `bun run offline`, **21/21** : l'archive répond à une requête
+Range **sans aucun réseau**, et Beer Sheva *et* Haïfa ont du sol sous elles
+hors ligne.
+
+## 9.6 Deux vrais bugs trouvés en chemin, et ils vous concernaient
+
+Ni l'un ni l'autre n'aurait été vu en lisant le code — les portes les ont
+attrapés :
+
+1. **Le service worker ne reconnaissait le fond de carte que par l'hôte
+   Supabase.** En même origine il retombait dans le cache de coquille — et
+   `cache.put()` refuse un `206`. Toutes vos requêtes de plage hors ligne
+   auraient échoué. Corrigé, et l'ancienne branche est conservée pour un
+   appareil qui détient encore l'ancienne archive.
+2. **Le garde-fou anti-troncature était désactivé sans que rien ne le dise.**
+   Le téléchargement lisait la taille attendue dans un en-tête que le nouveau
+   flux n'envoie pas, et retombait à 0 : plus de pourcentage sur le bouton, et
+   surtout une archive à moitié téléchargée aurait été déclarée « détenue ».
+   En clair : une carte qui se dit prête et qui échoue sur le terrain. Corrigé.
+
+## 9.7 L'extrait `negev` n'est toujours pas supprimé du bucket
+
+Vos quatre preuves sont vertes, donc votre condition est remplie — mais je ne
+supprime rien sans que vous le disiez maintenant que le contexte a changé :
+l'app n'en dépend plus du tout, et la porte refuse désormais tout build qui ne
+demande pas l'archive nationale. **Dites-le et je le supprime**, ou laissez-le :
+il ne coûte que 42 Mo et ne peut plus être servi par erreur.

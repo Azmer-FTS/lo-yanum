@@ -5420,3 +5420,91 @@ attaches the asset himself — the file is at `basemap/israel-20260831-z14.pmtil
 94 268 129 bytes, `PMTiles` magic verified.
 
 **French report for him: `docs/RAPPORT-BASEMAP-2026-09-01.md` §8.**
+
+---
+
+## 28. ✅ THE MAP SHIPS WITH THE APP — ROUTE 1, DELIVERED AND VERIFIED (2026-09-01)
+
+§27 proved the upload impossible. The product owner chose **route 1**: host the
+archive on GitHub Pages, the app's own origin. It is done, deployed and measured.
+
+### 28.1 The architecture, and the one trap in it
+
+The archive is stored as a **release asset** (`basemap-israel-20260831`; GitHub
+allows 2 GB there), pulled onto the runner by the deploy, and staged into
+`public/basemap/` so Vite copies it into `dist/` like any other public asset.
+**The 94 MB never enters git** — `/public/basemap/` is ignored.
+
+⚠️ **THE RELEASE ASSET CANNOT BE THE BROWSER'S URL, AND IT WAS TRIED.**
+`…/releases/download/…` serves the right 94 268 129 bytes and answers a range
+with `206` — and sends **no `access-control-allow-origin`**, so a cross-origin
+PMTiles read from the page fails. **The release is STORAGE; Pages is the HOST.**
+That sentence is in `basemap.ts` and in `deploy.yml` so it is not "simplified".
+
+### 28.2 Both gates got STRICTER, and that is the point
+
+Each had one branch that warned and shipped while the archive was missing from
+the bucket. Correct while the upload was somebody's pending act; wrong now that
+it was never possible and the map travels with the build.
+
+* `deploy.yml` is a flat **must be national**, and additionally requires the
+  archive to be IN `dist/` at its exact length with the `PMTiles` magic.
+* `bun run ground` fails instead of printing an empty Haifa. Its resolution now
+  reads the **payload** (`public/basemap/…`) rather than a remote HEAD — closer
+  to the artefact than the bucket ever was.
+
+### 28.3 ★★ TWO REAL BUGS THE MOVE EXPOSED — both caught by RUNNING the gates
+
+1. **`sw.js` matched the basemap on the SUPABASE HOST alone.** A same-origin
+   archive fell through to `isImmutableAsset` → `cacheFirst` → `cache.put()`,
+   which **refuses a 206 outright**. Every offline range request would have
+   failed. It now matches `basemap/*.pmtiles` on its own origin FIRST, and keeps
+   the Supabase branch so a device still holding the old archive answers from
+   cache.
+2. **`useOfflineMaps`'s `download` closed over `downloadBytes` without listing
+   it in its deps**, so it always read the first render's `null`. Harmless while
+   the bucket sent `content-length`; not harmless now that the streamed GET does
+   not — `expected` fell to 0, which costs the progress percentage AND disables
+   the truncation guard. **A half archive would have reported `held: true`** and
+   failed every range request in the field. The page now sends `expectedBytes`
+   and the worker prefers its own header, falling back to it.
+
+### 28.4 The evidence, on the SERVED artefact
+
+Run **33490777710** (`ce6cfcc`), `success` 09:11:33 UTC. Then, on the live site:
+
+```
+served index.html  →  src="./assets/index-CeseSHSi.js"
+served bundle (1 624 212 B, sha256 fb2ec1eccaf6…):
+    grep -o -i negev  | wc -l  ->  0
+    grep -o -i israel | wc -l  ->  1
+
+HEAD …/lo-yanum/basemap/israel-20260831-z14.pmtiles
+    HTTP/2 200 · content-length: 94268129 · accept-ranges: bytes
+    access-control-allow-origin: *
+Range: bytes=0-16383  →  206 · content-range: bytes 0-16383/94268129 · magic PMTiles
+```
+
+Blank-profile Chromium against the **deployed** URL: the door renders, and a
+fetch from the page's own origin returns `206`, `bytes 0-16383/94268129`,
+`PMTiles`.
+
+`bun run ground` 11/11 (Haifa **1 614 roads at z14**, 0 this morning).
+`bun run offline` **21/21**, including the range request and both cities with no
+network at all.
+
+### 28.5 ⏭️ WHAT IS LEFT, AND IT IS SMALL
+
+* ⛔ **Never suggest the Supabase upload again.** §14.4, §26.6 and the report's
+  §6 are struck through; §27 is why.
+* **Only the PO can see הגדרות on the deployed app** — it is behind the login
+  door and the password is his alone. Everything provable without it is proved
+  above. He should open it and read `israel-20260831-z14.pmtiles` / 94.3 MB.
+* **`negev-20260829-z14.pmtiles` is still in the bucket**, deliberately: nothing
+  depends on it any more and the gate refuses any build that asks for it, so it
+  is inert. Deleting it is a one-line act waiting on his word.
+* **When the map is re-cut**: new name (OSM build date in it), new release
+  asset, one new line in `deploy.yml`'s register and in `ground.ts`'s `ARCHIVES`
+  with the exact byte length, and update the tag in the staging step.
+
+**French report for him: `docs/RAPPORT-BASEMAP-2026-09-01.md` §9.**
