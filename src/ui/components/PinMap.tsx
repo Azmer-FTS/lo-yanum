@@ -7,7 +7,7 @@ import type { LatLng } from '@core/index'
 import { Icon } from './Icon'
 import { MapView } from './MapView'
 import { readToken } from './badges'
-import { FullscreenToggle, fullscreenShell, useMapFullscreen } from './fullscreen'
+import { fullscreenShell, useMapFullscreen } from './fullscreen'
 
 /**
  * G2 — A LOCATION IS ENTERED BY PLACING A PIN, NEVER BY TYPING DEGREES.
@@ -87,14 +87,12 @@ export function PinMap({
           `relative ${flush ? 'h-full w-full' : className}`,
         )}
       >
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end p-3">
-          <FullscreenToggle
-            active={fullscreen.active}
-            onToggle={fullscreen.toggle}
-          />
-        </div>
+        {/* ⚠️ THE FLOATING "מסך מלא" BUTTON WAS HERE AND IS GONE (PO return
+            2026-09-02). It is one row of the map's own vertical control
+            stack now — see `MapTools`. */}
         <MapView
           ariaLabel={t('a11y.map')}
+          fullscreen={{ active: fullscreen.active, onToggle: fullscreen.toggle }}
           className={`h-full w-full transition-shadow duration-base ${
             flush && !fullscreen.active ? 'rounded-none' : 'rounded-card'
           } ${

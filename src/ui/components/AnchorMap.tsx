@@ -19,7 +19,7 @@ import { ThreatLegend, threatVectorShapes, threatZoneShapes } from './threats'
 import { ZoneLegend, zoneColor, zoneLabelKey } from './zones'
 import { PointLegend } from './meet'
 import { entityMarkerKind, farmMarkerColor, postColor, readToken } from './badges'
-import { FullscreenToggle, fullscreenShell, useMapFullscreen } from './fullscreen'
+import { fullscreenShell, useMapFullscreen } from './fullscreen'
 
 /**
  * F2 / F6 — THE MAP THAT CREATES ANCHOR POINTS.
@@ -518,112 +518,31 @@ export function AnchorMap({
             ? (id) => setSelectedZoneId((cur) => (cur === id ? null : id))
             : undefined
         }
+        fullscreen={{ active: fullscreen.active, onToggle: fullscreen.toggle }}
       />
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-2 p-3">
-        <FullscreenToggle
-          active={fullscreen.active}
-          onToggle={fullscreen.toggle}
-          className="self-end"
-        />
-        {overlay && <div className="pointer-events-auto">{overlay}</div>}
+      {/* ★★ PO RETURN 2026-09-02 — THE TOP OF THE MAP HAS ONE OWNER NOW.
+          This strip used to carry THREE of them: the "מסך מלא" button
+          (`self-end`, which in an RTL document is the physical LEFT, i.e. on
+          top of MapLibre's own controls), the host's `overlay`, and a
+          full-width wrapping row of five drawing buttons. All three sat over
+          the zoom and the ground switch on his iPad.
 
-        {/* G1 — the zone-drawing toolbar. Explicit modes, one per kind. */}
-        {zonesEditable && !active && (
-          <div className="pointer-events-auto flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => startDrawing('farm_boundary')}
-              className="btn-secondary py-1.5 text-micro"
-            >
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-pill"
-                style={{ backgroundColor: zoneColor('farm_boundary', entity) }}
-              />
-              {t(entity === 'moshav' ? 'zone.drawBoundaryMoshav' : 'zone.drawBoundary')}
-            </button>
-            <button
-              type="button"
-              onClick={() => startDrawing('grazing_area')}
-              className="btn-secondary py-1.5 text-micro"
-            >
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-pill"
-                style={{ backgroundColor: zoneColor('grazing_area', entity) }}
-              />
-              {t('zone.drawGrazing')}
-            </button>
-            {/* G18 — the two threat tools, only where the caller armed them.
-                Deliberately after the ground buttons and visually apart: they
-                write a different KIND of statement. */}
-            {onThreatZoneCreate && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedZoneId(null)
-                  setMode({ kind: 'threatZone', draft: [] })
-                }}
-                className="btn-secondary py-1.5 text-micro"
-              >
-                <Icon name="alert" size={13} />
-                {t('threat.drawZone')}
-              </button>
-            )}
-            {onThreatVectorCreate && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedZoneId(null)
-                  setMode({ kind: 'threatVector', origin: null })
-                }}
-                className="btn-secondary py-1.5 text-micro"
-              >
-                <Icon name="send" size={13} />
-                {t('threat.addVector')}
-              </button>
-            )}
-            {selectedZone && (
-              <>
-                {/* G15 — the panel's half of the live read-out: which zone is
-                    being edited, and how big it currently is. */}
-                <span className="flex items-center gap-1.5 rounded-pill border border-edge-subtle bg-surface-overlay/95 px-3 py-1.5 text-micro font-semibold text-content-primary shadow-card backdrop-blur">
-                  <span
-                    className="inline-block h-2.5 w-2.5 rounded-pill"
-                    style={{ backgroundColor: zoneColor(selectedZone.kind, entity) }}
-                  />
-                  {t(zoneLabelKey(selectedZone.kind, entity))}
-                  <span className="numeric ltr-nums">
-                    {t('zone.areaDunams', {
-                      n: Math.round(
-                        ringAreaDunams(selectedZone.ring),
-                      ).toLocaleString('he-IL'),
-                    })}
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onZoneDelete?.(selectedZone.id)
-                    setSelectedZoneId(null)
-                  }}
-                  className="btn-secondary py-1.5 text-micro text-status-danger-ink"
-                >
-                  <Icon name="trash" size={13} />
-                  {t('zone.deleteZone')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedZoneId(null)}
-                  className="btn-secondary py-1.5 text-micro"
-                >
-                  <Icon name="check" size={13} />
-                  {t('zone.doneEditing')}
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+          · fullscreen  → a row of `MapTools`, the map's single control stack
+          · the drawing tools → the BOTTOM bar, below, where they only appear
+            in an editing context
+          · what is left is the host's own `overlay`
+
+          ⚠️ `pl-[4.5rem]` IS A PHYSICAL LEFT PADDING AND THAT IS DELIBERATE.
+             MapLibre puts `top-left` controls on the physical left whatever
+             the document direction, so a logical `ps-` would clear the wrong
+             side in this RTL app — which is precisely how the collision got
+             here. 4.5rem is the stack's 44 px plus its 12 px gutter. */}
+      {overlay && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-2 p-3 pl-[4.5rem]">
+          <div className="pointer-events-auto">{overlay}</div>
+        </div>
+      )}
 
       {/* One bottom overlay for the legends AND the banner: stacked in a
           column so the legend can never slide behind the banner, whose height
@@ -641,8 +560,16 @@ export function AnchorMap({
         {/* The control sits ON the map, because the map is what it is about.
             The empty case is louder on purpose: with no points yet, this
             banner IS the only route forward. */}
-        {(onCreate || drawing || threatDrawing || vectorDrawing) && (
+        {(onCreate || zonesEditable || drawing || threatDrawing || vectorDrawing) && (
           <div className="w-full self-stretch">
+          {/* ★ THE SENTENCE ROW ONLY EXISTS WHERE IT HAS SOMETHING TO SAY.
+              The bar as a whole now also opens for a map that is merely
+              ZONE-editable, so that the drawing tools have somewhere to live;
+              on such a map with nothing armed there is no point-placement
+              hint and no button, and printing "tap to add a point" under a
+              screen that cannot add one would be a lie in the calmest voice
+              available. */}
+          {(onCreate || active) && (
           <div
             className={`pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card px-3.5 py-2.5 backdrop-blur ${
               active || empty
@@ -786,6 +713,132 @@ export function AnchorMap({
               )
             )}
           </div>
+          )}
+
+          {/* ★★ PO RETURN 2026-09-02 — THE DRAWING TOOLS LIVE HERE NOW.
+              They were a wrapping row of five buttons floated across the TOP
+              of the canvas, over MapLibre's zoom and over the ground switch.
+              They belong to an editing context, so they belong in the bar that
+              only exists in one: the same bar that already carries the point
+              placement, directly under the sentence that says what the map is
+              currently for.
+
+              ★ AND THEY ONLY RENDER WHEN THE MAP IS IDLE. While a ring is
+                being drawn the bar's job is "close it or cancel it", and a row
+                of five ways to start something else underneath that is how a
+                half-drawn grazing area gets abandoned by accident. */}
+          {zonesEditable && !active && (
+            <div
+              data-testid="draw-tools"
+              className="pointer-events-auto mt-2 flex flex-wrap items-center gap-2
+                         rounded-card border border-edge-subtle bg-surface-overlay/95
+                         px-3.5 py-2.5 shadow-card backdrop-blur"
+            >
+              <span className="text-micro font-semibold text-content-muted">
+                {t('zone.toolsLabel')}
+              </span>
+              <button
+                type="button"
+                onClick={() => startDrawing('farm_boundary')}
+                data-testid="draw-boundary"
+                className="btn-secondary min-h-[36px] py-1.5 text-micro"
+              >
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-pill"
+                  style={{ backgroundColor: zoneColor('farm_boundary', entity) }}
+                />
+                {t(entity === 'moshav' ? 'zone.drawBoundaryMoshav' : 'zone.drawBoundary')}
+              </button>
+              <button
+                type="button"
+                onClick={() => startDrawing('grazing_area')}
+                data-testid="draw-grazing"
+                className="btn-secondary min-h-[36px] py-1.5 text-micro"
+              >
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-pill"
+                  style={{ backgroundColor: zoneColor('grazing_area', entity) }}
+                />
+                {t('zone.drawGrazing')}
+              </button>
+              {/* G18 — the two threat tools, only where the caller armed them.
+                  Deliberately after the ground buttons: they write a different
+                  KIND of statement. */}
+              {onThreatZoneCreate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedZoneId(null)
+                    setMode({ kind: 'threatZone', draft: [] })
+                  }}
+                  data-testid="draw-threat-zone"
+                  className="btn-secondary min-h-[36px] py-1.5 text-micro"
+                >
+                  <Icon name="alert" size={13} />
+                  {t('threat.drawZone')}
+                </button>
+              )}
+              {onThreatVectorCreate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedZoneId(null)
+                    setMode({ kind: 'threatVector', origin: null })
+                  }}
+                  data-testid="draw-threat-vector"
+                  className="btn-secondary min-h-[36px] py-1.5 text-micro"
+                >
+                  <Icon name="send" size={13} />
+                  {t('threat.addVector')}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* G15 — the selected zone's live read-out and its two actions.
+              Same bar, same rule: it is a context, so it is here. */}
+          {selectedZone && !active && (
+            <div
+              data-testid="zone-selected"
+              className="pointer-events-auto mt-2 flex flex-wrap items-center gap-2
+                         rounded-card border border-accent bg-surface-overlay/95
+                         px-3.5 py-2.5 shadow-glow backdrop-blur"
+            >
+              <span className="flex items-center gap-1.5 text-micro font-semibold text-content-primary">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-pill"
+                  style={{ backgroundColor: zoneColor(selectedZone.kind, entity) }}
+                />
+                {t(zoneLabelKey(selectedZone.kind, entity))}
+                <span className="numeric ltr-nums">
+                  {t('zone.areaDunams', {
+                    n: Math.round(ringAreaDunams(selectedZone.ring)).toLocaleString(
+                      'he-IL',
+                    ),
+                  })}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  onZoneDelete?.(selectedZone.id)
+                  setSelectedZoneId(null)
+                }}
+                className="btn-secondary min-h-[36px] py-1.5 text-micro text-status-danger-ink"
+              >
+                <Icon name="trash" size={13} />
+                {t('zone.deleteZone')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedZoneId(null)}
+                className="btn-secondary min-h-[36px] py-1.5 text-micro"
+              >
+                <Icon name="check" size={13} />
+                {t('zone.doneEditing')}
+              </button>
+            </div>
+          )}
           </div>
         )}
       </div>

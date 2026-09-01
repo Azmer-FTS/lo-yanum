@@ -31,7 +31,6 @@ import { MapSplit } from '../../components/MapSplit'
 import { MapView } from '../../components/MapView'
 import { PointLegend, meetColor } from '../../components/meet'
 import {
-  FullscreenToggle,
   fullscreenShell,
   useMapFullscreen,
 } from '../../components/fullscreen'
@@ -331,7 +330,9 @@ export function MissionDetailScreen() {
      to, and the transport's pickup/dropoff in the meet colour. */
   const mapBody = (
     <div className={fullscreenShell(mapFullscreen.active, 'relative h-full w-full')}>
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-3">
+      {/* ⚠️ `pl-[4.5rem]` clears the map's control stack, which MapLibre puts
+          on the PHYSICAL left whatever the document direction. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-3 pl-[4.5rem]">
         {additionalAnchorPoints.length > 0 ? (
           <span className="chip pointer-events-auto bg-surface-overlay/95 text-accent-ink shadow-card backdrop-blur">
             <Icon name="pin" size={11} />
@@ -342,14 +343,16 @@ export function MissionDetailScreen() {
         ) : (
           <span />
         )}
-        <FullscreenToggle
-          active={mapFullscreen.active}
-          onToggle={mapFullscreen.toggle}
-        />
+        {/* ⚠️ THE FLOATING "מסך מלא" BUTTON WAS HERE AND IS GONE (PO return
+            2026-09-02) — it is a row of `MapTools` now. */}
       </div>
               <MapView
                 ariaLabel={t('a11y.map')}
                 className="h-full w-full rounded-none"
+                fullscreen={{
+                  active: mapFullscreen.active,
+                  onToggle: mapFullscreen.toggle,
+                }}
                 cooperative
                 fit
                 markers={[

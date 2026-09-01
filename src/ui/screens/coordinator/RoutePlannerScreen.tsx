@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import {
-  HOME_BASE,
   addDays,
   atTimeOn,
   buildDayPlan,
@@ -25,6 +24,7 @@ import {
 } from '@core/index'
 import type { AgendaEvent, Farm } from '@core/index'
 
+import { originLabel, originPosition } from '../../settings/origin'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
@@ -107,7 +107,23 @@ export function RoutePlannerScreen() {
     [farms, selected],
   )
 
-  const route = useMemo(() => planRoute(chosen, HOME_BASE), [chosen])
+  /**
+   * ★ PO RETURN 2026-09-02 — THE DAY STARTS WHERE HE SAYS IT DOES. This was
+   *   `HOME_BASE`, a constant reading Jerusalem, so every distance and every
+   *   arrival time on this screen was measured from a point nobody chose. It
+   *   is now the הגדרות setting, with the same constant as its default.
+   */
+  const origin = originPosition()
+  const originName = originLabel() || t('route.originName')
+
+  const route = useMemo(
+    () => planRoute(chosen, origin),
+    // The origin is a stored preference, not React state: it changes only when
+    // הגדרות is saved, which remounts this screen anyway. Keyed on its VALUE so
+    // a returning coordinator gets the new plan rather than the cached one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [chosen, origin.lat, origin.lng],
+  )
   const line = useMemo(() => routePolyline(route), [route])
   const mapsUrl = useMemo(() => googleMapsRouteUrl(route), [route])
   const wazeSteps = useMemo(() => wazeStepLinks(route), [route])
@@ -152,11 +168,11 @@ export function RoutePlannerScreen() {
   }
 
   const markers: MapMarker[] = useMemo(() => {
-    const origin: MapMarker = {
+    const originMarker: MapMarker = {
       id: 'origin',
-      position: HOME_BASE,
+      position: origin,
       color: readToken('--accent'),
-      title: t('route.originName'),
+      title: originName,
       kind: 'origin',
       badge: '★',
     }
@@ -196,8 +212,9 @@ export function RoutePlannerScreen() {
       ),
     )
 
-    return [origin, ...rest, ...stops]
-  }, [route, farms, selected, hoveredId, t])
+    return [originMarker, ...rest, ...stops]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route, farms, selected, hoveredId, t, origin.lat, origin.lng, originName])
 
   const contactOf = (farm: Farm) =>
     farm.contacts.find((c) => c.isPrimary) ?? farm.contacts[0] ?? null

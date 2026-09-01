@@ -39,3 +39,8 @@ dist-ground/
 # (ETAT §28). Same 94 MB as `/basemap/` above, staged where Vite will copy it.
 /public/basemap/
 dist-backdrop/
+# A85 — the redraw gate's own build, and the scratch builds used to look at a
+# screen. Same reason as every line above: they carry the 94 MB archive.
+dist-redraw/
+dist-look/
+dist-redraw-probe/

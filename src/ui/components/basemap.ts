@@ -265,10 +265,89 @@ function assetUrl(path: string): string {
  */
 let registered = false
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ THE GLYPH SCHEME — WHY THE MAP HAD WHITE PATCHES AT LOW ZOOM (ETAT §31)
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * The product owner reported that a fast zoom-out leaves parts of the map
+ * blank until a small zoom in the other direction. Measured, and the cause is
+ * not the zoom and not the archive:
+ *
+ *   1. Protomaps' label expression is BILINGUAL. With `lang: 'he'` it prints
+ *      `name:he` on one line and, when the local name is in another script,
+ *      **the local name underneath** — so at z1–z7, where Cyprus, Georgia,
+ *      Russia and half the world are in frame, the map asks for Greek,
+ *      Cyrillic, Georgian, Ethiopic and variation-selector glyph ranges.
+ *   2. Only FIVE ranges are vendored (Latin, Latin-ext, Hebrew, Arabic,
+ *      punctuation). The rest are not on disk.
+ *   3. And a missing range is not a 404 the map can shrug off: this is a
+ *      single-page app, so **the host answers `200` with `index.html`**.
+ *      MapLibre hands that HTML to its protobuf reader, which throws
+ *      `Unimplemented type: 4`.
+ *   4. A glyph failure fails the TILE that needed it. MapLibre marks it
+ *      `errored`, `areTilesLoaded()` still returns true, and **an errored tile
+ *      is never requested again** — so the hole stays until the camera moves
+ *      enough to need different tiles. That is exactly "it comes back after a
+ *      small zoom in the other direction".
+ *
+ * Measured before the fix, on a build serving the real archive: a scripted
+ * z14 → z7 zoom-out left **20 of 35 probe points painting nothing** and
+ * `7/76/51`, `6/38/25`, `5/19/12`, `4/9/6` all `errored`, while the tiles
+ * themselves came off the wire byte-perfect (sha256 of the decompressed MVT
+ * identical to the local archive). The data was never the problem.
+ *
+ * ★ SO THERE ARE TWO FIXES AND BOTH ARE HERE, because either alone leaves the
+ *   trap armed:
+ *
+ *   · `simplifyLabels` below drops the second line — a Hebrew coordinator is
+ *     not served by the Georgian name of a town in Georgia — so the map stops
+ *     ASKING for scripts it does not carry.
+ *   · and this protocol makes a range that is missing ANYWAY — a re-cut
+ *     archive, a new neighbour in frame, a device offline before the assets
+ *     were held — resolve to an EMPTY STACK rather than to an HTML page. A
+ *     label then renders without those few glyphs. **A missing font can never
+ *     blank a tile again**, which is the part that has to survive the next
+ *     change to this file.
+ */
+const GLYPH_SCHEME = 'lo-glyphs'
+
+/**
+ * ⚠️ AN SPA FALLBACK IS A `200`, SO THE STATUS CODE IS NOT THE TEST. What
+ *    distinguishes a real glyph range from the app's own shell is the
+ *    content-type: a `.pbf` is served as some binary type, `index.html` is
+ *    `text/html`. Both conditions are checked because a future host might
+ *    answer 404 honestly, and that must be handled identically.
+ */
+function isGlyphPayload(response: Response): boolean {
+  if (!response.ok) return false
+  const type = (response.headers.get('content-type') ?? '').toLowerCase()
+  return !type.includes('text/html') && !type.includes('application/xhtml')
+}
+
 export function registerPmtilesProtocol(): void {
   if (registered) return
   const protocol = new Protocol()
   maplibregl.addProtocol('pmtiles', protocol.tile)
+
+  maplibregl.addProtocol(GLYPH_SCHEME, async (params, abortController) => {
+    // `lo-glyphs://https://host/…` — the scheme is a prefix on the real URL,
+    // so the service worker still sees (and can hold) the asset it always saw.
+    const target = params.url.slice(GLYPH_SCHEME.length + 3)
+    try {
+      const response = await fetch(target, { signal: abortController.signal })
+      if (isGlyphPayload(response)) return { data: await response.arrayBuffer() }
+    } catch (error) {
+      // A genuine abort is MapLibre cancelling a range it no longer wants, and
+      // it must propagate: swallowing it would report an empty stack as a
+      // successful load and cache it.
+      if (abortController.signal.aborted) throw error
+    }
+    // Not vendored, not reachable, or the SPA shell. Zero bytes is a VALID
+    // glyphs message with no stacks in it — MapLibre reads it as "this range
+    // has no glyphs" and carries on, which is the whole point.
+    return { data: new ArrayBuffer(0) }
+  })
 
   // Same "once per page" contract, same reason: MapLibre throws if the RTL
   // plugin is set twice, and this module is imported by seven screens.
@@ -447,7 +526,24 @@ export const BASEMAP_URL: string =
  */
 export function basemapAssets(): string[] {
   const stacks = ['Noto Sans Regular', 'Noto Sans Medium', 'Noto Sans Italic']
-  const ranges = ['0-255', '256-511', '1280-1535', '1536-1791', '8192-8447']
+  /**
+   * ★ SIX RANGES, AND THE SIXTH WAS FOUND BY §31's INVESTIGATION RATHER THAN
+   *   BY READING THE STYLE. `65024-65279` is U+FE00–FEFF — **Arabic
+   *   Presentation Forms-B**, which is where `mapbox-gl-rtl-text` puts every
+   *   shaped Arabic letter. So an Arabic place name on this map does not use
+   *   the Arabic block at all once it has been shaped; it uses this one. It
+   *   was missing, the SPA answered the request with `index.html`, and the
+   *   tile carrying that label was marked errored — which is why Arabic-named
+   *   localities were part of the white patches.
+   */
+  const ranges = [
+    '0-255',
+    '256-511',
+    '1280-1535',
+    '1536-1791',
+    '8192-8447',
+    '65024-65279',
+  ]
   const out = [
     assetUrl('mapbox-gl-rtl-text.js'),
     assetUrl('sprites/light.json'),
@@ -670,42 +766,34 @@ function boundaryLayers(mode: 'vector' | 'imagery'): LayerSpecification[] {
  * B. THE SATELLITE LAYER — PO REQUEST, 2026-09-01. ONLINE ONLY, BY DESIGN.
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * ⚠️⚠️ WHICH PROVIDER, AND WHY IT IS NOT THE ONE IN THE BRIEF.
+ * ⚠️⚠️ WHICH PROVIDER — AND IT CHANGED ON 2026-09-02, ON HIS WORD.
  *
- * The request named Esri's world imagery as an example AND said to verify the
- * conditions. Verified, 2026-09-01 — and the verification is the reason this
- * ships pointed somewhere else:
+ * §30 shipped this pointed at EOX's Sentinel-2 cloudless and said why: Esri's
+ * World Imagery answers anonymously with CORS and real sub-metre detail, but
+ * its service metadata carries no licence field, and Esri's published position
+ * is that it is covered by their Terms of Use, requires an ArcGIS licence and
+ * excludes commercial use. That is not a licence this project can grant itself
+ * on the product owner's behalf, so §30 registered it fully written, one word
+ * from being switched on, and said the word was his.
  *
- *   · `server.arcgisonline.com/.../World_Imagery` answers anonymously, sends
- *     `access-control-allow-origin: *`, and serves real sub-metre detail up to
- *     z17+. Technically it would work today, with one line.
- *   · Its own service metadata carries NO licence field — only
- *     `copyrightText`. Esri's published position is that the service is
- *     covered by their Terms of Use and requires an ArcGIS Online or
- *     Enterprise licence, and their community answers say plainly that it is
- *     not free and not for commercial use.
+ * ★ HE GAVE IT. The return of 2026-09-02 reports the imagery as blurred at
+ *   close zoom, names **Esri World Imagery** as the source, states that it
+ *   reaches z18–19 over Israel, and instructs: raise the maxzoom to the
+ *   provider's real maximum and verify at z16–z17. Sentinel-2 is 10 m per
+ *   pixel and its real maximum IS 14 — the blur he is looking at is not a
+ *   misconfiguration, it is the whole of what that mosaic contains — so there
+ *   is no reading of that instruction that Sentinel-2 satisfies. Esri ships.
  *
- *   That is not a licence this project can grant itself on the product
- *   owner's behalf, so it is HIS decision and not a default. It is registered
- *   below, fully written, one word from being switched on.
+ * ⚠️ AND THE TERMS QUESTION IS NOT CLOSED BY THIS FILE, it is only answered by
+ *    him. It is written here so that nobody has to reconstruct it: the imagery
+ *    now used is Esri's, under Esri's Terms of Use. Reverting is ONE WORD —
+ *    `SATELLITE_S2` on the line below — and the CC BY 4.0 provider is kept
+ *    complete and working underneath for exactly that reason.
  *
- * ★ WHAT SHIPS INSTEAD: EOX's Sentinel-2 cloudless. The 2016 mosaic is
- *   published under CC BY 4.0 — a real, named, permissive licence with one
- *   obligation, attribution, which is honoured in the source's own
- *   `attribution` string and therefore in MapLibre's attribution control. It
- *   answers anonymously and sends CORS for this exact origin (measured:
- *   `access-control-allow-origin: https://azmer-fts.github.io`).
- *
- * ⚠️ AND ITS ONE REAL LIMIT, STATED RATHER THAN HIDDEN: Sentinel-2 is 10 m per
- *    pixel. The service will answer a z17 request, but with 3.7 kB of
- *    upsampled blur against Esri's 24 kB of actual detail — measured, both, at
- *    the same tile. So the SOURCE is capped at `maxzoom: 14` and MapLibre
- *    upsamples visibly past it, which is the honest behaviour: the operator
- *    sees the imagery going soft instead of being shown invented sharpness.
- *    Orchards, wadis, bare ground, built-up edges and tracks all read at z13–14
- *    — which is the scale at which imagery answers "what is the ground like
- *    around this farm". For "what is in this yard", the answer is Esri's terms
- *    or a keyed provider, and that is a decision, not an oversight.
+ * ★ WHAT THE SWAP BUYS, MEASURED THE SAME DAY AT THE SAME TILE (Beer Sheva,
+ *   z17): Esri **23 353 bytes** of real detail against Sentinel-2's **3 863**
+ *   of upsampled blur; and Esri still answers at z18 (15 998 bytes). Both send
+ *   `access-control-allow-origin: *` and neither asks for a key.
  */
 export interface SatelliteProvider {
   id: string
@@ -716,7 +804,39 @@ export interface SatelliteProvider {
   attribution: string
 }
 
-export const SATELLITE: SatelliteProvider = {
+/**
+ * Esri World Imagery. Sub-metre over Israel, z0–z23 declared; capped here at
+ * the zoom the product owner named and the gate verifies.
+ *
+ * ⚠️ `{z}/{y}/{x}` AND NOT `{z}/{x}/{y}` — ArcGIS REST puts the ROW before the
+ *    column. Transposing it serves a tile from somewhere else in the world
+ *    that still decodes as a picture, which is the kind of wrong that does not
+ *    look wrong.
+ */
+export const SATELLITE_ESRI: SatelliteProvider = {
+  id: 'esri-world-imagery',
+  tiles: [
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  ],
+  // ★ 19, and the number is the provider's, not a guess: measured answering
+  //   with real bytes at z17 and z18 over Beer Sheva. Past this MapLibre
+  //   upsamples, which is what the operator should see when the detail genuinely
+  //   runs out.
+  maxzoom: 19,
+  attribution:
+    'Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community',
+}
+
+/**
+ * ⛔ THE CC BY 4.0 FALLBACK, KEPT COMPLETE AND KEPT WORKING. Sentinel-2
+ *    cloudless 2016, published under a real named permissive licence whose one
+ *    obligation — attribution — is honoured in the string below. 10 m per
+ *    pixel, so `maxzoom: 14` is its true ceiling and not a cap.
+ *
+ *    Putting this name on the `SATELLITE` line below reverts the imagery to a
+ *    licence this project can grant itself. That is the whole of the revert.
+ */
+export const SATELLITE_S2: SatelliteProvider = {
   id: 's2cloudless-2016',
   tiles: ['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg'],
   maxzoom: 14,
@@ -726,25 +846,8 @@ export const SATELLITE: SatelliteProvider = {
     '(Contains modified Copernicus Sentinel data 2016) — CC BY 4.0',
 }
 
-/**
- * ⛔ NOT WIRED UP, AND THAT IS DELIBERATE. Swapping `SATELLITE` for this is a
- *    one-line change and it is the product owner's to make, because what it
- *    changes is not the code but which terms this app is operating under:
- *
- *      "Source: Esri, Vantor, Earthstar Geographics, and the GIS User
- *       Community" — sub-metre over most of Israel, z0–z23, anonymous, CORS
- *       open; and covered by Esri's Terms of Use, which state an ArcGIS
- *       licence is required and exclude commercial use.
- */
-export const SATELLITE_ESRI: SatelliteProvider = {
-  id: 'esri-world-imagery',
-  tiles: [
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  ],
-  maxzoom: 19,
-  attribution:
-    'Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community',
-}
+/** ★ THE ONE LINE. `SATELLITE_ESRI` (his instruction) or `SATELLITE_S2`. */
+export const SATELLITE: SatelliteProvider = SATELLITE_ESRI
 
 /** Which ground is under the programme's own drawings. */
 export type BasemapBase = 'vector' | 'satellite'
@@ -833,6 +936,107 @@ function imageryTheme(resolved: 'light' | 'dark'): Theme {
 }
 
 /**
+ * ★★ ONE NAME PER PLACE: HEBREW, THEN ENGLISH, THEN WHATEVER THE GROUND CALLS
+ *    IT. (§31, and it is half of the white-patch fix.)
+ *
+ * Protomaps' `lang` block is deliberately bilingual — `name:he` on top and,
+ * when the local name is in a different script, the LOCAL name on a second
+ * line. That is a good default for a world map and the wrong one here: this is
+ * a Hebrew tool used in Israel, the second line is Greek over Cyprus and
+ * Georgian over Georgia, and asking for those scripts is what was blanking
+ * tiles at low zoom.
+ *
+ * ⚠️ IT REWRITES ONLY THE EXPRESSIONS THAT ARE THE LANGUAGE BLOCK, matched on
+ *    `name:he` appearing inside them. Road shields, house numbers and any
+ *    other `text-field` that is not a place name are left exactly as they are
+ *    — a blanket rewrite would have quietly relabelled things this fix has no
+ *    business touching.
+ */
+const HE_EN_NAME: ExpressionSpecification = [
+  'coalesce',
+  ['get', 'name:he'],
+  ['get', 'name:en'],
+  ['get', 'name'],
+]
+
+function simplifyLabels(layers: LayerSpecification[]): LayerSpecification[] {
+  return layers.map((layer) => {
+    if (layer.type !== 'symbol') return layer
+    const field = layer.layout?.['text-field']
+    if (field === undefined) return layer
+    if (!JSON.stringify(field).includes('name:he')) return layer
+    return {
+      ...layer,
+      layout: { ...layer.layout, 'text-field': HE_EN_NAME },
+    } as LayerSpecification
+  })
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * PO REQUEST, 2026-09-01 — THE BIG CITIES GET THEIR OWN WEIGHT
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Protomaps already sizes a place label by `population_rank`, so Jerusalem is
+ * bigger than Kiryat Gat. What it does NOT do is colour them differently:
+ * every locality from Tel Aviv down to a village of four hundred is drawn in
+ * the same ink, so at a glance the map has no anchors — which is what the
+ * product owner is describing when he asks for dedicated colours for the big
+ * cities.
+ *
+ * ★ THE TIERS ARE MEASURED, NOT GUESSED. `population_rank` read out of THIS
+ *   archive, for the localities inside Israel:
+ *
+ *     12  ירושלים · תל אביב–יפו · חיפה        (and רבת עמון across the border)
+ *     11  עזה · אירביד
+ *     10  באר שבע · נתניה · ראשון לציון · אשדוד · פתח תקווה
+ *      ≤9 everything else, 129 localities in the frame
+ *
+ *   So the cut is at 12 and at 10, and it is the DATA's cut rather than a
+ *   hand-written list of city names that would go stale the day the archive is
+ *   re-cut.
+ *
+ * ⚠️ INK, AND STILL NOT A HUE — the same rule as the borders in §30. A city
+ *    label in a colour would compete with the markers and the zones, which are
+ *    the only things on this map that are allowed to be coloured. The ladder
+ *    is `--text-primary` → `--text-secondary` → `--text-muted`, which in this
+ *    palette is a real, visible three-step difference (#171D26 → #3A4654 →
+ *    #5B6878), plus a wider halo on the top tier so a city holds its own over
+ *    a built-up area.
+ */
+function cityTiers(
+  layers: LayerSpecification[],
+  ink: { major: string; city: string; town: string; halo: string },
+): LayerSpecification[] {
+  return layers.map((layer) => {
+    if (layer.id !== 'places_locality') return layer
+    return {
+      ...layer,
+      paint: {
+        ...layer.paint,
+        'text-color': [
+          'case',
+          ['>=', ['get', 'population_rank'], 12],
+          ink.major,
+          ['>=', ['get', 'population_rank'], 10],
+          ink.city,
+          ink.town,
+        ],
+        'text-halo-color': ink.halo,
+        'text-halo-width': [
+          'case',
+          ['>=', ['get', 'population_rank'], 12],
+          2,
+          ['>=', ['get', 'population_rank'], 10],
+          1.6,
+          1,
+        ],
+      },
+    } as LayerSpecification
+  })
+}
+
+/**
  * The style, for one theme and one ground.
  *
  * ★ THE PMTILES SOURCE IS DECLARED IN BOTH CASES, and that is not waste: the
@@ -848,7 +1052,10 @@ export function buildBasemapStyle(
     version: 8 as const,
     // Protomaps' layer specs reference sprites and glyphs by these names; both
     // are served by Protomaps' own CDN and are a few kB, unlike the tiles.
-    glyphs: assetUrl('fonts/{fontstack}/{range}.pbf'),
+    // ★ THROUGH `lo-glyphs://` (§31). The URL underneath is the same asset URL
+    //   it always was — the scheme only buys the empty-stack fallback that
+    //   stops a missing range from erroring the tile that wanted it.
+    glyphs: `${GLYPH_SCHEME}://${assetUrl('fonts/{fontstack}/{range}.pbf')}`,
     // The sprite sheet follows the palette: Protomaps ships a light and a dark
     // set, and its shields and pictograms are drawn for the ground under them.
     sprite: assetUrl(`sprites/${resolved}`),
@@ -862,11 +1069,21 @@ export function buildBasemapStyle(
   }
 
   if (base === 'satellite') {
-    const over = layersWithCustomTheme(
-      'protomaps',
-      imageryTheme(resolved),
-      'he',
-    ).filter((l) => OVER_IMAGERY.has(l.id))
+    const over = cityTiers(
+      simplifyLabels(
+        layersWithCustomTheme('protomaps', imageryTheme(resolved), 'he').filter(
+          (l) => OVER_IMAGERY.has(l.id),
+        ),
+      ),
+      // Over a photograph the ladder is opacity rather than value: the halo is
+      // already near-black, so a darker ink would disappear instead of ranking.
+      {
+        major: 'rgb(255 255 255)',
+        city: 'rgb(255 255 255 / 0.92)',
+        town: 'rgb(255 255 255 / 0.78)',
+        halo: 'rgb(0 0 0 / 0.85)',
+      },
+    )
 
     /**
      * The borders go BETWEEN the roads and the labels, exactly as they do on
@@ -896,7 +1113,17 @@ export function buildBasemapStyle(
     }
   }
 
-  const layers = layersWithCustomTheme('protomaps', themeFromTokens(resolved), 'he')
+  const layers = cityTiers(
+    simplifyLabels(
+      layersWithCustomTheme('protomaps', themeFromTokens(resolved), 'he'),
+    ),
+    {
+      major: token('--text-primary'),
+      city: token('--text-secondary'),
+      town: token('--text-muted'),
+      halo: token('--surface-base'),
+    },
+  )
 
   /**
    * ★ PROTOMAPS' OWN TWO BOUNDARY LAYERS ARE REPLACED IN PLACE, not hidden and

@@ -1,6 +1,8 @@
 import { chromium } from 'playwright'
 import type { Browser, Page, Request } from 'playwright'
 
+import { SATELLITE } from '../src/ui/components/basemap'
+
 /**
  * A84 — THE GROUND UNDER THE PROGRAMME: BORDERS, AND THE SATELLITE SWITCH.
  *
@@ -38,6 +40,15 @@ const SHOTS = 'docs/screenshots/basemap'
  *   kind_detail 2 from z8 to z14 — that is measured, and it is what makes the
  *   dashed-line check below a check rather than a hope.
  */
+/**
+ * ★ THE PROVIDER'S HOST IS DERIVED FROM THE SHIPPED CONSTANT, NOT TYPED HERE.
+ *   §32 swapped the imagery from EOX to Esri on the product owner's word, and
+ *   the first version of this gate carried `tiles.maps.eox.at` as a literal —
+ *   which would have gone on passing while watching for requests the app no
+ *   longer makes. One source of truth: `basemap.ts`.
+ */
+const IMAGERY_HOST = new URL(SATELLITE.tiles[0].replace(/\{[a-z]\}/g, '0')).host
+
 const BORDER_VIEW = { name: 'ירושלים / קו שביתת הנשק', lat: 31.83, lng: 35.12, zoom: 11 }
 /**
  * ★ AND A SECOND ONE, BECAUSE THE FIRST VERSION OF THIS GATE FAILED ON
@@ -176,10 +187,10 @@ try {
   const imagery: string[] = []
   const imageryStatus = new Map<number, number>()
   page.on('request', (r: Request) => {
-    if (r.url().includes('tiles.maps.eox.at')) imagery.push(r.url())
+    if (r.url().includes(IMAGERY_HOST)) imagery.push(r.url())
   })
   page.on('response', (r) => {
-    if (r.url().includes('tiles.maps.eox.at'))
+    if (r.url().includes(IMAGERY_HOST))
       imageryStatus.set(r.status(), (imageryStatus.get(r.status()) ?? 0) + 1)
   })
 
@@ -304,15 +315,23 @@ try {
   section('B — THE SATELLITE SWITCH')
   // -------------------------------------------------------------------------
 
-  const switcher = page.locator('[data-testid="map-base-switcher"]')
-  check('the מפה / לוויין control is on the map', (await switcher.count()) === 1)
+  /**
+   * ⚠️ THE TWO-BUTTON `BaseSwitcher` IS GONE (PO return 2026-09-02) and the
+   *    ground switch is now ONE row of the map's single vertical control stack
+   *    — `map-tool-base`, whose `aria-pressed` is the satellite state and
+   *    whose `data-base` names the live ground. Same claims, one control.
+   */
+  const stack = page.locator('[data-testid="map-tools"]')
+  const baseBtn = page.locator('[data-testid="map-tool-base"]')
+  check('the map carries ONE control stack', (await stack.count()) === 1)
+  check('the מפה / לוויין switch is a row of it', (await baseBtn.count()) === 1)
   check(
     'and it starts on the vector ground',
-    (await page.locator('[data-testid="map-base-vector"]').getAttribute('aria-pressed')) === 'true',
+    (await baseBtn.getAttribute('data-base')) === 'vector',
   )
 
   await settle(page, FARM_VIEW)
-  await page.locator('[data-testid="map-base-satellite"]').click()
+  await baseBtn.click()
   await styleLoaded(page)
   await settle(page, FARM_VIEW)
   await page.waitForTimeout(2500)
@@ -332,7 +351,7 @@ try {
   check(
     '★ the browser really ASKED the licensed provider for imagery',
     imagery.length > 0,
-    `${imagery.length} tile requests to tiles.maps.eox.at`,
+    `${imagery.length} tile requests to ${IMAGERY_HOST}`,
   )
   if ((imageryStatus.get(200) ?? 0) > 0) {
     check(
@@ -342,7 +361,7 @@ try {
     )
   } else {
     warn(
-      'imagery was requested and NOTHING came back — EOX, not this app',
+      `imagery was requested and NOTHING came back — ${IMAGERY_HOST}, not this app`,
       `${imagery.length} requested, statuses ${statuses}. The switch, the style and the fallback are all still checked below.`,
     )
   }
@@ -368,18 +387,61 @@ try {
   )
   await page.screenshot({ path: `${SHOTS}/satellite.png` })
 
+  /**
+   * ★★ PO RETURN 2026-09-02 — "SATELLITE FLOU EN ZOOM FORT". His diagnosis was
+   *    that the raster source's declared `maxzoom` was capped too low, and it
+   *    was: the shipped provider was Sentinel-2 at 10 m/px, whose real ceiling
+   *    IS z14, so past it MapLibre was magnifying a z14 tile and the imagery
+   *    went soft while the vector roads stayed sharp — exactly what he saw.
+   *
+   *    The provider is now Esri (§32, his word), maxzoom 19. So the check is
+   *    not "is 19 in the style" — that is a configuration — but **whether the
+   *    browser actually holds LOADED imagery tiles at z16 and z17**. Under the
+   *    old cap it could not: the highest canonical zoom in the raster cache
+   *    would be 14 whatever the camera did.
+   */
+  for (const z of [16, 17]) {
+    await settle(page, { ...FARM_VIEW, zoom: z })
+    await page.waitForTimeout(2500)
+    const deep = await page.evaluate(() => {
+      const m = (window as unknown as { __loYanumMap?: MapHandle }).__loYanumMap
+      const style = (m as unknown as { style?: Record<string, unknown> })?.style
+      const caches =
+        (style?.sourceCaches as Record<string, { _tiles: Record<string, unknown> }>) ??
+        (style?._otherSourceCaches as Record<string, { _tiles: Record<string, unknown> }>)
+      const cache = caches?.satellite
+      if (!cache) return { max: -1, loaded: 0 }
+      const tiles = Object.values(cache._tiles) as {
+        state: string
+        tileID: { canonical: { z: number } }
+      }[]
+      const loaded = tiles.filter((t) => t.state === 'loaded')
+      return {
+        max: loaded.reduce((a, t) => Math.max(a, t.tileID.canonical.z), -1),
+        loaded: loaded.length,
+      }
+    })
+    check(
+      `★★ at z${z} the imagery on screen is REAL z${z} data, not a magnified z14 tile`,
+      deep.max >= z,
+      `${deep.loaded} loaded imagery tiles, deepest canonical zoom ${deep.max}`,
+    )
+    await page.screenshot({ path: `${SHOTS}/satellite-z${z}.png` })
+  }
+  await settle(page, FARM_VIEW)
+  console.log(`  captures: ${SHOTS}/satellite-z16.png, ${SHOTS}/satellite-z17.png`)
+
   // ---- the offline rule, which is the half that matters in the field ------
   await context.setOffline(true)
   await page.waitForTimeout(1200)
-  const offBtn = page.locator('[data-testid="map-base-satellite"]')
   check(
-    '★★ offline, the לוויין button is DISABLED',
-    await offBtn.isDisabled(),
+    '★★ offline, the ground switch is DISABLED',
+    await baseBtn.isDisabled(),
   )
   check(
     'and it says why, in Hebrew, on the control itself',
-    (await offBtn.getAttribute('title')) === 'לוויין זמין רק בחיבור',
-    (await offBtn.getAttribute('title')) ?? '<none>',
+    (await baseBtn.getAttribute('title')) === 'לוויין זמין רק בחיבור',
+    (await baseBtn.getAttribute('title')) ?? '<none>',
   )
   await styleLoaded(page)
   await page.waitForTimeout(800)
@@ -394,7 +456,7 @@ try {
   )
   check(
     'the control shows the vector ground as the live one again',
-    (await page.locator('[data-testid="map-base-vector"]').getAttribute('aria-pressed')) === 'true',
+    (await baseBtn.getAttribute('data-base')) === 'vector',
   )
   await page.screenshot({ path: `${SHOTS}/satellite-offline-fallback.png` })
   await context.setOffline(false)

@@ -108,8 +108,14 @@ export function MapPanel({
             fit={fit}
           />
 
+          {/* ⚠️ `pl-[4.5rem]` — PHYSICAL LEFT, AND IT HAS TO BE (PO return
+              2026-09-02). MapLibre puts its `top-left` control group on the
+              physical left whatever the document direction, so in this RTL app
+              a logical `ps-` clears the wrong side and the screen's own
+              overlay lands on the zoom buttons. 4.5rem is the 44 px stack plus
+              its gutter. */}
           {overlay && (
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 p-3">
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 p-3 pl-[4.5rem]">
               <div className="pointer-events-auto">{overlay}</div>
             </div>
           )}

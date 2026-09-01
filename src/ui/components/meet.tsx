@@ -8,7 +8,7 @@ import { Icon } from './Icon'
 import { MapView } from './MapView'
 import type { MapMarker } from './MapView'
 import { MarkerSwatch, entityMarkerKind, farmMarkerColor, postColor, readToken } from './badges'
-import { FullscreenToggle, fullscreenShell, useMapFullscreen } from './fullscreen'
+import { fullscreenShell, useMapFullscreen } from './fullscreen'
 
 /**
  * G8 — MEETING POINTS ARE WHERE THE CAR GOES; THE GUARD POST IS WHERE THE
@@ -238,13 +238,10 @@ export function MeetPointsEditor({
           zoom={11}
           markers={markers}
           onMapClick={armed ? place : undefined}
+          fullscreen={{ active: fullscreen.active, onToggle: fullscreen.toggle }}
         />
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-end p-3">
-          <FullscreenToggle
-            active={fullscreen.active}
-            onToggle={fullscreen.toggle}
-          />
-        </div>
+        {/* ⚠️ THE FLOATING "מסך מלא" BUTTON WAS HERE AND IS GONE (PO return
+            2026-09-02) — it is a row of `MapTools` now. */}
         {armed && (
           <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10">
             {/* The armed-mode ring comes from shadow-glow's 1px accent spread. */}

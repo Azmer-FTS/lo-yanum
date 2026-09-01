@@ -1,13 +1,22 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { formatCoords } from '@core/index'
+
 import { SUPABASE_CONFIGURED } from '../../../data/config'
 import { signOut } from '../../../data/auth'
 import { Icon } from '../../components/Icon'
 import { Callout, KeyValue, PageHeader, Section } from '../../components/primitives'
-import { DisplayDiagnostics } from '../../components/DisplayDiagnostics'
 import { readReportRecipient, writeReportRecipient } from '../../report/recipient'
+import {
+  originLabel,
+  originPosition,
+  originSuggestions,
+  resolveOrigin,
+  writeOrigin,
+} from '../../settings/origin'
 import { useAuth } from '../../hooks/useAuth'
+import { useDataState } from '../../hooks/useDataState'
 import { megabytes, useOfflineMaps, useOnline } from '../../offline'
 import { BASEMAP_URL, basemapAssets } from '../../components/basemap'
 
@@ -33,10 +42,14 @@ import { BASEMAP_URL, basemapAssets } from '../../components/basemap'
  */
 const BASEMAP_ASSETS = basemapAssets()
 
+/** Same reasoning: the gazetteer never changes inside a session. */
+const ORIGIN_SUGGESTIONS = originSuggestions()
+
 export function SettingsScreen() {
   const { t } = useTranslation()
   const online = useOnline()
   const auth = useAuth()
+  const data = useDataState()
   const {
     held,
     bytes,
@@ -59,11 +72,67 @@ export function SettingsScreen() {
   // PO POINT 7b — where "שלח במייל" points, and P3.3bis's destination too.
   const [recipient, setRecipient] = useState(() => readReportRecipient())
   const [recipientSaved, setRecipientSaved] = useState(false)
+  // PO RETURN 2026-09-02 — נקודת מוצא.
+  const [origin, setOrigin] = useState(() => originLabel())
+  const [originState, setOriginState] = useState<'idle' | 'saved' | 'bad'>('idle')
+  const [locating, setLocating] = useState(false)
 
   const onClear = async () => {
     setClearing(true)
     await clear()
     setClearing(false)
+  }
+
+  /**
+   * ★ AN EMPTY FIELD IS A REAL ANSWER — it means "go back to the default" —
+   *   so it clears rather than failing validation. Anything else that cannot
+   *   be resolved is refused OUT LOUD instead of being stored as text nobody
+   *   can plan a route from.
+   */
+  const saveOrigin = () => {
+    if (origin.trim() === '') {
+      writeOrigin(null)
+      setOriginState('saved')
+      return
+    }
+    const resolved = resolveOrigin(origin)
+    if (resolved === null) {
+      setOriginState('bad')
+      return
+    }
+    writeOrigin(resolved)
+    setOrigin(resolved.label)
+    setOriginState('saved')
+  }
+
+  const useMyPosition = () => {
+    if (!('geolocation' in navigator)) {
+      setOriginState('bad')
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const label = formatCoords({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        })
+        writeOrigin({
+          label,
+          position: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+        })
+        setOrigin(label)
+        setOriginState('saved')
+        setLocating(false)
+      },
+      () => {
+        // Denied, or no fix. The field still works by hand, which is why this
+        // is a convenience button and not the only way in.
+        setLocating(false)
+        setOriginState('bad')
+      },
+      { enableHighAccuracy: true, timeout: 10_000 },
+    )
   }
 
   const busy = progress !== null
@@ -120,6 +189,21 @@ export function SettingsScreen() {
                 value={wantedArchive}
                 ltr
               />
+              {/* ★★ PO RETURN 2026-09-02 — HE ASKED WHY THE NAME ENDS `.png`,
+                  AND A NAME THAT NEEDS EXPLAINING HAS TO EXPLAIN ITSELF ON THE
+                  SCREEN THAT PRINTS IT. It is deliberate and load-bearing
+                  (ETAT §29): GitHub Pages gzips by content-type, an unknown
+                  extension is `application/octet-stream`, that type IS
+                  compressed, and a `Range` is then applied to the COMPRESSED
+                  stream — which aims every PMTiles read at the wrong bytes and
+                  empties the deep zooms. `image/png` is not compressed. The
+                  file is the same PMTiles archive it always was; only the
+                  served extension changed. */}
+              {/\.png$/.test(wantedArchive) && (
+                <p className="muted mt-1" data-testid="archive-suffix-note">
+                  {t('settings.offline.suffixNote')}
+                </p>
+              )}
               {heldArchive && heldArchive !== wantedArchive && (
                 <KeyValue
                   label={t('settings.offline.archiveHeld')}
@@ -293,44 +377,176 @@ export function SettingsScreen() {
         )}
       </Section>
 
-      {/* PO POINT 7b — the address the report is sent to. One field, saved on
-          blur rather than behind a button: a settings screen with a single
-          input and a Save next to it is a screen people leave without
-          pressing it. */}
+      {/* ★★ PO RETURN 2026-09-02 — "נקודת מוצא", AND IT IS NOT COSMETIC.
+          Every distance, every arrival time and the ★ on the planner's map are
+          measured from `HOME_BASE`, a CONSTANT reading Jerusalem. A
+          coordinator who leaves from Beer Sheva was being shown a day that
+          starts 100 km from his car. See `ui/settings/origin.ts` for what the
+          field accepts and why the gazetteer is tried before the numbers. */}
+      <Section title={t('settings.origin.title')} className="mt-6">
+        <label className="label" htmlFor="settings-origin">
+          {t('settings.origin.label')}
+        </label>
+        <div className="flex flex-wrap items-start gap-2">
+          <input
+            id="settings-origin"
+            type="text"
+            className="input min-w-[12rem] flex-1"
+            list="settings-origin-options"
+            data-testid="origin-input"
+            placeholder={t('settings.origin.placeholder')}
+            value={origin}
+            onChange={(e) => {
+              setOrigin(e.target.value)
+              setOriginState('idle')
+            }}
+          />
+          <datalist id="settings-origin-options">
+            {ORIGIN_SUGGESTIONS.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+          <button
+            type="button"
+            className="btn-primary"
+            data-testid="origin-save"
+            onClick={saveOrigin}
+          >
+            <Icon name="check" size={16} />
+            {t('common.save')}
+          </button>
+          {/* ★ THE SAME GESTURE AS "מיקומי" ON THE MAP, in the one other place
+              a coordinator needs his own position: setting his depot while
+              standing in it. */}
+          <button
+            type="button"
+            className="btn-secondary"
+            data-testid="origin-here"
+            disabled={locating}
+            onClick={useMyPosition}
+          >
+            <Icon name="pin" size={16} />
+            {t(locating ? 'settings.origin.locating' : 'settings.origin.here')}
+          </button>
+        </div>
+        <p
+          className={`mt-1.5 text-caption ${
+            originState === 'bad'
+              ? 'text-status-danger-ink'
+              : originState === 'saved'
+                ? 'text-status-success-ink'
+                : 'text-content-muted'
+          }`}
+          data-testid="origin-hint"
+          role={originState === 'bad' ? 'alert' : undefined}
+        >
+          {originState === 'bad'
+            ? t('settings.origin.unresolved')
+            : originState === 'saved'
+              ? t('settings.origin.saved', { coords: formatCoords(originPosition()) })
+              : t('settings.origin.hint', { coords: formatCoords(originPosition()) })}
+        </p>
+      </Section>
+
+      {/* ★ PO RETURN 2026-09-02 — A REAL "שמור", AND THE OLD REASONING IS
+          RETIRED RATHER THAN DEFENDED. The comment here used to argue that a
+          single field with a Save next to it is a screen people leave without
+          pressing it, so it saved on blur. On his iPad it read as a field with
+          NO WAY TO CONFIRM, which is worse: nothing on screen ever said the
+          address had been taken. The button is now explicit AND the blur still
+          saves, so neither habit loses the value. */}
       <Section title={t('report.recipientLabel')} className="mt-6">
         <label className="label" htmlFor="report-recipient">
           {t('report.recipientLabel')}
         </label>
-        <input
-          id="report-recipient"
-          type="email"
-          dir="ltr"
-          inputMode="email"
-          autoComplete="email"
-          className="input"
-          data-testid="report-recipient"
-          value={recipient}
-          onChange={(e) => {
-            setRecipient(e.target.value)
-            setRecipientSaved(false)
-          }}
-          onBlur={() => {
-            writeReportRecipient(recipient)
-            setRecipientSaved(true)
-          }}
-        />
-        <p className="muted mt-1.5">
+        <div className="flex flex-wrap items-start gap-2">
+          <input
+            id="report-recipient"
+            type="email"
+            dir="ltr"
+            inputMode="email"
+            autoComplete="email"
+            className="input min-w-[12rem] flex-1"
+            data-testid="report-recipient"
+            value={recipient}
+            onChange={(e) => {
+              setRecipient(e.target.value)
+              setRecipientSaved(false)
+            }}
+            onBlur={() => {
+              writeReportRecipient(recipient)
+              setRecipientSaved(true)
+            }}
+          />
+          <button
+            type="button"
+            className="btn-primary"
+            data-testid="report-recipient-save"
+            onClick={() => {
+              writeReportRecipient(recipient)
+              setRecipientSaved(true)
+            }}
+          >
+            <Icon name="check" size={16} />
+            {t('common.save')}
+          </button>
+        </div>
+        <p
+          className={`mt-1.5 text-caption ${
+            recipientSaved ? 'text-status-success-ink' : 'text-content-muted'
+          }`}
+          data-testid="report-recipient-hint"
+        >
           {recipientSaved ? t('report.recipientSaved') : t('report.recipientHint')}
         </p>
       </Section>
 
-      {/* Not a green tick. Until the outbox exists, a change made with no
-          network is lost on reload, and the coordinator is the person who most
-          needs to know that BEFORE he types it. */}
-      <Section title={t('settings.sync.title')} className="mt-6" bare>
-        <Callout tone="warn" icon="clock" title={t('settings.sync.title')}>
-          {t('settings.sync.notYet')}
-        </Callout>
+      {/* ★★ PO RETURN 2026-09-02 — THE BANDEAU IS GONE, AND IT WAS A LIE BY
+          THE TIME HE READ IT. This block used to carry
+          `settings.sync.notYet` — "changes are kept in memory only and are
+          erased on refresh" — which was TRUE before P2.5b and false the day
+          the outbox shipped. A stale warning is worse than no warning: it
+          tells a coordinator not to trust work that is in fact safe. What
+          replaces it is the state itself, and it says nothing reassuring it
+          cannot prove: how many aggregates are waiting, whether the snapshot
+          on screen has been confirmed against the server since, and — in demo
+          mode, where `useDataState` returns null — that this build has no
+          database behind it at all. */}
+      <Section title={t('settings.sync.title')} className="mt-6">
+        {data === null ? (
+          <p className="text-caption text-content-primary">
+            {t('settings.sync.demo')}
+          </p>
+        ) : (
+          <>
+            <p className="flex items-center gap-2.5 text-caption font-medium text-content-primary">
+              <span
+                aria-hidden="true"
+                className={`h-2.5 w-2.5 shrink-0 rounded-pill ${
+                  data.pending > 0
+                    ? 'bg-status-info'
+                    : data.stale
+                      ? 'bg-status-warn'
+                      : 'bg-status-success'
+                }`}
+              />
+              <span data-testid="sync-state">
+                {data.pending > 0
+                  ? t('settings.sync.pending', { count: data.pending })
+                  : data.stale
+                    ? t('settings.sync.stale')
+                    : t('settings.sync.clean')}
+              </span>
+            </p>
+            <p className="muted mt-1">
+              {data.pending > 0
+                ? t('settings.sync.pendingHint')
+                : data.stale
+                  ? t('settings.sync.staleHint')
+                  : t('settings.sync.cleanHint')}
+            </p>
+          </>
+        )}
       </Section>
 
       <Section title={t('settings.account.title')} className="mt-6">
@@ -354,10 +570,15 @@ export function SettingsScreen() {
         )}
       </Section>
 
-      {/* PO POINT 1 — REMOVABLE IN ONE MOVE: delete this line and the import.
-          It is here so the product owner can read his own iPad's insets
-          instead of anybody guessing at them from a simulation. */}
-      <DisplayDiagnostics />
+      {/* ⚠️ `<DisplayDiagnostics />` WAS HERE AND IS GONE (PO return
+          2026-09-02). It was PO point 1's instrument: a temporary panel
+          printing this iPad's four safe-area insets so the status-bar
+          arbitration could be settled from his own device rather than from a
+          simulation. That arbitration WAS settled — option A, ETAT §24.5 — on
+          2026-09-01, which retired the instrument the same day and nobody
+          removed it. It was written to come out in one move and it did: this
+          line and one import. The component file stays in the tree, unused and
+          unimported, because the next display question will want it. */}
     </div>
   )
 }

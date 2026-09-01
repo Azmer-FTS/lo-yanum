@@ -7,7 +7,8 @@ import { HOME_BASE, bearingDeg, boundsOf } from '@core/index'
 import type { LatLng } from '@core/index'
 
 import { readToken } from './badges'
-import { BaseSwitcher, readStoredBase } from './BaseSwitcher'
+import { readStoredBase, writeStoredBase } from './mapBase'
+import { MapTools } from './MapTools'
 import { buildBasemapStyle, registerPmtilesProtocol, resolvedThemeOf } from './basemap'
 import type { BasemapBase } from './basemap'
 
@@ -158,6 +159,18 @@ export interface MapViewProps {
    * where the map IS the page, must keep the single-finger pan.
    */
   cooperative?: boolean
+  /**
+   * PO RETURN 2026-09-02 — the fullscreen toggle moved INTO the map's control
+   * stack, so the host hands its state down instead of floating a button of
+   * its own over the canvas. Omitted where the host has no fullscreen mode.
+   */
+  fullscreen?: { active: boolean; onToggle: () => void }
+  /**
+   * מיקומי. On by default wherever the map is driven: "where am I" is the one
+   * question every screen with a real map can be asked. Thumbnails never get
+   * it, because `interactive: false` skips the whole stack.
+   */
+  locate?: boolean
 }
 
 const SIZE: Record<MarkerKind, number> = {
@@ -518,6 +531,8 @@ export default function MapCanvas({
   onMapClick,
   onMapDblClick,
   cooperative = false,
+  fullscreen,
+  locate = true,
 }: MapViewProps) {
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -537,6 +552,17 @@ export default function MapCanvas({
   polygonClickRef.current = onPolygonClick
   const dblClickRef = useRef(onMapDblClick)
   dblClickRef.current = onMapDblClick
+  /**
+   * The control is created once, at mount, and the fullscreen flag changes on
+   * every toggle — so the control reads the CURRENT value through a ref and is
+   * repainted by the effect below. Closing over the prop would pin the button
+   * to whatever "fullscreen" was when the map was created.
+   */
+  const fullscreenRef = useRef(fullscreen)
+  fullscreenRef.current = fullscreen
+  const locateRef = useRef(locate)
+  locateRef.current = locate
+  const toolsRef = useRef<MapTools | null>(null)
 
   // Double-click has one meaning at a time: close the ring, or zoom. The
   // handler's presence decides which.
@@ -584,9 +610,12 @@ export default function MapCanvas({
       },
     })
 
-    if (interactive) {
-      map.addControl(new maplibregl.NavigationControl({ showCompass: false }))
-    }
+    // ⚠️ MapLibre's own `NavigationControl` IS GONE (PO return 2026-09-02).
+    //    Its zoom buttons are now two rows of the single vertical stack in
+    //    `MapTools`, together with the ground switch, fullscreen and מיקומי —
+    //    which is the whole point: one owner of the map's corner, so nothing
+    //    can be laid on top of anything. See `MapTools` for the four-owner
+    //    collision this replaces.
 
     /**
      * PMTILES — THE PROGRAMME'S OWN SOURCES AND LAYERS, AS A FUNCTION THAT CAN
@@ -844,29 +873,48 @@ export default function MapCanvas({
     }
 
     /**
-     * PO REQUEST B — the ground switch, and only where a map is actually
-     * driven. `interactive: false` is the thumbnail case: a control on a
-     * 120 px preview is a control nobody can hit and a legend nobody asked
-     * for. The switcher's own rules — disabled offline, automatic fallback —
-     * live inside it; see `BaseSwitcher`.
+     * PO RETURN 2026-09-02 — THE WHOLE OF THE MAP'S PERMANENT CHROME, IN ONE
+     * CONTROL, and only where a map is actually driven. `interactive: false`
+     * is the thumbnail case: a control on a 120 px preview is a control nobody
+     * can hit. The offline rules — the ground switch disabled with a reason,
+     * the automatic fallback to the national archive — live inside it, as they
+     * did in `BaseSwitcher`.
      */
     if (interactive) {
-      const switcher = new BaseSwitcher(
-        {
-          group: t('map.base.label'),
+      const tools = new MapTools({
+        labels: {
+          group: t('map.tools.group'),
           vector: t('map.base.vector'),
           satellite: t('map.base.satellite'),
-          offlineHint: t('map.base.offlineHint'),
-          onlineHint: t('map.base.onlineHint'),
+          satelliteOffline: t('map.base.offlineHint'),
+          fullscreenEnter: t('map.fullscreen'),
+          fullscreenExit: t('map.exitFullscreen'),
+          locate: t('map.locate.label'),
+          locating: t('map.locate.busy'),
+          locateDenied: t('map.locate.denied'),
+          locateFailed: t('map.locate.failed'),
+          zoomIn: t('map.zoomIn'),
+          zoomOut: t('map.zoomOut'),
         },
-        ground,
-        (next) => {
+        base: ground,
+        onBase: (next) => {
           if (next === ground) return
           ground = next
+          writeStoredBase(next)
           applyStyle()
         },
-      )
-      map.addControl(switcher, 'top-left')
+        fullscreen: fullscreenRef.current
+          ? {
+              active: fullscreenRef.current.active,
+              // Through the ref, so the control created once always calls the
+              // CURRENT handler — the same rule as `clickRef` above.
+              onToggle: () => fullscreenRef.current?.onToggle(),
+            }
+          : undefined,
+        locate: locateRef.current,
+      })
+      toolsRef.current = tools
+      map.addControl(tools, 'top-left')
     }
 
     const themeObserver = new MutationObserver(repaint)
@@ -967,6 +1015,21 @@ export default function MapCanvas({
     // `onMapClick` is in the deps because arming the map changes whether a
     // marker intercepts a tap — see `markerElement`.
   }, [markers, onMapClick])
+
+  /**
+   * PO RETURN 2026-09-02 — repaint the stack when the host's fullscreen state
+   * changes. Cheap: it rewrites one icon and one label.
+   */
+  useEffect(() => {
+    toolsRef.current?.update({
+      fullscreen: fullscreen
+        ? {
+            active: fullscreen.active,
+            onToggle: () => fullscreenRef.current?.onToggle(),
+          }
+        : undefined,
+    })
+  }, [fullscreen?.active, fullscreen])
 
   // Sync the route polyline.
   //
