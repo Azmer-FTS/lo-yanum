@@ -244,8 +244,17 @@ function AlertCard({ alert }: { alert: DashboardAlert }) {
  * tile on the product owner's iPad. A longer figure steps down one size, and
  * every figure truncates with the full value on hover rather than escaping.
  */
-function figureClass(text: string): string {
-  return `numeric ${text.length > 5 ? 'text-title' : text.length > 4 ? 'text-section' : 'text-display'}`
+function figureClass(text: string, room: 'tile' | 'kpi' = 'tile'): string {
+  // A number is NEVER truncated — "254" cut to "4…" is worse than any
+  // overflow. It steps down instead: the wide dunam tiles (11 rem) hold four
+  // display digits and a separator; the four KPI cards (8.5 rem, an icon
+  // beside the figure) hold two.
+  const n = text.length
+  const step =
+    room === 'kpi'
+      ? n > 4 ? 'text-title' : n > 2 ? 'text-section' : 'text-display'
+      : n > 6 ? 'text-title' : n > 5 ? 'text-section' : 'text-display'
+  return `numeric whitespace-nowrap ${step}`
 }
 
 function Kpi({
@@ -285,9 +294,7 @@ function Kpi({
             instruments: on the 1376 px wall-mounted reading they were smaller
             than a section heading. The clamp in --text-display-size keeps
             them sane on a phone; Rubik's tabular figures keep them aligned. */}
-        <span className={`${figureClass(String(value))} min-w-0 truncate ${toneClass}`} title={String(value)}>
-          {value}
-        </span>
+        <span className={`${figureClass(String(value), 'kpi')} min-w-0 ${toneClass}`}>{value}</span>
         <span
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-field bg-surface-high ${toneClass}`}
         >
@@ -541,7 +548,7 @@ export function DashboardScreen() {
       <div className="auto-cols mb-2.5 gap-2.5 [--col-min:11rem]">
         <Link to="/coordinator/farms" className="card-interactive min-w-0 p-4">
           <span
-            className={`${figureClass(dunams.guardedDunams.toLocaleString(locale))} block truncate text-status-success-ink`}
+            className={`${figureClass(dunams.guardedDunams.toLocaleString(locale))} block text-status-success-ink`}
             title={dunams.guardedDunams.toLocaleString(locale)}
           >
             {dunams.guardedDunams.toLocaleString(locale)}
@@ -555,7 +562,7 @@ export function DashboardScreen() {
         </Link>
         <Link to="/coordinator/farms" className="card-interactive min-w-0 p-4">
           <span
-            className={`${figureClass(dunams.potentialDunams.toLocaleString(locale))} block truncate text-accent-ink`}
+            className={`${figureClass(dunams.potentialDunams.toLocaleString(locale))} block text-accent-ink`}
             title={dunams.potentialDunams.toLocaleString(locale)}
           >
             {dunams.potentialDunams.toLocaleString(locale)}
@@ -579,7 +586,7 @@ export function DashboardScreen() {
             className="card-interactive min-w-0 p-4"
           >
             <span
-              className={`${figureClass(dunams.guardedHeads.toLocaleString(locale))} block truncate text-content-primary`}
+              className={`${figureClass(dunams.guardedHeads.toLocaleString(locale))} block text-content-primary`}
               title={dunams.guardedHeads.toLocaleString(locale)}
             >
               {dunams.guardedHeads.toLocaleString(locale)}

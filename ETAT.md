@@ -1,5 +1,101 @@
 # לא ינום — ETAT
 
+> ⏰⏰ **NOTE DE RÉVEIL — 2026-09-02, ~03:00 (heure d'Israël). LIRE EN PREMIER.**
+>
+> Bonjour. Voici ce qui s'est passé cette nuit (ordre de nuit N1→N8), en
+> autonomie totale, sans aucune question. Tout est commité sur `main`,
+> déployé sur https://azmer-fts.github.io/lo-yanum/ et vérifié sur l'URL
+> servie. Le détail technique est au **§36** en bas du fichier.
+>
+> ## Ce qui est prêt pour la démo
+>
+> 1. **N1 — les zones ne disparaissent plus.** Vos deux polygones de
+>    « חוות חלומותי » n'ont jamais quitté la base (2 zones, 77 sommets,
+>    écrits hier à 23:39/23:40). La perte était côté client, et deux défauts
+>    réels ont été trouvés et corrigés par un nouveau banc qui pilote **l'app
+>    réelle déployée sans compte** (`bun run zones`, 38 contrôles) :
+>    (a) un rechargement sur une fiche renvoyait à la liste avant que les
+>    données n'arrivent ; (b) une hydratation en vol pouvait écraser un
+>    dessin fait pendant qu'elle chargeait. Les deux sont fermés, et le banc
+>    tourne à chaque déploiement.
+> 2. **N2 — le PDF du contrat a une sortie.** Voir / télécharger / partager
+>    ne naviguent plus jamais : visionneuse dans l'app avec bouton fermer,
+>    partage du FICHIER (Mail/WhatsApp sur iPad), téléchargement propre.
+>    Un contrat fictif d'une page, en hébreu, en-tête לא ינום, marqué
+>    « דוגמה », remplace l'ancien fichier vide. Dans הגדרות → **תבנית הסכם**
+>    vous pouvez téléverser le vrai PDF de l'association : il remplace le
+>    fictif pour toutes les fiches.
+> 3. **N3 — la base réelle est REMPLIE.** 18 entités (14 Néguev + 4 nord
+>    dont בית שאן), 21 zones dessinées sur 9 entités, 8 עמדות שמירה, 2 zones
+>    de menace + 2 vecteurs, 56 volontaires, 8 conducteurs, 8 gardes (passées
+>    avec confirmations, planifiées, une annulée), 5 incidents, 21 visites et
+>    4 réunions sur les jours à venir (demain et après-demain), 2 tournées
+>    (aujourd'hui, demain). **Marqueur : tout id de démo commence par
+>    `demo-`.** Dans הגדרות → **נתוני הדגמה** : « מחק את כל נתוני ההדגמה »,
+>    double confirmation, ne touche ni votre ferme ni vos réglages (prouvé
+>    par `bun run demo`).
+> 4. **N4 — בית שאן se tape maintenant.** Le gazetteer passe de 21 à
+>    **1 174 localités** (liste officielle « שמות יישובים עם קואורדינטות »,
+>    data.gov.il, hors ligne, sans clé), tolérant aux variantes de saisie.
+> 5. **N5 — le rapport PDF** porte des icônes, et le destinataire se saisit
+>    au moment de l'envoi (défaut = כתובת דוחות). Vérifié en 390 px.
+> 6. **N6 — deux graphes** sur le dashboard (entités signées cumulées par
+>    mois ; gardes effectuées par semaine), SVG maison, clair/sombre.
+> 7. **N7 — passe visuelle** : chiffres KPI qui ne débordent plus, email qui
+>    passe à la ligne, champ date dans sa boîte, icônes sur les chiffres de
+>    la fiche et par type de bétail, pastille bleue pour un moshav, pâturage
+>    **ambre** (ferme) / **turquoise** (moshav) contre frontière verte/bleue,
+>    pointe de vecteur à la couleur du trait, eau **bleu franc** + rivières
+>    et wadis visibles dès z7/z11. Balayage `layout` : 32 écrans × 4
+>    viewports, aucun défilement horizontal.
+>
+> ## Décidé en votre nom
+>
+> - **Aucun compte de test n'a été créé** (l'outil l'a refusé, et c'était la
+>   règle §13). À la place, un faux Supabase intercepté dans le navigateur
+>   pilote l'app réelle déployée : c'est ce qui rend N1/N2/N3 prouvables sur
+>   l'URL servie sans votre mot de passe. Rien n'atteint la base pendant un
+>   banc.
+> - **Photos de démo = avatars stylisés générés sur l'appareil** (marqueur
+>   `placeholder:…`), pas des fichiers dans le bucket `photos` : écrire dans
+>   le bucket exige une session coordinateur, qui n'existe pas sur cette
+>   machine. Rendu identique, purge sans rien à nettoyer.
+> - Les couleurs exactes des pâturages (ambre / turquoise) et le bleu de
+>   l'eau sont mon choix ; les tokens sont dans `src/styles/tokens.css` et
+>   `src/ui/components/basemap.ts` (`water`).
+> - Le rapport avait déjà toutes les figures demandées ; je n'ai pas
+>   redessiné la page, seulement ajouté icônes et destinataire éditable.
+>
+> ## Reste ouvert
+>
+> - **Signature dessinée sur le contrat lui-même (P3.3)** : non livrée ;
+>   le flux de signature existant est inchangé. Prochaine unité : dessiner
+>   la signature stockée sur le PDF (pdf.js ou notre pipeline canvas).
+> - `bun run tokens` a 2 échecs **antérieurs à cette nuit** (contour de
+>   carte dans `AnchorMap.tsx`, commit 9feeeeb) — pas une régression.
+> - Un avertissement console bénin « RTL Text Plugin failed to import
+>   scripts » sur la seconde carte d'une même page ; les libellés sont
+>   corrects. À regarder un jour calme.
+> - Esri (§33) et `negev-20260829-z14.pmtiles` dans le bucket : inchangés.
+>
+> ## Votre test du matin sur iPad — 5 points
+>
+> 1. Ouvrir l'app, se connecter : le dashboard montre ~15 600 dunams gardés,
+>    les 4 KPI colorés et les deux graphes « צמיחה ».
+> 2. חוות → carte : entités du Néguev ET du nord ; toucher « חוות רתם » :
+>    2 zones (vert + ambre), 2 עמדות, zone de menace hachurée. Recharger la
+>    page SUR la fiche : elle reste là, zones comprises.
+> 3. Dans la fiche, section הסכמים : œil → visionneuse → « סגירה » revient
+>    à la fiche. Partage → feuille Mail/WhatsApp.
+> 4. יומן / dashboard « היום שלי » : visites de demain (חוות עמק בית שאן
+>    16:00) et réunion ; RDV → יישוב : taper « בית שאן ».
+> 5. הגדרות : « נתוני הדגמה » compte 155 lignes de démo (ne PAS purger
+>    avant la démo) ; « תבנית הסכם » propose le téléversement.
+>
+> Rien n'a été sacrifié (N5 et N6 livrés). Commits de la nuit : `a555f33`
+> (N1) → `d7d4813` (N6), plus l'ETAT.
+
+
 > הִנֵּה לֹא יָנוּם וְלֹא יִישָׁן שׁוֹמֵר יִשְׂרָאֵל
 > — תהלים קכ"א, ד
 

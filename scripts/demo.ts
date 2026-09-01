@@ -100,7 +100,8 @@ try {
   await page.screenshot({ path: `${SHOTS}/1-seeded.png` })
 
   await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
-  await page.waitForTimeout(2500)
+  // Long enough for the second (IndexedDB) load to land before the capture.
+  await page.waitForTimeout(4500)
   await page.screenshot({ path: `${SHOTS}/2-dashboard.png`, fullPage: true })
 
   // ---- N8: the captures the product owner will compare his iPad against ----
