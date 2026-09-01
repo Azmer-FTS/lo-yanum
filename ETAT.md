@@ -3172,6 +3172,15 @@ max zoom 14**, `clustered: true`, attribution present, planetiler 0.10.2.
 
 ### 14.4 ⛔ WHY THE UPLOAD DID NOT HAPPEN, AND THE ONE THING THE PO MUST DO
 
+> ⛔⛔ **REFUTED 2026-09-01 — THE UPLOAD IS IMPOSSIBLE, NOT PENDING. SEE §27.**
+> Both routes below (`dashboard` and `BASEMAP_TOKEN`) return
+> **`413 Maximum size exceeded`**. The project caps uploads at **52 428 800
+> bytes (50 MiB)** and the national archive is 94 268 129. The cap is the
+> PLAN's, not the bucket's (`basemap` allows 209 715 200), and it is enforced
+> BEFORE authorisation — so no password changes it. This is why the act stayed
+> "one minute away" across four reports. **Do not tell the PO to upload again.**
+
+
 **Writes to the `basemap` bucket are coordinator-only** — that is
 `20260831000300_basemap_bucket.sql`, and it is the policy that let the FIRST
 upload happen through a normal signed-in session and **without the service-role
@@ -3192,6 +3201,15 @@ key this project never fetches**. The session it used belonged to
   the same act with better paperwork. It is not attempted again.
 
 **SO ONE OF THESE TWO, AND EITHER IS A MINUTE'S WORK:**
+
+
+> ⛔⛔ **REFUTED 2026-09-01 — THE UPLOAD IS IMPOSSIBLE, NOT PENDING. SEE §27.**
+> Both routes below (`dashboard` and `BASEMAP_TOKEN`) return
+> **`413 Maximum size exceeded`**. The project caps uploads at **52 428 800
+> bytes (50 MiB)** and the national archive is 94 268 129. The cap is the
+> PLAN's, not the bucket's (`basemap` allows 209 715 200), and it is enforced
+> BEFORE authorisation — so no password changes it. This is why the act stayed
+> "one minute away" across four reports. **Do not tell the PO to upload again.**
 
 1. ⛔ **THE PRODUCT OWNER, IN THE DASHBOARD** — Storage → `basemap` → Upload
    file → `basemap/israel-20260831-z14.pmtiles` from this repository. The
@@ -4920,7 +4938,16 @@ deploy — including work with nothing to do with the map — on an act no sessi
 can perform. The moment the object lands, the strict branch takes over and
 Haifa's three lines become a condition of shipping.
 
-### 26.6 ⛔ THE ONE ACT LEFT, AND IT IS STILL HIS — ONE MINUTE
+### 26.6 ~~THE ONE ACT LEFT, AND IT IS STILL HIS — ONE MINUTE~~ ⛔ REFUTED, §27
+
+> ⛔⛔ **REFUTED 2026-09-01 — THE UPLOAD IS IMPOSSIBLE, NOT PENDING. SEE §27.**
+> Both routes below (`dashboard` and `BASEMAP_TOKEN`) return
+> **`413 Maximum size exceeded`**. The project caps uploads at **52 428 800
+> bytes (50 MiB)** and the national archive is 94 268 129. The cap is the
+> PLAN's, not the bucket's (`basemap` allows 209 715 200), and it is enforced
+> BEFORE authorisation — so no password changes it. This is why the act stayed
+> "one minute away" across four reports. **Do not tell the PO to upload again.**
+
 
 **Supabase dashboard → Storage → `basemap` → Upload file →
 `israel-20260831-z14.pmtiles`** (94 268 129 bytes, in `basemap/` in this
@@ -5299,3 +5326,97 @@ Three items to carry in:
    NULL, ends_at NULL)`. `anchorPointId` stays a plain FK on `missions` — see
    decision 52. The UI for the windows is Lot 1 work; nothing in the mock store
    should grow a half-guessed version of it before then.
+
+---
+
+## 27. ⛔⛔ THE BASEMAP, SETTLED — THE UPLOAD IS **IMPOSSIBLE**, AND THAT IS THE WHOLE BUG (2026-09-01)
+
+**The PO was right in every capture and every report was wrong about the cause.**
+Four reports treated the national archive as *not yet uploaded*. It is *not
+uploadable*. The project caps every upload at **52 428 800 bytes (50 MiB)** and
+`israel-20260831-z14.pmtiles` is **94 268 129**.
+
+### 27.1 The measurement, bounded to the byte
+
+Three TUS create requests against `basemap`, identical but for the declared
+length:
+
+```
+upload-length = 52428800  (50 MiB exactly)  →  HTTP 403   ← size OK, refused on AUTH
+upload-length = 52428801  (50 MiB + 1)      →  HTTP 413   Maximum size exceeded
+upload-length = 94268129  (the archive)     →  HTTP 413   Maximum size exceeded
+```
+
+The `403`/`413` boundary is the proof: **at 50 MiB the server still cares who is
+asking; one byte over, it does not.** The cap is checked BEFORE authorisation,
+so a coordinator token cannot pass it. `bun run basemap` fails at its very first
+call — `create failed: 413 Maximum size exceeded` — before a single chunk moves.
+
+Not the bucket's doing:
+
+```sql
+select id, public, file_size_limit from storage.buckets;
+-- basemap | true | 209715200      (200 MB — the bucket is fine)
+```
+
+It is the **plan's** global cap on `lo-yanum-prod` (free tier). `negev`
+(42 560 293) is under it, which is exactly why that one is in the bucket and the
+other never was.
+
+### 27.2 Every other link is intact — verified, not assumed
+
+* `BASEMAP_KEY` has **never** been changed since `0c11b10`. `git log -S` over
+  `src/` finds `israel-20260831` in exactly two places: a *comment* in
+  `offline.ts:237` and a commit message. **No constant commit was ever lost —
+  none was ever written**, and correctly so.
+* `main` == `origin/main` == `29c0ba0`, 0 ahead / 0 behind.
+* Its deploy, run `33478765889`, **succeeded** at 06:42 UTC; the served
+  `index.html` carries `last-modified: 06:43:48 GMT`. Nothing failed.
+* The workflow's own line, verbatim: *"the bundle asks for the PARTIAL extract
+  'negev-20260829-z14.pmtiles' … israel-20260831-z14.pmtiles is still not in the
+  bucket (length 88, range 400)"*.
+* Served bundle `assets/index-MQ5mES-Q.js` (1 624 181 B, sha256 `08ab7f16b95d…`):
+  `grep -c negev → 1`, `grep -c israel → 0`.
+
+★ **So the `negev` constant is CORRECT, not a bug.** Flipping it while the
+national object is unservable makes the deploy gate refuse the build, and
+forcing it past the gate ships a blank map.
+
+### 27.3 The way out — measured, not proposed on faith
+
+**GitHub Pages can host the archive.** Measured on the live site:
+
+```
+curl -H "Range: bytes=0-99" …/assets/index-MQ5mES-Q.js
+HTTP/2 206
+access-control-allow-origin: *
+accept-ranges: bytes
+content-range: bytes 0-99/1624181
+```
+
+`206` + `accept-ranges` + `ACAO *` is the complete list of what PMTiles needs,
+and Pages is the app's **own origin**, so CORS stops mattering at all.
+`VITE_BASEMAP_URL` already exists as the override and `deploy.yml` already
+resolves it — the wiring is built, only the host changes. Free, no re-cut, z14
+and the whole country kept.
+
+Alternatives: paid Supabase plan (his money, his call); or re-cut under 50 MiB,
+which costs either z14 or territory — the trade he has already refused.
+
+### 27.4 ⏭️ WHAT THE NEXT SESSION DOES
+
+⛔ **NOT the upload. Never suggest it again** — §14.4, §26.6 and the report's §6
+are all struck through for this reason.
+
+**Waiting on the PO: one word — "voie 1" (the Pages route).** On that word:
+publish `basemap/israel-20260831-z14.pmtiles` as a release asset or into the
+Pages payload, repoint `basemap.ts` + `deploy.yml`'s register at the new host,
+push, wait for the run, then re-`curl` the served bundle and show `israel`
+present / `negev` absent, then `bun run ground`'s four proofs on a blank profile.
+
+⚠️ Publishing the archive was **refused by this session's permission classifier**
+(`gh release create`). The next session needs that permission granted, or the PO
+attaches the asset himself — the file is at `basemap/israel-20260831-z14.pmtiles`,
+94 268 129 bytes, `PMTiles` magic verified.
+
+**French report for him: `docs/RAPPORT-BASEMAP-2026-09-01.md` §8.**

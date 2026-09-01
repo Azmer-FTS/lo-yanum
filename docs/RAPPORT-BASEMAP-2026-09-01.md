@@ -3,6 +3,13 @@
 **Verdict : le bug est OUVERT.** Vos quatre preuves ne sont pas au rapport, et
 elles ne peuvent pas y être aujourd'hui. Voici pourquoi, mesuré et non plaidé.
 
+> ⛔ **MISE À JOUR DU 2026-09-01, APRÈS VOTRE CAPTURE EN NAVIGATION PRIVÉE —
+> LISEZ LE §8 AVANT LE §6.** Le §6 vous demande un téléversement dans le
+> tableau de bord Supabase. **Ce téléversement est impossible** : le projet
+> refuse tout fichier de plus de 50 Mio et l'archive nationale en fait 94,3.
+> Mesuré, borné à l'octet près, au §8. Le §6 est conservé tel quel pour que
+> l'erreur reste lisible, mais **il ne faut pas le suivre**.
+
 ---
 
 ## 1. Ce que la mesure dit — vos quatre preuves, telles qu'elles sont revenues
@@ -99,7 +106,11 @@ en hébreu et ne demande **aucun** fond de carte.
 
 ---
 
-## 6. ⛔ La manipulation à faire — une ligne, une minute, et elle est à vous
+## 6. ~~La manipulation à faire — une ligne, une minute, et elle est à vous~~
+
+> ⛔ **CETTE SECTION EST FAUSSE ET RÉFUTÉE PAR LE §8.** Le téléversement décrit
+> ci-dessous renvoie `413 Maximum size exceeded`, quel que soit l'opérateur.
+> Ne la suivez pas. Elle reste ici parce qu'elle vous a coûté deux itérations.
 
 > **Supabase → Storage → bucket `basemap` → Upload file →
 > `israel-20260831-z14.pmtiles`** (le fichier est dans `basemap/` de ce dépôt,
@@ -126,3 +137,113 @@ raisons de plus :
 suppression de l'extrait sud.** À ce moment-là le repli silencieux que vous
 craignez est déjà impossible : la porte refuse de livrer un bundle qui demande
 l'extrait partiel dès que l'archive nationale est utilisable.
+
+---
+
+# 8. ⛔ LE §6 CI-DESSUS EST FAUX. LE TÉLÉVERSEMENT EST **IMPOSSIBLE**, PAS EN ATTENTE
+
+*Ajouté le 2026-09-01 après votre capture en navigation privée. Vous aviez
+raison sur toute la ligne, et la raison est plus bas que là où deux rapports
+ont cherché.*
+
+Le §6 vous demandait un geste d'une minute dans le tableau de bord Supabase.
+**Ce geste ne peut pas aboutir.** Ce n'est ni un oubli, ni un droit manquant,
+ni un déploiement cassé : le projet Supabase refuse tout fichier de plus de
+**50 Mio**, et l'archive nationale en fait 94,3. Personne ne peut la
+téléverser — ni moi, ni vous, avec aucun mot de passe.
+
+## 8.1 La mesure qui le prouve, bornée à l'octet près
+
+Trois créations d'envoi TUS sur le bucket `basemap`, identiques sauf la
+longueur déclarée :
+
+```
+--- upload-length = 52428800  (50 Mio pile)   ---  HTTP 403
+--- upload-length = 52428801  (50 Mio + 1 o)  ---  HTTP 413
+--- upload-length = 94268129  (l'archive)     ---  HTTP 413
+```
+
+Lisez la première ligne : à 50 Mio pile, le serveur accepte la **taille** et ne
+refuse que sur l'**autorisation** (`403` — écriture réservée au coordinateur,
+exactement comme prévu). Un octet de plus et il ne regarde même plus qui
+demande : `413 Maximum size exceeded`. **Le plafond est donc exactement
+52 428 800 octets, et il est vérifié avant l'identité.** Votre mot de passe ne
+change rien à ce chiffre.
+
+Et le bucket, lui, n'y est pour rien — il autorise 200 Mo :
+
+```
+id       | public | file_size_limit
+basemap  | true   | 209715200
+```
+
+Le plafond est celui du **plan** du projet `lo-yanum-prod`, pas celui du
+bucket. C'est la limite du palier gratuit de Supabase.
+
+## 8.2 Toute la chaîne, et elle est cohérente de bout en bout
+
+| maillon | état mesuré |
+|---|---|
+| `negev-20260829-z14.pmtiles`, 42 560 293 o | **< 50 Mio → téléversé, présent, `200`** |
+| `israel-20260831-z14.pmtiles`, 94 268 129 o | **> 50 Mio → `413` → jamais téléversé** |
+| fichier local `basemap/israel-…pmtiles` | présent, 94 268 129 o exacts, entête `PMTiles` — **il a bien été découpé, il n'a juste jamais pu partir** |
+| commit de la constante | **il n'existe pas** : `BASEMAP_KEY` n'a jamais été modifiée depuis `0c11b10` |
+| `main` / `origin/main` | `29c0ba0`, synchronisés, 0 en avance, 0 en retard |
+| déploiement de ce SHA | run `33478765889`, `success`, 06h42 UTC |
+| verdict du workflow | *« la nationale n'est toujours pas dans le bucket (longueur 88, range 400) »* |
+
+**Rien n'a échoué. Rien n'a été oublié. Rien n'attend d'être poussé.** Le
+correctif n'est pas en production parce qu'il n'a jamais existé sous la forme
+que trois rapports lui ont supposée — une constante à changer. La constante
+`negev` est *correcte* tant que l'archive `israel` n'est pas servable : la
+changer maintenant ferait refuser le déploiement par la porte (« le bundle
+demande une archive que le bucket ne sert pas »), et, forcée, donnerait un
+écran blanc.
+
+## 8.3 Les sorties brutes sur le SERVI, comme vous les exigez
+
+`curl https://azmer-fts.github.io/lo-yanum/` → bundle référencé :
+
+```
+<script type="module" crossorigin src="./assets/index-MQ5mES-Q.js"></script>
+```
+
+`curl` de ce bundle (1 624 181 octets, sha256 `08ab7f16b95d…`) :
+
+```
+grep -o -i "negev"  | wc -l   →   1
+grep -o -i "israel" | wc -l   →   0
+```
+
+et l'occurrence, en clair :
+
+```js
+const d6="negev-20260829-z14.pmtiles",
+      h6=`https://lvrptqmkjikkkhcxocbe.supabase.co/storage/v1/object/public/basemap/${d6}`
+```
+
+**Votre prédiction était exacte au mot près.** Le bundle servi référence
+toujours `negev`, et jamais `israel`.
+
+## 8.4 Ce qu'il reste, et c'est une décision qui vous appartient
+
+Trois voies, et une seule ne coûte rien :
+
+1. **Héberger l'archive sur GitHub Pages plutôt que sur Supabase.** Mesuré :
+   Pages répond `206` à une requête `Range` avec `access-control-allow-origin: *`
+   — c'est tout ce que PMTiles demande, et c'est même la *même* origine que
+   l'app. `VITE_BASEMAP_URL` existe déjà exactement pour ça. **Gratuit,
+   aujourd'hui, sans re-découpe, en gardant le z14 et tout le pays.** C'est ma
+   recommandation.
+2. **Passer le projet Supabase au plan payant**, qui relève le plafond. ~25 $/mois
+   pour un fichier — et c'est votre argent, donc votre décision.
+3. **Re-découper l'archive sous 50 Mio** — soit en perdant le z14, soit en
+   perdant du territoire. C'est exactement le compromis que vous avez refusé.
+
+⚠️ Je n'ai pas engagé la voie 1 de moi-même : elle déplace l'hébergement du
+fond de carte, ce que trois documents traitent comme une décision arrêtée, et
+la publication de l'archive m'a de toute façon été refusée par la politique de
+permissions de cette session. **Dites « voie 1 » et je la livre en entier** :
+publication de l'archive, `basemap.ts` et `deploy.yml` recâblés, porte de
+déploiement mise à jour, puis les `curl` sur le servi montrant `israel` présent
+et `negev` absent — et enfin vos quatre preuves navigateur sur profil vierge.
