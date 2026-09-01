@@ -40,7 +40,9 @@
     "freehand": "bun run scripts/freehand.ts",
     "deletion": "bun run scripts/deletion.ts",
     "report": "bun run scripts/report.ts",
-    "empty": "bun run scripts/empty.ts"
+    "empty": "bun run scripts/empty.ts",
+    "zones": "bun run scripts/zones.ts",
+    "agreement": "bun run scripts/agreement.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "^0.4.0",

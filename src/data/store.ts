@@ -1,9 +1,10 @@
-import type { StoreBackend, StoreChange } from '@core/backend'
+import type { StoreBackend, StoreChange, StoreData } from '@core/backend'
 import { emptyData } from '@core/demo'
 import { installBackend, replaceSnapshot, setSession } from '@core/store'
 
 import { subscribeAuth, getAuthState, onSignOut } from './auth'
 import {
+  applyRecords,
   flushOutbox,
   keyOf,
   memoryCache,
@@ -169,6 +170,15 @@ async function writeThrough(changes: StoreChange[]): Promise<void> {
   }
 }
 
+/**
+ * N1 (2026-09-02) — the changes made WHILE a hydration is in flight, keyed
+ * like the outbox so six edits to one guard are one entry. Null when no load
+ * is running. Recorded synchronously at mutation time — before the serial
+ * queue, before the cache — because the race is against a fetch that has
+ * already left, and nothing later would be early enough. See `applyRecords`.
+ */
+let sinceLoadBegan: Map<string, StoreChange> | null = null
+
 const SUPABASE_BACKEND: StoreBackend = {
   name: 'supabase',
   persists: true,
@@ -177,6 +187,7 @@ const SUPABASE_BACKEND: StoreBackend = {
   // correct answer rather than a placeholder for one.
   seed: emptyData,
   onChange: (changes) => {
+    if (sinceLoadBegan) for (const c of changes) sinceLoadBegan.set(keyOf(c), c)
     queue = queue.then(() => writeThrough(changes)).catch((error: unknown) => {
       // writeThrough handles its own failures; anything reaching here is the
       // cache itself refusing, which must not break the serial chain.
@@ -318,17 +329,39 @@ export function installSupabaseStore(): void {
 
     await flushPending()
 
-    const fresh = await hydrateFrom(client)
+    // N1 — from here until the snapshot is on screen, every mutation is also
+    // recorded, and laid back over the server's answer below.
+    const recording = new Map<string, StoreChange>()
+    sinceLoadBegan = recording
+    let fresh: StoreData
+    try {
+      fresh = await hydrateFrom(client)
+    } finally {
+      if (sinceLoadBegan === recording) sinceLoadBegan = null
+    }
     // The last and only place it matters: everything above this line is a READ.
     if (abandoned()) return
-    replaceSnapshot(fresh)
+    /**
+     * ★ WHAT THE SERVER ANSWERED IS NOT YET WHAT THE iPAD KNOWS. Two kinds of
+     *   local change are newer than that answer and would vanish from the
+     *   screen and from the cache if it were installed as-is:
+     *     · the outbox — whatever a failed or partial flush left waiting;
+     *     · the recording — whatever was drawn or edited while the fetch was
+     *       in flight, which on a slow link is the whole of a coordinator's
+     *       first minute back in the app.
+     *   Both are laid over the snapshot, outbox first so an edit made during
+     *   the load wins over one made before it.
+     */
+    const waiting = await cache.getAll('outbox')
+    const merged = applyRecords(fresh, [...waiting, ...recording.values()])
+    replaceSnapshot(merged)
     await cache.clear('aggregates')
     if (abandoned()) {
       // Signed out DURING the write. Leave nothing rather than half of it.
       await cache.clear('aggregates')
       return
     }
-    await cache.put('aggregates', snapshotRecords(fresh, new Date().toISOString()))
+    await cache.put('aggregates', snapshotRecords(merged, new Date().toISOString()))
     publish({ status: 'ready', stale: false, message: null })
   }
 

@@ -5,6 +5,7 @@ import {
   flushOutbox,
   keyOf,
   memoryCache,
+  applyRecords,
   restoreSnapshot,
   snapshotRecords,
   toRecords,
@@ -111,6 +112,62 @@ section('1 — what is on screen is what comes back after a cold start')
     emptyish !== null && emptyish.farms.length === 0,
     emptyish ? `${emptyish.farms.length} farms` : 'null',
   )
+}
+
+// --- 1b. N1 (2026-09-02): local changes laid over a server snapshot --------
+
+section('1b — what was drawn DURING a hydration is laid back over the answer')
+
+{
+  /**
+   * The race `bun run zones` guards on the deployed URL, reduced to its pure
+   * half: a snapshot fetched before a write must not put the older truth on
+   * screen. `applyRecords` is what `load()` runs on the server's answer with
+   * the outbox and the changes recorded while the fetch was in flight.
+   */
+  const server = DEMO_BACKEND.seed()
+  const firstFarm = server.farms[0]
+  const drawn = {
+    id: 'zone-during-load',
+    farmId: firstFarm.id,
+    kind: 'farm_boundary' as const,
+    ring: [
+      { lat: 31.25, lng: 34.79 },
+      { lat: 31.26, lng: 34.79 },
+      { lat: 31.26, lng: 34.8 },
+    ],
+  }
+  const renamed = { ...firstFarm, name: 'renamed while loading' }
+  const at = '2026-09-02T00:00:00.000Z'
+  const merged = applyRecords(server, [
+    { collection: 'farmZones', id: drawn.id, json: JSON.stringify(drawn), at },
+    { collection: 'farms', id: renamed.id, json: JSON.stringify(renamed), at },
+    { collection: 'farms', id: server.farms[1].id, json: null, at },
+  ])
+  check(
+    'a zone drawn during the load is in the merged snapshot',
+    merged.farmZones.some((z) => z.id === drawn.id),
+    `${server.farmZones.length} → ${merged.farmZones.length} zones`,
+  )
+  check(
+    'an edit made during the load replaces the server row, by id',
+    merged.farms.find((f) => f.id === renamed.id)?.name === 'renamed while loading' &&
+      merged.farms.filter((f) => f.id === renamed.id).length === 1,
+  )
+  check(
+    'a deletion made during the load removes the server row',
+    !merged.farms.some((f) => f.id === server.farms[1].id),
+  )
+  check(
+    'the server snapshot itself is untouched — the overlay is a copy',
+    !server.farmZones.some((z) => z.id === drawn.id) && server.farms[0].name !== 'renamed while loading',
+  )
+  check('no records means the same snapshot', applyRecords(server, []) === server)
+  const later = applyRecords(server, [
+    { collection: 'farms', id: renamed.id, json: JSON.stringify({ ...renamed, name: 'first' }), at },
+    { collection: 'farms', id: renamed.id, json: JSON.stringify({ ...renamed, name: 'last' }), at },
+  ])
+  check('later records win, which is the outbox promise', later.farms.find((f) => f.id === renamed.id)?.name === 'last')
 }
 
 // --- 2. The outbox coalesces ----------------------------------------------

@@ -22,8 +22,12 @@ import {
   TextArea,
   TextField,
 } from '../../components/fields'
-import { PageHeader } from '../../components/primitives'
+import {
+  LoadingState,
+  PageHeader,
+} from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
+import { useHydrated } from '../../hooks/useDataState'
 
 /** R5.2 — anchor point create/edit, reached from the farm detail screen. */
 export function AnchorFormScreen() {
@@ -50,7 +54,11 @@ export function AnchorFormScreen() {
   )
   const [touched, setTouched] = useState(false)
 
-  if (!farm) return <Navigate to="/coordinator/farms" replace />
+  // N1 (2026-09-02) — a missing record before the snapshot has arrived is
+  // "not loaded yet", never "gone": redirecting here on a reload was how a
+  // coordinator's own farm closed itself. See `useHydrated`.
+  const hydrated = useHydrated()
+  if (!farm) return hydrated ? <Navigate to="/coordinator/farms" replace /> : <LoadingState />
 
   const errors = {
     name: !name.trim() ? t('form.required') : undefined,

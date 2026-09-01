@@ -45,10 +45,12 @@ import {
 import {
   Callout,
   KeyValue,
+  LoadingState,
   PageHeader,
   Section,
 } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
+import { useHydrated } from '../../hooks/useDataState'
 import { useLocale } from '../../hooks/useLocale'
 
 /**
@@ -317,7 +319,11 @@ export function MissionDetailScreen() {
   // property of the moment, not of the guard.
   const [outreachEvent, setOutreachEvent] = useState<OutreachEvent>('created')
 
-  if (!view) return <Navigate to="/coordinator/missions" replace />
+  // N1 (2026-09-02) — a missing record before the snapshot has arrived is
+  // "not loaded yet", never "gone": redirecting here on a reload was how a
+  // coordinator's own farm closed itself. See `useHydrated`.
+  const hydrated = useHydrated()
+  if (!view) return hydrated ? <Navigate to="/coordinator/missions" replace /> : <LoadingState />
 
   const { mission, farm, anchorPoint, additionalAnchorPoints, volunteers } =
     view

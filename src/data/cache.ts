@@ -205,6 +205,46 @@ export function restoreSnapshot(records: CacheRecord[]): StoreData | null {
   return data
 }
 
+/**
+ * ORDRE DE NUIT 2026-09-02 (N1) — LAY LOCAL CHANGES OVER A SERVER SNAPSHOT.
+ *
+ * ★ THE RACE THIS CLOSES. A hydration is a read that takes seconds on a farm
+ *   track; a coordinator draws a zone in those seconds; the write goes through
+ *   (or waits in the outbox). Then the snapshot arrives — fetched BEFORE the
+ *   write — and `replaceSnapshot` puts the server's older truth on screen and
+ *   in the cache. The zone is on the server and gone from the iPad until the
+ *   next cold start. "Flush the outbox before hydrating" (the rule above) only
+ *   covers changes made BEFORE the load began, and only when the flush
+ *   succeeds; this covers the ones made DURING it, and the ones a failed
+ *   flush left waiting.
+ *
+ * Pure, so `bun run sync` can drive it: every record replaces (or removes)
+ * the aggregate with its id in `data`. Later records win, which is the same
+ * last-write-wins the outbox already promises.
+ */
+export function applyRecords(
+  data: StoreData,
+  records: ReadonlyArray<{ collection: Collection; id: string; json: string | null }>,
+): StoreData {
+  if (records.length === 0) return data
+  const next: StoreData = { ...data }
+  for (const collection of COLLECTIONS) {
+    ;(next[collection] as unknown[]) = [...(data[collection] as unknown[])]
+  }
+  for (const record of records) {
+    const list = next[record.collection] as Array<{ id: string }>
+    const index = list.findIndex((row) => row.id === record.id)
+    if (record.json === null) {
+      if (index !== -1) list.splice(index, 1)
+    } else {
+      const row = JSON.parse(record.json) as { id: string }
+      if (index === -1) list.push(row)
+      else list[index] = row
+    }
+  }
+  return next
+}
+
 // ===========================================================================
 // The outbox
 // ===========================================================================

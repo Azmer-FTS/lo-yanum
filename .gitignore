@@ -53,3 +53,4 @@ dist-freehand/
 
 # The demo twin, built by the deploy and folded into dist/demo (ETAT §35).
 dist-demo/
+dist-zones/

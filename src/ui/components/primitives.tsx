@@ -723,6 +723,25 @@ export function Callout({
   )
 }
 
+/**
+ * ORDRE DE NUIT 2026-09-02 (N1) — what a detail screen shows while the real
+ * app's snapshot has not arrived yet. See `useHydrated`: before it, five
+ * screens answered that first empty frame with a redirect to their list.
+ */
+export function LoadingState() {
+  const { t } = useTranslation()
+  return (
+    <div
+      role="status"
+      data-testid="loading-state"
+      className="flex animate-fade-in flex-col items-center gap-3 px-6 py-16 text-center"
+    >
+      <Skeleton className="h-2 w-40" />
+      <p className="muted">{t('data.loading')}</p>
+    </div>
+  )
+}
+
 /** Skeleton block used while a lazy chunk (the map) is still arriving. */
 export function Skeleton({ className = '' }: { className?: string }) {
   return (

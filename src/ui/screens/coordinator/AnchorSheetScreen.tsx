@@ -21,8 +21,14 @@ import { MapSplit } from '../../components/MapSplit'
 import { MapView } from '../../components/MapView'
 import { readToken } from '../../components/badges'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
-import { CopyButton, PageHeader, Section } from '../../components/primitives'
+import {
+  CopyButton,
+  LoadingState,
+  PageHeader,
+  Section,
+} from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
+import { useHydrated } from '../../hooks/useDataState'
 import { useLocale } from '../../hooks/useLocale'
 
 function MessageCard({
@@ -100,8 +106,12 @@ export function AnchorSheetScreen() {
       ) ?? null,
   )
 
+  // N1 (2026-09-02) — see `useHydrated`: before the snapshot has arrived a
+  // missing record is "not loaded yet", and a redirect here closed the sheet
+  // on every reload of the real app.
+  const hydrated = useHydrated()
   if (!farm || !anchor || anchor.farmId !== farm.id) {
-    return <Navigate to="/coordinator/farms" replace />
+    return hydrated ? <Navigate to="/coordinator/farms" replace /> : <LoadingState />
   }
 
   const labels: AnchorMessageLabels = {
