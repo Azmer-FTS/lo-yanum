@@ -387,7 +387,29 @@ try {
 
   await page.goto(`${server.base}/#/coordinator/settings`, { waitUntil: 'load' })
   await page.waitForSelector('[data-testid="download-map"]', { timeout: 20_000 })
-  await page.waitForTimeout(1500)
+
+  /**
+   * ★ WAIT FOR THE SIZE, DO NOT SLEEP AND HOPE. This was `waitForTimeout(1500)`
+   *   and it made the gate lie about a screen that was merely slower than the
+   *   nap: the button's megabytes come from a HEAD, and a HEAD that crosses an
+   *   origin (the `GROUND_URL` branch, pointed at the deployed archive) took
+   *   2.5 s on a cold Fastly edge — measured — against a 1.5 s wait. The check
+   *   below then read a button with no number on it and reported a defect that
+   *   did not exist. A gate that flakes is a gate whose next real failure gets
+   *   explained away, which is exactly what this project cannot afford.
+   */
+  await page
+    .waitForFunction(
+      () =>
+        /\d+(\.\d+)?\s*MB/.test(
+          document.querySelector('[data-testid="download-map"]')?.textContent ?? '',
+        ),
+      undefined,
+      { timeout: 20_000 },
+    )
+    .catch(() => {
+      /* Left to the check below to name — a missing size IS a failure here. */
+    })
 
   const settingsText = await page.evaluate(() => document.body.innerText)
   const buttonLabel = (
