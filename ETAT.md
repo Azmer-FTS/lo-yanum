@@ -4902,6 +4902,18 @@ of the file died there on a raw Playwright timeout instead, which is the exact
 shape of failure this gate exists to abolish. That is fixed: a style that never
 loads is now a named FAIL and the wire is printed anyway.
 
+✅ **AND IT HAS RUN IN THE REAL PIPELINE, NOT ONLY ON THIS LAPTOP.** Deploy run
+**`33478522286`** (head `190a095`, `success`): `8 passed, 3 failed`, the wire
+printed with both `206`s and `content-range: … /42560293`, the three Haifa
+lines empty, and the captures downloadable from the run as the
+**`basemap-proofs`** artifact (254 500 bytes, kept 90 days).
+
+⚠️ **ONE THING TO KNOW WHEN READING THE CI LOG:** the Supabase host is a
+repository secret, so GitHub masks it and the wire lines read
+`REQ GET ***/storage/v1/object/public/basemap/negev-20260829-z14.pmtiles`. The
+ARCHIVE KEY — the part that identifies which map — is never masked, and it is
+the same identifier the הגדרות screen shows. Run it locally for the whole URL.
+
 **The one case that warns instead of failing** is the national archive being
 genuinely absent, and it is not leniency: failing there would stop every
 deploy — including work with nothing to do with the map — on an act no session
