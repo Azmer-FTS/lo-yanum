@@ -101,6 +101,146 @@ jobs:
           # empty string is falsy — `basemap.ts` then keeps its own default.
           VITE_BASEMAP_URL: ${{ steps.basemap.outputs.url }}
 
+
+      # PO POINT 4 (2026-09-01) — THE PERMANENT GATE: WHAT THE BUNDLE ACTUALLY
+      # ASKS FOR HAS TO BE A MAP THAT EXISTS, AND ONCE THE NATIONAL ARCHIVE IS
+      # IN THE BUCKET IT HAS TO BE THAT ONE.
+      #
+      # The step above decides which archive to POINT AT. This one reads the
+      # BUILT FILES and checks what they ended up asking for — which is the
+      # product owner's own condition, and the right one: the resolve step
+      # states an intention, `dist/` is the artefact, and the iPad only ever
+      # sees the artefact. Everything here is measured on `dist/`.
+      #
+      # ⚠️ THE THRESHOLD IS NOT "> 100 MB", AND THIS IS THE THIRD TIME THE
+      #    NUMBER HAS HAD TO BE CORRECTED IN THIS FILE'S HISTORY. The national
+      #    cut of Israel at z14 is 94 268 129 bytes — 94.3 MB. A "> 100 MB"
+      #    rule would REFUSE THE REAL NATIONAL MAP for ever and pass any
+      #    120 MB extract of anywhere. So the archives are named, one line
+      #    each, with the exact length each was measured at and whether it
+      #    covers the country. Exact equality also catches the failure a
+      #    threshold cannot: a truncated or half-finished upload on a name that
+      #    is already trusted.
+      #
+      # WHAT FAILS THE BUILD, AND WHAT ONLY WARNS
+      #   · the bundle names no archive at all              → FAIL
+      #   · it names an archive nobody has registered       → FAIL
+      #   · the live archive is absent, the wrong length,
+      #     or refuses a range request                      → FAIL
+      #   · the national archive IS usable in the bucket and
+      #     the bundle still asks for a partial extract     → FAIL   ← the regression guard
+      #   · the national archive is NOT uploaded yet and the
+      #     bundle asks for the southern extract            → warn, and deploy
+      #
+      # That last line is deliberate and is the only reason this gate is not a
+      # flat "must be national". Failing it today would stop EVERY deploy —
+      # including work that has nothing to do with the map — until an upload
+      # only the product owner can perform. The day it lands, the fourth rule
+      # closes behind it and the pipeline can never fall back again.
+      - name: Gate — the basemap the built bundle asks for
+        run: |
+          set -euo pipefail
+
+          bucket='https://lvrptqmkjikkkhcxocbe.supabase.co/storage/v1/object/public/basemap'
+
+          # The register of cut archives: key, exact bytes, national yes/no.
+          # A new cut is a NEW NAME (the OSM build date is in it), so this list
+          # grows by one line and never edits one.
+          national_key='israel-20260831-z14.pmtiles'
+          len_israel_20260831_z14=94268129
+          len_negev_20260829_z14=42560293
+
+          registered_length() {
+            case "$1" in
+              israel-20260831-z14.pmtiles) printf '%s' "${len_israel_20260831_z14}" ;;
+              negev-20260829-z14.pmtiles)  printf '%s' "${len_negev_20260829_z14}" ;;
+              *) return 1 ;;
+            esac
+          }
+
+          is_national() { [ "$1" = "${national_key}" ]; }
+
+          # ---- 1. what does the ARTEFACT name? -----------------------------
+          # The URL is a template literal, so minification splits it: the base
+          # and the key are two strings in the file. The KEY is the thing that
+          # survives intact, and it is also the thing a coordinator reads on
+          # the הגדרות screen — the same identifier at both ends.
+          keys="$(grep -ohE '[A-Za-z0-9._-]+\.pmtiles' dist/assets/*.js 2>/dev/null | sort -u || true)"
+
+          if [ -z "${keys}" ]; then
+            echo "::error::Basemap gate: the built bundle names no .pmtiles archive at all. The map would not draw. Refusing to deploy."
+            exit 1
+          fi
+
+          echo "archives named in dist/assets/*.js:"
+          printf '  %s\n' ${keys}
+
+          # ---- 2. which one is LIVE? ---------------------------------------
+          # `VITE_BASEMAP_URL` wins over the compiled-in default at runtime
+          # (`basemap.ts`), and Vite inlines it as a whole URL — so when the
+          # national key is present in the bundle it IS the one the app uses,
+          # even if the superseded default string survives beside it.
+          live=''
+          for key in ${keys}; do
+            if is_national "${key}"; then live="${key}"; fi
+          done
+
+          if [ -z "${live}" ]; then
+            count="$(printf '%s\n' ${keys} | wc -l | tr -d ' ')"
+            if [ "${count}" != "1" ]; then
+              echo "::error::Basemap gate: the bundle names ${count} different archives and none is the national one, so which the app would use cannot be read off the artefact. Refusing to deploy."
+              exit 1
+            fi
+            live="${keys}"
+          fi
+
+          echo "live archive : ${live}"
+
+          # ---- 3. is it registered, and is it really there? ----------------
+          if ! expected="$(registered_length "${live}")"; then
+            echo "::error::Basemap gate: '${live}' is not in this workflow's register of cut archives. A new cut must be added here with the exact byte length it was measured at, so that a truncated upload on a trusted name cannot ship. Refusing to deploy."
+            exit 1
+          fi
+
+          headers="$(curl --silent --show-error --head --max-time 60 "${bucket}/${live}" || true)"
+          length="$(printf '%s' "${headers}" | tr -d '\r' \
+                    | awk 'tolower($1) == "content-length:" { print $2 }' | tail -n1)"
+          range="$(curl --silent --output /dev/null --max-time 60 \
+                        --header 'Range: bytes=0-15' \
+                        --write-out '%{http_code}' "${bucket}/${live}" || true)"
+
+          echo "length       : ${length:-<absent>} (registered ${expected})"
+          echo "range        : HTTP ${range} (needs 206)"
+
+          if [ "${length:-0}" != "${expected}" ]; then
+            echo "::error::Basemap gate: the bundle asks for '${live}' and the bucket answers ${length:-nothing} bytes, not ${expected}. Either the object is missing, or the upload is partial. A build whose map does not exist must not reach an iPad. Refusing to deploy."
+            exit 1
+          fi
+
+          if [ "${range}" != "206" ]; then
+            echo "::error::Basemap gate: '${live}' does not answer a range request with 206 (got ${range}). PMTiles reads an archive by ranges and nothing else; without this the map is a blank screen. Refusing to deploy."
+            exit 1
+          fi
+
+          # ---- 4. the regression guard -------------------------------------
+          if is_national "${live}"; then
+            echo "::notice::Basemap gate: the bundle asks for the NATIONAL archive ${live}, present at ${expected} bytes and serving 206. Passed."
+            exit 0
+          fi
+
+          nat_len="$(curl --silent --show-error --head --max-time 60 "${bucket}/${national_key}" \
+                     | tr -d '\r' | awk 'tolower($1) == "content-length:" { print $2 }' | tail -n1 || true)"
+          nat_range="$(curl --silent --output /dev/null --max-time 60 \
+                            --header 'Range: bytes=0-15' \
+                            --write-out '%{http_code}' "${bucket}/${national_key}" || true)"
+
+          if [ "${nat_len:-0}" = "${len_israel_20260831_z14}" ] && [ "${nat_range}" = "206" ]; then
+            echo "::error::Basemap gate: ${national_key} IS in the bucket and usable, and this bundle still asks for the partial extract '${live}'. That is the exact regression this gate exists to stop — the product owner saw the Negev on a national programme. Refusing to deploy."
+            exit 1
+          fi
+
+          echo "::warning::Basemap gate: the bundle asks for the PARTIAL extract '${live}' (${expected} bytes), which is present and usable — so this build ships and the map draws. But it is the SOUTH, not the country: ${national_key} is still not in the bucket (length ${nat_len:-absent}, range ${nat_range}). The upload is the product owner's, ETAT §14.4. The moment it lands, this warning becomes a failure and the next deploy carries the national map."
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3

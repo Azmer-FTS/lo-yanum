@@ -4675,9 +4675,132 @@ what** (§24.3), which is the whole point of this session.
 
 ---
 
+## 25. ⛔ THE THIRD REPORT OF 2026-09-01 — THE CONSTANT WAS NOT THE BUG, AND THE GATE IS NOW PERMANENT
+
+The product owner's instrumentation (§24) did its job and gave him three exact
+readings off his own iPad, in Hebrew, after a clean reinstall and a successful
+re-download: **`negev-20260829-z14.pmtiles`, 42.6 MB, persistence granted.**
+His conclusion was that the deployed bundle still asks for the old southern
+extract — **and it is CORRECT.** His diagnosis of WHY was the one thing that
+was not, and the difference decides whether there is code to write.
+
+### 25.1 · What the ARTEFACT says (measured 2026-09-01, nothing assumed)
+
+| asked | measured |
+|---|---|
+| working tree clean, `HEAD` == `origin/main`? | ✅ `fb3d424` on both |
+| did a deploy run on that exact commit? | ✅ run **33451960133**, `success`, `headSha fb3d424` |
+| which archive does the SERVED JS ask for? | `assets/index-MQ5mES-Q.js` names **`negev-20260829-z14.pmtiles`**, once, and no other `.pmtiles` |
+| is it a REAL build? | ✅ `sb_publishable_` appears once |
+| bucket on the SOUTHERN key | `200`, `content-length: 42 560 293`, range → `206` |
+| bucket on the NATIONAL key | **`400`**, an 88-byte JSON body, range → `400` |
+
+**42 560 293 bytes is 42.6 MB. The iPad was reading the bucket correctly.**
+
+### 25.2 ★★ THE CAUSE — AND IT IS NOT A COMMIT, A CONSTANT OR A STALE BUILD
+
+The three hypotheses in the report were *un commit non mergé, une constante non
+mise à jour, un build parti d'un état antérieur*. **All three are excluded, and
+the deploy log of run 33451960133 says so in one line it printed itself:**
+
+```
+##[warning]Basemap: israel-20260831-z14.pmtiles is not usable in the bucket yet
+(length 88, range 400). This build falls back to the key compiled into
+src/ui/components/basemap.ts — the SOUTHERN extract.
+VITE_BASEMAP_URL:
+```
+
+§23.5's resolve step **ran, asked the bucket, was answered `400`, and fell back
+on purpose.** `VITE_BASEMAP_URL` came out empty, so `basemap.ts` kept its own
+default — which is exactly what it is written to do.
+
+★ **SO THERE IS NO CODE DEFECT AND NOTHING TO CORRECT IN THE BUNDLE. THE
+  BLOCKER IS, STILL AND ONLY, §14.4's UPLOAD** — 94 268 129 bytes that only the
+  product owner can write, because the `basemap` bucket is coordinator-only and
+  the one coordinator's password is his alone. Editing `BASEMAP_KEY` by hand
+  today would not fix anything: it would point the app at an object that
+  returns `400`, and the map would go from *southern* to *blank*.
+
+### 25.3 · HIS ONLINE OBSERVATION IS RIGHT, AND IT PROVES MORE THAN HE CLAIMED
+
+He noted that the map is cut off at the north **on Wi-Fi, with aeroplane mode
+never yet tested**, and concluded the offline layer is not involved. **Confirmed
+from the source:** `buildBasemapStyle` declares exactly one source,
+`pmtiles://${BASEMAP_URL}`, and there is no raster fallback anywhere since
+decision 71. **One archive is the whole of the rendering, online and off.** A
+truncated map on a live network is therefore the expected symptom of this cause
+and not a second bug — and it does rule the service worker out entirely.
+
+### 25.4 · POINT 3 — THE REPLACEMENT IS ALREADY CORRECT, WITH ONE PRECISION HE NEEDS
+
+Verified in `public/sw.js` and `SettingsScreen.tsx`:
+
+* **The old archive is REPLACED, not added.** `DOWNLOAD_MAP` deletes every
+  cache entry whose URL is not the wanted one — twice: **before** the stream if
+  the quota is tight (`droppedOld`), and again **after** the stored length has
+  been checked byte for byte against `content-length`. The space is recovered.
+* **A truncated download deletes itself** rather than reporting `held: true`.
+* **הגדרות will show the new name and the new size**: `wantedArchive` is
+  printed always, `heldArchive` appears beside it while they differ, `stale`
+  raises a warning callout, and the size before the tap is a real `HEAD` — with
+  `r.ok` checked first, so Supabase's 88-byte `400` can never be shown as
+  "0.1 MB".
+
+⚠️ **THE PRECISION, AND IT CHANGES HIS ONE-LINE INSTRUCTION.** `רענון` does
+**not** replace anything — `MAP_STATS` only reports. It will say *the wrong map
+is held* and name both files. **The old Negev archive is freed only when he taps
+the download.** Refresh, then download; in that order.
+
+### 25.5 ✅ POINT 4 — THE PERMANENT GATE, AND THE THRESHOLD HE GAVE IS WRONG
+
+Added to `.github/workflows/deploy.yml`: **`Gate — the basemap the built bundle
+asks for`**, which runs after `vite build` and reads `dist/assets/*.js` — the
+artefact, not the tree, not the resolve step's intention.
+
+⚠️ **HIS RULE WAS `content-length > 100 Mo`, AND IT WOULD HAVE BEEN A TRAP THAT
+NEVER OPENS.** The national cut of Israel at z14 is **94 268 129 bytes —
+94.3 MB**. A `> 100 MB` gate would refuse the real national map for ever, and
+would happily pass a 120 MB extract of any single district. **The number 175 has
+now been corrected three times in this file and appears in no measurement of
+this project.** The gate therefore uses a **register of named cuts with the
+exact byte length each was measured at**, which is strictly stronger: it also
+catches the one failure a threshold cannot — a partial upload landing on a name
+that is already trusted.
+
+What it does, all six branches run and proved before commit:
+
+| condition | verdict |
+|---|---|
+| the bundle names no `.pmtiles` at all | **FAIL** |
+| it names a cut absent from the register | **FAIL** |
+| the live archive is missing, the wrong length, or refuses a range | **FAIL** |
+| the national archive IS usable and the bundle still asks for a partial extract | **FAIL** — the regression guard |
+| the national archive is usable and the bundle asks for it | pass |
+| the national archive is not uploaded yet, the southern extract is present and usable | **warn, and deploy** |
+
+★ **THE LAST ROW IS DELIBERATE AND IS THE ONLY SOFTNESS IN THE GATE.** A flat
+"must be national" today would stop **every** deploy — including work with
+nothing to do with the map, point 9 among it — behind an upload that is not a
+session's to perform. The moment the object lands, row four closes behind it and
+**no build can ever fall back to a partial extract again.** If he prefers the
+hard version, it is deleting the last `echo ::warning` and its branch.
+
+---
+
 ## ⏭️ RESUME HERE — THE SECOND RETURN IS DELIVERED; §22 IS WHAT IS LEFT
 
-> ⛔ **READ §24 FIRST, THEN §23. §24 IS THE MOST RECENT UNIT.** Two things it
+> ⛔ **READ §25 FIRST. IT IS THE MOST RECENT UNIT AND IT CLOSES A HYPOTHESIS.**
+> The product owner reported on 2026-09-01 that the deployed bundle still asks
+> for the Negev extract. **He is right, and the cause is NOT a missing commit,
+> a stale constant or an old build** — the deploy's own log shows the resolve
+> step asking the bucket, being answered `400`, and falling back on purpose.
+> **There is nothing to correct in the code. The blocker is §14.4's upload and
+> has never been anything else.** §25.5 adds the permanent gate he asked for —
+> and corrects its threshold: `> 100 MB` would refuse the real national archive,
+> which is 94.3 MB. §25.4 carries the one precision his field instruction needs:
+> `רענון` reports, `הורדה` replaces.
+>
+> ⛔ **THEN §24, THEN §23. §24 IS THE UNIT BEFORE THIS ONE.** Two things it
 > settles, and a fresh session would get both wrong from the tree alone:
 > **the status bar is OPTION A again** — `default`, option B tried for one
 > build and refused on a real iPad (§24.5) — and **the national archive has
