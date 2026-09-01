@@ -390,3 +390,282 @@ supprime rien sans que vous le disiez maintenant que le contexte a changé :
 l'app n'en dépend plus du tout, et la porte refuse désormais tout build qui ne
 demande pas l'archive nationale. **Dites-le et je le supprime**, ou laissez-le :
 il ne coûte que 42 Mo et ne peut plus être servi par erreur.
+
+---
+
+# 10. LE FICHIER N'A JAMAIS ÉTÉ CORROMPU — C'EST L'HÔTE QUI LE COMPRESSAIT
+
+Vos deux anomalies et les trous à fort zoom ont **une seule cause**, et ce
+n'est ni l'archive, ni le réseau, ni un téléversement raté.
+
+## 10.1 D'abord, ce qui est éliminé — mesuré, pas supposé
+
+Le fichier servi est **identique octet pour octet** à celui généré ici :
+
+```
+sha256 local   c7265232b57eb2d6c52978e070e9f43d348b122191ee8d0285b65f630a4263cb
+sha256 serveur c7265232b57eb2d6c52978e070e9f43d348b122191ee8d0285b65f630a4263cb
+                                              (94 268 129 octets, téléchargés en entier)
+```
+
+Et l'archive elle-même est saine. En-tête PMTiles décodé :
+
+```
+magic PMTiles · version 3 · zooms 0 → 14 · 24 519 tuiles adressées
+emprise  34,20 → 36,00 E   /   29,35 → 33,45 N     (tout le pays)
+fin des données tuiles  44 016 + 94 224 113 = 94 268 129   ← exactement la taille
+couches  boundaries, buildings, earth, landcover, landuse, places, pois, roads, water
+```
+
+Tuiles décodées **depuis le serveur**, comparées octet pour octet au local :
+
+| ville | zoom | offset | octets | MVT décompressé | identique au serveur |
+|---|---|---|---|---|---|
+| ירושלים Jérusalem | z14 | 64 777 443 | 79 256 | 116 877 o, 7 couches | **OUI** |
+| חיפה Haïfa | z13 | 44 565 355 | 81 174 | 106 869 o, 8 couches | **OUI** |
+| אילת Eilat | z12 | 12 587 636 | 33 536 | 43 826 o, 8 couches | **OUI** |
+| תל אביב Tel-Aviv | z14 | 86 786 817 | 45 252 | 64 722 o | **OUI** |
+| באר שבע Beer-Sheva | z14 | 55 201 416 | 58 038 | 80 967 o | **OUI** |
+
+**Aucun re-téléversement n'était nécessaire, et 175 Mo n'a jamais été la bonne
+attente** : l'extrait national z14 pèse 94 268 129 octets, soit 94,3 Mo. C'est
+le chiffre inscrit dans les portes depuis hier, et il est juste.
+
+## 10.2 La cause : un seul en-tête de réponse
+
+GitHub Pages est derrière Fastly, et Fastly compresse **selon le type MIME**.
+Une extension inconnue — `.pmtiles` — est servie `application/octet-stream`,
+et ce type est dans la liste des types compressés :
+
+```
+Accept-Encoding: identity  →  200, content-length: 94268129
+Accept-Encoding: gzip      →  200, content-encoding: gzip,
+                                   content-length: 93926002     ← 93,9 Mo
+```
+
+**Un navigateur envoie toujours la seconde forme.** `Accept-Encoding` est un
+en-tête interdit dans `fetch` : ni la page ni le service worker ne peuvent
+demander `identity`. Et voici ce que cela fait à une requête de plage :
+
+```
+Range: bytes=64777443-64856698        (la tuile Jérusalem z14, exactement)
+→ 206  content-range: bytes 64777443-64856698/93926002     ← /93926002
+→ le corps est une tranche du FLUX GZIP, pas de l'archive
+→ le client tente de décompresser un fragment qui n'est pas un flux gzip
+→ « incorrect header check » — la tuile n'arrive jamais.
+```
+
+Le dénominateur est la preuve : **la plage est appliquée à l'objet compressé.**
+PMTiles calcule chacun de ses décalages sur le fichier *non* compressé, donc
+toutes les lectures après la première visaient les mauvais octets.
+
+## 10.3 Pourquoi la carte semblait *presque* correcte
+
+C'est ce qui a rendu ce défaut si difficile à voir. La seule plage qui survit
+est celle qui commence à l'octet 0 — un flux gzip tronqué se décode quand même
+depuis son propre début — et les octets 0…16383 sont exactement **l'en-tête, le
+répertoire racine et les métadonnées**.
+
+D'où : l'archive s'identifiait correctement, l'app nommait le bon fichier,
+chaque `curl` depuis un terminal passait (curl n'envoie aucun `Accept-Encoding`
+sauf si on le lui demande), toutes les portes étaient vertes — **et les zooms
+profonds, dont les tuiles vivent loin dans le fichier, revenaient vides.**
+Jérusalem dessinée à z11 et blanche à z14, ce n'est pas une archive corrompue :
+c'est cela, et rien d'autre.
+
+## 10.4 Vos deux anomalies, expliquées à l'octet près
+
+1. **« le serveur annonce 93,9 Mo »** — 93 926 002 octets est la longueur
+   **compressée**. C'est ce que le HEAD annonçait et ce que le bouton affichait.
+2. **« reçus 94,3 > annoncés 93,9 »** — le flux se décompresse en 94 268 129
+   octets, la vraie taille. Le compteur mesurait les octets **décodés** contre
+   un plafond **compressé**, donc il le dépassait, le garde-fou anti-troncature
+   se déclenchait, et **un téléchargement parfaitement complet était supprimé et
+   annoncé comme coupé.**
+
+## 10.5 Le correctif
+
+Pages n'offre ni fichier `_headers`, ni `.htaccess`, ni configuration par
+fichier : **l'extension EST le type MIME, et le type MIME EST la décision de
+compression.** Mesuré sur cet hôte, le même jour :
+
+| type servi | compressé ? |
+|---|---|
+| `image/png` | **non** |
+| `font/woff2` | **non** |
+| `application/pdf` | **non** |
+| `application/octet-stream` | oui |
+| texte, javascript, json, svg+xml | oui |
+
+L'objet servi s'appelle donc désormais **`israel-20260831-z14.pmtiles.png`**.
+Mêmes octets, même *release asset*, renommé au moment de la mise en place. Le
+vrai nom reste devant le suffixe pour que rien ne soit caché : **c'est ce que
+l'écran הגדרות affichera, tel quel.**
+
+## 10.6 Et les gardes qui l'ont laissé passer sont fermés
+
+* Le service worker ne compare plus les octets reçus à un `content-length`
+  placé sous un `content-encoding` ; **court est un échec, long ne l'est pas** —
+  un flux qui livre plus que l'annonce ne peut pas être tronqué.
+* Puis il demande **à l'archive** si elle est entière, au lieu de le demander
+  aux en-têtes : magie, version, et la fin des données tuiles déclarée par son
+  propre en-tête comparée à la taille stockée. Deux `content-length` ont été
+  pris à mentir sur ce fichier précis ; l'en-tête PMTiles, lui, ne peut pas.
+  Nouveau verdict `corrupt`, avec son texte hébreu.
+* `bun run ground` **échoue sur tout `content-encoding`** sur une réponse de
+  fond de carte, et sa quatrième preuve couvre huit couples lieu/zoom, dont
+  **Jérusalem z14 et z16** — la tuile qui était vide sur votre écran.
+* Le déploiement a une **nouvelle étape, après la mise en ligne**, qui
+  interroge l'URL réelle comme le fait un navigateur : aucun `content-encoding`,
+  longueur exacte, une plage au **milieu** du fichier dont le dénominateur est
+  la vraie taille, et ces octets-là décompressés en la tuile Jérusalem z14.
+  **Rien qui s'exécute avant un déploiement n'aurait pu voir ce défaut.**
+
+## 10.7 Les preuves, sur le site déployé
+
+Sur l'URL réelle, demandée comme un navigateur la demande :
+
+```
+HEAD  Accept-Encoding: gzip, deflate, br, zstd
+  200 · content-type: image/png · content-length: 94268129
+      · accept-ranges: bytes · access-control-allow-origin: *
+      · AUCUN content-encoding
+
+Range bytes=64777443-64856698 (tuile Jérusalem z14), même Accept-Encoding
+  206 · content-range: bytes 64777443-64856698/94268129
+      · 79 256 octets reçus, identiques à la tuile locale
+      · gunzip → 116 877 octets de MVT valide
+```
+
+`bun run ground`, **profil vierge, contre l'archive déployée**, 17/17 :
+
+```
+PROOF 1  une seule archive demandée .... israel-20260831-z14.pmtiles.png
+PROOF 2  206 · total sur le fil ........ 94 268 129 (94,3 MB)
+         ★★ aucun ré-encodage .......... aucun content-encoding
+PROOF 3  écran הגדרות .................. « רענון מפות לא מקוונות (94.3 MB) »
+PROOF 4  ירושלים z14 ... 2 511 routes    ירושלים z16 ...   276 routes
+         חיפה z12 ......   549 routes    חיפה z13 ...... 1 163 routes
+         חיפה z14 ..... 1 614 routes     אילת z12 ......   121 routes
+         תל אביב z14 .. 2 073 routes     באר שבע z14 ... 1 757 routes
+```
+
+Et le **téléchargement complet**, tapé à la main sur l'archive déployée, dans
+un navigateur vierge — capture `deployed-download-complete.png` :
+
+```
+שמורה במכשיר · israel-20260831-z14.pmtiles.png · 94.3 MB
+הניסיון האחרון : הצליח — 94.3 MB נשמרו
+```
+
+Là où le même écran disait ce matin « ההורדה נקטעה — התקבלו 94.3 מתוך 93.9 MB ».
+
+---
+
+# 11. VOS DEUX DEMANDES CARTE
+
+## 11.1 A — Les frontières
+
+Protomaps livre deux couches de limites et ce sont des chuchotements : 0,7 px
+pour une frontière nationale, 0,4 px en dessous, dans le même gris qu'une voie
+de service, avec le même pointillé. Une frontière dessinée comme une allée est
+une frontière qu'on ne voit pas.
+
+**La distinction que vous demandiez est dans les données** — je ne l'ai pas
+inventée. En décodant la couche `boundaries` de l'archive autour de Jérusalem,
+de la vallée du Jourdain et de la ligne sud, de z8 à z14 :
+
+```
+kind         country | region | county | locality
+kind_detail  2 | 4 | 5 | 6 | 8            (le admin_level d'OSM)
+disputed     true — et seulement sur certaines
+```
+
+Donc trois énoncés, dans le vocabulaire d'OSM lui-même :
+
+| ligne | rendu |
+|---|---|
+| frontière internationale établie | **pleine**, le trait le plus épais du fond de carte |
+| ligne contestée / armistice | **tirets**, à la **même** épaisseur — importance égale, statut explicitement différent |
+| région, district, localité | fin, finement pointillé, discret |
+
+De l'**encre**, jamais une couleur de zone : `--zone-boundary` veut dire « le
+bord d'une ferme avec laquelle on travaille », une ligne administrative est un
+autre type d'énoncé, et les deux ne doivent pas être confondables d'un coup
+d'œil. Vos propres tracés restent les seules choses saturées de la carte, et
+ils sont toujours peints **par-dessus** tout ceci.
+
+Chaque ligne a son **propre halo** — MapLibre n'a pas de halo de ligne, donc
+c'est une seconde ligne plus large dessous, dans la couleur de la page. Sans
+lui, une frontière qui traverse la Méditerranée, une zone bâtie et du sable nu
+change trois fois de contraste sur sa longueur.
+
+⚠️ La première version s'est trompée là-dessus et la capture l'a montrée : un
+halo **plein** sous une ligne en tirets transformait la ligne d'armistice en
+trait **noir plein** avec des tirets blancs découpés dedans, sur l'imagerie.
+Les creux d'un pointillé doivent laisser voir le sol. Chaque halo porte
+maintenant le même motif, et les nombres sont divisés par le facteur
+d'élargissement, parce qu'un `dasharray` se mesure en largeurs de trait et non
+en pixels.
+
+Captures : `borders-national.png`, `borders-light.png`, `borders-dark.png`.
+
+## 11.2 B — La couche satellite, et **la vérification que vous aviez demandée**
+
+Le bouton « מפה / לוויין » est en haut à gauche de chaque carte pilotable.
+
+⚠️ **Ce n'est pas Esri, et c'est précisément parce que vous m'avez demandé de
+vérifier les conditions.** Vérifié le 01/09/2026 :
+
+* `server.arcgisonline.com/.../World_Imagery` répond de façon anonyme, envoie
+  bien les en-têtes CORS, et offre du sub-métrique jusqu'à z17+ — mesuré.
+* **Mais son propre descriptif de service ne porte aucun champ de licence**, et
+  la position publiée d'Esri est que ce service relève de leurs conditions
+  d'utilisation, exige une licence ArcGIS Online ou Enterprise, et **exclut
+  l'usage commercial**.
+
+Ce n'est pas une licence que je peux m'accorder à votre place. La couche
+livrée est donc **Sentinel-2 cloudless d'EOX, millésime 2016 : CC BY 4.0** —
+une vraie licence nommée, permissive, avec une seule obligation, l'attribution,
+qui est désormais affichée par la carte elle-même :
+
+> © OpenStreetMap | Sentinel-2 cloudless by EOX IT Services GmbH
+> (Contains modified Copernicus Sentinel data 2016) — CC BY 4.0
+
+**Esri est écrit dans le fichier, complet, à un mot de la bascule** si vous
+acceptez ces conditions. C'est votre décision, elle est posée devant vous.
+
+⚠️ **Et sa limite réelle, dite plutôt que cachée** : Sentinel-2, c'est 10 m par
+pixel. Le service répond à une requête z17, mais avec 3,7 ko de flou
+sur-échantillonné contre 24 ko de vrai détail chez Esri — mesuré, même tuile.
+La source est donc plafonnée à z14 et MapLibre agrandit visiblement au-delà :
+l'opérateur voit l'image devenir molle plutôt qu'on ne lui montre une netteté
+inventée. Vergers, oueds, sol nu, lisières bâties et pistes se lisent
+parfaitement à z13–14 — l'échelle à laquelle l'imagerie répond à « à quoi
+ressemble le terrain autour de cette ferme ». Pour « qu'y a-t-il dans cette
+cour », il faut Esri ou un fournisseur à clé.
+
+Sur la photo, les couches de sol sont retirées et **l'orientation est
+conservée** : routes, noms de lieux, noms de routes et les frontières, en blanc
+sur halo sombre — l'encre de l'app disparaît dans un verger, un toit et de la
+roche dans la même image. Les POI sont volontairement absents : ce sont **vos**
+marqueurs qui doivent gagner.
+
+⚠️ **EN LIGNE UNIQUEMENT, et le contrôle s'en charge lui-même.** Hors ligne, le
+bouton לוויין est **désactivé** et dit pourquoi — « לוויין זמין רק בחיבור » — et
+une carte **déjà** en mode satellite **retombe toute seule** sur l'archive
+vectorielle nationale. Sinon un coordinateur qui bascule dans la cour et sort
+de couverture se retrouve avec un rectangle noir et ses marqueurs dessus.
+
+Captures : `satellite.png`, `satellite-offline-fallback.png`.
+
+## 11.3 La porte
+
+`bun run backdrop` (A84), **dans le déploiement**, 19 vérifications. Elle
+refuse la présence d'une couche comme preuve — une couche peut être présente,
+correctement filtrée et invisible, ce qui est exactement ce qu'était le trait
+de 0,4 px de Protomaps. Tout y est soit interrogé sur ce que MapLibre a
+réellement **rendu**, soit observé sur le réseau, soit lu dans le DOM du
+contrôle. Son unique avertissement non bloquant est « le serveur d'un tiers ne
+répond pas », jamais « cette app est cassée », et la distinction est écrite
+dans le fichier.

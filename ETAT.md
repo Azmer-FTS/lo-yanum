@@ -5508,3 +5508,190 @@ network at all.
   with the exact byte length, and update the tag in the staging step.
 
 **French report for him: `docs/RAPPORT-BASEMAP-2026-09-01.md` §9.**
+
+---
+
+## 29. ⛔⛔ THE ARCHIVE WAS NEVER CORRUPT — THE HOST GZIPPED IT, AND THE RANGE PROVES IT (2026-09-01)
+
+**Everything about the file was right and everything about the transport was
+wrong.** §28 shipped a national archive that was byte-perfect and a pipeline
+that was green, and the product owner still saw "ההורדה נקטעה — התקבלו 94.3
+מתוך 93.9 MB" and holes at high zoom over Jerusalem. Both symptoms have ONE
+cause, and it is a single response header.
+
+### 29.1 What is eliminated first, measured rather than assumed
+
+```
+sha256 local   c7265232b57eb2d6c52978e070e9f43d348b122191ee8d0285b65f630a4263cb
+sha256 served  c7265232b57eb2d6c52978e070e9f43d348b122191ee8d0285b65f630a4263cb
+```
+
+The full 94 268 129 bytes, pulled from Pages, are identical to the local cut.
+The PMTiles header decodes: v3, zooms **0 → 14**, bounds 34.20–36.00 E /
+29.35–33.45 N (the whole country), 24 519 addressed tiles, and
+`tile_data_offset + tile_data_length = 44 016 + 94 224 113 = 94 268 129` —
+**exactly the file size**, so nothing is missing from the end. Jerusalem z14,
+Haifa z13, Eilat z12, Tel Aviv z14 and Beer Sheva z14 were located through the
+directories, fetched FROM THE SERVER by byte range, and are byte-identical to
+the local file; each gunzips into a valid MVT with 7–8 layers.
+
+★ **So no re-upload was needed and 175 MB was never the right expectation.**
+The national z14 extract is 94 268 129 bytes — 94.3 MB, the number already in
+every gate.
+
+### 29.2 The cause, bounded to the header
+
+Pages sits behind Fastly; Fastly compresses **by content-type**; an unknown
+extension gets `application/octet-stream`, and that type is on the list:
+
+```
+Accept-Encoding: identity  →  200, content-length: 94268129
+Accept-Encoding: gzip      →  200, content-encoding: gzip,
+                                   content-length: 93926002
+```
+
+A browser always sends the second — `Accept-Encoding` is a **forbidden header
+name** in `fetch`, so neither the page nor the service worker can ask for
+`identity`. And on a range:
+
+```
+Range: bytes=64777443-64856698        (the Jerusalem z14 tile, exactly)
+→  206  content-range: bytes 64777443-64856698/93926002     ← /93926002
+→  the body is a slice of the GZIP STREAM, not of the archive
+→  "incorrect header check" — the tile never arrives
+```
+
+**The denominator is the tell: the range is applied to the COMPRESSED object.**
+PMTiles computes every offset against the uncompressed file.
+
+### 29.3 ★★ WHY EVERY EXISTING PROOF WAS GREEN, AND THIS IS THE LESSON
+
+The one range that survives is the one starting at byte 0 — a truncated gzip
+stream still decodes from its own start — and bytes 0…16383 are the header,
+the root directory and the metadata. So the archive identified itself
+correctly, the bundle named the right file, `bun run ground` passed, and
+**every `curl` in §28 passed because curl sends no `Accept-Encoding` unless
+told to.** §28's evidence was gathered under conditions no browser reproduces.
+
+The deep zooms live far into the file, so they were the only thing that broke:
+Jerusalem drawn at z11, blank at z14. Exactly what he reported.
+
+### 29.4 His two anomalies, to the byte
+
+1. **"the server announces 93.9 MB"** — 93 926 002 is the COMPRESSED length,
+   which is what the HEAD returned and what the button showed.
+2. **"received 94.3 > announced 93.9"** — the stream decodes to 94 268 129.
+   The counter measured DECODED bytes against a COMPRESSED ceiling, overshot
+   it, and the truncation guard **deleted a download that had completed
+   perfectly** and reported it as cut.
+
+### 29.5 The fix, and why it looks the way it does
+
+Pages offers no `_headers`, no `.htaccess`, no per-file configuration: **the
+extension IS the content-type and the content-type IS the compression
+decision.** Measured on this host, same day — `image/png`, `font/woff2` and
+`application/pdf` are left alone; `application/octet-stream`, text, javascript,
+json and svg+xml are compressed.
+
+⚠️ **The served object is `israel-20260831-z14.pmtiles.png`, and the suffix is
+LOAD-BEARING.** Same bytes, same release asset (which keeps the plain name),
+renamed while staging in `deploy.yml`. The real name stays in front of the
+suffix so the הגדרות screen prints the truth. Removing it puts the holes back.
+
+### 29.6 Four guards closed
+
+* `sw.js` never compares `received` to a `content-length` that sat under a
+  `content-encoding`; **short fails, long does not** — a stream that delivers
+  more than announced cannot be truncated.
+* `sw.js` then asks the ARCHIVE whether it is whole: magic, version, and its
+  own declared end of tile data against the stored size. Two `content-length`s
+  were caught lying about this exact file; the PMTiles header cannot. New
+  verdict `corrupt`, with its Hebrew string.
+* `bun run ground` **fails on any `content-encoding`** on a basemap response,
+  and its fourth proof is eight place/zoom pairs including Jerusalem z14 and
+  z16. Its third proof also stopped sleeping 1500 ms and now waits for the
+  size — a cross-origin HEAD took 2.5 s on a cold edge and the gate lied.
+* ★★ **A post-deploy `served` job** asks the LIVE url the way a browser asks:
+  no content-encoding, exact length, a mid-file range whose content-range
+  denominator is the real size, and those bytes gunzipping into the Jerusalem
+  z14 tile. **Nothing that runs before a deploy could ever have seen this.**
+
+### 29.7 The evidence
+
+Live, browser-shaped `curl`: `content-type: image/png`, **no content-encoding**,
+`content-length: 94268129`, `content-range: …/94268129`, tile bytes identical,
+`gunzip` → 116 877 bytes of MVT.
+
+`bun run ground` against the **deployed** archive, blank profile: **17/17**,
+Jerusalem z14 2 511 roads / z16 276, Haifa z12/13/14, Eilat, Tel Aviv, Beer
+Sheva. `bun run offline` **21/21**. And the full download, driven by hand on
+the deployed archive: `שמורה במכשיר · 94.3 MB · הניסיון האחרון: הצליח`.
+
+---
+
+## 30. ✅ THE BORDERS, AND A SATELLITE GROUND THAT KNOWS IT NEEDS A NETWORK (2026-09-01)
+
+Two PO requests taken after §29. Gate: **`bun run backdrop`** (A84), in the
+deploy, **19/19**. Captures in `docs/screenshots/basemap/`.
+
+### 30.1 A — the borders
+
+Protomaps ships 0.7 px for a national border and 0.4 px below it, both in the
+same grey as a service road. ★ **The distinction he asked for is IN THE DATA**
+— decoded from the archive's own `boundaries` layer, z8 → z14:
+`kind` (country/region/county/locality), `kind_detail` (the OSM admin_level)
+and **`disputed: true`, present at kind_detail 2 and 5**.
+
+So: settled international line **solid** and the heaviest thing on the
+basemap; disputed/armistice line **dashed at the same weight** — equal
+importance, explicitly unequal status; region/county thin and finely dotted.
+**Ink (`--text-secondary`), never a zone colour** — an administrative line and
+"the edge of a farm we work with" must not be confusable, and the programme's
+own layers still paint on top of all of it.
+
+⚠️ **Each line has its OWN halo, and the first version was wrong.** One solid
+halo under all three turned the armistice line into a solid black line with
+white dashes cut out of it over imagery. Each halo now carries the same
+pattern, divided by the halo's width factor — a `dasharray` is measured in
+line-widths, not pixels. Caught by looking at the capture.
+
+### 30.2 B — the satellite ground
+
+A MapLibre `IControl`, not a React overlay: `MapCanvas` renders ONE element
+and 27 screens size it through the `className` they pass.
+
+⚠️ **NOT Esri, and that IS the verification he asked for.** `World_Imagery`
+answers anonymously with CORS and sub-metre detail to z17+ — measured — and
+its service metadata carries **no licence field**, while Esri's published
+position is that it requires an ArcGIS licence and excludes commercial use.
+Ships pointed at **EOX Sentinel-2 cloudless 2016, CC BY 4.0**, whose one
+obligation — attribution — MapLibre now renders. `SATELLITE_ESRI` is written
+out in `basemap.ts`, one word from being switched on, **his decision**.
+
+⚠️ Its limit is stated: 10 m/px. The service answers z17 with 3.7 kB of
+upsampled blur against Esri's 24 kB — measured, same tile — so the source is
+capped at `maxzoom: 14` and MapLibre visibly upsamples past it.
+
+Over the photograph: ground layers dropped, orientation kept (roads, place and
+road names, the borders), white on a dark halo. **POIs deliberately absent.**
+
+⚠️ **ONLINE ONLY, enforced by the control itself.** Offline the לוויין button
+is disabled with `לוויין זמין רק בחיבור`, and a map already in satellite mode
+**falls back to the national vector archive on its own**.
+
+⚠️ `maplibregl-ctrl-group` is deliberately NOT on the control: MapLibre's
+`.maplibregl-ctrl-group button { background: transparent; width: 29px }` is two
+class selectors and beats every Tailwind utility — the first version had no
+visible selected state and no 44 px tap target.
+
+### 30.3 ⏭️ WHAT IS LEFT
+
+* **Only the PO can open הגדרות on the deployed app.** It should now read
+  `israel-20260831-z14.pmtiles.png` / 94.3 MB, and רענון should complete.
+* **The Esri swap is one line** and waits on his word about the terms.
+* **`negev-20260829-z14.pmtiles` is still in the bucket**, still inert, still
+  waiting on one word to delete.
+* **When the map is re-cut**: new name (OSM build date in it), and it must
+  keep a `.png` served extension or §29 returns.
+
+**French report for him: `docs/RAPPORT-BASEMAP-2026-09-01.md` §10 and §11.**
