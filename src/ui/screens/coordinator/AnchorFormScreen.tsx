@@ -107,7 +107,7 @@ export function AnchorFormScreen() {
           {
             id: 'farm',
             position: farm.position,
-            color: farmMarkerColor(),
+            color: farmMarkerColor(farm),
             title: farm.name,
             subtitle: farm.locality,
             kind: entityMarkerKind(farm),

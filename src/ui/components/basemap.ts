@@ -93,7 +93,12 @@ function themeFromTokens(resolved: 'light' | 'dark'): Theme {
    * violet Mediterranean was `hue-rotate` acting on a raster, and there is no
    * filter here to produce it.
    */
-  const water = token('--accent', 0.28)
+  // N7.6 (2026-09-02) — WATER IS A FRANK BLUE, NOT A TINT OF THE ACCENT. The
+  // product owner orients himself by the sea, the Kinneret, the wadis and the
+  // reservoirs, and at 28 % of the accent they were the page's own colour.
+  // Still not the marker's blue: a saturated sky blue on light, a softer one
+  // on dark, both measured against the surface they sit on.
+  const water = resolved === 'light' ? 'rgb(52 132 214 / 0.62)' : 'rgb(96 165 250 / 0.55)'
 
   return {
     ...base,
@@ -973,6 +978,40 @@ const HE_EN_NAME: ExpressionSpecification = [
   ['get', 'name'],
 ]
 
+/**
+ * N7.6 (2026-09-02) — RIVERS AND WADIS FROM z8, STREAMS FROM z11, WIDER.
+ *
+ * The base theme draws a river from z9 at zero width (reaching one pixel only
+ * at z9.5) and a stream from z14 at half a pixel — invisible at every zoom a
+ * coordinator actually plans at. The Jordan, the Besor and the wadis of the
+ * Negev are landmarks; this gives them a line.
+ */
+function strongerWater(layers: LayerSpecification[]): LayerSpecification[] {
+  return layers.map((layer) => {
+    if (layer.id === 'water_river' && layer.type === 'line') {
+      return {
+        ...layer,
+        minzoom: 7,
+        paint: {
+          ...layer.paint,
+          'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 7, 0.8, 10, 1.6, 13, 3, 16, 6],
+        },
+      }
+    }
+    if (layer.id === 'water_stream' && layer.type === 'line') {
+      return {
+        ...layer,
+        minzoom: 11,
+        paint: {
+          ...layer.paint,
+          'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.6, 14, 1.4, 17, 2.5],
+        },
+      }
+    }
+    return layer
+  })
+}
+
 function simplifyLabels(layers: LayerSpecification[]): LayerSpecification[] {
   return layers.map((layer) => {
     if (layer.type !== 'symbol') return layer
@@ -1128,9 +1167,9 @@ export function buildBasemapStyle(
   }
 
   const layers = cityTiers(
-    simplifyLabels(
+    strongerWater(simplifyLabels(
       layersWithCustomTheme('protomaps', themeFromTokens(resolved), 'he'),
-    ),
+    )),
     {
       major: token('--text-primary'),
       city: token('--text-secondary'),

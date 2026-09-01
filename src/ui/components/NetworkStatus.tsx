@@ -101,6 +101,12 @@ export function NetworkStatus() {
        */
       className="pointer-events-none fixed start-0 end-0 z-40 flex justify-center"
       style={{ insetBlockStart: 'calc(var(--shell-top) + 0.5rem)' }}
+      // N7.1 (2026-09-02) — `data-overlay`: this strip FLOATS over the header
+      // on purpose (a toast, not a bar), so the layout sweep's "no pinned
+      // element covers another" rule exempts it the way it exempts a modal.
+      // It is pointer-events-none and the pill inside is the only paint.
+      data-overlay=""
+
       data-testid={phase === 'offline' ? 'offline-badge' : 'network-status'}
       /**
        * ★ THE TESTID IS `offline-badge` WHEN IT IS OFFLINE, and that is the

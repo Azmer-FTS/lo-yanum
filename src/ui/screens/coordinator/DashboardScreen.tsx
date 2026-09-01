@@ -28,6 +28,7 @@ import { ReportButton } from '../../report/ReportButton'
 import { readReportRecipient } from '../../report/recipient'
 import { CreateGuardButton } from '../../components/CreateGuardFab'
 import { Icon } from '../../components/Icon'
+import { GrowthCharts } from '../../components/GrowthCharts'
 import { MyDayBlock } from '../../components/MyDayBlock'
 import type { IconName } from '../../components/Icon'
 import { MapPanel } from '../../components/MapPanel'
@@ -236,6 +237,17 @@ function AlertCard({ alert }: { alert: DashboardAlert }) {
 
 // --- KPI -------------------------------------------------------------------
 
+/**
+ * N7.1 (2026-09-02) — THE FIGURE FITS ITS CARD. `text-display` clamps to
+ * 4 rem, which is five digits and a separator on a 8.5 rem card; the
+ * livestock total (`4,820`) and a dunam sum (`12,345`) both overflowed the
+ * tile on the product owner's iPad. A longer figure steps down one size, and
+ * every figure truncates with the full value on hover rather than escaping.
+ */
+function figureClass(text: string): string {
+  return `numeric ${text.length > 5 ? 'text-title' : text.length > 4 ? 'text-section' : 'text-display'}`
+}
+
 function Kpi({
   label,
   value,
@@ -255,9 +267,16 @@ function Kpi({
     alert: 'text-status-danger-ink',
     accent: 'text-accent-ink',
   }[tone]
+  // N7.5 (2026-09-02) — a card may carry its tone as a tint, charter kept.
+  const tintClass = {
+    default: '',
+    good: 'bg-status-success/[0.07]',
+    alert: 'bg-status-danger/[0.07]',
+    accent: 'bg-accent/[0.07]',
+  }[tone]
 
   return (
-    <Link to={to} className="card-interactive min-w-0 p-3">
+    <Link to={to} className={`card-interactive min-w-0 p-3 ${tintClass}`}>
       {/* Figure and icon on one line, label underneath on its own full width.
           Side by side, a four-word Hebrew label had ~90 px and truncated to
           "התראות …", which is not a label. */}
@@ -266,7 +285,9 @@ function Kpi({
             instruments: on the 1376 px wall-mounted reading they were smaller
             than a section heading. The clamp in --text-display-size keeps
             them sane on a phone; Rubik's tabular figures keep them aligned. */}
-        <span className={`numeric text-display ${toneClass}`}>{value}</span>
+        <span className={`${figureClass(String(value))} min-w-0 truncate ${toneClass}`} title={String(value)}>
+          {value}
+        </span>
         <span
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-field bg-surface-high ${toneClass}`}
         >
@@ -519,7 +540,10 @@ export function DashboardScreen() {
           figures on the screen and they come first. */}
       <div className="auto-cols mb-2.5 gap-2.5 [--col-min:11rem]">
         <Link to="/coordinator/farms" className="card-interactive min-w-0 p-4">
-          <span className="numeric text-display block text-status-success-ink">
+          <span
+            className={`${figureClass(dunams.guardedDunams.toLocaleString(locale))} block truncate text-status-success-ink`}
+            title={dunams.guardedDunams.toLocaleString(locale)}
+          >
             {dunams.guardedDunams.toLocaleString(locale)}
           </span>
           <span className="mt-1 block text-caption font-semibold leading-tight text-content-primary">
@@ -530,7 +554,10 @@ export function DashboardScreen() {
           </span>
         </Link>
         <Link to="/coordinator/farms" className="card-interactive min-w-0 p-4">
-          <span className="numeric text-display block text-accent-ink">
+          <span
+            className={`${figureClass(dunams.potentialDunams.toLocaleString(locale))} block truncate text-accent-ink`}
+            title={dunams.potentialDunams.toLocaleString(locale)}
+          >
             {dunams.potentialDunams.toLocaleString(locale)}
           </span>
           <span className="mt-1 block text-caption font-semibold leading-tight text-content-primary">
@@ -551,7 +578,10 @@ export function DashboardScreen() {
             data-testid="kpi-guarded-heads"
             className="card-interactive min-w-0 p-4"
           >
-            <span className="numeric text-display block text-content-primary">
+            <span
+              className={`${figureClass(dunams.guardedHeads.toLocaleString(locale))} block truncate text-content-primary`}
+              title={dunams.guardedHeads.toLocaleString(locale)}
+            >
               {dunams.guardedHeads.toLocaleString(locale)}
             </span>
             <span className="mt-1 block text-caption font-semibold leading-tight text-content-primary">
@@ -628,6 +658,14 @@ export function DashboardScreen() {
           {t('myday.title')}
         </h2>
         <MyDayBlock dayKey={localDayKey(now())} />
+      </section>
+
+      {/* N6 (2026-09-02) — growth: entities signed over time, guards per week. */}
+      <section className="mb-5">
+        <div className="flex items-end justify-between gap-3 pb-2">
+          <h2 className="text-section">{t('dashboard.growth.title')}</h2>
+        </div>
+        <GrowthCharts />
       </section>
 
       {/* 3 — Agenda. */}

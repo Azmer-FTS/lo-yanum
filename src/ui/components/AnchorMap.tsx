@@ -275,7 +275,7 @@ export function AnchorMap({
         position: farm.position,
         // G7bis.1 — the farm's identity pastille: forest, always. Its status
         // lives in the chips beside the map, not in the pin's colour.
-        color: farmMarkerColor(),
+        color: farmMarkerColor(farm),
         title: farm.name,
         subtitle: farm.locality,
         kind: entityMarkerKind(farm),

@@ -103,8 +103,10 @@ export function ContactActions({
           {name}
         </p>
         <p className="ltr-nums text-micro text-content-muted">{phone}</p>
+        {/* N7.1 (2026-09-02) — an address is read, not glanced at: it
+            breaks anywhere rather than truncating into "dov@serialk…". */}
         {email && (
-          <p className="ltr-nums truncate text-micro text-content-muted" dir="ltr">
+          <p className="ltr-nums break-all text-micro text-content-muted" dir="ltr" title={email}>
             {email}
           </p>
         )}

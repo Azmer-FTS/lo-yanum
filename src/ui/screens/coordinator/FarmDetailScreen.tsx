@@ -33,6 +33,7 @@ import type {
   Farm,
   FarmStatus,
   LatLng,
+  LivestockLine,
 } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
@@ -180,6 +181,32 @@ function FarmFacts({ farm }: { farm: Farm }) {
  * balance), then status, next visit and last activity as the three facts a
  * phone call about this farm actually needs.
  */
+/** N7.2 — the icon beside a content figure: muted, never competing with it. */
+function FigureIcon({ name }: { name: IconName }) {
+  return (
+    <span className="shrink-0 text-content-muted/70" aria-hidden="true">
+      <Icon name={name} size={18} />
+    </span>
+  )
+}
+
+function livestockIcon(kind: LivestockLine['kind']): IconName {
+  switch (kind) {
+    case 'cattle':
+      return 'cattle'
+    case 'sheep':
+      return 'sheep'
+    case 'goats':
+      return 'goat'
+    case 'camels':
+      return 'camel'
+    case 'poultry':
+      return 'bird'
+    default:
+      return 'pawPrint'
+  }
+}
+
 function KeyNumbers({
   farm,
   lastActivityAt,
@@ -194,7 +221,8 @@ function KeyNumbers({
   return (
     <div className="card card-pad metric-band" data-testid="farm-key-numbers">
       <div className="min-w-0">
-        <p className="numeric text-metric text-content-primary">
+        <p className="numeric text-metric flex items-center gap-2 text-content-primary">
+          <FigureIcon name="landPlot" />
           {farm.farmDunams.toLocaleString(locale)}
         </p>
         <p className="muted mt-0.5 leading-tight">
@@ -212,7 +240,8 @@ function KeyNumbers({
         </p>
       </div>
       <div className="min-w-0">
-        <p className="numeric text-metric text-content-primary">
+        <p className="numeric text-metric flex items-center gap-2 text-content-primary">
+          <FigureIcon name="wheat" />
           {farm.grazingDunams.toLocaleString(locale)}
         </p>
         <p className="muted mt-0.5 leading-tight">
@@ -232,18 +261,21 @@ function KeyNumbers({
           built out of. */}
       {heads !== null && (
         <div className="min-w-0">
-          <p className="numeric text-metric text-content-primary">
+          <p className="numeric text-metric flex items-center gap-2 text-content-primary">
+            <FigureIcon name="pawPrint" />
             {heads.toLocaleString(locale)}
           </p>
           <p className="muted mt-0.5 leading-tight">
             {t('livestock.total')}
-            <span className="block text-micro">
-              {(farm.livestock ?? [])
-                .map(
-                  (l) =>
-                    `${l.kind === 'other' && l.label ? l.label : t(`livestock.kinds.${l.kind}`)} ${l.heads.toLocaleString(locale)}`,
-                )
-                .join(' · ')}
+            {/* N7.2 — one small glyph per kind, so the herd reads at a glance. */}
+            <span className="mt-0.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-micro">
+              {(farm.livestock ?? []).map((l, i) => (
+                <span key={i} className="inline-flex items-center gap-1 whitespace-nowrap">
+                  <Icon name={livestockIcon(l.kind)} size={12} />
+                  {l.kind === 'other' && l.label ? l.label : t(`livestock.kinds.${l.kind}`)}{' '}
+                  {l.heads.toLocaleString(locale)}
+                </span>
+              ))}
             </span>
           </p>
         </div>

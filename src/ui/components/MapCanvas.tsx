@@ -714,12 +714,16 @@ export default function MapCanvas({
           )
         }
       }
-      if (!map.hasImage('threat-arrow')) {
-        map.addImage(
-          'threat-arrow',
-          arrowImage(threatToken('medium'), readToken('--surface-base')),
-          { pixelRatio: 1 },
-        )
+      // N7.4 (2026-09-02) — ONE HEAD PER INTENSITY, so the tip is the same
+      // colour as the shaft it ends. A single medium-red head on an orange
+      // low-intensity vector was the product owner's finding.
+      for (const intensity of ['low', 'medium', 'high'] as const) {
+        const name = `threat-arrow-${intensity}`
+        if (!map.hasImage(name)) {
+          map.addImage(name, arrowImage(threatToken(intensity), readToken('--surface-base')), {
+            pixelRatio: 1,
+          })
+        }
       }
 
       map.addSource('threat-zones', {
@@ -775,7 +779,7 @@ export default function MapCanvas({
         source: 'threat-vectors',
         filter: ['==', ['geometry-type'], 'Point'],
         layout: {
-          'icon-image': 'threat-arrow',
+          'icon-image': ['concat', 'threat-arrow-', ['get', 'intensity']],
           'icon-size': ['case', ['get', 'emphasis'], 1.15, 0.9],
           'icon-rotate': ['get', 'bearing'],
           // Rotate WITH the map, so a two-finger twist does not leave every
@@ -1482,6 +1486,7 @@ function applyThreats(
     const props = {
       id: v.id,
       color: threatToken(v.intensity),
+      intensity: v.intensity,
       emphasis: v.emphasis ?? false,
       bearing: bearingDeg(v.origin, v.target),
     }

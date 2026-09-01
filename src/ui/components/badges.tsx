@@ -71,8 +71,10 @@ export function readToken(name: string, fallback = 'rgb(240, 140, 0)'): string {
  * charter forest (theme-aware token); a guard post is AMBER — the watch-fire
  * colour, far from both the accent olive and the meet-point blue.
  */
-export function farmMarkerColor(): string {
-  return readToken('--marker-farm')
+export function farmMarkerColor(entity: { entityKind?: import('@core/index').EntityKind } = {}): string {
+  // N7.2 (2026-09-02) — a moshav is painted in ITS family (the boundary
+  // blue), so farm and moshav are tellable by colour before the glyph.
+  return readToken(entity.entityKind === 'moshav' ? '--zone-boundary-moshav' : '--marker-farm')
 }
 
 /**

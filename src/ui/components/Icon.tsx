@@ -11,6 +11,14 @@ import type { ReactNode, SVGProps } from 'react'
  */
 
 export type IconName =
+  | 'landPlot'
+  | 'wheat'
+  | 'pawPrint'
+  | 'cattle'
+  | 'sheep'
+  | 'goat'
+  | 'camel'
+  | 'bird'
   | 'mail'
   | 'dashboard'
   | 'farm'
@@ -73,6 +81,77 @@ export type IconName =
 type Props = SVGProps<SVGSVGElement> & { name: IconName; size?: number }
 
 const PATHS: Record<IconName, ReactNode> = {
+  // N7.2 (2026-09-02) — the content figures' icons: the holding's ground,
+  // the grazing, the herd as a whole, and one glyph per livestock kind.
+  // Lucide `land-plot`, `wheat`, `paw-print`, `beef`, `bird`; the sheep,
+  // goat and camel are drawn here in the same 24-unit stroke language.
+  landPlot: (
+    <>
+      <path d="m12 8 6-3-6-3v10" />
+      <path d="m8 11.99-5.5 3.14a1 1 0 0 0 0 1.74l8.5 4.86a2 2 0 0 0 2 0l8.5-4.86a1 1 0 0 0 0-1.74L16 12" />
+      <path d="m6.49 12.85 11.02 6.3" />
+      <path d="M17.51 12.85 6.5 19.15" />
+    </>
+  ),
+  wheat: (
+    <>
+      <path d="M2 22 16 8" />
+      <path d="M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z" />
+      <path d="M7.47 8.53 9 7l1.53 1.53a3.5 3.5 0 0 1 0 4.94L9 15l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z" />
+      <path d="M11.47 4.53 13 3l1.53 1.53a3.5 3.5 0 0 1 0 4.94L13 11l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z" />
+      <path d="M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z" />
+      <path d="M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z" />
+      <path d="M15.47 13.47 17 15l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z" />
+      <path d="M19.47 9.47 21 11l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L13 11l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z" />
+    </>
+  ),
+  pawPrint: (
+    <>
+      <circle cx="11" cy="4" r="2" />
+      <circle cx="18" cy="8" r="2" />
+      <circle cx="20" cy="16" r="2" />
+      <path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z" />
+    </>
+  ),
+  cattle: (
+    <>
+      <circle cx="12.5" cy="8.5" r="2.5" />
+      <path d="M12.5 2a6.5 6.5 0 0 0-6.22 4.6c-1.1 3.13-.78 3.9-3.18 6.08A3 3 0 0 0 5 18c4 0 8.4-1.8 11.4-4.3A6.5 6.5 0 0 0 12.5 2Z" />
+      <path d="m18.5 6 2.19 4.5a6.48 6.48 0 0 1 .31 2 6.49 6.49 0 0 1-2.6 5.2C15.4 20.2 11 22 7 22a3 3 0 0 1-2.68-1.66L2.4 16.5" />
+    </>
+  ),
+  sheep: (
+    <>
+      <path d="M7 9a3 3 0 0 1 5-2 3 3 0 0 1 5 2 3 3 0 0 1 1 5.5V16a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-1.5A3 3 0 0 1 7 9Z" />
+      <path d="M8 19v2M16 19v2" />
+      <path d="M5 11H3.5a1.5 1.5 0 0 0 0 3H5" />
+    </>
+  ),
+  goat: (
+    <>
+      <path d="M6 10c0-3 2-5 5-5h2c3 0 5 2 5 5v6a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3Z" />
+      <path d="M9 19v2M15 19v2" />
+      <path d="M10 5 8 2M14 5l2-3" />
+      <path d="M12 12v2" />
+    </>
+  ),
+  camel: (
+    <>
+      <path d="M3 17c0-2 1-4 3-5 1-3 3-5 6-5s5 2 6 5c2 1 3 3 3 5" />
+      <path d="M5 17v4M9 17v4M15 17v4M19 17v4" />
+      <path d="M18 8V5l2-1" />
+    </>
+  ),
+  bird: (
+    <>
+      <path d="M16 7h.01" />
+      <path d="M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.28-2.3L2 20" />
+      <path d="m20 7 2 .5-2 .5" />
+      <path d="M10 18v3" />
+      <path d="M14 17.75V21" />
+      <path d="M7 18a6 6 0 0 0 3.84-10.61" />
+    </>
+  ),
   dashboard: (
     <>
       <rect x="3" y="3" width="7" height="9" rx="1.5" />

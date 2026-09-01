@@ -131,13 +131,13 @@
      clearly different hue. Greens here are semantic map colours, not the
      retired brand greens. */
   --zone-boundary: 30 122 79; /* #1E7A4F farm boundary  */
-  --zone-grazing: 47 163 114; /* #2FA372 farm grazing   */
+  --zone-grazing: 184 134 11; /* #B8860B farm grazing — amber, N7.3: far from the boundary's green */
   /* G16 — the MOSHAV family: blue, clearly apart from the farm greens,
      because a moshav routinely ADJOINS a farm and their four zone kinds must
      stay tellable side by side (A55). Same internal logic: boundary dark,
      grazing the same family lighter. */
   --zone-boundary-moshav: 29 78 216; /* #1D4ED8 moshav boundary */
-  --zone-grazing-moshav: 96 165 250; /* #60A5FA moshav grazing  */
+  --zone-grazing-moshav: 13 148 136; /* #0D9488 moshav grazing — teal, N7.3 */
   --status-violet: 143 99 232; /* #8F63E8 violet               */
 
   /* G7bis.1 — the farm's identity pastille on every map. A deep green:
@@ -396,10 +396,10 @@
 
   /* G1/G16 — the farm zone family lightened to read on the night raster. */
   --zone-boundary: 123 216 172; /* #7BD8AC */
-  --zone-grazing: 69 200 143; /* #45C88F */
+  --zone-grazing: 224 177 90; /* #E0B15A amber, N7.3 */
   /* G16 — the moshav blues, lifted the same way for the night raster. */
   --zone-boundary-moshav: 147 197 253; /* #93C5FD */
-  --zone-grazing-moshav: 96 165 250; /* #60A5FA */
+  --zone-grazing-moshav: 45 212 191; /* #2DD4BF teal, N7.3 */
   --status-info: 79 182 224; /* #4FB6E0 */
   --status-violet: 178 149 250; /* #B295FA */
 
@@ -487,9 +487,9 @@
     /* The map-ground tokens must ride along, or a system-dark user keeps the
        daylight outlines on the night raster. */
     --zone-boundary: 123 216 172;
-    --zone-grazing: 69 200 143;
+    --zone-grazing: 224 177 90;
     --zone-boundary-moshav: 147 197 253;
-    --zone-grazing-moshav: 96 165 250;
+    --zone-grazing-moshav: 45 212 191;
     --marker-farm: 143 201 172;
 
     --status-success-ink: 52 201 166;

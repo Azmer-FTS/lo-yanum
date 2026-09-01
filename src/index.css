@@ -542,6 +542,26 @@
            focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25;
   }
 
+  /* N7.1 (2026-09-02) — A DATE FIELD THAT STAYS IN ITS BOX. WebKit gives
+     date/time inputs an intrinsic minimum width from its own picker chrome,
+     and in a narrow grid cell that chrome pushed the field past the card's
+     edge on the product owner's iPad. Zero the intrinsic minimum, cap at the
+     cell, and drop the native appearance so the app's own field draws. */
+  .input[type='date'],
+  .input[type='time'],
+  .input[type='datetime-local'] {
+    @apply block min-w-0 max-w-full;
+    -webkit-appearance: none;
+    appearance: none;
+    min-height: 2.5rem;
+  }
+  .input[type='date']::-webkit-date-and-time-value,
+  .input[type='time']::-webkit-date-and-time-value,
+  .input[type='datetime-local']::-webkit-date-and-time-value {
+    text-align: start;
+    min-height: 1.25rem;
+  }
+
   /**
    * ★★ PO POINT 2 (2026-08-31) — THE PARASITIC SCROLL ON THE FARM FORM, AND
    *    THIS ONE RULE IS THE WHOLE CAUSE.
