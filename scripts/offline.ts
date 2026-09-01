@@ -215,7 +215,14 @@ try {
     const url = m?.getStyle().sources.protomaps?.url ?? ''
     return url.replace(/^pmtiles:\/\//, '')
   })
-  check('the map is reading a PMTiles archive', basemapUrl.endsWith('.pmtiles'), basemapUrl)
+  // ★ `.pmtiles.png` IS THE SERVED NAME (§29): Pages gzips
+  //   `application/octet-stream` and range-slices the COMPRESSED object, which
+  //   aims every PMTiles read at the wrong bytes. `image/png` is left alone.
+  check(
+    'the map is reading a PMTiles archive',
+    /\.pmtiles(\.png)?$/.test(basemapUrl),
+    basemapUrl,
+  )
 
   await page.goto(`${demo.url}/#/coordinator/settings`, { waitUntil: 'load' })
   await page.waitForTimeout(1200)

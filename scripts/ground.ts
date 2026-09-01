@@ -46,14 +46,18 @@ import type { Browser, BrowserContext, Page, Request, Response } from 'playwrigh
 
 /** The register of cut archives: exact bytes, and whether it is the country. */
 const ARCHIVES: Record<string, { bytes: number; national: boolean }> = {
+  // ⚠️ THE `.png` IS THE SERVED NAME AND IT IS DELIBERATE — ETAT §29, and the
+  //    long note above `BASEMAP_KEY` in `basemap.ts` is the measurement. Pages
+  //    gzips `application/octet-stream` and then applies `Range` to the
+  //    COMPRESSED object, which points every PMTiles read at the wrong bytes.
+  //    `image/png` is not compressed. Same bytes, same cut, same release
+  //    asset — only the extension the host sees changed.
+  'israel-20260831-z14.pmtiles.png': { bytes: 94_268_129, national: true },
   'israel-20260831-z14.pmtiles': { bytes: 94_268_129, national: true },
   'negev-20260829-z14.pmtiles': { bytes: 42_560_293, national: false },
 }
 
-const NATIONAL_KEY = 'israel-20260831-z14.pmtiles'
-
-const BUCKET =
-  'https://lvrptqmkjikkkhcxocbe.supabase.co/storage/v1/object/public/basemap'
+const NATIONAL_KEY = 'israel-20260831-z14.pmtiles.png'
 
 const PORT = Number(process.env.GROUND_PORT ?? 5195)
 const OUT_DIR = 'dist-ground'
@@ -61,7 +65,32 @@ const SHOTS = 'docs/screenshots/basemap'
 
 /** Haifa. The northern city the southern extract does not contain. */
 const HAIFA = { name: 'חיפה (Haifa)', lat: 32.794, lng: 34.9896 }
-const ZOOMS = [12, 13, 14]
+
+/**
+ * ★ §29 — AND FOUR MORE PLACES, AT THE ZOOMS THE PRODUCT OWNER NAMED.
+ *
+ *   Haifa alone answered one question — "does the archive reach the north" —
+ *   and it answered it at the shallow end of the range. The bug of 2026-09-01
+ *   was invisible to it: the host was gzipping the archive and slicing ranges
+ *   on the COMPRESSED stream, so the bytes at LOW offsets still decoded (a
+ *   truncated gzip stream reads correctly from its own start) and only the
+ *   deep tiles, which live far into the file, came back as nothing. The map
+ *   drew at z11 and was blank at z14 over Jerusalem, which is exactly what he
+ *   reported and exactly what no gate here was looking at.
+ *
+ *   So the sweep is now BY DEPTH as much as by geography, and Jerusalem z14 is
+ *   in it because that is the tile that was empty on his screen.
+ */
+const PROBES: { name: string; slug: string; lat: number; lng: number; zoom: number }[] = [
+  { name: 'ירושלים (Jerusalem)', slug: 'jerusalem', lat: 31.7683, lng: 35.2137, zoom: 14 },
+  { name: 'ירושלים (Jerusalem)', slug: 'jerusalem', lat: 31.7683, lng: 35.2137, zoom: 16 },
+  { name: 'חיפה (Haifa)', slug: 'haifa', lat: HAIFA.lat, lng: HAIFA.lng, zoom: 12 },
+  { name: 'חיפה (Haifa)', slug: 'haifa', lat: HAIFA.lat, lng: HAIFA.lng, zoom: 13 },
+  { name: 'חיפה (Haifa)', slug: 'haifa', lat: HAIFA.lat, lng: HAIFA.lng, zoom: 14 },
+  { name: 'אילת (Eilat)', slug: 'eilat', lat: 29.5577, lng: 34.9519, zoom: 12 },
+  { name: 'תל אביב (Tel Aviv)', slug: 'telaviv', lat: 32.0853, lng: 34.7818, zoom: 14 },
+  { name: 'באר שבע (Beer Sheva)', slug: 'beersheva', lat: 31.253, lng: 34.7915, zoom: 14 },
+]
 
 let passed = 0
 let failed = 0
@@ -86,30 +115,6 @@ function archiveName(url: string): string {
   } catch {
     return ''
   }
-}
-
-/**
- * Ask the bucket about one key the way the deploy workflow asks: a HEAD for
- * the length, and a range request, because a `200` on a whole file proves
- * nothing about an archive that is only ever read in slices.
- */
-async function probe(key: string): Promise<{ length: number; range: number }> {
-  let length = 0
-  let range = 0
-  try {
-    const head = await fetch(`${BUCKET}/${key}`, { method: 'HEAD' })
-    if (head.ok) length = Number(head.headers.get('content-length') || '0')
-  } catch {
-    /* absent, and the caller reads that off the zero */
-  }
-  try {
-    const res = await fetch(`${BUCKET}/${key}`, { headers: { Range: 'bytes=0-15' } })
-    range = res.status
-    await res.arrayBuffer()
-  } catch {
-    /* same */
-  }
-  return { length, range }
 }
 
 /**
@@ -262,6 +267,15 @@ try {
   /** Every request and response that touches the bucket, kept in order. */
   const wire: string[] = []
   const requestedUrls = new Set<string>()
+  /**
+   * ★ §29 — ANY `content-encoding` AT ALL ON THE ARCHIVE IS A FAILURE.
+   *   A re-encoded body makes `Range` mean something else: the offsets then
+   *   address the COMPRESSED stream while PMTiles computes them against the
+   *   real file, and the deep tiles silently become nothing. Nothing else in
+   *   this gate could see that, because every number it checks — the URL, the
+   *   206, even the total length — stays right while it happens.
+   */
+  const encodedResponses: string[] = []
 
   page.on('request', (r: Request) => {
     if (!r.url().includes('/basemap/')) return
@@ -276,9 +290,11 @@ try {
     if (total) wireLength = Number(total)
     else if (r.request().method() === 'HEAD' && r.ok())
       wireLength = Number(h['content-length'] ?? '0') || wireLength
+    if (h['content-encoding']) encodedResponses.push(`${r.status()} ${h['content-encoding']}`)
     wire.push(
       `RES  ${r.status()} ${r.url()}  content-length: ${h['content-length'] ?? '—'}` +
-        `  content-range: ${contentRange || '—'}`,
+        `  content-range: ${contentRange || '—'}` +
+        `  content-encoding: ${h['content-encoding'] ?? '—'}`,
     )
   })
 
@@ -357,6 +373,13 @@ try {
     wireLength === expected && expected > 0,
     `${wireLength} on the wire, ${expected} registered (${(wireLength / 1e6).toFixed(1)} MB)`,
   )
+  check(
+    '★★ and NOTHING re-encoded it on the way — no content-encoding at all',
+    encodedResponses.length === 0,
+    encodedResponses.length === 0
+      ? 'no content-encoding on any basemap response'
+      : `${encodedResponses.join(', ')} — a range over a re-encoded body reads the WRONG BYTES (§29)`,
+  )
 
   // -------------------------------------------------------------------------
   section('PROOF 3 — WHAT הגדרות SAYS ON THE SAME BUILD')
@@ -384,14 +407,18 @@ try {
   )
 
   // -------------------------------------------------------------------------
-  section(`PROOF 4 — ${HAIFA.name}, DRAWN, AT z${ZOOMS.join(' z')}`)
+  section('PROOF 4 — GROUND UNDER EIGHT PLACE/ZOOM PAIRS, DRAWN AND CAPTURED')
   // -------------------------------------------------------------------------
 
   await Bun.$`mkdir -p ${SHOTS}`.quiet()
   await page.goto(`${server.base}/#/coordinator/farms`, { waitUntil: 'load' })
   await styleLoaded(page)
 
-  for (const zoom of ZOOMS) {
+  /** The archive's name without its serving extension, for a readable file. */
+  const shotKey = liveKey.replace(/\.png$/, '')
+
+  for (const probe of PROBES) {
+    const zoom = probe.zoom
     const drawn = await page.evaluate(
       async ([lat, lng, z]) => {
         const m = (
@@ -423,18 +450,18 @@ try {
           error: '',
         }
       },
-      [HAIFA.lat, HAIFA.lng, zoom] as [number, number, number],
+      [probe.lat, probe.lng, zoom] as [number, number, number],
     )
 
-    await page.screenshot({ path: `${SHOTS}/haifa-z${zoom}-${liveKey}.png` })
-    if (drawn.roads <= 0) haifaFailed++
+    await page.screenshot({ path: `${SHOTS}/${probe.slug}-z${zoom}-${shotKey}.png` })
+    if (drawn.roads <= 0 && probe.slug === 'haifa') haifaFailed++
     check(
-      `★ ${HAIFA.name} has ground under it at z${zoom}`,
+      `★ ${probe.name} has ground under it at z${zoom}`,
       drawn.roads > 0,
       drawn.error || `${drawn.total} features, ${drawn.roads} of them roads`,
     )
   }
-  console.log(`  captures: ${SHOTS}/haifa-z{12,13,14}-${liveKey}.png`)
+  console.log(`  captures: ${SHOTS}/<place>-z<zoom>-${shotKey}.png`)
 } finally {
   await browser?.close()
   server.stop()

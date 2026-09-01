@@ -105,13 +105,20 @@ function isBasemap(url) {
     //   constant, so a re-cut archive (a NEW name, by the naming rule) is held
     //   by a worker that shipped before it existed.
     //
+    // ⚠️ `.pmtiles.png` IS THE SAME FILE AND THE SUFFIX IS DELIBERATE (§29).
+    //    Pages gzips `application/octet-stream` and applies `Range` to the
+    //    COMPRESSED object, which aims every PMTiles read at the wrong bytes;
+    //    `image/png` is not compressed. Both spellings are matched so that a
+    //    device still holding the un-suffixed archive keeps answering from
+    //    cache instead of quietly going back to the network.
+    //
     // ⚠️ IT MUST STAY AHEAD OF `isImmutableAsset`, WHICH IS WHY IT IS HERE AND
     //   NOT THERE. `cacheFirst` calls `cache.put()`, and `cache.put()` REFUSES
     //   a 206 outright — so routing the archive through the shell cache would
     //   fail every single range request PMTiles makes. The basemap needs the
     //   whole-archive-plus-slicing path in `basemapResponse`, and nothing else.
     (url.origin === self.location.origin &&
-      /\/basemap\/[^/]+\.pmtiles$/.test(url.pathname)) ||
+      /\/basemap\/[^/]+\.pmtiles(\.png)?$/.test(url.pathname)) ||
     // The previous home, kept so that a device still holding the Supabase-hosted
     // archive keeps answering from cache instead of silently going to network.
     ((url.hostname.endsWith('.supabase.co') || url.hostname.endsWith('.supabase.in')) &&
@@ -404,10 +411,16 @@ self.addEventListener('message', (event) => {
    *      the exception's own name — and the settings screen prints it.
    *
    * ★ AND WHAT IS STORED IS VERIFIED BY READING IT BACK. A stream that ends
-   *   early can still resolve `cache.put`; the check is the stored object's
-   *   own length against `content-length`, and a mismatch DELETES the entry.
-   *   A half archive that reports `held: true` fails every range request in
-   *   the field, which is the worst of the three outcomes.
+   *   early can still resolve `cache.put`, so the entry is re-opened and
+   *   measured, and a mismatch DELETES it. A half archive that reports
+   *   `held: true` fails every range request in the field, which is the worst
+   *   of the three outcomes.
+   *
+   * ★ 2026-09-01 (§29) — AND THE ARCHIVE'S OWN HEADER IS THE LAST WORD, not a
+   *   `content-length`. Two of those were measured lying about this exact file
+   *   on this exact host, which is how a complete download came to be deleted
+   *   as "truncated". `error: 'corrupt'` is the new verdict for bytes that
+   *   arrive whole and are not a PMTiles archive.
    */
   if (data.type === 'DOWNLOAD_MAP' && typeof data.url === 'string') {
     event.waitUntil(
@@ -447,9 +460,29 @@ self.addEventListener('message', (event) => {
          *   header wins when it exists and the page's HEAD stands in when it
          *   does not; 0 only survives if neither knew, and that is honest.
          */
-        const expected =
-          Number(response.headers.get('content-length') || '0') ||
-          Number(data.expectedBytes || 0)
+        /**
+         * ⚠️ A `content-length` UNDER A `content-encoding` DESCRIBES THE
+         *    COMPRESSED BODY, AND THAT IS EXACTLY WHAT PRODUCED THE PRODUCT
+         *    OWNER'S "94.3 OF 93.9" (§29).
+         *
+         *    Pages was gzipping the archive: the header announced 93 926 002
+         *    (the compressed length) while the stream decoded to 94 268 129
+         *    (the real one). `received` counts DECODED bytes, so it overshot
+         *    the ceiling it was being measured against, the equality below
+         *    failed, and a download that had in fact completed perfectly was
+         *    deleted and reported as truncated. The archive was never the
+         *    problem, and neither was the network.
+         *
+         *    So a compressed stream's own header is not comparable and is not
+         *    used. The page's HEAD stands in — and since the `.png` suffix
+         *    landed there is no encoding on this object at all, which is the
+         *    real fix; this is the guard that stops the same lie being told
+         *    again by some future host.
+         */
+        const encoded = Boolean(response.headers.get('content-encoding'))
+        const headerLength = Number(response.headers.get('content-length') || '0')
+        const pageLength = Number(data.expectedBytes || 0)
+        const expected = encoded ? pageLength : headerLength || pageLength
 
         // ---- room, asked before the minutes are spent rather than after ----
         let droppedOld = false
@@ -489,7 +522,10 @@ self.addEventListener('message', (event) => {
           'content-type': 'application/octet-stream',
           'accept-ranges': 'bytes',
         }
-        if (expected > 0) headers['content-length'] = String(expected)
+        // ⚠️ NO `content-length` IS WRITTEN HERE (§29). It could only be the
+        //    number the server announced, which is the number that was wrong;
+        //    the cached blob's own size is the truth and is what `MAP_STATS`
+        //    and `sliceFromCache` both read.
 
         try {
           await cache.put(wanted, new Response(counted, { status: 200, headers }))
@@ -507,14 +543,67 @@ self.addEventListener('message', (event) => {
 
         // ---- read it back: what is on the device, not what was sent --------
         const stored = await cache.match(wanted)
-        const storedBytes = stored ? (await stored.blob()).size : 0
-        if (expected > 0 && (received !== expected || storedBytes !== expected)) {
+        const storedBlob = stored ? await stored.blob() : null
+        const storedBytes = storedBlob ? storedBlob.size : 0
+
+        /**
+         * ★ SHORT IS A FAILURE; LONG IS NOT (§29).
+         *
+         *   A stream that ends early is a truncated archive and must be
+         *   deleted. A stream that delivers MORE than was announced cannot be
+         *   truncated — it can only mean the announcement was wrong, which is
+         *   precisely the case that threw away a perfectly good 94 MB
+         *   download. What must always hold is that what is ON THE DEVICE is
+         *   what CAME OFF THE WIRE, and that is its own line below.
+         */
+        if ((expected > 0 && received < expected) || storedBytes !== received) {
           await dropWanted()
           await fail('truncated', {
             received,
             expected,
             stored: storedBytes,
             droppedOld,
+          })
+          return
+        }
+
+        /**
+         * ★★ AND THEN THE ARCHIVE IS ASKED WHETHER IT IS WHOLE, RATHER THAN
+         *    THE HEADERS BEING ASKED ABOUT IT.
+         *
+         *    Every length in this function comes from a server that has now
+         *    been caught stating one twice. A PMTiles archive carries its own
+         *    extent in its first 127 bytes: the magic, the version, and where
+         *    the tile data ends. If the file on the device stops before its
+         *    own header says it should, it is short — whatever any
+         *    `content-length` claimed, and whatever the network reported. This
+         *    is the check that does not depend on anybody's honesty, and it is
+         *    the one a coordinator's map actually needs to pass.
+         */
+        const head = new Uint8Array(await storedBlob.slice(0, 127).arrayBuffer())
+        const magic = String.fromCharCode(...head.subarray(0, 7))
+        if (head.length < 127 || magic !== 'PMTiles' || head[7] !== 3) {
+          await dropWanted()
+          await fail('corrupt', {
+            received,
+            expected,
+            stored: storedBytes,
+            droppedOld,
+            detail: `magic '${magic}' v${head[7]}`,
+          })
+          return
+        }
+        const view = new DataView(head.buffer, head.byteOffset, head.byteLength)
+        const tileDataEnd =
+          Number(view.getBigUint64(56, true)) + Number(view.getBigUint64(64, true))
+        if (tileDataEnd > storedBytes) {
+          await dropWanted()
+          await fail('corrupt', {
+            received,
+            expected,
+            stored: storedBytes,
+            droppedOld,
+            detail: `its header ends the tile data at ${tileDataEnd}`,
           })
           return
         }

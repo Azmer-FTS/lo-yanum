@@ -312,7 +312,72 @@ export function registerPmtilesProtocol(): void {
  * (measured 2026-08-31), so a versioned name is what lets the service worker
  * hold one archive indefinitely and drop it only when the name changes.
  */
-export const BASEMAP_KEY = 'israel-20260831-z14.pmtiles'
+/**
+ * ⚠️⚠️ THE `.png` SUFFIX IS LOAD-BEARING. IT IS NOT A TYPO, IT IS NOT A
+ *      LEFTOVER, AND REMOVING IT PUTS HOLES BACK IN THE MAP (§29).
+ *
+ * The bytes are a PMTiles archive. The name ends `.png` because that is the
+ * only lever GitHub Pages gives us over a response header, and one response
+ * header was silently destroying every tile the app read over the network.
+ *
+ * ★ WHAT WAS MEASURED, 2026-09-01, on the live site.
+ *
+ *   Pages sits behind Fastly, and Fastly gzips by CONTENT-TYPE. An unknown
+ *   extension — `.pmtiles` — is served `application/octet-stream`, and that
+ *   type IS on the compress list:
+ *
+ *     Accept-Encoding: identity  →  200, content-length: 94268129
+ *     Accept-Encoding: gzip      →  200, content-encoding: gzip,
+ *                                        content-length: 93926002
+ *
+ *   A browser ALWAYS sends the second one — `Accept-Encoding` is a forbidden
+ *   header name in `fetch`, so neither the page nor the service worker can ask
+ *   for `identity`. And the killer is what happens to a RANGE:
+ *
+ *     Range: bytes=64777443-64856698  (the Jerusalem z14 tile, exactly)
+ *     →  206  content-range: bytes 64777443-64856698/93926002   ← /93926002
+ *     →  body = a slice of the GZIP STREAM, not of the archive
+ *     →  the client tries to gunzip a fragment that is not a gzip member
+ *     →  "incorrect header check" — the tile never arrives.
+ *
+ *   The denominator is the giveaway: the range is applied to the COMPRESSED
+ *   object. PMTiles computes every offset against the UNCOMPRESSED file, so
+ *   every read after the first is aimed at the wrong bytes.
+ *
+ * ★ WHY THE MAP LOOKED *ALMOST* RIGHT, which is what made this so hard to see.
+ *   The one range that survives is the one starting at byte 0 — a truncated
+ *   gzip stream still decodes from its own start — and bytes 0…16383 are
+ *   exactly the header, the root directory and the metadata. So the archive
+ *   identified itself correctly, the app named the right file, every curl run
+ *   from a terminal passed (curl sends NO `Accept-Encoding` unless asked), and
+ *   the deep zooms — whose tiles live at high offsets — came back empty.
+ *   Jerusalem blank at z14 and drawn at z11 is not a corrupt archive; it is
+ *   this, and only this.
+ *
+ * ★ WHY `.png` AND NOT SOMETHING HONEST. Measured on this same host, same day:
+ *
+ *     image/png        not compressed   ← chosen
+ *     font/woff2       not compressed
+ *     application/pdf  not compressed
+ *     application/octet-stream   COMPRESSED
+ *     text (any), javascript, json, svg+xml        COMPRESSED
+ *
+ *   Pages offers no `_headers` file, no `.htaccess` and no per-file
+ *   configuration: the extension IS the content-type, and the content-type IS
+ *   the compression decision. Of the three that work, `.png` is the one every
+ *   proxy and CDN on earth already knows to leave alone. The archive keeps its
+ *   real name in front of the suffix so that nothing about it is hidden — the
+ *   הגדרות screen prints `israel-20260831-z14.pmtiles.png` verbatim, and that
+ *   string is the truth about what is served.
+ *
+ * ⚠️ THE RELEASE ASSET KEEPS THE PLAIN `.pmtiles` NAME. Only the object served
+ *    by Pages needs the suffix; `deploy.yml` renames it while staging. Nothing
+ *    has to be re-uploaded, and the stored bytes are untouched — verified
+ *    sha256-identical, served vs. local: c7265232b57eb2d6…
+ *
+ * The rest of the name is untouched, so the versioning rule above still holds.
+ */
+export const BASEMAP_KEY = 'israel-20260831-z14.pmtiles.png'
 
 /**
  * ★ THE ARCHIVE IS SERVED FROM THE APP'S OWN ORIGIN, AND THAT IS A MEASUREMENT

@@ -70,9 +70,20 @@ jobs:
         run: |
           set -euo pipefail
 
-          key='israel-20260831-z14.pmtiles'
+          # ⚠️ THE RELEASE ASSET AND THE SERVED OBJECT HAVE DIFFERENT NAMES,
+          #    AND THE DIFFERENCE IS THE WHOLE OF §29. The bytes are identical
+          #    and nothing was re-uploaded; only the extension Pages sees
+          #    changes, because the extension IS the content-type and the
+          #    content-type IS whether Fastly gzips the object. Measured on the
+          #    live site: `application/octet-stream` (what `.pmtiles` gets) is
+          #    compressed, and a `Range` is then applied to the COMPRESSED
+          #    stream — `content-range: …/93926002` instead of /94268129 — so
+          #    every PMTiles read after the first landed on the wrong bytes and
+          #    the deep zooms came back empty. `image/png` is not compressed.
+          asset_name='israel-20260831-z14.pmtiles'
+          key='israel-20260831-z14.pmtiles.png'
           expected=94268129
-          asset="https://github.com/${GITHUB_REPOSITORY}/releases/download/basemap-israel-20260831/${key}"
+          asset="https://github.com/${GITHUB_REPOSITORY}/releases/download/basemap-israel-20260831/${asset_name}"
 
           mkdir -p public/basemap
           curl --silent --show-error --location --fail --max-time 600 \
@@ -153,14 +164,15 @@ jobs:
           # The register of cut archives: key, exact bytes, national yes/no.
           # A new cut is a NEW NAME (the OSM build date is in it), so this list
           # grows by one line and never edits one.
-          national_key='israel-20260831-z14.pmtiles'
+          national_key='israel-20260831-z14.pmtiles.png'
           len_israel_20260831_z14=94268129
           len_negev_20260829_z14=42560293
 
           registered_length() {
             case "$1" in
-              israel-20260831-z14.pmtiles) printf '%s' "${len_israel_20260831_z14}" ;;
-              negev-20260829-z14.pmtiles)  printf '%s' "${len_negev_20260829_z14}" ;;
+              israel-20260831-z14.pmtiles.png) printf '%s' "${len_israel_20260831_z14}" ;;
+              israel-20260831-z14.pmtiles)     printf '%s' "${len_israel_20260831_z14}" ;;
+              negev-20260829-z14.pmtiles)      printf '%s' "${len_negev_20260829_z14}" ;;
               *) return 1 ;;
             esac
           }
@@ -169,7 +181,12 @@ jobs:
           # The URL is built with `new URL()`, so minification leaves the KEY
           # intact as one string — and it is also the thing a coordinator reads
           # on the הגדרות screen. The same identifier at both ends.
-          keys="$(grep -ohE '[A-Za-z0-9._-]+\.pmtiles' dist/assets/*.js 2>/dev/null | sort -u || true)"
+          # ★ THE `.png` MUST BE PART OF WHAT IS MATCHED (§29). Without the
+          #   optional group this pattern truncates the name back to
+          #   '....pmtiles', the gate then looks for a file that is not in the
+          #   artefact under that name, and the deploy fails for the wrong
+          #   reason — or worse, passes on a stale one.
+          keys="$(grep -ohE '[A-Za-z0-9._-]+\.pmtiles(\.png)?' dist/assets/*.js 2>/dev/null | sort -u || true)"
 
           if [ -z "${keys}" ]; then
             echo "::error::Basemap gate: the built bundle names no .pmtiles archive at all. The map would not draw. Refusing to deploy."
@@ -288,3 +305,98 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # ★★ §29 — THE GATE THAT WOULD HAVE CAUGHT IT, AND THE ONLY ONE THAT COULD.
+  #
+  # Every earlier basemap gate asks the SOURCE, the ARTEFACT or a LOCAL server.
+  # This bug lived in none of those. The archive was perfect — sha256-identical
+  # to the local cut, header intact, Jerusalem/Haifa/Eilat all decoding — and
+  # the app was correct, and the deploy was green. What was wrong was ONE
+  # RESPONSE HEADER, added by the host, on the way out, only when the client
+  # says it accepts gzip. Nothing that runs before the deploy can see it, and
+  # `curl` does not see it either unless it is told to ask the way a browser
+  # asks. That is why every proof so far said the map was fine.
+  #
+  # So this job runs AFTER the deploy, against the real URL, and it asks the
+  # exact question a browser asks:
+  #
+  #   1  a HEAD sending `Accept-Encoding: gzip` must come back with NO
+  #      `content-encoding` and the exact registered length;
+  #   2  a range in the MIDDLE of the file, sent the same way, must come back
+  #      206 with `content-range: …/<the real length>` — the denominator is the
+  #      tell: under compression it is the compressed size;
+  #   3  and those bytes, gunzipped as a PMTiles tile, must be the Jerusalem
+  #      z14 tile — byte-for-byte the same as the one in the artefact.
+  #
+  # If a future host, a future extension or a future "simplification" turns the
+  # compression back on, this fails loudly on the run that did it.
+  served:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gate — the SERVED archive, asked the way a browser asks
+        run: |
+          set -euo pipefail
+
+          base='https://azmer-fts.github.io/lo-yanum'
+          key='israel-20260831-z14.pmtiles.png'
+          expected=94268129
+          # The Jerusalem z14 tile, located in the artefact: offset and length.
+          tile_off=64777443
+          tile_len=79256
+
+          url="${base}/basemap/${key}"
+          browser='Accept-Encoding: gzip, deflate, br, zstd'
+
+          echo "--- 1. HEAD, as a browser sends it"
+          head_h="$(curl --silent --show-error --fail --head -H "${browser}" "${url}")"
+          printf '%s\n' "${head_h}" | tr -d '\r' | grep -iE '^(HTTP|content-type|content-encoding|content-length)' || true
+
+          enc="$(printf '%s' "${head_h}" | tr -d '\r' | grep -i '^content-encoding:' || true)"
+          if [ -n "${enc}" ]; then
+            echo "::error::Served gate: the archive comes back with '${enc}'. A compressed object is range-sliced on the COMPRESSED stream, which aims every PMTiles read at the wrong bytes and empties the deep zooms — this is exactly ETAT §29. The served name must map to a content-type Fastly does not compress (image/png, font/woff2, application/pdf). Refusing."
+            exit 1
+          fi
+
+          len="$(printf '%s' "${head_h}" | tr -d '\r' | awk 'tolower($1)=="content-length:"{print $2}' | tail -1)"
+          if [ "${len}" != "${expected}" ]; then
+            echo "::error::Served gate: the archive announces ${len} bytes, not ${expected}. Refusing."
+            exit 1
+          fi
+
+          echo "--- 2. a range in the MIDDLE of the file, as a browser sends it"
+          range_h="$(curl --silent --show-error --fail -o /tmp/tile.bin -D - \
+                       -H "${browser}" \
+                       -r "${tile_off}-$((tile_off + tile_len - 1))" "${url}")"
+          printf '%s\n' "${range_h}" | tr -d '\r' | grep -iE '^(HTTP|content-range|content-encoding|content-length)' || true
+
+          cr="$(printf '%s' "${range_h}" | tr -d '\r' | awk 'tolower($1)=="content-range:"{print $NF}' | tail -1)"
+          if [ "${cr}" != "bytes ${tile_off}-$((tile_off + tile_len - 1))/${expected}" ] && \
+             [ "${cr}" != "${tile_off}-$((tile_off + tile_len - 1))/${expected}" ]; then
+            echo "::error::Served gate: content-range came back '${cr}', expected a denominator of ${expected}. A different denominator means the range was applied to a re-encoded body. Refusing."
+            exit 1
+          fi
+
+          got="$(wc -c < /tmp/tile.bin | tr -d ' ')"
+          if [ "${got}" != "${tile_len}" ]; then
+            echo "::error::Served gate: asked for ${tile_len} bytes at offset ${tile_off} and received ${got}. Refusing."
+            exit 1
+          fi
+
+          echo "--- 3. and those bytes must BE the Jerusalem z14 tile"
+          # PMTiles tile_compression = gzip (2) for this cut, so the slice must
+          # gunzip cleanly into a Mapbox Vector Tile. A slice of the wrong bytes
+          # cannot: that is precisely the failure the product owner was seeing.
+          if ! gunzip -c /tmp/tile.bin > /tmp/tile.mvt 2>/tmp/gz.err; then
+            echo "::error::Served gate: the Jerusalem z14 slice does not gunzip ($(cat /tmp/gz.err)). The bytes at that offset are not the tile that is there in the artefact. Refusing."
+            exit 1
+          fi
+          mvt="$(wc -c < /tmp/tile.mvt | tr -d ' ')"
+          echo "Jerusalem z14 tile: ${got} bytes on the wire, ${mvt} bytes of MVT"
+          if [ "${mvt}" -lt 10000 ]; then
+            echo "::error::Served gate: the Jerusalem z14 tile decoded to only ${mvt} bytes. Refusing."
+            exit 1
+          fi
+
+          echo "::notice::Served gate: ${key} is served uncompressed at ${expected} bytes, ranges are exact, and the Jerusalem z14 tile decodes off the wire. Passed."
+
