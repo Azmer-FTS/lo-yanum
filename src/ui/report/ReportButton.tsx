@@ -7,6 +7,7 @@ import { Icon } from '../components/Icon'
 import { Modal } from '../components/primitives'
 import { drawReport } from './draw'
 import { canvasesToPdfFile } from './pdf'
+import { writeReportRecipient } from './recipient'
 
 /**
  * PO POINT 7 — "דוח", AND THREE WAYS OUT OF IT.
@@ -41,6 +42,9 @@ export function ReportButton({
   const [busy, setBusy] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [url, setUrl] = useState<string | null>(null)
+  // N5 (2026-09-02) — the address is TYPED AT THE MOMENT OF SENDING, with
+  // כתובת דוחות as its default; what is typed becomes the new default.
+  const [to, setTo] = useState(recipient)
 
   const build = async () => {
     setBusy(true)
@@ -149,17 +153,33 @@ export function ReportButton({
             <a
               className="btn-secondary"
               data-testid="report-mail"
-              href={`mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(
+              href={`mailto:${encodeURIComponent(to.trim())}?subject=${encodeURIComponent(
                 t('report.mailSubject'),
               )}&body=${encodeURIComponent(body())}`}
-              onClick={download}
+              onClick={() => {
+                if (to.trim() !== '') writeReportRecipient(to.trim())
+                download()
+              }}
             >
               <Icon name="mail" size={16} />
               {t('report.mail')}
             </a>
           </div>
+          <label className="mt-3 block">
+            <span className="label">{t('report.toLabel')}</span>
+            <input
+              type="email"
+              inputMode="email"
+              dir="ltr"
+              className="input ltr-nums text-start"
+              data-testid="report-to"
+              value={to}
+              placeholder="name@example.co.il"
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </label>
           <p className="muted mt-2 text-end">
-            {recipient ? t('report.attachHint') : t('report.noRecipient')}
+            {to.trim() ? t('report.attachHint') : t('report.noRecipient')}
           </p>
         </Modal>
       )}
