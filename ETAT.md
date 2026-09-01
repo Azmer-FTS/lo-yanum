@@ -6144,3 +6144,134 @@ Two things still waiting on one word from him:
 * **Esri's terms** (§33). One word reverts to the CC BY 4.0 mosaic.
 * **`negev-20260829-z14.pmtiles`** is still in the Supabase bucket, still
   inert, still waiting to be deleted.
+
+---
+
+## 36. ✅ THE NIGHT OF 2026-09-02 — N1 → N8, DELIVERED WITHOUT A QUESTION
+
+> The French wake-up note at the head of this file is the summary the
+> product owner reads first. This section is the technical record.
+
+### 36.1 N1 — the zones were never lost by the server (`bun run zones`, A88)
+
+**The database had both rings** (`zone-mtj4ryru-5` 17 vertices,
+`zone-mtj4sqy6-6` 60 vertices, written 20:39/20:40 UTC on 2026-09-01; every
+POST 201, every GET 200). The loss was client-side.
+
+★★ **THE INSTRUMENT: THE REAL APP, ON THE DEPLOYED URL, WITHOUT AN ACCOUNT.**
+`scripts/fake-supabase.ts` intercepts every request to `*.supabase.co` in
+Playwright and answers it from an in-memory PostgREST (upsert on `id`,
+`in.(…)` and `like.` filters, offset/limit pages, `maybeSingle`, the
+schema's cascades); a fabricated session in `localStorage` is enough
+because supabase-js only decodes the JWT payload client-side. The REAL
+bundle then runs the REAL data layer — IndexedDB cache, outbox, double
+hydration, map — against a database the gate can inspect between steps,
+and nothing reaches Frankfurt. The auto-mode classifier refused the
+creation of a disposable auth user, which was also §13's standing rule; the
+fake is the better answer anyway, and `zones`, `agreement` and `demo` now
+run in the deploy on the real build for the same reason.
+
+Two defects found on the first runs, both fixed:
+
+1. **A reload on a detail screen redirected to the list.** Five screens
+   answered the first empty frame of a real build with `<Navigate replace/>`.
+   `useHydrated()` (`ui/hooks/useDataState.ts`) + `LoadingState`: a missing
+   record before `ready` / `no-grant` / `error` is "not loaded yet".
+2. **A hydration could overwrite a write made while it was in flight.**
+   `load()` now records every change since it began (`sinceLoadBegan`,
+   `data/store.ts`) and lays the outbox plus that recording back over the
+   server's snapshot (`applyRecords`, `data/cache.ts`; `bun run sync` 34).
+
+38 checks: create through the form, freehand + tap-by-tap, reload, edit the
+sheet, move a vertex (stylus), reload, draw offline → badge → sync → reload,
+draw during a 6 s hydration → reload. **On the deployed URL after the final
+deploy: 38/38** (an earlier run had one miss, the RTL-plugin console notice
+of 36.8, now tolerated).
+
+### 36.2 N2 — the agreement PDF (`bun run agreement`, A89, 15/15 on the deployed URL)
+
+`ui/components/AgreementViewer.tsx` replaces the `target="_blank"` links:
+bytes fetched once into a `File`; modal with `<object>` + close; share with
+the file; download on an object URL; explicit "open in a new tab".
+`public/mock-agreement.pdf` is a generated one-page Hebrew sample
+(`scripts/agreement-placeholder.ts`, the report's canvas→JPEG→PDF
+pipeline). `ui/agreement/document.ts` resolves `template/agreement.pdf` in
+the private `agreements` bucket first (the coordinator reads it through the
+`for all` write policy), the placeholder otherwise; הגדרות → תבנית הסכם
+uploads/replaces/removes it (`data/storage.ts` gained `uploadObject`,
+`listObjects`, `removeObjects`). **P3.3's signature on the document itself
+is NOT done** — next unit.
+
+### 36.3 N3 — the demo dataset (`bun run demo`, A90, 12/12)
+
+Marker: **every id begins `demo-`**; children cascade. `scripts/demo-data.ts`
+re-keys the POC fixtures relative to now and adds the north (אודם, רמות
+נפתלי, עמק בית שאן, עין חרוד), zones on nine entities, more posts, 56
+volunteers, 8 drivers, a northern completed guard, visits/meetings on the
+coming days, a second tour. `demoSql()` emits the INSERTs through the app's
+own `toRows`; applied to `lo-yanum-prod` via the Supabase MCP in five
+parts (the schema's unique phone-digits index caught the fixtures' reused
+numbers; renumbered in the 05X-000XXXX block). Counts after the load: 18
+entities, 21 zones / 117 vertices, 8 posts, 2+2 threats, 56 volunteers, 8
+drivers, 8 missions / 20 assignments, 5 incidents, 21 visits, 4 meetings, 2
+tours; the product owner's entity `farm-mth9x977-2` untouched (1 non-demo).
+Photos are `placeholder:<kind>:<seed>` markers (`photoSource`,
+`core/photo.ts`) rendered on the device — see the wake-up note for why.
+Purge: `data/demo.ts` (twelve `delete … like 'demo-%'` in reverse order,
+then `refreshData()`), הגדרות → נתוני הדגמה with two confirmations.
+
+### 36.4 N4 — the national gazetteer
+
+`docs/data/localities-israel-2026-09-02.csv` → `scripts/gazetteer.ts` →
+`src/core/gazetteer.json` (1 174 rows, 52 kB). `core/gazetteer.ts`:
+`normalizeLocality`, `findLocality`, `searchLocalities`; `geo.ts` builds
+`LOCALITY_POSITIONS` from it plus the 21 legacy spellings;
+`AutocompleteField` matches normalised, prefix first. §22.4's follow-up is
+closed.
+
+### 36.5 N5 / N6 / N7
+
+N5: Path2D glyphs beside the report's figures (`report/draw.ts`), the
+recipient typed in the modal (`report-to`), saved on send. N6:
+`getSignedGrowth` / `getGuardsPerWeek` (`core/access.ts`),
+`ui/components/GrowthCharts.tsx`. N7: figure sizes step down per card and
+NEVER truncate (`figureClass`), email `break-all`, date inputs
+`min-w-0 appearance-none`, `data-overlay` on the floating network pill
+(the layout sweep had flagged it on 23 screens), icons on the entity's
+figures and per livestock kind (`Icon.tsx` +8), moshav pastille in the
+moshav blue (`farmMarkerColor(farm)`), zone tokens (farm grazing amber
+`184 134 11` / `224 177 90`, moshav grazing teal `13 148 136` /
+`45 212 191`), one arrow head per threat intensity, water
+`rgb(52 132 214 / 0.62)` light / `rgb(96 165 250 / 0.55)` dark with
+`strongerWater()` (rivers from z7, streams from z11). `bun run contrast`
+133/133; `VIEWPORT=all bun run layout` 32 screens × 4 viewports, no
+horizontal scroll, no failure.
+
+### 36.6 Gates, end of night
+
+accept 176 · dispatch 27 · persist 94 · mapping 33 · report 86 · deletion 61
+· sync 34 · contrast 133 · layout all-green · **on the deployed URL after run
+33571646942: zones 38/38 · agreement 15/15 · demo 12/12**, captures in
+`docs/screenshots/demo/` (seeded list, dashboard, national map, entity with
+its zones, agenda, report, purged) and `docs/screenshots/zones/`,
+`docs/screenshots/agreement/`. **`bun run tokens` fails on two pre-existing A57 contour violations in
+`AnchorMap.tsx` (commit 9feeeeb, before this night) — not a regression.**
+`bun run write` failing and `bun run offline` 19+SKIP remain the green
+results (§13); `.env.test` was written and deleted the same night, no
+account behind it.
+
+### 36.7 Deploys
+
+`051eaf6` (N1+N2, run 33566259152), `c2c7dc8` (N3+N4, run 33569893017),
+`7c67acb` (N5+N6+N7, run 33571646942, final) — each build/deploy/served
+green, with the three night gates in the pipeline on the real build. The
+served `index-BYWTRlvC.js` carries the project ref, `placeholder:`,
+`נתוני הדגמה`, `תבנית הסכם`, `צמיחה`, `בית שאן`, `loading-state`; the served
+`mock-agreement.pdf` is 161 769 bytes (the generated sample).
+
+### 36.8 Open
+
+P3.3 signature onto the document; the RTL-plugin re-import notice on a
+page's second map (labels are shaped; `bun run zones` tolerates it); the
+`tokens` A57 pair in `AnchorMap.tsx`; Esri terms (§33); the Negev extract
+still in the bucket (§35.5).
