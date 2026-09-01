@@ -1,4 +1,4 @@
-import { DAY, addDays, fromDayKey, isTonight, now } from './clock'
+import { DAY, addDays, fromDayKey, isTonight, localDayKey, now } from './clock'
 import { _raw, getSession } from './store'
 import { buildDayPlan } from './tours'
 import type { DayPlan, Tour } from './tours'
@@ -877,4 +877,80 @@ export function getAlerts(): DashboardAlert[] {
     (a, b) =>
       b.weight - a.weight || new Date(b.at).getTime() - new Date(a.at).getTime(),
   )
+}
+
+
+// ---------------------------------------------------------------------------
+// N6 (2026-09-02) — GROWTH, FOR THE DASHBOARD'S TWO CHARTS
+// ---------------------------------------------------------------------------
+
+export interface GrowthPoint {
+  /** The bucket's label — `YYYY-MM` for a month, `YYYY-MM-DD` (its Sunday) for a week. */
+  key: string
+  /** New in this bucket. */
+  added: number
+  /** Running total up to and including this bucket. */
+  cumulative: number
+}
+
+/**
+ * Entities SIGNED, by month, cumulative — the funder's curve. An entity counts
+ * from the date of its first agreement; an entity with a signed status but no
+ * agreement row counts from nothing (it has no date to be placed at) and is
+ * reported in `undated` so the chart can say so rather than hide it.
+ */
+export function getSignedGrowth(months = 12, from: Date = now()): { points: GrowthPoint[]; undated: number } {
+  const farms = getVisibleFarms()
+  const dates: number[] = []
+  let undated = 0
+  for (const f of farms) {
+    const first = f.agreements
+      .map((a) => new Date(a.signedAt).getTime())
+      .filter((t) => Number.isFinite(t))
+      .sort((a, b) => a - b)[0]
+    if (first === undefined) {
+      if (f.status === 'signed' || f.status === 'active') undated++
+      continue
+    }
+    dates.push(first)
+  }
+  const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  const start = new Date(from.getFullYear(), from.getMonth() - (months - 1), 1)
+  let before = dates.filter((t) => t < start.getTime()).length
+  const points: GrowthPoint[] = []
+  for (let i = 0; i < months; i++) {
+    const a = new Date(start.getFullYear(), start.getMonth() + i, 1)
+    const b = new Date(start.getFullYear(), start.getMonth() + i + 1, 1)
+    const added = dates.filter((t) => t >= a.getTime() && t < b.getTime()).length
+    before += added
+    points.push({ key: monthKey(a), added, cumulative: before })
+  }
+  return { points, undated }
+}
+
+/**
+ * Guards COMPLETED, by week (Sunday to Saturday, the Israeli week), for the
+ * last `weeks` weeks including the current one.
+ */
+export function getGuardsPerWeek(weeks = 12, from: Date = now()): GrowthPoint[] {
+  const done = getVisibleMissions()
+    .filter((m) => m.status === 'completed')
+    .map((m) => new Date(m.startAt).getTime())
+  const sunday = new Date(from)
+  sunday.setHours(0, 0, 0, 0)
+  sunday.setDate(sunday.getDate() - sunday.getDay())
+  const first = new Date(sunday)
+  first.setDate(first.getDate() - 7 * (weeks - 1))
+  let running = done.filter((t) => t < first.getTime()).length
+  const points: GrowthPoint[] = []
+  for (let i = 0; i < weeks; i++) {
+    const a = new Date(first)
+    a.setDate(a.getDate() + 7 * i)
+    const b = new Date(a)
+    b.setDate(b.getDate() + 7)
+    const added = done.filter((t) => t >= a.getTime() && t < b.getTime()).length
+    running += added
+    points.push({ key: localDayKey(a), added, cumulative: running })
+  }
+  return points
 }

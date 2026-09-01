@@ -103,6 +103,34 @@ try {
   await page.waitForTimeout(2500)
   await page.screenshot({ path: `${SHOTS}/2-dashboard.png`, fullPage: true })
 
+  // ---- N8: the captures the product owner will compare his iPad against ----
+  // The same rows as production, on the deployed bundle: what he sees on the
+  // demo morning, minus his own entity. Taken before the purge.
+  const waitMap = () =>
+    page.waitForFunction(() => Boolean((window as unknown as { __loYanumMap?: { isStyleLoaded: () => boolean } }).__loYanumMap?.isStyleLoaded()), undefined, { timeout: 60_000 }).catch(() => null)
+  await page.goto(`${BASE}/#/coordinator/farms?view=map`, { waitUntil: 'load' })
+  await waitMap()
+  await page.waitForTimeout(3500)
+  await page.screenshot({ path: `${SHOTS}/4-national-map.png` })
+  await page.goto(`${BASE}/#/coordinator/farms/demo-farm-01`, { waitUntil: 'load' })
+  await waitMap()
+  await page.waitForTimeout(3000)
+  await page.screenshot({ path: `${SHOTS}/5-entity-with-zones.png`, fullPage: true })
+  const zoneRows = await page.locator('button', { hasText: 'ערוך' }).count()
+  check('the entity screen lists its two persisted zones', zoneRows === 2, `${zoneRows} rows`)
+  await page.goto(`${BASE}/#/coordinator/agenda`, { waitUntil: 'load' })
+  await page.waitForTimeout(2500)
+  await page.screenshot({ path: `${SHOTS}/6-agenda.png`, fullPage: true })
+  await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
+  await page.waitForTimeout(2500)
+  await page.locator('[data-testid="report-open"]').first().click()
+  await page.waitForSelector('[data-testid="report-to"]', { timeout: 20_000 })
+  await page.waitForTimeout(800)
+  await page.screenshot({ path: `${SHOTS}/7-report.png` })
+  check('the report builds on the demo programme', (await page.locator('object[type="application/pdf"]').count()) === 1)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(400)
+
   // ---- הגדרות: the count, then the purge ---------------------------------
   await page.goto(`${BASE}/#/coordinator/settings`, { waitUntil: 'load' })
   await page.waitForTimeout(2500)
