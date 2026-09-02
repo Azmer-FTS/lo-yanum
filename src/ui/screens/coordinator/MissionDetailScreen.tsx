@@ -556,16 +556,28 @@ export function MissionDetailScreen() {
           column: `container-type` makes an element a containing block for
           `fixed` descendants, and the screen's modal must stay the viewport's. */}
       <div className="panel-scope flex flex-col gap-4">
-        <Section title={t('missions.team')}>
+        <Section
+          title={t('missions.team')}
+          collapseKey="mission-team"
+          summary={t('blocks.people', { count: view.volunteers.length })}
+        >
           <TeamList view={view} />
         </Section>
 
-        <Section title={t('presence.rosterTitle')}>
+        <Section
+          title={t('presence.rosterTitle')}
+          collapseKey="mission-presence"
+          summary={t('blocks.people', { count: view.volunteers.length })}
+        >
           <PresenceMatrix view={view} />
         </Section>
 
         <div className="pair-grid">
-<Section title={t('common.details')}>
+<Section
+            title={t('common.details')}
+            collapseKey="mission-details"
+            summary={`${farm.name} · ${anchorPoint.name}`}
+          >
             <dl>
               <KeyValue
                 label={t('missions.farm')}
@@ -602,7 +614,11 @@ export function MissionDetailScreen() {
             </dl>
           </Section>
 
-<Section title={t('driver.volunteerDrivers')}>
+<Section
+            title={t('driver.volunteerDrivers')}
+            collapseKey="mission-drivers"
+            summary={t('blocks.drivers', { count: view.drivers.length })}
+          >
             {/* G5.3 — one block per car. Confirmation is per driver: with two
                 cars on the road, "the transport is confirmed" is two facts. */}
             {view.drivers.length === 0 ? (
@@ -657,7 +673,11 @@ export function MissionDetailScreen() {
             the cancellation, and two copies of "who has been told" on one
             screen is how the two stop agreeing. */}
         {mission.status !== 'cancelled' && (
-          <Section title={t('outreach.title')}>
+          <Section
+            title={t('outreach.title')}
+            collapseKey="mission-outreach"
+            defaultOpen={false}
+          >
             <OutreachPanel
               view={view}
               event={outreachEvent}
@@ -667,7 +687,12 @@ export function MissionDetailScreen() {
           </Section>
         )}
 
-        <Section title={t('missions.timeline')}>
+        <Section
+          title={t('missions.timeline')}
+          collapseKey="mission-timeline"
+          defaultOpen={false}
+          summary={t('blocks.entries', { count: timeline.length })}
+        >
             {/* Dated, not clock-only: a guard is created days before it starts
                 and runs 21:00 → 05:00 across midnight, so bare times put
                 "created 11:46" below "dropped off 11:40" and read as a

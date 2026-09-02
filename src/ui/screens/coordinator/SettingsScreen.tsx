@@ -143,7 +143,7 @@ export function SettingsScreen() {
     <div className="mx-auto w-full max-w-2xl">
       <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
 
-      <Section title={t('settings.connection.title')} flush>
+      <Section title={t('settings.connection.title')} flush collapseKey="settings-connection">
         <p className="flex items-center gap-2.5 text-caption font-medium text-content-primary">
           <span
             aria-hidden="true"
@@ -162,7 +162,7 @@ export function SettingsScreen() {
         </p>
       </Section>
 
-      <Section title={t('settings.offline.title')} className="mt-6">
+      <Section title={t('settings.offline.title')} className="mt-6" collapseKey="settings-offline" defaultOpen={false}>
         {active ? (
           <>
             {/* ★ THE SCREEN NAMES THE ARCHIVE, AND THAT IS THE POINT OF THIS
@@ -385,7 +385,7 @@ export function SettingsScreen() {
           coordinator who leaves from Beer Sheva was being shown a day that
           starts 100 km from his car. See `ui/settings/origin.ts` for what the
           field accepts and why the gazetteer is tried before the numbers. */}
-      <Section title={t('settings.origin.title')} className="mt-6">
+      <Section title={t('settings.origin.title')} className="mt-6" collapseKey="settings-origin" defaultOpen={false}>
         <label className="label" htmlFor="settings-origin">
           {t('settings.origin.label')}
         </label>
@@ -457,7 +457,7 @@ export function SettingsScreen() {
           NO WAY TO CONFIRM, which is worse: nothing on screen ever said the
           address had been taken. The button is now explicit AND the blur still
           saves, so neither habit loses the value. */}
-      <Section title={t('report.recipientLabel')} className="mt-6">
+      <Section title={t('report.recipientLabel')} className="mt-6" collapseKey="settings-report" defaultOpen={false}>
         <label className="label" htmlFor="report-recipient">
           {t('report.recipientLabel')}
         </label>
@@ -514,7 +514,7 @@ export function SettingsScreen() {
           on screen has been confirmed against the server since, and — in demo
           mode, where `useDataState` returns null — that this build has no
           database behind it at all. */}
-      <Section title={t('settings.sync.title')} className="mt-6">
+      <Section title={t('settings.sync.title')} className="mt-6" collapseKey="settings-sync" defaultOpen={false}>
         {data === null ? (
           <p className="text-caption text-content-primary">
             {t('settings.sync.demo')}
@@ -557,7 +557,7 @@ export function SettingsScreen() {
       {/* N3 (2026-09-02) — the demo dataset, and the one button that removes it. */}
       <DemoDataSection />
 
-      <Section title={t('settings.account.title')} className="mt-6">
+      <Section title={t('settings.account.title')} className="mt-6" collapseKey="settings-account">
         {SUPABASE_CONFIGURED && auth.status === 'signed-in' ? (
           <>
             <dl>

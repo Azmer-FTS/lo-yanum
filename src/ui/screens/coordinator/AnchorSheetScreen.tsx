@@ -231,7 +231,7 @@ export function AnchorSheetScreen() {
       />
 
       <div className="flex flex-col gap-4">
-          <Section title={t('anchor.messages')}>
+          <Section title={t('anchor.messages')} collapseKey="post-messages">
             {/* P0bis.3b — the two messages SIDE BY SIDE once the panel can
                 hold them. They are the same briefing written twice, once with
                 links and once without, and the coordinator's actual job here
@@ -258,13 +258,21 @@ export function AnchorSheetScreen() {
 
           <div className="panel-scope">
             <div className="pair-grid">
-          <Section title={t('anchor.access')}>
+          <Section
+            title={t('anchor.access')}
+            collapseKey="post-access"
+            summary={anchor.accessDescription}
+          >
             <p className="text-caption leading-relaxed text-content-secondary">
               {anchor.accessDescription}
             </p>
           </Section>
 
-          <Section title={t('anchor.instructions')}>
+          <Section
+            title={t('anchor.instructions')}
+            collapseKey="post-instructions"
+            summary={t('blocks.entries', { count: anchor.instructions.length })}
+          >
             <ul className="flex flex-col gap-2">
               {anchor.instructions.map((line, i) => (
                 <li key={i} className="flex gap-2.5 text-caption text-content-secondary">

@@ -56,7 +56,6 @@ import {
   readStatusColor,
 } from '../../components/badges'
 import {
-  CollapsibleSection,
   EmptyState,
   KeyValue,
   LoadingState,
@@ -311,7 +310,12 @@ function KeyNumbers({
 function FarmIdentity({ farm }: { farm: Farm }) {
   const { t } = useTranslation()
   return (
-    <Section title={t('common.details')} flush>
+    <Section
+      title={t('common.details')}
+      flush
+      collapseKey="entity-details"
+      summary={`${t(`farmType.${farm.type}`)} · ${farm.locality}`}
+    >
       <div className="mb-3 border-b border-edge-subtle pb-3">
         <StatusStepper status={farm.status} />
       </div>
@@ -351,13 +355,9 @@ export function FarmDetailScreen() {
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
   const [selectedThreatId, setSelectedThreatId] = useState<string | null>(null)
 
-  // G7bis.3 — the secondary blocks open by default only where two columns
-  // exist to absorb them; on one narrow column they start folded. Read once:
-  // resizing mid-visit should not re-fold what the user arranged.
-  const [wideDefault] = useState(() =>
-    window.matchMedia('(min-width: 1280px)').matches,
-  )
-
+  // U1 (2026-09-02) — the folds are remembered GLOBALLY per block type
+  // (`Section collapseKey`), so there is no per-screen default to compute any
+  // more: the reference blocks start folded everywhere, the essentials open.
   // N1 (2026-09-02) — a missing record before the snapshot has arrived is
   // "not loaded yet", never "gone": redirecting here on a reload was how a
   // coordinator's own farm closed itself. See `useHydrated`.
@@ -541,7 +541,16 @@ export function FarmDetailScreen() {
             {/* G14c — the recent-activity strip moved up from the fold: "what
                 has been going on here" is the second question after the
                 numbers, not an appendix. */}
-            <Section title={t('timeline.farmActivity')}>
+            <Section
+              title={t('timeline.farmActivity')}
+              collapseKey="entity-activity"
+              defaultOpen={false}
+              summary={
+                lastActivityAt
+                  ? formatRelative(lastActivityAt, locale)
+                  : t('timeline.noActivity')
+              }
+            >
               {activity.length === 0 ? (
                 <EmptyState icon="history" title={t('timeline.noActivity')} />
               ) : (
@@ -551,6 +560,8 @@ export function FarmDetailScreen() {
 
             <Section
             title={t('farms.anchorPoints')}
+            collapseKey="entity-posts"
+            summary={t('blocks.posts', { count: anchors.length })}
             action={
               <a
                 href={googleMapsPointUrl(farm.position)}
@@ -621,7 +632,12 @@ export function FarmDetailScreen() {
 
           {/* G15 — the ground list: every drawn zone with its live area, and
               an "ערוך" that selects it on the map with its handles up. */}
-          <Section title={t('zone.zonesTitle')}>
+          <Section
+            title={t('zone.zonesTitle')}
+            collapseKey="entity-zones"
+            defaultOpen={false}
+            summary={t('blocks.zones', { count: zones.length })}
+          >
             {zones.length === 0 ? (
               <EmptyState icon="map" title={t('zone.noZones')} />
             ) : (
@@ -697,7 +713,11 @@ export function FarmDetailScreen() {
               only the panel can answer. */}
           <div className="panel-scope">
             <div className="pair-grid">
-          <Section title={t('farms.guardHistory')}>
+          <Section
+            title={t('farms.guardHistory')}
+            collapseKey="entity-guards"
+            summary={t('blocks.guards', { count: missions.length })}
+          >
             {missions.length === 0 ? (
               <EmptyState icon="shield" title={t('missions.empty')} />
             ) : (
@@ -722,7 +742,11 @@ export function FarmDetailScreen() {
             )}
           </Section>
 
-          <Section title={t('farms.recentIncidents')}>
+          <Section
+            title={t('farms.recentIncidents')}
+            collapseKey="entity-incidents"
+            summary={t('blocks.incidents', { count: incidents.length })}
+          >
             {incidents.length === 0 ? (
               <EmptyState icon="alert" title={t('incidents.empty')} />
             ) : (
@@ -746,7 +770,11 @@ export function FarmDetailScreen() {
             )}
           </Section>
 
-          <Section title={t('farms.contacts')}>
+          <Section
+            title={t('farms.contacts')}
+            collapseKey="entity-contacts"
+            summary={t('blocks.contacts', { count: farm.contacts.length })}
+          >
             <ul className="auto-cols gap-x-5 [--col-min:15rem]">
               {farm.contacts.map((contact) => (
                 <li key={contact.id} className="flex items-center gap-3 py-1.5">
@@ -766,10 +794,14 @@ export function FarmDetailScreen() {
             </ul>
           </Section>
 
-          <CollapsibleSection
-            storageKey="farm-detail:commitments"
+          <Section
             title={t('commitment.title')}
-            defaultOpen={wideDefault}
+            collapseKey="entity-commitments"
+            defaultOpen={false}
+            summary={t('blocks.commitments', {
+              count: farm.commitments.length,
+              done: farm.commitments.filter((c) => c.fulfilled).length,
+            })}
           >
             {farm.commitments.length === 0 ? (
               <EmptyState title={t('common.none')} />
@@ -810,12 +842,13 @@ export function FarmDetailScreen() {
                 ))}
               </ul>
             )}
-          </CollapsibleSection>
+          </Section>
 
-          <CollapsibleSection
-            storageKey="farm-detail:agreements"
+          <Section
             title={t('farms.agreements')}
-            defaultOpen={wideDefault}
+            collapseKey="entity-agreements"
+            defaultOpen={false}
+            summary={t('blocks.agreements', { count: farm.agreements.length })}
           >
             {farm.agreements.length === 0 ? (
               <EmptyState icon="document" title={t('farms.noAgreements')} />
@@ -846,22 +879,24 @@ export function FarmDetailScreen() {
                 ))}
               </ul>
             )}
-          </CollapsibleSection>
+          </Section>
 
-          <CollapsibleSection
-            storageKey="farm-detail:notes"
+          <Section
             title={t('common.notes')}
-            defaultOpen={wideDefault}
+            collapseKey="entity-notes"
+            defaultOpen={false}
+            summary={farm.notes ? farm.notes.split('\n')[0] : t('common.none')}
           >
             <p className="whitespace-pre-line text-caption leading-relaxed text-content-secondary">
               {farm.notes || t('common.none')}
             </p>
-          </CollapsibleSection>
+          </Section>
 
-          <CollapsibleSection
-            storageKey="farm-detail:visits"
+          <Section
             title={t('agenda.visits')}
-            defaultOpen={wideDefault}
+            collapseKey="entity-visits"
+            defaultOpen={false}
+            summary={t('blocks.visits', { count: visits.length })}
             action={
               <button
                 type="button"
@@ -909,7 +944,7 @@ export function FarmDetailScreen() {
                 ))}
               </ul>
             )}
-          </CollapsibleSection>
+          </Section>
           </div>
           </div>
           </div>

@@ -101,7 +101,7 @@ export function AgreementTemplateSection() {
   const uploaded = info !== 'unknown' && info !== null
 
   return (
-    <Section title={t('settings.agreement.title')} className="mt-6">
+    <Section title={t('settings.agreement.title')} className="mt-6" collapseKey="settings-agreement" defaultOpen={false}>
       <p className="muted">{t('settings.agreement.intro')}</p>
 
       <p className="mt-3 text-caption font-medium text-content-primary" data-testid="agreement-template-status">

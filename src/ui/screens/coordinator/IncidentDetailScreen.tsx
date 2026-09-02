@@ -164,13 +164,21 @@ export function IncidentDetailScreen() {
             key/value list the eye reads last. The report itself is set one
             size up: on this screen it is the content, not an attribute. */}
         <div className="pair-grid">
-          <Section title={t('report.description')}>
+          <Section
+            title={t('report.description')}
+            collapseKey="incident-description"
+            summary={incident.description}
+          >
             <p className="whitespace-pre-line text-body leading-relaxed text-content-primary">
               {incident.description}
             </p>
           </Section>
 
-          <Section title={t('common.details')}>
+          <Section
+            title={t('common.details')}
+            collapseKey="incident-details"
+            summary={`${incident.reporterName} · ${formatDateTime(incident.reportedAt, locale)}`}
+          >
             <dl>
               <KeyValue
                 label={t('report.severity')}
@@ -208,7 +216,11 @@ export function IncidentDetailScreen() {
               The follow-up entries are not a separate list from the report and
               the closure: they are the middle of the same story, and rendering
               them as three blocks was what made the screen hard to read. */}
-          <Section title={t('incidents.thread')}>
+          <Section
+            title={t('incidents.thread')}
+            collapseKey="incident-thread"
+            summary={t('blocks.entries', { count: timeline.length })}
+          >
             <Timeline withDate entries={timeline} />
 
             <div className="mt-4 flex flex-col gap-2 border-t border-edge-subtle pt-3 sm:flex-row">

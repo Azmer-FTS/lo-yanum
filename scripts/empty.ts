@@ -83,6 +83,9 @@ function audit(): Array<{ heading: string; body: string; hasEmptyState: boolean 
 
     const heading = el.querySelector('h1, h2, h3')
     if (!heading) continue
+    // U1 (2026-09-02) — a FOLDED block is a heading with its body deliberately
+    // hidden, and its one-line summary is the content. Not a stump.
+    if (el.dataset.open === '0') continue
     // A section that contains other sections is a WRAPPER; its children are
     // what this is about, and judging it too would report one defect twice.
     if (el.querySelector('section') !== null) continue

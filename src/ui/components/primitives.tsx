@@ -46,6 +46,39 @@ export function PageHeader({
 }
 
 /**
+ * U1 (2026-09-02) — EVERY SIGNIFICANT BLOCK FOLDS, AND THE FOLD IS REMEMBERED
+ * PER KIND OF BLOCK, NOT PER RECORD.
+ *
+ * The product owner's rule, verbatim: if he folds "שכבת איומים" on one farm,
+ * it is folded on EVERY farm, and it stays folded tomorrow. So the memory is
+ * keyed by the block's TYPE (`collapseKey`) in localStorage — never by the
+ * record's id, and never in sessionStorage, which iPadOS empties every time
+ * it reaps the tab.
+ *
+ * A folded block costs one line: its title, a chevron, and a one-line
+ * summary/counter the caller supplies ("3 עמדות · 2 אזורים"). The whole
+ * heading is the hit area (G11), not the 15 px chevron.
+ */
+const BLOCK_PREFIX = 'lo-yanum:block:'
+
+export function readBlockOpen(key: string, fallback: boolean): boolean {
+  try {
+    const stored = localStorage.getItem(BLOCK_PREFIX + key)
+    return stored !== null ? stored === '1' : fallback
+  } catch {
+    return fallback
+  }
+}
+
+export function writeBlockOpen(key: string, open: boolean): void {
+  try {
+    localStorage.setItem(BLOCK_PREFIX + key, open ? '1' : '0')
+  } catch {
+    // A remembered fold is a convenience, not a requirement.
+  }
+}
+
+/**
  * C3 — the section heading lives ABOVE the card, not inside it.
  *
  * Burying a 13px uppercase label inside the card made every block look the
@@ -53,6 +86,8 @@ export function PageHeader({
  * outside at the `section` scale, with generous space above it and tight space
  * below, so it visually belongs to the card it introduces. The card itself
  * holds content only.
+ *
+ * With `collapseKey` the heading is also the block's switch (U1 above).
  */
 export function Section({
   title,
@@ -73,6 +108,9 @@ export function Section({
    * separate objects — which is what they are.
    */
   bare = false,
+  collapseKey,
+  defaultOpen = true,
+  summary,
 }: {
   title?: string
   action?: ReactNode
@@ -81,42 +119,84 @@ export function Section({
   padded?: boolean
   flush?: boolean
   bare?: boolean
+  /** U1 — the block TYPE the fold is remembered under (global, persistent). */
+  collapseKey?: string
+  /** First-ever state, before the product owner has touched the block. */
+  defaultOpen?: boolean
+  /** One line shown beside the title while the block is folded. */
+  summary?: ReactNode
 }) {
+  const [open, setOpen] = useState<boolean>(() =>
+    collapseKey ? readBlockOpen(collapseKey, defaultOpen) : true,
+  )
+  const toggle = () => {
+    if (!collapseKey) return
+    setOpen((v) => {
+      writeBlockOpen(collapseKey, !v)
+      return !v
+    })
+  }
+  const foldable = collapseKey !== undefined
+
   return (
-    <section className={className}>
+    <section
+      className={className}
+      data-block={collapseKey}
+      data-open={foldable ? (open ? '1' : '0') : undefined}
+    >
       {(title || action) && (
         <div
-          className={`flex items-end justify-between gap-3 pb-2.5 ${
+          className={`flex items-center justify-between gap-3 pb-2 ${
             flush ? '' : 'pt-1'
           }`}
         >
-          {title && (
-            <h2 className="text-section text-content-primary">{title}</h2>
+          {foldable ? (
+            <button
+              type="button"
+              onClick={toggle}
+              aria-expanded={open}
+              data-testid={`block-${collapseKey}`}
+              className="group flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-field text-start
+                         transition-colors duration-fast hover:bg-surface-high/70 -ms-1.5 ps-1.5"
+            >
+              <span
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-pill bg-surface-high text-content-secondary
+                            transition-transform duration-fast group-hover:text-content-primary ${
+                              open ? '' : 'ltr:-rotate-90 rtl:rotate-90'
+                            }`}
+              >
+                <Icon name="chevronDown" size={14} />
+              </span>
+              <h2 className="truncate text-section text-content-primary">{title}</h2>
+              {!open && summary && (
+                <span
+                  className="min-w-0 truncate text-caption text-content-muted"
+                  data-block-summary=""
+                >
+                  {summary}
+                </span>
+              )}
+            </button>
+          ) : (
+            title && <h2 className="text-section text-content-primary">{title}</h2>
           )}
           {action}
         </div>
       )}
-      {bare ? (
-        children
-      ) : (
-        <div className={`card ${padded ? 'card-pad' : ''}`}>{children}</div>
-      )}
+      {open &&
+        (bare ? (
+          children
+        ) : (
+          <div className={`card ${padded ? 'card-pad' : ''}`}>{children}</div>
+        ))}
     </section>
   )
 }
 
 /**
- * G7bis.3 — a Section whose heading is also its switch.
- *
- * The farm detail's secondary blocks (commitments, agreements, notes, visits)
- * are reference material: consulted sometimes, in the way always — worst on an
- * iPad portrait column where four half-empty cards push the incidents below
- * three screenfuls. Collapsed they cost one line each. The state is remembered
- * PER SESSION (sessionStorage), so reopening the same farm mid-shift keeps the
- * coordinator's arrangement without persisting a stale layout into next month.
- *
- * The chevron sits ON the heading, and the whole heading is the hit area —
- * a 14 px chevron alone is not a target a thumb can be asked to hit (G11).
+ * G7bis.3 → U1 — kept as a name for the older call sites; it is `Section`
+ * with a `collapseKey`. `storageKey` used to be a sessionStorage key per
+ * screen; it is now the block TYPE and the memory is global.
  */
 export function CollapsibleSection({
   storageKey,
@@ -127,56 +207,31 @@ export function CollapsibleSection({
   className = '',
   padded = true,
   bare = false,
+  summary,
 }: {
-  /** sessionStorage key; also what makes the memory per-block. */
   storageKey: string
   title: string
-  /** First-visit state — callers pass "am I on a wide viewport". */
   defaultOpen: boolean
   action?: ReactNode
   children: ReactNode
   className?: string
   padded?: boolean
   bare?: boolean
+  summary?: ReactNode
 }) {
-  const [open, setOpen] = useState<boolean>(() => {
-    const stored = sessionStorage.getItem(storageKey)
-    return stored !== null ? stored === '1' : defaultOpen
-  })
-
-  const toggle = () =>
-    setOpen((v) => {
-      sessionStorage.setItem(storageKey, v ? '0' : '1')
-      return !v
-    })
-
   return (
-    <section className={className}>
-      <div className="flex items-end justify-between gap-3 pb-2.5">
-        <button
-          type="button"
-          onClick={toggle}
-          aria-expanded={open}
-          className="group flex min-w-0 items-center gap-1.5 text-start"
-        >
-          <span
-            className={`text-content-muted transition-transform duration-fast group-hover:text-content-primary ${
-              open ? '' : 'ltr:-rotate-90 rtl:rotate-90'
-            }`}
-          >
-            <Icon name="chevronDown" size={15} />
-          </span>
-          <h2 className="truncate text-section text-content-primary">{title}</h2>
-        </button>
-        {action}
-      </div>
-      {open &&
-        (bare ? (
-          children
-        ) : (
-          <div className={`card ${padded ? 'card-pad' : ''}`}>{children}</div>
-        ))}
-    </section>
+    <Section
+      collapseKey={storageKey}
+      title={title}
+      defaultOpen={defaultOpen}
+      action={action}
+      className={className}
+      padded={padded}
+      bare={bare}
+      summary={summary}
+    >
+      {children}
+    </Section>
   )
 }
 
@@ -335,6 +390,151 @@ export function KpiFilter({
   )
 }
 
+/**
+ * U2 (2026-09-02) — THE COMPACT KPI-FILTER, for the one swipable row above a
+ * list. Same contract as `KpiFilter` (the card IS the filter), a quarter of
+ * the height: figure and label on one line, the hint under the label, 44 px
+ * tall so a thumb can hit it on a moving vehicle.
+ */
+export function KpiChip({
+  label,
+  value,
+  icon,
+  dot,
+  hint,
+  tone = 'default',
+  active,
+  onClick,
+  testId,
+}: {
+  label: string
+  value: ReactNode
+  tone?: 'default' | 'alert' | 'good' | 'accent'
+  icon?: IconName
+  dot?: ReactNode
+  hint?: ReactNode
+  active: boolean
+  onClick: () => void
+  testId?: string
+}) {
+  const toneClass = {
+    default: 'text-content-primary',
+    alert: 'text-status-danger-ink',
+    good: 'text-status-success-ink',
+    accent: 'text-accent-ink',
+  }[tone]
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      data-testid={testId}
+      className={`tile-interactive flex min-h-11 items-center gap-2 px-3 py-1 text-start ${
+        active ? 'bg-accent/10 ring-2 ring-accent' : ''
+      }`}
+    >
+      {dot}
+      {icon && (
+        <span className={`shrink-0 ${toneClass}`}>
+          <Icon name={icon} size={16} />
+        </span>
+      )}
+      <span className={`numeric text-heading font-bold leading-none ${toneClass}`}>
+        {value}
+      </span>
+      <span className="flex min-w-0 flex-col leading-tight">
+        <span className="whitespace-nowrap text-caption text-content-secondary">
+          {label}
+        </span>
+        {hint && (
+          <span className="whitespace-nowrap text-micro text-content-muted/80">
+            {hint}
+          </span>
+        )}
+      </span>
+    </button>
+  )
+}
+
+/**
+ * U2 — the sticky top of every list screen: a compact title row, then ONE
+ * swipable row holding the search box and the KPI-filters, then the filter
+ * pills, then (optionally) the column headers. Pinned at every width.
+ *
+ * `-mx-4 px-4` / `lg:-mx-5 lg:px-5` — the block paints out to the panel's
+ * own padding so the rows never show at the sides while it is pinned.
+ */
+export function ListTop({
+  title,
+  subtitle,
+  actions,
+  search,
+  onSearch,
+  searchPlaceholder,
+  kpis,
+  filters,
+  children,
+  testId,
+}: {
+  title: ReactNode
+  subtitle?: ReactNode
+  actions?: ReactNode
+  search?: string
+  onSearch?: (v: string) => void
+  searchPlaceholder?: string
+  /** The KPI chips — rendered in the swipable row. */
+  kpis?: ReactNode
+  /** The filter pills row (a `FilterRow`), below the KPIs. */
+  filters?: ReactNode
+  /** Column headers, closing the block. */
+  children?: ReactNode
+  testId?: string
+}) {
+  return (
+    <div
+      data-list-top=""
+      data-testid={testId}
+      className="sticky z-20 -mx-4 mb-2 bg-surface-base/95 px-4 pb-1 backdrop-blur lg:-mx-5 lg:px-5"
+      style={{ top: 'var(--shell-top, 0px)' }}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 pb-2">
+        <div className="flex min-w-0 items-baseline gap-2">
+          <h1 className="truncate text-heading text-content-primary">{title}</h1>
+          {subtitle && <span className="muted whitespace-nowrap">{subtitle}</span>}
+        </div>
+        {actions && (
+          <div className="flex flex-wrap items-center gap-1.5">{actions}</div>
+        )}
+      </div>
+      <div className="flex items-stretch gap-2">
+        {onSearch && (
+          <div className="relative w-36 shrink-0 sm:w-44">
+            <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
+              <Icon name="search" size={15} />
+            </span>
+            <input
+              type="search"
+              className="input h-full min-h-11 py-1.5 ps-8"
+              value={search ?? ''}
+              placeholder={searchPlaceholder}
+              onChange={(e) => onSearch(e.target.value)}
+              data-testid="list-search"
+            />
+          </div>
+        )}
+        {kpis && (
+          <div className="scroll-row min-w-0 flex-1" data-testid="kpi-strip">
+            {kpis}
+          </div>
+        )}
+      </div>
+      {filters && <div className="mt-1.5">{filters}</div>}
+      {children}
+    </div>
+  )
+}
+
 /** List row that navigates. Chevron follows the writing direction. */
 export function RowLink({ to, children }: { to: string; children: ReactNode }) {
   return (
@@ -448,16 +648,23 @@ export function FilterRow({
   active,
   onClear,
   trailing,
+  nowrap = false,
 }: {
   children: ReactNode
   /** True when at least one filter is on. */
   active: boolean
   onClear: () => void
   trailing?: ReactNode
+  /** U2 — one swipable line instead of a wrapping block. */
+  nowrap?: boolean
 }) {
   const { t } = useTranslation()
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-1.5">
+    <div
+      className={`items-center gap-1.5 ${
+        nowrap ? 'scroll-row mb-2' : 'mb-4 flex flex-wrap'
+      }`}
+    >
       {children}
       {active && (
         <button

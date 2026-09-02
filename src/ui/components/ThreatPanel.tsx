@@ -124,6 +124,9 @@ export function ThreatPanel({
   return (
     <Section
       title={t('threat.layer')}
+      collapseKey="entity-threats"
+      defaultOpen={false}
+      summary={t('blocks.threats', { zones: zones.length, vectors: vectors.length })}
       // The role restriction is stated on the panel itself, once: a
       // coordinator writing an assessment should know who can read it back.
       action={

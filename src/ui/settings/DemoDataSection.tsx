@@ -55,7 +55,7 @@ export function DemoDataSection() {
   const total = counts?.total ?? 0
 
   return (
-    <Section title={t('settings.demo.title')} className="mt-6">
+    <Section title={t('settings.demo.title')} className="mt-6" collapseKey="settings-demo" defaultOpen={false}>
       <p className="muted">{t('settings.demo.intro')}</p>
       <p className="mt-3 text-caption font-medium text-content-primary" data-testid="demo-data-status">
         {total === 0
