@@ -42,9 +42,7 @@ function ItemRow({ item }: { item: DayPlanItem }) {
         <span className="ltr-nums numeric w-11 shrink-0 text-micro text-content-muted">
           {formatTime(item.at, locale)}
         </span>
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-field bg-surface-high text-content-muted">
-          <Icon name="home" size={13} />
-        </span>
+        <Icon name="home" size={18} strokeWidth={1.5} className="shrink-0 text-content-muted" />
         <span className="min-w-0 flex-1 truncate text-caption text-content-secondary">
           {t('myday.return')}
         </span>

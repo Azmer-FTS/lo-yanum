@@ -303,14 +303,16 @@ export function GrowthCharts() {
   const guardsTotal = guards.reduce((s, p) => s + p.added, 0)
 
   return (
-    // U3 — one under the other, by the product owner's order; never side by side.
-    <div className="flex flex-col gap-2.5" data-testid="growth-charts">
+    // U3 — one under the other in a narrow column. W3.2 (passe finale) — the
+    // charts were growing giant with the panel: the height is capped at 240 px
+    // and, when the column is wide enough, the two sit SIDE BY SIDE instead
+    // of growing (`.growth-grid`, a container query).
+    <div className="growth-wrap" data-testid="growth-charts">
+      <div className="growth-grid">
       <div className="card card-pad min-w-0 bg-status-success/[0.05]">
         <div className="flex items-center justify-between gap-2">
           <p className="text-caption font-semibold text-content-primary">{t('dashboard.growth.signed')}</p>
-          <span className="flex h-8 w-8 items-center justify-center rounded-field bg-status-success/15 text-status-success-ink">
-            <Icon name="document" size={16} />
-          </span>
+          <Icon name="document" size={24} strokeWidth={1.4} className="shrink-0 text-status-success-ink" />
         </div>
         <p className="muted mb-1">{t('dashboard.growth.signedHint', { months: 12 })}</p>
         <AreaChart points={signed.points} locale={locale} colour="rgb(var(--status-success))" />
@@ -321,12 +323,11 @@ export function GrowthCharts() {
       <div className="card card-pad min-w-0 bg-accent/[0.05]">
         <div className="flex items-center justify-between gap-2">
           <p className="text-caption font-semibold text-content-primary">{t('dashboard.growth.guards')}</p>
-          <span className="flex h-8 w-8 items-center justify-center rounded-field bg-accent/15 text-accent-ink">
-            <Icon name="shield" size={16} />
-          </span>
+          <Icon name="shield" size={24} strokeWidth={1.4} className="shrink-0 text-accent-ink" />
         </div>
         <p className="muted mb-1">{t('dashboard.growth.guardsHint', { weeks: 12, count: guardsTotal })}</p>
         <BarChart points={guards} locale={locale} colour="rgb(var(--accent))" />
+      </div>
       </div>
     </div>
   )

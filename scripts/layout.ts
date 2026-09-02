@@ -361,6 +361,8 @@ const ROUTES: Array<{
 interface Report {
   scrollWidth: number
   innerWidth: number
+  /** W2 — figures wider than their card (`[data-figure]`), at every seam stop. */
+  escapedFigures: Array<{ tag: string; text: string }>
   /**
    * PO return 5 — HOW FAR THE DOCUMENT CAN ACTUALLY BE SLID, measured by
    * trying to slide it. `scrollWidth` is the usual instrument and it is not
@@ -727,9 +729,28 @@ function audit(): Report {
     }
   }
 
+  // W2 (2026-09-02, passe finale) — A FIGURE THAT ESCAPES ITS CARD. The big
+  // numbers were leaving their KPI cards and widening the page; every figure
+  // now carries `data-figure`, and one whose content is wider than its box
+  // fails the screen at every seam position.
+  const escapedFigures = [...document.querySelectorAll<HTMLElement>('[data-figure]')]
+    .filter((el) => {
+      const r = el.getBoundingClientRect()
+      if (r.width <= 0) return false
+      const card = el.closest<HTMLElement>('.figure-card, .card, .card-interactive, .tile')
+      return (
+        el.scrollWidth > el.clientWidth + 1 ||
+        (card !== null && r.right > card.getBoundingClientRect().right + 1) ||
+        (card !== null && r.left < card.getBoundingClientRect().left - 1)
+      )
+    })
+    .map((el) => ({ tag: label(el), text: (el.textContent ?? '').trim().slice(0, 20) }))
+    .slice(0, 8)
+
   return {
     smallFields: smallFields.slice(0, 6),
     coarsePointer,
+    escapedFigures,
     scrollWidth: document.documentElement.scrollWidth,
     innerWidth: vw,
     scrollRange,
@@ -922,9 +943,12 @@ for (const name of RUNS) {
 
       // U7 — judged at EVERY stop: the seam is what makes a column narrow.
       const cutOff = report.truncated.length > 0
+      // W2 — judged at EVERY stop, like the overflow it used to cause.
+      const escaped = report.escapedFigures.length > 0
       const ok =
         !overflow &&
         !cutOff &&
+        !escaped &&
         !tooTall &&
         !gradientWrong &&
         !clockCovered &&
@@ -951,6 +975,9 @@ for (const name of RUNS) {
       }
       for (const c of report.truncated) {
         console.log(`      U7 text cut with no recourse: ${c.tag} "${c.text}"`)
+      }
+      for (const f of report.escapedFigures) {
+        console.log(`      W2 figure escapes its card: ${f.tag} "${f.text}"`)
       }
       if (!first) continue
       for (const w of report.wide) {

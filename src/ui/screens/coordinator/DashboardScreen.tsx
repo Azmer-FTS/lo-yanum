@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -83,25 +84,29 @@ import { useLocale } from '../../hooks/useLocale'
  */
 const ALERT_STYLE: Record<
   DashboardAlert['kind'],
-  { icon: string; chip: string; iconName: IconName }
+  { icon: string; ink: string; chip: string; iconName: IconName }
 > = {
   recruiting: {
     icon: 'bg-status-warn/15 text-status-warn-ink',
+    ink: 'text-status-warn-ink',
     chip: 'bg-status-warn/15 text-status-warn-ink',
     iconName: 'users',
   },
   urgent_incident: {
     icon: 'bg-critical text-content-on-accent',
+    ink: 'text-critical',
     chip: 'chip-critical',
     iconName: 'alert',
   },
   presence_mismatch: {
     icon: 'bg-critical/15 text-status-danger-ink',
+    ink: 'text-status-danger-ink',
     chip: 'bg-critical/15 text-status-danger-ink',
     iconName: 'users',
   },
   return_not_confirmed: {
     icon: 'bg-critical/15 text-status-danger-ink',
+    ink: 'text-status-danger-ink',
     chip: 'bg-critical/15 text-status-danger-ink',
     iconName: 'car',
   },
@@ -151,15 +156,12 @@ function AlertChip({
       onClick={onSelect}
       aria-pressed={selected}
       data-testid="alert-chip"
-      className={`tile-interactive flex h-full min-h-[3.5rem] w-full items-center gap-2.5 border-s-4 px-3 py-2 text-start ${
+      className={`tile-interactive flex h-full min-h-[5.25rem] w-full items-center gap-3 border-s-4 px-3 py-2.5 text-start ${
         critical ? 'border-s-critical' : 'border-s-status-warn'
       } ${selected ? 'bg-accent/10 ring-2 ring-accent' : ''}`}
     >
-      <span
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-field ${style.icon}`}
-      >
-        <Icon name={style.iconName} size={16} />
-      </span>
+      {/* W3.1c — the icon alone, bigger and thin, no disc. */}
+      <Icon name={style.iconName} size={26} strokeWidth={1.4} className={`shrink-0 ${style.ink}`} />
       <span className="min-w-0 flex-1 leading-tight">
         <span className="flex items-center gap-1.5">
           <span
@@ -245,13 +247,35 @@ function AlertDetail({ alert }: { alert: DashboardAlert }) {
   )
 }
 
-/** U3 — the alerts block: the swipable carousel plus the selected detail. */
+/**
+ * U3 — the alerts block: the swipable carousel plus the selected detail.
+ * W3.3 (2026-09-02, passe finale) — EVERY open alert is in the carousel, two
+ * visible at a time, with position dots that also scroll on tap.
+ */
 function AlertsCarousel({ alerts }: { alerts: DashboardAlert[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const ref = useRef<HTMLDivElement>(null)
   const selected = alerts.find((a) => a.id === selectedId) ?? null
+  const pages = Math.max(1, Math.ceil(alerts.length / 2))
+  const onScroll = () => {
+    const el = ref.current
+    if (!el) return
+    const first = el.firstElementChild as HTMLElement | null
+    const step = first ? first.offsetWidth + 8 : el.clientWidth / 2
+    setPage(Math.min(pages - 1, Math.round(Math.abs(el.scrollLeft) / (step * 2))))
+  }
+  const goTo = (i: number) => {
+    const el = ref.current
+    if (!el) return
+    const first = el.firstElementChild as HTMLElement | null
+    const step = first ? first.offsetWidth + 8 : el.clientWidth / 2
+    const dir = getComputedStyle(el).direction === 'rtl' ? -1 : 1
+    el.scrollTo({ left: dir * i * step * 2, behavior: 'smooth' })
+  }
   return (
     <div>
-      <div className="carousel-2 stagger" data-testid="alerts-carousel">
+      <div ref={ref} onScroll={onScroll} className="carousel-2 stagger" data-testid="alerts-carousel">
         {alerts.map((alert) => (
           <AlertChip
             key={alert.id}
@@ -261,6 +285,19 @@ function AlertsCarousel({ alerts }: { alerts: DashboardAlert[] }) {
           />
         ))}
       </div>
+      {pages > 1 && (
+        <div className="carousel-dots" data-testid="alerts-dots">
+          {Array.from({ length: pages }, (_, i) => (
+            <button
+              key={i}
+              type="button"
+              aria-current={i === page ? 'true' : undefined}
+              aria-label={`${i + 1}/${pages}`}
+              onClick={() => goTo(i)}
+            />
+          ))}
+        </div>
+      )}
       {selected && <AlertDetail alert={selected} />}
     </div>
   )
@@ -269,23 +306,56 @@ function AlertsCarousel({ alerts }: { alerts: DashboardAlert[] }) {
 // --- KPI -------------------------------------------------------------------
 
 /**
- * N7.1 (2026-09-02) — THE FIGURE FITS ITS CARD. `text-display` clamps to
- * 4 rem, which is five digits and a separator on a 8.5 rem card; the
- * livestock total (`4,820`) and a dunam sum (`12,345`) both overflowed the
- * tile on the product owner's iPad. A longer figure steps down one size, and
- * every figure truncates with the full value on hover rather than escaping.
+ * W2 (2026-09-02, passe finale) — THE FIGURE FITS ITS CARD, BY ARITHMETIC.
+ * The card is a size container (`.figure-card`) and the figure (`.figure`)
+ * takes the smaller of its ceiling and what its digit count allows in the
+ * width available — see `index.css`. Nothing here is ever truncated or
+ * stepped by hand any more; the digit count is the only input.
  */
-function figureClass(text: string, room: 'tile' | 'kpi' = 'tile'): string {
-  // A number is NEVER truncated — "254" cut to "4…" is worse than any
-  // overflow. It steps down instead: the wide dunam tiles (11 rem) hold four
-  // display digits and a separator; the four KPI cards (8.5 rem, an icon
-  // beside the figure) hold two.
-  const n = text.length
-  const step =
-    room === 'kpi'
-      ? n > 4 ? 'text-title' : n > 2 ? 'text-section' : 'text-display'
-      : n > 6 ? 'text-title' : n > 5 ? 'text-section' : 'text-display'
-  return `numeric whitespace-nowrap ${step}`
+function figureVars(text: string, max?: string, reserve?: string): CSSProperties {
+  return {
+    '--digits': String(Math.max(1, text.length)),
+    ...(max ? { '--figure-max': max } : {}),
+    ...(reserve ? { '--figure-reserve': reserve } : {}),
+  } as CSSProperties
+}
+
+/** W3.1a — one of the two strategic cards at the head of the dashboard. */
+function HeroFigure({
+  value,
+  label,
+  hint,
+  icon,
+  tone,
+  testId,
+}: {
+  value: string
+  label: string
+  hint: string
+  icon: IconName
+  tone: 'good' | 'accent'
+  testId: string
+}) {
+  const ink = tone === 'good' ? 'text-status-success-ink' : 'text-accent-ink'
+  const tint = tone === 'good' ? 'var(--status-success)' : 'var(--accent)'
+  return (
+    <Link
+      to="/coordinator/farms"
+      data-testid={testId}
+      className="card-interactive card-wow figure-card flex flex-col p-4"
+      style={{ '--wow-tint': tint } as CSSProperties}
+    >
+      <span className="flex items-start justify-between gap-3">
+        <span className={`figure ${ink}`} style={figureVars(value, '4.75rem', '3.25rem')} data-figure title={value}>
+          {value}
+        </span>
+        {/* W3.1c — the icon alone, thin and big: no disc behind it. */}
+        <Icon name={icon} size={34} strokeWidth={1.25} className={`mt-1 shrink-0 ${ink}`} />
+      </span>
+      <span className="mt-2 block text-caption font-semibold leading-tight text-content-primary">{label}</span>
+      <span className="muted mt-0.5 block leading-tight">{hint}</span>
+    </Link>
+  )
 }
 
 function Kpi({
@@ -294,12 +364,14 @@ function Kpi({
   icon,
   tone = 'default',
   to,
+  testId,
 }: {
   label: string
   value: number
   icon: IconName
   tone?: 'default' | 'good' | 'alert' | 'accent'
   to: string
+  testId?: string
 }) {
   const toneClass = {
     default: 'text-content-primary',
@@ -314,25 +386,19 @@ function Kpi({
     alert: 'bg-status-danger/[0.07]',
     accent: 'bg-accent/[0.07]',
   }[tone]
+  const text = String(value)
 
+  // W3.1b — a COMPACT card in a swipable row: figure and a bare icon on one
+  // line, the label under them. The figure fits by arithmetic (W2).
   return (
-    <Link to={to} className={`card-interactive min-w-0 p-3 ${tintClass}`}>
-      {/* Figure and icon on one line, label underneath on its own full width.
-          Side by side, a four-word Hebrew label had ~90 px and truncated to
-          "התראות …", which is not a label. */}
+    <Link to={to} data-testid={testId} className={`card-interactive figure-card p-2.5 ${tintClass}`}>
       <span className="flex items-center justify-between gap-2">
-        {/* G7 — DISPLAY scale, not metric. These four numbers are the room's
-            instruments: on the 1376 px wall-mounted reading they were smaller
-            than a section heading. The clamp in --text-display-size keeps
-            them sane on a phone; Rubik's tabular figures keep them aligned. */}
-        <span className={`${figureClass(String(value), 'kpi')} min-w-0 ${toneClass}`}>{value}</span>
-        <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-field bg-surface-high ${toneClass}`}
-        >
-          <Icon name={icon} size={16} />
+        <span className={`figure ${toneClass}`} style={figureVars(text, '1.9rem', '2.25rem')} data-figure>
+          {text}
         </span>
+        <Icon name={icon} size={24} strokeWidth={1.4} className={`shrink-0 ${toneClass}`} />
       </span>
-      <span className="muted mt-1 block leading-tight">{label}</span>
+      <span className="muted mt-1 block truncate leading-tight" title={label}>{label}</span>
     </Link>
   )
 }
@@ -572,67 +638,33 @@ export function DashboardScreen() {
         <CreateGuardButton className="btn-primary hidden lg:inline-flex" />
       </header>
 
-      {/* 0 — G14a: the two strategic dunam KPIs, before anything operational.
-          These are the association's budget numbers, so they are the biggest
-          figures on the screen and they come first. */}
-      <div className="auto-cols mb-2.5 gap-2.5 [--col-min:11rem]">
-        <Link to="/coordinator/farms" className="card-interactive min-w-0 p-4">
-          <span
-            className={`${figureClass(dunams.guardedDunams.toLocaleString(locale))} block text-status-success-ink`}
-            title={dunams.guardedDunams.toLocaleString(locale)}
-          >
-            {dunams.guardedDunams.toLocaleString(locale)}
-          </span>
-          <span className="mt-1 block text-caption font-semibold leading-tight text-content-primary">
-            {t('dashboard.guardedDunams')}
-          </span>
-          <span className="muted mt-0.5 block leading-tight">
-            {t('dashboard.guardedDunamsHint')}
-          </span>
-        </Link>
-        <Link to="/coordinator/farms" className="card-interactive min-w-0 p-4">
-          <span
-            className={`${figureClass(dunams.potentialDunams.toLocaleString(locale))} block text-accent-ink`}
-            title={dunams.potentialDunams.toLocaleString(locale)}
-          >
-            {dunams.potentialDunams.toLocaleString(locale)}
-          </span>
-          <span className="mt-1 block text-caption font-semibold leading-tight text-content-primary">
-            {t('dashboard.potentialDunams')}
-          </span>
-          <span className="muted mt-0.5 block leading-tight">
-            {t('dashboard.potentialDunamsHint')}
-          </span>
-        </Link>
-        {/* ★ PO POINT 6 — the third budget number, and it is HIDDEN AT ZERO.
-            The funding depends on the livestock as well as on the ground, but
-            zero here means "no entity under guard has been asked yet", not
-            "there are no animals". A tile reading 0 would put a number nobody
-            has established next to two that are measured. */}
-        {dunams.guardedHeads > 0 && (
-          <Link
-            to="/coordinator/farms"
-            data-testid="kpi-guarded-heads"
-            className="card-interactive min-w-0 p-4"
-          >
-            <span
-              className={`${figureClass(dunams.guardedHeads.toLocaleString(locale))} block text-content-primary`}
-              title={dunams.guardedHeads.toLocaleString(locale)}
-            >
-              {dunams.guardedHeads.toLocaleString(locale)}
-            </span>
-            <span className="mt-1 block text-caption font-semibold leading-tight text-content-primary">
-              {t('livestock.totalGuarded')}
-            </span>
-            <span className="muted mt-0.5 block leading-tight">
-              {t('dashboard.guardedDunamsHint')}
-            </span>
-          </Link>
-        )}
+      {/* W3.1 (2026-09-02, passe finale) — THE ORDER OF IMPORTANCE IS THE
+          PRODUCT OWNER'S: the association's budget depends on the DUNAMS, not
+          on the livestock. Two big cards first, never hidden; then ONE
+          swipable row of small cards — the livestock deliberately among the
+          small ones. */}
+      <div className="auto-cols mb-2.5 gap-2.5 [--col-min:12rem]" data-testid="hero-figures">
+        <HeroFigure
+          value={dunams.guardedDunams.toLocaleString(locale)}
+          label={t('dashboard.guardedDunams')}
+          hint={t('dashboard.guardedDunamsHint')}
+          icon="shield"
+          tone="good"
+          testId="hero-guarded"
+        />
+        <HeroFigure
+          value={dunams.potentialDunams.toLocaleString(locale)}
+          label={t('dashboard.potentialDunams')}
+          hint={t('dashboard.potentialDunamsHint')}
+          icon="map"
+          tone="accent"
+          testId="hero-potential"
+        />
       </div>
 
-      {/* 1 — KPI strip. */}
-      <div className="auto-cols mb-5 gap-2.5 [--col-min:8.5rem]">
+      {/* 1 — the compact KPI row: swipable sideways when the column is
+          narrow, never wrapping. */}
+      <div className="scroll-row kpi-row mb-5" data-testid="kpi-row">
         <Kpi
           label={t('dashboard.activeFarms')}
           value={activeFarms}
@@ -641,17 +673,24 @@ export function DashboardScreen() {
           to="/coordinator/farms?status=active"
         />
         <Kpi
-          label={t('dashboard.tonightGuards')}
-          value={tonight.length}
-          icon="shield"
-          tone="accent"
-          to="/coordinator/missions"
+          label={t('livestock.totalGuarded')}
+          value={dunams.guardedHeads}
+          icon="cattle"
+          to="/coordinator/farms"
+          testId="kpi-guarded-heads"
         />
         <Kpi
           label={t('dashboard.availableVolunteers')}
           value={stats.active}
           icon="users"
           to="/coordinator/volunteers"
+        />
+        <Kpi
+          label={t('dashboard.tonightGuards')}
+          value={tonight.length}
+          icon="shield"
+          tone="accent"
+          to="/coordinator/missions"
         />
         <Kpi
           label={t('dashboard.openAlerts')}

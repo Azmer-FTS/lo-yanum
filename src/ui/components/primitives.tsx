@@ -309,13 +309,8 @@ export function Stat({
 
   return (
     <div className="card card-pad flex items-center gap-3">
-      {icon && (
-        <span
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-field bg-surface-high ${toneClass}`}
-        >
-          <Icon name={icon} size={19} />
-        </span>
-      )}
+      {/* W3.1c — the icon alone, bigger and thin: no disc behind it. */}
+      {icon && <Icon name={icon} size={26} strokeWidth={1.4} className={`shrink-0 ${toneClass}`} />}
       <div className="min-w-0">
         <p className="muted truncate">{label}</p>
         <p className={`numeric mt-1 text-title ${toneClass}`}>{value}</p>
@@ -368,13 +363,8 @@ export function KpiFilter({
         active ? 'bg-accent/10 ring-2 ring-accent' : ''
       }`}
     >
-      {icon && (
-        <span
-          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-field bg-surface-high ${toneClass}`}
-        >
-          <Icon name={icon} size={17} />
-        </span>
-      )}
+      {/* W3.1c — the icon alone, bigger and thin: no disc behind it. */}
+      {icon && <Icon name={icon} size={24} strokeWidth={1.4} className={`shrink-0 ${toneClass}`} />}
       <span className="min-w-0">
         <span className={`numeric block text-title ${toneClass}`}>{value}</span>
         <span className="muted flex items-center gap-1.5 truncate leading-tight">
