@@ -10,6 +10,7 @@ import './index.css'
 import App from './ui/App'
 import { DEFAULT_LANGUAGE, applyLanguage } from './ui/i18n'
 import { registerServiceWorker } from './ui/offline'
+import { installDemoPhotos } from './ui/demoPhotos'
 import { applyDisplayMode } from './ui/standalone'
 import { initTheme } from './ui/theme'
 
@@ -56,6 +57,8 @@ if (!SUPABASE_CONFIGURED) {
   ).__loYanumEmptyStore = () => installBackend(EMPTY_BACKEND)
 }
 
+// U9 — the demo markers resolve to real CC0 photographs from now on.
+installDemoPhotos()
 applyLanguage(DEFAULT_LANGUAGE)
 // Stamp the theme before React mounts, or the app flashes the wrong palette.
 initTheme(getSession().role)

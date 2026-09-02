@@ -103,9 +103,34 @@ export function seedHasPhoto(id: string, share: number): boolean {
  * kilobyte of SVG in every hydration. Anything else — a data URI, a URL — is
  * returned untouched, so the reader has exactly one call to make.
  */
+/**
+ * U9 (2026-09-02) — REAL PHOTOGRAPHS BEHIND THE MARKERS, FOR THE DEMO.
+ *
+ * The product owner asked for realistic pictures rather than generated
+ * avatars: the app is not public, the data is fictional and will be purged
+ * after the demonstration. The `placeholder:<kind>:<seed>` markers already
+ * in the database and in the fixtures are LEFT AS THEY ARE; what changes is
+ * how the device resolves them. When a pool of CC0 photographs has been
+ * configured (`src/ui/demoPhotos.ts`, from `public/demo-photos/`), a marker
+ * maps deterministically — by the same hash as the avatar hue — onto one of
+ * them, so the same person always gets the same face on every device and
+ * after every reload; with no pool (the gates, a script, an old build) the
+ * stylised SVG portrait is drawn as before. The purge removes the rows; the
+ * pool is a static asset of the app and needs no cleaning.
+ */
+let pool: { person: string[]; place: string[] } = { person: [], place: [] }
+
+export function configurePhotoPool(next: { person: string[]; place: string[] }): void {
+  pool = { person: [...next.person], place: [...next.place] }
+}
+
 export function photoSource(value: string | null | undefined): string | null {
   if (!value) return null
   if (!value.startsWith('placeholder:')) return value
-  const [, kind, ...rest] = value.split(':')
-  return placeholderPhoto(rest.join(':') || value, kind === 'place' ? 'place' : 'person')
+  const [, kindRaw, ...rest] = value.split(':')
+  const kind = kindRaw === 'place' ? 'place' : 'person'
+  const seed = rest.join(':') || value
+  const urls = pool[kind]
+  if (urls.length > 0) return urls[avatarHue(`pool:${seed}`) % urls.length]
+  return placeholderPhoto(seed, kind)
 }

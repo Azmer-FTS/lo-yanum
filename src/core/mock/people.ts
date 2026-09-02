@@ -1,5 +1,5 @@
 import { DAY, iso, now } from '../clock'
-import { placeholderPhoto, seedHasPhoto } from '../photo'
+import { seedHasPhoto } from '../photo'
 import type { Driver, Volunteer } from '../types'
 import { generateVolunteers } from './generate'
 
@@ -568,11 +568,11 @@ DRIVERS.push(...VOLUNTEER_DRIVERS)
 // picture, the rest fall back to initials.
 for (const volunteer of VOLUNTEERS) {
   if (seedHasPhoto(volunteer.id, 0.45)) {
-    volunteer.photo = placeholderPhoto(volunteer.id, 'person')
+    volunteer.photo = `placeholder:person:${volunteer.id}`
   }
 }
 for (const driver of DRIVERS) {
   if (seedHasPhoto(driver.id, 0.65)) {
-    driver.photo = placeholderPhoto(driver.id, 'person')
+    driver.photo = `placeholder:person:${driver.id}`
   }
 }

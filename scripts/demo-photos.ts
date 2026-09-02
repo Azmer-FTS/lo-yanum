@@ -2,45 +2,48 @@
  * DEMO PHOTOS — a pool of REAL, CC0 photographs from Wikimedia Commons, as
  * static assets, for the demo dataset.
  *
- *   bun run scripts/demo-photos.ts
+ *   bun run scripts/demo-photos.ts                         # rebuild the pool
+ *   DEMO_PHOTOS_REVIEW=1 bun run scripts/demo-photos.ts    # discover candidates
  *
- * What it does, in order:
+ * ★ THE POOL IS A CURATED LIST, VERIFIED ON EVERY RUN. `PEOPLE` and `PLACES`
+ *   below name, by Commons pageid, every photograph that was found by the
+ *   searches in `PEOPLE_QUERIES` / `PLACES_QUERIES`, looked at by a human,
+ *   and kept: one adult, face visible, no child, no nudity, no painting, no
+ *   statue, no archival scan, no group, no couple, no costume; and for the
+ *   places, a photograph (not a drawing, not a map) of farmland, a flock, a
+ *   field, an orchard, arid or Mediterranean land. The searches returned
+ *   about 560 portraits and 300 landscapes; the picks are what survived.
  *
- *   1. SEARCHES Commons (`list=search`, file namespace) with a list of
- *      PERSON queries (portraits: men, women, young, older, outdoors…) and
- *      PLACE queries (farms, flocks, fields, arid and Mediterranean land).
- *      Every query is suffixed with `filetype:bitmap incategory:CC-Zero`, the
- *      only reliable licence filter the search index offers (`haslicense:`
- *      does not work). Candidates are deduplicated by pageid; the ORDER is
- *      deterministic — query order, then search rank — so that the pool is
- *      the same on every run.
+ *   A normal run does NOT search. It:
+ *     1. asks the API (`prop=imageinfo`) for every pick, and KEEPS it only if
+ *        `extmetadata.LicenseShortName` is exactly "CC0" (or "Public domain"
+ *        with `License` starting with "cc0"), the mime is JPEG or PNG, and
+ *        both sides are ≥ 400 px — a pick that fails is dropped with a
+ *        warning, never silently kept;
+ *     2. downloads the 640 px thumbnail with curl into a cache OUTSIDE the
+ *        repository (the OS temp dir, keyed by pageid — a re-run downloads
+ *        nothing it already has);
+ *     3. writes each as a JPEG capped at 640 px on the long edge (`sips`,
+ *        quality stepped down until the file is under ~120 kB) into
+ *          public/demo-photos/people/<nn>.jpg
+ *          public/demo-photos/places/<nn>.jpg
+ *        — the directories are EMPTIED first, so the numbering is always
+ *        sequential (the order of the pick lists) and never carries a stale
+ *        file;
+ *     4. writes public/demo-photos/manifest.json and
+ *        docs/demo-photos-licences.md (one row per file: Commons page,
+ *        author, licence).
  *
- *   2. VERIFIES each candidate through `prop=imageinfo`: it is kept only if
- *      `extmetadata.LicenseShortName` is exactly "CC0" (or "Public domain"
- *      with `License` starting with "cc0"), the mime is JPEG or PNG, and both
- *      sides are ≥ 400 px. Author (`Artist`, HTML stripped) and `Credit` are
- *      recorded.
- *
- *   3. DOWNLOADS the 640 px thumbnail with curl into a cache OUTSIDE the
- *      repository (the OS temp dir, keyed by pageid — a re-run downloads
- *      nothing it already has), then writes it as a JPEG capped at 640 px on
- *      the long edge with `sips`, stepping the quality down until the file
- *      is under ~120 kB, into
- *        public/demo-photos/people/<nn>.jpg
- *        public/demo-photos/places/<nn>.jpg
- *      The two directories are EMPTIED first, so the numbering is always
- *      sequential and never carries a stale file.
- *
- *   4. WRITES public/demo-photos/manifest.json and
- *      docs/demo-photos-licences.md (one row per file: Commons page, author,
- *      licence).
- *
- * ★ THE QUALITY PASS IS IN THE SCRIPT. `REJECTED` below lists, by pageid and
- *   with the reason, every image that the search returned and that a human
- *   looked at and refused (a painting, a statue, a group, a child, a face
- *   that is not visible, a place that is not agricultural…). A re-run skips
- *   them, so the pool stays curated without anyone having to look again.
- *   `PEOPLE_MAX` and `PLACES_MAX` cap the pool after the rejections.
+ *   A REVIEW run (`DEMO_PHOTOS_REVIEW=1`) is how the lists were built and how
+ *   they get extended: it runs every query (each suffixed with
+ *   `filetype:bitmap incategory:CC-Zero`, the only licence filter the search
+ *   index honours — `haslicense:` does not work), deduplicates by pageid,
+ *   verifies the licence of every candidate exactly as above, downloads them
+ *   all into the cache, and lays them out as numbered JPEGs in
+ *   <tmp>/lo-yanoum-demo-photos-review/{people,places}/ with a `review.json`
+ *   mapping each number to its pageid and title. Nothing under `public/` is
+ *   touched by a review run. Look at the sheet, add the good pageids to the
+ *   lists, run normally.
  *
  * No npm dependency: Bun's fetch for the API, curl for the bytes, sips (macOS)
  * for the conversion.
@@ -57,14 +60,12 @@ const OUT_DIR = join(ROOT, 'public', 'demo-photos')
 const MANIFEST = join(OUT_DIR, 'manifest.json')
 const LICENCES_DOC = join(ROOT, 'docs', 'demo-photos-licences.md')
 const CACHE_DIR = join(tmpdir(), 'lo-yanoum-demo-photos-cache')
+const REVIEW_DIR = join(tmpdir(), 'lo-yanoum-demo-photos-review')
 
 const API = 'https://commons.wikimedia.org/w/api.php'
 const USER_AGENT = 'LoYanoumDemoPhotos/1.0 (https://github.com/Azmer-FTS; demo dataset asset pool)'
 
-// Override with PEOPLE_MAX / PLACES_MAX in the environment to review the
-// whole verified pool before pruning (e.g. PEOPLE_MAX=999 PLACES_MAX=999).
-const PEOPLE_MAX = Number(process.env.PEOPLE_MAX ?? 48)
-const PLACES_MAX = Number(process.env.PLACES_MAX ?? 26)
+const REVIEW = process.env.DEMO_PHOTOS_REVIEW === '1'
 const MAX_EDGE = 640
 const TARGET_BYTES = 120 * 1024
 const MIN_SIDE = 400
@@ -147,15 +148,6 @@ const PLACES_QUERIES = [
   'date palms',
 ]
 
-/**
- * The quality pass. Pageid → reason. Everything here was returned by a query
- * above, verified CC0, looked at, and refused. Kept in the script so that a
- * re-run reproduces the curated pool exactly.
- */
-const REJECTED: Record<number, string> = {
-  // (filled by the quality pass — see the bottom of this file)
-}
-
 /** Words in a title that mean "not a photograph of one adult" or "not a photo". */
 const TITLE_BLOCKLIST = [
   /\bpainting\b/i, /\bdrawing\b/i, /\bsketch of\b/i, /\bstatue\b/i, /\bsculpture\b/i,
@@ -168,6 +160,114 @@ const TITLE_BLOCKLIST = [
   /\.tiff?$/i, /\.gif$/i, /\.svg$/i,
 ]
 
+/**
+ * THE PICKS. [pageid, note]. Order = file number. Reviewed on 2026-09-02 from
+ * the review run's sheets; the note is what the reviewer saw, not the Commons
+ * title (that is in the manifest).
+ */
+const PEOPLE: [number, string][] = [
+  // — men —
+  [61874612, 'older man, glasses, studio, grey background'],
+  [61878193, 'young man, head and shoulders, outdoors'],
+  [61848389, 'young man, glasses, blue jacket, woods'],
+  [62057252, 'young man, close-up, hand on chin'],
+  [61850571, 'smiling man with backpack, city street'],
+  [61874678, 'elderly man in straw hat, farmer'],
+  [61733565, 'smiling man, arms crossed, field at sunset'],
+  [61724220, 'laughing man, white sweater, plain background'],
+  [62055463, 'man with dreadlocks, white t-shirt, shutter'],
+  [61847301, 'man in black, green vines behind'],
+  [61850380, 'elderly Karen man smiling, red shirt, stick'],
+  [61682257, 'laughing older worker, gloves and drill'],
+  [61782151, 'smiling young man in hoodie, winter woods'],
+  [61667090, 'older man at a market stall, smiling'],
+  [61728392, 'bald man sitting, autumn trees'],
+  [62057708, 'man in grey hoodie, dark background'],
+  [61874266, 'bearded man in fur hood, looking at camera'],
+  [61844929, 'bearded man in suit and tie'],
+  [61847324, 'man with cap, sunglasses and camera, green hills'],
+  [61850863, 'older man holding a camera, dry lakebed'],
+  [61682931, 'young mechanic beside a scooter'],
+  [61857601, 'young man in red striped t-shirt'],
+  [61758315, 'man in white polo, city street'],
+  [62058386, 'young man in jersey, looking aside'],
+  // — women —
+  [61654448, 'young woman, dark hair, hedge behind'],
+  [61825662, 'smiling woman, yellow leaves'],
+  [61834605, 'woman in hat by a tree'],
+  [61831510, 'smiling woman with a phone, outdoors'],
+  [61753747, 'smiling woman in denim jacket, night lights'],
+  [61829078, 'woman in sunglasses, striped top, hand on chin'],
+  [61758627, 'woman with short blonde hair, dark background'],
+  [61831725, 'smiling woman in plaid, corn leaves'],
+  [61824017, 'young woman in pink, sitting by roses'],
+  [61831412, 'woman with earrings, stone wall'],
+  [61827586, 'red-haired woman, arms crossed, misty field'],
+  [61776322, 'smiling woman in fur hood, pumpkins'],
+  [61825702, 'smiling woman in a dry field, winter'],
+  [61826552, 'woman in denim jacket, leaf crown, ivy'],
+  [61839496, 'smiling woman in hat, hand on chin'],
+  [61833060, 'older woman smiling by a window'],
+  [61850221, 'Indian woman in sari, smiling'],
+  [61827173, 'smiling young woman, grey t-shirt, trees'],
+  [61847056, 'woman in hat and plaid, sunset field'],
+  [61758494, 'woman in white t-shirt under trees'],
+  [58821688, 'red-haired woman at a laptop, cafe'],
+  [61824207, 'smiling woman in hat by red flowers'],
+  [61850754, 'smiling woman in sunglasses, leaning on a rail'],
+  [61826749, 'elderly woman, glasses, red hat, close-up'],
+  [61830040, 'woman in glasses and red sweater, rock behind'],
+  [61828358, 'woman in glasses holding a cat, yellow coat'],
+  [61756942, 'smiling red-haired woman in tall grasses'],
+]
+
+const PLACES: [number, string][] = [
+  // — flocks —
+  [62303498, 'sheep flock on stony ground, red hills'],
+  [62307301, 'sheep flock, red mountains'],
+  [62071269, 'sheep on dry plain, snowy mountains (Peru)'],
+  [61701145, 'two sheep by a signpost, dry grassland'],
+  [59541881, 'sheep scattered on a brown hillside'],
+  [143535141, 'sheep facing the camera, flock behind'],
+  [62176080, 'goats in a barn'],
+  [62336278, 'goat on a green slope'],
+  [62273687, 'white goat close-up, herd behind'],
+  // — cattle and horses —
+  [61837953, 'cow at sunset, backlit'],
+  [61768886, 'cattle herd from above'],
+  [62318755, 'cattle on a plain, snowy mountain'],
+  [62173120, 'bull in dry grass'],
+  [61911476, 'horses at sunset, fence'],
+  [62302899, 'horses grazing on a dry hill'],
+  // — fields —
+  [31469180, 'pasture at sunset, trees'],
+  [62290474, 'wheat field rows to the horizon'],
+  [62277319, 'farmland from above, green parcels'],
+  [58831161, 'crop fields from above, road'],
+  [62311256, 'tractor in a green field, big sky'],
+  [61732365, 'stables fence at sunset'],
+  [61800235, 'combine harvesting wheat'],
+  [62290316, 'wheat ears against blue sky'],
+  [61654293, 'hay bales on a dry hill'],
+  [31236894, 'tractor and hay bales, dry field'],
+  // — olive groves, vineyards, orchards —
+  [176431458, 'old olive trees, sun through the grove'],
+  [65405286, 'olive orchard and dry hills (Kurdistan)'],
+  [65405294, 'olive orchard, pylon, hazy sky'],
+  [65405287, 'lone olive tree in a dry orchard'],
+  [35906113, 'olive and almond terraces above a turquoise lake (Andalusia)'],
+  [62119818, 'vineyard and brown hills'],
+  [61654309, 'vineyard terraces from above'],
+  // — desert —
+  [61863114, 'Negev, storm light over the crater'],
+  [112595228, 'lonely road in the Negev hills'],
+  [58859365, 'camels resting in the Negev'],
+  [61653651, 'flat rocks on arid hills, blue sky'],
+  [62103756, 'camel train at sunset'],
+  [61849494, 'camels on a desert plain'],
+  [51439009, 'arid hills under a blue sky'],
+]
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type Kind = 'people' | 'places'
@@ -175,8 +275,7 @@ type Kind = 'people' | 'places'
 interface Candidate {
   pageid: number
   title: string
-  query: string
-  rank: number
+  note: string
 }
 
 interface Verified extends Candidate {
@@ -198,7 +297,7 @@ interface ManifestEntry {
   credit: string
   license: 'CC0'
   pageid: number
-  query: string
+  note: string
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -251,13 +350,10 @@ async function search(query: string): Promise<Candidate[]> {
     srsearch: `${query} filetype:bitmap incategory:CC-Zero`,
   })
   const hits: { pageid: number; title: string }[] = data?.query?.search ?? []
-  return hits.map((h, i) => ({ pageid: h.pageid, title: h.title, query, rank: i }))
+  return hits.map((h) => ({ pageid: h.pageid, title: h.title, note: query }))
 }
 
-function titleAllowed(title: string): boolean {
-  return !TITLE_BLOCKLIST.some((re) => re.test(title))
-}
-
+/** Every query, deduplicated by pageid, in query order then search rank. */
 async function gather(kind: Kind, queries: string[]): Promise<Candidate[]> {
   const seen = new Map<number, Candidate>()
   let raw = 0
@@ -266,7 +362,7 @@ async function gather(kind: Kind, queries: string[]): Promise<Candidate[]> {
     raw += hits.length
     for (const h of hits) {
       if (seen.has(h.pageid)) continue
-      if (!titleAllowed(h.title)) continue
+      if (TITLE_BLOCKLIST.some((re) => re.test(h.title))) continue
       seen.set(h.pageid, h)
     }
   }
@@ -274,6 +370,7 @@ async function gather(kind: Kind, queries: string[]): Promise<Candidate[]> {
   return [...seen.values()]
 }
 
+/** The licence check. Returns only the candidates that pass, in the input order. */
 async function verify(cands: Candidate[]): Promise<Verified[]> {
   const byId = new Map(cands.map((c) => [c.pageid, c]))
   const out: Verified[] = []
@@ -300,7 +397,8 @@ async function verify(cands: Candidate[]): Promise<Verified[]> {
       if (!ii.thumburl) continue
       out.push({
         ...c,
-        pageUrl: ii.descriptionurl ?? `https://commons.wikimedia.org/wiki/${encodeURIComponent(c.title)}`,
+        title: page.title ?? c.title,
+        pageUrl: ii.descriptionurl ?? `https://commons.wikimedia.org/wiki/${encodeURIComponent(page.title ?? c.title)}`,
         thumbUrl: ii.thumburl,
         width: ii.width,
         height: ii.height,
@@ -311,7 +409,6 @@ async function verify(cands: Candidate[]): Promise<Verified[]> {
       })
     }
   }
-  // imageinfo returns pages in its own order; restore ours.
   const order = new Map(cands.map((c, i) => [c.pageid, i]))
   out.sort((a, b) => order.get(a.pageid)! - order.get(b.pageid)!)
   return out
@@ -322,7 +419,7 @@ function run(cmd: string[]): { ok: boolean; err: string } {
   return { ok: p.exitCode === 0, err: p.stderr.toString() }
 }
 
-/** Download the thumbnail into the cache (once), return the cached path or null. */
+/** Download the thumbnail into the cache (once); the cached path, or null. */
 function download(v: Verified): string | null {
   const ext = v.mime === 'image/png' ? 'png' : 'jpg'
   const cached = join(CACHE_DIR, `${v.pageid}.${ext}`)
@@ -348,29 +445,25 @@ function convert(src: string, dst: string): boolean {
     }
     if (statSync(dst).size <= TARGET_BYTES) return true
   }
-  return true // over budget at quality 40 — keep it, report it
+  return true // still over budget at quality 40 — kept, and reported below
 }
 
 function emptyDir(dir: string) {
   mkdirSync(dir, { recursive: true })
-  for (const f of readdirSync(dir)) if (/^\d\d\.jpg$/.test(f)) rmSync(join(dir, f))
+  for (const f of readdirSync(dir)) if (/^\d+\.jpg$/.test(f)) rmSync(join(dir, f))
 }
 
-async function buildPool(kind: Kind, queries: string[], max: number): Promise<{ entries: ManifestEntry[]; verified: number; rejected: number }> {
-  const cands = await gather(kind, queries)
+/** Verify + download + convert a list into `dir`, numbered in list order. */
+async function materialise(kind: Kind, cands: Candidate[], dir: string, warnLost = true): Promise<{ entries: ManifestEntry[]; verified: Verified[] }> {
   const verified = await verify(cands)
-  console.log(`[${kind}] ${verified.length} verified CC0 (jpeg/png, ≥ ${MIN_SIDE} px)`)
-  const dir = join(OUT_DIR, kind)
+  const lost = warnLost ? cands.filter((c) => !verified.some((v) => v.pageid === c.pageid)) : []
+  for (const c of lost) console.warn(`  ! [${kind}] dropped, no longer CC0/jpeg/png/≥${MIN_SIDE}px: pageid ${c.pageid} (${c.note})`)
   emptyDir(dir)
   const entries: ManifestEntry[] = []
-  let rejected = 0
   for (const v of verified) {
-    if (entries.length >= max) break
-    if (REJECTED[v.pageid]) { rejected++; continue }
     const cached = download(v)
     if (!cached) continue
-    const nn = String(entries.length + 1).padStart(2, '0')
-    const file = `${nn}.jpg`
+    const file = `${String(entries.length + 1).padStart(2, '0')}.jpg`
     if (!convert(cached, join(dir, file))) continue
     entries.push({
       file: `demo-photos/${kind}/${file}`,
@@ -380,10 +473,10 @@ async function buildPool(kind: Kind, queries: string[], max: number): Promise<{ 
       credit: v.credit,
       license: 'CC0',
       pageid: v.pageid,
-      query: v.query,
+      note: v.note,
     })
   }
-  return { entries, verified: verified.length, rejected }
+  return { entries, verified }
 }
 
 function dirBytes(dir: string): number {
@@ -391,8 +484,9 @@ function dirBytes(dir: string): number {
 }
 
 function licencesMarkdown(people: ManifestEntry[], places: ManifestEntry[]): string {
+  const cell = (s: string) => s.replace(/\|/g, '\\|')
   const row = (e: ManifestEntry) =>
-    `| \`${e.file}\` | [${e.title.replace(/^File:/, '').replace(/\|/g, '\\|')}](${e.pageUrl}) | ${e.author.replace(/\|/g, '\\|')} | ${e.license} |`
+    `| \`${e.file}\` | [${cell(e.title.replace(/^File:/, ''))}](${e.pageUrl}) | ${cell(e.author)} | ${e.license} |`
   const table = (rows: ManifestEntry[]) =>
     ['| File | Commons page | Author | Licence |', '|---|---|---|---|', ...rows.map(row)].join('\n')
   return [
@@ -401,9 +495,9 @@ function licencesMarkdown(people: ManifestEntry[], places: ManifestEntry[]): str
     `All ${people.length + places.length} images under \`public/demo-photos/\` are CC0 / public domain photographs from ` +
       'Wikimedia Commons. Each one was verified programmatically by `scripts/demo-photos.ts` through the Commons API ' +
       '(`prop=imageinfo`, `extmetadata.LicenseShortName` = "CC0") at the time of download, and is served here as a ' +
-      `640 px JPEG. Credit is not required by the licence; the author and the Commons page are listed anyway.`,
+      '640 px JPEG. CC0 requires no attribution; the author and the Commons page are listed anyway.',
     '',
-    `Regenerate with \`bun run scripts/demo-photos.ts\`. The manifest is \`public/demo-photos/manifest.json\`.`,
+    'Regenerate with `bun run scripts/demo-photos.ts`. The manifest is `public/demo-photos/manifest.json`.',
     '',
     `## People (${people.length})`,
     '',
@@ -418,16 +512,30 @@ function licencesMarkdown(people: ManifestEntry[], places: ManifestEntry[]): str
 
 // ─── Main ───────────────────────────────────────────────────────────────────
 
+async function reviewRun() {
+  mkdirSync(CACHE_DIR, { recursive: true })
+  const picked = new Set([...PEOPLE, ...PLACES].map(([id]) => id))
+  for (const [kind, queries] of [['people', PEOPLE_QUERIES], ['places', PLACES_QUERIES]] as [Kind, string[]][]) {
+    const cands = await gather(kind, queries)
+    const dir = join(REVIEW_DIR, kind)
+    const { entries, verified } = await materialise(kind, cands, dir, false) // search hits are not picks; a refused one is just not CC0
+    await Bun.write(join(dir, 'review.json'), JSON.stringify(entries.map((e) => ({ n: e.file.split('/').pop(), pageid: e.pageid, title: e.title, query: e.note, picked: picked.has(e.pageid) })), null, 2) + '\n')
+    const unreviewed = entries.filter((e) => !picked.has(e.pageid)).length
+    console.log(`[${kind}] review: ${verified.length} verified CC0, ${entries.length} laid out in ${dir} (${unreviewed} not in the pick list)`)
+  }
+}
+
 async function main() {
   mkdirSync(CACHE_DIR, { recursive: true })
   mkdirSync(OUT_DIR, { recursive: true })
 
-  const people = await buildPool('people', PEOPLE_QUERIES, PEOPLE_MAX)
-  const places = await buildPool('places', PLACES_QUERIES, PLACES_MAX)
+  const toCands = (picks: [number, string][]): Candidate[] => picks.map(([pageid, note]) => ({ pageid, title: '', note }))
+  const people = await materialise('people', toCands(PEOPLE), join(OUT_DIR, 'people'))
+  const places = await materialise('places', toCands(PLACES), join(OUT_DIR, 'places'))
 
   const manifest = {
     generated: new Date().toISOString().slice(0, 10),
-    source: 'Wikimedia Commons, CC0 only, verified via prop=imageinfo extmetadata',
+    source: 'Wikimedia Commons, CC0 only, verified via prop=imageinfo extmetadata (scripts/demo-photos.ts)',
     people: people.entries,
     places: places.entries,
   }
@@ -436,16 +544,16 @@ async function main() {
 
   const kbPeople = Math.round(dirBytes(join(OUT_DIR, 'people')) / 1024)
   const kbPlaces = Math.round(dirBytes(join(OUT_DIR, 'places')) / 1024)
-  const over = [...people.entries, ...places.entries]
-    .map((e) => ({ e, size: statSync(join(ROOT, 'public', e.file)).size }))
-    .filter((x) => x.size > TARGET_BYTES)
-  for (const x of over) console.warn(`  ! ${x.e.file} is ${Math.round(x.size / 1024)} kB (over ${TARGET_BYTES / 1024} kB)`)
+  for (const e of [...people.entries, ...places.entries]) {
+    const size = statSync(join(ROOT, 'public', e.file)).size
+    if (size > TARGET_BYTES) console.warn(`  ! ${e.file} is ${Math.round(size / 1024)} kB (over ${TARGET_BYTES / 1024} kB)`)
+  }
 
   console.log(
-    `demo-photos: people ${people.entries.length} kept (${people.verified} verified, ${people.rejected} rejected by the quality pass), ` +
-      `places ${places.entries.length} kept (${places.verified} verified, ${places.rejected} rejected), ` +
+    `demo-photos: people ${people.entries.length}/${PEOPLE.length} kept, places ${places.entries.length}/${PLACES.length} kept, ` +
       `${kbPeople + kbPlaces} kB total (people ${kbPeople} kB, places ${kbPlaces} kB) → ${OUT_DIR}`,
   )
 }
 
-await main()
+if (REVIEW) await reviewRun()
+else await main()

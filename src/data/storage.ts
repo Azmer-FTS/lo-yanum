@@ -36,8 +36,9 @@ export function agreementKey(entityId: string, agreementId: string): string {
 /**
  * Is this `photo` value an object key, or something already displayable?
  *
- * The demo store holds data URIs (`placeholderPhoto`) and always will — /poc
- * is frozen on them. A real build holds keys. Rather than give the two modes
+ * The demo store holds `placeholder:` markers (U9: resolved on the device to
+ * a CC0 photograph, or to a stylised portrait) and the frozen /poc holds data
+ * URIs; a real build holds keys.  * is frozen on them. A real build holds keys. Rather than give the two modes
  * two component trees, every reader passes its `photo` through here: a value
  * that is already a URL is returned untouched, and only a bare key is signed.
  */

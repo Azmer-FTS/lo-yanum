@@ -110,4 +110,4 @@ export {
 } from './gazetteer'
 export type { Locality, LocalityKind } from './gazetteer'
 
-export { photoSource } from './photo'
+export { configurePhotoPool, photoSource } from './photo'

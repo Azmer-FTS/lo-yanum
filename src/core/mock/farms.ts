@@ -1,5 +1,5 @@
 import { atTime } from '../clock'
-import { placeholderPhoto, seedHasPhoto } from '../photo'
+import { seedHasPhoto } from '../photo'
 import type { Farm } from '../types'
 
 /**
@@ -536,11 +536,13 @@ export const FARMS: Farm[] = [
  */
 for (const farm of FARMS) {
   if (seedHasPhoto(farm.id, 0.55)) {
-    farm.photo = placeholderPhoto(farm.id, 'place')
+    // U9 — a marker the device resolves (a real photograph when the demo
+    // pool is configured, the stylised portrait otherwise).
+    farm.photo = `placeholder:place:${farm.id}`
   }
   for (const contact of farm.contacts) {
     if (seedHasPhoto(contact.id, 0.5)) {
-      contact.photo = placeholderPhoto(contact.id, 'person')
+      contact.photo = `placeholder:person:${contact.id}`
     }
   }
 }

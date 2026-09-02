@@ -44,7 +44,10 @@
     "zones": "bun run scripts/zones.ts",
     "agreement": "bun run scripts/agreement.ts",
     "demo": "bun run scripts/demo.ts",
-    "gazetteer": "bun run scripts/gazetteer.ts"
+    "gazetteer": "bun run scripts/gazetteer.ts",
+    "blocks": "bun run scripts/blocks.ts",
+    "uipass": "bun run scripts/uipass.ts",
+    "demo-photos": "bun run scripts/demo-photos.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "^0.4.0",
