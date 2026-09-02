@@ -730,8 +730,15 @@
   container-type: inline-size;
 }
 
+/* U7 (2026-09-02) — `minmax(0, 1fr)`, NOT `1fr`. A bare `1fr` is
+   `minmax(auto, 1fr)`: the track can never be narrower than its items'
+   min-content, and ONE nowrap line — a folded block's one-line summary, a
+   truncated file name — then widens the whole column past the panel and the
+   page scrolls sideways. With a zero minimum the column is the panel's width
+   and the truncation inside it actually truncates. */
 .pair-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
@@ -762,17 +769,19 @@
    enough, one when it is not, whether it sits in a 50 % panel or a modal. */
 .form-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
 }
 
 @container (min-width: 30rem) {
   .form-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
 .pair-grid-wide {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
@@ -782,7 +791,7 @@
    every pair on every screen wait for the same generous width. */
 @container (min-width: 36rem) {
   .pair-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   /* A block that must keep the full width of the row inside a paired grid —
@@ -794,7 +803,7 @@
 
 @container (min-width: 50rem) {
   .pair-grid-wide {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 

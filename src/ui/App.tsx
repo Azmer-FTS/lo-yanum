@@ -16,6 +16,7 @@ import {
 } from './components/layouts'
 import { DataBanner } from './components/DataBanner'
 import { NetworkStatus } from './components/NetworkStatus'
+import { useTruncationTitles } from './hooks/useTruncationTitles'
 import { useAuth } from './hooks/useAuth'
 import { useCoreValue } from './hooks/useCore'
 import { LandingScreen } from './screens/LandingScreen'
@@ -81,6 +82,8 @@ function RequireRole({ role, children }: { role: Role; children: ReactNode }) {
  */
 export default function App() {
   const auth = useAuth()
+  // U7 — every truncated text carries its full value as a title, app-wide.
+  useTruncationTitles()
 
   if (auth.status === 'loading') return <AuthSplash />
   if (auth.status === 'signed-out') return <LoginScreen />

@@ -167,7 +167,8 @@ export function Section({
               >
                 <Icon name="chevronDown" size={14} />
               </span>
-              <h2 className="truncate text-section text-content-primary">{title}</h2>
+              {/* The title never gives way; the summary beside it does. */}
+              <h2 className="shrink-0 text-section text-content-primary">{title}</h2>
               {!open && summary && (
                 <span
                   className="min-w-0 truncate text-caption text-content-muted"

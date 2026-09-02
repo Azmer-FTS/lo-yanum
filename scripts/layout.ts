@@ -370,7 +370,13 @@ interface Report {
    * healthy screen in both directions.
    */
   scrollRange: number
-  wide: Array<{ tag: string; cls: string; width: number }>
+  wide: Array<{ tag: string; cls: string; width: number   /**
+   * U7 (2026-09-02) — text cut off with NO way to read it: an element whose
+   * ellipsis or line-clamp is actually clipping, and which carries no
+   * `title` of its own or from an ancestor.
+   */
+  truncated: Array<{ tag: string; text: string }>
+}>
   collisions: Array<{ a: string; b: string }>
   /** A30 — page height as a multiple of the viewport. */
   heightRatio: number
@@ -519,6 +525,36 @@ function audit(): Report {
    * `overflow-y:auto` and no height limit does not scroll, it grows, and it
    * would otherwise satisfy a naive check while the page still stretched.
    */
+  /**
+   * U7 — NO TEXT CUT WITHOUT RECOURSE, at EVERY seam position. An ellipsis
+   * is allowed; a value nobody can recover is not. The app's root observer
+   * (`useTruncationTitles`) gives every overflowing `.truncate` /
+   * `line-clamp-*` element its full text as a `title`; this asks the DOM
+   * whether any clipped text is still without one, which is what a new
+   * component that truncates by hand would produce.
+   */
+  const truncated = [...document.querySelectorAll<HTMLElement>('body *')]
+    .filter((el) => {
+      const cs = getComputedStyle(el)
+      if (cs.display === 'none' || cs.visibility === 'hidden') return false
+      const r = el.getBoundingClientRect()
+      if (r.width <= 0 || r.height <= 0) return false
+      const clamp = cs.webkitLineClamp && cs.webkitLineClamp !== 'none'
+      const ellipsis = cs.textOverflow === 'ellipsis' && cs.overflowX !== 'visible'
+      if (!clamp && !ellipsis) return false
+      const overflows = clamp
+        ? el.scrollHeight > el.clientHeight + 1
+        : el.scrollWidth > el.clientWidth + 1
+      if (!overflows) return false
+      if (!(el.textContent ?? '').trim()) return false
+      return el.closest('[title]') === null
+    })
+    .map((el) => ({
+      tag: label(el),
+      text: (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 40),
+    }))
+    .slice(0, 8)
+
   const uncontained = [...document.querySelectorAll('table, ul, ol')]
     .filter((el) => {
       const rows =
@@ -703,6 +739,7 @@ function audit(): Report {
     heightRatio:
       document.documentElement.scrollHeight / Math.max(1, window.innerHeight),
     uncontained,
+    truncated,
   }
 }
 
@@ -883,8 +920,11 @@ for (const name of RUNS) {
         sa !== null &&
         (Math.abs(sa.shellFoot - sa.footOccupied) > 1.5 || sa.shellFootDefault > 0.5)
 
+      // U7 — judged at EVERY stop: the seam is what makes a column narrow.
+      const cutOff = report.truncated.length > 0
       const ok =
         !overflow &&
+        !cutOff &&
         !tooTall &&
         !gradientWrong &&
         !clockCovered &&
@@ -908,6 +948,9 @@ for (const name of RUNS) {
         console.log(
           `      HORIZONTAL SCROLL: scrollWidth ${report.scrollWidth} vs window ${report.innerWidth}, slid ${report.scrollRange}px`,
         )
+      }
+      for (const c of report.truncated) {
+        console.log(`      U7 text cut with no recourse: ${c.tag} "${c.text}"`)
       }
       if (!first) continue
       for (const w of report.wide) {
