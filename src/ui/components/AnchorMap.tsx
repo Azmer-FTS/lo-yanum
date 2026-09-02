@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -23,8 +23,10 @@ import { Icon } from './Icon'
 import { MapView } from './MapView'
 import type { MapMarker, MapPolygon } from './MapView'
 import { ThreatLegend, threatVectorShapes, threatZoneShapes } from './threats'
-import { ZoneLegend, zoneColor, zoneLabelKey } from './zones'
+import { ZoneLegend, zoneColor, zoneLabelKey, zoneSatColor } from './zones'
 import { PointLegend } from './meet'
+import { MapLegend } from './MapLegend'
+import { offeredLayers } from './mapLayers'
 import { entityMarkerKind, farmMarkerColor, postColor, readToken } from './badges'
 import { fullscreenShell, useMapFullscreen } from './fullscreen'
 
@@ -466,7 +468,10 @@ export function AnchorMap({
       ...zones.map((z) => ({
         id: z.id,
         ring: z.ring,
+        kind: z.kind,
         color: zoneColor(z.kind, entity),
+        // U5 — the frank tint the zone takes over satellite imagery.
+        satColor: zoneSatColor(z.kind, entity),
         emphasis: z.id === selectedZoneId,
       })),
       ...(drawing && drawing.draft.length >= 3
@@ -474,7 +479,9 @@ export function AnchorMap({
             {
               id: 'draft',
               ring: drawing.draft,
+              kind: drawing.zone,
               color: zoneColor(drawing.zone, entity),
+              satColor: zoneSatColor(drawing.zone, entity),
               emphasis: true,
             },
           ]
@@ -722,16 +729,7 @@ export function AnchorMap({
              whatever the writing direction, so the reservation is physical
              too. It costs 72 px of a bar whose buttons already wrap, and it
              costs nothing at all on the iPad this is drawn on. */}
-      <div className="pointer-events-none absolute inset-x-3 bottom-9 z-10 flex flex-col items-end gap-2 pl-[4.5rem] sm:items-start">
-        {/* G7bis.1 — one legend stack: what the point shapes mean, then what
-            the painted ground means. */}
-        <PointLegend showFarm showPost showMeet={false} entity={entity} />
-        <ZoneLegend zones={zones} entity={entity} />
-        {/* G18 — its own stack, because "what ground is this" and "what is the
-            assessment" are different questions. Renders nothing when the layer
-            is empty, which is what a farmer's session always produces. */}
-        <ThreatLegend zones={threatZones} vectors={threatVectors} />
-
+      <div className="pointer-events-none absolute inset-x-3 bottom-9 z-10 flex flex-col gap-2 pl-[4.5rem]">
         {/* The control sits ON the map, because the map is what it is about.
             The empty case is louder on purpose: with no points yet, this
             banner IS the only route forward. */}
@@ -746,10 +744,8 @@ export function AnchorMap({
               available. */}
           {(onCreate || active) && (
           <div
-            className={`pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card px-3.5 py-2.5 backdrop-blur ${
-              active || empty
-                ? 'border border-accent bg-surface-overlay/95 shadow-glow'
-                : 'border border-edge-subtle bg-surface-overlay/90 shadow-card'
+            className={`glass pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card px-3.5 py-2.5 ${
+              active || empty ? 'ring-1 ring-accent shadow-glow' : ''
             }`}
           >
             <span className="shrink-0 text-accent-ink">
@@ -928,120 +924,13 @@ export function AnchorMap({
           </div>
           )}
 
-          {/* ★★ PO RETURN 2026-09-02 — THE DRAWING TOOLS LIVE HERE NOW.
-              They were a wrapping row of five buttons floated across the TOP
-              of the canvas, over MapLibre's zoom and over the ground switch.
-              They belong to an editing context, so they belong in the bar that
-              only exists in one: the same bar that already carries the point
-              placement, directly under the sentence that says what the map is
-              currently for.
-
-              ★ AND THEY ONLY RENDER WHEN THE MAP IS IDLE. While a ring is
-                being drawn the bar's job is "close it or cancel it", and a row
-                of five ways to start something else underneath that is how a
-                half-drawn grazing area gets abandoned by accident. */}
-          {zonesEditable && !active && (
-            <div
-              data-testid="draw-tools"
-              className="pointer-events-auto mt-2 flex flex-wrap items-center gap-2
-                         rounded-card border border-edge-subtle bg-surface-overlay/95
-                         px-3.5 py-2.5 shadow-card backdrop-blur"
-            >
-              <span className="text-micro font-semibold text-content-muted">
-                {t('zone.toolsLabel')}
-              </span>
-              {/* ★★ PO POINT 9b — ציור חופשי, AND IT IS A MODE SWITCH RATHER
-                  THAN A SIXTH TOOL. The kind of area is still chosen with the
-                  buttons beside it; this decides HOW the ring is produced —
-                  a continuous stroke instead of vertex-by-vertex — which is
-                  why it is pressed FIRST and stays pressed. On a real iPad the
-                  Pencil is the reason it exists: a pen draws, and asking one
-                  to place vertices one tap at a time is asking it to be a
-                  finger. */}
-              <button
-                type="button"
-                /* The row only exists while the map is idle, so there is never
-                   a live trace to tear down here. */
-                onClick={() => setFreehandArmed((armed) => !armed)}
-                data-testid="draw-freehand"
-                aria-pressed={freehandArmed}
-                className={`min-h-[36px] py-1.5 text-micro ${
-                  freehandArmed ? 'btn-primary' : 'btn-secondary'
-                }`}
-              >
-                <Icon name="edit" size={13} />
-                {t('zone.freehand')}
-              </button>
-              <button
-                type="button"
-                onClick={() => startDrawing('farm_boundary')}
-                data-testid="draw-boundary"
-                className="btn-secondary min-h-[36px] py-1.5 text-micro"
-              >
-                <span
-                  className="inline-block h-2.5 w-2.5 rounded-pill"
-                  style={{ backgroundColor: zoneColor('farm_boundary', entity) }}
-                />
-                {t(entity === 'moshav' ? 'zone.drawBoundaryMoshav' : 'zone.drawBoundary')}
-              </button>
-              <button
-                type="button"
-                onClick={() => startDrawing('grazing_area')}
-                data-testid="draw-grazing"
-                className="btn-secondary min-h-[36px] py-1.5 text-micro"
-              >
-                <span
-                  className="inline-block h-2.5 w-2.5 rounded-pill"
-                  style={{ backgroundColor: zoneColor('grazing_area', entity) }}
-                />
-                {t('zone.drawGrazing')}
-              </button>
-              {/* G18 — the two threat tools, only where the caller armed them.
-                  Deliberately after the ground buttons: they write a different
-                  KIND of statement. */}
-              {onThreatZoneCreate && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedZoneId(null)
-                    setMode(
-                      freehandArmed
-                        ? { kind: 'freehand', zone: 'threat', live: [] }
-                        : { kind: 'threatZone', draft: [] },
-                    )
-                  }}
-                  data-testid="draw-threat-zone"
-                  className="btn-secondary min-h-[36px] py-1.5 text-micro"
-                >
-                  <Icon name="alert" size={13} />
-                  {t('threat.drawZone')}
-                </button>
-              )}
-              {onThreatVectorCreate && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedZoneId(null)
-                    setMode({ kind: 'threatVector', origin: null })
-                  }}
-                  data-testid="draw-threat-vector"
-                  className="btn-secondary min-h-[36px] py-1.5 text-micro"
-                >
-                  <Icon name="send" size={13} />
-                  {t('threat.addVector')}
-                </button>
-              )}
-            </div>
-          )}
-
           {/* G15 — the selected zone's live read-out and its two actions.
               Same bar, same rule: it is a context, so it is here. */}
           {selectedZone && !active && (
             <div
               data-testid="zone-selected"
-              className="pointer-events-auto mt-2 flex flex-wrap items-center gap-2
-                         rounded-card border border-accent bg-surface-overlay/95
-                         px-3.5 py-2.5 shadow-glow backdrop-blur"
+              className="glass pointer-events-auto mt-2 flex flex-wrap items-center gap-2
+                         rounded-card px-3.5 py-2.5 shadow-glow ring-1 ring-accent"
             >
               <span className="flex items-center gap-1.5 text-micro font-semibold text-content-primary">
                 <span
@@ -1080,7 +969,189 @@ export function AnchorMap({
           )}
           </div>
         )}
+
+        {/* U4 (2026-09-02) — THE BOTTOM ROW: the foldable legend at the inline
+            start, the drawing tools' frosted button at the inline end. The
+            tools used to be a wrapping row of five buttons that sat on the
+            map permanently; now one 44 px glass button unfolds them on tap
+            and folds them after a choice or a tap elsewhere. The map stays
+            clean. */}
+        <div className="flex items-end justify-between gap-2">
+          <MapLegend
+            layers={offeredLayers({
+              markers,
+              polygons,
+              threatZones,
+              threatVectors,
+            })}
+            defaultOpen={false}
+          >
+            {/* G7bis.1 — one legend stack: what the point shapes mean, then
+                what the painted ground means, then the assessment. */}
+            <PointLegend showFarm showPost showMeet={false} entity={entity} />
+            <ZoneLegend zones={zones} entity={entity} />
+            <ThreatLegend zones={threatZones} vectors={threatVectors} />
+          </MapLegend>
+          {zonesEditable && !active && (
+            <DrawToolsFab>
+              {/* ★★ PO POINT 9b — ציור חופשי, AND IT IS A MODE SWITCH RATHER
+                  THAN A SIXTH TOOL. The kind of area is still chosen with the
+                  buttons beside it; this decides HOW the ring is produced —
+                  a continuous stroke instead of vertex-by-vertex — which is
+                  why it is pressed FIRST and stays pressed. */}
+              <button
+                type="button"
+                onClick={() => setFreehandArmed((armed) => !armed)}
+                data-testid="draw-freehand"
+                data-keep-open=""
+                aria-pressed={freehandArmed}
+                className={`min-h-11 justify-start py-1.5 text-micro ${
+                  freehandArmed ? 'btn-primary' : 'btn-secondary'
+                }`}
+              >
+                <Icon name="edit" size={14} />
+                {t('zone.freehand')}
+              </button>
+              <button
+                type="button"
+                onClick={() => startDrawing('farm_boundary')}
+                data-testid="draw-boundary"
+                className="btn-secondary min-h-11 justify-start py-1.5 text-micro"
+              >
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-pill"
+                  style={{ backgroundColor: zoneColor('farm_boundary', entity) }}
+                />
+                {t(entity === 'moshav' ? 'zone.drawBoundaryMoshav' : 'zone.drawBoundary')}
+              </button>
+              <button
+                type="button"
+                onClick={() => startDrawing('grazing_area')}
+                data-testid="draw-grazing"
+                className="btn-secondary min-h-11 justify-start py-1.5 text-micro"
+              >
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-pill"
+                  style={{ backgroundColor: zoneColor('grazing_area', entity) }}
+                />
+                {t('zone.drawGrazing')}
+              </button>
+              {/* G18 — the two threat tools, only where the caller armed
+                  them. After the ground buttons: they write a different KIND
+                  of statement. */}
+              {onThreatZoneCreate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedZoneId(null)
+                    setMode(
+                      freehandArmed
+                        ? { kind: 'freehand', zone: 'threat', live: [] }
+                        : { kind: 'threatZone', draft: [] },
+                    )
+                  }}
+                  data-testid="draw-threat-zone"
+                  className="btn-secondary min-h-11 justify-start py-1.5 text-micro"
+                >
+                  <Icon name="alert" size={14} />
+                  {t('threat.drawZone')}
+                </button>
+              )}
+              {onThreatVectorCreate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedZoneId(null)
+                    setMode({ kind: 'threatVector', origin: null })
+                  }}
+                  data-testid="draw-threat-vector"
+                  className="btn-secondary min-h-11 justify-start py-1.5 text-micro"
+                >
+                  <Icon name="send" size={14} />
+                  {t('threat.addVector')}
+                </button>
+              )}
+              {onCreate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedZoneId(null)
+                    setMode({ kind: 'placing' })
+                  }}
+                  data-testid="draw-add-point"
+                  className="btn-secondary min-h-11 justify-start py-1.5 text-micro"
+                >
+                  <Icon name="pin" size={14} />
+                  {t('anchor.addPoint')}
+                </button>
+              )}
+            </DrawToolsFab>
+          )}
+        </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * U4.1 — THE FROSTED TOOLS BUTTON. One 44 px glass button; a tap unfolds a
+ * glass column with the tools above it; a tool press folds it (unless the
+ * button carries `data-keep-open`, the freehand switch, which is a setting
+ * rather than an action); a tap anywhere else, or Escape, folds it too.
+ */
+function DrawToolsFab({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown, true)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={ref} className="pointer-events-auto relative shrink-0" data-testid="draw-tools" data-open={open ? '1' : '0'}>
+      {open && (
+        <div
+          role="group"
+          aria-label={t('map.tools.draw')}
+          data-testid="draw-tools-panel"
+          className="glass absolute bottom-full end-0 mb-2 flex w-56 animate-fade-in flex-col gap-1 rounded-card p-1.5"
+          onClick={(e) => {
+            const target = (e.target as HTMLElement).closest('button')
+            if (target && !target.hasAttribute('data-keep-open')) setOpen(false)
+          }}
+        >
+          <span className="px-2 pb-0.5 pt-1 text-micro font-semibold text-content-muted">
+            {t('zone.toolsLabel')}
+          </span>
+          {children}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={t(open ? 'map.tools.drawClose' : 'map.tools.drawOpen')}
+        title={t('map.tools.draw')}
+        data-testid="draw-tools-toggle"
+        className={`glass flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-fast ${
+          open ? 'bg-accent text-content-on-accent' : 'text-content-primary hover:text-accent-ink'
+        }`}
+      >
+        <Icon name={open ? 'close' : 'edit'} size={19} />
+      </button>
     </div>
   )
 }

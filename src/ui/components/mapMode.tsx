@@ -194,3 +194,55 @@ export function MapModeSwitch({
     </div>
   )
 }
+
+/**
+ * U4.4 (2026-09-02) — THE FLOATING MODE PILL. Three icon buttons in one
+ * vertical frosted pill, fixed to the viewport's physical bottom-left, the
+ * same spot in every mode. Labels on `title` / `aria-label`; the active mode
+ * is filled.
+ */
+export function MapModePill({
+  mode,
+  onChange,
+  raised = false,
+}: {
+  mode: MapMode
+  onChange: (mode: MapMode) => void
+  /** Step up above the guard FAB on the phone routes that carry it. */
+  raised?: boolean
+}) {
+  const { t } = useTranslation()
+  return (
+    <div
+      role="group"
+      aria-label={t('map.modeLabel')}
+      data-testid="map-mode-pill"
+      data-mode={mode}
+      data-overlay=""
+      className={`glass fixed left-3 z-30 flex flex-col gap-0.5 rounded-pill p-1 ${
+        raised
+          ? 'bottom-[calc(var(--shell-bottom)+5.5rem)] lg:bottom-[calc(var(--shell-bottom)+0.75rem)]'
+          : 'bottom-[calc(var(--shell-bottom)+0.75rem)]'
+      }`}
+    >
+      {MODES.map((m) => (
+        <button
+          key={m}
+          type="button"
+          onClick={() => onChange(m)}
+          aria-pressed={mode === m}
+          aria-label={t(`map.mode.${m}`)}
+          title={t(`map.mode.${m}`)}
+          data-testid={`map-mode-${m}`}
+          className={`flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-fast ${
+            mode === m
+              ? 'bg-accent text-content-on-accent shadow-accent'
+              : 'text-content-secondary hover:bg-surface-high hover:text-content-primary'
+          }`}
+        >
+          <Icon name={MODE_ICON[m]} size={18} />
+        </button>
+      ))}
+    </div>
+  )
+}

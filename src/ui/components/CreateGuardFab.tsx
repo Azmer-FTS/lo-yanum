@@ -20,7 +20,7 @@ import { Icon } from './Icon'
  */
 
 /** Routes the action belongs to. Elsewhere it would just be clutter. */
-const SHOWN_ON = [
+export const FAB_ROUTES = [
   '/coordinator',
   '/coordinator/missions',
   '/coordinator/agenda',
@@ -30,7 +30,7 @@ export function CreateGuardFab() {
   const { t } = useTranslation()
   const { pathname } = useLocation()
 
-  if (!SHOWN_ON.includes(pathname)) return null
+  if (!FAB_ROUTES.includes(pathname)) return null
 
   return (
     <Link

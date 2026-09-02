@@ -138,6 +138,15 @@
      grazing the same family lighter. */
   --zone-boundary-moshav: 29 78 216; /* #1D4ED8 moshav boundary */
   --zone-grazing-moshav: 13 148 136; /* #0D9488 moshav grazing — teal, N7.3 */
+  /* U5 (2026-09-02) — THE SAME FOUR ZONES OVER SATELLITE IMAGERY. The Negev
+     is brown and green on a photograph, so the vector palette's green and
+     amber vanish on it. Over imagery the tints are frank cyan / magenta for
+     a farm and sky / violet for a moshav, thicker, with a dark halo — theme
+     independent, because the photograph is. */
+  --zone-boundary-sat: 34 211 238; /* #22D3EE cyan */
+  --zone-grazing-sat: 232 121 249; /* #E879F9 magenta */
+  --zone-boundary-moshav-sat: 125 211 252; /* #7DD3FC sky */
+  --zone-grazing-moshav-sat: 192 132 252; /* #C084FC violet */
   --status-violet: 143 99 232; /* #8F63E8 violet               */
 
   /* G7bis.1 — the farm's identity pastille on every map. A deep green:

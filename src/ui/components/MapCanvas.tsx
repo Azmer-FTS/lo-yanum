@@ -1,4 +1,5 @@
 import maplibregl from 'maplibre-gl'
+import type { ExpressionSpecification } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +10,7 @@ import type { LatLng } from '@core/index'
 import { readToken } from './badges'
 import { readStoredBase, writeStoredBase } from './mapBase'
 import { MapTools } from './MapTools'
+import { MARKER_LAYER, useMapLayers } from './mapLayers'
 import { buildBasemapStyle, registerPmtilesProtocol, resolvedThemeOf } from './basemap'
 import type { BasemapBase } from './basemap'
 
@@ -86,6 +88,10 @@ export interface MapPolygon {
   id: string
   ring: LatLng[]
   color: string
+  /** U4.3 — which layer switch governs it; unknown kinds are always drawn. */
+  kind?: 'farm_boundary' | 'grazing_area'
+  /** U5 — the frank tint the zone takes over satellite imagery. */
+  satColor?: string
   emphasis?: boolean
 }
 
@@ -548,10 +554,10 @@ function markerElement(marker: MapMarker): HTMLElement {
 }
 
 export default function MapCanvas({
-  markers,
-  polygons,
-  threatZones,
-  threatVectors,
+  markers: allMarkers,
+  polygons: allPolygons,
+  threatZones: allThreatZones,
+  threatVectors: allThreatVectors,
   onPolygonClick,
   line,
   center,
@@ -569,6 +575,41 @@ export default function MapCanvas({
   freehand,
 }: MapViewProps) {
   const { t } = useTranslation()
+  /**
+   * U4.3 (2026-09-02) — THE LAYER SWITCHES ARE APPLIED HERE, ONCE, for every
+   * map in the app: what a screen hands over is filtered by the remembered
+   * visibility set before it reaches MapLibre. A marker kind no switch
+   * governs (incidents, the route's origin, the drawing grips) is always
+   * drawn; a polygon with no `kind` likewise.
+   */
+  const [layers] = useMapLayers()
+  const markers = useMemo(
+    () =>
+      allMarkers.filter((m) => {
+        const layer = MARKER_LAYER[m.kind ?? 'farm']
+        return layer ? layers[layer] : true
+      }),
+    [allMarkers, layers],
+  )
+  const polygons = useMemo(
+    () =>
+      allPolygons?.filter((p) =>
+        p.kind === 'grazing_area'
+          ? layers.grazing
+          : p.kind === 'farm_boundary'
+            ? layers.boundaries
+            : true,
+      ),
+    [allPolygons, layers],
+  )
+  const threatZones = useMemo(
+    () => (layers.threatZones ? allThreatZones : allThreatZones && []),
+    [allThreatZones, layers.threatZones],
+  )
+  const threatVectors = useMemo(
+    () => (layers.threatVectors ? allThreatVectors : allThreatVectors && []),
+    [allThreatVectors, layers.threatVectors],
+  )
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markersRef = useRef<maplibregl.Marker[]>([])
@@ -679,25 +720,62 @@ export default function MapCanvas({
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
       })
+      /**
+       * U5 (2026-09-02) — THE ZONES OVER SATELLITE IMAGERY. The Negev is
+       * brown and green on a photograph, and a 9 % wash of green or amber
+       * with a 2 px line simply vanished on it (the product owner's
+       * finding). Over imagery the zone takes its `satColor` (cyan /
+       * magenta, sky / violet — tokens.css), a 28 % fill, a 3.2 px contour
+       * and a dark halo under the contour. The vector palette is untouched.
+       *
+       * ★ AND THE CONTOURS ARE DRAWN ABOVE EVERY FILL, threat hatch
+       *   included: fills first, then the halo, then the lines, so two
+       *   overlapping zones both keep a legible edge. The order below IS the
+       *   rule; a layer added "where it seems to belong" breaks it.
+       */
+      const sat = ground === 'satellite'
+      const zoneColor: ExpressionSpecification = sat
+        ? ['coalesce', ['get', 'satColor'], ['get', 'color']]
+        : ['get', 'color']
       map.addLayer({
         id: 'zones-fill',
         type: 'fill',
         source: 'zones',
         paint: {
-          'fill-color': ['get', 'color'],
-          'fill-opacity': ['case', ['get', 'emphasis'], 0.18, 0.09],
+          'fill-color': zoneColor,
+          'fill-opacity': sat
+            ? ['case', ['get', 'emphasis'], 0.42, 0.28]
+            : ['case', ['get', 'emphasis'], 0.18, 0.09],
         },
       })
-      map.addLayer({
-        id: 'zones-line',
-        type: 'line',
-        source: 'zones',
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: {
-          'line-color': ['get', 'color'],
-          'line-width': ['case', ['get', 'emphasis'], 3.5, 2],
-        },
-      })
+      /** Added AFTER the threat fill, below — see `addZoneContours`. */
+      const addZoneContours = () => {
+        if (sat) {
+          map.addLayer({
+            id: 'zones-halo',
+            type: 'line',
+            source: 'zones',
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: {
+              'line-color': 'rgb(0 0 0 / 0.6)',
+              'line-width': ['case', ['get', 'emphasis'], 8, 6.5],
+              'line-blur': 1.5,
+            },
+          })
+        }
+        map.addLayer({
+          id: 'zones-line',
+          type: 'line',
+          source: 'zones',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': zoneColor,
+            'line-width': sat
+              ? ['case', ['get', 'emphasis'], 5, 3.2]
+              : ['case', ['get', 'emphasis'], 3.5, 2],
+          },
+        })
+      }
       map.on('click', 'zones-fill', (e) => {
         const id = e.features?.[0]?.properties?.id as string | undefined
         if (id) polygonClickRef.current?.(id)
@@ -746,6 +824,8 @@ export default function MapCanvas({
           'fill-opacity': ['case', ['get', 'emphasis'], 0.95, 0.75],
         },
       })
+      // U5 — every fill is down; now the contours, above all of them.
+      addZoneContours()
       map.addLayer({
         id: 'threat-zones-line',
         type: 'line',
@@ -1550,6 +1630,7 @@ function applyPolygons(
         properties: {
           id: p.id,
           color: p.color,
+            satColor: p.satColor ?? p.color,
           emphasis: p.emphasis ?? false,
         },
         geometry: {

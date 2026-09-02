@@ -1,7 +1,9 @@
 import { useRef } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 
-import { MapModeSwitch, clampRatio, useMapMode, useMapRatio } from './mapMode'
+import { FAB_ROUTES } from './CreateGuardFab'
+import { MapModePill, clampRatio, useMapMode, useMapRatio } from './mapMode'
 import { PullToRefresh } from './PullToRefresh'
 import type { MapModeState } from './mapMode'
 import { PanelSplitter } from './splitter'
@@ -217,6 +219,8 @@ export function MapSplit({
   const c = BP[breakpoint]
 
   const shellRef = useRef<HTMLDivElement | null>(null)
+  const { pathname } = useLocation()
+  const withFab = FAB_ROUTES.includes(pathname)
 
   const style = {
     '--content-w': `${clampRatio(ratio)}%`,
@@ -254,14 +258,9 @@ export function MapSplit({
               the sibling beside it and never moves, which is the whole of the
               product owner's requirement. */}
           <PullToRefresh>
-          {/* ONE switch on screen at a time. Below the breakpoint the map sits
-              ABOVE the content and its own bar carries the control, so this
-              copy stands down — except in `hidden`, where there is no bar. */}
-          <MapModeSwitch
-            mode={mode}
-            onChange={setMode}
-            className={`mb-3 flex-wrap ${mode === 'hidden' ? '' : c.switchInContent}`}
-          />
+          {/* U4.4 (2026-09-02) — the three-state switch is no longer here: it
+              is the floating pill at the physical bottom-left of the
+              viewport, the same place in every mode (below). */}
           {children(state)}
           </PullToRefresh>
         </div>
@@ -304,10 +303,7 @@ export function MapSplit({
           <span className="truncate text-caption font-medium text-content-secondary">
             {ariaLabel}
           </span>
-          <div className="flex shrink-0 items-center gap-2">
-            {barExtra}
-            <MapModeSwitch mode={mode} onChange={setMode} />
-          </div>
+          <div className="flex shrink-0 items-center gap-2">{barExtra}</div>
         </div>
 
         <div
@@ -318,6 +314,19 @@ export function MapSplit({
           {map(state)}
         </div>
       </div>
+
+      {/* ★ U4.4 — THE MODE PILL IS FIXED TO THE VIEWPORT, PHYSICAL BOTTOM-LEFT,
+          IN EVERY MODE. The product owner never has to look for it after a
+          switch to full screen: hidden, split or full, it is where it was.
+          Vertical and 44 px wide so it lives inside the 4.5 rem strip every
+          map overlay already reserves on the physical left for the control
+          stack. On the three phone routes that carry the guard FAB it steps
+          up above the FAB. `data-overlay`: it is deliberately over things. */}
+      <MapModePill
+        mode={mode}
+        onChange={setMode}
+        raised={withFab}
+      />
     </div>
   )
 }

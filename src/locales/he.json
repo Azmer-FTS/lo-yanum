@@ -682,7 +682,21 @@
     "zoomIn": "התקרבות",
     "zoomOut": "התרחקות",
     "tools": {
-      "group": "כלי מפה"
+      "group": "כלי מפה",
+      "draw": "כלי שרטוט",
+      "drawOpen": "פתיחת כלי השרטוט",
+      "drawClose": "סגירת כלי השרטוט"
+    },
+    "legendToggle": "הצגה או הסתרה של המקרא",
+    "layers": {
+      "title": "שכבות",
+      "entities": "סימוני יישויות",
+      "boundaries": "גבולות יישויות",
+      "grazing": "שטחי מרעה",
+      "posts": "עמדות שמירה",
+      "pickups": "נקודות איסוף",
+      "threatZones": "אזורי איום",
+      "threatVectors": "וקטורי איום"
     },
     "locate": {
       "label": "מיקומי",

@@ -17,6 +17,16 @@ import { readToken } from './badges'
  * adjoins a farm and their zones must stay tellable side by side (A55).
  */
 
+/** U5 — the tint the same zone takes over satellite imagery. */
+export function zoneSatColor(kind: FarmZoneKind, entity: EntityKind = 'farm'): string {
+  if (entity === 'moshav') {
+    return readToken(
+      kind === 'farm_boundary' ? '--zone-boundary-moshav-sat' : '--zone-grazing-moshav-sat',
+    )
+  }
+  return readToken(kind === 'farm_boundary' ? '--zone-boundary-sat' : '--zone-grazing-sat')
+}
+
 export function zoneColor(kind: FarmZoneKind, entity: EntityKind = 'farm'): string {
   if (entity === 'moshav') {
     return readToken(
@@ -52,7 +62,9 @@ export function zonePolygons(
   return zones.map((z) => ({
     id: z.id,
     ring: z.ring,
+    kind: z.kind,
     color: zoneColor(z.kind, kindOf.get(z.farmId) ?? 'farm'),
+    satColor: zoneSatColor(z.kind, kindOf.get(z.farmId) ?? 'farm'),
   }))
 }
 
