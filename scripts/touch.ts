@@ -235,6 +235,27 @@ async function tapText(page: Page, cdp: CDPSession, text: string): Promise<boole
   return true
 }
 
+/** U4.1 — a finger tap on an element by testid (the frosted tools button). */
+async function tapTestId(page: Page, cdp: CDPSession, testid: string): Promise<boolean> {
+  const rect = await page.evaluate((id) => {
+    const el = document.querySelector(`[data-testid="${id}"]`) as HTMLElement | null
+    if (!el || el.offsetParent === null) return null
+    el.scrollIntoView({ block: 'center' })
+    const r = el.getBoundingClientRect()
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+  }, testid)
+  if (!rect) return false
+  await tap(cdp, rect.x, rect.y)
+  await page.waitForTimeout(300)
+  return true
+}
+
+/** U1 — unfold the zone list (a folded block by default) with a finger tap. */
+async function unfoldZones(page: Page, cdp: CDPSession): Promise<void> {
+  const open = await page.evaluate(() => document.querySelector('[data-block="entity-zones"]')?.getAttribute('data-open'))
+  if (open === '0') await tapTestId(page, cdp, 'block-entity-zones')
+}
+
 /** Bring the map back under the finger after a tap that scrolled the page. */
 async function scrollToMap(page: Page): Promise<void> {
   await page.evaluate(() => window.scrollTo({ top: 0 }))
@@ -397,6 +418,7 @@ check(
 
 section('4 — drawing a zone, tap by tap')
 
+check('the frosted tools button unfolds the tools', await tapTestId(page, cdp, 'draw-tools-toggle'))
 check('"צייר שטח מרעה" is reachable', await tapText(page, cdp, 'צייר שטח מרעה'))
 await page.waitForTimeout(600)
 await scrollToMap(page)
@@ -436,6 +458,7 @@ check(
 
 section('5 — reshaping a zone by finger')
 
+await unfoldZones(page, cdp)
 check('"ערוך" opens the zone for editing', await tapText(page, cdp, 'ערוך'))
 await page.waitForTimeout(1200)
 await scrollToMap(page)
@@ -662,6 +685,7 @@ check(
 
 // --- 10c. drawing a whole zone with the stylus ------------------------------
 
+check('the tools unfold for the stylus too', await tapTestId(page, cdp, 'draw-tools-toggle'))
 check('"צייר שטח מרעה" is reachable by STYLUS', await penTapText(page, cdp, 'צייר שטח מרעה'))
 await page.waitForTimeout(600)
 await scrollToMap(page)
@@ -704,6 +728,7 @@ check(
 
 // --- 10d. editing a vertex with the stylus ----------------------------------
 
+await unfoldZones(page, cdp)
 check('"ערוך" opens the ring by STYLUS', await penTapText(page, cdp, 'ערוך'))
 await page.waitForTimeout(1200)
 await scrollToMap(page)

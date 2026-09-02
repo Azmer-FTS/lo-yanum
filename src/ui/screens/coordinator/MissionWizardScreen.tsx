@@ -1916,7 +1916,7 @@ export function MissionWizardScreen() {
 
       {/* Sticky footer navigation, offset above the sticky demo toolbar. */}
       {step < 5 && (
-        <div className="sticky bottom-[var(--shell-bottom)] z-30 -mx-4 mt-5 flex items-center gap-2 border-t border-edge-subtle bg-surface-overlay/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+        <div className="sticky bottom-[var(--shell-bottom)] z-30 -mx-4 mt-5 flex items-center gap-2 border-t border-edge-subtle bg-surface-overlay/95 px-4 py-3 pl-[4.25rem] backdrop-blur sm:-mx-6 sm:px-6 sm:pl-[4.25rem]">
           <button
             type="button"
             className="btn-secondary"

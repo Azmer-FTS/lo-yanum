@@ -25,6 +25,20 @@ import { FakeDb, installFakeSession, installFakeSupabase } from './fake-supabase
 const BASE = (process.env.BASE_URL ?? 'https://azmer-fts.github.io/lo-yanum').replace(/\/$/, '')
 const SHOTS = 'docs/screenshots/demo'
 
+/**
+ * U1 (2026-09-02) — THE ZONE LIST IS A FOLDED BLOCK BY DEFAULT ("אזורי הקרקע",
+ * the product owner's smart default). A gate that reads the list unfolds it
+ * first, as a thumb would; the fold is then remembered for the context.
+ */
+async function unfoldZones(page: Page): Promise<void> {
+  const block = page.locator('[data-block="entity-zones"]')
+  if ((await block.count()) === 0) return
+  if ((await block.getAttribute('data-open')) === '0') {
+    await page.locator('[data-testid="block-entity-zones"]').click()
+    await page.waitForTimeout(250)
+  }
+}
+
 let passed = 0
 let failed = 0
 function check(label: string, ok: boolean, detail = ''): void {
@@ -117,6 +131,7 @@ try {
   await waitMap()
   await page.waitForTimeout(3000)
   await page.screenshot({ path: `${SHOTS}/5-entity-with-zones.png`, fullPage: true })
+  await unfoldZones(page)
   const zoneRows = await page.locator('button', { hasText: 'ערוך' }).count()
   check('the entity screen lists its two persisted zones', zoneRows === 2, `${zoneRows} rows`)
   await page.goto(`${BASE}/#/coordinator/agenda`, { waitUntil: 'load' })

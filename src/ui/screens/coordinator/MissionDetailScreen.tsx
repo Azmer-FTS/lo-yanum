@@ -676,7 +676,6 @@ export function MissionDetailScreen() {
           <Section
             title={t('outreach.title')}
             collapseKey="mission-outreach"
-            defaultOpen={false}
           >
             <OutreachPanel
               view={view}

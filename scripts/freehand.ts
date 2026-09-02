@@ -47,6 +47,19 @@ const VIEWPORTS = [
   { name: 'ipad-ls', width: 1376, height: 1032 },
 ]
 
+/**
+ * U4.1 (2026-09-02) — THE DRAWING TOOLS FOLD INTO ONE FROSTED BUTTON. A gate
+ * that presses a tool first unfolds them, exactly as a thumb would; the panel
+ * folds again after a choice (the freehand switch keeps it open).
+ */
+async function openTools(page: Page): Promise<void> {
+  const toggle = page.locator('[data-testid="draw-tools-toggle"]')
+  if ((await toggle.count()) === 0) return
+  if ((await page.locator('[data-testid="draw-tools-panel"]').count()) > 0) return
+  await toggle.click()
+  await page.waitForTimeout(250)
+}
+
 let passed = 0
 let failed = 0
 
@@ -197,8 +210,9 @@ try {
     await page.waitForTimeout(1500)
 
     const tools = page.locator('[data-testid="draw-tools"]')
-    check('the drawing tools are in the bottom bar', (await tools.count()) === 1)
+    check('the drawing tools are one frosted button in the bottom row', (await tools.count()) === 1)
 
+    await openTools(page)
     const freehandButton = page.locator('[data-testid="draw-freehand"]')
     check('and "ציור חופשי" is one of them', (await freehandButton.count()) === 1)
 
@@ -208,6 +222,7 @@ try {
       'pressing it arms freehand as a MODE, not as a tool',
       (await freehandButton.getAttribute('aria-pressed')) === 'true',
     )
+    await openTools(page)
     await page.locator('[data-testid="draw-grazing"]').click()
     await page.waitForTimeout(400)
 
@@ -339,11 +354,13 @@ try {
      *   what the first version of this gate did, and it then looked for a בטל
      *   in a vertex-drawing session that has none.
      */
+    await openTools(page)
     check(
       '★ freehand is still armed after a finished zone — it is a preference',
       (await page.locator('[data-testid="draw-freehand"]').getAttribute('aria-pressed')) ===
         'true',
     )
+    await openTools(page)
     await page.locator('[data-testid="draw-boundary"]').click()
     await page.waitForTimeout(400)
     const cancel = page.locator('[data-testid="freehand-cancel"]')

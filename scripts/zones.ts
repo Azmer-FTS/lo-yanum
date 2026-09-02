@@ -52,6 +52,19 @@ const BASE = (process.env.BASE_URL ?? 'https://azmer-fts.github.io/lo-yanum').re
 const SHOTS = 'docs/screenshots/zones'
 const VIEWPORT = { width: 1032, height: 1376 }
 
+/**
+ * U4.1 (2026-09-02) — THE DRAWING TOOLS FOLD INTO ONE FROSTED BUTTON. A gate
+ * that presses a tool first unfolds them, exactly as a thumb would; the panel
+ * folds again after a choice (the freehand switch keeps it open).
+ */
+async function openTools(page: Page): Promise<void> {
+  const toggle = page.locator('[data-testid="draw-tools-toggle"]')
+  if ((await toggle.count()) === 0) return
+  if ((await page.locator('[data-testid="draw-tools-panel"]').count()) > 0) return
+  await toggle.click()
+  await page.waitForTimeout(250)
+}
+
 let passed = 0
 let failed = 0
 
@@ -113,7 +126,21 @@ async function mapBox(page: Page) {
   return box
 }
 
-async function waitForMap(page: Page): Promise<void> {
+/**
+ * U1 (2026-09-02) — THE ZONE LIST IS A FOLDED BLOCK BY DEFAULT ("אזורי הקרקע",
+ * the product owner's smart default). A gate that reads the list unfolds it
+ * first, as a thumb would; the fold is then remembered for the context.
+ */
+async function unfoldZones(page: Page): Promise<void> {
+  const block = page.locator('[data-block="entity-zones"]')
+  if ((await block.count()) === 0) return
+  if ((await block.getAttribute('data-open')) === '0') {
+    await page.locator('[data-testid="block-entity-zones"]').click()
+    await page.waitForTimeout(250)
+  }
+}
+
+async function waitForMapReady(page: Page): Promise<void> {
   try {
     await page.waitForFunction(
       () => {
@@ -208,6 +235,11 @@ async function reloadEntity(page: Page, base: string, farmId: string): Promise<b
   return stayed
 }
 
+async function waitForMap(page: Page): Promise<void> {
+  await waitForMapReady(page)
+  await unfoldZones(page)
+}
+
 const zoneRows = (page: Page) => page.locator('button', { hasText: he.zone.edit })
 
 async function screenshot(page: Page, name: string): Promise<void> {
@@ -298,6 +330,7 @@ try {
   section('2 — two zones: a boundary freehand, a grazing area tap by tap')
 
   await waitForMap(page)
+  await openTools(page)
   const freehand = page.locator('[data-testid="draw-freehand"]')
   check('the drawing tools are there', (await freehand.count()) === 1)
   await freehand.click()
@@ -319,6 +352,7 @@ try {
 
   // The grazing area, tap by tap, off to one side so the two do not overlap.
   // ציור חופשי is a MODE and stays armed; a tap-by-tap ring needs it off.
+  await openTools(page)
   if ((await freehand.getAttribute('aria-pressed')) === 'true') await freehand.click()
   await page.locator('[data-testid="draw-grazing"]').click()
   await page.waitForTimeout(400)
@@ -482,6 +516,7 @@ try {
   db.offline = true
   await context.setOffline(true)
   await page.waitForTimeout(800)
+  await openTools(page)
   if ((await freehand.getAttribute('aria-pressed')) !== 'true') await freehand.click()
   await page.locator('[data-testid="draw-grazing"]').click()
   await page.waitForTimeout(400)
@@ -529,6 +564,7 @@ try {
   if (!page.url().endsWith(farmId)) await page.goto(`${BASE}/#/coordinator/farms/${farmId}`, { waitUntil: 'load' })
   await waitForMap(page)
   check('the entity is on screen from the cache before the server has answered', (await zoneRows(page).count()) === 3, `${await zoneRows(page).count()}`)
+  await openTools(page)
   if ((await freehand.getAttribute('aria-pressed')) !== 'true') await freehand.click()
   await page.locator('[data-testid="draw-boundary"]').click()
   await page.waitForTimeout(300)
