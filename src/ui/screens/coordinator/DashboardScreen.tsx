@@ -40,7 +40,7 @@ import {
   readStatusColor,
   readToken,
 } from '../../components/badges'
-import { EmptyState } from '../../components/primitives'
+import { EmptyState, Section } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
@@ -107,18 +107,9 @@ const ALERT_STYLE: Record<
   },
 }
 
-function AlertCard({ alert }: { alert: DashboardAlert }) {
-  const { t } = useTranslation()
-  const locale = useLocale()
-  // G14b — collapsed by default: the compact reading is the alarm, the
-  // details and the call list cost one click.
-  const [open, setOpen] = useState(false)
-  const style = ALERT_STYLE[alert.kind]
-  // G4.3 — a recruiting guard ESCALATES: amber while the night is far,
-  // critical orange inside six hours (weight 9 is set by access.ts). The
-  // urgent-incident treatment is reused so "loud" stays one language.
+/** U3 — the alert's one-line reading and its severity, shared by both views. */
+function alertMeta(alert: DashboardAlert, t: (k: string, o?: Record<string, unknown>) => string) {
   const critical = alert.kind !== 'recruiting' || alert.weight >= 9
-
   const detail =
     alert.kind === 'presence_mismatch'
       ? t('alerts.mismatchDetail', { name: alert.detail })
@@ -127,111 +118,151 @@ function AlertCard({ alert }: { alert: DashboardAlert }) {
         : alert.kind === 'recruiting'
           ? t('alerts.recruitingDetail', { detail: alert.detail })
           : alert.detail
+  return { critical, detail }
+}
 
+/**
+ * U3 (2026-09-02) — THE COMPACT ALERT, in the journal's own format: a colour
+ * dot, the relative time, one line. Two of them fit a view; the row swipes.
+ * A tap selects it and the details and actions unfold UNDER the carousel,
+ * where they have the whole width — a card that grew inside the row would
+ * push its neighbour off the screen.
+ *
+ * F4 — the two "somebody is unaccounted for" states and an urgent incident
+ * are the charter orange; a staffing gap is amber until six hours before the
+ * night. Same alarm, two volumes, one colour to look for.
+ */
+function AlertChip({
+  alert,
+  selected,
+  onSelect,
+}: {
+  alert: DashboardAlert
+  selected: boolean
+  onSelect: () => void
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const style = ALERT_STYLE[alert.kind]
+  const { critical, detail } = alertMeta(alert, t)
   return (
-    <li className="overflow-hidden rounded-card shadow-card transition-shadow duration-base hover:shadow-lift">
-      {/* G14b — the compact line is FULL COLOUR: the severity is the fill,
-          not a chip on a white card. Critical orange for the unaccounted
-          states, amber for a staffing gap; icon + title + relative time and
-          nothing else. `text-content-on-accent` is audited on both fills. */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className={`flex w-full items-center gap-2.5 px-3.5 py-2.5 text-start text-content-on-accent
-                    transition-all duration-fast ease-out active:scale-[0.995] ${
-                      critical
-                        ? 'bg-critical hover:bg-critical/90'
-                        : 'bg-status-warn hover:bg-status-warn/90'
-                    }`}
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      data-testid="alert-chip"
+      className={`tile-interactive flex h-full min-h-[3.5rem] w-full items-center gap-2.5 border-s-4 px-3 py-2 text-start ${
+        critical ? 'border-s-critical' : 'border-s-status-warn'
+      } ${selected ? 'bg-accent/10 ring-2 ring-accent' : ''}`}
+    >
+      <span
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-field ${style.icon}`}
       >
-        <Icon name={style.iconName} size={17} className="shrink-0" />
-        <span className="min-w-0 flex-1 truncate text-caption font-bold">
-          {t(`alerts.${alert.kind}`)}
-          <span className="font-medium"> · {alert.farmName}</span>
-        </span>
-        {/* Relative time, not a clock reading: "25 minutes ago" is the
-            question a coordinator is actually asking. */}
-        <span className="shrink-0 text-micro font-semibold opacity-90">
-          {formatRelative(alert.at, locale)}
-        </span>
-        <Icon
-          name="chevron"
-          size={14}
-          className={`shrink-0 transition-transform duration-fast ${
-            open ? 'rotate-90' : 'rtl:-scale-x-100'
-          }`}
-        />
-      </button>
-
-      {open && (
-        <div className="flex items-start gap-3 bg-surface-raised p-3.5">
+        <Icon name={style.iconName} size={16} />
+      </span>
+      <span className="min-w-0 flex-1 leading-tight">
+        <span className="flex items-center gap-1.5">
           <span
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-field ${style.icon}`}
-          >
-            <Icon name={style.iconName} size={20} />
+            className={`h-2 w-2 shrink-0 rounded-pill ${critical ? 'bg-critical' : 'bg-status-warn'}`}
+          />
+          <span className="truncate text-caption font-semibold text-content-primary" title={t(`alerts.${alert.kind}`)}>
+            {t(`alerts.${alert.kind}`)}
           </span>
+          <span className="ms-auto shrink-0 text-micro text-content-muted">
+            {formatRelative(alert.at, locale)}
+          </span>
+        </span>
+        <span className="mt-0.5 block truncate text-micro text-content-secondary" title={`${alert.farmName} · ${detail ?? ''}`}>
+          {alert.farmName}
+          {detail ? ` · ${detail}` : ''}
+        </span>
+      </span>
+    </button>
+  )
+}
 
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <p className="text-caption font-medium text-content-secondary">
-                {alert.farmName}
-              </p>
-              {alert.kind === 'recruiting' ? (
-                <span
-                  className={critical ? 'chip-critical' : `chip ${style.chip}`}
-                >
-                  <span className="numeric ltr-nums">{alert.detail}</span>
-                </span>
-              ) : critical && alert.kind === 'urgent_incident' ? (
-                <span className={style.chip}>
-                  <span className="live-dot" />
-                  {t('severity.urgent')}
-                </span>
-              ) : (
-                <span className={`chip ${style.chip}`}>
-                  {t('alerts.needsAction')}
-                </span>
-              )}
-            </div>
-            {detail && (
-              <p className="mt-1 text-caption text-content-secondary">
-                {detail}
-              </p>
-            )}
-
-            {/* Every alert carries its own call list: the coordinator should
-                never have to navigate in order to place the call. */}
-            <div className="mt-2.5 flex flex-wrap items-center gap-2">
-              {alert.contacts.map((c) => (
-                <a
-                  key={`${c.phone}-${c.roleKey}`}
-                  href={telHref(c.phone)}
-                  className="inline-flex items-center gap-1.5 rounded-pill bg-surface-high px-3 py-1.5
-                             text-micro font-semibold text-content-primary transition-all duration-fast ease-out
-                             hover:bg-gradient-accent hover:text-content-on-accent active:scale-95"
-                >
-                  <Icon name="phone" size={13} />
-                  {c.name}
-                  <span className="font-normal opacity-70">{t(c.roleKey)}</span>
-                </a>
-              ))}
-              <Link
-                to={alert.href}
-                className="ms-auto inline-flex items-center gap-1 text-micro font-semibold text-accent-ink hover:underline"
-              >
-                {t(
-                  alert.kind === 'recruiting'
-                    ? 'alerts.completeRecruitment'
-                    : 'common.details',
-                )}
-                <Icon name="chevron" size={12} className="rtl:-scale-x-100" />
-              </Link>
-            </div>
-          </div>
+/** The selected alert's details and call list, under the carousel. */
+function AlertDetail({ alert }: { alert: DashboardAlert }) {
+  const { t } = useTranslation()
+  const style = ALERT_STYLE[alert.kind]
+  const { critical, detail } = alertMeta(alert, t)
+  return (
+    <div
+      data-testid="alert-detail"
+      className={`mt-2 flex animate-fade-in items-start gap-3 rounded-card border-s-4 bg-surface-raised p-3.5 shadow-card ${
+        critical ? 'border-s-critical' : 'border-s-status-warn'
+      }`}
+    >
+      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-field ${style.icon}`}>
+        <Icon name={style.iconName} size={20} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="text-caption font-semibold text-content-primary">
+            {t(`alerts.${alert.kind}`)} · {alert.farmName}
+          </p>
+          {alert.kind === 'recruiting' ? (
+            <span className={critical ? 'chip-critical' : `chip ${style.chip}`}>
+              <span className="numeric ltr-nums">{alert.detail}</span>
+            </span>
+          ) : critical && alert.kind === 'urgent_incident' ? (
+            <span className={style.chip}>
+              <span className="live-dot" />
+              {t('severity.urgent')}
+            </span>
+          ) : (
+            <span className={`chip ${style.chip}`}>{t('alerts.needsAction')}</span>
+          )}
         </div>
-      )}
-    </li>
+        {detail && <p className="mt-1 text-caption text-content-secondary">{detail}</p>}
+
+        {/* Every alert carries its own call list: the coordinator should
+            never have to navigate in order to place the call. */}
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          {alert.contacts.map((c) => (
+            <a
+              key={`${c.phone}-${c.roleKey}`}
+              href={telHref(c.phone)}
+              className="inline-flex items-center gap-1.5 rounded-pill bg-surface-high px-3 py-1.5
+                         text-micro font-semibold text-content-primary transition-all duration-fast ease-out
+                         hover:bg-gradient-accent hover:text-content-on-accent active:scale-95"
+            >
+              <Icon name="phone" size={13} />
+              {c.name}
+              <span className="font-normal opacity-70">{t(c.roleKey)}</span>
+            </a>
+          ))}
+          <Link
+            to={alert.href}
+            className="ms-auto inline-flex items-center gap-1 text-micro font-semibold text-accent-ink hover:underline"
+          >
+            {t(alert.kind === 'recruiting' ? 'alerts.completeRecruitment' : 'common.details')}
+            <Icon name="chevron" size={12} className="rtl:-scale-x-100" />
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** U3 — the alerts block: the swipable carousel plus the selected detail. */
+function AlertsCarousel({ alerts }: { alerts: DashboardAlert[] }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = alerts.find((a) => a.id === selectedId) ?? null
+  return (
+    <div>
+      <div className="carousel-2 stagger" data-testid="alerts-carousel">
+        {alerts.map((alert) => (
+          <AlertChip
+            key={alert.id}
+            alert={alert}
+            selected={alert.id === selectedId}
+            onSelect={() => setSelectedId((cur) => (cur === alert.id ? null : alert.id))}
+          />
+        ))}
+      </div>
+      {selected && <AlertDetail alert={selected} />}
+    </div>
   )
 }
 
@@ -357,20 +388,20 @@ function AgendaWidget() {
   }, [events])
 
   return (
-    <section className="mb-5">
-      <div className="flex items-end justify-between gap-3 pb-2">
-        <h2 className="text-section text-content-primary">
-          {t('agenda.title')}
-        </h2>
+    <Section
+      title={t('agenda.title')}
+      collapseKey="dash-agenda"
+      className="mb-5"
+      summary={t('blocks.events', { count: events.length })}
+      action={
         <Link
           to="/coordinator/agenda"
           className="text-micro font-semibold text-accent-ink hover:underline"
         >
           {t('agenda.openAgenda')}
         </Link>
-      </div>
-
-      <div className="card card-pad">
+      }
+    >
         <ol className="grid grid-cols-7 gap-1">
           {week.map((day) => {
             const key = localDayKey(day)
@@ -436,8 +467,7 @@ function AgendaWidget() {
             ))
           )}
         </ul>
-      </div>
-    </section>
+    </Section>
   )
 }
 
@@ -632,48 +662,46 @@ export function DashboardScreen() {
         />
       </div>
 
-      {/* 2 — Open alerts. The loudest block on the screen when it is not empty. */}
-      <section className="mb-5">
-        <div className="flex items-end justify-between gap-3 pb-2">
-          <h2 className="text-section text-content-primary">
-            {t('dashboard.alerts')}
-          </h2>
-          {alerts.length > 0 && (
+      {/* U3 (2026-09-02) — THE PRODUCT OWNER'S ORDER: the big figures, then
+          DIRECTLY under them the two growth charts one under the other, then
+          the alerts as a compact swipable carousel, then the day, the agenda
+          and the reference blocks. Every block folds (U1). */}
+      <Section
+        title={t('dashboard.growth.title')}
+        collapseKey="dash-growth"
+        bare
+        className="mb-5"
+      >
+        <GrowthCharts />
+      </Section>
+
+      <Section
+        title={t('dashboard.alerts')}
+        collapseKey="dash-alerts"
+        bare
+        className="mb-5"
+        summary={t('blocks.alerts', { count: alerts.length })}
+        action={
+          alerts.length > 0 ? (
             <span className="chip bg-status-danger/15 text-status-danger-ink">
               <span className="numeric">{alerts.length}</span>
             </span>
-          )}
-        </div>
+          ) : undefined
+        }
+      >
         {alerts.length === 0 ? (
           <div className="card card-pad">
             <EmptyState icon="check" title={t('dashboard.noAlerts')} />
           </div>
         ) : (
-          <ul className="stagger flex flex-col gap-2.5">
-            {alerts.map((alert) => (
-              <AlertCard key={alert.id} alert={alert} />
-            ))}
-          </ul>
+          <AlertsCarousel alerts={alerts} />
         )}
-      </section>
+      </Section>
 
-      {/* G9 — "היום שלי": today as the coordinator will drive it. Between the
-          alerts (what is wrong) and the agenda (what is coming), because the
-          field day is what they actually do between the two. */}
-      <section className="mb-5">
-        <h2 className="pb-2 text-section text-content-primary">
-          {t('myday.title')}
-        </h2>
+      {/* G9 — "היום שלי": today as the coordinator will drive it. */}
+      <Section title={t('myday.title')} collapseKey="dash-myday" bare className="mb-5">
         <MyDayBlock dayKey={localDayKey(now())} />
-      </section>
-
-      {/* N6 (2026-09-02) — growth: entities signed over time, guards per week. */}
-      <section className="mb-5">
-        <div className="flex items-end justify-between gap-3 pb-2">
-          <h2 className="text-section">{t('dashboard.growth.title')}</h2>
-        </div>
-        <GrowthCharts />
-      </section>
+      </Section>
 
       {/* 3 — Agenda. */}
       <AgendaWidget />
@@ -685,11 +713,12 @@ export function DashboardScreen() {
           column of "farm · 21:00 · 4 people" wraps every row. */}
       <div className="panel-scope">
         <div className="pair-grid-wide">
-      <section className="mb-5">
-        <h2 className="pb-2 text-section text-content-primary">
-          {t('dashboard.tonightGuards')}
-        </h2>
-        <div className="card card-pad">
+      <Section
+        title={t('dashboard.tonightGuards')}
+        collapseKey="dash-tonight"
+        className="mb-5"
+        summary={t('blocks.guards', { count: tonight.length })}
+      >
           {tonight.length === 0 ? (
             <EmptyState title={t('dashboard.noTonightGuards')} />
           ) : (
@@ -729,14 +758,15 @@ export function DashboardScreen() {
               ))}
             </ul>
           )}
-        </div>
-      </section>
+      </Section>
 
-      <section className="mb-5">
-        <h2 className="pb-2 text-section text-content-primary">
-          {t('dashboard.farmsByStatus')}
-        </h2>
-        <div className="card card-pad">
+      <Section
+        title={t('dashboard.farmsByStatus')}
+        collapseKey="dash-pipeline"
+        defaultOpen={false}
+        className="mb-5"
+        summary={t('farms.count', { count: farms.length })}
+      >
           <ul className="auto-cols gap-x-4 [--col-min:12rem]">
             {statusCounts.map(({ status, count }) => (
               <li key={status}>
@@ -770,8 +800,7 @@ export function DashboardScreen() {
               </p>
             </div>
           </div>
-        </div>
-      </section>
+      </Section>
         </div>
       </div>
     </MapPanel>
