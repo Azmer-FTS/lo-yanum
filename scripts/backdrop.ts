@@ -316,18 +316,24 @@ try {
   // -------------------------------------------------------------------------
 
   /**
-   * ⚠️ THE TWO-BUTTON `BaseSwitcher` IS GONE (PO return 2026-09-02) and the
-   *    ground switch is now ONE row of the map's single vertical control stack
-   *    — `map-tool-base`, whose `aria-pressed` is the satellite state and
-   *    whose `data-base` names the live ground. Same claims, one control.
+   * ⚠️ W5 (2026-09-02) — THE GROUND IS TWO TARGETS AGAIN, INSIDE THE ONE
+   *    STACK. It was a single toggle whose label named the OTHER ground,
+   *    which is honest and unreadable at a glance; it is now מפה and לוויין
+   *    side by side, `map-tool-base` and `map-tool-satellite`, each with
+   *    `data-active` for the live one. Same claims, still one stack.
    */
   const stack = page.locator('[data-testid="map-tools"]')
-  const baseBtn = page.locator('[data-testid="map-tool-base"]')
+  const vectorBtn = page.locator('[data-testid="map-tool-base"]')
+  const baseBtn = page.locator('[data-testid="map-tool-satellite"]')
   check('the map carries ONE control stack', (await stack.count()) === 1)
-  check('the מפה / לוויין switch is a row of it', (await baseBtn.count()) === 1)
+  check(
+    'the מפה / לוויין switch is a two-target group of it',
+    (await vectorBtn.count()) === 1 && (await baseBtn.count()) === 1,
+  )
   check(
     'and it starts on the vector ground',
-    (await baseBtn.getAttribute('data-base')) === 'vector',
+    (await vectorBtn.getAttribute('data-active')) === 'true' &&
+      (await baseBtn.getAttribute('data-active')) === 'false',
   )
 
   await settle(page, FARM_VIEW)
@@ -456,7 +462,7 @@ try {
   )
   check(
     'the control shows the vector ground as the live one again',
-    (await baseBtn.getAttribute('data-base')) === 'vector',
+    (await vectorBtn.getAttribute('data-active')) === 'true',
   )
   await page.screenshot({ path: `${SHOTS}/satellite-offline-fallback.png` })
   await context.setOffline(false)
