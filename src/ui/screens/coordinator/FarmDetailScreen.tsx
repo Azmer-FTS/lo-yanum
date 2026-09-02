@@ -50,7 +50,6 @@ import { zoneColor, zoneLabelKey } from '../../components/zones'
 import { Timeline } from '../../components/Timeline'
 import type { TimelineEntry } from '../../components/Timeline'
 import {
-  FarmStatusChip,
   MissionStatusChip,
   SeverityChip,
   readStatusColor,
@@ -180,15 +179,6 @@ function FarmFacts({ farm }: { farm: Farm }) {
  * balance), then status, next visit and last activity as the three facts a
  * phone call about this farm actually needs.
  */
-/** N7.2 — the icon beside a content figure: muted, never competing with it. */
-function FigureIcon({ name }: { name: IconName }) {
-  return (
-    <span className="shrink-0 text-content-muted/70" aria-hidden="true">
-      <Icon name={name} size={18} />
-    </span>
-  )
-}
-
 function livestockIcon(kind: LivestockLine['kind']): IconName {
   switch (kind) {
     case 'cattle':
@@ -206,6 +196,57 @@ function livestockIcon(kind: LivestockLine['kind']): IconName {
   }
 }
 
+/**
+ * U6 (2026-09-02) — THE SUMMARY BAND, RESTRUCTURED. The product owner's
+ * reading of the old band: "the information is all over the place, you
+ * cannot tell what belongs to what". So: ONE fact per card, cards visibly
+ * separate, the STATUS first and loudest (a coloured pastille on its own
+ * tinted card, in the top corner the eye lands on), icons twice the size
+ * they were and breathing in a tinted disc, a vivid tint per card inside
+ * the charter's palette, and the row SWIPES sideways when the column is
+ * too narrow instead of wrapping or truncating.
+ */
+function BandCard({
+  icon,
+  tint,
+  ink,
+  figure,
+  label,
+  extra,
+  testId,
+  style,
+}: {
+  icon: IconName
+  /** Tailwind background class for the card's wash. */
+  tint: string
+  /** Tailwind text class for the icon disc. */
+  ink: string
+  figure: React.ReactNode
+  label: React.ReactNode
+  extra?: React.ReactNode
+  testId?: string
+  style?: React.CSSProperties
+}) {
+  return (
+    <div
+      data-testid={testId}
+      style={style}
+      className={`!flex-[1_0_9.5rem] rounded-card p-3 shadow-card ${tint}`}
+    >
+      <div className="flex items-center gap-3">
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-surface-raised/80 ${ink}`}>
+          <Icon name={icon} size={24} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="numeric truncate text-metric text-content-primary">{figure}</div>
+          <p className="muted truncate leading-tight">{label}</p>
+        </div>
+      </div>
+      {extra && <div className="mt-2 border-t border-edge-subtle/70 pt-2">{extra}</div>}
+    </div>
+  )
+}
+
 function KeyNumbers({
   farm,
   lastActivityAt,
@@ -216,89 +257,128 @@ function KeyNumbers({
   const { t } = useTranslation()
   const locale = useLocale()
   const heads = totalHeads(farm)
+  const statusColor = readStatusColor(farm.status)
 
   return (
-    <div className="card card-pad metric-band" data-testid="farm-key-numbers">
-      <div className="min-w-0">
-        <p className="numeric text-metric flex items-center gap-2 text-content-primary">
-          <FigureIcon name="landPlot" />
-          {farm.farmDunams.toLocaleString(locale)}
-        </p>
-        <p className="muted mt-0.5 leading-tight">
-          {t(
-            entityKindOf(farm) === 'moshav'
-              ? 'farms.farmAreaMoshav'
-              : 'farms.farmArea',
-          )}
-          {/* G15 — the override is a VISIBLE fact, not a hidden flag. */}
-          {farm.farmDunamsManual && (
-            <span className="chip ms-1.5 bg-status-warn/15 text-status-warn-ink">
-              {t('zone.manualOverride')}
-            </span>
-          )}
-        </p>
+    <div className="scroll-row" data-testid="farm-key-numbers">
+      {/* THE STATUS, FIRST — a big pastille in the status's own colour on a
+          card washed with it, in the corner the Hebrew eye lands on. */}
+      <div
+        data-testid="band-status"
+        className="!flex-[1_0_9.5rem] rounded-card p-3 shadow-card ring-1"
+        style={{
+          backgroundColor: `color-mix(in srgb, ${statusColor} 14%, rgb(var(--surface-raised)))`,
+          // The ring is the status's colour: the one contour on the screen that
+          // carries a meaning rather than an edge.
+          ['--tw-ring-color' as string]: `color-mix(in srgb, ${statusColor} 45%, transparent)`,
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <span
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill"
+            style={{ backgroundColor: `color-mix(in srgb, ${statusColor} 22%, transparent)` }}
+          >
+            <span className="h-5 w-5 rounded-pill shadow-card" style={{ backgroundColor: statusColor }} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-heading font-semibold text-content-primary">
+              {t(`farmStatus.${farm.status}`)}
+            </p>
+            <p className="muted truncate leading-tight">{t('farms.statusLabel')}</p>
+          </div>
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className="numeric text-metric flex items-center gap-2 text-content-primary">
-          <FigureIcon name="wheat" />
-          {farm.grazingDunams.toLocaleString(locale)}
-        </p>
-        <p className="muted mt-0.5 leading-tight">
-          {t('farms.grazingArea')}
-          {farm.grazingDunamsManual && (
-            <span className="chip ms-1.5 bg-status-warn/15 text-status-warn-ink">
-              {t('zone.manualOverride')}
-            </span>
-          )}
-        </p>
-      </div>
+
+      <BandCard
+        testId="band-farm-dunams"
+        icon="landPlot"
+        tint="bg-status-success/[0.12]"
+        ink="text-status-success-ink"
+        figure={farm.farmDunams.toLocaleString(locale)}
+        label={
+          <>
+            {t(entityKindOf(farm) === 'moshav' ? 'farms.farmAreaMoshav' : 'farms.farmArea')}
+            {/* G15 — the override is a VISIBLE fact, not a hidden flag. */}
+            {farm.farmDunamsManual && (
+              <span className="chip ms-1.5 bg-status-warn/15 text-status-warn-ink">
+                {t('zone.manualOverride')}
+              </span>
+            )}
+          </>
+        }
+      />
+
+      <BandCard
+        testId="band-grazing-dunams"
+        icon="wheat"
+        tint="bg-status-warn/[0.14]"
+        ink="text-status-warn-ink"
+        figure={farm.grazingDunams.toLocaleString(locale)}
+        label={
+          <>
+            {t('farms.grazingArea')}
+            {farm.grazingDunamsManual && (
+              <span className="chip ms-1.5 bg-status-warn/15 text-status-warn-ink">
+                {t('zone.manualOverride')}
+              </span>
+            )}
+          </>
+        }
+      />
+
       {/* ★ PO POINT 6 — THE HEAD COUNT SITS WITH THE DUNAMS BECAUSE IT
-          ANSWERS THE SAME QUESTION: how much is under guard here. It is
-          rendered ONLY when somebody has actually been asked — `totalHeads`
-          returns null for an entity with no rows, and a "0 ראשים" tile would
-          state a fact nobody has established, on a number the funding is
-          built out of. */}
+          ANSWERS THE SAME QUESTION: how much is under guard here. Rendered
+          ONLY when somebody has actually been asked — `totalHeads` returns
+          null for an entity with no rows, and a "0 ראשים" card would state a
+          fact nobody has established, on a number the funding is built of. */}
       {heads !== null && (
-        <div className="min-w-0">
-          <p className="numeric text-metric flex items-center gap-2 text-content-primary">
-            <FigureIcon name="pawPrint" />
-            {heads.toLocaleString(locale)}
-          </p>
-          <p className="muted mt-0.5 leading-tight">
-            {t('livestock.total')}
-            {/* N7.2 — one small glyph per kind, so the herd reads at a glance. */}
-            <span className="mt-0.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-micro">
+        <BandCard
+          testId="band-heads"
+          icon="pawPrint"
+          tint="bg-status-violet/[0.12]"
+          ink="text-status-violet-ink"
+          figure={heads.toLocaleString(locale)}
+          label={t('livestock.total')}
+          extra={
+            /* N7.2 — one glyph per kind, so the herd reads at a glance. */
+            <span className="flex flex-wrap gap-x-3 gap-y-1 text-micro text-content-secondary">
               {(farm.livestock ?? []).map((l, i) => (
                 <span key={i} className="inline-flex items-center gap-1 whitespace-nowrap">
-                  <Icon name={livestockIcon(l.kind)} size={12} />
+                  <Icon name={livestockIcon(l.kind)} size={15} />
                   {l.kind === 'other' && l.label ? l.label : t(`livestock.kinds.${l.kind}`)}{' '}
-                  {l.heads.toLocaleString(locale)}
+                  <span className="numeric font-semibold text-content-primary">
+                    {l.heads.toLocaleString(locale)}
+                  </span>
                 </span>
               ))}
             </span>
-          </p>
-        </div>
+          }
+        />
       )}
-      <div className="min-w-0">
-        <FarmStatusChip status={farm.status} />
-        <p className="muted mt-1 leading-tight">{t('farms.statusLabel')}</p>
-      </div>
-      <div className="min-w-0">
-        <p className="ltr-nums truncate text-heading font-semibold text-content-primary">
-          {farm.nextVisitAt
-            ? formatDate(farm.nextVisitAt, locale)
-            : t('common.none')}
-        </p>
-        <p className="muted mt-0.5 leading-tight">{t('farms.nextVisit')}</p>
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-heading font-semibold text-content-primary">
-          {lastActivityAt
-            ? formatRelative(lastActivityAt, locale)
-            : t('common.none')}
-        </p>
-        <p className="muted mt-0.5 leading-tight">{t('farms.lastActivity')}</p>
-      </div>
+
+      <BandCard
+        testId="band-next-visit"
+        icon="calendar"
+        tint="bg-status-info/[0.12]"
+        ink="text-status-info-ink"
+        figure={
+          farm.nextVisitAt ? (
+            <span className="ltr-nums">{formatDate(farm.nextVisitAt, locale)}</span>
+          ) : (
+            t('common.none')
+          )
+        }
+        label={t('farms.nextVisit')}
+      />
+
+      <BandCard
+        testId="band-last-activity"
+        icon="history"
+        tint="bg-surface-high"
+        ink="text-content-secondary"
+        figure={lastActivityAt ? formatRelative(lastActivityAt, locale) : t('common.none')}
+        label={t('farms.lastActivity')}
+      />
     </div>
   )
 }
