@@ -118,10 +118,32 @@ export function seedHasPhoto(id: string, share: number): boolean {
  * stylised SVG portrait is drawn as before. The purge removes the rows; the
  * pool is a static asset of the app and needs no cleaning.
  */
-let pool: { person: string[]; place: string[] } = { person: [], place: [] }
+/**
+ * W1 (2026-09-02, passe finale) — WHO GETS WHICH FACE.
+ *
+ * The programme mobilises young men from yeshivot: a volunteer or a driver
+ * must therefore resolve to a portrait of a YOUNG MAN (18–30), never a woman,
+ * never an elderly person. The contact of an entity is a farmer — an adult
+ * man of any age. The pool is split accordingly, and the seed says which
+ * pool applies: a contact's seed carries `contact` (`contact-01a`,
+ * `demo-contact-…`); everything else in the `person` kind is a volunteer or
+ * a driver. Women are no longer in any pool.
+ */
+export type PersonPool = 'young' | 'adult'
+let pool: { young: string[]; adult: string[]; place: string[] } = { young: [], adult: [], place: [] }
 
-export function configurePhotoPool(next: { person: string[]; place: string[] }): void {
-  pool = { person: [...next.person], place: [...next.place] }
+export function configurePhotoPool(next: {
+  /** Young men — volunteers and drivers. */
+  young: string[]
+  /** Adult men of any age — contacts of entities. */
+  adult: string[]
+  place: string[]
+}): void {
+  pool = { young: [...next.young], adult: [...next.adult], place: [...next.place] }
+}
+
+export function personPoolFor(seed: string): PersonPool {
+  return /contact/i.test(seed) ? 'adult' : 'young'
 }
 
 export function photoSource(value: string | null | undefined): string | null {
@@ -130,7 +152,7 @@ export function photoSource(value: string | null | undefined): string | null {
   const [, kindRaw, ...rest] = value.split(':')
   const kind = kindRaw === 'place' ? 'place' : 'person'
   const seed = rest.join(':') || value
-  const urls = pool[kind]
+  const urls = kind === 'place' ? pool.place : pool[personPoolFor(seed)]
   if (urls.length > 0) return urls[avatarHue(`pool:${seed}`) % urls.length]
   return placeholderPhoto(seed, kind)
 }

@@ -15,11 +15,33 @@ import manifest from './demo-photos.json'
  * Configured before the first render (see `main.tsx`); an empty list — the
  * gates, a build without the assets — leaves the stylised portraits in place.
  */
+/**
+ * W1 (2026-09-02, passe finale) — ONLY MEN, AND ONLY YOUNG MEN FOR THE
+ * VOLUNTEERS AND DRIVERS. The product owner saw women and elderly people as
+ * volunteers; the programme mobilises young yeshiva men. The pool files are
+ * unchanged (numbering, licences); what changes is which of them may be
+ * used, by file number, after looking at every portrait:
+ *   – YOUNG (18–30): volunteers and drivers;
+ *   – ADULT (any age): contacts of entities, i.e. farmers.
+ * The women of the pool (25–51) are referenced by nothing. Portraits of
+ * religious young men (kippa, tzitzit) were looked for on Commons: the only
+ * ones there are archival black-and-white frames or identifiable public
+ * figures, neither of which belongs on a fictional volunteer — see ETAT.
+ */
+const YOUNG_MEN = [2, 3, 4, 5, 7, 8, 10, 13, 15, 16, 18, 19, 21, 22, 23, 24]
+const ADULT_MEN = [1, 6, 7, 10, 12, 14, 15, 18, 19, 20, 22, 23]
+
 export function installDemoPhotos(): void {
   const base = import.meta.env.BASE_URL
   const url = (file: string) => `${base}demo-photos/${file.replace(/^\//, '')}`
+  const pick = (numbers: number[]) =>
+    numbers
+      .map((n) => manifest.people.find((f) => f.endsWith(`/${String(n).padStart(2, '0')}.jpg`)))
+      .filter((f): f is string => Boolean(f))
+      .map(url)
   configurePhotoPool({
-    person: manifest.people.map(url),
+    young: pick(YOUNG_MEN),
+    adult: pick(ADULT_MEN),
     place: manifest.places.map(url),
   })
 }
