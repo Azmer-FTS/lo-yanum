@@ -107,7 +107,7 @@
 > 5. **Dashboard** : chiffres → deux graphes l'un sous l'autre (toucher un
 >    point/une barre = valeur) → carrousel d'alertes (swipe, tap = détails).
 >
-> Commits : `d116758` (U1) → `ff59e20` (U9) + ETAT ; déploiement : voir §37.7.
+> Commits : `d116758` (U1) → `ff59e20` (U9), corrections de gates `0561a30`, pastille `U4.4` ; déploiement vert : run 33601764755 (§37.9).
 
 > ⏰⏰ **NOTE DE RÉVEIL — 2026-09-02, ~03:00 (heure d'Israël). LIRE EN PREMIER.**
 >
@@ -6541,7 +6541,21 @@ layout all-green (4 viewports × 3 seams, with the new U7 rule) · blocks 26 ·
 empty · overlap (see the deploy). `bun run write` failing and `offline`
 19+SKIP remain the green results (§13).
 
-### 37.9 Open
+### 37.9 Deploys, and the proofs on the served URL
+
+Run **33600079606** (`f9da996`) FAILED in `bun run ground`: the archive
+block on הגדרות started folded — fixed in `0561a30` with the gate and
+default corrections above. Run **33601764755** (`b2a3c7a`-range, HEAD
+`U4.4 breakpoint`): build / deploy / served all green. Served real bundle
+`assets/index-CkWFlB9g.js` carries `map-mode-pill`, `lo-yanum:block:`,
+`lo-yanum:map-layers`, `demo-photos`, `draw-tools-toggle`,
+`alerts-carousel` and the project ref; the demo twin's is
+`assets/index-NukEMiut.js`; `demo-photos/people/01.jpg` answers 200,
+`image/jpeg`, 34 042 bytes. On the deployed demo twin: **`bun run uipass`
+18/18** (captures in `docs/screenshots/uipass/`, 1-dashboard →
+6-tools-open) and **`bun run blocks` 26/26**.
+
+### 37.10 Open
 
 - **P3.3** — the signature drawn onto the agreement PDF: not started, next.
 - **Repository hygiene**: 477 uncurated images (32.9 MB) in `4bbf4c4`'s

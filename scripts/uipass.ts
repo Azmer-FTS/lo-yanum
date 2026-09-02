@@ -63,7 +63,7 @@ console.log(`\nUI pass captures — ${BASE}\n`)
 
 // 1 — dashboard
 await open(page, '#/coordinator', 4500)
-const charts = page.locator('[data-testid="growth-charts"] svg')
+const charts = page.locator('[data-testid="chart-area"], [data-testid="chart-bars"]')
 check('dashboard: two growth charts', (await charts.count()) === 2)
 const boxes = await charts.evaluateAll((els) => els.map((e) => e.getBoundingClientRect()))
 check('dashboard: the charts are one UNDER the other', boxes.length === 2 && boxes[1].top > boxes[0].bottom - 1)
