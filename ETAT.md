@@ -1,5 +1,110 @@
 # לא ינום — ETAT
 
+> 🎯 **PASSE UI/UX AVANT DÉMONSTRATION — 2026-09-02 (journée). LIRE EN PREMIER.**
+>
+> Les dix unités U1→U10 de votre brief sont livrées, commitées une par une
+> sur `main`, déployées sur https://azmer-fts.github.io/lo-yanum/ et
+> vérifiées sur l'URL servie (captures `docs/screenshots/uipass/`, prises
+> sur le jumeau `/lo-yanum/demo/`). Le détail technique est au **§37**.
+> **P3.3 (signature dessinée sur le PDF) n'est pas commencée** — c'est
+> la prochaine unité, comme demandé.
+>
+> ## Ce qui a changé
+>
+> - **U1 — tout bloc se replie**, chevron dans le titre, et la mémoire est
+>   **globale par type de bloc** (localStorage `lo-yanum:block:<type>`) :
+>   replier « שכבת איומים » sur une ferme le replie sur toutes, et ça tient
+>   après rechargement. Replié = titre + résumé d'une ligne
+>   (« 3 עמדות », « 2 אזורים · 2 וקטורים »). Défauts : menaces, zones,
+>   activité, engagements, accords, notes, visites, chronologies repliés ;
+>   chiffres clés, carte, contacts, gardes, incidents ouverts. Appliqué aux
+>   fiches entité / mission / incident / poste, au dashboard et aux réglages.
+> - **U2 — haut des listes compact et sticky** (fermes, volontaires,
+>   conducteurs, missions, incidents) : titre compact + une seule rangée
+>   swipable avec la recherche et les KPI-filtres (puces 44 px) + les pilules
+>   sur une ligne + en-têtes de colonnes, pinnés à toute largeur (~14 % de
+>   la hauteur au lieu des trois quarts). 8–10 fermes visibles sur iPad
+>   paysage.
+> - **U3 — dashboard réordonné** : grands chiffres → les deux graphes de
+>   croissance **l'un sous l'autre** (aire lissée monotone + dégradé, barres
+>   arrondies, grille discrète, valeur au survol/appui, animation d'entrée)
+>   → **alertes en carrousel swipable** (2 visibles, format compact du
+>   journal, clic = détails + appels sous le carrousel) → ma journée →
+>   agenda → le reste.
+> - **U4 — carte épurée** : outils de dessin dans un **bouton flottant
+>   translucide** (verre dépoli) qui se déploie/replie ; **légende
+>   repliable** (mémorisée) contenant **7 cases à cocher de couches**
+>   (marqueurs, limites, pâturages, postes, ramassages, zones et vecteurs de
+>   menace — un seul réglage pour toutes les cartes, mémorisé) ; les trois
+>   modes carte (masquée / partagée / plein écran) sont une **pastille
+>   verticale fixe en bas à gauche physique**, au même endroit dans les
+>   trois modes.
+> - **U5 — zones lisibles sur satellite** : cyan / magenta (ferme), ciel /
+>   violet (moshav), remplissage 28 %, contour 3,2 px avec halo sombre ;
+>   contours toujours dessinés au-dessus de tous les remplissages, hachures
+>   de menace comprises. Palette vectorielle inchangée.
+> - **U6 — bandeau de fiche** : une donnée par carte, **statut en premier**
+>   (pastille dans sa couleur), icônes 24 px, teinte vive par carte, rangée
+>   swipable si la colonne est étroite.
+> - **U7 — zéro texte coupé sans recours** : chaque `.truncate` qui déborde
+>   reçoit automatiquement sa valeur complète en infobulle (`title`) ; le
+>   gate `layout` échoue désormais sur tout texte coupé sans recours, aux
+>   4 viewports × 3 positions de séparateur (32 écrans, tous verts). Les
+>   grilles sont clampées (`minmax(0,1fr)`) : plus de colonne élargie par
+>   une ligne trop longue.
+> - **U8 — vignettes de fermes** : photo pleine hauteur bord à bord à
+>   gauche, deux zones de clic (texte = fiche, photo = centrer la carte),
+>   survol / appui long = aperçu rapide (même carte que sur la carte).
+> - **U9 — vraies photos** : 51 portraits + 39 paysages **CC0 vérifiés par
+>   l'API Wikimedia Commons** (licence notée fichier par fichier dans
+>   `docs/demo-photos-licences.md`), livrées comme **assets statiques**
+>   (`public/demo-photos/`, 7,3 Mo) — voir « Décidé en votre nom ».
+> - **U10** — nouveaux gates `bun run blocks` (26 contrôles : mémoire des
+>   replis, légende, couches, pastille, outils) et `bun run uipass`
+>   (captures + contrôles sur l'URL servie). `bun run tokens` est **vert**
+>   (les 2 contours A57 d'AnchorMap sont corrigés).
+>
+> ## Décidé en votre nom
+>
+> - **Photos = assets statiques, pas le bucket `photos`.** Écrire dans le
+>   bucket exige une session coordinateur qui n'existe sur aucune machine de
+>   gate (§13/§36). Les marqueurs `placeholder:` déjà en base sont inchangés :
+>   l'appareil les résout vers une photo du pool, de façon déterministe (la
+>   même personne garde le même visage partout). La purge supprime les
+>   lignes ; il n'y a rien à nettoyer côté stockage.
+> - **Couleurs satellite** (cyan/magenta/ciel/violet) : mon choix, tokens
+>   `--zone-*-sat` dans `tokens.css`.
+> - **Pastille de mode en bas à gauche physique**, verticale : c'est la
+>   bande de 4,5 rem que toutes les cartes réservaient déjà pour la pile de
+>   commandes, donc rien ne se recouvre.
+> - ⚠️ **Hygiène de dépôt** : mon commit U2 (`4bbf4c4`) a embarqué par
+>   erreur 477 images non triées (32,9 Mo) de la passe de découverte de
+>   l'agent photos ; elles sont retirées dès le commit U9 mais **restent
+>   dans l'historique**. La réécriture des commits (non poussés à ce
+>   moment-là) a été refusée par le classificateur d'auto-mode ; je n'ai
+>   pas insisté. Si vous voulez un dépôt léger : `git filter-branch
+>   --index-filter 'git rm -r --cached --ignore-unmatch public/demo-photos
+>   scripts/demo-photos.ts' e309abd..4bbf4c4` avant que d'autres clones
+>   n'existent — à votre décision.
+>
+> ## À re-tester sur iPad — 5 points
+>
+> 1. **חוות** (liste) : le bandeau reste en haut pendant le scroll, les
+>    KPI se swipent au doigt, 8+ fermes visibles en paysage ; appui long
+>    sur une vignette → aperçu ; toucher la photo → la carte se centre.
+> 2. **Une fiche ferme** : replier « שכבת איומים » puis ouvrir une autre
+>    ferme — replié aussi ; recharger — toujours replié. Le bandeau du haut
+>    se swipe ; le statut est en premier.
+> 3. **Carte** : bouton crayon translucide → outils ; « מקרא » → décocher
+>    « שטחי מרעה » → les pâturages disparaissent sur TOUTES les cartes ;
+>    passer en לוויין sur חוות רתם à z14 : zones cyan/magenta bien visibles.
+> 4. **Pastille bas-gauche** : masquée / partagée / plein écran — elle ne
+>    bouge pas.
+> 5. **Dashboard** : chiffres → deux graphes l'un sous l'autre (toucher un
+>    point/une barre = valeur) → carrousel d'alertes (swipe, tap = détails).
+>
+> Commits : `d116758` (U1) → `ff59e20` (U9) + ETAT ; déploiement : voir §37.7.
+
 > ⏰⏰ **NOTE DE RÉVEIL — 2026-09-02, ~03:00 (heure d'Israël). LIRE EN PREMIER.**
 >
 > Bonjour. Voici ce qui s'est passé cette nuit (ordre de nuit N1→N8), en
@@ -6275,3 +6380,163 @@ P3.3 signature onto the document; the RTL-plugin re-import notice on a
 page's second map (labels are shaped; `bun run zones` tolerates it); the
 `tokens` A57 pair in `AnchorMap.tsx`; Esri terms (§33); the Negev extract
 still in the bucket (§35.5).
+
+## 37. ✅ THE UI/UX PASS BEFORE THE DEMONSTRATION — U1 → U10 (2026-09-02, daytime)
+
+> The French note at the head of this file is what the product owner reads
+> first. This section is the technical record. One commit per unit.
+
+### 37.1 U1 — folds, remembered per KIND of block (`d116758`)
+
+`Section` (`ui/components/primitives.tsx`) takes `collapseKey`, `defaultOpen`
+and `summary`; `readBlockOpen` / `writeBlockOpen` keep the state in
+localStorage under `lo-yanum:block:<key>` — the key is the block TYPE
+(`entity-threats`, `mission-team`, `dash-alerts`…), never a record id, and
+never sessionStorage (iPadOS reaps tabs). The heading is a `button` with
+`aria-expanded`, a chevron in a disc, and `data-block` / `data-open` on the
+section for the gates; folded, it shows `summary` in a `[data-block-summary]`
+span. `CollapsibleSection` survives as a name that maps `storageKey →
+collapseKey`. Applied: FarmDetail (details, activity, posts, zones, guards,
+incidents, contacts, commitments, agreements, notes, visits), ThreatPanel,
+MissionDetail (team, presence, details, drivers, outreach, timeline),
+IncidentDetail (description, details, thread), AnchorSheet (messages, access,
+instructions), Settings (all eight blocks), Dashboard (growth, alerts, my day,
+agenda, tonight, pipeline). `scripts/empty.ts` skips `data-open="0"`
+sections. New locale block `blocks.*` (Hebrew plurals: `_one` + plain form,
+because i18next falls back from `_two`/`_many` to the bare key).
+
+### 37.2 U2 + U8 — the list top, the farm tile (`4bbf4c4`)
+
+`ListTop` (sticky at every width, `top: var(--shell-top)`, `-mx-4 px-4 /
+lg:-mx-5 lg:px-5`, opaque `bg-surface-base/95 backdrop-blur`), `KpiChip`
+(44 px, figure + label + hint on one line), `FilterRow nowrap`, and the CSS
+`.scroll-row` (flex, `overflow-x:auto`, snap proximity, hidden scrollbar,
+`-webkit-overflow-scrolling: touch`). Five screens converted; Drivers' seat
+total became a non-filtering chip. `FarmTile` + `TilePhoto` in
+FarmsListScreen: `h-[4.75rem]`, photo last in the RTL flex row (= physical
+left), pin badge in its corner, `data-testid="farm-tile-center"`.
+`EntityQuickCard` + `useQuickPreview` (`ui/components/EntityQuickCard.tsx`):
+hover 350 ms / long-press 450 ms (pointer events, click swallowed after a
+long press), portal at a fixed position (the panel scrolls and `.panel-scope`
+contains `fixed`), closes on scroll / pointerdown / key. `MapCanvas` /
+`MapPanel` gained `flyTo: {position, key, zoom?}` (one `easeTo` per key,
+never below z13). ⚠️ This commit swept in 477 uncurated review images
+(32.9 MB) — see 37.9.
+
+### 37.3 U3 — the dashboard (`1b4a2f0`)
+
+Order: dunam figures → four KPIs → `GrowthCharts` → alerts → my day → agenda →
+tonight / pipeline. `GrowthCharts.tsx`: `flex-col`, monotone (Fritsch–Carlson)
+spline — Catmull-Rom overshot a 4 → 4 → 3 step above 4 —, gradient area,
+rounded gradient bars, two dashed gridlines + baseline, `useNearest` pointer
+tooltip (guide line + label), `.chart-rise` entrance (`transform-box:
+fill-box`, per-bar delay, off under reduced motion). Alerts: `AlertChip`
+(`border-s-4` critical/warn, dot, relative time, one truncated line) in
+`.carousel-2` (`flex: 0 0 calc(50% - .25rem)`, snap mandatory), `AlertDetail`
+under the row with the call list; `AlertsCarousel` holds the selection.
+
+### 37.4 U4 + U5 — the map's chrome and the satellite zones (`4fc2d49`)
+
+- `ui/components/mapLayers.ts`: `MapLayerKey` ×7, one localStorage set
+  (`lo-yanum:map-layers`) behind `useSyncExternalStore`, `MARKER_LAYER`
+  (farm/moshav → entities, anchor → posts, car → pickups; incidents, origin,
+  grips, labels are never governed), `offeredLayers()` reads what a map is
+  about to draw. **`MapCanvas` filters its own props** (markers, polygons by
+  `kind`, the two threat collections), so every map obeys without a screen
+  knowing.
+- `MapLegend.tsx`: frosted `.glass` panel, title row toggles (memory
+  `lo-yanum:block:map-legend`), checkboxes on top of the swatches (the
+  screens' chips flattened inside via `[&>div]:!border-0…`). `MapPanel` and
+  `AnchorMap` render it; the phone rule (legend only in `full` below `lg`)
+  is unchanged.
+- `AnchorMap`: the bottom overlay is now [banner(s)] then a row [legend at
+  the inline start | `DrawToolsFab` at the inline end]. The FAB is one 44 px
+  `.glass` button; open, a `w-56` glass column with the six tools
+  (`data-keep-open` on the freehand switch), closed by a tool press, an
+  outside `pointerdown` (capture) or Escape. `data-testid="draw-tools"`
+  carries `data-open`. The A57 contours on the sentence bar and the
+  zone-selected bar became `ring-1 ring-accent` on `.glass` — `bun run
+  tokens` is green.
+- `MapModePill` (`mapMode.tsx`), rendered by `MapSplit` after the shell:
+  `fixed left-3 bottom-[calc(var(--shell-bottom)+0.75rem)]`, vertical, three
+  44 px buttons, `data-overlay` (it is deliberately over things — the layout
+  gate's pinned-collision rule), `raised` on `FAB_ROUTES` below `lg` so it
+  clears the guard FAB. The content column's `MapModeSwitch` and the map
+  bar's are gone; the bar keeps the label and `barExtra`. `MapPanel`'s
+  detail card is `left-[3.75rem] right-3` (physical) on phones.
+- U5 tokens `--zone-boundary-sat` 34 211 238, `--zone-grazing-sat` 232 121
+  249, `--zone-boundary-moshav-sat` 125 211 252, `--zone-grazing-moshav-sat`
+  192 132 252 (theme-independent: the photograph is). `zoneSatColor()` in
+  `zones.tsx`; `MapPolygon` gained `kind` and `satColor` (zonePolygons and
+  AnchorMap both set them). In `installProgrammeLayers` the paint reads
+  `ground`: over imagery `fill-color` = `coalesce(satColor, color)`,
+  opacity .28/.42, a `zones-halo` line (rgb(0 0 0 / .6), 6.5/8 px, blur 1.5)
+  under a 3.2/5 px contour. **Layer order is now zones-fill →
+  threat-zones-fill → zones-halo → zones-line → threat-zones-line →
+  vectors**: every contour above every fill (`addZoneContours()` is called
+  after the threat fill). Verified at z13–z16 on חוות רתם over Esri imagery.
+
+### 37.5 U6 — the summary band (`bd903e2`)
+
+`KeyNumbers` is a `.scroll-row` of `BandCard`s (`!flex-[1_0_9.5rem]`, so
+they fill a wide panel and scroll in a narrow one): status first (pastille
++ `color-mix` wash + ring in the status colour, `data-testid="band-status"`),
+farm dunams (success tint), grazing (warn), heads (violet, per-kind glyphs
+under a divider), next visit (info), last activity (neutral). Icons 24 px in
+a 44 px disc. `FigureIcon` is gone.
+
+### 37.6 U7 — no text cut without recourse (`84decfe`)
+
+`ui/hooks/useTruncationTitles.ts`, mounted once in `App`: a MutationObserver
+on `body` (childList, characterData, class/style) + `resize` + fonts,
+coalesced on a **40 ms timer — not rAF, which never fires in a background
+tab** (found in the hidden dev pane); every overflowing `.truncate` /
+`line-clamp-*` gets `title` = its text and `data-auto-title`, removed when
+it stops overflowing; a hand-written `title` is never overwritten.
+`window.__loYanumTruncation` = {scans, titled, run} for the gates.
+`scripts/layout.ts` reports `truncated` (ellipsis/clamp actually clipping,
+no `[title]` ancestor) at ALL three seam stops and fails on it. CSS:
+`.pair-grid`, `.pair-grid-wide`, `.form-grid` use `minmax(0, 1fr)` — a bare
+`1fr` let the folded notes block's one-line summary widen the column to
+518 px on a 390 px phone (the sweep caught it). The block title is
+`shrink-0`; the summary is what truncates. `VIEWPORT=all bun run layout`:
+32 screens × 4 viewports × 3 seams, green.
+
+New gates: **`bun run blocks`** (A91, 26 checks, dev server) and
+**`bun run uipass`** (captures + 18 checks on the served URL, default the
+deployed demo twin).
+
+### 37.7 U9 — the photographs (`ff59e20`)
+
+`scripts/demo-photos.ts` (`bun run demo-photos`): pick lists by Commons
+pageid (51 people, 39 places), each re-verified through `prop=imageinfo`
+(`LicenseShortName === "CC0"`, JPEG/PNG, ≥ 400 px), 640 px thumbs via
+curl, `sips` to < 120 kB, renumbered, `public/demo-photos/manifest.json` +
+`docs/demo-photos-licences.md`. `DEMO_PHOTOS_REVIEW=1` is the discovery mode
+(69 queries with `incategory:CC-Zero` — `haslicense:` does not work on
+Commons). Total 7.3 MB; `sw.js` does not precache `public/` wholesale, so
+it costs on demand only. `core/photo.ts`: `configurePhotoPool()`;
+`photoSource()` maps `placeholder:<kind>:<seed>` onto the pool by
+`avatarHue('pool:'+seed)`, SVG portrait when the pool is empty.
+`ui/demoPhotos.ts` + `ui/demo-photos.json` (generated from the manifest)
+configure it in `main.tsx` before the first render. The mock fixtures
+(`mock/farms.ts`, `mock/people.ts`) now store markers instead of data URIs.
+**The bucket was not written** (no session — §13); the demo rows in
+`lo-yanum-prod` are unchanged and resolve on the device.
+
+### 37.8 Gates, end of pass
+
+accept 176 · dispatch 27 · persist 94 · mapping 33 · report 86 · deletion 61
+· sync 34 · contrast 133 · **tokens green (was 2 pre-existing failures)** ·
+layout all-green (4 viewports × 3 seams, with the new U7 rule) · blocks 26 ·
+empty · overlap (see the deploy). `bun run write` failing and `offline`
+19+SKIP remain the green results (§13).
+
+### 37.9 Open
+
+- **P3.3** — the signature drawn onto the agreement PDF: not started, next.
+- **Repository hygiene**: 477 uncurated images (32.9 MB) in `4bbf4c4`'s
+  history; the rewrite was refused by the auto-mode classifier while the
+  commits were still unpushed. Remedy in the head note.
+- The RTL-plugin console notice on a page's second map (§36.8); Esri terms
+  (§33); the Negev extract in the bucket (§35.5).

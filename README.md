@@ -4,9 +4,10 @@
 
 Coordination tool for a volunteer farm-protection programme in the Negev, built
 for **[Artzenu](https://artzenu.org.il)** (ארצנו) and its שומרים בחוות programme.
-**Lot 0.9: the UX/UI finishing pass — the guard wizard builds its own anchor
-points on the map, form fields lost their tint, one radius scale, and the
-charter's orange finally does a job. Full UI, realistic mock data, no backend.**
+**2026-09-02: the UI/UX pass before the demonstration — every block folds
+with a global memory, compact sticky list tops, the dashboard in the
+product owner's order, a map whose chrome folds away with per-layer
+switches, zones that read on satellite, and real CC0 photographs.**
 
 **Live preview: https://azmer-fts.github.io/lo-yanum/**
 
@@ -33,6 +34,9 @@ bun install && bun run dev
 | `bun run wizard` | Play the guard wizard from a farm with no anchor point (dev server must be running) |
 | `bun run screenshots` | Regenerate `docs/screenshots/` (dev server must be running) |
 | `bun run brand-reference` | Re-capture `docs/brand/` from the live artzenu.org.il (needs the internet) |
+| `bun run blocks` | The folds, the legend, the layer switches and the mode pill, remembered and in place (dev server must be running) |
+| `bun run uipass` | The demonstration captures from the served URL, with assertions (default: the deployed demo twin) |
+| `bun run demo-photos` | Re-verify and re-download the CC0 demo photographs into `public/demo-photos/` (needs the internet) |
 
 Pick an identity on the landing screen, or switch roles any time from the bar
 at the bottom of every screen.
