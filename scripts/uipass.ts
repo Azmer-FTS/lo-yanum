@@ -66,7 +66,18 @@ await open(page, '#/coordinator', 4500)
 const charts = page.locator('[data-testid="chart-area"], [data-testid="chart-bars"]')
 check('dashboard: two growth charts', (await charts.count()) === 2)
 const boxes = await charts.evaluateAll((els) => els.map((e) => e.getBoundingClientRect()))
-check('dashboard: the charts are one UNDER the other', boxes.length === 2 && boxes[1].top > boxes[0].bottom - 1)
+// W3.2 (passe finale) — one under the other in a narrow column, SIDE BY SIDE
+// once the content column is 44 rem wide; and never taller than 240 px.
+const growthW = await page.locator('[data-testid="growth-charts"]').evaluate((e) => e.getBoundingClientRect().width)
+const sideBySide = growthW >= 44 * 16
+check(
+  sideBySide ? 'dashboard: the charts are SIDE BY SIDE (wide column)' : 'dashboard: the charts are one UNDER the other (narrow column)',
+  boxes.length === 2 && (sideBySide ? Math.abs(boxes[1].top - boxes[0].top) < 2 : boxes[1].top > boxes[0].bottom - 1),
+  `${Math.round(growthW)} px`,
+)
+check('dashboard: no chart taller than 240 px', boxes.every((b) => b.height <= 241), boxes.map((b) => Math.round(b.height)).join('/'))
+check('dashboard: no figure escapes its card', (await page.locator('[data-figure]').evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1).length)) === 0)
+check('dashboard: the two dunam cards lead', (await page.locator('[data-testid="hero-figures"] a').count()) === 2)
 const kpiBottom = await page.locator('[data-testid="kpi-guarded-heads"], a.card-interactive').first().evaluate((e) => e.getBoundingClientRect().bottom)
 check('dashboard: the charts come directly under the figures', boxes[0].top > kpiBottom)
 check('dashboard: the alerts are a carousel', (await page.locator('[data-testid="alerts-carousel"] [data-testid="alert-chip"]').count()) >= 2)

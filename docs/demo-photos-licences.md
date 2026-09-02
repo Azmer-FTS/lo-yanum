@@ -4,6 +4,8 @@ All 90 images under `public/demo-photos/` are CC0 / public domain photographs fr
 
 Regenerate with `bun run scripts/demo-photos.ts`. The manifest is `public/demo-photos/manifest.json`.
 
+**W1 (2026-09-02, passe finale) — which portraits the app actually uses.** The programme mobilises young yeshiva men, so the device only ever resolves a volunteer or a driver to one of the YOUNG MEN of the pool (files 02, 03, 04, 05, 07, 08, 10, 13, 15, 16, 18, 19, 21, 22, 23, 24) and an entity contact (a farmer) to one of the ADULT MEN (01, 06, 07, 10, 12, 14, 15, 18, 19, 20, 22, 23) — see `src/ui/demoPhotos.ts`. The women (25–51) stay on disk under their CC0 licence but are referenced by nothing. Every image here is demo material for a private demonstration and must be purged or replaced before any real use.
+
 ## People (51)
 
 | File | Commons page | Author | Licence |

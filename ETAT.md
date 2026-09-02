@@ -1,5 +1,97 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE FINALE AVANT DÉMONSTRATION — 2026-09-02, ~10:00 (heure d'Israël). LIRE EN PREMIER.**
+>
+> Brief W1→W8, 1 h 30 chrono, autonomie totale. **Livré : W1, W2, W3.**
+> **Sacrifié faute de temps : W4, W5, W6, W7, W8** (dans l'ordre inverse
+> demandé, depuis la fin). Commits `c5381e0` (W1) et `7a5eefb` (W2+W3) sur
+> `main`, déploiement run 33610742383 ; captures locales dans
+> `docs/screenshots/final/`, captures de l'URL servie dans
+> `docs/screenshots/uipass/`.
+>
+> **État vérifié sur l'URL servie** (https://azmer-fts.github.io/lo-yanum/,
+> jumeau démo `/demo/`) : déploiement run 33610742383 **succès** ;
+> `bun run uipass` sur l'URL servie **21/21** (dont les 4 contrôles W2/W3
+> ajoutés : aucune figure n'échappe à sa carte, graphes ≤ 240 px, les deux
+> cartes dunams en tête, carrousel) ; `bun run blocks` **26/26** ;
+> `VIEWPORT=ipad-ls bun run layout` (gate renforcé W2, 32 écrans × 3
+> positions de séparateur) **0 échec** — les trois sur le build de ce commit.
+> Les autres viewports du gate `layout` (phone, iphone, ipad portrait) n'ont
+> pas été relancés faute de temps : à faire au prochain démarrage.
+>
+> ## Ce qui a changé
+>
+> - **W1 — portraits.** Plus aucune femme, plus aucune personne âgée parmi
+>   les volontaires et conducteurs : ils ne résolvent plus que vers les
+>   **16 jeunes hommes** du pool existant (fichiers listés dans
+>   `docs/demo-photos-licences.md` et `src/ui/demoPhotos.ts`) ; les contacts
+>   d'entités (agriculteurs) vers des hommes adultes de tous âges. Le choix
+>   se fait par la graine du marqueur (`contact` → adulte, sinon jeune), donc
+>   **rien n'a changé en base** et la purge reste la même.
+>   ⚠️ Portraits « religieux » (kippa, tsitsit) : cherchés sur Wikimedia
+>   Commons (toutes licences, comme autorisé) — il n'y a que des archives
+>   noir et blanc des années 80 (Kiryat Arba, GPO) et des **personnalités
+>   publiques identifiables** (rabbins, députés, ambassadeur). Mettre le
+>   visage d'une personne réelle et identifiable sur un volontaire fictif
+>   était le pire résultat possible en démonstration ; j'ai renoncé. Les
+>   portraits actuels sont des modèles Unsplash CC0, jeunes, sans signe
+>   religieux. **Ces images sont temporaires et doivent être purgées ou
+>   remplacées avant tout usage réel.**
+> - **W2 — plus rien ne déborde d'une carte.** Cause racine traitée : chaque
+>   grand chiffre porte `data-figure`, sa carte est un *size container*
+>   (`.figure-card`) et sa taille de police est `min(plafond, (largeur −
+>   réserve icône) / (nb de caractères × 0,66))` — le chiffre s'adapte à la
+>   carte, jamais l'inverse ; `overflow:hidden` en dernier recours ;
+>   `.auto-cols` clampé par `min(--col-min, 100%)`. **Gate `layout`
+>   renforcé** : une figure plus large que sa carte = échec, aux 4 viewports
+>   × 3 positions de séparateur. Vérifié localement : scrollWidth == viewport
+>   et 0 figure échappée sur dashboard (3 positions), volontaires,
+>   conducteurs, fiche ferme.
+> - **W3 — dashboard.** (a) Deux grandes cartes « waouh » en tête
+>   (דונם בשמירה, דונם פוטנציאלי), jamais masquables, dégradé doux, icône
+>   nue 34 px trait fin ; (b) juste dessous **une rangée swipable** de petites
+>   cartes : חוות פעילות, ראשים בשמירה (petit, volontairement), מתנדבים
+>   זמינים, שמירות הלילה, התראות פתוחות — jamais de retour à la ligne ;
+>   (c) icônes sans pastille ronde, plus grandes, trait fin : dashboard,
+>   graphes, alertes, `Stat`, `KpiFilter`, « ma journée ». (2) Graphes
+>   plafonnés à **240 px** ; **côte à côte** dès que la colonne fait 44 rem
+>   (container query), vérifié à 3 positions de séparateur. (3) Carrousel
+>   d'alertes : contient **toutes** les alertes ouvertes, 2 visibles, hauteur
+>   +50 % (5,25 rem), **points de position** cliquables. Note : le dashboard
+>   et le badge du rail lisent la même source `getAlerts()` (incidents
+>   urgents non résolus, écarts de présence, retours non confirmés,
+>   recrutement) ; s'il voit « 5 » ailleurs, c'est la liste des incidents, qui
+>   compte aussi les non urgents.
+>
+> ## Sacrifié (pas commencé)
+>
+> - **W4** bouton d'action flottant unifié + menu contextuel façon macOS.
+> - **W5** carte : pile de contrôles en verre dépoli + sélecteur מפה/לוויין,
+>   suppression des boutons de mode en haut des listes, regroupement des
+>   outils de dessin dans le stylet, bouton « i » d'attribution, légende
+>   identique partout, marqueurs différenciés par type.
+> - **W6** fiche d'entité : bandeau à hauteur fixe, « מוזן ידנית » sur une
+>   deuxième ligne, pilule d'actions, fil d'Ariane réduit à une flèche.
+> - **W7** profil coordinateur éditable + rapport périodique.
+> - **W8** signature sur le contrat (P3.3).
+>
+> ## À re-tester par le PO — 5 points
+>
+> 1. **מתנדבים / נהגים** : faire défiler toute la liste — uniquement des
+>    hommes jeunes ; une fiche ferme → contacts = hommes adultes.
+> 2. **Dashboard iPad paysage** : déplacer le séparateur aux deux extrêmes —
+>    aucun scroll horizontal, les chiffres restent dans leurs cartes.
+> 3. **Dashboard** : les deux cartes dunams en tête, la rangée de petits KPI
+>    se swipe au doigt quand la colonne est étroite.
+> 4. **Graphes** : panneau large → côte à côte, jamais plus hauts que 240 px.
+> 5. **Alertes** : swiper le carrousel, les points suivent ; toutes les
+>    alertes ouvertes y sont.
+>
+> Pour reprendre : `git pull && bun install && bun run dev`, puis
+> `BASE_URL=http://localhost:5173 bun run layout` (gate renforcé W2) et
+> `bun run uipass` (URL servie, contrôles W3 ajoutés).
+
+
 > 🎯 **PASSE UI/UX AVANT DÉMONSTRATION — 2026-09-02 (journée). LIRE EN PREMIER.**
 >
 > Les dix unités U1→U10 de votre brief sont livrées, commitées une par une
