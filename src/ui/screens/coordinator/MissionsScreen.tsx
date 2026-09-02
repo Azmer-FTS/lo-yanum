@@ -23,6 +23,7 @@ import {
   EmptyState,
   FilterPill,
   FilterRow,
+  ListTop,
   LoadMore,
 } from '../../components/primitives'
 import { useProgressive } from '../../hooks/useProgressive'
@@ -125,22 +126,16 @@ export function MissionsScreen() {
         </ul>
       }
     >
-      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-title text-content-primary">
-            {t('missions.title')}
-          </h1>
-          <p className="muted mt-1">
-            {t('missions.count', { count: list.length })}
-          </p>
-        </div>
-        <CreateGuardButton className="btn-primary hidden lg:inline-flex" />
-      </header>
-
-      {/* D7.3 — the upcoming/past switch and the status filter share one row.
-          Status counts are computed against the ACTIVE tab, so a pill's number
-          is what pressing it would actually show. */}
-      <FilterRow active={status !== null} onClear={() => setStatus(null)}>
+      <ListTop
+        testId="missions-top"
+        title={t('missions.title')}
+        subtitle={t('missions.count', { count: list.length })}
+        actions={<CreateGuardButton className="btn-primary hidden py-1.5 text-micro lg:inline-flex" />}
+        filters={
+          /* D7.3 — the upcoming/past switch and the status filter share one
+             row. Status counts are computed against the ACTIVE tab, so a
+             pill's number is what pressing it would actually show. */
+          <FilterRow nowrap active={status !== null} onClear={() => setStatus(null)}>
         <FilterPill
           active={tab === 'upcoming'}
           onClick={() => setTab('upcoming')}
@@ -187,6 +182,8 @@ export function MissionsScreen() {
           )
         })}
       </FilterRow>
+        }
+      />
 
       {list.length === 0 ? (
         <EmptyState icon="shield" title={t('missions.empty')} />

@@ -13,6 +13,7 @@ import {
   EmptyState,
   FilterPill,
   FilterRow,
+  ListTop,
   LoadMore,
 } from '../../components/primitives'
 import { useProgressive } from '../../hooks/useProgressive'
@@ -125,20 +126,17 @@ export function IncidentsScreen() {
         </ul>
       }
     >
-      <header className="mb-4">
-        <h1 className="text-title text-content-primary">
-          {t('incidents.title')}
-        </h1>
-        <p className="muted mt-1">
-          {t('incidents.count', { count: filtered.length })}
-        </p>
-      </header>
-
-      {/* D7.3 — one row, every pill counted.
-          The twelve per-farm pills are gone: they were longer than the list
-          they filtered, and clicking a marker on the map is a faster way to
-          narrow to one farm than reading twelve names. */}
-      <FilterRow
+      <ListTop
+        testId="incidents-top"
+        title={t('incidents.title')}
+        subtitle={t('incidents.count', { count: filtered.length })}
+        filters={
+          /* D7.3 — one row, every pill counted. The twelve per-farm pills are
+             gone: they were longer than the list they filtered, and clicking
+             a marker on the map is a faster way to narrow to one farm than
+             reading twelve names. */
+          <FilterRow
+        nowrap
         active={severity !== null || openOnly || since !== ALL}
         onClear={() => {
           setSeverity(null)
@@ -181,6 +179,8 @@ export function IncidentsScreen() {
           </FilterPill>
         ))}
       </FilterRow>
+        }
+      />
 
       {filtered.length === 0 ? (
         <EmptyState icon="alert" title={t('incidents.empty')} />

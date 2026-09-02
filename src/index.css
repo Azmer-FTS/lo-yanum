@@ -967,3 +967,97 @@
    and the roads from `tokens.css` directly, once per theme. Open question 9 is
    closed by deletion rather than by adjustment, which is the only honest way
    to close it. */
+
+/* ---------------------------------------------------------------------------
+   U2 (2026-09-02) — THE LIST TOP IS ONE COMPACT, SWIPABLE, STICKY ROW
+   ---------------------------------------------------------------------------
+   The product owner saw four farms under a bandeau that took three quarters
+   of the panel. The KPI-filters are now ONE row that scrolls sideways under a
+   finger (momentum from the platform, no wrapping, no visible scrollbar) and
+   the whole top — title, KPIs, search, filters, column headers — is pinned
+   while the list scrolls, at every width, never more than ~25 % of the height.
+   --------------------------------------------------------------------------- */
+.scroll-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-block: 2px;
+  /* Room for the active chip's ring, which would otherwise be shaved by the
+     clip edge — the same lesson as the pipeline stepper (G14c). */
+  padding-inline: 2px;
+  margin-inline: -2px;
+}
+
+.scroll-row::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-row > * {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+
+/* U1 — a folded block's heading is a full-width button; keep its focus ring. */
+[data-block] > div > button[aria-expanded] {
+  padding-inline-end: 0.5rem;
+}
+
+/* U3 — the alerts carousel: two cards per view, swipable. */
+.carousel-2 {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 2px;
+  margin: -2px;
+}
+
+.carousel-2::-webkit-scrollbar {
+  display: none;
+}
+
+.carousel-2 > * {
+  flex: 0 0 calc(50% - 0.25rem);
+  min-width: 14rem;
+  scroll-snap-align: start;
+}
+
+/* U4 — the glass chrome over the map (iOS-style frosted panel). */
+.glass {
+  background-color: rgb(var(--surface-overlay) / 0.72);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+  backdrop-filter: saturate(160%) blur(14px);
+  box-shadow:
+    0 0 0 1px rgb(var(--border-subtle) / 0.9),
+    var(--shadow-card);
+}
+
+/* U3 — a short entrance for the charts: the area grows, the bars rise. */
+@keyframes chart-rise {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.chart-rise {
+  transform-origin: bottom;
+  animation: chart-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-rise {
+    animation: none;
+  }
+}

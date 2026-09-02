@@ -132,6 +132,12 @@ export interface MapViewProps {
   zoom?: number
   /** Frame all markers instead of using center/zoom. */
   fit?: boolean
+  /**
+   * U8 (2026-09-02) — "centre on the map" from a list tile. A NEW `key` moves
+   * the camera once; the same position twice is two requests, so the key is
+   * what the effect watches. Never zooms out below the farm scale.
+   */
+  flyTo?: { position: LatLng; key: number; zoom?: number }
   interactive?: boolean
   className?: string
   ariaLabel: string
@@ -551,6 +557,7 @@ export default function MapCanvas({
   center,
   zoom = 8,
   fit = false,
+  flyTo,
   interactive = true,
   className = 'h-full w-full',
   ariaLabel,
@@ -1349,6 +1356,18 @@ export default function MapCanvas({
     map.jumpTo({ center: [center.lng, center.lat], zoom })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centreKey, zoom, fit])
+
+  // U8 — one camera move per request key (see the prop).
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !flyTo) return
+    map.easeTo({
+      center: [flyTo.position.lng, flyTo.position.lat],
+      zoom: Math.max(map.getZoom(), flyTo.zoom ?? 13),
+      duration: 600,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flyTo?.key])
 
   return (
     <div

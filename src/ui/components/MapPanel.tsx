@@ -53,6 +53,8 @@ export interface MapPanelProps {
   center?: LatLng
   zoom?: number
   fit?: boolean
+  /** U8 — centre the map on a tile's entity (see MapCanvas). */
+  flyTo?: { position: LatLng; key: number; zoom?: number }
   /** Floating legend, bottom corner of the map. */
   legend?: ReactNode
   /** Floating controls over the top of the map. */
@@ -80,6 +82,7 @@ export function MapPanel({
   center,
   zoom,
   fit = true,
+  flyTo,
   legend,
   overlay,
   detail,
@@ -106,6 +109,7 @@ export function MapPanel({
             center={center}
             zoom={zoom}
             fit={fit}
+            flyTo={flyTo}
           />
 
           {/* ⚠️ `pl-[4.5rem]` — PHYSICAL LEFT, AND IT HAS TO BE (PO return

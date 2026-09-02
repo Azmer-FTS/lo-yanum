@@ -22,11 +22,10 @@ import { PeopleMap } from '../../components/PeopleMap'
 import { MapSplit } from '../../components/MapSplit'
 import {
   EmptyState,
-  FilterBar,
   FilterPill,
-  KpiFilter,
+  KpiChip,
+  ListTop,
   Modal,
-  PageHeader,
 } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
@@ -289,39 +288,41 @@ export function VolunteersScreen() {
       >
         {() => (
           <>
-      <div
-        className="-mx-4 bg-surface-base px-4 lg:-mx-5 lg:px-5 lg:sticky lg:z-20"
-        style={{ top: 'var(--shell-top, 0px)' }}
-      >
-        <PageHeader
-          title={t('volunteers.title')}
-          subtitle={t('common.showingOf', {
-            shown: filtered.length,
-            total: volunteers.length,
-          })}
-          actions={
-            <>
-              <Link to="/coordinator/import/volunteers" className="btn-secondary">
-                <Icon name="upload" size={15} />
-                {t('volunteers.import')}
-              </Link>
-              <button
-                type="button"
-                onClick={() => setEditing('new')}
-                data-testid="volunteer-new"
-                className="btn-primary"
-              >
-                <Icon name="userPlus" size={15} />
-                {t('volunteers.new')}
-              </button>
-            </>
-          }
-        />
+      <ListTop
+        testId="volunteers-top"
+        title={t('volunteers.title')}
+        subtitle={t('common.showingOf', {
+          shown: filtered.length,
+          total: volunteers.length,
+        })}
+        actions={
+          <>
+            <Link
+              to="/coordinator/import/volunteers"
+              className="btn-secondary py-1.5 text-micro"
+              title={t('volunteers.import')}
+            >
+              <Icon name="upload" size={14} />
+              <span className="hidden sm:inline">{t('volunteers.import')}</span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => setEditing('new')}
+              data-testid="volunteer-new"
+              className="btn-primary py-1.5 text-micro"
+            >
+              <Icon name="userPlus" size={14} />
+              {t('volunteers.new')}
+            </button>
+          </>
+        }
+        search={query}
+        onSearch={setQuery}
+        searchPlaceholder={t('volunteers.searchPlaceholder')}
+        kpis={
+          <>
 
-        {/* G14d — the number cards ARE the filters now (A51): active state on
-            the card itself, and the old status/phone pills are gone. */}
-        <div className="auto-cols mb-3 gap-2.5 [--col-min:7.5rem]">
-          <KpiFilter
+          <KpiChip
             label={t('volunteerStatus.active')}
             value={stats.active}
             tone="good"
@@ -329,14 +330,14 @@ export function VolunteersScreen() {
             active={status === 'active'}
             onClick={() => setStatus(status === 'active' ? null : 'active')}
           />
-          <KpiFilter
+          <KpiChip
             label={t('volunteerStatus.inactive')}
             value={stats.inactive}
             icon="moon"
             active={status === 'inactive'}
             onClick={() => setStatus(status === 'inactive' ? null : 'inactive')}
           />
-          <KpiFilter
+          <KpiChip
             label={t('volunteers.statsSmartphone')}
             value={stats.smartphone}
             icon="phone"
@@ -345,7 +346,7 @@ export function VolunteersScreen() {
               setPhoneType(phoneType === 'smartphone' ? null : 'smartphone')
             }
           />
-          <KpiFilter
+          <KpiChip
             label={t('volunteers.statsKosher')}
             value={stats.kosher}
             tone="accent"
@@ -355,27 +356,25 @@ export function VolunteersScreen() {
               setPhoneType(phoneType === 'kosher' ? null : 'kosher')
             }
           />
-          <KpiFilter
+          <KpiChip
             label={t('volunteers.statsLicenseCar')}
             value={stats.licenseCar}
             icon="car"
             active={licenseCar}
             onClick={() => setLicenseCar((v) => !v)}
           />
-          <KpiFilter
+          <KpiChip
             label={t('volunteers.statsNeverGuarded')}
             value={stats.neverGuarded}
             icon="history"
             active={neverGuarded}
             onClick={() => setNeverGuarded((v) => !v)}
           />
-        </div>
-
-        <FilterBar
-          search={query}
-          onSearch={setQuery}
-          searchPlaceholder={t('volunteers.searchPlaceholder')}
-          trailing={
+        
+          </>
+        }
+        filters={
+          <div className="scroll-row items-center">
             <button
               type="button"
               onClick={() => setGrouped((g) => !g)}
@@ -384,8 +383,6 @@ export function VolunteersScreen() {
               <Icon name="layers" size={14} />
               {t('volunteers.groupToggle')}
             </button>
-          }
-        >
           {/* G14d — only the yeshiva pills remain: they have no KPI card. The
               status and phone pills were the cards' redundant twins. */}
           {yeshivot.map((y) => (
@@ -416,11 +413,10 @@ export function VolunteersScreen() {
               {t('common.clear')}
             </button>
           )}
-        </FilterBar>
-
-        {/* G7/G14d — the column header closes the sticky block, drawn as the
-            table's own top edge; the rows card below loses its top rounding
-            at lg so the two read as one surface. */}
+        
+          </div>
+        }
+      >
         {filtered.length > 0 && (
           <div
             className="hidden items-center gap-3 rounded-t-card border-b border-edge-subtle
@@ -477,7 +473,8 @@ export function VolunteersScreen() {
             </span>
           </div>
         )}
-      </div>
+      
+      </ListTop>
 
       {/* MapSplit unmounts this whole column in `full` (`contentInFull`)
           rather than hiding it: a window-virtualised list whose container is

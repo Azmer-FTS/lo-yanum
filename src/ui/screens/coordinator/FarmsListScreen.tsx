@@ -6,14 +6,17 @@ import {
   FARM_PIPELINE,
   entityKindOf,
   formatDate,
+  getAllVisibleAnchorPoints,
   getAllVisibleFarmZones,
   getVisibleFarms,
   getVisibleThreatVectors,
   getVisibleThreatZones,
+  totalHeads,
 } from '@core/index'
-import type { Farm, FarmStatus, FarmType } from '@core/index'
+import type { Farm, FarmStatus, FarmType, LatLng } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
+import { EntityQuickCard, useQuickPreview } from '../../components/EntityQuickCard'
 import { ChevronForward, Icon } from '../../components/Icon'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import {
@@ -32,7 +35,8 @@ import {
   EmptyState,
   FilterPill,
   FilterRow,
-  KpiFilter,
+  KpiChip,
+  ListTop,
   LoadMore,
 } from '../../components/primitives'
 import { ZoneLegend, zonePolygons } from '../../components/zones'
@@ -96,6 +100,15 @@ export function FarmsListScreen() {
   const [query, setQuery] = useState('')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // U8 — the tile's second click zone: centre the map on this entity.
+  const [flyTo, setFlyTo] = useState<{ position: LatLng; key: number } | null>(null)
+  const anchors = useCoreValue(getAllVisibleAnchorPoints)
+  const postsOf = (farmId: string) => anchors.filter((a) => a.farmId === farmId).length
+  const quick = useQuickPreview<Farm>()
+  const centerOn = (farm: Farm) => {
+    setSelectedId(farm.id)
+    setFlyTo((f) => ({ position: farm.position, key: (f?.key ?? 0) + 1 }))
+  }
   /**
    * G7 — two readings of the same roster. The MAP stays the default (A18:
    * geography first), but a farm file imported at scale needs columns to
@@ -168,10 +181,18 @@ export function FarmsListScreen() {
 
   const moshavim = farms.filter((f) => entityKindOf(f) === 'moshav')
 
-  const kpiGrid = (
-    <div className="auto-cols mb-3 gap-2 [--col-min:9rem]">
+  /**
+   * U2 (2026-09-02) — THE TOP IS ONE STICKY, COMPACT BLOCK. The product owner
+   * saw four farms under a bandeau that took three quarters of the panel:
+   * the KPI cards were a grid, the search a row, the pills another. Now the
+   * status KPIs are chips in ONE swipable row beside the search box, the
+   * type pills are one line under it, and the whole thing is pinned at every
+   * width — so eight to ten entities are on screen on an iPad in landscape.
+   */
+  const kpiChips = (
+    <>
       {statusKpis.map((k) => (
-        <KpiFilter
+        <KpiChip
           key={k.status}
           label={t(`farmStatus.${k.status}`)}
           value={k.count}
@@ -179,12 +200,13 @@ export function FarmsListScreen() {
           hint={t('farms.kpiDunams', { n: k.dunams.toLocaleString(locale) })}
           active={status === k.status}
           onClick={() => setStatus(status === k.status ? null : k.status)}
+          testId={`kpi-${k.status}`}
         />
       ))}
-      {/* G16 — the entity-kind card: how many of these records are moshavim,
-          weighted like the status cards, and the card is the filter. */}
+      {/* G16 — the entity-kind chip: how many of these records are moshavim,
+          weighted like the status chips, and the chip is the filter. */}
       {moshavim.length > 0 && (
-        <KpiFilter
+        <KpiChip
           label={t('farms.kpiMoshavim')}
           value={moshavim.length}
           icon="home"
@@ -196,87 +218,64 @@ export function FarmsListScreen() {
           })}
           active={moshavOnly}
           onClick={() => setMoshavOnly((v) => !v)}
+          testId="kpi-moshavim"
         />
       )}
-    </div>
+    </>
   )
 
-  const header = (
-    <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-title text-content-primary">{t('farms.title')}</h1>
-        <p className="muted mt-1">
-          {t('common.showingOf', {
-            shown: filtered.length,
-            total: farms.length,
-          })}
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="hidden items-center gap-1.5 lg:flex">
-          {(['map', 'table'] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setView(v)}
-              aria-pressed={view === v}
-              className={`filter-pill ${view === v ? 'filter-pill-active' : ''}`}
-            >
-              <Icon name={v === 'map' ? 'map' : 'menu'} size={13} />
-              {t(v === 'map' ? 'farms.viewMap' : 'farms.viewTable')}
-            </button>
-          ))}
-        </div>
-        {/* G18 — the threat layer's switch lives with the view controls,
-            because it IS a view control: it changes what the map is about,
-            not what the list contains. Coordinator-only by construction —
-            with nothing to show, there is nothing to toggle. */}
-        {(threatZones.length > 0 || threatVectors.length > 0) && (
+  const actions = (
+    <>
+      <div className="hidden items-center gap-1 lg:flex">
+        {(['map', 'table'] as const).map((v) => (
           <button
+            key={v}
             type="button"
-            onClick={toggleThreatLayer}
-            aria-pressed={threatLayer}
-            className={`filter-pill min-h-11 px-3 ${
-              threatLayer ? 'filter-pill-active' : ''
-            }`}
+            onClick={() => setView(v)}
+            aria-pressed={view === v}
+            title={t(v === 'map' ? 'farms.viewMap' : 'farms.viewTable')}
+            className={`filter-pill min-h-9 ${view === v ? 'filter-pill-active' : ''}`}
           >
-            <Icon name="alert" size={13} />
-            {t('threat.layer')}
+            <Icon name={v === 'map' ? 'map' : 'menu'} size={13} />
+            {t(v === 'map' ? 'farms.viewMap' : 'farms.viewTable')}
           </button>
-        )}
-        {/* G10 — the farms roster gets the same import affordance the
-            volunteers one has had since R5.4, pointed at its own template. */}
-        <Link to="/coordinator/import/farms" className="btn-secondary">
-          <Icon name="upload" size={15} />
-          {t('volunteers.import')}
-        </Link>
-        <Link to="/coordinator/farms/new" className="btn-primary">
-          <Icon name="plus" size={15} />
-          {t('farms.new')}
-        </Link>
+        ))}
       </div>
-    </header>
-  )
-
-  const searchBox = (
-    <div className="mb-3">
-      <div className="relative">
-        <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
-          <Icon name="search" size={16} />
-        </span>
-        <input
-          type="search"
-          className="input py-2 ps-9"
-          value={query}
-          placeholder={t('farms.searchPlaceholder')}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </div>
-    </div>
+      {/* G18 — the threat layer's switch lives with the view controls,
+          because it IS a view control: it changes what the map is about,
+          not what the list contains. Coordinator-only by construction —
+          with nothing to show, there is nothing to toggle. */}
+      {(threatZones.length > 0 || threatVectors.length > 0) && (
+        <button
+          type="button"
+          onClick={toggleThreatLayer}
+          aria-pressed={threatLayer}
+          className={`filter-pill min-h-9 ${threatLayer ? 'filter-pill-active' : ''}`}
+        >
+          <Icon name="alert" size={13} />
+          {t('threat.layer')}
+        </button>
+      )}
+      {/* G10 — the farms roster gets the same import affordance the
+          volunteers one has had since R5.4, pointed at its own template. */}
+      <Link
+        to="/coordinator/import/farms"
+        className="btn-secondary py-1.5 text-micro"
+        title={t('volunteers.import')}
+      >
+        <Icon name="upload" size={14} />
+        <span className="hidden sm:inline">{t('volunteers.import')}</span>
+      </Link>
+      <Link to="/coordinator/farms/new" className="btn-primary py-1.5 text-micro">
+        <Icon name="plus" size={14} />
+        {t('farms.new')}
+      </Link>
+    </>
   )
 
   const filterRow = (
     <FilterRow
+      nowrap
       active={status !== null || type !== null || moshavOnly}
       onClear={() => {
         setStatus(null)
@@ -284,8 +283,8 @@ export function FarmsListScreen() {
         setMoshavOnly(false)
       }}
     >
-      {/* G14d — the status pills are gone: the KPI cards above carry status
-          filtering now. Only the type pills remain, they have no card. */}
+      {/* G14d — the status pills are gone: the KPI chips above carry status
+          filtering now. Only the type pills remain, they have no chip. */}
       {TYPES.map((ft) => (
         <FilterPill
           key={ft}
@@ -299,22 +298,29 @@ export function FarmsListScreen() {
     </FilterRow>
   )
 
+  const top = (extra?: React.ReactNode) => (
+    <ListTop
+      testId="farms-top"
+      title={t('farms.title')}
+      subtitle={t('common.showingOf', { shown: filtered.length, total: farms.length })}
+      actions={actions}
+      search={query}
+      onSearch={setQuery}
+      searchPlaceholder={t('farms.searchPlaceholder')}
+      kpis={kpiChips}
+      filters={filterRow}
+    >
+      {extra}
+    </ListTop>
+  )
+
   // G7 — the full-page table reading, outside the map shell entirely.
   if (view === 'table') {
     return (
       <div className="px-4 pb-24 pt-5 sm:px-6 lg:pb-6">
         {/* G14d/A51 — the whole top rides the page from lg, column headers
             included, same construction as the volunteers roster. */}
-        <div
-          className="-mx-4 bg-surface-base px-4 sm:-mx-6 sm:px-6 lg:sticky lg:z-20"
-          style={{ top: 'var(--shell-top, 0px)' }}
-        >
-          {header}
-          {kpiGrid}
-          {searchBox}
-          {filterRow}
-          {filtered.length > 0 && <FarmsTableHead />}
-        </div>
+        {top(filtered.length > 0 && <FarmsTableHead />)}
         {filtered.length === 0 ? (
           <EmptyState icon="farm" title={t('farms.empty')} />
         ) : (
@@ -360,61 +366,18 @@ export function FarmsListScreen() {
         </ul>
         </>
       }
+      flyTo={flyTo ?? undefined}
       detail={
         selected && (
-          <div className="animate-fade-in rounded-card bg-surface-overlay/95 p-4 shadow-lift backdrop-blur">
-            <div className="flex items-start gap-3">
-              <Avatar
-                photo={selected.photo}
-                name={selected.name}
-                size="md"
-                shape="square"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-heading text-content-primary">
-                  {selected.name}
-                </p>
-                <p className="muted mt-0.5">
-                  {selected.locality} · {selected.region}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedId(null)}
-                aria-label={t('common.close')}
-                className="shrink-0 rounded-field p-1 text-content-muted hover:bg-surface-high hover:text-content-primary"
-              >
-                <Icon name="close" size={16} />
-              </button>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <FarmStatusChip status={selected.status} />
-              <span className="chip bg-surface-high text-content-secondary">
-                {t(`farmType.${selected.type}`)}
-              </span>
-            </div>
-            <Link
-              to={`/coordinator/farms/${selected.id}`}
-              className="btn-primary mt-3 w-full"
-            >
-              {t('map.openFarm')}
-              <ChevronForward size={16} />
-            </Link>
-          </div>
+          <EntityQuickCard
+            farm={selected}
+            posts={postsOf(selected.id)}
+            onClose={() => setSelectedId(null)}
+          />
         )
       }
     >
-      {/* G14d — title, KPI-filters and search ride the panel's own scroll
-          from lg, so the controls survive a long filtered list. */}
-      <div
-        className="-mx-4 bg-surface-base px-4 lg:sticky lg:-mx-5 lg:z-20 lg:px-5"
-        style={{ top: 'var(--shell-top, 0px)' }}
-      >
-        {header}
-        {kpiGrid}
-        {searchBox}
-        {filterRow}
-      </div>
+      {top()}
 
       {filtered.length === 0 ? (
         <EmptyState icon="farm" title={t('farms.empty')} />
@@ -425,52 +388,132 @@ export function FarmsListScreen() {
         // dragged, which is exactly when a stretched row looks emptiest.
         <div className="panel-scope">
           <ul className="stagger pair-grid gap-1.5">
-          {page.visible.map((farm) => {
-            const active = farm.id === hoveredId || farm.id === selectedId
-            return (
-              <li key={farm.id}>
-                <button
-                  type="button"
-                  onMouseEnter={() => setHoveredId(farm.id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                  onFocus={() => setHoveredId(farm.id)}
-                  onBlur={() => setHoveredId(null)}
-                  onClick={() => navigate(`/coordinator/farms/${farm.id}`)}
-                  /* F5.3 — a farm row is a card. A transparent border on the
-                     page surface gave the list no edges at all. */
-                  className={`tile-interactive flex w-full items-center gap-3 px-3 py-2.5 text-start ${
-                    active ? 'border-accent/60 bg-accent/10' : ''
-                  }`}
-                >
-                  <Avatar
-                    photo={farm.photo}
-                    name={farm.name}
-                    size="sm"
-                    shape="square"
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <FarmStatusDot status={farm.status} />
-                      <span className="truncate text-caption font-medium text-content-primary">
-                        {farm.name}
-                      </span>
-                    </span>
-                    <span className="muted mt-0.5 block truncate">
-                      {farm.locality} · {t(`farmType.${farm.type}`)}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-content-muted">
-                    <ChevronForward size={15} />
-                  </span>
-                </button>
-              </li>
-            )
-          })}
+          {page.visible.map((farm) => (
+            <li key={farm.id}>
+              <FarmTile
+                farm={farm}
+                active={farm.id === hoveredId || farm.id === selectedId}
+                heads={totalHeads(farm)}
+                onHover={setHoveredId}
+                onOpen={() => navigate(`/coordinator/farms/${farm.id}`)}
+                onCenter={() => centerOn(farm)}
+                previewProps={quick.bind(farm)}
+              />
+            </li>
+          ))}
           </ul>
         </div>
       )}
+      {quick.portal((farm) => (
+        <EntityQuickCard farm={farm} posts={postsOf(farm.id)} compact />
+      ))}
       <LoadMore shown={page.shown} total={page.total} onMore={page.more} />
     </MapPanel>
+  )
+}
+
+/**
+ * U8 (2026-09-02) — THE LIVING TILE. The photo takes the tile's whole height,
+ * edge to edge, on the PHYSICAL LEFT (last flex child in this RTL row), and
+ * it is the tile's second click zone: "centre on the map", with a pin badge
+ * in its corner saying so. The text zone opens the file. Hover (mouse) or a
+ * long press (touch) opens the quick card beside the tile.
+ */
+function FarmTile({
+  farm,
+  active,
+  heads,
+  onHover,
+  onOpen,
+  onCenter,
+  previewProps,
+}: {
+  farm: Farm
+  active: boolean
+  heads: number | null
+  onHover: (id: string | null) => void
+  onOpen: () => void
+  onCenter: () => void
+  previewProps: Record<string, unknown>
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  return (
+    <div
+      data-testid="farm-tile"
+      className={`tile-interactive flex h-[4.75rem] overflow-hidden ${
+        active ? 'bg-accent/10 ring-2 ring-accent/60' : ''
+      }`}
+      onMouseEnter={() => onHover(farm.id)}
+      onMouseLeave={() => onHover(null)}
+      {...previewProps}
+    >
+      <button
+        type="button"
+        onFocus={() => onHover(farm.id)}
+        onBlur={() => onHover(null)}
+        onClick={onOpen}
+        title={t('farms.openFile')}
+        className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3 py-2 text-start"
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <FarmStatusDot status={farm.status} />
+          <span className="truncate text-caption font-semibold text-content-primary" title={farm.name}>
+            {farm.name}
+          </span>
+        </span>
+        <span className="muted block truncate" title={`${farm.locality} · ${t(`farmType.${farm.type}`)}`}>
+          {farm.locality} · {t(`farmType.${farm.type}`)}
+        </span>
+        <span className="flex flex-wrap items-center gap-x-2.5 text-micro text-content-muted">
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            <Icon name="landPlot" size={11} />
+            <span className="numeric">{(farm.farmDunams + farm.grazingDunams).toLocaleString(locale)}</span>
+            {t('farms.dunams')}
+          </span>
+          {heads !== null && (
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+              <Icon name="pawPrint" size={11} />
+              <span className="numeric">{heads.toLocaleString(locale)}</span>
+            </span>
+          )}
+          {farm.nextVisitAt && (
+            <span className="inline-flex items-center gap-1 whitespace-nowrap">
+              <Icon name="calendar" size={11} />
+              <span className="ltr-nums">{formatDate(farm.nextVisitAt, locale)}</span>
+            </span>
+          )}
+        </span>
+      </button>
+      <span className="flex shrink-0 items-center pe-1 text-content-muted/60">
+        <ChevronForward size={14} />
+      </span>
+      <button
+        type="button"
+        onClick={onCenter}
+        aria-label={t('farms.centerOnMap')}
+        title={t('farms.centerOnMap')}
+        data-testid="farm-tile-center"
+        className="group relative h-full w-[4.75rem] shrink-0 overflow-hidden bg-surface-high"
+      >
+        <TilePhoto photo={farm.photo} name={farm.name} />
+        <span
+          className="absolute bottom-1 start-1 flex h-6 w-6 items-center justify-center rounded-pill bg-surface-overlay/90 text-accent-ink shadow-card
+                     transition-transform duration-fast group-hover:scale-110 group-active:scale-95"
+        >
+          <Icon name="pin" size={13} />
+        </span>
+      </button>
+    </div>
+  )
+}
+
+/** The tile's full-bleed photo, or the initials on the name's colour. */
+function TilePhoto({ photo, name }: { photo: string | null; name: string }) {
+  return (
+    <span className="absolute inset-0 flex items-center justify-center [&>*]:h-full [&>*]:w-full [&>*]:rounded-none [&>*]:ring-0 [&>span]:text-heading">
+      <Avatar photo={photo} name={name} size="lg" shape="square" />
+    </span>
   )
 }
 
@@ -503,7 +546,7 @@ function FarmsTableHead() {
   return (
     <div
       className="hidden items-center gap-3 rounded-t-card border-b border-edge-subtle
-                 bg-surface-overlay/95 px-4 py-2.5 backdrop-blur lg:flex"
+                 bg-surface-overlay/95 px-4 py-1.5 backdrop-blur lg:flex"
     >
       <HeaderCell label={t('missions.farm')} className="w-56" />
       <HeaderCell label={t('volunteers.colLocality')} className="w-32" />

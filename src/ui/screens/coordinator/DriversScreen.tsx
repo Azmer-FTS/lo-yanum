@@ -18,10 +18,8 @@ import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
 import {
   EmptyState,
-  KpiFilter,
-  PageHeader,
-  SearchInput,
-  Stat,
+  KpiChip,
+  ListTop,
 } from '../../components/primitives'
 import { PeopleMap } from '../../components/PeopleMap'
 import { MapSplit } from '../../components/MapSplit'
@@ -145,62 +143,66 @@ export function DriversScreen() {
       >
         {() => (
           <>
-      <div
-        className="-mx-4 bg-surface-base px-4 lg:-mx-5 lg:px-5 lg:sticky lg:z-20"
-        style={{ top: 'var(--shell-top, 0px)' }}
-      >
-        <PageHeader
-          title={
-            <span className="flex items-center gap-2.5">
-              <span className="text-accent-ink">
-                <Icon name="steering" size={26} />
-              </span>
-              {t('driver.volunteerDrivers')}
+      <ListTop
+        testId="drivers-top"
+        title={
+          <span className="flex items-center gap-2">
+            <span className="text-accent-ink">
+              <Icon name="steering" size={20} />
             </span>
-          }
-          subtitle={t('driver.rosterSubtitle')}
-          actions={
-            <>
-              <Link to="/coordinator/import/drivers" className="btn-secondary">
-                <Icon name="upload" size={15} />
-                {t('volunteers.import')}
-              </Link>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => setCreating(true)}
-              >
-                <Icon name="userPlus" size={15} />
-                {t('driver.addDriver')}
-              </button>
-            </>
-          }
-        />
+            {t('driver.volunteerDrivers')}
+          </span>
+        }
+        subtitle={t('driver.rosterSubtitle')}
+        actions={
+          <>
+            <Link
+              to="/coordinator/import/drivers"
+              className="btn-secondary py-1.5 text-micro"
+              title={t('volunteers.import')}
+            >
+              <Icon name="upload" size={14} />
+              <span className="hidden sm:inline">{t('volunteers.import')}</span>
+            </Link>
+            <button
+              type="button"
+              className="btn-primary py-1.5 text-micro"
+              onClick={() => setCreating(true)}
+            >
+              <Icon name="userPlus" size={14} />
+              {t('driver.addDriver')}
+            </button>
+          </>
+        }
+        search={query}
+        onSearch={setQuery}
+        searchPlaceholder={t('common.search')}
+        kpis={
+          <>
 
-        {/* G14d — the cards are the filters. "Total" clears; the seat sum is
-            a reading, not a filter, so it stays a plain Stat. */}
-        <div className="auto-cols mb-3 gap-2.5 [--col-min:8.5rem]">
-          <KpiFilter
+          <KpiChip
             label={t('driver.statsTotal')}
             value={stats.total}
             icon="steering"
             active={!anyFilter}
             onClick={clearFilters}
           />
-          <Stat
+          <KpiChip
             label={t('driver.statsSeats')}
             value={stats.totalSeats}
             tone="accent"
             icon="users"
+            active={false}
+            onClick={clearFilters}
           />
-          <KpiFilter
+          <KpiChip
             label={t('driver.statsSevenPlus')}
             value={stats.sevenPlusSeats}
             icon="car"
             active={sevenPlus}
             onClick={() => setSevenPlus((v) => !v)}
           />
-          <KpiFilter
+          <KpiChip
             label={t('driver.statsFreeTonight')}
             value={stats.freeTonight}
             tone="good"
@@ -208,17 +210,12 @@ export function DriversScreen() {
             active={freeTonight}
             onClick={() => setFreeTonight((v) => !v)}
           />
-        </div>
-
-        <div className="mb-3 flex flex-wrap items-center gap-3">
-          <div className="w-full sm:w-80">
-            <SearchInput
-              value={query}
-              onChange={setQuery}
-              placeholder={t('common.search')}
-            />
-          </div>
-          <p className="muted">{t('driver.count', { count: filtered.length })}</p>
+        
+          </>
+        }
+        filters={
+          <div className="scroll-row items-center">
+<p className="muted">{t('driver.count', { count: filtered.length })}</p>
           {/* P0.2 — the tapped bubble reads back as a removable pill. */}
           {locality !== null && (
             <button
@@ -240,8 +237,10 @@ export function DriversScreen() {
               {t('common.clear')}
             </button>
           )}
-        </div>
-
+        
+          </div>
+        }
+      >
         {filtered.length > 0 && (
           <div
             className="hidden items-center gap-3 rounded-t-card border-b border-edge-subtle
@@ -267,7 +266,8 @@ export function DriversScreen() {
             />
           </div>
         )}
-      </div>
+      
+      </ListTop>
 
       {/* See the volunteers roster: MapSplit UNMOUNTS this column in `full`
           rather than hiding it, or the window virtualiser measures a
