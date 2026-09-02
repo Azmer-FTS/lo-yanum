@@ -1,5 +1,125 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE FINALE — W1→W8 COMPLÈTE, 2026-09-02. LIRE EN PREMIER.**
+>
+> **Les huit unités sont livrées, commitées une par une, poussées et
+> vérifiées sur l'URL servie.** La note précédente (ci-dessous, conservée)
+> annonçait W4–W8 sacrifiés faute de temps ; ils ont été repris et terminés
+> dans l'ordre du brief. Dernier commit `4413b33`, déploiement run
+> **33619708564 succès**.
+>
+> ## Vérifié
+>
+> | Gate | Où | Résultat |
+> |---|---|---|
+> | `uipass` | URL servie (jumeau `/demo/`) | **21/21** |
+> | `blocks` | serveur local | **26/26** |
+> | `layout` | **4 viewports** × 32 écrans × 3 positions de séparateur | **0 échec** |
+> | `overlap` | 4 viewports, 9 écrans à carte | **72/72** |
+> | `backdrop` | build servi | **23/23** |
+> | `freehand` | 2 viewports iPad | **30/30** |
+> | `agreement` | build réel servi | **17/17** (dont W8) |
+> | `zones` / `demo` | build réel servi | **38/38** / **12/12** |
+> | `outreach` / `report` | — | **25/25** / **86/86** |
+>
+> Les trois viewports de `layout` laissés en suspens par la note précédente
+> (phone, iphone, ipad portrait) ont été relancés : verts.
+>
+> ## W4 — un seul bouton « + » (`58d3bba`)
+>
+> Créer était cinq affordances à cinq endroits. Désormais **un bouton
+> flottant unique** sur les huit routes coordinateur, à toutes les largeurs,
+> qui ouvre un **menu contextuel façon macOS** : l'action de l'écran courant
+> en premier et surlignée, les autres sous un filet. `CreateGuardFab` est
+> supprimé. Les deux rosters créent dans une modale qu'ils possèdent : le
+> menu leur demande par l'URL (`?new=1`), que l'écran lit puis retire.
+> Le bouton porte `data-overlay` (comme la pastille de mode) : il est
+> au-dessus du panneau par construction.
+>
+> ## W5 — la carte (`fb3b3b9`, gates `fa56f43`)
+>
+> · Pile de commandes en **verre dépoli**. · Le fond est un **sélecteur à
+> deux cibles** מפה / לוויין au lieu d'une bascule dont le libellé nommait
+> l'autre fond ; hors ligne seule la seconde est désactivée. · **Les boutons
+> de mode en haut des listes sont supprimés** (`MapModeSwitch` effacé) ; la
+> pastille fixe est la seule commande de mode et existe désormais à toutes
+> les largeurs. · **La longue barre ne revient plus** : elle n'existe que
+> pendant un tracé armé, bornée à 26 rem ; le stylet est monté sur toute
+> carte capable de créer. · **Attribution OSM derrière un « i »** : le
+> `<details open>` de MapLibre est refermé au chargement, son sommaire
+> devient un bouton rond de 28 px en verre ; dès qu'on l'ouvre on n'y touche
+> plus. · **Mêmes 7 cases sur tous les écrans** (`offeredLayers` supprimé),
+> mecra présent partout, replié par défaut. · **Épingle ≠ goutte** : un
+> poste de garde est une épingle (tête ronde sur aiguille), la goutte reste
+> aux points posés et aux arrêts ; le mecra reprend la silhouette.
+>
+> ## W6 — la fiche (`c259550`)
+>
+> · **Cadrage serré à l'ouverture** (l'AJOUT du brief) : `frameTo` sur la
+> boîte englobante des anneaux des zones + les postes + le point de
+> l'entité, une fois par entité. ⚠️ La boîte est calculée sur place et non
+> par `boundsOf`, qui plafonne sa marge à 0,02° **par côté** (2,2 km) et
+> triplait la boîte d'une exploitation — c'était ça, le « tout est
+> minuscule ». Mesuré : z12,8 → **z14,2 / z15,5 / z13,0** sur trois fermes ;
+> la fiche d'un poste ouvre à z16. · **Bandeau à hauteur fixe** 5,25 rem
+> (mesuré 84 px sur trois fermes, contre 76→148 px avant). · **« מוזן ידנית »
+> sur sa propre ligne**, réservée qu'elle soit remplie ou non ; le cheptel
+> descend dans « פרטים ». · **Trois actions en une pilule**, la destructive
+> en dernier dans son encre. · **Flèche de retour** de 40 px à côté du titre
+> au lieu du fil d'Ariane.
+>
+> ## W7 — profil + rapport périodique (`4642672`)
+>
+> · `core/profile.ts` : la carte du rakaz est **éditable** depuis הגדרות
+> (nom, téléphone, tâche), avec abonnés — enregistrer repeint le rail sans
+> recharger. **Défaut : דובי בן שושן.** Elle alimente la signature de chaque
+> message généré et le numéro de rappel. localStorage, pour les deux raisons
+> déjà écrites pour l'adresse de rapport : besoin sans réseau, et carte
+> personnelle plutôt que donnée du programme.
+> · **Rapport périodique** : 7 / 30 / 90 jours ou un an, choisis dans la
+> modale, PDF reconstruit sur place. ⚠️ Seules les grandeurs fenêtrées
+> bougent ; les cumulées sont un état, et le dire est le rôle de
+> `report.periodHint`.
+>
+> ## W8 — la signature sur le contrat (`4413b33`)
+>
+> L'encre était stockée sur la ligne et s'arrêtait là. Elle est désormais
+> **dessinée sur la dernière page du PDF**, côté physique droit — le bloc
+> « חתימת בעל היישות », celui du bailleur, qui est la partie qui signe ici.
+> Le tampon est un PNG rendu par le navigateur (aucun glyphe embarqué, même
+> raisonnement que `report/pdf.ts`) ; `pdf-lib` est **derrière un import
+> dynamique**, donc hors du bundle principal, chargé à la première ouverture
+> d'un contrat signé. Un PDF illisible rend les octets d'origine inchangés :
+> jamais un téléchargement cassé devant un fermier.
+>
+> ## À re-tester par le PO — 6 points
+>
+> 1. **Le « + »** : le même bouton sur tableau de bord, fermes, volontaires,
+>    conducteurs, shmirot ; le menu met en tête l'action de l'écran.
+> 2. **Carte** : plus aucun bouton de mode en haut des listes — la pastille
+>    en bas à gauche, à toutes les largeurs ; מפה/לוויין en deux cibles ;
+>    le « i » en bas de carte ouvre l'attribution ; 7 cases partout.
+> 3. **Une fiche ferme** : à l'ouverture la carte cadre la ferme, pas la
+>    région ; le bandeau a la même hauteur d'une ferme à l'autre ; les trois
+>    actions sont une pilule ; la flèche remplace le fil d'Ariane.
+> 4. **הגדרות → פרופיל הרכז** : changer le nom, envoyer un message depuis
+>    une fiche → la signature porte le nouveau nom.
+> 5. **Rapport** : ouvrir דוח, changer la période, vérifier que les
+>    shmirot/incidents bougent et que les dunams ne bougent pas.
+> 6. **Contrat** : signer un fermier dans sa fiche, puis ouvrir/partager le
+>    contrat → la signature est sur la page.
+>
+> ⚠️ Inchangé et toujours vrai : les portraits de démonstration sont des
+> images temporaires à purger ou remplacer avant tout usage réel
+> (`docs/demo-photos-licences.md`), et l'historique du dépôt porte encore
+> les 477 images du commit `4bbf4c4` (voir la note U-passe plus bas).
+>
+> Pour reprendre : `git pull && bun install && bun run dev`, puis
+> `VIEWPORT=<phone|iphone|ipad|ipad-ls> BASE_URL=http://localhost:5173 bun
+> run layout`, `bun run blocks`, et `bun run uipass` sur l'URL servie.
+
+---
+
 > 🏁 **PASSE FINALE AVANT DÉMONSTRATION — 2026-09-02, ~10:00 (heure d'Israël). LIRE EN PREMIER.**
 >
 > Brief W1→W8, 1 h 30 chrono, autonomie totale. **Livré : W1, W2, W3.**
