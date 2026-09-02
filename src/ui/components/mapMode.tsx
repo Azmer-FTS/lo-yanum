@@ -205,11 +205,14 @@ export function MapModePill({
   mode,
   onChange,
   raised = false,
+  className = '',
 }: {
   mode: MapMode
   onChange: (mode: MapMode) => void
   /** Step up above the guard FAB on the phone routes that carry it. */
   raised?: boolean
+  /** The breakpoint gate: `hidden lg:flex` / `hidden xl:flex`. */
+  className?: string
 }) {
   const { t } = useTranslation()
   return (
@@ -219,7 +222,7 @@ export function MapModePill({
       data-testid="map-mode-pill"
       data-mode={mode}
       data-overlay=""
-      className={`glass fixed left-3 z-30 flex flex-col gap-0.5 rounded-pill p-1 ${
+      className={`glass fixed left-3 z-30 flex-col gap-0.5 rounded-pill p-1 ${className || 'flex'} ${
         raised
           ? 'bottom-[calc(var(--shell-bottom)+5.5rem)] lg:bottom-[calc(var(--shell-bottom)+0.75rem)]'
           : 'bottom-[calc(var(--shell-bottom)+0.75rem)]'

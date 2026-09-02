@@ -38,7 +38,10 @@
 >   menace — un seul réglage pour toutes les cartes, mémorisé) ; les trois
 >   modes carte (masquée / partagée / plein écran) sont une **pastille
 >   verticale fixe en bas à gauche physique**, au même endroit dans les
->   trois modes.
+>   trois modes, dès que la carte est À CÔTÉ du contenu (paysage, bureau).
+>   En affichage empilé (portrait, téléphone) elle recouvrait « שמירה » et
+>   les boutons en bas à gauche des cartes : là, le sélecteur reste dans
+>   la barre de la carte, en haut de page, comme avant.
 > - **U5 — zones lisibles sur satellite** : cyan / magenta (ferme), ciel /
 >   violet (moshav), remplissage 28 %, contour 3,2 px avec halo sombre ;
 >   contours toujours dessinés au-dessus de tous les remplissages, hachures
@@ -98,8 +101,9 @@
 > 3. **Carte** : bouton crayon translucide → outils ; « מקרא » → décocher
 >    « שטחי מרעה » → les pâturages disparaissent sur TOUTES les cartes ;
 >    passer en לוויין sur חוות רתם à z14 : zones cyan/magenta bien visibles.
-> 4. **Pastille bas-gauche** : masquée / partagée / plein écran — elle ne
->    bouge pas.
+> 4. **Pastille bas-gauche** (iPad en paysage) : masquée / partagée /
+>    plein écran — elle ne bouge pas. En portrait, le sélecteur est dans
+>    la barre au-dessus de la carte.
 > 5. **Dashboard** : chiffres → deux graphes l'un sous l'autre (toucher un
 >    point/une barre = valeur) → carrousel d'alertes (swipe, tap = détails).
 >
@@ -6460,10 +6464,15 @@ under the row with the call list; `AlertsCarousel` holds the selection.
 - `MapModePill` (`mapMode.tsx`), rendered by `MapSplit` after the shell:
   `fixed left-3 bottom-[calc(var(--shell-bottom)+0.75rem)]`, vertical, three
   44 px buttons, `data-overlay` (it is deliberately over things — the layout
-  gate's pinned-collision rule), `raised` on `FAB_ROUTES` below `lg` so it
-  clears the guard FAB. The content column's `MapModeSwitch` and the map
-  bar's are gone; the bar keeps the label and `barExtra`. `MapPanel`'s
-  detail card is `left-[3.75rem] right-3` (physical) on phones.
+  gate's pinned-collision rule), `raised` on `FAB_ROUTES` below `lg`.
+  **Rendered only past the screen's breakpoint** (`BP.pill`: `hidden
+  lg:flex` / `hidden xl:flex`): stacked, the content column is the whole
+  width and the pill sat on שמירה (`bun run zones` at iPad portrait) and on
+  the cards' bottom-left buttons — there the `MapModeSwitch` stays in the
+  map's bar, and in `hidden` a copy at the top of the content. The two
+  sticky action bars carry a physical `pl-[4.5rem]` for `hidden` mode past
+  the breakpoint. `MapPanel`'s detail card is `left-[3.75rem] right-3`
+  (physical) on phones.
 - U5 tokens `--zone-boundary-sat` 34 211 238, `--zone-grazing-sat` 232 121
   249, `--zone-boundary-moshav-sat` 125 211 252, `--zone-grazing-moshav-sat`
   192 132 252 (theme-independent: the photograph is). `zoneSatColor()` in

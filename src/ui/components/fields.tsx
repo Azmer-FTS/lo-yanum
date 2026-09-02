@@ -543,11 +543,11 @@ export function FormActions({
     // `bottom-[--shell-bottom]` clears the sticky demo toolbar. At plain
     // `bottom-0` the submit button sat underneath it at every viewport.
     <div
-      // U4.4 — `pl-[4.25rem]` is PHYSICAL: the floating mode pill sits at the
+      // U4.4 — `pl-[4.5rem]` is PHYSICAL: the floating mode pill sits at the
       // viewport's physical bottom-left, and in an RTL row `justify-end` puts
       // the submit button exactly there on every stacked layout. The bar
       // keeps its buttons clear of the pill at every width.
-      className="sticky bottom-[var(--shell-bottom)] -mx-4 mt-2 flex justify-end gap-2 border-t border-edge-subtle bg-surface-base/95 px-4 py-3 pl-[4.25rem] backdrop-blur sm:-mx-6 sm:px-6 sm:pl-[4.25rem]"
+      className="sticky bottom-[var(--shell-bottom)] -mx-4 mt-2 flex justify-end gap-2 border-t border-edge-subtle bg-surface-base/95 px-4 py-3 pl-[4.5rem] backdrop-blur sm:-mx-6 sm:px-6 sm:pl-[4.5rem]"
     >
       <button type="button" className="btn-secondary" onClick={onCancel}>
         {cancelLabel}

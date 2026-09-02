@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 
 import { FAB_ROUTES } from './CreateGuardFab'
-import { MapModePill, clampRatio, useMapMode, useMapRatio } from './mapMode'
+import { MapModePill, MapModeSwitch, clampRatio, useMapMode, useMapRatio } from './mapMode'
 import { PullToRefresh } from './PullToRefresh'
 import type { MapModeState } from './mapMode'
 import { PanelSplitter } from './splitter'
@@ -126,6 +126,8 @@ interface BreakpointClasses {
   switchInContent: string
   splitter: string
   splitterPage: string
+  /** U4.4 — the fixed pill exists only where the map is BESIDE the content. */
+  pill: string
 }
 
 const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
@@ -148,6 +150,7 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
     splitter: 'hidden lg:flex',
     splitterPage:
       'lg:sticky lg:top-[var(--shell-top)] lg:h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] lg:self-start',
+    pill: 'hidden lg:flex',
   },
   xl: {
     shellPanel:
@@ -168,6 +171,7 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
     splitter: 'hidden xl:flex',
     splitterPage:
       'xl:sticky xl:top-[var(--shell-top)] xl:h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] xl:self-start',
+    pill: 'hidden xl:flex',
   },
 }
 
@@ -258,9 +262,15 @@ export function MapSplit({
               the sibling beside it and never moves, which is the whole of the
               product owner's requirement. */}
           <PullToRefresh>
-          {/* U4.4 (2026-09-02) — the three-state switch is no longer here: it
-              is the floating pill at the physical bottom-left of the
-              viewport, the same place in every mode (below). */}
+          {/* U4.4 (2026-09-02) — past the breakpoint the switch is the fixed
+              pill at the physical bottom-left (below). STACKED, it lives in
+              the map's own bar at the top of the page; in `hidden` there is
+              no bar, so this copy stands in, at the top of the content. */}
+          <MapModeSwitch
+            mode={mode}
+            onChange={setMode}
+            className={`mb-3 flex-wrap ${mode === 'hidden' ? c.bar : 'hidden'}`}
+          />
           {children(state)}
           </PullToRefresh>
         </div>
@@ -303,7 +313,10 @@ export function MapSplit({
           <span className="truncate text-caption font-medium text-content-secondary">
             {ariaLabel}
           </span>
-          <div className="flex shrink-0 items-center gap-2">{barExtra}</div>
+          <div className="flex shrink-0 items-center gap-2">
+            {barExtra}
+            <MapModeSwitch mode={mode} onChange={setMode} />
+          </div>
         </div>
 
         <div
@@ -316,16 +329,22 @@ export function MapSplit({
       </div>
 
       {/* ★ U4.4 — THE MODE PILL IS FIXED TO THE VIEWPORT, PHYSICAL BOTTOM-LEFT,
-          IN EVERY MODE. The product owner never has to look for it after a
-          switch to full screen: hidden, split or full, it is where it was.
-          Vertical and 44 px wide so it lives inside the 4.5 rem strip every
-          map overlay already reserves on the physical left for the control
-          stack. On the three phone routes that carry the guard FAB it steps
-          up above the FAB. `data-overlay`: it is deliberately over things. */}
+          IN EVERY MODE, wherever the map is BESIDE the content. The product
+          owner never has to look for it after a switch to full screen:
+          hidden, split or full, it is where it was. Vertical and 44 px wide
+          so it lives inside the 4.5 rem strip every map overlay already
+          reserves on the physical left for the control stack.
+          ⚠️ BELOW THE BREAKPOINT IT IS NOT RENDERED, and that was measured:
+          stacked, the content column is the whole width and a fixed pill at
+          its bottom-left sat on שמירה (bun run zones, iPad portrait) and on
+          the "add contact" button of every card that scrolled past. There
+          the switch is in the map's bar at the top of the page, where it
+          always was. `data-overlay`: it is deliberately over things. */}
       <MapModePill
         mode={mode}
         onChange={setMode}
         raised={withFab}
+        className={c.pill}
       />
     </div>
   )
