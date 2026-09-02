@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { Agreement } from '@core/types'
 
 import { fetchAgreementFile } from '../agreement/document'
+import { useLocale } from '../hooks/useLocale'
 import { Icon } from './Icon'
 import { Modal } from './primitives'
 
@@ -41,6 +42,7 @@ export function AgreementActions({
   farmName: string
 }) {
   const { t } = useTranslation()
+  const locale = useLocale()
   const [file, setFile] = useState<File | null>(null)
   const [url, setUrl] = useState<string | null>(null)
   const [busy, setBusy] = useState<'view' | 'share' | 'download' | null>(null)
@@ -53,7 +55,15 @@ export function AgreementActions({
 
   const load = async (): Promise<File | null> => {
     try {
-      return await fetchAgreementFile(agreement.fileName)
+      // W8 — the row's drawn signature is stamped onto the last page on the
+      // way out, so the viewer, the download and the share sheet all hold
+      // the SIGNED contract rather than the blank template.
+      return await fetchAgreementFile(agreement.fileName, {
+        agreement,
+        farmName,
+        t: t as (key: string, options?: Record<string, unknown>) => string,
+        locale,
+      })
     } catch {
       setError(true)
       return null

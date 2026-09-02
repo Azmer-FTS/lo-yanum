@@ -1,3 +1,5 @@
+import type { Agreement } from '@core/types'
+
 import { SUPABASE_CONFIGURED } from '../../data/config'
 import {
   AGREEMENTS_BUCKET,
@@ -7,6 +9,7 @@ import {
   uploadObject,
 } from '../../data/storage'
 import type { StoredObject } from '../../data/storage'
+import { stampAgreement } from './sign'
 
 /**
  * ORDRE DE NUIT 2026-09-02 (N2) — WHICH PDF IS "THE AGREEMENT".
@@ -21,9 +24,11 @@ import type { StoredObject } from '../../data/storage'
  *
  * ★ ONE KEY, NOT ONE PER ENTITY. The programme has one contract text; what
  *   differs per farm is the signature (P3.3), which is stored on the
- *   `agreements` ROW and will be drawn onto this document when that unit
- *   lands. A per-entity copy today would be twenty copies of the same PDF
- *   waiting to be out of date.
+ *   `agreements` ROW and — W8, 2026-09-02 — IS NOW DRAWN ONTO THIS DOCUMENT
+ *   on the way out (`sign.ts`). A per-entity copy in the bucket would still
+ *   be twenty copies of the same PDF waiting to be out of date: the text is
+ *   one file, the signature is applied per entity at the moment the bytes
+ *   are handed to the viewer, the download or the share sheet.
  *
  * ★ THE KEY'S FIRST SEGMENT IS `template`, which no entity id ever is. The
  *   storage read policy for farmers asks for an agreement row whose entity is
@@ -90,10 +95,33 @@ export async function removeTemplate(): Promise<void> {
  * share sheet, the download and the viewer all hold the SAME object and a
  * signed URL never has to leave the app in a link.
  */
-export async function fetchAgreementFile(fileName: string): Promise<File> {
+export async function fetchAgreementFile(
+  fileName: string,
+  /**
+   * W8 — when the row carries a drawn signature, the bytes handed back have
+   * it ON them. Omitted (or unsigned) gives the template unchanged, which is
+   * what every caller got before this unit.
+   */
+  signed?: {
+    agreement: Agreement
+    farmName: string
+    t: (key: string, options?: Record<string, unknown>) => string
+    locale?: string
+  },
+): Promise<File> {
   const doc = await agreementDocument()
   const response = await fetch(doc.url)
   if (!response.ok) throw new Error(`agreement: ${response.status}`)
-  const blob = await response.blob()
-  return new File([blob], fileName, { type: 'application/pdf' })
+  if (!signed?.agreement.signature) {
+    const blob = await response.blob()
+    return new File([blob], fileName, { type: 'application/pdf' })
+  }
+  const stamped = await stampAgreement(
+    await response.arrayBuffer(),
+    signed.agreement,
+    signed.farmName,
+    signed.t,
+    signed.locale,
+  )
+  return new File([stamped], fileName, { type: 'application/pdf' })
 }

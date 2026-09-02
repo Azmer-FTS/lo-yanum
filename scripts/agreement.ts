@@ -62,6 +62,26 @@ db.rows('agreements').push({
   position: 0,
 })
 
+/**
+ * ★ W8 (2026-09-02) — A SECOND ROW, SIGNED, so the gate can prove the two
+ *   halves at once: the unsigned one still hands out the template untouched,
+ *   and the signed one hands out a document that is BIGGER, because the ink
+ *   is on its last page (`ui/agreement/sign.ts`). A 2×2 black PNG is enough
+ *   ink to prove the path; what it looks like is a capture's job.
+ */
+const INK =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGNgYGD4z4AGmNAFyBQAAB6cAQ8SjKvxAAAAAElFTkSuQmCC'
+
+db.rows('agreements').push({
+  id: 'agr-a89-signed',
+  entity_id: 'farm-a89',
+  signed_at: '2026-08-21T10:00:00Z',
+  signed_by: 'אליהו בן־חמו',
+  file_name: 'הסכם חתום — חוות ההסכם.pdf',
+  signature: INK,
+  position: 1,
+})
+
 console.log('')
 console.log('  A89 — THE AGREEMENT PDF HAS A WAY OUT')
 console.log('  =====================================')
@@ -93,7 +113,8 @@ try {
     await page.waitForTimeout(500)
   }
   check('the entity is on screen with its agreement row', (await page.locator('body').innerText()).includes('הסכם — חוות ההסכם.pdf'))
-  check('"view" is a BUTTON, not a link that navigates', (await viewBtn.count()) === 1 && (await viewBtn.evaluate((el) => el.tagName)) === 'BUTTON')
+  check('"view" is a BUTTON, not a link that navigates', (await viewBtn.evaluate((el) => el.tagName)) === 'BUTTON')
+  check('W8 — the entity carries both rows, unsigned and signed', (await page.locator('[data-testid="agreement-view"]').count()) === 2)
 
   // ---- view --------------------------------------------------------------
   await viewBtn.click()
@@ -107,6 +128,28 @@ try {
   const bytes = await page.evaluate(async (u) => (await (await fetch(u)).arrayBuffer()).byteLength, src ?? '')
   check('and the document is a real PDF (the placeholder, one page)', bytes > 10_000, `${bytes} bytes`)
   await page.screenshot({ path: `${SHOTS}/1-viewer.png` })
+
+  // ---- W8: the SIGNED row carries the signature on the document ----------
+  await page.locator('[data-testid="agreement-modal-close"]').click()
+  await page.waitForTimeout(400)
+  await page.locator('[data-testid="agreement-view"]').nth(1).click()
+  await page.waitForSelector('[data-testid="agreement-document"]', { timeout: 15_000 })
+  await page.waitForTimeout(1200)
+  const signedSrc = await page.locator('[data-testid="agreement-document"]').getAttribute('data')
+  const signedBytes = await page.evaluate(
+    async (u) => (await (await fetch(u)).arrayBuffer()).byteLength,
+    signedSrc ?? '',
+  )
+  check(
+    '★★ W8 — the SIGNED row hands out a document the signature was drawn on',
+    signedBytes > bytes,
+    `${bytes} → ${signedBytes} bytes`,
+  )
+  await page.screenshot({ path: `${SHOTS}/1b-viewer-signed.png` })
+  await page.locator('[data-testid="agreement-modal-close"]').click()
+  await page.waitForTimeout(400)
+  await viewBtn.click()
+  await page.waitForSelector('[data-testid="agreement-document"]', { timeout: 15_000 })
 
   // ---- close -------------------------------------------------------------
   await page.locator('[data-testid="agreement-modal-close"]').click()
