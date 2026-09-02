@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 
-import { FAB_ROUTES } from './CreateGuardFab'
+import { FAB_ROUTES } from './ActionFab'
 import { MapModePill, MapModeSwitch, clampRatio, useMapMode, useMapRatio } from './mapMode'
 import { PullToRefresh } from './PullToRefresh'
 import type { MapModeState } from './mapMode'

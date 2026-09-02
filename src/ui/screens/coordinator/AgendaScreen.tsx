@@ -24,7 +24,6 @@ import {
 } from '@core/index'
 import type { AgendaEvent, MissionStatus } from '@core/index'
 
-import { CreateGuardButton } from '../../components/CreateGuardFab'
 import { GeneralMeetingModal } from '../../components/GeneralMeetingModal'
 import { Icon } from '../../components/Icon'
 import { FarmVisitModal } from '../../components/FarmVisitModal'
@@ -363,7 +362,6 @@ export function AgendaScreen() {
               </div>
             </>
           )}
-          <CreateGuardButton className="btn-secondary hidden lg:inline-flex" />
         </div>
       </header>
 

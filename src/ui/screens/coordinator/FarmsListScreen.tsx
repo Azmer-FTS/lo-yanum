@@ -266,10 +266,6 @@ export function FarmsListScreen() {
         <Icon name="upload" size={14} />
         <span className="hidden sm:inline">{t('volunteers.import')}</span>
       </Link>
-      <Link to="/coordinator/farms/new" className="btn-primary py-1.5 text-micro">
-        <Icon name="plus" size={14} />
-        {t('farms.new')}
-      </Link>
     </>
   )
 

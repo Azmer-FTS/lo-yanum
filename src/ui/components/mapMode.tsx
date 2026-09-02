@@ -209,7 +209,7 @@ export function MapModePill({
 }: {
   mode: MapMode
   onChange: (mode: MapMode) => void
-  /** Step up above the guard FAB on the phone routes that carry it. */
+  /** Step up above the unified "+" button on the routes that carry it. */
   raised?: boolean
   /** The breakpoint gate: `hidden lg:flex` / `hidden xl:flex`. */
   className?: string
@@ -222,9 +222,13 @@ export function MapModePill({
       data-testid="map-mode-pill"
       data-mode={mode}
       data-overlay=""
+      // ★ W4/W5 — RAISED AT EVERY WIDTH NOW, not only below `lg`. The
+      //   unified "+" is fixed at the inline end, which in this RTL app is
+      //   this same physical corner, and it is there on the desktop too; the
+      //   pill sits in the slot above it rather than under it.
       className={`glass fixed left-3 z-30 flex-col gap-0.5 rounded-pill p-1 ${className || 'flex'} ${
         raised
-          ? 'bottom-[calc(var(--shell-bottom)+5.5rem)] lg:bottom-[calc(var(--shell-bottom)+0.75rem)]'
+          ? 'bottom-[calc(var(--shell-bottom)+5.5rem)]'
           : 'bottom-[calc(var(--shell-bottom)+0.75rem)]'
       }`}
     >

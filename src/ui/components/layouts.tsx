@@ -10,7 +10,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useCoreValue } from '../hooks/useCore'
 import { usePublishedHeight } from '../hooks/useShellMetrics'
 import { PullToRefresh } from './PullToRefresh'
-import { CreateGuardFab } from './CreateGuardFab'
+import { ActionFab } from './ActionFab'
 import { DevToolbar } from './DevToolbar'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
@@ -368,8 +368,10 @@ export function CoordinatorLayout() {
           </main>
         </div>
 
-        {/* D3.4 — persistent on the dashboard, the guard list and the agenda. */}
-        <CreateGuardFab />
+        {/* W4 — THE ONLY "+" IN THE COORDINATOR SHELL. One button, one place,
+            every screen; the menu it opens puts the current screen's own
+            creation first. See `ActionFab`. */}
+        <ActionFab />
       </div>
 
       {menuOpen && (

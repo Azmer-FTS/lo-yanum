@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import {
   archiveVolunteer,
@@ -85,6 +85,22 @@ export function VolunteersScreen() {
   // PO POINT 8 — the delete the product owner had no way to perform.
   const del = useConfirmDelete()
   const [editing, setEditing] = useState<Volunteer | null | 'new'>(null)
+
+  /**
+   * W4 — THE UNIFIED "+" ASKS THROUGH THE URL. The floating button lives in
+   * the shell and this modal's setter lives here, so `?new=1` is the seam:
+   * the menu navigates to `…/volunteers?new=1` from ANY screen, this opens
+   * the form and takes the flag straight back out of the address so a reload
+   * or a back does not reopen it.
+   */
+  const [params, setParams] = useSearchParams()
+  useEffect(() => {
+    if (params.get('new') !== '1') return
+    setEditing('new')
+    const next = new URLSearchParams(params)
+    next.delete('new')
+    setParams(next, { replace: true })
+  }, [params, setParams])
   const [history, setHistory] = useState<Volunteer | null>(null)
 
   const yeshivot = useMemo(
@@ -305,15 +321,6 @@ export function VolunteersScreen() {
               <Icon name="upload" size={14} />
               <span className="hidden sm:inline">{t('volunteers.import')}</span>
             </Link>
-            <button
-              type="button"
-              onClick={() => setEditing('new')}
-              data-testid="volunteer-new"
-              className="btn-primary py-1.5 text-micro"
-            >
-              <Icon name="userPlus" size={14} />
-              {t('volunteers.new')}
-            </button>
           </>
         }
         search={query}

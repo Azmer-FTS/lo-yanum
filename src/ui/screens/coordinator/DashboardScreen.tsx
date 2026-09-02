@@ -27,7 +27,6 @@ import type { AgendaEvent, DashboardAlert, MissionStatus } from '@core/index'
 import { Avatar } from '../../components/Avatar'
 import { ReportButton } from '../../report/ReportButton'
 import { readReportRecipient } from '../../report/recipient'
-import { CreateGuardButton } from '../../components/CreateGuardFab'
 import { Icon } from '../../components/Icon'
 import { GrowthCharts } from '../../components/GrowthCharts'
 import { MyDayBlock } from '../../components/MyDayBlock'
@@ -631,11 +630,10 @@ export function DashboardScreen() {
           <p className="muted mt-1">{t('app.tagline')}</p>
         </div>
         {/* Desktop half of the persistent action; the phone gets the FAB. */}
-        {/* PO POINT 7 — the employer's report, beside the one operational
-            action. It is a `btn-secondary`: creating a guard is the job, the
-            report is the paperwork. */}
+        {/* PO POINT 7 — the employer's report. W4 took the "create a guard"
+            button out of this header: creating is the floating "+" now, on
+            every screen, so the header keeps only the paperwork. */}
         <ReportButton recipient={readReportRecipient()} />
-        <CreateGuardButton className="btn-primary hidden lg:inline-flex" />
       </header>
 
       {/* W3.1 (2026-09-02, passe finale) — THE ORDER OF IMPORTANCE IS THE

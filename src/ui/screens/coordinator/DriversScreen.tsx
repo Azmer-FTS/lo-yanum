@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import {
   deleteDriver,
@@ -59,6 +59,16 @@ export function DriversScreen() {
   // PO POINT 8.
   const del = useConfirmDelete()
   const [creating, setCreating] = useState(false)
+
+  /** W4 — same seam as the volunteers roster: `?new=1` opens this modal. */
+  const [params, setParams] = useSearchParams()
+  useEffect(() => {
+    if (params.get('new') !== '1') return
+    setCreating(true)
+    const next = new URLSearchParams(params)
+    next.delete('new')
+    setParams(next, { replace: true })
+  }, [params, setParams])
 
   /** P0.2 — everything except the locality, so the bubbles keep the neighbours. */
   const beforeLocality = useMemo(() => {
@@ -164,14 +174,6 @@ export function DriversScreen() {
               <Icon name="upload" size={14} />
               <span className="hidden sm:inline">{t('volunteers.import')}</span>
             </Link>
-            <button
-              type="button"
-              className="btn-primary py-1.5 text-micro"
-              onClick={() => setCreating(true)}
-            >
-              <Icon name="userPlus" size={14} />
-              {t('driver.addDriver')}
-            </button>
           </>
         }
         search={query}

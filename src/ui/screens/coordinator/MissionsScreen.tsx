@@ -14,7 +14,6 @@ import {
 import type { MissionStatus } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
-import { CreateGuardButton } from '../../components/CreateGuardFab'
 import { ChevronForward, Icon } from '../../components/Icon'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
@@ -130,7 +129,6 @@ export function MissionsScreen() {
         testId="missions-top"
         title={t('missions.title')}
         subtitle={t('missions.count', { count: list.length })}
-        actions={<CreateGuardButton className="btn-primary hidden py-1.5 text-micro lg:inline-flex" />}
         filters={
           /* D7.3 — the upcoming/past switch and the status filter share one
              row. Status counts are computed against the ACTIVE tab, so a
