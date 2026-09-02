@@ -58,6 +58,8 @@ import {
   EmptyState,
   KeyValue,
   LoadingState,
+  ActionPill,
+  ActionPillItem,
   PageHeader,
   RowLink,
   Section,
@@ -197,6 +199,20 @@ function livestockIcon(kind: LivestockLine['kind']): IconName {
 }
 
 /**
+ * ★ W6 (2026-09-02) — THE BAND HAS ONE HEIGHT, ON EVERY ENTITY.
+ *
+ * `align-items: stretch` made the cards of ONE band equal to each other and
+ * nothing more: the tallest card set the height, and the tallest card was
+ * whichever one happened to carry extra content — the livestock breakdown on
+ * a farm with five kinds of animal, the «מוזן ידנית» chip that wrapped its
+ * label to a second line. So the band was 76 px on one farm and 148 px on the
+ * next, and the whole sheet below it moved. It is 5.25 rem everywhere now:
+ * three text lines (figure, label, note) beside a 44 px disc, and content
+ * that does not fit is truncated rather than allowed to push.
+ */
+const BAND_H = 'h-[5.25rem]'
+
+/**
  * U6 (2026-09-02) — THE SUMMARY BAND, RESTRUCTURED. The product owner's
  * reading of the old band: "the information is all over the place, you
  * cannot tell what belongs to what". So: ONE fact per card, cards visibly
@@ -212,7 +228,7 @@ function BandCard({
   ink,
   figure,
   label,
-  extra,
+  note,
   testId,
   style,
 }: {
@@ -223,7 +239,15 @@ function BandCard({
   ink: string
   figure: React.ReactNode
   label: React.ReactNode
-  extra?: React.ReactNode
+  /**
+   * ★ W6 — THE THIRD LINE, AND «מוזן ידנית» IS WHY IT EXISTS. The override
+   *   chip used to be appended INSIDE the label, on the same line as
+   *   "שטח החווה" — so on a 9.5 rem card the label it qualifies was the part
+   *   that got truncated away, and the band's height changed from farm to
+   *   farm depending on whether it was there. It is a line of its own now,
+   *   always reserved (see BAND_H), never wrapping.
+   */
+  note?: React.ReactNode
   testId?: string
   style?: React.CSSProperties
 }) {
@@ -231,18 +255,20 @@ function BandCard({
     <div
       data-testid={testId}
       style={style}
-      className={`!flex-[1_0_9.5rem] rounded-card p-3 shadow-card ${tint}`}
+      className={`!flex-[1_0_9.5rem] ${BAND_H} flex items-center gap-3 rounded-card p-3 shadow-card ${tint}`}
     >
-      <div className="flex items-center gap-3">
-        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-surface-raised/80 ${ink}`}>
-          <Icon name={icon} size={24} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="numeric truncate text-metric text-content-primary">{figure}</div>
-          <p className="muted truncate leading-tight">{label}</p>
-        </div>
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-surface-raised/80 ${ink}`}>
+        <Icon name={icon} size={24} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="numeric truncate text-metric text-content-primary">{figure}</div>
+        <p className="muted truncate leading-tight">{label}</p>
+        {/* The line is RESERVED whether or not it is filled: that is what
+            makes the band one height on every entity. */}
+        <p className="truncate text-micro leading-tight text-content-muted">
+          {note ?? '\u00a0'}
+        </p>
       </div>
-      {extra && <div className="mt-2 border-t border-edge-subtle/70 pt-2">{extra}</div>}
     </div>
   )
 }
@@ -265,7 +291,7 @@ function KeyNumbers({
           card washed with it, in the corner the Hebrew eye lands on. */}
       <div
         data-testid="band-status"
-        className="!flex-[1_0_9.5rem] rounded-card p-3 shadow-card ring-1"
+        className={`!flex-[1_0_9.5rem] ${BAND_H} flex items-center rounded-card p-3 shadow-card ring-1`}
         style={{
           backgroundColor: `color-mix(in srgb, ${statusColor} 14%, rgb(var(--surface-raised)))`,
           // The ring is the status's colour: the one contour on the screen that
@@ -273,7 +299,7 @@ function KeyNumbers({
           ['--tw-ring-color' as string]: `color-mix(in srgb, ${statusColor} 45%, transparent)`,
         }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex w-full items-center gap-3">
           <span
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill"
             style={{ backgroundColor: `color-mix(in srgb, ${statusColor} 22%, transparent)` }}
@@ -285,6 +311,7 @@ function KeyNumbers({
               {t(`farmStatus.${farm.status}`)}
             </p>
             <p className="muted truncate leading-tight">{t('farms.statusLabel')}</p>
+            <p className="truncate text-micro leading-tight">&nbsp;</p>
           </div>
         </div>
       </div>
@@ -295,16 +322,17 @@ function KeyNumbers({
         tint="bg-status-success/[0.12]"
         ink="text-status-success-ink"
         figure={farm.farmDunams.toLocaleString(locale)}
-        label={
-          <>
-            {t(entityKindOf(farm) === 'moshav' ? 'farms.farmAreaMoshav' : 'farms.farmArea')}
-            {/* G15 — the override is a VISIBLE fact, not a hidden flag. */}
-            {farm.farmDunamsManual && (
-              <span className="chip ms-1.5 bg-status-warn/15 text-status-warn-ink">
-                {t('zone.manualOverride')}
-              </span>
-            )}
-          </>
+        label={t(
+          entityKindOf(farm) === 'moshav' ? 'farms.farmAreaMoshav' : 'farms.farmArea',
+        )}
+        /* G15 — the override is a VISIBLE fact, not a hidden flag; W6 gives
+           it the line under the label instead of the end of it. */
+        note={
+          farm.farmDunamsManual ? (
+            <span className="font-semibold text-status-warn-ink">
+              {t('zone.manualOverride')}
+            </span>
+          ) : undefined
         }
       />
 
@@ -314,15 +342,13 @@ function KeyNumbers({
         tint="bg-status-warn/[0.14]"
         ink="text-status-warn-ink"
         figure={farm.grazingDunams.toLocaleString(locale)}
-        label={
-          <>
-            {t('farms.grazingArea')}
-            {farm.grazingDunamsManual && (
-              <span className="chip ms-1.5 bg-status-warn/15 text-status-warn-ink">
-                {t('zone.manualOverride')}
-              </span>
-            )}
-          </>
+        label={t('farms.grazingArea')}
+        note={
+          farm.grazingDunamsManual ? (
+            <span className="font-semibold text-status-warn-ink">
+              {t('zone.manualOverride')}
+            </span>
+          ) : undefined
         }
       />
 
@@ -339,20 +365,14 @@ function KeyNumbers({
           ink="text-status-violet-ink"
           figure={heads.toLocaleString(locale)}
           label={t('livestock.total')}
-          extra={
-            /* N7.2 — one glyph per kind, so the herd reads at a glance. */
-            <span className="flex flex-wrap gap-x-3 gap-y-1 text-micro text-content-secondary">
-              {(farm.livestock ?? []).map((l, i) => (
-                <span key={i} className="inline-flex items-center gap-1 whitespace-nowrap">
-                  <Icon name={livestockIcon(l.kind)} size={15} />
-                  {l.kind === 'other' && l.label ? l.label : t(`livestock.kinds.${l.kind}`)}{' '}
-                  <span className="numeric font-semibold text-content-primary">
-                    {l.heads.toLocaleString(locale)}
-                  </span>
-                </span>
-              ))}
-            </span>
-          }
+          /* W6 — the per-kind breakdown left the band for the details block
+             (`LivestockLines`): it is the one card that could be six lines
+             tall, and it was setting the height of the whole row. */
+          note={(farm.livestock ?? [])
+            .map((l) =>
+              l.kind === 'other' && l.label ? l.label : t(`livestock.kinds.${l.kind}`),
+            )
+            .join(' · ')}
         />
       )}
 
@@ -383,6 +403,33 @@ function KeyNumbers({
   )
 }
 
+/** N7.2 — one glyph per kind, so the herd reads at a glance. */
+function LivestockLines({ farm }: { farm: Farm }) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const lines = farm.livestock ?? []
+  if (lines.length === 0) return null
+  return (
+    <div className="mt-3 border-t border-edge-subtle pt-3">
+      <p className="muted mb-1.5">{t('livestock.total')}</p>
+      <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
+        {lines.map((l, i) => (
+          <li
+            key={i}
+            className="inline-flex items-center gap-1.5 whitespace-nowrap text-caption text-content-secondary"
+          >
+            <Icon name={livestockIcon(l.kind)} size={17} />
+            {l.kind === 'other' && l.label ? l.label : t(`livestock.kinds.${l.kind}`)}
+            <span className="numeric font-semibold text-content-primary">
+              {l.heads.toLocaleString(locale)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 /**
  * G7bis.3 / G14c — the identity card: where the farm stands in the pipeline,
  * then the leftover facts.
@@ -400,6 +447,11 @@ function FarmIdentity({ farm }: { farm: Farm }) {
         <StatusStepper status={farm.status} />
       </div>
       <FarmFacts farm={farm} />
+      {/* W6 — the herd, kind by kind. It used to hang off the band's head-count
+          card and was the one thing that could make that row 148 px tall on
+          one farm and 76 px on the next; here it can be as long as the farm
+          is without moving anything above it. */}
+      <LivestockLines farm={farm} />
     </Section>
   )
 }
@@ -574,41 +626,35 @@ export function FarmDetailScreen() {
             title={farm.name}
             subtitle={`${farm.locality} · ${farm.region}`}
             back={{ to: '/coordinator/farms', label: t('farms.title') }}
+            /* ★ W6 — THE THREE ACTIONS ARE ONE PILL. See `ActionPill`: three
+               skins for one idea, wrapping to two rows on an iPad in
+               portrait. PO POINT 8's rule is unchanged — deleting has to
+               EXIST and must not be the loudest thing on the screen — so it
+               is the last segment, in the danger ink, inside the same pill. */
             actions={
-              <>
-                <button
-                  type="button"
-                  className="btn-secondary"
+              <ActionPill>
+                <ActionPillItem
+                  icon="calendar"
+                  label={t('agenda.planVisit')}
                   onClick={() => setNewVisit(true)}
-                >
-                  <Icon name="calendar" size={15} />
-                  {t('agenda.planVisit')}
-                </button>
-                <Link
+                />
+                <ActionPillItem
+                  icon="edit"
+                  label={t('common.edit')}
                   to={`/coordinator/farms/${farm.id}/edit`}
-                  className="btn-secondary"
-                >
-                  <Icon name="edit" size={15} />
-                  {t('common.edit')}
-                </Link>
-                {/* PO POINT 8 — the way back from a farm entered twice. It is
-                    a `btn-ghost` in the danger ink rather than a red button:
-                    the action has to EXIST, and it must not be the loudest
-                    thing on a screen whose job is the farm. */}
-                <button
-                  type="button"
-                  data-testid="delete-entity"
-                  className="btn-ghost text-status-danger-ink hover:bg-status-danger/10"
+                />
+                <ActionPillItem
+                  icon="trash"
+                  label={t('deletion.action')}
+                  danger
+                  testId="delete-entity"
                   onClick={() =>
                     del.ask('entity', farm.id, () => deleteFarm(farm.id), {
                       after: () => navigate('/coordinator/farms'),
                     })
                   }
-                >
-                  <Icon name="trash" size={15} />
-                  {t('deletion.action')}
-                </button>
-              </>
+                />
+              </ActionPill>
             }
           />
 

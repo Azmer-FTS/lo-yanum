@@ -159,6 +159,14 @@ export function ActionFab() {
       ref={ref}
       data-testid="action-fab"
       data-open={open ? '1' : '0'}
+      /* ⚠️ `data-overlay` — THE SAME DECLARATION THE MODE PILL CARRIES, and
+         for the same reason. The `layout` gate forbids two pinned elements
+         from overlapping, because two bars that found each other by accident
+         is a defect; a floating action button is over the panel underneath
+         BY CONSTRUCTION, and it is also not "occupied foot" the shell has to
+         reserve room for. The old button escaped the rule only by being
+         `lg:hidden` — i.e. by not existing at the width the gate measures. */
+      data-overlay=""
       className="fixed bottom-[calc(var(--shell-bottom)+1.25rem)] end-4 z-40 flex flex-col items-end"
     >
       {open && (

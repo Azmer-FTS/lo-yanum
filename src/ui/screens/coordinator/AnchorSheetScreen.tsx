@@ -162,7 +162,9 @@ export function AnchorSheetScreen() {
         ariaLabel={t('a11y.map')}
         className="h-full w-full rounded-none"
         center={anchor.position}
-        zoom={13}
+        // W6 — a post's sheet opens ON the post, not on the region around
+        // it: one point, framed at post scale. Same rule as the farm sheet.
+        zoom={16}
         markers={[
           {
             id: anchor.id,

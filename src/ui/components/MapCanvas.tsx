@@ -144,6 +144,23 @@ export interface MapViewProps {
    * what the effect watches. Never zooms out below the farm scale.
    */
   flyTo?: { position: LatLng; key: number; zoom?: number }
+  /**
+   * ★ W6 (2026-09-02) — FRAME AN ENTITY'S OWN GEOMETRY, CLOSE.
+   *
+   * Opening a farm's sheet used to hand the map `center = farm.position,
+   * zoom = 13`, which is a REGIONAL frame: the product owner's holding, its
+   * boundary, its grazing and its two guard posts came up as a cluster of
+   * dots a centimetre across in the middle of the Negev, and every single
+   * visit began by zooming in by hand.
+   *
+   * This frames the bounding box of everything that BELONGS to the entity —
+   * the rings of its zones, its posts, its own pin — with a real margin, and
+   * it does it once per `key` (the entity's id), so an edit, a drawn zone or
+   * a pan is never undone by a re-frame. `maxZoom` is the far end of the
+   * clamp: a single-point entity gets a farm-scale view, not the whole of
+   * MapLibre's zoom range.
+   */
+  frameTo?: { points: LatLng[]; key: string; maxZoom?: number; padding?: number }
   interactive?: boolean
   className?: string
   ariaLabel: string
@@ -595,6 +612,7 @@ export default function MapCanvas({
   zoom = 8,
   fit = false,
   flyTo,
+  frameTo,
   interactive = true,
   className = 'h-full w-full',
   ariaLabel,
@@ -1499,6 +1517,53 @@ export default function MapCanvas({
     map.jumpTo({ center: [center.lng, center.lat], zoom })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centreKey, zoom, fit])
+
+  /**
+   * W6 — one framing per entity. Keyed on `frameTo.key` ALONE, deliberately:
+   * the point list changes on every drawn vertex, and re-framing under a
+   * hand that is drawing is the defect the `fit` effect above already
+   * documents.
+   */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !frameTo || frameTo.points.length === 0) return
+    /**
+     * ⚠️ THE BOX IS COMPUTED HERE AND NOT WITH `boundsOf`, AND THAT IS THE
+     *    WHOLE OF THIS FIX. `boundsOf` floors its padding at 0.02° PER SIDE
+     *    — about 2.2 km — which is right for the national map it was written
+     *    for and catastrophic for one holding: a farm whose geometry spans
+     *    0.022° came out of it three times too wide, so `fitBounds` framed
+     *    9 km of Negev around 2 km of farm and produced z12.8. That IS the
+     *    "everything is minuscule" the product owner reported, and no amount
+     *    of tuning `maxZoom` reaches it, because the box was already wrong.
+     *
+     *    Here the margin is 6 % of the box's own span, with no floor. The
+     *    screen-pixel `padding` below is what keeps the geometry clear of
+     *    the controls floating over the canvas.
+     */
+    let west = frameTo.points[0].lng
+    let east = west
+    let south = frameTo.points[0].lat
+    let north = south
+    for (const p of frameTo.points) {
+      if (p.lng < west) west = p.lng
+      if (p.lng > east) east = p.lng
+      if (p.lat < south) south = p.lat
+      if (p.lat > north) north = p.lat
+    }
+    // A single-point entity has no span at all: give it a ~200 m box and let
+    // `maxZoom` decide, rather than handing MapLibre a degenerate rectangle.
+    const padLng = Math.max((east - west) * 0.06, 0.001)
+    const padLat = Math.max((north - south) * 0.06, 0.001)
+    map.fitBounds(
+      [
+        [west - padLng, south - padLat],
+        [east + padLng, north + padLat],
+      ],
+      { padding: frameTo.padding ?? 44, duration: 500, maxZoom: frameTo.maxZoom ?? 16 },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameTo?.key])
 
   // U8 — one camera move per request key (see the prop).
   useEffect(() => {

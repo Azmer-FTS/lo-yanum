@@ -8,6 +8,20 @@ import type { IconName } from './Icon'
 
 // --- Layout blocks ---------------------------------------------------------
 
+/**
+ * ★ W6 (2026-09-02) — AN ARROW, NOT A BREADCRUMB.
+ *
+ * The way back was a line of its own above the title — "‹ חוות" in muted
+ * 13 px — which cost a whole row at the top of every sheet to restate the
+ * name of the list the coordinator had just come from, and was a 14 px hit
+ * target on a device driven with a thumb. It is a 40 px round button BESIDE
+ * the title now, where the back arrow is in every application he already
+ * uses; the list's name lives on `title` / `aria-label`, where a name that
+ * is only ever confirmation belongs.
+ *
+ * `ltr:-scale-x-100`: back is towards the inline START, which is the RIGHT
+ * in Hebrew and the LEFT in English, so the glyph flips with the direction.
+ */
 export function PageHeader({
   title,
   subtitle,
@@ -17,31 +31,106 @@ export function PageHeader({
   title: ReactNode
   subtitle?: string
   actions?: ReactNode
-  /** Breadcrumb link back to the parent list. */
+  /** The parent list. Rendered as a round back arrow beside the title. */
   back?: { to: string; label: string }
 }) {
   return (
     <header className="mb-6">
-      {back && (
-        <Link
-          to={back.to}
-          className="mb-2 inline-flex items-center gap-1.5 text-caption text-content-muted
-                     transition-colors duration-fast hover:text-content-primary"
-        >
-          <Icon name="chevron" size={14} className="ltr:-scale-x-100" />
-          {back.label}
-        </Link>
-      )}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-title text-content-primary">{title}</h1>
-          {subtitle && <p className="muted mt-1">{subtitle}</p>}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-2.5">
+          {back && (
+            <Link
+              to={back.to}
+              aria-label={back.label}
+              title={back.label}
+              data-testid="page-back"
+              className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-pill
+                         border border-edge-subtle bg-surface-raised text-content-secondary
+                         shadow-card transition-colors duration-fast
+                         hover:bg-surface-high hover:text-content-primary"
+            >
+              <Icon name="chevron" size={18} className="ltr:-scale-x-100" />
+            </Link>
+          )}
+          <div className="min-w-0">
+            <h1 className="text-title text-content-primary">{title}</h1>
+            {subtitle && <p className="muted mt-1">{subtitle}</p>}
+          </div>
         </div>
         {actions && (
           <div className="flex flex-wrap items-center gap-2">{actions}</div>
         )}
       </div>
     </header>
+  )
+}
+
+/**
+ * ★ W6 — THE SHEET'S ACTIONS ARE ONE PILL.
+ *
+ * A farm's header carried three separate buttons — תכנון ביקור, עריכה and a
+ * ghost מחיקה in the danger ink — three different skins for three things
+ * that are one idea: what can be done to this record. Wrapped, on an iPad in
+ * portrait, they took two rows and the delete drifted under the edit.
+ *
+ * One segmented pill, hairlines between the segments, the destructive one
+ * last and in its ink. It is a row of buttons rather than a menu because
+ * three is exactly the number that still reads faster open than folded.
+ */
+export function ActionPill({
+  children,
+  className = '',
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div
+      data-testid="sheet-actions"
+      className={`flex shrink-0 items-center overflow-hidden rounded-pill border border-edge-subtle
+                  bg-surface-raised shadow-card divide-x divide-edge-subtle rtl:divide-x-reverse ${className}`}
+    >
+      {children}
+    </div>
+  )
+}
+
+/** One segment of an `ActionPill`. Renders a button, or a link when given `to`. */
+export function ActionPillItem({
+  icon,
+  label,
+  to,
+  onClick,
+  danger = false,
+  testId,
+}: {
+  icon: IconName
+  label: string
+  to?: string
+  onClick?: () => void
+  danger?: boolean
+  testId?: string
+}) {
+  const cls = `flex min-h-11 items-center gap-1.5 px-3.5 text-caption font-medium
+               transition-colors duration-fast ${
+                 danger
+                   ? 'text-status-danger-ink hover:bg-status-danger/10'
+                   : 'text-content-secondary hover:bg-surface-high hover:text-content-primary'
+               }`
+  const body = (
+    <>
+      <Icon name={icon} size={16} />
+      <span className="whitespace-nowrap">{label}</span>
+    </>
+  )
+  return to ? (
+    <Link to={to} data-testid={testId} className={cls}>
+      {body}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} data-testid={testId} className={cls}>
+      {body}
+    </button>
   )
 }
 

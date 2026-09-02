@@ -616,6 +616,29 @@ export function AnchorMap({
   const liveDunams =
     tracing && tracing.live.length >= 3 ? ringAreaDunams(tracing.live) : null
 
+  /**
+   * ★ W6 (2026-09-02) — OPENING A SHEET FRAMES *THIS* ENTITY, CLOSE.
+   *
+   * `center = farm.position, zoom = 13` framed the region, not the farm: the
+   * product owner's own words were that everything comes up minuscule. What
+   * the sheet is about is the entity's OWN geometry — the rings of its
+   * boundary and grazing, its guard posts, its pin — so that is what the
+   * camera is given, with a 25 % margin around the box and a 56 px inset for
+   * the controls that float over it.
+   *
+   * Keyed on the farm's id ALONE: the camera moves once, when the sheet
+   * opens. Adding a vertex, dragging a post or panning must never re-frame
+   * under the hand doing it (see `frameTo` in MapCanvas).
+   */
+  const framePoints = useMemo(
+    () => [
+      ...zones.flatMap((z) => z.ring),
+      ...anchors.map((a) => a.position),
+      farm.position,
+    ],
+    [zones, anchors, farm.position],
+  )
+
   return (
     <div className={fullscreenShell(fullscreen.active, `relative ${className}`)}>
       <MapView
@@ -625,6 +648,7 @@ export function AnchorMap({
         } ${active ? 'ring-2 ring-accent' : ''}`}
         center={farm.position}
         zoom={13}
+        frameTo={{ points: framePoints, key: farm.id }}
         markers={markers}
         polygons={polygons}
         onMapClick={acceptsClicks ? handleMapClick : undefined}
