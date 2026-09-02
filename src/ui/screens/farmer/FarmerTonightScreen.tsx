@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 import {
-  COORDINATOR,
+  readCoordinator,
   formatDateTime,
   formatTime,
   getFarmZonesForFarm,
@@ -189,9 +189,9 @@ export function FarmerTonightScreen() {
 
       <Section title={t('anchor.labelCoordinator')} className="mt-4">
         <CallRow
-          name={COORDINATOR.name}
-          phone={COORDINATOR.phone}
-          label={COORDINATOR.role}
+          name={readCoordinator().name}
+          phone={readCoordinator().phone}
+          label={readCoordinator().role}
         />
       </Section>
 

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import { COORDINATOR, getMyActiveMissionView, getMyVolunteer } from '@core/index'
+import { getMyActiveMissionView, getMyVolunteer, readCoordinator } from '@core/index'
 
 import { IncidentReportForm } from '../../components/IncidentReportForm'
 import { EmptyState, PageHeader } from '../../components/primitives'
@@ -43,8 +43,8 @@ export function VolunteerReportScreen() {
           showPhoto: true,
           farmerName: view.farm.contacts.find((c) => c.isPrimary)?.name,
           farmerPhone: view.farm.contacts.find((c) => c.isPrimary)?.phone,
-          coordinatorName: COORDINATOR.name,
-          coordinatorPhone: COORDINATOR.phone,
+          coordinatorName: readCoordinator().name,
+          coordinatorPhone: readCoordinator().phone,
         }}
       />
     </>

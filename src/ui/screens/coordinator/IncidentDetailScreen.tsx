@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useParams } from 'react-router-dom'
 
 import {
-  COORDINATOR,
+  readCoordinator,
   addIncidentEntry,
   formatCoords,
   formatDateTime,
@@ -86,7 +86,7 @@ export function IncidentDetailScreen() {
   const submitEntry = () => {
     const text = entry.trim()
     if (!text) return
-    addIncidentEntry(incident.id, COORDINATOR.name, text)
+    addIncidentEntry(incident.id, readCoordinator().name, text)
     setEntry('')
   }
 

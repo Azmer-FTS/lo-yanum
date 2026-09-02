@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
-  COORDINATOR,
+  readCoordinator,
   formatDateTime,
   formatTime,
   getMyActiveMissionView,
@@ -201,9 +201,9 @@ export function DriverTripScreen() {
 
         <Section title={t('anchor.labelCoordinator')}>
           <CallRow
-            name={COORDINATOR.name}
-            phone={COORDINATOR.phone}
-            label={COORDINATOR.role}
+            name={readCoordinator().name}
+            phone={readCoordinator().phone}
+            label={readCoordinator().role}
           />
         </Section>
       </div>

@@ -2,7 +2,9 @@
 
 export const COORDINATOR = {
   id: 'coord-01',
-  name: 'דוד לוי',
+  // W7 — the shipped default of the coordinator's card. It is EDITABLE from
+  // הגדרות (see `profile.ts`); this is only what a fresh device starts with.
+  name: 'דובי בן שושן',
   phone: '052-0000049',
   role: 'רכז אזורי — נגב',
 } as const

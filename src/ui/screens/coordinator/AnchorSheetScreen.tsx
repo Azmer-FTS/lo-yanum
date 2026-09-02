@@ -3,7 +3,7 @@ import { Link, Navigate, useParams, useNavigate } from 'react-router-dom'
 
 import {
   deleteAnchorPoint,
-  COORDINATOR,
+  readCoordinator,
   buildKosherMessage,
   buildSmartphoneMessage,
   formatCoords,
@@ -136,8 +136,8 @@ export function AnchorSheetScreen() {
     mission: nextMission?.mission ?? null,
     driver: nextMission?.driver ?? null,
     farmerContact: farm.contacts.find((c) => c.isPrimary) ?? null,
-    coordinatorName: COORDINATOR.name,
-    coordinatorPhone: COORDINATOR.phone,
+    coordinatorName: readCoordinator().name,
+    coordinatorPhone: readCoordinator().phone,
     locale,
   }
 

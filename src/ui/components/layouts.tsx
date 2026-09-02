@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
-import { COORDINATOR, getMyDisplayName, getSession } from '@core/index'
+import { getMyDisplayName, getSession } from '@core/index'
+import { useCoordinator } from '../hooks/useCoordinator'
 
 import { signOut } from '../../data/auth'
 import { SUPABASE_CONFIGURED } from '../../data/config'
@@ -146,6 +147,9 @@ function AccountBlock({ expanded }: { expanded: boolean }) {
   const { t } = useTranslation()
   const auth = useAuth()
   const signedIn = auth.status === 'signed-in'
+  // W7 — the card is editable in הגדרות, and this is the other view of it:
+  // saving there repaints the rail without a reload.
+  const me = useCoordinator()
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -154,8 +158,11 @@ function AccountBlock({ expanded }: { expanded: boolean }) {
       >
         {expanded ? (
           <>
-            <p className="truncate text-caption font-medium text-content-primary">
-              {COORDINATOR.name}
+            <p
+              data-testid="rail-coordinator-name"
+              className="truncate text-caption font-medium text-content-primary"
+            >
+              {me.name}
             </p>
             {signedIn ? (
               <p
@@ -167,13 +174,13 @@ function AccountBlock({ expanded }: { expanded: boolean }) {
               </p>
             ) : (
               <p className="truncate text-micro text-content-muted">
-                {COORDINATOR.role}
+                {me.role}
               </p>
             )}
           </>
         ) : (
           <span className="text-caption font-semibold text-accent-ink">
-            {COORDINATOR.name.slice(0, 1)}
+            {me.name.slice(0, 1)}
           </span>
         )}
       </div>

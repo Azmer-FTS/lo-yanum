@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 import {
-  COORDINATOR,
+  readCoordinator,
   confirmArrival,
   confirmGuardEnd,
   formatDateTime,
@@ -187,8 +187,8 @@ export function VolunteerGuardScreen() {
               />
             )}
             <CallRow
-              name={COORDINATOR.name}
-              phone={COORDINATOR.phone}
+              name={readCoordinator().name}
+              phone={readCoordinator().phone}
               label={t('anchor.labelCoordinator')}
             />
           </div>

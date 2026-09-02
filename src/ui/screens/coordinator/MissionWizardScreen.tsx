@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
-  COORDINATOR,
+  readCoordinator,
   atTimeOn,
   buildInvitationMessage,
   buildDriverMessage,
@@ -709,8 +709,8 @@ export function MissionWizardScreen() {
         anchorPoint: anchor,
         startAt,
         endAt,
-        coordinatorName: COORDINATOR.name,
-        coordinatorPhone: COORDINATOR.phone,
+        coordinatorName: readCoordinator().name,
+        coordinatorPhone: readCoordinator().phone,
         locale,
       },
       {
@@ -868,8 +868,8 @@ export function MissionWizardScreen() {
       },
       driver,
       farmerContact: farm.contacts.find((c) => c.isPrimary) ?? null,
-      coordinatorName: COORDINATOR.name,
-      coordinatorPhone: COORDINATOR.phone,
+      coordinatorName: readCoordinator().name,
+      coordinatorPhone: readCoordinator().phone,
       locale,
     }
     const labels = {

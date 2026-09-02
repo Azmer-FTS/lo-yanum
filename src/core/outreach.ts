@@ -1,4 +1,4 @@
-import { COORDINATOR } from './config'
+import { readCoordinator } from './profile'
 import { formatDate, formatTime } from './clock'
 import { toInternational } from './messages'
 import type { MissionView, PhoneType } from './types'
@@ -238,7 +238,9 @@ export function buildOutreachMessage(
         ? labels.askUpdated
         : labels.askCancelled,
     '',
-    `${labels.signature} ${COORDINATOR.name} · ${COORDINATOR.phone}`,
+    // W7 — the coordinator's card is editable now, so the signature reads it
+    // at composition time rather than from a frozen constant.
+    `${labels.signature} ${readCoordinator().name} · ${readCoordinator().phone}`,
   )
 
   return parts.join('\n')
@@ -300,7 +302,7 @@ export function buildGroupKit(
     ...members.map((r) => `+${toInternational(r.phone)}`),
     // The coordinator adds himself: a group he is not in is a group he cannot
     // read at 02:00.
-    `+${toInternational(COORDINATOR.phone)}`,
+    `+${toInternational(readCoordinator().phone)}`,
   ]
 
   const name = `${labels.groupName} ${view.farm.name} ${formatDate(

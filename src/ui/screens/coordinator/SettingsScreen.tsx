@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { formatCoords } from '@core/index'
+import { formatCoords, readCoordinator, resetCoordinator, writeCoordinator } from '@core/index'
 
 import { SUPABASE_CONFIGURED } from '../../../data/config'
 import { signOut } from '../../../data/auth'
@@ -74,6 +74,10 @@ export function SettingsScreen() {
   // PO POINT 7b — where "שלח במייל" points, and P3.3bis's destination too.
   const [recipient, setRecipient] = useState(() => readReportRecipient())
   const [recipientSaved, setRecipientSaved] = useState(false)
+  // W7 — the coordinator's own card. See `core/profile.ts` for why it lives
+  // on the device rather than in the database.
+  const [me, setMe] = useState(() => readCoordinator())
+  const [meSaved, setMeSaved] = useState(false)
   // PO RETURN 2026-09-02 — נקודת מוצא.
   const [origin, setOrigin] = useState(() => originLabel())
   const [originState, setOriginState] = useState<'idle' | 'saved' | 'bad'>('idle')
@@ -457,6 +461,98 @@ export function SettingsScreen() {
           NO WAY TO CONFIRM, which is worse: nothing on screen ever said the
           address had been taken. The button is now explicit AND the blur still
           saves, so neither habit loses the value. */}
+      {/* ★★ W7 (2026-09-02) — THE COORDINATOR'S CARD IS HIS TO EDIT.
+          It was a frozen constant in `config.ts`, and three things read it:
+          the rail's account block, the signature at the foot of every
+          generated WhatsApp / SMS, and the number those messages tell a
+          farmer to call back. The one identity he could not change was the
+          one going out under his name. */}
+      <Section title={t('settings.profile.title')} className="mt-6" collapseKey="settings-profile">
+        <p className="muted mb-3">{t('settings.profile.hint')}</p>
+        <div className="auto-cols gap-3 [--col-min:13rem]">
+          <div>
+            <label className="label" htmlFor="coordinator-name">
+              {t('settings.profile.name')}
+            </label>
+            <input
+              id="coordinator-name"
+              className="input w-full"
+              data-testid="coordinator-name"
+              value={me.name}
+              onChange={(e) => {
+                setMe((c) => ({ ...c, name: e.target.value }))
+                setMeSaved(false)
+              }}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="coordinator-phone">
+              {t('settings.profile.phone')}
+            </label>
+            <input
+              id="coordinator-phone"
+              dir="ltr"
+              inputMode="tel"
+              className="input w-full"
+              data-testid="coordinator-phone"
+              value={me.phone}
+              onChange={(e) => {
+                setMe((c) => ({ ...c, phone: e.target.value }))
+                setMeSaved(false)
+              }}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="coordinator-role">
+              {t('settings.profile.role')}
+            </label>
+            <input
+              id="coordinator-role"
+              className="input w-full"
+              data-testid="coordinator-role"
+              value={me.role}
+              onChange={(e) => {
+                setMe((c) => ({ ...c, role: e.target.value }))
+                setMeSaved(false)
+              }}
+            />
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="btn-primary"
+            data-testid="coordinator-save"
+            onClick={() => {
+              writeCoordinator(me)
+              setMe(readCoordinator())
+              setMeSaved(true)
+            }}
+          >
+            <Icon name="check" size={16} />
+            {t('common.save')}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            data-testid="coordinator-reset"
+            onClick={() => {
+              resetCoordinator()
+              setMe(readCoordinator())
+              setMeSaved(false)
+            }}
+          >
+            <Icon name="history" size={16} />
+            {t('settings.profile.reset')}
+          </button>
+          {meSaved && (
+            <span className="text-caption text-status-success-ink" data-testid="coordinator-saved">
+              {t('settings.profile.saved')}
+            </span>
+          )}
+        </div>
+      </Section>
+
       <Section title={t('report.recipientLabel')} className="mt-6" collapseKey="settings-report">
         <label className="label" htmlFor="report-recipient">
           {t('report.recipientLabel')}
