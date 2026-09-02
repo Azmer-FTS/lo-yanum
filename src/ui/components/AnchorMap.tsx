@@ -26,7 +26,6 @@ import { ThreatLegend, threatVectorShapes, threatZoneShapes } from './threats'
 import { ZoneLegend, zoneColor, zoneLabelKey, zoneSatColor } from './zones'
 import { PointLegend } from './meet'
 import { MapLegend } from './MapLegend'
-import { offeredLayers } from './mapLayers'
 import { entityMarkerKind, farmMarkerColor, postColor, readToken } from './badges'
 import { fullscreenShell, useMapFullscreen } from './fullscreen'
 
@@ -735,18 +734,28 @@ export function AnchorMap({
             banner IS the only route forward. */}
         {(onCreate || zonesEditable || drawing || threatDrawing || vectorDrawing) && (
           <div className="w-full self-stretch">
-          {/* ★ THE SENTENCE ROW ONLY EXISTS WHERE IT HAS SOMETHING TO SAY.
-              The bar as a whole now also opens for a map that is merely
-              ZONE-editable, so that the drawing tools have somewhere to live;
-              on such a map with nothing armed there is no point-placement
-              hint and no button, and printing "tap to add a point" under a
-              screen that cannot add one would be a lie in the calmest voice
-              available. */}
-          {(onCreate || active) && (
+          {/* ★★ W5 (2026-09-02) — THE LONG BAR DOES NOT COME BACK.
+              It used to be printed whenever the map could create ANYTHING —
+              i.e. permanently, on every farm — carrying "הקישו על המפה כדי
+              להוסיף עמדה" and a הוסף נקודה button that the pencil menu
+              already offers. A permanent instruction bar across the foot of
+              a map is the single biggest thing between the product owner and
+              his own geography.
+
+              It now exists ONLY while something is armed, which is the one
+              moment it says something that is both true and new: what is
+              being drawn, how many vertices, how many dunams, and the way
+              out. Nothing armed → no bar at all, and the pencil is the only
+              thing on the canvas.
+
+              `w-auto self-start` and `flex-nowrap`: it is a strip beside the
+              legend, not a rule across the map. */}
+          {active && (
           <div
-            className={`glass pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card px-3.5 py-2.5 ${
-              active || empty ? 'ring-1 ring-accent shadow-glow' : ''
-            }`}
+            data-testid="draw-context-bar"
+            className="glass pointer-events-auto flex w-auto max-w-full items-center gap-x-3
+                       gap-y-2 self-start rounded-card px-3.5 py-2.5 shadow-glow ring-1 ring-accent
+                       sm:max-w-[26rem]"
           >
             <span className="shrink-0 text-accent-ink">
               <Icon
@@ -763,7 +772,7 @@ export function AnchorMap({
               />
             </span>
 
-            <p className="min-w-0 flex-1 text-caption text-content-secondary">
+            <p className="min-w-0 text-caption text-content-secondary">
               <span className="font-semibold text-content-primary">
                 {tracing
                   ? t('zone.tracing')
@@ -904,23 +913,7 @@ export function AnchorMap({
                 <Icon name="close" size={13} />
                 {t('common.cancel')}
               </button>
-            ) : (
-              onCreate && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedZoneId(null)
-                    setMode({ kind: 'placing' })
-                  }}
-                  className={`shrink-0 py-1.5 text-micro ${
-                    empty ? 'btn-primary' : 'btn-secondary'
-                  }`}
-                >
-                  <Icon name="plus" size={13} />
-                  {t('anchor.addPoint')}
-                </button>
-              )
-            )}
+            ) : null}
           </div>
           )}
 
@@ -977,23 +970,21 @@ export function AnchorMap({
             and folds them after a choice or a tap elsewhere. The map stays
             clean. */}
         <div className="flex items-end justify-between gap-2">
-          <MapLegend
-            layers={offeredLayers({
-              markers,
-              polygons,
-              threatZones,
-              threatVectors,
-            })}
-            defaultOpen={false}
-          >
+          <MapLegend defaultOpen={false}>
             {/* G7bis.1 — one legend stack: what the point shapes mean, then
                 what the painted ground means, then the assessment. */}
             <PointLegend showFarm showPost showMeet={false} entity={entity} />
             <ZoneLegend zones={zones} entity={entity} />
             <ThreatLegend zones={threatZones} vectors={threatVectors} />
           </MapLegend>
-          {zonesEditable && !active && (
+          {/* ★ W5 — THE PENCIL IS THE ONLY WAY IN NOW, so it has to exist on
+              every map that can create ANYTHING, not only on the ones that
+              can draw a polygon: הוסף נקודה used to live in the long bar and
+              this is where it went. */}
+          {(zonesEditable || onCreate) && !active && (
             <DrawToolsFab>
+              {zonesEditable && (
+              <>
               {/* ★★ PO POINT 9b — ציור חופשי, AND IT IS A MODE SWITCH RATHER
                   THAN A SIXTH TOOL. The kind of area is still chosen with the
                   buttons beside it; this decides HOW the ring is produced —
@@ -1070,6 +1061,8 @@ export function AnchorMap({
                   <Icon name="send" size={14} />
                   {t('threat.addVector')}
                 </button>
+              )}
+              </>
               )}
               {onCreate && (
                 <button

@@ -156,44 +156,14 @@ const MODE_ICON: Record<MapMode, 'menu' | 'columns' | 'map'> = {
   full: 'map',
 }
 
-/**
- * The three-state switch. Touch-sized (44 px, P0.3) because it lives on
- * screens whose whole point is being usable with a thumb.
+/*
+ * ★ W5 (2026-09-02) — `MapModeSwitch`, THE ROW OF THREE LABELLED PILLS, IS
+ *   DELETED. It existed twice on every map-first screen (once at the top of
+ *   the content in `hidden`, once in the map's own bar) and the product
+ *   owner used neither: the fixed pill below never moves between the three
+ *   modes, which is the whole reason it was built. Two controls saying the
+ *   same thing, one of them eating the first line of every roster.
  */
-export function MapModeSwitch({
-  mode,
-  onChange,
-  className = '',
-}: {
-  mode: MapMode
-  onChange: (mode: MapMode) => void
-  className?: string
-}) {
-  const { t } = useTranslation()
-  return (
-    <div
-      className={`flex shrink-0 items-center gap-1 ${className}`}
-      role="group"
-      aria-label={t('map.modeLabel')}
-    >
-      {MODES.map((m) => (
-        <button
-          key={m}
-          type="button"
-          onClick={() => onChange(m)}
-          aria-pressed={mode === m}
-          title={t(`map.mode.${m}`)}
-          className={`filter-pill min-h-11 px-3 ${
-            mode === m ? 'filter-pill-active' : ''
-          }`}
-        >
-          <Icon name={MODE_ICON[m]} size={15} />
-          {t(`map.mode.${m}`)}
-        </button>
-      ))}
-    </div>
-  )
-}
 
 /**
  * U4.4 (2026-09-02) — THE FLOATING MODE PILL. Three icon buttons in one

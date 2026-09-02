@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import type { LatLng } from '@core/index'
 
 import { MapLegend } from './MapLegend'
-import { offeredLayers } from './mapLayers'
 import { MapSplit } from './MapSplit'
 import { MapView } from './MapView'
 import type {
@@ -93,14 +92,12 @@ export function MapPanel({
   contentWidth = 'third',
   screenKey,
 }: MapPanelProps) {
-  // U4.3 — the legend offers a switch per layer this map actually carries.
-  const offered = offeredLayers({ markers, polygons, threatZones, threatVectors })
   return (
     <MapSplit
       screenKey={screenKey}
       ariaLabel={ariaLabel}
       contentPercent={CONTENT_PERCENT[contentWidth]}
-      map={({ mode }) => (
+      map={() => (
         <>
           <MapView
             ariaLabel={ariaLabel}
@@ -128,20 +125,16 @@ export function MapPanel({
             </div>
           )}
 
-          {(legend || offered.length > 0) && (
-            <div
-              className={`pointer-events-none absolute bottom-3 start-3 z-10 lg:block ${
-                mode === 'full' ? 'block' : 'hidden'
-              }`}
-            >
-              {/* P0.1 — `full` is the one state where a phone shows the legend
-                  at all (below `lg` it is hidden, because a 40dvh map cannot
-                  spare the room). U4 — one foldable frosted panel, the layer
-                  switches on top of the swatches; capped and scrollable so it
-                  annotates the map instead of covering a third of it. */}
-              <MapLegend layers={offered}>{legend}</MapLegend>
-            </div>
-          )}
+          {/* ★ W5 — THE LEGEND IS ON EVERY MAP AT EVERY WIDTH. It used to be
+              hidden below `lg` unless the map was in `full`, on the argument
+              that a 40dvh map cannot spare the room — but it is FOLDED by
+              default now, so what it costs when unopened is one 36 px title
+              row, and the seven layer switches are the same seven on every
+              screen (see `MapLegend`). A control that disappears at some
+              widths is a control the product owner stops trusting. */}
+          <div className="pointer-events-none absolute bottom-3 start-3 z-10">
+            <MapLegend>{legend}</MapLegend>
+          </div>
 
           {/* U4.4 — `left-[3.75rem]` is PHYSICAL: the floating mode pill sits
               at the physical bottom-left whatever the writing direction. */}

@@ -321,7 +321,7 @@ export function PointLegend({
       )}
       {showPost && (
         <span className="flex items-center gap-1.5 text-micro text-content-secondary">
-          <MarkerSwatch shape="pin" color={postColor()} />
+          <MarkerSwatch shape="post" color={postColor()} />
           {t('anchor.title')}
         </span>
       )}

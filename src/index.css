@@ -1050,6 +1050,30 @@
   color: rgb(var(--text-secondary)) !important;
 }
 
+/*
+ * W5 (2026-09-02) — THE LICENCE IS BEHIND AN "i", AND THE "i" IS 28 px.
+ * MapLibre's own summary is 24 px with a hairline focus ring; on the iPad
+ * this app is driven on that is a target you hit by luck. Closed it is a
+ * round frosted button like every other control on the canvas; open, the
+ * text panel it reveals keeps the same skin. See `MapCanvas` for the
+ * `<details open>` that is closed on load.
+ */
+.maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) {
+  border-radius: 999px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.maplibregl-ctrl-attrib-button {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 999px !important;
+  background-color: rgb(var(--surface-overlay) / 0.78) !important;
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+  backdrop-filter: saturate(160%) blur(14px);
+  box-shadow: 0 0 0 1px rgb(var(--border-subtle) / 0.9), var(--shadow-card);
+}
+
 .maplibregl-popup-content {
   background: rgb(var(--surface-overlay)) !important;
   color: rgb(var(--text-primary)) !important;

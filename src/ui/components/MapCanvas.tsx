@@ -234,6 +234,34 @@ const PIN_KINDS: ReadonlyArray<MarkerKind> = ['pin', 'anchor', 'car']
 const TEARDROP =
   'M12 1C5.9 1 1 5.9 1 12c0 8.1 11 19 11 19s11-10.9 11-19C23 5.9 18.1 1 12 1z'
 
+/**
+ * ★ W5 (2026-09-02) — A GUARD POST IS AN "ÉPINGLE", NOT A DROP.
+ *
+ * Every bottom-anchored marker on this map wore the SAME teardrop: the farm's
+ * meeting point, the car's pickup stops and the guard posts. Three different
+ * ideas, one silhouette, told apart only by a 13 px glyph and a colour — on
+ * an iPad, in daylight, at z12, that is told apart by nothing at all.
+ *
+ * A guard post is now a PIN: a round head on a tapering needle, the map-pin
+ * shape that reads as "planted here". The drop stays for the things that ARE
+ * drops — a location the coordinator placed, a pickup stop — so the two are
+ * one glance apart at any zoom.
+ *
+ * The head's centre is at y ≈ 8.9 rather than 12, so the glyph and the rank
+ * badge move up with it; see `HEAD_Y` below.
+ */
+const NEEDLE_PIN = 'M12 31.2 9.6 17.6a9 9 0 1 1 4.8 0z'
+
+/** Which of the two bottom-anchored silhouettes each pin kind wears. */
+const PIN_SHAPE: Partial<Record<MarkerKind, string>> = {
+  anchor: NEEDLE_PIN,
+}
+
+/** Where the head's centre sits in the 24×32 box, per silhouette. */
+const HEAD_Y: Partial<Record<MarkerKind, number>> = {
+  anchor: 8.9,
+}
+
 /** G8 — the meeting-point glyph: a car. */
 const CAR_PATH =
   'M5 11l1.3-3.3A2 2 0 0 1 8.2 6h7.6a2 2 0 0 1 1.9 1.7L19 11m-14 0h14m-14 0a1.6 1.6 0 0 0-1.6 1.6V16a1 1 0 0 0 1 1H6m13-6a1.6 1.6 0 0 1 1.6 1.6V16a1 1 0 0 1-1 1H18m-12 0v1.4a.6.6 0 0 0 .6.6h1.2a.6.6 0 0 0 .6-.6V17m-2.4 0h2.4m9.6 0v1.4a.6.6 0 0 1-.6.6h-1.2a.6.6 0 0 1-.6-.6V17m2.4 0H16m-8.5-3.5h.01m8.99 0h.01'
@@ -446,18 +474,21 @@ function markerElement(marker: MapMarker): HTMLElement {
         : 'filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))',
       'transition:width 150ms cubic-bezier(.16,1,.3,1),height 150ms cubic-bezier(.16,1,.3,1),filter 150ms',
     ].join(';')
+    // W5 — the silhouette and, with it, where the head's contents sit.
+    const silhouette = PIN_SHAPE[kind] ?? TEARDROP
+    const headY = HEAD_Y[kind] ?? 12
     const head = marker.badge
-      ? `<text x="12" y="15.6" text-anchor="middle" font-family="var(--font-sans)"
+      ? `<text x="12" y="${headY + 3.6}" text-anchor="middle" font-family="var(--font-sans)"
                font-size="10.5" font-weight="700" fill="${ring}">${escapeHtml(marker.badge)}</text>`
       : GLYPH[kind]
         ? `<g fill="none" stroke="${ring}" stroke-width="2.4" stroke-linecap="round"
-              stroke-linejoin="round" transform="translate(5.4 5.4) scale(0.55)">
+              stroke-linejoin="round" transform="translate(5.4 ${headY - 6.6}) scale(0.55)">
              <path d="${GLYPH[kind]}"/>
            </g>`
-        : `<circle cx="12" cy="12" r="4.2" fill="${ring}"/>`
+        : `<circle cx="12" cy="${headY}" r="4.2" fill="${ring}"/>`
     el.innerHTML = `
       <svg viewBox="0 0 24 32" width="${w}" height="${h}" aria-hidden="true">
-        <path d="${TEARDROP}" fill="${marker.color}" stroke="${ring}" stroke-width="1.6"/>
+        <path d="${silhouette}" fill="${marker.color}" stroke="${ring}" stroke-width="1.6"/>
         ${head}
       </svg>`
     footprint = { w, h, anchorBottom: true }
@@ -686,6 +717,37 @@ export default function MapCanvas({
         'CooperativeGesturesHandler.MobileHelpText': t('map.gestureMobile'),
       },
     })
+
+    /**
+     * ★ W5 (2026-09-02) — THE LICENCE LINE LIVES BEHIND THE "i".
+     *
+     * MapLibre renders the attribution as `<details open>`, so "©
+     * OpenStreetMap" sat permanently across the bottom of every map. It is a
+     * LICENCE OBLIGATION and it is not going away — but the obligation is
+     * that it be REACHABLE, not that it be printed over the Negev. Compact
+     * mode already ships the ⓘ summary; all that was missing was closing the
+     * details. It stays closed until somebody opens it, and once they have,
+     * this stops touching it (`toggle` sets the flag) — a control that
+     * re-closes itself under the reader's finger is worse than a printed
+     * line.
+     */
+    let attributionTouched = false
+    const collapseAttribution = () => {
+      const details = containerRef.current?.querySelector<HTMLDetailsElement>(
+        'details.maplibregl-ctrl-attrib',
+      )
+      if (!details) return
+      if (!details.dataset.loYanum) {
+        details.dataset.loYanum = '1'
+        details.addEventListener('toggle', () => {
+          if (details.open) attributionTouched = true
+        })
+      }
+      if (!attributionTouched) details.open = false
+    }
+    map.on('load', collapseAttribution)
+    map.on('styledata', collapseAttribution)
+    map.on('sourcedata', collapseAttribution)
 
     // ⚠️ MapLibre's own `NavigationControl` IS GONE (PO return 2026-09-02).
     //    Its zoom buttons are now two rows of the single vertical stack in
@@ -1044,6 +1106,7 @@ export default function MapCanvas({
       const tools = new MapTools({
         labels: {
           group: t('map.tools.group'),
+          baseLabel: t('map.base.label'),
           vector: t('map.base.vector'),
           satellite: t('map.base.satellite'),
           satelliteOffline: t('map.base.offlineHint'),

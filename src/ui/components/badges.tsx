@@ -101,7 +101,12 @@ export function MarkerSwatch({
   shape,
   color,
 }: {
-  shape: 'disc' | 'pin' | 'triangle'
+  /**
+   * W5 — `post` is the needle pin the guard posts wear on the canvas; `pin`
+   * stays the teardrop of the placed points and the pickup stops. The legend
+   * repeats the marker's SILHOUETTE, so it has to carry both.
+   */
+  shape: 'disc' | 'pin' | 'post' | 'triangle'
   color: string
 }) {
   if (shape === 'disc') {
@@ -122,7 +127,11 @@ export function MarkerSwatch({
   return (
     <svg viewBox="0 0 24 32" className="h-3.5 w-3 shrink-0" aria-hidden="true">
       <path
-        d="M12 1C5.9 1 1 5.9 1 12c0 8.1 11 19 11 19s11-10.9 11-19C23 5.9 18.1 1 12 1z"
+        d={
+          shape === 'post'
+            ? 'M12 31.2 9.6 17.6a9 9 0 1 1 4.8 0z'
+            : 'M12 1C5.9 1 1 5.9 1 12c0 8.1 11 19 11 19s11-10.9 11-19C23 5.9 18.1 1 12 1z'
+        }
         fill={color}
       />
     </svg>

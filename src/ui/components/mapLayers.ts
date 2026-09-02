@@ -94,27 +94,9 @@ export const MARKER_LAYER: Partial<Record<string, MapLayerKey>> = {
   car: 'pickups',
 }
 
-/**
- * Which switches a map should OFFER, read off what it is about to draw. A
- * switch for pickup points on a map that has none is a switch that does
- * nothing, so the legend asks this before listing them.
+/*
+ * ★ W5 (2026-09-02) — `offeredLayers` IS DELETED. Showing only the layers a
+ *   given map happened to be drawing meant a different number of boxes per
+ *   screen for ONE remembered set; see `MapLegend` for why that reads as a
+ *   lie. Every legend lists all seven.
  */
-export function offeredLayers(input: {
-  markers?: ReadonlyArray<{ kind?: string }>
-  polygons?: ReadonlyArray<{ kind?: string }>
-  threatZones?: ReadonlyArray<unknown>
-  threatVectors?: ReadonlyArray<unknown>
-}): MapLayerKey[] {
-  const out = new Set<MapLayerKey>()
-  for (const m of input.markers ?? []) {
-    const layer = MARKER_LAYER[m.kind ?? 'farm']
-    if (layer) out.add(layer)
-  }
-  for (const p of input.polygons ?? []) {
-    if (p.kind === 'farm_boundary') out.add('boundaries')
-    if (p.kind === 'grazing_area') out.add('grazing')
-  }
-  if ((input.threatZones?.length ?? 0) > 0) out.add('threatZones')
-  if ((input.threatVectors?.length ?? 0) > 0) out.add('threatVectors')
-  return MAP_LAYERS.filter((k) => out.has(k))
-}

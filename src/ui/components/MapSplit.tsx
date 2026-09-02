@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 
 import { FAB_ROUTES } from './ActionFab'
-import { MapModePill, MapModeSwitch, clampRatio, useMapMode, useMapRatio } from './mapMode'
+import { MapModePill, clampRatio, useMapMode, useMapRatio } from './mapMode'
 import { PullToRefresh } from './PullToRefresh'
 import type { MapModeState } from './mapMode'
 import { PanelSplitter } from './splitter'
@@ -126,7 +126,7 @@ interface BreakpointClasses {
   switchInContent: string
   splitter: string
   splitterPage: string
-  /** U4.4 — the fixed pill exists only where the map is BESIDE the content. */
+  /** W5 — the pill is the ONLY mode control now, so it exists everywhere. */
   pill: string
 }
 
@@ -150,7 +150,7 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
     splitter: 'hidden lg:flex',
     splitterPage:
       'lg:sticky lg:top-[var(--shell-top)] lg:h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] lg:self-start',
-    pill: 'hidden lg:flex',
+    pill: 'flex',
   },
   xl: {
     shellPanel:
@@ -171,7 +171,7 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
     splitter: 'hidden xl:flex',
     splitterPage:
       'xl:sticky xl:top-[var(--shell-top)] xl:h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] xl:self-start',
-    pill: 'hidden xl:flex',
+    pill: 'flex',
   },
 }
 
@@ -262,15 +262,14 @@ export function MapSplit({
               the sibling beside it and never moves, which is the whole of the
               product owner's requirement. */}
           <PullToRefresh>
-          {/* U4.4 (2026-09-02) — past the breakpoint the switch is the fixed
-              pill at the physical bottom-left (below). STACKED, it lives in
-              the map's own bar at the top of the page; in `hidden` there is
-              no bar, so this copy stands in, at the top of the content. */}
-          <MapModeSwitch
-            mode={mode}
-            onChange={setMode}
-            className={`mb-3 flex-wrap ${mode === 'hidden' ? c.bar : 'hidden'}`}
-          />
+          {/* ★ W5 (2026-09-02) — THE ROW OF MODE BUTTONS AT THE TOP OF EVERY
+              LIST IS GONE. There were two copies of the same three-state
+              switch — one here for `hidden`, one in the map's bar — plus the
+              fixed pill, and the pill is the one the product owner uses
+              because it never moves. Two of the three were costing a line of
+              the roster's first screenful to say what the third already
+              says. The pill is rendered at EVERY width now (below), so
+              nothing was lost with them. */}
           {children(state)}
           </PullToRefresh>
         </div>
@@ -313,10 +312,7 @@ export function MapSplit({
           <span className="truncate text-caption font-medium text-content-secondary">
             {ariaLabel}
           </span>
-          <div className="flex shrink-0 items-center gap-2">
-            {barExtra}
-            <MapModeSwitch mode={mode} onChange={setMode} />
-          </div>
+          <div className="flex shrink-0 items-center gap-2">{barExtra}</div>
         </div>
 
         <div
@@ -334,12 +330,12 @@ export function MapSplit({
           hidden, split or full, it is where it was. Vertical and 44 px wide
           so it lives inside the 4.5 rem strip every map overlay already
           reserves on the physical left for the control stack.
-          ⚠️ BELOW THE BREAKPOINT IT IS NOT RENDERED, and that was measured:
-          stacked, the content column is the whole width and a fixed pill at
-          its bottom-left sat on שמירה (bun run zones, iPad portrait) and on
-          the "add contact" button of every card that scrolled past. There
-          the switch is in the map's bar at the top of the page, where it
-          always was. `data-overlay`: it is deliberately over things. */}
+          ★ W5 — AND BELOW THE BREAKPOINT TOO, NOW. It used to stop at `lg`
+          because the switch also existed at the top of the page; W5 took
+          that row out of every list, so this became the only way to hide or
+          fill the map and it has to exist at every width. It is `raised`
+          above the unified "+" in the same corner, and `data-overlay` says
+          what it has always said: it is deliberately over things. */}
       <MapModePill
         mode={mode}
         onChange={setMode}

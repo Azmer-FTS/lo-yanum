@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 
 import { Icon } from './Icon'
 import { MAP_LAYERS, useMapLayers } from './mapLayers'
-import type { MapLayerKey } from './mapLayers'
 import { readBlockOpen, writeBlockOpen } from './primitives'
 
 /**
@@ -16,34 +15,36 @@ import { readBlockOpen, writeBlockOpen } from './primitives'
  * as the content blocks), and INSIDE it, above the swatches, the seven
  * layer checkboxes the product owner needs to show one layer at a time.
  *
- * Only the layers this map actually carries are offered: a switch for
- * pickup points on a map that has none is a switch that does nothing.
+ * ★ W5 (2026-09-02) — THE SAME SEVEN BOXES ON EVERY SCREEN, ALWAYS.
+ *   U4 offered only the layers a given map happened to be drawing, which
+ *   sounded tidy and was not: the product owner opened the farms map and
+ *   counted three boxes, opened a farm and counted five, and had to work out
+ *   each time whether a layer was OFF or merely absent. A layer set that is
+ *   ONE remembered value for the whole app has to be shown whole in every
+ *   place it can be edited, or the list is lying about what it controls.
+ *   A box for a layer this map has nothing to draw simply changes nothing
+ *   here — and it still changes the next map he opens, which is the point.
  */
 export function MapLegend({
   children,
-  layers,
   className = '',
-  defaultOpen = true,
+  defaultOpen = false,
 }: {
   /** The swatches — whatever the screen wants to explain. */
   children?: ReactNode
-  /** The layer switches this map should offer. */
-  layers?: readonly MapLayerKey[]
   className?: string
   defaultOpen?: boolean
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(() => readBlockOpen('map-legend', defaultOpen))
   const [visible, setLayer] = useMapLayers()
-  const offered = MAP_LAYERS.filter((k) => layers?.includes(k))
+  const offered = MAP_LAYERS
 
   const toggle = () =>
     setOpen((v) => {
       writeBlockOpen('map-legend', !v)
       return !v
     })
-
-  if (!children && offered.length === 0) return null
 
   return (
     <div
