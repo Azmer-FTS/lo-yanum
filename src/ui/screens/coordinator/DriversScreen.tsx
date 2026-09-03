@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 
 import {
   deleteDriver,
@@ -16,6 +16,7 @@ import type { Driver } from '@core/index'
 import { Avatar } from '../../components/Avatar'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
+import { OverflowMenu } from '../../components/OverflowMenu'
 import {
   EmptyState,
   KpiChip,
@@ -163,18 +164,22 @@ export function DriversScreen() {
             {t('driver.volunteerDrivers')}
           </span>
         }
-        subtitle={t('driver.rosterSubtitle')}
-        actions={
-          <>
-            <Link
-              to="/coordinator/import/drivers"
-              className="btn-secondary py-1.5 text-micro"
-              title={t('volunteers.import')}
-            >
-              <Icon name="upload" size={14} />
-              <span className="hidden sm:inline">{t('volunteers.import')}</span>
-            </Link>
-          </>
+        count={t('common.showingOf', { shown: filtered.length, total: drivers.length })}
+        menu={
+          /* X2 — the import link is a row in the "⋯", like every other
+             screen's own action. */
+          <OverflowMenu
+            testId="drivers-menu"
+            items={[
+              {
+                key: 'import',
+                label: t('volunteers.import'),
+                icon: 'upload',
+                to: '/coordinator/import/drivers',
+                testId: 'drivers-import',
+              },
+            ]}
+          />
         }
         search={query}
         onSearch={setQuery}

@@ -77,6 +77,10 @@ export type IconName =
   | 'send'
   | 'logout'
   | 'columns'
+  | 'more'
+  | 'table'
+  | 'region'
+  | 'navigation'
 
 type Props = SVGProps<SVGSVGElement> & { name: IconName; size?: number }
 
@@ -241,6 +245,33 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M13.5 4.5v15M16 9.5h3M16 12.5h3M16 15.5h3" />
     </>
   ),
+  /* X2 — the list header's single action control. Three dots, drawn as
+     filled discs so the glyph still reads at 18 px on an iPad in daylight
+     where three 1.7-stroke rings would smear into a line. */
+  more: (
+    <>
+      <circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none" />
+    </>
+  ),
+  /* X2 — "the roster as columns", the other half of the view switch. */
+  table: (
+    <>
+      <rect x="3" y="4.5" width="18" height="15" rx="2" />
+      <path d="M3 9.5h18M3 14.5h18M9 4.5v15" />
+    </>
+  ),
+  /* X12 — a geographic region: a bounded piece of ground, not a pin. */
+  region: (
+    <>
+      <path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8z" />
+      <path d="M9 4.5v12.7M15 6.8v12.7" />
+    </>
+  ),
+  /* X8 — turn-by-turn navigation (Waze / Maps), the arrow every mapping app
+     uses for "take me there". */
+  navigation: <path d="m3 11 18-8-8 18-2.2-7.8z" />,
   pin: (
     <>
       <path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z" />

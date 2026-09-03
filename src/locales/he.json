@@ -89,7 +89,8 @@
     "sortBy": "מיון לפי",
     "expandAll": "פתיחת הכול",
     "collapseAll": "סגירת הכול",
-    "showingOf": "מוצגים {{shown}} מתוך {{total}}"
+    "showingOf": "מוצגים {{shown}} מתוך {{total}}",
+    "actions": "פעולות"
   },
   "roles": {
     "coordinator": "רכז",

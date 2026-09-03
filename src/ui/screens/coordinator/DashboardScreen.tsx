@@ -624,7 +624,7 @@ export function DashboardScreen() {
     >
       <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-title text-content-primary">
+          <h1 data-page-title="" className="text-title text-content-primary">
             {t('dashboard.title')}
           </h1>
           <p className="muted mt-1">{t('app.tagline')}</p>

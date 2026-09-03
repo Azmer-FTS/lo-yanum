@@ -36,14 +36,23 @@ export type MapLayerVisibility = Record<MapLayerKey, boolean>
 
 const STORAGE_KEY = 'lo-yanum:map-layers'
 
-const ALL_ON: MapLayerVisibility = {
+/**
+ * ★ X2 (2026-09-04) — THE THREAT LAYERS START OFF, and that is not a taste.
+ *   Until now the farms screen carried its own "שכבת איומים" pill whose
+ *   remembered default was OFF, and the two legend checkboxes said ON — two
+ *   controls disagreeing about one layer. The pill is deleted (see
+ *   `FarmsListScreen`) and the checkboxes inherit its default: a hatched
+ *   overlay across half the Negev is not what "where are my farms and how are
+ *   they doing" is asking, and it is one tick away when it is.
+ */
+const DEFAULTS: MapLayerVisibility = {
   entities: true,
   boundaries: true,
   grazing: true,
   posts: true,
   pickups: true,
-  threatZones: true,
-  threatVectors: true,
+  threatZones: false,
+  threatVectors: false,
 }
 
 let current: MapLayerVisibility = read()
@@ -52,11 +61,11 @@ const listeners = new Set<() => void>()
 function read(): MapLayerVisibility {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return ALL_ON
+    if (!raw) return DEFAULTS
     const parsed = JSON.parse(raw) as Partial<MapLayerVisibility>
-    return { ...ALL_ON, ...parsed }
+    return { ...DEFAULTS, ...parsed }
   } catch {
-    return ALL_ON
+    return DEFAULTS
   }
 }
 

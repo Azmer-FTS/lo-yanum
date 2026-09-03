@@ -128,7 +128,7 @@ export function MissionsScreen() {
       <ListTop
         testId="missions-top"
         title={t('missions.title')}
-        subtitle={t('missions.count', { count: list.length })}
+        count={t('missions.count', { count: list.length })}
         filters={
           /* D7.3 — the upcoming/past switch and the status filter share one
              row. Status counts are computed against the ACTIVE tab, so a

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 
 import {
   archiveVolunteer,
@@ -20,6 +20,7 @@ import { Icon } from '../../components/Icon'
 import { PhoneTypeChip, VolunteerStatusChip } from '../../components/badges'
 import { PeopleMap } from '../../components/PeopleMap'
 import { MapSplit } from '../../components/MapSplit'
+import { OverflowMenu } from '../../components/OverflowMenu'
 import {
   EmptyState,
   FilterPill,
@@ -307,21 +308,31 @@ export function VolunteersScreen() {
       <ListTop
         testId="volunteers-top"
         title={t('volunteers.title')}
-        subtitle={t('common.showingOf', {
+        count={t('common.showingOf', {
           shown: filtered.length,
           total: volunteers.length,
         })}
-        actions={
-          <>
-            <Link
-              to="/coordinator/import/volunteers"
-              className="btn-secondary py-1.5 text-micro"
-              title={t('volunteers.import')}
-            >
-              <Icon name="upload" size={14} />
-              <span className="hidden sm:inline">{t('volunteers.import')}</span>
-            </Link>
-          </>
+        menu={
+          <OverflowMenu
+            testId="volunteers-menu"
+            items={[
+              {
+                key: 'import',
+                label: t('volunteers.import'),
+                icon: 'upload',
+                to: '/coordinator/import/volunteers',
+                testId: 'volunteers-import',
+              },
+              {
+                key: 'group',
+                label: t('volunteers.groupToggle'),
+                icon: 'layers',
+                checked: grouped,
+                onClick: () => setGrouped((g) => !g),
+                testId: 'volunteers-group',
+              },
+            ]}
+          />
         }
         search={query}
         onSearch={setQuery}
@@ -382,14 +393,6 @@ export function VolunteersScreen() {
         }
         filters={
           <div className="scroll-row items-center">
-            <button
-              type="button"
-              onClick={() => setGrouped((g) => !g)}
-              className={`filter-pill ${grouped ? 'filter-pill-active' : ''}`}
-            >
-              <Icon name="layers" size={14} />
-              {t('volunteers.groupToggle')}
-            </button>
           {/* G14d — only the yeshiva pills remain: they have no KPI card. The
               status and phone pills were the cards' redundant twins. */}
           {yeshivot.map((y) => (

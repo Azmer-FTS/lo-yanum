@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
   FARM_PIPELINE,
@@ -19,6 +19,7 @@ import { Avatar } from '../../components/Avatar'
 import { EntityQuickCard, useQuickPreview } from '../../components/EntityQuickCard'
 import { ChevronForward, Icon } from '../../components/Icon'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
+import { OverflowMenu } from '../../components/OverflowMenu'
 import {
   ThreatLegend,
   threatVectorShapes,
@@ -65,30 +66,15 @@ export function FarmsListScreen() {
   // other role, so no condition here decides who sees the layer.
   const threatZones = useCoreValue(getVisibleThreatZones)
   const threatVectors = useCoreValue(getVisibleThreatVectors)
-  /**
-   * The layer is OFF by default and its state is remembered.
-   *
-   * Off because the global map's job is "where are my farms and how are they
-   * doing", and a hatched overlay across half the Negev competes with that;
-   * remembered because a coordinator working a threat brief this week should
-   * not re-arm it on every navigation. Same key space as P0.1's map mode.
+  /*
+   * ★ X2 (2026-09-04) — THE THREAT LAYER'S OWN BUTTON IS GONE. It was a pill
+   *   in this header AND two checkboxes in the map legend, i.e. two controls
+   *   over one remembered value, and the product owner asked for the legend
+   *   to be the only place a map layer is switched. The shapes are handed to
+   *   the map unconditionally now; `MapCanvas` filters them by
+   *   `mapLayers.ts`, which is where every other layer has been governed
+   *   since W5. The threat layers default to OFF there, as this pill did.
    */
-  const [threatLayer, setThreatLayer] = useState(() => {
-    try {
-      return localStorage.getItem('lo-yanum:threat-layer') === '1'
-    } catch {
-      return false
-    }
-  })
-  const toggleThreatLayer = () =>
-    setThreatLayer((on) => {
-      try {
-        localStorage.setItem('lo-yanum:threat-layer', on ? '0' : '1')
-      } catch {
-        // A remembered toggle is a convenience, not a requirement.
-      }
-      return !on
-    })
 
   // The dashboard links here with ?status=… — keep it in the URL so a filtered
   // list stays shareable and survives a refresh.
@@ -224,49 +210,41 @@ export function FarmsListScreen() {
     </>
   )
 
-  const actions = (
-    <>
-      <div className="hidden items-center gap-1 lg:flex">
-        {(['map', 'table'] as const).map((v) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => setView(v)}
-            aria-pressed={view === v}
-            title={t(v === 'map' ? 'farms.viewMap' : 'farms.viewTable')}
-            className={`filter-pill min-h-9 ${view === v ? 'filter-pill-active' : ''}`}
-          >
-            <Icon name={v === 'map' ? 'map' : 'menu'} size={13} />
-            {t(v === 'map' ? 'farms.viewMap' : 'farms.viewTable')}
-          </button>
-        ))}
-      </div>
-      {/* G18 — the threat layer's switch lives with the view controls,
-          because it IS a view control: it changes what the map is about,
-          not what the list contains. Coordinator-only by construction —
-          with nothing to show, there is nothing to toggle. */}
-      {(threatZones.length > 0 || threatVectors.length > 0) && (
-        <button
-          type="button"
-          onClick={toggleThreatLayer}
-          aria-pressed={threatLayer}
-          className={`filter-pill min-h-9 ${threatLayer ? 'filter-pill-active' : ''}`}
-        >
-          <Icon name="alert" size={13} />
-          {t('threat.layer')}
-        </button>
-      )}
-      {/* G10 — the farms roster gets the same import affordance the
-          volunteers one has had since R5.4, pointed at its own template. */}
-      <Link
-        to="/coordinator/import/farms"
-        className="btn-secondary py-1.5 text-micro"
-        title={t('volunteers.import')}
-      >
-        <Icon name="upload" size={14} />
-        <span className="hidden sm:inline">{t('volunteers.import')}</span>
-      </Link>
-    </>
+  /**
+   * X2 — WHAT THIS SCREEN CAN DO, IN ONE "⋯". The import link and the
+   * map/table switch were three labelled buttons across the title line; they
+   * are two rows in the menu now. The threat pill is not replaced by a row —
+   * it moved to the legend's checkboxes and lives only there.
+   */
+  const menu = (
+    <OverflowMenu
+      testId="farms-menu"
+      items={[
+        {
+          key: 'view-map',
+          label: t('farms.viewMap'),
+          icon: 'map',
+          checked: view === 'map',
+          onClick: () => setView('map'),
+          testId: 'farms-view-map',
+        },
+        {
+          key: 'view-table',
+          label: t('farms.viewTable'),
+          icon: 'table',
+          checked: view === 'table',
+          onClick: () => setView('table'),
+          testId: 'farms-view-table',
+        },
+        {
+          key: 'import',
+          label: t('volunteers.import'),
+          icon: 'upload',
+          to: '/coordinator/import/farms',
+          testId: 'farms-import',
+        },
+      ]}
+    />
   )
 
   const filterRow = (
@@ -298,8 +276,8 @@ export function FarmsListScreen() {
     <ListTop
       testId="farms-top"
       title={t('farms.title')}
-      subtitle={t('common.showingOf', { shown: filtered.length, total: farms.length })}
-      actions={actions}
+      count={t('common.showingOf', { shown: filtered.length, total: farms.length })}
+      menu={menu}
       search={query}
       onSearch={setQuery}
       searchPlaceholder={t('farms.searchPlaceholder')}
@@ -335,17 +313,11 @@ export function FarmsListScreen() {
       ariaLabel={t('map.farmsMap')}
       markers={markers}
       polygons={zonePolygons(zones, farms)}
-      threatZones={threatLayer ? threatZoneShapes(threatZones) : []}
-      threatVectors={threatLayer ? threatVectorShapes(threatVectors) : []}
+      threatZones={threatZoneShapes(threatZones)}
+      threatVectors={threatVectorShapes(threatVectors)}
       legend={
         <>
-        {threatLayer && (
-          <ThreatLegend
-            zones={threatZones}
-            vectors={threatVectors}
-            className="mb-2"
-          />
-        )}
+        <ThreatLegend zones={threatZones} vectors={threatVectors} className="mb-2" />
         <ZoneLegend zones={zones} farms={farms} className="mb-2" />
         <ul className="flex flex-col gap-1.5">
           {STATUSES.map((s) => (

@@ -53,7 +53,9 @@ export function PageHeader({
             </Link>
           )}
           <div className="min-w-0">
-            <h1 className="text-title text-content-primary">{title}</h1>
+            <h1 data-page-title="" className="text-title text-content-primary">
+              {title}
+            </h1>
             {subtitle && <p className="muted mt-1">{subtitle}</p>}
           </div>
         </div>
@@ -538,17 +540,37 @@ export function KpiChip({
 }
 
 /**
- * U2 — the sticky top of every list screen: a compact title row, then ONE
- * swipable row holding the search box and the KPI-filters, then the filter
- * pills, then (optionally) the column headers. Pinned at every width.
+ * U2 → X1 (2026-09-04) — THE STICKY TOP OF EVERY LIST, ONE GABARIT, NO
+ * EXCEPTIONS.
+ *
+ * ★ THE TITLE HAS ONE SIZE IN THE WHOLE APP, AND IT IS THE DASHBOARD'S.
+ *   "לוח בקרה" was `text-title` (24 px) and "חוות" / "מתנדבים" were
+ *   `text-heading` (18 px), because the rosters' top was written to be
+ *   compact and the dashboard's was not. The product owner reads that as two
+ *   different applications, and he is right: the size of a page's name is not
+ *   a place to save four pixels. `PageHeader`, `ListTop` and the dashboard's
+ *   own header all render `text-title` now, and nothing scales it down by
+ *   content.
+ *
+ * ★ THE COUNTER LEFT THE TITLE LINE. "20 מתוך 20" was a muted span baselined
+ *   with the title, which made the title look like a sentence and cost the
+ *   search box its room. It is a small discreet pill at the head of the
+ *   FILTER row now, aligned with the KPI chips it qualifies — beside the
+ *   numbers it is about, not beside the name of the screen.
+ *
+ * ★ THE ROW IS ALWAYS [title] [search] [⋯]. One line, the same three things
+ *   in the same three places on every list; whatever the screen can do lives
+ *   in the "⋯" (see `OverflowMenu`), so the line never changes width class
+ *   from one roster to the next.
  *
  * `-mx-4 px-4` / `lg:-mx-5 lg:px-5` — the block paints out to the panel's
  * own padding so the rows never show at the sides while it is pinned.
  */
 export function ListTop({
   title,
-  subtitle,
+  count,
   actions,
+  menu,
   search,
   onSearch,
   searchPlaceholder,
@@ -558,8 +580,12 @@ export function ListTop({
   testId,
 }: {
   title: ReactNode
-  subtitle?: ReactNode
+  /** X1 — the "n of m" pill, rendered at the head of the KPI row. */
+  count?: ReactNode
+  /** Rare inline control that must stay visible; prefer `menu`. */
   actions?: ReactNode
+  /** X2 — the screen's own actions, folded into the "⋯". */
+  menu?: ReactNode
   search?: string
   onSearch?: (v: string) => void
   searchPlaceholder?: string
@@ -578,24 +604,24 @@ export function ListTop({
       className="sticky z-20 -mx-4 mb-2 bg-surface-base/95 px-4 pb-1 backdrop-blur lg:-mx-5 lg:px-5"
       style={{ top: 'var(--shell-top, 0px)' }}
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 pb-2">
-        <div className="flex min-w-0 items-baseline gap-2">
-          <h1 className="truncate text-heading text-content-primary">{title}</h1>
-          {subtitle && <span className="muted whitespace-nowrap">{subtitle}</span>}
-        </div>
-        {actions && (
-          <div className="flex flex-wrap items-center gap-1.5">{actions}</div>
-        )}
-      </div>
-      <div className="flex items-stretch gap-2">
+      {/* X1.3 — [title] [search] [⋯], one line, every list. `flex-wrap` is
+          the 390 px escape hatch: the search box drops to its own line rather
+          than squeezing the title to three characters or widening the page. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pb-2">
+        <h1
+          data-page-title=""
+          className="min-w-0 flex-1 truncate text-title text-content-primary"
+        >
+          {title}
+        </h1>
         {onSearch && (
-          <div className="relative w-36 shrink-0 sm:w-44">
+          <div className="relative order-last w-full shrink-0 sm:order-none sm:w-52 lg:w-60">
             <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
               <Icon name="search" size={15} />
             </span>
             <input
               type="search"
-              className="input h-full min-h-11 py-1.5 ps-8"
+              className="input min-h-11 py-1.5 ps-8"
               value={search ?? ''}
               placeholder={searchPlaceholder}
               onChange={(e) => onSearch(e.target.value)}
@@ -603,12 +629,27 @@ export function ListTop({
             />
           </div>
         )}
-        {kpis && (
-          <div className="scroll-row min-w-0 flex-1" data-testid="kpi-strip">
-            {kpis}
-          </div>
-        )}
+        {actions}
+        {menu}
       </div>
+      {(count || kpis) && (
+        <div className="flex items-stretch gap-2">
+          {count && (
+            <span
+              data-list-count=""
+              className="numeric flex shrink-0 items-center self-center whitespace-nowrap rounded-pill
+                         bg-surface-high px-2.5 py-1 text-micro text-content-muted"
+            >
+              {count}
+            </span>
+          )}
+          {kpis && (
+            <div className="scroll-row min-w-0 flex-1" data-testid="kpi-strip">
+              {kpis}
+            </div>
+          )}
+        </div>
+      )}
       {filters && <div className="mt-1.5">{filters}</div>}
       {children}
     </div>
