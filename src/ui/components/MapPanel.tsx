@@ -62,6 +62,12 @@ export interface MapPanelProps {
   overlay?: ReactNode
   /** Card shown over the map for the selected marker. */
   detail?: ReactNode
+  /**
+   * X4.3 — when given, `detail` is drawn ANCHORED to this point with a tip
+   * pointing at it, instead of parked in the map's corner. The key is what
+   * re-opens it; see `MapCanvas.anchored`.
+   */
+  detailAt?: { position: LatLng; key: number }
   /** The list / content panel. */
   children: ReactNode
   ariaLabel: string
@@ -87,6 +93,7 @@ export function MapPanel({
   legend,
   overlay,
   detail,
+  detailAt,
   children,
   ariaLabel,
   contentWidth = 'third',
@@ -111,6 +118,11 @@ export function MapPanel({
             zoom={zoom}
             fit={fit}
             flyTo={flyTo}
+            anchored={
+              detail && detailAt
+                ? { position: detailAt.position, key: detailAt.key, node: detail }
+                : undefined
+            }
           />
 
           {/* ⚠️ `pl-[4.5rem]` — PHYSICAL LEFT, AND IT HAS TO BE (PO return
@@ -144,7 +156,10 @@ export function MapPanel({
 
           {/* U4.4 — `left-[3.75rem]` is PHYSICAL: the floating mode pill sits
               at the physical bottom-left whatever the writing direction. */}
-          {detail && (
+          {/* X4.3 — the corner card is the fallback for the screens whose
+              selection is not a point on the ground; with `detailAt` the same
+              node is drawn on the marker instead. */}
+          {detail && !detailAt && (
             <div className="pointer-events-none absolute bottom-3 left-[3.75rem] right-3 z-20 sm:left-auto sm:end-4 sm:w-80">
               <div className="pointer-events-auto">{detail}</div>
             </div>

@@ -13,7 +13,7 @@ import {
   getVisibleThreatZones,
   totalHeads,
 } from '@core/index'
-import type { Farm, FarmStatus, FarmType, LatLng } from '@core/index'
+import type { Farm, FarmStatus, FarmType } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { EntityQuickCard, useQuickPreview } from '../../components/EntityQuickCard'
@@ -86,15 +86,26 @@ export function FarmsListScreen() {
   const [query, setQuery] = useState('')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  // U8 — the tile's second click zone: centre the map on this entity.
-  const [flyTo, setFlyTo] = useState<{ position: LatLng; key: number } | null>(null)
+  /**
+   * ★ X4.3 (2026-09-04) — THE PHOTO SITUATES, IT DOES NOT ZOOM.
+   *
+   * U8 made the tile's photo a `flyTo`, and `flyTo` lifts the camera to at
+   * least z13 — so from the national frame a tap threw away exactly the
+   * context the product owner tapped it to get. It now SELECTS the entity and
+   * opens its card ANCHORED to its own pin, tip and all, with the camera left
+   * where it was (`MapCanvas.anchored` pans only if the pin is off screen).
+   * The tight frame stays the OTHER gesture's: opening the sheet.
+   */
+  const [previewKey, setPreviewKey] = useState(0)
+  /** A new key is a new request to (re)anchor — and to pan only if off screen. */
+  const select = (id: string | null) => {
+    setSelectedId(id)
+    setPreviewKey((k) => k + 1)
+  }
   const anchors = useCoreValue(getAllVisibleAnchorPoints)
   const postsOf = (farmId: string) => anchors.filter((a) => a.farmId === farmId).length
   const quick = useQuickPreview<Farm>()
-  const centerOn = (farm: Farm) => {
-    setSelectedId(farm.id)
-    setFlyTo((f) => ({ position: farm.position, key: (f?.key ?? 0) + 1 }))
-  }
+  const centerOn = (farm: Farm) => select(farm.id)
   /**
    * G7 — two readings of the same roster. The MAP stays the default (A18:
    * geography first), but a farm file imported at scale needs columns to
@@ -142,7 +153,7 @@ export function FarmsListScreen() {
             kind: entityMarkerKind(farm),
           },
           { hoveredId, selectedId },
-          { onHover: setHoveredId, onSelect: setSelectedId },
+          { onHover: setHoveredId, onSelect: select },
         ),
       ),
     [filtered, hoveredId, selectedId],
@@ -334,13 +345,13 @@ export function FarmsListScreen() {
         </ul>
         </>
       }
-      flyTo={flyTo ?? undefined}
+      detailAt={selected ? { position: selected.position, key: previewKey } : undefined}
       detail={
         selected && (
           <EntityQuickCard
             farm={selected}
             posts={postsOf(selected.id)}
-            onClose={() => setSelectedId(null)}
+            onClose={() => select(null)}
           />
         )
       }

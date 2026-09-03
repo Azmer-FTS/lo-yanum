@@ -1117,6 +1117,15 @@
   padding: 10px 12px !important;
 }
 
+/* X4.3 — the anchored entity preview. The card supplies its own surface and
+   padding, so the popup is only the geometry and the tip. */
+.maplibregl-popup.lo-anchored .maplibregl-popup-content {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
 .maplibregl-popup-tip {
   border-top-color: rgb(var(--surface-overlay)) !important;
   border-bottom-color: rgb(var(--surface-overlay)) !important;

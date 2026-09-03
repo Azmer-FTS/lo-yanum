@@ -22,17 +22,31 @@ import type { IconName } from './Icon'
  * `ltr:-scale-x-100`: back is towards the inline START, which is the RIGHT
  * in Hebrew and the LEFT in English, so the glyph flips with the direction.
  */
+/**
+ * ★ X4.1 (2026-09-04) — THE SHEET SHOWS THE PLACE IT IS ABOUT.
+ *
+ * A farm's file opened on a name and two words of geography, and the product
+ * owner's complaint was recognition: he taps a photo in the roster and lands
+ * on a page that looks like every other page. `media` is a square thumbnail
+ * beside the title — the same picture he tapped, at 64 px, which is a
+ * confirmation rather than a banner. A full-width band was the other option
+ * and it costs 140 px of a column that is already a long read; the square
+ * costs nothing, because the header row was that tall anyway.
+ */
 export function PageHeader({
   title,
   subtitle,
   actions,
   back,
+  media,
 }: {
   title: ReactNode
   subtitle?: string
   actions?: ReactNode
   /** The parent list. Rendered as a round back arrow beside the title. */
   back?: { to: string; label: string }
+  /** A square thumbnail of the record — its photo, or its initials. */
+  media?: ReactNode
 }) {
   return (
     <header className="mb-6">
@@ -51,6 +65,11 @@ export function PageHeader({
             >
               <Icon name="chevron" size={18} className="ltr:-scale-x-100" />
             </Link>
+          )}
+          {media && (
+            <span data-page-media="" className="shrink-0">
+              {media}
+            </span>
           )}
           <div className="min-w-0">
             <h1 data-page-title="" className="text-title text-content-primary">
@@ -97,7 +116,17 @@ export function ActionPill({
   )
 }
 
-/** One segment of an `ActionPill`. Renders a button, or a link when given `to`. */
+/**
+ * One segment of an `ActionPill`. Renders a button, or a link when given `to`.
+ *
+ * ★ X4.2 (2026-09-04) — ICONS ONLY, AND THE LABEL MOVES TO `title`/`aria-label`.
+ *   Three labelled segments made a pill about 22 rem wide sitting beside a
+ *   title in a 42 % column, so on an iPad in portrait it wrapped under the
+ *   name and the delete drifted. A bin, a pencil and a calendar are three
+ *   glyphs nobody has to read, and at 48×44 px each the pill is 9 rem — with
+ *   BIGGER targets than the labelled version had. Nothing is lost for a
+ *   screen reader or a hover: the words are still on the element.
+ */
 export function ActionPillItem({
   icon,
   label,
@@ -113,24 +142,26 @@ export function ActionPillItem({
   danger?: boolean
   testId?: string
 }) {
-  const cls = `flex min-h-11 items-center gap-1.5 px-3.5 text-caption font-medium
+  const cls = `flex h-12 w-12 items-center justify-center
                transition-colors duration-fast ${
                  danger
                    ? 'text-status-danger-ink hover:bg-status-danger/10'
                    : 'text-content-secondary hover:bg-surface-high hover:text-content-primary'
                }`
-  const body = (
-    <>
-      <Icon name={icon} size={16} />
-      <span className="whitespace-nowrap">{label}</span>
-    </>
-  )
+  const body = <Icon name={icon} size={19} />
   return to ? (
-    <Link to={to} data-testid={testId} className={cls}>
+    <Link to={to} data-testid={testId} className={cls} title={label} aria-label={label}>
       {body}
     </Link>
   ) : (
-    <button type="button" onClick={onClick} data-testid={testId} className={cls}>
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testId}
+      className={cls}
+      title={label}
+      aria-label={label}
+    >
       {body}
     </button>
   )

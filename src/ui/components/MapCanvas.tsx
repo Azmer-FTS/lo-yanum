@@ -1,7 +1,9 @@
 import maplibregl from 'maplibre-gl'
 import type { ExpressionSpecification } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { HOME_BASE, bearingDeg, boundsOf } from '@core/index'
@@ -144,6 +146,24 @@ export interface MapViewProps {
    * what the effect watches. Never zooms out below the farm scale.
    */
   flyTo?: { position: LatLng; key: number; zoom?: number }
+  /**
+   * ★ X4.3 (2026-09-04) — A PREVIEW ANCHORED TO ITS OWN MARKER.
+   *
+   * Tapping a list tile's photo used to call `flyTo`, which zoomed from the
+   * national frame to z13 — the product owner lost the context he tapped the
+   * photo to get. What he asked for instead: the camera STAYS where it is,
+   * and the entity's card opens with a little arrow pointing at its pin, so
+   * he can see the farm in its region. The tight frame is still what OPENING
+   * the sheet does (`frameTo`), which is the other gesture and the other
+   * question.
+   *
+   * It is a MapLibre `Popup` with React portalled into it rather than an
+   * absolutely-positioned div: the tip, the re-anchoring on pan and zoom, and
+   * the flip when the point is near an edge are all things MapLibre already
+   * does correctly, and all things a hand-rolled overlay gets wrong first on
+   * a device being panned with a thumb.
+   */
+  anchored?: { position: LatLng; key: number; node: ReactNode }
   /**
    * ★ W6 (2026-09-02) — FRAME AN ENTITY'S OWN GEOMETRY, CLOSE.
    *
@@ -612,6 +632,7 @@ export default function MapCanvas({
   zoom = 8,
   fit = false,
   flyTo,
+  anchored,
   frameTo,
   interactive = true,
   className = 'h-full w-full',
@@ -704,6 +725,9 @@ export default function MapCanvas({
   const polygonsRef = useRef<MapPolygon[] | undefined>(polygons)
   const threatZonesRef = useRef<MapThreatZone[] | undefined>(threatZones)
   const threatVectorsRef = useRef<MapThreatVector[] | undefined>(threatVectors)
+  // X4.3 — one popup and one host node for the anchored preview.
+  const popupRef = useRef<maplibregl.Popup | null>(null)
+  const [popupHost] = useState(() => document.createElement('div'))
 
   // Create the map once.
   useEffect(() => {
@@ -1553,15 +1577,68 @@ export default function MapCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flyTo?.key])
 
+  /**
+   * X4.3 — THE ANCHORED PREVIEW. One popup instance, moved rather than
+   * recreated; the React content lives in `popupHost` and is portalled in, so
+   * it re-renders with the rest of the app while MapLibre keeps owning the
+   * geometry.
+   */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    if (!anchored) {
+      popupRef.current?.remove()
+      return
+    }
+    if (!popupRef.current) {
+      popupRef.current = new maplibregl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        // Clear of a 44 px pin, so the tip lands on the marker rather than in it.
+        offset: 26,
+        maxWidth: '20rem',
+        className: 'lo-anchored',
+      }).setDOMContent(popupHost)
+    }
+    const point: [number, number] = [anchored.position.lng, anchored.position.lat]
+    popupRef.current.setLngLat(point).addTo(map)
+
+    /**
+     * ⚠️ PAN, NEVER ZOOM. The whole point of this gesture is that the frame
+     *    does not change — the product owner tapped the photo to SITUATE the
+     *    farm. But a pin outside the viewport would open its card off screen,
+     *    so a point outside the padded frame is eased into view at the SAME
+     *    zoom, and a point already inside moves the camera not at all.
+     */
+    const box = map.getContainer().getBoundingClientRect()
+    const at = map.project(point)
+    const pad = 80
+    const outside =
+      at.x < pad || at.y < pad || at.x > box.width - pad || at.y > box.height - pad
+    if (outside) map.easeTo({ center: point, duration: 500 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchored?.key, anchored === undefined])
+
+  useEffect(
+    () => () => {
+      popupRef.current?.remove()
+      popupRef.current = null
+    },
+    [],
+  )
+
   return (
-    <div
-      ref={containerRef}
-      role="application"
-      aria-label={ariaLabel}
-      className={`overflow-hidden rounded-card bg-surface-sunken ${
-        onMapClick ? '[&_.maplibregl-canvas]:cursor-crosshair' : ''
-      } ${className}`}
-    />
+    <>
+      <div
+        ref={containerRef}
+        role="application"
+        aria-label={ariaLabel}
+        className={`overflow-hidden rounded-card bg-surface-sunken ${
+          onMapClick ? '[&_.maplibregl-canvas]:cursor-crosshair' : ''
+        } ${className}`}
+      />
+      {anchored && createPortal(anchored.node, popupHost)}
+    </>
   )
 }
 

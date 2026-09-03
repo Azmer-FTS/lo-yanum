@@ -291,7 +291,13 @@ function KeyNumbers({
           card washed with it, in the corner the Hebrew eye lands on. */}
       <div
         data-testid="band-status"
-        className={`!flex-[1_0_9.5rem] ${BAND_H} flex items-center rounded-card p-3 shadow-card ring-1`}
+        /* ★ X4.4 — THE STATUS IS NEVER CUT. It was `!flex-[1_0_9.5rem]` with a
+           `truncate` on the word, so "מוכן לחתימה" lost its last letters on
+           the physical right — a status that is half-printed is worse than no
+           card. The card sizes to its own content now (it lives in a
+           `scroll-row`, so growing costs nothing) with 9.5 rem as a FLOOR
+           rather than a basis, and the word is `whitespace-nowrap`. */
+        className={`!flex-[0_0_auto] min-w-[9.5rem] ${BAND_H} flex items-center rounded-card p-3 shadow-card ring-1`}
         style={{
           backgroundColor: `color-mix(in srgb, ${statusColor} 14%, rgb(var(--surface-raised)))`,
           // The ring is the status's colour: the one contour on the screen that
@@ -307,10 +313,10 @@ function KeyNumbers({
             <span className="h-5 w-5 rounded-pill shadow-card" style={{ backgroundColor: statusColor }} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-heading font-semibold text-content-primary">
+            <p className="whitespace-nowrap text-heading font-semibold text-content-primary">
               {t(`farmStatus.${farm.status}`)}
             </p>
-            <p className="muted truncate leading-tight">{t('farms.statusLabel')}</p>
+            <p className="muted whitespace-nowrap leading-tight">{t('farms.statusLabel')}</p>
             <p className="truncate text-micro leading-tight">&nbsp;</p>
           </div>
         </div>
@@ -626,6 +632,11 @@ export function FarmDetailScreen() {
             title={farm.name}
             subtitle={`${farm.locality} · ${farm.region}`}
             back={{ to: '/coordinator/farms', label: t('farms.title') }}
+            /* X4.1 — the picture he tapped in the roster, so the sheet is
+               recognisably the place he came from. */
+            media={
+              <Avatar photo={farm.photo} name={farm.name} size="lg" shape="square" />
+            }
             /* ★ W6 — THE THREE ACTIONS ARE ONE PILL. See `ActionPill`: three
                skins for one idea, wrapping to two rows on an iPad in
                portrait. PO POINT 8's rule is unchanged — deleting has to
