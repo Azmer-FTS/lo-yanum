@@ -296,6 +296,33 @@ try {
     `${drawn.regional} features`,
   )
 
+  /**
+   * ★ X3.6 (2026-09-04) — THE DROPPED CAPTION, MEASURED WHERE IT USED TO
+   *   RENDER. The product owner asked for "השטחים הפלסטיניים" to come off the
+   *   basemap; `dropNamedLabels` (basemap.ts) filters it out of
+   *   `places_country` / `places_region` by name. The BOUNDARY lines above are
+   *   untouched and this gate has just proved they are still drawn — which is
+   *   the point: a dashed armistice line is a different statement from a
+   *   floating area caption, and only one of the two was asked to go.
+   */
+  const dropped = await page.evaluate(() => {
+    const m = (window as unknown as { __loYanumMap?: MapHandle }).__loYanumMap
+    if (!m) return -1
+    return m
+      .queryRenderedFeatures(undefined, {
+        layers: ['places_country', 'places_region'],
+      })
+      .filter((f) => {
+        const p = (f as unknown as { properties?: Record<string, unknown> }).properties ?? {}
+        return [p.name, p['name:he'], p['name:en']].includes('השטחים הפלסטיניים')
+      }).length
+  })
+  check(
+    '★ X3.6 — "השטחים הפלסטיניים" is not rendered as a place label',
+    dropped === 0,
+    `${dropped} matching label features in the armistice-line frame`,
+  )
+
   await page.screenshot({ path: `${SHOTS}/borders-light.png` })
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
   await styleLoaded(page)
@@ -316,24 +343,26 @@ try {
   // -------------------------------------------------------------------------
 
   /**
-   * ⚠️ W5 (2026-09-02) — THE GROUND IS TWO TARGETS AGAIN, INSIDE THE ONE
-   *    STACK. It was a single toggle whose label named the OTHER ground,
-   *    which is honest and unreadable at a glance; it is now מפה and לוויין
-   *    side by side, `map-tool-base` and `map-tool-satellite`, each with
-   *    `data-active` for the live one. Same claims, still one stack.
+   * ⚠️ X3.2 (2026-09-04) — THE GROUND IS ONE TARGET AGAIN. W5 split it into
+   *    מפה / לוויין because a single toggle whose LABEL named the other
+   *    ground read as a riddle; the product owner has since asked for the
+   *    pair to go, and the riddle is answered instead by the GLYPH being the
+   *    destination. So there is one `map-tool-base`, and `data-base` on it
+   *    says which ground the map is on while `data-target` says where a tap
+   *    would take it. Same claims about the style, one button.
    */
   const stack = page.locator('[data-testid="map-tools"]')
-  const vectorBtn = page.locator('[data-testid="map-tool-base"]')
-  const baseBtn = page.locator('[data-testid="map-tool-satellite"]')
+  const baseBtn = page.locator('[data-testid="map-tool-base"]')
   check('the map carries ONE control stack', (await stack.count()) === 1)
   check(
-    'the מפה / לוויין switch is a two-target group of it',
-    (await vectorBtn.count()) === 1 && (await baseBtn.count()) === 1,
+    'the ground switch is ONE target of it, not two',
+    (await baseBtn.count()) === 1 &&
+      (await page.locator('[data-testid="map-tool-satellite"]').count()) === 0,
   )
   check(
-    'and it starts on the vector ground',
-    (await vectorBtn.getAttribute('data-active')) === 'true' &&
-      (await baseBtn.getAttribute('data-active')) === 'false',
+    'and it starts on the vector ground, offering the imagery',
+    (await baseBtn.getAttribute('data-base')) === 'vector' &&
+      (await baseBtn.getAttribute('data-target')) === 'satellite',
   )
 
   await settle(page, FARM_VIEW)
@@ -462,7 +491,7 @@ try {
   )
   check(
     'the control shows the vector ground as the live one again',
-    (await vectorBtn.getAttribute('data-active')) === 'true',
+    (await baseBtn.getAttribute('data-base')) === 'vector',
   )
   await page.screenshot({ path: `${SHOTS}/satellite-offline-fallback.png` })
   await context.setOffline(false)

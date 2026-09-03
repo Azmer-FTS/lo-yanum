@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react'
+
 import type { BasemapBase } from './basemap'
 
 /**
@@ -35,9 +37,34 @@ export function readStoredBase(): BasemapBase {
 }
 
 export function writeStoredBase(base: BasemapBase): void {
+  current = base
   try {
     localStorage.setItem(STORE_KEY, base)
   } catch {
     // Nothing to do and nothing worth failing a map over.
   }
+  for (const l of listeners) l()
+}
+
+/**
+ * ★ X3.4 (2026-09-04) — THE GROUND IS ALSO A REACT-READABLE VALUE NOW, and
+ *   the reason is the attribution. MapLibre's own attribution control is gone
+ *   (see `MapCanvas`): it lived at the map's physical bottom-right, which in
+ *   this RTL app is where the legend lives, so the two sat on each other and
+ *   the "i" ended up under the panel. The replacement is a React button beside
+ *   the legend — and a React button has to know which ground is on screen to
+ *   name its source. One tiny store, the same shape as `mapLayers.ts`.
+ */
+let current: BasemapBase = readStoredBase()
+const listeners = new Set<() => void>()
+
+const getBase = (): BasemapBase => current
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+export function useMapBase(): BasemapBase {
+  return useSyncExternalStore(subscribe, getBase, getBase)
 }

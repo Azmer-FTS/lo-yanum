@@ -999,6 +999,40 @@
   font-family: var(--font-sans);
 }
 
+/* ---------------------------------------------------------------------------
+   X3.1 (2026-09-04) — ONE VERTICAL AXIS FOR EVERYTHING THAT FLOATS ON THE MAP
+   ---------------------------------------------------------------------------
+   The product owner's report was geometric and exact: "the + sticks out to the
+   right". Four objects share the map's physical left edge — the tools rail,
+   the map-mode pill, the drawing pencil and the shell's unified "+" — and each
+   had inherited its own offset and its own width:
+
+     MapLibre control margin   10 px, and the rail 52 px wide
+     MapModePill               left-3 = 12 px, 52 px wide
+     ActionFab                 end-4  = 16 px, 56 px wide
+
+   Three lines, three widths. `--map-rail` is the single number now, and every
+   one of the four reads it: same left edge, same width, one axis.
+   --------------------------------------------------------------------------- */
+:root {
+  --map-rail: 0.75rem;
+  --map-rail-w: 3.25rem;
+}
+
+/* `!important` — MapLibre's own sheet declares `margin: 10px 0 0 10px` at the
+   same specificity, and which of the two wins depends on the order Vite
+   happens to inject them in. That is not a thing to leave to chance when the
+   whole point of the rule is that four objects land on one line. */
+.maplibregl-ctrl-top-left {
+  margin: 0 !important;
+  padding: var(--map-rail) !important;
+}
+
+.maplibregl-ctrl-top-left .maplibregl-ctrl {
+  margin: 0 !important;
+  width: var(--map-rail-w);
+}
+
 /* MapLibre attribution/controls are authored LTR; keep them that way. */
 .maplibregl-ctrl-bottom-right,
 .maplibregl-ctrl-bottom-left,

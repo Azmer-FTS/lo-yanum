@@ -1012,6 +1012,60 @@ function strongerWater(layers: LayerSpecification[]): LayerSpecification[] {
   })
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * X3.6 (2026-09-04) — ONE PLACE LABEL IS DROPPED, BY NAME, AND ONLY ONE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * The product owner asked for "השטחים הפלסטיניים" to come off the basemap.
+ * This is a Protomaps `places_country` point carrying the OSM name of the
+ * territory; nothing else on the map depends on it, and the BOUNDARY lines
+ * are untouched — §A above draws the armistice line, dashed and honest, and
+ * that is a different statement from a floating area caption.
+ *
+ * ⚠️ IT IS DONE BY NAME AND ONLY ON THE LABEL LAYERS, deliberately narrow.
+ *    Filtering on `disputed` would silently take other captions with it as
+ *    the archive is re-cut, and re-cutting the PMTiles archive to drop a
+ *    feature would put a hand-edited basemap in the repository. A named
+ *    exclusion is auditable in one line, which is what a decision like this
+ *    one has to be.
+ */
+const DROPPED_PLACE_LABELS = [
+  'השטחים הפלסטיניים',
+  'Palestinian Territories',
+  'Palestinian Territory',
+]
+
+const PLACE_LABEL_LAYERS = new Set(['places_country', 'places_region'])
+
+/**
+ * ⚠️ LEGACY FILTER SYNTAX, ON PURPOSE, AND IT IS NOT A STYLE CHOICE.
+ *    `protomaps-themes-base` writes these layers as `["==","kind","country"]`
+ *    — the OLD filter grammar, not an expression. MapLibre decides which of
+ *    the two grammars an `["all", …]` is by looking at its members, so
+ *    wrapping a legacy filter together with `["!=", ["get","name"], …]`
+ *    makes it validate the whole thing as legacy and reject every `["get"]`
+ *    as "string expected, array found" — which silently drops the ENTIRE
+ *    style and leaves a blank canvas. (It did. That is how this comment
+ *    exists.) `["!in", key, …values]` is the legacy spelling of the same
+ *    exclusion and composes with what is already there.
+ */
+function dropNamedLabels(layers: LayerSpecification[]): LayerSpecification[] {
+  const exclusions = ['name', 'name:he', 'name:en'].map(
+    (key) => ['!in', key, ...DROPPED_PLACE_LABELS] as unknown as FilterSpecification,
+  )
+
+  return layers.map((layer) => {
+    if (!PLACE_LABEL_LAYERS.has(layer.id)) return layer
+    const existing = (layer as { filter?: FilterSpecification }).filter
+    const parts = existing ? [existing, ...exclusions] : exclusions
+    return {
+      ...layer,
+      filter: ['all', ...parts] as unknown as FilterSpecification,
+    } as LayerSpecification
+  })
+}
+
 function simplifyLabels(layers: LayerSpecification[]): LayerSpecification[] {
   return layers.map((layer) => {
     if (layer.type !== 'symbol') return layer
@@ -1123,9 +1177,11 @@ export function buildBasemapStyle(
 
   if (base === 'satellite') {
     const over = cityTiers(
-      simplifyLabels(
-        layersWithCustomTheme('protomaps', imageryTheme(resolved), 'he').filter(
-          (l) => OVER_IMAGERY.has(l.id),
+      dropNamedLabels(
+        simplifyLabels(
+          layersWithCustomTheme('protomaps', imageryTheme(resolved), 'he').filter(
+            (l) => OVER_IMAGERY.has(l.id),
+          ),
         ),
       ),
       // Over a photograph the ladder is opacity rather than value: the halo is
@@ -1167,9 +1223,13 @@ export function buildBasemapStyle(
   }
 
   const layers = cityTiers(
-    strongerWater(simplifyLabels(
-      layersWithCustomTheme('protomaps', themeFromTokens(resolved), 'he'),
-    )),
+    dropNamedLabels(
+      strongerWater(
+        simplifyLabels(
+          layersWithCustomTheme('protomaps', themeFromTokens(resolved), 'he'),
+        ),
+      ),
+    ),
     {
       major: token('--text-primary'),
       city: token('--text-secondary'),

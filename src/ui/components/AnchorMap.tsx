@@ -752,7 +752,8 @@ export function AnchorMap({
              whatever the writing direction, so the reservation is physical
              too. It costs 72 px of a bar whose buttons already wrap, and it
              costs nothing at all on the iPad this is drawn on. */}
-      <div className="pointer-events-none absolute inset-x-3 bottom-9 z-10 flex flex-col gap-2 pl-[4.5rem]">
+      {/* X3.5 — `start-7`: the seam's grip hangs into this edge. See MapPanel. */}
+      <div className="pointer-events-none absolute bottom-9 end-3 start-7 z-10 flex flex-col gap-2 pl-[4.5rem]">
         {/* The control sits ON the map, because the map is what it is about.
             The empty case is louder on purpose: with no points yet, this
             banner IS the only route forward. */}

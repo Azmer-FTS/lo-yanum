@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Icon } from './Icon'
+import { MapAttribution } from './MapAttribution'
 import { MAP_LAYERS, useMapLayers } from './mapLayers'
 import { readBlockOpen, writeBlockOpen } from './primitives'
 
@@ -47,10 +48,16 @@ export function MapLegend({
     })
 
   return (
+    /* ★ X3.4 — THE LEGEND AND THE "i" ARE ONE ROW, bottom-aligned. The licence
+       button used to be MapLibre's own control at the map's physical
+       bottom-right, i.e. under this panel; beside it, and anchored to the same
+       baseline, it is visible whether the legend is folded or unfolded without
+       a single z-index. See `MapAttribution`. */
+    <div className={`pointer-events-auto flex items-end gap-1.5 ${className}`}>
     <div
       data-testid="map-legend"
       data-open={open ? '1' : '0'}
-      className={`glass pointer-events-auto max-w-[15rem] rounded-card ${className}`}
+      className="glass max-w-[15rem] rounded-card"
     >
       <button
         type="button"
@@ -102,6 +109,8 @@ export function MapLegend({
           </div>
         </div>
       )}
+    </div>
+      <MapAttribution />
     </div>
   )
 }

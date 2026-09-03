@@ -120,11 +120,57 @@ export function PanelSplitter({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       onKeyDown={onKeyDown}
-      className={`group relative z-20 w-4 shrink-0 cursor-col-resize touch-none select-none items-center justify-center self-stretch
-                  bg-surface-base outline-none focus-visible:ring-2 focus-visible:ring-accent ${className}`}
+      /**
+       * ★ X3.5 (2026-09-04) — THE SEAM IS A HAIRLINE, AND EVERYTHING IT
+       *   OCCUPIES IS ON THE MAP'S SIDE.
+       *
+       *   What the product owner saw was list tiles clipped along their
+       *   physical left edge. The cause was this element: a 16 px band of
+       *   `--surface-base` PLUS a hit overlay stretched 14 px into BOTH
+       *   neighbours (`-start-3.5 -end-3.5`), so a 44 px-wide invisible strip
+       *   lay over the first characters of every tile and swallowed their
+       *   taps.
+       *
+       *   Now the flex item is a 2 px rule, and the hit area and the grip are
+       *   absolutely positioned entirely onto the PHYSICAL LEFT — which is
+       *   the map in both writing directions (decision 34). The list is never
+       *   under the seam again, and dragging still starts anywhere in a 44 px
+       *   band.
+       *
+       * ⚠️ PHYSICAL `left`, NOT LOGICAL `start`. A logical inset flips with
+       *    the direction and would put the grip over the CONTENT in Hebrew —
+       *    which is the defect, not the fix. The row is reversed per
+       *    direction precisely so that the map is always physically left.
+       */
+      className={`group relative z-20 w-0.5 shrink-0 cursor-col-resize touch-none select-none items-stretch
+                  self-stretch bg-edge-subtle outline-none transition-colors duration-fast
+                  hover:bg-accent focus-visible:bg-accent ${className}`}
     >
-      <span className="pointer-events-none block h-11 w-1.5 rounded-pill bg-edge-strong transition-colors duration-fast group-hover:bg-accent group-focus-visible:bg-accent" />
-      <span className="absolute inset-y-0 -start-3.5 -end-3.5" aria-hidden />
+      {/* The 44 px thumb band, entirely over the map. */}
+      <span className="absolute inset-y-0 -left-11 right-0" aria-hidden />
+      {/**
+       * ★ VISIBLE ON BOTH GROUNDS. A grip painted in `--border-strong` reads
+       *   on the vector map and vanishes over satellite imagery, which is
+       *   half the time the product owner is dragging it. `glass` is the
+       *   app's one definition of a control that sits OVER imagery, so the
+       *   grip wears it — the same answer W5 gave the tools rail.
+       */}
+      <span
+        className="glass pointer-events-none absolute left-0 top-1/2 flex h-14 w-5 -translate-x-full -translate-y-1/2
+                   items-center justify-center rounded-s-card text-content-secondary
+                   transition-colors duration-fast group-hover:text-accent-ink group-focus-visible:text-accent-ink"
+      >
+        <svg width="10" height="18" viewBox="0 0 10 18" aria-hidden="true" focusable="false">
+          <g fill="currentColor">
+            <circle cx="3" cy="4" r="1.1" />
+            <circle cx="3" cy="9" r="1.1" />
+            <circle cx="3" cy="14" r="1.1" />
+            <circle cx="7" cy="4" r="1.1" />
+            <circle cx="7" cy="9" r="1.1" />
+            <circle cx="7" cy="14" r="1.1" />
+          </g>
+        </svg>
+      </span>
     </div>
   )
 }

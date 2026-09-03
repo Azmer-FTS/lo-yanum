@@ -196,7 +196,7 @@ export function MapModePill({
       //   unified "+" is fixed at the inline end, which in this RTL app is
       //   this same physical corner, and it is there on the desktop too; the
       //   pill sits in the slot above it rather than under it.
-      className={`glass fixed left-3 z-30 flex-col gap-0.5 rounded-pill p-1 ${className || 'flex'} ${
+      className={`glass fixed left-[var(--map-rail)] z-30 w-[var(--map-rail-w)] flex-col gap-0.5 rounded-card p-1 ${className || 'flex'} ${
         raised
           ? 'bottom-[calc(var(--shell-bottom)+5.5rem)]'
           : 'bottom-[calc(var(--shell-bottom)+0.75rem)]'

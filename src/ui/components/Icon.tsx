@@ -81,6 +81,7 @@ export type IconName =
   | 'table'
   | 'region'
   | 'navigation'
+  | 'info'
 
 type Props = SVGProps<SVGSVGElement> & { name: IconName; size?: number }
 
@@ -272,6 +273,14 @@ const PATHS: Record<IconName, ReactNode> = {
   /* X8 — turn-by-turn navigation (Waze / Maps), the arrow every mapping app
      uses for "take me there". */
   navigation: <path d="m3 11 18-8-8 18-2.2-7.8z" />,
+  /* X3.4 — the licence button. */
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5.5" />
+      <circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none" />
+    </>
+  ),
   pin: (
     <>
       <path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z" />

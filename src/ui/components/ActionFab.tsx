@@ -167,7 +167,12 @@ export function ActionFab() {
          reserve room for. The old button escaped the rule only by being
          `lg:hidden` — i.e. by not existing at the width the gate measures. */
       data-overlay=""
-      className="fixed bottom-[calc(var(--shell-bottom)+1.25rem)] end-4 z-40 flex flex-col items-end"
+      /* X3.1 — THE SAME AXIS AS THE MAP RAIL. `end-4` + a 56 px button put
+         this one object 4 px outside the line the tools stack, the mode pill
+         and the pencil all sit on; the product owner read that as the "+"
+         sticking out. `--map-rail` / `--map-rail-w` (index.css) are the one
+         offset and the one width now. */
+      className="fixed bottom-[calc(var(--shell-bottom)+1.25rem)] end-[var(--map-rail)] z-40 flex flex-col items-end"
     >
       {open && (
         <div
@@ -198,14 +203,14 @@ export function ActionFab() {
         aria-label={t(open ? 'fab.close' : 'fab.open')}
         title={t('fab.open')}
         data-testid="action-fab-toggle"
-        className={`flex h-14 w-14 items-center justify-center rounded-pill shadow-accent
+        className={`flex h-[var(--map-rail-w)] w-[var(--map-rail-w)] items-center justify-center rounded-pill shadow-accent
                     transition-all duration-base ease-out active:scale-95 ${
                       open
                         ? 'bg-surface-overlay text-content-primary'
                         : 'bg-gradient-accent text-content-on-accent'
                     }`}
       >
-        <Icon name={open ? 'close' : 'plus'} size={24} />
+        <Icon name={open ? 'close' : 'plus'} size={23} />
       </button>
     </div>
   )

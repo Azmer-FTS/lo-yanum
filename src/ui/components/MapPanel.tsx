@@ -132,7 +132,13 @@ export function MapPanel({
               row, and the seven layer switches are the same seven on every
               screen (see `MapLegend`). A control that disappears at some
               widths is a control the product owner stops trusting. */}
-          <div className="pointer-events-none absolute bottom-3 start-3 z-10">
+          {/* ★ X3.5 — `start-7` RATHER THAN `start-3`, AND THE 16 EXTRA PIXELS
+              ARE THE SEAM'S. The resize grip now hangs 20 px INTO the map from
+              its physical right edge (see `PanelSplitter`), which is the same
+              edge the legend is anchored to in Hebrew. Either the grip covers
+              the legend or the legend covers the grip; a clearance is the only
+              answer that leaves both readable in every state, folded or not. */}
+          <div className="pointer-events-none absolute bottom-3 start-7 z-10">
             <MapLegend>{legend}</MapLegend>
           </div>
 

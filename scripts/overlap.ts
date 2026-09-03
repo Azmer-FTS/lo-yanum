@@ -208,7 +208,27 @@ async function audit(page: Page): Promise<Report> {
       }
     }
 
-    return { maps: maps.length, controls: counted, collisions, small, stack }
+    /**
+     * ★ X3.1 (2026-09-04) — THE RAIL IS ONE VERTICAL AXIS, AND IT IS MEASURED.
+     *
+     * The product owner's report was "the + sticks out to the right", and it
+     * was true to the pixel: MapLibre's control margin is 10 px, the mode
+     * pill was at 12 px and the "+" at 16 px with a 56 px button against the
+     * others' 52 px. Nothing in the app said those three numbers had to
+     * agree, so they drifted. `--map-rail` / `--map-rail-w` (index.css) are
+     * the single offset and the single width now, and this is what stops the
+     * next float from inventing a fourth.
+     */
+    const rail: { name: string; left: number; width: number }[] = []
+    for (const id of ['map-tools', 'map-mode-pill', 'action-fab-toggle']) {
+      const el = document.querySelector(`[data-testid="${id}"]`)
+      if (!el) continue
+      const r = el.getBoundingClientRect()
+      if (r.width === 0) continue
+      rail.push({ name: id, left: Math.round(r.left), width: Math.round(r.width) })
+    }
+
+    return { maps: maps.length, controls: counted, collisions, small, stack, rail }
   })
 }
 
@@ -300,6 +320,16 @@ try {
           `${route.name}: every control-stack button is at least 44 px`,
           report.small.length === 0,
           report.small.join(', '),
+        )
+      }
+
+      if (report.rail.length > 1) {
+        const lefts = new Set(report.rail.map((r) => r.left))
+        const widths = new Set(report.rail.map((r) => r.width))
+        check(
+          `${route.name}: the floating rail is one axis, one width`,
+          lefts.size === 1 && widths.size === 1,
+          report.rail.map((r) => `${r.name} @${r.left} w${r.width}`).join(' | '),
         )
       }
 

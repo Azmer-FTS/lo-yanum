@@ -47,7 +47,7 @@ import type { BasemapBase } from './basemap'
  */
 export interface MapToolsLabels {
   group: string
-  /** Names the two-target ground selector. */
+  /** Names the ground toggle. */
   baseLabel: string
   vector: string
   satellite: string
@@ -108,9 +108,7 @@ export class MapTools implements IControl {
   private map: MapLibreMap | null = null
   private container: HTMLDivElement | null = null
 
-  private baseGroup: HTMLDivElement | null = null
-  private vectorButton: HTMLButtonElement | null = null
-  private satelliteButton: HTMLButtonElement | null = null
+  private baseButton: HTMLButtonElement | null = null
   private fullscreenButton: HTMLButtonElement | null = null
   private locateButton: HTMLButtonElement | null = null
 
@@ -129,48 +127,60 @@ export class MapTools implements IControl {
 
   onAdd(map: MapLibreMap): HTMLElement {
     this.map = map
+    /**
+     * ★ X3.1 (2026-09-04) — TWO PILLS, ONE AXIS, ONE WIDTH.
+     *
+     * The product owner's report was geometric: "the + sticks out to the
+     * right". It did — MapLibre's control margin is 10 px, the mode pill is
+     * at 12 px and the "+" was at 16 px with a 56 px button against these
+     * 52 px ones, so four floating objects on the same physical edge sat on
+     * four different vertical lines. Every one of them is 52 px wide at
+     * 12 px from the edge now (`--map-rail`, index.css), and this container
+     * is transparent so the two GROUPS inside it carry the glass: the ground
+     * and the fullscreen above, then מיקומי with the zoom, which is the
+     * grouping the product owner asked for.
+     */
     const container = document.createElement('div')
-    // ★ W5 (2026-09-02) — FROSTED GLASS, like every other floating control on
-    //   the map (the legend, the pencil, the mode pill). An opaque white
-    //   slab is the one thing on this canvas that reads as "chrome bolted
-    //   on"; `glass` is the app's single definition of a control that sits
-    //   OVER imagery, so the stack wears it too. `overflow-hidden` is gone
-    //   with it: it clipped the blur's own edge.
-    container.className =
-      'maplibregl-ctrl glass flex flex-col gap-0.5 rounded-card p-1'
+    container.className = 'maplibregl-ctrl flex flex-col gap-2 bg-transparent shadow-none'
     container.setAttribute('role', 'group')
     container.setAttribute('aria-label', this.options.labels.group)
     container.setAttribute('data-testid', 'map-tools')
 
-    // ★ W5 — THE GROUND IS A SELECTOR, NOT A TOGGLE. One button that shows
-    //   the current ground and whose LABEL names the other one is honest but
-    //   unreadable at a glance on a moving iPad: the product owner could not
-    //   tell whether he was looking at "you are on map" or "press for map".
-    //   Two targets, מפה and לוויין, the active one filled — the same shape
-    //   as the mode pill, and no reading required.
-    this.baseGroup = document.createElement('div')
-    this.baseGroup.className = 'flex flex-col gap-0.5 pb-0.5'
-    this.baseGroup.setAttribute('role', 'group')
-    this.baseGroup.setAttribute('aria-label', this.options.labels.baseLabel)
-    this.baseGroup.dataset.testid = 'map-base'
+    const view = this.pill('map-tools-view')
 
-    this.vectorButton = this.button('map-tool-base', () => this.setBase('vector'))
-    this.satelliteButton = this.button('map-tool-satellite', () =>
-      this.setBase('satellite'),
-    )
-    this.baseGroup.append(this.vectorButton, this.satelliteButton)
-    container.append(this.baseGroup, this.rule())
+    /**
+     * ★ X3.2 — ONE GROUND BUTTON, NOT TWO. W5 split it into מפה / לוויין
+     *   because a single toggle whose LABEL named the other ground read as a
+     *   riddle. The product owner has now asked for the pair to go: two
+     *   targets for a binary is one target too many on a rail he drives with
+     *   a thumb. The answer to W5's objection is that the button now shows
+     *   the ground it would GIVE you — the satellite glyph while you are on
+     *   the map, the layers glyph while you are on imagery — which is the
+     *   convention every mapping application already teaches with its corner
+     *   thumbnail. Nothing has to be read.
+     */
+    this.baseButton = this.button('map-tool-base', () => this.toggleBase())
+    view.append(this.baseButton)
 
     if (this.options.fullscreen) {
       this.fullscreenButton = this.button('map-tool-fullscreen', () =>
         this.options.fullscreen?.onToggle(),
       )
-      container.append(this.fullscreenButton)
+      view.append(this.fullscreenButton)
     }
+    container.append(view)
+
+    /**
+     * ★ X3.3 — מיקומי IS GROUPED WITH THE ZOOM, at the same 2 px spacing as
+     *   + and −, and it is NOT tinted at rest. It used to sit with the view
+     *   controls and go solid accent the moment a fix arrived, which made a
+     *   passive "here I am" dot look like an armed mode.
+     */
+    const nav = this.pill('map-tools-nav')
 
     if (this.options.locate) {
       this.locateButton = this.button('map-tool-locate', () => this.toggleLocate())
-      container.append(this.locateButton)
+      nav.append(this.locateButton, this.rule())
     }
 
     const zoomIn = this.button('map-tool-zoom-in', () => map.zoomIn({ duration: 240 }))
@@ -183,7 +193,8 @@ export class MapTools implements IControl {
     zoomOut.title = this.options.labels.zoomOut
     zoomOut.setAttribute('aria-label', this.options.labels.zoomOut)
 
-    container.append(zoomIn, zoomOut)
+    nav.append(zoomIn, zoomOut)
+    container.append(nav)
 
     this.container = container
     this.paint()
@@ -191,6 +202,14 @@ export class MapTools implements IControl {
     window.addEventListener('online', this.onConnectivity)
     window.addEventListener('offline', this.onConnectivity)
     return container
+  }
+
+  /** One frosted group of the rail. Every one of them is exactly 52 px wide. */
+  private pill(testid: string): HTMLDivElement {
+    const el = document.createElement('div')
+    el.className = 'glass flex flex-col gap-0.5 rounded-card p-1'
+    el.dataset.testid = testid
+    return el
   }
 
   onRemove(): void {
@@ -240,8 +259,11 @@ export class MapTools implements IControl {
     return hr
   }
 
-  private setBase(next: BasemapBase): void {
-    if (next === this.base) return
+  private toggleBase(): void {
+    const next: BasemapBase = this.base === 'satellite' ? 'vector' : 'satellite'
+    // Offline, only ONE direction is dead — the imagery is a remote raster
+    // service and the vector archive is on the device. Same rule as ever,
+    // expressed on one button instead of two.
     if (next === 'satellite' && !navigator.onLine) return
     this.base = next
     this.options.onBase(next)
@@ -251,27 +273,19 @@ export class MapTools implements IControl {
   private paint(): void {
     const l = this.options.labels
 
-    if (this.vectorButton && this.satelliteButton) {
+    if (this.baseButton) {
       const satellite = this.base === 'satellite'
-      // ★ EACH BUTTON NAMES ITSELF. The icon is the ground it selects and the
-      //   label is that ground's name — no "press for the other one" riddle.
-      this.vectorButton.innerHTML = icon('layers')
-      this.vectorButton.title = l.vector
-      this.vectorButton.setAttribute('aria-label', l.vector)
-      this.vectorButton.setAttribute('aria-pressed', String(!satellite))
-      this.vectorButton.dataset.base = 'vector'
-      this.vectorButton.dataset.active = String(!satellite)
-      this.vectorButton.classList.toggle('bg-accent', !satellite)
-      this.vectorButton.classList.toggle('text-content-on-accent', !satellite)
-
-      this.satelliteButton.innerHTML = icon('satellite')
-      this.satelliteButton.title = l.satellite
-      this.satelliteButton.setAttribute('aria-label', l.satellite)
-      this.satelliteButton.setAttribute('aria-pressed', String(satellite))
-      this.satelliteButton.dataset.base = 'satellite'
-      this.satelliteButton.dataset.active = String(satellite)
-      this.satelliteButton.classList.toggle('bg-accent', satellite)
-      this.satelliteButton.classList.toggle('text-content-on-accent', satellite)
+      // ★ THE GLYPH AND THE LABEL ARE THE DESTINATION, not the current state:
+      //   on the vector map the button offers לוויין, on imagery it offers
+      //   מפה. `data-base` carries the CURRENT ground for the gates, which
+      //   need to know where the map is rather than where a tap would take it.
+      this.baseButton.innerHTML = icon(satellite ? 'layers' : 'satellite')
+      const label = satellite ? l.vector : l.satellite
+      this.baseButton.title = label
+      this.baseButton.setAttribute('aria-label', label)
+      this.baseButton.setAttribute('aria-pressed', String(satellite))
+      this.baseButton.dataset.base = satellite ? 'satellite' : 'vector'
+      this.baseButton.dataset.target = satellite ? 'vector' : 'satellite'
     }
 
     if (this.fullscreenButton && this.options.fullscreen) {
@@ -298,11 +312,10 @@ export class MapTools implements IControl {
       this.locateButton.setAttribute('aria-pressed', String(this.locateState === 'on'))
       this.locateButton.dataset.state = this.locateState
       this.locateButton.classList.toggle('animate-pulse', this.locateState === 'busy')
-      this.locateButton.classList.toggle('bg-accent', this.locateState === 'on')
-      this.locateButton.classList.toggle(
-        'text-content-on-accent',
-        this.locateState === 'on',
-      )
+      // ★ X3.3 — TRACKING IS ACCENT INK, NOT AN ACCENT SLAB. A filled blue
+      //   button in this rail is the visual weight of an armed tool; "I am
+      //   showing your dot" is not one.
+      this.locateButton.classList.toggle('text-accent-ink', this.locateState === 'on')
       this.locateButton.classList.toggle(
         'text-status-danger-ink',
         this.locateState === 'denied' || this.locateState === 'failed',
@@ -327,13 +340,14 @@ export class MapTools implements IControl {
       this.options.onBase('vector')
     }
     this.paint()
-    if (this.satelliteButton) {
-      // Offline, only ONE of the two targets is dead — the imagery is a
-      // remote raster service. מפה stays live, which is the whole point of
-      // splitting the toggle in two. Applied AFTER `paint()`, which sets the
-      // normal title.
-      this.satelliteButton.disabled = !online
-      if (!online) this.satelliteButton.title = this.options.labels.satelliteOffline
+    if (this.baseButton) {
+      // Offline the button is dead only while it would take you TO the
+      // imagery; on imagery-with-no-network the fallback above has already
+      // moved the map, so the button is offering the vector ground and stays
+      // live. Applied AFTER `paint()`, which sets the normal title.
+      const dead = !online && this.base !== 'satellite'
+      this.baseButton.disabled = dead
+      if (dead) this.baseButton.title = this.options.labels.satelliteOffline
     }
   }
 

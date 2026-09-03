@@ -725,7 +725,14 @@ export default function MapCanvas({
       center: [center?.lng ?? HOME_BASE.lng, center?.lat ?? HOME_BASE.lat],
       zoom,
       interactive,
-      attributionControl: { compact: true },
+      /* ★ X3.4 (2026-09-04) — MAPLIBRE'S ATTRIBUTION CONTROL IS OFF. It is
+         added at the PHYSICAL bottom-right, which in this Hebrew app is the
+         corner the legend owns, so the "i" ended up under the panel — the
+         same four-owners-one-corner defect `MapTools` fixed at the top. The
+         licence is a React button inside the legend's own row now; see
+         `MapAttribution`, which also carries why the obligation is still
+         met. */
+      attributionControl: false,
       cooperativeGestures: cooperative,
       // MapLibre ships the gesture hint in English; the app is Hebrew-only and
       // the string is real UI, so it comes from the locale file like the rest.
@@ -735,37 +742,6 @@ export default function MapCanvas({
         'CooperativeGesturesHandler.MobileHelpText': t('map.gestureMobile'),
       },
     })
-
-    /**
-     * ★ W5 (2026-09-02) — THE LICENCE LINE LIVES BEHIND THE "i".
-     *
-     * MapLibre renders the attribution as `<details open>`, so "©
-     * OpenStreetMap" sat permanently across the bottom of every map. It is a
-     * LICENCE OBLIGATION and it is not going away — but the obligation is
-     * that it be REACHABLE, not that it be printed over the Negev. Compact
-     * mode already ships the ⓘ summary; all that was missing was closing the
-     * details. It stays closed until somebody opens it, and once they have,
-     * this stops touching it (`toggle` sets the flag) — a control that
-     * re-closes itself under the reader's finger is worse than a printed
-     * line.
-     */
-    let attributionTouched = false
-    const collapseAttribution = () => {
-      const details = containerRef.current?.querySelector<HTMLDetailsElement>(
-        'details.maplibregl-ctrl-attrib',
-      )
-      if (!details) return
-      if (!details.dataset.loYanum) {
-        details.dataset.loYanum = '1'
-        details.addEventListener('toggle', () => {
-          if (details.open) attributionTouched = true
-        })
-      }
-      if (!attributionTouched) details.open = false
-    }
-    map.on('load', collapseAttribution)
-    map.on('styledata', collapseAttribution)
-    map.on('sourcedata', collapseAttribution)
 
     // ⚠️ MapLibre's own `NavigationControl` IS GONE (PO return 2026-09-02).
     //    Its zoom buttons are now two rows of the single vertical stack in

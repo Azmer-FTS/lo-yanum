@@ -111,9 +111,9 @@ const pill = await page.locator('[data-testid="map-mode-pill"]').boundingBox()
 check('farm-detail: the mode pill is at the physical bottom-left', !!pill && pill.x < 40 && pill.y + pill.height > 1032 - 120)
 await shot(page, '3-farm-detail')
 
-// 4 — satellite, layers open. W5: the ground is two targets, so it is the
-// satellite one that is pressed to get there and מפה that comes back.
-await page.locator('[data-testid="map-tool-satellite"]').click()
+// 4 — satellite, layers open. X3.2: the ground is ONE target again — the same
+// button goes there and comes back.
+await page.locator('[data-testid="map-tool-base"]').click()
 await page.waitForTimeout(6000)
 if ((await page.locator('[data-testid="map-legend"]').getAttribute('data-open')) === '0') {
   await page.locator('[data-testid="map-legend-toggle"]').click()
@@ -136,7 +136,7 @@ check('satellite: the layer switches are open', (await page.locator('[data-testi
 await shot(page, '4-farm-satellite-z14')
 
 // 5/6 — the tools
-await page.locator('[data-testid="map-tool-base"]').click()  // back to מפה
+await page.locator('[data-testid="map-tool-base"]').click()  // back to מפה (X3.2: same button)
 await page.waitForTimeout(2500)
 check('tools: folded by default', (await page.locator('[data-testid="draw-tools-panel"]').count()) === 0)
 await shot(page, '5-tools-folded')
