@@ -90,7 +90,10 @@
     "expandAll": "פתיחת הכול",
     "collapseAll": "סגירת הכול",
     "showingOf": "מוצגים {{shown}} מתוך {{total}}",
-    "actions": "פעולות"
+    "actions": "פעולות",
+    "durationHm": "{{h}} שעות {{m}} דקות",
+    "durationH": "{{h}} שעות",
+    "durationM": "{{m}} דקות"
   },
   "roles": {
     "coordinator": "רכז",

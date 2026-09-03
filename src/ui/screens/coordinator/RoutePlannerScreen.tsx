@@ -8,6 +8,7 @@ import {
   buildDayPlan,
   deleteTour,
   estimateDriveMinutes,
+  splitDuration,
   formatTime,
   fromDayKey,
   getAgendaEvents,
@@ -218,6 +219,18 @@ export function RoutePlannerScreen() {
 
   const contactOf = (farm: Farm) =>
     farm.contacts.find((c) => c.isPrimary) ?? farm.contacts[0] ?? null
+
+  /**
+   * X8.4 — "3 שעות 47 דקות", never "307 דק'". The arithmetic is
+   * `splitDuration` in core; the wording is the locale file's; this is the
+   * one line that joins them.
+   */
+  const duration = (minutes: number) => {
+    const { hours, minutes: mins } = splitDuration(minutes)
+    if (hours === 0) return t('common.durationM', { m: mins })
+    if (mins === 0) return t('common.durationH', { h: hours })
+    return t('common.durationHm', { h: hours, m: mins })
+  }
 
   return (
     <MapPanel
@@ -431,7 +444,23 @@ export function RoutePlannerScreen() {
         )}
       </section>
 
-      <section className="mb-4">
+      {/*
+        ★ X8 (2026-09-04) — THE THREE BLOCKS WERE ONE BLOCK.
+        =====================================================================
+        "סדר הנסיעה", "קביעת פגישות" and "ניווט" each printed the same
+        numbered list of the same farms in the same order — three times, one
+        under the other, differing only in which two controls hung off the
+        end of the row. The product owner scrolled past a screen and a half
+        of repetition to reach the Google Maps link.
+
+        ONE list now. A step is a step: its number, its farm, when he gets
+        there, how far it was — and then the three things he can do about it,
+        which is call the contact, book the visit, and start navigating. The
+        Waze explanation drops to a note under the block, because it explains
+        an icon rather than introducing a section, and the Google Maps link
+        keeps the foot of the screen it has always had.
+      */}
+      <section className="mb-6">
         <h2 className="pb-2.5 text-section text-content-primary">
           {t('route.order')}
         </h2>
@@ -440,207 +469,156 @@ export function RoutePlannerScreen() {
             <EmptyState icon="route" title={t('route.emptySelection')} />
           ) : (
             <>
-              <ol className="flex flex-col">
+              <ol className="flex flex-col divide-y divide-edge-subtle/60">
                 {route.stops.map((stop, i) => {
                   const planStop = plan.stops[i]
+                  const contact = contactOf(stop.farm)
+                  const waze = wazeSteps.find((w) => w.order === stop.order)
                   return (
                     <li
                       key={stop.farm.id}
                       onMouseEnter={() => setHoveredId(stop.farm.id)}
                       onMouseLeave={() => setHoveredId(null)}
-                      className={`flex items-center gap-2.5 rounded-field px-1.5 py-1.5 transition-colors duration-fast ${
-                        hoveredId === stop.farm.id ? 'bg-accent/10' : ''
-                      }`}
+                      /* X6 — `flex-wrap`: the action group drops to its own
+                         line rather than pushing the row past the panel. */
+                      className={`flex flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-field px-1.5 py-2
+                                  transition-colors duration-fast ${
+                                    hoveredId === stop.farm.id ? 'bg-accent/10' : ''
+                                  }`}
                     >
-                      <span className="numeric flex h-6 w-6 shrink-0 items-center justify-center rounded-pill bg-accent text-micro font-bold text-content-on-accent">
+                      <span className="numeric flex h-7 w-7 shrink-0 items-center justify-center rounded-pill bg-accent text-micro font-bold text-content-on-accent">
                         {stop.order}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-caption text-content-primary">
-                        {stop.farm.name}
-                      </span>
-                      {/* G9 — when the drive is simulated from a departure
-                          time, every stop has an expected arrival. */}
-                      {planStop && (
-                        <span className="ltr-nums numeric shrink-0 text-micro font-semibold text-accent-ink">
-                          {formatTime(planStop.arriveAt, locale)}
+
+                      <span className="min-w-[9rem] flex-1">
+                        <span
+                          className="block truncate text-caption font-medium text-content-primary"
+                          title={stop.farm.name}
+                        >
+                          {stop.farm.name}
                         </span>
-                      )}
-                      <span className="ltr-nums shrink-0 text-micro text-content-muted">
-                        {km(stop.legKm)} {t('common.km')}
+                        <span className="muted flex flex-wrap items-center gap-x-2 leading-tight">
+                          {/* G9 — with a departure time every stop has an
+                              expected arrival; without one, only the leg. */}
+                          {planStop && (
+                            <span className="ltr-nums numeric font-semibold text-accent-ink">
+                              {formatTime(planStop.arriveAt, locale)}
+                            </span>
+                          )}
+                          <span className="ltr-nums">
+                            {km(stop.legKm)} {t('common.km')}
+                          </span>
+                        </span>
+                      </span>
+
+                      <span className="flex shrink-0 items-center gap-1">
+                        {contact ? (
+                          <a
+                            href={telHref(contact.phone)}
+                            title={`${t('common.call')} · ${contact.name}`}
+                            aria-label={`${t('common.call')} · ${contact.name}`}
+                            className="flex h-9 w-9 items-center justify-center rounded-pill bg-surface-high text-content-primary
+                                       transition-all duration-fast ease-out hover:bg-gradient-accent hover:text-content-on-accent active:scale-95"
+                          >
+                            <Icon name="phone" size={15} />
+                          </a>
+                        ) : (
+                          <span
+                            title={t('route.noContact')}
+                            className="flex h-9 w-9 items-center justify-center text-content-muted/40"
+                          >
+                            <Icon name="phone" size={15} />
+                          </span>
+                        )}
+
+                        {planStop?.visitEvent ? (
+                          <button
+                            type="button"
+                            onClick={() => setEditVisitId(planStop.visitEvent?.id ?? null)}
+                            className="chip bg-status-violet/15 text-status-violet-ink transition-all duration-fast hover:brightness-95"
+                          >
+                            <Icon name="pin" size={11} />
+                            {t('route.visitPlanned')}
+                            <span className="ltr-nums">
+                              {formatTime(planStop.visitEvent.at, locale)}
+                            </span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={!planStop}
+                            onClick={() =>
+                              planStop &&
+                              setMeetingFor({
+                                farmId: stop.farm.id,
+                                at: planStop.arriveAt,
+                              })
+                            }
+                            className="btn-secondary py-1.5 text-micro disabled:opacity-40"
+                          >
+                            <Icon name="calendar" size={14} />
+                            {t('route.scheduleMeeting')}
+                          </button>
+                        )}
+
+                        {waze && (
+                          <a
+                            href={waze.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={t('common.openInWaze')}
+                            aria-label={t('common.openInWaze')}
+                            className="flex h-9 w-9 items-center justify-center rounded-pill bg-surface-high text-accent-ink
+                                       transition-all duration-fast ease-out hover:bg-gradient-accent hover:text-content-on-accent active:scale-95"
+                          >
+                            <Icon name="navigation" size={15} />
+                          </a>
+                        )}
                       </span>
                     </li>
                   )
                 })}
               </ol>
 
-              <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-edge-subtle pt-3">
-                <div>
-                  <dt className="muted">{t('route.roundTrip')}</dt>
-                  <dd className="ltr-nums numeric text-heading text-content-primary">
-                    {km(route.roundTripKm)} {t('common.km')}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="muted">{t('route.estimatedDrive')}</dt>
-                  <dd className="ltr-nums numeric text-heading text-content-primary">
-                    {estimateDriveMinutes(route.roundTripKm)}{' '}
-                    {t('common.minutesShort')}
-                  </dd>
-                </div>
+              {/* ★ X8.5 — THE TOTALS ARE A TABLE, NOT TWO LOOSE PARAGRAPHS.
+                  Same label scale, same figure scale, same baseline, one rule
+                  above them; and the duration is hours and minutes (X8.4). */}
+              <dl className="mt-3 grid gap-x-4 gap-y-2 border-t border-edge-subtle pt-3 [grid-template-columns:auto_1fr]">
+                <dt className="muted self-baseline">{t('route.roundTrip')}</dt>
+                <dd className="ltr-nums numeric self-baseline text-heading text-content-primary">
+                  {km(route.roundTripKm)} {t('common.km')}
+                </dd>
+                <dt className="muted self-baseline">{t('route.estimatedDrive')}</dt>
+                <dd className="numeric self-baseline text-heading text-content-primary">
+                  {duration(estimateDriveMinutes(route.roundTripKm))}
+                </dd>
               </dl>
             </>
           )}
         </div>
+
+        {route.stops.length > 0 && (
+          <>
+            {/* X8.2 — the Waze caveat is a footnote to the icon above, not a
+                section of its own. */}
+            <p className="muted mt-2 flex items-start gap-1.5">
+              <Icon name="navigation" size={12} className="mt-0.5 shrink-0" />
+              {t('route.wazeStepByStep')}
+            </p>
+
+            {/* X8.3 — and the whole-route hand-off stays at the foot. */}
+            <a
+              href={mapsUrl ?? undefined}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-secondary mt-2 w-full justify-center"
+            >
+              <Icon name="external" size={16} />
+              {t('route.openInGoogleMaps')}
+            </a>
+          </>
+        )}
       </section>
-
-      {/* G9.2 — "קביעת פגישות": book the day's humans against the computed
-          drive. One row per stop: call the farm's contact, or open a visit
-          pre-filled with THIS stop's expected arrival on THIS date. */}
-      {plan.stops.length > 0 && (
-        <section className="mb-4">
-          <h2 className="pb-1 text-section text-content-primary">
-            {t('route.meetingsPanel')}
-          </h2>
-          <p className="muted pb-2.5">{t('route.meetingsPanelHint')}</p>
-          <div className="card card-pad">
-            <ul className="flex flex-col">
-              {plan.stops.map((stop) => {
-                const contact = contactOf(stop.farm)
-                return (
-                  <li
-                    key={stop.farm.id}
-                    className="flex flex-wrap items-center gap-2 rounded-field px-1.5 py-2"
-                  >
-                    <span className="numeric flex h-6 w-6 shrink-0 items-center justify-center rounded-pill bg-accent text-micro font-bold text-content-on-accent">
-                      {stop.order}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-caption font-medium text-content-primary">
-                        {stop.farm.name}
-                      </span>
-                      <span className="muted ltr-nums block">
-                        {t('route.arriveAt')} ·{' '}
-                        {formatTime(stop.arriveAt, locale)}
-                      </span>
-                    </span>
-                    {contact ? (
-                      <a
-                        href={telHref(contact.phone)}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-surface-high px-3 py-1.5
-                                   text-micro font-semibold text-content-primary transition-all duration-fast ease-out
-                                   hover:bg-gradient-accent hover:text-content-on-accent active:scale-95"
-                      >
-                        <Icon name="phone" size={13} />
-                        <span className="max-w-28 truncate">{contact.name}</span>
-                      </a>
-                    ) : (
-                      <span className="muted shrink-0">
-                        {t('route.noContact')}
-                      </span>
-                    )}
-                    {stop.visitEvent ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setEditVisitId(stop.visitEvent?.id ?? null)
-                        }
-                        className="chip shrink-0 bg-status-violet/15 text-status-violet-ink transition-all duration-fast hover:brightness-95"
-                      >
-                        <Icon name="pin" size={11} />
-                        {t('route.visitPlanned')}
-                        <span className="ltr-nums">
-                          {formatTime(stop.visitEvent.at, locale)}
-                        </span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setMeetingFor({
-                            farmId: stop.farm.id,
-                            at: stop.arriveAt,
-                          })
-                        }
-                        className="btn-secondary shrink-0"
-                      >
-                        <Icon name="calendar" size={14} />
-                        {t('route.scheduleMeeting')}
-                      </button>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        </section>
-      )}
-
-      {/* D7.2 — NAVIGATION HAND-OFF, ASYMMETRIC ON PURPOSE.
-          The two apps are not two equivalent buttons, because they do not offer
-          the same thing: Google Maps takes the whole route in ONE link, Waze
-          needs one link per stop. Presenting them as a matched pair of buttons
-          implied a parity that does not exist and hid the step list underneath.
-          Now Waze is a single titled block holding its numbered list, and the
-          Google Maps action sits beside that block as one line. */}
-      {route.stops.length > 0 && (
-        <section className="mb-6">
-          <h2 className="pb-2.5 text-section text-content-primary">
-            {t('common.navigate')}
-          </h2>
-
-          <div className="card card-pad">
-            <div className="mb-2 flex items-center gap-2">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-field bg-accent/15 text-accent-ink">
-                <Icon name="pin" size={15} />
-              </span>
-              <p className="text-caption font-semibold text-content-primary">
-                {t('route.wazeBlockTitle')}
-              </p>
-            </div>
-            <p className="muted mb-2.5">{t('route.wazeStepByStep')}</p>
-
-            <ol className="flex flex-col gap-1">
-              {wazeSteps.map((step) => (
-                <li key={step.order}>
-                  <a
-                    href={step.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    onMouseEnter={() =>
-                      setHoveredId(route.stops[step.order - 1]?.farm.id ?? null)
-                    }
-                    onMouseLeave={() => setHoveredId(null)}
-                    className="flex items-center gap-2.5 rounded-field px-2 py-1.5
-                               transition-all duration-fast hover:bg-surface-high"
-                  >
-                    <span className="numeric flex h-5 w-5 shrink-0 items-center justify-center rounded-pill bg-gradient-accent text-micro font-bold text-content-on-accent">
-                      {step.order}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-caption text-content-primary">
-                      {step.farmName}
-                    </span>
-                    <Icon
-                      name="external"
-                      size={13}
-                      className="shrink-0 text-content-muted"
-                    />
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          <a
-            href={mapsUrl ?? undefined}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-secondary mt-2 w-full justify-center"
-          >
-            <Icon name="external" size={16} />
-            {t('route.openInGoogleMaps')}
-          </a>
-        </section>
-      )}
         </div>
       </div>
 

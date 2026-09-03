@@ -156,3 +156,26 @@ export function routePolyline(route: PlannedRoute): LatLng[] {
 export function estimateDriveMinutes(km: number): number {
   return Math.round(((km * 1.35) / 72) * 60)
 }
+
+/**
+ * ★ X8.4 (2026-09-04) — A DURATION IS HOURS AND MINUTES, NEVER RAW MINUTES.
+ *
+ * The planner printed "307 דק'" for a day's driving. Nobody reads that as
+ * five hours and seven minutes; they read it as a number and move on, which
+ * is the opposite of what a total is for. Split here, in `core`, because it
+ * is arithmetic and because the wording of it belongs to the locale file
+ * rather than to this function.
+ *
+ * Negative and non-finite inputs collapse to zero: a total that has gone
+ * wrong upstream should print "0" rather than "-1 שעות".
+ */
+export function splitDuration(totalMinutes: number): {
+  hours: number
+  minutes: number
+} {
+  if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) {
+    return { hours: 0, minutes: 0 }
+  }
+  const whole = Math.round(totalMinutes)
+  return { hours: Math.floor(whole / 60), minutes: whole % 60 }
+}
