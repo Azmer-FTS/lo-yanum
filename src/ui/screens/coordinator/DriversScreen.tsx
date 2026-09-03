@@ -17,6 +17,7 @@ import { Avatar } from '../../components/Avatar'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
 import { OverflowMenu } from '../../components/OverflowMenu'
+import { RosterHead, RowAction } from '../../components/roster'
 import {
   EmptyState,
   KpiChip,
@@ -112,20 +113,6 @@ export function DriversScreen() {
   const { listRef, virtualizer, margin } = useWindowTable(
     filtered.length,
     () => ROW_HEIGHT,
-  )
-
-  const HeaderCell = ({
-    label,
-    className = '',
-  }: {
-    label: string
-    className?: string
-  }) => (
-    <span
-      className={`text-micro font-semibold uppercase tracking-wide text-content-muted ${className}`}
-    >
-      {label}
-    </span>
   )
 
   return (
@@ -249,31 +236,25 @@ export function DriversScreen() {
         }
       >
         {filtered.length > 0 && (
+          /* X5 — one `--roster-cols`, worn by this header and by every row. */
+          <div className="roster roster-drivers">
           <div
-            className="hidden items-center gap-3 rounded-t-card border-b border-edge-subtle
-                       bg-surface-overlay/95 px-4 py-2.5 backdrop-blur lg:flex"
+            className="roster-row rounded-t-card border-b border-edge-subtle
+                       bg-surface-overlay/95 px-4 py-2.5 backdrop-blur"
           >
-            <HeaderCell label={t('volunteers.colName')} className="w-56" />
-            <HeaderCell label={t('driver.vehicle')} className="w-52" />
-            <HeaderCell label={t('driver.seats')} className="w-16" />
-            <HeaderCell label={t('volunteers.colLocality')} className="w-32" />
-            <HeaderCell label={t('volunteers.colPhone')} className="w-36" />
-            {/* P0bis.5a — the address, at 2xl only; see the volunteers roster. */}
-            <HeaderCell
-              label={t('form.email')}
-              className="hidden w-48 2xl:block"
-            />
-            <HeaderCell
-              label={t('driver.availabilityNote')}
-              className="hidden flex-1 xl:block"
-            />
-            <HeaderCell
-              label={t('volunteers.colActions')}
-              className="ms-auto"
-            />
+            <RosterHead label={t('volunteers.colName')} />
+            <RosterHead label={t('driver.vehicle')} tier="lg" />
+            <RosterHead label={t('driver.seats')} tier="md" />
+            <RosterHead label={t('volunteers.colLocality')} tier="lg" />
+            <RosterHead label={t('volunteers.colPhone')} tier="md" />
+            {/* P0bis.5a — the address, on the widest reading only. */}
+            <RosterHead label={t('form.email')} tier="xl" />
+            <RosterHead label={t('driver.availabilityNote')} tier="xl" />
+            <RosterHead label={t('volunteers.colActions')} className="text-end" />
+          </div>
           </div>
         )}
-      
+
       </ListTop>
 
       {/* See the volunteers roster: MapSplit UNMOUNTS this column in `full`
@@ -282,7 +263,7 @@ export function DriversScreen() {
       {filtered.length === 0 ? (
         <EmptyState icon="car" title={t('driver.empty')} />
       ) : (
-        <div className="card lg:rounded-t-none">
+        <div className="roster roster-drivers card lg:rounded-t-none">
           <div
             ref={listRef}
             style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
@@ -300,162 +281,126 @@ export function DriversScreen() {
                     height: item.size,
                     transform: `translateY(${item.start - margin}px)`,
                   }}
-                  className="flex items-center border-b border-edge-subtle/50 px-4
+                  /* X5 — ONE row markup, tracks by container width; see the
+                     volunteers roster for why the two-markup version drifted. */
+                  className="roster-row border-b border-edge-subtle/50 px-4
                              transition-colors duration-fast hover:bg-surface-high/60"
                 >
-                  {/* Desktop: dense table row */}
-                  <div className="hidden w-full items-center gap-3 lg:flex">
-                    <div className="flex w-56 min-w-0 items-center gap-2.5">
-                      <Avatar photo={d.photo} name={d.name} size="xs" />
-                      <p className="min-w-0 flex-1 truncate text-caption font-medium text-content-primary">
-                        {d.name}
-                      </p>
-                      {d.volunteerId && (
-                        <span
-                          className="shrink-0 text-status-violet-ink"
-                          title={t('driver.alsoVolunteer')}
-                          aria-label={t('driver.alsoVolunteer')}
-                        >
-                          <Icon name="shield" size={13} />
-                        </span>
-                      )}
-                    </div>
-                    <span className="w-52 truncate text-caption text-content-secondary">
-                      {d.vehicle || t('driver.privateCar')}
-                    </span>
-                    <span className="numeric w-16 text-caption text-content-primary">
-                      {d.seats}
-                    </span>
-                    <span className="w-32 truncate text-caption text-content-secondary">
-                      {d.locality}
-                    </span>
-                    <span className="ltr-nums w-36 whitespace-nowrap text-micro text-content-secondary">
-                      {d.phone}
-                    </span>
-                    <span className="hidden w-48 min-w-0 2xl:block">
-                      {d.email ? (
-                        <a
-                          href={mailtoHref(d.email)}
-                          dir="ltr"
-                          title={d.email}
-                          className="ltr-nums block truncate text-micro text-content-secondary hover:text-accent-ink hover:underline"
-                        >
-                          {d.email}
-                        </a>
-                      ) : (
-                        <span className="text-micro text-content-muted/50">—</span>
-                      )}
-                    </span>
-                    <span className="hidden min-w-0 flex-1 truncate text-micro text-content-muted xl:block">
-                      {d.availabilityNote || '—'}
-                    </span>
-                    <span className="ms-auto flex shrink-0 items-center gap-1">
-                      <a
-                        href={telHref(d.phone)}
-                        aria-label={t('common.call')}
-                        title={t('common.call')}
-                        className="rounded-field p-1.5 text-content-muted transition-colors duration-fast hover:bg-surface-overlay hover:text-content-primary"
-                      >
-                        <Icon name="phone" size={16} />
-                      </a>
-                      <a
-                        href={whatsappHref(d.phone)}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={t('common.whatsapp')}
-                        title={t('common.whatsapp')}
-                        className="rounded-field p-1.5 text-content-muted transition-colors duration-fast hover:bg-surface-overlay hover:text-content-primary"
-                      >
-                        <Icon name="whatsapp" size={16} />
-                      </a>
-                      {d.email && (
-                        <a
-                          href={mailtoHref(d.email)}
-                          aria-label={t('common.email')}
-                          title={d.email}
-                          className="rounded-field p-1.5 text-content-muted transition-colors duration-fast hover:bg-surface-overlay hover:text-content-primary"
-                        >
-                          <Icon name="mail" size={16} />
-                        </a>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setEditing(d)}
-                        aria-label={t('common.edit')}
-                        title={t('common.edit')}
-                        data-testid="driver-edit"
-                        className="rounded-field p-1.5 text-content-muted transition-colors duration-fast hover:bg-surface-overlay hover:text-content-primary"
-                      >
-                        <Icon name="edit" size={16} />
-                      </button>
-                      {/* PO POINT 8 — refused while he is driving anybody, and
-                          for a DUAL HAT the alternative offered is to take the
-                          driver hat off rather than to delete a volunteer. */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          del.ask('driver', d.id, () => deleteDriver(d.id))
-                        }
-                        aria-label={t('deletion.action')}
-                        title={t('deletion.action')}
-                        data-testid="driver-delete"
-                        className="rounded-field p-1.5 text-content-muted transition-colors duration-fast hover:bg-status-danger/10 hover:text-status-danger-ink"
-                      >
-                        <Icon name="trash" size={16} />
-                      </button>
-                    </span>
-                  </div>
-
-                  {/* Mobile: compact card row */}
-                  <div className="flex w-full items-center gap-3 lg:hidden">
-                    <Avatar photo={d.photo} name={d.name} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-caption font-medium text-content-primary">
-                          {d.name}
-                        </p>
+                  {/* 1 — name, with what has lost its column merged under it. */}
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <Avatar photo={d.photo} name={d.name} size="xs" />
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-1.5 truncate text-caption font-medium text-content-primary">
+                        <span className="truncate">{d.name}</span>
                         {d.volunteerId && (
-                          <span className="shrink-0 text-status-violet-ink">
-                            <Icon name="shield" size={12} />
+                          <span
+                            className="shrink-0 text-status-violet-ink"
+                            title={t('driver.alsoVolunteer')}
+                            aria-label={t('driver.alsoVolunteer')}
+                          >
+                            <Icon name="shield" size={13} />
                           </span>
                         )}
-                      </div>
-                      <p className="truncate text-micro text-content-muted">
-                        {d.vehicle || t('driver.privateCar')} ·{' '}
-                        <span className="numeric">{d.seats}</span>{' '}
-                        {t('driver.seats')} · {d.locality}
+                      </p>
+                      <p
+                        className="truncate text-micro text-content-muted"
+                        title={`${d.vehicle || t('driver.privateCar')} · ${d.seats} · ${d.locality} · ${d.phone}`}
+                      >
+                        <span data-merge="lg" style={{ ['--col-display' as string]: 'inline' }}>
+                          {d.vehicle || t('driver.privateCar')} · {d.locality}
+                        </span>
+                        <span data-merge="md" style={{ ['--col-display' as string]: 'inline' }}>
+                          {' '}· <span className="numeric">{d.seats}</span>{' '}
+                          {t('driver.seats')} · <span className="ltr-nums">{d.phone}</span>
+                        </span>
                       </p>
                     </div>
-                    <span className="flex shrink-0 items-center gap-1">
-                      <a
-                        href={telHref(d.phone)}
-                        aria-label={t('common.call')}
-                        className="rounded-field p-2 text-content-muted hover:bg-surface-high hover:text-content-primary"
-                      >
-                        <Icon name="phone" size={16} />
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => setEditing(d)}
-                        aria-label={t('common.edit')}
-                        data-testid="driver-edit"
-                        className="rounded-field p-2 text-content-muted hover:bg-surface-high hover:text-content-primary"
-                      >
-                        <Icon name="edit" size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          del.ask('driver', d.id, () => deleteDriver(d.id))
-                        }
-                        aria-label={t('deletion.action')}
-                        data-testid="driver-delete"
-                        className="rounded-field p-2 text-content-muted hover:bg-status-danger/10 hover:text-status-danger-ink"
-                      >
-                        <Icon name="trash" size={16} />
-                      </button>
-                    </span>
                   </div>
+
+                  {/* 2 — vehicle */}
+                  <span data-col="lg" className="truncate text-caption text-content-secondary">
+                    {d.vehicle || t('driver.privateCar')}
+                  </span>
+
+                  {/* 3 — seats */}
+                  <span data-col="md" className="numeric truncate text-caption text-content-primary">
+                    {d.seats}
+                  </span>
+
+                  {/* 4 — locality */}
+                  <span data-col="lg" className="truncate text-caption text-content-secondary">
+                    {d.locality}
+                  </span>
+
+                  {/* 5 — phone */}
+                  <span data-col="md" className="ltr-nums truncate text-micro text-content-secondary">
+                    {d.phone}
+                  </span>
+
+                  {/* 6 — email */}
+                  <span data-col="xl" className="min-w-0">
+                    {d.email ? (
+                      <a
+                        href={mailtoHref(d.email)}
+                        dir="ltr"
+                        title={d.email}
+                        className="ltr-nums block truncate text-micro text-content-secondary hover:text-accent-ink hover:underline"
+                      >
+                        {d.email}
+                      </a>
+                    ) : (
+                      <span className="text-micro text-content-muted/50">—</span>
+                    )}
+                  </span>
+
+                  {/* 7 — availability note */}
+                  <span
+                    data-col="xl"
+                    className="truncate text-micro text-content-muted"
+                    title={d.availabilityNote || undefined}
+                  >
+                    {d.availabilityNote || '—'}
+                  </span>
+
+                  {/* 8 — actions */}
+                  <span data-actions="" className="flex items-center justify-end gap-0.5">
+                    <RowAction
+                      icon="phone"
+                      href={telHref(d.phone)}
+                      label={t('common.call')}
+                    />
+                    <span data-col="md" style={{ ['--col-display' as string]: 'contents' }}>
+                      <RowAction
+                        icon="whatsapp"
+                        href={whatsappHref(d.phone)}
+                        external
+                        label={t('common.whatsapp')}
+                      />
+                      {d.email && (
+                        <RowAction
+                          icon="mail"
+                          href={mailtoHref(d.email)}
+                          label={t('common.email')}
+                        />
+                      )}
+                    </span>
+                    <RowAction
+                      icon="edit"
+                      onClick={() => setEditing(d)}
+                      testId="driver-edit"
+                      label={t('common.edit')}
+                    />
+                    {/* PO POINT 8 — refused while he is driving anybody, and for
+                        a DUAL HAT the alternative offered is to take the driver
+                        hat off rather than to delete a volunteer. */}
+                    <RowAction
+                      icon="trash"
+                      danger
+                      onClick={() => del.ask('driver', d.id, () => deleteDriver(d.id))}
+                      testId="driver-delete"
+                      label={t('deletion.action')}
+                    />
+                  </span>
                 </div>
               )
             })}

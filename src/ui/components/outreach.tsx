@@ -249,7 +249,13 @@ export function OutreachPanel({
                 <button
                   type="button"
                   onClick={() => setOpenFor(openFor === key ? null : key)}
-                  className="flex min-w-0 flex-1 items-center gap-2 text-start"
+                  /* X6 — `min-w-[11rem]` IS WHAT MAKES THE ROW WRAP. With
+                     `min-w-0` this button gave way to the last pixel — measured
+                     at 22 px inside a 222 px row at 25 % of the seam — and the
+                     two pills inside it were then squeezed into two lines each.
+                     A floor turns the squeeze into a line break of the row,
+                     which is what `flex-wrap` on the parent is there for. */
+                  className="flex min-w-[11rem] flex-1 items-center gap-2 text-start"
                   aria-expanded={openFor === key}
                 >
                   <Icon

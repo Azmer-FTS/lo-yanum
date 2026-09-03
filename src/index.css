@@ -1240,3 +1240,264 @@
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   X5 (2026-09-04) — THE ROSTERS ARE A GRID, AND THE GRID IS MEASURED ON THE
+   PANEL RATHER THAN ON THE WINDOW
+   ---------------------------------------------------------------------------
+   ★ WHAT WAS WRONG, AND IT WAS ONE CAUSE WITH FOUR SYMPTOMS. The three
+     rosters were flex rows of fixed-width spans — `w-56`, `w-44`, `w-32` —
+     with the header row written separately from the data row. Two things
+     follow from that and the product owner reported both:
+
+       · A flex item's default `flex-shrink` is 1. So the moment the row did
+         not fit, EVERY cell gave way — but the header's cells and the data
+         row's cells are different elements with different content, so they
+         gave way by different amounts. That is "les colonnes ne sont pas
+         alignées", exactly, and it appeared as soon as he dragged the seam.
+       · The breakpoints were VIEWPORT breakpoints (`lg:`, `xl:`, `2xl:`).
+         The width that decides whether nine columns fit is the PANEL's, and
+         since P0bis.2 the panel is a width he drags: at 25 % of a 1376 px
+         iPad the `lg` row is 330 px wide and still trying to draw nine
+         columns. That is the crushed cells, the deformed pills and the
+         clipped icons, all at once.
+
+   ★ SO: ONE `grid-template-columns` PER TIER, DECLARED ONCE, WORN BY THE
+     HEADER AND BY EVERY ROW. Alignment stops being something to maintain and
+     becomes something the layout cannot get wrong. And the tiers are
+     `@container` queries on the roster's own box, so the answer to "does this
+     column fit" is asked of the thing that actually changes.
+
+   ★ AND NOTHING DISAPPEARS WITHOUT GOING SOMEWHERE (the product owner's own
+     wording: the columns MERGE). A cell carries `data-col="<tier>"` — the
+     narrowest tier it is shown at — and the compact reading carries the same
+     fact as a subline under the name with `data-merge="<tier>"`, which hides
+     itself the moment its column appears. Below the tier the datum is under
+     the name; at and above it, it is in its column. It is never nowhere.
+   --------------------------------------------------------------------------- */
+
+.roster {
+  container-type: inline-size;
+}
+
+.roster-row {
+  display: grid;
+  grid-template-columns: var(--roster-cols);
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* `min-width: 0` on every track's content, or one `nowrap` phone number makes
+   its column refuse to shrink and pushes the whole grid past the panel — the
+   same lesson as `minmax(0, 1fr)` in `.pair-grid`. */
+.roster-row > * {
+  min-width: 0;
+}
+
+/* ⚠️ THE ACTIONS TRACK IS THE ONE EXCEPTION TO `min-width: 0`, and the reason
+   is what the product owner saw as "icônes tronquées". A grid `auto` track can
+   be squeezed to its MIN-content, and a flex row of icon buttons has a
+   min-content of almost nothing because each button is happy to shrink — so at
+   25 % of the seam the five actions were laid out inside 36 px on top of each
+   other. `max-content` on this cell alone makes the icons the row's hard floor
+   and lets the NAME be the thing that gives way, which is the right one: a
+   truncated name still carries a `title`, a clipped delete button carries
+   nothing. */
+.roster-row > [data-actions] {
+  min-width: max-content;
+}
+
+/* A cell is hidden until its tier is reached; a merged subline is shown until
+   its tier is reached. `--col-display` lets a cell that must be a flex row say
+   so without every tier rule having to know. */
+.roster [data-col] {
+  display: none;
+}
+
+.roster [data-col='base'],
+.roster [data-merge] {
+  display: var(--col-display, block);
+}
+
+@container (min-width: 44rem) {
+  .roster [data-col='md'] {
+    display: var(--col-display, block);
+  }
+
+  .roster [data-merge='md'] {
+    display: none;
+  }
+}
+
+@container (min-width: 60rem) {
+  .roster [data-col='lg'] {
+    display: var(--col-display, block);
+  }
+
+  .roster [data-merge='lg'] {
+    display: none;
+  }
+}
+
+@container (min-width: 78rem) {
+  .roster [data-col='xl'] {
+    display: var(--col-display, block);
+  }
+
+  .roster [data-merge='xl'] {
+    display: none;
+  }
+}
+
+/* --- The three rosters' own tracks -----------------------------------------
+   ⚠️ THE TRACKS ARE DECLARED ON THE ROW, NOT ON THE CONTAINER, AND THAT IS A
+      RULE OF CONTAINER QUERIES RATHER THAN A STYLE CHOICE. An element is
+      never its own query container: `@container … { .roster-volunteers { … } }`
+      would ask about the roster's PARENT and silently never match. So the
+      container is the wrapper (`.roster .roster-<name>`) and every rule below
+      targets `.roster-row` INSIDE it.
+   -------------------------------------------------------------------------- */
+
+/* volunteers — name · yeshiva · locality · phone · email · licence ·
+   availability · guards · status · last activity · actions */
+.roster-volunteers .roster-row {
+  --roster-cols: minmax(0, 1fr) auto;
+}
+
+@container (min-width: 44rem) {
+  .roster-volunteers .roster-row {
+    --roster-cols: minmax(0, 1fr) 8.5rem 6rem auto;
+  }
+}
+
+@container (min-width: 60rem) {
+  .roster-volunteers .roster-row {
+    --roster-cols: minmax(0, 1.4fr) minmax(0, 1fr) 7rem 8.5rem 3.5rem 6rem auto;
+  }
+}
+
+@container (min-width: 78rem) {
+  .roster-volunteers .roster-row {
+    --roster-cols: minmax(0, 1.3fr) minmax(0, 0.9fr) 6.5rem 8.5rem minmax(0, 0.9fr)
+      4.5rem 8rem 3.5rem 6rem 6.5rem auto;
+  }
+}
+
+/* drivers — name · vehicle · seats · locality · phone · email · note · actions */
+.roster-drivers .roster-row {
+  --roster-cols: minmax(0, 1fr) auto;
+}
+
+@container (min-width: 44rem) {
+  .roster-drivers .roster-row {
+    --roster-cols: minmax(0, 1fr) 3.5rem 8.5rem auto;
+  }
+}
+
+@container (min-width: 60rem) {
+  .roster-drivers .roster-row {
+    --roster-cols: minmax(0, 1.3fr) minmax(0, 1fr) 3.5rem 7rem 8.5rem auto;
+  }
+}
+
+@container (min-width: 78rem) {
+  .roster-drivers .roster-row {
+    --roster-cols: minmax(0, 1.2fr) minmax(0, 1fr) 3.5rem 6.5rem 8.5rem
+      minmax(0, 0.9fr) minmax(0, 0.9fr) auto;
+  }
+}
+
+/* farms — name · locality · region · type · status · dunams · contacts ·
+   next visit · chevron */
+.roster-farms .roster-row {
+  --roster-cols: minmax(0, 1fr) auto;
+}
+
+@container (min-width: 44rem) {
+  .roster-farms .roster-row {
+    --roster-cols: minmax(0, 1fr) 7.5rem 6.5rem auto;
+  }
+}
+
+@container (min-width: 60rem) {
+  .roster-farms .roster-row {
+    --roster-cols: minmax(0, 1.4fr) minmax(0, 1fr) 5.5rem 7.5rem 6.5rem auto;
+  }
+}
+
+@container (min-width: 78rem) {
+  .roster-farms .roster-row {
+    --roster-cols: minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 0.9fr) 5.5rem 7.5rem
+      7.5rem 3.5rem 6.5rem auto;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   X5.2 — A STATUS PILL IS ITS OWN WIDTH, ALWAYS
+   ---------------------------------------------------------------------------
+   `.chip` is `inline-flex`, which is intrinsically sized — but a chip dropped
+   straight into a flex or grid CELL inherits that box's stretch, and the
+   product owner saw pills pulled tall in one column and squashed flat in the
+   next. Three declarations make it impossible: it never grows, it never
+   stretches to its cell's height, and it never grows past its cell either.
+   --------------------------------------------------------------------------- */
+.chip {
+  flex: 0 0 auto;
+  align-self: center;
+  justify-self: start;
+  max-width: 100%;
+  /* ⚠️ AND IT NEVER WRAPS. `max-width: 100%` alone stops a pill from widening
+     its box and turns the squeeze into a SECOND LINE instead — a 67 px pill
+     40 px tall, which is the "pilules déformées" the product owner saw, in the
+     other direction. A pill is one line by definition; when there is not room
+     for it, the answer is for the ROW to wrap (see X6 above), never for the
+     pill to. */
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+   X6 (2026-09-04) — WHAT WAS ACTUALLY WIDENING THE PAGE
+   ---------------------------------------------------------------------------
+   The product owner diagnosed the sideways scroll himself and he was right:
+   it is blocks that do not wrap. Two families, and the fix is the same shape
+   for both — say the minimum out loud instead of inheriting `auto`.
+
+   · ACTION GROUPS. `ContactActions`' trio is `flex shrink-0` with three or
+     four 40 px targets and 6 px gaps: 175 px that, by declaration, refuses to
+     give way. In a farm's contact card inside a 25 %-seam panel there is not
+     175 px, so the row pushed its card, the card pushed the column and the
+     PAGE scrolled. `flex-wrap` lets the fourth button drop to a second line,
+     which costs 40 px of height nobody minds and stops the page moving.
+
+   · FIELDS, DATES ABOVE ALL. `.input[type=date]` was already zeroed (N7.1),
+     but only where the class is worn. A date input's intrinsic minimum comes
+     from WebKit's own picker chrome, so it applies to the ELEMENT and not to
+     a class — a field that forgets `.input` is a field that widens the page
+     on an iPad and nowhere else.
+
+   ⚠️ NEITHER OF THESE IS THE GATE. `bun run layout` measures the page's
+      `scrollWidth` against the viewport at every viewport × seam position;
+      these two rules are what make it pass, and the gate is what keeps the
+      next block from undoing them.
+   --------------------------------------------------------------------------- */
+
+[data-contact-actions] {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+input[type='date'],
+input[type='time'],
+input[type='datetime-local'] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* A `<label>` wrapping a field is a block that has to be allowed to shrink;
+   `min-width: auto` on a flex item is what carries a date field's intrinsic
+   minimum up into the row. */
+label:has(> input),
+label:has(> select),
+label:has(> textarea) {
+  min-width: 0;
+}

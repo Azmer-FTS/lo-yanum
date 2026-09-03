@@ -384,6 +384,23 @@ interface Report {
   truncated: Array<{ tag: string; text: string }>
 }>
   collisions: Array<{ a: string; b: string }>
+  /**
+   * ★ X5 (2026-09-04) — THE ROSTERS' TWO FAILURE MODES, MEASURED.
+   *
+   * `crushed`: a `.roster-row` cell that is on screen, has content, and is
+   * under 24 px wide — the shape of "les colonnes sont écrasées". A grid track
+   * can be squeezed to its min-content, and a flex row of icon buttons has a
+   * min-content of nearly nothing, which is how five actions ended up inside
+   * 36 px on top of each other at 25 % of the seam.
+   *
+   * `deformedPills`: a `.chip` whose own content does not fit it, or which has
+   * been pulled to more than two lines' worth of height by its cell's stretch.
+   * "Les pilules de statut se déforment", exactly, and both directions of it.
+   *
+   * Both are judged at EVERY seam stop, because the seam is what creates them.
+   */
+  crushed: Array<{ tag: string; width: number }>
+  deformedPills: Array<{ text: string; w: number; h: number }>
   /** A30 — page height as a multiple of the viewport. */
   heightRatio: number
   /** A30 — long tables/lists with no bounded scroll container above them. */
@@ -439,11 +456,45 @@ function audit(): Report {
   de.scrollLeft = restore
   const scrollRange = Math.abs(maxScroll - minScroll)
 
+  /**
+   * ★ X6 (2026-09-04) — "WIDER THAN THE VIEWPORT" WAS ONLY HALF THE QUESTION.
+   *
+   * The other half is an element of ORDINARY width that STICKS OUT: a 40 px
+   * button at x = 1010 on a 1032 px screen adds 18 px of scrollWidth and is
+   * not wide by any measure. This gate reported "scrollWidth 1047 vs 1032"
+   * and then listed nothing, which is the worst possible result — a real
+   * defect with no name on it. An element that ends past the viewport (or
+   * starts before it, which is where an RTL overflow goes) is now named too.
+   *
+   * `position: fixed` is excluded: it does not contribute to `scrollWidth`,
+   * so a fixed rail deliberately bled to the edge is not this defect.
+   */
+  /**
+   * ⚠️ AND IT ONLY COUNTS IF NOTHING ABOVE IT CLIPS. A map marker sits at the
+   *    coordinates it sits at; `getBoundingClientRect` reports where it WOULD
+   *    be even when an `overflow: hidden` ancestor is already cutting it off,
+   *    and a clipped box contributes nothing to `scrollWidth`. Without this
+   *    walk the gate names every pin near a panel's edge and the real culprit
+   *    is the seventh line down.
+   */
+  const clipped = (el: Element): boolean => {
+    let p = el.parentElement
+    while (p && p !== document.documentElement) {
+      const o = getComputedStyle(p).overflowX
+      if (o !== 'visible') return true
+      p = p.parentElement
+    }
+    return false
+  }
+
   const wide = [...document.querySelectorAll('body *')]
     .filter((el) => {
       const r = el.getBoundingClientRect()
+      if (r.height <= 0) return false
+      if (getComputedStyle(el).position === 'fixed') return false
       // 1 px of slack absorbs sub-pixel rounding on fractional layouts.
-      return r.width > vw + 1 && r.height > 0
+      const out = r.width > vw + 1 || r.right > vw + 1 || r.left < -1
+      return out && !clipped(el)
     })
     .map((el) => ({
       tag: label(el),
@@ -751,10 +802,45 @@ function audit(): Report {
     .map((el) => ({ tag: label(el), text: (el.textContent ?? '').trim().slice(0, 20) }))
     .slice(0, 8)
 
+  // X5 — crushed roster cells and deformed status pills.
+  const crushed: Array<{ tag: string; width: number }> = []
+  for (const row of document.querySelectorAll<HTMLElement>('.roster-row')) {
+    for (const cell of row.children) {
+      const el = cell as HTMLElement
+      const st = getComputedStyle(el)
+      if (st.display === 'none' || st.visibility === 'hidden') continue
+      const r = el.getBoundingClientRect()
+      if (r.width <= 0 || r.height <= 0) continue
+      const hasContent = (el.textContent ?? '').trim().length > 0 || el.children.length > 0
+      if (hasContent && r.width < 24) {
+        crushed.push({ tag: label(el), width: Math.round(r.width) })
+      }
+    }
+  }
+
+  const deformedPills: Array<{ text: string; w: number; h: number }> = []
+  for (const el of document.querySelectorAll<HTMLElement>('.chip')) {
+    const r = el.getBoundingClientRect()
+    if (r.width <= 0 || r.height <= 0) continue
+    const squashed = el.scrollWidth > el.clientWidth + 1
+    // A chip is one line of `micro` plus padding: ~24 px. Past 40 it has been
+    // stretched by a cell rather than sized by its own content.
+    const stretched = r.height > 40
+    if (squashed || stretched) {
+      deformedPills.push({
+        text: (el.textContent ?? '').trim().slice(0, 16),
+        w: Math.round(r.width),
+        h: Math.round(r.height),
+      })
+    }
+  }
+
   return {
     smallFields: smallFields.slice(0, 6),
     coarsePointer,
     escapedFigures,
+    crushed: crushed.slice(0, 6),
+    deformedPills: deformedPills.slice(0, 6),
     scrollWidth: document.documentElement.scrollWidth,
     innerWidth: vw,
     scrollRange,
@@ -949,10 +1035,16 @@ for (const name of RUNS) {
       const cutOff = report.truncated.length > 0
       // W2 — judged at EVERY stop, like the overflow it used to cause.
       const escaped = report.escapedFigures.length > 0
+      // X5 — the seam is what crushes a column and deforms a pill, so both are
+      // judged at every stop rather than at the default one.
+      const crushedCols = report.crushed.length > 0
+      const deformed = report.deformedPills.length > 0
       const ok =
         !overflow &&
         !cutOff &&
         !escaped &&
+        !crushedCols &&
+        !deformed &&
         !tooTall &&
         !gradientWrong &&
         !clockCovered &&
@@ -976,12 +1068,25 @@ for (const name of RUNS) {
         console.log(
           `      HORIZONTAL SCROLL: scrollWidth ${report.scrollWidth} vs window ${report.innerWidth}, slid ${report.scrollRange}px`,
         )
+        // X6 — NAME THE CULPRIT AT EVERY SEAM STOP, not only at the default
+        // one. An overflow that appears only at 75 % is exactly the kind this
+        // gate exists for, and "scrollWidth is 15px too big" with no element
+        // named is a morning of bisecting.
+        for (const w of report.wide) {
+          console.log(`      → wider than viewport: ${w.tag} (${w.width}px)`)
+        }
       }
       for (const c of report.truncated) {
         console.log(`      U7 text cut with no recourse: ${c.tag} "${c.text}"`)
       }
       for (const f of report.escapedFigures) {
         console.log(`      W2 figure escapes its card: ${f.tag} "${f.text}"`)
+      }
+      for (const c of report.crushed) {
+        console.log(`      X5 roster column crushed to ${c.width}px: ${c.tag}`)
+      }
+      for (const p of report.deformedPills) {
+        console.log(`      X5 status pill deformed (${p.w}×${p.h}): "${p.text}"`)
       }
       if (!first) continue
       for (const w of report.wide) {

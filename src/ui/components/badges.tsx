@@ -277,6 +277,25 @@ export function VolunteerStatusChip({ status }: { status: VolunteerStatus }) {
   )
 }
 
+/**
+ * X5.4 — THE SAME FACT, DOT-SIZED. Below the tier where the status has a
+ * column of its own, the chip would need a third line of a 56 px row and was
+ * clipped; a dot before the name says it in no height at all, with the word
+ * on `title` for anyone who needs it spelled out.
+ */
+export function VolunteerStatusDot({ status }: { status: VolunteerStatus }) {
+  const { t } = useTranslation()
+  return (
+    <span
+      title={t(`volunteerStatus.${status}`)}
+      aria-label={t(`volunteerStatus.${status}`)}
+      className={`inline-block h-2.5 w-2.5 shrink-0 rounded-pill ${
+        status === 'active' ? 'bg-status-success' : 'bg-content-muted/50'
+      }`}
+    />
+  )
+}
+
 /** R6: per-person confirmation state, shown side by side in mission detail. */
 export function ConfirmationChip({
   state,

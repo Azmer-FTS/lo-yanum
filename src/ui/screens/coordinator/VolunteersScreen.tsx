@@ -8,6 +8,8 @@ import {
   getVolunteerStats,
   getVolunteers,
   mailtoHref,
+  telHref,
+  whatsappHref,
   deleteVolunteer,
   reactivateVolunteer,
 } from '@core/index'
@@ -15,12 +17,12 @@ import type { PhoneType, Volunteer, VolunteerStatus } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
-import { ContactButtons } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
-import { PhoneTypeChip, VolunteerStatusChip } from '../../components/badges'
+import { VolunteerStatusChip, VolunteerStatusDot } from '../../components/badges'
 import { PeopleMap } from '../../components/PeopleMap'
 import { MapSplit } from '../../components/MapSplit'
 import { OverflowMenu } from '../../components/OverflowMenu'
+import { RosterHead, RowAction } from '../../components/roster'
 import {
   EmptyState,
   FilterPill,
@@ -215,25 +217,29 @@ export function VolunteersScreen() {
     label,
     sortKey,
     className = '',
+    tier,
   }: {
     label: string
     sortKey: SortKey
     className?: string
+    tier?: 'base' | 'md' | 'lg' | 'xl'
   }) => (
     <button
       type="button"
       onClick={() => toggleSort(sortKey)}
       aria-label={t('a11y.sortColumn', { column: label })}
-      className={`flex items-center gap-1 text-start text-micro font-semibold uppercase tracking-wide
+      data-col={tier ?? 'base'}
+      style={{ ['--col-display' as string]: 'flex' }}
+      className={`min-w-0 items-center gap-1 text-start text-micro font-semibold uppercase tracking-wide
                   text-content-muted transition-colors duration-fast hover:text-content-primary ${className}`}
     >
-      {label}
+      <span className="truncate">{label}</span>
       <Icon
         name={
           sort.key !== sortKey ? 'sort' : sort.dir === 'asc' ? 'sortAsc' : 'sortDesc'
         }
         size={13}
-        className={sort.key === sortKey ? 'text-accent-ink' : 'opacity-40'}
+        className={`shrink-0 ${sort.key === sortKey ? 'text-accent-ink' : 'opacity-40'}`}
       />
     </button>
   )
@@ -428,62 +434,38 @@ export function VolunteersScreen() {
         }
       >
         {filtered.length > 0 && (
+          /* X5 — THE HEADER WEARS THE SAME `--roster-cols` AS EVERY ROW, so
+             the two cannot drift. It is never `hidden lg:flex` any more: the
+             compact reading has a header too (name + actions), because a
+             roster with no column labels at 25 % of the seam is a roster the
+             product owner has to guess at. */
+          <div className="roster roster-volunteers">
           <div
-            className="hidden items-center gap-3 rounded-t-card border-b border-edge-subtle
-                       bg-surface-overlay/95 px-4 py-2.5 backdrop-blur lg:flex"
+            className="roster-row rounded-t-card border-b border-edge-subtle
+                       bg-surface-overlay/95 px-4 py-2.5 backdrop-blur"
           >
-            <SortHeader label={t('volunteers.colName')} sortKey="name" className="w-56" />
-            <SortHeader
-              label={t('volunteers.colYeshiva')}
-              sortKey="yeshiva"
-              className="w-44"
-            />
-            <SortHeader
-              label={t('volunteers.colLocality')}
-              sortKey="locality"
-              className="w-32"
-            />
-            <span className="w-40 text-micro font-semibold uppercase tracking-wide text-content-muted">
-              {t('volunteers.colPhone')}
-            </span>
-            {/* P0bis.5a — the address, at 2xl only. It is a column the
-                coordinator scans rarely and a channel the sending centre uses
-                constantly, so it earns a place on the widest reading and
-                nowhere else; below that its absence is visible as a struck
-                envelope in the actions. */}
-            <span className="hidden w-48 text-micro font-semibold uppercase tracking-wide text-content-muted 2xl:block">
-              {t('form.email')}
-            </span>
-            {/* G7 — the staffing columns: can he drive, when can he come.
-                xl-only; at lg the row is already full and these answers live
-                one click away in the form. */}
-            <span className="hidden w-20 text-micro font-semibold uppercase tracking-wide text-content-muted xl:block">
-              {t('volunteers.colLicenseCar')}
-            </span>
-            <span className="hidden w-36 text-micro font-semibold uppercase tracking-wide text-content-muted xl:block">
-              {t('volunteers.colAvailability')}
-            </span>
-            <SortHeader
-              label={t('volunteers.colGuards')}
-              sortKey="guardsCount"
-              className="w-20"
-            />
-            <SortHeader
-              label={t('volunteers.colStatus')}
-              sortKey="status"
-              className="w-24"
-            />
+            <SortHeader label={t('volunteers.colName')} sortKey="name" />
+            <SortHeader label={t('volunteers.colYeshiva')} sortKey="yeshiva" tier="lg" />
+            <SortHeader label={t('volunteers.colLocality')} sortKey="locality" tier="lg" />
+            <RosterHead label={t('volunteers.colPhone')} tier="md" />
+            {/* P0bis.5a — the address, on the widest reading only. It is a
+                column the coordinator scans rarely and a channel the sending
+                centre uses constantly. */}
+            <RosterHead label={t('form.email')} tier="xl" />
+            <RosterHead label={t('volunteers.colLicenseCar')} tier="xl" />
+            <RosterHead label={t('volunteers.colAvailability')} tier="xl" />
+            <SortHeader label={t('volunteers.colGuards')} sortKey="guardsCount" tier="lg" />
+            <SortHeader label={t('volunteers.colStatus')} sortKey="status" tier="md" />
             <SortHeader
               label={t('volunteers.colLastActivity')}
               sortKey="lastActivityAt"
-              className="w-28"
+              tier="xl"
             />
-            <span className="ms-auto text-micro font-semibold uppercase tracking-wide text-content-muted">
-              {t('volunteers.colActions')}
-            </span>
+            <RosterHead label={t('volunteers.colActions')} className="text-end" />
+          </div>
           </div>
         )}
-      
+
       </ListTop>
 
       {/* MapSplit unmounts this whole column in `full` (`contentInFull`)
@@ -493,7 +475,7 @@ export function VolunteersScreen() {
       {filtered.length === 0 ? (
         <EmptyState icon="users" title={t('volunteers.empty')} />
       ) : (
-        <div className="card lg:rounded-t-none">
+        <div className="roster roster-volunteers card lg:rounded-t-none">
           {/* The window is the scroll container (G7); this div only maps the
               virtual coordinate space. */}
           <div ref={listRef} style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
@@ -548,120 +530,175 @@ export function VolunteersScreen() {
                   <div
                     key={item.key}
                     style={style}
-                    className="flex items-center border-b border-edge-subtle/50 px-4
+                    /* X5 — ONE ROW, NOT TWO. There used to be a `lg:flex`
+                       desktop row AND an `lg:hidden` card, i.e. two markups
+                       for one record that could and did drift apart. Now
+                       there is one grid whose tracks change with the panel's
+                       width, and the fields that lose their column reappear
+                       as sublines under the name. */
+                    className="roster-row border-b border-edge-subtle/50 px-4
                                transition-colors duration-fast hover:bg-surface-high/60"
                   >
-                    {/* Desktop: dense table row */}
-                    <div className="hidden w-full items-center gap-3 lg:flex">
-                      <div className="flex w-56 min-w-0 items-center gap-2.5">
-                        <Avatar photo={v.photo} name={v.name} size="xs" />
-                        <div className="min-w-0">
-                          <p className="flex items-center gap-1.5 truncate text-caption font-medium text-content-primary">
-                            {v.name}
-                            {/* G5.2 — the dual hat, visible in BOTH rosters. */}
-                            {v.canDrive && (
-                              <span
-                                className="shrink-0 text-accent-ink"
-                                title={t('form.canDrive')}
-                                aria-label={t('form.canDrive')}
-                              >
-                                <Icon name="steering" size={13} />
-                              </span>
-                            )}
-                          </p>
-                          <p className="truncate text-micro text-content-muted">
-                            {t('volunteers.age')}{' '}
-                            <span className="ltr-nums">{v.age}</span>
-                          </p>
-                        </div>
+                    {/* 1 — NAME, and everything merged under it below its tier. */}
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <Avatar photo={v.photo} name={v.name} size="xs" />
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-1.5 truncate text-caption font-medium text-content-primary">
+                          {/* Below the status column's tier, the status is
+                              this dot — a third line in a 56 px row was
+                              clipped, and a dot costs no height at all. */}
+                          <span data-merge="md" style={{ ['--col-display' as string]: 'inline-block' }}>
+                            <VolunteerStatusDot status={v.status} />
+                          </span>
+                          <span className="truncate">{v.name}</span>
+                          {/* G5.2 — the dual hat, visible in BOTH rosters. */}
+                          {v.canDrive && (
+                            <span
+                              className="shrink-0 text-accent-ink"
+                              title={t('form.canDrive')}
+                              aria-label={t('form.canDrive')}
+                            >
+                              <Icon name="steering" size={13} />
+                            </span>
+                          )}
+                        </p>
+                        <p
+                          className="truncate text-micro text-content-muted"
+                          title={`${v.yeshiva} · ${v.locality} · ${v.phone}`}
+                        >
+                          {/* ⚠️ `--col-display`, NEVER an inline `display`: an
+                              inline style beats the `@container` rule that
+                              hides this at its tier, and the subline would
+                              then be printed twice — once here and once in
+                              its own column. */}
+                          <span data-merge="lg" style={{ ['--col-display' as string]: 'inline' }}>
+                            {v.yeshiva} · {v.locality} ·{' '}
+                          </span>
+                          {t('volunteers.age')} <span className="ltr-nums">{v.age}</span>
+                          <span data-merge="md" style={{ ['--col-display' as string]: 'inline' }}>
+                            {' '}· <span className="ltr-nums">{v.phone}</span>
+                          </span>
+                        </p>
                       </div>
-                      <span className="w-44 truncate text-caption text-content-secondary">
-                        {v.yeshiva}
+                    </div>
+
+                    {/* 2 — yeshiva */}
+                    <span data-col="lg" className="truncate text-caption text-content-secondary">
+                      {v.yeshiva}
+                    </span>
+
+                    {/* 3 — locality */}
+                    <span data-col="lg" className="truncate text-caption text-content-secondary">
+                      {v.locality}
+                    </span>
+
+                    {/* 4 — phone. Icon rather than the full chip: the label
+                        would wrap the number onto a second line. */}
+                    <span
+                      data-col="md"
+                      style={{ ['--col-display' as string]: 'flex' }}
+                      className="min-w-0 items-center gap-2"
+                    >
+                      <span
+                        title={t(`phoneType.${v.phoneType}`)}
+                        className={`shrink-0 ${
+                          v.phoneType === 'kosher' ? 'text-accent-ink' : 'text-status-info-ink'
+                        }`}
+                      >
+                        <Icon name={v.phoneType === 'kosher' ? 'phoneBasic' : 'phone'} size={14} />
                       </span>
-                      <span className="w-32 truncate text-caption text-content-secondary">
-                        {v.locality}
+                      <span className="ltr-nums truncate text-micro text-content-secondary">
+                        {v.phone}
                       </span>
-                      {/* Icon rather than the full chip: the label would wrap
-                          the number onto a second line and break the row grid. */}
-                      <span className="flex w-40 items-center gap-2">
-                        <span
-                          title={t(`phoneType.${v.phoneType}`)}
-                          className={
-                            v.phoneType === 'kosher'
-                              ? 'text-accent-ink'
-                              : 'text-status-info-ink'
-                          }
+                    </span>
+
+                    {/* 5 — email */}
+                    <span data-col="xl" className="min-w-0">
+                      {v.email ? (
+                        <a
+                          href={mailtoHref(v.email)}
+                          dir="ltr"
+                          title={v.email}
+                          className="ltr-nums block truncate text-micro text-content-secondary hover:text-accent-ink hover:underline"
                         >
-                          <Icon
-                            name={
-                              v.phoneType === 'kosher' ? 'phoneBasic' : 'phone'
-                            }
-                            size={14}
-                          />
-                        </span>
-                        <span className="ltr-nums whitespace-nowrap text-micro text-content-secondary">
-                          {v.phone}
-                        </span>
+                          {v.email}
+                        </a>
+                      ) : (
+                        <span className="text-micro text-content-muted/50">—</span>
+                      )}
+                    </span>
+
+                    {/* 6 — licence + car at a glance: green means "has it",
+                        the faded icon means "does not", so a column of 300
+                        scans without reading a word. */}
+                    <span
+                      data-col="xl"
+                      style={{ ['--col-display' as string]: 'flex' }}
+                      className="items-center gap-2.5"
+                    >
+                      <span
+                        title={t('form.hasLicense')}
+                        aria-label={t('form.hasLicense')}
+                        className={
+                          v.hasLicense ? 'text-status-success-ink' : 'text-content-muted/30'
+                        }
+                      >
+                        <Icon name="document" size={14} />
                       </span>
-                      <span className="hidden w-48 items-center gap-1.5 2xl:flex">
-                        {v.email ? (
-                          <a
-                            href={mailtoHref(v.email)}
-                            dir="ltr"
-                            title={v.email}
-                            className="ltr-nums truncate text-micro text-content-secondary hover:text-accent-ink hover:underline"
-                          >
-                            {v.email}
-                          </a>
-                        ) : (
-                          <span className="text-micro text-content-muted/50">—</span>
-                        )}
+                      <span
+                        title={t('form.hasCar')}
+                        aria-label={t('form.hasCar')}
+                        className={v.hasCar ? 'text-status-success-ink' : 'text-content-muted/30'}
+                      >
+                        <Icon name="car" size={14} />
                       </span>
-                      {/* G7 — licence + car at a glance: green means "has it",
-                          the faded icon means "does not", so a column of 300
-                          scans without reading a word. */}
-                      <span className="hidden w-20 items-center gap-2.5 xl:flex">
-                        <span
-                          title={t('form.hasLicense')}
-                          aria-label={t('form.hasLicense')}
-                          className={
-                            v.hasLicense
-                              ? 'text-status-success-ink'
-                              : 'text-content-muted/30'
-                          }
-                        >
-                          <Icon name="document" size={14} />
-                        </span>
-                        <span
-                          title={t('form.hasCar')}
-                          aria-label={t('form.hasCar')}
-                          className={
-                            v.hasCar
-                              ? 'text-status-success-ink'
-                              : 'text-content-muted/30'
-                          }
-                        >
-                          <Icon name="car" size={14} />
-                        </span>
-                      </span>
-                      <span className="hidden w-36 truncate text-micro text-content-secondary xl:block">
-                        {availabilitySummary(v)}
-                      </span>
-                      <span className="numeric w-20 text-caption text-content-primary">
-                        {v.guardsCount}
-                      </span>
-                      <span className="w-24">
-                        <VolunteerStatusChip status={v.status} />
-                      </span>
-                      <span className="ltr-nums w-28 text-micro text-content-muted">
-                        {activityLabel(v)}
-                      </span>
-                      <span className="ms-auto flex items-center gap-1">
+                    </span>
+
+                    {/* 7 — availability */}
+                    <span data-col="xl" className="truncate text-micro text-content-secondary">
+                      {availabilitySummary(v)}
+                    </span>
+
+                    {/* 8 — guards */}
+                    <span data-col="lg" className="numeric truncate text-caption text-content-primary">
+                      {v.guardsCount}
+                    </span>
+
+                    {/* 9 — status */}
+                    <span data-col="md">
+                      <VolunteerStatusChip status={v.status} />
+                    </span>
+
+                    {/* 10 — last activity */}
+                    <span data-col="xl" className="ltr-nums truncate text-micro text-content-muted">
+                      {activityLabel(v)}
+                    </span>
+
+                    {/* 11 — actions. `justify-end` rather than `ms-auto`: in a
+                        grid the track is already at the end of the row, and
+                        `ms-auto` in a shrunken cell is what used to clip the
+                        last icon. */}
+                    <span data-actions="" className="flex items-center justify-end gap-0.5">
+                      {/* Below the phone's tier the number is only a subline,
+                          so the two ways to REACH him come back as buttons —
+                          in the row's own 32 px icon size, not the 40 px
+                          `ContactButtons` trio, which needs 175 px the panel
+                          does not have at 25 % of the seam. */}
+                      <span data-merge="md" style={{ ['--col-display' as string]: 'contents' }}>
                         <RowAction
-                          icon="edit"
-                          label={t('common.edit')}
-                          onClick={() => setEditing(v)}
+                          icon="phone"
+                          href={telHref(v.phone)}
+                          label={`${t('common.call')} ${v.name}`}
                         />
+                        <RowAction
+                          icon="whatsapp"
+                          href={whatsappHref(v.phone)}
+                          external
+                          label={`${t('common.whatsapp')} ${v.name}`}
+                        />
+                      </span>
+                      <RowAction icon="edit" label={t('common.edit')} onClick={() => setEditing(v)} />
+                      <span data-col="md" style={{ ['--col-display' as string]: 'contents' }}>
                         <RowAction
                           icon="history"
                           label={t('volunteers.history')}
@@ -680,42 +717,19 @@ export function VolunteersScreen() {
                             onClick={() => reactivateVolunteer(v.id)}
                           />
                         )}
-                        {/* PO POINT 8 — DELETE IS NOT ARCHIVE, and until now
-                            the archive action wore the bin icon, which is
-                            exactly the confusion this row had to stop making.
-                            Archiving keeps a volunteer's nights; deleting is
-                            for the row that was typed by mistake, and it is
-                            refused the moment he has a night. */}
+                        {/* PO POINT 8 — DELETE IS NOT ARCHIVE. Archiving keeps
+                            a volunteer's nights; deleting is for the row that
+                            was typed by mistake, and it is refused the moment
+                            he has a night. */}
                         <RowAction
                           icon="trash"
                           danger
                           testId="volunteer-delete"
                           label={t('deletion.action')}
-                          onClick={() =>
-                            del.ask('volunteer', v.id, () => deleteVolunteer(v.id))
-                          }
+                          onClick={() => del.ask('volunteer', v.id, () => deleteVolunteer(v.id))}
                         />
                       </span>
-                    </div>
-
-                    {/* Mobile: compact card */}
-                    <div className="flex w-full items-center gap-3 lg:hidden">
-                      <Avatar photo={v.photo} name={v.name} size="sm" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate text-caption font-medium text-content-primary">
-                            {v.name}
-                          </p>
-                          <PhoneTypeChip type={v.phoneType} />
-                        </div>
-                        <p className="truncate text-micro text-content-muted">
-                          {v.yeshiva} · {v.locality} ·{' '}
-                          <span className="numeric">{v.guardsCount}</span>{' '}
-                          {t('volunteers.colGuards')}
-                        </p>
-                      </div>
-                      <ContactButtons name={v.name} phone={v.phone} />
-                    </div>
+                    </span>
                   </div>
                 )
               })}
@@ -741,38 +755,6 @@ export function VolunteersScreen() {
         <HistoryDialog volunteer={history} onClose={() => setHistory(null)} />
       )}
     </>
-  )
-}
-
-function RowAction({
-  icon,
-  label,
-  onClick,
-  testId,
-  danger = false,
-}: {
-  icon: 'edit' | 'history' | 'trash' | 'check' | 'close'
-  label: string
-  onClick: () => void
-  testId?: string
-  /** PO POINT 8 — a delete is not the same weight as a history button. */
-  danger?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={label}
-      aria-label={label}
-      data-testid={testId}
-      className={`rounded-field p-1.5 transition-colors duration-fast ${
-        danger
-          ? 'text-content-muted hover:bg-status-danger/10 hover:text-status-danger-ink'
-          : 'text-content-muted hover:bg-surface-overlay hover:text-content-primary'
-      }`}
-    >
-      <Icon name={icon} size={16} />
-    </button>
   )
 }
 

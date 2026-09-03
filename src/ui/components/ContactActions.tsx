@@ -34,7 +34,10 @@ export function ContactButtons({
   const { t } = useTranslation()
 
   return (
-    <div className="flex shrink-0 items-center gap-1.5">
+    /* X6 — `data-contact-actions` + wrap (index.css): four 40 px targets
+       that refuse to shrink are 175 px, and in a 25 %-seam panel there is not
+       175 px. It wraps rather than widening the page. */
+    <div data-contact-actions="" className="flex items-center gap-1.5">
       <a
         href={telHref(phone)}
         aria-label={`${t('common.call')} ${name}`}

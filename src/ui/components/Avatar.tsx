@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 import { avatarHue, initialsOf, photoSource } from '@core/index'
 
 /**
@@ -35,13 +37,35 @@ export function Avatar({
   const base = `${SIZES[size]} ${radius} ${ringClass} shrink-0 overflow-hidden`
 
   const src = photoSource(photo)
-  if (src) {
+
+  /**
+   * ★ X5.3 (2026-09-04) — A MISSING PICTURE IS ALWAYS THE INITIALS DISC,
+   *   NEVER A BROKEN `<img>`.
+   *
+   *   `photoSource` answers "is there a path", which is a different question
+   *   from "did the bytes arrive". A path that 404s — a purged demo portrait,
+   *   a photo taken on a device that has since been wiped, an import row with
+   *   a stale URL — left the browser's own broken-image placeholder in the
+   *   row, which on a 28 px avatar renders as a grey dash. That is the "trait
+   *   à la place du rond" the product owner reported, and no amount of
+   *   styling the `<img>` fixes it: a failed image is not a styling state.
+   *
+   *   So the failure is CAUGHT and the component falls back to the branch it
+   *   already had. The flag is keyed on `src` so a row recycled by the
+   *   virtualiser onto a different person tries that person's photo rather
+   *   than inheriting the last one's failure.
+   */
+  const [failed, setFailed] = useState(false)
+  useEffect(() => setFailed(false), [src])
+
+  if (src && !failed) {
     return (
       <img
         src={src}
         alt=""
         loading="lazy"
         decoding="async"
+        onError={() => setFailed(true)}
         className={`${base} object-cover`}
       />
     )
@@ -51,6 +75,7 @@ export function Avatar({
   return (
     <span
       aria-hidden="true"
+      data-avatar-fallback=""
       className={`${base} flex items-center justify-center font-semibold text-white`}
       style={{
         backgroundColor: `hsl(${hue} 42% 38%)`,

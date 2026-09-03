@@ -150,7 +150,7 @@ export function MapPanel({
               edge the legend is anchored to in Hebrew. Either the grip covers
               the legend or the legend covers the grip; a clearance is the only
               answer that leaves both readable in every state, folded or not. */}
-          <div className="pointer-events-none absolute bottom-3 start-7 z-10">
+          <div className="pointer-events-none absolute bottom-3 end-3 start-7 z-10 flex justify-start">
             <MapLegend>{legend}</MapLegend>
           </div>
 

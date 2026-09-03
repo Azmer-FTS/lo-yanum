@@ -20,6 +20,7 @@ import { EntityQuickCard, useQuickPreview } from '../../components/EntityQuickCa
 import { ChevronForward, Icon } from '../../components/Icon'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import { OverflowMenu } from '../../components/OverflowMenu'
+import { RosterHead } from '../../components/roster'
 import {
   ThreatLegend,
   threatVectorShapes,
@@ -499,48 +500,29 @@ function TilePhoto({ photo, name }: { photo: string | null; name: string }) {
 const TABLE_ROW_HEIGHT = 56
 
 /**
- * G7 — the roster reading of the farms: one row per farm, fixed columns,
- * window-virtualised with a sticky header. Same construction as the
- * volunteers table; 12 fixture farms do not need it, the hundreds a real
- * import brings do, and the table must not change shape when they arrive.
+ * G7 → X5 — the roster reading of the farms: one row per farm, window-
+ * virtualised, with a sticky header. The columns are the shared roster grid
+ * (`.roster` / `.roster-farms` in index.css), so header and rows cannot drift
+ * and the tiers are asked of the TABLE's own width rather than the window's.
  */
-const HeaderCell = ({
-  label,
-  className = '',
-}: {
-  label: string
-  className?: string
-}) => (
-  <span
-    className={`text-micro font-semibold uppercase tracking-wide text-content-muted ${className}`}
-  >
-    {label}
-  </span>
-)
-
-/** G14d — the column header row, rendered inside the parent's sticky block
- *  so title, KPI-filters, search and columns pin as ONE unit (A51). */
 function FarmsTableHead() {
   const { t } = useTranslation()
   return (
-    <div
-      className="hidden items-center gap-3 rounded-t-card border-b border-edge-subtle
-                 bg-surface-overlay/95 px-4 py-1.5 backdrop-blur lg:flex"
-    >
-      <HeaderCell label={t('missions.farm')} className="w-56" />
-      <HeaderCell label={t('volunteers.colLocality')} className="w-32" />
-      <HeaderCell label={t('farms.colRegion')} className="w-32" />
-      <HeaderCell label={t('farms.colType')} className="w-24" />
-      <HeaderCell label={t('farms.colStatus')} className="w-32" />
-      <HeaderCell
-        label={t('farms.colDunams')}
-        className="hidden w-36 xl:block"
-      />
-      <HeaderCell
-        label={t('farms.colContacts')}
-        className="hidden w-20 xl:block"
-      />
-      <HeaderCell label={t('farms.nextVisit')} className="w-28" />
+    <div className="roster roster-farms">
+      <div
+        className="roster-row rounded-t-card border-b border-edge-subtle
+                   bg-surface-overlay/95 px-4 py-1.5 backdrop-blur"
+      >
+        <RosterHead label={t('missions.farm')} />
+        <RosterHead label={t('volunteers.colLocality')} tier="lg" />
+        <RosterHead label={t('farms.colRegion')} tier="xl" />
+        <RosterHead label={t('farms.colType')} tier="lg" />
+        <RosterHead label={t('farms.colStatus')} tier="md" />
+        <RosterHead label={t('farms.colDunams')} tier="xl" />
+        <RosterHead label={t('farms.colContacts')} tier="xl" />
+        <RosterHead label={t('farms.nextVisit')} tier="md" />
+        <RosterHead label="" className="text-end" />
+      </div>
     </div>
   )
 }
@@ -563,7 +545,7 @@ function FarmsTable({
   const dunams = (n: number) => n.toLocaleString(locale)
 
   return (
-    <div className="card lg:rounded-t-none">
+    <div className="roster roster-farms card lg:rounded-t-none">
       <div
         ref={listRef}
         style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
@@ -583,68 +565,75 @@ function FarmsTable({
                 height: item.size,
                 transform: `translateY(${item.start - margin}px)`,
               }}
-              className="flex items-center border-b border-edge-subtle/50 px-4 text-start
+              className="roster-row border-b border-edge-subtle/50 px-4 text-start
                          transition-colors duration-fast hover:bg-surface-high/60"
             >
-              {/* Desktop: dense table row */}
-              <span className="hidden w-full items-center gap-3 lg:flex">
-                <span className="flex w-56 min-w-0 items-center gap-2.5">
-                  <Avatar
-                    photo={farm.photo}
-                    name={farm.name}
-                    size="xs"
-                    shape="square"
-                  />
-                  <span className="truncate text-caption font-medium text-content-primary">
-                    {farm.name}
-                  </span>
-                </span>
-                <span className="w-32 truncate text-caption text-content-secondary">
-                  {farm.locality}
-                </span>
-                <span className="w-32 truncate text-caption text-content-secondary">
-                  {farm.region}
-                </span>
-                <span className="w-24 truncate text-caption text-content-secondary">
-                  {t(`farmType.${farm.type}`)}
-                </span>
-                <span className="w-32">
-                  <FarmStatusChip status={farm.status} />
-                </span>
-                <span className="ltr-nums numeric hidden w-36 text-caption text-content-secondary xl:block">
-                  {dunams(farm.farmDunams)} / {dunams(farm.grazingDunams)}
-                </span>
-                <span className="numeric hidden w-20 text-caption text-content-secondary xl:block">
-                  {farm.contacts.length}
-                </span>
-                <span className="ltr-nums w-28 text-micro text-content-muted">
-                  {farm.nextVisitAt
-                    ? formatDate(farm.nextVisitAt, locale)
-                    : t('farms.noVisitYet')}
-                </span>
-                <ChevronForward size={14} />
-              </span>
-
-              {/* Mobile: the tile shape the map view uses. */}
-              <span className="flex w-full items-center gap-3 lg:hidden">
-                <Avatar
-                  photo={farm.photo}
-                  name={farm.name}
-                  size="sm"
-                  shape="square"
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
-                    <FarmStatusDot status={farm.status} />
+              {/* 1 — name, with whatever has lost its column merged under it. */}
+              <span className="flex min-w-0 items-center gap-2.5">
+                <Avatar photo={farm.photo} name={farm.name} size="xs" shape="square" />
+                <span className="min-w-0">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span data-merge="md" style={{ ['--col-display' as string]: 'inline-block' }}>
+                      <FarmStatusDot status={farm.status} />
+                    </span>
                     <span className="truncate text-caption font-medium text-content-primary">
                       {farm.name}
                     </span>
                   </span>
-                  <span className="muted mt-0.5 block truncate">
-                    {farm.locality} · {t(`farmType.${farm.type}`)}
+                  <span
+                    className="muted block truncate"
+                    title={`${farm.locality} · ${farm.region} · ${t(`farmType.${farm.type}`)}`}
+                  >
+                    <span data-merge="lg" style={{ ['--col-display' as string]: 'inline' }}>
+                      {farm.locality} · {t(`farmType.${farm.type}`)}
+                    </span>
+                    <span data-merge="xl" style={{ ['--col-display' as string]: 'inline' }}>
+                      {' '}· {farm.region}
+                    </span>
                   </span>
                 </span>
-                <ChevronForward size={15} />
+              </span>
+
+              {/* 2 — locality */}
+              <span data-col="lg" className="truncate text-caption text-content-secondary">
+                {farm.locality}
+              </span>
+
+              {/* 3 — region */}
+              <span data-col="xl" className="truncate text-caption text-content-secondary">
+                {farm.region}
+              </span>
+
+              {/* 4 — type */}
+              <span data-col="lg" className="truncate text-caption text-content-secondary">
+                {t(`farmType.${farm.type}`)}
+              </span>
+
+              {/* 5 — status */}
+              <span data-col="md">
+                <FarmStatusChip status={farm.status} />
+              </span>
+
+              {/* 6 — dunams */}
+              <span data-col="xl" className="ltr-nums numeric truncate text-caption text-content-secondary">
+                {dunams(farm.farmDunams)} / {dunams(farm.grazingDunams)}
+              </span>
+
+              {/* 7 — contacts */}
+              <span data-col="xl" className="numeric truncate text-caption text-content-secondary">
+                {farm.contacts.length}
+              </span>
+
+              {/* 8 — next visit */}
+              <span data-col="md" className="ltr-nums truncate text-micro text-content-muted">
+                {farm.nextVisitAt
+                  ? formatDate(farm.nextVisitAt, locale)
+                  : t('farms.noVisitYet')}
+              </span>
+
+              {/* 9 — the way in */}
+              <span data-actions="" className="flex items-center justify-end text-content-muted/60">
+                <ChevronForward size={14} />
               </span>
             </button>
           )

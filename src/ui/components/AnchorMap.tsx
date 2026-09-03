@@ -994,7 +994,16 @@ export function AnchorMap({
             map permanently; now one 44 px glass button unfolds them on tap
             and folds them after a choice or a tap elsewhere. The map stays
             clean. */}
-        <div className="flex items-end justify-between gap-2">
+        {/* ★ X6 — `flex-wrap`, AND IT IS THE FIX FOR A REAL OVERFLOW. At 75 %
+            of the wizard's seam this row has ~146 px (the map's 25 %, less its
+            two insets and the 4.5 rem strip the mode pill owns) and it holds a
+            legend, the licence "i" and the pencil — about 180 px. A `flex`
+            row that cannot fit overflows at its END, which in Hebrew is the
+            physical LEFT, i.e. into negative x, which is exactly where an RTL
+            page's `scrollWidth` grows. Caught by `bun run layout` at ipad
+            PORTRAIT and nowhere else. It is anchored by `bottom`, so wrapping
+            grows it upward, over the map, at no cost. */}
+        <div className="flex flex-wrap-reverse items-end justify-between gap-2">
           <MapLegend defaultOpen={false}>
             {/* G7bis.1 — one legend stack: what the point shapes mean, then
                 what the painted ground means, then the assessment. */}
