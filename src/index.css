@@ -1501,3 +1501,81 @@ label:has(> select),
 label:has(> textarea) {
   min-width: 0;
 }
+
+/* ---------------------------------------------------------------------------
+   X7 (2026-09-04) — ONE LIST TILE HEIGHT, AND ONE COLORIMETRY FOR THE SORT
+   CARDS
+   ---------------------------------------------------------------------------
+   ★ THE HEIGHT. A farm tile was 4.75 rem and fixed; a guard tile and an
+     incident tile were whatever their content came to, which on the same
+     screenful ran from 4.4 rem to 6.2 rem. Three lists that are the same
+     GESTURE — scan a column of records, tap one — should not have three
+     rhythms, and the product owner reads the difference as three screens
+     built by three people. `--tile-h` is the one number, and it is slightly
+     more than the farm tile was: the fixed height is what makes a column
+     scannable, and 5.5 rem is what three lines of a guard actually need.
+
+   ⚠️ A FIXED HEIGHT MEANS THE CONTENT MUST TRUNCATE WITH A `title`, or
+      `bun run layout`'s U7 check fails the screen — which is the correct
+      trade and the reason this is safe to impose.
+
+   ★ THE COLOUR. The band cards on an entity's sheet are the reading the
+     product owner signed off on: a wash of the tone at ~12 %, the icon on a
+     raised disc in the tone's ink, the figure in the page's own ink. Every
+     SORT card in the app — the KPI chips above every roster — now wears the
+     same three rules, so a green card means the same thing on a farm's sheet
+     and above the volunteers list.
+   --------------------------------------------------------------------------- */
+:root {
+  --tile-h: 5.5rem;
+}
+
+.list-tile {
+  height: var(--tile-h);
+  overflow: hidden;
+}
+
+/* The KPI/sort chip's tone wash — the band cards' recipe at chip scale. */
+.kpi-tone-default {
+  background-color: rgb(var(--surface-raised));
+}
+
+.kpi-tone-good {
+  background-color: color-mix(in srgb, rgb(var(--status-success)) 12%, rgb(var(--surface-raised)));
+}
+
+.kpi-tone-alert {
+  background-color: color-mix(in srgb, rgb(var(--status-danger)) 12%, rgb(var(--surface-raised)));
+}
+
+.kpi-tone-accent {
+  background-color: color-mix(in srgb, rgb(var(--accent)) 12%, rgb(var(--surface-raised)));
+}
+
+/* ---------------------------------------------------------------------------
+   X7.2 — THE FILTER PILLS WERE TOO PALE TO SEE
+   ---------------------------------------------------------------------------
+   `.filter-pill` sat on `--surface-high`, which against `--surface-base` is a
+   step of about 1.05 in luminance — visible on a calibrated desktop panel and
+   invisible on an iPad in a truck in daylight, which is where the entity-type
+   pills (חקלאות / בעלי חיים / מעורבת) are actually read. The pill keeps its
+   shape and gains a real edge: a hairline in the strong border colour and a
+   darker fill. The ACTIVE state is unchanged — it was never the problem, and
+   the two have to stay clearly different.
+   --------------------------------------------------------------------------- */
+/* 18 % of the page's own ink, measured rather than guessed: at 8 % the fill
+   came to #ECEDEE against a #F3F4F6 page — a seven-point step, which is what
+   "on ne les distingue pas du fond" means numerically. At 18 % it is #DADCDF,
+   a step the eye reads at arm's length on a sunlit iPad. Mixing the INK
+   rather than naming a grey is what makes it work in dark too: there the ink
+   is near-white and the same declaration LIGHTENS the pill off its surface. */
+.filter-pill:not(.filter-pill-active) {
+  background-color: color-mix(in srgb, rgb(var(--text-primary)) 18%, rgb(var(--surface-raised)));
+  border-color: rgb(var(--border-strong) / 0.85);
+  color: rgb(var(--text-primary));
+}
+
+.filter-pill:not(.filter-pill-active):hover {
+  background-color: color-mix(in srgb, rgb(var(--text-primary)) 26%, rgb(var(--surface-raised)));
+  border-color: rgb(var(--border-strong));
+}

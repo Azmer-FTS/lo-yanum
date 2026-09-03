@@ -421,7 +421,10 @@ function FarmTile({
   return (
     <div
       data-testid="farm-tile"
-      className={`tile-interactive flex h-[4.75rem] overflow-hidden ${
+      /* X7.1 — `list-tile`: the ONE height every list tile in the app has
+         (index.css, `--tile-h`). It was 4.75 rem here and free-running on the
+         guards and the incidents. */
+      className={`tile-interactive list-tile flex ${
         active ? 'bg-accent/10 ring-2 ring-accent/60' : ''
       }`}
       onMouseEnter={() => onHover(farm.id)}
@@ -474,7 +477,7 @@ function FarmTile({
         aria-label={t('farms.centerOnMap')}
         title={t('farms.centerOnMap')}
         data-testid="farm-tile-center"
-        className="group relative h-full w-[4.75rem] shrink-0 overflow-hidden bg-surface-high"
+        className="group relative h-full w-[var(--tile-h)] shrink-0 overflow-hidden bg-surface-high"
       >
         <TilePhoto photo={farm.photo} name={farm.name} />
         <span

@@ -1003,7 +1003,7 @@ export function AnchorMap({
             page's `scrollWidth` grows. Caught by `bun run layout` at ipad
             PORTRAIT and nowhere else. It is anchored by `bottom`, so wrapping
             grows it upward, over the map, at no cost. */}
-        <div className="flex flex-wrap-reverse items-end justify-between gap-2">
+        <div className="flex flex-wrap items-end justify-between gap-2">
           <MapLegend defaultOpen={false}>
             {/* G7bis.1 — one legend stack: what the point shapes mean, then
                 what the painted ground means, then the assessment. */}

@@ -205,7 +205,8 @@ export function IncidentsScreen() {
                   onClick={() => navigate(`/coordinator/incidents/${incident.id}`)}
                   /* F5.3 — the row floats: card surface, soft drop, and the
                      severity bar on top of it rather than instead of it. */
-                  className={`tile-interactive w-full border-s-4 px-3 py-2.5 text-start ${
+                  /* X7.1 — the same `--tile-h` as every other list. */
+                  className={`tile-interactive list-tile w-full border-s-4 px-3 py-2 text-start ${
                     SEVERITY_EDGE[incident.severity]
                   } ${active ? 'border-accent/60 bg-accent/10' : ''}`}
                 >
@@ -223,7 +224,13 @@ export function IncidentsScreen() {
                       {formatDateTime(incident.reportedAt, locale)}
                     </span>
                   </span>
-                  <span className="mt-1 line-clamp-2 block text-caption text-content-secondary">
+                  {/* One line, not two: three lines plus the chips row is what
+                      `--tile-h` holds. `title` is the recourse the U7 gate
+                      requires of anything that clips. */}
+                  <span
+                    title={incident.description}
+                    className="mt-1 block truncate text-caption text-content-secondary"
+                  >
                     {incident.description}
                   </span>
                   <span className="muted mt-1 flex items-center gap-1">

@@ -476,17 +476,30 @@ export function KpiFilter({
     accent: 'text-accent-ink',
   }[tone]
 
+  /** X7.3 — the same wash as `KpiChip`; see the note there. */
+  const wash = {
+    default: 'kpi-tone-default',
+    alert: 'kpi-tone-alert',
+    good: 'kpi-tone-good',
+    accent: 'kpi-tone-accent',
+  }[tone]
+
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`card-interactive flex min-w-0 items-center gap-2.5 p-3 text-start ${
-        active ? 'bg-accent/10 ring-2 ring-accent' : ''
+      className={`card-interactive flex min-w-0 items-center gap-2.5 p-3 text-start ${wash} ${
+        active ? 'ring-2 ring-accent' : ''
       }`}
     >
-      {/* W3.1c — the icon alone, bigger and thin: no disc behind it. */}
-      {icon && <Icon name={icon} size={24} strokeWidth={1.4} className={`shrink-0 ${toneClass}`} />}
+      {icon && (
+        <span
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-surface-raised/80 ${toneClass}`}
+        >
+          <Icon name={icon} size={24} strokeWidth={1.4} />
+        </span>
+      )}
       <span className="min-w-0">
         <span className={`numeric block text-title ${toneClass}`}>{value}</span>
         <span className="muted flex items-center gap-1.5 truncate leading-tight">
@@ -537,19 +550,38 @@ export function KpiChip({
     accent: 'text-accent-ink',
   }[tone]
 
+  /**
+   * ★ X7.3 (2026-09-04) — THE SORT CARDS WEAR THE SHEET'S COLORIMETRY.
+   *
+   * The band cards on an entity's sheet are the reading the product owner
+   * signed off on: a 12 % wash of the tone, the icon on a raised disc in the
+   * tone's ink, the figure in the page's own ink. These chips were a flat
+   * `--surface-raised` with a coloured glyph, so the same "good" green meant
+   * one thing on a farm's sheet and another above a roster. `.kpi-tone-*`
+   * (index.css) is that recipe at chip scale.
+   */
+  const wash = {
+    default: 'kpi-tone-default',
+    alert: 'kpi-tone-alert',
+    good: 'kpi-tone-good',
+    accent: 'kpi-tone-accent',
+  }[tone]
+
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
       data-testid={testId}
-      className={`tile-interactive flex min-h-11 items-center gap-2 px-3 py-1 text-start ${
-        active ? 'bg-accent/10 ring-2 ring-accent' : ''
+      className={`tile-interactive flex min-h-11 items-center gap-2 px-3 py-1 text-start ${wash} ${
+        active ? 'ring-2 ring-accent' : ''
       }`}
     >
       {dot}
       {icon && (
-        <span className={`shrink-0 ${toneClass}`}>
+        <span
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-pill bg-surface-raised/80 ${toneClass}`}
+        >
           <Icon name={icon} size={16} />
         </span>
       )}

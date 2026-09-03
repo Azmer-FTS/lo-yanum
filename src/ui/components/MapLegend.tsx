@@ -53,7 +53,7 @@ export function MapLegend({
        bottom-right, i.e. under this panel; beside it, and anchored to the same
        baseline, it is visible whether the legend is folded or unfolded without
        a single z-index. See `MapAttribution`. */
-    <div className={`pointer-events-auto flex min-w-0 flex-wrap-reverse items-end gap-1.5 ${className}`}>
+    <div className={`pointer-events-auto flex min-w-0 flex-wrap items-end gap-1.5 ${className}`}>
     <div
       data-testid="map-legend"
       data-open={open ? '1' : '0'}

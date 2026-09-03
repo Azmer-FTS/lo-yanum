@@ -216,7 +216,8 @@ export function MissionsScreen() {
                      in dark is a 1 px line on near-black: the whole list read
                      as one grey slab and the product owner could not tell where
                      one guard ended and the next began. */
-                  className={`tile-interactive w-full px-3 py-2.5 text-start ${
+                  /* X7.1 — the same `--tile-h` as every other list. */
+                  className={`tile-interactive list-tile w-full px-3 py-2 text-start ${
                     active ? 'border-accent/60 bg-accent/10' : ''
                   }`}
                 >
