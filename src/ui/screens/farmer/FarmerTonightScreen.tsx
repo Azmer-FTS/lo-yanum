@@ -75,6 +75,7 @@ export function FarmerTonightScreen() {
             <div key={mission.id} className="flex flex-col gap-4">
               <Section
                 title={t('farmer.guardTeam')}
+          collapseKey="farmer-team"
                 action={<MissionStatusChip status={mission.status} />}
               >
                 <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption">
@@ -123,7 +124,8 @@ export function FarmerTonightScreen() {
               </Section>
 
               {driver && (
-                <Section title={t('farmer.driverTitle')}>
+                <Section title={t('farmer.driverTitle')}
+          collapseKey="farmer-driver">
                   <CallRow
                     name={driver.name}
                     phone={driver.phone}
@@ -135,6 +137,7 @@ export function FarmerTonightScreen() {
 
               <Section
                 title={t('farmer.anchorTitle')}
+          collapseKey="farmer-anchor"
                 action={
                   <a
                     href={wazeUrl(anchorPoint.position)}
@@ -187,7 +190,8 @@ export function FarmerTonightScreen() {
         </div>
       )}
 
-      <Section title={t('anchor.labelCoordinator')} className="mt-4">
+      <Section title={t('anchor.labelCoordinator')}
+          collapseKey="farmer-coordinator" className="mt-4">
         <CallRow
           name={readCoordinator().name}
           phone={readCoordinator().phone}

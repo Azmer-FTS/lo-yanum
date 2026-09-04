@@ -276,7 +276,8 @@ export function IncidentDetailScreen() {
             </div>
           </Section>
         {!incident.position && (
-          <Section title={t('incidents.position')}>
+          <Section title={t('incidents.position')}
+          collapseKey="incident-position">
             <p className="muted">{t('incidents.noPosition')}</p>
           </Section>
         )}
@@ -288,7 +289,7 @@ export function IncidentDetailScreen() {
   // reading has to supply the padding the shell no longer does.
   if (!mapBody) {
     return (
-      <div className="mx-auto max-w-4xl px-4 pb-[var(--float-reserve)] pt-5 sm:px-6 sm:pt-6">
+      <div className="mx-auto max-w-4xl px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 sm:px-6 sm:[--content-pad:1.5rem] sm:pt-6">
         {content}
       </div>
     )

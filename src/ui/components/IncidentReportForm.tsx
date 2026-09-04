@@ -267,7 +267,8 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
       </div>
 
       <div className="flex flex-col gap-4">
-        <Section title={t('report.description')}>
+        <Section title={t('report.description')}
+          collapseKey="report-description">
           <textarea
             className="input min-h-40 text-body"
             rows={6}
@@ -280,7 +281,8 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
         </Section>
 
         {context.showPhoto && (
-          <Section title={t('report.photo')}>
+          <Section title={t('report.photo')}
+          collapseKey="report-photo">
             <div className="flex items-center gap-3 rounded-field border border-dashed border-edge-strong px-4 py-5 text-content-muted">
               <Icon name="camera" size={22} />
               <span className="text-caption">{t('report.photoPlaceholder')}</span>

@@ -99,6 +99,7 @@ export function DriverTripScreen() {
         {/* The roster comes first: it is what the driver opens the app to do. */}
         <Section
           title={t('presence.rosterTitle')}
+          collapseKey="driver-roster"
           action={
             <Toggle
               value={leg}
@@ -121,6 +122,7 @@ export function DriverTripScreen() {
 
         <Section
           title={t('driver.destination')}
+          collapseKey="driver-destination"
           action={
             <a
               href={wazeUrl(mission.dropoffPoint ?? farm.position)}
@@ -189,7 +191,8 @@ export function DriverTripScreen() {
           </p>
         </Section>
 
-        <Section title={t('driver.vehicle')}>
+        <Section title={t('driver.vehicle')}
+          collapseKey="driver-vehicle">
           <p className="text-caption text-content-secondary">
             {driver.vehicle} ·{' '}
             <span className="ltr-nums">
@@ -199,7 +202,8 @@ export function DriverTripScreen() {
           </p>
         </Section>
 
-        <Section title={t('anchor.labelCoordinator')}>
+        <Section title={t('anchor.labelCoordinator')}
+          collapseKey="driver-coordinator">
           <CallRow
             name={readCoordinator().name}
             phone={readCoordinator().phone}

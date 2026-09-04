@@ -430,6 +430,27 @@ interface Report {
    *    bottom of the last child that is actually in the flow.
    */
   clipped: Array<{ tag: string; lost: number }>
+  /**
+   * ★★ Y10 (2026-09-04) — TEXT THAT LANDS ON THE PHYSICAL LEFT OF AN RTL PAGE.
+   *
+   * The product owner reported the timeline's timestamps as "alignées à
+   * GAUCHE : les remettre À DROITE (sous le titre), conformément au RTL". The
+   * cause is one class doing two jobs: `.ltr-nums` sets `direction: ltr`,
+   * which it must — a Hebrew page otherwise renders "12:36–20:36" with its
+   * parts reordered — and `direction` is ALSO what `text-align: start`
+   * resolves against. So the moment that class went on a BLOCK rather than on
+   * the digits inside it, "start" quietly turned from right into left.
+   *
+   * Nothing could see it: the element has the right class, the right
+   * alignment keyword and the wrong result. So the audit computes the
+   * RESOLVED alignment and compares it with the page's own direction.
+   *
+   * ⚠️ CENTRED TEXT AND FORM FIELDS ARE EXCLUDED. `text-center` is a decision
+   *    somebody made and direction does not change it; and a time or phone
+   *    INPUT whose digits sit at its left edge is the convention every
+   *    keyboard on the device follows.
+   */
+  misaligned: Array<{ tag: string; text: string }>
   collisions: Array<{ a: string; b: string }>
   /**
    * ★ X5 (2026-09-04) — THE ROSTERS' TWO FAILURE MODES, MEASURED.
@@ -672,6 +693,51 @@ function audit(): Report {
    *   · a one-pixel disagreement is sub-pixel layout, not a defect, so the
    *     threshold is 4 px — a fifth of a line of text.
    */
+  /** ★★ Y10 — see `Report.misaligned`. */
+  const pageRtl = getComputedStyle(document.documentElement).direction === 'rtl'
+  const misaligned = !pageRtl
+    ? []
+    : [...document.querySelectorAll<HTMLElement>('body *')]
+        .filter((el) => {
+          const cs = getComputedStyle(el)
+          if (cs.display === 'none' || cs.visibility === 'hidden') return false
+          if (cs.display.startsWith('inline') && cs.display !== 'inline-block') return false
+          if (cs.direction !== 'ltr') return false
+          if (['INPUT', 'TEXTAREA', 'SELECT', 'OPTION'].includes(el.tagName)) return false
+          if (el.closest('input, textarea, select')) return false
+          const align = cs.textAlign
+          if (align !== 'start' && align !== 'left') return false
+          const r = el.getBoundingClientRect()
+          if (r.width <= 0 || r.height <= 0) return false
+          const own = [...el.childNodes]
+            .filter((n) => n.nodeType === Node.TEXT_NODE)
+            .map((n) => n.textContent ?? '')
+            .join('')
+            .trim()
+          if (!own) return false
+          /**
+           * A box that is exactly as wide as its own text cannot be said to be
+           * aligned to either side of anything — so the SLACK is what makes
+           * this a claim about alignment.
+           *
+           * ⚠️ MEASURED WITH A RANGE, NOT WITH `scrollWidth`. The first
+           *    version compared the box with `el.scrollWidth`, which for a
+           *    block whose content fits IS the box — so the difference was
+           *    always zero and the check excluded every element it existed to
+           *    find. It reported nothing on the very code it was written from.
+           */
+          const range = document.createRange()
+          range.selectNodeContents(el)
+          const textWidth = range.getBoundingClientRect().width
+          range.detach()
+          return r.width - textWidth >= 8
+        })
+        .map((el) => ({
+          tag: label(el),
+          text: (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 30),
+        }))
+        .slice(0, 8)
+
   const inFlowOverflow = (el: HTMLElement): number => {
     const r = el.getBoundingClientRect()
     const cs = getComputedStyle(el)
@@ -947,6 +1013,7 @@ function audit(): Report {
     uncontained,
     truncated,
     clipped: clippedBoxes,
+    misaligned,
   }
 }
 
@@ -1138,6 +1205,9 @@ for (const name of RUNS) {
       // ★★ Y2 — judged at EVERY stop, because the seam is what narrows a tile
       // and a narrow tile is what makes its first row wrap into a fourth line.
       const clippedBoxes = report.clipped.length > 0
+      // ★★ Y10 — judged at every stop: a narrow panel is what puts a
+      // timestamp on its own line in the first place.
+      const wrongSide = report.misaligned.length > 0
       const ok =
         !overflow &&
         !cutOff &&
@@ -1145,6 +1215,7 @@ for (const name of RUNS) {
         !crushedCols &&
         !deformed &&
         !clippedBoxes &&
+        !wrongSide &&
         !tooTall &&
         !gradientWrong &&
         !clockCovered &&
@@ -1190,6 +1261,9 @@ for (const name of RUNS) {
       }
       for (const c of report.clipped) {
         console.log(`      Y2 box cuts its own content, ${c.lost}px lost: ${c.tag}`)
+      }
+      for (const m of report.misaligned) {
+        console.log(`      Y10 text on the physical LEFT of an RTL page: ${m.tag} "${m.text}"`)
       }
       if (!first) continue
       for (const w of report.wide) {

@@ -75,7 +75,8 @@ export function FarmerGuardsScreen() {
           scrolling past his whole future to reach last week. */}
       <div className="panel-scope">
         <div className="pair-grid">
-        <Section title={t('farmer.upcoming')}>
+        <Section title={t('farmer.upcoming')}
+          collapseKey="farmer-upcoming">
           {upcoming.length === 0 ? (
             <EmptyState icon="moon" title={t('farmer.noUpcoming')} />
           ) : (
@@ -87,7 +88,8 @@ export function FarmerGuardsScreen() {
           )}
         </Section>
 
-        <Section title={t('farmer.past')}>
+        <Section title={t('farmer.past')}
+          collapseKey="farmer-past">
           {past.length === 0 ? (
             <EmptyState icon="shield" title={t('farmer.noPast')} />
           ) : (

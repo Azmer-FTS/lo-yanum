@@ -121,6 +121,7 @@ export function VolunteerGuardScreen() {
       <div className="flex flex-col gap-4">
         <Section
           title={t('volunteer.anchorTitle')}
+          collapseKey="volunteer-anchor"
           action={
             <a
               href={wazeUrl(anchorPoint.position)}
@@ -155,7 +156,8 @@ export function VolunteerGuardScreen() {
           </p>
         </Section>
 
-        <Section title={t('volunteer.instructions')}>
+        <Section title={t('volunteer.instructions')}
+          collapseKey="volunteer-instructions">
           <ul className="flex flex-col gap-2">
             {anchorPoint.instructions.map((line, i) => (
               <li key={i} className="flex gap-2.5 text-caption text-content-secondary">
@@ -168,7 +170,8 @@ export function VolunteerGuardScreen() {
           </ul>
         </Section>
 
-        <Section title={t('volunteer.contactsTitle')}>
+        <Section title={t('volunteer.contactsTitle')}
+          collapseKey="volunteer-contacts">
           <div className="flex flex-col gap-2">
             {farmerContact && (
               <CallRow
@@ -194,7 +197,8 @@ export function VolunteerGuardScreen() {
           </div>
         </Section>
 
-        <Section title={t('volunteer.team')}>
+        <Section title={t('volunteer.team')}
+          collapseKey="volunteer-team">
           <ul className="divide-y divide-edge-subtle">
             {volunteers.map(({ volunteer, isGroupPhone }) => (
               <li key={volunteer.id} className="flex items-center gap-3 py-2.5">

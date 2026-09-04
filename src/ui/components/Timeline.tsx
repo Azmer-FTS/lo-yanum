@@ -119,12 +119,34 @@ export function Timeline({
                   </span>
                 )}
               </div>
-              <p className="ltr-nums mt-0.5 text-start text-micro text-content-muted">
-                {entry.at
-                  ? withDate
-                    ? formatDateTime(entry.at, locale)
-                    : formatTime(entry.at, locale)
-                  : '—'}
+              {/**
+                * ★★ Y10 (2026-09-04) — THE ISOLATION BELONGS TO THE NUMBER, THE
+                *    ALIGNMENT TO THE LINE.
+                *
+                * The product owner: "les dates/heures passées à la ligne sont
+                * alignées à GAUCHE : les remettre À DROITE (sous le titre),
+                * conformément au RTL."
+                *
+                * `.ltr-nums` sets `direction: ltr` — which it must, or a
+                * Hebrew page renders "12:36–20:36" with its parts reordered.
+                * But direction is also what `text-start` RESOLVES against, so
+                * putting the class on the paragraph quietly turned "start"
+                * from right into left, and X9.1's new timestamp line landed
+                * under the title at the wrong edge on every timeline in the
+                * app.
+                *
+                * So the paragraph stays in the document's direction and is
+                * `text-start` — the right, in Hebrew — and the isolation is on
+                * the SPAN that actually holds the digits.
+                */}
+              <p className="mt-0.5 text-start text-micro text-content-muted">
+                <span className="ltr-nums">
+                  {entry.at
+                    ? withDate
+                      ? formatDateTime(entry.at, locale)
+                      : formatTime(entry.at, locale)
+                    : '—'}
+                </span>
               </p>
 
               {entry.detail && (

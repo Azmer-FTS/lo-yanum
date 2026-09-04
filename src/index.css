@@ -230,10 +230,44 @@
   /* Numbers, phone numbers and coordinates must read LTR inside RTL text.
      A ratio like "3 / 12" has to be ONE run of this class — two separate runs
      get reordered by the bidi algorithm and display backwards. */
+  /**
+   * ★★ Y10 (2026-09-04) — THE DIRECTION IS THE NUMBER'S, THE ALIGNMENT IS THE
+   *    PAGE'S.
+   *
+   * The product owner: "les dates/heures passées à la ligne sont alignées à
+   * GAUCHE : les remettre À DROITE, conformément au RTL."
+   *
+   * `direction: ltr` is not optional — without it a Hebrew page renders
+   * "12:36–20:36" with its parts reordered. But `direction` is ALSO what
+   * `text-align: start` resolves against, so the moment this class went on a
+   * BLOCK rather than on the digits inside it, "start" quietly turned from
+   * right into left. `bun run layout` found it on twenty-odd elements across
+   * the app once it was taught to compute the RESOLVED alignment: phone
+   * numbers under a name, coordinates over the map, hex values in the
+   * styleguide, the timeline's timestamps.
+   *
+   * ★ `match-parent` IS THE EXACT SEMANTICS AND IT IS ONE LINE. It resolves
+   *   `start` / `end` against the PARENT's direction instead of this
+   *   element's — which is precisely "let the number be LTR and let the line
+   *   sit where the page's own text sits".
+   *
+   * ⚠️ AND IT DOES NOT OVERRIDE AN EXPLICIT CHOICE. This rule is in the
+   *    components layer; Tailwind's `text-center` / `text-end` are utilities,
+   *    which come after — so the several places that deliberately centre a
+   *    number keep centring it.
+   */
   .ltr-nums {
     direction: ltr;
     unicode-bidi: isolate;
     font-variant-numeric: tabular-nums;
+    /* ⚠️ BOTH SPELLINGS, AND THE PREFIXED ONE IS THE ONE THAT WORKS TODAY.
+       Blink and WebKit — Chromium, Safari, and the product owner's iPad —
+       implement this keyword as `-webkit-match-parent`; the unprefixed form
+       was measured being dropped, which is why the first run of this change
+       moved 36 elements not at all. The standard spelling is second so it
+       wins wherever it is understood. */
+    text-align: -webkit-match-parent;
+    text-align: match-parent;
   }
 
   /* Counter / table figures: tabular and tightly led so a column scans fast. */

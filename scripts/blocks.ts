@@ -131,7 +131,18 @@ for (const mode of ['full', 'hidden', 'split'] as const) {
   await page.waitForTimeout(500)
   const r = await pill.boundingBox()
   rects[mode] = r ? { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) } : { x: -1, y: -1, w: 0, h: 0 }
-  check(`mode ${mode}: the pill is at the physical bottom-left`, rects[mode].x < 40 && rects[mode].y + rects[mode].h > 1032 - 120, JSON.stringify(rects[mode]))
+  /**
+   * ★★ Y3.3 (2026-09-04) — "AT THE PHYSICAL BOTTOM-LEFT" WAS `x < 40`, and the
+   *    product owner has since asked for the three buttons to lie DOWN beside
+   *    the "+" rather than stand above it. So the pill starts one rail past
+   *    the "+"'s far edge and the old assertion is describing the layout he
+   *    rejected. What U4.4 was actually protecting — "he never has to look for
+   *    it after a switch" — is the check below this loop, that the box is
+   *    identical in all three modes; what this line keeps is that it is still
+   *    in the BOTTOM BAND rather than anywhere else. Its exact geometry beside
+   *    the "+" is `bun run overlap`'s business, measured to the pixel there.
+   */
+  check(`mode ${mode}: the pill is in the bottom band`, rects[mode].x < 260 && rects[mode].y + rects[mode].h > 1032 - 140, JSON.stringify(rects[mode]))
 }
 check('the pill is at the SAME coordinates in all three modes', JSON.stringify(rects.full) === JSON.stringify(rects.hidden) && JSON.stringify(rects.hidden) === JSON.stringify(rects.split))
 const fixed = await pill.evaluate((el) => getComputedStyle(el).position)
@@ -148,6 +159,88 @@ check('a tap unfolds the tools', (await page.locator('[data-testid="draw-tools-p
 await page.mouse.click(300, 300)
 await page.waitForTimeout(300)
 check('a tap elsewhere folds them', (await page.locator('[data-testid="draw-tools-panel"]').count()) === 0)
+
+// --- 4. ★★ Y11 — EVERY TITLED CONTENT BLOCK HAS A CHEVRON AND A MEMORY -----
+//
+// The product owner: "Le PO constate que tous les blocs ne sont pas repliables.
+// Audit complet : chaque bloc de contenu de chaque écran doit avoir son chevron
+// et sa mémoire globale par type (règle X1 déjà spécifiée)."
+//
+// U1 built the mechanism and eleven of the app's seventy-four blocks used it.
+// The audit below is what stops that drifting again: it visits every screen
+// that shows content blocks — including the three ROLE screens, which had none
+// at all — and asks each `<Section>` whether it is foldable.
+//
+// ⚠️ A WIZARD STEP IS NOT A CONTENT BLOCK, and this is the one exclusion.
+//    "מתי", "נקודת מוצא", "רשימה קצרה" are the STEPS of a form the coordinator
+//    is filling in, sequenced by the wizard's own stepper; a chevron on a step
+//    he is being walked through is a second navigation for the same thing, and
+//    folding the step he is typing into would hide his own input. The import
+//    wizard is the same shape.
+const BLOCK_SCREENS: Array<{ name: string; hash: string; session?: string }> = [
+  { name: 'לוח בקרה', hash: '#/coordinator' },
+  { name: 'כרטיס חווה', hash: '#/coordinator/farms/farm-01' },
+  { name: 'כרטיס שמירה', hash: '#/coordinator/missions/mission-01' },
+  { name: 'כרטיס אירוע', hash: '#/coordinator/incidents/inc-01' },
+  { name: 'עמדה', hash: '#/coordinator/farms/farm-01/anchors/anchor-01' },
+  { name: 'הגדרות', hash: '#/coordinator/settings' },
+  { name: 'חקלאי — הלילה', hash: '#/farmer', session: 'farmer:contact-01a' },
+  { name: 'חקלאי — שמירות', hash: '#/farmer/guards', session: 'farmer:contact-01a' },
+  { name: 'מתנדב — שמירה', hash: '#/volunteer', session: 'volunteer:vol-001' },
+  { name: 'נהג — נסיעה', hash: '#/driver', session: 'driver:drv-03' },
+]
+
+console.log('')
+console.log('  Y11 — every titled content block folds, and remembers')
+console.log('  -----------------------------------------------------')
+
+const treated: string[] = []
+for (const screen of BLOCK_SCREENS) {
+  /**
+   * ⚠️ THE IDENTITY IS PICKED THE WAY THE DEMO PICKS IT — the toolbar's
+   *    `<select>` — rather than by writing a storage key this file guesses the
+   *    name of. Same door `bun run layout` uses for the role screens.
+   */
+  await open(page, '#/coordinator', 300)
+  if (screen.session) {
+    await page.selectOption('select', screen.session)
+    await page.waitForTimeout(400)
+  }
+  await page.evaluate((h) => {
+    window.location.hash = h
+  }, screen.hash)
+  await page.waitForTimeout(2800)
+
+  const blocks = await page.evaluate(() =>
+    [...document.querySelectorAll('section')]
+      .filter((el) => {
+        const r = el.getBoundingClientRect()
+        if (r.width === 0 || r.height === 0) return false
+        // A block is one that HAS a heading; a bare `<Section>` used as a
+        // spacing wrapper has nothing to hang a chevron on.
+        return el.querySelector(':scope > div > button[aria-expanded], :scope > div > h2, :scope > div > p, :scope > div > span') !== null
+      })
+      .map((el) => ({
+        key: el.getAttribute('data-block'),
+        foldable: el.hasAttribute('data-open'),
+        title: (el.querySelector('button[aria-expanded] span, h2, :scope > div span') ?? el)
+          .textContent?.replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 28),
+      })),
+  )
+  const bare = blocks.filter((b) => !b.foldable)
+  check(
+    `${screen.name}: all ${blocks.length} content blocks fold`,
+    blocks.length > 0 && bare.length === 0,
+    bare.length ? `not foldable: ${bare.map((b) => b.title).join(' · ')}` : blocks.map((b) => b.key).join(' · '),
+  )
+  for (const b of blocks) if (b.key) treated.push(`${screen.name}/${b.key}`)
+}
+
+console.log('')
+console.log(`  ${treated.length} blocks treated:`)
+for (const t of treated) console.log(`    ${t}`)
 
 await browser.close()
 console.log(`\n  ${passed} passed, ${failed} failed\n`)
