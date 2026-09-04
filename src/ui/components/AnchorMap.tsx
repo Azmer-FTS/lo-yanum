@@ -1003,7 +1003,29 @@ export function AnchorMap({
             page's `scrollWidth` grows. Caught by `bun run layout` at ipad
             PORTRAIT and nowhere else. It is anchored by `bottom`, so wrapping
             grows it upward, over the map, at no cost. */}
-        <div className="flex flex-wrap items-end justify-between gap-2">
+        {/**
+          * ★★ Y3.3 (2026-09-04) — THE PENCIL MOVED TO THE LEGEND'S SIDE.
+          *
+          * This row was `justify-between`: the legend at the inline start —
+          * the physical RIGHT in Hebrew — and the drawing tools at the inline
+          * end, i.e. the physical LEFT. Y3.3 laid the mode pill down beside
+          * the "+" in exactly that corner, and `bun run blocks` caught the
+          * result as a sixty-second timeout: "map-mode-full … intercepts
+          * pointer events". The pencil was under the band.
+          *
+          * ⚠️ AND RESERVING THE BAND'S WIDTH WAS THE FIRST ANSWER, WHICH THE
+          *    SWEEP REJECTED. A 232 px `padding-inline-start` gives the row a
+          *    232 px min-content, and at 75 % of the mission wizard's seam the
+          *    map column is narrower than that: `bun run layout` reported
+          *    "HORIZONTAL SCROLL: scrollWidth 1074 vs window 1032 → div…
+          *    bottom-9 (232px)". A reservation cannot fix a conflict on a
+          *    surface too narrow to hold both.
+          *
+          * So the two controls share the side the band is NOT on. They read
+          * better together anyway — the legend explains the map and the pencil
+          * draws on it — and the physical left is left to the band alone.
+          */}
+        <div className="flex flex-wrap items-end justify-start gap-2">
           <MapLegend defaultOpen={false}>
             {/* G7bis.1 — one legend stack: what the point shapes mean, then
                 what the painted ground means, then the assessment. */}
