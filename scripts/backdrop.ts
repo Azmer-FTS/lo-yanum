@@ -1,4 +1,4 @@
-import { chromium } from 'playwright'
+import { chromium, webkit } from 'playwright'
 import type { Browser, Page, Request } from 'playwright'
 
 import { SATELLITE } from '../src/ui/components/basemap'
@@ -30,6 +30,67 @@ import { SATELLITE } from '../src/ui/components/basemap'
  */
 
 const PORT = Number(process.env.BACKDROP_PORT ?? 5196)
+
+/**
+ * ★★ Y1 (2026-09-04) — THE ENGINE IS A CHOICE NOW, AND THE REASON IS THE
+ *    PRODUCT OWNER'S IPAD. Every sweep in this repository has run on Chromium
+ *    because the WebKit build was not installed on the machine, and ETAT.md has
+ *    carried "the iPad is WebKit, so that is the half that is missing" as a
+ *    standing caveat for four rounds. It is installed. `ENGINE=webkit bun run
+ *    backdrop` is now a real run, and section C below — the one that answers
+ *    his white map — is written to be worth running on both.
+ */
+const ENGINE = process.env.ENGINE === 'webkit' ? webkit : chromium
+const ENGINE_NAME = process.env.ENGINE === 'webkit' ? 'webkit' : 'chromium'
+
+/**
+ * ★★ Y1 — READING THE PIXELS THE GPU ACTUALLY PAINTED.
+ *
+ * MapLibre creates its context with `preserveDrawingBuffer: false`, which is
+ * the right default and which also means the buffer is empty by the time any
+ * script can sample it: `drawImage` of the live canvas returns one flat colour
+ * whether the map is perfect or dead. That is not a detail — it is the exact
+ * reason a gate can watch `getStyle().sources`, see `protomaps` present, and
+ * sign off on a white rectangle.
+ *
+ * So the flag is forced on for the duration of the gate, by patching
+ * `getContext` before any application script runs. It costs a copy per frame
+ * and buys the only evidence that answers the product owner's report.
+ */
+const PRESERVE_DRAWING_BUFFER = `(() => {
+  const orig = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (type, attrs) {
+    if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') {
+      attrs = Object.assign({}, attrs, { preserveDrawingBuffer: true });
+    }
+    return orig.call(this, type, attrs);
+  };
+})()`
+
+/**
+ * How many distinct colours the GL canvas is showing, over a 200×200 sample.
+ *
+ * A painted basemap is well over a hundred — land, water, roads, labels, the
+ * halo under each of them. A dead context, a style with no ground, or a
+ * `background` layer alone is one, two or three. The threshold below is set at
+ * eight, which is an order of magnitude clear of both.
+ */
+const PAINTED_COLOURS = `(() => {
+  const gl = document.querySelector('.maplibregl-canvas');
+  if (!gl) return -1;
+  const w = 200, h = 200;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(gl, 0, 0, w, h);
+  const d = ctx.getImageData(0, 0, w, h).data;
+  const seen = new Set();
+  for (let i = 0; i < d.length; i += 4) seen.add((d[i] >> 3) + ',' + (d[i+1] >> 3) + ',' + (d[i+2] >> 3));
+  return seen.size;
+})()`
+
+/** Below this, the map is not showing a ground. See `PAINTED_COLOURS`. */
+const PAINTED_FLOOR = 8
 const OUT_DIR = 'dist-backdrop'
 const SHOTS = 'docs/screenshots/basemap'
 
@@ -145,7 +206,7 @@ async function styleLoaded(page: Page, ms = 40_000): Promise<boolean> {
 }
 
 console.log('')
-console.log('  A84 — BORDERS AND THE SATELLITE SWITCH, IN A REAL BROWSER')
+console.log(`  A84 — BORDERS AND THE SATELLITE SWITCH, IN A REAL BROWSER (${ENGINE_NAME})`)
 console.log('  ========================================================')
 
 const env = { ...process.env, VITE_SUPABASE_URL: '', VITE_SUPABASE_PUBLISHABLE_KEY: '' }
@@ -178,8 +239,9 @@ const base = `http://localhost:${PORT}`
 
 let browser: Browser | null = null
 try {
-  browser = await chromium.launch()
+  browser = await ENGINE.launch()
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'he-IL' })
+  await context.addInitScript(PRESERVE_DRAWING_BUFFER)
   const page = await context.newPage()
   page.setDefaultTimeout(30_000)
 
@@ -496,6 +558,149 @@ try {
   await page.screenshot({ path: `${SHOTS}/satellite-offline-fallback.png` })
   await context.setOffline(false)
   console.log(`  captures: ${SHOTS}/satellite.png, ${SHOTS}/satellite-offline-fallback.png`)
+
+  // -------------------------------------------------------------------------
+  section('C — Y1: THE GROUND COMES BACK, EVERY TIME AND FROM ANYTHING')
+  // -------------------------------------------------------------------------
+
+  /**
+   * ★★ Y1 (2026-09-04) — THE PRODUCT OWNER'S WHITE MAP.
+   *
+   *   "en basculant satellite → vectoriel, le fond de carte ne revient pas —
+   *    seuls les marqueurs restent sur un écran blanc. Aucun zoom/dézoom ni
+   *    re-bascule ne le récupère."
+   *
+   * Two claims are separated here, because the first one turned out to be
+   * innocent and saying so is part of the answer.
+   *
+   * C1 — THE SWITCH ITSELF. Ten round-trips, and at all twenty states the
+   *      canvas is asked how many colours it is PAINTING rather than which
+   *      sources it declares. The earlier version of this gate checked
+   *      `getStyle().sources` and would have passed a blank map without
+   *      hesitating; that is exactly the evidence §29 rules out, and it is why
+   *      `PRESERVE_DRAWING_BUFFER` exists above.
+   *
+   * C2 — A LOST WEBGL CONTEXT, which is what actually produces his screen.
+   *      iOS discards GL contexts under memory pressure and on backgrounding,
+   *      and MapLibre 4.7.1 announces a recovery it does not perform: after
+   *      its `webglcontextrestored` handler has run `_setupPainter`, `resize`
+   *      and `_update`, the canvas holds ONE colour and stays there through a
+   *      zoom and a ground switch — measured, and the reason nothing the
+   *      product owner tried helped. `MapCanvas` rebuilds the map instead.
+   *      Both shapes are driven: the loss that is restored, and the loss that
+   *      is never restored at all.
+   */
+  const painted = async (): Promise<number> => Number(await page.evaluate(PAINTED_COLOURS))
+
+  await settle(page, FARM_VIEW)
+  await page.waitForTimeout(1500)
+  check(
+    '★ the sampler sees a PAINTED map before anything is done to it',
+    (await painted()) >= PAINTED_FLOOR,
+    `${await painted()} distinct colours over 200×200`,
+  )
+
+  let worstVector = Number.POSITIVE_INFINITY
+  let worstSatellite = Number.POSITIVE_INFINITY
+  let blankStates = 0
+  for (let cycle = 1; cycle <= 10; cycle++) {
+    await baseBtn.click()
+    await styleLoaded(page)
+    await page.waitForTimeout(2200)
+    const onImagery = await painted()
+    worstSatellite = Math.min(worstSatellite, onImagery)
+    if (onImagery < PAINTED_FLOOR) blankStates++
+
+    await baseBtn.click()
+    await styleLoaded(page)
+    await page.waitForTimeout(2200)
+    const onVector = await painted()
+    worstVector = Math.min(worstVector, onVector)
+    if (onVector < PAINTED_FLOOR) blankStates++
+
+    if (cycle === 10) await page.screenshot({ path: `${SHOTS}/y1-after-10-round-trips.png` })
+  }
+  check(
+    '★★ C1 — ten satellite↔vector round-trips, and the ground is PAINTED at all 20 states',
+    blankStates === 0,
+    `${blankStates} blank states; thinnest vector frame ${worstVector} colours, thinnest imagery frame ${worstSatellite}`,
+  )
+  check(
+    'and the switch ends where it started, on the vector ground',
+    (await baseBtn.getAttribute('data-base')) === 'vector',
+  )
+
+  /** The camera, so the recovery can be shown not to have moved it. */
+  const cameraNow = async (): Promise<string> =>
+    page.evaluate(() => {
+      const m = (window as unknown as { __loYanumMap?: MapHandle }).__loYanumMap as unknown as {
+        getCenter: () => { lng: number; lat: number }
+        getZoom: () => number
+      }
+      const c = m.getCenter()
+      return `${c.lng.toFixed(3)},${c.lat.toFixed(3)}@${m.getZoom().toFixed(1)}`
+    })
+
+  const markerCount = async (): Promise<number> => page.locator('.maplibregl-marker').count()
+
+  const before = { pixels: await painted(), camera: await cameraNow(), markers: await markerCount() }
+
+  /** C2a — the ordinary case: the browser takes the context and gives it back. */
+  await page.evaluate(() => {
+    const c = document.querySelector('.maplibregl-canvas') as HTMLCanvasElement
+    const gl = (c.getContext('webgl2') ?? c.getContext('webgl')) as WebGLRenderingContext
+    const lose = gl.getExtension('WEBGL_lose_context') as { loseContext: () => void; restoreContext: () => void }
+    lose.loseContext()
+    setTimeout(() => lose.restoreContext(), 300)
+  })
+  await page.waitForTimeout(7000)
+  const restored = { pixels: await painted(), camera: await cameraNow(), markers: await markerCount() }
+  check(
+    '★★ C2a — a WebGL context that is lost and restored leaves a PAINTED map',
+    restored.pixels >= PAINTED_FLOOR,
+    `${before.pixels} colours before, ${restored.pixels} after`,
+  )
+  check(
+    '★ and the coordinator is still looking at the same place',
+    restored.camera === before.camera,
+    `${before.camera} → ${restored.camera}`,
+  )
+  check(
+    '★ and his markers came back with the ground',
+    restored.markers === before.markers && restored.markers > 0,
+    `${before.markers} before, ${restored.markers} after`,
+  )
+  await page.screenshot({ path: `${SHOTS}/y1-context-restored.png` })
+
+  /** C2b — the backgrounded-iPad case: the context goes and never comes back. */
+  await page.evaluate(() => {
+    const c = document.querySelector('.maplibregl-canvas') as HTMLCanvasElement
+    const gl = (c.getContext('webgl2') ?? c.getContext('webgl')) as WebGLRenderingContext
+    ;(gl.getExtension('WEBGL_lose_context') as { loseContext: () => void }).loseContext()
+  })
+  await page.waitForTimeout(9000)
+  check(
+    '★★ C2b — a context that is lost and NEVER restored is rebuilt anyway',
+    (await painted()) >= PAINTED_FLOOR,
+    `${await painted()} colours after a silent loss`,
+  )
+
+  /** And the thing he reported is the thing that still has to work afterwards. */
+  await baseBtn.click()
+  await styleLoaded(page)
+  await page.waitForTimeout(2200)
+  const satAfterLoss = await painted()
+  await baseBtn.click()
+  await styleLoaded(page)
+  await page.waitForTimeout(2200)
+  const vecAfterLoss = await painted()
+  check(
+    '★★ and the ground switch still paints both grounds after a recovery',
+    satAfterLoss >= PAINTED_FLOOR && vecAfterLoss >= PAINTED_FLOOR,
+    `imagery ${satAfterLoss} colours, vector ${vecAfterLoss} colours`,
+  )
+  await page.screenshot({ path: `${SHOTS}/y1-recovered-and-switching.png` })
+  console.log(`  captures: ${SHOTS}/y1-after-10-round-trips.png, ${SHOTS}/y1-context-restored.png`)
 } finally {
   await browser?.close()
   serve.kill()

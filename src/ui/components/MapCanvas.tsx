@@ -744,6 +744,56 @@ export default function MapCanvas({
   freehandRef.current = freehand
   const toolsRef = useRef<MapTools | null>(null)
 
+  /**
+   * ★★ Y1 (2026-09-04) — THE WHITE MAP, AND WHY NOTHING RECOVERED IT.
+   *
+   * The product owner reported that switching לוויין → מפה left the markers
+   * floating on a white rectangle, and that neither zooming nor switching back
+   * brought the ground back. The first suspect — that `setStyle` was dropping
+   * the `pmtiles://` source or failing to re-attach the layers — was measured
+   * and ACQUITTED: `bun run backdrop` now drives ten satellite↔vector
+   * round-trips on Chromium AND WebKit, at the iPad and iPhone viewports, on
+   * localhost and on the deployed URL, and reads the PAINTED PIXELS of the GL
+   * canvas at every state. The ground is drawn at all twenty of them.
+   *
+   * What DOES produce his screen exactly — markers kept, ground gone, zoom and
+   * re-toggle both useless — is a LOST WEBGL CONTEXT, which is an ordinary
+   * event on an iPad: iOS discards GL contexts under memory pressure and when
+   * a tab is backgrounded, and this app hands the GPU a 94 MB vector archive
+   * plus, in satellite, a screenful of raster imagery.
+   *
+   * ⚠️ AND MAPLIBRE 4.7.1 DOES NOT COME BACK FROM ONE. It looks like it does:
+   *    it calls `preventDefault()` on the loss, and on restore it runs
+   *    `_setupPainter()`, `resize()` and `_update()` and fires
+   *    `webglcontextrestored`. Measured, with `WEBGL_lose_context`: after that
+   *    whole sequence the canvas holds ONE colour — 1 distinct value across
+   *    200×200 samples — and stays there through a `resize()`, a
+   *    `triggerRepaint()`, a zoom and a ground switch. The style is intact,
+   *    the sources are intact, the painter is dead.
+   *
+   * So the only honest recovery is to BUILD A NEW MAP. This counter is the
+   * one that does it: every effect that attaches anything to the map carries
+   * it, so bumping it tears the corpse down and stands a fresh instance up in
+   * the same container — at the camera the dead one was looking at, which is
+   * held in `cameraRestoreRef` and is why the recovery is invisible rather
+   * than a jump back to the national view.
+   *
+   * ★ THE TIMER IS A FALLBACK, NOT THE PATH. `webglcontextrestored` normally
+   *   arrives, because MapLibre's `preventDefault()` is what allows it to; but
+   *   a context lost while the app is in the background can stay lost until
+   *   long after the user has come back and started tapping. So a loss that
+   *   is not restored is rebuilt anyway, and a construction that fails
+   *   because the GPU is still gone is retried rather than left as a blank.
+   */
+  const [glGeneration, setGlGeneration] = useState(0)
+  const cameraRestoreRef = useRef<{
+    center: maplibregl.LngLatLike
+    zoom: number
+    bearing: number
+    pitch: number
+  } | null>(null)
+
+
   // Double-click has one meaning at a time: close the ring, or zoom. The
   // handler's presence decides which.
   useEffect(() => {
@@ -751,7 +801,7 @@ export default function MapCanvas({
     if (!map) return
     if (onMapDblClick) map.doubleClickZoom.disable()
     else map.doubleClickZoom.enable()
-  }, [onMapDblClick])
+  }, [onMapDblClick, glGeneration])
 
   /**
    * X12.3 — the regional washes are MapLibre layers rather than a filtered
@@ -774,7 +824,7 @@ export default function MapCanvas({
     return () => {
       map.off('styledata', apply)
     }
-  }, [layers.regions])
+  }, [layers.regions, glGeneration])
   // Latest requested polyline. Held in a ref so the map's own `load` handler
   // can apply it the moment the source exists, whatever order things mounted in.
   const lineRef = useRef<LatLng[] | undefined>(line)
@@ -785,7 +835,7 @@ export default function MapCanvas({
   const popupRef = useRef<maplibregl.Popup | null>(null)
   const [popupHost] = useState(() => document.createElement('div'))
 
-  // Create the map once.
+  // Create the map once — and again after a lost GL context, see `glGeneration`.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
 
@@ -796,14 +846,24 @@ export default function MapCanvas({
      */
     const initialGround = readStoredBase()
 
+    /**
+     * ★ Y1 — THE CAMERA OF THE MAP THAT DIED, when there was one. A recovery
+     *   that dropped the coordinator back to the national view would be a
+     *   second defect rather than a fix: he loses the farm he was looking at.
+     */
+    const restore = cameraRestoreRef.current
+    cameraRestoreRef.current = null
+
     const map = new maplibregl.Map({
       container: containerRef.current,
       // ★ The stored ground, filtered through the network state — see
       //   `readStoredBase`. A device left in satellite mode and opened with no
       //   coverage comes up on the vector archive it is holding.
       style: buildBasemapStyle(resolvedThemeOf(), initialGround),
-      center: [center?.lng ?? HOME_BASE.lng, center?.lat ?? HOME_BASE.lat],
-      zoom,
+      center: restore?.center ?? [center?.lng ?? HOME_BASE.lng, center?.lat ?? HOME_BASE.lat],
+      zoom: restore?.zoom ?? zoom,
+      bearing: restore?.bearing ?? 0,
+      pitch: restore?.pitch ?? 0,
       interactive,
       /* ★ X3.4 (2026-09-04) — MAPLIBRE'S ATTRIBUTION CONTROL IS OFF. It is
          added at the PHYSICAL bottom-right, which in this Hebrew app is the
@@ -1299,18 +1359,74 @@ export default function MapCanvas({
     const systemDark = window.matchMedia?.('(prefers-color-scheme: dark)')
     systemDark?.addEventListener('change', repaint)
 
+    /**
+     * ★★ Y1 — THE RECOVERY. See the long note on `glGeneration` for why a
+     *    rebuild is the only thing that works.
+     *
+     * ⚠️ THE CAMERA IS READ AT THE MOMENT OF THE LOSS, NOT AT THE REBUILD.
+     *    `map.getCenter()` on a map whose painter has been torn down and put
+     *    back returns the transform, which survives — but the map is about to
+     *    be `remove()`d and the value has to outlive it, so it is copied into
+     *    a ref that the next construction reads and clears.
+     */
+    let rebuildTimer: ReturnType<typeof setTimeout> | undefined
+    let rebuilt = false
+    const rebuild = () => {
+      if (rebuilt) return
+      rebuilt = true
+      clearTimeout(rebuildTimer)
+      try {
+        cameraRestoreRef.current = {
+          center: map.getCenter(),
+          zoom: map.getZoom(),
+          bearing: map.getBearing(),
+          pitch: map.getPitch(),
+        }
+      } catch {
+        // A transform we cannot read is a map we cannot frame; the fresh one
+        // comes up on the props' own camera, which is never worse than white.
+        cameraRestoreRef.current = null
+      }
+      setGlGeneration((g) => g + 1)
+    }
+    const onLost = () => {
+      // The fallback of the note above: a context lost while the tab was in
+      // the background may never announce a restore, and the coordinator is
+      // looking at the white rectangle NOW.
+      clearTimeout(rebuildTimer)
+      rebuildTimer = setTimeout(rebuild, 1500)
+    }
+    map.on('webglcontextlost', onLost)
+    map.on('webglcontextrestored', rebuild)
+
     mapRef.current = map
     return () => {
+      clearTimeout(rebuildTimer)
+      map.off('webglcontextlost', onLost)
+      map.off('webglcontextrestored', rebuild)
       resizeObserver.disconnect()
       themeObserver.disconnect()
       systemDark?.removeEventListener('change', repaint)
-      map.remove()
+      /**
+       * ⚠️ GUARDED, AND ONLY BECAUSE OF THE RECOVERY PATH. `Map.remove()`
+       *    reaches into `painter.context.gl` to call `loseContext()` on the
+       *    way out — which is exactly the thing that is already gone when the
+       *    reason we are here is a lost context. An exception thrown in a
+       *    cleanup function takes the RE-RUN of the effect with it, so an
+       *    unguarded `remove()` would turn "the map recovers" into "the map is
+       *    white and React has given up".
+       */
+      try {
+        map.remove()
+      } catch {
+        map.getContainer().querySelector('.maplibregl-canvas-container')?.remove()
+      }
       mapRef.current = null
     }
-    // Mount-only: later prop changes are handled by the effects below, which is
-    // far cheaper than tearing the GL context down.
+    // Mount-only, plus `glGeneration`: later prop changes are handled by the
+    // effects below, which is far cheaper than tearing the GL context down.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [glGeneration])
 
   // Sync markers.
   useEffect(() => {
@@ -1388,7 +1504,7 @@ export default function MapCanvas({
     })
     // `onMapClick` is in the deps because arming the map changes whether a
     // marker intercepts a tap — see `markerElement`.
-  }, [markers, onMapClick])
+  }, [markers, onMapClick, glGeneration])
 
   /**
    * ═════════════════════════════════════════════════════════════════════════
@@ -1558,7 +1674,7 @@ export default function MapCanvas({
      *      every render without disturbing anything.
      */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [freehand?.active])
+  }, [freehand?.active, glGeneration])
 
   /**
    * PO RETURN 2026-09-02 — repaint the stack when the host's fullscreen state
@@ -1585,13 +1701,13 @@ export default function MapCanvas({
     lineRef.current = line
     const map = mapRef.current
     if (map) applyLine(map, line)
-  }, [line])
+  }, [line, glGeneration])
 
   useEffect(() => {
     polygonsRef.current = polygons
     const map = mapRef.current
     if (map) applyPolygons(map, polygons)
-  }, [polygons])
+  }, [polygons, glGeneration])
 
   // G18 — one effect for both shapes: they are one layer to the user, and
   // toggling "שכבת איומים" changes both at once.
@@ -1600,7 +1716,7 @@ export default function MapCanvas({
     threatVectorsRef.current = threatVectors
     const map = mapRef.current
     if (map) applyThreats(map, threatZones, threatVectors)
-  }, [threatZones, threatVectors])
+  }, [threatZones, threatVectors, glGeneration])
 
   /**
    * Frame the content.
