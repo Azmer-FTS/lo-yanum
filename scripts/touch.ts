@@ -374,6 +374,18 @@ check(
   `${postsBefore}`,
 )
 
+/**
+ * ⚠️ W5 PUT "הוסף נקודה" BEHIND THE PENCIL AND THIS GATE WAS NEVER TOLD — see
+ *    the same note in `scripts/wizard.ts`. Five of this sweep's checks have
+ *    been failing on a button that simply moved, which is a gate reporting a
+ *    defect that does not exist. Unfold the tools with a FINGER first, which
+ *    is itself worth asserting.
+ */
+check(
+  'the tools unfold under a finger',
+  await tapTestId(page, cdp, 'draw-tools-toggle'),
+)
+await page.waitForTimeout(400)
 check('"הוסף נקודה" is reachable by finger', await tapText(page, cdp, 'הוסף נקודה'))
 await page.waitForTimeout(500)
 await scrollToMap(page)
@@ -653,6 +665,11 @@ check(
 // --- 10a. placing a pin with the stylus -------------------------------------
 
 const penPostsBefore = await anchorPins(page).count()
+check(
+  'the tools unfold under a stylus',
+  await tapTestId(page, cdp, 'draw-tools-toggle'),
+)
+await page.waitForTimeout(400)
 check('"הוסף נקודה" is reachable by STYLUS', await penTapText(page, cdp, 'הוסף נקודה'))
 await page.waitForTimeout(500)
 await scrollToMap(page)

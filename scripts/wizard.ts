@@ -144,6 +144,16 @@ check(
   (await anchorPins(page).count()) === 0,
 )
 
+/**
+ * ⚠️ W5 (2026-09-02) PUT "הוסף נקודה" BEHIND THE PENCIL, AND THIS GATE WAS
+ *    NEVER TOLD. The long bar of five drawing buttons is gone from the map;
+ *    one frosted 44 px button unfolds them. The gate had been failing seven
+ *    checks ever since — every one of them downstream of a button it could no
+ *    longer find — which is a gate reporting a defect that does not exist and
+ *    hiding the ones that might. Unfold first, then press.
+ */
+await page.locator('[data-testid="draw-tools-toggle"]').first().click()
+await page.waitForTimeout(400)
 await clickText(page, 'הוסף נקודה')
 await page.waitForTimeout(400)
 check(
