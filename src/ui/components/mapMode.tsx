@@ -167,20 +167,36 @@ const MODE_ICON: Record<MapMode, 'menu' | 'columns' | 'map'> = {
 
 /**
  * U4.4 (2026-09-02) — THE FLOATING MODE PILL. Three icon buttons in one
- * vertical frosted pill, fixed to the viewport's physical bottom-left, the
- * same spot in every mode. Labels on `title` / `aria-label`; the active mode
- * is filled.
+ * frosted pill, fixed to the viewport's bottom, the same spot in every mode.
+ * Labels on `title` / `aria-label`; the active mode is filled.
+ *
+ * ★★ Y3.3 (2026-09-04) — HORIZONTAL, AND BESIDE THE "+" RATHER THAN ABOVE IT.
+ *
+ *    "Les trois boutons de mode passent EN BAS, à l'HORIZONTALE, à côté du
+ *    bouton '+', dans le même langage visuel."
+ *
+ *    W4 stacked this pill ON TOP of the "+" because both wanted the same
+ *    corner, which made a column four buttons tall standing in the map — and
+ *    a tower of floating controls is the thing the product owner has been
+ *    reporting since W5 under three different names. On one line they read as
+ *    what they are: one bottom bar of map controls, the "+" at the end of it.
+ *
+ *  ⚠️ THE OFFSET IS THE "+"'S OWN, DERIVED. `--map-rail` is where the "+"
+ *     starts and `--map-rail-w` is how wide it is, so this pill begins one
+ *     rail-gap past its far edge. Typing a number here is how the two ended up
+ *     on different vertical lines before X3.1.
+ *
+ *  ⚠️ AND PHYSICAL `left`, NOT LOGICAL `start`, because `ActionFab` is pinned
+ *     with `end-[var(--map-rail)]` — which in this Hebrew app IS the physical
+ *     left. Beside it means physically to its right, in both directions.
  */
 export function MapModePill({
   mode,
   onChange,
-  raised = false,
   className = '',
 }: {
   mode: MapMode
   onChange: (mode: MapMode) => void
-  /** Step up above the unified "+" button on the routes that carry it. */
-  raised?: boolean
   /** The breakpoint gate: `hidden lg:flex` / `hidden xl:flex`. */
   className?: string
 }) {
@@ -192,15 +208,9 @@ export function MapModePill({
       data-testid="map-mode-pill"
       data-mode={mode}
       data-overlay=""
-      // ★ W4/W5 — RAISED AT EVERY WIDTH NOW, not only below `lg`. The
-      //   unified "+" is fixed at the inline end, which in this RTL app is
-      //   this same physical corner, and it is there on the desktop too; the
-      //   pill sits in the slot above it rather than under it.
-      className={`glass fixed left-[var(--map-rail)] z-30 w-[var(--map-rail-w)] flex-col gap-0.5 rounded-card p-1 ${className || 'flex'} ${
-        raised
-          ? 'bottom-[calc(var(--shell-bottom)+5.5rem)]'
-          : 'bottom-[calc(var(--shell-bottom)+0.75rem)]'
-      }`}
+      className={`glass fixed bottom-[calc(var(--shell-bottom)+1.25rem)]
+                  left-[calc(var(--map-rail)+var(--map-rail-w)+var(--map-rail))] z-30
+                  h-[var(--map-rail-w)] flex-row items-center gap-0.5 rounded-card p-1 ${className || 'flex'}`}
     >
       {MODES.map((m) => (
         <button

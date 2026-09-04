@@ -277,9 +277,27 @@ export function PanelSplitter({
        *   app's one definition of a control that sits OVER imagery, so the
        *   grip wears it — the same answer W5 gave the tools rail.
        */}
+      {/**
+        * ★★ Y3.1 (2026-09-04) — THE TAB WAS ROUNDED ON THE WRONG SIDE.
+        *
+        * "La poignée est orientée à l'envers : la retourner, verticale,
+        * collée à la barre." The grip is a tab sitting entirely on the map's
+        * side of the rule, so its PHYSICAL RIGHT edge is the one against the
+        * rule and its PHYSICAL LEFT edge is the one facing the map. It wore
+        * `rounded-s-card`, which in this RTL document is the physical RIGHT —
+        * so the curve was against the bar and the square edge was in the
+        * open. That is a tab peeling AWAY from the rule, which is precisely
+        * what "à l'envers" and "collée à la barre" name.
+        *
+        * ⚠️ PHYSICAL `l`, NOT LOGICAL `s`, for the same reason the insets
+        *    above are physical: the row is reversed per direction so that the
+        *    map is always physically left, so the side this tab has to be
+        *    square on does not flip with the writing direction and a logical
+        *    corner would put the mistake back in the other language.
+        */}
       <span
         className="glass pointer-events-none absolute left-0 top-1/2 flex h-14 w-5 -translate-x-full -translate-y-1/2
-                   items-center justify-center rounded-s-card text-content-secondary
+                   items-center justify-center rounded-l-card text-content-secondary
                    transition-colors duration-fast group-hover:text-accent-ink group-focus-visible:text-accent-ink"
       >
         <svg width="10" height="18" viewBox="0 0 10 18" aria-hidden="true" focusable="false">

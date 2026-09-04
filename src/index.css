@@ -1017,6 +1017,28 @@
 :root {
   --map-rail: 0.75rem;
   --map-rail-w: 3.25rem;
+
+  /* -------------------------------------------------------------------------
+     ★★ Y3.4 (2026-09-04) — THE BOTTOM RESERVE, AS ONE NUMBER.
+
+     "RÉSERVE DE BAS DE PAGE : tous les écrans réservent une marge basse égale
+     à la hauteur de cette barre, pour que le dernier élément d'une liste ne
+     soit JAMAIS masqué par les boutons flottants."
+
+     Every screen was reserving its own guess: `pb-24` below the breakpoint and
+     `lg:pb-5` above it, on four call sites — which is 96 px where the bar is
+     72 px, and 20 px where the bar is 72 px. The second is why the last farm
+     on the product owner's iPad sat under the "+".
+
+     DERIVED FROM WHERE THE BAR ACTUALLY IS, so it cannot drift from it:
+     the band starts `1.25rem` above `--shell-bottom` (`ActionFab` and
+     `MapModePill` are both pinned there) and is `--map-rail-w` tall. The
+     `--map-rail` on the end is the same breathing gap the rail keeps from
+     every edge, so the last row clears the glass rather than touching it.
+     ------------------------------------------------------------------------- */
+  --float-reserve: calc(
+    var(--shell-bottom) + 1.25rem + var(--map-rail-w) + var(--map-rail)
+  );
 }
 
 /* `!important` — MapLibre's own sheet declares `margin: 10px 0 0 10px` at the
@@ -1031,6 +1053,39 @@
 .maplibregl-ctrl-top-left .maplibregl-ctrl {
   margin: 0 !important;
   width: var(--map-rail-w);
+}
+
+/* ---------------------------------------------------------------------------
+   ★★ Y3.2 (2026-09-04) — THE ZOOM BUTTONS, ON A DESKTOP WITH A MOUSE ONLY
+   ---------------------------------------------------------------------------
+   "SUPPRIMER les boutons zoom +/− sur tablette et téléphone (le pincement
+   suffit ; ils n'ajoutent que de l'encombrement). Les conserver uniquement sur
+   desktop avec souris."
+
+   Two conditions, and BOTH are needed:
+
+     `pointer: fine`   an iPad in landscape is 1024–1366 CSS px wide, so a
+                       width test alone keeps the buttons on exactly the
+                       device he asked to have them removed from. The pointer
+                       query is the one that actually says "a mouse".
+
+     `min-width: 64rem` a desktop window narrowed to a phone's width is a
+                       phone's worth of room, mouse or not, and the rail is
+                       already carrying four other targets.
+
+   ⚠️ `display: contents` AT REST, so the wrapper does not become a flex item
+      of its own between the locate button and the zoom pair — the rail's
+      2 px rhythm is `gap-0.5` on the pill, and an extra box in the middle of
+      it would space the group differently from every other pill on the rail.
+   --------------------------------------------------------------------------- */
+.map-tools-zoom {
+  display: none;
+}
+
+@media (pointer: fine) and (min-width: 64rem) {
+  .map-tools-zoom {
+    display: contents;
+  }
 }
 
 /* MapLibre attribution/controls are authored LTR; keep them that way. */

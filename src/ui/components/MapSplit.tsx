@@ -1,8 +1,6 @@
 import { useRef } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { useLocation } from 'react-router-dom'
 
-import { FAB_ROUTES } from './ActionFab'
 import { MapModePill, clampRatio, useMapMode, useMapRatio } from './mapMode'
 import { PullToRefresh } from './PullToRefresh'
 import type { MapModeState } from './mapMode'
@@ -137,8 +135,8 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
     shellPage:
       'flex flex-col lg:flex-row-reverse lg:items-start lg:pt-[var(--shell-top)] lg:rtl:flex-row',
     contentPanel:
-      'order-2 min-w-0 flex-1 overflow-y-auto px-4 pb-24 pt-5 lg:order-none lg:pb-5',
-    contentPage: 'order-2 min-w-0 flex-1 px-4 pb-24 pt-5 lg:order-none lg:pb-5',
+      'order-2 min-w-0 flex-1 overflow-y-auto px-4 pb-[var(--float-reserve)] pt-5 lg:order-none',
+    contentPage: 'order-2 min-w-0 flex-1 px-4 pb-[var(--float-reserve)] pt-5 lg:order-none',
     contentHidden: 'lg:w-full lg:px-5',
     contentSplit: 'lg:w-[var(--content-w)] lg:flex-none lg:px-5',
     mapCol: 'order-1 flex-col lg:order-none lg:min-w-0 lg:flex-1',
@@ -158,8 +156,8 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
     shellPage:
       'flex flex-col lg:pt-[var(--shell-top)] xl:flex-row-reverse xl:items-start xl:rtl:flex-row',
     contentPanel:
-      'order-2 min-w-0 flex-1 overflow-y-auto px-4 pb-24 pt-5 xl:order-none xl:pb-5',
-    contentPage: 'order-2 min-w-0 flex-1 px-4 pb-24 pt-5 xl:order-none xl:pb-5',
+      'order-2 min-w-0 flex-1 overflow-y-auto px-4 pb-[var(--float-reserve)] pt-5 xl:order-none',
+    contentPage: 'order-2 min-w-0 flex-1 px-4 pb-[var(--float-reserve)] pt-5 xl:order-none',
     contentHidden: 'xl:w-full xl:px-5',
     contentSplit: 'xl:w-[var(--content-w)] xl:flex-none xl:px-5',
     mapCol: 'order-1 flex-col xl:order-none xl:min-w-0 xl:flex-1',
@@ -223,8 +221,6 @@ export function MapSplit({
   const c = BP[breakpoint]
 
   const shellRef = useRef<HTMLDivElement | null>(null)
-  const { pathname } = useLocation()
-  const withFab = FAB_ROUTES.includes(pathname)
 
   const style = {
     '--content-w': `${clampRatio(ratio)}%`,
@@ -336,12 +332,7 @@ export function MapSplit({
           fill the map and it has to exist at every width. It is `raised`
           above the unified "+" in the same corner, and `data-overlay` says
           what it has always said: it is deliberately over things. */}
-      <MapModePill
-        mode={mode}
-        onChange={setMode}
-        raised={withFab}
-        className={c.pill}
-      />
+      <MapModePill mode={mode} onChange={setMode} className={c.pill} />
     </div>
   )
 }

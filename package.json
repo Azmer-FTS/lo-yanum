@@ -49,7 +49,8 @@
     "uipass": "bun run scripts/uipass.ts",
     "demo-photos": "bun run scripts/demo-photos.ts",
     "seam": "bun run scripts/seam.ts",
-    "regions": "bun run scripts/regions.ts"
+    "regions": "bun run scripts/regions.ts",
+    "reserve": "bun run scripts/reserve.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "^0.4.0",

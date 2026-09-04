@@ -320,7 +320,7 @@ export function FarmsListScreen() {
   // G7 — the full-page table reading, outside the map shell entirely.
   if (view === 'table') {
     return (
-      <div className="px-4 pb-24 pt-5 sm:px-6 lg:pb-6">
+      <div className="px-4 pb-[var(--float-reserve)] pt-5 sm:px-6">
         {/* G14d/A51 — the whole top rides the page from lg, column headers
             included, same construction as the volunteers roster. */}
         {top(filtered.length > 0 && <FarmsTableHead />)}

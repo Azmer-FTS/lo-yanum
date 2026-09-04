@@ -180,8 +180,35 @@ export class MapTools implements IControl {
 
     if (this.options.locate) {
       this.locateButton = this.button('map-tool-locate', () => this.toggleLocate())
-      nav.append(this.locateButton, this.rule())
+      nav.append(this.locateButton)
     }
+
+    /**
+     * ★★ Y3.2 (2026-09-04) — THE ZOOM BUTTONS ARE A DESKTOP-WITH-A-MOUSE
+     *    CONTROL, AND NOWHERE ELSE.
+     *
+     *    "SUPPRIMER les boutons zoom +/− sur tablette et téléphone (le
+     *    pincement suffit ; ils n'ajoutent que de l'encombrement). Les
+     *    conserver uniquement sur desktop avec souris."
+     *
+     * ★ THE SEPARATOR GOES WITH THEM, which is why the rule moved in here
+     *   rather than staying with מיקומי. A hairline under a lone locate
+     *   button, dividing it from nothing, is the shape of a control that was
+     *   hidden by somebody who only thought about the buttons.
+     *
+     * ⚠️ HIDDEN IN CSS, NOT SKIPPED IN JS. The condition is "a fine pointer on
+     *    a wide window" — two things that both change WITHOUT this control
+     *    being rebuilt: the coordinator resizes the window, or plugs a mouse
+     *    into the iPad. A media query re-evaluates itself; a branch taken once
+     *    in `onAdd` would be answering a question from whenever the map
+     *    happened to mount. The rule is in `index.css` next to the rail's
+     *    other measurements.
+     */
+    const zoom = document.createElement('div')
+    zoom.dataset.testid = 'map-tools-zoom'
+    zoom.className = 'map-tools-zoom contents'
+
+    if (this.options.locate) zoom.append(this.rule())
 
     const zoomIn = this.button('map-tool-zoom-in', () => map.zoomIn({ duration: 240 }))
     zoomIn.innerHTML = icon('plus')
@@ -193,7 +220,8 @@ export class MapTools implements IControl {
     zoomOut.title = this.options.labels.zoomOut
     zoomOut.setAttribute('aria-label', this.options.labels.zoomOut)
 
-    nav.append(zoomIn, zoomOut)
+    zoom.append(zoomIn, zoomOut)
+    nav.append(zoom)
     container.append(nav)
 
     this.container = container

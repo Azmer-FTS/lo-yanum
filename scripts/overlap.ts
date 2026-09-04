@@ -48,6 +48,22 @@ interface Viewport {
   name: string
   width: number
   height: number
+  /**
+   * ★★ Y3.2 — WHETHER THIS DEVICE HAS A FINGER OR A MOUSE, AND IT IS THE
+   *    DECIDING FACT OF THE ZOOM CHECK BELOW.
+   *
+   *    The product owner asked for the zoom pair to go from "tablette et
+   *    téléphone" and to stay on "desktop avec souris". An iPad in landscape
+   *    is 1376 CSS px wide — WIDER than most laptops — so a width test alone
+   *    keeps the buttons on exactly the device he asked to have them removed
+   *    from, and a gate that only varies the width would prove the rule on
+   *    the two cases it is not about.
+   *
+   *    `hasTouch` sets `pointer: coarse` in Chromium AND WebKit (measured),
+   *    which is the media query the app actually branches on. So the sweep
+   *    now carries a real fourth case: wide, and touched.
+   */
+  touch: boolean
 }
 
 /**
@@ -56,10 +72,12 @@ interface Viewport {
  * the same words there.
  */
 const VIEWPORTS: Viewport[] = [
-  { name: 'phone', width: 390, height: 844 },
-  { name: 'iphone', width: 402, height: 874 },
-  { name: 'ipad', width: 1032, height: 1376 },
-  { name: 'ipad-ls', width: 1376, height: 1032 },
+  { name: 'phone', width: 390, height: 844, touch: true },
+  { name: 'iphone', width: 402, height: 874, touch: true },
+  { name: 'ipad', width: 1032, height: 1376, touch: true },
+  { name: 'ipad-ls', width: 1376, height: 1032, touch: true },
+  /** The one case the zoom pair is meant to survive on. */
+  { name: 'desktop', width: 1440, height: 900, touch: false },
 ]
 
 /** Every screen that carries a real, driven map. */
@@ -182,6 +200,17 @@ async function audit(page: Page): Promise<Report> {
         stack = true
         for (const button of toolStack.querySelectorAll('button')) {
           const r = button.getBoundingClientRect()
+          /**
+           * ⚠️ Y3.2 — A BUTTON THAT IS NOT DRAWN IS NOT A SMALL BUTTON. The
+           *    zoom pair is `display: none` on a coarse pointer (the product
+           *    owner's iPad and phone, where pinch is the gesture), so it
+           *    measures 0×0 there — and the first run after that change
+           *    reported nine screens as having a 0×0 tap target, which is a
+           *    gate describing the absence of a control as a defect of it.
+           *    Whether the pair is present at all is `zoomShown` below; this
+           *    check is about the size of what IS on the rail.
+           */
+          if (r.width === 0 && r.height === 0) continue
           if (r.width < 43.5 || r.height < 43.5) {
             small.push(`${label(button)} ${Math.round(r.width)}×${Math.round(r.height)}`)
           }
@@ -209,7 +238,7 @@ async function audit(page: Page): Promise<Report> {
     }
 
     /**
-     * ★ X3.1 (2026-09-04) — THE RAIL IS ONE VERTICAL AXIS, AND IT IS MEASURED.
+     * ★ X3.1 (2026-09-04) — THE FLOATS ARE MEASURED, NOT TRUSTED.
      *
      * The product owner's report was "the + sticks out to the right", and it
      * was true to the pixel: MapLibre's control margin is 10 px, the mode
@@ -218,17 +247,91 @@ async function audit(page: Page): Promise<Report> {
      * agree, so they drifted. `--map-rail` / `--map-rail-w` (index.css) are
      * the single offset and the single width now, and this is what stops the
      * next float from inventing a fourth.
+     *
+     * ★★ Y3.3 (2026-09-04) — AND THERE ARE TWO GEOMETRIES NOW, NOT ONE.
+     *
+     *    "Les trois boutons de mode passent EN BAS, à l'HORIZONTALE, à côté
+     *    du bouton '+', dans le même langage visuel."
+     *
+     *    So the mode pill has LEFT the vertical rail on purpose, and a gate
+     *    that goes on asserting one axis for all three would fail the change
+     *    the product owner asked for — which is worse than not checking, as it
+     *    teaches the next person to delete the check. The invariant X3.1 was
+     *    protecting is not "one axis"; it is "nothing here is a number
+     *    somebody typed". That splits cleanly in two:
+     *
+     *      rail    the vertical stack — the map tools and the "+" — still
+     *              share one physical left edge and one width.
+     *      bottom  the horizontal band — the "+" and the mode pill — share one
+     *              bottom edge and one height, and the pill starts exactly one
+     *              `--map-rail` past the "+"'s far edge, which is the same gap
+     *              the rail keeps from every other edge.
      */
-    const rail: { name: string; left: number; width: number }[] = []
-    for (const id of ['map-tools', 'map-mode-pill', 'action-fab-toggle']) {
+    const box = (id: string): { name: string; left: number; right: number; width: number; bottom: number; height: number } | null => {
       const el = document.querySelector(`[data-testid="${id}"]`)
-      if (!el) continue
+      if (!el) return null
       const r = el.getBoundingClientRect()
-      if (r.width === 0) continue
-      rail.push({ name: id, left: Math.round(r.left), width: Math.round(r.width) })
+      if (r.width === 0) return null
+      return {
+        name: id,
+        left: Math.round(r.left),
+        right: Math.round(r.right),
+        width: Math.round(r.width),
+        bottom: Math.round(r.bottom),
+        height: Math.round(r.height),
+      }
     }
 
-    return { maps: maps.length, controls: counted, collisions, small, stack, rail }
+    const rail = ['map-tools', 'action-fab-toggle']
+      .map(box)
+      .filter((b): b is NonNullable<typeof b> => b !== null)
+    const bottom = ['action-fab-toggle', 'map-mode-pill']
+      .map(box)
+      .filter((b): b is NonNullable<typeof b> => b !== null)
+    /**
+     * ⚠️ MEASURED, NOT PARSED. `--map-rail` is declared in `rem`, and
+     *    `parseFloat('0.75rem')` is 0.75 — which this check duly compared
+     *    against a 12 px gap and failed, on a layout that was correct. A
+     *    custom property is a STRING until something lays it out, so the gap
+     *    is read off an element the browser has actually laid out with it.
+     */
+    const probe = document.createElement('div')
+    probe.style.cssText = 'position:absolute;visibility:hidden;width:var(--map-rail)'
+    document.body.append(probe)
+    const railGap = Math.round(probe.getBoundingClientRect().width)
+    probe.remove()
+
+    /**
+     * ★★ Y3.2 — IS THE ZOOM PAIR ON THE RAIL, AND SHOULD IT BE?
+     *
+     *    "SUPPRIMER les boutons zoom +/− sur tablette et téléphone (le
+     *    pincement suffit). Les conserver uniquement sur desktop avec souris."
+     *
+     *    Reported as two facts rather than one verdict, so a failure says
+     *    which half is wrong: what the browser IS, and what the rail SHOWS.
+     */
+    const zoomShown = ['map-tool-zoom-in', 'map-tool-zoom-out'].every((id) => {
+      const el = document.querySelector(`[data-testid="${id}"]`)
+      if (!el) return false
+      const r = el.getBoundingClientRect()
+      return r.width > 0 && r.height > 0
+    })
+    const finePointer = window.matchMedia('(pointer: fine)').matches
+    const wideWindow = window.matchMedia('(min-width: 64rem)').matches
+
+    return {
+      maps: maps.length,
+      controls: counted,
+      collisions,
+      small,
+      stack,
+      rail,
+      bottom,
+      railGap,
+      zoomShown,
+      finePointer,
+      wideWindow,
+    }
   })
 }
 
@@ -284,12 +387,15 @@ try {
 
   for (const viewport of viewports) {
     console.log('')
-    console.log(`  ${viewport.name} — ${viewport.width}×${viewport.height}`)
+    console.log(
+      `  ${viewport.name} — ${viewport.width}×${viewport.height}, ${viewport.touch ? 'touch' : 'mouse'}`,
+    )
     console.log(`  ${'-'.repeat(viewport.name.length + 14)}`)
 
     const context = await browser.newContext({
       viewport: { width: viewport.width, height: viewport.height },
       locale: 'he-IL',
+      hasTouch: viewport.touch,
     })
     const page = await context.newPage()
     page.setDefaultTimeout(30_000)
@@ -327,9 +433,39 @@ try {
         const lefts = new Set(report.rail.map((r) => r.left))
         const widths = new Set(report.rail.map((r) => r.width))
         check(
-          `${route.name}: the floating rail is one axis, one width`,
+          `${route.name}: the vertical rail is one axis, one width`,
           lefts.size === 1 && widths.size === 1,
           report.rail.map((r) => `${r.name} @${r.left} w${r.width}`).join(' | '),
+        )
+      }
+
+      /**
+       * ★★ Y3.2 — the zoom pair, exactly where the product owner asked for it
+       *    and nowhere else.
+       */
+      if (report.stack) {
+        const shouldShow = report.finePointer && report.wideWindow
+        check(
+          `${route.name}: the zoom pair is ${shouldShow ? 'ON the rail (mouse, wide window)' : 'OFF the rail (touch or narrow)'}`,
+          report.zoomShown === shouldShow,
+          `pointer ${report.finePointer ? 'fine' : 'coarse'}, window ${report.wideWindow ? '≥64rem' : '<64rem'}, drawn ${report.zoomShown}`,
+        )
+      }
+
+      /**
+       * ★★ Y3.3 — the bottom band: one line, one height, one gap. The gap is
+       *    read from `--map-rail` rather than typed here, for the same reason
+       *    X3.1 stopped typing the offset.
+       */
+      if (report.bottom.length > 1) {
+        const [fab, pill] = report.bottom
+        const sameLine = Math.abs(fab.bottom - pill.bottom) <= 1
+        const sameHeight = Math.abs(fab.height - pill.height) <= 1
+        const gap = pill.left - fab.right
+        check(
+          `${route.name}: the mode pill sits BESIDE the "+", on its line`,
+          sameLine && sameHeight && Math.abs(gap - report.railGap) <= 1,
+          `+ bottom ${fab.bottom} h${fab.height} right ${fab.right} | pill bottom ${pill.bottom} h${pill.height} left ${pill.left} — gap ${gap}px, rail gap ${report.railGap}px`,
         )
       }
 

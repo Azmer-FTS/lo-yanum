@@ -368,7 +368,7 @@ export function CoordinatorLayout() {
             className={
               bleed
                 ? 'flex-1'
-                : 'flex-1 px-4 pb-24 pt-5 sm:px-6 sm:pt-6 lg:pb-6 lg:pt-[calc(var(--status-inset)+1.5rem)] 2xl:px-8'
+                : 'flex-1 px-4 pb-[var(--float-reserve)] pt-5 sm:px-6 sm:pt-6 lg:pt-[calc(var(--status-inset)+1.5rem)] 2xl:px-8'
             }
           >
             {bleed ? <Outlet /> : <PullToRefresh><Outlet /></PullToRefresh>}

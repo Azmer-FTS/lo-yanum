@@ -288,7 +288,7 @@ export function IncidentDetailScreen() {
   // reading has to supply the padding the shell no longer does.
   if (!mapBody) {
     return (
-      <div className="mx-auto max-w-4xl px-4 pb-24 pt-5 sm:px-6 sm:pt-6 lg:pb-6">
+      <div className="mx-auto max-w-4xl px-4 pb-[var(--float-reserve)] pt-5 sm:px-6 sm:pt-6">
         {content}
       </div>
     )

@@ -110,8 +110,20 @@ export function PeopleMap({
         </p>
       </div>
 
+      {/**
+        * ⚠️ Y3.4 — `--float-reserve`, NOT `bottom-3`, AND IT TOOK A GATE TO
+        *    NOTICE. When the map is the full-height column its bottom edge IS
+        *    the viewport's, so a control 12 px up from it lands inside the
+        *    band the "+" and the mode pill occupy — and Y3.3 put the mode pill
+        *    on that line. `bun run touch` caught it as "the roster is whole
+        *    again — 22": the tap meant for ניקוי הסינון was reaching
+        *    `map-mode-hidden` instead, so the filter never cleared and the
+        *    counter never went back to 300. The reserve is the same number
+        *    every list reserves; a floating control over the map has exactly
+        *    the same reason to respect it.
+        */}
       {selected !== null && (
-        <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex justify-center">
+        <div className="pointer-events-none absolute inset-x-3 bottom-[var(--float-reserve)] z-20 flex justify-center">
           <button
             type="button"
             onClick={() => onSelect(null)}
