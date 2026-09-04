@@ -1,6 +1,178 @@
 # לא ינום — ETAT
 
-> 🏁 **PASSE UI/UX PROFONDE — X1→X13 COMPLÈTE, 2026-09-04. LIRE EN PREMIER.**
+> 🏁 **PASSE UI/UX + BUGS CRITIQUES — Y1→Y13 COMPLÈTE, 2026-09-04. LIRE EN
+> PREMIER.**
+>
+> Les treize unités sont livrées, en dix commits, poussées et vérifiées sur
+> l'URL servie. Les deux bugs bloquants avaient tous deux une cause que le
+> rapport initial ne pouvait pas nommer, et dans les deux cas le premier
+> suspect a été mesuré puis innocenté.
+>
+> ## Les deux bugs critiques
+>
+> **Y1 — la carte blanche n'était pas la bascule de fond.** Le suspect évident
+> — `setStyle` qui perdrait la source `pmtiles://` — a été mesuré et
+> **innocenté** : dix allers-retours satellite↔vectoriel sur Chromium ET
+> WebKit, aux viewports iPad et iPhone, en local et sur l'URL déployée, en
+> lisant les **pixels peints** du canvas à chacun des vingt états. Le fond est
+> dessiné partout.
+>
+> Ce qui produit exactement l'écran décrit — marqueurs gardés, fond parti, zoom
+> et re-bascule tous deux inutiles — est une **perte du contexte WebGL**,
+> banale sur iPad : iOS libère les contextes GL sous la pression mémoire et à
+> la mise en arrière-plan, et cette app confie au GPU une archive de 94 Mo plus,
+> en satellite, un plein écran d'imagerie.
+>
+> Et **MapLibre 4.7.1 n'en revient pas**. Il en a l'air : `preventDefault()`
+> sur la perte, puis `_setupPainter()`, `resize()`, `_update()` et
+> `webglcontextrestored`. Mesuré avec `WEBGL_lose_context` : après toute cette
+> séquence le canvas ne tient plus qu'**une** couleur sur 200×200 échantillons,
+> et y reste à travers un `resize()`, un `triggerRepaint()`, un zoom et une
+> bascule de fond. `MapCanvas` reconstruit donc la carte, à la caméra de celle
+> qui vient de mourir — y compris quand le rétablissement n'est jamais annoncé.
+>
+> **Y2 — les vignettes de garde.** X7.1 avait donné aux trois listes une
+> `height` unique pour un rythme de colonne, choisie pour « trois lignes d'une
+> garde ». Une garde en a **quatre**, et la première passe à la ligne quand le
+> panneau est étroit : 33 px coupés à tout viewport, 65 px sur un iPad paysage,
+> 23 px sur les incidents. `min-height` garde le rythme pour ce qui tient —
+> fermes et incidents retombent exactement sur 88 px — et laisse le reste
+> respirer.
+>
+> Le gate `layout` **balayait déjà** cet écran, aux quatre viewports et aux
+> trois positions de couture, et le passait à chaque fois : rien n'y regardait
+> si une BOÎTE coupe son contenu. U7 regarde du TEXTE qui s'ellipse ; une
+> vignette ne s'ellipse pas, elle s'arrête.
+>
+> ## Les gates
+>
+> | Gate | Portée | Résultat |
+> |---|---|---|
+> | `backdrop` | + section C (Y1) et D (Y8) — pixels peints | **36/36**, chromium et webkit |
+> | `modes` | **nouveau** (Y4) — 5 listes × 3 modes × 3 viewports | **75/75**, chromium et webkit |
+> | `band` | **nouveau** (Y5/Y6) — géométrie mesurée, pas la couleur | **64/64** |
+> | `reserve` | **nouveau** (Y3.4) — 7 listes × 4 viewports | **56/56** |
+> | `fixedhours` | **nouveau** (Y9.3) — pur, l'ordonnancement comme arithmétique | **19/19** |
+> | `parse` | **nouveau** — chaque script de gate se parse | **51/51** |
+> | `layout` | + `clipped` (Y2) et `misaligned` (Y10) — 4 viewports × 32 écrans × 3 coutures | **0 échec** |
+> | `overlap` | + un 5ᵉ viewport desktop, + pointeur grossier émulé | **185/185** |
+> | `blocks` | + l'audit Y11 sur 10 écrans | **36/36** |
+> | `splitter` · `seam` · `touch` | souris, tactile, stylet, 200 cycles | 72/72 · 7/7 · 57/57 |
+> | `regions` · `wizard` · `accept` | pur, assistant, domaine | 58/58 · 28/28 · 176/176 |
+> | `rtl` · `report` · `deletion` · `dispatch` | classeur, PDF, suppressions, affectation | 45 · 86 · 61 · 27, 0 échec |
+>
+> **`ENGINE=webkit` est exécutable.** Le build WebKit de Playwright est
+> installé : le caveat que cette note portait depuis quatre passes — « l'iPad
+> du PO est WebKit, donc c'est la moitié qui manque » — est levé. `backdrop`,
+> `modes` et `band` tournent sur les deux moteurs.
+>
+> ## Ce qui a changé, unité par unité
+>
+> **Y3 — les contrôles de carte.** La poignée était arrondie CONTRE la barre et
+> plate vers l'extérieur : un onglet qui se décolle. Le zoom +/− est un contrôle
+> de desktop À LA SOURIS (`pointer: fine` ET ≥ 64 rem — un iPad paysage fait
+> 1376 px, donc une condition de largeur seule l'aurait gardé sur l'appareil
+> même dont il fallait le retirer). Les trois boutons de mode se couchent à côté
+> du « + ». Et `--float-reserve`, **dérivé de l'endroit où la barre se trouve**,
+> remplace les quatre `pb-24` / `lg:pb-5` que chaque écran devinait — 96 px là
+> où la barre en fait 72, et 20 px là où elle en fait 72.
+>
+> **Y4 — un seul comportement par mode**, sur les cinq listes. `MapPanel`
+> jetait le mode que `MapSplit` lui passait, donc les écrans dessinaient la
+> même chose avec un tiers de largeur ou la totalité. La photo est à DROITE
+> (quatrième demande) : dans une rangée RTL le PREMIER enfant est la droite
+> physique. Gardes et incidents ont enfin un tableau ; volontaires et
+> conducteurs ont enfin des vignettes.
+>
+> **Y5 — un seul modèle de bandeau** (troisième demande). Il en restait
+> **quatre** géométries derrière une seule colorimétrie — 84/44/24, 44/28/16,
+> pas de disque, et un chiffre de 76 px — ce qui est précisément pourquoi les
+> deux premières demandes ont pu passer à côté d'une relecture par capture : la
+> couleur est ce qu'une capture montre, la taille est ce qu'elle cache.
+>
+> **Y6 — bord à bord, ombres entières.** La rangée portait 2 px de padding,
+> choisis pour un anneau de focus ; une ombre `0 4px 14px` en demande 14.
+>
+> **Y7 — un fond OU un contour.** 12 % au lieu de 18 %, filet retiré, pastille
+> de compteur en disque clair, et drop-down sous 20 rem de **panneau**.
+>
+> **Y8 — les régions.** Chroma ×1,55, opacité 10 % → 35 %, et le découpage est
+> un **ordre de peinture** : sous la couche `water` de l'archive, la mer
+> repeint chaque débordement. Aucune coordonnée inventée.
+>
+> **Y9 — le planificateur.** Le rendez-vous absorbé dans son étape ne
+> contraignait rien : l'étape affichait 12:32 et portait une étiquette 09:30.
+> L'horaire se construit maintenant autour des épingles, et une journée
+> qu'aucun ordre ne peut sauver est SIGNALÉE plutôt qu'absorbée.
+>
+> **Y10 — l'alignement RTL.** `.ltr-nums` pose `direction: ltr`, et `direction`
+> est ce contre quoi `text-align: start` se résout. Une déclaration
+> (`text-align: -webkit-match-parent`) corrige une quarantaine d'éléments.
+>
+> **Y11 — 53 blocs sur 10 écrans** ont leur chevron et leur mémoire, y compris
+> les trois écrans de rôle qui n'en avaient aucun.
+>
+> **Y12 — la loupe ouvre un panneau.** Le filtrage reste en direct ; Entrée
+> ferme.
+>
+> **Y13 — מצב תצוגה.** Le coordinateur regarde par l'écran d'un fermier, d'un
+> volontaire ou d'un conducteur, et revient depuis un bandeau qui est DANS
+> l'en-tête collant — un chemin de retour qui défile hors de vue est un aller
+> simple.
+>
+> ## Ce qui reste, et ce qui est délibéré
+>
+> - **Les frontières TERRESTRES des régions ne sont pas découpées** (Y8.2), et
+>   c'est délibéré. L'archive porte les frontières nationales comme des
+>   **lignes** ; il n'y a aucun polygone de pays à intersecter. Découper un
+>   aplat sur une frontière terrestre voudrait dire construire ce polygone à
+>   partir des lignes, c'est-à-dire décider où passe la frontière : exactement
+>   ce que « ne pas inventer de tracés » interdit. Un aplat peut donc dépasser
+>   un peu à l'est ; c'est un seau pour un filtre et une couleur.
+> - **Les contours de régions restent approximatifs** (X12), écrits à la main
+>   et documentés comme tels dans `core/regions.ts`.
+> - **`scripts/` n'est pas typechecké.** `tsconfig.json` inclut `src` et
+>   `vite.config.ts` ; passer les gates sous `tsc` fait apparaître 111 erreurs
+>   préexistantes, surtout un `@types/bun` manquant. C'est un nettoyage à part.
+>   `bun run parse` couvre la classe d'erreur qui a fait échouer un déploiement
+>   cette fois-ci (une variable redéclarée), en moins d'une seconde.
+> - ⚠️ **Inchangé et toujours vrai** : les portraits de démonstration sont
+>   temporaires (`docs/demo-photos-licences.md`), et l'historique du dépôt porte
+>   encore les 477 images du commit `4bbf4c4`.
+>
+> ## À re-tester par le PO — 6 points
+>
+> 1. **La carte blanche.** Basculer satellite ↔ vectoriel plusieurs fois, sur
+>    l'iPad, en laissant l'app en arrière-plan entre deux. Le fond doit revenir
+>    à chaque fois, et si iOS a repris le contexte, la carte se reconstruit à
+>    l'endroit où elle était.
+> 2. **Les trois modes, sur les cinq listes.** חוות, מתנדבים, נהגים, שמירות,
+>    אירועים : partagé = vignettes avec la **photo à droite**, contenu plein =
+>    tableau dense, carte pleine = carte seule. Le comportement doit être
+>    identique d'un écran à l'autre.
+> 3. **Le bas de chaque liste.** Défiler jusqu'au bout : la dernière rangée doit
+>    être entièrement lisible et cliquable, jamais sous le « + » ni sous les
+>    trois boutons de mode.
+> 4. **Le planificateur.** Choisir des fermes dans la grille de cartes, poser un
+>    rendez-vous à 09:30 sur l'une d'elles, recalculer : l'heure doit rester
+>    09:30 et le reste de la journée s'organiser autour.
+> 5. **Les régions.** Légende → « אזורים » : les aplats doivent se voir, et
+>    épouser le trait de côte.
+> 6. **מצב תצוגה** (הגדרות) : passer en fermier, en volontaire, en conducteur,
+>    et revenir par le bandeau. C'est la porte pour commenter les trois autres
+>    interfaces.
+>
+> Captures de l'URL déployée : `docs/screenshots/ypass/` (iPad et iPhone).
+> Pour reprendre : `git pull && bun install && bun run dev`, puis
+> `bun run parse`, `bun run modes`, `bun run band`, `bun run reserve`,
+> `bun run fixedhours`, `ENGINE=webkit bun run backdrop`, et
+> `VIEWPORT=all BASE_URL=http://localhost:5173 bun run layout`.
+
+---
+
+> 🏁 **PASSE UI/UX PROFONDE — X1→X13 COMPLÈTE, 2026-09-04.** (Note
+> précédente, conservée. La table des gates ci-dessous est celle de cette
+> passe-là ; la table courante est en tête de fichier.)
 >
 > La démonstration à l'association s'est bien passée et le PO en est
 > revenu avec une liste de défauts de cohérence et de responsive. **Les

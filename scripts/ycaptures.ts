@@ -157,6 +157,21 @@ try {
        *    these are captures of what each mode DRAWS.
        */
       await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' })
+      /**
+       * ⚠️ THE STATE IS CLEARED BETWEEN SHOTS, AND THE FIRST RUN IS WHY. The
+       *    captures share one browser context, so `y3-carte-pleine` left the
+       *    farms screen in `full` — and the next shot's search button was
+       *    present, correct and INVISIBLE, because in `full` there is no
+       *    content column. A capture run has to start each frame from the
+       *    state the product owner would find, not from the previous frame's.
+       */
+      await page.evaluate(() => {
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith('lo-yanum:map-mode:') || key === 'lo-yanum:view-as') {
+            localStorage.removeItem(key)
+          }
+        }
+      })
       if (shot.mode) {
         await page.evaluate(
           ([k, v]) => localStorage.setItem(`lo-yanum:map-mode:${k}`, v as string),

@@ -66,8 +66,15 @@ const LISTS = [
   { name: 'fermes', hash: '#/coordinator/farms', row: '[data-testid="farm-tile"], .list-tile' },
   { name: 'gardes', hash: '#/coordinator/missions', row: '.list-tile' },
   { name: 'incidents', hash: '#/coordinator/incidents', row: '.list-tile' },
-  { name: 'volontaires', hash: '#/coordinator/volunteers', row: '.roster-row' },
-  { name: 'conducteurs', hash: '#/coordinator/drivers', row: '.roster-row' },
+  /**
+   * ⚠️ BOTH SHAPES, BECAUSE Y4 GAVE THESE TWO A SECOND ONE. In `split` — the
+   *    default — the rosters draw card-tiles like every other list; the
+   *    `.roster-row` grid is what "contenu plein" shows. A selector naming
+   *    only the table matched nothing here and failed the screen for the
+   *    wrong reason.
+   */
+  { name: 'volontaires', hash: '#/coordinator/volunteers', row: '[data-testid="volunteer-tile"], .roster-row' },
+  { name: 'conducteurs', hash: '#/coordinator/drivers', row: '[data-testid="driver-tile"], .roster-row' },
   { name: 'tableau de bord', hash: '#/coordinator', row: 'main li' },
   /**
    * ⚠️ `main li`, AND NOT `main .rounded-card`, WHICH IS WHAT THIS ENTRY SAID
