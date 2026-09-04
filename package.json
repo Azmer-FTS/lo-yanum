@@ -47,7 +47,8 @@
     "gazetteer": "bun run scripts/gazetteer.ts",
     "blocks": "bun run scripts/blocks.ts",
     "uipass": "bun run scripts/uipass.ts",
-    "demo-photos": "bun run scripts/demo-photos.ts"
+    "demo-photos": "bun run scripts/demo-photos.ts",
+    "seam": "bun run scripts/seam.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "^0.4.0",

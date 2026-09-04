@@ -1,8 +1,8 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { RATIO_MAX, RATIO_MIN } from './mapMode'
+import { RATIO_MAX, RATIO_MIN, clampRatio as clamp } from './mapMode'
 import type { MapRatioState } from './mapMode'
 
 /**
@@ -50,9 +50,70 @@ export function PanelSplitter({
   label?: string
 }) {
   const { t } = useTranslation()
-  // Two taps inside this window are a RESET, not two zero-length drags. A ref
-  // rather than state: a re-render per tap would be a change nobody can see.
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ★ X13 (2026-09-04) — WHY THE SEAM USED TO SEIZE UP, AND WHAT IS DIFFERENT
+   * ═══════════════════════════════════════════════════════════════════════
+   *
+   * The product owner reported that after a long session the separator stops
+   * moving and only closing the app brings it back. It is not a leak in the
+   * sense of a listener that is never removed — every listener in this file
+   * and in `MapCanvas` is torn down. It is a COST that grows with the session,
+   * and the cost was paid on every pointermove:
+   *
+   *     pointermove  →  setRatio()      (React state, at the pointer's rate)
+   *                  →  localStorage.setItem()   ← SYNCHRONOUS, every sample
+   *                  →  MapSplit re-render
+   *                  →  MapPanel / MapView / MapCanvas re-render
+   *                  →  ResizeObserver → map.resize()
+   *
+   * `bun run seam` counts it: a forty-move drag was FORTY blocking storage
+   * writes, each followed by a React commit of the whole map-first shell.
+   * Early in a session it is merely janky; on a device that has been running
+   * all day it saturates the main thread, the pointer stream backs up behind
+   * it, and the handle stops answering. "It freezes after a while" is exactly
+   * what that looks like from outside.
+   *
+   * ⚠️ IT IS NOT MARKER CHURN, which was the first guess. A screen's
+   *    `markers` array is memoised on its own data, so a ratio change does
+   *    not rebuild the pins — the gate check written on that assumption
+   *    passed on the BROKEN build, which is how the wrong explanation was
+   *    caught rather than shipped.
+   *
+   * ★ SO A DRAG NO LONGER RENDERS ANYTHING. While the pointer is down the
+   *   width is written straight onto the shell's own custom property — one
+   *   style recalculation, no React, no marker churn, no storage — coalesced
+   *   to one write per animation frame. React state and localStorage are
+   *   updated ONCE, on pointerup. The visible behaviour is identical; the
+   *   cost is three orders of magnitude smaller.
+   *
+   * ★ AND THE GESTURE ALWAYS ENDS. `lostpointercapture` is handled (the
+   *   browser can revoke capture on its own — a system gesture, the element
+   *   being re-rendered under the finger), `setPointerCapture` is wrapped
+   *   because it throws on a detached node, and a document-level
+   *   pointerup/pointercancel is armed for the duration of the drag so a
+   *   release the element never sees still ends the drag. A drag state that
+   *   is never cleared is the other way this control dies.
+   */
+  // Two taps inside this window are a RESET, not two zero-length drags.
+  // A ref rather than state: a re-render per tap would be a change nobody
+  // can see.
   const lastTapRef = useRef(0)
+  const draggingRef = useRef(false)
+  const movedRef = useRef(false)
+  const frameRef = useRef(0)
+  const pendingRef = useRef<number | null>(null)
+
+  /** The live width, written to the DOM and nothing else. */
+  const paint = useCallback(
+    (pct: number) => {
+      const el = shellRef.current
+      if (!el) return
+      el.style.setProperty('--content-w', `${clamp(pct)}%`)
+    },
+    [shellRef],
+  )
 
   const applyPointer = useCallback(
     (clientX: number) => {
@@ -60,25 +121,86 @@ export function PanelSplitter({
       if (!el) return
       const box = el.getBoundingClientRect()
       if (box.width <= 0) return
-      setRatio(((box.right - clientX) / box.width) * 100)
+      pendingRef.current = ((box.right - clientX) / box.width) * 100
+      // One paint per frame however fast the pointer reports.
+      if (frameRef.current) return
+      frameRef.current = requestAnimationFrame(() => {
+        frameRef.current = 0
+        if (pendingRef.current !== null) paint(pendingRef.current)
+      })
     },
-    [shellRef, setRatio],
+    [shellRef, paint],
+  )
+
+  /** Commit whatever the drag left on screen to React state and storage. */
+  const commit = useCallback(() => {
+    if (frameRef.current) {
+      cancelAnimationFrame(frameRef.current)
+      frameRef.current = 0
+    }
+    const pending = pendingRef.current
+    pendingRef.current = null
+    if (pending !== null) setRatio(pending)
+  }, [setRatio])
+
+  const endDrag = useCallback(() => {
+    if (!draggingRef.current) return
+    draggingRef.current = false
+    commit()
+  }, [commit])
+
+  /**
+   * The safety net. Armed only while a drag is live, so it costs nothing the
+   * rest of the time; it catches the release the handle itself never sees.
+   */
+  useEffect(() => {
+    const onUp = () => endDrag()
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    return () => {
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+    }
+  }, [endDrag])
+
+  // A drag interrupted by an unmount must not leave a frame queued.
+  useEffect(
+    () => () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current)
+    },
+    [],
   )
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault()
     const now = e.timeStamp
-    if (now - lastTapRef.current < 400) {
+    /**
+     * ⚠️ ONLY A TAP COUNTS TOWARDS THE DOUBLE-TAP. The first version compared
+     *    timestamps alone, so two quick DRAGS — which is how the seam is
+     *    actually adjusted — read as a double-tap and reset the ratio the
+     *    second one was about to set. `movedRef` is what makes the gesture a
+     *    tap.
+     */
+    if (!movedRef.current && now - lastTapRef.current < 400) {
       lastTapRef.current = 0
       reset()
       return
     }
     lastTapRef.current = now
-    e.currentTarget.setPointerCapture(e.pointerId)
+    movedRef.current = false
+    draggingRef.current = true
+    pendingRef.current = null
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // A detached or already-captured node. The window-level listeners above
+      // and `onPointerMove`'s own guard keep the drag working without it.
+    }
   }
 
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
+    if (!draggingRef.current) return
+    movedRef.current = true
     applyPointer(e.clientX)
   }
 
@@ -86,6 +208,7 @@ export function PanelSplitter({
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId)
     }
+    endDrag()
   }
 
   /**
@@ -119,6 +242,7 @@ export function PanelSplitter({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onLostPointerCapture={endDrag}
       onKeyDown={onKeyDown}
       /**
        * ★ X3.5 (2026-09-04) — THE SEAM IS A HAIRLINE, AND EVERYTHING IT
@@ -146,8 +270,6 @@ export function PanelSplitter({
                   self-stretch bg-edge-subtle outline-none transition-colors duration-fast
                   hover:bg-accent focus-visible:bg-accent ${className}`}
     >
-      {/* The 44 px thumb band, entirely over the map. */}
-      <span className="absolute inset-y-0 -left-11 right-0" aria-hidden />
       {/**
        * ★ VISIBLE ON BOTH GROUNDS. A grip painted in `--border-strong` reads
        *   on the vector map and vanishes over satellite imagery, which is
@@ -171,6 +293,12 @@ export function PanelSplitter({
           </g>
         </svg>
       </span>
+      {/* ⚠️ LAST CHILD ON PURPOSE. The 44 px thumb band, entirely over the map
+          — and `bun run splitter` reads this element as `lastElementChild`
+          and the grip as `firstElementChild`. Swapping the two makes the gate
+          measure the wrong box, which is exactly what happened when X3.5
+          rewrote this element. */}
+      <span className="absolute inset-y-0 -left-11 right-0" aria-hidden />
     </div>
   )
 }
