@@ -671,14 +671,33 @@ export function ListTop({
           the 390 px escape hatch: the search box drops to its own line rather
           than squeezing the title to three characters or widening the page. */}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pb-2">
+        {/* ⚠️ `min-w-[6rem]` — A FLOOR, NOT A WIDTH, and it is what makes the
+            row wrap instead of shaving the title. With `min-w-0` the title is
+            the item that gives way, so at 25 % of the seam "מתנדבים" was
+            rendered as "מ…" beside a search box at its full 13 rem. A floor
+            turns the squeeze into a line break (the search drops below), which
+            is the X6 rule applied to the one row every screen starts with.
+            ⚠️ AND IT CANNOT BE A `sm:` BREAKPOINT: this row lives in a panel
+            whose width the coordinator drags, and the viewport says nothing
+            about it — the same lesson as X5's roster tracks. The floor is on
+            the TITLE alone; the search keeps `shrink-0`, so the arithmetic is
+            6 rem + 13 rem + 44 px + gaps ≈ 23 rem, and any panel narrower than
+            that wraps the search onto its own line instead of eating the
+            name. */}
         <h1
           data-page-title=""
-          className="min-w-0 flex-1 truncate text-title text-content-primary"
+          className="min-w-[6rem] flex-1 truncate text-title text-content-primary"
         >
           {title}
         </h1>
         {onSearch && (
-          <div className="relative order-last w-full shrink-0 sm:order-none sm:w-52 lg:w-60">
+          /* ⚠️ 10 / 12 REM, NOT 13 / 15. Measured: on the farms panel (a third
+             of a 1376 px iPad, 395 px inside its padding) a 15 rem box left
+             147 px for the title and 44 px for the "⋯" — 447 px of demand
+             against 395 px — so the row wrapped and the sticky top grew by a
+             line, and one farm tile fell off the screen. The arithmetic that
+             has to hold is `6 rem title + this + 44 px + gaps ≤ the panel`. */
+          <div className="relative order-last w-full shrink-0 sm:order-none sm:w-40 lg:w-48">
             <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
               <Icon name="search" size={15} />
             </span>
