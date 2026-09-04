@@ -53,7 +53,9 @@
     "reserve": "bun run scripts/reserve.ts",
     "modes": "bun run scripts/modes.ts",
     "band": "bun run scripts/band.ts",
-    "fixedhours": "bun run scripts/fixedhours.ts"
+    "fixedhours": "bun run scripts/fixedhours.ts",
+    "ycaptures": "bun run scripts/ycaptures.ts",
+    "parse": "bun run scripts/parse.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "^0.4.0",

@@ -757,20 +757,28 @@ try {
     await legendToggle.click()
     await page.waitForTimeout(400)
   }
-  const before = await painted()
+  /**
+   * ⚠️ `beforeRegions` / `afterRegions` / `regionsDrawn`, NOT `before` /
+   *    `after` / `drawn`. Sections B and C already bind those names at this
+   *    file's top level, and the first version of this section reused them —
+   *    which `bun x tsc --noEmit` cannot see (it includes `src`, not
+   *    `scripts`) and which failed the DEPLOY. `bun run parse` is the guard
+   *    that now catches it in under a second.
+   */
+  const beforeRegions = await painted()
   const regionBox = page.locator('[data-testid="layer-regions"]')
   check('the regions layer has a switch in the legend', (await regionBox.count()) === 1)
   await regionBox.check({ force: true })
   await page.waitForTimeout(2000)
-  const after = await painted()
-  const drawn = await page.evaluate(() => {
+  const afterRegions = await painted()
+  const regionsDrawn = await page.evaluate(() => {
     const m = (window as unknown as { __loYanumMap?: MapHandle }).__loYanumMap
     return m ? m.queryRenderedFeatures(undefined, { layers: ['regions-fill'] }).length : 0
   })
   check(
     '★★ D1 — switching them on CHANGES the map, and by a lot',
-    drawn > 0 && after > before + 40,
-    `${drawn} washes drawn, ${before} colours before → ${after} after`,
+    regionsDrawn > 0 && afterRegions > beforeRegions + 40,
+    `${regionsDrawn} washes drawn, ${beforeRegions} colours before → ${afterRegions} after`,
   )
 
   /**
