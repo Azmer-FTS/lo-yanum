@@ -50,6 +50,25 @@ export interface DayPlanStop {
   wazeUrl: string
   /** A visit already planned on this farm this day, if one exists. */
   visitEvent: AgendaEvent | null
+  /**
+   * ★★ Y9.3 (2026-09-04) — TRUE WHEN THIS STOP'S HOUR IS NOT NEGOTIABLE.
+   *
+   * A farm with an appointment already booked on it is PINNED to that hour;
+   * `arriveAt` IS the appointment. Everything else in the day floats around
+   * it. See `buildDayPlan`.
+   */
+  fixed: boolean
+  /**
+   * ★★ Y9.3 — minutes by which the drive cannot make a pinned hour, when the
+   * day as ordered is simply impossible. Zero on every feasible plan.
+   *
+   * ⚠️ REPORTED RATHER THAN SILENTLY ABSORBED. The alternative is to move the
+   *    appointment, which is what the app used to do and what the product
+   *    owner reported: a 09:30 shown at 12:32. An appointment the coordinator
+   *    made with a farmer is not the app's to move; if the driving does not
+   *    fit, the plan says so and he decides.
+   */
+  lateBy: number
 }
 
 export interface DayPlanItem {
@@ -161,13 +180,58 @@ export function buildDayPlan(input: DayPlanInput): DayPlan {
     .map(windowOf)
     .sort((a, b) => a.start - b.start)
 
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ★★ Y9.3 (2026-09-04) — A BOOKED HOUR IS AN ABSOLUTE CONSTRAINT.
+   * ═══════════════════════════════════════════════════════════════════════
+   *
+   * The product owner: "un rendez-vous déjà pris (ex. 09:30) doit être honoré
+   * tel quel dans l'ordre calculé — actuellement l'app le décale à 12:32. Les
+   * heures fixes sont des CONTRAINTES ABSOLUES ; l'optimisation ne réordonne
+   * que ce qui flotte entre elles."
+   *
+   * ⚠️ AND THE OLD CODE MADE THAT IMPOSSIBLE BY CONSTRUCTION. A visit booked
+   *    on a farm the tour passes through was ABSORBED into its stop — taken
+   *    out of `walls` on the reasoning that "the visit and the stop are the
+   *    same errand", which is true — and then the stop's hour was computed
+   *    from the drive simulation like every other. So the appointment was the
+   *    one event on the day that constrained NOTHING: the stop showed 12:32
+   *    and carried a 09:30 label. Absorbing it was right; letting it float
+   *    afterwards was the defect.
+   *
+   * THE SCHEDULE IS BUILT AROUND THE PINS.
+   *
+   *   1  Every tour farm with an absorbed visit is PINNED, and the pins are
+   *      taken in the order of their own hours — a coordinator cannot be at
+   *      10:00 before 09:30 whatever his list says.
+   *   2  The floating stops keep the order he saved them in, and are poured
+   *      into the gaps BEFORE each pin, greedily, while one still fits: the
+   *      drive there, the stop itself, and the drive on to the pin, all
+   *      before the pin's hour.
+   *   3  What did not fit runs after the last pin, in the same order, exactly
+   *      as the whole day used to.
+   *
+   * That is "l'optimisation ne réordonne que ce qui flotte entre elles",
+   * literally: a pinned stop never moves, and a floating stop never overtakes
+   * another floating stop.
+   */
+  const pinnedAt = (farm: Farm): number | null => {
+    const event = absorbedByFarm.get(farm.id)
+    return event ? new Date(event.at).getTime() : null
+  }
+  const pins = tourFarms
+    .filter((f) => pinnedAt(f) !== null)
+    .sort((a, b) => (pinnedAt(a) as number) - (pinnedAt(b) as number))
+  const floating = tourFarms.filter((f) => pinnedAt(f) === null)
+
   const stops: DayPlanStop[] = []
   let cursor = tour ? new Date(tour.departAt).getTime() : 0
   let position = origin
   let totalKm = 0
   let driveMinutes = 0
 
-  for (const farm of tourFarms) {
+  /** Place one floating farm at the cursor, pushed past any wall it hits. */
+  const placeFloating = (farm: Farm): void => {
     const legKm = haversineKm(position, farm.position)
     const legMinutes = estimateDriveMinutes(legKm)
     let arrive = cursor + legMinutes * MINUTE
@@ -192,7 +256,9 @@ export function buildDayPlan(input: DayPlanInput): DayPlan {
       arriveAt: iso(new Date(arrive)),
       departAt: iso(new Date(departAt)),
       wazeUrl: wazeUrl(farm.position),
-      visitEvent: absorbedByFarm.get(farm.id) ?? null,
+      visitEvent: null,
+      fixed: false,
+      lateBy: 0,
     })
 
     totalKm += legKm
@@ -200,6 +266,54 @@ export function buildDayPlan(input: DayPlanInput): DayPlan {
     cursor = departAt
     position = farm.position
   }
+
+  /** Place one pinned farm AT its hour, whatever the driving says. */
+  const placePinned = (farm: Farm): void => {
+    const event = absorbedByFarm.get(farm.id) as AgendaEvent
+    const at = new Date(event.at).getTime()
+    const legKm = haversineKm(position, farm.position)
+    const legMinutes = estimateDriveMinutes(legKm)
+    const earliest = cursor + legMinutes * MINUTE
+    // The appointment lasts as long as it says, or a stop, whichever is more.
+    const ends = Math.max(new Date(event.endAt).getTime(), at + TOUR_STOP_MINUTES * MINUTE)
+
+    stops.push({
+      farm,
+      order: stops.length + 1,
+      legKm,
+      driveMinutes: legMinutes,
+      waitMinutes: Math.max(0, Math.round((at - earliest) / MINUTE)),
+      arriveAt: iso(new Date(at)),
+      departAt: iso(new Date(ends)),
+      wazeUrl: wazeUrl(farm.position),
+      visitEvent: event,
+      fixed: true,
+      lateBy: Math.max(0, Math.round((earliest - at) / MINUTE)),
+    })
+
+    totalKm += legKm
+    driveMinutes += legMinutes
+    cursor = ends
+    position = farm.position
+  }
+
+  const queue = [...floating]
+  for (const pin of pins) {
+    const at = pinnedAt(pin) as number
+    // Pour in what still fits before this appointment, in the saved order.
+    for (;;) {
+      const next = queue[0]
+      if (!next) break
+      const toNext = estimateDriveMinutes(haversineKm(position, next.position)) * MINUTE
+      const onward = estimateDriveMinutes(haversineKm(next.position, pin.position)) * MINUTE
+      const done = cursor + toNext + TOUR_STOP_MINUTES * MINUTE
+      if (done + onward > at) break
+      queue.shift()
+      placeFloating(next)
+    }
+    placePinned(pin)
+  }
+  for (const farm of queue) placeFloating(farm)
 
   let returnAt: string | null = null
   if (stops.length > 0) {

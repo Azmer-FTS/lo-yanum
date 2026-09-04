@@ -8,6 +8,7 @@ import {
   buildDayPlan,
   deleteTour,
   estimateDriveMinutes,
+  farmRegion,
   splitDuration,
   formatTime,
   fromDayKey,
@@ -23,7 +24,7 @@ import {
   telHref,
   wazeStepLinks,
 } from '@core/index'
-import type { AgendaEvent, Farm } from '@core/index'
+import type { AgendaEvent, Farm, FarmStatus, RegionId } from '@core/index'
 
 import { originLabel, originPosition } from '../../settings/origin'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
@@ -34,7 +35,9 @@ import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { FarmStatusDot, readStatusColor,
   entityMarkerKind, readToken } from '../../components/badges'
-import { EmptyState } from '../../components/primitives'
+import { EmptyState, FilterPill, FilterRow, Section } from '../../components/primitives'
+import { Avatar } from '../../components/Avatar'
+import { RegionFilter } from '../../components/RegionFilter'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
@@ -67,6 +70,13 @@ function toTimeInput(isoValue: string): string {
  * offers the farm's contact as a call and a visit pre-filled with the stop's
  * COMPUTED arrival time — plan the drive first, book the humans to it.
  */
+/**
+ * ★★ Y9.4 — the statuses a route is actually planned around. Not every status
+ *    in the domain: a picker with eight pills is the crushed row Y7.3 exists
+ *    to prevent.
+ */
+const PICK_STATUSES: FarmStatus[] = ['active', 'contacted', 'to_contact']
+
 export function RoutePlannerScreen() {
   const { t } = useTranslation()
   // PO POINT 8 — a saved tour used to be deleted on the first tap.
@@ -107,6 +117,40 @@ export function RoutePlannerScreen() {
     () => farms.filter((f) => selected.has(f.id)),
     [farms, selected],
   )
+
+  /**
+   * ★★ Y9.4 (2026-09-04) — THE PICKER'S OWN FILTERS: by day, by status, by
+   *    region. See the note beside the `FilterRow` below for why they NARROW
+   *    rather than select.
+   */
+  const [pickDay, setPickDay] = useState(false)
+  const [pickStatus, setPickStatus] = useState<FarmStatus | null>(null)
+  const [pickRegion, setPickRegion] = useState<RegionId | null>(null)
+
+  /** "Ce jour-là" = a visit already booked on the day being planned. */
+  const isOnDay = (farm: Farm): boolean =>
+    farm.nextVisitAt !== null && localDayKey(new Date(farm.nextVisitAt)) === dayKey
+
+  const pickable = useMemo(
+    () =>
+      farms.filter(
+        (f) =>
+          (!pickDay || isOnDay(f)) &&
+          (pickStatus === null || f.status === pickStatus) &&
+          (pickRegion === null || farmRegion(f) === pickRegion),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [farms, pickDay, pickStatus, pickRegion, dayKey],
+  )
+
+  const pickRegionCounts = useMemo(() => {
+    const out: Partial<Record<RegionId, number>> = {}
+    for (const f of farms) {
+      const id = farmRegion(f)
+      if (id) out[id] = (out[id] ?? 0) + 1
+    }
+    return out
+  }, [farms])
 
   /**
    * ★ PO RETURN 2026-09-02 — THE DAY STARTS WHERE HE SAYS IT DOES. This was
@@ -356,32 +400,26 @@ export function RoutePlannerScreen() {
         </div>
       </section>
 
-      {/* P0bis.3b — the planner's four panels — pick the farms, read the
-          order, book the meetings, hand the route to Waze — are each a short
-          list. Two per row as soon as the panel can hold two, which stops the
-          screen being four screenfuls of half-empty column on the one screen
-          whose whole job is to be read while driving is being planned. */}
-      <div className="panel-scope">
-        <div className="pair-grid">
-      <section className="mb-4">
-        <div className="flex items-end justify-between gap-3 pb-2.5">
-          <h2 className="text-section text-content-primary">
-            {t('route.selectFarms')}
-          </h2>
+      {/**
+        * ★★ Y9.1 (2026-09-04) — THE BLOCKS STACK, ONE UNDER THE OTHER.
+        *
+        * "Les blocs passent les uns SOUS les autres (empilés verticalement),
+        *  plus côte à côte."
+        *
+        * P0bis.3b put them two per row to stop the screen being "four
+        * screenfuls of half-empty column". Y9.2 removes the reason: the farm
+        * picker is a grid of cards that fills its width and folds away once
+        * the choice is made, so the block beside it is no longer a short list
+        * next to a short list. Read in a column, the planner reads as what it
+        * is — choose, then read the day — instead of two things competing for
+        * the same line.
+        */}
+      <Section
+        title={t('route.selectFarms')}
+        collapseKey="route-select"
+        summary={t('route.selectedCount', { count: selected.size })}
+        action={
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                setSelected(
-                  new Set(
-                    farms.filter((f) => f.nextVisitAt !== null).map((f) => f.id),
-                  ),
-                )
-              }
-              className="text-micro font-medium text-accent-ink hover:underline"
-            >
-              {t('route.suggestPending')}
-            </button>
             {selected.size > 0 && (
               <button
                 type="button"
@@ -392,15 +430,58 @@ export function RoutePlannerScreen() {
               </button>
             )}
           </div>
-        </div>
+        }
+      >
+        {/**
+          * ★★ Y9.4 (2026-09-04) — FILTERS THAT NARROW, RATHER THAN A
+          *    "SELECT EVERYTHING" LINK.
+          *
+          * "Filtres de sélection plus intelligents : par jour, par statut, par
+          *  région — pas 'tout sélectionner' par défaut."
+          *
+          * The block used to offer one shortcut — "the farms with a visit
+          * pending" — which selects a set rather than narrowing the choice,
+          * and left the coordinator scrolling a checkbox list of everything
+          * else. These three pills narrow WHAT IS SHOWN; the choosing stays
+          * his, one card at a time.
+          */}
+        <FilterRow
+          nowrap
+          active={pickDay || pickStatus !== null || pickRegion !== null}
+          onClear={() => {
+            setPickDay(false)
+            setPickStatus(null)
+            setPickRegion(null)
+          }}
+        >
+          <RegionFilter
+            value={pickRegion}
+            onChange={setPickRegion}
+            counts={pickRegionCounts}
+            testId="route-region"
+          />
+          <FilterPill
+            active={pickDay}
+            onClick={() => setPickDay((v) => !v)}
+            count={farms.filter((f) => isOnDay(f)).length}
+          >
+            {t('route.filterDay')}
+          </FilterPill>
+          {PICK_STATUSES.map((st) => (
+            <FilterPill
+              key={st}
+              active={pickStatus === st}
+              onClick={() => setPickStatus(pickStatus === st ? null : st)}
+              dot={<FarmStatusDot status={st} />}
+              count={farms.filter((f) => f.status === st).length}
+            >
+              {t(`farmStatus.${st}`)}
+            </FilterPill>
+          ))}
+        </FilterRow>
 
-        {/* ★ PO POINT 5 — THE STUMP THE CAPTURE FOUND. With an empty
-            programme this was a heading, a "quick pick" link, and an EMPTY
-            1.5 px card: a box with nothing in it under a title, which is
-            exactly the thing the product owner called a crushed stump. It is
-            also the FIRST screen of the real app on his first morning, before
-            a single farm has been imported — so the empty state here carries
-            the way OUT of it rather than only naming the absence. */}
+        {/* ★ PO POINT 5 — the empty state carries the way OUT of it: this is
+            the first screen of the real app on the first morning. */}
         {farms.length === 0 ? (
           <EmptyState
             icon="farm"
@@ -413,36 +494,79 @@ export function RoutePlannerScreen() {
               </Link>
             }
           />
+        ) : pickable.length === 0 ? (
+          <EmptyState icon="farm" title={t('farms.empty')} />
         ) : (
-        <div className="card p-1.5">
-          <ul className="max-h-64 overflow-y-auto">
-            {farms.map((farm) => (
-              <li key={farm.id}>
-                <label
-                  onMouseEnter={() => setHoveredId(farm.id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                  className={`flex cursor-pointer items-center gap-2.5 rounded-field px-2 py-2 transition-colors duration-fast ${
-                    hoveredId === farm.id ? 'bg-accent/10' : 'hover:bg-surface-high'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected.has(farm.id)}
-                    onChange={() => toggle(farm.id)}
-                    className="check"
-                  />
-                  <FarmStatusDot status={farm.status} />
-                  <span className="min-w-0 flex-1 truncate text-caption text-content-primary">
-                    {farm.name}
-                  </span>
-                  <span className="muted shrink-0 truncate">{farm.locality}</span>
-                </label>
-              </li>
-            ))}
+          /**
+           * ★★ Y9.2 — SMALL SELECTABLE CARDS, NOT CHECKBOXES.
+           *
+           * "remplacer les cases à cocher (trop petites au doigt) par une
+           *  grille de PETITES CARTES sélectionnables (≈3 rangées × 6 colonnes
+           *  sur large, s'adapte en étroit), chacune avec photo, nom, localité
+           *  — tap = sélection, état visuel net."
+           *
+           * ⚠️ SIX COLUMNS IS A MINIMUM CARD WIDTH, NOT A COLUMN COUNT. The
+           *    grid is `auto-fill` at 7.5 rem, which comes to six across the
+           *    ~46 rem the planner's panel has when the seam is where he
+           *    leaves it, and to two on a phone — "s'adapte en étroit"
+           *    without a breakpoint that would be measuring the WINDOW while
+           *    the panel is what changes.
+           */
+          <ul
+            data-testid="route-picker"
+            className="grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(7.5rem,1fr))]"
+          >
+            {pickable.map((farm) => {
+              const on = selected.has(farm.id)
+              return (
+                <li key={farm.id}>
+                  <button
+                    type="button"
+                    onClick={() => toggle(farm.id)}
+                    aria-pressed={on}
+                    data-testid="route-pick"
+                    onMouseEnter={() => setHoveredId(farm.id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                    className={`group relative flex w-full flex-col overflow-hidden rounded-card text-start
+                                transition-all duration-fast ${
+                                  on
+                                    ? 'ring-2 ring-accent bg-accent/10'
+                                    : 'bg-surface-raised shadow-card hover:bg-surface-high'
+                                }`}
+                  >
+                    <span className="relative block h-14 w-full overflow-hidden bg-surface-high">
+                      <span className="absolute inset-0 flex items-center justify-center [&>*]:h-full [&>*]:w-full [&>*]:rounded-none [&>*]:ring-0">
+                        <Avatar photo={farm.photo} name={farm.name} size="lg" shape="square" />
+                      </span>
+                      {/* The selected state is a mark, not only a ring: a ring
+                          alone is invisible on a photograph. */}
+                      {on && (
+                        <span className="absolute end-1 top-1 flex h-6 w-6 items-center justify-center rounded-pill bg-accent text-content-on-accent shadow-card">
+                          <Icon name="check" size={13} />
+                        </span>
+                      )}
+                    </span>
+                    <span className="flex min-w-0 flex-col gap-0.5 px-2 py-1.5">
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <FarmStatusDot status={farm.status} />
+                        <span
+                          className="truncate text-micro font-semibold text-content-primary"
+                          title={farm.name}
+                        >
+                          {farm.name}
+                        </span>
+                      </span>
+                      <span className="muted truncate" title={farm.locality}>
+                        {farm.locality}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
-        </div>
         )}
-      </section>
+      </Section>
 
       {/*
         ★ X8 (2026-09-04) — THE THREE BLOCKS WERE ONE BLOCK.
@@ -470,8 +594,27 @@ export function RoutePlannerScreen() {
           ) : (
             <>
               <ol className="flex flex-col divide-y divide-edge-subtle/60">
-                {route.stops.map((stop, i) => {
-                  const planStop = plan.stops[i]
+                {/**
+                  * ★★ Y9.3 — THE LIST IS THE SCHEDULE, NOT THE SAVED ORDER.
+                  *
+                  * It used to render `route.stops` — the order the coordinator
+                  * ticked the farms in — and pair each row with `plan.stops[i]`
+                  * for its hour. Now that an appointment PINS its stop and the
+                  * float is reordered around it, those two lists are different
+                  * orders, and pairing them by index would print one farm's
+                  * hour on another farm's row. The plan is the answer to "what
+                  * is my day", so the plan is what is drawn.
+                  */}
+                {(plan.stops.length > 0 ? plan.stops : route.stops.map((s, i) => ({
+                  ...s,
+                  order: i + 1,
+                  arriveAt: '',
+                  fixed: false,
+                  lateBy: 0,
+                  visitEvent: null,
+                  wazeUrl: '',
+                }))).map((stop) => {
+                  const planStop = plan.stops.find((ps) => ps.farm.id === stop.farm.id)
                   const contact = contactOf(stop.farm)
                   const waze = wazeSteps.find((w) => w.order === stop.order)
                   return (
@@ -491,6 +634,17 @@ export function RoutePlannerScreen() {
                         {stop.order}
                       </span>
 
+                      {/**
+                        * ★★ Y9.5 (2026-09-04) — "ALIGNEMENT STRICT DES COLONNES
+                        *    ET DES PILULES". The hour and the distance were
+                        *    inline text in a wrapping row, so each line started
+                        *    wherever the farm's name happened to end and the
+                        *    column of times zig-zagged down the block. They are
+                        *    TRACKS now: a fixed 3.5 rem for the hour and 4.5 rem
+                        *    for the kilometres, both `tabular-nums`, so the
+                        *    figures stack under each other whatever the names
+                        *    do.
+                        */}
                       <span className="min-w-[9rem] flex-1">
                         <span
                           className="block truncate text-caption font-medium text-content-primary"
@@ -498,17 +652,32 @@ export function RoutePlannerScreen() {
                         >
                           {stop.farm.name}
                         </span>
-                        <span className="muted flex flex-wrap items-center gap-x-2 leading-tight">
+                        <span className="muted grid items-baseline gap-x-2 leading-tight [grid-template-columns:3.5rem_4.5rem_auto]">
                           {/* G9 — with a departure time every stop has an
                               expected arrival; without one, only the leg. */}
-                          {planStop && (
-                            <span className="ltr-nums numeric font-semibold text-accent-ink">
-                              {formatTime(planStop.arriveAt, locale)}
-                            </span>
-                          )}
+                          <span
+                            className={`ltr-nums numeric font-semibold ${
+                              planStop?.fixed ? 'text-status-violet-ink' : 'text-accent-ink'
+                            }`}
+                          >
+                            {planStop ? formatTime(planStop.arriveAt, locale) : '—'}
+                          </span>
                           <span className="ltr-nums">
                             {km(stop.legKm)} {t('common.km')}
                           </span>
+                          {/* ★★ Y9.3 — a pinned hour says so, and an impossible
+                              one says by how much. Neither is ever moved. */}
+                          {planStop?.fixed && (
+                            <span className="chip bg-status-violet/15 text-status-violet-ink">
+                              <Icon name="clock" size={10} />
+                              {t('route.fixedHour')}
+                              {planStop.lateBy > 0 && (
+                                <span className="ltr-nums">
+                                  {t('route.lateBy', { m: planStop.lateBy })}
+                                </span>
+                              )}
+                            </span>
+                          )}
                         </span>
                       </span>
 
@@ -623,8 +792,6 @@ export function RoutePlannerScreen() {
           </>
         )}
       </section>
-        </div>
-      </div>
 
       {meetingFor && (
         <FarmVisitModal
