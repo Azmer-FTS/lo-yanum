@@ -7,6 +7,7 @@ import {
   LIVESTOCK_KINDS,
   LOCALITY_POSITIONS,
   NEGEV_CENTER,
+  REGIONS,
   createFarm,
   getFarm,
   getFarmZonesForFarm,
@@ -34,6 +35,7 @@ import type {
   LatLng,
   LivestockKind,
   LivestockLine,
+  RegionId,
 } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
@@ -138,6 +140,14 @@ export function FarmFormScreen() {
   const [name, setName] = useState(existing?.name ?? '')
   const [locality, setLocality] = useState(existing?.locality ?? '')
   const [region, setRegion] = useState(existing?.region ?? '')
+  /**
+   * X12.2 — the STANDARD region. `''` means "leave it to the position", which
+   * is the normal state and the default; picking one pins it. Two fields
+   * rather than one because they answer different questions: `region` is what
+   * the association calls this place, `regionId` is which of the thirteen it
+   * is counted in.
+   */
+  const [regionId, setRegionId] = useState<RegionId | ''>(existing?.regionId ?? '')
   const [type, setType] = useState<FarmType>(existing?.type ?? 'mixed')
   // G16 — חווה / מושב / אחר. New records default to a farm.
   const [entityKind, setEntityKind] = useState<EntityKind>(
@@ -270,6 +280,7 @@ export function FarmFormScreen() {
       name: name.trim(),
       locality: locality.trim(),
       region: region.trim(),
+      regionId: regionId === '' ? null : regionId,
       type,
       entityKind,
       status,
@@ -373,6 +384,16 @@ export function FarmFormScreen() {
             required
           />
           <TextField label={t('form.region')} value={region} onChange={setRegion} />
+          {/* X12.2 — blank = derived from the position. See `farmRegion`. */}
+          <SelectField<RegionId | ''>
+            label={t('form.regionStd')}
+            value={regionId}
+            onChange={setRegionId}
+            options={[
+              { value: '', label: t('form.regionStdHint') },
+              ...REGIONS.map((r) => ({ value: r.id, label: r.name })),
+            ]}
+          />
           <SelectField<FarmType>
             label={t('form.type')}
             value={type}

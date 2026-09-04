@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   FARM_PIPELINE,
   entityKindOf,
+  farmRegion,
   formatDate,
   getAllVisibleAnchorPoints,
   getAllVisibleFarmZones,
@@ -13,13 +14,14 @@ import {
   getVisibleThreatZones,
   totalHeads,
 } from '@core/index'
-import type { Farm, FarmStatus, FarmType } from '@core/index'
+import type { Farm, FarmStatus, FarmType, RegionId } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { EntityQuickCard, useQuickPreview } from '../../components/EntityQuickCard'
 import { ChevronForward, Icon } from '../../components/Icon'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import { OverflowMenu } from '../../components/OverflowMenu'
+import { RegionFilter } from '../../components/RegionFilter'
 import { RosterHead } from '../../components/roster'
 import {
   ThreatLegend,
@@ -84,6 +86,8 @@ export function FarmsListScreen() {
   const [type, setType] = useState<FarmType | null>(null)
   // G16 — the moshav KPI-filter: entity kind joins the list's filters.
   const [moshavOnly, setMoshavOnly] = useState(false)
+  // X12.4 — the standard region, as a filter. `null` is "every region".
+  const [region, setRegion] = useState<RegionId | null>(null)
   const [query, setQuery] = useState('')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -129,6 +133,7 @@ export function FarmsListScreen() {
       if (status !== null && farm.status !== status) return false
       if (type !== null && farm.type !== type) return false
       if (moshavOnly && entityKindOf(farm) !== 'moshav') return false
+      if (region !== null && farmRegion(farm) !== region) return false
       if (!q) return true
       return (
         farm.name.toLowerCase().includes(q) ||
@@ -137,7 +142,7 @@ export function FarmsListScreen() {
         farm.contacts.some((c) => c.name.toLowerCase().includes(q))
       )
     })
-  }, [farms, status, type, moshavOnly, query])
+  }, [farms, status, type, moshavOnly, region, query])
 
   const page = useProgressive(filtered)
 
@@ -178,6 +183,16 @@ export function FarmsListScreen() {
   }).filter((k) => k.count > 0)
 
   const moshavim = farms.filter((f) => entityKindOf(f) === 'moshav')
+
+  /** X12.4 — how many entities each region holds, for the picker's labels. */
+  const regionCounts = useMemo(() => {
+    const out: Partial<Record<RegionId, number>> = {}
+    for (const f of farms) {
+      const id = farmRegion(f)
+      if (id) out[id] = (out[id] ?? 0) + 1
+    }
+    return out
+  }, [farms])
 
   /**
    * U2 (2026-09-02) — THE TOP IS ONE STICKY, COMPACT BLOCK. The product owner
@@ -262,13 +277,15 @@ export function FarmsListScreen() {
   const filterRow = (
     <FilterRow
       nowrap
-      active={status !== null || type !== null || moshavOnly}
+      active={status !== null || type !== null || moshavOnly || region !== null}
       onClear={() => {
         setStatus(null)
         setType(null)
         setMoshavOnly(false)
+        setRegion(null)
       }}
     >
+      <RegionFilter value={region} onChange={setRegion} counts={regionCounts} testId="farms-region" />
       {/* G14d — the status pills are gone: the KPI chips above carry status
           filtering now. Only the type pills remain, they have no chip. */}
       {TYPES.map((ft) => (

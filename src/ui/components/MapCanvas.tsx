@@ -14,6 +14,7 @@ import { readStoredBase, writeStoredBase } from './mapBase'
 import { MapTools } from './MapTools'
 import { MARKER_LAYER, useMapLayers } from './mapLayers'
 import { buildBasemapStyle, registerPmtilesProtocol, resolvedThemeOf } from './basemap'
+import { REGIONS, regionById, regionOf } from '@core/index'
 import type { BasemapBase } from './basemap'
 
 /**
@@ -653,12 +654,44 @@ export default function MapCanvas({
    * drawn; a polygon with no `kind` likewise.
    */
   const [layers] = useMapLayers()
+  /**
+   * ⚠️ X12.3 — THE LAYER SET, READ FROM WITHIN THE MAP'S OWN SETUP. The regions
+   *    are MapLibre layers rather than a filtered prop, so their initial
+   *    `visibility` has to be decided inside `installProgrammeLayers` — which
+   *    runs from the map's `load` and again after every `setStyle`, in an
+   *    effect that must not depend on the layer set (it creates the map, and
+   *    re-creating a map on a checkbox is not a thing). The ref is what lets
+   *    that closure read the CURRENT value without depending on it.
+   */
+  const layersRef = useRef(layers)
+  layersRef.current = layers
   const markers = useMemo(
     () =>
-      allMarkers.filter((m) => {
-        const layer = MARKER_LAYER[m.kind ?? 'farm']
-        return layer ? layers[layer] : true
-      }),
+      allMarkers
+        .filter((m) => {
+          const layer = MARKER_LAYER[m.kind ?? 'farm']
+          return layer ? layers[layer] : true
+        })
+        /**
+         * ★ X12.5 — THE DEMONSTRATION COLOURING. With `regionColors` on, an
+         *   entity marker takes the colour of the region it stands in instead
+         *   of the colour of its own status. It is a switch in the legend and
+         *   it is off by default, because status is what a coordinator reads a
+         *   marker for; this is for the minutes he spends showing a room where
+         *   the association works.
+         *
+         *   Only ENTITY markers change. A guard post, a pickup point or a
+         *   drawing grip is not in a region in any sense the product owner
+         *   means, and recolouring those would make the map say something
+         *   nobody asked it to.
+         */
+        .map((m) => {
+          if (!layers.regionColors) return m
+          const kind = m.kind ?? 'farm'
+          if (kind !== 'farm' && kind !== 'moshav') return m
+          const region = regionById(regionOf(m.position))
+          return region ? { ...m, color: `rgb(${region.rgb})` } : m
+        }),
     [allMarkers, layers],
   )
   const polygons = useMemo(
@@ -719,6 +752,29 @@ export default function MapCanvas({
     if (onMapDblClick) map.doubleClickZoom.disable()
     else map.doubleClickZoom.enable()
   }, [onMapDblClick])
+
+  /**
+   * X12.3 — the regional washes are MapLibre layers rather than a filtered
+   * prop, so their switch is a `visibility` change. Guarded on the layer
+   * existing: `setStyle` (a theme or ground change) tears every programme
+   * layer down and `installProgrammeLayers` puts them back, and this effect
+   * can fire in the gap.
+   */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const apply = () => {
+      const on = layers.regions ? 'visible' : 'none'
+      for (const id of ['regions-fill', 'regions-line', 'regions-label']) {
+        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on)
+      }
+    }
+    apply()
+    map.on('styledata', apply)
+    return () => {
+      map.off('styledata', apply)
+    }
+  }, [layers.regions])
   // Latest requested polyline. Held in a ref so the map's own `load` handler
   // can apply it the moment the source exists, whatever order things mounted in.
   const lineRef = useRef<LatLng[] | undefined>(line)
@@ -794,6 +850,83 @@ export default function MapCanvas({
      *   That property is what makes this safe.
      */
     const installProgrammeLayers = () => {
+      /**
+       * ★ X12.3 (2026-09-04) — THE REGIONS, UNDER EVERYTHING.
+       *
+       * Thirteen translucent washes with the region's name at the centre.
+       * They are added FIRST, so every programme drawing — zones, threats,
+       * the route, the markers — paints on top of them: a region is the
+       * ground the work happens on, not a thing on the map, and a wash that
+       * covered a farm's boundary would invert that.
+       *
+       * ⚠️ 10 % OPACITY, AND A HUE THAT IS NOT THE PROGRAMME'S. The zone
+       *    colours mean "the edge of a holding we work with" and the threat
+       *    colours mean an assessment; borrowing either here would make a
+       *    region look like one. The palette lives with the outlines in
+       *    `core/regions.ts`, where the reason is written out.
+       *
+       * OFF BY DEFAULT (`mapLayers.ts`): the product owner turns them on to
+       * explain the country and off again to work.
+       */
+      map.addSource('regions', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: REGIONS.map((r) => ({
+            type: 'Feature' as const,
+            properties: { id: r.id, name: r.name, color: `rgb(${r.rgb})` },
+            geometry: {
+              type: 'Polygon' as const,
+              coordinates: [[...r.ring, r.ring[0]]],
+            },
+          })),
+        },
+      })
+      const regionsVisible = layersRef.current.regions ? 'visible' : 'none'
+      map.addLayer({
+        id: 'regions-fill',
+        type: 'fill',
+        source: 'regions',
+        layout: { visibility: regionsVisible },
+        paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.1 },
+      })
+      map.addLayer({
+        id: 'regions-line',
+        type: 'line',
+        source: 'regions',
+        layout: { visibility: regionsVisible, 'line-join': 'round' },
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 1.4,
+          'line-opacity': 0.55,
+        },
+      })
+      /**
+       * The name at the centre. `symbol-placement: point` on a polygon puts
+       * the label at the centroid, which is where `regionCenter` also puts it
+       * and where `bun run regions` asserts it lands inside the outline.
+       * `text-allow-overlap` is FALSE on purpose: at a national zoom thirteen
+       * names would collide, and MapLibre dropping the ones that do not fit
+       * is the right answer rather than a wall of text.
+       */
+      map.addLayer({
+        id: 'regions-label',
+        type: 'symbol',
+        source: 'regions',
+        layout: {
+          visibility: regionsVisible,
+          'text-field': ['get', 'name'],
+          'text-font': ['Noto Sans Regular'],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 6, 12, 10, 20],
+          'text-allow-overlap': false,
+        },
+        paint: {
+          'text-color': readToken('--text-secondary'),
+          'text-halo-color': readToken('--surface-base'),
+          'text-halo-width': 1.6,
+        },
+      })
+
       // G1 — zone polygons, declared before the route so the line and the
       // markers always paint above the ground they describe.
       map.addSource('zones', {

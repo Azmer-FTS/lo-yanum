@@ -11,6 +11,7 @@ import {
   getVolunteerStats,
 } from './access'
 import { now } from './clock'
+import { dunamsByRegion } from './regions'
 import { entityKindOf, totalHeads } from './types'
 import type { FarmStatusCount, IncidentSeverity } from './types'
 
@@ -55,6 +56,26 @@ export interface ProgrammeReport {
   potentialDunams: number
   /** PO POINT 6 — null when no guarded entity has been asked. Never rendered as 0. */
   guardedHeads: number | null
+
+  /**
+   * X12.4 — the ground, BY REGION. The two dunam totals above say how much;
+   * this says where, which is the question the association's own maps ask.
+   * Heaviest first, regions holding nothing dropped — `dunamsByRegion`, the
+   * same function the dashboard's block calls, so a printed page and a screen
+   * can never disagree about a funding figure.
+   */
+  dunamsByRegion: Array<{ name: string; dunams: number; count: number }>
+  /**
+   * The same distribution, already folded to what fits on ONE line of A4: the
+   * six heaviest, then a single "אחר" row carrying the rest.
+   *
+   * ⚠️ FOLDED HERE AND NOT IN THE RENDERER, and that is a rule this report has
+   *    been built under from the start: `bun run report` greps the drawing
+   *    code for arithmetic and fails it. A page that sums its own rows is a
+   *    page that can disagree with the screen — so the domain decides what the
+   *    numbers are and the renderer only decides where they sit.
+   */
+  dunamsByRegionTop: Array<{ name: string; dunams: number }>
 
   // --- the entities -------------------------------------------------------
   entitiesTotal: number
@@ -122,6 +143,22 @@ export function buildProgrammeReport(
    *   and the one thing worse than not knowing is printing a zero on a page a
    *   director forwards to a funder.
    */
+  /**
+   * X12.4 — computed once, published twice: the full distribution for the
+   * dashboard's bars and the folded six-plus-rest for the printed line.
+   */
+  const regionRows = dunamsByRegion(entities)
+  const REGION_ROWS_ON_PAGE = 6
+  const regionRest = regionRows
+    .slice(REGION_ROWS_ON_PAGE)
+    .reduce((sum, r) => sum + r.dunams, 0)
+  const regionTop: Array<{ name: string; dunams: number }> = [
+    ...regionRows
+      .slice(0, REGION_ROWS_ON_PAGE)
+      .map((r) => ({ name: r.name, dunams: r.dunams })),
+    ...(regionRest > 0 ? [{ name: 'אחר', dunams: regionRest }] : []),
+  ]
+
   const anyoneAsked = entities.some(
     (f) => (f.status === 'signed' || f.status === 'active') && totalHeads(f) !== null,
   )
@@ -133,6 +170,12 @@ export function buildProgrammeReport(
     guardedDunams: dunams.guardedDunams,
     potentialDunams: dunams.potentialDunams,
     guardedHeads: anyoneAsked ? dunams.guardedHeads : null,
+    dunamsByRegion: regionRows.map(({ name, dunams: d, count }) => ({
+      name,
+      dunams: d,
+      count,
+    })),
+    dunamsByRegionTop: regionTop,
 
     entitiesTotal: entities.length,
     byStatus,

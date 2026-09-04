@@ -16,6 +16,7 @@ import type {
   FarmContact,
   LivestockLine,
   FarmStatus,
+  RegionId,
   EntityKind,
   FarmType,
   FarmVisit,
@@ -336,6 +337,8 @@ export interface FarmDraft {
   name: string
   locality: string
   region: string
+  /** X12.2 — the standard region, when it is pinned by hand. Null = derived. */
+  regionId?: RegionId | null
   type: FarmType
   /** G16 — חווה / מושב / אחר; absent = farm. */
   entityKind?: EntityKind

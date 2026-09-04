@@ -12,8 +12,9 @@ import {
   whatsappHref,
   deleteVolunteer,
   reactivateVolunteer,
+  regionOfLocality,
 } from '@core/index'
-import type { PhoneType, Volunteer, VolunteerStatus } from '@core/index'
+import type { PhoneType, RegionId, Volunteer, VolunteerStatus } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
@@ -22,6 +23,7 @@ import { VolunteerStatusChip, VolunteerStatusDot } from '../../components/badges
 import { PeopleMap } from '../../components/PeopleMap'
 import { MapSplit } from '../../components/MapSplit'
 import { OverflowMenu } from '../../components/OverflowMenu'
+import { RegionFilter } from '../../components/RegionFilter'
 import { RosterHead, RowAction } from '../../components/roster'
 import {
   EmptyState,
@@ -80,6 +82,8 @@ export function VolunteersScreen() {
   // P0.2 — the locality filter is set by tapping a bubble on the map, and it
   // composes with every KPI-filter above it.
   const [locality, setLocality] = useState<string | null>(null)
+  // X12.4 — a volunteer's region is his town's (see `regionOfLocality`).
+  const [region, setRegion] = useState<RegionId | null>(null)
   const [sort, setSort] = useState<SortState>({ key: 'name', dir: 'asc' })
   const [grouped, setGrouped] = useState(false)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -124,6 +128,7 @@ export function VolunteersScreen() {
       if (licenseCar && !(v.hasLicense && v.hasCar)) return false
       if (neverGuarded && v.guardsCount !== 0) return false
       if (yeshiva !== null && v.yeshiva !== yeshiva) return false
+      if (region !== null && regionOfLocality(v.locality) !== region) return false
       if (!q) return true
       return (
         matches(v.name.toLowerCase(), q) ||
@@ -132,7 +137,7 @@ export function VolunteersScreen() {
         v.phone.replace(/\D/g, '').includes(q.replace(/\D/g, '') || ' ')
       )
     })
-  }, [volunteers, query, status, phoneType, licenseCar, neverGuarded, yeshiva])
+  }, [volunteers, query, status, phoneType, licenseCar, neverGuarded, yeshiva, region])
 
   const mapLocalities = useMemo(
     () => beforeLocality.map((v) => v.locality),
@@ -268,6 +273,7 @@ export function VolunteersScreen() {
     phoneType !== null ||
     yeshiva !== null ||
     locality !== null ||
+    region !== null ||
     licenseCar ||
     neverGuarded
 
@@ -276,9 +282,20 @@ export function VolunteersScreen() {
     setPhoneType(null)
     setYeshiva(null)
     setLocality(null)
+    setRegion(null)
     setLicenseCar(false)
     setNeverGuarded(false)
   }
+
+  /** X12.4 — per-region counts for the picker's labels. */
+  const regionCounts = useMemo(() => {
+    const out: Partial<Record<RegionId, number>> = {}
+    for (const v of volunteers) {
+      const id = regionOfLocality(v.locality)
+      if (id) out[id] = (out[id] ?? 0) + 1
+    }
+    return out
+  }, [volunteers])
 
   return (
     <>
@@ -399,6 +416,12 @@ export function VolunteersScreen() {
         }
         filters={
           <div className="scroll-row items-center">
+            <RegionFilter
+              value={region}
+              onChange={setRegion}
+              counts={regionCounts}
+              testId="volunteers-region"
+            />
           {/* G14d — only the yeshiva pills remain: they have no KPI card. The
               status and phone pills were the cards' redundant twins. */}
           {yeshivot.map((y) => (

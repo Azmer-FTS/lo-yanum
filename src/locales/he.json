@@ -31,7 +31,8 @@
     "alerts_one": "התראה אחת",
     "alerts": "{{count}} התראות",
     "events_one": "אירוע אחד",
-    "events": "{{count}} אירועים"
+    "events": "{{count}} אירועים",
+    "regions": "{{count}} אזורים"
   },
   "common": {
     "search": "חיפוש",
@@ -93,7 +94,8 @@
     "actions": "פעולות",
     "durationHm": "{{h}} שעות {{m}} דקות",
     "durationH": "{{h}} שעות",
-    "durationM": "{{m}} דקות"
+    "durationM": "{{m}} דקות",
+    "other": "אחר"
   },
   "roles": {
     "coordinator": "רכז",
@@ -466,7 +468,8 @@
     "guardedDunams": "דונם בשמירה",
     "guardedDunamsHint": "יישויות חתומות ופעילות",
     "potentialDunams": "דונם פוטנציאלי",
-    "potentialDunamsHint": "בתהליך — טרם חתמו ולא סירבו"
+    "potentialDunamsHint": "בתהליך — טרם חתמו ולא סירבו",
+    "dunamsByRegion": "דונם לפי אזור"
   },
   "alerts": {
     "urgent_incident": "אירוע דחוף",
@@ -525,7 +528,11 @@
     "searchPlaceholder": "חיפוש חווה, יישוב או איש קשר",
     "zonesPlaceholder": "שכבת גבולות החלקות תתווסף בשלב הבא",
     "openFullMap": "מפה מלאה",
-    "createFirst": "יצירת חווה"
+    "createFirst": "יצירת חווה",
+    "colRegionStd": "אזור",
+    "regionAuto": "אזור אוטומטי",
+    "regionAll": "כל האזורים",
+    "regionNone": "מחוץ לאזורים"
   },
   "anchor": {
     "title": "עמדת שמירה",
@@ -710,7 +717,9 @@
       "posts": "עמדות שמירה",
       "pickups": "נקודות איסוף",
       "threatZones": "אזורי איום",
-      "threatVectors": "וקטורי איום"
+      "threatVectors": "וקטורי איום",
+      "regions": "אזורים",
+      "regionColors": "צבע לפי אזור"
     },
     "locate": {
       "label": "מיקומי",
@@ -934,7 +943,8 @@
     "period30": "30 יום",
     "period90": "90 יום",
     "period365": "שנה",
-    "periodHint": "הנתונים המצטברים אינם תלויים בתקופה; התקופה קובעת את השמירות והאירועים שנספרים בחלון."
+    "periodHint": "הנתונים המצטברים אינם תלויים בתקופה; התקופה קובעת את השמירות והאירועים שנספרים בחלון.",
+    "byRegion": "דונם לפי אזור"
   },
   "emergency": {
     "police": "משטרה",
@@ -1110,7 +1120,9 @@
     "savedVolunteer": "המתנדב נשמר",
     "savedAnchor": "עמדת השמירה נשמרה",
     "addNew": "חדש",
-    "chooseExisting": "מהרשימה"
+    "chooseExisting": "מהרשימה",
+    "regionStd": "אזור סטנדרטי",
+    "regionStdHint": "מחושב מהמיקום — ניתן לקבוע ידנית"
   },
   "import": {
     "title": "ייבוא מקובץ",

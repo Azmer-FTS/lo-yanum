@@ -326,6 +326,35 @@ export function drawReport(
     x -= ctx.measureText(text).width + 22 * S
   }
 
+  /**
+   * ★ X12.4 — THE GROUND, BY REGION, ON THE PAGE.
+   *
+   * The headline says how many dunams are under guard; a director's next
+   * question is where they are. One line, the heaviest six regions, in the
+   * same order and from the same `dunamsByRegion` the dashboard's block
+   * renders — a printed page and a screen that disagree about a funding
+   * figure is the failure this shares a function to prevent.
+   *
+   * Six because the line has to stay one line at 11 px on A4; the remainder
+   * is summarised rather than dropped, so the total still adds up.
+   */
+  y += 54 * S
+  ctx.fillStyle = c.ink
+  ctx.font = FONT(11, 700)
+  ctx.textAlign = 'right'
+  ctx.fillText(t('report.byRegion'), right, y)
+
+  y += 28 * S
+  ctx.font = FONT(11)
+  ctx.fillStyle = c.muted
+  // ⚠️ `dunamsByRegionTop` is ALREADY folded to what fits — six regions and a
+  //    rest row — by `core/report.ts`. This layer never sums anything; see the
+  //    note on that field and `bun run report`'s check 4.
+  const regionLine = report.dunamsByRegionTop
+    .map((r) => `${r.name} ${he(r.dunams)}`)
+    .join('   ·   ')
+  ctx.fillText(regionLine || t('common.none'), right, y)
+
   // --- foot ----------------------------------------------------------------
   const footY = PAGE.height - M
   line(ctx, footY - 18 * S, c.line)

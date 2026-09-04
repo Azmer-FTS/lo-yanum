@@ -9,7 +9,9 @@ import {
   formatTime,
   getAgendaEvents,
   getAlerts,
+  dunamsByRegion,
   getDunamKpis,
+  regionById,
   getFarmStatusCounts,
   getTonightMissionViews,
   getUpcomingAgendaEvents,
@@ -22,7 +24,12 @@ import {
   startOfWeek,
   telHref,
 } from '@core/index'
-import type { AgendaEvent, DashboardAlert, MissionStatus } from '@core/index'
+import type {
+  AgendaEvent,
+  DashboardAlert,
+  MissionStatus,
+  RegionId,
+} from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { ReportButton } from '../../report/ReportButton'
@@ -538,6 +545,54 @@ function AgendaWidget() {
 
 // --- Screen ----------------------------------------------------------------
 
+/**
+ * X12.4 — the region distribution as horizontal bars. A bar rather than a
+ * table because the question is "which regions carry the weight", which is a
+ * shape; the figure is printed on the row anyway for the reader who wants it.
+ * The bar's colour is the region's own (`core/regions.ts`), so this block and
+ * the map's washes are the same key.
+ */
+function RegionBars({
+  rows,
+}: {
+  rows: Array<{ id: RegionId | null; name: string; dunams: number; count: number }>
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const max = Math.max(1, ...rows.map((r) => r.dunams))
+
+  if (rows.length === 0) {
+    return <EmptyState icon="region" title={t('farms.empty')} />
+  }
+
+  return (
+    <ul className="flex flex-col gap-2" data-testid="dunams-by-region">
+      {rows.map((row) => {
+        const rgb = regionById(row.id)?.rgb ?? '148 163 184'
+        return (
+          <li key={row.id ?? 'none'} className="flex items-center gap-3">
+            <span className="w-24 shrink-0 truncate text-caption text-content-secondary">
+              {row.name}
+            </span>
+            <span className="h-3 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-high">
+              <span
+                className="block h-full rounded-pill"
+                style={{
+                  width: `${Math.max(2, (row.dunams / max) * 100)}%`,
+                  backgroundColor: `rgb(${rgb})`,
+                }}
+              />
+            </span>
+            <span className="numeric w-24 shrink-0 text-end text-caption text-content-primary">
+              {row.dunams.toLocaleString(locale)}
+            </span>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 export function DashboardScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -545,6 +600,8 @@ export function DashboardScreen() {
 
   const farms = useCoreValue(getVisibleFarms)
   const dunams = useCoreValue(getDunamKpis)
+  // X12.4 — the same computation the PDF report prints. See `dunamsByRegion`.
+  const byRegion = useMemo(() => dunamsByRegion(farms), [farms])
   const statusCounts = useCoreValue(getFarmStatusCounts)
   const alerts = useCoreValue(getAlerts)
   const tonight = useCoreValue(getTonightMissionViews)
@@ -710,6 +767,22 @@ export function DashboardScreen() {
         className="mb-5"
       >
         <GrowthCharts />
+      </Section>
+
+      {/* ★ X12.4 — THE DUNAMS, BY REGION. The two hero figures say how much
+          ground is under guard; this says WHERE it is, which is the question
+          the association's own maps are about. One `dunamsByRegion` feeds
+          both this block and the PDF report, so the two cannot disagree —
+          the same rule `getDunamKpis` is written under. Folded by default:
+          it is a reference, not a daily read. */}
+      <Section
+        title={t('dashboard.dunamsByRegion')}
+        collapseKey="dash-regions"
+        defaultOpen={false}
+        className="mb-5"
+        summary={t('blocks.regions', { count: byRegion.length })}
+      >
+        <RegionBars rows={byRegion} />
       </Section>
 
       <Section

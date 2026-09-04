@@ -7,16 +7,18 @@ import {
   getDrivers,
   getDriverStats,
   getTonightBookedDriverIds,
+  regionOfLocality,
   telHref,
   mailtoHref,
   whatsappHref,
 } from '@core/index'
-import type { Driver } from '@core/index'
+import type { Driver, RegionId } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
 import { OverflowMenu } from '../../components/OverflowMenu'
+import { RegionFilter } from '../../components/RegionFilter'
 import { RosterHead, RowAction } from '../../components/roster'
 import {
   EmptyState,
@@ -57,6 +59,8 @@ export function DriversScreen() {
   const [freeTonight, setFreeTonight] = useState(false)
   // P0.2 — set by tapping a bubble on the roster map; composes with the KPIs.
   const [locality, setLocality] = useState<string | null>(null)
+  // X12.4 — the standard region, as a filter.
+  const [region, setRegion] = useState<RegionId | null>(null)
   const [editing, setEditing] = useState<Driver | null>(null)
   // PO POINT 8.
   const del = useConfirmDelete()
@@ -96,19 +100,33 @@ export function DriversScreen() {
 
   const filtered = useMemo(
     () =>
-      locality === null
-        ? beforeLocality
-        : beforeLocality.filter((d) => d.locality === locality),
-    [beforeLocality, locality],
+      beforeLocality.filter(
+        (d) =>
+          (locality === null || d.locality === locality) &&
+          // X12.4 — a driver's region is his town's, like a volunteer's.
+          (region === null || regionOfLocality(d.locality) === region),
+      ),
+    [beforeLocality, locality, region],
   )
 
-  const anyFilter = sevenPlus || freeTonight || locality !== null
+  const anyFilter = sevenPlus || freeTonight || locality !== null || region !== null
 
   const clearFilters = () => {
     setSevenPlus(false)
     setFreeTonight(false)
     setLocality(null)
+    setRegion(null)
   }
+
+  /** X12.4 — per-region counts for the picker's labels. */
+  const regionCounts = useMemo(() => {
+    const out: Partial<Record<RegionId, number>> = {}
+    for (const d of drivers) {
+      const id = regionOfLocality(d.locality)
+      if (id) out[id] = (out[id] ?? 0) + 1
+    }
+    return out
+  }, [drivers])
 
   const { listRef, virtualizer, margin } = useWindowTable(
     filtered.length,
@@ -209,6 +227,12 @@ export function DriversScreen() {
         }
         filters={
           <div className="scroll-row items-center">
+            <RegionFilter
+              value={region}
+              onChange={setRegion}
+              counts={regionCounts}
+              testId="drivers-region"
+            />
 <p className="muted">{t('driver.count', { count: filtered.length })}</p>
           {/* P0.2 — the tapped bubble reads back as a removable pill. */}
           {locality !== null && (

@@ -21,6 +21,15 @@ export type MapLayerKey =
   | 'threatZones'
   | 'threatVectors'
   | 'entities'
+  /** X12.3 — the thirteen regional washes, with their names. */
+  | 'regions'
+  /**
+   * X12.5 — the demonstration switch: a marker takes the colour of the region
+   * it stands in instead of the colour of its own status. Useful while showing
+   * the country to a room; never on while working, because status is what a
+   * coordinator reads a marker for.
+   */
+  | 'regionColors'
 
 export const MAP_LAYERS: readonly MapLayerKey[] = [
   'entities',
@@ -30,6 +39,8 @@ export const MAP_LAYERS: readonly MapLayerKey[] = [
   'pickups',
   'threatZones',
   'threatVectors',
+  'regions',
+  'regionColors',
 ] as const
 
 export type MapLayerVisibility = Record<MapLayerKey, boolean>
@@ -53,6 +64,10 @@ const DEFAULTS: MapLayerVisibility = {
   pickups: true,
   threatZones: false,
   threatVectors: false,
+  // X12.3 — off by default, on the product owner's own instruction: the
+  // washes are for explaining the country, not for working in it.
+  regions: false,
+  regionColors: false,
 }
 
 let current: MapLayerVisibility = read()

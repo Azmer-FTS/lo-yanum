@@ -11,7 +11,9 @@ import {
   deleteFarm,
   deleteFarmZoneChecked,
   getThreatsForFarm,
+  farmRegion,
   formatDate,
+  regionById,
   formatDateTime,
   formatRelative,
   getAnchorPointsForFarm,
@@ -163,6 +165,24 @@ function FarmFacts({ farm }: { farm: Farm }) {
     <dl className="auto-cols gap-x-5 [--col-min:13rem]">
       <KeyValue label={t('farms.filterType')} value={t(`farmType.${farm.type}`)} />
       <KeyValue label={t('volunteers.locality')} value={farm.locality} />
+      {/* ★ X12.2 — THE STANDARD REGION, AND IT SAYS WHERE IT CAME FROM.
+          Derived from the position unless somebody has set it by hand
+          (`farmRegion`), so the line carries "אזור אוטומטי" while it is the
+          computed answer: a field that looks typed but is derived is a field
+          somebody will one day try to correct in the wrong place. */}
+      <KeyValue
+        label={t('farms.colRegionStd')}
+        value={
+          <span className="flex items-center gap-1.5">
+            {regionById(farmRegion(farm))?.name ?? t('farms.regionNone')}
+            {!farm.regionId && (
+              <span className="chip bg-surface-high text-content-muted">
+                {t('farms.regionAuto')}
+              </span>
+            )}
+          </span>
+        }
+      />
       <KeyValue
         label={t('farms.lastVisit')}
         value={

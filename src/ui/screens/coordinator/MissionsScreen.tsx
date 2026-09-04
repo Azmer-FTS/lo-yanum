@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
 import {
+  farmRegion,
   formatDate,
   formatTime,
   formatWeekday,
@@ -11,13 +12,14 @@ import {
   getUpcomingMissionViews,
   resolveConfirmation,
 } from '@core/index'
-import type { MissionStatus } from '@core/index'
+import type { MissionStatus, RegionId } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { ChevronForward, Icon } from '../../components/Icon'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { MissionStatusChip, readToken } from '../../components/badges'
+import { RegionFilter } from '../../components/RegionFilter'
 import {
   EmptyState,
   FilterPill,
@@ -70,14 +72,30 @@ export function MissionsScreen() {
 
   const [tab, setTab] = useState<'upcoming' | 'past' | 'cancelled'>('upcoming')
   const [status, setStatus] = useState<MissionStatus | null>(null)
+  // X12.4 — a guard's region is its farm's.
+  const [region, setRegion] = useState<RegionId | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
 
   const byTab = { upcoming, past, cancelled }
   const list = useMemo(() => {
-    const base = byTab[tab]
-    return status === null ? base : base.filter((v) => v.mission.status === status)
+    return byTab[tab].filter(
+      (v) =>
+        (status === null || v.mission.status === status) &&
+        (region === null || farmRegion(v.farm) === region),
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, upcoming, past, cancelled, status])
+  }, [tab, upcoming, past, cancelled, status, region])
+
+  /** X12.4 — per-region counts for the picker's labels, over the live tab. */
+  const regionCounts = useMemo(() => {
+    const out: Partial<Record<RegionId, number>> = {}
+    for (const v of byTab[tab]) {
+      const id = farmRegion(v.farm)
+      if (id) out[id] = (out[id] ?? 0) + 1
+    }
+    return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, upcoming, past, cancelled])
 
   const page = useProgressive(list)
 
@@ -133,7 +151,20 @@ export function MissionsScreen() {
           /* D7.3 — the upcoming/past switch and the status filter share one
              row. Status counts are computed against the ACTIVE tab, so a
              pill's number is what pressing it would actually show. */
-          <FilterRow nowrap active={status !== null} onClear={() => setStatus(null)}>
+          <FilterRow
+            nowrap
+            active={status !== null || region !== null}
+            onClear={() => {
+              setStatus(null)
+              setRegion(null)
+            }}
+          >
+            <RegionFilter
+              value={region}
+              onChange={setRegion}
+              counts={regionCounts}
+              testId="missions-region"
+            />
         <FilterPill
           active={tab === 'upcoming'}
           onClick={() => setTab('upcoming')}

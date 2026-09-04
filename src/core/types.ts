@@ -59,6 +59,27 @@ export type FarmType = 'agriculture' | 'livestock' | 'mixed'
  */
 export type EntityKind = 'farm' | 'moshav' | 'other'
 
+/**
+ * X12 — the thirteen standard regions. Declared HERE rather than in
+ * `regions.ts` so that `Farm` can name one without types.ts importing the
+ * module that imports types.ts; the outlines, the palette and the
+ * point-in-polygon live there.
+ */
+export type RegionId =
+  | 'golan'
+  | 'galilee'
+  | 'jezreel'
+  | 'carmel-coast'
+  | 'sharon'
+  | 'coastal-plain'
+  | 'samaria'
+  | 'judea'
+  | 'jordan-valley'
+  | 'dead-sea'
+  | 'negev'
+  | 'arava'
+  | 'eilat'
+
 /** The read side of the optional field: absent means a plain farm. */
 export const entityKindOf = (farm: { entityKind?: EntityKind }): EntityKind =>
   farm.entityKind ?? 'farm'
@@ -189,7 +210,26 @@ export interface Farm {
   id: string
   name: string
   locality: string
+  /**
+   * The association's OWN name for where this is — "רמת נגב", "חבל שלום".
+   * Free text, typed by whoever entered the record, and it stays: it is what
+   * the coordinator says on the phone.
+   *
+   * ⚠️ NOT the same field as `regionId` below, and the two are not redundant.
+   * This one is a label; that one is a bucket the app can count and colour.
+   */
   region: string
+  /**
+   * X12 — the STANDARD region, when somebody has overridden it by hand.
+   *
+   * Normally null: the region is derived from `position` by `regionOf`
+   * (core/regions.ts), so a farm that moves is re-filed by itself and nothing
+   * has to be maintained. It is set only when the automatic answer is wrong —
+   * a holding that straddles a seam, or one whose recorded point is a gate on
+   * the far side of a line. `farmRegion()` is the one place the two are
+   * arbitrated; nothing else should read either field directly.
+   */
+  regionId?: RegionId | null
   type: FarmType
   /** G16 — חווה / מושב / אחר. Absent = 'farm' (see entityKindOf). */
   entityKind?: EntityKind
