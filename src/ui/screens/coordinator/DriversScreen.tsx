@@ -17,6 +17,7 @@ import type { Driver, RegionId } from '@core/index'
 import { Avatar } from '../../components/Avatar'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
+import { ListTile } from '../../components/ListTile'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { RegionFilter } from '../../components/RegionFilter'
 import { RosterHead, RowAction } from '../../components/roster'
@@ -24,10 +25,12 @@ import {
   EmptyState,
   KpiChip,
   ListTop,
+  LoadMore,
 } from '../../components/primitives'
 import { PeopleMap } from '../../components/PeopleMap'
 import { MapSplit } from '../../components/MapSplit'
 import { useCoreValue } from '../../hooks/useCore'
+import { useProgressive } from '../../hooks/useProgressive'
 import { useWindowTable } from '../../hooks/useWindowTable'
 import { DriverFormModal } from './DriverFormModal'
 
@@ -128,6 +131,9 @@ export function DriversScreen() {
     return out
   }, [drivers])
 
+  /** ★★ Y4 — the split reading's card column pages the way the others do. */
+  const tilePage = useProgressive(filtered)
+
   const { listRef, virtualizer, margin } = useWindowTable(
     filtered.length,
     () => ROW_HEIGHT,
@@ -157,7 +163,7 @@ export function DriversScreen() {
           />
         )}
       >
-        {() => (
+        {({ mode }) => (
           <>
       <ListTop
         testId="drivers-top"
@@ -259,7 +265,9 @@ export function DriversScreen() {
           </div>
         }
       >
-        {filtered.length > 0 && (
+        {/* ★★ Y4 — the column headers belong to the table, so they are drawn
+            when the table is. See the volunteers roster. */}
+        {filtered.length > 0 && mode === 'hidden' && (
           /* X5 — one `--roster-cols`, worn by this header and by every row. */
           <div className="roster roster-drivers">
           <div
@@ -286,6 +294,39 @@ export function DriversScreen() {
           scrollMargin of 0 and draws its rows a page above themselves. */}
       {filtered.length === 0 ? (
         <EmptyState icon="car" title={t('driver.empty')} />
+      ) : mode !== 'hidden' ? (
+        /** ★★ Y4 — card-tiles in `split`, exactly as on the four other lists.
+         *  See the long note on the volunteers roster for why. */
+        <div className="panel-scope">
+          <ul className="stagger pair-grid gap-1.5">
+            {tilePage.visible.map((d) => (
+              <li key={d.id}>
+                <ListTile
+                  testId="driver-tile"
+                  photo={d.photo}
+                  name={d.name}
+                  onOpen={() => setEditing(d)}
+                  openLabel={t('volunteers.colName')}
+                >
+                  <span className="truncate text-caption font-semibold text-content-primary" title={d.name}>
+                    {d.name}
+                  </span>
+                  <span className="muted block truncate" title={`${d.vehicle ?? ''} · ${d.locality}`}>
+                    {[d.vehicle, d.locality].filter(Boolean).join(' · ')}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-x-2.5 text-micro text-content-muted">
+                    <span className="ltr-nums whitespace-nowrap">{d.phone}</span>
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap">
+                      <Icon name="users" size={11} />
+                      <span className="numeric">{d.seats}</span>
+                    </span>
+                  </span>
+                </ListTile>
+              </li>
+            ))}
+          </ul>
+          <LoadMore shown={tilePage.shown} total={tilePage.total} onMore={tilePage.more} />
+        </div>
       ) : (
         <div className="roster roster-drivers card lg:rounded-t-none">
           <div

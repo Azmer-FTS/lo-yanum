@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
 import { DAY, formatDateTime, getVisibleIncidentViews } from '@core/index'
-import type { IncidentSeverity } from '@core/index'
+import type { IncidentSeverity, IncidentView } from '@core/index'
 
-import { ChevronForward } from '../../components/Icon'
+import { Avatar } from '../../components/Avatar'
+import { ListTile } from '../../components/ListTile'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { MarkerSwatch, SeverityChip, readToken } from '../../components/badges'
@@ -16,7 +17,9 @@ import {
   ListTop,
   LoadMore,
 } from '../../components/primitives'
+import { RosterHead } from '../../components/roster'
 import { useProgressive } from '../../hooks/useProgressive'
+import { useWindowTable } from '../../hooks/useWindowTable'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
@@ -126,6 +129,8 @@ export function IncidentsScreen() {
         </ul>
       }
     >
+      {({ mode }) => (
+      <>
       <ListTop
         testId="incidents-top"
         title={t('incidents.title')}
@@ -180,10 +185,19 @@ export function IncidentsScreen() {
         ))}
       </FilterRow>
         }
-      />
+      >
+        {/* ★★ Y4 — the column headers ride the sticky top with the filters. */}
+        {mode === 'hidden' && filtered.length > 0 && <IncidentsTableHead />}
+      </ListTop>
 
       {filtered.length === 0 ? (
         <EmptyState icon="alert" title={t('incidents.empty')} />
+      ) : mode === 'hidden' ? (
+        /** ★★ Y4 — CONTENU PLEIN IS THE TABLE, on all five lists alike. */
+        <IncidentsTable
+          views={filtered}
+          onOpen={(id) => navigate(`/coordinator/incidents/${id}`)}
+        />
       ) : (
         // P0bis.3b — the cards go TWO PER ROW as soon as the panel can hold
         // two. Stretched to the full width of a widened panel each row becomes
@@ -192,23 +206,21 @@ export function IncidentsScreen() {
         // about the panel rather than about the window.
         <div className="panel-scope">
           <ul className="stagger pair-grid gap-2">
-          {page.visible.map(({ incident, farm }) => {
-            const active = incident.id === hoveredId
-            return (
+            {page.visible.map(({ incident, farm }) => (
               <li key={incident.id}>
-                <button
-                  type="button"
-                  onMouseEnter={() => setHoveredId(incident.id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                  onFocus={() => setHoveredId(incident.id)}
-                  onBlur={() => setHoveredId(null)}
-                  onClick={() => navigate(`/coordinator/incidents/${incident.id}`)}
+                <ListTile
+                  testId="incident-tile"
+                  photo={farm.photo}
+                  name={farm.name}
+                  active={incident.id === hoveredId}
+                  onOpen={() => navigate(`/coordinator/incidents/${incident.id}`)}
                   /* F5.3 — the row floats: card surface, soft drop, and the
                      severity bar on top of it rather than instead of it. */
-                  /* X7.1 — the same `--tile-h` as every other list. */
-                  className={`tile-interactive list-tile w-full border-s-4 px-3 py-2 text-start ${
-                    SEVERITY_EDGE[incident.severity]
-                  } ${active ? 'border-accent/60 bg-accent/10' : ''}`}
+                  className={`border-s-4 ${SEVERITY_EDGE[incident.severity]}`}
+                  hoverProps={{
+                    onMouseEnter: () => setHoveredId(incident.id),
+                    onMouseLeave: () => setHoveredId(null),
+                  }}
                 >
                   <span className="flex flex-wrap items-center gap-2">
                     <SeverityChip severity={incident.severity} />
@@ -224,9 +236,8 @@ export function IncidentsScreen() {
                       {formatDateTime(incident.reportedAt, locale)}
                     </span>
                   </span>
-                  {/* One line, not two: three lines plus the chips row is what
-                      `--tile-h` holds. `title` is the recourse the U7 gate
-                      requires of anything that clips. */}
+                  {/* `title` is the recourse the U7 gate requires of anything
+                      that clips. */}
                   <span
                     title={incident.description}
                     className="mt-1 block truncate text-caption text-content-secondary"
@@ -234,18 +245,135 @@ export function IncidentsScreen() {
                     {incident.description}
                   </span>
                   <span className="muted mt-1 flex items-center gap-1">
-                    {incident.reporterName} ·{' '}
-                    {t(`incidentSource.${incident.source}`)}
-                    <ChevronForward size={13} />
+                    {incident.reporterName} · {t(`incidentSource.${incident.source}`)}
                   </span>
-                </button>
+                </ListTile>
               </li>
-            )
-          })}
-        </ul>
-      </div>
+            ))}
+          </ul>
+        </div>
       )}
       <LoadMore shown={page.shown} total={page.total} onMore={page.more} />
+      </>
+      )}
     </MapPanel>
+  )
+}
+
+const TABLE_ROW_HEIGHT = 56
+
+/** ★★ Y4 — the incidents, as columns. Same grid system as the other rosters. */
+function IncidentsTableHead() {
+  const { t } = useTranslation()
+  return (
+    <div className="roster roster-incidents">
+      <div
+        className="roster-row rounded-t-card border-b border-edge-subtle
+                   bg-surface-overlay/95 px-4 py-1.5 backdrop-blur"
+      >
+        <RosterHead label={t('missions.farm')} />
+        <RosterHead label={t('incidents.reportedAt')} tier="md" />
+        <RosterHead label={t('incidents.filterSeverity')} tier="lg" />
+        <RosterHead label={t('incidents.reportedBy')} tier="xl" />
+        <RosterHead label={t('farms.colStatus')} tier="md" />
+      </div>
+    </div>
+  )
+}
+
+function IncidentsTable({
+  views,
+  onOpen,
+}: {
+  views: IncidentView[]
+  onOpen: (incidentId: string) => void
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const { listRef, virtualizer, margin } = useWindowTable(
+    views.length,
+    () => TABLE_ROW_HEIGHT,
+  )
+
+  return (
+    <div className="roster roster-incidents card lg:rounded-t-none">
+      <div ref={listRef} style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+        {virtualizer.getVirtualItems().map((item) => {
+          const { incident, farm } = views[item.index]
+          return (
+            <button
+              key={incident.id}
+              type="button"
+              onClick={() => onOpen(incident.id)}
+              style={{
+                position: 'absolute',
+                insetInlineStart: 0,
+                insetInlineEnd: 0,
+                top: 0,
+                height: item.size,
+                transform: `translateY(${item.start - margin}px)`,
+              }}
+              className={`roster-row border-b border-s-4 border-edge-subtle/50 px-4 text-start
+                         transition-colors duration-fast hover:bg-surface-high/60 ${
+                           SEVERITY_EDGE[incident.severity]
+                         }`}
+            >
+              {/* 1 — the farm and what happened, with the dropped columns merged
+                  under it. */}
+              <span className="flex min-w-0 items-center gap-2.5">
+                <Avatar photo={farm.photo} name={farm.name} size="xs" shape="square" />
+                <span className="min-w-0">
+                  <span className="block truncate text-caption font-medium text-content-primary">
+                    {farm.name}
+                  </span>
+                  <span className="muted block truncate" title={incident.description}>
+                    {incident.description}
+                    <span data-merge="xl" style={{ ['--col-display' as string]: 'inline' }}>
+                      {' '}· {incident.reporterName}
+                    </span>
+                  </span>
+                </span>
+              </span>
+
+              {/* 2 — when */}
+              <span data-col="md" className="truncate text-caption text-content-secondary">
+                <span className="ltr-nums">{formatDateTime(incident.reportedAt, locale)}</span>
+              </span>
+
+              {/* 3 — severity */}
+              <span
+                data-col="lg"
+                style={{ ['--col-display' as string]: 'flex' }}
+                className="flex min-w-0 items-center"
+              >
+                <SeverityChip severity={incident.severity} />
+              </span>
+
+              {/* 4 — who reported it */}
+              <span data-col="xl" className="truncate text-caption text-content-secondary">
+                {incident.reporterName}
+              </span>
+
+              {/* 5 — open or closed */}
+              <span
+                data-col="md"
+                style={{ ['--col-display' as string]: 'flex' }}
+                className="flex min-w-0 items-center"
+              >
+                {incident.resolved ? (
+                  <span className="chip bg-status-success/15 text-status-success-ink">
+                    {t('incidents.resolved')}
+                  </span>
+                ) : (
+                  <span className="chip bg-status-warn/15 text-status-warn-ink">
+                    {t('incidents.open')}
+                  </span>
+                )}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }

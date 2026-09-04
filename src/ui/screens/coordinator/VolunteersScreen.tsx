@@ -23,6 +23,7 @@ import { VolunteerStatusChip, VolunteerStatusDot } from '../../components/badges
 import { PeopleMap } from '../../components/PeopleMap'
 import { MapSplit } from '../../components/MapSplit'
 import { OverflowMenu } from '../../components/OverflowMenu'
+import { ListTile } from '../../components/ListTile'
 import { RegionFilter } from '../../components/RegionFilter'
 import { RosterHead, RowAction } from '../../components/roster'
 import {
@@ -30,9 +31,11 @@ import {
   FilterPill,
   KpiChip,
   ListTop,
+  LoadMore,
   Modal,
 } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
+import { useProgressive } from '../../hooks/useProgressive'
 import { useLocale } from '../../hooks/useLocale'
 import { useWindowTable } from '../../hooks/useWindowTable'
 import { VolunteerFormModal } from './VolunteerFormModal'
@@ -166,6 +169,9 @@ export function VolunteersScreen() {
       }
     })
   }, [beforeLocality, locality, sort])
+
+  /** ★★ Y4 — the split reading's card column pages the way the others do. */
+  const tilePage = useProgressive(filtered)
 
   /**
    * Flatten groups into a single virtualised list. Headers and rows share one
@@ -326,7 +332,7 @@ export function VolunteersScreen() {
           />
         )}
       >
-        {() => (
+        {({ mode }) => (
           <>
       <ListTop
         testId="volunteers-top"
@@ -456,7 +462,11 @@ export function VolunteersScreen() {
           </div>
         }
       >
-        {filtered.length > 0 && (
+        {/* ★★ Y4 (2026-09-04) — THE COLUMN HEADERS BELONG TO THE TABLE, so they
+            are drawn when the table is. In `split` the content is a column of
+            card-tiles and a row of column labels above cards is furniture that
+            names nothing. */}
+        {filtered.length > 0 && mode === 'hidden' && (
           /* X5 — THE HEADER WEARS THE SAME `--roster-cols` AS EVERY ROW, so
              the two cannot drift. It is never `hidden lg:flex` any more: the
              compact reading has a header too (name + actions), because a
@@ -497,6 +507,59 @@ export function VolunteersScreen() {
           its rows a page above themselves. */}
       {filtered.length === 0 ? (
         <EmptyState icon="users" title={t('volunteers.empty')} />
+      ) : mode !== 'hidden' ? (
+        /**
+         * ★★ Y4 (2026-09-04) — IN `split` THIS ROSTER IS CARD-TILES LIKE EVERY
+         *    OTHER LIST, AND IT WAS THE ONE THAT MADE THE PRODUCT OWNER WRITE
+         *    THE RULE. Farms and guards drew cards beside the map while these
+         *    two drew a table squeezed into a third of the screen, so "the
+         *    modes behave differently depending on the screen" was literally
+         *    true. The table has not gone anywhere: it is what CONTENU PLEIN
+         *    shows, which is the reading it was built for.
+         *
+         * ⚠️ NOT VIRTUALISED, ON PURPOSE — `useProgressive` instead, the hook the
+         *    other three tile lists already use. Running the window virtualiser
+         *    over a narrow column of variable-height cards would be a second
+         *    measurement of a thing that is no longer a fixed-row table.
+         *
+         * ⚠️ AND `useProgressive`'S PAGE OF 20, NOT A COUNTER OF ITS OWN. The
+         *    first version kept its own `tileCount` starting at 24, and `bun
+         *    run layout` failed the screen for it: A30 refuses a list of more
+         *    than 20 rows with no bounded scroll ancestor, because that is a
+         *    page whose length is a function of how many records happen to
+         *    exist. The hook's page size IS that bound, and using it is also
+         *    what makes "load more" behave the same on all five lists.
+         */
+        <div className="panel-scope">
+          <ul className="stagger pair-grid gap-1.5">
+            {tilePage.visible.map((v) => (
+              <li key={v.id}>
+                <ListTile
+                  testId="volunteer-tile"
+                  photo={v.photo}
+                  name={v.name}
+                  onOpen={() => setEditing(v)}
+                  openLabel={t('volunteers.colName')}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <VolunteerStatusDot status={v.status} />
+                    <span className="truncate text-caption font-semibold text-content-primary" title={v.name}>
+                      {v.name}
+                    </span>
+                  </span>
+                  <span className="muted block truncate" title={`${v.yeshiva ?? ''} · ${v.locality}`}>
+                    {[v.yeshiva, v.locality].filter(Boolean).join(' · ')}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-x-2.5 text-micro text-content-muted">
+                    <span className="ltr-nums whitespace-nowrap">{v.phone}</span>
+                    <VolunteerStatusChip status={v.status} />
+                  </span>
+                </ListTile>
+              </li>
+            ))}
+          </ul>
+          <LoadMore shown={tilePage.shown} total={tilePage.total} onMore={tilePage.more} />
+        </div>
       ) : (
         <div className="roster roster-volunteers card lg:rounded-t-none">
           {/* The window is the scroll container (G7); this div only maps the

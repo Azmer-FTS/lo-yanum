@@ -12,14 +12,16 @@ import {
   getUpcomingMissionViews,
   resolveConfirmation,
 } from '@core/index'
-import type { MissionStatus, RegionId } from '@core/index'
+import type { MissionStatus, MissionView, RegionId } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
-import { ChevronForward, Icon } from '../../components/Icon'
+import { Icon } from '../../components/Icon'
+import { ListTile } from '../../components/ListTile'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { MissionStatusChip, readToken } from '../../components/badges'
 import { RegionFilter } from '../../components/RegionFilter'
+import { RosterHead } from '../../components/roster'
 import {
   EmptyState,
   FilterPill,
@@ -28,6 +30,7 @@ import {
   LoadMore,
 } from '../../components/primitives'
 import { useProgressive } from '../../hooks/useProgressive'
+import { useWindowTable } from '../../hooks/useWindowTable'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
@@ -60,7 +63,6 @@ const STATUSES: MissionStatus[] = [
  */
 export function MissionsScreen() {
   const { t } = useTranslation()
-  const locale = useLocale()
   const navigate = useNavigate()
 
   const upcoming = useCoreValue(getUpcomingMissionViews)
@@ -143,6 +145,8 @@ export function MissionsScreen() {
         </ul>
       }
     >
+      {({ mode }) => (
+      <>
       <ListTop
         testId="missions-top"
         title={t('missions.title')}
@@ -212,10 +216,26 @@ export function MissionsScreen() {
         })}
       </FilterRow>
         }
-      />
+      >
+        {/* ★★ Y4 — the column headers ride the sticky top with the filters, so
+            a scrolled table still names its columns. Same construction as the
+            farms and volunteers rosters. */}
+        {mode === 'hidden' && list.length > 0 && <MissionsTableHead />}
+      </ListTop>
 
       {list.length === 0 ? (
         <EmptyState icon="shield" title={t('missions.empty')} />
+      ) : mode === 'hidden' ? (
+        /**
+         * ★★ Y4 — CONTENU PLEIN IS THE TABLE, on this screen exactly as on the
+         *    four others. A guard tile is four rows tall because a card has to
+         *    say everything at once; given the whole width, columns say the
+         *    same things in a third of the height and line up down the page.
+         */
+        <MissionsTable
+          views={list}
+          onOpen={(id) => navigate(`/coordinator/missions/${id}`)}
+        />
       ) : (
         // P0bis.3b — the cards go TWO PER ROW as soon as the panel can hold
         // two. Stretched to the full width of a widened panel each row becomes
@@ -224,105 +244,262 @@ export function MissionsScreen() {
         // about the panel rather than about the window.
         <div className="panel-scope">
           <ul className="stagger pair-grid gap-2">
-          {page.visible.map((view) => {
-            const { mission, farm, anchorPoint, driver, volunteers } = view
-            const active = mission.id === hoveredId
-            const mismatch = mission.assignments.some(
-              (a) =>
-                resolveConfirmation(a.outbound) === 'mismatch' ||
-                resolveConfirmation(a.inbound) === 'mismatch',
-            )
-
-            return (
-              <li key={mission.id}>
-                <button
-                  type="button"
-                  onMouseEnter={() => setHoveredId(mission.id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                  onFocus={() => setHoveredId(mission.id)}
-                  onBlur={() => setHoveredId(null)}
-                  onClick={() => navigate(`/coordinator/missions/${mission.id}`)}
-                  /* F5.3 — a guard is a CARD, not a bordered region of the
-                     page. These rows carried a subtle border and no fill, which
-                     in dark is a 1 px line on near-black: the whole list read
-                     as one grey slab and the product owner could not tell where
-                     one guard ended and the next began. */
-                  /* X7.1 — the same `--tile-h` as every other list. */
-                  className={`tile-interactive list-tile w-full px-3 py-2 text-start ${
-                    active ? 'border-accent/60 bg-accent/10' : ''
-                  }`}
-                >
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`text-caption font-medium text-content-primary ${
-                        mission.status === 'cancelled'
-                          ? 'line-through opacity-70'
-                          : ''
-                      }`}
-                    >
-                      {farm.name}
-                    </span>
-                    <MissionStatusChip status={mission.status} />
-                    {mission.status === 'recruiting' && (
-                      <span className="chip bg-status-warn/15 text-status-warn-ink">
-                        <span className="numeric ltr-nums">
-                          {mission.assignments.length}/
-                          {mission.requiredVolunteers}
-                        </span>
-                      </span>
-                    )}
-                    {mismatch && (
-                      /* F4 — a driver/group disagreement is a critical state. */
-                      <span className="chip-critical">
-                        <Icon name="alert" size={11} />
-                        {t('alerts.presence_mismatch')}
-                      </span>
-                    )}
-                  </span>
-
-                  <span className="muted mt-1 block">
-                    <span className="ltr-nums">
-                      {formatDate(mission.startAt, locale)}
-                    </span>{' '}
-                    · {formatWeekday(mission.startAt, locale)} ·{' '}
-                    <span className="ltr-nums">
-                      {formatTime(mission.startAt, locale)}–
-                      {formatTime(mission.endAt, locale)}
-                    </span>
-                  </span>
-
-                  <span className="muted mt-0.5 block truncate">
-                    {anchorPoint.name}
-                    {driver ? ` · ${driver.name}` : ` · ${t('missions.noDriver')}`}
-                  </span>
-
-                  {/* Faces, not just names: the coordinator recognises the team
-                      at a glance (C5.3). */}
-                  <span className="mt-2 flex items-center gap-1.5">
-                    {volunteers.slice(0, 5).map(({ volunteer }) => (
-                      <Avatar
-                        key={volunteer.id}
-                        photo={volunteer.photo}
-                        name={volunteer.name}
-                        size="xs"
-                      />
-                    ))}
-                    {volunteers.length > 5 && (
-                      <span className="numeric text-micro text-content-muted">
-                        +{volunteers.length - 5}
-                      </span>
-                    )}
-                    <ChevronForward size={13} />
-                  </span>
-                </button>
+            {page.visible.map((view) => (
+              <li key={view.mission.id}>
+                <MissionTile
+                  view={view}
+                  active={view.mission.id === hoveredId}
+                  onHover={setHoveredId}
+                  onOpen={() => navigate(`/coordinator/missions/${view.mission.id}`)}
+                />
               </li>
-            )
-          })}
-        </ul>
-      </div>
+            ))}
+          </ul>
+        </div>
       )}
       {/* F5.5 — a season of guards is hundreds of rows. */}
       <LoadMore shown={page.shown} total={page.total} onMore={page.more} />
+      </>
+      )}
     </MapPanel>
   )
 }
+
+const TABLE_ROW_HEIGHT = 56
+
+/**
+ * ★★ Y4 (2026-09-04) — THE GUARD TILE, ON THE APP'S ONE TILE.
+ *
+ * It was a bare `<button>` with four stacked rows and no picture at all, while
+ * the farms list beside it had a full-bleed photo — two lists, two shapes, for
+ * the same gesture. It is `ListTile` now, so the farm's photo is on the
+ * physical right here too and the tap targets are the same two zones.
+ */
+function MissionTile({
+  view,
+  active,
+  onHover,
+  onOpen,
+}: {
+  view: MissionView
+  active: boolean
+  onHover: (id: string | null) => void
+  onOpen: () => void
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const { mission, farm, anchorPoint, driver, volunteers } = view
+  const mismatch = mission.assignments.some(
+    (a) =>
+      resolveConfirmation(a.outbound) === 'mismatch' ||
+      resolveConfirmation(a.inbound) === 'mismatch',
+  )
+
+  return (
+    <ListTile
+      testId="mission-tile"
+      photo={farm.photo}
+      name={farm.name}
+      active={active}
+      onOpen={onOpen}
+      openLabel={t('missions.openMission')}
+      hoverProps={{
+        onMouseEnter: () => onHover(mission.id),
+        onMouseLeave: () => onHover(null),
+      }}
+    >
+      <span className="flex flex-wrap items-center gap-2">
+        <span
+          className={`text-caption font-medium text-content-primary ${
+            mission.status === 'cancelled' ? 'line-through opacity-70' : ''
+          }`}
+        >
+          {farm.name}
+        </span>
+        <MissionStatusChip status={mission.status} />
+        {mission.status === 'recruiting' && (
+          <span className="chip bg-status-warn/15 text-status-warn-ink">
+            <span className="numeric ltr-nums">
+              {mission.assignments.length}/{mission.requiredVolunteers}
+            </span>
+          </span>
+        )}
+        {mismatch && (
+          /* F4 — a driver/group disagreement is a critical state. */
+          <span className="chip-critical">
+            <Icon name="alert" size={11} />
+            {t('alerts.presence_mismatch')}
+          </span>
+        )}
+      </span>
+
+      <span className="muted mt-1 block">
+        <span className="ltr-nums">{formatDate(mission.startAt, locale)}</span>{' '}
+        · {formatWeekday(mission.startAt, locale)} ·{' '}
+        <span className="ltr-nums">
+          {formatTime(mission.startAt, locale)}–{formatTime(mission.endAt, locale)}
+        </span>
+      </span>
+
+      <span className="muted mt-0.5 block truncate">
+        {anchorPoint.name}
+        {driver ? ` · ${driver.name}` : ` · ${t('missions.noDriver')}`}
+      </span>
+
+      {/* Faces, not just names: the coordinator recognises the team at a
+          glance (C5.3). */}
+      <span className="mt-2 flex items-center gap-1.5">
+        {volunteers.slice(0, 5).map(({ volunteer }) => (
+          <Avatar
+            key={volunteer.id}
+            photo={volunteer.photo}
+            name={volunteer.name}
+            size="xs"
+          />
+        ))}
+        {volunteers.length > 5 && (
+          <span className="numeric text-micro text-content-muted">
+            +{volunteers.length - 5}
+          </span>
+        )}
+      </span>
+    </ListTile>
+  )
+}
+
+/** ★★ Y4 — the guards, as columns. Same grid system as the three rosters. */
+export function MissionsTableHead() {
+  const { t } = useTranslation()
+  return (
+    <div className="roster roster-missions">
+      <div
+        className="roster-row rounded-t-card border-b border-edge-subtle
+                   bg-surface-overlay/95 px-4 py-1.5 backdrop-blur"
+      >
+        <RosterHead label={t('missions.farm')} />
+        <RosterHead label={t('missions.date')} tier="md" />
+        <RosterHead label={t('missions.anchorPoint')} tier="lg" />
+        <RosterHead label={t('missions.driver')} tier="xl" />
+        <RosterHead label={t('missions.team')} tier="lg" />
+        <RosterHead label={t('farms.colStatus')} tier="md" />
+      </div>
+    </div>
+  )
+}
+
+function MissionsTable({
+  views,
+  onOpen,
+}: {
+  views: MissionView[]
+  onOpen: (missionId: string) => void
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const { listRef, virtualizer, margin } = useWindowTable(
+    views.length,
+    () => TABLE_ROW_HEIGHT,
+  )
+
+  return (
+    <div className="roster roster-missions card lg:rounded-t-none">
+      <div ref={listRef} style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+        {virtualizer.getVirtualItems().map((item) => {
+          const { mission, farm, anchorPoint, driver, volunteers } = views[item.index]
+          return (
+            <button
+              key={mission.id}
+              type="button"
+              onClick={() => onOpen(mission.id)}
+              style={{
+                position: 'absolute',
+                insetInlineStart: 0,
+                insetInlineEnd: 0,
+                top: 0,
+                height: item.size,
+                transform: `translateY(${item.start - margin}px)`,
+              }}
+              className="roster-row border-b border-edge-subtle/50 px-4 text-start
+                         transition-colors duration-fast hover:bg-surface-high/60"
+            >
+              {/* 1 — the farm, with whatever has lost its column merged under it. */}
+              <span className="flex min-w-0 items-center gap-2.5">
+                <Avatar photo={farm.photo} name={farm.name} size="xs" shape="square" />
+                <span className="min-w-0">
+                  <span
+                    className={`block truncate text-caption font-medium text-content-primary ${
+                      mission.status === 'cancelled' ? 'line-through opacity-70' : ''
+                    }`}
+                  >
+                    {farm.name}
+                  </span>
+                  <span className="muted block truncate">
+                    <span data-merge="md" style={{ ['--col-display' as string]: 'inline' }}>
+                      <span className="ltr-nums">{formatDate(mission.startAt, locale)}</span>
+                    </span>
+                    <span data-merge="lg" style={{ ['--col-display' as string]: 'inline' }}>
+                      {' '}· {anchorPoint.name}
+                    </span>
+                    <span data-merge="xl" style={{ ['--col-display' as string]: 'inline' }}>
+                      {' '}· {driver ? driver.name : t('missions.noDriver')}
+                    </span>
+                  </span>
+                </span>
+              </span>
+
+              {/* 2 — when */}
+              <span data-col="md" className="truncate text-caption text-content-secondary">
+                <span className="ltr-nums">{formatDate(mission.startAt, locale)}</span>
+                <span className="muted block ltr-nums">
+                  {formatTime(mission.startAt, locale)}–{formatTime(mission.endAt, locale)}
+                </span>
+              </span>
+
+              {/* 3 — the rendezvous */}
+              <span data-col="lg" className="truncate text-caption text-content-secondary">
+                {anchorPoint.name}
+              </span>
+
+              {/* 4 — the driver */}
+              <span data-col="xl" className="truncate text-caption text-content-secondary">
+                {driver ? driver.name : <span className="muted">{t('missions.noDriver')}</span>}
+              </span>
+
+              {/* 5 — the team, as faces.
+                  ⚠️ `--col-display: flex` — a cell's `display` is OWNED by the
+                     roster's tier rules (`.roster [data-col]`, index.css),
+                     whose selector outweighs Tailwind's `.flex`. Without this
+                     the cell falls back to `block` and the faces stack
+                     VERTICALLY out of the row, which is exactly what the
+                     first capture of this table showed. */}
+              <span
+                data-col="lg"
+                style={{ ['--col-display' as string]: 'flex' }}
+                className="flex items-center gap-1"
+              >
+                {volunteers.slice(0, 3).map(({ volunteer }) => (
+                  <Avatar key={volunteer.id} photo={volunteer.photo} name={volunteer.name} size="xs" />
+                ))}
+                {volunteers.length > 3 && (
+                  <span className="numeric text-micro text-content-muted">
+                    +{volunteers.length - 3}
+                  </span>
+                )}
+              </span>
+
+              {/* 6 — status */}
+              <span
+                data-col="md"
+                style={{ ['--col-display' as string]: 'flex' }}
+                className="flex min-w-0 items-center"
+              >
+                <MissionStatusChip status={mission.status} />
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+

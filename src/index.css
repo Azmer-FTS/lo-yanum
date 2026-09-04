@@ -1039,6 +1039,23 @@
   --float-reserve: calc(
     var(--shell-bottom) + 1.25rem + var(--map-rail-w) + var(--map-rail)
   );
+
+  /* -------------------------------------------------------------------------
+     ★★ Y3.3 (2026-09-04) — HOW WIDE THE BOTTOM BAND IS, for the overlays that
+     have to stay out of its way.
+
+     `--float-reserve` above is how far UP a list has to stop. This is how far
+     ACROSS a control drawn on the map has to start, and it is a second number
+     because the band changed shape: it used to be one 52 px button with the
+     mode pill stacked above it, and `pl-[4.5rem]` was enough for both. Laid
+     out on ONE line it is the "+", a rail gap and three mode buttons — and the
+     drawing-tools pencil, anchored to the map's physical left, ended up
+     underneath it. `bun run blocks` caught it as a sixty-second timeout:
+     "map-mode-full … intercepts pointer events".
+
+     Derived, like the reserve: rail, the "+", rail, the pill, rail.
+     ------------------------------------------------------------------------- */
+  --float-band: calc(3 * var(--map-rail) + var(--map-rail-w) + 9rem);
 }
 
 /* `!important` — MapLibre's own sheet declares `margin: 10px 0 0 10px` at the
@@ -1210,6 +1227,42 @@
    finger (momentum from the platform, no wrapping, no visible scrollbar) and
    the whole top — title, KPIs, search, filters, column headers — is pinned
    while the list scrolls, at every width, never more than ~25 % of the height.
+   --------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   ★★ Y6 (2026-09-04) — A SWIPABLE ROW RUNS EDGE TO EDGE, AND ITS CARDS'
+   SHADOWS BREATHE.
+   ---------------------------------------------------------------------------
+   The product owner reported two things about these rows and they have one
+   cause:
+
+     "l'ombre des vignettes est coupée à gauche et à droite (marge du
+      conteneur qui rogne), et les rangées swipables ne vont pas jusqu'au
+      bord."
+
+   The row carried 2 px of inline padding — chosen in G14c for the active
+   chip's 2 px focus RING, which is all it was ever asked to hold. `--shadow-card`
+   is `0 4px 14px`, so a card's drop needs 14 px on each side and had two; the
+   clip edge shaved it, which is precisely "coupée à gauche et à droite". And
+   because the row lives inside the content column's own padding, its first
+   card starts at the text margin and its last one ends there — a swipable row
+   that visibly stops short of the screen does not read as swipable at all.
+
+   Both are fixed by the same two declarations: pull the row OUT of the
+   column's padding by exactly that padding, and put the padding back INSIDE
+   the scrollport. The first card then begins at the same margin as the text
+   above it, the row's scroll surface reaches the screen's edge, and there are
+   `--content-pad` of room at each end for the shadow.
+
+   ⚠️ `--content-pad` IS PUBLISHED BY THE SHELL THAT OWNS THE PADDING, not
+      guessed from a breakpoint here. The page shell is `px-4 sm:px-6` and the
+      map shell's content column is `px-4 lg:px-5` — two different ladders, and
+      a media query in this file would have to know both and would be wrong on
+      the third. The fallback is 0, which degrades to exactly the old
+      behaviour rather than to a broken one.
+
+   ⚠️ AND THE VERTICAL ROOM IS PAID FOR WITH A NEGATIVE MARGIN, so a row that
+      can now show its shadow does not also become 16 px taller and push every
+      list down.
    --------------------------------------------------------------------------- */
 .scroll-row {
   display: flex;
@@ -1497,6 +1550,72 @@
   .roster-farms .roster-row {
     --roster-cols: minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 0.9fr) 5.5rem 7.5rem
       7.5rem 3.5rem 6.5rem 1.5rem;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   ★★ Y4 (2026-09-04) — THE TWO ROSTERS THAT DID NOT HAVE ONE.
+   ---------------------------------------------------------------------------
+   The product owner's rule is that CONTENU PLEIN is a dense table on ALL five
+   lists — "plus aucune différence de comportement d'un écran à l'autre".
+   Guards and incidents had no table at all: whatever the mode, they drew the
+   same four-row card, so choosing "fill the screen" on those two screens gave
+   a wider card and nothing else.
+
+   The tiers are the SAME four container widths as the three rosters above,
+   for the same reason X5 chose them: the panel is a width the coordinator
+   drags, so "does this column fit" is a question about the panel. What drops
+   first is what a coordinator can reconstruct — the driver before the
+   rendezvous, the rendezvous before the date — and everything that drops
+   MERGES under the name rather than disappearing (`data-merge`).
+   --------------------------------------------------------------------------- */
+
+/* guards — farm · when · rendezvous · driver · team · status */
+/* At the narrowest tier only the name column is drawn: everything else has
+   merged under it, so a second track would be an empty column. */
+.roster-missions .roster-row {
+  --roster-cols: minmax(0, 1fr);
+}
+
+@container (min-width: 44rem) {
+  .roster-missions .roster-row {
+    --roster-cols: minmax(0, 1fr) 7.5rem 6.5rem;
+  }
+}
+
+@container (min-width: 60rem) {
+  .roster-missions .roster-row {
+    --roster-cols: minmax(0, 1.3fr) 7.5rem minmax(0, 1fr) 6rem 6.5rem;
+  }
+}
+
+@container (min-width: 78rem) {
+  .roster-missions .roster-row {
+    --roster-cols: minmax(0, 1.2fr) 7.5rem minmax(0, 1fr) minmax(0, 0.9fr) 6rem
+      6.5rem;
+  }
+}
+
+/* incidents — farm · when · severity · reported by · status */
+.roster-incidents .roster-row {
+  --roster-cols: minmax(0, 1fr);
+}
+
+@container (min-width: 44rem) {
+  .roster-incidents .roster-row {
+    --roster-cols: minmax(0, 1fr) 7.5rem 6.5rem;
+  }
+}
+
+@container (min-width: 60rem) {
+  .roster-incidents .roster-row {
+    --roster-cols: minmax(0, 1.3fr) 7.5rem 6.5rem 6.5rem;
+  }
+}
+
+@container (min-width: 78rem) {
+  .roster-incidents .roster-row {
+    --roster-cols: minmax(0, 1.2fr) 7.5rem 6.5rem minmax(0, 0.9fr) 6.5rem;
   }
 }
 

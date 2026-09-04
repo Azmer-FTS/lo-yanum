@@ -3,6 +3,7 @@ import type { LatLng } from '@core/index'
 
 import { MapLegend } from './MapLegend'
 import { MapSplit } from './MapSplit'
+import type { MapModeState } from './mapMode'
 import { MapView } from './MapView'
 import type {
   MapMarker,
@@ -68,8 +69,23 @@ export interface MapPanelProps {
    * re-opens it; see `MapCanvas.anchored`.
    */
   detailAt?: { position: LatLng; key: number }
-  /** The list / content panel. */
-  children: ReactNode
+  /**
+   * The list / content panel.
+   *
+   * ★★ Y4 (2026-09-04) — A RENDER PROP, BECAUSE THE CONTENT IS NOW A FUNCTION
+   *    OF THE MODE. `MapSplit` has always handed its own children the mode;
+   *    `MapPanel` threw it away (`{() => children}`) and every screen it
+   *    wraps therefore drew the same thing whether it had a third of the
+   *    width or all of it. That is the whole of the product owner's Y4:
+   *
+   *      "mode PARTAGÉ : carte + liste en cartes-vignettes ;
+   *       mode CONTENU PLEIN : bascule automatique en TABLEAU dense ;
+   *       mode CARTE PLEINE : carte seule."
+   *
+   *    A plain node is still accepted, for the screens whose content really
+   *    does not depend on the mode.
+   */
+  children: ReactNode | ((state: MapModeState) => ReactNode)
   ariaLabel: string
   contentWidth?: ContentWidth
   /**
@@ -159,15 +175,17 @@ export function MapPanel({
           {/* X4.3 — the corner card is the fallback for the screens whose
               selection is not a point on the ground; with `detailAt` the same
               node is drawn on the marker instead. */}
+          {/* ⚠️ Y3.3 — the corner card starts past the bottom band, for the
+              same reason the drawing tools do. */}
           {detail && !detailAt && (
-            <div className="pointer-events-none absolute bottom-3 left-[3.75rem] right-3 z-20 sm:left-auto sm:end-4 sm:w-80">
+            <div className="pointer-events-none absolute bottom-3 left-[var(--float-band)] right-3 z-20 sm:left-auto sm:end-[var(--float-band)] sm:w-80">
               <div className="pointer-events-auto">{detail}</div>
             </div>
           )}
         </>
       )}
     >
-      {() => children}
+      {(state) => (typeof children === 'function' ? children(state) : children)}
     </MapSplit>
   )
 }

@@ -19,6 +19,7 @@ import type { Farm, FarmStatus, FarmType, RegionId } from '@core/index'
 import { Avatar } from '../../components/Avatar'
 import { EntityQuickCard, useQuickPreview } from '../../components/EntityQuickCard'
 import { ChevronForward, Icon } from '../../components/Icon'
+import { ListTile } from '../../components/ListTile'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { RegionFilter } from '../../components/RegionFilter'
@@ -115,10 +116,13 @@ export function FarmsListScreen() {
    * G7 — two readings of the same roster. The MAP stays the default (A18:
    * geography first), but a farm file imported at scale needs columns to
    * scan down, and a table crammed into the map shell's one-third panel is
-   * not a table. The toggle swaps the whole shell: map-first, or a full-page
-   * window-virtualised table like the volunteers'.
+   * not a table.
+   *
+   * ★★ Y4 — WHICH READING IS SHOWN IS THE MAP MODE, not a switch of this
+   *    screen's own. See the "⋯" note below: `hidden` — the coordinator has
+   *    asked for the content to fill the screen — IS the table, on this
+   *    screen and on the four others.
    */
-  const [view, setView] = useState<'map' | 'table'>('map')
 
   const setStatus = (value: FarmStatus | null) => {
     const next = new URLSearchParams(params)
@@ -238,31 +242,20 @@ export function FarmsListScreen() {
   )
 
   /**
-   * X2 — WHAT THIS SCREEN CAN DO, IN ONE "⋯". The import link and the
-   * map/table switch were three labelled buttons across the title line; they
-   * are two rows in the menu now. The threat pill is not replaced by a row —
-   * it moved to the legend's checkboxes and lives only there.
+   * X2 — WHAT THIS SCREEN CAN DO, IN ONE "⋯".
+   *
+   * ★★ Y4 (2026-09-04) — AND THE MAP/TABLE PAIR IS NO LONGER ONE OF THEM.
+   *    This screen carried a `view` of its own — two rows in this menu — on
+   *    top of the three-mode pill every map screen already has, so the
+   *    coordinator had FOUR states to think about on one screen and three on
+   *    every other. His rule collapses them: the table IS the content-full
+   *    mode. Choosing "contenu plein" is choosing the table, and there is one
+   *    control for both because they were always one idea.
    */
   const menu = (
     <OverflowMenu
       testId="farms-menu"
       items={[
-        {
-          key: 'view-map',
-          label: t('farms.viewMap'),
-          icon: 'map',
-          checked: view === 'map',
-          onClick: () => setView('map'),
-          testId: 'farms-view-map',
-        },
-        {
-          key: 'view-table',
-          label: t('farms.viewTable'),
-          icon: 'table',
-          checked: view === 'table',
-          onClick: () => setView('table'),
-          testId: 'farms-view-table',
-        },
         {
           key: 'import',
           label: t('volunteers.import'),
@@ -317,25 +310,6 @@ export function FarmsListScreen() {
     </ListTop>
   )
 
-  // G7 — the full-page table reading, outside the map shell entirely.
-  if (view === 'table') {
-    return (
-      <div className="px-4 pb-[var(--float-reserve)] pt-5 sm:px-6">
-        {/* G14d/A51 — the whole top rides the page from lg, column headers
-            included, same construction as the volunteers roster. */}
-        {top(filtered.length > 0 && <FarmsTableHead />)}
-        {filtered.length === 0 ? (
-          <EmptyState icon="farm" title={t('farms.empty')} />
-        ) : (
-          <FarmsTable
-            farms={filtered}
-            onOpen={(id) => navigate(`/coordinator/farms/${id}`)}
-          />
-        )}
-      </div>
-    )
-  }
-
   return (
     <MapPanel
       screenKey="farms"
@@ -374,47 +348,79 @@ export function FarmsListScreen() {
         )
       }
     >
-      {top()}
-
-      {filtered.length === 0 ? (
-        <EmptyState icon="farm" title={t('farms.empty')} />
-      ) : (
-        // P0bis.3b — two farm cards per row as soon as the panel can hold
-        // two. In the map reading the panel is a third of the screen, so this
-        // is normally one column; it earns its keep the moment the seam is
-        // dragged, which is exactly when a stretched row looks emptiest.
-        <div className="panel-scope">
-          <ul className="stagger pair-grid gap-1.5">
-          {page.visible.map((farm) => (
-            <li key={farm.id}>
-              <FarmTile
-                farm={farm}
-                active={farm.id === hoveredId || farm.id === selectedId}
-                heads={totalHeads(farm)}
-                onHover={setHoveredId}
-                onOpen={() => navigate(`/coordinator/farms/${farm.id}`)}
-                onCenter={() => centerOn(farm)}
-                previewProps={quick.bind(farm)}
+      {({ mode }) =>
+        /**
+         * ★★ Y4 — THE MODE CHOOSES THE READING, and the same three lines are
+         *    written on all five lists. `full` never reaches here: `MapSplit`
+         *    hides this column itself.
+         */
+        mode === 'hidden' ? (
+          <>
+            {/* G14d/A51 — the whole top rides the page from lg, column headers
+                included, same construction as the volunteers roster. */}
+            {top(filtered.length > 0 && <FarmsTableHead />)}
+            {filtered.length === 0 ? (
+              <EmptyState icon="farm" title={t('farms.empty')} />
+            ) : (
+              <FarmsTable
+                farms={filtered}
+                onOpen={(id) => navigate(`/coordinator/farms/${id}`)}
               />
-            </li>
-          ))}
-          </ul>
-        </div>
-      )}
-      {quick.portal((farm) => (
-        <EntityQuickCard farm={farm} posts={postsOf(farm.id)} compact />
-      ))}
-      <LoadMore shown={page.shown} total={page.total} onMore={page.more} />
+            )}
+          </>
+        ) : (
+          <>
+            {top()}
+
+            {filtered.length === 0 ? (
+              <EmptyState icon="farm" title={t('farms.empty')} />
+            ) : (
+              // P0bis.3b — two farm cards per row as soon as the panel can hold
+              // two. In the map reading the panel is a third of the screen, so
+              // this is normally one column; it earns its keep the moment the
+              // seam is dragged, which is exactly when a stretched row looks
+              // emptiest.
+              <div className="panel-scope">
+                <ul className="stagger pair-grid gap-1.5">
+                  {page.visible.map((farm) => (
+                    <li key={farm.id}>
+                      <FarmTile
+                        farm={farm}
+                        active={farm.id === hoveredId || farm.id === selectedId}
+                        heads={totalHeads(farm)}
+                        onHover={setHoveredId}
+                        onOpen={() => navigate(`/coordinator/farms/${farm.id}`)}
+                        onCenter={() => centerOn(farm)}
+                        previewProps={quick.bind(farm)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {quick.portal((farm) => (
+              <EntityQuickCard farm={farm} posts={postsOf(farm.id)} compact />
+            ))}
+            <LoadMore shown={page.shown} total={page.total} onMore={page.more} />
+          </>
+        )
+      }
     </MapPanel>
   )
 }
 
 /**
  * U8 (2026-09-02) — THE LIVING TILE. The photo takes the tile's whole height,
- * edge to edge, on the PHYSICAL LEFT (last flex child in this RTL row), and
- * it is the tile's second click zone: "centre on the map", with a pin badge
- * in its corner saying so. The text zone opens the file. Hover (mouse) or a
- * long press (touch) opens the quick card beside the tile.
+ * edge to edge, and it is the tile's second click zone: "centre on the map",
+ * with a pin badge in its corner saying so. The text zone opens the file.
+ * Hover (mouse) or a long press (touch) opens the quick card beside the tile.
+ *
+ * ★★ Y4 (2026-09-04) — THE SHAPE IS `ListTile` NOW, SHARED WITH THE FOUR
+ *    OTHER LISTS, and the photo has moved to the PHYSICAL RIGHT with it. U8
+ *    put it on the physical left and said so in as many words; the product
+ *    owner has asked four times for the other side, which is where a Hebrew
+ *    reader's eye starts. See `ListTile` for why that is a matter of child
+ *    ORDER rather than of a direction-specific class.
  */
 function FarmTile({
   farm,
@@ -436,84 +442,50 @@ function FarmTile({
   const { t } = useTranslation()
   const locale = useLocale()
   return (
-    <div
-      data-testid="farm-tile"
-      /* X7.1 — `list-tile`: the ONE height every list tile in the app has
-         (index.css, `--tile-h`). It was 4.75 rem here and free-running on the
-         guards and the incidents. */
-      className={`tile-interactive list-tile flex ${
-        active ? 'bg-accent/10 ring-2 ring-accent/60' : ''
-      }`}
-      onMouseEnter={() => onHover(farm.id)}
-      onMouseLeave={() => onHover(null)}
-      {...previewProps}
+    <ListTile
+      testId="farm-tile"
+      photo={farm.photo}
+      name={farm.name}
+      active={active}
+      onOpen={onOpen}
+      onCentre={onCenter}
+      centreLabel={t('farms.centerOnMap')}
+      openLabel={t('farms.openFile')}
+      hoverProps={{
+        ...previewProps,
+        onMouseEnter: () => onHover(farm.id),
+        onMouseLeave: () => onHover(null),
+      }}
     >
-      <button
-        type="button"
-        onFocus={() => onHover(farm.id)}
-        onBlur={() => onHover(null)}
-        onClick={onOpen}
-        title={t('farms.openFile')}
-        className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3 py-2 text-start"
-      >
-        <span className="flex min-w-0 items-center gap-2">
-          <FarmStatusDot status={farm.status} />
-          <span className="truncate text-caption font-semibold text-content-primary" title={farm.name}>
-            {farm.name}
-          </span>
+      <span className="flex min-w-0 items-center gap-2">
+        <FarmStatusDot status={farm.status} />
+        <span className="truncate text-caption font-semibold text-content-primary" title={farm.name}>
+          {farm.name}
         </span>
-        <span className="muted block truncate" title={`${farm.locality} · ${t(`farmType.${farm.type}`)}`}>
-          {farm.locality} · {t(`farmType.${farm.type}`)}
-        </span>
-        <span className="flex flex-wrap items-center gap-x-2.5 text-micro text-content-muted">
-          <span className="inline-flex items-center gap-1 whitespace-nowrap">
-            <Icon name="landPlot" size={11} />
-            <span className="numeric">{(farm.farmDunams + farm.grazingDunams).toLocaleString(locale)}</span>
-            {t('farms.dunams')}
-          </span>
-          {heads !== null && (
-            <span className="inline-flex items-center gap-1 whitespace-nowrap">
-              <Icon name="pawPrint" size={11} />
-              <span className="numeric">{heads.toLocaleString(locale)}</span>
-            </span>
-          )}
-          {farm.nextVisitAt && (
-            <span className="inline-flex items-center gap-1 whitespace-nowrap">
-              <Icon name="calendar" size={11} />
-              <span className="ltr-nums">{formatDate(farm.nextVisitAt, locale)}</span>
-            </span>
-          )}
-        </span>
-      </button>
-      <span className="flex shrink-0 items-center pe-1 text-content-muted/60">
-        <ChevronForward size={14} />
       </span>
-      <button
-        type="button"
-        onClick={onCenter}
-        aria-label={t('farms.centerOnMap')}
-        title={t('farms.centerOnMap')}
-        data-testid="farm-tile-center"
-        className="group relative h-full w-[var(--tile-h)] shrink-0 overflow-hidden bg-surface-high"
-      >
-        <TilePhoto photo={farm.photo} name={farm.name} />
-        <span
-          className="absolute bottom-1 start-1 flex h-6 w-6 items-center justify-center rounded-pill bg-surface-overlay/90 text-accent-ink shadow-card
-                     transition-transform duration-fast group-hover:scale-110 group-active:scale-95"
-        >
-          <Icon name="pin" size={13} />
+      <span className="muted block truncate" title={`${farm.locality} · ${t(`farmType.${farm.type}`)}`}>
+        {farm.locality} · {t(`farmType.${farm.type}`)}
+      </span>
+      <span className="flex flex-wrap items-center gap-x-2.5 text-micro text-content-muted">
+        <span className="inline-flex items-center gap-1 whitespace-nowrap">
+          <Icon name="landPlot" size={11} />
+          <span className="numeric">{(farm.farmDunams + farm.grazingDunams).toLocaleString(locale)}</span>
+          {t('farms.dunams')}
         </span>
-      </button>
-    </div>
-  )
-}
-
-/** The tile's full-bleed photo, or the initials on the name's colour. */
-function TilePhoto({ photo, name }: { photo: string | null; name: string }) {
-  return (
-    <span className="absolute inset-0 flex items-center justify-center [&>*]:h-full [&>*]:w-full [&>*]:rounded-none [&>*]:ring-0 [&>span]:text-heading">
-      <Avatar photo={photo} name={name} size="lg" shape="square" />
-    </span>
+        {heads !== null && (
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            <Icon name="pawPrint" size={11} />
+            <span className="numeric">{heads.toLocaleString(locale)}</span>
+          </span>
+        )}
+        {farm.nextVisitAt && (
+          <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            <Icon name="calendar" size={11} />
+            <span className="ltr-nums">{formatDate(farm.nextVisitAt, locale)}</span>
+          </span>
+        )}
+      </span>
+    </ListTile>
   )
 }
 

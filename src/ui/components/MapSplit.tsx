@@ -135,10 +135,10 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
     shellPage:
       'flex flex-col lg:flex-row-reverse lg:items-start lg:pt-[var(--shell-top)] lg:rtl:flex-row',
     contentPanel:
-      'order-2 min-w-0 flex-1 overflow-y-auto px-4 pb-[var(--float-reserve)] pt-5 lg:order-none',
-    contentPage: 'order-2 min-w-0 flex-1 px-4 pb-[var(--float-reserve)] pt-5 lg:order-none',
-    contentHidden: 'lg:w-full lg:px-5',
-    contentSplit: 'lg:w-[var(--content-w)] lg:flex-none lg:px-5',
+      'order-2 min-w-0 flex-1 overflow-y-auto px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 lg:order-none',
+    contentPage: 'order-2 min-w-0 flex-1 px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 lg:order-none',
+    contentHidden: 'lg:w-full lg:px-5 lg:[--content-pad:1.25rem]',
+    contentSplit: 'lg:w-[var(--content-w)] lg:flex-none lg:px-5 lg:[--content-pad:1.25rem]',
     mapCol: 'order-1 flex-col lg:order-none lg:min-w-0 lg:flex-1',
     mapColPage:
       'lg:sticky lg:top-[var(--shell-top)] lg:h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] lg:self-start',
@@ -156,10 +156,10 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
     shellPage:
       'flex flex-col lg:pt-[var(--shell-top)] xl:flex-row-reverse xl:items-start xl:rtl:flex-row',
     contentPanel:
-      'order-2 min-w-0 flex-1 overflow-y-auto px-4 pb-[var(--float-reserve)] pt-5 xl:order-none',
-    contentPage: 'order-2 min-w-0 flex-1 px-4 pb-[var(--float-reserve)] pt-5 xl:order-none',
-    contentHidden: 'xl:w-full xl:px-5',
-    contentSplit: 'xl:w-[var(--content-w)] xl:flex-none xl:px-5',
+      'order-2 min-w-0 flex-1 overflow-y-auto px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 xl:order-none',
+    contentPage: 'order-2 min-w-0 flex-1 px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 xl:order-none',
+    contentHidden: 'xl:w-full xl:px-5 xl:[--content-pad:1.25rem]',
+    contentSplit: 'xl:w-[var(--content-w)] xl:flex-none xl:px-5 xl:[--content-pad:1.25rem]',
     mapCol: 'order-1 flex-col xl:order-none xl:min-w-0 xl:flex-1',
     mapColPage:
       'xl:sticky xl:top-[var(--shell-top)] xl:h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] xl:self-start',
@@ -231,7 +231,21 @@ export function MapSplit({
       ref={shellRef}
       data-map-shell={screenKey}
       style={style}
-      className={`${scroll === 'page' ? c.shellPage : c.shellPanel} ${
+      /**
+       * ★★ Y4 (2026-09-04) — IN `hidden` THE PAGE SCROLLS, WHATEVER THIS
+       *    SCREEN'S `scroll` STRATEGY IS THE REST OF THE TIME.
+       *
+       *    `panel` exists so that dragging a list does not move the map
+       *    beside it — the product owner's point 4b. In `hidden` there IS no
+       *    map beside it: the content is the whole screen, and keeping it in
+       *    an inner scrollport then costs two real things. The scrollbar
+       *    stops being the page's, and — the reason this was found — the
+       *    dense table Y4 switches to is WINDOW-virtualised (`useWindowTable`,
+       *    G7), so inside a column that scrolls on its own it measures a
+       *    scrollport nobody is moving and renders the wrong rows against a
+       *    band of empty space. Same rule for all five lists.
+       */
+      className={`${scroll === 'page' || mode === 'hidden' ? c.shellPage : c.shellPanel} ${
         // In `full` below the breakpoint the map IS the screen, so the shell is
         // pinned to the viewport instead of growing with a list that is not
         // there. `min-h-dvh` otherwise, so a short list still fills the page.
@@ -245,7 +259,7 @@ export function MapSplit({
       {!(mode === 'full' && contentInFull === 'unmount') && (
         <div
           data-map-content=""
-          className={`${scroll === 'page' ? c.contentPage : c.contentPanel} ${
+          className={`${scroll === 'page' || mode === 'hidden' ? c.contentPage : c.contentPanel} ${
             mode === 'full'
               ? 'hidden'
               : mode === 'hidden'

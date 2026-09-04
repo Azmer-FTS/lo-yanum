@@ -296,8 +296,19 @@ const ROUTES: Array<{
   {
     name: 'driver-modal',
     hash: '#/coordinator/drivers',
+    /**
+     * ★★ Y4 (2026-09-04) — OPENED FROM THE TILE, NOT FROM A ROW ACTION.
+     *
+     * This step used to click `driver-edit`, the pencil in a roster row — and
+     * after Y4 the default reading of this screen is CARD-TILES, so the roster
+     * and its pencil only exist in "contenu plein". The gate timed out for
+     * sixty seconds on every viewport waiting for a control the coordinator no
+     * longer starts from. Tapping the card IS how the record opens now, which
+     * is one tap on a 84 px target instead of one on a 32 px icon; the pencil
+     * is still there in the table reading.
+     */
     open: async (page) => {
-      await page.locator('[data-testid="driver-edit"]:visible').first().click()
+      await page.locator('[data-testid="driver-tile-open"]:visible').first().click()
       await page.waitForSelector('[role="dialog"]', { timeout: 10_000 })
       await page.waitForTimeout(600)
     },
