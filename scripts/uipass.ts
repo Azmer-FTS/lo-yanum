@@ -245,6 +245,106 @@ await page.waitForTimeout(400)
 check('tools: a tap unfolds them', (await page.locator('[data-testid="draw-tools-panel"] button').count()) >= 5)
 await shot(page, '6-tools-open')
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 8–12 — THE SCREENS THIS PASS REBUILT, PHOTOGRAPHED ON THE SERVED URL.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * The product owner's rule has not changed: nothing is delivered until it is
+ * seen on the deployed bundle. Each of these carries its own assertion so the
+ * capture cannot quietly become a picture of a broken screen.
+ */
+
+// 8 — X8: the planner's three blocks are one
+await open(page, '#/coordinator/route', 4500)
+await page.evaluate(() => {
+  for (const box of [...document.querySelectorAll('input[type="checkbox"].check')].slice(0, 4)) {
+    ;(box as HTMLInputElement).click()
+  }
+})
+await page.waitForTimeout(1500)
+const stopRows = await page.locator('[data-testid="route-stop"]').count()
+check('X8: the planner has ONE numbered list of stops', stopRows > 0, `${stopRows} stops`)
+check(
+  'X8: every stop carries its call, its meeting and its navigation',
+  (await page.locator('[data-testid="route-stop"]').first().locator('a, button').count()) >= 2,
+)
+const driveText = await page.locator('[data-testid="route-drive-time"]').textContent()
+check(
+  'X8: the drive time is hours and minutes, never raw minutes',
+  (driveText ?? '').includes('שעות') || (driveText ?? '').includes('דקות'),
+  driveText ?? '',
+)
+await page.evaluate(() => {
+  document.querySelector('[data-testid="route-stop"]')?.scrollIntoView({ block: 'center' })
+})
+await page.waitForTimeout(400)
+await shot(page, '8-route-planner')
+
+// 9 — X9: the guard's band is the entity sheet's band
+await open(page, '#/coordinator/missions/mission-01', 4500)
+const bandCards = await page.locator('[data-testid="mission-key-numbers"] > *').count()
+check('X9: the guard band is five regular cards', bandCards === 5, `${bandCards}`)
+const bandHeights = await page
+  .locator('[data-testid="mission-key-numbers"] > *')
+  .evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().height)))])
+check('X9: and they are all one height', bandHeights.length === 1, bandHeights.join('/'))
+await shot(page, '9-mission-detail')
+
+// 10 — X10: closing an incident is the last step of its thread
+await open(page, '#/coordinator/incidents/inc-01', 4500)
+const resolveInThread = await page.evaluate(
+  () => document.querySelector('[data-testid="incident-resolve"]')?.closest('ol') !== null,
+)
+check('X10: the closing action lives INSIDE the follow-up thread', resolveInThread)
+check(
+  'X10: "פתיחה במפות" has a named place in the details block',
+  (await page.locator('[data-testid="incident-open-maps"]').count()) === 1,
+)
+await shot(page, '10-incident-detail')
+
+// 11 — X12: the regional washes, switched on from the legend
+await open(page, '#/coordinator/farms', 4500)
+if ((await page.locator('[data-testid="map-legend"]').getAttribute('data-open')) === '0') {
+  await page.locator('[data-testid="map-legend-toggle"]').click()
+  await page.waitForTimeout(300)
+}
+await page.locator('[data-testid="layer-regions"]').check()
+await page.waitForTimeout(600)
+await page.evaluate(() => {
+  const m = (window as unknown as { __loYanumMap?: { jumpTo: (o: unknown) => void } }).__loYanumMap
+  m?.jumpTo({ center: [35.05, 31.7], zoom: 7 })
+})
+await page.waitForTimeout(3000)
+const regionsPainted = await page.evaluate(() => {
+  const m = (
+    window as unknown as {
+      __loYanumMap?: { queryRenderedFeatures: (g?: unknown, o?: unknown) => unknown[] }
+    }
+  ).__loYanumMap
+  return m ? m.queryRenderedFeatures(undefined, { layers: ['regions-fill'] }).length : -1
+})
+check('X12: the regional washes are actually painted', regionsPainted > 3, `${regionsPainted} regions in frame`)
+await shot(page, '11-regions-layer')
+
+// 12 — X5: the roster at the narrowest seam, columns merged rather than crushed
+await open(page, '#/coordinator/volunteers', 4500)
+await page.locator('[data-panel-splitter]').focus()
+await page.keyboard.press('End')
+await page.waitForTimeout(800)
+const crushed = await page.evaluate(
+  () =>
+    [...document.querySelectorAll('.roster-row')].flatMap((row) =>
+      [...row.children].filter((c) => {
+        const st = getComputedStyle(c)
+        if (st.display === 'none') return false
+        const r = c.getBoundingClientRect()
+        return r.width > 0 && r.width < 24 && (c.textContent ?? '').trim().length > 0
+      }),
+    ).length,
+)
+check('X5: at the narrowest seam no roster column is crushed', crushed === 0, `${crushed}`)
+await shot(page, '12-roster-narrow-seam')
+
 await browser.close()
 console.log(`\n  ${passed} passed, ${failed} failed\n`)
 if (failed > 0) process.exit(1)

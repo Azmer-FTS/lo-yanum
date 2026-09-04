@@ -477,6 +477,7 @@ export function RoutePlannerScreen() {
                   return (
                     <li
                       key={stop.farm.id}
+                      data-testid="route-stop"
                       onMouseEnter={() => setHoveredId(stop.farm.id)}
                       onMouseLeave={() => setHoveredId(null)}
                       /* X6 — `flex-wrap`: the action group drops to its own
@@ -589,7 +590,10 @@ export function RoutePlannerScreen() {
                   {km(route.roundTripKm)} {t('common.km')}
                 </dd>
                 <dt className="muted self-baseline">{t('route.estimatedDrive')}</dt>
-                <dd className="numeric self-baseline text-heading text-content-primary">
+                <dd
+                  data-testid="route-drive-time"
+                  className="numeric self-baseline text-heading text-content-primary"
+                >
                   {duration(estimateDriveMinutes(route.roundTripKm))}
                 </dd>
               </dl>
