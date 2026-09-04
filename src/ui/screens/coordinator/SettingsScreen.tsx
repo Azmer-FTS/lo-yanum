@@ -10,6 +10,7 @@ import { Callout, KeyValue, PageHeader, Section } from '../../components/primiti
 import { readReportRecipient, writeReportRecipient } from '../../report/recipient'
 import { AgreementTemplateSection } from '../../settings/AgreementTemplateSection'
 import { DemoDataSection } from '../../settings/DemoDataSection'
+import { ViewAsSection } from '../../settings/ViewAsSection'
 import {
   originLabel,
   originPosition,
@@ -652,6 +653,10 @@ export function SettingsScreen() {
 
       {/* N3 (2026-09-02) — the demo dataset, and the one button that removes it. */}
       <DemoDataSection />
+
+      {/* ★★ Y13 — the coordinator's test door. Demo builds only; see
+          `viewAs.ts`. */}
+      <ViewAsSection />
 
       <Section title={t('settings.account.title')} className="mt-6" collapseKey="settings-account">
         {SUPABASE_CONFIGURED && auth.status === 'signed-in' ? (

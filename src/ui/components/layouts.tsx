@@ -9,6 +9,7 @@ import { signOut } from '../../data/auth'
 import { SUPABASE_CONFIGURED } from '../../data/config'
 import { useAuth } from '../hooks/useAuth'
 import { useCoreValue } from '../hooks/useCore'
+import { ViewAsBanner } from '../settings/ViewAsBanner'
 import { usePublishedHeight } from '../hooks/useShellMetrics'
 import { PullToRefresh } from './PullToRefresh'
 import { ActionFab } from './ActionFab'
@@ -368,7 +369,7 @@ export function CoordinatorLayout() {
             className={
               bleed
                 ? 'flex-1'
-                : 'flex-1 px-4 pb-[var(--float-reserve)] pt-5 sm:px-6 sm:pt-6 lg:pt-[calc(var(--status-inset)+1.5rem)] 2xl:px-8'
+                : 'flex-1 px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 sm:px-6 sm:[--content-pad:1.5rem] sm:pt-6 lg:pt-[calc(var(--status-inset)+1.5rem)] 2xl:px-8 2xl:[--content-pad:2rem]'
             }
           >
             {bleed ? <Outlet /> : <PullToRefresh><Outlet /></PullToRefresh>}
@@ -467,6 +468,11 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
             </div>
           </div>
         </div>
+        {/* ★★ Y13 — the discreet banner, on every screen of the simulated role,
+            and INSIDE the sticky header on purpose: it carries the only way
+            back, and a way back that scrolls away is a one-way trip. It costs
+            one 28 px line, and only while a simulation is running. */}
+        <ViewAsBanner />
       </header>
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-5">
