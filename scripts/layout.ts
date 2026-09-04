@@ -376,13 +376,49 @@ interface Report {
    * healthy screen in both directions.
    */
   scrollRange: number
-  wide: Array<{ tag: string; cls: string; width: number   /**
+  wide: Array<{ tag: string; cls: string; width: number }>
+  /**
    * U7 (2026-09-02) — text cut off with NO way to read it: an element whose
    * ellipsis or line-clamp is actually clipping, and which carries no
    * `title` of its own or from an ancestor.
+   *
+   * ⚠️ THIS FIELD WAS NESTED INSIDE `wide`'S ELEMENT TYPE, and had been since
+   *    U7 was written: a stray brace put `truncated` among a wide element's
+   *    properties, so `Report` never declared it at all. Nothing failed,
+   *    because `report` is inferred from what the audit function RETURNS
+   *    rather than annotated with `Report` — which is also why the mistake
+   *    could sit here for four passes. The interface is documentation for the
+   *    next reader either way, so it should say something true.
    */
   truncated: Array<{ tag: string; text: string }>
-}>
+  /**
+   * ★★ Y2 (2026-09-04) — A CARD THAT CUTS ITS OWN CONTENT OFF.
+   *
+   * The product owner found the guard tiles "complètement tronquées". They
+   * were: `--tile-h` was a fixed `height` with `overflow: hidden`, and a guard
+   * tile has a fourth row — the volunteers' faces — that the number was not
+   * chosen for. It cost 33 px at every viewport and 65 px on a landscape iPad.
+   *
+   * ⚠️ AND THIS SWEEP WAS ALREADY VISITING THAT SCREEN, at four viewports and
+   *    three seam stops, and passed it every time. Nothing here was looking at
+   *    whether a BOX cuts its content: U7 looks at TEXT that ellipsises, and a
+   *    tile does not ellipsise — it just ends. So the screen was covered and
+   *    the defect was not, which is the more useful half of this entry.
+   *
+   * A container that hides its overflow and whose IN-FLOW content is taller
+   * than it is, is either a deliberate clip with a scrollbar somewhere or a
+   * fixed height somebody guessed. The first has `overflow-y: auto|scroll`
+   * and is excluded; what is left is the second.
+   *
+   * ⚠️ IN-FLOW, AND `scrollHeight` IS NOT THAT. The first version of this
+   *    check used `scrollHeight`, which counts absolutely-positioned
+   *    descendants — so it reported MapLibre's own root as losing 572 px on
+   *    every map screen, because a map's markers, popups and controls are
+   *    absolute children that reach past the box ON PURPOSE. That is the
+   *    element's whole design, not a defect. The measurement below is the
+   *    bottom of the last child that is actually in the flow.
+   */
+  clipped: Array<{ tag: string; lost: number }>
   collisions: Array<{ a: string; b: string }>
   /**
    * ★ X5 (2026-09-04) — THE ROSTERS' TWO FAILURE MODES, MEASURED.
@@ -611,6 +647,54 @@ function audit(): Report {
       text: (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 40),
     }))
     .slice(0, 8)
+
+  /**
+   * ★★ Y2 — BOXES THAT CUT THEIR OWN CONTENT. See `Report.clipped`.
+   *
+   * The three exclusions are what make this a signal rather than a list of
+   * every rounded corner in the app:
+   *
+   *   · anything that SCROLLS (`overflow-y: auto|scroll`) is hiding content on
+   *     purpose and hands the user a way to reach it;
+   *   · anything whose own clipping is a line-clamp or an ellipsis is U7's
+   *     business, and U7 judges it by a different and stricter rule;
+   *   · a one-pixel disagreement is sub-pixel layout, not a defect, so the
+   *     threshold is 4 px — a fifth of a line of text.
+   */
+  const inFlowOverflow = (el: HTMLElement): number => {
+    const r = el.getBoundingClientRect()
+    const cs = getComputedStyle(el)
+    const padBottom = parseFloat(cs.paddingBottom) || 0
+    let deepest = 0
+    for (const child of [...el.children] as HTMLElement[]) {
+      const ccs = getComputedStyle(child)
+      if (ccs.position === 'absolute' || ccs.position === 'fixed') continue
+      if (ccs.display === 'none') continue
+      const cr = child.getBoundingClientRect()
+      const marginBottom = parseFloat(ccs.marginBottom) || 0
+      deepest = Math.max(deepest, cr.bottom - r.top + marginBottom)
+    }
+    if (deepest === 0) return 0
+    return Math.round(deepest + padBottom - el.clientHeight)
+  }
+
+  const clippedBoxes = [...document.querySelectorAll<HTMLElement>('body *')]
+    .map((el) => {
+      const cs = getComputedStyle(el)
+      if (cs.display === 'none' || cs.visibility === 'hidden') return null
+      if (cs.overflowY !== 'hidden' && cs.overflowY !== 'clip') return null
+      if (cs.webkitLineClamp && cs.webkitLineClamp !== 'none') return null
+      if (cs.textOverflow === 'ellipsis') return null
+      if (!el.firstElementChild) return null
+      const r = el.getBoundingClientRect()
+      if (r.width <= 0 || r.height <= 0) return null
+      const lost = inFlowOverflow(el)
+      return lost > 4 ? { tag: label(el), lost } : null
+    })
+    .filter((x): x is { tag: string; lost: number } => x !== null)
+    .sort((a, b) => b.lost - a.lost)
+    .slice(0, 8)
+
 
   const uncontained = [...document.querySelectorAll('table, ul, ol')]
     .filter((el) => {
@@ -851,6 +935,7 @@ function audit(): Report {
       document.documentElement.scrollHeight / Math.max(1, window.innerHeight),
     uncontained,
     truncated,
+    clipped: clippedBoxes,
   }
 }
 
@@ -1039,12 +1124,16 @@ for (const name of RUNS) {
       // judged at every stop rather than at the default one.
       const crushedCols = report.crushed.length > 0
       const deformed = report.deformedPills.length > 0
+      // ★★ Y2 — judged at EVERY stop, because the seam is what narrows a tile
+      // and a narrow tile is what makes its first row wrap into a fourth line.
+      const clippedBoxes = report.clipped.length > 0
       const ok =
         !overflow &&
         !cutOff &&
         !escaped &&
         !crushedCols &&
         !deformed &&
+        !clippedBoxes &&
         !tooTall &&
         !gradientWrong &&
         !clockCovered &&
@@ -1087,6 +1176,9 @@ for (const name of RUNS) {
       }
       for (const p of report.deformedPills) {
         console.log(`      X5 status pill deformed (${p.w}×${p.h}): "${p.text}"`)
+      }
+      for (const c of report.clipped) {
+        console.log(`      Y2 box cuts its own content, ${c.lost}px lost: ${c.tag}`)
       }
       if (!first) continue
       for (const w of report.wide) {

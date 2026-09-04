@@ -1546,8 +1546,34 @@ label:has(> textarea) {
   --tile-h: 5.5rem;
 }
 
+/* ---------------------------------------------------------------------------
+   ★★ Y2 (2026-09-04) — THE HEIGHT IS A FLOOR, NOT A CEILING.
+   ---------------------------------------------------------------------------
+   The product owner reported the guard tiles "complètement tronquées — c'était
+   correct avant". They were: X7.1 gave all three lists one `height` so a
+   column would scan at one rhythm, and the number was chosen for "three lines
+   of a guard". A guard tile has FOUR rows — the farm and its chips, the date
+   and hours, the meeting point and driver, and the row of volunteer faces —
+   and the first of those WRAPS when the panel is narrow.
+
+   Measured, before this change, at five viewports:
+
+     guards, every viewport      88 px box for 121 px of content — 33 px cut
+     guards, iPad landscape      88 px box for 153 px of content — 65 px cut
+     incidents, narrow panel     88 px box for 111 px of content — 23 px cut
+     farms, every viewport       88 px box for  88 px of content — exact
+
+   So the rhythm was real for two lists out of three and a paper cut for the
+   third. `min-height` keeps every tile that FITS on the common rhythm — farms
+   and incidents still land on exactly 88 px, which is the property X7.1 was
+   after — and lets a tile that has a fourth row be as tall as its fourth row.
+
+   ⚠️ `overflow: hidden` STAYS, and it is not the bug. It rounds the farm
+      tile's photo to the card's corner, and with a floor instead of a fixed
+      height there is nothing left for it to cut.
+   --------------------------------------------------------------------------- */
 .list-tile {
-  height: var(--tile-h);
+  min-height: var(--tile-h);
   overflow: hidden;
 }
 
