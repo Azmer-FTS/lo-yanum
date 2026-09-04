@@ -34,10 +34,14 @@ export function ContactButtons({
   const { t } = useTranslation()
 
   return (
-    /* X6 — `data-contact-actions` + wrap (index.css): four 40 px targets
-       that refuse to shrink are 175 px, and in a 25 %-seam panel there is not
-       175 px. It wraps rather than widening the page. */
-    <div data-contact-actions="" className="flex items-center gap-1.5">
+    /* ★ X6 — `shrink-0` IS BACK, AND THE WRAPPING BELONGS TO THE ROW.
+       Taking it off did stop the group widening its box, and it also let the
+       group be squeezed to ONE button wide, which stacked four 40 px targets
+       into a 160 px vertical column down the middle of a guard's team list.
+       A group of actions is an object: it wraps INSIDE itself when it must
+       (`flex-wrap`, index.css) and its ROW wraps around it, but it is never
+       compressed into a stripe. */
+    <div data-contact-actions="" className="flex shrink-0 items-center gap-1.5">
       <a
         href={telHref(phone)}
         aria-label={`${t('common.call')} ${name}`}

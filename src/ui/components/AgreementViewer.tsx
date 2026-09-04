@@ -192,6 +192,15 @@ export function AgreementActions({
               <Icon name="download" size={16} />
               {t('farms.agreementDownload')}
             </button>
+            {/* ★ X11 (2026-09-04) — TWO CHANGES, BOTH SUBTRACTIONS.
+                · The bottom "סגירה" is gone. `Modal` already draws a cross in
+                  its own header and closes on Escape and on the backdrop;
+                  a fourth way out, in the row where the three real actions
+                  are, made "close" look like one of them.
+                · "פתיחה בכרטיסייה חדשה" said what the BROWSER would do, which
+                  is not a thing the product owner has a word for — he told us
+                  he did not know what it was. It says what HE gets: the file,
+                  in a window of its own. */}
             <a
               className="btn-secondary"
               data-testid="agreement-modal-tab"
@@ -200,17 +209,8 @@ export function AgreementActions({
               rel="noreferrer noopener"
             >
               <Icon name="expand" size={16} />
-              {t('agreement.openTab')}
+              {t('agreement.openWindow')}
             </a>
-            <button
-              type="button"
-              className="btn-secondary"
-              data-testid="agreement-modal-close"
-              onClick={close}
-            >
-              <Icon name="close" size={16} />
-              {t('common.close')}
-            </button>
           </div>
         </Modal>
       )}

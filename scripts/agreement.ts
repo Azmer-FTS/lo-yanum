@@ -124,13 +124,23 @@ try {
   check('★ the PDF opens INSIDE the app, in a modal', (await doc.count()) === 1, src ?? '')
   check('on an object URL — the bytes were fetched, no navigation to the file', (src ?? '').startsWith('blob:'))
   check('the app is still on the entity', page.url() === url, page.url())
-  check('with a close button in view', await page.locator('[data-testid="agreement-modal-close"]').isVisible())
+  /* ⚠️ X11 (2026-09-04) — THE READER HAS ONE CLOSE, AND IT IS THE MODAL'S OWN
+     CROSS. A second "סגירה" sat at the foot among the three real actions and
+     read as a fourth one; the product owner asked for it to go. So this gate
+     addresses `modal-close` — the cross `Modal` has always drawn — rather
+     than the deleted button. Escape and the backdrop still work and are still
+     checked below. */
+  check('with a close button in view', await page.locator('[data-testid="modal-close"]').isVisible())
+  check(
+    'X11 — and only ONE way out in the action row',
+    (await page.locator('[data-testid="agreement-modal-close"]').count()) === 0,
+  )
   const bytes = await page.evaluate(async (u) => (await (await fetch(u)).arrayBuffer()).byteLength, src ?? '')
   check('and the document is a real PDF (the placeholder, one page)', bytes > 10_000, `${bytes} bytes`)
   await page.screenshot({ path: `${SHOTS}/1-viewer.png` })
 
   // ---- W8: the SIGNED row carries the signature on the document ----------
-  await page.locator('[data-testid="agreement-modal-close"]').click()
+  await page.locator('[data-testid="modal-close"]').click()
   await page.waitForTimeout(400)
   await page.locator('[data-testid="agreement-view"]').nth(1).click()
   await page.waitForSelector('[data-testid="agreement-document"]', { timeout: 15_000 })
@@ -146,13 +156,13 @@ try {
     `${bytes} → ${signedBytes} bytes`,
   )
   await page.screenshot({ path: `${SHOTS}/1b-viewer-signed.png` })
-  await page.locator('[data-testid="agreement-modal-close"]').click()
+  await page.locator('[data-testid="modal-close"]').click()
   await page.waitForTimeout(400)
   await viewBtn.click()
   await page.waitForSelector('[data-testid="agreement-document"]', { timeout: 15_000 })
 
   // ---- close -------------------------------------------------------------
-  await page.locator('[data-testid="agreement-modal-close"]').click()
+  await page.locator('[data-testid="modal-close"]').click()
   await page.waitForTimeout(400)
   check('★★ close returns to the entity, nothing else changed', (await doc.count()) === 0 && page.url() === url)
 

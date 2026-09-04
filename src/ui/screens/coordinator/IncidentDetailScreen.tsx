@@ -80,6 +80,32 @@ export function IncidentDetailScreen() {
       icon: incident.resolved ? 'check' : 'clock',
       state: incident.resolved ? 'done' : 'current',
       tone: incident.resolved ? 'success' : 'warn',
+      /**
+       * ★ X10.1 (2026-09-04) — CLOSING IS THE LAST STEP OF THE THREAD, SO THE
+       *   BUTTON IS ON THE LAST STEP OF THE THREAD.
+       *
+       *   It used to sit in the page header, beside the severity chip and two
+       *   blocks above the story it ends: the product owner could not tell
+       *   what it acted on. Here it is attached to the row that says "not yet
+       *   resolved", which is the row it changes. The reopen is the same
+       *   button on the same row once the step is done — one control, one
+       *   place, whichever direction it goes.
+       */
+      detail: (
+        <button
+          type="button"
+          data-testid="incident-resolve"
+          className={
+            incident.resolved
+              ? 'btn-ghost mt-1 py-1.5 text-micro'
+              : 'btn-primary mt-1 py-1.5 text-micro'
+          }
+          onClick={() => setIncidentResolved(incident.id, !incident.resolved)}
+        >
+          <Icon name={incident.resolved ? 'history' : 'check'} size={14} />
+          {t(incident.resolved ? 'incidents.reopen' : 'incidents.resolve')}
+        </button>
+      ),
     },
   ]
 
@@ -114,19 +140,16 @@ export function IncidentDetailScreen() {
           },
         ]}
       />
-      <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 flex justify-between gap-2">
+      {/* ★ X10.2 — "פתיחה במפות" IS NOT ON THE MAP ANY MORE. It floated at
+          the map's physical end, in the strip the legend and the mode pill
+          already own, so the product owner reported never finding it. It is a
+          named row of the details block now (see below), where a link to an
+          external service belongs; what stays here is the coordinate, which
+          is a caption rather than a control. */}
+      <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10 flex justify-start">
         <span className="ltr-nums pointer-events-auto rounded-card bg-surface-overlay/95 px-3 py-1.5 text-micro text-content-secondary shadow-card backdrop-blur">
           {formatCoords(incident.position)}
         </span>
-        <a
-          href={googleMapsPointUrl(incident.position)}
-          target="_blank"
-          rel="noreferrer"
-          className="btn-secondary pointer-events-auto min-h-11 shadow-card"
-        >
-          <Icon name="external" size={13} />
-          {t('common.openInMaps')}
-        </a>
       </div>
     </>
   )
@@ -144,18 +167,9 @@ export function IncidentDetailScreen() {
       <PageHeader
         title={farm.name}
         subtitle={formatDateTime(incident.reportedAt, locale)}
-        actions={
-          <div className="flex items-center gap-2">
-            <SeverityChip severity={incident.severity} />
-            <button
-              type="button"
-              className="btn-secondary py-2 text-micro"
-              onClick={() => setIncidentResolved(incident.id, !incident.resolved)}
-            >
-              {t(incident.resolved ? 'incidents.reopen' : 'incidents.resolve')}
-            </button>
-          </div>
-        }
+        /* X10.1 — the closing action left this header for the last entry of
+           the follow-up thread, which is what it acts on. */
+        actions={<SeverityChip severity={incident.severity} />}
       />
 
       <div className="panel-scope flex flex-col gap-4">
@@ -195,6 +209,23 @@ export function IncidentDetailScreen() {
                 value={formatDateTime(incident.reportedAt, locale)}
                 ltr
               />
+              {incident.position && (
+                <KeyValue
+                  label={t('incidents.position')}
+                  value={
+                    <a
+                      href={googleMapsPointUrl(incident.position)}
+                      target="_blank"
+                      rel="noreferrer"
+                      data-testid="incident-open-maps"
+                      className="inline-flex items-center gap-1.5 text-accent-ink hover:underline"
+                    >
+                      <Icon name="external" size={13} />
+                      {t('common.openInMaps')}
+                    </a>
+                  }
+                />
+              )}
               {incident.missionId && (
                 <KeyValue
                   label={t('incidents.linkedMission')}

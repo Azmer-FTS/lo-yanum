@@ -94,6 +94,15 @@ export function Timeline({
               )}
             </div>
 
+            {/* ★ X9.1 (2026-09-04) — THE TIMESTAMP IS ON ITS OWN LINE, UNDER
+                THE STEP.
+                It used to be `ms-auto` on the title's row, which put a Hebrew
+                label and an LTR date at the two ends of a narrow column with a
+                stretch of nothing between them — and on a step whose label
+                wrapped, the date landed level with the second line and read as
+                belonging to the wrong entry. Under the title it is where a
+                date is in every log the coordinator has ever read, and the
+                title gets the whole width back. */}
             <div className={`min-w-0 flex-1 ${last ? 'pb-0' : 'pb-4'}`}>
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 <p
@@ -109,14 +118,14 @@ export function Timeline({
                     {t('timeline.now')}
                   </span>
                 )}
-                <span className="ltr-nums ms-auto text-micro text-content-muted">
-                  {entry.at
-                    ? withDate
-                      ? formatDateTime(entry.at, locale)
-                      : formatTime(entry.at, locale)
-                    : '—'}
-                </span>
               </div>
+              <p className="ltr-nums mt-0.5 text-start text-micro text-content-muted">
+                {entry.at
+                  ? withDate
+                    ? formatDateTime(entry.at, locale)
+                    : formatTime(entry.at, locale)
+                  : '—'}
+              </p>
 
               {entry.detail && (
                 <div className="mt-0.5 text-caption text-content-secondary">

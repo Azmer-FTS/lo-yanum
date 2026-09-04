@@ -20,6 +20,7 @@ import type {
 import { useState } from 'react'
 
 import { Avatar } from '../../components/Avatar'
+import { BandCard } from '../../components/band'
 import {
   CancelMissionModal,
   CancellationPanel,
@@ -214,7 +215,9 @@ function TeamList({ view }: { view: MissionView }) {
               </span>
             )}
           </div>
-          <div className="mt-1 flex items-center gap-3 pb-2">
+          {/* X6 — the ROW wraps around the action group, rather than the
+              group being squeezed into a column. */}
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 pb-2">
             <ContactButtons name={volunteer.name} phone={volunteer.phone} />
             <p className="muted min-w-0 truncate">
               {volunteer.yeshiva} · {volunteer.locality} ·{' '}
@@ -513,42 +516,70 @@ export function MissionDetailScreen() {
           else is the two times, how many people and how many cars. Reading
           them off a key/value list four blocks down is the thing this band
           exists to stop. */}
-      <div className="card card-pad metric-band mb-4">
-        <div className="min-w-0">
-          <p className="numeric ltr-nums text-metric text-content-primary">
-            {formatTime(mission.startAt, locale)}
-          </p>
-          <p className="muted mt-0.5 leading-tight">{t('missions.startAt')}</p>
-        </div>
-        <div className="min-w-0">
-          <p className="numeric ltr-nums text-metric text-content-primary">
-            {formatTime(mission.endAt, locale)}
-          </p>
-          <p className="muted mt-0.5 leading-tight">{t('missions.endAt')}</p>
-        </div>
-        <div className="min-w-0">
-          <p className="numeric text-metric text-content-primary">{assigned}</p>
-          <p className="muted mt-0.5 leading-tight">{t('missions.team')}</p>
-        </div>
-        <div className="min-w-0">
-          <p className="numeric text-metric text-content-primary">
-            {view.drivers.length}
-          </p>
-          <p className="muted mt-0.5 leading-tight">
-            {t('driver.volunteerDrivers')}
-          </p>
-        </div>
-        <div className="min-w-0">
-          <p className="numeric text-metric text-content-primary">
-            {1 + additionalAnchorPoints.length}
-          </p>
-          {/* The COUNT is the number; the rendezvous is named under it,
-              because "how many posts" and "which one the driver goes to" are
-              two different questions and only the first is a metric. */}
-          <p className="muted mt-0.5 truncate leading-tight">
-            {t('map.anchorPoint')} · {anchorPoint.name}
-          </p>
-        </div>
+      {/* ★ X9.2 (2026-09-04) — THE SAME BAND AS AN ENTITY'S SHEET.
+          The product owner's word for this strip was "c'est le bordel", and
+          the reason was structural: five bare `<div>`s in an auto-fit grid,
+          no icons, no wash, and a fifth cell whose two-line label made it
+          taller than its neighbours, so nothing lined up. It is `BandCard`
+          now — the same component, the same 5.25 rem, the same tinted disc
+          and reserved third line as the band he signed off on for a farm.
+          The rendezvous' NAME goes on the reserved note line, where the
+          override chip goes on a farm; "how many posts" is the figure, and
+          "which one the driver was sent to" is the note under it. */}
+      <div className="scroll-row mb-4" data-testid="mission-key-numbers">
+        <BandCard
+          testId="band-start"
+          icon="clock"
+          tint="bg-accent/[0.12]"
+          ink="text-accent-ink"
+          figure={<span className="ltr-nums">{formatTime(mission.startAt, locale)}</span>}
+          label={t('missions.startAt')}
+        />
+        <BandCard
+          testId="band-end"
+          icon="moon"
+          tint="bg-status-violet/[0.12]"
+          ink="text-status-violet-ink"
+          figure={<span className="ltr-nums">{formatTime(mission.endAt, locale)}</span>}
+          label={t('missions.endAt')}
+        />
+        <BandCard
+          testId="band-team"
+          icon="users"
+          tint="bg-status-success/[0.12]"
+          ink="text-status-success-ink"
+          figure={assigned}
+          label={t('missions.team')}
+        />
+        <BandCard
+          testId="band-drivers"
+          icon="steering"
+          tint="bg-status-info/[0.12]"
+          ink="text-status-info-ink"
+          figure={view.drivers.length}
+          label={t('driver.volunteerDrivers')}
+        />
+        <BandCard
+          testId="band-posts"
+          icon="shield"
+          tint="bg-status-warn/[0.14]"
+          ink="text-status-warn-ink"
+          figure={1 + additionalAnchorPoints.length}
+          label={t('map.anchorPoint')}
+          /* X9.4 — THE NOTE IS THE LINK, and the details block below has
+             dropped its own copy of this name. The rendezvous was printed
+             twice on one screen: once here and once as a key/value four
+             blocks down. Only one of the two could be opened, so that is the
+             one that survived — moved up to where the fact already was. */
+          note={
+            <Link
+              to={`/coordinator/farms/${farm.id}/anchors/${anchorPoint.id}`}
+              className="hover:underline"
+            >
+              {anchorPoint.name}
+            </Link>
+          }
+        />
       </div>
 
       {/* P0bis.3b — `panel-scope` is the measuring box for every `pair-grid`
@@ -587,17 +618,6 @@ export function MissionDetailScreen() {
                     className="hover:underline"
                   >
                     {farm.name}
-                  </Link>
-                }
-              />
-              <KeyValue
-                label={t('missions.anchorPoint')}
-                value={
-                  <Link
-                    to={`/coordinator/farms/${farm.id}/anchors/${anchorPoint.id}`}
-                    className="hover:underline"
-                  >
-                    {anchorPoint.name}
                   </Link>
                 }
               />

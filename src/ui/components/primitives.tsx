@@ -1069,6 +1069,9 @@ export function Modal({
             onClick={onClose}
             className="rounded-field p-1.5 text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
             aria-label={t('common.close')}
+            /* X11 — THE modal's one way out, and now the only one on the
+               contract reader: the gates address it by name. */
+            data-testid="modal-close"
           >
             <Icon name="close" size={18} />
           </button>

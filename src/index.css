@@ -1484,6 +1484,9 @@
 [data-contact-actions] {
   flex-wrap: wrap;
   justify-content: flex-end;
+  /* Two targets wide: the group folds 4 → 2×2 rather than to a single
+     stripe, and its ROW is what wraps around it (see ContactActions). */
+  min-width: 5.5rem;
 }
 
 input[type='date'],
