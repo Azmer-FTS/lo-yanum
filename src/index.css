@@ -1307,6 +1307,16 @@
   min-width: max-content;
 }
 
+/* ⚠️⚠️ AND THE LAST TRACK IS A NUMBER, NEVER `auto`. This is the mistake the
+   first version of the grid made and `bun run uipass` caught on the served
+   build: two grids do not share track sizes — that is what `subgrid` is for,
+   and the header lives in `ListTop` while the rows live in the card below it,
+   so they are two grids by construction. An `auto` last track therefore sized
+   to the HEADER's word ("פעולות", 36 px) on one and to the ROW's four icons
+   (134 px) on the other, and every column to the right of it landed 98 px
+   apart — the exact defect the grid was introduced to end, reintroduced by
+   one keyword. Every track below is declared. */
+
 /* A cell is hidden until its tier is reached; a merged subline is shown until
    its tier is reached. `--col-display` lets a cell that must be a flex row say
    so without every tier rule having to know. */
@@ -1360,75 +1370,78 @@
 
 /* volunteers — name · yeshiva · locality · phone · email · licence ·
    availability · guards · status · last activity · actions */
+/* The actions track: 32 px per icon plus a 2 px gap. Three icons below the
+   phone's tier (call, WhatsApp, edit) and four at and above it (edit,
+   history, archive/reactivate, delete). */
 .roster-volunteers .roster-row {
-  --roster-cols: minmax(0, 1fr) auto;
+  --roster-cols: minmax(0, 1fr) 6.5rem;
 }
 
 @container (min-width: 44rem) {
   .roster-volunteers .roster-row {
-    --roster-cols: minmax(0, 1fr) 8.5rem 6rem auto;
+    --roster-cols: minmax(0, 1fr) 8.5rem 6rem 8.5rem;
   }
 }
 
 @container (min-width: 60rem) {
   .roster-volunteers .roster-row {
-    --roster-cols: minmax(0, 1.4fr) minmax(0, 1fr) 7rem 8.5rem 3.5rem 6rem auto;
+    --roster-cols: minmax(0, 1.4fr) minmax(0, 1fr) 7rem 8.5rem 3.5rem 6rem 8.5rem;
   }
 }
 
 @container (min-width: 78rem) {
   .roster-volunteers .roster-row {
     --roster-cols: minmax(0, 1.3fr) minmax(0, 0.9fr) 6.5rem 8.5rem minmax(0, 0.9fr)
-      4.5rem 8rem 3.5rem 6rem 6.5rem auto;
+      4.5rem 8rem 3.5rem 6rem 6.5rem 8.5rem;
   }
 }
 
 /* drivers — name · vehicle · seats · locality · phone · email · note · actions */
 .roster-drivers .roster-row {
-  --roster-cols: minmax(0, 1fr) auto;
+  --roster-cols: minmax(0, 1fr) 6.5rem;
 }
 
 @container (min-width: 44rem) {
   .roster-drivers .roster-row {
-    --roster-cols: minmax(0, 1fr) 3.5rem 8.5rem auto;
+    --roster-cols: minmax(0, 1fr) 3.5rem 8.5rem 10.5rem;
   }
 }
 
 @container (min-width: 60rem) {
   .roster-drivers .roster-row {
-    --roster-cols: minmax(0, 1.3fr) minmax(0, 1fr) 3.5rem 7rem 8.5rem auto;
+    --roster-cols: minmax(0, 1.3fr) minmax(0, 1fr) 3.5rem 7rem 8.5rem 10.5rem;
   }
 }
 
 @container (min-width: 78rem) {
   .roster-drivers .roster-row {
     --roster-cols: minmax(0, 1.2fr) minmax(0, 1fr) 3.5rem 6.5rem 8.5rem
-      minmax(0, 0.9fr) minmax(0, 0.9fr) auto;
+      minmax(0, 0.9fr) minmax(0, 0.9fr) 10.5rem;
   }
 }
 
 /* farms — name · locality · region · type · status · dunams · contacts ·
    next visit · chevron */
 .roster-farms .roster-row {
-  --roster-cols: minmax(0, 1fr) auto;
+  --roster-cols: minmax(0, 1fr) 1.5rem;
 }
 
 @container (min-width: 44rem) {
   .roster-farms .roster-row {
-    --roster-cols: minmax(0, 1fr) 7.5rem 6.5rem auto;
+    --roster-cols: minmax(0, 1fr) 7.5rem 6.5rem 1.5rem;
   }
 }
 
 @container (min-width: 60rem) {
   .roster-farms .roster-row {
-    --roster-cols: minmax(0, 1.4fr) minmax(0, 1fr) 5.5rem 7.5rem 6.5rem auto;
+    --roster-cols: minmax(0, 1.4fr) minmax(0, 1fr) 5.5rem 7.5rem 6.5rem 1.5rem;
   }
 }
 
 @container (min-width: 78rem) {
   .roster-farms .roster-row {
     --roster-cols: minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 0.9fr) 5.5rem 7.5rem
-      7.5rem 3.5rem 6.5rem auto;
+      7.5rem 3.5rem 6.5rem 1.5rem;
   }
 }
 

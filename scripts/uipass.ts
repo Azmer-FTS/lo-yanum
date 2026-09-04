@@ -99,7 +99,107 @@ check('farms: the KPI strip scrolls sideways rather than wrapping', await page.l
 const photoH = await tiles.first().locator('[data-testid="farm-tile-center"]').evaluate((e) => e.getBoundingClientRect().height)
 const tileH = await tiles.first().evaluate((e) => e.getBoundingClientRect().height)
 check('farms: the photo takes the tile\'s full height', Math.abs(photoH - tileH) < 1.5, `${Math.round(photoH)} / ${Math.round(tileH)}`)
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * X1 / X2 / X7 / X12 (2026-09-04) — THE COHERENCE PASS, ON THE SERVED URL.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Every one of these is a claim the product owner made about what he saw, so
+ * every one of them is measured on the deployed bundle rather than argued.
+ */
+const titleSize = await page
+  .locator('[data-testid="farms-top"] [data-page-title]')
+  .evaluate((e) => getComputedStyle(e).fontSize)
+check(
+  'X1: the list title is the DASHBOARD\'s size, 24 px — not a reduced one',
+  titleSize === '24px',
+  titleSize,
+)
+check(
+  'X1: the counter left the title line for a pill on the filter row',
+  (await page.locator('[data-testid="farms-top"] [data-list-count]').count()) === 1 &&
+    (await page
+      .locator('[data-testid="farms-top"] [data-page-title]')
+      .evaluate((e) => (e.textContent ?? '').includes('מתוך'))) === false,
+)
+check(
+  'X2: the header carries ONE "⋯" and no view-toggle pills',
+  (await page.locator('[data-testid="farms-menu-toggle"]').count()) === 1,
+)
+// The legend is FOLDED by default (U4.2), so the switches have to be opened
+// before they can be counted — which is itself the state the product owner
+// meets on a fresh device.
+if ((await page.locator('[data-testid="map-legend"]').getAttribute('data-open')) === '0') {
+  await page.locator('[data-testid="map-legend-toggle"]').click()
+  await page.waitForTimeout(300)
+}
+check(
+  'X2: the threat layer is a legend checkbox, not a header button',
+  (await page.locator('[data-testid="layer-threatZones"]').count()) === 1 &&
+    (await page.locator('[data-testid="layer-threatZones"]').isChecked()) === false,
+)
+check(
+  'X12: the regions layer and the region filter are both offered, regions OFF',
+  (await page.locator('[data-testid="layer-regions"]').count()) === 1 &&
+    (await page.locator('[data-testid="layer-regions"]').isChecked()) === false &&
+    (await page.locator('[data-testid="farms-region"]').count()) === 1,
+)
+/**
+ * X7 — ONE TILE HEIGHT ACROSS THE LISTS. Measured on three screens rather
+ * than asserted from the token, because the defect was three lists that each
+ * sized themselves from their own content.
+ */
+const heightOf = async (hash: string) => {
+  await open(page, hash, 3500)
+  return page
+    .locator('.list-tile')
+    .first()
+    .evaluate((e) => Math.round(e.getBoundingClientRect().height))
+}
+const farmsTileH = tileH
 await shot(page, '2-farms')
+const missionsTileH = await heightOf('#/coordinator/missions')
+const incidentsTileH = await heightOf('#/coordinator/incidents')
+check(
+  'X7: farms, guards and incidents share ONE tile height',
+  Math.round(farmsTileH) === missionsTileH && missionsTileH === incidentsTileH,
+  `${Math.round(farmsTileH)} / ${missionsTileH} / ${incidentsTileH}`,
+)
+
+/**
+ * X5 — THE ROSTER HEADER AND ITS ROWS ARE ONE GRID. The defect was two
+ * markups drifting apart under `flex-shrink`; the fix is one
+ * `grid-template-columns`, so the check is that the computed track list is
+ * the SAME string on the header and on a row.
+ */
+await open(page, '#/coordinator/volunteers', 4500)
+const tracks = await page
+  .locator('.roster-row')
+  .evaluateAll((els) => els.slice(0, 2).map((e) => getComputedStyle(e).gridTemplateColumns))
+check(
+  'X5: the roster header and its rows share one grid template',
+  tracks.length === 2 && tracks[0] === tracks[1],
+  tracks.join('  vs  '),
+)
+check(
+  'X5: no status pill is deformed',
+  (await page
+    .locator('.chip')
+    .evaluateAll((els) =>
+      els.filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().height > 40)
+        .length,
+    )) === 0,
+)
+check(
+  'X5: a missing photo is the initials disc, never a broken image',
+  (await page
+    .locator('img')
+    .evaluateAll((els) =>
+      els.filter((e) => (e as HTMLImageElement).complete && (e as HTMLImageElement).naturalWidth === 0)
+        .length,
+    )) === 0,
+)
+await shot(page, '7-volunteers-roster')
 
 // 3 — farm detail
 await open(page, '#/coordinator/farms/farm-01', 4500)
