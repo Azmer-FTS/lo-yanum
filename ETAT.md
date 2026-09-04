@@ -1,6 +1,159 @@
 # לא ינום — ETAT
 
-> 🏁 **PASSE FINALE — W1→W8 COMPLÈTE, 2026-09-02. LIRE EN PREMIER.**
+> 🏁 **PASSE UI/UX PROFONDE — X1→X13 COMPLÈTE, 2026-09-04. LIRE EN PREMIER.**
+>
+> La démonstration à l'association s'est bien passée et le PO en est
+> revenu avec une liste de défauts de cohérence et de responsive. **Les
+> treize unités sont livrées**, une par commit, poussées et vérifiées sur
+> l'URL servie. Dernier commit `dbb7398`, déploiement **succès**.
+>
+> ## Les gates
+>
+> | Gate | Portée | Résultat |
+> |---|---|---|
+> | `layout` | **4 viewports × 3 positions de couture × 32 écrans** | **0 échec** |
+> | `uipass` | URL déployée (jumeau `/demo/`) | **39/39**, 12 captures |
+> | `overlap` | 4 viewports, 9 écrans à carte | **108/108** |
+> | `splitter` | 5 écrans, souris + tactile + clavier | **72/72** |
+> | `seam` | **nouveau** — 200 cycles de redimensionnement | **7/7** |
+> | `regions` | **nouveau** — pur, 24 lieux réels | **58/58** |
+> | `backdrop` | build servi | **24/24** |
+> | `blocks` · `freehand` · `redraw` | build servi | 26/26 · 30/30 · 18/18 |
+> | `touch` · `wizard` | tactile / stylet, assistant | **57/57** · **28/28** |
+> | `accept` · `deletion` · `dispatch` · `import` | domaine | 176 · 61 · 27 · 29, 0 échec |
+> | `report` · `outreach` · `empty` · `contrast` · `rtl` | — | 86 · 25 · 10 · AA · 45 |
+> | `agreement` · `zones` · `demo` | build **réel** servi | 18/18 · 38/38 · 12/12 |
+> | `mapfirst` | 27 écrans | carte à gauche partout |
+>
+> Trois gates ont GAGNÉ des mesures dans cette passe : `layout` sait
+> maintenant nommer l'élément qui déborde à chaque position de couture
+> (« 15 px de trop » sans nom, c'était une matinée de bissection) et
+> refuse une colonne de roster écrasée ou une pilule déformée ;
+> `overlap` mesure l'axe du rail flottant ; `uipass` porte neuf contrôles
+> de cette passe. Deux gates ont été RÉPARÉS : `touch` et `wizard`
+> cherchaient depuis W5 un bouton qui avait simplement déménagé.
+>
+> ## Ce qui a changé
+>
+> **X1/X2 — un seul gabarit d'en-tête.** Le titre de page a UNE taille
+> partout : 24 px, celle du dashboard. Le compteur quitte la ligne de
+> titre pour une pastille en tête de la rangée de filtres. La ligne est
+> toujours **[titre] [recherche] [⋯]**. Les boutons texte des en-têtes
+> (import, bascule carte/tableau, couche menaces) sont dans le « ⋯ » —
+> et les pilules de bascule d'affichage sont supprimées pour de bon. La
+> couche menaces ne vit plus que dans les cases de la légende.
+>
+> **X3 — la carte.** Un seul axe pour tout ce qui flotte : la pile
+> d'outils, la pastille de mode et le « + » avaient trois décalages et
+> trois largeurs, d'où « le + dépasse à droite ». Un seul bouton de fond,
+> dont le GLYPHE est la destination. מיקומי rejoint le zoom et ne se
+> remplit plus d'accent. L'attribution quitte MapLibre pour un bouton à
+> côté de la légende — elle était dans le coin que la légende occupe en
+> hébreu. Le séparateur devient un filet de 2 px dont la poignée est
+> entièrement du côté carte : c'est lui qui rognait les vignettes.
+> « השטחים הפלסטיניים » est filtrée du fond de carte ; les LIGNES de
+> frontière sont intactes.
+>
+> **X4 — la fiche.** La photo de l'entité à côté du titre, les trois
+> actions en icônes seules (cibles plus grandes qu'en version libellée),
+> le statut jamais coupé, et le clic sur la photo d'une vignette ouvre un
+> **aperçu ancré au marqueur** sans bouger la caméra — le cadrage serré
+> reste ce que fait l'ouverture de la fiche.
+>
+> **X5/X6 — les rosters et le scroll.** Une cause, quatre symptômes : des
+> rangées flex de largeurs fixes, en-tête écrit séparément des lignes,
+> avec des seuils de FENÊTRE alors que la largeur qui décide est celle du
+> PANNEAU. C'est une grille CSS à requêtes de conteneur maintenant, un
+> `grid-template-columns` par palier porté par l'en-tête et par chaque
+> ligne. Les colonnes qui ne tiennent plus FUSIONNENT en sous-lignes sous
+> le nom. Les pilules ne se déforment plus (ni écrasées ni sur deux
+> lignes) ; un avatar dont l'image échoue redevient le disque à
+> initiales. Le scroll horizontal venait de trois blocs qui ne passaient
+> pas à la ligne : ils passent à la ligne.
+>
+> **X7 — vignettes et pilules.** Une hauteur de vignette (5,5 rem) pour
+> fermes, gardes et incidents. Les vignettes de tri portent la
+> colorimétrie de la fiche, validée par le PO. Les pilules de filtre
+> passent de 7 points d'écart avec le fond à un écart lisible au soleil.
+>
+> **X8 — le planificateur.** « סדר הנסיעה », « קביעת פגישות » et
+> « ניווט » imprimaient la même liste trois fois. Une seule liste, trois
+> actions par étape, durées en heures et minutes, totaux alignés.
+>
+> **X9/X10/X11 — détails, incident, contrat.** L'horodatage passe sous
+> le titre de l'étape. Le bandeau de garde est le MÊME composant que
+> celui de la fiche d'entité. Fermer un incident est un bouton sur la
+> dernière étape de son fil. « פתיחה במפות » a une place nommée. Le
+> lecteur de contrat perd son second bouton de fermeture et
+> « פתיחה בכרטיסייה חדשה » dit ce que le PO obtient.
+>
+> **X12 — les régions.** Treize régions, contours **approximatifs écrits
+> à la main** et documentés comme tels (voir la note en tête de
+> `src/core/regions.ts` : aucun GeoJSON libre ne pouvait être versé sans
+> y mettre une lecture politique des limites ou une licence que ce dépôt
+> ne peut pas re-concéder). Chaque entité reçoit sa région de ses
+> coordonnées, écrasable à la main. Couche « אזורים » et option
+> « צבע לפי אזור » dans la légende, **éteintes par défaut**. Filtre par
+> région sur les quatre listes, bloc « דונם לפי אזור » au dashboard et
+> ligne des six plus lourdes sur le PDF.
+>
+> **X13 — le séparateur qui se figeait.** Ce n'était pas une fuite
+> d'écouteurs : `setRatio` écrivait dans `localStorage` de façon
+> SYNCHRONE à chaque `pointermove`. Mesuré : quarante écritures
+> bloquantes par glissement, chacune suivie d'un commit React de tout le
+> gabarit. Un glissement ne rend plus rien — la largeur est écrite
+> directement sur la propriété personnalisée, une fois par frame — et
+> l'état est commité au relâchement. `bun run seam` le mesure et échoue
+> bien sur l'ancien code.
+>
+> ## Ce qui reste
+>
+> - **Les contours de régions sont approximatifs.** Ils suffisent pour un
+>   seau, une couleur et un total ; ils ne sont pas une frontière et le
+>   fichier le dit. Si l'association veut un tracé officiel un jour, il
+>   faudra une source sous licence et une décision sur le tracé — c'est
+>   une question qui n'est pas technique.
+> - **`ENGINE=webkit` n'est pas exécutable sur cette machine** (le build
+>   WebKit de Playwright n'est pas installé). Les sweeps ont tourné en
+>   Chromium ; l'iPad du PO est WebKit, donc c'est la moitié qui manque.
+> - **X5.4, dernier recours non implémenté** : le brief proposait un
+>   sélecteur de colonnes visibles « en dernier recours ». La fusion en
+>   sous-lignes couvre les quatre paliers jusqu'à 262 px de panneau,
+>   donc il n'a pas été nécessaire — à faire si le PO veut choisir ses
+>   colonnes plutôt que les voir fusionner.
+> - ⚠️ **Inchangé et toujours vrai** : les portraits de démonstration
+>   sont temporaires (`docs/demo-photos-licences.md`), et l'historique du
+>   dépôt porte encore les 477 images du commit `4bbf4c4`.
+>
+> ## À re-tester par le PO — 5 points
+>
+> 1. **Les en-têtes de liste.** חוות, מתנדבים, נהגים, שמירות, אירועים :
+>    même taille de titre que לוח בקרה, compteur en pastille sous le
+>    titre, et un seul « ⋯ » qui contient l'import et la bascule
+>    carte/tableau. Plus aucune pilule de bascule en haut.
+> 2. **Tirer la couture, longuement.** Sur מתנדבים et נהגים : les
+>    colonnes restent alignées avec leur en-tête à toutes les largeurs,
+>    ce qui disparaît réapparaît sous le nom, et après une longue
+>    session la poignée répond toujours.
+> 3. **Les régions.** Légende → « אזורים » : les aplats et les noms.
+>    Puis « צבע לפי אזור ». Puis le filtre « כל האזורים » sur les quatre
+>    listes, et le bloc « דונם לפי אזור » au bas du dashboard.
+> 4. **Le planificateur.** Choisir quatre fermes : une seule liste, avec
+>    par étape l'appel, « קבע פגישה » et la navigation ; la durée en
+>    heures et minutes.
+> 5. **Une fiche de ferme et un incident.** La photo en tête, les trois
+>    icônes d'action, le statut entier ; puis un incident : le bouton de
+>    clôture est sur la dernière étape du fil et « פתיחה במפות » est dans
+>    « פרטים ».
+>
+> Captures de l'URL déployée : `docs/screenshots/uipass/` (12).
+> Pour reprendre : `git pull && bun install && bun run dev`, puis
+> `bun run uipass`, `VIEWPORT=all BASE_URL=http://localhost:5173 bun run
+> layout`, `bun run seam`, `bun run regions`.
+
+---
+
+> 🏁 **PASSE FINALE — W1→W8 COMPLÈTE, 2026-09-02.** (Note précédente, conservée.)
 >
 > **Les huit unités sont livrées, commitées une par une, poussées et
 > vérifiées sur l'URL servie.** La note précédente (ci-dessous, conservée)
@@ -120,7 +273,7 @@
 
 ---
 
-> 🏁 **PASSE FINALE AVANT DÉMONSTRATION — 2026-09-02, ~10:00 (heure d'Israël). LIRE EN PREMIER.**
+> 🏁 **PASSE FINALE AVANT DÉMONSTRATION — 2026-09-02, ~10:00 (heure d'Israël).** (Note d'archive.)
 >
 > Brief W1→W8, 1 h 30 chrono, autonomie totale. **Livré : W1, W2, W3.**
 > **Sacrifié faute de temps : W4, W5, W6, W7, W8** (dans l'ordre inverse
@@ -212,7 +365,7 @@
 > `bun run uipass` (URL servie, contrôles W3 ajoutés).
 
 
-> 🎯 **PASSE UI/UX AVANT DÉMONSTRATION — 2026-09-02 (journée). LIRE EN PREMIER.**
+> 🎯 **PASSE UI/UX AVANT DÉMONSTRATION — 2026-09-02 (journée).** (Note d'archive.)
 >
 > Les dix unités U1→U10 de votre brief sont livrées, commitées une par une
 > sur `main`, déployées sur https://azmer-fts.github.io/lo-yanum/ et
@@ -321,7 +474,7 @@
 >
 > Commits : `d116758` (U1) → `ff59e20` (U9), corrections de gates `0561a30`, pastille `U4.4` ; déploiement vert : run 33601764755 (§37.9).
 
-> ⏰⏰ **NOTE DE RÉVEIL — 2026-09-02, ~03:00 (heure d'Israël). LIRE EN PREMIER.**
+> ⏰⏰ **NOTE DE RÉVEIL — 2026-09-02, ~03:00 (heure d'Israël).** (Note d'archive.)
 >
 > Bonjour. Voici ce qui s'est passé cette nuit (ordre de nuit N1→N8), en
 > autonomie totale, sans aucune question. Tout est commité sur `main`,
