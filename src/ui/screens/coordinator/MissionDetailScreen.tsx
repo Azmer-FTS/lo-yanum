@@ -532,7 +532,8 @@ export function MissionDetailScreen() {
           icon="clock"
           tint="bg-accent/[0.12]"
           ink="text-accent-ink"
-          figure={<span className="ltr-nums">{formatTime(mission.startAt, locale)}</span>}
+          /* ★★ Y5 — a string, so the figure can be measured; see the farm sheet. */
+          figure={formatTime(mission.startAt, locale)}
           label={t('missions.startAt')}
         />
         <BandCard
@@ -540,7 +541,7 @@ export function MissionDetailScreen() {
           icon="moon"
           tint="bg-status-violet/[0.12]"
           ink="text-status-violet-ink"
-          figure={<span className="ltr-nums">{formatTime(mission.endAt, locale)}</span>}
+          figure={formatTime(mission.endAt, locale)}
           label={t('missions.endAt')}
         />
         <BandCard

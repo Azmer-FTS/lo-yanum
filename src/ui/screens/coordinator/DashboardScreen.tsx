@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -32,6 +32,7 @@ import type {
 } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
+import { BandCard } from '../../components/band'
 import { ReportButton } from '../../report/ReportButton'
 import { readReportRecipient } from '../../report/recipient'
 import { Icon } from '../../components/Icon'
@@ -47,7 +48,8 @@ import {
   readStatusColor,
   readToken,
 } from '../../components/badges'
-import { EmptyState, Section } from '../../components/primitives'
+import { EmptyState, Section, bandTone } from '../../components/primitives'
+import type { KpiTone } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
@@ -312,21 +314,19 @@ function AlertsCarousel({ alerts }: { alerts: DashboardAlert[] }) {
 // --- KPI -------------------------------------------------------------------
 
 /**
- * W2 (2026-09-02, passe finale) — THE FIGURE FITS ITS CARD, BY ARITHMETIC.
- * The card is a size container (`.figure-card`) and the figure (`.figure`)
- * takes the smaller of its ceiling and what its digit count allows in the
- * width available — see `index.css`. Nothing here is ever truncated or
- * stepped by hand any more; the digit count is the only input.
+ * W3.1a — one of the two strategic cards at the head of the dashboard.
+ *
+ * ★★ Y5 (2026-09-04) — AND IT IS `BandCard` NOW, LIKE EVERY OTHER FIGURE IN
+ *    THE APP. It was the fourth of the four geometries listed at the top of
+ *    `band.tsx`: no disc, a 34 px glyph and a figure that scaled itself up to
+ *    76 px. It kept its PROMINENCE — it is still the pair at the head of the
+ *    page, still `card-wow`, still the tone that says which of the two budget
+ *    numbers this is — and it gave up being a different SHAPE. That is what
+ *    "à l'identique … même hauteur, même style, mêmes proportions d'icônes"
+ *    asks for, and prominence by position and colour rather than by a size
+ *    nothing else in the app uses is the reading the entity sheet already had
+ *    the product owner's signature on.
  */
-function figureVars(text: string, max?: string, reserve?: string): CSSProperties {
-  return {
-    '--digits': String(Math.max(1, text.length)),
-    ...(max ? { '--figure-max': max } : {}),
-    ...(reserve ? { '--figure-reserve': reserve } : {}),
-  } as CSSProperties
-}
-
-/** W3.1a — one of the two strategic cards at the head of the dashboard. */
 function HeroFigure({
   value,
   label,
@@ -342,28 +342,33 @@ function HeroFigure({
   tone: 'good' | 'accent'
   testId: string
 }) {
-  const ink = tone === 'good' ? 'text-status-success-ink' : 'text-accent-ink'
-  const tint = tone === 'good' ? 'var(--status-success)' : 'var(--accent)'
+  const { tint, ink } = bandTone(tone)
   return (
-    <Link
+    <BandCard
       to="/coordinator/farms"
-      data-testid={testId}
-      className="card-interactive card-wow figure-card flex flex-col p-4"
-      style={{ '--wow-tint': tint } as CSSProperties}
-    >
-      <span className="flex items-start justify-between gap-3">
-        <span className={`figure ${ink}`} style={figureVars(value, '4.75rem', '3.25rem')} data-figure title={value}>
-          {value}
-        </span>
-        {/* W3.1c — the icon alone, thin and big: no disc behind it. */}
-        <Icon name={icon} size={34} strokeWidth={1.25} className={`mt-1 shrink-0 ${ink}`} />
-      </span>
-      <span className="mt-2 block text-caption font-semibold leading-tight text-content-primary">{label}</span>
-      <span className="muted mt-0.5 block leading-tight">{hint}</span>
-    </Link>
+      testId={testId}
+      icon={icon}
+      tint={`card-wow ${tint}`}
+      ink={ink}
+      figure={value}
+      label={label}
+      note={hint}
+      style={
+        {
+          '--wow-tint': tone === 'good' ? 'var(--status-success)' : 'var(--accent)',
+        } as CSSProperties
+      }
+    />
   )
 }
 
+/**
+ * The dashboard's KPI row.
+ *
+ * ★★ Y5 — `BandCard`, on the same terms as `HeroFigure` above: this row was
+ *    the third geometry — a bare 24 px glyph with no disc at all — and the
+ *    product owner reads a disc-less icon beside a disced one as two designs.
+ */
 function Kpi({
   label,
   value,
@@ -373,39 +378,23 @@ function Kpi({
   testId,
 }: {
   label: string
-  value: number
+  value: ReactNode
   icon: IconName
-  tone?: 'default' | 'good' | 'alert' | 'accent'
+  tone?: KpiTone
   to: string
   testId?: string
 }) {
-  const toneClass = {
-    default: 'text-content-primary',
-    good: 'text-status-success-ink',
-    alert: 'text-status-danger-ink',
-    accent: 'text-accent-ink',
-  }[tone]
-  // N7.5 (2026-09-02) — a card may carry its tone as a tint, charter kept.
-  const tintClass = {
-    default: '',
-    good: 'bg-status-success/[0.07]',
-    alert: 'bg-status-danger/[0.07]',
-    accent: 'bg-accent/[0.07]',
-  }[tone]
-  const text = String(value)
-
-  // W3.1b — a COMPACT card in a swipable row: figure and a bare icon on one
-  // line, the label under them. The figure fits by arithmetic (W2).
+  const { tint, ink } = bandTone(tone)
   return (
-    <Link to={to} data-testid={testId} className={`card-interactive figure-card p-2.5 ${tintClass}`}>
-      <span className="flex items-center justify-between gap-2">
-        <span className={`figure ${toneClass}`} style={figureVars(text, '1.9rem', '2.25rem')} data-figure>
-          {text}
-        </span>
-        <Icon name={icon} size={24} strokeWidth={1.4} className={`shrink-0 ${toneClass}`} />
-      </span>
-      <span className="muted mt-1 block truncate leading-tight" title={label}>{label}</span>
-    </Link>
+    <BandCard
+      to={to}
+      testId={testId}
+      icon={icon}
+      tint={tint}
+      ink={ink}
+      figure={value}
+      label={label}
+    />
   )
 }
 

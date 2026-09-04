@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
+import { useNarrow } from '../hooks/useNarrow'
+import { BandCard } from './band'
 import { ChevronForward, Icon } from './Icon'
 import type { IconName } from './Icon'
 
@@ -442,87 +444,35 @@ export function Stat({
 }
 
 /**
+ * The four tones a stat tile can wear, as the wash + ink pair `BandCard`
+ * takes. One table, so a "good" green means the same thing on a farm's sheet,
+ * above a roster and on the dashboard.
+ */
+const TONES = {
+  default: { tint: 'kpi-tone-default', ink: 'text-content-primary' },
+  alert: { tint: 'kpi-tone-alert', ink: 'text-status-danger-ink' },
+  good: { tint: 'kpi-tone-good', ink: 'text-status-success-ink' },
+  accent: { tint: 'kpi-tone-accent', ink: 'text-accent-ink' },
+} as const
+
+export type KpiTone = keyof typeof TONES
+
+/** ★★ Y5 — exported so the dashboard's cards read the same table. */
+export function bandTone(tone: KpiTone): { tint: string; ink: string } {
+  return TONES[tone]
+}
+
+/**
  * G14d — A KPI CARD THAT *IS* THE FILTER. The number cards above the big
  * rosters used to be decoration repeating what pills below them already did;
  * now the card is the control: click filters the list, the active card takes
  * the accent ring, and the redundant pills are gone. Shared by volunteers,
  * drivers and farms so the three screens stay one gesture.
+ *
+ * ★★ Y5 (2026-09-04) — AND IT IS `BandCard`, not a second drawing of it. See
+ *    the table of four geometries at the top of `band.tsx`.
  */
 export function KpiFilter({
-  label,
-  value,
-  icon,
-  dot,
-  hint,
-  tone = 'default',
-  active,
-  onClick,
-}: {
-  label: string
-  value: ReactNode
-  tone?: 'default' | 'alert' | 'good' | 'accent'
-  icon?: IconName
-  /** Status dot shown before the label (the farm cards). */
-  dot?: ReactNode
-  /** Small second line under the label — e.g. the status's dunam total. */
-  hint?: ReactNode
-  active: boolean
-  onClick: () => void
-}) {
-  const toneClass = {
-    default: 'text-content-primary',
-    alert: 'text-status-danger-ink',
-    good: 'text-status-success-ink',
-    accent: 'text-accent-ink',
-  }[tone]
-
-  /** X7.3 — the same wash as `KpiChip`; see the note there. */
-  const wash = {
-    default: 'kpi-tone-default',
-    alert: 'kpi-tone-alert',
-    good: 'kpi-tone-good',
-    accent: 'kpi-tone-accent',
-  }[tone]
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`card-interactive flex min-w-0 items-center gap-2.5 p-3 text-start ${wash} ${
-        active ? 'ring-2 ring-accent' : ''
-      }`}
-    >
-      {icon && (
-        <span
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-surface-raised/80 ${toneClass}`}
-        >
-          <Icon name={icon} size={24} strokeWidth={1.4} />
-        </span>
-      )}
-      <span className="min-w-0">
-        <span className={`numeric block text-title ${toneClass}`}>{value}</span>
-        <span className="muted flex items-center gap-1.5 truncate leading-tight">
-          {dot}
-          {label}
-        </span>
-        {hint && (
-          <span className="block truncate text-micro leading-tight text-content-muted/80">
-            {hint}
-          </span>
-        )}
-      </span>
-    </button>
-  )
-}
-
-/**
- * U2 (2026-09-02) — THE COMPACT KPI-FILTER, for the one swipable row above a
- * list. Same contract as `KpiFilter` (the card IS the filter), a quarter of
- * the height: figure and label on one line, the hint under the label, 44 px
- * tall so a thumb can hit it on a moving vehicle.
- */
-export function KpiChip({
   label,
   value,
   icon,
@@ -535,70 +485,157 @@ export function KpiChip({
 }: {
   label: string
   value: ReactNode
-  tone?: 'default' | 'alert' | 'good' | 'accent'
+  tone?: KpiTone
   icon?: IconName
+  /** Status dot shown before the label (the farm cards). */
   dot?: ReactNode
+  /** Small second line under the label — e.g. the status's dunam total. */
   hint?: ReactNode
   active: boolean
   onClick: () => void
   testId?: string
 }) {
-  const toneClass = {
-    default: 'text-content-primary',
-    alert: 'text-status-danger-ink',
-    good: 'text-status-success-ink',
-    accent: 'text-accent-ink',
-  }[tone]
+  const { tint, ink } = TONES[tone]
+  return (
+    <BandCard
+      icon={icon}
+      tint={tint}
+      ink={ink}
+      figure={value}
+      label={label}
+      note={hint}
+      dot={dot}
+      active={active}
+      onClick={onClick}
+      testId={testId}
+    />
+  )
+}
 
-  /**
-   * ★ X7.3 (2026-09-04) — THE SORT CARDS WEAR THE SHEET'S COLORIMETRY.
-   *
-   * The band cards on an entity's sheet are the reading the product owner
-   * signed off on: a 12 % wash of the tone, the icon on a raised disc in the
-   * tone's ink, the figure in the page's own ink. These chips were a flat
-   * `--surface-raised` with a coloured glyph, so the same "good" green meant
-   * one thing on a farm's sheet and another above a roster. `.kpi-tone-*`
-   * (index.css) is that recipe at chip scale.
-   */
-  const wash = {
-    default: 'kpi-tone-default',
-    alert: 'kpi-tone-alert',
-    good: 'kpi-tone-good',
-    accent: 'kpi-tone-accent',
-  }[tone]
+/**
+ * U2 (2026-09-02) — THE COMPACT KPI-FILTER, for the one swipable row above a
+ * list.
+ *
+ * ★★ Y5 (2026-09-04) — AND IT IS NOT COMPACT ANY MORE. It was a quarter of
+ *    the band's height — 44 px, a 28 px disc, a 16 px glyph — which is the
+ *    second of the four geometries `band.tsx` lists. The product owner has
+ *    asked three times for the sheet's model "à l'identique" on every screen
+ *    that shows a row of numbers, and this row is the one he sees most. It
+ *    costs the top of a list about 40 px, which is what the swipable row and
+ *    Y6's edge-to-edge treatment are for.
+ *
+ * ⚠️ THE NAME IS KEPT ON PURPOSE. Nineteen call sites across four screens
+ *    import `KpiChip`; renaming it would be a diff nobody can read for a
+ *    change that is entirely about geometry. It is a thin alias of
+ *    `KpiFilter` now, and the two are the same card because they were always
+ *    meant to be the same card.
+ */
+export function KpiChip(props: Parameters<typeof KpiFilter>[0]) {
+  return <KpiFilter {...props} />
+}
+
+/**
+ * ★★ Y12 (2026-09-04) — THE SEARCH PANEL. See the note at its call site in
+ *    `ListTop` for why the field left the header.
+ *
+ * ⚠️ THE VALUE IS THE SCREEN'S, NOT THIS COMPONENT'S. There is no draft state
+ *    here: typing calls `onChange` immediately, which is what makes the list
+ *    narrow under the panel while it is open. A local draft committed on Enter
+ *    would be a different feature — a search you cannot see the effect of
+ *    until you press a key — and it is not the one that was asked for.
+ */
+function SearchOverlay({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement | null>(null)
+  const field = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    // "le champ prend le focus (clavier)" — after the panel has been painted,
+    // or iOS ignores the focus and no keyboard comes up.
+    const id = requestAnimationFrame(() => field.current?.focus())
+    const onDown = (e: PointerEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown, true)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      cancelAnimationFrame(id)
+      document.removeEventListener('pointerdown', onDown, true)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      data-testid={testId}
-      className={`tile-interactive flex min-h-11 items-center gap-2 px-3 py-1 text-start ${wash} ${
-        active ? 'ring-2 ring-accent' : ''
-      }`}
-    >
-      {dot}
-      {icon && (
-        <span
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-pill bg-surface-raised/80 ${toneClass}`}
+    <div ref={box} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label={placeholder ?? t('common.search')}
+        title={placeholder ?? t('common.search')}
+        data-testid="list-search-open"
+        className={`flex h-11 w-11 items-center justify-center rounded-field transition-colors duration-fast ${
+          value
+            ? 'bg-accent/15 text-accent-ink'
+            : 'text-content-secondary hover:bg-surface-high hover:text-content-primary'
+        }`}
+      >
+        <Icon name="search" size={18} />
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label={placeholder ?? t('common.search')}
+          data-testid="list-search-panel"
+          className="glass absolute end-0 top-full z-40 mt-1.5 flex w-[min(22rem,80vw)] items-center gap-2 rounded-card p-2 shadow-lift"
         >
-          <Icon name={icon} size={16} />
-        </span>
+          <div className="relative min-w-0 flex-1">
+            <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
+              <Icon name="search" size={15} />
+            </span>
+            <input
+              ref={field}
+              type="search"
+              className="input min-h-11 py-1.5 ps-8"
+              value={value}
+              placeholder={placeholder}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  setOpen(false)
+                }
+              }}
+              data-testid="list-search"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            data-testid="list-search-done"
+            className="btn-primary shrink-0 py-2"
+          >
+            <Icon name="check" size={15} />
+            {t('common.done')}
+          </button>
+        </div>
       )}
-      <span className={`numeric text-heading font-bold leading-none ${toneClass}`}>
-        {value}
-      </span>
-      <span className="flex min-w-0 flex-col leading-tight">
-        <span className="whitespace-nowrap text-caption text-content-secondary">
-          {label}
-        </span>
-        {hint && (
-          <span className="whitespace-nowrap text-micro text-content-muted/80">
-            {hint}
-          </span>
-        )}
-      </span>
-    </button>
+    </div>
   )
 }
 
@@ -690,49 +727,71 @@ export function ListTop({
         >
           {title}
         </h1>
+        {/**
+          * ★★ Y12 (2026-09-04) — THE MAGNIFIER OPENS A PANEL; IT IS NOT A BOX
+          *    THAT LIVES IN THE HEADER.
+          *
+          *    "La loupe ouvre un panneau de recherche en surcouche : le champ
+          *     prend le focus (clavier), les résultats s'affinent en direct,
+          *     validation par Entrée ou bouton, fermeture automatique après
+          *     validation. Libère l'espace de l'en-tête le reste du temps."
+          *
+          * ★ AND THE HEADER'S ARITHMETIC IS WHY HE IS RIGHT. The note this
+          *   replaces spent a paragraph measuring a box down from 15 rem to
+          *   10 rem so that "6 rem title + this + 44 px + gaps" would fit a
+          *   third of an iPad — which is a field small enough to be useless
+          *   AND still the widest thing on a row whose other two items are a
+          *   page title and one button. A 44 px target that opens a full-width
+          *   field costs the header 44 px and gives the search the whole
+          *   panel.
+          *
+          * ⚠️ THE FILTERING IS STILL LIVE. `onSearch` fires on every
+          *    keystroke, exactly as it did — "les résultats s'affinent en
+          *    direct" — so Enter and the button CLOSE the panel rather than
+          *    submitting anything. Nothing about how a screen filters changed;
+          *    only where the field lives.
+          */}
         {onSearch && (
-          /* ⚠️ 10 / 12 REM, NOT 13 / 15. Measured: on the farms panel (a third
-             of a 1376 px iPad, 395 px inside its padding) a 15 rem box left
-             147 px for the title and 44 px for the "⋯" — 447 px of demand
-             against 395 px — so the row wrapped and the sticky top grew by a
-             line, and one farm tile fell off the screen. The arithmetic that
-             has to hold is `6 rem title + this + 44 px + gaps ≤ the panel`. */
-          <div className="relative order-last w-full shrink-0 sm:order-none sm:w-40 lg:w-48">
-            <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
-              <Icon name="search" size={15} />
-            </span>
-            <input
-              type="search"
-              className="input min-h-11 py-1.5 ps-8"
-              value={search ?? ''}
-              placeholder={searchPlaceholder}
-              onChange={(e) => onSearch(e.target.value)}
-              data-testid="list-search"
-            />
-          </div>
+          <SearchOverlay
+            value={search ?? ''}
+            onChange={onSearch}
+            placeholder={searchPlaceholder}
+          />
         )}
         {actions}
         {menu}
       </div>
-      {(count || kpis) && (
-        <div className="flex items-stretch gap-2">
+      {/**
+        * ★★ Y6 (2026-09-04) — THE KPI ROW HAS ITS OWN LINE NOW, and the
+        *    counter has moved down to the filters'.
+        *
+        *    X1 put the counter "en tête de la rangée de filtres" and it ended
+        *    up as a flex SIBLING of the KPI strip instead — which was
+        *    invisible until Y6 made the strip bleed out to the screen's edge,
+        *    at which point the row's negative start margin slid the first card
+        *    UNDER the pill. Two things wanted the same line; only one of them
+        *    can also be edge-to-edge, and the one the product owner swipes is
+        *    the row.
+        */}
+      {kpis && (
+        <div className="scroll-row min-w-0" data-testid="kpi-strip">
+          {kpis}
+        </div>
+      )}
+      {(count || filters) && (
+        <div className="mt-1.5 flex items-center gap-2">
           {count && (
             <span
               data-list-count=""
               className="numeric flex shrink-0 items-center self-center whitespace-nowrap rounded-pill
-                         bg-surface-high px-2.5 py-1 text-micro text-content-muted"
+                         bg-surface-high px-2.5 py-1 text-micro text-content-secondary"
             >
               {count}
             </span>
           )}
-          {kpis && (
-            <div className="scroll-row min-w-0 flex-1" data-testid="kpi-strip">
-              {kpis}
-            </div>
-          )}
+          {filters && <div className="min-w-0 flex-1">{filters}</div>}
         </div>
       )}
-      {filters && <div className="mt-1.5">{filters}</div>}
       {children}
     </div>
   )
@@ -862,23 +921,104 @@ export function FilterRow({
   nowrap?: boolean
 }) {
   const { t } = useTranslation()
+  /**
+   * ★★ Y7.3 (2026-09-04) — UNDER 26 REM THE ROW BECOMES A DROP-DOWN.
+   *
+   *   "Sur petit viewport, les filtres passent dans un DROP-DOWN (demandé
+   *    précédemment, non fait) plutôt qu'en rangée écrasée."
+   *
+   * ★ 20 REM IS MEASURED, NOT PICKED, AND IT IS MEASURED ON THE RIGHT BOX.
+   *   The first version used 26 rem and put the guards list into a drop-down
+   *   on a 1440 px desktop — because Y6 moved this row in beside the counter
+   *   pill, so what it is handed is the panel LESS about 7 rem, and a 456 px
+   *   panel measured 344 px here. At 20 rem a desktop's third-panel (344 px)
+   *   keeps its pills as a swipable row, and a phone (about 238 px once the
+   *   counter and the padding are taken) gets the drop-down — which is where
+   *   the row really is crushed rather than merely swipable.
+   *
+   * ★ AND THE QUESTION IS ASKED OF THE PANEL, not of the window: since
+   *   P0bis.2 the list's width is something he DRAGS. See `useNarrow`.
+   *
+   * ⚠️ THE PILLS ARE THE SAME NODES IN BOTH SHAPES. They are `children`,
+   *    moved into the panel rather than re-declared for it, so a screen
+   *    cannot end up with a filter in one reading and not in the other —
+   *    which is exactly what X5 spent a pass undoing on the rosters.
+   */
+  const { ref, narrow } = useNarrow(20 * 16)
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown, true)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const clearPill = active && (
+    <button
+      type="button"
+      onClick={onClear}
+      data-testid="filter-clear"
+      className="filter-pill text-content-primary hover:text-status-danger"
+    >
+      <Icon name="close" size={11} />
+      {t('common.clear')}
+    </button>
+  )
+
+  if (narrow) {
+    return (
+      <div ref={box} className="relative mb-2 flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          data-testid="filter-dropdown"
+          className={`filter-pill ${active ? 'filter-pill-active' : ''}`}
+        >
+          <Icon name="filter" size={12} />
+          {t('common.filters')}
+        </button>
+        {clearPill}
+        {trailing && <div className="ms-auto flex items-center gap-1.5">{trailing}</div>}
+        {open && (
+          <div
+            role="dialog"
+            aria-label={t('common.filters')}
+            data-testid="filter-dropdown-panel"
+            className="glass absolute inset-x-0 top-full z-40 mt-1.5 flex max-h-[60dvh] flex-wrap
+                       items-center gap-1.5 overflow-y-auto rounded-card p-3 shadow-lift"
+          >
+            {children}
+          </div>
+        )}
+        {/* The row's own ruler. It is `absolute` so it measures the space the
+            row HAS rather than the space its contents take. */}
+        <span ref={ref} aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px" />
+      </div>
+    )
+  }
+
   return (
     <div
+      ref={ref}
       className={`items-center gap-1.5 ${
         nowrap ? 'scroll-row mb-2' : 'mb-4 flex flex-wrap'
       }`}
     >
       {children}
-      {active && (
-        <button
-          type="button"
-          onClick={onClear}
-          className="filter-pill border-edge-strong text-content-primary hover:border-status-danger"
-        >
-          <Icon name="close" size={11} />
-          {t('common.clear')}
-        </button>
-      )}
+      {clearPill}
       {trailing && (
         <div className="ms-auto flex items-center gap-1.5">{trailing}</div>
       )}

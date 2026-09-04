@@ -333,12 +333,14 @@ function KeyNumbers({
         icon="calendar"
         tint="bg-status-info/[0.12]"
         ink="text-status-info-ink"
+        /* ★★ Y5 — A STRING, NOT A `<span>`. `BandCard` auto-fits a figure by
+           counting its characters (W2), which it can only do when there are
+           characters to count; wrapped in a node it fell back to one digit,
+           took the full 32 px ceiling and a 181 px date was clipped to
+           "13.0…" inside a 72 px box. The `ltr-nums` the span carried is
+           already on the figure element itself. */
         figure={
-          farm.nextVisitAt ? (
-            <span className="ltr-nums">{formatDate(farm.nextVisitAt, locale)}</span>
-          ) : (
-            t('common.none')
-          )
+          farm.nextVisitAt ? formatDate(farm.nextVisitAt, locale) : t('common.none')
         }
         label={t('farms.nextVisit')}
       />
