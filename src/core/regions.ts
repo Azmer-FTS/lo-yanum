@@ -57,8 +57,22 @@ export interface Region {
    *    edge of a holding we work with" (`--zone-*`) and the threat colours
    *    mean an assessment (`--status-warn` / `--status-danger`); a region is
    *    neither, and a region wash that borrowed either would be read as one.
-   *    So the palette is its own: desaturated, evenly spaced round the wheel,
-   *    and painted at low opacity under everything else the map draws.
+   *    So the palette is its own: evenly spaced round the wheel, and painted
+   *    under everything else the map draws.
+   *
+   * ★★ Y8.1 (2026-09-04) — AND IT IS NOT DESATURATED ANY MORE.
+   *
+   *    "Les aplats de régions sont quasi invisibles : augmenter nettement
+   *     l'opacité et la saturation (c'est une couche que le PO active
+   *     volontairement — quand elle est active, elle doit se VOIR)."
+   *
+   *    That last clause is the whole argument. X12 chose a pale palette at
+   *    10 % opacity on the reasoning that a wash under the programme's own
+   *    drawings must not compete with them — which is right for a layer that
+   *    is always on, and wrong for one the coordinator switches on to answer
+   *    a question. Each hue keeps its exact position on the wheel; its chroma
+   *    is multiplied by 1.55 and its lightness by 0.90, and `MapCanvas` paints
+   *    them at 35 % instead of 10 %.
    */
   rgb: string
   /** Approximate outline, `[lng, lat]`, closed implicitly. */
@@ -76,7 +90,7 @@ export const REGIONS: readonly Region[] = [
   {
     id: 'eilat',
     name: 'אילת',
-    rgb: '236 112 99',
+    rgb: '255 66 47',
     /* The southern tip only: Eilat and its bay. Yotvata, 35 km north, is
        the Arava — checked against the named places in `bun run regions`. */
     ring: [
@@ -89,7 +103,7 @@ export const REGIONS: readonly Region[] = [
   {
     id: 'arava',
     name: 'הערבה',
-    rgb: '230 176 90',
+    rgb: '255 169 33',
     ring: [
       [34.9, 29.72],
       [35.06, 29.72],
@@ -102,7 +116,7 @@ export const REGIONS: readonly Region[] = [
   {
     id: 'dead-sea',
     name: 'ים המלח',
-    rgb: '120 178 200',
+    rgb: '72 177 216',
     ring: [
       [35.32, 31.1],
       [35.57, 31.1],
@@ -114,7 +128,7 @@ export const REGIONS: readonly Region[] = [
   {
     id: 'jordan-valley',
     name: 'בקעת הירדן',
-    rgb: '150 190 140',
+    rgb: '121 194 103',
     ring: [
       [35.42, 31.82],
       [35.62, 31.82],
@@ -126,7 +140,7 @@ export const REGIONS: readonly Region[] = [
   {
     id: 'golan',
     name: 'רמת הגולן',
-    rgb: '138 154 210',
+    rgb: '89 119 224',
     ring: [
       [35.62, 32.72],
       [35.95, 32.78],
@@ -138,7 +152,7 @@ export const REGIONS: readonly Region[] = [
   {
     id: 'galilee',
     name: 'הגליל',
-    rgb: '124 190 160',
+    rgb: '82 201 147',
     ring: [
       [35.02, 32.72],
       [35.62, 32.72],
@@ -151,7 +165,7 @@ export const REGIONS: readonly Region[] = [
   {
     id: 'jezreel',
     name: 'עמק יזרעאל',
-    rgb: '196 176 120',
+    rgb: '211 175 74',
     ring: [
       [35.05, 32.45],
       [35.55, 32.5],
@@ -163,7 +177,7 @@ export const REGIONS: readonly Region[] = [
   {
     id: 'carmel-coast',
     name: 'חוף הכרמל',
-    rgb: '110 186 196',
+    rgb: '61 197 214',
     ring: [
       [34.84, 32.4],
       [35.05, 32.45],
@@ -175,7 +189,7 @@ export const REGIONS: readonly Region[] = [
   {
     id: 'sharon',
     name: 'השרון',
-    rgb: '146 172 214',
+    rgb: '97 147 227',
     /* The Sharon starts north of Tel Aviv, around Herzliya — Tel Aviv itself
        is the coastal plain, which is where `bun run regions` expects it. */
     ring: [
@@ -189,7 +203,7 @@ export const REGIONS: readonly Region[] = [
   {
     id: 'coastal-plain',
     name: 'מישור החוף',
-    rgb: '176 200 150',
+    rgb: '159 205 110',
     ring: [
       [34.45, 31.5],
       [34.95, 31.5],
@@ -201,7 +215,7 @@ export const REGIONS: readonly Region[] = [
   {
     id: 'samaria',
     name: 'שומרון',
-    rgb: '200 160 190',
+    rgb: '200 124 181',
     /* The Judea / Samaria line sits around the Ramallah latitude, not at the
        coastal plain's: Ariel (32.11) is Samaria and Jerusalem (31.77) is
        Judea, which is what `bun run regions` pins down. */
@@ -216,7 +230,7 @@ export const REGIONS: readonly Region[] = [
   {
     id: 'judea',
     name: 'יהודה',
-    rgb: '190 150 130',
+    rgb: '198 126 90',
     ring: [
       [34.95, 31.35],
       [35.45, 31.35],
@@ -228,7 +242,7 @@ export const REGIONS: readonly Region[] = [
   {
     id: 'negev',
     name: 'הנגב',
-    rgb: '214 186 132',
+    rgb: '233 180 79',
     ring: [
       [34.27, 30.4],
       [34.98, 30.6],

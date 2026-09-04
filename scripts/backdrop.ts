@@ -701,6 +701,103 @@ try {
   )
   await page.screenshot({ path: `${SHOTS}/y1-recovered-and-switching.png` })
   console.log(`  captures: ${SHOTS}/y1-after-10-round-trips.png, ${SHOTS}/y1-context-restored.png`)
+
+  // -------------------------------------------------------------------------
+  section('D — Y8: THE REGIONS ARE VISIBLE, AND THE COAST CUTS THEM')
+  // -------------------------------------------------------------------------
+
+  /**
+   * ★★ Y8 (2026-09-04) — TWO CLAIMS, BOTH ABOUT WHAT IS PAINTED.
+   *
+   *   D1  "les aplats de régions sont quasi invisibles : augmenter nettement
+   *        l'opacité et la saturation". X12 painted them at 10 % of a
+   *        deliberately pale palette. The check is not the declared opacity —
+   *        that is a configuration — but whether turning the layer ON changes
+   *        the PIXELS, measured the way section C measures the ground.
+   *
+   *   D2  "réutiliser la géométrie déjà présente dans le fond vectoriel …
+   *        pour que les aplats épousent exactement la forme du pays". The
+   *        implementation is a paint order rather than a computation: the
+   *        washes are inserted BELOW the archive's own `water`, so the sea
+   *        paints over every overhang. So what is checked is the ORDER — and
+   *        then, over the Mediterranean, that a point which is inside a
+   *        region's hand-written ring shows NO region colour, because the
+   *        coastline the coordinator is looking at cut it.
+   */
+  await page.evaluate(() => {
+    const m = (window as unknown as { __loYanumMap?: MapHandle }).__loYanumMap as unknown as {
+      jumpTo: (o: unknown) => void
+    }
+    m.jumpTo({ center: [34.9, 31.9], zoom: 7 })
+  })
+  await page.waitForTimeout(2500)
+
+  const regionOrder = await page.evaluate(() => {
+    const m = (window as unknown as { __loYanumMap?: MapHandle }).__loYanumMap
+    if (!m) return { fill: -1, line: -1, water: -1, earth: -1 }
+    const ids = m.getStyle().layers.map((l) => l.id)
+    return {
+      fill: ids.indexOf('regions-fill'),
+      line: ids.indexOf('regions-line'),
+      water: ids.indexOf('water'),
+      earth: ids.indexOf('earth'),
+    }
+  })
+  check(
+    '★★ D2 — the region washes are painted UNDER the archive\'s own water',
+    regionOrder.fill > regionOrder.earth &&
+      regionOrder.fill < regionOrder.water &&
+      regionOrder.line < regionOrder.water,
+    `earth ${regionOrder.earth} < fill ${regionOrder.fill} / line ${regionOrder.line} < water ${regionOrder.water}`,
+  )
+
+  /** The legend's checkbox is how the coordinator turns them on, so it is how this does. */
+  const legendToggle = page.locator('[data-testid="map-legend-toggle"]')
+  if (await legendToggle.count()) {
+    await legendToggle.click()
+    await page.waitForTimeout(400)
+  }
+  const before = await painted()
+  const regionBox = page.locator('[data-testid="layer-regions"]')
+  check('the regions layer has a switch in the legend', (await regionBox.count()) === 1)
+  await regionBox.check({ force: true })
+  await page.waitForTimeout(2000)
+  const after = await painted()
+  const drawn = await page.evaluate(() => {
+    const m = (window as unknown as { __loYanumMap?: MapHandle }).__loYanumMap
+    return m ? m.queryRenderedFeatures(undefined, { layers: ['regions-fill'] }).length : 0
+  })
+  check(
+    '★★ D1 — switching them on CHANGES the map, and by a lot',
+    drawn > 0 && after > before + 40,
+    `${drawn} washes drawn, ${before} colours before → ${after} after`,
+  )
+
+  /**
+   * ★★ D2, MEASURED WHERE IT MATTERS: a point in the sea that IS inside one of
+   *    the hand-written rings. If the cut works, `regions-fill` is not among
+   *    what is rendered there — the Mediterranean is painted over it.
+   */
+  const overSea = await page.evaluate(() => {
+    const m = (window as unknown as { __loYanumMap?: MapHandle }).__loYanumMap as unknown as {
+      project: (c: [number, number]) => { x: number; y: number }
+      queryRenderedFeatures: (p: unknown, o?: unknown) => { layer?: { id: string } }[]
+    }
+    // 20 km off Ashdod: open water, and well inside the coastal rings.
+    const p = m.project([34.4, 31.8])
+    const at = m.queryRenderedFeatures(p) as { layer?: { id: string } }[]
+    return {
+      water: at.some((f) => f.layer?.id === 'water'),
+      region: at.some((f) => f.layer?.id === 'regions-fill'),
+    }
+  })
+  check(
+    "★★ D2 — a point at sea inside a region's ring shows the SEA, not the wash",
+    overSea.water && !overSea.region,
+    `water ${overSea.water}, region wash ${overSea.region}`,
+  )
+  await page.screenshot({ path: `${SHOTS}/y8-regions-national.png` })
+  console.log(`  captures: ${SHOTS}/y8-regions-national.png`)
 } finally {
   await browser?.close()
   serve.kill()

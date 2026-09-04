@@ -943,24 +943,73 @@ export default function MapCanvas({
         },
       })
       const regionsVisible = layersRef.current.regions ? 'visible' : 'none'
-      map.addLayer({
-        id: 'regions-fill',
-        type: 'fill',
-        source: 'regions',
-        layout: { visibility: regionsVisible },
-        paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.1 },
-      })
-      map.addLayer({
-        id: 'regions-line',
-        type: 'line',
-        source: 'regions',
-        layout: { visibility: regionsVisible, 'line-join': 'round' },
-        paint: {
-          'line-color': ['get', 'color'],
-          'line-width': 1.4,
-          'line-opacity': 0.55,
+
+      /**
+       * ★★ Y8.2 (2026-09-04) — THE REGIONS ARE CUT BY THE BASEMAP'S OWN
+       *    COASTLINE, AND NOTHING IS TRACED BY HAND TO DO IT.
+       *
+       *    "CONTOURS : ne pas inventer de tracés. Réutiliser la géométrie déjà
+       *     présente dans le fond vectoriel … et découper les régions à
+       *     l'intérieur de ce contour existant, pour que les aplats épousent
+       *     exactement la forme du pays affichée sur la carte."
+       *
+       * ★ THE CUT IS A PAINT ORDER, NOT A COMPUTATION. The thirteen rings are
+       *   hand-written approximations (see `core/regions.ts`) and they
+       *   overhang the coast by kilometres. Inserted BELOW the archive's
+       *   `water` layer, every one of those overhangs is painted over by the
+       *   Mediterranean, the Kinneret and the Dead Sea — the same polygons the
+       *   coordinator is already looking at, at the same zoom, with the same
+       *   vertices. The wash therefore follows the coastline EXACTLY, and no
+       *   coordinate was invented to make it.
+       *
+       * ⚠️ AND THE LAND BORDERS ARE NOT CUT, WHICH IS DELIBERATE AND IS THE
+       *    HONEST HALF OF THIS. The archive carries national boundaries as
+       *    LINES (`boundaries`, kind_detail, disputed) — there is no country
+       *    POLYGON in it to intersect with. Clipping a wash to a land border
+       *    would mean building that polygon from the lines, i.e. deciding
+       *    where the border runs, which is exactly what "ne pas inventer de
+       *    tracés" forbids and exactly the decision X12 refused to encode.
+       *    A region wash may therefore still reach a little way past a land
+       *    frontier; it is a bucket for a filter and a colour, never a claim.
+       *
+       * ⚠️ `beforeId` IS LOOKED UP, NOT TYPED. `water` is Protomaps' id today;
+       *    if a re-cut archive renames it the fallback is the first symbol
+       *    layer, which keeps the wash under every label rather than throwing.
+       */
+      const waterCut =
+        map.getStyle().layers.find((l) => l.id === 'water')?.id ??
+        map.getStyle().layers.find((l) => l.type === 'symbol')?.id
+
+      map.addLayer(
+        {
+          id: 'regions-fill',
+          type: 'fill',
+          source: 'regions',
+          layout: { visibility: regionsVisible },
+          /**
+           * ★★ Y8.1 — 35 %, NOT 10 %. This is a layer the coordinator turns ON
+           *    to answer a question; at 10 % of a desaturated hue it answered
+           *    nothing. The palette gained its chroma in the same pass — see
+           *    `core/regions.ts`.
+           */
+          paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.35 },
         },
-      })
+        waterCut,
+      )
+      map.addLayer(
+        {
+          id: 'regions-line',
+          type: 'line',
+          source: 'regions',
+          layout: { visibility: regionsVisible, 'line-join': 'round' },
+          paint: {
+            'line-color': ['get', 'color'],
+            'line-width': 2,
+            'line-opacity': 0.9,
+          },
+        },
+        waterCut,
+      )
       /**
        * The name at the centre. `symbol-placement: point` on a polygon puts
        * the label at the centroid, which is where `regionCenter` also puts it
