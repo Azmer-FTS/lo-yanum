@@ -1,11 +1,14 @@
-import { Protocol } from 'pmtiles'
+import { FetchSource, PMTiles, Protocol, SharedPromiseCache } from 'pmtiles'
+import type { Entry, Header, RangeResponse, Source } from 'pmtiles'
 import maplibregl from 'maplibre-gl'
+import worldLand from './world-land.json'
 import { layersWithCustomTheme, namedTheme } from 'protomaps-themes-base'
 import type { Theme } from 'protomaps-themes-base'
 import type {
   ExpressionSpecification,
   FilterSpecification,
   LayerSpecification,
+  SourceSpecification,
   StyleSpecification,
 } from 'maplibre-gl'
 
@@ -71,12 +74,31 @@ function token(name: string, alpha?: number): string {
  * will ever see. Every key that DOES show is below, and every value is a
  * token — so `bun run contrast`'s palette is the map's palette.
  */
+/**
+ * ★ Y1 — HOISTED OUT OF `themeFromTokens` BECAUSE THE SEA IS NOW PAINTED
+ *   TWICE: once by the archive's own `water` layer, and once by the
+ *   off-archive ground below it. Two literals would be one edit away from two
+ *   different blues meeting on a coastline.
+ */
+function waterColour(resolved: 'light' | 'dark'): string {
+  return resolved === 'light' ? 'rgb(52 132 214 / 0.62)' : 'rgb(96 165 250 / 0.55)'
+}
+
 function themeFromTokens(resolved: 'light' | 'dark'): Theme {
   const base = namedTheme(resolved)
 
-  const surfaceBase = token('--surface-base')
-  const surfaceHigh = token('--surface-high')
-  const surfaceSunken = token('--surface-sunken')
+  /**
+   * ★★ Y1 — THE GROUND, AND WHY IT STOPPED BEING THE PAGE.
+   *
+   * `earth: surfaceBase` and `sand/scrub/park/wood: surfaceHigh` put the land
+   * five units away from the panel beside it and the desert five units from
+   * the land. `bun run vector` reads it as one value over 68 % of the canvas
+   * at z12 and 82 % at z15: "un aplat sans relief ni détail". These three
+   * tokens are the ladder that replaces it — see `tokens.css`.
+   */
+  const mapLand = token('--map-land')
+  const mapLandAlt = token('--map-land-alt')
+  const mapLandDeep = token('--map-land-deep')
   const borderSubtle = token('--border-subtle')
   const borderStrong = token('--border-strong')
   const textSecondary = token('--text-secondary')
@@ -98,38 +120,47 @@ function themeFromTokens(resolved: 'light' | 'dark'): Theme {
   // reservoirs, and at 28 % of the accent they were the page's own colour.
   // Still not the marker's blue: a saturated sky blue on light, a softer one
   // on dark, both measured against the surface they sit on.
-  const water = resolved === 'light' ? 'rgb(52 132 214 / 0.62)' : 'rgb(96 165 250 / 0.55)'
+  const water = waterColour(resolved)
 
   return {
     ...base,
 
     // --- Ground -----------------------------------------------------------
-    background: surfaceBase,
-    earth: surfaceBase,
-    // The Negev IS sand and scrub; these three are most of what is on screen
-    // south of Beersheba, so they are a hair off the page rather than a
-    // colour, or the whole map becomes a texture.
-    sand: surfaceHigh,
-    scrub_a: surfaceHigh,
-    scrub_b: surfaceHigh,
-    beach: surfaceHigh,
-    park_a: surfaceHigh,
-    park_b: surfaceHigh,
-    wood_a: surfaceHigh,
-    wood_b: surfaceHigh,
-    pedestrian: surfaceHigh,
-    industrial: surfaceHigh,
-    school: surfaceHigh,
-    hospital: surfaceHigh,
-    military: surfaceHigh,
-    zoo: surfaceHigh,
-    aerodrome: surfaceHigh,
+    // ★★ Y1 — THE BACKGROUND IS THE SEA NOW, NOT THE PAGE. It is the colour of
+    //    every pixel the archive has no tile for, and while it was
+    //    `--surface-base` those pixels were indistinguishable from the panel
+    //    beside them: "des bandes blanches à droite et à gauche". Under it
+    //    goes `lo-world-land`, so the land outside the extract is land and the
+    //    sea is sea. `earth` — the archive's OWN land — keeps the page colour
+    //    and paints over both wherever there are tiles.
+    background: waterColour(resolved),
+    earth: mapLand,
+    // The Negev IS sand and scrub, and these are most of what is on screen
+    // south of Beersheba. They used to be "a hair off the page" — which read
+    // as nothing at all. They are a step off the LAND now, and the scrub and
+    // the woods a second step, so a wadi bed, a planted block and bare ground
+    // are three different things at a glance instead of one flat field.
+    sand: mapLandAlt,
+    scrub_a: mapLandAlt,
+    scrub_b: mapLandDeep,
+    beach: mapLandAlt,
+    park_a: mapLandAlt,
+    park_b: mapLandDeep,
+    wood_a: mapLandAlt,
+    wood_b: mapLandDeep,
+    pedestrian: mapLandAlt,
+    industrial: mapLandAlt,
+    school: mapLandAlt,
+    hospital: mapLandAlt,
+    military: mapLandAlt,
+    zoo: mapLandAlt,
+    aerodrome: mapLandAlt,
 
     water,
 
     // Buildings: present, never prominent. A moshav read as a grey texture is
     // right; a moshav read as a field of shapes competes with its own zone.
-    buildings: surfaceSunken,
+    buildings: mapLandDeep,
 
     // --- Roads ------------------------------------------------------------
     // Casings from the STRONG border, fills from the subtle one: that is the
@@ -145,35 +176,35 @@ function themeFromTokens(resolved: 'light' | 'dark'): Theme {
     railway: borderStrong,
     pier: borderSubtle,
 
-    minor_service_casing: surfaceBase,
-    minor_casing: surfaceBase,
-    link_casing: surfaceBase,
-    major_casing_early: surfaceBase,
-    major_casing_late: surfaceBase,
-    highway_casing_early: surfaceBase,
-    highway_casing_late: surfaceBase,
+    minor_service_casing: mapLand,
+    minor_casing: mapLand,
+    link_casing: mapLand,
+    major_casing_early: mapLand,
+    major_casing_late: mapLand,
+    highway_casing_early: mapLand,
+    highway_casing_late: mapLand,
 
     tunnel_other: borderSubtle,
     tunnel_minor: borderSubtle,
     tunnel_link: borderSubtle,
     tunnel_major: borderStrong,
     tunnel_highway: borderStrong,
-    tunnel_other_casing: surfaceBase,
-    tunnel_minor_casing: surfaceBase,
-    tunnel_link_casing: surfaceBase,
-    tunnel_major_casing: surfaceBase,
-    tunnel_highway_casing: surfaceBase,
+    tunnel_other_casing: mapLand,
+    tunnel_minor_casing: mapLand,
+    tunnel_link_casing: mapLand,
+    tunnel_major_casing: mapLand,
+    tunnel_highway_casing: mapLand,
 
     bridges_other: borderSubtle,
     bridges_minor: borderSubtle,
     bridges_link: borderSubtle,
     bridges_major: borderStrong,
     bridges_highway: borderStrong,
-    bridges_other_casing: surfaceBase,
-    bridges_minor_casing: surfaceBase,
-    bridges_link_casing: surfaceBase,
-    bridges_major_casing: surfaceBase,
-    bridges_highway_casing: surfaceBase,
+    bridges_other_casing: mapLand,
+    bridges_minor_casing: mapLand,
+    bridges_link_casing: mapLand,
+    bridges_major_casing: mapLand,
+    bridges_highway_casing: mapLand,
 
     // --- Boundaries -------------------------------------------------------
     // ⚠️ NOT a zone colour. `--zone-boundary` means "the edge of a farm we
@@ -186,17 +217,17 @@ function themeFromTokens(resolved: 'light' | 'dark'): Theme {
     // place name readable over sand AND over water without a second palette.
     country_label: textMuted,
     state_label: textMuted,
-    state_label_halo: surfaceBase,
+    state_label_halo: mapLand,
     city_label: textSecondary,
-    city_label_halo: surfaceBase,
+    city_label_halo: mapLand,
     subplace_label: textMuted,
-    subplace_label_halo: surfaceBase,
+    subplace_label_halo: mapLand,
     roads_label_major: textMuted,
-    roads_label_major_halo: surfaceBase,
+    roads_label_major_halo: mapLand,
     roads_label_minor: textMuted,
-    roads_label_minor_halo: surfaceBase,
+    roads_label_minor_halo: mapLand,
     address_label: textMuted,
-    address_label_halo: surfaceBase,
+    address_label_halo: mapLand,
     ocean_label: textMuted,
     waterway_label: textMuted,
     peak_label: textMuted,
@@ -272,6 +303,140 @@ let registered = false
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ Y1 (2026-09-06) — THE MAP THAT NEEDED A RELAUNCH. THE CACHE KEPT THE
+ *    REJECTION.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * The product owner's report ends on the sentence that names the bug: the
+ * vector ground "se dégrade ou disparaît, ne se rafraîchit pas, **oblige à
+ * relancer l'application**". Not a slow map, not a wrong colour — a map that
+ * cannot be recovered from inside the running page. Something is REMEMBERING
+ * the failure, and only a new page forgets it.
+ *
+ * ★ IT IS `SharedPromiseCache`, IN pmtiles 4.5.0, AND IT IS TWO LINES.
+ *   `getHeader` builds a promise, puts it in `this.cache` under the archive's
+ *   URL, and returns it. `getDirectory` does the same under
+ *   `url|etag|offset|length`. Neither one removes the entry when the promise
+ *   REJECTS — the `.catch` re-throws to the caller and leaves the poisoned
+ *   promise in the map. So:
+ *
+ *     · one failed range read on the header → EVERY tile for the rest of the
+ *       page's life awaits that same rejected promise. Nothing reaches the
+ *       wire again. The map is blank and stays blank.
+ *     · one failed read on a LEAF directory → every tile under that leaf dies
+ *       the same way, and the others carry on. Which is precisely "se
+ *       dégrade" rather than "disparaît", and why the two words are both in
+ *       the report.
+ *
+ *   An iPad supplies the failing read for free: iOS suspends fetches when a
+ *   tab is backgrounded, and Safari drops in-flight requests on a network
+ *   change. It does not take a bad connection, only a lock screen.
+ *
+ * ★ SO THERE ARE THREE LAYERS OF ANSWER HERE, and each one is needed for a
+ *   different length of outage.
+ *
+ *   1. `RetryingSource` — a blip of a few hundred milliseconds never becomes a
+ *      failure at all. Three attempts, backing off, and an abort is never
+ *      retried because an abort is MapLibre cancelling a range it no longer
+ *      wants.
+ *   2. `HealingCache` — a read that fails anyway does not poison its key. The
+ *      entry is dropped, so the NEXT caller starts a fresh fetch. This is the
+ *      one that makes recovery possible at all.
+ *   3. `MapCanvas` re-requests the tiles MapLibre marked `errored` — see the
+ *      tile-healing effect there. Without it the browser is willing and the
+ *      cache is clean, but nobody asks.
+ *
+ * ⚠️ ALL THREE ARE PROVED BY `bun run vector` SECTION D, which breaks the
+ *    network for real (`route.abort`) and then requires the map to come back
+ *    with NO reload and NO gesture. Both halves of it were seen red on this
+ *    file before this block existed: D1 stayed blank for the full 30 s budget,
+ *    D2 came back with 7 tiles still `errored`.
+ */
+
+/** Attempts per range read, including the first. */
+const RANGE_ATTEMPTS = 3
+
+/** A network blip is milliseconds; this ladder covers a second and a half. */
+const RANGE_BACKOFF_MS = [120, 400, 900]
+
+class RetryingSource implements Source {
+  private readonly inner: FetchSource
+
+  constructor(url: string) {
+    this.inner = new FetchSource(url)
+  }
+
+  getKey(): string {
+    return this.inner.getKey()
+  }
+
+  async getBytes(
+    offset: number,
+    length: number,
+    signal?: AbortSignal,
+    etag?: string,
+  ): Promise<RangeResponse> {
+    let last: unknown
+    for (let attempt = 0; attempt < RANGE_ATTEMPTS; attempt++) {
+      try {
+        return await this.inner.getBytes(offset, length, signal, etag)
+      } catch (error) {
+        // ⚠️ AN ABORT IS NOT A FAILURE. MapLibre aborts the ranges for a tile
+        //    the camera has left; retrying them would fetch bytes nobody wants
+        //    and, worse, would keep a dead tile's request alive.
+        if (signal?.aborted) throw error
+        // An ETag mismatch has its own recovery inside PMTiles (it invalidates
+        // and retries once). Retrying it here would fight that.
+        if (error instanceof Error && error.name === 'EtagMismatch') throw error
+        last = error
+        if (attempt < RANGE_ATTEMPTS - 1) {
+          await new Promise((resolve) => setTimeout(resolve, RANGE_BACKOFF_MS[attempt]))
+        }
+      }
+    }
+    throw last
+  }
+}
+
+/**
+ * `SharedPromiseCache`, minus the part that remembers failures.
+ *
+ * ⚠️ IT REACHES INTO `this.cache`, WHICH IS THE LIBRARY'S OWN FIELD AND NOT
+ *    ITS API. That is deliberate and it is the smallest possible version of
+ *    this fix: the alternative is a whole cache implementation of our own,
+ *    which would have to re-derive the directory key format anyway — and the
+ *    key format is the ONE thing that must not drift. The two keys below are
+ *    copied from `getHeader` and `getDirectory` verbatim, and
+ *    `bun run vector` D1/D2 fail loudly if a pmtiles upgrade changes either.
+ */
+class HealingCache extends SharedPromiseCache {
+  override async getHeader(source: Source): Promise<Header> {
+    try {
+      return await super.getHeader(source)
+    } catch (error) {
+      this.cache.delete(source.getKey())
+      throw error
+    }
+  }
+
+  override async getDirectory(
+    source: Source,
+    offset: number,
+    length: number,
+    header: Header,
+    signal?: AbortSignal,
+  ): Promise<Entry[]> {
+    try {
+      return await super.getDirectory(source, offset, length, header, signal)
+    } catch (error) {
+      this.cache.delete(`${source.getKey()}|${header.etag || ''}|${offset}|${length}`)
+      throw error
+    }
+  }
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
  * ★★ THE GLYPH SCHEME — WHY THE MAP HAD WHITE PATCHES AT LOW ZOOM (ETAT §31)
  * ═══════════════════════════════════════════════════════════════════════════
  *
@@ -333,7 +498,24 @@ function isGlyphPayload(response: Response): boolean {
 export function registerPmtilesProtocol(): void {
   if (registered) return
   const protocol = new Protocol()
+  /**
+   * ★ Y1 — THE ARCHIVE IS HANDED TO THE PROTOCOL RATHER THAN DISCOVERED BY IT.
+   *   `Protocol.tilev4` builds a `PMTiles` on first sight of a URL, with the
+   *   library's own `FetchSource` and its own `SharedPromiseCache` — the two
+   *   pieces this file replaces. `add()` registers ours under the same key
+   *   (`source.getKey()` is the URL), so the style's `pmtiles://…` resolves to
+   *   it and no default is ever constructed.
+   */
+  protocol.add(new PMTiles(new RetryingSource(BASEMAP_URL), new HealingCache()))
   maplibregl.addProtocol('pmtiles', protocol.tile)
+
+  /**
+   * Y1.1 — the archive's URL, readable from the page. `bun run vector`
+   * section B asks the SERVED object for a range and checks the answer, and
+   * hard-coding the URL in the gate is how a gate ends up testing a basemap
+   * the app no longer ships.
+   */
+  ;(globalThis as unknown as { __loYanumBasemapUrl?: string }).__loYanumBasemapUrl = BASEMAP_URL
 
   maplibregl.addProtocol(GLYPH_SCHEME, async (params, abortController) => {
     // `lo-glyphs://https://host/…` — the scheme is a prefix on the real URL,
@@ -1151,6 +1333,85 @@ function cityTiers(
  *   archive, so the layer that says WHERE YOU ARE keeps working when the
  *   imagery is slow, and the switch back to `'vector'` needs nothing fetched.
  */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ Y1 — THE GROUND OUTSIDE THE ARCHIVE. "DES BANDES BLANCHES À DROITE ET À
+ *    GAUCHE."
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * The bands are not a fault in the file and no re-cut removes them. The
+ * archive is a COUNTRY extract, so its tiles have an edge, and `bun run vector`
+ * section A prints exactly where that edge is:
+ *
+ *     z6  lon 33.75…39.38      z7  lon 33.75…36.56
+ *     z8  lon 33.75…36.56      z9  lon 33.75…36.56
+ *
+ * An iPad in landscape at z6 spans 32 768 px of world; the archive can paint
+ * 512 of them. Everything else was the style's `background` — which was
+ * `--surface-base`, the PAGE's own colour, and therefore read as a hole rather
+ * than as a margin. That is the whole of the report's second sentence, and it
+ * is why the satellite (a global raster) was perfect at every zoom while the
+ * vector was not.
+ *
+ * ★ SO THE APP CARRIES ITS OWN GROUND, AND IT IS A COASTLINE AND NOTHING ELSE.
+ *   Natural Earth's 50 m land polygons, public domain, clipped to a box around
+ *   the programme and committed as 18 kB of JSON by `bun run worldland`. The
+ *   sea is painted by the style's `background` and the land by one fill on top
+ *   of it, both UNDER every archive layer — so where the archive has tiles it
+ *   wins on every pixel, and where it has none the coordinator sees a sea that
+ *   is a sea and a Jordan that is land.
+ *
+ * ⚠️ THERE IS NO BOUNDARY IN THAT FILE AND THERE MUST NEVER BE ONE. A
+ *    coastline is where the water stops and nobody disputes it. Every land
+ *    border in this frame is exactly the kind of line ETAT's standing rule
+ *    ("aucune coordonnée inventée", §X12/§Y8) is about, and Natural Earth's
+ *    opinion of them is not this project's to publish. The archive draws the
+ *    borders, from OSM, as it always did.
+ *
+ * ★ AND IT DOUBLES AS THE FALLBACK GROUND the report asks for in so many
+ *   words — "fond de secours coloré sous les tuiles". It is drawn from a
+ *   bundled constant with no fetch and no cache entry, so a device that cannot
+ *   read one byte of the archive still gets a map-shaped map instead of a
+ *   white rectangle.
+ */
+const WORLD_GROUND_SOURCE = 'lo-world'
+export const WORLD_GROUND_LAYER = 'lo-world-land'
+
+/**
+ * How far the camera may travel. The clip box of `world-land.json`, minus a
+ * hair so the fill always reaches the edge of the screen rather than ending on
+ * it.
+ *
+ * ★ IT IS A CAMERA BOUND AND THEREFORE ALSO A MINIMUM ZOOM: MapLibre keeps the
+ *   viewport inside `maxBounds`, so on an iPad this floors the zoom at about
+ *   5, which is the whole eastern Mediterranean in frame. Below that the app
+ *   would be showing an ocean of nothing to a coordinator whose programme is
+ *   180 km across.
+ */
+export const MAP_MAX_BOUNDS: [[number, number], [number, number]] = [
+  [24.2, 21.2],
+  [45.8, 40.8],
+]
+
+/**
+ * ONE fill, and it goes immediately above Protomaps' own `background` layer —
+ * which is the sea — and immediately below `earth`, which is the archive's
+ * land. Three layers, in the order the eye reads them: water, then land we
+ * carry, then land the archive knows about.
+ */
+function worldGroundSource(): SourceSpecification {
+  return { type: 'geojson', data: worldLand as GeoJSON.FeatureCollection }
+}
+
+function worldGroundLayer(): LayerSpecification {
+  return {
+    id: WORLD_GROUND_LAYER,
+    type: 'fill',
+    source: WORLD_GROUND_SOURCE,
+    paint: { 'fill-color': token('--map-land') },
+  } as LayerSpecification
+}
+
 export function buildBasemapStyle(
   resolved: 'light' | 'dark',
   base: BasemapBase = 'vector',
@@ -1250,13 +1511,23 @@ export function buildBasemapStyle(
   const kept = layers.filter((l) => l.id !== 'boundaries_country' && l.id !== 'boundaries')
   const insert = at === -1 ? kept.length : at
 
+  /**
+   * ★ Y1 — the off-archive land goes straight after Protomaps' `background`
+   *   (the sea) and before everything else. `findIndex` rather than `[0]`
+   *   because the order of a themed layer list is the theme's to decide, and a
+   *   ground layer that ends up on top of the roads is worse than no ground.
+   */
+  const withGround = [...kept.slice(0, insert), ...boundaryLayers('vector'), ...kept.slice(insert)]
+  const bg = withGround.findIndex((l) => l.type === 'background')
+  const groundAt = bg === -1 ? 0 : bg + 1
+
   return {
     ...common,
-    sources: { protomaps },
+    sources: { protomaps, [WORLD_GROUND_SOURCE]: worldGroundSource() },
     layers: [
-      ...kept.slice(0, insert),
-      ...boundaryLayers('vector'),
-      ...kept.slice(insert),
+      ...withGround.slice(0, groundAt),
+      worldGroundLayer(),
+      ...withGround.slice(groundAt),
     ],
   }
 }

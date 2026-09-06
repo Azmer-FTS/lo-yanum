@@ -55,7 +55,9 @@
     "band": "bun run scripts/band.ts",
     "fixedhours": "bun run scripts/fixedhours.ts",
     "ycaptures": "bun run scripts/ycaptures.ts",
-    "parse": "bun run scripts/parse.ts"
+    "parse": "bun run scripts/parse.ts",
+    "vector": "bun run scripts/vector.ts",
+    "worldland": "bun run scripts/worldland.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "^0.4.0",

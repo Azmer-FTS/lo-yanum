@@ -13,7 +13,7 @@ import { readToken } from './badges'
 import { readStoredBase, writeStoredBase } from './mapBase'
 import { MapTools } from './MapTools'
 import { MARKER_LAYER, useMapLayers } from './mapLayers'
-import { buildBasemapStyle, registerPmtilesProtocol, resolvedThemeOf } from './basemap'
+import { MAP_MAX_BOUNDS, buildBasemapStyle, registerPmtilesProtocol, resolvedThemeOf } from './basemap'
 import { REGIONS, regionById, regionOf } from '@core/index'
 import type { BasemapBase } from './basemap'
 
@@ -865,6 +865,19 @@ export default function MapCanvas({
       bearing: restore?.bearing ?? 0,
       pitch: restore?.pitch ?? 0,
       interactive,
+      /**
+       * ★★ Y1 — HOW FAR THE CAMERA MAY GO, AND WHY THERE IS A LIMIT AT ALL.
+       *
+       * `MAP_MAX_BOUNDS` is the clip box of the off-archive ground the app
+       * carries (`world-land.json`). Beyond it there is no coastline and no
+       * archive, so the only thing left to draw is the sea colour — a blue
+       * rectangle with markers on it, which is the same defect as the white
+       * one it replaces. MapLibre keeps the viewport inside these bounds, so
+       * this is also a floor on the zoom: about z5 on an iPad, which frames
+       * the whole eastern Mediterranean. A programme 180 km across has no use
+       * for anything wider.
+       */
+      maxBounds: MAP_MAX_BOUNDS,
       /* ★ X3.4 (2026-09-04) — MAPLIBRE'S ATTRIBUTION CONTROL IS OFF. It is
          added at the PHYSICAL bottom-right, which in this Hebrew app is the
          corner the legend owns, so the "i" ended up under the panel — the
@@ -1475,6 +1488,176 @@ export default function MapCanvas({
     // Mount-only, plus `glGeneration`: later prop changes are handled by the
     // effects below, which is far cheaper than tearing the GL context down.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [glGeneration])
+
+  /**
+   * ★★ Y1 (2026-09-06) — THE THIRD LAYER OF THE RECOVERY: SOMEBODY HAS TO ASK
+   *    AGAIN.
+   *
+   * `basemap.ts` fixes the two reasons a re-request could not SUCCEED — the
+   * retry ladder in `RetryingSource` and the cached rejection in
+   * `HealingCache`. Neither one causes a re-request to HAPPEN, and MapLibre
+   * never issues one: a tile that fails goes to state `errored` and stays
+   * there for as long as it is in the cache. Zooming does not clear it (the
+   * same tile id comes back at the same state), and switching ground does not
+   * either. That is the whole of "ne se rafraîchit pas, oblige à relancer
+   * l'application" — measured, before this effect existed, as **7 tiles still
+   * errored 15 s after the network came back**, and still 2 after a zoom in
+   * and out.
+   *
+   * ★ WHAT WAKES IT UP, and why each one is in the list:
+   *
+   *   · `error` on the map — a tile has just failed; try again shortly, in
+   *     case it was one blip. Debounced, because a lost connection fails
+   *     twenty tiles at once and twenty reloads is a stampede.
+   *   · `online` — the iPad found the farmhouse Wi-Fi again. This is the event
+   *     the product owner's own gesture (put it down, pick it up) generates.
+   *   · `visibilitychange` — iOS suspends fetches for a backgrounded tab and
+   *     the ones in flight come back as failures. Returning to the app is
+   *     therefore a moment when the map is very often wrong and nothing else
+   *     would notice.
+   *   · a slow sweep — the catch-all, at 20 s, for an outage that ends without
+   *     the browser telling anyone. Costs nothing when there is nothing to do:
+   *     the first thing it does is count, and it counts zero.
+   */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let disposed = false
+    /** Grows while the healing keeps failing, resets the moment it works. */
+    let backoff = 0
+
+    /**
+     * How many tiles of the archive MapLibre has given up on.
+     *
+     * ⚠️ `style.sourceCaches` IS INTERNAL, and it is read rather than written.
+     *    There is no public way to ask "which tiles failed", and the
+     *    alternative — reloading the source unconditionally on a timer —
+     *    re-fetches a working map every twenty seconds on a metered
+     *    connection. Guarded so that a MapLibre upgrade which renames it makes
+     *    this a no-op rather than a crash.
+     */
+    interface TileCache {
+      _tiles?: Record<string, { state?: string }>
+      _reloadTile?: (id: string, state: string) => void
+    }
+    const tileCache = (): TileCache | undefined =>
+      (map as unknown as { style?: { sourceCaches?: Record<string, TileCache> } }).style
+        ?.sourceCaches?.protomaps
+
+    const erroredIds = (): string[] => {
+      const cache = tileCache()
+      if (!cache?._tiles) return []
+      return Object.keys(cache._tiles).filter((id) => cache._tiles?.[id].state === 'errored')
+    }
+
+    /**
+     * ★★ AND THE WORST CASE IS NOT A TILE, IT IS THE SOURCE.
+     *
+     * A `pmtiles://` source loads by reading the archive's HEADER — one range
+     * request — and turning it into TileJSON. If THAT read fails, MapLibre
+     * never finishes loading the style: `map.on('load')` never fires, no tile
+     * is ever requested, and there is nothing in `sourceCaches` to be errored.
+     * Measured with the network cut for the first four seconds of the page:
+     * the map sat there for the full 40 s budget and `__loYanumMap` was never
+     * even published. That is the strongest form of the report — an app that
+     * can only be relaunched — and no amount of tile reloading reaches it,
+     * because tiles are downstream of a source that never came up.
+     *
+     * `VectorTileSource.load()` re-fetches the TileJSON and fires `data` with
+     * `sourceDataType: 'metadata'` on success, which is what lets `load` fire
+     * late and the whole style come alive.
+     */
+    const sourceDown = (): boolean => {
+      const source = map.getSource('protomaps') as unknown as { _loaded?: boolean } | undefined
+      return Boolean(source) && source?._loaded === false
+    }
+
+    /**
+     * ⚠️⚠️ AND `SourceCache.reload()` IS NOT THE CALL, WHICH COST A WHOLE RUN
+     *      OF THE GATE TO LEARN. MapLibre 4.7.1, verbatim:
+     *
+     *        reload() { … for (const t in this._tiles)
+     *                       "errored" !== this._tiles[t].state
+     *                         && this._reloadTile(t, "reloading"); }
+     *
+     *      It reloads every tile EXCEPT the errored ones — which is a
+     *      defensible default (a reload is normally a style change, and
+     *      re-requesting a tile that has already failed would stampede a dead
+     *      network) and is exactly, precisely the set this function exists to
+     *      re-request. `bun run vector` D2 stayed at 5 errored tiles with the
+     *      call in place, and that is why: it was a no-op on its whole target.
+     *
+     *      So the errored tiles are re-requested ONE BY ONE through
+     *      `_reloadTile`, which is the same method `reload()` calls and the
+     *      same state (`'reloading'`) it passes.
+     */
+    const heal = (): void => {
+      if (disposed || !mapRef.current) return
+      try {
+        if (sourceDown()) {
+          ;(map.getSource('protomaps') as unknown as { load?: () => void } | undefined)?.load?.()
+          return
+        }
+        const ids = erroredIds()
+        if (ids.length === 0) {
+          backoff = 0
+          return
+        }
+        const cache = tileCache()
+        for (const id of ids) cache?._reloadTile?.(id, 'reloading')
+        map.triggerRepaint()
+        // Still broken? Come back, less often each time, up to the sweep's
+        // own cadence — a device with no coverage must not spin.
+        backoff = Math.min(backoff === 0 ? 1500 : backoff * 2, 20_000)
+        schedule(backoff)
+      } catch {
+        // A style being torn down mid-reload is not worth a broken map.
+      }
+    }
+
+    const schedule = (delay: number): void => {
+      clearTimeout(timer)
+      timer = setTimeout(heal, delay)
+    }
+
+    const onError = (): void => schedule(sourceDown() ? 600 : 1500)
+    // A gesture by the user is a fresh chance, and it resets the ladder.
+    const retryNow = (): void => {
+      backoff = 0
+      schedule(200)
+    }
+    const onOnline = retryNow
+    const onVisible = (): void => {
+      if (document.visibilityState === 'visible') retryNow()
+    }
+
+    map.on('error', onError)
+    window.addEventListener('online', onOnline)
+    document.addEventListener('visibilitychange', onVisible)
+    /**
+     * ⚠️ TWO CADENCES, AND THE FAST ONE IS NOT A POLL OF THE NETWORK. While
+     *    the SOURCE is down the app is unusable, so it is retried every 3 s;
+     *    once it is up the sweep is the 20 s catch-all described above. Both
+     *    do nothing at all when there is nothing wrong — the first thing
+     *    `heal` does is ask.
+     */
+    const sweep = setInterval(() => {
+      if (sourceDown()) heal()
+    }, 3000)
+    const slowSweep = setInterval(heal, 20_000)
+
+    return () => {
+      disposed = true
+      clearTimeout(timer)
+      clearInterval(sweep)
+      clearInterval(slowSweep)
+      map.off('error', onError)
+      window.removeEventListener('online', onOnline)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [glGeneration])
 
   // Sync markers.
