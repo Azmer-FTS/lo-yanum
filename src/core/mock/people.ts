@@ -545,6 +545,54 @@ export const DRIVERS: Driver[] = [
 
 // G5.2 — the dual hats: one Driver row per canDrive volunteer, linked by
 // volunteerId. Same human, both rosters, seats of a private car.
+/**
+ * ★★ Y10 (2026-09-06) — A DRIVER IS A COMPLETE ROW, OR HE IS NOT A DRIVER.
+ *
+ * "Un conducteur s'appelle « Yu » (écran נהגים מתנדבים), sans photo ni adresse
+ *  complète. Corriger le jeu de démonstration : tout conducteur a un nom
+ *  hébreu complet, une photo cohérente avec le programme, une ville et un
+ *  nombre de places."
+ *
+ * ★ "Yu" WAS THE INITIALS DISC, and that is worth writing down because it is
+ *   the actual defect. Every generated name in this file is a full Hebrew
+ *   first name and surname — there is no two-letter driver in the fixtures.
+ *   What he read as a name was `Avatar`'s fallback for a driver with no
+ *   photograph: two Hebrew letters in a disc where a face belongs, and
+ *   "יו" (yod-vav, the initials of e.g. יונתן ורדי) is exactly "Yu" to a
+ *   French reader. A demonstration row that makes a reviewer ask "who is Yu"
+ *   has already cost more than the photograph would have.
+ *
+ * ★ SO EVERY DRIVER CARRIES ALL FOUR, and the dual-hat rows carried none of
+ *   the last three: `vehicle: ''`, `availabilityNote: ''` and a photo only
+ *   when the volunteer happened to have drawn one. The car and the note are
+ *   seeded from the volunteer's own id, so they are stable across reloads like
+ *   everything else in this file.
+ *
+ * ⚠️ AND THE VOLUNTEERS KEEP THEIR MIXED STATE, deliberately — see the loop at
+ *    the foot of this file. The CC0 pool is SIXTEEN portraits of young men
+ *    (`demoPhotos.ts`, W1) and there are 284 volunteers: at 100 % each face
+ *    appears eighteen times in one scroll, which reads as a stock-photo
+ *    catalogue rather than as a roster. Nine drivers against sixteen faces
+ *    repeat nothing.
+ */
+const PRIVATE_CARS = [
+  'מאזדה 3 אפורה',
+  'סקודה אוקטביה כחולה',
+  'טויוטה קורולה לבנה',
+  'יונדאי i20 כסופה',
+  'קיה ספורטאז׳ שחורה',
+  'פורד פוקוס אדומה',
+] as const
+
+const DRIVER_NOTES = [
+  'זמין בערבי חול, מתאם מראש.',
+  'מסיע בדרך חזרה מהישיבה.',
+  'זמין בימי חמישי ובמוצאי שבת.',
+  'מעדיף מסלולים באזור הנגב המערבי.',
+  'זמין בהתראה קצרה בתוך העיר.',
+  'נוסע קבוע לרמת נגב.',
+] as const
+
 const VOLUNTEER_DRIVERS: Driver[] = NAMED_VOLUNTEERS.filter(
   (v) => v.canDrive,
 ).map((v, i) => ({
@@ -553,11 +601,11 @@ const VOLUNTEER_DRIVERS: Driver[] = NAMED_VOLUNTEERS.filter(
   phone: v.phone,
   // The dual hat is ONE human: the same address, not a second one.
   email: v.email,
-  vehicle: '',
+  vehicle: PRIVATE_CARS[i % PRIVATE_CARS.length],
   seats: 4,
   locality: v.locality,
   photo: v.photo,
-    availabilityNote: '',
+  availabilityNote: DRIVER_NOTES[i % DRIVER_NOTES.length],
   notes: '',
   volunteerId: v.id,
 }))
@@ -571,8 +619,11 @@ for (const volunteer of VOLUNTEERS) {
     volunteer.photo = `placeholder:person:${volunteer.id}`
   }
 }
+/**
+ * ★★ Y10 — EVERY driver, not 65 % of them. See the note above
+ *    `VOLUNTEER_DRIVERS`: nine rows against sixteen CC0 portraits repeat
+ *    nothing, and the initials disc is what the product owner read as a name.
+ */
 for (const driver of DRIVERS) {
-  if (seedHasPhoto(driver.id, 0.65)) {
-    driver.photo = `placeholder:person:${driver.id}`
-  }
+  driver.photo = `placeholder:person:${driver.id}`
 }
