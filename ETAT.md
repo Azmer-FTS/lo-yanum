@@ -1,7 +1,239 @@
 # לא ינום — ETAT
 
-> 🏁 **PASSE UI/UX + BUGS CRITIQUES — Y1→Y13 COMPLÈTE, 2026-09-04. LIRE EN
-> PREMIER.**
+> 🏁 **PASSE FOND DE CARTE, ZONES, RESPIRATION ET BUGS — Y1→Y11 COMPLÈTE,
+> 2026-09-06. LIRE EN PREMIER.**
+>
+> Onze unités, dix commits, poussées et vérifiées sur l'URL servie. Les deux
+> bloquants sont traités en premier comme demandé, et dans les deux cas la
+> cause était **nommable et mesurable** — pas une impression, pas un réglage.
+>
+> ## Les deux bloquants
+>
+> **Y1 — la carte qu'il fallait relancer était un CACHE QUI GARDAIT LE REFUS.**
+>
+> Le premier suspect, l'archive, a été mesuré et **innocenté** : `bun run
+> vector` section A l'énumère tuile par tuile, z0 à z12, 24 519 tuiles
+> adressées, aucune absente sur Israël, neuf couches vectorielles. La recouper
+> n'aurait rien changé.
+>
+> Ce qui produit exactement « se dégrade ou disparaît, ne se rafraîchit pas,
+> **oblige à relancer l'application** » est deux lignes de `pmtiles 4.5.0` :
+> `SharedPromiseCache.getHeader` et `.getDirectory` rangent la PROMESSE sous la
+> clé de l'archive et ne l'en retirent **jamais quand elle échoue**. Une seule
+> lecture ratée — un iPad qui perd le réseau une seconde, un onglet qui revient
+> de l'arrière-plan — empoisonne cette clé pour la durée de vie de la page :
+> toute lecture ultérieure attend la même promesse rejetée, rien ne repart sur
+> le fil, et seule une relance efface. Une clé de répertoire FEUILLE ratée tue
+> les tuiles sous cette feuille et laisse les autres : c'est « se dégrade »
+> plutôt que « disparaît », et c'est pourquoi les deux mots sont dans le
+> rapport.
+>
+> Trois couches de réponse, une par durée de panne, plus une quatrième
+> découverte en route :
+>
+> 1. `RetryingSource` — trois essais, un blip ne devient jamais un échec ;
+> 2. `HealingCache` — une lecture qui échoue quand même n'empoisonne pas sa
+>    clé ;
+> 3. la reprise dans `MapCanvas` — quelqu'un doit **redemander**. MapLibre ne
+>    le fait pas : une tuile en échec reste `errored` tant qu'elle est en cache,
+>    et ni le zoom ni la bascule de fond ne l'en sortent ;
+> 4. ⚠️ **et `SourceCache.reload()` n'est pas l'appel.** MapLibre 4.7.1,
+>    textuellement : `"errored" !== this._tiles[t].state && this._reloadTile(…)`
+>    — il recharge toutes les tuiles **sauf** celles en erreur, exactement
+>    l'ensemble visé. D2 est resté à 5 tuiles en erreur avec l'appel en place.
+>    Elles sont redemandées une par une.
+>
+> Et si la lecture d'en-tête elle-même échoue, la SOURCE ne charge jamais :
+> `map.on('load')` ne se déclenche pas, aucune tuile n'est demandée, il n'y a
+> rien dans `sourceCaches` à réparer. C'est la forme la plus forte du rapport,
+> et elle est traitée à part (`VectorTileSource.load()` rappelé).
+>
+> **Y1bis — les bandes blanches sont LE BORD DE L'EXTRAIT.** L'archive est une
+> coupe nationale. Mesuré : lon 33,75–39,38 à z6 et seulement 33,75–36,56 dès
+> z7. Un iPad en paysage à z6 couvre 32 768 px de monde et l'archive en peint
+> 512. **Aucune recoupe d'Israël n'y change rien — ce qui manque n'est pas
+> Israël.** L'app porte donc son propre sol : le trait de côte Natural Earth
+> 50 m, domaine public, découpé autour du programme, 18 ko embarqués. Aucune
+> frontière dans ce fichier et il ne doit jamais y en avoir : une côte est là
+> où l'eau s'arrête et personne ne la conteste, une frontière terrestre dans ce
+> cadre est exactement le genre de trait que la règle « aucune coordonnée
+> inventée » vise.
+>
+> **Y1ter — et le sol a sa couleur.** `earth` était `--surface-base` : le sol de
+> la carte était la couleur du panneau d'à côté. 68 % du canvas à z12 et 82 % à
+> z15 sur une seule valeur — « un aplat sans relief ni détail », mesuré. Trois
+> tokens (`--map-land`, `-alt`, `-deep`) donnent au désert, aux cultures et au
+> bâti trois valeurs différentes. Ce qui rend aussi le test possible : aucun
+> pixel de la carte ne peut plus être la couleur de la page, donc un pixel qui
+> l'est est un pixel que rien n'a peint.
+>
+> ⚠️ **TROIS DÉFAUTS DE PLUS ONT ÉTÉ PRIS SUR LES CAPTURES DE L'URL DÉPLOYÉE,
+> pas par un gate** — et chacun a ajouté au gate la question qu'il ne posait
+> pas. C'est la partie de cette passe qui mérite d'être relue :
+>
+> 1. **Le `background` portait l'alpha de l'eau.** Une couche `background` n'a
+>    rien dessous : MapLibre la compose contre un canvas transparent, donc à
+>    62 % la mer hors archive sortait en lavis, avec un bord de TUILE bien droit
+>    sur son flanc. → le gate exige un `background` opaque.
+> 2. **La terre débordait dans la Méditerranée.** `worldland.ts` découpait ses
+>    anneaux par Sutherland–Hodgman, correct pour un polygone CONVEXE et qui
+>    relie, pour un concave, des morceaux qui ne le sont pas. Sondé sur la page
+>    servie : `queryRenderedFeatures` à 33,39 E / 31,73 N — pleine mer —
+>    répondait `lo-world-land`. Plus rien n'est découpé ; les anneaux sont
+>    gardés entiers et simplifiés. → le gate demande à la carte si six points
+>    nommés sont mer ou terre.
+> 3. **Une marche au milieu de la mer.** Le fond était le composite
+>    eau-sur-terre (125,173,221) et l'océan de l'archive est l'eau peinte SUR ce
+>    fond (80,148,217). Les deux ne coïncident que si l'eau est opaque : c'est
+>    le seul point fixe. L'alpha s'en va, et les valeurs retenues sont les
+>    composites qui étaient déjà à l'écran — rien ne change de couleur. → le
+>    gate lit deux pixels, un de chaque côté du bord de tuile.
+>
+> Le motif est le même trois fois : **un contrôle de pixels non peints ne voit
+> pas une couleur de carte légitime au mauvais endroit.** Une capture de l'URL
+> servie, regardée, le voit.
+>
+> **Y7 — l'en-tête collant avait TROIS trous**, et n'en corriger que deux en
+> laissait un visible. Il n'était pas opaque (`rgba(243,244,246,0.95)` mesuré
+> sur les cinq listes ; sur WebKit un `backdrop-filter` dans un scroller est
+> composé tard ou pas du tout) ; le padding haut du scrollport n'était pas
+> couvert, donc 20 px de contenu vivant au-dessus de lui ; et l'espace en
+> dessous était une marge, donc un trou. Le rideau est un pseudo-élément et non
+> une `box-shadow` — une ombre peint sans être cliquable, et le doigt
+> atteindrait la carte dessous.
+>
+> ## Les gates
+>
+> | Gate | Portée | Résultat |
+> |---|---|---|
+> | `vector` | **nouveau** (Y1) — archive, service worker, bandes, mer/terre, couture, reprise réseau | **34/34**, chromium ET webkit |
+> | `rhythm` | **nouveau** (Y5·Y6·Y7·Y8) — 3 viewports × 2 modes × 6 écrans | **217/217**, chromium ET webkit |
+> | `settings` | **nouveau** (Y2·Y3·Y4) — stylet, rôles, thème, synchronisation | **18/18**, chromium ET webkit |
+> | `rows` | **nouveau** (Y9) — 5 tableaux × 3 largeurs | **87/87**, chromium ET webkit |
+> | `backdrop` | bordures, satellite, pixels peints | **36/36**, chromium ET webkit |
+> | `band` · `modes` · `reserve` | bandeaux, modes, réserve du bas | 64/64 · 75/75 · 56/56 |
+> | `overlap` · `redraw` · `freehand` | recouvrements, redessin, tracé | 185/185 · 18/18 · 30/30 |
+> | `layout` · `blocks` · `seam` | 4 viewports × 32 écrans, blocs, couture | 0 échec · 36/36 · 7/7 |
+> | `splitter` · `touch` · `rtl` · `zones` · `wizard` | 72 · 57 · 45 · 38 · 28, 0 échec |
+> | `regions` · `accept` · `dispatch` · `fixedhours` | pur, domaine, affectation, horaires | 58 · 176 · 27 · 19 |
+> | `report` · `deletion` · `persist` · `import` · `demo` · `agreement` · `outreach` | 86 · 61 · **94** · **29** · 12 · 18 · 25 |
+> | `tokens` · `contrast` · `parse` · `empty` | A28/A29/A57, WCAG AA, 57 scripts, 10 écrans | tous verts |
+>
+> **Deux portes étaient rouges AVANT cette passe** et le re-passage A1–A50 les a
+> fait remonter ; elles sont corrigées ici plutôt que laissées « rouges
+> connues » : `import` l'était depuis Y12 (la loupe ouvre un panneau, donc il
+> n'y a plus de champ dans l'en-tête tant qu'on ne l'a pas pressée — la porte
+> attendait 60 s un sélecteur qui ne pouvait pas résoudre), et `tokens`
+> signalait quatre violations A28 présentes dans l'arbre depuis `92fa94e`.
+>
+> ## Ce qui a changé, unité par unité
+>
+> **Y2 — עריכת אזורים.** `core/regions.ts` porte depuis X12 une limite écrite
+> noir sur blanc : ces anneaux sont des approximations tracées à la main
+> d'après une photo d'une carte pédagogique. La seule personne qui puisse les
+> corriger est celle qui tient la carte. C'est un OVERLAY, pas une édition des
+> littéraux, donc « שחזר ברירת מחדל » supprime une clé. `regionOf` lit
+> `regions()`, donc il n'existe pas de seconde liste : la région d'une ferme,
+> celle d'un volontaire, la répartition en dounams, les aplats et les compteurs
+> bougent tous à l'enregistrement — c'est ce que veut dire « source de vérité ».
+> Deux moyens d'édition, le même moteur que les polygones de ferme.
+>
+> ⚠️ Et `setPointerCapture` est protégé : il LÈVE `NotFoundError` quand
+> l'identifiant de pointeur n'est plus actif, ce qui arrive pour de vrai quand
+> un stylet est relevé entre la mise en file de l'événement et le gestionnaire.
+> L'exception abandonnait tout le handler avant `tracing = true` : le tracé ne
+> faisait rien, sans erreur visible.
+>
+> **Y3 — le thème quitte le rail, et רכז est l'un des quatre.** Y13 avait
+> construit מצב תצוגה comme un choix de PERSONNE à incarner, donc רכז n'y
+> figurait pas — c'est exactement pour ça que la bascule était introuvable : on
+> cherchait une rangée de quatre et on trouvait une rangée de trois qui ne
+> contenait pas la sienne.
+>
+> **Y4 — סנכרון פריסה** est un changement de CLÉ et rien d'autre : `free` lit
+> `…:map-mode:farms`, `synced` lit `…:map-mode:__all__`. Chaque écran continue
+> d'appeler `useMapMode(screenKey)` et ne sait rien du réglage, donc aucun écran
+> ne peut oublier de l'honorer. Défaut `free`, aucune régression.
+>
+> **Y5 — la cause était le SNAP, pas le padding.** `.scroll-row` sort déjà de la
+> colonne et remet le padding à l'intérieur : la boîte de la première carte EST
+> sur la marge. Ce qui la déplaçait, c'est `scroll-snap-align: start` sans
+> `scroll-padding` sur le scroller — la rangée se posait une marge trop loin.
+> Titre à x=940, première carte à x=960, `scrollLeft` à −20 au chargement, sur
+> les six rangées nommées. Une déclaration.
+>
+> **Y6 — le rythme est une valeur.** Mesuré avant : titre→KPI 4 px, KPI→filtres
+> **−18 px** — les deux rangées se CHEVAUCHAIENT. `--list-rhythm` vaut 16 px et
+> les trois blocs le respectent aux trois viewports. Le compteur n'apparaît plus
+> qu'une fois : `LoadMore` répétait la phrase exacte de la pastille, pris par le
+> gate sur מתנדבים.
+>
+> **Y8 — le panneau pousse la liste**, il ne la recouvre plus, et une région
+> vide est grisée plutôt que masquée.
+>
+> **Y9 — une hauteur.** C'était `56` cinq fois sous deux noms. `ROSTER_ROW_HEIGHT`
+> vaut 64. Et l'en-tête d'אירועים était décalé de 4 px : chaque rangée
+> d'incident porte une barre de gravité sur son bord de début, l'en-tête ne la
+> portait pas.
+>
+> **Y10 — « Yu » était le disque d'initiales**, pas un nom. Aucun conducteur des
+> fixtures ne porte un nom de deux lettres ; ce que le PO a lu est le repli
+> d'`Avatar`, et « יו » se lit exactement « Yu » pour un lecteur français.
+>
+> ## Ce qui reste, et ce qui est délibéré
+>
+> - **Les volontaires gardent leur état mixte de photos** (Y10). Le fonds CC0
+>   est de **seize** portraits de jeunes hommes et il y a 284 volontaires : à
+>   100 % chaque visage apparaît dix-huit fois dans un même défilement, ce qui
+>   se lit comme un catalogue de banque d'images. C'est un écart assumé au
+>   « tout volontaire » de la demande, et la raison est le nombre de photos
+>   libres disponibles, pas le code. Les neuf conducteurs, eux, ont tous les
+>   quatre attributs demandés.
+> - **Le shell de terrain garde son sélecteur de thème** (Y3.1). חקלאי,
+>   מתנדב et נהג n'ont pas d'écran de réglages ; le leur retirer serait leur
+>   retirer le thème. Le rail du coordinateur, lui, ne l'a plus.
+> - **Les contours par défaut des régions restent approximatifs** (X12) — mais
+>   ils sont maintenant corrigeables par le PO lui-même, ce qui était le seul
+>   remède honnête.
+> - **Les frontières TERRESTRES des régions ne sont pas découpées** (Y8.2 de la
+>   passe précédente), et c'est toujours délibéré, pour la même raison.
+> - **`scripts/` n'est pas typechecké.** Inchangé ; `bun run parse` couvre la
+>   classe d'erreur qui a fait échouer un déploiement.
+> - ⚠️ **Inchangé et toujours vrai** : les portraits de démonstration sont
+>   temporaires (`docs/demo-photos-licences.md`), et l'historique du dépôt porte
+>   encore les 477 images du commit `4bbf4c4`.
+>
+> ## À re-tester par le PO — 6 points
+>
+> 1. **La carte, sur l'iPad, en coupant le réseau.** Mettre l'appareil en mode
+>    avion pendant que la carte charge, puis le rallumer sans relancer l'app :
+>    le fond doit revenir tout seul. Et laisser l'app en arrière-plan une minute
+>    avant d'y revenir.
+> 2. **Les zooms.** z6 (le pays), z9, z12, z15 : plus de bande blanche, la mer
+>    est une mer et la Jordanie est de la terre. Le désert doit avoir du grain.
+> 3. **עריכת אזורים** (הגדרות → עריכת אזורים) : choisir הנגב, redessiner au
+>    Pencil, regarder la surface vivante, annuler, refaire, enregistrer — puis
+>    aller sur חוות et vérifier que les compteurs par région ont bougé. Et
+>    « שחזר ברירת מחדל » pour revenir.
+> 4. **הגדרות → תצוגה** : le thème (trois valeurs) et « סנכרון פריסה ». En
+>    mode מסונכרן, changer la disposition sur חוות et vérifier מתנדבים.
+> 5. **Le haut de chaque liste.** La première carte de chaque rangée doit
+>    commencer exactement sous la première lettre du titre, et rien ne doit
+>    passer devant l'en-tête en défilant.
+> 6. **מצב תצוגה** : les quatre rôles, רכז en premier et marqué.
+>
+> Captures de l'URL déployée, clair ET sombre, iPad portrait, iPad paysage et
+> iPhone : `docs/screenshots/zpass/` (48 images).
+> Pour reprendre : `git pull && bun install && bun run dev`, puis
+> `bun run parse`, `bun run vector`, `bun run rhythm`, `bun run rows`,
+> `bun run settings`, `ENGINE=webkit bun run vector`, et
+> `VIEWPORT=all BASE_URL=http://localhost:5173 bun run layout`.
+
+---
+
+> 🏁 **PASSE UI/UX + BUGS CRITIQUES — Y1→Y13, 2026-09-04.** (Note précédente,
+> conservée. La table des gates ci-dessous est celle de cette passe-là ; la
+> table courante est en tête de fichier.)
 >
 > Les treize unités sont livrées, en dix commits, poussées et vérifiées sur
 > l'URL servie. Les deux bugs bloquants avaient tous deux une cause que le
