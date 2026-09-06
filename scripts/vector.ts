@@ -461,6 +461,57 @@ try {
   }
 
   // -------------------------------------------------------------------------
+  section('C2 — THE SEA IS A SEA, WHERE THE ARCHIVE HAS NOTHING TO SAY')
+  // -------------------------------------------------------------------------
+  {
+    /**
+     * ★★ THE QUESTION THE PIXEL CHECK COULD NOT ASK. The off-archive ground is
+     *    a real coastline, and a wrong one is not a HOLE — it is land in the
+     *    Mediterranean, painted in a perfectly legitimate map colour. The
+     *    first version of `worldland.ts` clipped its rings with
+     *    Sutherland–Hodgman, which is correct for a convex polygon and joins
+     *    unjoined pieces of a concave one; Afro-Eurasia is about as concave as
+     *    a polygon gets. On the DEPLOYED build,
+     *    `queryRenderedFeatures` at 33.39 E / 31.73 N — open sea, well west of
+     *    Ashkelon — answered `lo-world-land`. Caught on a capture, not by a
+     *    gate. It is a gate now.
+     */
+    const SEA = [
+      { name: "Méditerranée, ouest d'Ashkelon", lng: 33.39, lat: 31.73 },
+      { name: 'Méditerranée, ouest de Haïfa', lng: 32.5, lat: 32.5 },
+      { name: 'golfe d`Aqaba', lng: 34.7, lat: 29.0 },
+    ]
+    const LAND = [
+      { name: 'Amman', lng: 35.93, lat: 31.95 },
+      { name: 'Le Caire', lng: 31.24, lat: 30.04 },
+      { name: 'Damas', lng: 36.3, lat: 33.5 },
+    ]
+    for (const point of [...SEA, ...LAND]) {
+      const isSea = SEA.includes(point)
+      await jump(page, point.lng, point.lat, 8, 2500)
+      const layers = await page.evaluate(() => {
+        const m = (window as unknown as {
+          __loYanumMap?: {
+            queryRenderedFeatures: (p: [number, number]) => { layer?: { id: string } }[]
+          }
+        }).__loYanumMap
+        const canvas = document.querySelector('.maplibregl-canvas') as HTMLCanvasElement | null
+        if (!m || !canvas) return []
+        const box = canvas.getBoundingClientRect()
+        return (m.queryRenderedFeatures([box.width / 2, box.height / 2]) ?? []).map(
+          (f) => f.layer?.id ?? '',
+        )
+      })
+      const onLand = layers.includes('lo-world-land') || layers.includes('earth')
+      check(
+        `★ ${point.name} is ${isSea ? 'sea' : 'land'}`,
+        isSea ? !onLand : onLand,
+        layers.slice(0, 4).join(', ') || 'nothing rendered',
+      )
+    }
+  }
+
+  // -------------------------------------------------------------------------
   section('D — THE MAP THAT NEEDED A RELAUNCH')
   // -------------------------------------------------------------------------
   {
