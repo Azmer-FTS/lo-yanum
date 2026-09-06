@@ -50,6 +50,12 @@ dist-overlap/
 
 # A87 — the freehand gate builds its own copy.
 dist-freehand/
+# Y1→Y11 — the four gates this pass added, same reason as every line above:
+# a preview build is an artefact, not a source.
+dist-vector/
+dist-rhythm/
+dist-rows/
+dist-settings/
 
 # The demo twin, built by the deploy and folded into dist/demo (ETAT §35).
 dist-demo/
