@@ -916,16 +916,22 @@ export function ListTop({
            *    In an RTL row the FIRST child is the physical right, so the
            *    filters keep the start and the count takes the far end.
            *
-           * ⚠️ AND THE ROW'S END BLEED IS CANCELLED WHEN THERE IS A COUNT.
-           *    `.scroll-row` pulls itself `--content-pad` out at BOTH ends for
-           *    the shadow; at the end, next to a pill, that is 20 px of
-           *    scrolling content sliding underneath it. The arbitrary variant
-           *    reaches the row the screen supplied, which this component does
-           *    not own and cannot add a class to.
+           * ⚠️ AND THE ROW'S END BLEED IS CANCELLED WHEN THERE IS A COUNT —
+           *    THE MARGIN, NOT THE PADDING, and the difference is a whole
+           *    other unit's requirement. `.scroll-row` pulls itself
+           *    `--content-pad` OUT at both ends (margin) and puts the same
+           *    amount back IN (padding): the margin is the bleed, the padding
+           *    is the room a card's drop shadow needs. Next to a pill the
+           *    bleed is 20 px of scrolling content sliding underneath it, so
+           *    the margin goes — and the padding stays, or Y6's "les ombres
+           *    des vignettes sont coupées" comes straight back. `bun run band`
+           *    measures exactly that padding and caught the first version of
+           *    this line zeroing both.
+           *
+           *    The arbitrary variant reaches the row the SCREEN supplied,
+           *    which this component does not own and cannot add a class to.
            */
-          className={`flex items-center gap-2 ${
-            count ? '[&>div>.scroll-row]:me-0 [&>div>.scroll-row]:pe-0' : ''
-          }`}
+          className={`flex items-center gap-2 ${count ? '[&>div>.scroll-row]:me-0' : ''}`}
           style={{ marginTop: 'var(--list-rhythm)' }}
         >
           <div className="min-w-0 flex-1">{filters}</div>
