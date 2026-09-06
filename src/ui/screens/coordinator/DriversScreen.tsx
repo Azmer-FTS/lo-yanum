@@ -20,7 +20,7 @@ import { Icon } from '../../components/Icon'
 import { ListTile } from '../../components/ListTile'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { RegionFilter } from '../../components/RegionFilter'
-import { RosterHead, RowAction } from '../../components/roster'
+import { ROSTER_ROW_HEIGHT, RosterHead, RowAction } from '../../components/roster'
 import {
   EmptyState,
   KpiChip,
@@ -35,7 +35,6 @@ import { useProgressive } from '../../hooks/useProgressive'
 import { useWindowTable } from '../../hooks/useWindowTable'
 import { DriverFormModal } from './DriverFormModal'
 
-const ROW_HEIGHT = 56
 
 /**
  * G5.1 → G7 — the volunteer-driver roster, as a FULL-PAGE table.
@@ -137,7 +136,7 @@ export function DriversScreen() {
 
   const { listRef, virtualizer, margin } = useWindowTable(
     filtered.length,
-    () => ROW_HEIGHT,
+    () => ROSTER_ROW_HEIGHT,
   )
 
   return (
@@ -272,8 +271,9 @@ export function DriversScreen() {
           /* X5 — one `--roster-cols`, worn by this header and by every row. */
           <div className="roster roster-drivers">
           <div
+            data-roster-head=""
             className="roster-row rounded-t-card border-b border-edge-subtle
-                       bg-surface-overlay/95 px-4 py-2.5 backdrop-blur"
+                       bg-surface-overlay px-4 py-2"
           >
             <RosterHead label={t('volunteers.colName')} />
             <RosterHead label={t('driver.vehicle')} tier="lg" />

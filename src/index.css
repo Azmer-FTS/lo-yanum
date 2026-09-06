@@ -1007,7 +1007,7 @@
 .carousel-dots > button {
   width: 0.5rem;
   height: 0.5rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgb(var(--content-muted) / 0.35);
   transition: background var(--duration-fast, 120ms) ease-out, transform var(--duration-fast, 120ms) ease-out;
 }
@@ -1314,7 +1314,7 @@
  * `<details open>` that is closed on load.
  */
 .maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show) {
-  border-radius: 999px !important;
+  border-radius: var(--radius-pill) !important;
   background: transparent !important;
   box-shadow: none !important;
 }
@@ -1322,7 +1322,7 @@
 .maplibregl-ctrl-attrib-button {
   width: 28px !important;
   height: 28px !important;
-  border-radius: 999px !important;
+  border-radius: var(--radius-pill) !important;
   background-color: rgb(var(--surface-overlay) / 0.78) !important;
   -webkit-backdrop-filter: saturate(160%) blur(14px);
   backdrop-filter: saturate(160%) blur(14px);
@@ -1618,11 +1618,25 @@
   container-type: inline-size;
 }
 
+/* ★★ Y9 — ONE HEIGHT, AND IT IS THE TOKEN'S. The rows the virtualiser
+   positions get theirs from `ROSTER_ROW_HEIGHT`; this is the floor for
+   everything else drawn with the same grid — the column header, and the
+   non-virtualised rosters. A header that is 30 px tall over 64 px rows is the
+   "l'en-tête n'est pas solidaire du tableau" the product owner reported: it
+   reads as a caption floating above a list rather than as the top of it. */
 .roster-row {
   display: grid;
   grid-template-columns: var(--roster-cols);
   align-items: center;
   gap: 0.75rem;
+  min-height: var(--roster-row-h);
+}
+
+/* The column header is the one exception: it carries no avatar and no second
+   line, so it takes the row's rhythm at two thirds of its height and the
+   table starts where the eye expects it to. */
+.roster-row:has(> [data-col]) {
+  min-height: calc(var(--roster-row-h) * 0.66);
 }
 
 /* `min-width: 0` on every track's content, or one `nowrap` phone number makes

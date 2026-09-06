@@ -25,7 +25,7 @@ import { MapSplit } from '../../components/MapSplit'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { ListTile } from '../../components/ListTile'
 import { RegionFilter } from '../../components/RegionFilter'
-import { RosterHead, RowAction } from '../../components/roster'
+import { ROSTER_ROW_HEIGHT, RosterHead, RowAction } from '../../components/roster'
 import {
   EmptyState,
   FilterPill,
@@ -68,7 +68,6 @@ function matches(haystack: string, needle: string): boolean {
   return false
 }
 
-const ROW_HEIGHT = 56
 
 export function VolunteersScreen() {
   const { t } = useTranslation()
@@ -214,7 +213,7 @@ export function VolunteersScreen() {
    * it scroll away naturally, and ~300 rows still render as ~25 DOM nodes.
    */
   const { listRef, virtualizer, margin } = useWindowTable(rows.length, (i) =>
-    rows[i].kind === 'header' ? 44 : ROW_HEIGHT,
+    rows[i].kind === 'header' ? 44 : ROSTER_ROW_HEIGHT,
   )
 
   const toggleSort = (key: SortKey) => {
@@ -475,8 +474,9 @@ export function VolunteersScreen() {
              product owner has to guess at. */
           <div className="roster roster-volunteers">
           <div
+            data-roster-head=""
             className="roster-row rounded-t-card border-b border-edge-subtle
-                       bg-surface-overlay/95 px-4 py-2.5 backdrop-blur"
+                       bg-surface-overlay px-4 py-2"
           >
             <SortHeader label={t('volunteers.colName')} sortKey="name" />
             <SortHeader label={t('volunteers.colYeshiva')} sortKey="yeshiva" tier="lg" />

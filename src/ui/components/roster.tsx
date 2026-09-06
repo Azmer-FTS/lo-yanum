@@ -20,6 +20,22 @@ import type { IconName } from './Icon'
  */
 export type RosterTier = 'base' | 'md' | 'lg' | 'xl'
 
+/**
+ * ★★ Y9 (2026-09-06) — THE ROW HEIGHT, AND THERE IS ONE OF IT NOW.
+ *
+ * It was `const TABLE_ROW_HEIGHT = 56` in three screens and
+ * `const ROW_HEIGHT = 56` in two more — the same number, five times, under two
+ * names. The product owner has asked for taller rows "depuis le début"; this
+ * is the line that has to change for that to be true everywhere at once.
+ *
+ * ⚠️ IT IS MIRRORED BY `--roster-row-h` IN `tokens.css`, which is what the
+ *    header and the non-virtualised rows use. The virtualiser needs a NUMBER
+ *    (it positions every row absolutely from it) and CSS needs a length; there
+ *    is no way to have one declaration serve both, so `bun run rows` compares
+ *    them and fails if they drift.
+ */
+export const ROSTER_ROW_HEIGHT = 64
+
 /** A column label. Its width is the roster's track, never its own. */
 export function RosterHead({
   label,

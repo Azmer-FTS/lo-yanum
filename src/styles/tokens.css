@@ -347,6 +347,26 @@
    *    why the value lives here and the subtraction lives with the padding it
    *    is cancelling.
    */
+  /**
+   * ★★ Y9 (2026-09-06) — THE HEIGHT OF A TABLE ROW, ONCE.
+   *
+   * "Densité des lignes revue à la hausse en hauteur ; colonnes lisibles en
+   *  conduite comme demandé depuis le début."
+   *
+   * It was the literal `56` — five times, one per list screen, which is five
+   * chances for the next raise to reach four of them. 64 px is the figure: a
+   * 44 px touch target (the iOS floor, and this is used in a moving vehicle)
+   * with 10 px of air above and below, so a name and its second line stop
+   * touching the rule under them.
+   *
+   * ⚠️ AND THE ROW IS VIRTUALISED, so this number is not decoration: the
+   *    measurer is handed it and every row is absolutely positioned from it.
+   *    `ROSTER_ROW_HEIGHT` in `roster.tsx` is the same value for the
+   *    TypeScript side, and the two are checked against each other by
+   *    `bun run rows`.
+   */
+  --roster-row-h: 4rem;
+
   --list-rhythm: 1rem;
   /** What `.scroll-row` reserves at each block end for a card's shadow. */
   --row-shadow-room: 0.75rem;

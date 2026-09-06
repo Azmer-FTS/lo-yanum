@@ -23,7 +23,7 @@ import { ListTile } from '../../components/ListTile'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { RegionFilter } from '../../components/RegionFilter'
-import { RosterHead } from '../../components/roster'
+import { ROSTER_ROW_HEIGHT, RosterHead } from '../../components/roster'
 import {
   ThreatLegend,
   threatVectorShapes,
@@ -489,7 +489,6 @@ function FarmTile({
   )
 }
 
-const TABLE_ROW_HEIGHT = 56
 
 /**
  * G7 → X5 — the roster reading of the farms: one row per farm, window-
@@ -502,8 +501,9 @@ function FarmsTableHead() {
   return (
     <div className="roster roster-farms">
       <div
+        data-roster-head=""
         className="roster-row rounded-t-card border-b border-edge-subtle
-                   bg-surface-overlay/95 px-4 py-1.5 backdrop-blur"
+                   bg-surface-overlay px-4 py-2"
       >
         <RosterHead label={t('missions.farm')} />
         <RosterHead label={t('volunteers.colLocality')} tier="lg" />
@@ -531,7 +531,7 @@ function FarmsTable({
 
   const { listRef, virtualizer, margin } = useWindowTable(
     farms.length,
-    () => TABLE_ROW_HEIGHT,
+    () => ROSTER_ROW_HEIGHT,
   )
 
   const dunams = (n: number) => n.toLocaleString(locale)

@@ -43,7 +43,19 @@ const SRC = path.resolve('src')
 
 // `t-none` joined with G14d: a table card whose top corners are square where
 // it meets the sticky column header above it — still radius 0, not a new step.
-const ALLOWED_RADIUS = new Set(['field', 'card', 'pill', 'none', 't-card', 't-none'])
+/**
+ * ★ Y9 (2026-09-06) — THE LOGICAL SIDES ARE ON THE LIST NOW, and they always
+ *   should have been. A28 is "one scale, three values"; `rounded-s-card` is
+ *   the CARD value applied to the start side, which is the same value and the
+ *   same decision. What is NOT allowed is a fourth SIZE, and none of these is
+ *   one. (The splitter's grip was `rounded-l-card` — a PHYSICAL side, which in
+ *   an RTL app is the wrong half of the rule as well as of the layout.)
+ */
+const ALLOWED_RADIUS = new Set([
+  'field', 'card', 'pill', 'none',
+  't-card', 't-none', 'b-card',
+  's-card', 'e-card', 's-pill', 'e-pill',
+])
 
 /** Radius CUSTOM PROPERTIES that may exist in tokens.css. */
 const ALLOWED_RADIUS_VARS = new Set(['field', 'card', 'pill'])

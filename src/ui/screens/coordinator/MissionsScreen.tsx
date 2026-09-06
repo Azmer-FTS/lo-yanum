@@ -21,7 +21,7 @@ import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { MissionStatusChip, readToken } from '../../components/badges'
 import { RegionFilter } from '../../components/RegionFilter'
-import { RosterHead } from '../../components/roster'
+import { ROSTER_ROW_HEIGHT, RosterHead } from '../../components/roster'
 import {
   EmptyState,
   FilterPill,
@@ -265,7 +265,6 @@ export function MissionsScreen() {
   )
 }
 
-const TABLE_ROW_HEIGHT = 56
 
 /**
  * ★★ Y4 (2026-09-04) — THE GUARD TILE, ON THE APP'S ONE TILE.
@@ -373,8 +372,9 @@ export function MissionsTableHead() {
   return (
     <div className="roster roster-missions">
       <div
+        data-roster-head=""
         className="roster-row rounded-t-card border-b border-edge-subtle
-                   bg-surface-overlay/95 px-4 py-1.5 backdrop-blur"
+                   bg-surface-overlay px-4 py-2"
       >
         <RosterHead label={t('missions.farm')} />
         <RosterHead label={t('missions.date')} tier="md" />
@@ -398,7 +398,7 @@ function MissionsTable({
   const locale = useLocale()
   const { listRef, virtualizer, margin } = useWindowTable(
     views.length,
-    () => TABLE_ROW_HEIGHT,
+    () => ROSTER_ROW_HEIGHT,
   )
 
   return (

@@ -297,7 +297,7 @@ export function PanelSplitter({
         */}
       <span
         className="glass pointer-events-none absolute left-0 top-1/2 flex h-14 w-5 -translate-x-full -translate-y-1/2
-                   items-center justify-center rounded-l-card text-content-secondary
+                   items-center justify-center rounded-s-card text-content-secondary
                    transition-colors duration-fast group-hover:text-accent-ink group-focus-visible:text-accent-ink"
       >
         <svg width="10" height="18" viewBox="0 0 10 18" aria-hidden="true" focusable="false">

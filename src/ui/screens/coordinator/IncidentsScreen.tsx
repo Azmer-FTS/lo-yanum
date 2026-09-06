@@ -17,7 +17,7 @@ import {
   ListTop,
   LoadMore,
 } from '../../components/primitives'
-import { RosterHead } from '../../components/roster'
+import { ROSTER_ROW_HEIGHT, RosterHead } from '../../components/roster'
 import { useProgressive } from '../../hooks/useProgressive'
 import { useWindowTable } from '../../hooks/useWindowTable'
 import { useCoreValue } from '../../hooks/useCore'
@@ -260,7 +260,6 @@ export function IncidentsScreen() {
   )
 }
 
-const TABLE_ROW_HEIGHT = 56
 
 /** ★★ Y4 — the incidents, as columns. Same grid system as the other rosters. */
 function IncidentsTableHead() {
@@ -268,8 +267,18 @@ function IncidentsTableHead() {
   return (
     <div className="roster roster-incidents">
       <div
-        className="roster-row rounded-t-card border-b border-edge-subtle
-                   bg-surface-overlay/95 px-4 py-1.5 backdrop-blur"
+        data-roster-head=""
+        /**
+         * ★★ Y9.1 — `border-s-4 border-s-transparent`, AND IT IS THE WHOLE
+         *    ALIGNMENT ON THIS SCREEN. Every incident ROW carries a 4 px
+         *    severity bar on its start edge (`SEVERITY_EDGE`); the header did
+         *    not, so the two grids began 4 px apart and every one of the five
+         *    columns was off by that much. Measured by `bun run rows` as
+         *    "worst drift 4px" — the only table of the five that drifted.
+         *    The header takes the same 4 px, in nothing.
+         */
+        className="roster-row rounded-t-card border-b border-s-4 border-edge-subtle
+                   border-s-transparent bg-surface-overlay px-4 py-2"
       >
         <RosterHead label={t('missions.farm')} />
         <RosterHead label={t('incidents.reportedAt')} tier="md" />
@@ -292,7 +301,7 @@ function IncidentsTable({
   const locale = useLocale()
   const { listRef, virtualizer, margin } = useWindowTable(
     views.length,
-    () => TABLE_ROW_HEIGHT,
+    () => ROSTER_ROW_HEIGHT,
   )
 
   return (
