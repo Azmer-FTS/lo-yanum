@@ -40,6 +40,7 @@ import { MissionDetailScreen } from './screens/coordinator/MissionDetailScreen'
 import { MissionWizardScreen } from './screens/coordinator/MissionWizardScreen'
 import { MissionsScreen } from './screens/coordinator/MissionsScreen'
 import { RoutePlannerScreen } from './screens/coordinator/RoutePlannerScreen'
+import { RegionsEditScreen } from './screens/coordinator/RegionsEditScreen'
 import { SettingsScreen } from './screens/coordinator/SettingsScreen'
 import { VolunteersScreen } from './screens/coordinator/VolunteersScreen'
 import { VolunteerGuardScreen } from './screens/volunteer/VolunteerGuardScreen'
@@ -170,6 +171,9 @@ export default function App() {
           <Route path="missions/new" element={<MissionWizardScreen />} />
           <Route path="missions/:missionId" element={<MissionDetailScreen />} />
           <Route path="settings" element={<SettingsScreen />} />
+          {/* ★★ Y2 — "עריכת אזורים". Reached from הגדרות; the screen itself
+              refuses to render for anybody but the coordinator. */}
+          <Route path="settings/regions" element={<RegionsEditScreen />} />
           <Route path="incidents" element={<IncidentsScreen />} />
           <Route
             path="incidents/:incidentId"

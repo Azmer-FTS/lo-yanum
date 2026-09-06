@@ -61,6 +61,8 @@ export type IconName =
   | 'chevronDown'
   | 'userPlus'
   | 'history'
+  | 'undo'
+  | 'redo'
   | 'eye'
   | 'eyeOff'
   | 'layers'
@@ -406,6 +408,24 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" />
       <path d="M3.5 4.5V10H9" />
       <path d="M12 8v4.4l3 1.8" />
+    </>
+  ),
+  /**
+   * ★ Y2 — undo / redo, Lucide's `undo-2` and `redo-2`. Added for the region
+   *   editor, which is the first screen in this app where a gesture can be
+   *   wrong in a way that a second gesture cannot simply correct: a dragged
+   *   vertex has no "put it back" position to aim at.
+   */
+  undo: (
+    <>
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />
+    </>
+  ),
+  redo: (
+    <>
+      <path d="m15 14 5-5-5-5" />
+      <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13" />
     </>
   ),
   eye: (

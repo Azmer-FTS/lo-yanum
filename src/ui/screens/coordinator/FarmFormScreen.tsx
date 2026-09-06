@@ -7,7 +7,7 @@ import {
   LIVESTOCK_KINDS,
   LOCALITY_POSITIONS,
   NEGEV_CENTER,
-  REGIONS,
+  regions,
   createFarm,
   getFarm,
   getFarmZonesForFarm,
@@ -391,7 +391,7 @@ export function FarmFormScreen() {
             onChange={setRegionId}
             options={[
               { value: '', label: t('form.regionStdHint') },
-              ...REGIONS.map((r) => ({ value: r.id, label: r.name })),
+              ...regions().map((r) => ({ value: r.id, label: r.name })),
             ]}
           />
           <SelectField<FarmType>

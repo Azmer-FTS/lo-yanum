@@ -85,6 +85,25 @@ function commit(): void {
   for (const fn of listeners) fn()
 }
 
+/**
+ * ★★ Y2 — SOMETHING OUTSIDE THE STORE CHANGED WHAT THE STORE'S DATA MEANS.
+ *
+ * The region outlines are not store data — they are a pure function the store's
+ * data is read THROUGH (`farmRegion`, `regionOfLocality`, `dunamsByRegion`).
+ * When the coordinator saves a redrawn boundary, not one farm has changed and
+ * every farm's region may have. `useCoreValue` re-runs its selector on a
+ * version bump and nothing else, so this is the whole of "rattachement
+ * automatique … recalculé après enregistrement": one bump, and every screen
+ * re-reads through the new outlines.
+ *
+ * ⚠️ NOT a mutation, and it must not become one. It writes nothing, so the
+ *    Supabase backend sees no change and nothing is pushed — which is right:
+ *    the outlines are a setting of this device, not a row.
+ */
+export function notifyDerivedChange(): void {
+  commit()
+}
+
 export function subscribe(listener: () => void): () => void {
   listeners.add(listener)
   return () => {

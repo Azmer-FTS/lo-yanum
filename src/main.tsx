@@ -12,6 +12,7 @@ import { DEFAULT_LANGUAGE, applyLanguage } from './ui/i18n'
 import { registerServiceWorker } from './ui/offline'
 import { installDemoPhotos } from './ui/demoPhotos'
 import { applyDisplayMode } from './ui/standalone'
+import { loadRegionEdits } from './ui/settings/regionEdits'
 import { initTheme } from './ui/theme'
 
 /**
@@ -59,6 +60,16 @@ if (!SUPABASE_CONFIGURED) {
 
 // U9 — the demo markers resolve to real CC0 photographs from now on.
 installDemoPhotos()
+/**
+ * ★★ Y2 — THE REGION OUTLINES, BEFORE THE FIRST RENDER.
+ *
+ * Every derived read — a farm's region, a volunteer's region, the dunam
+ * distribution, the washes on the map, the filter counts — goes through
+ * `regions()`. Loading the coordinator's redrawn boundaries after the first
+ * paint would mean one frame filed under X12's guesses and then a reshuffle,
+ * which on the dashboard is a bar chart that changes shape as you look at it.
+ */
+loadRegionEdits()
 applyLanguage(DEFAULT_LANGUAGE)
 // Stamp the theme before React mounts, or the app flashes the wrong palette.
 initTheme(getSession().role)

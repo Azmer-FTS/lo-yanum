@@ -87,6 +87,7 @@ export {
   cancelMission,
   setOutreachSent,
   reactivateMission,
+  notifyDerivedChange,
 } from './store'
 export type {
   NewIncidentInput,

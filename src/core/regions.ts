@@ -255,10 +255,83 @@ export const REGIONS: readonly Region[] = [
   },
 ] as const
 
-const BY_ID = new Map<RegionId, Region>(REGIONS.map((r) => [r.id, r]))
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ Y2 (2026-09-06) — THE OUTLINES ARE THE PRODUCT OWNER'S NOW.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * "Les frontières des 13 régions générées ne correspondent pas aux cartes de
+ *  référence. Le PO doit pouvoir les redessiner lui-même… Les frontières
+ *  éditées sont persistées et deviennent la source de vérité."
+ *
+ * Which is the right answer to the honest limitation this file has carried
+ * since X12: these rings are approximations written by hand, and the person
+ * holding the association's teaching maps is the only one who can correct
+ * them. What he draws replaces what is written above, for every reader.
+ *
+ * ★ AN OVERLAY, NOT AN EDIT OF `REGIONS`. The literals above stay exactly as
+ *   they are, so "שחזר ברירת מחדל" is deleting one key rather than restoring
+ *   from a copy of a copy — and so the hue, the name and the id of a region
+ *   can never be lost by editing its shape.
+ *
+ * ★ AND IT IS STILL PURE. This module keeps no storage and touches no DOM: the
+ *   UI reads and writes `localStorage` and hands the result to
+ *   `setRegionRings`. `bun run regions` drives the whole of it with no browser.
+ *
+ * ⚠️ EVERY DERIVED READ GOES THROUGH `regions()`, INCLUDING `regionOf`. That
+ *    is what "deviennent la source de vérité" means in code: there is no
+ *    second list, so a farm's region, a volunteer's region, the dunam
+ *    distribution, the washes on the map and the filter counts all move
+ *    together the moment he saves. A reader that closed over `REGIONS`
+ *    directly would be the one thing that silently disagreed.
+ */
+type Ring = Array<[number, number]>
+
+let rings: Partial<Record<RegionId, Ring>> = {}
+let effective: readonly Region[] = REGIONS
+let byId = new Map<RegionId, Region>(REGIONS.map((r) => [r.id, r]))
+
+function rebuild(): void {
+  effective = REGIONS.map((r) => {
+    const edited = rings[r.id]
+    return edited && edited.length >= 3 ? { ...r, ring: edited } : r
+  })
+  byId = new Map(effective.map((r) => [r.id, r]))
+}
+
+/**
+ * Replace the whole overlay. A ring with fewer than three points is ignored
+ * rather than rejected: a truncated stored value must degrade to the default
+ * outline, not to a region that cannot contain anything.
+ */
+export function setRegionRings(next: Partial<Record<RegionId, Ring>>): void {
+  rings = { ...next }
+  rebuild()
+}
+
+/** What is stored, for the UI to persist. */
+export function regionRings(): Partial<Record<RegionId, Ring>> {
+  return { ...rings }
+}
+
+/** True when this region's outline is the product owner's rather than X12's. */
+export function regionIsEdited(id: RegionId): boolean {
+  const ring = rings[id]
+  return Array.isArray(ring) && ring.length >= 3
+}
+
+/** The region list as it stands — edits applied. */
+export function regions(): readonly Region[] {
+  return effective
+}
+
+/** The outline as X12 wrote it, for "שחזר ברירת מחדל". */
+export function defaultRing(id: RegionId): Ring | null {
+  return (REGIONS.find((r) => r.id === id)?.ring as Ring | undefined) ?? null
+}
 
 export function regionById(id: RegionId | null | undefined): Region | null {
-  return id ? (BY_ID.get(id) ?? null) : null
+  return id ? (byId.get(id) ?? null) : null
 }
 
 /**
@@ -293,7 +366,7 @@ export function pointInRing(point: LatLng, ring: Array<[number, number]>): boole
  * coordinate typed wrong, a point in the sea.
  */
 export function regionOf(point: LatLng): RegionId | null {
-  for (const region of REGIONS) {
+  for (const region of regions()) {
     if (pointInRing(point, region.ring)) return region.id
   }
   return null

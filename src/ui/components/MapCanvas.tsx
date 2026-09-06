@@ -14,7 +14,7 @@ import { readStoredBase, writeStoredBase } from './mapBase'
 import { MapTools } from './MapTools'
 import { MARKER_LAYER, useMapLayers } from './mapLayers'
 import { MAP_MAX_BOUNDS, buildBasemapStyle, registerPmtilesProtocol, resolvedThemeOf } from './basemap'
-import { REGIONS, regionById, regionOf } from '@core/index'
+import { regionById, regionOf, regions } from '@core/index'
 import type { BasemapBase } from './basemap'
 
 /**
@@ -392,6 +392,14 @@ function markerElement(marker: MapMarker): HTMLElement {
   el.setAttribute('aria-label', marker.title)
 
   const kind = marker.kind ?? 'farm'
+  /**
+   * ★ Y2.7 — THE KIND, ON THE ELEMENT. "En dehors de cet écran, les zones ne
+   *   sont JAMAIS éditables par accident", and the only honest way to check
+   *   that is to look for the grips: `bun run settings` counts
+   *   `[data-marker-kind="vertex"]` on three list screens and requires zero.
+   *   Reading it off a class name would be reading off a colour.
+   */
+  el.dataset.markerKind = kind
   const ring = readToken('--surface-base')
   // P0.3 — filled in by whichever branch draws the marker, then handed to
   // `wrapForTouch` at the bottom. Declared here so no branch can forget it and
@@ -945,7 +953,7 @@ export default function MapCanvas({
         type: 'geojson',
         data: {
           type: 'FeatureCollection',
-          features: REGIONS.map((r) => ({
+          features: regions().map((r) => ({
             type: 'Feature' as const,
             properties: { id: r.id, name: r.name, color: `rgb(${r.rgb})` },
             geometry: {
@@ -1824,7 +1832,24 @@ export default function MapCanvas({
       // the primary pointer owns the stroke from start to finish.
       if (!event.isPrimary) return
       event.preventDefault()
-      canvas.setPointerCapture(event.pointerId)
+      /**
+       * ⚠️ GUARDED, AND IT IS NOT DEFENSIVE PROGRAMMING FOR ITS OWN SAKE.
+       *    `setPointerCapture` THROWS `NotFoundError` when the pointer id is
+       *    not currently active — which happens for real when a pen is lifted
+       *    between the event being queued and this handler running, and which
+       *    happened every time in `bun run settings` A53, where the stroke is
+       *    a synthetic `PointerEvent` with `pointerType: 'pen'`. An exception
+       *    here abandons the whole `down` handler before `tracing = true`, so
+       *    the stroke silently does nothing: no trace, no polygon, no error
+       *    anybody sees. Capture is an optimisation (it keeps the stroke on
+       *    this element if the finger leaves it); losing it must not lose the
+       *    stroke.
+       */
+      try {
+        canvas.setPointerCapture(event.pointerId)
+      } catch {
+        /* see above */
+      }
       tracing = true
       trace = [at(event)]
       lastX = event.clientX
