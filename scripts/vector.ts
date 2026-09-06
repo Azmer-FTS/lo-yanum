@@ -411,6 +411,45 @@ try {
       bg !== '' && !/\/\s*0?\.\d/.test(bg) && !/rgba/.test(bg),
       bg || 'no background layer',
     )
+
+    /**
+     * ★★ AND THERE IS NO STEP IN THE MIDDLE OF THE MEDITERRANEAN. The sea
+     *    inside the archive is the `water` layer painted OVER the background;
+     *    the sea outside it is the background alone. They agree only if the
+     *    water colour is opaque — correctif 2 shipped a background that was
+     *    the composite instead, and the two blues differed by 45 units with a
+     *    straight tile edge between them. Read here as two pixels, one on each
+     *    side of that edge.
+     */
+    await jump(page, 33.6, 31.8, 8)
+    const sides = await page.evaluate(() => {
+      const gl = document.querySelector('.maplibregl-canvas') as HTMLCanvasElement | null
+      const m = (window as unknown as {
+        __loYanumMap?: {
+          project: (ll: [number, number]) => { x: number; y: number }
+        }
+      }).__loYanumMap
+      if (!gl || !m) return null
+      const c = document.createElement('canvas')
+      c.width = gl.width
+      c.height = gl.height
+      const ctx = c.getContext('2d')
+      if (!ctx) return null
+      ctx.drawImage(gl, 0, 0)
+      const ratio = gl.width / gl.getBoundingClientRect().width
+      const read = (lng: number, lat: number): string => {
+        const p = m.project([lng, lat])
+        const d = ctx.getImageData(Math.round(p.x * ratio), Math.round(p.y * ratio), 1, 1).data
+        return `${d[0]},${d[1]},${d[2]}`
+      }
+      // Both open sea; 33.9 is inside the archive's z8 tile column, 33.4 is not.
+      return { inside: read(33.9, 31.8), outside: read(33.4, 31.8) }
+    })
+    check(
+      '★★ and the sea the archive draws is the same blue as the sea we draw',
+      sides !== null && sides.inside === sides.outside,
+      sides ? `${sides.inside} inside, ${sides.outside} outside` : 'could not read',
+    )
   }
   for (const zoom of [6, 9, 12, 15]) {
     await jump(page, 34.85, 31.25, zoom)

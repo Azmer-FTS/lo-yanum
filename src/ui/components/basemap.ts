@@ -80,44 +80,38 @@ function token(name: string, alpha?: number): string {
  *   off-archive ground below it. Two literals would be one edit away from two
  *   different blues meeting on a coastline.
  */
-function waterColour(resolved: 'light' | 'dark'): string {
-  return resolved === 'light' ? 'rgb(52 132 214 / 0.62)' : 'rgb(96 165 250 / 0.55)'
-}
-
-/** `52 132 214 / 0.62` → `[52, 132, 214, 0.62]`. */
-function parseRgb(value: string): [number, number, number, number] {
-  const inner = value.replace(/^rgba?\(/, '').replace(/\)$/, '')
-  const [channels, alpha] = inner.split('/')
-  const [r, g, b] = channels.trim().split(/[\s,]+/).map(Number)
-  return [r, g, b, alpha === undefined ? 1 : Number(alpha.trim())]
-}
-
 /**
- * ★★ Y1 (2026-09-06, correctif) — THE SEA UNDER THE ARCHIVE IS OPAQUE, AND
- *    THE FIRST VERSION OF IT WAS NOT.
+ * ★★ Y1 (2026-09-06, correctif 3) — THE WATER IS OPAQUE, AND THAT IS WHAT
+ *    CLOSES THE SEAM.
  *
- * The style's `background` is the colour of every pixel the archive has no
- * tile for, and it was set to `waterColour` — which carries an ALPHA, because
- * where the archive DOES have tiles that colour is painted OVER `earth` and
- * the transparency is what makes a shallow bay read differently from open
- * water. A `background` layer has nothing under it: MapLibre composites it
- * against a transparent canvas, so at 62 % the sea outside the extract came
- * out as a pale wash rather than as the sea — visible as a light rectangle
- * north of Egypt in the deployed capture, with a straight TILE EDGE down its
- * right-hand side, which is the giveaway.
+ * The colour of a pixel the archive has no tile for is the style's
+ * `background`; the colour of the OCEAN inside the archive is the `water`
+ * layer painted over that same background. So the two agree only if painting
+ * water over the background leaves the background unchanged — which, for a
+ * water colour with an alpha, is true for exactly one background: the water
+ * colour itself. Anything else is a step in the middle of the Mediterranean,
+ * and correctif 2 shipped one: our sea at 125,173,221 against the archive's at
+ * 80,148,217, with a straight tile edge between them.
  *
- * So the background is the same colour ALREADY COMPOSITED against the land it
- * would have been painted over. Computed rather than typed: two literals a
- * blend apart is two literals that stop matching the day either one moves,
- * and the seam between "sea the archive drew" and "sea we drew" is exactly
- * where that would show. Measured against the archive's own water pixel:
- * 125,173,221 here against 125,175,226 on the tile.
+ * ★ SO THE ALPHA GOES, AND THE VALUES ARE THE COMPOSITES THAT WERE ALREADY ON
+ *   SCREEN — nothing the product owner has been looking at changes colour.
+ *   Light is exactly the ocean the deployed build renders today
+ *   (52,132,214 at 62 % over the sea background). Dark is exactly the ocean
+ *   the previous pass rendered (96,165,250 at 55 % over the night surface).
+ *
+ * ⚠️ AND INLAND WATER IS NOW THE SAME BLUE AS THE SEA. The alpha existed to
+ *    soften a lake against the land under it; a lake in the colour of the sea
+ *    is how every map anybody uses draws one, and the alternative is a seam
+ *    in the sea. N7.6's requirement — "un bleu franc", the coordinator
+ *    orients himself by the water — is better served by this, not worse.
  */
+function waterColour(resolved: 'light' | 'dark'): string {
+  return resolved === 'light' ? 'rgb(80 148 217)' : 'rgb(58 98 149)'
+}
+
+/** Identical, and it MUST be — see above. Named apart so the reason survives. */
 function seaColour(resolved: 'light' | 'dark'): string {
-  const [r, g, b, a] = parseRgb(waterColour(resolved))
-  const [lr, lg, lb] = parseRgb(token('--map-land'))
-  const mix = (top: number, bottom: number): number => Math.round(top * a + bottom * (1 - a))
-  return `rgb(${mix(r, lr)} ${mix(g, lg)} ${mix(b, lb)})`
+  return waterColour(resolved)
 }
 
 function themeFromTokens(resolved: 'light' | 'dark'): Theme {
