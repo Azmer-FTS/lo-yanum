@@ -336,7 +336,12 @@ export function CoordinatorLayout() {
           {/* Mobile / tablet top bar */}
           <header
             ref={topBarRef}
-            className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-edge-subtle bg-surface-overlay/95 px-4 pb-3 pt-[calc(var(--status-inset)+0.75rem)] backdrop-blur lg:hidden"
+            /* ★ Y7 — OPAQUE. A shell header at 95 % over a scrolling list is
+               a list card seen through the app's own name, and on WebKit the
+               `backdrop-blur` that was hiding it is composited late or not at
+               all inside a scroller. Nothing is meant to be visible behind a
+               header. */
+            className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-edge-subtle bg-surface-overlay px-4 pb-3 pt-[calc(var(--status-inset)+0.75rem)] lg:hidden"
           >
             <Brand />
             <div className="flex items-center gap-2">
@@ -453,7 +458,7 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-base">
-      <header className="sticky top-0 z-30 border-b border-edge-subtle bg-surface-overlay/95 px-4 pb-3 pt-[calc(var(--status-inset)+0.75rem)] backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-edge-subtle bg-surface-overlay px-4 pb-3 pt-[calc(var(--status-inset)+0.75rem)]">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
           <Brand />
           <div className="flex items-center gap-3">

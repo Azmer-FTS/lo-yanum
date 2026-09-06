@@ -72,6 +72,7 @@
     "hoursAgo": "לפני {{count}} שעות",
     "resultsCount": "{{count}} תוצאות",
     "showMore": "הצגת עוד",
+    "showMoreCount": "הצגת עוד {{count}}",
     "showLess": "הצגת פחות",
     "required": "שדה חובה",
     "sent": "נשלח",

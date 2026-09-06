@@ -712,6 +712,86 @@
   }
 
   /**
+   * ═════════════════════════════════════════════════════════════════════════
+   * ★★ Y7 (2026-09-06) — THE STICKY TOP OF A LIST, AND THE THREE HOLES IT HAD.
+   * ═════════════════════════════════════════════════════════════════════════
+   *
+   * Reported on חוות in split mode and reproduced at every viewport: "les
+   * cartes de la liste défilent DERRIÈRE l'en-tête sticky et restent visibles
+   * au-dessus de lui". Three separate defects were producing it, and fixing
+   * any two of them would have left a visible one.
+   *
+   *   1. THE HEADER WAS NOT OPAQUE. `bg-surface-base/95` plus `backdrop-blur`
+   *      is a frosted pane, and a frosted pane shows what is behind it. On
+   *      Chromium the blur hides the shape; on WebKit — the product owner's
+   *      iPad — a `backdrop-filter` inside a scrolling container is composited
+   *      late and often not at all, so what he sees is a list card at 5 %
+   *      through the KPI row. There is nothing to see through a list header TO,
+   *      so it is opaque now and the blur is gone with it.
+   *
+   *   2. THE SCROLLPORT'S OWN TOP PADDING WAS UNCOVERED. The content column
+   *      carries `pt-5`, and a sticky element pins to the padding box — so the
+   *      header stops 20 px short of the top of the scrollport and the cards
+   *      scroll through the strip above it. Measured: the header's box top at
+   *      y=20 with 20 px of live content above it. `--sticky-curtain` is that
+   *      strip, painted by a box-shadow offset upward: same width, same
+   *      colour, no layout, and it cannot be scrolled out of because it is
+   *      part of the sticky element.
+   *
+   *   3. THE GAP BELOW IT WAS A MARGIN. `mb-2` is 8 px of transparency between
+   *      the header and the first card, so a card was visible in it while
+   *      scrolling. Margins on a sticky element are holes; the spacing is
+   *      padding now and the surface runs to where the list starts.
+   *
+   * ⚠️ AND THE Z-INDEX IS 20, NOT MORE. The shell's own headers are 30 and
+   *    must stay above this one — see the `data-standalone` gradient above.
+   */
+  .sticky-top {
+    position: sticky;
+    z-index: 20;
+    background-color: rgb(var(--surface-base));
+  }
+
+  /* The curtain. Generous: the widest top padding any shell declares is
+     1.5 rem, and a curtain that is too tall costs nothing, because everything
+     above it inside the scrollport is content we are covering on purpose.
+
+     ⚠️ A PSEUDO-ELEMENT AND NOT A `box-shadow`, and the difference is a tap.
+        A shadow paints the band and is invisible to hit-testing, so a finger
+        landing in it reaches the card sliding underneath — a list row that
+        opens when you meant to touch the header. A real box is painted AND
+        hit-tested, and `elementFromPoint` reports the header, which is also
+        what makes `bun run rhythm`'s A58 probe able to see it at all. */
+  .sticky-top::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 100%;
+    height: var(--sticky-curtain, 2.5rem);
+    background-color: inherit;
+  }
+
+  /**
+   * The same rule at the bottom of a scroller: an opaque bar, and a curtain
+   * pointing DOWN so the last row of a list cannot appear in the strip between
+   * the bar and the edge of the scrollport.
+   */
+  .sticky-foot {
+    position: sticky;
+    z-index: 20;
+    background-color: rgb(var(--surface-overlay));
+  }
+
+  .sticky-foot::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    height: var(--sticky-curtain, 2.5rem);
+    background-color: inherit;
+  }
+
+  /**
    * F5.5 — A TABLE LIVES IN A BOX, IN BOTH AXES.
    *
    * `.scroll-x` solved the horizontal half in Lot 0.6 and left the vertical one
@@ -1333,6 +1413,34 @@
       can now show its shadow does not also become 16 px taller and push every
       list down.
    --------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   ★★ Y5 (2026-09-06) — AND THE ROW COMES TO REST ON THAT MARGIN, WHICH Y6 DID
+   NOT.
+   ---------------------------------------------------------------------------
+   Y6 above put the first card's BOX on the content margin and it is still
+   right. What it did not do is make the row STOP there: with
+   `scroll-snap-align: start` on the children and no `scroll-padding` on the
+   scroller, the browser snaps a child's edge to the SCROLLPORT's edge — which
+   the two declarations above deliberately pushed `--content-pad` further out.
+   So every row settled one padding out of alignment.
+
+   Measured on an iPad at 1032 px, on all six rows the product owner named
+   (dashboard KPIs, alerts, and the KPI strips of חוות, מתנדבים, נהגים
+   מתנדבים, and the farm sheet): the title's start edge at x=940, the first
+   card's at x=960, and `scrollLeft` reading −20 at load — the row scrolled
+   away from its own start before anybody touched it. Hence "la première carte
+   est collée au bord droit du panneau" and hence cards clipped at rest.
+
+   `scroll-padding-inline` is the whole fix, and it is the declaration this
+   pattern was missing rather than a compensation for anything.
+
+   ⚠️ THE FADE IS DATA-DRIVEN AND NOT DECORATIVE (Y5.4: "indiquer visuellement
+      qu'il y a du contenu au-delà… sans jamais de barre de défilement
+      horizontale visible"). A mask on a row that FITS shaves its last card for
+      nothing, and a mask on the start edge hides the very card this unit is
+      about. `ScrollRow` measures and publishes `data-overflow`, and only the
+      named sides fade. No `data-overflow` at all means the row fits.
+   --------------------------------------------------------------------------- */
 .scroll-row {
   display: flex;
   align-items: stretch;
@@ -1349,6 +1457,7 @@
      reason the row reaches the screen's edge. */
   padding-inline: var(--content-pad, 2px);
   margin-inline: calc(-1 * var(--content-pad, 2px));
+  scroll-padding-inline: var(--content-pad, 2px);
 }
 
 .scroll-row::-webkit-scrollbar {
@@ -1358,6 +1467,51 @@
 .scroll-row > * {
   flex: 0 0 auto;
   scroll-snap-align: start;
+}
+
+/* Y5.4 — the edge fade, on the side that has more and only when there is more.
+   `--fade` is 1.5 rem of soft edge; the mask is written in LOGICAL terms via
+   the two directions so it follows the writing direction with the row. */
+.scroll-row[data-overflow='end'],
+.carousel-2[data-overflow='end'] {
+  -webkit-mask-image: linear-gradient(to var(--fade-end, left), transparent 0, #000 1.5rem, #000 100%);
+  mask-image: linear-gradient(to var(--fade-end, left), transparent 0, #000 1.5rem, #000 100%);
+}
+
+.scroll-row[data-overflow='start'],
+.carousel-2[data-overflow='start'] {
+  -webkit-mask-image: linear-gradient(to var(--fade-start, right), transparent 0, #000 1.5rem, #000 100%);
+  mask-image: linear-gradient(to var(--fade-start, right), transparent 0, #000 1.5rem, #000 100%);
+}
+
+.scroll-row[data-overflow='both'],
+.carousel-2[data-overflow='both'] {
+  -webkit-mask-image: linear-gradient(
+    to var(--fade-end, left),
+    transparent 0,
+    #000 1.5rem,
+    #000 calc(100% - 1.5rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to var(--fade-end, left),
+    transparent 0,
+    #000 1.5rem,
+    #000 calc(100% - 1.5rem),
+    transparent 100%
+  );
+}
+
+/* The two physical directions, resolved once from the document's direction so
+   every row inherits them and nothing has to know which way it is written. */
+[dir='rtl'] {
+  --fade-end: left;
+  --fade-start: right;
+}
+
+[dir='ltr'] {
+  --fade-end: right;
+  --fade-start: left;
 }
 
 /* U1 — a folded block's heading is a full-width button; keep its focus ring. */
@@ -1381,6 +1535,7 @@
   margin-block: -0.75rem;
   padding-inline: var(--content-pad, 2px);
   margin-inline: calc(-1 * var(--content-pad, 2px));
+  scroll-padding-inline: var(--content-pad, 2px);
 }
 
 .carousel-2::-webkit-scrollbar {

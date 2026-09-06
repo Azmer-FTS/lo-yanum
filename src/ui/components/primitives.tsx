@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -7,6 +8,115 @@ import { useNarrow } from '../hooks/useNarrow'
 import { BandCard } from './band'
 import { ChevronForward, Icon } from './Icon'
 import type { IconName } from './Icon'
+
+// --- The horizontal rows ---------------------------------------------------
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ Y5 (2026-09-06) — EVERY SWIPABLE ROW STARTS ON THE CONTENT MARGIN.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Reported on the dashboard (KPI and התראות פעילות), on חוות, מתנדבים and
+ * נהגים מתנדבים, and on the farm sheet: "la première carte de chaque rangée
+ * défilante est collée au bord droit du panneau, hors de l'alignement du
+ * contenu".
+ *
+ * ★ MEASURED, AND IT IS EXACTLY ONE `--content-pad`. On an iPad at 1032 px
+ *   the title's start edge is at x=940 and the first KPI card's is at x=960 —
+ *   20 px out, which is `--content-pad` to the pixel, on every row of every
+ *   screen listed above.
+ *
+ * ★ AND THE CAUSE IS THE SNAP, NOT THE PADDING. `.scroll-row` bleeds by a
+ *   negative margin and takes the same amount back as padding, so the first
+ *   child's box IS on the content margin — Y6 got that right. What moves it
+ *   is `scroll-snap-align: start` on the children with no `scroll-padding` on
+ *   the scroller: the browser snaps the child's edge to the SCROLLPORT's edge,
+ *   which is 20 px further out, and the row comes to rest one padding out of
+ *   alignment. `scrollLeft` reads −20 at load on all six rows. The fix is one
+ *   declaration (`scroll-padding-inline`, in index.css) and this component is
+ *   the other half of the request.
+ *
+ * ★ THE OTHER HALF IS Y5.4 — "indiquer visuellement qu'il y a du contenu
+ *   au-delà, sans jamais de barre de défilement horizontale visible". A fade
+ *   has to be on the side that HAS more, and only when there is more, or it
+ *   shaves the last card of a row that fits. CSS cannot ask that question, so
+ *   this component measures and publishes the answer as `data-overflow`, and
+ *   `index.css` masks accordingly.
+ */
+export function ScrollRow({
+  children,
+  className = '',
+  carousel = false,
+  testId,
+  onScroll,
+  innerRef,
+  ...rest
+}: {
+  children: ReactNode
+  className?: string
+  /** The dashboard's two-per-view alerts strip, which snaps mandatorily. */
+  carousel?: boolean
+  testId?: string
+  onScroll?: (e: React.UIEvent<HTMLDivElement>) => void
+  /**
+   * A caller's own ref on the same node. Object refs (the alerts carousel
+   * pages by scripting its scroller) and CALLBACK refs (`useNarrow` measures
+   * the filter row) both arrive here, so this component keeps a ref of its own
+   * for the measuring and forwards whatever it was given alongside it.
+   */
+  innerRef?: React.Ref<HTMLDivElement>
+} & Omit<React.HTMLAttributes<HTMLDivElement>, 'onScroll' | 'className' | 'children' | 'ref'>) {
+  const ref = useRef<HTMLDivElement | null>(null)
+  const attach = (node: HTMLDivElement | null): void => {
+    ref.current = node
+    if (typeof innerRef === 'function') innerRef(node)
+    else if (innerRef) (innerRef as React.MutableRefObject<HTMLDivElement | null>).current = node
+  }
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    /**
+     * Which ends have more. `scrollLeft` is negative-going in an RTL scroller
+     * on Chromium and WebKit alike, so its ABSOLUTE value is the distance
+     * travelled from the start whichever way the writing runs — which is the
+     * only thing this needs to know.
+     */
+    const publish = (): void => {
+      const slack = el.scrollWidth - el.clientWidth
+      // 2 px: a sub-pixel layout must not light a fade on a row that fits.
+      if (slack <= 2) {
+        el.removeAttribute('data-overflow')
+        return
+      }
+      const travelled = Math.abs(el.scrollLeft)
+      const atStart = travelled <= 2
+      const atEnd = travelled >= slack - 2
+      el.setAttribute('data-overflow', atStart ? 'end' : atEnd ? 'start' : 'both')
+    }
+    publish()
+    el.addEventListener('scroll', publish, { passive: true })
+    const observer = new ResizeObserver(publish)
+    observer.observe(el)
+    for (const child of Array.from(el.children)) observer.observe(child)
+    return () => {
+      el.removeEventListener('scroll', publish)
+      observer.disconnect()
+    }
+  }, [children])
+
+  return (
+    <div
+      ref={attach}
+      data-testid={testId}
+      onScroll={onScroll}
+      className={`${carousel ? 'carousel-2' : 'scroll-row'} ${className}`.trim()}
+      {...rest}
+    >
+      {children}
+    </div>
+  )
+}
 
 // --- Layout blocks ---------------------------------------------------------
 
@@ -701,13 +811,16 @@ export function ListTop({
     <div
       data-list-top=""
       data-testid={testId}
-      className="sticky z-20 -mx-4 mb-2 bg-surface-base/95 px-4 pb-1 backdrop-blur lg:-mx-5 lg:px-5"
-      style={{ top: 'var(--shell-top, 0px)' }}
+      className="sticky-top -mx-4 px-4 lg:-mx-5 lg:px-5"
+      style={{
+        top: 'var(--shell-top, 0px)',
+        paddingBottom: 'calc(var(--list-rhythm) - var(--row-shadow-room))',
+      }}
     >
       {/* X1.3 — [title] [search] [⋯], one line, every list. `flex-wrap` is
           the 390 px escape hatch: the search box drops to its own line rather
           than squeezing the title to three characters or widening the page. */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pb-2">
+      <div data-title-row="" className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
         {/* ⚠️ `min-w-[6rem]` — A FLOOR, NOT A WIDTH, and it is what makes the
             row wrap instead of shaving the title. With `min-w-0` the title is
             the item that gives way, so at 25 % of the seam "מתנדבים" was
@@ -772,14 +885,50 @@ export function ListTop({
         *    UNDER the pill. Two things wanted the same line; only one of them
         *    can also be edge-to-edge, and the one the product owner swipes is
         *    the row.
+        *
+        * ★★ Y6 (2026-09-06) — AND THE RHYTHM IS ONE VALUE, DECLARED ONCE.
+        *
+        *    "C'est très collé, ça ne respire pas — la rangée de filtres touche
+        *     les KPI au-dessus et la liste en dessous." Measured on the iPad,
+        *    title→KPIs and KPIs→filters: **4 px and −18 px**. The second one
+        *    is NEGATIVE: the two rows OVERLAPPED by eighteen pixels, because
+        *    `.scroll-row` pays for its shadow with `margin-block: -0.75rem`
+        *    and the 6 px of `mt-1.5` beneath it never stood a chance. Both
+        *    gaps are `--list-rhythm` now (see `tokens.css`), applied as
+        *    padding on the row itself so the negative margin cannot eat it.
         */}
       {kpis && (
-        <div className="scroll-row min-w-0" data-testid="kpi-strip">
+        <ScrollRow
+          className="min-w-0"
+          testId="kpi-strip"
+          style={{ marginTop: 'calc(var(--list-rhythm) - var(--row-shadow-room))' }}
+        >
           {kpis}
-        </div>
+        </ScrollRow>
       )}
       {(count || filters) && (
-        <div className="mt-1.5 flex items-center gap-2">
+        <div
+          /**
+           * ★★ Y5 — THE COUNTER MOVED TO THE END OF THE LINE, and that is the
+           *    whole of it. As a flex sibling BEFORE the row it pushed the
+           *    filters **104–116 px** off the content margin on נהגים and
+           *    מתנדבים — the same defect this unit is about, one row lower.
+           *    In an RTL row the FIRST child is the physical right, so the
+           *    filters keep the start and the count takes the far end.
+           *
+           * ⚠️ AND THE ROW'S END BLEED IS CANCELLED WHEN THERE IS A COUNT.
+           *    `.scroll-row` pulls itself `--content-pad` out at BOTH ends for
+           *    the shadow; at the end, next to a pill, that is 20 px of
+           *    scrolling content sliding underneath it. The arbitrary variant
+           *    reaches the row the screen supplied, which this component does
+           *    not own and cannot add a class to.
+           */
+          className={`flex items-center gap-2 ${
+            count ? '[&>div>.scroll-row]:me-0 [&>div>.scroll-row]:pe-0' : ''
+          }`}
+          style={{ marginTop: 'var(--list-rhythm)' }}
+        >
+          <div className="min-w-0 flex-1">{filters}</div>
           {count && (
             <span
               data-list-count=""
@@ -789,7 +938,6 @@ export function ListTop({
               {count}
             </span>
           )}
-          {filters && <div className="min-w-0 flex-1">{filters}</div>}
         </div>
       )}
       {children}
@@ -978,7 +1126,23 @@ export function FilterRow({
 
   if (narrow) {
     return (
-      <div ref={box} className="relative mb-2 flex items-center gap-1.5">
+      /**
+       * ★★ Y8 (2026-09-06) — THE PANEL PUSHES THE LIST, IT DOES NOT COVER IT.
+       *
+       * "Le sélecteur de région et le popover de filtres recouvrent
+       *  aujourd'hui la première carte de la liste. Ils doivent s'ouvrir SOUS
+       *  la rangée de filtres sans jamais masquer un élément de contenu, ou
+       *  décaler la liste."
+       *
+       * It was `absolute inset-x-0 top-full`, which is a panel that floats
+       * over whatever is under it — measured by `bun run rhythm` A59 as
+       * covering the first card on חוות, שמירות and אירועים. It is in flow
+       * now: it grows the sticky header, and the header pushes the list. The
+       * second half of his sentence, which is also the honest one — a filter
+       * panel that hides the rows it is filtering is a panel you have to
+       * close to see what you did.
+       */
+      <div ref={box} className="relative mb-2 flex flex-wrap items-center gap-1.5">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -997,8 +1161,11 @@ export function FilterRow({
             role="dialog"
             aria-label={t('common.filters')}
             data-testid="filter-dropdown-panel"
-            className="glass absolute inset-x-0 top-full z-40 mt-1.5 flex max-h-[60dvh] flex-wrap
-                       items-center gap-1.5 overflow-y-auto rounded-card p-3 shadow-lift"
+            /* `basis-full` — in flow, on its own line under the row it belongs
+               to, at the row's own width. No `absolute`, no `z-40`, nothing to
+               land on top of. */
+            className="mt-1.5 flex max-h-[60dvh] basis-full flex-wrap items-center gap-1.5
+                       overflow-y-auto rounded-card bg-surface-high p-3"
           >
             {children}
           </div>
@@ -1010,18 +1177,28 @@ export function FilterRow({
     )
   }
 
-  return (
-    <div
-      ref={ref}
-      className={`items-center gap-1.5 ${
-        nowrap ? 'scroll-row mb-2' : 'mb-4 flex flex-wrap'
-      }`}
-    >
+  const body = (
+    <>
       {children}
       {clearPill}
       {trailing && (
         <div className="ms-auto flex items-center gap-1.5">{trailing}</div>
       )}
+    </>
+  )
+
+  /**
+   * ★ Y5 — the swipable variant is a `ScrollRow` like every other, so the
+   *   filter row starts on the content margin and fades on the side that has
+   *   more. The wrapping variant is a plain flex box and needs neither.
+   */
+  return nowrap ? (
+    <ScrollRow innerRef={ref} className="mb-2 items-center gap-1.5">
+      {body}
+    </ScrollRow>
+  ) : (
+    <div ref={ref} className="mb-4 flex flex-wrap items-center gap-1.5">
+      {body}
     </div>
   )
 }
@@ -1029,10 +1206,19 @@ export function FilterRow({
 /**
  * F5.5 — the foot of a progressively-rendered list.
  *
- * Prints the count BEFORE the button, because "מוצגים 20 מתוך 137" is the
- * information; the button is only useful once you know that. Renders nothing at
- * all when everything is on screen — a permanent "show more" that does nothing
- * teaches people to ignore it.
+ * ★★ Y6.4 (2026-09-06) — AND IT NO LONGER REPEATS THE COUNTER.
+ *
+ *    "Le compteur « מוצגים X מתוך Y » ne doit apparaître QU'UNE FOIS par
+ *     écran." It printed the identical sentence that the pill at the top of
+ *     the list prints — caught by `bun run rhythm` on מתנדבים, where the list
+ *     is long enough for both to be on screen at once, as **2 counters**.
+ *
+ *    What is NOT a repetition is how many more there are, so that is what the
+ *    button says now. Same information, none of it twice, and the button
+ *    finally states its own consequence.
+ *
+ * Renders nothing at all when everything is on screen — a permanent "show
+ * more" that does nothing teaches people to ignore it.
  */
 export function LoadMore({
   shown,
@@ -1046,13 +1232,10 @@ export function LoadMore({
   const { t } = useTranslation()
   if (shown >= total) return null
   return (
-    <div className="flex items-center gap-3 py-3">
-      <span className="numeric text-micro text-content-muted">
-        {t('common.showingOf', { shown, total })}
-      </span>
+    <div className="flex items-center py-3">
       <button type="button" onClick={onMore} className="btn-secondary py-1.5 text-micro">
         <Icon name="chevronDown" size={14} />
-        {t('common.showMore')}
+        {t('common.showMoreCount', { count: total - shown })}
       </button>
     </div>
   )

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { REPORT_WINDOW_DAYS, buildProgrammeReport } from '@core/index'
 
 import { Icon } from '../components/Icon'
-import { Modal } from '../components/primitives'
+import { Modal, ScrollRow } from '../components/primitives'
 import { drawReport } from './draw'
 import { canvasesToPdfFile } from './pdf'
 import { writeReportRecipient } from './recipient'
@@ -137,7 +137,7 @@ export function ReportButton({
           {/* W7 — the window, above the page it produced. */}
           <div className="mb-3">
             <span className="label">{t('report.periodLabel')}</span>
-            <div className="scroll-row mt-1" role="group" aria-label={t('report.periodLabel')}>
+            <ScrollRow className="mt-1" role="group" aria-label={t('report.periodLabel')}>
               {([7, 30, 90, 365] as const).map((d) => (
                 <button
                   key={d}
@@ -154,7 +154,7 @@ export function ReportButton({
                   {t(`report.period${d}`)}
                 </button>
               ))}
-            </div>
+            </ScrollRow>
             <p className="muted mt-1.5">{t('report.periodHint')}</p>
           </div>
 

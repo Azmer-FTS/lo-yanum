@@ -33,6 +33,7 @@ import {
   ListTop,
   LoadMore,
   Modal,
+  ScrollRow,
 } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useProgressive } from '../../hooks/useProgressive'
@@ -421,7 +422,7 @@ export function VolunteersScreen() {
           </>
         }
         filters={
-          <div className="scroll-row items-center">
+          <ScrollRow className="items-center">
             <RegionFilter
               value={region}
               onChange={setRegion}
@@ -459,7 +460,7 @@ export function VolunteersScreen() {
             </button>
           )}
         
-          </div>
+          </ScrollRow>
         }
       >
         {/* ★★ Y4 (2026-09-04) — THE COLUMN HEADERS BELONG TO THE TABLE, so they

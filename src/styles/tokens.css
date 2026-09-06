@@ -330,6 +330,27 @@
    * by this variable lands flush at the top of the viewport on desktop and
    * exactly under the bar on a phone, with no breakpoint of its own.
    */
+  /**
+   * ★★ Y6 (2026-09-06) — THE VERTICAL RHYTHM OF A LIST'S TOP, ONE VALUE.
+   *
+   * "C'est très collé, ça ne respire pas — la rangée de filtres touche les KPI
+   * au-dessus et la liste en dessous." Measured on an iPad before this token:
+   * title→KPIs **4 px**, KPIs→filters **−18 px**. The second is negative — the
+   * two rows genuinely overlapped — because `.scroll-row` pays for its cards'
+   * drop shadow with `margin-block: -0.75rem`, and the 6 px of `mt-1.5` that
+   * separated them never stood a chance against 12.
+   *
+   * ⚠️ IT IS THE GAP BETWEEN WHAT IS DRAWN, not between the boxes. A row's box
+   *    reaches 12 px past its cards at each end (that is the shadow room), so
+   *    every call site subtracts the shadow room it is adjacent to. Getting
+   *    that arithmetic wrong is what produced −18 in the first place, and it is
+   *    why the value lives here and the subtraction lives with the padding it
+   *    is cancelling.
+   */
+  --list-rhythm: 1rem;
+  /** What `.scroll-row` reserves at each block end for a card's shadow. */
+  --row-shadow-room: 0.75rem;
+
   --shell-top: 0px;
 
   /**

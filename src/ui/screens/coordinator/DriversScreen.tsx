@@ -26,6 +26,7 @@ import {
   KpiChip,
   ListTop,
   LoadMore,
+  ScrollRow,
 } from '../../components/primitives'
 import { PeopleMap } from '../../components/PeopleMap'
 import { MapSplit } from '../../components/MapSplit'
@@ -232,7 +233,7 @@ export function DriversScreen() {
           </>
         }
         filters={
-          <div className="scroll-row items-center">
+          <ScrollRow className="items-center">
             <RegionFilter
               value={region}
               onChange={setRegion}
@@ -262,7 +263,7 @@ export function DriversScreen() {
             </button>
           )}
         
-          </div>
+          </ScrollRow>
         }
       >
         {/* ★★ Y4 — the column headers belong to the table, so they are drawn

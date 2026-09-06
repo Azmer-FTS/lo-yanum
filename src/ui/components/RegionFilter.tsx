@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import { REGIONS } from '@core/index'
+import { regions } from '@core/index'
 import type { RegionId } from '@core/index'
 
 import { Icon } from './Icon'
@@ -53,10 +53,24 @@ export function RegionFilter({
                    text-inherit outline-none"
       >
         <option value="all">{t('farms.regionAll')}</option>
-        {REGIONS.map((r) => {
+        {regions().map((r) => {
           const n = counts?.[r.id]
+          /**
+           * ★★ Y8.3 (2026-09-06) — "Les régions sans aucun élément
+           *    apparaissent grisées, pas masquées."
+           *
+           *    Hiding an empty region makes the list of regions change shape
+           *    from one screen to the next, and a coordinator who knows there
+           *    are thirteen and counts eleven has to work out which two are
+           *    missing and why. Disabled says the same thing without asking
+           *    the question: the region exists, and there is nothing in it.
+           *
+           * ⚠️ AND IT IS NEVER DISABLED WHILE IT IS THE ACTIVE FILTER, or the
+           *    control would show a selection the user cannot see selected.
+           */
+          const empty = n === 0 && value !== r.id
           return (
-            <option key={r.id} value={r.id}>
+            <option key={r.id} value={r.id} disabled={empty}>
               {n === undefined ? r.name : `${r.name} (${n})`}
             </option>
           )

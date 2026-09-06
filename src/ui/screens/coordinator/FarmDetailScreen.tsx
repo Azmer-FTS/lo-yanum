@@ -66,6 +66,7 @@ import {
   PageHeader,
   RowLink,
   Section,
+  ScrollRow,
 } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useHydrated } from '../../hooks/useDataState'
@@ -232,7 +233,7 @@ function KeyNumbers({
   const statusColor = readStatusColor(farm.status)
 
   return (
-    <div className="scroll-row" data-testid="farm-key-numbers">
+    <ScrollRow testId="farm-key-numbers">
       {/* THE STATUS, FIRST — a big pastille in the status's own colour on a
           card washed with it, in the corner the Hebrew eye lands on. */}
       <div
@@ -353,7 +354,7 @@ function KeyNumbers({
         figure={lastActivityAt ? formatRelative(lastActivityAt, locale) : t('common.none')}
         label={t('farms.lastActivity')}
       />
-    </div>
+    </ScrollRow>
   )
 }
 

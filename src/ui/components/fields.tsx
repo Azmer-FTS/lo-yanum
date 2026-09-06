@@ -547,7 +547,7 @@ export function FormActions({
       // viewport's physical bottom-left, and in an RTL row `justify-end` puts
       // the submit button exactly there on every stacked layout. The bar
       // keeps its buttons clear of the pill at every width.
-      className="sticky bottom-[var(--shell-bottom)] -mx-4 mt-2 flex justify-end gap-2 border-t border-edge-subtle bg-surface-base/95 px-4 py-3 pl-[4.5rem] backdrop-blur sm:-mx-6 sm:px-6 sm:pl-[4.5rem]"
+      className="sticky-foot bottom-[var(--shell-bottom)] -mx-4 mt-2 flex justify-end gap-2 border-t border-edge-subtle px-4 py-3 pl-[4.5rem] sm:-mx-6 sm:px-6 sm:pl-[4.5rem]"
     >
       <button type="button" className="btn-secondary" onClick={onCancel}>
         {cancelLabel}

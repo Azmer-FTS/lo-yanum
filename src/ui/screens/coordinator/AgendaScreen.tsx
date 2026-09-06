@@ -368,7 +368,7 @@ export function AgendaScreen() {
       {/* One control row: period navigation on one side, view switch on the
           other. Sticky so paging through months never scrolls it away. */}
       <div className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-2 rounded-card
-                      bg-surface-overlay/95 p-2 shadow-card backdrop-blur">
+                      bg-surface-overlay p-2 shadow-card">
         <div className="flex items-center gap-1">
           <button
             type="button"

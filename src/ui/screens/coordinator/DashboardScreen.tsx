@@ -48,7 +48,7 @@ import {
   readStatusColor,
   readToken,
 } from '../../components/badges'
-import { EmptyState, Section, bandTone } from '../../components/primitives'
+import { EmptyState, ScrollRow, Section, bandTone } from '../../components/primitives'
 import type { KpiTone } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
@@ -283,7 +283,7 @@ function AlertsCarousel({ alerts }: { alerts: DashboardAlert[] }) {
   }
   return (
     <div>
-      <div ref={ref} onScroll={onScroll} className="carousel-2 stagger" data-testid="alerts-carousel">
+      <ScrollRow carousel innerRef={ref} onScroll={onScroll} className="stagger" testId="alerts-carousel">
         {alerts.map((alert) => (
           <AlertChip
             key={alert.id}
@@ -292,7 +292,7 @@ function AlertsCarousel({ alerts }: { alerts: DashboardAlert[] }) {
             onSelect={() => setSelectedId((cur) => (cur === alert.id ? null : alert.id))}
           />
         ))}
-      </div>
+      </ScrollRow>
       {pages > 1 && (
         <div className="carousel-dots" data-testid="alerts-dots">
           {Array.from({ length: pages }, (_, i) => (
@@ -708,7 +708,7 @@ export function DashboardScreen() {
 
       {/* 1 — the compact KPI row: swipable sideways when the column is
           narrow, never wrapping. */}
-      <div className="scroll-row kpi-row mb-5" data-testid="kpi-row">
+      <ScrollRow className="kpi-row mb-5" testId="kpi-row">
         <Kpi
           label={t('dashboard.activeFarms')}
           value={activeFarms}
@@ -743,7 +743,7 @@ export function DashboardScreen() {
           tone={alerts.length > 0 ? 'alert' : 'default'}
           to="/coordinator/incidents"
         />
-      </div>
+      </ScrollRow>
 
       {/* U3 (2026-09-02) — THE PRODUCT OWNER'S ORDER: the big figures, then
           DIRECTLY under them the two growth charts one under the other, then

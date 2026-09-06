@@ -49,6 +49,7 @@ import {
   LoadingState,
   PageHeader,
   Section,
+  ScrollRow,
 } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useHydrated } from '../../hooks/useDataState'
@@ -526,7 +527,7 @@ export function MissionDetailScreen() {
           The rendezvous' NAME goes on the reserved note line, where the
           override chip goes on a farm; "how many posts" is the figure, and
           "which one the driver was sent to" is the note under it. */}
-      <div className="scroll-row mb-4" data-testid="mission-key-numbers">
+      <ScrollRow className="mb-4" testId="mission-key-numbers">
         <BandCard
           testId="band-start"
           icon="clock"
@@ -581,7 +582,7 @@ export function MissionDetailScreen() {
             </Link>
           }
         />
-      </div>
+      </ScrollRow>
 
       {/* P0bis.3b — `panel-scope` is the measuring box for every `pair-grid`
           below it. It is a deliberate wrapper rather than the whole content

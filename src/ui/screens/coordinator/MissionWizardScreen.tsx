@@ -964,7 +964,9 @@ export function MissionWizardScreen() {
           breakpoint of its own.
           Below `sm` only the current label is spelled out — five Hebrew labels
           on a 390 px row is unreadable at any font size. */}
-      <ol className="sticky top-[var(--shell-top)] z-30 -mx-4 mb-4 flex items-center gap-1 overflow-x-auto border-b border-edge-subtle bg-surface-base/95 px-4 py-2.5 backdrop-blur sm:-mx-6 sm:px-6">
+      {/* ★ Y7 — opaque, and its spacing is padding rather than margin: a
+          sticky bar with a bottom margin shows the page through the gap. */}
+      <ol className="sticky-top top-[var(--shell-top)] z-30 -mx-4 mb-4 flex items-center gap-1 overflow-x-auto border-b border-edge-subtle px-4 py-2.5 sm:-mx-6 sm:px-6">
         {([1, 2, 3, 4, 5] as Step[]).map((s, i) => {
           const done = s < step
           const current = s === step
@@ -1916,7 +1918,7 @@ export function MissionWizardScreen() {
 
       {/* Sticky footer navigation, offset above the sticky demo toolbar. */}
       {step < 5 && (
-        <div className="sticky bottom-[var(--shell-bottom)] z-30 -mx-4 mt-5 flex items-center gap-2 border-t border-edge-subtle bg-surface-overlay/95 px-4 py-3 pl-[4.5rem] backdrop-blur sm:-mx-6 sm:px-6 sm:pl-[4.5rem]">
+        <div className="sticky-foot bottom-[var(--shell-bottom)] z-30 -mx-4 mt-5 flex items-center gap-2 border-t border-edge-subtle px-4 py-3 pl-[4.5rem] sm:-mx-6 sm:px-6 sm:pl-[4.5rem]">
           <button
             type="button"
             className="btn-secondary"
