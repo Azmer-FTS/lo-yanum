@@ -87,8 +87,36 @@ export function ViewAsSection() {
         </div>
       )}
 
+      {/**
+        * ★★ Y3.2 (2026-09-06) — THE FOUR ROLES, AND רכז IS ONE OF THEM.
+        *
+        *    "La bascule de rôle est introuvable aujourd'hui. Créer une entrée
+        *     claire « מצב תצוגה » listant les quatre rôles (רכז, חקלאי,
+        *     מתנדב, נהג), avec le rôle actif marqué et un retour immédiat au
+        *     rôle coordinateur."
+        *
+        * ★ Y13 built this as a chooser of PEOPLE TO IMPERSONATE, so רכז was
+        *   not in the row: there is nobody to impersonate, it is who you are.
+        *   Which is exactly why it was not findable — a coordinator looking
+        *   for "where do I switch roles" was looking for a row of four and
+        *   finding a row of three that did not contain his own.
+        *
+        *   רכז is the first pill now, it is MARKED when no simulation is
+        *   running, and pressing it is the way back — the same one the banner
+        *   offers, in the place the eye looks for it.
+        */}
       <div className="mt-3">
         <FilterRow active={false} onClear={() => undefined}>
+          <FilterPill
+            active={active === null}
+            onClick={() => {
+              stopViewAs()
+              navigate('/coordinator')
+            }}
+          >
+            <Icon name="shield" size={11} />
+            {t('roles.coordinator')}
+          </FilterPill>
           {ROLES.map((r) => (
             <FilterPill
               key={r}
@@ -97,6 +125,9 @@ export function ViewAsSection() {
               count={presets.filter((p) => p.role === r).length}
             >
               {t(`roles.${r}`)}
+              {/* The role currently BEING SIMULATED, which is a different fact
+                  from which list is open below. */}
+              {active?.role === r && <Icon name="check" size={11} />}
             </FilterPill>
           ))}
         </FilterRow>

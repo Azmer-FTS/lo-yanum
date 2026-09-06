@@ -323,11 +323,13 @@ export function CoordinatorLayout() {
               the product owner reported never seeing the offline state on his
               installed iPad. `NetworkStatus` is mounted once at the root now
               and floats over every shell. */}
+          {/* ★★ Y3.1 (2026-09-06) — THE THEME SWITCH IS GONE FROM THIS RAIL.
+              "Le sélecteur de thème quitte le rail latéral et part dans
+               l'écran de réglages. Le rail droit est encombré."
+              Three stacked segments, permanently, in a 4.5 rem column, for a
+              choice a person makes once a season. It lives in הגדרות →
+              תצוגה now — see `DisplaySection`. */}
           <div className="mt-auto flex flex-col gap-2">
-            <div className={expanded ? '' : 'flex justify-center'}>
-              <ThemeToggle compact={!expanded} vertical={!expanded} />
-            </div>
-
             <AccountBlock expanded={expanded} />
           </div>
         </aside>
@@ -345,8 +347,8 @@ export function CoordinatorLayout() {
           >
             <Brand />
             <div className="flex items-center gap-2">
-              {/* PO POINT 3 — see the rail above: one indicator, at the root. */}
-              <ThemeToggle compact />
+              {/* PO POINT 3 — see the rail above: one indicator, at the root.
+                  ★ Y3.1 — and the theme switch is in הגדרות, not here. */}
               <button
                 type="button"
                 onClick={() => setMenuOpen(true)}

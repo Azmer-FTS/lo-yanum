@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Icon } from './Icon'
@@ -41,6 +41,69 @@ import { Icon } from './Icon'
 export type MapMode = 'hidden' | 'split' | 'full'
 
 const MODES: readonly MapMode[] = ['hidden', 'split', 'full'] as const
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ Y4 (2026-09-06) — "סנכרון פריסה". ONE LAYOUT, OR ONE PER SCREEN.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * "Aujourd'hui chaque écran garde sa propre répartition carte/contenu. Le PO
+ *  veut pouvoir choisir… synchronisé : la disposition choisie s'applique
+ *  IMMÉDIATEMENT à tous les écrans concernés ; libre : comportement actuel."
+ *
+ * ★ IT IS A CHANGE OF KEY AND NOTHING ELSE, which is why it is here rather
+ *   than in every screen. `free` reads and writes `…:map-mode:farms`; `synced`
+ *   reads and writes `…:map-mode:__all__`. Every screen goes on calling
+ *   `useMapMode(screenKey)` and knows nothing about the setting, so there is
+ *   no screen that can forget to honour it.
+ *
+ * ★ AND THE RATIO TRAVELS WITH IT (brief point 3): dragging the seam in
+ *   `synced` moves it everywhere, because the seam writes the same shared key.
+ *
+ * ★ DEFAULT `free` — the behaviour that exists (brief point 2). A device that
+ *   has never seen this setting behaves exactly as it did.
+ *
+ * ⚠️ THE SWITCH IS LIVE, hence the listener set. Nothing else in this app
+ *    needs it — only one map screen is mounted at a time — but a setting that
+ *    silently needs a reload is the kind of thing that is discovered on an
+ *    iPad in a truck.
+ */
+export type LayoutSync = 'free' | 'synced'
+
+const SYNC_KEY = 'lo-yanum:layout-sync'
+/** The screen key every screen shares while the layouts are synchronised. */
+const SHARED = '__all__'
+
+const syncListeners = new Set<() => void>()
+
+export function readLayoutSync(): LayoutSync {
+  try {
+    return localStorage.getItem(SYNC_KEY) === 'synced' ? 'synced' : 'free'
+  } catch {
+    return 'free'
+  }
+}
+
+export function writeLayoutSync(next: LayoutSync): void {
+  try {
+    if (next === 'free') localStorage.removeItem(SYNC_KEY)
+    else localStorage.setItem(SYNC_KEY, 'synced')
+  } catch {
+    // Persistence is a convenience; the switch still takes effect this session.
+  }
+  for (const fn of syncListeners) fn()
+}
+
+function subscribeSync(listener: () => void): () => void {
+  syncListeners.add(listener)
+  return () => {
+    syncListeners.delete(listener)
+  }
+}
+
+export function useLayoutSync(): LayoutSync {
+  return useSyncExternalStore(subscribeSync, readLayoutSync, () => 'free' as LayoutSync)
+}
 
 const storageKey = (screenKey: string) => `lo-yanum:map-mode:${screenKey}`
 
@@ -103,48 +166,59 @@ export interface MapRatioState {
 }
 
 export function useMapRatio(screenKey: string, fallback: number): MapRatioState {
-  const [ratio, setRatioState] = useState<number>(() =>
-    readRatio(screenKey, fallback),
-  )
+  const sync = useLayoutSync()
+  const scope = sync === 'synced' ? SHARED : screenKey
+  const [ratio, setRatioState] = useState<number>(() => readRatio(scope, fallback))
+
+  // The switch flipped while this screen was on: re-read under the new scope.
+  useEffect(() => {
+    setRatioState(readRatio(scope, fallback))
+  }, [scope, fallback])
 
   const setRatio = useCallback(
     (next: number) => {
       const clamped = clampRatio(next)
       setRatioState(clamped)
       try {
-        localStorage.setItem(ratioKey(screenKey), String(Math.round(clamped * 10) / 10))
+        localStorage.setItem(ratioKey(scope), String(Math.round(clamped * 10) / 10))
       } catch {
         // See useMapMode: persistence is a convenience.
       }
     },
-    [screenKey],
+    [scope],
   )
 
   const reset = useCallback(() => {
     setRatioState(fallback)
     try {
-      localStorage.removeItem(ratioKey(screenKey))
+      localStorage.removeItem(ratioKey(scope))
     } catch {
       // Same.
     }
-  }, [screenKey, fallback])
+  }, [scope, fallback])
 
   return { ratio, setRatio, reset }
 }
 
 export function useMapMode(screenKey: string): MapModeState {
-  const [mode, setModeState] = useState<MapMode>(() => readMode(screenKey))
+  const sync = useLayoutSync()
+  const scope = sync === 'synced' ? SHARED : screenKey
+  const [mode, setModeState] = useState<MapMode>(() => readMode(scope))
+
+  useEffect(() => {
+    setModeState(readMode(scope))
+  }, [scope])
 
   const setMode = useCallback(
     (next: MapMode) => {
       setModeState(next)
       try {
-        localStorage.setItem(storageKey(screenKey), next)
+        localStorage.setItem(storageKey(scope), next)
       } catch {
         // Persistence is a convenience; losing it must not break the screen.
       }
     },
-    [screenKey],
+    [scope],
   )
 
   return { mode, setMode }

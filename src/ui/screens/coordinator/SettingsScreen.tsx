@@ -9,6 +9,7 @@ import { Icon } from '../../components/Icon'
 import { Callout, KeyValue, PageHeader, Section } from '../../components/primitives'
 import { readReportRecipient, writeReportRecipient } from '../../report/recipient'
 import { AgreementTemplateSection } from '../../settings/AgreementTemplateSection'
+import { DisplaySection, RegionsEditSection } from '../../settings/DisplaySection'
 import { DemoDataSection } from '../../settings/DemoDataSection'
 import { ViewAsSection } from '../../settings/ViewAsSection'
 import {
@@ -166,6 +167,14 @@ export function SettingsScreen() {
           )}
         </p>
       </Section>
+
+      {/* ★★ Y3.1 · Y4 — the theme (out of the rail) and the layout sync. */}
+      <DisplaySection />
+
+      {/* ★★ Y2.1 — the door to the region editor. Above the offline block on
+          purpose: it is a decision about the programme, not about this
+          device's storage. */}
+      <RegionsEditSection />
 
       <Section title={t('settings.offline.title')} className="mt-6" collapseKey="settings-offline">
         {active ? (
