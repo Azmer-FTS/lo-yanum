@@ -1013,6 +1013,16 @@ section('7 — every mutation @core exports is driven above')
     'resetStore',
     'newContactId',
     'newAgreementId',
+    /**
+     * ★ Y2 — `notifyDerivedChange` WRITES NOTHING, and that is exactly why it
+     *   belongs on this list rather than in the driven set. It bumps the
+     *   store's version so every `useCoreValue` selector re-runs, because
+     *   something OUTSIDE the store — the region outlines — changed what the
+     *   store's data MEANS. There is no row to persist, no change for the
+     *   Supabase backend to see, and nothing for this gate to read back. A
+     *   test that "drove" it would assert that a version counter went up.
+     */
+    'notifyDerivedChange',
   ])
   const mutations = exported.filter((n) => !NOT_MUTATIONS.has(n))
   const uncovered = mutations.filter((n) => !driven.has(n))

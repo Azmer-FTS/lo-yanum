@@ -84,6 +84,42 @@ function waterColour(resolved: 'light' | 'dark'): string {
   return resolved === 'light' ? 'rgb(52 132 214 / 0.62)' : 'rgb(96 165 250 / 0.55)'
 }
 
+/** `52 132 214 / 0.62` → `[52, 132, 214, 0.62]`. */
+function parseRgb(value: string): [number, number, number, number] {
+  const inner = value.replace(/^rgba?\(/, '').replace(/\)$/, '')
+  const [channels, alpha] = inner.split('/')
+  const [r, g, b] = channels.trim().split(/[\s,]+/).map(Number)
+  return [r, g, b, alpha === undefined ? 1 : Number(alpha.trim())]
+}
+
+/**
+ * ★★ Y1 (2026-09-06, correctif) — THE SEA UNDER THE ARCHIVE IS OPAQUE, AND
+ *    THE FIRST VERSION OF IT WAS NOT.
+ *
+ * The style's `background` is the colour of every pixel the archive has no
+ * tile for, and it was set to `waterColour` — which carries an ALPHA, because
+ * where the archive DOES have tiles that colour is painted OVER `earth` and
+ * the transparency is what makes a shallow bay read differently from open
+ * water. A `background` layer has nothing under it: MapLibre composites it
+ * against a transparent canvas, so at 62 % the sea outside the extract came
+ * out as a pale wash rather than as the sea — visible as a light rectangle
+ * north of Egypt in the deployed capture, with a straight TILE EDGE down its
+ * right-hand side, which is the giveaway.
+ *
+ * So the background is the same colour ALREADY COMPOSITED against the land it
+ * would have been painted over. Computed rather than typed: two literals a
+ * blend apart is two literals that stop matching the day either one moves,
+ * and the seam between "sea the archive drew" and "sea we drew" is exactly
+ * where that would show. Measured against the archive's own water pixel:
+ * 125,173,221 here against 125,175,226 on the tile.
+ */
+function seaColour(resolved: 'light' | 'dark'): string {
+  const [r, g, b, a] = parseRgb(waterColour(resolved))
+  const [lr, lg, lb] = parseRgb(token('--map-land'))
+  const mix = (top: number, bottom: number): number => Math.round(top * a + bottom * (1 - a))
+  return `rgb(${mix(r, lr)} ${mix(g, lg)} ${mix(b, lb)})`
+}
+
 function themeFromTokens(resolved: 'light' | 'dark'): Theme {
   const base = namedTheme(resolved)
 
@@ -133,7 +169,7 @@ function themeFromTokens(resolved: 'light' | 'dark'): Theme {
     //    goes `lo-world-land`, so the land outside the extract is land and the
     //    sea is sea. `earth` — the archive's OWN land — keeps the page colour
     //    and paints over both wherever there are tiles.
-    background: waterColour(resolved),
+    background: seaColour(resolved),
     earth: mapLand,
     // The Negev IS sand and scrub, and these are most of what is on screen
     // south of Beersheba. They used to be "a hair off the page" — which read

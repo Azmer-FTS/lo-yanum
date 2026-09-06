@@ -389,6 +389,29 @@ try {
   // -------------------------------------------------------------------------
   section('C — A51/A52 · NO WHITE BAND, AT ANY ZOOM THE CAMERA CAN REACH')
   // -------------------------------------------------------------------------
+  {
+    /**
+     * ★★ THE `background` LAYER MUST BE OPAQUE, and this check exists because
+     *    the first version of the fix was not. That layer has nothing under it
+     *    — MapLibre composites it against a TRANSPARENT canvas — so an alpha
+     *    there is a hole with a tint on it. It shipped once at 62 % and the
+     *    deployed capture showed the sea outside the archive as a pale wash
+     *    with a straight tile edge down its side. The unpainted-pixel check
+     *    below could not see it: a washed-out blue is not the page's grey.
+     */
+    const bg = await page.evaluate(() => {
+      const m = (window as unknown as {
+        __loYanumMap?: { getStyle: () => { layers: { id: string; type: string; paint?: Record<string, unknown> }[] } }
+      }).__loYanumMap
+      const layer = m?.getStyle().layers.find((l) => l.type === 'background')
+      return String(layer?.paint?.['background-color'] ?? '')
+    })
+    check(
+      '★ the style`s background — the colour of every untiled pixel — is opaque',
+      bg !== '' && !/\/\s*0?\.\d/.test(bg) && !/rgba/.test(bg),
+      bg || 'no background layer',
+    )
+  }
   for (const zoom of [6, 9, 12, 15]) {
     await jump(page, 34.85, 31.25, zoom)
     const sample = await read(page)

@@ -246,7 +246,17 @@ await page.evaluate(() => {
   window.location.hash = '#/coordinator/volunteers'
 })
 await page.waitForTimeout(2500)
-await page.fill('main input[type="search"], main input[type="text"]', 'בדיקה ראשון')
+/**
+ * ⚠️ THE MAGNIFIER OPENS THE FIELD (Y12, previous pass), so there is no search
+ *    input in the header until it is pressed. This gate had been red since
+ *    that change with a 60 s timeout on a locator that could not resolve —
+ *    caught while re-running A1–A50 for this pass, and fixed here rather than
+ *    left as "known red": a gate that cannot reach its own subject proves
+ *    nothing about the import it exists to verify.
+ */
+await page.click('[data-testid="list-search-open"]')
+await page.waitForTimeout(600)
+await page.fill('input[type="search"], input[type="text"]', 'בדיקה ראשון')
 await page.waitForTimeout(900)
 check(
   'the imported volunteer is in the roster',
