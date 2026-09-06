@@ -188,14 +188,15 @@ const OVER_STICKY = `(() => {
     for (let y = r.top + 4; y < r.bottom - 3; y += 10) {
       for (let x = r.left + 10; x < r.right - 10; x += 40) {
         const el = document.elementFromPoint(x, y);
-        if (
-          el &&
-          !bar.contains(el) &&
-          el !== document.documentElement &&
-          el !== document.body &&
-          !el.closest('header, [data-list-top], .sticky-top, .sticky-foot')
-        ) {
-          intruders.push(el.tagName + '.' + String(el.className).slice(0, 40));
+        /* ★ THE SAME RULE AS THE BAND ABOVE: an intruder is CONTENT. WebKit
+           answers this probe with the SCROLL CONTAINER at several points
+           inside a sticky header — its hit-testing walks to the scroller
+           rather than to the pinned child — which is not something anybody can
+           see and is not what the report is about. A card over the header is.
+           Chromium and WebKit agree on that question. */
+        const item = el && el.closest('[data-tile], [data-row], .card, article, li, a[href], img');
+        if (item && !bar.contains(item)) {
+          intruders.push(item.tagName + '.' + String(item.className).slice(0, 40));
         }
       }
     }
