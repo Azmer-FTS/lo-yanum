@@ -31,9 +31,16 @@ import { chromium } from 'playwright'
  *     `max-w-2xl` phone column at every width — that IS the narrow responsive
  *     form the rule explicitly allows, and a 672 px column split in two would
  *     be worse on the phone these screens exist for.
- *   · The screens with NO map. Two are named: the agenda, because a calendar is
- *     read like text and is deliberately not flipped (decision 34), and
- *     הגדרות, which is a form about the device rather than about the ground.
+ *   · The screens with NO map. ONE is left: הגדרות, which is a form about the
+ *     device rather than about the ground.
+ *
+ *     ★★ AB3.1 (2026-09-08) — THE AGENDA IS NO LONGER THE SECOND. It was
+ *     exempted on the reading that « a calendar is read like text », which is
+ *     true of the GRID and says nothing about the screen: the product owner
+ *     asked to see where his appointments are, and the answer is the same
+ *     gabarit as everywhere else. The grid itself is still read like text —
+ *     its columns are not flipped — and it now sits in the content column of a
+ *     map-first screen, which is exactly what decision 34 describes.
  *
  * Run against a live dev server:
  *   BASE_URL=http://localhost:5173 bun run mapfirst
@@ -58,11 +65,7 @@ interface Route {
 
 const ROUTES: Route[] = [
   { name: 'dashboard', hash: '#/coordinator' },
-  {
-    name: 'agenda',
-    hash: '#/coordinator/agenda',
-    expectNoMap: 'a calendar is read like text — deliberately not map-first',
-  },
+  { name: 'agenda', hash: '#/coordinator/agenda' },
   { name: 'farms', hash: '#/coordinator/farms' },
   { name: 'farm-detail', hash: '#/coordinator/farms/farm-01' },
   { name: 'farm-form-edit', hash: '#/coordinator/farms/farm-01/edit' },

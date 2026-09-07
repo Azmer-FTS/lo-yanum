@@ -284,11 +284,14 @@ const ROUTES: Array<{
       //   hidden element waits sixty seconds and then fails. It failed on both
       //   phone viewports and passed on both iPad ones, which is exactly the
       //   shape of this mistake.
-      // W4 — creating is the shell's unified "+" now, so the roster's own
-      // header no longer carries the button: open the menu, then pick it.
+      // W4 — creating is the shell's unified "+".
+      // ★★ AB1.2 — AND ON מתנדבים THERE IS NOW NOTHING TO PICK. « Un menu à un
+      //    seul choix est un clic perdu »: this screen creates exactly one
+      //    thing, so the "+" IS that thing and no menu opens. The step used to
+      //    press the toggle and then hunt for `volunteer-new` inside a panel
+      //    that no longer exists — sixty seconds of timeout, on a button that
+      //    had already done the job on the first press.
       await page.locator('[data-testid="action-fab-toggle"]').click()
-      await page.waitForTimeout(200)
-      await page.locator('[data-testid="volunteer-new"]:visible').first().click()
       await page.waitForSelector('[role="dialog"]', { timeout: 10_000 })
       await page.waitForTimeout(600)
     },

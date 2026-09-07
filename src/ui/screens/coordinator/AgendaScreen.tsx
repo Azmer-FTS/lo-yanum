@@ -444,7 +444,10 @@ export function AgendaScreen() {
        zero-height guard would become a flex item and buy an extra `gap-2`. */
     <div
       data-testid="agenda-controls"
-      className="mb-3 flex flex-wrap items-center gap-2 rounded-card bg-surface-overlay p-2 shadow-card"
+      /* Z1 · A60 — `mb-4` IS `--list-rhythm`, and this bar is one of the rows
+         `bun run rhythm` measures the gap under. Twelve pixels reads as 11
+         once the browser has snapped the boxes, which is under the floor. */
+      className="mb-4 flex flex-wrap items-center gap-2 rounded-card bg-surface-overlay p-2 shadow-card"
     >
       <div className="flex items-center gap-1">
         <button
