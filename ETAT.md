@@ -181,34 +181,32 @@
 > | `zones` · `overlap` · `redraw` · `backdrop` · `freehand` · `seam` · `splitter` | carte, dessin, couture | 38 · 185 · 18 · 36 · 30 · 7 · 72 |
 > | `storage` · `offline` · `auth` · `write` · `gazetteer` · `basemap` · `worldland` | | 10 · 21 · 20 · verts |
 > | `tokens` · `contrast` · `parse` · `blocks` · `empty` · `mapfirst` · `fixedhours` | | verts · 36 · 10 écrans · 27 · 19 |
-> | ⚠️ `live` | le schéma DÉPLOYÉ | **ROUGE — voir ci-dessous** |
+> | `live` | le schéma DÉPLOYÉ, sans mot de passe | **48/48** — migration passée le 2026-09-08 |
 >
-> ## ⚠️ UN POINT BLOQUANT, ET IL EST HORS DE CE DÉPÔT
+> ## La migration, appliquée — et par quel chemin
 >
-> **La migration `20260907000100_prospection_fields.sql` n'est PAS appliquée sur
-> Supabase.** `bun run live` la trouve : `column entities.council does not
-> exist`, et avec elle les seize colonnes que AA2, AA4 et AA5 ajoutent.
+> `supabase/migrations/20260907000100_prospection_fields.sql` est **passée sur
+> `lo-yanum-prod` (`lvrptqmkjikkkhcxocbe`) le 2026-09-08**, à la demande
+> explicite du PO. `bun run live` : **48/48**, et `entities` compte ses
+> **33 colonnes**.
 >
-> ★ **Ce que cela casse, exactement.** Le jumeau de démonstration
->   (`/lo-yanum/demo/`) n'a pas de Supabase : tout ce qui est vérifié et
->   photographié dans cette passe fonctionne. L'app RÉELLE (`/lo-yanum/`) écrit
->   dans Postgres : tant que la migration n'est pas passée, enregistrer une
->   ferme portant un des nouveaux champs sera refusé par la base.
+> ⚠️ **ET LE CHEMIN VAUT D'ÊTRE ÉCRIT, parce que le premier a échoué et que le
+>    prochain qui essaiera perdra la même demi-heure.** Le CLI installé sur
+>    cette machine est connecté à un AUTRE compte Supabase : `supabase link
+>    --project-ref lvrptqmkjikkkhcxocbe` répond
+>    `LegacyLinkProjectStatusError — your account does not have the necessary
+>    privileges`, et `supabase projects list` énumère cinq projets dont aucun
+>    n'est celui-ci. **C'est l'outil MCP Supabase de la session qui a le bon
+>    compte** : il voit `lo-yanum-prod` dans l'organisation
+>    `jkqsqykhquutilldvcsv`, et `apply_migration` a passé le fichier tel quel.
+>    `supabase db push` depuis ce poste ne marchera pas tant que le CLI n'est
+>    pas reconnecté au bon compte.
 >
-> ★ **Pourquoi elle n'a pas été appliquée d'ici.** L'outil Supabase de cette
->   session a été refusé par le garde-fou, et le CLI installé sur cette machine
->   est connecté à un AUTRE compte que celui qui héberge `lvrptqmkjikkkhcxocbe`
->   — ses cinq projets ne comprennent pas celui-ci. Aucun contournement
->   raisonnable n'existe depuis ici, et forcer une migration sur une base de
->   production n'est pas une décision qui se prend sans le PO.
->
-> ★ **Comment la passer** : coller le contenu de
->   `supabase/migrations/20260907000100_prospection_fields.sql` dans l'éditeur
->   SQL du projet, ou `supabase link --project-ref lvrptqmkjikkkhcxocbe` puis
->   `supabase db push`. Elle est ADDITIVE et idempotente : que des
->   `add column if not exists`, aucune colonne, politique ou enum existants
->   touchés, et un client plus ancien lit et écrit `entities` exactement comme
->   avant. Ensuite `bun run live` doit repasser à 48/48.
+> La migration est ADDITIVE et idempotente : que des `add column if not
+> exists` plus un index unique partiel, aucune colonne, politique ou enum
+> existants touchés, et un client plus ancien lit et écrit `entities`
+> exactement comme avant. Les seize colonnes de AA2, AA4 et AA5 sont en place,
+> et l'app RÉELLE enregistre désormais une ferme portant les nouveaux champs.
 >
 > ## Des rouges QUI ÉTAIENT DÉJÀ ROUGES — vérifiés, pas supposés
 >
@@ -273,8 +271,8 @@
 > `bun run parse`, `bun run pills`, `bun run prospection`, `bun run signatures`,
 > `bun run sheets`, `ENGINE=webkit bun run pills`, `bun run rhythm`,
 > `VIEWPORT=all bun run layout` et `bun run aacaptures`.
-> ⚠️ **Et `bun run live` restera rouge tant que la migration ci-dessus n'aura
-> pas été passée sur Supabase.**
+> `bun run live` est vert : la migration est passée sur Supabase (voir
+> ci-dessus pour le chemin, qui n'est pas celui qu'on croit).
 >
 > ## Ce qui reste, et ce qui est délibéré
 >
