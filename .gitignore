@@ -71,3 +71,4 @@ dist-region/
 
 # Sondes temporaires de la passe Z (scratch, jamais commitées).
 probe-*.ts
+dist-realtest/

@@ -2,6 +2,12 @@ import { chromium } from 'playwright'
 import type { Browser, Page } from 'playwright'
 
 /**
+ * ★★ Z9 (2026-09-07) — THE CAPTURES OF THIS PASS, ON THE URL THE PRODUCT OWNER
+ *    OPENS. Extended from Y11's seven screens: the planner's farm picker
+ *    (A61), the guards and incidents rosters, and the phone's folded role
+ *    button opened (A69) join the sweep, because those are the four things
+ *    this pass changed that a measurement alone does not settle.
+ *
  * ★★ Y11 — THE CAPTURES OF THIS PASS, ON THE URL THE PRODUCT OWNER OPENS.
  *
  *   bun run zcaptures
@@ -50,7 +56,35 @@ const SHOTS: Shot[] = [
   { name: 'volontaires', hash: '#/coordinator/volunteers', mode: { key: 'volunteers', value: 'split' }, wait: 6500 },
   { name: 'conducteurs', hash: '#/coordinator/drivers', mode: { key: 'drivers', value: 'split' }, wait: 6500 },
   { name: 'gardes', hash: '#/coordinator/missions', mode: { key: 'missions', value: 'split' }, wait: 6500 },
+  { name: 'incidents', hash: '#/coordinator/incidents', mode: { key: 'incidents', value: 'split' }, wait: 6500 },
+  {
+    /* ★ Z2 / A61 — "בחירת חוות", the screen the product owner called the
+       catastrophe. Full screen, which is where he said it was worst. */
+    name: 'planificateur',
+    hash: '#/coordinator/route',
+    mode: { key: 'route', value: 'hidden' },
+    wait: 6500,
+  },
+  { name: 'planificateur-splitte', hash: '#/coordinator/route', mode: { key: 'route', value: 'split' }, wait: 6500 },
+  { name: 'agenda', hash: '#/coordinator/agenda', wait: 5000 },
   { name: 'reglages', hash: '#/coordinator/settings', wait: 4500 },
+  {
+    /* ★ Z6 / A69 — the folded role switch, opened. Renders nothing at all
+       above 640 px, so on the two iPad frames this is the ordinary screen and
+       the frame is still worth having: it is the proof that the bar is
+       unchanged there. */
+    name: 'bascule-role',
+    hash: '#/coordinator/farms',
+    mode: { key: 'farms', value: 'split' },
+    wait: 6000,
+    act: async (page) => {
+      const toggle = page.locator('[data-testid="devbar-toggle"]')
+      if (await toggle.count()) {
+        await toggle.click()
+        await page.waitForTimeout(700)
+      }
+    },
+  },
   {
     name: 'edition-region',
     hash: '#/coordinator/settings/regions',

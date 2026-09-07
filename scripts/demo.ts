@@ -30,6 +30,28 @@ const SHOTS = 'docs/screenshots/demo'
  * the product owner's smart default). A gate that reads the list unfolds it
  * first, as a thumb would; the fold is then remembered for the context.
  */
+/**
+ * ★ Z3 (2026-09-07) — THE COUNTER, AS TWO NUMBERS.
+ *
+ * It says "14/14" everywhere the room is tight and the long sentence only on a
+ * full-page table, so a gate that matches one of the two wordings is a gate
+ * that breaks on a width. The pill wears `data-list-count` in both shapes.
+ */
+async function countPill(page: Page): Promise<string | null> {
+  const pill = page.locator('[data-list-count]').first()
+  /* ⚠️ AND IT WAITS. The real build starts EMPTY and hydrates, so the roster —
+     and the pill that counts it — arrives when the fake PostgREST has answered.
+     A fixed 3.5 s was enough on this machine and not on the CI runner, where
+     the first run of this check read nothing at all. */
+  try {
+    await pill.waitFor({ state: 'attached', timeout: 20_000 })
+  } catch {
+    return null
+  }
+  const nums = (await pill.innerText()).match(/\d+/g)
+  return nums && nums.length >= 2 ? `${nums[0]}/${nums[1]}` : null
+}
+
 async function unfoldZones(page: Page): Promise<void> {
   const block = page.locator('[data-block="entity-zones"]')
   if ((await block.count()) === 0) return
@@ -110,7 +132,14 @@ try {
   await page.waitForTimeout(3500)
   const list = await page.locator('body').innerText()
   check('the real app shows the seeded programme', list.includes('חוות רתם') && list.includes('חוות בקר אודם') && list.includes('חוות חלומותי'))
-  check(`the entities count reads ${data.farms.length + 1}`, new RegExp(`מוצגים ${data.farms.length + 1} מתוך ${data.farms.length + 1}`).test(list), (list.match(/מוצגים \d+ מתוך \d+/) ?? ['—'])[0])
+  /* ⚠️ Z3 — the counter is "N/M" now unless a full-page table has room for the
+     sentence, so this reads the pill's numbers rather than one of its two
+     wordings. `countPill()` is at the top of this file. */
+  check(
+    `the entities count reads ${data.farms.length + 1}`,
+    (await countPill(page)) === `${data.farms.length + 1}/${data.farms.length + 1}`,
+    (await countPill(page)) ?? '—',
+  )
   await page.screenshot({ path: `${SHOTS}/1-seeded.png` })
 
   await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
@@ -190,21 +219,35 @@ try {
         }
       })
     const db = await open()
-    if (!db) return { available: false, aggregates: 0, outbox: 0 }
-    const countIn = (name: string) =>
-      new Promise<number>((resolve) => {
-        if (!db.objectStoreNames.contains(name)) return resolve(0)
-        const req = db.transaction(name, 'readonly').objectStore(name).count()
-        req.onsuccess = () => resolve(req.result)
-        req.onerror = () => resolve(-1)
+    if (!db) return { available: false, demo: 0, outbox: 0, total: 0 }
+    const keysIn = (name: string) =>
+      new Promise<string[]>((resolve) => {
+        if (!db.objectStoreNames.contains(name)) return resolve([])
+        const req = db.transaction(name, 'readonly').objectStore(name).getAllKeys()
+        req.onsuccess = () => resolve((req.result as IDBValidKey[]).map(String))
+        req.onerror = () => resolve([])
       })
-    return { available: true, aggregates: await countIn('aggregates'), outbox: await countIn('outbox') }
+    const aggregates = await keysIn('aggregates')
+    const outbox = await keysIn('outbox')
+    return {
+      available: true,
+      demo: aggregates.filter((k) => k.includes('demo-')).length,
+      outbox: outbox.length,
+      total: aggregates.length,
+    }
   })
+  /**
+   * ⚠️ "EMPTY" IS EMPTY OF THE DEMO DATASET, NOT EMPTY FULL STOP. The first
+   *    version of this check asked for zero records and read TWO — which are
+   *    the product owner's own entity and its zone, re-recorded by the
+   *    re-hydration that follows the purge. A cache that came back empty of
+   *    HIS data would be the actual defect.
+   */
   check(
-    '★★ and the device is empty with it — IndexedDB snapshot and outbox',
-    !local.available || (local.aggregates === 0 && local.outbox === 0),
+    '★★ and the device is empty of it too — no demo row in the cache, no queued write',
+    !local.available || (local.demo === 0 && local.outbox === 0),
     local.available
-      ? `aggregates ${local.aggregates}, outbox ${local.outbox}`
+      ? `${local.demo} demo keys of ${local.total} cached, outbox ${local.outbox}`
       : 'no IndexedDB in this context',
   )
   await page.screenshot({ path: `${SHOTS}/3-purged.png`, fullPage: true })
@@ -212,7 +255,13 @@ try {
   await page.goto(`${BASE}/#/coordinator/farms`, { waitUntil: 'load' })
   await page.waitForTimeout(3000)
   const afterList = await page.locator('body').innerText()
-  check('and the list shows only the real entity, without a reload', afterList.includes('חוות חלומותי') && !afterList.includes('חוות רתם') && /מוצגים 1 מתוך 1/.test(afterList), (afterList.match(/מוצגים \d+ מתוך \d+/) ?? ['—'])[0])
+  check(
+    'and the list shows only the real entity, without a reload',
+    afterList.includes('חוות חלומותי') &&
+      !afterList.includes('חוות רתם') &&
+      (await countPill(page)) === '1/1',
+    (await countPill(page)) ?? '—',
+  )
 
   await context.close()
 } finally {

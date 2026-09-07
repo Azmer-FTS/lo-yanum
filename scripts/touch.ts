@@ -548,9 +548,23 @@ check(
   smallOnRoster.join(' · '),
 )
 
+/**
+ * ⚠️ Z3 (2026-09-07) — READ THE COUNTER'S ELEMENT, NOT ITS SENTENCE.
+ *
+ * This matched the literal "מוצגים X מתוך Y", which Z3 replaced with a short
+ * "300/300" everywhere except a full-page table — so three checks here started
+ * reading NaN/NaN the day the counter got shorter. The pill carries
+ * `data-list-count` in both shapes; the two numbers in it are the answer, and
+ * a future wording cannot take them away again.
+ */
 const shown = async () => {
-  const m = (await bodyText(page)).match(/מוצגים (\d+) מתוך (\d+)/)
-  return m ? [Number(m[1]), Number(m[2])] : [NaN, NaN]
+  const text = await page
+    .locator('[data-list-count]')
+    .first()
+    .innerText()
+    .catch(() => '')
+  const nums = text.match(/\d+/g)
+  return nums && nums.length >= 2 ? [Number(nums[0]), Number(nums[1])] : [NaN, NaN]
 }
 const [beforeShown, total] = await shown()
 check('the roster starts unfiltered', beforeShown === total, `${beforeShown}/${total}`)
