@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
-import { useNarrow, usePhoneShape } from '../hooks/useNarrow'
+import { useFilterFold, useNarrow, usePhoneShape } from '../hooks/useNarrow'
 import { BandCard } from './band'
 import { ChevronForward, Icon } from './Icon'
 import type { IconName } from './Icon'
@@ -1220,40 +1220,58 @@ export function FilterPill({
  */
 export function FilterRow({
   children,
-  active,
+  activeCount,
   onClear,
   trailing,
 }: {
   children: ReactNode
-  /** True when at least one filter is on. */
-  active: boolean
+  /**
+   * ★★ AB2.4 — HOW MANY FILTERS ARE ON, NOT WHETHER ANY IS.
+   *
+   *   « Le bouton « סינון » porte une pastille indiquant le nombre de filtres
+   *     actifs, pour qu'on sache ce qui est appliqué sans ouvrir. »
+   *
+   * ⚠️ IT IS A NUMBER THE SCREEN HANDS IN, AND IT HAS TO BE. The pills are
+   *    `children` — declared by the screen, moved by this component — and in
+   *    the folded shape they are not in the document at all until the panel is
+   *    opened, so nothing here can count them by looking. The screen is the
+   *    one place that knows what "one filter" means on it: a region and a
+   *    status are two, a tab is not a filter, and a sort order is not one
+   *    either.
+   */
+  activeCount: number
   onClear: () => void
   trailing?: ReactNode
 }) {
   const { t } = useTranslation()
+  const active = activeCount > 0
   /**
-   * ★★ AA1.5 (2026-09-07) — THE QUESTION MOVED FROM THE PANEL TO THE DEVICE,
-   *    AND THAT IS THE PRODUCT OWNER'S DECISION ON Z3.2.
+   * ★★ AB2 (2026-09-08) — THE SHAPE IS DECIDED BY WHETHER THEY FIT, AND THE
+   *    TWO EARLIER ANSWERS ARE BOTH KEPT INSIDE THAT ONE.
    *
-   *   « Sur iPad et desktop : pastilles VISIBLES en permanence sur leur propre
-   *     ligne, pas repliées derrière סינון. »
+   *   « Sur téléphone et sur toute largeur où les pastilles passeraient à DEUX
+   *     lignes ou plus : elles disparaissent de la barre et se replient
+   *     intégralement derrière le bouton « סינון ». […] Le basculement se
+   *     décide sur la largeur RÉELLEMENT disponible du panneau, pas sur la
+   *     largeur de l'appareil : en mode splitté sur iPad, le panneau est
+   *     étroit et doit se replier comme un téléphone. »
    *
-   * Y7.3 and Z3 measured this row's own box, on the good argument that the
-   * width of a panel the coordinator drags is not the width of his screen. It
-   * is a good argument for a row that has to FIT; it is the wrong one for a
-   * row that has to BE THERE. Measured before this line changed, at 1376 px:
-   * חוות, שמירות, אירועים and מסלול all answered "narrow" and folded their
-   * pills behind a button — on a desktop. The folded shape is a phone's now,
-   * and nothing else.
+   * ★ `phone ||` IS NOT A LEFTOVER OF AA1.5, IT IS THE FIRST FRAME. A phone's
+   *   pills always overflow, so the measurement reaches the same answer half a
+   *   frame later; asking the media query as well means the folded shape is
+   *   what is PAINTED, rather than a row of pills that jumps into a button.
+   *   And AA1.5's guarantee survives untouched in the other direction: on an
+   *   iPad or a desktop where they fit, they are on their own line, visible,
+   *   permanently — because `fold` is then false.
    *
-   * ⚠️ IT FOLLOWS THAT THE WIDE SHAPE MUST WRAP RATHER THAN SCROLL. It was a
-   *    `ScrollRow`, and a pill past the fade is a pill that is not visible at
-   *    rest — measured on the desktop as a hit area of 1 × 1 px on « מעורבת »,
-   *    which is not a filter anybody can press. Two lines are the answer his
-   *    sentence already gives: line 1 the counter and the word, line 2 the
-   *    pills, always.
+   * ★ AND THE WIDE SHAPE MUST WRAP RATHER THAN SCROLL (AA1.5). It cannot wrap
+   *   any more — that is what this hook now prevents — but `.pill-row` keeps
+   *   `flex-wrap`, because a row that clipped instead would hide a pill on the
+   *   frame between a resize and the measurement.
    */
   const phone = usePhoneShape()
+  const { boxRef, pillsRef, fold: overflow, available, required } = useFilterFold()
+  const fold = phone || overflow
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement | null>(null)
   /** Z3 — the counter `ListTop` built, if this row is inside one. */
@@ -1267,13 +1285,22 @@ export function FilterRow({
    * 402 px before this: the last pill's hit area was 1 × 1 px, because the
    * rail was on top of it. The flag is on the document because the two things
    * are in different trees and neither owns the other.
+   *
+   * ⚠️ AB2 — AND IT IS KEYED ON `fold`, NOT ON `phone`. An iPad panel dragged
+   *    narrow now opens the same dropdown, in the same band, over the same
+   *    floating button.
    */
   useEffect(() => {
-    if (!open || !phone) return
+    if (!open || !fold) return
     const root = document.documentElement
     root.setAttribute('data-filters-open', '')
     return () => root.removeAttribute('data-filters-open')
-  }, [open, phone])
+  }, [open, fold])
+
+  /** A row that stops being folded must not leave a panel open behind it. */
+  useEffect(() => {
+    if (!fold) setOpen(false)
+  }, [fold])
 
   useEffect(() => {
     if (!open) return
@@ -1303,15 +1330,25 @@ export function FilterRow({
     </button>
   )
 
-
   /** The bar itself: one box, one width, whichever shape is drawn in it. */
   const bar = (inner: ReactNode): ReactNode => (
-    <div ref={box} data-filter-row="" data-shape={phone ? 'phone' : 'wide'} className="relative">
+    <div
+      ref={(node) => {
+        box.current = node
+        boxRef(node)
+      }}
+      data-filter-row=""
+      data-shape={fold ? 'phone' : 'wide'}
+      data-filters-active={activeCount}
+      data-fold-available={available ?? undefined}
+      data-fold-required={required ?? undefined}
+      className="relative"
+    >
       {inner}
     </div>
   )
 
-  if (phone) {
+  if (fold) {
     return (
       <FilterShape.Provider value={{ phone: true }}>
         {bar(
@@ -1341,6 +1378,14 @@ export function FilterRow({
             >
               <Icon name="filter" size={12} />
               {t('common.filters')}
+              {/* AB2.4 — what is applied, without opening. `filter-count` is
+                  the same badge a pill's own count uses, so the number reads
+                  as the same kind of fact in both places. */}
+              {active && (
+                <span className="filter-count" data-testid="filter-active-count">
+                  {activeCount}
+                </span>
+              )}
             </button>
             {clearPill}
             {trailing && <div className="flex items-center gap-2">{trailing}</div>}
@@ -1367,11 +1412,11 @@ export function FilterRow({
   /**
    * ★ AA1.5 — THE WIDE SHAPE IS TWO LINES, AND « סינון » IS A LABEL ON IT.
    *
-   * On a phone the word is a disclosure — it opens the panel that holds the
-   * pills. Here there is nothing to disclose: the pills are on the line under
-   * it, permanently. Leaving a button that toggles nothing would be worse than
-   * dropping the word, so it keeps the word and drops the button: the same
-   * icon and the same noun, set as the heading of the block it names.
+   * On a folded row the word is a disclosure — it opens the panel that holds
+   * the pills. Here there is nothing to disclose: the pills are on the line
+   * under it, permanently. Leaving a button that toggles nothing would be
+   * worse than dropping the word, so it keeps the word and drops the button:
+   * the same icon and the same noun, set as the heading of the block it names.
    */
   return (
     <FilterShape.Provider value={{ phone: false }}>
@@ -1385,14 +1430,21 @@ export function FilterRow({
             >
               <Icon name="filter" size={12} />
               {t('common.filters')}
+              {active && (
+                <span className="filter-count" data-testid="filter-active-count">
+                  {activeCount}
+                </span>
+              )}
             </span>
             {trailing && (
               <div className="ms-auto flex items-center gap-2">{trailing}</div>
             )}
           </div>
           {/* AA1.2 — `.pill-row` carries the 10 px / 20 px the touch targets
-              need; see the note beside it in `index.css`. */}
-          <div className="pill-row mt-2">
+              need; see the note beside it in `index.css`.
+              AB2 — and it is the row `useFilterFold` measures: its children's
+              own widths are what decides whether this shape can exist. */}
+          <div ref={pillsRef} className="pill-row mt-2">
             {children}
             {clearPill}
           </div>

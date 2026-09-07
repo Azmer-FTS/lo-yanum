@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
   MONTH_GRID_DAYS,
@@ -230,9 +230,28 @@ export function AgendaScreen() {
   const [editVisitId, setEditVisitId] = useState<string | null>(null)
   const [meetingAt, setMeetingAt] = useState<string | null>(null)
   const [editMeetingId, setEditMeetingId] = useState<string | null>(null)
-  const [headerMenu, setHeaderMenu] = useState(false)
 
   const today = now()
+
+  /**
+   * ★★ AB1.1 — `?new=visit` / `?new=meeting`, THE SEAM THE "+" ASKS THROUGH.
+   *
+   * Both appointments open a modal this screen owns, so the shell's floating
+   * button cannot call their setter. It navigates here with a parameter, this
+   * reads it once and clears it — which is the same seam the two rosters have
+   * used since W4, and it works from the dashboard as well as from here.
+   */
+  const [params, setParams] = useSearchParams()
+  const asked = params.get('new')
+  useEffect(() => {
+    if (asked !== 'visit' && asked !== 'meeting') return
+    const at = atTimeOn(now(), 10, 0)
+    if (asked === 'visit') setVisitAt(at)
+    else setMeetingAt(at)
+    const next = new URLSearchParams(params)
+    next.delete('new')
+    setParams(next, { replace: true })
+  }, [asked, params, setParams])
 
   const { days, from, to } = useMemo(() => {
     if (view === 'day') {
@@ -327,42 +346,16 @@ export function AgendaScreen() {
 
   return (
     <>
-      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-title text-content-primary">{t('agenda.title')}</h1>
-          <p className="muted mt-1">{t('agenda.subtitle')}</p>
-        </div>
-        <div className="relative flex items-center gap-2">
-          {/* G6.2 — one button, three event types. */}
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => setHeaderMenu((v) => !v)}
-          >
-            <Icon name="plus" size={15} />
-            {t('agenda.addEvent')}
-          </button>
-          {headerMenu && (
-            <>
-              <button
-                type="button"
-                aria-label={t('common.close')}
-                className="fixed inset-0 z-20 cursor-default"
-                onClick={() => setHeaderMenu(false)}
-              />
-              <div className="absolute end-0 top-full z-30">
-                <div className="relative w-56">
-                  <SlotMenu
-                    day={anchor}
-                    onClose={() => setHeaderMenu(false)}
-                    onPlanVisit={(d) => setVisitAt(atTimeOn(d, 10, 0))}
-                    onPlanMeeting={(d) => setMeetingAt(atTimeOn(d, 10, 0))}
-                  />
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+      {/* ★★ AB1.3 — THE HEADER'S OWN CREATE BUTTON IS GONE, AND THAT IS THE
+          POINT OF AB1 RATHER THAN A SIDE EFFECT OF IT. « La place ainsi gagnée
+          sort les actions de création des barres d'en-tête. » This screen
+          carried the last one: a `btn-primary` opening the same four-item menu
+          the floating "+" opens, two thumb-widths from it. What creates on
+          this screen is the "+", and it offers ביקור · פגישה · שמירה — the
+          three things an agenda can hold — and nothing about a farm. */}
+      <header className="mb-4">
+        <h1 className="text-title text-content-primary">{t('agenda.title')}</h1>
+        <p className="muted mt-1">{t('agenda.subtitle')}</p>
       </header>
 
       {/* One control row: period navigation on one side, view switch on the

@@ -112,7 +112,15 @@ export function DriversScreen() {
     [beforeLocality, locality, region],
   )
 
-  const anyFilter = sevenPlus || freeTonight || locality !== null || region !== null
+  /**
+   * ★★ AB2.4 — THE NUMBER ON « סינון », counted where "one filter" is known.
+   * Four independent narrowings, one each. A tab is not one of them.
+   */
+  const activeFilters =
+    (sevenPlus ? 1 : 0) +
+    (freeTonight ? 1 : 0) +
+    (locality !== null ? 1 : 0) +
+    (region !== null ? 1 : 0)
 
   const clearFilters = () => {
     setSevenPlus(false)
@@ -253,7 +261,7 @@ export function DriversScreen() {
            * number; it is gone.
            */
           <FilterRow
-            active={anyFilter}
+            activeCount={activeFilters}
             onClear={clearFilters}
           >
             <RegionFilter

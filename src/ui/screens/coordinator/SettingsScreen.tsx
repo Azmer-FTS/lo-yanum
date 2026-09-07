@@ -149,7 +149,32 @@ export function SettingsScreen() {
     <div className="mx-auto w-full max-w-2xl">
       <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
 
-      <Section title={t('settings.connection.title')} flush collapseKey="settings-connection">
+      {/**
+        * ★★ AB5b (2026-09-08) — « JE NE VOIS PAS LA POSSIBILITÉ DE BASCULER
+        *    D'UN MODE À UN AUTRE », AND HE WAS LOOKING IN THE RIGHT PLACE.
+        *
+        * It EXISTS, and it has since Y13 · Y3.2 — measured on the deployed
+        * twin at 402 px, « מצב תצוגה » sits at y = 2630 in a 3260 px page,
+        * ninth of ten blocks, under the offline archive, the origin point, the
+        * coordinator's own card, the report address, the sync state, the
+        * contract template and the demo dataset. On an 874 px phone that is
+        * three full screens of scrolling past things he was not looking for,
+        * which is indistinguishable from absent.
+        *
+        * ★ SO IT IS FIRST. Nothing else on this screen is a way to ANOTHER
+        *   SCREEN; everything else is a setting he changes once. The one block
+        *   that is a door belongs at the top, where a door goes — and the four
+        *   roles are then the first thing the settings screen says.
+        *
+        * ⚠️ IT STILL RENDERS NOTHING IN A SUPABASE BUILD, and that has not
+        *    changed: there the role is a claim on a token and a client-side
+        *    swap would show a screen the server would never serve. See
+        *    `viewAs.ts`. The product owner tests on the demo twin (AB5b.3),
+        *    which is exactly where it is.
+        */}
+      <ViewAsSection />
+
+      <Section title={t('settings.connection.title')} className="mt-6" collapseKey="settings-connection">
         <p className="flex items-center gap-2.5 text-caption font-medium text-content-primary">
           <span
             aria-hidden="true"
@@ -662,10 +687,6 @@ export function SettingsScreen() {
 
       {/* N3 (2026-09-02) — the demo dataset, and the one button that removes it. */}
       <DemoDataSection />
-
-      {/* ★★ Y13 — the coordinator's test door. Demo builds only; see
-          `viewAs.ts`. */}
-      <ViewAsSection />
 
       <Section title={t('settings.account.title')} className="mt-6" collapseKey="settings-account">
         {SUPABASE_CONFIGURED && auth.status === 'signed-in' ? (

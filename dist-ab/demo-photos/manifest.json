@@ -1,0 +1,908 @@
+{
+  "generated": "2026-09-02",
+  "source": "Wikimedia Commons, CC0 only, verified via prop=imageinfo extmetadata (scripts/demo-photos.ts)",
+  "people": [
+    {
+      "file": "demo-photos/people/01.jpg",
+      "title": "File:Gray-haired man portrait (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Gray-haired_man_portrait_(Unsplash).jpg",
+      "author": "Foto Sushi fotosushi",
+      "credit": "https://unsplash.com/photos/6anudmpILw4",
+      "license": "CC0",
+      "pageid": 61874612,
+      "note": "older man, glasses, studio, grey background"
+    },
+    {
+      "file": "demo-photos/people/02.jpg",
+      "title": "File:Portrait of a man (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Portrait_of_a_man_(Unsplash).jpg",
+      "author": "William Stitt willpower",
+      "credit": "https://unsplash.com/photos/B0m8ZIR-CF0",
+      "license": "CC0",
+      "pageid": 61878193,
+      "note": "young man, head and shoulders, outdoors"
+    },
+    {
+      "file": "demo-photos/people/03.jpg",
+      "title": "File:Man vanguard glasses outdoors (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Man_vanguard_glasses_outdoors_(Unsplash).jpg",
+      "author": "Seth Doyle sethdoylee",
+      "credit": "https://unsplash.com/photos/vmBik4xv27s",
+      "license": "CC0",
+      "pageid": 61848389,
+      "note": "young man, glasses, blue jacket, woods"
+    },
+    {
+      "file": "demo-photos/people/04.jpg",
+      "title": "File:Face portrait (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Face_portrait_(Unsplash).jpg",
+      "author": "William Stitt willpower",
+      "credit": "https://unsplash.com/photos/PgSu429ID5o",
+      "license": "CC0",
+      "pageid": 62057252,
+      "note": "young man, close-up, hand on chin"
+    },
+    {
+      "file": "demo-photos/people/05.jpg",
+      "title": "File:Stockholm man with headphones (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Stockholm_man_with_headphones_(Unsplash).jpg",
+      "author": "Yingchou Han hyingchou",
+      "credit": "https://unsplash.com/photos/IJrIeCs3D4g",
+      "license": "CC0",
+      "pageid": 61850571,
+      "note": "smiling man with backpack, city street"
+    },
+    {
+      "file": "demo-photos/people/06.jpg",
+      "title": "File:Man with wrinkles and cap (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Man_with_wrinkles_and_cap_(Unsplash).jpg",
+      "author": "Kahar Saidyhalam kahar",
+      "credit": "https://unsplash.com/photos/ifl-af6d_0c",
+      "license": "CC0",
+      "pageid": 61874678,
+      "note": "elderly man in straw hat, farmer"
+    },
+    {
+      "file": "demo-photos/people/07.jpg",
+      "title": "File:Man with crossed arms (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Man_with_crossed_arms_(Unsplash).jpg",
+      "author": "Warren Wong wflwong",
+      "credit": "https://unsplash.com/photos/VVEwJJRRHgk",
+      "license": "CC0",
+      "pageid": 61733565,
+      "note": "smiling man, arms crossed, field at sunset"
+    },
+    {
+      "file": "demo-photos/people/08.jpg",
+      "title": "File:Always smile (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Always_smile_(Unsplash).jpg",
+      "author": "michael m_minimal",
+      "credit": "https://unsplash.com/photos/gKbrJTDV6os",
+      "license": "CC0",
+      "pageid": 61724220,
+      "note": "laughing man, white sweater, plain background"
+    },
+    {
+      "file": "demo-photos/people/09.jpg",
+      "title": "File:Sitting And Smiling (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Sitting_And_Smiling_(Unsplash).jpg",
+      "author": "Brooke Cagle brookecagle",
+      "credit": "https://unsplash.com/photos/Nm70URdtf3c",
+      "license": "CC0",
+      "pageid": 62055463,
+      "note": "man with dreadlocks, white t-shirt, shutter"
+    },
+    {
+      "file": "demo-photos/people/10.jpg",
+      "title": "File:Mainstream session (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Mainstream_session_(Unsplash).jpg",
+      "author": "Maksym Zakharyak zakharyak",
+      "credit": "https://unsplash.com/photos/FNeU95sOjY8",
+      "license": "CC0",
+      "pageid": 61847301,
+      "note": "man in black, green vines behind"
+    },
+    {
+      "file": "demo-photos/people/11.jpg",
+      "title": "File:Karen Elder (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Karen_Elder_(Unsplash).jpg",
+      "author": "Capturing the human heart. zjtcpts",
+      "credit": "https://unsplash.com/photos/i9uIhSlOWYc",
+      "license": "CC0",
+      "pageid": 61850380,
+      "note": "elderly Karen man smiling, red shirt, stick"
+    },
+    {
+      "file": "demo-photos/people/12.jpg",
+      "title": "File:Happy blue collar worker (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Happy_blue_collar_worker_(Unsplash).jpg",
+      "author": "David Siglin dsiglin",
+      "credit": "https://unsplash.com/photos/UuW4psOb388",
+      "license": "CC0",
+      "pageid": 61682257,
+      "note": "laughing older worker, gloves and drill"
+    },
+    {
+      "file": "demo-photos/people/13.jpg",
+      "title": "File:Hungary (Unsplash lCVP-lu0kxk).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Hungary_(Unsplash_lCVP-lu0kxk).jpg",
+      "author": "Norman Toth 100rulez",
+      "credit": "https://unsplash.com/photos/lCVP-lu0kxk",
+      "license": "CC0",
+      "pageid": 61782151,
+      "note": "smiling young man in hoodie, winter woods"
+    },
+    {
+      "file": "demo-photos/people/14.jpg",
+      "title": "File:Happy Worker (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Happy_Worker_(Unsplash).jpg",
+      "author": "Aaron Burden aaronburden",
+      "credit": "https://unsplash.com/photos/aHqNIrN5U1g",
+      "license": "CC0",
+      "pageid": 61667090,
+      "note": "older man at a market stall, smiling"
+    },
+    {
+      "file": "demo-photos/people/15.jpg",
+      "title": "File:Bearded man in the wilderness (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Bearded_man_in_the_wilderness_(Unsplash).jpg",
+      "author": "Nik MacMillan nikarthur",
+      "credit": "https://unsplash.com/photos/Q7r-IezW1BU",
+      "license": "CC0",
+      "pageid": 61728392,
+      "note": "bald man sitting, autumn trees"
+    },
+    {
+      "file": "demo-photos/people/16.jpg",
+      "title": "File:Bearded man in hoodie (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Bearded_man_in_hoodie_(Unsplash).jpg",
+      "author": "Ryan Holloway hollowaykryan",
+      "credit": "https://unsplash.com/photos/oJUTLMxMsgE",
+      "license": "CC0",
+      "pageid": 62057708,
+      "note": "man in grey hoodie, dark background"
+    },
+    {
+      "file": "demo-photos/people/17.jpg",
+      "title": "File:Serious man in furry hood (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Serious_man_in_furry_hood_(Unsplash).jpg",
+      "author": "Frank Marino frank_marino87",
+      "credit": "https://unsplash.com/photos/7SokKNHZu54",
+      "license": "CC0",
+      "pageid": 61874266,
+      "note": "bearded man in fur hood, looking at camera"
+    },
+    {
+      "file": "demo-photos/people/18.jpg",
+      "title": "File:Hipster Professional (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Hipster_Professional_(Unsplash).jpg",
+      "author": "rawpixel.com rawpixel",
+      "credit": "https://unsplash.com/photos/izTZ-TtdwCs",
+      "license": "CC0",
+      "pageid": 61844929,
+      "note": "bearded man in suit and tie"
+    },
+    {
+      "file": "demo-photos/people/19.jpg",
+      "title": "File:Lost on the white (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Lost_on_the_white_(Unsplash).jpg",
+      "author": "Joshua Harvey josharvey",
+      "credit": "https://unsplash.com/photos/9y_etjI7QPI",
+      "license": "CC0",
+      "pageid": 61847324,
+      "note": "man with cap, sunglasses and camera, green hills"
+    },
+    {
+      "file": "demo-photos/people/20.jpg",
+      "title": "File:Old man holding camera (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Old_man_holding_camera_(Unsplash).jpg",
+      "author": "Kahar Saidyhalam kahar",
+      "credit": "https://unsplash.com/photos/cYXmK32Bdlo",
+      "license": "CC0",
+      "pageid": 61850863,
+      "note": "older man holding a camera, dry lakebed"
+    },
+    {
+      "file": "demo-photos/people/21.jpg",
+      "title": "File:Repair Man (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Repair_Man_(Unsplash).jpg",
+      "author": "Igor Ovsyannykov igorovsyannykov",
+      "credit": "https://unsplash.com/photos/Q2s7cN7TrRQ",
+      "license": "CC0",
+      "pageid": 61682931,
+      "note": "young mechanic beside a scooter"
+    },
+    {
+      "file": "demo-photos/people/22.jpg",
+      "title": "File:Man in t-shirt posing (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Man_in_t-shirt_posing_(Unsplash).jpg",
+      "author": "Mohammad Faruque primitivestudios",
+      "credit": "https://unsplash.com/photos/SpIKPT8zeAs",
+      "license": "CC0",
+      "pageid": 61857601,
+      "note": "young man in red striped t-shirt"
+    },
+    {
+      "file": "demo-photos/people/23.jpg",
+      "title": "File:Man standing on street (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Man_standing_on_street_(Unsplash).jpg",
+      "author": "chelsea ferenando chelferen",
+      "credit": "https://unsplash.com/photos/r_-M00daj2Y",
+      "license": "CC0",
+      "pageid": 61758315,
+      "note": "man in white polo, city street"
+    },
+    {
+      "file": "demo-photos/people/24.jpg",
+      "title": "File:Man in jersey (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Man_in_jersey_(Unsplash).jpg",
+      "author": "William Stitt willpower",
+      "credit": "https://unsplash.com/photos/HZpIpbHbVGY",
+      "license": "CC0",
+      "pageid": 62058386,
+      "note": "young man in jersey, looking aside"
+    },
+    {
+      "file": "demo-photos/people/25.jpg",
+      "title": "File:Brunette woman portrait (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Brunette_woman_portrait_(Unsplash).jpg",
+      "author": "Christopher Campbell chrisjoelcampbell",
+      "credit": "https://unsplash.com/photos/3hoAon9Mc88",
+      "license": "CC0",
+      "pageid": 61654448,
+      "note": "young woman, dark hair, hedge behind"
+    },
+    {
+      "file": "demo-photos/people/26.jpg",
+      "title": "File:Smiling woman in blanket (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Smiling_woman_in_blanket_(Unsplash).jpg",
+      "author": "REASONS ART reas",
+      "credit": "https://unsplash.com/photos/mxbnQMjlHj8",
+      "license": "CC0",
+      "pageid": 61825662,
+      "note": "smiling woman, yellow leaves"
+    },
+    {
+      "file": "demo-photos/people/27.jpg",
+      "title": "File:Dark-haired woman by a tree (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Dark-haired_woman_by_a_tree_(Unsplash).jpg",
+      "author": "Allef Vinicius seteales",
+      "credit": "https://unsplash.com/photos/PoM0yxiD6L8",
+      "license": "CC0",
+      "pageid": 61834605,
+      "note": "woman in hat by a tree"
+    },
+    {
+      "file": "demo-photos/people/28.jpg",
+      "title": "File:Smiling woman with a phone (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Smiling_woman_with_a_phone_(Unsplash).jpg",
+      "author": "rawpixel.com rawpixel",
+      "credit": "https://unsplash.com/photos/xYjWeyS235w",
+      "license": "CC0",
+      "pageid": 61831510,
+      "note": "smiling woman with a phone, outdoors"
+    },
+    {
+      "file": "demo-photos/people/29.jpg",
+      "title": "File:Outdoor portrait (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Outdoor_portrait_(Unsplash).jpg",
+      "author": "Anthony Ginsbrook aginsbrook",
+      "credit": "https://unsplash.com/photos/21rLuJewFKQ",
+      "license": "CC0",
+      "pageid": 61753747,
+      "note": "smiling woman in denim jacket, night lights"
+    },
+    {
+      "file": "demo-photos/people/30.jpg",
+      "title": "File:Expresion! (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Expresion!_(Unsplash).jpg",
+      "author": "Rikky Alves rikkyalves",
+      "credit": "https://unsplash.com/photos/NmcZ5_4DcRQ",
+      "license": "CC0",
+      "pageid": 61829078,
+      "note": "woman in sunglasses, striped top, hand on chin"
+    },
+    {
+      "file": "demo-photos/people/31.jpg",
+      "title": "File:Pixie Cut (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Pixie_Cut_(Unsplash).jpg",
+      "author": "Janko Ferlič thepootphotographer",
+      "credit": "https://unsplash.com/photos/qzDF5PNEWKc",
+      "license": "CC0",
+      "pageid": 61758627,
+      "note": "woman with short blonde hair, dark background"
+    },
+    {
+      "file": "demo-photos/people/32.jpg",
+      "title": "File:Smiling in a cornfield (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Smiling_in_a_cornfield_(Unsplash).jpg",
+      "author": "Allef Vinicius seteales",
+      "credit": "https://unsplash.com/photos/bPCZahXmMUs",
+      "license": "CC0",
+      "pageid": 61831725,
+      "note": "smiling woman in plaid, corn leaves"
+    },
+    {
+      "file": "demo-photos/people/33.jpg",
+      "title": "File:I Love Portraits (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:I_Love_Portraits_(Unsplash).jpg",
+      "author": "Clarisse Meyer clarissemeyer",
+      "credit": "https://unsplash.com/photos/x9cXI2eQLBw",
+      "license": "CC0",
+      "pageid": 61824017,
+      "note": "young woman in pink, sitting by roses"
+    },
+    {
+      "file": "demo-photos/people/34.jpg",
+      "title": "File:Chic and Glamorous (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Chic_and_Glamorous_(Unsplash).jpg",
+      "author": "Henri Meilhac henrimeilhac",
+      "credit": "https://unsplash.com/photos/K36naecXVwU",
+      "license": "CC0",
+      "pageid": 61831412,
+      "note": "woman with earrings, stone wall"
+    },
+    {
+      "file": "demo-photos/people/35.jpg",
+      "title": "File:She's Self-conscious (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:She%27s_Self-conscious_(Unsplash).jpg",
+      "author": "Brooke Cagle brookecagle",
+      "credit": "https://unsplash.com/photos/QZRAaYfmvA8",
+      "license": "CC0",
+      "pageid": 61827586,
+      "note": "red-haired woman, arms crossed, misty field"
+    },
+    {
+      "file": "demo-photos/people/36.jpg",
+      "title": "File:In front of pumpkin shelves (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:In_front_of_pumpkin_shelves_(Unsplash).jpg",
+      "author": "Frank Marino frank_marino87",
+      "credit": "https://unsplash.com/photos/wW9BF9gKdns",
+      "license": "CC0",
+      "pageid": 61776322,
+      "note": "smiling woman in fur hood, pumpkins"
+    },
+    {
+      "file": "demo-photos/people/37.jpg",
+      "title": "File:Closed eye smile in field (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Closed_eye_smile_in_field_(Unsplash).jpg",
+      "author": "Priscilla Du Preez artographybyp",
+      "credit": "https://unsplash.com/photos/Dzblot3Qhok",
+      "license": "CC0",
+      "pageid": 61825702,
+      "note": "smiling woman in a dry field, winter"
+    },
+    {
+      "file": "demo-photos/people/38.jpg",
+      "title": "File:Crown of Leaves (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Crown_of_Leaves_(Unsplash).jpg",
+      "author": "Eli DeFaria elidefaria",
+      "credit": "https://unsplash.com/photos/bsU_7Ln2E2Y",
+      "license": "CC0",
+      "pageid": 61826552,
+      "note": "woman in denim jacket, leaf crown, ivy"
+    },
+    {
+      "file": "demo-photos/people/39.jpg",
+      "title": "File:Smiling woman (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Smiling_woman_(Unsplash).jpg",
+      "author": "Allef Vinicius seteales",
+      "credit": "https://unsplash.com/photos/C_1jjFJioWg",
+      "license": "CC0",
+      "pageid": 61839496,
+      "note": "smiling woman in hat, hand on chin"
+    },
+    {
+      "file": "demo-photos/people/40.jpg",
+      "title": "File:Smiling woman by a window (Unsplash NoRsyXmHGpI).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Smiling_woman_by_a_window_(Unsplash_NoRsyXmHGpI).jpg",
+      "author": "Brooke Cagle brookecagle",
+      "credit": "https://unsplash.com/photos/NoRsyXmHGpI",
+      "license": "CC0",
+      "pageid": 61833060,
+      "note": "older woman smiling by a window"
+    },
+    {
+      "file": "demo-photos/people/41.jpg",
+      "title": "File:Woman with bindi smiles (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Woman_with_bindi_smiles_(Unsplash).jpg",
+      "author": "Oriol Casas oricasas",
+      "credit": "https://unsplash.com/photos/C7m7RSFONYc",
+      "license": "CC0",
+      "pageid": 61850221,
+      "note": "Indian woman in sari, smiling"
+    },
+    {
+      "file": "demo-photos/people/42.jpg",
+      "title": "File:Closed eye smile (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Closed_eye_smile_(Unsplash).jpg",
+      "author": "Marcelo Matarazzo marcelo2016",
+      "credit": "https://unsplash.com/photos/WKxWQg7tZoU",
+      "license": "CC0",
+      "pageid": 61827173,
+      "note": "smiling young woman, grey t-shirt, trees"
+    },
+    {
+      "file": "demo-photos/people/43.jpg",
+      "title": "File:Red lipstick smile (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Red_lipstick_smile_(Unsplash).jpg",
+      "author": "Allef Vinicius seteales",
+      "credit": "https://unsplash.com/photos/6ypOmTNK2FA",
+      "license": "CC0",
+      "pageid": 61847056,
+      "note": "woman in hat and plaid, sunset field"
+    },
+    {
+      "file": "demo-photos/people/44.jpg",
+      "title": "File:Woman beneath trees and sun (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Woman_beneath_trees_and_sun_(Unsplash).jpg",
+      "author": "Jimmy Chang photohunter",
+      "credit": "https://unsplash.com/photos/VplzfrQvCm4",
+      "license": "CC0",
+      "pageid": 61758494,
+      "note": "woman in white t-shirt under trees"
+    },
+    {
+      "file": "demo-photos/people/45.jpg",
+      "title": "File:Tattooed woman with laptop (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Tattooed_woman_with_laptop_(Unsplash).jpg",
+      "author": "Brooke Cagle brookecagle",
+      "credit": "http://unsplash.com/photos/WHWYBmtn3_0",
+      "license": "CC0",
+      "pageid": 58821688,
+      "note": "red-haired woman at a laptop, cafe"
+    },
+    {
+      "file": "demo-photos/people/46.jpg",
+      "title": "File:Woman in a hat by red flowers (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Woman_in_a_hat_by_red_flowers_(Unsplash).jpg",
+      "author": "Allef Vinicius seteales",
+      "credit": "https://unsplash.com/photos/tTUSgZ8uLkk",
+      "license": "CC0",
+      "pageid": 61824207,
+      "note": "smiling woman in hat by red flowers"
+    },
+    {
+      "file": "demo-photos/people/47.jpg",
+      "title": "File:Woman in Parque da Cidade (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Woman_in_Parque_da_Cidade_(Unsplash).jpg",
+      "author": "Tikkho Maciel tikkho",
+      "credit": "https://unsplash.com/photos/Oed8cpob9VM",
+      "license": "CC0",
+      "pageid": 61850754,
+      "note": "smiling woman in sunglasses, leaning on a rail"
+    },
+    {
+      "file": "demo-photos/people/48.jpg",
+      "title": "File:Experience brings character. (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Experience_brings_character._(Unsplash).jpg",
+      "author": "Alex Harvey alexharvey",
+      "credit": "https://unsplash.com/photos/y0I85D5QKvs",
+      "license": "CC0",
+      "pageid": 61826749,
+      "note": "elderly woman, glasses, red hat, close-up"
+    },
+    {
+      "file": "demo-photos/people/49.jpg",
+      "title": "File:Woman In Nature (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Woman_In_Nature_(Unsplash).jpg",
+      "author": "Enara Agirrezabala enaraslens",
+      "credit": "https://unsplash.com/photos/VBrJmSBqyrI",
+      "license": "CC0",
+      "pageid": 61830040,
+      "note": "woman in glasses and red sweater, rock behind"
+    },
+    {
+      "file": "demo-photos/people/50.jpg",
+      "title": "File:Woman holding cat (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Woman_holding_cat_(Unsplash).jpg",
+      "author": "Mel Elías mieldalabeja",
+      "credit": "https://unsplash.com/photos/2_KjpNXFl5M",
+      "license": "CC0",
+      "pageid": 61828358,
+      "note": "woman in glasses holding a cat, yellow coat"
+    },
+    {
+      "file": "demo-photos/people/51.jpg",
+      "title": "File:Woman with purple grasses (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Woman_with_purple_grasses_(Unsplash).jpg",
+      "author": "Blake Hunter blakeh",
+      "credit": "https://unsplash.com/photos/SKlhN6gCpjs",
+      "license": "CC0",
+      "pageid": 61756942,
+      "note": "smiling red-haired woman in tall grasses"
+    }
+  ],
+  "places": [
+    {
+      "file": "demo-photos/places/01.jpg",
+      "title": "File:Herd of sheep in mountains (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Herd_of_sheep_in_mountains_(Unsplash).jpg",
+      "author": "nima hatami thegreatnima",
+      "credit": "https://unsplash.com/photos/UcQsXKYNgHI",
+      "license": "CC0",
+      "pageid": 62303498,
+      "note": "sheep flock on stony ground, red hills"
+    },
+    {
+      "file": "demo-photos/places/02.jpg",
+      "title": "File:Shepherding Livestock (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Shepherding_Livestock_(Unsplash).jpg",
+      "author": "Patrick Schneider patrick_schneider",
+      "credit": "https://unsplash.com/photos/wczrs3Unfnk",
+      "license": "CC0",
+      "pageid": 62307301,
+      "note": "sheep flock, red mountains"
+    },
+    {
+      "file": "demo-photos/places/03.jpg",
+      "title": "File:Ollantaytambo, Peru (Unsplash imQGQL0VV4s).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Ollantaytambo,_Peru_(Unsplash_imQGQL0VV4s).jpg",
+      "author": "Blake Richard Verdoorn blakeverdoorn",
+      "credit": "https://unsplash.com/photos/imQGQL0VV4s",
+      "license": "CC0",
+      "pageid": 62071269,
+      "note": "sheep on dry plain, snowy mountains (Peru)"
+    },
+    {
+      "file": "demo-photos/places/04.jpg",
+      "title": "File:Country Sheep (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Country_Sheep_(Unsplash).jpg",
+      "author": "Topich topich",
+      "credit": "https://unsplash.com/photos/FDkT3DpYBoI",
+      "license": "CC0",
+      "pageid": 61701145,
+      "note": "two sheep by a signpost, dry grassland"
+    },
+    {
+      "file": "demo-photos/places/05.jpg",
+      "title": "File:Sheep on the British countryside.jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Sheep_on_the_British_countryside.jpg",
+      "author": "Rucksack Magazine",
+      "credit": "https://unsplash.com/photos/7x910DZkN_A",
+      "license": "CC0",
+      "pageid": 59541881,
+      "note": "sheep scattered on a brown hillside"
+    },
+    {
+      "file": "demo-photos/places/06.jpg",
+      "title": "File:IMG a sheep.jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:IMG_a_sheep.jpg",
+      "author": "Sam Carter",
+      "credit": "https://unsplash.com/photos/white-sheep-on-green-grass-during-daytime-GHOiyov2TSQ",
+      "license": "CC0",
+      "pageid": 143535141,
+      "note": "sheep facing the camera, flock behind"
+    },
+    {
+      "file": "demo-photos/places/07.jpg",
+      "title": "File:Farm Goats (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Farm_Goats_(Unsplash).jpg",
+      "author": "Jarren Simmons jarrensimmons47",
+      "credit": "https://unsplash.com/photos/bzzGg63bzAM",
+      "license": "CC0",
+      "pageid": 62176080,
+      "note": "goats in a barn"
+    },
+    {
+      "file": "demo-photos/places/08.jpg",
+      "title": "File:Wild Mountain Goat (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Wild_Mountain_Goat_(Unsplash).jpg",
+      "author": "andrew welch andrewwelch3",
+      "credit": "https://unsplash.com/photos/3UI-q-GOrlc",
+      "license": "CC0",
+      "pageid": 62336278,
+      "note": "goat on a green slope"
+    },
+    {
+      "file": "demo-photos/places/09.jpg",
+      "title": "File:Caleb Woods 2017-06-05 (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Caleb_Woods_2017-06-05_(Unsplash).jpg",
+      "author": "Caleb Woods caleb_woods",
+      "credit": "https://unsplash.com/photos/EddYw_S1x14",
+      "license": "CC0",
+      "pageid": 62273687,
+      "note": "white goat close-up, herd behind"
+    },
+    {
+      "file": "demo-photos/places/10.jpg",
+      "title": "File:Sun Cow (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Sun_Cow_(Unsplash).jpg",
+      "author": "Louis Blythe louisjblythe",
+      "credit": "https://unsplash.com/photos/8fr8l0juCOw",
+      "license": "CC0",
+      "pageid": 61837953,
+      "note": "cow at sunset, backlit"
+    },
+    {
+      "file": "demo-photos/places/11.jpg",
+      "title": "File:Cow spread (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Cow_spread_(Unsplash).jpg",
+      "author": "Filip Bunkens pitslamp",
+      "credit": "https://unsplash.com/photos/phKv_fo-9HM",
+      "license": "CC0",
+      "pageid": 61768886,
+      "note": "cattle herd from above"
+    },
+    {
+      "file": "demo-photos/places/12.jpg",
+      "title": "File:Castelluccio, Italy (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Castelluccio,_Italy_(Unsplash).jpg",
+      "author": "marco forno marco4no",
+      "credit": "https://unsplash.com/photos/4xb7hurRzIU",
+      "license": "CC0",
+      "pageid": 62318755,
+      "note": "cattle on a plain, snowy mountain"
+    },
+    {
+      "file": "demo-photos/places/13.jpg",
+      "title": "File:Karsten Würth (@inf1783) 2016-05-28 (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Karsten_W%C3%BCrth_(@inf1783)_2016-05-28_(Unsplash).jpg",
+      "author": "Karsten Würth (@inf1783) inf1783",
+      "credit": "https://unsplash.com/photos/A6TYqwlgsWM",
+      "license": "CC0",
+      "pageid": 62173120,
+      "note": "bull in dry grass"
+    },
+    {
+      "file": "demo-photos/places/14.jpg",
+      "title": "File:Horses on a farm at sunset (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Horses_on_a_farm_at_sunset_(Unsplash).jpg",
+      "author": "Omar Prestwich omarprestwich",
+      "credit": "https://unsplash.com/photos/mS26pmEiVVA",
+      "license": "CC0",
+      "pageid": 61911476,
+      "note": "horses at sunset, fence"
+    },
+    {
+      "file": "demo-photos/places/15.jpg",
+      "title": "File:Grazing horses in Iceland (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Grazing_horses_in_Iceland_(Unsplash).jpg",
+      "author": "Isabella Jusková bellaskova",
+      "credit": "https://unsplash.com/photos/9aNltHjuOc0",
+      "license": "CC0",
+      "pageid": 62302899,
+      "note": "horses grazing on a dry hill"
+    },
+    {
+      "file": "demo-photos/places/16.jpg",
+      "title": "File:Sunset@pastureCreek(byKennethThewissen).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Sunset@pastureCreek(byKennethThewissen).jpg",
+      "author": "Kenneth Thewissen",
+      "credit": "http://unsplash.com/photos/D76DklsG-5U",
+      "license": "CC0",
+      "pageid": 31469180,
+      "note": "pasture at sunset, trees"
+    },
+    {
+      "file": "demo-photos/places/17.jpg",
+      "title": "File:Wheatfield (Unsplash).png",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Wheatfield_(Unsplash).png",
+      "author": "Rasmus Landgreen rasmuslandgreen",
+      "credit": "https://unsplash.com/photos/tylohxbj5tg",
+      "license": "CC0",
+      "pageid": 62290474,
+      "note": "wheat field rows to the horizon"
+    },
+    {
+      "file": "demo-photos/places/18.jpg",
+      "title": "File:Tomasz Bazylinski 2015 (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Tomasz_Bazylinski_2015_(Unsplash).jpg",
+      "author": "Tomasz Bazylinski bazylu",
+      "credit": "https://unsplash.com/photos/V3p5NSMh_lo",
+      "license": "CC0",
+      "pageid": 62277319,
+      "note": "farmland from above, green parcels"
+    },
+    {
+      "file": "demo-photos/places/19.jpg",
+      "title": "File:Waterloo, Canada (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Waterloo,_Canada_(Unsplash).jpg",
+      "author": "Sveta Fedarava svetacreative",
+      "credit": "http://unsplash.com/photos/tI_Odb7ZU6M",
+      "license": "CC0",
+      "pageid": 58831161,
+      "note": "crop fields from above, road"
+    },
+    {
+      "file": "demo-photos/places/20.jpg",
+      "title": "File:Suchawa farmland (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Suchawa_farmland_(Unsplash).jpg",
+      "author": "freestocks.org freestocks",
+      "credit": "https://unsplash.com/photos/aU3Y9GBZkzc",
+      "license": "CC0",
+      "pageid": 62311256,
+      "note": "tractor in a green field, big sky"
+    },
+    {
+      "file": "demo-photos/places/21.jpg",
+      "title": "File:Valkyr Stables (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Valkyr_Stables_(Unsplash).jpg",
+      "author": "Jon Phillips jonphillips",
+      "credit": "https://unsplash.com/photos/bReva9tPYAg",
+      "license": "CC0",
+      "pageid": 61732365,
+      "note": "stables fence at sunset"
+    },
+    {
+      "file": "demo-photos/places/22.jpg",
+      "title": "File:Harvesting the Wheat Crop (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Harvesting_the_Wheat_Crop_(Unsplash).jpg",
+      "author": "meriç tuna tuna59",
+      "credit": "https://unsplash.com/photos/CE1OvMrZumQ",
+      "license": "CC0",
+      "pageid": 61800235,
+      "note": "combine harvesting wheat"
+    },
+    {
+      "file": "demo-photos/places/23.jpg",
+      "title": "File:Melissa Askew 2015-08-08 (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Melissa_Askew_2015-08-08_(Unsplash).jpg",
+      "author": "Melissa Askew teamaskew",
+      "credit": "https://unsplash.com/photos/1fBUD5Dcmys",
+      "license": "CC0",
+      "pageid": 62290316,
+      "note": "wheat ears against blue sky"
+    },
+    {
+      "file": "demo-photos/places/24.jpg",
+      "title": "File:Jenelle Ball 2014-12-17 (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Jenelle_Ball_2014-12-17_(Unsplash).jpg",
+      "author": "Jenelle Ball xxvs",
+      "credit": "https://unsplash.com/photos/_6YXOv-l7AI",
+      "license": "CC0",
+      "pageid": 61654293,
+      "note": "hay bales on a dry hill"
+    },
+    {
+      "file": "demo-photos/places/25.jpg",
+      "title": "File:GozhaNETfields.jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:GozhaNETfields.jpg",
+      "author": "GozhaNET",
+      "credit": "http://unsplash.com/photos/xDrxJCdedcI",
+      "license": "CC0",
+      "pageid": 31236894,
+      "note": "tractor and hay bales, dry field"
+    },
+    {
+      "file": "demo-photos/places/26.jpg",
+      "title": "File:Old olive grove - Flickr - darko149.jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Old_olive_grove_-_Flickr_-_darko149.jpg",
+      "author": "Darko B",
+      "credit": "Old olive grove",
+      "license": "CC0",
+      "pageid": 176431458,
+      "note": "old olive trees, sun through the grove"
+    },
+    {
+      "file": "demo-photos/places/27.jpg",
+      "title": "File:Olive orchard in Koye in the Arbil Governorate of the Kurdistan Region of Iraq 18.jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Olive_orchard_in_Koye_in_the_Arbil_Governorate_of_the_Kurdistan_Region_of_Iraq_18.jpg",
+      "author": "Levi Clancy",
+      "credit": "Own work",
+      "license": "CC0",
+      "pageid": 65405286,
+      "note": "olive orchard and dry hills (Kurdistan)"
+    },
+    {
+      "file": "demo-photos/places/28.jpg",
+      "title": "File:Olive orchard in Koye in the Arbil Governorate of the Kurdistan Region of Iraq 21.jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Olive_orchard_in_Koye_in_the_Arbil_Governorate_of_the_Kurdistan_Region_of_Iraq_21.jpg",
+      "author": "Levi Clancy",
+      "credit": "Own work",
+      "license": "CC0",
+      "pageid": 65405294,
+      "note": "olive orchard, pylon, hazy sky"
+    },
+    {
+      "file": "demo-photos/places/29.jpg",
+      "title": "File:Olive orchard in Koye in the Arbil Governorate of the Kurdistan Region of Iraq 19.jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Olive_orchard_in_Koye_in_the_Arbil_Governorate_of_the_Kurdistan_Region_of_Iraq_19.jpg",
+      "author": "Levi Clancy",
+      "credit": "Own work",
+      "license": "CC0",
+      "pageid": 65405287,
+      "note": "lone olive tree in a dry orchard"
+    },
+    {
+      "file": "demo-photos/places/30.jpg",
+      "title": "File:Olive trees almond trees near Arenas del Rey, Andalusia, Spain.jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Olive_trees_almond_trees_near_Arenas_del_Rey,_Andalusia,_Spain.jpg",
+      "author": "Jebulon",
+      "credit": "Own work",
+      "license": "CC0",
+      "pageid": 35906113,
+      "note": "olive and almond terraces above a turquoise lake (Andalusia)"
+    },
+    {
+      "file": "demo-photos/places/31.jpg",
+      "title": "File:Vineyard and hills (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Vineyard_and_hills_(Unsplash).jpg",
+      "author": "Tim Mossholder timmossholder",
+      "credit": "https://unsplash.com/photos/KDlLiCL7XPk",
+      "license": "CC0",
+      "pageid": 62119818,
+      "note": "vineyard and brown hills"
+    },
+    {
+      "file": "demo-photos/places/32.jpg",
+      "title": "File:Dürnstein, Austria (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:D%C3%BCrnstein,_Austria_(Unsplash).jpg",
+      "author": "Chris De Wit skyxperience",
+      "credit": "https://unsplash.com/photos/JES_izhNmWY",
+      "license": "CC0",
+      "pageid": 61654309,
+      "note": "vineyard terraces from above"
+    },
+    {
+      "file": "demo-photos/places/33.jpg",
+      "title": "File:Negev desert (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Negev_desert_(Unsplash).jpg",
+      "author": "Tatiana Zhukova tatiana19",
+      "credit": "https://unsplash.com/photos/ZjxHQkbdHGc",
+      "license": "CC0",
+      "pageid": 61863114,
+      "note": "Negev, storm light over the crater"
+    },
+    {
+      "file": "demo-photos/places/34.jpg",
+      "title": "File:View of a lonely road in the Negev on the way to Masada DSF1866.jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:View_of_a_lonely_road_in_the_Negev_on_the_way_to_Masada_DSF1866.jpg",
+      "author": "Levi Meir Clancy",
+      "credit": "Own work",
+      "license": "CC0",
+      "pageid": 112595228,
+      "note": "lonely road in the Negev hills"
+    },
+    {
+      "file": "demo-photos/places/35.jpg",
+      "title": "File:Negev, Israel (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Negev,_Israel_(Unsplash).jpg",
+      "author": "james ballard jamesballard79",
+      "credit": "http://unsplash.com/photos/aJNyKBJVUqI",
+      "license": "CC0",
+      "pageid": 58859365,
+      "note": "camels resting in the Negev"
+    },
+    {
+      "file": "demo-photos/places/36.jpg",
+      "title": "File:Flat rocks on the arid hills (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Flat_rocks_on_the_arid_hills_(Unsplash).jpg",
+      "author": "Joseph Barrientos jbcreate_",
+      "credit": "https://unsplash.com/photos/jEE9g4eR1bo",
+      "license": "CC0",
+      "pageid": 61653651,
+      "note": "flat rocks on arid hills, blue sky"
+    },
+    {
+      "file": "demo-photos/places/37.jpg",
+      "title": "File:Camel train sunset. (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Camel_train_sunset._(Unsplash).jpg",
+      "author": "Ron Fung oriz",
+      "credit": "https://unsplash.com/photos/eA-xu684aI0",
+      "license": "CC0",
+      "pageid": 62103756,
+      "note": "camel train at sunset"
+    },
+    {
+      "file": "demo-photos/places/38.jpg",
+      "title": "File:Camels (Unsplash).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Camels_(Unsplash).jpg",
+      "author": "Piotr Chrobot chrumo",
+      "credit": "https://unsplash.com/photos/Bp9hJrDRkf8",
+      "license": "CC0",
+      "pageid": 61849494,
+      "note": "camels on a desert plain"
+    },
+    {
+      "file": "demo-photos/places/39.jpg",
+      "title": "File:Landscape-nature-sky-desert (24244426371).jpg",
+      "pageUrl": "https://commons.wikimedia.org/wiki/File:Landscape-nature-sky-desert_(24244426371).jpg",
+      "author": "www.Pixel.la Free Stock Photos",
+      "credit": "http://unsplash.com/photos/Nzw3HHsNHYU",
+      "license": "CC0",
+      "pageid": 51439009,
+      "note": "arid hills under a blue sky"
+    }
+  ]
+}

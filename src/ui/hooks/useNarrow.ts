@@ -93,3 +93,120 @@ export function usePhoneShape(): boolean {
 
   return phone
 }
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AB2 (2026-09-08) — "WOULD THESE PILLS NEED A SECOND LINE?", ASKED OF THE
+ *    PILLS AND OF THE PANEL THEY ARE IN.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * The product owner, restating what the « סינון » button was always for:
+ *
+ *   « le but de cette icône, c'était de regrouper tous les autres filtres pour
+ *     qu'au lieu de s'empiler en dessous les uns des autres, ils rentrent dans
+ *     un bouton filtre qui s'ouvre comme un menu déroulant. »
+ *
+ * ★ SO THE QUESTION IS NEITHER Y7.3'S NOR AA1.5'S, AND BOTH WERE HALF RIGHT.
+ *   Y7.3 measured the PANEL, which is right about which box the pills have to
+ *   fit in and wrong about desktops — it folded four screens away at 1376 px.
+ *   AA1.5 answered « is this a phone », which is right about desktops and
+ *   wrong about the one case AB2.3 names explicitly: an iPad in split view,
+ *   where the panel is a phone's width and the device is not.
+ *
+ *   The question that is right in all three cases is the one the sentence
+ *   actually asks — DO THEY FIT ON ONE LINE HERE — so this hook measures the
+ *   pills' own single-line width against the box they are in.
+ *
+ * ⚠️ THE REQUIREMENT IS REMEMBERED, BECAUSE ONCE FOLDED THERE IS NOTHING LEFT
+ *    TO MEASURE. The folded shape removes the pills from the bar, so a hook
+ *    that re-measured every frame would fold, find a row of zero pills, decide
+ *    they fit, unfold, and oscillate for ever. What is stable is the pills'
+ *    NATURAL width — a pill's size comes from its text, not from its
+ *    container — so it is measured while they are laid out and kept. The bar's
+ *    width keeps being observed either way, which is what lets a dragged seam
+ *    unfold them again.
+ *
+ * ⚠️ AND THE COMPARISON IS `>` WITH NO SLACK, DELIBERATELY. `sum(widths) +
+ *    gap × (n − 1)` is exactly what one line costs; anything above the box's
+ *    content width wraps, and AA1.2 already learnt that three pixels is a
+ *    second line. A tolerance here would be three pixels' worth of a defect
+ *    the product owner has already reported twice.
+ */
+export function useFilterFold(): {
+  /** Put on the box the pills have to fit inside. */
+  boxRef: (node: HTMLElement | null) => void
+  /** Put on the row that lays the pills out, in the unfolded shape only. */
+  pillsRef: (node: HTMLElement | null) => void
+  /** True when they would take two lines — fold them behind « סינון ». */
+  fold: boolean
+  /** The box's content width, and what one line of pills costs. */
+  available: number | null
+  required: number | null
+} {
+  const [available, setAvailable] = useState<number | null>(null)
+  const [required, setRequired] = useState<number | null>(null)
+  const boxNode = useRef<HTMLElement | null>(null)
+  const boxObserver = useRef<ResizeObserver | null>(null)
+  const pillsNode = useRef<HTMLElement | null>(null)
+  const pillsObserver = useRef<ResizeObserver | null>(null)
+
+  useEffect(() => {
+    return () => {
+      boxObserver.current?.disconnect()
+      pillsObserver.current?.disconnect()
+    }
+  }, [])
+
+  const boxRef = (node: HTMLElement | null): void => {
+    if (node === boxNode.current) return
+    boxObserver.current?.disconnect()
+    boxNode.current = node
+    if (!node) {
+      boxObserver.current = null
+      return
+    }
+    const measure = (): void => setAvailable(node.clientWidth)
+    measure()
+    boxObserver.current = new ResizeObserver(measure)
+    boxObserver.current.observe(node)
+  }
+
+  const pillsRef = (node: HTMLElement | null): void => {
+    if (node === pillsNode.current) return
+    pillsObserver.current?.disconnect()
+    pillsNode.current = node
+    if (!node) {
+      pillsObserver.current = null
+      return
+    }
+    const measure = (): void => {
+      const kids = [...node.children] as HTMLElement[]
+      if (kids.length === 0) {
+        setRequired(0)
+        return
+      }
+      const style = getComputedStyle(node)
+      const gap = parseFloat(style.columnGap || style.gap || '0') || 0
+      const sum = kids.reduce((total, el) => total + el.getBoundingClientRect().width, 0)
+      setRequired(sum + gap * (kids.length - 1))
+    }
+    measure()
+    /* The pills' own widths change with their labels — a count appearing on a
+       pill is a wider pill — so the row is observed, not measured once. */
+    pillsObserver.current = new ResizeObserver(measure)
+    pillsObserver.current.observe(node)
+    for (const el of [...node.children]) pillsObserver.current.observe(el)
+  }
+
+  const fold =
+    available !== null && required !== null && required > available
+
+  /**
+   * ⚠️ THE TWO NUMBERS ARE PUBLISHED ON THE BAR (`data-fold-*` in
+   *    `FilterRow`), and that is not debug scaffolding left behind: `bun run
+   *    filters` sweeps 360 → 1440 px in steps of 20 and has to say WHY a width
+   *    folded. "shape=phone" is an assertion; "487 > 458" is a measurement,
+   *    and the difference is the whole of AA1's lesson about probes.
+   */
+  return { boxRef, pillsRef, fold, available, required }
+}

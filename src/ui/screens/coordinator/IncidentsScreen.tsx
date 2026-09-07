@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { DAY, formatDateTime, getVisibleIncidentViews } from '@core/index'
 import type { IncidentSeverity, IncidentView } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
+import { CoordinatorIncidentModal } from '../../components/CoordinatorIncidentModal'
 import { ListTile } from '../../components/ListTile'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
@@ -59,6 +60,21 @@ export function IncidentsScreen() {
   const [openOnly, setOpenOnly] = useState(false)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
 
+  /**
+   * ★★ AB1.1 — `?new=1`, THE SAME SEAM THE TWO ROSTERS HAVE USED SINCE W4.
+   * The floating "+" is in the shell and this modal's setter is here, so the
+   * button asks through the URL and this reads it and clears it.
+   */
+  const [params, setParams] = useSearchParams()
+  const [creating, setCreating] = useState(false)
+  useEffect(() => {
+    if (params.get('new') !== '1') return
+    setCreating(true)
+    const next = new URLSearchParams(params)
+    next.delete('new')
+    setParams(next, { replace: true })
+  }, [params, setParams])
+
   const filtered = useMemo(() => {
     const cutoff =
       since === 'week'
@@ -104,6 +120,8 @@ export function IncidentsScreen() {
   )
 
   return (
+    <>
+    {creating && <CoordinatorIncidentModal onClose={() => setCreating(false)} />}
     <MapPanel
       screenKey="incidents"
       ariaLabel={t('map.incidentsMap')}
@@ -142,7 +160,9 @@ export function IncidentsScreen() {
              a marker on the map is a faster way to narrow to one farm than
              reading twelve names. */
           <FilterRow
-        active={severity !== null || openOnly || since !== ALL}
+        activeCount={
+          (severity !== null ? 1 : 0) + (openOnly ? 1 : 0) + (since !== ALL ? 1 : 0)
+        }
         onClear={() => {
           setSeverity(null)
           setOpenOnly(false)
@@ -257,6 +277,7 @@ export function IncidentsScreen() {
       </>
       )}
     </MapPanel>
+    </>
   )
 }
 

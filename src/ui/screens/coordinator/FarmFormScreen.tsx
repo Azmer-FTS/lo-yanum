@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import {
   FARM_PIPELINE,
@@ -137,6 +137,10 @@ export function FarmFormScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { farmId } = useParams()
+  const [params] = useSearchParams()
+  const asked = params.get('kind')
+  const initialKind: EntityKind =
+    asked === 'moshav' || asked === 'other' || asked === 'farm' ? asked : 'farm'
 
   const existing = useCoreValue(() => (farmId ? getFarm(farmId) : null))
   const isEdit = Boolean(farmId)
@@ -153,9 +157,18 @@ export function FarmFormScreen() {
    */
   const [regionId, setRegionId] = useState<RegionId | ''>(existing?.regionId ?? '')
   const [type, setType] = useState<FarmType>(existing?.type ?? 'mixed')
-  // G16 — חווה / מושב / אחר. New records default to a farm.
+  /**
+   * G16 — חווה / מושב / אחר. New records default to a farm.
+   *
+   * ★★ AB1.1 — AND `?kind=moshav` OPENS THE FORM ALREADY ON A MOSHAV. The
+   *    product owner's list gives חוות / מושבים two entries under the "+", and
+   *    a second entry that lands on the same blank farm form, leaving him to
+   *    find the kind picker himself, would be the same click AB1.2 removes
+   *    elsewhere. The parameter is read ONCE, as the initial state, so
+   *    changing the picker afterwards is never fought by the URL.
+   */
   const [entityKind, setEntityKind] = useState<EntityKind>(
-    existing?.entityKind ?? 'farm',
+    existing?.entityKind ?? initialKind,
   )
   const [status, setStatus] = useState<FarmStatus>(
     existing?.status ?? 'to_contact',

@@ -8,7 +8,7 @@ import type { Role, SessionPreset } from '@core/index'
 import { SUPABASE_CONFIGURED } from '../../data/config'
 import { Avatar } from '../components/Avatar'
 import { Icon } from '../components/Icon'
-import { Callout, FilterPill, FilterRow, Section } from '../components/primitives'
+import { Callout, FilterPill, Section } from '../components/primitives'
 import { useCoreValue } from '../hooks/useCore'
 import { stopViewAs, useViewAs, viewAs } from './viewAs'
 
@@ -33,6 +33,8 @@ export function ViewAsSection() {
   const presets = useCoreValue(listSessionPresets)
   const active = useViewAs()
   const [role, setRole] = useState<Role>('farmer')
+  /** The role actually in force — `null` means the coordinator's own. */
+  const activeRole: Role | null = active?.role ?? null
 
   const people = useMemo(
     () => presets.filter((p) => p.role === role),
@@ -55,7 +57,11 @@ export function ViewAsSection() {
   return (
     <Section
       title={t('viewAs.title')}
-      className="mt-6"
+      /* ★★ AB5b — FIRST BLOCK ON THE SCREEN, AND FLUSH WITH ITS TOP. See the
+         note on the call site in `SettingsScreen`: measured at 2630 px down a
+         3260 px page on the deployed twin, which is three phone screens of
+         scrolling to find the one control he was looking for. */
+      flush
       collapseKey="settings-viewas"
       summary={active ? `${t(`roles.${active.role}`)} · ${active.name}` : undefined}
     >
@@ -105,8 +111,16 @@ export function ViewAsSection() {
         *   running, and pressing it is the way back — the same one the banner
         *   offers, in the place the eye looks for it.
         */}
-      <div className="mt-3">
-        <FilterRow active={false} onClear={() => undefined}>
+      <div className="mt-3" data-testid="role-switch">
+        {/* ★★ AB5b (2026-09-08) — A PILL ROW, AND NOT A `FilterRow` ANY MORE.
+            These four are not filters and never were; they were borrowing the
+            component because it drew the row. AB2 makes that borrowing wrong
+            as well as inaccurate: a `FilterRow` now FOLDS itself behind
+            « סינון » when its pills would take two lines, and the one control
+            the product owner could not find would have hidden itself behind a
+            button called "filter". `.pill-row` is the shared geometry — the
+            10 px / 20 px AA1.2 measured — with none of the behaviour. */}
+        <div className="pill-row">
           <FilterPill
             active={active === null}
             onClick={() => {
@@ -116,21 +130,33 @@ export function ViewAsSection() {
           >
             <Icon name="shield" size={11} />
             {t('roles.coordinator')}
+            {active === null && <Icon name="check" size={11} />}
           </FilterPill>
           {ROLES.map((r) => (
+            /**
+              * ★★ AB5b.2 — « LE RÔLE ACTIF MARQUÉ », AND THE ACCENT SKIN IS
+              *    NOW THAT AND ONLY THAT.
+              *
+              * Y3.2 gave the skin to « which list is open below », so on a
+              * fresh settings screen BOTH רכז and חקלאי were drawn as on —
+              * measured, both `aria-pressed="true"` — and neither of them was
+              * the answer to "which role am I in". The two facts are still
+              * both shown, but the loud one is the one the sentence asks for:
+              * the accent means IN FORCE, the chevron means "this is the list
+              * you are looking at".
+              */
             <FilterPill
               key={r}
-              active={role === r}
+              active={activeRole === r}
+              dot={role === r ? <Icon name="chevronDown" size={11} /> : undefined}
               onClick={() => setRole(r)}
               count={presets.filter((p) => p.role === r).length}
             >
               {t(`roles.${r}`)}
-              {/* The role currently BEING SIMULATED, which is a different fact
-                  from which list is open below. */}
-              {active?.role === r && <Icon name="check" size={11} />}
+              {activeRole === r && <Icon name="check" size={11} />}
             </FilterPill>
           ))}
-        </FilterRow>
+        </div>
       </div>
 
       {people.length === 0 ? (

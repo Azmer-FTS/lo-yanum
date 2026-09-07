@@ -372,8 +372,13 @@ export function FarmsListScreen() {
 
   const filterRow = (
     <FilterRow
-      active={
-        status !== null || type !== null || moshavOnly || region !== null || hasAreas
+      /* AB2.4 — five independent narrowings on this screen, one each. */
+      activeCount={
+        (status !== null ? 1 : 0) +
+        (type !== null ? 1 : 0) +
+        (moshavOnly ? 1 : 0) +
+        (region !== null ? 1 : 0) +
+        (hasAreas ? 1 : 0)
       }
       onClear={() => {
         setStatus(null)

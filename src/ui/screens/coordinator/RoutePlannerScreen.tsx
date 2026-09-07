@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 
@@ -35,7 +35,13 @@ import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { FarmStatusDot, readStatusColor,
   entityMarkerKind, readToken } from '../../components/badges'
-import { EmptyState, FilterPill, FilterRow, Section } from '../../components/primitives'
+import {
+  EmptyState,
+  FilterPill,
+  FilterRow,
+  Section,
+  writeBlockOpen,
+} from '../../components/primitives'
 import { Avatar } from '../../components/Avatar'
 import { RegionFilter } from '../../components/RegionFilter'
 import { useCoreValue } from '../../hooks/useCore'
@@ -99,6 +105,36 @@ export function RoutePlannerScreen() {
     at: string
   } | null>(null)
   const [editVisitId, setEditVisitId] = useState<string | null>(null)
+
+  /**
+   * ★★ AB1.1 · AB1.2 — `?new=step`: מסלול CREATES A STOP, NOT A FARM.
+   *
+   * The old menu offered « חווה חדשה » here, on the reading that a planner
+   * without farms needs farms. It is the wrong answer to « je suis sur le
+   * planificateur et je veux ajouter une étape »: a stop is a farm ALREADY IN
+   * THE PROGRAMME being put on today's drive, and the block that does that is
+   * « בחירת חוות », one screen down and — because U1 remembers a fold for
+   * ever — quite possibly closed.
+   *
+   * ⚠️ SO THE PARAMETER FORCES IT OPEN AND REMOUNTS IT. `Section` reads its
+   *    remembered state ONCE, at mount; writing the flag without the remount
+   *    would store "open" and leave a shut block on screen until the next
+   *    navigation. The counter in the `key` is what makes the fold obey now.
+   */
+  const [pickerNonce, setPickerNonce] = useState(0)
+  const pickerRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (params.get('new') !== 'step') return
+    writeBlockOpen('route-select', true)
+    setPickerNonce((n) => n + 1)
+    const next = new URLSearchParams(params)
+    next.delete('new')
+    setParams(next, { replace: true })
+    // One frame, so the reopened block has a box to scroll to.
+    requestAnimationFrame(() =>
+      pickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    )
+  }, [params, setParams])
 
   const farms = useCoreValue(getVisibleFarms)
   const savedTour = useCoreValue(() => getTourForDay(dayKey))
@@ -414,7 +450,9 @@ export function RoutePlannerScreen() {
         * is — choose, then read the day — instead of two things competing for
         * the same line.
         */}
+      <div ref={pickerRef} data-testid="route-step-picker">
       <Section
+        key={`route-select-${pickerNonce}`}
         title={t('route.selectFarms')}
         collapseKey="route-select"
         summary={t('route.selectedCount', { count: selected.size })}
@@ -449,7 +487,11 @@ export function RoutePlannerScreen() {
             room between them is the app's one rhythm. */}
         <div className="filters-gap">
         <FilterRow
-          active={pickDay || pickStatus !== null || pickRegion !== null}
+          activeCount={
+            (pickDay ? 1 : 0) +
+            (pickStatus !== null ? 1 : 0) +
+            (pickRegion !== null ? 1 : 0)
+          }
           onClear={() => {
             setPickDay(false)
             setPickStatus(null)
@@ -596,6 +638,7 @@ export function RoutePlannerScreen() {
           </ul>
         )}
       </Section>
+      </div>
 
       {/*
         ★ X8 (2026-09-04) — THE THREE BLOCKS WERE ONE BLOCK.

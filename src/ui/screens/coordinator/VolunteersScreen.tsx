@@ -274,14 +274,15 @@ export function VolunteersScreen() {
     return parts.length > 0 ? parts.join(' · ') : '—'
   }
 
-  const anyFilter =
-    status !== null ||
-    phoneType !== null ||
-    yeshiva !== null ||
-    locality !== null ||
-    region !== null ||
-    licenseCar ||
-    neverGuarded
+  /** ★★ AB2.4 — seven independent narrowings, one each. */
+  const activeFilters =
+    (status !== null ? 1 : 0) +
+    (phoneType !== null ? 1 : 0) +
+    (yeshiva !== null ? 1 : 0) +
+    (locality !== null ? 1 : 0) +
+    (region !== null ? 1 : 0) +
+    (licenseCar ? 1 : 0) +
+    (neverGuarded ? 1 : 0)
 
   const clearFilters = () => {
     setStatus(null)
@@ -422,7 +423,7 @@ export function VolunteersScreen() {
           /* Z3 — `FilterRow` like every other roster: it owns the clearing,
              the drop-down shape at narrow widths that this screen never had,
              and the counter's place in both shapes. */
-          <FilterRow active={anyFilter} onClear={clearFilters}>
+          <FilterRow activeCount={activeFilters} onClear={clearFilters}>
             <RegionFilter
               value={region}
               onChange={setRegion}

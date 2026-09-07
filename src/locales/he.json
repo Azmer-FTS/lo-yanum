@@ -581,7 +581,8 @@
     "sortStatus": "סטטוס",
     "sortNextVisit": "ביקור הבא",
     "filterHasAreas": "עם שטח רשום",
-    "filterHasAreasHint": "רק יישויות שיש להן דונם משוקלל גדול מאפס"
+    "filterHasAreasHint": "רק יישויות שיש להן דונם משוקלל גדול מאפס",
+    "newMoshav": "מושב חדש"
   },
   "anchor": {
     "title": "עמדת שמירה",
@@ -819,7 +820,8 @@
     "fixedHour": "שעה קבועה",
     "lateBy": "· באיחור של {{m}} דק׳",
     "filterDay": "ביקור ביום זה",
-    "selectedCount": "{{count}} נבחרו"
+    "selectedCount": "{{count}} נבחרו",
+    "newStep": "תחנה חדשה למסלול"
   },
   "myday": {
     "title": "היום שלי",
@@ -935,7 +937,10 @@
     "reopen": "פתיחה מחדש",
     "resolved": "טופל",
     "open": "פתוח",
-    "linkedMission": "שמירה מקושרת"
+    "linkedMission": "שמירה מקושרת",
+    "new": "אירוע חדש",
+    "newHint": "דיווח שנרשם על ידי הרכז — בחר חווה, ואז את חומרת האירוע.",
+    "pickFarm": "באיזו חווה?"
   },
   "report": {
     "title": "דוח תוכנית",
