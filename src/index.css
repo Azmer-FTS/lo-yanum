@@ -1995,8 +1995,10 @@
   }
 }
 
-/* farms — name · locality · region · type · status · dunams · contacts ·
-   next visit · chevron */
+/* farms — name · locality · region · type · status · areas · weighted ·
+   contacts · next visit · chevron
+   ⚠️ AA3.3 added « weighted » at the `xl` tier only: it is the tenth track,
+      and the three narrower tiers already merge the areas under the name. */
 .roster-farms .roster-row {
   --roster-cols: minmax(0, 1fr) 1.5rem;
 }
@@ -2016,7 +2018,7 @@
 @container (min-width: 78rem) {
   .roster-farms .roster-row {
     --roster-cols: minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 0.9fr) 5.5rem 7.5rem
-      7.5rem 3.5rem 6.5rem 1.5rem;
+      7.5rem 5.5rem 3.5rem 6.5rem 1.5rem;
   }
 }
 

@@ -255,3 +255,95 @@ export function splitLegacyDunams(
   if (type === 'livestock') return { farmDunams: 0, grazingDunams: dunams }
   return { farmDunams: 0, grazingDunams: 0 }
 }
+
+// ---------------------------------------------------------------------------
+// AA2bis — is the signatory's right over this land established?
+// ---------------------------------------------------------------------------
+
+/**
+ * ★★ AA2bis (2026-09-07) — « NE PAS ORGANISER DE GARDES SUR UN TERRAIN QUI
+ *    N'APPARTIENT PAS AU SIGNATAIRE. »
+ *
+ * That sentence is the whole of this function, and it is an operational rule
+ * rather than a clerical one: a guard rota placed on ground the signatory does
+ * not hold is volunteers standing, at night, somewhere nobody agreed they
+ * could be. So the app SAYS SO, visibly, and does not act on it — « avertit,
+ * ne bloque » is the product owner's own second sentence, and it matters as
+ * much as the first: a farm whose paperwork is thin is exactly the farm the
+ * programme wants on its list, with the gap findable.
+ *
+ * Four answers rather than a boolean, because they call for different work:
+ *
+ *   · `none`        the paper establishes a right and it has not lapsed;
+ *   · `unset`       nobody has recorded what paper there is — a question to
+ *                   ask, not a fault found. It is separated from `no_document`
+ *                   because « we have not asked » and « there is none » are
+ *                   different facts and the second one is the serious one;
+ *   · `no_document` the kind recorded does not prove a right (see
+ *                   `establishesRight` on each option);
+ *   · `expired`     it did, and the date has passed.
+ *
+ * ⚠️ THE DATE IS COMPARED AS A DAY, NOT AS AN INSTANT. `landAgreementUntil` is
+ *    a `YYYY-MM-DD` with no time and no zone; turning it into a Date and
+ *    comparing to `now()` would make a contract expire at midnight UTC, which
+ *    in Israel is two or three in the morning of the following day. Comparing
+ *    the two day-strings is exact and has no zone in it at all.
+ */
+export type LandRightIssue = 'none' | 'unset' | 'no_document' | 'expired'
+
+export function landRightIssue(
+  farm: { landAgreement?: string; landAgreementUntil?: string | null },
+  todayKey: string,
+): LandRightIssue {
+  const kind = (farm.landAgreement ?? '').trim()
+  if (kind === '') return 'unset'
+  const option = LAND_AGREEMENT_OPTIONS.find((o) => o.id === kind)
+  if (!option || !option.establishesRight) return 'no_document'
+  const until = (farm.landAgreementUntil ?? '').trim()
+  if (until !== '' && until < todayKey) return 'expired'
+  return 'none'
+}
+
+// ---------------------------------------------------------------------------
+// AA4 — the two enum columns the association's own workbook carries
+// ---------------------------------------------------------------------------
+
+/**
+ * ★★ AA4 (2026-09-07) — סטטוס AND סוג פעילות AS EXACT VALUES, NOT SUBSTRINGS.
+ *
+ * `templates.ts` reads these two columns with a longest-substring-first table,
+ * which is the right tool for somebody's own spreadsheet where the cell might
+ * say « כבר דיברנו איתם » — and the WRONG one for the association's workbook,
+ * where the values come from a validated drop-down and are exact. The trap is
+ * live and it is not hypothetical:
+ *
+ *   ⚠️ « לא נוצר קשר » (NOT contacted) CONTAINS « נוצר קשר » (contacted).
+ *
+ * A substring reader turns "we have not called them" into "we have called
+ * them" on every unworked row of a 198-row sheet, and the coordinator's whole
+ * call list silently disappears. `readOption` compares WHOLE normalised
+ * strings, so the two cannot be confused whichever order they are declared in.
+ *
+ * These lists are also what the EXPORT writes, which is what makes the round
+ * trip (AA4.10, A78) exact rather than approximately right.
+ */
+export const FARM_STATUS_OPTIONS: readonly FieldOption[] = [
+  { id: 'to_contact', label: 'ליצירת קשר', aliases: ['לא נוצר קשר', 'to_contact'] },
+  { id: 'contacted', label: 'נוצר קשר', aliases: ['contacted'] },
+  { id: 'visited', label: 'בוקרה', aliases: ['ביקור', 'visited'] },
+  { id: 'verbal_ok', label: 'הסכמה בעל פה', aliases: ['הסכמה בעל־פה', 'verbal_ok', 'verbal'] },
+  { id: 'signed', label: 'הסכמה נחתמה', aliases: ['נחתם', 'חתמה', 'signed'] },
+  { id: 'active', label: 'פעילה', aliases: ['פעיל', 'active'] },
+  { id: 'declined', label: 'לא רלוונטי', aliases: ['סירבה', 'סירב', 'declined'] },
+]
+
+/**
+ * סוג פעילות — the workbook says מעובד / מרעה / מעורב, the app says
+ * חקלאות / בעלי חיים / מעורבת. Same three things; both spellings are here so
+ * that a file from either side reads, and the EXPORT writes the workbook's.
+ */
+export const FARM_TYPE_OPTIONS: readonly FieldOption[] = [
+  { id: 'agriculture', label: 'מעובד', aliases: ['חקלאות', 'חקלאי', 'agriculture'] },
+  { id: 'livestock', label: 'מרעה', aliases: ['בעלי חיים', 'רעייה', 'livestock'] },
+  { id: 'mixed', label: 'מעורב', aliases: ['מעורבת', 'משולב', 'mixed'] },
+]

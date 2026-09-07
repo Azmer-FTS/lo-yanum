@@ -24,6 +24,7 @@ import type { ImportField, ImportKind, ParsedRow } from '@core/index'
 
 import { Icon } from '../../components/Icon'
 import { SelectField } from '../../components/fields'
+import { ImportTabs } from '../../components/importTabs'
 import { LoadMore } from '../../components/primitives'
 import { useProgressive } from '../../hooks/useProgressive'
 import {
@@ -284,38 +285,25 @@ export function ImportWizardScreen() {
         back={{ to: back.to, label: t(back.labelKey) }}
       />
 
-      {/* G10 — the three templates are one tap apart. A coordinator who lands
-          here from the volunteers list and realises he meant the farms sheet
-          should not have to go back out through two screens. Switching resets
-          the wizard: a mapping guessed for one template is meaningless
-          against another's columns. */}
-      <div className="pill-row mb-4">
-        {IMPORT_KINDS.map((k) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => {
-              if (k === kind) return
-              setStep('upload')
-              setResult(null)
-              setMatrix([])
-              setHeaders([])
-              setMapping([])
-              setFileName('')
-              setError(null)
-              navigate(`/coordinator/import/${k}`)
-            }}
-            aria-pressed={k === kind}
-            className={`filter-pill min-h-11 px-3 ${k === kind ? 'filter-pill-active' : ''}`}
-          >
-            <Icon
-              name={k === 'farms' ? 'farm' : k === 'drivers' ? 'steering' : 'users'}
-              size={14}
-            />
-            {t(IMPORT_TEMPLATES[k].titleKey)}
-          </button>
-        ))}
-      </div>
+      {/* G10 — the templates are one tap apart. A coordinator who lands here
+          from the volunteers list and realises he meant the farms sheet should
+          not have to go back out through two screens. Switching resets the
+          wizard: a mapping guessed for one template is meaningless against
+          another's columns.
+          AA4 · AA5 — and the row now carries the two imports that come from
+          outside the programme, which are a screen of their own. */}
+      <ImportTabs
+        current={kind}
+        onLeave={() => {
+          setStep('upload')
+          setResult(null)
+          setMatrix([])
+          setHeaders([])
+          setMapping([])
+          setFileName('')
+          setError(null)
+        }}
+      />
 
       <StepBar current={step} />
 

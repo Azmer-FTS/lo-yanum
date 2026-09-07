@@ -302,6 +302,40 @@ export interface Farm {
   /** AA4 — מועצה אזורית. Half of the fallback identity key, with the name. */
   council?: string
 
+  /**
+   * AA4 — טלפון מרכזיית המועצה. The COUNCIL's switchboard, and it is labelled
+   * as such everywhere it is shown: the association's workbook says in so many
+   * words that this is not the farmer's number, and a coordinator who dials it
+   * expecting one gets a receptionist at nine in the evening.
+   */
+  councilPhone?: string
+
+  /**
+   * AA4 — סוג יישוב, verbatim: קיבוץ · מושב · יישוב קהילתי · חוות בודדים ·
+   * מושב שיתופי.
+   *
+   * ★ FREE TEXT AND NOT AN ENUM, on purpose. `entityKind` (G16) is the app's
+   *   own three-way classification and it is DERIVED from this on import — it
+   *   decides the marker and the zone labels. This field is what the sheet
+   *   actually said, kept so the export round trip loses nothing: « קיבוץ »
+   *   collapses to `other` in the enum, and re-exporting `other` would hand
+   *   the association back a worse file than the one it sent.
+   */
+  localityKind?: string
+
+  /** AA4 — עדיפות (1-3), the association's own call order. Null = unranked. */
+  priority?: number | null
+
+  /**
+   * ★ AA4.4 — « Sans coordonnées : fiche créée et marquée מיקום חסר. »
+   *
+   * The record is parked on the programme's base (there is no such thing as a
+   * farm with no point in this model — the map would put it in the Gulf of
+   * Guinea) and wears this flag, which is what makes the debt findable. It is
+   * cleared the moment somebody drags the pin, and set again by nothing.
+   */
+  positionMissing?: boolean
+
   /** AA2 — an id from `LEGAL_ENTITY_OPTIONS` (core/fields.ts), or ''. */
   legalEntity?: string
 
@@ -900,6 +934,20 @@ export interface DunamKpis {
    *   never filled is worse than one that is absent.
    */
   guardedHeads: number
+  /**
+   * ★ AA3.2 (2026-09-07) — THE WEIGHTED TOTAL OF THE SIGNED ENTITIES, WHICH IS
+   *   THE NUMBER THE ASSOCIATION IS ACTUALLY MEASURED ON.
+   *
+   * `guardedDunams` above adds the two areas flat, and for "how much ground is
+   * under guard" that is the right sum. It is the WRONG one for the target:
+   * five thousand dunams of open range and a hundred dunams of orchard are the
+   * same figure there and are a hundred to one apart in what the State funds.
+   * `weightedDunams` (core/fields.ts) applies the 1:50 and carries the reason.
+   *
+   * Signed AND active, the same set as `guardedDunams` — a farm that has
+   * signed counts whether or not a guard has stood on it yet.
+   */
+  weightedSigned: number
 }
 
 export type AlertKind =

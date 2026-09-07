@@ -62,7 +62,10 @@
     "settings": "bun run scripts/settings.ts",
     "rows": "bun run scripts/rows.ts",
     "zcaptures": "bun run scripts/zcaptures.ts",
-    "pills": "bun run scripts/pills.ts"
+    "pills": "bun run scripts/pills.ts",
+    "prospection": "bun run scripts/prospection.ts",
+    "signatures": "bun run scripts/signatures.ts",
+    "sheets": "bun run scripts/sheets.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "^0.4.0",

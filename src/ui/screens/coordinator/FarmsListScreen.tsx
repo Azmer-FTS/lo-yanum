@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   FARM_PIPELINE,
   entityKindOf,
+  weightedDunams,
   farmRegion,
   formatDate,
   getAllVisibleAnchorPoints,
@@ -41,6 +42,7 @@ import {
   FilterPill,
   FilterRow,
   PillGroup,
+  PillSelect,
   KpiChip,
   ListTop,
   LoadMore,
@@ -104,6 +106,23 @@ export function FarmsListScreen() {
    * The tight frame stays the OTHER gesture's: opening the sheet.
    */
   const [previewKey, setPreviewKey] = useState(0)
+  /**
+   * ★★ AA3.3 (2026-09-07) — « TOTAL PONDÉRÉ TRIABLE ET FILTRABLE EN LISTE
+   *    COMME EN TABLEAU. »
+   *
+   * ★ ONE SORT, TWO READINGS. The tiles and the table are the same screen in
+   *   two shapes (Y4 folded the old view switch into the map mode), so a sort
+   *   that lived in the table would vanish the moment the coordinator went
+   *   back to the split — which is the reading he uses on the road. The order
+   *   is applied to `filtered` once, above both.
+   *
+   * ★ AND THE DEFAULT STAYS `name`. A roster that re-orders itself the first
+   *   time you open it is a roster you have to re-learn; the weighted order is
+   *   something he asks for, on a screen where he is deciding who to call.
+   */
+  const [sort, setSort] = useState<FarmSort>('name')
+  /** AA3.3 — the weighted figure as a FILTER: which places have areas at all. */
+  const [hasAreas, setHasAreas] = useState(false)
   /** A new key is a new request to (re)anchor — and to pan only if off screen. */
   const select = (id: string | null) => {
     setSelectedId(id)
@@ -139,6 +158,10 @@ export function FarmsListScreen() {
       if (type !== null && farm.type !== type) return false
       if (moshavOnly && entityKindOf(farm) !== 'moshav') return false
       if (region !== null && farmRegion(farm) !== region) return false
+      // AA3.3 — « filtrable » : 198 rows arrive from a prospection sheet with
+      // no areas at all, and « which of these have we actually measured » is
+      // the question that separates a lead from a holding.
+      if (hasAreas && weightedDunams(farm) <= 0) return false
       if (!q) return true
       return (
         farm.name.toLowerCase().includes(q) ||
@@ -147,9 +170,16 @@ export function FarmsListScreen() {
         farm.contacts.some((c) => c.name.toLowerCase().includes(q))
       )
     })
-  }, [farms, status, type, moshavOnly, region, query])
+  }, [farms, status, type, moshavOnly, region, hasAreas, query])
 
-  const page = useProgressive(filtered)
+  /**
+   * ⚠️ SORTED ON A COPY, AND STABLY. `Array.prototype.sort` mutates, and
+   *    `filtered` is a memo the markers also read — sorting it in place would
+   *    re-order the map's own list as a side effect of rendering the roster.
+   */
+  const sorted = useMemo(() => sortFarms(filtered, sort), [filtered, sort])
+
+  const page = useProgressive(sorted)
 
   const markers: MapMarker[] = useMemo(
     () =>
@@ -264,18 +294,39 @@ export function FarmsListScreen() {
           to: '/coordinator/import/farms',
           testId: 'farms-import',
         },
+        /* AA4 · AA5 — the two files that come from the association. They are
+           reached from THIS screen because that is where the coordinator is
+           when he thinks about them; the tab row inside the wizard then moves
+           him between all five. */
+        {
+          key: 'prospection',
+          label: t('import.prospectionTitle'),
+          icon: 'table',
+          to: '/coordinator/import/prospection',
+          testId: 'farms-import-prospection',
+        },
+        {
+          key: 'signatures',
+          label: t('import.signaturesTitle'),
+          icon: 'edit',
+          to: '/coordinator/import/signatures',
+          testId: 'farms-import-signatures',
+        },
       ]}
     />
   )
 
   const filterRow = (
     <FilterRow
-      active={status !== null || type !== null || moshavOnly || region !== null}
+      active={
+        status !== null || type !== null || moshavOnly || region !== null || hasAreas
+      }
       onClear={() => {
         setStatus(null)
         setType(null)
         setMoshavOnly(false)
         setRegion(null)
+        setHasAreas(false)
       }}
     >
       <RegionFilter value={region} onChange={setRegion} counts={regionCounts} testId="farms-region" />
@@ -295,6 +346,31 @@ export function FarmsListScreen() {
           </FilterPill>
         ))}
       </PillGroup>
+      {/* AA3.3 — the weighted figure as a filter, and as an order. Both sit in
+          the filter row rather than in the table's head, because the table is
+          one of two readings and the split is the other. */}
+      <FilterPill
+        active={hasAreas}
+        onClick={() => setHasAreas((v) => !v)}
+        count={farms.filter((f) => weightedDunams(f) > 0).length}
+      >
+        {t('farms.filterHasAreas')}
+      </FilterPill>
+      <PillSelect<FarmSort>
+        value={sort}
+        onChange={setSort}
+        active={sort !== 'name'}
+        icon="sort"
+        label={t('farms.sortLabel')}
+        testId="farms-sort"
+        options={[
+          { value: 'name', label: t('farms.sortName') },
+          { value: 'weightedDesc', label: t('farms.sortWeightedDesc') },
+          { value: 'weightedAsc', label: t('farms.sortWeightedAsc') },
+          { value: 'status', label: t('farms.sortStatus') },
+          { value: 'nextVisit', label: t('farms.sortNextVisit') },
+        ]}
+      />
     </FilterRow>
   )
 
@@ -368,7 +444,7 @@ export function FarmsListScreen() {
               <EmptyState icon="farm" title={t('farms.empty')} />
             ) : (
               <FarmsTable
-                farms={filtered}
+                farms={sorted}
                 onOpen={(id) => navigate(`/coordinator/farms/${id}`)}
               />
             )}
@@ -477,6 +553,15 @@ function FarmTile({
           <span className="numeric">{(farm.farmDunams + farm.grazingDunams).toLocaleString(locale)}</span>
           {t('farms.dunams')}
         </span>
+        {/* AA3.3 — and the weighted figure beside the flat one, on the tile
+            too: « en liste comme en tableau ». Only when there is one — a
+            « 0 משוקלל » on every unmeasured lead is noise on 198 rows. */}
+        {weightedDunams(farm) > 0 && (
+          <span className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-content-secondary">
+            <span className="numeric">{weightedDunams(farm).toLocaleString(locale)}</span>
+            {t('farms.weightedShort')}
+          </span>
+        )}
         {heads !== null && (
           <span className="inline-flex items-center gap-1 whitespace-nowrap">
             <Icon name="pawPrint" size={11} />
@@ -494,6 +579,44 @@ function FarmTile({
   )
 }
 
+
+/**
+ * ★★ AA3.3 (2026-09-07) — THE FOUR ORDERS, AND WHY THERE ARE ONLY FOUR.
+ *
+ * A roster with a sort menu of every column is a roster nobody sorts: the
+ * useful orders are the questions somebody actually asks of this list. « Who
+ * is biggest » (weighted, both ways — the small ones matter when he is looking
+ * for what is left to measure), « where am I in the pipeline » and « who is
+ * next ». The alphabet is the default because it is the only order in which a
+ * name can be FOUND rather than read.
+ *
+ * ⚠️ A FARM WITH NO NEXT VISIT SORTS LAST, NOT FIRST. `null` compared as a
+ *    string puts it wherever the engine likes; here it is `Infinity`, which is
+ *    the honest answer to "when is the next visit" for a place nobody has
+ *    booked.
+ */
+export type FarmSort = 'name' | 'weightedDesc' | 'weightedAsc' | 'status' | 'nextVisit'
+
+function sortFarms(farms: Farm[], sort: FarmSort): Farm[] {
+  const next = [...farms]
+  switch (sort) {
+    case 'weightedDesc':
+      return next.sort((a, b) => weightedDunams(b) - weightedDunams(a))
+    case 'weightedAsc':
+      return next.sort((a, b) => weightedDunams(a) - weightedDunams(b))
+    case 'status':
+      return next.sort(
+        (a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status),
+      )
+    case 'nextVisit': {
+      const at = (f: Farm) =>
+        f.nextVisitAt ? new Date(f.nextVisitAt).getTime() : Infinity
+      return next.sort((a, b) => at(a) - at(b))
+    }
+    default:
+      return next.sort((a, b) => a.name.localeCompare(b.name, 'he'))
+  }
+}
 
 /**
  * G7 → X5 — the roster reading of the farms: one row per farm, window-
@@ -516,6 +639,10 @@ function FarmsTableHead() {
         <RosterHead label={t('farms.colType')} tier="lg" />
         <RosterHead label={t('farms.colStatus')} tier="md" />
         <RosterHead label={t('farms.colDunams')} tier="xl" />
+        {/* AA3.3 — the weighted total, in the table, next to what it is made
+            of. `xl` like the pair it follows: below that width the row shows
+            the areas merged under the name and a third number would not fit. */}
+        <RosterHead label={t('farms.colWeighted')} tier="xl" className="text-end" />
         <RosterHead label={t('farms.colContacts')} tier="xl" />
         <RosterHead label={t('farms.nextVisit')} tier="md" />
         <RosterHead label="" className="text-end" />
@@ -616,19 +743,28 @@ function FarmsTable({
                 {dunams(farm.farmDunams)} / {dunams(farm.grazingDunams)}
               </span>
 
-              {/* 7 — contacts */}
+              {/* 7 — AA3.3: the weighted total */}
+              <span
+                data-col="xl"
+                data-weighted={weightedDunams(farm)}
+                className="ltr-nums numeric truncate text-end text-caption font-semibold text-content-primary"
+              >
+                {dunams(weightedDunams(farm))}
+              </span>
+
+              {/* 8 — contacts */}
               <span data-col="xl" className="numeric truncate text-caption text-content-secondary">
                 {farm.contacts.length}
               </span>
 
-              {/* 8 — next visit */}
+              {/* 9 — next visit */}
               <span data-col="md" className="ltr-nums truncate text-micro text-content-muted">
                 {farm.nextVisitAt
                   ? formatDate(farm.nextVisitAt, locale)
                   : t('farms.noVisitYet')}
               </span>
 
-              {/* 9 — the way in */}
+              {/* 10 — the way in */}
               <span data-actions="" className="flex items-center justify-end text-content-muted/60">
                 <ChevronForward size={14} />
               </span>

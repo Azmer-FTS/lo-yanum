@@ -1,4 +1,5 @@
 import { DAY, addDays, fromDayKey, isTonight, localDayKey, now } from './clock'
+import { weightedDunams } from './fields'
 import { _raw, getSession } from './store'
 import { buildDayPlan } from './tours'
 import type { DayPlan, Tour } from './tours'
@@ -292,14 +293,17 @@ export function getDunamKpis(): DunamKpis {
   // PO POINT 6 — counted over the SAME entities as `guardedDunams`, so the two
   // numbers on the dashboard are two facts about one set rather than two sets.
   let guardedHeads = 0
+  // AA3.2 — the same set as `guardedDunams`, weighted. See `DunamKpis`.
+  let weightedSigned = 0
   for (const f of getVisibleFarms()) {
     const dunams = f.farmDunams + f.grazingDunams
     if (guarded.includes(f.status)) {
       guardedDunams += dunams
+      weightedSigned += weightedDunams(f)
       guardedHeads += totalHeads(f) ?? 0
     } else if (f.status !== 'declined') potentialDunams += dunams
   }
-  return { guardedDunams, potentialDunams, guardedHeads }
+  return { guardedDunams, potentialDunams, guardedHeads, weightedSigned }
 }
 
 /** Farms with a scheduled visit, soonest first — the coordinator's to-do. */

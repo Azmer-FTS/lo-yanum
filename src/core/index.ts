@@ -16,6 +16,8 @@ export * from './tours'
 export * from './messages'
 export * from './outreach'
 export * from './import'
+export * from './prospection'
+export * from './signatures'
 export * from './access'
 export * from './dispatch'
 export * from './sessions'
@@ -74,6 +76,8 @@ export {
   updateVolunteer,
   importVolunteers,
   importFarms,
+  applyProspection,
+  applySignatures,
   importDrivers,
   createFarmVisit,
   updateFarmVisit,

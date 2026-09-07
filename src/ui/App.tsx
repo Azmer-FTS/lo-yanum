@@ -54,6 +54,13 @@ const ImportWizardScreen = lazy(() =>
   })),
 )
 
+/** AA4 · AA5 — the same reasoning, and it also pulls SheetJS on demand. */
+const SheetImportScreen = lazy(() =>
+  import('./screens/coordinator/SheetImportScreen').then((m) => ({
+    default: m.SheetImportScreen,
+  })),
+)
+
 /**
  * Navigation-level half of the role gate. The data-level half — the half that
  * actually matters — lives in @core/access; this only stops a role from
@@ -153,6 +160,34 @@ export default function App() {
               the back link knows which roster he came from. The legacy
               /volunteers/import URL is kept: it is in the product owner's
               browser history and in the Lot 0.9 screenshots. */}
+          {/* ★★ AA4 · AA5 — the two imports that come from OUTSIDE the
+              programme are their own screen, and they are declared BEFORE the
+              `:kind` route or the wizard's redirect would swallow them: it
+              treats any kind it does not know as a mistyped URL.
+
+              ⚠️ AND EACH CARRIES A `key`. Both routes render the same lazy
+                 component, so React reconciles one into the other and KEEPS
+                 its state: caught by `bun run sheets`, which walked the
+                 prospection wizard to its preview, navigated to the signatures
+                 one, and found no file input — the second screen had inherited
+                 the first one's step. A key per kind makes the switch a
+                 remount, which is what a different file plainly is. */}
+          <Route
+            path="import/prospection"
+            element={
+              <Suspense fallback={<div className="skeleton h-96 rounded-card" />}>
+                <SheetImportScreen key="prospection" kind="prospection" />
+              </Suspense>
+            }
+          />
+          <Route
+            path="import/signatures"
+            element={
+              <Suspense fallback={<div className="skeleton h-96 rounded-card" />}>
+                <SheetImportScreen key="signatures" kind="signatures" />
+              </Suspense>
+            }
+          />
           <Route
             path="import/:kind"
             element={

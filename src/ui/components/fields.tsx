@@ -64,7 +64,9 @@ export function TextField({
   hint?: string
   required?: boolean
   placeholder?: string
-  type?: 'text' | 'tel' | 'number' | 'email'
+  /* AA2 — 'date' for תוקף ההסכם: the native picker, which is the only
+     date control a thumb can drive on an iPhone. */
+  type?: 'text' | 'tel' | 'number' | 'email' | 'date'
   ltr?: boolean
   className?: string
 }) {

@@ -4,6 +4,10 @@ import type { StoreBackend, StoreData, StoreIndex } from './backend'
 import { iso, now } from './clock'
 import { DEMO_BACKEND } from './demo'
 import { ringAreaDunams } from './geo'
+import { entityKindForRow } from './prospection'
+import { farmFromSignatureRow, signaturePatch } from './signatures'
+import type { SignaturePlan } from './signatures'
+import type { ProspectionPlan } from './prospection'
 import type { Tour } from './tours'
 import type {
   Agreement,
@@ -377,6 +381,10 @@ export interface FarmDraft {
   // AA2 — the prospection fields. Every one optional; see `Farm` for why.
   localityCode?: number | null
   council?: string
+  councilPhone?: string
+  localityKind?: string
+  priority?: number | null
+  positionMissing?: boolean
   legalEntity?: string
   landAgreement?: string
   landAgreementUntil?: string | null
@@ -1120,6 +1128,161 @@ export function importFarms(drafts: FarmDraft[]): number {
   for (const farm of created) syncZoneDunams(farm.id)
   commit()
   return created.length
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AA4.2 (2026-09-07) — UN RÉIMPORT MET À JOUR, IL NE CRÉE JAMAIS DE DOUBLON.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * `importFarms` above APPENDS, which is right for a one-off roster and wrong
+ * for the workbook the product owner re-imports several times a week: the same
+ * 198 rows would become 396, then 594. This is the other writer, and it takes
+ * a PLAN — computed by `planProspection`, previewed by the coordinator — so
+ * that what was shown on the preview screen and what is written here are the
+ * same object rather than two derivations of it.
+ *
+ * ★ THE MERGE IS `{ ...farm, ...patch }` AND THE PATCH IS SPARSE. That single
+ *   spread is AA4.3: a key absent from the patch is a cell that was blank, and
+ *   a blank cell leaves what the app holds exactly as it was. Nothing here has
+ *   to know which fields those are, which is what stops the rule from decaying
+ *   the next time a column is added.
+ *
+ * ★ A CREATED RECORD GETS THE DEFAULTS A FARM CANNOT EXIST WITHOUT — a point
+ *   (the programme's base, flagged `positionMissing`), a status, a type — and
+ *   nothing else invented. Empty contacts, empty commitments, no livestock:
+ *   « לא הומצא אף נתון » is the workbook's own rule and it is this one too.
+ */
+export function applyProspection(
+  plan: ProspectionPlan,
+  fallbackPosition: LatLng,
+): { created: number; updated: number } {
+  const created: Farm[] = plan.created.map((entry, i) => {
+    const patch = entry.patch
+    return {
+      id: `${nextId('farm')}-${i}`,
+      name: patch.name ?? '',
+      locality: patch.name ?? '',
+      region: patch.region ?? '',
+      regionId: patch.regionId ?? null,
+      type: patch.type ?? 'mixed',
+      entityKind: entityKindForRow(patch),
+      status: patch.status ?? 'to_contact',
+      position: patch.position ?? fallbackPosition,
+      farmDunams: patch.farmDunams ?? 0,
+      grazingDunams: patch.grazingDunams ?? 0,
+      farmDunamsManual: patch.farmDunamsManual,
+      grazingDunamsManual: patch.grazingDunamsManual,
+      contacts: [],
+      commitments: [],
+      agreements: [],
+      notes: patch.notes ?? '',
+      lastVisitAt: null,
+      nextVisitAt: null,
+      photo: null,
+      localityCode: patch.localityCode ?? null,
+      council: patch.council,
+      councilPhone: patch.councilPhone,
+      localityKind: patch.localityKind,
+      priority: patch.priority ?? null,
+      positionMissing: patch.positionMissing,
+      legalEntity: patch.legalEntity,
+      landAgreement: patch.landAgreement,
+      landAgreementUntil: patch.landAgreementUntil ?? null,
+      farmerName: patch.farmerName,
+      farmerPhone: patch.farmerPhone,
+      liaisonName: patch.liaisonName,
+      liaisonPhone: patch.liaisonPhone,
+    }
+  })
+
+  const patches = new Map(plan.updated.map((entry) => [entry.farmId as string, entry.patch]))
+  data.farms = [
+    ...data.farms.map((farm) => {
+      const patch = patches.get(farm.id)
+      return patch ? { ...farm, ...patch } : farm
+    }),
+    ...created,
+  ]
+  for (const farm of created) syncZoneDunams(farm.id)
+  commit()
+  return { created: created.length, updated: patches.size }
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AA5.2 · AA5.4 (2026-09-07) — LES SIGNATURES DÉJÀ OBTENUES.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * One row is one signed farm. A row that matches a record SIGNS that record; a
+ * row that matches nothing CREATES one — « le PO doit pouvoir faire signer
+ * d'abord et créer la fiche ensuite », which is how a gate at dusk actually
+ * works.
+ *
+ * ★ THE STATUS IS SET, AND SO IS ITS PROVENANCE. « הסכמה נחתמה » with the
+ *   row's own date, plus the file it came in and the day it arrived — because
+ *   these records become documents handed to a ministry, and a signature whose
+ *   origin is unrecorded is one nobody can defend.
+ *
+ * ★ AND A SIGNATURE THAT COULD NOT BE READ STILL SIGNS THE FARM. The record is
+ *   `signed`, flagged « חתימה חסרה », and named in the report. Refusing it
+ *   would throw away the fact that a farmer consented over the format of a
+ *   spreadsheet cell.
+ */
+export function applySignatures(
+  plan: SignaturePlan,
+  fileName: string,
+  fallbackPosition: LatLng,
+): { attached: number; created: number; withoutSignature: number } {
+  const importedAt = iso(now())
+
+  const created: Farm[] = plan.created.map((entry, i) => {
+    const base = farmFromSignatureRow(entry.row, fallbackPosition)
+    const patch = signaturePatch(entry.row, fileName, importedAt)
+    return {
+      id: `${nextId('farm')}-sig-${i}`,
+      name: base.name,
+      locality: base.locality,
+      region: '',
+      regionId: null,
+      type: 'mixed',
+      entityKind: 'farm',
+      position: base.position,
+      positionMissing: base.positionMissing,
+      localityCode: base.localityCode ?? null,
+      council: base.council,
+      farmDunams: 0,
+      grazingDunams: 0,
+      contacts: [],
+      commitments: [],
+      agreements: [],
+      notes: '',
+      lastVisitAt: null,
+      nextVisitAt: null,
+      photo: null,
+      ...patch,
+    }
+  })
+
+  const patches = new Map(
+    plan.attached.map((entry) => [
+      entry.farmId as string,
+      signaturePatch(entry.row, fileName, importedAt),
+    ]),
+  )
+  data.farms = [
+    ...data.farms.map((farm) => {
+      const patch = patches.get(farm.id)
+      return patch ? { ...farm, ...patch } : farm
+    }),
+    ...created,
+  ]
+  commit()
+  return {
+    attached: patches.size,
+    created: created.length,
+    withoutSignature: plan.unreadable.length,
+  }
 }
 
 export function importDrivers(drafts: DriverDraft[]): number {

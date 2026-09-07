@@ -1,5 +1,6 @@
 import type { Collection, StoreData } from '@core/backend'
 import type { Tour } from '@core/tours'
+import { splitLegacyDunams } from '@core/fields'
 import type {
   Agreement,
   AnchorPoint,
@@ -161,6 +162,31 @@ const farmMapping: Mapping<Farm> = {
           last_visit_at: f.lastVisitAt,
           next_visit_at: f.nextVisitAt,
           photo: f.photo,
+          /**
+           * ★ AA2 · AA5 (2026-09-07) — THE PROSPECTION COLUMNS.
+           *
+           * ⚠️ EVERY ONE OF THEM IS WRITTEN AS `null` RATHER THAN OMITTED WHEN
+           *    ABSENT, and that is not cosmetic: an omitted key in an upsert
+           *    leaves whatever the row held before, so a farm whose חקלאי was
+           *    cleared in the form would come back with the old name after a
+           *    sync. `?? null` makes "cleared" a value the round trip carries.
+           */
+          locality_code: f.localityCode ?? null,
+          council: f.council ?? null,
+          council_phone: f.councilPhone ?? null,
+          locality_kind: f.localityKind ?? null,
+          priority: f.priority ?? null,
+          position_missing: f.positionMissing ?? false,
+          legal_entity: f.legalEntity ?? null,
+          land_agreement: f.landAgreement ?? null,
+          land_agreement_until: f.landAgreementUntil ?? null,
+          farmer_name: f.farmerName ?? null,
+          farmer_phone: f.farmerPhone ?? null,
+          liaison_name: f.liaisonName ?? null,
+          liaison_phone: f.liaisonPhone ?? null,
+          signature: f.signature ?? null,
+          signature_missing: f.signatureMissing ?? false,
+          signature_origin: f.signatureOrigin ? JSON.stringify(f.signatureOrigin) : null,
         },
       ],
     },
@@ -225,8 +251,28 @@ const farmMapping: Mapping<Farm> = {
     entityKind: str(p.entity_kind, 'farm') as Farm['entityKind'],
     status: str(p.status, 'to_contact') as Farm['status'],
     position: point(p.lat, p.lng),
-    farmDunams: num(p.farm_dunams),
-    grazingDunams: num(p.grazing_dunams),
+    /**
+     * ★★ AA2 (2026-09-07) — THE SINGLE-AREA MIGRATION, AND WHAT IT ACTUALLY
+     *    HAD TO MOVE.
+     *
+     * The product owner asked for « migration sans perte de la surface unique
+     * actuelle ». Said plainly, and it is worth saying rather than
+     * implementing something that looks like work: this model has held the two
+     * areas APART since G1 — `farm_dunams` and `grazing_dunams` are separate
+     * columns and separate fields, and no row in this repository has ever
+     * carried one figure. What AA2 changed is what they are CALLED (מעובד /
+     * מרעה) and what they are used for (the 1:50 weighting), not where they
+     * live, so there is nothing to move for a record written by this app.
+     *
+     * ⚠️ WHICH LEAVES THE ROW THAT DID NOT COME FROM THIS APP. A payload with
+     *    a single `dunams` and neither of the two — an older snapshot, a hand-
+     *    written seed, a table someone else built — is exactly the case the
+     *    rule is for, and reading it as zero would silently lose the figure.
+     *    `splitLegacyDunams` files it by the entity's own type and REFUSES to
+     *    guess for a mixed holding, because a split nobody measured would
+     *    become a funding number nobody measured.
+     */
+    ...legacyAreas(p),
     farmDunamsManual: bool(p.farm_dunams_manual),
     grazingDunamsManual: bool(p.grazing_dunams_manual),
     contacts: ordered(kids.entity_contacts).map(
@@ -277,7 +323,66 @@ const farmMapping: Mapping<Farm> = {
     lastVisitAt: tsOrNull(p.last_visit_at),
     nextVisitAt: tsOrNull(p.next_visit_at),
     photo: nullableStr(p.photo),
+    /**
+     * AA2 · AA5 — the prospection columns.
+     *
+     * ⚠️ ABSENT COMES BACK AS `undefined`, NOT AS `''` OR `null`, and that is
+     *    what makes the round trip an identity. Every one of these fields is
+     *    optional on `Farm`; a farm that has never been asked its חקלאי has no
+     *    key at all, and `str()`'s helpful `''` would turn "not asked" into
+     *    "asked, and the answer was blank" on the way back — which is the
+     *    exact distinction AA2bis is built on and which `bun run mapping`
+     *    catches to the byte. A value that IS an empty string, typed and
+     *    cleared in the form, still round-trips as an empty string.
+     */
+    localityCode: optNum(p.locality_code),
+    council: optStr(p.council),
+    councilPhone: optStr(p.council_phone),
+    localityKind: optStr(p.locality_kind),
+    priority: optNum(p.priority),
+    positionMissing: p.position_missing === true ? true : undefined,
+    legalEntity: optStr(p.legal_entity),
+    landAgreement: optStr(p.land_agreement),
+    landAgreementUntil: optStr(p.land_agreement_until),
+    farmerName: optStr(p.farmer_name),
+    farmerPhone: optStr(p.farmer_phone),
+    liaisonName: optStr(p.liaison_name),
+    liaisonPhone: optStr(p.liaison_phone),
+    // AA5 — the imported signature and where it came from.
+    signature: optStr(p.signature),
+    signatureMissing: p.signature_missing === true ? true : undefined,
+    signatureOrigin: readSignatureOrigin(p.signature_origin),
   }),
+}
+
+/**
+ * AA5.4 — the origin travels as one JSON column rather than three.
+ *
+ * ⚠️ AND A MALFORMED ONE IS `undefined`, NEVER A THROW. This runs on every row
+ *    of every snapshot; one bad cell must not take the whole sync down, and a
+ *    farm whose provenance is unreadable is a farm whose provenance is
+ *    unknown — which is what `undefined` already means here.
+ */
+/** AA2 — see the note in the farm's `fromRows`: absent stays absent. */
+const optStr = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined)
+const optNum = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined)
+
+function legacyAreas(p: Row): { farmDunams: number; grazingDunams: number } {
+  if (p.farm_dunams === undefined && p.grazing_dunams === undefined) {
+    return splitLegacyDunams(num(p.dunams), str(p.type, 'mixed') as Farm['type'])
+  }
+  return { farmDunams: num(p.farm_dunams), grazingDunams: num(p.grazing_dunams) }
+}
+
+function readSignatureOrigin(raw: unknown): Farm['signatureOrigin'] {
+  if (raw && typeof raw === 'object') return raw as Farm['signatureOrigin']
+  if (typeof raw !== 'string' || raw.trim() === '') return undefined
+  try {
+    const parsed = JSON.parse(raw) as Farm['signatureOrigin']
+    return parsed && typeof parsed === 'object' ? parsed : undefined
+  } catch {
+    return undefined
+  }
 }
 
 // ===========================================================================

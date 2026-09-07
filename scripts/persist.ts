@@ -3,6 +3,11 @@ import { readFileSync } from 'node:fs'
 import { COLLECTIONS } from '../src/core/backend'
 import type { Collection, StoreBackend, StoreChange } from '../src/core/backend'
 import { DEMO_BACKEND, emptyData } from '../src/core/demo'
+/* AA4 · AA5 — the readers the two new writers take a plan from. They are pure
+   and live outside the store, so they are imported from their own modules. */
+import { HOME_BASE } from '../src/core/geo'
+import { analyseProspection } from '../src/core/prospection'
+import { SIGNATURE_COLUMNS, analyseSignatures } from '../src/core/signatures'
 import {
   addIncident,
   addIncidentEntry,
@@ -39,6 +44,8 @@ import {
   deleteTour,
   importDrivers,
   importFarms,
+  applyProspection,
+  applySignatures,
   importVolunteers,
   installBackend,
   patchAnchorPoint,
@@ -751,6 +758,55 @@ emits('deleteTour', () => deleteTour('2027-01-01'), [], [
     _raw().farms.length === before + 1 &&
       changes.filter((c) => c.collection === 'farms' && c.json !== null).length >= 1,
     `${changes.length} changes`,
+  )
+}
+/**
+ * ★★ AA4.2 · AA5 — THE TWO WRITERS THAT UPDATE RATHER THAN APPEND.
+ *
+ * `importFarms` above adds; these two take a PLAN and merge it into records
+ * that already exist. What this gate has to see is that BOTH halves reach the
+ * outbox: a creation AND an update must each emit their aggregate, or a
+ * coordinator's weekly re-import would look right on screen and never leave
+ * the device.
+ */
+{
+  const before = _raw().farms.length
+  /* ⚠️ THE SECOND ROW CARRIES NO COUNCIL, and that is not an oversight: the
+     farm `importFarms` created above has none either, and the fallback
+     identity is « name + council » as a PAIR. A row that adds a council to a
+     record that has none is a different key and therefore a different place —
+     which is the rule the product owner asked for, and which is worth a line
+     here so the next reader does not "fix" it into a name-only match. */
+  const rows = [
+    ['נקודת בדיקה AA4', 'רמת הנגב', '31.04393', '34.72177'],
+    ['ייבוא א73', '', '30.99206', '34.76999'],
+  ]
+  const headers = ['שם המקום', 'מועצה אזורית', 'קו רוחב', 'קו אורך']
+  const { plan } = analyseProspection(headers, rows, _raw().farms)
+  const changes = drive('applyProspection', () => void applyProspection(plan, HOME_BASE))
+  check(
+    'applyProspection emits the created entity and the updated one',
+    _raw().farms.length === before + 1 &&
+      changes.filter((c) => c.collection === 'farms' && c.json !== null).length >= 2,
+    `${changes.length} changes, ${_raw().farms.length - before} new`,
+  )
+}
+{
+  const before = _raw().farms.length
+  const headers = SIGNATURE_COLUMNS.map((c) => c.header)
+  const row = (name: string) =>
+    SIGNATURE_COLUMNS.map((c) =>
+      c.field === 'name' ? name : c.field === 'signature' ? '[[1,1],[9,4]]' : '',
+    )
+  const { plan } = analyseSignatures(headers, [row('ייבוא א73'), row('חתימה חדשה AA5')], _raw().farms)
+  const changes = drive('applySignatures', () =>
+    void applySignatures(plan, 'persist-gate.csv', HOME_BASE),
+  )
+  check(
+    'applySignatures emits the signed entity and the one it created',
+    _raw().farms.length === before + 1 &&
+      changes.filter((c) => c.collection === 'farms' && c.json !== null).length >= 2,
+    `${changes.length} changes, ${_raw().farms.length - before} new`,
   )
 }
 {

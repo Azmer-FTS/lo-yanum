@@ -1403,6 +1403,67 @@ export function FilterRow({
 }
 
 /**
+ * ★★ AA3.3 (2026-09-07) — A PILL THAT IS A PICKER, FOR A LIST OF CHOICES THAT
+ *    IS TOO LONG TO BE PILLS AND TOO SHORT TO BE A SCREEN.
+ *
+ * X12.4 built this shape once, inside `RegionFilter`, for the thirteen
+ * regions. Sorting needs the same thing — four orders, each with two
+ * directions — and copying forty lines of it would be the third time this
+ * repository learnt why one component is better than two that agree today.
+ *
+ * ⚠️ THE `<select>` IS STRETCHED OVER THE PILL'S OWN 44 px TARGET, and that is
+ *    not a detail. A `.filter-pill` draws 36 px of ink and hit-tests 44 (AA1.1,
+ *    a transparent `::before`); a select sitting INSIDE the ink would leave the
+ *    outer four pixels top and bottom belonging to the label, which forwards a
+ *    focus and does not open a picker on iOS. So the control is the target.
+ */
+export function PillSelect<T extends string>({
+  value,
+  onChange,
+  options,
+  label,
+  icon,
+  active,
+  testId,
+}: {
+  value: T
+  onChange: (next: T) => void
+  options: ReadonlyArray<{ value: T; label: string }>
+  /** Accessible name — the picker has no visible label of its own. */
+  label: string
+  icon?: IconName
+  /** Wears the accent skin, like any other pill that is doing something. */
+  active?: boolean
+  testId?: string
+}) {
+  const shown = options.find((o) => o.value === value)?.label ?? ''
+  return (
+    <label
+      className={`filter-pill relative cursor-pointer ${active ? 'filter-pill-active' : ''}`}
+      data-testid={testId}
+    >
+      {icon && <Icon name={icon} size={13} className="shrink-0" />}
+      <span className="whitespace-nowrap">{shown}</span>
+      <span data-chevron="" className="shrink-0 opacity-70">
+        <Icon name="chevronDown" size={11} />
+      </span>
+      <select
+        value={value}
+        aria-label={label}
+        onChange={(e) => onChange(e.target.value as T)}
+        className="absolute inset-x-0 top-1/2 h-11 w-full -translate-y-1/2 cursor-pointer opacity-0"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+/**
  * ★★ AA1.3 (2026-09-07) — ON A PHONE, A ROW OF PILLS IS A GRID OF EQUAL ONES.
  *
  *   « Sur téléphone, les pastilles de type prennent toutes la même largeur,

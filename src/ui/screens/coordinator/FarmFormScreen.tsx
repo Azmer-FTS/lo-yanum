@@ -4,6 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 
 import {
   FARM_PIPELINE,
+  LAND_AGREEMENT_OPTIONS,
+  LEGAL_ENTITY_OPTIONS,
   LIVESTOCK_KINDS,
   LOCALITY_POSITIONS,
   NEGEV_CENTER,
@@ -205,6 +207,29 @@ export function FarmFormScreen() {
   const [photo, setPhoto] = useState<string | null>(existing?.photo ?? null)
   const [touched, setTouched] = useState(false)
 
+  /**
+   * ★★ AA2 (2026-09-07) — THE PROSPECTION FIELDS.
+   *
+   * ⚠️ EVERY ONE OF THEM IS A STRING IN THIS FORM, INCLUDING THE CODE. A
+   *    `number | null` state for סמל יישוב would make an empty field and a
+   *    zero the same value halfway through a keystroke, and 0 is not a
+   *    locality. It is parsed once, on submit, and an unparseable value
+   *    becomes null rather than NaN.
+   */
+  const [localityCode, setLocalityCode] = useState(
+    existing?.localityCode == null ? '' : String(existing.localityCode),
+  )
+  const [council, setCouncil] = useState(existing?.council ?? '')
+  const [legalEntity, setLegalEntity] = useState(existing?.legalEntity ?? '')
+  const [landAgreement, setLandAgreement] = useState(existing?.landAgreement ?? '')
+  const [landAgreementUntil, setLandAgreementUntil] = useState(
+    existing?.landAgreementUntil ?? '',
+  )
+  const [farmerName, setFarmerName] = useState(existing?.farmerName ?? '')
+  const [farmerPhone, setFarmerPhone] = useState(existing?.farmerPhone ?? '')
+  const [liaisonName, setLiaisonName] = useState(existing?.liaisonName ?? '')
+  const [liaisonPhone, setLiaisonPhone] = useState(existing?.liaisonPhone ?? '')
+
   const num = (v: string) => (v.trim() === '' ? NaN : Number(v))
 
   const errors = {
@@ -305,6 +330,16 @@ export function FarmFormScreen() {
         role: c.role.trim(),
       })),
       notes: notes.trim(),
+      // AA2 — the prospection fields. An empty code is null, never 0.
+      localityCode: localityCode.trim() === '' ? null : Number(localityCode.trim()),
+      council: council.trim(),
+      legalEntity,
+      landAgreement,
+      landAgreementUntil: landAgreementUntil.trim() === '' ? null : landAgreementUntil,
+      farmerName: farmerName.trim(),
+      farmerPhone: farmerPhone.trim(),
+      liaisonName: liaisonName.trim(),
+      liaisonPhone: liaisonPhone.trim(),
     }
 
     if (isEdit && farmId) {
@@ -492,6 +527,102 @@ export function FarmFormScreen() {
               </div>
             ))
           )}
+        </FormSection>
+
+        {/**
+          * ★★ AA2 (2026-09-07) — LA TERRE ET LE PAPIER, AVANT LES SURFACES.
+          *
+          * The order on this form is the order of the conversation the
+          * coordinator is actually having: who is this place, WHOSE is the
+          * ground and on what paper, how big is it, who keeps what on it.
+          * The area fields used to come straight after the contacts, which
+          * put "how many dunams" before "does the man signing hold the land"
+          * — and AA2bis exists because the second question is the one that
+          * decides whether the first one matters.
+          */}
+        <FormSection title={t('form.sectionLand')}>
+          <div className="auto-cols gap-3 [--col-min:14rem]">
+            <TextField
+              label={t('form.localityCode')}
+              hint={t('form.localityCodeHint')}
+              value={localityCode}
+              onChange={setLocalityCode}
+              type="number"
+              ltr
+            />
+            <TextField
+              label={t('form.council')}
+              value={council}
+              onChange={setCouncil}
+            />
+            <SelectField<string>
+              label={t('form.legalEntity')}
+              value={legalEntity}
+              onChange={setLegalEntity}
+              options={[
+                { value: '', label: t('form.notChosen') },
+                ...LEGAL_ENTITY_OPTIONS.map((o) => ({ value: o.id, label: o.label })),
+              ]}
+            />
+            <SelectField<string>
+              label={t('form.landAgreement')}
+              value={landAgreement}
+              onChange={setLandAgreement}
+              options={[
+                { value: '', label: t('form.notChosen') },
+                ...LAND_AGREEMENT_OPTIONS.map((o) => ({ value: o.id, label: o.label })),
+              ]}
+            />
+            <TextField
+              label={t('form.landAgreementUntil')}
+              hint={t('form.landAgreementUntilHint')}
+              value={landAgreementUntil}
+              onChange={setLandAgreementUntil}
+              type="date"
+              ltr
+            />
+          </div>
+        </FormSection>
+
+        {/**
+          * ★ AA2 — DEUX PERSONNES, ET CE NE SONT PAS LES MÊMES.
+          *
+          * « איש קשר (מועצה/אגודה) » orients you; « שם החקלאי » signs. The
+          * association's own workbook keeps two rows for it, and the reason is
+          * operational rather than clerical: at nine in the evening the
+          * coordinator has to know which of the two numbers is the one that
+          * answers. They are NOT folded into the contacts list below, which is
+          * the farm's own address book and has a different job.
+          */}
+        <FormSection title={t('form.sectionFieldPeople')}>
+          <div className="auto-cols gap-3 [--col-min:14rem]">
+            <TextField
+              label={t('form.farmerName')}
+              hint={t('form.farmerNameHint')}
+              value={farmerName}
+              onChange={setFarmerName}
+            />
+            <TextField
+              label={t('form.farmerPhone')}
+              value={farmerPhone}
+              onChange={setFarmerPhone}
+              type="tel"
+              ltr
+            />
+            <TextField
+              label={t('form.liaisonName')}
+              hint={t('form.liaisonNameHint')}
+              value={liaisonName}
+              onChange={setLiaisonName}
+            />
+            <TextField
+              label={t('form.liaisonPhone')}
+              value={liaisonPhone}
+              onChange={setLiaisonPhone}
+              type="tel"
+              ltr
+            />
+          </div>
         </FormSection>
 
         <FormSection title={t('form.sectionAreas')}>

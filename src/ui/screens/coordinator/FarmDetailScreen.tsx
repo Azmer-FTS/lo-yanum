@@ -4,6 +4,12 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 
 import {
   FARM_PIPELINE,
+  LAND_AGREEMENT_OPTIONS,
+  LEGAL_ENTITY_OPTIONS,
+  landRightIssue,
+  localDayKey,
+  optionLabel,
+  weightedDunams,
   createAnchorPoint,
   createFarmZone,
   createThreatVector,
@@ -58,6 +64,7 @@ import {
   readStatusColor,
 } from '../../components/badges'
 import {
+  Callout,
   EmptyState,
   KeyValue,
   LoadingState,
@@ -193,7 +200,109 @@ function FarmFacts({ farm }: { farm: Farm }) {
         }
         ltr={farm.lastVisitAt !== null}
       />
+      {/**
+        * ★ AA2 (2026-09-07) — THE PROSPECTION FACTS, AND ONLY THE ONES THAT
+        *   HAVE AN ANSWER.
+        *
+        * Every one of these is optional on the record (a farm exists the
+        * moment somebody has heard of it), so a blank line here would say
+        * "we asked and there is nothing" about a question nobody has asked
+        * yet. The land agreement is the exception and it is deliberate: it
+        * prints « לא ידוע » when unset, because AA2bis is already warning
+        * about that farm at the top of this block and a fact the warning
+        * names must be findable in the list underneath it.
+        */}
+      {farm.localityCode != null && (
+        <KeyValue label={t('farms.localityCode')} value={String(farm.localityCode)} ltr />
+      )}
+      {farm.council && <KeyValue label={t('farms.council')} value={farm.council} />}
+      {farm.legalEntity && (
+        <KeyValue
+          label={t('farms.legalEntity')}
+          value={optionLabel(farm.legalEntity, LEGAL_ENTITY_OPTIONS)}
+        />
+      )}
+      <KeyValue
+        label={t('farms.landAgreement')}
+        value={
+          farm.landAgreement
+            ? optionLabel(farm.landAgreement, LAND_AGREEMENT_OPTIONS)
+            : t('form.notChosen')
+        }
+      />
+      {farm.landAgreementUntil && (
+        <KeyValue
+          label={t('farms.landAgreementUntil')}
+          value={formatDate(farm.landAgreementUntil, locale)}
+          ltr
+        />
+      )}
+      {(farm.farmerName || farm.farmerPhone) && (
+        <KeyValue
+          label={t('farms.farmer')}
+          value={[farm.farmerName, farm.farmerPhone].filter(Boolean).join(' · ')}
+        />
+      )}
+      {(farm.liaisonName || farm.liaisonPhone) && (
+        <KeyValue
+          label={t('farms.liaison')}
+          value={[farm.liaisonName, farm.liaisonPhone].filter(Boolean).join(' · ')}
+        />
+      )}
     </dl>
+  )
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AA2bis (2026-09-07) — LE DROIT DU SIGNATAIRE SUR LA TERRE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ *   « Avertissement visible mais sobre sur la fiche — le droit du signataire
+ *     sur la terre n'est pas établi. Raison métier : ne pas organiser de
+ *     gardes sur un terrain qui n'appartient pas au signataire. Avertit, ne
+ *     bloque. »
+ *
+ * ★ SOBRE MEANS `warn`, NOT `danger`, AND IT MEANS IT SAYS WHY. A red band
+ *   would read as "this farm is a problem"; the farm is not a problem, the
+ *   paperwork is a question. The tone is the same one the app uses for
+ *   « מוזן ידנית » — something to know before acting, not something wrong.
+ *
+ * ★ AND IT NAMES THE PAPER OR THE DATE. « Le droit n'est pas établi » with no
+ *   reason is a sentence a coordinator can do nothing with; « הצהרת חקלאים
+ *   בלבד — אינו מסמך זכויות » tells him what to go and ask for.
+ *
+ * ⚠️ IT NEVER BLOCKS. Nothing on this screen is disabled by it and no guard
+ *    refuses to be planned because of it. The product owner said « avertit, ne
+ *    bloque » in the same breath as the business reason, and the two together
+ *    are the design: the coordinator, not the app, decides what an unproven
+ *    right means tonight.
+ */
+function LandRightWarning({ farm }: { farm: Farm }) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const issue = landRightIssue(farm, localDayKey(now()))
+  if (issue === 'none') return null
+
+  const body =
+    issue === 'expired'
+      ? t('farms.landRightExpired', {
+          date: farm.landAgreementUntil
+            ? formatDate(farm.landAgreementUntil, locale)
+            : '',
+        })
+      : issue === 'unset'
+        ? t('farms.landRightUnset')
+        : t('farms.landRightNoDoc', {
+            kind: optionLabel(farm.landAgreement, LAND_AGREEMENT_OPTIONS),
+          })
+
+  return (
+    <div className="mb-3" data-testid="land-right-warning" data-issue={issue}>
+      <Callout tone="warn" icon="alert" title={t('farms.landRightTitle')}>
+        <p className="mt-1 leading-snug">{body}</p>
+      </Callout>
+    </div>
   )
 }
 
@@ -305,6 +414,27 @@ function KeyNumbers({
         }
       />
 
+      {/**
+        * ★ AA3 — « דונם משוקלל », BESIDE THE TWO FIGURES IT IS MADE OF.
+        *
+        * It is the number the association reports and the one the target is
+        * set in, and it is meaningless without the two beside it: five
+        * thousand dunams of range weigh a hundred. Putting it third in the
+        * same band is what makes the 1:50 visible rather than a formula
+        * somebody has to remember. `weightedDunams` is the only place the
+        * coefficients are applied — see `core/fields.ts` for where they come
+        * from.
+        */}
+      <BandCard
+        testId="band-weighted-dunams"
+        icon="landPlot"
+        tint="bg-accent/[0.12]"
+        ink="text-accent-ink"
+        figure={weightedDunams(farm).toLocaleString(locale)}
+        label={t('farms.weighted')}
+        note={t('dashboard.weightedHint')}
+      />
+
       {/* ★ PO POINT 6 — THE HEAD COUNT SITS WITH THE DUNAMS BECAUSE IT
           ANSWERS THE SAME QUESTION: how much is under guard here. Rendered
           ONLY when somebody has actually been asked — `totalHeads` returns
@@ -398,6 +528,9 @@ function FarmIdentity({ farm }: { farm: Farm }) {
       collapseKey="entity-details"
       summary={`${t(`farmType.${farm.type}`)} · ${farm.locality}`}
     >
+      {/* AA2bis — before the pipeline, because it is the question that decides
+          whether moving along that pipeline is safe. */}
+      <LandRightWarning farm={farm} />
       <div className="mb-3 border-b border-edge-subtle pb-3">
         <StatusStepper status={farm.status} />
       </div>
@@ -936,9 +1069,76 @@ export function FarmDetailScreen() {
             defaultOpen={false}
             summary={t('blocks.agreements', { count: farm.agreements.length })}
           >
-            {farm.agreements.length === 0 ? (
+            {/**
+              * ★★ AA5.3 · AA5.4 (2026-09-07) — LA SIGNATURE IMPORTÉE, ET D'OÙ
+              *    ELLE VIENT.
+              *
+              * A signature that arrived in a spreadsheet cell has no agreement
+              * record behind it — there is no PDF, no `signedBy`, nothing but
+              * a drawing and a row. So it is shown HERE, at the top of the
+              * block it belongs to, with its provenance stated in words: the
+              * file it came in and the day it was imported. « Traçabilité »
+              * was the product owner's own term, and the reason is that these
+              * records become documents handed to a ministry.
+              *
+              * ★ AND « חתימה חסרה » IS SHOWN WITH THE SAME PROMINENCE. A row
+              *   whose signature cell could not be read still signed the farm
+              *   (AA5.3 forbids rejecting it); the gap is a to-do, and a to-do
+              *   nobody can see is a to-do nobody does.
+              */}
+            {farm.signatureOrigin?.kind === 'imported' && (
+              <div
+                className="mb-3 rounded-field border border-edge-subtle p-3"
+                data-testid="imported-signature"
+                data-missing={farm.signatureMissing ? '1' : '0'}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="chip bg-status-info/15 text-status-info-ink">
+                    <Icon name="edit" size={11} />
+                    {t('farms.signatureImported')}
+                  </span>
+                  {farm.signatureMissing && (
+                    <span className="chip bg-status-warn/15 text-status-warn-ink">
+                      <Icon name="alert" size={11} />
+                      {t('farms.signatureMissing')}
+                    </span>
+                  )}
+                </div>
+                {farm.signature ? (
+                  <img
+                    src={farm.signature}
+                    alt={t('signature.title')}
+                    data-testid="signature-image"
+                    /* A white plate under it: an ink-on-transparent signature
+                       is invisible on the dark theme's own surface, and this
+                       is the one image in the app whose subject IS the ink. */
+                    className="mt-2 h-20 w-full rounded-field bg-white object-contain p-1"
+                  />
+                ) : (
+                  <p className="muted mt-2">{t('farms.signatureMissingHint')}</p>
+                )}
+                <p className="muted mt-2">
+                  {t('farms.signatureImportedFrom', {
+                    file: farm.signatureOrigin.fileName ?? '—',
+                    date: farm.signatureOrigin.importedAt
+                      ? formatDate(farm.signatureOrigin.importedAt, locale)
+                      : '—',
+                  })}
+                  {farm.signatureOrigin.signedAt && (
+                    <>
+                      {' · '}
+                      <span className="ltr-nums">
+                        {formatDate(farm.signatureOrigin.signedAt, locale)}
+                      </span>
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {farm.agreements.length === 0 && !farm.signatureOrigin ? (
               <EmptyState icon="document" title={t('farms.noAgreements')} />
-            ) : (
+            ) : farm.agreements.length === 0 ? null : (
               <ul className="flex flex-col gap-2">
                 {farm.agreements.map((a) => (
                   <li

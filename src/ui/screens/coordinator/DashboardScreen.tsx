@@ -11,6 +11,8 @@ import {
   getAlerts,
   dunamsByRegion,
   getDunamKpis,
+  WEIGHTED_DUNAM_TARGET,
+  targetProgress,
   regionById,
   getFarmStatusCounts,
   getTonightMissionViews,
@@ -704,6 +706,72 @@ export function DashboardScreen() {
           tone="accent"
           testId="hero-potential"
         />
+      </div>
+
+      {/**
+        * ═══════════════════════════════════════════════════════════════════
+        * ★★ AA3.2 (2026-09-07) — LE TOTAL PONDÉRÉ, L'OBJECTIF, ET OÙ ON EN EST.
+        * ═══════════════════════════════════════════════════════════════════
+        *
+        * ★ IT IS A BAR AND NOT A THIRD BIG NUMBER, and that is the whole
+        *   design of this card. « 34 200 » beside « 100 000 » is arithmetic
+        *   the reader has to do; a bar that is a third full is the answer
+        *   already done. The association reports this figure monthly and the
+        *   only question ever asked of it is how far along it is.
+        *
+        * ★ THE FORMULA IS PRINTED UNDER IT. « מעובד × 1 · מרעה × 0.02 » is
+        *   four characters of hint and it is what stops the next person from
+        *   reading the total as dunams of ground and concluding the programme
+        *   has shrunk. The ratio has a source (`WEIGHTED_DUNAM`), and a number
+        *   whose source is invisible is a number somebody re-derives wrongly.
+        *
+        * ⚠️ THE PERCENTAGE IS NOT CAPPED AND THE BAR IS. Passing the target is
+        *    a fact worth printing — « 118% מהיעד » is exactly the sentence the
+        *    association wants to be able to say — but a bar drawn at 118 %
+        *    would overflow its own track, so the WIDTH is clamped and the
+        *    figure is not.
+        */}
+      <div
+        className="card mb-2.5 p-4"
+        data-testid="weighted-target"
+        data-weighted={dunams.weightedSigned}
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <p className="text-caption font-semibold text-content-primary">
+            {t('dashboard.weightedTitle')}
+          </p>
+          <p className="numeric text-micro text-content-muted">
+            {t('dashboard.weightedTarget', {
+              target: WEIGHTED_DUNAM_TARGET.toLocaleString(locale),
+            })}
+          </p>
+        </div>
+        <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <p className="numeric text-metric leading-none text-accent-ink">
+            {dunams.weightedSigned.toLocaleString(locale)}
+          </p>
+          <p className="numeric text-caption font-semibold text-content-secondary">
+            {t('dashboard.weightedPercent', {
+              percent: targetProgress(dunams.weightedSigned),
+            })}
+          </p>
+        </div>
+        <div
+          className="mt-2.5 h-2 w-full overflow-hidden rounded-pill bg-surface-high"
+          role="progressbar"
+          aria-valuenow={targetProgress(dunams.weightedSigned)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={t('dashboard.weightedTitle')}
+        >
+          <span
+            className="block h-full rounded-pill bg-accent transition-[width] duration-base ease-out"
+            style={{
+              width: `${Math.min(100, targetProgress(dunams.weightedSigned))}%`,
+            }}
+          />
+        </div>
+        <p className="muted mt-1.5 leading-tight">{t('dashboard.weightedHint')}</p>
       </div>
 
       {/* 1 — the compact KPI row: swipable sideways when the column is
