@@ -374,18 +374,42 @@ export function CoordinatorLayout() {
                header. */
             className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-edge-subtle bg-surface-overlay px-4 pb-3 pt-[calc(var(--status-inset)+0.75rem)] lg:hidden"
           >
-            <Brand />
-            <div className="flex items-center gap-2">
+            {/**
+              * ★★ AB7 (2026-09-08) — THE HAMBURGER MOVES TO THE READING START,
+              *    WHICH IN HEBREW IS THE PHYSICAL RIGHT.
+              *
+              * The product owner asked whether it should, and asked for the
+              * reason rather than the answer. It should, and the reason is not
+              * a convention borrowed from elsewhere — it is that THIS APP
+              * ALREADY DECIDED IT. The drawer has been `absolute inset-y-0
+              * start-0` since P0bis: it slides in from the physical RIGHT. The
+              * button that opens it was at the physical LEFT, so the thumb
+              * crossed a 402 px screen and the panel appeared where the thumb
+              * had started. One of the two was wrong and it was not the panel:
+              * an RTL app puts the navigation icon at the start, and the
+              * drawer with it (Material's bidirectionality rule, and what
+              * every Hebrew app on the product owner's own telephone does).
+              *
+              * ⚠️ AND THE BRAND FOLLOWS IT RATHER THAN SWAPPING WITH IT. The
+              *    bar is `justify-between`; putting the button at the start
+              *    and leaving the brand at the end would move BOTH objects,
+              *    and a logo at the inline end is its own oddity. Icon, then
+              *    name, both at the start — the same order the expanded rail
+              *    reads in, which is where the eye learnt it.
+              */}
+            <div className="flex min-w-0 items-center gap-2">
               {/* PO POINT 3 — see the rail above: one indicator, at the root.
                   ★ Y3.1 — and the theme switch is in הגדרות, not here. */}
               <button
                 type="button"
                 onClick={() => setMenuOpen(true)}
                 aria-label={t('a11y.openMenu')}
-                className="rounded-field p-2 text-content-secondary transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
+                data-testid="shell-menu"
+                className="-ms-1 rounded-field p-2 text-content-secondary transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
               >
                 <Icon name="menu" />
               </button>
+              <Brand />
             </div>
           </header>
           )}
