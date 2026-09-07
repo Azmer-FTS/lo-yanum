@@ -198,6 +198,20 @@ export function ExportScreen() {
                     {row.map((cell, j) => (
                       <td
                         key={j}
+                        /* ⚠️ `dir="ltr"` ON THE CELLS THAT CARRY NUMBERS, AND IT
+                           IS NOT CosMETIC. In an RTL paragraph « (052) 000-0001 »
+                           is laid out as « (052) 0001-000 » — the groups are
+                           reversed on screen while the FILE is correct, which
+                           is the worst of both: a preview that says the export
+                           is wrong when it is right. The rule follows the
+                           column's own format, so a Hebrew name stays RTL. */
+                        dir={
+                          format === 'association' &&
+                          ASSOCIATION_COLUMNS[j] &&
+                          ASSOCIATION_COLUMNS[j].format !== 'text'
+                            ? 'ltr'
+                            : undefined
+                        }
                         className="max-w-56 truncate px-2.5 py-1.5 text-content-primary"
                         title={cell}
                       >

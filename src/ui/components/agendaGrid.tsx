@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { formatTime, formatWeekdayShort, isSameDay, localDayKey } from '@core/index'
+import { formatTime, formatWeekdayShort, isSameDay, layOutDay, localDayKey } from '@core/index'
 import type { AgendaEvent } from '@core/index'
 
 import { Icon } from './Icon'
@@ -58,95 +58,11 @@ const OPEN_AT = 6
 const MIN_HOUR = 30
 /** A ladder in a narrow panel scrolls rather than squeezes. */
 const SPLIT_HOUR = 52
-/** A visit is a point in time; it still needs a block a thumb can hit. */
-const MIN_EVENT_MINUTES = 45
-
 export interface AgendaTone {
   /** Tailwind classes for the block. */
   block: string
   dot: string
   icon: IconName
-}
-
-/**
- * ★★ AB4.3 — TWO APPOINTMENTS AT THE SAME HOUR ARE SIDE BY SIDE.
- *
- * « chevauchements de rendez-vous côte à côte et non superposés »
- *
- * The events of one day are swept in start order into CLUSTERS — a maximal run
- * of events where each overlaps at least one other — and every event in a
- * cluster gets `1 / size` of the column, in its own lane.
- *
- * ⚠️ THE CLUSTER, NOT THE PAIR. Sharing the width between two events that
- *    happen to touch would still stack a third one on the second: A 20:00–02:00
- *    overlaps B 21:00–22:00 and C 23:00–00:00 while B and C do not touch each
- *    other, and all three have to be visible. Splitting by cluster gives
- *    thirds; splitting by pair would give B and C the same half.
- *
- * ⚠️ AND THE COMPARISON IS ON THE DAY'S OWN MINUTES, clamped to it. A guard
- *    that runs past midnight is drawn to the foot of its own day and picked up
- *    again at the head of the next one — the alternative, a block that
- *    overflows its column, is a block drawn over the neighbouring day.
- */
-export interface LaidOut {
-  event: AgendaEvent
-  /** Minutes from 00:00 of the day being drawn. */
-  from: number
-  to: number
-  lane: number
-  lanes: number
-}
-
-const MINUTES_IN_DAY = 24 * 60
-
-export function layOutDay(events: readonly AgendaEvent[], day: Date): LaidOut[] {
-  const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime()
-  const dayEnd = dayStart + MINUTES_IN_DAY * 60_000
-
-  const spans = events
-    .map((event) => {
-      const startMs = new Date(event.at).getTime()
-      const rawEnd = new Date(event.endAt).getTime()
-      const endMs = Number.isFinite(rawEnd) && rawEnd > startMs ? rawEnd : startMs
-      const from = Math.max(0, Math.round((startMs - dayStart) / 60_000))
-      const toRaw = Math.round((Math.min(endMs, dayEnd) - dayStart) / 60_000)
-      const to = Math.min(MINUTES_IN_DAY, Math.max(from + MIN_EVENT_MINUTES, toRaw))
-      return { event, from, to }
-    })
-    .sort((a, b) => a.from - b.from || a.to - b.to)
-
-  const out: LaidOut[] = []
-  let cluster: typeof spans = []
-  let clusterEnd = -1
-
-  const flush = (): void => {
-    if (cluster.length === 0) return
-    /* Lanes inside the cluster: the first lane whose last event has finished. */
-    const laneEnds: number[] = []
-    for (const span of cluster) {
-      let lane = laneEnds.findIndex((end) => end <= span.from)
-      if (lane === -1) {
-        lane = laneEnds.length
-        laneEnds.push(span.to)
-      } else {
-        laneEnds[lane] = span.to
-      }
-      out.push({ ...span, lane, lanes: 0 })
-    }
-    const lanes = laneEnds.length
-    for (let i = out.length - cluster.length; i < out.length; i++) out[i].lanes = lanes
-    cluster = []
-    clusterEnd = -1
-  }
-
-  for (const span of spans) {
-    if (cluster.length > 0 && span.from >= clusterEnd) flush()
-    cluster.push(span)
-    clusterEnd = Math.max(clusterEnd, span.to)
-  }
-  flush()
-
-  return out
 }
 
 /**
@@ -396,6 +312,11 @@ export function AgendaGrid({
                     data-event-id={event.id}
                     data-lane={lane}
                     data-lanes={lanes}
+                    data-selected={selected ? '1' : undefined}
+                    /* AB3.3 — one press looks, a second opens. The title says
+                       so on the block that is already selected, which is the
+                       only moment the second press means anything. */
+                    title={selected ? t('agenda.openEvent') : event.title}
                     onClick={() => onSelect(event)}
                     /* ⚠️ `flex flex-col justify-start`, AND IT IS NOT DECORATION.
                        A `<button>` CENTRES its content box vertically by the

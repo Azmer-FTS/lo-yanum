@@ -316,16 +316,31 @@ export function AgendaScreen() {
   }
 
   /**
-   * ★ SELECT, THEN OPEN — IN THAT ORDER AND IN ONE TAP.
+   * ★★ AB3.3 — THE FIRST PRESS SELECTS, THE SECOND OPENS.
    *
-   * The selection is what links the two halves (AB3.3), and opening the record
-   * is what the coordinator has always got from this gesture. Doing both keeps
-   * the link honest without charging a second tap for the thing the screen was
-   * already doing.
+   * « Cliquer un marqueur met en évidence le rendez-vous dans la liste. La
+   *   liaison marche dans les deux sens. »
+   *
+   * ⚠️ AND SELECTING CANNOT ALSO OPEN, WHICH IS WHAT THE FIRST ATTEMPT DID.
+   *    A guard's `href` is another screen: pressing its block selected it and
+   *    then navigated away, so the emphasis on its marker existed for one
+   *    frame on a page nobody was looking at any more — measured by `bun run
+   *    abpass` as « nothing selected ». The link the product owner asked for
+   *    only exists if the gesture that makes it STAYS on the agenda.
+   *
+   * ★ SO IT IS THE CALENDAR GESTURE, which is also what he already knows from
+   *   every other calendar: one press to look at it — the block is ringed, its
+   *   marker grows, the map is framed on it — and a second press on the SAME
+   *   block to open the record. Nothing else on the screen changed meaning:
+   *   the day heading still frames the day, the hour bands still create.
    */
   const selectAndOpen = (event: AgendaEvent) => {
+    if (selectedId === event.id) {
+      openEvent(event)
+      return
+    }
     setSelectedId(event.id)
-    openEvent(event)
+    if (event.position) setFrame({ points: [event.position], key: `${event.id}-${Date.now()}` })
   }
 
   const markers: MapMarker[] = useMemo(
@@ -560,6 +575,8 @@ export function AgendaScreen() {
                     type="button"
                     data-testid="agenda-event"
                     data-event-id={event.id}
+                    data-selected={selectedId === event.id ? '1' : undefined}
+                    title={selectedId === event.id ? t('agenda.openEvent') : event.title}
                     onClick={() => selectAndOpen(event)}
                     className={`w-full rounded-field border-s-[3px] px-1.5 py-1 text-start
                                 transition-all duration-fast ease-out hover:brightness-95 ${tone.block} ${

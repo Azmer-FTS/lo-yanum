@@ -34,8 +34,13 @@ import type { Browser, Page } from 'playwright'
  *        are at least 8 px apart.
  * ★ A73  on the phone the type pills are all the same width, in a grid, and
  *        the region selector is a drop-down of its own on its own line.
- * ★ A74  on iPad and desktop the pills are visible at rest — not folded away
- *        behind « סינון ».
+ * ★ A74  on iPad and desktop the pills are visible at rest WHEN THE PANEL HAS
+ *        THE ROOM — see AB2, which replaced « is this a phone » with « do they
+ *        fit here », and the note beside the check itself.
+ * ★★ A85 (AB1) the "+" offers only what the CURRENT screen can create, and
+ *        opens it directly when there is only one.
+ * ★★ A86 (AB1.4) the "+" does not sit on any touch target — on all nine
+ *        screens, not only on the one where it was found.
  */
 
 const PORT = Number(process.env.PILLS_PORT ?? 5209)
@@ -66,6 +71,109 @@ const SCREENS = [
   { name: 'יומן', key: 'agenda', hash: '#/coordinator/agenda' },
   { name: 'הגדרות', key: null, hash: '#/coordinator/settings' },
 ] as const
+
+/**
+ * ★★ A85 (AB1) — WHAT EACH SCREEN MAY CREATE, TRANSCRIBED FROM THE BRIEF AND
+ *    NOT FROM `ActionFab`.
+ *
+ *   חוות / מושבים  → nouvelle ferme, nouveau moshav
+ *   מתנדבים        → nouveau volontaire
+ *   נהגים מתנדבים  → nouveau conducteur
+ *   שמירות         → nouvelle garde
+ *   אירועים        → nouvel événement
+ *   יומן           → nouveau rendez-vous, nouvelle garde
+ *   מסלול          → nouvelle étape
+ *   לוח בקרה       → l'ensemble, c'est l'écran d'accueil
+ *
+ * `null` means the screen has no "+" at all — הגדרות and the import wizard
+ * create nothing, and a button offering "a farm" there is the defect this
+ * whole unit is about.
+ */
+const FAB_SCREENS = [
+  {
+    name: 'לוח בקרה',
+    hash: '#/coordinator',
+    expect: ['farm', 'moshav', 'volunteer', 'driver', 'mission', 'visit', 'meeting', 'incident'],
+  },
+  { name: 'חוות', hash: '#/coordinator/farms', expect: ['farm', 'moshav'] },
+  { name: 'מתנדבים', hash: '#/coordinator/volunteers', expect: ['volunteer'] },
+  { name: 'נהגים', hash: '#/coordinator/drivers', expect: ['driver'] },
+  { name: 'שמירות', hash: '#/coordinator/missions', expect: ['mission'] },
+  { name: 'אירועים', hash: '#/coordinator/incidents', expect: ['incident'] },
+  { name: 'יומן', hash: '#/coordinator/agenda', expect: ['visit', 'meeting', 'mission'] },
+  { name: 'מסלול', hash: '#/coordinator/route', expect: ['step'] },
+  { name: 'הגדרות', hash: '#/coordinator/settings', expect: null },
+  { name: 'ייבוא', hash: '#/coordinator/import/farms', expect: null },
+] as const
+
+interface FabState {
+  count: number
+  direct: string | null
+}
+
+/** ⚠️ A REAL FUNCTION, like every other probe here. See the note above. */
+function readFab(): FabState | null {
+  const root = document.querySelector('[data-testid="action-fab"]')
+  if (!root) return null
+  const toggle = document.querySelector('[data-testid="action-fab-toggle"]')
+  return {
+    count: Number(root.getAttribute('data-fab-count') ?? '0'),
+    direct: toggle ? toggle.getAttribute('data-fab-direct') : null,
+  }
+}
+
+/**
+ * Which PINNED controls the "+" rectangle overlaps. See the note at the call
+ * site for why the question is restricted to pinned things and to pills.
+ */
+function fabCollisions(): string[] {
+  const fab = document.querySelector('[data-testid="action-fab"]')
+  if (!fab) return []
+  const f = fab.getBoundingClientRect()
+  const hits: string[] = []
+
+  const overlaps = (r: DOMRect): boolean =>
+    r.width > 1 &&
+    r.height > 1 &&
+    r.left < f.right &&
+    f.left < r.right &&
+    r.top < f.bottom &&
+    f.top < r.bottom
+
+  const label = (el: Element): string => {
+    const id = el.getAttribute('data-testid')
+    if (id) return id
+    const text = (el.textContent || '').trim().slice(0, 14)
+    return text || el.tagName.toLowerCase()
+  }
+
+  const candidates = new Set<Element>()
+  for (const el of document.querySelectorAll('.filter-pill')) candidates.add(el)
+  for (const el of document.querySelectorAll(
+    'button, a, select, input, [role="button"]',
+  )) {
+    if (fab.contains(el)) continue
+    /* Pinned to the viewport, or inside something that is. */
+    let node: Element | null = el
+    while (node && node !== document.body) {
+      const pos = getComputedStyle(node).position
+      if (pos === 'fixed' || pos === 'sticky') {
+        candidates.add(el)
+        break
+      }
+      node = node.parentElement
+    }
+  }
+
+  for (const el of candidates) {
+    if (fab.contains(el)) continue
+    /* The map's mode pill is RAISED above the button deliberately (U4.4) and
+       declares itself an overlay, exactly as the button does. */
+    if (el.closest('[data-overlay]') && !el.closest('[data-filter-row]')) continue
+    if (overlaps(el.getBoundingClientRect())) hits.push(label(el))
+  }
+  return hits
+}
 
 let passed = 0
 let failed = 0
@@ -375,7 +483,120 @@ try {
   }
 
   // -------------------------------------------------------------------------
-  section('A74 — on iPad and desktop the pills are visible at rest')
+  section('A85 · A86 — the "+", on the nine screens')
+  // -------------------------------------------------------------------------
+  {
+    const context = await browser.newContext({
+      viewport: { width: PHONE.width, height: PHONE.height },
+      locale: 'he-IL',
+      deviceScaleFactor: 2,
+      hasTouch: true,
+      isMobile: ENGINE_NAME === 'chromium',
+    })
+    const page = await context.newPage()
+    page.setDefaultTimeout(60_000)
+
+    for (const screen of FAB_SCREENS) {
+      await load(page, screen.hash)
+
+      const state = (await page.evaluate(readFab)) as FabState | null
+      if (screen.expect === null) {
+        check(
+          `A85 · ${screen.name}: no "+" — this screen creates nothing`,
+          state === null,
+          state ? `${state.count} actions offered` : 'absent',
+        )
+        continue
+      }
+
+      check(
+        `A85 · ${screen.name}: the "+" offers exactly ${screen.expect.length}`,
+        state !== null && state.count === screen.expect.length,
+        state ? `${state.count}` : 'no "+" at all',
+      )
+
+      if (state === null) continue
+
+      if (screen.expect.length === 1) {
+        /* AB1.2 — « un menu à un seul choix est un clic perdu ». */
+        check(
+          `A85 · ${screen.name}: one creation, so the "+" IS it — no menu`,
+          state.direct === screen.expect[0],
+          `direct=${state.direct ?? 'null'}`,
+        )
+        await page.locator('[data-testid="action-fab-toggle"]').click()
+        await page.waitForTimeout(900)
+        /**
+         * ⚠️ « OPENED » IS NOT ALWAYS « NAVIGATED », AND מסלול IS WHY. Four of
+         *    the five single-action screens leave for a form or open a modal;
+         *    the planner's ÉTAPE is a block on the screen you are already on,
+         *    so its `?new=step` is read and CLEARED (see the note in
+         *    `RoutePlannerScreen`) and the hash comes back to where it was. The
+         *    proof there is the block: forced open, whatever the coordinator
+         *    had folded it to.
+         */
+        const opened =
+          screen.expect[0] === 'step'
+            ? (await page.locator('[data-block="route-select"][data-open="1"]').count()) > 0
+            : !(await page.evaluate(() => location.hash)).endsWith(screen.hash.slice(1)) ||
+              (await page.locator('[role="dialog"]').count()) > 0
+        check(
+          `A85 · ${screen.name}: pressing it opens ${screen.expect[0]} straight away`,
+          opened,
+          await page.evaluate(() => location.hash),
+        )
+      } else {
+        await page.locator('[data-testid="action-fab-toggle"]').click()
+        await page.waitForTimeout(400)
+        const items = (await page.evaluate(() =>
+          [...document.querySelectorAll('[data-fab-item]')].map((el) =>
+            el.getAttribute('data-fab-item'),
+          ),
+        )) as string[]
+        check(
+          `A85 · ${screen.name}: the menu is ${screen.expect.join(' · ')} and nothing else`,
+          JSON.stringify(items) === JSON.stringify(screen.expect),
+          items.join(' · ') || 'menu not found',
+        )
+        await page.keyboard.press('Escape')
+        await page.waitForTimeout(250)
+      }
+    }
+
+    /**
+     * ★★ A86 — THE "+" COVERS NO TOUCH TARGET.
+     *
+     * AA1.5 found it on מתנדבים, where the button sat on the last filter pill
+     * and reduced its hit area to 1 × 1 px. What is measured here is the
+     * general form of that: the button's rectangle against every PINNED
+     * control on the screen — the filter row, the shell's header, the map's
+     * own rail, the mode pill — plus every filter pill wherever it is.
+     *
+     * ⚠️ IT IS RESTRICTED TO PINNED THINGS AND TO PILLS, AND THAT IS NOT A
+     *    WEAKENING. A floating button is over the list underneath it BY
+     *    CONSTRUCTION — that is what floating means, and `--float-reserve`
+     *    already stops the last ROW from ending under it. What must never
+     *    happen is that it lands on something that cannot be scrolled out
+     *    from under it, because that control is then unreachable for ever.
+     */
+    for (const screen of SCREENS) {
+      for (const withPanel of [false, true]) {
+        await load(page, screen.hash)
+        if (withPanel && !(await openFilters(page))) continue
+        const hits = (await page.evaluate(fabCollisions)) as string[]
+        check(
+          `A86 · ${screen.name}${withPanel ? ' (filters open)' : ''}: the "+" is on nothing`,
+          hits.length === 0,
+          hits.slice(0, 4).join(' · ') || 'no pinned control under it',
+        )
+      }
+    }
+
+    await context.close()
+  }
+
+  // -------------------------------------------------------------------------
+  section('A74 — on iPad and desktop the pills are visible when they fit')
   // -------------------------------------------------------------------------
   for (const vp of WIDE) {
     const context = await browser.newContext({
@@ -387,20 +608,61 @@ try {
     const page = await context.newPage()
     page.setDefaultTimeout(60_000)
 
+    /**
+     * ★★ A74, REWRITTEN BY AB2, AND THE MEASUREMENT IS WHY.
+     *
+     * AA1.5's rule was « on iPad and desktop the pills are visible, never
+     * behind סינון », and it was enforced by asking the DEVICE. AB2 replaces
+     * the question with « do they fit in the box they are in », because AB2.3
+     * names the case the device question gets wrong: an iPad in split view has
+     * a phone's panel and must fold like one.
+     *
+     * ⚠️ AND ON THIS APP'S OWN DEFAULT LAYOUT THAT IS NOT A THEORETICAL CASE.
+     *    The content column is a THIRD of the row, so at 1376 px it is 395 px
+     *    wide — measured — and שמירות needs 573 px of pills. So the honest
+     *    assertion is no longer « never folded » but « folded exactly when
+     *    they do not fit », and both halves are checked from the two numbers
+     *    the row publishes (`data-fold-*`). A row that folds with room to
+     *    spare is the AA1.5 regression and fails here.
+     */
     for (const screen of SCREENS) {
       await load(page, screen.hash)
-      const state = (await page.evaluate(() => ({
-        folded: document.querySelectorAll('[data-testid="filter-dropdown"]').length,
-        pills: [...document.querySelectorAll('.filter-pill')].filter((el) => {
-          const r = el.getBoundingClientRect()
-          return r.width > 4 && r.height > 4
-        }).length,
-      }))) as { folded: number; pills: number }
+      const state = (await page.evaluate(() => {
+        const row = document.querySelector('[data-filter-row]')
+        return {
+          found: Boolean(row),
+          shape: row ? row.getAttribute('data-shape') : null,
+          available: Number(row ? row.getAttribute('data-fold-available') : NaN),
+          required: Number(row ? row.getAttribute('data-fold-required') : NaN),
+          folded: document.querySelectorAll('[data-testid="filter-dropdown"]').length,
+          pills: [...document.querySelectorAll('.filter-pill')].filter((el) => {
+            const r = el.getBoundingClientRect()
+            return r.width > 4 && r.height > 4
+          }).length,
+        }
+      })) as {
+        found: boolean
+        shape: string | null
+        available: number
+        required: number
+        folded: number
+        pills: number
+      }
 
+      if (!state.found) {
+        check(
+          `A74 · ${vp.name} · ${screen.name}: has a filter row`,
+          state.pills > 0,
+          `no [data-filter-row]; ${state.pills} pills`,
+        )
+        continue
+      }
+
+      const fits = Number.isFinite(state.required) && state.required <= state.available
       check(
-        `A74 · ${vp.name} · ${screen.name}: pills shown, nothing behind סינון`,
-        state.folded === 0 && state.pills > 0,
-        `folded=${state.folded} pills=${state.pills}`,
+        `A74 · ${vp.name} · ${screen.name}: ${fits ? 'they fit, so they are shown' : 'they do not fit, so they fold'}`,
+        fits ? state.folded === 0 && state.pills > 0 : state.folded === 1,
+        `${Math.round(state.required)} needed / ${state.available} available · shape=${state.shape}`,
       )
     }
 

@@ -1,7 +1,291 @@
 # לא ינום — ETAT
 
-> 🏁 **PASSE AA — TACTILE, DONNÉES TERRAIN, IMPORT ET SIGNATURES. 2026-09-07.
-> LIRE EN PREMIER.**
+> 🏁 **PASSE AB — LE « + » CONTEXTUEL, LES FILTRES QUI SE REPLIENT, L'AGENDA
+> CARTOGRAPHIQUE, L'OBJECTIF PILOTABLE ET LE FORMAT DE L'ASSOCIATION.
+> 2026-09-08. LIRE EN PREMIER.**
+>
+> Huit unités, sept commits, poussées et **déployées sur les deux URLs**.
+> Le principe du PO — « l'esthétique et le côté pratique sont indissociables »
+> — a tranché au moins trois fois ici dans un sens qu'un correctif purement
+> ergonomique n'aurait pas pris.
+>
+> ## Les défauts qui avaient une cause nommable
+>
+> **AB1 — LE « + » PROPOSAIT UNE FERME SUR L'AGENDA, ET W4 L'AVAIT VOULU.**
+> W4 a trié les quatre actions pour que celle de l'écran courant vienne en
+> PREMIER, et a gardé les trois autres sous un filet « au cas où ». C'est un
+> menu qui répond à une question que personne ne pose : rien sur l'agenda n'est
+> une ferme, et une liste qui en propose une est une liste qu'il faut LIRE
+> avant d'agir. La table `CREATIONS` d'`ActionFab` est maintenant écran →
+> créations, et rien d'autre. **Cinq écrans n'en ont qu'une** — מתנדבים,
+> נהגים, שמירות, אירועים, מסלול — et le « + » l'ouvre directement.
+>
+> ⚠️ **DEUX DES HUIT CRÉATIONS N'EXISTAIENT PAS.** אירועים n'avait aucune
+> création : le journal du coordinateur était en lecture seule, et un appel qui
+> arrive sur son propre téléphone — la police a appelé, un voisin a vu un
+> véhicule — n'avait nulle part où aller. C'est le formulaire du terrain (R7),
+> avec deux différences qui sont des faits et non des goûts : le coordinateur
+> n'est pas sur place, donc la position de son appareil serait un mensonge et
+> c'est le point de la ferme qui est enregistré ; et la ferme n'est pas
+> impliquée par sa session, donc c'est la première chose que la fenêtre
+> demande. מסלול proposait « חווה חדשה », ce qui est la mauvaise réponse à
+> « je veux ajouter une étape » : une étape est une ferme DÉJÀ dans le
+> programme qu'on met sur la tournée du jour, et `?new=step` force l'ouverture
+> du bloc בחירת חוות — que U1 mémorise, donc possiblement fermé depuis des
+> semaines — et y défile.
+>
+> **AB2 — NI Y7.3 NI AA1.5 NE POSAIENT LA BONNE QUESTION, ET LES DEUX AVAIENT
+> À MOITIÉ RAISON.** Y7.3 mesurait le PANNEAU, ce qui est juste sur la boîte
+> où les pastilles doivent TENIR et faux sur les grands écrans : quatre écrans
+> repliaient à 1376 px. AA1.5 demandait « est-ce un téléphone », ce qui est
+> juste sur les grands écrans et faux sur le seul cas que AB2.3 nomme — un iPad
+> splitté, dont le panneau est large comme un téléphone. La question qui est
+> juste dans les trois cas est celle que la phrase du PO pose déjà : EST-CE QUE
+> ÇA TIENT SUR UNE LIGNE ICI. `useFilterFold` mesure la largeur naturelle des
+> pastilles contre la largeur réelle de la boîte.
+>
+> ⚠️ **ET LA MESURE EST RETENUE, faute de quoi le repli supprime ce qu'il
+> mesure.** La forme repliée sort les pastilles de la barre ; un hook qui
+> remesurerait à chaque image replierait, trouverait une rangée de zéro
+> pastille, déciderait que ça tient, déplierait, et oscillerait pour toujours.
+> Ce qui est stable est la largeur NATURELLE — la taille d'une pastille vient
+> de son texte, pas de son conteneur — donc elle est mesurée pendant qu'elles
+> sont posées, et gardée.
+>
+> ⚠️ **CE QUE ÇA DONNE SUR LA MISE EN PAGE PAR DÉFAUT DE CETTE APP, MESURÉ :**
+> la colonne de contenu vaut un TIERS de la rangée, donc **395 px à 1376 px**,
+> et שמירות demande **558 px** de pastilles, אירועים **573**, מסלול **581**,
+> חוות **402**. Sur ces quatre écrans, à la couture par défaut, les pastilles
+> se replient derrière « סינון » — et **elles réapparaissent dès que le PO
+> élargit la couture ou passe en contenu plein écran**. C'est la lecture
+> littérale d'AB2.1 et d'AB2.5, et c'est ce que A74 assert désormais : replié
+> EXACTEMENT quand ça ne tient pas, jamais quand ça tient.
+>
+> **AB3 — L'AGENDA N'AVAIT PAS DE POSITION À MONTRER.** `AgendaEvent` ne
+> portait aucun point. Il en porte un, ou `null` quand personne ne le connaît :
+> point de garde pour une שמירה (c'est là que le groupe se tient), point de la
+> ferme pour un ביקור sauf les fiches parquées sans coordonnées par AA4.4, et
+> le lieu de la פגישה lu dans le gazetteer. **Rien n'est inventé** : « בית
+> הכנסת של דוד » n'est pas une localité et ne le sera jamais, et une punaise
+> posée sur la ville la plus proche est un fait que l'app aurait fabriqué.
+>
+> **AB4 — LA SEMAINE ÉTAIT SEPT BOÎTES, ET C'EST POURQUOI AUCUN DES QUATRE
+> POINTS DU PO N'ÉTAIT POSSIBLE.** Une boîte n'a pas d'axe du temps : 09:00 et
+> 21:00 étaient à la hauteur qu'atteignait la liste, « maintenant » n'avait
+> nulle part où se dessiner, deux gardes à la même heure étaient l'une
+> au-dessus de l'autre — ce qui n'est pas ce à quoi ressemble « en même
+> temps » — et les boîtes s'arrêtaient où finissait la plus longue. Les quatre
+> points sont la même chose absente : **L'HEURE N'ÉTAIT PAS UNE POSITION.**
+>
+> ⚠️ **VINGT-QUATRE HEURES, PAS 06→23, ET CE N'EST PAS UN DÉTAIL ICI.** Le
+> sujet de ce programme est la garde de NUIT : une garde qui commence à 22:00
+> et finit à 04:00 avait la moitié d'elle-même hors de la fenêtre, et une garde
+> à 01:00 n'existait pas sur le calendrier. L'échelle est la journée entière,
+> et « le défilement s'ouvre sur les heures de travail » est alors exactement
+> ce que ça dit : le DÉFILEMENT s'ouvre à 06:00, et minuit est au-dessus.
+>
+> ⚠️ **TROIS DÉFAUTS MESURÉS EN CHEMIN.** Un `<button>` CENTRE son contenu :
+> une garde de six heures affichait son heure au milieu du bloc — vu sur une
+> capture comme un libellé « 05:11 » posé en face de 09:00. `PullToRefresh` est
+> une boîte de hauteur automatique, donc `h-full` n'y résolvait rien et
+> l'échelle rendait **1321 px dans une colonne de 900**. Et en contenu plein
+> écran la page défilait de **299 px** sous la grille, ce qui met la fin de
+> l'échelle sous le pli.
+>
+> **AB5b — LA BASCULE DE RÔLE EXISTAIT, ET LE PO AVAIT RAISON.** Mesurée sur le
+> jumeau DÉPLOYÉ à 402 px : « מצב תצוגה » était à **y = 2630 dans une page de
+> 3260**, neuvième bloc sur dix, sous l'archive hors-ligne, le point de départ,
+> la fiche du coordinateur, l'adresse des rapports, l'état de synchronisation,
+> le modèle de contrat et le jeu de démonstration. Sur un écran de 874 px, cela
+> fait trois écrans à faire défiler devant des choses qu'il ne cherchait pas,
+> ce qui est indiscernable d'absent. **Elle est première.** Elle est aussi
+> sortie de `FilterRow` : ces quatre pastilles ne sont pas des filtres, et
+> depuis AB2 un `FilterRow` SE REPLIE — le seul contrôle que le PO ne trouvait
+> pas se serait caché derrière un bouton appelé « filtre ».
+>
+> ⚠️ **ET « LE RÔLE ACTIF MARQUÉ » N'ÉTAIT PAS MARQUÉ.** Y3.2 donnait la peau
+> accentuée à « quelle liste est ouverte en dessous », si bien que sur un écran
+> de réglages neuf, רכז ET חקלאי étaient tous deux dessinés comme actifs —
+> mesuré, `aria-pressed="true"` sur les deux — et aucun des deux ne répondait à
+> « dans quel rôle suis-je ». L'accent veut dire EN VIGUEUR, et rien d'autre.
+>
+> **AB6 — LEUR FORMAT A QUATRE PIÈGES, ET CHACUN EST MUET S'IL EST RATÉ.**
+> Leur מיקום est en longitude, latitude — l'inverse du standard — et comme les
+> deux plages se CHEVAUCHENT entre 33,5 et 34, aucun test de plage ne tranche.
+> Ce qui tranche est qu'en Israël la longitude est TOUJOURS la plus grande des
+> deux : le point le plus au nord (מטולה) est à 33,28 N pour 35,58 E, le plus
+> au sud (אילת) à 29,55 N pour 34,95 E, et la côte la plus à l'ouest à 34,27 E.
+> Ils ont DEUX colonnes nommées מיקום, donc un en-tête n'est pas une identité
+> et le lecteur les distingue par POSITION. Les téléphones sont
+> `(0XX) XXX-XXXX` et reviennent en `0XX-XXXXXXX`. Les dates sont `JJ/MM/AAAA`
+> et reviennent en `YYYY-MM-DD`.
+>
+> ⚠️ **ET L'ALLER-RETOUR A ÉCHOUÉ SUR LA CLÉ, PAS SUR LES COLONNES.** Mesuré
+> avant correctif : **193 créations** sur le réimport de notre PROPRE export.
+> Leur format ne porte pas de סמל יישוב, donc chaque ligne se clé en
+> `place:nom|מוסד` — et les 198 fiches issues du classeur de prospection
+> portent toutes un `code:1177`. `planProspection` prend désormais la fonction
+> de clé des fiches EXISTANTES en paramètre, et l'association passe `placeKey`.
+> 0 création, 198 appariements, 0 doublon, 0 champ perdu.
+>
+> **AB7 — LE HAMBURGER ÉTAIT DU MAUVAIS CÔTÉ DE SON PROPRE TIROIR.** Le tiroir
+> est `absolute inset-y-0 start-0` depuis P0bis : il entre par la droite
+> physique. Le bouton qui l'ouvrait était à gauche, donc le pouce traversait
+> 402 px et le panneau apparaissait là où le pouce était parti. **Réponse en
+> une ligne, comme demandé : il passe à droite, parce que c'est le côté par
+> lequel entre le tiroir qu'il ouvre** — et accessoirement parce que c'est ce
+> que fait toute application RTL (règle de bidirectionnalité de Material).
+>
+> ## Ce que la passe ajoute
+>
+> **`src/core/association.ts` EST la table de correspondance**, comme
+> `fields.ts` est la table des valeurs : une LIGNE par colonne de leur portail,
+> l'en-tête tel qu'ils l'écrivent, laquelle de nos valeurs la remplit, comment
+> elle s'écrit, et comment elle s'appelle chez nous — cette dernière étant
+> imprimée sur l'écran d'export, pour que « הסכם רעיה/חכירה ← סוג הסכם קרקע »
+> soit une phrase que le PO peut vérifier contre son propre écran. Repointer
+> une colonne, c'est changer un mot sur une ligne ; il n'y a de `switch` sur un
+> en-tête nulle part.
+>
+> ⚠️ **DEUX COLONNES SORTENT VIDES, NOMMÉES DANS LE RAPPORT D'EXPORT.**
+> שטחים שמירה : leurs feuilles y recopient שטחים מעובדים, et recopier ici
+> mettrait dans un fichier remis à l'État une surface que personne n'a mesurée
+> — ce programme n'enregistre pas de surface GARDÉE (`FarmZone` connaît une
+> limite de ferme et une zone de pâturage, et aucune des deux n'est « le
+> terrain que les volontaires arpentent »). שם העסק : nous n'avons qu'un nom,
+> et le remettre sous un en-tête qui veut dire autre chose serait rendre à
+> l'association son propre שם המקום déguisé. Même règle que « אומדן סדר גודל »
+> en AA4.6.
+>
+> **Deux définitions que l'app a dû choisir, imprimées sur l'écran d'export**
+> plutôt qu'enterrées dans le code : כמות התנדבויות est le nombre de SHIFTS-
+> VOLONTAIRES (quatre volontaires sur une nuit font quatre actes de bénévolat,
+> et c'est en cela que se compte le financement ; une garde annulée ne compte
+> pas), et כמות מתנדבים קבועים est le nombre de volontaires ayant DEUX gardes
+> ou plus sur la même ferme — leur formulaire demande « réguliers » sans dire
+> ce que régulier veut dire, et il n'y a pas d'autre donnée sur quoi s'appuyer.
+>
+> **L'objectif est une campagne, pas une constante.** `WEIGHTED_DUNAM_TARGET`
+> reste une constante nommée et devient explicitement la valeur INITIALE ;
+> `ui/settings/target.ts` porte la campagne du coordinateur — chiffre,
+> échéance, libellé, comportement à l'atteinte, campagne suivante, et les
+> campagnes déjà atteintes. « חזרה לערך ההתחלתי » y revient, ce qui est ce qui
+> donne encore un sens à la constante.
+>
+> ⚠️ **Le retrait d'une campagne atteinte est un ÉVÉNEMENT, pas un état.**
+> `settleTarget` est idempotent — il ne fait rien tant que la tête de
+> l'historique porte déjà ce libellé et ce chiffre — et il est appelé depuis un
+> effet, jamais pendant le rendu, faute de quoi l'historique gagnerait une
+> ligne par peinture.
+>
+> **Une seule pression regarde, une deuxième ouvre.** Sur l'agenda, presser un
+> bloc le SÉLECTIONNE : il est cerclé, son marqueur grossit, la carte se cadre
+> dessus. Presser le même bloc une seconde fois ouvre la fiche. La première
+> version faisait les deux d'un coup, et le `href` d'une garde est un autre
+> écran : la mise en évidence existait une image sur une page que plus personne
+> ne regardait — mesuré par `bun run abpass` comme « nothing selected ».
+>
+> ## Les portes
+>
+> | Gate | Portée | Résultat |
+> |---|---|---|
+> | `assoc` | **nouveau** (AB6) — A94 · A95 · A96, sur le VRAI classeur | **PLACEHOLDER_ASSOC** |
+> | `abpass` | **nouveau** (AB2·AB3·AB4·AB5) — A87 · A88 · A89 · A90 · A91 · A92 · A93 | **PLACEHOLDER_ABPASS** |
+> | `pills` | A71 · A72 · A73 · A74 + **A85 · A86** (AB1), 9 écrans à 402 px + iPad + desktop | **PLACEHOLDER_PILLS** |
+> | `abcaptures` | **nouveau** (AB8) — captures du déployé, clair + sombre, 3 viewports | **PLACEHOLDER_CAPTURES** |
+> | `prospection` · `signatures` · `sheets` | AA4 · AA5, inchangés | 40 · 32 · 15 |
+> | `accept` · `persist` · `mapping` · `sync` | domaine, store, 26 tables, hors-ligne | 176 · **97** · 33 · 34 |
+> | `layout` · `rhythm` · `settings` · `reserve` · `band` · `rows` · `modes` | | PLACEHOLDER_LAYOUT |
+> | `live` | le schéma DÉPLOYÉ, sans mot de passe | **48/48** — migration en place |
+>
+> ## La migration Supabase
+>
+> `supabase/migrations/20260907000100_prospection_fields.sql` **est appliquée**
+> sur `lo-yanum-prod` (`lvrptqmkjikkkhcxocbe`) depuis le 2026-09-08, et rien
+> dans cette passe n'en demande une nouvelle : l'objectif et ses campagnes sont
+> LOCAUX à l'appareil (même raisonnement que נקודת מוצא et l'adresse des
+> rapports — il faut que ça marche sans réseau, et c'est la préférence d'une
+> personne sur son propre exercice budgétaire), et le format de l'association
+> est un export, pas une table. `bun run live` : **48/48**.
+>
+> ⚠️ **Le chemin, s'il en faut une un jour, reste celui d'AA7 et pas celui
+> qu'on croit** : le CLI de ce poste est connecté à un AUTRE compte Supabase.
+> C'est l'outil MCP Supabase de la session qui a le bon compte.
+>
+> ## À re-tester par le PO — 9 points
+>
+> 1. **Le « + », sur chaque écran.** Sur מתנדבים, נהגים, שמירות, אירועים et
+>    מסלול il ouvre DIRECTEMENT la chose ; sur חוות il propose ferme et moshav ;
+>    sur יומן, ביקור · פגישה · שמירה ; sur le tableau de bord, tout.
+> 2. **Les filtres, en faisant glisser la couture.** Panneau étroit : les
+>    pastilles rentrent derrière « סינון », avec le nombre de filtres actifs
+>    dessus. Panneau large : elles sont là, sur une ligne, toujours.
+> 3. **L'agenda.** La carte à gauche, les rendez-vous numérotés dans l'ordre du
+>    jour. Presser un jour cadre la carte dessus. Presser un bloc le sélectionne
+>    et met son marqueur en avant ; le presser une SECONDE fois ouvre la fiche.
+>    Presser un marqueur sélectionne le bloc.
+> 4. **L'agenda en contenu plein écran.** La grille prend toute la hauteur, il
+>    n'y a pas de bande vide, et le défilement s'ouvre sur 06:00.
+> 5. **מיקום חסר**, replié sous la grille : les rendez-vous que la carte ne peut
+>    pas montrer, nommés.
+> 6. **הגדרות → מצב תצוגה**, en premier bloc : les quatre rôles, le rôle en
+>    vigueur marqué, le retour au coordinateur toujours là.
+> 7. **הגדרות → יעד** : changer le chiffre, l'échéance, le libellé ; choisir
+>    « לעבור אוטומטית ליעד הבא » et saisir le suivant ; regarder le tableau de
+>    bord ; revenir voir l'historique.
+> 8. **חוות → ⋯ → ייצוא נתונים** : choisir מבנה העמותה, un périmètre, lire
+>    l'aperçu ET le rapport d'export — les colonnes vides y sont nommées avec
+>    leur raison — puis télécharger le CSV et le xlsx.
+> 9. **Réimporter ce même fichier** par חוות → ⋯ → ייבוא → מבנה העמותה :
+>    l'aperçu doit annoncer **0 à créer**.
+>
+> **Les deux URLs, même commit :**
+> - L'app réelle : https://azmer-fts.github.io/lo-yanum/
+> - Le jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
+>
+> Captures de l'URL déployée, clair ET sombre, iPad portrait, iPad paysage et
+> iPhone : `docs/screenshots/abpass/`, et chacune est aussi une lecture
+> géométrique au repos.
+>
+> Pour reprendre : `git pull && bun install && bun run dev`, puis
+> `bun run parse`, `bun run assoc`, `bun run abpass`, `bun run pills`,
+> `ENGINE=webkit bun run pills`, `bun run prospection`, `bun run signatures`,
+> `bun run sheets`, `bun run persist`, `VIEWPORT=all bun run layout` et
+> `bun run abcaptures`.
+>
+> ## Ce qui reste, et ce qui est délibéré
+>
+> - **שטחים שמירה et שם העסק sortent VIDES**, et le rapport d'export le dit
+>   avec la raison. Le jour où le programme mesurera une surface réellement
+>   gardée, c'est `guardedDunams` dans `associationInputs` qui cesse de valoir
+>   `null`, et rien d'autre ne bouge.
+> - **Le format de l'association ne porte pas de סמל יישוב**, donc son
+>   aller-retour hérite de la limite connue de la clé de repli d'AA4.2 : deux
+>   fiches partageant un nom ET une מועצה sont ambiguës, et c'est la première
+>   qui gagne — ce qui est strictement mieux que d'en créer une troisième.
+> - **La bascule de rôle reste absente d'un build Supabase**, et c'est
+>   inchangé : là-bas le rôle est une revendication sur un jeton, et un
+>   échange côté client montrerait un écran que le serveur ne servirait jamais.
+>   Le PO teste sur le jumeau, qui est exactement où elle est.
+> - **L'objectif et son historique sont locaux à l'appareil.** Le jour où un
+>   serveur possède les campagnes, `ui/settings/target.ts` devient son cache —
+>   même note que P3.3bis sur l'adresse des rapports.
+> - **Une garde qui traverse minuit est dessinée deux fois**, une fois au pied
+>   de son jour et une fois en tête du suivant. L'alternative — un bloc qui
+>   déborde de sa colonne — est un bloc dessiné par-dessus le jour voisin.
+> - ⚠️ **Le piège des sondes reste entier.** `abpass`, `pills`, `sheets`,
+>   `abcaptures` passent leurs sondes comme de VRAIES fonctions à
+>   `page.evaluate`. Et une sonde peut être JUSTE et mesurer la mauvaise
+>   chose : celle d'A87 comptait les lignes par le `top` des enfants, et le
+>   filet d'un pixel qui sépare les onglets des statuts sur שמירות est haut de
+>   16 px contre 36 pour une pastille — même ligne, `top` différent, deux
+>   lignes comptées là où le navigateur en avait dessiné une.
+
+---
+
+> 🏁 **PASSE AA — TACTILE, DONNÉES TERRAIN, IMPORT ET SIGNATURES. 2026-09-07.**
+> (Note précédente, conservée. La table des gates courante est en tête de
+> fichier.)
 >
 > Sept unités, quatre commits, poussées et **déployées sur les deux URLs**.
 > Le principe du PO — « l'esthétique et le côté pratique sont indissociables »
