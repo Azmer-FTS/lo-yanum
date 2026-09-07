@@ -65,7 +65,8 @@
     "pills": "bun run scripts/pills.ts",
     "prospection": "bun run scripts/prospection.ts",
     "signatures": "bun run scripts/signatures.ts",
-    "sheets": "bun run scripts/sheets.ts"
+    "sheets": "bun run scripts/sheets.ts",
+    "aacaptures": "bun run scripts/aacaptures.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "^0.4.0",

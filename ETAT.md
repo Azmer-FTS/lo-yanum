@@ -1,6 +1,216 @@
 # לא ינום — ETAT
 
-> 🏁 **PASSE FINITION — Z1→Z9 COMPLÈTE, 2026-09-07. LIRE EN PREMIER.**
+> 🏁 **PASSE AA — TACTILE, DONNÉES TERRAIN, IMPORT ET SIGNATURES. 2026-09-07.**
+>
+> Sept unités, trois commits, poussées et **déployées sur les deux URLs**.
+> Le principe du PO — « l'esthétique et le côté pratique sont indissociables »
+> — est ce qui arbitre chaque choix ci-dessous, et il a tranché au moins trois
+> fois dans un sens qu'un correctif purement ergonomique n'aurait pas pris.
+>
+> ## Les défauts qui avaient une cause nommable
+>
+> **AA1 — LA CIBLE TACTILE FAISAIT 27 PX DE HAUT. TOUTES.** Mesurée par
+> `bun run pills`, qui ne lit pas un `getBoundingClientRect` mais MARCHE la
+> zone tactile au pixel avec `elementFromPoint`, en partant du centre de chaque
+> pastille jusqu'à ce qu'elle cesse de répondre. C'est la seule règle possible
+> ici : la cible a le droit d'être plus grande que l'encre — le PO l'autorise
+> explicitement — et le rectangle du bouton ne le sait pas. La même marche
+> répond à la question du recouvrement : si deux cibles se chevauchent, la
+> marche s'arrête tôt, parce que le voisin répond.
+>
+> Vu rouge, à 402 px, sur les neuf écrans : **aucune cible n'atteignait 44 px**,
+> **cinq à sept px** séparaient deux voisines, et les trois pastilles de type
+> mesuraient 71, 74 et 81 px de large. La cible fait 44 px de haut pour 36 px
+> d'encre, via un `::before` transparent que le navigateur teste comme faisant
+> partie du bouton ; `min-width: 2.75rem` pour qu'elle n'ait jamais à
+> s'ÉLARGIR, faute de quoi les 8 px d'écart n'existeraient nulle part sur une
+> rangée de 402 px.
+>
+> ⚠️ **Et 8 px se mesuraient à 7.** L'écart CSS valait bien 0,5 rem ; les
+> boîtes tombent sur des fractions de pixel et le navigateur les aligne sur sa
+> grille, si bien qu'il ne reste que sept pixels entiers neutres entre deux
+> cibles. `.pill-row` vaut 10 px et 20 px — une seule fois, pour TOUTES les
+> rangées de pastilles de l'app : l'agenda, l'assistant d'import, le panneau de
+> menaces et les réglages avaient chacun leur propre `gap`.
+>
+> **AA1.5 — ET SUR DESKTOP LES PASTILLES ÉTAIENT REPLIÉES DERRIÈRE « סינון ».**
+> Y7.3 puis Z3 mesuraient le PANNEAU, avec un bon argument : la largeur d'une
+> colonne que le coordinateur fait glisser n'est pas celle de son écran. C'est
+> le bon argument pour une rangée qui doit TENIR ; c'est le mauvais pour une
+> rangée qui doit ÊTRE LÀ. Mesuré à 1376 px avant correctif : חוות, שמירות,
+> אירועים et מסלול repliaient tous les quatre. La forme repliée est celle d'un
+> TÉLÉPHONE (`max-width: 639px`) et de rien d'autre.
+>
+> ⚠️ **Il s'ensuit que la forme large doit ENVELOPPER et non défiler.** C'était
+> un `ScrollRow`, et une pastille passée sous le fondu est une pastille qui
+> n'est pas visible au repos : mesurée sur desktop, « מעורבת » avait une cible
+> de **1 × 1 px**. Un filtre que personne ne peut presser.
+>
+> ⚠️ **Et sur מתנדבים, panneau ouvert, la dernière pastille avait elle aussi
+> 1 × 1 px** — le « + » flottant était posé dessus. Aucune capture ne le
+> montre : les deux ont simplement l'air proches. Le rail du bas s'efface
+> maintenant pendant que le panneau est ouvert.
+>
+> **AA4 — « לא נוצר קשר » CONTIENT « נוצר קשר ».** `templates.ts` lit les
+> colonnes d'énumération par sous-chaîne, la plus longue d'abord, et c'est le
+> bon outil pour le tableur de quelqu'un d'autre. C'est le mauvais pour le
+> classeur de l'association, dont les valeurs viennent d'une liste validée :
+> « on ne les a pas appelés » devenait « on les a appelés » sur chaque ligne
+> non travaillée d'un fichier de 198. Les listes du classeur (`fields.ts`) se
+> comparent en chaîne ENTIÈRE normalisée — les guillemets hébreux, les tirets
+> longs, les espaces en trop et la casse sont absorbés une fois pour toutes.
+>
+> **AA4 — LE DRAPEAU « SAISI À LA MAIN » POSÉ SUR UN ZÉRO.** Les 198 lignes
+> arrivent sans surface. Marquer leur zéro comme une saisie manuelle les aurait
+> gelées à zéro pour toujours : G15 respecte le drapeau, donc aucune zone
+> dessinée n'aurait jamais pu les remplir. Trouvé par A78, dont l'aller-retour
+> renvoyait `farmDunamsManual` différent de l'original.
+>
+> **AA4/AA5 — LES DEUX ÉCRANS D'IMPORT PARTAGEAIENT LEUR ÉTAT.** Ils rendent le
+> même composant paresseux depuis deux routes ; React réconcilie l'un dans
+> l'autre et GARDE son étape. `bun run sheets` a attendu soixante secondes un
+> champ de fichier que le second écran n'avait pas, parce qu'il était resté sur
+> l'aperçu du premier. Une `key` par type.
+>
+> **AA4 — LE CLASSEUR DU PO S'OUVRE SUR SON ONGLET מקרא.** Prendre
+> `SheetNames[0]`, ce que fait l'assistant des trois rosters et qui est juste
+> pour un fichier que nous avons écrit, aurait lu la page d'instructions et
+> annoncé « 0 ligne ».
+>
+> **AA2 — ONZE COLONNES DÉCLARÉES ET INVISIBLES.** `bun run mapping` lit les
+> migrations avec un parseur qui ne connaît que `alter table … add column` une
+> colonne à la fois ; un `alter table` à virgules n'enregistre que la première.
+> Une instruction par colonne, comme toutes les autres migrations du dépôt.
+>
+> **AA6 — ET LE FORMULAIRE DE FERME EST PASSÉ À 6,2 ÉCRANS.** Les deux
+> nouvelles sections AA2 l'ont fait franchir le plafond de six d'A30, à 390 px.
+> Repliées par défaut, avec un résumé qui DIT ce qu'elles contiennent — même
+> correctif que la section bétail, pour la même raison. Retour à 5,3.
+>
+> ## Ce que la passe ajoute
+>
+> **Un seul fichier de configuration** (`src/core/fields.ts`) porte les deux
+> listes que le PO fera grandir (סוג הישות המשפטית, סוג הסכם קרקע), les deux
+> listes fermées du classeur (סטטוס, סוג פעילות), les deux coefficients et
+> l'objectif. Une valeur = une ligne ; le formulaire, l'import et l'export
+> lisent le même tableau, et il n'y a de `switch` nulle part.
+>
+> ⚠️ **La signification voyage AVEC la valeur.** `establishesRight` est une
+> propriété de chaque type d'accord : le jour où le PO ajoute
+> « הסכם הרשאה עונתי », il répond à la question qui compte — ce papier
+> prouve-t-il que le signataire tient la terre — sur la ligne même où il le
+> nomme. Une liste séparée des « faibles » serait une liste qui se périme.
+>
+> **AA2bis répond QUATRE choses, pas un booléen** : établi · jamais renseigné ·
+> le papier ne prouve rien · périmé. « Personne n'a demandé » et « il n'y a
+> rien » sont des faits différents, et le second est le grave. Le bandeau est
+> `warn` et non `danger` : la ferme n'est pas un problème, le dossier est une
+> question. **Il avertit et ne bloque rien** — rien n'est désactivé, aucune
+> garde ne refuse d'être planifiée. C'est la seconde phrase du PO, et elle
+> compte autant que la première.
+>
+> **AA3 — 0,02 est 1/50**, le ratio de subvention de l'État pour le pâturage,
+> écrit en toutes lettres à côté de la constante. La carte du tableau de bord
+> est une BARRE et non un troisième grand nombre : « 34 200 » à côté de
+> « 100 000 » est un calcul que le lecteur doit faire, une barre au tiers est
+> la réponse déjà faite. Le pourcentage n'est pas plafonné (118 % est une
+> phrase que l'association veut pouvoir dire) ; la largeur de la barre, si.
+>
+> **AA4 — la clé d'identité est סמל יישוב, sinon שם המקום + מועצה אזורית.**
+> Une case VIDE n'écrase jamais rien : le patch est CREUX, et
+> `{...ferme, ...patch}` est toute la règle — rien en aval n'a besoin de savoir
+> quels champs sont concernés, ce qui est ce qui empêche la règle de se périmer
+> à la prochaine colonne ajoutée. Deux colonnes sont lues et jetées :
+> l'estimation (le classeur la dit lui-même « הערכה בלבד ») et le pondéré,
+> recalculé ici.
+>
+> ⚠️ **Le drapeau `positionMissing` est le seul « champ » qui ne vient pas
+> d'une case**, il est DÉDUIT de deux cases vides — donc en mise à jour il se
+> comporte comme la case vide dont parle la règle : un classeur sans
+> coordonnées ne dépose pas une ferme dont le coordinateur a traîné la punaise
+> la semaine dernière. Il est conservé à la CRÉATION, où il est la description
+> honnête d'une fiche que personne n'a placée.
+>
+> **AA5 — une ligne = une ferme signée**, et une ligne sans fiche CRÉE la
+> fiche : on fait signer au portail le mardi et on saisit le jeudi. La
+> signature est lue en base64, en URL et en tracé de points — paires, objets
+> `{x,y}`, raccourci polyline — et plusieurs traits restent plusieurs traits
+> (un `polyline` unique tracerait un trait que le stylo n'a jamais fait). Une
+> forme inconnue coûte la signature et **jamais la ligne**. Chaque fiche garde
+> l'origine : le fichier et le jour.
+>
+> ⚠️ **Le mapping est mémorisé PAR EN-TÊTE et non par position.** L'export de
+> l'association gagnera un jour une colonne ; un mapping retenu par index
+> appliquerait alors chaque réponse à la mauvaise colonne, silencieusement, sur
+> un fichier de signatures.
+>
+> ## Les portes
+>
+> | Gate | Portée | Résultat |
+> |---|---|---|
+> | `pills` | **nouveau** (AA1) — A71 · A72 · A73 · A74, 9 écrans à 402 px + iPad + desktop | **51/51** chromium ET webkit |
+> | `prospection` | **nouveau** (AA2·AA3·AA4) — A75 · A76 · A77 · A78 · A79 · A80, sur le VRAI classeur | **40/40** |
+> | `signatures` | **nouveau** (AA5) — A81 · A82 · A83 · A84 | **32/32** |
+> | `sheets` | **nouveau** — les deux assistants dans un vrai navigateur | **15/15** chromium ET webkit |
+> | `aacaptures` | **nouveau** (AA6) — 90 captures du déployé + la lecture géométrique au repos | **90 captures, 0 recouvrement** |
+> | `layout` | 32 écrans × 3 ratios, 4 viewports | 0 débordement, 0 recouvrement épinglé |
+> | `rhythm` · `settings` · `reserve` · `band` · `rows` · `modes` | | 564 · 36 · 56 · 56 · 87 · 75 |
+> | `accept` · `persist` · `mapping` · `sync` | domaine, store, 26 tables, hors-ligne | 176 · 96 · 33 · 34 |
+> | `import` · `wizard` · `rtl` · `touch` | assistant des rosters, stylet | 29 · 28 · 45 · 57 |
+> | `demo` | sur l'URL DÉPLOYÉE | 13/13 |
+> | `report` · `deletion` · `regions` · `dispatch` · `outreach` · `agreement` | | 86 · 61 · 58 · 27 · 25 · 18 |
+> | `tokens` · `contrast` · `parse` · `blocks` · `empty` · `mapfirst` · `fixedhours` | | verts · 36 · 10 écrans · 27 · 19 |
+>
+> ## À re-tester par le PO — 8 points
+>
+> 1. **Les pastilles, sur l'iPhone.** Appuyer sur le bord de chacune : c'est
+>    celle-là qui doit répondre. Les trois types font la même largeur, la
+>    région est un menu déroulant sur sa propre ligne.
+> 2. **Sur iPad et desktop** : les pastilles sont sur leur ligne, toujours
+>    visibles, jamais derrière « סינון ».
+> 3. **Une fiche de ferme** : le bandeau du droit à la terre, sobre, avec sa
+>    raison ; les nouveaux champs ; les trois cartes מעובד / מרעה / משוקלל.
+> 4. **Le tableau de bord** : la barre du pondéré et son pourcentage.
+> 5. **Déposer `prospection-sud.xlsx`** dans חוות → ⋯ → קובץ איתור : l'aperçu
+>    doit annoncer 198 à créer. Le redéposer : 198 à mettre à jour, 0 à créer.
+> 6. **Vider une case dans le classeur et réimporter** : ce qui a été saisi
+>    dans l'app doit survivre.
+> 7. **Exporter puis réimporter** : rien ne doit changer.
+> 8. **Un fichier de signatures aux en-têtes différents** : l'écran de
+>    correspondance, puis le même fichier une seconde fois — le mapping doit
+>    être déjà rempli.
+>
+> ## Ce qui reste, et ce qui est délibéré
+>
+> - **La clé de repli est le COUPLE nom + מועצה**, pas le nom seul. Une fiche
+>   saisie à la main sans מועצה ne rejoindra donc pas une ligne du classeur qui
+>   en porte une : ce sont deux clés, donc deux lieux. C'est la règle que le PO
+>   a demandée, et l'assouplir en « nom seul quand il n'y en a qu'un » ferait
+>   fusionner les deux lignes « חוות בודדים » du fichier, qui sont dans deux
+>   מועצות différentes.
+> - **Le pondéré du classeur est ignoré**, toujours, et l'estimation aussi.
+> - **`אומדן סדר גודל` est réexportée VIDE.** L'app ne la stocke pas ; inventer
+>   une valeur pour remplir la colonne serait pire qu'un blanc — le PO
+>   réimporterait l'estimation de sa propre app comme si c'était celle de
+>   l'association.
+> - **Le modèle stockait DÉJÀ les deux surfaces séparément** depuis G1. La
+>   « migration de la surface unique » n'avait donc rien à déplacer pour une
+>   fiche écrite par cette app ; `splitLegacyDunams` existe et est testée pour
+>   la ligne qui ne vient PAS d'ici (un instantané ancien, une table écrite
+>   ailleurs) et refuse de deviner pour une exploitation mixte.
+> - **Le bandeau du droit à la terre n'empêche rien.** Aucune garde ne refuse
+>   d'être planifiée. C'est la seconde phrase du PO.
+> - ⚠️ **Le piège des sondes reste entier** pour les gates écrits en template
+>   literal. `pills`, `sheets` et `aacaptures` passent leurs sondes comme de
+>   VRAIES fonctions à `page.evaluate` : le compilateur les vérifie, un
+>   antislash reste un antislash, et un accent grave dans un commentaire ne tue
+>   plus le fichier.
+
+---
+
+> 🏁 **PASSE FINITION — Z1→Z9 COMPLÈTE, 2026-09-07.**
+> (Note précédente, conservée. La table des gates courante est en tête de
+> fichier.)
 >
 > Neuf unités, quatre commits, poussées et **déployées sur les deux URLs**.
 > C'était la dernière passe cosmétique ; après elle vient le module documents.

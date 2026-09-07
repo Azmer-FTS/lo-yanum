@@ -1191,7 +1191,8 @@
     "liaisonName": "איש קשר (מועצה/אגודה)",
     "liaisonNameHint": "מי שמפנה אתכם — לא בהכרח החותם",
     "liaisonPhone": "נייד — איש קשר",
-    "notChosen": "לא נבחר"
+    "notChosen": "לא נבחר",
+    "localityCodeTaken": "סמל היישוב הזה כבר משויך ליישות אחרת"
   },
   "import": {
     "title": "ייבוא מקובץ",

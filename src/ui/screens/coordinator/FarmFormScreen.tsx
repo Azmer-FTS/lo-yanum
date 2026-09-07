@@ -6,6 +6,7 @@ import {
   FARM_PIPELINE,
   LAND_AGREEMENT_OPTIONS,
   LEGAL_ENTITY_OPTIONS,
+  optionLabel,
   LIVESTOCK_KINDS,
   LOCALITY_POSITIONS,
   NEGEV_CENTER,
@@ -13,6 +14,7 @@ import {
   createFarm,
   getFarm,
   getFarmZonesForFarm,
+  getVisibleFarms,
   ringAreaDunams,
   fromDayKey,
   isEmail,
@@ -194,6 +196,8 @@ export function FarmFormScreen() {
   const [grazingManual, setGrazingManual] = useState(
     Boolean(existing?.grazingDunamsManual),
   )
+  /** AA2 — the roster, for the סמל יישוב uniqueness check below. */
+  const allFarms = useCoreValue(getVisibleFarms)
   const zones = useCoreValue(() => (farmId ? getFarmZonesForFarm(farmId) : []))
   const zoneSum = (kind: 'farm_boundary' | 'grazing_area'): number | null => {
     const of = zones.filter((z) => z.kind === kind)
@@ -232,11 +236,31 @@ export function FarmFormScreen() {
 
   const num = (v: string) => (v.trim() === '' ? NaN : Number(v))
 
+  /**
+   * ★ AA2 — « סמל יישוב — entier, unique quand présent. »
+   *
+   * The database enforces it with a partial unique index, and the import keys
+   * on it. Neither of those helps the coordinator who is typing: he would
+   * discover the clash on a failed sync, hours later, with no idea which of
+   * the two records is the other one. So it is checked HERE, against the
+   * roster he is looking at, and named.
+   *
+   * ⚠️ AGAINST EVERY OTHER RECORD, NOT AGAINST THIS ONE. Editing a farm and
+   *    pressing save without touching the code must not report the farm as a
+   *    duplicate of itself.
+   */
+  const codeClash =
+    localityCode.trim() !== '' &&
+    allFarms.some(
+      (f) => f.id !== farmId && String(f.localityCode ?? '') === localityCode.trim(),
+    )
+
   const errors = {
     name: !name.trim() ? t('form.required') : undefined,
     locality: !locality.trim() ? t('form.required') : undefined,
     // A37 — a farm exists only where its pin is: no pin, no farm.
     position: !position ? t('form.pinRequired') : undefined,
+    localityCode: codeClash ? t('form.localityCodeTaken') : undefined,
   }
   const contactErrors = contacts.map((c) => ({
     name: !c.name.trim() ? t('form.required') : undefined,
@@ -540,13 +564,39 @@ export function FarmFormScreen() {
           * — and AA2bis exists because the second question is the one that
           * decides whether the first one matters.
           */}
-        <FormSection title={t('form.sectionLand')}>
+        {/**
+          * ⚠️ FOLDED BY DEFAULT, AND `bun run layout` IS WHY.
+          *
+          * The two AA2 sections took the farm form at 390 px from 5.4
+          * screenfuls to **6.2**, over A30's cap of six — the same defect the
+          * livestock section was folded for, and the same fix. Closed it still
+          * SAYS what is in it (the summary carries the entity kind and the
+          * agreement); only the editing folds away, so a coordinator adding a
+          * farm from the passenger seat is not scrolling past eleven fields he
+          * has no answers for yet.
+          */}
+        <FormSection
+          title={t('form.sectionLand')}
+          storageKey={`farm-form-land:${farmId ?? 'new'}`}
+          defaultOpen={false}
+          summary={
+            <span className="chip ms-2 bg-surface-high text-content-secondary">
+              {[
+                optionLabel(legalEntity, LEGAL_ENTITY_OPTIONS),
+                optionLabel(landAgreement, LAND_AGREEMENT_OPTIONS),
+              ]
+                .filter(Boolean)
+                .join(' · ') || t('form.notChosen')}
+            </span>
+          }
+        >
           <div className="auto-cols gap-3 [--col-min:14rem]">
             <TextField
               label={t('form.localityCode')}
               hint={t('form.localityCodeHint')}
               value={localityCode}
               onChange={setLocalityCode}
+              error={show('localityCode')}
               type="number"
               ltr
             />
@@ -594,7 +644,16 @@ export function FarmFormScreen() {
           * answers. They are NOT folded into the contacts list below, which is
           * the farm's own address book and has a different job.
           */}
-        <FormSection title={t('form.sectionFieldPeople')}>
+        <FormSection
+          title={t('form.sectionFieldPeople')}
+          storageKey={`farm-form-people:${farmId ?? 'new'}`}
+          defaultOpen={false}
+          summary={
+            <span className="chip ms-2 bg-surface-high text-content-secondary">
+              {[farmerName, liaisonName].filter(Boolean).join(' · ') || t('form.notChosen')}
+            </span>
+          }
+        >
           <div className="auto-cols gap-3 [--col-min:14rem]">
             <TextField
               label={t('form.farmerName')}
