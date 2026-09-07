@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
@@ -19,6 +20,41 @@ import { Icon } from './Icon'
 const ROLE_ORDER: Role[] = ['coordinator', 'farmer', 'volunteer', 'driver']
 
 /**
+ * ★★ Z6 (2026-09-07) — ON A PHONE THIS BAR IS IN THE WAY OF THE APP IT IS
+ *    THERE TO SHOW.
+ *
+ * "Sur smartphone, le sélecteur de rôle gêne pour juger vraiment de l'app. La
+ *  bascule se replie derrière un bouton discret dans un coin de l'écran; un
+ *  tap l'ouvre. Sur tablette et desktop, elle reste comme aujourd'hui."
+ *
+ * At 402 px the bar is a select, two buttons and a label that wrap onto two
+ * lines and take 62 px off a 874 px screen — permanently, on every screen,
+ * under the content the product owner is trying to judge. Folded, it is a
+ * 44 px disc in the corner the map controls do not use and `--shell-foot`
+ * goes back to zero, which hands those 62 px to the app.
+ *
+ * ⚠️ THE QUESTION IS THE VIEWPORT'S, NOT A PANEL'S, and that is the one place
+ *    in this app where it is. This bar is pinned to the bottom of the DEVICE;
+ *    it is not in a column anybody drags. `useNarrow` would be measuring the
+ *    wrong box on purpose.
+ */
+const PHONE = '(max-width: 639px)'
+
+function useIsPhone(): boolean {
+  const [phone, setPhone] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(PHONE).matches,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia(PHONE)
+    const onChange = (e: MediaQueryListEvent) => setPhone(e.matches)
+    mq.addEventListener('change', onChange)
+    setPhone(mq.matches)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return phone
+}
+
+/**
  * POC-only role switcher. Deleted in Lot 1 together with @core/sessions —
  * nothing else in the app imports either.
  */
@@ -38,6 +74,8 @@ export function DevToolbar() {
   const presets = useCoreValue(listSessionPresets)
   const session = useCoreValue(getSession)
   const currentId = presetIdOf(session)
+  const phone = useIsPhone()
+  const [open, setOpen] = useState(false)
 
   /**
    * ⚠️ PO POINT 1 — THIS BAR NO LONGER PUBLISHES `--shell-foot`, AND THE
@@ -68,16 +106,8 @@ export function DevToolbar() {
   // SURFACE runs under the indicator rather than stopping above it. The
   // measurement that matters is now the sticky container's (PO point 1), and
   // this padding is inside that container, so it is still counted.
-  return (
-    <div
-      className="border-t border-edge-strong bg-surface-sunken pb-[var(--safe-bottom)]"
-    >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
-        <span className="flex items-center gap-1.5 text-micro font-medium text-content-muted">
-          <Icon name="switch" size={14} />
-          {t('devbar.viewAs')}
-        </span>
-
+  const picker = (
+    <>
         <select
           value={currentId}
           onChange={(e) => onPick(e.target.value)}
@@ -124,6 +154,76 @@ export function DevToolbar() {
         <span className="ms-auto hidden text-micro text-content-muted/60 lg:block">
           {t('devbar.hint')}
         </span>
+    </>
+  )
+
+  /**
+   * ★ Z6.1 — THE PHONE READING: a disc in the corner, and a sheet above it.
+   *
+   * The corner is the bottom INLINE START, which in this Hebrew app is the
+   * physical right — the one the map controls leave empty. The "+" is pinned
+   * to `end-[var(--map-rail)]` (physical left) and the mode pill extends from
+   * it, so the two never meet; and the offset is `--shell-foot` plus the
+   * same reserve those two use, so on a field shell the disc sits above the
+   * tab bar rather than on it.
+   *
+   * ⚠️ AND IT RENDERS NOTHING IN FLOW, which is the point: the sticky
+   *    container in `layouts.tsx` measures itself, so an empty one publishes
+   *    no `--shell-foot` at all and the 62 px go back to the app.
+   */
+  if (phone) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          aria-label={t('devbar.viewAs')}
+          title={t('devbar.viewAs')}
+          data-testid="devbar-toggle"
+          /* ⚠️ `--pinned-foot` IS THE THIRD TERM, AND `bun run layout` IS WHY.
+             A screen that owns the bottom of the device — the guard wizard,
+             every form — pins its own action bar there, and the sweep caught
+             this disc lying on it at 402 px on all four wizard steps. The bar
+             publishes its measured height (standing decision 39: measured, not
+             declared) and the disc starts above it. Zero everywhere else. */
+          className="glass fixed bottom-[calc(var(--shell-foot)+var(--pinned-foot,0px)+var(--shell-bottom)+1.25rem)]
+                     start-[var(--map-rail)] z-40 flex h-11 w-11 items-center justify-center
+                     rounded-pill text-content-secondary shadow-card"
+        >
+          <Icon name="switch" size={18} />
+        </button>
+        {open && (
+          <div
+            role="dialog"
+            aria-label={t('devbar.viewAs')}
+            data-testid="devbar-panel"
+            className="glass fixed bottom-[calc(var(--shell-foot)+var(--pinned-foot,0px)+var(--shell-bottom)+4.5rem)]
+                       start-[var(--map-rail)] end-[var(--map-rail)] z-40 flex flex-wrap items-center
+                       gap-x-3 gap-y-2 rounded-card p-3 shadow-lift"
+          >
+            <span className="flex w-full items-center gap-1.5 text-micro font-medium text-content-muted">
+              <Icon name="switch" size={14} />
+              {t('devbar.viewAs')}
+            </span>
+            {picker}
+          </div>
+        )}
+      </>
+    )
+  }
+
+  return (
+    <div
+      className="border-t border-edge-strong bg-surface-sunken pb-[var(--safe-bottom)]"
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
+        <span className="flex items-center gap-1.5 text-micro font-medium text-content-muted">
+          <Icon name="switch" size={14} />
+          {t('devbar.viewAs')}
+        </span>
+        {picker}
       </div>
     </div>
   )

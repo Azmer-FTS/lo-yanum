@@ -168,6 +168,45 @@ try {
   check('★★ the real entity survived, with its zone', db.rows('entities').some((r) => r.id === REAL_ID) && db.rows('zones').some((r) => r.id === 'zone-real-1') && db.rows('zone_vertices').filter((v) => v.zone_id === 'zone-real-1').length === 3)
   check('the grant row survived too', db.rows('app_users').length === 1)
   check('the screen says how many were removed', /נמחקו \d+ רשומות/.test(await page.locator('body').innerText()))
+
+  /**
+   * ★★ Z7.2 (2026-09-07) — A70. AND THE DEVICE IS EMPTY TOO.
+   *
+   * "Remet l'app à vide proprement (y compris cache local, IndexedDB,
+   *  outbox)." Before this pass the purge stopped at the server: the P2.5b
+   * snapshot of every demo row was still in IndexedDB on this device, so a
+   * cold start with no network put the whole demo programme back. Asked of
+   * the database itself rather than of a badge.
+   */
+  const local = await page.evaluate(async () => {
+    const open = () =>
+      new Promise<IDBDatabase | null>((resolve) => {
+        try {
+          const r = indexedDB.open('lo-yanum')
+          r.onsuccess = () => resolve(r.result)
+          r.onerror = () => resolve(null)
+        } catch {
+          resolve(null)
+        }
+      })
+    const db = await open()
+    if (!db) return { available: false, aggregates: 0, outbox: 0 }
+    const countIn = (name: string) =>
+      new Promise<number>((resolve) => {
+        if (!db.objectStoreNames.contains(name)) return resolve(0)
+        const req = db.transaction(name, 'readonly').objectStore(name).count()
+        req.onsuccess = () => resolve(req.result)
+        req.onerror = () => resolve(-1)
+      })
+    return { available: true, aggregates: await countIn('aggregates'), outbox: await countIn('outbox') }
+  })
+  check(
+    '★★ and the device is empty with it — IndexedDB snapshot and outbox',
+    !local.available || (local.aggregates === 0 && local.outbox === 0),
+    local.available
+      ? `aggregates ${local.aggregates}, outbox ${local.outbox}`
+      : 'no IndexedDB in this context',
+  )
   await page.screenshot({ path: `${SHOTS}/3-purged.png`, fullPage: true })
 
   await page.goto(`${BASE}/#/coordinator/farms`, { waitUntil: 'load' })

@@ -1028,6 +1028,28 @@ function audit(): Report {
  * far below the fold. Before F5.5 the import preview rendered every row of the
  * file, so its height was whatever the coordinator happened to upload.
  */
+/**
+ * ★★ Z6 (2026-09-07) — THE IDENTITY IS PICKED THE WAY A THUMB PICKS IT, AND ON
+ *    A PHONE THAT NOW TAKES ONE TAP FIRST.
+ *
+ * The role bar folds behind a 44 px disc under 640 px (see `DevToolbar`), so
+ * `select` is not in the document until it is opened. This sweep drives 32
+ * screens at 402 px through that bar, so it opens it — rather than reaching
+ * past the UI into `localStorage`, which is how a gate stops testing the thing
+ * it is named after.
+ */
+async function pickSession(page: Page, id: string): Promise<void> {
+  if ((await page.locator('select').count()) === 0) {
+    const toggle = page.locator('[data-testid="devbar-toggle"]')
+    if ((await toggle.count()) > 0) {
+      await toggle.click()
+      await page.waitForTimeout(250)
+    }
+  }
+  await page.waitForSelector('select', { state: 'attached' })
+  await page.selectOption('select', id)
+}
+
 const browser = await (ENGINE === 'webkit' ? webkit : chromium).launch()
 
 let failures = 0
@@ -1106,8 +1128,7 @@ for (const name of RUNS) {
   for (const route of ROUTES) {
     // Pick the identity through the dev toolbar, exactly as a user would.
     await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
-    await page.waitForSelector('select', { state: 'attached' })
-    await page.selectOption('select', route.session ?? 'coordinator')
+    await pickSession(page, route.session ?? 'coordinator')
     await page.waitForTimeout(300)
 
     await page.evaluate((h) => {
@@ -1328,8 +1349,7 @@ for (const name of RUNS) {
       // default is the dark palette, so a capture taken without this is the
       // wrong screen in the wrong theme, which is what the first one was.
       await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
-      await page.waitForSelector('select', { state: 'attached' })
-      await page.selectOption('select', 'coordinator')
+      await pickSession(page, 'coordinator')
       await page.waitForTimeout(400)
       await page.evaluate((h) => {
         window.location.hash = h

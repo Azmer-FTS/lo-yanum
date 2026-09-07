@@ -57,6 +57,26 @@ const ALLOWED_RADIUS = new Set([
   's-card', 'e-card', 's-pill', 'e-pill',
 ])
 
+/**
+ * ★★ Z5.1 (2026-09-07) — ONE PHYSICAL SIDE, NAMED, WITH ITS REASON.
+ *
+ * Y9's note above is right about the rule and wrong about this one element,
+ * and the cost was a regression the product owner reported: the splitter's
+ * grip is a tab on the map's side of the seam, the seam's row is REVERSED per
+ * writing direction so that the map is always physically left, and therefore
+ * the side that tab must be square on is physically left in both languages. A
+ * logical corner puts the curve against the bar — "la poignée est orientée à
+ * l'envers", which is what Y3.1 had just fixed and what swapping this class
+ * for a compliant one undid.
+ *
+ * A28 is "one scale, three values". `l-card` is the CARD value. What it is not
+ * is direction-agnostic, so it is allowed here and nowhere else.
+ */
+const PHYSICAL_RADIUS_ALLOWED: Record<string, string> = {
+  'ui/components/splitter.tsx':
+    'the seam grip is a tab on the map side, and the map is physically left in both directions',
+}
+
 /** Radius CUSTOM PROPERTIES that may exist in tokens.css. */
 const ALLOWED_RADIUS_VARS = new Set(['field', 'card', 'pill'])
 
@@ -116,7 +136,10 @@ for (const file of files) {
     .replace(/^\s*\/\/.*$/gm, '')
 
   for (const m of code.matchAll(/\brounded-([a-z0-9]+(?:-[a-z0-9]+)*)/g)) {
-    if (!ALLOWED_RADIUS.has(m[1])) {
+    const exempt =
+      PHYSICAL_RADIUS_ALLOWED[rel(file)] !== undefined &&
+      /^[lrtb]-(field|card|pill)$/.test(m[1])
+    if (!ALLOWED_RADIUS.has(m[1]) && !exempt) {
       failures.push({
         rule: 'A28 radius',
         file: rel(file),
@@ -370,6 +393,9 @@ console.log(
 )
 console.log('')
 console.log(`  radius scale        ${[...ALLOWED_RADIUS_VARS].join(' / ')}`)
+for (const [file, why] of Object.entries(PHYSICAL_RADIUS_ALLOWED)) {
+  console.log(`  physical side       ${file} — ${why}`)
+}
 console.log(`  orange call sites   ${Object.keys(CRITICAL_ALLOWED).length} files`)
 for (const [file, why] of Object.entries(CRITICAL_ALLOWED)) {
   console.log(`    ${file.padEnd(48)} ${why}`)

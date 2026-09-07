@@ -13,13 +13,33 @@ export const THEME_CHOICES: ThemeChoice[] = ['light', 'dark', 'system']
 /**
  * Defaults differ by role because the work differs.
  *
- * The coordinator works a data-dense back-office in daylight, where a dark UI
- * costs legibility for no benefit. The field roles open the app at 21:00 in a
- * desert with no light pollution, where a bright screen ruins night vision and
- * announces your position. Either can override; only the starting point differs.
+ * ★★ Z5.2 (2026-09-07) — THE COORDINATOR ASKS THE DEVICE, AND THE DETECTION
+ *    WAS NEVER BROKEN.
+ *
+ * "Thème selon l'appareil : le PO est en mode sombre sur son iPad et l'app
+ *  reste en clair. Corriger la détection (prefers-color-scheme)."
+ *
+ * Measured before changing anything, on both engines, with the choice stored
+ * as `system`: a dark context resolves `--surface-base` to `11 17 25`, a light
+ * one to `243 244 246`, and flipping the OS preference on a loaded page moves
+ * it live. `prefers-color-scheme` works. What did not work is that nobody was
+ * asking it — the coordinator's default was the literal `light`, so an iPad in
+ * dark mode opening this app for the first time got a light one and no
+ * indication that a question had been answered on its behalf.
+ *
+ * The default is the device now. It is a DEFAULT: the three pills in הגדרות
+ * still hold, and a coordinator who wants light on a dark iPad says so once.
+ *
+ * ⚠️ THE FIELD ROLES KEEP `dark`, AND THAT IS NOT AN OVERSIGHT. A volunteer
+ *    opens this at 21:00 in a desert with no light pollution: a bright screen
+ *    ruins night vision and announces a position. That default protects
+ *    somebody in the dark from their own phone's daytime setting, which is
+ *    the one case where following the device is the wrong answer. They can
+ *    still choose "לפי המכשיר" — the switch is in their shell, and the
+ *    product owner validated it there.
  */
 export function defaultThemeFor(role: Role): ThemeChoice {
-  return role === 'coordinator' ? 'light' : 'dark'
+  return role === 'coordinator' ? 'system' : 'dark'
 }
 
 /**

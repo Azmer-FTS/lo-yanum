@@ -294,10 +294,22 @@ export function PanelSplitter({
         *    map is always physically left, so the side this tab has to be
         *    square on does not flip with the writing direction and a logical
         *    corner would put the mistake back in the other language.
+        *
+        * ★★ Z5.1 (2026-09-07) — AND IT WAS PUT BACK, BY A GATE ABOUT SOMETHING
+        *    ELSE. "La poignée de redimensionnement du split a été RETOURNÉE.
+        *    Régression." It was: `c7882dd` (Y9) changed this one class from
+        *    `rounded-l-card` to `rounded-s-card` while clearing four A28
+        *    warnings — `bun run tokens` reads a PHYSICAL side as a violation
+        *    of "one radius scale", and the logical side compiles, so the
+        *    warning went away and the defect came back four commits after it
+        *    was fixed. A28 is about SIZES; the side this tab is square on is a
+        *    layout fact of a row that is reversed per direction, and it cannot
+        *    be logical. The exemption is named in `scripts/tokens.ts` with its
+        *    reason, which is the project's own convention for exactly this.
         */}
       <span
         className="glass pointer-events-none absolute left-0 top-1/2 flex h-14 w-5 -translate-x-full -translate-y-1/2
-                   items-center justify-center rounded-s-card text-content-secondary
+                   items-center justify-center rounded-l-card text-content-secondary
                    transition-colors duration-fast group-hover:text-accent-ink group-focus-visible:text-accent-ink"
       >
         <svg width="10" height="18" viewBox="0 0 10 18" aria-hidden="true" focusable="false">

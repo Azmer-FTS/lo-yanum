@@ -1623,7 +1623,8 @@
   width: 1.75rem;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  /* A28 — the pill value, through the scale, not a literal 999. */
+  border-radius: var(--radius-pill);
   background: var(--surface-overlay);
   box-shadow: var(--shadow-card);
 }

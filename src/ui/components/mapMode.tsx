@@ -73,6 +73,15 @@ export type LayoutSync = 'free' | 'synced'
 const SYNC_KEY = 'lo-yanum:layout-sync'
 /** The screen key every screen shares while the layouts are synchronised. */
 const SHARED = '__all__'
+/**
+ * ★★ Z5.3 (2026-09-07) — WHICH LAYOUT "THE LAYOUT" IS.
+ *
+ * The last map screen this device was on. See `writeLayoutSync`: turning
+ * synchronisation ON has to spread a layout, and the only honest candidate is
+ * the one the coordinator was last looking at — הגדרות has no map of its own
+ * to read the answer from.
+ */
+const LAST_KEY = 'lo-yanum:map-last'
 
 const syncListeners = new Set<() => void>()
 
@@ -84,10 +93,40 @@ export function readLayoutSync(): LayoutSync {
   }
 }
 
+/**
+ * ★★ Z5.3 (2026-09-07) — "ELLE DOIT S'APPLIQUER IMMÉDIATEMENT À TOUS LES
+ *    ÉCRANS, SANS RECHARGER" — AND THE RELOAD WAS NOT THE MECHANISM.
+ *
+ * Driven on both engines before changing anything: farms set to `hidden`,
+ * `synced` pressed in הגדרות, then farms opened again — the map came back,
+ * with no reload. The switch has been live since Y4 and still is.
+ *
+ * What it did NOT do is spread anything. `__all__` had never been written, so
+ * turning synchronisation on sent every screen to the DEFAULT `split` at
+ * whatever the default ratio is — the coordinator's own arrangement replaced
+ * by the factory one, on every screen at once. Read from his seat that is
+ * "the setting did nothing / did the wrong thing", and setting one screen by
+ * hand afterwards makes it look as though a reload was what fixed it.
+ *
+ * Switching ON now SEEDS the shared scope from the last map screen this device
+ * was on, which is what "la disposition choisie s'applique à tous les écrans"
+ * says. Switching back to `free` touches nothing: every screen's own key is
+ * still where it was, so the two states are reversible.
+ */
 export function writeLayoutSync(next: LayoutSync): void {
   try {
-    if (next === 'free') localStorage.removeItem(SYNC_KEY)
-    else localStorage.setItem(SYNC_KEY, 'synced')
+    if (next === 'free') {
+      localStorage.removeItem(SYNC_KEY)
+    } else {
+      const from = localStorage.getItem(LAST_KEY)
+      if (from) {
+        const mode = localStorage.getItem(storageKey(from))
+        if (mode !== null) localStorage.setItem(storageKey(SHARED), mode)
+        const ratio = localStorage.getItem(ratioKey(from))
+        if (ratio !== null) localStorage.setItem(ratioKey(SHARED), ratio)
+      }
+      localStorage.setItem(SYNC_KEY, 'synced')
+    }
   } catch {
     // Persistence is a convenience; the switch still takes effect this session.
   }
@@ -204,6 +243,16 @@ export function useMapMode(screenKey: string): MapModeState {
   const sync = useLayoutSync()
   const scope = sync === 'synced' ? SHARED : screenKey
   const [mode, setModeState] = useState<MapMode>(() => readMode(scope))
+
+  /* Z5.3 — remember which map screen this device was last on, so הגדרות has
+     a layout to spread when synchronisation is switched on. */
+  useEffect(() => {
+    try {
+      localStorage.setItem(LAST_KEY, screenKey)
+    } catch {
+      // Same as every other write here: a convenience, never a requirement.
+    }
+  }, [screenKey])
 
   useEffect(() => {
     setModeState(readMode(scope))

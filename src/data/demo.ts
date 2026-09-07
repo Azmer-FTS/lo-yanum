@@ -6,7 +6,7 @@ import { getSupabase } from './client'
 import { SUPABASE_CONFIGURED } from './config'
 import { MAPPINGS } from './rows'
 import type { Mapping } from './rows'
-import { refreshData } from './store'
+import { clearLocalData, refreshData } from './store'
 
 /**
  * ORDRE DE NUIT 2026-09-02 (N3) — THE DEMO DATASET'S MARKER, AND ITS PURGE.
@@ -59,6 +59,10 @@ export async function purgeDemoData(): Promise<{ removed: number }> {
     if (error) throw new Error(`${table}: ${error.message}`)
     removed += count ?? 0
   }
+  /* ★ Z7.2 — and the device with it. The rows are gone from Frankfurt; the
+     snapshot of them in IndexedDB and any queued write against them are what
+     would put the programme back on the next cold start. */
+  await clearLocalData()
   await refreshData()
   return { removed }
 }

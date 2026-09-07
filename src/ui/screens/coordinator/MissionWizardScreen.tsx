@@ -49,6 +49,7 @@ import type {
 } from '@core/index'
 
 import { AnchorMap } from '../../components/AnchorMap'
+import { usePublishedHeight } from '../../hooks/useShellMetrics'
 import { PanelSplitter } from '../../components/splitter'
 import { useMapRatio } from '../../components/mapMode'
 import { MeetPointsEditor } from '../../components/meet'
@@ -327,6 +328,9 @@ export function MissionWizardScreen() {
   const locale = useLocale()
   const navigate = useNavigate()
   const [params] = useSearchParams()
+  /* Z6 — see the bar at the foot of this screen. */
+  const footRef = useRef<HTMLDivElement | null>(null)
+  usePublishedHeight(footRef, '--pinned-foot')
 
   const farms = useCoreValue(getVisibleFarms)
   const volunteers = useCoreValue(getVolunteers)
@@ -1918,7 +1922,12 @@ export function MissionWizardScreen() {
 
       {/* Sticky footer navigation, offset above the sticky demo toolbar. */}
       {step < 5 && (
-        <div className="sticky-foot bottom-[var(--shell-bottom)] z-30 -mx-4 mt-5 flex items-center gap-2 border-t border-edge-subtle px-4 py-3 pl-[4.5rem] sm:-mx-6 sm:px-6 sm:pl-[4.5rem]">
+        <div
+          ref={footRef}
+          /* Z6 — publishes its height as `--pinned-foot`; the phone's folded
+             role button sits above whatever this bar occupies. */
+          className="sticky-foot bottom-[var(--shell-bottom)] z-30 -mx-4 mt-5 flex items-center gap-2 border-t border-edge-subtle px-4 py-3 pl-[4.5rem] sm:-mx-6 sm:px-6 sm:pl-[4.5rem]"
+        >
           <button
             type="button"
             className="btn-secondary"

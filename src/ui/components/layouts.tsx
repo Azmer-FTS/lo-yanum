@@ -71,6 +71,26 @@ const BLEED_PATTERNS = [
   /^\/coordinator\/incidents\/[^/]+$/,
 ]
 
+/**
+ * ★★ Z5.4 (2026-09-07) — THE ROUTES THAT TAKE THE WHOLE DEVICE.
+ *
+ * "Édition d'une région : la carte doit être en PLEIN ÉCRAN obligatoire
+ *  pendant l'édition (pas de split, pas de panneau latéral). Le PO a besoin de
+ *  toute la surface pour dessiner au stylet."
+ *
+ * Not a mode the screen can offer and the coordinator can forget to press —
+ * the shell simply does not draw itself here. Rail, mobile header and the "+"
+ * are all gone, and `--shell-top` falls back to its own token because the bar
+ * that publishes it is not in the tree (see `usePublishedHeight`, which
+ * REMOVES the property rather than zeroing it, precisely so this works).
+ *
+ * The way out is the screen's own back arrow, which is the only control it
+ * needs and the one place a stylus is not going to hit by accident.
+ */
+const SOLO_ROUTES = ['/coordinator/settings/regions']
+
+const isSoloPath = (pathname: string) => SOLO_ROUTES.includes(pathname)
+
 const isBleedPath = (pathname: string) =>
   BLEED_ROUTES.some((r) => pathname === r) ||
   BLEED_PATTERNS.some((r) => r.test(pathname)) ||
@@ -230,6 +250,8 @@ export function CoordinatorLayout() {
   usePublishedHeight(footRef, '--shell-foot')
 
   const bleed = isBleedPath(pathname)
+  /* Z5.4 — a region being redrawn with a stylus gets the device to itself. */
+  const solo = isSoloPath(pathname)
 
   // Close the mobile slide-over whenever the route changes.
   useEffect(() => setMenuOpen(false), [pathname])
@@ -267,7 +289,9 @@ export function CoordinatorLayout() {
   return (
     <div className="flex min-h-dvh flex-col bg-surface-base">
       <div className="flex flex-1">
-        {/* Desktop rail — full-bleed: no max-width wrapper anywhere. */}
+        {/* Desktop rail — full-bleed: no max-width wrapper anywhere.
+            Z5.4 — and not drawn at all on a solo route. */}
+        {!solo && (
         <aside
           // P3.4 — in the installed app the rail runs to the top edge of the
           // display, so its own surface is what the clock is drawn on, and the
@@ -333,9 +357,12 @@ export function CoordinatorLayout() {
             <AccountBlock expanded={expanded} />
           </div>
         </aside>
+        )}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          {/* Mobile / tablet top bar */}
+          {/* Mobile / tablet top bar. Z5.4 — absent on a solo route, which is
+              also how `--shell-top` goes back to its token default there. */}
+          {!solo && (
           <header
             ref={topBarRef}
             /* ★ Y7 — OPAQUE. A shell header at 95 % over a scrolling list is
@@ -359,6 +386,7 @@ export function CoordinatorLayout() {
               </button>
             </div>
           </header>
+          )}
 
           {/* P3.4 — `lg:pt-[…status-inset…]` AND ONLY AT `lg`.
               Below it this column sits under the sticky header, which already
@@ -374,19 +402,20 @@ export function CoordinatorLayout() {
               move, so `bleed` decides which of the two owns the gesture. */}
           <main
             className={
-              bleed
+              bleed || solo
                 ? 'flex-1'
                 : 'flex-1 px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 sm:px-6 sm:[--content-pad:1.5rem] sm:pt-6 lg:pt-[calc(var(--status-inset)+1.5rem)] 2xl:px-8 2xl:[--content-pad:2rem]'
             }
           >
-            {bleed ? <Outlet /> : <PullToRefresh><Outlet /></PullToRefresh>}
+            {bleed || solo ? <Outlet /> : <PullToRefresh><Outlet /></PullToRefresh>}
           </main>
         </div>
 
         {/* W4 — THE ONLY "+" IN THE COORDINATOR SHELL. One button, one place,
             every screen; the menu it opens puts the current screen's own
             creation first. See `ActionFab`. */}
-        <ActionFab />
+        {/* Z5.4 — no "+" over a map somebody is drawing on. */}
+        {!solo && <ActionFab />}
       </div>
 
       {menuOpen && (

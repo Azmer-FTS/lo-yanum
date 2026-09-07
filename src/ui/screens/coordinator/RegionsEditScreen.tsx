@@ -16,6 +16,7 @@ import type { LatLng, RegionId } from '@core/index'
 
 import { ChevronForward, Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
+import { ScrollRow } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { ringOf, resetRegionRing, saveRegionRing } from '../../settings/regionEdits'
 
@@ -208,7 +209,19 @@ export function RegionsEditScreen() {
   )
 
   return (
-    <div className="flex h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] min-h-0 flex-col">
+    /**
+     * ★ Z5.4 (2026-09-07) — AND THE SCREEN CARRIES ITS OWN MARGIN NOW.
+     *
+     * The shell's `<main>` is bare on a solo route (see `layouts.tsx`), so the
+     * padding the blocks below bleed OUT of — `-mx-4 px-4` on the pinned top,
+     * `-mx-4` on the map — has to come from here or the negative margins push
+     * the header off the side of the device. `--content-pad` goes with it,
+     * because that is what a swipable row reads to reach the edge.
+     */
+    <div
+      className="flex h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] min-h-0 flex-col
+                 px-4 pt-5 [--content-pad:1rem] lg:px-5 lg:[--content-pad:1.25rem]"
+    >
       {/* The chooser. One pill per region, its own colour, and a mark on the
           ones he has already redrawn — so "which of these is still X12's
           guess" is answerable at a glance. */}
@@ -228,9 +241,12 @@ export function RegionsEditScreen() {
           </h1>
         </div>
 
-        <div
-          className="scroll-row min-w-0"
-          data-testid="region-chooser"
+        {/* ★ Z4.4 — a swipable row like every other one: the same edge fade on
+            the side that has more, and the same chevron. It was a bare
+            `.scroll-row` div, so it had neither. */}
+        <ScrollRow
+          className="min-w-0"
+          testId="region-chooser"
           style={{ marginTop: 'calc(var(--list-rhythm) - var(--row-shadow-room))' }}
         >
           {all.map((r) => (
@@ -251,7 +267,7 @@ export function RegionsEditScreen() {
               {regionIsEdited(r.id) && <Icon name="check" size={11} />}
             </button>
           ))}
-        </div>
+        </ScrollRow>
       </div>
 
       <div className="relative -mx-4 mt-3 min-h-0 flex-1 lg:-mx-5">

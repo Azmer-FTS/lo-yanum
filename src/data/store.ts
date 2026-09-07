@@ -219,6 +219,35 @@ export function refreshData(): Promise<void> {
   return refreshImpl ? refreshImpl() : Promise.resolve()
 }
 
+/**
+ * ★★ Z7.2 (2026-09-07) — "REMET L'APP À VIDE PROPREMENT (Y COMPRIS CACHE
+ *    LOCAL, INDEXEDDB, OUTBOX)."
+ *
+ * The purge in `data/demo.ts` deleted the `demo-` rows from Frankfurt and
+ * stopped there, which is only two thirds of empty: this device still held the
+ * P2.5b snapshot of those rows in IndexedDB, so a cold start with no network
+ * restored the entire demo programme from the cache — and any edit made to a
+ * demo record before the purge was still sitting in the outbox, waiting to be
+ * written back to rows that no longer exist.
+ *
+ * ⚠️ IT CLEARS THE MODULE'S OWN HANDLE, not a second one opened for the
+ *    occasion. `cache` is swapped from the in-memory fallback to real
+ *    IndexedDB once it opens; a purge that opened its own connection would
+ *    empty the database while this module went on writing to the object it
+ *    still held.
+ *
+ * ⚠️ AND IT DISCARDS PENDING WRITES, which is the honest reading of "à vide"
+ *    and is why the caller asks twice. See `settings.demo.confirm2`.
+ */
+export async function clearLocalData(): Promise<void> {
+  await cache.clear()
+  publish({ pending: 0, stale: false, message: null })
+  /* The reload is the CALLER's next line (`refreshData`), which re-runs the
+     whole load and re-records the cache from the emptied server. Resetting the
+     load guard is that function's business and it lives inside the closure
+     that owns it. */
+}
+
 export function flushPending(): Promise<void> {
   queue = queue.then(async () => {
     const result = await flushOutbox(cache, sendChanges)

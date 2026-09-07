@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 
 import { normalizeLocality } from '@core/index'
 
+import { usePublishedHeight } from '../hooks/useShellMetrics'
 import { Icon } from './Icon'
 
 /**
@@ -539,10 +540,20 @@ export function FormActions({
   disabled?: boolean
   onSubmit: () => void
 }) {
+  /**
+   * ★ Z6 (2026-09-07) — THE BAR SAYS HOW TALL IT IS, and the phone's folded
+   *   role button reads it. `bun run layout` caught the new disc overlapping
+   *   this bar on the wizard's four steps at 402 px, which is exactly what its
+   *   pinned-overlap sweep is for. Measured rather than declared, like every
+   *   other offset in this shell (standing decision 39).
+   */
+  const footRef = useRef<HTMLDivElement | null>(null)
+  usePublishedHeight(footRef, '--pinned-foot')
   return (
     // `bottom-[--shell-bottom]` clears the sticky demo toolbar. At plain
     // `bottom-0` the submit button sat underneath it at every viewport.
     <div
+      ref={footRef}
       // U4.4 — `pl-[4.5rem]` is PHYSICAL: the floating mode pill sits at the
       // viewport's physical bottom-left, and in an RTL row `justify-end` puts
       // the submit button exactly there on every stacked layout. The bar

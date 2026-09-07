@@ -251,11 +251,42 @@ try {
       `farms=${await modeOn('farms')}, volunteers=${await modeOn('volunteers')}`,
     )
 
-    // SYNCED: one layout everywhere, immediately.
+    /**
+     * ★★ A67 (Z5.3, 2026-09-07) — TURNING IT ON SPREADS THE LAYOUT IN USE,
+     *    AND SPREADS IT WITHOUT A RELOAD.
+     *
+     * "Synchronisation de la mise en page : ne prend effet qu'après
+     *  rechargement. Elle doit s'appliquer IMMÉDIATEMENT à tous les écrans."
+     *
+     * Driven before the fix on both engines: the switch WAS live, and it sent
+     * every screen to the factory `split` — because the shared scope had never
+     * been written, so "synchronised" meant "forget what he had". חוות is on
+     * `hidden` from the free branch above; pressing סנכרון must put מתנדבים,
+     * נהגים and שמירות on `hidden` too, with nothing else pressed and nothing
+     * reloaded.
+     */
+    /* ⚠️ "THE LAYOUT IN USE" IS THE LAST MAP SCREEN HE WAS ON, and the free
+       branch above left מתנדבים as that screen. So this walks back to חוות —
+       the one on `hidden` — before opening הגדרות, which is what a coordinator
+       flipping this switch has just done. */
+    await page.goto(`${base}/#/coordinator/farms`, { waitUntil: 'load' })
+    await page.waitForTimeout(1800)
     await page.goto(`${base}/#/coordinator/settings`, { waitUntil: 'load' })
     await page.waitForTimeout(1200)
     await page.locator('[data-testid="settings-layout-synced"]').click()
     await page.waitForTimeout(300)
+    const seeded = [
+      await modeOn('volunteers'),
+      await modeOn('drivers'),
+      await modeOn('missions'),
+    ]
+    check(
+      '★★ A67 — switching it on spreads the layout already in use, not the default',
+      seeded.every((m) => m === 'hidden'),
+      `חוות was hidden; the others read ${seeded.join(', ')}`,
+    )
+
+    // …and a layout chosen while synchronised is the layout everywhere.
     await setMode('farms', 'full')
     const spread = [
       await modeOn('volunteers'),
@@ -272,6 +303,114 @@ try {
     await page.waitForTimeout(1200)
     await page.locator('[data-testid="settings-layout-free"]').click()
     await page.waitForTimeout(300)
+  }
+
+  // -------------------------------------------------------------------------
+  section('A65 — THE SEAM GRIP, THE WAY IT WAS BEFORE Y9 TURNED IT ROUND')
+  // -------------------------------------------------------------------------
+  {
+    /**
+     * "La poignée de redimensionnement du split a été RETOURNÉE. Régression.
+     *  La remettre en orientation verticale, du même côté et avec le même
+     *  aspect qu'avant."
+     *
+     * ★ MEASURED, NOT READ OFF A CLASS. The regression was one Tailwind class
+     *   — `rounded-l-card` to `rounded-s-card` — which compiles, passes a
+     *   token audit, and flips the tab's curve to the other edge. So the check
+     *   is the resolved corner radii: the tab sits on the map's side of the
+     *   rule, so its edge AGAINST the rule (physically right, in both writing
+     *   directions, because the row is reversed) is square and the one facing
+     *   the map is rounded.
+     */
+    /* A56 above leaves חוות on whatever layout it was proving; a seam only
+       exists in `split`, so this section puts it there first. */
+    await page.goto(`${base}/#/coordinator/farms`, { waitUntil: 'load' })
+    await page.waitForTimeout(2000)
+    await page.locator('[data-testid="map-mode-split"]').first().click()
+    await page.waitForTimeout(1200)
+    const grip = (await page.evaluate(`(() => {
+      const sep = document.querySelector('[role="separator"]');
+      if (!sep) return null;
+      const tab = sep.firstElementChild;
+      if (!tab) return null;
+      const r = tab.getBoundingClientRect();
+      const cs = getComputedStyle(tab);
+      return {
+        w: Math.round(r.width),
+        h: Math.round(r.height),
+        tl: parseFloat(cs.borderTopLeftRadius),
+        bl: parseFloat(cs.borderBottomLeftRadius),
+        tr: parseFloat(cs.borderTopRightRadius),
+        br: parseFloat(cs.borderBottomRightRadius),
+        sepLeft: Math.round(sep.getBoundingClientRect().left),
+        tabRight: Math.round(r.right),
+      };
+    })()`)) as {
+      w: number
+      h: number
+      tl: number
+      bl: number
+      tr: number
+      br: number
+      sepLeft: number
+      tabRight: number
+    } | null
+    check('A65 — the seam has a grip', grip !== null)
+    if (grip) {
+      check(
+        'A65 — and it is VERTICAL: taller than it is wide',
+        grip.h > grip.w * 2,
+        `${grip.w}×${grip.h}`,
+      )
+      check(
+        'A65 — square against the bar, rounded towards the map',
+        grip.tr < 1 && grip.br < 1 && grip.tl > 2 && grip.bl > 2,
+        `radii l ${grip.tl}/${grip.bl}, r ${grip.tr}/${grip.br}`,
+      )
+      check(
+        'A65 — and it sits on the map side of the rule',
+        Math.abs(grip.tabRight - grip.sepLeft) <= 2,
+        `tab right ${grip.tabRight}px, rule left ${grip.sepLeft}px`,
+      )
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  section('A68 — עריכת אזורים TAKES THE WHOLE DEVICE')
+  // -------------------------------------------------------------------------
+  {
+    await page.goto(`${base}/#/coordinator/settings/regions`, { waitUntil: 'load' })
+    await page.waitForTimeout(2600)
+    const solo = (await page.evaluate(`(() => {
+      const map = document.querySelector('.maplibregl-map');
+      const r = map ? map.getBoundingClientRect() : null;
+      return {
+        rail: !!document.querySelector('aside'),
+        header: !!document.querySelector('header'),
+        split: !!document.querySelector('[role="separator"]'),
+        mapWidth: r ? Math.round(r.width) : 0,
+        viewport: innerWidth,
+        shellTop: getComputedStyle(document.documentElement).getPropertyValue('--shell-top').trim(),
+      };
+    })()`)) as {
+      rail: boolean
+      header: boolean
+      split: boolean
+      mapWidth: number
+      viewport: number
+      shellTop: string
+    }
+    check(
+      'A68 — no side rail, no shell header, no split while a region is edited',
+      !solo.rail && !solo.header && !solo.split,
+      `rail=${solo.rail} header=${solo.header} split=${solo.split}`,
+    )
+    check(
+      'A68 — and the map is the width of the device',
+      solo.mapWidth >= solo.viewport - 2,
+      `${solo.mapWidth}px of ${solo.viewport}px`,
+    )
+    await page.screenshot({ path: `${SHOTS}/a68-region-solo-${ENGINE_NAME}.png` })
   }
 
   // -------------------------------------------------------------------------
@@ -379,6 +518,126 @@ try {
       grips === 0,
       `${grips} grips across three list screens`,
     )
+  }
+  // -------------------------------------------------------------------------
+  section('A66 — THE DEVICE DECIDES THE THEME, AND IT DECIDES IT LIVE')
+  // -------------------------------------------------------------------------
+  {
+    /**
+     * "Theme selon l'appareil : le PO est en mode sombre sur son iPad et
+     *  l'app reste en clair. Corriger la detection (prefers-color-scheme),
+     *  ecouter le changement a chaud."
+     *
+     * ★ THE DETECTION WAS NEVER THE FAULT, AND THIS SECTION SAYS SO IN
+     *   NUMBERS. Three claims: a first-ever launch on a dark device is dark —
+     *   the one that was false, because the coordinator's default was the
+     *   literal light and nothing asked the device; an explicit choice still
+     *   beats the device; and flipping the device's preference under a page
+     *   that is already open moves the palette with no reload.
+     *
+     * ⚠️ EACH READING GETS ITS OWN CONTEXT, because the claim is about a
+     *    device that has never been asked. A context that has already stored a
+     *    choice is a different question.
+     */
+    const surfaceOf = (target: Page) =>
+      target.evaluate(
+        `(() => ({
+          attr: document.documentElement.getAttribute('data-theme'),
+          base: getComputedStyle(document.documentElement).getPropertyValue('--surface-base').trim(),
+        }))()`,
+      ) as Promise<{ attr: string | null; base: string }>
+
+    for (const scheme of ['dark', 'light'] as const) {
+      const ctx = await browser.newContext({
+        viewport: { width: 1032, height: 1376 },
+        locale: 'he-IL',
+        colorScheme: scheme,
+      })
+      const p2 = await ctx.newPage()
+      p2.setDefaultTimeout(30_000)
+      await p2.goto(`${base}/#/coordinator`, { waitUntil: 'load' })
+      await p2.waitForTimeout(2200)
+      const seen = await surfaceOf(p2)
+      const isDark = seen.base.startsWith('11 ')
+      check(
+        `A66 — a first launch on a ${scheme} device draws ${scheme}`,
+        isDark === (scheme === 'dark'),
+        `--surface-base ${seen.base}, data-theme ${seen.attr ?? '(none)'}`,
+      )
+      await p2.emulateMedia({ colorScheme: scheme === 'dark' ? 'light' : 'dark' })
+      await p2.waitForTimeout(800)
+      const flipped = await surfaceOf(p2)
+      check(
+        `A66 — and it follows the device changing, with no reload`,
+        flipped.base !== seen.base,
+        `${seen.base} → ${flipped.base}`,
+      )
+      await p2.emulateMedia({ colorScheme: 'dark' })
+      await p2.goto(`${base}/#/coordinator/settings`, { waitUntil: 'load' })
+      await p2.waitForTimeout(1800)
+      await p2.locator('[data-testid="settings-theme-light"]').click()
+      await p2.waitForTimeout(600)
+      const forced = await surfaceOf(p2)
+      check(
+        'A66 — and an explicit light still beats a dark device',
+        forced.attr === 'light' && !forced.base.startsWith('11 '),
+        `data-theme ${forced.attr ?? '(none)'}, --surface-base ${forced.base}`,
+      )
+      await ctx.close()
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  section('A69 — THE ROLE SWITCH FOLDS AWAY ON A PHONE')
+  // -------------------------------------------------------------------------
+  {
+    for (const vp of [
+      { name: 'iphone', width: 402, height: 874, folded: true },
+      { name: 'ipad', width: 1032, height: 1376, folded: false },
+    ]) {
+      const ctx = await browser.newContext({
+        viewport: { width: vp.width, height: vp.height },
+        locale: 'he-IL',
+        hasTouch: true,
+      })
+      const p2 = await ctx.newPage()
+      p2.setDefaultTimeout(30_000)
+      await p2.goto(`${base}/#/coordinator/farms`, { waitUntil: 'load' })
+      await p2.waitForTimeout(2600)
+      const hasToggle = (await p2.locator('[data-testid="devbar-toggle"]').count()) > 0
+      const hasInline = (await p2.locator('select[aria-label]').count()) > 0
+      check(
+        `A69 — ${vp.name}: the role switch is ${vp.folded ? 'folded behind a button' : 'the bar it has always been'}`,
+        hasToggle === vp.folded && hasInline === !vp.folded,
+        `toggle=${hasToggle} inlineSelect=${hasInline}`,
+      )
+      if (vp.folded) {
+        const box = await p2.locator('[data-testid="devbar-toggle"]').boundingBox()
+        check(
+          'A69 — and it is a 44 px target in a corner the map controls leave free',
+          !!box && box.width >= 40 && box.height >= 40,
+          box
+            ? `${Math.round(box.width)}×${Math.round(box.height)} at ${Math.round(box.x)},${Math.round(box.y)}`
+            : 'no box',
+        )
+        const foot = (await p2.evaluate(
+          `getComputedStyle(document.documentElement).getPropertyValue('--shell-foot').trim()`,
+        )) as string
+        check(
+          'A69 — and the 62 px it used to take are given back to the app',
+          foot === '0px' || foot === '',
+          `--shell-foot ${foot || '(unset)'}`,
+        )
+        await p2.locator('[data-testid="devbar-toggle"]').click()
+        await p2.waitForTimeout(500)
+        check(
+          'A69 — a tap opens it, with the roles inside',
+          (await p2.locator('[data-testid="devbar-panel"] select').count()) === 1,
+        )
+        await p2.screenshot({ path: `${SHOTS}/a69-role-folded-${ENGINE_NAME}.png` })
+      }
+      await ctx.close()
+    }
   }
 } finally {
   await browser?.close()

@@ -162,9 +162,32 @@ async function probe(page: Page, rowSelector: string): Promise<RowVerdict> {
      *    controls at the foot, not a demand that every card fit on an iPhone.
      *    Points above the fold are dropped rather than failed.
      */
+    /**
+     * ⚠️ Z6 (2026-09-07) — AND POINTS UNDER THE PINNED HEADER ARE DROPPED FOR
+     *    THE SAME REASON POINTS ABOVE THE FOLD ARE.
+     *
+     *    This gate's claim is about the FLOATING CONTROLS AT THE FOOT — the
+     *    "+", the mode pill, the bar that used to be pinned down there. A row
+     *    passing under an opaque sticky header is not that; it is what a
+     *    sticky header is for, and A58 in `bun run rhythm` is the check that
+     *    owns that question from the other side.
+     *
+     *    It surfaced when Z6 folded the phone's role bar away: 62 px came back
+     *    to the page, the agenda's scroll-to-the-end landed 62 px further on,
+     *    and the last row's TOP edge ended up under the shell header. Nothing
+     *    about the foot had changed.
+     */
+    const headerBottom = [...document.querySelectorAll<HTMLElement>('header, [data-list-top]')]
+      .map((el) => {
+        const cs = getComputedStyle(el)
+        if (cs.position !== 'sticky' && cs.position !== 'fixed') return 0
+        const hr = el.getBoundingClientRect()
+        return hr.top <= 2 && hr.height > 0 ? hr.bottom : 0
+      })
+      .reduce((a, b) => Math.max(a, b), 0)
     const ys = [r.top + 6, r.top + r.height / 2, r.bottom - 6]
       .map((y) => Math.round(y))
-      .filter((y) => y >= 0 && y <= window.innerHeight - 1)
+      .filter((y) => y >= headerBottom && y <= window.innerHeight - 1)
     let hitOwn = true
     let tag = ''
     for (const y of ys) {

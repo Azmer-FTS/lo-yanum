@@ -245,7 +245,9 @@ section('A10 — a driver/group disagreement is visible to all three parties')
 
 section('A12 — per-role theme defaults')
 {
-  check('coordinator defaults to light', defaultThemeFor('coordinator') === 'light')
+  /* ★ Z5.2 (2026-09-07) — the coordinator's default is the DEVICE now; the
+     field roles keep dark, which is a safety default rather than a taste. */
+  check('coordinator defaults to the device', defaultThemeFor('coordinator') === 'system')
   check('farmer defaults to dark', defaultThemeFor('farmer') === 'dark')
   check('volunteer defaults to dark', defaultThemeFor('volunteer') === 'dark')
   check('driver defaults to dark', defaultThemeFor('driver') === 'dark')
