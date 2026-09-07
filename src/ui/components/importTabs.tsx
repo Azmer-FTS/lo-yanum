@@ -24,7 +24,15 @@ import type { IconName } from './Icon'
  *    pretending otherwise inside one component would have meant a screen with
  *    two of everything. Here they are two routes and one row of tabs.
  */
-export type SheetKind = 'prospection' | 'signatures'
+/**
+ * ★★ AB6.7 — AND A THIRD: THE ASSOCIATION'S OWN FILE, COMING BACK.
+ *
+ * « Test d'aller-retour : export au format association, réimport dans l'app,
+ *   aucune perte ni doublon. » A format this app can write and cannot read is
+ *   a one-way door, and a one-way door is how the coordinator ends up with two
+ *   copies of a farm the week the association sends his own file back.
+ */
+export type SheetKind = 'prospection' | 'signatures' | 'association'
 export type AnyImportKind = ImportKind | SheetKind
 
 const ICON: Record<AnyImportKind, IconName> = {
@@ -33,6 +41,7 @@ const ICON: Record<AnyImportKind, IconName> = {
   drivers: 'steering',
   prospection: 'table',
   signatures: 'edit',
+  association: 'document',
 }
 
 const LABEL_KEY: Record<AnyImportKind, string> = {
@@ -41,12 +50,14 @@ const LABEL_KEY: Record<AnyImportKind, string> = {
   drivers: IMPORT_TEMPLATES.drivers.titleKey,
   prospection: 'import.templateProspection',
   signatures: 'import.templateSignatures',
+  association: 'import.templateAssociation',
 }
 
 export const ALL_IMPORT_KINDS: readonly AnyImportKind[] = [
   ...IMPORT_KINDS,
   'prospection',
   'signatures',
+  'association',
 ]
 
 export function ImportTabs({

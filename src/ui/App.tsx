@@ -33,6 +33,7 @@ import { AnchorSheetScreen } from './screens/coordinator/AnchorSheetScreen'
 import { DashboardScreen } from './screens/coordinator/DashboardScreen'
 import { FarmDetailScreen } from './screens/coordinator/FarmDetailScreen'
 import { FarmFormScreen } from './screens/coordinator/FarmFormScreen'
+import { ExportScreen } from './screens/coordinator/ExportScreen'
 import { FarmsListScreen } from './screens/coordinator/FarmsListScreen'
 import { IncidentDetailScreen } from './screens/coordinator/IncidentDetailScreen'
 import { IncidentsScreen } from './screens/coordinator/IncidentsScreen'
@@ -188,6 +189,18 @@ export default function App() {
               </Suspense>
             }
           />
+          {/* ★★ AB6.7 — and the association's own file, coming back. Same
+              screen, same `key` rule: three routes render one lazy component,
+              and without a key per kind React reconciles one into the next and
+              KEEPS its step (see the note on the two above). */}
+          <Route
+            path="import/association"
+            element={
+              <Suspense fallback={<div className="skeleton h-96 rounded-card" />}>
+                <SheetImportScreen key="association" kind="association" />
+              </Suspense>
+            }
+          />
           <Route
             path="import/:kind"
             element={
@@ -200,6 +213,9 @@ export default function App() {
             path="volunteers/import"
             element={<Navigate to="/coordinator/import/volunteers" replace />}
           />
+          {/* ★★ AB6.6 — l'écran d'export. Reached from חוות → ⋯, beside the
+              two imports it is the counterpart of. */}
+          <Route path="export" element={<ExportScreen />} />
           <Route path="agenda" element={<AgendaScreen />} />
           <Route path="missions" element={<MissionsScreen />} />
           {/* Static segment before the :missionId param, or "new" is read as an id. */}

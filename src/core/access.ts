@@ -1,6 +1,8 @@
 import { DAY, addDays, fromDayKey, isTonight, localDayKey, now } from './clock'
+import type { AssociationInput } from './association'
 import { weightedDunams } from './fields'
 import { positionOfLocality } from './geo'
+import { signatureImageOf } from './signatures'
 import { _raw, getSession } from './store'
 import { buildDayPlan } from './tours'
 import type { DayPlan, Tour } from './tours'
@@ -975,4 +977,72 @@ export function getGuardsPerWeek(weeks = 12, from: Date = now()): GrowthPoint[] 
     points.push({ key: localDayKey(a), added, cumulative: running })
   }
   return points
+}
+
+// ---------------------------------------------------------------------------
+// ★★ AB6 (2026-09-08) — WHAT THE ASSOCIATION EXPORT NEEDS AND THE FARM RECORD
+//    DOES NOT CARRY.
+// ---------------------------------------------------------------------------
+
+/**
+ * « כמות התנדבויות » and « כמות מתנדבים קבועים » are counted from this app's
+ * own guards, farm by farm, and this is the one place that counting is
+ * defined. `core/association.ts` stays free of the store; the gate builds its
+ * rows from literals.
+ *
+ * ★ « התנדבויות » IS VOLUNTEER-NIGHTS, NOT NIGHTS. Four volunteers on one
+ *   guard is four acts of volunteering, and that is the figure the association
+ *   reports: it is what its funding is counted in.
+ *
+ * ⚠️ « קבועים » IS A DEFINITION THIS APP HAS TO MAKE, AND IT IS PRINTED ON THE
+ *    EXPORT SCREEN RATHER THAN BURIED HERE. The association's form asks for
+ *    "regular volunteers" and does not say what regular means; a volunteer who
+ *    stood once is not a fixture of the farm, and there is no other datum to
+ *    lean on. TWO OR MORE guards at the SAME farm is the reading, it is stated
+ *    in the export report in Hebrew, and it is one number to change here.
+ *
+ * ⚠️ CANCELLED GUARDS ARE NOT COUNTED. A night that was called off is a night
+ *    nobody stood, and G9bis keeps it on the record precisely so it is not
+ *    confused with one that happened.
+ */
+const REGULAR_AT_LEAST = 2
+
+export function associationCounts(
+  farmId: string,
+): { volunteering: number; regulars: number } {
+  let volunteering = 0
+  const perVolunteer = new Map<string, number>()
+  for (const mission of getVisibleMissions()) {
+    if (mission.farmId !== farmId) continue
+    if (mission.status === 'cancelled') continue
+    for (const a of mission.assignments) {
+      volunteering++
+      perVolunteer.set(a.volunteerId, (perVolunteer.get(a.volunteerId) ?? 0) + 1)
+    }
+  }
+  let regulars = 0
+  for (const n of perVolunteer.values()) if (n >= REGULAR_AT_LEAST) regulars++
+  return { volunteering, regulars }
+}
+
+/** The rows the association export writes, in the order the farms are given. */
+export function associationInputs(
+  farms: readonly Farm[],
+): AssociationInput[] {
+  return farms.map((farm) => ({
+    farm,
+    ...associationCounts(farm.id),
+    signature: signatureImageOf(farm),
+    /**
+     * ⚠️ AB6.4 — `null`, ALWAYS, AND ON PURPOSE. This programme does not
+     *    record a GUARDED area: `FarmZone` knows a farm boundary and a grazing
+     *    area, and neither of those is "the ground the volunteers actually
+     *    walk". Their own sheets fill this column with a copy of « שטחים
+     *    מעובדים »; copying it here would put a figure nobody measured into a
+     *    file that goes to the State under this programme's name. The export
+     *    report names the column as blank instead, which is the truth and is
+     *    also the request for the datum.
+     */
+    guardedDunams: null,
+  }))
 }

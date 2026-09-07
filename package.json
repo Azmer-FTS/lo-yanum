@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Lo Yanum — farm guard coordination tool (Lot 0.9: UX/UI finishing pass)",
+  "description": "Lo Yanum \u2014 farm guard coordination tool (Lot 0.9: UX/UI finishing pass)",
   "scripts": {
     "dev": "vite",
     "dev:real": "vite --mode real",
@@ -66,7 +66,8 @@
     "prospection": "bun run scripts/prospection.ts",
     "signatures": "bun run scripts/signatures.ts",
     "sheets": "bun run scripts/sheets.ts",
-    "aacaptures": "bun run scripts/aacaptures.ts"
+    "aacaptures": "bun run scripts/aacaptures.ts",
+    "assoc": "bun run scripts/association.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "^0.4.0",

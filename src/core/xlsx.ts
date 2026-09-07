@@ -387,3 +387,32 @@ export function buildWorkbook(sheets: readonly SheetSpec[]): Uint8Array {
   ]
   return zipStore(files)
 }
+
+// ---------------------------------------------------------------------------
+// ★★ AB6.1 (2026-09-08) — CSV, BECAUSE THE ASSOCIATION'S PORTAL TAKES ONE.
+// ---------------------------------------------------------------------------
+
+/**
+ * A matrix as CSV, ready to be handed to a `Blob`.
+ *
+ * ⚠️ THE BOM IS NOT OPTIONAL AND THIS FILE ALREADY KNEW IT. `core/import.ts`
+ *    retired the old CSV export and wrote down the two rules it had, so that
+ *    whoever restored one would restore them too: the column order is the
+ *    template's own, and the file must open with a UTF-8 BOM or Excel on a
+ *    Hebrew Windows machine renders every header as mojibake. This is that
+ *    restoration, and both rules are kept — the order is
+ *    `ASSOCIATION_COLUMNS`', and `﻿` is the first character.
+ *
+ * ⚠️ CRLF, FOR THE SAME REASON AND THE SAME MACHINE. A lone `\n` inside a
+ *    quoted cell is fine; between records, Excel on Windows wants both.
+ *
+ * ★ AND EVERY CELL IS QUOTED. A signature data URI contains commas, a note
+ *   contains newlines, and a Hebrew name contains neither — quoting only what
+ *   needs it makes a file whose shape depends on its contents, which is
+ *   exactly what is hard to debug at the other end. Doubling an embedded quote
+ *   is the whole escape rule.
+ */
+export function matrixToCsv(matrix: readonly (readonly string[])[]): string {
+  const cell = (v: string): string => `"${String(v ?? '').replace(/"/g, '""')}"`
+  return '﻿' + matrix.map((row) => row.map(cell).join(',')).join('\r\n') + '\r\n'
+}

@@ -6,6 +6,11 @@ import { DEMO_BACKEND, emptyData } from '../src/core/demo'
 /* AA4 · AA5 — the readers the two new writers take a plan from. They are pure
    and live outside the store, so they are imported from their own modules. */
 import { HOME_BASE } from '../src/core/geo'
+import {
+  ASSOCIATION_COLUMNS,
+  analyseAssociation,
+  associationSignatures,
+} from '../src/core/association'
 import { analyseProspection } from '../src/core/prospection'
 import { SIGNATURE_COLUMNS, analyseSignatures } from '../src/core/signatures'
 import {
@@ -44,6 +49,7 @@ import {
   deleteTour,
   importDrivers,
   importFarms,
+  applyAssociation,
   applyProspection,
   applySignatures,
   importVolunteers,
@@ -804,6 +810,41 @@ emits('deleteTour', () => deleteTour('2027-01-01'), [], [
   )
   check(
     'applySignatures emits the signed entity and the one it created',
+    _raw().farms.length === before + 1 &&
+      changes.filter((c) => c.collection === 'farms' && c.json !== null).length >= 2,
+    `${changes.length} changes, ${_raw().farms.length - before} new`,
+  )
+}
+/**
+ * ★★ AB6.7 — THE ASSOCIATION'S OWN FILE, COMING BACK. Same three guarantees as
+ *    the prospection path (it IS that path — see `analyseAssociation`), plus
+ *    the one column that is not in the patch: the signature.
+ */
+{
+  const before = _raw().farms.length
+  const headers = ASSOCIATION_COLUMNS.map((c) => c.header)
+  const row = (name: string, council: string) =>
+    ASSOCIATION_COLUMNS.map((c) =>
+      c.source === 'placeName'
+        ? name
+        : c.source === 'institution'
+          ? council
+          : c.source === 'signature'
+            ? 'data:image/png;base64,iVBORw0KGgo='
+            : c.source === 'grazingDunams'
+              ? '120'
+              : '',
+    )
+  const { plan, rows } = analyseAssociation(
+    headers,
+    [row('נקודת בדיקה AA4', 'רמת הנגב'), row('חוות העמותה AB6', 'רמת הנגב')],
+    _raw().farms,
+  )
+  const changes = drive('applyAssociation', () =>
+    void applyAssociation(plan, associationSignatures(rows), 'ab6-gate.xlsx', HOME_BASE),
+  )
+  check(
+    'applyAssociation emits the updated entity, the one it created, and the signatures',
     _raw().farms.length === before + 1 &&
       changes.filter((c) => c.collection === 'farms' && c.json !== null).length >= 2,
     `${changes.length} changes, ${_raw().farms.length - before} new`,

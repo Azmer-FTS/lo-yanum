@@ -209,6 +209,17 @@ export function guessProspectionField(header: string): ProspectionField {
  *    farm whose code is 1177 and one whose name normalises to "1177" would
  *    collide — absurd until somebody names a plot after its block number.
  */
+/**
+ * ★★ AB6.7 — THE FALLBACK HALF OF `identityKey`, ON ITS OWN.
+ *
+ * A format that carries no locality code can only ever produce this key, so
+ * it needs to be able to ask for it of a record that HAS one. See
+ * `planProspection`'s `keyOfExisting`.
+ */
+export function placeKey(record: { name: string; council?: string }): string {
+  return `place:${normaliseValue(record.name)}|${normaliseValue(record.council ?? '')}`
+}
+
 export function identityKey(record: {
   localityCode?: number | null
   name: string
@@ -217,7 +228,7 @@ export function identityKey(record: {
   if (record.localityCode != null && Number.isFinite(record.localityCode)) {
     return `code:${record.localityCode}`
   }
-  return `place:${normaliseValue(record.name)}|${normaliseValue(record.council ?? '')}`
+  return placeKey(record)
 }
 
 // ---------------------------------------------------------------------------
@@ -250,6 +261,17 @@ export type ProspectionWarning = 'warnNoPosition' | 'warnUnknownRegion'
  */
 export interface ProspectionPatch {
   name?: string
+  /**
+   * ★★ AB6.7 — THE LOCALITY, AND IT ARRIVED WITH THE ASSOCIATION FORMAT.
+   *
+   * The prospection sheet has no such column — its « שם המקום » IS the
+   * locality, which is why `applyProspection` has always seeded `locality`
+   * from the name. The association's file has TWO columns called מיקום and
+   * one of them is the locality's name, so a row from it can say something
+   * the prospection row never could. Optional, sparse, and ignored by every
+   * reader that does not set it.
+   */
+  locality?: string
   localityCode?: number | null
   localityKind?: string
   council?: string
@@ -552,9 +574,32 @@ export interface ProspectionPlan {
 export function planProspection(
   rows: ProspectionRow[],
   existing: readonly Farm[],
+  /**
+   * ★★ AB6.7 — HOW AN EXISTING RECORD IS KEYED, AND WHY IT IS A PARAMETER.
+   *
+   * For a prospection sheet it is `identityKey`: the State's locality code
+   * when the record has one, the name + council pair otherwise (AA4.2). That
+   * is right for a file that CARRIES the code.
+   *
+   * The association's file does not. Every one of its rows keys as
+   * `place:name|council`, so a store whose records were created from the
+   * prospection workbook — and therefore all carry `code:1177` — would match
+   * NOTHING: measured, 193 creations on a re-import of our own export, which
+   * is the duplicate this rule exists to prevent, arriving by the other door.
+   *
+   * ⚠️ AND THE FIRST RECORD WINS ON A COLLISION, DELIBERATELY. Two records
+   *    sharing a name AND a council under `placeKey` is the known limit of
+   *    that fallback (written out in ETAT for AA4.2); updating the first is
+   *    the same choice the prospection importer already makes, and it is
+   *    strictly better than creating a third.
+   */
+  keyOfExisting: (farm: Farm) => string = identityKey,
 ): ProspectionPlan {
   const byKey = new Map<string, Farm>()
-  for (const farm of existing) byKey.set(identityKey(farm), farm)
+  for (const farm of existing) {
+    const key = keyOfExisting(farm)
+    if (!byKey.has(key)) byKey.set(key, farm)
+  }
 
   const created: ProspectionPlanRow[] = []
   const updated: ProspectionPlanRow[] = []

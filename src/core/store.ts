@@ -4,7 +4,7 @@ import type { StoreBackend, StoreData, StoreIndex } from './backend'
 import { iso, now } from './clock'
 import { DEMO_BACKEND } from './demo'
 import { ringAreaDunams } from './geo'
-import { entityKindForRow } from './prospection'
+import { entityKindForRow, placeKey } from './prospection'
 import { farmFromSignatureRow, signaturePatch } from './signatures'
 import type { SignaturePlan } from './signatures'
 import type { ProspectionPlan } from './prospection'
@@ -1162,7 +1162,9 @@ export function applyProspection(
     return {
       id: `${nextId('farm')}-${i}`,
       name: patch.name ?? '',
-      locality: patch.name ?? '',
+      // AB6.7 — the association's second מיקום carries a real locality;
+      // the prospection sheet has no such column and seeds it from the name.
+      locality: patch.locality ?? patch.name ?? '',
       region: patch.region ?? '',
       regionId: patch.regionId ?? null,
       type: patch.type ?? 'mixed',
@@ -1207,6 +1209,58 @@ export function applyProspection(
   for (const farm of created) syncZoneDunams(farm.id)
   commit()
   return { created: created.length, updated: patches.size }
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AB6.7 (2026-09-08) — RÉIMPORTER LE FICHIER DE L'ASSOCIATION.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * The plan itself is a prospection plan — `analyseAssociation` builds one, for
+ * the reasons written in `core/association.ts` — so applying it IS
+ * `applyProspection`, unchanged, with all three of AA4's guarantees intact.
+ *
+ * What this adds is the one column that has no equivalent on that path: the
+ * signature. It is attached exactly as AA5 attaches one — the image, the
+ * origin, the file it came in, the day — so a signature that made the round
+ * trip is indistinguishable from one that arrived on the consents form, which
+ * is the whole point of « la forme retenue par l'import de signatures d'AA5 ».
+ *
+ * ⚠️ AND IT NEVER CLEARS ONE. A row whose חתימה cell is empty leaves the farm's
+ *    signature alone: their export of a farm they have no signature for must
+ *    not delete the one this app captured on a tablet in the field. Same rule
+ *    as AA4.3, applied to the one field that is not in the patch.
+ */
+export function applyAssociation(
+  plan: ProspectionPlan,
+  signatures: ReadonlyMap<string, string>,
+  fileName: string,
+  fallbackPosition: LatLng,
+): { created: number; updated: number; signatures: number } {
+  const applied = applyProspection(plan, fallbackPosition)
+  if (signatures.size === 0) return { ...applied, signatures: 0 }
+
+  const importedAt = iso(now())
+  let attached = 0
+  data.farms = data.farms.map((farm) => {
+    const image = signatures.get(placeKey(farm))
+    if (!image) return farm
+    attached++
+    return {
+      ...farm,
+      status: 'signed' as FarmStatus,
+      signature: image,
+      signatureMissing: undefined,
+      signatureOrigin: {
+        kind: 'imported' as const,
+        signedAt: farm.signatureOrigin?.signedAt ?? null,
+        fileName,
+        importedAt,
+      },
+    }
+  })
+  commit()
+  return { ...applied, signatures: attached }
 }
 
 /**

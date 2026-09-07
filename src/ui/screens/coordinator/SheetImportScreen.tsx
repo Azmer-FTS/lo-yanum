@@ -2,13 +2,20 @@ import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
+  ASSOCIATION_COLUMNS,
   HOME_BASE,
   PROSPECTION_COLUMNS,
   SIGNATURE_COLUMNS,
+  analyseAssociation,
   analyseProspection,
   analyseSignatures,
+  applyAssociation,
   applyProspection,
   applySignatures,
+  associationExportMatrix,
+  associationInputs,
+  associationSignatures,
+  guessAssociationMapping,
   getVisibleFarms,
   guessProspectionField,
   guessSignatureField,
@@ -19,11 +26,8 @@ import {
   signatureImageOf,
   signedFarms,
 } from '@core/index'
-/* @core/xlsx is the workbook WRITER and is deliberately not re-exported from
-   the core index — it is the import surface's own tool (see `templates.ts`),
-   so it is imported directly, exactly as `scripts/accept.ts` does. */
-import { STYLE_BODY, STYLE_HEADER, buildWorkbook } from '@core/xlsx'
 import type {
+  AssociationField,
   ProspectionField,
   ProspectionPlan,
   SignatureField,
@@ -35,6 +39,7 @@ import { SelectField } from '../../components/fields'
 import { ImportTabs } from '../../components/importTabs'
 import type { SheetKind } from '../../components/importTabs'
 import { Callout, EmptyState, PageHeader, Section } from '../../components/primitives'
+import { downloadMatrix } from '../../report/download'
 import { useCoreValue } from '../../hooks/useCore'
 
 /**
@@ -169,25 +174,6 @@ function CountBand({
   )
 }
 
-/** Turn a matrix into an .xlsx and hand it to the browser. */
-function downloadMatrix(matrix: string[][], widths: number[], sheet: string, file: string): void {
-  const rows = matrix.map((row, i) =>
-    row.map((value) => ({ value, style: i === 0 ? STYLE_HEADER : STYLE_BODY })),
-  )
-  const bytes = buildWorkbook([{ name: sheet, widths, rows, freezeHeader: true }])
-  const blob = new Blob([bytes.slice().buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = file
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 0)
-}
-
 export function SheetImportScreen({ kind }: { kind: SheetKind }) {
   const { t } = useTranslation()
   const farms = useCoreValue(getVisibleFarms)
@@ -209,10 +195,20 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
 
   const inputRef = useRef<HTMLInputElement | null>(null)
 
+  /**
+   * ⚠️ THE ASSOCIATION'S LIST HAS TWO COLUMNS CALLED מיקום (AB6, trap 2), so
+   *    its picker labels them by header AND by what they hold: two identical
+   *    options in one `<select>` is a choice nobody can make.
+   */
   const columns =
     kind === 'prospection'
       ? PROSPECTION_COLUMNS.map((c) => ({ field: c.field as string, header: c.header }))
-      : SIGNATURE_COLUMNS.map((c) => ({ field: c.field as string, header: c.header }))
+      : kind === 'signatures'
+        ? SIGNATURE_COLUMNS.map((c) => ({ field: c.field as string, header: c.header }))
+        : ASSOCIATION_COLUMNS.map((c) => ({
+            field: c.source as string,
+            header: `${c.header} — ${c.ours}`,
+          }))
 
   const fieldOptions = ['ignore', ...columns.map((c) => c.field)]
   const labelOf = (field: string): string =>
@@ -268,9 +264,12 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
 
       /* AA5.6 — the remembered mapping wins over the guess, per header. */
       const saved = readRemembered(kind)
-      const guessed = head.map((h) =>
-        kind === 'prospection' ? guessProspectionField(h) : guessSignatureField(h),
-      )
+      const guessed =
+        kind === 'association'
+          ? (guessAssociationMapping(head) as string[])
+          : head.map((h) =>
+              kind === 'prospection' ? guessProspectionField(h) : guessSignatureField(h),
+            )
       const merged = head.map((h, i) => saved[normaliseValue(h)] ?? guessed[i])
 
       setFileName(file.name)
@@ -285,15 +284,21 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
 
   const analysis = useMemo(() => {
     if (step !== 'preview') return null
-    return kind === 'prospection'
-      ? analyseProspection(headers, matrix, farms, mapping as ProspectionField[])
-      : analyseSignatures(headers, matrix, farms, mapping as SignatureField[])
+    if (kind === 'prospection') {
+      return analyseProspection(headers, matrix, farms, mapping as ProspectionField[])
+    }
+    if (kind === 'association') {
+      return analyseAssociation(headers, matrix, farms, mapping as AssociationField[])
+    }
+    return analyseSignatures(headers, matrix, farms, mapping as SignatureField[])
   }, [step, kind, headers, matrix, farms, mapping])
 
   const canMap =
     kind === 'prospection'
       ? mapping.includes('name')
-      : requiredSignatureFields().every((f) => mapping.includes(f))
+      : kind === 'association'
+        ? mapping.includes('placeName')
+        : requiredSignatureFields().every((f) => mapping.includes(f))
 
   const run = () => {
     if (!analysis) return
@@ -306,6 +311,22 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
         updated: applied.updated,
         rejected: plan.rejected.length,
         unknown: plan.unknown.length,
+        withoutSignature: 0,
+      })
+    } else if (kind === 'association') {
+      const plan = analysis.plan as ProspectionPlan
+      const rows = (analysis as { rows: Parameters<typeof associationSignatures>[0] }).rows
+      const applied = applyAssociation(
+        plan,
+        associationSignatures(rows),
+        fileName,
+        HOME_BASE,
+      )
+      setReport({
+        created: applied.created,
+        updated: applied.updated,
+        rejected: plan.rejected.length,
+        unknown: 0,
         withoutSignature: 0,
       })
     } else {
@@ -332,6 +353,16 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
           'רשימה',
           'lo-yanum-prospection.xlsx',
         )
+      } else if (kind === 'association') {
+        /* The screen with the scope, the preview and the export report is
+           `/coordinator/export` (AB6.6); this button is the same matrix, for
+           the coordinator who is already standing on the import. */
+        downloadMatrix(
+          associationExportMatrix(associationInputs(farms)).matrix,
+          ASSOCIATION_COLUMNS.map((c) => c.width ?? 16),
+          'נתונים',
+          'lo-yanum-association.xlsx',
+        )
       } else {
         downloadMatrix(
           signatureExportMatrix(farms, signatureImageOf),
@@ -348,8 +379,8 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
-        title={t(kind === 'prospection' ? 'import.prospectionTitle' : 'import.signaturesTitle')}
-        subtitle={t(kind === 'prospection' ? 'import.prospectionHint' : 'import.signaturesHint')}
+        title={t(`import.${kind}Title`)}
+        subtitle={t(`import.${kind}Hint`)}
         back={{ to: '/coordinator/farms', label: t('farms.title') }}
       />
 
@@ -419,7 +450,13 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
             className="btn-secondary mt-4 w-full sm:w-auto"
           >
             <Icon name="download" size={15} />
-            {t(kind === 'prospection' ? 'import.exportProspection' : 'import.exportSignatures')}
+            {t(
+              kind === 'prospection'
+                ? 'import.exportProspection'
+                : kind === 'association'
+                  ? 'export.title'
+                  : 'import.exportSignatures',
+            )}
           </button>
           <p className="muted mt-2">
             {t('import.exportHint')}
@@ -465,9 +502,9 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
               <Callout
                 tone="warn"
                 title={t('import.mapRequired', {
-                  columns: (kind === 'prospection'
-                    ? ['שם המקום']
-                    : requiredSignatureFields().map((f) => labelOf(f))
+                  columns: (kind === 'signatures'
+                    ? requiredSignatureFields().map((f) => labelOf(f))
+                    : ['שם המקום']
                   ).join(' · '),
                 })}
               />
@@ -488,9 +525,13 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
                 onClick={() => {
                   forget(kind)
                   setMapping(
-                    headers.map((h) =>
-                      kind === 'prospection' ? guessProspectionField(h) : guessSignatureField(h),
-                    ),
+                    kind === 'association'
+                      ? (guessAssociationMapping(headers) as string[])
+                      : headers.map((h) =>
+                          kind === 'prospection'
+                            ? guessProspectionField(h)
+                            : guessSignatureField(h),
+                        ),
                   )
                 }}
               >
@@ -510,7 +551,7 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
         </Section>
       )}
 
-      {step === 'preview' && analysis && kind === 'prospection' && (
+      {step === 'preview' && analysis && kind !== 'signatures' && (
         <ProspectionPreview
           plan={analysis.plan as ProspectionPlan}
           onBack={() => setStep('mapping')}

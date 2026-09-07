@@ -342,6 +342,16 @@ export function FarmsListScreen() {
           to: '/coordinator/import/signatures',
           testId: 'farms-import-signatures',
         },
+        /* ★★ AB6.6 — and the way OUT, in the same menu as the ways in. The
+           coordinator's sentence is « j'importe, j'enrichis, je ressors un
+           fichier » — three items of one workflow, one menu. */
+        {
+          key: 'export',
+          label: t('export.title'),
+          icon: 'download',
+          to: '/coordinator/export',
+          testId: 'farms-export',
+        },
       ]}
     />
   )
