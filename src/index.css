@@ -704,8 +704,15 @@
    *   the pill itself moving.
    */
   .filter-pill {
+    /* ⚠️ `px-2` AND NOT `px-2.5`, AND IT IS FOUR PIXELS THAT MATTER. `bun run
+       uipass` measures the farms header at 1032 px landscape: the pill row has
+       403 px of content box there, and at 2.5 the four pills came to 406 —
+       three pixels over, so the row wrapped, the sticky top went to 300 px
+       (over U2's quarter-of-the-height rule) and two farms fell off the
+       screen. `min-width: 2.75rem` still holds the short ones open, so only
+       the long labels give the four pixels back. */
     @apply relative inline-flex shrink-0 items-center justify-center gap-1.5
-           rounded-pill border border-transparent bg-surface-high px-2.5
+           rounded-pill border border-transparent bg-surface-high px-2
            text-micro font-medium text-content-secondary
            transition-all duration-fast ease-out
            hover:text-content-primary;

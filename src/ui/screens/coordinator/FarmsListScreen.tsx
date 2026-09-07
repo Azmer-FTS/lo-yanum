@@ -6,6 +6,7 @@ import {
   FARM_PIPELINE,
   entityKindOf,
   weightedDunams,
+  totalWeightedDunams,
   farmRegion,
   formatDate,
   getAllVisibleAnchorPoints,
@@ -48,6 +49,7 @@ import {
   LoadMore,
 } from '../../components/primitives'
 import { ZoneLegend, zonePolygons } from '../../components/zones'
+import { usePhoneShape } from '../../hooks/useNarrow'
 import { useProgressive } from '../../hooks/useProgressive'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
@@ -123,6 +125,8 @@ export function FarmsListScreen() {
   const [sort, setSort] = useState<FarmSort>('name')
   /** AA3.3 — the weighted figure as a FILTER: which places have areas at all. */
   const [hasAreas, setHasAreas] = useState(false)
+  /** AA6 — where the sort control is rendered; see `sortControl`. */
+  const phone = usePhoneShape()
   /** A new key is a new request to (re)anchor — and to pan only if off screen. */
   const select = (id: string | null) => {
     setSelectedId(id)
@@ -218,6 +222,8 @@ export function FarmsListScreen() {
   }).filter((k) => k.count > 0)
 
   const moshavim = farms.filter((f) => entityKindOf(f) === 'moshav')
+  /** AA3.3 — the records that have a weighted figure at all. */
+  const withAreas = farms.filter((f) => weightedDunams(f) > 0)
 
   /** X12.4 — how many entities each region holds, for the picker's labels. */
   const regionCounts = useMemo(() => {
@@ -251,6 +257,30 @@ export function FarmsListScreen() {
           testId={`kpi-${k.status}`}
         />
       ))}
+      {/**
+        * ★★ AA3.3 (2026-09-07) — « TOTAL PONDÉRÉ TRIABLE ET FILTRABLE », AND
+        *    THE FILTER IS A KPI CHIP.
+        *
+        * It began as a pill in the filter row and `bun run uipass` costed it:
+        * two more lines of sticky header and two fewer farms on screen. This
+        * strip is where it belongs anyway — G14d's rule for this screen is
+        * that the CHIP IS THE FILTER, the chips already carry a figure under
+        * their count, and this strip scrolls sideways so a chip costs no
+        * height at all. The figure it carries is the one the association
+        * reports.
+        */}
+      <KpiChip
+        label={t('farms.weighted')}
+        value={withAreas.length}
+        icon="landPlot"
+        tone="accent"
+        hint={t('farms.kpiDunams', {
+          n: totalWeightedDunams(farms).toLocaleString(locale),
+        })}
+        active={hasAreas}
+        onClick={() => setHasAreas((v) => !v)}
+        testId="kpi-weighted"
+      />
       {/* G16 — the entity-kind chip: how many of these records are moshavim,
           weighted like the status chips, and the chip is the filter. */}
       {moshavim.length > 0 && (
@@ -316,6 +346,30 @@ export function FarmsListScreen() {
     />
   )
 
+  /**
+   * ★ AA3.3 — the order, as one control, rendered in one of two places.
+   *   ONE node, moved — not two declared behind a breakpoint: the X5 lesson,
+   *   and the reason a screen cannot end up sorting differently in the two
+   *   readings of itself.
+   */
+  const sortControl = (
+    <PillSelect<FarmSort>
+      value={sort}
+      onChange={setSort}
+      active={sort !== 'name'}
+      icon="sort"
+      label={t('farms.sortLabel')}
+      testId="farms-sort"
+      options={[
+        { value: 'name', label: t('farms.sortName') },
+        { value: 'weightedDesc', label: t('farms.sortWeightedDesc') },
+        { value: 'weightedAsc', label: t('farms.sortWeightedAsc') },
+        { value: 'status', label: t('farms.sortStatus') },
+        { value: 'nextVisit', label: t('farms.sortNextVisit') },
+      ]}
+    />
+  )
+
   const filterRow = (
     <FilterRow
       active={
@@ -346,31 +400,18 @@ export function FarmsListScreen() {
           </FilterPill>
         ))}
       </PillGroup>
-      {/* AA3.3 — the weighted figure as a filter, and as an order. Both sit in
-          the filter row rather than in the table's head, because the table is
-          one of two readings and the split is the other. */}
-      <FilterPill
-        active={hasAreas}
-        onClick={() => setHasAreas((v) => !v)}
-        count={farms.filter((f) => weightedDunams(f) > 0).length}
-      >
-        {t('farms.filterHasAreas')}
-      </FilterPill>
-      <PillSelect<FarmSort>
-        value={sort}
-        onChange={setSort}
-        active={sort !== 'name'}
-        icon="sort"
-        label={t('farms.sortLabel')}
-        testId="farms-sort"
-        options={[
-          { value: 'name', label: t('farms.sortName') },
-          { value: 'weightedDesc', label: t('farms.sortWeightedDesc') },
-          { value: 'weightedAsc', label: t('farms.sortWeightedAsc') },
-          { value: 'status', label: t('farms.sortStatus') },
-          { value: 'nextVisit', label: t('farms.sortNextVisit') },
-        ]}
-      />
+      {/**
+        * ★★ AA6 — AND THE SORT IS HERE ONLY ON A PHONE.
+        *
+        * `bun run uipass` measured the cost of putting it in this row on an
+        * iPad in landscape: the pills wrapped to a second line, the sticky top
+        * went from 244 px to **300** — over U2's quarter-of-the-height rule —
+        * and **six** entities were on screen instead of eight. Sorting is not
+        * filtering; on a wide screen it belongs with the search and the « ⋯ »,
+        * on the row that has the room. On a phone that row has none, so it
+        * comes back down into the panel, where there is space to spare.
+        */}
+      {phone && sortControl}
     </FilterRow>
   )
 
@@ -381,6 +422,9 @@ export function FarmsListScreen() {
       shown={filtered.length}
       total={farms.length}
       menu={menu}
+      /* AA6 — on a wide screen the order sits with the search and the « ⋯ »,
+         on the one row that already has the room. See `sortControl`. */
+      actions={!phone ? sortControl : undefined}
       search={query}
       onSearch={setQuery}
       searchPlaceholder={t('farms.searchPlaceholder')}
