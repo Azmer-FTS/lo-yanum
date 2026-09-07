@@ -128,6 +128,27 @@ interface BreakpointClasses {
   pill: string
 }
 
+/**
+ * ★★ Z1bis (2026-09-07) — `[--shell-top:0px]` ON THE SCROLLING PANEL, AND IT
+ *    IS A CORRECTION OF MEANING RATHER THAN A NUDGE.
+ *
+ * `--shell-top` answers "how far below the top of the DEVICE anything pinned
+ * has to start", and the pinned top of every list wears it as its `top`. That
+ * is right when the thing scrolling is the page, because the shell's own
+ * header is pinned up there too. In `contentPanel` the thing scrolling is this
+ * column: its own top edge is already below the header, and a sticky child
+ * with `top: 62px` therefore pins 62 px INSIDE the list before anything has
+ * been scrolled — sitting on the first card rather than above it.
+ *
+ * Measured on the deployed demo at 402 px, farms in split: the pinned top's
+ * bottom at 735 px with the first row's top at 672 — sixty-three pixels of the
+ * first farm behind an opaque header, at rest. Visible on the capture; A58
+ * could not see it, because it hit-tests inside the header and an opaque
+ * header answers "me" whatever is behind it.
+ *
+ * Declaring it on the SCROLLPORT rather than on the sticky element is what
+ * makes it true for anything else that ever pins itself in this column.
+ */
 const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
   lg: {
     shellPanel:
@@ -135,7 +156,7 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
     shellPage:
       'flex flex-col lg:flex-row-reverse lg:items-start lg:pt-[var(--shell-top)] lg:rtl:flex-row',
     contentPanel:
-      'order-2 min-w-0 flex-1 overflow-y-auto px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 lg:order-none',
+      'order-2 min-w-0 flex-1 overflow-y-auto [--shell-top:0px] px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 lg:order-none',
     contentPage: 'order-2 min-w-0 flex-1 px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 lg:order-none',
     contentHidden: 'lg:w-full lg:px-5 lg:[--content-pad:1.25rem]',
     contentSplit: 'lg:w-[var(--content-w)] lg:flex-none lg:px-5 lg:[--content-pad:1.25rem]',
@@ -156,7 +177,7 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
     shellPage:
       'flex flex-col lg:pt-[var(--shell-top)] xl:flex-row-reverse xl:items-start xl:rtl:flex-row',
     contentPanel:
-      'order-2 min-w-0 flex-1 overflow-y-auto px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 xl:order-none',
+      'order-2 min-w-0 flex-1 overflow-y-auto [--shell-top:0px] px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 xl:order-none',
     contentPage: 'order-2 min-w-0 flex-1 px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 xl:order-none',
     contentHidden: 'xl:w-full xl:px-5 xl:[--content-pad:1.25rem]',
     contentSplit: 'xl:w-[var(--content-w)] xl:flex-none xl:px-5 xl:[--content-pad:1.25rem]',

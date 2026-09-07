@@ -576,7 +576,7 @@ export function RoutePlannerScreen() {
                         </span>
                       )}
                     </span>
-                    <span className="flex min-w-0 flex-col gap-0.5 px-3 py-2">
+                    <span data-pick-label="" className="flex min-w-0 flex-col gap-0.5 px-3 py-2">
                       <span className="flex min-w-0 items-center gap-1.5">
                         <FarmStatusDot status={farm.status} />
                         <span

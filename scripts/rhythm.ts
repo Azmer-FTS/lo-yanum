@@ -591,6 +591,89 @@ const FADES = `((phase) => {
   return out;
 })`
 
+/**
+ * ★★ Z1bis (2026-09-07) — WHAT IS BEHIND THE PINNED TOP WHILE NOTHING HAS
+ *    BEEN SCROLLED.
+ *
+ * ⚠️ AND IT CANNOT BE ASKED WITH `elementFromPoint`, WHICH IS THE WHOLE
+ *    REASON A58 NEVER SAW THIS. A58's probe hit-tests inside the header's own
+ *    rectangle, and the header is OPAQUE and on top — so the browser answers
+ *    "the header", every time, whether there is a card under it or nothing at
+ *    all. Two rectangles is the only question that can be asked here.
+ *
+ * At rest a pinned header sits at its own place in the flow and covers
+ * nothing. If it covers something, its `top` offset is larger than the room
+ * its scrollport gives it — which is exactly what `top: var(--shell-top)`
+ * does inside a panel that is not the page.
+ */
+const BEHIND_STICKY = `(() => {
+  const out = [];
+  document.querySelectorAll('[data-list-top], header[class*="sticky"], .sticky-top').forEach((bar) => {
+    const r = bar.getBoundingClientRect();
+    if (r.height < 8 || r.width < 8) return;
+    const covered = [];
+    document.querySelectorAll('[data-tile], [data-row], .card, .roster, article, li').forEach((item) => {
+      if (bar.contains(item) || item.contains(bar)) return;
+      const ir = item.getBoundingClientRect();
+      if (ir.height < 6 || ir.width < 6) return;
+      const overlapY = Math.min(ir.bottom, r.bottom) - Math.max(ir.top, r.top);
+      const overlapX = Math.min(ir.right, r.right) - Math.max(ir.left, r.left);
+      if (overlapY > 2 && overlapX > 2) {
+        covered.push(item.tagName + '.' + String(item.className).slice(0, 24) + ' by ' + Math.round(overlapY) + 'px');
+      }
+    });
+    out.push({
+      what: bar.getAttribute('data-testid') || bar.tagName,
+      top: Math.round(r.top),
+      covered: covered.slice(0, 3),
+      count: covered.length,
+    });
+  });
+  return out;
+})()`
+
+/**
+ * ★★ Z2 (2026-09-07) — A61. "בחירת חוות" BREATHES.
+ *
+ * "C'est la catastrophe, super collé en bas, les filtres sont collés aux
+ *  vignettes des fermes et les fermes sont très collées les unes aux autres —
+ *  même en plein écran."
+ *
+ * Three numbers, and all three were measured on the product owner's own
+ * device before anything moved: a **6 px** gutter between cards 121 px wide,
+ * a label block with 8 px at the sides and 6 px top and bottom, and — the one
+ * that makes "même en plein écran" true — `auto-fill` at a 7.5 rem minimum,
+ * which adds a column the instant another minimum fits and therefore pins
+ * every card at its smallest whatever the panel's width.
+ */
+const PICKER = `(() => {
+  const ul = document.querySelector('[data-testid="route-picker"]');
+  if (!ul) return null;
+  const cs = getComputedStyle(ul);
+  const items = Array.from(ul.children);
+  if (!items.length) return null;
+  const first = items[0];
+  const card = first.querySelector('[data-testid="route-pick"]') || first;
+  /* ⚠️ BY A MARKER, NOT BY POSITION. A last-child selector matched a nested
+     span with no padding of its own and reported 0/0 — a check that fails a
+     correct layout, which is the same class of mistake as one that passes a
+     broken one. */
+  const label = card.querySelector('[data-pick-label]');
+  const lcs = label ? getComputedStyle(label) : null;
+  const rows = new Set(items.map((i) => Math.round(i.getBoundingClientRect().top)));
+  const cols = new Set(items.map((i) => Math.round(i.getBoundingClientRect().left)));
+  return {
+    gapRow: Math.round(parseFloat(cs.rowGap) || 0),
+    gapCol: Math.round(parseFloat(cs.columnGap) || 0),
+    cardW: Math.round(card.getBoundingClientRect().width),
+    padX: lcs ? Math.round(parseFloat(lcs.paddingLeft)) : 0,
+    padY: lcs ? Math.round(parseFloat(lcs.paddingTop)) : 0,
+    rows: rows.size,
+    cols: cols.size,
+    width: Math.round(ul.getBoundingClientRect().width),
+  };
+})()`
+
 /** A59 — a floating panel that covers a piece of content. */
 const FLOATERS = `(() => {
   const out = [];
@@ -719,6 +802,65 @@ try {
          * heads sat flat on the pills. Franc: at least 12 px. Identique:
          * within 4 px of the 16 the two gaps above it already keep.
          */
+        /**
+         * ★★ Z1bis (2026-09-07) — AND NOTHING IS HIDDEN BEHIND THE PINNED TOP
+         *    WHILE NOTHING HAS BEEN SCROLLED.
+         *
+         * A58 above asks this question after a 700 px scroll, where a card
+         * under the header is what a sticky header is FOR. Asked at rest it is
+         * a different claim, and it was false: on a phone in split mode the
+         * pinned top sat 62 px INSIDE the list and covered the first farm.
+         * Found on a capture of the deployed page, not by a gate — the fade
+         * lesson of Y1, again.
+         */
+        const atRest = (await page.evaluate(BEHIND_STICKY)) as {
+          what: string
+          top: number
+          covered: string[]
+          count: number
+        }[]
+        const hiding = atRest.filter((b) => b.count > 0)
+        check(
+          `A60 · ${screen.name}: at rest, the pinned top covers no content`,
+          hiding.length === 0,
+          hiding.map((b) => `${b.what} hides ${b.covered.join(', ')}`).join(' — ') ||
+            `${atRest.length} bars, nothing behind them`,
+        )
+
+        // ---------------------------------------------------------------- A61
+        if (screen.key === 'route') {
+          const picker = (await page.evaluate(PICKER)) as {
+            gapRow: number
+            gapCol: number
+            cardW: number
+            padX: number
+            padY: number
+            rows: number
+            cols: number
+            width: number
+          } | null
+          if (picker) {
+            check(
+              `A61 · ${mode}: a frank gutter between the farm cards, both ways`,
+              picker.gapRow >= 10 && picker.gapCol >= 10,
+              `${picker.gapCol}px across, ${picker.gapRow}px down`,
+            )
+            check(
+              `A61 · ${mode}: the name and the place do not touch the card's edges`,
+              picker.padX >= 10 && picker.padY >= 7,
+              `${picker.padX}px at the sides, ${picker.padY}px top and bottom`,
+            )
+            /* "La grille s'élargit au lieu de se tasser": with a 12 px gutter
+               and an 8.5 rem minimum, a full-screen panel draws cards larger
+               than the minimum rather than one more column of the smallest. */
+            check(
+              `A61 · ${mode}: the cards are comfortable, not squeezed to the minimum`,
+              picker.cardW >= 132,
+              `${picker.cardW}px wide, ${picker.cols} columns over ${picker.width}px`,
+            )
+          }
+        }
+
         const filterRows = (await page.evaluate(FILTER_GAP)) as {
           what: string
           gap: number | null

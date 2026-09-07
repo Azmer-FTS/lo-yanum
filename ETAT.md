@@ -1,7 +1,179 @@
 # לא ינום — ETAT
 
-> 🏁 **PASSE FOND DE CARTE, ZONES, RESPIRATION ET BUGS — Y1→Y11 COMPLÈTE,
-> 2026-09-06. LIRE EN PREMIER.**
+> 🏁 **PASSE FINITION — Z1→Z9 COMPLÈTE, 2026-09-07. LIRE EN PREMIER.**
+>
+> Neuf unités, quatre commits, poussées et **déployées sur les deux URLs**.
+> C'était la dernière passe cosmétique ; après elle vient le module documents.
+>
+> ## Les quatre défauts qui avaient une cause nommable
+>
+> **Z1 — « ça respire en haut, ça ne respire pas en bas » ÉTAIT UNE
+> SOUSTRACTION APPLIQUÉE DEUX FOIS.** Mesuré sur l'iPad à 1032 px avant de
+> toucher quoi que ce soit : titre→KPI **16 px**, KPI→filtres **16 px**,
+> filtres→contenu **4 px** en splitté et **0 px** en vue tableau, où les
+> en-têtes de colonnes étaient posés à plat sur les pastilles. Le padding bas
+> de l'en-tête épinglé valait `--list-rhythm − --row-shadow-room` — ce qui se
+> lit comme « reprendre la place que la rangée réserve à son ombre », sauf que
+> `.scroll-row` la reprend DÉJÀ elle-même (`padding-block: .75rem` annulé par
+> `margin-block: -.75rem`). La soustraction était faite deux fois et 16
+> devenait 4.
+>
+> Et `FilterRow` portait TROIS marges, une par forme (`mb-2`, `mb-4`, `mb-2`),
+> donc l'espace sous les filtres dépendait de la largeur du panneau et de
+> l'écran : 12 px sur חוות, 4 px sur נהגים, pour la même rangée au même
+> endroit. Elle n'en porte plus aucune ; `.filters-gap` la paie ailleurs, et
+> **moitié en padding** — un `::after` de hauteur nulle ne suffit PAS, une
+> boîte vide est auto-collapsante et les marges passent au travers (remesuré à
+> 4 px avec le garde en place).
+>
+> **⚠️ Z1bis — ET LE PIRE N'ÉTAIT PAS DANS LES GATES : SUR TÉLÉPHONE,
+> L'EN-TÊTE ÉPINGLÉ COUVRAIT LA PREMIÈRE FERME.** Trouvé sur une CAPTURE de
+> l'URL déployée, pas par une porte. `--shell-top` répond à « à quelle hauteur
+> sous le haut de l'APPAREIL doit commencer ce qui est épinglé », et l'en-tête
+> de chaque liste le porte comme `top`. C'est juste quand ce qui défile est la
+> page ; dans le panneau de contenu, ce qui défile est la colonne, dont le bord
+> haut est déjà sous l'en-tête de coque — donc un enfant `sticky` avec
+> `top: 62px` s'épingle 62 px À L'INTÉRIEUR de la liste avant tout défilement.
+> Mesuré sur le déployé à 402 px, חוות en splitté : bas de l'en-tête à 735 px,
+> haut de la première rangée à **672** — soixante-trois pixels de la première
+> ferme derrière un en-tête opaque, au repos.
+>
+> ⚠️ **Et A58 ne pouvait pas le voir**, ce qui est la leçon à retenir : elle
+> teste par `elementFromPoint` À L'INTÉRIEUR du rectangle de l'en-tête, et un
+> en-tête OPAQUE répond « moi » quoi qu'il y ait derrière. La seule question
+> possible ici est celle de deux rectangles. La nouvelle vérification A60 « au
+> repos » est géométrique pour cette raison.
+>
+> **Z3 — LE COMPTEUR ÉTAIT UN `ReactNode`, ET LES CINQ ÉCRANS Y METTAIENT
+> TROIS PHRASES DIFFÉRENTES** (« מוצגים X מתוך Y », « N שמירות », « N אירועים »),
+> donc aucun composant ne pouvait le raccourcir. Il prend les deux NOMBRES
+> maintenant et décide : « 14/14 », la phrase longue seulement en tableau
+> pleine page. Et נהגים מתנדבים affichait neuf **trois fois** : la vignette KPI
+> « סה"כ נהגים » — la seule vignette « total » de l'app, les autres comptent par
+> statut ou par attribut — la pastille « 9 נהגים », et le compteur. Les deux
+> premières partent.
+>
+> **Z4 — LE DÉGRADÉ ÉTAIT DU MAUVAIS CÔTÉ, DANS LES DEUX SENS D'ÉCRITURE, ET
+> IL L'AVAIT TOUJOURS ÉTÉ.** `linear-gradient(to left, transparent 0, …)` : le
+> premier arrêt est au DÉBUT de la ligne du dégradé, donc « to left » est
+> transparent à DROITE. Capturé sur la rangée KPI du tableau de bord :
+> `scrollLeft` à 0, **352 px** de contenu encore à gauche, et le fondu peint à
+> droite. C'est tout le « des fois ça marche, des fois non » — ça n'a jamais
+> marché, et l'œil lit un fondu à côté d'une coupe nette comme arbitraire.
+> Le masque quitte aussi le scroller (Safari le lâche pendant une inertie) pour
+> `.scroll-veil`, une boîte immobile de la taille exacte de la rangée. Et un
+> chevron cliquable, du côté qui a du contenu, qui avance d'une carte.
+>
+> **Z5.1 — LA POIGNÉE DU SPLIT A ÉTÉ RETOURNÉE PAR UNE PORTE QUI PARLAIT
+> D'AUTRE CHOSE.** `git show c7882dd` : Y9 a changé UNE classe,
+> `rounded-l-card` → `rounded-s-card`, dans un lot qui nettoyait quatre
+> avertissements A28. `bun run tokens` lit un côté PHYSIQUE comme une violation
+> de « une seule échelle de rayons » ; la classe logique compile, l'avertissement
+> disparaît, et le défaut revient **quatre commits** après avoir été corrigé par
+> Y3.1. A28 parle de TAILLES ; le côté sur lequel cette languette est carrée est
+> un fait de mise en page d'une rangée inversée selon la direction, et il ne
+> peut pas être logique. L'exception est nommée dans la porte, avec sa raison
+> imprimée.
+>
+> **Z5.2 — LA DÉTECTION DU THÈME N'A JAMAIS ÉTÉ EN CAUSE.** Mesuré sur les deux
+> moteurs, choix « selon l'appareil » : contexte sombre → `--surface-base`
+> `11 17 25`, clair → `243 244 246`, et basculer la préférence de l'OS sous une
+> page ouverte la déplace en direct. `prefers-color-scheme` marche. Ce qui ne
+> marchait pas : le défaut du coordinateur était le littéral `light`, donc un
+> iPad en mode sombre ouvrant l'app pour la première fois obtenait du clair sans
+> que personne n'ait posé la question. Le défaut est l'appareil.
+>
+> **Z5.3 — LA SYNCHRO ÉTAIT DÉJÀ VIVANTE ; ELLE REMETTAIT LE DÉFAUT.** Rejoué
+> avant correctif : חוות sur `hidden`, סנכרון pressé, חוות rouvert — la carte
+> revient, sans rechargement. Mais la portée partagée `__all__` n'avait jamais
+> été écrite, donc « synchronisé » voulait dire « oublie ta disposition et
+> prends celle d'usine », sur tous les écrans à la fois. Activer la synchro
+> SÈME maintenant la portée partagée à partir du dernier écran de carte utilisé.
+>
+> ## Les portes
+>
+> | Gate | Portée | Résultat |
+> |---|---|---|
+> | `rhythm` | **étendu** (Z1·Z2·Z3·Z4) — 8 écrans × 3 largeurs × 2 modes, + A60 au repos, A61, A62, A63, A64 aux 4 phases | **616/616** chromium, **615/615** webkit |
+> | `settings` | **étendu** (Z5·Z6) — A65 poignée, A66 thème appareil, A67 synchro, A68 région plein écran, A69 rôle replié | **36/36**, chromium ET webkit |
+> | `demo` | **étendu** (Z7) — A70, et le cache local avec | **13/13** sur l'URL déployée |
+> | `layout` | 32 écrans × 3 ratios, 402 px ET 390 px | 0 débordement, 0 recouvrement épinglé |
+> | `reserve` · `band` · `rows` · `blocks` · `modes` · `seam` | réserve du bas, bandeaux, tableaux, blocs, modes, couture | 56 · 60 · 87 · 36 · 75 · 7 |
+> | `touch` · `freehand` · `wizard` · `import` · `rtl` | stylet, Apple Pencil, garde de bout en bout, xlsx | 57 · 30 · 28 · 29 · 45 |
+> | `overlap` · `redraw` · `backdrop` · `vector` · `zones` | contrôles de carte, redessin, fond, archive, zones | 185 · 18 · 36 · 34 · 38 |
+> | `report` · `deletion` · `persist` · `mapping` · `sync` · `accept` | PDF, suppression, store, mapper, hors-ligne, domaine | 86 · 61 · 94 · 33 · 34 · 176 |
+> | `regions` · `dispatch` · `fixedhours` · `agreement` · `empty` · `mapfirst` · `outreach` | | 58 · 27 · 19 · 18 · 10 écrans · 27 · 25 |
+> | `tokens` · `contrast` · `parse` · `splitter` | A28/A29/A57, WCAG AA, 57 scripts, couture | tous verts · 72 |
+>
+> ## Les tests vus ROUGES avant correctif
+>
+> - **A60** (espace sous les filtres) : 7 des 10 lectures iPad — 4 px en
+>   splitté, **0 px** en vue tableau.
+> - **A60 au repos** (rien derrière l'en-tête épinglé) : חוות, שמירות et
+>   אירועים à 402 px — « hides LI. by 64px ».
+> - **A61** (le libellé des vignettes) : 0 px de padding, parce que la première
+>   version de la sonde visait `span:last-child` et attrapait un span imbriqué.
+> - **A62** : נהגים, « aussi en 9 ».
+> - **A64** : toutes les rangées défilantes, aux quatre phases.
+> - **A65** : rayons `l 0/0, r 14/14` — la languette arrondie contre la barre.
+> - **A67** : « les autres lisent split, split, split ».
+> - **`layout`** : le disque de rôle sur la barre d'actions du wizard, aux
+>   quatre étapes, à 402 px.
+> - **`reserve`** : agenda à 402 px, révélé par les 62 px que Z6 a rendus.
+> - **`touch` et `demo`** : trois vérifications passées à NaN/NaN parce
+>   qu'elles lisaient la PHRASE du compteur que Z3 venait de raccourcir.
+>
+> ## Ce qui reste, et ce qui est délibéré
+>
+> - **Les rôles de terrain gardent le thème sombre par défaut** (Z5.2). Un
+>   écran clair à 21 h dans le désert ruine la vision nocturne et signale une
+>   position : c'est une sécurité, pas un goût. Ils peuvent choisir « לפי
+>   המכשיר » — le sélecteur est dans leur shell, et le PO l'a validé.
+> - **Les données de démonstration n'ont pas été retouchées** (Z7.1), à la
+>   demande explicite du PO. Les vignettes sans photo montrent le repli
+>   d'`Avatar`.
+> - **La bascule de rôle reste une barre sur tablette et desktop** (Z6.2).
+> - **`scripts/` n'est pas typechecké.** Inchangé ; `bun run parse` couvre la
+>   classe d'erreur qui a fait échouer un déploiement.
+> - ⚠️ **Le piège des sondes reste entier** : elles sont des template literals,
+>   donc un antislash-s y devient un `s` et un accent grave dans un COMMENTAIRE
+>   tue le fichier. Trois fois cette passe.
+>
+> ## À re-tester par le PO — 7 points
+>
+> 1. **Le haut de chaque liste, sur l'iPhone.** La première fiche ne doit plus
+>    être à moitié derrière l'en-tête, et l'espace au-dessus et en dessous de
+>    la rangée de filtres doit être le même.
+> 2. **בחירת חוות**, en plein écran et en splitté : gouttière entre les
+>    vignettes, nom et lieu qui ne touchent pas les bords.
+> 3. **Le compteur** : « 14/14 » partout, la phrase longue seulement en tableau
+>    pleine page, et une seule fois par écran — נהגים מתנדבים en particulier.
+> 4. **Les rangées défilantes** : le fondu et le chevron doivent être du côté
+>    où il reste du contenu, pendant le défilement comme à l'arrêt, et
+>    disparaître au bout. Le chevron avance d'une carte.
+> 5. **הגדרות → תצוגה** : mettre l'iPad en sombre, ouvrir l'app sans rien
+>    régler — elle doit être sombre. Puis basculer l'iPad en clair app ouverte.
+> 6. **La poignée du split** : la languette doit être carrée contre la barre et
+>    arrondie du côté de la carte, comme avant.
+> 7. **Sur smartphone** : le disque en bas à droite ouvre la bascule de rôle, et
+>    le bas de l'écran est rendu à l'app.
+>
+> **Les deux URLs, même commit, même CSS (`index-CSz1r8Rb.css` sur les deux) :**
+> - L'app réelle : https://azmer-fts.github.io/lo-yanum/
+> - Le jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
+>
+> Captures de l'URL déployée, clair ET sombre, iPad portrait, iPad paysage et
+> iPhone : `docs/screenshots/zpass/` (78 images).
+> Pour reprendre : `git pull && bun install && bun run dev`, puis
+> `bun run parse`, `bun run rhythm`, `bun run settings`, `bun run demo`,
+> `ENGINE=webkit bun run rhythm`, et
+> `VIEWPORT=all BASE_URL=http://localhost:5173 bun run layout`.
+
+---
+
+> 🏁 **PASSE FOND DE CARTE, ZONES, RESPIRATION ET BUGS — Y1→Y11, 2026-09-06.**
+> (Note précédente, conservée. La table des gates courante est en tête de
+> fichier.)
 >
 > Onze unités, dix commits, poussées et vérifiées sur l'URL servie. Les deux
 > bloquants sont traités en premier comme demandé, et dans les deux cas la
