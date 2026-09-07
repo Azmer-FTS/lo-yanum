@@ -26,7 +26,7 @@ import {
   KpiChip,
   ListTop,
   LoadMore,
-  ScrollRow,
+  FilterRow,
 } from '../../components/primitives'
 import { PeopleMap } from '../../components/PeopleMap'
 import { MapSplit } from '../../components/MapSplit'
@@ -175,7 +175,8 @@ export function DriversScreen() {
             {t('driver.volunteerDrivers')}
           </span>
         }
-        count={t('common.showingOf', { shown: filtered.length, total: drivers.length })}
+        shown={filtered.length}
+        total={drivers.length}
         menu={
           /* X2 — the import link is a row in the "⋯", like every other
              screen's own action. */
@@ -198,13 +199,22 @@ export function DriversScreen() {
         kpis={
           <>
 
-          <KpiChip
-            label={t('driver.statsTotal')}
-            value={stats.total}
-            icon="steering"
-            active={!anyFilter}
-            onClick={clearFilters}
-          />
+          {/**
+            * ★★ Z3.3 (2026-09-07) — THE HEAD COUNT WAS ON THIS SCREEN THREE
+            *    TIMES, AND TWO OF THEM WERE THIS ONE AND THE PILL BELOW.
+            *
+            * "נהגים מתנדבים affiche le nombre de conducteurs TROIS fois
+            *  (vignette KPI סה\"כ נהגים 9, pastille 9 נהגים, et le compteur
+            *  9 מתוך 9). Un seul reste."
+            *
+            * The counter is the one that stays: Z3.1 makes it the short
+            * "9/9", it says both numbers rather than one, and every other
+            * roster has it. This chip was also the only "total" chip in the
+            * app — חוות and מתנדבים count by status and by attribute, never
+            * the whole — so removing it is what makes the four rosters read
+            * the same. What it did BESIDES saying nine, clearing the filters,
+            * the ניקוי pill in the row below already does and says.
+            */}
           <KpiChip
             label={t('driver.statsSeats')}
             value={stats.totalSeats}
@@ -232,37 +242,39 @@ export function DriversScreen() {
           </>
         }
         filters={
-          <ScrollRow className="items-center">
+          /**
+           * ★★ Z3 (2026-09-07) — THE SAME ROW COMPONENT AS EVERY OTHER SCREEN.
+           *
+           * It was a bare `ScrollRow` with its own clear button, which is why
+           * this screen never got Y7.3's drop-down at narrow widths and why
+           * the counter had nowhere to go. `FilterRow` owns the clearing, the
+           * two shapes and — since Z3 — the counter's place in both of them.
+           * The "9 נהגים" paragraph that stood here is the third copy of the
+           * number; it is gone.
+           */
+          <FilterRow
+            nowrap
+            active={anyFilter}
+            onClear={clearFilters}
+          >
             <RegionFilter
               value={region}
               onChange={setRegion}
               counts={regionCounts}
               testId="drivers-region"
             />
-<p className="muted">{t('driver.count', { count: filtered.length })}</p>
-          {/* P0.2 — the tapped bubble reads back as a removable pill. */}
-          {locality !== null && (
-            <button
-              type="button"
-              onClick={() => setLocality(null)}
-              className="filter-pill filter-pill-active"
-            >
-              <Icon name="pin" size={11} />
-              {locality}
-            </button>
-          )}
-          {anyFilter && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="filter-pill border-edge-strong text-content-primary hover:border-status-danger"
-            >
-              <Icon name="close" size={11} />
-              {t('common.clear')}
-            </button>
-          )}
-        
-          </ScrollRow>
+            {/* P0.2 — the tapped bubble reads back as a removable pill. */}
+            {locality !== null && (
+              <button
+                type="button"
+                onClick={() => setLocality(null)}
+                className="filter-pill filter-pill-active"
+              >
+                <Icon name="pin" size={11} />
+                {locality}
+              </button>
+            )}
+          </FilterRow>
         }
       >
         {/* ★★ Y4 — the column headers belong to the table, so they are drawn

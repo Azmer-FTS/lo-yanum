@@ -150,7 +150,11 @@ export function MissionsScreen() {
       <ListTop
         testId="missions-top"
         title={t('missions.title')}
-        count={t('missions.count', { count: list.length })}
+        /* Z3 — the same two numbers as every other roster, said the same way.
+           It used to print "N שמירות": a third sentence for one idea, and one
+           the component that draws it could not shorten. */
+        shown={list.length}
+        total={byTab[tab].length}
         filters={
           /* D7.3 — the upcoming/past switch and the status filter share one
              row. Status counts are computed against the ACTIVE tab, so a

@@ -134,7 +134,8 @@ export function IncidentsScreen() {
       <ListTop
         testId="incidents-top"
         title={t('incidents.title')}
-        count={t('incidents.count', { count: filtered.length })}
+        shown={filtered.length}
+        total={views.length}
         filters={
           /* D7.3 — one row, every pill counted. The twelve per-farm pills are
              gone: they were longer than the list they filtered, and clicking

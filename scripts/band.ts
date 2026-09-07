@@ -218,7 +218,19 @@ try {
             })
             .map((el) => {
               const r = el.getBoundingClientRect()
-              const host = el.parentElement as HTMLElement
+              /* ⚠️ Z4 (2026-09-07) — PAST THE VEIL. The row's bleed moved up
+                 to `.scroll-veil` (the box the edge fade is painted on has to
+                 have the row's exact extent), so the row's direct parent is
+                 now the very box it used to bleed out of and this check would
+                 measure 0 against 0 for ever. The host is the first ancestor
+                 that is not part of the scroller's own plumbing. */
+              let host = el.parentElement as HTMLElement
+              while (
+                host &&
+                (host.classList.contains('scroll-veil') || host.classList.contains('scroll-nav'))
+              ) {
+                host = host.parentElement as HTMLElement
+              }
               const hr = host.getBoundingClientRect()
               const cs = getComputedStyle(el)
               const padStart = parseFloat(cs.paddingInlineStart) || 0

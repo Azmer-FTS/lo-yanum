@@ -95,6 +95,8 @@
     "expandAll": "פתיחת הכול",
     "collapseAll": "סגירת הכול",
     "showingOf": "מוצגים {{shown}} מתוך {{total}}",
+    "scrollBack": "הצגת הקודמים",
+    "scrollForward": "הצגת הבאים",
     "actions": "פעולות",
     "durationHm": "{{h}} שעות {{m}} דקות",
     "durationH": "{{h}} שעות",

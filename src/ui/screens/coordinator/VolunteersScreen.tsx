@@ -33,7 +33,7 @@ import {
   ListTop,
   LoadMore,
   Modal,
-  ScrollRow,
+  FilterRow,
 } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useProgressive } from '../../hooks/useProgressive'
@@ -337,10 +337,8 @@ export function VolunteersScreen() {
       <ListTop
         testId="volunteers-top"
         title={t('volunteers.title')}
-        count={t('common.showingOf', {
-          shown: filtered.length,
-          total: volunteers.length,
-        })}
+        shown={filtered.length}
+        total={volunteers.length}
         menu={
           <OverflowMenu
             testId="volunteers-menu"
@@ -421,45 +419,38 @@ export function VolunteersScreen() {
           </>
         }
         filters={
-          <ScrollRow className="items-center">
+          /* Z3 — `FilterRow` like every other roster: it owns the clearing,
+             the drop-down shape at narrow widths that this screen never had,
+             and the counter's place in both shapes. */
+          <FilterRow nowrap active={anyFilter} onClear={clearFilters}>
             <RegionFilter
               value={region}
               onChange={setRegion}
               counts={regionCounts}
               testId="volunteers-region"
             />
-          {/* G14d — only the yeshiva pills remain: they have no KPI card. The
-              status and phone pills were the cards' redundant twins. */}
-          {yeshivot.map((y) => (
-            <FilterPill
-              key={y}
-              active={yeshiva === y}
-              onClick={() => setYeshiva(yeshiva === y ? null : y)}
-              count={stats.byYeshiva.find((b) => b.yeshiva === y)?.count}
-            >
-              {y}
-            </FilterPill>
-          ))}
-          {/* P0.2 — the tapped bubble reads back as a removable pill, so a
-              filter set on the map is visible once the map has scrolled off. */}
-          {locality !== null && (
-            <FilterPill active onClick={() => setLocality(null)}>
-              <Icon name="pin" size={11} />
-              {locality}
-            </FilterPill>
-          )}
-          {anyFilter && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="filter-pill border-edge-strong text-content-primary hover:border-status-danger"
-            >
-              <Icon name="close" size={11} />
-              {t('common.clear')}
-            </button>
-          )}
-        
-          </ScrollRow>
+            {/* G14d — only the yeshiva pills remain: they have no KPI card.
+                The status and phone pills were the cards' redundant twins. */}
+            {yeshivot.map((y) => (
+              <FilterPill
+                key={y}
+                active={yeshiva === y}
+                onClick={() => setYeshiva(yeshiva === y ? null : y)}
+                count={stats.byYeshiva.find((b) => b.yeshiva === y)?.count}
+              >
+                {y}
+              </FilterPill>
+            ))}
+            {/* P0.2 — the tapped bubble reads back as a removable pill, so a
+                filter set on the map is visible once the map has scrolled
+                off. */}
+            {locality !== null && (
+              <FilterPill active onClick={() => setLocality(null)}>
+                <Icon name="pin" size={11} />
+                {locality}
+              </FilterPill>
+            )}
+          </FilterRow>
         }
       >
         {/* ★★ Y4 (2026-09-04) — THE COLUMN HEADERS BELONG TO THE TABLE, so they

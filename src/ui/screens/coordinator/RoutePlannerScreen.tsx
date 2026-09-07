@@ -445,6 +445,9 @@ export function RoutePlannerScreen() {
           * else. These three pills narrow WHAT IS SHOWN; the choosing stays
           * his, one card at a time.
           */}
+        {/* Z1/Z2 — the row and the grid under it are two blocks, and the
+            room between them is the app's one rhythm. */}
+        <div className="filters-gap">
         <FilterRow
           nowrap
           active={pickDay || pickStatus !== null || pickRegion !== null}
@@ -479,6 +482,7 @@ export function RoutePlannerScreen() {
             </FilterPill>
           ))}
         </FilterRow>
+        </div>
 
         {/* ★ PO POINT 5 — the empty state carries the way OUT of it: this is
             the first screen of the real app on the first morning. */}
@@ -512,9 +516,35 @@ export function RoutePlannerScreen() {
            *    without a breakpoint that would be measuring the WINDOW while
            *    the panel is what changes.
            */
+          /**
+           * ★★ Z2 (2026-09-07) — "C'EST LA CATASTROPHE, SUPER COLLE EN BAS."
+           *
+           * The product owner's worst screen, and the three complaints are
+           * three numbers, all of them measured on his own device:
+           *
+           *   · the filters sat on the grid — 4 px, and the fix is Z1's
+           *     `.filters-gap` wrapper above;
+           *   · "les fermes sont tres collees les unes aux autres" — the
+           *     gutter was **6 px** (`gap-1.5`) between cards 121 px wide on
+           *     the iPad and 131 px in full screen. Six pixels between two
+           *     photographs is not a gutter, it is a seam;
+           *   · "le nom et le lieu ne touchent pas les bords" — the label
+           *     block carried 8 px at the sides and 6 px top and bottom, and
+           *     the locality line is the one that rides the edge.
+           *
+           * ★ AND THE MINIMUM CARD GREW WITH THE GUTTER, WHICH IS Z2.4.
+           *   "En plein ecran, la grille s'elargit au lieu de se tasser: plus
+           *   de colonnes, pas des vignettes plus serrees." `auto-fill` adds a
+           *   column the instant another minimum fits, so a 7.5 rem minimum
+           *   pinned every card at 121–131 px however wide the panel got —
+           *   nine columns of the smallest card the rule allows. At 8.5 rem
+           *   with a 12 px gutter the same 1224 px panel draws eight columns
+           *   of 141 px: fewer, larger, and still more than the four a split
+           *   panel gets.
+           */
           <ul
             data-testid="route-picker"
-            className="grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(7.5rem,1fr))]"
+            className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr))]"
           >
             {pickable.map((farm) => {
               const on = selected.has(farm.id)
@@ -546,7 +576,7 @@ export function RoutePlannerScreen() {
                         </span>
                       )}
                     </span>
-                    <span className="flex min-w-0 flex-col gap-0.5 px-2 py-1.5">
+                    <span className="flex min-w-0 flex-col gap-0.5 px-3 py-2">
                       <span className="flex min-w-0 items-center gap-1.5">
                         <FarmStatusDot status={farm.status} />
                         <span

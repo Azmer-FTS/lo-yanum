@@ -63,7 +63,26 @@ const SCREENS = [
   { name: 'נהגים', key: 'drivers', hash: '#/coordinator/drivers' },
   { name: 'שמירות', key: 'missions', hash: '#/coordinator/missions' },
   { name: 'אירועים', key: 'incidents', hash: '#/coordinator/incidents' },
+  /* ★ Z1 (2026-09-07) — "de partout" means the two screens whose filter row is
+     NOT inside a `ListTop` as well: the planner's farm picker and the agenda's
+     control bar. A60 finds the row by what it IS rather than by where it
+     lives, so both join the sweep. */
+  { name: 'מסלול', key: 'route', hash: '#/coordinator/route' },
+  { name: 'יומן', key: 'agenda', hash: '#/coordinator/agenda' },
 ] as const
+
+interface FadeRow {
+  what: string
+  phase: string
+  slack: number
+  moreStart: boolean
+  moreEnd: boolean
+  fadeStart: boolean
+  fadeEnd: boolean
+  chevStart: boolean
+  chevEnd: boolean
+  attr: string | null
+}
 
 let passed = 0
 let failed = 0
@@ -231,6 +250,12 @@ const ROWS = `(() => {
     const titleStart = rtl ? tr.right : tr.left;
     out.push({
       what: row.getAttribute('data-testid') || String(row.className).split(' ')[0],
+      /* ★ Z1 — A ROW INSIDE A CARD IS ON THE CARD'S MARGIN, NOT THE PAGE'S.
+         The planner's filter row lives inside a Section, whose padding is
+         exactly the 20 px A57 reported as a defect. The claim A57 makes is
+         about rows in the content column; a row in a block of its own is
+         reported and not asserted. */
+      inCard: !!row.closest('.card, .card-pad, [data-block]'),
       overflow: row.scrollWidth - row.clientWidth > 2,
       resting: Math.round(Math.abs(row.scrollLeft)),
       fromTitle: Math.round(rtl ? titleStart - firstStart : firstStart - titleStart),
@@ -289,6 +314,283 @@ const RHYTHM = `(() => {
   };
 })()`
 
+/**
+ * ★★ Z1 (2026-09-07) — A60. THE FILTER ROW, FOUND BY WHAT IT IS.
+ *
+ * The Y6 probe above can only speak about a screen that has a `[data-list-top]`
+ * — which the planner and the agenda do not, and they are two of the nine the
+ * product owner named. This one looks for a row of filter controls anywhere on
+ * the page: the pills, the drop-down button that replaces them in a narrow
+ * panel, or the `.filters-gap` marker a screen wears when it owns its own row.
+ *
+ * The gap is measured from the row's last PAINTED descendant — a row box
+ * reaches past its pills by the room a shadow needs — to the top of the first
+ * painted thing under it, whichever comes first.
+ */
+const FILTER_GAP = `(() => {
+  const rows = [];
+  const push = (el) => { if (el && !rows.includes(el)) rows.push(el); };
+  const top = document.querySelector('[data-list-top]');
+  if (top) {
+    const inHeader = Array.from(top.querySelectorAll('.scroll-row')).filter(
+      (r) => r.getAttribute('data-testid') !== 'kpi-strip',
+    );
+    push(inHeader[inHeader.length - 1] || null);
+    const dd = top.querySelector('[data-testid="filter-dropdown"]');
+    if (dd) push(dd.parentElement);
+  }
+  document.querySelectorAll('.filters-gap').forEach(push);
+  /* A screen that owns its filter bar and gives it a background — the agenda's
+     control card — is found by the pills it holds rather than by a marker. */
+  document.querySelectorAll('.filter-pill').forEach((pill) => {
+    const holder = pill.parentElement && pill.parentElement.parentElement;
+    if (holder && !rows.some((r) => r.contains(pill))) push(holder);
+  });
+  const out = [];
+  rows.forEach((row) => {
+    const rr = row.getBoundingClientRect();
+    if (rr.height < 4 || rr.width < 4) return;
+    /* The last thing the row actually PAINTS. */
+    /* ⚠️ A ROW THAT PAINTS ITS OWN BACKGROUND ENDS AT ITS EDGE, not at its
+       last pill. The agenda's control bar is a card with 8 px of padding: read from
+       the pill inside it the gap reads 24 px and the row looks wrong, while
+       what the eye sees below the card is the 16 px this is about. Asked of
+       the computed background so a class name cannot lie about it. */
+    const bg = getComputedStyle(row).backgroundColor;
+    const alpha = /rgba?\\(([^)]+)\\)/.exec(bg);
+    const parts = alpha ? alpha[1].split(',').map((v) => parseFloat(v)) : [];
+    const painted = parts.length >= 3 && (parts.length < 4 || parts[3] > 0.05);
+    let fb = -Infinity;
+    if (painted) fb = rr.bottom;
+    else {
+      /**
+       * ⚠️ AND "THE BOTTOM OF THE ROW" IS WHERE IT LAST PAINTS SOMETHING.
+       *
+       * Counting every descendant's rectangle counts the wrappers too, and a
+       * row of pills has four of them — the bar, the nav, the veil and the
+       * scroller — each of which reaches 12 px past the pills because that is
+       * the room a card's shadow needs. Measured that way a correct 16 px gap
+       * reports as 3. So an element counts when it PAINTS: a background, a
+       * border, or text of its own. A pill has a background and stops where
+       * the eye says it stops; a wrapper has neither.
+       */
+      const paints = (el) => {
+        const cs = getComputedStyle(el);
+        if (cs.position === 'absolute' || cs.position === 'fixed') return false;
+        const bg = cs.backgroundColor || '';
+        const m = /rgba?\\(([^)]+)\\)/.exec(bg);
+        const parts = m ? m[1].split(',').map((v) => parseFloat(v)) : [];
+        if (parts.length >= 3 && (parts.length < 4 || parts[3] > 0.05)) return true;
+        if (parseFloat(cs.borderBottomWidth) > 0 || parseFloat(cs.borderTopWidth) > 0) return true;
+        if (cs.backgroundImage && cs.backgroundImage !== 'none') return true;
+        if (el.tagName === 'IMG' || el.tagName === 'SVG' || el.tagName === 'svg') return true;
+        return el.children.length === 0 && (el.textContent || '').trim() !== '';
+      };
+      const walk = (el) => {
+        Array.from(el.children).forEach((c) => {
+          const r = c.getBoundingClientRect();
+          if (r.height >= 4 && r.width >= 4 && r.bottom > fb && paints(c)) fb = r.bottom;
+          walk(c);
+        });
+      };
+      walk(row);
+      if (fb === -Infinity) fb = rr.bottom;
+    }
+    /**
+     * ★ AND THE THING BELOW IS FOUND BY LOOKING, NOT BY WALKING THE TREE.
+     *
+     * The first version of this asked the DOM: siblings, then ancestors, then
+     * every list item on the page. It reported 56 px on חוות at 402 px and
+     * 128 px on שמירות, because a virtualised roster positions its rows
+     * ABSOLUTELY inside a spacer — so the row that is visibly 16 px under the
+     * filters is not a sibling of anything, and the first one the tree walk
+     * could reach was somewhere else entirely. The claim is visual, so the
+     * question is asked visually: step down the middle of the row, pixel by
+     * pixel, and stop at the first thing that is CONTENT.
+     */
+    const xs = [rr.left + rr.width * 0.25, rr.left + rr.width * 0.5, rr.left + rr.width * 0.75];
+    let bestTop = Infinity;
+    let what = null;
+    for (let y = Math.round(fb) + 1; y <= Math.round(fb) + 60 && bestTop === Infinity; y++) {
+      for (const x of xs) {
+        const hit = document.elementFromPoint(x, y);
+        if (!hit || row.contains(hit) || hit.contains(row)) continue;
+        const item = hit.closest('[data-tile], [data-row], .card, .roster, article, li, table, img, [data-testid="route-pick"]');
+        if (!item || item.contains(row)) continue;
+        bestTop = y;
+        what = item.tagName + '.' + String(item.className).slice(0, 30);
+        break;
+      }
+    }
+    out.push({
+      what: row.getAttribute('data-testid') || String(row.className).split(' ')[0] || row.tagName,
+      gap: bestTop === Infinity ? null : Math.round(bestTop - fb),
+      next: what,
+    });
+  });
+  return out;
+})()`
+
+/**
+ * ★★ Z3 (2026-09-07) — A62 · A63. ONE COUNTER, SHORT, AND NO NUMBER TWICE.
+ *
+ *   "Le compteur devient COURT: 14/14. Version longue autorisee UNIQUEMENT en
+ *    vue tableau pleine page. Supprimer tous les doublons — נהגים מתנדבים
+ *    affiche le nombre de conducteurs TROIS fois. Un seul reste."
+ *
+ * ★ THE DUPLICATE IS FOUND BY THE NUMBER, NOT BY THE SENTENCE. Y6 counted the
+ *   string "מוצגים X מתוך Y" and reported ONE on נהגים, on a screen printing
+ *   nine three times: the KPI chip said "9", the pill said "9 נהגים" and only
+ *   the third said the sentence. So this reads every leaf of the pinned header
+ *   and asks whether the counter's own two numbers are written anywhere else
+ *   in it.
+ *
+ * ★ AND A63 IS A GEOMETRY, NOT A CLASS NAME. "LIGNE 1: compteur court + bouton
+ *   סינון, face a face. LIGNE 2: la rangee de filtres, SEULE." Two boxes are
+ *   on one line when their tops agree; the counter faces the button when one
+ *   is at the reading start of that line and the other at its end.
+ */
+const COUNTER = `(() => {
+  const top = document.querySelector('[data-list-top]');
+  if (!top) return null;
+  const pills = Array.from(top.querySelectorAll('[data-list-count]'));
+  const long = [];
+  const leaves = [];
+  top.querySelectorAll('span, p, div, li, button, h1, h2').forEach((el) => {
+    if (el.children.length) return;
+    const text = (el.textContent || '').trim();
+    if (!text) return;
+    leaves.push({
+      text: text,
+      inCount: pills.some((p) => p === el || p.contains(el)),
+      inFilterCount: !!el.closest('.filter-count'),
+    });
+    if (/מוצגים/.test(text)) long.push(text);
+  });
+  const pill = pills[0] || null;
+  const text = pill ? (pill.textContent || '').trim() : null;
+  /* ⚠️ NO REGEX HERE, AND THAT IS DELIBERATE. This probe is a TEMPLATE
+     LITERAL: a backslash-slash inside one is just a slash, so the obvious
+     /^[0-9]+\\/[0-9]+$/ arrives at the browser as an unterminated regex and
+     the whole evaluate dies with "Unexpected token". Same family as the
+     backslash-s trap Y6 documents two probes up. */
+  const halves = text ? text.split('/') : [];
+  const short = text
+    ? halves.length === 2 && halves.every((h) => h.trim() !== '' && String(Number(h.trim())) === h.trim())
+    : null;
+  let echoes = [];
+  if (text) {
+    const numbers = text.match(/[0-9]+/g) || [];
+    /* ⚠️ A FILTER'S OWN COUNT IS NOT A COPY OF THE LIST'S COUNT. "מתוכננת 4"
+       says how many that pill would show; it is about the pill, and that it
+       happens to equal the total on a four-guard week is arithmetic, not a
+       duplicate. Excluded by the class the count wears, not by its value.
+       The chip this check was written for — the drivers' total — is a KPI, and
+       KPI figures do not wear the filter-count class. */
+    leaves.forEach((leaf) => {
+      if (leaf.inCount || leaf.inFilterCount) return;
+      if (numbers.some((n) => leaf.text === n)) echoes.push(leaf.text);
+    });
+  }
+  /* A63 — the counter and the filter button, and whether they share a line. */
+  const dd = top.querySelector('[data-testid="filter-dropdown"]');
+  let face = null;
+  if (pill && dd) {
+    const a = pill.getBoundingClientRect();
+    const b = dd.getBoundingClientRect();
+    const rtl = getComputedStyle(document.documentElement).direction === 'rtl';
+    const line = Math.abs(a.top - b.top) < 10;
+    /* In RTL the reading start is the RIGHT edge. */
+    const countFirst = rtl ? a.right > b.right : a.left < b.left;
+    face = { line: line, countFirst: countFirst, apart: Math.round(Math.abs((rtl ? a.left - b.right : b.left - a.right))) };
+  }
+  /* And the filters themselves: are they on a line of their own under it. */
+  let panelAlone = null;
+  const panel = top.querySelector('[data-testid="filter-dropdown-panel"]');
+  if (panel && pill) {
+    const pr = panel.getBoundingClientRect();
+    const cr = pill.getBoundingClientRect();
+    /* ⚠️ "TOUTE LA LARGEUR" IS THE HEADER'S CONTENT BOX, NOT ITS BORDER BOX.
+       The pinned header bleeds out to the panel's own padding and puts the
+       same amount back inside (px-4 / lg:px-5), so comparing against its
+       rectangle asks the panel to be 32 px wider than the column it lives in
+       and fails a layout that is right. */
+    const cs = getComputedStyle(top);
+    const rowWidth = top.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    panelAlone = { below: pr.top >= cr.bottom - 1, full: pr.width >= rowWidth - 4 };
+  }
+  return { pills: pills.length, text: text, short: short, longCount: long.length, echoes: echoes.slice(0, 4), face: face, panelAlone: panelAlone };
+})()`
+
+/**
+ * ★★ Z4 (2026-09-07) — A64. THE FADE AND THE CHEVRON, ON THE SIDE THAT HAS
+ *    MORE, AND ON NO OTHER.
+ *
+ *   "Le degrade de bord est present DES QU'IL RESTE du contenu au-dela, de ce
+ *    cote-la. Il disparait uniquement quand on est au bout. Il ne depend
+ *    JAMAIS du fait qu'un defilement soit en cours ou non."
+ *
+ * ★ AND THE SIDE IS DERIVED FROM THE COMPUTED MASK, NOT FROM A CLASS. The bug
+ *   this replaces was a gradient pointing the right way with its stops the
+ *   wrong way round, which no selector-based check can see: `to left` puts 0 %
+ *   at the RIGHT edge, so where the transparent stop SITS is the whole
+ *   question. This reads the resolved `mask-image`, works out which physical
+ *   edge goes transparent, and compares it with the edge that actually has
+ *   more content. The first attempt at the fix failed this check, from the
+ *   other side, which is why it is written this way.
+ */
+const FADES = `((phase) => {
+  const rtl = getComputedStyle(document.documentElement).direction === 'rtl';
+  const out = [];
+  document.querySelectorAll('.scroll-nav').forEach((nav) => {
+    const row = nav.querySelector('.scroll-row, .carousel-2');
+    if (!row) return;
+    const r = row.getBoundingClientRect();
+    if (r.width < 8 || r.height < 8) return;
+    const slack = row.scrollWidth - row.clientWidth;
+    const travelled = Math.abs(row.scrollLeft);
+    const moreStart = slack > 2 && travelled > 2;
+    const moreEnd = slack > 2 && travelled < slack - 2;
+    const veil = nav.querySelector('.scroll-veil');
+    const cs = veil ? getComputedStyle(veil) : null;
+    const mask = cs ? (cs.maskImage && cs.maskImage !== 'none' ? cs.maskImage : cs.webkitMaskImage) : 'none';
+    /* Which PHYSICAL edges the mask makes transparent. */
+    let fadeLeft = false;
+    let fadeRight = false;
+    if (mask && mask !== 'none') {
+      const toLeft = mask.indexOf('to left') >= 0;
+      /* A stop list is read along the gradient line: 0 % at the far side of
+         the arrow, 100 % at the side it points to. */
+      const firstTransparent = mask.indexOf('rgba(0, 0, 0, 0) 0px') >= 0 || mask.indexOf('transparent 0px') >= 0;
+      const lastTransparent = mask.indexOf('rgba(0, 0, 0, 0) 100%') >= 0 || mask.indexOf('transparent 100%') >= 0;
+      if (toLeft) {
+        if (firstTransparent) fadeRight = true;
+        if (lastTransparent) fadeLeft = true;
+      } else {
+        if (firstTransparent) fadeLeft = true;
+        if (lastTransparent) fadeRight = true;
+      }
+    }
+    const fadeStart = rtl ? fadeRight : fadeLeft;
+    const fadeEnd = rtl ? fadeLeft : fadeRight;
+    const chevStart = !!nav.querySelector('[data-testid="scroll-nudge-start"]');
+    const chevEnd = !!nav.querySelector('[data-testid="scroll-nudge-end"]');
+    out.push({
+      what: row.getAttribute('data-testid') || String(row.className).split(' ')[0],
+      phase: phase,
+      slack: Math.round(slack),
+      moreStart: moreStart,
+      moreEnd: moreEnd,
+      fadeStart: fadeStart,
+      fadeEnd: fadeEnd,
+      chevStart: chevStart,
+      chevEnd: chevEnd,
+      attr: nav.getAttribute('data-overflow'),
+    });
+  });
+  return out;
+})`
+
 /** A59 — a floating panel that covers a piece of content. */
 const FLOATERS = `(() => {
   const out = [];
@@ -339,6 +641,7 @@ try {
         // ---------------------------------------------------------------- A57
         const rows = (await page.evaluate(ROWS)) as {
           what: string
+          inCard: boolean
           overflow: boolean
           resting: number
           fromTitle: number
@@ -346,7 +649,7 @@ try {
           fade: string | null
         }[]
         if (rows.length) {
-          const off = rows.filter((r) => Math.abs(r.fromTitle) > 2)
+          const off = rows.filter((r) => !r.inCard && Math.abs(r.fromTitle) > 2)
           check(
             `A57 · ${screen.name}: every swipable row starts on the content margin`,
             off.length === 0,
@@ -394,6 +697,42 @@ try {
         )
 
         // ------------------------------------------------------------------ Y6
+        /* ⚠️ Z1 — BACK TO THE TOP FIRST. A58 above leaves the list scrolled by
+           700 px, and A60 asks where the CONTENT begins under the filter row:
+           read at an arbitrary scroll offset it measures whichever card
+           happens to be passing, which is not a layout fact at all. The first
+           version of A60 reported 49 / 52 / 76 px in split for exactly that
+           reason. */
+        await page.evaluate(`${SCROLL}(0)`)
+        await page.waitForTimeout(350)
+
+        /**
+         * ★★ Z1 (2026-09-07) — A60. THE ROOM UNDER THE FILTER ROW IS THE ROOM
+         *    ABOVE IT.
+         *
+         * "La rangee de filtres doit avoir le MEME espace au-dessus et EN
+         *  DESSOUS. Le contenu ne commence jamais colle aux filtres."
+         *
+         * Measured on the iPad before the fix: **4 px** under the row on
+         * מתנדבים and נהגים, **12 px** on חוות (the same row, a different
+         * shape), and **0 px** in table mode on all five, where the column
+         * heads sat flat on the pills. Franc: at least 12 px. Identique:
+         * within 4 px of the 16 the two gaps above it already keep.
+         */
+        const filterRows = (await page.evaluate(FILTER_GAP)) as {
+          what: string
+          gap: number | null
+          next: string | null
+        }[]
+        for (const row of filterRows) {
+          if (row.gap === null) continue
+          check(
+            `A60 · ${screen.name}: content does not start glued to the filters (${row.what})`,
+            row.gap >= 12 && Math.abs(row.gap - 16) <= 4,
+            `${row.gap}px to ${row.next}`,
+          )
+        }
+
         const rhythm = (await page.evaluate(RHYTHM)) as {
           titleToKpis: number | null
           kpisToFilters: number | null
@@ -422,11 +761,124 @@ try {
           )
         }
 
+        // ---------------------------------------------------------------- A64
+        /**
+         * Three readings of the same rule, and the third is the one the report
+         * is really about: at rest at the start, at rest at the end, and
+         * WITHOUT WAITING after a scroll has been asked for — "il ne depend
+         * jamais du fait qu'un defilement soit en cours ou non".
+         */
+        const phases: { name: string; rows: FadeRow[] }[] = []
+        phases.push({ name: 'at rest', rows: (await page.evaluate(`${FADES}('rest')`)) as FadeRow[] })
+        await page.evaluate(`(() => {
+          document.querySelectorAll('.scroll-nav .scroll-row, .scroll-nav .carousel-2').forEach((el) => {
+            const slack = el.scrollWidth - el.clientWidth;
+            if (slack > 2) el.scrollLeft = (el.scrollLeft < 0 ? -1 : 1) * Math.round(slack / 2);
+          });
+        })()`)
+        phases.push({ name: 'mid-scroll, not settled', rows: (await page.evaluate(`${FADES}('mid')`)) as FadeRow[] })
+        await page.waitForTimeout(500)
+        phases.push({ name: 'stopped in the middle', rows: (await page.evaluate(`${FADES}('stopped')`)) as FadeRow[] })
+        await page.evaluate(`(() => {
+          document.querySelectorAll('.scroll-nav .scroll-row, .scroll-nav .carousel-2').forEach((el) => {
+            const slack = el.scrollWidth - el.clientWidth;
+            if (slack > 2) el.scrollLeft = (el.scrollLeft < 0 ? -1 : 1) * slack;
+          });
+        })()`)
+        await page.waitForTimeout(400)
+        phases.push({ name: 'at the far end', rows: (await page.evaluate(`${FADES}('end')`)) as FadeRow[] })
+
+        for (const phase of phases) {
+          const scrolling = phase.rows.filter((r) => r.slack > 2)
+          if (!scrolling.length) continue
+          const wrongFade = scrolling.filter(
+            (r) => r.fadeStart !== r.moreStart || r.fadeEnd !== r.moreEnd,
+          )
+          check(
+            `A64 · ${screen.name} (${phase.name}): the fade is on the side that has more, and only there`,
+            wrongFade.length === 0,
+            wrongFade
+              .map(
+                (r) =>
+                  `${r.what}: more[start=${r.moreStart} end=${r.moreEnd}] fade[start=${r.fadeStart} end=${r.fadeEnd}]`,
+              )
+              .join(' — ') || `${scrolling.length} rows`,
+          )
+          const wrongChevron = scrolling.filter(
+            (r) => r.chevStart !== r.moreStart || r.chevEnd !== r.moreEnd,
+          )
+          check(
+            `A64 · ${screen.name} (${phase.name}): and the chevron follows the same rule`,
+            wrongChevron.length === 0,
+            wrongChevron
+              .map(
+                (r) =>
+                  `${r.what}: more[${r.moreStart}/${r.moreEnd}] chevron[${r.chevStart}/${r.chevEnd}]`,
+              )
+              .join(' — ') || `${scrolling.length} rows`,
+          )
+        }
+        /* Back where the other checks expect to find it. */
+        await page.evaluate(`(() => {
+          document.querySelectorAll('.scroll-nav .scroll-row, .scroll-nav .carousel-2').forEach((el) => { el.scrollLeft = 0; });
+        })()`)
+        await page.waitForTimeout(300)
+
+        // ------------------------------------------------------------ A62·A63
+        const counter = (await page.evaluate(COUNTER)) as {
+          pills: number
+          text: string | null
+          short: boolean | null
+          longCount: number
+          echoes: string[]
+          face: { line: boolean; countFirst: boolean; apart: number } | null
+          panelAlone: { below: boolean; full: boolean } | null
+        } | null
+        if (counter && counter.pills > 0) {
+          check(
+            `A62 · ${screen.name}: one counter, and only one`,
+            counter.pills === 1 && counter.longCount <= 1,
+            `${counter.pills} pills, ${counter.longCount} long sentences — "${counter.text}"`,
+          )
+          /**
+           * Short everywhere the room is not there. The long sentence is
+           * allowed on a full-page table only, which is `mode === 'hidden'` on
+           * the two wide viewports; a phone is never a full page in this
+           * sense and a split panel never is either.
+           */
+          const mayBeLong = mode === 'hidden' && vp.name !== 'iphone'
+          check(
+            `A62 · ${screen.name}: the counter is short${mayBeLong ? ' or the full sentence (full-page table)' : ''}`,
+            mayBeLong ? true : counter.short === true,
+            `"${counter.text}"`,
+          )
+          check(
+            `A62 · ${screen.name}: no number of the counter is written twice in the header`,
+            counter.echoes.length === 0,
+            counter.echoes.length ? `also as ${counter.echoes.join(', ')}` : 'no echo',
+          )
+          if (counter.face) {
+            check(
+              `A63 · ${screen.name}: counter and סינון face each other on one line`,
+              counter.face.line && counter.face.countFirst,
+              `line=${counter.face.line} countFirst=${counter.face.countFirst} apart=${counter.face.apart}px`,
+            )
+          }
+        }
+
         // ---------------------------------------------------------------- A59
         const dropdown = page.locator('[data-testid="filter-dropdown"]')
         if (await dropdown.count()) {
           await dropdown.first().click()
           await page.waitForTimeout(350)
+          const alone = (await page.evaluate(COUNTER)) as { panelAlone: { below: boolean; full: boolean } | null } | null
+          if (alone && alone.panelAlone) {
+            check(
+              `A63 · ${screen.name}: the filters open on a line of their own, full width`,
+              alone.panelAlone.below && alone.panelAlone.full,
+              `below=${alone.panelAlone.below} full=${alone.panelAlone.full}`,
+            )
+          }
           const floaters = (await page.evaluate(FLOATERS)) as { what: string; hidden: number }[]
           const masking = floaters.filter((f) => f.hidden > 0)
           check(

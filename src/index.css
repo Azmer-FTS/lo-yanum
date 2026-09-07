@@ -1454,10 +1454,47 @@
   padding-block: 0.75rem;
   margin-block: -0.75rem;
   /* Room for the card's drop shadow AND for the active chip's ring, and the
-     reason the row reaches the screen's edge. */
+     reason the row reaches the screen's edge.
+     ⚠️ Z4 — THE NEGATIVE MARGIN MOVED UP TO `.scroll-veil`, which is the box
+        the fade is painted on: a mask clips to its own border box, so the veil
+        has to have exactly the row's extent or the 20 px the row bleeds out by
+        would be cut off at the screen's edge. The row is the veil's width now,
+        and the veil does the bleeding. */
   padding-inline: var(--content-pad, 2px);
-  margin-inline: calc(-1 * var(--content-pad, 2px));
   scroll-padding-inline: var(--content-pad, 2px);
+}
+
+/* ---------------------------------------------------------------------------
+   ★★ Z1 (2026-09-07) — THE ROOM UNDER A FILTER ROW, DECLARED ONCE.
+   ---------------------------------------------------------------------------
+   "La rangee de filtres doit avoir le MEME espace au-dessus et EN DESSOUS. Le
+    contenu (liste, vignettes, tableau, carte) ne commence jamais colle aux
+    filtres." — and it was true of nine screens, not one.
+
+   `FilterRow` used to carry its own `mb-2` / `mb-4`, which made the gap depend
+   on which of its three shapes the panel's width had chosen. It carries none
+   now; a filter row that is NOT inside a `ListTop` — the planner's picker, the
+   agenda's control bar — wears this class instead, and `--list-rhythm` is the
+   one value both sides of the row are measured against.
+   --------------------------------------------------------------------------- */
+/* ⚠️ AND IT IS PAID HALF IN PADDING, WHICH IS NOT A ROUNDING. A `.scroll-row`
+   pays for its shadow room with `margin-block: -0.75rem`; as the last child of
+   a plain block that negative margin COLLAPSES with the wrapper's own, and
+   16 + (−12) is 4 — the very number this class exists to replace, measured
+   again on the planner after the first version of it shipped.
+
+   ⚠️⚠️ AND A ZERO-HEIGHT `::after` DOES NOT FIX IT, which is the trap: an
+        empty block with no border and no padding is SELF-COLLAPSING, so its
+        own margins collapse through it and the parent's bottom margin still
+        meets the row's. Measured with the guard in place: 4 px again. Padding
+        cannot collapse, so the room below the row is 12 px of padding plus
+        4 px of margin — sixteen, whatever the row's own margins are.
+
+   ⚠️ It follows that `.filters-gap` must never paint a background: the padding
+      would show as a band. It is a bare wrapper, and that is all it is. */
+.filters-gap {
+  padding-bottom: var(--row-shadow-room);
+  margin-bottom: calc(var(--list-rhythm) - var(--row-shadow-room));
 }
 
 .scroll-row::-webkit-scrollbar {
@@ -1469,32 +1506,72 @@
   scroll-snap-align: start;
 }
 
-/* Y5.4 — the edge fade, on the side that has more and only when there is more.
-   `--fade` is 1.5 rem of soft edge; the mask is written in LOGICAL terms via
-   the two directions so it follows the writing direction with the row. */
-.scroll-row[data-overflow='end'],
-.carousel-2[data-overflow='end'] {
-  -webkit-mask-image: linear-gradient(to var(--fade-end, left), transparent 0, #000 1.5rem, #000 100%);
-  mask-image: linear-gradient(to var(--fade-end, left), transparent 0, #000 1.5rem, #000 100%);
+/* ---------------------------------------------------------------------------
+   ★★ Z4 (2026-09-07) — THE EDGE FADE. THREE THINGS WERE WRONG WITH IT AND ONE
+   OF THEM WAS THE SIDE.
+   ---------------------------------------------------------------------------
+   "Le fondu disparait quand je scrolle, et quand je m'arrete ca coupe net au
+    lieu de rester en fondu; des fois ca marche, des fois non."
+
+   1 ★★ IT WAS ON THE WRONG EDGE, IN BOTH WRITING DIRECTIONS. Y5.4 wrote
+       `linear-gradient(to var(--fade-end), transparent 0, ...)`, and the first
+       stop of a gradient sits at the START of its own line: a gradient drawn
+       `to left` is transparent at the RIGHT. So `data-overflow: end` — "there
+       is more towards the end" — faded the START edge, where nothing
+       continues, and left a hard cut on the side that does. Captured on the
+       dashboard's KPI row at 1032 px: `scrollLeft` 0, 352 px of content still
+       to the left, and the fade painted on the right. That is the whole of
+       "des fois ca marche, des fois non": it never matched, and the eye reads
+       a fade next to a full stop as arbitrary.
+
+       So the mask now travels TOWARDS THE EDGE IT IS FADING, and the two
+       physical directions are named for what they are.
+
+   2 ★ IT WAS PAINTED ON THE SCROLLER. A `-webkit-mask-image` on a layer that
+       is being scrolled with momentum is Safari's to recomposite, and it drops
+       or lags it while that layer moves — "le fondu disparait quand je
+       scrolle", exactly. `.scroll-veil` is a still box of the row's own size;
+       the row scrolls inside it and the mask has nothing to chase.
+
+   3 ★ AND A FADE IS NOT AN INSTRUCTION. "Moi je le sais, mais les gens ne le
+       sauront pas forcement." `.scroll-nudge` is a chevron at the edge that
+       has more, on the same rule as the fade, and it moves the row by one
+       card. See `ScrollRow`.
+   --------------------------------------------------------------------------- */
+.scroll-nav {
+  position: relative;
 }
 
-.scroll-row[data-overflow='start'],
-.carousel-2[data-overflow='start'] {
-  -webkit-mask-image: linear-gradient(to var(--fade-start, right), transparent 0, #000 1.5rem, #000 100%);
-  mask-image: linear-gradient(to var(--fade-start, right), transparent 0, #000 1.5rem, #000 100%);
+.scroll-veil {
+  margin-inline: calc(-1 * var(--content-pad, 2px));
 }
 
-.scroll-row[data-overflow='both'],
-.carousel-2[data-overflow='both'] {
+/* ⚠️ READ THE STOPS, NOT THE KEYWORD. `to left` puts 0 % at the RIGHT edge and
+   100 % at the left, so a mask that must go transparent at the LEFT is
+   `to left` with its transparent stop LAST. Writing the transparent stop first
+   — which is what Y5.4 did — fades the opposite edge, and the first attempt at
+   this fix reproduced the bug from the other side. Captured both times on the
+   dashboard's KPI row before it was believed. */
+.scroll-nav[data-overflow='end'] > .scroll-veil {
+  -webkit-mask-image: linear-gradient(to var(--edge-end), #000 0, #000 calc(100% - 1.5rem), transparent 100%);
+  mask-image: linear-gradient(to var(--edge-end), #000 0, #000 calc(100% - 1.5rem), transparent 100%);
+}
+
+.scroll-nav[data-overflow='start'] > .scroll-veil {
+  -webkit-mask-image: linear-gradient(to var(--edge-start), #000 0, #000 calc(100% - 1.5rem), transparent 100%);
+  mask-image: linear-gradient(to var(--edge-start), #000 0, #000 calc(100% - 1.5rem), transparent 100%);
+}
+
+.scroll-nav[data-overflow='both'] > .scroll-veil {
   -webkit-mask-image: linear-gradient(
-    to var(--fade-end, left),
+    to var(--edge-end),
     transparent 0,
     #000 1.5rem,
     #000 calc(100% - 1.5rem),
     transparent 100%
   );
   mask-image: linear-gradient(
-    to var(--fade-end, left),
+    to var(--edge-end),
     transparent 0,
     #000 1.5rem,
     #000 calc(100% - 1.5rem),
@@ -1505,13 +1582,56 @@
 /* The two physical directions, resolved once from the document's direction so
    every row inherits them and nothing has to know which way it is written. */
 [dir='rtl'] {
-  --fade-end: left;
-  --fade-start: right;
+  --edge-end: left;
+  --edge-start: right;
 }
 
 [dir='ltr'] {
-  --fade-end: right;
-  --fade-start: left;
+  --edge-end: right;
+  --edge-start: left;
+}
+
+/* ★ THE CHEVRON. Discreet by request — a small disc over the faded edge, not a
+   bar — and it lives OUTSIDE the veil so the mask that fades the cards does
+   not fade the one control that says they can be moved. */
+.scroll-nudge {
+  position: absolute;
+  inset-block: 0;
+  z-index: 2;
+  display: flex;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--content-secondary);
+  cursor: pointer;
+}
+
+.scroll-nudge[data-side='end'] {
+  inset-inline-end: calc(-1 * var(--content-pad, 2px));
+}
+
+.scroll-nudge[data-side='start'] {
+  inset-inline-start: calc(-1 * var(--content-pad, 2px));
+}
+
+.scroll-nudge-disc {
+  display: flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-card);
+}
+
+@media (hover: hover) {
+  .scroll-nudge:hover .scroll-nudge-disc {
+    background: var(--surface-high);
+  }
 }
 
 /* U1 — a folded block's heading is a full-width button; keep its focus ring. */
@@ -1534,7 +1654,6 @@
   padding-block: 0.75rem;
   margin-block: -0.75rem;
   padding-inline: var(--content-pad, 2px);
-  margin-inline: calc(-1 * var(--content-pad, 2px));
   scroll-padding-inline: var(--content-pad, 2px);
 }
 

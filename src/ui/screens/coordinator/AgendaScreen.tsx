@@ -367,7 +367,10 @@ export function AgendaScreen() {
 
       {/* One control row: period navigation on one side, view switch on the
           other. Sticky so paging through months never scrolls it away. */}
-      <div className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-2 rounded-card
+      {/* Z1 — mb-4 IS `--list-rhythm`, and it is a plain margin rather than
+          `.filters-gap` because this bar is itself a flex row: the class's
+          zero-height guard would become a flex item and buy an extra `gap-2`. */}
+      <div className="sticky top-0 z-20 mb-4 flex flex-wrap items-center gap-2 rounded-card
                       bg-surface-overlay p-2 shadow-card">
         <div className="flex items-center gap-1">
           <button
@@ -415,7 +418,7 @@ export function AgendaScreen() {
       </div>
 
       {/* Legend — an event's colour is its type, and that has to be stated. */}
-      <ul className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+      <ul className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5">
         {(
           [
             ['planned', 'missionStatus.planned'],

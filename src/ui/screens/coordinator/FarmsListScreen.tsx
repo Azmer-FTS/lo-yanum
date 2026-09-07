@@ -298,7 +298,8 @@ export function FarmsListScreen() {
     <ListTop
       testId="farms-top"
       title={t('farms.title')}
-      count={t('common.showingOf', { shown: filtered.length, total: farms.length })}
+      shown={filtered.length}
+      total={farms.length}
       menu={menu}
       search={query}
       onSearch={setQuery}
