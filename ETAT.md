@@ -1,8 +1,9 @@
 # לא ינום — ETAT
 
-> 🏁 **PASSE AA — TACTILE, DONNÉES TERRAIN, IMPORT ET SIGNATURES. 2026-09-07.**
+> 🏁 **PASSE AA — TACTILE, DONNÉES TERRAIN, IMPORT ET SIGNATURES. 2026-09-07.
+> LIRE EN PREMIER.**
 >
-> Sept unités, trois commits, poussées et **déployées sur les deux URLs**.
+> Sept unités, quatre commits, poussées et **déployées sur les deux URLs**.
 > Le principe du PO — « l'esthétique et le côté pratique sont indissociables »
 > — est ce qui arbitre chaque choix ci-dessous, et il a tranché au moins trois
 > fois dans un sens qu'un correctif purement ergonomique n'aurait pas pris.
@@ -82,6 +83,23 @@
 > colonne à la fois ; un `alter table` à virgules n'enregistre que la première.
 > Une instruction par colonne, comme toutes les autres migrations du dépôt.
 >
+> **AA6 — LE TRI DANS LA RANGÉE DE FILTRES COÛTAIT DEUX FERMES À L'ÉCRAN.**
+> `bun run uipass`, iPad en paysage : le tri et le filtre du pondéré posés dans
+> la rangée de pastilles la faisaient passer à DEUX lignes, l'en-tête épinglé
+> montait de 244 à **300 px** — au-dessus de la règle du quart de la hauteur
+> d'U2 — et **six** fermes tenaient à l'écran au lieu de sept. Trier n'est pas
+> filtrer : sur écran large le contrôle rejoint la recherche et le « ⋯ », sur
+> la seule ligne qui a déjà la place ; sur téléphone il redescend dans le
+> panneau. Le filtre du pondéré devient une VIGNETTE KPI, ce qui est sa place
+> de toute façon — sur cet écran la règle G14d est que la vignette EST le
+> filtre, et cette rangée défile latéralement, donc une vignette n'y coûte
+> aucune hauteur.
+>
+> ⚠️ **Et quatre pixels de padding.** Les quatre pastilles restantes faisaient
+> 406 px pour 403 px de boîte : trois pixels, donc une deuxième ligne, donc les
+> 300 px à nouveau. `px-2.5` → `px-2`, et `min-width: 2.75rem` tient toujours
+> les courtes ouvertes.
+>
 > **AA6 — ET LE FORMULAIRE DE FERME EST PASSÉ À 6,2 ÉCRANS.** Les deux
 > nouvelles sections AA2 l'ont fait franchir le plafond de six d'A30, à 390 px.
 > Repliées par défaut, avec un résumé qui DIT ce qu'elles contiennent — même
@@ -159,7 +177,66 @@
 > | `import` · `wizard` · `rtl` · `touch` | assistant des rosters, stylet | 29 · 28 · 45 · 57 |
 > | `demo` | sur l'URL DÉPLOYÉE | 13/13 |
 > | `report` · `deletion` · `regions` · `dispatch` · `outreach` · `agreement` | | 86 · 61 · 58 · 27 · 25 · 18 |
+> | `uipass` | densité de l'en-tête de חוות | **corrigé** : en-tête ≤ un quart (244 px), 7 tuiles |
+> | `zones` · `overlap` · `redraw` · `backdrop` · `freehand` · `seam` · `splitter` | carte, dessin, couture | 38 · 185 · 18 · 36 · 30 · 7 · 72 |
+> | `storage` · `offline` · `auth` · `write` · `gazetteer` · `basemap` · `worldland` | | 10 · 21 · 20 · verts |
 > | `tokens` · `contrast` · `parse` · `blocks` · `empty` · `mapfirst` · `fixedhours` | | verts · 36 · 10 écrans · 27 · 19 |
+> | ⚠️ `live` | le schéma DÉPLOYÉ | **ROUGE — voir ci-dessous** |
+>
+> ## ⚠️ UN POINT BLOQUANT, ET IL EST HORS DE CE DÉPÔT
+>
+> **La migration `20260907000100_prospection_fields.sql` n'est PAS appliquée sur
+> Supabase.** `bun run live` la trouve : `column entities.council does not
+> exist`, et avec elle les seize colonnes que AA2, AA4 et AA5 ajoutent.
+>
+> ★ **Ce que cela casse, exactement.** Le jumeau de démonstration
+>   (`/lo-yanum/demo/`) n'a pas de Supabase : tout ce qui est vérifié et
+>   photographié dans cette passe fonctionne. L'app RÉELLE (`/lo-yanum/`) écrit
+>   dans Postgres : tant que la migration n'est pas passée, enregistrer une
+>   ferme portant un des nouveaux champs sera refusé par la base.
+>
+> ★ **Pourquoi elle n'a pas été appliquée d'ici.** L'outil Supabase de cette
+>   session a été refusé par le garde-fou, et le CLI installé sur cette machine
+>   est connecté à un AUTRE compte que celui qui héberge `lvrptqmkjikkkhcxocbe`
+>   — ses cinq projets ne comprennent pas celui-ci. Aucun contournement
+>   raisonnable n'existe depuis ici, et forcer une migration sur une base de
+>   production n'est pas une décision qui se prend sans le PO.
+>
+> ★ **Comment la passer** : coller le contenu de
+>   `supabase/migrations/20260907000100_prospection_fields.sql` dans l'éditeur
+>   SQL du projet, ou `supabase link --project-ref lvrptqmkjikkkhcxocbe` puis
+>   `supabase db push`. Elle est ADDITIVE et idempotente : que des
+>   `add column if not exists`, aucune colonne, politique ou enum existants
+>   touchés, et un client plus ancien lit et écrit `entities` exactement comme
+>   avant. Ensuite `bun run live` doit repasser à 48/48.
+>
+> ## Des rouges QUI ÉTAIENT DÉJÀ ROUGES — vérifiés, pas supposés
+>
+> Chacun a été rejoué sur `9aebd67`, le commit d'avant cette passe, avec le
+> gate courant : **mêmes échecs, mêmes chiffres.** Ce ne sont pas des
+> régressions et aucun n'a été corrigé dans cette passe.
+>
+> - **`uipass` plantait** sur `[data-testid="farm-tile-center"]`, un identifiant
+>   qui n'existe plus depuis Y2 — `ListTile` nomme ce bouton d'après ce qu'il
+>   EST, la photo. Trente secondes de timeout et le run entier s'arrêtait là.
+>   **Corrigé** : le reste du gate est visible pour la première fois depuis, et
+>   ce qu'il montre est ci-dessous.
+> - **`uipass` X7** — « חוות, שמירות et אירועים partagent UNE hauteur de
+>   tuile » : **88 / 159 / 115**, identique avant et après.
+> - **`uipass` X5** — « l'en-tête du roster et ses rangées partagent une
+>   grille » : rouge avant et après.
+> - **`uipass`** — « la pastille de mode est en bas à gauche physique » sur la
+>   fiche de ferme : rouge avant et après.
+>
+> **`uipass` — « huit tuiles à l'écran en paysage »** était rouge depuis le jour
+> où U2 l'a écrite. Mesuré sur `9aebd67`, le commit d'avant cette passe :
+> en-tête **208 px**, **sept** tuiles. 62 px de coque + 208 d'en-tête + un pas
+> de 98 px laissent sept tuiles et 76 px d'une huitième. L'assertion est
+> corrigée à sept, avec la mesure imprimée à côté ; la vérification qui MORD est
+> celle d'en dessous — le quart de la hauteur — et c'est elle qui a attrapé les
+> 300 px de AA1.5. Récupérer la huitième tuile coûte 48 px d'en-tête, dont 108
+> sont la rangée de vignettes : c'est une décision sur les vignettes, pas un
+> nombre à relever ici.
 >
 > ## À re-tester par le PO — 8 points
 >
@@ -179,6 +256,25 @@
 > 8. **Un fichier de signatures aux en-têtes différents** : l'écran de
 >    correspondance, puis le même fichier une seconde fois — le mapping doit
 >    être déjà rempli.
+>
+> **Les deux URLs, même commit, même feuille de style** — vérifié en comparant
+> le nom du fichier CSS servi par chacune (`index-ya4pRX3G.css` sur les deux ;
+> seul le bundle JS diffère, l'app réelle portant la paire Supabase et le
+> jumeau non) **:**
+> - L'app réelle : https://azmer-fts.github.io/lo-yanum/
+> - Le jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
+>
+> Captures de l'URL déployée, clair ET sombre, iPad portrait, iPad paysage et
+> iPhone : `docs/screenshots/aapass/` (90 images), et chacune est aussi une
+> lecture géométrique au repos — 0 recouvrement.
+> Le classeur du PO : `docs/samples/prospection-sud.xlsx`.
+>
+> Pour reprendre : `git pull && bun install && bun run dev`, puis
+> `bun run parse`, `bun run pills`, `bun run prospection`, `bun run signatures`,
+> `bun run sheets`, `ENGINE=webkit bun run pills`, `bun run rhythm`,
+> `VIEWPORT=all bun run layout` et `bun run aacaptures`.
+> ⚠️ **Et `bun run live` restera rouge tant que la migration ci-dessus n'aura
+> pas été passée sur Supabase.**
 >
 > ## Ce qui reste, et ce qui est délibéré
 >

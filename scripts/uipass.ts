@@ -116,7 +116,11 @@ check('farms: at least seven tiles fully on screen in landscape', visibleTiles >
 const topH = await page.locator('[data-testid="farms-top"]').evaluate((e) => e.getBoundingClientRect().height)
 check('farms: the sticky top takes at most a quarter of the height', topH <= 1032 * 0.25, `${Math.round(topH)} px`)
 check('farms: the KPI strip scrolls sideways rather than wrapping', await page.locator('[data-testid="kpi-strip"]').evaluate((e) => getComputedStyle(e).overflowX === 'auto' && getComputedStyle(e).flexWrap === 'nowrap'))
-const photoH = await tiles.first().locator('[data-testid="farm-tile-center"]').evaluate((e) => e.getBoundingClientRect().height)
+/* ⚠️ `-photo`, NOT `-center`. `ListTile` names that button after what it IS
+   (the photo, which doubles as « centre on the map »); this line asked for a
+   test id that has not existed since Y2 and crashed the whole run on a
+   thirty-second locator timeout — before this pass as well as during it. */
+const photoH = await tiles.first().locator('[data-testid="farm-tile-photo"]').evaluate((e) => e.getBoundingClientRect().height)
 const tileH = await tiles.first().evaluate((e) => e.getBoundingClientRect().height)
 check('farms: the photo takes the tile\'s full height', Math.abs(photoH - tileH) < 1.5, `${Math.round(photoH)} / ${Math.round(tileH)}`)
 
