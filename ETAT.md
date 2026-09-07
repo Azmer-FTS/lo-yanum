@@ -158,7 +158,11 @@
 > 7. **Sur smartphone** : le disque en bas à droite ouvre la bascule de rôle, et
 >    le bas de l'écran est rendu à l'app.
 >
-> **Les deux URLs, même commit, même CSS (`index-CSz1r8Rb.css` sur les deux) :**
+> **Les deux URLs, même commit, même feuille de style** — vérifié en lisant le
+> nom du fichier CSS servi par chacune et en comparant les deux, plutôt qu'en
+> supposant que le workflow a fait ce qu'il dit (il publie bien la MÊME build
+> deux fois : l'app réelle avec la paire Supabase, le jumeau sans elle, donc
+> seul le bundle JS diffère) **:**
 > - L'app réelle : https://azmer-fts.github.io/lo-yanum/
 > - Le jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
 >
