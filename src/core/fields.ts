@@ -202,6 +202,19 @@ export const WEIGHTED_DUNAM = {
 /**
  * The month's target, in weighted dunams. From the workbook's מקרא sheet
  * (« יעד דונם משוקלל לסוף החודש »), which is where the association sets it.
+ *
+ * ⚠️ ★★ AB5a.4 (2026-09-08) — THIS IS NOW THE **INITIAL** VALUE, AND IT STAYS
+ *    A NAMED CONSTANT FOR THAT REASON.
+ *
+ *      « L'objectif reste une constante nommée comme valeur INITIALE ; les
+ *        réglages la surchargent. »
+ *
+ *    `ui/settings/target.ts` holds the coordinator's own campaign — figure,
+ *    deadline, label, what happens when it is passed, and the campaigns
+ *    already achieved — and the dashboard reads THAT. A device that has never
+ *    opened הגדרות → יעד reads this line, and « חזרה לערך ההתחלתי » comes back
+ *    to it. Editing this number therefore changes what a NEW device starts
+ *    with, not what the product owner is currently working towards.
  */
 export const WEIGHTED_DUNAM_TARGET = 100_000
 
@@ -225,7 +238,17 @@ export function totalWeightedDunams(farms: readonly HasAreas[]): number {
   return farms.reduce((sum, f) => sum + weightedDunams(f), 0)
 }
 
-/** Where a total stands against the target, as a whole percentage. */
+/**
+ * Where a total stands against the target, as a whole percentage.
+ *
+ * ⚠️ AB5a — THE DASHBOARD NO LONGER CALLS THIS; it calls `progressAgainst` in
+ *    `ui/settings/target.ts`, which takes the coordinator's own campaign
+ *    rather than the constant. This is kept because it is the PURE form of the
+ *    same arithmetic against the initial value, it is what `bun run
+ *    prospection` pins (« 118 % is a sentence the association wants to be able
+ *    to say »), and a server-side report in Lot 1 will want it with no React
+ *    anywhere near it.
+ */
 export function targetProgress(total: number, target = WEIGHTED_DUNAM_TARGET): number {
   if (target <= 0) return 0
   return Math.round((total / target) * 100)

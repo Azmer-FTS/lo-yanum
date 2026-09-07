@@ -11,6 +11,7 @@ import { readReportRecipient, writeReportRecipient } from '../../report/recipien
 import { AgreementTemplateSection } from '../../settings/AgreementTemplateSection'
 import { DisplaySection, RegionsEditSection } from '../../settings/DisplaySection'
 import { DemoDataSection } from '../../settings/DemoDataSection'
+import { TargetSection } from '../../settings/TargetSection'
 import { ViewAsSection } from '../../settings/ViewAsSection'
 import {
   originLabel,
@@ -195,6 +196,11 @@ export function SettingsScreen() {
 
       {/* ★★ Y3.1 · Y4 — the theme (out of the rail) and the layout sync. */}
       <DisplaySection />
+
+      {/* ★★ AB5a — « יעד ». Above the offline block and below the display
+          settings: it is a decision about the PROGRAMME, like the region
+          editor under it, not about this device's storage. */}
+      <TargetSection />
 
       {/* ★★ Y2.1 — the door to the region editor. Above the offline block on
           purpose: it is a decision about the programme, not about this

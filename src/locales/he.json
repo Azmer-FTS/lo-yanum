@@ -310,6 +310,26 @@
       "role": "תפקיד",
       "saved": "הפרופיל נשמר",
       "reset": "חזרה לברירת המחדל"
+    },
+    "target": {
+      "title": "יעד",
+      "hint": "היעד שמופיע בלוח הבקרה. ערך התחלתי מגיע מקובץ התצורה; מה שנקבע כאן גובר עליו.",
+      "label": "שם היעד",
+      "labelPlaceholder": "לדוגמה: תקציב 2026",
+      "dunams": "יעד בדונם משוקלל",
+      "dueOn": "תאריך יעד",
+      "onReached": "כשהיעד מושג",
+      "keep": "להשאיר את היעד המושג ולברך",
+      "next": "לעבור אוטומטית ליעד הבא",
+      "nextTitle": "היעד הבא",
+      "nextHint": "ייכנס לתוקף ברגע שהיעד הנוכחי יושג.",
+      "history": "יעדים קודמים",
+      "historyEmpty": "טרם הושג יעד",
+      "historyRow": "{{label}} · {{dunams}} דונם · הושג ב־{{date}} עם {{total}}",
+      "reset": "חזרה לערך ההתחלתי",
+      "saved": "היעד נשמר",
+      "bad": "יעד חייב להיות מספר גדול מאפס",
+      "unnamed": "יעד ללא שם"
     }
   },
   "devbar": {
@@ -489,7 +509,10 @@
     "weightedTitle": "דונם משוקלל — חתומות",
     "weightedHint": "מעובד × 1 · מרעה × 0.02 (יחס 1:50)",
     "weightedTarget": "יעד {{target}}",
-    "weightedPercent": "{{percent}}% מהיעד"
+    "weightedPercent": "{{percent}}% מהיעד",
+    "weightedReached": "היעד הושג",
+    "weightedReachedHint": "{{label}} — הושג ב־{{date}} עם {{total}} דונם משוקלל.",
+    "weightedDue": "עד {{date}}"
   },
   "alerts": {
     "urgent_incident": "אירוע דחוף",

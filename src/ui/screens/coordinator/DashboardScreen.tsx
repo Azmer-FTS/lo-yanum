@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
@@ -11,8 +11,7 @@ import {
   getAlerts,
   dunamsByRegion,
   getDunamKpis,
-  WEIGHTED_DUNAM_TARGET,
-  targetProgress,
+  formatDate,
   regionById,
   getFarmStatusCounts,
   getTonightMissionViews,
@@ -33,6 +32,12 @@ import type {
   RegionId,
 } from '@core/index'
 
+import {
+  isReached,
+  progressAgainst,
+  settleTarget,
+  useTarget,
+} from '../../settings/target'
 import { Avatar } from '../../components/Avatar'
 import { BandCard } from '../../components/band'
 import { ReportButton } from '../../report/ReportButton'
@@ -604,6 +609,22 @@ export function DashboardScreen() {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const activeFarms = farms.filter((f) => f.status === 'active').length
 
+  /**
+   * ★★ AB5a — THE TARGET, AND ITS ONE SIDE EFFECT, IN AN EFFECT.
+   *
+   * `settleTarget` writes a campaign into the history the moment it is passed
+   * and — when the coordinator asked for it — swaps in the next one. It is
+   * idempotent (see `target.ts`), so calling it whenever the total changes is
+   * safe; calling it during RENDER would not be, which is why it is here.
+   */
+  const target = useTarget()
+  useEffect(() => {
+    settleTarget(dunams.weightedSigned)
+  }, [dunams.weightedSigned, target.current.dunams, target.onReached])
+  const reached = isReached(dunams.weightedSigned, target.current)
+  /** The most recent closed campaign, for the line under the bar. */
+  const lastReached = target.history[0] ?? null
+
   const markers: MapMarker[] = useMemo(() => {
     const farmMarkers = farms.map((farm) => ({
       id: farm.id,
@@ -735,15 +756,29 @@ export function DashboardScreen() {
         className="card mb-2.5 p-4"
         data-testid="weighted-target"
         data-weighted={dunams.weightedSigned}
+        data-target={target.current.dunams}
+        data-reached={reached ? '1' : '0'}
       >
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <p className="text-caption font-semibold text-content-primary">
             {t('dashboard.weightedTitle')}
+            {target.current.label !== '' && (
+              <span className="ms-2 text-micro font-medium text-content-muted">
+                {target.current.label}
+              </span>
+            )}
           </p>
           <p className="numeric text-micro text-content-muted">
             {t('dashboard.weightedTarget', {
-              target: WEIGHTED_DUNAM_TARGET.toLocaleString(locale),
+              target: target.current.dunams.toLocaleString(locale),
             })}
+            {target.current.dueOn !== '' && (
+              <span className="ms-2">
+                {t('dashboard.weightedDue', {
+                  date: formatDate(`${target.current.dueOn}T00:00:00`, locale),
+                })}
+              </span>
+            )}
           </p>
         </div>
         <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -752,26 +787,54 @@ export function DashboardScreen() {
           </p>
           <p className="numeric text-caption font-semibold text-content-secondary">
             {t('dashboard.weightedPercent', {
-              percent: targetProgress(dunams.weightedSigned),
+              percent: progressAgainst(dunams.weightedSigned, target.current),
             })}
           </p>
+          {/* ★★ AB5a.2 — « on garde et on félicite », and this chip IS the
+              congratulation. It is a fact printed once the bar is full, not a
+              banner that has to be dismissed: the coordinator reports this
+              figure monthly and « היעד הושג » is the sentence he reports. */}
+          {reached && (
+            <span
+              className="chip bg-status-success/15 text-status-success-ink"
+              data-testid="target-reached"
+            >
+              <Icon name="check" size={12} />
+              {t('dashboard.weightedReached')}
+            </span>
+          )}
         </div>
         <div
           className="mt-2.5 h-2 w-full overflow-hidden rounded-pill bg-surface-high"
           role="progressbar"
-          aria-valuenow={targetProgress(dunams.weightedSigned)}
+          aria-valuenow={progressAgainst(dunams.weightedSigned, target.current)}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-label={t('dashboard.weightedTitle')}
         >
           <span
-            className="block h-full rounded-pill bg-accent transition-[width] duration-base ease-out"
+            className={`block h-full rounded-pill transition-[width] duration-base ease-out ${
+              reached ? 'bg-status-success' : 'bg-accent'
+            }`}
             style={{
-              width: `${Math.min(100, targetProgress(dunams.weightedSigned))}%`,
+              width: `${Math.min(100, progressAgainst(dunams.weightedSigned, target.current))}%`,
             }}
           />
         </div>
         <p className="muted mt-1.5 leading-tight">{t('dashboard.weightedHint')}</p>
+        {/* AB5a.3 — the campaign that was just closed, named on the card that
+            carried it. The full record lives in הגדרות → יעד. */}
+        {lastReached && (
+          <p className="muted mt-1 leading-tight" data-testid="target-last">
+            {t('dashboard.weightedReachedHint', {
+              label: lastReached.label || t('settings.target.unnamed'),
+              date: lastReached.reachedOn
+                ? formatDate(`${lastReached.reachedOn}T00:00:00`, locale)
+                : '—',
+              total: lastReached.total.toLocaleString(locale),
+            })}
+          </p>
+        )}
       </div>
 
       {/* 1 — the compact KPI row: swipable sideways when the column is
