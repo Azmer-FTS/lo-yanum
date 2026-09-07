@@ -51,6 +51,8 @@ const COORDINATOR_NAV: NavItem[] = [
  */
 const BLEED_ROUTES = [
   '/coordinator',
+  // ★★ AB3.1 — the agenda joined the gabarit: it carries a map now.
+  '/coordinator/agenda',
   '/coordinator/farms',
   '/coordinator/route',
   '/coordinator/volunteers',

@@ -221,6 +221,36 @@ export interface MapSplitProps {
   splitHeight?: string
   /** Extra content for the map's own header bar, before the switch. */
   barExtra?: ReactNode
+  /**
+   * ★★ AB4.1 (2026-09-08) — CLASSES FOR THE BOX THE CONTENT IS ACTUALLY IN.
+   *
+   * The content column is a scrollport whose height the shell sets past the
+   * breakpoint — but the children are inside `PullToRefresh`, one more div,
+   * whose height is auto. So a screen asking for "the whole useful height"
+   * with `h-full` measured 100 % of an auto box and got its own content back:
+   * the agenda's hour ladder rendered 1321 px tall inside a 900 px column,
+   * which is the empty band AB4.1 is about, upside down.
+   *
+   * Handing that box `flex h-full min-h-0 flex-col` is what makes `flex-1`
+   * inside it mean the column. It is opt-in: every list screen wants the
+   * auto-height box it has always had.
+   */
+  contentClassName?: string
+  /**
+   * ★★ AB4.1 (2026-09-08) — KEEP THE COLUMN'S OWN SCROLLPORT IN `hidden`.
+   *
+   * Y4 sends every screen to `shellPage` when the map is hidden, and the
+   * reason is written out below: the dense table those five lists switch to is
+   * WINDOW-virtualised (`useWindowTable`, G7), and inside a column that
+   * scrolls on its own it measures a scrollport nobody is moving.
+   *
+   * The agenda has no such table, and it has the opposite requirement — « la
+   * grille occupe toute la hauteur utile » is a statement about a BOX, and a
+   * box only has a height if something gives it one. Measured before this: in
+   * content-full at 1376 × 1032 the page scrolled 299 px past the grid, so the
+   * hour ladder ended above the fold and the block under it below it.
+   */
+  keepPanelScroll?: boolean
 }
 
 export function MapSplit({
@@ -234,6 +264,8 @@ export function MapSplit({
   contentInFull = 'hide',
   splitHeight = 'h-[40dvh]',
   barExtra,
+  contentClassName = '',
+  keepPanelScroll = false,
 }: MapSplitProps) {
   const state = useMapMode(screenKey)
   const { mode, setMode } = state
@@ -266,7 +298,11 @@ export function MapSplit({
        *    scrollport nobody is moving and renders the wrong rows against a
        *    band of empty space. Same rule for all five lists.
        */
-      className={`${scroll === 'page' || mode === 'hidden' ? c.shellPage : c.shellPanel} ${
+      className={`${
+        scroll === 'page' || (mode === 'hidden' && !keepPanelScroll)
+          ? c.shellPage
+          : c.shellPanel
+      } ${
         // In `full` below the breakpoint the map IS the screen, so the shell is
         // pinned to the viewport instead of growing with a list that is not
         // there. `min-h-dvh` otherwise, so a short list still fills the page.
@@ -280,7 +316,11 @@ export function MapSplit({
       {!(mode === 'full' && contentInFull === 'unmount') && (
         <div
           data-map-content=""
-          className={`${scroll === 'page' || mode === 'hidden' ? c.contentPage : c.contentPanel} ${
+          className={`${
+            scroll === 'page' || (mode === 'hidden' && !keepPanelScroll)
+              ? c.contentPage
+              : c.contentPanel
+          } ${
             mode === 'full'
               ? 'hidden'
               : mode === 'hidden'
@@ -292,7 +332,7 @@ export function MapSplit({
               SCREEN. This column is the panel that scrolls text; the map is
               the sibling beside it and never moves, which is the whole of the
               product owner's requirement. */}
-          <PullToRefresh>
+          <PullToRefresh className={contentClassName}>
           {/* ★ W5 (2026-09-02) — THE ROW OF MODE BUTTONS AT THE TOP OF EVERY
               LIST IS GONE. There were two copies of the same three-state
               switch — one here for `hidden`, one in the map's bar — plus the

@@ -57,6 +57,18 @@ export interface MapPanelProps {
   fit?: boolean
   /** U8 — centre the map on a tile's entity (see MapCanvas). */
   flyTo?: { position: LatLng; key: number; zoom?: number }
+  /**
+   * ★★ AB3.3 — FRAME A SET OF POINTS (W6's `frameTo`, passed through).
+   *
+   * « Cliquer un jour dans l'agenda recentre la carte sur les rendez-vous de
+   *   ce jour. » One appointment is a `flyTo`; four spread over a council is a
+   *   BOUNDING BOX, and easing to their centroid at a guessed zoom would put
+   *   two of them off screen. MapCanvas has done this properly since W6 — the
+   *   box, a real padding, a `maxZoom` clamp so a single point does not fill
+   *   the screen with one field — and it was reachable from the farm sheet
+   *   only because `MapPanel` did not forward it.
+   */
+  frameTo?: { points: LatLng[]; key: string; maxZoom?: number; padding?: number }
   /** Floating legend, bottom corner of the map. */
   legend?: ReactNode
   /** Floating controls over the top of the map. */
@@ -94,6 +106,10 @@ export interface MapPanelProps {
    * thereby want the volunteers list to disappear.
    */
   screenKey: string
+  /** AB4.1 — classes for the box the content sits in; see `MapSplit`. */
+  contentClassName?: string
+  /** AB4.1 — keep the column's own scrollport when the map is hidden. */
+  keepPanelScroll?: boolean
 }
 
 export function MapPanel({
@@ -106,6 +122,7 @@ export function MapPanel({
   zoom,
   fit = true,
   flyTo,
+  frameTo,
   legend,
   overlay,
   detail,
@@ -114,11 +131,15 @@ export function MapPanel({
   ariaLabel,
   contentWidth = 'third',
   screenKey,
+  contentClassName,
+  keepPanelScroll,
 }: MapPanelProps) {
   return (
     <MapSplit
       screenKey={screenKey}
       ariaLabel={ariaLabel}
+      contentClassName={contentClassName}
+      keepPanelScroll={keepPanelScroll}
       contentPercent={CONTENT_PERCENT[contentWidth]}
       map={() => (
         <>
@@ -134,6 +155,7 @@ export function MapPanel({
             zoom={zoom}
             fit={fit}
             flyTo={flyTo}
+            frameTo={frameTo}
             anchored={
               detail && detailAt
                 ? { position: detailAt.position, key: detailAt.key, node: detail }

@@ -159,7 +159,7 @@ export function PullToRefresh({
       {/* The indicator takes real height so the content moves with the pull
           rather than the pill floating over the top of it. */}
       <div
-        className="flex items-end justify-center overflow-hidden transition-[height] duration-fast ease-out"
+        className="flex shrink-0 items-end justify-center overflow-hidden transition-[height] duration-fast ease-out"
         style={{ height: `${height}px` }}
         aria-hidden={height === 0}
       >

@@ -1,5 +1,6 @@
 import { DAY, addDays, fromDayKey, isTonight, localDayKey, now } from './clock'
 import { weightedDunams } from './fields'
+import { positionOfLocality } from './geo'
 import { _raw, getSession } from './store'
 import { buildDayPlan } from './tours'
 import type { DayPlan, Tour } from './tours'
@@ -595,6 +596,10 @@ export function getAgendaEvents(from: Date, to: Date): AgendaEvent[] {
       missionStatus: view.mission.status,
       done: false,
       farmId: view.farm.id,
+      // AB3 — the anchor point, not the farm centroid: that is where the
+      // group physically stands, and it is what the missions map already
+      // plots (C1.4).
+      position: view.anchorPoint.position,
     })
   }
 
@@ -614,6 +619,16 @@ export function getAgendaEvents(from: Date, to: Date): AgendaEvent[] {
       missionStatus: null,
       done: false,
       farmId: null,
+      /**
+       * AB3.4 — a meeting's place is a line of free text, so it is read
+       * through the gazetteer and left `null` when that fails. « בית הכנסת של
+       * דוד » is not a locality and never will be; the entry then shows as
+       * מיקום חסר, which is the truth, rather than as a pin on the nearest
+       * town, which would not be.
+       */
+      position: meeting.location.trim() === ''
+        ? null
+        : positionOfLocality(meeting.location),
     })
   }
 
@@ -634,6 +649,9 @@ export function getAgendaEvents(from: Date, to: Date): AgendaEvent[] {
       missionStatus: null,
       done: visit.done,
       farmId: farm.id,
+      // AA4.4 — a farm parked at HOME_BASE by a sheet with no coordinates is
+      // not a farm anybody can drive to, so the visit is מיקום חסר too.
+      position: farm.positionMissing ? null : farm.position,
     })
   }
 

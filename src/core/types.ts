@@ -1012,6 +1012,26 @@ export interface AgendaEvent {
   done: boolean
   /** Null for general meetings — they belong to no farm. */
   farmId: string | null
+  /**
+   * ★★ AB3 (2026-09-08) — WHERE THIS ENTRY IS, OR `null` WHEN NOBODY KNOWS.
+   *
+   *   « j'aimerais voir où se situent géographiquement mes rendez-vous. »
+   *
+   * ⚠️ `null` IS A REAL ANSWER AND NOT A MISSING FIELD, which is AB3.4: an
+   *    entry with no known place stays in the LIST, marked מיקום חסר, and is
+   *    not drawn. Falling back to the farm's centroid for a meeting held in a
+   *    café, or to `HOME_BASE` for anything, would put a numbered pin on the
+   *    map at a place the coordinator never agreed to drive to — and a pin is
+   *    read as a fact.
+   *
+   * Where each kind gets it, in `getAgendaEvents`:
+   *   · mission — the ANCHOR POINT, because that is where the group stands;
+   *   · visit   — the farm's own point, unless the farm is one of the
+   *               `positionMissing` rows a prospection sheet parked (AA4.4);
+   *   · meeting — its `location` read through the gazetteer, which is the only
+   *               place a meeting's whereabouts is ever written down.
+   */
+  position: LatLng | null
 }
 
 /** G14d — the driver roster's KPI-filters, computed at the accessor. */
