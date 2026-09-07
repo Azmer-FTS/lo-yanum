@@ -189,13 +189,13 @@
 >
 > | Gate | Portée | Résultat |
 > |---|---|---|
-> | `assoc` | **nouveau** (AB6) — A94 · A95 · A96, sur le VRAI classeur | **PLACEHOLDER_ASSOC** |
-> | `abpass` | **nouveau** (AB2·AB3·AB4·AB5) — A87 · A88 · A89 · A90 · A91 · A92 · A93 | **PLACEHOLDER_ABPASS** |
-> | `pills` | A71 · A72 · A73 · A74 + **A85 · A86** (AB1), 9 écrans à 402 px + iPad + desktop | **PLACEHOLDER_PILLS** |
-> | `abcaptures` | **nouveau** (AB8) — captures du déployé, clair + sombre, 3 viewports | **PLACEHOLDER_CAPTURES** |
+> | `assoc` | **nouveau** (AB6) — A94 · A95 · A96, sur le VRAI classeur | **40/40** |
+> | `abpass` | **nouveau** (AB2·AB3·AB4·AB5) — A87 · A88 · A89 · A90 · A91 · A92 · A93 | **50/50** |
+> | `pills` | A71 · A72 · A73 · A74 + **A85 · A86** (AB1), 9 écrans à 402 px + iPad + desktop | **89/89** chromium ET webkit |
+> | `abcaptures` | **nouveau** (AB8) — captures du déployé, clair + sombre, 3 viewports | **108 captures, 0 recouvrement au repos** |
 > | `prospection` · `signatures` · `sheets` | AA4 · AA5, inchangés | 40 · 32 · 15 |
 > | `accept` · `persist` · `mapping` · `sync` | domaine, store, 26 tables, hors-ligne | 176 · **97** · 33 · 34 |
-> | `layout` · `rhythm` · `settings` · `reserve` · `band` · `rows` · `modes` | | PLACEHOLDER_LAYOUT |
+> | `layout` · `rhythm` · `settings` · `reserve` · `band` · `rows` · `modes` | | 0 débordement · **573 (10 rouges d'avant AB)** · 36 · 56 · 56 · 87 · 75 |
 > | `live` | le schéma DÉPLOYÉ, sans mot de passe | **48/48** — migration en place |
 >
 > ## La migration Supabase
@@ -252,6 +252,26 @@
 > `ENGINE=webkit bun run pills`, `bun run prospection`, `bun run signatures`,
 > `bun run sheets`, `bun run persist`, `VIEWPORT=all bun run layout` et
 > `bun run abcaptures`.
+>
+> ## Des rouges QUI ÉTAIENT DÉJÀ ROUGES — vérifiés, pas supposés
+>
+> `rhythm` rend **573 verts et 10 rouges**. Les dix ont été rejoués sur
+> **04e4fe3**, le commit d'avant cette passe, dans un worktree, avec le gate
+> courant : **mêmes échecs, mêmes chiffres** (554 verts, les 10 mêmes). Ce ne
+> sont pas des régressions et aucun n'est corrigé ici.
+>
+> - **A62 · חוות « also as 14 », six fois.** La vignette KPI « דונם משוקלל »
+>   vaut 14, et le compteur dit 14/14. C'est une coïncidence du jeu de
+>   démonstration — quatorze fermes, quatorze avec une surface — et la sonde
+>   n'a pas de moyen de distinguer un écho d'une égalité arithmétique.
+> - **A60 · חוות « 1px », quatre fois.** L'en-tête de liste soustrait
+>   `--row-shadow-room` quand il porte des en-têtes de colonnes, pour que la
+>   tête d'un tableau reste collée à son corps ; la rangée que la sonde mesure
+>   à ce moment-là est la rangée de vignettes, pas les filtres.
+>
+> `uipass` rend **36 verts et 3 rouges**, et ce sont exactement les trois que
+> AA7 a déjà rejoués et documentés : X7 (88 / 159 / 115), X5, et la pastille de
+> mode sur la fiche de ferme.
 >
 > ## Ce qui reste, et ce qui est délibéré
 >
@@ -558,6 +578,26 @@
 > `bun run live` est vert : la migration est passée sur Supabase (voir
 > ci-dessus pour le chemin, qui n'est pas celui qu'on croit).
 >
+> ## Des rouges QUI ÉTAIENT DÉJÀ ROUGES — vérifiés, pas supposés
+>
+> `rhythm` rend **573 verts et 10 rouges**. Les dix ont été rejoués sur
+> **04e4fe3**, le commit d'avant cette passe, dans un worktree, avec le gate
+> courant : **mêmes échecs, mêmes chiffres** (554 verts, les 10 mêmes). Ce ne
+> sont pas des régressions et aucun n'est corrigé ici.
+>
+> - **A62 · חוות « also as 14 », six fois.** La vignette KPI « דונם משוקלל »
+>   vaut 14, et le compteur dit 14/14. C'est une coïncidence du jeu de
+>   démonstration — quatorze fermes, quatorze avec une surface — et la sonde
+>   n'a pas de moyen de distinguer un écho d'une égalité arithmétique.
+> - **A60 · חוות « 1px », quatre fois.** L'en-tête de liste soustrait
+>   `--row-shadow-room` quand il porte des en-têtes de colonnes, pour que la
+>   tête d'un tableau reste collée à son corps ; la rangée que la sonde mesure
+>   à ce moment-là est la rangée de vignettes, pas les filtres.
+>
+> `uipass` rend **36 verts et 3 rouges**, et ce sont exactement les trois que
+> AA7 a déjà rejoués et documentés : X7 (88 / 159 / 115), X5, et la pastille de
+> mode sur la fiche de ferme.
+>
 > ## Ce qui reste, et ce qui est délibéré
 >
 > - **La clé de repli est le COUPLE nom + מועצה**, pas le nom seul. Une fiche
@@ -710,6 +750,26 @@
 > - **`reserve`** : agenda à 402 px, révélé par les 62 px que Z6 a rendus.
 > - **`touch` et `demo`** : trois vérifications passées à NaN/NaN parce
 >   qu'elles lisaient la PHRASE du compteur que Z3 venait de raccourcir.
+>
+> ## Des rouges QUI ÉTAIENT DÉJÀ ROUGES — vérifiés, pas supposés
+>
+> `rhythm` rend **573 verts et 10 rouges**. Les dix ont été rejoués sur
+> **04e4fe3**, le commit d'avant cette passe, dans un worktree, avec le gate
+> courant : **mêmes échecs, mêmes chiffres** (554 verts, les 10 mêmes). Ce ne
+> sont pas des régressions et aucun n'est corrigé ici.
+>
+> - **A62 · חוות « also as 14 », six fois.** La vignette KPI « דונם משוקלל »
+>   vaut 14, et le compteur dit 14/14. C'est une coïncidence du jeu de
+>   démonstration — quatorze fermes, quatorze avec une surface — et la sonde
+>   n'a pas de moyen de distinguer un écho d'une égalité arithmétique.
+> - **A60 · חוות « 1px », quatre fois.** L'en-tête de liste soustrait
+>   `--row-shadow-room` quand il porte des en-têtes de colonnes, pour que la
+>   tête d'un tableau reste collée à son corps ; la rangée que la sonde mesure
+>   à ce moment-là est la rangée de vignettes, pas les filtres.
+>
+> `uipass` rend **36 verts et 3 rouges**, et ce sont exactement les trois que
+> AA7 a déjà rejoués et documentés : X7 (88 / 159 / 115), X5, et la pastille de
+> mode sur la fiche de ferme.
 >
 > ## Ce qui reste, et ce qui est délibéré
 >
@@ -944,6 +1004,26 @@
 > fixtures ne porte un nom de deux lettres ; ce que le PO a lu est le repli
 > d'`Avatar`, et « יו » se lit exactement « Yu » pour un lecteur français.
 >
+> ## Des rouges QUI ÉTAIENT DÉJÀ ROUGES — vérifiés, pas supposés
+>
+> `rhythm` rend **573 verts et 10 rouges**. Les dix ont été rejoués sur
+> **04e4fe3**, le commit d'avant cette passe, dans un worktree, avec le gate
+> courant : **mêmes échecs, mêmes chiffres** (554 verts, les 10 mêmes). Ce ne
+> sont pas des régressions et aucun n'est corrigé ici.
+>
+> - **A62 · חוות « also as 14 », six fois.** La vignette KPI « דונם משוקלל »
+>   vaut 14, et le compteur dit 14/14. C'est une coïncidence du jeu de
+>   démonstration — quatorze fermes, quatorze avec une surface — et la sonde
+>   n'a pas de moyen de distinguer un écho d'une égalité arithmétique.
+> - **A60 · חוות « 1px », quatre fois.** L'en-tête de liste soustrait
+>   `--row-shadow-room` quand il porte des en-têtes de colonnes, pour que la
+>   tête d'un tableau reste collée à son corps ; la rangée que la sonde mesure
+>   à ce moment-là est la rangée de vignettes, pas les filtres.
+>
+> `uipass` rend **36 verts et 3 rouges**, et ce sont exactement les trois que
+> AA7 a déjà rejoués et documentés : X7 (88 / 159 / 115), X5, et la pastille de
+> mode sur la fiche de ferme.
+>
 > ## Ce qui reste, et ce qui est délibéré
 >
 > - **Les volontaires gardent leur état mixte de photos** (Y10). Le fonds CC0
@@ -1115,6 +1195,26 @@
 > volontaire ou d'un conducteur, et revient depuis un bandeau qui est DANS
 > l'en-tête collant — un chemin de retour qui défile hors de vue est un aller
 > simple.
+>
+> ## Des rouges QUI ÉTAIENT DÉJÀ ROUGES — vérifiés, pas supposés
+>
+> `rhythm` rend **573 verts et 10 rouges**. Les dix ont été rejoués sur
+> **04e4fe3**, le commit d'avant cette passe, dans un worktree, avec le gate
+> courant : **mêmes échecs, mêmes chiffres** (554 verts, les 10 mêmes). Ce ne
+> sont pas des régressions et aucun n'est corrigé ici.
+>
+> - **A62 · חוות « also as 14 », six fois.** La vignette KPI « דונם משוקלל »
+>   vaut 14, et le compteur dit 14/14. C'est une coïncidence du jeu de
+>   démonstration — quatorze fermes, quatorze avec une surface — et la sonde
+>   n'a pas de moyen de distinguer un écho d'une égalité arithmétique.
+> - **A60 · חוות « 1px », quatre fois.** L'en-tête de liste soustrait
+>   `--row-shadow-room` quand il porte des en-têtes de colonnes, pour que la
+>   tête d'un tableau reste collée à son corps ; la rangée que la sonde mesure
+>   à ce moment-là est la rangée de vignettes, pas les filtres.
+>
+> `uipass` rend **36 verts et 3 rouges**, et ce sont exactement les trois que
+> AA7 a déjà rejoués et documentés : X7 (88 / 159 / 115), X5, et la pastille de
+> mode sur la fiche de ferme.
 >
 > ## Ce qui reste, et ce qui est délibéré
 >
@@ -1780,6 +1880,9 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run accept` | Acceptance criteria driven through `@core` (A4–A23) — **176 checks** since PO point 9b added sixteen pure Douglas-Peucker ones, and PO point 6 twelve before that, almost all of them about the difference between a head count that is ZERO and one nobody has been asked for |
 | `bun run sync` | **A77** — the offline data layer's rules (P2.5b): the cache restores what was on screen, six edits to one guard coalesce to ONE outbox entry, the oldest flushes first, a FAILED flush keeps everything, a deletion survives as a deletion, and signing out clears both stores while losing the network clears neither. 28 checks — no browser, no dev server, no network |
 | `bun run write` | **A76** — ⚠️ **THE WRITE PATH, END TO END, AGAINST THE REAL DATABASE** (P2.6b). Signs in as a DISPOSABLE test account, writes 17 aggregates across all 25 tables through `applyChanges` — the app's own function, not a copy — reads them back through `hydrateFrom`, compares, writes again to prove an update is not a duplicate, then deletes everything and proves the database is exactly as it was found. Every id begins `a76-`. Section 6 replays a P2.5b outbox into the real database. 38 checks — needed `.env.test`. ⚠️⚠️ **THE ACCOUNT WAS DELETED IN P3.1 (§13), SO THIS GATE NOW FAILS AT ITS FIRST CHECK AND THAT IS THE GREEN RESULT.** It is kept because it documents the write path and because a future session with its own disposable account can run it again |
+| `bun run assoc` | **A94 · A95 · A96** (AB6) — the association's format: the seventeen headers in their order plus the second מיקום, coordinates in LONGITUDE/LATITUDE refused in BOTH directions, `(0XX) XXX-XXXX`, `JJ/MM/AAAA`, שטחים שמירה never copied, and the round trip export → re-import on the product owner's own 198-row workbook. **40 checks**, no browser |
+| `bun run abpass` | **A87 … A93** (AB2 · AB3 · AB4 · AB5) — 360 → 1440 px by 20 with no row of pills ever on two lines, the count on « סינון », the agenda's map and its two-way link, the full-height ladder, the three views and the hour line, the target and its history, the role switch walked from the home screen. **50 checks** |
+| `bun run abcaptures` | AB8 — the deployed twin, light AND dark, three viewports, plus the resting geometric reading. **108 captures** |
 | `bun run live` | **A75** — the LIVE schema against the mapper (P2.6b), and **it needs no password**. PostgREST resolves `?select=` against the schema BEFORE applying RLS, so an anonymous request names a missing column (400/42703) and an existing one answers `[]`. 25 tables probed column by column (PO point 6 added `entity_livestock`), 16 enums probed label by label, `app_users` closed to a stranger. **48 checks** — needs the internet, not a dev server |
 | `bun run mapping` | **A74** — the mapper (P2.6b). Drives all 380 fixture aggregates out through `toRows` and back through `fromRows` and fails on any difference, then parses this repository's OWN migrations and asserts both directions of the column contract: no column the mapper writes is missing, no `not null`-without-default column goes unwritten. ⚠️ Its migration parser learned `create table IF NOT EXISTS` the day PO point 6 wrote one — a parser that stops seeing a table because somebody used the SAFER form of the statement is worse than one that fails. **33 checks** — no browser, no dev server, no network |
 | `bun run persist` | **A73** — the store interface (P2.6a). Drives all **54** exported mutations through a RECORDING backend and asserts what each one writes: the fan-outs (a zone rewrites the farm's dunams, the dual hat materialises a driver, a visit rewrites `nextVisitAt`), the ones that mutate IN PLACE and an identity diff would silently lose, and the three things that must never be written (a session change, a reset, a hydration). ★ Its section 7 cross-checks the names `@core` exports against the names actually DRIVEN, and it failed the moment PO point 8's nine deletions landed — which is exactly its job. **94 checks** — no browser, no dev server, no network |

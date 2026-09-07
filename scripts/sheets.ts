@@ -148,9 +148,12 @@ try {
   // -------------------------------------------------------------------------
 
   await open(page, '#/coordinator/import/prospection')
+  /* ★★ AB6.7 — SIX TABS, NOT FIVE: the association's own file, coming back,
+     joined the three rosters and the two association imports. A format this
+     app can write and cannot read is a one-way door. */
   check(
-    'the prospection wizard is reachable and shows five tabs',
-    (await page.locator('[data-testid="import-tabs"] .filter-pill').count()) === 5,
+    'the prospection wizard is reachable and shows six tabs',
+    (await page.locator('[data-testid="import-tabs"] .filter-pill').count()) === 6,
     `${await page.locator('[data-testid="import-tabs"] .filter-pill').count()} tabs`,
   )
 

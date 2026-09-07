@@ -85,7 +85,24 @@ const LISTS = [
    *    widths that had nothing to do with the reserve. A selector that can
    *    match furniture is not a selector for rows.
    */
-  { name: 'agenda', hash: '#/coordinator/agenda', row: 'main li' },
+  /**
+   * ★★ AB3 · AB4 (2026-09-08) — AND `main li` STOPPED MATCHING ANYTHING WHEN
+   *    THE AGENDA BECAME AN HOUR LADDER. There are no list items on this
+   *    screen any more: the appointments are absolutely-positioned blocks
+   *    inside a scroller of their own, and the one thing at the FOOT of the
+   *    content column — the thing the reserve exists to keep clear of the
+   *    floating band — is the « מיקום חסר » disclosure under the grid.
+   *
+   * ⚠️ THE GRID ITSELF IS NOT A ROW AND MUST NOT BE ONE HERE. It scrolls
+   *    inside its own box, so its last block can never end under the "+";
+   *    measuring it would be measuring a scrollport against a reserve that is
+   *    not for it.
+   */
+  {
+    name: 'agenda',
+    hash: '#/coordinator/agenda',
+    row: '[data-testid="agenda-unplaced"], [data-testid="agenda-grid"]',
+  },
 ] as const
 
 let passed = 0

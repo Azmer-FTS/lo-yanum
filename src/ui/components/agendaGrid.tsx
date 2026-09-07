@@ -304,6 +304,17 @@ export function AgendaGrid({
                  */
                 const boxHeight = ((to - from) / 60) * hour
                 const compact = boxHeight < 34
+                /**
+                 * ⚠️ AND A BLOCK THAT SHARES ITS COLUMN IS NARROW WHATEVER ITS
+                 *    HEIGHT. Measured on the deployed twin, iPad landscape: a
+                 *    76 px column split in two leaves 36 px, and « 06:40 »
+                 *    overflowed and was CLIPPED AT ITS INLINE END — the box
+                 *    read « 40 », which is not a time and is worse than no
+                 *    label at all. The kind icon goes (the colour already says
+                 *    which kind it is), and the hour truncates with an ellipsis
+                 *    rather than losing its first half.
+                 */
+                const shared = lanes > 1
                 return (
                   <button
                     key={event.id}
@@ -337,44 +348,77 @@ export function AgendaGrid({
                       width: `calc(${100 / lanes}% - 4px)`,
                     }}
                   >
-                    <span className="flex min-w-0 items-center gap-1">
-                      {/* ⚠️ NO KIND ICON ON A COMPACT BLOCK. A week column on
-                          a 402 px phone is 46 px wide and the button clips at
-                          its inline end, so nine pixels of icon plus a gap
-                          pushed the HOUR out of the box — measured as blocks
-                          reading « :30 ». The colour of the block already says
-                          which kind it is, and the legend says what the colour
-                          means; the hour has nothing else that carries it. */}
-                      {!compact && <Icon name={tone.icon} size={9} className="shrink-0" />}
-                      <span className="ltr-nums shrink-0 text-micro font-semibold">
-                        {formatTime(event.at, locale)}
-                      </span>
-                      {event.position === null && (
-                        <Icon
-                          name="alert"
-                          size={9}
-                          className="shrink-0"
-                          aria-label={t('agenda.missingPosition')}
-                        />
-                      )}
-                      {compact && (
+                    {/**
+                      * ⚠️ ON A SHARED COLUMN THE HOUR IS THE REDUNDANT DATUM,
+                      *    AND THAT IS THE WHOLE ARGUMENT FOR DROPPING IT.
+                      *
+                      * Measured on the deployed twin, iPad landscape: a 76 px
+                      * column split in two leaves 36 px, and « 06:40 » was
+                      * clipped at its inline end to « 40 » — not a time, and
+                      * worse than nothing. Truncating it instead gives « 0… »,
+                      * which is honest and says nothing at all.
+                      *
+                      * ★ The block's TOP EDGE already states the hour: that is
+                      *   what an hour ladder is for, and it is why this view
+                      *   was rebuilt (AB4). What the ladder cannot say is WHOSE
+                      *   appointment it is. So when there is room for one line,
+                      *   the line is the name.
+                      */}
+                    {shared ? (
+                      <span className="flex min-w-0 items-center gap-1">
+                        {event.position === null && (
+                          <Icon
+                            name="alert"
+                            size={9}
+                            className="shrink-0"
+                            aria-label={t('agenda.missingPosition')}
+                          />
+                        )}
                         <span
-                          className={`min-w-0 truncate text-micro font-medium ${
+                          className={`min-w-0 truncate text-micro font-semibold ${
                             event.missionStatus === 'cancelled' ? 'line-through opacity-80' : ''
                           }`}
                         >
                           {event.title}
                         </span>
-                      )}
-                    </span>
-                    {!compact && (
-                      <span
-                        className={`block truncate text-micro font-medium ${
-                          event.missionStatus === 'cancelled' ? 'line-through opacity-80' : ''
-                        }`}
-                      >
-                        {event.title}
                       </span>
+                    ) : (
+                      <>
+                        <span className="flex min-w-0 items-center gap-1">
+                          {!compact && <Icon name={tone.icon} size={9} className="shrink-0" />}
+                          <span className="ltr-nums shrink-0 text-micro font-semibold">
+                            {formatTime(event.at, locale)}
+                          </span>
+                          {event.position === null && (
+                            <Icon
+                              name="alert"
+                              size={9}
+                              className="shrink-0"
+                              aria-label={t('agenda.missingPosition')}
+                            />
+                          )}
+                          {compact && (
+                            <span
+                              className={`min-w-0 truncate text-micro font-medium ${
+                                event.missionStatus === 'cancelled'
+                                  ? 'line-through opacity-80'
+                                  : ''
+                              }`}
+                            >
+                              {event.title}
+                            </span>
+                          )}
+                        </span>
+                        {!compact && (
+                          <span
+                            className={`block truncate text-micro font-medium ${
+                              event.missionStatus === 'cancelled' ? 'line-through opacity-80' : ''
+                            }`}
+                          >
+                            {event.title}
+                          </span>
+                        )}
+                      </>
                     )}
                   </button>
                 )
