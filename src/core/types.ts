@@ -235,7 +235,23 @@ export interface Farm {
   entityKind?: EntityKind
   status: FarmStatus
   position: LatLng
+  /**
+   * ★★ AA2 (2026-09-07) — THIS IS « שטח מעובד », AND IT ALWAYS WAS.
+   *
+   * The field keeps its name because renaming a key that is already written
+   * into every persisted record and into `data/rows.ts`'s column map buys
+   * nothing and risks a silent loss; what changed is the LABEL, everywhere it
+   * is read. The pair is now explicitly « מעובד / מרעה » rather than
+   * « שטח החווה / שטח מרעה », which is what the association's own workbook
+   * calls them and what the weighting (AA3) needs them to be: one is counted
+   * at 1, the other at 1/50, and « the farm's area » does not say which.
+   *
+   * A record that predates the split carries one figure; `splitLegacyDunams`
+   * (core/fields.ts) files it by the farm's type and refuses to guess for a
+   * mixed holding.
+   */
   farmDunams: number
+  /** AA2 — שטח מרעה (דונם). Weighted at 1/50; see `WEIGHTED_DUNAM`. */
   grazingDunams: number
   /**
    * G15 — true when the coordinator TYPED the value ("מוזן ידנית"); false or
@@ -259,6 +275,92 @@ export interface Farm {
   nextVisitAt: string | null
   /** Photo of the place itself. */
   photo: string | null
+
+  // -------------------------------------------------------------------------
+  // ★★ AA2 (2026-09-07) — THE FIELDS THE PROSPECTION WORK ACTUALLY NEEDS.
+  // -------------------------------------------------------------------------
+  /**
+   * Every one of them is OPTIONAL, and that is not laziness: this record is
+   * created the moment somebody puts a place on a list, long before anybody
+   * has asked whose name is on the lease. A required field here would turn
+   * « we have heard of this moshav » into « we cannot write it down », which
+   * is the opposite of what a prospection tool is for.
+   */
+
+  /**
+   * סמל יישוב (למ״ס) — the State's own four-digit code for the locality.
+   *
+   * ★ IT IS THE IDENTITY KEY OF THE IMPORT (AA4.2), which is the whole reason
+   *   it is worth carrying: a name can be spelt three ways and a council can
+   *   be re-drawn, but 1177 is טללים in every file anybody will ever send.
+   *   Unique across farms WHEN PRESENT — two records sharing a code are the
+   *   same place entered twice, and the importer says so rather than creating
+   *   the second.
+   */
+  localityCode?: number | null
+
+  /** AA4 — מועצה אזורית. Half of the fallback identity key, with the name. */
+  council?: string
+
+  /** AA2 — an id from `LEGAL_ENTITY_OPTIONS` (core/fields.ts), or ''. */
+  legalEntity?: string
+
+  /** AA2 — an id from `LAND_AGREEMENT_OPTIONS` (core/fields.ts), or ''. */
+  landAgreement?: string
+
+  /**
+   * AA2 — תוקף ההסכם: the date the right over the land expires.
+   * ISO `YYYY-MM-DD`, or null when nobody has read the contract.
+   * A date in the past is one of the two triggers for the AA2bis warning.
+   */
+  landAgreementUntil?: string | null
+
+  /**
+   * ★ AA2 — TWO PEOPLE, AND THEY ARE NOT THE SAME PERSON.
+   *
+   * « איש קשר (מועצה/אגודה) » is who POINTS you at the holding — the regional
+   * council's office, the אגודה's secretary. « שם החקלאי » is who SIGNS.
+   * The association's workbook keeps two rows for exactly this reason, and
+   * collapsing them into the existing `contacts` list would lose which of the
+   * two a coordinator is about to telephone at nine in the evening.
+   */
+  farmerName?: string
+  farmerPhone?: string
+  liaisonName?: string
+  liaisonPhone?: string
+
+  /**
+   * AA5.4 — WHERE THIS FARM'S SIGNATURE CAME FROM.
+   *
+   * Signed on the device, or imported from the association's own form — with
+   * the file it came in and the day it arrived. Absent means neither has
+   * happened. Traceability is the product owner's own word for it, and the
+   * reason is that these rows become documents handed to the State.
+   */
+  signatureOrigin?: SignatureOrigin
+
+  /**
+   * AA5.3 — the signature image itself when it arrived by import, as a PNG or
+   * SVG data URI. A signature made in the app lives on its `Agreement`; this
+   * one has no agreement record behind it, only a row in somebody's export.
+   */
+  signature?: string | null
+
+  /**
+   * AA5.3 — set when a signed row arrived whose signature cell could not be
+   * read. The row is imported, never rejected; this is the to-do it leaves.
+   */
+  signatureMissing?: boolean
+}
+
+/** AA5.4 — how a farm came to be signed. */
+export interface SignatureOrigin {
+  kind: 'app' | 'imported'
+  /** ISO datetime the signature was made, or the row said it was. */
+  signedAt: string | null
+  /** Imports only: the file it arrived in, and the day it was imported. */
+  fileName?: string
+  importedAt?: string
 }
 
 // ---------------------------------------------------------------------------

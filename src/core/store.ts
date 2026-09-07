@@ -374,6 +374,20 @@ export interface FarmDraft {
   livestock?: LivestockLine[]
   agreements: Agreement[]
   notes: string
+  // AA2 — the prospection fields. Every one optional; see `Farm` for why.
+  localityCode?: number | null
+  council?: string
+  legalEntity?: string
+  landAgreement?: string
+  landAgreementUntil?: string | null
+  farmerName?: string
+  farmerPhone?: string
+  liaisonName?: string
+  liaisonPhone?: string
+  // AA5 — set by the signatures import, never by the form.
+  signature?: string | null
+  signatureMissing?: boolean
+  signatureOrigin?: Farm['signatureOrigin']
 }
 
 export function createFarm(draft: FarmDraft): Farm {

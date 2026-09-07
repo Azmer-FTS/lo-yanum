@@ -449,7 +449,6 @@ export function RoutePlannerScreen() {
             room between them is the app's one rhythm. */}
         <div className="filters-gap">
         <FilterRow
-          nowrap
           active={pickDay || pickStatus !== null || pickRegion !== null}
           onClear={() => {
             setPickDay(false)

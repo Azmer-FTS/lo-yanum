@@ -60,3 +60,36 @@ export function useNarrow(at: number): {
 
   return { ref, narrow }
 }
+
+/**
+ * ★★ AA1.4 · AA1.5 (2026-09-07) — "SUR TÉLÉPHONE", ASKED OF THE PHONE.
+ *
+ * `useNarrow` above is right for every question about a panel the coordinator
+ * DRAGS. The filter row's shape is not one of them, and Z3 discovered why the
+ * hard way: measuring the bar's own box means the same iPad answers "row" at
+ * 75 % of the seam and "drop-down" at 25 %, so the pills the product owner is
+ * looking for disappear behind « סינון » on a 1376 px screen. His decision on
+ * AA1.5 settles it — "sur iPad et desktop : pastilles VISIBLES en permanence"
+ * — and that is a fact about the DEVICE, not about the panel.
+ *
+ * 640 px is the same floor `sm:` uses everywhere else in this repository, so
+ * the folded shape is exactly "a phone" and nothing else.
+ */
+const PHONE_SHAPE = '(max-width: 639px)'
+
+export function usePhoneShape(): boolean {
+  const [phone, setPhone] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(PHONE_SHAPE).matches,
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia(PHONE_SHAPE)
+    const onChange = (): void => setPhone(mq.matches)
+    onChange()
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  return phone
+}

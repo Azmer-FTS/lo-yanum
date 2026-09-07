@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
-import { useNarrow } from '../hooks/useNarrow'
+import { useNarrow, usePhoneShape } from '../hooks/useNarrow'
 import { BandCard } from './band'
 import { ChevronForward, Icon } from './Icon'
 import type { IconName } from './Icon'
@@ -31,6 +31,20 @@ import type { IconName } from './Icon'
  * `FilterRow` decides WHERE it goes.
  */
 const CounterSlot = createContext<ReactNode>(null)
+
+/**
+ * ★★ AA1.3 · AA1.4 (2026-09-07) — WHAT SHAPE THE ROW IS IN, FOR THE CONTROLS
+ *    THAT HAVE TO CHANGE SHAPE WITH IT.
+ *
+ * Two of the filter row's own children behave differently on a phone: the
+ * three type pills become a grid of equal widths (`PillGroup`), and the region
+ * selector leaves the row for a full-width drop-down of its own
+ * (`RegionFilter`). Both are `children` — handed in by the screen, moved by
+ * this component, never re-declared — so the only way for them to know is to
+ * be told. A prop would mean every screen passing the same boolean it does not
+ * have; a context means the row states it once, where it is known.
+ */
+export const FilterShape = createContext<{ phone: boolean }>({ phone: false })
 
 // --- The horizontal rows ---------------------------------------------------
 
@@ -1209,57 +1223,57 @@ export function FilterRow({
   active,
   onClear,
   trailing,
-  nowrap = false,
 }: {
   children: ReactNode
   /** True when at least one filter is on. */
   active: boolean
   onClear: () => void
   trailing?: ReactNode
-  /** U2 — one swipable line instead of a wrapping block. */
-  nowrap?: boolean
 }) {
   const { t } = useTranslation()
   /**
-   * ★★ Y7.3 (2026-09-04) — UNDER 26 REM THE ROW BECOMES A DROP-DOWN.
+   * ★★ AA1.5 (2026-09-07) — THE QUESTION MOVED FROM THE PANEL TO THE DEVICE,
+   *    AND THAT IS THE PRODUCT OWNER'S DECISION ON Z3.2.
    *
-   *   "Sur petit viewport, les filtres passent dans un DROP-DOWN (demandé
-   *    précédemment, non fait) plutôt qu'en rangée écrasée."
+   *   « Sur iPad et desktop : pastilles VISIBLES en permanence sur leur propre
+   *     ligne, pas repliées derrière סינון. »
    *
-   * ★ 20 REM IS MEASURED, NOT PICKED, AND IT IS MEASURED ON THE RIGHT BOX.
-   *   The first version used 26 rem and put the guards list into a drop-down
-   *   on a 1440 px desktop — because Y6 moved this row in beside the counter
-   *   pill, so what it is handed is the panel LESS about 7 rem, and a 456 px
-   *   panel measured 344 px here. At 20 rem a desktop's third-panel (344 px)
-   *   keeps its pills as a swipable row, and a phone (about 238 px once the
-   *   counter and the padding are taken) gets the drop-down — which is where
-   *   the row really is crushed rather than merely swipable.
+   * Y7.3 and Z3 measured this row's own box, on the good argument that the
+   * width of a panel the coordinator drags is not the width of his screen. It
+   * is a good argument for a row that has to FIT; it is the wrong one for a
+   * row that has to BE THERE. Measured before this line changed, at 1376 px:
+   * חוות, שמירות, אירועים and מסלול all answered "narrow" and folded their
+   * pills behind a button — on a desktop. The folded shape is a phone's now,
+   * and nothing else.
    *
-   * ★ AND THE QUESTION IS ASKED OF THE PANEL, not of the window: since
-   *   P0bis.2 the list's width is something he DRAGS. See `useNarrow`.
-   *
-   * ⚠️ THE PILLS ARE THE SAME NODES IN BOTH SHAPES. They are `children`,
-   *    moved into the panel rather than re-declared for it, so a screen
-   *    cannot end up with a filter in one reading and not in the other —
-   *    which is exactly what X5 spent a pass undoing on the rosters.
+   * ⚠️ IT FOLLOWS THAT THE WIDE SHAPE MUST WRAP RATHER THAN SCROLL. It was a
+   *    `ScrollRow`, and a pill past the fade is a pill that is not visible at
+   *    rest — measured on the desktop as a hit area of 1 × 1 px on « מעורבת »,
+   *    which is not a filter anybody can press. Two lines are the answer his
+   *    sentence already gives: line 1 the counter and the word, line 2 the
+   *    pills, always.
    */
-  /**
-   * ⚠️ Z3 (2026-09-07) — 24 REM, AND THE BOX IT IS ASKED OF MOVED.
-   *
-   * Y7.3 measured 20 rem against the row's own box, which sat INSIDE the
-   * counter's flex line and so was the panel less about 7 rem. Z3 gives the
-   * counter to this component, and the two shapes put it in two different
-   * places — so measuring the row itself would measure a different box per
-   * shape, and a panel between the two answers would flip between them for
-   * ever. The ruler is the bar's full width now, in both shapes, and the
-   * threshold carries the counter's own room: 20 rem of pills plus a short
-   * "14/14" pill and its gap.
-   */
-  const { ref, narrow } = useNarrow(24 * 16)
+  const phone = usePhoneShape()
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement | null>(null)
   /** Z3 — the counter `ListTop` built, if this row is inside one. */
   const counter = useContext(CounterSlot)
+
+  /**
+   * ★ AA1.2 — WHILE THE PANEL IS OPEN, THE BOTTOM RAIL STEPS ASIDE.
+   *
+   * The floating "+" and the map-mode pill are fixed to the foot of the
+   * screen; the panel grows down into that band. Measured on מתנדבים at
+   * 402 px before this: the last pill's hit area was 1 × 1 px, because the
+   * rail was on top of it. The flag is on the document because the two things
+   * are in different trees and neither owns the other.
+   */
+  useEffect(() => {
+    if (!open || !phone) return
+    const root = document.documentElement
+    root.setAttribute('data-filters-open', '')
+    return () => root.removeAttribute('data-filters-open')
+  }, [open, phone])
 
   useEffect(() => {
     if (!open) return
@@ -1289,123 +1303,143 @@ export function FilterRow({
     </button>
   )
 
+
   /** The bar itself: one box, one width, whichever shape is drawn in it. */
   const bar = (inner: ReactNode): ReactNode => (
-    <div ref={ref} className="relative">
+    <div ref={box} data-filter-row="" data-shape={phone ? 'phone' : 'wide'} className="relative">
       {inner}
     </div>
   )
 
-  if (narrow) {
-    return bar(
-      /**
-       * ★★ Y8 (2026-09-06) — THE PANEL PUSHES THE LIST, IT DOES NOT COVER IT.
-       *
-       * "Le sélecteur de région et le popover de filtres recouvrent
-       *  aujourd'hui la première carte de la liste. Ils doivent s'ouvrir SOUS
-       *  la rangée de filtres sans jamais masquer un élément de contenu, ou
-       *  décaler la liste."
-       *
-       * It was `absolute inset-x-0 top-full`, which is a panel that floats
-       * over whatever is under it — measured by `bun run rhythm` A59 as
-       * covering the first card on חוות, שמירות and אירועים. It is in flow
-       * now: it grows the sticky header, and the header pushes the list. The
-       * second half of his sentence, which is also the honest one — a filter
-       * panel that hides the rows it is filtering is a panel you have to
-       * close to see what you did.
-       */
-      <div ref={box} className="flex flex-wrap items-center gap-1.5">
-        {/**
-          * ★★ Z3.2 (2026-09-07) — LINE 1 IS THE COUNTER AND THE BUTTON, FACE
-          *    TO FACE; LINE 2 IS THE FILTERS, ALONE, AT FULL WIDTH.
-          *
-          * "Aujourd'hui les trois partagent une ligne et les filtres sont
-          *  ecrases." They did: the counter took the end of this row, the
-          *  סינון button and the ניקוי pill took the start, and the panel
-          *  that holds the actual filters opened underneath at whatever was
-          *  left. `me-auto` on the counter is the whole of "face a face" —
-          *  in an RTL row it pins the count to the reading start and pushes
-          *  everything else to the far end.
-          */}
-        {counter && <span className="me-auto flex items-center">{counter}</span>}
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          aria-haspopup="dialog"
-          data-testid="filter-dropdown"
-          className={`filter-pill ${active ? 'filter-pill-active' : ''}`}
-        >
-          <Icon name="filter" size={12} />
-          {t('common.filters')}
-        </button>
-        {clearPill}
-        {trailing && <div className="flex items-center gap-1.5">{trailing}</div>}
-        {open && (
-          <div
-            role="dialog"
-            aria-label={t('common.filters')}
-            data-testid="filter-dropdown-panel"
-            /* `basis-full` — in flow, on its own line under the row it belongs
-               to, at the row's own width. No `absolute`, no `z-40`, nothing to
-               land on top of. */
-            className="mt-1.5 flex max-h-[60dvh] basis-full flex-wrap items-center gap-1.5
-                       overflow-y-auto rounded-card bg-surface-high p-3"
-          >
-            {children}
-          </div>
+  if (phone) {
+    return (
+      <FilterShape.Provider value={{ phone: true }}>
+        {bar(
+          /**
+           * ★★ Y8 (2026-09-06) — THE PANEL PUSHES THE LIST, IT DOES NOT COVER
+           *    IT. It was `absolute inset-x-0 top-full`, which floats over
+           *    whatever is under it — measured by `bun run rhythm` A59 as
+           *    covering the first card on חוות, שמירות and אירועים. It is in
+           *    flow: it grows the sticky header, and the header pushes the
+           *    list.
+           */
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+            {/**
+              * ★★ Z3.2 — LINE 1 IS THE COUNTER AND THE BUTTON, FACE TO FACE.
+              * `me-auto` on the counter is the whole of "face à face": in an
+              * RTL row it pins the count to the reading start and pushes
+              * everything else to the far end.
+              */}
+            {counter && <span className="me-auto flex items-center">{counter}</span>}
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              aria-haspopup="dialog"
+              data-testid="filter-dropdown"
+              className={`filter-pill px-3 ${active ? 'filter-pill-active' : ''}`}
+            >
+              <Icon name="filter" size={12} />
+              {t('common.filters')}
+            </button>
+            {clearPill}
+            {trailing && <div className="flex items-center gap-2">{trailing}</div>}
+            {open && (
+              <div
+                role="dialog"
+                aria-label={t('common.filters')}
+                data-testid="filter-dropdown-panel"
+                /* `basis-full` — in flow, on its own line under the row it
+                   belongs to, at the row's own width. No `absolute`, no
+                   `z-40`, nothing to land on top of. */
+                className="pill-row mt-1.5 max-h-[60dvh] basis-full overflow-y-auto
+                           rounded-card bg-surface-high p-3"
+              >
+                {children}
+              </div>
+            )}
+          </div>,
         )}
-      </div>,
+      </FilterShape.Provider>
     )
   }
 
-  const body = (
-    <>
-      {children}
-      {clearPill}
-      {trailing && (
-        <div className="ms-auto flex items-center gap-1.5">{trailing}</div>
+  /**
+   * ★ AA1.5 — THE WIDE SHAPE IS TWO LINES, AND « סינון » IS A LABEL ON IT.
+   *
+   * On a phone the word is a disclosure — it opens the panel that holds the
+   * pills. Here there is nothing to disclose: the pills are on the line under
+   * it, permanently. Leaving a button that toggles nothing would be worse than
+   * dropping the word, so it keeps the word and drops the button: the same
+   * icon and the same noun, set as the heading of the block it names.
+   */
+  return (
+    <FilterShape.Provider value={{ phone: false }}>
+      {bar(
+        <>
+          <div className="flex items-center gap-2">
+            {counter}
+            <span
+              data-filters-title=""
+              className="flex items-center gap-1.5 text-micro font-medium text-content-muted"
+            >
+              <Icon name="filter" size={12} />
+              {t('common.filters')}
+            </span>
+            {trailing && (
+              <div className="ms-auto flex items-center gap-2">{trailing}</div>
+            )}
+          </div>
+          {/* AA1.2 — `.pill-row` carries the 10 px / 20 px the touch targets
+              need; see the note beside it in `index.css`. */}
+          <div className="pill-row mt-2">
+            {children}
+            {clearPill}
+          </div>
+        </>,
       )}
-    </>
+    </FilterShape.Provider>
   )
+}
 
-  /**
-   * ★ Y5 — the swipable variant is a `ScrollRow` like every other, so the
-   *   filter row starts on the content margin and fades on the side that has
-   *   more. The wrapping variant is a plain flex box and needs neither.
-   */
-  /**
-   * ★★ Z1 (2026-09-07) — THE ROW CARRIES NO MARGIN OF ITS OWN ANY MORE.
-   *
-   * It had three — `mb-2`, `mb-4`, `mb-2`, one per shape — so the room under
-   * the filters depended on which shape the panel's width had picked, and on
-   * whether the screen passed a `FilterRow` or a bare `ScrollRow` (מתנדבים and
-   * נהגים do). Measured: 12 px on חוות and 4 px on נהגים, for the same row in
-   * the same place. Spacing between two blocks belongs to whatever holds them
-   * both: `ListTop` pays it here, and `.filters-gap` pays it everywhere else.
-   */
-  /**
-   * ★ Z3 — AND IN THE WIDE SHAPE THE COUNTER KEEPS THE END OF THE LINE.
-   *
-   * Y5 measured why it cannot be a flex sibling BEFORE the row: it pushed the
-   * pills 104–116 px off the content margin on נהגים and מתנדבים. The row
-   * keeps the start and stays swipable; the count sits at the far end, out of
-   * the scroller so it cannot slide away, and the row's END bleed is
-   * cancelled beside it (`me-0`) or 20 px of pills scroll underneath it.
-   */
-  const withCount = (row: ReactNode): ReactNode =>
-    counter ? (
-      <div className="flex items-center gap-2 [&_.scroll-veil]:me-0">
-        <div className="min-w-0 flex-1">{row}</div>
-        {counter}
-      </div>
-    ) : (
-      row
-    )
-
-  return nowrap
-    ? bar(withCount(<ScrollRow className="items-center gap-1.5">{body}</ScrollRow>))
-    : bar(withCount(<div className="flex flex-wrap items-center gap-1.5">{body}</div>))
+/**
+ * ★★ AA1.3 (2026-09-07) — ON A PHONE, A ROW OF PILLS IS A GRID OF EQUAL ONES.
+ *
+ *   « Sur téléphone, les pastilles de type prennent toutes la même largeur,
+ *     alignées en grille. Un libellé court ne donne pas une pastille étroite :
+ *     la régularité est ici à la fois plus lisible et plus sûre au doigt. »
+ *
+ * That last clause is the design principle of this whole pass in one line, and
+ * it is why this is a grid rather than three `min-w` pills: equal columns are
+ * the only thing that makes the boundary between two targets PREDICTABLE. A
+ * thumb that has learnt where « בעלי חיים » ends does not have to re-learn it
+ * on the next screen.
+ *
+ * On iPad and desktop it is a plain fragment — the pills join the wrapping row
+ * like any other, because there the widths are not what is scarce.
+ */
+export function PillGroup({
+  name,
+  cols = 3,
+  children,
+}: {
+  /** Identifies the group for `bun run pills` (A73). */
+  name: string
+  cols?: number
+  children: ReactNode
+}) {
+  const { phone } = useContext(FilterShape)
+  if (!phone) return <>{children}</>
+  return (
+    <div
+      data-pill-group={name}
+      /* AA1.2 — the same 10 px / 20 px as `.pill-row`, in a grid. */
+      className="grid basis-full gap-x-[10px] gap-y-5 [&_.filter-pill]:w-full"
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+    >
+      {children}
+    </div>
+  )
 }
 
 /**

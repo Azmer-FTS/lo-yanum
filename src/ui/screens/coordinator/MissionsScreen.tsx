@@ -160,7 +160,6 @@ export function MissionsScreen() {
              row. Status counts are computed against the ACTIVE tab, so a
              pill's number is what pressing it would actually show. */
           <FilterRow
-            nowrap
             active={status !== null || region !== null}
             onClear={() => {
               setStatus(null)

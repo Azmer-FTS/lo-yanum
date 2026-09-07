@@ -253,7 +253,6 @@ export function DriversScreen() {
            * number; it is gone.
            */
           <FilterRow
-            nowrap
             active={anyFilter}
             onClear={clearFilters}
           >

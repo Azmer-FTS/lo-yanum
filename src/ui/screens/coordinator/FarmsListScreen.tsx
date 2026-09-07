@@ -40,6 +40,7 @@ import {
   EmptyState,
   FilterPill,
   FilterRow,
+  PillGroup,
   KpiChip,
   ListTop,
   LoadMore,
@@ -269,7 +270,6 @@ export function FarmsListScreen() {
 
   const filterRow = (
     <FilterRow
-      nowrap
       active={status !== null || type !== null || moshavOnly || region !== null}
       onClear={() => {
         setStatus(null)
@@ -280,17 +280,21 @@ export function FarmsListScreen() {
     >
       <RegionFilter value={region} onChange={setRegion} counts={regionCounts} testId="farms-region" />
       {/* G14d — the status pills are gone: the KPI chips above carry status
-          filtering now. Only the type pills remain, they have no chip. */}
-      {TYPES.map((ft) => (
-        <FilterPill
-          key={ft}
-          active={type === ft}
-          onClick={() => setType(type === ft ? null : ft)}
-          count={farms.filter((f) => f.type === ft).length}
-        >
-          {t(`farmType.${ft}`)}
-        </FilterPill>
-      ))}
+          filtering now. Only the type pills remain, they have no chip.
+          AA1.3 — and on a phone the three of them are one grid of equal
+          widths: « un libellé court ne donne pas une pastille étroite ». */}
+      <PillGroup name="farm-type" cols={3}>
+        {TYPES.map((ft) => (
+          <FilterPill
+            key={ft}
+            active={type === ft}
+            onClick={() => setType(type === ft ? null : ft)}
+            count={farms.filter((f) => f.type === ft).length}
+          >
+            {t(`farmType.${ft}`)}
+          </FilterPill>
+        ))}
+      </PillGroup>
     </FilterRow>
   )
 

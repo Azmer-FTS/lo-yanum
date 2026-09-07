@@ -289,7 +289,7 @@ export function ImportWizardScreen() {
           should not have to go back out through two screens. Switching resets
           the wizard: a mapping guessed for one template is meaningless
           against another's columns. */}
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="pill-row mb-4">
         {IMPORT_KINDS.map((k) => (
           <button
             key={k}

@@ -58,7 +58,7 @@ export function DisplaySection() {
           role="group"
           aria-label={t('theme.label')}
           data-testid="settings-theme"
-          className="mt-1.5 flex flex-wrap items-center gap-1.5"
+          className="pill-row mt-1.5"
         >
           {THEME_CHOICES.map((option) => (
             <button
@@ -82,7 +82,7 @@ export function DisplaySection() {
           role="group"
           aria-label={t('settings.display.syncLabel')}
           data-testid="settings-layout-sync"
-          className="mt-1.5 flex flex-wrap items-center gap-1.5"
+          className="pill-row mt-1.5"
         >
           {(['free', 'synced'] as const).map((option) => (
             <button

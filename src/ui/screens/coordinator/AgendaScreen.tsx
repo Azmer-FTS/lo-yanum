@@ -402,7 +402,8 @@ export function AgendaScreen() {
           {periodLabel}
         </p>
 
-        <div className="ms-auto flex items-center gap-1.5">
+        {/* AA1.2 — pills under the same thumb as every other row of pills. */}
+        <div className="pill-row ms-auto">
           {(['day', 'week', 'month'] as const).map((v) => (
             <button
               key={v}

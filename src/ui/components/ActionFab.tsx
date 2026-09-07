@@ -167,6 +167,11 @@ export function ActionFab() {
          reserve room for. The old button escaped the rule only by being
          `lg:hidden` — i.e. by not existing at the width the gate measures. */
       data-overlay=""
+      /* ★ AA1.2 — AND IT IS PART OF THE BOTTOM RAIL, which steps aside while
+         the phone's filter panel is open. See `[data-bottom-rail]` in
+         `index.css`: this button was measured sitting ON TOP of the last
+         filter pill on מתנדבים at 402 px, which made that filter untappable. */
+      data-bottom-rail=""
       /* X3.1 — THE SAME AXIS AS THE MAP RAIL. `end-4` + a 56 px button put
          this one object 4 px outside the line the tools stack, the mode pill
          and the pencil all sit on; the product owner read that as the "+"

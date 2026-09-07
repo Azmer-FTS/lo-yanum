@@ -422,7 +422,7 @@ export function VolunteersScreen() {
           /* Z3 — `FilterRow` like every other roster: it owns the clearing,
              the drop-down shape at narrow widths that this screen never had,
              and the counter's place in both shapes. */
-          <FilterRow nowrap active={anyFilter} onClear={clearFilters}>
+          <FilterRow active={anyFilter} onClear={clearFilters}>
             <RegionFilter
               value={region}
               onChange={setRegion}

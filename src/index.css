@@ -671,12 +671,112 @@
      further down, where the resting fill is declared. The hover no longer
      draws an edge either: on a filled pill it read as a second state between
      "off" and "on", which is one state too many for a control with two. */
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ★★ AA1.1 · AA1.2 · AA1.6 (2026-09-07) — LA PLACE POUR SES DOIGTS.
+   * ═══════════════════════════════════════════════════════════════════════
+   *
+   * The product owner, on his iPhone: « les pilules n'ont pas la même taille,
+   * des fois j'appuie sur une et ça appuie sur l'autre, je n'ai pas la place
+   * pour mes doigts. » Three separate facts, and each one has its own line
+   * here.
+   *
+   * ★ THE HIT AREA IS 44 px TALL; THE INK IS 32. His own permission — « la
+   *   zone tactile peut dépasser le visuel sans l'alourdir visuellement » — is
+   *   what makes that legal, and a `::before` is what makes it real: a
+   *   transparent box centred on the pill, six pixels proud of it top and
+   *   bottom, which the browser hit-tests as part of the button because a
+   *   pseudo-element IS part of its element. Nothing about the drawing
+   *   changes; only what a thumb may miss by.
+   *
+   * ★ AND 44 px WIDE, EVEN FOR A SHORT WORD. `min-width` rather than more
+   *   padding, so « נהג » and « פתוחים בלבד » keep their own natural widths
+   *   and only the runt is grown. It is also what keeps the hit areas from
+   *   having to bulge SIDEWAYS to reach 44 — if they did, the 8 px his second
+   *   complaint asks for would have to be found somewhere, and there is
+   *   nowhere on a 402 px row to find it.
+   *
+   * ★ THE PRESSED STATE IS ON THE PILL THAT WAS TOUCHED (AA1.6). Safari paints
+   *   a grey rectangle of its own over the tapped element — on a pill whose
+   *   hit area is wider than its ink, that rectangle is visibly not the pill,
+   *   which is precisely the "j'appuie sur une et ça appuie sur l'autre"
+   *   impression. It is turned off and replaced by a scale the eye reads as
+   *   the pill itself moving.
+   */
   .filter-pill {
-    @apply inline-flex shrink-0 items-center gap-1.5 rounded-pill border
-           border-transparent bg-surface-high px-2.5 py-1 text-micro
-           font-medium text-content-secondary
+    @apply relative inline-flex shrink-0 items-center justify-center gap-1.5
+           rounded-pill border border-transparent bg-surface-high px-2.5
+           text-micro font-medium text-content-secondary
            transition-all duration-fast ease-out
            hover:text-content-primary;
+    min-width: 2.75rem;
+    min-height: 2.25rem;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* AA1.1 — the touch target. Transparent, so it adds nothing to the drawing,
+     and hit-tested, so it adds everything to the thumb. `inset-inline: 0`
+     keeps it exactly as wide as the ink: the width is already ≥ 44 px, and a
+     target that bulged sideways would eat the gap AA1.2 asks for. */
+  .filter-pill::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 50%;
+    height: 2.75rem;
+    margin-top: -1.375rem;
+    border-radius: inherit;
+  }
+
+  /* AA1.6 — pressed, and unmistakably on this one. */
+  .filter-pill:active {
+    transform: scale(0.96);
+  }
+
+  /**
+   * ★★ AA1.2 (2026-09-07) — THE ROW THAT HOLDS PILLS, AND ITS ARITHMETIC,
+   *    IN ONE PLACE.
+   *
+   * « Écart minimal de 8 px entre deux cibles tactiles voisines. Aujourd'hui
+   *   deux pastilles se touchent et la frontière est ambiguë. »
+   *
+   * ★ THE TWO FIGURES ARE NOT THE SAME BECAUSE THE TARGET IS NOT THE INK.
+   *   A pill draws 36 px of ink and hit-tests 44, so it stands FOUR PIXELS
+   *   PROUD of itself top and bottom and not one pixel proud of itself left or
+   *   right (`::before` is `inset-inline: 0`). Sideways, therefore, the gap you
+   *   see IS the clearance; vertically it is the gap you see LESS eight. 10 px
+   *   and 20 px leave 10 and 12 — comfortably over his floor, with a pixel in
+   *   hand for the rounding a browser does when it snaps a fractional box to
+   *   the device grid, which is worth a whole pixel of the answer and is why
+   *   8 px flat measured as 7.
+   *
+   * ⚠️ EVERY ROW OF PILLS WEARS THIS, not just the filter rows: the agenda's
+   *    control bar and the import wizard's roster switcher are pills under the
+   *    same thumb, and they had their own `gap-1.5` and `gap-2`. One class is
+   *    what keeps the next one from inventing a third.
+   */
+  /**
+   * ★★ AA1.2 (2026-09-07) — THE BOTTOM RAIL STEPS ASIDE FOR THE FILTER PANEL.
+   *
+   * Found by `bun run pills` and by nothing else: on מתנדבים at 402 px, with
+   * the « סינון » panel open, the floating "+" and the map-mode pill sat over
+   * its last row — the pill « ישיבת שדרות » measured a hit area of 1 × 1 px.
+   * A filter you cannot press is not a filter, and a capture would have shown
+   * two controls that merely look close.
+   *
+   * ★ THEY FADE, THEY ARE NOT UNMOUNTED. The panel is a moment — one tap to
+   *   open, one tap or an Escape to close — and a control that disappears from
+   *   the DOM and comes back has to be found again. Fading keeps the corner's
+   *   geometry, which is what the eye returns to.
+   *
+   * ★ AND IT IS THE PHONE'S PANEL ONLY, because that is the only shape where
+   *   the two share a band: on iPad and desktop the pills are on their own
+   *   line at the top of the list (AA1.5) and the rail is nowhere near them.
+   */
+  .pill-row {
+    @apply flex flex-wrap items-center;
+    column-gap: 10px;
+    row-gap: 20px;
   }
 
   /* The active pill is unmistakable: accent border, accent wash, accent ink.
@@ -1444,7 +1544,10 @@
 .scroll-row {
   display: flex;
   align-items: stretch;
-  gap: 0.5rem;
+  /* AA1.2 — 10 px, the same figure as `.pill-row` and for the same reason:
+     the cards in these rows are tap targets too (a KPI chip filters the list),
+     and 8 px measured as 7 once a browser snapped the boxes to its grid. */
+  gap: 10px;
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
@@ -2169,4 +2272,14 @@ label:has(> textarea) {
 
 .filter-pill:not(.filter-pill-active):hover {
   background-color: color-mix(in srgb, rgb(var(--text-primary)) 19%, rgb(var(--surface-raised)));
+}
+
+/* AA1.2 — see the note beside `.pill-row`. */
+:root[data-filters-open] [data-bottom-rail] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+[data-bottom-rail] {
+  transition: opacity var(--duration-base, 200ms) ease-out;
 }

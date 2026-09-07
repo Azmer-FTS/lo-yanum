@@ -67,7 +67,7 @@ export function ThreatPanel({
     value: ThreatIntensity
     onChange: (next: ThreatIntensity) => void
   }) => (
-    <div className="flex flex-wrap gap-1.5" role="group">
+    <div className="pill-row" role="group">
       {THREAT_INTENSITIES.map((level) => (
         <button
           key={level}

@@ -142,7 +142,6 @@ export function IncidentsScreen() {
              a marker on the map is a faster way to narrow to one farm than
              reading twelve names. */
           <FilterRow
-        nowrap
         active={severity !== null || openOnly || since !== ALL}
         onClear={() => {
           setSeverity(null)

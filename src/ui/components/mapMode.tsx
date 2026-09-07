@@ -331,6 +331,8 @@ export function MapModePill({
       data-testid="map-mode-pill"
       data-mode={mode}
       data-overlay=""
+      /* AA1.2 — see `[data-bottom-rail]` in `index.css`. */
+      data-bottom-rail=""
       className={`glass fixed bottom-[calc(var(--shell-bottom)+1.25rem)]
                   left-[calc(var(--map-rail)+var(--map-rail-w)+var(--map-rail))] z-30
                   h-[var(--map-rail-w)] flex-row items-center gap-0.5 rounded-card p-1 ${className || 'flex'}`}
