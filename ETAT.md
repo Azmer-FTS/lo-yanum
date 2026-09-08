@@ -105,14 +105,24 @@
 > ferme, **marquée approximative dans le SMS**. Une alerte qui dit « à peu près
 > à la ferme Retem » part ; une alerte qui attend un satellite ne part pas.
 >
-> **Mesuré, dans un vrai navigateur : 1 333 ms** entre le contact et l'existence
-> du panneau de confirmation, sur un budget de 2 000 — et **821 ms le réseau
-> COUPÉ**, ce qui est plus rapide et pas plus lent : la voie réseau échoue vite,
-> et c'est précisément son rôle de filet. A122 coupe vraiment le réseau du
-> contexte plutôt que de raisonner sur la pureté d'une fonction, parce qu'une
-> fonction pure peut être juste dans un écran qui, lui, attend une réponse qui
-> ne viendra pas. Huit numéros restent composables, `navigator.onLine` rend
-> `false`. Appui maintenu de 800 ms
+> **Mesuré dans un vrai navigateur, entre le contact et l'existence du panneau
+> de confirmation : 1 333 ms puis 1 749 ms sur deux exécutions**, pour un budget
+> de 2 000.
+>
+> ⚠️ **LA FOURCHETTE EST CITÉE ENTIÈRE ET PAS SEULEMENT SON MEILLEUR CHIFFRE.**
+> Ce qui varie n'est pas le geste — l'appui est de 800 ms, à la milliseconde —
+> c'est la voie réseau, qui écrit un incident dans un magasin dont la
+> réconciliation structurelle passe sur un millier de lignes (P2.6,
+> `indexOf`). 1 749 ms est un budget tenu avec 251 ms de marge, ce qui est
+> vrai et un peu juste ; le dire est ce qui permettra de savoir, la première
+> fois qu'une exécution dépassera, que la cause était déjà là.
+>
+> **Et 821 ms le réseau COUPÉ**, ce qui est plus rapide et pas plus lent : la
+> voie réseau échoue vite, et c'est précisément son rôle de filet. A122 coupe
+> vraiment le réseau du contexte plutôt que de raisonner sur la pureté d'une
+> fonction, parce qu'une fonction pure peut être juste dans un écran qui, lui,
+> attend une réponse qui ne viendra pas. Huit numéros restent composables,
+> `navigator.onLine` rend `false`. Appui maintenu de 800 ms
 > — au-dessus du contact accidentel qu'un téléphone produit dans une poche
 > (50 à 200 ms), très en dessous du seuil où l'on croit que le bouton ne marche
 > pas. **Zéro dialogue à lire** : A120 le pose au DOM. Un appui bref n'envoie
