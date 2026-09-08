@@ -20,7 +20,8 @@
 > ⚠️ **IL NE PORTE PAS LA GARDE ELLE-MÊME, ET C'EST UNE DÉCISION.** Une garde
 > complète dans l'URL fait un lien de mille cinq cents caractères, et ce lien
 > voyage dans le SMS d'AE4 vers un téléphone cachère qui l'affichera coupé —
-> c'est-à-dire un lien mort. Mesuré : **139 caractères**, et A118 en fait un
+> c'est-à-dire un lien mort. Mesuré sur l'origine déployée : **107
+> caractères**, dans un SMS de convocation complet de 489. A118 en fait un
 > plafond (200) plutôt qu'une observation.
 >
 > ⚠️ **L'EMPREINTE REND LE JETON INFALSIFIABLE À LA MAIN, ET RIEN DE PLUS.** On

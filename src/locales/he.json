@@ -570,7 +570,10 @@
     "checkpoint_missing": "אין סימן חיים",
     "checkpoint_missingDetail": "{{minutes}} דקות ללא סימן חיים מהקבוצה",
     "end_missing": "שמירה לא נסגרה",
-    "end_missingDetail": "עברו {{minutes}} דקות משעת הסיום והשמירה לא נסגרה"
+    "end_missingDetail": "עברו {{minutes}} דקות משעת הסיום והשמירה לא נסגרה",
+    "arrival_missingDetailHours": "עברו {{hours}} שעות משעת ההתחלה ואיש לא אישר הגעה",
+    "checkpoint_missingDetailHours": "{{hours}} שעות ללא סימן חיים מהקבוצה",
+    "end_missingDetailHours": "עברו {{hours}} שעות משעת הסיום והשמירה לא נסגרה"
   },
   "farms": {
     "title": "חוות",

@@ -161,14 +161,26 @@ function alertMeta(alert: DashboardAlert, t: (k: string, o?: Record<string, unkn
         ? t('alerts.returnDetail')
         : alert.kind === 'recruiting'
           ? t('alerts.recruitingDetail', { detail: alert.detail })
-          : /* AE3 — `detail` porte les MINUTES de silence, jamais une phrase :
-               « depuis 47 דקות » se lit d'un coup d'œil et une heure absolue
-               oblige à soustraire, à trois heures du matin, de tête. */
-            alert.kind === 'arrival_missing' ||
-              alert.kind === 'checkpoint_missing' ||
-              alert.kind === 'end_missing'
-            ? t(`alerts.${alert.kind}Detail`, { minutes: alert.detail })
-            : alert.detail
+          : /**
+           * ★★ AE3 — `detail` PORTE LES MINUTES, ET C'EST L'ÉCRAN QUI CHOISIT
+           *    L'UNITÉ.
+           *
+           * Une heure absolue oblige à soustraire de tête à trois heures du
+           * matin, donc c'est une DURÉE. Mais « עברו 1620 דקות » sur une garde
+           * d'hier soir est un nombre qu'on doit diviser de tête, ce qui est le
+           * même défaut déplacé : au-delà de deux heures la durée passe en
+           * heures. Le seuil est celui où les minutes cessent d'être la façon
+           * dont on parle d'un retard.
+           */
+          alert.kind === 'arrival_missing' ||
+            alert.kind === 'checkpoint_missing' ||
+            alert.kind === 'end_missing'
+          ? Number(alert.detail) >= 120
+            ? t(`alerts.${alert.kind}DetailHours`, {
+                hours: Math.round(Number(alert.detail) / 60),
+              })
+            : t(`alerts.${alert.kind}Detail`, { minutes: alert.detail })
+          : alert.detail
   return { critical, detail }
 }
 

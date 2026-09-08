@@ -75,17 +75,28 @@ create index if not exists mission_checkpoints_mission_idx
 alter table mission_checkpoints enable row level security;
 alter table mission_checkpoints force row level security;
 
+-- ⚠️ LES TROIS HELPERS SONT DANS LE SCHÉMA `private`, ET LES APPELER SANS LE
+--    PRÉFIXE FAIT ÉCHOUER LA MIGRATION SUR LA BASE RÉELLE.
+--
+--    C'est P2.3 : `app_role()`, `is_coordinator()` et `my_mission_ids()` ont
+--    été déplacés hors de `public` pour qu'ils ne soient pas exposés comme des
+--    RPC (`/rest/v1/rpc/is_coordinator` → 404), et les `drop function
+--    public.*` de cette migration-là garantissent qu'il n'en reste rien dans
+--    `public`. Les politiques de `20260830000200_rls.sql` sont écrites sans
+--    préfixe parce qu'elles PRÉCÈDENT ce déplacement et ont été réécrites par
+--    lui. Une politique neuve doit qualifier.
+
 -- Le coordinateur voit et écrit tout, comme sur les 26 autres tables.
 drop policy if exists mission_checkpoints_coordinator_all on mission_checkpoints;
 create policy mission_checkpoints_coordinator_all on mission_checkpoints
   for all to authenticated
-  using (is_coordinator()) with check (is_coordinator());
+  using (private.is_coordinator()) with check (private.is_coordinator());
 
 -- Le terrain lit les siennes, exactement comme `mission_assignments`.
 drop policy if exists mission_checkpoints_field_read on mission_checkpoints;
 create policy mission_checkpoints_field_read on mission_checkpoints
   for select to authenticated
-  using (mission_id in (select my_mission_ids()));
+  using (mission_id in (select private.my_mission_ids()));
 
 -- ★★ ET LE PORTEUR DU TÉLÉPHONE DE GROUPE PEUT EN AJOUTER.
 --
@@ -99,11 +110,11 @@ drop policy if exists mission_checkpoints_group_insert on mission_checkpoints;
 create policy mission_checkpoints_group_insert on mission_checkpoints
   for insert to authenticated
   with check (
-    app_role() = 'volunteer'
+    private.app_role() = 'volunteer'
     and exists (
       select 1 from mission_assignments a
       where a.mission_id = mission_checkpoints.mission_id
-        and a.volunteer_id = app_ref()
+        and a.volunteer_id = private.app_ref()
         and a.is_group_phone
     )
   );
