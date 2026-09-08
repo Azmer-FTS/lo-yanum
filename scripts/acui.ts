@@ -239,6 +239,41 @@ try {
     }
   })
   if (neglect.hasPill) {
+    /**
+     * ★★ AND THE RECTANGLE, WHICH IS THE HALF THE DOM CANNOT ANSWER.
+     *
+     * The KPI band SCROLLS sideways. The first draft put this chip after
+     * « דונם משוקלל », i.e. ninth — and at 1376 px the eighth was already cut
+     * in half, so the one signal AC4.5 exists for was off screen on the iPad
+     * the product owner holds, while `querySelector` found it perfectly well.
+     * Seen on a deployed capture and by nothing else (AA6.2). So: the chip's
+     * box against its own scroller's box, at rest, with no scrolling.
+     */
+    const visible = await page.evaluate(() => {
+      const chip = document.querySelector('[data-testid="farms-neglected"]') as HTMLElement | null
+      if (!chip) return null
+      let scroller: HTMLElement | null = chip.parentElement
+      while (scroller) {
+        const s = getComputedStyle(scroller)
+        if (s.overflowX === 'auto' || s.overflowX === 'scroll') break
+        scroller = scroller.parentElement
+      }
+      const box = chip.getBoundingClientRect()
+      const frame = (scroller ?? document.documentElement).getBoundingClientRect()
+      return {
+        left: Math.round(box.left - frame.left),
+        right: Math.round(frame.right - box.right),
+        width: Math.round(box.width),
+        frameWidth: Math.round(frame.width),
+      }
+    })
+    check(
+      'A106 · and the chip is WHOLLY on screen at rest — the band scrolls',
+      visible !== null && visible.left >= -1 && visible.right >= -1 && visible.width > 40,
+      visible
+        ? `${visible.width}px chip, ${visible.left}px from the start, ${visible.right}px from the end of a ${visible.frameWidth}px band`
+        : 'chip not found',
+    )
     check(
       'A106 · the « נשכחו » chip names its threshold on the card',
       /\d/.test(neglect.title.replace(String(neglect.count), '')),

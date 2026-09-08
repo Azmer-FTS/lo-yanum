@@ -180,6 +180,17 @@
 > ont été oubliées sous cent quatre-vingt-dix qui n'ont jamais rien reçu comme
 > promesse.
 >
+> ⚠️ **ET SA PLACE DANS LA RANGÉE A ÉTÉ DÉCIDÉE PAR UNE CAPTURE, PAS PAR UNE
+> SONDE.** Posée après « דונם משוקלל », elle était la NEUVIÈME vignette — et la
+> bande de vignettes DÉFILE latéralement : à 1376 px la huitième était déjà
+> coupée en deux, donc le seul signal pour lequel AC4.5 existe était hors écran
+> sur l'iPad que le PO tient dans les mains. `bun run acui` ne pouvait pas le
+> voir : il interroge le DOM, et le DOM l'avait. La capture du déployé, elle,
+> l'a vu — c'est la leçon d'AA6.2 une fois de plus, « la seule question qu'on
+> peut poser à deux boîtes opaques est une question sur deux RECTANGLES ».
+> Elle est **première**, et A106 mesure désormais sa boîte contre celle de son
+> propre défileur, au repos et sans défiler.
+>
 > **Le signal est un anneau creux de 8 px** dans l'encre d'avertissement, avec
 > sa raison en `title` et en `aria-label`. Pas un badge rouge et pas une rangée
 > colorée : la pastille de statut deux caractères plus loin possède déjà la

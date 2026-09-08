@@ -282,6 +282,47 @@ export function FarmsListScreen() {
    */
   const kpiChips = (
     <>
+      {/**
+        * ═══════════════════════════════════════════════════════════════════
+        * ★★ AC4.4 · AC4.5 — « QUI EST OUBLIÉ », EN UNE VIGNETTE ET NON EN UNE
+        *    PASTILLE.
+        * ═══════════════════════════════════════════════════════════════════
+        *
+        * ⚠️ AND THE FIRST DRAFT PUT IT IN THE FILTER ROW, WHERE A86 CAUGHT IT.
+        *    A new pill row makes the unfolded panel taller, and the floating
+        *    « + » then lands ON it: measured on `bun run pills` as
+        *    « the "+" is on nothing — farms-neglected », which is the AA1.5
+        *    defect exactly — a control the button covers is a control that
+        *    cannot be scrolled out from under it, and is therefore unreachable
+        *    for ever. It belongs with the other count-that-is-also-a-filter
+        *    (« דונם משוקלל »), in the KPI row, which is where this roster has
+        *    put that shape since G14d.
+        *
+        * ⚠️ AND IT IS FIRST IN THE ROW, WHICH THE CAPTURES DECIDED. Placed
+        *    after « דונם משוקלל » it was the ninth chip: the KPI band SCROLLS,
+        *    and at 1376 px the eighth was already cut in half — so the one
+        *    signal this unit exists for was off screen on the iPad the product
+        *    owner actually holds. `bun run acui` could not see that (it asks
+        *    the DOM, and the DOM had it); the deployed capture could, which is
+        *    the AA6.2 lesson again. A106 now measures the RECTANGLE.
+        *
+        * ⚠️ IT IS DRAWN ONLY WHEN THERE IS SOMETHING TO SHOW. A filter always
+        *    present and always emptying the list is a filter the coordinator
+        *    learns to distrust; on a roster of 198 leads with no signed farm
+        *    yet, « נשכחו » has nothing to say and says nothing.
+        */}
+      {neglectedCount > 0 && (
+        <KpiChip
+          label={t('farms.filterNeglected')}
+          value={neglectedCount}
+          icon="clock"
+          tone="alert"
+          hint={t('farms.filterNeglectedHint', { days: neglectDays })}
+          active={neglected}
+          onClick={() => setNeglected((v) => !v)}
+          testId="farms-neglected"
+        />
+      )}
       {statusKpis.map((k) => (
         <KpiChip
           key={k.status}
@@ -318,39 +359,6 @@ export function FarmsListScreen() {
         onClick={() => setHasAreas((v) => !v)}
         testId="kpi-weighted"
       />
-      {/**
-        * ═══════════════════════════════════════════════════════════════════
-        * ★★ AC4.4 · AC4.5 — « QUI EST OUBLIÉ », EN UNE VIGNETTE ET NON EN UNE
-        *    PASTILLE.
-        * ═══════════════════════════════════════════════════════════════════
-        *
-        * ⚠️ AND THE FIRST DRAFT PUT IT IN THE FILTER ROW, WHERE A86 CAUGHT IT.
-        *    A new pill row makes the unfolded panel taller, and the floating
-        *    « + » then lands ON it: measured on `bun run pills` as
-        *    « the "+" is on nothing — farms-neglected », which is the AA1.5
-        *    defect exactly — a control the button covers is a control that
-        *    cannot be scrolled out from under it, and is therefore unreachable
-        *    for ever. It belongs with the other count-that-is-also-a-filter
-        *    (« דונם משוקלל »), in the KPI row, which is where this roster has
-        *    put that shape since G14d.
-        *
-        * ⚠️ IT IS DRAWN ONLY WHEN THERE IS SOMETHING TO SHOW. A filter always
-        *    present and always emptying the list is a filter the coordinator
-        *    learns to distrust; on a roster of 198 leads with no signed farm
-        *    yet, « נשכחו » has nothing to say and says nothing.
-        */}
-      {neglectedCount > 0 && (
-        <KpiChip
-          label={t('farms.filterNeglected')}
-          value={neglectedCount}
-          icon="clock"
-          tone="alert"
-          hint={t('farms.filterNeglectedHint', { days: neglectDays })}
-          active={neglected}
-          onClick={() => setNeglected((v) => !v)}
-          testId="farms-neglected"
-        />
-      )}
       {/* G16 — the entity-kind chip: how many of these records are moshavim,
           weighted like the status chips, and the chip is the filter. */}
       {moshavim.length > 0 && (
