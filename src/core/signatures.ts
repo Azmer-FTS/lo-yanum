@@ -358,7 +358,15 @@ export function parseSignatureRow(
     signature: cell.image,
     signatureShape: cell.shape,
     notes: at('notes'),
-    key: identityKey({ localityCode, name, council }),
+    /* AC1 — the holding half joins the key here too: a consents file names
+       the farmer who signed, and two farmers of one locality are two rows. */
+    key: identityKey({
+      localityCode,
+      name,
+      locality: at('locality'),
+      council,
+      farmerName: at('farmerName'),
+    }),
     problems,
     warnings,
   }
@@ -387,8 +395,38 @@ export function planSignatures(
   rows: SignatureRow[],
   existing: readonly Farm[],
 ): SignaturePlan {
+  /**
+   * ★★ AC1 · AC2 — A RECORD IS FINDABLE UNDER EVERY KEY A POORER FILE CAN
+   *    SPELL, and a consents file is the poorest of the three this app reads.
+   *
+   * Its columns are a place, a council, sometimes a farmer. So the same record
+   * is indexed four ways, richest first:
+   *
+   *   · its own key — locality + holding, the full identity of AC1;
+   *   · the same with the NAME standing in for the locality, for a file
+   *     written before יישוב was a column of its own (AC2);
+   *   · the same with the holding STRIPPED, for a row that names a place and
+   *     no farmer — which is the signatures format's normal shape, and which
+   *     must attach to the farm that is there rather than create a second;
+   *   · and both at once.
+   *
+   * ⚠️ RICHEST FIRST AND `if (!has)` THROUGHOUT: a looser alias must never
+   *    displace a record that answers to that key exactly.
+   */
   const byKey = new Map<string, Farm>()
-  for (const farm of existing) byKey.set(identityKey(farm), farm)
+  const bare = { farmName: '', farmerName: '' }
+  const readings = [
+    (f: Farm) => identityKey(f),
+    (f: Farm) => identityKey({ ...f, locality: '' }),
+    (f: Farm) => identityKey({ ...f, ...bare }),
+    (f: Farm) => identityKey({ ...f, ...bare, locality: '' }),
+  ]
+  for (const reading of readings) {
+    for (const farm of existing) {
+      const key = reading(farm)
+      if (!byKey.has(key)) byKey.set(key, farm)
+    }
+  }
 
   const attached: SignaturePlanRow[] = []
   const rejected: SignatureRow[] = []

@@ -5,6 +5,7 @@ import {
   ASSOCIATION_COLUMNS,
   PROSPECTION_COLUMNS,
   associationExportMatrix,
+  associationCounts,
   associationInputs,
   farmRegion,
   getVisibleFarms,
@@ -69,7 +70,10 @@ export function ExportScreen() {
   const built = useMemo(() => {
     if (format === 'prospection') {
       return {
-        matrix: prospectionExportMatrix(inScope),
+        /* AC4.6 — « כמות מתנדבים קבועים » is a column of the 32 and it is
+           counted from the guards; `core/prospection.ts` is pure and takes
+           the counter rather than reaching for the store. */
+        matrix: prospectionExportMatrix(inScope, (farm) => associationCounts(farm.id).regulars),
         widths: PROSPECTION_COLUMNS.map((c) => c.width ?? 16),
         sheet: 'רשימה',
         file: 'lo-yanum-prospection',
@@ -270,8 +274,11 @@ export function ExportScreen() {
           <div className="mt-4">
             <p className="label">{t('export.definitions')}</p>
             <ul className="flex flex-col gap-1 text-caption text-content-secondary">
+              {/* AC4.7 — les définitions d'AB restent affichées, confirmées
+                  par le PO ; celle de שטחים שמירה est renversée par AC3. */}
               <li>{t('export.defVolunteering')}</li>
               <li>{t('export.defRegulars')}</li>
+              <li>{t('export.defGuards')}</li>
               <li>{t('export.defGuarded')}</li>
             </ul>
           </div>

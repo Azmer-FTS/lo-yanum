@@ -1,5 +1,5 @@
 import { LAND_AGREEMENT_OPTIONS, LEGAL_ENTITY_OPTIONS, normaliseValue, optionLabel, readOption } from './fields'
-import { placeKey, planProspection } from './prospection'
+import { ASSOCIATION_INDEX, planProspection } from './prospection'
 import type { ProspectionPatch, ProspectionPlan, ProspectionRow } from './prospection'
 import type { Farm, LatLng } from './types'
 
@@ -45,12 +45,12 @@ import type { Farm, LatLng } from './types'
  *    4. DATES ARE `JJ/MM/AAAA`. Ours are `YYYY-MM-DD` day-strings with no
  *       time and no zone (AA2bis), and they stay that way in the database.
  *
- * ⚠️ AND ONE TRAP THAT IS THEIRS RATHER THAN OURS: « שטחים שמירה » is, on
- *    their sheets, usually a copy of « שטחים מעובדים ». Copying it here would
- *    hand the State a guarded-area figure nobody measured, in a file that
- *    carries this programme's name. It is written only when the guarded area
- *    is actually known, and the export report NAMES the column as blank
- *    otherwise (AB6.4).
+ * ⚠️ AND ONE TRAP THAT WAS READ AS OURS AND WAS NOT — CLOSED BY AC3. « שטחים
+ *    שמירה » looked like a careless copy of « שטחים מעובדים » on their sheets,
+ *    so AB6.4 refused to write it. The product owner has ruled: it is a
+ *    DECLARATION, filled on purpose, and it means « we watch the whole of
+ *    this ». The column is now filled from `guardedDunamsOf` — מעובד + מרעה by
+ *    default, overridable farm by farm — and it no longer comes out blank.
  *
  * PURE: no SheetJS, no DOM, no React — like everything under /src/core.
  */
@@ -381,9 +381,10 @@ export interface AssociationInput {
   /** The signature image, in the shape AA5's import reads and writes. */
   signature: string | null
   /**
-   * AB6.4 — the area actually GUARDED, when the programme knows it.
-   * `null` — which is what it is today — leaves the cell empty and puts the
-   * column in the export report. It is never the cultivated area.
+   * AB6.4 → AC3.3 — the area this programme DECLARES it watches.
+   *
+   * `null` still leaves the cell empty and names the column in the export
+   * report; since AC3 the caller has a real figure to pass, and does.
    */
   guardedDunams: number | null
 }
@@ -408,7 +409,7 @@ const SOURCE: Record<AssociationSource, (input: AssociationInput) => string> = {
     optionLabel(farm.landAgreement, LAND_AGREEMENT_OPTIONS),
   grazingDunams: ({ farm }) => String(farm.grazingDunams),
   cultivatedDunams: ({ farm }) => String(farm.farmDunams),
-  /* AB6.4 — never a copy of the cultivated area. See the note at the top. */
+  /* AC3.3 — the declared guarded area; see `guardedDunamsOf` in fields.ts. */
   guardedDunams: ({ guardedDunams }) =>
     guardedDunams === null ? '' : String(guardedDunams),
   volunteeringCount: ({ volunteering }) => String(volunteering),
@@ -459,11 +460,17 @@ export interface AssociationReport {
   badCoordinates: { name: string; text: string }[]
 }
 
-/** Sources this app simply does not hold. Reported as such, never filled. */
-const NOT_STORED: ReadonlySet<AssociationSource> = new Set([
-  'guardedDunams',
-  'businessName',
-])
+/**
+ * Sources this app simply does not hold. Reported as such, never filled.
+ *
+ * ★★ AC3.3 — « שטחים שמירה » LEFT THIS SET. AB6.4 put it here because this
+ *    programme recorded no guarded area and copying the cultivated one would
+ *    have handed the State a figure nobody measured. The product owner has
+ *    since ruled the column a DECLARATION rather than a measurement, and the
+ *    app now holds one: `guardedDunamsOf`, defaulted to מעובד + מרעה and
+ *    overridable farm by farm. « Elle ne sort plus vide. »
+ */
+const NOT_STORED: ReadonlySet<AssociationSource> = new Set(['businessName'])
 
 export function associationExportMatrix(inputs: readonly AssociationInput[]): {
   matrix: string[][]
@@ -704,24 +711,37 @@ export function analyseAssociation(
   // +2: the header row, plus 1-based numbering, so the number is the one the
   // coordinator sees in the left margin of Excel.
   const rows = matrix.map((raw, i) => parseAssociationRow([...raw], used, i + 2))
-  const asProspection: ProspectionRow[] = rows.map((row) => ({
-    rowNumber: row.rowNumber,
-    name: row.name,
-    council: row.council,
-    localityCode: null,
-    key: placeKey({ name: row.name, council: row.council }),
-    patch: row.patch,
-    problems: row.problems,
-    warnings: [],
-    unknown: [],
-  }))
+  const asProspection: ProspectionRow[] = rows.map((row) => {
+    /* ★ AC1 — their format has no שם החווה column, so the holding half of the
+       key is the farmer alone, on BOTH sides. See `ASSOCIATION_INDEX`. */
+    const identity = {
+      localityCode: null,
+      name: row.name,
+      locality: row.patch.locality ?? '',
+      council: row.council,
+      farmerName: row.patch.farmerName ?? '',
+    }
+    return {
+      rowNumber: row.rowNumber,
+      name: row.name,
+      council: row.council,
+      localityCode: null,
+      key: ASSOCIATION_INDEX.key(identity),
+      localityKey: ASSOCIATION_INDEX.locality(identity),
+      seed: ASSOCIATION_INDEX.seed(identity),
+      patch: row.patch,
+      problems: row.problems,
+      warnings: [],
+      unknown: [],
+    }
+  })
   /* ⚠️ AND THE EXISTING RECORDS ARE KEYED THE SAME WAY. See the note on
      `planProspection`'s third parameter: keying them by `identityKey` would
      give every farm imported from the prospection workbook a `code:` key that
      no association row can ever produce. */
   return {
     rows,
-    plan: planProspection(asProspection, existing, placeKey),
+    plan: planProspection(asProspection, existing, ASSOCIATION_INDEX),
     mapping: used,
   }
 }
@@ -733,7 +753,15 @@ export function associationSignatures(
   const out = new Map<string, string>()
   for (const row of rows) {
     if (!row.signature) continue
-    out.set(placeKey({ name: row.name, council: row.council }), row.signature)
+    out.set(
+      ASSOCIATION_INDEX.key({
+        name: row.name,
+        locality: row.patch.locality ?? '',
+        council: row.council,
+        farmerName: row.patch.farmerName ?? '',
+      }),
+      row.signature,
+    )
   }
   return out
 }

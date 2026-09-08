@@ -4,7 +4,7 @@ import type { StoreBackend, StoreData, StoreIndex } from './backend'
 import { iso, now } from './clock'
 import { DEMO_BACKEND } from './demo'
 import { ringAreaDunams } from './geo'
-import { entityKindForRow, placeKey } from './prospection'
+import { ASSOCIATION_INDEX, entityKindForRow } from './prospection'
 import { farmFromSignatureRow, signaturePatch } from './signatures'
 import type { SignaturePlan } from './signatures'
 import type { ProspectionPlan } from './prospection'
@@ -390,8 +390,14 @@ export interface FarmDraft {
   landAgreementUntil?: string | null
   farmerName?: string
   farmerPhone?: string
+  farmerEmail?: string
   liaisonName?: string
   liaisonPhone?: string
+  // AC1 · AC2 · AC3 — the holding's own name, its umbrella, its guarded area.
+  farmName?: string
+  umbrella?: string
+  guardedDunams?: number
+  guardedDunamsManual?: boolean
   // AA5 — set by the signatures import, never by the form.
   signature?: string | null
   signatureMissing?: boolean
@@ -1193,8 +1199,14 @@ export function applyProspection(
       landAgreementUntil: patch.landAgreementUntil ?? null,
       farmerName: patch.farmerName,
       farmerPhone: patch.farmerPhone,
+      farmerEmail: patch.farmerEmail,
       liaisonName: patch.liaisonName,
       liaisonPhone: patch.liaisonPhone,
+      // AC1 · AC2.4 · AC3 — the holding, its umbrella, its declared watch.
+      farmName: patch.farmName,
+      umbrella: patch.umbrella,
+      guardedDunams: patch.guardedDunams,
+      guardedDunamsManual: patch.guardedDunamsManual,
     }
   })
 
@@ -1243,7 +1255,7 @@ export function applyAssociation(
   const importedAt = iso(now())
   let attached = 0
   data.farms = data.farms.map((farm) => {
-    const image = signatures.get(placeKey(farm))
+    const image = signatures.get(ASSOCIATION_INDEX.key(farm))
     if (!image) return farm
     attached++
     return {

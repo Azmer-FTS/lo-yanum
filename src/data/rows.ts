@@ -182,8 +182,15 @@ const farmMapping: Mapping<Farm> = {
           land_agreement_until: f.landAgreementUntil ?? null,
           farmer_name: f.farmerName ?? null,
           farmer_phone: f.farmerPhone ?? null,
+          farmer_email: f.farmerEmail ?? null,
           liaison_name: f.liaisonName ?? null,
           liaison_phone: f.liaisonPhone ?? null,
+          /* AC1 · AC2.4 · AC3 — the holding half of the identity, the umbrella
+             organisation, and the declared guarded area with its override. */
+          farm_name: f.farmName ?? null,
+          umbrella_org: f.umbrella ?? null,
+          guarded_dunams: f.guardedDunams ?? null,
+          guarded_dunams_manual: f.guardedDunamsManual ?? false,
           signature: f.signature ?? null,
           signature_missing: f.signatureMissing ?? false,
           signature_origin: f.signatureOrigin ? JSON.stringify(f.signatureOrigin) : null,
@@ -346,8 +353,18 @@ const farmMapping: Mapping<Farm> = {
     landAgreementUntil: optStr(p.land_agreement_until),
     farmerName: optStr(p.farmer_name),
     farmerPhone: optStr(p.farmer_phone),
+    farmerEmail: optStr(p.farmer_email),
     liaisonName: optStr(p.liaison_name),
     liaisonPhone: optStr(p.liaison_phone),
+    // AC1 · AC2.4 · AC3.
+    farmName: optStr(p.farm_name),
+    umbrella: optStr(p.umbrella_org),
+    guardedDunams: optNum(p.guarded_dunams),
+    /* ⚠️ `undefined` AND NOT `false` WHEN ABSENT, exactly as `positionMissing`
+       is: `guardedDunamsOf` reads absent and false alike, and only one of the
+       two is what a record that has never been answered for actually holds —
+       which is what keeps `bun run mapping`'s round trip an identity. */
+    guardedDunamsManual: p.guarded_dunams_manual === true ? true : undefined,
     // AA5 — the imported signature and where it came from.
     signature: optStr(p.signature),
     signatureMissing: p.signature_missing === true ? true : undefined,

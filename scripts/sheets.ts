@@ -162,7 +162,9 @@ try {
 
   /* ⚠️ SCOPED TO THE MAPPING GRID. A bare `document.querySelectorAll('select')`
      also catches the shell's own pickers — it reported 27 for a 26-column
-     file, which is the kind of off-by-one that looks like a parsing bug. */
+     file, which is the kind of off-by-one that looks like a parsing bug.
+     AC2 — the workbook is 32 columns wide since the product owner made it one
+     row per HOLDING rather than one per locality. */
   const readMapping = () =>
     page.evaluate(() =>
       [...document.querySelectorAll('[data-testid="mapping-grid"] select')].map(
@@ -171,8 +173,8 @@ try {
     )
   const mapped = await readMapping()
   check(
-    'A75 · all 26 columns were recognised with no help',
-    mapped.length === 26 && mapped.every((v) => v !== 'ignore'),
+    'AC2 · all 32 columns were recognised with no help',
+    mapped.length === 32 && mapped.every((v) => v !== 'ignore'),
     `${mapped.length} columns, ${mapped.filter((v) => v === 'ignore').length} unrecognised`,
   )
 

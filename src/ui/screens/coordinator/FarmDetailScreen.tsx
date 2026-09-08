@@ -6,6 +6,9 @@ import {
   FARM_PIPELINE,
   LAND_AGREEMENT_OPTIONS,
   LEGAL_ENTITY_OPTIONS,
+  availableVolunteers,
+  farmGuardStats,
+  guardedDunamsOf,
   landRightIssue,
   localDayKey,
   optionLabel,
@@ -415,6 +418,32 @@ function KeyNumbers({
       />
 
       {/**
+        * ★★ AC3 — « שטחים שמירה », LA SURFACE QUE LE PROGRAMME DÉCLARE GARDER.
+        *
+        * Beside the two areas it defaults to, and never mixed with the
+        * weighted figure two cards along: one is a declaration, the other is
+        * the subsidy rule (AC3.4). The note says which of the two it is
+        * showing — the default, or a figure somebody typed.
+        */}
+      <BandCard
+        testId="band-guarded-dunams"
+        icon="shield"
+        tint="bg-status-info/[0.12]"
+        ink="text-status-info-ink"
+        figure={guardedDunamsOf(farm).toLocaleString(locale)}
+        label={t('farms.guardedArea')}
+        note={
+          farm.guardedDunamsManual ? (
+            <span className="font-semibold text-status-warn-ink">
+              {t('farms.guardedAreaManual')}
+            </span>
+          ) : (
+            t('farms.guardedAreaDefault')
+          )
+        }
+      />
+
+      {/**
         * ★ AA3 — « דונם משוקלל », BESIDE THE TWO FIGURES IT IS MADE OF.
         *
         * It is the number the association reports and the one the target is
@@ -566,6 +595,10 @@ export function FarmDetailScreen() {
   const missions = useCoreValue(() =>
     getVisibleMissionViews().filter((v) => v.mission.farmId === farmId),
   )
+  /* AC4.1 · AC4.2 — read through `useCoreValue` like everything else on this
+     screen, so a guard cancelled in another tab moves the counters here. */
+  const coverage = useCoreValue(() => farmGuardStats(farmId))
+  const available = useCoreValue(() => (farm ? availableVolunteers(farm) : 0))
 
   const [newVisit, setNewVisit] = useState(false)
   const [editVisitId, setEditVisitId] = useState<string | null>(null)
@@ -932,6 +965,72 @@ export function FarmDetailScreen() {
               only the panel can answer. */}
           <div className="panel-scope">
             <div className="pair-grid">
+          {/**
+            * ═══════════════════════════════════════════════════════════════
+            * ★★ AC4.1 · AC4.2 — CE QUE CETTE FERME A REÇU, ET CE QU'ELLE PEUT
+            *    RECEVOIR.
+            * ═══════════════════════════════════════════════════════════════
+            *
+            * Three figures, above the history rather than inside it, because
+            * the question they answer is asked BEFORE the list is read: has
+            * this farm been served, when last, and is there anybody to send.
+            *
+            * ⚠️ « מתנדבים זמינים » IS A REGIONAL FIGURE AND SAYS SO. Two
+            *    neighbouring farms share a vivier and will show the same
+            *    number; the hint states it, because a coordinator who reads
+            *    it as « ces gens sont à cette ferme » would double-count.
+            */}
+          <Section
+            title={t('farms.coverageTitle')}
+            collapseKey="entity-coverage"
+            summary={
+              coverage.lastGuardAt
+                ? formatDate(coverage.lastGuardAt, locale)
+                : t('farms.neverGuarded')
+            }
+          >
+            <dl className="auto-cols gap-3 [--col-min:9rem]" data-testid="farm-coverage">
+              <div>
+                <dt className="muted">{t('farms.guardsCount')}</dt>
+                <dd
+                  data-testid="coverage-guards"
+                  data-guards={coverage.guards}
+                  className="numeric ltr-nums text-heading font-semibold text-content-primary"
+                >
+                  {coverage.guards.toLocaleString(locale)}
+                </dd>
+              </div>
+              <div>
+                <dt className="muted">{t('farms.volunteeringCount')}</dt>
+                <dd className="numeric ltr-nums text-heading font-semibold text-content-primary">
+                  {coverage.volunteering.toLocaleString(locale)}
+                </dd>
+              </div>
+              <div>
+                <dt className="muted">{t('farms.lastGuard')}</dt>
+                <dd
+                  data-testid="coverage-last"
+                  className="ltr-nums text-heading font-semibold text-content-primary"
+                >
+                  {coverage.lastGuardAt
+                    ? formatDate(coverage.lastGuardAt, locale)
+                    : t('farms.neverGuarded')}
+                </dd>
+              </div>
+              <div>
+                <dt className="muted">{t('farms.availableVolunteers')}</dt>
+                <dd
+                  data-testid="coverage-available"
+                  data-available={available}
+                  className="numeric ltr-nums text-heading font-semibold text-content-primary"
+                >
+                  {available.toLocaleString(locale)}
+                </dd>
+              </div>
+            </dl>
+            <p className="muted mt-2">{t('farms.availableVolunteersHint')}</p>
+          </Section>
+
           <Section
             title={t('farms.guardHistory')}
             collapseKey="entity-guards"

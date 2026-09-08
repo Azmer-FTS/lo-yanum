@@ -7,6 +7,7 @@ import {
   entityKindOf,
   weightedDunams,
   totalWeightedDunams,
+  farmCoverage,
   farmRegion,
   formatDate,
   getAllVisibleAnchorPoints,
@@ -16,7 +17,7 @@ import {
   getVisibleThreatZones,
   totalHeads,
 } from '@core/index'
-import type { Farm, FarmStatus, FarmType, RegionId } from '@core/index'
+import type { Farm, FarmCoverage, FarmStatus, FarmType, RegionId } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { EntityQuickCard, useQuickPreview } from '../../components/EntityQuickCard'
@@ -54,6 +55,7 @@ import { useProgressive } from '../../hooks/useProgressive'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 import { useWindowTable } from '../../hooks/useWindowTable'
+import { useCoverageSettings } from '../../settings/coverage'
 
 const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
 const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed']
@@ -125,6 +127,33 @@ export function FarmsListScreen() {
   const [sort, setSort] = useState<FarmSort>('name')
   /** AA3.3 — the weighted figure as a FILTER: which places have areas at all. */
   const [hasAreas, setHasAreas] = useState(false)
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ★★ AC4.4 · AC4.5 — LA VUE DE RÉPARTITION.
+   * ═══════════════════════════════════════════════════════════════════════
+   *
+   *   « trier et filtrer par nombre de gardes reçues et par ancienneté de la
+   *     dernière garde, pour voir d'un coup d'œil qui est servi et qui est
+   *     oublié. »
+   *
+   * ★ ONE WALK OVER THE GUARDS, NOT ONE PER ROW. `farmCoverage` answers for
+   *   the whole roster at once and the result is indexed by id; a per-row
+   *   `farmGuardStats` would re-walk every mission 198 times on every
+   *   keystroke in the search box.
+   */
+  const { neglectDays } = useCoverageSettings()
+  const coverage = useCoreValue(() => farmCoverage(getVisibleFarms(), neglectDays))
+  const coverageOf = useMemo(() => {
+    const by = new Map<string, FarmCoverage>()
+    for (const row of coverage) by.set(row.farm.id, row)
+    return by
+  }, [coverage])
+  /** AC4.5 — « nous ne sommes pas venus » : actives, never or long ago. */
+  const [neglected, setNeglected] = useState(false)
+  const neglectedCount = useMemo(
+    () => coverage.filter((c) => c.state === 'never' || c.state === 'stale').length,
+    [coverage],
+  )
   /** AA6 — where the sort control is rendered; see `sortControl`. */
   const phone = usePhoneShape()
   /** A new key is a new request to (re)anchor — and to pan only if off screen. */
@@ -166,6 +195,11 @@ export function FarmsListScreen() {
       // no areas at all, and « which of these have we actually measured » is
       // the question that separates a lead from a holding.
       if (hasAreas && weightedDunams(farm) <= 0) return false
+      /* AC4.4 — « qui est oublié », as a narrowing of the same roster. */
+      if (neglected) {
+        const state = coverageOf.get(farm.id)?.state
+        if (state !== 'never' && state !== 'stale') return false
+      }
       if (!q) return true
       return (
         farm.name.toLowerCase().includes(q) ||
@@ -174,14 +208,17 @@ export function FarmsListScreen() {
         farm.contacts.some((c) => c.name.toLowerCase().includes(q))
       )
     })
-  }, [farms, status, type, moshavOnly, region, hasAreas, query])
+  }, [farms, status, type, moshavOnly, region, hasAreas, neglected, coverageOf, query])
 
   /**
    * ⚠️ SORTED ON A COPY, AND STABLY. `Array.prototype.sort` mutates, and
    *    `filtered` is a memo the markers also read — sorting it in place would
    *    re-order the map's own list as a side effect of rendering the roster.
    */
-  const sorted = useMemo(() => sortFarms(filtered, sort), [filtered, sort])
+  const sorted = useMemo(
+    () => sortFarms(filtered, sort, coverageOf),
+    [filtered, sort, coverageOf],
+  )
 
   const page = useProgressive(sorted)
 
@@ -376,6 +413,10 @@ export function FarmsListScreen() {
         { value: 'weightedAsc', label: t('farms.sortWeightedAsc') },
         { value: 'status', label: t('farms.sortStatus') },
         { value: 'nextVisit', label: t('farms.sortNextVisit') },
+        /* AC4.4 — the three orders the equity question is asked in. */
+        { value: 'guardsAsc', label: t('farms.sortGuardsAsc') },
+        { value: 'guardsDesc', label: t('farms.sortGuardsDesc') },
+        { value: 'lastGuardOldest', label: t('farms.sortLastGuardOldest') },
       ]}
     />
   )
@@ -388,7 +429,8 @@ export function FarmsListScreen() {
         (type !== null ? 1 : 0) +
         (moshavOnly ? 1 : 0) +
         (region !== null ? 1 : 0) +
-        (hasAreas ? 1 : 0)
+        (hasAreas ? 1 : 0) +
+        (neglected ? 1 : 0)
       }
       onClear={() => {
         setStatus(null)
@@ -396,6 +438,7 @@ export function FarmsListScreen() {
         setMoshavOnly(false)
         setRegion(null)
         setHasAreas(false)
+        setNeglected(false)
       }}
     >
       <RegionFilter value={region} onChange={setRegion} counts={regionCounts} testId="farms-region" />
@@ -415,6 +458,27 @@ export function FarmsListScreen() {
           </FilterPill>
         ))}
       </PillGroup>
+      {/**
+        * ★★ AC4.4 · AC4.5 — « QUI EST OUBLIÉ », EN UNE PASTILLE.
+        *
+        * ⚠️ IT IS DRAWN ONLY WHEN THERE IS SOMETHING TO SHOW. A filter that is
+        *    always there and always empties the list is a filter the
+        *    coordinator learns to distrust; on a roster of 198 leads with no
+        *    signed farm yet, « נשכחו » has nothing to say and says nothing.
+        */}
+      {neglectedCount > 0 && (
+        <PillGroup name="farm-neglected" cols={1}>
+          <FilterPill
+            active={neglected}
+            onClick={() => setNeglected((v) => !v)}
+            count={neglectedCount}
+            testId="farms-neglected"
+            title={t('farms.filterNeglectedHint', { days: neglectDays })}
+          >
+            {t('farms.filterNeglected')}
+          </FilterPill>
+        </PillGroup>
+      )}
       {/**
         * ★★ AA6 — AND THE SORT IS HERE ONLY ON A PHONE.
         *
@@ -504,6 +568,8 @@ export function FarmsListScreen() {
             ) : (
               <FarmsTable
                 farms={sorted}
+                coverageOf={coverageOf}
+                neglectDays={neglectDays}
                 onOpen={(id) => navigate(`/coordinator/farms/${id}`)}
               />
             )}
@@ -528,6 +594,8 @@ export function FarmsListScreen() {
                         farm={farm}
                         active={farm.id === hoveredId || farm.id === selectedId}
                         heads={totalHeads(farm)}
+                        coverage={coverageOf.get(farm.id) ?? null}
+                        neglectDays={neglectDays}
                         onHover={setHoveredId}
                         onOpen={() => navigate(`/coordinator/farms/${farm.id}`)}
                         onCenter={() => centerOn(farm)}
@@ -566,6 +634,8 @@ function FarmTile({
   farm,
   active,
   heads,
+  coverage,
+  neglectDays,
   onHover,
   onOpen,
   onCenter,
@@ -574,6 +644,8 @@ function FarmTile({
   farm: Farm
   active: boolean
   heads: number | null
+  coverage: FarmCoverage | null
+  neglectDays: number
   onHover: (id: string | null) => void
   onOpen: () => void
   onCenter: () => void
@@ -602,6 +674,7 @@ function FarmTile({
         <span className="truncate text-caption font-semibold text-content-primary" title={farm.name}>
           {farm.name}
         </span>
+        <NeglectMark coverage={coverage} neglectDays={neglectDays} />
       </span>
       <span className="muted block truncate" title={`${farm.locality} · ${t(`farmType.${farm.type}`)}`}>
         {farm.locality} · {t(`farmType.${farm.type}`)}
@@ -654,11 +727,41 @@ function FarmTile({
  *    the honest answer to "when is the next visit" for a place nobody has
  *    booked.
  */
-export type FarmSort = 'name' | 'weightedDesc' | 'weightedAsc' | 'status' | 'nextVisit'
+export type FarmSort =
+  | 'name'
+  | 'weightedDesc'
+  | 'weightedAsc'
+  | 'status'
+  | 'nextVisit'
+  /** AC4.4 — « qui est servi et qui est oublié ». */
+  | 'guardsAsc'
+  | 'guardsDesc'
+  | 'lastGuardOldest'
 
-function sortFarms(farms: Farm[], sort: FarmSort): Farm[] {
+function sortFarms(
+  farms: Farm[],
+  sort: FarmSort,
+  coverageOf: ReadonlyMap<string, FarmCoverage>,
+): Farm[] {
   const next = [...farms]
+  const guardsOf = (f: Farm) => coverageOf.get(f.id)?.stats.guards ?? 0
   switch (sort) {
+    /**
+     * ★★ AC4.4 — « LE MOINS SERVI D'ABORD » IS THE ORDER THE DECISION IS MADE
+     *    IN, so it is the one that reads first in the list.
+     *
+     * ⚠️ TIES BREAK ON THE LAST GUARD, NOT ON THE NAME. Two hundred farms at
+     *    zero guards sorted alphabetically is a list where the answer to « who
+     *    next » is always the same farm; among equals, the one nobody has been
+     *    to for longest comes first, and « never » is the longest of all.
+     */
+    case 'guardsAsc':
+      return next.sort((a, b) => guardsOf(a) - guardsOf(b) || oldestFirst(a, b, coverageOf))
+    case 'guardsDesc':
+      return next.sort((a, b) => guardsOf(b) - guardsOf(a))
+    /* « Jamais » sorts as infinitely old — see `sinceOf`. */
+    case 'lastGuardOldest':
+      return next.sort((a, b) => oldestFirst(a, b, coverageOf))
     case 'weightedDesc':
       return next.sort((a, b) => weightedDunams(b) - weightedDunams(a))
     case 'weightedAsc':
@@ -678,11 +781,83 @@ function sortFarms(farms: Farm[], sort: FarmSort): Farm[] {
 }
 
 /**
+ * Days since the last guard, with « never » as the OLDEST value there is.
+ *
+ * ⚠️ `Infinity` AND NOT A LARGE NUMBER. A farm nobody has ever guarded is not
+ *    « nine hundred days ago »; it is a different state, and the only ordering
+ *    that is right for it in both directions is the unbounded one.
+ */
+function sinceOf(farm: Farm, coverageOf: ReadonlyMap<string, FarmCoverage>): number {
+  const stats = coverageOf.get(farm.id)?.stats
+  if (!stats || stats.guards === 0) return Infinity
+  return stats.daysSinceLastGuard ?? Infinity
+}
+
+/**
+ * ⚠️ COMPARED, NOT SUBTRACTED. Two farms that have never been guarded are both
+ *    `Infinity`, and `Infinity - Infinity` is `NaN` — a comparator that
+ *    returns NaN leaves the engine free to do anything, which is how a list
+ *    ends up in a different order every time it is filtered.
+ */
+function oldestFirst(
+  a: Farm,
+  b: Farm,
+  coverageOf: ReadonlyMap<string, FarmCoverage>,
+): number {
+  const x = sinceOf(a, coverageOf)
+  const y = sinceOf(b, coverageOf)
+  if (x === y) return 0
+  return x > y ? -1 : 1
+}
+
+/**
  * G7 → X5 — the roster reading of the farms: one row per farm, window-
  * virtualised, with a sticky header. The columns are the shared roster grid
  * (`.roster` / `.roster-farms` in index.css), so header and rows cannot drift
  * and the tiers are asked of the TABLE's own width rather than the window's.
  */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AC4.5 — « UN SIGNAL VISUEL SOBRE », ET SOBRE EST LE MOT QUI DÉCIDE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * A hollow ring, in the warning ink, 8 px, with its reason in the tooltip and
+ * in `aria-label`. NOT a red badge and not a coloured row: the status dot two
+ * characters to its left already owns the row's colour, and a second full-
+ * strength signal beside it turns a roster into a warning panel where nothing
+ * stands out because everything does.
+ *
+ * ⚠️ HOLLOW AND NOT FILLED, and that is the distinction it carries: `never`
+ *    is a farm that has had nothing at all, `stale` one that had something a
+ *    long time ago. Two shapes of the same mark, one glance apart.
+ */
+function NeglectMark({
+  coverage,
+  neglectDays,
+}: {
+  coverage: FarmCoverage | null
+  neglectDays: number
+}) {
+  const { t } = useTranslation()
+  if (!coverage) return null
+  if (coverage.state !== 'never' && coverage.state !== 'stale') return null
+  const label =
+    coverage.state === 'never'
+      ? t('farms.neglectedNever')
+      : t('farms.neglectedStale', { days: coverage.stats.daysSinceLastGuard ?? neglectDays })
+  return (
+    <span
+      data-testid="farm-neglect"
+      data-neglect={coverage.state}
+      title={label}
+      aria-label={label}
+      className={`inline-block size-2 shrink-0 rounded-full border border-status-warn-ink/70 ${
+        coverage.state === 'never' ? '' : 'bg-status-warn-ink/25'
+      }`}
+    />
+  )
+}
+
 function FarmsTableHead() {
   const { t } = useTranslation()
   return (
@@ -702,6 +877,8 @@ function FarmsTableHead() {
             of. `xl` like the pair it follows: below that width the row shows
             the areas merged under the name and a third number would not fit. */}
         <RosterHead label={t('farms.colWeighted')} tier="xl" className="text-end" />
+        {/* AC4.4 — how many nights this farm has had, and how long ago. */}
+        <RosterHead label={t('farms.colGuards')} tier="xl" className="text-end" />
         <RosterHead label={t('farms.colContacts')} tier="xl" />
         <RosterHead label={t('farms.nextVisit')} tier="md" />
         <RosterHead label="" className="text-end" />
@@ -712,9 +889,13 @@ function FarmsTableHead() {
 
 function FarmsTable({
   farms,
+  coverageOf,
+  neglectDays,
   onOpen,
 }: {
   farms: Farm[]
+  coverageOf: ReadonlyMap<string, FarmCoverage>
+  neglectDays: number
   onOpen: (farmId: string) => void
 }) {
   const { t } = useTranslation()
@@ -762,6 +943,10 @@ function FarmsTable({
                     <span className="truncate text-caption font-medium text-content-primary">
                       {farm.name}
                     </span>
+                    <NeglectMark
+                      coverage={coverageOf.get(farm.id) ?? null}
+                      neglectDays={neglectDays}
+                    />
                   </span>
                   <span
                     className="muted block truncate"
@@ -811,19 +996,36 @@ function FarmsTable({
                 {dunams(weightedDunams(farm))}
               </span>
 
-              {/* 8 — contacts */}
+              {/* 8 — AC4.4: the nights received, and how long ago the last was */}
+              <span
+                data-col="xl"
+                data-guards={coverageOf.get(farm.id)?.stats.guards ?? 0}
+                className="ltr-nums numeric truncate text-end text-caption text-content-secondary"
+              >
+                {(coverageOf.get(farm.id)?.stats.guards ?? 0).toLocaleString(locale)}
+                <span className="muted ms-1 text-micro">
+                  {coverageOf.get(farm.id)?.stats.lastGuardAt
+                    ? formatDate(
+                        coverageOf.get(farm.id)?.stats.lastGuardAt as string,
+                        locale,
+                      )
+                    : '—'}
+                </span>
+              </span>
+
+              {/* 9 — contacts */}
               <span data-col="xl" className="numeric truncate text-caption text-content-secondary">
                 {farm.contacts.length}
               </span>
 
-              {/* 9 — next visit */}
+              {/* 10 — next visit */}
               <span data-col="md" className="ltr-nums truncate text-micro text-content-muted">
                 {farm.nextVisitAt
                   ? formatDate(farm.nextVisitAt, locale)
                   : t('farms.noVisitYet')}
               </span>
 
-              {/* 10 — the way in */}
+              {/* 11 — the way in */}
               <span data-actions="" className="flex items-center justify-end text-content-muted/60">
                 <ChevronForward size={14} />
               </span>

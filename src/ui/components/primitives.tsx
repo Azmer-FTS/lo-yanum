@@ -1186,18 +1186,26 @@ export function FilterPill({
   children,
   dot,
   count,
+  /* AC4.5 — a pill whose meaning depends on a setting says so on hover; the
+     threshold is a number the coordinator chose and can forget. */
+  title,
+  testId,
 }: {
   active: boolean
   onClick: () => void
   children: ReactNode
   dot?: ReactNode
   count?: number
+  title?: string
+  testId?: string
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
+      title={title}
+      data-testid={testId}
       className={`filter-pill ${active ? 'filter-pill-active' : ''}`}
     >
       {dot}

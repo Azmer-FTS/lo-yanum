@@ -233,6 +233,48 @@ export function weightedDunams(farm: HasAreas): number {
   return Math.round(raw)
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AC3 (2026-09-08) — « שטחים שמירה » : LE PO A TRANCHÉ, C'EST DÉCLARATIF.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ *   « שטחים שמירה n'est pas une recopie erronée. C'est une déclaration —
+ *     "nous surveillons la totalité de cette surface". Leur système la
+ *     remplit, et c'est volontaire. »
+ *
+ * ★ SO THE DEFAULT IS THE WHOLE HOLDING — מעובד + מרעה — AND IT IS A DEFAULT
+ *   AND NOT A STORED COPY. A record that has never been touched answers with
+ *   the sum of its two areas and follows them when a polygon is drawn; the day
+ *   the coordinator types a different figure, `guardedDunamsManual` is set and
+ *   the default never speaks again for that farm (AC3.2).
+ *
+ * ⚠️ AND A TYPED ZERO DOES NOT FREEZE ANYTHING — the trap AA4 fell into on a
+ *    sheet of 198 zeroes. The flag is set by the importer only above zero and
+ *    by the form only on a real entry; `guardedDunams` at 0 with no flag is a
+ *    record nobody has answered for, and it keeps answering with the default.
+ *
+ * ⚠️ IT IS NOT THE WEIGHTING, AND THE TWO NEVER MEET (AC3.4). `weightedDunams`
+ *    above is the SUBSIDY rule — מעובד × 1 + מרעה × 0,02 — and it reads
+ *    neither this function nor this field. The guarded area is what the
+ *    programme SAYS it watches; the weighted figure is what the State counts.
+ */
+export interface HasGuardedArea extends HasAreas {
+  guardedDunams?: number
+  guardedDunamsManual?: boolean
+}
+
+export function guardedDunamsOf(farm: HasGuardedArea): number {
+  if (farm.guardedDunamsManual && Number.isFinite(farm.guardedDunams)) {
+    return Math.round(farm.guardedDunams as number)
+  }
+  return Math.round(farm.farmDunams + farm.grazingDunams)
+}
+
+/** Is this farm's guarded area the default, or a figure somebody typed? */
+export function guardedIsManual(farm: HasGuardedArea): boolean {
+  return farm.guardedDunamsManual === true
+}
+
 /** The same sum over a list, for the dashboard card and the list totals. */
 export function totalWeightedDunams(farms: readonly HasAreas[]): number {
   return farms.reduce((sum, f) => sum + weightedDunams(f), 0)

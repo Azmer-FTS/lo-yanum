@@ -107,7 +107,7 @@ section('A75 — the first import of the real workbook')
 // ---------------------------------------------------------------------------
 
 check(
-  'every one of the 26 headers is recognised',
+  'AC2 · every one of the 32 headers is recognised',
   (() => {
     const { mapping } = analyseProspection(headers, [], [])
     return mapping.every((f) => f !== 'ignore')
@@ -157,7 +157,7 @@ check(
 {
   const iLat = headers.findIndex((h) => h.trim() === 'קו רוחב')
   const iLng = headers.findIndex((h) => h.trim() === 'קו אורך')
-  const iName = headers.findIndex((h) => h.trim() === 'שם המקום')
+  const iName = headers.findIndex((h) => h.trim() === 'שם המקום (כפי שיישלח אליהם)')
   const farms = getVisibleFarms()
   const wrong: string[] = []
   let compared = 0
@@ -308,7 +308,16 @@ section('A77 — the same file with cells emptied')
   target.landAgreement = 'perpetual_lease'
 
   /** Every cell but the identity emptied, on every row. */
-  const keep = new Set(['שם המקום', 'סמל יישוב (למ״ס)', 'מועצה אזורית'])
+  /* AC2 — the identity is now the holding AND the locality, so the columns
+     that must survive the blanking are five, not three. */
+  const keep = new Set([
+    'שם המקום (כפי שיישלח אליהם)',
+    'שם החווה',
+    'שם החקלאי',
+    'יישוב',
+    'סמל יישוב (למ״ס)',
+    'מועצה אזורית',
+  ])
   const blanked = matrix.map((raw) =>
     raw.map((cell, i) => (keep.has(headers[i]?.trim() ?? '') ? cell : '')),
   )
@@ -346,7 +355,7 @@ section('A78 — export, then import the export')
   const source = getVisibleFarms()
   const exported = prospectionExportMatrix(source)
   check(
-    'A78 · the export has the workbook’s own 26 headers, in order',
+    'A78 · the export has the workbook’s own 32 headers, in order',
     exported[0].length === headers.length &&
       exported[0].every((h, i) => h.trim() === headers[i].trim()),
     exported[0]
@@ -366,14 +375,41 @@ section('A78 — export, then import the export')
     back.plan.created.length === 0 && back.plan.rejected.length === 0,
     `created=${back.plan.created.length} rejected=${back.plan.rejected.length}`,
   )
+  /**
+   * ★★ AC2.2 — ONE FIELD MOVES ON THE FIRST PASS, AND IT IS THE FORMULA.
+   *
+   * The A77 section above typed « יוסי כהן » straight onto the טללים record,
+   * which is what a coordinator does in the app — and the workbook's own
+   * שם המקום formula says a row with a farmer and no farm name is called
+   * « החווה של יוסי כהן ». The export writes that (it is the cell HIS Excel
+   * would recompute anyway) and the re-import adopts it. Exactly one record,
+   * exactly one field, by the association's own rule — and the SECOND round
+   * trip is a pure identity, which is what makes it a rename and not a drift.
+   */
   const drifted = back.plan.updated.filter((u) => u.changes.length > 0)
   check(
-    'A78 · and no field comes back different',
-    drifted.length === 0,
+    'A78 · one record is renamed by the workbook’s own formula, and nothing else moves',
+    drifted.length === 1 && drifted[0].changes.join(',') === 'name',
     drifted
       .slice(0, 6)
       .map((u) => `${u.row.name}: ${u.changes.join(',')}`)
       .join(' · ') || 'round trip is an identity',
+  )
+  applyProspection(back.plan, HOME_BASE)
+  const settled = getVisibleFarms()
+  const again2 = analyseProspection(
+    prospectionExportMatrix(settled)[0],
+    prospectionExportMatrix(settled).slice(1),
+    settled,
+  )
+  const drifted2 = again2.plan.updated.filter((u) => u.changes.length > 0)
+  check(
+    'A78 · and the second round trip is an identity',
+    again2.plan.created.length === 0 && drifted2.length === 0,
+    drifted2
+      .slice(0, 4)
+      .map((u) => `${u.row.name}: ${u.changes.join(',')}`)
+      .join(' · ') || `${again2.plan.updated.length} updated, nothing changed`,
   )
   check(
     'A78 · no unknown list value on the way back in',

@@ -15,6 +15,7 @@ import {
   getFarm,
   getFarmZonesForFarm,
   getVisibleFarms,
+  guardedDunamsOf,
   ringAreaDunams,
   fromDayKey,
   isEmail,
@@ -209,6 +210,29 @@ export function FarmFormScreen() {
   const [grazingManual, setGrazingManual] = useState(
     Boolean(existing?.grazingDunamsManual),
   )
+  /**
+   * ★★ AC3 — LA SURFACE GARDÉE, ET SON CHAMP EST INITIALISÉ PAR LE DÉFAUT.
+   *
+   * A record that has never been answered for holds no `guardedDunams` at all,
+   * so the box opens showing what `guardedDunamsOf` would answer — מעובד +
+   * מרעה — rather than empty. Typing over it sets the flag, exactly as the two
+   * areas above do; the button under the field hands it back to the default.
+   *
+   * ⚠️ AND A TYPED ZERO DOES NOT FREEZE THE RECORD (AC3.2, A102). The submit
+   *    below refuses to set the flag for a zero, which is the trap AA4 fell
+   *    into on a sheet of 198 of them: a record flagged at zero can never be
+   *    filled in by a drawn polygon again.
+   */
+  const [guardedDunams, setGuardedDunams] = useState(
+    String(existing ? guardedDunamsOf(existing) : 0),
+  )
+  const [guardedManual, setGuardedManual] = useState(
+    Boolean(existing?.guardedDunamsManual),
+  )
+  /** AC1 · AC2 — the holding's own name, its umbrella, the farmer's address. */
+  const [farmName, setFarmName] = useState(existing?.farmName ?? '')
+  const [umbrella, setUmbrella] = useState(existing?.umbrella ?? '')
+  const [farmerEmail, setFarmerEmail] = useState(existing?.farmerEmail ?? '')
   /** AA2 — the roster, for the סמל יישוב uniqueness check below. */
   const allFarms = useCoreValue(getVisibleFarms)
   const zones = useCoreValue(() => (farmId ? getFarmZonesForFarm(farmId) : []))
@@ -248,6 +272,15 @@ export function FarmFormScreen() {
   const [liaisonPhone, setLiaisonPhone] = useState(existing?.liaisonPhone ?? '')
 
   const num = (v: string) => (v.trim() === '' ? NaN : Number(v))
+  /**
+   * ★ AC3.1 — THE DEFAULT FOLLOWS THE TWO FIELDS AS THEY ARE TYPED, not the
+   *   record as it was loaded: a coordinator who corrects the grazing area and
+   *   then presses « חזרה לברירת המחדל » must get the CORRECTED total.
+   */
+  const defaultGuarded = Math.round(
+    (Number.isFinite(num(farmDunams)) ? num(farmDunams) : 0) +
+      (Number.isFinite(num(grazingDunams)) ? num(grazingDunams) : 0),
+  )
 
   /**
    * ★ AA2 — « סמל יישוב — entier, unique quand présent. »
@@ -360,6 +393,9 @@ export function FarmFormScreen() {
         : 0,
       farmDunamsManual: farmManual,
       grazingDunamsManual: grazingManual,
+      /* AC3.2 — the flag never lands on a zero. See the note on the state. */
+      guardedDunams: Number.isFinite(num(guardedDunams)) ? num(guardedDunams) : 0,
+      guardedDunamsManual: guardedManual && num(guardedDunams) > 0,
       contacts: contacts.map((c) => ({
         ...c,
         name: c.name.trim(),
@@ -375,8 +411,12 @@ export function FarmFormScreen() {
       landAgreementUntil: landAgreementUntil.trim() === '' ? null : landAgreementUntil,
       farmerName: farmerName.trim(),
       farmerPhone: farmerPhone.trim(),
+      farmerEmail: farmerEmail.trim(),
       liaisonName: liaisonName.trim(),
       liaisonPhone: liaisonPhone.trim(),
+      // AC1 · AC2.4 — the holding's own name, and who groups it.
+      farmName: farmName.trim(),
+      umbrella: umbrella.trim(),
     }
 
     if (isEdit && farmId) {
@@ -668,6 +708,28 @@ export function FarmFormScreen() {
           }
         >
           <div className="auto-cols gap-3 [--col-min:14rem]">
+            {/**
+              * ★★ AC1 — שם החווה, ET C'EST LA MOITIÉ DE L'IDENTITÉ.
+              *
+              * Left empty the record is a LOCALITY SEED — « there is farming
+              * here and we have not been told by whom » — which is what all
+              * 198 rows of the workbook are today. Filling it and the farmer's
+              * name UPDATES that seed rather than creating a second record;
+              * see `planProspection`. The hint says so in Hebrew, because a
+              * coordinator who does not know that will make four records for
+              * one moshav.
+              */}
+            <TextField
+              label={t('form.farmName')}
+              hint={t('form.farmNameHint')}
+              value={farmName}
+              onChange={setFarmName}
+            />
+            <TextField
+              label={t('form.umbrella')}
+              value={umbrella}
+              onChange={setUmbrella}
+            />
             <TextField
               label={t('form.farmerName')}
               hint={t('form.farmerNameHint')}
@@ -679,6 +741,13 @@ export function FarmFormScreen() {
               value={farmerPhone}
               onChange={setFarmerPhone}
               type="tel"
+              ltr
+            />
+            <TextField
+              label={t('form.farmerEmail')}
+              value={farmerEmail}
+              onChange={setFarmerEmail}
+              type="email"
               ltr
             />
             <TextField
@@ -740,6 +809,49 @@ export function FarmFormScreen() {
                 setGrazingHectares(String(sum))
               }}
             />
+          </div>
+          {/**
+            * ★★ AC3 — « שטחים שמירה » : LA DÉCLARATION, PAS UNE MESURE.
+            *
+            * « nous surveillons la totalité de cette surface. » The default is
+            * the whole holding and the button hands it back; a typed figure is
+            * the farmer's own declaration and nothing overwrites it after.
+            */}
+          <div>
+            <TextField
+              label={t('form.guardedArea')}
+              hint={t('form.guardedAreaHint')}
+              value={guardedDunams}
+              onChange={(v) => {
+                setGuardedDunams(v)
+                setGuardedManual(true)
+              }}
+              type="number"
+              ltr
+            />
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {guardedManual ? (
+                <>
+                  <span className="chip bg-status-warn/15 text-status-warn-ink">
+                    {t('form.guardedManual')}
+                  </span>
+                  <button
+                    type="button"
+                    data-testid="guarded-back-to-default"
+                    onClick={() => {
+                      setGuardedManual(false)
+                      setGuardedDunams(String(defaultGuarded))
+                    }}
+                    className="text-micro font-semibold text-accent-ink hover:underline"
+                  >
+                    {t('form.guardedBackToDefault')} (
+                    <span className="numeric ltr-nums">{defaultGuarded}</span>)
+                  </button>
+                </>
+              ) : (
+                <span className="muted text-micro">{t('form.guardedAuto')}</span>
+              )}
+            </div>
           </div>
         </FormSection>
 

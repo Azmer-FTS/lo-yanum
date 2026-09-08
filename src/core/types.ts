@@ -360,8 +360,41 @@ export interface Farm {
    */
   farmerName?: string
   farmerPhone?: string
+  /** AC2 — מייל חקלאי, a column of the 32-column workbook since AC2. */
+  farmerEmail?: string
   liaisonName?: string
   liaisonPhone?: string
+
+  /**
+   * ★★ AC1 (2026-09-08) — שם החווה, AND IT IS HALF OF THE IDENTITY.
+   *
+   * A locality carries several independent holdings — « dans בארי il peut y
+   * avoir quatre agriculteurs, chacun avec ses dounams et son contrat » — so
+   * סמל יישוב alone stopped being an identity the day the workbook became one
+   * row per FARM. The key is now שם החווה + שם החקלאי + סמל יישוב, and both
+   * names empty is a real and expected state: a LOCALITY SEED, a record that
+   * says a place farms and does not yet say who. See `core/prospection.ts`.
+   */
+  farmName?: string
+
+  /** AC2.4 — ארגון מאגד: the agudah, גד״ש or שח״ם above the holding. Free text. */
+  umbrella?: string
+
+  /**
+   * ★★ AC3 (2026-09-08) — שטחים שמירה, THE AREA THIS PROGRAMME DECLARES IT
+   *    WATCHES.
+   *
+   * AB6 refused to write this column, reading it as an erroneous copy of the
+   * cultivated area. The product owner has overturned that: it is a
+   * DECLARATION, their system fills it deliberately, and it means « we watch
+   * the whole of this ». It therefore DEFAULTS to מעובד + מרעה rather than
+   * being stored, and `guardedDunamsManual` is what makes a typed figure
+   * permanent — the same G15 contract as the two areas, including the rule
+   * that a ZERO never sets the flag. Read it through `guardedDunamsOf`;
+   * nothing should touch either field directly.
+   */
+  guardedDunams?: number
+  guardedDunamsManual?: boolean
 
   /**
    * AA5.4 — WHERE THIS FARM'S SIGNATURE CAME FROM.

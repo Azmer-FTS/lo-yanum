@@ -13,6 +13,7 @@ import {
   applyProspection,
   applySignatures,
   associationExportMatrix,
+  associationCounts,
   associationInputs,
   associationSignatures,
   guessAssociationMapping,
@@ -348,7 +349,8 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
     try {
       if (kind === 'prospection') {
         downloadMatrix(
-          prospectionExportMatrix(farms),
+          /* AC4.6 — the regulars column, counted from this app's own guards. */
+          prospectionExportMatrix(farms, (farm) => associationCounts(farm.id).regulars),
           PROSPECTION_COLUMNS.map((c) => c.width ?? 16),
           'רשימה',
           'lo-yanum-prospection.xlsx',

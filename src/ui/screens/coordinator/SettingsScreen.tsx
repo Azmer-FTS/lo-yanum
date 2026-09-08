@@ -11,6 +11,7 @@ import { readReportRecipient, writeReportRecipient } from '../../report/recipien
 import { AgreementTemplateSection } from '../../settings/AgreementTemplateSection'
 import { DisplaySection, RegionsEditSection } from '../../settings/DisplaySection'
 import { DemoDataSection } from '../../settings/DemoDataSection'
+import { CoverageSection } from '../../settings/CoverageSection'
 import { TargetSection } from '../../settings/TargetSection'
 import { ViewAsSection } from '../../settings/ViewAsSection'
 import {
@@ -201,6 +202,10 @@ export function SettingsScreen() {
           settings: it is a decision about the PROGRAMME, like the region
           editor under it, not about this device's storage. */}
       <TargetSection />
+
+      {/* AC4.5 — le seuil d'oubli, juste sous l'objectif : les deux disent au
+          coordinateur ce que le programme attend de lui ce mois-ci. */}
+      <CoverageSection />
 
       {/* ★★ Y2.1 — the door to the region editor. Above the offline block on
           purpose: it is a decision about the programme, not about this

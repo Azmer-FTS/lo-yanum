@@ -3,6 +3,7 @@ import {
   FARM_TYPE_OPTIONS,
   LAND_AGREEMENT_OPTIONS,
   LEGAL_ENTITY_OPTIONS,
+  guardedDunamsOf,
   normaliseValue,
   optionLabel,
   readOption,
@@ -56,21 +57,33 @@ export type ProspectionField =
   | 'ignore'
   | 'index'
   | 'name'
+  /** ★★ AC1 — שם החווה. The first half of the new identity. */
+  | 'farmName'
+  | 'farmerName'
+  | 'farmerPhone'
+  /** ★ AC2 — מייל חקלאי, which the new workbook carries per row. */
+  | 'farmerEmail'
+  | 'legalEntity'
+  /** ★ AC2.4 — ארגון מאגד: the agudah / גד״ש / שח״ם above the holding. */
+  | 'umbrella'
+  /** ★ AC2 — יישוב, at last a column of its own rather than the place name. */
+  | 'locality'
   | 'localityCode'
   | 'localityKind'
   | 'council'
   | 'region'
   | 'councilPhone'
-  | 'legalEntity'
   | 'liaisonName'
   | 'liaisonPhone'
-  | 'farmerName'
-  | 'farmerPhone'
   | 'activity'
   | 'estimate'
   | 'cultivated'
   | 'grazing'
+  /** ★★ AC3 — שטחים שמירה, and the product owner has ruled it a declaration. */
+  | 'guarded'
   | 'weighted'
+  /** ★ AC4.6 — כמות מתנדבים קבועים: written out, recomputed on the way in. */
+  | 'regulars'
   | 'landAgreement'
   | 'landAgreementUntil'
   | 'status'
@@ -95,10 +108,54 @@ export interface ProspectionColumn {
  * ⚠️ THE ORDER IS THE FILE'S ORDER, and the export writes it back in exactly
  *    this order. That is what makes « aller-retour sans perte » (AA4.10) a
  *    property of one list rather than of two that agree today.
+ *
+ * ★★ AC2 (2026-09-08) — THIRTY-TWO COLUMNS, AND THE FILE IS NOW ONE ROW PER
+ *    HOLDING. The product owner's new workbook says so on its own מקרא sheet:
+ *    « שורה אחת לכל חווה, לא לכל יישוב ». Six columns are new — שם החווה,
+ *    מייל חקלאי, ארגון מאגד, יישוב, שטחים שמירה, כמות מתנדבים קבועים — and
+ *    four were re-worded. The old spellings are kept as aliases rather than
+ *    replaced: a coordinator with last month's file on his laptop must still
+ *    be able to drop it in.
  */
 export const PROSPECTION_COLUMNS: readonly ProspectionColumn[] = [
   { field: 'index', header: "מס'", aliases: ['מס', 'מספר', '#'], width: 6 },
-  { field: 'name', header: 'שם המקום', aliases: ['שם', 'שם היישוב', 'שם החווה'], width: 22 },
+  /**
+   * ★★ AC2.2 — THIS CELL IS A FORMULA IN HIS WORKBOOK, AND IT IS READ AS A
+   *    VALUE. `IF(C="",IF(D="",I,"החווה של "&D),IF(D="",C,C&" - החווה של "&D))`
+   *    — the farm's name, or the farmer's, or both, or the locality when
+   *    neither is filled. SheetJS hands over the CALCULATED value, which is
+   *    what the importer reads; the app never writes a formula back, and
+   *    `composePlaceName` below is that same rule in TypeScript so the export
+   *    recomposes the cell rather than echoing it.
+   */
+  {
+    field: 'name',
+    header: 'שם המקום (כפי שיישלח אליהם)',
+    aliases: ['שם המקום', 'שם היישוב', 'שם'],
+    width: 26,
+  },
+  { field: 'farmName', header: 'שם החווה', aliases: ['החווה', 'שם חווה'], width: 20 },
+  { field: 'farmerName', header: 'שם החקלאי', aliases: ['החקלאי', 'שם חקלאי'], width: 20 },
+  { field: 'farmerPhone', header: 'נייד החקלאי', aliases: ['טלפון החקלאי'], width: 16 },
+  {
+    field: 'farmerEmail',
+    header: 'מייל חקלאי',
+    aliases: ['אימייל חקלאי', 'דוא״ל חקלאי', 'מייל'],
+    width: 24,
+  },
+  {
+    field: 'legalEntity',
+    header: 'סוג הישות המשפטית',
+    aliases: ['הישות המשפטית', 'סוג ישות משפטית'],
+    width: 20,
+  },
+  {
+    field: 'umbrella',
+    header: 'ארגון מאגד (אגודה/גד״ש/שח״ם)',
+    aliases: ['ארגון מאגד', 'ארגון', 'אגודה מאגדת'],
+    width: 24,
+  },
+  { field: 'locality', header: 'יישוב', aliases: ['ישוב'], width: 18 },
   {
     field: 'localityCode',
     header: 'סמל יישוב (למ״ס)',
@@ -120,12 +177,6 @@ export const PROSPECTION_COLUMNS: readonly ProspectionColumn[] = [
     width: 18,
   },
   {
-    field: 'legalEntity',
-    header: 'סוג הישות המשפטית',
-    aliases: ['הישות המשפטית', 'סוג ישות משפטית'],
-    width: 20,
-  },
-  {
     field: 'liaisonName',
     header: 'איש קשר (מועצה/אגודה)',
     aliases: ['איש קשר', 'איש קשר מועצה'],
@@ -137,34 +188,57 @@ export const PROSPECTION_COLUMNS: readonly ProspectionColumn[] = [
     aliases: ['נייד איש קשר', 'טלפון איש קשר'],
     width: 16,
   },
-  { field: 'farmerName', header: 'שם החקלאי', aliases: ['החקלאי', 'שם חקלאי'], width: 20 },
-  { field: 'farmerPhone', header: 'נייד החקלאי', aliases: ['טלפון החקלאי'], width: 16 },
   { field: 'activity', header: 'סוג פעילות', aliases: ['פעילות', 'סוג חווה'], width: 14 },
+  /**
+   * ★ AC2.3 — « אומדן ליישוב כולו » IS ABOUT THE LOCALITY, NOT THE HOLDING.
+   *   Read and thrown away, as its predecessor « אומדן סדר גודל » was: writing
+   *   it into an area would put a whole moshav's guess into one farmer's row,
+   *   and adding it up across the four rows of one locality would multiply a
+   *   guess by four.
+   */
   {
     field: 'estimate',
-    header: 'אומדן סדר גודל (דונם) — הערכה בלבד',
-    aliases: ['אומדן סדר גודל', 'אומדן', 'אומדן (דונם)'],
-    width: 22,
+    header: 'אומדן ליישוב כולו (דונם) — הערכה',
+    aliases: [
+      'אומדן ליישוב כולו',
+      'אומדן סדר גודל (דונם) — הערכה בלבד',
+      'אומדן סדר גודל',
+      'אומדן',
+      'אומדן (דונם)',
+    ],
+    width: 24,
   },
   {
     field: 'cultivated',
     header: 'שטח מעובד (דונם)',
-    aliases: ['שטח מעובד', 'מעובד'],
+    aliases: ['שטח מעובד', 'מעובד', 'שטחים מעובדים'],
     width: 14,
   },
-  { field: 'grazing', header: 'שטח מרעה (דונם)', aliases: ['שטח מרעה', 'מרעה'], width: 14 },
+  { field: 'grazing', header: 'שטח מרעה (דונם)', aliases: ['שטח מרעה', 'מרעה', 'שטחי מרעה'], width: 14 },
+  {
+    field: 'guarded',
+    header: 'שטחים שמירה (דונם)',
+    aliases: ['שטחים שמירה', 'שטח שמירה', 'שטח נשמר'],
+    width: 16,
+  },
   { field: 'weighted', header: 'דונם משוקלל', aliases: ['משוקלל'], width: 14 },
   {
     field: 'landAgreement',
-    header: 'סוג הסכם קרקע',
-    aliases: ['הסכם קרקע', 'סוג ההסכם'],
-    width: 24,
+    header: 'הסכם רעיה/חכירה',
+    aliases: ['סוג הסכם קרקע', 'הסכם קרקע', 'סוג ההסכם', 'הסכם רעיה', 'הסכם חכירה'],
+    width: 26,
   },
   {
     field: 'landAgreementUntil',
-    header: 'תוקף ההסכם',
-    aliases: ['תוקף', 'תוקף הסכם'],
-    width: 14,
+    header: 'תאריך תפוגה הסכם קרקע',
+    aliases: ['תוקף ההסכם', 'תוקף', 'תוקף הסכם', 'תאריך תפוגה'],
+    width: 20,
+  },
+  {
+    field: 'regulars',
+    header: 'כמות מתנדבים קבועים',
+    aliases: ['מתנדבים קבועים'],
+    width: 18,
   },
   { field: 'status', header: 'סטטוס', aliases: ['מצב'], width: 16 },
   { field: 'priority', header: 'עדיפות (1-3)', aliases: ['עדיפות'], width: 10 },
@@ -174,6 +248,45 @@ export const PROSPECTION_COLUMNS: readonly ProspectionColumn[] = [
   { field: 'waze', header: 'Waze', aliases: ['וייז'], width: 10 },
   { field: 'notes', header: 'הערות', aliases: ['הערה', 'notes'], width: 30 },
 ]
+
+/**
+ * ★★ AC2.2 — THE WORKBOOK'S OWN FORMULA, IN TYPESCRIPT AND IN ONE PLACE.
+ *
+ * The importer composes the name it stores and the exporter composes the cell
+ * it writes, from the same three fields and through this one function — which
+ * is what makes the round trip an identity rather than two spellings that
+ * agree today. `fallback` is what a record with NEITHER name answers with: on
+ * the way in, the empty string, so the locality wins; on the way out, the
+ * record's own `name`, so a place named by hand in the app is not silently
+ * renamed to its locality.
+ */
+export function composePlaceName(
+  record: { farmName?: string | null; farmerName?: string | null; locality?: string | null },
+  fallback = '',
+): string {
+  const farm = (record.farmName ?? '').trim()
+  const farmer = (record.farmerName ?? '').trim()
+  /* שם החווה is the holding's own name and it always wins — with the farmer's
+     appended when there is one, which is the workbook's own formula. */
+  if (farm !== '') return farmer === '' ? farm : `${farm} - החווה של ${farmer}`
+  /**
+   * ⚠️ THE FARMER BRANCH RUNS ON THE WAY OUT TOO, AND THAT IS DELIBERATE. His
+   *    workbook RECOMPUTES this cell the moment he opens the file: an export
+   *    that wrote « טללים » beside a שם החקלאי of « יוסי כהן » would be a file
+   *    Excel corrects to « החווה של יוסי כהן » before he has typed anything,
+   *    and a round trip that agrees with a stale cell agrees with nothing.
+   *    Consequence, measured and written into A107: a record whose farmer was
+   *    typed into the APP without a farm name is renamed ONCE, by the
+   *    association's own rule, and every pass after that is an identity.
+   *
+   * ★ THE FALLBACK IS THE LAST WORD, NOT THE FIRST. It answers only for a
+   *   record that carries NEITHER name — a farm created by hand in the app —
+   *   whose own `name` is then the only name anybody ever gave it, and must
+   *   not be replaced by its locality.
+   */
+  if (farmer !== '') return `החווה של ${farmer}`
+  return fallback || (record.locality ?? '').trim()
+}
 
 /**
  * Which field a header names, or `ignore`.
@@ -200,35 +313,155 @@ export function guessProspectionField(header: string): ProspectionField {
 // ---------------------------------------------------------------------------
 
 /**
- * ★★ AA4.2 — THE KEY A RE-IMPORT MATCHES ON.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AC1 (2026-09-08) — UNE LOCALITÉ PORTE PLUSIEURS EXPLOITATIONS.
+ * ═══════════════════════════════════════════════════════════════════════════
  *
- * « CLÉ D'IDENTITÉ : סמל יישוב s'il est présent, sinon שם המקום + מועצה
- *   אזורית. Un réimport MET À JOUR, il ne crée jamais de doublon. »
+ *   « Dans בארי il peut y avoir quatre agriculteurs, chacun avec ses dounams
+ *     et son contrat. La clé actuelle, סמל יישוב, les écrase les uns sur les
+ *     autres. »
  *
- * ⚠️ THE TWO KEYS LIVE IN ONE NAMESPACE AND ARE PREFIXED. Without the prefix a
- *    farm whose code is 1177 and one whose name normalises to "1177" would
- *    collide — absurd until somebody names a plot after its block number.
+ * ★ SO A KEY HAS TWO HALVES, AND ONLY ONE OF THEM IS THE PLACE.
+ *
+ *     · THE LOCALITY — `code:1177` when the State's own code is there,
+ *       `place:<יישוב>|<מועצה>` when it is not. Unchanged from AA4.2 except
+ *       that it now reads the יישוב COLUMN the new workbook has, falling back
+ *       to the place name for the files that have no such column.
+ *     · THE HOLDING — `<שם החווה>|<שם החקלאי>`, normalised. Empty on both
+ *       sides is a real and expected value: it is a LOCALITY SEED, a row that
+ *       says « there is farming at טללים and we have not yet been told by
+ *       whom ». 198 of the product owner's 198 rows are exactly that today.
+ *
+ * ★★ AND THE SEED IS WHY THE KEY ALONE IS NOT THE WHOLE RULE (AC1.1, third
+ *    sentence). « un remplissage ultérieur des deux champs la met à jour au
+ *    lieu d'en créer une nouvelle » — the row whose two names have just been
+ *    filled in has a key that has never existed, so a plain map lookup would
+ *    create a second record beside the seed and leave the seed for ever.
+ *    `planProspection` therefore matches in TWO passes: every exact key first,
+ *    then the leftovers against the locality's own seed. See the note there.
+ *
+ * ⚠️ THE HALVES ARE JOINED BY `#`, WHICH APPEARS IN NEITHER. Without a
+ *    separator a farm called « א » in locality « code:1 » and one called «  »
+ *    in « code:1א » would key alike — absurd until it is not.
  */
-/**
- * ★★ AB6.7 — THE FALLBACK HALF OF `identityKey`, ON ITS OWN.
- *
- * A format that carries no locality code can only ever produce this key, so
- * it needs to be able to ask for it of a record that HAS one. See
- * `planProspection`'s `keyOfExisting`.
- */
-export function placeKey(record: { name: string; council?: string }): string {
-  return `place:${normaliseValue(record.name)}|${normaliseValue(record.council ?? '')}`
+
+/** The holding half: the farm's own name, and its farmer's. */
+export function holdingKey(record: {
+  farmName?: string | null
+  farmerName?: string | null
+}): string {
+  return `${normaliseValue(record.farmName ?? '')}|${normaliseValue(record.farmerName ?? '')}`
 }
 
-export function identityKey(record: {
+/**
+ * ★ AC1.1 — NEITHER NAME FILLED: the row is an AMORCE, a locality seed.
+ *   Read of a row and of a record with the same function, because the whole
+ *   promotion rule turns on the two being asked the same question.
+ */
+export function isLocalitySeed(record: {
+  farmName?: string | null
+  farmerName?: string | null
+}): boolean {
+  return holdingKey(record) === '|'
+}
+
+/**
+ * ★★ AB6.7 — THE LOCALITY HALF BY NAME, WHICH IS THE ONLY ONE A FILE WITH NO
+ *    סמל יישוב CAN EVER PRODUCE — the association's format, for one.
+ *
+ * ⚠️ IT READS `locality` FIRST AND THE PLACE NAME ONLY AS A FALLBACK. Before
+ *    AC2 the workbook had no יישוב column and « שם המקום » WAS the locality,
+ *    which is why AA4.2 keyed on the name. It is not any more: « חוות הבשור -
+ *    החווה של יוסי » and « חוות הבשור - החווה של דוד » are two rows of ONE
+ *    locality, and keying their locality half on their own names would put
+ *    them in two.
+ */
+export function placeLocalityKey(record: {
+  name: string
+  locality?: string
+  council?: string
+}): string {
+  const where = normaliseValue(record.locality ?? '') || normaliseValue(record.name)
+  return `place:${where}|${normaliseValue(record.council ?? '')}`
+}
+
+/** The locality half, preferring the State's code when the record carries one. */
+export function localityKey(record: {
   localityCode?: number | null
   name: string
+  locality?: string
   council?: string
 }): string {
   if (record.localityCode != null && Number.isFinite(record.localityCode)) {
     return `code:${record.localityCode}`
   }
-  return placeKey(record)
+  return placeLocalityKey(record)
+}
+
+export type FarmIdentityInput = {
+  localityCode?: number | null
+  name: string
+  locality?: string
+  council?: string
+  farmName?: string | null
+  farmerName?: string | null
+}
+
+export function identityKey(record: FarmIdentityInput): string {
+  return `${localityKey(record)}#${holdingKey(record)}`
+}
+
+/** The same, forced onto the name-and-council locality. See `placeLocalityKey`. */
+export function placeKey(record: FarmIdentityInput): string {
+  return `${placeLocalityKey(record)}#${holdingKey(record)}`
+}
+
+/**
+ * ★★ HOW A SET OF RECORDS IS INDEXED, AS ONE VALUE.
+ *
+ * `planProspection` needs three answers about a record — its full key, which
+ * locality it belongs to, and whether it is a bare seed — and every format
+ * answers them differently because every format carries different columns.
+ * Passing three functions separately is how two of them end up disagreeing;
+ * passing one object is how the prospection path and the association path stay
+ * two rows in this file rather than two implementations of the same rule.
+ */
+export interface FarmIndex {
+  key: (record: FarmIdentityInput) => string
+  locality: (record: FarmIdentityInput) => string
+  seed: (record: FarmIdentityInput) => boolean
+}
+
+/** The prospection workbook: it carries סמל יישוב, so the code is the locality. */
+export const CODE_INDEX: FarmIndex = {
+  key: identityKey,
+  locality: localityKey,
+  seed: isLocalitySeed,
+}
+
+/** A file with no locality code at all — name + council, and the holding. */
+export const PLACE_INDEX: FarmIndex = {
+  key: placeKey,
+  locality: placeLocalityKey,
+  seed: isLocalitySeed,
+}
+
+/**
+ * ★★ AC1 · AB6.7 — THE ASSOCIATION'S FORMAT HAS NO שם החווה COLUMN, so the
+ *    holding half it can produce is the FARMER alone. Keying existing records
+ *    on the full pair would give every farm whose שם החווה is filled a key no
+ *    row of theirs can ever spell — which is exactly the 193-creations defect
+ *    of AB6.7, arriving by a third door.
+ *
+ * ⚠️ ITS KNOWN LIMIT, WRITTEN DOWN: two holdings in ONE locality with the SAME
+ *    farmer and different farm names collapse to one key here. The first
+ *    record wins, as everywhere else in this planner, and updating the first
+ *    is strictly better than creating a third.
+ */
+export const ASSOCIATION_INDEX: FarmIndex = {
+  key: (r) => `${placeLocalityKey(r)}#|${normaliseValue(r.farmerName ?? '')}`,
+  locality: placeLocalityKey,
+  seed: (r) => normaliseValue(r.farmerName ?? '') === '',
 }
 
 // ---------------------------------------------------------------------------
@@ -281,13 +514,22 @@ export interface ProspectionPatch {
   legalEntity?: string
   liaisonName?: string
   liaisonPhone?: string
+  /** ★ AC1 — שם החווה. Half of the identity; see `holdingKey`. */
+  farmName?: string
   farmerName?: string
   farmerPhone?: string
+  /** ★ AC2 — מייל חקלאי, a column of the new workbook. */
+  farmerEmail?: string
+  /** ★ AC2.4 — ארגון מאגד, free text: אגודה · גד״ש · שח״ם. */
+  umbrella?: string
   type?: FarmType
   farmDunams?: number
   grazingDunams?: number
   farmDunamsManual?: boolean
   grazingDunamsManual?: boolean
+  /** ★ AC3 — שטחים שמירה, the declared guarded area, and its override flag. */
+  guardedDunams?: number
+  guardedDunamsManual?: boolean
   landAgreement?: string
   landAgreementUntil?: string | null
   status?: FarmStatus
@@ -305,6 +547,13 @@ export interface ProspectionRow {
   council: string
   localityCode: number | null
   key: string
+  /**
+   * ★ AC1 — the locality half on its own, so the second matching pass can ask
+   *   « which seed does this row belong to » without re-splitting the key.
+   */
+  localityKey: string
+  /** ★ AC1 — neither שם החווה nor שם החקלאי was filled: a locality amorce. */
+  seed: boolean
   patch: ProspectionPatch
   problems: ProspectionProblem[]
   warnings: ProspectionWarning[]
@@ -367,9 +616,36 @@ export function parseProspectionRow(
   const unknown: UnknownValue[] = []
   const patch: ProspectionPatch = {}
 
-  const name = at('name')
+  /**
+   * ★★ AC1 · AC2.2 — THE THREE CELLS THAT MAKE A NAME, AND THE ONE THAT IS A
+   *    FORMULA.
+   *
+   * « שם המקום » is computed in his workbook from the other three; SheetJS
+   * hands over the calculated value, and `composePlaceName` is the same rule
+   * here so the export can write the cell rather than echo it (AC2.2, A101).
+   *
+   * ⚠️ THE COMPOSITION ONLY TAKES OVER WHEN THE FILE HAS ONE OF THE TWO NEW
+   *    COLUMNS. A file in the old 26-column shape has a שם החקלאי and NO
+   *    שם החווה and NO יישוב; composing from it would rename « טללים » into
+   *    « החווה של יוסי » on import, which is a file this app can still be
+   *    handed and must still read as it always did.
+   */
+  const farmName = at('farmName')
+  const farmerName = at('farmerName')
+  const localityCell = at('locality')
+  const nameCell = at('name')
+  const composed = composePlaceName({
+    farmName,
+    farmerName,
+    locality: localityCell,
+  })
+  const name =
+    farmName !== '' || localityCell !== '' ? composed : nameCell || composed
+
   if (name === '') problems.push('errMissingName')
   else patch.name = name
+  if (farmName !== '') patch.farmName = farmName
+  if (localityCell !== '') patch.locality = localityCell
 
   const council = at('council')
   if (council !== '') patch.council = council
@@ -428,10 +704,14 @@ export function parseProspectionRow(
   if (liaisonName !== '') patch.liaisonName = liaisonName
   const liaisonPhone = at('liaisonPhone')
   if (liaisonPhone !== '') patch.liaisonPhone = liaisonPhone
-  const farmerName = at('farmerName')
   if (farmerName !== '') patch.farmerName = farmerName
   const farmerPhone = at('farmerPhone')
   if (farmerPhone !== '') patch.farmerPhone = farmerPhone
+  const farmerEmail = at('farmerEmail')
+  if (farmerEmail !== '') patch.farmerEmail = farmerEmail
+  /* AC2.4 — free text, no list: « אגודה », « גד״ש חבל שלום », a name. */
+  const umbrella = at('umbrella')
+  if (umbrella !== '') patch.umbrella = umbrella
 
   const until = at('landAgreementUntil')
   if (until !== '') patch.landAgreementUntil = until
@@ -469,6 +749,35 @@ export function parseProspectionRow(
     patch.grazingDunams = grazing
     if (grazing > 0) patch.grazingDunamsManual = true
   }
+  /**
+   * ★★ AC3 — « שטחים שמירה » IS A DECLARATION, AND THE PRODUCT OWNER HAS
+   *    RULED. AB6 read it as an erroneous copy of the cultivated area and
+   *    refused to write it; he has said in so many words that it is
+   *    deliberate — « nous surveillons la totalité de cette surface » — and
+   *    their system fills it on purpose. So it is imported like any other
+   *    area, with G15's flag on exactly the same terms: a figure above zero is
+   *    an override that the default must never overwrite again, and a ZERO
+   *    leaves the flag absent, because a zero that froze itself would freeze
+   *    the record at zero for ever (AC3.2, A102).
+   */
+  const guarded = cellNumber(at('guarded'))
+  if (guarded !== null && guarded > 0) {
+    /**
+     * ⚠️ AND IT IS ONLY A DECLARATION WHEN IT DIFFERS FROM THE DEFAULT. The
+     *    export writes this column on EVERY row (AC3.3), and for most rows the
+     *    figure it writes is precisely מעובד + מרעה — the default. Reading
+     *    that back as a hand-entered override would turn every round trip into
+     *    a mass freeze: 198 records pinned to whatever their areas were the
+     *    day the file was produced, deaf to every polygon drawn afterwards.
+     *    A cell that restates the default is the default; a cell that says
+     *    something else is the farmer's declaration, and that one sticks.
+     */
+    const fallback = (cultivated ?? 0) + (grazing ?? 0)
+    if (guarded !== fallback) {
+      patch.guardedDunams = guarded
+      patch.guardedDunamsManual = true
+    }
+  }
 
   // --- AA4.4: the position -------------------------------------------------
   const latCell = at('lat')
@@ -500,12 +809,22 @@ export function parseProspectionRow(
   const notes = at('notes')
   if (notes !== '') patch.notes = notes
 
+  const identity = {
+    localityCode,
+    name,
+    locality: localityCell,
+    council,
+    farmName,
+    farmerName,
+  }
   return {
     rowNumber,
     name,
     council,
     localityCode,
-    key: identityKey({ localityCode, name, council }),
+    key: identityKey(identity),
+    localityKey: localityKey(identity),
+    seed: isLocalitySeed(identity),
     patch,
     problems,
     warnings,
@@ -565,40 +884,64 @@ export interface ProspectionPlan {
  *   is therefore a value, computed with no side effects, that the wizard
  *   renders and then hands back to the store. Nothing decides anything twice.
  *
- * ⚠️ AND THE FILE IS DE-DUPLICATED AGAINST ITSELF. Two rows with the same key
- *    in one sheet are a mistake in the sheet; importing both would create the
- *    duplicate this whole unit exists to prevent, and merging them silently
- *    would pick a winner nobody chose. The second one is rejected, by row
- *    number, and the coordinator can see which.
+ * ⚠️ AND SINCE AC1 IT MATCHES IN TWO PASSES. See the block comment inside.
  */
 export function planProspection(
   rows: ProspectionRow[],
   existing: readonly Farm[],
   /**
-   * ★★ AB6.7 — HOW AN EXISTING RECORD IS KEYED, AND WHY IT IS A PARAMETER.
+   * ★★ AB6.7 · AC1 — HOW AN EXISTING RECORD IS KEYED, AND WHY IT IS A
+   *    PARAMETER.
    *
-   * For a prospection sheet it is `identityKey`: the State's locality code
-   * when the record has one, the name + council pair otherwise (AA4.2). That
-   * is right for a file that CARRIES the code.
+   * For a prospection sheet it is `CODE_INDEX`: the State's locality code when
+   * the record has one, the יישוב + מועצה pair otherwise, and in both cases
+   * the שם החווה + שם החקלאי half beside it. That is right for a file that
+   * CARRIES the code.
    *
-   * The association's file does not. Every one of its rows keys as
-   * `place:name|council`, so a store whose records were created from the
-   * prospection workbook — and therefore all carry `code:1177` — would match
-   * NOTHING: measured, 193 creations on a re-import of our own export, which
-   * is the duplicate this rule exists to prevent, arriving by the other door.
-   *
-   * ⚠️ AND THE FIRST RECORD WINS ON A COLLISION, DELIBERATELY. Two records
-   *    sharing a name AND a council under `placeKey` is the known limit of
-   *    that fallback (written out in ETAT for AA4.2); updating the first is
-   *    the same choice the prospection importer already makes, and it is
-   *    strictly better than creating a third.
+   * The association's file does not, and it has no שם החווה column either, so
+   * it passes `ASSOCIATION_INDEX` — a store whose records all carry
+   * `code:1177#חוות הבשור|יוסי` would match NOTHING otherwise: measured in
+   * AB6.7 as 193 creations on a re-import of our OWN export, which is the
+   * duplicate this rule exists to prevent, arriving by the other door.
    */
-  keyOfExisting: (farm: Farm) => string = identityKey,
+  index: FarmIndex = CODE_INDEX,
 ): ProspectionPlan {
   const byKey = new Map<string, Farm>()
+  /** ★ AC1 — the locality's seed, and its first record whatever that is. */
+  const seedOfLocality = new Map<string, Farm>()
+  const firstOfLocality = new Map<string, Farm>()
+
+  /**
+   * ★★ AC2 — A RECORD IS FINDABLE UNDER ITS LOCALITY *AND* UNDER ITS NAME.
+   *
+   * Until AC2 the workbook had no יישוב column and « שם המקום » WAS the
+   * locality, so both readings were one string. They are two now, and a file
+   * in the older shape — the roster import, the association's format, last
+   * month's spreadsheet — can only ever produce the NAME one. Indexing a
+   * record under both is what lets those files keep matching records whose
+   * locality is a different word from their name; measured on `bun run
+   * persist`, whose fixture farm is called « ייבוא א73 » and lives in a town
+   * with another name entirely.
+   *
+   * ⚠️ PRIMARIES FIRST, ALIASES ONLY INTO THE GAPS. An alias must never
+   *    displace a record that answers to that key for real, so the two passes
+   *    are ordered and both are `if (!has)`.
+   */
+  const aliasOf = (farm: Farm) => ({ ...farm, locality: '' })
   for (const farm of existing) {
-    const key = keyOfExisting(farm)
+    const key = index.key(farm)
     if (!byKey.has(key)) byKey.set(key, farm)
+    const where = index.locality(farm)
+    if (!firstOfLocality.has(where)) firstOfLocality.set(where, farm)
+    if (index.seed(farm) && !seedOfLocality.has(where)) seedOfLocality.set(where, farm)
+  }
+  for (const farm of existing) {
+    const alias = aliasOf(farm)
+    const key = index.key(alias)
+    if (!byKey.has(key)) byKey.set(key, farm)
+    const where = index.locality(alias)
+    if (!firstOfLocality.has(where)) firstOfLocality.set(where, farm)
+    if (index.seed(farm) && !seedOfLocality.has(where)) seedOfLocality.set(where, farm)
   }
 
   const created: ProspectionPlanRow[] = []
@@ -608,20 +951,84 @@ export function planProspection(
   const seen = new Set<string>()
   let positioned = 0
 
+  const accepted: ProspectionRow[] = []
   for (const row of rows) {
     unknown.push(...row.unknown)
     if (row.problems.length > 0) {
       rejected.push(row)
       continue
     }
+    /**
+     * ⚠️ THE FILE IS DE-DUPLICATED AGAINST ITSELF. Two rows with the same key
+     *    in one sheet are a mistake in the sheet; importing both would create
+     *    the duplicate this whole unit exists to prevent, and merging them
+     *    silently would pick a winner nobody chose. The second is rejected, by
+     *    row number, and the coordinator can see which.
+     *
+     * ★ AC1.3 — AND THIS IS WHERE « deux lignes qui partagent le même סמל
+     *   יישוב » STOPPED BEING A DUPLICATE. Under AA4.2 the key WAS the code,
+     *   so four farmers in בארי were four rows with one key and three of them
+     *   were thrown away. The key now carries the holding, so the four are
+     *   four keys and all four are kept.
+     */
     if (seen.has(row.key)) {
       rejected.push({ ...row, problems: ['errDuplicateInFile'] })
       continue
     }
     seen.add(row.key)
     if (row.patch.position) positioned++
+    accepted.push(row)
+  }
 
-    const match = byKey.get(row.key)
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ★★ AC1.1 — TWO PASSES, AND THE ORDER OF THE ROWS MUST NOT DECIDE.
+   * ═══════════════════════════════════════════════════════════════════════
+   *
+   * PASS 1 — every exact key. A record already claimed by an exact match is
+   * off the table for everybody else.
+   *
+   * PASS 2 — the leftovers, against the LOCALITY:
+   *
+   *   · a row whose two names are filled and whose key is new takes the
+   *     locality's SEED, if it still has one. That is « une amorce de
+   *     localité … un remplissage ultérieur des deux champs la met à jour au
+   *     lieu d'en créer une nouvelle », and it is the whole of A99.
+   *   · an AMORCE row takes the locality's seed, or failing that its first
+   *     record of any kind. It carries no farm and no farmer name, so the
+   *     sparse patch cannot overwrite either (AA4.3); all it does is refresh
+   *     the facts that belong to the LOCALITY — the council, the switchboard,
+   *     the coordinates. Without this a store built from the old workbook,
+   *     where the coordinator has since typed a farmer's name into the app,
+   *     would answer a re-import of the very same file with 198 duplicates.
+   *
+   * ⚠️ WHY TWO PASSES AND NOT ONE LOOP. In one loop an amorce row appearing
+   *    first would claim by locality a record that a later row matches
+   *    EXACTLY, and that later row would then create a duplicate — the defect
+   *    would depend on the order of the lines in a spreadsheet, which is the
+   *    hardest kind to reproduce.
+   */
+  const claimed = new Set<string>()
+  const matched = new Map<ProspectionRow, Farm>()
+  for (const row of accepted) {
+    const exact = byKey.get(row.key)
+    if (exact && !claimed.has(exact.id)) {
+      claimed.add(exact.id)
+      matched.set(row, exact)
+    }
+  }
+  for (const row of accepted) {
+    if (matched.has(row)) continue
+    const seed = seedOfLocality.get(row.localityKey)
+    const fallback = row.seed ? (seed ?? firstOfLocality.get(row.localityKey)) : seed
+    if (fallback && !claimed.has(fallback.id)) {
+      claimed.add(fallback.id)
+      matched.set(row, fallback)
+    }
+  }
+
+  for (const row of accepted) {
+    const match = matched.get(row)
     if (match) {
       const patch = patchForUpdate(row.patch)
       updated.push({ row, farmId: match.id, patch, changes: changedFields(match, patch) })
@@ -688,20 +1095,54 @@ export function analyseProspection(
  *   computation, which is the number the association wants; the importer
  *   ignores it on the way back in.
  */
-export function prospectionExportMatrix(farms: readonly Farm[]): string[][] {
+export function prospectionExportMatrix(
+  farms: readonly Farm[],
+  /**
+   * ★ AC4.6 — « כמות מתנדבים קבועים » IS COUNTED FROM THE GUARDS, and this
+   *   module is pure: it holds no store and walks no missions. The caller —
+   *   the export screen, the wizard, the gate — passes the counter in. Left
+   *   out, the column is written blank rather than as a zero, because a zero
+   *   in that cell reads as « nobody comes back » and absent reads as « this
+   *   file was produced without asking », which is the truth.
+   */
+  regularsOf?: (farm: Farm) => number | null,
+): string[][] {
   const header = PROSPECTION_COLUMNS.map((c) => c.header)
   const rows = farms.map((farm, i) =>
-    PROSPECTION_COLUMNS.map((column) => prospectionCell(farm, column.field, i + 1)),
+    PROSPECTION_COLUMNS.map((column) =>
+      prospectionCell(farm, column.field, i + 1, regularsOf),
+    ),
   )
   return [header, ...rows]
 }
 
-function prospectionCell(farm: Farm, field: ProspectionField, index: number): string {
+function prospectionCell(
+  farm: Farm,
+  field: ProspectionField,
+  index: number,
+  regularsOf?: (farm: Farm) => number | null,
+): string {
   switch (field) {
     case 'index':
       return String(index)
+    /* AC2.2 — recomposed, never echoed. See `composePlaceName`. */
     case 'name':
-      return farm.name
+      return composePlaceName(farm, farm.name)
+    case 'farmName':
+      return farm.farmName ?? ''
+    case 'farmerEmail':
+      return farm.farmerEmail ?? ''
+    case 'umbrella':
+      return farm.umbrella ?? ''
+    case 'locality':
+      return farm.locality
+    /* AC3.3 — the declared guarded area, defaulted from the two others. */
+    case 'guarded':
+      return String(guardedDunamsOf(farm))
+    case 'regulars': {
+      const n = regularsOf?.(farm)
+      return n == null ? '' : String(n)
+    }
     case 'localityCode':
       return farm.localityCode == null ? '' : String(farm.localityCode)
     case 'localityKind':
@@ -725,7 +1166,7 @@ function prospectionCell(farm: Farm, field: ProspectionField, index: number): st
     case 'activity':
       return optionLabel(farm.type, FARM_TYPE_OPTIONS)
     case 'estimate':
-      // AA4.6 — never stored, never invented. See the note above.
+      // AA4.6 · AC2.3 — never stored, never invented. See the note above.
       return ''
     case 'cultivated':
       return String(farm.farmDunams)

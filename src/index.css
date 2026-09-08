@@ -2023,9 +2023,13 @@
 }
 
 @container (min-width: 78rem) {
+  /* AC4.4 — one more track at the widest tier: « שמירות », the nights this
+     farm has received and the date of the last one. It joins at `xl` for the
+     reason the weighted column did — below that width the areas are already
+     merged under the name, and a further number would not fit. */
   .roster-farms .roster-row {
-    --roster-cols: minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 0.9fr) 5.5rem 7.5rem
-      7.5rem 5.5rem 3.5rem 6.5rem 1.5rem;
+    --roster-cols: minmax(0, 1.2fr) minmax(0, 0.85fr) minmax(0, 0.85fr) 5.5rem 7.5rem
+      7.5rem 5.5rem 7rem 3.5rem 6.5rem 1.5rem;
   }
 }
 

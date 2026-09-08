@@ -1,7 +1,9 @@
 import { DAY, addDays, fromDayKey, isTonight, localDayKey, now } from './clock'
 import type { AssociationInput } from './association'
-import { weightedDunams } from './fields'
+import { guardedDunamsOf, weightedDunams } from './fields'
 import { positionOfLocality } from './geo'
+import { farmRegion, regionOfLocality } from './regions'
+import type { RegionId } from './regions'
 import { signatureImageOf } from './signatures'
 import { _raw, getSession } from './store'
 import { buildDayPlan } from './tours'
@@ -980,6 +982,203 @@ export function getGuardsPerWeek(weeks = 12, from: Date = now()): GrowthPoint[] 
 }
 
 // ---------------------------------------------------------------------------
+// ★★ AC4 (2026-09-08) — L'ÉQUITÉ DE RÉPARTITION DES GARDES.
+// ---------------------------------------------------------------------------
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * « Ne pas toujours servir les mêmes fermes. L'association croise ses
+ *   tableaux pour répartir. »
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ★★ THREE FIGURES, AND THEY ARE NOT THE SAME FIGURE — which is why they are
+ *    three fields with three names rather than one called « גardes ».
+ *
+ *      · `guards`       — NIGHTS THIS FARM ACTUALLY RECEIVED. One per guard,
+ *        whatever the size of the team. This is the equity number: « qui est
+ *        servi et qui est oublié » is a question about nights, not about
+ *        head-count, and a farm that had one guard of eight volunteers has
+ *        been served ONCE.
+ *      · `volunteering` — VOLUNTEER-NIGHTS, the association's own « כמות
+ *        התנדבויות ». Four volunteers on one guard is four. It is what their
+ *        funding is counted in, it is the definition AB6 settled and AC4.7
+ *        confirms, and it is what goes in the export.
+ *      · `regulars`     — volunteers with TWO OR MORE guards at THIS farm.
+ *        This app's reading of « קבוע », printed on the export screen.
+ *
+ * ⚠️ CANCELLED GUARDS COUNT IN NONE OF THE THREE. « hors annulées », and G9bis
+ *    keeps a called-off night on the record precisely so it is not confused
+ *    with one that happened.
+ *
+ * ⚠️ AND A NIGHT STILL IN THE FUTURE IS NOT A NIGHT « RÉELLEMENT EFFECTUÉE ».
+ *    A guard booked for next Tuesday must not make a neglected farm look
+ *    served — the whole point of the signal in AC4.5 is to find the farms
+ *    nobody has been to, and a plan is not a visit. The cut is the guard's
+ *    START: a night that has begun counts, one that has not does not.
+ *
+ * ★ `lastGuardAt` IS `null` FOR « JAMAIS », NOT AN OLD DATE. The distinction
+ *   is the one the distribution view is built on: « il y a longtemps » and
+ *   « jamais » are different states and are shown differently.
+ */
+export interface FarmGuardStats {
+  /** Nights received, cancelled excluded, future excluded. */
+  guards: number
+  /** Volunteer-nights — « כמות התנדבויות ». Same exclusions. */
+  volunteering: number
+  /** Volunteers with two or more guards here — « כמות מתנדבים קבועים ». */
+  regulars: number
+  /** ISO datetime of the most recent guard, or null when there has been none. */
+  lastGuardAt: string | null
+  /** Whole days since `lastGuardAt`, or null when there has been none. */
+  daysSinceLastGuard: number | null
+}
+
+const REGULAR_AT_LEAST = 2
+
+export function farmGuardStats(farmId: string, at: number = now().getTime()): FarmGuardStats {
+  let guards = 0
+  let volunteering = 0
+  let lastAt = 0
+  const perVolunteer = new Map<string, number>()
+  for (const mission of getVisibleMissions()) {
+    if (mission.farmId !== farmId) continue
+    if (mission.status === 'cancelled') continue
+    const started = new Date(mission.startAt).getTime()
+    if (!Number.isFinite(started) || started > at) continue
+    guards++
+    if (started > lastAt) lastAt = started
+    for (const a of mission.assignments) {
+      volunteering++
+      perVolunteer.set(a.volunteerId, (perVolunteer.get(a.volunteerId) ?? 0) + 1)
+    }
+  }
+  let regulars = 0
+  for (const n of perVolunteer.values()) if (n >= REGULAR_AT_LEAST) regulars++
+  return {
+    guards,
+    volunteering,
+    regulars,
+    lastGuardAt: lastAt === 0 ? null : new Date(lastAt).toISOString(),
+    daysSinceLastGuard: lastAt === 0 ? null : Math.floor((at - lastAt) / DAY),
+  }
+}
+
+/**
+ * ★★ AC4.2 — « מתנדבים זמינים » : COMBIEN DE VOLONTAIRES SONT MOBILISABLES.
+ *
+ *   « Calculé à partir des volontaires actifs dont la région ou la yeshiva
+ *     les rattache à cette zone. »
+ *
+ * ★ SO IT IS A PROPERTY OF THE REGION AND NOT OF THE FARM, AND THE PRODUCT
+ *   OWNER SAID SO FIRST: « Deux fermes voisines partagent normalement le même
+ *   vivier et afficheront donc le même nombre — c'est attendu, pas un bug. »
+ *   Writing it as a per-farm computation that HAPPENS to agree would be a
+ *   figure two neighbouring farms could drift apart on; it is one count per
+ *   region, asked of the farm's region.
+ *
+ * ★ TWO WAYS IN, IN THIS ORDER. A volunteer's own town first — that is where
+ *   he sleeps and where a driver collects him — and his YESHIVA when the town
+ *   says nothing the gazetteer knows. A student registered in ירושלים who
+ *   learns in a southern yeshiva is mobilisable in the south, and the second
+ *   reading is the only one that says so.
+ *
+ * ⚠️ INACTIVE VOLUNTEERS ARE NOT MOBILISABLE. « volontaires actifs », and an
+ *    archived roster entry is a person who has told us he is not coming.
+ *
+ * ⚠️ AND A FARM WHOSE REGION IS UNKNOWN GETS 0, NOT THE WHOLE ROSTER. There is
+ *    no vivier for a place that is not on any map; answering with the national
+ *    total would tell a coordinator he has ninety people for a farm he cannot
+ *    even file.
+ */
+export function volunteerRegion(volunteer: Volunteer): RegionId | null {
+  return regionOfLocality(volunteer.locality) ?? regionOfLocality(volunteer.yeshiva)
+}
+
+export function availableVolunteersByRegion(): Map<RegionId, number> {
+  const out = new Map<RegionId, number>()
+  for (const volunteer of getVolunteers()) {
+    if (volunteer.status !== 'active') continue
+    const region = volunteerRegion(volunteer)
+    if (!region) continue
+    out.set(region, (out.get(region) ?? 0) + 1)
+  }
+  return out
+}
+
+export function availableVolunteers(
+  farm: { regionId?: RegionId | null; position: { lat: number; lng: number } },
+  byRegion: ReadonlyMap<RegionId, number> = availableVolunteersByRegion(),
+): number {
+  const region = farmRegion(farm)
+  return region ? (byRegion.get(region) ?? 0) : 0
+}
+
+/**
+ * ★★ AC4.5 — « signal visuel sobre sur les fermes actives n'ayant reçu aucune
+ *    garde depuis longtemps, ou aucune du tout ».
+ *
+ * ★ THE INITIAL THRESHOLD IS THIRTY DAYS, AND THE REASON IS THE ASSOCIATION'S
+ *   OWN CALENDAR. It reports monthly and its יעד is a monthly figure
+ *   (`WEIGHTED_DUNAM_TARGET`); a farm that has gone a whole reporting month
+ *   without a night is a farm that will appear in that month's report having
+ *   received nothing. Shorter — a fortnight — lights up half the roster in a
+ *   programme that guards a few nights a week; longer — a quarter — is past
+ *   the point where the farmer has stopped expecting anybody. It is a NAMED
+ *   INITIAL VALUE and the coordinator overrides it in הגדרות, exactly as
+ *   AB5a's target does.
+ *
+ * ⚠️ « ACTIVES » IS THE FILTER AND IT IS NOT DECORATION. A lead nobody has
+ *    telephoned yet has received no guard for a very good reason, and marking
+ *    it neglected would bury the four farms that signed and were then
+ *    forgotten under a hundred and ninety that were never promised anything.
+ */
+export const NEGLECT_DAYS_INITIAL = 30
+
+export type CoverageState = 'never' | 'stale' | 'ok' | 'notActive'
+
+export function coverageState(
+  farm: Farm,
+  stats: FarmGuardStats,
+  neglectDays: number = NEGLECT_DAYS_INITIAL,
+): CoverageState {
+  if (farm.status !== 'signed' && farm.status !== 'active') return 'notActive'
+  if (stats.guards === 0) return 'never'
+  if ((stats.daysSinceLastGuard ?? 0) >= neglectDays) return 'stale'
+  return 'ok'
+}
+
+/**
+ * The distribution view's row: one farm, everything the equity question needs,
+ * computed once. The screen sorts and filters on THIS rather than re-walking
+ * the missions per row — 198 farms × every guard, on every keystroke, is what
+ * a list that stutters is made of.
+ */
+export interface FarmCoverage {
+  farm: Farm
+  stats: FarmGuardStats
+  available: number
+  state: CoverageState
+}
+
+export function farmCoverage(
+  farms: readonly Farm[],
+  neglectDays: number = NEGLECT_DAYS_INITIAL,
+): FarmCoverage[] {
+  const byRegion = availableVolunteersByRegion()
+  const at = now().getTime()
+  return farms.map((farm) => {
+    const stats = farmGuardStats(farm.id, at)
+    return {
+      farm,
+      stats,
+      available: availableVolunteers(farm, byRegion),
+      state: coverageState(farm, stats, neglectDays),
+    }
+  })
+}
+
+
+// ---------------------------------------------------------------------------
 // ★★ AB6 (2026-09-08) — WHAT THE ASSOCIATION EXPORT NEEDS AND THE FARM RECORD
 //    DOES NOT CARRY.
 // ---------------------------------------------------------------------------
@@ -1005,23 +1204,17 @@ export function getGuardsPerWeek(weeks = 12, from: Date = now()): GrowthPoint[] 
  *    nobody stood, and G9bis keeps it on the record precisely so it is not
  *    confused with one that happened.
  */
-const REGULAR_AT_LEAST = 2
-
+/**
+ * ★ AC4 — THE TWO EXPORT FIGURES ARE NOW ONE READING OF `farmGuardStats`,
+ *   and that is the whole change here: the definitions AB6 settled and AC4.7
+ *   confirms are unchanged, but the distribution view needs the same walk over
+ *   the same guards, and two walks with two exclusion rules are two walks that
+ *   will one day disagree in a file handed to the State.
+ */
 export function associationCounts(
   farmId: string,
 ): { volunteering: number; regulars: number } {
-  let volunteering = 0
-  const perVolunteer = new Map<string, number>()
-  for (const mission of getVisibleMissions()) {
-    if (mission.farmId !== farmId) continue
-    if (mission.status === 'cancelled') continue
-    for (const a of mission.assignments) {
-      volunteering++
-      perVolunteer.set(a.volunteerId, (perVolunteer.get(a.volunteerId) ?? 0) + 1)
-    }
-  }
-  let regulars = 0
-  for (const n of perVolunteer.values()) if (n >= REGULAR_AT_LEAST) regulars++
+  const { volunteering, regulars } = farmGuardStats(farmId)
   return { volunteering, regulars }
 }
 
@@ -1034,15 +1227,14 @@ export function associationInputs(
     ...associationCounts(farm.id),
     signature: signatureImageOf(farm),
     /**
-     * ⚠️ AB6.4 — `null`, ALWAYS, AND ON PURPOSE. This programme does not
-     *    record a GUARDED area: `FarmZone` knows a farm boundary and a grazing
-     *    area, and neither of those is "the ground the volunteers actually
-     *    walk". Their own sheets fill this column with a copy of « שטחים
-     *    מעובדים »; copying it here would put a figure nobody measured into a
-     *    file that goes to the State under this programme's name. The export
-     *    report names the column as blank instead, which is the truth and is
-     *    also the request for the datum.
+     * ★★ AC3.3 — AND IT IS NO LONGER `null`. AB6.4 left this column empty
+     *    because the programme recorded no guarded area and their own sheets
+     *    filled it with a copy of « שטחים מעובדים » — which looked like a
+     *    mistake. The product owner has ruled it a DECLARATION: their system
+     *    fills it deliberately, and it says « we watch the whole of this ».
+     *    The app now holds that declaration — מעובד + מרעה by default,
+     *    overridable farm by farm — and writes it. « Elle ne sort plus vide. »
      */
-    guardedDunams: null,
+    guardedDunams: guardedDunamsOf(farm),
   }))
 }

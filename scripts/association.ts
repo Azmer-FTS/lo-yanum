@@ -45,7 +45,8 @@ import type { AssociationInput, Farm } from '../src/core/index'
  *        dates `JJ/MM/AAAA`.
  *   A95  export → re-import: no row is created, nothing that had a value
  *        loses it or changes.
- *   A96  שטחים שמירה is never a copy of שטחים מעובדים.
+ *   A96→AC3  שטחים שמירה est une déclaration : remplie, par défaut
+ *        מעובד + מרעה, écrasable à la main. La règle d'AB est renversée.
  *
  * ★ AND THE COORDINATE ORDER IS REFUSED IN BOTH DIRECTIONS, which is the
  *   product owner's own wording: « ajoute une vérification qui échoue si
@@ -342,32 +343,47 @@ check(
 }
 
 // ---------------------------------------------------------------------------
-section('A96 — שטחים שמירה is never a copy of שטחים מעובדים')
+section('A96 → AC3 — שטחים שמירה est une DÉCLARATION, et elle sort remplie')
 // ---------------------------------------------------------------------------
 
+/**
+ * ⚠️ THIS SECTION SAYS THE OPPOSITE OF WHAT IT SAID IN AB, AND ON PURPOSE.
+ *    A96 asserted the column was never written, because AB6.4 read it as an
+ *    erroneous copy of « שטחים מעובדים ». The product owner has ruled: it is a
+ *    DECLARATION their system fills deliberately — « nous surveillons la
+ *    totalité de cette surface » — so the default IS the whole holding and the
+ *    old assertion is now the defect. The gate is rewritten rather than
+ *    deleted so the reversal is on the record.
+ */
 {
   const iGuard = headersOut.indexOf('שטחים שמירה')
   const iCult = headersOut.indexOf('שטחים מעובדים')
-  const copied = out.slice(1).filter((r) => r[iGuard] !== '' && r[iGuard] === r[iCult])
-  const nonEmpty = out.slice(1).filter((r) => r[iGuard] !== '')
+  const iGraze = headersOut.indexOf('שטחי מרעה')
+  const empty = out.slice(1).filter((r) => r[iGuard] === '')
   check(
-    'A96 · not one row copies the cultivated area into the guarded one',
-    copied.length === 0,
-    `${copied.length} copied of ${nonEmpty.length} non-empty`,
+    'AC3.3 · every row carries a guarded area — the column no longer comes out blank',
+    empty.length === 0,
+    `${empty.length} empty of ${out.length - 1}`,
+  )
+  const wrong = out
+    .slice(1)
+    .filter((r) => Number(r[iGuard]) !== Number(r[iCult] || 0) + Number(r[iGraze] || 0))
+  check(
+    'AC3.1 · and by default it is מעובד + מרעה, on every row',
+    wrong.length === 0,
+    wrong.length ? `${wrong.length} rows differ` : `${out.length - 1} rows`,
   )
   check(
-    'A96 · and the export REPORTS the column as blank, with its reason',
-    report.blanks.some((b) => b.header === 'שטחים שמירה' && b.reason === 'notStored'),
+    'AC3.3 · the export no longer reports it as a column this app does not hold',
+    !report.blanks.some((b) => b.header === 'שטחים שמירה'),
     report.blanks.map((b) => `${b.header}(${b.reason})`).join(' · ') || 'no blanks reported',
   )
-  /* A cultivated area that IS the guarded one is a legitimate coincidence, so
-     the rule is about the source, not about the values. Proven by giving one
-     row a real guarded figure and checking it is written. */
+  /* AC3.2 — a figure the coordinator typed is what goes out, not the default. */
   const one = associationExportMatrix([
     { ...inputs[0], guardedDunams: 42 },
   ]).matrix[1]
   check(
-    'A96 · a guarded area we DO know is written',
+    'AC3.2 · a declared figure overrides the default in the file',
     one[iGuard] === '42',
     `[${one[iGuard]}]`,
   )
