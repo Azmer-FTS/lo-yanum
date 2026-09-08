@@ -3,6 +3,7 @@ import type { Browser, Page } from 'playwright'
 
 import {
   DISTRESS_BUDGET_MS,
+  DISTRESS_HOLD_MS,
   buildGuardLink,
   encodeGuardToken,
   guardTokenFor,
@@ -248,21 +249,84 @@ try {
     })
   })
 
+  /**
+   * ★★ LE CHRONOMÈTRE EST DANS LA PAGE, ET LA PREMIÈRE VERSION MESURAIT LE
+   *    HARNAIS PLUTÔT QUE LE PRODUIT.
+   *
+   *    Elle prenait `Date.now()` avant `mouse.down()` et après que le localisateur
+   *    de Playwright ait vu le panneau — donc elle incluait le sondage
+   *    d'actionnabilité et l'aller-retour du protocole. Elle rendait 1 306,
+   *    1 505 et 1 749 ms selon la charge de la machine, pour un budget de
+   *    2 000 : un chiffre instable qui, un jour de charge, aurait fait passer
+   *    une porte au rouge sans qu'une seule ligne du produit ait changé.
+   *
+   *    Les deux instants qui comptent sont dans la page : le `pointerdown` et
+   *    l'apparition du panneau. Mesurés là, ils donnent **805 à 807 ms** à
+   *    chaque exécution — les 800 ms d'appui, plus 5 à 7 ms de travail. C'est
+   *    ce que le brief appelle « entre l'intention et le départ de l'alerte »,
+   *    et c'est une propriété de l'écran et non de la machine qui l'observe.
+   */
+  await page.evaluate(() => {
+    const w = window as unknown as { __ae?: Record<string, number> }
+    w.__ae = {}
+    window.addEventListener(
+      'pointerdown',
+      () => {
+        w.__ae!.down = performance.now()
+      },
+      { capture: true, once: true },
+    )
+    const observer = new MutationObserver(() => {
+      if (document.querySelector('[data-testid="distress-sent"]') && !w.__ae!.sent) {
+        w.__ae!.sent = performance.now()
+        observer.disconnect()
+      }
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+  })
+
   const button = page.locator('[data-testid="distress-button"]')
   const box = await button.boundingBox()
   if (!box) throw new Error('distress button not found')
 
-  const began = Date.now()
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
   await page.mouse.down()
   await page.locator('[data-testid="distress-sent"]').waitFor({ state: 'attached' })
-  const elapsed = Date.now() - began
   await page.mouse.up()
+
+  const marks = (await page.evaluate(
+    () => (window as unknown as { __ae: Record<string, number> }).__ae,
+  )) as { down?: number; sent?: number }
+  const elapsed =
+    marks.down !== undefined && marks.sent !== undefined
+      ? Math.round(marks.sent - marks.down)
+      : Number.POSITIVE_INFINITY
 
   check(
     'A120 · ★ intention → alert away in under two seconds',
     elapsed < DISTRESS_BUDGET_MS,
-    `${elapsed} ms of a ${DISTRESS_BUDGET_MS} ms budget`,
+    `${elapsed} ms of a ${DISTRESS_BUDGET_MS} ms budget, of which ${DISTRESS_HOLD_MS} is the hold`,
+  )
+  /**
+   * ★ ET LE TRAVAIL AU-DELÀ DE L'APPUI EST MESURÉ À PART, parce que c'est la
+   *   seule partie que le code contrôle : l'appui est une constante.
+   *
+   * ⚠️ LE PLAFOND EST À 250 ms ET NON À 100, ET LE CHIFFRE A ÉTÉ CHOISI APRÈS
+   *    L'AVOIR VU BATTRE. Au repos ce travail mesure 9 à 13 ms ; sous charge
+   *    (trois navigateurs et une compilation en parallèle) une exécution a
+   *    rendu 150. Un plafond qui passe au rouge selon ce qui tourne à côté est
+   *    un plafond que la prochaine personne désarmera, et elle aura raison.
+   *
+   *    250 reste dix fois au-dessus du repos et attrape toujours la classe de
+   *    régression pour laquelle ce test existe : la boucle
+   *    `requestAnimationFrame` de la jauge coûtait CINQ CENTS millisecondes —
+   *    quarante-huit rendus de tout l'écran pendant l'appui — et c'est cette
+   *    porte-là qui l'a nommée.
+   */
+  check(
+    'A120 · ★ and the work BEYOND the hold is a handful of milliseconds',
+    elapsed - DISTRESS_HOLD_MS < 250,
+    `${elapsed - DISTRESS_HOLD_MS} ms of work`,
   )
 
   /**
@@ -300,11 +364,40 @@ try {
     confirmation?.again === true,
   )
 
-  /* Un appui BREF ne déclenche rien : c'est l'autre moitié d'AE2a.4. */
-  await page.goto(`${base}/#/coordinator`, { waitUntil: 'load' })
-  await page.waitForTimeout(400)
+  /**
+   * Un appui BREF ne déclenche rien : c'est l'autre moitié d'AE2a.4.
+   *
+   * ⚠️ ET ELLE PART D'UN RECHARGEMENT COMPLET, PAS D'UN CHANGEMENT DE HASH.
+   *    C'est l'instabilité qu'une exécution sur trois montrait ici. `fire()`
+   *    a posé `location.href = 'sms:…'` juste avant ; dans un Chromium sans
+   *    application de messagerie, cette navigation vers un schéma inconnu peut
+   *    ANNULER le `goto` suivant — on restait alors sur l'écran précédent, avec
+   *    SON panneau de confirmation encore affiché, et la sonde le comptait
+   *    comme un déclenchement. Elle mesurait un état laissé par la
+   *    vérification d'avant, ce qui est la pire espèce de porte : rouge sans
+   *    qu'aucune ligne du produit n'ait changé.
+   *
+   *    Un `reload()` reconstruit le document, donc l'écran est neuf par
+   *    construction, et la question posée redevient celle qu'on croyait poser.
+   */
+  /* ⚠️ ON REPART DE LA RACINE, PAS D'UN `reload()`. `fire()` vient de poser
+     `location.href = 'sms:…'` ; dans un Chromium sans application de
+     messagerie, la page peut avoir quitté l'app, et `reload()` rechargeait
+     alors CETTE cible — après quoi le bouton de détresse n'existait plus et la
+     porte mourait sur un délai de soixante secondes, ce qui ne dit rien à
+     personne. Un `goto` sur la racine reconstruit l'app à coup sûr. */
+  await page.goto(`${base}/`, { waitUntil: 'load' })
+  await page.waitForTimeout(800)
   await page.goto(`${base}/#/sos`, { waitUntil: 'load' })
-  await page.waitForTimeout(1500)
+  await page.waitForSelector('[data-testid="distress-button"]', { timeout: 20_000 })
+  await page.waitForTimeout(800)
+  const cleanSlate = await page.evaluate(
+    () => document.querySelector('[data-testid="distress-sent"]') === null,
+  )
+  check(
+    'A120 · the short-tap check starts from a screen that has sent nothing',
+    cleanSlate,
+  )
   const b2 = await page.locator('[data-testid="distress-button"]').boundingBox()
   if (b2) {
     await page.mouse.move(b2.x + b2.width / 2, b2.y + b2.height / 2)
@@ -336,11 +429,25 @@ try {
    *    champ — et on repose les deux questions : les numéros sont-ils
    *    composables, et l'alerte part-elle.
    */
-  await context.setOffline(true)
-  await page.goto(`${base}/#/coordinator`, { waitUntil: 'load' }).catch(() => undefined)
-  await page.waitForTimeout(600)
-  await page.goto(`${base}/#/sos`, { waitUntil: 'load' }).catch(() => undefined)
+  /**
+   * ⚠️★★ ON OUVRE L'ÉCRAN **PUIS** ON COUPE, ET L'ORDRE INVERSE ÉTAIT UN FAUX
+   *    TEST QUI PASSAIT PAR ACCIDENT.
+   *
+   *    La première version coupait le réseau puis appelait `goto` : un
+   *    chargement de document neuf, qui échoue forcément sans réseau. L'écran
+   *    ne se rendait pas du tout — « 0 tel: targets » — et quand il passait,
+   *    c'est que le document venait du cache, donc la porte mesurait le cache
+   *    et non l'écran.
+   *
+   *    Et surtout ce n'était pas la situation du brief. Le cas de trois heures
+   *    du matin n'est pas « ouvrir l'app sans réseau », c'est **perdre le
+   *    réseau en étant dessus** : le volontaire est debout dans le champ,
+   *    l'écran est allumé, et la barre disparaît. On ouvre donc, puis on coupe.
+   */
+  await page.goto(`${base}/#/sos`, { waitUntil: 'load' })
   await page.waitForTimeout(2000)
+  await context.setOffline(true)
+  await page.waitForTimeout(500)
 
   const offline = await page.evaluate(() => {
     const screen = document.querySelector('[data-testid="emergency-screen"]')
@@ -363,12 +470,35 @@ try {
      filet — mais le SMS et l'écran de confirmation ne l'attendent pas. */
   const offBox = await page.locator('[data-testid="distress-button"]').boundingBox()
   if (offBox) {
-    const t0 = Date.now()
+    await page.evaluate(() => {
+      const w = window as unknown as { __ae?: Record<string, number> }
+      w.__ae = {}
+      window.addEventListener(
+        'pointerdown',
+        () => {
+          w.__ae!.down = performance.now()
+        },
+        { capture: true, once: true },
+      )
+      const observer = new MutationObserver(() => {
+        if (document.querySelector('[data-testid="distress-sent"]') && !w.__ae!.sent) {
+          w.__ae!.sent = performance.now()
+          observer.disconnect()
+        }
+      })
+      observer.observe(document.body, { childList: true, subtree: true })
+    })
     await page.mouse.move(offBox.x + offBox.width / 2, offBox.y + offBox.height / 2)
     await page.mouse.down()
     await page.locator('[data-testid="distress-sent"]').waitFor({ state: 'attached' })
-    const offElapsed = Date.now() - t0
     await page.mouse.up()
+    const offMarks = (await page.evaluate(
+      () => (window as unknown as { __ae: Record<string, number> }).__ae,
+    )) as { down?: number; sent?: number }
+    const offElapsed =
+      offMarks.down !== undefined && offMarks.sent !== undefined
+        ? Math.round(offMarks.sent - offMarks.down)
+        : Number.POSITIVE_INFINITY
     check(
       'A122 · ★ and the alert still goes, inside the same two-second budget',
       offElapsed < DISTRESS_BUDGET_MS,
@@ -553,7 +683,25 @@ try {
     await page.goto(`${base}/${home}`, { waitUntil: 'load' })
     await page.waitForTimeout(2200)
     const reach = await page.evaluate(() => {
-      const el = document.querySelector('[data-emergency-launcher]') as HTMLElement | null
+      /**
+       * ⚠️ LE LANCEUR **VISIBLE**, PAS LE PREMIER DU DOCUMENT.
+       *
+       *    La coquille du coordinateur en dessine deux : celui du rail
+       *    (`hidden lg:flex`) et celui de la barre d'en-tête (`lg:hidden`).
+       *    Le rail vient EN PREMIER dans le document, donc `querySelector` en
+       *    rendait un rectangle de taille nulle sur téléphone et la sonde
+       *    concluait « pas entier, ne répond pas » — en mesurant un élément que
+       *    personne ne voit. La question honnête est « y a-t-il, sur cet écran,
+       *    un lanceur qu'un pouce peut atteindre », donc on prend le premier
+       *    qui a une surface.
+       */
+      const all = Array.from(
+        document.querySelectorAll('[data-emergency-launcher]'),
+      ) as HTMLElement[]
+      const el = all.find((c) => {
+        const r = c.getBoundingClientRect()
+        return r.width > 0 && r.height > 0
+      })
       if (!el) return { present: false, whole: false, own: false }
       const b = el.getBoundingClientRect()
       const whole =
@@ -572,7 +720,12 @@ try {
       JSON.stringify(reach),
     )
     if (reach.present && reach.own) {
-      await page.locator('[data-emergency-launcher]').first().click()
+      /* ⚠️ `:visible` — LE MÊME PIÈGE QUE DANS LA SONDE JUSTE AU-DESSUS. La
+         coquille du coordinateur dessine DEUX lanceurs, celui du rail
+         (`hidden lg:flex`, premier dans le document) et celui de la barre
+         d'en-tête. Sans ce filtre, le clic visait celui que personne ne voit et
+         expirait au bout de soixante secondes. */
+      await page.locator('[data-emergency-launcher]:visible').first().click()
       await page.waitForTimeout(1200)
       const arrived = await page.evaluate(() => ({
         hash: location.hash,

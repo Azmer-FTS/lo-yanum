@@ -90,16 +90,30 @@ export function EmergencyScreen() {
   const fix = useLastFix()
 
   const [phase, setPhase] = useState<Phase>('idle')
-  const [progress, setProgress] = useState(0)
   const [plan, setPlan] = useState<DistressPlan | null>(null)
   const [transmitted, setTransmitted] = useState<'pending' | 'ok' | 'failed'>('pending')
   const timer = useRef<number | null>(null)
-  const raf = useRef<number | null>(null)
+  /**
+   * ★★ LA JAUGE D'APPUI EST UNE TRANSITION CSS SUR UN `ref`, ET LA PREMIÈRE
+   *    VERSION LA PILOTAIT EN ÉTAT REACT. C'EST UN DÉFAUT MESURÉ.
+   *
+   *    Elle appelait `setProgress` dans une boucle `requestAnimationFrame` :
+   *    **quarante-huit rendus de tout l'écran pendant les 800 ms d'appui**, sur
+   *    l'écran qui doit être le plus rapide de l'application. Mesuré sur ce
+   *    Mac, au repos : 1 306 à 1 402 ms de l'intention au panneau, soit ~510 ms
+   *    au-delà de l'appui — et 1 749 ms sous charge, à 251 ms du budget que le
+   *    brief fixe. Sur un téléphone Android bon marché à trois heures du matin,
+   *    cette marge n'existe pas.
+   *
+   *    Une transition CSS coûte ZÉRO travail JavaScript par image : le
+   *    compositeur anime `scaleX` tout seul, et le fil principal reste libre
+   *    pour la seule chose qui compte, qui est de faire partir l'alerte.
+   */
+  const gauge = useRef<HTMLSpanElement | null>(null)
 
   useEffect(
     () => () => {
       if (timer.current !== null) window.clearTimeout(timer.current)
-      if (raf.current !== null) cancelAnimationFrame(raf.current)
     },
     [],
   )
@@ -165,7 +179,23 @@ export function EmergencyScreen() {
     const next = planDistress(alert, ctx, labels)
     setPlan(next)
     setPhase('sent')
-    acknowledge()
+
+    /**
+     * ★★ LE BIP EST DIFFÉRÉ D'UNE TÂCHE, ET C'EST UNE MESURE ET NON UNE
+     *    PRÉCAUTION.
+     *
+     *    Créer un `AudioContext` coûte de 100 à 500 ms la première fois dans
+     *    Chromium, et le navigateur ne peut RIEN peindre tant que le gestionnaire
+     *    n'est pas rendu : appelé ici, l'accusé de réception retardait le
+     *    panneau qu'il accuse. Mesuré : deux exécutions sur six à ~510 ms de
+     *    travail au lieu de ~30.
+     *
+     *    C'est un accusé de réception, pas une voie de transmission — le
+     *    fichier `useEmergency.ts` le dit déjà — donc il n'a aucun droit sur le
+     *    chemin critique. Un `setTimeout(0)` le fait partir juste après la
+     *    peinture, ce qui est de toute façon le moment où un humain l'entend.
+     */
+    window.setTimeout(acknowledge, 0)
 
     // 1 — la voie réseau.
     try {
@@ -204,22 +234,30 @@ export function EmergencyScreen() {
   const startHold = () => {
     if (phase === 'sent') return
     setPhase('holding')
-    const began = performance.now()
-    const tick = () => {
-      const p = Math.min(1, (performance.now() - began) / DISTRESS_HOLD_MS)
-      setProgress(p)
-      if (p < 1) raf.current = requestAnimationFrame(tick)
+    const bar = gauge.current
+    if (bar) {
+      /* Repartir de zéro SANS transition, puis armer celle qui dure l'appui :
+         sans le reflow forcé entre les deux, le navigateur regroupe les deux
+         écritures et la barre saute à 1 sans jamais s'animer. */
+      bar.style.transition = 'none'
+      bar.style.transform = 'scaleX(0)'
+      void bar.offsetWidth
+      bar.style.transition = `transform ${DISTRESS_HOLD_MS}ms linear`
+      bar.style.transform = 'scaleX(1)'
     }
-    raf.current = requestAnimationFrame(tick)
     timer.current = window.setTimeout(fire, DISTRESS_HOLD_MS)
   }
 
   const cancelHold = () => {
     if (timer.current !== null) window.clearTimeout(timer.current)
-    if (raf.current !== null) cancelAnimationFrame(raf.current)
     timer.current = null
-    raf.current = null
-    setProgress(0)
+    const bar = gauge.current
+    if (bar) {
+      /* Le retour est court et non instantané : un doigt qui glisse doit VOIR
+         que l'appui a été perdu, sinon il croit avoir déclenché. */
+      bar.style.transition = 'transform 140ms ease-out'
+      bar.style.transform = 'scaleX(0)'
+    }
     setPhase((p) => (p === 'holding' ? 'idle' : p))
   }
 
@@ -275,8 +313,9 @@ export function EmergencyScreen() {
           {/* La barre de progression de l'appui. `origin-left`/RTL : c'est une
               jauge de TEMPS, elle va toujours dans le même sens. */}
           <span
+            ref={gauge}
             aria-hidden
-            style={{ transform: `scaleX(${progress})` }}
+            style={{ transform: 'scaleX(0)' }}
             className="absolute inset-x-0 bottom-0 h-2 origin-left bg-content-on-accent/80"
           />
           <span className="flex flex-col items-center gap-2">
@@ -330,8 +369,9 @@ export function EmergencyScreen() {
             type="button"
             data-testid="distress-again"
             onClick={() => {
+              /* Le bouton revient monté ; sa jauge se remet à zéro toute seule
+                 au prochain appui (`startHold` la repose sans transition). */
               setPhase('idle')
-              setProgress(0)
             }}
             className="mt-3 h-11 rounded-field border border-edge-strong px-4 text-caption text-content-secondary hover:bg-surface-high"
           >

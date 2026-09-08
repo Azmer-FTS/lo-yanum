@@ -105,24 +105,43 @@
 > ferme, **marquée approximative dans le SMS**. Une alerte qui dit « à peu près
 > à la ferme Retem » part ; une alerte qui attend un satellite ne part pas.
 >
-> **Mesuré dans un vrai navigateur, entre le contact et l'existence du panneau
-> de confirmation : 1 333 ms puis 1 749 ms sur deux exécutions**, pour un budget
-> de 2 000.
+> **Mesuré dans la page, entre le `pointerdown` et l'apparition du panneau :
+> 809 à 814 ms**, dont 800 d'appui — soit **9 à 14 ms de travail** — pour un
+> budget de 2 000.
 >
-> ⚠️ **LA FOURCHETTE EST CITÉE ENTIÈRE ET PAS SEULEMENT SON MEILLEUR CHIFFRE.**
-> Ce qui varie n'est pas le geste — l'appui est de 800 ms, à la milliseconde —
-> c'est la voie réseau, qui écrit un incident dans un magasin dont la
-> réconciliation structurelle passe sur un millier de lignes (P2.6,
-> `indexOf`). 1 749 ms est un budget tenu avec 251 ms de marge, ce qui est
-> vrai et un peu juste ; le dire est ce qui permettra de savoir, la première
-> fois qu'une exécution dépassera, que la cause était déjà là.
+> ⚠️ **ET LES PREMIERS CHIFFRES QUE CETTE PASSE A PUBLIÉS ÉTAIENT FAUX, D'UNE
+> FAÇON QUI VAUT D'ÊTRE ÉCRITE.** La porte prenait `Date.now()` avant
+> `mouse.down()` et après que le localisateur de Playwright ait vu le panneau :
+> elle incluait le sondage d'actionnabilité et l'aller-retour du protocole, et
+> rendait 1 306, 1 505 puis 1 749 ms **selon la charge de la machine**. Un jour
+> de charge, elle serait passée au rouge sans qu'une ligne du produit ait
+> changé. Les deux instants qui comptent sont dans la page ; mesurés là, ils ne
+> bougent plus de cinq millisecondes.
 >
-> **Et 821 ms le réseau COUPÉ**, ce qui est plus rapide et pas plus lent : la
-> voie réseau échoue vite, et c'est précisément son rôle de filet. A122 coupe
-> vraiment le réseau du contexte plutôt que de raisonner sur la pureté d'une
-> fonction, parce qu'une fonction pure peut être juste dans un écran qui, lui,
-> attend une réponse qui ne viendra pas. Huit numéros restent composables,
-> `navigator.onLine` rend `false`. Appui maintenu de 800 ms
+> ⚠️ **ET LA MESURE HONNÊTE A TROUVÉ UN VRAI DÉFAUT DERRIÈRE LE FAUX.** La jauge
+> d'appui appelait `setProgress` dans une boucle `requestAnimationFrame` :
+> **quarante-huit rendus de tout l'écran pendant les 800 ms**, sur l'écran qui
+> doit être le plus rapide de l'app. C'est une transition CSS sur un `ref`
+> maintenant — zéro travail JavaScript par image, le compositeur anime `scaleX`
+> tout seul — et le bip, qui est un accusé de réception et non une voie de
+> transmission, est différé d'une tâche parce que créer un `AudioContext` coûte
+> de 100 à 500 ms dans Chromium. Sur un téléphone Android bon marché à trois
+> heures du matin, ces cinq cents millisecondes n'étaient pas une marge, elles
+> étaient le budget.
+>
+> **Et 809 ms le réseau COUPÉ**, à trois millisecondes du cas connecté. A122
+> coupe vraiment le réseau du contexte plutôt que de raisonner sur la pureté
+> d'une fonction, parce qu'une fonction pure peut être juste dans un écran qui,
+> lui, attend une réponse qui ne viendra pas. Huit numéros restent composables,
+> `navigator.onLine` rend `false`.
+>
+> ⚠️ **ET L'ÉCRAN EST OUVERT AVANT LA COUPURE, PAS APRÈS — L'ORDRE INVERSE ÉTAIT
+> UN FAUX TEST.** Couper puis appeler `goto`, c'est demander un document neuf
+> sans réseau : l'écran ne se rendait pas du tout (« 0 tel: targets »), et
+> quand il passait, c'est que le document venait du cache — la porte mesurait
+> le cache. Ce n'était pas non plus la situation du brief : le cas de trois
+> heures du matin n'est pas « ouvrir l'app sans réseau », c'est **perdre le
+> réseau en étant dessus**. Appui maintenu de 800 ms
 > — au-dessus du contact accidentel qu'un téléphone produit dans une poche
 > (50 à 200 ms), très en dessous du seuil où l'on croit que le bouton ne marche
 > pas. **Zéro dialogue à lire** : A120 le pose au DOM. Un appui bref n'envoie

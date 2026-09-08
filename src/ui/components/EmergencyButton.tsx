@@ -101,9 +101,19 @@ export function EmergencyLink({ expanded = true }: { expanded?: boolean }) {
       onClick={() => navigate(EMERGENCY_ROUTE)}
       title={expanded ? undefined : t('emergency.title')}
       aria-label={t('emergency.title')}
+      /**
+       * ⚠️ `min-w-11` QUAND IL EST REPLIÉ, ET SON ABSENCE ÉTAIT UN DÉFAUT.
+       *
+       *    Replié, ce bouton ne porte que son icône de 19 px : avec `px-0` sa
+       *    LARGEUR tombait à 19 px alors que sa hauteur restait à 44. La règle
+       *    d'AA1 est une règle sur les deux dimensions, et la cible ainsi
+       *    rétrécie était le lanceur d'urgence du coordinateur sur téléphone —
+       *    c'est-à-dire le contrôle qui a le moins le droit d'être difficile à
+       *    atteindre. Trouvé par `bun run aeui`, qui mesure les deux côtés.
+       */
       className={`flex min-h-11 items-center gap-2 rounded-field bg-critical/10 px-3 py-2 text-caption font-semibold
                   text-critical transition-colors duration-fast hover:bg-critical/20 ${
-                    expanded ? '' : 'justify-center px-0'
+                    expanded ? '' : 'min-w-11 justify-center px-0'
                   }`}
     >
       <Icon name="alert" size={19} />
