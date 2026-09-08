@@ -87,4 +87,14 @@ dist-ab/
 #    DES DEUX PASSES PRÉCÉDENTES, PAS UNE CONVENTION. Les retirer de l'index
 #    est un nettoyage à part entière — il touche des fichiers qu'aucune ligne
 #    de cette passe n'a produits — et il n'a donc pas été fait ici.
+#
+# ✅ FAIT EN AF (2026-09-09). `git rm -r --cached dist-acpass dist-adpass` :
+#    l'arbre de travail garde les fichiers, l'index ne les suit plus, et les
+#    deux répertoires rejoignent la liste ci-dessous. Ce qui a forcé la main
+#    est qu'ils étaient DÉJÀ divergents au début de cette passe — neuf
+#    suppressions et neuf ajouts d'actifs hachés qu'aucun humain ne relira —
+#    et qu'un `git status` bruyant est un `git status` qu'on cesse de lire.
 dist-aepass/
+dist-acpass/
+dist-adpass/
+dist-afpass/
