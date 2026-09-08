@@ -478,6 +478,9 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
             {headers.map((header, i) => (
               <div
                 key={`${header}-${i}`}
+                /* AC5/A100 — the header the wizard actually READ, addressable
+                   so the gate can prove the sheet chooser picked רשימה. */
+                data-header={header}
                 className="rounded-field border border-edge-subtle bg-surface-high p-3"
               >
                 <p className="mb-1 text-micro text-content-muted">{t('import.detectedColumn')}</p>
