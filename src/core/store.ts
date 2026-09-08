@@ -3,6 +3,7 @@ import { deletionPlan } from './deletion'
 import type { StoreBackend, StoreData, StoreIndex } from './backend'
 import { iso, now } from './clock'
 import { DEMO_BACKEND } from './demo'
+import { declaredAreas, measuredAreas } from './fields'
 import { ringAreaDunams } from './geo'
 import { ASSOCIATION_INDEX, entityKindForRow } from './prospection'
 import { farmFromSignatureRow, signaturePatch } from './signatures'
@@ -63,7 +64,7 @@ import { DEFAULT_AVAILABILITY, EMPTY_LEG } from './types'
  */
 
 let backend: StoreBackend = DEMO_BACKEND
-let data: StoreData = backend.seed()
+let data: StoreData = remeasureFarms(backend.seed())
 
 /**
  * The structural index the write-through diff is taken against — see
@@ -146,7 +147,7 @@ export function setSession(session: Session): void {
  * mode that reset itself into 26 DELETEs would be a different kind of tool.
  */
 export function resetStore(): void {
-  data = backend.seed()
+  data = remeasureFarms(backend.seed())
   index = backend.persists ? indexOf(data) : null
   commit()
 }
@@ -159,7 +160,7 @@ export function resetStore(): void {
  */
 export function installBackend(next: StoreBackend): void {
   backend = next
-  data = next.seed()
+  data = remeasureFarms(next.seed())
   index = next.persists ? indexOf(data) : null
   version += 1
   for (const fn of listeners) fn()
@@ -181,7 +182,9 @@ export function backendName(): string {
  */
 export function replaceSnapshot(next: StoreData): void {
   const session = data.session
-  data = { ...next, session }
+  /* AD1 - la mesure est reconstruite depuis les polygones qui viennent
+     d'arriver, jamais lue dans ce qui arrive : voir `remeasureFarms`. */
+  data = remeasureFarms({ ...next, session })
   index = backend.persists ? indexOf(data) : null
   version += 1
   for (const fn of listeners) fn()
@@ -420,9 +423,66 @@ export function updateFarm(farmId: string, draft: FarmDraft): void {
   const index = data.farms.findIndex((f) => f.id === farmId)
   if (index === -1) return
   data.farms[index] = { ...data.farms[index], ...draft }
-  // G15 — a submit that RELEASES an override (manual flag back to false)
-  // gets the zone sum back immediately, through the one writer.
-  syncZoneDunams(farmId)
+  /* AD1 — le formulaire n'écrit QUE la surface déclarée ; la mesurée est
+     reprise ici pour qu'une fiche créée puis enregistrée porte la sienne
+     sans attendre la prochaine mutation de polygone. */
+  remeasureFarm(farmId)
+  commit()
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AD2.2 — LES DEUX GESTES DE LA NOTE D'ÉCART, EN UN GESTE CHACUN.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * « aligner sur le tracé » — la déclarée prend la valeur mesurée. La note se
+ * tait d'elle-même après ça, parce qu'il n'y a plus d'écart : rien à mémoriser.
+ *
+ * ⚠️ ET LE DRAPEAU DE SAISIE SUIT LA MÊME RÈGLE QU'AILLEURS (AD1.5) : il se
+ *    pose sur un chiffre, jamais sur un zéro. Aligner sur un contour qui n'a
+ *    pas de zone de pâture met מרעה à zéro, et un zéro drapeauté serait une
+ *    exploitation qui DÉCLARE n'avoir aucun pâturage — ce que personne n'a dit.
+ */
+export function alignDeclaredToOutline(farmId: string): void {
+  const index = data.farms.findIndex((f) => f.id === farmId)
+  if (index === -1) return
+  const farm = data.farms[index]
+  const measured = measuredAreas(farm)
+  if (measured === null) return
+  const next: Farm = {
+    ...farm,
+    farmDunams: measured.cultivated,
+    grazingDunams: measured.grazing,
+  }
+  if (measured.cultivated > 0) next.farmDunamsManual = true
+  else delete next.farmDunamsManual
+  if (measured.grazing > 0) next.grazingDunamsManual = true
+  else delete next.grazingDunamsManual
+  /* La divergence tranchée n'existe plus ; garder sa trace ferait taire une
+     divergence FUTURE qui se trouverait porter les mêmes deux totaux. */
+  next.areaGapAcceptedDeclared = null
+  next.areaGapAcceptedMeasured = null
+  data.farms[index] = next
+  commit()
+}
+
+/**
+ * « garder le chiffre déclaré » — la note se tait POUR CETTE FICHE jusqu'à ce
+ * que l'un des deux totaux change à nouveau. C'est la paire qui est
+ * enregistrée, pas un booléen : voir `areaGap` dans core/fields.ts.
+ */
+export function keepDeclaredArea(farmId: string): void {
+  const index = data.farms.findIndex((f) => f.id === farmId)
+  if (index === -1) return
+  const farm = data.farms[index]
+  const declared = declaredAreas(farm)
+  const measured = measuredAreas(farm)
+  if (declared === null || measured === null) return
+  data.farms[index] = {
+    ...farm,
+    areaGapAcceptedDeclared: declared.total,
+    areaGapAcceptedMeasured: measured.total,
+  }
   commit()
 }
 
@@ -443,34 +503,78 @@ export interface FarmZoneDraft {
 }
 
 /**
- * G15 — ONE WRITER for the auto-filled dunam fields, same pattern as
- * `syncNextVisit` (decision 35): every zone mutation funnels through here, so
- * "the map says 430 dunams" and "the form says 430 dunams" cannot disagree.
- * A field the coordinator typed (its `*Manual` flag) is never overwritten,
- * and a kind with NO zones left says nothing — deleting the last polygon
- * must not zero a number that predates the drawing.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AD1 (2026-09-08) — LE SEUL ÉCRIVAIN DE LA SURFACE **MESURÉE**.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * G15 avait UN écrivain pour UN couple de champs, arbitré par un drapeau. La
+ * décision du PO en AD1 sépare les deux faits : la surface déclarée n'est plus
+ * touchée par la carte, et ce writer-ci ne remplit que la mesurée.
+ *
+ * ★ ET C'EST POUR ÇA QUE LE DÉFAUT G15 DISPARAÎT. La mesurée n'a aucune
+ *   colonne en base, aucune cellule dans l'export, aucune lecture dans
+ *   l'import : elle est RECALCULÉE, ici, depuis les polygones. Un aller-retour
+ *   export/import ne peut donc rien y figer, et redessiner un contour la
+ *   recalcule — y compris après cet aller-retour, ce qu'A109 mesure.
+ *
+ * ★ AUCUN POLYGONE DE CE GENRE = CHAMP ABSENT (AD3.4). Pas zéro : « il n'y a
+ *   pas de tracé » et « le tracé fait zéro » sont deux phrases, et seule la
+ *   première met l'exploitation dans la file « à contourner ». Effacer le
+ *   dernier contour rend donc la fiche à cette file, ce qui est exactement ce
+ *   qu'il faut qu'il se passe.
  */
-function syncZoneDunams(farmId: string): void {
+function remeasureFarm(farmId: string): void {
   const farm = data.farms.find((f) => f.id === farmId)
   if (!farm) return
-  const zones = data.farmZones.filter((z) => z.farmId === farmId)
-  const sumOf = (kind: FarmZoneKind): number | null => {
+  const next = remeasured(farm, data.farmZones)
+  if (next !== farm) data.farms = data.farms.map((f) => (f.id === farmId ? next : f))
+}
+
+/** La mesure d'une ferme contre une liste de zones. Pure. */
+function remeasured(farm: Farm, allZones: readonly FarmZone[]): Farm {
+  const zones = allZones.filter((z) => z.farmId === farm.id)
+  const sumOf = (kind: FarmZoneKind): number | undefined => {
     const of = zones.filter((z) => z.kind === kind)
-    if (of.length === 0) return null
+    if (of.length === 0) return undefined
     return Math.round(of.reduce((s, z) => s + ringAreaDunams(z.ring), 0))
   }
   const boundary = sumOf('farm_boundary')
   const grazing = sumOf('grazing_area')
+  if (farm.measuredFarmDunams === boundary && farm.measuredGrazingDunams === grazing) {
+    return farm
+  }
   const next = { ...farm }
-  if (!farm.farmDunamsManual && boundary !== null) next.farmDunams = boundary
-  if (!farm.grazingDunamsManual && grazing !== null) next.grazingDunams = grazing
-  data.farms = data.farms.map((f) => (f.id === farmId ? next : f))
+  if (boundary === undefined) delete next.measuredFarmDunams
+  else next.measuredFarmDunams = boundary
+  if (grazing === undefined) delete next.measuredGrazingDunams
+  else next.measuredGrazingDunams = grazing
+  return next
+}
+
+/**
+ * ★★ AD1 — LA MESURE EST RECONSTRUITE À CHAQUE FOIS QUE LE JEU DE DONNÉES
+ *    ARRIVE, et jamais lue depuis ce qui arrive.
+ *
+ * Quatre portes d'entrée : la graine du backend, `resetStore`, `installBackend`
+ * et `replaceSnapshot` (l'hydratation Supabase et le cache hors-ligne). Une
+ * seule d'entre elles oubliée et une fiche hydratée porterait une mesure
+ * venue d'ailleurs — c'est-à-dire exactement la classe de défaut qu'AD1
+ * supprime. Écrit comme une fonction sur un `StoreData` pour qu'il n'y ait
+ * qu'un mot à appeler aux quatre endroits.
+ *
+ * ⚠️ CE N'EST PAS UNE MUTATION : elle est appelée AVANT que l'index de
+ *    write-through soit pris, donc rien n'est repoussé vers le serveur. Ce
+ *    serait de toute façon sans objet — aucun de ces champs n'a de colonne.
+ */
+function remeasureFarms(next: StoreData): StoreData {
+  next.farms = next.farms.map((f) => remeasured(f, next.farmZones))
+  return next
 }
 
 export function createFarmZone(draft: FarmZoneDraft): FarmZone {
   const zone: FarmZone = { id: nextId('zone'), ...draft }
   data.farmZones = [...data.farmZones, zone]
-  syncZoneDunams(draft.farmId)
+  remeasureFarm(draft.farmId)
   commit()
   return zone
 }
@@ -480,14 +584,14 @@ export function updateFarmZoneRing(zoneId: string, ring: LatLng[]): void {
   const index = data.farmZones.findIndex((z) => z.id === zoneId)
   if (index === -1) return
   data.farmZones[index] = { ...data.farmZones[index], ring }
-  syncZoneDunams(data.farmZones[index].farmId)
+  remeasureFarm(data.farmZones[index].farmId)
   commit()
 }
 
 export function deleteFarmZone(zoneId: string): void {
   const zone = data.farmZones.find((z) => z.id === zoneId)
   data.farmZones = data.farmZones.filter((z) => z.id !== zoneId)
-  if (zone) syncZoneDunams(zone.farmId)
+  if (zone) remeasureFarm(zone.farmId)
   commit()
 }
 
@@ -1119,7 +1223,7 @@ export function createMission(draft: MissionDraft): Mission {
  * commit, one paint — the same shape `importVolunteers` has had since R5.4.
  *
  * A farm gets its zone sums recomputed on the way in: an import carries no
- * polygons, so `syncZoneDunams` is what makes an imported farm's numbers obey
+ * polygons, so `remeasureFarm` is what gives an imported farm its measured
  * the same one-writer rule as a drawn one (G15) — the manual flag the draft
  * sets is what protects a number the farmer actually stated.
  */
@@ -1131,7 +1235,7 @@ export function importFarms(drafts: FarmDraft[]): number {
     ...draft,
   }))
   data.farms = [...data.farms, ...created]
-  for (const farm of created) syncZoneDunams(farm.id)
+  for (const farm of created) remeasureFarm(farm.id)
   commit()
   return created.length
 }
@@ -1159,6 +1263,49 @@ export function importFarms(drafts: FarmDraft[]): number {
  *   nothing else invented. Empty contacts, empty commitments, no livestock:
  *   « לא הומצא אף נתון » is the workbook's own rule and it is this one too.
  */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AD1.1 — « UN IMPORT NE FIGE PAS UN POLYGONE », ET C'EST ICI QUE ÇA SE
+ *    JOUE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * L'export écrit une surface sur CHAQUE ligne, et pour une exploitation qui
+ * n'a jamais rien déclaré ce qu'il écrit est ce que le contour mesure (AD1.4 :
+ * quand une seule des deux existe, elle sert seule). Relire cette cellule
+ * comme une DÉCLARATION transformerait chaque aller-retour en fabrication de
+ * déclarations : la fiche cesserait de suivre son polygone, et redessiner le
+ * contour ferait apparaître une note d'écart sur une ferme dont personne n'a
+ * jamais signé le moindre chiffre. C'est le défaut G15, sous une autre forme.
+ *
+ * ★ LA RÈGLE EST CELLE QU'AC3 A DÉJÀ INVENTÉE POUR שטחים שמירה : une cellule
+ *   qui redit ce que l'app calculerait de toute façon N'EST PAS une saisie.
+ *   Ici, « ce que l'app calculerait » est la surface MESURÉE de cette fiche.
+ *   Une cellule qui dit autre chose est bien une déclaration, et elle est
+ *   écrite — même si elle est plus petite, même si elle est plus grande : c'est
+ *   précisément la divergence qu'AD2 sert à montrer.
+ *
+ * ⚠️ COMPARÉ GENRE PAR GENRE, PAS SUR LE TOTAL. Une ligne qui dirait 430
+ *    מעובד / 0 מרעה contre un contour de 0 / 430 a le même total et n'est pas
+ *    la même exploitation.
+ */
+function withoutRestatedMeasure<T extends { farmDunams?: number; grazingDunams?: number }>(
+  farm: Farm,
+  patch: T,
+): T {
+  const measured = measuredAreas(farm)
+  if (measured === null) return patch
+  const next = { ...patch }
+  if (next.farmDunams !== undefined && Math.round(next.farmDunams) === measured.cultivated) {
+    delete next.farmDunams
+    delete (next as { farmDunamsManual?: boolean }).farmDunamsManual
+  }
+  if (next.grazingDunams !== undefined && Math.round(next.grazingDunams) === measured.grazing) {
+    delete next.grazingDunams
+    delete (next as { grazingDunamsManual?: boolean }).grazingDunamsManual
+  }
+  return next
+}
+
 export function applyProspection(
   plan: ProspectionPlan,
   fallbackPosition: LatLng,
@@ -1214,11 +1361,11 @@ export function applyProspection(
   data.farms = [
     ...data.farms.map((farm) => {
       const patch = patches.get(farm.id)
-      return patch ? { ...farm, ...patch } : farm
+      return patch ? { ...farm, ...withoutRestatedMeasure(farm, patch) } : farm
     }),
     ...created,
   ]
-  for (const farm of created) syncZoneDunams(farm.id)
+  for (const farm of created) remeasureFarm(farm.id)
   commit()
   return { created: created.length, updated: patches.size }
 }

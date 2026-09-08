@@ -4,6 +4,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
   FARM_PIPELINE,
+  areaGapRatio,
+  effectiveAreas,
+  hasAreaGap,
+  needsOutline,
   entityKindOf,
   weightedDunams,
   totalWeightedDunams,
@@ -22,6 +26,7 @@ import type { Farm, FarmCoverage, FarmStatus, FarmType, RegionId } from '@core/i
 import { Avatar } from '../../components/Avatar'
 import { EntityQuickCard, useQuickPreview } from '../../components/EntityQuickCard'
 import { ChevronForward, Icon } from '../../components/Icon'
+import { AreaGapMark } from '../../components/areaGap'
 import { ListTile } from '../../components/ListTile'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import { OverflowMenu } from '../../components/OverflowMenu'
@@ -55,6 +60,7 @@ import { useProgressive } from '../../hooks/useProgressive'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 import { useWindowTable } from '../../hooks/useWindowTable'
+import { useAreaGapThreshold } from '../../settings/areaGap'
 import { useCoverageSettings } from '../../settings/coverage'
 
 const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
@@ -154,6 +160,28 @@ export function FarmsListScreen() {
     () => coverage.filter((c) => c.state === 'never' || c.state === 'stale').length,
     [coverage],
   )
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ★★ AD2.6 · AD3 — LES DEUX FILES DE TRAVAIL DE LA SURFACE.
+   * ═══════════════════════════════════════════════════════════════════════
+   *
+   * « פערי שטח » — les fiches dont la déclaration et le tracé ne se rejoignent
+   * pas, à trancher avant que le dossier parte ; « לתיחום » — celles qui
+   * portent un chiffre déclaré et AUCUN polygone, à contourner.
+   *
+   * ⚠️ CE SONT DEUX FILES ET NON DEUX DEGRÉS D'UNE MÊME ALERTE. Une fiche sans
+   *    tracé n'a pas d'écart (il faut deux surfaces pour diverger) et ne peut
+   *    donc jamais être dans les deux à la fois. Les compter séparément est ce
+   *    qui rend les deux nombres lisibles.
+   */
+  const gapThreshold = useAreaGapThreshold()
+  const [gapOnly, setGapOnly] = useState(false)
+  const [noOutlineOnly, setNoOutlineOnly] = useState(false)
+  const gapCount = useMemo(
+    () => farms.filter((f) => hasAreaGap(f, gapThreshold)).length,
+    [farms, gapThreshold],
+  )
+  const noOutlineCount = useMemo(() => farms.filter((f) => needsOutline(f)).length, [farms])
   /** AA6 — where the sort control is rendered; see `sortControl`. */
   const phone = usePhoneShape()
   /** A new key is a new request to (re)anchor — and to pan only if off screen. */
@@ -195,6 +223,9 @@ export function FarmsListScreen() {
       // no areas at all, and « which of these have we actually measured » is
       // the question that separates a lead from a holding.
       if (hasAreas && weightedDunams(farm) <= 0) return false
+      /* AD2.6 · AD3.2 — les deux files, comme deux rétrécissements du rôle. */
+      if (gapOnly && !hasAreaGap(farm, gapThreshold)) return false
+      if (noOutlineOnly && !needsOutline(farm)) return false
       /* AC4.4 — « qui est oublié », as a narrowing of the same roster. */
       if (neglected) {
         const state = coverageOf.get(farm.id)?.state
@@ -208,7 +239,20 @@ export function FarmsListScreen() {
         farm.contacts.some((c) => c.name.toLowerCase().includes(q))
       )
     })
-  }, [farms, status, type, moshavOnly, region, hasAreas, neglected, coverageOf, query])
+  }, [
+    farms,
+    status,
+    type,
+    moshavOnly,
+    region,
+    hasAreas,
+    neglected,
+    gapOnly,
+    noOutlineOnly,
+    gapThreshold,
+    coverageOf,
+    query,
+  ])
 
   /**
    * ⚠️ SORTED ON A COPY, AND STABLY. `Array.prototype.sort` mutates, and
@@ -216,8 +260,8 @@ export function FarmsListScreen() {
    *    re-order the map's own list as a side effect of rendering the roster.
    */
   const sorted = useMemo(
-    () => sortFarms(filtered, sort, coverageOf),
-    [filtered, sort, coverageOf],
+    () => sortFarms(filtered, sort, coverageOf, gapThreshold),
+    [filtered, sort, coverageOf, gapThreshold],
   )
 
   const page = useProgressive(sorted)
@@ -254,7 +298,8 @@ export function FarmsListScreen() {
     return {
       status: s,
       count: inStatus.length,
-      dunams: inStatus.reduce((sum, f) => sum + f.farmDunams + f.grazingDunams, 0),
+      /* AD1.4 — « la » surface de chaque fiche : déclarée, ou mesurée à défaut. */
+      dunams: inStatus.reduce((sum, f) => sum + effectiveAreas(f).total, 0),
     }
   }).filter((k) => k.count > 0)
 
@@ -323,6 +368,60 @@ export function FarmsListScreen() {
           testId="farms-neglected"
         />
       )}
+      {/**
+        * ═══════════════════════════════════════════════════════════════════
+        * ★★ AD3.2 — « לתיחום », DEUXIÈME, ET LA PLACE A ÉTÉ DÉCIDÉE PAR LES
+        *    DEUX ACCIDENTS D'AC.
+        * ═══════════════════════════════════════════════════════════════════
+        *
+        * Le brief nomme les deux : le « + » flottant s'est posé sur une
+        * pastille mise dans la barre de filtres (A86), et une vignette
+        * neuvième était hors écran à 1376 px parce que la bande DÉFILE.
+        *
+        * ★ LA PREMIÈRE LEÇON DIT « PAS DANS LA BARRE DE FILTRES » — donc ici,
+        *   dans la bande des vignettes, où le bouton flottant ne va jamais.
+        * ★ LA SECONDE DIT « PAS EN NEUVIÈME » — donc en DEUXIÈME, juste après
+        *   « נשכחו », qu'AC a placée en tête pour cette raison exacte et qu'il
+        *   n'est pas question de déplacer une troisième fois.
+        *
+        * ⚠️ ET CE N'EST PAS UNE SONDE QUI LE VÉRIFIE. A116 mesure la boîte de
+        *    cette vignette contre celle de son défileur sur le DÉPLOYÉ, à
+        *    1376 px et à 402 px, au repos et sans défiler — la leçon d'AA6.2 et
+        *    d'AC4.5 : « la seule question qu'on peut poser à deux boîtes
+        *    opaques est une question sur deux RECTANGLES ».
+        *
+        * ⚠️ ELLE NE S'AFFICHE QUE QUAND ELLE A QUELQUE CHOSE À DIRE, comme sa
+        *    voisine : sur un rôle où personne n'a encore déclaré de surface,
+        *    une file « à contourner » vide est un filtre qui vide la liste et
+        *    qu'on apprend à ne plus croire.
+        */}
+      {noOutlineCount > 0 && (
+        <KpiChip
+          label={t('farms.filterNoOutline')}
+          value={noOutlineCount}
+          icon="landPlot"
+          tone="accent"
+          hint={t('farms.filterNoOutlineHint')}
+          active={noOutlineOnly}
+          onClick={() => setNoOutlineOnly((v) => !v)}
+          testId="farms-no-outline"
+        />
+      )}
+      {/* AD2.6 — et l'autre file de la même paire : les fiches dont les deux
+          surfaces ne se rejoignent pas. Elle vient après, parce qu'elle est
+          rare là où « לתיחום » est massive au démarrage d'un programme. */}
+      {gapCount > 0 && (
+        <KpiChip
+          label={t('farms.filterGap')}
+          value={gapCount}
+          icon="alert"
+          tone="alert"
+          hint={t('farms.filterGapHint', { percent: Math.round(gapThreshold * 100) })}
+          active={gapOnly}
+          onClick={() => setGapOnly((v) => !v)}
+          testId="farms-area-gap"
+        />
+      )}
       {statusKpis.map((k) => (
         <KpiChip
           key={k.status}
@@ -369,7 +468,7 @@ export function FarmsListScreen() {
           tone="accent"
           hint={t('farms.kpiDunams', {
             n: moshavim
-              .reduce((sum, f) => sum + f.farmDunams + f.grazingDunams, 0)
+              .reduce((sum, f) => sum + effectiveAreas(f).total, 0)
               .toLocaleString(locale),
           })}
           active={moshavOnly}
@@ -458,6 +557,8 @@ export function FarmsListScreen() {
         { value: 'guardsAsc', label: t('farms.sortGuardsAsc') },
         { value: 'guardsDesc', label: t('farms.sortGuardsDesc') },
         { value: 'lastGuardOldest', label: t('farms.sortLastGuardOldest') },
+        /* AD2.6 — « trier par écart », le plus gros en tête. */
+        { value: 'areaGapDesc', label: t('farms.sortGapDesc') },
       ]}
     />
   )
@@ -471,7 +572,9 @@ export function FarmsListScreen() {
         (moshavOnly ? 1 : 0) +
         (region !== null ? 1 : 0) +
         (hasAreas ? 1 : 0) +
-        (neglected ? 1 : 0)
+        (neglected ? 1 : 0) +
+        (gapOnly ? 1 : 0) +
+        (noOutlineOnly ? 1 : 0)
       }
       onClear={() => {
         setStatus(null)
@@ -480,6 +583,8 @@ export function FarmsListScreen() {
         setRegion(null)
         setHasAreas(false)
         setNeglected(false)
+        setGapOnly(false)
+        setNoOutlineOnly(false)
       }}
     >
       <RegionFilter value={region} onChange={setRegion} counts={regionCounts} testId="farms-region" />
@@ -619,6 +724,11 @@ export function FarmsListScreen() {
                         onHover={setHoveredId}
                         onOpen={() => navigate(`/coordinator/farms/${farm.id}`)}
                         onCenter={() => centerOn(farm)}
+                        onDraw={
+                          noOutlineOnly && needsOutline(farm)
+                            ? () => navigate(`/coordinator/farms/${farm.id}?draw=farm_boundary`)
+                            : null
+                        }
                         previewProps={quick.bind(farm)}
                       />
                     </li>
@@ -659,6 +769,7 @@ function FarmTile({
   onHover,
   onOpen,
   onCenter,
+  onDraw,
   previewProps,
 }: {
   farm: Farm
@@ -669,6 +780,8 @@ function FarmTile({
   onHover: (id: string | null) => void
   onOpen: () => void
   onCenter: () => void
+  /** AD3.3 — présent seulement quand la file « לתיחום » est ouverte. */
+  onDraw: (() => void) | null
   previewProps: Record<string, unknown>
 }) {
   const { t } = useTranslation()
@@ -695,6 +808,9 @@ function FarmTile({
           {farm.name}
         </span>
         <NeglectMark coverage={coverage} neglectDays={neglectDays} />
+        {/* AD2.5 — le signal d'écart, à côté de celui de l'oubli : deux
+            marques de la même famille, une seule chose à apprendre. */}
+        <AreaGapMark farm={farm} />
       </span>
       <span className="muted block truncate" title={`${farm.locality} · ${t(`farmType.${farm.type}`)}`}>
         {farm.locality} · {t(`farmType.${farm.type}`)}
@@ -702,7 +818,7 @@ function FarmTile({
       <span className="flex flex-wrap items-center gap-x-2.5 text-micro text-content-muted">
         <span className="inline-flex items-center gap-1 whitespace-nowrap">
           <Icon name="landPlot" size={11} />
-          <span className="numeric">{(farm.farmDunams + farm.grazingDunams).toLocaleString(locale)}</span>
+          <span className="numeric">{effectiveAreas(farm).total.toLocaleString(locale)}</span>
           {t('farms.dunams')}
         </span>
         {/* AA3.3 — and the weighted figure beside the flat one, on the tile
@@ -724,6 +840,42 @@ function FarmTile({
           <span className="inline-flex items-center gap-1 whitespace-nowrap">
             <Icon name="calendar" size={11} />
             <span className="ltr-nums">{formatDate(farm.nextVisitAt, locale)}</span>
+          </span>
+        )}
+        {/**
+          * ★★ AD3.3 — LE GESTE DIRECT, ET IL N'EXISTE QUE DANS LA FILE.
+          *
+          * « Depuis cette file, un geste ouvre directement la carte de la ferme
+          *   en mode tracé. » Hors de la file, ce bouton serait posé sur la
+          *   moitié d'un rôle de 198 lignes pour un travail que le
+          *   coordinateur n'est pas en train de faire ; dans la file, il est la
+          *   seule chose que chaque rangée demande.
+          *
+          * ⚠️ `stopPropagation` — la rangée entière ouvre la fiche. Sans lui,
+          *    le geste ouvrirait la fiche PUIS la carte, et la navigation
+          *    arrière du PO se retrouverait avec un cran de trop.
+          */}
+        {onDraw !== null && (
+          <span
+            role="button"
+            tabIndex={0}
+            data-testid="farm-draw-outline"
+            className="inline-flex items-center gap-1 whitespace-nowrap rounded-pill
+                       bg-accent/12 px-2 py-0.5 font-semibold text-accent-ink
+                       hover:bg-accent/20"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDraw()
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' && e.key !== ' ') return
+              e.preventDefault()
+              e.stopPropagation()
+              onDraw()
+            }}
+          >
+            <Icon name="landPlot" size={11} />
+            {t('farms.drawOutline')}
           </span>
         )}
       </span>
@@ -757,15 +909,35 @@ export type FarmSort =
   | 'guardsAsc'
   | 'guardsDesc'
   | 'lastGuardOldest'
+  /** AD2.6 — « trier par écart », comme pour les fermes oubliées. */
+  | 'areaGapDesc'
 
 function sortFarms(
   farms: Farm[],
   sort: FarmSort,
   coverageOf: ReadonlyMap<string, FarmCoverage>,
+  gapThreshold: number,
 ): Farm[] {
   const next = [...farms]
   const guardsOf = (f: Farm) => coverageOf.get(f.id)?.stats.guards ?? 0
   switch (sort) {
+    /**
+     * ★★ AD2.6 — « TRIER PAR ÉCART », ET L'ÉCART EST UNE PROPORTION.
+     *
+     * ⚠️ PAS EN DOUNAMS. Un mochav de 20 000 dounams qui se trompe de 5 % pèse
+     *    mille dounams et n'a probablement rien à trancher ; un petit
+     *    exploitant qui déclare le double de son contour pèse trois cents et
+     *    c'est exactement le dossier qu'il ne faut pas remettre en l'état. La
+     *    question du PO est « qui a un problème », pas « qui est grand ».
+     *
+     * Les fiches sans note valent zéro (`areaGapRatio`) : elles se rangent
+     * derrière, dans l'ordre où elles étaient, sans se mélanger à celles qui
+     * parlent.
+     */
+    case 'areaGapDesc':
+      return next.sort(
+        (a, b) => areaGapRatio(b, gapThreshold) - areaGapRatio(a, gapThreshold),
+      )
     /**
      * ★★ AC4.4 — « LE MOINS SERVI D'ABORD » IS THE ORDER THE DECISION IS MADE
      *    IN, so it is the one that reads first in the list.
@@ -967,6 +1139,8 @@ function FarmsTable({
                       coverage={coverageOf.get(farm.id) ?? null}
                       neglectDays={neglectDays}
                     />
+                    {/* AD2.5 — « un signal discret dans la liste ET le tableau ». */}
+                    <AreaGapMark farm={farm} />
                   </span>
                   <span
                     className="muted block truncate"
@@ -1004,7 +1178,7 @@ function FarmsTable({
 
               {/* 6 — dunams */}
               <span data-col="xl" className="ltr-nums numeric truncate text-caption text-content-secondary">
-                {dunams(farm.farmDunams)} / {dunams(farm.grazingDunams)}
+                {dunams(effectiveAreas(farm).cultivated)} / {dunams(effectiveAreas(farm).grazing)}
               </span>
 
               {/* 7 — AA3.3: the weighted total */}

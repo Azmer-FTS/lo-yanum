@@ -1,5 +1,4 @@
 import type { StoreBackend, StoreData } from './backend'
-import { ringAreaDunams } from './geo'
 import { ANCHOR_POINTS } from './mock/anchors'
 import { FARMS } from './mock/farms'
 import { INCIDENTS } from './mock/incidents'
@@ -26,37 +25,24 @@ import { FARM_ZONES } from './mock/zones'
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T
 
 /**
- * G15 — the fixtures' dunam figures were hand-estimated before the polygons
- * existed; at seed the drawn ground wins (unless a farm is flagged manual),
- * so the map, the form and the dashboard KPIs agree from the first render.
+ * ★★ AD1 (2026-09-08) — `seedZoneDunams` A ÉTÉ SUPPRIMÉ, ET C'EST LA DÉCISION
+ *    DU PO APPLIQUÉE À LA GRAINE.
+ *
+ * G15 faisait gagner le contour sur le chiffre estimé, « pour que la carte, le
+ * formulaire et les KPI soient d'accord dès le premier rendu ». Depuis AD1 ils
+ * n'ont plus à être d'accord : ce sont DEUX surfaces, la déclarée et la
+ * mesurée, et les écraser l'une par l'autre est précisément ce qu'AD1.1
+ * interdit. Les chiffres des fixtures sont donc les DÉCLARÉS, les polygones
+ * portent les MESURÉS (`remeasureFarms` les calcule à la graine comme à
+ * l'hydratation), et le jumeau de démonstration montre de vraies divergences
+ * plutôt qu'un accord fabriqué.
  */
-function seedZoneDunams(seed: StoreData): StoreData {
-  const sums = new Map<string, { boundary: number; grazing: number }>()
-  for (const z of seed.farmZones) {
-    const entry = sums.get(z.farmId) ?? { boundary: 0, grazing: 0 }
-    if (z.kind === 'farm_boundary') entry.boundary += ringAreaDunams(z.ring)
-    else entry.grazing += ringAreaDunams(z.ring)
-    sums.set(z.farmId, entry)
-  }
-  seed.farms = seed.farms.map((f) => {
-    const s = sums.get(f.id)
-    if (!s) return f
-    return {
-      ...f,
-      farmDunams:
-        !f.farmDunamsManual && s.boundary > 0 ? Math.round(s.boundary) : f.farmDunams,
-      grazingDunams:
-        !f.grazingDunamsManual && s.grazing > 0 ? Math.round(s.grazing) : f.grazingDunams,
-    }
-  })
-  return seed
-}
 
 export const DEMO_BACKEND: StoreBackend = {
   name: 'demo',
   persists: false,
   seed: (): StoreData =>
-    seedZoneDunams({
+    ({
       farms: clone(FARMS),
       generalMeetings: clone(GENERAL_MEETINGS),
       farmZones: clone(FARM_ZONES),

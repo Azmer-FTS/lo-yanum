@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import {
   FARM_PIPELINE,
@@ -8,7 +8,10 @@ import {
   LEGAL_ENTITY_OPTIONS,
   availableVolunteers,
   farmGuardStats,
+  declaredAreas,
+  effectiveAreas,
   guardedDunamsOf,
+  measuredAreas,
   landRightIssue,
   localDayKey,
   optionLabel,
@@ -42,6 +45,7 @@ import {
 import type {
   CommitmentKind,
   Farm,
+  FarmZoneKind,
   FarmStatus,
   LatLng,
   LivestockLine,
@@ -56,8 +60,10 @@ import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
 import { AnchorMap } from '../../components/AnchorMap'
 import { MapSplit } from '../../components/MapSplit'
+import type { MapMode } from '../../components/mapMode'
 import { ThreatPanel } from '../../components/ThreatPanel'
 import { AgreementActions } from '../../components/AgreementViewer'
+import { AreaGapNote } from '../../components/areaGap'
 import { zoneColor, zoneLabelKey } from '../../components/zones'
 import { Timeline } from '../../components/Timeline'
 import type { TimelineEntry } from '../../components/Timeline'
@@ -332,6 +338,43 @@ function livestockIcon(kind: LivestockLine['kind']): IconName {
   }
 }
 
+/**
+ * ★★ AD1 — LE CHIFFRE QU'UNE CARTE DE SURFACE MONTRE.
+ *
+ * La déclarée, ou la mesurée quand rien n'est déclaré (AD1.4). Un seul mot
+ * pour les deux cartes, pour qu'elles ne puissent pas répondre différemment à
+ * la même question.
+ */
+function areaFigure(farm: Farm, which: 'cultivated' | 'grazing'): number {
+  return effectiveAreas(farm)[which]
+}
+
+/**
+ * ★★ AD1 — LA LIGNE SOUS LE CHIFFRE : L'AUTRE SURFACE, OU SON ABSENCE.
+ *
+ * Trois phrases possibles et une seule est une note d'alerte — aucune, en
+ * fait : « אין תיחום » est une file de travail (AD3), pas un défaut, et « שטח
+ * מדוד » est la lecture normale d'une fiche que personne n'a encore déclarée.
+ * L'encre d'avertissement est réservée à l'écart lui-même, qui a son propre
+ * bloc au-dessus.
+ */
+function AreaNote({ farm, which }: { farm: Farm; which: 'cultivated' | 'grazing' }) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const declared = declaredAreas(farm)
+  const measured = measuredAreas(farm)
+  if (declared === null) {
+    /* Le chiffre affiché EST la mesure : on dit d'où il vient, et rien d'autre. */
+    return measured === null ? null : <>{t('farms.measuredArea')}</>
+  }
+  if (measured === null) return <>{t('farms.noOutline')}</>
+  return (
+    <>
+      {t('farms.measuredArea')} · {measured[which].toLocaleString(locale)}
+    </>
+  )
+}
+
 function KeyNumbers({
   farm,
   lastActivityAt,
@@ -381,24 +424,34 @@ function KeyNumbers({
         </div>
       </div>
 
+      {/**
+        * ═══════════════════════════════════════════════════════════════════
+        * ★★ AD1 — LES DEUX SURFACES, DANS LA MÊME BANDE ET SANS UNE CARTE DE
+        *    PLUS.
+        * ═══════════════════════════════════════════════════════════════════
+        *
+        * ★ LE CHIFFRE EST LA DÉCLARÉE, LA LIGNE DESSOUS EST LA MESURÉE. Deux
+        *   cartes de plus auraient été la lecture naïve, et elles auraient
+        *   coûté ce qu'AC a déjà payé une fois : la bande DÉFILE, et une
+        *   neuvième carte est une carte hors écran sur l'iPad du PO. Ici les
+        *   deux faits sont à un millimètre l'un de l'autre, ce qui est de
+        *   toute façon la bonne place pour deux chiffres qu'on compare.
+        *
+        * ★ ET QUAND IL N'Y EN A QU'UNE, ELLE SERT SEULE (AD1.4) : la carte
+        *   porte la mesurée et le dit, ou porte la déclarée et dit qu'il n'y
+        *   a pas de tracé. Aucune note d'alerte dans les deux cas — il n'y a
+        *   rien d'anormal à n'avoir pas encore mesuré.
+        */}
       <BandCard
         testId="band-farm-dunams"
         icon="landPlot"
         tint="bg-status-success/[0.12]"
         ink="text-status-success-ink"
-        figure={farm.farmDunams.toLocaleString(locale)}
+        figure={areaFigure(farm, 'cultivated').toLocaleString(locale)}
         label={t(
           entityKindOf(farm) === 'moshav' ? 'farms.farmAreaMoshav' : 'farms.farmArea',
         )}
-        /* G15 — the override is a VISIBLE fact, not a hidden flag; W6 gives
-           it the line under the label instead of the end of it. */
-        note={
-          farm.farmDunamsManual ? (
-            <span className="font-semibold text-status-warn-ink">
-              {t('zone.manualOverride')}
-            </span>
-          ) : undefined
-        }
+        note={<AreaNote farm={farm} which="cultivated" />}
       />
 
       <BandCard
@@ -406,15 +459,9 @@ function KeyNumbers({
         icon="wheat"
         tint="bg-status-warn/[0.14]"
         ink="text-status-warn-ink"
-        figure={farm.grazingDunams.toLocaleString(locale)}
+        figure={areaFigure(farm, 'grazing').toLocaleString(locale)}
         label={t('farms.grazingArea')}
-        note={
-          farm.grazingDunamsManual ? (
-            <span className="font-semibold text-status-warn-ink">
-              {t('zone.manualOverride')}
-            </span>
-          ) : undefined
-        }
+        note={<AreaNote farm={farm} which="grazing" />}
       />
 
       {/**
@@ -560,6 +607,10 @@ function FarmIdentity({ farm }: { farm: Farm }) {
       {/* AA2bis — before the pipeline, because it is the question that decides
           whether moving along that pipeline is safe. */}
       <LandRightWarning farm={farm} />
+      {/* ★★ AD2 — LA NOTE D'ÉCART, JUSTE SOUS L'AVERTISSEMENT DE DROIT AU SOL,
+          parce que les deux posent la même sorte de question : ce dossier
+          est-il en état d'être remis. Voir `components/areaGap.tsx`. */}
+      <AreaGapNote farm={farm} />
       <div className="mb-3 border-b border-edge-subtle pb-3">
         <StatusStepper status={farm.status} />
       </div>
@@ -573,11 +624,50 @@ function FarmIdentity({ farm }: { farm: Farm }) {
   )
 }
 
+/**
+ * ★★ AD3.3 — ET LA CARTE DOIT ÊTRE VISIBLE POUR QU'ON PUISSE TRACER DESSUS.
+ *
+ * La disposition carte/contenu est mémorisée par appareil (P0.1) et « מוסתר »
+ * est un choix légitime qu'un coordinateur peut avoir fait il y a des
+ * semaines. Arriver par la file « לתיחום » sur une carte en `display:none`
+ * serait un geste direct vers un outil invisible, ce qui est pire qu'un geste
+ * indirect. Une fois, à l'arrivée armée, et jamais autrement : ce n'est pas à
+ * cet écran de reprendre à quelqu'un une préférence qu'il a posée.
+ */
+function EnsureMapVisible({
+  armed,
+  mode,
+  setMode,
+}: {
+  armed: boolean
+  mode: MapMode
+  setMode: (next: MapMode) => void
+}) {
+  const done = useRef(false)
+  useEffect(() => {
+    if (!armed || done.current) return
+    done.current = true
+    if (mode === 'hidden') setMode('split')
+  }, [armed, mode, setMode])
+  return null
+}
+
 export function FarmDetailScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
   const navigate = useNavigate()
   const { farmId = '' } = useParams()
+  /**
+   * ★★ AD3.3 — `?draw=farm_boundary` : LA FILE « לתיחום » ARRIVE ICI ARMÉE.
+   *
+   * Lu une fois, et seules les deux valeurs qui sont des genres de zone sont
+   * acceptées : une URL bricolée ne doit pas pouvoir mettre la carte dans un
+   * mode qui n'existe pas.
+   */
+  const [searchParams] = useSearchParams()
+  const askedDraw = searchParams.get('draw')
+  const armZone: FarmZoneKind | null =
+    askedDraw === 'farm_boundary' || askedDraw === 'grazing_area' ? askedDraw : null
   // PO POINT 8 — one dialog for every deletion this screen offers.
   const del = useConfirmDelete()
 
@@ -723,6 +813,7 @@ export function FarmDetailScreen() {
       }
       onZoneRingChange={updateFarmZoneRing}
       onZoneDelete={(id) => del.ask('farmZone', id, () => deleteFarmZoneChecked(id))}
+      armZone={armZone}
     />
   )
 
@@ -743,6 +834,7 @@ export function FarmDetailScreen() {
       >
         {({ mode: mapMode, setMode: setMapMode }) => (
           <>
+          <EnsureMapVisible armed={armZone !== null} mode={mapMode} setMode={setMapMode} />
           <PageHeader
             title={farm.name}
             subtitle={`${farm.locality} · ${farm.region}`}

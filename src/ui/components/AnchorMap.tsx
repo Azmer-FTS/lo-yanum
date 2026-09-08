@@ -112,6 +112,21 @@ export interface AnchorMapProps {
   onThreatZoneCreate?: (ring: LatLng[]) => void
   onThreatVectorCreate?: (origin: LatLng, target: LatLng) => void
   selectedThreatId?: string | null
+  /**
+   * ★★ AD3.3 — OUVRIR DÉJÀ ARMÉ EN MODE TRACÉ.
+   *
+   * La file « לתיחום » amène ici pour une seule chose : dessiner un contour.
+   * Arriver sur une carte au repos et devoir retrouver le bon outil, c'est
+   * trois gestes de plus par ferme, multipliés par le nombre de fiches de la
+   * file — c'est-à-dire précisément ce que « sans repasser par la liste »
+   * demande d'éviter.
+   *
+   * ⚠️ ARMÉ UNE FOIS, PAS MAINTENU. Le mode est un état de la carte : le
+   *    réarmer à chaque rendu empêcherait de l'annuler avec Échap, et laisser
+   *    l'URL le redemander après un tracé terminé rouvrirait un outil que le
+   *    coordinateur vient de ranger.
+   */
+  armZone?: FarmZoneKind | null
 }
 
 /**
@@ -173,6 +188,7 @@ export function AnchorMap({
   onThreatZoneCreate,
   onThreatVectorCreate,
   selectedThreatId = null,
+  armZone = null,
 }: AnchorMapProps) {
   const { t } = useTranslation()
 
@@ -216,6 +232,16 @@ export function AnchorMap({
     zonesEditable && selectedZoneId
       ? (zones.find((z) => z.id === selectedZoneId) ?? null)
       : null
+
+  /* AD3.3 — armé une seule fois, à l'arrivée sur la fiche avec `?draw=…`. */
+  const armedRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!armZone || !zonesEditable) return
+    const key = `${farm.id}:${armZone}`
+    if (armedRef.current === key) return
+    armedRef.current = key
+    setMode({ kind: 'drawing', zone: armZone, draft: [] })
+  }, [armZone, farm.id, zonesEditable])
 
   useEffect(() => {
     if (mode.kind === 'idle' && !selectedZoneId) return

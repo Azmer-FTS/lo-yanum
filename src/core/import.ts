@@ -379,10 +379,11 @@ export function toVolunteerDrafts(
  * pushes the work back onto a spreadsheet, when dragging a pin on the farm's
  * own map takes four seconds. The badge is what makes the debt findable.
  *
- * Dunams come in as MANUAL: the number in the sheet is the farmer's own claim
- * and must not be silently overwritten the first time somebody draws a zone
- * (G15's `syncZoneDunams` respects the flag). Zero means "not stated", so it
- * is left automatic and the map will fill it in.
+ * Dunams come in as DÉCLARÉS (AD1): the number in the sheet is the farmer's
+ * own claim, it lands in the declared pair, and no polygon will ever touch it
+ * — the drawn ground has its own surface now. Zero means "not stated", so the
+ * flag stays absent and the fiche entre dans la file « à contourner » (AD3)
+ * plutôt que de déclarer zéro dounam.
  */
 export function toFarmDrafts(
   rows: ParsedRow[],

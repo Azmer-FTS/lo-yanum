@@ -218,19 +218,268 @@ export const WEIGHTED_DUNAM = {
  */
 export const WEIGHTED_DUNAM_TARGET = 100_000
 
-export interface HasAreas {
-  /** שטח מעובד (דונם). */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AD1 (2026-09-08) — DEUX SURFACES QUI COEXISTENT ET NE S'ÉCRASENT JAMAIS.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ *   « Une exploitation a désormais DEUX surfaces : la surface DÉCLARÉE — celle
+ *     du contrat, du fichier, ou saisie à la main — et la surface MESURÉE,
+ *     calculée par le polygone tracé sur la carte. Aucune des deux n'écrase
+ *     l'autre, jamais, dans aucun sens. »
+ *
+ * ★★ LA DÉCLARÉE EST STOCKÉE, LA MESURÉE EST DÉRIVÉE, ET C'EST TOUT LE
+ *    CORRECTIF G15.
+ *
+ *    Jusqu'ici il n'y avait qu'UN couple de champs et un drapeau `*Manual`
+ *    pour arbitrer qui avait le droit d'y écrire. Le défaut nommé en AC — et
+ *    laissé ouvert pour le PO — en découlait mécaniquement : l'export écrit la
+ *    surface de CHAQUE ligne, l'import relit un nombre non nul comme un
+ *    remplacement, donc une fiche dont les chiffres venaient de ses polygones
+ *    ramassait le drapeau au retour et cessait pour toujours de suivre son
+ *    contour. Ce n'était pas un bug d'implémentation : c'était une seule case
+ *    pour deux faits différents.
+ *
+ *    ⚠️ IL N'Y A PLUS DE CASE À RAMASSER. `farmDunams` / `grazingDunams` sont
+ *       la DÉCLARÉE, et rien qui vienne de la carte ne les touche. La MESURÉE
+ *       n'est pas un champ qu'un import pourrait atteindre : elle est
+ *       RECALCULÉE depuis `farmZones` à chaque mutation de polygone et à
+ *       chaque hydratation (`remeasureFarms`, core/store.ts). Un aller-retour
+ *       export/import complet ne peut donc pas la figer — il n'y a rien à
+ *       figer — et A109 le mesure exactement dans cet ordre.
+ *
+ * ★ QUAND UNE SEULE DES DEUX EXISTE, ELLE SERT SEULE (AD1.4). Pas de note, pas
+ *   d'alerte : une fiche sans polygone n'est pas en défaut, et une fiche dont
+ *   personne n'a déclaré la surface non plus. `effectiveAreas` est la lecture
+ *   « donne-moi LA surface » — la déclarée d'abord, la mesurée à défaut — et
+ *   c'est elle que la pondération, la surface gardée et les totaux lisent.
+ *
+ * ★ LA PONDÉRATION S'APPUIE SUR LA DÉCLARÉE (AD1.3), parce que c'est elle qui
+ *   figure au contrat remis à l'État. Le coefficient et le total ne bougent
+ *   pas d'un dounam : 800 / 100 / 220 (A110).
+ */
+
+/** AD1 — la surface déclarée : deux champs, toujours présents. */
+export interface HasDeclaredAreas {
+  /** שטח מעובד (דונם) — DÉCLARÉ. Zéro = personne n'a déclaré. */
   farmDunams: number
-  /** שטח מרעה (דונם). */
+  /** שטח מרעה (דונם) — DÉCLARÉ. */
   grazingDunams: number
 }
 
-/** AA3.1 — the one computation. Rounded, because a dunam is not divisible. */
+/**
+ * AD1 — la surface mesurée : dérivée des polygones, jamais persistée, jamais
+ * importée. Absente quand la ferme ne porte aucun contour de ce genre.
+ */
+export interface HasMeasuredAreas {
+  measuredFarmDunams?: number
+  measuredGrazingDunams?: number
+}
+
+export interface HasAreas extends HasDeclaredAreas, HasMeasuredAreas {}
+
+/** Un couple de surfaces et son total, en dounams entiers. */
+export interface AreaPair {
+  /** מעובד. */
+  cultivated: number
+  /** מרעה. */
+  grazing: number
+  /** La somme des deux — ce qu'on appelle « la surface » en une phrase. */
+  total: number
+}
+
+function pair(cultivated: number, grazing: number): AreaPair {
+  const c = Math.round(cultivated)
+  const g = Math.round(grazing)
+  return { cultivated: c, grazing: g, total: c + g }
+}
+
+const NO_AREAS: AreaPair = { cultivated: 0, grazing: 0, total: 0 }
+
+/**
+ * AD1 — la surface DÉCLARÉE, ou `null` quand personne n'a rien déclaré.
+ *
+ * ⚠️ ZÉRO N'EST PAS UNE DÉCLARATION, et c'est la même règle qu'AA4 et AC3 :
+ *    les 198 lignes du classeur du PO sont à 0/0 parce que personne n'est
+ *    encore allé mesurer, et lire cela comme « cette exploitation déclare
+ *    zéro dounam » ferait apparaître un écart de 100 % sur chacune d'elles le
+ *    jour où un contour est tracé.
+ */
+export function declaredAreas(farm: HasDeclaredAreas): AreaPair | null {
+  const c = Number.isFinite(farm.farmDunams) ? farm.farmDunams : 0
+  const g = Number.isFinite(farm.grazingDunams) ? farm.grazingDunams : 0
+  if (c <= 0 && g <= 0) return null
+  return pair(Math.max(c, 0), Math.max(g, 0))
+}
+
+/**
+ * AD1 — la surface MESURÉE, ou `null` quand aucun polygone n'est tracé.
+ *
+ * Un seul des deux genres suffit : une exploitation dont on a tracé le
+ * périmètre mais pas la zone de pâture EST mesurée, pour la moitié qui a un
+ * contour. Ce qui n'existe pas vaut zéro dans le couple, jamais « inconnu »,
+ * parce que le total est ce qu'on compare à la déclaration.
+ */
+export function measuredAreas(farm: HasMeasuredAreas): AreaPair | null {
+  const c = farm.measuredFarmDunams
+  const g = farm.measuredGrazingDunams
+  const hasC = Number.isFinite(c)
+  const hasG = Number.isFinite(g)
+  if (!hasC && !hasG) return null
+  return pair(hasC ? (c as number) : 0, hasG ? (g as number) : 0)
+}
+
+/**
+ * AD1.4 — LA surface, quand on n'en veut qu'une : la déclarée, ou la mesurée
+ * quand rien n'est déclaré, ou zéro quand il n'y a ni l'une ni l'autre.
+ */
+export function effectiveAreas(farm: HasAreas): AreaPair {
+  return declaredAreas(farm) ?? measuredAreas(farm) ?? NO_AREAS
+}
+
+/**
+ * AD3.1 — une exploitation qui porte une surface déclarée mais AUCUN polygone.
+ * C'est une file de travail (« à contourner »), pas une alerte.
+ */
+export function needsOutline(farm: HasAreas): boolean {
+  return declaredAreas(farm) !== null && measuredAreas(farm) === null
+}
+
+/**
+ * AA3.1 — la pondération. Rounded, because a dunam is not divisible.
+ *
+ * AD1.3 — sur la DÉCLARÉE, avec la mesurée pour seule doublure quand rien
+ * n'est déclaré (AD1.4). Les coefficients sont inchangés.
+ */
 export function weightedDunams(farm: HasAreas): number {
+  const areas = effectiveAreas(farm)
   const raw =
-    farm.farmDunams * WEIGHTED_DUNAM.cultivated +
-    farm.grazingDunams * WEIGHTED_DUNAM.grazing
+    areas.cultivated * WEIGHTED_DUNAM.cultivated +
+    areas.grazing * WEIGHTED_DUNAM.grazing
   return Math.round(raw)
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AD2 (2026-09-08) — LA NOTE D'ÉCART, ET POURQUOI C'EST UN GARDE-FOU.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ *   « Un agriculteur qui déclare 1 200 dounams dont le contour en fait 800, il
+ *     faut le savoir AVANT de remettre le dossier à l'État. »
+ *
+ * ★ DIX POUR CENT, ET C'EST UNE CONSTANTE NOMMÉE (AD2.3), réglable dans les
+ *   réglages — même forme qu'AB5a pour le יעד et qu'AC4.5 pour le seuil
+ *   d'oubli : la constante est la valeur INITIALE, `ui/settings/areaGap.ts`
+ *   porte la surcharge du coordinateur, et « חזרה לערך ההתחלתי » revient ici.
+ *
+ * ★ POURQUOI DIX. En dessous, on mesure la main qui a tracé : un contour suivi
+ *   au doigt sur une tablette dans un pick-up est à quelques pour cent du
+ *   cadastre, et une note qui s'allume à 3 % est une note que le coordinateur
+ *   apprend à ne plus lire. Au-delà de dix, la différence ne s'explique plus
+ *   par le tracé : il manque une parcelle, ou le chiffre déclaré est celui de
+ *   la localité entière. C'est exactement la question qu'il faut poser avant
+ *   de signer.
+ *
+ * ⚠️ L'ÉCART EST RAPPORTÉ À LA DÉCLARÉE, PAS À LA PLUS GRANDE DES DEUX. C'est
+ *    le chiffre que le PO signe ; « votre déclaration dépasse le contour d'un
+ *    tiers » est la phrase qui a un sens devant l'État, et rapporter à la
+ *    mesurée ferait dire à la même paire 1200/800 tantôt 33 % tantôt 50 %
+ *    selon le sens de lecture.
+ */
+export const AREA_GAP_THRESHOLD_INITIAL = 0.1
+
+/** AD2.1 — ce que la note affiche : les deux valeurs, l'écart, le sens. */
+export interface AreaGap {
+  declared: AreaPair
+  measured: AreaPair
+  /** measured − declared, signé : négatif = le contour est plus petit. */
+  deltaDunams: number
+  /** |delta| / declared.total, en fraction (0,33 = 33 %). */
+  ratio: number
+  /** `'short'` = le tracé est plus petit que la déclaration. */
+  direction: 'short' | 'over'
+}
+
+/**
+ * AD2 — l'écart entre les deux surfaces, ou `null` quand il n'y a rien à dire :
+ * une seule des deux existe (AD1.4), ou l'écart est sous le seuil (AD2/A113),
+ * ou le coordinateur a déjà tranché pour ces deux valeurs-là (AD2.2).
+ */
+export function areaGap(
+  farm: HasAreas & HasGapDecision,
+  threshold: number = AREA_GAP_THRESHOLD_INITIAL,
+): AreaGap | null {
+  const declared = declaredAreas(farm)
+  const measured = measuredAreas(farm)
+  if (declared === null || measured === null) return null
+  if (declared.total <= 0) return null
+  const deltaDunams = measured.total - declared.total
+  const ratio = Math.abs(deltaDunams) / declared.total
+  const limit = Number.isFinite(threshold) && threshold > 0
+    ? threshold
+    : AREA_GAP_THRESHOLD_INITIAL
+  if (ratio <= limit) return null
+  if (gapAccepted(farm, declared.total, measured.total)) return null
+  return {
+    declared,
+    measured,
+    deltaDunams,
+    ratio,
+    direction: deltaDunams < 0 ? 'short' : 'over',
+  }
+}
+
+/**
+ * AD2.2 — « garder le chiffre déclaré » : la note se tait POUR CETTE FICHE
+ * jusqu'à ce que l'un des deux change à nouveau.
+ *
+ * ★ CE QUI EST ENREGISTRÉ EST LA PAIRE DE VALEURS, PAS UNE DATE NI UN BOOLÉEN.
+ *   Un booléen « ignoré » serait une décision prise une fois pour toutes sur
+ *   une fiche dont le contour peut être redessiné demain, et c'est précisément
+ *   le cas où la note doit revenir. Comparer la paire répond à « est-ce la
+ *   même divergence que celle qu'il a tranchée » sans horloge et sans ordre
+ *   d'événements.
+ */
+export interface HasGapDecision {
+  /** Le total DÉCLARÉ au moment où le coordinateur a gardé son chiffre. */
+  areaGapAcceptedDeclared?: number | null
+  /** Le total MESURÉ au même moment. */
+  areaGapAcceptedMeasured?: number | null
+}
+
+function gapAccepted(
+  farm: HasGapDecision,
+  declaredTotal: number,
+  measuredTotal: number,
+): boolean {
+  const d = farm.areaGapAcceptedDeclared
+  const m = farm.areaGapAcceptedMeasured
+  if (!Number.isFinite(d as number) || !Number.isFinite(m as number)) return false
+  return Math.round(d as number) === declaredTotal && Math.round(m as number) === measuredTotal
+}
+
+/**
+ * AD2.5 — y a-t-il quelque chose à signaler sur cette fiche ? Le signal
+ * discret de la liste et du tableau, et le filtre de l'écran חוות, posent
+ * cette question-là et pas une autre.
+ */
+export function hasAreaGap(
+  farm: HasAreas & HasGapDecision,
+  threshold?: number,
+): boolean {
+  return areaGap(farm, threshold) !== null
+}
+
+/**
+ * AD2.6 — de quoi trier « par écart ». Zéro quand il n'y a pas de note, pour
+ * que l'ordre place les fiches concernées en tête et laisse les autres
+ * derrière sans les mélanger.
+ */
+export function areaGapRatio(
+  farm: HasAreas & HasGapDecision,
+  threshold?: number,
+): number {
+  return areaGap(farm, threshold)?.ratio ?? 0
 }
 
 /**
@@ -267,7 +516,10 @@ export function guardedDunamsOf(farm: HasGuardedArea): number {
   if (farm.guardedDunamsManual && Number.isFinite(farm.guardedDunams)) {
     return Math.round(farm.guardedDunams as number)
   }
-  return Math.round(farm.farmDunams + farm.grazingDunams)
+  /* AD1.4 — le défaut est LA surface, c'est-à-dire la déclarée, ou la mesurée
+     quand rien n'est déclaré. Une fiche dont le seul chiffre vient d'un
+     polygone déclare donc garder ce que le polygone dit, et le suit. */
+  return effectiveAreas(farm).total
 }
 
 /** Is this farm's guarded area the default, or a figure somebody typed? */

@@ -1,4 +1,4 @@
-import { LAND_AGREEMENT_OPTIONS, LEGAL_ENTITY_OPTIONS, normaliseValue, optionLabel, readOption } from './fields'
+import { LAND_AGREEMENT_OPTIONS, LEGAL_ENTITY_OPTIONS, effectiveAreas, normaliseValue, optionLabel, readOption } from './fields'
 import { ASSOCIATION_INDEX, planProspection } from './prospection'
 import type { ProspectionPatch, ProspectionPlan, ProspectionRow } from './prospection'
 import type { Farm, LatLng } from './types'
@@ -407,8 +407,11 @@ const SOURCE: Record<AssociationSource, (input: AssociationInput) => string> = {
   contactPhone: ({ farm }) => farm.farmerPhone ?? primaryContact(farm)?.phone ?? '',
   landAgreementKind: ({ farm }) =>
     optionLabel(farm.landAgreement, LAND_AGREEMENT_OPTIONS),
-  grazingDunams: ({ farm }) => String(farm.grazingDunams),
-  cultivatedDunams: ({ farm }) => String(farm.farmDunams),
+  /* AD1.4 — la déclarée, ou la mesurée à défaut. Même règle que le format de
+     prospection, et pour la même raison : un fichier moins renseigné que
+     l'écran qui l'a produit est un fichier qu'il faut recompléter à la main. */
+  grazingDunams: ({ farm }) => String(effectiveAreas(farm).grazing),
+  cultivatedDunams: ({ farm }) => String(effectiveAreas(farm).cultivated),
   /* AC3.3 — the declared guarded area; see `guardedDunamsOf` in fields.ts. */
   guardedDunams: ({ guardedDunams }) =>
     guardedDunams === null ? '' : String(guardedDunams),

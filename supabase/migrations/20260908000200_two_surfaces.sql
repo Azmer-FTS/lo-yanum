@@ -1,0 +1,33 @@
+-- ===========================================================================
+-- AD1 · AD2 — DEUX SURFACES QUI COEXISTENT, ET UNE DIVERGENCE QUI SE TRANCHE.
+-- ===========================================================================
+--
+-- La décision du PO : une exploitation porte une surface DÉCLARÉE — le
+-- contrat, le fichier, la saisie — et une surface MESURÉE, calculée par le
+-- polygone tracé sur la carte. Aucune des deux n'écrase l'autre.
+--
+-- ★★ ET LA MESURÉE N'A PAS DE COLONNE ICI, VOLONTAIREMENT.
+--
+--    C'est le correctif du défaut G15 nommé en AC et laissé ouvert. Elle est
+--    RECALCULÉE depuis `farm_zones` à chaque hydratation et à chaque mutation
+--    de polygone (`remeasureFarms`, src/core/store.ts). Lui donner une colonne
+--    rouvrirait exactement le chemin qu'AD1 ferme : un jeu de données arrivé
+--    d'ailleurs — un export réimporté, un cache d'un autre jour — pourrait
+--    écrire une mesure qui ne vient pas du contour, et la fiche cesserait de
+--    suivre son polygone.
+--
+-- Ce que la base doit retenir, en revanche, est la DÉCISION du coordinateur
+-- quand les deux divergent de plus du seuil : « je garde mon chiffre déclaré ».
+-- Elle est enregistrée comme la PAIRE de totaux sur laquelle elle a été prise,
+-- pas comme un booléen — voir `areaGap` dans src/core/fields.ts : la note doit
+-- revenir dès que l'une des deux valeurs rechange, et un booléen la ferait
+-- taire pour toujours sur une fiche dont le contour sera redessiné demain.
+--
+-- ADDITIF : aucune colonne supprimée, aucune politique modifiée. Un client
+-- plus ancien lit et écrit `entities` exactement comme avant.
+-- ===========================================================================
+
+-- ⚠️ UNE INSTRUCTION PAR COLONNE — le lecteur de schéma de `bun run mapping`
+--    analyse `alter table … add column` une colonne à la fois.
+alter table entities add column if not exists area_gap_declared integer;
+alter table entities add column if not exists area_gap_measured integer;

@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
-import { entityKindOf, formatDate, totalHeads } from '@core/index'
+import { effectiveAreas, entityKindOf, formatDate, totalHeads } from '@core/index'
 import type { Farm } from '@core/index'
 
 import { Avatar } from './Avatar'
@@ -92,7 +92,7 @@ export function EntityQuickCard({
       <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-edge-subtle pt-3">
         {figure(
           'landPlot',
-          t('farms.kpiDunams', { n: farm.farmDunams.toLocaleString(locale) }),
+          t('farms.kpiDunams', { n: effectiveAreas(farm).cultivated.toLocaleString(locale) }),
           t(moshav ? 'farms.farmAreaMoshav' : 'farms.farmArea'),
           'text-status-success-ink',
         )}

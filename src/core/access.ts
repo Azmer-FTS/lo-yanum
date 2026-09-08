@@ -1,6 +1,6 @@
 import { DAY, addDays, fromDayKey, isTonight, localDayKey, now } from './clock'
 import type { AssociationInput } from './association'
-import { guardedDunamsOf, weightedDunams } from './fields'
+import { effectiveAreas, guardedDunamsOf, weightedDunams } from './fields'
 import { positionOfLocality } from './geo'
 import { farmRegion, regionOfLocality } from './regions'
 import type { RegionId } from './regions'
@@ -301,7 +301,8 @@ export function getDunamKpis(): DunamKpis {
   // AA3.2 — the same set as `guardedDunams`, weighted. See `DunamKpis`.
   let weightedSigned = 0
   for (const f of getVisibleFarms()) {
-    const dunams = f.farmDunams + f.grazingDunams
+    /* AD1.4 — « la » surface : déclarée d'abord, mesurée à défaut. */
+    const dunams = effectiveAreas(f).total
     if (guarded.includes(f.status)) {
       guardedDunams += dunams
       weightedSigned += weightedDunams(f)

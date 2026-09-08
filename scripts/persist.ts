@@ -68,6 +68,8 @@ import {
   setSession,
   updateAnchorPoint,
   updateDriver,
+  alignDeclaredToOutline,
+  keepDeclaredArea,
   updateFarm,
   updateFarmVisit,
   updateFarmZoneRing,
@@ -402,6 +404,19 @@ const farmDraft = () => {
   }
 }
 emits('updateFarm', () => updateFarm(farmId, farmDraft()), [['farms', farmId]])
+
+/**
+ * ★★ AD2.2 — LES DEUX GESTES DE LA NOTE D'ÉCART, ET ILS ÉCRIVENT TOUS DEUX LA
+ *    FICHE.
+ *
+ * `keepDeclaredArea` d'abord : il enregistre la paire tranchée, donc la ferme
+ * part avec une décision en mémoire ; `alignDeclaredToOutline` ensuite, qui
+ * remplace la déclarée par la mesurée ET efface cette décision. Dans cet ordre
+ * les deux émettent, et la fiche revient à un état où la note n'a plus rien à
+ * dire — ce qui est exactement ce que le PO attend du second bouton.
+ */
+emits('keepDeclaredArea', () => keepDeclaredArea(farmId), [['farms', farmId]])
+emits('alignDeclaredToOutline', () => alignDeclaredToOutline(farmId), [['farms', farmId]])
 
 let createdFarmId = ''
 emits(

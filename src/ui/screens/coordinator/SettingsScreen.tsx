@@ -11,6 +11,7 @@ import { readReportRecipient, writeReportRecipient } from '../../report/recipien
 import { AgreementTemplateSection } from '../../settings/AgreementTemplateSection'
 import { DisplaySection, RegionsEditSection } from '../../settings/DisplaySection'
 import { DemoDataSection } from '../../settings/DemoDataSection'
+import { AreaGapSection } from '../../settings/AreaGapSection'
 import { CoverageSection } from '../../settings/CoverageSection'
 import { TargetSection } from '../../settings/TargetSection'
 import { ViewAsSection } from '../../settings/ViewAsSection'
@@ -206,6 +207,9 @@ export function SettingsScreen() {
       {/* AC4.5 — le seuil d'oubli, juste sous l'objectif : les deux disent au
           coordinateur ce que le programme attend de lui ce mois-ci. */}
       <CoverageSection />
+      {/* AD2.3 — le seuil d'écart, à côté du seuil d'oubli : deux réglages qui
+          décident tous les deux quand une fiche se met à parler. */}
+      <AreaGapSection />
 
       {/* ★★ Y2.1 — the door to the region editor. Above the offline block on
           purpose: it is a decision about the programme, not about this

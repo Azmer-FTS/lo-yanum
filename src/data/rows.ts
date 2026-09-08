@@ -191,6 +191,18 @@ const farmMapping: Mapping<Farm> = {
           umbrella_org: f.umbrella ?? null,
           guarded_dunams: f.guardedDunams ?? null,
           guarded_dunams_manual: f.guardedDunamsManual ?? false,
+          /**
+           * ★★ AD2.2 — LA DIVERGENCE QUE LE COORDINATEUR A TRANCHÉE, comme la
+           *    PAIRE de totaux sur laquelle il l'a tranchée.
+           *
+           * ⚠️ ET LA SURFACE MESURÉE N'A PAS DE COLONNE, EXPRÈS (AD1). Elle est
+           *    recalculée depuis `farm_zones` à chaque hydratation
+           *    (`remeasureFarms`, core/store.ts) ; lui donner une colonne
+           *    rouvrirait le seul chemin par lequel un jeu de données arrivé
+           *    d'ailleurs pourrait la figer, qui est le défaut G15 lui-même.
+           */
+          area_gap_declared: f.areaGapAcceptedDeclared ?? null,
+          area_gap_measured: f.areaGapAcceptedMeasured ?? null,
           signature: f.signature ?? null,
           signature_missing: f.signatureMissing ?? false,
           signature_origin: f.signatureOrigin ? JSON.stringify(f.signatureOrigin) : null,
@@ -365,6 +377,10 @@ const farmMapping: Mapping<Farm> = {
        two is what a record that has never been answered for actually holds —
        which is what keeps `bun run mapping`'s round trip an identity. */
     guardedDunamsManual: p.guarded_dunams_manual === true ? true : undefined,
+    /* AD2.2 — absentes tant que personne n'a tranché ; `areaGap` lit les deux
+       ensemble et n'accepte que la paire complète. */
+    areaGapAcceptedDeclared: optNum(p.area_gap_declared),
+    areaGapAcceptedMeasured: optNum(p.area_gap_measured),
     // AA5 — the imported signature and where it came from.
     signature: optStr(p.signature),
     signatureMissing: p.signature_missing === true ? true : undefined,

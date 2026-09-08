@@ -1,3 +1,4 @@
+import { effectiveAreas } from './fields'
 import { positionOfLocality } from './geo'
 import type { LatLng, RegionId } from './types'
 
@@ -437,7 +438,8 @@ export function dunamsByRegion(
   for (const farm of farms) {
     const id = farmRegion(farm)
     const cell = totals.get(id) ?? { dunams: 0, count: 0 }
-    cell.dunams += farm.farmDunams + farm.grazingDunams
+    /* AD1.4 — la déclarée, ou la mesurée quand rien n'est déclaré. */
+    cell.dunams += effectiveAreas(farm).total
     cell.count += 1
     totals.set(id, cell)
   }

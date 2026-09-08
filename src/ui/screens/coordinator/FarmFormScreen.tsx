@@ -94,43 +94,54 @@ const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed']
  * areas → status → notes. Saving writes to the mock store, so the change is
  * visible everywhere for the rest of the session.
  */
-/** G15 — the provenance line under a dunam field: override chip + the way
- *  back to the zone sum, or the sum's name when it is the live source. */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AD1 (2026-09-08) — LA LIGNE SOUS UN CHAMP DE SURFACE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * G15 écrivait ici « מוזן ידנית » avec un chemin de retour vers la somme des
+ * zones, parce que le champ et le polygone se disputaient UNE case. Ils ne se
+ * la disputent plus : ce champ est la surface DÉCLARÉE, le polygone a la
+ * sienne, et aucun des deux n'écrase l'autre.
+ *
+ * ★ CE QUI RESTE À DIRE EST DONC L'AUTRE CHIFFRE, et un geste pour l'adopter
+ *   si le coordinateur le veut — « יישור לפי התיחום », le même mot que sur la
+ *   note d'écart, parce que c'est le même geste. Il REMPLIT le champ ; il ne
+ *   l'enregistre pas : c'est le bouton שמור qui décide, comme partout ailleurs
+ *   sur cet écran.
+ *
+ * ★ ET QUAND IL N'Y A PAS DE TRACÉ, ON LE DIT. « אין תיחום » est ce qui met
+ *   cette exploitation dans la file AD3, et c'est la seule chose que le
+ *   coordinateur ait besoin de savoir en regardant ce champ.
+ */
 function DunamSourceRow({
-  manual,
-  autoSum,
-  onAuto,
+  typed,
+  measured,
+  onAdopt,
 }: {
-  manual: boolean
-  autoSum: number | null
-  onAuto: (sum: number) => void
+  typed: string
+  measured: number | null
+  onAdopt: (sum: number) => void
 }) {
   const { t } = useTranslation()
-  if (manual) {
-    return (
-      <div className="mt-1 flex flex-wrap items-center gap-2">
-        <span className="chip bg-status-warn/15 text-status-warn-ink">
-          {t('zone.manualOverride')}
-        </span>
-        {autoSum !== null && (
-          <button
-            type="button"
-            onClick={() => onAuto(autoSum)}
-            className="text-micro font-semibold text-accent-ink hover:underline"
-          >
-            {t('zone.backToAuto')} (
-            <span className="numeric ltr-nums">{autoSum}</span>)
-          </button>
-        )}
-      </div>
-    )
-  }
-  if (autoSum === null) return null
+  if (measured === null) return <p className="muted mt-1">{t('farms.noOutline')}</p>
+  const same = Math.round(Number(typed)) === measured
   return (
-    <p className="muted mt-1">
-      {t('zone.autoFromZones')} ·{' '}
-      <span className="numeric ltr-nums">{autoSum}</span>
-    </p>
+    <div className="mt-1 flex flex-wrap items-center gap-2">
+      <span className="muted">
+        {t('farms.measuredArea')} ·{' '}
+        <span className="numeric ltr-nums">{measured}</span>
+      </span>
+      {!same && (
+        <button
+          type="button"
+          onClick={() => onAdopt(measured)}
+          className="text-micro font-semibold text-accent-ink hover:underline"
+        >
+          {t('farms.gapAlign')}
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -391,8 +402,13 @@ export function FarmFormScreen() {
       grazingDunams: Number.isFinite(num(grazingDunams))
         ? num(grazingDunams)
         : 0,
-      farmDunamsManual: farmManual,
-      grazingDunamsManual: grazingManual,
+      /* ★ AD1.5 — LE DRAPEAU NE SE POSE JAMAIS SUR UN ZÉRO, ici comme à
+         l'import et comme sur שטחים שמירה. Un zéro saisi est « je n'ai pas ce
+         chiffre », pas « cette exploitation déclare zéro dounam » — et une
+         fiche figée à zéro est une fiche qui ne peut plus jamais être
+         renseignée. C'est le piège d'AA4, rappelé en AC3 et redemandé en AD1. */
+      farmDunamsManual: farmManual && num(farmDunams) > 0,
+      grazingDunamsManual: grazingManual && num(grazingDunams) > 0,
       /* AC3.2 — the flag never lands on a zero. See the note on the state. */
       guardedDunams: Number.isFinite(num(guardedDunams)) ? num(guardedDunams) : 0,
       guardedDunamsManual: guardedManual && num(guardedDunams) > 0,
@@ -767,9 +783,10 @@ export function FarmFormScreen() {
         </FormSection>
 
         <FormSection title={t('form.sectionAreas')}>
-          {/* G15 — each field says where its number comes from: typed values
-              wear the "מוזן ידנית" chip and can be handed back to the zone
-              sum; automatic values name their source. */}
+          {/* ★★ AD1 — CES DEUX CHAMPS SONT LA SURFACE **DÉCLARÉE**. La ligne
+              sous chacun donne ce que le contour mesure, et un geste pour
+              l'adopter ; enregistrer ne touche jamais au polygone, et
+              redessiner le polygone ne touchera jamais à ces deux champs. */}
           <div>
             <TextField
               label={t('form.farmArea')}
@@ -782,10 +799,10 @@ export function FarmFormScreen() {
               ltr
             />
             <DunamSourceRow
-              manual={farmManual}
-              autoSum={zoneSum('farm_boundary')}
-              onAuto={(sum) => {
-                setFarmManual(false)
+              typed={farmDunams}
+              measured={zoneSum('farm_boundary')}
+              onAdopt={(sum) => {
+                setFarmManual(sum > 0)
                 setFarmHectares(String(sum))
               }}
             />
@@ -802,10 +819,10 @@ export function FarmFormScreen() {
               ltr
             />
             <DunamSourceRow
-              manual={grazingManual}
-              autoSum={zoneSum('grazing_area')}
-              onAuto={(sum) => {
-                setGrazingManual(false)
+              typed={grazingDunams}
+              measured={zoneSum('grazing_area')}
+              onAdopt={(sum) => {
+                setGrazingManual(sum > 0)
                 setGrazingHectares(String(sum))
               }}
             />

@@ -3,6 +3,7 @@ import {
   FARM_TYPE_OPTIONS,
   LAND_AGREEMENT_OPTIONS,
   LEGAL_ENTITY_OPTIONS,
+  effectiveAreas,
   guardedDunamsOf,
   normaliseValue,
   optionLabel,
@@ -1168,10 +1169,18 @@ function prospectionCell(
     case 'estimate':
       // AA4.6 · AC2.3 — never stored, never invented. See the note above.
       return ''
+    /**
+     * ★★ AD1.4 — LA SURFACE QUE LE FICHIER PORTE EST « LA » SURFACE : la
+     *    déclarée, ou la mesurée quand rien n'est déclaré. Écrire une cellule
+     *    vide pour une exploitation dont l'app connaît le contour serait
+     *    remettre à l'État un dossier moins renseigné que l'écran qui l'a
+     *    produit. Le retour n'en fait pas une déclaration pour autant : voir
+     *    `withoutRestatedMeasure` dans core/store.ts.
+     */
     case 'cultivated':
-      return String(farm.farmDunams)
+      return String(effectiveAreas(farm).cultivated)
     case 'grazing':
-      return String(farm.grazingDunams)
+      return String(effectiveAreas(farm).grazing)
     case 'weighted':
       return String(weightedDunams(farm))
     case 'landAgreement':

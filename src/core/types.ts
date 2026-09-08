@@ -250,17 +250,65 @@ export interface Farm {
    * (core/fields.ts) files it by the farm's type and refuses to guess for a
    * mixed holding.
    */
+  /**
+   * ★★ AD1 (2026-09-08) — ET C'EST DÉSORMAIS LA SURFACE **DÉCLARÉE**, la
+   * seule qu'un contrat, un fichier ou une saisie remplissent. Le tracé a la
+   * sienne (`measuredFarmDunams`) et les deux ne s'écrasent jamais.
+   */
   farmDunams: number
-  /** AA2 — שטח מרעה (דונם). Weighted at 1/50; see `WEIGHTED_DUNAM`. */
+  /**
+   * AA2 — שטח מרעה (דונם). Weighted at 1/50; see `WEIGHTED_DUNAM`.
+   * AD1 — DÉCLARÉE, comme sa voisine.
+   */
   grazingDunams: number
   /**
-   * G15 — true when the coordinator TYPED the value ("מוזן ידנית"); false or
-   * absent means the number is the zone sum and the store keeps it in sync
-   * with the drawn polygons (see syncZoneDunams). Optional so fixtures and
-   * imports predating the flag stay valid — absent reads as automatic.
+   * G15 → ★★ AD1 (2026-09-08) — LE DRAPEAU NE GARDE PLUS UNE PORTE, IL DIT
+   * D'OÙ VIENT LE CHIFFRE.
+   *
+   * Il servait à empêcher les polygones d'écraser une saisie. Depuis AD1 les
+   * polygones n'écrivent plus JAMAIS ici — ils alimentent `measuredFarmDunams`
+   * / `measuredGrazingDunams`, qui sont une autre surface — donc il n'y a plus
+   * rien à protéger. Ce qu'il reste à dire est « ce chiffre a été saisi ou
+   * réclamé par quelqu'un », qui se lit sur la fiche et qui est ce que
+   * l'export et le formulaire posent.
+   *
+   * ⚠️ ET IL NE SE POSE TOUJOURS JAMAIS SUR UN ZÉRO (AD1.5, AA4, AC3). Un
+   *    classeur de 198 zéros est un classeur où personne n'a encore mesuré, et
+   *    un drapeau posé là déclarerait 198 exploitations à zéro dounam.
    */
   farmDunamsManual?: boolean
   grazingDunamsManual?: boolean
+  /**
+   * ★★ AD1 (2026-09-08) — LA SURFACE MESURÉE, DÉRIVÉE DES POLYGONES.
+   *
+   *   « la surface mesurée continue de suivre son polygone : si le PO
+   *     redessine le contour, elle se recalcule. »
+   *
+   * ★ ELLE N'EST NI PERSISTÉE NI IMPORTÉE, ET C'EST LE CORRECTIF LUI-MÊME.
+   *   `remeasureFarms` (core/store.ts) la recalcule depuis `farmZones` à
+   *   chaque mutation de polygone, à chaque hydratation et à chaque reset ;
+   *   `data/rows.ts` ne l'écrit dans aucune colonne et n'en lit aucune. Il n'y
+   *   a donc aucun chemin par lequel un fichier déposé pourrait la figer —
+   *   c'est le défaut G15 nommé en AC, et il disparaît parce que la case qu'il
+   *   ramassait n'existe plus.
+   *
+   * ★ ABSENTE = AUCUN CONTOUR DE CE GENRE. Effacer le dernier polygone rend le
+   *   champ absent plutôt que zéro : « il n'y a pas de tracé » et « le tracé
+   *   fait zéro dounam » ne sont pas la même phrase, et c'est la première qui
+   *   met l'exploitation dans la file AD3.
+   */
+  measuredFarmDunams?: number
+  measuredGrazingDunams?: number
+  /**
+   * ★★ AD2.2 — « GARDER LE CHIFFRE DÉCLARÉ », ENREGISTRÉ COMME UNE PAIRE.
+   *
+   * Les deux totaux au moment où le coordinateur a tranché. La note se tait
+   * tant que les deux sont inchangés et revient dès que l'un bouge — voir
+   * `areaGap` dans core/fields.ts pour pourquoi ce n'est ni un booléen ni une
+   * date.
+   */
+  areaGapAcceptedDeclared?: number | null
+  areaGapAcceptedMeasured?: number | null
   contacts: FarmContact[]
   commitments: FarmCommitment[]
   /**

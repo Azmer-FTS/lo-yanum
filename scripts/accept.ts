@@ -9,6 +9,7 @@ import {
   buildKosherMessage,
   buildSmartphoneMessage,
   createFarmVisit,
+  effectiveAreas,
   entityKindOf,
   createMission,
   defaultThemeFor,
@@ -359,8 +360,12 @@ section('A52 — the dashboard dunam KPIs recompute from the mocks')
 {
   as(COORD)
   const farms = getVisibleFarms()
+  /* ★ AD1.4 — « la » surface d'une fiche est la DÉCLARÉE, ou la MESURÉE quand
+     rien n'est déclaré. Depuis AD1 les fixtures portent les deux (leurs
+     chiffres estimés ET leurs polygones), et additionner les champs bruts
+     compterait la déclarée d'une fiche mesurée-seulement à zéro. */
   const sum = (list: typeof farms) =>
-    list.reduce((s, f) => s + f.farmDunams + f.grazingDunams, 0)
+    list.reduce((s, f) => s + effectiveAreas(f).total, 0)
   const guarded = sum(farms.filter((f) => f.status === 'signed' || f.status === 'active'))
   const potential = sum(
     farms.filter((f) => f.status !== 'signed' && f.status !== 'active' && f.status !== 'declined'),
@@ -414,15 +419,25 @@ section('A54 — geodesic dunam area is right, and the store keeps fields in syn
         .filter((z) => z.kind === kind)
         .reduce((s, z) => s + ringAreaDunams(z.ring), 0),
     )
+  /* ★★ AD1 — LA RÈGLE A CHANGÉ ET C'EST LA DÉCISION DU PO. Le polygone ne
+     remplit plus le chiffre de la fiche : il remplit la surface MESURÉE, qui
+     est un second fait à côté du premier. Ce qui est vérifié ici est donc que
+     la mesure EST la somme des anneaux — et que la déclarée, elle, n'a pas
+     bougé d'un dounam. */
   check(
-    'a farm with zones carries the zone sum as its dunams',
-    farm01.farmDunams === sumOf('farm-01', 'farm_boundary') &&
-      farm01.grazingDunams === sumOf('farm-01', 'grazing_area'),
+    'a farm with zones carries the zone sum as its MEASURED surface',
+    farm01.measuredFarmDunams === sumOf('farm-01', 'farm_boundary') &&
+      farm01.measuredGrazingDunams === sumOf('farm-01', 'grazing_area'),
+    `${String(farm01.measuredFarmDunams)} / ${String(farm01.measuredGrazingDunams)}`,
+  )
+  check(
+    'and its DECLARED surface is untouched by the drawing',
+    farm01.farmDunams === 420 && farm01.grazingDunams === 3100,
     `${farm01.farmDunams} / ${farm01.grazingDunams}`,
   )
   const farm08 = getVisibleFarms().find((f) => f.id === 'farm-08')!
   check(
-    'a manual override (מוזן ידנית) survives the sync',
+    'a hand-entered figure (מוזן ידנית) is what it always was',
     farm08.grazingDunamsManual === true && farm08.grazingDunams === 3900,
     `${farm08.grazingDunams}`,
   )
@@ -438,9 +453,9 @@ section('A55 — moshavim are entities with the same mechanics')
   const retamim = moshavim.find((m) => m.id === 'farm-13')!
   check('a moshav carries drawn ground like a farm', getFarmZonesForFarm('farm-13').length === 2)
   check(
-    'its dunams auto-fill from the zones like a farm',
-    retamim.farmDunams > 0 && retamim.grazingDunams > 0,
-    `${retamim.farmDunams} / ${retamim.grazingDunams}`,
+    'its MEASURED surface comes from the zones like a farm (AD1)',
+    (retamim.measuredFarmDunams ?? 0) > 0 && (retamim.measuredGrazingDunams ?? 0) > 0,
+    `${String(retamim.measuredFarmDunams)} / ${String(retamim.measuredGrazingDunams)}`,
   )
   // The adjacency the four tints exist for: the moshav's grazing reaches
   // west to where חוות רתם's grazing ends (~34.672°E).

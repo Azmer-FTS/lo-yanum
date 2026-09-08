@@ -46,6 +46,9 @@ export {
   setCommitmentFulfilled,
   createFarm,
   updateFarm,
+  // AD2.2 — les deux gestes de la note d'écart.
+  alignDeclaredToOutline,
+  keepDeclaredArea,
   // PO POINT 8 — the deletions, every one of them refusal-aware.
   deleteFarm,
   deleteVolunteer,
