@@ -224,21 +224,25 @@ try {
    *    So this reads the count rather than demanding a fixed number.
    */
   await open(page, '#/coordinator/farms')
+  /* ⚠️ IT IS A KPI CHIP AND NOT A FILTER PILL — see the note at its call site
+     and the A86 finding that moved it. So the count is the card's FIGURE and
+     the threshold is the card's third line, not a `.filter-count` and a
+     `title` attribute. */
   const neglect = await page.evaluate(() => {
-    const pill = document.querySelector('[data-testid="farms-neglected"]') as HTMLElement | null
+    const chip = document.querySelector('[data-testid="farms-neglected"]') as HTMLElement | null
     const marks = document.querySelectorAll('[data-testid="farm-neglect"]').length
     return {
-      hasPill: pill !== null,
-      count: Number((pill?.querySelector('.filter-count')?.textContent ?? '0').replace(/\D/g, '')),
-      title: pill?.getAttribute('title') ?? '',
+      hasPill: chip !== null,
+      count: Number((chip?.querySelector('.numeric')?.textContent ?? '0').replace(/\D/g, '')),
+      title: chip?.innerText ?? '',
       marks,
     }
   })
   if (neglect.hasPill) {
     check(
-      'A106 · the « נשכחו » pill names its threshold on hover',
-      /\d/.test(neglect.title),
-      neglect.title,
+      'A106 · the « נשכחו » chip names its threshold on the card',
+      /\d/.test(neglect.title.replace(String(neglect.count), '')),
+      neglect.title.replace(/\n/g, ' · '),
     )
     await page.locator('[data-testid="farms-neglected"]').click()
     await page.waitForTimeout(1200)

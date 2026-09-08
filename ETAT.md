@@ -1,6 +1,268 @@
 # לא ינום — ETAT
 
-> 🏁 **PASSE AB — LE « + » CONTEXTUEL, LES FILTRES QUI SE REPLIENT, L'AGENDA
+> 🏁 **PASSE AC — L'EXPLOITATION DEVIENT L'IDENTITÉ, LA SURFACE GARDÉE DEVIENT
+> UNE DÉCLARATION, ET LES GARDES SE RÉPARTISSENT. 2026-09-08. LIRE EN PREMIER.**
+>
+> Quatre unités, trois commits, poussées et **déployées sur les deux URLs**.
+> Le PO a déposé un NOUVEAU `docs/samples/prospection-sud.xlsx` avant la passe :
+> **32 colonnes, une ligne par EXPLOITATION et non plus par localité**, et son
+> onglet מקרא le dit lui-même — « שורה אחת לכל חווה, לא לכל יישוב ». Tout le
+> reste de la passe découle de cette phrase.
+>
+> ## AC1 — LA CLÉ ÉCRASAIT TROIS AGRICULTEURS SUR QUATRE
+>
+> **Le défaut, en une phrase :** la clé d'identité était `סמל יישוב`, et בארי
+> n'a qu'un סמל יישוב. Quatre agriculteurs indépendants, chacun avec ses
+> dounams et son contrat, étaient quatre lignes portant une seule clé — la
+> première créait la fiche, les trois autres étaient **rejetées comme doublons
+> dans le fichier**. Ce n'était pas une perte silencieuse (le rapport d'import
+> les nommait) mais c'était la mauvaise réponse à un fichier correct.
+>
+> ⚠️ **LA CLÉ A DEUX MOITIÉS ET UNE SEULE EST LE LIEU.**
+>
+> - **la localité** — `code:1177` quand le סמל est là, `place:<יישוב>|<מועצה>`
+>   sinon. Inchangée depuis AA4.2 sauf qu'elle lit désormais la colonne יישוב
+>   que le nouveau classeur possède, et retombe sur le nom de lieu pour les
+>   fichiers qui n'en ont pas ;
+> - **l'exploitation** — `<שם החווה>|<שם החקלאי>`, normalisées. Les deux vides
+>   est une valeur réelle et attendue : c'est une **AMORCE DE LOCALITÉ**, et
+>   **les 198 lignes du classeur du PO sont exactement cela aujourd'hui**.
+>
+> ⚠️ **ET LA CLÉ SEULE NE SUFFIT PAS — C'EST LA TROISIÈME PHRASE D'AC1.1.**
+> « un remplissage ultérieur des deux champs la met à jour au lieu d'en créer
+> une nouvelle » : la ligne dont on vient de remplir les deux noms porte une
+> clé qui n'a jamais existé, donc une simple table d'appariement créerait une
+> seconde fiche à côté de l'amorce et laisserait l'amorce là pour toujours.
+> `planProspection` apparie donc en **DEUX PASSES** :
+>
+> 1. **toutes les clés exactes** d'abord ; une fiche appariée est prise ;
+> 2. **les restes contre la localité** — une ligne nommée prend l'amorce de sa
+>    localité si elle en a encore une, une ligne AMORCE prend l'amorce ou, à
+>    défaut, la première fiche de la localité.
+>
+> ⚠️ **POURQUOI DEUX PASSES ET PAS UNE BOUCLE.** En une boucle, une ligne
+> amorce placée en tête réclamerait par localité une fiche qu'une ligne
+> ultérieure apparie EXACTEMENT, et cette ligne créerait alors un doublon — le
+> défaut dépendrait de **l'ordre des lignes dans un tableur**, ce qui est la
+> sorte la plus difficile à reproduire.
+>
+> ⚠️ **ET LE CAS QUI AURAIT MORDU EN SILENCE.** Le coordinateur tape un nom
+> d'agriculteur dans l'APP le mardi ; le jeudi il réimporte son classeur, dont
+> la ligne pour cette localité est toujours une amorce. Sans la seconde passe,
+> **198 doublons**. Avec elle, 198 mises à jour, et l'amorce n'efface aucun des
+> deux noms qu'elle ne porte pas (AA4.3, le patch est creux).
+>
+> ⚠️ **L'INDEX UNIQUE DE LA BASE ÉTAIT LE MÊME DÉFAUT, ÉCRIT EN SQL.**
+> `entities_locality_code_key` interdisait deux fiches sur un סמל. Il est
+> remplacé par `entities_holding_key` sur le triplet, avec
+> `coalesce(farm_name,'')` sur les deux noms — car en Postgres deux `NULL` ne
+> sont pas égaux, et un index sur le triplet nu aurait laissé passer un nombre
+> illimité d'amorces pour une même localité, qui est précisément la seule forme
+> à garder à une ligne. Migration `20260908000100_holding_identity.sql`,
+> appliquée sur `lo-yanum-prod` ; `bun run live` repasse à **48/48**.
+>
+> ⚠️ **UNE FICHE EST TROUVABLE SOUS SA LOCALITÉ *ET* SOUS SON NOM.** Avant AC2
+> le classeur n'avait pas de colonne יישוב et « שם המקום » ÉTAIT la localité :
+> les deux lectures étaient une seule chaîne. Elles sont deux maintenant, et un
+> fichier de l'ancienne forme — l'import de liste, le format de l'association,
+> le tableur du mois dernier — ne peut produire que celle du NOM. Les fiches
+> sont donc indexées sous les deux, **les primaires d'abord et les alias
+> seulement dans les trous**. Mesuré sur `bun run persist`, dont la ferme de
+> fixture s'appelle « ייבוא א73 » et habite une ville qui porte un autre nom.
+>
+> ## AC2 — TRENTE-DEUX COLONNES, ET DEUX PIÈGES QUI ÉTAIENT DÉJÀ DOCUMENTÉS
+>
+> Six colonnes sont neuves — **שם החווה · מייל חקלאי · ארגון מאגד · יישוב ·
+> שטחים שמירה · כמות מתנדבים קבועים** — et quatre ont été réécrites
+> (`אומדן סדר גודל` → `אומדן ליישוב כולו`, `סוג הסכם קרקע` →
+> `הסכם רעיה/חכירה`, `תוקף ההסכם` → `תאריך תפוגה הסכם קרקע`, `שם המקום` →
+> `שם המקום (כפי שיישלח אליהם)`). **Les anciennes orthographes restent en
+> alias** : un coordinateur avec le fichier du mois dernier sur son portable
+> doit encore pouvoir le déposer.
+>
+> ⚠️ **שם המקום EST UNE FORMULE, ET C'EST SA VALEUR CALCULÉE QUI EST LUE.**
+> `IF(C="",IF(D="",I,"החווה של "&D),IF(D="",C,C&" - החווה של "&D))` — le nom de
+> la ferme, ou celui de l'agriculteur, ou les deux, ou la localité quand aucun
+> n'est rempli. SheetJS rend la valeur calculée ; `composePlaceName` est la
+> même règle en TypeScript, **une seule fois**, lue par l'import ET par
+> l'export. C'est ce qui fait de l'aller-retour une identité plutôt que deux
+> orthographes qui s'accordent aujourd'hui. Rien n'écrit jamais dans son
+> classeur, et **aucune cellule produite ne porte de formule** (A101).
+>
+> ⚠️ **UNE CONSÉQUENCE MESURÉE, ET ELLE EST DANS A78 ET A107.** Une fiche dont
+> l'agriculteur a été tapé dans l'APP sans nom de ferme est **renommée une
+> fois** par la formule de l'association — « טללים » devient « החווה של יוסי
+> כהן ». C'est la cellule que SON Excel recalculerait de toute façon à
+> l'ouverture ; un export qui écrirait « טללים » à côté d'un שם החקלאי rempli
+> serait un fichier qu'Excel corrige avant qu'il ait tapé quoi que ce soit. Le
+> deuxième aller-retour est une **identité pure**, et c'est ce qui en fait un
+> renommage et pas une dérive.
+>
+> ⚠️ **« אומדן ליישוב כולו » PORTE SUR LA LOCALITÉ ENTIÈRE.** Lu et jeté, comme
+> son prédécesseur : l'écrire dans une surface mettrait la supposition d'un
+> mochav entier dans la ligne d'un seul agriculteur, et l'additionner entre les
+> quatre lignes d'une localité multiplierait une supposition par quatre.
+>
+> **Le champ neuf du modèle** est `ארגון מאגד` (`Farm.umbrella`), texte libre,
+> avec `farmName`, `farmerEmail`, `guardedDunams` et `guardedDunamsManual`.
+>
+> ## AC3 — LE PO A RENVERSÉ AB, ET IL A RAISON
+>
+> AB6.4 refusait d'écrire « שטחים שמירה » en la lisant comme une recopie
+> erronée de « שטחים מעובדים » : copier aurait remis à l'État un chiffre que
+> personne n'a mesuré, dans un fichier portant le nom du programme. **Le PO a
+> tranché : c'est une DÉCLARATION.** Leur système la remplit volontairement et
+> elle dit « nous surveillons la totalité de cette surface ».
+>
+> - **Défaut = מעובד + מרעה**, calculé et non stocké : une fiche jamais
+>   renseignée suit ses deux surfaces quand un polygone est tracé.
+> - **Une valeur saisie n'est plus jamais écrasée** — même drapeau G15 que les
+>   deux autres surfaces.
+> - ⚠️ **ET LE DRAPEAU NE SE POSE JAMAIS SUR UN ZÉRO.** C'est le piège nommé
+>   dans le brief et c'est celui où AA4 était tombé sur une feuille de 198
+>   zéros : une fiche figée à zéro ne peut plus jamais être remplie par une
+>   zone dessinée.
+> - ⚠️ **ET À L'IMPORT, UNE CELLULE QUI REDIT LE DÉFAUT EST LE DÉFAUT.**
+>   L'export écrit cette colonne sur CHAQUE ligne, et pour la plupart des
+>   lignes ce qu'il écrit est précisément מעובד + מרעה. La relire comme une
+>   saisie manuelle transformerait chaque aller-retour en **gel de masse** :
+>   198 fiches épinglées à ce qu'étaient leurs surfaces le jour du fichier,
+>   sourdes à tout polygone tracé ensuite.
+> - **La pondération n'en sait rien** (AC3.4) : 800 / 100 / 220, avec ou sans
+>   surface gardée déclarée à 999 999.
+>
+> ## AC4 — L'ÉQUITÉ, ET TROIS CHIFFRES QUI NE SONT PAS LE MÊME CHIFFRE
+>
+> - **`guards`** — les NUITS que cette ferme a reçues, une par garde quelle que
+>   soit la taille de l'équipe. C'est le chiffre de l'équité : « qui est servi
+>   et qui est oublié » est une question sur des nuits, et une ferme qui a eu
+>   une garde de huit volontaires a été servie **une fois**.
+> - **`volunteering`** — les volontaires-nuits, le « כמות התנדבויות » de
+>   l'association. Quatre volontaires sur une garde font quatre. C'est ce en
+>   quoi leur financement se compte, c'est la définition retenue en AB, et
+>   AC4.7 la confirme.
+> - **`regulars`** — les volontaires venus au moins DEUX fois sur la même
+>   ferme.
+>
+> ⚠️ **LES ANNULÉES NE COMPTENT DANS AUCUN DES TROIS**, et **une garde encore à
+> venir n'est pas une garde reçue** : une nuit réservée pour mardi prochain ne
+> doit pas faire passer une ferme oubliée pour servie, ce qui est exactement ce
+> que le signal d'AC4.5 sert à trouver.
+>
+> ⚠️ **`lastGuardAt` EST `null` POUR « JAMAIS », PAS UNE VIEILLE DATE.** « il y
+> a longtemps » et « jamais » sont deux états, affichés différemment, et le tri
+> les ordonne avec `Infinity` — **comparé, jamais soustrait** : `Infinity -
+> Infinity` vaut `NaN`, et un comparateur qui rend `NaN` laisse le moteur
+> libre, ce qui est la façon dont une liste finit dans un ordre différent à
+> chaque filtrage.
+>
+> **מתנדבים זמינים est un chiffre RÉGIONAL, et le PO l'a dit avant nous** :
+> « deux fermes voisines partagent normalement le même vivier et afficheront
+> donc le même nombre — c'est attendu, pas un bug ». Il est donc écrit comme
+> **un compte par région**, demandé à la région de la ferme, et non comme un
+> calcul par ferme qui se trouverait coïncider. Deux entrées : la localité du
+> volontaire d'abord — c'est là qu'il dort et où un conducteur le prend — puis
+> sa **yeshiva** quand sa ville ne dit rien au gazetteer. Inactifs exclus ; une
+> ferme dont la région est inconnue rend **0** et non le rôle national.
+>
+> **Le seuil est de 30 JOURS, et la raison est le calendrier de l'association**
+> : elle rapporte au mois et son יעד est un chiffre mensuel, donc une ferme
+> passée un mois de rapport entier sans une nuit est une ferme qui paraîtra
+> dans ce rapport n'ayant rien reçu. Quinze jours allumerait la moitié du rôle
+> dans un programme qui garde quelques nuits par semaine ; un trimestre est
+> au-delà du point où le fermier a cessé d'attendre quelqu'un. C'est une
+> **valeur initiale nommée** (`NEGLECT_DAYS_INITIAL`), pas un défaut à éditer :
+> הגדרות → פריסת שמירות la surcharge, exactement comme AB5a le fait du יעד.
+>
+> ⚠️ **« ACTIVES » EST LE FILTRE ET CE N'EST PAS DE LA DÉCORATION.** Un prospect
+> que personne n'a encore appelé n'a reçu aucune garde pour une très bonne
+> raison, et le marquer oublié enterrerait les quatre fermes qui ont signé puis
+> ont été oubliées sous cent quatre-vingt-dix qui n'ont jamais rien reçu comme
+> promesse.
+>
+> **Le signal est un anneau creux de 8 px** dans l'encre d'avertissement, avec
+> sa raison en `title` et en `aria-label`. Pas un badge rouge et pas une rangée
+> colorée : la pastille de statut deux caractères plus loin possède déjà la
+> couleur de la rangée, et un second signal à pleine force à côté transforme un
+> rôle en tableau d'alarmes où rien ne ressort parce que tout ressort. **Creux
+> pour « jamais », plein à 25 % pour « il y a longtemps »** — deux formes de la
+> même marque, à un coup d'œil l'une de l'autre.
+>
+> ## Ce qu'il faut regarder soi-même, dans cet ordre
+>
+> 1. **חוות → contenu plein** : la colonne « שמירות » — les nuits reçues et la
+>    date de la dernière — à côté du total pondéré qu'il ne faut pas confondre
+>    avec elle.
+> 2. **חוות → מיון** : « שמירות — הכי מעט קודם », puis « שמירה אחרונה —
+>    הוותיקה קודם ».
+> 3. **חוות → נשכחו** : la pastille n'apparaît que quand elle a quelque chose à
+>    dire ; l'allumer ne laisse que des rangées portant la marque.
+> 4. **Une fiche de ferme** : le bloc פריסת השמירות — nuits reçues,
+>    התנדבויות, dernière garde, מתנדבים זמינים avec sa phrase d'explication —
+>    et la carte שטחים שמירה qui dit si elle montre le défaut ou une saisie.
+> 5. **Le formulaire d'une ferme** : שם החווה avec son indication (vide = la
+>    ligne ouvre le יישוב), ארגון מאגד, מייל חקלאי, et le champ שטחים שמירה
+>    avec « חזרה לברירת המחדל ».
+> 6. **הגדרות → פריסת שמירות** : changer le seuil, revenir à 30.
+> 7. **חוות → ⋯ → ייבוא → קובץ איתור** : déposer `docs/samples/prospection-sud.xlsx`
+>    — 32 colonnes reconnues sans aide, 198 à créer.
+> 8. **Recommencer le même dépôt** : l'aperçu doit annoncer **0 à créer**.
+> 9. **חוות → ⋯ → ייצוא נתונים** : les deux formats. שטחים שמירה n'est plus
+>    vide dans celui de l'association, et les définitions retenues sont sous le
+>    rapport.
+>
+> **Les deux URLs, même commit :**
+> - L'app réelle : https://azmer-fts.github.io/lo-yanum/
+> - Le jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
+>
+> Captures de l'URL déployée, clair ET sombre, iPad portrait, iPad paysage et
+> iPhone : `docs/screenshots/acpass/`, et chacune est aussi une lecture
+> géométrique au repos.
+>
+> Pour reprendre : `git pull && bun install && bun run dev`, puis
+> `bun run acpass`, `bun run acui`, `bun run prospection`, `bun run assoc`,
+> `bun run signatures`, `bun run sheets`, `bun run persist`, `bun run mapping`,
+> `bun run live` et `bun run accaptures`.
+>
+> ## Les rouges — rejoués sur 83c3556, pas supposés
+>
+> `uipass` rend **36 verts et 3 rouges**. Les trois ont été rejoués dans un
+> worktree sur **83c3556**, le commit d'avant cette passe, avec la porte
+> courante : **mêmes trois échecs, mêmes chiffres** — X7 « farms, guards and
+> incidents share ONE tile height » (88 / 159 / 115), X5 « the roster header
+> and its rows share one grid template », et « farm-detail: the mode pill is at
+> the physical bottom-left ». Ce ne sont pas des régressions et aucun n'est
+> corrigé ici.
+>
+> `write` échoue toujours, et c'est l'état voulu depuis P3.1 : le compte de
+> test a été supprimé, et cette porte est faite pour cesser de fonctionner ce
+> jour-là.
+>
+> ⚠️ **DEUX ROUGES ÉTAIENT BIEN LES NÔTRES, ET ILS ONT ÉTÉ CORRIGÉS**, pas
+> excusés : A86 sur `pills` et les deux comptes de région sur `settings` — voir
+> la vignette « נשכחו » plus haut. Les deux portes repassent à 89/0 et 36/0.
+>
+> ⚠️ **ET CE QUI ÉTAIT ROUGE EN COURS DE PASSE SANS ÊTRE UN ROUGE PRÉEXISTANT.**
+> `bun run live` a rendu « entities — 38 columns » tant que la base ne
+> connaissait pas les cinq colonnes neuves. La migration appliquée sur
+> `lo-yanum-prod`, il rend **48/48**.
+>
+> ## Ce qui a été trouvé en chemin et qui n'est PAS de cette passe
+>
+> ⚠️ **UNE SURFACE VENUE D'UN POLYGONE SE FIGE À L'ALLER-RETOUR, ET C'EST LA
+> RÈGLE G15 QUI S'APPLIQUE COMME ÉCRITE.** L'importeur lit une surface non
+> nulle comme un remplacement — « a typed number IS an override; a zero is
+> not » — donc une fiche portant des surfaces SANS drapeau, c'est-à-dire une
+> fiche remplie par des zones dessinées, ramasse le drapeau au retour et cesse
+> de suivre ses polygones. Ce comportement précède cette passe, `bun run
+> prospection` ne le voyait pas parce que ses 198 fiches sont toutes à 0/0, et
+> il est nommé dans `scripts/acpass.ts` là où la fixture pose les drapeaux
+> elle-même. **Il n'est pas corrigé ici** : le corriger veut dire trancher ce
+> qu'un fichier sans colonne de drapeau doit vouloir dire, ce qui est une
+> question pour le PO et non un détail d'implémentation.
+>
+
+> 📕 **PASSE AB (précédente) — LE « + » CONTEXTUEL, LES FILTRES QUI SE REPLIENT, L'AGENDA
 > CARTOGRAPHIQUE, L'OBJECTIF PILOTABLE ET LE FORMAT DE L'ASSOCIATION.
 > 2026-09-08. LIRE EN PREMIER.**
 >
