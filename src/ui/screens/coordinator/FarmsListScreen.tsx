@@ -801,6 +801,36 @@ function FarmTile({
         onMouseEnter: () => onHover(farm.id),
         onMouseLeave: () => onHover(null),
       }}
+      /**
+        * ★★ AD3.3 — LE GESTE DIRECT, ET IL N'EXISTE QUE DANS LA FILE.
+        *
+        * « Depuis cette file, un geste ouvre directement la carte de la ferme
+        *   en mode tracé, pour enchaîner les contours sans repasser par la
+        *   liste. » Hors de la file, ce bouton serait posé sur la moitié d'un
+        *   rôle de 198 lignes pour un travail que le coordinateur n'est pas en
+        *   train de faire ; dans la file, il est la seule chose que chaque
+        *   rangée demande.
+        *
+        * ⚠️ ET IL EST UN FRÈRE DU BOUTON DE LA TUILE, PAS UN ENFANT — voir le
+        *    créneau `action` de `ListTile`.
+        */
+      action={
+        onDraw === null ? undefined : (
+          <button
+            type="button"
+            data-testid="farm-draw-outline"
+            title={t('farms.drawOutline')}
+            aria-label={`${t('farms.drawOutline')} — ${farm.name}`}
+            onClick={onDraw}
+            className="inline-flex items-center gap-1 whitespace-nowrap rounded-pill
+                       bg-accent/15 px-2.5 py-1 text-micro font-semibold text-accent-ink
+                       hover:bg-accent/25"
+          >
+            <Icon name="landPlot" size={12} />
+            {t('farms.drawOutline')}
+          </button>
+        )
+      }
     >
       <span className="flex min-w-0 items-center gap-2">
         <FarmStatusDot status={farm.status} />
@@ -840,42 +870,6 @@ function FarmTile({
           <span className="inline-flex items-center gap-1 whitespace-nowrap">
             <Icon name="calendar" size={11} />
             <span className="ltr-nums">{formatDate(farm.nextVisitAt, locale)}</span>
-          </span>
-        )}
-        {/**
-          * ★★ AD3.3 — LE GESTE DIRECT, ET IL N'EXISTE QUE DANS LA FILE.
-          *
-          * « Depuis cette file, un geste ouvre directement la carte de la ferme
-          *   en mode tracé. » Hors de la file, ce bouton serait posé sur la
-          *   moitié d'un rôle de 198 lignes pour un travail que le
-          *   coordinateur n'est pas en train de faire ; dans la file, il est la
-          *   seule chose que chaque rangée demande.
-          *
-          * ⚠️ `stopPropagation` — la rangée entière ouvre la fiche. Sans lui,
-          *    le geste ouvrirait la fiche PUIS la carte, et la navigation
-          *    arrière du PO se retrouverait avec un cran de trop.
-          */}
-        {onDraw !== null && (
-          <span
-            role="button"
-            tabIndex={0}
-            data-testid="farm-draw-outline"
-            className="inline-flex items-center gap-1 whitespace-nowrap rounded-pill
-                       bg-accent/12 px-2 py-0.5 font-semibold text-accent-ink
-                       hover:bg-accent/20"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDraw()
-            }}
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter' && e.key !== ' ') return
-              e.preventDefault()
-              e.stopPropagation()
-              onDraw()
-            }}
-          >
-            <Icon name="landPlot" size={11} />
-            {t('farms.drawOutline')}
           </span>
         )}
       </span>

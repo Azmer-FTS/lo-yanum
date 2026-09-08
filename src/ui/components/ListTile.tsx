@@ -46,6 +46,7 @@ export function ListTile({
   hoverProps,
   testId = 'list-tile',
   className = '',
+  action,
   children,
 }: {
   photo: string | null
@@ -61,6 +62,15 @@ export function ListTile({
   hoverProps?: Record<string, unknown>
   testId?: string
   className?: string
+  /**
+   * ★★ AD3.3 — UN GESTE DE PLUS SUR LA RANGÉE, ET IL EST UN VRAI FRÈRE.
+   *
+   * ⚠️ PAS DANS `children`. Le corps de la tuile EST un `<button>` ; un second
+   *    contrôle posé dedans est du contenu interactif imbriqué — invalide, et
+   *    surtout indéfendable au clavier, où Entrée activerait les deux. Ce
+   *    créneau est rendu à côté du bouton, avant le chevron.
+   */
+  action?: ReactNode
   children: ReactNode
 }) {
   return (
@@ -109,6 +119,10 @@ export function ListTile({
       >
         {children}
       </button>
+
+      {action !== undefined && action !== null && (
+        <span className="flex shrink-0 items-center ps-1">{action}</span>
+      )}
 
       <span className="flex shrink-0 items-center pe-1 text-content-muted/60">
         <ChevronForward size={14} />

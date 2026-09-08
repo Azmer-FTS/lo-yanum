@@ -233,16 +233,6 @@ export function AnchorMap({
       ? (zones.find((z) => z.id === selectedZoneId) ?? null)
       : null
 
-  /* AD3.3 — armé une seule fois, à l'arrivée sur la fiche avec `?draw=…`. */
-  const armedRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (!armZone || !zonesEditable) return
-    const key = `${farm.id}:${armZone}`
-    if (armedRef.current === key) return
-    armedRef.current = key
-    setMode({ kind: 'drawing', zone: armZone, draft: [] })
-  }, [armZone, farm.id, zonesEditable])
-
   useEffect(() => {
     if (mode.kind === 'idle' && !selectedZoneId) return
     const onKey = (e: KeyboardEvent) => {
@@ -254,12 +244,24 @@ export function AnchorMap({
     return () => window.removeEventListener('keydown', onKey)
   }, [mode.kind, selectedZoneId])
 
-  // Disarm when the map stops being about the same farm: an armed mode carried
-  // across a farm change would drop the next point (or vertex) on the wrong one.
+  /**
+   * Disarm when the map stops being about the same farm: an armed mode carried
+   * across a farm change would drop the next point (or vertex) on the wrong one.
+   *
+   * ★★ AD3.3 — ET C'EST AUSSI OÙ `armZone` EST HONORÉ, DANS LE MÊME EFFET.
+   *
+   * ⚠️ UN SECOND EFFET AURAIT ÉTÉ UN BOGUE D'ORDRE, ET IL L'A ÉTÉ : posé plus
+   *    haut, il armait le mode et celui-ci le remettait à `idle` dans le même
+   *    passage — `bun run adui` a rendu « the map came up idle » avec l'URL
+   *    parfaitement correcte à côté. « La carte est devenue celle d'une autre
+   *    ferme » a UN écrivain, et ce qu'il écrit est soit le repos, soit
+   *    l'outil que la file a demandé.
+   */
   useEffect(() => {
-    setMode({ kind: 'idle' })
+    if (armZone && zonesEditable) setMode({ kind: 'drawing', zone: armZone, draft: [] })
+    else setMode({ kind: 'idle' })
     setSelectedZoneId(null)
-  }, [farm.id])
+  }, [farm.id, armZone, zonesEditable])
 
   /**
    * Memoised on a SIGNATURE, not on the array.
