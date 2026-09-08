@@ -322,6 +322,62 @@ try {
   )
 
   // -------------------------------------------------------------------------
+  section('A122 — réseau coupé, l’écran et ses voies restent')
+  // -------------------------------------------------------------------------
+
+  /**
+   * ★★ `bun run aepass` PROUVE QUE LE PLAN EST PUR ; CECI PROUVE QUE L'ÉCRAN
+   *    TIENT QUAND LE RÉSEAU TOMBE, ET CE N'EST PAS LA MÊME AFFIRMATION.
+   *
+   *    « Le bouton reste fonctionnel hors ligne : appel et SMS ne demandent pas
+   *    de réseau de données. » Une fonction pure peut être juste dans un écran
+   *    qui, lui, attend une réponse qui ne viendra pas. On coupe donc vraiment
+   *    le réseau du contexte — c'est la barre de réseau qui disparaît dans le
+   *    champ — et on repose les deux questions : les numéros sont-ils
+   *    composables, et l'alerte part-elle.
+   */
+  await context.setOffline(true)
+  await page.goto(`${base}/#/coordinator`, { waitUntil: 'load' }).catch(() => undefined)
+  await page.waitForTimeout(600)
+  await page.goto(`${base}/#/sos`, { waitUntil: 'load' }).catch(() => undefined)
+  await page.waitForTimeout(2000)
+
+  const offline = await page.evaluate(() => {
+    const screen = document.querySelector('[data-testid="emergency-screen"]')
+    const tels = Array.from(document.querySelectorAll('a[href^="tel:"]'))
+    return {
+      screen: screen !== null,
+      tels: tels.length,
+      police: tels.some((a) => (a.getAttribute('href') ?? '').includes('100')),
+      button: document.querySelector('[data-testid="distress-button"]') !== null,
+      online: navigator.onLine,
+    }
+  })
+  check(
+    'A122 · ★ with the data network CUT, the screen is still there and still dials',
+    offline.screen && offline.button && offline.tels >= 3 && offline.police && !offline.online,
+    `${offline.tels} tel: targets, navigator.onLine=${offline.online}`,
+  )
+
+  /* ★ ET L'ALERTE PART QUAND MÊME. La voie réseau échoue — c'est son rôle de
+     filet — mais le SMS et l'écran de confirmation ne l'attendent pas. */
+  const offBox = await page.locator('[data-testid="distress-button"]').boundingBox()
+  if (offBox) {
+    const t0 = Date.now()
+    await page.mouse.move(offBox.x + offBox.width / 2, offBox.y + offBox.height / 2)
+    await page.mouse.down()
+    await page.locator('[data-testid="distress-sent"]').waitFor({ state: 'attached' })
+    const offElapsed = Date.now() - t0
+    await page.mouse.up()
+    check(
+      'A122 · ★ and the alert still goes, inside the same two-second budget',
+      offElapsed < DISTRESS_BUDGET_MS,
+      `${offElapsed} ms with no network`,
+    )
+  }
+  await context.setOffline(false)
+
+  // -------------------------------------------------------------------------
   section('A124 — les cibles, les écarts, et le « + » qui n’est pas là')
   // -------------------------------------------------------------------------
 

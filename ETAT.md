@@ -106,7 +106,13 @@
 > à la ferme Retem » part ; une alerte qui attend un satellite ne part pas.
 >
 > **Mesuré, dans un vrai navigateur : 1 333 ms** entre le contact et l'existence
-> du panneau de confirmation, sur un budget de 2 000. Appui maintenu de 800 ms
+> du panneau de confirmation, sur un budget de 2 000 — et **821 ms le réseau
+> COUPÉ**, ce qui est plus rapide et pas plus lent : la voie réseau échoue vite,
+> et c'est précisément son rôle de filet. A122 coupe vraiment le réseau du
+> contexte plutôt que de raisonner sur la pureté d'une fonction, parce qu'une
+> fonction pure peut être juste dans un écran qui, lui, attend une réponse qui
+> ne viendra pas. Huit numéros restent composables, `navigator.onLine` rend
+> `false`. Appui maintenu de 800 ms
 > — au-dessus du contact accidentel qu'un téléphone produit dans une poche
 > (50 à 200 ms), très en dessous du seuil où l'on croit que le bouton ne marche
 > pas. **Zéro dialogue à lire** : A120 le pose au DOM. Un appui bref n'envoie
