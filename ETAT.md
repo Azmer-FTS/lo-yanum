@@ -1,6 +1,230 @@
 # לא ינום — ETAT
 
-> 🏁 **PASSE AC — L'EXPLOITATION DEVIENT L'IDENTITÉ, LA SURFACE GARDÉE DEVIENT
+> 🏁 **PASSE AD — LA SURFACE DÉCLARÉE ET LA SURFACE TRACÉE SONT DEUX VÉRITÉS
+> QUI NE S'ÉCRASENT PAS. 2026-09-08. LIRE EN PREMIER.**
+>
+> Trois unités, trois commits, poussés et **déployés sur les deux URLs**.
+> Cette passe tranche le défaut que la passe AC avait nommé et laissé ouvert
+> pour le PO, en bas de son propre rapport : « une surface venue d'un polygone
+> se fige à l'aller-retour, et c'est la règle G15 qui s'applique comme
+> écrite ».
+>
+> ## AD1 — LA CAUSE N'ÉTAIT PAS UN BOGUE, C'ÉTAIT UNE CASE POUR DEUX FAITS
+>
+> **Le défaut, en une phrase :** l'export écrit la surface de CHAQUE ligne,
+> l'import relit un nombre non nul comme un remplacement, donc une fiche dont
+> les chiffres venaient de ses polygones ramassait `farmDunamsManual` au retour
+> et cessait pour toujours de suivre son contour. G15 faisait exactement ce
+> qu'il disait faire. Le problème était qu'il n'y avait qu'UN couple de champs
+> et un drapeau pour arbitrer qui avait le droit d'y écrire, alors qu'il y a
+> **deux faits différents** : ce que le fermier DÉCLARE, et ce que le contour
+> MESURE.
+>
+> ⚠️ **LA DÉCLARÉE EST STOCKÉE, LA MESURÉE EST DÉRIVÉE, ET C'EST TOUT LE
+> CORRECTIF.**
+>
+> - `farmDunams` / `grazingDunams` sont la surface **DÉCLARÉE** — le contrat,
+>   le fichier, la saisie. Rien qui vienne de la carte ne les touche.
+> - `measuredFarmDunams` / `measuredGrazingDunams` sont la **MESURÉE**, et elles
+>   ne sont **ni persistées ni importées** : `remeasureFarms` (core/store.ts)
+>   les recalcule depuis `farm_zones` à la graine, au `resetStore`, à
+>   `installBackend` et à `replaceSnapshot`. **Il n'y a plus de case à
+>   ramasser.** Un aller-retour export/import ne peut rien y figer parce qu'il
+>   n'y a rien à figer, et redessiner recalcule — c'est A109, et elle rejoue le
+>   défaut dans son ordre exact : polygone, export, import, PUIS redessin.
+>
+> ⚠️ **QUATRE PORTES D'ENTRÉE, ET UNE SEULE OUBLIÉE AURAIT SUFFI.** Une fiche
+> hydratée depuis Postgres ou depuis le cache hors-ligne porterait une mesure
+> venue d'ailleurs, ce qui est précisément la classe de défaut que la passe
+> supprime. C'est pourquoi c'est une fonction sur un `StoreData` et non quatre
+> lignes recopiées.
+>
+> ⚠️ **`seedZoneDunams` A ÉTÉ SUPPRIMÉ DU JUMEAU DE DÉMONSTRATION.** Il
+> écrasait les chiffres des fixtures par la somme des polygones « pour que la
+> carte, le formulaire et les KPI soient d'accord dès le premier rendu ». Ils
+> n'ont plus à être d'accord : ce sont deux surfaces, et les écraser l'une par
+> l'autre est exactement ce qu'AD1.1 interdit. **Le jumeau montre désormais de
+> vraies divergences** — quatre fiches au-dessus du seuil, sept sans contour,
+> deux mochavim mesurés sans rien déclarer — au lieu d'un accord fabriqué.
+>
+> ⚠️ **ET L'EXPORT ÉCRIT « LA » SURFACE, PAS LA DÉCLARÉE SEULE.** Une
+> exploitation dont le seul chiffre vient du contour sortirait avec une cellule
+> vide, c'est-à-dire un dossier remis à l'État moins renseigné que l'écran qui
+> l'a produit. Elle sort donc avec sa mesure — et **le retour n'en fait pas une
+> déclaration** : `withoutRestatedMeasure` applique la règle qu'AC3 avait
+> inventée pour שטחים שמירה, « une cellule qui redit ce que l'app calculerait
+> de toute façon n'est pas une saisie », cette fois comparée genre par genre
+> contre la mesure de la fiche.
+>
+> ⚠️ **LE DRAPEAU NE SE POSE TOUJOURS JAMAIS SUR UN ZÉRO, ET IL LE FAISAIT
+> ENCORE À UN ENDROIT.** Le formulaire posait `farmDunamsManual` sur n'importe
+> quelle frappe, y compris un `0` tapé puis effacé. C'est le piège d'AA4,
+> rappelé en AC3 et redemandé en AD1.5 ; il est fermé au formulaire comme à
+> l'import et comme à l'alignement.
+>
+> **La pondération n'a pas bougé d'un dounam** : 800 / 100 / 220, sur la
+> DÉCLARÉE (AD1.3), avec la mesurée pour seule doublure quand rien n'est
+> déclaré (AD1.4).
+>
+> ## AD2 — LA NOTE D'ÉCART EST UN GARDE-FOU SUR UNE SIGNATURE
+>
+> « Un agriculteur qui déclare 1 200 dounams dont le contour en fait 800, il
+> faut le savoir AVANT de remettre le dossier à l'État. » La note dit ça, et
+> non « pensez à mettre à jour » : les deux valeurs, l'écart en dounams et en
+> pourcentage, et ce qu'on risque.
+>
+> ⚠️ **LE POURCENTAGE EST RAPPORTÉ À LA DÉCLARÉE, PAS À LA PLUS GRANDE DES
+> DEUX.** 400 sur 1 200 fait **33 %** ; rapporté à la mesurée, la même paire
+> dirait 50 %, et le PO lirait deux chiffres pour une seule divergence selon le
+> sens où il la regarde. C'est le chiffre qu'il signe qui est le dénominateur.
+>
+> ⚠️ **« GARDER LE CHIFFRE DÉCLARÉ » ENREGISTRE UNE PAIRE, PAS UN BOOLÉEN.** Un
+> booléen « ignoré » serait une décision prise une fois pour toutes sur une
+> fiche dont le contour peut être redessiné demain — c'est-à-dire le seul cas
+> où la note doit revenir. `areaGapAcceptedDeclared` / `areaGapAcceptedMeasured`
+> gardent les deux totaux sur lesquels il a tranché ; la note se tait tant
+> qu'ils sont inchangés et revient dès que l'un bouge, **sans horloge et sans
+> ordre d'événements**. A112 le mesure dans les deux sens.
+>
+> ⚠️ **« ALIGNER SUR LE TRACÉ » EFFACE CETTE PAIRE plutôt que de la garder** :
+> il n'y a plus d'écart, donc rien à mémoriser, et une paire conservée ferait
+> taire une divergence FUTURE qui se trouverait porter les deux mêmes totaux.
+>
+> **Le seuil est de 10 %, en constante nommée** (`AREA_GAP_THRESHOLD_INITIAL`),
+> surchargée dans הגדרות → פער בין הצהרה לתיחום — même forme qu'AB5a pour le
+> יעד et qu'AC4.5 pour le seuil d'oubli. **Pourquoi dix** : en dessous, on
+> mesure la main qui a tracé du doigt sur une tablette dans un pick-up, et une
+> note qui s'allume à 3 % est une note qu'on apprend à ne plus lire ; au-delà,
+> la différence ne s'explique plus par le tracé — il manque une parcelle, ou le
+> chiffre déclaré est celui de la localité entière.
+>
+> ⚠️ **LE SEUIL EST UN ARGUMENT DE `areaGap`, PAS UNE LECTURE D'UN ÉTAT
+> CACHÉ.** C'est ce qui fait de « les notes suivent immédiatement » une vérité
+> par construction et non un abonnement qu'un écran pourrait oublier.
+>
+> **Le signal est un carré plein de 8 px** dans l'encre d'avertissement, en
+> liste comme en tableau — même grammaire que la marque « oubliée » d'AC4.5,
+> ronde et creuse, pour qu'il n'y ait qu'une chose à apprendre et deux formes à
+> distinguer d'un coup d'œil.
+>
+> ## AD3 — « לתיחום » EST UNE FILE DE TRAVAIL, PAS UNE ALERTE
+>
+> Une exploitation qui porte une surface déclarée et **aucun** polygone. Sur le
+> jumeau : **sept sur quatorze**.
+>
+> ⚠️ **LA PLACE DE LA VIGNETTE A ÉTÉ DÉCIDÉE PAR LES DEUX ACCIDENTS D'AC, PRIS
+> ENSEMBLE**, comme le brief le demande. Le premier disait « pas dans la barre
+> de filtres » — le « + » flottant s'y est posé sur une pastille (A86), et un
+> contrôle que le bouton couvre est inatteignable pour toujours. Le second
+> disait « pas en neuvième » — la bande DÉFILE, et « נשכחו » posée neuvième
+> était hors écran à 1376 px alors que le DOM la trouvait parfaitement. Elle est
+> donc **dans la bande, en DEUXIÈME**, derrière « נשכחו » qu'AC a mise en tête
+> pour cette raison exacte et qu'il n'était pas question de déplacer une
+> troisième fois.
+>
+> **A116 la vérifie sur le DÉPLOYÉ et sur capture**, aux deux largeurs que le
+> brief nomme — **1376 px et 402 px**, dans les deux thèmes — avec **deux
+> questions et pas une** : le RECTANGLE de la vignette contre celui de son
+> propre défileur, et le POINT — qui répond à un clic en son centre. Aucune des
+> deux ne suffit seule : un rectangle entièrement dans le cadre peut être
+> couvert, et un point qui répond « moi » peut appartenir à une vignette à
+> moitié dehors. Mesuré : **152 px de vignette, 101 px du bord à 1376 px, 72 px
+> à 402 px, et le point répond « la vignette elle-même »** dans les quatre cas.
+>
+> ⚠️ **ET L'IPAD PORTRAIT EST LU SANS ÊTRE EXIGÉ, POUR UNE RAISON QUI EST DE
+> L'ARITHMÉTIQUE ET NON UN RENONCEMENT.** À 1032 px en mode PARTAGÉ la colonne
+> de contenu fait 320 px, la bande y réserve 20 px de marge de chaque côté, donc
+> il reste **280 px utiles** ; une vignette de cette famille fait **152 px** et
+> l'écart entre deux en fait 10, soit **314 px pour deux**. **Aucune seconde
+> vignette ne peut y être entière, quel que soit son contenu, son libellé ou son
+> ordre** — c'est une propriété de la bande, pas de celle-ci, et AC l'avait déjà
+> rencontrée : la seule issue est d'être PREMIÈRE, ce qu'on ne peut pas faire
+> deux fois. Ce qui est vrai à cette largeur est que la vignette est **coupée de
+> 14 px et non hors écran** — son libellé, son compte et son point central
+> répondent, ce qui est matériellement autre chose que la neuvième vignette
+> d'AC, absente de l'écran — et qu'elle est **entière dès le passage en contenu
+> plein**, où la bande fait 992 px. Le chiffre est imprimé à chaque exécution de
+> `bun run adcaptures` pour que personne n'ait à le redécouvrir.
+>
+> **Le geste direct** ouvre la carte de la ferme **déjà armée** en mode tracé
+> (`?draw=farm_boundary`), et il n'existe que dans la file : hors d'elle, ce
+> serait un bouton posé sur la moitié d'un rôle de 198 lignes pour un travail
+> que le coordinateur n'est pas en train de faire.
+>
+> ⚠️ **ET AUCUN POLYGONE N'EST JAMAIS GÉNÉRÉ.** Décision explicite du PO :
+> « un contour faux est pire qu'un contour absent, parce qu'il a l'air d'être
+> une donnée et que des volontaires s'en serviront pour se repérer la nuit ».
+> A117 le pose après le seul chemin qui pourrait en fabriquer un — 198 lignes
+> déposées avec des surfaces, des coordonnées et des noms : 198 fiches, **zéro
+> zone**.
+>
+> ## Le défaut trouvé en chemin, et il est de cette passe
+>
+> ⚠️ **L'EFFET QUI ARMAIT LE MODE TRACÉ ÉTAIT POSÉ AVANT CELUI QUI DÉSARME AU
+> CHANGEMENT DE FERME**, et se faisait écraser dans le même passage. `bun run
+> adui` a rendu « the map came up idle » avec l'URL parfaitement correcte à
+> côté — un bogue d'ORDRE, la sorte qu'aucune relecture ne voit et qu'une porte
+> voit tout de suite. « La carte est devenue celle d'une autre ferme » a
+> maintenant **un seul écrivain**, et ce qu'il écrit est soit le repos, soit
+> l'outil que la file a demandé.
+>
+> ## Ce qu'il faut regarder soi-même, dans cet ordre
+>
+> 1. **חוות → la bande de vignettes** : « נשכחו », puis **« לתיחום »**, puis
+>    « פערי שטח » quand il y en a. Les trois sont des filtres.
+> 2. **חוות → לתיחום** : sept fiches, chacune avec son bouton « סימון על המפה ».
+>    Un clic ouvre la carte de cette ferme, crayon déjà en main.
+> 3. **חוות → פערי שטח**, puis **מיון → פער שטח — הגדול קודם**.
+> 4. **חוות רתם, חוות גבעת עשן** : la note d'écart, ses deux valeurs et ses deux
+>    boutons. Appuyer sur « שמירת המספר המוצהר », puis redessiner le contour :
+>    la note revient.
+> 5. **Une fiche** : les cartes מעובד et מרעה portent la DÉCLARÉE, et la ligne
+>    dessous porte la MESURÉE — ou « אין תיחום ».
+> 6. **מושב רתמים** : rien de déclaré, la mesure sert seule, aucune note.
+> 7. **Le formulaire d'une ferme** : sous chaque champ, ce que le contour
+>    mesure, et « יישור לפי התיחום » qui remplit le champ sans l'enregistrer.
+> 8. **הגדרות → פער בין הצהרה לתיחום** : passer à 1 %, revenir à 10.
+> 9. **חוות → ⋯ → ייצוא נתונים**, puis redéposer le fichier produit : **0 à
+>    créer**, aucun drapeau posé, et les polygones suivent toujours.
+>
+> **Les deux URLs, même commit :**
+> - L'app réelle : https://azmer-fts.github.io/lo-yanum/
+> - Le jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
+>
+> Captures de l'URL déployée, clair ET sombre, iPad portrait, iPad paysage et
+> iPhone : `docs/screenshots/adpass/`.
+>
+> Pour reprendre : `git pull && bun install && bun run dev`, puis
+> `bun run adpass`, `bun run adui`, `bun run adcaptures`, `bun run acpass`,
+> `bun run accept`, `bun run persist`, `bun run prospection`, `bun run assoc`,
+> `bun run mapping` et `bun run live`.
+>
+> ## Les rouges — repris d'AC, pas supposés
+>
+> Les trois rouges STABLES d'`uipass` sont ceux d'AC, inchangés et non corrigés
+> ici : X7 « farms, guards and incidents share ONE tile height », X5 « the
+> roster header and its rows share one grid template », et « farm-detail: the
+> mode pill is at the physical bottom-left ». Les quatre INSTABLES sont les
+> mêmes aussi — « satellite: the imagery is on », ses deux voisines et X12 —
+> et pour la même raison : ce sont des questions posées à des tuiles qui
+> arrivent par le réseau.
+>
+> `write` échoue toujours, et c'est l'état voulu depuis P3.1 : le compte de test
+> a été supprimé, et cette porte est faite pour cesser de fonctionner ce jour-là.
+>
+> ⚠️ **CE QUI ÉTAIT ROUGE EN COURS DE PASSE SANS ÊTRE UN ROUGE PRÉEXISTANT.**
+> `bun run accept` a rendu cinq échecs sur les deux surfaces — « a farm with
+> zones carries the zone sum as its dunams » et ses voisines — parce que ces
+> vérifications DISENT la règle qu'AD1 remplace. Elles ont été **réécrites, pas
+> supprimées** : la mesure EST la somme des anneaux, et la déclarée n'a pas
+> bougé. `bun run persist` a rendu « NOT DRIVEN: alignDeclaredToOutline,
+> keepDeclaredArea », ce qui est cette porte faisant exactement son travail.
+> `bun run live` a rendu « entities — 48 columns » tant que la base ignorait les
+> deux colonnes neuves ; migration `20260908000200_two_surfaces` appliquée sur
+> `lo-yanum-prod`, il rend **48/48**.
+>
+
+> 📕 **PASSE AC (précédente) — L'EXPLOITATION DEVIENT L'IDENTITÉ, LA SURFACE GARDÉE DEVIENT
 > UNE DÉCLARATION, ET LES GARDES SE RÉPARTISSENT. 2026-09-08. LIRE EN PREMIER.**
 >
 > Quatre unités, trois commits, poussées et **déployées sur les deux URLs**.
@@ -281,7 +505,7 @@
 > question pour le PO et non un détail d'implémentation.
 >
 
-> 📕 **PASSE AB (précédente) — LE « + » CONTEXTUEL, LES FILTRES QUI SE REPLIENT, L'AGENDA
+> 📗 **PASSE AB — LE « + » CONTEXTUEL, LES FILTRES QUI SE REPLIENT, L'AGENDA
 > CARTOGRAPHIQUE, L'OBJECTIF PILOTABLE ET LE FORMAT DE L'ASSOCIATION.
 > 2026-09-08. LIRE EN PREMIER.**
 >

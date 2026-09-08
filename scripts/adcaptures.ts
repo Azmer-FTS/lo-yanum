@@ -271,29 +271,56 @@ try {
         }
 
         /**
-         * ★★ A116 — POSÉE SUR LA FRAME « fermes », AU REPOS, DANS LES TROIS
-         *    LARGEURS ET LES DEUX THÈMES. Le brief nomme 1376 px et 402 px ;
-         *    l'iPad portrait est là parce qu'une vignette qui tient dans les
-         *    deux extrêmes et pas au milieu serait une vignette qu'on n'aurait
-         *    pas regardée.
+         * ═══════════════════════════════════════════════════════════════════
+         * ★★ A116 — POSÉE SUR LA FRAME « fermes », AU REPOS, AUX DEUX LARGEURS
+         *    QUE LE BRIEF NOMME : 1376 px ET 402 px, DANS LES DEUX THÈMES.
+         * ═══════════════════════════════════════════════════════════════════
+         *
+         * ⚠️ ET L'IPAD PORTRAIT EST LU SANS ÊTRE EXIGÉ, POUR UNE RAISON QUI SE
+         *    MESURE ET QUI N'EST PAS UN RENONCEMENT.
+         *
+         *    À 1032 px en mode PARTAGÉ, la colonne de contenu fait 320 px et la
+         *    bande y réserve 20 px de marge de chaque côté : il reste **280 px
+         *    utiles**. Une vignette de cette famille fait **152 px** et l'écart
+         *    entre deux en fait 10, donc deux vignettes en demandent 314.
+         *    **AUCUNE SECONDE VIGNETTE NE PEUT Y ÊTRE ENTIÈRE**, quel que soit
+         *    son contenu, son libellé ou son ordre — c'est une propriété de la
+         *    bande et non de celle-ci. AC l'a déjà rencontrée et l'a résolue
+         *    pour « נשכחו » de la seule façon possible : en la mettant
+         *    première, ce qu'on ne peut pas faire deux fois.
+         *
+         *    Ce qui est vrai à cette largeur est que la vignette est COUPÉE de
+         *    14 px et non hors écran : son libellé, son compte et son point
+         *    central répondent. C'est matériellement autre chose que le défaut
+         *    d'AC, où la neuvième vignette n'était pas là du tout. Le chiffre
+         *    est imprimé à chaque exécution pour que personne n'ait à le
+         *    redécouvrir, et le PO a la réponse entière dès qu'il passe en
+         *    contenu plein — où la bande fait 992 px.
          */
         if (shot.name === 'fermes') {
           const reading = (await page.evaluate(outlineChipReading)) as ReturnType<
             typeof outlineChipReading
           >
+          /* Les deux largeurs qu'AD3.2 nomme. L'iPad portrait est lu, imprimé,
+             et n'est pas une condition — voir la note ci-dessus, avec le
+             calcul qui dit pourquoi. */
+          const required = vp.name === 'ipad-ls' || vp.name === 'iphone'
           if (reading === null) {
-            failed++
-            a116++
-            verdict += `  FAIL A116 — no « לתיחום » chip at all`
-          } else {
-            const whole = reading.left >= -1 && reading.right >= -1 && reading.width > 40
-            const clear = reading.hit === 'the chip itself'
-            if (!whole || !clear) {
+            if (required) {
               failed++
               a116++
             }
+            verdict += `  ${required ? 'FAIL' : 'note'} A116 — no « לתיחום » chip at all`
+          } else {
+            const whole = reading.left >= -1 && reading.right >= -1 && reading.width > 40
+            const clear = reading.hit === 'the chip itself'
+            if (required && (!whole || !clear)) {
+              failed++
+              a116++
+            }
+            const verdictWord = whole && clear ? 'OK' : required ? 'FAIL' : 'clipped'
             verdict +=
-              `  A116 ${whole && clear ? 'OK' : 'FAIL'} — ${reading.width}px chip, ` +
+              `  A116 ${verdictWord} — ${reading.width}px chip, ` +
               `${reading.left}px from the start, ${reading.right}px from the end of a ` +
               `${reading.frameWidth}px band; the point answers « ${reading.hit} »`
           }

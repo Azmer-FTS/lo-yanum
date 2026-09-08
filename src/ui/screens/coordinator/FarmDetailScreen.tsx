@@ -368,10 +368,18 @@ function AreaNote({ farm, which }: { farm: Farm; which: 'cultivated' | 'grazing'
     return measured === null ? null : <>{t('farms.measuredArea')}</>
   }
   if (measured === null) return <>{t('farms.noOutline')}</>
+  /**
+   * ⚠️ « מדוד » ET PAS « שטח מדוד », ET LA CAPTURE L'A TRANCHÉ. La ligne de
+   *    note d'une carte de bande est TRONQUÉE : à 152 px de carte, « שטח מדוד ·
+   *    10,018 » s'affichait « שטח מדוד … » et le seul chiffre que cette ligne
+   *    existe pour montrer était celui qui tombait. Le mot entier reste dans le
+   *    `title`, où il est là pour qui hésite.
+   */
+  const full = `${t('farms.measuredArea')} · ${measured[which].toLocaleString(locale)}`
   return (
-    <>
-      {t('farms.measuredArea')} · {measured[which].toLocaleString(locale)}
-    </>
+    <span title={full}>
+      {t('farms.measuredShort')} {measured[which].toLocaleString(locale)}
+    </span>
   )
 }
 

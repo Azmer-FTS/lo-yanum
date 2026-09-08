@@ -661,7 +661,8 @@
     "filterNoOutline": "לתיחום",
     "filterNoOutlineHint": "יישויות עם שטח מוצהר שאין להן אף פוליגון על המפה",
     "drawOutline": "סימון על המפה",
-    "colAreaGap": "פער"
+    "colAreaGap": "פער",
+    "measuredShort": "מדוד"
   },
   "anchor": {
     "title": "עמדת שמירה",
