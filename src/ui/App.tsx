@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useEffect, useReducer } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { getSession, homeRouteFor } from '@core/index'
@@ -123,10 +123,38 @@ function passesTheDoor(): boolean {
   return readGuardPass() !== null
 }
 
+/**
+ * ⚠️★★ ET IL FAUT ÉCOUTER `hashchange`, CE QUI N'EST PAS UNE PRÉCAUTION MAIS UN
+ *    DÉFAUT MESURÉ SUR L'URL RÉELLE DÉPLOYÉE.
+ *
+ *    Depuis une URL FROIDE, `…/#/sos` ouvre l'écran d'urgence sans mot de passe
+ *    — vérifié sur https://azmer-fts.github.io/lo-yanum/. Mais depuis l'écran
+ *    de connexion, coller `#/sos` dans la barre d'adresse ne faisait RIEN :
+ *    `passesTheDoor` n'est lu que pendant un rendu, et devant la porte il n'y a
+ *    pas de routeur — donc personne n'écoutait le changement de hash, et rien
+ *    ne provoquait ce rendu. La page restait sur son formulaire.
+ *
+ *    C'est exactement la situation d'AE1.5 vue de l'autre côté : quelqu'un dont
+ *    le lien vient d'expirer atterrit sur la porte, et les numéros doivent
+ *    rester atteignables sans qu'il ait à savoir qu'il faut recharger. Trois
+ *    lignes, et la promesse devient vraie depuis TOUS les points d'entrée et
+ *    non seulement depuis le bon.
+ */
+function useHashDoor(): void {
+  const [, bump] = useReducer((n: number) => n + 1, 0)
+  useEffect(() => {
+    window.addEventListener('hashchange', bump)
+    return () => window.removeEventListener('hashchange', bump)
+  }, [])
+}
+
 export default function App() {
   const auth = useAuth()
   // U7 — every truncated text carries its full value as a title, app-wide.
   useTruncationTitles()
+  // AE1.5 · AE2 — voir `useHashDoor` : la porte doit se relire quand l'URL
+  // change, y compris quand aucun routeur n'est monté pour l'entendre.
+  useHashDoor()
 
   if (auth.status === 'loading') return <AuthSplash />
   if (auth.status === 'signed-out' && !passesTheDoor()) return <LoginScreen />

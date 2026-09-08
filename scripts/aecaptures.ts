@@ -92,8 +92,35 @@ const SHOTS: Shot[] = [
   /* ★ AE1.5 — l'écran d'un lien qui ne vaut plus, avec ses numéros. */
   { name: 'lien-expire', hash: `#/g/${expiredToken}`, measure: true, wait: 3500 },
 
-  /* ★ AE3 — les silences sur le tableau de bord du coordinateur. */
-  { name: 'silences', hash: '#/coordinator', become: 'coordinator', wait: 7000 },
+  /**
+   * ★ AE3 — LES SILENCES SUR LE TABLEAU DE BORD, ET LA CAPTURE DESCEND
+   *   JUSQU'À EUX.
+   *
+   * ⚠️ La première version cadrait le haut de l'écran et le bloc d'alertes est
+   *    sous les KPI : une capture nommée « silences » qui ne montre pas un
+   *    silence est une preuve qui ne prouve pas son nom, ce qui est la seule
+   *    espèce de preuve pire que pas de preuve. Elle OUVRE aussi la première
+   *    alerte, parce que le détail — « depuis N heures » — et les boutons
+   *    d'appel sont ce qu'AE3 produit.
+   */
+  {
+    name: 'silences',
+    hash: '#/coordinator',
+    become: 'coordinator',
+    wait: 7000,
+    act: async (page) => {
+      const chip = page.locator('[data-testid="alert-chip"]').first()
+      if (await chip.count()) {
+        await chip.scrollIntoViewIfNeeded()
+        await page.waitForTimeout(500)
+        await chip.click().catch(() => undefined)
+        await page.waitForTimeout(900)
+        const detail = page.locator('[data-testid="alert-detail"]').first()
+        if (await detail.count()) await detail.scrollIntoViewIfNeeded()
+      }
+      await page.waitForTimeout(800)
+    },
+  },
 
   /* ★ AE3.2 · AE4 — les trois délais et le gabarit, dans les réglages. */
   {
