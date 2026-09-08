@@ -8,6 +8,10 @@ import {
   buildDistressAlert,
   emergencyEntries,
   formatTime,
+  getMyDisplayName,
+  getMyDriver,
+  getMyFarm,
+  getMyVolunteer,
   getSession,
   planDistress,
   telHref,
@@ -56,11 +60,31 @@ import { useGuardPass } from '../guardPass'
 
 type Phase = 'idle' | 'holding' | 'sent'
 
+/**
+ * Le numéro de rappel de la personne connectée, par rôle. `null` pour le
+ * coordinateur : sa carte est un réglage de l'appareil (W7), pas une ligne du
+ * magasin, et c'est `readCoordinator()` qui la porte.
+ */
+function myPhoneOf(): string | null {
+  switch (getSession().role) {
+    case 'volunteer':
+      return getMyVolunteer()?.phone ?? null
+    case 'driver':
+      return getMyDriver()?.phone ?? null
+    case 'farmer':
+      return getMyFarm()?.contacts.find((c) => c.isPrimary)?.phone ?? null
+    case 'coordinator':
+      return null
+  }
+}
+
 export function EmergencyScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
   const navigate = useNavigate()
   const session = useCoreValue(getSession)
+  const myName = useCoreValue(getMyDisplayName)
+  const myPhoneFromRole = useCoreValue(myPhoneOf)
   const ctx = useEmergencyContext()
   const pass = useGuardPass()
   const fix = useLastFix()
@@ -80,11 +104,24 @@ export function EmergencyScreen() {
     [],
   )
 
-  const who =
-    pass?.person.name ??
-    (session.role === 'coordinator' ? ctx.coordinator.name : '') ??
-    ''
-  const myPhone = pass?.person.phone ?? ctx.coordinator.phone
+  /**
+   * ★★ AE2a.1 — « QUI » DOIT ÊTRE UN NOM POUR LES QUATRE RÔLES, ET LA PREMIÈRE
+   *    VERSION N'EN AVAIT QUE POUR DEUX.
+   *
+   *    Elle lisait le laissez-passer, sinon le coordinateur, sinon la chaîne
+   *    vide — donc un agriculteur ou un conducteur signé par le sélecteur du
+   *    jumeau envoyait « מי: · 052-… », un numéro sans nom. C'est
+   *    `getMyDisplayName` qui répond pour les trois rôles de terrain (il rend
+   *    `null` pour le coordinateur exprès, parce que SA carte vit dans les
+   *    réglages et pas dans le magasin), et le laissez-passer passe devant
+   *    parce que lui seul répond quand rien n'est hydraté.
+   *
+   * ⚠️ ET LE NUMÉRO SUIT LE MÊME ORDRE. Un SMS de détresse dont le numéro de
+   *    rappel est celui du coordinateur, envoyé AU coordinateur, est une
+   *    alerte à laquelle on ne peut pas répondre.
+   */
+  const who = pass?.person.name ?? myName ?? ctx.coordinator.name
+  const myPhone = pass?.person.phone ?? myPhoneFromRole ?? ctx.coordinator.phone
 
   /**
    * ★★ LA CASCADE, EXÉCUTÉE. L'ORDRE EST CELUI QUE `core/emergency.ts`

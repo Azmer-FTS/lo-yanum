@@ -269,9 +269,19 @@
 > - L'app réelle : https://azmer-fts.github.io/lo-yanum/
 > - Le jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
 >
-> Captures de l'URL déployée, clair ET sombre, iPad portrait, iPad paysage et
-> iPhone, **l'écran d'urgence dans les quatre rôles** :
-> `docs/screenshots/aepass/`.
+> **Soixante captures de l'URL déployée, clair ET sombre, iPad portrait, iPad
+> paysage et iPhone, l'écran d'urgence dans les quatre rôles :
+> `docs/screenshots/aepass/` — 0 problème, dont 0 sur A124.**
+>
+> ⚠️ **ET LA PORTE DES CAPTURES SURVIT DÉSORMAIS À UNE COUPURE DE LA LIAISON DE
+> LA MACHINE QUI LA LANCE.** Deux exécutions de suite se sont arrêtées sur
+> `ERR_INTERNET_DISCONNECTED` après vingt captures parfaites — le wifi du
+> poste, pas Pages. Une porte qui abandonne à la première coupure ne peut pas
+> prouver un site distant depuis un portable ; une porte qui la masque ne
+> prouve rien. Trois tentatives par navigation, et le **total des reprises est
+> imprimé** : la série qui a produit ces soixante captures en a compté **3**,
+> et si ce chiffre montait, c'est la ligne qu'il faudrait regarder plutôt que
+> le produit.
 >
 > Pour reprendre : `git pull && bun install && bun run dev`, puis
 > `bun run aepass`, `bun run aeui`, `bun run aecaptures`, `bun run adpass`,
@@ -318,6 +328,27 @@
 >    devenues **pliables et repliées**, leur résumé portant le fait (les trois
 >    délais ; « modifié » ; « טלפוני לילה הוזנו »), ce qui est exactement la
 >    règle des sections pliables déjà en place sur cette fiche.
+>
+> ⚠️ **ET DEUX DÉFAUTS TROUVÉS SUR LE DÉPLOYÉ, APRÈS QUE TOUTES LES PORTES
+> LOCALES ÉTAIENT VERTES.** C'est la leçon d'AA6.2 et d'AC une fois de plus, et
+> elle se paie à chaque passe qui ne la respecte pas.
+>
+> 1. **`#/sos` DEPUIS L'ÉCRAN DE CONNEXION NE FAISAIT RIEN, SUR L'APP RÉELLE.**
+>    Depuis une URL froide il ouvre l'écran d'urgence sans mot de passe —
+>    vérifié sur `https://azmer-fts.github.io/lo-yanum/`, onze cibles
+>    composables et zéro champ de mot de passe. Mais `passesTheDoor` n'est lu
+>    que pendant un rendu, et **devant la porte il n'y a pas de routeur** :
+>    personne n'écoutait `hashchange`, donc rien ne provoquait ce rendu et la
+>    page restait sur son formulaire. C'est AE1.5 vue de l'autre côté —
+>    quelqu'un dont le lien vient d'expirer atterrit sur la porte, et les
+>    numéros doivent rester atteignables sans qu'il ait à savoir qu'il faut
+>    recharger. Trois lignes (`useHashDoor`), et la promesse est vraie depuis
+>    TOUS les points d'entrée au lieu du bon.
+> 2. **LA CAPTURE NOMMÉE « silences » NE MONTRAIT PAS DE SILENCE.** Elle cadrait
+>    le haut du tableau de bord et le bloc d'alertes est sous les KPI. Une
+>    preuve qui ne prouve pas son nom est la seule espèce de preuve pire que
+>    pas de preuve : elle descend maintenant jusqu'à la première alerte et
+>    l'OUVRE, parce que le détail et les boutons d'appel sont ce qu'AE3 produit.
 >
 > ⚠️ **ET DEUX DÉFAUTS DE PORTE, PAS DE PRODUIT, QUI VALENT D'ÊTRE ÉCRITS.**
 > A124 comptait « couvert » ce qui n'était que « plus bas » — `elementFromPoint`
