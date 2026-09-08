@@ -146,20 +146,52 @@ let browser: Browser | null = null
 let taken = 0
 let failed = 0
 let a124 = 0
+let retried = 0
+
+/**
+ * ★★ UNE COUPURE DE LA LIAISON DE CETTE MACHINE N'EST PAS UN DÉFAUT DU
+ *    DÉPLOYÉ, ET LA PORTE DOIT SAVOIR FAIRE LA DIFFÉRENCE.
+ *
+ *    Deux exécutions de suite se sont arrêtées sur `ERR_INTERNET_DISCONNECTED`
+ *    après vingt captures parfaites — le wifi du poste, pas Pages. Une porte
+ *    qui abandonne à la première coupure ne peut tout simplement pas prouver un
+ *    site distant depuis un portable ; une porte qui la MASQUE ne prouve rien
+ *    du tout.
+ *
+ *    Alors on réessaie trois fois, en attendant que la liaison revienne, et le
+ *    total des reprises est IMPRIMÉ à la fin : si le chiffre est élevé, c'est
+ *    la ligne qui est mauvaise, et le lecteur doit le savoir plutôt que de lire
+ *    un « 60 captures » qui a coûté une heure. Un échec qui SURVIT aux trois
+ *    reprises est jeté, comme avant.
+ */
+async function goto(page: Page, url: string): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await page.goto(url, { waitUntil: attempt === 1 ? 'load' : 'domcontentloaded' })
+      return
+    } catch (error) {
+      if (attempt >= 3) throw error
+      retried++
+      /* La liaison revient rarement dans la seconde ; on lui laisse le temps
+         qu'un rechargement humain lui laisserait. */
+      await new Promise((r) => setTimeout(r, 8000 * attempt))
+    }
+  }
+}
 
 /** Devenir quelqu'un, par le chemin réel de chaque rôle. */
 async function become(page: Page, who: NonNullable<Shot['become']>): Promise<void> {
   if (who === 'volunteer') {
-    await page.goto(`${BASE}/#/g/${volunteerToken}`, { waitUntil: 'load' })
+    await goto(page, `${BASE}/#/g/${volunteerToken}`)
     await page.waitForTimeout(3500)
     return
   }
   if (who === 'driver' && driverToken) {
-    await page.goto(`${BASE}/#/g/${driverToken}`, { waitUntil: 'load' })
+    await goto(page, `${BASE}/#/g/${driverToken}`)
     await page.waitForTimeout(3500)
     return
   }
-  await page.goto(`${BASE}/#/coordinator`, { waitUntil: 'load' })
+  await goto(page, `${BASE}/#/coordinator`)
   await page.waitForTimeout(3000)
   if (who === 'coordinator') return
   /* L'agriculteur n'a pas de lien (AE1.6 : il garde son accès existant), donc
@@ -203,7 +235,7 @@ try {
       page.setDefaultTimeout(60_000)
 
       for (const shot of SHOTS) {
-        await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' })
+        await goto(page, `${BASE}/`)
         await page.evaluate((t) => {
           for (const key of Object.keys(localStorage)) {
             if (key.startsWith('lo-yanum:map-mode:') || key === 'lo-yanum:view-as') {
@@ -228,7 +260,7 @@ try {
         }, theme as string)
 
         if (shot.become) await become(page, shot.become)
-        await page.goto(`${BASE}/${shot.hash}`, { waitUntil: 'load' })
+        await goto(page, `${BASE}/${shot.hash}`)
         await page.waitForTimeout(shot.wait ?? 4000)
         if (shot.act) await shot.act(page)
 
@@ -346,6 +378,11 @@ try {
 }
 
 console.log('')
-console.log(`  ${taken} captures dans ${OUT}/ — ${failed} problème(s), dont ${a124} sur A124`)
+console.log(
+  `  ${taken} captures dans ${OUT}/ — ${failed} problème(s), dont ${a124} sur A124` +
+    (retried > 0
+      ? `, et ${retried} navigation(s) reprises après une coupure de CETTE machine`
+      : ''),
+)
 console.log('')
 if (failed > 0) process.exit(1)
