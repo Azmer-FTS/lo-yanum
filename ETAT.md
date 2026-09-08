@@ -237,13 +237,21 @@
 >
 > ## Les rouges — rejoués sur 83c3556, pas supposés
 >
-> `uipass` rend **36 verts et 3 rouges**. Les trois ont été rejoués dans un
-> worktree sur **83c3556**, le commit d'avant cette passe, avec la porte
-> courante : **mêmes trois échecs, mêmes chiffres** — X7 « farms, guards and
-> incidents share ONE tile height » (88 / 159 / 115), X5 « the roster header
-> and its rows share one grid template », et « farm-detail: the mode pill is at
-> the physical bottom-left ». Ce ne sont pas des régressions et aucun n'est
-> corrigé ici.
+> `uipass` a **trois rouges STABLES**, rejoués dans un worktree sur **83c3556**,
+> le commit d'avant cette passe, avec la porte courante : **mêmes trois échecs,
+> mêmes chiffres** — X7 « farms, guards and incidents share ONE tile height »
+> (88 / 159 / 115), X5 « the roster header and its rows share one grid
+> template », et « farm-detail: the mode pill is at the physical bottom-left ».
+> Ce ne sont pas des régressions et aucun n'est corrigé ici.
+>
+> ⚠️ **ET QUATRE QUI SONT INSTABLES D'UNE EXÉCUTION À L'AUTRE, DES DEUX CÔTÉS.**
+> « satellite: the imagery is on », ses deux voisines, et X12 « the regional
+> washes are actually painted » — le même run rend 36/3, puis 32/7, puis 35/4,
+> et **sur 83c3556 aussi** (35/4 au second passage). Ce sont des questions
+> posées à des tuiles qui arrivent par le réseau ; elles ne mesurent pas ce
+> qu'elles croient mesurer tant qu'elles n'attendent pas le rendu. Noté ici
+> plutôt que corrigé : ce n'est pas le sujet de cette passe, et un correctif
+> qui consisterait à allonger une attente n'est pas un correctif.
 >
 > `write` échoue toujours, et c'est l'état voulu depuis P3.1 : le compte de
 > test a été supprimé, et cette porte est faite pour cesser de fonctionner ce
