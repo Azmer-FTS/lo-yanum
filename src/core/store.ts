@@ -285,6 +285,27 @@ function stampLegTimestamps(mission: Mission): void {
   }
 }
 
+/**
+ * ★★ AE3.3 — LE POINT DE CONTRÔLE, EN UN GESTE.
+ *
+ * Un horodatage ajouté à la fin de la liste, et rien d'autre. Pas de statut,
+ * pas de champ « dernier signe » qui doublerait la liste et pourrait la
+ * contredire : `checkpointState` (core/vigil.ts) lit le maximum de l'arrivée
+ * et des points, ce qui est vrai par construction.
+ *
+ * ⚠️ SANS EFFET AVANT L'ARRIVÉE ET APRÈS LA FIN. Un point de contrôle sur une
+ *    garde qui n'a pas commencé serait un signe de vie donné par quelqu'un qui
+ *    n'est pas sur place — c'est-à-dire exactement le faux négatif qu'AE3
+ *    existe pour empêcher.
+ */
+export function recordCheckpoint(missionId: string): void {
+  withMission(missionId, (m) => {
+    if (m.arrivalConfirmedAt === null) return
+    if (m.endConfirmedAt !== null) return
+    m.checkpoints = [...(m.checkpoints ?? []), iso(now())]
+  })
+}
+
 /** Volunteer action: the guard is over for the whole group. */
 export function confirmGuardEnd(missionId: string): void {
   withMission(missionId, (m) => {
@@ -401,6 +422,15 @@ export interface FarmDraft {
   umbrella?: string
   guardedDunams?: number
   guardedDunamsManual?: boolean
+  /* ★★ AE2 — les deux numéros de nuit et les quatre champs du תיק אתר. Ils
+     sont sur le brouillon comme les autres textes libres : `createFarm` et
+     `updateFarm` recopient le brouillon, il n'y a rien de plus à écrire. */
+  councilHotline?: string
+  standbyPhone?: string
+  siteAccess?: string
+  gateCode?: string
+  parking?: string
+  terrainNotes?: string
   // AA5 — set by the signatures import, never by the form.
   signature?: string | null
   signatureMissing?: boolean
@@ -1199,6 +1229,8 @@ export function createMission(draft: MissionDraft): Mission {
     requiredVolunteers: draft.requiredVolunteers ?? assignments.length,
     arrivalConfirmedAt: null,
     endConfirmedAt: null,
+    /* AE3.3 — vide, et c'est l'état honnête d'une nuit qui n'a pas commencé. */
+    checkpoints: [],
     createdAt: iso(now()),
     droppedOffAt: null,
     pickedUpAt: null,

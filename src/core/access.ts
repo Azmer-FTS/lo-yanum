@@ -7,6 +7,8 @@ import type { RegionId } from './regions'
 import { signatureImageOf } from './signatures'
 import { _raw, getSession } from './store'
 import { buildDayPlan } from './tours'
+import { guardWasHeld, silenceSignals } from './vigil'
+import type { VigilThresholds } from './vigil'
 import type { DayPlan, Tour } from './tours'
 import type {
   AgendaEvent,
@@ -791,7 +793,15 @@ export function getPresenceMismatches(): PresenceMismatch[] {
  * Every alert carries its own call list, so the coordinator can dial from the
  * dashboard without navigating anywhere.
  */
-export function getAlerts(): DashboardAlert[] {
+/**
+ * ⚠️ LES SEUILS SONT UN ARGUMENT, PAS UNE LECTURE D'UN ÉTAT CACHÉ — même règle
+ *    qu'AD2 pour le seuil d'écart. C'est ce qui fait de « le réglage suit
+ *    immédiatement » une vérité par construction, et c'est ce qui permet à
+ *    `bun run aepass` de poser la question à midi comme à trois heures.
+ */
+export function getAlerts(
+  thresholds: VigilThresholds | undefined = undefined,
+): DashboardAlert[] {
   const alerts: DashboardAlert[] = []
   const d = _raw()
   const farms = getVisibleFarms()
@@ -897,6 +907,56 @@ export function getAlerts(): DashboardAlert[] {
       // <6h outranks a mismatch; <24h sits between; further out stays low.
       weight: hoursLeft < 6 ? 9 : hoursLeft < 24 ? 7 : 4,
       contacts: [],
+    })
+  }
+
+  /**
+   * ★★ AE3 — LES TROIS SILENCES, ET ILS SONT LES PLUS LOURDS DE LA LISTE.
+   *
+   * Chaque autre alerte de cet écran naît d'un geste : quelqu'un a signalé un
+   * incident, quelqu'un a coché une présence, quelqu'un a créé une garde. Ces
+   * trois-là naissent d'une case restée nulle à une heure qui est passée, et
+   * c'est le seul cas où « personne ne nous a rien dit » veut peut-être dire
+   * que personne ne PEUT rien dire. Poids 40 : au-dessus de l'incident urgent
+   * (30), parce qu'un incident urgent a au moins un auteur.
+   *
+   * ⚠️ ET LES CONTACTS SONT CEUX QU'ON APPELLE, PAS CEUX QU'ON PRÉVIENT : le
+   *    porteur du téléphone de groupe d'abord — c'est lui qu'on essaie de
+   *    joindre — puis le conducteur, puis l'agriculteur, qui est à quatre
+   *    minutes de la ferme quand les deux autres ne répondent pas.
+   */
+  for (const signal of silenceSignals(getVisibleMissions(), thresholds)) {
+    const mission = d.missions.find((m) => m.id === signal.missionId)
+    const farm = farms.find((f) => f.id === signal.farmId)
+    const holderId = mission?.assignments.find((a) => a.isGroupPhone)?.volunteerId
+    const holder = d.volunteers.find((v) => v.id === holderId)
+    const driver = d.drivers.find((dr) => dr.id === mission?.drivers[0]?.driverId)
+    const primary = farm?.contacts.find((c) => c.isPrimary)
+    alerts.push({
+      id: `alert-silence-${signal.kind}-${signal.missionId}`,
+      kind: signal.kind,
+      farmName: farm?.name ?? '',
+      at: signal.at,
+      detail: String(signal.lateMinutes),
+      href: `/coordinator/missions/${signal.missionId}`,
+      weight: 40,
+      contacts: [
+        holder && {
+          name: holder.name,
+          phone: holder.phone,
+          roleKey: 'volunteers.groupPhoneHolder',
+        },
+        driver && {
+          name: driver.name,
+          phone: driver.phone,
+          roleKey: 'anchor.labelDriver',
+        },
+        primary && {
+          name: primary.name,
+          phone: primary.phone,
+          roleKey: 'anchor.labelFarmer',
+        },
+      ].filter(Boolean) as DashboardAlert['contacts'],
     })
   }
 
@@ -1044,6 +1104,17 @@ export function farmGuardStats(farmId: string, at: number = now().getTime()): Fa
   for (const mission of getVisibleMissions()) {
     if (mission.farmId !== farmId) continue
     if (mission.status === 'cancelled') continue
+    /**
+     * ★★ AE3.5 — « UNE GARDE NON CONFIRMÉE N'EST PAS UNE GARDE REÇUE. »
+     *
+     * AC4 comptait toute nuit passée non annulée, faute de savoir si quelqu'un
+     * était venu. Depuis AE3.1 une case le dit, et une nuit dont personne n'a
+     * confirmé l'arrivée est une nuit qui, portée au crédit d'une ferme dans le
+     * rapport de l'association, est un chiffre inventé. Les trois compteurs
+     * l'excluent ensemble — la même fonction que celle qui allume l'alerte,
+     * pour que le tableau de bord et la fiche ne puissent pas se contredire.
+     */
+    if (!guardWasHeld(mission)) continue
     const started = new Date(mission.startAt).getTime()
     if (!Number.isFinite(started) || started > at) continue
     guards++

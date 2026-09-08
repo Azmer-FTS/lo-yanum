@@ -12,6 +12,8 @@ import { AgreementTemplateSection } from '../../settings/AgreementTemplateSectio
 import { DisplaySection, RegionsEditSection } from '../../settings/DisplaySection'
 import { DemoDataSection } from '../../settings/DemoDataSection'
 import { AreaGapSection } from '../../settings/AreaGapSection'
+import { SummonsSection } from '../../settings/SummonsSection'
+import { VigilSection } from '../../settings/VigilSection'
 import { CoverageSection } from '../../settings/CoverageSection'
 import { TargetSection } from '../../settings/TargetSection'
 import { ViewAsSection } from '../../settings/ViewAsSection'
@@ -210,6 +212,14 @@ export function SettingsScreen() {
       {/* AD2.3 — le seuil d'écart, à côté du seuil d'oubli : deux réglages qui
           décident tous les deux quand une fiche se met à parler. */}
       <AreaGapSection />
+
+      {/* ★★ AE3 · AE4 — les délais des trois silences, puis le gabarit du SMS
+          de convocation. Ils suivent les seuils d'AC4.5 et d'AD2.3 parce que
+          ce sont les mêmes objets : des nombres que le coordinateur règle pour
+          SON programme, sur SON appareil. */}
+      <VigilSection />
+
+      <SummonsSection />
 
       {/* ★★ Y2.1 — the door to the region editor. Above the offline block on
           purpose: it is a decision about the programme, not about this

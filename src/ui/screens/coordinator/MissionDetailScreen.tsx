@@ -26,6 +26,7 @@ import {
   CancellationPanel,
 } from '../../components/cancellation'
 import { OutreachPanel } from '../../components/outreach'
+import { SummonsButton } from '../../components/summons'
 import { ContactActions, ContactButtons } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
 import { MapSplit } from '../../components/MapSplit'
@@ -220,6 +221,21 @@ function TeamList({ view }: { view: MissionView }) {
               group being squeezed into a column. */}
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1.5 pb-2">
             <ContactButtons name={volunteer.name} phone={volunteer.phone} />
+            {/* ★★ AE4 — LE SMS DE CONVOCATION, ET IL EST ICI PLUTÔT QUE DANS
+                UNE ACTION DE MASSE. Le coordinateur envoie à qui il vient de
+                confirmer au téléphone, pas à une liste : c'est la même
+                grammaire que les trois boutons de contact à côté, et c'est ce
+                qui fait que l'envoi suit le recrutement au lieu de l'attendre.
+                Le lien de garde d'AE1 est dedans. */}
+            <SummonsButton
+              mission={view.mission}
+              farm={view.farm}
+              anchor={view.anchorPoint}
+              role="volunteer"
+              personId={volunteer.id}
+              phone={volunteer.phone}
+              compact
+            />
             <p className="muted min-w-0 truncate">
               {volunteer.yeshiva} · {volunteer.locality} ·{' '}
               <span className="ltr-nums">{volunteer.phone}</span>

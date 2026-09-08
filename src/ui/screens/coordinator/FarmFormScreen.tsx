@@ -281,6 +281,13 @@ export function FarmFormScreen() {
   const [farmerPhone, setFarmerPhone] = useState(existing?.farmerPhone ?? '')
   const [liaisonName, setLiaisonName] = useState(existing?.liaisonName ?? '')
   const [liaisonPhone, setLiaisonPhone] = useState(existing?.liaisonPhone ?? '')
+  /* ★★ AE2 — les deux numéros de nuit et les quatre champs du תיק אתר. */
+  const [councilHotline, setCouncilHotline] = useState(existing?.councilHotline ?? '')
+  const [standbyPhone, setStandbyPhone] = useState(existing?.standbyPhone ?? '')
+  const [siteAccess, setSiteAccess] = useState(existing?.siteAccess ?? '')
+  const [gateCode, setGateCode] = useState(existing?.gateCode ?? '')
+  const [parking, setParking] = useState(existing?.parking ?? '')
+  const [terrainNotes, setTerrainNotes] = useState(existing?.terrainNotes ?? '')
 
   const num = (v: string) => (v.trim() === '' ? NaN : Number(v))
   /**
@@ -430,6 +437,12 @@ export function FarmFormScreen() {
       farmerEmail: farmerEmail.trim(),
       liaisonName: liaisonName.trim(),
       liaisonPhone: liaisonPhone.trim(),
+      councilHotline: councilHotline.trim(),
+      standbyPhone: standbyPhone.trim(),
+      siteAccess: siteAccess.trim(),
+      gateCode: gateCode.trim(),
+      parking: parking.trim(),
+      terrainNotes: terrainNotes.trim(),
       // AC1 · AC2.4 — the holding's own name, and who groups it.
       farmName: farmName.trim(),
       umbrella: umbrella.trim(),
@@ -1204,6 +1217,83 @@ export function FarmFormScreen() {
               value: v,
               label: t(`farmStatus.${v}`),
             }))}
+          />
+        </FormSection>
+
+        {/* ═══════════════════════════════════════════════════════════════
+            ★★ AE2 — TÉLÉPHONES DE NUIT ET תיק אתר.
+
+            ⚠️ UNE SECTION À ELLE, ET NON DEUX CHAMPS GLISSÉS DANS « CONTACTS ».
+               Les contacts sont des gens à qui l'on parle en journée ; ces
+               six-là sont ce qu'on lit à 03:00 en courant. Les mélanger
+               reviendrait à demander à quelqu'un de lire une section pour
+               trouver un code de portail.
+
+            ⚠️ ET LE מוקד EST À CÔTÉ DE LA MRKZIYA, AVEC SON PROPRE INDICE.
+               `councilPhone` (AA4) est la standardiste et ne répond pas la
+               nuit ; les confondre coûte une intervention.
+            ═══════════════════════════════════════════════════════════════ */}
+        {/**
+          * ⚠️ REPLIABLE ET REPLIÉE, ET `bun run layout` EST POURQUOI : cette
+          *    fiche est plafonnée à six hauteurs d'écran à 390 px (A30) et ces
+          *    six champs l'ont poussée à 6,2 — le même plafond, la même règle
+          *    et le même remède que les trois sections pliables au-dessus.
+          *
+          * ★ ET LE RÉSUMÉ DIT CE QUI COMPTE QUAND ELLE EST FERMÉE : les deux
+          *   numéros de nuit sont-ils renseignés. Un coordinateur qui parcourt
+          *   ses fiches cherche précisément ce trou-là, et il doit le voir sans
+          *   ouvrir — c'est la règle du résumé de `form.sectionLand`, appliquée
+          *   à la seule information de cette section qui se lit en urgence.
+          */}
+        <FormSection
+          title={t('settings.emergencyFields.title')}
+          storageKey={`farm-form-emergency:${farmId ?? 'new'}`}
+          defaultOpen={false}
+          summary={
+            <span className="chip ms-2 bg-surface-high text-content-secondary">
+              {[standbyPhone.trim(), councilHotline.trim()].filter(Boolean).length === 2
+                ? t('settings.emergencyFields.bothSet')
+                : t('settings.emergencyFields.someMissing')}
+            </span>
+          }
+        >
+          <TextField
+            label={t('settings.emergencyFields.standbyPhone')}
+            hint={t('settings.emergencyFields.standbyPhoneHint')}
+            value={standbyPhone}
+            onChange={setStandbyPhone}
+            type="tel"
+            ltr
+          />
+          <TextField
+            label={t('settings.emergencyFields.councilHotline')}
+            hint={t('settings.emergencyFields.councilHotlineHint')}
+            value={councilHotline}
+            onChange={setCouncilHotline}
+            type="tel"
+            ltr
+          />
+          <TextField
+            label={t('emergency.siteAccess')}
+            value={siteAccess}
+            onChange={setSiteAccess}
+          />
+          <TextField
+            label={t('emergency.gateCode')}
+            value={gateCode}
+            onChange={setGateCode}
+          />
+          <TextField
+            label={t('emergency.parking')}
+            value={parking}
+            onChange={setParking}
+          />
+          <TextArea
+            label={t('emergency.terrain')}
+            value={terrainNotes}
+            onChange={setTerrainNotes}
+            rows={3}
+            className="col-span-full"
           />
         </FormSection>
 

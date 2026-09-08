@@ -20,6 +20,10 @@ export * from './agenda'
 export * from './association'
 export * from './prospection'
 export * from './signatures'
+export * from './emergency'
+export * from './invite'
+export * from './vigil'
+export * from './summons'
 export * from './access'
 export * from './dispatch'
 export * from './sessions'
@@ -40,6 +44,8 @@ export {
   setIncidentResolved,
   confirmArrival,
   confirmGuardEnd,
+  // AE3.3 — le point de contrôle de la nuit.
+  recordCheckpoint,
   setPresence,
   archiveVolunteer,
   reactivateVolunteer,

@@ -203,6 +203,22 @@ const farmMapping: Mapping<Farm> = {
            */
           area_gap_declared: f.areaGapAcceptedDeclared ?? null,
           area_gap_measured: f.areaGapAcceptedMeasured ?? null,
+          /**
+           * ★★ AE2 — LES DEUX NUMÉROS QUI ARRIVENT LES PREMIERS ET LA FICHE DU
+           *    SITE. Six colonnes de texte, toutes nullables, aucune lue par
+           *    quoi que ce soit d'autre que l'écran d'urgence et le SMS.
+           *
+           * ⚠️ `council_hotline` N'EST PAS `council_phone`. La seconde existe
+           *    depuis AA4 et c'est la STANDARDISTE ; les fondre reviendrait à
+           *    composer un numéro qui ne répond pas la nuit. Voir la note sur
+           *    `Farm.councilHotline`.
+           */
+          council_hotline: f.councilHotline ?? null,
+          standby_phone: f.standbyPhone ?? null,
+          site_access: f.siteAccess ?? null,
+          gate_code: f.gateCode ?? null,
+          parking: f.parking ?? null,
+          terrain_notes: f.terrainNotes ?? null,
           signature: f.signature ?? null,
           signature_missing: f.signatureMissing ?? false,
           signature_origin: f.signatureOrigin ? JSON.stringify(f.signatureOrigin) : null,
@@ -381,6 +397,15 @@ const farmMapping: Mapping<Farm> = {
        ensemble et n'accepte que la paire complète. */
     areaGapAcceptedDeclared: optNum(p.area_gap_declared),
     areaGapAcceptedMeasured: optNum(p.area_gap_measured),
+    /* AE2 — absents tant que personne n'a renseigné ; `optStr` rend `undefined`
+       et non `''`, ce qui est ce qui garde l'aller-retour de `bun run mapping`
+       une identité. */
+    councilHotline: optStr(p.council_hotline),
+    standbyPhone: optStr(p.standby_phone),
+    siteAccess: optStr(p.site_access),
+    gateCode: optStr(p.gate_code),
+    parking: optStr(p.parking),
+    terrainNotes: optStr(p.terrain_notes),
     // AA5 — the imported signature and where it came from.
     signature: optStr(p.signature),
     signatureMissing: p.signature_missing === true ? true : undefined,
@@ -653,6 +678,8 @@ const missionMapping: Mapping<Mission> = {
     { table: 'presence_marks', fk: 'mission_id' },
     { table: 'mission_drivers', fk: 'mission_id' },
     { table: 'mission_driver_passengers', fk: 'mission_id' },
+    /* AE3.3 — les signes de vie de la nuit, un par ligne, dans l'ordre. */
+    { table: 'mission_checkpoints', fk: 'mission_id' },
     { table: 'cancel_notices', fk: 'mission_id' },
   ],
   toRows: (m) => {
@@ -715,6 +742,24 @@ const missionMapping: Mapping<Mission> = {
             created_at: m.createdAt,
           },
         ],
+      },
+      {
+        /**
+         * ★★ AE3.3 — UNE LIGNE PAR POINT DE CONTRÔLE, PAS UNE COLONNE
+         *    « dernier signe ».
+         *
+         * Une colonne unique répondrait à « depuis quand est-il silencieux »
+         * et à rien d'autre. La question que le coordinateur pose au matin est
+         * « combien de fois a-t-il donné signe », et celle que l'association
+         * pose au mois est « est-ce que ce dispositif sert ». Les deux sont des
+         * questions sur des lignes.
+         */
+        table: 'mission_checkpoints',
+        rows: (m.checkpoints ?? []).map((at, position) => ({
+          mission_id: m.id,
+          at,
+          position,
+        })),
       },
       {
         table: 'mission_guard_posts',
@@ -790,6 +835,9 @@ const missionMapping: Mapping<Mission> = {
       additionalAnchorPointIds: ordered(kids.mission_guard_posts).map((r) =>
         str(r.guard_post_id),
       ),
+      /* AE3.3 — relus dans l'ordre écrit, jamais retriés par la date : c'est
+         `position` qui porte l'ordre, comme pour les quatre autres enfants. */
+      checkpoints: ordered(kids.mission_checkpoints).map((r) => ts(r.at)),
       pickupPoint: pointOrNull(p.pickup_lat, p.pickup_lng),
       dropoffPoint: pointOrNull(p.dropoff_lat, p.dropoff_lng),
       returnPickupPoint: pointOrNull(p.return_pickup_lat, p.return_pickup_lng),

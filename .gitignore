@@ -78,3 +78,13 @@ dist-pills/
 dist-sheets/
 dist-abpass/
 dist-ab/
+
+# AE — la porte navigateur de la passe de sécurité construit ici. Même raison
+# que toutes les lignes ci-dessus : un build d'aperçu est un artefact, pas une
+# source.
+#
+# ⚠️ `dist-acpass/` ET `dist-adpass/` SONT SUIVIS PAR GIT, ET C'EST UN ACCIDENT
+#    DES DEUX PASSES PRÉCÉDENTES, PAS UNE CONVENTION. Les retirer de l'index
+#    est un nettoyage à part entière — il touche des fichiers qu'aucune ligne
+#    de cette passe n'a produits — et il n'a donc pas été fait ici.
+dist-aepass/

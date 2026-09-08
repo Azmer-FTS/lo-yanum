@@ -75,7 +75,10 @@
     "accaptures": "bun run scripts/accaptures.ts",
     "adpass": "bun run scripts/adpass.ts",
     "adui": "bun run scripts/adui.ts",
-    "adcaptures": "bun run scripts/adcaptures.ts"
+    "adcaptures": "bun run scripts/adcaptures.ts",
+    "aepass": "bun run scripts/aepass.ts",
+    "aeui": "bun run scripts/aeui.ts",
+    "aecaptures": "bun run scripts/aecaptures.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "^0.4.0",

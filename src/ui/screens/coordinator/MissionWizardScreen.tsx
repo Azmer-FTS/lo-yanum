@@ -869,6 +869,8 @@ export function MissionWizardScreen() {
         cancelNote: '',
         outreach: [],
         reactivatedAt: null,
+        /* AE3.3 — un aperçu de message pour une garde qui n'existe pas encore. */
+        checkpoints: [],
       },
       driver,
       farmerContact: farm.contacts.find((c) => c.isPrimary) ?? null,

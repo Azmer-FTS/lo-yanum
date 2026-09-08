@@ -143,11 +143,11 @@ check(
   for (const c of COLLECTIONS) for (const t of tablesOf(c)) tables.add(t)
   check(
     'and between them they cover the schema',
-    // PO POINT 6 added `entity_livestock`: 27 tables in the schema, minus
-    // `app_users`, which is who a login speaks for rather than data the app
-    // writes.
-    tables.size === 26,
-    `${tables.size} tables (27 minus app_users, which is identity, not data)`,
+    // PO POINT 6 added `entity_livestock`; ★★ AE3.3 added
+    // `mission_checkpoints`. 28 tables in the schema, minus `app_users`, which
+    // is who a login speaks for rather than data the app writes.
+    tables.size === 27,
+    `${tables.size} tables (28 minus app_users, which is identity, not data)`,
   )
   check(
     'app_users is NOT one of them',
@@ -313,6 +313,9 @@ section('4 — the empty shapes, which is what the real app starts with')
     assignments: [],
     drivers: [],
     outreach: [],
+    /* AE3.3 — et pas un signe de vie : c'est l'état d'une garde qui n'a pas
+       commencé, et c'est la forme que le vrai programme démarre avec. */
+    checkpoints: [],
   }
   const written = mapping.toRows(bare)
   const back = mapping.fromRows(
@@ -323,7 +326,8 @@ section('4 — the empty shapes, which is what the real app starts with')
   check('a guard with no team, no car and no notice', diff === null, diff ?? 'identical')
   check(
     'and its child tables are written as empty sets, not skipped',
-    written.length === 7,
+    // ★★ AE3.3 — huit maintenant : `mission_checkpoints` a rejoint les sept.
+    written.length === 8,
     `${written.length} tables addressed`,
   )
 }

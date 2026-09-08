@@ -21,6 +21,7 @@ import {
   cancelMission,
   confirmArrival,
   confirmGuardEnd,
+  recordCheckpoint,
   createAnchorPoint,
   createDriver,
   createFarm,
@@ -274,6 +275,16 @@ emits('setIncidentResolved', () => setIncidentResolved(incidentId, true), [
 
 // Missions -----------------------------------------------------------------
 emits('confirmArrival', () => confirmArrival(missionId), [['missions', missionId]])
+/**
+ * ★★ AE3.3 — ET IL EST POSÉ **APRÈS** `confirmArrival`, PAS AVANT.
+ *
+ * `recordCheckpoint` ne fait rien tant que l'arrivée n'est pas confirmée
+ * (c'est sa règle : un signe de vie donné par quelqu'un qui n'est pas encore
+ * sur place est le faux négatif qu'AE3 existe pour empêcher). Placé avant, il
+ * n'émettrait aucun changement et cette porte le dirait — ce qui serait un
+ * échec juste pour la mauvaise raison.
+ */
+emits('recordCheckpoint', () => recordCheckpoint(missionId), [['missions', missionId]])
 emits(
   'setPresence',
   () => setPresence(missionId, _raw().missions[0].assignments[0].volunteerId, 'inbound', 'driver', 'present'),

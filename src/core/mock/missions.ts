@@ -42,16 +42,29 @@ const who = (
   inbound: LegConfirmation = { ...EMPTY_LEG },
 ): MissionAssignment => ({ volunteerId, isGroupPhone, outbound, inbound })
 
-/** G9bis defaults — a guard that was never called off. */
+/**
+ * G9bis defaults — a guard that was never called off.
+ *
+ * ★★ AE3 — AND ITS CHECKPOINT LIST, WHICH IS EMPTY HERE AND OVERRIDDEN ON THE
+ *    ONE GUARD THAT IS ACTUALLY UNDER WAY. Empty is the honest default for a
+ *    night that has not started; a fixture that pre-filled every guard with
+ *    signs of life would hide the only state AE3 exists to find.
+ */
 const notCancelled = (): Pick<
   Mission,
-  'cancelledAt' | 'cancelReason' | 'cancelNote' | 'outreach' | 'reactivatedAt'
+  | 'cancelledAt'
+  | 'cancelReason'
+  | 'cancelNote'
+  | 'outreach'
+  | 'reactivatedAt'
+  | 'checkpoints'
 > => ({
   cancelledAt: null,
   cancelReason: null,
   cancelNote: '',
   outreach: [],
   reactivatedAt: null,
+  checkpoints: [],
 })
 
 export const MISSIONS: Mission[] = [
@@ -93,6 +106,10 @@ export const MISSIONS: Mission[] = [
     ],
     arrivalConfirmedAt: hoursFromNow(-1.8),
     endConfirmedAt: null,
+    /* AE3.3 — the one guard genuinely under way has given a sign of life since
+       it arrived, so the demo twin shows the state the feature is FOR rather
+       than only its alarm. */
+    checkpoints: [hoursFromNow(-0.6)],
     createdAt: hoursFromNow(-50),
     droppedOffAt: hoursFromNow(-2.1),
     pickedUpAt: null,
@@ -170,6 +187,55 @@ export const MISSIONS: Mission[] = [
     endConfirmedAt: hoursFromNow(-22),
     createdAt: hoursFromNow(-78),
     droppedOffAt: hoursFromNow(-30.2),
+    pickedUpAt: null,
+    completedAt: null,
+  },
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ★★ AE3 (2026-09-08) — LA NUIT DONT PERSONNE N'A RIEN DIT.
+   * ═══════════════════════════════════════════════════════════════════════
+   *
+   * Hier soir, sur `farm-01`. Programmée, une équipe assignée, un conducteur,
+   * et PAS UNE CASE COCHÉE : ni arrivée, ni sortie, ni signe de vie.
+   *
+   * ★ ELLE MANQUAIT, ET SON ABSENCE RENDAIT DEUX FONCTIONNALITÉS INVISIBLES.
+   *   Les six gardes des fixtures étaient soit confirmées, soit à venir, soit
+   *   annulées — c'est-à-dire qu'aucune ne se trouvait dans le seul état
+   *   qu'AE3 existe pour trouver. Sans elle, le tableau de bord du jumeau ne
+   *   montre jamais un silence, et A127 ne peut pas distinguer « exclue parce
+   *   que non confirmée » de « il n'y en avait pas ».
+   *
+   * ⚠️ ET ELLE EST DÉLIBÉRÉMENT LAIDE : c'est la nuit que le programme doit
+   *    pouvoir apercevoir le lendemain matin, pas une nuit qu'on montre au
+   *    donateur.
+   */
+  {
+    id: 'mission-08',
+    ...notCancelled(),
+    farmId: 'farm-01',
+    anchorPointId: 'anchor-01',
+    additionalAnchorPointIds: [],
+    pickupPoint: null,
+    dropoffPoint: null,
+    returnPickupPoint: null,
+    returnDropoffPoint: null,
+    startAt: hoursFromNow(-27),
+    endAt: hoursFromNow(-19),
+    requiredVolunteers: 2,
+    status: 'planned',
+    assignments: [who('vol-004', true), who('vol-005', false)],
+    drivers: [
+      {
+        driverId: 'drv-01',
+        passengerVolunteerIds: ['vol-004', 'vol-005'],
+        confirmed: true,
+      },
+    ],
+    arrivalConfirmedAt: null,
+    endConfirmedAt: null,
+    createdAt: hoursFromNow(-75),
+    droppedOffAt: null,
     pickedUpAt: null,
     completedAt: null,
   },
@@ -281,6 +347,7 @@ export const MISSIONS: Mission[] = [
       },
     ],
     reactivatedAt: null,
+    checkpoints: [],
   },
 
   {

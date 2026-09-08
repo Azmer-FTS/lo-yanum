@@ -19,6 +19,10 @@ import { NetworkStatus } from './components/NetworkStatus'
 import { useTruncationTitles } from './hooks/useTruncationTitles'
 import { useAuth } from './hooks/useAuth'
 import { useCoreValue } from './hooks/useCore'
+import { EMERGENCY_ROUTE } from './components/EmergencyButton'
+import { readGuardPass } from './guardPass'
+import { EmergencyScreen } from './screens/EmergencyScreen'
+import { GuardLinkScreen } from './screens/GuardLinkScreen'
 import { LandingScreen } from './screens/LandingScreen'
 import { AuthSplash, LoginScreen } from './screens/LoginScreen'
 import { StyleguideScreen } from './screens/StyleguideScreen'
@@ -89,13 +93,43 @@ function RequireRole({ role, children }: { role: Role; children: ReactNode }) {
  * the frozen /poc is and what every verification script drives — `status` is
  * `disabled` and this function returns the app exactly as P0bis left it.
  */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AE1 · AE2 (2026-09-08) — LES DEUX CHOSES QUI PASSENT DEVANT LA PORTE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ★ AE1 — UN VOLONTAIRE N'A PAS DE COMPTE. « Aucun volontaire ne crée de
+ *   compte. Aucun mot de passe. » La porte P2.3 est une bonne porte pour un
+ *   coordinateur ; pour le porteur d'un lien de garde, c'est un formulaire
+ *   qu'il ne peut pas remplir, donc une app qui ne s'ouvre pas. Deux états la
+ *   contournent, et deux seulement : l'URL EST un lien de garde, ou l'appareil
+ *   PORTE un laissez-passer non périmé (`ui/guardPass.ts`, qui refuse de
+ *   rendre un jeton dont la date est passée et l'efface au passage).
+ *
+ * ★ AE2 — ET L'ÉCRAN D'URGENCE AUSSI, POUR QUELQU'UN QUI N'A NI L'UN NI
+ *   L'AUTRE. C'est AE1.5 vu de l'autre côté : les numéros restent
+ *   atteignables. Un écran qui ne porte que des numéros publics et le numéro
+ *   du coordinateur ne divulgue rien qu'une porte devrait garder, et le refuser
+ *   à quelqu'un dont le lien vient d'expirer est précisément le défaut que
+ *   cette passe existe pour supprimer.
+ *
+ * ⚠️ LU SUR LE HASH ET NON SUR UN ÉTAT DU ROUTEUR, parce qu'il n'y a pas
+ *    encore de routeur : cette décision se prend AVANT `<HashRouter>`.
+ */
+function passesTheDoor(): boolean {
+  const hash = typeof window === 'undefined' ? '' : window.location.hash
+  if (hash.startsWith('#/g/')) return true
+  if (hash === `#${EMERGENCY_ROUTE}` || hash.startsWith(`#${EMERGENCY_ROUTE}?`)) return true
+  return readGuardPass() !== null
+}
+
 export default function App() {
   const auth = useAuth()
   // U7 — every truncated text carries its full value as a title, app-wide.
   useTruncationTitles()
 
   if (auth.status === 'loading') return <AuthSplash />
-  if (auth.status === 'signed-out') return <LoginScreen />
+  if (auth.status === 'signed-out' && !passesTheDoor()) return <LoginScreen />
 
   return (
     <HashRouter>
@@ -121,6 +155,17 @@ export default function App() {
             )
           }
         />
+
+        {/* ★★ AE1 — LE LIEN DE GARDE. Hors de toute coquille et hors de toute
+            garde de rôle : c'est lui qui POSE le rôle. */}
+        <Route path="/g/:token" element={<GuardLinkScreen />} />
+
+        {/* ★★ AE2 — L'ÉCRAN D'URGENCE, UNE SEULE ROUTE POUR LES QUATRE RÔLES.
+            Au niveau racine et non dans chaque coquille : quatre copies
+            seraient quatre écrans à garder identiques, et celui qui divergerait
+            serait découvert une nuit. Il n'a pas de `RequireRole` parce qu'il
+            n'y a pas de rôle qui n'ait pas le droit d'appeler la police. */}
+        <Route path={EMERGENCY_ROUTE} element={<EmergencyScreen />} />
 
         {/* D1 — token demonstration page. Hidden: not in any navigation, no
             role gate, rendered outside every layout so the tokens are seen on

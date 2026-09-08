@@ -524,12 +524,34 @@ section('A104 · A105 — les compteurs de gardes et le vivier')
   if (!target) throw new Error('no farm with a guard in the fixture')
 
   const mine = missions.filter((m) => m.farmId === target.id)
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ★★ RÉÉCRITE EN AE3.5 (2026-09-08), PAS SUPPRIMÉE — ET LA DIFFÉRENCE EST
+   *    UNE CASE DE PLUS DANS CE FILTRE.
+   * ═══════════════════════════════════════════════════════════════════════
+   *
+   * AC4 disait « les nuits passées non annulées », et c'était la bonne
+   * définition tant que RIEN dans le système ne pouvait dire si quelqu'un
+   * était venu. Depuis AE3.1, une case le dit : le porteur du téléphone de
+   * groupe confirme l'arrivée en un geste. Une nuit programmée que personne
+   * n'a confirmée est une nuit dont on ne sait pas si elle a eu lieu, et la
+   * porter au crédit d'une ferme dans le rapport de l'association serait un
+   * chiffre inventé — « une garde non confirmée n'est pas une garde reçue ».
+   *
+   * ⚠️ LES TROIS COMPTEURS L'EXCLUENT ENSEMBLE. `guards`, `volunteering` et
+   *    `regulars` sont trois lectures d'un même ensemble de nuits ; en
+   *    exclure une d'un seul des trois donnerait à une ferme plus de
+   *    volontaires-nuits que de nuits.
+   */
   const past = mine.filter(
-    (m) => m.status !== 'cancelled' && new Date(m.startAt).getTime() <= Date.now(),
+    (m) =>
+      m.status !== 'cancelled' &&
+      new Date(m.startAt).getTime() <= Date.now() &&
+      m.arrivalConfirmedAt !== null,
   )
   const stats = farmGuardStats(target.id)
   check(
-    'A104 · the nights counted are the ones that happened, cancelled excluded',
+    'A104 · the nights counted are the ones that HAPPENED — cancelled and unconfirmed excluded',
     stats.guards === past.length,
     `${stats.guards} counted, ${past.length} expected, ${mine.length} on the record`,
   )
@@ -537,6 +559,18 @@ section('A104 · A105 — les compteurs de gardes et le vivier')
     'A104 · התנדבויות is volunteer-nights over those same guards',
     stats.volunteering === past.reduce((n, m) => n + m.assignments.length, 0),
     `${stats.volunteering}`,
+  )
+  /* ★ ET L'EXCLUSION EST RÉELLE SUR CETTE FICHE : sans une nuit non confirmée
+     dans le lot, la ligne au-dessus passerait sans rien mesurer. */
+  check(
+    'A104 · ★ and at least one scheduled night is NOT counted, or the line above measures nothing',
+    mine.some(
+      (m) =>
+        m.status !== 'cancelled' &&
+        new Date(m.startAt).getTime() <= Date.now() &&
+        m.arrivalConfirmedAt === null,
+    ),
+    `${mine.length - past.length} not counted`,
   )
   check(
     'A104 · the last-guard date is the latest of them, or null for none',

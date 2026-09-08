@@ -103,7 +103,8 @@
     "durationM": "{{m}} דקות",
     "other": "אחר",
     "done": "אישור",
-    "invalid": "ערך לא תקין"
+    "invalid": "ערך לא תקין",
+    "edited": "שונה"
   },
   "roles": {
     "coordinator": "רכז",
@@ -341,7 +342,35 @@
     "areaGapIntro": "מאיזה פער בין השטח המוצהר לשטח המדוד מופיעה הערה בכרטיס היישות.",
     "areaGapPercent": "סף באחוזים",
     "areaGapReset": "חזרה לערך ההתחלתי ({{percent}}%)",
-    "areaGapWhy": "הערך ההתחלתי הוא 10% — מתחת לזה מודדים את היד שסימנה על המסך, לא את הקרקע."
+    "areaGapWhy": "הערך ההתחלתי הוא 10% — מתחת לזה מודדים את היד שסימנה על המסך, לא את הקרקע.",
+    "vigil": {
+      "title": "סימני חיים",
+      "intro": "מתי היעדר אישור הופך להתראה אצל הרכז. הערכים נשמרים במכשיר הזה.",
+      "arrival": "אישור הגעה — דקות אחרי שעת ההתחלה",
+      "checkpoint": "סימן חיים — כל כמה דקות",
+      "close": "סגירת שמירה — דקות אחרי שעת הסיום",
+      "why": "סימן חיים תכוף מדי הוא הסיבה הנפוצה ביותר שמתנדב מכבה התראות — ואז שלושת הסימנים משתתקים יחד.",
+      "reset": "חזרה לערכי ההתחלה ({{arrival}} / {{checkpoint}} / {{close}} דקות)"
+    },
+    "summons": {
+      "title": "תבנית SMS זימון",
+      "intro": "ההודעה שנשלחת ביום השמירה. ניתן לשנות את הנוסח; שדות בסוגריים המסולסלים מוחלפים בנתוני השמירה.",
+      "tokens": "שדות חובה",
+      "missing": "חסרים שדות חובה: {{list}} — לא נשמר",
+      "preview": "תצוגה מקדימה",
+      "reset": "חזרה לנוסח שנשלח עם האפליקציה",
+      "defaultTemplate": "שמירה הלילה — לא ינום\n\nמקום: {{place}}\nניווט: {{navigation}}\nתאריך: {{date}}\nשעות: {{from}}–{{to}}\n\nחקלאי: {{farmerName}} {{farmerPhone}}\nרכז: {{coordinatorPhone}}\nחירום: {{emergency}}\n\nציוד: {{kit}}\n\nכל הפרטים: {{link}}",
+      "kit": "נעליים סגורות, מכנסיים ארוכים, מים, פנס"
+    },
+    "emergencyFields": {
+      "title": "טלפוני חירום ותיק אתר",
+      "councilHotline": "מוקד המועצה",
+      "councilHotlineHint": "לא המרכזייה — המוקד שעונה בלילה",
+      "standbyPhone": "כיתת כוננות היישוב",
+      "standbyPhoneHint": "משמש את כל החוות באותו יישוב",
+      "bothSet": "טלפוני לילה הוזנו",
+      "someMissing": "חסרים טלפוני לילה"
+    }
   },
   "devbar": {
     "viewAs": "צפייה בתור",
@@ -535,7 +564,13 @@
     "needsAction": "דורש טיפול",
     "recruiting": "משמרת בגיוס",
     "recruitingDetail": "אישרו {{detail}} — המשמרת עדיין לא מאוישת",
-    "completeRecruitment": "השלם גיוס"
+    "completeRecruitment": "השלם גיוס",
+    "arrival_missing": "לא אושרה הגעה",
+    "arrival_missingDetail": "עברו {{minutes}} דקות משעת ההתחלה ואיש לא אישר הגעה",
+    "checkpoint_missing": "אין סימן חיים",
+    "checkpoint_missingDetail": "{{minutes}} דקות ללא סימן חיים מהקבוצה",
+    "end_missing": "שמירה לא נסגרה",
+    "end_missingDetail": "עברו {{minutes}} דקות משעת הסיום והשמירה לא נסגרה"
   },
   "farms": {
     "title": "חוות",
@@ -993,7 +1028,10 @@
     "countMismatch": "אי־התאמה במספר המתנדבים",
     "expectedCount": "משובצים: {{count}}",
     "openMission": "פתיחת השמירה",
-    "create": "צור משמרת"
+    "create": "צור משמרת",
+    "summons": "SMS זימון",
+    "guardLink": "קישור לשמירה",
+    "guardLinkCopied": "הקישור הועתק"
   },
   "incidents": {
     "title": "יומן אירועים",
@@ -1089,7 +1127,40 @@
     "police": "משטרה",
     "ambulance": "מד\"א",
     "fire": "כיבוי אש",
-    "regionalSecurity": "קב\"ט מועצה"
+    "regionalSecurity": "קב\"ט מועצה",
+    "title": "חירום",
+    "noFarm": "לא משויך לחווה כרגע",
+    "distress": "מצוקה",
+    "distressHint": "לחיצה ארוכה",
+    "sent": "ההתראה יצאה",
+    "sentSms": "SMS נפתח אל {{count}} נמענים — הרכז והחקלאי",
+    "sentServer": "נרשם אירוע דחוף אצל הרכז",
+    "sentServerQueued": "האירוע ממתין ויישלח כשתחזור הרשת",
+    "nowWhat": "עכשיו — חייגו. הכי מהיר מלמעלה למטה.",
+    "again": "שליחה נוספת",
+    "approximate": "משוער",
+    "groupLocal": "הקרובים ביותר",
+    "groupNational": "שירותי חירום",
+    "groupContext": "לפי הצורך",
+    "borrowed": "מחווה אחרת באותו יישוב",
+    "standby": "כיתת כוננות",
+    "councilHotline": "מוקד המועצה",
+    "idf": "צה\"ל — פיקוד העורף",
+    "magav": "מג\"ב (דרך 100)",
+    "electric": "חברת חשמל",
+    "smsTitle": "מצוקה — לא ינום",
+    "smsWho": "מי",
+    "smsFarm": "חווה",
+    "smsAt": "שעה",
+    "siteFile": "תיק אתר",
+    "siteAccess": "גישה ונקודת כניסה",
+    "gateCode": "קוד או מפתח שער",
+    "parking": "חנייה",
+    "terrain": "מאפייני שטח — כלבים, כלים, אזורים להימנע",
+    "unset": "לא הוזן",
+    "expiredTitle": "הקישור אינו בתוקף",
+    "expiredBody": "השמירה הזו הסתיימה. לשמירה הבאה יישלח קישור חדש. בינתיים — הטלפונים כאן פעילים.",
+    "mda": "מד\"א"
   },
   "farmer": {
     "tonightTitle": "הלילה בחווה",
@@ -1127,7 +1198,12 @@
     "endDone": "סיום אושר",
     "arrivedAt": "אושרה הגעה",
     "endedAt": "אושר סיום",
-    "reportCta": "דיווח אירוע"
+    "reportCta": "דיווח אירוע",
+    "checkpoint": "הכול תקין",
+    "checkpointHint": "סימן חיים אחרון לפני {{minutes}} דקות",
+    "checkpointDue": "הגיע הזמן לסימן חיים",
+    "checkpointNever": "עוד לא נמסר סימן חיים",
+    "siteFileHint": "מה שצריך לדעת על המקום הזה"
   },
   "driver": {
     "title": "ההסעה שלי",

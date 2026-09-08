@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import {
   getSession,
@@ -15,6 +15,7 @@ import type { Role } from '@core/index'
 
 import { SUPABASE_CONFIGURED } from '../../data/config'
 import { useCoreValue } from '../hooks/useCore'
+import { EMERGENCY_ROUTE } from './EmergencyButton'
 import { Icon } from './Icon'
 
 const ROLE_ORDER: Role[] = ['coordinator', 'farmer', 'volunteer', 'driver']
@@ -71,6 +72,7 @@ export function DevToolbar() {
 
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const presets = useCoreValue(listSessionPresets)
   const session = useCoreValue(getSession)
   const currentId = presetIdOf(session)
@@ -171,6 +173,18 @@ export function DevToolbar() {
    *    container in `layouts.tsx` measures itself, so an empty one publishes
    *    no `--shell-foot` at all and the 62 px go back to the app.
    */
+  /**
+   * ★★ AE2 / A124 — ET IL NE SE DESSINE PAS SUR L'ÉCRAN D'URGENCE.
+   *
+   * Le disque de démonstration est posé au coin bas du DÉBUT de ligne, qui sur
+   * l'écran d'urgence est occupé par des numéros de 64 px. `bun run aeui` l'a
+   * mesuré : deux cibles couvertes à 402 px, et les cibles couvertes étaient
+   * des numéros d'urgence. C'est A86 exactement, dans le seul écran où il
+   * coûte une intervention. Le « + » du coordinateur y avait déjà été retiré
+   * pour la même raison (`layouts.tsx`) ; celui-ci le suit.
+   */
+  if (pathname === EMERGENCY_ROUTE) return null
+
   if (phone) {
     return (
       <>
@@ -199,7 +213,17 @@ export function DevToolbar() {
             role="dialog"
             aria-label={t('devbar.viewAs')}
             data-testid="devbar-panel"
-            className="glass fixed bottom-[calc(var(--shell-foot)+var(--pinned-foot,0px)+var(--shell-bottom)+4.5rem)]
+            /* ★★ AE2 — SIX REM ET NON QUATRE ET DEMI, ET `bun run layout` EST
+               POURQUOI. Le disque fait 44 px depuis 1,25 rem, donc 4,5 rem le
+               dégageait ; le bouton d'urgence de la coquille de terrain en
+               fait 64 (AE2b.4 : « vise plus large que le minimum ») et son
+               sommet est à 5,25 rem. Ce panneau se posait dessus sur les six
+               écrans de terrain — c'est-à-dire un objet de DÉMONSTRATION
+               couvrant le contrôle d'urgence, le défaut A86 dans le seul
+               écran où il coûte une intervention. C'est le panneau qui monte :
+               entre un artefact du jumeau et le bouton rouge, ce n'est pas le
+               bouton rouge qui se déplace. */
+            className="glass fixed bottom-[calc(var(--shell-foot)+var(--pinned-foot,0px)+var(--shell-bottom)+6rem)]
                        start-[var(--map-rail)] end-[var(--map-rail)] z-40 flex flex-wrap items-center
                        gap-x-3 gap-y-2 rounded-card p-3 shadow-lift"
           >

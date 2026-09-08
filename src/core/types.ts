@@ -466,6 +466,54 @@ export interface Farm {
    * read. The row is imported, never rejected; this is the to-do it leaves.
    */
   signatureMissing?: boolean
+
+  // -------------------------------------------------------------------------
+  // ★★ AE2 (2026-09-08) — LES DEUX NUMÉROS QUI ARRIVENT LES PREMIERS, ET LA
+  //    FICHE DU SITE. TOUS REMPLIS PAR LE COORDINATEUR, TOUS FACULTATIFS.
+  // -------------------------------------------------------------------------
+  /**
+   * ★ AE2b.2 — « מוקד » DE LA מועצה אזורית, ET CE N'EST PAS `councilPhone`.
+   *
+   *   `councilPhone` est la STANDARDISTE (AA4, et le classeur de l'association
+   *   le dit en toutes lettres) : à neuf heures du soir elle ne répond pas. Le
+   *   מוקד est la permanence, elle répond la nuit, et c'est elle qui réveille
+   *   la כיתת כוננות. Les confondre en un champ ferait composer le mauvais
+   *   numéro à trois heures du matin, ce qui est exactement le coût que cette
+   *   passe existe pour supprimer.
+   */
+  councilHotline?: string
+  /**
+   * ★ AE2b.2 — כיתת כוננות DU יישוב : les gens du coin, armés, à quatre
+   *   minutes. « Ce sont eux qui arrivent les premiers. »
+   *
+   * ⚠️ C'EST UNE PROPRIÉTÉ DU LIEU ET PAS DE L'EXPLOITATION, et c'est pour ça
+   *    qu'on ne le lit jamais directement : `localEmergencyNumbers`
+   *    (core/emergency.ts) le cherche sur la fiche, PUIS sur les autres fiches
+   *    du même יישוב. Rempli une fois sur n'importe laquelle des quatre fermes
+   *    de בארי, il sert les quatre — ce qui est ce que « champ sur la
+   *    localité » veut dire quand la localité n'est pas une ligne en base.
+   */
+  standbyPhone?: string
+
+  /**
+   * ★★ AE2c — תיק אתר. Quatre champs libres, et ils servent TOUTES les nuits
+   *    et pas seulement en urgence : c'est la meilleure idée de la référence
+   *    que le PO a déposée.
+   *
+   * ⚠️ QUATRE CHAMPS ET NON UN SEUL BLOC DE NOTES. `notes` existe déjà et
+   *    contient des phrases de prospection. Un volontaire qui cherche le code
+   *    du portail à 03:00 ne lit pas un paragraphe : il regarde à la ligne qui
+   *    porte le mot « portail ». Ce qui est cherché sous la pression doit être
+   *    étiqueté.
+   */
+  /** Accès et point d'entrée : « מכביש 40 מזרחה, השער השני אחרי הבריכה ». */
+  siteAccess?: string
+  /** Code ou clé du portail. */
+  gateCode?: string
+  /** Où se garer. */
+  parking?: string
+  /** Particularités du terrain : chiens, machines, zones à éviter. */
+  terrainNotes?: string
 }
 
 /** AA5.4 — how a farm came to be signed. */
@@ -862,6 +910,20 @@ export interface Mission {
   drivers: MissionDriver[]
   arrivalConfirmedAt: string | null
   endConfirmedAt: string | null
+  /**
+   * ★★ AE3.3 (2026-09-08) — LES POINTS DE CONTRÔLE DE LA NUIT.
+   *
+   * Un horodatage par « tout va bien » posé pendant la garde, dans l'ordre.
+   * Vide est l'état normal d'une garde qui n'a pas encore commencé ; ce n'est
+   * pas la même chose qu'une garde silencieuse, et c'est `vigil.ts` qui fait
+   * la différence — elle se prend en regardant l'HEURE, pas la longueur de
+   * cette liste.
+   *
+   * ⚠️ AJOUT SEULEMENT, JAMAIS RÉÉCRITURE. « Il a signalé à 01:20 » est un
+   *    fait de la nuit, et une liste qu'on remplace par son dernier élément
+   *    est une liste qui ne peut plus répondre à « combien de fois ».
+   */
+  checkpoints: string[]
 
   // --- D6.2: the night's timeline ------------------------------------------
   //
@@ -1037,6 +1099,17 @@ export type AlertKind =
   | 'presence_mismatch'
   /** G4.3 — a guard still recruiting, urgency growing as the night nears. */
   | 'recruiting'
+  /**
+   * ★★ AE3 (2026-09-08) — LES TROIS SILENCES.
+   *
+   * « Le défaut de toute application de panique : dans le pire des cas,
+   *   personne ne presse rien. » Ce sont les seules alertes de ce tableau que
+   *   RIEN n'a déclenchées — elles naissent d'une absence, en comparant une
+   *   heure attendue à une case restée nulle. Voir core/vigil.ts.
+   */
+  | 'arrival_missing'
+  | 'checkpoint_missing'
+  | 'end_missing'
 
 export interface DashboardAlert {
   id: string

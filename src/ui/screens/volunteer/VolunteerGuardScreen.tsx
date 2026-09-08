@@ -3,12 +3,15 @@ import { Link } from 'react-router-dom'
 
 import {
   readCoordinator,
+  checkpointState,
   confirmArrival,
   confirmGuardEnd,
   formatDateTime,
   formatTime,
+  getFarmZonesForFarm,
   getMyActiveMissionView,
   isGroupPhoneHolder,
+  recordCheckpoint,
   wazeUrl,
 } from '@core/index'
 
@@ -29,6 +32,10 @@ import {
 } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
+import { useNowTick } from '../../hooks/useEmergency'
+import { useGuardPass } from '../../guardPass'
+import { useVigil } from '../../settings/vigil'
+import { SiteFile } from '../EmergencyScreen'
 
 export function VolunteerGuardScreen() {
   const { t } = useTranslation()
@@ -38,8 +45,66 @@ export function VolunteerGuardScreen() {
   const isHolder = useCoreValue(() =>
     view ? isGroupPhoneHolder(view.mission) : false,
   )
+  const pass = useGuardPass()
+  const thresholds = useVigil()
+  /* AE3.3 — l'échéance se lit sur l'horloge, donc l'écran doit se repeindre
+     sans qu'aucune donnée n'ait changé. Trente secondes : assez fin pour que
+     « il reste dix minutes » soit vrai, assez lâche pour ne pas réveiller un
+     téléphone en veille. */
+  const tick = useNowTick(30_000)
+  const zones = useCoreValue(() =>
+    view ? getFarmZonesForFarm(view.farm.id) : [],
+  )
+  const cp = view ? checkpointState(view.mission, thresholds, tick) : null
 
   if (!view) {
+    /**
+     * ★★ AE1.3 — LE LAISSEZ-PASSER EST LE REPLI, ET C'EST LE CAS DE TROIS
+     *    HEURES DU MATIN.
+     *
+     * Le volontaire a ouvert son lien à 19:00 chez lui ; dans le champ, sans
+     * données, le magasin ne connaît aucune garde. Ce que l'appareil porte est
+     * exactement ce qu'AE1.3 autorise — la garde, la fiche du site, les
+     * numéros — et c'est assez pour tenir la nuit. Écrire « aucune garde » à
+     * quelqu'un qui EST sur sa garde serait le pire mensonge de cet écran.
+     */
+    if (pass) {
+      return (
+        <>
+          <PageHeader
+            title={pass.farm.name}
+            subtitle={`${pass.anchor?.name ?? pass.farm.locality} · ${formatTime(
+              pass.mission.startAt,
+              locale,
+            )}`}
+          />
+          <SiteFile
+            farm={{
+              name: pass.farm.name,
+              locality: pass.farm.locality,
+              position: pass.farm.position,
+              siteAccess: pass.farm.siteAccess,
+              gateCode: pass.farm.gateCode,
+              parking: pass.farm.parking,
+              terrainNotes: pass.farm.terrain,
+            }}
+            outline={pass.farm.outline}
+          />
+          <Section title={t('volunteer.contactsTitle')} className="mt-4">
+            <div className="flex flex-col gap-2">
+              {pass.numbers.map((n) => (
+                <CallRow
+                  key={`${n.labelKey}-${n.phone}`}
+                  name={n.name || t(n.labelKey)}
+                  phone={n.phone}
+                  label={t(n.labelKey)}
+                />
+              ))}
+            </div>
+          </Section>
+        </>
+      )
+    }
     return (
       <>
         <PageHeader title={t('volunteer.title')} />
@@ -108,6 +173,44 @@ export function VolunteerGuardScreen() {
           >
             <Icon name="shield" size={19} />
             {t('volunteer.confirmEnd')}
+          </button>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════
+            ★★ AE3.3 — LE POINT DE CONTRÔLE, EN UN GESTE.
+
+            ⚠️ IL NE SE DESSINE QU'ENTRE L'ARRIVÉE ET LA FIN, ce qui est le
+               seul intervalle où « tout va bien » veut dire quelque chose. Un
+               bouton présent avant l'arrivée inviterait à donner un signe de
+               vie depuis le minibus.
+
+            ⚠️ ET LA RELANCE EST UN CHANGEMENT D'ÉTAT DU BOUTON, PAS UNE
+               NOTIFICATION. Dix minutes avant l'échéance il devient plein et
+               le dit ; c'est ce que le brief appelle « avec relance avant de
+               déclencher quoi que ce soit », et ça ne demande ni permission
+               système ni serveur de push — donc ça marche cette nuit.
+            ═══════════════════════════════════════════════════════════════ */}
+        {cp !== null && cp.lastAt !== null && (
+          <button
+            type="button"
+            data-testid="checkpoint"
+            onClick={() => recordCheckpoint(mission.id)}
+            disabled={!isHolder}
+            className={
+              cp.reminding || cp.overdue
+                ? 'btn-primary btn-big'
+                : 'btn-secondary btn-big'
+            }
+          >
+            <Icon name="check" size={19} />
+            <span className="flex flex-col items-start leading-tight">
+              <span>{t('volunteer.checkpoint')}</span>
+              <span className="text-micro font-normal opacity-80">
+                {cp.reminding || cp.overdue
+                  ? t('volunteer.checkpointDue')
+                  : t('volunteer.checkpointHint', { minutes: cp.silentMinutes })}
+              </span>
+            </span>
           </button>
         )}
 
@@ -226,6 +329,15 @@ export function VolunteerGuardScreen() {
             {t('alerts.returnDetail')}
           </Callout>
         )}
+      </div>
+
+      {/* ★★ AE2c — תיק אתר, SUR LA GARDE EN COURS ET PAS SEULEMENT EN
+          URGENCE. « La meilleure idée de la référence fournie par le PO, et
+          utile toutes les nuits. » Le même composant que l'écran d'urgence :
+          deux copies auraient divergé le jour où un champ s'ajoute, et le
+          champ manquant aurait été le code du portail. */}
+      <div className="mt-4">
+        <SiteFile farm={farm} outline={zones.map((z) => z.ring)} />
       </div>
 
       <Link to="/volunteer/report" className="btn-primary btn-big mt-4">

@@ -13,6 +13,7 @@ import { ViewAsBanner } from '../settings/ViewAsBanner'
 import { usePublishedHeight } from '../hooks/useShellMetrics'
 import { PullToRefresh } from './PullToRefresh'
 import { ActionFab } from './ActionFab'
+import { EMERGENCY_ROUTE, EmergencyFab, EmergencyLink } from './EmergencyButton'
 import { DevToolbar } from './DevToolbar'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
@@ -356,6 +357,11 @@ export function CoordinatorLayout() {
               choice a person makes once a season. It lives in הגדרות →
               תצוגה now — see `DisplaySection`. */}
           <div className="mt-auto flex flex-col gap-2">
+            {/* ★★ AE2 — L'URGENCE EST DANS LE RAIL, PAS FLOTTANTE, et c'est
+                ce qui garantit qu'elle ne couvre jamais le « + ». Voir la note
+                d'en-tête d'`EmergencyButton`. Au-DESSUS du bloc d'identité :
+                c'est un contrôle, pas une signature. */}
+            <EmergencyLink expanded={expanded} />
             <AccountBlock expanded={expanded} />
           </div>
         </aside>
@@ -411,6 +417,10 @@ export function CoordinatorLayout() {
               </button>
               <Brand />
             </div>
+            {/* ★★ AE2 — et sur téléphone elle est dans la barre, à l'autre
+                bout : un geste, visible sur chaque écran, et zéro pixel
+                partagé avec le « + » qui vit en bas. */}
+            <EmergencyLink expanded={false} />
           </header>
           )}
 
@@ -440,8 +450,12 @@ export function CoordinatorLayout() {
         {/* W4 — THE ONLY "+" IN THE COORDINATOR SHELL. One button, one place,
             every screen; the menu it opens puts the current screen's own
             creation first. See `ActionFab`. */}
-        {/* Z5.4 — no "+" over a map somebody is drawing on. */}
-        {!solo && <ActionFab />}
+        {/* Z5.4 — no "+" over a map somebody is drawing on.
+            ★★ AE2 / A124 — AND NONE ON THE EMERGENCY SCREEN. A floating
+            button there would sit on a phone number somebody is reaching for
+            at 03:00, which is A86's defect in the one place it costs an
+            intervention. */}
+        {!solo && pathname !== EMERGENCY_ROUTE && <ActionFab />}
       </div>
 
       {menuOpen && (
@@ -540,6 +554,12 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-5">
         <Outlet />
       </main>
+
+      {/* ★★ AE2 — LE BOUTON D'URGENCE, ET C'EST ICI QU'IL EST FLOTTANT.
+          Ces trois rôles n'ont pas de « + » — `ActionFab` appartient au
+          coordinateur — donc il n'y a rien qu'il puisse couvrir, et c'est la
+          coquille où se tient l'utilisateur du brief. */}
+      <EmergencyFab />
 
       <div ref={fieldFootRef} className="sticky bottom-0 z-30">
         {/* PO return 6 — in DEMO mode `DevToolbar` sits below this bar and

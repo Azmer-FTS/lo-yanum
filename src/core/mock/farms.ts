@@ -12,6 +12,23 @@ export const FARMS: Farm[] = [
     name: 'חוות רתם',
     locality: 'רתמים',
     region: 'רמת נגב',
+    /**
+     * ★★ AE2 — LA FICHE COMPLÈTE, ET LE JUMEAU EN A BESOIN D'UNE.
+     *
+     * Trois états coexistent volontairement dans ces fixtures et ils sont ce
+     * que les captures d'AE5 montrent : ici tout est renseigné ; sur
+     * `farm-02` le מוקד est EMPRUNTÉ à cette fiche par la מועצה ; sur
+     * `farm-13` la כיתת כוננות est empruntée par le יישוב. Un jeu de données
+     * où tout serait rempli ne montrerait jamais la résolution d'AE2b.2, qui
+     * est la moitié intéressante.
+     */
+    council: 'רמת נגב',
+    councilHotline: '08-6564111',
+    standbyPhone: '052-0009110',
+    siteAccess: 'מכביש 40, פנייה מזרחה אחרי תחנת הדלק, 2.4 ק"מ דרך עפר עד השער הצפוני.',
+    gateCode: 'שער צפוני 4417# — המפתח אצל החקלאי',
+    parking: 'מגרש מוצק מימין לשער, לא להיכנס לשדה — הקרקע נרטבת בלילה',
+    terrainNotes: 'שני כלבי רועים משוחררים אחרי חצות. ממטרות אוטומטיות 02:00–03:30 בחלקה המזרחית.',
     type: 'mixed',
     status: 'active',
     position: { lat: 31.0583, lng: 34.6531 },
@@ -74,6 +91,14 @@ export const FARMS: Farm[] = [
     id: 'farm-02',
     name: 'חוות מעלה עבדת',
     locality: 'שדה בוקר',
+    /* AE2b.2 — même מועצה que `farm-01` et AUCUN מוקד à elle : la résolution
+       le lui prête, et l'écran dit qu'il est emprunté. C'est A123. */
+    council: 'רמת נגב',
+    standbyPhone: '052-0009220',
+    siteAccess: 'דרך שער המכון, פנייה שנייה שמאלה.',
+    gateCode: '',
+    parking: 'לפני השער, מצד ימין',
+    terrainNotes: '',
     region: 'רמת נגב',
     type: 'agriculture',
     status: 'active',
@@ -473,6 +498,8 @@ export const FARMS: Farm[] = [
     id: 'farm-13',
     name: 'מושב רתמים',
     locality: 'רתמים',
+    /* AE2b.2 — même יישוב que `farm-01`, aucune כיתת כוננות à lui : il
+       l'emprunte au יישוב. L'autre moitié d'A123, sur l'autre échelle. */
     region: 'רמת נגב',
     type: 'mixed',
     entityKind: 'moshav',

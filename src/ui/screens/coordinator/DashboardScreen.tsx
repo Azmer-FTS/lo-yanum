@@ -125,6 +125,30 @@ const ALERT_STYLE: Record<
     chip: 'bg-critical/15 text-status-danger-ink',
     iconName: 'car',
   },
+  /**
+   * ★★ AE3 — LES TROIS SILENCES PRENNENT LE PLEIN `card-critical`, comme
+   *    l'incident urgent et pour une raison plus forte que la sienne : un
+   *    incident urgent a un auteur, un silence n'en a pas. C'est le seul
+   *    endroit de cet écran où « rien ne s'est passé » est la nouvelle.
+   */
+  arrival_missing: {
+    icon: 'bg-critical text-content-on-accent',
+    ink: 'text-critical',
+    chip: 'chip-critical',
+    iconName: 'moon',
+  },
+  checkpoint_missing: {
+    icon: 'bg-critical text-content-on-accent',
+    ink: 'text-critical',
+    chip: 'chip-critical',
+    iconName: 'shield',
+  },
+  end_missing: {
+    icon: 'bg-critical text-content-on-accent',
+    ink: 'text-critical',
+    chip: 'chip-critical',
+    iconName: 'clock',
+  },
 }
 
 /** U3 — the alert's one-line reading and its severity, shared by both views. */
@@ -137,7 +161,14 @@ function alertMeta(alert: DashboardAlert, t: (k: string, o?: Record<string, unkn
         ? t('alerts.returnDetail')
         : alert.kind === 'recruiting'
           ? t('alerts.recruitingDetail', { detail: alert.detail })
-          : alert.detail
+          : /* AE3 — `detail` porte les MINUTES de silence, jamais une phrase :
+               « depuis 47 דקות » se lit d'un coup d'œil et une heure absolue
+               oblige à soustraire, à trois heures du matin, de tête. */
+            alert.kind === 'arrival_missing' ||
+              alert.kind === 'checkpoint_missing' ||
+              alert.kind === 'end_missing'
+            ? t(`alerts.${alert.kind}Detail`, { minutes: alert.detail })
+            : alert.detail
   return { critical, detail }
 }
 

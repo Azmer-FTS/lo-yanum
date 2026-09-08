@@ -1,7 +1,316 @@
 # לא ינום — ETAT
 
-> 🏁 **PASSE AD — LA SURFACE DÉCLARÉE ET LA SURFACE TRACÉE SONT DEUX VÉRITÉS
-> QUI NE S'ÉCRASENT PAS. 2026-09-08. LIRE EN PREMIER.**
+> 🏁 **PASSE AE — UN VOLONTAIRE N'A PAS DE COMPTE, IL A UN LIEN ; ET L'ABSENCE
+> DE NOUVELLES EST UNE ALERTE. 2026-09-08. LIRE EN PREMIER.**
+>
+> **Passe de SÉCURITÉ.** L'utilisateur type de tout ce qui suit est un garçon de
+> dix-huit ans, seul, à trois heures du matin, dans un champ sans éclairage,
+> avec une barre de réseau. Chaque décision ci-dessous a été jugée à cette
+> aune : un défaut ici ne coûte pas du temps, il coûte une intervention qui
+> n'arrive pas.
+>
+> Quatre unités, poussées et **déployées sur les deux URLs**.
+>
+> ## AE1 — LE JETON PORTE QUATRE CHOSES, ET PAS LA GARDE
+>
+> « Aucun volontaire ne crée de compte. Aucun mot de passe. » Le lien
+> `#/g/<jeton>` ouvre l'app **sur sa garde**, et le jeton porte exactement :
+> le rôle, la personne, la garde, et l'instant où il cesse de valoir.
+>
+> ⚠️ **IL NE PORTE PAS LA GARDE ELLE-MÊME, ET C'EST UNE DÉCISION.** Une garde
+> complète dans l'URL fait un lien de mille cinq cents caractères, et ce lien
+> voyage dans le SMS d'AE4 vers un téléphone cachère qui l'affichera coupé —
+> c'est-à-dire un lien mort. Mesuré : **139 caractères**, et A118 en fait un
+> plafond (200) plutôt qu'une observation.
+>
+> ⚠️ **L'EMPREINTE REND LE JETON INFALSIFIABLE À LA MAIN, ET RIEN DE PLUS.** On
+> ne peut pas repousser sa propre expiration en éditant la barre d'adresse : la
+> date est dans ce que l'empreinte couvre, et A118 le pose en recollant le
+> corps d'un jeton d'un an sur l'empreinte d'un jeton d'un jour. Ce n'est PAS
+> de l'authentification, et le fichier le dit à sa première page : le sel est
+> dans le bundle, forcément, puisque le navigateur doit vérifier hors ligne. Le
+> compromis est juste pour CE programme — la chose protégée est l'horaire d'une
+> garde, le porteur est un garçon sans compte, et le coût d'un mot de passe
+> serait qu'il n'ouvre jamais l'app. En lot 1 la signature part côté serveur et
+> **rien d'autre ici ne change**.
+>
+> ⚠️ **« RIEN D'HISTORIQUE » EST LA FORME DE LA CASE, PAS UNE PURGE.**
+> `GuardPass` est **un** objet et non un tableau : il n'y a pas de place pour
+> une seconde garde, donc pas de purge à écrire, pas de date de purge à régler,
+> pas de tâche de nettoyage à ne pas oublier de lancer. A119 ouvre deux liens
+> et interroge le `localStorage` de l'appareil : **une clé, une garde, 1 308
+> octets**, et le nom de la ferme précédente est introuvable dedans.
+>
+> ⚠️ **LE DÉFAUT QUE CETTE PORTE A TROUVÉ, ET QU'AUCUNE RELECTURE N'AURAIT VU.**
+> L'écran du lien résolvait la garde **à travers `access.ts`**, qui filtre par
+> la session courante. Au premier lien la session est celle du coordinateur et
+> tout répond ; au SECOND, la session est déjà le volontaire du lien précédent,
+> `getFarm` d'une ferme qui n'est pas la sienne rend `null` — parfaitement
+> correctement — et le laissez-passer **n'était pas remplacé**. Le volontaire
+> ouvrait la garde de la semaine dernière en croyant ouvrir celle du soir.
+> L'autorité ici est le JETON, qui va POSER la session deux lignes plus bas :
+> lire à travers le filtre de l'identité qu'on remplace est une inversion.
+> Tout se lit sur `_raw()` désormais.
+>
+> **Un lien périmé donne un écran clair et pas une erreur technique** (AE1.5) :
+> A118 vérifie qu'aucun mot de code (`401`, `token`, `expired`) n'y figure, et
+> que le coordinateur et le 100 y restent composables. **Même modèle pour les
+> conducteurs** ; l'agriculteur garde son accès existant.
+>
+> ## AE2 — UN SEUL ÉCRAN D'URGENCE, ET IL EST À UN GESTE DES QUATRE RÔLES
+>
+> `#/sos`, **au niveau racine et non dans chaque coquille** : quatre copies
+> seraient quatre écrans à garder identiques, et celui qui divergerait serait
+> découvert une nuit. Aucun `RequireRole` — il n'y a pas de rôle qui n'ait pas
+> le droit d'appeler la police — et il **passe devant la porte de
+> connexion**, comme le lien de garde, parce qu'AE1.5 exige que les numéros
+> restent atteignables à quelqu'un dont le lien vient d'expirer.
+>
+> ⚠️ **LE LANCEUR A DEUX FORMES, ET LE COIN A ÉTÉ CHOISI PAR CE QUI OCCUPE
+> L'AUTRE.** Dans les coquilles de terrain il est flottant, 64 px, au-dessus de
+> la barre d'onglets ; dans celle du coordinateur il est **dans le rail et dans
+> la barre d'en-tête**, pas flottant. La raison est A86, qu'on ne refera pas :
+> « un contrôle que le bouton couvre est inatteignable pour toujours », et le
+> contrôle couvert serait ici un numéro d'urgence. Deux objets flottants ne
+> coexistent donc jamais — par construction, pas par mesure. Le coin du DÉBUT
+> n'était pas libre non plus : le disque « voir en tant que » du jumeau y est
+> posé, ce que la porte a trouvé avant nous.
+>
+> ### AE2a — la cascade, et pourquoi son ordre d'exécution n'est pas son ordre de fiabilité
+>
+> **Un navigateur ne peut pas, dans un seul geste, composer un numéro ET ouvrir
+> un SMS** : la première navigation prend la main et la seconde est perdue.
+> L'ordre du brief est un ordre de FIABILITÉ ; l'ordre d'exécution en découle :
+>
+> 1. la **requête** part d'abord — elle ne demande pas la main, et hors ligne
+>    elle atterrit dans la file d'attente qui repartira toute seule (P2.5b) ;
+> 2. le **SMS** s'ouvre ensuite — il compose et rend la main, **coordinateur et
+>    agriculteur dans UNE composition**, ce qui est ce que « en parallèle »
+>    veut dire de mesurable ;
+> 3. l'**appel** reste sous le pouce, en boutons de 64 px. C'est la voie la
+>    plus fiable, et c'est celle que l'utilisateur tient déjà.
+>
+> ⚠️ **LES DEUX VOIES TÉLÉPHONIQUES NE TOUCHENT JAMAIS LE RÉSEAU DE DONNÉES.**
+> `sms:` et `tel:` sont des URI de l'appareil, et le plan qui les porte est une
+> fonction pure : A122 la produit dans un processus qui n'a **pas de pile
+> réseau du tout**. Le corps porte les **coordonnées en clair AVANT** le lien
+> de navigation — un lien ne se lit pas à voix haute à un pilote de patrouille
+> et ne s'ouvre pas sur un téléphone cachère ; deux nombres, si.
+>
+> ⚠️ **LE GPS EST DEMANDÉ À L'OUVERTURE DE L'ÉCRAN, PAS À L'APPUI**, et c'est ce
+> qui fait tenir le budget. Un premier fix coûte de trois à trente secondes
+> dans un champ ; demandé au moment de l'appui il tiendrait l'alerte en otage
+> exactement quand elle presse. Pas de fix : on part avec la position de la
+> ferme, **marquée approximative dans le SMS**. Une alerte qui dit « à peu près
+> à la ferme Retem » part ; une alerte qui attend un satellite ne part pas.
+>
+> **Mesuré, dans un vrai navigateur : 1 333 ms** entre le contact et l'existence
+> du panneau de confirmation, sur un budget de 2 000. Appui maintenu de 800 ms
+> — au-dessus du contact accidentel qu'un téléphone produit dans une poche
+> (50 à 200 ms), très en dessous du seuil où l'on croit que le bouton ne marche
+> pas. **Zéro dialogue à lire** : A120 le pose au DOM. Un appui bref n'envoie
+> rien, et renvoyer est un second geste délibéré — « un utilisateur qui doute
+> renvoie l'alerte dix fois ».
+>
+> ### AE2b — « ce sont eux qui arrivent les premiers »
+>
+> L'ordre de l'écran est l'inverse de l'évident, et le brief dit pourquoi : la
+> כיתת כוננות du יישוב est à quatre minutes et la patrouille à vingt ;
+> l'agriculteur ouvre le portail que la police ne sait pas trouver. **Les gens
+> du coin d'abord, 100/101/102 ensuite, le contextuel en dernier.**
+>
+> ⚠️ **`councilHotline` N'EST PAS `councilPhone`, ET LES CONFONDRE COÛTE UNE
+> INTERVENTION.** `councilPhone` existe depuis AA4 et c'est la **standardiste**
+> — le classeur de l'association le dit en toutes lettres, et à neuf heures du
+> soir elle ne répond pas. Le מוקד est la permanence de nuit, et c'est elle qui
+> réveille la כיתת כוננות.
+>
+> ⚠️ **« CHAMPS SUR LA FICHE FERME **ET SUR LA LOCALITÉ** » — ET LA SECONDE
+> MOITIÉ EST UNE RÉSOLUTION, PAS UNE TABLE.** Une כיתת כוננות appartient au
+> יישוב : dans בארי il y a quatre exploitations (AC1) et **une** équipe. Deux
+> écritures possibles — une table des localités en base, ou le champ sur la
+> fiche plus la résolution qui regarde les voisines. La seconde est retenue et
+> pas par économie : le coordinateur remplit ce qu'il a sous les yeux, la fiche
+> qu'il est en train d'ouvrir, et il n'ira pas chercher un écran « localités »
+> pour y saisir un numéro qu'un agriculteur vient de lui dicter. Rempli une
+> fois n'importe où dans le יישוב, il sert tout le monde, **et l'écran dit
+> qu'il est emprunté**.
+>
+> ⚠️ **ET LES DEUX ÉCHELLES NE SE CROISENT PAS.** Un מוקד couvre dix יישובים ;
+> apparier la כיתת כוננות sur la מועצה donnerait au volontaire de שדה בוקר
+> l'équipe de רתמים, à quinze kilomètres. A123 le pose comme une question à
+> part entière, et c'est le seul défaut de cette famille qui serait invisible
+> autrement.
+>
+> **Les cibles sont à 64 px et les écarts à 12 px**, pas à 44 et 8 : « vise plus
+> large que le minimum », parce qu'« elles se pressent dans le noir avec des
+> mains qui tremblent ». A124 mesure quand même contre 44 et 8 — une porte
+> vérifie la règle, pas l'intention — **aux deux largeurs, dans les deux
+> thèmes, et sur le déployé**.
+>
+> ⚠️ **ET LA PREMIÈRE VERSION DE CETTE SONDE AVAIT TORT, D'UNE FAÇON QUI VAUT
+> D'ÊTRE ÉCRITE.** `elementFromPoint` rend `null` pour tout point HORS de la
+> fenêtre, et la liste des numéros dépasse la hauteur d'un téléphone : elle
+> comptait « couvert » ce qui n'était que « plus bas ». Deux faux positifs à
+> 402 px, aucun à 1376 — la signature exacte de cette erreur, et exactement ce
+> qui aurait fait ignorer un jour un vrai recouvrement en le prenant pour du
+> défilement. La question se pose désormais cible par cible, **après l'avoir
+> amenée à l'écran**.
+>
+> ### AE2c — תיק אתר
+>
+> Quatre champs libres — accès et point d'entrée, code ou clé de portail, où se
+> garer, particularités du terrain — **plus le contour de la ferme sur la
+> carte**. Sur la garde en cours ET sur l'écran d'urgence, par **le même
+> composant** : deux copies auraient divergé le jour où un champ s'ajoute, et
+> le champ manquant aurait été le code du portail.
+>
+> ⚠️ **QUATRE CHAMPS ET NON UN BLOC DE NOTES.** `notes` existe déjà et contient
+> des phrases de prospection. Quelqu'un qui cherche le code du portail à 03:00
+> ne lit pas un paragraphe : il regarde la ligne qui porte le mot « portail ».
+> **Ce qui est cherché sous la pression doit être étiqueté** — et un champ vide
+> s'affiche en disant qu'il est vide, parce que « il n'y a pas de portail » et
+> « personne n'a écrit le code » demandent des actions opposées.
+>
+> **AE2d respecté :** ni drone, ni כריזה, ni השתקה מלאה. Ils supposent une
+> installation sur site que ces fermes n'ont pas.
+>
+> ## AE3 — LES TROIS SILENCES
+>
+> « Le défaut de toute application de panique : dans le pire des cas, personne
+> ne presse rien. » C'est la seule partie de la passe qui n'a pas de bouton :
+> elle déduit d'une case restée nulle à une heure passée qu'il faut téléphoner.
+>
+> **Trois, et ils ne se déduisent pas l'un de l'autre** : une garde jamais
+> PRISE (22:40 et personne n'est arrivé) ; une garde qui a CESSÉ de donner
+> signe (arrivée à 21:00, plus rien à 01:30) ; une garde jamais CLÔTURÉE. Le
+> deuxième est le seul qui puisse trouver un problème **pendant** la nuit.
+>
+> ⚠️ **UNE GARDE NE PRODUIT QU'UN SEUL SIGNAL.** Une garde jamais prise dont
+> l'heure de fin est passée est silencieuse deux fois, littéralement ; en dire
+> deux choses au coordinateur, c'est le faire téléphoner deux fois pour une
+> seule ferme, et c'est aussi la façon dont une liste d'alertes devient trop
+> longue pour être lue.
+>
+> **30 / 120 / 60 minutes, en constantes nommées, réglables dans הגדרות →
+> סימני חיים.** Le 120 est le seul dont une mauvaise valeur **détruit** la
+> fonctionnalité au lieu de la dégrader, et le brief l'écrit lui-même : « un
+> volontaire réveillé toutes les vingt minutes désinstalle l'app » — et alors
+> les trois signaux se taisent ensemble. A126 en fait un plancher (≥ 60).
+> **La relance est un changement d'état du bouton**, dix minutes avant
+> l'échéance : pas de notification système, pas de serveur de push, donc ça
+> marche cette nuit.
+>
+> ⚠️ **AC4 A CHANGÉ DE DÉFINITION, ET CE N'EST PAS UN RÉGLAGE.** « Une garde non
+> confirmée n'est pas une garde reçue » : AC4 comptait toute nuit passée non
+> annulée, ce qui était juste tant que rien ne pouvait dire si quelqu'un était
+> venu. Une case le dit maintenant. Les **trois** compteurs l'excluent
+> ensemble — en exclure une d'un seul des trois donnerait à une ferme plus de
+> volontaires-nuits que de nuits — et **c'est la même fonction qui décide du
+> compteur et de l'alerte**, sinon le tableau de bord dirait « non confirmée »
+> pendant que la fiche la compterait comme reçue.
+>
+> ⚠️ **ET IL A FALLU AJOUTER UNE NUIT LAIDE AUX FIXTURES.** Les six gardes
+> étaient soit confirmées, soit à venir, soit annulées : **aucune n'était dans
+> le seul état qu'AE3 existe pour trouver**, donc le jumeau ne montrait jamais
+> un silence et A127 ne pouvait pas distinguer « exclue » de « il n'y en avait
+> pas ». `mission-08` est hier soir sur חוות רתם, une équipe assignée, un
+> conducteur, et pas une case cochée.
+>
+> ## AE4 — LE SMS DE CONVOCATION, ET SA COMPLÉTUDE EST STRUCTURELLE
+>
+> Lieu exact **avec ses coordonnées** et lien de navigation, horaires, nom et
+> numéro de l'agriculteur, numéro du coordinateur, numéros d'urgence (les gens
+> du coin d'abord, même ordre qu'AE2b), consignes pratiques, **et le lien de
+> garde d'AE1**. Gabarit modifiable dans הגדרות.
+>
+> ⚠️ **UN GABARIT LIBRE EST UN GABARIT DONT ON PEUT EFFACER LE NUMÉRO DU
+> COORDINATEUR SANS S'EN APERCEVOIR**, et le SMS partirait quand même, tous les
+> jours, à tout le monde. Les onze jetons obligatoires sont déclarés dans
+> @core, l'écran **refuse** d'enregistrer un gabarit qui en a perdu un **et le
+> nomme**, et A128 pose la question au gabarit livré ET à un gabarit mutilé.
+> Un jeton inconnu est laissé visible plutôt qu'effacé : `{{adresse}}` doit
+> montrer son erreur, pas un trou.
+>
+> ## Ce qu'il faut regarder soi-même, dans cet ordre
+>
+> 1. **N'importe quel écran → le bouton rouge** : rail ou barre d'en-tête chez
+>    le coordinateur, flottant chez les trois autres. Un geste.
+> 2. **`#/sos`** : appui maintenu sur le grand bouton, et regarder ce qui part.
+>    Puis les numéros — la כיתת כוננות en tête.
+> 3. **חוות → חוות רתם → עריכה → « טלפוני חירום ותיק אתר »** : les six champs.
+> 4. **שדה בוקר** : son מוקד est celui de רתמים, et l'écran le dit.
+> 5. **La garde d'un volontaire** : תיק אתר en bas, le contour sur la carte, et
+>    « הכול תקין » quand la garde est en cours.
+> 6. **Le tableau de bord** : les silences, en tête de la liste d'alertes.
+> 7. **הגדרות → סימני חיים**, puis **תבנית SMS זימון** : effacer
+>    `{{coordinatorPhone}}` et essayer d'enregistrer.
+> 8. **שמירות → une garde → un volontaire → « SMS זימון »** : le message
+>    complet, avec son lien.
+>
+> **Les deux URLs, même commit :**
+> - L'app réelle : https://azmer-fts.github.io/lo-yanum/
+> - Le jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
+>
+> Captures de l'URL déployée, clair ET sombre, iPad portrait, iPad paysage et
+> iPhone, **l'écran d'urgence dans les quatre rôles** :
+> `docs/screenshots/aepass/`.
+>
+> Pour reprendre : `git pull && bun install && bun run dev`, puis
+> `bun run aepass`, `bun run aeui`, `bun run aecaptures`, `bun run adpass`,
+> `bun run acpass`, `bun run accept`, `bun run persist`, `bun run mapping`,
+> `bun run prospection`, `bun run assoc` et `bun run live`.
+>
+> ## Les rouges — repris d'AD, pas supposés
+>
+> **Les trois rouges STABLES d'`uipass` sont ceux d'AC et d'AD**, inchangés et
+> non corrigés ici : X7 « farms, guards and incidents share ONE tile height »,
+> X5 « the roster header and its rows share one grid template », et
+> « farm-detail: the mode pill is at the physical bottom-left ». Les quatre
+> INSTABLES sont les mêmes aussi — « satellite: the imagery is on », ses deux
+> voisines et X12 — et pour la même raison : ce sont des questions posées à des
+> tuiles qui arrivent par le réseau.
+>
+> `write` échoue toujours, et c'est l'état voulu depuis P3.1 : le compte de
+> test a été supprimé, et cette porte est faite pour cesser de fonctionner ce
+> jour-là.
+>
+> ⚠️ **CE QUI ÉTAIT ROUGE EN COURS DE PASSE SANS ÊTRE UN ROUGE PRÉEXISTANT, ET
+> LES QUATRE SONT DES DÉFAUTS DE CETTE PASSE TROUVÉS PAR SES PROPRES PORTES.**
+>
+> 1. **`bun run acpass` — A104, trois lignes rouges.** Elles DISAIENT la règle
+>    qu'AE3.5 remplace. **Réécrites, pas supprimées** : le filtre gagne une
+>    case (`arrivalConfirmedAt !== null`) et une quatrième vérification a été
+>    AJOUTÉE — « au moins une nuit programmée n'est PAS comptée » — sans quoi
+>    les trois autres passeraient en ne mesurant rien.
+> 2. **`bun run persist` — « NOT DRIVEN: recordCheckpoint »**, cette porte
+>    faisant exactement son travail. Le pilote est posé APRÈS `confirmArrival`,
+>    parce que `recordCheckpoint` ne fait rien avant l'arrivée.
+> 3. **`bun run mapping` — deux lignes**, sur les comptes de tables : 26 → 27,
+>    et sept enfants de `missions` → huit. `mission_checkpoints` est arrivée.
+> 4. **`bun run layout` — HUIT écrans rouges, et c'était le défaut le plus
+>    grave de la passe.** Six écrans de terrain : « pinned overlap » entre le
+>    bouton d'urgence et le PANNEAU du bandeau de démonstration, qui se posait
+>    dessus — un artefact du jumeau couvrant le contrôle d'urgence, A86 dans le
+>    seul écran où il coûte une intervention. Le disque fait 44 px et 4,5 rem le
+>    dégageaient ; le bouton d'urgence en fait 64 et son sommet est à 5,25 rem.
+>    **C'est le panneau qui monte à 6 rem** : entre un artefact du jumeau et le
+>    bouton rouge, ce n'est pas le bouton rouge qui se déplace. Et deux écrans
+>    de coordinateur — `farm-form` et `settings` — passés à **6,2 hauteurs
+>    d'écran pour un plafond de 6** (A30) : mes trois sections neuves sont
+>    devenues **pliables et repliées**, leur résumé portant le fait (les trois
+>    délais ; « modifié » ; « טלפוני לילה הוזנו »), ce qui est exactement la
+>    règle des sections pliables déjà en place sur cette fiche.
+>
+> ⚠️ **ET DEUX DÉFAUTS DE PORTE, PAS DE PRODUIT, QUI VALENT D'ÊTRE ÉCRITS.**
+> A124 comptait « couvert » ce qui n'était que « plus bas » — `elementFromPoint`
+> rend `null` hors de la fenêtre — et la porte des captures ne posait le thème
+> que pour le coordinateur, alors que les rôles de terrain ont `dark` pour
+> défaut délibéré : une capture nommée « light » sortait sombre, c'est-à-dire
+> une preuve qui ne prouvait pas ce que son nom disait.
+
+> 📕 **PASSE AD (précédente) — LA SURFACE DÉCLARÉE ET LA SURFACE TRACÉE SONT
+> DEUX VÉRITÉS QUI NE S'ÉCRASENT PAS. 2026-09-08.**
 >
 > Trois unités, trois commits, poussés et **déployés sur les deux URLs**.
 > Cette passe tranche le défaut que la passe AC avait nommé et laissé ouvert
