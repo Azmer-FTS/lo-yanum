@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
@@ -30,6 +30,7 @@ import {
 } from '@core/index'
 import type {
   Agreement,
+  Farm,
   CommitmentKind,
   EntityKind,
   FarmCommitment,
@@ -46,7 +47,7 @@ import type {
 import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
 import { PhotoField } from '../../components/PhotoField'
-import { SignaturePad } from '../../components/SignaturePad'
+import { AgreementSignModal } from '../../components/AgreementSignModal'
 import { MapSplit } from '../../components/MapSplit'
 import { PinMap } from '../../components/PinMap'
 import {
@@ -279,6 +280,8 @@ export function FarmFormScreen() {
   )
   const [farmerName, setFarmerName] = useState(existing?.farmerName ?? '')
   const [farmerPhone, setFarmerPhone] = useState(existing?.farmerPhone ?? '')
+  /* ★ AF1 — ת״ז / ח״פ, la quatrième case de l'en-tête du הסכם התנדבות. */
+  const [farmerId, setFarmerId] = useState(existing?.farmerId ?? '')
   const [liaisonName, setLiaisonName] = useState(existing?.liaisonName ?? '')
   const [liaisonPhone, setLiaisonPhone] = useState(existing?.liaisonPhone ?? '')
   /* ★★ AE2 — les deux numéros de nuit et les quatre champs du תיק אתר. */
@@ -288,6 +291,32 @@ export function FarmFormScreen() {
   const [gateCode, setGateCode] = useState(existing?.gateCode ?? '')
   const [parking, setParking] = useState(existing?.parking ?? '')
   const [terrainNotes, setTerrainNotes] = useState(existing?.terrainNotes ?? '')
+
+  /**
+   * ★★ AF1.1 — « TOUS LES CHAMPS SONT PRÉ-REMPLIS DEPUIS LA FICHE », ET LA
+   *    FICHE EST CE QUI EST À L'ÉCRAN, PAS CE QUI EST EN BASE.
+   *
+   * Le cas du brief est la création d'une ferme DEVANT l'agriculteur (AF2) :
+   * on saisit son nom et son portable, puis on lui fait signer, et rien n'a
+   * encore été enregistré. Passer `existing` au document rendrait un document
+   * vide sur exactement le parcours qu'AF2 décrit. On passe donc l'état du
+   * formulaire, l'enregistrement restant l'affaire du bouton שמור.
+   */
+  const signingFarm = useMemo(
+    () =>
+      ({
+        ...(existing ?? {}),
+        id: existing?.id ?? 'new',
+        name: name.trim(),
+        locality: locality.trim(),
+        farmName: farmName.trim(),
+        farmerName: farmerName.trim(),
+        farmerPhone: farmerPhone.trim(),
+        farmerId: farmerId.trim(),
+        contacts,
+      }) as Farm,
+    [existing, name, locality, farmName, farmerName, farmerPhone, farmerId, contacts],
+  )
 
   const num = (v: string) => (v.trim() === '' ? NaN : Number(v))
   /**
@@ -435,6 +464,7 @@ export function FarmFormScreen() {
       farmerName: farmerName.trim(),
       farmerPhone: farmerPhone.trim(),
       farmerEmail: farmerEmail.trim(),
+      farmerId: farmerId.trim(),
       liaisonName: liaisonName.trim(),
       liaisonPhone: liaisonPhone.trim(),
       councilHotline: councilHotline.trim(),
@@ -770,6 +800,19 @@ export function FarmFormScreen() {
               value={farmerPhone}
               onChange={setFarmerPhone}
               type="tel"
+              ltr
+            />
+            {/* ★★ AF1 — ת״ז / ח״פ. Il n'existait pas, et « הסכם התנדבות-
+                ארצנו » le demande nommément. Texte libre et non un nombre :
+                un particulier écrit neuf chiffres, une société agricole un
+                ח״פ, un קיבוץ le numéro de son אגודה — une case sur leur
+                papier, un champ ici, et aucune validation qui refuserait le
+                formulaire que l'association accepte. */}
+            <TextField
+              label={t('form.farmerId')}
+              hint={t('form.farmerIdHint')}
+              value={farmerId}
+              onChange={setFarmerId}
               ltr
             />
             <TextField
@@ -1156,18 +1199,24 @@ export function FarmFormScreen() {
                     signs when he is asked to, not because a form scrolled past
                     a blank rectangle. The signed/unsigned chip below is always
                     on screen, so nothing is hidden, only folded. */}
+                {/* ★★ AF1.2 (2026-09-09) — LE PAVÉ BLANC EST REMPLACÉ PAR LE
+                    DOCUMENT. Le rectangle qui se dépliait ici ne montrait rien
+                    de ce qui était signé : le PDF n'était consultable qu'APRÈS.
+                    `AgreementSignModal` met le document en premier, le pad en
+                    dessous, et l'encre atterrit dans le cadre du bas sous les
+                    yeux de l'agriculteur avant qu'on approuve. */}
                 {openSignature === a.id && (
-                  <div className="mt-3">
-                    <p className="label">{t('signature.title')}</p>
-                    <SignaturePad
-                      value={a.signature ?? null}
-                      onChange={(signature) =>
-                        setAgreements((prev) =>
-                          prev.map((x, j) => (j === i ? { ...x, signature } : x)),
-                        )
-                      }
-                    />
-                  </div>
+                  <AgreementSignModal
+                    farm={signingFarm}
+                    agreement={a}
+                    onClose={() => setOpenSignature(null)}
+                    onCommit={(signature) => {
+                      setAgreements((prev) =>
+                        prev.map((x, j) => (j === i ? { ...x, signature } : x)),
+                      )
+                      setOpenSignature(null)
+                    }}
+                  />
                 )}
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                   <span className="flex items-center gap-2">
@@ -1189,7 +1238,7 @@ export function FarmFormScreen() {
                       }
                     >
                       <Icon name="edit" size={15} />
-                      {t('signature.title')}
+                      {a.signature ? t('agreement.view') : t('agreement.openReader')}
                     </button>
                   </span>
                   <button

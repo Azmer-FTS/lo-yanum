@@ -415,6 +415,8 @@ export interface FarmDraft {
   farmerName?: string
   farmerPhone?: string
   farmerEmail?: string
+  /** AF1 — ת״ז / ח״פ, one of the four boxes at the head of the agreement. */
+  farmerId?: string
   liaisonName?: string
   liaisonPhone?: string
   // AC1 · AC2 · AC3 — the holding's own name, its umbrella, its guarded area.

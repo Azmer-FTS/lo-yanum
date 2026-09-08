@@ -183,6 +183,8 @@ const farmMapping: Mapping<Farm> = {
           farmer_name: f.farmerName ?? null,
           farmer_phone: f.farmerPhone ?? null,
           farmer_email: f.farmerEmail ?? null,
+          /* AF1 — ת״ז / ח״פ, la quatrième case de l'en-tête du הסכם. */
+          farmer_id_no: f.farmerId ?? null,
           liaison_name: f.liaisonName ?? null,
           liaison_phone: f.liaisonPhone ?? null,
           /* AC1 · AC2.4 · AC3 — the holding half of the identity, the umbrella
@@ -382,6 +384,7 @@ const farmMapping: Mapping<Farm> = {
     farmerName: optStr(p.farmer_name),
     farmerPhone: optStr(p.farmer_phone),
     farmerEmail: optStr(p.farmer_email),
+    farmerId: optStr(p.farmer_id_no),
     liaisonName: optStr(p.liaison_name),
     liaisonPhone: optStr(p.liaison_phone),
     // AC1 · AC2.4 · AC3.

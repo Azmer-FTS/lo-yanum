@@ -410,6 +410,22 @@ export interface Farm {
   farmerPhone?: string
   /** AC2 — מייל חקלאי, a column of the 32-column workbook since AC2. */
   farmerEmail?: string
+  /**
+   * ★★ AF1 (2026-09-09) — ת״ז / ח״פ, AND IT EXISTS BECAUSE A DOCUMENT ASKS FOR
+   *    IT BY NAME.
+   *
+   * « הסכם התנדבות- ארצנו » carries four boxes at its head — מקום התנדבות,
+   * שם החקלאי, תז/חפ, נייד — and three of them were already on this record.
+   * This is the fourth. It is FREE TEXT and deliberately not a number: a
+   * private holder writes a nine-digit ת״ז, an agricultural company writes a
+   * ח״פ, and a קיבוץ writes its אגודה's number — one box on their paper, one
+   * field here, and no validation that would refuse the form the association
+   * actually accepts.
+   *
+   * Optional like every other AA2 field: a record exists long before anybody
+   * has asked whose identity number is on the lease.
+   */
+  farmerId?: string
   liaisonName?: string
   liaisonPhone?: string
 

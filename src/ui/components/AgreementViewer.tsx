@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { Agreement } from '@core/types'
+import type { Agreement, Farm } from '@core/types'
 
 import { fetchAgreementFile } from '../agreement/document'
+import { agreementFileName } from '../agreement/input'
 import { useLocale } from '../hooks/useLocale'
 import { Icon } from './Icon'
 import { Modal } from './primitives'
@@ -36,10 +37,15 @@ import { Modal } from './primitives'
  */
 export function AgreementActions({
   agreement,
-  farmName,
+  farm,
 }: {
   agreement: Agreement
-  farmName: string
+  /**
+   * ★ AF1.3 — LA FICHE ENTIÈRE, ET PLUS SEULEMENT SON NOM. Le document produit
+   *   porte les quatre cases de l'en-tête — מקום התנדבות, שם החקלאי, תז/חפ,
+   *   נייד — et trois d'entre elles ne sont pas dans un nom.
+   */
+  farm: Farm
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -58,17 +64,22 @@ export function AgreementActions({
       // W8 — the row's drawn signature is stamped onto the last page on the
       // way out, so the viewer, the download and the share sheet all hold
       // the SIGNED contract rather than the blank template.
-      return await fetchAgreementFile(agreement.fileName, {
-        agreement,
-        farmName,
-        t: t as (key: string, options?: Record<string, unknown>) => string,
-        locale,
-      })
+      return await fetchAgreementFile(
+        agreementFileName(farm, t as (k: string, o?: Record<string, unknown>) => string),
+        {
+          farm,
+          agreement,
+          t: t as (key: string, options?: Record<string, unknown>) => string,
+          locale,
+        },
+      )
     } catch {
       setError(true)
       return null
     }
   }
+
+  const farmName = farm.farmName || farm.name
 
   const view = async () => {
     setBusy('view')
@@ -162,13 +173,13 @@ export function AgreementActions({
       )}
 
       {file && url && (
-        <Modal title={agreement.fileName} onClose={close} wide>
+        <Modal title={file.name} onClose={close} wide>
           <object
             data={url}
             type="application/pdf"
             data-testid="agreement-document"
             className="h-[60dvh] w-full rounded-card bg-surface-high"
-            aria-label={agreement.fileName}
+            aria-label={file.name}
           >
             <p className="muted p-4">{t('agreement.noInlineViewer')}</p>
           </object>

@@ -74,6 +74,13 @@ export const FARMS: Farm[] = [
         fulfilled: true,
       },
     ],
+    /* ★ AF1 (2026-09-09) — LES TROIS CASES DU HAUT DU הסכם, RENSEIGNÉES SUR
+       LES QUATRE FICHES QUI PORTENT UN ACCORD. Le jumeau est là où le PO
+       regarde ; un document de démonstration dont le ת״ז est vide ne montre
+       pas ce qu'AF1 a changé. Numéros inventés, comme tout ce fichier. */
+    farmerName: 'אליהו בן־חמו',
+    farmerPhone: '052-0000001',
+    farmerId: '057392814',
     agreements: [
       {
         id: 'agr-01',
@@ -125,6 +132,13 @@ export const FARMS: Farm[] = [
       { kind: 'water', detail: 'ברז מים מסונן במבנה האריזה', fulfilled: true },
       { kind: 'food', detail: 'ארגזי מזון יבש ופירות מהמטע', fulfilled: false },
     ],
+    /* ★ AF1 (2026-09-09) — LES TROIS CASES DU HAUT DU הסכם, RENSEIGNÉES SUR
+       LES QUATRE FICHES QUI PORTENT UN ACCORD. Le jumeau est là où le PO
+       regarde ; un document de démonstration dont le ת״ז est vide ne montre
+       pas ce qu'AF1 a changé. Numéros inventés, comme tout ce fichier. */
+    farmerName: 'יונתן אשל',
+    farmerPhone: '053-0000011',
+    farmerId: '512874903',
     agreements: [
       {
         id: 'agr-02',
@@ -178,6 +192,13 @@ export const FARMS: Farm[] = [
         fulfilled: true,
       },
     ],
+    /* ★ AF1 (2026-09-09) — LES TROIS CASES DU HAUT DU הסכם, RENSEIGNÉES SUR
+       LES QUATRE FICHES QUI PORTENT UN ACCORD. Le jumeau est là où le PO
+       regarde ; un document de démonstration dont le ת״ז est vide ne montre
+       pas ce qu'AF1 a changé. Numéros inventés, comme tout ce fichier. */
+    farmerName: 'משה קדוש',
+    farmerPhone: '054-0000021',
+    farmerId: '031558472',
     agreements: [
       {
         id: 'agr-03',
@@ -222,6 +243,13 @@ export const FARMS: Farm[] = [
       { kind: 'water', detail: 'ג׳ריקן 20 ליטר מלא בכל ערב', fulfilled: true },
       { kind: 'food', detail: 'ארוחת בוקר לפני החזרה', fulfilled: false },
     ],
+    /* ★ AF1 (2026-09-09) — LES TROIS CASES DU HAUT DU הסכם, RENSEIGNÉES SUR
+       LES QUATRE FICHES QUI PORTENT UN ACCORD. Le jumeau est là où le PO
+       regarde ; un document de démonstration dont le ת״ז est vide ne montre
+       pas ce qu'AF1 a changé. Numéros inventés, comme tout ce fichier. */
+    farmerName: 'דוד אלמליח',
+    farmerPhone: '052-0000031',
+    farmerId: '514402317',
     agreements: [
       {
         id: 'agr-04',

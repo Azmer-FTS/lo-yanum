@@ -1359,7 +1359,7 @@ export function FarmDetailScreen() {
                       </p>
                     </div>
                     {/* G14c — view / download / share, right on the row. */}
-                    <AgreementActions agreement={a} farmName={farm.name} />
+                    <AgreementActions agreement={a} farm={farm} />
                   </li>
                 ))}
               </ul>

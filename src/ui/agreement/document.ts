@@ -1,6 +1,9 @@
-import type { Agreement } from '@core/types'
+import type { Agreement, Farm } from '@core/types'
 
 import { SUPABASE_CONFIGURED } from '../../data/config'
+import { agreementPdf } from './artzenu'
+import { agreementPageInput } from './input'
+import type { Translate } from './input'
 import {
   AGREEMENTS_BUCKET,
   listObjects,
@@ -40,7 +43,33 @@ import { stampAgreement } from './sign'
 export const TEMPLATE_FOLDER = 'template'
 export const TEMPLATE_KEY = `${TEMPLATE_FOLDER}/agreement.pdf`
 
-export type DocumentSource = 'template' | 'placeholder'
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AF1.3 (2026-09-09) — « generated » REMPLACE « placeholder », ET C'EST LA
+ *    FIN D'UNE ATTENTE DE SEPT JOURS.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * La note ci-dessus dit « tant que l'association n'a pas téléversé SON contrat,
+ * il y a un ESPACE RÉSERVÉ ». Elle ne l'a pas téléversé, et le PO a fourni à la
+ * place la capture de son formulaire — ce qui est mieux : le document est
+ * désormais PRODUIT, avec les valeurs de la fiche dedans, plutôt que téléversé
+ * vide et rempli à la main.
+ *
+ * L'ordre de résolution, et chaque cran a sa raison :
+ *
+ *   1. `template`  — le PDF téléversé depuis הגדרות, s'il y en a un. Le jour
+ *                    où l'association envoie sa propre version signée par son
+ *                    juriste, elle gagne : c'est son papier, pas le nôtre. La
+ *                    signature y est tamponnée comme avant (`sign.ts`).
+ *   2. `generated` — « הסכם התנדבות- ארצנו » dessiné par `artzenu.ts` avec les
+ *                    quatre cases de la fiche, le logo, le texte du gabarit et
+ *                    l'encre. C'est ce qui sort aujourd'hui.
+ *
+ * ⚠️ `placeholder` N'EST PLUS UN CAS. `public/mock-agreement.pdf` reste dans
+ *    l'arbre parce que `AgreementTemplateSection` s'en sert comme exemple à
+ *    montrer, mais aucune fiche ne le produit plus.
+ */
+export type DocumentSource = 'template' | 'placeholder' | 'generated'
 
 export interface AgreementDocument {
   url: string
@@ -64,7 +93,9 @@ export function agreementDocument(): Promise<AgreementDocument> {
       const url = await signedUrl(AGREEMENTS_BUCKET, TEMPLATE_KEY).catch(() => null)
       if (url) return { url, source: 'template' }
     }
-    return { url: placeholderUrl(), source: 'placeholder' }
+    /* Plus de bytes à aller chercher : `fetchAgreementFile` dessine. L'URL
+       reste celle de l'exemple pour que הגדרות ait quelque chose à montrer. */
+    return { url: placeholderUrl(), source: 'generated' }
   })()
   return resolved
 }
@@ -91,37 +122,45 @@ export async function removeTemplate(): Promise<void> {
 }
 
 /**
- * The bytes, as a `File` named the way the entity's row names it — so the
- * share sheet, the download and the viewer all hold the SAME object and a
- * signed URL never has to leave the app in a link.
+ * Le document d'une fiche, prêt à être lu, téléchargé ou partagé.
+ *
+ * ★ UN SEUL POINT DE SORTIE POUR LES TROIS BOUTONS, comme avant : l'aperçu, le
+ *   téléchargement et la feuille de partage tiennent le MÊME objet, donc ce
+ *   qu'un agriculteur reçoit par WhatsApp est octet pour octet ce que le
+ *   coordinateur vient de regarder.
  */
 export async function fetchAgreementFile(
   fileName: string,
-  /**
-   * W8 — when the row carries a drawn signature, the bytes handed back have
-   * it ON them. Omitted (or unsigned) gives the template unchanged, which is
-   * what every caller got before this unit.
-   */
-  signed?: {
+  context: {
+    farm: Farm
     agreement: Agreement
-    farmName: string
-    t: (key: string, options?: Record<string, unknown>) => string
-    locale?: string
+    t: Translate
+    locale: string
   },
 ): Promise<File> {
   const doc = await agreementDocument()
+
+  /* 2 — rien n'a été téléversé : on PRODUIT le formulaire de l'association. */
+  if (doc.source !== 'template') {
+    return await agreementPdf(
+      agreementPageInput(context.farm, context.agreement, context.t, context.locale),
+      fileName,
+    )
+  }
+
+  /* 1 — le PDF de l'association, tamponné de l'encre comme depuis W8. */
   const response = await fetch(doc.url)
   if (!response.ok) throw new Error(`agreement: ${response.status}`)
-  if (!signed?.agreement.signature) {
+  if (!context.agreement.signature) {
     const blob = await response.blob()
     return new File([blob], fileName, { type: 'application/pdf' })
   }
   const stamped = await stampAgreement(
     await response.arrayBuffer(),
-    signed.agreement,
-    signed.farmName,
-    signed.t,
-    signed.locale,
+    context.agreement,
+    context.farm.farmName || context.farm.name,
+    context.t,
+    context.locale,
   )
   return new File([stamped], fileName, { type: 'application/pdf' })
 }

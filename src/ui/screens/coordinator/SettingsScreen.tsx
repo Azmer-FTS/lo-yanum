@@ -13,6 +13,7 @@ import { DisplaySection, RegionsEditSection } from '../../settings/DisplaySectio
 import { DemoDataSection } from '../../settings/DemoDataSection'
 import { AreaGapSection } from '../../settings/AreaGapSection'
 import { SummonsSection } from '../../settings/SummonsSection'
+import { DeclarationSection } from '../../settings/DeclarationSection'
 import { VigilSection } from '../../settings/VigilSection'
 import { CoverageSection } from '../../settings/CoverageSection'
 import { TargetSection } from '../../settings/TargetSection'
@@ -220,6 +221,8 @@ export function SettingsScreen() {
       <VigilSection />
 
       <SummonsSection />
+
+      <DeclarationSection />
 
       {/* ★★ Y2.1 — the door to the region editor. Above the offline block on
           purpose: it is a decision about the programme, not about this
