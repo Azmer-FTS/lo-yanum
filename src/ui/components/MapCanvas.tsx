@@ -250,10 +250,15 @@ export interface MapViewProps {
 }
 
 const SIZE: Record<MarkerKind, number> = {
+  /* ★ AH10 — « ÉPINGLE FINE ». La largeur est celle de la TÊTE ; la hauteur en
+     découle (4/3) et la pointe se pose sur la coordonnée. 26 px de tête donne
+     une aiguille de 35 px de haut — la même famille que le poste de garde,
+     plus fine que la pastille de 26 px qu'elle remplace, qui occupait 26 px
+     dans les deux sens. */
   farm: 26,
   moshav: 26,
   anchor: 30,
-  incident: 24,
+  incident: 26,
   mission: 22,
   origin: 22,
   pin: 30,
@@ -266,8 +271,40 @@ const SIZE: Record<MarkerKind, number> = {
   bubble: 30,
 }
 
-/** The kinds drawn as a bottom-anchored teardrop rather than a centred shape. */
-const PIN_KINDS: ReadonlyArray<MarkerKind> = ['pin', 'anchor', 'car']
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AH10 (2026-09-09) — LES POINTS PRÉCIS SONT DES ÉPINGLES, ET LA POINTE
+ *    DÉSIGNE LA POSITION.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ *   « Épingle fine à tête ronde, façon Apple Plans, contour peu épais, pouvant
+ *     contenir une icône, léger relief. Pour les points PRÉCIS : ferme,
+ *     rendez-vous, incident, étape d'itinéraire. Les marqueurs actuels, plus
+ *     larges, restent pour les REGROUPEMENTS et les zones, où la précision au
+ *     mètre n'a pas de sens. La pointe désigne la position exacte, pas le
+ *     centre de la tête. »
+ *
+ * ★★ ET « LA POINTE DÉSIGNE LA POSITION » N'EST PAS UNE AFFAIRE DE DESSIN,
+ *    C'EST L'ANCRAGE. Une pastille centrée sur ses coordonnées est décalée d'un
+ *    demi-marqueur vers le bas dès qu'on la lit comme une épingle — à z16, sur
+ *    un iPad, c'est une quinzaine de mètres de terrain. Ce qui change ici est
+ *    donc d'abord `anchor: 'bottom'` (plus bas, dans les options du Marker),
+ *    et la silhouette ensuite.
+ *
+ * ★ CE QUI RESTE UNE PASTILLE, ET POURQUOI : `bubble` agrège des gens sur une
+ *   ville — sa taille EST son compte, une épingle y mentirait sur la
+ *   précision ; `origin` est un point de référence dont on part, pas un lieu
+ *   où l'on va ; `move`, `vertex` et `label` sont des poignées et des
+ *   étiquettes, pas des lieux.
+ */
+const PIN_KINDS: ReadonlyArray<MarkerKind> = [
+  'pin',
+  'anchor',
+  'car',
+  'farm',
+  'moshav',
+  'incident',
+]
 
 const TEARDROP =
   'M12 1C5.9 1 1 5.9 1 12c0 8.1 11 19 11 19s11-10.9 11-19C23 5.9 18.1 1 12 1z'
@@ -290,14 +327,31 @@ const TEARDROP =
  */
 const NEEDLE_PIN = 'M12 31.2 9.6 17.6a9 9 0 1 1 4.8 0z'
 
-/** Which of the two bottom-anchored silhouettes each pin kind wears. */
+/**
+ * Which of the two bottom-anchored silhouettes each pin kind wears.
+ *
+ * ★★ AH10 — L'AIGUILLE EST DEVENUE LA RÈGLE, LA GOUTTE L'EXCEPTION. Elle
+ *    l'était déjà pour le poste de garde depuis W5, et le PO a décrit
+ *    exactement cette forme pour tout ce qui est précis : « tête ronde, contour
+ *    peu épais, léger relief ». La goutte reste sur `car` — le point où la
+ *    voiture s'arrête est une zone de dépose, pas un mètre carré — de sorte
+ *    que les deux silhouettes restent à un coup d'œil l'une de l'autre.
+ */
 const PIN_SHAPE: Partial<Record<MarkerKind, string>> = {
   anchor: NEEDLE_PIN,
+  farm: NEEDLE_PIN,
+  moshav: NEEDLE_PIN,
+  incident: NEEDLE_PIN,
+  pin: NEEDLE_PIN,
 }
 
 /** Where the head's centre sits in the 24×32 box, per silhouette. */
 const HEAD_Y: Partial<Record<MarkerKind, number>> = {
   anchor: 8.9,
+  farm: 8.9,
+  moshav: 8.9,
+  incident: 8.9,
+  pin: 8.9,
 }
 
 /** G8 — the meeting-point glyph: a car. */
@@ -322,6 +376,12 @@ const GLYPH: Partial<Record<MarkerKind, string>> = {
   anchor:
     'M12 3c-2.6 1.6-5 2.3-7 2.4v7.2c0 4.4 2.9 6.8 7 8.4 4.1-1.6 7-4 7-8.4V5.4c-2-.1-4.4-.8-7-2.4z',
   car: CAR_PATH,
+  /* ★ AH10.3 — L'INCIDENT GARDE SON TRIANGLE, DANS LA TÊTE DE L'ÉPINGLE. La
+     silhouette dit « ici, exactement » (AH10.4) et le glyphe dit « attention »
+     — le langage des panneaux de route, que personne n'a à apprendre. Le
+     triangle plein qu'il était perdait la pointe ; le remplacer par un rond
+     aurait perdu le panneau. */
+  incident: 'M12 4.4 21 19.8H3Z M12 10.6v3.4 M12 16.4v.2',
   // G15 — the whole-polygon move handle: a four-way arrow cross.
   move: 'M12 2v20M2 12h20M12 2l-2.5 2.5M12 2l2.5 2.5M12 22l-2.5-2.5M12 22l2.5-2.5M2 12l2.5-2.5M2 12l2.5 2.5M22 12l-2.5-2.5M22 12l-2.5 2.5',
 }
@@ -532,38 +592,34 @@ function markerElement(marker: MapMarker): HTMLElement {
              <path d="${GLYPH[kind]}"/>
            </g>`
         : `<circle cx="12" cy="${headY}" r="4.2" fill="${ring}"/>`
+    /**
+     * ★★ AH10.3 — « CONTRASTE SUFFISANT SUR FOND SATELLITE COMME VECTORIEL, EN
+     *    THÈME CLAIR ET SOMBRE », ET C'EST DEUX TRAITS PLUTÔT QU'UN.
+     *
+     * Le contour est `--surface-base` : quasi blanc en thème clair, quasi noir
+     * en sombre. Sur la carte vectorielle il est juste dans les deux cas — le
+     * fond est le même jeton. Sur une PHOTOGRAPHIE il ne l'est pas : la photo
+     * ne connaît pas le thème, et un contour presque noir sur un champ labouré
+     * disparaît exactement comme un contour presque blanc sur une serre.
+     *
+     * ★ LA SOLUTION EST CELLE DES ZONES (U5, `zones-halo`) : un HALO sombre et
+     *   translucide posé SOUS le contour clair. Quel que soit le fond, l'un des
+     *   deux traits porte — et sur le vectoriel le halo se lit comme le « léger
+     *   relief » que le PO a demandé plutôt que comme un second contour.
+     */
     el.innerHTML = `
       <svg viewBox="0 0 24 32" width="${w}" height="${h}" aria-hidden="true">
+        <path d="${silhouette}" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="3.6"
+              stroke-linejoin="round"/>
         <path d="${silhouette}" fill="${marker.color}" stroke="${ring}" stroke-width="1.6"/>
         ${head}
       </svg>`
     footprint = { w, h, anchorBottom: true }
-  } else if (kind === 'incident') {
-    // G7bis.1 — an incident is a WARNING TRIANGLE, the shape every road sign
-    // has already taught. Severity keeps the colour scale it always had.
-    const s = marker.emphasis ? SIZE.incident + 8 : SIZE.incident
-    el.style.cssText = [
-      `width:${s}px`,
-      `height:${s}px`,
-      'padding:0',
-      'background:transparent',
-      'border:none',
-      'cursor:pointer',
-      'display:block',
-      marker.emphasis
-        ? 'filter:drop-shadow(0 0 3px rgba(255,255,255,.4)) drop-shadow(0 4px 8px rgba(0,0,0,.55))'
-        : 'filter:drop-shadow(0 2px 5px rgba(0,0,0,.45))',
-      'transition:width 150ms cubic-bezier(.16,1,.3,1),height 150ms cubic-bezier(.16,1,.3,1),filter 150ms',
-    ].join(';')
-    el.innerHTML = `
-      <svg viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true">
-        <path d="M12 2.6 22.6 20.9H1.4Z" fill="${marker.color}" stroke="${ring}"
-              stroke-width="1.8" stroke-linejoin="round"/>
-        <path d="M12 9.6v4.6M12 17.1v.2" fill="none" stroke="${ring}"
-              stroke-width="2" stroke-linecap="round"/>
-      </svg>`
-    footprint = { w: s, h: s, anchorBottom: false }
   } else {
+    /* ★ AH10 — LE TRIANGLE AUTONOME A DISPARU D'ICI, ET IL N'EST PAS PERDU :
+       il est devenu le glyphe DANS la tête de l'épingle (voir `GLYPH.incident`).
+       Un signalement est un point précis — le PO l'a nommé — et un triangle
+       centré sur ses coordonnées désigne son centre, pas l'endroit. */
     // The disc kinds: the farm's identity pastille (barn glyph), a guard on
     // the missions map (shield), the route's origin. A numbered badge wins
     // over the glyph — the number IS the information on a route.

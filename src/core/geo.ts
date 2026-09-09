@@ -509,6 +509,31 @@ export function parsePositionInput(raw: string): LatLng | null {
 }
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AH9 (2026-09-09) — ET L'ÉCRITURE DOIT SURVIVRE À LA LECTURE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ LE DÉFAUT TROUVÉ PAR A170, ET IL DORMAIT DEPUIS AF3.3. Le lecteur
+ *    ci-dessus exige TROIS décimales — c'est ce qui l'empêche de prendre le
+ *    « ,15z » d'un zoom Google pour une longitude, et c'est juste. Mais
+ *    `${p.lat},${p.lng}` laisse JavaScript imprimer le nombre le plus court :
+ *    31.25 s'écrit « 31.25 », deux décimales. Un point rond — et un lien Waze
+ *    en produit un sur deux — traversait donc l'URL et revenait `null`.
+ *
+ * ★ CONSÉQUENCE CONCRÈTE, mesurée : « convertir cette étape en fiche ferme »
+ *   ouvrait le formulaire SANS ÉPINGLE, avec la carte armée, comme si le point
+ *   n'avait jamais existé. Le PO aurait repointé à la main un lieu qu'il
+ *   venait de coller.
+ *
+ * ★ LA RÈGLE : ce qui écrit une position dans une URL passe par ici. Six
+ *   décimales, toujours — c'est ~11 cm, bien au-delà de ce qu'un lien
+ *   WhatsApp porte, et surtout toujours ≥ 3.
+ */
+export function positionParam(p: LatLng): string {
+  return `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`
+}
+
+/**
  * True when the text LOOKS like a location the coordinator meant to give but
  * that cannot be resolved — a shortened share link, in practice. The import
  * uses it to tell "he left the cell empty" apart from "he gave us something

@@ -324,9 +324,20 @@ export function RoutePlannerScreen() {
         </p>
       }
     >
-      <header className="mb-4">
-        <h1 className="text-title text-content-primary">{t('route.title')}</h1>
-        <p className="muted mt-1">{t('route.subtitle')}</p>
+      <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-title text-content-primary">{t('route.title')}</h1>
+          <p className="muted mt-1">{t('route.subtitle')}</p>
+        </div>
+        {/* ★★ AH9 — LA PORTE DE L'ITINÉRAIRE LIBRE, ICI ET NULLE PART AILLEURS.
+            C'est la même question — « dans quel ordre je roule demain » — et
+            un écran qu'on atteint depuis le menu principal serait un second
+            planificateur ; posé ici, il est l'autre réponse à la question
+            qu'on est déjà en train de se poser. */}
+        <Link to="/coordinator/route/free" className="btn-secondary shrink-0" data-testid="open-free-route">
+          <Icon name="pin" size={16} />
+          {t('freeRoute.title')}
+        </Link>
       </header>
 
       {/* G9.1 — the day this route belongs to, and its saved state. */}

@@ -11,6 +11,7 @@ import {
   getGeneralMeeting,
   getVisibleFarms,
   updateGeneralMeeting,
+  positionParam,
 } from '@core/index'
 import type { LatLng } from '@core/index'
 
@@ -243,7 +244,10 @@ export function GeneralMeetingModal({
             data-testid="meeting-make-farm"
             onClick={() => {
               const query = new URLSearchParams({
-                at: `${position.lat},${position.lng}`,
+                /* ★ AH9 — `positionParam`, JAMAIS l'interpolation nue : voir
+                   `core/geo.ts`. Un point rond perdait ses décimales et le
+                   formulaire s'ouvrait sans épingle. */
+                at: positionParam(position),
                 name: title.trim(),
                 locality: location.trim(),
               })

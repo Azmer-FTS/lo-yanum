@@ -90,7 +90,9 @@
     "ahbar": "bun run scripts/ahbar.ts",
     "ahdoc": "bun run scripts/ahdoc.ts",
     "ahheight": "bun run scripts/ahheight.ts",
-    "ahui": "bun run scripts/ahui.ts"
+    "ahui": "bun run scripts/ahui.ts",
+    "ahpins": "bun run scripts/ahpins.ts",
+    "ahroute": "bun run scripts/ahroute.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "0.2.3",
