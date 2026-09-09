@@ -51,11 +51,22 @@
 > l'état où le PO l'a trouvé interminable, puisque le ת״ז est dans une section
 > repliée) :
 >
+> **Création d'une ferme**
+>
 > | | avant | après | |
 > |---|---|---|---|
 > | iPhone 402 | 4 626 px | **4 686 px** | +60 : la case à cocher neuve, une colonne de toute façon |
 > | iPad portrait 1032 | 4 411 px | **3 853 px** | **−12,7 %** |
 > | iPad paysage 1376 | 3 748 px | **3 358 px** | **−10,4 %** |
+>
+> **Modification d'une ferme renseignée** — c'est celle que le PO ouvre le plus,
+> et c'est là que le gain est le plus net :
+>
+> | | avant | après | |
+> |---|---|---|---|
+> | iPhone 402 | 6 782 px | **6 842 px** | +60, la même case |
+> | iPad portrait 1032 | 5 741 px | **5 333 px** | **−7,1 %** |
+> | iPad paysage 1376 | 5 237 px | **4 847 px** | **−7,4 %** |
 >
 > ## AH2 — « FLOTTANTS » ÉTAIT LA DESCRIPTION EXACTE DE `position: sticky`
 >

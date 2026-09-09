@@ -52,7 +52,7 @@ try {
     const page = await ctx.newPage()
     await page.goto(`${base}/#/coordinator`, { waitUntil: 'load' })
     await page.waitForTimeout(700)
-    await page.goto(`${base}/#/coordinator/farms/new`, { waitUntil: 'load' })
+    await page.goto(`${base}/${process.env.FORM ?? '#/coordinator/farms/new'}`, { waitUntil: 'load' })
     await page.waitForTimeout(2600)
     const measure = () => page.evaluate(() => {
       const doc = document.scrollingElement as HTMLElement
