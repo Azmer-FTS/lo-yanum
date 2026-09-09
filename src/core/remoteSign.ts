@@ -70,7 +70,6 @@ export interface SignDraft {
   farmName: string
   /** AG4.1 — l'image de la carte, en URL de données. Facultative par défaut. */
   idPhoto: string | null
-  accepted: boolean
   /** L'encre, en URL de données PNG. */
   signature: string | null
 }
@@ -81,7 +80,6 @@ export const EMPTY_SIGN_DRAFT: SignDraft = {
   farmerPhone: '',
   farmName: '',
   idPhoto: null,
-  accepted: false,
   signature: null,
 }
 
@@ -147,16 +145,27 @@ export interface SignFormState {
 }
 
 /**
- * ★ TROIS RAISONS DE BLOQUER, ET ELLES SONT NOMMÉES SÉPARÉMENT.
+ * ★ DEUX RAISONS DE BLOQUER, ET ELLES SONT NOMMÉES SÉPARÉMENT.
  *
  * « La signature est bloquée tant qu'un champ obligatoire est vide, AVEC UN
  *   MESSAGE QUI NOMME CE QUI MANQUE. » Un unique « formulaire incomplet »
  *   oblige à chercher, et sur un téléphone chercher veut dire faire défiler.
+ *
+ * ★★ AH6.3 (2026-09-09) — LA TROISIÈME A DISPARU : « pas de case à cocher si
+ *    elle fait doublon avec l'acte de signer — pour le PO, signer vaut
+ *    acceptation. » C'est tranché dans ce sens, et c'est la bonne lecture :
+ *    une case « j'ai lu et j'approuve » posée AU-DESSUS du pad de signature
+ *    demande deux fois la même chose à quelqu'un qui est en train de signer,
+ *    et la deuxième demande est celle qu'on coche sans lire. Le document est
+ *    à l'écran, l'encre est l'accord — comme sur du papier.
+ *
+ * ⚠️ ET C'EST UN CHAMP OBLIGATOIRE DE MOINS, ce qui est la règle qui gouverne
+ *    tout ce formulaire (AH6.5) : « chaque champ obligatoire de plus est un
+ *    formulaire de moins qui se termine ».
  */
 export type SignBlockReason =
   | { kind: 'fields'; fields: SignFieldId[] }
   | { kind: 'photo' }
-  | { kind: 'accept' }
 
 export function signFormState(
   farm: Farm,
@@ -179,10 +188,13 @@ export function signFormState(
    *    cocher, réessayer, et découvrir un second refus. Un refus à la fois, et
    *    le plus haut de l'écran d'abord.
    */
+  /**
+   * ⚠️ L'ORDRE DES DEUX BLOCAGES EST L'ORDRE DE L'ÉCRAN, ET IL COMPTE. Un refus
+   *    à la fois, et le plus haut de l'écran d'abord.
+   */
   let blocked: SignBlockReason | null = null
   if (missing.length > 0) blocked = { kind: 'fields', fields: missing }
   else if (options.requireIdPhoto && draft.idPhoto === null) blocked = { kind: 'photo' }
-  else if (!draft.accepted) blocked = { kind: 'accept' }
 
   return { given, asked, values, missing, blocked }
 }

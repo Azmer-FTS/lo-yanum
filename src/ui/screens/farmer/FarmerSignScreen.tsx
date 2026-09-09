@@ -13,7 +13,7 @@ import {
 } from '@core/index'
 import type { SignDraft, SignFieldId } from '@core/index'
 
-import { drawAgreementPage } from '../../agreement/artzenu'
+import { drawAgreementPages } from '../../agreement/artzenu'
 import { agreementFileName, agreementPageInput } from '../../agreement/input'
 import { Icon } from '../../components/Icon'
 import { SignaturePad } from '../../components/SignaturePad'
@@ -55,7 +55,7 @@ export function FarmerSignScreen() {
 
   const [draft, setDraft] = useState<SignDraft>(EMPTY_SIGN_DRAFT)
   const [tried, setTried] = useState(false)
-  const [preview, setPreview] = useState<string | null>(null)
+  const [preview, setPreview] = useState<string[] | null>(null)
   const [done, setDone] = useState(false)
   const seq = useRef(0)
 
@@ -102,7 +102,7 @@ export function FarmerSignScreen() {
     let alive = true
     const mine = ++seq.current
     void (async () => {
-      const canvas = await drawAgreementPage(
+      const pages = await drawAgreementPages(
         agreementPageInput(
           {
             ...farm,
@@ -123,7 +123,7 @@ export function FarmerSignScreen() {
         ),
       )
       if (!alive || mine !== seq.current) return
-      setPreview(canvas.toDataURL('image/png'))
+      setPreview(pages.map((c) => c.toDataURL('image/png')))
     })()
     return () => {
       alive = false
@@ -290,12 +290,15 @@ export function FarmerSignScreen() {
           className="max-h-[46dvh] overflow-auto overscroll-contain rounded-card border border-edge-subtle bg-white p-2"
         >
           {preview ? (
-            <img
-              src={preview}
-              alt={t('agreement.preview')}
-              data-testid="sign-preview-page"
-              className="mx-auto block w-full max-w-[46rem]"
-            />
+            preview.map((src, i) => (
+              <img
+                key={i}
+                src={src}
+                alt={t('agreement.preview')}
+                data-testid="sign-preview-page"
+                className="mx-auto mb-2 block w-full max-w-[46rem] last:mb-0"
+              />
+            ))
           ) : (
             <p className="muted p-6 text-center">{t('agreement.previewLoading')}</p>
           )}
@@ -303,21 +306,15 @@ export function FarmerSignScreen() {
       </Section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* 5 — LA CASE, PUIS LE DOIGT                                          */}
+      {/* 5 — LE DOIGT, ET RIEN AVANT LUI (AH6.3)                             */}
       {/* ------------------------------------------------------------------ */}
+      {/* ★★ LA CASE « קראתי ואני מאשר » A ÉTÉ RETIRÉE. Elle demandait une
+          seconde fois, à quelqu'un en train de signer, ce que la signature dit
+          déjà — et c'est la case qu'on coche sans lire. Voir `remoteSign.ts` :
+          pour le PO, signer VAUT acceptation, comme sur du papier. Ce qui
+          reste est la phrase qui le dit, sous le pad. */}
       <Section title={t('agreement.signatureHeading')} collapseKey="sign-ink">
-        <label className="flex items-start gap-2.5 rounded-field bg-surface-high px-3.5 py-3">
-          <input
-            type="checkbox"
-            data-testid="sign-accept"
-            checked={draft.accepted}
-            onChange={(e) => setDraft((d) => ({ ...d, accepted: e.target.checked }))}
-            className="mt-0.5 h-5 w-5 shrink-0"
-          />
-          <span className="text-caption leading-relaxed">{t('sign.accept')}</span>
-        </label>
-
-        <p className="label mt-4">{t('agreement.signStep')}</p>
+        <p className="label">{t('agreement.signStep')}</p>
         <SignaturePad
           value={draft.signature}
           onChange={(ink) => setDraft((d) => ({ ...d, signature: ink }))}
@@ -338,9 +335,7 @@ export function FarmerSignScreen() {
                     .map((id) => t(`sign.field.${id}`))
                     .join(', '),
                 })
-              : state.blocked.kind === 'photo'
-                ? t('sign.missingPhoto')
-                : t('sign.missingAccept')}
+              : t('sign.missingPhoto')}
           </p>
         )}
         {tried && !state.blocked && draft.signature === null && (
@@ -364,7 +359,10 @@ export function FarmerSignScreen() {
           <Icon name="check" size={19} />
           {t('sign.submit')}
         </button>
-        <p className="muted mt-2">{t('sign.submitHint')}</p>
+        {/* ★ AH6.3 — CE QUE SIGNER VEUT DIRE, ÉCRIT SOUS LE BOUTON PLUTÔT QUE
+            COCHÉ AU-DESSUS. */}
+        <p className="muted mt-2">{t('sign.signIsAccept')}</p>
+        <p className="muted mt-1">{t('sign.submitHint')}</p>
       </Section>
     </>
   )

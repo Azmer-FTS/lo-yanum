@@ -91,8 +91,15 @@ export function AgreementTemplateSection() {
     }
   }
 
+  /**
+   * ★★ AH4 — LE BOUTON N'OUVRE PLUS L'IMAGE D'EXEMPLE, PARCE QU'IL N'Y EN A
+   *    PLUS. Il n'ouvre QUE le PDF téléversé par l'association ; quand rien
+   *    n'a été téléversé, le document en vigueur est celui du gabarit, et
+   *    l'aperçu de CE document est juste au-dessus, dans « מסמך החתימה ».
+   */
   const view = async () => {
     const doc = await agreementDocument()
+    if (doc.url === null) return
     // The current document, in a NEW tab and never in this window: the
     // trap N2 fixes was a PDF replacing the app with no way back.
     window.open(doc.url, '_blank', 'noopener,noreferrer')
@@ -112,7 +119,7 @@ export function AgreementTemplateSection() {
                 ? new Date(info.updatedAt).toLocaleDateString(locale)
                 : '—',
             })
-          : t('settings.agreement.placeholder')}
+          : t('settings.agreement.generated')}
       </p>
 
       {SUPABASE_CONFIGURED ? (
@@ -139,10 +146,12 @@ export function AgreementTemplateSection() {
                 ? t('settings.agreement.replace')
                 : t('settings.agreement.upload')}
           </button>
-          <button type="button" className="btn-secondary" onClick={() => void view()}>
-            <Icon name="eye" size={16} />
-            {t('settings.agreement.view')}
-          </button>
+          {uploaded && (
+            <button type="button" className="btn-secondary" onClick={() => void view()}>
+              <Icon name="eye" size={16} />
+              {t('settings.agreement.view')}
+            </button>
+          )}
           {uploaded && (
             <button
               type="button"

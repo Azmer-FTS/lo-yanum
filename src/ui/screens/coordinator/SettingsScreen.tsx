@@ -13,7 +13,7 @@ import { DisplaySection, RegionsEditSection } from '../../settings/DisplaySectio
 import { DemoDataSection } from '../../settings/DemoDataSection'
 import { AreaGapSection } from '../../settings/AreaGapSection'
 import { SummonsSection } from '../../settings/SummonsSection'
-import { DeclarationSection } from '../../settings/DeclarationSection'
+import { AgreementDocSection } from '../../settings/AgreementDocSection'
 import { VigilSection } from '../../settings/VigilSection'
 import { RenewalSection } from '../../settings/RenewalSection'
 import { GeoDiagnosticsSection } from '../../settings/GeoDiagnosticsSection'
@@ -348,7 +348,11 @@ export function SettingsScreen() {
 
       <SettingsGroup id="templates" />
       <SummonsSection />
-      <DeclarationSection />
+      {/* ★★ AH5 — le gabarit du document de signature, son logo, son aperçu.
+          Il REMPLACE `DeclarationSection` : celle-ci ne réglait qu'un
+          paragraphe d'un document dont le reste vivait dans le code, et deux
+          endroits pour régler un seul papier est exactement ce qu'AH5 supprime. */}
+      <AgreementDocSection />
       {/* N2 (2026-09-02) — the association's contract, uploaded once. */}
       <AgreementTemplateSection />
 

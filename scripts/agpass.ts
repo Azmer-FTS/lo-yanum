@@ -465,12 +465,15 @@ const NO_PHOTO = { requireIdPhoto: false }
   check('A144 · parcours 1 — aucun champ redemandé', state.asked.length === 0,
     state.asked.join(', '))
   check('A144 · parcours 1 — rien ne manque', state.missing.length === 0)
+  /* ★★ AH6.3 — LA CASE A DISPARU, ET LA PORTE CHANGE DE SENS AVEC ELLE. Le PO
+     a tranché : « pas de case à cocher si elle fait doublon avec l'acte de
+     signer ». Ce qui était « bloqué tant qu'elle n'est pas cochée » devient
+     donc « rien ne bloque » — et c'est cela qu'il faut vérifier, sinon la
+     porte garderait une exigence que le produit n'a plus. */
   check(
-    "A144 · parcours 1 — mais la case n'est pas cochée, donc pas de signature",
-    state.blocked?.kind === 'accept' && !canSign(state),
+    'A144/AH6.3 · parcours 1 — plus aucune case à cocher : on peut signer',
+    state.blocked === null && canSign(state) === true,
   )
-  const accepted = signFormState(farm, { ...EMPTY_SIGN_DRAFT, accepted: true }, NO_PHOTO)
-  check('A144 · parcours 1 — cochée, on peut signer', canSign(accepted) === true)
 }
 
 {
@@ -495,7 +498,7 @@ const NO_PHOTO = { requireIdPhoto: false }
   )
   const filled = signFormState(
     farm,
-    { ...EMPTY_SIGN_DRAFT, farmerId: '012345678', accepted: true },
+    { ...EMPTY_SIGN_DRAFT, farmerId: '012345678' },
     NO_PHOTO,
   )
   check('A144 · parcours 2 — rempli, on peut signer', canSign(filled) === true)
@@ -544,7 +547,7 @@ const NO_PHOTO = { requireIdPhoto: false }
     farmerName: 'יוסי כהן',
     farmerId: '012345678',
     farmName: 'משק כהן',
-    accepted: true,
+
   }
   const edited = signFormState(farm, draft, NO_PHOTO)
   check(

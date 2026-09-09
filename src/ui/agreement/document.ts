@@ -45,15 +45,20 @@ export const TEMPLATE_KEY = `${TEMPLATE_FOLDER}/agreement.pdf`
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ★★ AF1.3 (2026-09-09) — « generated » REMPLACE « placeholder », ET C'EST LA
- *    FIN D'UNE ATTENTE DE SEPT JOURS.
+ * ★★ AF1.3 (2026-09-09) — « generated » REMPLACE « placeholder ».
+ * ★★ AH4 (2026-09-09) — ET L'EXEMPLE EST SUPPRIMÉ, PAS SEULEMENT CONTOURNÉ.
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * La note ci-dessus dit « tant que l'association n'a pas téléversé SON contrat,
- * il y a un ESPACE RÉSERVÉ ». Elle ne l'a pas téléversé, et le PO a fourni à la
- * place la capture de son formulaire — ce qui est mieux : le document est
- * désormais PRODUIT, avec les valeurs de la fiche dedans, plutôt que téléversé
- * vide et rempli à la main.
+ * AF1.3 avait laissé `public/mock-agreement.pdf` dans l'arbre « parce que
+ * `AgreementTemplateSection` s'en sert comme exemple à montrer ». Le PO a
+ * regardé cet exemple et a tranché : « c'est une IMAGE générée autrefois pour
+ * montrer un rendu, elle ne porte aucun texte exploitable et n'a AUCUN rapport
+ * avec le document que signent les agriculteurs ».
+ *
+ * ★★ ET C'ÉTAIT PIRE QU'INUTILE : le bouton « צפייה במסמך הנוכחי » des réglages
+ *    ouvrait CE fichier, donc l'écran qui prétend dire quel document sera
+ *    montré à l'agriculteur en montrait un autre. Un aperçu qui n'est pas le
+ *    document est la seule chose plus coûteuse qu'une absence d'aperçu.
  *
  * L'ordre de résolution, et chaque cran a sa raison :
  *
@@ -61,24 +66,17 @@ export const TEMPLATE_KEY = `${TEMPLATE_FOLDER}/agreement.pdf`
  *                    où l'association envoie sa propre version signée par son
  *                    juriste, elle gagne : c'est son papier, pas le nôtre. La
  *                    signature y est tamponnée comme avant (`sign.ts`).
- *   2. `generated` — « הסכם התנדבות- ארצנו » dessiné par `artzenu.ts` avec les
- *                    quatre cases de la fiche, le logo, le texte du gabarit et
- *                    l'encre. C'est ce qui sort aujourd'hui.
- *
- * ⚠️ `placeholder` N'EST PLUS UN CAS. `public/mock-agreement.pdf` reste dans
- *    l'arbre parce que `AgreementTemplateSection` s'en sert comme exemple à
- *    montrer, mais aucune fiche ne le produit plus.
+ *   2. `generated` — le document du gabarit d'AH5, dessiné par `artzenu.ts`
+ *                    avec les valeurs de la fiche, le logo réglé et l'encre.
+ *                    C'est ce qui sort aujourd'hui, et l'aperçu des réglages
+ *                    est LE MÊME dessin.
  */
-export type DocumentSource = 'template' | 'placeholder' | 'generated'
+export type DocumentSource = 'template' | 'generated'
 
 export interface AgreementDocument {
-  url: string
+  /** `null` quand le document est DESSINÉ : il n'y a pas de fichier derrière. */
+  url: string | null
   source: DocumentSource
-}
-
-/** The placeholder, resolved against the app's base so the PWA finds it. */
-export function placeholderUrl(): string {
-  return new URL(`${import.meta.env.BASE_URL}mock-agreement.pdf`, window.location.href).toString()
 }
 
 let resolved: Promise<AgreementDocument> | null = null
@@ -93,9 +91,12 @@ export function agreementDocument(): Promise<AgreementDocument> {
       const url = await signedUrl(AGREEMENTS_BUCKET, TEMPLATE_KEY).catch(() => null)
       if (url) return { url, source: 'template' }
     }
-    /* Plus de bytes à aller chercher : `fetchAgreementFile` dessine. L'URL
-       reste celle de l'exemple pour que הגדרות ait quelque chose à montrer. */
-    return { url: placeholderUrl(), source: 'generated' }
+    /* ★ AH4 — PLUS D'URL DU TOUT DANS CE CAS. Il n'y a pas de fichier derrière
+       un document dessiné à la demande, et rendre l'URL d'un autre fichier
+       « pour que les réglages aient quelque chose à montrer » est précisément
+       ce que le PO a trouvé et fait retirer. Ce qui montre le document, c'est
+       le document. */
+    return { url: null, source: 'generated' }
   })()
   return resolved
 }
@@ -149,6 +150,7 @@ export async function fetchAgreementFile(
   }
 
   /* 1 — le PDF de l'association, tamponné de l'encre comme depuis W8. */
+  if (doc.url === null) throw new Error('agreement: template without a url')
   const response = await fetch(doc.url)
   if (!response.ok) throw new Error(`agreement: ${response.status}`)
   if (!context.agreement.signature) {

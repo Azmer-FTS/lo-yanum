@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { Agreement, Farm } from '@core/index'
 
-import { drawAgreementPage } from '../agreement/artzenu'
+import { drawAgreementPages } from '../agreement/artzenu'
 import { agreementPageInput } from '../agreement/input'
 import { useLocale } from '../hooks/useLocale'
 import { Icon } from './Icon'
@@ -51,7 +51,7 @@ export function AgreementSignModal({
   const { t } = useTranslation()
   const locale = useLocale()
   const [ink, setInk] = useState<string | null>(agreement.signature ?? null)
-  const [preview, setPreview] = useState<string | null>(null)
+  const [preview, setPreview] = useState<string[] | null>(null)
   const [touched, setTouched] = useState(false)
   /* Un rendu par frappe serait un rendu A4 par frappe ; seule l'encre change
      réellement le document, et elle n'arrive qu'au relevé du stylet. */
@@ -61,11 +61,14 @@ export function AgreementSignModal({
     let alive = true
     const mine = ++seq.current
     void (async () => {
-      const canvas = await drawAgreementPage(
+      /* ★ AH5 — TOUTES LES PAGES, PAS LA PREMIÈRE. Depuis qu'un gabarit
+         modifiable peut déborder, un aperçu d'une seule page cacherait la
+         clause que l'association vient d'ajouter à celui qui la signe. */
+      const pages = await drawAgreementPages(
         agreementPageInput(farm, { ...agreement, signature: ink }, t as never, locale),
       )
       if (!alive || mine !== seq.current) return
-      setPreview(canvas.toDataURL('image/png'))
+      setPreview(pages.map((c) => c.toDataURL('image/png')))
     })()
     return () => {
       alive = false
@@ -90,12 +93,15 @@ export function AgreementSignModal({
         className="max-h-[34dvh] overflow-auto overscroll-contain rounded-card border border-edge-subtle bg-white p-2"
       >
         {preview ? (
-          <img
-            src={preview}
-            alt={t('agreement.preview')}
-            data-testid="agreement-preview-page"
-            className="mx-auto block w-full max-w-[46rem]"
-          />
+          preview.map((src, i) => (
+            <img
+              key={i}
+              src={src}
+              alt={t('agreement.preview')}
+              data-testid="agreement-preview-page"
+              className="mx-auto mb-2 block w-full max-w-[46rem] last:mb-0"
+            />
+          ))
         ) : (
           <p className="muted p-6 text-center">{t('agreement.previewLoading')}</p>
         )}

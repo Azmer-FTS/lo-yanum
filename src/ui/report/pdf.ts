@@ -2,9 +2,9 @@
  * PO POINT 7 (2026-08-31) — A REAL PDF, IN HEBREW, WITH NO PDF LIBRARY.
  *
  * ★★ THE BRIEF SAID "THE SAME PDF LIB AS THE AGREEMENTS" AND THERE IS NO SUCH
- *    LIB. `public/mock-agreement.pdf` is a static file checked into the
- *    repository; nothing in this project has ever GENERATED a PDF. So this
- *    unit had to choose one, and the choice is the interesting part.
+ *    LIB. Nothing in this project has ever GENERATED a PDF with one. So this
+ *    unit had to choose a technique, and the choice is the interesting part —
+ *    the agreement of AH5 now uses the same one, page by page.
  *
  * ★ EVERY JS PDF LIBRARY FAILS THE SAME WAY ON THIS APP: HEBREW. `jspdf` and
  *   `pdf-lib` both draw text with an embedded font, and the PDF base-14 fonts

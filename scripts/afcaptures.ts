@@ -162,7 +162,7 @@ const SHOTS: Shot[] = [
         await pill.click()
         await page.waitForTimeout(1200)
       }
-      const block = page.locator('[data-testid="block-settings-declaration"]')
+      const block = page.locator('[data-testid="block-settings-agreement-doc"]')
       if (await block.count()) {
         await block.click()
         await page.waitForTimeout(900)

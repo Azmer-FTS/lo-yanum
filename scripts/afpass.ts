@@ -1,14 +1,14 @@
 import {
-  AGREEMENT_FIELDS,
-  agreementFieldValues,
+  AGREEMENT_VARS,
+  agreementValues,
   boundedDistance,
   buildProgrammeReport,
   isUnresolvableLocationLink,
   looseMatch,
-  missingDeclarationTokens,
+  renderAgreementTemplate,
   parsePositionInput,
   rankOptions,
-  renderDeclaration,
+  unknownAgreementVars,
   resetStore,
   typoBudget,
 } from '../src/core/index'
@@ -223,27 +223,44 @@ check(
 )
 
 // ---------------------------------------------------------------------------
-section('3 — AF1 · les quatre cases du document et le gabarit')
+section('3 — AF1 · les valeurs du document et le gabarit (repris par AH5)')
 // ---------------------------------------------------------------------------
 
+/**
+ * ⚠️ AH5 A REMPLACÉ LE MÉCANISME, PAS LA DÉCISION. AF1 posait QUATRE CASES en
+ *    dur, dessinées par le code, plus un paragraphe de gabarit à un seul jeton
+ *    `{{year}}`. Le PO a demandé en AH5 que le document ENTIER soit un gabarit
+ *    de texte à sept variables, parce que l'association ajoutera une clause et
+ *    qu'il doit pouvoir le faire seul.
+ *
+ * ★ CE QUI SURVIT D'AF1 EST CE QUI COMPTAIT : d'où vient chaque valeur. Ces
+ *   contrôles sont donc réécrits sur `agreementValues` et non supprimés — une
+ *   porte qu'on efface avec le module qu'elle gardait ne garde plus rien.
+ */
 resetStore()
 const farm = _raw().farms.find((f: Farm) => f.id === 'farm-01')!
+const CTX = { year: '2026', signedAtText: '01/01/2026' }
 
 {
-  const values = agreementFieldValues(farm)
-  check('AF1 · le document a exactement quatre cases', AGREEMENT_FIELDS.length === 4)
+  const values = agreementValues(farm, CTX)
+  check('AF1/AH5 · le document a exactement sept variables', AGREEMENT_VARS.length === 7)
   check(
-    'AF1 · מקום התנדבות porte l’exploitation ET la localité',
-    values.place.includes(farm.name) && values.place.includes(farm.locality),
-    values.place,
+    'AH5.2 · aucune SURFACE parmi les variables',
+    !AGREEMENT_VARS.some((v) => /שטח|דונם|מעובד|מרעה/.test(v)),
+    AGREEMENT_VARS.join(' · '),
   )
-  check('AF1 · שם החקלאי est pré-rempli', values.farmerName !== '', values.farmerName)
-  check('AF1 · תז/חפ est pré-rempli', values.farmerId !== '', values.farmerId)
-  check('AF1 · נייד est pré-rempli', values.phone !== '', values.phone)
+  check('AF1 · שם החקלאי est pré-rempli', values['שם_החקלאי'] !== '', values['שם_החקלאי'])
+  check('AF1 · תז/חפ est pré-rempli', values['תז_חפ'] !== '', values['תז_חפ'])
+  check('AF1 · נייד est pré-rempli', values['נייד'] !== '', values['נייד'])
+  check(
+    'AH5 · שם החווה et יישוב sont DEUX variables distinctes',
+    values['שם_החווה'] !== '' && values['יישוב'] === farm.locality,
+    `${values['שם_החווה']} / ${values['יישוב']}`,
+  )
   /* ⚠️ ET C'EST BIEN LE CHCLAI, PAS LE CONTACT SECONDAIRE. */
   check(
     'AF1 · c’est le nom du חקלאי et non celui du contact de liaison',
-    values.farmerName === farm.farmerName,
+    values['שם_החקלאי'] === farm.farmerName,
   )
 }
 {
@@ -251,36 +268,12 @@ const farm = _raw().farms.find((f: Farm) => f.id === 'farm-01')!
      jamais sur un secondaire : c'est le מזכיר qui vous oriente, pas celui qui
      signe. */
   const bare: Farm = { ...farm, farmerName: undefined, farmerPhone: undefined }
-  const values = agreementFieldValues(bare)
+  const values = agreementValues(bare, CTX)
   const primary = farm.contacts.find((c) => c.isPrimary)
   check(
     'AF1 · à défaut, le contact PRINCIPAL et pas un autre',
-    values.farmerName === primary?.name && values.phone === primary?.phone,
-    values.farmerName,
-  )
-}
-{
-  /* Une case vide sort vide — c'est un formulaire, et une ligne vide veut dire
-     « à remplir à la main » plutôt que de bloquer la production du document
-     devant l'agriculteur. */
-  const empty: Farm = { ...farm, farmerId: undefined }
-  check('AF1 · une case sans valeur sort VIDE et ne bloque rien', agreementFieldValues(empty).farmerId === '')
-}
-{
-  const shipped =
-    'מאשר כי בשנת {{year}} מתבצעת בשטחים החקלאיים שבהחזקתי פעילות של מתנדבי ארגון'
-  check('AF1.4 · le gabarit livré est complet', missingDeclarationTokens(shipped).length === 0)
-  check(
-    'AF1.4 · un gabarit sans {{year}} est REFUSÉ, et le jeton perdu est nommé',
-    missingDeclarationTokens('מאשר כי בשנת 2026 מתבצעת').join(',') === 'year',
-  )
-  check(
-    'AF1.4 · l’année s’insère',
-    renderDeclaration(shipped, { year: '2026' }).includes('בשנת 2026'),
-  )
-  check(
-    'AF1.4 · un jeton inconnu est laissé tel quel plutôt qu’effacé',
-    renderDeclaration('{{annee}} {{year}}', { year: '2026' }) === '{{annee}} 2026',
+    values['שם_החקלאי'] === primary?.name && values['נייד'] === primary?.phone,
+    values['שם_החקלאי'],
   )
 }
 
