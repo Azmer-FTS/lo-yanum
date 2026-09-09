@@ -178,7 +178,21 @@ try {
     page.waitForEvent('download', { timeout: 15_000 }).catch(() => null),
     page.locator('[data-testid="agreement-download"]').first().click(),
   ])
-  check('★ download is a SAVE, with the entity\'s file name', download !== null && download.suggestedFilename() === 'הסכם — חוות ההסכם.pdf', download?.suggestedFilename() ?? 'no download event')
+  /**
+   * ★★ AF1.3 (2026-09-09) — LE NOM VIENT DÉSORMAIS DU DOCUMENT PRODUIT, PAS DE
+   *    LA LIGNE D'ACCORD.
+   *
+   * Avant, le fichier portait le `fileName` de la ligne — une valeur saisie à
+   * la création de l'accord, qui pouvait dire « הסכם-חוות-רתם-חתום.pdf » sur un
+   * document régénéré ce matin. Ce qui sort maintenant est « הסכם התנדבות- ארצנו »
+   * rempli avec la fiche, et son nom le dit. La ligne garde son `fileName` :
+   * c'est la trace de ce qui a été signé sur papier avant l'application.
+   */
+  check(
+    "★ download is a SAVE, with the entity's file name",
+    download !== null && download.suggestedFilename() === 'הסכם התנדבות — חוות ההסכם.pdf',
+    download?.suggestedFilename() ?? 'no download event',
+  )
   await page.waitForTimeout(500)
   check('and the app is still on the entity afterwards', page.url() === url && pages.length === 0, `${pages.length} new pages`)
 
