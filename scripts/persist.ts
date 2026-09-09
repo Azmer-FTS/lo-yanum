@@ -82,8 +82,11 @@ import {
   updateThreatVector,
   updateThreatZone,
   updateVolunteer,
+  seedTestData,
+  purgeTestData,
   _raw,
 } from '../src/core/store'
+import { TEST_FARM_ID } from '../src/core/testData'
 import { DEFAULT_AVAILABILITY } from '../src/core/types'
 
 /**
@@ -1177,6 +1180,44 @@ section('6 — three things that must never reach the database')
   )
 }
 
+// --- 6bis. AH3 — le jeu d'essai, posé puis retiré ---------------------------
+
+section("6bis — AH3 · le jeu d'essai produit de vraies écritures")
+
+{
+  /**
+   * ★★ ET C'EST LA QUESTION QUI COMPTE POUR CE BOUTON. Un jeu d'essai qui
+   *    n'existerait qu'en mémoire s'afficherait parfaitement et disparaîtrait
+   *    au premier rechargement — le pire genre de défaut, parce qu'il ne se
+   *    voit qu'une fois qu'on a compté dessus. Cette porte demande donc au
+   *    magasin ce qu'il a DÉRIVÉ à pousser.
+   */
+  const added = drive('seedTestData', () => {
+    seedTestData()
+  })
+  check(
+    "AH3 · poser le jeu produit un changement par ligne, la ferme comprise",
+    hit(added, 'farms', TEST_FARM_ID) !== undefined && added.length >= 6,
+    `${added.length} changements`,
+  )
+  const again = drive('seedTestData', () => {
+    seedTestData()
+  })
+  check(
+    '⚠️ AH3 · le poser DEUX FOIS ne crée pas une seconde ferme',
+    _raw().farms.filter((f) => f.id === TEST_FARM_ID).length === 1,
+    `${again.length} changements au second appel`,
+  )
+  const gone = drive('purgeTestData', () => {
+    purgeTestData()
+  })
+  check(
+    'AH3 · le retirer produit une suppression par ligne',
+    gone.every((c) => c.json === null) && gone.length >= 6,
+    `${gone.length} suppressions`,
+  )
+}
+
 // --- 7. Coverage: no mutation added without a line in this file ------------
 
 section('7 — every mutation @core exports is driven above')
@@ -1229,6 +1270,10 @@ section('7 — every mutation @core exports is driven above')
     'isReadOnly',
     'setReadOnly',
     'ReadOnlyViolation',
+    /* ★ AH3 — `testDataCount` COMPTE, il n'écrit pas. Même famille que
+       `getVersion` : rien à relire derrière. Ses deux frères `seedTestData` et
+       `purgeTestData`, eux, sont conduits en 6bis. */
+    'testDataCount',
   ])
   const mutations = exported.filter((n) => !NOT_MUTATIONS.has(n))
   const uncovered = mutations.filter((n) => !driven.has(n))

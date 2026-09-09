@@ -7,7 +7,7 @@ import {
   getFarmStatusCounts,
   getPastMissionViews,
   getUpcomingMissionViews,
-  getVisibleFarms,
+  getCountableFarms,
   getVisibleFarmVisits,
   getVisibleIncidents,
   getVisibleMissions,
@@ -16,6 +16,7 @@ import {
 import { now } from './clock'
 import { WEIGHTED_DUNAM_TARGET, effectiveAreas } from './fields'
 import { dunamsByRegion } from './regions'
+import { isTestId } from './testData'
 import { entityKindOf, totalHeads } from './types'
 import type { FarmStatusCount, IncidentSeverity } from './types'
 
@@ -192,17 +193,21 @@ export function buildProgrammeReport(
   const volunteers = getVolunteerStats()
   const drivers = getDriverStats()
   const byStatus = getFarmStatusCounts()
-  const entities = getVisibleFarms()
+  /* AH3.5 — le compte rendu que l'association envoie ne porte jamais le jeu
+     d'essai. Voir `getCountableFarms`. */
+  const entities = getCountableFarms()
 
   /**
    * ★ COMPLETED GUARDS ARE COUNTED OFF `getPastMissionViews`, WHICH ALREADY
    *   EXCLUDES THE CANCELLED ONES. Counting raw missions would put every night
    *   that was called off into a figure a funder reads as work delivered.
    */
-  const past = getPastMissionViews()
+  const past = getPastMissionViews().filter((v) => !isTestId(v.mission.id))
   const completed = past.filter((v) => v.mission.status === 'completed')
 
-  const incidents = getVisibleIncidents().filter((i) => isWithin(i.reportedAt, from))
+  const incidents = getVisibleIncidents().filter(
+    (i) => !isTestId(i.id) && isWithin(i.reportedAt, from),
+  )
   const incidentsWindow: Record<IncidentSeverity, number> = {
     observation: incidents.filter((i) => i.severity === 'observation').length,
     suspicious: incidents.filter((i) => i.severity === 'suspicious').length,
@@ -282,7 +287,8 @@ export function buildProgrammeReport(
     ).length,
     // `getUpcomingMissionViews` is the dashboard's own "what is coming", so the
     // two cannot disagree about what "upcoming" means.
-    guardsUpcoming: getUpcomingMissionViews().length,
+    // AH3.5 — moins le jeu d'essai, comme les gardes passées juste au-dessus.
+    guardsUpcoming: getUpcomingMissionViews().filter((v) => !isTestId(v.mission.id)).length,
 
     incidentsWindow,
     incidentsWindowTotal: incidents.length,

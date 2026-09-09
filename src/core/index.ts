@@ -32,6 +32,7 @@ export * from './prefill'
 export * from './vigil'
 export * from './summons'
 export * from './agreementTemplate'
+export * from './testData'
 export * from './lookup'
 export * from './access'
 export * from './dispatch'
@@ -48,6 +49,9 @@ export {
   getSession,
   setSession,
   resetStore,
+  seedTestData,
+  purgeTestData,
+  testDataCount,
   addIncident,
   addIncidentEntry,
   setIncidentResolved,

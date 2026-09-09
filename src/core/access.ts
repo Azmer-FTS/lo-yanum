@@ -1,6 +1,7 @@
 import { DAY, addDays, fromDayKey, isTonight, localDayKey, now } from './clock'
 import type { AssociationInput } from './association'
 import { effectiveAreas, guardedDunamsOf, weightedDunams } from './fields'
+import { isTestId } from './testData'
 import { positionOfLocality } from './geo'
 import { farmRegion, regionOfLocality } from './regions'
 import type { RegionId } from './regions'
@@ -280,7 +281,8 @@ export function getFarm(farmId: string): Farm | null {
 }
 
 export function getFarmStatusCounts(): FarmStatusCount[] {
-  const farms = getVisibleFarms()
+  /* AH3.5 — la file de prospection est un chiffre de programme, pas une liste. */
+  const farms = getCountableFarms()
   const statuses: FarmStatus[] = [...FARM_PIPELINE, 'declined']
   return statuses.map((status) => ({
     status,
@@ -293,6 +295,29 @@ export function getFarmStatusCounts(): FarmStatusCount[] {
  * dashboard because the accept script recomputes them from the mocks and the
  * two must be the same function, not two implementations that agree today.
  */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AH3.5 (2026-09-09) — CE QUI COMPTE, ET CE QUI NE COMPTE PAS.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ *   « Ce jeu ne fausse rien : exclu des compteurs de l'objectif, des dounams
+ *     pondérés et du compte rendu envoyé. Vérifie-le, ne le suppose pas. »
+ *
+ * ★★ L'EXCLUSION EST ICI ET NON DANS `getVisibleFarms`, ET LA DIFFÉRENCE EST
+ *    TOUTE LA DEMANDE. Le PO doit VOIR la ferme de bidon dans ses listes, sur
+ *    sa carte, dans « voir comme » — c'est pour cela qu'elle existe. Ce qu'il
+ *    ne doit pas voir, c'est ses 200 dounams dans le pourcentage que
+ *    l'association transmet au ministère. Filtrer à la visibilité aurait rendu
+ *    le jeu inutile ; ne pas filtrer du tout aurait rendu le chiffre faux.
+ *
+ * ★ ET C'EST UNE FONCTION NOMMÉE PLUTÔT QU'UN `.filter` RECOPIÉ. Le prochain
+ *   compteur ajouté au tableau de bord se posera la question « countable ou
+ *   visible ? » parce que les deux existent et portent leur nom.
+ */
+export function getCountableFarms(): Farm[] {
+  return getVisibleFarms().filter((f) => !isTestId(f.id))
+}
+
 export function getDunamKpis(): DunamKpis {
   const guarded: FarmStatus[] = ['signed', 'active']
   let guardedDunams = 0
@@ -302,7 +327,8 @@ export function getDunamKpis(): DunamKpis {
   let guardedHeads = 0
   // AA3.2 — the same set as `guardedDunams`, weighted. See `DunamKpis`.
   let weightedSigned = 0
-  for (const f of getVisibleFarms()) {
+  /* AH3.5 — le jeu d'essai ne pèse pas sur l'objectif. */
+  for (const f of getCountableFarms()) {
     /* AD1.4 — « la » surface : déclarée d'abord, mesurée à défaut. */
     const dunams = effectiveAreas(f).total
     if (guarded.includes(f.status)) {
@@ -424,7 +450,7 @@ export function getVolunteer(volunteerId: string): Volunteer | null {
 }
 
 export function getVolunteerStats(): VolunteerStats {
-  const volunteers = getVolunteers()
+  const volunteers = getVolunteers().filter((v) => !isTestId(v.id))
   const yeshivot = [...new Set(volunteers.map((v) => v.yeshiva))]
 
   return {
@@ -462,7 +488,7 @@ export function getTonightBookedDriverIds(): string[] {
 }
 
 export function getDriverStats(): DriverStats {
-  const drivers = getDrivers()
+  const drivers = getDrivers().filter((d) => !isTestId(d.id))
   const bookedTonight = new Set(getTonightBookedDriverIds())
   return {
     total: drivers.length,

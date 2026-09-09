@@ -16,6 +16,7 @@ import type { MissionStatus, MissionView, RegionId } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
+import { TestDataBadge } from '../../components/TestDataBadge'
 import { ListTile } from '../../components/ListTile'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
@@ -318,6 +319,8 @@ function MissionTile({
         >
           {farm.name}
         </span>
+        {/* AH3.2 — la marque du jeu d'essai. */}
+        <TestDataBadge id={mission.id} />
         <MissionStatusChip status={mission.status} />
         {mission.status === 'recruiting' && (
           <span className="chip bg-status-warn/15 text-status-warn-ink">

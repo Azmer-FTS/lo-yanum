@@ -30,6 +30,7 @@ import {
   formatRelative,
   getAnchorPointsForFarm,
   getFarm,
+  isTestId,
   getFarmZonesForFarm,
   updateFarmZoneRing,
   getFarmVisitsForFarm,
@@ -52,6 +53,7 @@ import type {
 } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
+import { TestDataBadge } from '../../components/TestDataBadge'
 import { BAND_H, BandCard } from '../../components/band'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { ContactActions } from '../../components/ContactActions'
@@ -888,6 +890,19 @@ export function FarmDetailScreen() {
           />
 
           <div className="flex flex-col gap-4">
+            {/* ★★ AH3.2 — LA MARQUE DU JEU D'ESSAI, EN TÊTE DE LA FICHE ET NON
+                DANS UN COIN. « Aucune ambiguïté possible avec de vraies
+                données » veut dire qu'on la voit AVANT de lire les chiffres,
+                pas après les avoir crus. */}
+            {isTestId(farm.id) && (
+              <div className="card card-pad flex items-center gap-2 border-status-warn/40 bg-status-warn/10">
+                <TestDataBadge id={farm.id} />
+                <span className="text-caption text-content-secondary">
+                  {t('testData.recordHint')}
+                </span>
+              </div>
+            )}
+
             {/* G14c — the numbers first, big; the long reading below. */}
             <KeyNumbers farm={farm} lastActivityAt={lastActivityAt} />
 

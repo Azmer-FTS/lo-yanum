@@ -8,6 +8,7 @@ import { ringAreaDunams } from './geo'
 import { ASSOCIATION_INDEX, entityKindForRow } from './prospection'
 import { farmFromSignatureRow, signaturePatch } from './signatures'
 import type { SignaturePlan } from './signatures'
+import { buildTestData, isTestId } from './testData'
 import type { ProspectionPlan } from './prospection'
 import type { Tour } from './tours'
 import type {
@@ -231,6 +232,83 @@ export function setSession(session: Session): void {
      de RETOUR au rôle de rekaz — le seul geste qui doit marcher toujours. */
   version += 1
   for (const fn of listeners) fn()
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AH3 (2026-09-09) — POSER ET RETIRER LE JEU D'ESSAI.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ★ ELLES PASSENT PAR `commit()` COMME TOUTE AUTRE MUTATION, et c'est ce qui
+ *   fait que le jeu ATTERRIT VRAIMENT DANS LA BASE. `commit` compare l'index
+ *   d'avant et d'après et laisse le backend Supabase pousser les lignes
+ *   dérivées ; une écriture qui court-circuiterait le commit produirait un jeu
+ *   visible à l'écran et absent de Frankfurt — c'est-à-dire disparu au premier
+ *   rechargement.
+ *
+ * ⚠️ POSER DEUX FOIS NE DOUBLE RIEN. Les identifiants sont FIXES (`test-…`),
+ *    donc la pose remplace ce qui porte le même id au lieu de l'empiler. Un
+ *    bouton qu'on presse deux fois est un bouton qu'on pressera deux fois.
+ *
+ * ⚠️ ET LE RETRAIT NE TOUCHE QUE `test-`. Ce n'est pas une précaution, c'est
+ *    une propriété : `nextId` ne produit jamais ce préfixe, donc ce que le PO
+ *    aura créé entre-temps ne PEUT PAS être emporté.
+ */
+export function seedTestData(): { added: number } {
+  const set = buildTestData()
+  let added = 0
+  const put = <T extends { id: string }>(list: T[], rows: T[]): void => {
+    for (const row of rows) {
+      const at = list.findIndex((r) => r.id === row.id)
+      if (at === -1) list.push(row)
+      else list[at] = row
+      added += 1
+    }
+  }
+  put(data.farms, set.farms)
+  put(data.farmZones, set.farmZones)
+  put(data.anchorPoints, set.anchorPoints)
+  put(data.volunteers, set.volunteers)
+  put(data.drivers, set.drivers)
+  put(data.missions, set.missions)
+  data = remeasureFarms(data)
+  commit()
+  return { added }
+}
+
+export function purgeTestData(): { removed: number } {
+  let removed = 0
+  const strip = <T extends { id: string }>(list: T[]): T[] => {
+    const kept = list.filter((r) => !isTestId(r.id))
+    removed += list.length - kept.length
+    return kept
+  }
+  data = {
+    ...data,
+    farms: strip(data.farms),
+    farmZones: strip(data.farmZones),
+    anchorPoints: strip(data.anchorPoints),
+    volunteers: strip(data.volunteers),
+    drivers: strip(data.drivers),
+    missions: strip(data.missions),
+    incidents: strip(data.incidents),
+    farmVisits: strip(data.farmVisits),
+  }
+  commit()
+  return { removed }
+}
+
+/** Combien de lignes du jeu d'essai sont en mémoire, pour l'écran de réglages. */
+export function testDataCount(): number {
+  const d = data
+  return (
+    d.farms.filter((r) => isTestId(r.id)).length +
+    d.farmZones.filter((r) => isTestId(r.id)).length +
+    d.anchorPoints.filter((r) => isTestId(r.id)).length +
+    d.volunteers.filter((r) => isTestId(r.id)).length +
+    d.drivers.filter((r) => isTestId(r.id)).length +
+    d.missions.filter((r) => isTestId(r.id)).length
+  )
 }
 
 /**

@@ -14,6 +14,7 @@ import { DemoDataSection } from '../../settings/DemoDataSection'
 import { AreaGapSection } from '../../settings/AreaGapSection'
 import { SummonsSection } from '../../settings/SummonsSection'
 import { AgreementDocSection } from '../../settings/AgreementDocSection'
+import { TestDataSection } from '../../settings/TestDataSection'
 import { VigilSection } from '../../settings/VigilSection'
 import { RenewalSection } from '../../settings/RenewalSection'
 import { GeoDiagnosticsSection } from '../../settings/GeoDiagnosticsSection'
@@ -769,6 +770,10 @@ export function SettingsScreen() {
         </p>
       </Section>
       {/* N3 (2026-09-02) — the demo dataset, and the one button that removes it. */}
+      {/* ★★ AH3 — le jeu d'essai, à côté du jeu de démonstration : ce sont
+          deux choses de la même famille et le PO doit voir qu'elles sont
+          distinctes. */}
+      <TestDataSection />
       <DemoDataSection />
 
       {/* ⚠️ `<DisplayDiagnostics />` WAS HERE AND IS GONE (PO return

@@ -33,6 +33,7 @@ import { EntityQuickCard, useQuickPreview } from '../../components/EntityQuickCa
 import { ChevronForward, Icon } from '../../components/Icon'
 import { AreaGapMark } from '../../components/areaGap'
 import { ListTile } from '../../components/ListTile'
+import { TestDataBadge } from '../../components/TestDataBadge'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { RegionFilter } from '../../components/RegionFilter'
@@ -926,6 +927,8 @@ function FarmTile({
         <span className="truncate text-caption font-semibold text-content-primary" title={farm.name}>
           {farm.name}
         </span>
+        {/* AH3.2 — la marque du jeu d'essai, en tête des autres marques. */}
+        <TestDataBadge id={farm.id} />
         <NeglectMark coverage={coverage} neglectDays={neglectDays} />
         {/* AD2.5 — le signal d'écart, à côté de celui de l'oubli : deux
             marques de la même famille, une seule chose à apprendre. */}

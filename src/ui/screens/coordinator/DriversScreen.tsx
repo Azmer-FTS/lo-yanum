@@ -16,6 +16,7 @@ import {
 import type { Driver, RegionId } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
+import { TestDataBadge } from '../../components/TestDataBadge'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
 import { ListTile } from '../../components/ListTile'
@@ -329,8 +330,11 @@ export function DriversScreen() {
                   onOpen={() => setEditing(d)}
                   openLabel={t('volunteers.colName')}
                 >
-                  <span className="truncate text-caption font-semibold text-content-primary" title={d.name}>
-                    {d.name}
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-caption font-semibold text-content-primary" title={d.name}>
+                      {d.name}
+                    </span>
+                    <TestDataBadge id={d.id} />
                   </span>
                   <span className="muted block truncate" title={`${d.vehicle ?? ''} · ${d.locality}`}>
                     {[d.vehicle, d.locality].filter(Boolean).join(' · ')}
@@ -378,6 +382,8 @@ export function DriversScreen() {
                     <div className="min-w-0">
                       <p className="flex items-center gap-1.5 truncate text-caption font-medium text-content-primary">
                         <span className="truncate">{d.name}</span>
+                        {/* AH3.2 — la marque du jeu d'essai. */}
+                        <TestDataBadge id={d.id} />
                         {d.volunteerId && (
                           <span
                             className="shrink-0 text-status-violet-ink"

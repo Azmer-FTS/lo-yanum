@@ -19,6 +19,7 @@ import {
 import type { PhoneType, RegionId, Volunteer, VolunteerStatus } from '@core/index'
 
 import { Avatar } from '../../components/Avatar'
+import { TestDataBadge } from '../../components/TestDataBadge'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
 import { VolunteerStatusChip, VolunteerStatusDot } from '../../components/badges'
@@ -645,6 +646,8 @@ export function VolunteersScreen() {
                             <VolunteerStatusDot status={v.status} />
                           </span>
                           <span className="truncate">{v.name}</span>
+                          {/* AH3.2 — la marque du jeu d'essai. */}
+                          <TestDataBadge id={v.id} />
                           {/* G5.2 — the dual hat, visible in BOTH rosters. */}
                           {v.canDrive && (
                             <span
