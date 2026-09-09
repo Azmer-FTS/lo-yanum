@@ -222,10 +222,33 @@ check(
   })(),
   headersOut.filter((h) => h === 'מיקום').length + ' columns named מיקום',
 )
+/**
+ * ★★ AH8 (2026-09-09) — LE COMPTE PASSE DE DIX-HUIT À VINGT ET UN, ET LA PORTE
+ *    CHANGE DE FORME PLUTÔT QUE DE DISPARAÎTRE.
+ *
+ * Ce qu'elle protégeait était « rien d'INVENTÉ ne s'ajoute au fichier de
+ * l'association ». Le PO a nommé trois informations qui devaient avoir leur
+ * propre colonne et n'en avaient aucune (ת״ז / ח״פ, שם החווה, תאריך חתימה) ;
+ * une porte qui compte ne peut pas distinguer un ajout demandé d'un ajout
+ * subi. Elle nomme donc désormais les trois, et refuse toute quatrième.
+ */
+const AH8_ADDED = ['ת״ז / ח״פ', 'שם החווה', 'תאריך חתימה']
 check(
-  'A94 · and the whole file is those eighteen and nothing else',
-  headersOut.length === WANTED.length + 1,
+  'A94/AH8 · le fichier est les dix-huit, plus les TROIS colonnes nommées par le PO',
+  headersOut.length === WANTED.length + 1 + AH8_ADDED.length &&
+    AH8_ADDED.every((h) => headersOut.includes(h)),
   `${headersOut.length} columns`,
+)
+check(
+  'AH8 · et chacune des douze informations du brief a SA propre colonne',
+  (() => {
+    const NEEDED = [
+      'איש קשר', 'ת״ז / ח״פ', 'נייד איש קשר', 'שם החווה', 'מיקום',
+      'תאריך חתימה', 'שטחים מעובדים', 'שטחי מרעה', 'שטחים שמירה',
+      'הסכם רעיה/חכירה', 'תאריך תפוגה הסכם קרקע', 'חתימה',
+    ]
+    return NEEDED.every((h) => headersOut.includes(h))
+  })(),
 )
 
 // ---------------------------------------------------------------------------

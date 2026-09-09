@@ -83,6 +83,10 @@ export type AssociationSource =
   | 'institution'
   | 'businessName'
   | 'farmerEmail'
+  /* ★★ AH8 (2026-09-09) — les trois que le PO a comptées et qui manquaient. */
+  | 'farmerId'
+  | 'holdingName'
+  | 'signedAt'
 
 export type AssociationFormat = 'text' | 'number' | 'date' | 'phone' | 'coords'
 
@@ -259,6 +263,56 @@ export const ASSOCIATION_COLUMNS: readonly AssociationColumn[] = [
     width: 24,
     ours: 'דוא״ל של איש הקשר הראשי',
   },
+  /**
+   * ═════════════════════════════════════════════════════════════════════════
+   * ★★ AH8 (2026-09-09) — TROIS COLONNES DE PLUS, ET ELLES SONT AJOUTÉES À LA
+   *    FIN.
+   * ═════════════════════════════════════════════════════════════════════════
+   *
+   *   « L'association reprend l'export dans son tableau. Chaque information
+   *     doit occuper SA PROPRE COLONNE, jamais un bloc de texte agrégé. »
+   *
+   * Le PO a listé douze champs ; trois n'avaient pas de colonne :
+   *
+   *   · ת״ז / ח״פ — il n'en existait AUCUNE, alors que c'est la case du
+   *     document que l'agriculteur signe (AF1) et le seul identifiant d'un
+   *     signataire ;
+   *   · שם החווה — « שם המקום » porte `farm.name`, le libellé de la fiche, et
+   *     `farmName` est le nom du HOLDING (AC1). Les faire tenir dans une case
+   *     serait exactement l'agrégat que le brief interdit ;
+   *   · תאריך חתימה — la colonne « חתימה » portait l'image et rien d'autre,
+   *     donc rien ne disait QUAND. Un contrat sans date est un contrat qu'on
+   *     ne peut pas renouveler.
+   *
+   * ⚠️ À LA FIN, ET JAMAIS INTERCALÉES. Les dix-sept en-têtes du haut sont
+   *    transcrits DANS L'ORDRE DE LEUR PORTAIL (AB6.1) ; insérer au milieu
+   *    décalerait des colonnes dans un fichier que quelqu'un colle par
+   *    position.
+   */
+  {
+    header: 'ת״ז / ח״פ',
+    source: 'farmerId',
+    format: 'text',
+    aliases: ['תז', 'ת.ז', 'תעודת זהות', 'ח״פ', 'חפ', 'תז/חפ'],
+    width: 16,
+    ours: 'ת״ז / ח״פ של החותם',
+  },
+  {
+    header: 'שם החווה',
+    source: 'holdingName',
+    format: 'text',
+    aliases: ['שם המשק', 'שם החווה/המשק'],
+    width: 22,
+    ours: 'שם החווה (שונה משם המקום)',
+  },
+  {
+    header: 'תאריך חתימה',
+    source: 'signedAt',
+    format: 'date',
+    aliases: ['תאריך החתימה', 'נחתם בתאריך'],
+    width: 16,
+    ours: 'תאריך ההסכם החתום האחרון',
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -434,6 +488,26 @@ const SOURCE: Record<AssociationSource, (input: AssociationInput) => string> = {
      heading that means something else. */
   businessName: () => '',
   farmerEmail: ({ farm }) => primaryContact(farm)?.email ?? '',
+  /* AH8 — la case du document de signature, et rien d'autre : ni le nom, ni le
+     téléphone ne peuvent la suppléer. Vide quand elle est vide, comme sur le
+     papier. */
+  farmerId: ({ farm }) => (farm.farmerId ?? '').trim(),
+  /* AH8 — le nom du HOLDING (AC1), distinct de `farm.name` que porte שם המקום. */
+  holdingName: ({ farm }) => (farm.farmName ?? '').trim(),
+  /**
+   * AH8 — la date du DERNIER accord SIGNÉ, jamais celle d'une ligne d'accord
+   * créée et laissée sans encre : une date de signature sur un contrat non
+   * signé est une fausse mention sur un document que l'État lit.
+   */
+  signedAt: ({ farm }) => {
+    const signed = (farm.agreements ?? []).filter((a) => (a.signature ?? null) !== null)
+    if (signed.length === 0) return ''
+    const latest = signed.reduce((a, b) =>
+      new Date(a.signedAt).getTime() >= new Date(b.signedAt).getTime() ? a : b,
+    )
+    /* Le format `date` attend un jour ISO ; `signedAt` est un instant ISO. */
+    return latest.signedAt.slice(0, 10)
+  },
 }
 
 function cell(input: AssociationInput, column: AssociationColumn): string {

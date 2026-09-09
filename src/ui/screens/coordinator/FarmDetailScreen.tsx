@@ -67,7 +67,7 @@ import { ThreatPanel } from '../../components/ThreatPanel'
 import { AgreementActions } from '../../components/AgreementViewer'
 /* ★★ AG3.1 · AG5 · AG6.3 — le lien permanent de l'agriculteur, l'échéance de
    son accord, et les documents qu'il a fournis ou non. */
-import { FarmerLinkBlock } from '../../components/FarmerLinkBlock'
+import { FarmerLinkBlock, FarmerLinkModal } from '../../components/FarmerLinkBlock'
 import { AreaGapNote } from '../../components/areaGap'
 import { zoneColor, zoneLabelKey } from '../../components/zones'
 import { Timeline } from '../../components/Timeline'
@@ -704,6 +704,8 @@ export function FarmDetailScreen() {
   const available = useCoreValue(() => (farm ? availableVolunteers(farm) : 0))
 
   const [newVisit, setNewVisit] = useState(false)
+  /* AH7.3 — le raccourci d'envoi du lien de signature, depuis l'en-tête. */
+  const [linkOpen, setLinkOpen] = useState(false)
   const [editVisitId, setEditVisitId] = useState<string | null>(null)
   const [selectedAnchorId, setSelectedAnchorId] = useState<string | null>(null)
   // G15 — zone selection lives HERE so the list's "ערוך" buttons and the
@@ -874,6 +876,17 @@ export function FarmDetailScreen() {
                   label={t('common.edit')}
                   to={`/coordinator/farms/${farm.id}/edit`}
                 />
+                {/* ★★ AH7.3 — LE LIEN DE SIGNATURE, EN UN GESTE DEPUIS LA
+                    FICHE. Le bloc « הקישור של החקלאי » plus bas est replié par
+                    défaut : l'atteindre coûtait déplier, défiler, appuyer.
+                    Ici c'est une pression, et ce sont les MÊMES boutons —
+                    voir `farmerLinkParts`. */}
+                <ActionPillItem
+                  icon="message"
+                  label={t('renewal.sendLink')}
+                  testId="farm-send-link"
+                  onClick={() => setLinkOpen(true)}
+                />
                 <ActionPillItem
                   icon="trash"
                   label={t('deletion.action')}
@@ -888,6 +901,10 @@ export function FarmDetailScreen() {
               </ActionPill>
             }
           />
+
+          {linkOpen && (
+            <FarmerLinkModal farm={farm} onClose={() => setLinkOpen(false)} />
+          )}
 
           <div className="flex flex-col gap-4">
             {/* ★★ AH3.2 — LA MARQUE DU JEU D'ESSAI, EN TÊTE DE LA FICHE ET NON

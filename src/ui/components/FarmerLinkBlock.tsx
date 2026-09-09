@@ -18,7 +18,7 @@ import type { Farm } from '@core/index'
 
 import { useRenewalWindow } from '../settings/renewal'
 import { useLocale } from '../hooks/useLocale'
-import { CopyButton, Callout, Section } from './primitives'
+import { CopyButton, Callout, Modal, Section } from './primitives'
 import { Icon } from './Icon'
 
 /**
@@ -42,6 +42,134 @@ function appOrigin(): string {
   if (typeof window === 'undefined') return ''
   const { origin, pathname } = window.location
   return `${origin}${pathname}`.replace(/\/index\.html$/, '').replace(/\/+$/, '')
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AH7.3 (2026-09-09) — « DEPUIS LA FICHE D'UNE FERME, ENVOYER LE LIEN DE
+ *    SIGNATURE EN UN GESTE. »
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Le bloc ci-dessous existe depuis AG3 et il est REPLIÉ par défaut : atteindre
+ * les deux boutons coûtait déplier, puis faire défiler, puis appuyer. Trois
+ * gestes pour l'action que le PO fait le plus souvent sur une fiche.
+ *
+ * ★★ CE QUI EST EXTRAIT ICI EST LE CALCUL, PAS LE RENDU, et c'est ce qui
+ *    évite la faute évidente : un second bouton qui recomposerait le lien à sa
+ *    façon finirait par envoyer une URL différente de celle que le bloc
+ *    affiche. Le raccourci de l'en-tête et le bloc lisent la MÊME fonction.
+ */
+export interface FarmerLinkParts {
+  contact: { id: string; name: string; phone: string } | null
+  link: string
+  phone: string
+  body: string
+  four: string | null
+  renewalDue: boolean
+}
+
+export function farmerLinkParts(
+  farm: Farm,
+  t: (k: string, o?: Record<string, unknown>) => string,
+  renewWindow: number,
+): FarmerLinkParts {
+  const contact = farm.contacts.find((c) => c.isPrimary) ?? farm.contacts[0] ?? null
+  const todayKey = dayKeyOf(now())
+  const renewal = renewalStatus(farm, todayKey, renewWindow)
+  const coordinator = readCoordinator()
+  if (!contact) {
+    return { contact: null, link: '', phone: '', body: '', four: '', renewalDue: false }
+  }
+  const link = buildFarmerLink(appOrigin(), farmerTokenFor(farm, contact.id))
+  const phone = (contact.phone ?? '').trim() || (farm.farmerPhone ?? '').trim()
+  const body = buildFarmerLinkMessage({
+    farmerName: farm.farmerName || contact.name,
+    farmName: farm.farmName || farm.name,
+    until: renewal.state === 'due' ? renewal.until : null,
+    link,
+    coordinatorName: coordinator.name,
+    coordinatorPhone: coordinator.phone,
+    labels: {
+      greeting: t('renewal.msgGreeting'),
+      intro: t('renewal.msgIntro'),
+      renewal: t('renewal.msgRenewal'),
+      ask: t('renewal.msgAsk'),
+      signature: t('renewal.msgSignature'),
+    },
+  })
+  return {
+    contact,
+    link,
+    phone,
+    body,
+    four: lastFourOf(phone),
+    renewalDue: renewal.state === 'due',
+  }
+}
+
+/**
+ * Les trois façons d'envoyer, dans l'ordre où le PO les emploie. Rendues à
+ * l'identique dans le bloc de la fiche et dans le raccourci de l'en-tête.
+ */
+export function FarmerLinkActions({ parts }: { parts: FarmerLinkParts }) {
+  const { t } = useTranslation()
+  const { link, phone, body } = parts
+  return (
+    <div className="flex flex-wrap gap-2">
+      <CopyButton value={link} label={t('renewal.copyLink')} />
+      <a
+        href={smsHref([phone], body)}
+        data-testid="farm-link-sms"
+        className={`btn-primary ${phone === '' ? 'pointer-events-none opacity-50' : ''}`}
+      >
+        <Icon name="message" size={16} />
+        {t('renewal.sendLink')}
+      </a>
+      <a
+        href={whatsappHref(phone, body)}
+        data-testid="farm-link-whatsapp"
+        className={`btn-secondary ${phone === '' ? 'pointer-events-none opacity-50' : ''}`}
+      >
+        <Icon name="message" size={16} />
+        WhatsApp
+      </a>
+    </div>
+  )
+}
+
+/** Le raccourci : une pression depuis l'en-tête de la fiche, et on envoie. */
+export function FarmerLinkModal({ farm, onClose }: { farm: Farm; onClose: () => void }) {
+  const { t } = useTranslation()
+  const renewWindow = useRenewalWindow()
+  const parts = farmerLinkParts(farm, t as never, renewWindow)
+  return (
+    <Modal title={t('renewal.linkTitle')} onClose={onClose}>
+      {parts.contact === null ? (
+        <Callout tone="warn" title={t('renewal.linkTitle')}>
+          {t('route.noContact')}
+        </Callout>
+      ) : (
+        <div data-testid="farm-link-modal">
+          <p className="muted">{t('renewal.linkHint')}</p>
+          <p className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="muted">{t('challenge.label', { n: 4 })}</span>
+            {parts.four ? (
+              <span className="ltr-nums chip bg-accent/15 text-accent-ink" dir="ltr">
+                {parts.four}
+              </span>
+            ) : (
+              <span className="chip bg-status-warn/15 text-status-warn-ink">
+                {t('challenge.noNumber')}
+              </span>
+            )}
+          </p>
+          <div className="mt-4">
+            <FarmerLinkActions parts={parts} />
+          </div>
+        </div>
+      )}
+    </Modal>
+  )
 }
 
 export function FarmerLinkBlock({ farm }: { farm: Farm }) {
@@ -128,24 +256,11 @@ export function FarmerLinkBlock({ farm }: { farm: Farm }) {
         )}
       </p>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        <CopyButton value={link} label={t('renewal.copyLink')} />
-        <a
-          href={smsHref([phone], body)}
-          data-testid="farm-link-sms"
-          className={`btn-primary ${phone === '' ? 'pointer-events-none opacity-50' : ''}`}
-        >
-          <Icon name="message" size={16} />
-          {t('renewal.sendLink')}
-        </a>
-        <a
-          href={whatsappHref(phone, body)}
-          data-testid="farm-link-whatsapp"
-          className={`btn-secondary ${phone === '' ? 'pointer-events-none opacity-50' : ''}`}
-        >
-          <Icon name="message" size={16} />
-          WhatsApp
-        </a>
+      {/* ★ AH7.3 — LES MÊMES TROIS BOUTONS QUE LE RACCOURCI DE L'EN-TÊTE, et
+          c'est le même composant : deux rendus du même lien finiraient par
+          envoyer deux URLs. */}
+      <div className="mt-3">
+        <FarmerLinkActions parts={{ contact, link, phone, body, four, renewalDue: renewal.state === 'due' }} />
       </div>
 
       {/* ★★ AG6.3 — « LE COORDINATEUR VOIT CE QUI EST FOURNI ET CE QUI MANQUE. »
