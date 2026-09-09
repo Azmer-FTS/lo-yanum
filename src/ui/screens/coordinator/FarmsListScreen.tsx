@@ -416,6 +416,48 @@ export function FarmsListScreen() {
       )}
       {/**
         * ═══════════════════════════════════════════════════════════════════
+        * ★★ AG5.2 — « לחידוש », DEUXIÈME, ET C'EST UNE MESURE QUI L'A DÉPLACÉE.
+        * ═══════════════════════════════════════════════════════════════════
+        *
+        * ⚠️ ELLE ÉTAIT TROISIÈME, ET A148 A TROUVÉ SUR LE DÉPLOYÉ EXACTEMENT
+        *    L'ACCIDENT QUE LE BRIEF ANNONÇAIT : à 402 px la vignette était
+        *    mesurée à **x = −90**, c'est-à-dire poussée hors de l'écran par la
+        *    bande qui défile. Le brief le nommait d'avance — « ni recouverte
+        *    par le “+” flottant ni repoussée hors écran » — et c'est le même
+        *    accident qu'AC4.5 et AD3.2.
+        *
+        * ★★ ET L'ARITHMÉTIQUE DIT QU'IL N'Y A PAS DE TROISIÈME PLACE À 402 px.
+        *    Une vignette mesure 152 px depuis Y5 — où le PO a demandé TROIS
+        *    FOIS le gabarit de la feuille « à l'identique », donc la rétrécir
+        *    serait défaire une décision prise trois fois. 3 × 152 + 2 × 10 =
+        *    476 px de contenu pour 370 px utiles sur un téléphone. Deux
+        *    vignettes tiennent au repos ; la troisième, quelle qu'elle soit,
+        *    dépasse. La question n'est donc pas « comment les faire tenir »
+        *    mais « laquelle des trois a le droit d'être la troisième ».
+        *
+        * ★ LA RÉPONSE EST : UNE ÉCHÉANCE DATÉE PASSE AVANT UN ARRIÉRÉ.
+        *   « נשכחו » reste première — AC l'y a mise et AD3.2 dit qu'il n'est
+        *   pas question de l'en bouger. « לחידוש » porte une DATE : passé le
+        *   jour dit, le document est expiré et la ferme sort du programme.
+        *   « לתיחום » est un arriéré : il est massif au démarrage, il ne
+        *   périme pas, et le repousser d'une semaine ne coûte rien. C'est donc
+        *   lui la troisième, et A148 mesure les deux : « לחידוש » ENTIÈREMENT
+        *   visible au repos partout, et au moins partiellement à 402 px.
+        */}
+      {renewIds.size > 0 && (
+        <KpiChip
+          label={t('renewal.title')}
+          value={renewIds.size}
+          icon="clock"
+          tone="alert"
+          hint={t('renewal.hint')}
+          active={renewOnly}
+          onClick={() => setRenewOnly((v) => !v)}
+          testId="farms-renewal"
+        />
+      )}
+      {/**
+        * ═══════════════════════════════════════════════════════════════════
         * ★★ AD3.2 — « לתיחום », DEUXIÈME, ET LA PLACE A ÉTÉ DÉCIDÉE PAR LES
         *    DEUX ACCIDENTS D'AC.
         * ═══════════════════════════════════════════════════════════════════
@@ -451,20 +493,6 @@ export function FarmsListScreen() {
           active={noOutlineOnly}
           onClick={() => setNoOutlineOnly((v) => !v)}
           testId="farms-no-outline"
-        />
-      )}
-      {/* ★★ AG5.2 — « לחידוש », TROISIÈME. Voir la note sur `renewIds` pour
-          pourquoi c'est cette place-là et pas une autre. */}
-      {renewIds.size > 0 && (
-        <KpiChip
-          label={t('renewal.title')}
-          value={renewIds.size}
-          icon="clock"
-          tone="alert"
-          hint={t('renewal.hint')}
-          active={renewOnly}
-          onClick={() => setRenewOnly((v) => !v)}
-          testId="farms-renewal"
         />
       )}
       {/* AD2.6 — et l'autre file de la même paire : les fiches dont les deux

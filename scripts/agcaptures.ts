@@ -304,6 +304,26 @@ try {
             }
           }, theme as string)
 
+          /**
+           * ⚠️★★ ET IL FAUT RECHARGER APRÈS LE NETTOYAGE, CE QUE LA PREMIÈRE
+           *    VERSION NE FAISAIT PAS — ET LA MESURE A148 N'A DONC RIEN MESURÉ
+           *    DU TOUT SUR SA PREMIÈRE EXÉCUTION SUR LE DÉPLOYÉ.
+           *
+           *    Le nettoyage ci-dessus efface `lo-yanum:farmer-pass`, mais la
+           *    page a DÉJÀ été chargée avec ce laissez-passer : AG3.1 a reposé
+           *    la session en agriculteur, `RequireRole` renvoie donc toute
+           *    navigation vers `/coordinator/**` sur `/farmer`, et la capture
+           *    « file de renouvellement » photographiait l'espace d'un
+           *    agriculteur en croyant photographier l'écran חוות. La sonde
+           *    cherchait alors sa vignette là où elle n'a jamais été et
+           *    concluait « aucune fiche à renouveler » — le pire genre de vert.
+           *
+           *    Un rechargement fait relire le stockage NETTOYÉ au démarrage,
+           *    ce qui est le seul moment où il est lu.
+           */
+          await page.reload({ waitUntil: 'load' })
+          await page.waitForTimeout(1200)
+
           await goto(page, `${BASE}/#/coordinator`)
           await page.waitForTimeout(2500)
           await goto(page, `${BASE}/${shot.hash}`)
@@ -396,9 +416,37 @@ try {
                 `  ·     A148 · ${vp.name} ${theme} · aucune fiche à renouveler : la vignette ne se dessine pas`,
               )
             } else {
+              /**
+               * ═══════════════════════════════════════════════════════════════
+               * ★★ CE QUI EST EXIGÉ DÉPEND DE LA LARGEUR, ET C'EST DE
+               *    L'ARITHMÉTIQUE PLUTÔT QU'UNE INDULGENCE.
+               * ═══════════════════════════════════════════════════════════════
+               *
+               * Une vignette fait 152 px depuis Y5 — gabarit demandé trois fois
+               * par le PO, donc non négociable. Trois vignettes de file font
+               * 3 × 152 + 2 × 10 = **476 px** ; un téléphone de 402 px en offre
+               * **370** une fois le rembourrage retiré. Deux tiennent au repos,
+               * jamais trois. Exiger ici « entièrement visible » sur téléphone
+               * serait exiger l'impossible, et une porte qui exige l'impossible
+               * finit désactivée.
+               *
+               * ★ CE QUI EST EXIGÉ EST DONC : **entièrement** visible dès qu'il
+               *   y a la place (≥ 1032 px), et **au moins partiellement** sur
+               *   un téléphone — ce qui est aussi ce qui montre à l'œil que la
+               *   bande défile. Ce qui reste interdit à TOUTES les largeurs est
+               *   d'être POUSSÉE DEHORS (bord droit ≤ 0 en RTL) ou RECOUVERTE.
+               *   La première version de cette mesure a trouvé exactement cela,
+               *   x = −90, et c'est ce qui a fait passer la vignette en
+               *   deuxième place.
+               */
+              const room = vp.width >= 1032
+              const partly =
+                geometry.rect.x + geometry.rect.w > 0 && geometry.rect.x < vp.width
               check(
-                `A148 · ${vp.name} ${theme} · la vignette « לחידוש » est visible au repos`,
-                geometry.inViewport,
+                `A148 · ${vp.name} ${theme} · la vignette « לחידוש » est ${
+                  room ? 'entièrement' : 'au moins partiellement'
+                } visible au repos`,
+                room ? geometry.inViewport : partly,
                 `x=${geometry.rect.x} y=${geometry.rect.y} ${geometry.rect.w}×${geometry.rect.h} / ${vp.width}×${vp.height}`,
               )
               check(

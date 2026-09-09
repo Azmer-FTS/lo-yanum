@@ -100,3 +100,6 @@ dist-adpass/
 dist-afpass/
 # AG8 — le build local que `bun run agui` sert.
 dist-agpass/
+
+# AG8 — le build à blanc que `bun run agcaptures` sert en local.
+dist-agdry/
