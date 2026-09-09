@@ -566,15 +566,58 @@ export function registerPmtilesProtocol(): void {
     return { data: new ArrayBuffer(0) }
   })
 
-  // Same "once per page" contract, same reason: MapLibre throws if the RTL
-  // plugin is set twice, and this module is imported by seven screens.
-  // `false` is the lazy flag — the plugin is fetched immediately rather than
-  // on the first RTL label, because on this map the first label IS RTL.
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ★★ AF (2026-09-09) — LE GREFFON RTL NE S'ENREGISTRAIT PAS, ET C'ÉTAIT LE
+   *    MAUVAIS PAQUET DEPUIS LE DÉBUT.
+   * ═══════════════════════════════════════════════════════════════════════════
+   *
+   * Trouvé par `bun run afui`, qui écoute les rejets non gérés de la page
+   * pendant le parcours d'AF2 : « RTL Text Plugin failed to import scripts
+   * from …/basemap-assets/mapbox-gl-rtl-text.js », sur le DÉPLOYÉ, dès la
+   * PREMIÈRE carte. Le fichier répond pourtant 200 avec 133 ko de JavaScript
+   * valide, ce qui rendait le message trompeur.
+   *
+   * ★★ CE QUE LE MESSAGE VEUT VRAIMENT DIRE : « le script a été importé et ne
+   *    s'est pas enregistré ». MapLibre pose `self.registerRTLTextPlugin` dans
+   *    son worker, fait `importScripts`, puis vérifie que les trois méthodes
+   *    sont là — `applyArabicShaping`, `processBidirectionalText`,
+   *    `processStyledBidirectionalText` — et lève sinon.
+   *
+   * ★★ MESURÉ, PAQUET PAR PAQUET, DANS UN VRAI WORKER qui définit
+   *    `registerRTLTextPlugin` exactement comme MapLibre le fait :
+   *
+   *      @mapbox/mapbox-gl-rtl-text 0.4.0  → registerRTLTextPlugin NON appelé
+   *      @mapbox/mapbox-gl-rtl-text 0.3.0  → registerRTLTextPlugin NON appelé
+   *      @mapbox/mapbox-gl-rtl-text 0.2.3  → appelé, avec les TROIS méthodes
+   *
+   *    Les deux versions récentes exposent un global `mapbox-gl-rtl-text` et
+   *    laissent l'appelant enregistrer — ce que MapLibre ne fait pas, parce que
+   *    son contrat est l'auto-enregistrement, celui de la 0.2.3. C'est aussi la
+   *    version que la documentation de MapLibre nomme, et la seule dont les
+   *    trois méthodes soient vraiment posées.
+   *
+   * ⚠️ CE QUE CE DÉFAUT COÛTAIT, ET IL N'ÉTAIT PAS COSMÉTIQUE. Sans greffon,
+   *    MapLibre ne fait ni la mise en forme bidi ni la liaison arabe : chaque
+   *    étiquette hébraïque de la carte — c'est-à-dire toutes — était rendue
+   *    dans l'ordre des octets. Sur une application dont le sujet EST une carte
+   *    en hébreu, ce sont tous les noms de lieux, depuis toujours.
+   *
+   * ⚠️ ET LA TAILLE MONTE DE 133 À 202 ko, ce qui est le prix du seul paquet
+   *    qui marche. Il est dans la liste de pré-cache hors ligne
+   *    (`offline.ts`), donc c'est 69 ko de plus une fois, sur un archivage de
+   *    94 Mo. Le compromis ne se discute pas.
+   *
+   * `false` est le drapeau paresseux — le greffon est cherché tout de suite
+   * plutôt qu'à la première étiquette RTL, parce que sur cette carte la
+   * première étiquette EST en RTL.
+   */
   try {
     maplibregl.setRTLTextPlugin(assetUrl('mapbox-gl-rtl-text.js'), false)
   } catch {
-    // Already set by a previous mount in React's dev double-render. Labels are
-    // shaped either way; this is not worth failing a map over.
+    // Déjà posé par un montage précédent dans le double rendu de React en
+    // développement. Les étiquettes sont mises en forme dans les deux cas ;
+    // cela ne vaut pas de faire échouer une carte.
   }
 
   registered = true

@@ -18,6 +18,8 @@ import { VigilSection } from '../../settings/VigilSection'
 import { CoverageSection } from '../../settings/CoverageSection'
 import { TargetSection } from '../../settings/TargetSection'
 import { ViewAsSection } from '../../settings/ViewAsSection'
+import { RemindersSection } from '../../settings/RemindersSection'
+import { SettingsGroup, SettingsToc } from '../../settings/SettingsGroup'
 import {
   originLabel,
   originPosition,
@@ -29,6 +31,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { useDataState } from '../../hooks/useDataState'
 import { megabytes, useOfflineMaps, useOnline } from '../../offline'
 import { BASEMAP_URL, basemapAssets } from '../../components/basemap'
+
+import { locate } from '../../geolocate'
 
 /**
  * P2.5a — הגדרות.
@@ -125,28 +129,21 @@ export function SettingsScreen() {
       return
     }
     setLocating(true)
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const label = formatCoords({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        })
-        writeOrigin({
-          label,
-          position: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-        })
-        setOrigin(label)
-        setOriginState('saved')
-        setLocating(false)
-      },
-      () => {
-        // Denied, or no fix. The field still works by hand, which is why this
-        // is a convenience button and not the only way in.
-        setLocating(false)
+    /* ★ AF2.3 — par la porte unique (`ui/geolocate.ts`) : une seule invite pour
+       toute l'app, et le dernier point connu répond sans en poser du tout. */
+    void locate({ timeoutMs: 10_000 }).then((fix) => {
+      setLocating(false)
+      if (!fix) {
+        // Refusé, ou pas de relevé. Le champ se remplit toujours à la main,
+        // ce qui est la raison d'être d'un bouton de commodité.
         setOriginState('bad')
-      },
-      { enableHighAccuracy: true, timeout: 10_000 },
-    )
+        return
+      }
+      const label = formatCoords(fix.position)
+      writeOrigin({ label, position: fix.position })
+      setOrigin(label)
+      setOriginState('saved')
+    })
   }
 
   const busy = progress !== null
@@ -154,7 +151,32 @@ export function SettingsScreen() {
   return (
     <div className="mx-auto w-full max-w-2xl">
       <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
+      {/**
+        * ═══════════════════════════════════════════════════════════════════
+        * ★★ AF7 (2026-09-09) — LA PAGE EST RANGÉE EN SEPT SECTIONS NOMMÉES,
+        *    ET RIEN D'AUTRE N'A CHANGÉ.
+        * ═══════════════════════════════════════════════════════════════════
+        *
+        * « Elle s'empile sans cohérence au fil des passes. Regroupe-la en
+        * sections nommées : profil et rôle · objectif · seuils et alertes ·
+        * gabarits (SMS, הצהרה) · carte et régions · affichage · données. Un
+        * sommaire en tête si la page dépasse un écran. Ne change aucun
+        * comportement, seulement l'agencement. »
+        *
+        * ★ CE QUI A CHANGÉ EST L'ORDRE DES FRÈRES ET RIEN D'AUTRE. Chaque bloc
+        *   est déplacé TEL QUEL, avec ses commentaires, sa `collapseKey` et
+        *   son état replié — de sorte qu'un coordinateur qui avait déplié
+        *   « נקודת מוצא » hier la retrouve dépliée aujourd'hui, simplement
+        *   ailleurs sur la page.
+        *
+        * ⚠️ ET LE SOMMAIRE N'EST PAS UN `<a href="#…">`. Un ancrage de hachage
+        *    dans une application qui ROUTE sur le hachage (`HashRouter`)
+        *    navigue au lieu de défiler ; c'est un défaut que rien n'aurait
+        *    rattrapé avant de le voir en production. Il défile à l'élément.
+        */}
+      <SettingsToc />
 
+      <SettingsGroup id="profile" />
       {/**
         * ★★ AB5b (2026-09-08) — « JE NE VOIS PAS LA POSSIBILITÉ DE BASCULER
         *    D'UN MODE À UN AUTRE », AND HE WAS LOOKING IN THE RIGHT PLACE.
@@ -179,56 +201,156 @@ export function SettingsScreen() {
         *    which is exactly where it is.
         */}
       <ViewAsSection />
-
-      <Section title={t('settings.connection.title')} className="mt-6" collapseKey="settings-connection">
-        <p className="flex items-center gap-2.5 text-caption font-medium text-content-primary">
-          <span
-            aria-hidden="true"
-            className={`h-2.5 w-2.5 shrink-0 rounded-pill ${
-              online ? 'bg-status-success' : 'bg-status-warn'
-            }`}
-          />
-          {t(online ? 'settings.connection.online' : 'settings.connection.offline')}
-        </p>
-        <p className="muted mt-1">
-          {t(
-            online
-              ? 'settings.connection.onlineHint'
-              : 'settings.connection.offlineHint',
+      {/* ★ PO RETURN 2026-09-02 — A REAL "שמור", AND THE OLD REASONING IS
+          RETIRED RATHER THAN DEFENDED. The comment here used to argue that a
+          single field with a Save next to it is a screen people leave without
+          pressing it, so it saved on blur. On his iPad it read as a field with
+          NO WAY TO CONFIRM, which is worse: nothing on screen ever said the
+          address had been taken. The button is now explicit AND the blur still
+          saves, so neither habit loses the value. */}
+      {/* ★★ W7 (2026-09-02) — THE COORDINATOR'S CARD IS HIS TO EDIT.
+          It was a frozen constant in `config.ts`, and three things read it:
+          the rail's account block, the signature at the foot of every
+          generated WhatsApp / SMS, and the number those messages tell a
+          farmer to call back. The one identity he could not change was the
+          one going out under his name. */}
+      <Section title={t('settings.profile.title')} className="mt-6" collapseKey="settings-profile">
+        <p className="muted mb-3">{t('settings.profile.hint')}</p>
+        <div className="auto-cols gap-3 [--col-min:13rem]">
+          <div>
+            <label className="label" htmlFor="coordinator-name">
+              {t('settings.profile.name')}
+            </label>
+            <input
+              id="coordinator-name"
+              className="input w-full"
+              data-testid="coordinator-name"
+              value={me.name}
+              onChange={(e) => {
+                setMe((c) => ({ ...c, name: e.target.value }))
+                setMeSaved(false)
+              }}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="coordinator-phone">
+              {t('settings.profile.phone')}
+            </label>
+            <input
+              id="coordinator-phone"
+              dir="ltr"
+              inputMode="tel"
+              className="input w-full"
+              data-testid="coordinator-phone"
+              value={me.phone}
+              onChange={(e) => {
+                setMe((c) => ({ ...c, phone: e.target.value }))
+                setMeSaved(false)
+              }}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="coordinator-role">
+              {t('settings.profile.role')}
+            </label>
+            <input
+              id="coordinator-role"
+              className="input w-full"
+              data-testid="coordinator-role"
+              value={me.role}
+              onChange={(e) => {
+                setMe((c) => ({ ...c, role: e.target.value }))
+                setMeSaved(false)
+              }}
+            />
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="btn-primary"
+            data-testid="coordinator-save"
+            onClick={() => {
+              writeCoordinator(me)
+              setMe(readCoordinator())
+              setMeSaved(true)
+            }}
+          >
+            <Icon name="check" size={16} />
+            {t('common.save')}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            data-testid="coordinator-reset"
+            onClick={() => {
+              resetCoordinator()
+              setMe(readCoordinator())
+              setMeSaved(false)
+            }}
+          >
+            <Icon name="history" size={16} />
+            {t('settings.profile.reset')}
+          </button>
+          {meSaved && (
+            <span className="text-caption text-status-success-ink" data-testid="coordinator-saved">
+              {t('settings.profile.saved')}
+            </span>
           )}
-        </p>
+        </div>
+      </Section>
+      <Section title={t('settings.account.title')} className="mt-6" collapseKey="settings-account">
+        {SUPABASE_CONFIGURED && auth.status === 'signed-in' ? (
+          <>
+            <dl>
+              <KeyValue label={t('auth.signedInAs')} value={auth.email ?? '—'} ltr />
+            </dl>
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              data-testid="settings-sign-out"
+              className="btn-secondary mt-4"
+            >
+              <Icon name="logout" size={16} className="rtl:-scale-x-100" />
+              {t('auth.signOut')}
+            </button>
+          </>
+        ) : (
+          <p className="muted">{t('settings.account.demo')}</p>
+        )}
       </Section>
 
-      {/* ★★ Y3.1 · Y4 — the theme (out of the rail) and the layout sync. */}
-      <DisplaySection />
-
+      <SettingsGroup id="target" />
       {/* ★★ AB5a — « יעד ». Above the offline block and below the display
           settings: it is a decision about the PROGRAMME, like the region
           editor under it, not about this device's storage. */}
       <TargetSection />
 
+      <SettingsGroup id="thresholds" />
       {/* AC4.5 — le seuil d'oubli, juste sous l'objectif : les deux disent au
           coordinateur ce que le programme attend de lui ce mois-ci. */}
       <CoverageSection />
       {/* AD2.3 — le seuil d'écart, à côté du seuil d'oubli : deux réglages qui
           décident tous les deux quand une fiche se met à parler. */}
       <AreaGapSection />
-
       {/* ★★ AE3 · AE4 — les délais des trois silences, puis le gabarit du SMS
           de convocation. Ils suivent les seuils d'AC4.5 et d'AD2.3 parce que
           ce sont les mêmes objets : des nombres que le coordinateur règle pour
           SON programme, sur SON appareil. */}
       <VigilSection />
+      <RemindersSection />
 
+      <SettingsGroup id="templates" />
       <SummonsSection />
-
       <DeclarationSection />
+      {/* N2 (2026-09-02) — the association's contract, uploaded once. */}
+      <AgreementTemplateSection />
 
+      <SettingsGroup id="map" />
       {/* ★★ Y2.1 — the door to the region editor. Above the offline block on
           purpose: it is a decision about the programme, not about this
           device's storage. */}
       <RegionsEditSection />
-
       <Section title={t('settings.offline.title')} className="mt-6" collapseKey="settings-offline">
         {active ? (
           <>
@@ -445,7 +567,6 @@ export function SettingsScreen() {
           </>
         )}
       </Section>
-
       {/* ★★ PO RETURN 2026-09-02 — "נקודת מוצא", AND IT IS NOT COSMETIC.
           Every distance, every arrival time and the ★ on the planner's map are
           measured from `HOME_BASE`, a CONSTANT reading Jerusalem. A
@@ -517,151 +638,29 @@ export function SettingsScreen() {
         </p>
       </Section>
 
-      {/* ★ PO RETURN 2026-09-02 — A REAL "שמור", AND THE OLD REASONING IS
-          RETIRED RATHER THAN DEFENDED. The comment here used to argue that a
-          single field with a Save next to it is a screen people leave without
-          pressing it, so it saved on blur. On his iPad it read as a field with
-          NO WAY TO CONFIRM, which is worse: nothing on screen ever said the
-          address had been taken. The button is now explicit AND the blur still
-          saves, so neither habit loses the value. */}
-      {/* ★★ W7 (2026-09-02) — THE COORDINATOR'S CARD IS HIS TO EDIT.
-          It was a frozen constant in `config.ts`, and three things read it:
-          the rail's account block, the signature at the foot of every
-          generated WhatsApp / SMS, and the number those messages tell a
-          farmer to call back. The one identity he could not change was the
-          one going out under his name. */}
-      <Section title={t('settings.profile.title')} className="mt-6" collapseKey="settings-profile">
-        <p className="muted mb-3">{t('settings.profile.hint')}</p>
-        <div className="auto-cols gap-3 [--col-min:13rem]">
-          <div>
-            <label className="label" htmlFor="coordinator-name">
-              {t('settings.profile.name')}
-            </label>
-            <input
-              id="coordinator-name"
-              className="input w-full"
-              data-testid="coordinator-name"
-              value={me.name}
-              onChange={(e) => {
-                setMe((c) => ({ ...c, name: e.target.value }))
-                setMeSaved(false)
-              }}
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="coordinator-phone">
-              {t('settings.profile.phone')}
-            </label>
-            <input
-              id="coordinator-phone"
-              dir="ltr"
-              inputMode="tel"
-              className="input w-full"
-              data-testid="coordinator-phone"
-              value={me.phone}
-              onChange={(e) => {
-                setMe((c) => ({ ...c, phone: e.target.value }))
-                setMeSaved(false)
-              }}
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="coordinator-role">
-              {t('settings.profile.role')}
-            </label>
-            <input
-              id="coordinator-role"
-              className="input w-full"
-              data-testid="coordinator-role"
-              value={me.role}
-              onChange={(e) => {
-                setMe((c) => ({ ...c, role: e.target.value }))
-                setMeSaved(false)
-              }}
-            />
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="btn-primary"
-            data-testid="coordinator-save"
-            onClick={() => {
-              writeCoordinator(me)
-              setMe(readCoordinator())
-              setMeSaved(true)
-            }}
-          >
-            <Icon name="check" size={16} />
-            {t('common.save')}
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            data-testid="coordinator-reset"
-            onClick={() => {
-              resetCoordinator()
-              setMe(readCoordinator())
-              setMeSaved(false)
-            }}
-          >
-            <Icon name="history" size={16} />
-            {t('settings.profile.reset')}
-          </button>
-          {meSaved && (
-            <span className="text-caption text-status-success-ink" data-testid="coordinator-saved">
-              {t('settings.profile.saved')}
-            </span>
-          )}
-        </div>
-      </Section>
+      <SettingsGroup id="display" />
+      {/* ★★ Y3.1 · Y4 — the theme (out of the rail) and the layout sync. */}
+      <DisplaySection />
 
-      <Section title={t('report.recipientLabel')} className="mt-6" collapseKey="settings-report">
-        <label className="label" htmlFor="report-recipient">
-          {t('report.recipientLabel')}
-        </label>
-        <div className="flex flex-wrap items-start gap-2">
-          <input
-            id="report-recipient"
-            type="email"
-            dir="ltr"
-            inputMode="email"
-            autoComplete="email"
-            className="input min-w-[12rem] flex-1"
-            data-testid="report-recipient"
-            value={recipient}
-            onChange={(e) => {
-              setRecipient(e.target.value)
-              setRecipientSaved(false)
-            }}
-            onBlur={() => {
-              writeReportRecipient(recipient)
-              setRecipientSaved(true)
-            }}
+      <SettingsGroup id="data" />
+      <Section title={t('settings.connection.title')} className="mt-6" collapseKey="settings-connection">
+        <p className="flex items-center gap-2.5 text-caption font-medium text-content-primary">
+          <span
+            aria-hidden="true"
+            className={`h-2.5 w-2.5 shrink-0 rounded-pill ${
+              online ? 'bg-status-success' : 'bg-status-warn'
+            }`}
           />
-          <button
-            type="button"
-            className="btn-primary"
-            data-testid="report-recipient-save"
-            onClick={() => {
-              writeReportRecipient(recipient)
-              setRecipientSaved(true)
-            }}
-          >
-            <Icon name="check" size={16} />
-            {t('common.save')}
-          </button>
-        </div>
-        <p
-          className={`mt-1.5 text-caption ${
-            recipientSaved ? 'text-status-success-ink' : 'text-content-muted'
-          }`}
-          data-testid="report-recipient-hint"
-        >
-          {recipientSaved ? t('report.recipientSaved') : t('report.recipientHint')}
+          {t(online ? 'settings.connection.online' : 'settings.connection.offline')}
+        </p>
+        <p className="muted mt-1">
+          {t(
+            online
+              ? 'settings.connection.onlineHint'
+              : 'settings.connection.offlineHint',
+          )}
         </p>
       </Section>
-
       {/* ★★ PO RETURN 2026-09-02 — THE BANDEAU IS GONE, AND IT WAS A LIE BY
           THE TIME HE READ IT. This block used to carry
           `settings.sync.notYet` — "changes are kept in memory only and are
@@ -709,33 +708,53 @@ export function SettingsScreen() {
           </>
         )}
       </Section>
-
-      {/* N2 (2026-09-02) — the association's contract, uploaded once. */}
-      <AgreementTemplateSection />
-
+      <Section title={t('report.recipientLabel')} className="mt-6" collapseKey="settings-report">
+        <label className="label" htmlFor="report-recipient">
+          {t('report.recipientLabel')}
+        </label>
+        <div className="flex flex-wrap items-start gap-2">
+          <input
+            id="report-recipient"
+            type="email"
+            dir="ltr"
+            inputMode="email"
+            autoComplete="email"
+            className="input min-w-[12rem] flex-1"
+            data-testid="report-recipient"
+            value={recipient}
+            onChange={(e) => {
+              setRecipient(e.target.value)
+              setRecipientSaved(false)
+            }}
+            onBlur={() => {
+              writeReportRecipient(recipient)
+              setRecipientSaved(true)
+            }}
+          />
+          <button
+            type="button"
+            className="btn-primary"
+            data-testid="report-recipient-save"
+            onClick={() => {
+              writeReportRecipient(recipient)
+              setRecipientSaved(true)
+            }}
+          >
+            <Icon name="check" size={16} />
+            {t('common.save')}
+          </button>
+        </div>
+        <p
+          className={`mt-1.5 text-caption ${
+            recipientSaved ? 'text-status-success-ink' : 'text-content-muted'
+          }`}
+          data-testid="report-recipient-hint"
+        >
+          {recipientSaved ? t('report.recipientSaved') : t('report.recipientHint')}
+        </p>
+      </Section>
       {/* N3 (2026-09-02) — the demo dataset, and the one button that removes it. */}
       <DemoDataSection />
-
-      <Section title={t('settings.account.title')} className="mt-6" collapseKey="settings-account">
-        {SUPABASE_CONFIGURED && auth.status === 'signed-in' ? (
-          <>
-            <dl>
-              <KeyValue label={t('auth.signedInAs')} value={auth.email ?? '—'} ltr />
-            </dl>
-            <button
-              type="button"
-              onClick={() => void signOut()}
-              data-testid="settings-sign-out"
-              className="btn-secondary mt-4"
-            >
-              <Icon name="logout" size={16} className="rtl:-scale-x-100" />
-              {t('auth.signOut')}
-            </button>
-          </>
-        ) : (
-          <p className="muted">{t('settings.account.demo')}</p>
-        )}
-      </Section>
 
       {/* ⚠️ `<DisplayDiagnostics />` WAS HERE AND IS GONE (PO return
           2026-09-02). It was PO point 1's instrument: a temporary panel

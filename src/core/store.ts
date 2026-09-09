@@ -1046,6 +1046,8 @@ export interface FarmVisitDraft {
   at: string
   note: string
   done: boolean
+  /** AF4.2 — l'alerte, en minutes avant. */
+  remindMinutes?: number | null
 }
 
 /**
@@ -1079,6 +1081,10 @@ export interface GeneralMeetingDraft {
   location: string
   person: string
   note: string
+  /** AF3.1 — le point collé depuis un lien de localisation. */
+  position?: LatLng | null
+  /** AF4.2 — l'alerte, en minutes avant. */
+  remindMinutes?: number | null
 }
 
 export function createGeneralMeeting(draft: GeneralMeetingDraft): GeneralMeeting {

@@ -1008,6 +1008,8 @@ export interface FarmVisit {
   at: string
   note: string
   done: boolean
+  /** AF4.2 — voir `GeneralMeeting.remindMinutes`. */
+  remindMinutes?: number | null
 }
 
 // ---------------------------------------------------------------------------
@@ -1158,6 +1160,30 @@ export interface GeneralMeeting {
   /** Who the meeting is with — person or organisation, free text. */
   person: string
   note: string
+  /**
+   * ★★ AF3.1 (2026-09-09) — LE POINT COLLÉ, ET IL NE PASSE PAS PAR LE
+   *    GAZETTEER.
+   *
+   * « Le PO reçoit des localisations par WhatsApp de fermes qui ne sont pas
+   * encore dans la base. » `location` est du TEXTE, résolu à la lecture par le
+   * gazetteer national — ce qui marche pour « בית שאן » et ne peut rien pour
+   * une parcelle au bout d'un chemin de terre, qui est justement le cas du
+   * brief. Ce champ porte le point TEL QU'IL A ÉTÉ COLLÉ.
+   *
+   * ⚠️ `null` EST UNE VRAIE RÉPONSE, c'est AB3.4 : une entrée dont personne ne
+   *    connaît le lieu reste dans la LISTE, marquée מיקום חסר, et n'est pas
+   *    dessinée. Un repli sur le centroïde d'une localité poserait une épingle
+   *    numérotée là où le coordinateur n'a jamais accepté d'aller, et une
+   *    épingle se lit comme un fait.
+   */
+  position?: LatLng | null
+  /**
+   * ★ AF4.2 — minutes AVANT le rendez-vous où l'on veut être prévenu.
+   * `null`/absent = aucune alerte, ce qui n'est pas `0` (« à l'heure dite »).
+   * Ce que l'app en fait, et ce qu'elle ne peut pas en faire, est écrit dans
+   * `src/ui/reminders.ts`.
+   */
+  remindMinutes?: number | null
 }
 
 /** D4 — one entry in the agenda, whatever kind of thing it is. */

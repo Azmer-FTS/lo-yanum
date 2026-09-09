@@ -7,6 +7,7 @@ import {
   LAND_AGREEMENT_OPTIONS,
   LEGAL_ENTITY_OPTIONS,
   optionLabel,
+  parsePositionInput,
   LIVESTOCK_KINDS,
   LOCALITY_POSITIONS,
   NEGEV_CENTER,
@@ -50,6 +51,7 @@ import { PhotoField } from '../../components/PhotoField'
 import { AgreementSignModal } from '../../components/AgreementSignModal'
 import { MapSplit } from '../../components/MapSplit'
 import { PinMap } from '../../components/PinMap'
+import { PositionLinkField } from '../../components/PositionLinkField'
 import {
   AutocompleteField,
   Field,
@@ -155,11 +157,31 @@ export function FarmFormScreen() {
   const initialKind: EntityKind =
     asked === 'moshav' || asked === 'other' || asked === 'farm' ? asked : 'farm'
 
+  /**
+   * ★★ AF3.3 (2026-09-09) — « UN LIEU POSÉ PEUT ÊTRE CONVERTI EN FICHE FERME
+   *    EN UN GESTE », ET LE GESTE EST CETTE QUERY.
+   *
+   * Le rendez-vous d'AF3 porte un point et un titre et rien d'autre — c'est
+   * ce qu'un lien WhatsApp donne. Le bouton « יצירת כרטיס חווה » de la fiche
+   * de rendez-vous ouvre cet écran avec les trois valeurs déjà dedans ; il
+   * n'ENREGISTRE rien, comme tout le reste de cet écran, parce que le
+   * coordinateur a encore une demi-douzaine de champs à remplir devant
+   * l'agriculteur et que שמור est ce qui décide.
+   *
+   * ⚠️ LE POINT EST RELU PAR `parsePositionInput`, PAS PAR `Number()`. C'est
+   *    la même barre d'adresse que n'importe qui peut éditer, et le contrôle
+   *    de la boîte d'Israël (AB6) est ce qui empêche un couple inversé — ou
+   *    bricolé — de poser une épingle en Syrie.
+   */
+  const seeded = parsePositionInput(params.get('at') ?? '')
+
   const existing = useCoreValue(() => (farmId ? getFarm(farmId) : null))
   const isEdit = Boolean(farmId)
 
-  const [name, setName] = useState(existing?.name ?? '')
-  const [locality, setLocality] = useState(existing?.locality ?? '')
+  const [name, setName] = useState(existing?.name ?? params.get('name') ?? '')
+  const [locality, setLocality] = useState(
+    existing?.locality ?? params.get('locality') ?? '',
+  )
   const [region, setRegion] = useState(existing?.region ?? '')
   /**
    * X12.2 — the STANDARD region. `''` means "leave it to the position", which
@@ -187,7 +209,7 @@ export function FarmFormScreen() {
     existing?.status ?? 'to_contact',
   )
   const [position, setPosition] = useState<LatLng | null>(
-    existing?.position ?? null,
+    existing?.position ?? seeded,
   )
   const [commitments, setCommitments] = useState<FarmCommitment[]>(
     existing?.commitments ?? [],
@@ -553,6 +575,17 @@ export function FarmFormScreen() {
             options={Object.keys(LOCALITY_POSITIONS)}
             error={show('locality')}
             required
+          />
+          {/* ★★ AF3.1 (2026-09-09) — LE LIEN REÇU PAR WHATSAPP, COLLÉ ICI.
+              Il est PLACÉ à côté de la localité et non près de la carte, et
+              c'est l'ordre de la conversation qui le décide : « c'est où » se
+              répond soit par un nom de יישוב, soit par un lien qu'on vient de
+              recevoir, et les deux réponses doivent être au même endroit. Il
+              pose l'épingle sur la carte du panneau, à gauche, où le
+              coordinateur la voit atterrir. */}
+          <PositionLinkField
+            className="col-span-full"
+            onResolve={setPosition}
           />
           <TextField label={t('form.region')} value={region} onChange={setRegion} />
           {/* X12.2 — blank = derived from the position. See `farmRegion`. */}

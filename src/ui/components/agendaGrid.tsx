@@ -52,6 +52,13 @@ import { useLocale } from '../hooks/useLocale'
  *   because the ladder is exactly as tall as the hours it draws.
  */
 
+/** `HH:MM` d'une minute du jour — l'heure que le bloc annonce pendant qu'on le déplace. */
+function clockLabel(minute: number): string {
+  const h = Math.floor(minute / 60)
+  const m = minute % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
 /** Where the scroll opens. Not midnight — the day starts being worked at 06. */
 const OPEN_AT = 6
 /** Below this an hour band cannot carry a label, let alone an event. */
@@ -139,6 +146,64 @@ export interface AgendaGridProps {
   focusedDay: string | null
   /** The empty-slot creation menu, opened on a column's own "+" . */
   onAddOn: (day: Date, hour: number) => void
+  /**
+   * ★★ AF4.1 (2026-09-09) — DÉPLACER UN RENDEZ-VOUS SUR LA GRILLE.
+   *
+   * Rendu `null` par l'appelant pour un bloc qu'on ne déplace pas — une garde
+   * en est une : c'est une nuit dotée de volontaires et d'un conducteur, pas
+   * un bloc qu'on fait glisser (même règle que le glisser-déposer du mois,
+   * G6.4). L'appelant reçoit le JOUR et la MINUTE de début voulus, et décide.
+   */
+  onMove?: (event: AgendaEvent, day: Date, startMinute: number) => void
+  /** Dit si CE bloc se déplace. Absent = aucun ne se déplace. */
+  canMove?: (event: AgendaEvent) => boolean
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AF4.1 — LE GLISSER-DÉPOSER, AU DOIGT ET AU STYLET.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * « Déplacer un rendez-vous par glisser-déposer sur la grille, sur tablette au
+ * doigt et au stylet. Absent aujourd'hui. » Il l'était : G6.4 avait posé un
+ * glisser-déposer HTML5 sur les CASES DU MOIS, qui change la date et garde
+ * l'heure — et le HTML5 drag-and-drop n'existe pas au toucher. Sur l'iPad du
+ * PO, il n'y avait rien.
+ *
+ * ★★ POINTER EVENTS, ET PAS AUTRE CHOSE. C'est la règle du dépôt depuis le
+ *    point 9 du PO : une seule voie pour la souris, le doigt et le Pencil, et
+ *    `pointerType` disponible quand ça compte. `dragstart` aurait exclu les
+ *    deux entrées qui sont justement demandées.
+ *
+ * ⚠️ UN APPUI MAINTENU ARME LE DÉPLACEMENT, ET C'EST LA GRILLE QUI L'IMPOSE.
+ *    La grille DÉFILE verticalement, et un rendez-vous se déplace lui aussi
+ *    verticalement : capturer le pointeur dès le contact rendrait la grille
+ *    impossible à faire défiler dès qu'on pose le doigt sur un bloc — c'est-à-
+ *    dire la moitié de sa surface. 280 ms d'immobilité arment ; un mouvement
+ *    avant ce délai est un défilement et le navigateur le garde.
+ *
+ * ⚠️ ET `touch-action` N'EST POSÉ QU'UNE FOIS ARMÉ. Déclaré `none` en
+ *    permanence sur le bloc, il tuerait ce même défilement. Il est posé sur
+ *    l'élément au moment où la minuterie tombe, et retiré au relâchement.
+ *
+ * ★ LE PAS EST DE QUINZE MINUTES. Un agenda qu'on manipule au doigt sur une
+ *   échelle de 34 px par heure ne peut pas placer une minute — le pas est ce
+ *   qui rend le geste répétable, et c'est le pas auquel un rendez-vous se
+ *   fixe de toute façon.
+ */
+const HOLD_MS = 280
+const SNAP_MINUTES = 15
+/** Au-delà de ce déplacement avant l'armement, c'est un défilement. */
+const SLOP_PX = 8
+
+interface DragState {
+  id: string
+  /** Décalage vertical appliqué au bloc, en pixels. */
+  dy: number
+  /** Colonne visée, en index de `days`. */
+  dayIndex: number
+  /** Minute de début visée, arrondie au pas. */
+  startMinute: number
 }
 
 export function AgendaGrid({
@@ -152,6 +217,8 @@ export function AgendaGrid({
   onFocusDay,
   focusedDay,
   onAddOn,
+  onMove,
+  canMove,
 }: AgendaGridProps) {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -179,6 +246,118 @@ export function AgendaGrid({
 
   const ladder = Array.from({ length: 24 }, (_, i) => i)
   const height = hour * 24
+
+  // -------------------------------------------------------------------------
+  // AF4.1 — le glisser-déposer. Voir la note au-dessus de `HOLD_MS`.
+  // -------------------------------------------------------------------------
+  const [drag, setDrag] = useState<DragState | null>(null)
+  const gesture = useRef<{
+    id: string
+    event: AgendaEvent
+    from: number
+    startX: number
+    startY: number
+    armed: boolean
+    timer: number
+    element: HTMLElement
+    touchAction: string
+  } | null>(null)
+
+  /** Colonne sous une abscisse écran, ou l'actuelle si le doigt sort de la grille. */
+  const columnAt = (clientX: number, fallback: number): number => {
+    const columns = scroller.current?.querySelectorAll('[data-testid="agenda-column"]')
+    if (!columns) return fallback
+    for (let i = 0; i < columns.length; i++) {
+      const r = columns[i].getBoundingClientRect()
+      if (clientX >= r.left && clientX <= r.right) return i
+    }
+    return fallback
+  }
+
+  const endGesture = (commit: boolean): void => {
+    const g = gesture.current
+    if (!g) return
+    window.clearTimeout(g.timer)
+    g.element.style.touchAction = g.touchAction
+    gesture.current = null
+    const state = drag
+    setDrag(null)
+    if (!commit || !g.armed || !state || !onMove) return
+    /* Rien à écrire quand rien n'a bougé : un appui long qui repart au même
+       endroit ne doit pas produire une mutation ni un rendu. */
+    const sameDay = days[state.dayIndex] === days[columnIndexOf(g.event)]
+    if (state.startMinute === g.from && sameDay) return
+    onMove(g.event, days[state.dayIndex], state.startMinute)
+  }
+
+  /** L'index de colonne où ce bloc est actuellement dessiné. */
+  const columnIndexOf = (event: AgendaEvent): number => {
+    const key = localDayKey(new Date(event.at))
+    const i = days.findIndex((d) => localDayKey(d) === key)
+    return i === -1 ? 0 : i
+  }
+
+  const onBlockPointerDown = (
+    e: React.PointerEvent<HTMLButtonElement>,
+    event: AgendaEvent,
+    from: number,
+  ): void => {
+    if (!onMove || !(canMove?.(event) ?? false)) return
+    /* Un clic droit ou un bouton secondaire n'arme rien. */
+    if (e.button !== 0 && e.pointerType === 'mouse') return
+    const element = e.currentTarget
+    const g = {
+      id: event.id,
+      event,
+      from,
+      startX: e.clientX,
+      startY: e.clientY,
+      armed: false,
+      timer: 0,
+      element,
+      touchAction: element.style.touchAction,
+    }
+    g.timer = window.setTimeout(() => {
+      g.armed = true
+      /* ⚠️ POSÉ MAINTENANT ET PAS DANS LA CLASSE : voir la note d'en-tête. */
+      element.style.touchAction = 'none'
+      try {
+        element.setPointerCapture(e.pointerId)
+      } catch {
+        // Un pointeur déjà relâché : le geste se terminera de lui-même.
+      }
+      setDrag({
+        id: event.id,
+        dy: 0,
+        dayIndex: columnIndexOf(event),
+        startMinute: from,
+      })
+    }, HOLD_MS)
+    gesture.current = g
+  }
+
+  const onBlockPointerMove = (e: React.PointerEvent<HTMLButtonElement>): void => {
+    const g = gesture.current
+    if (!g) return
+    const dy = e.clientY - g.startY
+    const dx = e.clientX - g.startX
+    if (!g.armed) {
+      /* Un mouvement avant l'armement est un défilement : on rend la main. */
+      if (Math.abs(dy) > SLOP_PX || Math.abs(dx) > SLOP_PX) {
+        window.clearTimeout(g.timer)
+        gesture.current = null
+      }
+      return
+    }
+    const minutes = Math.round((dy / hour) * 60 / SNAP_MINUTES) * SNAP_MINUTES
+    const startMinute = Math.max(0, Math.min(24 * 60 - SNAP_MINUTES, g.from + minutes))
+    setDrag({
+      id: g.id,
+      dy: ((startMinute - g.from) / 60) * hour,
+      dayIndex: columnAt(e.clientX, columnIndexOf(g.event)),
+      startMinute,
+    })
+  }
 
   return (
     <div
@@ -267,7 +446,7 @@ export function AgendaGrid({
           ))}
         </div>
 
-        {days.map((day) => {
+        {days.map((day, dayIndex) => {
           const key = localDayKey(day)
           const isToday = isSameDay(day, today)
           const laid = layOutDay(byDay.get(key) ?? [], day)
@@ -315,6 +494,12 @@ export function AgendaGrid({
                  *    rather than losing its first half.
                  */
                 const shared = lanes > 1
+                /* AF4.1 — pendant le geste, le bloc est dessiné à sa nouvelle
+                   place et porte la nouvelle heure : ce que l'on relâche est
+                   ce que l'on voit, pas une prédiction. */
+                const dragging = drag?.id === event.id
+                const movable = Boolean(onMove) && (canMove?.(event) ?? false)
+                const shownFrom = dragging ? drag.startMinute : from
                 return (
                   <button
                     key={event.id}
@@ -323,6 +508,13 @@ export function AgendaGrid({
                     data-event-id={event.id}
                     data-lane={lane}
                     data-lanes={lanes}
+                    data-movable={movable ? '1' : undefined}
+                    data-dragging={dragging ? '1' : undefined}
+                    onPointerDown={(e) => onBlockPointerDown(e, event, from)}
+                    onPointerMove={onBlockPointerMove}
+                    onPointerUp={() => endGesture(true)}
+                    onPointerCancel={() => endGesture(false)}
+                    onLostPointerCapture={() => endGesture(false)}
                     data-selected={selected ? '1' : undefined}
                     /* AB3.3 — one press looks, a second opens. The title says
                        so on the block that is already selected, which is the
@@ -344,8 +536,14 @@ export function AgendaGrid({
                     style={{
                       top: `${(from / 60) * hour}px`,
                       height: `${Math.max(18, ((to - from) / 60) * hour - 2)}px`,
-                      insetInlineStart: `calc(${(lane / lanes) * 100}% + 2px)`,
-                      width: `calc(${100 / lanes}% - 4px)`,
+                      insetInlineStart: dragging
+                        ? `calc(${(drag.dayIndex - dayIndex) * 100}% + 2px)`
+                        : `calc(${(lane / lanes) * 100}% + 2px)`,
+                      width: dragging ? 'calc(100% - 4px)' : `calc(${100 / lanes}% - 4px)`,
+                      transform: dragging ? `translateY(${drag.dy}px)` : undefined,
+                      zIndex: dragging ? 30 : undefined,
+                      opacity: dragging ? 0.92 : undefined,
+                      boxShadow: dragging ? '0 10px 30px rgb(0 0 0 / 0.25)' : undefined,
                     }}
                   >
                     {/**
@@ -387,7 +585,7 @@ export function AgendaGrid({
                         <span className="flex min-w-0 items-center gap-1">
                           {!compact && <Icon name={tone.icon} size={9} className="shrink-0" />}
                           <span className="ltr-nums shrink-0 text-micro font-semibold">
-                            {formatTime(event.at, locale)}
+                            {dragging ? clockLabel(shownFrom) : formatTime(event.at, locale)}
                           </span>
                           {event.position === null && (
                             <Icon

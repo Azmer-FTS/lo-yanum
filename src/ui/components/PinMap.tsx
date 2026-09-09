@@ -118,9 +118,42 @@ export function PinMap({
           }
         />
 
-        <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10">
+        {/**
+          * ═══════════════════════════════════════════════════════════════════
+          * ★★ AF2.1 (2026-09-09) — « UNE BARRE PLEINE LARGEUR POSÉE SUR LA
+          *    CARTE », ET LES TROIS CONTRÔLES LA RECOUVRAIENT.
+          * ═══════════════════════════════════════════════════════════════════
+          *
+          * Ce bloc était `inset-x-3 bottom-3` : 625 px de large au bas du
+          * panneau carte sur un iPad en paysage, mesuré. La pilule carte /
+          * partagé / plein écran est `fixed` au bas de la fenêtre, à 76 px du
+          * bord physique gauche — mesurée à x 76…220, y 908, contre le bandeau
+          * à x 12…637, y 910. Elle était donc littéralement POSÉE dessus, et
+          * A86 dit ce que cela coûte : « un contrôle que le bouton couvre est
+          * inatteignable pour toujours ».
+          *
+          * ★ IL PASSE EN HAUT, DU CÔTÉ PHYSIQUE DROIT, ET IL EST DE LA LARGEUR
+          *   DE SON CONTENU. Le choix du coin n'est pas esthétique, il est ce
+          *   qui reste : la pile d'outils de la carte tient le haut-gauche
+          *   physique (`MapTools`, `addControl(…, 'top-left')`), la pilule de
+          *   mode tient le bas-gauche à TOUTE largeur et dans TOUS les modes —
+          *   y compris `full` sur un téléphone, où la carte est l'écran entier
+          *   et où un bandeau bas ne peut pas lui échapper en se rétrécissant.
+          *   Le haut-droit est le seul coin libre partout.
+          *
+          * ⚠️ `right-3` EST PHYSIQUE ET NON `start-3`, DÉLIBÉRÉMENT. La pilule
+          *    de mode se positionne en `left`, qui est physique elle aussi ;
+          *    deux logiques mélangées se croiseraient le jour où l'app rendrait
+          *    une page LTR, et ce jour-là le contrôle recouvert serait celui-ci.
+          *
+          * ⚠️ ET LA LARGEUR EST PLAFONNÉE PAR RAPPORT À LA PILE D'OUTILS —
+          *    52 px de rail plus ses deux marges — pour qu'un texte long ne
+          *    vienne pas la recouvrir à son tour à 402 px.
+          */}
+        <div className="pointer-events-none absolute end-auto right-3 top-3 z-10 flex max-w-[calc(100%-5.5rem)] flex-col items-end gap-2">
           <div
-            className={`pointer-events-auto flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card px-3.5 py-2.5 backdrop-blur ${
+            data-testid="pin-panel"
+            className={`pointer-events-auto flex w-fit max-w-full flex-wrap items-center gap-x-3 gap-y-2 rounded-card px-3.5 py-2.5 backdrop-blur ${
               armed
                 ? 'border border-accent bg-surface-overlay/95 shadow-glow'
                 : 'border border-edge-subtle bg-surface-overlay/90 shadow-card'
@@ -130,7 +163,7 @@ export function PinMap({
               <Icon name="pin" size={17} />
             </span>
 
-            <p className="min-w-0 flex-1 text-caption text-content-secondary">
+            <p className="min-w-0 text-caption text-content-secondary">
               <span className="font-semibold text-content-primary">
                 {t(armed ? 'pin.placeHint' : 'pin.dragHint')}
               </span>
@@ -172,17 +205,24 @@ export function PinMap({
               )
             )}
           </div>
+
+          {/* ★ L'ERREUR REJOINT LA MÊME PILE au lieu d'occuper le haut à elle
+              seule : deux blocs flottants aux deux bouts d'une carte de 42dvh
+              sur un téléphone, c'est la carte qui disparaît. */}
+          {error && flush && (
+            <p
+              data-testid="pin-error"
+              className="pointer-events-auto w-fit max-w-full rounded-card bg-status-danger/15 px-3 py-1.5 text-micro text-status-danger-ink shadow-card backdrop-blur"
+            >
+              {error}
+            </p>
+          )}
         </div>
       </div>
 
-      {error &&
-        (flush ? (
-          <p className="pointer-events-none absolute inset-x-3 top-3 z-10 rounded-card bg-status-danger/15 px-3 py-1.5 text-micro text-status-danger-ink shadow-card backdrop-blur">
-            {error}
-          </p>
-        ) : (
-          <p className="mt-1 text-micro text-status-danger-ink">{error}</p>
-        ))}
+      {error && !flush && (
+        <p className="mt-1 text-micro text-status-danger-ink">{error}</p>
+      )}
     </div>
   )
 }

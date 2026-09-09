@@ -1,5 +1,330 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AF — LE DOCUMENT QUE L'AGRICULTEUR SIGNE, ET LE PARCOURS QUI Y
+> MÈNE. 2026-09-09. LIRE EN PREMIER.**
+>
+> **Passe de TERRAIN.** L'utilisateur type de tout ce qui suit est le PO,
+> debout, une tablette dans une main, devant un agriculteur qui attend. Chaque
+> décision ci-dessous a été jugée à cette aune : un défaut ici ne coûte pas du
+> temps, il renvoie les deux hommes au carnet papier.
+>
+> ## AF1 — LE DOCUMENT DE SIGNATURE EXISTE, ET IL SE LIT AVANT D'ÊTRE SIGNÉ
+>
+> Le PO avait fourni la capture de « הסכם התנדבות- ארצנו » il y a plusieurs
+> jours et rien ne l'avait repris. La signature ouvrait un rectangle blanc et
+> produisait `public/mock-agreement.pdf` — une page marquée « exemple » qui
+> attendait un PDF que l'association n'a jamais envoyé.
+>
+> ★★ **CE QUI SORT MAINTENANT EST LE FORMULAIRE DE L'ASSOCIATION, DESSINÉ.**
+> Le logo en tête, le titre, les quatre cases — מקום התנדבות · שם החקלאי ·
+> תז/חפ · נייד — pré-remplies depuis la fiche, le bloc הצהרה ואישור avec le
+> texte du brief et l'année insérée, le bloc חתימה avec l'encre.
+>
+> ★★ **AUCUNE BIBLIOTHÈQUE PDF NEUVE, ET C'EST LA MÊME RAISON QU'AU POINT 7.**
+> Les quatorze polices de base d'un PDF n'ont pas une lettre d'hébreu ; le
+> navigateur, lui, sait déjà façonner et ordonner l'hébreu dans les fontes de
+> l'app. La page est donc dessinée sur un canevas A4 et le fichier la porte
+> comme une image (`report/pdf.ts`, réutilisé tel quel). Le coût est dit : le
+> texte n'est pas sélectionnable et le fichier pèse ~200–400 ko.
+>
+> ⚠️ **« ON NE FAIT PAS SIGNER UN DOCUMENT INVISIBLE » EST CORRIGÉ PAR L'ORDRE
+> DE L'ÉCRAN, PAS PAR UN BOUTON DE PLUS.** `AgreementSignModal` met le document
+> en premier, le pad en dessous, et l'encre atterrit dans le cadre du bas sous
+> les yeux de l'agriculteur avant qu'on approuve. A129 le mesure comme une
+> question d'ORDRE et non de présence — `docTop 235 < padTop 627` — parce que
+> les deux pourraient coexister avec le pad au-dessus, et l'écran dirait alors
+> exactement le contraire de ce qui est demandé.
+>
+> ★★ **L'APERÇU EST LE DOCUMENT, PAS UNE IMITATION.** Même fonction, mêmes
+> valeurs, même gabarit. Un aperçu construit à part serait un aperçu capable de
+> mentir, et il mentirait le jour où quelqu'un changerait le gabarit.
+>
+> ⚠️ **ET CE QUE LA PAGE PORTE EST MESURÉ SUR SES PIXELS.** Le logo est un
+> MASQUE appliqué au canevas (le fichier de l'association est blanc sur
+> transparent, invisible sur du papier blanc) : la seule preuve qu'il est
+> arrivé est de l'encre sombre dans la bande du haut. A129 compte : 6 628 px
+> sombres pour le logo, 6 077 pour les quatre cases, 14 688 pour le bloc
+> הצהרה, et la signature fait passer sa bande de 1 211 à 4 164.
+>
+> ★ **LA CASE QUI N'EXISTAIT NULLE PART.** תז/חפ n'était sur aucune fiche ;
+> trois des quatre cases venaient d'AA2, la quatrième est neuve. Texte libre et
+> non un nombre : un particulier écrit neuf chiffres avec son zéro de tête, une
+> société un ח״פ, un קיבוץ le numéro de son אגודה.
+>
+> ★ **ET LA PAGE EST BLANCHE MÊME QUAND L'APP EST NOIRE.** Les couleurs du
+> document sont des littéraux et non des jetons : un contrat qui sortirait en
+> blanc sur noir parce que le coordinateur a le thème sombre est un contrat
+> qu'on ne peut pas imprimer.
+>
+> **AF1.4 — le texte du הצהרה est un gabarit dans les réglages**, avec le même
+> refus qu'AE4 : un gabarit qui a perdu `{{year}}` produit un document qui
+> affirme une activité « en l'an » sans année, parfaitement lisible et
+> parfaitement inutilisable. L'enregistrement est refusé et le jeton perdu est
+> nommé.
+>
+> ## AF2 — LES TROIS DÉFAUTS DE L'ÉCRAN DE MODIFICATION SONT **UN SEUL**
+>
+> ⚠️ **ET C'EST LE RÉSULTAT LE PLUS UTILE DE LA PASSE.** Le PO avait signalé
+> trois choses : la barre d'actions qui défile de gauche à droite, les boutons
+> שמור/ביטול qui « remontent avec le contenu » au lieu de rester ancrés, et un
+> soupçon que ce comportement casse le défilement de la page. Les trois sont la
+> même ligne.
+>
+> `MapSplit` déclarait `overflow-y-auto` et `[--shell-top:0px]` SANS préfixe de
+> point de rupture, alors que la hauteur qui les justifie est écrite AVEC.
+> Sous le point de rupture, la colonne de contenu était donc un conteneur de
+> défilement de hauteur AUTO : il ne défile jamais, puisque sa hauteur est
+> exactement celle de son contenu.
+>
+> 1. `position: sticky` se résout contre le plus proche ancêtre défilant.
+>    C'était cette colonne — qui ne défile pas — pendant que la PAGE, elle,
+>    défilait. **Mesuré : la barre à 3 627 px de haut dans un document de
+>    3 934, fenêtre de 1 376, à l'arrêt.** Deux écrans sous le pli.
+> 2. Régler UN axe sur autre chose que `visible` force l'autre à `auto` : la
+>    colonne était aussi un conteneur de défilement HORIZONTAL.
+> 3. Deux conteneurs de défilement imbriqués, dont l'intérieur capte la chaîne
+>    de défilement. Le soupçon du PO était juste et c'était la même ligne.
+>
+> ⚠️ **ET UNE SECONDE CAUSE, INDÉPENDANTE, TROUVÉE EN MESURANT.** `FormActions`
+> portait `-mx-4 sm:-mx-6`, une transcription du rembourrage du GABARIT DE PAGE.
+> La colonne de `MapSplit` est à `px-4` puis `xl:px-5` — jamais 24 px. Sur un
+> iPad en portrait la barre débordait de huit pixels de chaque côté, mesuré à
+> `[-8..968]` dans une fenêtre de 1 032, et faisait un document plus large que
+> l'écran. Elle lit `--content-pad` maintenant, que chaque coquille publie déjà
+> pour cette raison exacte.
+>
+> ★★ **LE BANDEAU DE L'ÉPINGLE ÉTAIT LITTÉRALEMENT SOUS LA PILULE.** Mesuré sur
+> iPad en paysage : le bandeau `[12..637] × y 910`, la pilule carte / partagé /
+> plein écran `[76..220] × y 908`. A86 dit ce que ça coûte — « un contrôle que
+> le bouton couvre est inatteignable pour toujours ». Il passe en haut, du côté
+> physique droit, à la largeur de son contenu (314 px sur téléphone, 360 sur
+> tablette contre 625 avant), et A132 vérifie **zéro pixel carré** de
+> recouvrement avec la pilule ET avec la pile d'outils, aux trois viewports.
+>
+> ⚠️ **LE CHOIX DU COIN N'EST PAS ESTHÉTIQUE, C'EST CE QUI RESTE.** La pile
+> d'outils tient le haut-gauche physique ; la pilule de mode tient le bas-gauche
+> à TOUTE largeur et dans TOUS les modes — y compris `full` sur un téléphone,
+> où la carte est l'écran entier et où un bandeau bas ne peut pas lui échapper
+> en se rétrécissant.
+>
+> ⚠️ **ET LA PORTE `layout` A TROUVÉ UN DÉFAUT DE PLUS DÈS QU'ELLE A PU LE
+> VOIR.** Un candidat au recouvrement doit n'avoir aucun ancêtre défilant ;
+> la colonne en était un à toutes les largeurs, donc l'en-tête épinglé de la
+> liste des fermes était EXCLU de la comparaison — pas parce qu'il ne recouvrait
+> rien, mais parce que la question ne lui était pas posée. Une fois posée : la
+> feuille « צפייה בתור » du jumeau restait ouverte APRÈS qu'on ait choisi un
+> rôle, posée sur l'écran où elle venait de vous emmener. Elle se referme.
+> Même famille que le point aveugle d'A124.
+>
+> **AF2.2 — l'autocomplétion tolère la faute de frappe.** Le gazetteer national
+> a 1 174 localités depuis N4 ; ce qui manquait est la tolérance, et sans elle
+> il se comportait comme les dix entrées qu'il avait avant. Trois rangs —
+> préfixe, sous-chaîne, approchant — et un seuil qui dépend de la longueur :
+> **0 sous quatre caractères, 1 jusqu'à sept, 2 au-delà**. À une correction
+> près, « רתם » et « רהט » sont voisins de tout ; à deux corrections près, une
+> requête de trois lettres rejoint la moitié du pays. La transposition compte
+> pour UNE erreur, parce que c'est ce qu'elle est pour la personne qui l'a
+> faite. Les trois barres de recherche des listes ont la même tolérance et la
+> même normalisation hébraïque.
+>
+> ⚠️ **ET LA PORTE A MONTRÉ LE SYMPTÔME EXACT DU PO EN ÉCHOUANT.** Sa première
+> version demandait « קרית שמונה » ; le gazetteer de l'État écrit « קריית
+> שמונה », avec deux yod. C'est précisément la frappe qui ne rendait rien.
+>
+> **AF2.3 — la localisation passe par une porte unique.** Cinq appels
+> indépendants à `navigator.geolocation` existaient — la pile d'outils, le
+> point de départ, le formulaire d'incident, l'écran d'urgence, le suivi de
+> carte — chacun capable de déclencher sa propre invite. A135 compte les
+> interrogations de l'appareil : **0 avant qu'on demande, 1 au premier appui,
+> et toujours 1 après qu'un second écran ait eu besoin de la position.** Le
+> dernier point connu est gardé sur l'appareil.
+>
+> ⛔ **CE QUI N'EST PAS À NOUS, DIT FRANCHEMENT :** c'est le SYSTÈME qui décide
+> si une origine garde son autorisation entre deux sessions. Safari sur iOS
+> n'accorde à un SITE qu'une permission de session ; une PWA INSTALLÉE la
+> garde. Aucune ligne de JavaScript ne change cela.
+>
+> ## AF3 — LE LIEU QUI N'EST PAS ENCORE UNE FERME
+>
+> Un champ « coller un lien de localisation » sur la création de rendez-vous ET
+> sur la création de ferme. La lecture est celle d'AB6 réutilisée telle quelle
+> — `parsePositionInput` connaît déjà Waze (`ll=`, `%2C`), Google Maps (`@`,
+> `query=`, `place/…/@`), les cartes d'Apple et le couple brut. A133 pose les
+> huit formes, et **l'ordre longitude/latitude est refusé dans les deux sens** :
+> en Israël une seule des deux lectures tombe dans la boîte.
+>
+> ⚠️ **UN LIEN RACCOURCI EST DIT, PAS DEVINÉ.** `maps.app.goo.gl` ne porte
+> aucune coordonnée ; le champ explique quoi faire au lieu de rendre « non
+> reconnu », qui enverrait le PO chercher une faute de frappe qui n'existe pas.
+>
+> ⚠️ **ET LE POINT COLLÉ PASSE DEVANT LE GAZETTEER.** Une réunion porte
+> désormais `position` en plus de son `location` textuel ; l'agenda lit le point
+> D'ABORD. Résoudre le texte en premier donnerait au rendez-vous le centre du
+> village voisin alors que la coordonnée exacte est dans la fiche.
+>
+> **AF3.3 — « converti en fiche ferme en un geste »** est une query : le bouton
+> ouvre le formulaire de création avec le point, le nom et la localité dedans,
+> et n'enregistre rien — שמור décide, comme partout. Le point est relu par
+> `parsePositionInput` et non par `Number()`, parce que c'est la même barre
+> d'adresse que n'importe qui peut éditer.
+>
+> ## AF4 — L'AGENDA
+>
+> **Le glisser-déposer sur la grille, au doigt et au stylet.** G6.4 avait posé
+> un glisser-déposer HTML5 sur les cases du MOIS ; le HTML5 drag-and-drop
+> n'existe pas au toucher, donc sur l'iPad du PO il n'y avait rien. Pointer
+> Events, comme tout le reste depuis le point 9.
+>
+> ⚠️ **UN APPUI MAINTENU DE 280 ms ARME LE DÉPLACEMENT, ET C'EST LA GRILLE QUI
+> L'IMPOSE.** Elle défile verticalement et un rendez-vous se déplace lui aussi
+> verticalement : capturer le pointeur dès le contact rendrait la grille
+> impossible à faire défiler dès qu'on pose le doigt sur un bloc. `touch-action:
+> none` n'est posé qu'une fois armé, pour la même raison. Pas de quinze minutes.
+> A136 mesure le déplacement réel : **380 → 484 px sur une échelle de 52 px par
+> heure**, soit exactement deux heures, au doigt ET au stylet.
+>
+> ⚠️ **UNE GARDE NE SE DÉPLACE PAS**, comme dans le mois : c'est une nuit dotée
+> de volontaires et d'un conducteur. `canMove` le dit à la grille, qui n'arme
+> même pas le geste — plutôt que de le laisser s'armer et d'en ignorer le
+> résultat, ce qui donnerait un bloc qui bouge sous le doigt et revient.
+>
+> ### ⛔ AF4.2 — LES RAPPELS, ET CE QU'UNE PWA NE PEUT PAS FAIRE
+>
+> Deux voies, et le brief demandait explicitement de dire laquelle marche quand.
+>
+> · **La notification du navigateur**, posée par `setTimeout` à la racine de
+>   l'app. Fiable **tant que l'onglet vit**, ce qui est le cas courant du PO en
+>   tournée. iOS suspend puis tue un onglet d'arrière-plan en quelques minutes.
+> · **Le fichier .ics**, qui pose l'alarme dans l'agenda DE L'APPAREIL. C'est la
+>   seule voie qui réveille un iPad dont l'app est FERMÉE, et elle n'a besoin
+>   d'aucun serveur.
+>
+> ⛔ **CE QUI N'EST PAS FAIT :** une vraie notification poussée, l'app fermée,
+> sans passer par l'agenda. Elle exige le Web Push — clés VAPID, abonnement
+> stocké par utilisateur, écoute `push` dans le service worker, **et un serveur
+> qui envoie à l'heure dite** : une fonction de bord et un ordonnanceur que ce
+> programme n'a pas. Sur iOS il faut EN PLUS que l'app soit installée sur
+> l'écran d'accueil. **Il n'y a aucune case qui ne déclenche rien** : les deux
+> réglages livrés font quelque chose dans les deux cas où on les pose.
+>
+> ## AF5 — LE COMPTE RENDU
+>
+> ⚠️ **`mailto:` NE PEUT PAS PORTER DE PIÈCE JOINTE**, et c'est une limite du
+> web plutôt qu'un oubli : aucun client de messagerie n'en accepte une depuis
+> une URL. La voie qui attache VRAIMENT est le partage natif — sur l'iPad,
+> `navigator.share({ files })` remet le FICHIER à Mail ou à WhatsApp. Il est
+> premier maintenant, il est nommé « שיתוף עם הקובץ », et le bouton mail dit ce
+> qu'il fait vraiment.
+>
+> ⚠️ **« LE PO DOUTE QU'ILS BOUGENT » — ILS BOUGEAIENT, ET SON DOUTE ÉTAIT
+> QUAND MÊME FONDÉ.** Le jeu de démonstration ne contenait qu'UNE garde
+> terminée, il y a deux jours : sur le jumeau, 7, 30, 90 et 365 jours
+> affichaient tous « 1 », et rien à l'écran ne distingue « la fenêtre ne marche
+> pas » de « il n'y a rien dedans ». Vingt-quatre nuits déterministes sur treize
+> mois ont été ajoutées aux fixtures. A137 vérifie que **les gardes et les
+> événements de la fenêtre croissent avec elle** et que **les chiffres
+> cumulatifs ne bougent PAS** — les faire varier serait un mensonge sur ce que
+> le nombre veut dire.
+>
+> **Le document a une seconde page.** La première garde son cahier des charges
+> — « lisible par un directeur en trente secondes » — et elle est pleine
+> jusqu'au pied. La seconde porte l'objectif en barre, les dounams déclarés
+> contre ceux sous garde, les fermes signées et actives, les volontaires, les
+> conducteurs, les gardes de la période, **les fermes sans garde récente en
+> deux nombres** (« jamais » et « ancienne » n'appellent pas le même geste) et
+> **la liste des événements**, les plus récents d'abord, plafonnée, avec le
+> total qui porte le reste.
+>
+> ## AF6 — LA BASCULE DE RÔLE, QUATRIÈME DEMANDE
+>
+> ✅ **ELLE EXISTE, ELLE EST LE PREMIER BLOC DES RÉGLAGES, ET A138 COMPTE LES
+> GESTES.** Sur téléphone : **2 gestes** (le menu, puis הגדרות) et elle est
+> visible sans défiler. Sur tablette : **1 geste** (le rail). Quatre pastilles,
+> le rôle actif marqué, retour immédiat.
+>
+> ⚠️ **CE QUI MANQUAIT EST LA RAISON POUR LAQUELLE IL NE LA TROUVAIT PAS.** Sur
+> l'APPLICATION RÉELLE, `ViewAsSection` rendait `null` — un écran de réglages
+> où la ligne qu'il cherche n'existe simplement pas, et rien qui le dise. Il
+> testait sur les deux et concluait « introuvable ». La règle ne change pas
+> (avec Supabase le rôle est une revendication du jeton, et une porte de test
+> qui ment est pire que pas de porte) ; ce qui change est que **l'absence est
+> maintenant DITE**, avec le chemin vers le jumeau.
+>
+> ## AF7 — LA PAGE DE RÉGLAGES, RANGÉE EN SEPT SECTIONS
+>
+> פרופיל ותפקיד · יעד · ספים והתראות · תבניות · מפה ואזורים · תצוגה · נתונים,
+> plus un sommaire en tête. **Ce qui a changé est l'ordre des frères et rien
+> d'autre** : chaque bloc est déplacé tel quel, avec ses commentaires, sa
+> `collapseKey` et son état replié — un coordinateur qui avait déplié « נקודת
+> מוצא » hier la retrouve dépliée, simplement ailleurs.
+>
+> ⚠️ **LE SOMMAIRE N'EST PAS UN `<a href="#…">`.** Un ancrage de hachage dans
+> une application qui ROUTE sur le hachage navigue au lieu de défiler. Il
+> défile à l'élément.
+>
+> ⚠️ **ET IL TIENT SUR UNE LIGNE QUI DÉFILE**, parce que sept pastilles repliées
+> sur trois lignes à 390 px ont poussé cet écran de 5,2 à 6,0 hauteurs d'écran,
+> c'est-à-dire exactement le plafond d'A30.
+>
+> ## ★★ ET LA PASSE A TROUVÉ UN DÉFAUT QUI N'ÉTAIT PAS DANS LE BRIEF, SUR LA
+> ## SURFACE LA PLUS EXPOSÉE DE L'APPLICATION
+>
+> `bun run afui` écoute les rejets non gérés de la page pendant le parcours
+> d'AF2. Il en a trouvé un, **sur le déployé, dès la PREMIÈRE carte** :
+>
+>     RTL Text Plugin failed to import scripts from
+>     …/basemap-assets/mapbox-gl-rtl-text.js
+>
+> Le fichier répond pourtant **200, `application/javascript`, 133 355 octets**,
+> ce qui rendait le message trompeur. Ce qu'il veut dire est : « le script a été
+> importé et ne s'est pas enregistré ». MapLibre pose `self.registerRTLTextPlugin`
+> dans son worker, fait `importScripts`, puis vérifie que les trois méthodes
+> sont là et lève sinon.
+>
+> **Mesuré, paquet par paquet, dans un vrai worker** qui définit
+> `registerRTLTextPlugin` exactement comme MapLibre le fait :
+>
+> | paquet | `registerRTLTextPlugin` |
+> |---|---|
+> | `@mapbox/mapbox-gl-rtl-text` **0.4.0** (celui qui était vendu) | **non appelé** |
+> | `@mapbox/mapbox-gl-rtl-text` 0.3.0 | **non appelé** |
+> | `@mapbox/mapbox-gl-rtl-text` **0.2.3** | appelé, avec les **trois** méthodes |
+>
+> Les deux versions récentes exposent un global `mapbox-gl-rtl-text` et laissent
+> l'appelant enregistrer ; MapLibre, lui, attend l'auto-enregistrement.
+>
+> ⚠️ **CE QUE ÇA COÛTAIT, ET CE N'ÉTAIT PAS COSMÉTIQUE.** Sans greffon, MapLibre
+> ne fait ni la mise en forme bidi ni la liaison arabe : **chaque étiquette
+> hébraïque de la carte était rendue dans l'ordre des octets**. Sur une
+> application dont le sujet EST une carte en hébreu, ce sont tous les noms de
+> lieux, depuis toujours. La taille monte de 133 à 202 ko — le prix du seul
+> paquet qui marche — et la porte le vérifie désormais à chaque exécution.
+>
+> ## AF8 — LA REMISE À ZÉRO
+>
+> Voir `supabase/migrations/20260909000200_reset_business_data.sql`. Chaque
+> table métier est **copiée dans le schéma `archive`** avant d'être vidée : le
+> retour en arrière est un `insert … select` par table, écrit dans le fichier
+> plutôt que promis ailleurs.
+>
+> ⚠️ **SES RÉGLAGES, SES RÉGIONS ET SES GABARITS NE SONT PAS EN BASE**, et
+> c'est pour cela qu'ils survivent sans qu'on ait à les épargner : l'objectif,
+> le seuil d'oubli, les délais de veille, le point de départ, l'adresse des
+> rapports, les tracés de régions retouchés et les deux gabarits vivent dans le
+> `localStorage` de SON appareil. Une remise à zéro de la base ne peut pas les
+> atteindre. Le jumeau n'a pas de base du tout — ses fixtures sont compilées
+> dans le paquet — donc il garde ses données par construction.
+>
+> ## AF9 — LES PORTES
+>
+> · `bun run afpass` — A133 · A134 · A137 et le document, **sans navigateur**.
+> · `bun run afui` — A129 · A130 · A131 · A132 · A135 · A136 · A138 et le
+>   parcours complet d'un rendez-vous, **dans Chromium**.
+> · `bun run afcaptures` — les captures du DÉPLOYÉ, clair et sombre, trois
+>   viewports.
+> · `bun run logo` — reprend le logo de l'association à la source et le recadre
+>   sur son alpha.
+
 > 🏁 **PASSE AE — UN VOLONTAIRE N'A PAS DE COMPTE, IL A UN LIEN ; ET L'ABSENCE
 > DE NOUVELLES EST UNE ALERTE. 2026-09-08. LIRE EN PREMIER.**
 >

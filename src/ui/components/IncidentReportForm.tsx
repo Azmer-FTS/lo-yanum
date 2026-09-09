@@ -8,6 +8,8 @@ import { Icon } from './Icon'
 import type { IconName } from './Icon'
 import { Section } from './primitives'
 
+import { locate } from '../geolocate'
+
 /**
  * R7 — EVENT REPORTING, REBUILT AS AN ALERT FLOW.
  *
@@ -87,21 +89,20 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
     }
 
     let cancelled = false
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        if (cancelled) return
-        setPosition({ lat: p.coords.latitude, lng: p.coords.longitude })
+    /* ★ AF2.3 — par la porte unique : si la carte ou l'écran d'urgence a déjà
+       relevé la position, ceci ne pose aucune invite et répond tout de suite. */
+    void locate().then((fix) => {
+      if (cancelled) return
+      if (fix) {
+        setPosition(fix.position)
         setLocating(false)
-      },
-      () => {
-        if (cancelled) return
-        // Denied, or no fix — common in the Negev. Fall back to the anchor
-        // point, which is where the group physically is.
-        setPosition(context.fallbackPosition)
-        setLocating(false)
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
-    )
+        return
+      }
+      // Refusé, ou pas de relevé — courant dans le Néguev. On se replie sur
+      // le point d'ancrage, qui est là où le groupe se trouve physiquement.
+      setPosition(context.fallbackPosition)
+      setLocating(false)
+    })
     return () => {
       cancelled = true
     }

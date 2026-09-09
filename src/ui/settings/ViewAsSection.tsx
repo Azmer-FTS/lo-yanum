@@ -47,7 +47,40 @@ export function ViewAsSection() {
    *    swapping a client-side session would show a screen the server would
    *    never actually serve. A test door that lies is worse than none.
    */
-  if (SUPABASE_CONFIGURED) return null
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ★★ AF6 (2026-09-09) — L'ABSENCE EST DÉSORMAIS DITE, ET C'EST LA QUATRIÈME
+   *    FOIS QUE LE PO CHERCHE CE BLOC.
+   * ═══════════════════════════════════════════════════════════════════════════
+   *
+   * Y3.2, Z6, AB5b, puis AF6 : quatre passes à demander une bascule de rôle
+   * qui EXISTE, qui est le premier bloc de cet écran, et qu'il ne trouve pas.
+   * La mesure d'AF6.1 sur le déployé dit pourquoi : sur le JUMEAU elle est là
+   * et se voit ; sur l'APPLICATION RÉELLE ce composant rendait `null` — donc
+   * un écran de réglages où la ligne qu'il cherche n'existe simplement pas, et
+   * rien qui le dise. Il testait sur les deux et concluait « introuvable ».
+   *
+   * ⚠️ LA RÈGLE NE CHANGE PAS, SEULE LA MUETTE DEVIENT PARLANTE. Avec Supabase
+   *    le rôle est une revendication portée par le jeton et chaque lecture est
+   *    filtrée côté serveur ; échanger une session côté client montrerait un
+   *    écran que le serveur ne servirait jamais. Une porte de test qui ment est
+   *    pire que pas de porte. Ce qui s'affiche à la place n'est donc pas un
+   *    bouton désactivé — c'est une phrase qui dit où la chose se trouve.
+   */
+  if (SUPABASE_CONFIGURED) {
+    return (
+      <Section
+        title={t('viewAs.title')}
+        flush
+        collapseKey="settings-viewas"
+        summary={t('viewAs.realBuildSummary')}
+      >
+        <Callout tone="info" title={t('viewAs.realBuildTitle')}>
+          {t('viewAs.realBuild')}
+        </Callout>
+      </Section>
+    )
+  }
 
   const step = (preset: SessionPreset): void => {
     viewAs(preset)

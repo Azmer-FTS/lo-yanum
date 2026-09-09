@@ -371,5 +371,230 @@ export function drawReport(
     footY,
   )
 
-  return [canvas]
+  ctx.textAlign = 'right'
+  ctx.font = FONT(8)
+  ctx.fillStyle = c.muted
+  ctx.fillText(t('report.pageOf', { n: 1, total: 2 }), right - 120 * S, footY)
+
+  return [canvas, drawActivityPage(report, t, c)]
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AF5.3 · AF5.4 (2026-09-09) — LA SECONDE PAGE : « UN RÉCAPITULATIF DE
+ *    TOUTE L'ACTIVITÉ, PAS UN EXTRAIT », ET LES ÉVÉNEMENTS.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ★ POURQUOI UNE SECONDE PAGE ET NON SIX LIGNES DE PLUS SUR LA PREMIÈRE. La
+ *   première a un cahier des charges sévère depuis le point 7 : « lisible par
+ *   un directeur en trente secondes ». Elle est pleine jusqu'au pied — mesuré,
+ *   pas estimé : la ligne des régions se termine à 54 px du trait de pied. Y
+ *   entasser l'objectif, les deux états de fermes, les oubliées et une liste
+ *   d'événements ferait deux pages de contenu dans une page de papier, et
+ *   détruirait la seule qualité que le brief exigeait de la première.
+ *
+ *   La seconde répond à l'autre question, celle du PO cette fois : « c'est un
+ *   récapitulatif de toute l'activité ». Elle a le droit de se lire en trois
+ *   minutes.
+ *
+ * ⚠️ ET ELLE N'ADDITIONNE RIEN. Même règle que la première, et `bun run report`
+ *    la vérifie en cherchant de l'arithmétique dans ce fichier : chaque nombre
+ *    ci-dessous est un champ de `ProgrammeReport`, calculé une fois dans
+ *    @core par les accesseurs que le tableau de bord affiche déjà. Une page
+ *    imprimée qui ne dit pas la même chose que l'écran est deux chiffres pour
+ *    un nom.
+ */
+function drawActivityPage(
+  report: ProgrammeReport,
+  t: (key: string, options?: Record<string, unknown>) => string,
+  c: ReturnType<typeof palette>,
+): HTMLCanvasElement {
+  const canvas = newPageCanvas()
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('no 2d context')
+
+  ctx.direction = 'rtl'
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillStyle = '#FFFFFF'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+  const right = PAGE.width - M
+  const width = PAGE.width - 2 * M
+  let y = M + 26 * S
+
+  ctx.textAlign = 'right'
+  ctx.fillStyle = c.ink
+  ctx.font = BRAND(22)
+  ctx.fillText(t('report.page2Title'), right, y)
+  y += 16 * S
+  line(ctx, y, c.line)
+
+  // --- l'objectif, en barre ------------------------------------------------
+  y += 40 * S
+  ctx.font = FONT(11, 700)
+  ctx.fillStyle = c.ink
+  ctx.fillText(t('report.targetLabel'), right, y)
+
+  ctx.textAlign = 'left'
+  ctx.font = FONT(11)
+  ctx.fillStyle = c.muted
+  ctx.fillText(
+    `${he(report.weightedGuardedDunams)} / ${he(report.targetWeighted)}`,
+    M,
+    y,
+  )
+
+  y += 14 * S
+  const barH = 12 * S
+  ctx.fillStyle = c.line
+  ctx.fillRect(M, y, width, barH)
+  /* ⚠️ PLAFONNÉE À 100 % POUR LE DESSIN ET NON POUR LE CHIFFRE. Un objectif
+     dépassé se lit « 118 % » à côté d'une barre pleine ; une barre qui
+     déborderait de sa piste serait un défaut de rendu, pas une bonne
+     nouvelle. */
+  const filled = Math.max(0, Math.min(100, report.targetPercent)) / 100
+  ctx.fillStyle = c.good
+  ctx.fillRect(M + width * (1 - filled), y, width * filled, barH)
+
+  y += barH + 20 * S
+  ctx.textAlign = 'right'
+  ctx.font = FONT(11, 700)
+  ctx.fillStyle = c.good
+  ctx.fillText(t('report.targetProgress', { percent: report.targetPercent }), right, y)
+
+  // --- la terre et les fermes ---------------------------------------------
+  y += 60 * S
+  const cols4 = [0, 1, 2, 3].map((i) => right - (i * width) / 4)
+  figure(ctx, cols4[0], y, he(report.declaredDunams), t('report.declaredDunams'), c.ink, undefined, false, 'landPlot')
+  figure(ctx, cols4[1], y, he(report.guardedDunams), t('dashboard.guardedDunams'), c.good, undefined, false, 'wheat')
+  figure(ctx, cols4[2], y, he(report.farmsSigned), t('report.farmsSigned'), c.ink, undefined, false, 'home')
+  figure(ctx, cols4[3], y, he(report.farmsActive), t('report.farmsActive'), c.good, undefined, false, 'farm')
+
+  y += 90 * S
+  figure(ctx, cols4[0], y, he(report.volunteersActive), t('report.activeVolunteers'), c.ink, undefined, false, 'users')
+  figure(ctx, cols4[1], y, he(report.driversTotal), t('report.drivers'), c.ink, undefined, false, 'car')
+  figure(
+    ctx,
+    cols4[2],
+    y,
+    he(report.guardsCompletedWindow),
+    t('report.guardsDone'),
+    c.good,
+    t('report.inWindow', {
+      count: report.guardsCompletedWindow,
+      days: report.windowDays,
+    }),
+    false,
+    'shield',
+  )
+  figure(ctx, cols4[3], y, he(report.incidentsWindowTotal), t('report.events'), c.warn, undefined, false, 'alert')
+
+  y += 76 * S
+  line(ctx, y, c.line)
+
+  // --- les oubliées --------------------------------------------------------
+  y += 38 * S
+  ctx.textAlign = 'right'
+  ctx.fillStyle = c.ink
+  ctx.font = FONT(11, 700)
+  ctx.fillText(t('report.neglectedTitle'), right, y)
+
+  y += 26 * S
+  ctx.font = FONT(11)
+  ctx.fillStyle = c.danger
+  const neverText = `${t('report.neverGuarded')} ${he(report.farmsNeverGuarded)}`
+  ctx.fillText(neverText, right, y)
+  ctx.fillStyle = c.warn
+  ctx.fillText(
+    `${t('report.staleGuard', { days: report.neglectDays })} ${he(report.farmsStaleGuard)}`,
+    right - ctx.measureText(neverText).width - 24 * S,
+    y,
+  )
+
+  y += 44 * S
+  line(ctx, y, c.line)
+
+  // --- les événements ------------------------------------------------------
+  y += 38 * S
+  ctx.fillStyle = c.ink
+  ctx.font = FONT(11, 700)
+  ctx.fillText(t('report.eventsTitle', { days: report.windowDays }), right, y)
+
+  y += 30 * S
+  if (report.incidentsList.length === 0) {
+    ctx.font = FONT(11)
+    ctx.fillStyle = c.muted
+    ctx.fillText(t('report.eventsNone'), right, y)
+  } else {
+    for (const entry of report.incidentsList) {
+      const colour =
+        entry.severity === 'urgent'
+          ? c.danger
+          : entry.severity === 'suspicious'
+            ? c.warn
+            : c.muted
+      /* La pastille de gravité, puis la date et la ferme, puis le texte —
+         tronqué à la largeur de la page plutôt que débordant, parce qu'un
+         événement coupé au milieu est encore lisible et qu'une page qui
+         déborde ne l'est pas. */
+      ctx.fillStyle = colour
+      ctx.beginPath()
+      ctx.arc(right - 4 * S, y - 4 * S, 4 * S, 0, Math.PI * 2)
+      ctx.fill()
+
+      ctx.font = FONT(10, 600)
+      ctx.fillStyle = c.ink
+      const head = `${new Date(entry.at).toLocaleDateString('he-IL', {
+        day: '2-digit',
+        month: '2-digit',
+      })}  ${entry.farm}`
+      ctx.fillText(head, right - 16 * S, y)
+
+      ctx.font = FONT(10)
+      ctx.fillStyle = c.muted
+      const used = ctx.measureText(head).width + 30 * S
+      ctx.fillText(clip(ctx, entry.text, width - used), right - used, y)
+      y += 24 * S
+    }
+    if (report.incidentsWindowTotal > report.incidentsList.length) {
+      ctx.font = FONT(10)
+      ctx.fillStyle = c.muted
+      ctx.fillText(
+        t('report.eventsMore', {
+          count: report.incidentsWindowTotal - report.incidentsList.length,
+        }),
+        right,
+        y + 6 * S,
+      )
+    }
+  }
+
+  // --- pied ----------------------------------------------------------------
+  const footY = PAGE.height - M
+  line(ctx, footY - 18 * S, c.line)
+  ctx.textAlign = 'right'
+  ctx.font = FONT(8)
+  ctx.fillStyle = c.muted
+  ctx.fillText(t('app.verseRef'), right, footY)
+  ctx.fillText(t('report.pageOf', { n: 2, total: 2 }), right - 120 * S, footY)
+  ctx.textAlign = 'left'
+  ctx.fillText(
+    t('report.generatedAt', {
+      at: new Date(report.generatedAt).toLocaleString('he-IL'),
+    }),
+    M,
+    footY,
+  )
+
+  return canvas
+}
+
+/** Un texte réduit à la largeur donnée, avec une ellipse quand il dépasse. */
+function clip(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (ctx.measureText(text).width <= maxWidth) return text
+  let cut = text
+  while (cut.length > 1 && ctx.measureText(`${cut}…`).width > maxWidth) {
+    cut = cut.slice(0, -1)
+  }
+  return `${cut}…`
 }

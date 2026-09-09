@@ -17,6 +17,7 @@ import {
 import { DataBanner } from './components/DataBanner'
 import { NetworkStatus } from './components/NetworkStatus'
 import { useTruncationTitles } from './hooks/useTruncationTitles'
+import { useReminderScheduler } from './hooks/useReminders'
 import { useAuth } from './hooks/useAuth'
 import { useCoreValue } from './hooks/useCore'
 import { EMERGENCY_ROUTE } from './components/EmergencyButton'
@@ -155,6 +156,8 @@ export default function App() {
   // AE1.5 · AE2 — voir `useHashDoor` : la porte doit se relire quand l'URL
   // change, y compris quand aucun routeur n'est monté pour l'entendre.
   useHashDoor()
+  // AF4.2 — les alarmes des rendez-vous, posées UNE fois pour toute l'app.
+  useReminderScheduler()
 
   if (auth.status === 'loading') return <AuthSplash />
   if (auth.status === 'signed-out' && !passesTheDoor()) return <LoginScreen />

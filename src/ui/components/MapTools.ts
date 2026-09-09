@@ -1,6 +1,8 @@
 import maplibregl from 'maplibre-gl'
 import type { IControl, Map as MapLibreMap } from 'maplibre-gl'
 
+import { locate, permissionStatus, watch } from '../geolocate'
+import type { Fix } from '../geolocate'
 import type { BasemapBase } from './basemap'
 
 /**
@@ -115,7 +117,8 @@ export class MapTools implements IControl {
   private base: BasemapBase
   private locateState: LocateState = 'idle'
   private meMarker: maplibregl.Marker | null = null
-  private watchId: number | null = null
+  /** AF2.3 — l'arrêt du suivi, rendu par `geolocate.watch`. */
+  private stopWatch: (() => void) | null = null
 
   private options: MapToolsOptions
   private readonly onConnectivity = (): void => this.applyConnectivity()
@@ -407,39 +410,41 @@ export class MapTools implements IControl {
     this.locateState = 'busy'
     this.paint()
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
+    /**
+     * ★★ AF2.3 (2026-09-09) — PAR LA PORTE UNIQUE, ET LE DERNIER POINT CONNU
+     *    EST DESSINÉ AVANT MÊME QU'ON DEMANDE.
+     *
+     * `ui/geolocate.ts` sert de mémoire à toute l'app : si un autre écran a
+     * relevé la position dans les deux dernières minutes, il n'y a aucune
+     * invite et aucun délai — le point apparaît. Et quand l'état de permission
+     * est déjà `denied`, on ne DEMANDE PAS : une invite qui ne peut
+     * qu'échouer est une invite qui apprend à l'utilisateur à refuser.
+     */
+    void (async () => {
+      const status = await permissionStatus()
+      const fix = await locate()
+      if (fix) {
         this.locateState = 'on'
-        this.showPosition(position, true)
+        this.drawFix(fix, true)
         this.startWatching()
-        this.paint()
-      },
-      (error) => {
-        // 1 is PERMISSION_DENIED. The two cases have different remedies, so
-        // they get different words rather than one "location unavailable".
-        this.locateState = error.code === 1 ? 'denied' : 'failed'
-        this.paint()
-      },
-      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 30_000 },
-    )
+      } else {
+        // Les deux cas ont des remèdes différents, donc des mots différents
+        // plutôt qu'un seul « position indisponible ».
+        this.locateState = status === 'denied' ? 'denied' : 'failed'
+      }
+      this.paint()
+    })()
   }
 
   private startWatching(): void {
-    if (this.watchId !== null) return
-    this.watchId = navigator.geolocation.watchPosition(
-      (position) => this.showPosition(position, false),
-      () => {
-        /* A lost fix while tracking is not worth a state change; the dot
-           simply stops moving until the next one arrives. */
-      },
-      { enableHighAccuracy: true, maximumAge: 10_000 },
-    )
+    if (this.stopWatch !== null) return
+    this.stopWatch = watch((fix) => this.drawFix(fix, false))
   }
 
   private stopWatching(): void {
-    if (this.watchId === null) return
-    navigator.geolocation.clearWatch(this.watchId)
-    this.watchId = null
+    if (this.stopWatch === null) return
+    this.stopWatch()
+    this.stopWatch = null
   }
 
   /**
@@ -450,13 +455,10 @@ export class MapTools implements IControl {
    *   siblings of the canvas and survive it untouched, which is the same
    *   reason every programme marker is one.
    */
-  private showPosition(position: GeolocationPosition, recentre: boolean): void {
+  private drawFix(fix: Fix, recentre: boolean): void {
     const map = this.map
     if (!map) return
-    const point: [number, number] = [
-      position.coords.longitude,
-      position.coords.latitude,
-    ]
+    const point: [number, number] = [fix.position.lng, fix.position.lat]
 
     if (!this.meMarker) {
       const el = document.createElement('div')

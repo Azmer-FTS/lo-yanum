@@ -431,6 +431,47 @@ export function AgendaScreen() {
     }
   }
 
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ★★ AF4.1 (2026-09-09) — LE MÊME DÉPLACEMENT, MAIS AVEC L'HEURE.
+   * ═══════════════════════════════════════════════════════════════════════════
+   *
+   * `dropOnDay` ci-dessus change la DATE et garde l'heure ; c'est ce que les
+   * cases du mois savent dire. Sur la grille, la hauteur EST l'heure, donc le
+   * geste porte les deux — et c'est ce que le PO demandait : « déplacer un
+   * rendez-vous par glisser-déposer sur la grille ».
+   *
+   * ⚠️ LA DURÉE EST CONSERVÉE, JAMAIS RECALCULÉE. Une visite est un point dans
+   *    le temps ; une réunion a un début et une fin, et faire glisser son
+   *    début sans déplacer sa fin transformerait une heure de rendez-vous en
+   *    trois. Le delta est repris tel quel.
+   *
+   * ⚠️ ET UNE GARDE NE SE DÉPLACE PAS, comme dans le mois et pour la même
+   *    raison (G6.4) : c'est une nuit dotée de volontaires et d'un conducteur,
+   *    pas un bloc qu'on fait glisser. `canMove` le dit à la grille, qui
+   *    n'arme même pas le geste — plutôt que de le laisser s'armer et d'en
+   *    ignorer le résultat, ce qui donnerait un bloc qui bouge sous le doigt
+   *    et revient à sa place.
+   */
+  const moveOnGrid = (event: AgendaEvent, day: Date, startMinute: number) => {
+    const at = atTimeOn(day, Math.floor(startMinute / 60), startMinute % 60)
+    if (event.kind === 'visit') {
+      const visit = getFarmVisit(event.id)
+      if (visit) updateFarmVisit(event.id, { ...visit, at })
+      return
+    }
+    if (event.kind === 'meeting') {
+      const meeting = getGeneralMeeting(event.id)
+      if (!meeting) return
+      const delta =
+        new Date(meeting.endAt).getTime() - new Date(meeting.at).getTime()
+      updateGeneralMeeting(event.id, {
+        at,
+        endAt: new Date(new Date(at).getTime() + delta).toISOString(),
+      })
+    }
+  }
+
   const periodLabel =
     view === 'day'
       ? formatDate(days[0].toISOString(), locale)
@@ -714,6 +755,8 @@ export function AgendaScreen() {
                 onFocusDay={focusDay}
                 focusedDay={focusedDay}
                 onAddOn={(day, hour) => setOpenSlot(`${localDayKey(day)}-${hour}`)}
+                onMove={moveOnGrid}
+                canMove={(event) => event.kind !== 'mission'}
               />
             )}
 

@@ -959,7 +959,16 @@ const farmVisitMapping: Mapping<FarmVisit> = {
   toRows: (v) => [
     {
       table: 'farm_visits',
-      rows: [{ id: v.id, entity_id: v.farmId, at: v.at, note: v.note, done: v.done }],
+      rows: [
+        {
+          id: v.id,
+          entity_id: v.farmId,
+          at: v.at,
+          note: v.note,
+          done: v.done,
+          remind_minutes: v.remindMinutes ?? null,
+        },
+      ],
     },
   ],
   fromRows: (p): FarmVisit => ({
@@ -968,6 +977,7 @@ const farmVisitMapping: Mapping<FarmVisit> = {
     at: ts(p.at),
     note: str(p.note),
     done: bool(p.done),
+    remindMinutes: typeof p.remind_minutes === 'number' ? p.remind_minutes : undefined,
   }),
 }
 
@@ -986,6 +996,12 @@ const generalMeetingMapping: Mapping<GeneralMeeting> = {
           location: m.location,
           person: m.person,
           note: m.note,
+          /* AF3.1 · AF4.2 — le point collé et l'alerte. `?? null` fait de
+             « effacé » une valeur que l'aller-retour porte, comme pour les
+             champs de prospection. */
+          lat: m.position?.lat ?? null,
+          lng: m.position?.lng ?? null,
+          remind_minutes: m.remindMinutes ?? null,
         },
       ],
     },
@@ -998,6 +1014,15 @@ const generalMeetingMapping: Mapping<GeneralMeeting> = {
     location: str(p.location),
     person: str(p.person),
     note: str(p.note),
+    /* ⚠️ `undefined` ET NON `null` QUAND LA COLONNE EST VIDE, exactement comme
+       `guardedDunamsManual` : `bun run mapping` exige que l'aller-retour soit
+       une IDENTITÉ, et une fiche à qui l'on n'a jamais posé la question porte
+       `undefined`. Les deux se lisent pareil en aval (`?? null`). */
+    position:
+      typeof p.lat === 'number' && typeof p.lng === 'number'
+        ? { lat: p.lat, lng: p.lng }
+        : undefined,
+    remindMinutes: typeof p.remind_minutes === 'number' ? p.remind_minutes : undefined,
   }),
 }
 

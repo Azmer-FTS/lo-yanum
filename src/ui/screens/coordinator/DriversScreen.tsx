@@ -11,6 +11,7 @@ import {
   telHref,
   mailtoHref,
   whatsappHref,
+  looseMatch,
 } from '@core/index'
 import type { Driver, RegionId } from '@core/index'
 
@@ -87,12 +88,12 @@ export function DriversScreen() {
       if (sevenPlus && d.seats < 7) return false
       if (freeTonight && booked.has(d.id)) return false
       if (!q) return true
-      return (
-        d.name.toLowerCase().includes(q) ||
-        d.locality.toLowerCase().includes(q) ||
-        d.vehicle.toLowerCase().includes(q) ||
-        d.phone.replace(/\D/g, '').includes(q.replace(/\D/g, '') || ' ')
-      )
+      /* ★ AF2.2 — voir `FarmsListScreen`. Le numéro reste une comparaison de
+         chiffres : une distance d'édition sur un téléphone rendrait des
+         voisins qui n'ont rien à voir. */
+      const digits = q.replace(/\D/g, '')
+      if (digits !== '' && d.phone.replace(/\D/g, '').includes(digits)) return true
+      return looseMatch(q, [d.name, d.locality, d.vehicle])
     })
   }, [drivers, query, sevenPlus, freeTonight, bookedTonight])
 

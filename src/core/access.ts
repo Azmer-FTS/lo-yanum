@@ -633,9 +633,21 @@ export function getAgendaEvents(from: Date, to: Date): AgendaEvent[] {
        * מיקום חסר, which is the truth, rather than as a pin on the nearest
        * town, which would not be.
        */
-      position: meeting.location.trim() === ''
-        ? null
-        : positionOfLocality(meeting.location),
+      /**
+       * ★★ AF3.1 (2026-09-09) — LE POINT COLLÉ PASSE DEVANT LE GAZETTEER, ET
+       *    L'ORDRE EST LE POINT.
+       *
+       * « Le PO reçoit des localisations par WhatsApp de fermes qui ne sont
+       * pas encore dans la base. » Un point collé depuis Waze désigne une
+       * parcelle au bout d'un chemin ; le gazetteer, lui, ne connaît que des
+       * centres de יישוב. Résoudre le texte d'abord donnerait au rendez-vous
+       * le centre du village voisin ALORS QUE la coordonnée exacte est là,
+       * dans la fiche — c'est-à-dire perdrait délibérément la seule
+       * information précise de l'entrée.
+       */
+      position:
+        meeting.position ??
+        (meeting.location.trim() === '' ? null : positionOfLocality(meeting.location)),
     })
   }
 

@@ -13,6 +13,8 @@ import {
   deleteVolunteer,
   reactivateVolunteer,
   regionOfLocality,
+  looseMatch,
+  normalizeLocality,
 } from '@core/index'
 import type { PhoneType, RegionId, Volunteer, VolunteerStatus } from '@core/index'
 
@@ -57,13 +59,22 @@ interface SortState {
 /**
  * Fuzzy-ish subsequence match: "ארכה" finds "אריאל כהן".
  * Cheap enough to run over 300 rows on every keystroke without debouncing.
+ *
+ * ★ AF2.2 (2026-09-09) — LES DEUX CÔTÉS SONT NORMALISÉS. `ק״ש` et `ק"ש` sont
+ *   deux chaînes pour `includes` et un seul endroit pour un humain ; c'est le
+ *   même défaut que dans les deux autres listes, et le même remède
+ *   (`normalizeLocality`, N4). La sous-séquence est CONSERVÉE au-dessus de la
+ *   tolérance aux fautes : elle rend les initiales, ce qu'aucune distance
+ *   d'édition ne fait.
  */
 function matches(haystack: string, needle: string): boolean {
-  if (haystack.includes(needle)) return true
+  const h = normalizeLocality(haystack)
+  const n = normalizeLocality(needle)
+  if (h.includes(n)) return true
   let i = 0
-  for (const ch of haystack) {
-    if (ch === needle[i]) i++
-    if (i === needle.length) return true
+  for (const ch of h) {
+    if (ch === n[i]) i++
+    if (i === n.length) return true
   }
   return false
 }
@@ -133,11 +144,15 @@ export function VolunteersScreen() {
       if (yeshiva !== null && v.yeshiva !== yeshiva) return false
       if (region !== null && regionOfLocality(v.locality) !== region) return false
       if (!q) return true
+      const digits = q.replace(/\D/g, '')
+      if (digits !== '' && v.phone.replace(/\D/g, '').includes(digits)) return true
       return (
-        matches(v.name.toLowerCase(), q) ||
-        matches(v.yeshiva.toLowerCase(), q) ||
-        matches(v.locality.toLowerCase(), q) ||
-        v.phone.replace(/\D/g, '').includes(q.replace(/\D/g, '') || ' ')
+        matches(v.name, q) ||
+        matches(v.yeshiva, q) ||
+        matches(v.locality, q) ||
+        /* ★ AF2.2 — et une faute de frappe en dernier recours, avec le même
+           budget que l'autocomplétion (`core/lookup.ts`). */
+        looseMatch(q, [v.name, v.yeshiva, v.locality])
       )
     })
   }, [volunteers, query, status, phoneType, licenseCar, neverGuarded, yeshiva, region])

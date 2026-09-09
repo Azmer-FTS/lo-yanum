@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 
-import { normalizeLocality } from '@core/index'
+import { rankOptions } from '@core/index'
 
 import { usePublishedHeight } from '../hooks/useShellMetrics'
 import { Icon } from './Icon'
@@ -124,20 +124,22 @@ export function AutocompleteField({
   const [highlight, setHighlight] = useState(0)
 
   const query = value.trim()
-  // N4 (2026-09-02) — tolerant of how Hebrew gets typed (quotes, hyphens,
-  // niqqud, spacing), and what the person is typing the START of comes first.
-  const q = normalizeLocality(query)
-  const matches = (
-    q === ''
-      ? options
-      : [
-          ...options.filter((o) => normalizeLocality(o).startsWith(q)),
-          ...options.filter((o) => {
-            const n = normalizeLocality(o)
-            return !n.startsWith(q) && n.includes(q)
-          }),
-        ]
-  ).slice(0, 8)
+  /**
+   * N4 (2026-09-02) — tolérant de la façon dont l'hébreu se tape (guillemets,
+   * traits d'union, niqqud, espaces), et ce dont on tape le DÉBUT vient en tête.
+   *
+   * ★★ AF2.2 (2026-09-09) — ET D'UNE FAUTE DE FRAPPE, MAINTENANT. Le rang
+   *    « approchant » de `rankOptions` est le troisième et le dernier : une
+   *    lettre à côté ne rendait rien, ce qui faisait ressembler un gazetteer
+   *    national de 1 174 entrées aux dix qu'il avait avant N4 — et c'est
+   *    exactement ce que le PO a rapporté (« l'autocomplétion de lieu ne
+   *    connaît qu'une dizaine d'endroits »). Le seuil dépend de la longueur de
+   *    la requête ; voir `core/lookup.ts` pour pourquoi il le doit.
+   */
+  const matches = useMemo(
+    () => rankOptions(query, options, (o) => o, 8).map((r) => r.item),
+    [query, options],
+  )
   // Exactly the typed value is not a suggestion, it is the state we are in.
   const suggestions = matches.filter((m) => m !== query)
   const showList = open && suggestions.length > 0
@@ -556,11 +558,32 @@ export function FormActions({
     // `bottom-0` the submit button sat underneath it at every viewport.
     <div
       ref={footRef}
+      data-testid="form-actions"
       // U4.4 — `pl-[4.5rem]` is PHYSICAL: the floating mode pill sits at the
       // viewport's physical bottom-left, and in an RTL row `justify-end` puts
       // the submit button exactly there on every stacked layout. The bar
       // keeps its buttons clear of the pill at every width.
-      className="sticky-foot bottom-[var(--shell-bottom)] -mx-4 mt-2 flex justify-end gap-2 border-t border-edge-subtle px-4 py-3 pl-[4.5rem] sm:-mx-6 sm:px-6 sm:pl-[4.5rem]"
+      //
+      // ★★ AF2.1 (2026-09-09) — LA MARGE NÉGATIVE EST `--content-pad`, ET PLUS
+      //    UNE SUPPOSITION SUR LA COQUILLE QUI L'ENTOURE.
+      //
+      // Elle était `-mx-4 sm:-mx-6` : une transcription de `px-4 sm:px-6`, qui
+      // est le rembourrage du GABARIT DE PAGE (`layouts.tsx`). La colonne de
+      // `MapSplit` est à `px-4` puis `xl:px-5` — jamais 24 px. Sur un iPad en
+      // portrait, la barre débordait donc de huit pixels de chaque côté de la
+      // colonne, mesuré à `[-8..968]` dans une fenêtre de 1 032, et faisait un
+      // document plus large que l'écran : la moitié du « défile de gauche à
+      // droite » que le PO a signalé.
+      //
+      // ★ CHAQUE COQUILLE PUBLIE DÉJÀ SON PROPRE REMBOURRAGE — c'est
+      //   `--content-pad`, écrit pour cette raison exacte (`index.css` : « il
+      //   est publié par la coquille QUI POSSÈDE le rembourrage »). La barre le
+      //   lit au lieu de le deviner, et elle est juste dans les quatre
+      //   coquilles sans en connaître aucune.
+      //
+      // ⚠️ `mx-[calc(… * -1)]` ET NON `-mx-[…]` : Tailwind rend la seconde
+      //    forme en `margin-left: -var(--content-pad)`, qui n'est pas du CSS.
+      className="sticky-foot bottom-[var(--shell-bottom)] mx-[calc(var(--content-pad,1rem)*-1)] mt-2 flex justify-end gap-2 border-t border-edge-subtle px-[var(--content-pad,1rem)] py-3 pl-[4.5rem]"
     >
       <button type="button" className="btn-secondary" onClick={onCancel}>
         {cancelLabel}

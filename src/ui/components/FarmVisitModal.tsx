@@ -10,10 +10,11 @@ import {
   updateFarmVisit,
 } from '@core/index'
 
-import { SelectField, TextArea } from './fields'
+import { Field, SelectField, TextArea } from './fields'
 import { useConfirmDelete } from './ConfirmDelete'
 import { Icon } from './Icon'
 import { Modal } from './primitives'
+import { REMINDER_CHOICES, downloadCalendarEvent } from '../reminders'
 import { useCoreValue } from '../hooks/useCore'
 
 /**
@@ -70,12 +71,20 @@ export function FarmVisitModal({
   )
   const [note, setNote] = useState(existing?.note ?? '')
   const [done, setDone] = useState(existing?.done ?? false)
+  /* ★ AF4.2 — l'alerte, comme sur la réunion générale. `-1` = aucune. */
+  const [remind, setRemind] = useState<number>(existing?.remindMinutes ?? -1)
 
   const valid = farmId !== '' && at !== ''
 
   const submit = () => {
     if (!valid) return
-    const draft = { farmId, at: fromLocalInput(at), note: note.trim(), done }
+    const draft = {
+      farmId,
+      at: fromLocalInput(at),
+      note: note.trim(),
+      done,
+      remindMinutes: remind < 0 ? null : remind,
+    }
     if (existing) updateFarmVisit(existing.id, draft)
     else createFarmVisit(draft)
     onClose()
@@ -115,6 +124,48 @@ export function FarmVisitModal({
             onChange={(e) => setAt(e.target.value)}
           />
         </label>
+
+        {/* ★★ AF4.2 — LA MÊME ALERTE QUE SUR UNE RÉUNION, ET LA MÊME SORTIE
+            VERS L'AGENDA DE L'APPAREIL. Deux formulaires de rendez-vous qui
+            proposeraient deux rappels différents seraient deux choses à
+            réapprendre ; `ui/reminders.ts` dit ce que chacune des deux voies
+            déclenche vraiment, et ce qu'une PWA ne peut pas faire. */}
+        <div className="form-grid">
+          <SelectField<string>
+            label={t('meeting.remindField')}
+            value={String(remind)}
+            onChange={(v) => setRemind(Number(v))}
+            options={REMINDER_CHOICES.map((m) => ({
+              value: String(m),
+              label: m < 0 ? t('meeting.remindNone') : t(`reminder.m${m}`),
+            }))}
+          />
+          <Field label=" ">
+            <button
+              type="button"
+              className="btn-secondary"
+              data-testid="visit-calendar"
+              onClick={() => {
+                const startIso = fromLocalInput(at)
+                downloadCalendarEvent({
+                  uid: existing?.id ?? `visit-${Date.parse(startIso)}`,
+                  title: `${t('agenda.planVisit')} — ${
+                    farms.find((f) => f.id === farmId)?.name ?? ''
+                  }`,
+                  at: startIso,
+                  endAt: new Date(Date.parse(startIso) + 3_600_000).toISOString(),
+                  location: farms.find((f) => f.id === farmId)?.locality ?? '',
+                  note: note.trim(),
+                  position: farms.find((f) => f.id === farmId)?.position ?? null,
+                  remindMinutes: remind < 0 ? null : remind,
+                })
+              }}
+            >
+              <Icon name="calendar" size={15} />
+              {t('meeting.remindCalendar')}
+            </button>
+          </Field>
+        </div>
 
         <TextArea
           label={t('common.notes')}

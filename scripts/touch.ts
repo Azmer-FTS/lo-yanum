@@ -202,6 +202,20 @@ async function penTapText(page: Page, cdp: CDPSession, text: string): Promise<bo
   return true
 }
 
+/** `penTapText`, mais sur un `data-testid` — un libellé traduit n'est pas une cible. */
+async function penTapTestId(page: Page, cdp: CDPSession, id: string): Promise<boolean> {
+  const rect = await page.evaluate((testId) => {
+    const el = document.querySelector(`[data-testid="${testId}"]`) as HTMLElement | null
+    if (!el || el.offsetParent === null) return null
+    el.scrollIntoView({ block: 'center' })
+    const r = el.getBoundingClientRect()
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+  }, id)
+  if (!rect) return false
+  await penTap(cdp, rect.x, rect.y)
+  return true
+}
+
 const centreOf = async (locator: Locator) => {
   const box = await locator.boundingBox()
   if (!box) throw new Error('element has no box')
@@ -879,11 +893,31 @@ if (padCount > 0) {
       `${inked} inked pixels`,
     )
 
-    // And the form knows it is signed.
+    /**
+     * ★★ AF1.2 (2026-09-09) — ET LA FICHE NE LE SAIT QU'APRÈS L'APPROBATION,
+     *    CE QUI EST LE CHANGEMENT ET NON UNE RÉGRESSION.
+     *
+     * Le pad était déplié sous la ligne de l'accord et l'encre partait dans
+     * l'état du formulaire à chaque trait. Il est maintenant DANS le lecteur
+     * du document (« on ne fait pas signer un document invisible »), et c'est
+     * « אישור וחתימה » qui remet l'encre à la fiche — un acte délibéré, devant
+     * l'agriculteur, une fois qu'il a lu ce qu'il signe.
+     *
+     * La porte suit ce chemin plutôt que l'ancien : elle APPROUVE au stylet,
+     * puis demande à la fiche si elle est chargée.
+     */
+    check(
+      '★ « אישור וחתימה » est atteignable au STYLUS',
+      await penTapTestId(page, cdp, 'agreement-sign-confirm'),
+    )
+    await page.waitForTimeout(1200)
     check(
       '★ and the agreement records that it is signed',
       (await bodyText(page)).includes('חתום'),
     )
+    /* Et on rouvre le lecteur pour la suite : « ניקוי » est dans le pad. */
+    await penTapTestId(page, cdp, 'signature-open')
+    await page.waitForTimeout(2500)
 
     // Clearing gets the blank pad back, by stylus.
     check('"ניקוי" is reachable by STYLUS', await penTapText(page, cdp, 'ניקוי'))

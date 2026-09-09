@@ -13,6 +13,8 @@ import type { EmergencyContext, Farm, LatLng, Mission } from '@core/index'
 import { useCoreValue } from './useCore'
 import { useGuardPass } from '../guardPass'
 
+import { lastFix, watch } from '../geolocate'
+
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * ★★ AE2 — QUELLE FERME, POUR CHACUN DES QUATRE RÔLES.
@@ -125,26 +127,29 @@ export function useEmergencyContext(): EmergencyContext & {
 export function useLastFix(): { current: LatLng | null } {
   const ref = useRef<LatLng | null>(null)
   useEffect(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) return
-    let id: number | null = null
+    /**
+     * ★★ AF2.3 (2026-09-09) — LE SUIVI PASSE PAR LA PORTE UNIQUE, ET IL PART
+     *    DÉJÀ ARMÉ.
+     *
+     * `lastFix()` est lu AVANT d'ouvrir le suivi : si un autre écran a relevé
+     * la position — la carte, le formulaire d'incident, les réglages — l'écran
+     * d'urgence part avec un point réel au lieu du repli de la ferme, et il
+     * l'a à l'instant zéro plutôt qu'après le premier satellite. C'est trente
+     * secondes de précision gagnées sur l'écran où elles comptent le plus.
+     *
+     * Et chaque relevé de CE suivi alimente à son tour la mémoire commune :
+     * un volontaire qui garde l'écran d'urgence ouvert améliore le point de
+     * départ de tous les autres écrans.
+     */
+    const known = lastFix()
+    if (known) ref.current = known.position
     try {
-      id = navigator.geolocation.watchPosition(
-        (p) => {
-          ref.current = { lat: p.coords.latitude, lng: p.coords.longitude }
-        },
-        () => {
-          /* Refusé, indisponible, ou hors délai. Le repli est la ferme, et il
-             est déjà en place — il n'y a rien à faire ici, surtout pas
-             réessayer en boucle sur un téléphone dont la batterie est le
-             consommable le plus critique de la nuit. */
-        },
-        { enableHighAccuracy: true, maximumAge: 30_000, timeout: 20_000 },
-      )
+      return watch((fix) => {
+        ref.current = fix.position
+      }, { maxAgeMs: 30_000 })
     } catch {
       // Contexte non sécurisé, ou API absente.
-    }
-    return () => {
-      if (id !== null) navigator.geolocation.clearWatch(id)
+      return undefined
     }
   }, [])
   return ref

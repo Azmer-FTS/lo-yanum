@@ -20,6 +20,7 @@ import {
   getVisibleThreatVectors,
   getVisibleThreatZones,
   totalHeads,
+  looseMatch,
 } from '@core/index'
 import type { Farm, FarmCoverage, FarmStatus, FarmType, RegionId } from '@core/index'
 
@@ -232,12 +233,16 @@ export function FarmsListScreen() {
         if (state !== 'never' && state !== 'stale') return false
       }
       if (!q) return true
-      return (
-        farm.name.toLowerCase().includes(q) ||
-        farm.locality.toLowerCase().includes(q) ||
-        farm.region.toLowerCase().includes(q) ||
-        farm.contacts.some((c) => c.name.toLowerCase().includes(q))
-      )
+      /* ★ AF2.2 — même tolérance que l'autocomplétion : ponctuation hébraïque
+         réconciliée, et une faute de frappe rattrapée sur un nom long. */
+      return looseMatch(q, [
+        farm.name,
+        farm.farmName ?? '',
+        farm.locality,
+        farm.region,
+        farm.farmerName ?? '',
+        ...farm.contacts.map((c) => c.name),
+      ])
     })
   }, [
     farms,

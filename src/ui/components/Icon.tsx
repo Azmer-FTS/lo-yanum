@@ -75,6 +75,7 @@ export type IconName =
   | 'image'
   | 'user'
   | 'calendar'
+  | 'bell'
   | 'flag'
   | 'send'
   | 'logout'
@@ -495,6 +496,12 @@ const PATHS: Record<IconName, ReactNode> = {
       <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
       <path d="M3.5 9.5h17M8 3.5V6.5M16 3.5V6.5" />
       <path d="M7.5 13h.01M12 13h.01M16.5 13h.01M7.5 16.5h.01M12 16.5h.01" />
+    </>
+  ),
+  bell: (
+    <>
+      <path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 3 .8 4.6 1.6 5.6.4.5 0 1.2-.6 1.2H5.5c-.6 0-1-.7-.6-1.2C5.7 14.6 6.5 13 6.5 10Z" />
+      <path d="M10 19.5a2.2 2.2 0 0 0 4 0" />
     </>
   ),
   flag: (

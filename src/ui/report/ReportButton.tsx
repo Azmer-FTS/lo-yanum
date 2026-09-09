@@ -8,6 +8,8 @@ import { Modal, ScrollRow } from '../components/primitives'
 import { drawReport } from './draw'
 import { canvasesToPdfFile } from './pdf'
 import { writeReportRecipient } from './recipient'
+import { useCoverageSettings } from '../settings/coverage'
+import { useTarget } from '../settings/target'
 
 /**
  * PO POINT 7 — "דוח", AND THREE WAYS OUT OF IT.
@@ -62,10 +64,25 @@ export function ReportButton({
    */
   const [days, setDays] = useState(REPORT_WINDOW_DAYS)
 
+  /**
+   * ★★ AF5.3 (2026-09-09) — L'OBJECTIF ET LE SEUIL D'OUBLI VIENNENT DES
+   *    RÉGLAGES, ET C'EST L'APPELANT QUI LES PASSE.
+   *
+   * Les deux vivent dans `localStorage` (AB5a, AC4.5) et @core ne lit pas le
+   * navigateur — c'est l'invariant du dossier. Les passer ici est ce qui fait
+   * que « 3 % מהיעד » sur la page imprimée est le MÊME pourcentage que sur le
+   * tableau de bord, y compris quand le PO a changé son objectif ce matin.
+   */
+  const target = useTarget()
+  const coverage = useCoverageSettings()
+
   const build = async (windowDays = days) => {
     setBusy(true)
     try {
-      const report = buildProgrammeReport(windowDays)
+      const report = buildProgrammeReport(windowDays, {
+        targetWeighted: target.current.dunams,
+        neglectDays: coverage.neglectDays,
+      })
       const canvases = drawReport(report, t as (k: string, o?: Record<string, unknown>) => string)
       const stamp = new Date(report.generatedAt).toISOString().slice(0, 10)
       const made = await canvasesToPdfFile(
@@ -105,7 +122,10 @@ export function ReportButton({
   }
 
   const body = () => {
-    const r = buildProgrammeReport(days)
+    const r = buildProgrammeReport(days, {
+      targetWeighted: target.current.dunams,
+      neglectDays: coverage.neglectDays,
+    })
     return [
       `${t('dashboard.guardedDunams')}: ${r.guardedDunams.toLocaleString('he-IL')}`,
       r.guardedHeads === null
@@ -171,6 +191,21 @@ export function ReportButton({
           </object>
 
           <div className="mt-4 flex flex-wrap justify-end gap-2">
+            {/* ★★ AF5.1 (2026-09-09) — « LE PDF EST RÉELLEMENT ATTACHÉ À
+                L'ENVOI », ET C'EST CE BOUTON-CI QUI LE FAIT.
+ 
+                Le PO reçoit « un courriel avec cinq chiffres et cinq titres »
+                et pas le document. C'est exact, et la cause est une limite du
+                web plutôt qu'un oubli : `mailto:` NE PEUT PAS porter de pièce
+                jointe — aucun client de messagerie n'en accepte une depuis une
+                URL, et prétendre le contraire est précisément ce qui fait
+                partir un message vide en croyant le contraire.
+ 
+                La voie qui attache VRAIMENT est le partage natif : sur son
+                iPad, `navigator.share({ files })` remet le FICHIER à Mail ou à
+                WhatsApp, qui l'attachent. Il est donc premier, il est nommé
+                « שיתוף עם הקובץ » plutôt que « שיתוף », et le bouton mail
+                dit désormais ce qu'il fait vraiment. */}
             {canShare && (
               <button
                 type="button"
@@ -178,12 +213,16 @@ export function ReportButton({
                 data-testid="report-share"
                 onClick={() =>
                   void navigator
-                    .share({ files: [file], title: t('report.title') })
+                    .share({
+                      files: [file],
+                      title: t('report.title'),
+                      text: body(),
+                    })
                     .catch(() => undefined)
                 }
               >
-                <Icon name="external" size={16} />
-                {t('report.share')}
+                <Icon name="send" size={16} />
+                {t('report.shareFirst')}
               </button>
             )}
             <button
@@ -224,7 +263,7 @@ export function ReportButton({
             />
           </label>
           <p className="muted mt-2 text-end">
-            {to.trim() ? t('report.attachHint') : t('report.noRecipient')}
+            {to.trim() ? t('report.attachedHint') : t('report.noRecipient')}
           </p>
         </Modal>
       )}

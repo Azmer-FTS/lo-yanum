@@ -1,4 +1,7 @@
 import {
+  NEGLECT_DAYS_INITIAL,
+  coverageState,
+  farmGuardStats,
   getDriverStats,
   getDunamKpis,
   getFarmStatusCounts,
@@ -11,6 +14,7 @@ import {
   getVolunteerStats,
 } from './access'
 import { now } from './clock'
+import { WEIGHTED_DUNAM_TARGET, effectiveAreas } from './fields'
 import { dunamsByRegion } from './regions'
 import { entityKindOf, totalHeads } from './types'
 import type { FarmStatusCount, IncidentSeverity } from './types'
@@ -101,8 +105,72 @@ export interface ProgrammeReport {
   incidentsWindow: Record<IncidentSeverity, number>
   incidentsWindowTotal: number
 
+  /**
+   * ★★ AF5.4 (2026-09-09) — « UNE SECTION ÉVÉNEMENTS DANS LE DOCUMENT », ET
+   *    C'EST UNE LISTE, PAS TROIS NOMBRES.
+   *
+   * Les trois compteurs par gravité au-dessus disent COMBIEN ; ils ne disent
+   * pas ce qui s'est passé, et « 2 urgents » sur une page qu'un directeur
+   * transmet à un bailleur est une phrase qui appelle immédiatement un coup de
+   * téléphone. Les entrées sont les plus RÉCENTES d'abord et plafonnées à ce
+   * qui tient sur la page ; `incidentsWindowTotal` porte le reste, de sorte
+   * que la liste ne puisse jamais être lue comme exhaustive quand elle ne
+   * l'est pas.
+   */
+  incidentsList: Array<{
+    at: string
+    farm: string
+    severity: IncidentSeverity
+    text: string
+  }>
+
   // --- what is next -------------------------------------------------------
   visitsUpcoming: number
+
+  // -------------------------------------------------------------------------
+  // ★★ AF5.3 (2026-09-09) — « C'EST UN RÉCAPITULATIF DE TOUTE L'ACTIVITÉ, PAS
+  //    UN EXTRAIT. »
+  // -------------------------------------------------------------------------
+
+  /** Les deux états qui comptent pour l'association, nommés plutôt que déduits. */
+  farmsSigned: number
+  farmsActive: number
+
+  /**
+   * ★ « DOUNAMS DÉCLARÉS » N'EST PAS « DOUNAMS EN SHMIRA », ET LES CONFONDRE
+   *   DOUBLE LE CHIFFRE. Celui-ci est la surface de TOUT le fichier — signé,
+   *   en cours, jamais contacté — c'est-à-dire le potentiel du programme ;
+   *   `guardedDunams` est ce qui est effectivement sous garde. Les deux
+   *   figurent, et le rapport dit lequel est lequel.
+   */
+  declaredDunams: number
+  /** AA3.2 — la même surface sous garde, pondérée par type de terrain. */
+  weightedGuardedDunams: number
+  /** L'objectif en vigueur, et le pourcentage atteint. */
+  targetWeighted: number
+  targetPercent: number
+
+  /**
+   * ★ FERMES SANS GARDE RÉCENTE — DEUX NOMBRES ET NON UN, parce que les deux
+   *   situations n'appellent pas le même geste : « jamais » veut dire qu'une
+   *   ferme a signé et n'a rien reçu, « ancienne » qu'elle a été servie puis
+   *   oubliée. Le seuil utilisé est porté avec eux, sinon le chiffre ne veut
+   *   rien dire hors de l'appareil qui l'a produit.
+   */
+  neglectDays: number
+  farmsNeverGuarded: number
+  farmsStaleGuard: number
+}
+
+export interface ReportOptions {
+  /**
+   * L'objectif en dounams pondérés. Le PO le règle dans הגדרות (AB5a) et ce
+   * réglage vit dans le navigateur ; @core ne lit pas `localStorage`, donc
+   * l'appelant le passe. Absent = la constante de l'association.
+   */
+  targetWeighted?: number
+  /** Le seuil d'oubli d'AC4.5, même raison. Absent = la valeur initiale. */
+  neglectDays?: number
 }
 
 const isWithin = (iso: string, from: number): boolean => {
@@ -110,8 +178,12 @@ const isWithin = (iso: string, from: number): boolean => {
   return Number.isFinite(t) && t >= from
 }
 
+/** Combien d'événements le document liste. Voir `incidentsList`. */
+const INCIDENTS_ON_PAGE = 8
+
 export function buildProgrammeReport(
   windowDays: number = REPORT_WINDOW_DAYS,
+  options: ReportOptions = {},
 ): ProgrammeReport {
   const at = now()
   const from = at.getTime() - windowDays * 24 * 60 * 60 * 1000
@@ -163,6 +235,20 @@ export function buildProgrammeReport(
     (f) => (f.status === 'signed' || f.status === 'active') && totalHeads(f) !== null,
   )
 
+  /* AF5.3 — les fermes sans garde récente, avec le seuil qui les définit. */
+  const neglectDays = options.neglectDays ?? NEGLECT_DAYS_INITIAL
+  let farmsNeverGuarded = 0
+  let farmsStaleGuard = 0
+  let declaredDunams = 0
+  for (const farm of entities) {
+    declaredDunams += effectiveAreas(farm).total
+    const state = coverageState(farm, farmGuardStats(farm.id, at.getTime()), neglectDays)
+    if (state === 'never') farmsNeverGuarded++
+    else if (state === 'stale') farmsStaleGuard++
+  }
+
+  const targetWeighted = options.targetWeighted ?? WEIGHTED_DUNAM_TARGET
+
   return {
     generatedAt: at.toISOString(),
     windowDays,
@@ -200,10 +286,34 @@ export function buildProgrammeReport(
 
     incidentsWindow,
     incidentsWindowTotal: incidents.length,
+    incidentsList: [...incidents]
+      .sort(
+        (a, b) => new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime(),
+      )
+      .slice(0, INCIDENTS_ON_PAGE)
+      .map((i) => ({
+        at: i.reportedAt,
+        farm: entities.find((f) => f.id === i.farmId)?.name ?? '',
+        severity: i.severity,
+        text: i.description,
+      })),
 
     visitsUpcoming: getVisibleFarmVisits().filter(
       (v) => !v.done && new Date(v.at).getTime() >= at.getTime(),
     ).length,
+
+    farmsSigned: entities.filter((f) => f.status === 'signed').length,
+    farmsActive: entities.filter((f) => f.status === 'active').length,
+    declaredDunams,
+    weightedGuardedDunams: dunams.weightedSigned,
+    targetWeighted,
+    targetPercent:
+      targetWeighted > 0
+        ? Math.round((dunams.weightedSigned / targetWeighted) * 100)
+        : 0,
+    neglectDays,
+    farmsNeverGuarded,
+    farmsStaleGuard,
   }
 }
 

@@ -374,3 +374,73 @@ export const MISSIONS: Mission[] = [
     ...notYet(72, future(4).startAt),
   },
 ]
+
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AF5.2 (2026-09-09) — UNE ANNÉE DE NUITS DERRIÈRE, ET C'EST UN DÉFAUT DE
+ *    DONNÉES QUE LA PORTE A TROUVÉ, PAS UN EMBELLISSEMENT.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Le PO : « Les chiffres se recalculent sur la période choisie (7, 30, 90,
+ * 365 jours). Vérifie-le : le PO doute qu'ils bougent. »
+ *
+ * ⚠️ ILS SE RECALCULAIENT DÉJÀ, ET SON DOUTE ÉTAIT QUAND MÊME FONDÉ. Le jeu de
+ *    démonstration ne contenait qu'UNE garde terminée, il y a deux jours : sur
+ *    le jumeau, 7, 30, 90 et 365 jours affichaient donc tous « 1 », et il n'y
+ *    a aucun moyen de distinguer « la fenêtre ne marche pas » de « il n'y a
+ *    rien dedans » en regardant l'écran. La fonction était juste ; la preuve
+ *    était impossible à faire. `bun run afpass` échouait pour cette raison
+ *    exacte, et c'est la bonne façon de découvrir ça.
+ *
+ * ★ VINGT-QUATRE NUITS SUR TREIZE MOIS, DÉTERMINISTES. Une suite d'écarts
+ *   fixes plutôt qu'un générateur aléatoire : les captures ne doivent pas
+ *   dériver d'une session à l'autre (même règle que `mock/generate.ts`), et
+ *   « la garde d'il y a 45 jours » doit désigner la même chose demain.
+ *
+ * ★ ET ELLES SONT MINCES EXPRÈS : une ferme, un point d'ancrage, deux
+ *   volontaires, pas de conducteur, aucune présence. Ce sont des lignes
+ *   d'HISTORIQUE — ce qu'on leur demande est d'être comptées par période et de
+ *   nourrir « qui a été oublié » (AC4.5). Leur donner un équipage complet
+ *   ferait vingt-quatre nuits de détail que personne n'ouvrira jamais.
+ */
+const HISTORY_OFFSETS = [
+  9, 12, 16, 21, 26, 33, 41, 48, 55, 63, 72, 84,
+  96, 110, 127, 145, 168, 190, 214, 240, 268, 300, 330, 358,
+] as const
+
+/** Les fermes qui tournent dans l'historique, et pourquoi ces quatre-là. */
+const HISTORY_FARMS = ['farm-01', 'farm-02', 'farm-03', 'farm-04'] as const
+const HISTORY_ANCHORS = ['anchor-01', 'anchor-03', 'anchor-04', 'anchor-05'] as const
+const HISTORY_VOLUNTEERS = ['vol-001', 'vol-002', 'vol-003', 'vol-004', 'vol-005', 'vol-006']
+
+const HISTORY: Mission[] = HISTORY_OFFSETS.map((daysAgo, i) => {
+  const night = guardNight(-daysAgo)
+  return {
+    id: `mission-h${String(i + 1).padStart(2, '0')}`,
+    ...notCancelled(),
+    farmId: HISTORY_FARMS[i % HISTORY_FARMS.length],
+    anchorPointId: HISTORY_ANCHORS[i % HISTORY_ANCHORS.length],
+    additionalAnchorPointIds: [],
+    pickupPoint: null,
+    dropoffPoint: null,
+    returnPickupPoint: null,
+    returnDropoffPoint: null,
+    ...night,
+    requiredVolunteers: 2,
+    status: 'completed' as const,
+    assignments: [
+      who(HISTORY_VOLUNTEERS[(i * 2) % HISTORY_VOLUNTEERS.length], true),
+      who(HISTORY_VOLUNTEERS[(i * 2 + 1) % HISTORY_VOLUNTEERS.length], false),
+    ],
+    drivers: [],
+    arrivalConfirmedAt: night.startAt,
+    endConfirmedAt: night.endAt,
+    createdAt: new Date(new Date(night.startAt).getTime() - 72 * 3_600_000).toISOString(),
+    droppedOffAt: night.startAt,
+    pickedUpAt: night.endAt,
+    completedAt: night.endAt,
+  }
+})
+
+MISSIONS.push(...HISTORY)

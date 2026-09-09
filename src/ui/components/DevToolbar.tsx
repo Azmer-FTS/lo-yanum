@@ -97,6 +97,26 @@ export function DevToolbar() {
     const preset = presets.find((p) => p.id === id)
     if (!preset) return
     setSession(presetToSession(preset))
+    /**
+     * ★★ AF2.1 (2026-09-09) — LA FEUILLE SE REFERME EN CHOISISSANT, ET ELLE NE
+     *    LE FAISAIT PAS.
+     *
+     * Sur un téléphone ce sélecteur est une feuille pleine largeur au bas de
+     * l'écran ; choisir un rôle NAVIGUAIT sans la refermer, donc elle restait
+     * posée sur l'écran où elle venait de vous emmener. `bun run layout` l'a
+     * mesuré dès qu'il a pu la voir : la feuille recouvrait l'en-tête épinglé
+     * de la liste des fermes à 390 px.
+     *
+     * ⚠️ ET LA PORTE NE POUVAIT PAS LA VOIR AVANT AUJOURD'HUI, ce qui vaut
+     *    d'être écrit. Un candidat au recouvrement doit n'avoir AUCUN ancêtre
+     *    défilant (`boxPinned`) ; la colonne de `MapSplit` en était un à toutes
+     *    les largeurs, par la déclaration qu'AF2.1 vient de corriger. L'en-tête
+     *    de liste était donc exclu de la comparaison — pas parce qu'il ne
+     *    recouvrait rien, mais parce que la question ne lui était pas posée.
+     *    Même famille que le point aveugle d'A124 : une sonde qui exclut avant
+     *    de mesurer exclut aussi les vrais défauts.
+     */
+    setOpen(false)
     navigate(homeRouteFor(preset.role))
   }
 

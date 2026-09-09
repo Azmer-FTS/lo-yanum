@@ -148,6 +148,44 @@ interface BreakpointClasses {
  *
  * Declaring it on the SCROLLPORT rather than on the sticky element is what
  * makes it true for anything else that ever pins itself in this column.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AF2.1 (2026-09-09) — ET LES TROIS DÉCLARATIONS SONT DÉSORMAIS SOUS LE
+ *    MÊME PRÉFIXE QUE LA HAUTEUR QU'ELLES SUPPOSENT. C'EST LA CAUSE DES TROIS
+ *    DÉFAUTS QUE LE PO A SIGNALÉS SUR L'ÉCRAN DE MODIFICATION D'UNE FERME, ET
+ *    C'EST **UN SEUL** DÉFAUT.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * `overflow-y-auto` et `[--shell-top:0px]` étaient écrits SANS préfixe ; la
+ * hauteur qui les justifie — `lg:h-[calc(100dvh…)]` sur la coquille — est
+ * écrite AVEC. Sous le point de rupture la colonne était donc un conteneur de
+ * défilement de hauteur AUTO : il ne défile jamais, puisque sa hauteur est
+ * exactement celle de son contenu. Trois conséquences, et le PO les a toutes
+ * les trois vues sans pouvoir les relier :
+ *
+ *   1. ⚠️ « les boutons Enregistrer et Annuler sont épinglés mais remontent
+ *      avec le contenu ». `position: sticky` se résout contre le PLUS PROCHE
+ *      ancêtre défilant. C'était cette colonne — qui ne défile pas — pendant
+ *      que la PAGE, elle, défilait. La barre n'avait donc rien à quoi se
+ *      coller : mesuré à 3 627 px de haut sur un document de 3 934 dans une
+ *      fenêtre de 1 376, c'est-à-dire deux écrans sous le pli, à l'arrêt.
+ *
+ *   2. ⚠️ « la barre d'actions défile de gauche à droite ». Régler UN axe sur
+ *      autre chose que `visible` force l'autre à `auto` : la colonne était
+ *      donc aussi un conteneur de défilement HORIZONTAL, et tout ce qui y
+ *      dépassait d'un pixel se poussait latéralement. `overflow-x-clip` le
+ *      referme sans recréer un conteneur — ce que `hidden` ferait.
+ *
+ *   3. ⚠️ « ce comportement est soupçonné de casser le défilement de la page ».
+ *      Il l'était : deux conteneurs de défilement imbriqués, dont l'intérieur
+ *      capte la chaîne de défilement de tout ce qui est au-dessus de lui.
+ *      Le soupçon du PO était juste et c'était la même ligne.
+ *
+ * ⚠️ ET LE CORRECTIF NE TOUCHE PAS LE COMPORTEMENT AU-DESSUS DU POINT DE
+ *    RUPTURE, qui est celui pour lequel `panel` a été écrit (point 4b du PO :
+ *    « faire défiler la liste ne doit pas bouger la carte à côté »). En
+ *    dessous, il n'y a pas de carte à côté : la carte est empilée au-dessus,
+ *    et c'est la page qui doit défiler.
  */
 const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
   lg: {
@@ -156,7 +194,8 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
     shellPage:
       'flex flex-col lg:flex-row-reverse lg:items-start lg:pt-[var(--shell-top)] lg:rtl:flex-row',
     contentPanel:
-      'order-2 min-w-0 flex-1 overflow-y-auto [--shell-top:0px] px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 lg:order-none',
+      'order-2 min-w-0 flex-1 px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 ' +
+      'lg:order-none lg:overflow-y-auto lg:overflow-x-clip lg:[--shell-top:0px]',
     contentPage: 'order-2 min-w-0 flex-1 px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 lg:order-none',
     contentHidden: 'lg:w-full lg:px-5 lg:[--content-pad:1.25rem]',
     contentSplit: 'lg:w-[var(--content-w)] lg:flex-none lg:px-5 lg:[--content-pad:1.25rem]',
@@ -177,7 +216,8 @@ const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
     shellPage:
       'flex flex-col lg:pt-[var(--shell-top)] xl:flex-row-reverse xl:items-start xl:rtl:flex-row',
     contentPanel:
-      'order-2 min-w-0 flex-1 overflow-y-auto [--shell-top:0px] px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 xl:order-none',
+      'order-2 min-w-0 flex-1 px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 ' +
+      'xl:order-none xl:overflow-y-auto xl:overflow-x-clip xl:[--shell-top:0px]',
     contentPage: 'order-2 min-w-0 flex-1 px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 xl:order-none',
     contentHidden: 'xl:w-full xl:px-5 xl:[--content-pad:1.25rem]',
     contentSplit: 'xl:w-[var(--content-w)] xl:flex-none xl:px-5 xl:[--content-pad:1.25rem]',
