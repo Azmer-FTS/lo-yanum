@@ -585,6 +585,56 @@ export const FARMS: Farm[] = [
 ]
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AG5.2 (2026-09-09) — DES ÉCHÉANCES DE תוקף ההסכם, ET C'EST LA LEÇON D'AF5
+ *    APPLIQUÉE UNE SECONDE FOIS.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ AUCUNE FIXTURE NE PORTAIT DE DATE, DONC LA FILE « לחידוש » ÉTAIT VIDE SUR
+ *    LE JUMEAU — ET UNE FILE VIDE EST INDISCERNABLE D'UNE FILE QUI NE MARCHE
+ *    PAS. C'est mot pour mot le défaut d'AF5 : « le jeu de démonstration ne
+ *    contenait qu'UNE garde terminée, donc 7, 30, 90 et 365 jours affichaient
+ *    tous 1, et rien à l'écran ne distingue "la fenêtre ne marche pas" de "il
+ *    n'y a rien dedans" ». Le PO aurait ouvert l'écran חוות, n'aurait rien vu,
+ *    et aurait eu raison de conclure que la fonctionnalité n'existe pas.
+ *
+ * ★ LES DATES SONT RELATIVES À AUJOURD'HUI, ET C'EST CE QUI LES GARDE VRAIES.
+ *   Une date en dur — « 2026-11-01 » — est une fixture qui se périme : dans six
+ *   mois la file se remplirait toute seule d'échéances passées, et dans deux ans
+ *   elle serait vide de nouveau. `atTime(offsetDays, …)` est déjà la façon dont
+ *   toutes les nuits de ce jeu sont posées.
+ *
+ * ★ ET LES QUATRE ÉTATS COEXISTENT VOLONTAIREMENT, comme les trois états des
+ *   numéros d'urgence deux cents lignes plus haut : dans la fenêtre, sur son
+ *   BORD exact, hors fenêtre, et déjà expirée. Un jeu où tout serait « à
+ *   renouveler » ne montrerait jamais que la vignette compte, et un jeu où
+ *   rien ne le serait ne montrerait jamais qu'elle existe.
+ *
+ * ⚠️ LA FICHE EXPIRÉE EST CE QUI REND VISIBLE LA DISJONCTION D'AG5.4 : elle
+ *    porte l'avertissement d'AA2bis et n'est PAS dans la file « לחידוש ». Les
+ *    deux mécanismes se complètent, et sur le jumeau on peut le VOIR.
+ */
+{
+  const day = (offset: number): string => atTime(offset, 12).slice(0, 10)
+  const SCHEDULE: Array<[string, number]> = [
+    /* Dans la fenêtre de soixante jours : ces deux-là sont la file. */
+    ['farm-01', 24],
+    ['farm-03', 51],
+    /* Sur le bord EXACT : dedans à un jour près, dehors à un jour près. */
+    ['farm-04', 60],
+    ['farm-05', 61],
+    /* Loin : la fiche est en règle et ne dit rien. */
+    ['farm-02', 210],
+    /* Passée : AA2bis parle, la file se tait. */
+    ['farm-07', -14],
+  ]
+  for (const [id, offset] of SCHEDULE) {
+    const farm = FARMS.find((f) => f.id === id)
+    if (farm) farm.landAgreementUntil = day(offset)
+  }
+}
+
+/**
  * Roughly half the farms and contacts carry a picture, chosen deterministically
  * so the UI can be judged in its real mixed state — some rows with a photo,
  * some falling back to initials (C5.4).

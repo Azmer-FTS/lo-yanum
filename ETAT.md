@@ -1,7 +1,302 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AG — VOIR COMME · L'ESPACE AGRICULTEUR · LA SIGNATURE À DISTANCE.
+> 2026-09-09. LIRE EN PREMIER.**
+>
+> **Passe d'ACCÈS.** L'utilisateur type de tout ce qui suit est un agriculteur
+> de soixante ans, seul, un dimanche soir, sur le téléphone que sa fille lui a
+> configuré. Il n'a jamais créé de compte de sa vie. Chaque décision ci-dessous
+> a été jugée à cette aune : un défaut ici ne coûte pas du temps, il coûte un
+> formulaire qu'on abandonne et un contrat qui n'existe jamais.
+>
+> ## AG1 — « VOIR COMME » MARCHE SUR L'APPLICATION RÉELLE, CINQUIÈME DEMANDE
+>
+> ⚠️★★ **L'ARGUMENT QUI FERMAIT LA PORTE DEPUIS Y13 ÉTAIT FAUX POUR CETTE
+> APPLICATION, ET C'EST LE RÉSULTAT LE PLUS UTILE DE LA PASSE.** Le texte disait :
+> « avec Supabase le rôle est une revendication du jeton et chaque lecture est
+> filtrée côté serveur, donc échanger la session côté client montrerait un écran
+> que le serveur ne servirait jamais ». La première moitié est exacte. La seconde
+> est le contraire de la conclusion qu'elle appelle.
+>
+> **Les lectures ne partent pas une par une.** `data/store.ts` hydrate le magasin
+> **UNE fois**, sous l'identité du coordinateur, en 25 selects ; les 52 accesseurs
+> d'`access.ts` lisent ensuite CETTE MÉMOIRE — synchrones, jamais des promesses,
+> et c'est la contrainte fondatrice écrite dans `core/backend.ts`. Changer
+> `session` ne fait donc pas partir une requête sous une autre identité : **il ne
+> fait partir aucune requête du tout.**
+>
+> ★★ **CE QUI FAIT QUE CE N'EST PAS UNE FAILLE, VÉRIFIÉ ET NON SUPPOSÉ (AG1.3) :**
+>
+> 1. **La direction.** On ne va jamais que du coordinateur — qui voit déjà tout —
+>    vers un rôle qui voit MOINS.
+> 2. **Aucune requête ne quitte l'origine, et aucune ne porte d'en-tête
+>    d'identité.** A140 écoute le réseau pendant tout l'épisode : **0 requête
+>    sortante, 0 en-tête `authorization` / `apikey` / `x-client-info`**, et
+>    `localStorage['lo-yanum:auth']` **identique octet pour octet** avant et après.
+> 3. **Lecture seule garantie par le MAGASIN.** `setReadOnly` verrouille `commit`
+>    (core/store.ts) : une mutation qui passerait quand même est **RESTAURÉE puis
+>    REFUSÉE**. A140 appelle cinq mutations depuis la page verrouillée — les cinq
+>    jettent `ReadOnlyViolation`, et le magasin est **identique octet pour octet**.
+>
+> ⚠️ **ET LE VERROU RESTAURE AVANT DE JETER, CE QUI N'EST PAS DE LA PRUDENCE.**
+> La moitié des mutations écrivent EN PLACE. Refuser au `commit` sans restaurer
+> laisserait la mutation faite en mémoire et seulement invisible — l'écran
+> mentirait jusqu'au rechargement, et la première écriture légitime après le
+> retour au rôle de rekaz pousserait cette mutation fantôme vers Postgres.
+>
+> ⛔ **CE QUE ÇA NE PROUVE PAS, DIT FRANCHEMENT :** cela ne prouve pas que les
+> politiques RLS d'un vrai agriculteur sont correctes. Ce mode montre ce que
+> L'INTERFACE d'un agriculteur affiche, pas ce que le SERVEUR lui servirait. Le
+> jour où un agriculteur aura un compte, c'est `bun run live` qui répondra.
+>
+> **AG1.4 — le bandeau est permanent et non masquable**, et « non masquable » est
+> une propriété de STRUCTURE : le composant n'a aucun état, il lit `useViewAs()`
+> et rend ou ne rend pas. A141 compte **un seul bouton** dans le bandeau — le
+> retour — et mesure sa boîte **après un défilement jusqu'en bas**, aux trois
+> viewports : `y=51` sur les trois.
+>
+> ## AG2 — LE CONTRÔLE PAR LES QUATRE DERNIERS CHIFFRES
+>
+> ★★ **CE QU'IL PROTÈGE ET CE QU'IL NE PROTÈGE PAS EST ÉCRIT EN TÊTE DE
+> `core/challenge.ts`**, comme AE1 l'a fait pour le jeton — parce qu'une mesure
+> de sécurité dont on ne dit pas la portée finit par être créditée d'une portée
+> qu'elle n'a pas.
+>
+> ✅ **Protège** : le lien RETRANSMIS (le SMS fait suivre au frère, l'URL collée
+> dans un groupe WhatsApp, le téléphone prêté), le lien retrouvé dans un
+> historique, l'URL devinée.
+> ⛔ **Ne protège pas** : quelqu'un qui CONNAÎT la personne — le portable d'un
+> agriculteur est sur son camion, ce n'est pas un secret, c'est un DISCRIMINANT ;
+> une énumération menée depuis plusieurs appareils, la temporisation vivant sur
+> l'appareil ; rien du tout contre qui a déjà le téléphone déverrouillé.
+>
+> **Deux essais francs, puis 15 s, 30 s, 60 s, 120 s, 240 s, plafond à 300 s.**
+> A142 pose la question à **cent échecs** : `max 300 s`, monotone, **jamais
+> l'infini**. « Pas de blocage définitif » est une phrase du brief, et une
+> progression sans plafond EST un blocage définitif. La mémoire est de
+> **90 jours**, par PERSONNE et non par appareil, et l'attente est une
+> **soustraction de dates** — donc recharger la page ne l'efface pas, vérifié
+> dans le navigateur.
+>
+> ⚠️★★ **ET LA PORTE ÉTAIT AU MAUVAIS ENDROIT — DÉFAUT TROUVÉ PAR `bun run agui`
+> EN M'ATTENDANT QUARANTE-CINQ SECONDES.** Elle n'était que dans
+> `FarmerLinkScreen`, l'écran de `#/f/<jeton>`. C'est le chemin qu'on emprunte
+> UNE fois : ensuite le laissez-passer est sur l'appareil, l'icône de l'écran
+> d'accueil ouvre la RACINE, et la racine mène à `/farmer` **sans repasser par
+> cet écran**. Dès que la mémoire expirait, l'application s'ouvrait sur la fiche,
+> les numéros et les gardes sans rien demander à personne. **La règle qui en
+> sort : une porte se pose sur ce qu'elle GARDE, pas sur le couloir par lequel on
+> est entré la première fois.** Elle est sur la coquille (`FarmerGate`).
+>
+> ## AG3 — L'ESPACE AGRICULTEUR
+>
+> **Le lien est PERMANENT, et c'est le contraire du jeton de garde.** Celui d'AE1
+> expire 24 h après la nuit qu'il ouvre parce qu'il OUVRE UNE NUIT ; celui-ci
+> ouvre UNE RELATION. On n'installe pas une icône qui périme dans vingt-quatre
+> heures. **90 caractères**, donc il tient dans le SMS d'un téléphone cachère.
+>
+> ⚠️★★ **ET L'INSTALLATION SUR L'ÉCRAN D'ACCUEIL A DEMANDÉ DEUX CORRECTIFS QUE
+> J'AVAIS TOUS LES DEUX RATÉS.** `manifest.webmanifest` déclare `start_url: "./"`
+> — la racine — et c'est correct : un manifeste par personne est impossible sur
+> un site statique. Conséquence : l'icône perd le jeton au premier lancement.
+> Le laissez-passer sur l'appareil (`ui/farmerPass.ts`) répond à la moitié du
+> problème ; **la seconde moitié est que rien ne POSAIT la session**, donc le
+> laissez-passer était écrit, lu, et inutile. Et le poser sur la seule route « / »
+> ne suffisait pas non plus : un rechargement direct sur `#/farmer` — ce que fait
+> le bouton « recharger », ce que fait iOS en réveillant une PWA suspendue — ne
+> passe jamais par la racine. **Ce qui RESTAURE une identité appartient au
+> démarrage de l'application, pas à l'une de ses routes.**
+>
+> A143 vérifie l'installabilité **condition par condition sur le build servi** :
+> manifeste atteignable, `display: standalone`, `start_url`/`scope` dans la
+> portée, icône déclarée **et servie (200)**, les trois métabalises
+> `apple-mobile-web-app-*` qu'iOS lit, un service worker enregistré, et la racine
+> qui rouvre SON espace.
+> ⛔ **Ce qu'aucune porte ne peut faire, dit franchement :** appuyer sur
+> « ajouter à l'écran d'accueil » dans Safari iOS. Playwright pilote WebKit, pas
+> Safari, et pas son menu de partage.
+>
+> ⚠️★★ **UNE GARDE ANNULÉE EN COURS DE NUIT N'ÉTAIT PAS SIGNALÉE.** La borne
+> était `startAt` : une garde annulée à 23 h pour la nuit de 22 h à 6 h avait son
+> début derrière elle et disparaissait de l'écran. C'est **exactement** le cas que
+> le brief décrit — « un agriculteur qui attend quelqu'un qui ne viendra pas » —
+> et c'est celui où il attend le plus fort. La borne est `endAt`, la même que
+> `getUpcomingMissionViews`, donc les deux listes se complètent au lieu de laisser
+> un trou entre elles.
+>
+> **Qui a accepté et qui n'a pas répondu** se lit sur `resolveConfirmation` (R6)
+> et non sur un champ neuf : ajouter un booléen « a accepté » aurait créé une
+> seconde vérité, et c'est elle qui aurait été fausse.
+>
+> ## AG4 — LE FORMULAIRE DE SIGNATURE À DISTANCE
+>
+> **Sept choses, et la liste est FERMÉE dans `core/remoteSign.ts`** : quatre
+> champs dont un facultatif, une photo facultative, une case, une signature.
+> Ajouter un champ doit coûter un débat, pas un `useState`.
+>
+> ⛔ **AUCUNE SURFACE (AG4.2)** et ⛔ **AUCUN OCR (AG4.3)**, et les deux sont
+> vérifiés plutôt que promis : A145 lit le fichier source (commentaires retirés)
+> **et** compte les champs du DOM rendu — **3 champs**, `sign-farmName`, un
+> fichier, une case. Aucune bibliothèque de reconnaissance dans `package.json`.
+>
+> ⚠️ **LA SONDE A ÉCHOUÉ SUR ELLE-MÊME À SA PREMIÈRE EXÉCUTION**, ce qui était
+> instructif : elle filtrait les commentaires ligne à ligne et le fichier contient
+> un bloc qui dit littéralement « pas d'OCR, pas de MRZ ». Une porte qui cherche
+> l'ABSENCE d'un mot ne doit jamais lire la prose qui explique pourquoi ce mot est
+> absent — sinon elle interdit d'écrire la raison, et une interdiction dont on ne
+> peut pas écrire la raison est une interdiction que le prochain lecteur
+> enfreindra de bonne foi.
+>
+> **Les trois parcours d'AG4.7, vérifiés sans navigateur** (A144) : tout saisi →
+> aucun champ redemandé, seule la case bloque ; ת״ז manquante → **un seul champ**
+> demandé et **le refus le NOMME** ; téléphone seul → trois champs, deux
+> obligatoires nommés, et **« החווה של יוסי » proposé depuis le PRÉNOM**,
+> modifiable — la saisie gagne toujours.
+>
+> **Le document se lit AVANT de signer**, et l'ORDRE est mesuré comme en A129 :
+> `doc 742 < pad 1312`. L'aperçu EST le document — `drawAgreementPage`, la
+> fonction que le PDF appelle, avec les valeurs du FORMULAIRE et non celles de la
+> fiche, sinon il lirait une page qui ne porte pas ce qu'il vient de taper.
+>
+> ★ **« LE PDF REVIENT AU COORDINATEUR » EST SATISFAIT SANS STOCKER D'OCTETS**, et
+> ça surprend, donc c'est écrit : depuis AF1.3 le document EST produit à partir de
+> la fiche et de l'accord. Stocker en plus le fichier serait stocker une SECONDE
+> vérité — et ce serait elle qui serait fausse le jour où quelqu'un corrige une
+> faute de frappe dans un nom.
+>
+> ## AG5 — LE RENOUVELLEMENT ANNUEL
+>
+> **C'est `landAgreementUntil` fiche par fiche, jamais un calendrier global.** Un
+> rappel au 1er janvier pour tout le monde est faux deux fois : une ferme qui court
+> jusqu'en 2028 recevrait deux rappels inutiles — et apprendrait à les ignorer, ce
+> qui coûte le troisième, qui comptait — et une ferme qui expire en juillet ne
+> recevrait rien au moment où il faudrait. **60 jours, réglable.**
+>
+> ⚠️★★ **AG5.4 — LES DEUX MÉCANISMES SONT DISJOINTS PAR CONSTRUCTION, ET LA
+> FRONTIÈRE EST LE JOUR MÊME.** `landRightIssue` rend `'expired'` quand
+> `until < today` — STRICTEMENT avant. `renewalStatus` rend `'due'` quand
+> `0 <= daysLeft <= window` — à partir d'aujourd'hui INCLUS. Aucune fiche ne peut
+> être dans les deux, et A148 le vérifie sur toutes les fiches plutôt que de le
+> raisonner. Leurs phrases ne se recouvrent pas non plus : AA2bis dit « le droit
+> sur cette terre n'est pas établi » (une question de FOND, qui arrête une garde),
+> « לחידוש » dit « il faut refaire signer avant telle date » (un CALENDRIER, qui
+> n'arrête rien).
+>
+> **La vignette est TROISIÈME**, après « נשכחו » (AC) et « לתיחום » (AD3.2, « il
+> n'est pas question de la déplacer une troisième fois »), avant les pastilles de
+> statut qui sont du filtrage et non une file. **Elle ne se dessine que quand elle
+> a quelque chose à dire.**
+>
+> ## AG6 — LES DOCUMENTS À FOURNIR
+>
+> **Déduits du סוג פעילות, jamais saisis** : מעובד → un, מרעה → un, מעורב → deux.
+> Une table `expected_documents` aurait été une seconde vérité à tenir d'accord
+> avec `entities.type`, et le jour où les deux auraient divergé c'est
+> l'agriculteur qui aurait téléversé le mauvais papier.
+>
+> **Plusieurs photos → UN PDF de plusieurs pages**, par `report/pdf.ts` réutilisé
+> tel quel : aucune bibliothèque neuve. A150 compte les `/Type /Page` dans les
+> octets produits — **3 photos → 3 pages, 55 759 octets**. ⚠️ **`contain` et non
+> `cover`** : remplir la page est plus joli et coupe les bords, et sur la photo
+> d'un document les bords sont l'en-tête, le numéro de dossier et le tampon.
+> ⚠️ **Un PDF déposé est pris tel quel** et jamais recomposé — le repasser par un
+> canevas dégraderait le seul cas où le document arrive déjà parfait.
+>
+> **AG6.4** — `documentsCompleteButRightUnproven` existe pour nommer un piège :
+> « le dossier est-il complet ? » se répond en comptant des fichiers, « cet homme
+> a-t-il le droit sur cette terre ? » se répond en lisant CE QUE DIT le papier.
+> Une exploitation peut avoir déposé ses deux PDF et n'avoir pour tout titre
+> qu'une הצהרת חקלאים. La complétude ne fait jamais taire AA2bis.
+>
+> ## AG7 — LA LOCALISATION : LA MESURE, ET UN VRAI DÉFAUT
+>
+> ⚠️★★ **LE DÉFAUT ÉTAIT À NOUS ET IL ÉTAIT DANS `geolocate.ts`.** AF2.3 a réuni
+> cinq appels en une porte unique et a mis la garde « ne demande jamais quand
+> c'est déjà refusé » dans `locate()`. **`watch()` ne l'a pas reçue** — et
+> `watchPosition` pose une invite exactement comme `getCurrentPosition`. Ouvrir
+> l'écran d'urgence, ou allumer le point « vous êtes ici », posait donc une invite
+> que la porte croyait avoir supprimée, **y compris juste après un refus**. Corrigé
+> (garde différée, le suivi ne part qu'une fois la réponse connue) et mesuré :
+> **permission refusée → `current=0 watch=0` sur l'écran d'urgence.**
+>
+> ⛔ **CE QUI N'EST PAS PROUVÉ, ET JE NE PRÉTENDS PAS LE CONTRAIRE.** La question
+> « iOS garde-t-il l'autorisation entre deux lancements de SON app installée » ne
+> peut pas être tranchée depuis cette machine : Playwright ne peut pas dire à une
+> page qu'elle a été lancée depuis un écran d'accueil (c'est écrit dans
+> `standalone.ts` depuis P3.4, et c'est pourquoi `data-standalone` est un attribut
+> et pas une media query). **Ce qui a été mesuré ici :** WebKit — le moteur de
+> Safari — **répond bien** à `permissions.query({name:'geolocation'})` (→ `prompt`),
+> donc l'hypothèse « Safari ne sait pas répondre » est FAUSSE et écartée.
+>
+> ★★ **CE QUI EST LIVRÉ À LA PLACE EST LA MESURE SUR SON APPAREIL.** הגדרות →
+> « אבחון מיקום » enregistre **une ligne par lancement** : `standalone` oui/non,
+> l'état de la permission tel que le SYSTÈME le rapporte, et le nombre
+> d'interrogations réelles. Trois colonnes, et chacune élimine une hypothèse — en
+> particulier : si `standalone` dit **non** alors qu'il lance depuis son icône, la
+> cause est trouvée et elle n'est pas dans notre code. Rien n'est envoyé nulle
+> part ; deux boutons, copier et effacer.
+>
+> ## AG8 — LES PORTES, ET LES DÉFAUTS QU'ELLES ONT TROUVÉS
+>
+> · `bun run agpass` — **74 contrôles** : A140 · A142 · A144 … A149, **sans
+>   navigateur**.
+> · `bun run agui` — **80 contrôles** : A140 · A141 · A142 · A143 · A144 · A145 ·
+>   A147 · A150 · A151, **dans Chromium ET WebKit**.
+> · `bun run agcaptures` — les captures du DÉPLOYÉ, clair et sombre, trois
+>   viewports, **et la mesure A148 de recouvrement de la vignette** — parce que
+>   « vérifie sur CAPTURE du déployé, pas seulement par sonde DOM ».
+>
+> **★★ SEPT DÉFAUTS TROUVÉS PAR LES PORTES, TOUS CORRIGÉS, ET AUCUN N'AURAIT ÉTÉ
+> VU PAR RELECTURE :**
+>
+> 1. **`useSyncExternalStore` et l'instantané neuf.** `geoDiagRows()` rendait un
+>    tableau neuf à chaque appel → boucle de rendu → **l'écran de réglages ENTIER
+>    plantait**. Trouvé par `bun run abpass`, qui attendait un champ de l'objectif
+>    qui n'arrivait jamais. « L'égalité de référence est le contrat de
+>    l'instantané » (`data/auth.ts` le dit déjà en toutes lettres).
+> 2. **La porte des quatre chiffres sur le couloir et non sur la coquille** (AG2
+>    ci-dessus).
+> 3. **Le laissez-passer ne posait pas la session**, puis **le posait seulement
+>    sur la racine** (AG3 ci-dessus). Deux tours pour le même défaut.
+> 4. **La garde annulée en cours de nuit**, borne `startAt` au lieu de `endAt`.
+> 5. **Le refus de lecture seule posé à la FIN des gestes.** L'écran de rapport a
+>    deux étapes ; seul le bouton d'envoi était grisé, donc en mode « voir comme »
+>    le coordinateur choisissait une gravité, rédigeait un signalement, et
+>    découvrait le refus au moment d'envoyer — c'est-à-dire au pire moment, après
+>    le travail. **Le refus se pose là où le GESTE COMMENCE.** Même correctif sur
+>    le lien de signature de l'accueil agriculteur.
+> 6. **`watch()` contournait la garde de permission** (AG7 ci-dessus).
+> 7. **La migration écrite en une instruction multi-colonnes.** `bun run mapping`
+>    lit les fichiers SQL et son analyseur lit `alter table … add column` **une
+>    colonne à la fois** ; la forme condensée est du SQL valide qu'il ne voit pas,
+>    donc il déclarait les deux colonnes MANQUANTES. Corrigé, et la raison est
+>    écrite dans le fichier pour la prochaine fois.
+>
+> **Et trois de mes propres sondes étaient fausses**, ce qui est dit parce que
+> l'honnêteté d'un rapport se mesure là : la sonde A145 lisait ses propres
+> commentaires ; la sonde A148 attendait 3 fiches là où 4 était la bonne réponse
+> (comptées à la main dans le commentaire, maintenant) ; la sonde A140 comptait
+> « zéro requête » et trouvait des lutins de carte et un portrait — des actifs du
+> paquet, même origine. **La question d'AG1.3 n'est pas « l'app parle-t-elle ? »
+> mais « parle-t-elle sous une autre identité ? »**, et les deux mesures qui y
+> répondent (origine, en-têtes) ne sont pas gênées par une image.
+>
+> ⛔ **CE QUI RESTE EN LOT 1, DIT PLUTÔT QUE DÉCOUVERT.** Dans une installation
+> réelle branchée sur Postgres, un visiteur ANONYME n'a rien hydraté : les
+> politiques RLS répondent à un `authenticated` et ni l'agriculteur ni le
+> volontaire ne le sont. La lecture par jeton demande une fonction de bord qui
+> vérifie la signature côté serveur et rende la fiche — c'est le seul morceau
+> d'AE1 **et** d'AG3 qui ne peut pas vivre dans le navigateur, et rien d'autre ne
+> changera quand elle existera : ces deux écrans gagneront un `await`. De même,
+> **le SMS de renouvellement part à la main** depuis la fiche : un envoi
+> automatique à J-60 demande un ordonnanceur, que ce programme n'a pas — et il
+> n'y a **aucune case qui ne déclenche rien**.
+>
+> **Migration `20260909000300_farmer_space.sql` appliquée sur `lo-yanum-prod`**
+> (deux colonnes additives et nullables). `bun run live` : **49/49 après**.
+
 > 🏁 **PASSE AF — LE DOCUMENT QUE L'AGRICULTEUR SIGNE, ET LE PARCOURS QUI Y
-> MÈNE. 2026-09-09. LIRE EN PREMIER.**
+> MÈNE. 2026-09-09.**
 >
 > **Passe de TERRAIN.** L'utilisateur type de tout ce qui suit est le PO,
 > debout, une tablette dans une main, devant un agriculteur qui attend. Chaque
@@ -3136,6 +3431,9 @@ would silently turn `accept`, `outreach`, `rtl`, `mapfirst`, `splitter`, `touch`
 | `bun run assoc` | **A94 · A95 · A96** (AB6) — the association's format: the seventeen headers in their order plus the second מיקום, coordinates in LONGITUDE/LATITUDE refused in BOTH directions, `(0XX) XXX-XXXX`, `JJ/MM/AAAA`, שטחים שמירה never copied, and the round trip export → re-import on the product owner's own 198-row workbook. **40 checks**, no browser |
 | `bun run abpass` | **A87 … A93** (AB2 · AB3 · AB4 · AB5) — 360 → 1440 px by 20 with no row of pills ever on two lines, the count on « סינון », the agenda's map and its two-way link, the full-height ladder, the three views and the hour line, the target and its history, the role switch walked from the home screen. **50 checks** |
 | `bun run abcaptures` | AB8 — the deployed twin, light AND dark, three viewports, plus the resting geometric reading. **108 captures** |
+| `bun run agpass` | **A140 · A142 · A144 … A149** (AG1 · AG2 · AG4 · AG5 · AG6) — le verrou de « voir comme » interrogé À L'ENVERS des autres portes (« après le verrou, cette mutation produit-elle AUCUN changement ? » — cinq mutations appelées, cinq `ReadOnlyViolation`, magasin identique octet pour octet) ; les quatre derniers chiffres et leur temporisation posée à **cent** échecs pour prouver qu'elle plafonne ; les trois parcours du formulaire et le refus qui NOMME le champ ; les documents déduits du סוג פעילות ; et la disjonction de « לחידוש » avec AA2bis vérifiée sur toutes les fiches. ⚠️ Sa sonde « aucun OCR » a échoué sur ses PROPRES commentaires à la première exécution — une porte qui cherche l'absence d'un mot ne doit pas lire la prose qui explique cette absence. **74 contrôles**, sans navigateur |
+| `bun run agui` | **A140 · A141 · A142 · A143 · A144 · A145 · A147 · A150 · A151** — « voir comme » sur les trois rôles avec **0 requête sortante et 0 en-tête d'identité** mesurés sur le réseau et le jeton d'auth comparé octet pour octet ; le bandeau mesuré après défilement aux trois viewports ; la porte des quatre chiffres refusée / accordée / mémorisée / temporisée à travers un rechargement ; l'installabilité PWA **condition par condition sur le build servi** ; l'ordre document-au-dessus-du-pad mesuré (`doc 742 < pad 1312`) ; trois photos → **3 pages** de PDF comptées dans les octets ; et la localisation mesurée dans **Chromium ET WebKit**. Elle a trouvé quatre défauts réels. **80 contrôles** |
+| `bun run agcaptures` | AG8 — le jumeau déployé, clair ET sombre, trois viewports, **et la mesure A148** : la vignette « לחידוש » au repos, sans défiler, contre TOUT objet flottant en pixels carrés. ⚠️ Elle FAIT ÉCHOUER le script — « vérifie sur CAPTURE du déployé, pas seulement par sonde DOM » ne veut rien dire si personne ne regarde la capture |
 | `bun run live` | **A75** — the LIVE schema against the mapper (P2.6b), and **it needs no password**. PostgREST resolves `?select=` against the schema BEFORE applying RLS, so an anonymous request names a missing column (400/42703) and an existing one answers `[]`. 25 tables probed column by column (PO point 6 added `entity_livestock`), 16 enums probed label by label, `app_users` closed to a stranger. **48 checks** — needs the internet, not a dev server |
 | `bun run mapping` | **A74** — the mapper (P2.6b). Drives all 380 fixture aggregates out through `toRows` and back through `fromRows` and fails on any difference, then parses this repository's OWN migrations and asserts both directions of the column contract: no column the mapper writes is missing, no `not null`-without-default column goes unwritten. ⚠️ Its migration parser learned `create table IF NOT EXISTS` the day PO point 6 wrote one — a parser that stops seeing a table because somebody used the SAFER form of the statement is worse than one that fails. **33 checks** — no browser, no dev server, no network |
 | `bun run persist` | **A73** — the store interface (P2.6a). Drives all **54** exported mutations through a RECORDING backend and asserts what each one writes: the fan-outs (a zone rewrites the farm's dunams, the dual hat materialises a driver, a visit rewrites `nextVisitAt`), the ones that mutate IN PLACE and an identity diff would silently lose, and the three things that must never be written (a session change, a reset, a hydration). ★ Its section 7 cross-checks the names `@core` exports against the names actually DRIVEN, and it failed the moment PO point 8's nine deletions landed — which is exactly its job. **94 checks** — no browser, no dev server, no network |
