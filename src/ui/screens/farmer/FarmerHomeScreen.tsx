@@ -26,7 +26,7 @@ import { MissionStatusChip } from '../../components/badges'
 import { Callout, EmptyState, PageHeader, Section } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
-import { renewalWindowDays } from '../../settings/renewal'
+import { useRenewalWindow } from '../../settings/renewal'
 import { readOnlyProps, useReadOnly } from '../../settings/viewAs'
 
 /**
@@ -62,11 +62,12 @@ export function FarmerHomeScreen() {
   const cancelled = useCoreValue(getCancelledMissionViews)
   const coordinator = readCoordinator()
   const readOnly = useReadOnly()
+  const window_ = useRenewalWindow()
 
   if (!farm) return null
 
   const todayKey = dayKeyOf(now())
-  const renewal = renewalStatus(farm, todayKey, renewalWindowDays())
+  const renewal = renewalStatus(farm, todayKey, window_)
   const missing = missingDocumentCount(farm)
   const checklist = documentChecklist(farm)
 

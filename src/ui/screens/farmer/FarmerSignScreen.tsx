@@ -20,7 +20,7 @@ import { SignaturePad } from '../../components/SignaturePad'
 import { Callout, PageHeader, Section } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
-import { requiresIdPhoto } from '../../settings/renewal'
+import { useRequiresIdPhoto } from '../../settings/renewal'
 import { readOnlyProps, useReadOnly } from '../../settings/viewAs'
 
 /**
@@ -59,7 +59,7 @@ export function FarmerSignScreen() {
   const [done, setDone] = useState(false)
   const seq = useRef(0)
 
-  const requirePhoto = requiresIdPhoto()
+  const requirePhoto = useRequiresIdPhoto()
 
   const state = useMemo(
     () => (farm ? signFormState(farm, draft, { requireIdPhoto: requirePhoto }) : null),

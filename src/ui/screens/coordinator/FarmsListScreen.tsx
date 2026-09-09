@@ -67,7 +67,7 @@ import { useLocale } from '../../hooks/useLocale'
 import { useWindowTable } from '../../hooks/useWindowTable'
 import { useAreaGapThreshold } from '../../settings/areaGap'
 import { useCoverageSettings } from '../../settings/coverage'
-import { renewalWindowDays } from '../../settings/renewal'
+import { useRenewalWindow } from '../../settings/renewal'
 
 const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
 const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed']
@@ -213,7 +213,7 @@ export function FarmsListScreen() {
    *   qui est l'état d'une base neuve — une file vide serait un filtre qui vide
    *   la liste et qu'on apprend à ne plus croire.
    */
-  const renewWindow = renewalWindowDays()
+  const renewWindow = useRenewalWindow()
   const todayKey = dayKeyOf(now())
   const renewIds = useMemo(
     () => new Set(farmsToRenew(farms, todayKey, renewWindow).map((f) => f.id)),

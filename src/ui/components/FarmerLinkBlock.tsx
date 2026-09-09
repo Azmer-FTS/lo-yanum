@@ -16,7 +16,7 @@ import {
 } from '@core/index'
 import type { Farm } from '@core/index'
 
-import { renewalWindowDays } from '../settings/renewal'
+import { useRenewalWindow } from '../settings/renewal'
 import { useLocale } from '../hooks/useLocale'
 import { CopyButton, Callout, Section } from './primitives'
 import { Icon } from './Icon'
@@ -48,6 +48,7 @@ export function FarmerLinkBlock({ farm }: { farm: Farm }) {
   const { t } = useTranslation()
   const locale = useLocale()
   const coordinator = readCoordinator()
+  const renewWindow = useRenewalWindow()
 
   /**
    * ⚠️ LE CONTACT PRINCIPAL, ET S'IL N'Y EN A PAS, LE PREMIER. Une fiche sans
@@ -57,7 +58,7 @@ export function FarmerLinkBlock({ farm }: { farm: Farm }) {
    */
   const contact = farm.contacts.find((c) => c.isPrimary) ?? farm.contacts[0] ?? null
   const todayKey = dayKeyOf(now())
-  const renewal = renewalStatus(farm, todayKey, renewalWindowDays())
+  const renewal = renewalStatus(farm, todayKey, renewWindow)
   const checklist = documentChecklist(farm)
   const missing = checklist.filter((l) => l.provided === null).length
 

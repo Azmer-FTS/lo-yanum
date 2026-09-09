@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react'
+
 import { RENEWAL_WINDOW_DAYS_DEFAULT } from '@core/index'
 
 /**
@@ -83,4 +85,23 @@ const listeners = new Set<() => void>()
 export function subscribeRenewal(listener: () => void): () => void {
   listeners.add(listener)
   return () => listeners.delete(listener)
+}
+
+/**
+ * ★ LE DÉLAI, ABONNÉ PLUTÔT QUE LU UNE FOIS.
+ *
+ * ⚠️ `renewalWindowDays()` LU DANS UN CORPS DE COMPOSANT NE SUFFIT PAS, et
+ *    c'est la même leçon que `useAreaGapThreshold` d'AD2.3. L'écran חוות
+ *    compte sa file à chaque rendu ; sans abonnement, un coordinateur qui passe
+ *    de 60 à 90 dans les réglages revient sur חוות et voit le MÊME nombre,
+ *    jusqu'à ce qu'il navigue ailleurs et revienne. Il conclut que le réglage
+ *    ne fait rien — ce qui est le pire résultat possible pour un réglage.
+ */
+export function useRenewalWindow(): number {
+  return useSyncExternalStore(subscribeRenewal, renewalWindowDays, renewalWindowDays)
+}
+
+/** Idem pour l'exigence de la photo de carte. */
+export function useRequiresIdPhoto(): boolean {
+  return useSyncExternalStore(subscribeRenewal, requiresIdPhoto, requiresIdPhoto)
 }

@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { RENEWAL_WINDOW_DAYS_DEFAULT } from '@core/index'
@@ -7,9 +7,8 @@ import { Section } from '../components/primitives'
 import {
   RENEWAL_WINDOW_MAX,
   RENEWAL_WINDOW_MIN,
-  renewalWindowDays,
-  requiresIdPhoto,
-  subscribeRenewal,
+  useRenewalWindow,
+  useRequiresIdPhoto,
   writeRenewalWindowDays,
   writeRequiresIdPhoto,
 } from './renewal'
@@ -27,12 +26,8 @@ import {
  */
 export function RenewalSection() {
   const { t } = useTranslation()
-  const current = useSyncExternalStore(
-    subscribeRenewal,
-    renewalWindowDays,
-    renewalWindowDays,
-  )
-  const photo = useSyncExternalStore(subscribeRenewal, requiresIdPhoto, requiresIdPhoto)
+  const current = useRenewalWindow()
+  const photo = useRequiresIdPhoto()
   const [value, setValue] = useState(String(current))
   const [state, setState] = useState<'idle' | 'saved' | 'bad'>('idle')
 
