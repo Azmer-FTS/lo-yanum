@@ -93,7 +93,8 @@
     "ahui": "bun run scripts/ahui.ts",
     "ahpins": "bun run scripts/ahpins.ts",
     "ahroute": "bun run scripts/ahroute.ts",
-    "ahsettings": "bun run scripts/ahsettings.ts"
+    "ahsettings": "bun run scripts/ahsettings.ts",
+    "ahcaptures": "bun run scripts/ahcaptures.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "0.2.3",
