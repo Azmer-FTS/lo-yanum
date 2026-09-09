@@ -269,6 +269,51 @@
 > l'application lit, écrit et restaure, pas que la politique de Frankfurt
 > accepte l'écriture. Cette moitié-là, c'est le PO qui la verra.
 >
+>
+> ## AH12 — LES PORTES, ET CE QUE `layout` A TROUVÉ QUE LES AUTRES N'ONT PAS
+>
+> ⚠️ **`bun run layout` MESURE DES PIXELS SUR TRENTE-DEUX ÉCRANS**, ce qu'aucune
+> porte d'AH ne fait, et elle a corrigé deux fois la mise en page :
+>
+> 1. **Le dégagement CALCULÉ de la pilule ne suffisait pas sur un téléphone.**
+>    Un dégagement juste vaut 232 px à 390 : il ne reste que 158 px pour deux
+>    boutons qui en demandent 160 — « ביטול, right 391 », au pixel près. **Deux
+>    contrôles épinglés au même coin d'un téléphone ne tiennent pas côte à
+>    côte, quel que soit le nombre.** La pilule MONTE au-dessus de la barre en
+>    lisant `--pinned-foot` que la barre publie déjà.
+> 2. **`--col-min:11rem` sur les contacts coûtait 300 px à 390.** Le plancher
+>    reste à 9 rem sur téléphone et s'ÉLARGIT à 13 rem au-delà : un point de
+>    rupture élargit, il ne rétrécit pas.
+> 3. **L'écran des réglages était DÉJÀ au-dessus du plafond avant cette passe**
+>    — 6,82 hauteurs mesurées sur le build d'avant, contre six. Trois blocs
+>    passent repliés avec leur résumé : les deux seuils qu'on pose une fois, et
+>    « voir comme » (599 px, le bloc le plus haut, pour une liste de personnes
+>    qu'on ne parcourt pas). **6,6 → 5,4.**
+>
+> **Les portes, à la fin de la passe :**
+>
+> ```
+> accept 177 · dispatch 27 · persist 107 · mapping 33 · report 86
+> deletion 61 · sync 34 · contrast 133 · assoc 42 · acpass 52
+> afpass 59 · agpass 74 · ahpass 40
+> ahbar 21 · ahui 25 · ahroute 15 · ahdoc 7 · ahpins 8 · ahsettings 9
+> uipass 41/41  (les trois rouges d'AC sont éteints)
+> layout : VIEWPORT=all, 32 écrans × 4 viewports × 3 coutures — VERT
+> zones 38 · agreement 18 · demo 13   (build réel, fausse base)
+> tokens : 10 violations PRÉ-EXISTANTES, aucune de plus
+> ```
+>
+> **Les deux URLs, même commit :**
+> - L'app réelle : https://azmer-fts.github.io/lo-yanum/
+> - Le jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
+>
+> **72 captures du déployé**, clair ET sombre, iPad portrait, iPad paysage et
+> iPhone : `docs/screenshots/ahpass/deployed/` — 0 échec, 0 reprise réseau, et
+> **A159 mesurée 12/12 sur le bundle SERVI**.
+>
+> **Vérifié sur l'URL réelle :** `mock-agreement.pdf` répond **404** (AH4) ; le
+> module de synchro servi porte exactement les quatorze clés d'AH11.2 ; le
+> chunk des réglages porte `user_settings`.
 
 > 🏁 **PASSE AG — VOIR COMME · L'ESPACE AGRICULTEUR · LA SIGNATURE À DISTANCE.
 > 2026-09-09. LIRE EN PREMIER.**
