@@ -336,7 +336,27 @@ function GuardBlock({ view }: { view: MissionView }) {
                       : 'bg-content-muted/15 text-content-muted'
                 }`}
               >
-                {t(`confirm.${state}`)}
+                {/**
+                  * ⚠️★★ LES LIBELLÉS SONT CEUX DE L'AGRICULTEUR, PAS CEUX DU
+                  *    RAMASSAGE, ET LA CAPTURE DU DÉPLOYÉ A MONTRÉ POURQUOI.
+                  *
+                  *    La première version rendait `confirm.*`, le vocabulaire
+                  *    de R6 : « נאסף » (ramassé), « לא הגיע », « ממתין »,
+                  *    « אי־התאמה ». Ce sont les mots du CONDUCTEUR, qui coche
+                  *    des gens dans un minibus. À l'agriculteur, « נאסף » ne
+                  *    répond pas à la question qu'il pose — « qui vient chez
+                  *    moi ce soir ? » — et « אי־התאמה » ne veut strictement
+                  *    rien dire pour lui.
+                  *
+                  * ★ LA DONNÉE NE CHANGE PAS, SEULE LA PHRASE. C'est la même
+                  *   `resolveConfirmation(outbound)` : quelqu'un de confirmé
+                  *   sur le trajet aller EST quelqu'un qui vient, et
+                  *   « pending » EST « n'a pas répondu », qui sont les deux
+                  *   mots exacts du brief. Traduire une donnée pour son
+                  *   lecteur n'est pas la déformer ; lui montrer le journal
+                  *   d'un autre métier, si.
+                  */}
+                {t(`farmerSpace.answer${state.charAt(0).toUpperCase()}${state.slice(1)}`)}
               </span>
               <div className="min-w-0 flex-1">
                 <CallRow
