@@ -1943,16 +1943,29 @@ export function MissionWizardScreen() {
           style={foot.barStyle}
           /* Z6 — publishes its height as `--pinned-foot`; the phone's folded
              role button sits above whatever this bar occupies. */
-        /* ★★ AH2 — LE DÉGAGEMENT DE LA PILULE DE MODE EST CALCULÉ, PLUS ÉCRIT.
-           `pl-[4.5rem]` valait 72 px pour une pilule qui va de 76 à 220 : il
-           n'a jamais été juste, et il ne se voyait pas parce qu'une barre
-           collante ne descendait jamais assez bas pour la rencontrer. Ancrée,
-           elle la rencontre — `bun run zones` a cliqué cinquante-cinq fois sur
-           un bouton שמור visible et couvert. La pilule publie sa largeur
-           (`--mode-pill-w`) et disparaît sous son point de rupture, où la
-           variable n'existe pas et où le repli à 0 laisse le dégagement du
-           bouton « + ». */
-          className="fixed bottom-[var(--shell-bottom)] z-30 flex items-center gap-2 border-t border-edge-subtle bg-surface-overlay px-4 py-3 pl-[calc(var(--map-rail)+var(--map-rail-w)+var(--map-rail)+var(--mode-pill-w,0px)+0.75rem)] sm:px-6 sm:pl-[calc(var(--map-rail)+var(--map-rail-w)+var(--map-rail)+var(--mode-pill-w,0px)+0.75rem)]"
+        /* ═══════════════════════════════════════════════════════════════
+           ★★ AH2 — IL N'Y A PLUS DE DÉGAGEMENT LATÉRAL, ET C'EST LA BONNE
+              RÉPONSE PLUTÔT QU'UN MEILLEUR NOMBRE.
+           ═══════════════════════════════════════════════════════════════
+
+           `pl-[4.5rem]` — 72 px écrits à la main pour une pilule qui va de 76
+           à 220 — n'a jamais été juste ; il ne se voyait pas parce qu'une
+           barre collante ne descendait jamais assez bas pour rencontrer la
+           pilule. Ancrée, elle la rencontre : `bun run zones` a cliqué
+           cinquante-cinq fois sur un bouton שמור visible et couvert.
+
+           ⚠️ ET LE CALCULER NE SUFFISAIT PAS. Un dégagement juste vaut 232 px
+              sur un iPhone à 390 — il ne reste alors que 158 px pour deux
+              boutons qui en demandent 160, et `bun run layout` l'a mesuré au
+              pixel près (« ביטול, right 391 »). Deux contrôles épinglés au même
+              coin d'un téléphone ne tiennent pas côte à côte, quel que soit le
+              nombre.
+
+           ★ LA PILULE MONTE AU-DESSUS DE LA BARRE, en lisant `--pinned-foot`
+             que la barre publie déjà — c'est ce que font le bouton d'urgence
+             et la barre de démonstration depuis Z6. Plus de voisinage, donc
+             plus de dégagement, donc plus de nombre à tenir juste. */
+          className="fixed bottom-[var(--shell-bottom)] z-30 flex items-center gap-2 border-t border-edge-subtle bg-surface-overlay px-4 py-3 sm:px-6"
         >
           <button
             type="button"

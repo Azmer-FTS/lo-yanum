@@ -743,12 +743,16 @@ export function FarmFormScreen() {
                     onChange={(v) => patchContact(i, { photo: v })}
                   />
                 </div>
-                {/* ★★ AH1.6 — DEUX CHAMPS COURTS PAR LIGNE AUX GRANDES
-                    LARGEURS. `--col-min:11rem` est ce qui fait tenir
-                    nom/téléphone puis courriel/rôle côte à côte dans une
-                    colonne d'iPad, et une seule colonne sur un téléphone —
-                    `auto-fit` répond à la largeur, pas à un point de rupture. */}
-                <div className="auto-cols gap-3 [--col-min:11rem]">
+                {/* ★★ AH1.6 — DEUX CHAMPS COURTS PAR LIGNE, AUX DEUX BOUTS.
+                    ⚠️ ET LE PLANCHER RESTE À 9 rem SUR UN TÉLÉPHONE : `bun run
+                       layout` a mesuré ce qu'un plancher à 11 rem coûtait —
+                       la section des contacts passait de 919 à 1 219 px à
+                       390 px, parce que quatre champs qui tenaient deux par
+                       deux se sont mis en colonne. Le formulaire d'édition
+                       passait de 5,63 à 5,99 hauteurs d'écran, contre un
+                       plafond de six. Le point de rupture ÉLARGIT le plancher
+                       au-delà du téléphone, il ne le rétrécit pas. */}
+                <div className="auto-cols gap-3 [--col-min:9rem] md:[--col-min:13rem]">
                   <TextField
                     label={t('form.contactName')}
                     value={contact.name}

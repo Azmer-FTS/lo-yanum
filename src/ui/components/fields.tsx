@@ -623,17 +623,30 @@ export function FormActions({
         //
         // ⚠️ `bottom-[var(--shell-bottom)]` ET NON `bottom-0` : c'est le max de
         //    la barre d'onglets et de la zone sûre du bas (AH2.3).
-        /* ★★ AH2 — LE DÉGAGEMENT DE LA PILULE DE MODE EST CALCULÉ, PLUS ÉCRIT.
-           `pl-[4.5rem]` valait 72 px pour une pilule qui va de 76 à 220 : il
-           n'a jamais été juste, et il ne se voyait pas parce qu'une barre
-           collante ne descendait jamais assez bas pour la rencontrer. Ancrée,
-           elle la rencontre — `bun run zones` a cliqué cinquante-cinq fois sur
-           un bouton שמור visible et couvert. La pilule publie sa largeur
-           (`--mode-pill-w`) et disparaît sous son point de rupture, où la
-           variable n'existe pas et où le repli à 0 laisse le dégagement du
-           bouton « + ». */
+        /* ═══════════════════════════════════════════════════════════════
+           ★★ AH2 — IL N'Y A PLUS DE DÉGAGEMENT LATÉRAL, ET C'EST LA BONNE
+              RÉPONSE PLUTÔT QU'UN MEILLEUR NOMBRE.
+           ═══════════════════════════════════════════════════════════════
+
+           `pl-[4.5rem]` — 72 px écrits à la main pour une pilule qui va de 76
+           à 220 — n'a jamais été juste ; il ne se voyait pas parce qu'une
+           barre collante ne descendait jamais assez bas pour rencontrer la
+           pilule. Ancrée, elle la rencontre : `bun run zones` a cliqué
+           cinquante-cinq fois sur un bouton שמור visible et couvert.
+
+           ⚠️ ET LE CALCULER NE SUFFISAIT PAS. Un dégagement juste vaut 232 px
+              sur un iPhone à 390 — il ne reste alors que 158 px pour deux
+              boutons qui en demandent 160, et `bun run layout` l'a mesuré au
+              pixel près (« ביטול, right 391 »). Deux contrôles épinglés au même
+              coin d'un téléphone ne tiennent pas côte à côte, quel que soit le
+              nombre.
+
+           ★ LA PILULE MONTE AU-DESSUS DE LA BARRE, en lisant `--pinned-foot`
+             que la barre publie déjà — c'est ce que font le bouton d'urgence
+             et la barre de démonstration depuis Z6. Plus de voisinage, donc
+             plus de dégagement, donc plus de nombre à tenir juste. */
         className="fixed bottom-[var(--shell-bottom)] z-30 flex justify-end gap-2 border-t
-                   border-edge-subtle bg-surface-overlay px-[var(--content-pad,1rem)] py-3 pl-[calc(var(--map-rail)+var(--map-rail-w)+var(--map-rail)+var(--mode-pill-w,0px)+0.75rem)]"
+                   border-edge-subtle bg-surface-overlay px-[var(--content-pad,1rem)] py-3"
       >
         <button type="button" className="btn-secondary" onClick={onCancel}>
           {cancelLabel}

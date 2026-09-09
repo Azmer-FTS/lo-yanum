@@ -1,5 +1,275 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AH — LE FORMULAIRE QUI NE REDEMANDE PLUS, LE DOCUMENT QUI EST UN
+> GABARIT, ET L'ITINÉRAIRE LIBRE. 2026-09-10. LIRE EN PREMIER.**
+>
+> **Passe de TERRAIN.** Tout ce qui suit part d'un geste que le PO a réellement
+> fait : créer une ferme devant un agriculteur, chercher le bouton d'envoi,
+> ouvrir un document et ne plus pouvoir en sortir, coller quatorze
+> localisations reçues par WhatsApp. Chaque bloc est jugé à cette aune.
+>
+> ## AH1 — SEPT REDONDANCES, ET UNE SEULE RÈGLE POUR LES DEUX
+>
+> Le PO en avait nommé trois. Le recensement en a trouvé **sept**, et elles ont
+> toutes la même forme — **DEUX CHAMPS POUR UNE SEULE VÉRITÉ** :
+>
+> | # | Ce qui est demandé deux fois | Où | Traité |
+> |---|---|---|---|
+> | 1 | Le **portable** | `farmerPhone` (אנשי שדה) et le portable du contact PRINCIPAL | proposé dans les deux sens |
+> | 2 | Le **nom de la personne** | `farmerName` et le nom du contact principal | proposé dans les deux sens |
+> | 3 | Le **courriel** | `farmerEmail` et le courriel du contact principal | proposé dans les deux sens |
+> | 4 | Le **contact du dossier / de terrain** | `farmerName+farmerPhone` et `liaisonName+liaisonPhone` | case « אותו אדם » qui RECOPIE |
+> | 5 | Le **nom de la ferme** | `name` (libellé de fiche) et `farmName` (nom du holding) | `name` se déduit de `farmName` |
+> | 6 | Le **nom du holding** | `farmName` et le prénom de l'agriculteur | « החווה של \<prénom\> », la fonction d'AG4 |
+> | 7 | La **localité** | `locality` et le libellé de fiche quand rien d'autre n'est connu | `name` se replie sur `locality` |
+>
+> ★★ **LA RÈGLE, ÉCRITE UNE FOIS, DANS `core/prefill.ts`.** Quand une
+> information est déjà connue ailleurs, le champ suivant la PROPOSE en gris ;
+> taper la remplace, ne rien taper l'accepte. `inherited()` est le seul endroit
+> qui décide de la seconde moitié.
+>
+> ⚠️ **ET C'EST UN `placeholder`, PAS UNE VALEUR ÉCRITE DANS L'ÉTAT.** Une
+> valeur écrite se met à courir après sa source : le PO corrige le prénom de
+> l'agriculteur, et le nom de ferme qu'il avait tapé trois minutes plus tôt se
+> fait écraser. Une proposition n'existe que tant que le champ est vide. C'est
+> la prudence d'AG4.1 appliquée à sept champs au lieu d'un.
+>
+> ★ **`סוג הישות המשפטית` ÉTAIT DÉJÀ UN SÉLECTEUR** (A156), avec les sept
+> valeurs de `LEGAL_ENTITY_OPTIONS` depuis AC2. Le PO ne l'a pas trouvé parce
+> qu'il vit dans une section **repliée par défaut** (« הקרקע והנייר », fermée
+> depuis AA2 pour tenir le plafond de six hauteurs d'écran d'A30). Rien à
+> corriger dans le code ; c'est dit ici pour qu'il sache où regarder.
+>
+> ⚠️★★ **LA CAUSE DU « UNE COLONNE PARTOUT » ÉTAIT DEUX `col-span-full`
+> MANQUANTS.** `.form-grid` passe à deux colonnes dès 30 rem de conteneur. Les
+> deux blocs des sections repliables n'occupaient qu'UNE de ces deux colonnes,
+> donc leur propre `auto-fit` à 14 rem n'avait jamais que 20 rem à répartir et
+> rendait une colonne unique — **en laissant la moitié droite de la section
+> vide**. C'est tout le défaut.
+>
+> **A158, la hauteur mesurée aux trois largeurs, sections OUVERTES** (c'est
+> l'état où le PO l'a trouvé interminable, puisque le ת״ז est dans une section
+> repliée) :
+>
+> | | avant | après | |
+> |---|---|---|---|
+> | iPhone 402 | 4 626 px | **4 686 px** | +60 : la case à cocher neuve, une colonne de toute façon |
+> | iPad portrait 1032 | 4 411 px | **3 853 px** | **−12,7 %** |
+> | iPad paysage 1376 | 3 748 px | **3 358 px** | **−10,4 %** |
+>
+> ## AH2 — « FLOTTANTS » ÉTAIT LA DESCRIPTION EXACTE DE `position: sticky`
+>
+> ⚠️★★ **CE N'ÉTAIT PAS UN DÉFAUT DE RÉGLAGE, C'ÉTAIT LE MÉCANISME.** Une barre
+> collante ne se colle au bas de la fenêtre que s'il reste du contenu SOUS elle
+> pour l'y pousser. La fiche de ferme ouvre quatre sections REPLIÉES : sur un
+> iPad le document est plus court que l'écran, la barre se pose donc à la fin
+> du contenu — au milieu de la page — et elle y reste.
+>
+> **A159 vu ROUGE sur le build d'avant, et le chiffre est éloquent :** iPad
+> paysage en mode partagé, la barre flottait à **231 px du bas À TOUS LES
+> DÉFILEMENTS** ; iPhone et iPad portrait, elle remontait de 84 et 182 px en
+> bas de course. 21/21 après, aux trois défilements × trois largeurs × trois
+> modes.
+>
+> ★ La barre devient `fixed`, sa boîte horizontale est **mesurée** sur un
+> témoin resté dans le flux, et ce témoin **réserve sa hauteur** — donc elle ne
+> recouvre aucun champ.
+>
+> ⚠️★★ **ET L'ANCRER A DÉCOUVERT UNE COLLISION QUE `bun run zones` A TROUVÉE EN
+> CLIQUANT CINQUANTE-CINQ FOIS SUR שמור.** Le dégagement de la pilule de mode
+> était `pl-[4.5rem]` — 72 px écrits à la main — pour une pilule qui va de 76 à
+> 220. Il n'a **jamais** été juste ; il ne se voyait pas parce qu'une barre
+> collante ne descendait jamais assez bas pour la rencontrer. La pilule publie
+> désormais sa largeur et la barre la lit (décision permanente 39). `ahbar`
+> demande maintenant aussi « ses boutons répondent-ils au doigt » : une barre
+> ancrée qu'on ne peut pas presser est pire qu'une barre flottante.
+>
+> ## AH3 — LE JEU D'ESSAI : MARQUÉ, EXCLU DES COMPTEURS, SUPPRIMABLE
+>
+> Une ferme complète de bout en bout (ת״ז, portable, surfaces, contour, contrat
+> **signé**, deux documents), un volontaire, un conducteur, une garde passée et
+> une garde à venir. Marqueur : le préfixe `test-`, la mécanique de N3.
+>
+> ★★ **L'EXCLUSION EST DANS `getCountableFarms` ET NON DANS `getVisibleFarms`,
+> ET LA DIFFÉRENCE EST TOUTE LA DEMANDE.** Le PO doit VOIR la ferme de bidon —
+> c'est pour cela qu'elle existe. Ce qu'il ne doit pas voir, ce sont ses
+> 200 dounams dans le pourcentage que l'association transmet au ministère.
+>
+> **Vérifié et non supposé :** après la pose, `getDunamKpis` rend les mêmes
+> chiffres et `buildProgrammeReport` est identique champ pour champ.
+> `guardsUpcoming` avait échappé au premier jet — la porte l'a trouvé.
+>
+> ★ **La suppression n'emporte que `test-` PAR CONSTRUCTION**, pas par
+> précaution : `nextId` ne produit jamais ce préfixe.
+>
+> ## AH4 — L'IMAGE D'EXEMPLE ÉTAIT PIRE QU'INUTILE
+>
+> **Recensement d'abord, comme demandé.** `public/mock-agreement.pdf` n'était
+> référencé que par `placeholderUrl()`, par le bouton « צפייה במסמך הנוכחי » des
+> réglages, et par son générateur `scripts/agreement-placeholder.ts`.
+>
+> ⚠️★★ **ET LE BOUTON DES RÉGLAGES OUVRAIT CE FICHIER** — c'est-à-dire que
+> l'écran qui prétend dire quel document sera montré à l'agriculteur en ouvrait
+> un autre. **Un aperçu qui n'est pas le document est la seule chose plus
+> coûteuse qu'une absence d'aperçu.** Supprimée du dépôt, de l'écran et de ses
+> références.
+>
+> ## AH5 — LE DOCUMENT ENTIER EST UN GABARIT
+>
+> AF1 dessinait un formulaire : titre en dur, QUATRE cases en dur avec leurs
+> libellés traduits, puis un paragraphe à un seul jeton. **Trois sources pour
+> un document.** Il n'y en a plus qu'une : le texte.
+>
+> ★★ **SEPT VARIABLES, EN HÉBREU, ET LA LISTE EST FERMÉE** —
+> `{{שם_החקלאי}} {{תז_חפ}} {{נייד}} {{שם_החווה}} {{יישוב}} {{שנה}}
+> {{תאריך_חתימה}}`. ⛔ **Aucune surface**, décision explicite du PO, et c'est
+> vérifié plutôt que promis. Elles sont en hébreu parce que c'est le PO qui les
+> tape : un gabarit à `{{farmerName}}` obligerait quelqu'un qui écrit de droite
+> à gauche à basculer de clavier sept fois au milieu d'une phrase.
+>
+> ★★ **« NI CHAMP VIDE NI LIGNE VIDE » DEMANDAIT UNE DÉFINITION**, sinon la
+> règle ne se programme pas — « ת״ז / ח״פ: » est techniquement non vide et
+> pourtant exactement ce que le PO ne veut pas voir. Retenue :
+>
+> - une ligne **sans** variable est conservée, toujours : c'est de la prose ;
+> - une ligne dont **AUCUNE** variable n'est renseignée disparaît, libellé
+>   compris ;
+> - une ligne **partiellement** remplie perd ses jetons vides et ses
+>   séparateurs orphelins (« נייד: · » ne reste pas) ;
+> - les lignes vides consécutives se referment.
+>
+> ★ **LE LOGO EST UNE VALEUR INITIALE, JAMAIS UN LOGO IMPOSÉ.** `null` = celui
+> de l'association, `''` = aucun (choisi exprès), sinon celui du PO. Position
+> et largeur réglables. L'aperçu appelle `drawAgreementPage` **elle-même**,
+> donc il ne peut pas mentir.
+>
+> ★ **ET LE DOCUMENT EST MULTIPAGE** depuis qu'il est modifiable : une page
+> unique aurait coupé **en silence** la clause que l'association ajoutera.
+>
+> ## AH6 — LA CASE D'ACCEPTATION EST RETIRÉE
+>
+> Le PO a tranché : « pas de case à cocher si elle fait doublon avec l'acte de
+> signer ». Elle demandait deux fois la même chose à quelqu'un en train de
+> signer, et c'est la case qu'on coche sans lire. **Un champ obligatoire de
+> moins**, ce qui est la règle qui gouverne ce formulaire (AH6.5). Le reste
+> d'AH6 était déjà tenu par AG4 et A166 le mesure : 3 champs figés, 1 seul
+> saisissable, 0 case, le document à l'écran, rien qui déborde à 402 px.
+>
+> ## AH7 — L'AUDIT DES VUES PLEIN ÉCRAN EST GÉOMÉTRIQUE
+>
+> ★★ **NI UNE CLASSE, NI UN `data-` QUE QUELQU'UN AURAIT OUBLIÉ DE POSER SUR LA
+> PROCHAINE** — les deux ne trouvent que ce qu'on a pensé à leur montrer. Ce
+> qui est cherché est la PROPRIÉTÉ qui piège : un élément `fixed` couvrant
+> ≥ 85 % de la fenêtre. Et « pouvoir être fermée » est mesuré **au toucher** :
+> la sortie doit répondre à `elementFromPoint` en son centre — un bouton
+> couvert par un bandeau opaque est un bouton qui n'existe pas.
+>
+> **Cinq entrées vérifiées, cinq sorties atteignables, cinq fois la touche
+> d'échappement.** Le mode carte plein écran de `MapSplit` n'ouvre aucune vue
+> épinglée sur un iPad : la carte occupe la colonne, la pilule ramène.
+>
+> **AH7.2, mesuré :** 241 ms du geste au raccourci du lien, **1 020 ms** du
+> geste au document dessiné. Le retard vient du dessin A4 sur canevas, qui est
+> ce qui PRODUIT le PDF ; rien à gagner sans changer le document.
+>
+> **AH7.3** — le bloc du lien est replié par défaut : l'atteindre coûtait
+> déplier, défiler, appuyer. Une pression dans l'en-tête de la fiche ouvre les
+> **mêmes** boutons — le calcul est extrait dans `farmerLinkParts`, de sorte
+> que le raccourci et le bloc ne PEUVENT pas envoyer deux URLs différentes.
+>
+> ## AH8 — TROIS INFORMATIONS N'AVAIENT AUCUNE COLONNE
+>
+> `ת״ז / ח״פ` (aucune, alors que c'est la case du document signé), `שם החווה`
+> (« שם המקום » porte `farm.name`, pas le nom du holding — les faire tenir dans
+> une case serait l'agrégat que le brief interdit) et `תאריך חתימה` (la colonne
+> « חתימה » portait l'image et rien qui dise QUAND).
+>
+> ⚠️ **AJOUTÉES À LA FIN, JAMAIS INTERCALÉES** : les dix-sept en-têtes du haut
+> sont transcrits dans l'ordre de leur portail et quelqu'un colle par position.
+> La date est celle du dernier accord **SIGNÉ**, jamais d'une ligne d'accord
+> sans encre.
+>
+> ## AH9 — L'ITINÉRAIRE LIBRE, ET ⛔ AUCUN SERVICE EXTERNE
+>
+> Ce n'est pas le planificateur existant : celui-là choisit des FICHES dans une
+> liste, et exiger quatorze fiches avant de savoir dans quel ordre rouler
+> inverserait l'ordre du travail réel.
+>
+> ⛔ **AH9.7 — RIEN NE SORT DE L'APPAREIL.** Orthodromie × 1,35 sur 72 km/h.
+> Ce que cela coûte est dit à l'écran comme dans le code : bon sur une route
+> ouverte, moins précis autour d'un wadi ou d'un barrage — d'où « בסביבות »
+> dans le message envoyé. Pour faire mieux il faudrait une matrice de trajets :
+> Google Distance Matrix ou Mapbox, payants à la requête **et qui envoient les
+> coordonnées de chaque agriculteur à un tiers** — pour des exploitations dont
+> on cartographie les zones de menace, c'est une décision et non un détail
+> technique ; ou OSRM auto-hébergé, qui n'envoie rien mais demande un serveur.
+> **Aucun des trois n'est branché.**
+>
+> ⚠️★★ **ET A170 A TROUVÉ UN DÉFAUT QUI DORMAIT DEPUIS AF3.3.** Le lecteur de
+> position exige trois décimales — c'est ce qui l'empêche de prendre le
+> « ,15z » d'un zoom Google pour une longitude. Mais `${p.lat},${p.lng}` laisse
+> JavaScript imprimer le plus court : 31.25 s'écrit « 31.25 ». **Un point rond
+> traversait donc l'URL et revenait `null`** : « convertir en fiche ferme »
+> ouvrait le formulaire **sans épingle**, carte armée, comme si le point
+> n'avait jamais existé. `positionParam` (six décimales) est le seul chemin.
+>
+> ## AH10 — LA POINTE N'EST PAS DU DESSIN, C'EST L'ANCRAGE
+>
+> Les points précis (ferme, moshav, rendez-vous, incident, étape d'itinéraire)
+> portent l'épingle fine à tête ronde ; la pastille reste pour les
+> REGROUPEMENTS (`bubble`), l'origine et les poignées.
+>
+> ★★ **« LA POINTE DÉSIGNE LA POSITION » SE MESURE SUR `anchor: 'bottom'`.** Une
+> pastille centrée sur ses coordonnées est décalée d'un demi-marqueur — à z16
+> sur un iPad, une quinzaine de mètres de terrain. A171 lit la transformation
+> que MapLibre pose, dans les deux thèmes.
+>
+> ★ **Le contraste sur photo ET sur vectoriel** vient d'un halo sombre
+> translucide posé SOUS le contour clair — la solution des zones (U5), qui
+> donne en prime le « léger relief » demandé.
+>
+> ## AH11 — LES TROIS ROUGES ÉTAIENT DES PORTES PÉRIMÉES
+>
+> Aucun des trois ne décrivait un défaut du produit, et trois passes les ont
+> annoncés sans les lire :
+>
+> - **X7 « one tile height »** exigeait l'ÉGALITÉ, et **Y2 avait décidé le
+>   contraire cinq jours plus tôt** : le PO avait signalé les tuiles de garde
+>   « complètement tronquées », Y2 a mesuré 88 px de boîte pour 153 px de
+>   contenu et remplacé `height` par `min-height`. La porte réclamait ce que le
+>   PO avait fait retirer. Elle vérifie désormais le PLANCHER, lu sur
+>   `--tile-h`.
+> - **X5 « one grid template »** ne mesurait plus RIEN : le rôle dense n'existe
+>   qu'en mode carte masquée (Y4), la porte cherchait `.roster-row` sur un
+>   écran qui n'en affiche aucune, et `tracks.length === 2` confondait « deux
+>   lignes d'accord » avec « aucune ligne ».
+> - **« the mode pill is at the physical bottom-left »** exigeait `x < 40` ; la
+>   pilule est à 76, un intervalle après le « + » dont elle est la voisine.
+>   Tenir le seuil aurait voulu dire recréer le recouvrement qu'A86 interdit.
+>
+> **`bun run uipass` 41/41**, après trois passes de rouge.
+>
+> ★★ **AH11.2 — LES RÉGLAGES REMONTENT SUR LE COMPTE.** Table `user_settings`
+> sur `lo-yanum-prod` : une ligne par compte, un `jsonb`, RLS « sa propre ligne
+> et rien d'autre », **pas même pour un rekaz**. La liste des clés qui voyagent
+> est FERMÉE et écrite à la main — le raccourci « tout ce qui commence par
+> `lo-yanum:` » aurait emporté le laissez-passer de l'agriculteur et la mémoire
+> de temporisation d'AG2, c'est-à-dire copié d'un appareil à l'autre les deux
+> protections qui n'ont de sens que sur un appareil.
+>
+> ⚠️ **A172 a trouvé une COURSE que le mécanisme seul ne fermait pas** : le
+> gabarit revenait bien dans le stockage, et l'écran des réglages, monté un
+> instant plus tôt, montrait toujours le texte livré — chaque module remplit
+> son cache à sa première lecture. Le premier rendu attend donc les réglages,
+> **au plus 2,5 s** ; un réseau mort n'empêche jamais l'app de s'ouvrir.
+>
+> ⛔ **DIT FRANCHEMENT :** le va-et-vient est vérifié contre une FAUSSE base
+> (`fake-supabase`). La vraie table existe, mais **aucune session de
+> coordinateur n'existe sur cette machine** (§13) — la porte prouve que
+> l'application lit, écrit et restaure, pas que la politique de Frankfurt
+> accepte l'écriture. Cette moitié-là, c'est le PO qui la verra.
+>
+
 > 🏁 **PASSE AG — VOIR COMME · L'ESPACE AGRICULTEUR · LA SIGNATURE À DISTANCE.
 > 2026-09-09. LIRE EN PREMIER.**
 >

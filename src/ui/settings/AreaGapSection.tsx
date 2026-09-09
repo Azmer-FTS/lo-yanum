@@ -41,7 +41,14 @@ export function AreaGapSection() {
     <Section
       title={t('settings.areaGapTitle')}
       className="mt-6"
+      /* ★★ AH12 — REPLIÉE PAR DÉFAUT, ET `bun run layout` EST POURQUOI. L'écran
+         des réglages faisait 6,6 hauteurs d'écran à 390 px contre un plafond
+         de six (A30) — il était au-dessus AVANT cette passe, et une passe qui
+         ajoute une section sans regarder le plafond est celle qui le fera
+         crever. Ce réglage est un SEUIL : on le pose une fois et on le relit
+         dans le résumé, qui reste à l'écran. */
       collapseKey="settings-area-gap"
+      defaultOpen={false}
       summary={`${gapPercent}%`}
     >
       <p className="muted mb-3">{t('settings.areaGapIntro')}</p>

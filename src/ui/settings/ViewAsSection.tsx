@@ -85,7 +85,13 @@ export function ViewAsSection() {
          3260 px page on the deployed twin, which is three phone screens of
          scrolling to find the one control he was looking for. */
       flush
+      /* ★★ AH12 — REPLIÉE PAR DÉFAUT. C'était le bloc le plus haut de l'écran
+         (599 px sur un iPhone) pour une LISTE DE PERSONNES qu'on ne parcourt
+         pas : on vient ici avec quelqu'un en tête. Le résumé dit qui est
+         affiché, ce qui est la seule chose à lire en passant. Voir le plafond
+         d'A30 dans `AreaGapSection`. */
       collapseKey="settings-viewas"
+      defaultOpen={false}
       summary={active ? `${t(`roles.${active.role}`)} · ${active.name}` : undefined}
     >
       {/* ★ AG1.2 — CE QUE LE MODE FAIT ET CE QU'IL NE FAIT PAS, DIT AVANT

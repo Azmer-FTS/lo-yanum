@@ -339,7 +339,13 @@ export function MapModePill({
       data-overlay=""
       /* AA1.2 — see `[data-bottom-rail]` in `index.css`. */
       data-bottom-rail=""
-      className={`glass fixed bottom-[calc(var(--shell-bottom)+1.25rem)]
+      /* ★★ AH2 — `--pinned-foot` EST LE TROISIÈME TERME, et c'est la hauteur
+         que la barre d'actions d'un formulaire publie (Z6). Sans lui, la
+         pilule et la barre se disputent le même coin sur un téléphone, et
+         c'est la pilule qui gagne — elle est au-dessus dans la pile. Le
+         bouton d'urgence et la barre de démonstration lisent déjà cette
+         variable pour la même raison. */
+      className={`glass fixed bottom-[calc(var(--shell-bottom)+var(--pinned-foot,0px)+1.25rem)]
                   left-[calc(var(--map-rail)+var(--map-rail-w)+var(--map-rail))] z-30
                   h-[var(--map-rail-w)] flex-row items-center gap-0.5 rounded-card p-1 ${className || 'flex'}`}
     >
