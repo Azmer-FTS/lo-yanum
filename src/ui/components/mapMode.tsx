@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { usePublishedWidth } from '../hooks/useShellMetrics'
 import { Icon } from './Icon'
 
 /**
@@ -324,8 +325,13 @@ export function MapModePill({
   className?: string
 }) {
   const { t } = useTranslation()
+  /* ★★ AH2 — ELLE PUBLIE SA LARGEUR, et la barre d'actions des formulaires la
+     lit pour se dégager. Voir `usePublishedWidth`. */
+  const ref = useRef<HTMLDivElement | null>(null)
+  usePublishedWidth(ref, '--mode-pill-w')
   return (
     <div
+      ref={ref}
       role="group"
       aria-label={t('map.modeLabel')}
       data-testid="map-mode-pill"

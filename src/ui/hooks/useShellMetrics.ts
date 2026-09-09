@@ -51,3 +51,44 @@ export function usePublishedHeight(
     }
   }, [ref, property])
 }
+
+/**
+ * ★★ AH2 (2026-09-09) — LA MÊME CHOSE, EN LARGEUR, ET UNE PORTE A DÛ LA
+ *    RÉCLAMER.
+ *
+ * La barre d'actions, une fois VRAIMENT ancrée au bas de la fenêtre (AH2),
+ * s'est posée là où la pilule de mode est posée depuis U4.4 — et le bouton
+ * שמור s'est retrouvé DESSOUS. `bun run zones` l'a trouvé en cinquante-cinq
+ * tentatives de clic sur un bouton parfaitement visible et parfaitement
+ * inatteignable : le défaut exact que la note d'A86 décrit.
+ *
+ * ⚠️ ET LE DÉGAGEMENT ÉTAIT UN NOMBRE ÉCRIT À LA MAIN — `pl-[4.5rem]`, soit
+ *    72 px, pour une pilule qui commence à 76 et finit à 220. Il n'a jamais
+ *    été juste ; il ne se voyait pas parce que la barre collante ne descendait
+ *    jamais assez bas pour la rencontrer. La pilule publie donc sa largeur, et
+ *    la barre la lit — décision permanente 39, une fois de plus.
+ */
+export function usePublishedWidth(
+  ref: RefObject<HTMLElement | null>,
+  property: string,
+): void {
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const publish = () => {
+      const width = el.getBoundingClientRect().width
+      if (width === 0) {
+        document.documentElement.style.removeProperty(property)
+        return
+      }
+      document.documentElement.style.setProperty(property, `${width}px`)
+    }
+    publish()
+    const observer = new ResizeObserver(publish)
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      document.documentElement.style.removeProperty(property)
+    }
+  }, [ref, property])
+}

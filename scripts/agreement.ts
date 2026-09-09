@@ -205,7 +205,20 @@ try {
   await page.waitForTimeout(2000)
   const status = page.locator('[data-testid="agreement-template-status"]')
   check('הגדרות has the תבנית הסכם section', (await status.count()) === 1)
-  check('and says the PLACEHOLDER is live until the association uploads its own', (await status.innerText()).includes('דוגמה'), await status.innerText())
+  /**
+   * ★★ AH4 (2026-09-09) — IL N'Y A PLUS DE « MOSMAKH LEDUGMA ». Le PO a regardé
+   *    l'exemple et a tranché : « une IMAGE générée autrefois, sans texte
+   *    exploitable, sans rapport avec le document que signent les
+   *    agriculteurs ». Elle est supprimée du dépôt, de l'écran et de ses
+   *    références. Ce que la section doit dire tant que l'association n'a rien
+   *    téléversé est donc : le document en vigueur est celui du GABARIT — ce
+   *    qui est vrai, et ce que le bouton du haut permet enfin de relire.
+   */
+  check(
+    'AH4 · la section dit que le document en vigueur est celui du GABARIT, plus un exemple',
+    (await status.innerText()).includes('מסמך החתימה') && !(await status.innerText()).includes('דוגמה'),
+    await status.innerText(),
+  )
   check('with an upload button', (await page.locator('[data-testid="agreement-template-upload"]').count()) === 1)
   await page.screenshot({ path: `${SHOTS}/2-settings.png`, fullPage: true })
 

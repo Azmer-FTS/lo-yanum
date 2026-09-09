@@ -173,6 +173,30 @@ try {
         end.covered === 0,
         `${end.covered} px`,
       )
+      /**
+       * ★★ ET SES PROPRES BOUTONS SONT ATTEIGNABLES AU DOIGT. `bun run zones`
+       *    a trouvé שמור couvert par la pilule de mode dès que la barre s'est
+       *    vraiment posée au bas de la fenêtre : visible, activé, et
+       *    inatteignable — cinquante-cinq tentatives de clic. Une barre ancrée
+       *    qu'on ne peut pas presser est pire qu'une barre flottante.
+       */
+      const reachable = await page.evaluate(() => {
+        const bar = document.querySelector('[data-testid="form-actions"]') as HTMLElement | null
+        if (!bar) return { total: 0, hit: 0 }
+        const buttons = Array.from(bar.querySelectorAll('button'))
+        let hit = 0
+        for (const b of buttons) {
+          const r = b.getBoundingClientRect()
+          const el = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+          if (el && (el === b || b.contains(el))) hit += 1
+        }
+        return { total: buttons.length, hit }
+      })
+      check(
+        `${label} — ses boutons répondent au doigt, rien ne les couvre`,
+        reachable.total > 0 && reachable.hit === reachable.total,
+        `${reachable.hit}/${reachable.total}`,
+      )
       await ctx.close()
     }
   }

@@ -623,8 +623,17 @@ export function FormActions({
         //
         // ⚠️ `bottom-[var(--shell-bottom)]` ET NON `bottom-0` : c'est le max de
         //    la barre d'onglets et de la zone sûre du bas (AH2.3).
+        /* ★★ AH2 — LE DÉGAGEMENT DE LA PILULE DE MODE EST CALCULÉ, PLUS ÉCRIT.
+           `pl-[4.5rem]` valait 72 px pour une pilule qui va de 76 à 220 : il
+           n'a jamais été juste, et il ne se voyait pas parce qu'une barre
+           collante ne descendait jamais assez bas pour la rencontrer. Ancrée,
+           elle la rencontre — `bun run zones` a cliqué cinquante-cinq fois sur
+           un bouton שמור visible et couvert. La pilule publie sa largeur
+           (`--mode-pill-w`) et disparaît sous son point de rupture, où la
+           variable n'existe pas et où le repli à 0 laisse le dégagement du
+           bouton « + ». */
         className="fixed bottom-[var(--shell-bottom)] z-30 flex justify-end gap-2 border-t
-                   border-edge-subtle bg-surface-overlay px-[var(--content-pad,1rem)] py-3 pl-[4.5rem]"
+                   border-edge-subtle bg-surface-overlay px-[var(--content-pad,1rem)] py-3 pl-[calc(var(--map-rail)+var(--map-rail-w)+var(--map-rail)+var(--mode-pill-w,0px)+0.75rem)]"
       >
         <button type="button" className="btn-secondary" onClick={onCancel}>
           {cancelLabel}

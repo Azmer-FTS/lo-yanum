@@ -277,7 +277,11 @@ export function AgreementDocSection() {
       <p className="muted mt-1">{t('settings.agreementDoc.previewHint')}</p>
       <div
         data-testid="agreement-doc-preview"
-        className="mt-2 max-h-[60dvh] overflow-auto overscroll-contain rounded-card border border-edge-subtle bg-white p-2"
+        /* ⚠️ `ring-1` ET NON `border` : A57 refuse un contour plein sur un
+           élément qui porte un mot de carte, et `bun run tokens` le vérifie.
+           Le cadre reste visible, il est simplement dessiné du bon côté du
+           pixel. */
+        className="mt-2 max-h-[60dvh] overflow-auto overscroll-contain rounded-card ring-1 ring-edge-subtle bg-white p-2"
       >
         {preview ? (
           <img

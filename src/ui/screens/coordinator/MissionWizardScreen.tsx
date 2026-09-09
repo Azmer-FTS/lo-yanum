@@ -1943,7 +1943,16 @@ export function MissionWizardScreen() {
           style={foot.barStyle}
           /* Z6 — publishes its height as `--pinned-foot`; the phone's folded
              role button sits above whatever this bar occupies. */
-          className="fixed bottom-[var(--shell-bottom)] z-30 flex items-center gap-2 border-t border-edge-subtle bg-surface-overlay px-4 py-3 pl-[4.5rem] sm:px-6 sm:pl-[4.5rem]"
+        /* ★★ AH2 — LE DÉGAGEMENT DE LA PILULE DE MODE EST CALCULÉ, PLUS ÉCRIT.
+           `pl-[4.5rem]` valait 72 px pour une pilule qui va de 76 à 220 : il
+           n'a jamais été juste, et il ne se voyait pas parce qu'une barre
+           collante ne descendait jamais assez bas pour la rencontrer. Ancrée,
+           elle la rencontre — `bun run zones` a cliqué cinquante-cinq fois sur
+           un bouton שמור visible et couvert. La pilule publie sa largeur
+           (`--mode-pill-w`) et disparaît sous son point de rupture, où la
+           variable n'existe pas et où le repli à 0 laisse le dégagement du
+           bouton « + ». */
+          className="fixed bottom-[var(--shell-bottom)] z-30 flex items-center gap-2 border-t border-edge-subtle bg-surface-overlay px-4 py-3 pl-[calc(var(--map-rail)+var(--map-rail-w)+var(--map-rail)+var(--mode-pill-w,0px)+0.75rem)] sm:px-6 sm:pl-[calc(var(--map-rail)+var(--map-rail-w)+var(--map-rail)+var(--mode-pill-w,0px)+0.75rem)]"
         >
           <button
             type="button"
