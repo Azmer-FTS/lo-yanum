@@ -238,15 +238,15 @@
 >
 > ## AG8 — LES PORTES, ET LES DÉFAUTS QU'ELLES ONT TROUVÉS
 >
-> · `bun run agpass` — **74 contrôles** : A140 · A142 · A144 … A149, **sans
->   navigateur**.
+> · `bun run agpass` — **75 contrôles** : A140 · A142 · A144 … A149 · A152,
+>   **sans navigateur**.
 > · `bun run agui` — **80 contrôles** : A140 · A141 · A142 · A143 · A144 · A145 ·
 >   A147 · A150 · A151, **dans Chromium ET WebKit**.
 > · `bun run agcaptures` — les captures du DÉPLOYÉ, clair et sombre, trois
 >   viewports, **et la mesure A148 de recouvrement de la vignette** — parce que
 >   « vérifie sur CAPTURE du déployé, pas seulement par sonde DOM ».
 >
-> **★★ SEPT DÉFAUTS TROUVÉS PAR LES PORTES, TOUS CORRIGÉS, ET AUCUN N'AURAIT ÉTÉ
+> **★★ HUIT DÉFAUTS TROUVÉS PAR LES PORTES, TOUS CORRIGÉS, ET AUCUN N'AURAIT ÉTÉ
 > VU PAR RELECTURE :**
 >
 > 1. **`useSyncExternalStore` et l'instantané neuf.** `geoDiagRows()` rendait un
@@ -266,7 +266,15 @@
 >    le travail. **Le refus se pose là où le GESTE COMMENCE.** Même correctif sur
 >    le lien de signature de l'accueil agriculteur.
 > 6. **`watch()` contournait la garde de permission** (AG7 ci-dessus).
-> 7. **La migration écrite en une instruction multi-colonnes.** `bun run mapping`
+> 7. **★★ LE SMS DE DÉTRESSE PORTAIT UNE CLÉ BRUTE DEPUIS AE, et c'est le pire
+>    endroit possible.** `EmergencyScreen` composait le message avec
+>    `t('anchor.navigation')` — une clé qui n'existe dans AUCUNE traduction.
+>    i18next rend alors la CLÉ : l'alerte envoyée à trois heures du matin portait
+>    la ligne littérale « anchor.navigation: https://waze.com/… » au lieu de
+>    « ניווט ». Rien ne plante, rien ne s'affiche en rouge, et personne ne le voit
+>    avant d'avoir besoin du message. **A152 est née de ce défaut** et vérifie
+>    désormais les 223 fichiers de `src/` à chaque exécution.
+> 8. **La migration écrite en une instruction multi-colonnes.** `bun run mapping`
 >    lit les fichiers SQL et son analyseur lit `alter table … add column` **une
 >    colonne à la fois** ; la forme condensée est du SQL valide qu'il ne voit pas,
 >    donc il déclarait les deux colonnes MANQUANTES. Corrigé, et la raison est

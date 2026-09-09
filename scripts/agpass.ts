@@ -60,6 +60,9 @@ import type { Farm, SignDraft } from '../src/core/index'
  *   A148  la file « לחידוש » : le compte est juste, et elle ne double PAS
  *         l'avertissement d'AA2bis.
  *   A149  les documents attendus déduits du סוג פעילות : un, un, ou deux.
+ *   A152  chaque clé de traduction employée existe — un `t()` qui échoue rend
+ *         sa propre clé, en silence, et c'est ainsi que le SMS de détresse
+ *         portait « anchor.navigation » depuis AE.
  *   plus  le jeton de l'agriculteur : permanent, et il ne se confond pas avec
  *         celui d'une garde.
  *
@@ -784,6 +787,67 @@ section('6 — A148 · la file « לחידוש » et son voisinage avec AA2bis')
     'A148 · la fenêtre est réellement réglable',
     wide.length === 4,
     wide.map((f) => f.id).join(', '),
+  )
+}
+
+// ---------------------------------------------------------------------------
+section('7 — chaque clé de traduction employée existe vraiment')
+// ---------------------------------------------------------------------------
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ A152 — UN `t()` QUI ÉCHOUE REND SA PROPRE CLÉ, ET C'EST PARFAITEMENT
+ *    SILENCIEUX.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ CETTE PORTE EXISTE PARCE QU'ELLE A TROUVÉ QUELQUE CHOSE LA PREMIÈRE FOIS
+ *    QU'ELLE A ÉTÉ ÉCRITE, ET DANS LE PIRE ENDROIT POSSIBLE. `EmergencyScreen`
+ *    composait le SMS de détresse avec `t('anchor.navigation')` — une clé qui
+ *    n'existe dans aucune traduction. i18next rend alors la CLÉ, donc l'alerte
+ *    envoyée à trois heures du matin portait la ligne littérale
+ *    « anchor.navigation: https://waze.com/… » au lieu de « ניווט ». Rien ne
+ *    plante, rien ne s'affiche en rouge, et personne ne le voit avant d'avoir
+ *    besoin du message. Le défaut datait d'AE2a et trois passes l'ont relu.
+ *
+ * ★ CE QUI EST CHERCHÉ EST ÉTROIT EXPRÈS : uniquement `t('quelque.chose')`
+ *   avec un point, uniquement sous `src/`. Sans le point la sonde ramasse
+ *   `document.createElement('div')` et une trentaine d'autres appels d'une
+ *   lettre qui n'ont rien à voir — et une porte qui crie à tort est une porte
+ *   qu'on désactive. Les clés composées à l'exécution (`t(\`roles.${r}\`)`) ne
+ *   sont pas couvertes : leur préfixe est vérifié par les écrans qui les
+ *   rendent, et une porte ne doit pas prétendre couvrir ce qu'elle ne voit pas.
+ */
+{
+  const he = (await Bun.file('src/locales/he.json').json()) as Record<string, unknown>
+  const has = (key: string): boolean => {
+    let cur: unknown = he
+    for (const part of key.split('.')) {
+      if (typeof cur !== 'object' || cur === null) return false
+      cur = (cur as Record<string, unknown>)[part]
+      if (cur === undefined) return false
+    }
+    return true
+  }
+
+  const files: string[] = []
+  const walk = async (dir: string): Promise<void> => {
+    for (const entry of await Array.fromAsync(new Bun.Glob('**/*.{ts,tsx}').scan(dir))) {
+      files.push(`${dir}/${entry}`)
+    }
+  }
+  await walk('src')
+
+  const missing: string[] = []
+  for (const file of files) {
+    const text = await Bun.file(file).text()
+    for (const m of text.matchAll(/\bt\(\s*'([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)+)'/g)) {
+      if (!has(m[1])) missing.push(`${m[1]} ← ${file}`)
+    }
+  }
+  check(
+    'A152 · aucune clé de traduction employée n’est absente du fichier de langue',
+    missing.length === 0,
+    missing.slice(0, 4).join(' | ') || `${files.length} fichiers`,
   )
 }
 

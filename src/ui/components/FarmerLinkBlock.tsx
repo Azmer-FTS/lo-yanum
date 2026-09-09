@@ -66,7 +66,7 @@ export function FarmerLinkBlock({ farm }: { farm: Farm }) {
     return (
       <Section title={t('renewal.linkTitle')} collapseKey="entity-farmer-link">
         <Callout tone="warn" title={t('renewal.linkTitle')}>
-          {t('farms.noContact')}
+          {t('route.noContact')}
         </Callout>
       </Section>
     )

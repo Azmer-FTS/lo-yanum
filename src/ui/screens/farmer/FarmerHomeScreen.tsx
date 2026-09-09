@@ -162,9 +162,14 @@ export function FarmerHomeScreen() {
           <Line label={t('agreement.fieldFarmerName')} value={farm.farmerName || name || ''} />
           <Line label={t('agreement.fieldFarmerId')} value={farm.farmerId ?? ''} />
           <Line label={t('agreement.fieldPhone')} value={farm.farmerPhone ?? ''} />
-          <Line label={t('farms.fieldFarmName')} value={farm.farmName || farm.name} />
-          <Line label={t('farms.locality')} value={farm.locality} />
-          <Line label={t('farms.type')} value={t(`farmType.${farm.type}`)} />
+          {/* ⚠️ LES CLÉS SONT CELLES DES ÉCRANS QUI EXISTENT DÉJÀ (`form.*`,
+              `import.*`), pas des clés neuves : trois libellés de plus pour
+              dire « יישוב » et « סוג » seraient trois libellés à traduire deux
+              fois, et c'est celui qu'on oublie qui finit en clé brute à
+              l'écran. */}
+          <Line label={t('import.fieldFarmName')} value={farm.farmName || farm.name} />
+          <Line label={t('form.locality')} value={farm.locality} />
+          <Line label={t('form.type')} value={t(`farmType.${farm.type}`)} />
         </dl>
         {/**
           * ★ AG3.2 — « ce qu'il peut corriger ». Il ne modifie pas la fiche

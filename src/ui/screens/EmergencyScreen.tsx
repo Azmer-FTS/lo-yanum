@@ -175,7 +175,14 @@ export function EmergencyScreen() {
       farm: t('emergency.smsFarm'),
       at: t('emergency.smsAt'),
       coordinates: t('anchor.coordinates'),
-      navigation: t('anchor.navigation'),
+      /* ⚠️ `anchor.labelNavigation` ET NON `anchor.navigation` : la seconde
+         n'existe dans aucune traduction, donc le SMS de détresse partait avec
+         la chaîne littérale « anchor.navigation » à la place du mot « ניווט ».
+         Défaut d'AE2a trouvé en AG8 par la vérification de toutes les clés
+         employées contre le fichier de langue — un `t()` qui échoue rend sa
+         propre clé, ce qui est parfaitement silencieux jusqu'à ce que quelqu'un
+         lise le message. */
+      navigation: t('anchor.labelNavigation'),
       approximate: t('emergency.approximate'),
     }
     const next = planDistress(alert, ctx, labels)
