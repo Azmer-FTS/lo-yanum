@@ -6,6 +6,23 @@ import { stopViewAs, useViewAs } from './viewAs'
 
 /**
  * ★★ Y13 (2026-09-04) — "BANDEAU DISCRET RAPPELANT LE RÔLE SIMULÉ."
+ * ★★ AG1.4 (2026-09-09) — ET IL EST PERMANENT, NON MASQUABLE, ET IL DIT AUSSI
+ *    QUE RIEN N'EST POSSIBLE.
+ *
+ * « Bandeau permanent et non masquable indiquant qui l'on regarde, et un
+ *   bouton de retour immédiat au rôle de coordinateur. »
+ *
+ * ★ « NON MASQUABLE » EST UNE PROPRIÉTÉ DE STRUCTURE, PAS UNE ABSENCE DE
+ *   BOUTON. Il n'y a pas de croix parce qu'il n'y a nulle part où ranger un
+ *   état « masqué » : ce composant n'a aucun état, il lit `useViewAs()` et
+ *   rend ou ne rend pas. Un bandeau qui se ferme serait un bandeau dont il
+ *   faudrait mémoriser la fermeture, et le PO se retrouverait un soir devant
+ *   l'écran d'un agriculteur sans rien qui le lui dise.
+ *
+ * ★ ET IL PORTE « לקריאה בלבד », PARCE QUE LE SILENCE SERAIT PIRE QUE LE GRIS.
+ *   Un bouton désactivé sans raison affichée est un bouton cassé ; le bandeau
+ *   est l'endroit où la raison tient une fois pour tout l'écran, plutôt que
+ *   dix-sept fois à côté de dix-sept boutons.
  *
  * Rendered by the FIELD shell, so it is on every screen the simulated role
  * has, and nowhere else — a coordinator looking at his own dashboard is not
@@ -43,6 +60,15 @@ export function ViewAsBanner() {
             role: t(`roles.${active.role}`),
             name: active.name,
           })}
+        </span>
+        {/* ★ AG1.2 — l'état, pas une décoration : c'est ce qui explique chaque
+            bouton gris de l'écran, et il tient dans une pastille. */}
+        <span
+          data-testid="view-as-readonly"
+          className="chip shrink-0 bg-accent/20 text-accent-ink"
+        >
+          <Icon name="eye" size={11} />
+          {t('viewAs.readOnly')}
         </span>
         <button
           type="button"

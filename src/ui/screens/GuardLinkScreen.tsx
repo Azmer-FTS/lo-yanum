@@ -15,7 +15,11 @@ import {
 import type { GuardToken } from '@core/index'
 import { _raw } from '@core/store'
 
+import { useCoreValue } from '../hooks/useCore'
+
 import { Icon } from '../components/Icon'
+import { PhoneChallenge } from '../components/PhoneChallenge'
+import { useChallenge } from '../challenge'
 import { writeGuardPass, readGuardPass } from '../guardPass'
 
 /**
@@ -48,12 +52,43 @@ import { writeGuardPass, readGuardPass } from '../guardPass'
  *    du défaut que cette passe supprime.
  */
 export function GuardLinkScreen() {
+  const { t } = useTranslation()
   const { token: raw } = useParams<{ token: string }>()
   const [state, setState] = useState<
     { kind: 'opening' } | { kind: 'ok' } | { kind: 'expired'; token: GuardToken | null }
   >({ kind: 'opening' })
 
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ★★ AG2.1 (2026-09-09) — ET LA PORTE DES QUATRE CHIFFRES PASSE DEVANT TOUT.
+   * ═══════════════════════════════════════════════════════════════════════════
+   *
+   * ⚠️ ELLE EST LUE AVANT L'EFFET, ET C'EST LE POINT ENTIER. Le laissez-passer
+   *    est écrit sur l'appareil et la session est posée DANS l'effet ci-dessous ;
+   *    poser la question après coup laisserait sur le téléphone de celui qui a
+   *    reçu le lien par erreur le nom de la ferme, ses numéros et le code de son
+   *    portail — c'est-à-dire exactement ce que la mesure existe pour empêcher.
+   *    Rien n'est écrit tant que la réponse n'est pas juste.
+   *
+   * ★ ET LE NUMÉRO INTERROGÉ EST CELUI DE LA PERSONNE DU JETON, lu sur le
+   *   magasin, jamais celui de la ferme : c'est SON lien, c'est SON téléphone.
+   */
+  const person = useCoreValue(() => {
+    const read = decodeGuardToken(raw ?? '')
+    if (read.status !== 'valid' || !read.token) return null
+    const d = _raw()
+    const t = read.token
+    return (
+      (t.role === 'driver'
+        ? d.drivers.find((x) => x.id === t.personId)
+        : d.volunteers.find((v) => v.id === t.personId)) ?? null
+    )
+  })
+  const challenge = useChallenge(person?.id ?? '', person?.phone ?? '')
+  const locked = person !== null && challenge.state !== 'open'
+
   useEffect(() => {
+    if (locked) return
     const read = decodeGuardToken(raw ?? '')
     if (read.status !== 'valid' || !read.token) {
       setState({ kind: 'expired', token: read.token })
@@ -158,7 +193,19 @@ export function GuardLinkScreen() {
        par l'écran : c'est le seul endroit où le lien décide de quelque chose. */
     setSession({ role: token.role, entityId: token.personId })
     setState({ kind: 'ok' })
-  }, [raw])
+  }, [raw, locked])
+
+  if (locked && person) {
+    return (
+      <PhoneChallenge
+        personId={person.id}
+        phone={person.phone}
+        status={challenge}
+        title={t('challenge.guardTitle')}
+        subtitle={t('challenge.guardSubtitle')}
+      />
+    )
+  }
 
   if (state.kind === 'opening') {
     return (

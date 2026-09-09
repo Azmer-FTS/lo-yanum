@@ -82,7 +82,10 @@
     "logo": "bun run scripts/logo.ts",
     "afpass": "bun run scripts/afpass.ts",
     "afui": "bun run scripts/afui.ts",
-    "afcaptures": "bun run scripts/afcaptures.ts"
+    "afcaptures": "bun run scripts/afcaptures.ts",
+    "agpass": "bun run scripts/agpass.ts",
+    "agui": "bun run scripts/agui.ts",
+    "agcaptures": "bun run scripts/agcaptures.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "0.2.3",

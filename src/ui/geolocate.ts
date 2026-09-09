@@ -41,7 +41,29 @@ import type { LatLng } from '@core/index'
  *   redemande.
  */
 
+import { noteGeoPrompt } from './geoDiagnostics'
+
 const KEY = 'lo-yanum:last-fix'
+/**
+ * ★★ AG7 — LA PERMISSION OBSERVÉE, MISE EN CACHE PAR NOUS.
+ *
+ * ⚠️ CE CACHE N'EXISTE QUE PARCE QUE `navigator.permissions` PEUT NE PAS
+ *    RÉPONDRE, ET C'EST LE PREMIER RÉSULTAT DE LA MESURE D'AG7. `permissionStatus`
+ *    rend `'unknown'` quand le navigateur ne connaît pas le nom de permission
+ *    « geolocation » — ce qui a longtemps été le cas de Safari — et une origine
+ *    qui ne peut pas LIRE son état ne peut rien en déduire non plus. Ce que
+ *    l'application SAIT quand même, c'est qu'un relevé a réussi : un appareil
+ *    ne rend pas de coordonnées à une origine qui n'a pas l'autorisation. Un
+ *    succès EST donc une observation de `granted`, et c'est la seule que ce
+ *    programme puisse produire sans rien demander.
+ *
+ * ⛔ ET ÇA N'EMPÊCHE PAS UNE INVITE, IL FAUT LE DIRE : c'est le SYSTÈME qui
+ *    décide d'en poser une, pas nous. Ce que ce cache empêche est la SECONDE
+ *    invite de la même session, et il permet aux écrans de servir le dernier
+ *    point connu sans repasser par l'appareil. Voir le rapport d'AG7 pour ce
+ *    que la mesure a dit de la première.
+ */
+const GRANTED_KEY = 'lo-yanum:geo-granted'
 
 export interface Fix {
   position: LatLng
@@ -79,6 +101,24 @@ export function lastFix(): Fix | null {
   return cached
 }
 
+/** Ce que l'appareil nous a répondu la dernière fois qu'il a répondu. */
+function rememberGranted(): void {
+  try {
+    localStorage.setItem(GRANTED_KEY, String(Date.now()))
+  } catch {
+    // Navigation privée : l'observation vit pour cette session.
+  }
+}
+
+/** A-t-on déjà obtenu un relevé de cet appareil ? */
+export function everGranted(): boolean {
+  try {
+    return localStorage.getItem(GRANTED_KEY) !== null
+  } catch {
+    return false
+  }
+}
+
 function remember(position: GeolocationPosition): Fix {
   const fix: Fix = {
     position: { lat: position.coords.latitude, lng: position.coords.longitude },
@@ -86,6 +126,7 @@ function remember(position: GeolocationPosition): Fix {
     at: position.timestamp || Date.now(),
   }
   cached = fix
+  rememberGranted()
   try {
     localStorage.setItem(KEY, JSON.stringify(fix))
   } catch {
@@ -151,6 +192,10 @@ export async function locate(options: LocateOptions = {}): Promise<Fix | null> {
 
   if (inFlight) return await inFlight
   inFlight = new Promise<Fix | null>((resolve) => {
+    /* ★ AG7 — CHAQUE INTERROGATION RÉELLE EST COMPTÉE, ICI ET NULLE PART
+       AILLEURS. Depuis AF2.3 il n'existe qu'une porte vers l'API de
+       localisation, donc compter à la porte compte tout. */
+    noteGeoPrompt()
     navigator.geolocation.getCurrentPosition(
       (position) => resolve(remember(position)),
       () => resolve(known),
@@ -180,16 +225,60 @@ export function watch(
   options: { highAccuracy?: boolean; maxAgeMs?: number } = {},
 ): () => void {
   if (typeof navigator === 'undefined' || !navigator.geolocation) return () => undefined
-  const id = navigator.geolocation.watchPosition(
-    (position) => onFix(remember(position)),
-    () => {
-      /* Un relevé perdu pendant le suivi ne vaut pas un changement d'état :
-         le point cesse simplement d'avancer jusqu'au suivant. */
-    },
-    {
-      enableHighAccuracy: options.highAccuracy ?? true,
-      maximumAge: options.maxAgeMs ?? 10_000,
-    },
-  )
-  return () => navigator.geolocation.clearWatch(id)
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ★★ AG7 — LE DÉFAUT QUE LA MESURE A TROUVÉ, ET IL ÉTAIT DANS CE FICHIER.
+   * ═══════════════════════════════════════════════════════════════════════════
+   *
+   * AF2.3 a réuni cinq appels en une porte et a mis la garde « ne demande
+   * jamais quand c'est déjà refusé » dans `locate()`. `watch()` ne l'a pas
+   * reçue — et `watchPosition` pose une invite exactement comme
+   * `getCurrentPosition`. Conséquence mesurable : ouvrir l'écran d'urgence
+   * (`useLastFix`) ou allumer le point « vous êtes ici » de la carte pose une
+   * invite que la porte croyait avoir supprimée, y compris juste après un
+   * refus. C'est UNE des deux moitiés du symptôme du PO, et c'est celle qui
+   * est à nous.
+   *
+   * ⚠️ ET LE SUIVI EST COMPTÉ COMME UNE INTERROGATION, parce que c'en est une.
+   *    Un compteur qui ne compterait que `getCurrentPosition` aurait affiché
+   *    « 1 invite » sur une session qui en a posé deux, et le diagnostic aurait
+   *    innocenté le code qui est en cause.
+   */
+  /**
+   * ⚠️ ET LA GARDE EST DIFFÉRÉE PLUTÔT QUE SAUTÉE, CE QUI EST LE SEUL MOYEN DE
+   *    L'AVOIR ICI. `permissionStatus()` est asynchrone et cette fonction rend
+   *    un désabonnement SYNCHRONE — c'est ce que veut un `useEffect`. Le suivi
+   *    part donc au tour de boucle suivant, quand la réponse est connue, et ne
+   *    part pas du tout quand elle est `denied`. Un appelant qui se démonte
+   *    entre-temps annule avant que rien n'ait été ouvert : `cancelled` est
+   *    exactement là pour ça.
+   *
+   * ★ ET `'unknown'` LAISSE PASSER, comme dans `locate()`. Un navigateur qui
+   *   ne sait pas répondre n'a pas dit non ; refuser sur son silence enlèverait
+   *   la position à l'écran d'urgence sur tout appareil un peu ancien, ce qui
+   *   est le pire échange que ce fichier puisse faire.
+   */
+  let cancelled = false
+  let id: number | null = null
+
+  void permissionStatus().then((status) => {
+    if (cancelled || status === 'denied') return
+    noteGeoPrompt()
+    id = navigator.geolocation.watchPosition(
+      (position) => onFix(remember(position)),
+      () => {
+        /* Un relevé perdu pendant le suivi ne vaut pas un changement d'état :
+           le point cesse simplement d'avancer jusqu'au suivant. */
+      },
+      {
+        enableHighAccuracy: options.highAccuracy ?? true,
+        maximumAge: options.maxAgeMs ?? 10_000,
+      },
+    )
+  })
+
+  return () => {
+    cancelled = true
+    if (id !== null) navigator.geolocation.clearWatch(id)
+  }
 }

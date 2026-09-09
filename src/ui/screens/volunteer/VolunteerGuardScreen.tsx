@@ -33,6 +33,10 @@ import {
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 import { useNowTick } from '../../hooks/useEmergency'
+/* ★ AG1.2 — les trois boutons de cet écran ÉCRIVENT. En mode « voir comme »
+   ils sont désactivés et disent pourquoi ; le verrou du magasin est ce qui
+   rend la désactivation une garantie plutôt qu'une politesse. */
+import { readOnlyProps, useReadOnly } from '../../settings/viewAs'
 import { useGuardPass } from '../../guardPass'
 import { useVigil } from '../../settings/vigil'
 import { SiteFile } from '../EmergencyScreen'
@@ -40,6 +44,7 @@ import { SiteFile } from '../EmergencyScreen'
 export function VolunteerGuardScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
+  const readOnly = useReadOnly()
 
   const view = useCoreValue(getMyActiveMissionView)
   const isHolder = useCoreValue(() =>
@@ -146,7 +151,8 @@ export function VolunteerGuardScreen() {
           <button
             type="button"
             onClick={() => confirmArrival(mission.id)}
-            disabled={!isHolder}
+            disabled={!isHolder || readOnly}
+            {...readOnlyProps(readOnly, t('viewAs.blocked'))}
             className="btn-primary btn-big"
           >
             <Icon name="pin" size={19} />
@@ -168,7 +174,8 @@ export function VolunteerGuardScreen() {
           <button
             type="button"
             onClick={() => confirmGuardEnd(mission.id)}
-            disabled={!isHolder || mission.arrivalConfirmedAt === null}
+            disabled={!isHolder || readOnly || mission.arrivalConfirmedAt === null}
+            {...readOnlyProps(readOnly, t('viewAs.blocked'))}
             className="btn-secondary btn-big"
           >
             <Icon name="shield" size={19} />
@@ -195,7 +202,8 @@ export function VolunteerGuardScreen() {
             type="button"
             data-testid="checkpoint"
             onClick={() => recordCheckpoint(mission.id)}
-            disabled={!isHolder}
+            disabled={!isHolder || readOnly}
+            {...readOnlyProps(readOnly, t('viewAs.blocked'))}
             className={
               cp.reminding || cp.overdue
                 ? 'btn-primary btn-big'

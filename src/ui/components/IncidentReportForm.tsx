@@ -9,6 +9,8 @@ import type { IconName } from './Icon'
 import { Section } from './primitives'
 
 import { locate } from '../geolocate'
+/* AG1.2 — déposer un événement est une écriture : grisé en mode « voir comme ». */
+import { readOnlyProps, useReadOnly } from '../settings/viewAs'
 
 /**
  * R7 — EVENT REPORTING, REBUILT AS AN ALERT FLOW.
@@ -69,6 +71,7 @@ export interface ReportContext {
 
 export function IncidentReportForm({ context }: { context: ReportContext }) {
   const { t } = useTranslation()
+  const readOnly = useReadOnly()
 
   const [step, setStep] = useState<Step>('severity')
   const [severity, setSeverity] = useState<IncidentSeverity>('suspicious')
@@ -219,11 +222,36 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
         <h2 className="mb-4 text-heading text-content-primary">
           {t('report.stepSeverity')}
         </h2>
+        {/**
+          * ⚠️★★ AG1.2 — LE REFUS EST POSÉ SUR LA **PREMIÈRE** ÉTAPE, ET C'EST UN
+          *    DÉFAUT QU'A140 A TROUVÉ EN NE TROUVANT RIEN. Ce formulaire a deux
+          *    étapes : choisir la gravité, puis écrire et envoyer. Seul le
+          *    bouton d'envoi était grisé — donc en mode « voir comme », l'écran
+          *    d'ouverture était entièrement vivant, le coordinateur choisissait
+          *    une gravité, rédigeait un signalement, et découvrait le refus au
+          *    moment d'appuyer sur envoyer. C'est-à-dire au pire moment, après
+          *    le travail.
+          *
+          * ★ LA RÈGLE QUI EN SORT, ET ELLE VAUT POUR TOUT L'ÉCRAN : le refus se
+          *   pose là où le GESTE COMMENCE, pas là où il se termine. Même
+          *   raisonnement que le lien de signature sur l'accueil de
+          *   l'agriculteur.
+          */}
+        {readOnly && (
+          <p
+            role="status"
+            data-testid="report-readonly"
+            className="chip mb-3 bg-status-warn/15 text-status-warn-ink"
+          >
+            {t('viewAs.blocked')}
+          </p>
+        )}
         <div className="flex flex-col gap-3">
           {SEVERITIES.map((s) => (
             <button
               key={s}
               type="button"
+              {...readOnlyProps(readOnly, t('viewAs.blocked'))}
               onClick={() => {
                 setSeverity(s)
                 setStep('details')
@@ -309,7 +337,8 @@ export function IncidentReportForm({ context }: { context: ReportContext }) {
         <button
           type="button"
           onClick={submit}
-          disabled={description.trim().length === 0}
+          disabled={readOnly || description.trim().length === 0}
+          {...readOnlyProps(readOnly, t('viewAs.blocked'))}
           className={`btn-big ${
             severity === 'urgent' ? 'btn-critical' : 'btn-primary'
           }`}

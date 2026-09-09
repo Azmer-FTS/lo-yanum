@@ -98,3 +98,5 @@ dist-aepass/
 dist-acpass/
 dist-adpass/
 dist-afpass/
+# AG8 — le build local que `bun run agui` sert.
+dist-agpass/

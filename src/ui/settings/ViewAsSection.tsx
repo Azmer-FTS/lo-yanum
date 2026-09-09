@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom'
 import { homeRouteFor, listSessionPresets } from '@core/index'
 import type { Role, SessionPreset } from '@core/index'
 
-import { SUPABASE_CONFIGURED } from '../../data/config'
 import { Avatar } from '../components/Avatar'
 import { Icon } from '../components/Icon'
 import { Callout, FilterPill, Section } from '../components/primitives'
@@ -15,8 +14,15 @@ import { stopViewAs, useViewAs, viewAs } from './viewAs'
 /**
  * ★★ Y13 (2026-09-04) — "מצב תצוגה", THE COORDINATOR'S OWN TEST DOOR.
  *
- * See `viewAs.ts` for why this is safe and why it is demo-only. What is here
- * is the choosing: a role, then the person.
+ * See `viewAs.ts` for why this is safe — and, since AG1, why it is no longer
+ * demo-only. What is here is the choosing: a role, then the person.
+ *
+ * ⚠️ ET LA PERSONNE N'EST PAS FACULTATIVE EN PRATIQUE, MÊME SI LE BRIEF DIT
+ *    « optionnellement ». Un écran d'agriculteur EST l'écran d'un agriculteur :
+ *    sans personne, `getMyFarm()` rend `null` et les trois onglets sont vides.
+ *    Ce qui est fait à la place est de rendre le choix immédiat — la pastille
+ *    du rôle ouvre SA liste, chaque nom est une tuile, et le compte sur la
+ *    pastille dit d'avance s'il y a quelqu'un à regarder.
  *
  * ★ THE PEOPLE ARE THE APP'S OWN, NOT A LIST TYPED HERE. `listSessionPresets`
  *   already answers "whose screen is worth looking at" — a farmer whose farm
@@ -42,46 +48,30 @@ export function ViewAsSection() {
   )
 
   /**
-   * ⚠️ NOT RENDERED WHEN THE BUILD HAS A REAL BACKEND. With Supabase the role
-   *    is a claim on a token and every read is filtered by it server-side;
-   *    swapping a client-side session would show a screen the server would
-   *    never actually serve. A test door that lies is worse than none.
-   */
-  /**
    * ═══════════════════════════════════════════════════════════════════════════
-   * ★★ AF6 (2026-09-09) — L'ABSENCE EST DÉSORMAIS DITE, ET C'EST LA QUATRIÈME
-   *    FOIS QUE LE PO CHERCHE CE BLOC.
+   * ★★ AG1 (2026-09-09) — IL SE REND MAINTENANT DANS LES DEUX BUILDS, ET LA
+   *    RAISON POUR LAQUELLE IL NE SE RENDAIT PAS ÉTAIT UNE ERREUR DE
+   *    RAISONNEMENT, PAS UNE PRÉCAUTION.
    * ═══════════════════════════════════════════════════════════════════════════
    *
-   * Y3.2, Z6, AB5b, puis AF6 : quatre passes à demander une bascule de rôle
-   * qui EXISTE, qui est le premier bloc de cet écran, et qu'il ne trouve pas.
-   * La mesure d'AF6.1 sur le déployé dit pourquoi : sur le JUMEAU elle est là
-   * et se voit ; sur l'APPLICATION RÉELLE ce composant rendait `null` — donc
-   * un écran de réglages où la ligne qu'il cherche n'existe simplement pas, et
-   * rien qui le dise. Il testait sur les deux et concluait « introuvable ».
+   * AF6 avait rendu l'absence PARLANTE — un encadré qui dit « va voir sur le
+   * jumeau ». Le PO a répondu ce qu'il fallait répondre : il ne veut pas
+   * travailler sur une autre plateforme, il veut voir SES données.
    *
-   * ⚠️ LA RÈGLE NE CHANGE PAS, SEULE LA MUETTE DEVIENT PARLANTE. Avec Supabase
-   *    le rôle est une revendication portée par le jeton et chaque lecture est
-   *    filtrée côté serveur ; échanger une session côté client montrerait un
-   *    écran que le serveur ne servirait jamais. Une porte de test qui ment est
-   *    pire que pas de porte. Ce qui s'affiche à la place n'est donc pas un
-   *    bouton désactivé — c'est une phrase qui dit où la chose se trouve.
+   * L'argument qui fermait la porte était : « avec Supabase, chaque lecture
+   * est filtrée côté serveur, donc échanger la session côté client montrerait
+   * un écran que le serveur ne servirait jamais ». La prémisse est fausse pour
+   * CETTE application : `data/store.ts` hydrate le magasin UNE fois, sous
+   * l'identité du coordinateur, et les 52 accesseurs d'`access.ts` lisent
+   * ensuite cette mémoire — synchrones, jamais des promesses (c'est la
+   * contrainte fondatrice écrite dans core/backend.ts). Il n'y a donc pas de
+   * requête par écran à laquelle une identité pourrait être attachée.
+   *
+   * Le raisonnement complet, avec ce qu'il ne prouve PAS, est dans `viewAs.ts`.
+   * Ce qui se passe ici est le CHOIX ; ce qui rend le choix sûr est le verrou
+   * de `setReadOnly`, posé par `viewAs()` et vérifié par A140 dans le magasin
+   * plutôt que sur les boutons.
    */
-  if (SUPABASE_CONFIGURED) {
-    return (
-      <Section
-        title={t('viewAs.title')}
-        flush
-        collapseKey="settings-viewas"
-        summary={t('viewAs.realBuildSummary')}
-      >
-        <Callout tone="info" title={t('viewAs.realBuildTitle')}>
-          {t('viewAs.realBuild')}
-        </Callout>
-      </Section>
-    )
-  }
-
   const step = (preset: SessionPreset): void => {
     viewAs(preset)
     navigate(homeRouteFor(preset.role))
@@ -98,6 +88,9 @@ export function ViewAsSection() {
       collapseKey="settings-viewas"
       summary={active ? `${t(`roles.${active.role}`)} · ${active.name}` : undefined}
     >
+      {/* ★ AG1.2 — CE QUE LE MODE FAIT ET CE QU'IL NE FAIT PAS, DIT AVANT
+          D'Y ENTRER. « Lecture seule » écrit après coup dans un bandeau est
+          une découverte ; écrit ici, c'est une promesse. */}
       <Callout tone="info" title={t('viewAs.title')}>
         {t('viewAs.hint')}
       </Callout>
@@ -194,7 +187,8 @@ export function ViewAsSection() {
 
       {people.length === 0 ? (
         <p className="muted">{t('viewAs.nobody')}</p>
-      ) : (
+      ) : (<>
+        <p className="muted mb-1.5">{t('viewAs.pick')}</p>
         <ul
           data-testid="view-as-people"
           className="grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(11rem,1fr))]"
@@ -219,7 +213,7 @@ export function ViewAsSection() {
             </li>
           ))}
         </ul>
-      )}
+      </>)}
     </Section>
   )
 }

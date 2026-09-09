@@ -599,9 +599,20 @@ export function FieldLayout({ items }: { items: NavItem[] }) {
   )
 }
 
+/**
+ * ★★ AG3.2 (2026-09-09) — QUATRE ONGLETS, ET L'ORDRE EST CELUI DE LA FRÉQUENCE.
+ *
+ * ⚠️ QUATRE ET PAS CINQ. La signature (`/farmer/sign`) et le détail de ce soir
+ *    (`/farmer/tonight`) sont atteints DEPUIS l'accueil, pas depuis la barre :
+ *    une barre d'onglets à cinq entrées sur un téléphone de 402 px donne des
+ *    cibles de 76 px de large avec un libellé hébreu tronqué, et le brief de
+ *    cette passe interdit précisément ce genre d'ajout. La signature est un
+ *    geste qu'on fait deux fois par an — elle n'a rien à faire sous le pouce.
+ */
 export const FARMER_NAV: NavItem[] = [
-  { to: '/farmer', icon: 'moon', labelKey: 'nav.tonight', end: true },
+  { to: '/farmer', icon: 'home', labelKey: 'nav.mySpace', end: true },
   { to: '/farmer/guards', icon: 'shield', labelKey: 'nav.myGuards' },
+  { to: '/farmer/documents', icon: 'upload', labelKey: 'nav.documents' },
   { to: '/farmer/report', icon: 'alert', labelKey: 'nav.report' },
 ]
 

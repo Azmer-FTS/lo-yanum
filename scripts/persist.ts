@@ -16,7 +16,10 @@ import { SIGNATURE_COLUMNS, analyseSignatures } from '../src/core/signatures'
 import {
   addIncident,
   addIncidentEntry,
+  applyRemoteSignature,
   archiveVolunteer,
+  attachProvidedDocument,
+  removeProvidedDocument,
   backendName,
   cancelMission,
   confirmArrival,
@@ -1074,6 +1077,68 @@ for (const [label, fn, collection, id] of [
   )
 }
 
+// --- 5bis. AG4 · AG6 — ce que l'agriculteur renvoie depuis son téléphone ----
+
+section("5bis — la signature à distance et les documents fournis (AG4 · AG6)")
+
+{
+  const farm = _raw().farms[0]
+  const before = farm.agreements.length
+
+  /**
+   * ★★ `applyRemoteSignature` ÉCRIT LA FICHE **ET** L'ACCORD, ET C'EST CE QUE
+   *    CETTE PORTE VÉRIFIE. La note sur la mutation dit pourquoi les deux sont
+   *    une seule opération : les séparer laisserait une fenêtre où un accord
+   *    signé pointerait sur une fiche vide. Ici, le diff structurel doit donc
+   *    montrer UNE ferme changée — l'accord est une table fille de `entities`
+   *    dans le modèle agrégé (voir COLLECTIONS), donc un seul changement.
+   */
+  const changes = drive('applyRemoteSignature', () =>
+    applyRemoteSignature(farm.id, {
+      farmerName: 'יוסי כהן',
+      farmerId: '012345678',
+      farmerPhone: '052-0000077',
+      farmName: 'החווה של יוסי',
+      signature: 'data:image/png;base64,AAAA',
+      idPhoto: null,
+      fileName: 'agreement.pdf',
+    }),
+  )
+  check(
+    'applyRemoteSignature — la fiche change',
+    hit(changes, 'farms', farm.id) !== undefined,
+    `${changes.length} change(s)`,
+  )
+  check(
+    "applyRemoteSignature — et l'accord est dedans, pas dans une seconde écriture",
+    _raw().farms[0].agreements.length === before + 1,
+    `${before} → ${_raw().farms[0].agreements.length}`,
+  )
+
+  const withDoc = drive('attachProvidedDocument', () =>
+    attachProvidedDocument(farm.id, {
+      id: 'grazing',
+      providedAt: new Date().toISOString(),
+      fileName: 'x.pdf',
+      file: 'data:application/pdf;base64,AAAA',
+    }),
+  )
+  check(
+    'attachProvidedDocument — la fiche change',
+    hit(withDoc, 'farms', farm.id) !== undefined,
+    `${withDoc.length} change(s)`,
+  )
+
+  const removed = drive('removeProvidedDocument', () =>
+    removeProvidedDocument(farm.id, 'grazing'),
+  )
+  check(
+    'removeProvidedDocument — la fiche change',
+    hit(removed, 'farms', farm.id) !== undefined,
+    `${removed.length} change(s)`,
+  )
+}
+
 // --- 6. What must NOT be written ------------------------------------------
 
 section('6 — three things that must never reach the database')
@@ -1146,6 +1211,24 @@ section('7 — every mutation @core exports is driven above')
      *   test that "drove" it would assert that a version counter went up.
      */
     'notifyDerivedChange',
+    /**
+     * ★★ AG1 — LE VERROU DE « VOIR COMME » N'EST PAS UNE MUTATION, ET LE
+     *    METTRE ICI EST UNE DÉCISION PLUTÔT QU'UNE COMMODITÉ.
+     *
+     * `setReadOnly` n'écrit aucune ligne : il empêche les autres d'en écrire.
+     * `isReadOnly` lit un booléen. `ReadOnlyViolation` est une classe d'erreur.
+     * Aucun des trois ne produit de `StoreChange`, donc aucun ne peut être
+     * « conduit » par cette porte, qui ne sait mesurer que des changements.
+     *
+     * ⚠️ CE QUI LES VÉRIFIE EST A140 DANS `bun run agpass`, ET C'EST LA BONNE
+     *    PORTE : elle pose la question inverse — après `setReadOnly(true)`,
+     *    est-ce qu'une mutation quelconque produit un changement ? La réponse
+     *    attendue est « aucun, et elle jette ». Une porte qui compte les
+     *    écritures ne peut pas prouver une absence d'écriture ; celle-là si.
+     */
+    'isReadOnly',
+    'setReadOnly',
+    'ReadOnlyViolation',
   ])
   const mutations = exported.filter((n) => !NOT_MUTATIONS.has(n))
   const uncovered = mutations.filter((n) => !driven.has(n))

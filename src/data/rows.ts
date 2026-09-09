@@ -224,6 +224,14 @@ const farmMapping: Mapping<Farm> = {
           signature: f.signature ?? null,
           signature_missing: f.signatureMissing ?? false,
           signature_origin: f.signatureOrigin ? JSON.stringify(f.signatureOrigin) : null,
+          /* ★★ AG6 · AG4 — ce que l'agriculteur a renvoyé depuis son
+             téléphone. Voir la migration 20260909000300 pour pourquoi les
+             documents fournis sont une colonne `jsonb` et non une table fille,
+             et pourquoi la photo de carte n'en est PAS un. */
+          provided_documents: f.providedDocuments
+            ? JSON.stringify(f.providedDocuments)
+            : null,
+          id_photo: f.idPhoto ?? null,
         },
       ],
     },
@@ -413,7 +421,42 @@ const farmMapping: Mapping<Farm> = {
     signature: optStr(p.signature),
     signatureMissing: p.signature_missing === true ? true : undefined,
     signatureOrigin: readSignatureOrigin(p.signature_origin),
+    // AG6 · AG4 — et le retour de l'agriculteur.
+    providedDocuments: readProvidedDocuments(p.provided_documents),
+    idPhoto: optStr(p.id_photo),
   }),
+}
+
+/**
+ * ★★ AG6 — les documents fournis, relus depuis la colonne `jsonb`.
+ *
+ * ⚠️ ET UNE CELLULE ABÎMÉE REND `undefined`, JAMAIS UNE EXCEPTION — exactement
+ *    la même règle que `readSignatureOrigin` ci-dessous, et pour la même
+ *    raison : ceci tourne sur chaque ligne de chaque instantané, et une cellule
+ *    illisible ne doit pas emporter la synchronisation entière. Une fiche dont
+ *    les documents sont illisibles est une fiche dont on ne sait pas ce qui a
+ *    été fourni — ce qui est déjà ce que `undefined` veut dire ici, et ce qui
+ *    la remet dans la file plutôt que de l'en sortir à tort.
+ */
+function readProvidedDocuments(raw: unknown): Farm['providedDocuments'] {
+  const value =
+    typeof raw === 'string'
+      ? (() => {
+          try {
+            return JSON.parse(raw) as unknown
+          } catch {
+            return null
+          }
+        })()
+      : raw
+  if (!Array.isArray(value)) return undefined
+  const rows = value.filter(
+    (d): d is NonNullable<Farm['providedDocuments']>[number] =>
+      !!d &&
+      typeof d === 'object' &&
+      ((d as { id?: unknown }).id === 'crops' || (d as { id?: unknown }).id === 'grazing'),
+  )
+  return rows.length > 0 ? rows : undefined
 }
 
 /**

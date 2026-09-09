@@ -15,6 +15,8 @@ import { AreaGapSection } from '../../settings/AreaGapSection'
 import { SummonsSection } from '../../settings/SummonsSection'
 import { DeclarationSection } from '../../settings/DeclarationSection'
 import { VigilSection } from '../../settings/VigilSection'
+import { RenewalSection } from '../../settings/RenewalSection'
+import { GeoDiagnosticsSection } from '../../settings/GeoDiagnosticsSection'
 import { CoverageSection } from '../../settings/CoverageSection'
 import { TargetSection } from '../../settings/TargetSection'
 import { ViewAsSection } from '../../settings/ViewAsSection'
@@ -339,6 +341,10 @@ export function SettingsScreen() {
           SON programme, sur SON appareil. */}
       <VigilSection />
       <RemindersSection />
+      {/* ★★ AG5.1 · AG4.1 — le délai du renouvellement et la photo de carte.
+          Ici et pas dans une huitième section : ce sont deux seuils, et « ספים
+          והתראות » est la section des seuils depuis AF7. */}
+      <RenewalSection />
 
       <SettingsGroup id="templates" />
       <SummonsSection />
@@ -641,6 +647,11 @@ export function SettingsScreen() {
       <SettingsGroup id="display" />
       {/* ★★ Y3.1 · Y4 — the theme (out of the rail) and the layout sync. */}
       <DisplaySection />
+
+      {/* ★★ AG7 — la mesure de la localisation. Sous « תצוגה » et non sous
+          « נתונים » : ce n'est pas une donnée du programme, c'est ce que CET
+          appareil a observé de lui-même. */}
+      <GeoDiagnosticsSection />
 
       <SettingsGroup id="data" />
       <Section title={t('settings.connection.title')} className="mt-6" collapseKey="settings-connection">

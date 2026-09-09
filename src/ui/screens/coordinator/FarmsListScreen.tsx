@@ -21,6 +21,10 @@ import {
   getVisibleThreatZones,
   totalHeads,
   looseMatch,
+  /* ★★ AG5.2 — la troisième file. */
+  dayKeyOf,
+  farmsToRenew,
+  now,
 } from '@core/index'
 import type { Farm, FarmCoverage, FarmStatus, FarmType, RegionId } from '@core/index'
 
@@ -63,6 +67,7 @@ import { useLocale } from '../../hooks/useLocale'
 import { useWindowTable } from '../../hooks/useWindowTable'
 import { useAreaGapThreshold } from '../../settings/areaGap'
 import { useCoverageSettings } from '../../settings/coverage'
+import { renewalWindowDays } from '../../settings/renewal'
 
 const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
 const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed']
@@ -183,6 +188,38 @@ export function FarmsListScreen() {
     [farms, gapThreshold],
   )
   const noOutlineCount = useMemo(() => farms.filter((f) => needsOutline(f)).length, [farms])
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ★★ AG5.2 (2026-09-09) — LA TROISIÈME FILE : « לחידוש ».
+   * ═══════════════════════════════════════════════════════════════════════════
+   *
+   * ⚠️ TROISIÈME, ET LA PLACE A ÉTÉ DÉCIDÉE PAR LES DEUX ACCIDENTS D'AC ET D'AD
+   *    QUE LE BRIEF RAPPELLE NOMMÉMENT. « נשכחו » tient la première place
+   *    depuis AC parce qu'elle est la question quotidienne ; « לתיחום » la
+   *    deuxième depuis AD3.2 et « il n'est pas question de la déplacer une
+   *    troisième fois ». Celle-ci est une échéance à soixante jours : elle
+   *    compte, elle n'est pas urgente à la minute, et elle vient donc juste
+   *    après — avant les pastilles de statut, qui sont du filtrage et non une
+   *    file.
+   *
+   * ⚠️ ET CE N'EST PAS UNE SONDE DOM QUI LE VÉRIFIE. A148 mesure la boîte de
+   *    cette vignette contre celle de son défileur SUR LE DÉPLOYÉ, à 402 et à
+   *    1376 px, au repos et sans défiler — la leçon d'AA6.2, d'AC4.5 et
+   *    d'AD3.2 : « la seule question qu'on peut poser à deux boîtes opaques est
+   *    une question sur deux RECTANGLES ».
+   *
+   * ★ ELLE NE S'AFFICHE QUE QUAND ELLE A QUELQUE CHOSE À DIRE, comme ses deux
+   *   voisines. Sur un programme dont aucune fiche ne porte de תוקף ההסכם — ce
+   *   qui est l'état d'une base neuve — une file vide serait un filtre qui vide
+   *   la liste et qu'on apprend à ne plus croire.
+   */
+  const renewWindow = renewalWindowDays()
+  const todayKey = dayKeyOf(now())
+  const renewIds = useMemo(
+    () => new Set(farmsToRenew(farms, todayKey, renewWindow).map((f) => f.id)),
+    [farms, todayKey, renewWindow],
+  )
+  const [renewOnly, setRenewOnly] = useState(false)
   /** AA6 — where the sort control is rendered; see `sortControl`. */
   const phone = usePhoneShape()
   /** A new key is a new request to (re)anchor — and to pan only if off screen. */
@@ -227,6 +264,8 @@ export function FarmsListScreen() {
       /* AD2.6 · AD3.2 — les deux files, comme deux rétrécissements du rôle. */
       if (gapOnly && !hasAreaGap(farm, gapThreshold)) return false
       if (noOutlineOnly && !needsOutline(farm)) return false
+      /* AG5.2 — la file du renouvellement, même forme que les deux autres. */
+      if (renewOnly && !renewIds.has(farm.id)) return false
       /* AC4.4 — « qui est oublié », as a narrowing of the same roster. */
       if (neglected) {
         const state = coverageOf.get(farm.id)?.state
@@ -254,6 +293,8 @@ export function FarmsListScreen() {
     neglected,
     gapOnly,
     noOutlineOnly,
+    renewOnly,
+    renewIds,
     gapThreshold,
     coverageOf,
     query,
@@ -410,6 +451,20 @@ export function FarmsListScreen() {
           active={noOutlineOnly}
           onClick={() => setNoOutlineOnly((v) => !v)}
           testId="farms-no-outline"
+        />
+      )}
+      {/* ★★ AG5.2 — « לחידוש », TROISIÈME. Voir la note sur `renewIds` pour
+          pourquoi c'est cette place-là et pas une autre. */}
+      {renewIds.size > 0 && (
+        <KpiChip
+          label={t('renewal.title')}
+          value={renewIds.size}
+          icon="clock"
+          tone="alert"
+          hint={t('renewal.hint')}
+          active={renewOnly}
+          onClick={() => setRenewOnly((v) => !v)}
+          testId="farms-renewal"
         />
       )}
       {/* AD2.6 — et l'autre file de la même paire : les fiches dont les deux
@@ -579,7 +634,8 @@ export function FarmsListScreen() {
         (hasAreas ? 1 : 0) +
         (neglected ? 1 : 0) +
         (gapOnly ? 1 : 0) +
-        (noOutlineOnly ? 1 : 0)
+        (noOutlineOnly ? 1 : 0) +
+        (renewOnly ? 1 : 0)
       }
       onClear={() => {
         setStatus(null)

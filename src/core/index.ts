@@ -22,6 +22,12 @@ export * from './prospection'
 export * from './signatures'
 export * from './emergency'
 export * from './invite'
+export * from './challenge'
+// ★★ AG5 · AG6 — le renouvellement annuel et les documents attendus.
+export * from './renewal'
+export * from './documents'
+// ★★ AG4 — le formulaire de signature à distance.
+export * from './remoteSign'
 export * from './vigil'
 export * from './summons'
 export * from './declaration'
@@ -107,6 +113,14 @@ export {
   setOutreachSent,
   reactivateMission,
   notifyDerivedChange,
+  // ★★ AG4 · AG6 — ce que l'agriculteur renvoie à sa fiche.
+  applyRemoteSignature,
+  attachProvidedDocument,
+  removeProvidedDocument,
+  // ★★ AG1 — le verrou de « voir comme ». Voir la note dans ./store.
+  isReadOnly,
+  setReadOnly,
+  ReadOnlyViolation,
 } from './store'
 export type {
   NewIncidentInput,
@@ -121,6 +135,7 @@ export type {
   GeneralMeetingDraft,
   MissionDraft,
   TourDraft,
+  RemoteSignatureInput,
 } from './store'
 
 export {

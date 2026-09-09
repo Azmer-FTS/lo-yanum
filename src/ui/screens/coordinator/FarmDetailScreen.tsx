@@ -63,6 +63,9 @@ import { MapSplit } from '../../components/MapSplit'
 import type { MapMode } from '../../components/mapMode'
 import { ThreatPanel } from '../../components/ThreatPanel'
 import { AgreementActions } from '../../components/AgreementViewer'
+/* ★★ AG3.1 · AG5 · AG6.3 — le lien permanent de l'agriculteur, l'échéance de
+   son accord, et les documents qu'il a fournis ou non. */
+import { FarmerLinkBlock } from '../../components/FarmerLinkBlock'
 import { AreaGapNote } from '../../components/areaGap'
 import { zoneColor, zoneLabelKey } from '../../components/zones'
 import { Timeline } from '../../components/Timeline'
@@ -1261,6 +1264,12 @@ export function FarmDetailScreen() {
               </ul>
             )}
           </Section>
+
+          {/* ★★ AG3.1 — JUSTE AU-DESSUS DES ACCORDS, ET LA PLACE EST LE SUJET :
+              le lien est ce qui PRODUIT l'accord suivant. Un coordinateur qui
+              ouvre « הסכמים » pour vérifier une signature a la relance sous les
+              yeux au même moment. */}
+          <FarmerLinkBlock farm={farm} />
 
           <Section
             title={t('farms.agreements')}

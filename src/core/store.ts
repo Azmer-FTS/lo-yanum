@@ -39,6 +39,7 @@ import type {
   PhoneType,
   PresenceMark,
   PresenceSource,
+  ProvidedDocument,
   Session,
   ThreatIntensity,
   ThreatVector,
@@ -79,7 +80,92 @@ let index: StoreIndex | null = backend.persists ? indexOf(data) : null
 let version = 0
 const listeners = new Set<() => void>()
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AG1.2 · AG1.3 (2026-09-09) — LE VERROU DE « VOIR COMME », ET IL EST ICI
+ *    PARCE QUE C'EST LE SEUL ENDROIT PAR OÙ TOUT PASSE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ *   « LECTURE SEULE, strictement. Aucune action possible : pas de confirmation
+ *     de garde, pas de signature, pas de modification, pas de suppression.
+ *     Toute action est désactivée visiblement, pas seulement ignorée. »
+ *
+ * ★★ DEUX MÉCANISMES, ET ILS NE FONT PAS LE MÊME TRAVAIL. L'INTERFACE DÉSACTIVE
+ *    LES BOUTONS — c'est le « visiblement » de la demande, et c'est ce que le
+ *    coordinateur voit. CE VERROU-CI EST LA GARANTIE — c'est ce qui reste vrai
+ *    le jour où quelqu'un ajoute un quatrième écran de terrain et oublie le
+ *    premier mécanisme. Un seul des deux serait un mensonge : des boutons gris
+ *    sans verrou est une politesse, un verrou sans boutons gris est un écran
+ *    qui ne répond pas et qu'on croit cassé.
+ *
+ * ★ IL EST POSÉ SUR `commit`, PAS SUR LES 53 MUTATIONS. Le même raisonnement
+ *   que `changesBetween` (voir ./backend) : une règle recopiée 53 fois est une
+ *   règle qui aura 52 copies le jour où quelqu'un ajoute la 54e.
+ *
+ * ⚠️ ET IL RESTAURE AVANT DE JETER, CE QUI N'EST PAS DE LA PRUDENCE. La moitié
+ *    des mutations écrivent EN PLACE (`setIncidentResolved` pose un champ sur
+ *    un objet que le tableau tient toujours par la même référence). Refuser au
+ *    `commit` sans restaurer laisserait la mutation faite en mémoire et
+ *    seulement invisible — c'est-à-dire exactement le pire des deux mondes :
+ *    l'écran du coordinateur mentirait jusqu'au rechargement, et la première
+ *    écriture LÉGITIME après le retour au rôle de rekaz pousserait cette
+ *    mutation fantôme vers Postgres.
+ *
+ * ⚠️ LE COÛT EST DIT : une `JSON.stringify` de tout le magasin à l'entrée du
+ *    mode (≈ un millier de lignes courtes, quelques millisecondes), une seule
+ *    fois, et une `JSON.parse` seulement si une écriture est réellement
+ *    tentée — ce qui, si l'interface fait son travail, n'arrive jamais.
+ */
+export class ReadOnlyViolation extends Error {
+  constructor() {
+    super('lo-yanum: the store is read-only (view-as is running)')
+    this.name = 'ReadOnlyViolation'
+  }
+}
+
+let readOnly = false
+/** Le magasin tel qu'il était à l'instant du verrouillage, en JSON. */
+let readOnlyBaseline: string | null = null
+
+export function isReadOnly(): boolean {
+  return readOnly
+}
+
+/**
+ * Poser ou lever le verrou.
+ *
+ * ⚠️ LA SESSION N'EST PAS DANS LA LIGNE DE MIRE. Elle fait partie de
+ *    `StoreData` (voir ./backend) mais elle est « qui regarde » et non
+ *    « ce qui est regardé » : la restauration ci-dessous garde la session
+ *    COURANTE, sans quoi une écriture refusée renverrait aussi le
+ *    coordinateur dans son propre rôle au milieu de sa visite.
+ */
+export function setReadOnly(on: boolean): void {
+  if (on === readOnly) return
+  readOnly = on
+  readOnlyBaseline = on ? JSON.stringify(data) : null
+}
+
+/** Reprend l'empreinte après une hydratation ou un changement de backend. */
+function rebaseReadOnly(): void {
+  if (readOnly) readOnlyBaseline = JSON.stringify(data)
+}
+
 function commit(): void {
+  if (readOnly) {
+    /* Restaurer D'ABORD — voir la note ci-dessus : une mutation en place est
+       déjà faite quand on arrive ici. */
+    if (readOnlyBaseline !== null) {
+      const session = data.session
+      data = remeasureFarms({ ...(JSON.parse(readOnlyBaseline) as StoreData), session })
+      /* L'index n'a pas bougé : rien n'a été poussé, donc rien à re-diffuser.
+         On repeint quand même, parce que l'écran a pu rendre l'état interdit
+         entre la mutation et ce refus. */
+      version += 1
+      for (const fn of listeners) fn()
+    }
+    throw new ReadOnlyViolation()
+  }
   if (index !== null) {
     const next = indexOf(data)
     const changes = changesBetween(index, next)
@@ -106,7 +192,10 @@ function commit(): void {
  *    the outlines are a setting of this device, not a row.
  */
 export function notifyDerivedChange(): void {
-  commit()
+  /* AG1 — pas par `commit` non plus : ce repeint n'écrit rien (la note
+     ci-dessus le dit déjà), donc il n'y a rien que le verrou ait à refuser. */
+  version += 1
+  for (const fn of listeners) fn()
 }
 
 export function subscribe(listener: () => void): () => void {
@@ -135,7 +224,13 @@ export function getSession(): Session {
 
 export function setSession(session: Session): void {
   data.session = session
-  commit()
+  /* ⚠️ PAS PAR `commit`, ET AG1 EST LA RAISON. La session est « qui regarde »
+     et non « ce qui est regardé » (voir `StoreData` dans ./backend) : elle
+     n'est dans aucune collection, elle ne produit aucun changement à pousser,
+     et la faire passer par le verrou de lecture seule ferait échouer le geste
+     de RETOUR au rôle de rekaz — le seul geste qui doit marcher toujours. */
+  version += 1
+  for (const fn of listeners) fn()
 }
 
 /**
@@ -149,7 +244,9 @@ export function setSession(session: Session): void {
 export function resetStore(): void {
   data = remeasureFarms(backend.seed())
   index = backend.persists ? indexOf(data) : null
-  commit()
+  rebaseReadOnly()
+  version += 1
+  for (const fn of listeners) fn()
 }
 
 /**
@@ -162,6 +259,7 @@ export function installBackend(next: StoreBackend): void {
   backend = next
   data = remeasureFarms(next.seed())
   index = next.persists ? indexOf(data) : null
+  rebaseReadOnly()
   version += 1
   for (const fn of listeners) fn()
 }
@@ -186,6 +284,12 @@ export function replaceSnapshot(next: StoreData): void {
      d'arriver, jamais lue dans ce qui arrive : voir `remeasureFarms`. */
   data = remeasureFarms({ ...next, session })
   index = backend.persists ? indexOf(data) : null
+  /* ★ AG1 — CE QUI ARRIVE DU SERVEUR DEVIENT LA NOUVELLE RÉFÉRENCE DU VERROU.
+     Une hydratation pendant que le coordinateur regarde l'écran d'un
+     agriculteur est parfaitement normale (elle arrive de SA session à lui) ;
+     sans cette ligne, la première écriture refusée après coup restaurerait un
+     magasin d'il y a dix minutes. */
+  rebaseReadOnly()
   version += 1
   for (const fn of listeners) fn()
 }
@@ -1723,6 +1827,129 @@ export function deleteTourById(tourId: string): boolean {
   if (!tour) return false
   if (!deletionPlan('tour', tourId).allowed) return false
   data.tours = data.tours.filter((t) => t.id !== tourId)
+  commit()
+  return true
+}
+
+// ---------------------------------------------------------------------------
+// ★★ AG4.8 · AG6.2 (2026-09-09) — CE QUE L'AGRICULTEUR RENVOIE À LA FICHE
+// ---------------------------------------------------------------------------
+
+/**
+ * La signature à distance, appliquée à la fiche.
+ *
+ * ★★ ELLE ÉCRIT LA FICHE **ET** L'ACCORD, EN UNE SEULE MUTATION, ET C'EST LA
+ *    DÉCISION LA PLUS IMPORTANTE DE CE BLOC. Le formulaire d'AG4 fait deux
+ *    choses à la fois : il COMPLÈTE ce que le coordinateur n'avait pas saisi
+ *    (le nom, la ת״ז, le portable, le nom de la ferme) et il SIGNE. Les
+ *    séparer en deux mutations laisserait une fenêtre — d'une milliseconde
+ *    dans le meilleur cas, d'une panne de réseau dans le pire — où un accord
+ *    signé pointerait sur une fiche encore vide, c'est-à-dire un contrat au
+ *    nom de personne.
+ *
+ * ⚠️ ET ELLE N'ÉCRASE JAMAIS UNE VALEUR DÉJÀ SAISIE. `signFormState` ne rend
+ *    saisissables que les champs vides (AG4.4) ; cette fonction applique la
+ *    même règle une seconde fois, du côté du magasin, parce qu'une règle qui
+ *    n'existe que dans un composant est une règle qu'un second appelant
+ *    ignorera.
+ *
+ * ★ « LE PDF REVIENT AU COORDINATEUR ET S'ATTACHE À LA FICHE » EST SATISFAIT
+ *   SANS STOCKER D'OCTETS, et il faut le dire parce que ça surprend : depuis
+ *   AF1.3 le document EST produit à partir de la fiche et de l'accord
+ *   (`ui/agreement/document.ts`). L'accord porte l'encre, la fiche porte les
+ *   quatre cases, donc le PDF que le coordinateur ouvre est le même octet pour
+ *   octet que celui que l'agriculteur a lu avant de signer. Stocker en plus le
+ *   fichier serait stocker une SECONDE vérité — et ce serait elle qui serait
+ *   fausse le jour où quelqu'un corrige une faute de frappe dans le nom.
+ */
+export interface RemoteSignatureInput {
+  farmerName: string
+  farmerId: string
+  farmerPhone: string
+  farmName: string
+  signature: string
+  /** AG4.1 — la photo de la carte, quand elle a été fournie. */
+  idPhoto: string | null
+  fileName: string
+}
+
+export function applyRemoteSignature(
+  farmId: string,
+  input: RemoteSignatureInput,
+): Agreement | null {
+  const farm = data.farms.find((f) => f.id === farmId)
+  if (!farm) return null
+
+  const keep = (current: string | undefined, incoming: string): string =>
+    (current ?? '').trim() !== '' ? (current as string) : incoming.trim()
+
+  farm.farmerName = keep(farm.farmerName, input.farmerName)
+  farm.farmerId = keep(farm.farmerId, input.farmerId)
+  farm.farmerPhone = keep(farm.farmerPhone, input.farmerPhone)
+  farm.farmName = keep(farm.farmName, input.farmName)
+
+  const signedAt = iso(now())
+  const agreement: Agreement = {
+    id: newAgreementId(),
+    signedAt,
+    signedBy: farm.farmerName || input.farmerName.trim(),
+    fileName: input.fileName,
+    signature: input.signature,
+  }
+  farm.agreements = [...farm.agreements, agreement]
+
+  /* AA5.4 — la traçabilité. « app » plutôt qu'un troisième genre : le
+     document a bien été signé DANS l'application, simplement pas sur l'iPad du
+     coordinateur. Inventer « remote » obligerait chaque lecteur de ce champ à
+     connaître une troisième valeur pour en faire exactement la même chose. */
+  farm.signatureOrigin = { kind: 'app', signedAt }
+
+  /* ★ LA PHOTO DE LA CARTE VOYAGE COMME LES AUTRES PIÈCES : une URL de
+     données sur la fiche, dans la même case que les documents fournis. Elle
+     n'est PAS un document attendu (voir `expectedDocuments`) — elle ne compte
+     donc jamais dans « il en manque un » — c'est une annexe de la signature. */
+  if (input.idPhoto !== null) farm.idPhoto = input.idPhoto
+
+  /* ★★ ET LE STATUT PASSE À « חתמה », PARCE QUE C'EST CE QUI VIENT D'ARRIVER.
+     ⚠️ MAIS JAMAIS EN ARRIÈRE : une exploitation déjà « פעילה » — qui a des
+        gardes en cours — ne redevient pas « חתמה » parce qu'elle a resigné son
+        renouvellement annuel. C'est exactement le cas d'AG5, et il serait
+        arrivé au premier renouvellement. */
+  if (farm.status !== 'active') farm.status = 'signed'
+
+  commit()
+  return agreement
+}
+
+/**
+ * ★★ AG6.2 — UN DOCUMENT FOURNI, DÉPOSÉ OU COMPOSÉ.
+ *
+ * ⚠️ IL REMPLACE CELUI DU MÊME GENRE PLUTÔT QUE DE S'AJOUTER, et c'est la même
+ *    forme que le laissez-passer d'AE1.3 : « un document de pâturage » est une
+ *    CASE et non une pile. Un agriculteur qui rephotographie ses papiers parce
+ *    que la première photo était floue ne veut pas que les deux soient
+ *    conservées — il veut que la bonne remplace la mauvaise, et le
+ *    coordinateur ne veut pas avoir à deviner laquelle regarder.
+ */
+export function attachProvidedDocument(
+  farmId: string,
+  document: ProvidedDocument,
+): boolean {
+  const farm = data.farms.find((f) => f.id === farmId)
+  if (!farm) return false
+  const rest = (farm.providedDocuments ?? []).filter((d) => d.id !== document.id)
+  farm.providedDocuments = [...rest, document]
+  commit()
+  return true
+}
+
+/** Retirer un document fourni — le coordinateur seul, depuis la fiche. */
+export function removeProvidedDocument(farmId: string, id: ProvidedDocument['id']): boolean {
+  const farm = data.farms.find((f) => f.id === farmId)
+  if (!farm) return false
+  const before = (farm.providedDocuments ?? []).length
+  farm.providedDocuments = (farm.providedDocuments ?? []).filter((d) => d.id !== id)
+  if (farm.providedDocuments.length === before) return false
   commit()
   return true
 }

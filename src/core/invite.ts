@@ -342,3 +342,102 @@ export function buildGuardPass(input: {
     person: { id: person.id, name: person.name, phone: person.phone },
   }
 }
+
+// ---------------------------------------------------------------------------
+// ★★ AG3.1 (2026-09-09) — LE LIEN DE L'AGRICULTEUR, ET IL EST PERMANENT
+// ---------------------------------------------------------------------------
+
+/**
+ *   « Lien PERMANENT par agriculteur, installable sur l'écran d'accueil. […]
+ *     Ce n'est PAS un guichet administratif ouvert trois fois par an. C'est
+ *     SON application, ouverte à chaque garde. »
+ *
+ * ★★ PERMANENT, ET C'EST LE CONTRAIRE DU JETON DE GARDE — LA RAISON EST DANS
+ *    LA PHRASE DU BRIEF. Le lien de garde d'AE1 expire vingt-quatre heures
+ *    après la nuit qu'il ouvre, parce qu'il OUVRE UNE NUIT : la suivante donne
+ *    un lien neuf, et une fenêtre qui traîne sur un téléphone perdu ne sert
+ *    plus qu'à quelqu'un d'autre. Celui-ci ouvre UNE RELATION. Un agriculteur
+ *    qui doit redemander son lien à chaque garde est un agriculteur qui
+ *    téléphone au coordinateur au lieu d'ouvrir l'application, ce qui est
+ *    exactement la charge que ce programme existe pour retirer — et c'est
+ *    aussi ce qui rend l'installation sur l'écran d'accueil possible : on
+ *    n'installe pas une icône qui périme dans vingt-quatre heures.
+ *
+ * ⚠️ LA CONTREPARTIE EST DITE, ET C'EST AG2 QUI LA PAIE. Un lien qui ne périme
+ *    pas est un lien qui vaut pour toujours si on le retransmet. C'est
+ *    précisément pour ce lien-ci que le contrôle par les quatre derniers
+ *    chiffres a été demandé, et `core/challenge.ts` écrit en tête ce qu'il
+ *    couvre et ce qu'il ne couvre pas.
+ *
+ * ★ ET IL PORTE LA FERME EN PLUS DU CONTACT, ce qui est une redondance
+ *   ASSUMÉE : `getMyFarm` sait retrouver la ferme depuis le contact seul. Le
+ *   `farmId` sert à l'écran d'ACCUEIL — celui qui doit dire « la fiche que ce
+ *   lien ouvre n'existe plus » plutôt que de rendre un écran vide — et à
+ *   l'appareil qui garde le laissez-passer hors ligne.
+ */
+export interface FarmerToken {
+  role: 'farmer'
+  /** Id du `FarmContact` — c'est ce que `session.entityId` vaut pour ce rôle. */
+  contactId: string
+  farmId: string
+}
+
+export type FarmerTokenRead =
+  | { status: 'valid'; token: FarmerToken }
+  | { status: 'malformed'; token: null }
+
+/**
+ * Le jeton d'agriculteur, tel qu'il apparaît dans l'URL.
+ *
+ * ⚠️ MÊME EMPREINTE, MÊME SEL, MÊME PORTÉE QU'EN AE1 : infalsifiable à la
+ *    main, pas davantage. Ce qui change ici est qu'il n'y a AUCUNE date à
+ *    protéger — donc l'empreinte ne garde plus qu'une chose, l'identité de la
+ *    fiche, et c'est le contrôle d'AG2 qui garde la porte.
+ */
+export function encodeFarmerToken(token: FarmerToken): string {
+  const compact = JSON.stringify([1, 'f', token.contactId, token.farmId])
+  const body = toBase64Url(new TextEncoder().encode(compact))
+  return `${body}.${fingerprint(body)}`
+}
+
+export function decodeFarmerToken(raw: string): FarmerTokenRead {
+  const dot = raw.lastIndexOf('.')
+  if (dot <= 0) return { status: 'malformed', token: null }
+  const body = raw.slice(0, dot)
+  if (raw.slice(dot + 1) !== fingerprint(body)) {
+    return { status: 'malformed', token: null }
+  }
+  const bytes = fromBase64Url(body)
+  if (!bytes) return { status: 'malformed', token: null }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(bytes))
+  } catch {
+    return { status: 'malformed', token: null }
+  }
+  if (!Array.isArray(parsed) || parsed.length !== 4 || parsed[0] !== 1) {
+    return { status: 'malformed', token: null }
+  }
+  const [, kind, contactId, farmId] = parsed as [number, string, string, string]
+  /* ⚠️ LE DISCRIMINANT EST VÉRIFIÉ, ET IL N'EST PAS DÉCORATIF. Les deux
+     familles de jetons partagent le même alphabet et la même empreinte ; sans
+     ce 'f' un jeton de garde tronqué pourrait se relire comme un jeton
+     d'agriculteur et ouvrir la fiche d'une exploitation. */
+  if (kind !== 'f') return { status: 'malformed', token: null }
+  if (typeof contactId !== 'string' || contactId === '') {
+    return { status: 'malformed', token: null }
+  }
+  if (typeof farmId !== 'string' || farmId === '') {
+    return { status: 'malformed', token: null }
+  }
+  return { status: 'valid', token: { role: 'farmer', contactId, farmId } }
+}
+
+/** Le lien complet, tel qu'il part dans le SMS. `origin` est donné (cf. AE1). */
+export function buildFarmerLink(origin: string, token: FarmerToken): string {
+  return `${origin.replace(/\/+$/, '')}/#/f/${encodeFarmerToken(token)}`
+}
+
+export function farmerTokenFor(farm: Farm, contactId: string): FarmerToken {
+  return { role: 'farmer', contactId, farmId: farm.id }
+}

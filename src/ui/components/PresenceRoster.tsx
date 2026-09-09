@@ -13,6 +13,7 @@ import { Avatar } from './Avatar'
 import { Icon } from './Icon'
 import { PhoneTypeChip } from './badges'
 import { Callout } from './primitives'
+import { readOnlyProps, useReadOnly } from '../settings/viewAs'
 
 /**
  * R6 — NOMINATIVE PRESENCE CONFIRMATION.
@@ -50,6 +51,9 @@ export function PresenceRoster({
   me?: Volunteer | null
 }) {
   const { t } = useTranslation()
+  /* AG1.2 — pointer quelqu'un présent est une écriture ; en mode « voir
+     comme » les deux grandes cibles sont grises et disent pourquoi. */
+  const readOnly = useReadOnly()
 
   const presentLabel =
     source === 'driver' ? t('presence.markPresent') : t('presence.withUs')
@@ -167,6 +171,7 @@ export function PresenceRoster({
                 <button
                   type="button"
                   onClick={() => mark(row.volunteer.id, 'present')}
+                  {...readOnlyProps(readOnly, t('viewAs.blocked'))}
                   aria-pressed={chosen === 'present'}
                   className={`flex items-center justify-center gap-2 rounded-field px-3 py-3 text-caption font-semibold
                               transition-all duration-fast ease-out active:scale-[0.98] ${
@@ -181,6 +186,7 @@ export function PresenceRoster({
                 <button
                   type="button"
                   onClick={() => mark(row.volunteer.id, 'absent')}
+                  {...readOnlyProps(readOnly, t('viewAs.blocked'))}
                   aria-pressed={chosen === 'absent'}
                   className={`flex items-center justify-center gap-2 rounded-field px-3 py-3 text-caption font-semibold
                               transition-all duration-fast ease-out active:scale-[0.98] ${
@@ -234,6 +240,7 @@ export function PresenceRoster({
               {isMe && row.volunteer.phoneType === 'smartphone' && (
                 <button
                   type="button"
+                  {...readOnlyProps(readOnly, t('viewAs.blocked'))}
                   onClick={() =>
                     setPresence(
                       missionId,

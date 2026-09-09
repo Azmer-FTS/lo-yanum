@@ -530,7 +530,72 @@ export interface Farm {
   parking?: string
   /** Particularités du terrain : chiens, machines, zones à éviter. */
   terrainNotes?: string
+
+  /**
+   * ★★ AG6 (2026-09-09) — LES DOCUMENTS EFFECTIVEMENT FOURNIS.
+   *
+   * Ce qui est ATTENDU n'est pas ici : c'est une fonction du `type` ci-dessus
+   * (`expectedDocuments`, core/documents.ts), donc rien à tenir d'accord.
+   * Ce champ ne porte que ce qui est ARRIVÉ.
+   *
+   * Facultatif comme tout ce bloc : une fiche existe longtemps avant que
+   * quiconque ait demandé un papier.
+   */
+  providedDocuments?: ProvidedDocument[]
+
+  /**
+   * ★★ AG4.1 — LA PHOTO DE LA CARTE D'IDENTITÉ DU SIGNATAIRE.
+   *
+   * ⚠️ ELLE N'EST PAS UN `ProvidedDocument`, ET LA DISTINCTION N'EST PAS
+   *    ADMINISTRATIVE. Les documents fournis sont une LISTE ATTENDUE, déduite
+   *    du סוג פעילות, dont l'absence met la fiche dans une file. Celle-ci est
+   *    une annexe de la SIGNATURE : facultative par défaut, elle ne manque
+   *    jamais et ne met rien dans aucune file. Les mélanger ferait apparaître
+   *    « il manque un document » sur toutes les fermes d'un programme qui n'a
+   *    jamais demandé de carte.
+   *
+   * ⛔ ET RIEN NE LA LIT AUTOMATIQUEMENT (AG4.3). Aucun OCR, aucune MRZ. Le
+   *    numéro est dans `farmerId`, tapé par quelqu'un.
+   */
+  idPhoto?: string | null
 }
+
+/**
+ * ★★ AG6 — un document effectivement fourni par l'agriculteur.
+ *
+ * ⚠️ IL VIT ICI ET NON DANS `documents.ts` POUR NE PAS FAIRE DE CYCLE : ce
+ *    module-ci ne dépend de rien, et `documents.ts` — qui calcule ce qui est
+ *    ATTENDU — dépend de lui. Le type est ré-exporté là-bas, où on le cherche.
+ */
+/**
+ * Un document effectivement fourni, tel qu'il est rangé sur la fiche.
+ *
+ * ★ LE PDF EST UNE URL DE DONNÉES, comme la photo (`core/photo.ts`) et comme
+ *   la signature (`Agreement.signature`), et pour la même raison écrite là-bas :
+ *   c'est ce qui traverse le mode hors ligne, le cache d'IndexedDB et l'outbox
+ *   sans qu'aucun de ces trois-là n'ait besoin de connaître un système de
+ *   fichiers. Le jour où le stockage Supabase accueille ces pièces, ce champ
+ *   devient une clé d'objet et RIEN d'autre ici ne change.
+ */
+export interface ProvidedDocument {
+  /**
+   * ⚠️ LE TYPE LITTÉRAL EST RECOPIÉ ICI PLUTÔT QU'IMPORTÉ, ET C'EST CE QUI
+   *    CASSE LE CYCLE. `documents.ts` déclare `ExpectedDocumentId` et le fait
+   *    coïncider avec ces deux valeurs ; l'inverse ferait dépendre le module
+   *    de types de celui qui calcule, alors que tout le reste du programme
+   *    dépend de celui-ci.
+   */
+  id: 'crops' | 'grazing'
+  /** ISO datetime du dépôt. */
+  providedAt: string
+  /** Nom du fichier tel qu'il a été déposé ou composé. */
+  fileName: string
+  /** Le PDF lui-même, en `data:application/pdf;base64,…`. */
+  file: string
+  /** Nombre de pages, quand il a été composé depuis des photos (AG6.2). */
+  pages?: number
+}
+
 
 /** AA5.4 — how a farm came to be signed. */
 export interface SignatureOrigin {

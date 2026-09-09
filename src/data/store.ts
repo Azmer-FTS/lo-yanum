@@ -1,6 +1,6 @@
 import type { StoreBackend, StoreChange, StoreData } from '@core/backend'
 import { emptyData } from '@core/demo'
-import { installBackend, replaceSnapshot, setSession } from '@core/store'
+import { installBackend, isReadOnly, replaceSnapshot, setSession } from '@core/store'
 
 import { subscribeAuth, getAuthState, onSignOut } from './auth'
 import {
@@ -354,7 +354,20 @@ export function installSupabaseStore(): void {
       publish({ status: 'no-grant', stale: false, message: null })
       return
     }
-    setSession({ role: grant.role, entityId: grant.entityId })
+    /**
+     * ★★ AG1.3 (2026-09-09) — ET UNE HYDRATATION NE RAMÈNE PAS LE COORDINATEUR
+     *    DANS SON PROPRE RÔLE AU MILIEU D'UNE VISITE.
+     *
+     * L'octroi lu ci-dessus est la VRAIE identité et il ne bouge pas : c'est
+     * elle qui a fait les 25 selects, c'est elle que le serveur connaît, et
+     * `readGrantFrom` vient de la relire pour cette raison. Ce qui est refusé
+     * ici est seulement de REPEINDRE l'écran avec, pendant que le
+     * coordinateur regarde délibérément celui de quelqu'un d'autre — une
+     * reconnexion réseau à 21:00 le ferait sauter hors du mode sans que rien
+     * ne l'explique. Le retour se fait par le bouton du bandeau, et par lui
+     * seul.
+     */
+    if (!isReadOnly()) setSession({ role: grant.role, entityId: grant.entityId })
 
     await flushPending()
 

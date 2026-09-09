@@ -25,6 +25,7 @@ import { useCoreValue } from '../hooks/useCore'
 import { acknowledge, useEmergencyContext, useLastFix } from '../hooks/useEmergency'
 import { useLocale } from '../hooks/useLocale'
 import { useGuardPass } from '../guardPass'
+import { readOnlyProps, useReadOnly } from '../settings/viewAs'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -88,6 +89,7 @@ export function EmergencyScreen() {
   const ctx = useEmergencyContext()
   const pass = useGuardPass()
   const fix = useLastFix()
+  const readOnly = useReadOnly()
 
   const [phase, setPhase] = useState<Phase>('idle')
   const [plan, setPlan] = useState<DistressPlan | null>(null)
@@ -233,6 +235,19 @@ export function EmergencyScreen() {
    */
   const startHold = () => {
     if (phase === 'sent') return
+    /**
+     * ★★ AG1.2 — ET EN MODE « VOIR COMME », CE BOUTON NE S'ARME MÊME PAS.
+     *
+     * ⚠️ LE VERROU DU MAGASIN NE SUFFIRAIT PAS ICI, ET C'EST LE SEUL ENDROIT
+     *    DE L'APP OÙ C'EST VRAI. `fire()` fait DEUX choses indépendantes : il
+     *    dépose un événement (que le verrou refuserait) et il ouvre `sms:`
+     *    avec de vrais destinataires (que rien dans le magasin ne peut
+     *    arrêter). Un coordinateur en train de regarder l'écran d'un
+     *    volontaire enverrait de vraies alertes à de vrais numéros. Le geste
+     *    est donc désarmé en amont, et l'anneau reste immobile — ce qui est
+     *    aussi la seule façon de le dire sans mot, comme le reste de cet écran.
+     */
+    if (readOnly) return
     setPhase('holding')
     const bar = gauge.current
     if (bar) {
@@ -296,6 +311,8 @@ export function EmergencyScreen() {
         <button
           type="button"
           data-testid="distress-button"
+          disabled={readOnly}
+          {...readOnlyProps(readOnly, t('viewAs.blocked'))}
           onPointerDown={startHold}
           onPointerUp={cancelHold}
           onPointerLeave={cancelHold}
