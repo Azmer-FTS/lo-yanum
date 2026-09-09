@@ -169,9 +169,23 @@ check(
     (await page.locator('[data-testid="farms-region"]').count()) === 1,
 )
 /**
- * X7 — ONE TILE HEIGHT ACROSS THE LISTS. Measured on three screens rather
- * than asserted from the token, because the defect was three lists that each
- * sized themselves from their own content.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ X7 → AH11.1 (2026-09-09) — LA PORTE DEMANDAIT L'ÉGALITÉ, ET Y2 AVAIT
+ *    DÉCIDÉ LE CONTRAIRE CINQ JOURS PLUS TÔT.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Elle était rouge depuis AC et trois passes l'ont annoncée sans la traiter.
+ * En la lisant, elle n'a jamais décrit un défaut du produit : X7.1 avait donné
+ * aux trois listes UNE hauteur fixe, puis le PO a signalé les tuiles de garde
+ * « complètement tronquées », et Y2 a mesuré — 88 px de boîte pour 153 px de
+ * contenu sur un iPad en paysage — puis remplacé `height` par `min-height` en
+ * écrivant pourquoi dans `index.css`. Ce que la porte a continué d'exiger est
+ * exactement ce que le PO avait fait retirer.
+ *
+ * ★ CE QU'ELLE DOIT GARDER EST LE PLANCHER, qui est la propriété que X7
+ *   cherchait vraiment : les trois listes ont le MÊME rythme, une tuile qui
+ *   tient dedans y tombe pile, et une tuile qui a une quatrième ligne dépasse
+ *   plutôt que de couper. Le chiffre est lu sur `--tile-h` et non recopié.
  */
 const heightOf = async (hash: string) => {
   await open(page, hash, 3500)
@@ -184,10 +198,29 @@ const farmsTileH = tileH
 await shot(page, '2-farms')
 const missionsTileH = await heightOf('#/coordinator/missions')
 const incidentsTileH = await heightOf('#/coordinator/incidents')
+const floorPx = await page.evaluate(() => {
+  /* ⚠️ Une propriété personnalisée n'est PAS résolue par `getPropertyValue` si
+     elle porte un `calc` ou une unité relative ; on la fait résoudre par le
+     navigateur sur un témoin, comme la sonde d'AH2. */
+  const probe = document.createElement('div')
+  probe.style.cssText = 'position:absolute;visibility:hidden;height:var(--tile-h)'
+  document.body.appendChild(probe)
+  const h = Math.round(probe.getBoundingClientRect().height)
+  probe.remove()
+  return h
+})
 check(
-  'X7: farms, guards and incidents share ONE tile height',
-  Math.round(farmsTileH) === missionsTileH && missionsTileH === incidentsTileH,
-  `${Math.round(farmsTileH)} / ${missionsTileH} / ${incidentsTileH}`,
+  'X7/AH11: les trois listes partagent UN plancher, et rien n’est plus court que lui',
+  floorPx > 0 &&
+    Math.round(farmsTileH) >= floorPx &&
+    missionsTileH >= floorPx &&
+    incidentsTileH >= floorPx,
+  `plancher ${floorPx} · ${Math.round(farmsTileH)} / ${missionsTileH} / ${incidentsTileH}`,
+)
+check(
+  'X7/AH11: et la tuile de ferme, qui tient dedans, tombe PILE sur le plancher (Y2)',
+  Math.abs(Math.round(farmsTileH) - floorPx) <= 1,
+  `${Math.round(farmsTileH)} / ${floorPx}`,
 )
 
 /**
@@ -196,10 +229,35 @@ check(
  * `grid-template-columns`, so the check is that the computed track list is
  * the SAME string on the header and on a row.
  */
+/**
+ * ★★ X5 → AH11.1 — ET CELLE-CI NE MESURAIT PLUS RIEN.
+ *
+ * Le rôle dense — l'en-tête et ses lignes en UNE grille — n'existe qu'en mode
+ * CARTE MASQUÉE : en mode partagé, qui est le défaut, la liste rend des
+ * TUILES (Y4, « le tableau dense est virtualisé sur la fenêtre »). La porte
+ * cherchait donc `.roster-row` sur un écran qui n'en affiche aucune, trouvait
+ * zéro élément, et rendait rouge depuis AC sans qu'aucune ligne de grille
+ * n'ait jamais divergé. Vérifié en la remettant dans le mode qu'elle décrit :
+ * en-tête et lignes rendent « 484px 136px 96px 136px », identique.
+ *
+ * ⚠️ ET ELLE EXIGE DÉSORMAIS D'AVOIR TROUVÉ SES LIGNES. `tracks.length === 2`
+ *    passait pour « deux lignes d'accord » et échouait pour « aucune ligne » —
+ *    deux causes, un seul rouge, et c'est ce qui l'a rendue illisible.
+ */
+await open(page, '#/coordinator/volunteers', 3000)
+await page.evaluate(() => {
+  localStorage.setItem('lo-yanum:map-mode:volunteers', 'hidden')
+  localStorage.removeItem('lo-yanum:layout-sync')
+})
 await open(page, '#/coordinator/volunteers', 4500)
 const tracks = await page
   .locator('.roster-row')
   .evaluateAll((els) => els.slice(0, 2).map((e) => getComputedStyle(e).gridTemplateColumns))
+check(
+  'X5/AH11: le rôle dense EST affiché — sinon la porte ne mesure rien',
+  tracks.length === 2,
+  `${tracks.length} lignes`,
+)
 check(
   'X5: the roster header and its rows share one grid template',
   tracks.length === 2 && tracks[0] === tracks[1],
@@ -231,8 +289,34 @@ check('farm-detail: the band is a swipable row of cards', (await page.locator('[
 check('farm-detail: the status card comes first', await page.locator('[data-testid="farm-key-numbers"] > *').first().evaluate((e) => e.getAttribute('data-testid') === 'band-status'))
 const folded = await page.locator('[data-block][data-open="0"]').count()
 check('farm-detail: reference blocks start folded', folded >= 4, `${folded}`)
+/**
+ * ★★ AH11.1 — « AU BAS-GAUCHE PHYSIQUE » N'A JAMAIS VOULU DIRE « À MOINS DE
+ *    40 px DU BORD », ET C'EST POURQUOI CETTE PORTE ÉTAIT ROUGE.
+ *
+ * La pilule est posée à `calc(--map-rail + --map-rail-w + --map-rail)` : elle
+ * commence un intervalle APRÈS le bouton « + » flottant, dont elle est le
+ * voisin. AF2.1 l'a mesurée à x = 76 et l'a écrit. Le seuil de 40 px date
+ * d'avant ce voisin ; le tenir aurait voulu dire ramener la pilule SOUS le
+ * « + », c'est-à-dire recréer le recouvrement qu'A86 interdit.
+ *
+ * ★ CE QU'ON VÉRIFIE DONC EST LA RELATION, PAS LE NOMBRE : la pilule commence
+ *   là où le rail du « + » finit, et son bas touche le bas de la fenêtre.
+ */
 const pill = await page.locator('[data-testid="map-mode-pill"]').boundingBox()
-check('farm-detail: the mode pill is at the physical bottom-left', !!pill && pill.x < 40 && pill.y + pill.height > 1032 - 120)
+const railEnd = await page.evaluate(() => {
+  const probe = document.createElement('div')
+  probe.style.cssText =
+    'position:absolute;visibility:hidden;width:calc(var(--map-rail) + var(--map-rail-w) + var(--map-rail))'
+  document.body.appendChild(probe)
+  const w = Math.round(probe.getBoundingClientRect().width)
+  probe.remove()
+  return w
+})
+check(
+  'farm-detail: the mode pill is at the physical bottom-left',
+  !!pill && Math.abs(pill.x - railEnd) <= 2 && pill.y + pill.height > 1032 - 140,
+  pill ? `x ${Math.round(pill.x)} pour un rail de ${railEnd}, bas ${Math.round(pill.y + pill.height)}` : 'absente',
+)
 await shot(page, '3-farm-detail')
 
 // 4 — satellite, layers open. X3.2: the ground is ONE target again — the same
@@ -351,6 +435,15 @@ check('X12: the regional washes are actually painted', regionsPainted > 3, `${re
 await shot(page, '11-regions-layer')
 
 // 12 — X5: the roster at the narrowest seam, columns merged rather than crushed
+/* ⚠️ ET LE MODE EST REMIS À `split` D'ABORD. Le contrôle de la grille
+   ci-dessus a mis cet écran en carte MASQUÉE — c'est le seul mode où le rôle
+   dense existe — et il n'y a pas de séparateur à tirer dans un écran sans
+   carte. Une porte qui laisse un réglage derrière elle casse la suivante. */
+await open(page, '#/coordinator/volunteers', 2000)
+await page.evaluate(() => {
+  localStorage.setItem('lo-yanum:map-mode:volunteers', 'split')
+  localStorage.removeItem('lo-yanum:layout-sync')
+})
 await open(page, '#/coordinator/volunteers', 4500)
 await page.locator('[data-panel-splitter]').focus()
 await page.keyboard.press('End')

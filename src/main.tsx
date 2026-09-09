@@ -36,11 +36,38 @@ import { initTheme } from './ui/theme'
  * this order because the alternative is a real app that shows twelve fixture
  * farms for as long as that chunk takes to arrive.
  */
+/**
+ * AH11.2 — la promesse des réglages du compte, attendue AVANT le premier rendu.
+ * `null` en mode démonstration : il n'y a pas de compte.
+ */
+let settingsReady: Promise<void> | null = null
+
 if (SUPABASE_CONFIGURED) {
   installBackend(EMPTY_BACKEND)
   void import('./data/store').then((m) => {
     m.installSupabaseStore()
   })
+  /**
+   * ★★ AH11.2 (2026-09-10) — LES RÉGLAGES DU COMPTE, AVANT LE PREMIER ÉCRAN.
+   *
+   * ⚠️ ICI ET PAS DANS L'HYDRATATION DES DONNÉES, ET LA RAISON EST L'ORDRE DE
+   *    LECTURE. Chaque module de réglage garde sa valeur dans un cache rempli
+   *    à sa PREMIÈRE lecture ; écrire dans `localStorage` avant que le premier
+   *    écran ne monte suffit donc à ce que les douze lisent la bonne valeur,
+   *    sans qu'aucun n'ait à savoir qu'un serveur existe. Appliqué après, il
+   *    aurait fallu un registre d'invalidation dans chacun.
+   *
+   * ⚠️ ET ÇA NE BLOQUE RIEN. L'application rend son écran de connexion pendant
+   *    que cette requête part ; si elle échoue ou n'arrive jamais, le cache
+   *    local reste ce qu'il était — c'est-à-dire l'état d'avant cette passe.
+   */
+  settingsReady = (async () => {
+    const sync = await import('./ui/settings/sync')
+    const remote = await import('./data/settings')
+    const blob = await remote.loadRemoteSettings().catch(() => null)
+    if (blob) sync.applySettings(blob)
+    sync.startSettingsSync(remote.saveRemoteSettings)
+  })()
 }
 
 /**
@@ -184,11 +211,46 @@ void openGeoDiagSession()
 const container = document.getElementById('root')
 if (!container) throw new Error('Root container #root not found')
 
-createRoot(container).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+function mount(): void {
+  createRoot(container as HTMLElement).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AH11.2 — LE PREMIER RENDU ATTEND LES RÉGLAGES DU COMPTE, ET PAS PLUS DE
+ *    DEUX SECONDES ET DEMIE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ POURQUOI ATTENDRE, ALORS QUE L'ÉCRITURE DANS `localStorage` SUFFIT EN
+ *    THÉORIE : parce que chaque module de réglage remplit son cache à sa
+ *    PREMIÈRE lecture, et que la première lecture arrive au premier rendu. La
+ *    porte A172 a trouvé exactement cette course — le gabarit était bien revenu
+ *    dans le stockage, et l'écran des réglages, monté un instant plus tôt,
+ *    montrait toujours le texte livré.
+ *
+ * ★ CE QUE ÇA COÛTE, ET POURQUOI C'EST GRATUIT ICI : un build réel n'affiche
+ *   rien d'autre qu'un formulaire de connexion tant que Francfort n'a pas
+ *   répondu. Les quelques dizaines de millisecondes de cette requête tombent
+ *   dans une attente qui existe déjà.
+ *
+ * ⚠️ ET LE DÉLAI EST DUR. Un réseau mort ne doit jamais empêcher l'application
+ *   de s'ouvrir : passé 2,5 s on rend, le cache local reste ce qu'il était, et
+ *   la restauration s'appliquera au prochain démarrage. Une application qui
+ *   attend indéfiniment un réglage est pire qu'une application avec un réglage
+ *   d'hier.
+ */
+if (settingsReady === null) {
+  mount()
+} else {
+  void Promise.race([
+    settingsReady,
+    new Promise((resolve) => window.setTimeout(resolve, 2500)),
+  ]).then(mount, mount)
+}
 
 // P2.5a — after the render call, not before: registration waits for `load`
 // anyway, and putting it last keeps the first paint the first thing that
