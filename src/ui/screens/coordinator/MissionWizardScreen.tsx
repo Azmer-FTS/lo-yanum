@@ -49,6 +49,7 @@ import type {
 } from '@core/index'
 
 import { AnchorMap } from '../../components/AnchorMap'
+import { useAnchoredBar } from '../../components/anchoredBar'
 import { usePublishedHeight } from '../../hooks/useShellMetrics'
 import { PanelSplitter } from '../../components/splitter'
 import { useMapRatio } from '../../components/mapMode'
@@ -328,9 +329,13 @@ export function MissionWizardScreen() {
   const locale = useLocale()
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  /* Z6 — see the bar at the foot of this screen. */
-  const footRef = useRef<HTMLDivElement | null>(null)
-  usePublishedHeight(footRef, '--pinned-foot')
+  /* Z6 — see the bar at the foot of this screen.
+     ★ AH2 — et elle est ANCRÉE comme celle des formulaires : même hook, même
+       témoin, même raison (voir `anchoredBar.tsx`). Deux barres d'actions qui
+       se comporteraient différemment au bas de deux écrans seraient deux
+       barres à réapprendre. */
+  const foot = useAnchoredBar()
+  usePublishedHeight(foot.barRef, '--pinned-foot')
 
   const farms = useCoreValue(getVisibleFarms)
   const volunteers = useCoreValue(getVolunteers)
@@ -1922,13 +1927,23 @@ export function MissionWizardScreen() {
         </Modal>
       )}
 
-      {/* Sticky footer navigation, offset above the sticky demo toolbar. */}
+      {/* AH2 — la navigation du bas, ancrée à la fenêtre et non au contenu. */}
       {step < 5 && (
+        <>
         <div
-          ref={footRef}
+          aria-hidden="true"
+          data-testid="wizard-foot-reserve"
+          ref={foot.spacerRef}
+          style={foot.spacerStyle}
+          className="-mx-4 mt-5 sm:-mx-6"
+        />
+        <div
+          ref={foot.barRef}
+          data-overlay=""
+          style={foot.barStyle}
           /* Z6 — publishes its height as `--pinned-foot`; the phone's folded
              role button sits above whatever this bar occupies. */
-          className="sticky-foot bottom-[var(--shell-bottom)] z-30 -mx-4 mt-5 flex items-center gap-2 border-t border-edge-subtle px-4 py-3 pl-[4.5rem] sm:-mx-6 sm:px-6 sm:pl-[4.5rem]"
+          className="fixed bottom-[var(--shell-bottom)] z-30 flex items-center gap-2 border-t border-edge-subtle bg-surface-overlay px-4 py-3 pl-[4.5rem] sm:px-6 sm:pl-[4.5rem]"
         >
           <button
             type="button"
@@ -1978,6 +1993,7 @@ export function MissionWizardScreen() {
             </button>
           )}
         </div>
+        </>
       )}
       {del.dialog}
     </>

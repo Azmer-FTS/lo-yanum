@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 
 import { rankOptions } from '@core/index'
 
 import { usePublishedHeight } from '../hooks/useShellMetrics'
+import { useAnchoredBar } from './anchoredBar'
 import { Icon } from './Icon'
 
 /**
@@ -53,6 +54,9 @@ export function TextField({
   hint,
   required,
   placeholder,
+  suggestion,
+  readOnly = false,
+  testId,
   type = 'text',
   ltr = false,
   className = '',
@@ -64,12 +68,36 @@ export function TextField({
   hint?: string
   required?: boolean
   placeholder?: string
+  /**
+   * ★★ AH1.2 (2026-09-09) — CE QUE LE PO VIENT D'ÉCRIRE, PROPOSÉ EN GRIS.
+   *
+   * « Quand une information est déjà connue ailleurs dans le formulaire, le
+   *   champ suivant se PRÉ-REMPLIT avec elle, en texte grisé, modifiable. Le
+   *   PO ne retape jamais ce qu'il vient d'écrire. »
+   *
+   * ★ C'EST UN `placeholder`, ET C'EST LA FORME EXACTE DE LA DEMANDE : gris,
+   *   lisible, et remplacé par la première frappe sans qu'on ait à effacer
+   *   quoi que ce soit. Une valeur posée dans l'état obligerait à sélectionner
+   *   puis supprimer avant de corriger, ce qui est un geste de plus et non un
+   *   geste de moins.
+   *
+   * ⚠️ ET C'EST L'APPELANT QUI RETIENT LA VALEUR, avec `inherited()`
+   *    (core/prefill.ts). Le champ ne décide de rien : il MONTRE. Un composant
+   *    qui remonterait la proposition par `onChange` écrirait dans l'état une
+   *    valeur que personne n'a tapée, et la première correction de la source
+   *    ne la corrigerait plus.
+   */
+  suggestion?: string
+  /** AH1.3 — un champ recopié par une case à cocher : visible, non saisissable. */
+  readOnly?: boolean
+  testId?: string
   /* AA2 — 'date' for תוקף ההסכם: the native picker, which is the only
      date control a thumb can drive on an iPhone. */
   type?: 'text' | 'tel' | 'number' | 'email' | 'date'
   ltr?: boolean
   className?: string
 }) {
+  const proposed = value.trim() === '' && (suggestion ?? '').trim() !== ''
   return (
     <Field
       label={label}
@@ -80,9 +108,15 @@ export function TextField({
     >
       <input
         type={type}
-        className={`input ${error ? 'border-status-danger' : ''} ${ltr ? 'ltr-nums text-start' : ''}`}
+        data-testid={testId}
+        data-suggested={proposed ? '1' : undefined}
+        readOnly={readOnly}
+        aria-readonly={readOnly || undefined}
+        className={`input ${error ? 'border-status-danger' : ''} ${ltr ? 'ltr-nums text-start' : ''} ${
+          readOnly ? 'cursor-default text-content-secondary opacity-80' : ''
+        }`}
         value={value}
-        placeholder={placeholder}
+        placeholder={proposed ? suggestion : placeholder}
         onChange={(e) => onChange(e.target.value)}
       />
     </Field>
@@ -530,7 +564,13 @@ export function FormSection({
   )
 }
 
-/** Sticky action bar at the foot of a form. */
+/**
+ * ★★ AH2 (2026-09-09) — LA BARRE D'ACTIONS, ANCRÉE AU BAS DE LA FENÊTRE.
+ *
+ * Voir `anchoredBar.tsx` pour le pourquoi : `sticky` ne colle qu'au bas du
+ * CONTENU, et sur un formulaire dont quatre sections s'ouvrent repliées le
+ * contenu est plus court que l'écran.
+ */
 export function FormActions({
   onCancel,
   cancelLabel,
@@ -551,52 +591,54 @@ export function FormActions({
    *   pinned-overlap sweep is for. Measured rather than declared, like every
    *   other offset in this shell (standing decision 39).
    */
-  const footRef = useRef<HTMLDivElement | null>(null)
-  usePublishedHeight(footRef, '--pinned-foot')
+  const anchor = useAnchoredBar()
+  usePublishedHeight(anchor.barRef, '--pinned-foot')
   return (
-    // `bottom-[--shell-bottom]` clears the sticky demo toolbar. At plain
-    // `bottom-0` the submit button sat underneath it at every viewport.
-    <div
-      ref={footRef}
-      data-testid="form-actions"
-      // U4.4 — `pl-[4.5rem]` is PHYSICAL: the floating mode pill sits at the
-      // viewport's physical bottom-left, and in an RTL row `justify-end` puts
-      // the submit button exactly there on every stacked layout. The bar
-      // keeps its buttons clear of the pill at every width.
-      //
-      // ★★ AF2.1 (2026-09-09) — LA MARGE NÉGATIVE EST `--content-pad`, ET PLUS
-      //    UNE SUPPOSITION SUR LA COQUILLE QUI L'ENTOURE.
-      //
-      // Elle était `-mx-4 sm:-mx-6` : une transcription de `px-4 sm:px-6`, qui
-      // est le rembourrage du GABARIT DE PAGE (`layouts.tsx`). La colonne de
-      // `MapSplit` est à `px-4` puis `xl:px-5` — jamais 24 px. Sur un iPad en
-      // portrait, la barre débordait donc de huit pixels de chaque côté de la
-      // colonne, mesuré à `[-8..968]` dans une fenêtre de 1 032, et faisait un
-      // document plus large que l'écran : la moitié du « défile de gauche à
-      // droite » que le PO a signalé.
-      //
-      // ★ CHAQUE COQUILLE PUBLIE DÉJÀ SON PROPRE REMBOURRAGE — c'est
-      //   `--content-pad`, écrit pour cette raison exacte (`index.css` : « il
-      //   est publié par la coquille QUI POSSÈDE le rembourrage »). La barre le
-      //   lit au lieu de le deviner, et elle est juste dans les quatre
-      //   coquilles sans en connaître aucune.
-      //
-      // ⚠️ `mx-[calc(… * -1)]` ET NON `-mx-[…]` : Tailwind rend la seconde
-      //    forme en `margin-left: -var(--content-pad)`, qui n'est pas du CSS.
-      className="sticky-foot bottom-[var(--shell-bottom)] mx-[calc(var(--content-pad,1rem)*-1)] mt-2 flex justify-end gap-2 border-t border-edge-subtle px-[var(--content-pad,1rem)] py-3 pl-[4.5rem]"
-    >
-      <button type="button" className="btn-secondary" onClick={onCancel}>
-        {cancelLabel}
-      </button>
-      <button
-        type="button"
-        className="btn-primary"
-        disabled={disabled}
-        onClick={onSubmit}
+    <>
+      {/*
+        ★ LE TÉMOIN : invisible, sans bordure, mais il OCCUPE la place de la
+          barre dans le flux — c'est ce qui garantit AH2.2, « elle ne recouvre
+          jamais le dernier champ ». Il porte aussi les marges négatives
+          d'AF2.1, de sorte que sa boîte est celle de la colonne rembourrage
+          compris, et que la barre `fixed` en hérite sans rien deviner.
+      */}
+      <div
+        aria-hidden="true"
+        data-testid="form-actions-reserve"
+        ref={anchor.spacerRef}
+        style={anchor.spacerStyle}
+        className="mx-[calc(var(--content-pad,1rem)*-1)] mt-2"
+      />
+      <div
+        ref={anchor.barRef}
+        data-testid="form-actions"
+        /* PO POINT 2 — une barre épinglée qui couvre le contenu défilant le
+           fait exprès ; le balayage de `bun run layout` doit le savoir. */
+        data-overlay=""
+        style={anchor.barStyle}
+        // U4.4 — `pl-[4.5rem]` is PHYSICAL: the floating mode pill sits at the
+        // viewport's physical bottom-left, and in an RTL row `justify-end` puts
+        // the submit button exactly there on every stacked layout. The bar
+        // keeps its buttons clear of the pill at every width.
+        //
+        // ⚠️ `bottom-[var(--shell-bottom)]` ET NON `bottom-0` : c'est le max de
+        //    la barre d'onglets et de la zone sûre du bas (AH2.3).
+        className="fixed bottom-[var(--shell-bottom)] z-30 flex justify-end gap-2 border-t
+                   border-edge-subtle bg-surface-overlay px-[var(--content-pad,1rem)] py-3 pl-[4.5rem]"
       >
-        {submitLabel}
-      </button>
-    </div>
+        <button type="button" className="btn-secondary" onClick={onCancel}>
+          {cancelLabel}
+        </button>
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={disabled}
+          onClick={onSubmit}
+        >
+          {submitLabel}
+        </button>
+      </div>
+    </>
   )
 }
 

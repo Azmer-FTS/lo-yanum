@@ -103,3 +103,6 @@ dist-agpass/
 
 # AG8 — le build à blanc que `bun run agcaptures` sert en local.
 dist-agdry/
+dist-ahbefore/
+dist-ahafter/
+dist-ahpass/

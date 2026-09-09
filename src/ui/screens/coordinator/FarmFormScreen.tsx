@@ -13,6 +13,7 @@ import {
   NEGEV_CENTER,
   regions,
   createFarm,
+  farmFormSuggestions,
   getFarm,
   getFarmZonesForFarm,
   getVisibleFarms,
@@ -20,8 +21,10 @@ import {
   ringAreaDunams,
   fromDayKey,
   isEmail,
+  inherited,
   iso,
   keepsLivestock,
+  liaisonIsFarmer,
   localDayKey,
   newAgreementId,
   newContactId,
@@ -306,6 +309,23 @@ export function FarmFormScreen() {
   const [farmerId, setFarmerId] = useState(existing?.farmerId ?? '')
   const [liaisonName, setLiaisonName] = useState(existing?.liaisonName ?? '')
   const [liaisonPhone, setLiaisonPhone] = useState(existing?.liaisonPhone ?? '')
+  /**
+   * ★★ AH1.3 (2026-09-09) — « LE CONTACT DE TERRAIN EST LA MÊME PERSONNE » EST
+   *    UNE CASE À COCHER QUI RECOPIE, PAS UNE DEUXIÈME SAISIE.
+   *
+   * ⚠️ SON ÉTAT INITIAL SE DÉDUIT DE LA FICHE (`liaisonIsFarmer`) et n'est pas
+   *    une colonne de plus : une fiche déjà enregistrée avec les deux paires
+   *    identiques rouvre avec la case cochée, sans migration et sans risque
+   *    qu'un drapeau en base contredise un jour les deux valeurs qu'il décrit.
+   */
+  const [liaisonSame, setLiaisonSame] = useState(() =>
+    liaisonIsFarmer({
+      farmerName: existing?.farmerName ?? '',
+      farmerPhone: existing?.farmerPhone ?? '',
+      liaisonName: existing?.liaisonName ?? '',
+      liaisonPhone: existing?.liaisonPhone ?? '',
+    }),
+  )
   /* ★★ AE2 — les deux numéros de nuit et les quatre champs du תיק אתר. */
   const [councilHotline, setCouncilHotline] = useState(existing?.councilHotline ?? '')
   const [standbyPhone, setStandbyPhone] = useState(existing?.standbyPhone ?? '')
@@ -340,6 +360,31 @@ export function FarmFormScreen() {
     [existing, name, locality, farmName, farmerName, farmerPhone, farmerId, contacts],
   )
 
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ★★ AH1.2 — LES PROPOSITIONS, CALCULÉES EN UN SEUL ENDROIT.
+   * ═══════════════════════════════════════════════════════════════════════
+   *
+   * `core/prefill.ts` décide QUOI proposer ; cet écran décide seulement OÙ
+   * l'afficher, et `inherited()` décide ce qui est enregistré. Trois questions,
+   * trois endroits, aucune règle écrite deux fois.
+   *
+   * ★ ET LE GABARIT DU NOM DE FERME EST CELUI D'AG4 — `sign.farmNamePattern`,
+   *   la clé que `FarmerSignScreen` lit déjà. Un second gabarit « côté rekaz »
+   *   donnerait deux propositions différentes pour la même ferme selon qui
+   *   remplit le formulaire.
+   */
+  const farmNamePattern = t('sign.farmNamePattern')
+  const suggest = farmFormSuggestions(
+    { name, locality, farmName, farmerName, farmerPhone, farmerEmail, contacts },
+    farmNamePattern,
+  )
+
+  /* AH1.3 — cochée, la case RECOPIE. Les deux champs restent visibles, en
+     lecture : le PO doit voir ce qui sera enregistré, pas un champ disparu. */
+  const liaisonNameShown = liaisonSame ? inherited(farmerName, suggest.farmerName) : liaisonName
+  const liaisonPhoneShown = liaisonSame ? inherited(farmerPhone, suggest.farmerPhone) : liaisonPhone
+
   const num = (v: string) => (v.trim() === '' ? NaN : Number(v))
   /**
    * ★ AC3.1 — THE DEFAULT FOLLOWS THE TWO FIELDS AS THEY ARE TYPED, not the
@@ -370,24 +415,58 @@ export function FarmFormScreen() {
       (f) => f.id !== farmId && String(f.localityCode ?? '') === localityCode.trim(),
     )
 
+  /**
+   * ★★ AH1.5 — LE NOM DE LA FICHE N'EST PLUS UNE SAISIE OBLIGATOIRE, IL EST
+   *    UNE VALEUR OBLIGATOIRE. Il se déduit du nom de l'exploitation, qui se
+   *    déduit lui-même du prénom de l'agriculteur ; ce que le formulaire exige
+   *    est qu'il en RESTE un à la fin, pas que le PO l'ait tapé.
+   */
+  const effectiveName = inherited(name, suggest.name)
   const errors = {
-    name: !name.trim() ? t('form.required') : undefined,
+    name: !effectiveName ? t('form.required') : undefined,
     locality: !locality.trim() ? t('form.required') : undefined,
     // A37 — a farm exists only where its pin is: no pin, no farm.
     position: !position ? t('form.pinRequired') : undefined,
     localityCode: codeClash ? t('form.localityCodeTaken') : undefined,
   }
-  const contactErrors = contacts.map((c) => ({
-    name: !c.name.trim() ? t('form.required') : undefined,
-    phone: !c.phone.trim()
-      ? t('form.required')
-      : !isValidPhone(c.phone)
-        ? t('form.invalidPhone')
-        : undefined,
-    // P0bis.5a — optional, checked only when filled.
-    email:
-      c.email.trim() && !isEmail(c.email) ? t('form.invalidEmail') : undefined,
-  }))
+  /**
+   * ⚠️ AH1.1 — LA VALIDATION PORTE SUR LA VALEUR RETENUE, PAS SUR LA FRAPPE.
+   *    Un contact principal laissé vide alors que le nom et le portable de
+   *    l'agriculteur sont juste au-dessus n'est pas un contact incomplet :
+   *    c'est un contact hérité. Valider `c.name` brut renverrait le PO taper
+   *    une seconde fois ce qu'il vient d'écrire — exactement ce que ce bloc
+   *    existe pour supprimer.
+   */
+  const contactValue = (
+    c: FarmContact,
+    i: number,
+    key: 'name' | 'phone' | 'email',
+  ): string => {
+    const primaryRow = c.isPrimary || (i === 0 && !contacts.some((x) => x.isPrimary))
+    if (!primaryRow) return c[key].trim()
+    const echo =
+      key === 'name'
+        ? suggest.primaryContactName
+        : key === 'phone'
+          ? suggest.primaryContactPhone
+          : suggest.primaryContactEmail
+    return inherited(c[key], echo)
+  }
+  const contactErrors = contacts.map((c, i) => {
+    const cName = contactValue(c, i, 'name')
+    const cPhone = contactValue(c, i, 'phone')
+    const cEmail = contactValue(c, i, 'email')
+    return {
+      name: !cName ? t('form.required') : undefined,
+      phone: !cPhone
+        ? t('form.required')
+        : !isValidPhone(cPhone)
+          ? t('form.invalidPhone')
+          : undefined,
+      // P0bis.5a — optional, checked only when filled.
+      email: cEmail && !isEmail(cEmail) ? t('form.invalidEmail') : undefined,
+    }
+  })
 
   const valid =
     Object.values(errors).every((e) => e === undefined) &&
@@ -439,9 +518,17 @@ export function FarmFormScreen() {
 
     if (!position) return
 
+    /**
+     * ★★ AH1.2 — CE QUI EST ENREGISTRÉ EST « TAPÉ, SINON PROPOSÉ ».
+     *
+     * ⚠️ ET C'EST LE SEUL ENDROIT OÙ LA PROPOSITION DEVIENT UNE VALEUR. Elle
+     *    n'a jamais été écrite dans l'état du formulaire ; elle est résolue
+     *    ici, au moment où le PO appuie sur שמור, sur exactement ce qu'il
+     *    voyait en gris à l'écran.
+     */
     const draft: FarmDraft = {
       photo,
-      name: name.trim(),
+      name: effectiveName,
       locality: locality.trim(),
       region: region.trim(),
       regionId: regionId === '' ? null : regionId,
@@ -470,12 +557,21 @@ export function FarmFormScreen() {
       /* AC3.2 — the flag never lands on a zero. See the note on the state. */
       guardedDunams: Number.isFinite(num(guardedDunams)) ? num(guardedDunams) : 0,
       guardedDunamsManual: guardedManual && num(guardedDunams) > 0,
-      contacts: contacts.map((c) => ({
-        ...c,
-        name: c.name.trim(),
-        phone: c.phone.trim(),
-        role: c.role.trim(),
-      })),
+      /* ★ AH1.1 — LE CONTACT PRINCIPAL ET L'AGRICULTEUR SONT LA MÊME PERSONNE
+         NEUF FOIS SUR DIX, et c'est le « téléphone demandé deux fois » que le
+         PO a signalé. Le formulaire propose l'un dans l'autre, dans les DEUX
+         sens ; ici la proposition devient la valeur, pour la ligne principale
+         seulement — un contact secondaire n'hérite de rien. */
+      contacts: contacts.map((c, i) => {
+        const primaryRow = c.isPrimary || (i === 0 && !contacts.some((x) => x.isPrimary))
+        return {
+          ...c,
+          name: primaryRow ? inherited(c.name, suggest.primaryContactName) : c.name.trim(),
+          phone: primaryRow ? inherited(c.phone, suggest.primaryContactPhone) : c.phone.trim(),
+          email: primaryRow ? inherited(c.email, suggest.primaryContactEmail) : c.email.trim(),
+          role: c.role.trim(),
+        }
+      }),
       notes: notes.trim(),
       // AA2 — the prospection fields. An empty code is null, never 0.
       localityCode: localityCode.trim() === '' ? null : Number(localityCode.trim()),
@@ -483,12 +579,13 @@ export function FarmFormScreen() {
       legalEntity,
       landAgreement,
       landAgreementUntil: landAgreementUntil.trim() === '' ? null : landAgreementUntil,
-      farmerName: farmerName.trim(),
-      farmerPhone: farmerPhone.trim(),
-      farmerEmail: farmerEmail.trim(),
+      farmerName: inherited(farmerName, suggest.farmerName),
+      farmerPhone: inherited(farmerPhone, suggest.farmerPhone),
+      farmerEmail: inherited(farmerEmail, suggest.farmerEmail),
       farmerId: farmerId.trim(),
-      liaisonName: liaisonName.trim(),
-      liaisonPhone: liaisonPhone.trim(),
+      /* AH1.3 — la case cochée écrit l'agriculteur dans les deux champs. */
+      liaisonName: liaisonNameShown.trim(),
+      liaisonPhone: liaisonPhoneShown.trim(),
       councilHotline: councilHotline.trim(),
       standbyPhone: standbyPhone.trim(),
       siteAccess: siteAccess.trim(),
@@ -496,7 +593,7 @@ export function FarmFormScreen() {
       parking: parking.trim(),
       terrainNotes: terrainNotes.trim(),
       // AC1 · AC2.4 — the holding's own name, and who groups it.
-      farmName: farmName.trim(),
+      farmName: inherited(farmName, suggest.farmName),
       umbrella: umbrella.trim(),
     }
 
@@ -561,10 +658,15 @@ export function FarmFormScreen() {
               shape="square"
             />
           </div>
+          {/* ★ AH1.5 — « le nom de la ferme redemandé alors qu'il se déduit ».
+              Il se propose ici en gris depuis שם החווה, qui se propose lui-même
+              depuis le prénom de l'agriculteur (AG4.1, la même fonction). */}
           <TextField
             label={t('form.name')}
             value={name}
             onChange={setName}
+            suggestion={suggest.name}
+            testId="farm-form-name"
             error={show('name')}
             required
           />
@@ -641,11 +743,19 @@ export function FarmFormScreen() {
                     onChange={(v) => patchContact(i, { photo: v })}
                   />
                 </div>
-                <div className="auto-cols gap-3 [--col-min:9rem]">
+                {/* ★★ AH1.6 — DEUX CHAMPS COURTS PAR LIGNE AUX GRANDES
+                    LARGEURS. `--col-min:11rem` est ce qui fait tenir
+                    nom/téléphone puis courriel/rôle côte à côte dans une
+                    colonne d'iPad, et une seule colonne sur un téléphone —
+                    `auto-fit` répond à la largeur, pas à un point de rupture. */}
+                <div className="auto-cols gap-3 [--col-min:11rem]">
                   <TextField
                     label={t('form.contactName')}
                     value={contact.name}
                     onChange={(v) => patchContact(i, { name: v })}
+                    suggestion={
+                      contact.isPrimary ? suggest.primaryContactName : undefined
+                    }
                     error={touched ? contactErrors[i]?.name : undefined}
                     required
                   />
@@ -653,6 +763,10 @@ export function FarmFormScreen() {
                     label={t('form.contactPhone')}
                     value={contact.phone}
                     onChange={(v) => patchContact(i, { phone: v })}
+                    suggestion={
+                      contact.isPrimary ? suggest.primaryContactPhone : undefined
+                    }
+                    testId={contact.isPrimary ? 'contact-phone-primary' : undefined}
                     error={touched ? contactErrors[i]?.phone : undefined}
                     type="tel"
                     ltr
@@ -662,6 +776,9 @@ export function FarmFormScreen() {
                     label={t('form.contactEmail')}
                     value={contact.email}
                     onChange={(v) => patchContact(i, { email: v })}
+                    suggestion={
+                      contact.isPrimary ? suggest.primaryContactEmail : undefined
+                    }
                     error={touched ? contactErrors[i]?.email : undefined}
                     type="email"
                     ltr
@@ -735,7 +852,14 @@ export function FarmFormScreen() {
             </span>
           }
         >
-          <div className="auto-cols gap-3 [--col-min:14rem]">
+          {/* ★★ AH1.6 — `col-span-full`, ET C'ÉTAIT TOUTE LA CAUSE DU
+              « une colonne partout » DU PO. `.form-grid` passe à deux colonnes
+              dès 30 rem ; ce bloc n'en occupait qu'UNE, donc son propre
+              `auto-fit` à 14 rem n'avait jamais que 20 rem à répartir et
+              rendait une seule colonne — en laissant la moitié droite de la
+              section vide. Il prend la largeur entière, et les cinq champs se
+              rangent deux par ligne sur un iPad. */}
+          <div className="auto-cols col-span-full gap-3 [--col-min:14rem]">
             <TextField
               label={t('form.localityCode')}
               hint={t('form.localityCodeHint')}
@@ -799,7 +923,7 @@ export function FarmFormScreen() {
             </span>
           }
         >
-          <div className="auto-cols gap-3 [--col-min:14rem]">
+          <div className="auto-cols col-span-full gap-3 [--col-min:14rem]">
             {/**
               * ★★ AC1 — שם החווה, ET C'EST LA MOITIÉ DE L'IDENTITÉ.
               *
@@ -816,6 +940,8 @@ export function FarmFormScreen() {
               hint={t('form.farmNameHint')}
               value={farmName}
               onChange={setFarmName}
+              suggestion={suggest.farmName}
+              testId="farm-form-farmName"
             />
             <TextField
               label={t('form.umbrella')}
@@ -827,11 +953,15 @@ export function FarmFormScreen() {
               hint={t('form.farmerNameHint')}
               value={farmerName}
               onChange={setFarmerName}
+              suggestion={suggest.farmerName}
+              testId="farm-form-farmerName"
             />
             <TextField
               label={t('form.farmerPhone')}
               value={farmerPhone}
               onChange={setFarmerPhone}
+              suggestion={suggest.farmerPhone}
+              testId="farm-form-farmerPhone"
               type="tel"
               ltr
             />
@@ -852,23 +982,84 @@ export function FarmFormScreen() {
               label={t('form.farmerEmail')}
               value={farmerEmail}
               onChange={setFarmerEmail}
+              suggestion={suggest.farmerEmail}
               type="email"
               ltr
             />
-            <TextField
-              label={t('form.liaisonName')}
-              hint={t('form.liaisonNameHint')}
-              value={liaisonName}
-              onChange={setLiaisonName}
-            />
-            <TextField
-              label={t('form.liaisonPhone')}
-              value={liaisonPhone}
-              onChange={setLiaisonPhone}
-              type="tel"
-              ltr
-            />
           </div>
+
+          {/* ★★ AH1.3 — LA CASE QUI RECOPIE. Elle est POSÉE AU-DESSUS des deux
+              champs qu'elle gouverne, jamais en dessous : cochée, ils passent
+              en lecture, et une case qui explique après coup pourquoi deux
+              champs viennent de se griser arrive trop tard. */}
+          <label
+            className="col-span-full flex items-center gap-2.5 rounded-field bg-surface-high px-3.5 py-2.5"
+            data-testid="liaison-same-row"
+          >
+            <input
+              type="checkbox"
+              data-testid="liaison-same"
+              className="check"
+              checked={liaisonSame}
+              onChange={(e) => {
+                const on = e.target.checked
+                setLiaisonSame(on)
+                /* ⚠️ DÉCOCHER NE VIDE PAS. Le PO qui se ravise retrouve les
+                   deux valeurs recopiées et les corrige, plutôt que de tout
+                   ressaisir — décocher est une correction, pas un effacement. */
+                if (on) {
+                  setLiaisonName(inherited(farmerName, suggest.farmerName))
+                  setLiaisonPhone(inherited(farmerPhone, suggest.farmerPhone))
+                }
+              }}
+            />
+            <span className="text-caption text-content-secondary">
+              {t('form.liaisonSame')}
+            </span>
+          </label>
+
+          {/* ★ ET COCHÉE, LA CASE NE LAISSE PAS DEUX CHAMPS GRISÉS — ELLE
+              LAISSE UNE LIGNE. Deux champs en lecture coûtent deux hauteurs de
+              champ sur un téléphone pour ne rien dire de plus qu'une phrase, et
+              A158 compte ces hauteurs. Ce qui est enregistré reste VISIBLE,
+              c'est la seule condition. */}
+          {liaisonSame ? (
+            <p
+              className="col-span-full text-caption text-content-secondary"
+              data-testid="liaison-echo"
+            >
+              {t('form.liaisonName')} ·{' '}
+              <span className="font-medium text-content-primary">
+                {liaisonNameShown || '—'}
+              </span>
+              {liaisonPhoneShown && (
+                <>
+                  {' · '}
+                  <span className="ltr-nums font-medium text-content-primary">
+                    {liaisonPhoneShown}
+                  </span>
+                </>
+              )}
+            </p>
+          ) : (
+            <div className="auto-cols col-span-full gap-3 [--col-min:14rem]">
+              <TextField
+                label={t('form.liaisonName')}
+                hint={t('form.liaisonNameHint')}
+                value={liaisonName}
+                onChange={setLiaisonName}
+                testId="liaison-name"
+              />
+              <TextField
+                label={t('form.liaisonPhone')}
+                value={liaisonPhone}
+                onChange={setLiaisonPhone}
+                testId="liaison-phone"
+                type="tel"
+                ltr
+              />
+            </div>
+          )}
         </FormSection>
 
         <FormSection title={t('form.sectionAreas')}>
