@@ -345,8 +345,31 @@ jobs:
       #    never possible (§27) and the archive ships inside the payload. Same
       #    policy as the gate above, and for the same reason: there is nobody
       #    left to wait for, so an empty Haifa is a broken pipeline.
+      # ⚠️★★ LA LISTE APT DE GOOGLE EST RETIRÉE AVANT D'INSTALLER, ET C'EST UN
+      #    CORRECTIF DE PIPELINE QU'UN DÉPLOIEMENT ROUGE A IMPOSÉ (2026-09-09).
+      #
+      #    `playwright install --with-deps` lance `apt-get update`, et l'image
+      #    du runner GitHub porte le dépôt `google-chrome` dans ses sources.
+      #    Ce jour-là ce dépôt a servi un `Packages.gz` dont la somme de
+      #    contrôle ne correspondait pas à son fichier `Release` — « Hash Sum
+      #    mismatch » — et `apt-get update` a rendu 100, deux exécutions de
+      #    suite, à trois minutes d'intervalle.
+      #
+      # ★ NOUS N'AVONS PAS BESOIN DE CHROME. Ce qui est installé ici est
+      #   CHROMIUM et ses bibliothèques système, qui viennent des dépôts
+      #   Ubuntu. Le dépôt de Google est une dépendance que le pipeline
+      #   traînait sans jamais s'en servir, et une dépendance dont on ne se
+      #   sert pas est une dépendance qui ne peut que casser. La retirer rend
+      #   le déploiement indépendant de la santé d'un miroir tiers.
+      #
+      # ⚠️ `|| true` PARTOUT : si le fichier n'existe pas sur une image future,
+      #    ce n'est pas une raison d'échouer — c'est même le cas idéal.
       - name: Chromium, for the browser gate
-        run: bun x playwright install --with-deps chromium
+        run: |
+          set -euo pipefail
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.list || true
+          sudo rm -f /etc/apt/sources.list.d/google-chrome*.sources || true
+          bun x playwright install --with-deps chromium
 
       - name: Gate — the basemap in a REAL browser, blank profile
         run: bun run ground
