@@ -47,16 +47,35 @@ do $$
 declare
   t text;
   stamp text := to_char(now(), 'YYYYMMDD_HH24MI');
+  /**
+   * ⚠️ L'ORDRE EST CELUI DES CLÉS ÉTRANGÈRES ET LA PREMIÈRE VERSION L'AVAIT
+   *    FAUX — DE DEUX FAÇONS QUE SEULE LA BASE RÉELLE POUVAIT DIRE.
+   *
+   *    `missions.guard_post_id` référence `guard_posts` : vider les points
+   *    d'ancrage avant les gardes a été REFUSÉ par la base (23503), et c'est
+   *    exactement ce qu'on attend d'elle. Même chose pour `incidents.mission_id`,
+   *    qui oblige à vider les incidents AVANT les gardes.
+   *
+   *    ★ ET LE REFUS N'A RIEN CASSÉ : le bloc entier est une transaction, donc
+   *      la première tentative a été annulée en totalité — ni archive, ni
+   *      suppression. Vérifié : zéro table dans `archive` après l'échec.
+   */
   tables text[] := array[
-    -- enfants d'abord
+    -- 1. les enfants purs
     'zone_vertices', 'threat_zone_vertices', 'incident_entries',
     'mission_driver_passengers', 'presence_marks', 'mission_assignments',
     'mission_drivers', 'mission_guard_posts', 'mission_checkpoints',
     'cancel_notices', 'tour_stops', 'entity_contacts', 'entity_commitments',
-    'entity_livestock', 'agreements', 'guard_posts',
-    -- puis les parents
-    'zones', 'threat_zones', 'threat_vectors', 'incidents', 'missions',
-    'farm_visits', 'general_meetings', 'tours', 'volunteers', 'drivers',
+    'entity_livestock', 'agreements',
+    -- 2. les incidents AVANT les gardes (incidents.mission_id)
+    'incidents',
+    -- 3. les gardes AVANT les points d'ancrage (missions.guard_post_id)
+    'missions', 'guard_posts',
+    -- 4. le reste des enfants d'`entities`
+    'threat_vectors', 'threat_zones', 'zones', 'farm_visits',
+    -- 5. ce qui ne dépend de rien
+    'general_meetings', 'tours', 'volunteers', 'drivers',
+    -- 6. et le parent de presque tout
     'entities'
   ];
 begin

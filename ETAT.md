@@ -300,12 +300,56 @@
 > lieux, depuis toujours. La taille monte de 133 à 202 ko — le prix du seul
 > paquet qui marche — et la porte le vérifie désormais à chaque exécution.
 >
-> ## AF8 — LA REMISE À ZÉRO
+> ## AF8 — LA REMISE À ZÉRO, FAITE
+>
+> **Appliquée le 2026-09-09 sur `lo-yanum-prod`. 858 lignes dans 27 tables,
+> toutes archivées d'abord** sous `archive.<table>_20260909_1246`. Après :
+> **une seule table non vide dans tout le schéma `public`, `app_users`, avec sa
+> ligne** — le compte du PO.
+>
+> | table | lignes | | table | lignes |
+> |---|---:|---|---|---:|
+> | zone_vertices | 387 | | drivers | 9 |
+> | threat_zone_vertices | 122 | | threat_vectors | 9 |
+> | volunteers | 56 | | agreements | 8 |
+> | presence_marks | 34 | | mission_drivers | 8 |
+> | zones | 28 | | missions | 8 |
+> | entity_contacts | 26 | | general_meetings | 7 |
+> | farm_visits | 22 | | incidents | 5 |
+> | entities | 20 | | threat_zones | 5 |
+> | mission_assignments | 20 | | tour_stops | 5 |
+> | entity_commitments | 18 | | cancel_notices | 1 |
+> | guard_posts | 18 | | mission_guard_posts | 1 |
+> | mission_driver_passengers | 17 | | tours | 1 |
+> | entity_livestock | 13 | | mission_checkpoints | 0 |
+> | incident_entries | 10 | | **total** | **858** |
+>
+> ⚠️ **ET LA BASE A REFUSÉ LA PREMIÈRE TENTATIVE, CE QUI EST EXACTEMENT CE QU'ON
+> LUI DEMANDE.** L'ordre initial vidait `guard_posts` avant `missions` :
+> `missions.guard_post_id` l'interdit (23503), et `incidents.mission_id`
+> interdit de même de vider les gardes avant les incidents. Le bloc entier est
+> UNE transaction, donc rien n'a été touché — vérifié après coup : **zéro table
+> dans `archive`**, zéro ligne supprimée. L'ordre est corrigé et commenté dans
+> le fichier.
 >
 > Voir `supabase/migrations/20260909000200_reset_business_data.sql`. Chaque
 > table métier est **copiée dans le schéma `archive`** avant d'être vidée : le
 > retour en arrière est un `insert … select` par table, écrit dans le fichier
 > plutôt que promis ailleurs.
+>
+> ⛔ **CE QU'AF8.5 DEMANDE ET QUE JE NE PEUX PAS FAIRE : ME CONNECTER À
+> L'APPLICATION RÉELLE.** Le mot de passe du coordinateur appartient au PO et
+> n'entre pas dans ce dépôt (§14.4) — c'est la contrainte qui a donné sa forme à
+> `bun run live`, qui prouve le schéma sans mot de passe. Ce qui EST prouvé, et
+> qui pose la même question autrement :
+>
+> · `bun run live` — **49/49 après l'effacement** : le schéma et le mappeur
+>   s'accordent toujours, et un lecteur anonyme n'obtient rien.
+> · `bun run empty` — **10 écrans sur un programme VIDE**, chacun avec un état
+>   vide digne. C'est l'app telle qu'il l'ouvrira.
+> · A139 dans `bun run afui` — le magasin est vidé **par le bouton des
+>   réglages, le même geste que le PO**, puis le parcours de création d'AF2 est
+>   refait de zéro : première ferme créée, aucune erreur.
 >
 > ⚠️ **SES RÉGLAGES, SES RÉGIONS ET SES GABARITS NE SONT PAS EN BASE**, et
 > c'est pour cela qu'ils survivent sans qu'on ait à les épargner : l'objectif,
@@ -317,9 +361,12 @@
 >
 > ## AF9 — LES PORTES
 >
-> · `bun run afpass` — A133 · A134 · A137 et le document, **sans navigateur**.
-> · `bun run afui` — A129 · A130 · A131 · A132 · A135 · A136 · A138 et le
->   parcours complet d'un rendez-vous, **dans Chromium**.
+> · `bun run afpass` — **63 contrôles** : A133 · A134 · A137 et le document,
+>   **sans navigateur**.
+> · `bun run afui` — **72 contrôles** : A129 · A130 · A131 · A132 · A135 · A136
+>   · A138 · A139 et le parcours complet d'un rendez-vous, **dans Chromium**.
+> · **60 captures du DÉPLOYÉ**, clair et sombre, trois viewports, zéro échec —
+>   `docs/screenshots/afpass/`.
 > · `bun run afcaptures` — les captures du DÉPLOYÉ, clair et sombre, trois
 >   viewports.
 > · `bun run logo` — reprend le logo de l'association à la source et le recadre

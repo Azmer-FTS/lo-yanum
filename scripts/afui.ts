@@ -712,6 +712,90 @@ try {
     await context.close()
   }
   // -------------------------------------------------------------------------
+  section('6bis — A139 · le parcours de création sur une application VIDE')
+  // -------------------------------------------------------------------------
+  /**
+   * ★★ AF8.5 — « APRÈS EFFACEMENT, REFAIS LE PARCOURS D'AF2 DE BOUT EN BOUT SUR
+   *    L'APP RÉELLE VIDE ».
+   *
+   * ⛔ CE QUE CETTE SONDE NE PEUT PAS FAIRE, ET IL FAUT LE DIRE : elle ne peut
+   *    pas se connecter à l'application réelle. Le mot de passe du coordinateur
+   *    appartient au PO et n'entre pas dans ce dépôt (§14.4) — c'est la même
+   *    contrainte qui a donné sa forme à `bun run live`, qui prouve le schéma
+   *    sans mot de passe.
+   *
+   * ★ CE QU'ELLE FAIT À LA PLACE EST LA MÊME QUESTION POSÉE AUTREMENT : elle
+   *   VIDE le magasin par le bouton des réglages — « הסרת נתוני הדגמה », le
+   *   même geste que le PO — puis refait le parcours de création de zéro. Une
+   *   application dont on a retiré toutes les données EST une application
+   *   neuve ; c'est aussi ce que `bun run empty` mesure écran par écran.
+   */
+  {
+    const context = await browser.newContext({
+      viewport: IPAD,
+      locale: 'he-IL',
+      hasTouch: true,
+    })
+    const page = await context.newPage()
+    page.setDefaultTimeout(45_000)
+    const errors: string[] = []
+    page.on('pageerror', (e) => errors.push(`${e.name}: ${e.message}`))
+
+    /**
+     * ⚠️ `__loYanumEmptyStore`, ET NON LE BOUTON DES RÉGLAGES. La section
+     *    « נתוני הדגמה » ne se rend QUE dans un build à base de données —
+     *    c'est elle qui efface les lignes `demo-` de Supabase — et cette porte
+     *    tourne sur le jumeau, qui n'a pas de base. Le vidage utilisé ici est
+     *    celui d'A81 (`bun run empty`), publié par le paquet de démonstration
+     *    exactement pour cette question.
+     */
+    await open(page, '#/coordinator/farms', 4000)
+    const emptied = await page.evaluate(() => {
+      const fn = (window as unknown as { __loYanumEmptyStore?: () => void })
+        .__loYanumEmptyStore
+      if (!fn) return false
+      fn()
+      return true
+    })
+    check('A139 · le magasin peut être vidé', emptied === true)
+    await page.waitForTimeout(2500)
+    /* ⚠️ ON COMPTE LES ÉPINGLES DE LA CARTE ET LES LIGNES DE LA LISTE, parce
+       qu'une liste vide peut aussi être une liste filtrée. Les deux à zéro,
+       c'est un programme vide. */
+    const left = await page.evaluate(() => ({
+      markers: document.querySelectorAll('.maplibregl-marker').length,
+      cards: document.querySelectorAll('a[href*="/coordinator/farms/farm-"]').length,
+    }))
+    check(
+      'A139 · la base est vide',
+      left.markers === 0 && left.cards === 0,
+      `${left.markers} épingle(s), ${left.cards} fiche(s)`,
+    )
+
+    /* Et le parcours d'AF2, de zéro. */
+    await page.goto(`${base}/#/coordinator/farms/new`, { waitUntil: 'load' })
+    await page.waitForTimeout(4000)
+    await page.locator('input[type="text"]:visible').first().fill('חוות ראשונה')
+    const locality = page.locator('input[role="combobox"]').first()
+    await locality.fill('רתמים')
+    await page.waitForTimeout(600)
+    await page.locator('[data-testid="position-link"]').fill('31.0583, 34.6531')
+    await page.locator('[data-testid="position-link-apply"]').click()
+    await page.waitForTimeout(900)
+    const save = page.locator('[data-testid="form-actions"] button').last()
+    await save.scrollIntoViewIfNeeded()
+    await save.click()
+    await page.waitForTimeout(2500)
+    check(
+      'A139 · sur une base vide, la première ferme se crée',
+      !page.url().includes('/new'),
+      page.url().slice(page.url().indexOf('#')),
+    )
+    check('A139 · sans erreur JavaScript', errors.length === 0, errors.join(' | ').slice(0, 200))
+    await context.close()
+  }
+
+  // -------------------------------------------------------------------------
   section('7 — AF4.3 · un rendez-vous, de bout en bout, carte comprise')
   // -------------------------------------------------------------------------
   {
