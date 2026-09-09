@@ -242,9 +242,18 @@
 >   **sans navigateur**.
 > · `bun run agui` — **80 contrôles** : A140 · A141 · A142 · A143 · A144 · A145 ·
 >   A147 · A150 · A151, **dans Chromium ET WebKit**.
-> · `bun run agcaptures` — les captures du DÉPLOYÉ, clair et sombre, trois
->   viewports, **et la mesure A148 de recouvrement de la vignette** — parce que
->   « vérifie sur CAPTURE du déployé, pas seulement par sonde DOM ».
+> · `bun run agcaptures` — **66 captures du DÉPLOYÉ, clair et sombre, trois
+>   viewports, ZÉRO échec**, et la mesure A148 : **12/12**, la vignette
+>   entièrement visible au repos à 1032 et 1376, à `x=72` sur un téléphone de
+>   402, **0 px² de recouvrement** partout.
+>
+> ★★ **ET LE MODE « VOIR COMME » EST SUR L'APPLICATION RÉELLE, PROUVÉ SANS MOT
+> DE PASSE.** Le bundle servi par `https://azmer-fts.github.io/lo-yanum/` — celui
+> qui nomme un projet Supabase, donc un vrai build — porte `view-as-banner`,
+> `view-as-readonly`, `phone-challenge`, `farmer-card`, `sign-submit`,
+> `farms-renewal`, `geo-diag-rows` et `document-photos`. C'est la même forme de
+> preuve que §14.4 impose depuis toujours : on ne peut pas se connecter à sa
+> place, on peut lire ce que son appareil télécharge.
 >
 > **★★ HUIT DÉFAUTS TROUVÉS PAR LES PORTES, TOUS CORRIGÉS, ET AUCUN N'AURAIT ÉTÉ
 > VU PAR RELECTURE :**
@@ -302,6 +311,24 @@
 >
 > **Migration `20260909000300_farmer_space.sql` appliquée sur `lo-yanum-prod`**
 > (deux colonnes additives et nullables). `bun run live` : **49/49 après**.
+>
+> ⚠️ **ET LE DÉPLOIEMENT A ÉTÉ ROUGE DEUX FOIS POUR UNE RAISON QUI N'EST PAS DANS
+> CE DÉPÔT — CORRIGÉE QUAND MÊME.** `playwright install --with-deps` lance
+> `apt-get update`, et l'image du runner GitHub porte le dépôt `google-chrome`
+> dans ses sources ; ce jour-là ce dépôt a servi un `Packages.gz` dont la somme
+> de contrôle ne correspondait pas à son `Release` (« Hash Sum mismatch »), deux
+> exécutions de suite à trois minutes d'intervalle. **Ce que nous installons est
+> CHROMIUM**, dont les bibliothèques viennent des dépôts Ubuntu : le dépôt de
+> Google était une dépendance que le pipeline traînait sans jamais s'en servir,
+> et une dépendance dont on ne se sert pas est une dépendance qui ne peut que
+> casser. Elle est retirée avant l'installation.
+>
+> ⛔ **ET UN DÉPLOIEMENT A EMPORTÉ 100 Mo QUI N'AVAIENT RIEN À Y FAIRE.** Le
+> répertoire du build à blanc (`dist-agdry/`) n'était pas dans `.gitignore` et un
+> `git add -A` l'a pris — avec l'archive nationale dedans. Le `push` a échoué sur
+> un `HTTP 408` après 34 Mo, ce qui est la seule raison pour laquelle je l'ai vu.
+> Retiré du commit avant qu'il n'entre dans l'historique distant, et ajouté à
+> `.gitignore` avec ses vingt-cinq voisins.
 
 > 🏁 **PASSE AF — LE DOCUMENT QUE L'AGRICULTEUR SIGNE, ET LE PARCOURS QUI Y
 > MÈNE. 2026-09-09.**
