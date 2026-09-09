@@ -473,17 +473,18 @@ function drawActivityPage(
   y += 90 * S
   figure(ctx, cols4[0], y, he(report.volunteersActive), t('report.activeVolunteers'), c.ink, undefined, false, 'users')
   figure(ctx, cols4[1], y, he(report.driversTotal), t('report.drivers'), c.ink, undefined, false, 'car')
+  /* ⚠️ LE CHIFFRE EST CELUI DE LA PÉRIODE, ET LA LIGNE DESSOUS DIT LE CUMUL —
+     l'inverse de la page 1, qui met le cumul en avant. Écrire « 5 » avec
+     « 5 en 30 jours » dessous, comme la première version le faisait, c'est
+     répéter le même nombre deux fois et ne rien dire du programme. */
   figure(
     ctx,
     cols4[2],
     y,
     he(report.guardsCompletedWindow),
-    t('report.guardsDone'),
+    t('report.guardsWindow', { days: report.windowDays }),
     c.good,
-    t('report.inWindow', {
-      count: report.guardsCompletedWindow,
-      days: report.windowDays,
-    }),
+    t('report.guardsTotal', { count: report.guardsCompletedTotal }),
     false,
     'shield',
   )

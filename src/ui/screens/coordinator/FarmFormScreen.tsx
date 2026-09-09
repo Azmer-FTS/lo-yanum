@@ -1244,8 +1244,38 @@ export function FarmFormScreen() {
                     agreement={a}
                     onClose={() => setOpenSignature(null)}
                     onCommit={(signature) => {
+                      /**
+                       * ★★ AF1.3 — L'ENCRE NEUVE DATE LE DOCUMENT, ET LA
+                       *    PREMIÈRE VERSION NE LE FAISAIT PAS.
+                       *
+                       * Le document imprime « תאריך » sous le trait, et
+                       * il l'imprimait depuis `signedAt` — une valeur posée à
+                       * la CRÉATION de la ligne d'accord. Un agriculteur qui
+                       * signait ce matin sortait donc avec un document daté
+                       * de trois mois, ce qui est une fausse déclaration sur
+                       * un papier que l'association archive.
+                       *
+                       * ⚠️ ET SEULEMENT QUAND L'ENCRE CHANGE. Rouvrir le
+                       *    lecteur pour relire un accord déjà signé, puis
+                       *    approuver sans redessiner, ne doit pas redater le
+                       *    document : la signature est la même. Le champ
+                       *    « תאריך חתימה » du formulaire reste au-dessus, et
+                       *    c'est lui qui corrige un accord signé sur papier
+                       *    un autre jour.
+                       */
                       setAgreements((prev) =>
-                        prev.map((x, j) => (j === i ? { ...x, signature } : x)),
+                        prev.map((x, j) =>
+                          j === i
+                            ? {
+                                ...x,
+                                signature,
+                                signedAt:
+                                  signature && signature !== x.signature
+                                    ? iso(now())
+                                    : x.signedAt,
+                              }
+                            : x,
+                        ),
                       )
                       setOpenSignature(null)
                     }}

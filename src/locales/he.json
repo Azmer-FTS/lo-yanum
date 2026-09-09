@@ -1197,7 +1197,9 @@
     "pageOf": "עמוד {{n}} מתוך {{total}}",
     "attachedHint": "הקובץ יורד למכשיר. באייפד: שיתוף ← דואר/וואטסאפ מצרף אותו ישירות.",
     "shareFirst": "שיתוף עם הקובץ",
-    "events": "אירועים"
+    "events": "אירועים",
+    "guardsWindow": "שמירות ב־{{days}} ימים",
+    "guardsTotal": "{{count}} מאז תחילת התוכנית"
   },
   "emergency": {
     "police": "משטרה",
