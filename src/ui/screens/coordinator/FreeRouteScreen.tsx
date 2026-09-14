@@ -347,8 +347,10 @@ export function FreeRouteScreen() {
                 <span className="numeric ltr-nums font-semibold">
                   {plan.roundTripKm.toFixed(1)} {t('freeRoute.km')}
                 </span>
-                <span className="muted ltr-nums ms-1.5">
-                  ({t('freeRoute.airKm', { km: plan.airRoundTripKm.toFixed(1) })})
+                {/* Sans parenthèses : en RTL, une parenthèse autour d'un nombre
+                    se retourne à la coupure de ligne d'un iPhone. */}
+                <span className="muted ms-2 inline-block">
+                  · {t('freeRoute.airKm', { km: plan.airRoundTripKm.toFixed(1) })}
                 </span>
               </span>
               <span>

@@ -146,6 +146,23 @@ try {
         navBottom: Math.round(nav.getBoundingClientRect().bottom),
       }
     })
+    /* La DERNIÈRE pastille, celle qui sort de la rangée sur un téléphone : on
+       fait défiler la page jusqu'en bas, la barre doit la ramener entière. */
+    await scrollTo(page, 'bottom')
+    await page.waitForTimeout(900)
+    const pillVisible = await page.evaluate(() => {
+      const nav = document.querySelector('[data-testid="settings-toc"]') as HTMLElement
+      const pill = nav.querySelector('[aria-current="true"]') as HTMLElement | null
+      if (!pill) return false
+      let row: HTMLElement | null = pill.parentElement
+      while (row && row !== nav && !/(auto|scroll)/.test(getComputedStyle(row).overflowX)) row = row.parentElement
+      const p = pill.getBoundingClientRect()
+      const r = (row ?? nav).getBoundingClientRect()
+      return p.left >= r.left - 1 && p.right <= r.right + 1
+    })
+    check(`A185 · ${name} · en bas de page, la pastille « נתונים » est ENTIÈRE dans sa rangée`, pillVisible)
+    await page.locator('[data-testid="settings-toc-thresholds"]').click()
+    await page.waitForTimeout(1500)
     check(
       `A185 · ${name} · un appui mène à la section, SOUS la barre, et la marque`,
       byClick.active === 'thresholds' &&

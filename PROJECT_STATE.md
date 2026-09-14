@@ -7,9 +7,10 @@
 ## Où en est-on
 
 - **Branche** : `main`. **Dernier commit** : voir `git log --oneline -1`
-  (fin de la passe **AH**, 2026-09-10).
-- **Passe terminée** : AH — formulaires, gabarit de signature, itinéraire
-  libre, épingles. Les douze blocs AH1 → AH12 sont livrés et déployés.
+  (fin de la passe **AI**, 2026-09-14).
+- **Passe terminée** : AI — tracé sur route hors ligne, saisie des points,
+  thème système, écran de réglages, données qui survivaient à la suppression.
+  Les dix blocs AI1 → AI10 sont livrés et déployés.
 - **Déployé** : les deux URLs, même commit.
   - App réelle : https://azmer-fts.github.io/lo-yanum/
   - Jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
@@ -19,77 +20,73 @@
 ```bash
 cd "/Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM"
 bun install
-bun run typecheck && bun run ahpass && bun run accept
+bun run typecheck && bun run aipass && bun run accept
 ```
 
-## Ce qui est fait dans AH
+## Ce qui est fait dans AI
 
 | Bloc | État |
 |---|---|
-| AH1 formulaire de ferme | ✅ 7 redondances recensées et traitées (`core/prefill.ts`) |
-| AH2 barre d'actions | ✅ ancrée (`ui/components/anchoredBar.tsx`), A159 vue rouge d'abord |
-| AH3 jeu d'essai | ✅ `core/testData.ts`, préfixe `test-`, exclu des compteurs |
-| AH4 image d'exemple | ✅ supprimée du dépôt, de l'écran et de ses références |
-| AH5 gabarit du document | ✅ `core/agreementTemplate.ts` + `ui/settings/AgreementDocSection.tsx` |
-| AH6 formulaire à distance | ✅ case d'acceptation retirée ; le reste tenait déjà (AG4) |
-| AH7 visualiseur | ✅ audit géométrique de toutes les vues plein écran ; envoi du lien en un geste |
-| AH8 export | ✅ trois colonnes ajoutées à la fin (`core/association.ts`) |
-| AH9 itinéraire libre | ✅ `core/freeRoute.ts` + `FreeRouteScreen.tsx`, aucun service externe |
-| AH10 épingles | ✅ `MapCanvas.tsx` — `PIN_KINDS` élargi, halo sous le contour |
-| AH11 dette | ✅ trois portes périmées réparées ; `user_settings` côté serveur |
-| AH12 vérification | ✅ portes + 72 captures du déployé |
+| AI8 données survivantes | ✅ c'était le jeu d'essai `test-` (vérifié en base + journaux) ; `SampleDataSection` : un bouton pour `demo-` ET `test-`, serveur recompté ; A187 dans `bun run demo` |
+| AI6 thème | ✅ cause : aucun composant coordinateur n'appliquait le thème après « voir comme » ; `startThemeController` ; A184 `bun run aitheme` 18/18 sur les deux URLs |
+| AI5 saisie | ✅ lecteur à 2 décimales, `parsePositionList`, textarea, champ vidé de ce qui est lu ; A180–A183 |
+| AI1→AI4 tracé | ✅ `core/roadGraph.ts` + `ui/routing/*` ; aucun service externe ; `aipass` 32, `airoute` 51 |
+| AI7 réglages | ✅ barre épinglée + section en cours ; « חיבור » fusionné ; clé `reminders` retirée ; `aisettings` 29 |
+| AI9 non-régression AH9 | ✅ `ahroute` 15/15 + glisser-déposer dans `airoute` |
+| AI10 | ✅ portes + `bun run aicaptures` sur le déployé |
 
-## Décisions permanentes posées par AH (à ne pas défaire sans raison)
+## Décisions permanentes posées par AI (à ne pas défaire sans raison)
 
-1. **Une proposition de champ est un `placeholder`, jamais une valeur écrite
-   dans l'état.** `inherited()` (`core/prefill.ts`) est le SEUL endroit qui
-   décide que « ne rien taper l'accepte ».
-2. **Une barre d'actions est `fixed`, sa boîte horizontale est MESURÉE sur un
-   témoin resté dans le flux, et ce témoin réserve sa hauteur.** `sticky` ne
-   colle qu'au bas du CONTENU.
-3. **Deux contrôles épinglés au même coin d'un téléphone ne tiennent pas côte à
-   côte.** Le second monte au-dessus du premier en lisant `--pinned-foot`.
-   Ne pas revenir à un dégagement latéral chiffré.
-4. **Le document de signature est UN gabarit de texte**, sept variables en
-   hébreu, liste fermée dans `core/agreementTemplate.ts`. ⛔ Aucune surface.
-   Une variable inconnue est refusée à l'enregistrement, en la nommant.
-5. **Le logo de l'association est une valeur INITIALE, jamais imposée.**
-   `null` = celui de l'association, `''` = aucun, sinon celui du PO.
-6. **Signer VAUT acceptation** : pas de case à cocher au-dessus du pad.
-7. **`test-` est le marqueur du jeu d'essai**, `demo-` celui du jeu de
-   démonstration. Les deux ne se mélangent pas. L'exclusion des compteurs est
-   dans `getCountableFarms`, jamais dans `getVisibleFarms`.
-8. **Ce qui écrit une position dans une URL passe par `positionParam`**
-   (six décimales). Le lecteur exige trois décimales et un point rond n'en a
-   que deux.
-9. **La liste des réglages qui voyagent d'un appareil à l'autre est FERMÉE**
-   (`ui/settings/sync.ts`). Le laissez-passer de l'agriculteur et la mémoire
-   de temporisation d'AG2 n'y sont pas et ne doivent jamais y être.
-10. ⛔ **Aucun service de routage externe.** Voir l'en-tête de
-    `core/freeRoute.ts` pour ce que coûteraient les trois candidats.
+1. ⛔ **Aucun calculateur d'itinéraire externe.** Le tracé vient de la couche
+   `roads` de l'archive PMTiles embarquée. A179 observe le trafic.
+2. **Le thème est appliqué par UN contrôleur démarré dans `main.tsx`**
+   (`startThemeController`), jamais par un composant. `useTheme` ne fait que
+   lire/écrire le choix.
+3. **Le rattachement d'un point exige une composante FORTEMENT connexe**
+   (pas seulement connexe) ; les bouts pendants à < 5 m sont reliés
+   (`repairJunctions`) ; l'élargissement d'un couloir est borné à 160 tuiles.
+4. **Le module de tracé est importé statiquement** : le service worker ne
+   met en cache que ce qui a été chargé en ligne ; un `import()` paresseux
+   échouait hors ligne.
+5. **Les vitesses sont des constantes nommées dans `core/roadGraph.ts`** ; la
+   piste roule à 20 km/h ; la marge (15 %, `ROUTE_MARGIN_INITIAL`) ne
+   s'applique qu'au roulage.
+6. **La suppression des données d'exemple vise `demo-` ET `test-`, passe
+   directement par le serveur et RECOMPTE le serveur** ; jamais par la file
+   d'envoi.
+7. **Un champ de collage de liens est un `<textarea>`** (un `<input>` supprime
+   les retours à la ligne) ; il ne se vide que de ce qu'il a su lire.
+8. Les décisions permanentes d'AH restent valables (voir `ETAT.md`, passe AH),
+   sauf la n°8 : le lecteur accepte désormais DEUX décimales.
 
 ## Les portes
 
 ```bash
-# Pures (rapides, aucun navigateur)
+# Pures
 bun run accept dispatch persist mapping report deletion sync contrast
-bun run ahpass afpass agpass acpass assoc
+bun run aipass ahpass afpass agpass acpass assoc     # aipass lit basemap/*.pmtiles
 
 # Navigateur, build local
-bun run ahbar ahui ahroute ahdoc ahpins ahsettings ahheight
-VIEWPORT=all bun run layout
-BASE_URL=http://localhost:5321 bun run uipass    # après un `vite preview`
+bun run airoute aisettings aitheme ahroute ahsettings
+VIEWPORT=all bun run layout                           # exige `vite --port 5173`
 
 # Build RÉEL + fausse base
 VITE_SUPABASE_URL=https://fake.supabase.co VITE_SUPABASE_PUBLISHABLE_KEY=x \
-  bun x vite build --outDir dist-ahreal
-BASE_URL=http://localhost:5197 bun run zones agreement demo
+  bun x vite build --outDir dist-aireal
+BASE_URL=http://localhost:5197 bun run demo zones agreement
 
 # Le déployé
-bun run ahcaptures
+BASE_URL=https://azmer-fts.github.io/lo-yanum/ bun run aitheme
+BASE_URL=https://azmer-fts.github.io/lo-yanum/demo bun run aisettings
+bun run aicaptures
 ```
 
 ## Échecs PRÉ-EXISTANTS, qui ne sont pas des régressions
+
+- **`bun run afui` : 6 rouges** (A131 ×3 : la porte attend une barre
+  `sticky` qu'AH2 a rendue `fixed` ; A138 ×3 : la bascule de rôle est dans un
+  bloc replié depuis AH12) et **`bun run settings` : A54** (même cause).
+  Vérifiés IDENTIQUES sur le commit 9451de3 (avant AI) dans un arbre séparé.
 
 - **`bun run tokens` : 10 violations.** A28 (un `rounded-full`), A57 (six
   contours pleins sur des cartes), A29 (trois emplois d'`critical` hors liste).
@@ -102,19 +99,22 @@ bun run ahcaptures
 
 ## Questions ouvertes / ce qui attend le PO
 
-1. **Le va-et-vient RÉEL des réglages (AH11.2) n'est pas prouvé.** La table
-   `user_settings` existe sur `lo-yanum-prod` et l'application lit/écrit/
-   restaure — vérifié contre une FAUSSE base. Personne ici n'a de session de
-   coordinateur, donc la politique RLS de Frankfurt n'a pas été exercée. Le PO
-   le verra à sa première ouverture : régler le gabarit, vider Safari,
-   rouvrir.
-2. **Les mesures de l'écran d'אבחון מיקום (AG7)** sont toujours attendues du
-   PO ; l'écran reste en place dans les réglages.
-3. **Le contrat de l'association** n'a toujours pas été téléversé. Le document
-   en vigueur est celui du gabarit, ce qui est désormais dit à l'écran.
-4. **Hygiène du dépôt** : 477 images non triées (32,9 Mo) dans l'historique du
-   commit `4bbf4c4` (§37.10). Une réécriture d'historique a été refusée par le
-   classificateur du mode auto ; elle reste à faire à la main.
+1. **Les six lignes `test-` sont toujours sur `lo-yanum-prod`** : le PO doit
+   presser « מחיקת כל נתוני ההדגמה והבדיקה » (הגדרות › נתונים) — c'est aussi la
+   preuve sur l'app réelle. Rien n'a été supprimé en production depuis ici.
+2. **Thème sur la PWA installée (écran d'accueil)** : mesuré dans Safari iPad
+   (simulateur iOS 26.3), pas en mode autonome (accès au simulateur non
+   accordé). La ligne « המכשיר · הבחירה · מוצג » dans תצוגה dit au PO ce qui se
+   passe sur SON iPad.
+3. **A177 sur iPad réel non mesuré.** Ici (Mac Intel) : chaud < 90 ms, ajout
+   d'une étape < 1 s, froid 1,2–1,9 s pour huit étapes collées d'un coup avec
+   départ Jérusalem ; en ligne sans archive téléchargée 2,1–4,1 s.
+4. **La Ligne verte** : le tracé peut passer par des localités au-delà (OSM ne
+   porte ni zones A/B ni points de contrôle). À décider : accepter, ou fournir
+   un polygone d'exclusion.
+5. Toujours ouverts depuis AH : va-et-vient réel des réglages sur Frankfurt ;
+   mesures d'AG7 ; contrat de l'association non téléversé ; hygiène du dépôt
+   (477 images dans `4bbf4c4`).
 
 ## Fichiers qui font autorité
 

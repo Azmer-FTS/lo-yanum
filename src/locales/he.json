@@ -923,7 +923,8 @@
     "linkHintMany": "Waze · Google Maps · מפות אפל · צמד קואורדינטות — אפשר להדביק כמה קישורים יחד",
     "linkDoneMany_one": "נוספה נקודה אחת",
     "linkDoneMany_other": "נוספו {{count}} נקודות",
-    "linkBadRest": "מה שנשאר בשדה לא זוהה כמיקום — אפשר לתקן ולהוסיף"
+    "linkBadRest": "מה שנשאר בשדה לא זוהה כמיקום — אפשר לתקן ולהוסיף",
+    "linkPlaceholderShort": "https://…"
   },
   "map": {
     "title": "מפת חוות",

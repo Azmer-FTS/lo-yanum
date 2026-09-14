@@ -123,7 +123,10 @@ export function PositionLinkField({
           autoCorrect="off"
           data-testid="position-link"
           className="input ltr-nums min-w-[min(100%,14rem)] flex-1 resize-none text-start"
-          placeholder={t('pin.linkPlaceholder')}
+          /* Court : un textarea d'une ligne replie son indication, et la
+             seconde moitié se coupait à mi-hauteur. Les formes acceptées sont
+             dites dans l'aide sous le champ. */
+          placeholder={t('pin.linkPlaceholderShort')}
           value={text}
           onChange={(e) => {
             setText(e.target.value)

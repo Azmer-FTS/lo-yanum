@@ -125,8 +125,14 @@ export function SettingsToc() {
   // La pastille active reste visible dans sa rangée, sans toucher au défilement vertical.
   useEffect(() => {
     const pill = navRef.current?.querySelector<HTMLElement>(`[data-testid="settings-toc-${active}"]`)
-    const row = pill?.parentElement
-    if (!pill || !row) return
+    /* Le vrai conteneur qui défile de côté, pas le parent immédiat : `ScrollRow`
+       enveloppe ses enfants, et la première version faisait défiler une boîte
+       qui ne défile pas — la pastille active restait coupée au bord. */
+    let row = pill?.parentElement ?? null
+    while (row && row !== navRef.current && !/(auto|scroll)/.test(getComputedStyle(row).overflowX)) {
+      row = row.parentElement
+    }
+    if (!pill || !row || row === navRef.current) return
     const p = pill.getBoundingClientRect()
     const r = row.getBoundingClientRect()
     if (p.left < r.left || p.right > r.right) {

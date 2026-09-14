@@ -1,5 +1,241 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AI — LE TRACÉ SUR ROUTE, LA SAISIE DES POINTS, LE THÈME, LES
+> RÉGLAGES. 2026-09-14. LIRE EN PREMIER.**
+>
+> Ordre suivi : AI8 → AI6 → AI5 → AI1 → AI4 → AI7 → AI9 → AI10.
+>
+> ## AI8 — CE QUI SURVIVAIT À LA SUPPRESSION : LE JEU D'ESSAI D'AH3
+>
+> **Regardé, pas deviné.** `lo-yanum-prod`, le 2026-09-14 : les seules lignes
+> métier de toute la base sont `entities test-farm`, `volunteers test-vol`,
+> `drivers test-drv`, `missions test-mission-past/next`, `zones test-zone`,
+> `guard_posts test-anchor`, `agreements test-agreement`, `entity_contacts
+> test-contact` et leurs lignes d'association. Posées le **2026-09-10 à 20:47
+> UTC** depuis Safari (Mac). **Aucun reliquat d'AF8.**
+>
+> **Les journaux de l'API** (09-10 20:00 → 09-14) : la pose du jeu d'essai, une
+> mise à jour de `test-mission-next` le 09-13 à 20:35 (la bascule de statut
+> d'une garde), et **aucune requête de suppression** — ni `test-` ni `demo-`.
+>
+> ⚠️★★ **LA CAUSE ÉTAIT L'ÉCRAN.** Deux sections côte à côte : « נתוני הדגמה »,
+> dont le bouton disait « מחק את כל נתוני ההדגמה » et ne visait que `demo-`, et
+> « נתוני בדיקה », **repliée par défaut** depuis AH12. Aucun geste de l'écran
+> n'emportait les deux.
+>
+> ★ **Correctif** (`data/demo.ts` · `ui/settings/SampleDataSection.tsx`) : UNE
+> section « נתוני הדגמה ובדיקה », UN bouton, deux confirmations qui disent ce
+> qui survit. La suppression part **directement au serveur** pour `demo-` ET
+> `test-` sur chaque table (plus par la file d'envoi : hors réseau, le jeu
+> disparaissait de l'écran et revenait à l'hydratation suivante), vide
+> IndexedDB et la file d'envoi, rehydrate, puis **RECOMPTE le serveur** et
+> l'écrit : « בשרת לא נשארה אף אחת ». La section s'ouvre d'elle-même quand il y
+> a quelque chose à retirer.
+>
+> **A187** dans `bun run demo` (build réel + fausse base, rejoué au
+> déploiement) : jeu d'essai posé par son bouton (1 ferme, 1 volontaire, 1
+> conducteur arrivés en base) à côté de 518 lignes `demo-` → une suppression →
+> 0 ligne `test-`, 0 ligne `demo-`, `entities 1` (la vraie), `volunteers 0`,
+> `drivers 0`, IndexedDB sans clé `demo-`/`test-`, file d'envoi 0.
+>
+> ⛔ **Les six lignes `test-` sont TOUJOURS sur `lo-yanum-prod`** : les
+> supprimer est un geste destructif en production, et c'est le premier geste
+> que le PO doit refaire lui-même avec le nouveau bouton — c'est aussi la
+> preuve sur l'app réelle.
+>
+> ## AI6 — LE THÈME : Z5.2 AVAIT RAISON SUR LA DÉTECTION, TORT SUR LA CONCLUSION
+>
+> **Mesuré sur le DÉPLOYÉ d'avant, Chromium et WebKit** : démarrage sombre,
+> bascule à chaud, retour d'arrière-plan — tous suivis. **Puis un aller-retour
+> « voir comme »** : appareil `dark`, réglage `system`, écran peint
+> **`243 244 246` (clair)**. Reproduit exactement.
+>
+> ⚠️★★ **LA CAUSE : QUI APPLIQUE.** Le thème était appliqué par un hook monté
+> seulement dans le shell de TERRAIN et dans « תצוגה ». « Voir comme » un
+> volontaire estampillait son choix sur `<html>` ; au retour, **rien ne
+> réappliquait celui du coordinateur**, et un attribut explicite gagne sur la
+> requête média. Une app installée sur iPad n'est presque jamais relancée.
+>
+> ★ **Correctif structurel** (`ui/theme.tsx`) : `startThemeController()` au
+> démarrage ; il réapplique au changement de RÔLE (abonné au magasin), de
+> préférence, à `visibilitychange`/`pageshow`/`focus`, et au `storage`. Plus
+> aucun composant n'applique ; `useTheme` lit un instantané partagé. Les trois
+> valeurs sont imprimées dans « תצוגה » (`theme-diagnostic`), en rouge avec un
+> contournement si l'écran contredit l'appareil.
+>
+> **A184** (`bun run aitheme`) : vue ROUGE sur le déployé d'avant (2 échecs,
+> les deux moteurs), **18/18 sur les DEUX URLs déployées** après (l'app réelle
+> avec la session de la fausse base).
+>
+> **iOS mesuré** — simulateur iPad Air 11" iOS 26.3, Safari, jumeau déployé :
+> suit l'appareil à chaud (`243 244 246` ↔ `11 17 25`) et au retour
+> d'arrière-plan. Captures `docs/screenshots/aipass/ios-safari/`. ⛔ **Le mode
+> « écran d'accueil » n'a pas pu être mesuré** : l'accès à l'interface du
+> simulateur n'était pas accordé (personne pour cliquer « Let Claude use it »).
+>
+> ## AI5 — LA SAISIE : LE LECTEUR EXIGEAIT TOUJOURS TROIS DÉCIMALES
+>
+> AH9 avait corrigé l'ÉCRITURE (`positionParam`), pas la LECTURE : `\d{3,}`.
+> **« 31.25, 34.79 » était refusé.** Deux décimales suffisent (le « ,15z » d'un
+> zoom n'a pas de décimale ; « 15.25z » ne tombe pas dans la boîte d'Israël) ;
+> un couple refusé ne mange plus son voisin.
+>
+> ★ `parsePositionList` : un bloc collé (retours à la ligne ET espaces — un
+> lien est un jeton, le reste est parcouru pour tous les couples) → autant de
+> points. `PositionLinkField` : **`<textarea>`** (un `<input>` SUPPRIME les
+> retours à la ligne au collage), Entrée valide (Maj+Entrée va à la ligne),
+> bouton explicite qui ne vole pas le focus, champ vidé de ce qui a été LU et
+> seulement de cela, motif affiché pour le reste, confirmation `aria-live`.
+>
+> **A180–A183** : `aipass` (chaînes) + `airoute` (navigateur).
+>
+> ## AI1 → AI4 — LE TRACÉ SUR ROUTE, HORS LIGNE, SANS RIEN ENVOYER
+>
+> ⛔ **Aucun service externe.** Le graphe vient de la couche `roads` de
+> l'archive PMTiles déjà embarquée (`kind`, `kind_detail`, `oneway`).
+>
+> **Fichiers** : `core/roadGraph.ts` (pur : graphe, vitesses, rattachement,
+> A*, couloir), `ui/routing/decodeRoads.ts`, `ui/routing/roadNetwork.ts`
+> (lecture par blocs de 256 Kio, graphe unique pour la vie de la page, cache
+> des étapes), `core/freeRoute.ts` (`planFreeRoute(route, { roadLegs,
+> marginPercent })`), `MapCanvas` (trois écritures : `road` plein, `gap`
+> pointillé, `estimate` pointillé serré couleur d'avertissement).
+>
+> **Vitesses nommées** : autoroute 95 · voie express 80 · principale 70 ·
+> secondaire 60 · tertiaire 50 · bretelle 40 · non classée 40 · rue 30 ·
+> service 20 · **piste 20** · rue piétonne 10 · hors réseau 12 × détour 1,3.
+>
+> ⚠️★★ **TROIS DÉFAUTS DE LA VOIE, TROUVÉS EN MESURANT :**
+> 1. **La découpe simplifie les lignes** et retire le sommet d'une jonction
+>    colinéaire : 11 648 bouts pendants sur 270 tuiles, trajets à 2,3 × le vol
+>    d'oiseau. `repairJunctions` relie tout bout pendant à moins de 5 m d'une
+>    arête voisine.
+> 2. **Connexe n'est pas roulable.** Le centre de Jérusalem se rattachait à
+>    une voie de service de 30 sommets dont les sorties sont à sens unique
+>    entrant : aucun chemin. Le rattachement exige une composante FORTEMENT
+>    connexe (Tarjan itératif).
+> 3. **Un point en mer** faisait élargir un trajet de 90 km à plus de mille
+>    tuiles et gelait l'écran > 30 s. L'élargissement est borné (160 tuiles) et
+>    n'a pas lieu pour un point sans route à 5 km.
+>
+> ⚠️★ **Et un défaut d'app trouvé par A178** : le module de tracé était chargé
+> à la demande ; le service worker ne l'avait jamais vu en ligne, donc réseau
+> coupé l'import échouait et l'écran restait sur « מחשב מסלול… » **pour
+> toujours**. Importé statiquement, et tout échec se dit (`unavailable`).
+>
+> **AI3.4 — de combien le PO se trompait** (`bun run aipass`, archive réelle) :
+>
+> | trajet | vol d'oiseau | route | écart | ancien calcul | route | + marge 15 % |
+> |---|---:|---:|---:|---:|---:|---:|
+> | לכיש → בית גוברין | 7,4 km | 10,5 km | +42 % | 8 min | 10 min | 11 min |
+> | לוזית → קריית גת | 14,0 km | 19,6 km | +39 % | 16 min | 19 min | 22 min |
+> | נחושה → אמציה | 11,4 km | 27,3 km | **+139 %** | 13 min | 25 min | 29 min |
+> | גבעת ישעיהו → שקף | 17,7 km | 32,6 km | +85 % | 20 min | 31 min | 35 min |
+> | אביעזר → לכיש | 21,0 km | 28,6 km | +36 % | 24 min | 24 min | 28 min |
+> | עגור → נועם | 18,6 km | 32,5 km | +75 % | 21 min | 29 min | 33 min |
+> | בית שמש → אמציה | 24,7 km | 39,4 km | +60 % | 28 min | 34 min | 39 min |
+> | שדה משה → צפרירים | 13,9 km | 23,9 km | +72 % | 16 min | 22 min | 26 min |
+>
+> **La route fait en moyenne +69 % du vol d'oiseau (de +36 à +139 %) ; AH9
+> supposait +35 %.** En temps, l'ancien calcul sous-estimait jusqu'à moitié
+> sur les trajets qui contournent (Nehusha → Amatzia : 13 min annoncées, 25
+> roulées).
+>
+> ⛔ **LIMITE DITE FRANCHEMENT : la Ligne verte.** Nehusha → Amatzia passe à
+> l'est, par des localités au-delà de la Ligne verte. OpenStreetMap ne porte
+> ni les zones A/B ni les points de contrôle : le tracé est ROULABLE, pas
+> forcément PRATICABLE pour le PO. Il le voit sur la carte et peut réordonner.
+>
+> **AI4.4 — couverture routière mesurée** (distance d'un point de grille à la
+> voie roulable la plus proche, pistes comprises) :
+>
+> | zone | > 250 m | > 500 m | > 1 km | médiane |
+> |---|---:|---:|---:|---:|
+> | Adoulam–Lakhish | 16 % | 2 % | 0 % | 81 m |
+> | Néguev nord (Ofakim–Beer-Sheva) | 29 % | 15 % | 5 % | 108 m |
+> | **Néguev occidental (Eshkol–Nitzana)** | **51 %** | **27 %** | 7 % | 255 m |
+> | Ramat HaNegev (Yeruham–Mashabei Sade) | 43 % | 19 % | 3 % | 216 m |
+>
+> Fermes du jeu de démonstration : 7/14 à plus de 60 m d'une route ; **Ne'ot
+> Hatzeva 1 136 m, Shizafon 1 702 m, Hatzeva 490 m** — là le dernier bout est
+> en pointillé et la liste le dit. Le Néguev occidental est la zone où les
+> pistes agricoles manquent le plus.
+>
+> **A177 — le temps.** Sur CETTE machine (Mac Intel), tournée de huit étapes
+> de la zone avec départ Jérusalem (235 tuiles, 244 862 sommets) :
+>
+> | | Chromium | WebKit |
+> |---|---:|---:|
+> | froid, huit collées d'un coup | 1,4–1,9 s | 1,2–1,5 s |
+> | chaud (réordonnancement) | 66–74 ms | 79–86 ms |
+> | une étape ajoutée | 718–908 ms | 233–241 ms |
+> | hors ligne, archive servie par le service worker | 1,27–1,63 s | — |
+> | déployé, EN LIGNE sans archive téléchargée (3 étapes) | 4,1 s | — |
+>
+> ⛔ **Sous la seconde : oui une fois le graphe construit et à l'ajout d'une
+> étape ; NON au tout premier calcul d'un bloc de huit (1,2–1,9 s ici), et pas
+> mesuré sur un iPad réel.** En ligne sans l'archive téléchargée, c'est le
+> réseau qui domine (≈ 5 Mo de plages lues).
+>
+> **A179** : trafic observé pendant toute `airoute` (6 contextes, ~milliers de
+> requêtes) : un seul hôte, `localhost` ; aucune coordonnée collée dans une
+> URL. Sur le déployé : un seul hôte, `azmer-fts.github.io`.
+>
+> ## AI7 — LES RÉGLAGES
+>
+> ★ **Barre des sections ÉPINGLÉE** (`.sticky-top` sous `--shell-top`), qui
+> suit le DÉFILEMENT (dernier en-tête passé sous la barre ; en bas de page, le
+> dernier à l'écran). A185 vue ROUGE sur le jumeau déployé d'avant (barre à
+> −3 488 px en bas de page), verte aux trois viewports.
+>
+> **Retiré, et pourquoi :**
+> - la section **« חיבור »** — fondue dans « **חיבור וסנכרון** » : deux blocs de
+>   deux lignes d'ÉTAT répondaient à la même question ;
+> - les sections **« נתוני הדגמה »** et **« נתוני בדיקה »** — remplacées par une
+>   seule (AI8) ;
+> - la clé **`lo-yanum:reminders`** de la liste de synchro — aucun module ne la
+>   lit ni ne l'écrit ; les rappels d'AF4 sont une autorisation du navigateur.
+>
+> **Déplacé** : l'adresse des rapports, de « נתונים » (des états de l'appareil)
+> vers le **profil**. **Ajouté** : « מרווח ביטחון במסלולים » (AI3.2) sous
+> « נקודת מוצא ». **A186** : 21 sections, 23 contrôles, aucun titre, champ ou
+> libellé en double, le thème réglable à un seul endroit.
+>
+> ## AI9 — NON-RÉGRESSION D'AH9 (A188)
+>
+> `bun run ahroute` **15/15** (ordre, flèches, proposition d'ordre court,
+> heures, SMS/WhatsApp, conversion en fiche, enregistrement). `airoute` ajoute
+> le glisser-déposer (événements HTML5 réels — la souris simulée de Playwright
+> n'initie aucun glisser natif sans tête), « בסביבות » dans le message, la
+> conversion avec position à six décimales.
+>
+> ## AI10 — LES PORTES
+>
+> ```
+> aipass 32 · airoute 51 · aisettings 29 (local ET déployé) · aitheme 18 (×2 URLs déployées)
+> demo 17 (A187)  ·  accept 177 · deletion 61 · sync 34 · contrast 133
+> ahpass 40 · afpass 59 · ahroute 15 · ahsettings 9
+> layout : VIEWPORT=all, 32 écrans × 4 viewports — VERT (réglages 5,5 hauteurs)
+> ```
+>
+> **Rouges PRÉEXISTANTS, vérifiés sur le commit d'avant la passe (9451de3)
+> dans un arbre séparé — identiques :** `tokens` 10 violations ; `afui` 6
+> (A131 ×3 attend une barre `sticky` qu'AH2 a rendue `fixed` ; A138 ×3 cherche
+> la bascule de rôle dans un bloc qu'AH12 a replié) ; `settings` A54 (même
+> cause qu'A138).
+>
+>
+> **Captures du déployé** : `bun run aicaptures` — clair et sombre, iPad
+> portrait, iPad paysage, iPhone : l'itinéraire de huit étapes sur route
+> (carte et liste), la saisie, les réglages en haut et au milieu, « תצוגה »,
+> « נתוני הדגמה ובדיקה » → `docs/screenshots/aipass/deployed/`, avec trois
+> mesures sur le bundle servi (A173 tracé calculé sur route en 2,1–2,9 s en
+> ligne, A185 barre épinglée, A179 aucune requête hors de l'origine).
+>
+> **Les deux URLs :** https://azmer-fts.github.io/lo-yanum/ ·
+> https://azmer-fts.github.io/lo-yanum/demo/
+
+
 > 🏁 **PASSE AH — LE FORMULAIRE QUI NE REDEMANDE PLUS, LE DOCUMENT QUI EST UN
 > GABARIT, ET L'ITINÉRAIRE LIBRE. 2026-09-10. LIRE EN PREMIER.**
 >
