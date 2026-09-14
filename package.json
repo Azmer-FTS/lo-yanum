@@ -98,7 +98,8 @@
     "aitheme": "bun run scripts/aitheme.ts",
     "aipass": "bun run scripts/aipass.ts",
     "airoute": "bun run scripts/airoute.ts",
-    "aisettings": "bun run scripts/aisettings.ts"
+    "aisettings": "bun run scripts/aisettings.ts",
+    "aicaptures": "bun run scripts/aicaptures.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "0.2.3",
