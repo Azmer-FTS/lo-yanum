@@ -1,6 +1,13 @@
 import { chromium, webkit } from 'playwright'
 import type { Page } from 'playwright'
 
+import { COLLECTIONS } from '../src/core/backend'
+import { buildTestData } from '../src/core/testData'
+import { MAPPINGS } from '../src/data/rows'
+import type { Mapping } from '../src/data/rows'
+
+import { FakeDb, installFakeSession, installFakeSupabase } from './fake-supabase'
+
 /**
  * ★★ A184 — LE THÈME SYSTÈME EST SUIVI : AU DÉMARRAGE, À CHAUD, AU RETOUR
  *    D'ARRIÈRE-PLAN, ET APRÈS UN « VOIR COMME ».
@@ -19,9 +26,10 @@ import type { Page } from 'playwright'
  *    `243 244 246`. Le shell de terrain avait posé l'attribut du volontaire et
  *    rien ne le retirait au retour.
  *
- * L'app réelle n'a pas de session de coordinateur sur cette machine : sur son
- * URL, le « voir comme » est sauté (et dit), le reste est mesuré sur l'écran
- * de connexion — c'est le même contrôleur.
+ * L'app réelle n'a pas de session de coordinateur sur cette machine : la porte
+ * lui donne celle de la FAUSSE base (`fake-supabase.ts`), avec le jeu d'essai
+ * dedans pour qu'il y ait quelqu'un à « voir comme ». Rien ne part vers
+ * Francfort. Sur le jumeau, la fausse base ne reçoit aucune requête.
  */
 const DARK = '11 17 25'
 const LIGHT = '243 244 246'
@@ -102,6 +110,17 @@ for (const [engineName, engine] of engines) {
   console.log(`  A184 — ${engineName} — ${base}`)
   const browser = await engine.launch()
   const ctx = await browser.newContext({ colorScheme: 'light', viewport: { width: 1032, height: 1376 } })
+  const db = new FakeDb()
+  db.seed()
+  const tests = buildTestData() as unknown as Record<string, unknown[]>
+  for (const collection of COLLECTIONS) {
+    const mapping = MAPPINGS[collection] as Mapping<unknown>
+    for (const value of tests[collection] ?? []) {
+      for (const t of mapping.toRows(value)) db.rows(t.table).push(...t.rows)
+    }
+  }
+  await installFakeSupabase(ctx, db)
+  await installFakeSession(ctx)
   await ctx.addInitScript(() => {
     if (sessionStorage.getItem('ai6-seeded')) return
     localStorage.setItem('lo-yanum:theme:coordinator', 'system')
