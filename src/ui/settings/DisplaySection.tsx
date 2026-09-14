@@ -9,6 +9,7 @@ import type { IconName } from '../components/Icon'
 import { Section } from '../components/primitives'
 import { useLayoutSync, writeLayoutSync } from '../components/mapMode'
 import type { LayoutSync } from '../components/mapMode'
+import { resolvedThemeOf } from '../components/basemap'
 import { useTheme } from '../theme'
 
 const THEME_ICON: Record<ThemeChoice, IconName> = {
@@ -45,8 +46,14 @@ const SYNC_ICON: Record<LayoutSync, IconName> = {
  */
 export function DisplaySection() {
   const { t } = useTranslation()
-  const { choice, setChoice } = useTheme()
+  const { choice, setChoice, systemDark } = useTheme()
   const sync = useLayoutSync()
+  /* ★ AI6 — CE QUI EST PEINT, lu sur le DOM et non déduit du choix : c'est la
+     seule des trois valeurs qui peut contredire les deux autres, donc la seule
+     qui vaille d'être imprimée. */
+  const shown = typeof document === 'undefined' ? null : resolvedThemeOf()
+  const device = systemDark ? 'dark' : 'light'
+  const mismatch = choice === 'system' && shown !== null && shown !== device
 
   return (
     <Section title={t('settings.display.title')} className="mt-6" collapseKey="settings-display">
@@ -74,6 +81,26 @@ export function DisplaySection() {
             </button>
           ))}
         </div>
+        {/* ★★ AI6 — LES TROIS VALEURS, À L'ÉCRAN DU PO. « Mon iPad est sombre et
+            l'app est claire » devient une ligne qu'il peut lire, et une
+            capture qu'il peut envoyer, au lieu d'une impression. */}
+        <p
+          className={`mt-1.5 text-caption ${mismatch ? 'text-status-danger-ink' : 'text-content-muted'}`}
+          data-testid="theme-diagnostic"
+          data-device={device}
+          data-shown={shown ?? ''}
+        >
+          {t('settings.display.themeDiag', {
+            device: t(`theme.${device}`),
+            choice: t(`theme.${choice}`),
+            shown: shown ? t(`theme.${shown}`) : '—',
+          })}
+        </p>
+        {mismatch && (
+          <p className="mt-1 text-caption text-status-danger-ink" role="alert">
+            {t('settings.display.themeMismatch')}
+          </p>
+        )}
       </div>
 
       <div className="mt-4">

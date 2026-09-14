@@ -6,7 +6,6 @@ import {
   buildFarmerLink,
   cancelMission,
   farmerTokenFor,
-  getSession,
   getVisibleMissions,
   lastFourOf,
 } from '@core/index'
@@ -22,7 +21,7 @@ import { applyDisplayMode } from './ui/standalone'
 import { openGeoDiagSession } from './ui/geoDiagnostics'
 import { photosToPdf } from './ui/documents'
 import { loadRegionEdits } from './ui/settings/regionEdits'
-import { initTheme } from './ui/theme'
+import { startThemeController } from './ui/theme'
 
 /**
  * P2.6b — WHICH STORE THIS BUILD RUNS ON, DECIDED BEFORE ANYTHING RENDERS.
@@ -190,8 +189,9 @@ installDemoPhotos()
  */
 loadRegionEdits()
 applyLanguage(DEFAULT_LANGUAGE)
-// Stamp the theme before React mounts, or the app flashes the wrong palette.
-initTheme(getSession().role)
+// Stamp the theme before React mounts, or the app flashes the wrong palette —
+// and keep it stamped: AI6, the controller follows role, device and resume.
+startThemeController()
 // P3.4 — and the display mode with it, for the same reason: the status-bar
 // treatment is a `[data-standalone]` rule, so the attribute has to be on
 // `<html>` before the first paint or the installed app flashes a shell with a
