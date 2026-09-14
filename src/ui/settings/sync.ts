@@ -23,7 +23,9 @@ export const SYNCED_SETTING_KEYS: readonly string[] = [
   'lo-yanum:target',
   'lo-yanum:coverage',
   'lo-yanum:vigil',
-  'lo-yanum:reminders',
+  /* ⚠️ AI7 — `lo-yanum:reminders` RETIRÉ : aucun module ne lit ni n'écrit cette
+     clé. Les rappels d'AF4 sont une AUTORISATION du navigateur, qui ne voyage
+     pas ; une entrée ici synchronisait du vide. */
   'lo-yanum:renewal-window',
   'lo-yanum:area-gap',
   'lo-yanum:require-id-photo',

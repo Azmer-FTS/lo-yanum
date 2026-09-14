@@ -323,6 +323,56 @@ export function SettingsScreen() {
         )}
       </Section>
 
+      {/* ★★ AI7 — L'ADRESSE DES RAPPORTS REJOINT LE PROFIL. Elle était sous
+          « נתונים », entre l'état de synchro et les jeux d'essai, c'est-à-dire
+          parmi des ÉTATS de l'appareil. C'est une préférence du coordinateur
+          sur ce qui part sous son nom — la voisine naturelle de sa carte. */}
+      <Section title={t('report.recipientLabel')} className="mt-6" collapseKey="settings-report">
+        <label className="label" htmlFor="report-recipient">
+          {t('report.recipientLabel')}
+        </label>
+        <div className="flex flex-wrap items-start gap-2">
+          <input
+            id="report-recipient"
+            type="email"
+            dir="ltr"
+            inputMode="email"
+            autoComplete="email"
+            className="input min-w-[12rem] flex-1"
+            data-testid="report-recipient"
+            value={recipient}
+            onChange={(e) => {
+              setRecipient(e.target.value)
+              setRecipientSaved(false)
+            }}
+            onBlur={() => {
+              writeReportRecipient(recipient)
+              setRecipientSaved(true)
+            }}
+          />
+          <button
+            type="button"
+            className="btn-primary"
+            data-testid="report-recipient-save"
+            onClick={() => {
+              writeReportRecipient(recipient)
+              setRecipientSaved(true)
+            }}
+          >
+            <Icon name="check" size={16} />
+            {t('common.save')}
+          </button>
+        </div>
+        <p
+          className={`mt-1.5 text-caption ${
+            recipientSaved ? 'text-status-success-ink' : 'text-content-muted'
+          }`}
+          data-testid="report-recipient-hint"
+        >
+          {recipientSaved ? t('report.recipientSaved') : t('report.recipientHint')}
+        </p>
+      </Section>
+
       <SettingsGroup id="target" />
       {/* ★★ AB5a — « יעד ». Above the offline block and below the display
           settings: it is a decision about the PROGRAMME, like the region
@@ -662,24 +712,6 @@ export function SettingsScreen() {
       <GeoDiagnosticsSection />
 
       <SettingsGroup id="data" />
-      <Section title={t('settings.connection.title')} className="mt-6" collapseKey="settings-connection">
-        <p className="flex items-center gap-2.5 text-caption font-medium text-content-primary">
-          <span
-            aria-hidden="true"
-            className={`h-2.5 w-2.5 shrink-0 rounded-pill ${
-              online ? 'bg-status-success' : 'bg-status-warn'
-            }`}
-          />
-          {t(online ? 'settings.connection.online' : 'settings.connection.offline')}
-        </p>
-        <p className="muted mt-1">
-          {t(
-            online
-              ? 'settings.connection.onlineHint'
-              : 'settings.connection.offlineHint',
-          )}
-        </p>
-      </Section>
       {/* ★★ PO RETURN 2026-09-02 — THE BANDEAU IS GONE, AND IT WAS A LIE BY
           THE TIME HE READ IT. This block used to carry
           `settings.sync.notYet` — "changes are kept in memory only and are
@@ -691,7 +723,30 @@ export function SettingsScreen() {
           on screen has been confirmed against the server since, and — in demo
           mode, where `useDataState` returns null — that this build has no
           database behind it at all. */}
-      <Section title={t('settings.sync.title')} className="mt-6" collapseKey="settings-sync">
+      {/* ★★ AI7 — « חיבור » ET « שינויים ממתינים » NE FONT PLUS QU'UN BLOC. Deux
+          sections de deux lignes chacune répondaient à la même question — mes
+          données sont-elles à l'abri — l'une pour le réseau, l'autre pour la
+          file d'envoi. Ce ne sont pas des réglages mais des états : un seul
+          bloc les dit ensemble, et la page perd un titre. */}
+      <Section title={t('settings.sync.titleMerged')} className="mt-6" collapseKey="settings-sync">
+        <div data-testid="settings-connection" className="mb-3 border-b border-edge-subtle pb-3">
+          <p className="flex items-center gap-2.5 text-caption font-medium text-content-primary">
+            <span
+              aria-hidden="true"
+              className={`h-2.5 w-2.5 shrink-0 rounded-pill ${
+                online ? 'bg-status-success' : 'bg-status-warn'
+              }`}
+            />
+            {t(online ? 'settings.connection.online' : 'settings.connection.offline')}
+          </p>
+          <p className="muted mt-1">
+            {t(
+              online
+                ? 'settings.connection.onlineHint'
+                : 'settings.connection.offlineHint',
+            )}
+          </p>
+        </div>
         {data === null ? (
           <p className="text-caption text-content-primary">
             {t('settings.sync.demo')}
@@ -726,51 +781,6 @@ export function SettingsScreen() {
             </p>
           </>
         )}
-      </Section>
-      <Section title={t('report.recipientLabel')} className="mt-6" collapseKey="settings-report">
-        <label className="label" htmlFor="report-recipient">
-          {t('report.recipientLabel')}
-        </label>
-        <div className="flex flex-wrap items-start gap-2">
-          <input
-            id="report-recipient"
-            type="email"
-            dir="ltr"
-            inputMode="email"
-            autoComplete="email"
-            className="input min-w-[12rem] flex-1"
-            data-testid="report-recipient"
-            value={recipient}
-            onChange={(e) => {
-              setRecipient(e.target.value)
-              setRecipientSaved(false)
-            }}
-            onBlur={() => {
-              writeReportRecipient(recipient)
-              setRecipientSaved(true)
-            }}
-          />
-          <button
-            type="button"
-            className="btn-primary"
-            data-testid="report-recipient-save"
-            onClick={() => {
-              writeReportRecipient(recipient)
-              setRecipientSaved(true)
-            }}
-          >
-            <Icon name="check" size={16} />
-            {t('common.save')}
-          </button>
-        </div>
-        <p
-          className={`mt-1.5 text-caption ${
-            recipientSaved ? 'text-status-success-ink' : 'text-content-muted'
-          }`}
-          data-testid="report-recipient-hint"
-        >
-          {recipientSaved ? t('report.recipientSaved') : t('report.recipientHint')}
-        </p>
       </Section>
       {/* ★★ AI8 — le jeu de démonstration (N3) et le jeu d'essai (AH3) dans UNE
           section, sous UN bouton : deux sections dont une seule était « tout
