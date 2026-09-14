@@ -10,11 +10,10 @@ import { Callout, KeyValue, PageHeader, Section } from '../../components/primiti
 import { readReportRecipient, writeReportRecipient } from '../../report/recipient'
 import { AgreementTemplateSection } from '../../settings/AgreementTemplateSection'
 import { DisplaySection, RegionsEditSection } from '../../settings/DisplaySection'
-import { DemoDataSection } from '../../settings/DemoDataSection'
 import { AreaGapSection } from '../../settings/AreaGapSection'
 import { SummonsSection } from '../../settings/SummonsSection'
 import { AgreementDocSection } from '../../settings/AgreementDocSection'
-import { TestDataSection } from '../../settings/TestDataSection'
+import { SampleDataSection } from '../../settings/SampleDataSection'
 import { VigilSection } from '../../settings/VigilSection'
 import { RenewalSection } from '../../settings/RenewalSection'
 import { GeoDiagnosticsSection } from '../../settings/GeoDiagnosticsSection'
@@ -769,12 +768,10 @@ export function SettingsScreen() {
           {recipientSaved ? t('report.recipientSaved') : t('report.recipientHint')}
         </p>
       </Section>
-      {/* N3 (2026-09-02) — the demo dataset, and the one button that removes it. */}
-      {/* ★★ AH3 — le jeu d'essai, à côté du jeu de démonstration : ce sont
-          deux choses de la même famille et le PO doit voir qu'elles sont
-          distinctes. */}
-      <TestDataSection />
-      <DemoDataSection />
+      {/* ★★ AI8 — le jeu de démonstration (N3) et le jeu d'essai (AH3) dans UNE
+          section, sous UN bouton : deux sections dont une seule était « tout
+          supprimer » ont laissé au PO des données d'origine inconnue. */}
+      <SampleDataSection />
 
       {/* ⚠️ `<DisplayDiagnostics />` WAS HERE AND IS GONE (PO return
           2026-09-02). It was PO point 1's instrument: a temporary panel

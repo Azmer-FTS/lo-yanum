@@ -142,11 +142,17 @@ export class FakeDb {
     const prefer = headers['prefer'] ?? ''
     const accept = headers['accept'] ?? ''
 
-    if (method === 'GET') {
+    if (method === 'GET' || method === 'HEAD') {
       const all = this.rows(table).filter((r) => this.matches(r, params))
       const offset = Number(params.get('offset') ?? 0)
       const limit = params.has('limit') ? Number(params.get('limit')) : all.length
       const page = all.slice(offset, offset + limit)
+      /* AI8 — `select(…, { count: 'exact', head: true })` : PostgREST répond
+         HEAD, sans corps, avec le total dans `content-range`. La suppression
+         recompte le serveur de cette façon. */
+      if (method === 'HEAD') {
+        return { status: 200, body: '', headers: { 'content-range': `*/${all.length}` } }
+      }
       // `maybeSingle()` asks for an object; PostgREST answers one row or 406.
       if (accept.includes('vnd.pgrst.object')) {
         if (page.length === 1) return { status: 200, body: JSON.stringify(page[0]) }
@@ -201,7 +207,7 @@ export class FakeDb {
 const CORS = {
   'access-control-allow-origin': '*',
   'access-control-allow-headers': '*',
-  'access-control-allow-methods': 'GET,POST,PATCH,DELETE,OPTIONS',
+  'access-control-allow-methods': 'GET,HEAD,POST,PATCH,DELETE,OPTIONS',
   'access-control-expose-headers': '*',
 }
 

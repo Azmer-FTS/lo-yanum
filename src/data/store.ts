@@ -237,7 +237,7 @@ export function refreshData(): Promise<void> {
  *    still held.
  *
  * ⚠️ AND IT DISCARDS PENDING WRITES, which is the honest reading of "à vide"
- *    and is why the caller asks twice. See `settings.demo.confirm2`.
+ *    and is why the caller asks twice. See `settings.sample.confirm2`.
  */
 export async function clearLocalData(): Promise<void> {
   await cache.clear()

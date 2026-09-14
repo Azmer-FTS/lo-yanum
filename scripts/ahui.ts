@@ -159,12 +159,13 @@ try {
     /** Pose le jeu d'essai : sans données, la moitié des écrans n'ouvre rien. */
     await open(page, '#/coordinator/settings', 3000)
     const seedBtn = page.locator('[data-testid="test-data-seed"]')
+    /* AI8 — la section est « נתוני הדגמה ובדיקה », repliée quand elle est vide. */
+    const block = page.locator('[data-block="settings-sample-data"][data-open="0"] [data-testid="block-settings-sample-data"]')
+    if ((await block.count()) === 1) {
+      await block.click()
+      await page.waitForTimeout(700)
+    }
     if ((await seedBtn.count()) === 1) {
-      const block = page.locator('[data-testid="block-settings-test-data"]')
-      if ((await block.count()) === 1) {
-        await block.click()
-        await page.waitForTimeout(700)
-      }
       await seedBtn.click()
       await page.waitForTimeout(900)
     }

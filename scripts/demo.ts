@@ -183,17 +183,52 @@ try {
   check('הגדרות counts the demo rows', (await status.count()) === 1 && /\d+ רשומות הדגמה/.test(await status.innerText()), await status.innerText().catch(() => '—'))
   check(`and names ${data.farms.length} entities`, (await status.innerText()).includes(`${data.farms.length} יישויות`))
 
+  /**
+   * ★★ AI8 (2026-09-14) — A187. LE JEU D'ESSAI D'AH3 EST POSÉ PAR SON BOUTON,
+   *    À CÔTÉ DU JEU DE DÉMONSTRATION, AVANT LA SUPPRESSION.
+   *
+   * C'est exactement l'état de `lo-yanum-prod` le 2026-09-14 : une ferme, un
+   * volontaire et un conducteur `test-` qu'aucun geste de l'écran ne pouvait
+   * retirer en même temps que `demo-`. La suppression unique doit emporter
+   * les deux, et la base comme l'appareil doivent le confirmer.
+   */
+  await page.locator('[data-testid="test-data-seed"]').click()
+  await page.waitForTimeout(5000)
+  const testIn = (table: string) => db.rows(table).filter((r) => typeof r.id === 'string' && (r.id as string).startsWith('test-')).length
+  check(
+    'A187 · le jeu d’essai est bien arrivé en base (1 ferme, 1 volontaire, 1 conducteur)',
+    testIn('entities') === 1 && testIn('volunteers') === 1 && testIn('drivers') === 1,
+    `${testIn('entities')} · ${testIn('volunteers')} · ${testIn('drivers')}`,
+  )
+
   let dialogs = 0
   page.on('dialog', (d) => {
     dialogs++
     void d.accept()
   })
-  await page.locator('[data-testid="demo-data-purge"]').click()
-  await page.waitForTimeout(6000)
+  await page.locator('[data-testid="sample-data-purge"]').click()
+  /* ⚠️ ON ATTEND LE VERDICT, PAS UNE DURÉE : la suppression passe deux marqueurs
+     sur chaque table puis RECOMPTE le serveur, ce qui fait quatre fois plus de
+     requêtes que la purge de N3 à travers le PostgREST simulé. */
+  const t0 = Date.now()
+  await page
+    .waitForSelector('[data-testid="sample-data-verdict"]', { timeout: 60_000 })
+    .catch(() => null)
+  console.log(`  (verdict after ${Date.now() - t0} ms)`)
+  await page.waitForTimeout(1000)
   check('★ the purge asks TWICE before it acts', dialogs === 2, `${dialogs} confirmations`)
 
   const after = demoRows()
   check('★★ every demo row is gone from every table', after === 0, `${before} → ${after}`)
+  const testLeft = [...db.tables.values()].flat().filter((r) => Object.values(r).some((v) => typeof v === 'string' && v.startsWith('test-'))).length
+  check('A187 · aucune ligne du jeu d’essai ne subsiste, dans aucune table', testLeft === 0, `${testLeft} lignes`)
+  check(
+    'A187 · en base : aucune ferme hors la vraie, aucun volontaire, aucun conducteur',
+    db.rows('entities').length === 1 && db.rows('volunteers').length === 0 && db.rows('drivers').length === 0,
+    `entities ${db.rows('entities').length} · volunteers ${db.rows('volunteers').length} · drivers ${db.rows('drivers').length}`,
+  )
+  const verdict = await page.locator('[data-testid="sample-data-verdict"]').innerText().catch(() => '—')
+  check('A187 · l’écran dit que le serveur a été recompté', /בשרת לא נשארה אף אחת/.test(verdict), verdict.replace(/\s+/g, ' ').slice(0, 240))
   check('★★ the real entity survived, with its zone', db.rows('entities').some((r) => r.id === REAL_ID) && db.rows('zones').some((r) => r.id === 'zone-real-1') && db.rows('zone_vertices').filter((v) => v.zone_id === 'zone-real-1').length === 3)
   check('the grant row survived too', db.rows('app_users').length === 1)
   check('the screen says how many were removed', /נמחקו \d+ רשומות/.test(await page.locator('body').innerText()))
@@ -231,7 +266,7 @@ try {
     const outbox = await keysIn('outbox')
     return {
       available: true,
-      demo: aggregates.filter((k) => k.includes('demo-')).length,
+      demo: aggregates.filter((k) => k.includes('demo-') || k.includes('test-')).length,
       outbox: outbox.length,
       total: aggregates.length,
     }
@@ -244,7 +279,7 @@ try {
    *    HIS data would be the actual defect.
    */
   check(
-    '★★ and the device is empty of it too — no demo row in the cache, no queued write',
+    '★★ A187 · and the device is empty of it too — no demo or test row in the cache, no queued write',
     !local.available || (local.demo === 0 && local.outbox === 0),
     local.available
       ? `${local.demo} demo keys of ${local.total} cached, outbox ${local.outbox}`
