@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { formatCoords, isUnresolvableLocationLink, parsePositionList } from '@core/index'
@@ -104,7 +104,21 @@ export function PositionLinkField({
     inputRef.current?.focus()
   }
 
-  const rows = Math.min(4, Math.max(1, text.split('\n').length))
+  /* Le champ grandit avec ce qu'il garde : un lien raccourci laissé pour
+     correction dépasse une ligne, et un textarea d'une ligne en coupait la
+     première moitié. Quatre lignes au plus, au-delà il défile. */
+  useLayoutEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    const cs = getComputedStyle(el)
+    const padding = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
+    const borders = parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)
+    const line = parseFloat(cs.lineHeight) || 20
+    el.style.height = 'auto'
+    // `scrollHeight` comprend le rembourrage ; la boîte est en `border-box`.
+    el.style.height = `${Math.min(el.scrollHeight, line * 4 + padding) + borders}px`
+  }, [text])
+  const rows = 1
 
   return (
     <Field
