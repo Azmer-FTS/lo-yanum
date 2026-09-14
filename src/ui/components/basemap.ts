@@ -389,7 +389,7 @@ const RANGE_ATTEMPTS = 3
 /** A network blip is milliseconds; this ladder covers a second and a half. */
 const RANGE_BACKOFF_MS = [120, 400, 900]
 
-class RetryingSource implements Source {
+export class RetryingSource implements Source {
   private readonly inner: FetchSource
 
   constructor(url: string) {

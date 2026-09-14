@@ -485,27 +485,125 @@ function inIsrael(lat: number, lng: number): boolean {
 export function parsePositionInput(raw: string): LatLng | null {
   const text = raw.trim()
   if (text === '') return null
+  return pairsIn(normaliseLocationText(text))[0]?.position ?? null
+}
 
-  // `%2C` is a comma; `ll.` is Waze's live-map separator. Normalising them
-  // away first means one number-pair regex covers every shape above.
-  const normalised = text
+/**
+ * `%2C` is a comma; `ll.` is Waze's live-map separator. Normalising them away
+ * first means one number-pair regex covers every shape above.
+ */
+function normaliseLocationText(text: string): string {
+  return text
     .replace(/%2c/gi, ',')
     .replace(/\bll[.=]/gi, ' ')
     .replace(/[?&#]/g, ' ')
+}
 
-  // A Google Maps URL carries the zoom as a third number ("…,15z"), and a
-  // place URL carries ids full of digits. Scanning for ADJACENT decimal pairs
-  // and validating them against the box is what keeps those out.
-  const matches = [...normalised.matchAll(/(-?\d{1,3}\.\d{3,})\s*[,;\s]\s*(-?\d{1,3}\.\d{3,})/g)]
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AI5.7 (2026-09-14) — LE LECTEUR EXIGEAIT TOUJOURS TROIS DÉCIMALES.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * AH9 avait corrigé l'ÉCRITURE (`positionParam` ci-dessous) et laissé la
+ * LECTURE en l'état : `\d{3,}`. Un « 31.25, 34.79 » tapé ou collé par le PO
+ * était donc refusé comme « לא זוהה מיקום » — le même point rond qu'AH9 avait
+ * trouvé, par l'autre porte.
+ *
+ * ★ DEUX DÉCIMALES SUFFISENT, et ce qui justifiait trois ne tient pas : le
+ *   « ,15z » d'un zoom Google n'a PAS de partie décimale, il ne peut donc pas
+ *   former un couple ; un zoom fractionnaire (« 15.25z ») donnerait un couple
+ *   (34.79, 15.25) qu'aucune des deux lectures ne place dans la boîte
+ *   d'Israël. Deux décimales, c'est ~1 km : un point rond, pas une erreur.
+ *
+ * ★ ET UN COUPLE REFUSÉ NE MANGE PLUS SON VOISIN. `matchAll` avance après
+ *   chaque correspondance, valide ou non : dans « 12.34 31.25, 34.79 » il
+ *   prenait « 12.34 31.25 », le rejetait, et ne regardait jamais le vrai
+ *   couple. La recherche repart maintenant un caractère plus loin après un
+ *   refus, et les bornes `(?<![\d.])` / `(?![\d.])` l'empêchent de repartir
+ *   au milieu d'un nombre.
+ */
+const PAIR = /(?<![\d.])(-?\d{1,3}\.\d{2,})\s*[,;\s]\s*(-?\d{1,3}\.\d{2,})(?![\d.])/g
 
-  for (const m of matches) {
+interface PairHit {
+  position: LatLng
+  start: number
+  end: number
+}
+
+function pairsIn(text: string): PairHit[] {
+  const hits: PairHit[] = []
+  const re = new RegExp(PAIR.source, 'g')
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
     const a = Number(m[1])
     const b = Number(m[2])
-    if (inIsrael(a, b)) return { lat: a, lng: b }
-    if (inIsrael(b, a)) return { lat: b, lng: a }
+    const position = inIsrael(a, b) ? { lat: a, lng: b } : inIsrael(b, a) ? { lat: b, lng: a } : null
+    if (position) {
+      hits.push({ position, start: m.index, end: m.index + m[0].length })
+      re.lastIndex = m.index + m[0].length
+    } else {
+      re.lastIndex = m.index + 1
+    }
+  }
+  return hits
+}
+
+export interface PositionListRead {
+  /** Dans l'ordre du texte collé. */
+  positions: LatLng[]
+  /** Les morceaux qui ressemblaient à une position et qui n'ont pas été lus. */
+  unread: string[]
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AI5.3 (2026-09-14) — PLUSIEURS LIENS D'UN COUP.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * « Le PO reçoit ses localisations par WhatsApp et peut vouloir les coller en
+ *   bloc » — séparées par des retours à la ligne OU des espaces.
+ *
+ * ⚠️ « SÉPARÉES PAR DES ESPACES » NE PEUT PAS VOULOIR DIRE « COUPER AUX
+ *    ESPACES » : un couple brut s'écrit « 31.0583, 34.6531 », avec une espace
+ *    au milieu. Donc : chaque LIEN (`https://…`, `www.…`) est un jeton à lui
+ *    seul et se lit seul ; ce qui reste de la ligne est parcouru pour tous
+ *    les couples bruts qu'il contient.
+ *
+ * ★ CE QUI N'EST PAS LU EST RENDU, PAS JETÉ (AI5.5). Un lien sans coordonnée,
+ *   ou un reste qui porte encore un nombre décimal, part dans `unread` — le
+ *   champ le garde. Des mots seuls (« מיקום: », le nom de la ferme que
+ *   WhatsApp met devant) ne sont pas une position manquée et ne sont pas
+ *   signalés, SAUF si rien du tout n'a été lu : alors c'est tout le texte qui
+ *   n'a pas été compris.
+ */
+export function parsePositionList(raw: string): PositionListRead {
+  const positions: LatLng[] = []
+  const unread: string[] = []
+  if (raw.trim() === '') return { positions, unread }
+
+  for (const line of raw.split(/\r?\n/)) {
+    let rest = line
+    const links = line.match(/(?:https?:\/\/|www\.)\S+/gi) ?? []
+    for (const link of links) {
+      rest = rest.replace(link, ' ')
+      const position = parsePositionInput(link)
+      if (position) positions.push(position)
+      else unread.push(link)
+    }
+    const normalised = normaliseLocationText(rest)
+    let leftover = ''
+    let cursor = 0
+    for (const hit of pairsIn(normalised)) {
+      positions.push(hit.position)
+      leftover += normalised.slice(cursor, hit.start)
+      cursor = hit.end
+    }
+    leftover += normalised.slice(cursor)
+    if (/\d\.\d/.test(leftover)) unread.push(leftover.trim())
   }
 
-  return null
+  if (positions.length === 0 && unread.length === 0) unread.push(raw.trim())
+  return { positions, unread }
 }
 
 /**

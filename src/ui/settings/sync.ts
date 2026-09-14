@@ -38,6 +38,8 @@ export const SYNCED_SETTING_KEYS: readonly string[] = [
   /* Le point de départ des tournées, et les tournées libres (AH9). */
   'lo-yanum:origin',
   'lo-yanum:free-routes',
+  /* AI3.2 — la marge des durées de roulage. */
+  'lo-yanum:route-margin',
 ]
 
 /** Ce que l'appareil porte aujourd'hui, pour les clés qui voyagent. */

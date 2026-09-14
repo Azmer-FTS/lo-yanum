@@ -6,10 +6,12 @@
       "name": "lo-yanum",
       "dependencies": {
         "@mapbox/mapbox-gl-rtl-text": "0.2.3",
+        "@mapbox/vector-tile": "1.3.1",
         "@supabase/supabase-js": "^2.112.4",
         "@tanstack/react-virtual": "^3.14.9",
         "i18next": "^23.16.8",
         "maplibre-gl": "^4.7.1",
+        "pbf": "3.3.0",
         "pdf-lib": "^1.17.1",
         "pmtiles": "^4.5.0",
         "protomaps-themes-base": "^4.5.0",

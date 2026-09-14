@@ -1,4 +1,6 @@
 import { HOME_BASE, haversineKm } from './geo'
+import { OFF_NETWORK_METERS } from './roadGraph'
+import type { RoadLeg } from './roadGraph'
 import { estimateDriveMinutes } from './routing'
 import type { LatLng } from './types'
 
@@ -47,8 +49,39 @@ import type { LatLng } from './types'
  *   décision et non un détail technique. OSRM auto-hébergé n'envoie rien mais
  *   demande un serveur. Aucun des trois n'est branché.
  *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AI1 → AI3 (2026-09-14) — ET LE VOL D'OISEAU N'EST PLUS QUE LE REPLI.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Le PO l'a jugé « utilisable mais trop approximatif : autour d'un wadi,
+ * l'écart réel atteint 30 à 40 % ». Le tracé suit désormais les routes de la
+ * carte, sur l'appareil (`roadGraph.ts`), et `planFreeRoute` prend ses
+ * distances et ses durées dans ce tracé quand il existe. Le calcul ci-dessus
+ * reste — c'est ce qui s'affiche pendant les quelques centaines de
+ * millisecondes du premier calcul, et quand aucun chemin n'existe (AI2.6).
+ * Chaque étape dit laquelle des deux elle porte (`mode`).
+ *
+ * ★★ AI3.2 — LA MARGE. Une durée de roulage calculée est une durée SANS
+ *    tracteur, sans feu rouge et sans portail fermé. La marge (réglage
+ *    « מרווח ביטחון », 15 % au départ — voir `ROUTE_MARGIN_INITIAL`)
+ *    s'applique aux durées de ROULAGE, jamais au temps passé sur place : le PO
+ *    sait combien de temps il reste chez un agriculteur, il ne sait pas ce
+ *    que fera la route.
+ *
  * PURE : ni DOM, ni React, ni stockage.
  */
+
+/**
+ * ★ AI3.2 — 15 %, ET POURQUOI. Les vitesses de `roadGraph.ts` sont des
+ *   moyennes de roulage en circulation fluide. Sur les trajets de quinze à
+ *   quarante minutes d'une tournée de la zone Adoulam–Lakhish, les pertes
+ *   qu'elles ne voient pas — une traversée de moshav, un tracteur sur la 353,
+ *   un portail à ouvrir, un demi-tour — font quelques minutes par trajet :
+ *   15 % d'un trajet de 25 minutes, c'est quatre minutes. Au-delà, l'heure
+ *   annoncée devient une heure où le PO attend dans sa voiture ; en deçà,
+ *   une heure qu'il ne tient pas. Réglable de 0 à 100 %.
+ */
+export const ROUTE_MARGIN_INITIAL = 15
 
 export interface FreeStop {
   id: string
@@ -80,12 +113,25 @@ export interface FreeRoute {
 export const FREE_ROUTE_ORIGIN: LatLng = HOME_BASE
 export const DEFAULT_VISIT_MINUTES = 30
 
+export type FreeLegMode = 'road' | 'straight' | 'pending'
+
 export interface FreeLeg {
   stop: FreeStop
   /** 1 pour la première étape. */
   order: number
+  /** Distance ROULÉE : sur route quand `mode === 'road'`, estimée sinon. */
   legKm: number
+  /** À vol d'oiseau, toujours — AI3.4 veut les deux. */
+  airKm: number
+  /** Durée de roulage, marge COMPRISE. */
   driveMinutes: number
+  /**
+   * `road` : tracé sur route. `straight` : aucun chemin, repli à vol d'oiseau
+   * (AI2.6). `pending` : le tracé n'est pas encore calculé.
+   */
+  mode: FreeLegMode
+  /** Mètres hors réseau au bout de cette étape (du point de route à l'étape). */
+  offNetworkMeters: number
   /** `HH:MM` local. */
   arriveAt: string
   leaveAt: string
@@ -96,6 +142,9 @@ export interface FreeRoutePlan {
   legs: FreeLeg[]
   totalKm: number
   returnKm: number
+  returnMode: FreeLegMode
+  /** À vol d'oiseau, aller et retour — pour AI3.4. */
+  airRoundTripKm: number
   roundTripKm: number
   /** L'heure de retour au point de départ. */
   returnAt: string
@@ -146,17 +195,61 @@ export function formatClock(minutes: number): string {
  *    ignore — un agriculteur qui n'est là qu'après la traite, une route
  *    fermée. `shortestOrder` est offerte à côté, et c'est lui qui l'applique.
  */
-export function planFreeRoute(route: FreeRoute): FreeRoutePlan {
+export interface FreeRouteOptions {
+  /**
+   * Les étapes calculées sur route : une par trajet, départ → étape 1 → … →
+   * retour, donc `stops.length + 1`. `null` pour un trajet sans chemin ;
+   * absent tant que rien n'est calculé.
+   */
+  roadLegs?: ReadonlyArray<RoadLeg | null> | null
+  /** AI3.2 — pourcentage ajouté aux durées de roulage. */
+  marginPercent?: number
+}
+
+export function planFreeRoute(route: FreeRoute, options: FreeRouteOptions = {}): FreeRoutePlan {
   const start = parseClock(route.departAt) ?? 8 * 60
+  const margin = 1 + Math.max(0, options.marginPercent ?? 0) / 100
+  const road = options.roadLegs ?? null
   const legs: FreeLeg[] = []
   let current = route.origin
   let clock = start
   let totalKm = 0
+  let airTotal = 0
+
+  const measure = (from: LatLng, to: LatLng, index: number) => {
+    const airKm = haversineKm(from, to)
+    const computed = road ? road[index] : undefined
+    if (computed) {
+      /* ★ AI2.5 — LE HORS-RÉSEAU COMPTÉ À L'ARRIVÉE. Le premier bout pendant
+         d'une étape est le départ de la précédente ; seul le dernier dit
+         « cette ferme est au bout d'un chemin que la carte ignore ». */
+      const last = computed.gaps.length > 0 ? computed.gaps[computed.gaps.length - 1] : null
+      const arrivalGap =
+        last && last[1].lat === to.lat && last[1].lng === to.lng
+          ? haversineKm(last[0], last[1]) * 1000
+          : 0
+      return {
+        airKm,
+        km: computed.meters / 1000,
+        raw: computed.seconds / 60,
+        mode: 'road' as const,
+        offNetworkMeters: arrivalGap >= OFF_NETWORK_METERS ? arrivalGap : 0,
+      }
+    }
+    return {
+      airKm,
+      km: airKm,
+      raw: estimateDriveMinutes(airKm),
+      mode: (road ? 'straight' : 'pending') as FreeLegMode,
+      offNetworkMeters: 0,
+    }
+  }
 
   route.stops.forEach((stop, i) => {
-    const legKm = haversineKm(current, stop.position)
-    const driveMinutes = estimateDriveMinutes(legKm)
-    totalKm += legKm
+    const m = measure(current, stop.position, i)
+    const driveMinutes = Math.round(m.raw * margin)
+    totalKm += m.km
+    airTotal += m.airKm
     clock += driveMinutes
     const arriveAt = formatClock(clock)
     const visitMinutes = stop.visitMinutes ?? route.defaultVisitMinutes
@@ -164,8 +257,11 @@ export function planFreeRoute(route: FreeRoute): FreeRoutePlan {
     legs.push({
       stop,
       order: i + 1,
-      legKm,
+      legKm: m.km,
+      airKm: m.airKm,
       driveMinutes,
+      mode: m.mode,
+      offNetworkMeters: m.offNetworkMeters,
       arriveAt,
       leaveAt: formatClock(clock),
       visitMinutes,
@@ -173,14 +269,23 @@ export function planFreeRoute(route: FreeRoute): FreeRoutePlan {
     current = stop.position
   })
 
-  const returnKm = route.stops.length === 0 ? 0 : haversineKm(current, route.origin)
-  clock += estimateDriveMinutes(returnKm)
+  let returnKm = 0
+  let returnMode: FreeLegMode = road ? 'straight' : 'pending'
+  if (route.stops.length > 0) {
+    const back = measure(current, route.origin, route.stops.length)
+    returnKm = back.km
+    returnMode = back.mode
+    airTotal += back.airKm
+    clock += Math.round(back.raw * margin)
+  }
 
   return {
     legs,
     totalKm,
     returnKm,
+    returnMode,
     roundTripKm: totalKm + returnKm,
+    airRoundTripKm: airTotal,
     returnAt: formatClock(clock),
     totalMinutes: clock - start,
   }

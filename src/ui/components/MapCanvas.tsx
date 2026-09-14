@@ -126,6 +126,11 @@ export interface MapThreatVector {
   emphasis?: boolean
 }
 
+export interface MapRouteLine {
+  coords: LatLng[]
+  style: 'road' | 'gap' | 'estimate'
+}
+
 export interface MapViewProps {
   markers: MapMarker[]
   /** G1 — zone polygons, under the markers and the route line. */
@@ -137,6 +142,14 @@ export interface MapViewProps {
   onPolygonClick?: (id: string) => void
   /** Ordered points for an optional route polyline. */
   line?: LatLng[]
+  /**
+   * ★★ AI2 — LE TRACÉ SUR ROUTE, EN TROIS ÉCRITURES QU'ON NE CONFOND PAS.
+   *   `road` plein : la route réelle. `gap` pointillé : le bout hors réseau,
+   *   de la route au point collé (AI2.5). `estimate` pointillé serré, couleur
+   *   d'avertissement : le repli à vol d'oiseau quand aucun chemin n'existe
+   *   (AI2.6). Un repli dessiné comme une route serait un tracé qui ment.
+   */
+  routeLines?: MapRouteLine[]
   center?: LatLng
   zoom?: number
   /** Frame all markers instead of using center/zoom. */
@@ -693,6 +706,7 @@ export default function MapCanvas({
   threatVectors: allThreatVectors,
   onPolygonClick,
   line,
+  routeLines,
   center,
   zoom = 8,
   fit = false,
@@ -892,6 +906,7 @@ export default function MapCanvas({
   // Latest requested polyline. Held in a ref so the map's own `load` handler
   // can apply it the moment the source exists, whatever order things mounted in.
   const lineRef = useRef<LatLng[] | undefined>(line)
+  const routeLinesRef = useRef<MapRouteLine[] | undefined>(routeLines)
   const polygonsRef = useRef<MapPolygon[] | undefined>(polygons)
   const threatZonesRef = useRef<MapThreatZone[] | undefined>(threatZones)
   const threatVectorsRef = useRef<MapThreatVector[] | undefined>(threatVectors)
@@ -1282,7 +1297,7 @@ export default function MapCanvas({
       // setData() rather than an add/remove layer cycle on every keystroke.
       map.addSource('route', {
         type: 'geojson',
-        data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [] } },
+        data: { type: 'FeatureCollection', features: [] },
       })
       map.addLayer({
         id: 'route-casing',
@@ -1291,7 +1306,7 @@ export default function MapCanvas({
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-color': readToken('--surface-base'),
-          'line-width': 7,
+          'line-width': ['match', ['get', 'style'], 'road', 8, 7],
           'line-opacity': 0.9,
         },
       })
@@ -1299,11 +1314,42 @@ export default function MapCanvas({
         id: 'route-line',
         type: 'line',
         source: 'route',
+        filter: ['==', ['get', 'style'], 'legacy'],
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-color': readToken('--accent'),
           'line-width': 3.5,
           'line-dasharray': [2, 1.4],
+        },
+      })
+      /* ★★ AI2 — les trois écritures du tracé libre. `line-dasharray` n'accepte
+         pas d'expression par entité : une couche par style, filtrée. */
+      map.addLayer({
+        id: 'route-road',
+        type: 'line',
+        source: 'route',
+        filter: ['==', ['get', 'style'], 'road'],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': readToken('--accent'), 'line-width': 4.5 },
+      })
+      map.addLayer({
+        id: 'route-gap',
+        type: 'line',
+        source: 'route',
+        filter: ['==', ['get', 'style'], 'gap'],
+        layout: { 'line-cap': 'butt', 'line-join': 'round' },
+        paint: { 'line-color': readToken('--accent'), 'line-width': 3.5, 'line-dasharray': [1, 1.2] },
+      })
+      map.addLayer({
+        id: 'route-estimate',
+        type: 'line',
+        source: 'route',
+        filter: ['==', ['get', 'style'], 'estimate'],
+        layout: { 'line-cap': 'butt', 'line-join': 'round' },
+        paint: {
+          'line-color': readToken('--status-warn'),
+          'line-width': 3.5,
+          'line-dasharray': [0.6, 1.6],
         },
       })
 
@@ -1348,7 +1394,7 @@ export default function MapCanvas({
         },
       })
 
-      applyLine(map, lineRef.current)
+      applyLine(map, lineRef.current, routeLinesRef.current)
     }
 
     map.on('load', () => {
@@ -2012,9 +2058,10 @@ export default function MapCanvas({
   // a map that had no route source yet, and silently vanished.
   useEffect(() => {
     lineRef.current = line
+    routeLinesRef.current = routeLines
     const map = mapRef.current
-    if (map) applyLine(map, line)
-  }, [line, glGeneration])
+    if (map) applyLine(map, line, routeLines)
+  }, [line, routeLines, glGeneration])
 
   useEffect(() => {
     polygonsRef.current = polygons
@@ -2389,16 +2436,24 @@ function applyPolygons(
 }
 
 /** Push a polyline into the pre-declared `route` source, if it exists yet. */
-function applyLine(map: maplibregl.Map, line: LatLng[] | undefined): void {
+function applyLine(
+  map: maplibregl.Map,
+  line: LatLng[] | undefined,
+  routeLines?: MapRouteLine[],
+): void {
   const source = map.getSource('route') as maplibregl.GeoJSONSource | undefined
   if (!source) return
+  const feature = (coords: LatLng[], style: string) => ({
+    type: 'Feature' as const,
+    properties: { style },
+    geometry: { type: 'LineString' as const, coordinates: coords.map((p) => [p.lng, p.lat]) },
+  })
   source.setData({
-    type: 'Feature',
-    properties: {},
-    geometry: {
-      type: 'LineString',
-      coordinates: (line ?? []).map((p) => [p.lng, p.lat]),
-    },
+    type: 'FeatureCollection',
+    features: [
+      ...(line && line.length > 1 ? [feature(line, 'legacy')] : []),
+      ...(routeLines ?? []).filter((l) => l.coords.length > 1).map((l) => feature(l.coords, l.style)),
+    ],
   })
 }
 

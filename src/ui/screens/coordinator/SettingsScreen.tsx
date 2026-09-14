@@ -21,6 +21,7 @@ import { CoverageSection } from '../../settings/CoverageSection'
 import { TargetSection } from '../../settings/TargetSection'
 import { ViewAsSection } from '../../settings/ViewAsSection'
 import { RemindersSection } from '../../settings/RemindersSection'
+import { RouteMarginSection } from '../../settings/RouteMarginSection'
 import { SettingsGroup, SettingsToc } from '../../settings/SettingsGroup'
 import {
   originLabel,
@@ -647,6 +648,9 @@ export function SettingsScreen() {
               : t('settings.origin.hint', { coords: formatCoords(originPosition()) })}
         </p>
       </Section>
+      {/* ★★ AI3.2 — la marge des durées, sous le point de départ : les deux
+          décident de l'heure qu'annonce une tournée. */}
+      <RouteMarginSection />
 
       <SettingsGroup id="display" />
       {/* ★★ Y3.1 · Y4 — the theme (out of the rail) and the layout sync. */}
