@@ -109,3 +109,9 @@ dist-ahpass/
 dist-ahreal/
 dist-aipass/
 dist-aireal/
+
+# AJ — la porte ajupdate construit deux builds (A, B) et garde le build d’avant correctif.
+dist-aj-a/
+dist-aj-b/
+dist-aj-before/
+dist-aj-before-b/

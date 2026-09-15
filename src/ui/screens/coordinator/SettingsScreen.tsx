@@ -14,6 +14,7 @@ import { AreaGapSection } from '../../settings/AreaGapSection'
 import { SummonsSection } from '../../settings/SummonsSection'
 import { AgreementDocSection } from '../../settings/AgreementDocSection'
 import { SampleDataSection } from '../../settings/SampleDataSection'
+import { AppVersionSection } from '../../settings/AppVersionSection'
 import { VigilSection } from '../../settings/VigilSection'
 import { RenewalSection } from '../../settings/RenewalSection'
 import { GeoDiagnosticsSection } from '../../settings/GeoDiagnosticsSection'
@@ -97,6 +98,18 @@ export function SettingsScreen() {
   const [origin, setOrigin] = useState(() => originLabel())
   const [originState, setOriginState] = useState<'idle' | 'saved' | 'bad'>('idle')
   const [locating, setLocating] = useState(false)
+
+  const workerSupported = typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+  const [activating, setActivating] = useState(false)
+  /** Wait (bounded) for the worker to be ready, then load the page under it. */
+  const onActivate = async () => {
+    setActivating(true)
+    await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((resolve) => setTimeout(resolve, 5000)),
+    ]).catch(() => undefined)
+    window.location.reload()
+  }
 
   const onClear = async () => {
     setClearing(true)
@@ -620,12 +633,31 @@ export function SettingsScreen() {
             )}
           </>
         ) : (
-          <>
+          /* ★★ AJ0 · A191 — CE BLOC DISAIT « RECHARGEZ LA PAGE UNE FOIS », DANS
+              UNE APP INSTALLÉE QUI N'A AUCUN MOYEN DE RECHARGER. Il ne dure plus
+              que les deux secondes du premier lancement (le hook écoute
+              `controllerchange`), et s'il dure, le bouton fait le rechargement
+              que l'app ne permet pas de faire autrement. */
+          <div data-testid="offline-inactive">
             <p className="text-caption text-content-primary">
-              {t('settings.offline.inactive')}
+              {t(workerSupported ? 'settings.offline.inactive' : 'settings.offline.unsupported')}
             </p>
-            <p className="muted mt-1">{t('settings.offline.inactiveHint')}</p>
-          </>
+            {workerSupported && (
+              <>
+                <p className="muted mt-1">{t('settings.offline.inactiveHint')}</p>
+                <button
+                  type="button"
+                  className="btn-secondary mt-3"
+                  data-testid="offline-activate"
+                  disabled={activating}
+                  onClick={() => void onActivate()}
+                >
+                  <Icon name="download" size={16} />
+                  {t(activating ? 'settings.offline.activating' : 'settings.offline.activate')}
+                </button>
+              </>
+            )}
+          </div>
         )}
       </Section>
       {/* ★★ PO RETURN 2026-09-02 — "נקודת מוצא", AND IT IS NOT COSMETIC.
@@ -786,6 +818,9 @@ export function SettingsScreen() {
           section, sous UN bouton : deux sections dont une seule était « tout
           supprimer » ont laissé au PO des données d'origine inconnue. */}
       <SampleDataSection />
+      {/* ★★ AJ0 · A190 — la version installée, sa date, et la recherche
+          manuelle. En dernier, là où une app range « à propos ». */}
+      <AppVersionSection />
 
       {/* ⚠️ `<DisplayDiagnostics />` WAS HERE AND IS GONE (PO return
           2026-09-02). It was PO point 1's instrument: a temporary panel

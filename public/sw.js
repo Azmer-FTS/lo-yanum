@@ -288,7 +288,17 @@ self.addEventListener('fetch', (event) => {
       (async () => {
         const cache = await caches.open(SHELL_CACHE)
         try {
-          const fresh = await fetch(request)
+          /**
+           * ★★ AJ0 — `cache: 'no-cache'`, PAST THE HTTP CACHE. GitHub Pages
+           *    serves `index.html` with `max-age=600` (measured), and a plain
+           *    `fetch(request)` was measured in Chromium handing a fresh launch
+           *    the PREVIOUS deploy's document inside that window — "network
+           *    first" that was, in fact, ten minutes behind. `no-cache`
+           *    revalidates with the ETag: one conditional request, a 304 when
+           *    nothing changed. Passing an init to a navigate request is valid
+           *    (its mode becomes same-origin; its redirect mode stays manual).
+           */
+          const fresh = await fetch(request, { cache: 'no-cache' })
           if (fresh && fresh.ok) await cache.put(request, fresh.clone())
           return fresh
         } catch {
@@ -313,6 +323,17 @@ self.addEventListener('message', (event) => {
   const data = event.data
   if (!data || typeof data.type !== 'string') return
   const reply = (payload) => event.source?.postMessage({ type: data.type, ...payload })
+
+  /**
+   * ★★ AJ0 — THE PAGE'S "APPLY THE NEW VERSION" BUTTON. `install` already skips
+   *    waiting, so today this is a no-op for a worker that got there by itself;
+   *    it is what makes the button's promise hold for one that is sitting in
+   *    `installed` — see `activateIncoming` in `src/ui/update.ts`.
+   */
+  if (data.type === 'SKIP_WAITING') {
+    event.waitUntil(self.skipWaiting())
+    return
+  }
 
   /**
    * PMTILES — WHAT THE הגדרות SCREEN ASKS, AND WHY IT ASKS IT IN THIS SHAPE.

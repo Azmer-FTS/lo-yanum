@@ -1,5 +1,9 @@
 /// <reference types="vite/client" />
 
+/** AJ0 — the running build's identity, stamped by `vite.config.ts`. */
+declare const __BUILD_ID__: string
+declare const __BUILD_TIME__: string
+
 /**
  * P2.3 — the two build-time values that point the app at its Supabase project.
  *

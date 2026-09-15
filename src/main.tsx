@@ -22,6 +22,8 @@ import { openGeoDiagSession } from './ui/geoDiagnostics'
 import { photosToPdf } from './ui/documents'
 import { loadRegionEdits } from './ui/settings/regionEdits'
 import { startThemeController } from './ui/theme'
+import { startUpdateWatcher } from './ui/update'
+import { UpdateBanner } from './ui/components/UpdateBanner'
 
 /**
  * P2.6b — WHICH STORE THIS BUILD RUNS ON, DECIDED BEFORE ANYTHING RENDERS.
@@ -214,6 +216,9 @@ if (!container) throw new Error('Root container #root not found')
 function mount(): void {
   createRoot(container as HTMLElement).render(
     <StrictMode>
+      {/* ★★ AJ0 — above the app, so the door, the map and the farmer's three
+          tabs all carry it. See `ui/components/UpdateBanner.tsx`. */}
+      <UpdateBanner />
       <App />
     </StrictMode>,
   )
@@ -256,3 +261,10 @@ if (settingsReady === null) {
 // anyway, and putting it last keeps the first paint the first thing that
 // happens. A no-op in dev, which is what keeps the browser gates honest.
 registerServiceWorker()
+/**
+ * ★★ AJ0 — and whether the server holds a newer build, asked now and at EVERY
+ * return to the foreground. Measured: an installed app resumed from the home
+ * screen never navigates, so without this question it runs the old bundle
+ * indefinitely. Started here and not in a component — see `ui/update.ts`.
+ */
+if (import.meta.env.PROD) startUpdateWatcher()

@@ -86,7 +86,7 @@ interface WorkerAnswer {
  */
 export interface MapAttempt {
   ok: boolean
-  /** 'network' | 'http' | 'quota' | 'store' | 'truncated' — named, never blank. */
+  /** 'network' | 'http' | 'quota' | 'store' | 'truncated' | 'inactive' — named, never blank. */
   error?: string
   status?: number
   detail?: string
@@ -342,7 +342,14 @@ export function useOfflineMaps(url: string, assets: string[] = []): OfflineMaps 
    */
   const download = useCallback(async (): Promise<boolean> => {
     const controller = navigator.serviceWorker?.controller
-    if (!controller) return false
+    if (!controller) {
+      // ★ AJ0 — never a silent `false`: the tap is answered on the screen.
+      const record: MapAttempt = { ok: false, error: 'inactive', archive: archiveName(url), at: Date.now() }
+      setAttempt(record)
+      writeAttempt(record)
+      setActive(false)
+      return false
+    }
     setProgress(0)
     setReceived(0)
     setExpected(null)
@@ -439,6 +446,27 @@ export function useOfflineMaps(url: string, assets: string[] = []): OfflineMaps 
 
   useEffect(() => {
     void refresh()
+  }, [refresh])
+
+  /**
+   * ★★ AJ0 · A191 — CONTROL ARRIVES AFTER THE SCREEN, AND THE SCREEN HAS TO HEAR IT.
+   *
+   * `active` used to be read ONCE, at mount. Measured on a fresh context — which
+   * is exactly what the home-screen app is on its first launch, its storage
+   * being separate from Safari's — the settings screen mounts, then the worker
+   * registers on `load` and claims the page about two seconds later. The screen
+   * never looked again: it kept "refresh the page once" and NO download button,
+   * in an app that has no refresh control. That is the PO's "I cannot reach the
+   * offline maps from the installed app". `controllerchange` and `ready` now
+   * re-ask.
+   */
+  useEffect(() => {
+    const container = navigator.serviceWorker
+    if (!container) return
+    const again = () => void refresh()
+    container.addEventListener('controllerchange', again)
+    void container.ready.then(again).catch(() => undefined)
+    return () => container.removeEventListener('controllerchange', again)
   }, [refresh])
 
   useEffect(() => {
