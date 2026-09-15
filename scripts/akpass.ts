@@ -1,6 +1,10 @@
 import {
   ASSOCIATION_COLUMNS,
+  analyseAssociation,
   analyseProspection,
+  applyAssociation,
+  associationSignatures,
+  signatureImageOf,
   applyProspection,
   archiveFarm,
   getAllVisibleAnchorPoints,
@@ -40,7 +44,7 @@ import {
   updateFarm,
 } from '../src/core/index'
 import type { Farm } from '../src/core/index'
-import { matrixToCsv } from '../src/core/xlsx'
+import { STYLE_SIGNATURE, buildWorkbook, matrixToCsv, pngBytesOf } from '../src/core/xlsx'
 import { _raw } from '../src/core/store'
 import he from '../src/locales/he.json'
 
@@ -72,6 +76,27 @@ function section(title: string): void {
   console.log('')
   console.log(`  ${title}`)
   console.log(`  ${'-'.repeat(title.length)}`)
+}
+
+/**
+ * Un lecteur de ZIP « stored », le pendant de `zipStore` : la porte lit le
+ * classeur tel qu'un tableur le lira, plutôt que de croire ce que l'écrivain
+ * dit avoir écrit.
+ */
+function readStoredZip(bytes: Uint8Array): Map<string, Uint8Array> {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const out = new Map<string, Uint8Array>()
+  let at = 0
+  while (at + 30 <= bytes.length && view.getUint32(at, true) === 0x04034b50) {
+    const size = view.getUint32(at + 18, true)
+    const nameLength = view.getUint16(at + 26, true)
+    const extraLength = view.getUint16(at + 28, true)
+    const name = new TextDecoder().decode(bytes.slice(at + 30, at + 30 + nameLength))
+    const start = at + 30 + nameLength + extraLength
+    out.set(name, bytes.slice(start, start + size))
+    at = start + size
+  }
+  return out
 }
 
 const draftOf = (farm: Farm) => {
@@ -328,6 +353,90 @@ section('A204 · A205 — archiver n\'est pas supprimer')
       const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])]
       return keys.filter((k) => JSON.stringify(a[k]) !== JSON.stringify(b[k])).join(', ') || 'identique'
     })())
+}
+
+// ---------------------------------------------------------------------------
+section('A206 — la signature, en PNG, dans sa propre cellule')
+// ---------------------------------------------------------------------------
+{
+  /** Un vrai PNG minuscule (1×1, noir) — les octets, pas une chaîne inventée. */
+  const PNG =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+
+  resetStore()
+  const farm = getVisibleFarms()[0]
+  applyRemoteSignature(farm.id, {
+    farmerName: farm.farmerName ?? 'חקלאי',
+    farmerId: '021985189',
+    farmerPhone: '050-8912840',
+    farmName: '',
+    signature: PNG,
+    idPhoto: null,
+    fileName: 'x.pdf',
+  })
+  const signed = getFarm(farm.id)!
+  check('A206 · the signature the fiche holds is what the export reads', signatureImageOf(signed) === PNG)
+
+  const { matrix } = associationExportMatrix(associationInputs([signed]))
+  const iSig = matrix[0].indexOf('חתימה')
+  check('A206 · the association format has its own חתימה column, and it carries the PNG',
+    iSig !== -1 && matrix[1][iSig] === PNG)
+  check('A206 · and nothing else is in that cell', matrix[1][iSig].trim() === matrix[1][iSig])
+
+  /* Le CSV : la cellule, entière, et rien d'autre dedans. */
+  const csv = matrixToCsv(matrix)
+  check('A206 · the CSV carries the whole data URI in one quoted cell', csv.includes(`"${PNG}"`))
+
+  /* Le xlsx : le PNG est une PIÈCE du classeur, ancrée à cette cellule. */
+  const rows = matrix.map((row, r) =>
+    row.map((value, c) => ({
+      value,
+      style: r > 0 && c === iSig ? STYLE_SIGNATURE : 0,
+    })),
+  )
+  const bytes = buildWorkbook([
+    {
+      name: 'נתונים',
+      rows,
+      images: [{ row: 1, col: iSig, dataUri: PNG }],
+      rowHeights: { 1: 58 },
+    },
+  ])
+  const zip = readStoredZip(bytes)
+  const media = zip.get('xl/media/image1.png')
+  check('A206 · the workbook carries the PNG as a real part', !!media &&
+    media[0] === 0x89 && media[1] === 0x50 && media[2] === 0x4e && media[3] === 0x47,
+    media ? `${media.length} bytes` : 'absente')
+  check('A206 · the bytes are the signature\'s own', 
+    !!media && JSON.stringify([...media]) === JSON.stringify([...(pngBytesOf(PNG) as Uint8Array)]))
+  const drawing = new TextDecoder().decode(zip.get('xl/drawings/drawing1.xml') ?? new Uint8Array())
+  check('A206 · anchored to its own cell, and to no other',
+    drawing.includes(`<xdr:col>${iSig}</xdr:col>`) && drawing.includes('<xdr:row>1</xdr:row>') &&
+      (drawing.match(/twoCellAnchor/g) ?? []).length === 2)
+  const sheet = new TextDecoder().decode(zip.get('xl/worksheets/sheet1.xml') ?? new Uint8Array())
+  const cellRef = `${String.fromCharCode(65 + iSig)}2`
+  check('A206 · the cell itself holds the signature and nothing else',
+    sheet.includes(`<c r="${cellRef}" s="${STYLE_SIGNATURE}" t="inlineStr"><is><t xml:space="preserve">${PNG}`),
+    cellRef)
+  const types = new TextDecoder().decode(zip.get('[Content_Types].xml') ?? new Uint8Array())
+  check('A206 · and the package declares the picture, so the file opens',
+    types.includes('image/png') && types.includes('drawing+xml') &&
+      !!zip.get('xl/drawings/_rels/drawing1.xml.rels') &&
+      !!zip.get('xl/worksheets/_rels/sheet1.xml.rels'))
+
+  /* L'ALLER-RETOUR : le fichier relu, la signature revient sur la fiche. */
+  resetStore()
+  const fresh = getVisibleFarms().find((f) => f.name === signed.name)!
+  check('A206 · the fresh record has no signature of its own', signatureImageOf(fresh) === null)
+  const read = analyseAssociation(matrix[0], matrix.slice(1), getFarmsForImport())
+  applyAssociation(read.plan, associationSignatures(read.rows), 'lo-yanum-association.csv', HOME_BASE)
+  const roundTripped = getFarm(fresh.id)!
+  check('A206 · export → re-import : the signature comes back intact, on the fiche',
+    signatureImageOf(roundTripped) === PNG, (signatureImageOf(roundTripped) ?? '').slice(0, 32))
+  check('A206 · and it is recorded as an imported signature, with its file',
+    roundTripped.signatureOrigin?.kind === 'imported' &&
+      roundTripped.signatureOrigin?.fileName === 'lo-yanum-association.csv')
+  check('A206 · the round trip created no duplicate', getVisibleFarms().length === 14, String(getVisibleFarms().length))
 }
 
 console.log('')

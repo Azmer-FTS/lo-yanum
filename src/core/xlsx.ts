@@ -44,6 +44,14 @@ export const STYLE_HEADER = 1
 export const STYLE_EXAMPLE = 2
 export const STYLE_WRAP = 3
 export const STYLE_TITLE = 4
+/**
+ * ★ AK8 — LA CELLULE DE LA SIGNATURE : sa VALEUR est l'image elle-même
+ *   (`data:image/png;base64,…`, ce que l'import d'AA5 relit), et le format
+ *   `;;;` fait qu'aucun caractère ne s'affiche par-dessus le PNG posé au même
+ *   endroit. La donnée est là pour la machine, l'image pour l'œil, et il n'y a
+ *   toujours qu'UNE chose dans la cellule : la signature.
+ */
+export const STYLE_SIGNATURE = 5
 
 export interface SheetCell {
   value: string
@@ -58,6 +66,30 @@ export interface SheetSpec {
   rows: ReadonlyArray<ReadonlyArray<SheetCell>>
   /** Freeze the first row so the headers stay put while filling 300 rows. */
   freezeHeader?: boolean
+  /** AK8 — les images ancrées, une par cellule (voir `SheetImage`). */
+  images?: readonly SheetImage[]
+  /** Hauteur de certaines lignes, en points — celles qui portent une image. */
+  rowHeights?: Readonly<Record<number, number>>
+}
+
+/**
+ * ★★ AK8 (2026-09-16) — UNE IMAGE POSÉE DANS UNE CELLULE.
+ *
+ *   « La signature sort en PNG, dans SA PROPRE CELLULE, dans l'export xlsx et
+ *     dans l'export CSV. Aucune autre donnée dans cette cellule. »
+ *
+ * Un tableur ne met pas une image DANS une cellule : il l'ancre à une plage.
+ * `twoCellAnchor editAs="oneCell"`, du coin de la cellule au coin de la
+ * suivante, est ce qui s'en approche exactement — l'image suit sa colonne et sa
+ * ligne, elle est rognée avec elles, et aucune autre cellule n'en porte un
+ * morceau.
+ */
+export interface SheetImage {
+  /** Ligne et colonne, 0-indexées, comme `rows`. */
+  row: number
+  col: number
+  /** `data:image/png;base64,…` — le PNG tel qu'il est stocké sur la fiche. */
+  dataUri: string
 }
 
 // ---------------------------------------------------------------------------
@@ -142,18 +174,25 @@ function sheetXml(sheet: SheetSpec): string {
       const inner = cells
         .map((cell, c) => cellXml(`${columnName(c)}${r + 1}`, cell))
         .join('')
-      return `<row r="${r + 1}">${inner}</row>`
+      /* AK8 — une ligne qui porte une signature est haute assez pour la voir. */
+      const height = sheet.rowHeights?.[r]
+      const attrs = height ? ` ht="${height}" customHeight="1"` : ''
+      return `<row r="${r + 1}"${attrs}>${inner}</row>`
     })
     .join('')
 
   return (
     XML_DECL +
-    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"' +
+    ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
     // THE LINE THE WHOLE UNIT IS ABOUT.
     `<sheetViews><sheetView rightToLeft="1" workbookViewId="0">${pane}</sheetView></sheetViews>` +
     '<sheetFormatPr defaultRowHeight="15"/>' +
     (cols ? `<cols>${cols}</cols>` : '') +
     `<sheetData>${rows}</sheetData>` +
+    /* ⚠️ APRÈS `sheetData`, ET C'EST L'ORDRE DU SCHÉMA : un `<drawing>` placé
+       avant fait rejeter la feuille entière par un lecteur strict. */
+    ((sheet.images ?? []).length > 0 ? '<drawing r:id="rIdDr1"/>' : '') +
     '</worksheet>'
   )
 }
@@ -182,7 +221,8 @@ const STYLES_XML =
   '</fills>' +
   '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
   '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-  '<cellXfs count="5">' +
+  '<numFmts count="1"><numFmt numFmtId="164" formatCode=";;;"/></numFmts>' +
+  '<cellXfs count="6">' +
   // 0 — body
   '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1">' +
   '<alignment horizontal="right" vertical="center" readingOrder="2"/></xf>' +
@@ -197,6 +237,9 @@ const STYLES_XML =
   '<alignment horizontal="right" vertical="top" wrapText="1" readingOrder="2"/></xf>' +
   // 4 — the instructions title
   '<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1">' +
+  '<alignment horizontal="right" vertical="center" readingOrder="2"/></xf>' +
+  // 5 — AK8: la cellule de signature. `;;;` cache le texte sous l'image.
+  '<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1">' +
   '<alignment horizontal="right" vertical="center" readingOrder="2"/></xf>' +
   '</cellXfs>' +
   '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
@@ -228,7 +271,84 @@ function workbookXml(sheets: readonly SheetSpec[]): string {
 const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 const CT = 'application/vnd.openxmlformats-officedocument.spreadsheetml'
 
-function contentTypesXml(count: number): string {
+/**
+ * ★ AK8 — LE DESSIN D'UNE FEUILLE : une ancre par image, de sa cellule à la
+ *   suivante, `editAs="oneCell"` pour qu'elle suive sa cellule quand on trie ou
+ *   qu'on élargit une colonne.
+ */
+function drawingXml(images: readonly SheetImage[]): string {
+  const XDR = 'http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing'
+  const A = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+  const anchors = images
+    .map((image, i) => {
+      const id = i + 1
+      return (
+        '<xdr:twoCellAnchor editAs="oneCell">' +
+        `<xdr:from><xdr:col>${image.col}</xdr:col><xdr:colOff>19050</xdr:colOff>` +
+        `<xdr:row>${image.row}</xdr:row><xdr:rowOff>19050</xdr:rowOff></xdr:from>` +
+        `<xdr:to><xdr:col>${image.col + 1}</xdr:col><xdr:colOff>0</xdr:colOff>` +
+        `<xdr:row>${image.row + 1}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>` +
+        '<xdr:pic>' +
+        '<xdr:nvPicPr>' +
+        `<xdr:cNvPr id="${id}" name="signature-${id}" descr="signature"/>` +
+        '<xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr>' +
+        '</xdr:nvPicPr>' +
+        `<xdr:blipFill><a:blip xmlns:r="${REL}" r:embed="rIdImg${id}"/>` +
+        '<a:stretch><a:fillRect/></a:stretch></xdr:blipFill>' +
+        '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></a:xfrm>' +
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr>' +
+        '</xdr:pic><xdr:clientData/></xdr:twoCellAnchor>'
+      )
+    })
+    .join('')
+  return XML_DECL + `<xdr:wsDr xmlns:xdr="${XDR}" xmlns:a="${A}">${anchors}</xdr:wsDr>`
+}
+
+function drawingRelsXml(images: readonly SheetImage[]): string {
+  const rels = images
+    .map(
+      (_, i) =>
+        `<Relationship Id="rIdImg${i + 1}" Type="${REL}/image" Target="../media/image${i + 1}.png"/>`,
+    )
+    .join('')
+  return (
+    XML_DECL +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    rels +
+    '</Relationships>'
+  )
+}
+
+/**
+ * `data:image/png;base64,…` → les octets. Écrit à la main plutôt qu'avec
+ * `atob` : ce fichier est du domaine PUR, et `atob` est une API de navigateur.
+ * `null` quand ce n'est pas un PNG en base64 — l'appelant écrit alors la
+ * cellule sans image plutôt qu'un classeur illisible.
+ */
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+export function pngBytesOf(dataUri: string): Uint8Array | null {
+  const comma = dataUri.indexOf(',')
+  if (comma === -1) return null
+  if (!/^data:image\/png;base64$/i.test(dataUri.slice(0, comma))) return null
+  const clean = dataUri.slice(comma + 1).replace(/[^A-Za-z0-9+/]/g, '')
+  const out = new Uint8Array(Math.floor((clean.length * 6) / 8))
+  let bits = 0
+  let value = 0
+  let at = 0
+  for (const ch of clean) {
+    const index = B64.indexOf(ch)
+    if (index === -1) return null
+    value = (value << 6) | index
+    bits += 6
+    if (bits >= 8) {
+      bits -= 8
+      out[at++] = (value >> bits) & 0xff
+    }
+  }
+  return at === out.length ? out : out.slice(0, at)
+}
+
+function contentTypesXml(count: number, withImages: boolean): string {
   const overrides = Array.from(
     { length: count },
     (_, i) =>
@@ -239,6 +359,11 @@ function contentTypesXml(count: number): string {
     '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
     '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
     '<Default Extension="xml" ContentType="application/xml"/>' +
+    (withImages ? '<Default Extension="png" ContentType="image/png"/>' : '') +
+    (withImages
+      ? '<Override PartName="/xl/drawings/drawing1.xml"' +
+        ' ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>'
+      : '') +
     `<Override PartName="/xl/workbook.xml" ContentType="${CT}.sheet.main+xml"/>` +
     overrides +
     `<Override PartName="/xl/styles.xml" ContentType="${CT}.styles+xml"/>` +
@@ -300,7 +425,9 @@ interface Entry {
   offset: number
 }
 
-export function zipStore(files: ReadonlyArray<[string, string]>): Uint8Array {
+export function zipStore(
+  files: ReadonlyArray<[string, string | Uint8Array]>,
+): Uint8Array {
   const encoder = new TextEncoder()
   const entries: Entry[] = []
   const chunks: Uint8Array[] = []
@@ -311,9 +438,10 @@ export function zipStore(files: ReadonlyArray<[string, string]>): Uint8Array {
     offset += bytes.length
   }
 
-  for (const [path, text] of files) {
+  for (const [path, content] of files) {
     const name = encoder.encode(path)
-    const data = encoder.encode(text)
+    /* AK8 — une entrée peut être binaire : le PNG d'une signature. */
+    const data = typeof content === 'string' ? encoder.encode(content) : content
     const crc = crc32(data)
     const header = new Uint8Array(30)
     const view = new DataView(header.buffer)
@@ -375,16 +503,51 @@ export function zipStore(files: ReadonlyArray<[string, string]>): Uint8Array {
 
 /** Build a complete .xlsx from the sheets given. Pure; returns the bytes. */
 export function buildWorkbook(sheets: readonly SheetSpec[]): Uint8Array {
-  const files: Array<[string, string]> = [
-    ['[Content_Types].xml', contentTypesXml(sheets.length)],
+  /**
+   * ⚠️ UNE SEULE FEUILLE PORTE DES IMAGES, ET C'EST ASSEZ : les deux exports de
+   *    cette application ont une feuille de données. Le jour où il en faudrait
+   *    deux, `drawing1` devient `drawing{n}` — et cette ligne est ce qui le
+   *    dira, plutôt qu'un classeur silencieusement amputé.
+   *
+   * ⚠️ ET SI UNE SEULE IMAGE EST ILLISIBLE, AUCUNE N'EST ÉCRITE : un classeur
+   *    dont une relation pointe vers un média absent ne s'ouvre pas du tout.
+   *    Les cellules, elles, gardent la signature en texte.
+   */
+  const sheetWithImages = sheets.findIndex((s) => (s.images ?? []).length > 0)
+  const images = sheetWithImages === -1 ? [] : (sheets[sheetWithImages].images ?? [])
+  const media: Array<[string, Uint8Array]> = []
+  images.forEach((image, i) => {
+    const bytes = pngBytesOf(image.dataUri)
+    if (bytes) media.push([`xl/media/image${i + 1}.png`, bytes])
+  })
+  const withImages = media.length > 0 && media.length === images.length
+
+  const files: Array<[string, string | Uint8Array]> = [
+    ['[Content_Types].xml', contentTypesXml(sheets.length, withImages)],
     ['_rels/.rels', ROOT_RELS],
     ['xl/workbook.xml', workbookXml(sheets)],
     ['xl/_rels/workbook.xml.rels', workbookRelsXml(sheets.length)],
     ['xl/styles.xml', STYLES_XML],
     ...sheets.map(
-      (s, i) => [`xl/worksheets/sheet${i + 1}.xml`, sheetXml(s)] as [string, string],
+      (s, i) =>
+        [
+          `xl/worksheets/sheet${i + 1}.xml`,
+          sheetXml(withImages ? s : { ...s, images: [] }),
+        ] as [string, string],
     ),
   ]
+  if (withImages) {
+    files.push([
+      `xl/worksheets/_rels/sheet${sheetWithImages + 1}.xml.rels`,
+      XML_DECL +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        `<Relationship Id="rIdDr1" Type="${REL}/drawing" Target="../drawings/drawing1.xml"/>` +
+        '</Relationships>',
+    ])
+    files.push(['xl/drawings/drawing1.xml', drawingXml(images)])
+    files.push(['xl/drawings/_rels/drawing1.xml.rels', drawingRelsXml(images)])
+    for (const entry of media) files.push(entry)
+  }
   return zipStore(files)
 }
 

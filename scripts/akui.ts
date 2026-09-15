@@ -33,6 +33,7 @@ const REMOTE = process.env.BASE_URL?.replace(/\/$/, '') ?? null
 const IPAD_PORTRAIT = { width: 1032, height: 1376 }
 const IPAD_LANDSCAPE = { width: 1376, height: 1032 }
 const PHONE = { width: 402, height: 874 }
+const DOWNLOADS = 'docs/screenshots/akpass/local'
 
 let passed = 0
 let failed = 0
@@ -165,12 +166,34 @@ export async function queueGeometry(page: Page, testId = 'farms-awaiting-docs') 
   }, testId)
 }
 
+/** Le pendant de `zipStore` : lire le classeur comme un tableur le lira. */
+function readStoredZip(bytes: Uint8Array): Map<string, Uint8Array> {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const out = new Map<string, Uint8Array>()
+  let at = 0
+  while (at + 30 <= bytes.length && view.getUint32(at, true) === 0x04034b50) {
+    const size = view.getUint32(at + 18, true)
+    const nameLength = view.getUint16(at + 26, true)
+    const extraLength = view.getUint16(at + 28, true)
+    const name = new TextDecoder().decode(bytes.slice(at + 30, at + 30 + nameLength))
+    const start = at + 30 + nameLength + extraLength
+    out.set(name, bytes.slice(start, start + size))
+    at = start + size
+  }
+  return out
+}
+
 const dialogOpen = (page: Page) => page.locator('[data-testid="assoc-form"]').count()
 
 async function formScenario(browserType: BrowserType, engine: string): Promise<void> {
   const browser: Browser = await browserType.launch()
   try {
-    const context = await browser.newContext({ viewport: IPAD_PORTRAIT, hasTouch: true, isMobile: engine === 'chromium' ? false : undefined })
+    const context = await browser.newContext({
+      viewport: IPAD_PORTRAIT,
+      hasTouch: true,
+      acceptDownloads: true,
+      isMobile: engine === 'chromium' ? false : undefined,
+    })
     const page = await context.newPage()
     const errors: string[] = []
     /* « ResizeObserver loop » est un avertissement du moteur, pas une erreur de l'app. */
@@ -433,6 +456,39 @@ async function formScenario(browserType: BrowserType, engine: string): Promise<v
         check(`A202 · ${engine} · the chip IS the queue (it filters)`, pressed === 'true', String(pressed))
       }
     }
+
+    section(`A206 — ${engine} : la signature dans les deux fichiers`)
+    /* La ferme signée plus haut dans ce même contexte porte une vraie encre. */
+    await page.setViewportSize(IPAD_LANDSCAPE)
+    await open(page, '#/coordinator/export', 2600)
+    await tap(page, 'export-format-association')
+    await page.waitForTimeout(500)
+    const files: Record<string, string> = {}
+    for (const [testId, ext] of [['export-xlsx', 'xlsx'], ['export-csv', 'csv']] as const) {
+      const wait = page.waitForEvent('download', { timeout: 30_000 })
+      await tap(page, testId)
+      const download = await wait
+      const path = `${DOWNLOADS}/${engine}-association.${ext}`
+      await download.saveAs(path)
+      files[ext] = path
+    }
+    const csvText = await Bun.file(files.csv).text()
+    const png = /"(data:image\/png;base64,[^"]+)"/.exec(csvText)
+    check(`A206 · ${engine} · the CSV carries the signature as a PNG, in one cell of its own`,
+      png !== null && png[1].length > 100 && png[1].length < 30_000,
+      png ? `${png[1].length} chars` : 'aucune')
+    const xlsx = new Uint8Array(await Bun.file(files.xlsx).arrayBuffer())
+    const parts = readStoredZip(xlsx)
+    const media = parts.get('xl/media/image1.png')
+    check(`A206 · ${engine} · the workbook carries the PNG itself, as a picture part`,
+      !!media && media[0] === 0x89 && media[1] === 0x50, media ? `${media.length} bytes` : 'aucune')
+    const drawing = new TextDecoder().decode(parts.get('xl/drawings/drawing1.xml') ?? new Uint8Array())
+    const sheetXml = new TextDecoder().decode(parts.get('xl/worksheets/sheet1.xml') ?? new Uint8Array())
+    check(`A206 · ${engine} · anchored to one cell, whose only content is that signature`,
+      drawing.includes('twoCellAnchor') && sheetXml.includes('s="5" t="inlineStr"><is><t xml:space="preserve">data:image/png;base64,'),
+      drawing.slice(0, 0))
+    check(`A206 · ${engine} · the cell stays under Excel's 32 767-character ceiling`,
+      (sheetXml.match(/data:image\/png;base64,[^<]+/g) ?? []).every((cell) => cell.length < 32_000))
 
     section(`A204 — ${engine} : l'archivage, et le retour`)
     await page.setViewportSize(IPAD_LANDSCAPE)

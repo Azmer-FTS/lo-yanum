@@ -17,6 +17,7 @@ import type { AssociationReport, Farm, RegionId } from '@core/index'
 
 import { Icon } from '../../components/Icon'
 import { Callout, PageHeader, Section } from '../../components/primitives'
+import { compactSignatures } from '../../report/signatureCells'
 import { downloadCsv, downloadMatrix } from '../../report/download'
 import { useCoreValue } from '../../hooks/useCore'
 
@@ -148,9 +149,13 @@ export function ExportScreen() {
             className="btn-primary"
             data-testid="export-xlsx"
             disabled={preview.length === 0}
-            onClick={() =>
-              downloadMatrix(built.matrix, built.widths, built.sheet, `${built.file}.xlsx`)
-            }
+            /* ★ AK8 — les signatures sont redessinées sous le plafond d'une
+               cellule AVANT d'écrire le fichier ; la fiche n'est pas touchée. */
+            onClick={() => {
+              void compactSignatures(built.matrix).then((matrix) =>
+                downloadMatrix(matrix, built.widths, built.sheet, `${built.file}.xlsx`),
+              )
+            }}
           >
             <Icon name="download" size={16} />
             {t('export.downloadXlsx')}
@@ -160,7 +165,11 @@ export function ExportScreen() {
             className="btn-secondary"
             data-testid="export-csv"
             disabled={preview.length === 0}
-            onClick={() => downloadCsv(built.matrix, `${built.file}.csv`)}
+            onClick={() => {
+              void compactSignatures(built.matrix).then((matrix) =>
+                downloadCsv(matrix, `${built.file}.csv`),
+              )
+            }}
           >
             <Icon name="download" size={16} />
             {t('export.downloadCsv')}
