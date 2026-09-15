@@ -9,7 +9,7 @@ import {
   analyseImport,
   fieldsFor,
   getDrivers,
-  getVisibleFarms,
+  getFarmsForImport,
   getVolunteers,
   guessField,
   importDrivers,
@@ -104,7 +104,8 @@ export function ImportWizardScreen() {
   const { kind: kindParam } = useParams<{ kind: string }>()
   const volunteers = useCoreValue(getVolunteers)
   const drivers = useCoreValue(getDrivers)
-  const farms = useCoreValue(getVisibleFarms)
+  /* AK7.5 — archivées comprises : une ligne ne doit pas créer un doublon. */
+  const farms = useCoreValue(getFarmsForImport)
 
   const kind = ((IMPORT_KINDS as readonly string[]).includes(kindParam ?? '')
     ? kindParam

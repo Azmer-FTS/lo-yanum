@@ -1791,6 +1791,40 @@ export function importVolunteers(drafts: VolunteerDraft[]): number {
  * `20260830000100_schema.sql` cleans the database, and this cleans the device.
  * Both are needed, and the app is the one the coordinator is looking at.
  */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AK7 (2026-09-16) — ARCHIVER, ET DÉSARCHIVER, EN UN GESTE CHACUN.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ⛔ AUCUNE PURGE, ET C'EST VÉRIFIÉ PLUTÔT QUE PROMIS : cette fonction touche
+ *    `data.farms` et RIEN D'AUTRE — ni `farmZones`, ni `anchorPoints`, ni
+ *    `threatZones`, ni `farmVisits`, ni `tours`, que `deleteFarm` juste en
+ *    dessous emporte. Elle ne passe pas non plus par `deletionPlan` : une
+ *    fiche avec des gardes passées se supprime mal et s'archive très bien.
+ */
+export function archiveFarm(farmId: string, reason = ''): boolean {
+  const index = data.farms.findIndex((f) => f.id === farmId)
+  if (index === -1) return false
+  data.farms[index] = {
+    ...data.farms[index],
+    archivedAt: iso(now()),
+    archiveReason: reason.trim() === '' ? undefined : reason.trim(),
+  }
+  commit()
+  return true
+}
+
+export function unarchiveFarm(farmId: string): boolean {
+  const index = data.farms.findIndex((f) => f.id === farmId)
+  if (index === -1) return false
+  /* ⚠️ `undefined` ET NON `null` : une fiche désarchivée doit redevenir
+     EXACTEMENT ce qu'elle était (A204 compare les deux objets), et `toRows`
+     écrit `null` en base pour l'un comme pour l'autre. */
+  data.farms[index] = { ...data.farms[index], archivedAt: undefined, archiveReason: undefined }
+  commit()
+  return true
+}
+
 export function deleteFarm(farmId: string): boolean {
   if (!deletionPlan('entity', farmId).allowed) return false
   data.farms = data.farms.filter((f) => f.id !== farmId)

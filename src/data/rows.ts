@@ -232,6 +232,11 @@ const farmMapping: Mapping<Farm> = {
             ? JSON.stringify(f.providedDocuments)
             : null,
           id_photo: f.idPhoto ?? null,
+          /* ★ AK7 — l'archive : un instant et un motif, deux colonnes
+             nullables. `?? null` comme les autres : « désarchivée » doit être
+             une valeur que l'aller-retour porte, pas une clé omise. */
+          archived_at: f.archivedAt ?? null,
+          archive_reason: f.archiveReason ?? null,
         },
       ],
     },
@@ -424,6 +429,13 @@ const farmMapping: Mapping<Farm> = {
     // AG6 · AG4 — et le retour de l'agriculteur.
     providedDocuments: readProvidedDocuments(p.provided_documents),
     idPhoto: optStr(p.id_photo),
+    /* AK7 — absente tant que rien n'a été archivé ; `null` est « désarchivée »
+       et c'est une valeur que l'aller-retour doit porter (voir `toRows`). */
+    /* `undefined` quand la colonne est vide — comme `positionMissing` : « pas
+       archivée » et « désarchivée » sont le même fait, et l'aller-retour de
+       `bun run mapping` doit rester une identité. */
+    archivedAt: p.archived_at == null ? undefined : ts(p.archived_at),
+    archiveReason: optStr(p.archive_reason),
   }),
 }
 

@@ -25,6 +25,7 @@ import {
   dayKeyOf,
   farmsToRenew,
   awaitingDocuments,
+  getArchivedFarms,
   now,
 } from '@core/index'
 import type { Farm, FarmCoverage, FarmStatus, FarmType, RegionId } from '@core/index'
@@ -85,7 +86,19 @@ export function FarmsListScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
   const navigate = useNavigate()
-  const farms = useCoreValue(getVisibleFarms)
+  /**
+   * ★★ AK7.3 — LE RÔLE, ET LA FILE DES ARCHIVÉES À CÔTÉ.
+   *
+   * `getVisibleFarms` ne rend plus les archivées (access.ts) : elles sortent
+   * donc des listes, de la carte, des vignettes et des compteurs sans qu'un
+   * seul écran ait à y penser. La pastille « בארכיון » est le SEUL endroit qui
+   * les demande, et elle remplace alors le rôle entier — un filtre qui les
+   * ajouterait aux actives serait un rôle où l'on ne sait plus ce qu'on lit.
+   */
+  const activeFarms = useCoreValue(getVisibleFarms)
+  const archivedFarms = useCoreValue(getArchivedFarms)
+  const [archivedOnly, setArchivedOnly] = useState(false)
+  const farms = archivedOnly ? archivedFarms : activeFarms
   const zones = useCoreValue(getAllVisibleFarmZones)
   // G18 — coordinator-only by construction: `access.ts` returns [] for every
   // other role, so no condition here decides who sees the layer.
@@ -703,7 +716,9 @@ export function FarmsListScreen() {
         (neglected ? 1 : 0) +
         (gapOnly ? 1 : 0) +
         (noOutlineOnly ? 1 : 0) +
-        (renewOnly ? 1 : 0)
+        (renewOnly ? 1 : 0) +
+        (docsOnly ? 1 : 0) +
+        (archivedOnly ? 1 : 0)
       }
       onClear={() => {
         setStatus(null)
@@ -714,6 +729,8 @@ export function FarmsListScreen() {
         setNeglected(false)
         setGapOnly(false)
         setNoOutlineOnly(false)
+        setDocsOnly(false)
+        setArchivedOnly(false)
       }}
     >
       <RegionFilter value={region} onChange={setRegion} counts={regionCounts} testId="farms-region" />
@@ -721,7 +738,7 @@ export function FarmsListScreen() {
           filtering now. Only the type pills remain, they have no chip.
           AA1.3 — and on a phone the three of them are one grid of equal
           widths: « un libellé court ne donne pas une pastille étroite ». */}
-      <PillGroup name="farm-type" cols={3}>
+      <PillGroup name="farm-type" cols={2}>
         {TYPES.map((ft) => (
           <FilterPill
             key={ft}
@@ -733,6 +750,26 @@ export function FarmsListScreen() {
           </FilterPill>
         ))}
       </PillGroup>
+      {/**
+        * ★★ AK7.3 — « בארכיון », UNE PASTILLE ET NON UNE VIGNETTE.
+        *
+        * Les vignettes du haut sont des FILES de travail — ce qu'il reste à
+        * faire. L'archive n'est pas du travail en attente : c'est l'autre
+        * moitié du rôle, qu'on va consulter. Elle est donc dans la barre de
+        * filtres, avec son compte, et elle ne s'affiche que quand il y a
+        * quelque chose dedans (la règle des trois files d'AC/AD/AG).
+        */}
+      {archivedFarms.length > 0 && (
+        <FilterPill
+          active={archivedOnly}
+          onClick={() => setArchivedOnly((v) => !v)}
+          count={archivedFarms.length}
+          title={t('archive.filterHint')}
+          testId="farms-archived"
+        >
+          {t('archive.filter')}
+        </FilterPill>
+      )}
       {/**
         * ★★ AA6 — AND THE SORT IS HERE ONLY ON A PHONE.
         *

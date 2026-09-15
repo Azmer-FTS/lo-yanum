@@ -41,7 +41,8 @@ bun run typecheck && bun run ajupdate && bun run aipass && bun run accept
 | Déploiement `0d2b506` | ❌ porte `agreement` (build réel) : le bandeau ajoute un 2ᵉ `agreement-view` ; porte re-ciblée (hors `farm-paper`), rejouée en local 18/18 |
 | Déploiement `e8660ef` | ✅ servi sur les deux URLs (AK3 · AK4 · AK5) |
 | AK6 carte | ✅ CAUSE MESURÉE : événement `offline` → `MapTools.applyConnectivity` → `onBase('vector')` → `writeStoredBase('vector')` (+ `readStoredBase` filtrait par `navigator.onLine` au lancement). Correctif : plus aucune écriture automatique, bande `map-imagery-notice` (hors ligne / tuiles en échec), reprise des tuiles satellite. `akmap` ROUGE 15/11 (`dist-ak6-before`) → VERT 26/0 ; `backdrop` réécrite 38/38. Logs `docs/ak/ak6-*.log` |
-| AK7 → AK9 | à faire |
+| AK7 archivage | ✅ `archivedAt` + `archiveReason` (migration `20260916000200`, appliquée sur prod) ; `archiveFarm`/`unarchiveFarm` ne touchent QUE `data.farms` ; `getVisibleFarms` retire les archivées (listes, carte, zones, postes, compteurs, objectif, compte rendu), `getFarm` les ouvre encore, `getFarmsForImport` les donne à l'import (pas de doublon, pas de désarchivage, rapport « עודכנו ונשארו בארכיון ») ; `akpass` 43/43, `akui` A204 ; `persist` 109/109 (les deux mutations y sont conduites) ; porte A152 corrigée (clés au pluriel) |
+| AK8 · AK9 | à faire |
 
 Décisions AK posées : (1) `type` reste la seule vérité de la nature, 'unknown' = rien coché ;
 (2) שטחים שמירה = déclaré ou vide, jamais מעובד + מרעה (les portes AC/AD réécrites, pas supprimées) ;

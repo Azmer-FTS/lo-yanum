@@ -1,5 +1,19 @@
 import {
   ASSOCIATION_COLUMNS,
+  analyseProspection,
+  applyProspection,
+  archiveFarm,
+  getAllVisibleAnchorPoints,
+  getAllVisibleFarmZones,
+  getArchivedFarms,
+  getDunamKpis,
+  getFarm,
+  getFarmsForImport,
+  getFarmStatusCounts,
+  isArchived,
+  identityKey,
+  HOME_BASE,
+  unarchiveFarm,
   FARM_TYPE_OPTIONS,
   LEGAL_ENTITY_OPTIONS,
   activitiesOf,
@@ -12,6 +26,7 @@ import {
   buildProgrammeReport,
   closureBlocked,
   createFarm,
+  effectiveAreas,
   getVisibleFarms,
   parseAgreementBlocks,
   plainText,
@@ -195,6 +210,124 @@ section('A202 — les documents manquants bloquent la clôture')
     r.farmsSignedWithDocuments === 1 && r.farmsSignedAwaitingDocuments === total - 1,
     `${r.farmsSignedWithDocuments} + ${r.farmsSignedAwaitingDocuments} = ${total}`)
   check('A202 · the report has the two labels', typeof he.report.signedWithDocs === 'string' && typeof he.report.signedAwaitingDocs === 'string')
+}
+
+// ---------------------------------------------------------------------------
+section('A204 · A205 — archiver n\'est pas supprimer')
+// ---------------------------------------------------------------------------
+{
+  resetStore()
+  const before = {
+    farms: getVisibleFarms().length,
+    zones: getAllVisibleFarmZones().length,
+    anchors: getAllVisibleAnchorPoints().length,
+    dunams: getDunamKpis(),
+    statuses: getFarmStatusCounts().reduce((n, c) => n + c.count, 0),
+    report: buildProgrammeReport(),
+    rawZones: _raw().farmZones.length,
+    rawAnchors: _raw().anchorPoints.length,
+    rawVisits: _raw().farmVisits.length,
+    rawThreats: _raw().threatZones.length + _raw().threatVectors.length,
+    rawTours: JSON.stringify(_raw().tours),
+  }
+  /* Une ferme qui COMPTE : elle a des zones, des postes et une surface. */
+  /* ⚠️ ET SON IDENTITÉ EST UNIQUE dans le jeu : deux fiches d'un même יישוב
+     sans שם החווה partagent une clé (AA4.2), et la ligne d'import tomberait
+     sur la voisine — ce qui ne dirait rien sur l'archive. */
+  const keyOf = (f: Farm) => identityKey(f)
+  const target = getVisibleFarms().find(
+    (f) =>
+      getAllVisibleFarmZones().some((z) => z.farmId === f.id) &&
+      effectiveAreas(f).total > 0 &&
+      getVisibleFarms().filter((o) => keyOf(o) === keyOf(f)).length === 1,
+  )!
+  const snapshot = JSON.stringify(target)
+
+  check('A204 · archiving answers true and stamps the day', archiveFarm(target.id, 'התחרטו'))
+  const archived = getArchivedFarms().find((f) => f.id === target.id)
+  check('A204 · it is out of the roster, and in the archive', 
+    !getVisibleFarms().some((f) => f.id === target.id) && !!archived && isArchived(archived))
+  check('A204 · its zones and its posts leave the map with it',
+    !getAllVisibleFarmZones().some((z) => z.farmId === target.id) &&
+      !getAllVisibleAnchorPoints().some((a) => a.farmId === target.id))
+  const now = {
+    farms: getVisibleFarms().length,
+    dunams: getDunamKpis(),
+    statuses: getFarmStatusCounts().reduce((n, c) => n + c.count, 0),
+    report: buildProgrammeReport(),
+  }
+  check('A204 · out of the counters and the target', now.farms === before.farms - 1 &&
+    now.dunams.guardedDunams + now.dunams.potentialDunams <
+      before.dunams.guardedDunams + before.dunams.potentialDunams &&
+    now.statuses === before.statuses - 1,
+    `${before.farms}→${now.farms}`)
+  check('A204 · and out of the report the association sends',
+    now.report.entitiesTotal === before.report.entitiesTotal - 1 &&
+      now.report.declaredDunams < before.report.declaredDunams &&
+      now.report.weightedGuardedDunams <= before.report.weightedGuardedDunams)
+  check('A204 · its own fiche still opens — an archive one cannot open is a deletion',
+    getFarm(target.id)?.id === target.id)
+  check('A204 · ⛔ NOTHING was purged: zones, posts, visits, threats, tours untouched',
+    _raw().farmZones.length === before.rawZones &&
+      _raw().anchorPoints.length === before.rawAnchors &&
+      _raw().farmVisits.length === before.rawVisits &&
+      _raw().threatZones.length + _raw().threatVectors.length === before.rawThreats &&
+      JSON.stringify(_raw().tours) === before.rawTours,
+    `${_raw().farmZones.length}/${before.rawZones} zones`)
+  check('A204 · the reason is kept, short and optional', archived?.archiveReason === 'התחרטו')
+
+  /* La ligne du fichier désigne la MÊME exploitation : son סמל יישוב quand la
+     fiche en porte un (c'est la clé d'identité d'AA4.2), son nom sinon. */
+  /* La clé d'identité d'AA4.2 est יישוב + מועצה + שם החווה + שם החקלאי : la
+     ligne les porte tous, sinon elle désigne une autre fiche du même יישוב. */
+  const importHeaders = ['שם המקום', 'יישוב', 'מועצה אזורית', 'סמל יישוב', 'שם החווה', 'שם החקלאי', 'נייד החקלאי']
+  const importRow = [
+    target.name,
+    target.locality,
+    target.council ?? '',
+    target.localityCode == null ? '' : String(target.localityCode),
+    target.farmName ?? '',
+    target.farmerName ?? '',
+    '050-1111111',
+  ]
+  check('A205 · an import row that matches an archived fiche finds it (no duplicate)', (() => {
+    const plan = analyseProspection(importHeaders, [importRow], getFarmsForImport()).plan
+    return plan.created.length === 0 && plan.updated.some((u) => u.farmId === target.id)
+  })())
+  {
+    const plan = analyseProspection(importHeaders, [importRow], getFarmsForImport()).plan
+    applyProspection(plan, HOME_BASE)
+    const after = getFarm(target.id)
+    check('A205 · it is UPDATED without being brought back', 
+      after?.farmerPhone === '050-1111111' && isArchived(after!) && !getVisibleFarms().some((f) => f.id === target.id),
+      `${after?.farmerPhone} archived=${after ? isArchived(after) : '?'}`)
+  }
+
+  check('A204 · unarchiving is one gesture, and gives the fiche back', (() => {
+    unarchiveFarm(target.id)
+    const back = getVisibleFarms().find((f) => f.id === target.id)
+    return !!back && !isArchived(back) && back.archiveReason === undefined
+  })())
+  check('A204 · the roster, the map and the counters are as they were',
+    getVisibleFarms().length === before.farms &&
+      getAllVisibleFarmZones().length === before.zones &&
+      getAllVisibleAnchorPoints().length === before.anchors &&
+      buildProgrammeReport().entitiesTotal === before.report.entitiesTotal)
+  /* ★ ET « RIEN N'EST PERDU » SE VÉRIFIE SUR UNE FICHE QUE L'IMPORT N'A PAS
+     TOUCHÉE : les deux objets, avant l'archivage et après le retour, doivent
+     être le MÊME. */
+  const untouched = getVisibleFarms().find((f) => f.id !== target.id)!
+  const untouchedBefore = JSON.stringify(untouched)
+  archiveFarm(untouched.id)
+  unarchiveFarm(untouched.id)
+  check('A204 · a fiche archived and brought back is byte-for-byte the same record',
+    JSON.stringify(getFarm(untouched.id)) === untouchedBefore,
+    (() => {
+      const a = JSON.parse(untouchedBefore) as Record<string, unknown>
+      const b = getFarm(untouched.id) as unknown as Record<string, unknown>
+      const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])]
+      return keys.filter((k) => JSON.stringify(a[k]) !== JSON.stringify(b[k])).join(', ') || 'identique'
+    })())
 }
 
 console.log('')

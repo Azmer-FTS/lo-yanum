@@ -12,6 +12,9 @@ import {
   effectiveAreas,
   guardedDunamsOf,
   awaitingDocuments,
+  archiveFarm,
+  isArchived,
+  unarchiveFarm,
   documentChecklist,
   measuredAreas,
   landRightIssue,
@@ -85,6 +88,7 @@ import {
   EmptyState,
   KeyValue,
   LoadingState,
+  Modal,
   ActionPill,
   ActionPillItem,
   PageHeader,
@@ -773,6 +777,57 @@ function PaperStrip({
   )
 }
 
+/**
+ * ★★ AK7.1 — LE MOTIF EST COURT ET FACULTATIF, et la fenêtre dit ce que
+ *    l'archivage fait ET ce qu'il ne fait pas. « Rien n'est perdu » est une
+ *    phrase qu'il faut lire AVANT d'appuyer, pas découvrir après.
+ */
+function ArchiveModal({
+  farm,
+  onClose,
+  onDone,
+}: {
+  farm: Farm
+  onClose: () => void
+  onDone: () => void
+}) {
+  const { t } = useTranslation()
+  const [reason, setReason] = useState('')
+  return (
+    <Modal title={t('archive.title')} onClose={onClose} testId="archive-modal">
+      <p className="text-caption text-content-secondary">{t('archive.hint')}</p>
+      <label className="label mt-4 block" htmlFor="archive-reason">
+        {t('archive.reason')}
+      </label>
+      <input
+        id="archive-reason"
+        data-testid="archive-reason"
+        className="input min-h-[3rem] text-body"
+        value={reason}
+        placeholder={t('archive.reasonPlaceholder')}
+        onChange={(e) => setReason(e.target.value)}
+      />
+      <div className="mt-4 flex justify-end gap-2">
+        <button type="button" className="btn-secondary" onClick={onClose}>
+          {t('common.cancel')}
+        </button>
+        <button
+          type="button"
+          className="btn-primary"
+          data-testid="archive-confirm"
+          onClick={() => {
+            archiveFarm(farm.id, reason)
+            onDone()
+          }}
+        >
+          <Icon name="download" size={16} />
+          {t('archive.confirm')}
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
 export function FarmDetailScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -817,6 +872,8 @@ export function FarmDetailScreen() {
   /* ★★ AK4 — le formulaire de l'association, en fenêtre, depuis la fiche. */
   const [formOpen, setFormOpen] = useState(false)
   const [justSigned, setJustSigned] = useState(false)
+  /* ★★ AK7.1 — l'archivage, en un geste, avec un motif court facultatif. */
+  const [archiveOpen, setArchiveOpen] = useState(false)
   const [editVisitId, setEditVisitId] = useState<string | null>(null)
   const [selectedAnchorId, setSelectedAnchorId] = useState<string | null>(null)
   // G15 — zone selection lives HERE so the list's "ערוך" buttons and the
@@ -998,6 +1055,18 @@ export function FarmDetailScreen() {
                   testId="farm-send-link"
                   onClick={() => setLinkOpen(true)}
                 />
+                {/* ★★ AK7.1 — ARCHIVER EST À CÔTÉ DE SUPPRIMER ET N'EST PAS
+                    SUPPRIMER : c'est le geste qu'on veut voir choisir quand
+                    une exploitation se désiste. Il n'emporte rien. */}
+                <ActionPillItem
+                  icon={isArchived(farm) ? 'undo' : 'download'}
+                  label={t(isArchived(farm) ? 'archive.undo' : 'archive.action')}
+                  testId="farm-archive"
+                  onClick={() => {
+                    if (isArchived(farm)) unarchiveFarm(farm.id)
+                    else setArchiveOpen(true)
+                  }}
+                />
                 <ActionPillItem
                   icon="trash"
                   label={t('deletion.action')}
@@ -1012,6 +1081,14 @@ export function FarmDetailScreen() {
               </ActionPill>
             }
           />
+
+          {archiveOpen && (
+            <ArchiveModal
+              farm={farm}
+              onClose={() => setArchiveOpen(false)}
+              onDone={() => setArchiveOpen(false)}
+            />
+          )}
 
           {formOpen && (
             <AssociationFormModal
@@ -1036,6 +1113,36 @@ export function FarmDetailScreen() {
                 <span className="text-caption text-content-secondary">
                   {t('testData.recordHint')}
                 </span>
+              </div>
+            )}
+
+            {/* ★★ AK7.2 — UNE FICHE ARCHIVÉE LE DIT EN TÊTE, ET SE REND EN UN
+                GESTE. Elle n'est nulle part ailleurs : ni liste, ni carte, ni
+                compteur, ni objectif, ni compte rendu. */}
+            {isArchived(farm) && (
+              <div
+                role="status"
+                data-testid="farm-archived-banner"
+                className="card card-pad flex flex-wrap items-center justify-between gap-3 border-s-4 border-s-content-muted bg-surface-high"
+              >
+                <span className="flex items-center gap-2 text-caption font-semibold text-content-secondary">
+                  <Icon name="download" size={17} />
+                  {farm.archiveReason
+                    ? t('archive.bannerWithReason', {
+                        date: formatDate(farm.archivedAt ?? '', locale),
+                        reason: farm.archiveReason,
+                      })
+                    : t('archive.banner', { date: formatDate(farm.archivedAt ?? '', locale) })}
+                </span>
+                <button
+                  type="button"
+                  data-testid="farm-unarchive"
+                  className="btn-secondary min-h-[2.75rem]"
+                  onClick={() => unarchiveFarm(farm.id)}
+                >
+                  <Icon name="undo" size={16} />
+                  {t('archive.undo')}
+                </button>
               </div>
             )}
 

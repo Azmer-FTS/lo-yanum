@@ -66,6 +66,9 @@ export {
   setCommitmentFulfilled,
   createFarm,
   updateFarm,
+  // AK7 — archiver n'est pas supprimer.
+  archiveFarm,
+  unarchiveFarm,
   // AD2.2 — les deux gestes de la note d'écart.
   alignDeclaredToOutline,
   keepDeclaredArea,

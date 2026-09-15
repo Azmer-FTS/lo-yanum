@@ -434,6 +434,71 @@ async function formScenario(browserType: BrowserType, engine: string): Promise<v
       }
     }
 
+    section(`A204 — ${engine} : l'archivage, et le retour`)
+    await page.setViewportSize(IPAD_LANDSCAPE)
+    await open(page, '#/coordinator/farms', 3200)
+    /* ⚠️ Dans le panneau étroit du mode splitté, les pastilles se replient
+       derrière « סינון » (AB2) : on l'ouvre, comme le PO. */
+    const openFilters = async (): Promise<void> => {
+      if ((await page.getByTestId('farms-archived').count()) > 0) return
+      if ((await page.getByTestId('filter-dropdown').count()) > 0) {
+        await tap(page, 'filter-dropdown')
+        await page.waitForTimeout(400)
+      }
+    }
+    const rosterCount = async () =>
+      await page.evaluate(() => ({
+        rows: document.querySelectorAll('[data-testid="farms-top"]')[0]?.textContent?.match(/\d+/g)?.slice(0, 2) ?? [],
+        markers: document.querySelectorAll('.maplibregl-marker').length,
+        archivedPill: document.querySelector('[data-testid="farms-archived"]') !== null,
+      }))
+    const start = await rosterCount()
+    await openFilters()
+    check(`A204 · ${engine} · nothing is archived yet, so the filter is not drawn`,
+      (await page.getByTestId('farms-archived').count()) === 0)
+
+    await open(page, '#/coordinator/farms/farm-04', 3000)
+    const archivedName = (await page.locator('h1').first().textContent()) ?? ''
+    await tap(page, 'farm-archive')
+    await page.waitForTimeout(400)
+    check(`A204 · ${engine} · the gesture opens one short window with an optional reason`,
+      (await page.getByTestId('archive-modal').count()) === 1 &&
+        (await page.getByTestId('archive-reason').count()) === 1)
+    await tap(page, 'archive-reason')
+    await page.keyboard.type('התחרטו')
+    await tap(page, 'archive-confirm')
+    await page.waitForTimeout(800)
+    const banner = (await page.getByTestId('farm-archived-banner').textContent().catch(() => '')) ?? ''
+    check(`A204 · ${engine} · the fiche says it is archived, with the reason and the way back`,
+      banner.includes('בארכיון') && banner.includes('התחרטו') &&
+        (await page.getByTestId('farm-unarchive').count()) === 1, banner.trim())
+
+    await open(page, '#/coordinator/farms', 3200)
+    const beforeOpen = await rosterCount()
+    await openFilters()
+    const after = { ...(await rosterCount()), markers: beforeOpen.markers }
+    const listText = await page.locator('[data-testid="farms-top"]').first().innerText()
+    check(`A204 · ${engine} · it is gone from the roster and from the map`,
+      after.markers === start.markers - 1 && !listText.includes(archivedName),
+      `markers ${start.markers} → ${after.markers}`)
+    check(`A204 · ${engine} · and a filter shows it, with its count`, after.archivedPill)
+    await tap(page, 'farms-archived')
+    await page.waitForTimeout(900)
+    const inFilter = await page.evaluate(() => document.body.innerText)
+    check(`A204 · ${engine} · the filter shows the archived fiche`, inFilter.includes(archivedName.trim()))
+
+    await open(page, '#/coordinator/farms/farm-04', 3000)
+    await tap(page, 'farm-unarchive')
+    await page.waitForTimeout(800)
+    check(`A204 · ${engine} · one gesture brings it back`,
+      (await page.getByTestId('farm-archived-banner').count()) === 0)
+    await open(page, '#/coordinator/farms', 3200)
+    const backBefore = await rosterCount()
+    await openFilters()
+    const back = { ...(await rosterCount()), markers: backBefore.markers }
+    check(`A204 · ${engine} · the roster and the map are as they were`,
+      back.markers === start.markers && !back.archivedPill, `markers ${back.markers}`)
+
     check(`AK · ${engine} · no page error`, errors.length === 0, errors.slice(0, 2).join(' | '))
     await context.close()
   } finally {

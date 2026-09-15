@@ -822,14 +822,25 @@ section('7 — chaque clé de traduction employée existe vraiment')
  */
 {
   const he = (await Bun.file('src/locales/he.json').json()) as Record<string, unknown>
+  /**
+   * ⚠️ AK7 — ET UNE CLÉ AU PLURIEL N'EST PAS UNE CLÉ MANQUANTE. i18next range
+   *    `pin.linkDoneMany` sous `pin.linkDoneMany_one` et `…_other` ; la porte
+   *    la déclarait absente depuis AI, ce qui était un défaut de la PORTE et
+   *    non du produit (la leçon d'AH11 : une porte périmée annonce un rouge que
+   *    trois passes recopient sans le lire).
+   */
+  const PLURALS = ['', '_zero', '_one', '_two', '_few', '_many', '_other']
   const has = (key: string): boolean => {
+    const parts = key.split('.')
+    const last = parts.pop() as string
     let cur: unknown = he
-    for (const part of key.split('.')) {
+    for (const part of parts) {
       if (typeof cur !== 'object' || cur === null) return false
       cur = (cur as Record<string, unknown>)[part]
       if (cur === undefined) return false
     }
-    return true
+    if (typeof cur !== 'object' || cur === null) return false
+    return PLURALS.some((suffix) => (cur as Record<string, unknown>)[`${last}${suffix}`] !== undefined)
   }
 
   const files: string[] = []

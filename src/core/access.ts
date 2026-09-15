@@ -257,7 +257,13 @@ export function isGroupPhoneHolder(mission: Mission): boolean {
 
 // --- Farms -----------------------------------------------------------------
 
-export function getVisibleFarms(): Farm[] {
+/**
+ * ★★ AK7 — CE QUE LE RÔLE A LE DROIT DE VOIR, ARCHIVE COMPRISE. Un seul
+ *    endroit décide du rôle ; `getVisibleFarms` retire ensuite les archivées,
+ *    et `getArchivedFarms` ne garde qu'elles. Les deux sortent d'ici, donc
+ *    elles ne peuvent pas diverger.
+ */
+function farmsForRole(): Farm[] {
   const s = getSession()
   const d = _raw()
 
@@ -276,8 +282,37 @@ export function getVisibleFarms(): Farm[] {
   }
 }
 
+/** Archivée ? La question se pose ici et nulle part ailleurs. */
+export const isArchived = (farm: { archivedAt?: string | null }): boolean =>
+  (farm.archivedAt ?? null) !== null
+
+/**
+ * ⚠️ AK7.2 — TOUT CE QUI COMPTE PASSE PAR ICI. Les listes, la carte (les zones
+ *    et les postes se filtrent sur cette liste), les compteurs, l'objectif et
+ *    le compte rendu (`getCountableFarms`) : retirer les archivées à cet
+ *    endroit les retire de tous, et il n'y a pas de second endroit à oublier.
+ */
+export function getVisibleFarms(): Farm[] {
+  return farmsForRole().filter((f) => !isArchived(f))
+}
+
+/** AK7.3 — la file « בארכיון », et le seul écran qui les montre. */
+export function getArchivedFarms(): Farm[] {
+  return farmsForRole().filter(isArchived)
+}
+
+/**
+ * ⚠️ ET LA FICHE ELLE-MÊME S'OUVRE ENCORE. Une archive qu'on ne peut plus
+ *    ouvrir est une suppression avec une autre étiquette : c'est depuis sa
+ *    fiche qu'on la désarchive.
+ */
 export function getFarm(farmId: string): Farm | null {
-  return getVisibleFarms().find((f) => f.id === farmId) ?? null
+  return farmsForRole().find((f) => f.id === farmId) ?? null
+}
+
+/** Les fiches qu'un import doit connaître : archivées comprises (AK7.5). */
+export function getFarmsForImport(): Farm[] {
+  return farmsForRole()
 }
 
 export function getFarmStatusCounts(): FarmStatusCount[] {

@@ -17,7 +17,8 @@ import {
   associationInputs,
   associationSignatures,
   guessAssociationMapping,
-  getVisibleFarms,
+  getFarmsForImport,
+  isArchived,
   guessProspectionField,
   guessSignatureField,
   normaliseValue,
@@ -177,7 +178,16 @@ function CountBand({
 
 export function SheetImportScreen({ kind }: { kind: SheetKind }) {
   const { t } = useTranslation()
-  const farms = useCoreValue(getVisibleFarms)
+  /**
+   * ★★ AK7.5 — L'IMPORT CONNAÎT LES FICHES ARCHIVÉES.
+   *
+   * ⚠️ AVEC `getVisibleFarms` une ligne dont la fiche est archivée n'aurait
+   *    trouvé AUCUNE correspondance et aurait créé un DOUBLON — la ferme
+   *    reviendrait par la porte de derrière, sous un second identifiant. Elle
+   *    est donc mise à jour SANS être désarchivée (aucun patch ne porte
+   *    `archivedAt`), et le rapport le dit.
+   */
+  const farms = useCoreValue(getFarmsForImport)
 
   const [step, setStep] = useState<Step>('upload')
   const [fileName, setFileName] = useState('')
@@ -187,6 +197,7 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const [report, setReport] = useState<{
+    archivedUpdated?: number
     created: number
     updated: number
     rejected: number
@@ -304,6 +315,14 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
   const run = () => {
     if (!analysis) return
     remember(kind, headers, mapping)
+    /* AK7.5 — combien des fiches mises à jour sont archivées. Compté AVANT
+       d'appliquer : après, la fiche porte les valeurs du fichier. */
+    const archivedIds = new Set(farms.filter(isArchived).map((f) => f.id))
+    const archivedUpdated =
+      kind === 'signatures'
+        ? 0
+        : (analysis.plan as ProspectionPlan).updated.filter((u) => u.farmId != null && archivedIds.has(u.farmId))
+            .length
     if (kind === 'prospection') {
       const plan = analysis.plan as ProspectionPlan
       const applied = applyProspection(plan, HOME_BASE)
@@ -313,6 +332,7 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
         rejected: plan.rejected.length,
         unknown: plan.unknown.length,
         withoutSignature: 0,
+        archivedUpdated,
       })
     } else if (kind === 'association') {
       const plan = analysis.plan as ProspectionPlan
@@ -329,6 +349,7 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
         rejected: plan.rejected.length,
         unknown: 0,
         withoutSignature: 0,
+        archivedUpdated,
       })
     } else {
       const plan = analysis.plan as SignaturePlan
@@ -588,6 +609,10 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
               report.unknown > 0 ? t('import.reportUnknown', { count: report.unknown }) : '',
               report.withoutSignature > 0
                 ? t('import.reportNoSignature', { count: report.withoutSignature })
+                : '',
+              /* AK7.5 — dit, et pas seulement fait. */
+              report.archivedUpdated
+                ? t('import.reportArchivedKept', { count: report.archivedUpdated })
                 : '',
             ]
               .filter(Boolean)

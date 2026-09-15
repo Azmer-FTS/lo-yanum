@@ -64,6 +64,8 @@ import {
   replaceSnapshot,
   resetStore,
   saveTour,
+  archiveFarm,
+  unarchiveFarm,
   setCommitmentFulfilled,
   setIncidentResolved,
   setMissionDriverConfirmed,
@@ -452,6 +454,18 @@ check('createFarm emitted the new entity', hit(recorded, 'farms', createdFarmId)
     () => setCommitmentFulfilled(withCommitment.id, 0, !withCommitment.commitments[0].fulfilled),
     [['farms', withCommitment.id]],
   )
+}
+
+/**
+ * ★★ AK7 — ARCHIVER ET DÉSARCHIVER SONT DES ÉCRITURES COMME LES AUTRES, et
+ *    elles n'emportent RIEN : un seul agrégat part à chaque fois, celui de la
+ *    fiche. Si l'une d'elles émettait aussi des zones ou des postes, ce serait
+ *    une suppression déguisée, et c'est ici que ça se verrait.
+ */
+{
+  const toArchive = _raw().farms.find((f) => f.id !== createdFarmId)!
+  emits('archiveFarm', () => void archiveFarm(toArchive.id, 'התחרטו'), [['farms', toArchive.id]])
+  emits('unarchiveFarm', () => void unarchiveFarm(toArchive.id), [['farms', toArchive.id]])
 }
 
 // Zones, anchors, threats --------------------------------------------------

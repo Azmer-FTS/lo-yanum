@@ -573,6 +573,32 @@ export interface Farm {
    *    numéro est dans `farmerId`, tapé par quelqu'un.
    */
   idPhoto?: string | null
+
+  /**
+   * ═════════════════════════════════════════════════════════════════════════
+   * ★★ AK7 (2026-09-16) — L'ARCHIVAGE, QUI N'EST PAS UNE SUPPRESSION.
+   * ═════════════════════════════════════════════════════════════════════════
+   *
+   *   « Le PO entrera des exploitations qui se désisteront ensuite. Une fiche
+   *     archivée disparaît des listes, de la carte, des compteurs, de
+   *     l'objectif et du compte rendu — mais rien n'est perdu. »
+   *
+   * ⚠️ ET CE N'EST PAS `deleteFarm` DÉGUISÉ. La suppression (PO POINT 8) passe
+   *    par `deletionPlan`, emporte les zones, les postes, les menaces et les
+   *    visites, et ne revient pas. Archiver n'emporte RIEN : la ligne reste,
+   *    ses enfants restent, et `unarchiveFarm` rend la fiche telle quelle.
+   *    Réutiliser le mécanisme de suppression serait le seul moyen de perdre
+   *    ce que cette fonction existe pour garder.
+   *
+   * ⚠️ « סירבה » EST UN STATUT, L'ARCHIVE EST UN ÉTAT. Une exploitation qui
+   *    refuse reste dans le rôle, comptée comme refus ; une fiche archivée
+   *    sort du rôle. Le PO peut faire les deux, dans cet ordre.
+   *
+   * L'instant ISO de l'archivage, ou absent/`null` quand la fiche est active.
+   */
+  archivedAt?: string | null
+  /** Motif court, facultatif (« התחרטו », « נמכרה »). */
+  archiveReason?: string
 }
 
 /**
