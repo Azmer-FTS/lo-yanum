@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-import { unknownAgreementVars } from '@core/index'
+import { plainText, unknownAgreementVars } from '@core/index'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -67,7 +67,13 @@ export function readTemplateOverride(): string | null {
 
 /** Le gabarit en vigueur : la surcharge, sinon celui qui est livré. */
 export function agreementTemplate(shipped: string): string {
-  return readTemplateOverride() ?? shipped
+  const override = readTemplateOverride()
+  /* ★ AK3 — un gabarit enregistré qui est MOT POUR MOT le texte livré avant
+     le gras (le PO a pressé « שמירה » sans rien changer) est le texte livré :
+     il reçoit le gras de l'association. Un gabarit réellement modifié, lui,
+     n'est jamais touché. */
+  if (override !== null && override === plainText(shipped) && override !== shipped) return shipped
+  return override ?? shipped
 }
 
 export type TemplateSaveResult = { ok: true } | { ok: false; unknown: string[] }

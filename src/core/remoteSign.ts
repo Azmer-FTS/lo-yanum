@@ -203,3 +203,38 @@ export function signFormState(
 export function canSign(state: SignFormState): boolean {
   return state.blocked === null
 }
+
+// ---------------------------------------------------------------------------
+// ★★ AK3 (2026-09-16) — LES DEUX CHAMPS NUMÉRIQUES DU FORMULAIRE DE L'ASSOCIATION
+// ---------------------------------------------------------------------------
+
+/**
+ * « ת״ז — numérique ». Des chiffres, et SEULEMENT des chiffres, gardés en
+ * TEXTE : « 021985189 » reste « 021985189 ». ⚠️ Jamais `Number()` ici ni en
+ * aval — c'est exactement ainsi que le zéro initial « saute chez eux ».
+ */
+export function idDigits(raw: string): string {
+  return raw.replace(/\D/g, '').slice(0, 9)
+}
+
+/** Une ת״ז et un ח״פ ont neuf chiffres, zéros initiaux compris. */
+export function isValidIdNumber(raw: string): boolean {
+  return /^\d{9}$/.test(raw.trim())
+}
+
+/**
+ * « נייד — numérique, format (0XX) XXX-XXXX », mis en forme PENDANT la frappe :
+ * le doigt ne tape que des chiffres, la ponctuation se pose d'elle-même.
+ */
+export function formatMobileTyping(raw: string): string {
+  const d = raw.replace(/\D/g, '').slice(0, 10)
+  if (d.length === 0) return ''
+  if (d.length <= 3) return `(${d}`
+  if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`
+}
+
+export function isValidMobile(raw: string): boolean {
+  const d = raw.replace(/\D/g, '')
+  return d.length === 10 && d.startsWith('0')
+}

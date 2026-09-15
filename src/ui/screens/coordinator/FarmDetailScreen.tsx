@@ -65,6 +65,7 @@ import { MapSplit } from '../../components/MapSplit'
 import type { MapMode } from '../../components/mapMode'
 import { ThreatPanel } from '../../components/ThreatPanel'
 import { AgreementActions } from '../../components/AgreementViewer'
+import { AssociationFormModal } from '../../components/AssociationFormModal'
 /* ★★ AG3.1 · AG5 · AG6.3 — le lien permanent de l'agriculteur, l'échéance de
    son accord, et les documents qu'il a fournis ou non. */
 import { FarmerLinkBlock, FarmerLinkModal } from '../../components/FarmerLinkBlock'
@@ -255,6 +256,15 @@ function FarmFacts({ farm }: { farm: Farm }) {
         <KeyValue
           label={t('farms.farmer')}
           value={[farm.farmerName, farm.farmerPhone].filter(Boolean).join(' · ')}
+        />
+      )}
+      {/* ★ AK3 — la ת״ז / ח״פ, TELLE QU'ELLE A ÉTÉ TAPÉE : du texte, zéro
+          initial compris (A199). */}
+      {farm.farmerId && (
+        <KeyValue
+          label={t('form.farmerId')}
+          value={<span data-testid="farm-farmer-id-value" dir="ltr">{farm.farmerId}</span>}
+          ltr
         />
       )}
       {(farm.liaisonName || farm.liaisonPhone) && (
@@ -658,6 +668,75 @@ function EnsureMapVisible({
   return null
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AK4 (2026-09-16) — LE BOUTON QUI OUVRE LE FORMULAIRE, AVEC SON LIBELLÉ.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Pas une icône de plus dans la pilule d'actions : c'est le geste que le PO
+ * fait debout devant l'agriculteur, et une icône sans mot est un bouton qu'on
+ * cherche. Le bandeau dit l'état (טרם נחתם / נחתם le …), porte le document
+ * précédent (AK4.6) et le bouton.
+ */
+function PaperStrip({
+  farm,
+  justSigned,
+  onOpenForm,
+}: {
+  farm: Farm
+  justSigned: boolean
+  onOpenForm: () => void
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const latest = farm.agreements
+    .filter((a) => (a.signature ?? null) !== null)
+    .sort((a, b) => new Date(b.signedAt).getTime() - new Date(a.signedAt).getTime())[0]
+  return (
+    <section
+      data-testid="farm-paper"
+      aria-label={t('assocForm.title')}
+      className="card card-pad flex flex-wrap items-center gap-x-4 gap-y-3"
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <span
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-field ${
+            latest ? 'bg-status-success/15 text-status-success-ink' : 'bg-surface-high text-content-secondary'
+          }`}
+        >
+          <Icon name={latest ? 'check' : 'document'} size={20} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-caption font-semibold text-content-primary">{t('assocForm.title')}</p>
+          <p className="muted" data-testid="farm-paper-state">
+            {latest
+              ? t('assocForm.signedBefore', {
+                  date: formatDate(latest.signedAt, locale),
+                  name: latest.signedBy,
+                })
+              : t('assocForm.notSigned')}
+          </p>
+          {justSigned && (
+            <p role="status" data-testid="assoc-saved" className="mt-0.5 text-micro font-semibold text-status-success-ink">
+              {t('assocForm.savedTitle')}
+            </p>
+          )}
+        </div>
+      </div>
+      {latest && <AgreementActions agreement={latest} farm={farm} />}
+      <button
+        type="button"
+        data-testid="farm-open-assoc-form"
+        onClick={onOpenForm}
+        className={`${latest ? 'btn-secondary' : 'btn-primary'} min-h-[2.75rem]`}
+      >
+        <Icon name="edit" size={16} />
+        {t(latest ? 'assocForm.openAgain' : 'assocForm.open')}
+      </button>
+    </section>
+  )
+}
+
 export function FarmDetailScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -699,6 +778,9 @@ export function FarmDetailScreen() {
   const [newVisit, setNewVisit] = useState(false)
   /* AH7.3 — le raccourci d'envoi du lien de signature, depuis l'en-tête. */
   const [linkOpen, setLinkOpen] = useState(false)
+  /* ★★ AK4 — le formulaire de l'association, en fenêtre, depuis la fiche. */
+  const [formOpen, setFormOpen] = useState(false)
+  const [justSigned, setJustSigned] = useState(false)
   const [editVisitId, setEditVisitId] = useState<string | null>(null)
   const [selectedAnchorId, setSelectedAnchorId] = useState<string | null>(null)
   // G15 — zone selection lives HERE so the list's "ערוך" buttons and the
@@ -895,6 +977,14 @@ export function FarmDetailScreen() {
             }
           />
 
+          {formOpen && (
+            <AssociationFormModal
+              farm={farm}
+              onClose={() => setFormOpen(false)}
+              onSaved={() => setJustSigned(true)}
+            />
+          )}
+
           {linkOpen && (
             <FarmerLinkModal farm={farm} onClose={() => setLinkOpen(false)} />
           )}
@@ -912,6 +1002,15 @@ export function FarmDetailScreen() {
                 </span>
               </div>
             )}
+
+            {/* ★★ AK4 · AK5 — LE PAPIER DE LA FERME, EN TÊTE DE LA FICHE : l'accord
+                de l'association (signé ou non, et le bouton qui ouvre le
+                formulaire) et les documents de droit sur la terre. */}
+            <PaperStrip
+              farm={farm}
+              justSigned={justSigned}
+              onOpenForm={() => setFormOpen(true)}
+            />
 
             {/* G14c — the numbers first, big; the long reading below. */}
             <KeyNumbers farm={farm} lastActivityAt={lastActivityAt} />

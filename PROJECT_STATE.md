@@ -34,8 +34,10 @@ bun run typecheck && bun run ajupdate && bun run aipass && bun run accept
 | Bloc | État |
 |---|---|
 | AK2 modèle | ✅ `farm_type` + `unknown` (migration `20260916000100`, appliquée sur prod) ; nature = deux cases חקלאות · מרעה sur `type` ; entités + מושב שיתופי, חברה בע״מ ; `guardedDunamsOf` → `number \| null`, plus de recopie (AK1.6 remplace AC3) |
-| AK1 données | outil `bun run akdata` (A192–A194, 30/30 sur le jeu construit) ; insertion prod APRÈS déploiement du code qui connaît `unknown` |
-| AK3 → AK9 | à faire |
+| AK1 données | ✅ 15 fiches `farm-ak1-01…15` insérées sur `lo-yanum-prod` après le déploiement de `2945841` ; relues et repassées : `bun run akdata check docs/ak/ak1-prod-rows.json` 15/15 ; 6 positionnées ; pondéré 2 160 |
+| AK3 formulaire | ✅ `AssociationFormModal` : libellés/ordre/gras/sauts de ligne/encadré (encadré tiré du gabarit, `**gras**` dans le gabarit ET le PDF) ; ת״ז et נייד `inputmode=numeric` ; pas de liste de lieux |
+| AK4 ouverture | ✅ bandeau « הסכם התנדבות- ארצנו » en tête de fiche (état, document précédent, bouton) ; `Modal` : focus piégé, croix, Échap, geste ; `bun run akui` 75/75 |
+| AK5 → AK9 | à faire |
 
 Décisions AK posées : (1) `type` reste la seule vérité de la nature, 'unknown' = rien coché ;
 (2) שטחים שמירה = déclaré ou vide, jamais מעובד + מרעה (les portes AC/AD réécrites, pas supprimées) ;

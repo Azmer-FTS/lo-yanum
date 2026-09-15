@@ -1,3 +1,4 @@
+import { richRuns } from '@core/index'
 import type { AgreementBlock } from '@core/index'
 
 import { PAGE, canvasesToPdfFile, newPageCanvas } from '../report/pdf'
@@ -134,6 +135,75 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): st
   }
   lines.push(line)
   return lines
+}
+
+/**
+ * ★★ AK3 — UN PARAGRAPHE AVEC DES MOTS EN GRAS.
+ *
+ * Le canevas n'a qu'une fonte à la fois. On coupe donc en MOTS, chacun avec sa
+ * graisse, on remplit la ligne en mesurant chaque mot dans SA fonte, et on pose
+ * les mots de droite à gauche. ⚠️ La mise en forme bidi d'une ligne entière
+ * (la note sur `wrap`) n'est pas perdue : chaque mot hébreu est façonné entier,
+ * un nombre ou un mot entre guillemets reste un seul mot, et c'est l'ordre des
+ * MOTS qu'une ligne hébraïque inverse, jamais celui des lettres d'un mot.
+ */
+interface RichWord {
+  text: string
+  bold: boolean
+  width: number
+}
+
+function richLines(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  size: number,
+): RichWord[][] {
+  const words: RichWord[] = []
+  for (const run of richRuns(text)) {
+    ctx.font = BODY(size, run.bold ? 700 : 400)
+    for (const w of run.text.split(/\s+/).filter((x) => x !== '')) {
+      words.push({ text: w, bold: run.bold, width: ctx.measureText(w).width })
+    }
+  }
+  ctx.font = BODY(size)
+  const space = ctx.measureText(' ').width
+  const lines: RichWord[][] = []
+  let line: RichWord[] = []
+  let used = 0
+  for (const w of words) {
+    const extra = line.length === 0 ? w.width : space + w.width
+    if (line.length > 0 && used + extra > maxWidth) {
+      lines.push(line)
+      line = [w]
+      used = w.width
+    } else {
+      line.push(w)
+      used += extra
+    }
+  }
+  if (line.length > 0 || lines.length === 0) lines.push(line)
+  return lines
+}
+
+function drawRichLine(
+  ctx: CanvasRenderingContext2D,
+  line: RichWord[],
+  rightX: number,
+  y: number,
+  size: number,
+): void {
+  ctx.font = BODY(size)
+  const space = ctx.measureText(' ').width
+  ctx.textAlign = 'right'
+  ctx.direction = 'rtl'
+  ctx.fillStyle = INK
+  let x = rightX
+  for (const w of line) {
+    ctx.font = BODY(size, w.bold ? 700 : 400)
+    ctx.fillText(w.text, x, y)
+    x -= w.width + space
+  }
 }
 
 function rule(ctx: CanvasRenderingContext2D, x0: number, x1: number, y: number): void {
@@ -296,16 +366,10 @@ export async function drawAgreementPages(
       y += 4
       continue
     }
-    ctx.textAlign = 'right'
-    ctx.fillStyle = INK
-    ctx.font = BODY(11)
-    for (const line of wrap(ctx, block.text, W * S)) {
+    /* AK3 — les mots en gras du gabarit (`**…**`). */
+    for (const line of richLines(ctx, block.text, W * S, 11)) {
       room(24)
-      const c = sheet.ctx
-      c.textAlign = 'right'
-      c.fillStyle = INK
-      c.font = BODY(11)
-      c.fillText(line, right * S, y * S)
+      drawRichLine(sheet.ctx, line, right * S, y * S, 11)
       y += 19
     }
   }

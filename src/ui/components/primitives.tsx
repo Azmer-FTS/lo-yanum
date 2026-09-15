@@ -1726,21 +1726,104 @@ export function Modal({
   onClose,
   children,
   wide = false,
+  header,
+  testId,
 }: {
   title: string
   onClose: () => void
   children: ReactNode
   wide?: boolean
+  /** AK4 — un en-tête à soi (logo + titre), à la place du `<h2>` simple. */
+  header?: ReactNode
+  testId?: string
 }) {
   const { t } = useTranslation()
+  const dialogRef = useRef<HTMLDivElement | null>(null)
+  /* Relu à chaque rendu : un parent qui recrée `onClose` ne doit pas relancer
+     l'effet de focus (il volerait le focus d'un champ en cours de saisie). */
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
 
+  /**
+   * ★★ AK4.1 · AK4.4 — LE FOCUS EST DANS LA FENÊTRE, ET IL N'EN SORT PAS.
+   *
+   * À l'ouverture, le dialogue prend le focus (lui, pas le premier champ : sur
+   * un iPad, focaliser un champ ouvre le clavier sur la moitié de l'écran avant
+   * que l'agriculteur ait lu une ligne). Tab et Maj+Tab tournent à l'intérieur ;
+   * à la fermeture, le focus revient au bouton qui l'a ouverte.
+   *
+   * ★ TROIS SORTIES, ET AUCUNE NE DÉPEND D'UNE AUTRE : la croix, la touche
+   *   d'échappement, et le GESTE — tirer l'en-tête vers le bas. C'est le défaut
+   *   d'AH7 (« ouvrir un document et ne plus pouvoir en sortir ») qui ne doit
+   *   pas se reproduire.
+   */
   useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    dialogRef.current?.focus({ preventScroll: true })
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      /* Une fenêtre ouverte DANS celle-ci (le lecteur du document précédent)
+         a la main : Échap ferme la plus haute, pas les deux. */
+      if (dialogRef.current?.querySelector('[aria-modal="true"]')) return
+      if (e.key === 'Escape') {
+        closeRef.current()
+        return
+      }
+      if (e.key !== 'Tab' || !dialogRef.current) return
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.offsetParent !== null)
+      if (focusable.length === 0) {
+        e.preventDefault()
+        return
+      }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement
+      const inside = dialogRef.current.contains(active)
+      if (e.shiftKey && (active === first || !inside || active === dialogRef.current)) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && (active === last || !inside)) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+    const onFocusIn = (e: FocusEvent) => {
+      if (dialogRef.current && !dialogRef.current.contains(e.target as Node)) {
+        dialogRef.current.focus({ preventScroll: true })
+      }
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+    document.addEventListener('focusin', onFocusIn)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.removeEventListener('focusin', onFocusIn)
+      if (opener && document.contains(opener)) opener.focus({ preventScroll: true })
+    }
+  }, [])
+
+  /* Le geste : tirer l'en-tête vers le bas de plus de 80 px ferme. La feuille
+     suit le doigt pour qu'on voie ce qu'on fait ; en deçà, elle revient. */
+  const drag = useRef<{ y: number; id: number } | null>(null)
+  const [pull, setPull] = useState(0)
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button,a,input,select,textarea')) return
+    drag.current = { y: e.clientY, id: e.pointerId }
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+  }
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag.current || drag.current.id !== e.pointerId) return
+    setPull(Math.max(0, e.clientY - drag.current.y))
+  }
+  const onPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag.current || drag.current.id !== e.pointerId) return
+    const distance = e.clientY - drag.current.y
+    drag.current = null
+    setPull(0)
+    if (distance > 80) closeRef.current()
+  }
 
   return (
     // `data-overlay` — PO POINT 2. A modal's whole job is to cover the shell,
@@ -1752,30 +1835,41 @@ export function Modal({
       className="fixed inset-0 z-50 flex items-end justify-center bg-surface-sunken/80 p-0 backdrop-blur-sm sm:items-center sm:p-6"
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        tabIndex={-1}
+        data-testid={testId}
+        style={pull > 0 ? { transform: `translateY(${pull}px)` } : undefined}
         // P0bis.3 — `panel-scope`: a modal's form lays itself out against the
         // DIALOG's width, not the window's. A `md:grid-cols-2` inside a 32 rem
         // dialog gave two 15 rem columns on any desktop, which is the reading
         // the breakpoint existed to prevent.
         className={`panel-scope max-h-[90dvh] w-full animate-fade-in overflow-y-auto rounded-t-card
-                    bg-surface-overlay p-5 shadow-lift sm:rounded-card ${
+                    bg-surface-overlay p-5 shadow-lift outline-none sm:rounded-card ${
                       wide ? 'max-w-3xl' : 'max-w-lg'
                     }`}
       >
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <h2 className="text-heading text-content-primary">{title}</h2>
+        <div
+          data-testid="modal-drag"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerEnd}
+          onPointerCancel={onPointerEnd}
+          className="mb-4 flex touch-none select-none items-center justify-between gap-4"
+        >
+          {header ?? <h2 className="text-heading text-content-primary">{title}</h2>}
           <button
             type="button"
             onClick={onClose}
-            className="rounded-field p-1.5 text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
+            className="shrink-0 rounded-field p-2.5 text-content-muted transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
             aria-label={t('common.close')}
             /* X11 — THE modal's one way out, and now the only one on the
                contract reader: the gates address it by name. */
             data-testid="modal-close"
           >
-            <Icon name="close" size={18} />
+            <Icon name="close" size={20} />
           </button>
         </div>
         {children}

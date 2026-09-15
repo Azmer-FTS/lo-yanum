@@ -238,15 +238,86 @@ export function parseAgreementBlocks(rendered: string): AgreementBlock[] {
     }
     const m = /^##\s+(.*)$/.exec(line.trim())
     if (m) {
+      /* AK3 — un titre est déjà gras ; ses astérisques ne s'impriment pas. */
+      const text = plainText(m[1].trim())
       if (!sawTitle) {
         sawTitle = true
-        blocks.push({ kind: 'title', text: m[1].trim() })
+        blocks.push({ kind: 'title', text })
       } else {
-        blocks.push({ kind: 'heading', text: m[1].trim() })
+        blocks.push({ kind: 'heading', text })
       }
       continue
     }
     blocks.push({ kind: 'paragraph', text: line })
   }
   return blocks
+}
+
+// ---------------------------------------------------------------------------
+// ★★ AK3 (2026-09-16) — LES MOTS EN GRAS DU FORMULAIRE DE L'ASSOCIATION
+// ---------------------------------------------------------------------------
+
+/**
+ * « Mêmes mots en gras. » Leur formulaire met en gras « ארגון "ארצנו" מבית
+ * עמותת שיבת ציון לרגבי אדמתה » et « שמירה, חקלאות ומרעה. ». Le gabarit reste la
+ * source unique du texte (AH5) : le gras s'y écrit `**comme ceci**`, ce que le
+ * PO tape déjà dans WhatsApp, et deux astérisques ne surviennent pas par
+ * accident au milieu d'une phrase en hébreu.
+ *
+ * ⚠️ UN `**` ORPHELIN NE MET PAS LE RESTE DU DOCUMENT EN GRAS : il s'imprime tel
+ *    quel. Une faute de frappe visible vaut mieux qu'un contrat où tout est
+ *    devenu gras sans que personne sache pourquoi.
+ */
+export interface RichRun {
+  text: string
+  bold: boolean
+}
+
+export function richRuns(text: string): RichRun[] {
+  const parts = text.split('**')
+  /* Nombre pair de `**` ⇔ nombre impair de morceaux. Sinon le dernier est
+     orphelin : on le recolle avec ses astérisques. */
+  if (parts.length % 2 === 0) {
+    const tail = parts.pop() as string
+    parts[parts.length - 1] = `${parts[parts.length - 1]}**${tail}`
+  }
+  return parts
+    .map((t, i) => ({ text: t, bold: i % 2 === 1 }))
+    .filter((r) => r.text !== '')
+}
+
+/** Le texte sans son balisage de gras. */
+export function plainText(text: string): string {
+  return richRuns(text).map((r) => r.text).join('')
+}
+
+/**
+ * ★★ AK3.5 — L'ENCADRÉ « הצהרה ואישור » DU FORMULAIRE À L'ÉCRAN VIENT DU MÊME
+ *    GABARIT QUE LE PDF. Un encadré tapé une seconde fois dans l'écran serait
+ *    le « deux sources pour un document » qu'AH5 a supprimé : le jour où
+ *    l'association change une virgule, l'agriculteur signerait à l'écran un
+ *    texte et recevrait l'autre.
+ *
+ * Rend les paragraphes (retours à la ligne compris) qui suivent l'intertitre
+ * nommé, jusqu'au suivant. `null` si le gabarit n'a pas cet intertitre.
+ */
+export function templateSection(
+  rendered: string,
+  heading: string,
+): { heading: string; lines: string[] } | null {
+  const want = plainText(heading).trim()
+  const lines = rendered.split('\n')
+  const start = lines.findIndex((l) => {
+    const m = /^##\s+(.*)$/.exec(l.trim())
+    return m !== null && plainText(m[1]).trim() === want
+  })
+  if (start === -1) return null
+  const out: string[] = []
+  for (const line of lines.slice(start + 1)) {
+    if (/^##\s+/.test(line.trim())) break
+    out.push(line.trimEnd())
+  }
+  while (out.length > 0 && out[0].trim() === '') out.shift()
+  while (out.length > 0 && out[out.length - 1].trim() === '') out.pop()
+  return { heading: want, lines: out }
 }
