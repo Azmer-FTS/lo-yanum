@@ -1,0 +1,37 @@
+$ bun run scripts/akmap.ts
+
+  AK6 — LA CARTE QUI RETOMBE EN VECTORIEL : MESURE
+  ================================================
+  http://localhost:5303  (dist-akpass)
+  PASS  setup · the PO chose satellite: stored and shown  — satellite/satellite
+  PASS  A203 · 1 délai 25 s : the stored choice is still satellite  — stored=satellite
+  PASS  A203 · 1 délai 25 s : the map still shows satellite  — shown=satellite sources=protomaps,satellite,regions,zones,threat-zones,threat-vectors,route,freehand
+  PASS  A203 · 2 retour en avant-plan : the stored choice is still satellite  — stored=satellite
+  PASS  A203 · 2 retour en avant-plan : the map still shows satellite  — shown=satellite sources=protomaps,satellite,regions,zones,threat-zones,threat-vectors,route,freehand
+  PASS  A203 · 3a hors ligne (pendant) : the stored choice is still satellite  — stored=satellite
+  PASS  A203 · 3a hors ligne (pendant) : the map still shows satellite  — shown=satellite sources=protomaps,satellite,regions,zones,threat-zones,threat-vectors,route,freehand
+  PASS  AK6.3 · 3a hors ligne (pendant) : the app SAYS the imagery is unavailable  — אין רשת — תמונות הלוויין יחזרו כשהרשת תחזור. הרקע שבחרת נשמר.
+  PASS  A203 · 3b réseau revenu : the stored choice is still satellite  — stored=satellite
+  PASS  A203 · 3b réseau revenu : the map still shows satellite  — shown=satellite sources=protomaps,satellite,regions,zones,threat-zones,threat-vectors,route,freehand
+  PASS  AK6.3 · 3b : once back online the notice is gone  — null
+  PASS  A203 · 4 controllerchange : the stored choice is still satellite  — stored=satellite
+  PASS  A203 · 4 controllerchange : the map still shows satellite  — shown=satellite sources=protomaps,satellite,regions,zones,threat-zones,threat-vectors,route,freehand
+  PASS  A203 · 5a tuiles satellite en 503 : the stored choice is still satellite  — stored=satellite
+  PASS  A203 · 5a tuiles satellite en 503 : the map still shows satellite  — shown=satellite sources=protomaps,satellite,regions,zones,threat-zones,threat-vectors,route,freehand
+  PASS  AK6.3 · 5a tuiles satellite en 503 : the app SAYS the imagery is unavailable  — חלק מתמונות הלוויין לא נטענו — מנסה שוב…
+  PASS  A203 · 5b tuiles de nouveau servies : the stored choice is still satellite  — stored=satellite
+  PASS  A203 · 5b tuiles de nouveau servies : the map still shows satellite  — shown=satellite sources=protomaps,satellite,regions,zones,threat-zones,threat-vectors,route,freehand
+  PASS  AK6.3 · 5b : the app RETRIED the failed imagery by itself  — 64 refused, 16 served after
+  PASS  AK6.3 · 5b : and the notice is gone  — null
+  PASS  A203 · 6 contexte WebGL perdu puis rendu : the stored choice is still satellite  — stored=satellite
+  PASS  A203 · 6 contexte WebGL perdu puis rendu : the map still shows satellite  — shown=satellite sources=protomaps,satellite,regions,zones,threat-zones,threat-vectors,route,freehand
+  ·     7a état : {"online":true,"map":false}
+  PASS  A203 · 7a relancée hors ligne : the stored choice is still satellite  — stored=satellite
+  PASS  A203 · 7a relancée hors ligne : the map comes up declaring satellite, not vector  — shown=satellite
+  PASS  A203 · 7b réseau revenu après un lancement hors ligne : the stored choice is still satellite  — stored=satellite
+  PASS  A203 · 7b réseau revenu après un lancement hors ligne : the map still shows satellite  — shown=satellite sources=protomaps,satellite,regions,zones,threat-zones,threat-vectors,route,freehand
+
+  CAUSES MESURÉES (écritures du choix qui ne sont pas « satellite ») :
+  ·     aucune
+
+  26 passed, 0 failed

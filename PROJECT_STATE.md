@@ -39,12 +39,16 @@ bun run typecheck && bun run ajupdate && bun run aipass && bun run accept
 | AK4 ouverture | ✅ bandeau « הסכם התנדבות- ארצנו » en tête de fiche (état, document précédent, bouton) ; `Modal` : focus piégé, croix, Échap, geste ; `bun run akui` 75/75 |
 | AK5 documents | ✅ `awaitingDocuments` / `closureBlocked` / `allowedStatus` (core/documents.ts) ; « פעילה » refusée à l'écran, dans `updateFarm`/`createFarm`/import ; bande « ממתין למסמכים » permanente dans le bandeau de fiche ; file « ממתינות / למסמכים » 2ᵉ vignette (après נשכחו) ; compte rendu : חתומות עם מסמכים / הממתינות ; `akpass` 30/30, `akui` A202 |
 | Déploiement `0d2b506` | ❌ porte `agreement` (build réel) : le bandeau ajoute un 2ᵉ `agreement-view` ; porte re-ciblée (hors `farm-paper`), rejouée en local 18/18 |
-| AK6 → AK9 | à faire |
+| Déploiement `e8660ef` | ✅ servi sur les deux URLs (AK3 · AK4 · AK5) |
+| AK6 carte | ✅ CAUSE MESURÉE : événement `offline` → `MapTools.applyConnectivity` → `onBase('vector')` → `writeStoredBase('vector')` (+ `readStoredBase` filtrait par `navigator.onLine` au lancement). Correctif : plus aucune écriture automatique, bande `map-imagery-notice` (hors ligne / tuiles en échec), reprise des tuiles satellite. `akmap` ROUGE 15/11 (`dist-ak6-before`) → VERT 26/0 ; `backdrop` réécrite 38/38. Logs `docs/ak/ak6-*.log` |
+| AK7 → AK9 | à faire |
 
 Décisions AK posées : (1) `type` reste la seule vérité de la nature, 'unknown' = rien coché ;
 (2) שטחים שמירה = déclaré ou vide, jamais מעובד + מרעה (les portes AC/AD réécrites, pas supprimées) ;
 (3) une fiche sans position n'a pas d'épingle (listes et compteurs oui) ;
-(4) libellés de statut alignés sur l'association : טרם נוצר קשר · מוכן לחתימה · נחתם.
+(4) libellés de statut alignés sur l'association : טרם נוצר קשר · מוכן לחתימה · נחתם ;
+(5) « פעילה » = la fiche achevée ; refusée tant que `awaitingDocuments` (transition bloquée, jamais de rétrogradation) ;
+(6) le fond de carte choisi n'est écrit QUE par le geste du PO sur le bouton ; hors ligne la carte le DIT, elle ne bascule pas.
 
 ## Ce qui est fait dans AJ
 

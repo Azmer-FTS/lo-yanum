@@ -529,34 +529,66 @@ try {
   console.log(`  captures: ${SHOTS}/satellite-z16.png, ${SHOTS}/satellite-z17.png`)
 
   // ---- the offline rule, which is the half that matters in the field ------
+  /**
+   * ★★ AK6 (2026-09-16) — LA RÈGLE EST RENVERSÉE PAR LE PO, ET MESURÉE.
+   *
+   *   « Le choix de fond du PO est persistant et n'est JAMAIS changé
+   *     automatiquement. Si des tuiles satellite échouent, l'app le signale et
+   *     réessaie, sans changer de fond dans son dos. »
+   *
+   * Cette porte exigeait l'inverse — « la carte est RETOMBÉE sur l'archive
+   * vectorielle d'elle-même » — et c'était précisément le mécanisme du bug :
+   * le repli ÉCRIVAIT « vector » dans le choix enregistré (`bun run akmap`,
+   * cause imprimée). Réécrite, pas supprimée, pour que le renversement reste
+   * au dossier.
+   */
   await context.setOffline(true)
-  await page.waitForTimeout(1200)
-  check(
-    '★★ offline, the ground switch is DISABLED',
-    await baseBtn.isDisabled(),
-  )
-  check(
-    'and it says why, in Hebrew, on the control itself',
-    (await baseBtn.getAttribute('title')) === 'לוויין זמין רק בחיבור',
-    (await baseBtn.getAttribute('title')) ?? '<none>',
-  )
-  await styleLoaded(page)
-  await page.waitForTimeout(800)
-  const fellBack = await page.evaluate(() => {
+  await page.waitForTimeout(1500)
+  const offlineState = await page.evaluate(() => {
     const m = (window as unknown as { __loYanumMap?: MapHandle }).__loYanumMap
-    return m ? Object.keys(m.getStyle().sources) : []
+    const notice = document.querySelector('[data-testid="map-imagery-notice"]')
+    return {
+      stored: localStorage.getItem('lo-yanum:map-base'),
+      sources: m ? Object.keys(m.getStyle().sources) : [],
+      notice: notice?.textContent ?? null,
+    }
   })
   check(
-    '★★ and the map FELL BACK to the national vector archive by itself',
-    !fellBack.includes('satellite') && fellBack.includes('protomaps'),
-    fellBack.join(', '),
+    '★★ AK6 — offline, the stored choice is still satellite (nothing rewrote it)',
+    offlineState.stored === 'satellite',
+    String(offlineState.stored),
   )
   check(
-    'the control shows the vector ground as the live one again',
-    (await baseBtn.getAttribute('data-base')) === 'vector',
+    '★★ AK6 — and the map is still on satellite: no ground switched behind his back',
+    offlineState.sources.includes('satellite') && (await baseBtn.getAttribute('data-base')) === 'satellite',
+    offlineState.sources.join(', '),
+  )
+  check(
+    '★★ AK6 — the map SAYS the imagery waits for the network',
+    (offlineState.notice ?? '').includes('אין רשת'),
+    offlineState.notice ?? '<none>',
+  )
+  check(
+    'the switch stays live, offering the vector ground — switching is HIS gesture',
+    !(await baseBtn.isDisabled()) && (await baseBtn.getAttribute('data-target')) === 'vector',
   )
   await page.screenshot({ path: `${SHOTS}/satellite-offline-fallback.png` })
   await context.setOffline(false)
+  await page.waitForTimeout(2500)
+  check(
+    'back online, the notice goes away by itself',
+    (await page.locator('[data-testid="map-imagery-notice"]').count()) === 0,
+  )
+  /* Et c'est LUI qui repasse sur le vectoriel — les sections suivantes partent
+     de ce fond, comme elles partaient autrefois du repli automatique. */
+  await baseBtn.click()
+  await styleLoaded(page)
+  await page.waitForTimeout(1200)
+  check(
+    'his own tap puts the map back on the vector ground',
+    (await baseBtn.getAttribute('data-base')) === 'vector' &&
+      (await page.evaluate(() => localStorage.getItem('lo-yanum:map-base'))) === 'vector',
+  )
   console.log(`  captures: ${SHOTS}/satellite.png, ${SHOTS}/satellite-offline-fallback.png`)
 
   // -------------------------------------------------------------------------

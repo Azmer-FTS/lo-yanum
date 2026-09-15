@@ -913,6 +913,15 @@ export default function MapCanvas({
   // X4.3 — one popup and one host node for the anchored preview.
   const popupRef = useRef<maplibregl.Popup | null>(null)
   const [popupHost] = useState(() => document.createElement('div'))
+  /**
+   * ★★ AK6.3 — L'IMAGERIE QUI NE VIENT PAS EST DITE, ET RÉESSAYÉE ; LE FOND NE
+   *    CHANGE PAS. `groundRef` suit le fond affiché (le choix du PO) ;
+   *    `imagery` est ce que la carte en dit : `offline` (pas de réseau),
+   *    `failing` (des tuiles satellite ont échoué et sont en cours de reprise).
+   */
+  const groundRef = useRef<BasemapBase>(readStoredBase())
+  const [imagery, setImagery] = useState<'ok' | 'offline' | 'failing'>('ok')
+  const [noticeHost, setNoticeHost] = useState<HTMLElement | null>(null)
 
   // Create the map once — and again after a lost GL context, see `glGeneration`.
   useEffect(() => {
@@ -924,6 +933,7 @@ export default function MapCanvas({
      *   `navigator.onLine` — which can flip between two calls.
      */
     const initialGround = readStoredBase()
+    groundRef.current = initialGround
 
     /**
      * ★ Y1 — THE CAMERA OF THE MAP THAT DIED, when there was one. A recovery
@@ -1506,8 +1516,11 @@ export default function MapCanvas({
         onBase: (next) => {
           if (next === ground) return
           ground = next
+          groundRef.current = next
+          /* AK6 — la SEULE écriture du choix : le geste du PO sur le bouton. */
           writeStoredBase(next)
           applyStyle()
+          window.dispatchEvent(new Event('lo-yanum:ground'))
         },
         fullscreen: fullscreenRef.current
           ? {
@@ -1766,6 +1779,116 @@ export default function MapCanvas({
       clearInterval(slowSweep)
       map.off('error', onError)
       window.removeEventListener('online', onOnline)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [glGeneration])
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ★★ AK6.3 — L'IMAGERIE SATELLITE : SIGNALER, RÉESSAYER, NE JAMAIS BASCULER.
+   * ═══════════════════════════════════════════════════════════════════════════
+   *
+   * Même mécanique que la réparation de l'archive ci-dessus (`_reloadTile`
+   * tuile par tuile, parce que `SourceCache.reload()` saute justement les
+   * tuiles en erreur), appliquée à la source `satellite`, et avec une chose en
+   * plus : le PO le SAIT. Une carte sur satellite sans réseau montre routes,
+   * noms et frontières (ils viennent de l'archive embarquée) sur un fond vide,
+   * avec une bande qui dit pourquoi ; au retour du réseau les tuiles
+   * reviennent d'elles-mêmes et la bande s'en va.
+   *
+   * ⚠️ MESURÉ AVANT : 16 tuiles refusées en 503, puis servies de nouveau —
+   *    0 redemandée en 20 s. Rien ne les réessayait.
+   */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    setNoticeHost(containerRef.current)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let disposed = false
+    let backoff = 0
+
+    interface TileCache {
+      _tiles?: Record<string, { state?: string }>
+      _reloadTile?: (id: string, state: string) => void
+    }
+    const cache = (): TileCache | undefined =>
+      (map as unknown as { style?: { sourceCaches?: Record<string, TileCache> } }).style
+        ?.sourceCaches?.satellite
+    const errored = (): string[] => {
+      const c = cache()
+      if (!c?._tiles) return []
+      return Object.keys(c._tiles).filter((id) => c._tiles?.[id].state === 'errored')
+    }
+
+    const evaluate = (): void => {
+      if (disposed) return
+      if (groundRef.current !== 'satellite') return setImagery('ok')
+      if (!navigator.onLine) return setImagery('offline')
+      setImagery(errored().length > 0 ? 'failing' : 'ok')
+    }
+
+    const heal = (): void => {
+      if (disposed || !mapRef.current) return
+      try {
+        if (groundRef.current !== 'satellite' || !navigator.onLine) {
+          evaluate()
+          return
+        }
+        const ids = errored()
+        if (ids.length === 0) {
+          backoff = 0
+          evaluate()
+          return
+        }
+        const c = cache()
+        for (const id of ids) c?._reloadTile?.(id, 'reloading')
+        map.triggerRepaint()
+        backoff = Math.min(backoff === 0 ? 2000 : backoff * 2, 20_000)
+        evaluate()
+        schedule(backoff)
+      } catch {
+        // Un style démonté pendant la reprise ne vaut pas une carte cassée.
+      }
+    }
+    const schedule = (delay: number): void => {
+      clearTimeout(timer)
+      timer = setTimeout(heal, delay)
+    }
+
+    const onError = (e: { sourceId?: string }): void => {
+      if (e?.sourceId !== 'satellite') return
+      setImagery(navigator.onLine ? 'failing' : 'offline')
+      schedule(backoff === 0 ? 1500 : backoff)
+    }
+    const retryNow = (): void => {
+      backoff = 0
+      evaluate()
+      schedule(300)
+    }
+    const onVisible = (): void => {
+      if (document.visibilityState === 'visible') retryNow()
+    }
+
+    map.on('error', onError)
+    map.on('idle', evaluate)
+    window.addEventListener('online', retryNow)
+    window.addEventListener('offline', evaluate)
+    window.addEventListener('lo-yanum:ground', retryNow)
+    document.addEventListener('visibilitychange', onVisible)
+    const sweep = setInterval(() => {
+      if (groundRef.current === 'satellite' && navigator.onLine && errored().length > 0) heal()
+    }, 4000)
+    evaluate()
+
+    return () => {
+      disposed = true
+      clearTimeout(timer)
+      clearInterval(sweep)
+      map.off('error', onError)
+      map.off('idle', evaluate)
+      window.removeEventListener('online', retryNow)
+      window.removeEventListener('offline', evaluate)
+      window.removeEventListener('lo-yanum:ground', retryNow)
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [glGeneration])
@@ -2247,6 +2370,24 @@ export default function MapCanvas({
         } ${className}`}
       />
       {anchored && createPortal(anchored.node, popupHost)}
+      {interactive && noticeHost && imagery !== 'ok' &&
+        createPortal(
+          <div
+            role="status"
+            data-testid="map-imagery-notice"
+            data-state={imagery}
+            className="glass pointer-events-none absolute start-1/2 top-3 z-[3] flex max-w-[min(26rem,calc(100%-7rem))] -translate-x-1/2 items-center gap-2 rounded-card px-3 py-2 text-caption font-semibold text-content-primary shadow-card rtl:translate-x-1/2"
+          >
+            <span
+              aria-hidden="true"
+              className={`inline-block h-2 w-2 shrink-0 rounded-pill ${
+                imagery === 'offline' ? 'bg-status-warn' : 'animate-pulse bg-accent'
+              }`}
+            />
+            {t(imagery === 'offline' ? 'map.base.imageryOffline' : 'map.base.imageryFailing')}
+          </div>,
+          noticeHost,
+        )}
     </>
   )
 }

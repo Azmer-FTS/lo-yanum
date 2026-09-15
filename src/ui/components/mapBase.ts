@@ -21,15 +21,23 @@ const STORE_KEY = 'lo-yanum:map-base'
  * The choice survives a reload, because it is a working preference and not a
  * mode: a coordinator who prefers imagery prefers it on the next screen too.
  *
- * ⚠️ IT IS READ THROUGH THE NETWORK STATE, ALWAYS. A device that was left in
- *    satellite mode and is opened with no coverage must come up on the vector
- *    ground, not on an empty raster source waiting for tiles that will not
- *    arrive.
+ * ★★ AK6 (2026-09-16) — ET IL N'EST PLUS FILTRÉ PAR LE RÉSEAU. MESURÉ AVANT DE
+ *    CORRIGER (`bun run akmap`, build d'avant) : le PO choisit le satellite,
+ *    l'iPad perd le réseau un instant, l'événement `offline` part, et
+ *    `MapTools.applyConnectivity` appelait `onBase('vector')` — c'est-à-dire
+ *    `writeStoredBase('vector')`. Le choix du PO était RÉÉCRIT ; au retour du
+ *    réseau rien ne le rétablissait, sur aucun écran, ni au rechargement. Et un
+ *    lancement à froid sans couverture passait par ici et répondait
+ *    « vector » sans rien écrire, pour le même résultat.
+ *
+ *    La règle du PO : « le choix de fond est persistant et n'est JAMAIS changé
+ *    automatiquement ». Cette fonction rend donc ce qu'il a choisi, point. Ce
+ *    que l'imagerie ne peut pas montrer hors ligne est DIT sur la carte
+ *    (`map-imagery-notice`, MapCanvas) et réessayé au retour du réseau.
  */
 export function readStoredBase(): BasemapBase {
   try {
-    const raw = localStorage.getItem(STORE_KEY)
-    if (raw === 'satellite' && navigator.onLine) return 'satellite'
+    if (localStorage.getItem(STORE_KEY) === 'satellite') return 'satellite'
   } catch {
     // Private browsing. The default is the right default.
   }

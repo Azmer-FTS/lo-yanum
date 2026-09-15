@@ -364,18 +364,16 @@ export class MapTools implements IControl {
    */
   private applyConnectivity(): void {
     const online = navigator.onLine
-    // The fallback FIRST, so `paint()` below describes the ground the map is
-    // actually on rather than the one it was on a line ago.
-    if (!online && this.base === 'satellite') {
-      this.base = 'vector'
-      this.options.onBase('vector')
-    }
+    /* ⛔ AK6 — PLUS DE REPLI AUTOMATIQUE. C'était ici que le choix du PO était
+       réécrit en « vector » à chaque événement `offline` (mesuré, voir
+       `readStoredBase`). Le fond reste celui qu'il a choisi ; la carte DIT que
+       l'imagerie attend le réseau, et la réessaie. */
     this.paint()
     if (this.baseButton) {
       // Offline the button is dead only while it would take you TO the
-      // imagery; on imagery-with-no-network the fallback above has already
-      // moved the map, so the button is offering the vector ground and stays
-      // live. Applied AFTER `paint()`, which sets the normal title.
+      // imagery; on imagery-with-no-network it offers the vector ground and
+      // stays live — switching is HIS gesture (AK6), never ours. Applied
+      // AFTER `paint()`, which sets the normal title.
       const dead = !online && this.base !== 'satellite'
       this.baseButton.disabled = dead
       if (dead) this.baseButton.title = this.options.labels.satelliteOffline
