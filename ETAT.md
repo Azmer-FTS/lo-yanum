@@ -101,8 +101,21 @@
 >
 > ## AJ0.4 — SUR LE DÉPLOYÉ
 >
-> (en cours au moment de ce commit — ce commit EST le « nouveau déploiement »
-> que l'app ouverte doit voir arriver)
+> **`FROM=f94c32a bun run scripts/ajdeployed.ts` : 11/11**, WebKit, app
+> installée (`standalone`), un VRAI déploiement GitHub Pages au milieu :
+> - 11:47 `f94c32a` servi sur les deux URLs. **A191** : bouton des cartes au
+>   premier lancement sans rechargement ; **94,3 MB téléchargés depuis Pages**
+>   dans l'app installée. **A190** : version imprimée = commit servi, date,
+>   recherche manuelle « מעודכנת (f94c32a) ».
+> - L'app reste ouverte. `6e538ee` (commit de documentation) est poussé à
+>   11:50 ; retour en avant-plan toutes les 30 s : **20 retours avec
+>   `banner=false` tant que f94c32a était servi** (aucune fausse alerte).
+> - 12:02:08 `6e538ee` servi → **au retour suivant, bandeau sur le jumeau ET
+>   sur l'écran de connexion de l'app réelle**, page jamais rechargée. **A189**.
+> - « עדכון עכשיו » sur les deux : `6e538ee` tourne, « האפליקציה עודכנה ».
+>   Réglages : « הוחלה גרסה חדשה: מ־f94c32a ל־6e538ee ». **A190**.
+> - Les deux déploiements (portes `zones`/`agreement`/`demo` sur build réel
+>   comprises) : succès. Captures `docs/screenshots/ajpass/deployed/`.
 >
 > 🏁 **PASSE AI — LE TRACÉ SUR ROUTE, LA SAISIE DES POINTS, LE THÈME, LES
 > RÉGLAGES. 2026-09-14. LIRE EN PREMIER.**

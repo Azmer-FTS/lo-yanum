@@ -10,8 +10,8 @@
   (passe **AJ**, 2026-09-15).
 - **Passe en cours** : AJ — AJ0 « la version installée ne se met jamais à
   jour » (bloquant, traité en premier). **Correctif livré et poussé**
-  (`f94c32a`) ; preuve locale verte ; preuve sur le déployé : voir `ETAT.md`
-  §AJ0.4.
+  (`f94c32a`) ; `ajupdate` 38/38 en local ; **sur le déployé 11/11** avec un
+  vrai déploiement pendant que l'app restait ouverte (`ETAT.md` §AJ0.4).
 - **Déployé** : les deux URLs, même commit.
   - App réelle : https://azmer-fts.github.io/lo-yanum/
   - Jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
@@ -37,7 +37,7 @@ bun run typecheck && bun run ajupdate && bun run aipass && bun run accept
 | AJ0.4 version dans les réglages | ✅ `AppVersionSection` (groupe נתונים, en dernier) |
 | AJ0.5 cartes depuis l'app installée | ✅ `useOfflineMaps` écoute `controllerchange`/`ready` ; bouton « הפעלה עכשיו » |
 | AJ0.6 rouge avant | ✅ `DIST_A=dist-aj-before bun run ajupdate` : 2 PASS / 16 FAIL |
-| AJ0.7 A189–A191 | ✅ local 38/38 (WebKit + Chromium) ; déployé : `ETAT.md` §AJ0.4 |
+| AJ0.7 A189–A191 | ✅ local 38/38 (WebKit + Chromium) ; déployé 11/11 (`f94c32a` → `6e538ee`, app jamais fermée) |
 
 ## Décisions permanentes posées par AJ
 
