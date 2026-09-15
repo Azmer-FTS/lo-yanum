@@ -133,6 +133,38 @@ async function signOnPad(page: Page, engine: string): Promise<void> {
   await drag(page, engine, pts)
 }
 
+
+/** A148, repris pour AK5.3 : la vignette contre tout ce qui flotte, au repos. */
+export async function queueGeometry(page: Page, testId = 'farms-awaiting-docs') {
+  return await page.evaluate((id) => {
+    const chip = document.querySelector(`[data-testid="${id}"]`)
+    if (!chip) return { present: false, inViewport: false, overlaps: [] as Array<{ testid: string; area: number }> }
+    const r = chip.getBoundingClientRect()
+    const floating = Array.from(document.querySelectorAll('body *'))
+      .filter((el) => {
+        if (chip.contains(el) || el.contains(chip)) return false
+        const cs = getComputedStyle(el)
+        if (cs.position !== 'fixed') return false
+        if (cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) === 0) return false
+        const b = el.getBoundingClientRect()
+        return b.width > 8 && b.height > 8 && b.width < innerWidth * 0.9
+      })
+      .map((el) => {
+        const b = el.getBoundingClientRect()
+        const ox = Math.max(0, Math.min(r.right, b.right) - Math.max(r.left, b.left))
+        const oy = Math.max(0, Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top))
+        return { testid: el.getAttribute('data-testid') ?? el.tagName.toLowerCase(), area: Math.round(ox * oy) }
+      })
+      .filter((f) => f.area > 0)
+    return {
+      present: true,
+      rect: { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) },
+      inViewport: r.top >= 0 && r.left >= -1 && r.bottom <= innerHeight + 1 && r.right <= innerWidth + 1,
+      overlaps: floating,
+    }
+  }, testId)
+}
+
 const dialogOpen = (page: Page) => page.locator('[data-testid="assoc-form"]').count()
 
 async function formScenario(browserType: BrowserType, engine: string): Promise<void> {
@@ -141,7 +173,8 @@ async function formScenario(browserType: BrowserType, engine: string): Promise<v
     const context = await browser.newContext({ viewport: IPAD_PORTRAIT, hasTouch: true, isMobile: engine === 'chromium' ? false : undefined })
     const page = await context.newPage()
     const errors: string[] = []
-    page.on('pageerror', (e) => errors.push(String(e)))
+    /* « ResizeObserver loop » est un avertissement du moteur, pas une erreur de l'app. */
+    page.on('pageerror', (e) => { if (!String(e).includes('ResizeObserver loop')) errors.push(String(e)) })
 
     /* farm-06 : ni שם החקלאי, ni ת״ז, ni נייד sur la fiche — les trois se saisissent. */
     await open(page, '#/coordinator/farms/farm-06')
@@ -286,6 +319,18 @@ async function formScenario(browserType: BrowserType, engine: string): Promise<v
     const agreementRows = await page.locator('[data-testid="farm-paper"] [data-testid="agreement-view"]').count()
     check(`A201 · ${engine} · the signed document is attached to the fiche`, agreementRows >= 1, `${agreementRows}`)
 
+    section(`A202 — ${engine} : signée sans documents`)
+    const band = await page.evaluate(() => {
+      const b = document.querySelector('[data-testid="farm-awaiting-docs"]') as HTMLElement | null
+      if (!b) return null
+      const r = b.getBoundingClientRect()
+      const cs = getComputedStyle(b)
+      return { text: b.textContent ?? '', w: Math.round(r.width), color: cs.color, bg: cs.backgroundColor }
+    })
+    check(`A202 · ${engine} · the signed fiche says « ממתין למסמכים », in a full-width band`,
+      !!band && band.text.includes('ממתין למסמכים') && band.w > 300, JSON.stringify(band))
+    check(`A202 · ${engine} · and names what is missing`, !!band && band.text.includes('אישור שטחי מרעה'))
+
     section(`AK4.6 · A200 — ${engine} : réouverture, et les trois sorties`)
     await tap(page, 'farm-open-assoc-form')
     check(`AK4.6 · ${engine} · a signed farm says so, and the previous document is one tap away`,
@@ -357,6 +402,37 @@ async function formScenario(browserType: BrowserType, engine: string): Promise<v
     })
     check(`A201 · ${engine} · on a phone it fits the width`, phone.overflowX >= 0 && phone.overflowX <= 1 && phone.width <= PHONE.width, JSON.stringify(phone))
     await page.keyboard.press('Escape')
+
+    section(`A202 — ${engine} : la clôture refusée, la file`)
+    await page.setViewportSize(IPAD_PORTRAIT)
+    await open(page, '#/coordinator/farms/farm-06/edit', 2400)
+    const statusSelect = page.locator('select').filter({ has: page.locator('option[value="active"]') }).first()
+    await statusSelect.scrollIntoViewIfNeeded()
+    await statusSelect.selectOption('active')
+    await page.waitForTimeout(300)
+    const refusal = await page.getByText('לא ניתן לסמן כ״פעילה״ — ממתין למסמכים').count()
+    check(`A202 · ${engine} · choosing « פעילה » on a fiche without documents is refused, in words`, refusal >= 1)
+    const saveBtn = page.locator('[data-testid="form-actions"] button').last()
+    await saveBtn.click()
+    await page.waitForTimeout(700)
+    check(`A202 · ${engine} · and saving does not leave the form`, page.url().includes('/edit'), page.url())
+
+    for (const vp of [PHONE, IPAD_LANDSCAPE]) {
+      await page.setViewportSize(vp)
+      await open(page, '#/coordinator/farms', 3000)
+      const geo = await queueGeometry(page)
+      await page.screenshot({ path: `docs/screenshots/akpass/local/${engine}-queue-${vp.width}.png` })
+      check(`A202 · ${engine} · ${vp.width} px : « ממתינות למסמכים » entirely on screen at rest`,
+        geo.present && geo.inViewport, JSON.stringify(geo))
+      check(`A202 · ${engine} · ${vp.width} px : covered by nothing that floats (the « + » included)`,
+        geo.present && geo.overlaps.length === 0, JSON.stringify(geo.overlaps))
+      if (geo.present && vp.width === PHONE.width) {
+        await page.getByTestId('farms-awaiting-docs').click()
+        await page.waitForTimeout(500)
+        const pressed = await page.getByTestId('farms-awaiting-docs').getAttribute('aria-pressed')
+        check(`A202 · ${engine} · the chip IS the queue (it filters)`, pressed === 'true', String(pressed))
+      }
+    }
 
     check(`AK · ${engine} · no page error`, errors.length === 0, errors.slice(0, 2).join(' | '))
     await context.close()

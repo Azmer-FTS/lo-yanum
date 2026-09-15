@@ -112,3 +112,53 @@ export function documentsCompleteButRightUnproven(
   if (missingDocumentCount(farm) > 0) return false
   return landRightIssue(farm, todayKey) !== 'none'
 }
+
+// ---------------------------------------------------------------------------
+// ★★ AK5 (2026-09-16) — SANS DOCUMENTS, UNE FICHE N'EST JAMAIS COMPLÈTE
+// ---------------------------------------------------------------------------
+
+/**
+ *   « Sans les documents de droit sur la terre, une fiche n'est jamais
+ *     complète, même signée. »
+ *
+ * ★ UNE SEULE QUESTION, POSÉE AU MÊME ENDROIT PAR TOUS : la fiche, la file
+ *   « ממתינות למסמכים », le verrou du statut « פעילה » et le compte rendu.
+ *
+ *   · nature connue   → il manque au moins un des documents qu'elle appelle ;
+ *   · nature inconnue → AUCUN document n'a été reçu (on ne sait pas lequel
+ *                       demander, mais on sait qu'on n'a rien) ;
+ *   · une fiche « סירבה » n'attend plus rien ; une fiche archivée non plus.
+ */
+export function awaitingDocuments(
+  farm: Pick<Farm, 'type' | 'providedDocuments' | 'status'> & { archivedAt?: string | null },
+): boolean {
+  if (farm.archivedAt) return false
+  if (farm.status === 'declined') return false
+  const provided = farm.providedDocuments ?? []
+  if (farm.type === 'unknown') return provided.length === 0
+  return missingDocumentCount(farm) > 0
+}
+
+/**
+ * ★★ AK5.2 — LE VERROU : « פעילה » (la fiche achevée) ne se POSE pas tant que
+ *    les documents manquent. C'est une TRANSITION qui est refusée, pas un état
+ *    qu'on défait : une fiche déjà « פעילה » avant cette règle n'est pas
+ *    rétrogradée en silence — elle affiche « ממתין למסמכים » et reste dans la
+ *    file jusqu'à ce que le papier arrive.
+ */
+export function closureBlocked(
+  farm: Pick<Farm, 'type' | 'providedDocuments' | 'status'> & { archivedAt?: string | null },
+): boolean {
+  return awaitingDocuments({ ...farm, status: farm.status === 'declined' ? 'signed' : farm.status })
+}
+
+/** Le statut qu'une écriture a le droit de poser, étant donné le verrou. */
+export function allowedStatus(
+  previous: Farm['status'] | null,
+  requested: Farm['status'],
+  farm: Pick<Farm, 'type' | 'providedDocuments'> & { archivedAt?: string | null },
+): Farm['status'] {
+  if (requested !== 'active' || previous === 'active') return requested
+  if (!closureBlocked({ ...farm, status: requested })) return requested
+  return previous ?? 'signed'
+}

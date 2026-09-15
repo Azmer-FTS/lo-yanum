@@ -18,6 +18,7 @@ import {
   getFarmZonesForFarm,
   getVisibleFarms,
   guardedDunamsOf,
+  closureBlocked,
   ACTIVITIES,
   activitiesOf,
   typeOfActivities,
@@ -426,6 +427,15 @@ export function FarmFormScreen() {
     // A37 — a farm exists only where its pin is: no pin, no farm.
     position: !position ? t('form.pinRequired') : undefined,
     localityCode: codeClash ? t('form.localityCodeTaken') : undefined,
+    /* ★★ AK5.2 — « פעילה » refusée tant que les documents manquent. La nature
+       lue est celle DU FORMULAIRE (on peut la corriger ici même), les
+       documents ceux de la fiche. Une fiche déjà « פעילה » n'est pas bloquée. */
+    status:
+      status === 'active' &&
+      existing?.status !== 'active' &&
+      closureBlocked({ type, status, providedDocuments: existing?.providedDocuments })
+        ? t('docs.closureBlocked')
+        : undefined,
   }
   /**
    * ⚠️ AH1.1 — LA VALIDATION PORTE SUR LA VALEUR RETENUE, PAS SUR LA FRAPPE.
@@ -1552,6 +1562,7 @@ export function FarmFormScreen() {
             label={t('form.status')}
             value={status}
             onChange={setStatus}
+            error={errors.status}
             options={STATUSES.map((v) => ({
               value: v,
               label: t(`farmStatus.${v}`),

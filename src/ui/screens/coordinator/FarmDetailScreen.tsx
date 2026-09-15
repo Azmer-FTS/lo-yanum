@@ -11,6 +11,8 @@ import {
   declaredAreas,
   effectiveAreas,
   guardedDunamsOf,
+  awaitingDocuments,
+  documentChecklist,
   measuredAreas,
   landRightIssue,
   localDayKey,
@@ -692,6 +694,11 @@ function PaperStrip({
   const latest = farm.agreements
     .filter((a) => (a.signature ?? null) !== null)
     .sort((a, b) => new Date(b.signedAt).getTime() - new Date(a.signedAt).getTime())[0]
+  const waiting = awaitingDocuments(farm)
+  const signedish = farm.status === 'signed' || farm.status === 'active'
+  const missing = documentChecklist(farm)
+    .filter((l) => l.provided === null)
+    .map((l) => l.id)
   return (
     <section
       data-testid="farm-paper"
@@ -733,6 +740,35 @@ function PaperStrip({
         <Icon name="edit" size={16} />
         {t(latest ? 'assocForm.openAgain' : 'assocForm.open')}
       </button>
+      {/**
+        * ★★ AK5.1 — « ממתין למסמכים », EN PERMANENCE ET VISIBLEMENT.
+        *
+        * Pas un rappel discret : une bande pleine largeur, dans le bandeau du
+        * papier de la ferme, en tête de fiche, qui ne se replie pas et ne se
+        * ferme pas. Elle nomme ce qui manque. Sur une fiche SIGNÉE elle passe au
+        * ton d'alerte : c'est là que le PO pourrait croire le dossier bouclé.
+        */}
+      {waiting && (
+        <div
+          role="status"
+          data-testid="farm-awaiting-docs"
+          className={`flex w-full basis-full items-center gap-2 rounded-field px-3 py-2 text-caption font-semibold ${
+            signedish
+              ? 'bg-status-danger/10 text-status-danger-ink'
+              : 'bg-status-warn/15 text-status-warn-ink'
+          }`}
+        >
+          <Icon name="alert" size={17} />
+          <span>{t('docs.awaiting')}</span>
+          <span className="font-normal">
+            ·{' '}
+            {missing.length > 0
+              ? t('docs.missingList', { list: missing.map((id) => t(`documents.${id}`)).join(', ') })
+              : t('docs.unknownNature')}
+          </span>
+          {signedish && <span className="font-normal">· {t('docs.signedAwaiting')}</span>}
+        </div>
+      )}
     </section>
   )
 }

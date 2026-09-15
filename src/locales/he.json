@@ -1268,7 +1268,9 @@
     "shareFirst": "שיתוף עם הקובץ",
     "events": "אירועים",
     "guardsWindow": "שמירות ב־{{days}} ימים",
-    "guardsTotal": "{{count}} מאז תחילת התוכנית"
+    "guardsTotal": "{{count}} מאז תחילת התוכנית",
+    "signedWithDocs": "חתומות עם מסמכים",
+    "signedAwaitingDocs": "חתומות הממתינות למסמכים"
   },
   "emergency": {
     "police": "משטרה",
@@ -2218,5 +2220,16 @@
     "savedTitle": "ההסכם נחתם ונשמר בכרטיס",
     "openAgain": "טופס ההסכם",
     "notSigned": "טרם נחתם"
+  },
+  "docs": {
+    "awaiting": "ממתין למסמכים",
+    "queue": "ממתינות למסמכים",
+    "missingList": "חסר: {{list}}",
+    "unknownNature": "מסמכי זכות בקרקע (תחום הפעילות לא ידוע)",
+    "complete": "המסמכים התקבלו",
+    "closureBlocked": "לא ניתן לסמן כ״פעילה״ — ממתין למסמכים",
+    "signedAwaiting": "נחתם, אך התיק אינו שלם בלי מסמכי הזכות בקרקע",
+    "queueLine1": "ממתינות",
+    "queueLine2": "למסמכים"
   }
 }

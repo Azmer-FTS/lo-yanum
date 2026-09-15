@@ -14,6 +14,7 @@ import {
   getVolunteerStats,
 } from './access'
 import { now } from './clock'
+import { awaitingDocuments } from './documents'
 import { WEIGHTED_DUNAM_TARGET, effectiveAreas } from './fields'
 import { dunamsByRegion } from './regions'
 import { isTestId } from './testData'
@@ -136,6 +137,14 @@ export interface ProgrammeReport {
   /** Les deux états qui comptent pour l'association, nommés plutôt que déduits. */
   farmsSigned: number
   farmsActive: number
+  /**
+   * ★★ AK5.4 — PARMI LES FICHES SIGNÉES (« נחתם » ou « פעילה »), CELLES QUI ONT
+   *    LEURS DOCUMENTS DE DROIT SUR LA TERRE ET CELLES QUI LES ATTENDENT. Les
+   *    deux nombres font la somme des signées : un compte rendu qui ne dirait
+   *    que « 3 signées » laisserait croire à trois dossiers complets.
+   */
+  farmsSignedWithDocuments: number
+  farmsSignedAwaitingDocuments: number
 
   /**
    * ★ « DOUNAMS DÉCLARÉS » N'EST PAS « DOUNAMS EN SHMIRA », ET LES CONFONDRE
@@ -310,6 +319,12 @@ export function buildProgrammeReport(
 
     farmsSigned: entities.filter((f) => f.status === 'signed').length,
     farmsActive: entities.filter((f) => f.status === 'active').length,
+    farmsSignedWithDocuments: entities.filter(
+      (f) => (f.status === 'signed' || f.status === 'active') && !awaitingDocuments(f),
+    ).length,
+    farmsSignedAwaitingDocuments: entities.filter(
+      (f) => (f.status === 'signed' || f.status === 'active') && awaitingDocuments(f),
+    ).length,
     declaredDunams,
     weightedGuardedDunams: dunams.weightedSigned,
     targetWeighted,

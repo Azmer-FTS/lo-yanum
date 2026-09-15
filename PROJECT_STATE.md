@@ -37,7 +37,9 @@ bun run typecheck && bun run ajupdate && bun run aipass && bun run accept
 | AK1 données | ✅ 15 fiches `farm-ak1-01…15` insérées sur `lo-yanum-prod` après le déploiement de `2945841` ; relues et repassées : `bun run akdata check docs/ak/ak1-prod-rows.json` 15/15 ; 6 positionnées ; pondéré 2 160 |
 | AK3 formulaire | ✅ `AssociationFormModal` : libellés/ordre/gras/sauts de ligne/encadré (encadré tiré du gabarit, `**gras**` dans le gabarit ET le PDF) ; ת״ז et נייד `inputmode=numeric` ; pas de liste de lieux |
 | AK4 ouverture | ✅ bandeau « הסכם התנדבות- ארצנו » en tête de fiche (état, document précédent, bouton) ; `Modal` : focus piégé, croix, Échap, geste ; `bun run akui` 75/75 |
-| AK5 → AK9 | à faire |
+| AK5 documents | ✅ `awaitingDocuments` / `closureBlocked` / `allowedStatus` (core/documents.ts) ; « פעילה » refusée à l'écran, dans `updateFarm`/`createFarm`/import ; bande « ממתין למסמכים » permanente dans le bandeau de fiche ; file « ממתינות / למסמכים » 2ᵉ vignette (après נשכחו) ; compte rendu : חתומות עם מסמכים / הממתינות ; `akpass` 30/30, `akui` A202 |
+| Déploiement `0d2b506` | ❌ porte `agreement` (build réel) : le bandeau ajoute un 2ᵉ `agreement-view` ; porte re-ciblée (hors `farm-paper`), rejouée en local 18/18 |
+| AK6 → AK9 | à faire |
 
 Décisions AK posées : (1) `type` reste la seule vérité de la nature, 'unknown' = rien coché ;
 (2) שטחים שמירה = déclaré ou vide, jamais מעובד + מרעה (les portes AC/AD réécrites, pas supprimées) ;

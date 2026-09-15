@@ -24,6 +24,7 @@ import {
   /* ★★ AG5.2 — la troisième file. */
   dayKeyOf,
   farmsToRenew,
+  awaitingDocuments,
   now,
 } from '@core/index'
 import type { Farm, FarmCoverage, FarmStatus, FarmType, RegionId } from '@core/index'
@@ -221,6 +222,9 @@ export function FarmsListScreen() {
     [farms, todayKey, renewWindow],
   )
   const [renewOnly, setRenewOnly] = useState(false)
+  /* ★★ AK5.3 — la file « ממתינות למסמכים », même forme que les autres. */
+  const [docsOnly, setDocsOnly] = useState(false)
+  const docsCount = useMemo(() => farms.filter((f) => awaitingDocuments(f)).length, [farms])
   /** AA6 — where the sort control is rendered; see `sortControl`. */
   const phone = usePhoneShape()
   /** A new key is a new request to (re)anchor — and to pan only if off screen. */
@@ -267,6 +271,8 @@ export function FarmsListScreen() {
       if (noOutlineOnly && !needsOutline(farm)) return false
       /* AG5.2 — la file du renouvellement, même forme que les deux autres. */
       if (renewOnly && !renewIds.has(farm.id)) return false
+      /* AK5.3 — les fiches dont les documents de droit sur la terre manquent. */
+      if (docsOnly && !awaitingDocuments(farm)) return false
       /* AC4.4 — « qui est oublié », as a narrowing of the same roster. */
       if (neglected) {
         const state = coverageOf.get(farm.id)?.state
@@ -296,6 +302,7 @@ export function FarmsListScreen() {
     noOutlineOnly,
     renewOnly,
     renewIds,
+    docsOnly,
     gapThreshold,
     coverageOf,
     query,
@@ -446,6 +453,37 @@ export function FarmsListScreen() {
         *   lui la troisième, et A148 mesure les deux : « לחידוש » ENTIÈREMENT
         *   visible au repos partout, et au moins partiellement à 402 px.
         */}
+      {/**
+        * ═══════════════════════════════════════════════════════════════════
+        * ★★ AK5.3 — « ממתינות למסמכים », DEUXIÈME, JUSTE APRÈS « נשכחו ».
+        * ═══════════════════════════════════════════════════════════════════
+        *
+        * ⚠️ LES ACCIDENTS D'AC ET D'AD RAPPELÉS PAR LE BRIEF DÉCIDENT DE LA PLACE.
+        *    Dans la bande des vignettes et non la barre de filtres (le « + »
+        *    flottant ne va jamais dans cette bande) ; et à une place qui est au
+        *    repos DANS l'écran à 402 px, où deux vignettes seulement tiennent
+        *    (AG5.2 : 3 × 152 + 20 > 370). « נשכחו » garde la première place
+        *    qu'AC lui a donnée ; cette file-ci est une RÈGLE MÉTIER qui bloque
+        *    la clôture, pas un arriéré : elle passe devant « לחידוש » et
+        *    « לתיחום ». Mesurée sur CAPTURE du déployé à 402 et 1376 (A202).
+        */}
+      {docsCount > 0 && (
+        /* ⚠️ Le nom de la file tient sur les DEUX lignes de la vignette : à
+           152 px (gabarit Y5, non négociable) « ממתינות למסמכים » sur une ligne
+           se coupait en « ממתינות ל… » sur la capture à 402 px. La seconde
+           ligne, réservée à la note, porte la fin du nom — le nom entier se
+           lit, et la hauteur de la bande ne change pas. */
+        <KpiChip
+          label={t('docs.queueLine1')}
+          value={docsCount}
+          icon="document"
+          tone="alert"
+          hint={<span className="font-semibold text-content-primary">{t('docs.queueLine2')}</span>}
+          active={docsOnly}
+          onClick={() => setDocsOnly((v) => !v)}
+          testId="farms-awaiting-docs"
+        />
+      )}
       {renewIds.size > 0 && (
         <KpiChip
           label={t('renewal.title')}

@@ -512,6 +512,18 @@ function drawActivityPage(
     y,
   )
 
+  /* ★★ AK5.4 — les signées, séparées : dossier complet / en attente de papiers. */
+  y += 26 * S
+  ctx.fillStyle = c.good
+  const withDocsText = `${t('report.signedWithDocs')} ${he(report.farmsSignedWithDocuments)}`
+  ctx.fillText(withDocsText, right, y)
+  ctx.fillStyle = c.danger
+  ctx.fillText(
+    `${t('report.signedAwaitingDocs')} ${he(report.farmsSignedAwaitingDocuments)}`,
+    right - ctx.measureText(withDocsText).width - 24 * S,
+    y,
+  )
+
   y += 44 * S
   line(ctx, y, c.line)
 

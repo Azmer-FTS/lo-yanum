@@ -107,14 +107,18 @@ try {
   }
   const url = page.url()
   // The agreements block may be folded on a narrow column.
-  const viewBtn = page.locator('[data-testid="agreement-view"]').first()
+  /* ★ AK4 — le bandeau « הסכם התנדבות- ארצנו » en tête de fiche porte AUSSI un
+     bouton de lecture (celui du dernier accord signé). Cette porte parle des
+     LIGNES du bloc des accords : elle les compte hors du bandeau. */
+  const rowViews = page.locator('xpath=//*[@data-testid="agreement-view"][not(ancestor::*[@data-testid="farm-paper"])]')
+  const viewBtn = rowViews.first()
   if ((await viewBtn.count()) === 0 || !(await viewBtn.isVisible())) {
     await page.locator(`button:has-text("${he.farms.agreements}")`).first().click().catch(() => undefined)
     await page.waitForTimeout(500)
   }
   check('the entity is on screen with its agreement row', (await page.locator('body').innerText()).includes('הסכם — חוות ההסכם.pdf'))
   check('"view" is a BUTTON, not a link that navigates', (await viewBtn.evaluate((el) => el.tagName)) === 'BUTTON')
-  check('W8 — the entity carries both rows, unsigned and signed', (await page.locator('[data-testid="agreement-view"]').count()) === 2)
+  check('W8 — the entity carries both rows, unsigned and signed', (await rowViews.count()) === 2)
 
   // ---- view --------------------------------------------------------------
   await viewBtn.click()
@@ -142,7 +146,7 @@ try {
   // ---- W8: the SIGNED row carries the signature on the document ----------
   await page.locator('[data-testid="modal-close"]').click()
   await page.waitForTimeout(400)
-  await page.locator('[data-testid="agreement-view"]').nth(1).click()
+  await rowViews.nth(1).click()
   await page.waitForSelector('[data-testid="agreement-document"]', { timeout: 15_000 })
   await page.waitForTimeout(1200)
   const signedSrc = await page.locator('[data-testid="agreement-document"]').getAttribute('data')

@@ -1,3 +1,4 @@
+import { allowedStatus } from './documents'
 import { changesBetween, indexOf } from './backend'
 import { deletionPlan } from './deletion'
 import type { StoreBackend, StoreData, StoreIndex } from './backend'
@@ -628,6 +629,8 @@ export function createFarm(draft: FarmDraft): Farm {
     lastVisitAt: null,
     nextVisitAt: null,
   }
+  /* AK5.2 — « פעילה » ne se pose pas sans documents, même à la création. */
+  farm.status = allowedStatus(null, farm.status, farm)
   data.farms = [farm, ...data.farms]
   commit()
   return farm
@@ -636,7 +639,10 @@ export function createFarm(draft: FarmDraft): Farm {
 export function updateFarm(farmId: string, draft: FarmDraft): void {
   const index = data.farms.findIndex((f) => f.id === farmId)
   if (index === -1) return
+  const previous = data.farms[index].status
   data.farms[index] = { ...data.farms[index], ...draft }
+  /* AK5.2 — le verrou, ici aussi : l'écran le dit, le domaine le tient. */
+  data.farms[index].status = allowedStatus(previous, data.farms[index].status, data.farms[index])
   /* AD1 — le formulaire n'écrit QUE la surface déclarée ; la mesurée est
      reprise ici pour qu'une fiche créée puis enregistrée porte la sienne
      sans attendre la prochaine mutation de polygone. */
@@ -1580,10 +1586,15 @@ export function applyProspection(
   })
 
   const patches = new Map(plan.updated.map((entry) => [entry.farmId as string, entry.patch]))
+  for (const farm of created) farm.status = allowedStatus(null, farm.status, farm)
   data.farms = [
     ...data.farms.map((farm) => {
       const patch = patches.get(farm.id)
-      return patch ? { ...farm, ...withoutRestatedMeasure(farm, patch) } : farm
+      if (!patch) return farm
+      const next = { ...farm, ...withoutRestatedMeasure(farm, patch) }
+      /* AK5.2 — un fichier ne pose pas « פעילה » plus que l'écran. */
+      next.status = allowedStatus(farm.status, next.status, next)
+      return next
     }),
     ...created,
   ]
@@ -1629,7 +1640,8 @@ export function applyAssociation(
     attached++
     return {
       ...farm,
-      status: 'signed' as FarmStatus,
+      /* AK8 — une fiche « פעילה » qui revient d'un aller-retour ne recule pas. */
+      status: (farm.status === 'active' ? 'active' : 'signed') as FarmStatus,
       signature: image,
       signatureMissing: undefined,
       signatureOrigin: {
