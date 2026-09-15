@@ -73,7 +73,16 @@ import { useCoverageSettings } from '../../settings/coverage'
 import { useRenewalWindow } from '../../settings/renewal'
 
 const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
-const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed', 'unknown']
+/**
+ * ⚠️ AK2 — ET « לא ידוע » N'EST PAS UNE QUATRIÈME PASTILLE ICI, PARCE QUE LA
+ *    MESURE L'INTERDIT. `bun run uipass` : à 1376 px en mode splitté le panneau
+ *    fait ~578 px ; une pastille de plus — ou seulement un libellé plus long,
+ *    « חקלאות ומרעה » au lieu de « מעורב » — fait basculer TOUTE la barre de
+ *    filtres derrière « סינון » (AB2), le filtre de région compris. Une fiche
+ *    de nature inconnue se lit sur sa tuile (« לא ידוע ») et se trouve par les
+ *    files du haut ; elle ne vaut pas de replier la barre entière.
+ */
+const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed']
 
 /**
  * C1.1 — farms, map-first.
@@ -738,7 +747,7 @@ export function FarmsListScreen() {
           filtering now. Only the type pills remain, they have no chip.
           AA1.3 — and on a phone the three of them are one grid of equal
           widths: « un libellé court ne donne pas une pastille étroite ». */}
-      <PillGroup name="farm-type" cols={2}>
+      <PillGroup name="farm-type" cols={3}>
         {TYPES.map((ft) => (
           <FilterPill
             key={ft}

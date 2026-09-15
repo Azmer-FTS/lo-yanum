@@ -475,8 +475,8 @@
   "farmType": {
     "agriculture": "חקלאות",
     "livestock": "מרעה",
-    "mixed": "חקלאות ומרעה",
-    "unknown": "תחום לא ידוע"
+    "mixed": "מעורב",
+    "unknown": "לא ידוע"
   },
   "entityKind": {
     "farm": "חווה",

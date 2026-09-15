@@ -104,7 +104,8 @@
     "akdata": "bun run scripts/akdata.ts",
     "akui": "bun run scripts/akui.ts",
     "akpass": "bun run scripts/akpass.ts",
-    "akmap": "bun run scripts/akmap.ts"
+    "akmap": "bun run scripts/akmap.ts",
+    "akcaptures": "bun run scripts/akcaptures.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "0.2.3",
