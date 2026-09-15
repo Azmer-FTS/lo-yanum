@@ -669,7 +669,10 @@ export function DashboardScreen() {
   const lastReached = target.history[0] ?? null
 
   const markers: MapMarker[] = useMemo(() => {
-    const farmMarkers = farms.map((farm) => ({
+    /* AK1 — une fiche sans position (neuf des quinze du portail) n'a pas
+       d'épingle : posée au point de repli, elle ferait croire à une ferme à
+       Jérusalem. Elle reste dans les listes et les compteurs. */
+    const farmMarkers = farms.filter((farm) => !farm.positionMissing).map((farm) => ({
       id: farm.id,
       position: farm.position,
       color: readStatusColor(farm.status),

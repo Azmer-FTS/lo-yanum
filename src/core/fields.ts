@@ -102,11 +102,15 @@ export function optionLabel(id: string | null | undefined, options: readonly Fie
 export const LEGAL_ENTITY_OPTIONS: readonly FieldOption[] = [
   { id: 'private_farmer', label: 'חקלאי פרטי', aliases: ['פרטי', 'private'] },
   { id: 'cooperative', label: 'אגודה שיתופית', aliases: ['אגודה', 'cooperative'] },
+  /* AK2.2 — les deux valeurs qui manquaient. Ajoutées À LEUR PLACE dans la
+     liste du PO ; les identifiants déjà écrits dans des fiches ne changent pas. */
+  { id: 'moshav_shitufi', label: 'מושב שיתופי', aliases: ['מושב שיתופי', 'moshav shitufi'] },
   { id: 'gadash', label: 'גד״ש', aliases: ['גדש', 'גד"ש'] },
   { id: 'shaham', label: 'שח״ם', aliases: ['שחם', 'שח"ם'] },
   { id: 'kibbutz', label: 'קיבוץ', aliases: ['kibbutz'] },
   { id: 'moshav', label: 'מושב', aliases: ['moshav'] },
   { id: 'herder', label: 'רועה/בעל עדר', aliases: ['רועה', 'בעל עדר', 'רועה / בעל עדר'] },
+  { id: 'company', label: 'חברה בע״מ', aliases: ['חברה', 'חברה בעמ', 'חברה בע"מ', 'בע״מ', 'company'] },
   { id: 'unknown_entity', label: 'לא ידוע', aliases: ['unknown'] },
 ]
 
@@ -512,14 +516,23 @@ export interface HasGuardedArea extends HasAreas {
   guardedDunamsManual?: boolean
 }
 
-export function guardedDunamsOf(farm: HasGuardedArea): number {
+export function guardedDunamsOf(farm: HasGuardedArea): number | null {
+  /**
+   * ★★ AK1.6 · AK2.3 (2026-09-16) — PLUS AUCUNE RECOPIE, ET C'EST UNE
+   *    DÉCISION DU PO QUI REMPLACE CELLE D'AC3.
+   *
+   *   « Ne renseigne PAS שטחים שמירה : la source est vide, et le PO ne l'a
+   *     pas mesurée. Ne recopie rien depuis les autres surfaces. »
+   *
+   * Jusqu'ici une fiche sans chiffre répondait מעובד + מרעה. C'était une
+   * surface que personne n'avait déclarée, écrite dans la colonne שטחים שמירה
+   * que l'association transmet. Désormais : ce qui a été tapé, ou RIEN.
+   * `null` sort en case vide, à l'écran comme à l'export.
+   */
   if (farm.guardedDunamsManual && Number.isFinite(farm.guardedDunams)) {
     return Math.round(farm.guardedDunams as number)
   }
-  /* AD1.4 — le défaut est LA surface, c'est-à-dire la déclarée, ou la mesurée
-     quand rien n'est déclaré. Une fiche dont le seul chiffre vient d'un
-     polygone déclare donc garder ce que le polygone dit, et le suit. */
-  return effectiveAreas(farm).total
+  return null
 }
 
 /** Is this farm's guarded area the default, or a figure somebody typed? */
@@ -645,10 +658,10 @@ export function landRightIssue(
  * trip (AA4.10, A78) exact rather than approximately right.
  */
 export const FARM_STATUS_OPTIONS: readonly FieldOption[] = [
-  { id: 'to_contact', label: 'ליצירת קשר', aliases: ['לא נוצר קשר', 'to_contact'] },
+  { id: 'to_contact', label: 'ליצירת קשר', aliases: ['לא נוצר קשר', 'טרם נוצר קשר', 'to_contact'] },
   { id: 'contacted', label: 'נוצר קשר', aliases: ['contacted'] },
   { id: 'visited', label: 'בוקרה', aliases: ['ביקור', 'visited'] },
-  { id: 'verbal_ok', label: 'הסכמה בעל פה', aliases: ['הסכמה בעל־פה', 'verbal_ok', 'verbal'] },
+  { id: 'verbal_ok', label: 'הסכמה בעל פה', aliases: ['הסכמה בעל־פה', 'מוכן לחתימה', 'verbal_ok', 'verbal'] },
   { id: 'signed', label: 'הסכמה נחתמה', aliases: ['נחתם', 'חתמה', 'signed'] },
   { id: 'active', label: 'פעילה', aliases: ['פעיל', 'active'] },
   { id: 'declined', label: 'לא רלוונטי', aliases: ['סירבה', 'סירב', 'declined'] },
@@ -662,5 +675,44 @@ export const FARM_STATUS_OPTIONS: readonly FieldOption[] = [
 export const FARM_TYPE_OPTIONS: readonly FieldOption[] = [
   { id: 'agriculture', label: 'מעובד', aliases: ['חקלאות', 'חקלאי', 'agriculture'] },
   { id: 'livestock', label: 'מרעה', aliases: ['בעלי חיים', 'רעייה', 'livestock'] },
-  { id: 'mixed', label: 'מעורב', aliases: ['מעורבת', 'משולב', 'mixed'] },
+  { id: 'mixed', label: 'מעורב', aliases: ['מעורבת', 'משולב', 'חקלאות ומרעה', 'mixed'] },
+  { id: 'unknown', label: 'לא ידוע', aliases: ['unknown'] },
 ]
+
+// ---------------------------------------------------------------------------
+// AK2 — la nature de l'activité, à choix multiple
+// ---------------------------------------------------------------------------
+
+/** Les deux cases, dans l'ordre du PO : חקלאות · מרעה. */
+export type Activity = 'crops' | 'grazing'
+export const ACTIVITIES: readonly Activity[] = ['crops', 'grazing']
+
+export interface Activities {
+  crops: boolean
+  grazing: boolean
+}
+
+/** `type` → les deux cases. 'unknown' = aucune cochée. */
+export function activitiesOf(type: FarmType | undefined): Activities {
+  return {
+    crops: type === 'agriculture' || type === 'mixed',
+    grazing: type === 'livestock' || type === 'mixed',
+  }
+}
+
+/** Les deux cases → `type`. C'est le seul chemin d'écriture depuis l'écran. */
+export function typeOfActivities(a: Activities): FarmType {
+  if (a.crops && a.grazing) return 'mixed'
+  if (a.crops) return 'agriculture'
+  if (a.grazing) return 'livestock'
+  return 'unknown'
+}
+
+/**
+ * ★ AK1.2 — la nature DÉDUITE des surfaces déclarées, et de rien d'autre.
+ *   מרעה seul, מעובד seul, ou les deux ; aucune surface → 'unknown' (un nom
+ *   de fiche n'est pas une déclaration).
+ */
+export function typeFromAreas(cultivated: number, grazing: number): FarmType {
+  return typeOfActivities({ crops: cultivated > 0, grazing: grazing > 0 })
+}

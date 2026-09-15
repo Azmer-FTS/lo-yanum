@@ -100,7 +100,8 @@
     "airoute": "bun run scripts/airoute.ts",
     "aisettings": "bun run scripts/aisettings.ts",
     "aicaptures": "bun run scripts/aicaptures.ts",
-    "ajupdate": "bun run scripts/ajupdate.ts"
+    "ajupdate": "bun run scripts/ajupdate.ts",
+    "akdata": "bun run scripts/akdata.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "0.2.3",

@@ -71,7 +71,7 @@ import { useCoverageSettings } from '../../settings/coverage'
 import { useRenewalWindow } from '../../settings/renewal'
 
 const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
-const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed']
+const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed', 'unknown']
 
 /**
  * C1.1 — farms, map-first.
@@ -315,7 +315,8 @@ export function FarmsListScreen() {
 
   const markers: MapMarker[] = useMemo(
     () =>
-      filtered.map((farm) =>
+      /* AK1 — pas d'épingle au point de repli pour une fiche sans position. */
+      filtered.filter((farm) => !farm.positionMissing).map((farm) =>
         withInteraction(
           {
             id: farm.id,

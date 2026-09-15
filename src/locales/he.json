@@ -464,18 +464,19 @@
     "backToLogin": "מסך פתיחה"
   },
   "farmStatus": {
-    "to_contact": "ליצירת קשר",
+    "to_contact": "טרם נוצר קשר",
     "contacted": "נוצר קשר",
     "visited": "בוקרה",
-    "verbal_ok": "הסכמה בעל־פה",
-    "signed": "חתמה",
+    "verbal_ok": "מוכן לחתימה",
+    "signed": "נחתם",
     "active": "פעילה",
     "declined": "סירבה"
   },
   "farmType": {
     "agriculture": "חקלאות",
-    "livestock": "בעלי חיים",
-    "mixed": "מעורבת"
+    "livestock": "מרעה",
+    "mixed": "חקלאות ומרעה",
+    "unknown": "תחום לא ידוע"
   },
   "entityKind": {
     "farm": "חווה",
@@ -785,7 +786,8 @@
     "filterNoOutlineHint": "יישויות עם שטח מוצהר שאין להן אף פוליגון על המפה",
     "drawOutline": "סימון על המפה",
     "colAreaGap": "פער",
-    "measuredShort": "מדוד"
+    "measuredShort": "מדוד",
+    "guardedAreaUnset": "לא הוצהר"
   },
   "anchor": {
     "title": "עמדת שמירה",
@@ -1507,12 +1509,15 @@
     "farmerEmail": "מייל חקלאי",
     "umbrella": "ארגון מאגד (אגודה/גד״ש/שח״ם)",
     "guardedArea": "שטחים שמירה (דונם)",
-    "guardedAreaHint": "ברירת המחדל: מעובד + מרעה. שינוי כאן נשמר ולא נדרס.",
+    "guardedAreaHint": "רק מה שהוצהר. ריק = לא נמדד. לא מועתק משטח אחר.",
     "guardedAuto": "ברירת מחדל — מעובד + מרעה",
     "guardedManual": "הוזן ידנית",
     "guardedBackToDefault": "חזרה לברירת המחדל",
     "farmerId": "ת״ז / ח״פ",
-    "farmerIdHint": "כפי שמופיע בהסכם ההתנדבות"
+    "farmerIdHint": "כפי שמופיע בהסכם ההתנדבות",
+    "activity": "תחום הפעילות",
+    "activityUnknown": "לא סומן — תחום לא ידוע",
+    "activityDropsArea": "שטח של תחום שבוטל יימחק בשמירה ולא יועבר לשטח האחר"
   },
   "import": {
     "title": "ייבוא מקובץ",
@@ -2192,5 +2197,9 @@
     "failedTitle": "העדכון לא נקלט",
     "failedBody": "האפליקציה עדיין פועלת על {{id}}. אפשר לנסות שוב.",
     "close": "סגירה"
+  },
+  "activity": {
+    "crops": "חקלאות",
+    "grazing": "מרעה"
   }
 }

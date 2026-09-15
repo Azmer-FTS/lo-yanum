@@ -764,20 +764,14 @@ export function parseProspectionRow(
   const guarded = cellNumber(at('guarded'))
   if (guarded !== null && guarded > 0) {
     /**
-     * ⚠️ AND IT IS ONLY A DECLARATION WHEN IT DIFFERS FROM THE DEFAULT. The
-     *    export writes this column on EVERY row (AC3.3), and for most rows the
-     *    figure it writes is precisely מעובד + מרעה — the default. Reading
-     *    that back as a hand-entered override would turn every round trip into
-     *    a mass freeze: 198 records pinned to whatever their areas were the
-     *    day the file was produced, deaf to every polygon drawn afterwards.
-     *    A cell that restates the default is the default; a cell that says
-     *    something else is the farmer's declaration, and that one sticks.
+     * ★ AK1.6 — ET UN CHIFFRE ÉGAL À מעובד + מרעה EST DÉSORMAIS UNE
+     *   DÉCLARATION COMME LES AUTRES. Il n'y a plus de défaut qu'il
+     *   « répéterait » : l'export n'écrit que ce qui a été déclaré, donc un
+     *   aller-retour ne fige plus rien, et laisser tomber cette case perdrait
+     *   la seule déclaration que le fichier porte.
      */
-    const fallback = (cultivated ?? 0) + (grazing ?? 0)
-    if (guarded !== fallback) {
-      patch.guardedDunams = guarded
-      patch.guardedDunamsManual = true
-    }
+    patch.guardedDunams = guarded
+    patch.guardedDunamsManual = true
   }
 
   // --- AA4.4: the position -------------------------------------------------
@@ -1137,9 +1131,11 @@ function prospectionCell(
       return farm.umbrella ?? ''
     case 'locality':
       return farm.locality
-    /* AC3.3 — the declared guarded area, defaulted from the two others. */
-    case 'guarded':
-      return String(guardedDunamsOf(farm))
+    /* AC3.3 · AK1.6 — the declared guarded area, and nothing when none. */
+    case 'guarded': {
+      const g = guardedDunamsOf(farm)
+      return g === null ? '' : String(g)
+    }
     case 'regulars': {
       const n = regularsOf?.(farm)
       return n == null ? '' : String(n)

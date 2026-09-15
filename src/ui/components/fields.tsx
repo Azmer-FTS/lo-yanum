@@ -60,6 +60,7 @@ export function TextField({
   type = 'text',
   ltr = false,
   className = '',
+  inputMode,
 }: {
   label: string
   value: string
@@ -94,6 +95,12 @@ export function TextField({
   /* AA2 — 'date' for תוקף ההסכם: the native picker, which is the only
      date control a thumb can drive on an iPhone. */
   type?: 'text' | 'tel' | 'number' | 'email' | 'date'
+  /**
+   * ★ AK3 — le clavier que le doigt reçoit. `numeric` = le pavé seul, sans
+   *   point ni signe : c'est celui d'une ת״ז et d'un portable. ⚠️ JAMAIS
+   *   `type="number"` pour une ת״ז : un nombre perd son zéro initial.
+   */
+  inputMode?: 'numeric' | 'tel' | 'text' | 'email'
   ltr?: boolean
   className?: string
 }) {
@@ -108,6 +115,8 @@ export function TextField({
     >
       <input
         type={type}
+        inputMode={inputMode}
+        pattern={inputMode === 'numeric' ? '[0-9]*' : undefined}
         data-testid={testId}
         data-suggested={proposed ? '1' : undefined}
         readOnly={readOnly}

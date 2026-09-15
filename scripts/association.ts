@@ -382,23 +382,27 @@ section('A96 → AC3 — שטחים שמירה est une DÉCLARATION, et elle sor
   const iGuard = headersOut.indexOf('שטחים שמירה')
   const iCult = headersOut.indexOf('שטחים מעובדים')
   const iGraze = headersOut.indexOf('שטחי מרעה')
+  /* ★ AK1.6 (2026-09-16) — LE PO RETIRE LE DÉFAUT : rien n'est recopié
+     depuis מעובד ou מרעה. Un classeur sans aucune déclaration sort donc cette
+     colonne VIDE, et le rapport la nomme « noData » — une colonne que l'app
+     tient, mais que personne n'a remplie. */
   const empty = out.slice(1).filter((r) => r[iGuard] === '')
   check(
-    'AC3.3 · every row carries a guarded area — the column no longer comes out blank',
-    empty.length === 0,
+    'AC3.3 → AK1.6 · with no declaration, no row invents a guarded area',
+    empty.length === out.length - 1,
     `${empty.length} empty of ${out.length - 1}`,
   )
-  const wrong = out
+  const copied = out
     .slice(1)
-    .filter((r) => Number(r[iGuard]) !== Number(r[iCult] || 0) + Number(r[iGraze] || 0))
+    .filter((r) => r[iGuard] !== '' && Number(r[iGuard]) === Number(r[iCult] || 0) + Number(r[iGraze] || 0))
   check(
-    'AC3.1 · and by default it is מעובד + מרעה, on every row',
-    wrong.length === 0,
-    wrong.length ? `${wrong.length} rows differ` : `${out.length - 1} rows`,
+    'AK1.6 · and no row carries a copy of מעובד + מרעה',
+    copied.length === 0,
+    `${copied.length} copies`,
   )
   check(
-    'AC3.3 · the export no longer reports it as a column this app does not hold',
-    !report.blanks.some((b) => b.header === 'שטחים שמירה'),
+    'AK1.6 · the export reports it as held but empty (noData), never notStored',
+    report.blanks.some((b) => b.header === 'שטחים שמירה' && b.reason === 'noData'),
     report.blanks.map((b) => `${b.header}(${b.reason})`).join(' · ') || 'no blanks reported',
   )
   /* AC3.2 — a figure the coordinator typed is what goes out, not the default. */

@@ -490,17 +490,10 @@ function KeyNumbers({
         icon="shield"
         tint="bg-status-info/[0.12]"
         ink="text-status-info-ink"
-        figure={guardedDunamsOf(farm).toLocaleString(locale)}
+        figure={guardedDunamsOf(farm)?.toLocaleString(locale) ?? '—'}
         label={t('farms.guardedArea')}
-        note={
-          farm.guardedDunamsManual ? (
-            <span className="font-semibold text-status-warn-ink">
-              {t('farms.guardedAreaManual')}
-            </span>
-          ) : (
-            t('farms.guardedAreaDefault')
-          )
-        }
+        /* AK1.6 — plus de « ברירת מחדל » : ce qui a été déclaré, ou un tiret. */
+        note={guardedDunamsOf(farm) === null ? t('farms.guardedAreaUnset') : undefined}
       />
 
       {/**

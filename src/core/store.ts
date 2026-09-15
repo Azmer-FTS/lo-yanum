@@ -1542,7 +1542,7 @@ export function applyProspection(
       locality: patch.locality ?? patch.name ?? '',
       region: patch.region ?? '',
       regionId: patch.regionId ?? null,
-      type: patch.type ?? 'mixed',
+      type: patch.type ?? 'unknown',
       entityKind: entityKindForRow(patch),
       status: patch.status ?? 'to_contact',
       position: patch.position ?? fallbackPosition,

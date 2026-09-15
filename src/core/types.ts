@@ -47,7 +47,22 @@ export type FarmStatus =
   | 'active'
   | 'declined'
 
-export type FarmType = 'agriculture' | 'livestock' | 'mixed'
+/**
+ * ★★ AK2 (2026-09-16) — LA NATURE DE L'ACTIVITÉ EST UN CHOIX MULTIPLE À DEUX
+ *    CASES : חקלאות · מרעה. `type` en est l'encodage unique, et il n'y a pas de
+ *    seconde colonne qui pourrait le contredire (la règle d'AH1) :
+ *
+ *      rien coché        → 'unknown'      (le PO ne sait pas encore)
+ *      חקלאות seule      → 'agriculture'
+ *      מרעה seul         → 'livestock'
+ *      les deux          → 'mixed'
+ *
+ * ⚠️ 'unknown' EST UNE VALEUR ET NON UNE ABSENCE. Avant AK2 une fiche neuve
+ *    naissait « mixed », c'est-à-dire qu'elle DÉCLARAIT deux activités que
+ *    personne n'avait vues. Voir `activitiesOf` / `typeOfActivities`
+ *    (core/fields.ts).
+ */
+export type FarmType = 'agriculture' | 'livestock' | 'mixed' | 'unknown'
 
 /**
  * G16 — what KIND of entity the record is (field-expert feedback): the

@@ -18,6 +18,9 @@ import {
   getFarmZonesForFarm,
   getVisibleFarms,
   guardedDunamsOf,
+  ACTIVITIES,
+  activitiesOf,
+  typeOfActivities,
   ringAreaDunams,
   fromDayKey,
   isEmail,
@@ -91,7 +94,6 @@ function PhotoCompact({
 }
 
 const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
-const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed']
 
 /**
  * R5.1 — farm create/edit.
@@ -194,7 +196,10 @@ export function FarmFormScreen() {
    * is counted in.
    */
   const [regionId, setRegionId] = useState<RegionId | ''>(existing?.regionId ?? '')
-  const [type, setType] = useState<FarmType>(existing?.type ?? 'mixed')
+  /* ★ AK2 — une fiche neuve naît « לא ידוע », plus « mixed » : rien n'est
+     coché tant que le PO n'a rien vu. */
+  const [type, setType] = useState<FarmType>(existing?.type ?? 'unknown')
+  const activities = activitiesOf(type)
   /**
    * G16 — חווה / מושב / אחר. New records default to a farm.
    *
@@ -260,9 +265,11 @@ export function FarmFormScreen() {
    *    into on a sheet of 198 of them: a record flagged at zero can never be
    *    filled in by a drawn polygon again.
    */
-  const [guardedDunams, setGuardedDunams] = useState(
-    String(existing ? guardedDunamsOf(existing) : 0),
-  )
+  /* ★ AK1.6 — vide tant que rien n'a été déclaré. Plus de défaut recopié. */
+  const [guardedDunams, setGuardedDunams] = useState(() => {
+    const g = existing ? guardedDunamsOf(existing) : null
+    return g === null ? '' : String(g)
+  })
   const [guardedManual, setGuardedManual] = useState(
     Boolean(existing?.guardedDunamsManual),
   )
@@ -386,15 +393,6 @@ export function FarmFormScreen() {
   const liaisonPhoneShown = liaisonSame ? inherited(farmerPhone, suggest.farmerPhone) : liaisonPhone
 
   const num = (v: string) => (v.trim() === '' ? NaN : Number(v))
-  /**
-   * ★ AC3.1 — THE DEFAULT FOLLOWS THE TWO FIELDS AS THEY ARE TYPED, not the
-   *   record as it was loaded: a coordinator who corrects the grazing area and
-   *   then presses « חזרה לברירת המחדל » must get the CORRECTED total.
-   */
-  const defaultGuarded = Math.round(
-    (Number.isFinite(num(farmDunams)) ? num(farmDunams) : 0) +
-      (Number.isFinite(num(grazingDunams)) ? num(grazingDunams) : 0),
-  )
 
   /**
    * ★ AA2 — « סמל יישוב — entier, unique quand présent. »
@@ -543,18 +541,29 @@ export function FarmFormScreen() {
         .filter((l) => Number.isFinite(l.heads) && l.heads > 0)
         .map((l) => ({ ...l, label: l.label.trim() })),
       agreements: agreements.map((a) => ({ ...a, signedBy: a.signedBy.trim() })),
-      farmDunams: Number.isFinite(num(farmDunams)) ? num(farmDunams) : 0,
-      grazingDunams: Number.isFinite(num(grazingDunams))
-        ? num(grazingDunams)
-        : 0,
+      /* ★ AK2.3 — la surface suit la nature. Une activité décochée n'a pas de
+         surface : ce qui restait dans son champ caché n'est PAS reporté dans
+         l'autre, il est retiré (et l'écran l'a annoncé sous les cases). Une
+         nature inconnue garde les deux champs tels qu'ils ont été tapés. */
+      farmDunams:
+        type !== 'unknown' && !activities.crops
+          ? 0
+          : Number.isFinite(num(farmDunams)) ? num(farmDunams) : 0,
+      grazingDunams:
+        type !== 'unknown' && !activities.grazing
+          ? 0
+          : Number.isFinite(num(grazingDunams)) ? num(grazingDunams) : 0,
       /* ★ AD1.5 — LE DRAPEAU NE SE POSE JAMAIS SUR UN ZÉRO, ici comme à
          l'import et comme sur שטחים שמירה. Un zéro saisi est « je n'ai pas ce
          chiffre », pas « cette exploitation déclare zéro dounam » — et une
          fiche figée à zéro est une fiche qui ne peut plus jamais être
          renseignée. C'est le piège d'AA4, rappelé en AC3 et redemandé en AD1. */
-      farmDunamsManual: farmManual && num(farmDunams) > 0,
-      grazingDunamsManual: grazingManual && num(grazingDunams) > 0,
-      /* AC3.2 — the flag never lands on a zero. See the note on the state. */
+      farmDunamsManual:
+        farmManual && num(farmDunams) > 0 && (type === 'unknown' || activities.crops),
+      grazingDunamsManual:
+        grazingManual && num(grazingDunams) > 0 && (type === 'unknown' || activities.grazing),
+      /* AC3.2 · AK1.6 — un chiffre tapé, ou rien. Le drapeau ne se pose
+         jamais sur un zéro ni sur une case vide. */
       guardedDunams: Number.isFinite(num(guardedDunams)) ? num(guardedDunams) : 0,
       guardedDunamsManual: guardedManual && num(guardedDunams) > 0,
       /* ★ AH1.1 — LE CONTACT PRINCIPAL ET L'AGRICULTEUR SONT LA MÊME PERSONNE
@@ -699,12 +708,6 @@ export function FarmFormScreen() {
               { value: '', label: t('form.regionStdHint') },
               ...regions().map((r) => ({ value: r.id, label: r.name })),
             ]}
-          />
-          <SelectField<FarmType>
-            label={t('form.type')}
-            value={type}
-            onChange={setType}
-            options={TYPES.map((v) => ({ value: v, label: t(`farmType.${v}`) }))}
           />
           {/* G16 — what KIND of entity this record is. A moshav keeps every
               mechanic and changes marker, zone tints and boundary wording. */}
@@ -980,6 +983,8 @@ export function FarmFormScreen() {
               hint={t('form.farmerIdHint')}
               value={farmerId}
               onChange={setFarmerId}
+              inputMode="numeric"
+              testId="farm-farmer-id"
               ltr
             />
             <TextField
@@ -1067,17 +1072,62 @@ export function FarmFormScreen() {
         </FormSection>
 
         <FormSection title={t('form.sectionAreas')}>
+          {/**
+            * ★★ AK2.1 — « NATURE DE L'ACTIVITÉ », À CHOIX MULTIPLE, EN TÊTE DES
+            *    SURFACES QU'ELLE GOUVERNE. Deux cases que le doigt presse, pas
+            *    une liste à trois valeurs dont l'une s'appelait « מעורבת » :
+            *    une exploitation peut être les deux, et c'est le cas de la
+            *    moitié du terrain. Rien de coché = לא ידוע.
+            */}
+          <fieldset className="col-span-full" data-testid="farm-activities">
+            <legend className="label">{t('form.activity')}</legend>
+            <div className="flex flex-wrap items-center gap-2">
+              {ACTIVITIES.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={activities[id]}
+                  data-testid={`activity-${id}`}
+                  onClick={() =>
+                    setType(typeOfActivities({ ...activities, [id]: !activities[id] }))
+                  }
+                  className={`filter-pill min-h-[2.75rem] px-4 ${
+                    activities[id] ? 'filter-pill-active' : ''
+                  }`}
+                >
+                  <Icon name={activities[id] ? 'check' : 'plus'} size={15} />
+                  {t(`activity.${id}`)}
+                </button>
+              ))}
+              {type === 'unknown' && (
+                <span className="muted text-micro">{t('form.activityUnknown')}</span>
+              )}
+            </div>
+            {type !== 'unknown' &&
+              ((!activities.crops && num(farmDunams) > 0) ||
+                (!activities.grazing && num(grazingDunams) > 0)) && (
+                <p className="mt-1 text-micro font-semibold text-status-warn-ink" role="status">
+                  {t('form.activityDropsArea')}
+                </p>
+              )}
+          </fieldset>
           {/* ★★ AD1 — CES DEUX CHAMPS SONT LA SURFACE **DÉCLARÉE**. La ligne
               sous chacun donne ce que le contour mesure, et un geste pour
               l'adopter ; enregistrer ne touche jamais au polygone, et
-              redessiner le polygone ne touchera jamais à ces deux champs. */}
+              redessiner le polygone ne touchera jamais à ces deux champs.
+              ★ AK2.3 — et chacun n'existe que pour SA nature. Taper un chiffre
+              dans une fiche de nature inconnue coche la case correspondante. */}
+          {(type === 'unknown' || activities.crops) && (
           <div>
             <TextField
               label={t('form.farmArea')}
               value={farmDunams}
+              testId="farm-area-cultivated"
               onChange={(v) => {
                 setFarmHectares(v)
                 setFarmManual(true)
+                if (type === 'unknown' && Number(v) > 0) setType('agriculture')
               }}
               type="number"
               ltr
@@ -1091,13 +1141,17 @@ export function FarmFormScreen() {
               }}
             />
           </div>
+          )}
+          {(type === 'unknown' || activities.grazing) && (
           <div>
             <TextField
               label={t('form.grazingArea')}
               value={grazingDunams}
+              testId="farm-area-grazing"
               onChange={(v) => {
                 setGrazingHectares(v)
                 setGrazingManual(true)
+                if (type === 'unknown' && Number(v) > 0) setType('livestock')
               }}
               type="number"
               ltr
@@ -1111,48 +1165,26 @@ export function FarmFormScreen() {
               }}
             />
           </div>
+          )}
           {/**
-            * ★★ AC3 — « שטחים שמירה » : LA DÉCLARATION, PAS UNE MESURE.
+            * ★★ AC3 → AK1.6 — « שטחים שמירה » : CE QUI A ÉTÉ DÉCLARÉ, OU RIEN.
             *
-            * « nous surveillons la totalité de cette surface. » The default is
-            * the whole holding and the button hands it back; a typed figure is
-            * the farmer's own declaration and nothing overwrites it after.
+            * Il n'y a plus de défaut מעובד + מרעה ni de bouton qui le rend : le
+            * PO a demandé qu'aucune surface ne soit recopiée dans une autre.
             */}
           <div>
             <TextField
               label={t('form.guardedArea')}
               hint={t('form.guardedAreaHint')}
               value={guardedDunams}
+              testId="farm-area-guarded"
               onChange={(v) => {
                 setGuardedDunams(v)
-                setGuardedManual(true)
+                setGuardedManual(v.trim() !== '')
               }}
               type="number"
               ltr
             />
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              {guardedManual ? (
-                <>
-                  <span className="chip bg-status-warn/15 text-status-warn-ink">
-                    {t('form.guardedManual')}
-                  </span>
-                  <button
-                    type="button"
-                    data-testid="guarded-back-to-default"
-                    onClick={() => {
-                      setGuardedManual(false)
-                      setGuardedDunams(String(defaultGuarded))
-                    }}
-                    className="text-micro font-semibold text-accent-ink hover:underline"
-                  >
-                    {t('form.guardedBackToDefault')} (
-                    <span className="numeric ltr-nums">{defaultGuarded}</span>)
-                  </button>
-                </>
-              ) : (
-                <span className="muted text-micro">{t('form.guardedAuto')}</span>
-              )}
-            </div>
           </div>
         </FormSection>
 

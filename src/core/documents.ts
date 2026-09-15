@@ -58,6 +58,10 @@ export function expectedDocuments(type: FarmType): ExpectedDocumentId[] {
       return ['grazing']
     case 'mixed':
       return ['crops', 'grazing']
+    /* AK2 — nature inconnue : on ne sait pas QUEL papier demander. La fiche
+       n'est pas complète pour autant — voir `awaitingDocuments`. */
+    case 'unknown':
+      return []
   }
 }
 

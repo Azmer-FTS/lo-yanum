@@ -8,7 +8,9 @@
 
 - **Branche** : `main`. **Dernier commit** : voir `git log --oneline -1`
   (passe **AJ**, 2026-09-15).
-- **Passe en cours** : AJ — AJ0 « la version installée ne se met jamais à
+- **Passe en cours : AK** (2026-09-16) — formulaire calqué, typologie,
+  archivage, reprise des données. Tableau d'avancement : section « AK » plus bas.
+- **Passe précédente** : AJ — AJ0 « la version installée ne se met jamais à
   jour » (bloquant, traité en premier). **Correctif livré et poussé**
   (`f94c32a`) ; `ajupdate` 38/38 en local ; **sur le déployé 11/11** avec un
   vrai déploiement pendant que l'app restait ouverte (`ETAT.md` §AJ0.4).
@@ -26,6 +28,19 @@ bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
 bun run typecheck && bun run ajupdate && bun run aipass && bun run accept
 ```
+
+## Ce qui est fait dans AK
+
+| Bloc | État |
+|---|---|
+| AK2 modèle | ✅ `farm_type` + `unknown` (migration `20260916000100`, appliquée sur prod) ; nature = deux cases חקלאות · מרעה sur `type` ; entités + מושב שיתופי, חברה בע״מ ; `guardedDunamsOf` → `number \| null`, plus de recopie (AK1.6 remplace AC3) |
+| AK1 données | outil `bun run akdata` (A192–A194, 30/30 sur le jeu construit) ; insertion prod APRÈS déploiement du code qui connaît `unknown` |
+| AK3 → AK9 | à faire |
+
+Décisions AK posées : (1) `type` reste la seule vérité de la nature, 'unknown' = rien coché ;
+(2) שטחים שמירה = déclaré ou vide, jamais מעובד + מרעה (les portes AC/AD réécrites, pas supprimées) ;
+(3) une fiche sans position n'a pas d'épingle (listes et compteurs oui) ;
+(4) libellés de statut alignés sur l'association : טרם נוצר קשר · מוכן לחתימה · נחתם.
 
 ## Ce qui est fait dans AJ
 

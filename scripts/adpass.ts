@@ -372,14 +372,14 @@ section('A110 — la pondération porte sur la déclarée')
   )
   /* AC3.4 — la surface gardée par défaut suit la même lecture, et rien d'autre. */
   check(
-    'A110 · and שטחים שמירה still defaults to that same surface',
-    guardedDunamsOf({ farmDunams: 800, grazingDunams: 5000 }) === 5800 &&
+    'A110 → AK1.6 · and שטחים שמירה copies neither surface any more',
+    guardedDunamsOf({ farmDunams: 800, grazingDunams: 5000 }) === null &&
       guardedDunamsOf({
         farmDunams: 0,
         grazingDunams: 0,
         measuredFarmDunams: 430,
         measuredGrazingDunams: 70,
-      }) === 500,
+      }) === null,
   )
 }
 

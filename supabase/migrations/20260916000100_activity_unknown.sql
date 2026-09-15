@@ -1,0 +1,19 @@
+-- ===========================================================================
+-- AK2 (2026-09-16) — LA NATURE DE L'ACTIVITÉ PEUT ÊTRE « INCONNUE ».
+-- ===========================================================================
+--
+--   « Champ nature de l'activité, à CHOIX MULTIPLE — une exploitation peut
+--     être les deux : חקלאות · מרעה. »
+--
+-- ★ `farm_type` RESTE LA SEULE COLONNE. Deux cases cochables s'encodent en
+--   quatre valeurs : agriculture (חקלאות), livestock (מרעה), mixed (les deux),
+--   et — ce qui manquait — `unknown` (aucune). Une seconde colonne « activités »
+--   aurait été un deuxième champ pour une seule vérité, la faute qu'AH1 a
+--   recensée sept fois.
+--
+-- ⚠️ JUSQU'ICI UNE FICHE NEUVE NAISSAIT `mixed` : elle déclarait deux activités
+--    que personne n'avait vues. Les huit fiches d'AK1 sans aucune surface sont
+--    exactement ce cas.
+--
+-- Additif : aucune ligne existante ne change.
+alter type farm_type add value if not exists 'unknown';

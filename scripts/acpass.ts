@@ -396,9 +396,12 @@ section('A102 — שטחים שמירה : le défaut, la déclaration, et le zé
 // ---------------------------------------------------------------------------
 
 {
+  /* ★ AK1.6 (2026-09-16) — LE DÉFAUT מעובד + מרעה EST RETIRÉ PAR LE PO.
+     « Ne recopie rien depuis les autres surfaces. » L'assertion est réécrite,
+     pas supprimée, pour que le renversement reste au dossier. */
   check(
-    'A102 · the default is מעובד + מרעה',
-    guardedDunamsOf({ farmDunams: 800, grazingDunams: 5000 }) === 5800,
+    'A102 → AK1.6 · no default: nothing declared means nothing',
+    guardedDunamsOf({ farmDunams: 800, grazingDunams: 5000 }) === null,
     String(guardedDunamsOf({ farmDunams: 800, grazingDunams: 5000 })),
   )
   check(
@@ -418,8 +421,8 @@ section('A102 — שטחים שמירה : le défaut, la déclaration, et le zé
    *    polygon drawn tomorrow still fills it.
    */
   check(
-    'A102 · a zero with no flag does not freeze anything',
-    guardedDunamsOf({ farmDunams: 800, grazingDunams: 100, guardedDunams: 0 }) === 900,
+    'A102 · a zero with no flag does not freeze anything (and copies nothing, AK1.6)',
+    guardedDunamsOf({ farmDunams: 800, grazingDunams: 100, guardedDunams: 0 }) === null,
     String(guardedDunamsOf({ farmDunams: 800, grazingDunams: 100, guardedDunams: 0 })),
   )
   /* And the importer never sets the flag for a zero cell. */
@@ -450,9 +453,9 @@ section('A102 — שטחים שמירה : le défaut, la déclaration, et le zé
     [],
   )
   check(
-    'A102 · a cell that restates the default is the default, not an override',
-    restated.rows[0].patch.guardedDunams === undefined &&
-      restated.rows[0].patch.guardedDunamsManual === undefined,
+    'A102 → AK1.6 · a cell equal to מעובד + מרעה is a declaration too (no default to restate)',
+    restated.rows[0].patch.guardedDunams === 900 &&
+      restated.rows[0].patch.guardedDunamsManual === true,
     `${String(restated.rows[0].patch.guardedDunams)}`,
   )
   /* AC3.2 — a declared value is never overwritten by a later re-import. */
@@ -722,13 +725,13 @@ section('A107 — l’export : 32 colonnes, aller-retour sans perte')
   const iGuardOut = exported[0].findIndex((h) => h.trim() === 'שטחים שמירה (דונם)')
   const blank = exported.slice(1).filter((r) => r[iGuardOut] === '')
   check(
-    'A107 · שטחים שמירה is filled on every row — it no longer comes out empty',
-    blank.length === 0,
+    'A107 → AK1.6 · שטחים שמירה carries only declarations: blank where none was made',
+    blank.length === exported.length - 2,
     `${blank.length} blank of ${exported.length - 1}`,
   )
   check(
-    'A107 · and its value is the declaration where there is one, the default elsewhere',
-    exported[2][iGuardOut] === '2500' && exported[1][iGuardOut] === '5800',
+    'A107 → AK1.6 · the declaration where there is one, nothing elsewhere',
+    exported[2][iGuardOut] === '2500' && exported[1][iGuardOut] === '',
     `${exported[1][iGuardOut]} · ${exported[2][iGuardOut]}`,
   )
 
@@ -761,8 +764,9 @@ section('A107 — l’export : 32 colonnes, aller-retour sans perte')
   const iVol = assoc.matrix[0].indexOf('כמות התנדבויות')
   const iReg = assoc.matrix[0].indexOf('כמות מתנדבים קבועים')
   check(
-    'A107 · the association export fills שטחים שמירה on every row',
-    iGuardAssoc !== -1 && assoc.matrix.slice(1).every((r) => r[iGuardAssoc] !== ''),
+    'A107 → AK1.6 · the association export writes שטחים שמירה only where declared',
+    iGuardAssoc !== -1 &&
+      assoc.matrix.slice(1).filter((r) => r[iGuardAssoc] !== '').length === 1,
     `${assoc.matrix.slice(1).filter((r) => r[iGuardAssoc] === '').length} blank`,
   )
   check(
