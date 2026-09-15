@@ -7,35 +7,58 @@
 ## Où en est-on
 
 - **Branche** : `main`. **Dernier commit** : voir `git log --oneline -1`
-  (fin de la passe **AI**, 2026-09-14).
-- **Passe terminée** : AI — tracé sur route hors ligne, saisie des points,
-  thème système, écran de réglages, données qui survivaient à la suppression.
-  Les dix blocs AI1 → AI10 sont livrés et déployés.
+  (passe **AJ**, 2026-09-15).
+- **Passe en cours** : AJ — AJ0 « la version installée ne se met jamais à
+  jour » (bloquant, traité en premier). **Correctif livré et poussé**
+  (`f94c32a`) ; preuve locale verte ; preuve sur le déployé : voir `ETAT.md`
+  §AJ0.4.
 - **Déployé** : les deux URLs, même commit.
   - App réelle : https://azmer-fts.github.io/lo-yanum/
   - Jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
+  - Le commit servi se lit dans `version.json` à la racine de chacune, et dans
+    l'app : הגדרות › נתונים › « גרסת האפליקציה ».
 
 ## La commande pour reprendre
 
 ```bash
 cd "/Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM"
 bun install
-bun run typecheck && bun run aipass && bun run accept
+lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
+bun run typecheck && bun run ajupdate && bun run aipass && bun run accept
 ```
 
-## Ce qui est fait dans AI
+## Ce qui est fait dans AJ
 
 | Bloc | État |
 |---|---|
-| AI8 données survivantes | ✅ c'était le jeu d'essai `test-` (vérifié en base + journaux) ; `SampleDataSection` : un bouton pour `demo-` ET `test-`, serveur recompté ; A187 dans `bun run demo` |
-| AI6 thème | ✅ cause : aucun composant coordinateur n'appliquait le thème après « voir comme » ; `startThemeController` ; A184 `bun run aitheme` 18/18 sur les deux URLs |
-| AI5 saisie | ✅ lecteur à 2 décimales, `parsePositionList`, textarea, champ vidé de ce qui est lu ; A180–A183 |
-| AI1→AI4 tracé | ✅ `core/roadGraph.ts` + `ui/routing/*` ; aucun service externe ; `aipass` 32, `airoute` 51 |
-| AI7 réglages | ✅ barre épinglée + section en cours ; « חיבור » fusionné ; clé `reminders` retirée ; `aisettings` 29 |
-| AI9 non-régression AH9 | ✅ `ahroute` 15/15 + glisser-déposer dans `airoute` |
-| AI10 | ✅ portes + `bun run aicaptures` sur le déployé |
+| AJ0.1 mesure | ✅ hypothèse « worker en attente » DÉMENTIE : `sw.js` identique entre déploiements + `skipWaiting` → jamais de `waiting` ; cause = une app reprise ne navigue pas et rien ne demandait ; Pages `max-age=600` ; écran des cartes lisait le contrôleur une seule fois |
+| AJ0.2 retour en avant-plan | ✅ `ui/update.ts` (`startUpdateWatcher` dans `main.tsx`) lit `version.json` à chaque retour |
+| AJ0.3 bandeau + bouton | ✅ `UpdateBanner` ; active le worker entrant puis recharge ; vérifie après coup |
+| AJ0.4 version dans les réglages | ✅ `AppVersionSection` (groupe נתונים, en dernier) |
+| AJ0.5 cartes depuis l'app installée | ✅ `useOfflineMaps` écoute `controllerchange`/`ready` ; bouton « הפעלה עכשיו » |
+| AJ0.6 rouge avant | ✅ `DIST_A=dist-aj-before bun run ajupdate` : 2 PASS / 16 FAIL |
+| AJ0.7 A189–A191 | ✅ local 38/38 (WebKit + Chromium) ; déployé : `ETAT.md` §AJ0.4 |
 
-## Décisions permanentes posées par AI (à ne pas défaire sans raison)
+## Décisions permanentes posées par AJ
+
+1. **La version est une identité de build, pas un fichier de service worker.**
+   `__BUILD_ID__` (bundle) contre `version.json` (servi). `sw.js` ne porte
+   PAS l'identifiant et `SHELL_CACHE` ne change PAS de nom par build : un
+   worker qui supprime l'ancien cache à l'activation casserait l'app hors
+   ligne jusqu'au prochain chargement en ligne.
+2. **La question « y a-t-il une nouvelle version » est posée par UN
+   contrôleur démarré dans `main.tsx`**, à chaque retour en avant-plan —
+   jamais par un composant.
+3. **Appliquer = worker entrant amené à `activated`, puis rechargement, puis
+   VÉRIFICATION** du bundle qui tourne contre la cible écrite avant. Un échec
+   se dit (« העדכון לא נקלט »).
+4. **Les navigations du worker contournent le cache HTTP** (`cache:
+   'no-cache'`) : Pages sert `max-age=600`.
+5. **Un état du service worker lu par un écran est réécouté**
+   (`controllerchange`), jamais lu une seule fois au montage.
+6. **`version.json` est lu en `no-store` + paramètre**, jamais depuis un cache.
+
+## Décisions permanentes posées par AI (toujours valables)
 
 1. ⛔ **Aucun calculateur d'itinéraire externe.** Le tracé vient de la couche
    `roads` de l'archive PMTiles embarquée. A179 observe le trafic.
@@ -67,6 +90,9 @@ bun run accept dispatch persist mapping report deletion sync contrast
 bun run aipass ahpass afpass agpass acpass assoc     # aipass lit basemap/*.pmtiles
 
 # Navigateur, build local
+bun run ajupdate                                      # A189–A191, deux builds A/B, WebKit + Chromium (~6 min)
+DIST_A=dist-aj-before SKIP_DOWNLOAD=1 bun run ajupdate  # le ROUGE : `vite build --outDir dist-aj-before` sur ddd1fba
+bun run offline                                       # 21 + SKIP ; vérifier d'abord qu'aucun preview ne tient 5197
 bun run airoute aisettings aitheme ahroute ahsettings
 VIEWPORT=all bun run layout                           # exige `vite --port 5173`
 
@@ -76,6 +102,7 @@ VITE_SUPABASE_URL=https://fake.supabase.co VITE_SUPABASE_PUBLISHABLE_KEY=x \
 BASE_URL=http://localhost:5197 bun run demo zones agreement
 
 # Le déployé
+FROM=<commit servi> bun run scripts/ajdeployed.ts     # garde l'app ouverte, attend le déploiement SUIVANT
 BASE_URL=https://azmer-fts.github.io/lo-yanum/ bun run aitheme
 BASE_URL=https://azmer-fts.github.io/lo-yanum/demo bun run aisettings
 bun run aicaptures
@@ -99,6 +126,12 @@ bun run aicaptures
 
 ## Questions ouvertes / ce qui attend le PO
 
+0. **AJ — sur SON iPad** : la première mise à jour vers `f94c32a` ne peut pas
+   s'annoncer toute seule (l'ancienne version n'a pas le bandeau). Il faut UNE
+   dernière fois fermer l'app (balayer dans le sélecteur d'apps) et la
+   rouvrir ; ensuite « גרסת האפליקציה » dans הגדרות dit la version, et les
+   suivantes arrivent par le bandeau. Le mode écran d'accueil iOS réel n'a pas
+   été mesuré ici (simulateur sans accès à l'interface).
 1. **Les six lignes `test-` sont toujours sur `lo-yanum-prod`** : le PO doit
    presser « מחיקת כל נתוני ההדגמה והבדיקה » (הגדרות › נתונים) — c'est aussi la
    preuve sur l'app réelle. Rien n'a été supprimé en production depuis ici.

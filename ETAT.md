@@ -1,5 +1,109 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AJ — LA VERSION INSTALLÉE SE MET À JOUR. 2026-09-15. LIRE EN
+> PREMIER.**
+>
+> ## AJ0.1 — MESURÉ AVANT DE CORRIGER : L'HYPOTHÈSE ÉTAIT FAUSSE
+>
+> Hypothèse reçue : « le service worker n'active la nouvelle version qu'après
+> fermeture de toutes les fenêtres ». **Démentie par la mesure** (build d'avant
+> AJ, WebKit et Chromium, serveur imitant Pages) :
+>
+> - **`sw.js` fait `skipWaiting()` depuis P2.5a, et son contenu est IDENTIQUE
+>   d'un déploiement à l'autre.** `registration.update()` ne trouve rien ;
+>   `waiting` et `installing` restent `null` avant, pendant et après un
+>   déploiement. **Aucun worker n'attend jamais.**
+> - **La vraie cause : une app reprise ne navigue pas.** Page ouverte sur A,
+>   serveur basculé sur B, retour en avant-plan simulé : cinq secondes plus
+>   tard la page tourne toujours sur A. B n'arrive que par une navigation, et
+>   rien dans l'app ne se demandait s'il existait une autre version.
+> - **GitHub Pages sert tout en `cache-control: max-age=600`** (curl sur le
+>   déployé : `index.html`, `sw.js`, le manifeste). Dans Chromium, un lancement
+>   à froid dans cette fenêtre a ressservi **l'ancien document** au travers du
+>   `fetch(request)` « network first » du worker.
+> - **Les cartes hors ligne (A191) : l'écran lisait le contrôleur UNE fois, au
+>   montage.** Au premier lancement (stockage neuf — ce qu'est l'app de l'écran
+>   d'accueil, séparée de Safari), l'écran monte, puis le worker s'enregistre
+>   sur `load` et prend la page ~2 s plus tard. L'écran restait sur « יש לרענן
+>   את הדף פעם אחת כדי להפעיל » **sans bouton de téléchargement**, pour
+>   toujours, dans une app qui n'a aucun moyen de recharger. C'est le
+>   « recharger sans moyen de le faire » du PO.
+>
+> ## AJ0.2 — LE CORRECTIF
+>
+> - **Identité du build** (`vite.config.ts`) : `__BUILD_ID__` (commit court :
+>   `GITHUB_SHA` au déploiement, `git` en local, `LO_YANUM_BUILD_ID` pour la
+>   porte) et `__BUILD_TIME__` dans le bundle ; **`version.json`** émis à côté
+>   d'`index.html`. Le bundle dit ce qui TOURNE, le fichier ce qui est SERVI.
+> - **`ui/update.ts`, démarré dans `main.tsx`** (jamais par un composant — la
+>   leçon d'AI6) : `version.json` lu en `no-store` + paramètre au démarrage et
+>   à **chaque** `visibilitychange`→visible, `pageshow`, `focus`, `online`
+>   (rafale bornée à une question par 4 s), et toutes les 15 min. Échecs
+>   nommés : `offline`, `network`, `http <code>`, `invalid`.
+> - **Bandeau `UpdateBanner`** (monté au-dessus de l'app : porte, carte, rôles
+>   de terrain) : ne disparaît pas seul ; « אחר כך » le range jusqu'au prochain
+>   retour ; « עדכון עכשיו » = `reg.update()`, amène le worker entrant à
+>   `activated` (`SKIP_WAITING` s'il est `installed`), puis recharge. La cible
+>   est écrite AVANT ; au démarrage suivant elle est comparée au bundle qui
+>   tourne : « האפליקציה עודכנה » ou **« העדכון לא נקלט »**.
+> - **`sw.js`** : navigations en `fetch(request, { cache: 'no-cache' })`
+>   (revalidation par ETag, plus de document vieux de 10 min) ; message
+>   `SKIP_WAITING`. `SHELL_CACHE` n'a PAS changé de nom : faire tourner les
+>   caches par build supprimerait l'app hors ligne entre l'activation d'un
+>   nouveau worker et le prochain chargement en ligne.
+> - **Réglages › נתונים › « גרסת האפליקציה »** (`AppVersionSection`) : version,
+>   date, mode (app installée / navigateur), état du worker, « עדכון אחרון »
+>   (de → vers, réussi ou non), et **« חיפוש עדכון עכשיו »** qui dit « à jour »
+>   en nommant la version, applique quand il trouve, ou nomme l'échec.
+> - **Cartes hors ligne** (`useOfflineMaps`) : réécoute `controllerchange` et
+>   `ready` ; le bloc inactif a un bouton « הפעלה עכשיו » qui fait le
+>   rechargement que l'app ne permet pas ; un téléchargement sans worker est
+>   inscrit comme échec `inactive`, plus jamais un `false` muet.
+> - Identifiants et dates isolés (FSI/PDI, `isolate()`) dans les phrases
+>   hébraïques : la première capture les montrait au mauvais bout de la ligne.
+>   Au téléphone, le texte du bandeau a une base de 16 rem (il était écrasé en
+>   colonne d'un mot).
+>
+> ## AJ0.3 — LES PREUVES
+>
+> **`bun run ajupdate`** — deux builds réels A/B du même arbre, serveur aux
+> en-têtes de Pages, contexte neuf `standalone`, WebKit puis Chromium :
+> - **ROUGE avant correctif** (`DIST_A=dist-aj-before`, build du commit
+>   ddd1fba) : **2 PASS / 16 FAIL** — pas de bouton de cartes sans rechargement,
+>   pas de version, pas de bandeau ; « la page tourne toujours sur A » au retour
+>   en avant-plan.
+> - **VERT après : 38/38.** A191 : bouton sans rechargement, archive entière
+>   (94,3 MB) depuis l'app installée. A190 : version + date + mode, « à jour »
+>   nommé, « אין רשת » hors ligne, « שגיאה 500 » quand le serveur refuse,
+>   recherche manuelle qui trouve ET applique. A189 : bandeau au retour en
+>   avant-plan, qui reste 8 s plus tard, rien d'appliqué en silence, bouton →
+>   B tourne, « עודכנה » après coup, worker toujours en contrôle ; au
+>   téléphone en sombre il tient ; après deux mises à jour l'app s'ouvre
+>   toujours hors ligne. Captures `docs/screenshots/ajpass/local/`.
+>
+> **`scripts/ajdeployed.ts`** — le même scénario avec un VRAI déploiement au
+> milieu : app installée (WebKit) ouverte sur le commit du correctif, gardée
+> ouverte pendant que le commit suivant se déploie. Résultat : voir AJ0.4.
+>
+> **Non-régression** : `offline` 21/21 (+ SKIP du compte de test),
+> `aisettings` 29/29, `ahsettings` 9/9, `accept` 177/177, `parse` 96/96 ;
+> `settings` A54 = l'échec pré-existant connu.
+>
+> ⚠️ **Piège rencontré** : un `vite preview` d'une session précédente tenait
+> encore le port 5197 (`dist-aireal`) ; `bun run offline` a testé CE build-là
+> (écran de connexion) et a échoué sur « nav ». Vérifier `lsof -iTCP:5197`
+> avant de conclure à une régression.
+>
+> ⛔ **Non mesuré** : iOS en mode écran d'accueil réel (simulateur sans accès à
+> l'interface). Le suspend/reprise d'iOS est simulé par les événements qu'une
+> page reprise reçoit ; la ligne « גרסת האפליקציה » permet au PO de vérifier
+> sur SON iPad.
+>
+> ## AJ0.4 — SUR LE DÉPLOYÉ
+>
+> (en cours au moment de ce commit — ce commit EST le « nouveau déploiement »
+> que l'app ouverte doit voir arriver)
+>
 > 🏁 **PASSE AI — LE TRACÉ SUR ROUTE, LA SAISIE DES POINTS, LE THÈME, LES
 > RÉGLAGES. 2026-09-14. LIRE EN PREMIER.**
 >
