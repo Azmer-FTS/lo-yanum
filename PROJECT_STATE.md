@@ -8,6 +8,14 @@
 
 - **Branche** : `main`. **Dernier commit** : voir `git log --oneline -1`
   (passe **AM**, 2026-09-16).
+- **Passe AN EN COURS** (2026-09-16) — logique d'interface, contradictions,
+  régressions. Consigne : AN1 → AN13 dans l'ordre, preuve = mesure SUR LE
+  DÉPLOYÉ dans un navigateur réel (+ simulateur iPad). Fait et poussé :
+  AN1 (`a0af144`, vérifié déployé : anui 13/13 + iPad simulateur), AN2 · AN3
+  (`48abf2f`). Reste : vérifier AN2/AN3 sur le déployé, puis AN4 → AN13.
+  Porte : `bun run anui` (A222–A227 à ce jour) ; rouge `DIST=dist-an-before
+  SKIP_BUILD=1` (build de 1dacc2c + `basemap/` copié à la main, sinon la carte
+  ne charge pas). Section « AN » ci-dessous.
 - **Passe AM TERMINÉE** (2026-09-16) — le formulaire de ferme repris : יישוב et
   épingle facultatifs, 1 330 localités, personnes en une carte, édition dans
   l'ordre du détail, claviers partout, barre opaque, bandeaux empilés,
@@ -30,6 +38,22 @@
   - Jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
   - Le commit servi se lit dans `version.json` à la racine de chacune, et dans
     l'app : הגדרות › נתונים › « גרסת האפליקציה ».
+
+## Ce qui est fait dans AN (en cours)
+
+| Bloc | État |
+|---|---|
+| AN1.1 thème | ⚠️ NON REPRODUIT. PWA autonome installée sur simulateur iPad (iPadOS 26.3) : bascule en direct, retour d'arrière-plan, déverrouillage → suit (captures `docs/an/an1-pwa-*`). Ceinture ajoutée : relecture de `prefers-color-scheme` toutes les 15 s + `resize` (`ui/theme.tsx`) |
+| AN1.2 clavier | ✅ **L'iPad n'a PAS de pavé web** : numeric/tel/decimal/type=tel → clavier complet (mesuré). `ui/components/NumericPad.tsx` : iPad seulement, `inputmode=none` au toucher + pavé 3×4. Vu sur le déployé (`docs/an/an1-ipad-DEPLOYE-a0af144-tz-pave.png`) |
+| AN1.3 téléphone | ✅ `052-0000049` (carte coordinateur) et `08-0000050` (urgence) retirés ; la carte s'enregistre à la frappe |
+| AN2 sans position | ✅ `farmPoint()` (core/geo.ts) partout où une ferme est montrée/reliée ; planificateur : sélectionnable, « מיקום חסר », hors tracé ; import marque enfin `positionMissing` |
+| AN2.4 regroupement | ✅ MapCanvas : disque avec le nombre, sur le centre du dessin |
+| AN3 route | ✅ `ui/routing/useRoadRoute.ts` partagé (libre + planificateur) ; étapes tracées gardées pendant un recalcul. Agenda / ma journée : aucun tracé (repères seulement) |
+
+Décisions AN posées :
+1. **Une fiche sans position n'a pas de point** : toute lecture pour montrer, relier ou mesurer passe par `farmPoint(farm)`. Le repli en base (Jérusalem / NEGEV_CENTER) n'est jamais affiché.
+2. **Un clavier se prouve sur un iPad, pas par ses attributs.** Nouveau champ numérique : `TextField kind` suffit, le pavé le prend.
+3. **Aucune valeur de contact inventée** dans `config.ts`.
 
 ## Ce qui est fait dans AM
 
