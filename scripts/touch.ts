@@ -838,6 +838,7 @@ await page.waitForTimeout(500)
 //   déjà inscrits. La porte suit le nouveau chemin, au stylet comme avant.
 check('"החתמה" opens the signing window by STYLUS', await penTapTestId(page, cdp, 'farm-sign'))
 await page.waitForTimeout(1500)
+// ★ AN5 — c'est la fenêtre de l'association (la même que sur la fiche).
 
 const pad = page.locator('[data-testid="signature-pad"]').first()
 const padCount = await pad.count()
@@ -908,16 +909,22 @@ if (padCount > 0) {
      * puis demande à la fiche si elle est chargée.
      */
     check(
-      '★ « אישור וחתימה » est atteignable au STYLUS',
-      await penTapTestId(page, cdp, 'agreement-sign-confirm'),
+      '★ « שמירה » of the signing window is reachable by STYLUS',
+      await penTapTestId(page, cdp, 'assoc-save'),
     )
     await page.waitForTimeout(1200)
     check(
       '★ and the agreement records that it is signed',
       (await bodyText(page)).includes('חתום'),
     )
-    /* Et on rouvre le lecteur pour la suite : « ניקוי » est dans le pad. */
-    await penTapTestId(page, cdp, 'signature-open')
+    /* Et on rouvre le lecteur pour la suite : « ניקוי » est dans le pad.
+       ★ AN5 — l'accord qu'on vient de signer est le DERNIER de la liste (la
+       carte d'un accord non signé ouvre un pad vide, sans « ניקוי »). */
+    await page.evaluate(() => {
+      const all = document.querySelectorAll('[data-testid="signature-open"]')
+      all[all.length - 1]?.setAttribute('data-testid', 'signature-open-last')
+    })
+    await penTapTestId(page, cdp, 'signature-open-last')
     await page.waitForTimeout(2500)
 
     // Clearing gets the blank pad back, by stylus.

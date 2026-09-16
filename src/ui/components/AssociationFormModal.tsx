@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -7,6 +7,11 @@ import {
   canonicalPhone,
   formatDate,
   formatMobileTyping,
+  fromDayKey,
+  iso,
+  localDayKey,
+  newAgreementId,
+  saveFarmAgreement,
   givenFields,
   idDigits,
   isReadOnly,
@@ -57,6 +62,17 @@ import { SignaturePad } from './SignaturePad'
  *    chiffres et ne convertit jamais en nombre, `applyRemoteSignature` range
  *    la chaîne telle quelle, et `rows.ts` l'écrit dans une colonne `text`.
  *
+ * ★★ AN5 (2026-09-17) — LA SEULE FENÊTRE DE SIGNATURE, ET LE TEXTE À L'ÉCRAN
+ *    DÈS L'OUVERTURE. « Aujourd'hui l'agriculteur voit d'abord le logo et doit
+ *    faire défiler pour lire. » Elle occupe toute la hauteur ; en tête, en une
+ *    bande serrée : le logo réduit (32 px), le titre, et les champs sur UNE
+ *    ligne à l'iPad — le signataire et la DATE DU JOUR déjà inscrits,
+ *    modifiables sur place (le nom connu se corrige d'un toucher ; ת״ז et נייד
+ *    connus restent figés, AK4.2) ; puis l'encadré הצהרה, qui prend la place
+ *    restante ; la zone de signature et « שמירה » sont fixées en bas. C'est
+ *    aussi la fenêtre que le bouton « החתמה » de l'édition ouvre (mode
+ *    `onSign`) : une fenêtre, partout.
+ *
  * ★ ENREGISTRER ÉCRIT PAR LE MÊME CHEMIN QUE LA SIGNATURE À DISTANCE
  *   (`applyRemoteSignature`) : un accord signé est ajouté à la fiche, les
  *   champs manquants sont complétés sans rien écraser, le statut passe à
@@ -66,24 +82,53 @@ export function AssociationFormModal({
   farm,
   onClose,
   onSaved,
+  onSign,
 }: {
   farm: Farm
   onClose: () => void
   onSaved?: (agreement: Agreement) => void
+  /**
+   * ★ AN5 — depuis l'ÉDITION : la fiche n'est pas encore enregistrée, rien
+   * n'est écrit ici ; l'accord signé et les champs saisis remontent au
+   * formulaire, que « שמירה » enregistrera.
+   */
+  onSign?: (agreement: Agreement, fields: { farmerName: string; farmerId: string; farmerPhone: string }) => void
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
   const readOnly = useReadOnly()
 
   const given = givenFields(farm)
-  const [farmerName, setFarmerName] = useState('')
+  /* ★ AN5.2 — « repris de la fiche » : quand les colonnes de l'agriculteur sont
+     vides, le contact principal de la fiche (la même personne, AM2) pré-remplit
+     le nom et le portable. Rien n'est figé : ce sont des saisies. */
+  const primary = farm.contacts.find((c) => c.isPrimary) ?? null
+  const [farmerName, setFarmerName] = useState(() => (given.farmerName ? '' : (primary?.name ?? '')))
   const [farmerId, setFarmerId] = useState('')
-  const [farmerPhone, setFarmerPhone] = useState('')
+  const [farmerPhone, setFarmerPhone] = useState(() =>
+    given.farmerPhone ? '' : formatMobileTyping(primary?.phone ?? ''),
+  )
   const [signature, setSignature] = useState<string | null>(null)
+  /* ★ AN5.2 — le nom connu se corrige sur place ; la date est celle du jour. */
+  const [nameEdit, setNameEdit] = useState<string | null>(null)
+  const [day, setDay] = useState(() => localDayKey(now()))
+  /* La zone d'encre prend la hauteur que le texte laisse : sur un iPad tenu
+     debout, pas de vide entre la déclaration et la signature. Mesurée, bornée. */
+  const padBox = useRef<HTMLDivElement | null>(null)
+  const [padHeight, setPadHeight] = useState(130)
+  useLayoutEffect(() => {
+    const el = padBox.current
+    if (!el) return
+    const measure = () => setPadHeight(Math.max(120, Math.min(640, Math.floor(el.clientHeight) - 56)))
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const [tried, setTried] = useState(false)
 
   const values = {
-    farmerName: given.farmerName || farmerName.trim(),
+    farmerName: nameEdit !== null ? nameEdit.trim() : given.farmerName || farmerName.trim(),
     farmerId: given.farmerId || farmerId,
     farmerPhone: given.farmerPhone || farmerPhone,
   }
@@ -139,7 +184,26 @@ export function AssociationFormModal({
     setTried(true)
     if (blocked || signature === null) return
     if (isReadOnly()) return
-    const agreement = applyRemoteSignature(farm.id, {
+    const signedAt = iso(fromDayKey(day))
+    if (onSign) {
+      onSign(
+        {
+          id: newAgreementId(),
+          signedAt,
+          signedBy: values.farmerName,
+          fileName: agreementFileName(farm, t as never),
+          signature,
+        },
+        {
+          farmerName: values.farmerName,
+          farmerId: values.farmerId,
+          farmerPhone: given.farmerPhone ? given.farmerPhone : canonicalPhone(values.farmerPhone),
+        },
+      )
+      onClose()
+      return
+    }
+    const applied = applyRemoteSignature(farm.id, {
       farmerName: values.farmerName,
       farmerId: values.farmerId,
       farmerPhone: given.farmerPhone ? given.farmerPhone : canonicalPhone(values.farmerPhone),
@@ -148,6 +212,13 @@ export function AssociationFormModal({
       idPhoto: null,
       fileName: agreementFileName(farm, t as never),
     })
+    /* ★ AN5.2 — le nom et la date tels qu'à l'écran portent sur l'ACCORD ; la
+       fiche garde ses champs (applyRemoteSignature ne les écrase jamais). */
+    const agreement =
+      applied && (applied.signedBy !== values.farmerName || localDayKey(new Date(applied.signedAt)) !== day)
+        ? { ...applied, signedBy: values.farmerName, signedAt }
+        : applied
+    if (agreement && agreement !== applied) saveFarmAgreement(farm.id, agreement)
     if (agreement) onSaved?.(agreement)
     onClose()
   }
@@ -160,7 +231,7 @@ export function AssociationFormModal({
     ) : null
 
   const inputClass = (frozen: boolean, bad: boolean) =>
-    `input min-h-[3rem] text-body ${bad ? 'border-status-danger' : ''} ${
+    `input text-body ${bad ? 'border-status-danger' : ''} ${
       frozen ? 'cursor-default bg-surface-high text-content-secondary' : ''
     }`
 
@@ -168,7 +239,7 @@ export function AssociationFormModal({
     <Modal
       title={t('assocForm.title')}
       onClose={onClose}
-      wide
+      fill
       testId="assoc-form"
       header={
         <div className="flex min-w-0 items-center gap-3">
@@ -177,7 +248,7 @@ export function AssociationFormModal({
           <span
             aria-hidden="true"
             data-testid="assoc-form-logo"
-            className="block h-11 w-11 shrink-0 bg-content-primary"
+            className="block h-8 w-8 shrink-0 bg-content-primary"
             style={{
               WebkitMaskImage: `url(${import.meta.env.BASE_URL}artzenu-mark.png)`,
               maskImage: `url(${import.meta.env.BASE_URL}artzenu-mark.png)`,
@@ -190,22 +261,22 @@ export function AssociationFormModal({
             }}
           />
           <div className="min-w-0">
-            <h2 data-testid="assoc-form-title" className="text-heading font-bold text-content-primary">
+            <h2 data-testid="assoc-form-title" className="text-body font-bold text-content-primary">
               {t('assocForm.title')}
+              {/* Le lieu est CONNU (AK3 ⛔) : dit sur la même ligne, jamais choisi. */}
+              <span className="muted ms-2 font-normal" data-testid="assoc-form-place">
+                {farm.farmName || farm.name}
+              </span>
             </h2>
-            {/* Le lieu est CONNU (AK3 ⛔) : dit en une ligne discrète, jamais choisi. */}
-            <p className="muted truncate" data-testid="assoc-form-place">
-              {farm.farmName || farm.name}
-            </p>
           </div>
         </div>
       }
     >
-      <div className="mx-auto flex max-w-xl flex-col gap-4">
+      <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-3">
         {signedBefore && (
           <div
             data-testid="assoc-signed-before"
-            className="flex flex-wrap items-center justify-between gap-2 rounded-card border-s-4 border-s-status-success bg-status-success/10 px-4 py-2.5"
+            className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-card border-s-4 border-s-status-success bg-status-success/10 px-3 py-1.5"
           >
             <span className="flex items-center gap-2 text-caption font-semibold text-status-success-ink">
               <Icon name="check" size={16} />
@@ -218,7 +289,8 @@ export function AssociationFormModal({
           </div>
         )}
 
-        {/* 2 — שם החקלאי */}
+        <div className="grid shrink-0 grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4">
+        {/* 2 — שם החקלאי : inscrit, et corrigible sur place (AN5.2). */}
         <div>
           <label className="label" htmlFor="assoc-farmerName">
             {t('assocForm.farmerName')}
@@ -229,11 +301,10 @@ export function AssociationFormModal({
             type="text"
             inputMode="text"
             autoComplete="name"
-            readOnly={given.farmerName !== ''}
             data-prefilled={given.farmerName !== '' ? '1' : undefined}
-            className={inputClass(given.farmerName !== '', tried && !!errors.farmerName)}
-            value={given.farmerName || farmerName}
-            onChange={(e) => setFarmerName(e.target.value)}
+            className={inputClass(false, tried && !!errors.farmerName)}
+            value={nameEdit !== null ? nameEdit : given.farmerName || farmerName}
+            onChange={(e) => (given.farmerName !== '' ? setNameEdit(e.target.value) : setFarmerName(e.target.value))}
           />
           {fieldError('farmerName')}
         </div>
@@ -285,11 +356,29 @@ export function AssociationFormModal({
           {fieldError('farmerPhone')}
         </div>
 
+        {/* ★ AN5.2 — la date du jour, inscrite, modifiable sur place. */}
+        <div>
+          <label className="label" htmlFor="assoc-date">
+            {t('form.signedAt')}
+          </label>
+          <input
+            id="assoc-date"
+            data-testid="assoc-field-date"
+            data-kind="date"
+            type="date"
+            dir="ltr"
+            className={`${inputClass(false, false)} ltr-nums`}
+            value={day}
+            onChange={(e) => e.target.value && setDay(e.target.value)}
+          />
+        </div>
+        </div>
+
         {/* 5 — l'encadré הצהרה ואישור, gras et retours à la ligne du gabarit. */}
         {declaration && (
           <section
             data-testid="assoc-declaration"
-            className="rounded-card border-2 border-edge-strong bg-surface-base px-4 py-3"
+            className="min-h-0 shrink overflow-auto overscroll-contain rounded-card border-2 border-edge-strong bg-surface-base px-4 py-3"
           >
             <h3 className="mb-1.5 text-body font-bold text-content-primary">
               {declaration.heading}
@@ -309,9 +398,10 @@ export function AssociationFormModal({
         )}
 
         {/* 6 — חתימה, avec son bouton d'effacement (dans le pad). */}
-        <div data-testid="assoc-signature">
+        {/* En bas, et plus grande quand l'écran le permet (un iPad tenu debout). */}
+        <div data-testid="assoc-signature" ref={padBox} className="flex min-h-[11rem] flex-1 flex-col justify-end">
           <p className="label">{t('assocForm.signature')}</p>
-          <SignaturePad value={signature} onChange={setSignature} height={170} />
+          <SignaturePad value={signature} onChange={setSignature} height={padHeight} />
           {fieldError('signature')}
         </div>
 
@@ -322,7 +412,7 @@ export function AssociationFormModal({
           onClick={save}
           disabled={readOnly}
           {...readOnlyProps(readOnly, t('viewAs.blocked'))}
-          className="btn-primary btn-big w-full"
+          className="btn-primary btn-big w-full shrink-0"
         >
           <Icon name="check" size={19} />
           {t('assocForm.save')}

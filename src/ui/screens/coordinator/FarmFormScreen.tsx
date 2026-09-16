@@ -26,14 +26,11 @@ import { formatPhoneTyping, findLocality, REGIONAL_COUNCILS, councilOfCode, matc
   haversineKm,
   isEmail,
   inherited,
-  iso,
   keepsLivestock,
   liaisonIsFarmer,
   mergePeople,
   nearestLocalities,
-  newAgreementId,
   newContactId,
-  now,
   positionOfLocality,
   splitPeople,
   updateFarm,
@@ -59,6 +56,7 @@ import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
 import { PhotoField, usePhotoPicker } from '../../components/PhotoField'
 import { AgreementSignModal } from '../../components/AgreementSignModal'
+import { AssociationFormModal } from '../../components/AssociationFormModal'
 import { LocalityField } from '../../components/LocalityField'
 import { MapSplit } from '../../components/MapSplit'
 import { PinMap } from '../../components/PinMap'
@@ -852,23 +850,10 @@ export function FarmFormScreen() {
     />
   )
 
-  const startSigning = (existingAgreement?: Agreement) => {
-    const unsigned = existingAgreement ?? agreements.find((a) => !a.signature)
-    setSigning(
-      unsigned
-        ? {
-            ...unsigned,
-            signedAt: unsigned.signature ? unsigned.signedAt : iso(now()),
-            signedBy: unsigned.signedBy || farmer.name.trim(),
-          }
-        : {
-            id: newAgreementId(),
-            signedAt: iso(now()),
-            signedBy: farmer.name.trim(),
-            fileName: t('form.agreementFileName', { name: name.trim() || '—' }),
-          },
-    )
-  }
+  /* ★★ AN5 — « החתמה » ouvre LA fenêtre de signature (celle de la fiche, en
+     mode brouillon : rien n'est écrit avant « שמירה » du formulaire). */
+  const [assocOpen, setAssocOpen] = useState(false)
+  const startSigning = () => setAssocOpen(true)
 
   const peopleCount =
     (farmer.name.trim() !== '' || farmer.phone.trim() !== '' ? 1 : 0) +
@@ -1786,7 +1771,10 @@ export function FarmFormScreen() {
                       type="button"
                       data-testid="signature-open"
                       className="btn-ghost min-h-[2.75rem]"
-                      onClick={() => startSigning(a)}
+                      /* La carte d'un accord ouvre SON document (lecture, et
+                         signature de cet accord-là) ; « החתמה » en tête ouvre
+                         la fenêtre de signature de la fiche. */
+                      onClick={() => setSigning(a)}
                     >
                       <Icon name="edit" size={15} />
                       {a.signature ? t('agreement.view') : t('agreement.openReader')}
@@ -1829,6 +1817,24 @@ export function FarmFormScreen() {
           />
         </FormSection>
 
+        {assocOpen && (
+          <AssociationFormModal
+            farm={signingFarm}
+            onClose={() => setAssocOpen(false)}
+            onSign={(agreement, fields) => {
+              setAgreements((prev) => [...prev, agreement])
+              /* Les champs saisis dans la fenêtre complètent la carte de
+                 l'agriculteur SANS rien écraser — la règle d'applyRemoteSignature. */
+              setFarmer((f) => ({
+                ...f,
+                name: f.name.trim() || fields.farmerName,
+                idNumber: (f.idNumber ?? '').trim() || fields.farmerId,
+                phone: f.phone.trim() || fields.farmerPhone,
+              }))
+              if (status !== 'active') setStatus('signed')
+            }}
+          />
+        )}
         {signing && (
           <AgreementSignModal
             farm={signingFarm}

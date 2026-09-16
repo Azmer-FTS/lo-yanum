@@ -143,10 +143,14 @@ try {
     page.setDefaultTimeout(45_000)
     await open(page, '#/coordinator/farms/farm-01/edit', 5000)
 
-    /* ★★ AN5 — le bouton est dans l'en-tête épinglé, visible sans rien déplier
-       (il était dans le bloc « הסכמים », replié depuis AM3). */
-    const opener = page.locator('[data-testid="farm-sign"]').first()
-    check('A129 · la fiche offre la lecture-et-signature', (await opener.count()) > 0 && (await opener.isVisible()))
+    /* ★★ AN5 — « החתמה » ouvre désormais le formulaire de l'association ; la
+       LECTURE du document, que mesure A129, s'ouvre sur un accord existant, dans
+       le bloc « הסכמים » (replié depuis AM3 : on le déplie). */
+    await page.locator('[data-testid="section-farm-form-agreements:farm-01"]').click()
+    await page.waitForTimeout(400)
+    const opener = page.locator('[data-testid="signature-open"]').first()
+    check('A129 · la fiche offre la lecture-et-signature', (await opener.count()) > 0)
+    await opener.scrollIntoViewIfNeeded()
     await opener.click()
     await page.waitForTimeout(4500)
 
@@ -269,9 +273,6 @@ try {
     check('A129 · le bouton d’approbation est à l’écran sans défiler', inView === true)
     await confirm.click()
     await page.waitForTimeout(1200)
-    /* Le bloc « הסכמים » est replié : on le déplie pour lire ce qu'il retient. */
-    await page.locator('[data-testid="section-farm-form-agreements:farm-01"]').click()
-    await page.waitForTimeout(500)
     const chip = await page.locator('[data-testid="signature-open"]').first().innerText()
     check('A129 · la fiche retient la signature', chip.trim().length > 0, chip.trim())
     await context.close()

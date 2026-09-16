@@ -485,7 +485,7 @@ try {
 
   if (wants('A229')) {
     // =======================================================================
-    section('A229 — signature : un geste, nom et date inscrits et modifiables, document lisible à l\'ouverture')
+    section('A229 — signature : un geste, nom et date inscrits et modifiables, le texte lisible à l\'ouverture')
     // =======================================================================
     for (const [w, h] of [[402, 874], [1032, 1376], [1376, 1032]] as const) {
       for (const where of ['fiche', 'édition'] as const) {
@@ -493,74 +493,59 @@ try {
           const ctx = await context(chrome, { viewport: { width: w, height: h } })
           const page = await ctx.newPage()
           await open(page, where === 'fiche' ? '#/coordinator/farms/farm-07' : '#/coordinator/farms/farm-07/edit', 3500)
-          const btn = page.locator('[data-testid="farm-sign"]:visible').first()
-          check(`${w} px · ${where} : le bouton de signature est à l'écran sans rien ouvrir`, await btn.isVisible())
-          await btn.click()
-          const modal = page.locator('[data-testid="agreement-sign-modal"]')
-          await modal.waitFor()
-          await page.waitForSelector('[data-testid="agreement-preview-page"]', { timeout: 15000 })
+          const buttons = await page.locator(where === 'fiche' ? '[data-testid="farm-open-assoc-form"]:visible, [data-testid="farm-sign"]:visible' : '[data-testid="farm-sign"]:visible').count()
+          check(`${w} px · ${where} : UN bouton de signature, à l'écran sans rien ouvrir`, buttons === 1, String(buttons))
+          await page.locator(where === 'fiche' ? '[data-testid="farm-open-assoc-form"]' : '[data-testid="farm-sign"]').first().click()
+          await page.locator('[data-testid="assoc-form"]').waitFor()
           await page.waitForTimeout(800)
           const m = await page.evaluate(() => {
             const vh = window.innerHeight
-            const box = document.querySelector('[data-testid="agreement-preview"]') as HTMLElement
-            const img = document.querySelector('[data-testid="agreement-preview-page"]') as HTMLImageElement
-            const confirm = document.querySelector('[data-testid="agreement-sign-confirm"]') as HTMLElement
-            const pad = document.querySelector('[data-testid="agreement-sign-foot"] canvas') as HTMLElement
-            const dialog = document.querySelector('[data-testid="agreement-sign-modal"]') as HTMLElement
-            const r = (e: Element) => e.getBoundingClientRect()
-            // Largeur réellement peinte de la page (object-contain) : l'échelle de lecture.
-            const scale = Math.min(r(img).width / img.naturalWidth, r(img).height / img.naturalHeight)
+            const r = (sel: string) => (document.querySelector(sel) as HTMLElement).getBoundingClientRect()
+            const decl = document.querySelector('[data-testid="assoc-declaration"]') as HTMLElement
+            const line = decl.querySelector('[data-testid="assoc-declaration-line"]') as HTMLElement
             return {
-              pages: document.querySelectorAll('[data-testid="agreement-preview-page"]').length,
-              scrolls: box.scrollHeight > box.clientHeight + 2,
-              fits: r(img).bottom <= r(box).bottom + 1 && r(img).top >= r(box).top - 1,
-              paintedWidth: Math.round(img.naturalWidth * scale),
-              dialogH: Math.round(r(dialog).height),
               vh,
-              padVisible: r(pad).bottom <= vh && r(pad).top >= 0,
-              confirmVisible: r(confirm).bottom <= vh && r(confirm).top >= 0,
-              signer: document.querySelector('[data-testid="agreement-signer"]')?.textContent?.trim(),
-              date: document.querySelector('[data-testid="agreement-date"]')?.textContent?.trim(),
+              dialogH: Math.round(r('[data-testid="assoc-form"]').height),
+              declInView: r('[data-testid="assoc-declaration"]').top >= 0 && r('[data-testid="assoc-declaration"]').bottom <= vh,
+              declScrolls: decl.scrollHeight > decl.clientHeight + 2,
+              bodyPx: parseFloat(getComputedStyle(line).fontSize),
+              padInView: r('[data-testid="assoc-signature"] canvas').bottom <= vh,
+              saveInView: r('[data-testid="assoc-save"]').bottom <= vh && r('[data-testid="assoc-save"]').top >= 0,
+              name: (document.querySelector('[data-testid="assoc-field-farmerName"]') as HTMLInputElement).value,
+              date: (document.querySelector('[data-testid="assoc-field-date"]') as HTMLInputElement).value,
+              nameEditable: !(document.querySelector('[data-testid="assoc-field-farmerName"]') as HTMLInputElement).readOnly,
             }
           })
           check(`${w} px · ${where} : la fenêtre prend la hauteur disponible`, m.dialogH >= m.vh - 60, `${m.dialogH} / ${m.vh}`)
-          check(`${w} px · ${where} : le document est entier à l'écran, sans défilement interne`, m.pages === 1 && !m.scrolls && m.fits, JSON.stringify({ pages: m.pages, scrolls: m.scrolls, fits: m.fits }))
-          /* Le corps du document est en 11 pt sur une page de 595 pt : sa taille
-             à l'écran est 11 × largeur peinte / 595. ⚠️ Un seuil « ≥ 300 px de
-             page » passait à 402 px avec un texte de 7 px : il est remplacé par
-             la taille du TEXTE, exigée ≥ 12 px sur iPad. Sur téléphone la page
-             entière sans défilement donne ~7 px : mesuré, imprimé, et annoncé
-             comme limite dans le rapport — pas déguisé en vert. */
-          const bodyPx = Math.round((11 * m.paintedWidth) / 595 * 10) / 10
-          if (w >= 1000) check(`${w} px · ${where} : le texte du document se lit (corps ≥ 12 px)`, bodyPx >= 12, `${bodyPx} px`)
-          else console.log(`  NOTE  ${w} px · ${where} : corps du texte à l'écran ${bodyPx} px (limite annoncée)`)
-          check(`${w} px · ${where} : zone d'encre et « אישור וחתימה » à l'écran`, m.padVisible && m.confirmVisible)
-          check(`${w} px · ${where} : l'agriculteur est inscrit comme signataire`, m.signer === 'עמית דרור', String(m.signer))
-          const today = new Date().toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })
-          check(`${w} px · ${where} : la date du jour est inscrite`, !!m.date && m.date.replace(/\D/g, '') === today.replace(/\D/g, ''), `${m.date} / ${today}`)
+          check(`${w} px · ${where} : le texte du document est entier à l'écran, sans défilement`, m.declInView && !m.declScrolls, JSON.stringify({ inView: m.declInView, scrolls: m.declScrolls }))
+          check(`${w} px · ${where} : lisible (corps ${m.bodyPx} px ≥ 16)`, m.bodyPx >= 16)
+          check(`${w} px · ${where} : zone de signature et « שמירה » à l'écran`, m.padInView && m.saveInView)
+          check(`${w} px · ${where} : l'agriculteur est inscrit, modifiable sur place`, m.name === 'עמית דרור' && m.nameEditable, m.name)
+          const today = await page.evaluate(() => {
+            const d = new Date()
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+          })
+          check(`${w} px · ${where} : la date du jour est inscrite`, m.date === today, `${m.date} / ${today}`)
           await page.screenshot({ path: `${SHOTS}/a229-${where === 'fiche' ? 'fiche' : 'edition'}-${w}-ouverture.png` })
 
           if (w === 1032 && where === 'fiche') {
-            // Modifiable SUR PLACE : un toucher sur la valeur, pas un champ à ouvrir.
-            await page.locator('[data-testid="agreement-signer"]').click()
-            await page.locator('[data-testid="agreement-signer-input"]').fill('רות דרור')
-            await page.locator('[data-testid="agreement-signer-input"]').press('Enter')
-            check('le nom se corrige d\'un toucher sur la valeur', (await page.locator('[data-testid="agreement-signer"]').textContent())?.trim() === 'רות דרור')
-            const pad = page.locator('[data-testid="agreement-sign-foot"] canvas')
-            const b = (await pad.boundingBox())!
-            await page.mouse.move(b.x + 40, b.y + 40)
+            await page.locator('[data-testid="assoc-field-farmerName"]').fill('רות דרור')
+            const idField = page.locator('[data-testid="assoc-field-farmerId"]')
+            if ((await idField.inputValue()) === '') await idField.fill('021985189')
+            const pad = page.locator('[data-testid="assoc-signature"] canvas')
+            const bb = (await pad.boundingBox())!
+            await page.mouse.move(bb.x + 40, bb.y + 40)
             await page.mouse.down()
-            await page.mouse.move(b.x + 160, b.y + 80, { steps: 8 })
-            await page.mouse.move(b.x + 260, b.y + 50, { steps: 8 })
+            await page.mouse.move(bb.x + 160, bb.y + 80, { steps: 8 })
+            await page.mouse.move(bb.x + 260, bb.y + 50, { steps: 8 })
             await page.mouse.up()
-            await page.locator('[data-testid="agreement-sign-confirm"]').click()
-            await page.waitForTimeout(800)
-            await page.locator('[data-testid="block-entity-agreements"]').click().catch(() => {})
-            await page.waitForTimeout(400)
-            const text = await page.locator('body').innerText()
-            check('signé depuis la fiche : l\'accord est enregistré au nom corrigé', text.includes('רות דרור'))
+            await page.locator('[data-testid="assoc-save"]').click()
+            await page.waitForTimeout(900)
+            const state = (await page.locator('[data-testid="farm-paper-state"]').textContent()) ?? ''
+            check('signé depuis la fiche : l\'accord porte le nom corrigé sur place', state.includes('רות דרור'), state)
           }
           if (where === 'édition') {
+            await page.locator('[data-testid="modal-close"]').click()
             const inputs = await page.locator('[data-testid="farm-block-agreements"] input[type="date"]').count()
             check(`${w} px · édition : plus aucun champ « date de signature » dans le formulaire`, inputs === 0, String(inputs))
           }

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { formRoutes } from './FormPages'
 
-import { newAgreementId, iso, saveFarmAgreement,
+import {
   FARM_PIPELINE,
   LAND_AGREEMENT_OPTIONS,
   LEGAL_ENTITY_OPTIONS,
@@ -50,7 +50,7 @@ import { newAgreementId, iso, saveFarmAgreement,
   totalHeads,
   splitPeople,
 } from '@core/index'
-import type { Agreement,
+import type {
   CommitmentKind,
   Farm,
   FarmZoneKind,
@@ -97,8 +97,6 @@ import {
   Section,
   ScrollRow,
 } from '../../components/primitives'
-import { AgreementSignModal } from '../../components/AgreementSignModal'
-import { agreementFileName } from '../../agreement/input'
 import { useCoreValue } from '../../hooks/useCore'
 import { useHydrated } from '../../hooks/useDataState'
 import { useLocale } from '../../hooks/useLocale'
@@ -1000,8 +998,6 @@ export function FarmDetailScreen() {
   const setNewVisit = (on: boolean) => on && navigate(formRoutes.newVisit({ farm: farmId }))
   /* AH7.3 — le raccourci d'envoi du lien de signature, depuis l'en-tête. */
   const [linkOpen, setLinkOpen] = useState(false)
-  /** ★★ AN5 — la signature en un geste depuis la fiche. */
-  const [signing, setSigning] = useState<Agreement | null>(null)
   /* ★★ AK4 — le formulaire de l'association, en fenêtre, depuis la fiche. */
   const [formOpen, setFormOpen] = useState(false)
   const [justSigned, setJustSigned] = useState(false)
@@ -1182,26 +1178,6 @@ export function FarmDetailScreen() {
                     défaut : l'atteindre coûtait déplier, défiler, appuyer.
                     Ici c'est une pression, et ce sont les MÊMES boutons —
                     voir `farmerLinkParts`. */}
-                {/* ★★ AN5 — « UN bouton sur la fiche ouvre directement la
-                    fenêtre de signature », date du jour et agriculteur déjà
-                    inscrits. */}
-                <ActionPillItem
-                  icon="edit"
-                  label={t('agreement.signNow')}
-                  testId="farm-sign"
-                  onClick={() => {
-                    const unsigned = farm.agreements.find((a) => !a.signature)
-                    setSigning({
-                      ...(unsigned ?? {
-                        id: newAgreementId(),
-                        fileName: agreementFileName(farm, t as never),
-                        signedBy: '',
-                      }),
-                      signedAt: iso(now()),
-                      signedBy: unsigned?.signedBy || farm.farmerName || '',
-                    } as Agreement)
-                  }}
-                />
                 <ActionPillItem
                   icon="message"
                   label={t('renewal.sendLink')}
@@ -1253,17 +1229,6 @@ export function FarmDetailScreen() {
 
           {linkOpen && (
             <FarmerLinkModal farm={farm} onClose={() => setLinkOpen(false)} />
-          )}
-          {signing && (
-            <AgreementSignModal
-              farm={farm}
-              agreement={signing}
-              onClose={() => setSigning(null)}
-              onCommit={(signature, meta) => {
-                saveFarmAgreement(farm.id, { ...signing, ...meta, signature })
-                setSigning(null)
-              }}
-            />
           )}
 
           <div className="flex flex-col gap-4">
