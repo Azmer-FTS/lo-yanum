@@ -18,7 +18,10 @@
   jour » (bloquant, traité en premier). **Correctif livré et poussé**
   (`f94c32a`) ; `ajupdate` 38/38 en local ; **sur le déployé 11/11** avec un
   vrai déploiement pendant que l'app restait ouverte (`ETAT.md` §AJ0.4).
-- **Déployé** : les deux URLs, même commit.
+- **Déployé** : les deux URLs servent le commit d'AL. **Vérifié SUR LE
+  DÉPLOYÉ** : `alui` 54/54 (le geste d'AL1 et l'écran de localisation) et
+  `alcaptures` 330/330 avec 54 captures
+  (`docs/screenshots/alpass/deployed/`).
   - App réelle : https://azmer-fts.github.io/lo-yanum/
   - Jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
   - Le commit servi se lit dans `version.json` à la racine de chacune, et dans
@@ -179,7 +182,22 @@ BASE_URL=https://azmer-fts.github.io/lo-yanum/ bun run aitheme
 BASE_URL=https://azmer-fts.github.io/lo-yanum/demo bun run aisettings
 bun run aicaptures
 bun run akcaptures                                    # 30 captures + A202 mesurée sur le servi
+BASE_URL=https://azmer-fts.github.io/lo-yanum/demo bun run alcaptures   # AL5, 54 captures
+BASE_URL=https://azmer-fts.github.io/lo-yanum/demo bun run alui         # AL, A207 · A210
 ```
+
+## Le simulateur iPad (AL3.1) — il RÉPOND, ne plus le reporter
+
+```bash
+xcrun simctl list devices available | grep iPad          # un iPad Air 11" reste démarré
+UD=<udid>
+xcrun simctl openurl $UD "https://azmer-fts.github.io/lo-yanum/demo/#/coordinator/farms/farm-07/edit"
+xcrun simctl io $UD screenshot /tmp/x.png                # aucune autorisation demandée
+```
+Le pilotage (toucher, taper, balayer) passe ensuite par l'outil de simulateur.
+⚠️ **Safari y sert un index en cache pendant 10 min** (`max-age=600`, la leçon
+d'AJ0.1) : ajouter un paramètre à l'URL (`?al=1`) pour voir le build qui vient
+d'être déployé.
 
 ## Échecs PRÉ-EXISTANTS, qui ne sont pas des régressions
 

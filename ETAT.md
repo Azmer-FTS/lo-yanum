@@ -64,6 +64,9 @@
 >   (`docs/al/ipad-reel-clavier-telephone.png`)
 > - **Aucun champ ne fait zoomer la page** : la mise en page est identique
 >   avant et après la frappe. C'est ce que garantissait la règle des 16 px.
+> - **Et AL1 vu sur le même appareil, après le déploiement** : sous le champ
+>   vide, « סכום מעובד + מרעה · 2440 » en gris et le bouton
+>   « להשתמש בסכום השטחים ». (`docs/al/ipad-reel-al1-suggestion.png`)
 >
 > ★ **COMMENT, pour la prochaine fois** : `xcrun simctl` depuis le shell
 > (`list devices`, `openurl`, `io … screenshot`) répond sans aucune
@@ -212,7 +215,8 @@
 > - **L'attribution de MapLibre** : le crédit légal des tuiles, dessiné par la
 >   bibliothèque, pas par nous.
 >
-> **Résultat : `alcaptures` 330/330, 54 captures.** Zéro défilement horizontal,
+> **Résultat sur le DÉPLOYÉ (`4072422`) : `alcaptures` 330/330, 54 captures dans
+> `docs/screenshots/alpass/deployed/`.** Zéro défilement horizontal,
 > zéro cible sous 44 px, zéro recouvrement au repos comme en bas de page, zéro
 > texte perdu en silence, zéro erreur de page — aux trois largeurs, en clair et
 > en sombre, sur les neuf écrans.
@@ -220,9 +224,11 @@
 > ## AL6 — LES PORTES
 >
 > ```
-> alpass 40/40 (A207 · A208 · A209)   alui 54/54 (A207 · A210, WebKit + Chromium)
-> alcaptures 330/330 + 54 captures    tokens 0 violation    settings 36/36
-> afui 72/72                          uipass 41/41          akui 59/59 (WebKit)
+> SUR LE DÉPLOYÉ (4072422, les deux URLs) :
+>   alui 54/54 (A207 · A210, WebKit + Chromium)   alcaptures 330/330 + 54 captures
+> EN LOCAL :
+> alpass 40/40 (A207 · A208 · A209)   tokens 0 violation    settings 36/36
+> afui 72/72   pills 89/89            uipass 41/41          akui 59/59 (WebKit)
 > akpass 56 · akdata 30 · accept 177 · persist 109 · mapping 33 · report 86
 > deletion 61 · sync 34 · assoc 42 · acpass 52 · adpass 46 · afpass 59
 > agpass 74 · ahpass 40 · aipass 32 · contrast vert
