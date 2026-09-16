@@ -140,7 +140,9 @@ export function SettingsScreen() {
     setOriginState('saved')
   }
 
+  const [askedPosition, setAskedPosition] = useState(false)
   const useMyPosition = () => {
+    setAskedPosition(true)
     if (!('geolocation' in navigator)) {
       setOriginState('bad')
       return
@@ -756,9 +758,13 @@ export function SettingsScreen() {
               ? t('settings.origin.saved', { coords: formatCoords(originPosition()) })
               : t('settings.origin.hint', { coords: formatCoords(originPosition()) })}
         </p>
-        <p className="mt-1 text-micro text-content-muted" data-testid="origin-permission-hint">
-          {t('settings.origin.permissionHint')}
-        </p>
+        {/* Après le geste seulement : au repos, la page des réglages ne
+            grandit pas d'une ligne (plafond de `layout`, 6 écrans à 390 px). */}
+        {askedPosition && (
+          <p className="mt-1 text-micro text-content-muted" data-testid="origin-permission-hint">
+            {t('settings.origin.permissionHint')}
+          </p>
+        )}
       </Section>
       {/* ★★ AI3.2 — la marge des durées, sous le point de départ : les deux
           décident de l'heure qu'annonce une tournée. */}

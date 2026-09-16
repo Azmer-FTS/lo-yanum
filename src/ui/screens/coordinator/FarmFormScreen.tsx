@@ -275,7 +275,7 @@ function PersonEditor({
           <p className="flex flex-wrap items-center gap-2 text-caption font-semibold text-content-primary">
             {title}
             {card.isPrimary && (
-              <span className="chip bg-accent/15 text-accent-ink" data-testid={`${testId}-primary`}>
+              <span className="chip shrink-0 whitespace-nowrap bg-accent/15 text-accent-ink" data-testid={`${testId}-primary`}>
                 {t('people.primary')}
               </span>
             )}
@@ -312,12 +312,15 @@ function PersonEditor({
           <button
             type="button"
             onClick={() => setExpanded(!open)}
-            className="btn-ghost min-h-[2.75rem]"
+            /* Icône seule : dans une carte de 250 px (panneau à 25 %), le mot
+               écrasait la pastille « איש קשר ראשי » (vu par `layout`, X5). */
+            className="btn-ghost h-11 w-11 shrink-0 justify-center p-0"
             data-testid={`${testId}-edit`}
             aria-expanded={open}
+            aria-label={open ? t('people.done') : t('common.edit')}
+            title={open ? t('people.done') : t('common.edit')}
           >
-            <Icon name={open ? 'check' : 'edit'} size={15} />
-            {open ? t('people.done') : t('common.edit')}
+            <Icon name={open ? 'check' : 'edit'} size={17} />
           </button>
         )}
       </div>

@@ -33,12 +33,20 @@ import { VolunteerFormModal } from './VolunteerFormModal'
  * éditions.
  */
 
-/** Retour là d'où l'on vient ; à défaut (adresse ouverte directement), la liste. */
+/**
+ * Retour là d'où l'on vient ; à défaut (adresse ouverte directement), la liste.
+ * ⚠️ Une page ouverte PAR REMPLACEMENT (l'agenda qui lit `?new=meeting`) n'a pas
+ * « d'où l'on vient » dans l'historique : revenir en arrière sautait l'agenda et
+ * posait le PO sur le tableau de bord (vu par afui AF4.3). L'écran qui remplace
+ * dit donc où revenir (`state.returnTo`).
+ */
 function useBack(fallback: string): () => void {
   const navigate = useNavigate()
   const location = useLocation()
+  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo
   return () => {
-    if (location.key !== 'default') navigate(-1)
+    if (returnTo) navigate(returnTo, { replace: true })
+    else if (location.key !== 'default') navigate(-1)
     else navigate(fallback, { replace: true })
   }
 }

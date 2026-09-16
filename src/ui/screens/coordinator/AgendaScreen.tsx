@@ -238,7 +238,10 @@ export function AgendaScreen() {
     const at = atTimeOn(now(), 10, 0)
     /* ★ AN11 — REMPLACE l'adresse `?new=…` par la page : effacer le paramètre
        après coup réécrivait l'agenda par-dessus la page ouverte. */
-    navigate(asked === 'visit' ? formRoutes.newVisit({ at }) : formRoutes.newMeeting({ at }), { replace: true })
+    navigate(asked === 'visit' ? formRoutes.newVisit({ at }) : formRoutes.newMeeting({ at }), {
+      replace: true,
+      state: { returnTo: '/coordinator/agenda' },
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asked])
 
