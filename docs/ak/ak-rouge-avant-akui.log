@@ -1,0 +1,31 @@
+$ bun run scripts/akui.ts
+
+  AK — FORMULAIRE, FENÊTRE, DOCUMENTS, ARCHIVAGE
+  ==============================================
+  http://localhost:5305
+
+  A197 · A200 — chromium : ouverture depuis la fiche, focus
+  ---------------------------------------------------------
+  FAIL  A197 · chromium · the fiche carries the button
+  FAIL  A197 · chromium · one tap opens the form as a modal
+  FAIL  A200 · chromium · the rest of the screen is dimmed (fixed overlay over the whole window)  — null
+  FAIL  A200 · chromium · focus is inside the dialog
+  FAIL  A200 · chromium · and fourteen Tabs later it is still inside
+  FAIL  A200 · chromium · Shift+Tab stays inside too
+
+  A196 · A197 · A198 — chromium : le formulaire de l'association
+  --------------------------------------------------------------
+error: evaluate: TypeError: Cannot read properties of null (reading 'querySelector')
+    at eval (eval at evaluate (:311:30), <anonymous>:2:81)
+    at UtilityScript.evaluate (<anonymous>:313:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+  log: [],
+
+      at eval (eval at evaluate (:311:30), <anonymous>:2:81)
+      at UtilityScript.evaluate (<anonymous>:313:16)
+      at UtilityScript.<anonymous> (<anonymous>:1:44)
+      at formScenario (/Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM/scripts/akui.ts:310:20)
+      at processTicksAndRejections (native:7:39)
+
+Bun v1.3.14 (macOS x64)
+error: script "akui" exited with code 1
