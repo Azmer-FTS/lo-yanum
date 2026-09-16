@@ -304,6 +304,33 @@ try {
     await ctx.close()
   })
 
+  for (const width of [390, 402]) {
+    await guard(async () => {
+      // ★ AM8 — vu sur la capture : « (050) 968-8262 » rogné d'un chiffre dans
+      //   sa demi-colonne d'iPhone. Aucune valeur pré-remplie n'est coupée.
+      const db = new FakeDb()
+      db.seed()
+      db.rows('entities').push({
+        id: 'farm-am-clip', kind: 'farm', entity_kind: 'farm', name: 'דני בראל לכיש', locality: '', region: '', type: 'livestock',
+        status: 'verbal_ok', lat: 31.7683, lng: 35.2137, position_missing: true, farm_dunams: 0, grazing_dunams: 21000,
+        notes: '', farmer_name: 'דני בראל', farmer_phone: '050-9688262', farmer_id_no: '021985189',
+      })
+      const ctx = await context(chrome, { width, height: 874 })
+      await installFakeSupabase(ctx, db)
+      await installFakeSession(ctx)
+      const page = await ctx.newPage()
+      await open(page, real, '#/coordinator/farms/farm-am-clip/edit', 4000)
+      const clipped = await page.$$eval('input[data-kind]', (els) =>
+        els
+          .filter((e) => (e as HTMLInputElement).value !== '' && e.scrollWidth > e.clientWidth + 1)
+          .map((e) => `${e.getAttribute('data-kind')} « ${(e as HTMLInputElement).value} » ${e.scrollWidth}>${e.clientWidth}`),
+      )
+      const filled = await page.$$eval('input[data-kind]', (els) => els.filter((e) => (e as HTMLInputElement).value !== '').length)
+      check(`${width} px : aucune valeur pré-remplie rognée dans son champ`, filled >= 3 && clipped.length === 0, clipped.join(' · ') || `${filled} champs remplis`)
+      await ctx.close()
+    })
+  }
+
   // =========================================================================
   section('A217 — l\'ordre et les intitulés de l\'édition sont ceux du détail')
   // =========================================================================

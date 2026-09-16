@@ -206,7 +206,10 @@ export function TextField({
         readOnly={readOnly}
         aria-readonly={readOnly || undefined}
         aria-invalid={error ? true : undefined}
-        className={`input ${error ? 'border-status-danger' : ''} ${dom.ltr ? 'ltr-nums text-end' : ''} ${
+        /* ★ AM8 — un portable formaté tient dans une demi-colonne d'iPhone :
+           les chiffres tabulaires le rognaient d'un chiffre (« (050) 968-826 »,
+           vu sur la capture). Proportionnels et sans rembourrage superflu. */
+        className={`input ${kind === 'phone' ? '!px-2.5' : ''} ${error ? 'border-status-danger' : ''} ${dom.ltr ? (kind === 'phone' ? 'text-end [font-variant-numeric:normal]' : 'ltr-nums text-end') : ''} ${
           readOnly ? 'cursor-default text-content-secondary opacity-80' : ''
         }`}
         value={shown}
