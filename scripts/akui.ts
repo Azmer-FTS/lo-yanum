@@ -353,6 +353,19 @@ async function formScenario(browserType: BrowserType, engine: string): Promise<v
     check(`A202 · ${engine} · the signed fiche says « ממתין למסמכים », in a full-width band`,
       !!band && band.text.includes('ממתין למסמכים') && band.w > 300, JSON.stringify(band))
     check(`A202 · ${engine} · and names what is missing`, !!band && band.text.includes('אישור שטחי מרעה'))
+    /* ⚠️ Et elle n'est RECOUVERTE par rien — la leçon d'AC4.5 et d'AD3.2 :
+       une mention permanente derrière une barre épinglée est une mention qui
+       n'existe pas. Mesurée au toucher, en son centre. */
+    const bandReach = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="farm-awaiting-docs"]') as HTMLElement | null
+      if (!el) return null
+      el.scrollIntoView({ block: 'center' })
+      const r = el.getBoundingClientRect()
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+      return { inside: r.top >= 0 && r.bottom <= innerHeight, reached: !!hit && el.contains(hit) }
+    })
+    check(`A202 · ${engine} · the band answers to a finger — nothing pinned covers it`,
+      bandReach?.inside === true && bandReach?.reached === true, JSON.stringify(bandReach))
 
     section(`AK4.6 · A200 — ${engine} : réouverture, et les trois sorties`)
     await tap(page, 'farm-open-assoc-form')
