@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
@@ -6,10 +6,8 @@ import {
   FARM_PIPELINE,
   LAND_AGREEMENT_OPTIONS,
   LEGAL_ENTITY_OPTIONS,
-  optionLabel,
   parsePositionInput,
   LIVESTOCK_KINDS,
-  LOCALITY_POSITIONS,
   NEGEV_CENTER,
   regions,
   createFarm,
@@ -25,16 +23,20 @@ import {
   typeOfActivities,
   ringAreaDunams,
   fromDayKey,
+  haversineKm,
   isEmail,
   inherited,
   iso,
   keepsLivestock,
   liaisonIsFarmer,
   localDayKey,
+  mergePeople,
+  nearestLocalities,
   newAgreementId,
   newContactId,
   now,
   positionOfLocality,
+  splitPeople,
   updateFarm,
 } from '@core/index'
 import type {
@@ -50,6 +52,7 @@ import type {
   LatLng,
   LivestockKind,
   LivestockLine,
+  PersonCard,
   RegionId,
 } from '@core/index'
 
@@ -57,11 +60,11 @@ import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
 import { PhotoField } from '../../components/PhotoField'
 import { AgreementSignModal } from '../../components/AgreementSignModal'
+import { LocalityField } from '../../components/LocalityField'
 import { MapSplit } from '../../components/MapSplit'
 import { PinMap } from '../../components/PinMap'
 import { PositionLinkField } from '../../components/PositionLinkField'
 import {
-  AutocompleteField,
   Field,
   FormActions,
   FormSection,
@@ -210,6 +213,129 @@ function GuardedSuggestionRow({
   )
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AM2 (2026-09-16) — UNE PERSONNE, UNE CARTE, SES CHAMPS AU MÊME ENDROIT.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Nom, portable, ת״ז/ח״פ, courriel, rôle : ce que le PO sait d'une personne se
+ * saisit sur SA carte, pré-rempli, modifiable sur place. Il n'y a plus de bloc
+ * « ajouter un contact » au-dessus d'une personne déjà connue — le bouton
+ * d'ajout est SOUS les cartes et dit « נוסף ». Voir `core/people.ts` pour
+ * pourquoi l'agriculteur et le contact principal ne font plus qu'une carte.
+ */
+function PersonEditor({
+  title,
+  testId,
+  card,
+  onChange,
+  withId,
+  errors,
+  onRemove,
+  showPrimary,
+}: {
+  title: string
+  testId: string
+  card: Pick<PersonCard, 'name' | 'phone' | 'email' | 'role' | 'photo' | 'isPrimary'> & {
+    idNumber?: string
+  }
+  onChange: (patch: Partial<PersonCard>) => void
+  withId: boolean
+  errors: { phone?: string; email?: string }
+  onRemove?: () => void
+  showPrimary: boolean
+}) {
+  const { t } = useTranslation()
+  const isFarmer = testId === 'person-farmer'
+  return (
+    <div
+      data-testid={testId}
+      className="col-span-full rounded-field border border-edge-subtle bg-surface-high p-3"
+    >
+      <div className="mb-3 flex flex-wrap items-center gap-3">
+        <Avatar photo={card.photo} name={card.name || '?'} size="md" />
+        <div className="min-w-0 flex-1">
+          <p className="text-caption font-semibold text-content-primary">{title}</p>
+          {card.name.trim() !== '' && (
+            <p className="muted truncate" data-testid={`${testId}-name-echo`}>
+              {card.name}
+            </p>
+          )}
+        </div>
+        {showPrimary && (
+          <label className="flex min-h-[2.75rem] items-center gap-2 text-caption text-content-secondary">
+            <input
+              type="radio"
+              name="primary-contact"
+              checked={card.isPrimary}
+              onChange={() => onChange({ isPrimary: true })}
+              className="h-5 w-5 accent-accent"
+            />
+            {t('people.primary')}
+          </label>
+        )}
+      </div>
+      <div className="auto-cols gap-3 [--col-min:9rem] md:[--col-min:13rem]">
+        <TextField
+          label={t('people.name')}
+          value={card.name}
+          onChange={(name) => onChange({ name })}
+          kind="name"
+          testId={isFarmer ? 'farm-form-farmerName' : `${testId}-name`}
+        />
+        <TextField
+          label={t('people.mobile')}
+          value={card.phone}
+          onChange={(phone) => onChange({ phone })}
+          kind="phone"
+          error={errors.phone}
+          testId={isFarmer ? 'farm-form-farmerPhone' : `${testId}-phone`}
+        />
+        {withId && (
+          <TextField
+            label={t('people.idNumber')}
+            hint={t('form.farmerIdHint')}
+            value={card.idNumber ?? ''}
+            onChange={(idNumber) => onChange({ idNumber })}
+            kind="id"
+            testId="farm-farmer-id"
+          />
+        )}
+        <TextField
+          label={t('people.email')}
+          value={card.email}
+          onChange={(email) => onChange({ email })}
+          kind="email"
+          error={errors.email}
+          placeholder="name@example.co.il"
+          testId={`${testId}-email`}
+        />
+        <TextField
+          label={t('people.role')}
+          value={card.role}
+          onChange={(role) => onChange({ role })}
+          testId={`${testId}-role`}
+        />
+      </div>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <PhotoCompact value={card.photo} onChange={(photo) => onChange({ photo })} />
+        </div>
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="btn-ghost min-h-[2.75rem] text-status-danger-ink hover:bg-status-danger/10"
+          >
+            <Icon name="trash" size={15} />
+            {t('people.remove')}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function FarmFormScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -220,20 +346,8 @@ export function FarmFormScreen() {
     asked === 'moshav' || asked === 'other' || asked === 'farm' ? asked : 'farm'
 
   /**
-   * ★★ AF3.3 (2026-09-09) — « UN LIEU POSÉ PEUT ÊTRE CONVERTI EN FICHE FERME
-   *    EN UN GESTE », ET LE GESTE EST CETTE QUERY.
-   *
-   * Le rendez-vous d'AF3 porte un point et un titre et rien d'autre — c'est
-   * ce qu'un lien WhatsApp donne. Le bouton « יצירת כרטיס חווה » de la fiche
-   * de rendez-vous ouvre cet écran avec les trois valeurs déjà dedans ; il
-   * n'ENREGISTRE rien, comme tout le reste de cet écran, parce que le
-   * coordinateur a encore une demi-douzaine de champs à remplir devant
-   * l'agriculteur et que שמור est ce qui décide.
-   *
-   * ⚠️ LE POINT EST RELU PAR `parsePositionInput`, PAS PAR `Number()`. C'est
-   *    la même barre d'adresse que n'importe qui peut éditer, et le contrôle
-   *    de la boîte d'Israël (AB6) est ce qui empêche un couple inversé — ou
-   *    bricolé — de poser une épingle en Syrie.
+   * ★★ AF3.3 — « UN LIEU POSÉ PEUT ÊTRE CONVERTI EN FICHE FERME EN UN GESTE ».
+   * ⚠️ LE POINT EST RELU PAR `parsePositionInput`, PAS PAR `Number()`.
    */
   const seeded = parsePositionInput(params.get('at') ?? '')
 
@@ -244,85 +358,61 @@ export function FarmFormScreen() {
   const [locality, setLocality] = useState(
     existing?.locality ?? params.get('locality') ?? '',
   )
+  /* ★ AM1.4 — « dans » ou « rattachée à » ; vide = non précisé. */
+  const [localityRelation, setLocalityRelation] = useState<'in' | 'attached' | ''>(
+    existing?.localityRelation ?? '',
+  )
   const [region, setRegion] = useState(existing?.region ?? '')
-  /**
-   * X12.2 — the STANDARD region. `''` means "leave it to the position", which
-   * is the normal state and the default; picking one pins it. Two fields
-   * rather than one because they answer different questions: `region` is what
-   * the association calls this place, `regionId` is which of the thirteen it
-   * is counted in.
-   */
+  /** X12.2 — the STANDARD region. `''` = derived from the position. */
   const [regionId, setRegionId] = useState<RegionId | ''>(existing?.regionId ?? '')
-  /* ★ AK2 — une fiche neuve naît « לא ידוע », plus « mixed » : rien n'est
-     coché tant que le PO n'a rien vu. */
   const [type, setType] = useState<FarmType>(existing?.type ?? 'unknown')
   const activities = activitiesOf(type)
-  /**
-   * G16 — חווה / מושב / אחר. New records default to a farm.
-   *
-   * ★★ AB1.1 — AND `?kind=moshav` OPENS THE FORM ALREADY ON A MOSHAV. The
-   *    product owner's list gives חוות / מושבים two entries under the "+", and
-   *    a second entry that lands on the same blank farm form, leaving him to
-   *    find the kind picker himself, would be the same click AB1.2 removes
-   *    elsewhere. The parameter is read ONCE, as the initial state, so
-   *    changing the picker afterwards is never fought by the URL.
-   */
+  /** G16 / AB1.1 — `?kind=moshav` opens the form already on a moshav. */
   const [entityKind, setEntityKind] = useState<EntityKind>(
     existing?.entityKind ?? initialKind,
   )
   const [status, setStatus] = useState<FarmStatus>(
     existing?.status ?? 'to_contact',
   )
+  /**
+   * ★★ AM1.5 — UNE FICHE SANS ÉPINGLE S'ENREGISTRE.
+   *
+   * ⚠️ ET SA POSITION DE REPLI NE S'AFFICHE PAS COMME UNE ÉPINGLE. Une fiche
+   *    `positionMissing` (neuf des quinze d'AK1) porte le point de la base du
+   *    programme ; l'ouvrir ici montrait une épingle à Beer-Sheva que personne
+   *    n'a posée, et l'enregistrer la gardait « manquante » même après l'avoir
+   *    déplacée. L'état part donc de `null`, et c'est l'enregistrement qui
+   *    décide du drapeau.
+   */
   const [position, setPosition] = useState<LatLng | null>(
-    existing?.position ?? seeded,
+    existing ? (existing.positionMissing ? null : existing.position) : seeded,
   )
   const [commitments, setCommitments] = useState<FarmCommitment[]>(
     existing?.commitments ?? [],
   )
-  /**
-   * PO POINT 6 — the head count, per species.
-   *
-   * ★ `?? []` AND NOT `?? [{…}]`. An empty list is "nobody has been asked",
-   *   which is not zero and must not be turned into one by a form that
-   *   helpfully pre-fills a row. `totalHeads` returns null for it and the
-   *   detail banner stays away — see `types.ts`.
-   */
+  /** PO POINT 6 — `?? []`: an empty list is "nobody has been asked". */
   const [livestock, setLivestock] = useState<LivestockLine[]>(
     existing?.livestock ?? [],
   )
-  /** P3.3 — which agreement's pad is open. One at a time; see the note below. */
+  const [livestockOpen, setLivestockOpen] = useState(false)
+  /** P3.3 — which agreement's pad is open. */
   const [openSignature, setOpenSignature] = useState<string | null>(null)
   const [agreements, setAgreements] = useState<Agreement[]>(
     existing?.agreements ?? [],
   )
   const [farmDunams, setFarmHectares] = useState(
-    String(existing?.farmDunams ?? ''),
+    existing?.farmDunams ? String(existing.farmDunams) : '',
   )
   const [grazingDunams, setGrazingHectares] = useState(
-    String(existing?.grazingDunams ?? ''),
+    existing?.grazingDunams ? String(existing.grazingDunams) : '',
   )
-  // G15 — typing in a dunam field flips it to "מוזן ידנית"; the button under
-  // the field hands it back to the zone sum.
   const [farmManual, setFarmManual] = useState(
     Boolean(existing?.farmDunamsManual),
   )
   const [grazingManual, setGrazingManual] = useState(
     Boolean(existing?.grazingDunamsManual),
   )
-  /**
-   * ★★ AC3 — LA SURFACE GARDÉE, ET SON CHAMP EST INITIALISÉ PAR LE DÉFAUT.
-   *
-   * A record that has never been answered for holds no `guardedDunams` at all,
-   * so the box opens showing what `guardedDunamsOf` would answer — מעובד +
-   * מרעה — rather than empty. Typing over it sets the flag, exactly as the two
-   * areas above do; the button under the field hands it back to the default.
-   *
-   * ⚠️ AND A TYPED ZERO DOES NOT FREEZE THE RECORD (AC3.2, A102). The submit
-   *    below refuses to set the flag for a zero, which is the trap AA4 fell
-   *    into on a sheet of 198 of them: a record flagged at zero can never be
-   *    filled in by a drawn polygon again.
-   */
-  /* ★ AK1.6 — vide tant que rien n'a été déclaré. Plus de défaut recopié. */
+  /* ★ AK1.6 — vide tant que rien n'a été déclaré. */
   const [guardedDunams, setGuardedDunams] = useState(() => {
     const g = existing ? guardedDunamsOf(existing) : null
     return g === null ? '' : String(g)
@@ -330,10 +420,8 @@ export function FarmFormScreen() {
   const [guardedManual, setGuardedManual] = useState(
     Boolean(existing?.guardedDunamsManual),
   )
-  /** AC1 · AC2 — the holding's own name, its umbrella, the farmer's address. */
   const [farmName, setFarmName] = useState(existing?.farmName ?? '')
   const [umbrella, setUmbrella] = useState(existing?.umbrella ?? '')
-  const [farmerEmail, setFarmerEmail] = useState(existing?.farmerEmail ?? '')
   /** AA2 — the roster, for the סמל יישוב uniqueness check below. */
   const allFarms = useCoreValue(getVisibleFarms)
   const zones = useCoreValue(() => (farmId ? getFarmZonesForFarm(farmId) : []))
@@ -342,22 +430,31 @@ export function FarmFormScreen() {
     if (of.length === 0) return null
     return Math.round(of.reduce((s, z) => s + ringAreaDunams(z.ring), 0))
   }
-  const [contacts, setContacts] = useState<FarmContact[]>(
-    existing?.contacts ?? [],
+
+  /* ★★ AM2 — les personnes, lues UNE fois en une carte d'agriculteur et les
+     autres contacts. `mergePeople` les réécrit aux deux endroits à
+     l'enregistrement. */
+  const [people] = useState(() =>
+    splitPeople({
+      farmerName: existing?.farmerName,
+      farmerPhone: existing?.farmerPhone,
+      farmerEmail: existing?.farmerEmail,
+      farmerId: existing?.farmerId,
+      contacts: existing?.contacts ?? [],
+    }),
   )
+  const [farmer, setFarmer] = useState<PersonCard>(people.farmer)
+  const [contacts, setContacts] = useState<FarmContact[]>(people.others)
+  const patchFarmer = (patch: Partial<PersonCard>) => {
+    setFarmer((f) => ({ ...f, ...patch }))
+    if (patch.isPrimary) setContacts((prev) => prev.map((c) => ({ ...c, isPrimary: false })))
+  }
+
   const [notes, setNotes] = useState(existing?.notes ?? '')
   const [photo, setPhoto] = useState<string | null>(existing?.photo ?? null)
   const [touched, setTouched] = useState(false)
 
-  /**
-   * ★★ AA2 (2026-09-07) — THE PROSPECTION FIELDS.
-   *
-   * ⚠️ EVERY ONE OF THEM IS A STRING IN THIS FORM, INCLUDING THE CODE. A
-   *    `number | null` state for סמל יישוב would make an empty field and a
-   *    zero the same value halfway through a keystroke, and 0 is not a
-   *    locality. It is parsed once, on submit, and an unparseable value
-   *    becomes null rather than NaN.
-   */
+  /** ★★ AA2 — THE PROSPECTION FIELDS. Every one a string in this form. */
   const [localityCode, setLocalityCode] = useState(
     existing?.localityCode == null ? '' : String(existing.localityCode),
   )
@@ -367,25 +464,13 @@ export function FarmFormScreen() {
   const [landAgreementUntil, setLandAgreementUntil] = useState(
     existing?.landAgreementUntil ?? '',
   )
-  const [farmerName, setFarmerName] = useState(existing?.farmerName ?? '')
-  const [farmerPhone, setFarmerPhone] = useState(existing?.farmerPhone ?? '')
-  /* ★ AF1 — ת״ז / ח״פ, la quatrième case de l'en-tête du הסכם התנדבות. */
-  const [farmerId, setFarmerId] = useState(existing?.farmerId ?? '')
   const [liaisonName, setLiaisonName] = useState(existing?.liaisonName ?? '')
   const [liaisonPhone, setLiaisonPhone] = useState(existing?.liaisonPhone ?? '')
-  /**
-   * ★★ AH1.3 (2026-09-09) — « LE CONTACT DE TERRAIN EST LA MÊME PERSONNE » EST
-   *    UNE CASE À COCHER QUI RECOPIE, PAS UNE DEUXIÈME SAISIE.
-   *
-   * ⚠️ SON ÉTAT INITIAL SE DÉDUIT DE LA FICHE (`liaisonIsFarmer`) et n'est pas
-   *    une colonne de plus : une fiche déjà enregistrée avec les deux paires
-   *    identiques rouvre avec la case cochée, sans migration et sans risque
-   *    qu'un drapeau en base contredise un jour les deux valeurs qu'il décrit.
-   */
+  /** ★★ AH1.3 — « le contact de terrain est la même personne », déduit. */
   const [liaisonSame, setLiaisonSame] = useState(() =>
     liaisonIsFarmer({
-      farmerName: existing?.farmerName ?? '',
-      farmerPhone: existing?.farmerPhone ?? '',
+      farmerName: people.farmer.name,
+      farmerPhone: people.farmer.phone,
       liaisonName: existing?.liaisonName ?? '',
       liaisonPhone: existing?.liaisonPhone ?? '',
     }),
@@ -398,16 +483,7 @@ export function FarmFormScreen() {
   const [parking, setParking] = useState(existing?.parking ?? '')
   const [terrainNotes, setTerrainNotes] = useState(existing?.terrainNotes ?? '')
 
-  /**
-   * ★★ AF1.1 — « TOUS LES CHAMPS SONT PRÉ-REMPLIS DEPUIS LA FICHE », ET LA
-   *    FICHE EST CE QUI EST À L'ÉCRAN, PAS CE QUI EST EN BASE.
-   *
-   * Le cas du brief est la création d'une ferme DEVANT l'agriculteur (AF2) :
-   * on saisit son nom et son portable, puis on lui fait signer, et rien n'a
-   * encore été enregistré. Passer `existing` au document rendrait un document
-   * vide sur exactement le parcours qu'AF2 décrit. On passe donc l'état du
-   * formulaire, l'enregistrement restant l'affaire du bouton שמור.
-   */
+  /** ★★ AF1.1 — la fiche signée est ce qui est À L'ÉCRAN. */
   const signingFarm = useMemo(
     () =>
       ({
@@ -416,53 +492,35 @@ export function FarmFormScreen() {
         name: name.trim(),
         locality: locality.trim(),
         farmName: farmName.trim(),
-        farmerName: farmerName.trim(),
-        farmerPhone: farmerPhone.trim(),
-        farmerId: farmerId.trim(),
-        contacts,
+        farmerName: farmer.name.trim(),
+        farmerPhone: farmer.phone.trim(),
+        farmerId: farmer.idNumber.trim(),
+        contacts: mergePeople(farmer, contacts, () => 'new-contact').contacts,
       }) as Farm,
-    [existing, name, locality, farmName, farmerName, farmerPhone, farmerId, contacts],
+    [existing, name, locality, farmName, farmer, contacts],
   )
 
-  /**
-   * ═══════════════════════════════════════════════════════════════════════
-   * ★★ AH1.2 — LES PROPOSITIONS, CALCULÉES EN UN SEUL ENDROIT.
-   * ═══════════════════════════════════════════════════════════════════════
-   *
-   * `core/prefill.ts` décide QUOI proposer ; cet écran décide seulement OÙ
-   * l'afficher, et `inherited()` décide ce qui est enregistré. Trois questions,
-   * trois endroits, aucune règle écrite deux fois.
-   *
-   * ★ ET LE GABARIT DU NOM DE FERME EST CELUI D'AG4 — `sign.farmNamePattern`,
-   *   la clé que `FarmerSignScreen` lit déjà. Un second gabarit « côté rekaz »
-   *   donnerait deux propositions différentes pour la même ferme selon qui
-   *   remplit le formulaire.
-   */
+  /** ★★ AH1.2 — les propositions, calculées en un seul endroit. */
   const farmNamePattern = t('sign.farmNamePattern')
   const suggest = farmFormSuggestions(
-    { name, locality, farmName, farmerName, farmerPhone, farmerEmail, contacts },
+    {
+      name,
+      locality,
+      farmName,
+      farmerName: farmer.name,
+      farmerPhone: farmer.phone,
+      farmerEmail: farmer.email,
+      contacts: [],
+    },
     farmNamePattern,
   )
 
-  /* AH1.3 — cochée, la case RECOPIE. Les deux champs restent visibles, en
-     lecture : le PO doit voir ce qui sera enregistré, pas un champ disparu. */
-  const liaisonNameShown = liaisonSame ? inherited(farmerName, suggest.farmerName) : liaisonName
-  const liaisonPhoneShown = liaisonSame ? inherited(farmerPhone, suggest.farmerPhone) : liaisonPhone
+  const liaisonNameShown = liaisonSame ? farmer.name : liaisonName
+  const liaisonPhoneShown = liaisonSame ? farmer.phone : liaisonPhone
 
   const num = (v: string) => (v.trim() === '' ? NaN : Number(v))
 
-  /**
-   * ★★ AL1 — CE QUE L'APP PROPOSE POUR « שטחים שמירה », ET RIEN DE PLUS.
-   *
-   * ⚠️ LA SOMME EST CELLE DE L'ÉCRAN, PAS CELLE DE LA FICHE ENREGISTRÉE. Le PO
-   *    tape 100 et 1 000 devant l'agriculteur, puis touche le bouton : la
-   *    suggestion doit valoir 1 100 tout de suite, pas la valeur d'avant sa
-   *    saisie.
-   *
-   * ★ Et elle suit les cases de la nature EXACTEMENT comme l'enregistrement
-   *   les suit (`onSubmit`) : la surface d'une activité décochée est retirée à
-   *   la sauvegarde, donc elle n'a rien à faire dans un chiffre proposé.
-   */
+  /** ★★ AL1 — ce que l'app propose pour « שטחים שמירה », sur l'écran. */
   const guardedSuggestion = suggestedGuardedDunams({
     farmDunams:
       type !== 'unknown' && !activities.crops ? 0
@@ -475,18 +533,22 @@ export function FarmFormScreen() {
   })
 
   /**
-   * ★ AA2 — « סמל יישוב — entier, unique quand présent. »
+   * ★★ AM1.3 — LA LOCALITÉ LA PLUS PROCHE DE L'ÉPINGLE, PROPOSÉE, JAMAIS
+   *    ÉCRITE.
    *
-   * The database enforces it with a partial unique index, and the import keys
-   * on it. Neither of those helps the coordinator who is typing: he would
-   * discover the clash on a failed sync, hours later, with no idea which of
-   * the two records is the other one. So it is checked HERE, against the
-   * roster he is looking at, and named.
-   *
-   * ⚠️ AGAINST EVERY OTHER RECORD, NOT AGAINST THIS ONE. Editing a farm and
-   *    pressing save without touching the code must not report the farm as a
-   *    duplicate of itself.
+   * La forme est celle d'AL1 : une ligne grisée et un bouton. Rien n'est
+   * enregistré sans le geste ; la ligne ne s'affiche que tant que le champ est
+   * vide, pour qu'un yishuv tapé par le PO ne soit jamais écrasé.
    */
+  const nearest = position ? nearestLocalities(position, 1)[0] ?? null : null
+  const typedPosition = locality.trim() === '' ? null : positionOfLocality(locality)
+  const pinDistanceKm =
+    position && typedPosition ? haversineKm(position, typedPosition) : null
+  /* Au-delà de 2 km du centre, la ferme est très probablement HORS du יישוב :
+     c'est ce que le bouton propose, et le PO peut changer d'avis d'un doigt. */
+  const relationFor = (km: number): 'in' | 'attached' => (km <= 2 ? 'in' : 'attached')
+
+  /** ★ AA2 — « סמל יישוב — entier, unique quand présent ». */
   const codeClash =
     localityCode.trim() !== '' &&
     allFarms.some(
@@ -494,21 +556,35 @@ export function FarmFormScreen() {
     )
 
   /**
-   * ★★ AH1.5 — LE NOM DE LA FICHE N'EST PLUS UNE SAISIE OBLIGATOIRE, IL EST
-   *    UNE VALEUR OBLIGATOIRE. Il se déduit du nom de l'exploitation, qui se
-   *    déduit lui-même du prénom de l'agriculteur ; ce que le formulaire exige
-   *    est qu'il en RESTE un à la fin, pas que le PO l'ait tapé.
+   * ═══════════════════════════════════════════════════════════════════════
+   * ★★ AM1.5 — CE QUI EMPÊCHE ENCORE D'ENREGISTRER, ET POURQUOI.
+   * ═══════════════════════════════════════════════════════════════════════
+   *
+   * « Une fiche incomplète vaut mieux qu'une fiche perdue. » Il ne reste que
+   * ce qui rendrait la fiche FAUSSE ou INTROUVABLE — jamais ce qui la laisse
+   * seulement incomplète :
+   *   · un nom, n'importe lequel (le sien, celui de l'exploitation, celui de
+   *     l'agriculteur ou le יישוב) — sans lui la fiche n'existe dans aucune
+   *     liste ;
+   *   · un numéro de téléphone ou un courriel SAISI mais impossible : c'est un
+   *     numéro qu'on composera la nuit ;
+   *   · un סמל יישוב déjà porté par une autre fiche (l'import s'y accroche) ;
+   *   · « פעילה » sans documents (AK5, une règle métier, pas un champ).
+   * ⛔ Le יישוב et l'épingle NE SONT PLUS exigés (AM1.2).
    */
-  const effectiveName = inherited(name, suggest.name)
+  const effectiveName = inherited(name, suggest.name) || inherited(farmer.name, '')
+  const phoneError = (v: string) =>
+    v.trim() !== '' && !isValidPhone(v) ? t('form.invalidPhone') : undefined
+  const emailError = (v: string) =>
+    v.trim() !== '' && !isEmail(v.trim()) ? t('form.invalidEmail') : undefined
   const errors = {
-    name: !effectiveName ? t('form.required') : undefined,
-    locality: !locality.trim() ? t('form.required') : undefined,
-    // A37 — a farm exists only where its pin is: no pin, no farm.
-    position: !position ? t('form.pinRequired') : undefined,
+    name: !effectiveName ? t('form.nameMissing') : undefined,
     localityCode: codeClash ? t('form.localityCodeTaken') : undefined,
-    /* ★★ AK5.2 — « פעילה » refusée tant que les documents manquent. La nature
-       lue est celle DU FORMULAIRE (on peut la corriger ici même), les
-       documents ceux de la fiche. Une fiche déjà « פעילה » n'est pas bloquée. */
+    farmerPhone: phoneError(farmer.phone),
+    farmerEmail: emailError(farmer.email),
+    liaisonPhone: liaisonSame ? undefined : phoneError(liaisonPhone),
+    standbyPhone: phoneError(standbyPhone),
+    /* ★★ AK5.2 — « פעילה » refusée tant que les documents manquent. */
     status:
       status === 'active' &&
       existing?.status !== 'active' &&
@@ -516,56 +592,28 @@ export function FarmFormScreen() {
         ? t('docs.closureBlocked')
         : undefined,
   }
-  /**
-   * ⚠️ AH1.1 — LA VALIDATION PORTE SUR LA VALEUR RETENUE, PAS SUR LA FRAPPE.
-   *    Un contact principal laissé vide alors que le nom et le portable de
-   *    l'agriculteur sont juste au-dessus n'est pas un contact incomplet :
-   *    c'est un contact hérité. Valider `c.name` brut renverrait le PO taper
-   *    une seconde fois ce qu'il vient d'écrire — exactement ce que ce bloc
-   *    existe pour supprimer.
-   */
-  const contactValue = (
-    c: FarmContact,
-    i: number,
-    key: 'name' | 'phone' | 'email',
-  ): string => {
-    const primaryRow = c.isPrimary || (i === 0 && !contacts.some((x) => x.isPrimary))
-    if (!primaryRow) return c[key].trim()
-    const echo =
-      key === 'name'
-        ? suggest.primaryContactName
-        : key === 'phone'
-          ? suggest.primaryContactPhone
-          : suggest.primaryContactEmail
-    return inherited(c[key], echo)
-  }
-  const contactErrors = contacts.map((c, i) => {
-    const cName = contactValue(c, i, 'name')
-    const cPhone = contactValue(c, i, 'phone')
-    const cEmail = contactValue(c, i, 'email')
-    return {
-      name: !cName ? t('form.required') : undefined,
-      phone: !cPhone
-        ? t('form.required')
-        : !isValidPhone(cPhone)
-          ? t('form.invalidPhone')
-          : undefined,
-      // P0bis.5a — optional, checked only when filled.
-      email: cEmail && !isEmail(cEmail) ? t('form.invalidEmail') : undefined,
-    }
-  })
-
-  const valid =
-    Object.values(errors).every((e) => e === undefined) &&
-    contactErrors.every((e) => !e.name && !e.phone && !e.email)
+  const contactErrors = contacts.map((c) => ({
+    phone: phoneError(c.phone),
+    email: emailError(c.email),
+  }))
+  const errorCount =
+    Object.values(errors).filter((e) => e !== undefined).length +
+    contactErrors.reduce((n, e) => n + (e.phone ? 1 : 0) + (e.email ? 1 : 0), 0)
+  const valid = errorCount === 0
 
   const show = (key: keyof typeof errors) => (touched ? errors[key] : undefined)
 
-  const patchContact = (index: number, patch: Partial<FarmContact>) => {
-    setContacts((prev) =>
-      prev.map((c, i) => (i === index ? { ...c, ...patch } : c)),
-    )
-  }
+  /* ★ AM1 — un enregistrement refusé MONTRE où, au lieu de ne rien faire : le
+     premier champ en faute vient sous les yeux et prend le focus. */
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    if (attempt === 0) return
+    const first = document.querySelector<HTMLElement>('[data-farm-form] [aria-invalid="true"]')
+    if (first) {
+      first.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      first.focus({ preventScroll: true })
+    }
+  }, [attempt])
 
   const addContact = () => {
     setContacts((prev) => [
@@ -577,63 +625,59 @@ export function FarmFormScreen() {
         email: '',
         role: '',
         photo: null,
-        // The first contact added is the one who can sign in as FARMER.
-        isPrimary: prev.length === 0,
+        isPrimary: false,
       },
     ])
   }
 
-  const removeContact = (index: number) => {
-    setContacts((prev) => {
-      const next = prev.filter((_, i) => i !== index)
-      // Never leave a farm with contacts but no primary — the farmer role
-      // resolves its identity through that flag.
-      if (next.length > 0 && !next.some((c) => c.isPrimary)) {
-        next[0] = { ...next[0], isPrimary: true }
-      }
-      return next
-    })
+  const patchContact = (index: number, patch: Partial<FarmContact>) => {
+    if (patch.isPrimary) setFarmer((f) => ({ ...f, isPrimary: false }))
+    setContacts((prev) =>
+      prev.map((c, i) =>
+        i === index ? { ...c, ...patch } : patch.isPrimary ? { ...c, isPrimary: false } : c,
+      ),
+    )
   }
 
-  const setPrimary = (index: number) => {
-    setContacts((prev) => prev.map((c, i) => ({ ...c, isPrimary: i === index })))
+  const removeContact = (index: number) => {
+    setContacts((prev) => prev.filter((_, i) => i !== index))
   }
 
   const submit = () => {
     setTouched(true)
-    if (!valid) return
+    if (!valid) {
+      setAttempt((n) => n + 1)
+      return
+    }
 
-    if (!position) return
+    /* ★★ AM2 — la carte de l'agriculteur écrit ses colonnes ET sa ligne de
+       contact ; `mergePeople` garde un seul principal. */
+    const merged = mergePeople(farmer, contacts, newContactId)
 
     /**
      * ★★ AH1.2 — CE QUI EST ENREGISTRÉ EST « TAPÉ, SINON PROPOSÉ ».
-     *
-     * ⚠️ ET C'EST LE SEUL ENDROIT OÙ LA PROPOSITION DEVIENT UNE VALEUR. Elle
-     *    n'a jamais été écrite dans l'état du formulaire ; elle est résolue
-     *    ici, au moment où le PO appuie sur שמור, sur exactement ce qu'il
-     *    voyait en gris à l'écran.
+     * ⚠️ C'est le seul endroit où une proposition devient une valeur.
      */
     const draft: FarmDraft = {
       photo,
       name: effectiveName,
       locality: locality.trim(),
+      localityRelation: locality.trim() === '' || localityRelation === '' ? undefined : localityRelation,
       region: region.trim(),
       regionId: regionId === '' ? null : regionId,
       type,
       entityKind,
       status,
-      position,
+      /* ★ AM1.5 — sans épingle, la fiche garde son point de repli et le
+         drapeau qui le dit ; avec, le drapeau tombe. */
+      position: position ?? existing?.position ?? positionOfLocality(locality) ?? NEGEV_CENTER,
+      positionMissing: position ? undefined : true,
       commitments: commitments.map((c) => ({ ...c, detail: c.detail.trim() })),
-      // A row with no head count is a row somebody started and abandoned; it
-      // must not become a zero in the funding total.
       livestock: livestock
         .filter((l) => Number.isFinite(l.heads) && l.heads > 0)
         .map((l) => ({ ...l, label: l.label.trim() })),
       agreements: agreements.map((a) => ({ ...a, signedBy: a.signedBy.trim() })),
-      /* ★ AK2.3 — la surface suit la nature. Une activité décochée n'a pas de
-         surface : ce qui restait dans son champ caché n'est PAS reporté dans
-         l'autre, il est retiré (et l'écran l'a annoncé sous les cases). Une
-         nature inconnue garde les deux champs tels qu'ils ont été tapés. */
+      /* ★ AK2.3 — la surface suit la nature. */
       farmDunams:
         type !== 'unknown' && !activities.crops
           ? 0
@@ -642,45 +686,24 @@ export function FarmFormScreen() {
         type !== 'unknown' && !activities.grazing
           ? 0
           : Number.isFinite(num(grazingDunams)) ? num(grazingDunams) : 0,
-      /* ★ AD1.5 — LE DRAPEAU NE SE POSE JAMAIS SUR UN ZÉRO, ici comme à
-         l'import et comme sur שטחים שמירה. Un zéro saisi est « je n'ai pas ce
-         chiffre », pas « cette exploitation déclare zéro dounam » — et une
-         fiche figée à zéro est une fiche qui ne peut plus jamais être
-         renseignée. C'est le piège d'AA4, rappelé en AC3 et redemandé en AD1. */
+      /* ★ AD1.5 — le drapeau ne se pose jamais sur un zéro. */
       farmDunamsManual:
         farmManual && num(farmDunams) > 0 && (type === 'unknown' || activities.crops),
       grazingDunamsManual:
         grazingManual && num(grazingDunams) > 0 && (type === 'unknown' || activities.grazing),
-      /* AC3.2 · AK1.6 — un chiffre tapé, ou rien. Le drapeau ne se pose
-         jamais sur un zéro ni sur une case vide. */
       guardedDunams: Number.isFinite(num(guardedDunams)) ? num(guardedDunams) : 0,
       guardedDunamsManual: guardedManual && num(guardedDunams) > 0,
-      /* ★ AH1.1 — LE CONTACT PRINCIPAL ET L'AGRICULTEUR SONT LA MÊME PERSONNE
-         NEUF FOIS SUR DIX, et c'est le « téléphone demandé deux fois » que le
-         PO a signalé. Le formulaire propose l'un dans l'autre, dans les DEUX
-         sens ; ici la proposition devient la valeur, pour la ligne principale
-         seulement — un contact secondaire n'hérite de rien. */
-      contacts: contacts.map((c, i) => {
-        const primaryRow = c.isPrimary || (i === 0 && !contacts.some((x) => x.isPrimary))
-        return {
-          ...c,
-          name: primaryRow ? inherited(c.name, suggest.primaryContactName) : c.name.trim(),
-          phone: primaryRow ? inherited(c.phone, suggest.primaryContactPhone) : c.phone.trim(),
-          email: primaryRow ? inherited(c.email, suggest.primaryContactEmail) : c.email.trim(),
-          role: c.role.trim(),
-        }
-      }),
+      contacts: merged.contacts,
       notes: notes.trim(),
-      // AA2 — the prospection fields. An empty code is null, never 0.
       localityCode: localityCode.trim() === '' ? null : Number(localityCode.trim()),
       council: council.trim(),
       legalEntity,
       landAgreement,
       landAgreementUntil: landAgreementUntil.trim() === '' ? null : landAgreementUntil,
-      farmerName: inherited(farmerName, suggest.farmerName),
-      farmerPhone: inherited(farmerPhone, suggest.farmerPhone),
-      farmerEmail: inherited(farmerEmail, suggest.farmerEmail),
-      farmerId: farmerId.trim(),
+      farmerName: merged.farmerName,
+      farmerPhone: merged.farmerPhone,
+      farmerEmail: merged.farmerEmail,
+      farmerId: merged.farmerId,
       /* AH1.3 — la case cochée écrit l'agriculteur dans les deux champs. */
       liaisonName: liaisonNameShown.trim(),
       liaisonPhone: liaisonPhoneShown.trim(),
@@ -690,7 +713,6 @@ export function FarmFormScreen() {
       gateCode: gateCode.trim(),
       parking: parking.trim(),
       terrainNotes: terrainNotes.trim(),
-      // AC1 · AC2.4 — the holding's own name, and who groups it.
       farmName: inherited(farmName, suggest.farmName),
       umbrella: umbrella.trim(),
     }
@@ -707,20 +729,19 @@ export function FarmFormScreen() {
   const cancel = () =>
     navigate(isEdit && farmId ? `/coordinator/farms/${farmId}` : '/coordinator/farms')
 
-  /* G2.1/P0bis.1 — the coordinates are not typed, they are pointed at, and
-     under the frozen gabarit the pin map is the LEFT panel rather than a block
-     halfway down the form. That is also the better form: the map follows the
-     locality field while no pin exists, so typing the town puts the right
-     hills on screen, and the pin stays visible while the rest is filled in. */
+  /* G2.1/P0bis.1 — the pin map is the LEFT panel. */
   const mapBody = (
     <PinMap
       flush
       value={position}
       onChange={setPosition}
       fallbackCenter={positionOfLocality(locality) ?? NEGEV_CENTER}
-      error={show('position')}
     />
   )
+
+  const peopleCount =
+    (farmer.name.trim() !== '' || farmer.phone.trim() !== '' ? 1 : 0) +
+    contacts.filter((c) => c.name.trim() !== '' || c.phone.trim() !== '').length
 
   return (
     <MapSplit
@@ -745,8 +766,23 @@ export function FarmFormScreen() {
         }}
       />
 
-      <div className="flex flex-col gap-4">
-        <FormSection title={t('form.sectionIdentity')}>
+      {/**
+        * ═══════════════════════════════════════════════════════════════════
+        * ★★ AM3 (2026-09-16) — L'ÉDITION SUIT L'ORDRE DU DÉTAIL.
+        * ═══════════════════════════════════════════════════════════════════
+        *
+        * « Je ne comprends pas pourquoi l'édition n'est pas pareille. » Les
+        * blocs de cet écran sont ceux de la fiche, dans son ordre et sous ses
+        * intitulés : l'en-tête (photo, nom) · סטטוס ושטחים · פרטים · אנשים ·
+        * טלפוני חירום ותיק אתר · התחייבויות · הסכמים · הערות. Ce que le PO lit
+        * au rang N de la fiche, il le modifie au rang N ici. Les blocs de la
+        * fiche qui ne se SAISISSENT pas (activité, points, zones, gardes,
+        * incidents, visites) n'ont pas de rang ici. `bun run amui` (A217)
+        * compare les deux listes d'intitulés.
+        */}
+      <div className="flex flex-col gap-4" data-farm-form="">
+        {/* L'en-tête de la fiche : la photo et le nom. */}
+        <FormSection title={t('form.sectionIdentity')} testId="farm-block-identity">
           <div className="col-span-full">
             <PhotoField
               label={t('photo.farmLabel')}
@@ -756,9 +792,7 @@ export function FarmFormScreen() {
               shape="square"
             />
           </div>
-          {/* ★ AH1.5 — « le nom de la ferme redemandé alors qu'il se déduit ».
-              Il se propose ici en gris depuis שם החווה, qui se propose lui-même
-              depuis le prénom de l'agriculteur (AG4.1, la même fonction). */}
+          {/* ★ AH1.5 — le nom se propose en gris depuis שם החווה. */}
           <TextField
             label={t('form.name')}
             value={name}
@@ -766,407 +800,24 @@ export function FarmFormScreen() {
             suggestion={suggest.name}
             testId="farm-form-name"
             error={show('name')}
-            required
           />
-          <AutocompleteField
-            label={t('form.locality')}
-            value={locality}
-            onChange={setLocality}
-            options={Object.keys(LOCALITY_POSITIONS)}
-            error={show('locality')}
-            required
-          />
-          {/* ★★ AF3.1 (2026-09-09) — LE LIEN REÇU PAR WHATSAPP, COLLÉ ICI.
-              Il est PLACÉ à côté de la localité et non près de la carte, et
-              c'est l'ordre de la conversation qui le décide : « c'est où » se
-              répond soit par un nom de יישוב, soit par un lien qu'on vient de
-              recevoir, et les deux réponses doivent être au même endroit. Il
-              pose l'épingle sur la carte du panneau, à gauche, où le
-              coordinateur la voit atterrir. */}
-          <PositionLinkField
-            className="col-span-full"
-            onResolve={setPosition}
-          />
-          <TextField label={t('form.region')} value={region} onChange={setRegion} />
-          {/* X12.2 — blank = derived from the position. See `farmRegion`. */}
-          <SelectField<RegionId | ''>
-            label={t('form.regionStd')}
-            value={regionId}
-            onChange={setRegionId}
-            options={[
-              { value: '', label: t('form.regionStdHint') },
-              ...regions().map((r) => ({ value: r.id, label: r.name })),
-            ]}
-          />
-          {/* G16 — what KIND of entity this record is. A moshav keeps every
-              mechanic and changes marker, zone tints and boundary wording. */}
-          <SelectField<EntityKind>
-            label={t('form.entityKind')}
-            value={entityKind}
-            onChange={setEntityKind}
-            options={(['farm', 'moshav', 'other'] as EntityKind[]).map((v) => ({
+        </FormSection>
+
+        {/* ═══ 1 — סטטוס ושטחים : la bande de chiffres de la fiche. ═══ */}
+        <FormSection title={t('form.sectionStatusAreas')} testId="farm-block-statusAreas">
+          <SelectField<FarmStatus>
+            label={t('form.status')}
+            value={status}
+            onChange={setStatus}
+            error={errors.status}
+            options={STATUSES.map((v) => ({
               value: v,
-              label: t(`entityKind.${v}`),
+              label: t(`farmStatus.${v}`),
             }))}
           />
-        </FormSection>
-
-        <FormSection
-          title={t('form.sectionContacts')}
-          action={
-            <button type="button" onClick={addContact} className="btn-ghost py-1.5">
-              <Icon name="plus" size={15} />
-              {t('form.addContact')}
-            </button>
-          }
-        >
-          {contacts.length === 0 ? (
-            <p className="muted col-span-full">{t('form.noContacts')}</p>
-          ) : (
-            contacts.map((contact, i) => (
-              <div
-                key={contact.id}
-                className="rounded-field border border-edge-subtle bg-surface-high p-3 col-span-full"
-              >
-                <div className="mb-3 flex items-center gap-3">
-                  <Avatar photo={contact.photo} name={contact.name || '?'} size="md" />
-                  <PhotoCompact
-                    value={contact.photo}
-                    onChange={(v) => patchContact(i, { photo: v })}
-                  />
-                </div>
-                {/* ★★ AH1.6 — DEUX CHAMPS COURTS PAR LIGNE, AUX DEUX BOUTS.
-                    ⚠️ ET LE PLANCHER RESTE À 9 rem SUR UN TÉLÉPHONE : `bun run
-                       layout` a mesuré ce qu'un plancher à 11 rem coûtait —
-                       la section des contacts passait de 919 à 1 219 px à
-                       390 px, parce que quatre champs qui tenaient deux par
-                       deux se sont mis en colonne. Le formulaire d'édition
-                       passait de 5,63 à 5,99 hauteurs d'écran, contre un
-                       plafond de six. Le point de rupture ÉLARGIT le plancher
-                       au-delà du téléphone, il ne le rétrécit pas. */}
-                <div className="auto-cols gap-3 [--col-min:9rem] md:[--col-min:13rem]">
-                  <TextField
-                    label={t('form.contactName')}
-                    value={contact.name}
-                    onChange={(v) => patchContact(i, { name: v })}
-                    suggestion={
-                      contact.isPrimary ? suggest.primaryContactName : undefined
-                    }
-                    error={touched ? contactErrors[i]?.name : undefined}
-                    required
-                  />
-                  <TextField
-                    label={t('form.contactPhone')}
-                    value={contact.phone}
-                    onChange={(v) => patchContact(i, { phone: v })}
-                    suggestion={
-                      contact.isPrimary ? suggest.primaryContactPhone : undefined
-                    }
-                    testId={contact.isPrimary ? 'contact-phone-primary' : undefined}
-                    error={touched ? contactErrors[i]?.phone : undefined}
-                    type="tel"
-                    ltr
-                    required
-                  />
-                  <TextField
-                    label={t('form.contactEmail')}
-                    value={contact.email}
-                    onChange={(v) => patchContact(i, { email: v })}
-                    suggestion={
-                      contact.isPrimary ? suggest.primaryContactEmail : undefined
-                    }
-                    error={touched ? contactErrors[i]?.email : undefined}
-                    type="email"
-                    ltr
-                    placeholder="name@example.co.il"
-                  />
-                  <TextField
-                    label={t('form.contactRole')}
-                    value={contact.role}
-                    onChange={(v) => patchContact(i, { role: v })}
-                  />
-                </div>
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <label className="flex items-center gap-2 text-caption text-content-secondary">
-                    <input
-                      type="radio"
-                      name="primary-contact"
-                      checked={contact.isPrimary}
-                      onChange={() => setPrimary(i)}
-                      className="h-4 w-4 accent-accent"
-                    />
-                    {t('form.contactPrimary')}
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => removeContact(i)}
-                    className="btn-ghost py-1.5 text-status-danger-ink hover:bg-status-danger/10"
-                  >
-                    <Icon name="trash" size={15} />
-                    {t('form.removeContact')}
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </FormSection>
-
-        {/**
-          * ★★ AA2 (2026-09-07) — LA TERRE ET LE PAPIER, AVANT LES SURFACES.
-          *
-          * The order on this form is the order of the conversation the
-          * coordinator is actually having: who is this place, WHOSE is the
-          * ground and on what paper, how big is it, who keeps what on it.
-          * The area fields used to come straight after the contacts, which
-          * put "how many dunams" before "does the man signing hold the land"
-          * — and AA2bis exists because the second question is the one that
-          * decides whether the first one matters.
-          */}
-        {/**
-          * ⚠️ FOLDED BY DEFAULT, AND `bun run layout` IS WHY.
-          *
-          * The two AA2 sections took the farm form at 390 px from 5.4
-          * screenfuls to **6.2**, over A30's cap of six — the same defect the
-          * livestock section was folded for, and the same fix. Closed it still
-          * SAYS what is in it (the summary carries the entity kind and the
-          * agreement); only the editing folds away, so a coordinator adding a
-          * farm from the passenger seat is not scrolling past eleven fields he
-          * has no answers for yet.
-          */}
-        <FormSection
-          title={t('form.sectionLand')}
-          storageKey={`farm-form-land:${farmId ?? 'new'}`}
-          defaultOpen={false}
-          summary={
-            <span className="chip ms-2 bg-surface-high text-content-secondary">
-              {[
-                optionLabel(legalEntity, LEGAL_ENTITY_OPTIONS),
-                optionLabel(landAgreement, LAND_AGREEMENT_OPTIONS),
-              ]
-                .filter(Boolean)
-                .join(' · ') || t('form.notChosen')}
-            </span>
-          }
-        >
-          {/* ★★ AH1.6 — `col-span-full`, ET C'ÉTAIT TOUTE LA CAUSE DU
-              « une colonne partout » DU PO. `.form-grid` passe à deux colonnes
-              dès 30 rem ; ce bloc n'en occupait qu'UNE, donc son propre
-              `auto-fit` à 14 rem n'avait jamais que 20 rem à répartir et
-              rendait une seule colonne — en laissant la moitié droite de la
-              section vide. Il prend la largeur entière, et les cinq champs se
-              rangent deux par ligne sur un iPad. */}
-          <div className="auto-cols col-span-full gap-3 [--col-min:14rem]">
-            <TextField
-              label={t('form.localityCode')}
-              hint={t('form.localityCodeHint')}
-              value={localityCode}
-              onChange={setLocalityCode}
-              error={show('localityCode')}
-              type="number"
-              ltr
-            />
-            <TextField
-              label={t('form.council')}
-              value={council}
-              onChange={setCouncil}
-            />
-            <SelectField<string>
-              label={t('form.legalEntity')}
-              value={legalEntity}
-              onChange={setLegalEntity}
-              options={[
-                { value: '', label: t('form.notChosen') },
-                ...LEGAL_ENTITY_OPTIONS.map((o) => ({ value: o.id, label: o.label })),
-              ]}
-            />
-            <SelectField<string>
-              label={t('form.landAgreement')}
-              value={landAgreement}
-              onChange={setLandAgreement}
-              options={[
-                { value: '', label: t('form.notChosen') },
-                ...LAND_AGREEMENT_OPTIONS.map((o) => ({ value: o.id, label: o.label })),
-              ]}
-            />
-            <TextField
-              label={t('form.landAgreementUntil')}
-              hint={t('form.landAgreementUntilHint')}
-              value={landAgreementUntil}
-              onChange={setLandAgreementUntil}
-              type="date"
-              ltr
-            />
-          </div>
-        </FormSection>
-
-        {/**
-          * ★ AA2 — DEUX PERSONNES, ET CE NE SONT PAS LES MÊMES.
-          *
-          * « איש קשר (מועצה/אגודה) » orients you; « שם החקלאי » signs. The
-          * association's own workbook keeps two rows for it, and the reason is
-          * operational rather than clerical: at nine in the evening the
-          * coordinator has to know which of the two numbers is the one that
-          * answers. They are NOT folded into the contacts list below, which is
-          * the farm's own address book and has a different job.
-          */}
-        <FormSection
-          title={t('form.sectionFieldPeople')}
-          storageKey={`farm-form-people:${farmId ?? 'new'}`}
-          defaultOpen={false}
-          summary={
-            <span className="chip ms-2 bg-surface-high text-content-secondary">
-              {[farmerName, liaisonName].filter(Boolean).join(' · ') || t('form.notChosen')}
-            </span>
-          }
-        >
-          <div className="auto-cols col-span-full gap-3 [--col-min:14rem]">
-            {/**
-              * ★★ AC1 — שם החווה, ET C'EST LA MOITIÉ DE L'IDENTITÉ.
-              *
-              * Left empty the record is a LOCALITY SEED — « there is farming
-              * here and we have not been told by whom » — which is what all
-              * 198 rows of the workbook are today. Filling it and the farmer's
-              * name UPDATES that seed rather than creating a second record;
-              * see `planProspection`. The hint says so in Hebrew, because a
-              * coordinator who does not know that will make four records for
-              * one moshav.
-              */}
-            <TextField
-              label={t('form.farmName')}
-              hint={t('form.farmNameHint')}
-              value={farmName}
-              onChange={setFarmName}
-              suggestion={suggest.farmName}
-              testId="farm-form-farmName"
-            />
-            <TextField
-              label={t('form.umbrella')}
-              value={umbrella}
-              onChange={setUmbrella}
-            />
-            <TextField
-              label={t('form.farmerName')}
-              hint={t('form.farmerNameHint')}
-              value={farmerName}
-              onChange={setFarmerName}
-              suggestion={suggest.farmerName}
-              testId="farm-form-farmerName"
-            />
-            <TextField
-              label={t('form.farmerPhone')}
-              value={farmerPhone}
-              onChange={setFarmerPhone}
-              suggestion={suggest.farmerPhone}
-              testId="farm-form-farmerPhone"
-              type="tel"
-              ltr
-            />
-            {/* ★★ AF1 — ת״ז / ח״פ. Il n'existait pas, et « הסכם התנדבות-
-                ארצנו » le demande nommément. Texte libre et non un nombre :
-                un particulier écrit neuf chiffres, une société agricole un
-                ח״פ, un קיבוץ le numéro de son אגודה — une case sur leur
-                papier, un champ ici, et aucune validation qui refuserait le
-                formulaire que l'association accepte. */}
-            <TextField
-              label={t('form.farmerId')}
-              hint={t('form.farmerIdHint')}
-              value={farmerId}
-              onChange={setFarmerId}
-              inputMode="numeric"
-              testId="farm-farmer-id"
-              ltr
-            />
-            <TextField
-              label={t('form.farmerEmail')}
-              value={farmerEmail}
-              onChange={setFarmerEmail}
-              suggestion={suggest.farmerEmail}
-              type="email"
-              ltr
-            />
-          </div>
-
-          {/* ★★ AH1.3 — LA CASE QUI RECOPIE. Elle est POSÉE AU-DESSUS des deux
-              champs qu'elle gouverne, jamais en dessous : cochée, ils passent
-              en lecture, et une case qui explique après coup pourquoi deux
-              champs viennent de se griser arrive trop tard. */}
-          <label
-            className="col-span-full flex items-center gap-2.5 rounded-field bg-surface-high px-3.5 py-2.5"
-            data-testid="liaison-same-row"
-          >
-            <input
-              type="checkbox"
-              data-testid="liaison-same"
-              className="check"
-              checked={liaisonSame}
-              onChange={(e) => {
-                const on = e.target.checked
-                setLiaisonSame(on)
-                /* ⚠️ DÉCOCHER NE VIDE PAS. Le PO qui se ravise retrouve les
-                   deux valeurs recopiées et les corrige, plutôt que de tout
-                   ressaisir — décocher est une correction, pas un effacement. */
-                if (on) {
-                  setLiaisonName(inherited(farmerName, suggest.farmerName))
-                  setLiaisonPhone(inherited(farmerPhone, suggest.farmerPhone))
-                }
-              }}
-            />
-            <span className="text-caption text-content-secondary">
-              {t('form.liaisonSame')}
-            </span>
-          </label>
-
-          {/* ★ ET COCHÉE, LA CASE NE LAISSE PAS DEUX CHAMPS GRISÉS — ELLE
-              LAISSE UNE LIGNE. Deux champs en lecture coûtent deux hauteurs de
-              champ sur un téléphone pour ne rien dire de plus qu'une phrase, et
-              A158 compte ces hauteurs. Ce qui est enregistré reste VISIBLE,
-              c'est la seule condition. */}
-          {liaisonSame ? (
-            <p
-              className="col-span-full text-caption text-content-secondary"
-              data-testid="liaison-echo"
-            >
-              {t('form.liaisonName')} ·{' '}
-              <span className="font-medium text-content-primary">
-                {liaisonNameShown || '—'}
-              </span>
-              {liaisonPhoneShown && (
-                <>
-                  {' · '}
-                  <span className="ltr-nums font-medium text-content-primary">
-                    {liaisonPhoneShown}
-                  </span>
-                </>
-              )}
-            </p>
-          ) : (
-            <div className="auto-cols col-span-full gap-3 [--col-min:14rem]">
-              <TextField
-                label={t('form.liaisonName')}
-                hint={t('form.liaisonNameHint')}
-                value={liaisonName}
-                onChange={setLiaisonName}
-                testId="liaison-name"
-              />
-              <TextField
-                label={t('form.liaisonPhone')}
-                value={liaisonPhone}
-                onChange={setLiaisonPhone}
-                testId="liaison-phone"
-                type="tel"
-                ltr
-              />
-            </div>
-          )}
-        </FormSection>
-
-        <FormSection title={t('form.sectionAreas')}>
           {/**
             * ★★ AK2.1 — « NATURE DE L'ACTIVITÉ », À CHOIX MULTIPLE, EN TÊTE DES
-            *    SURFACES QU'ELLE GOUVERNE. Deux cases que le doigt presse, pas
-            *    une liste à trois valeurs dont l'une s'appelait « מעורבת » :
-            *    une exploitation peut être les deux, et c'est le cas de la
-            *    moitié du terrain. Rien de coché = לא ידוע.
+            *    SURFACES QU'ELLE GOUVERNE. Rien de coché = לא ידוע.
             */}
           <fieldset className="col-span-full" data-testid="farm-activities">
             <legend className="label">{t('form.activity')}</legend>
@@ -1201,12 +852,7 @@ export function FarmFormScreen() {
                 </p>
               )}
           </fieldset>
-          {/* ★★ AD1 — CES DEUX CHAMPS SONT LA SURFACE **DÉCLARÉE**. La ligne
-              sous chacun donne ce que le contour mesure, et un geste pour
-              l'adopter ; enregistrer ne touche jamais au polygone, et
-              redessiner le polygone ne touchera jamais à ces deux champs.
-              ★ AK2.3 — et chacun n'existe que pour SA nature. Taper un chiffre
-              dans une fiche de nature inconnue coche la case correspondante. */}
+          {/* ★★ AD1 — la surface DÉCLARÉE ; la ligne dessous donne la mesurée. */}
           {(type === 'unknown' || activities.crops) && (
           <div>
             <TextField
@@ -1218,8 +864,7 @@ export function FarmFormScreen() {
                 setFarmManual(true)
                 if (type === 'unknown' && Number(v) > 0) setType('agriculture')
               }}
-              type="number"
-              ltr
+              kind="decimal"
             />
             <DunamSourceRow
               typed={farmDunams}
@@ -1242,8 +887,7 @@ export function FarmFormScreen() {
                 setGrazingManual(true)
                 if (type === 'unknown' && Number(v) > 0) setType('livestock')
               }}
-              type="number"
-              ltr
+              kind="decimal"
             />
             <DunamSourceRow
               typed={grazingDunams}
@@ -1255,19 +899,7 @@ export function FarmFormScreen() {
             />
           </div>
           )}
-          {/**
-            * ★★ AC3 → AK1.6 → AL1 — « שטחים שמירה » : PROPOSÉE, JAMAIS ÉCRITE.
-            *
-            * AC3 recopiait מעובד + מרעה, AK1.6 a tout vidé ; AL1 tranche entre
-            * les deux. Le champ s'ouvre VIDE — rien n'est écrit dans la colonne
-            * que l'association transmet au ministère — et l'app pose la somme
-            * SOUS le champ, grisée, à côté d'un bouton. Un geste l'accepte.
-            *
-            * ⚠️ LA LIGNE DISPARAÎT DÈS QUE LE CHAMP PORTE QUELQUE CHOSE : un
-            *    bouton qui peut écraser un chiffre tapé par le PO est un
-            *    bouton qui écrase, tôt ou tard. Vider le champ la fait revenir,
-            *    et c'est encore son geste.
-            */}
+          {/* ★★ AC3 → AK1.6 → AL1 — « שטחים שמירה » : PROPOSÉE, JAMAIS ÉCRITE. */}
           <div>
             <TextField
               label={t('form.guardedArea')}
@@ -1278,8 +910,7 @@ export function FarmFormScreen() {
                 setGuardedDunams(v)
                 setGuardedManual(v.trim() !== '')
               }}
-              type="number"
-              ltr
+              kind="decimal"
             />
             <GuardedSuggestionRow
               typed={guardedDunams}
@@ -1290,130 +921,448 @@ export function FarmFormScreen() {
               }}
             />
           </div>
+
+          {/* ★ PO POINT 6 — les têtes, dans le même bloc que la carte « סה״כ
+              ראשים » de la bande, et seulement pour une entité qui en a. */}
+          {keepsLivestock({ type }) && (
+            <div className="col-span-full" data-testid="farm-livestock">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                {/* ★ PO POINT 6 · A30 — replié par défaut, comme avant AM : fermé,
+                    il DIT le total, qui est le fait ; seule la saisie se replie. */}
+                <button
+                  type="button"
+                  aria-expanded={livestockOpen}
+                  data-testid="livestock-toggle"
+                  onClick={() => setLivestockOpen((v) => !v)}
+                  className="flex min-h-[2.75rem] min-w-0 flex-1 items-center gap-1.5 text-start"
+                >
+                  <span className={`text-content-muted transition-transform duration-fast ${livestockOpen ? '' : 'ltr:-rotate-90 rtl:rotate-90'}`}>
+                    <Icon name="chevronDown" size={16} />
+                  </span>
+                  <span className="label !mb-0">{t('livestock.section')}</span>
+                  {!livestockOpen && livestock.length > 0 && (
+                    <span className="chip ms-1 bg-surface-high text-content-secondary">
+                      {livestock.reduce((n, l) => n + (l.heads || 0), 0).toLocaleString()} {t('livestock.total')}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  data-testid="livestock-add"
+                  onClick={() => {
+                    setLivestockOpen(true)
+                    setLivestock((prev) => [...prev, { kind: 'sheep', label: '', heads: 0 }])
+                  }}
+                  className="btn-ghost min-h-[2.75rem]"
+                >
+                  <Icon name="plus" size={15} />
+                  {t('livestock.add')}
+                </button>
+              </div>
+              {!livestockOpen ? null : livestock.length === 0 ? (
+                <p className="muted">{t('livestock.empty')}</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {livestock.map((l, i) => (
+                    <div
+                      key={i}
+                      className="rounded-field border border-edge-subtle bg-surface-high p-3"
+                    >
+                      <div className="auto-cols gap-3 [--col-min:9rem]">
+                        <SelectField<LivestockKind>
+                          label={t('livestock.kind')}
+                          value={l.kind}
+                          onChange={(kind) =>
+                            setLivestock((prev) =>
+                              prev.map((x, j) => (j === i ? { ...x, kind } : x)),
+                            )
+                          }
+                          options={LIVESTOCK_KINDS.map((k) => ({
+                            value: k,
+                            label: t(`livestock.kinds.${k}`),
+                          }))}
+                        />
+                        <TextField
+                          label={t('livestock.heads')}
+                          value={l.heads === 0 ? '' : String(l.heads)}
+                          onChange={(v) =>
+                            setLivestock((prev) =>
+                              prev.map((x, j) =>
+                                j === i ? { ...x, heads: Number(v) || 0 } : x,
+                              ),
+                            )
+                          }
+                          kind="integer"
+                        />
+                        {/* The free label belongs to `other` and to nothing else. */}
+                        {l.kind === 'other' && (
+                          <TextField
+                            label={t('livestock.label')}
+                            value={l.label}
+                            onChange={(label) =>
+                              setLivestock((prev) =>
+                                prev.map((x, j) => (j === i ? { ...x, label } : x)),
+                              )
+                            }
+                            placeholder={t('livestock.labelPlaceholder')}
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setLivestock((prev) => prev.filter((_, j) => j !== i))
+                          }
+                          className="btn-ghost min-h-[2.75rem] self-end text-status-danger-ink hover:bg-status-danger/10"
+                        >
+                          <Icon name="trash" size={15} />
+                          {t('livestock.remove')}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <p className="text-caption font-medium text-content-primary">
+                    {t('livestock.total')}:{' '}
+                    <span className="numeric">
+                      {livestock.reduce((n, l) => n + (l.heads || 0), 0).toLocaleString()}
+                    </span>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </FormSection>
 
-        {/* ★ PO POINT 6 — AND IT ONLY EXISTS ON AN ENTITY THAT KEEPS ANIMALS.
-            An arable holding has no head count, and a form that asks anyway is
-            a form that trains the coordinator to skip a section. `type` is a
-            field on this same form, so the section appears and disappears as
-            he changes it. */}
-        {keepsLivestock({ type }) && (
-          <FormSection
-            title={t('livestock.section')}
-            // PO POINT 6 asked for a collapsible section, and A30 insisted:
-            // with the rows open the farm form was 6.1 screenfuls at 390 px.
-            // Closed it still SAYS the total, which is the fact; only the
-            // editing folds away.
-            storageKey={`farm-form-livestock:${farmId ?? 'new'}`}
-            defaultOpen={false}
-            summary={
-              livestock.length > 0 ? (
-                <span className="chip ms-2 bg-surface-high text-content-secondary">
-                  {livestock.reduce((n, l) => n + (l.heads || 0), 0).toLocaleString()}{' '}
-                  {t('livestock.total')}
-                </span>
-              ) : null
-            }
-            action={
-              <button
-                type="button"
-                data-testid="livestock-add"
-                onClick={() =>
-                  setLivestock((prev) => [
-                    ...prev,
-                    { kind: 'sheep', label: '', heads: 0 },
-                  ])
-                }
-                className="btn-ghost py-1.5"
-              >
-                <Icon name="plus" size={15} />
-                {t('livestock.add')}
-              </button>
-            }
-          >
-            <p className="muted col-span-full -mt-2">{t('livestock.hint')}</p>
-            {livestock.length === 0 ? (
-              <p className="muted col-span-full">{t('livestock.empty')}</p>
-            ) : (
-              livestock.map((l, i) => (
-                <div
-                  key={i}
-                  className="col-span-full rounded-field border border-edge-subtle bg-surface-high p-3"
-                >
-                  <div className="auto-cols gap-3 [--col-min:11rem]">
-                    <SelectField<LivestockKind>
-                      label={t('livestock.kind')}
-                      value={l.kind}
-                      onChange={(kind) =>
-                        setLivestock((prev) =>
-                          prev.map((x, j) => (j === i ? { ...x, kind } : x)),
-                        )
-                      }
-                      options={LIVESTOCK_KINDS.map((k) => ({
-                        value: k,
-                        label: t(`livestock.kinds.${k}`),
-                      }))}
-                    />
-                    <TextField
-                      label={t('livestock.heads')}
-                      value={l.heads === 0 ? '' : String(l.heads)}
-                      onChange={(v) =>
-                        setLivestock((prev) =>
-                          prev.map((x, j) =>
-                            j === i ? { ...x, heads: Number(v) || 0 } : x,
-                          ),
-                        )
-                      }
-                      type="number"
-                      ltr
-                    />
-                    {/* The free label belongs to `other` and to nothing else —
-                        a closed list is what keeps the totals addable. */}
-                    {l.kind === 'other' && (
-                      <TextField
-                        label={t('livestock.label')}
-                        value={l.label}
-                        onChange={(label) =>
-                          setLivestock((prev) =>
-                            prev.map((x, j) => (j === i ? { ...x, label } : x)),
-                          )
-                        }
-                        placeholder={t('livestock.labelPlaceholder')}
-                      />
-                    )}
-                  </div>
-                  <div className="mt-2 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setLivestock((prev) => prev.filter((_, j) => j !== i))
-                      }
-                      className="btn-ghost py-1.5 text-status-danger-ink hover:bg-status-danger/10"
-                    >
-                      <Icon name="trash" size={15} />
-                      {t('livestock.remove')}
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-            {livestock.length > 0 && (
-              <p className="col-span-full text-caption font-medium text-content-primary">
-                {t('livestock.total')}:{' '}
-                <span className="numeric">
-                  {livestock.reduce((n, l) => n + (l.heads || 0), 0).toLocaleString()}
-                </span>
-              </p>
-            )}
-          </FormSection>
-        )}
+        {/* ═══ 2 — פרטים : le bloc « פרטים » de la fiche, dans son ordre. ═══ */}
+        <FormSection title={t('common.details')} testId="farm-block-details">
+          <TextField
+            label={t('form.farmName')}
+            hint={t('form.farmNameHint')}
+            value={farmName}
+            onChange={setFarmName}
+            suggestion={suggest.farmName}
+            testId="farm-form-farmName"
+          />
+          <TextField
+            label={t('form.umbrella')}
+            value={umbrella}
+            onChange={setUmbrella}
+          />
+          {/* G16 — what KIND of entity this record is. */}
+          <SelectField<EntityKind>
+            label={t('form.entityKind')}
+            value={entityKind}
+            onChange={setEntityKind}
+            options={(['farm', 'moshav', 'other'] as EntityKind[]).map((v) => ({
+              value: v,
+              label: t(`entityKind.${v}`),
+            }))}
+          />
 
-        {/* G2.4 — the detail screen shows commitments and agreements, so the
-            form must be able to write them: a datum with no way in is either
-            dead weight or a lie. Real agreement signing (PDF, signature) is
-            Lot 3; this records the FACT of one. */}
+          {/* ★★ AM1 — LE יישוב : facultatif, la liste entière, et la relation. */}
+          <div className="col-span-full" data-testid="farm-locality-block">
+            <LocalityField
+              label={t('form.locality')}
+              hint={t('locality.optionalHint')}
+              value={locality}
+              onChange={setLocality}
+              near={position}
+              testId="farm-form-locality"
+              onPick={(l) => {
+                if (position) setLocalityRelation(relationFor(haversineKm(position, l.position)))
+              }}
+            />
+            {locality.trim() === '' && nearest && (
+              <div
+                className="mt-1 flex flex-wrap items-center gap-2"
+                data-testid="farm-locality-suggestion"
+              >
+                <span className="muted">
+                  {t('locality.nearestHint')} ·{' '}
+                  <span className="font-medium text-content-primary" data-testid="farm-locality-suggestion-name">
+                    {nearest.locality.name}
+                  </span>{' '}
+                  <span className="ltr-nums">({t('locality.km', { km: nearest.km.toFixed(1) })})</span>
+                </span>
+                <button
+                  type="button"
+                  data-testid="farm-locality-adopt"
+                  onClick={() => {
+                    setLocality(nearest.locality.name)
+                    setLocalityRelation(relationFor(nearest.km))
+                  }}
+                  className="inline-flex min-h-[2.75rem] items-center px-1 text-micro font-semibold text-accent-ink hover:underline"
+                >
+                  {t('locality.nearestUse')}
+                </button>
+              </div>
+            )}
+            {locality.trim() !== '' && (
+              <div className="mt-2" role="radiogroup" aria-label={t('locality.relation')}>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(['in', 'attached'] as const).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      role="radio"
+                      aria-checked={localityRelation === r}
+                      data-testid={`farm-locality-relation-${r}`}
+                      onClick={() => setLocalityRelation(localityRelation === r ? '' : r)}
+                      className={`filter-pill min-h-[2.75rem] px-4 ${
+                        localityRelation === r ? 'filter-pill-active' : ''
+                      }`}
+                    >
+                      {localityRelation === r && <Icon name="check" size={15} />}
+                      {t(r === 'in' ? 'locality.relationIn' : 'locality.relationAttached')}
+                    </button>
+                  ))}
+                </div>
+                {pinDistanceKm !== null && (
+                  <p className="muted mt-1 ltr-nums" data-testid="farm-locality-distance">
+                    {t('locality.distance', { km: pinDistanceKm.toFixed(1) })}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          {/* ★★ AF3.1 — le lien reçu par WhatsApp, à côté de « c'est où ». */}
+          <PositionLinkField className="col-span-full" onResolve={setPosition} />
+          {!position && (
+            <p className="muted col-span-full" data-testid="farm-no-pin" role="note">
+              {t('form.noPin')}
+            </p>
+          )}
+          <TextField label={t('form.region')} value={region} onChange={setRegion} />
+          {/* X12.2 — blank = derived from the position. See `farmRegion`. */}
+          <SelectField<RegionId | ''>
+            label={t('form.regionStd')}
+            value={regionId}
+            onChange={setRegionId}
+            options={[
+              { value: '', label: t('form.regionStdHint') },
+              ...regions().map((r) => ({ value: r.id, label: r.name })),
+            ]}
+          />
+          <TextField
+            label={t('form.localityCode')}
+            hint={t('form.localityCodeHint')}
+            value={localityCode}
+            onChange={setLocalityCode}
+            error={show('localityCode')}
+            kind="code"
+          />
+          <TextField
+            label={t('form.council')}
+            value={council}
+            onChange={setCouncil}
+          />
+          <SelectField<string>
+            label={t('form.legalEntity')}
+            value={legalEntity}
+            onChange={setLegalEntity}
+            options={[
+              { value: '', label: t('form.notChosen') },
+              ...LEGAL_ENTITY_OPTIONS.map((o) => ({ value: o.id, label: o.label })),
+            ]}
+          />
+          <SelectField<string>
+            label={t('form.landAgreement')}
+            value={landAgreement}
+            onChange={setLandAgreement}
+            options={[
+              { value: '', label: t('form.notChosen') },
+              ...LAND_AGREEMENT_OPTIONS.map((o) => ({ value: o.id, label: o.label })),
+            ]}
+          />
+          <TextField
+            label={t('form.landAgreementUntil')}
+            hint={t('form.landAgreementUntilHint')}
+            value={landAgreementUntil}
+            onChange={setLandAgreementUntil}
+            kind="date"
+          />
+        </FormSection>
+
+        {/* ═══ 3 — אנשים : un seul endroit pour les personnes de la fiche. ═══ */}
+        <FormSection
+          title={t('people.section')}
+          testId="farm-block-people"
+          summary={
+            <span className="chip ms-2 bg-surface-high text-content-secondary">
+              {t('people.summary', { count: peopleCount })}
+            </span>
+          }
+        >
+          <PersonEditor
+            title={t('people.farmer')}
+            testId="person-farmer"
+            card={farmer}
+            onChange={patchFarmer}
+            withId
+            errors={{ phone: show('farmerPhone'), email: show('farmerEmail') }}
+            showPrimary={contacts.length > 0}
+          />
+
+          {/* ★★ AH1.3 — le contact de terrain : la case qui recopie, au-dessus. */}
+          <div
+            className="col-span-full rounded-field border border-edge-subtle bg-surface-high p-3"
+            data-testid="person-liaison"
+          >
+            <p className="mb-2 text-caption font-semibold text-content-primary">
+              {t('people.liaison')}
+            </p>
+            <label
+              className="flex min-h-[2.75rem] items-center gap-2.5"
+              data-testid="liaison-same-row"
+            >
+              <input
+                type="checkbox"
+                data-testid="liaison-same"
+                className="check"
+                checked={liaisonSame}
+                onChange={(e) => {
+                  const on = e.target.checked
+                  setLiaisonSame(on)
+                  /* ⚠️ DÉCOCHER NE VIDE PAS : le PO retrouve les valeurs. */
+                  if (on) {
+                    setLiaisonName(farmer.name)
+                    setLiaisonPhone(farmer.phone)
+                  }
+                }}
+              />
+              <span className="text-caption text-content-secondary">
+                {t('form.liaisonSame')}
+              </span>
+            </label>
+            {liaisonSame ? (
+              <p className="text-caption text-content-secondary" data-testid="liaison-echo">
+                {liaisonNameShown || '—'}
+                {liaisonPhoneShown && (
+                  <>
+                    {' · '}
+                    <span className="ltr-nums font-medium text-content-primary">
+                      {liaisonPhoneShown}
+                    </span>
+                  </>
+                )}
+              </p>
+            ) : (
+              <div className="auto-cols mt-2 gap-3 [--col-min:9rem] md:[--col-min:13rem]">
+                <TextField
+                  label={t('people.name')}
+                  hint={t('form.liaisonNameHint')}
+                  value={liaisonName}
+                  onChange={setLiaisonName}
+                  testId="liaison-name"
+                  kind="name"
+                />
+                <TextField
+                  label={t('people.mobile')}
+                  value={liaisonPhone}
+                  onChange={setLiaisonPhone}
+                  testId="liaison-phone"
+                  error={show('liaisonPhone')}
+                  kind="phone"
+                />
+              </div>
+            )}
+          </div>
+
+          {contacts.map((contact, i) => (
+            <PersonEditor
+              key={contact.id}
+              title={contact.role.trim() || t('people.other')}
+              testId={`person-contact-${i}`}
+              card={contact}
+              onChange={(patch) => patchContact(i, patch)}
+              withId={false}
+              errors={{
+                phone: touched ? contactErrors[i]?.phone : undefined,
+                email: touched ? contactErrors[i]?.email : undefined,
+              }}
+              onRemove={() => removeContact(i)}
+              showPrimary
+            />
+          ))}
+
+          <button
+            type="button"
+            onClick={addContact}
+            data-testid="person-add"
+            className="btn-ghost col-span-full min-h-[2.75rem] justify-center border border-dashed border-edge-strong"
+          >
+            <Icon name="plus" size={15} />
+            {t('people.addOther')}
+          </button>
+        </FormSection>
+
+        {/* ═══ 4 — טלפוני חירום ותיק אתר (AE2), replié, comme sur la fiche. ═══ */}
+        <FormSection
+          title={t('settings.emergencyFields.title')}
+          testId="farm-block-emergency"
+          storageKey={`farm-form-emergency:${farmId ?? 'new'}`}
+          defaultOpen={false}
+          summary={
+            <span className="chip ms-2 bg-surface-high text-content-secondary">
+              {[standbyPhone.trim(), councilHotline.trim()].filter(Boolean).length === 2
+                ? t('settings.emergencyFields.bothSet')
+                : t('settings.emergencyFields.someMissing')}
+            </span>
+          }
+        >
+          <TextField
+            label={t('settings.emergencyFields.standbyPhone')}
+            hint={t('settings.emergencyFields.standbyPhoneHint')}
+            value={standbyPhone}
+            onChange={setStandbyPhone}
+            error={show('standbyPhone')}
+            kind="phone"
+          />
+          <TextField
+            label={t('settings.emergencyFields.councilHotline')}
+            hint={t('settings.emergencyFields.councilHotlineHint')}
+            value={councilHotline}
+            onChange={setCouncilHotline}
+            kind="phone"
+          />
+          <TextField
+            label={t('emergency.siteAccess')}
+            value={siteAccess}
+            onChange={setSiteAccess}
+          />
+          <TextField
+            label={t('emergency.gateCode')}
+            value={gateCode}
+            onChange={setGateCode}
+          />
+          <TextField
+            label={t('emergency.parking')}
+            value={parking}
+            onChange={setParking}
+          />
+          <TextArea
+            label={t('emergency.terrain')}
+            value={terrainNotes}
+            onChange={setTerrainNotes}
+            rows={3}
+            className="col-span-full"
+          />
+        </FormSection>
+
+        {/* ═══ 5 — התחייבויות בעל החווה (G2.4). ═══ */}
         <FormSection
           title={t('commitment.title')}
+          testId="farm-block-commitments"
+          /* ★ AM3 — replié par défaut, COMME AU DÉTAIL (et A30 : 390 px). */
+          storageKey={`farm-form-commitments:${farmId ?? 'new'}`}
+          defaultOpen={false}
+          summary={
+            <span className="chip ms-2 bg-surface-high text-content-secondary">
+              {t('blocks.commitments', {
+                count: commitments.length,
+                done: commitments.filter((c) => c.fulfilled).length,
+              })}
+            </span>
+          }
           action={
             <button
               type="button"
@@ -1423,7 +1372,7 @@ export function FarmFormScreen() {
                   { kind: 'shelter', detail: '', fulfilled: false },
                 ])
               }
-              className="btn-ghost py-1.5"
+              className="btn-ghost min-h-[2.75rem]"
             >
               <Icon name="plus" size={15} />
               {t('form.addCommitment')}
@@ -1462,7 +1411,7 @@ export function FarmFormScreen() {
                   />
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-3">
-                  <label className="flex items-center gap-2 text-caption text-content-secondary">
+                  <label className="flex min-h-[2.75rem] items-center gap-2 text-caption text-content-secondary">
                     <input
                       type="checkbox"
                       checked={c.fulfilled}
@@ -1482,7 +1431,7 @@ export function FarmFormScreen() {
                     onClick={() =>
                       setCommitments((prev) => prev.filter((_, j) => j !== i))
                     }
-                    className="btn-ghost py-1.5 text-status-danger-ink hover:bg-status-danger/10"
+                    className="btn-ghost min-h-[2.75rem] text-status-danger-ink hover:bg-status-danger/10"
                   >
                     <Icon name="trash" size={15} />
                     {t('common.remove')}
@@ -1493,8 +1442,17 @@ export function FarmFormScreen() {
           )}
         </FormSection>
 
+        {/* ═══ 6 — הסכמים. ═══ */}
         <FormSection
           title={t('farms.agreements')}
+          testId="farm-block-agreements"
+          storageKey={`farm-form-agreements:${farmId ?? 'new'}`}
+          defaultOpen={false}
+          summary={
+            <span className="chip ms-2 bg-surface-high text-content-secondary">
+              {t('blocks.agreements', { count: agreements.length })}
+            </span>
+          }
           action={
             <button
               type="button"
@@ -1511,7 +1469,7 @@ export function FarmFormScreen() {
                   },
                 ])
               }
-              className="btn-ghost py-1.5"
+              className="btn-ghost min-h-[2.75rem]"
             >
               <Icon name="plus" size={15} />
               {t('form.addAgreement')}
@@ -1535,10 +1493,13 @@ export function FarmFormScreen() {
                         prev.map((x, j) => (j === i ? { ...x, signedBy } : x)),
                       )
                     }
+                    kind="name"
                   />
                   <Field label={t('form.signedAt')}>
                     <input
                       type="date"
+                      data-kind="date"
+                      dir="ltr"
                       className="input ltr-nums"
                       value={localDayKey(new Date(a.signedAt))}
                       onChange={(e) => {
@@ -1551,49 +1512,14 @@ export function FarmFormScreen() {
                     />
                   </Field>
                 </div>
-                {/* ★ P3.3 / PO POINT 9 — THE SIGNATURE, AND THE PENCIL IS
-                    THE NATURAL TOOL FOR IT. A name written with a fingertip on
-                    glass is a scrawl, and a farmer is being asked to sign. The
-                    pad is Pointer Events throughout and uses the Pencil's
-                    PRESSURE where the device reports it.
-
-                    ★ BEHIND A BUTTON, and A30 is why: a 200 px canvas per
-                    agreement pushed the farm form past six screenfuls at
-                    390 px. It is also better as a deliberate act — a farmer
-                    signs when he is asked to, not because a form scrolled past
-                    a blank rectangle. The signed/unsigned chip below is always
-                    on screen, so nothing is hidden, only folded. */}
-                {/* ★★ AF1.2 (2026-09-09) — LE PAVÉ BLANC EST REMPLACÉ PAR LE
-                    DOCUMENT. Le rectangle qui se dépliait ici ne montrait rien
-                    de ce qui était signé : le PDF n'était consultable qu'APRÈS.
-                    `AgreementSignModal` met le document en premier, le pad en
-                    dessous, et l'encre atterrit dans le cadre du bas sous les
-                    yeux de l'agriculteur avant qu'on approuve. */}
+                {/* ★★ AF1.2 — LE DOCUMENT D'ABORD, LE PAD DESSOUS. */}
                 {openSignature === a.id && (
                   <AgreementSignModal
                     farm={signingFarm}
                     agreement={a}
                     onClose={() => setOpenSignature(null)}
                     onCommit={(signature) => {
-                      /**
-                       * ★★ AF1.3 — L'ENCRE NEUVE DATE LE DOCUMENT, ET LA
-                       *    PREMIÈRE VERSION NE LE FAISAIT PAS.
-                       *
-                       * Le document imprime « תאריך » sous le trait, et
-                       * il l'imprimait depuis `signedAt` — une valeur posée à
-                       * la CRÉATION de la ligne d'accord. Un agriculteur qui
-                       * signait ce matin sortait donc avec un document daté
-                       * de trois mois, ce qui est une fausse déclaration sur
-                       * un papier que l'association archive.
-                       *
-                       * ⚠️ ET SEULEMENT QUAND L'ENCRE CHANGE. Rouvrir le
-                       *    lecteur pour relire un accord déjà signé, puis
-                       *    approuver sans redessiner, ne doit pas redater le
-                       *    document : la signature est la même. Le champ
-                       *    « תאריך חתימה » du formulaire reste au-dessus, et
-                       *    c'est lui qui corrige un accord signé sur papier
-                       *    un autre jour.
-                       */
+                      /* ★★ AF1.3 — l'encre NEUVE date le document, et seulement elle. */
                       setAgreements((prev) =>
                         prev.map((x, j) =>
                           j === i
@@ -1626,7 +1552,7 @@ export function FarmFormScreen() {
                     <button
                       type="button"
                       data-testid="signature-open"
-                      className="btn-ghost py-1.5"
+                      className="btn-ghost min-h-[2.75rem]"
                       onClick={() =>
                         setOpenSignature((cur) => (cur === a.id ? null : a.id))
                       }
@@ -1640,7 +1566,7 @@ export function FarmFormScreen() {
                     onClick={() =>
                       setAgreements((prev) => prev.filter((_, j) => j !== i))
                     }
-                    className="btn-ghost py-1.5 text-status-danger-ink hover:bg-status-danger/10"
+                    className="btn-ghost min-h-[2.75rem] text-status-danger-ink hover:bg-status-danger/10"
                   >
                     <Icon name="trash" size={15} />
                     {t('common.remove')}
@@ -1651,97 +1577,18 @@ export function FarmFormScreen() {
           )}
         </FormSection>
 
-        <FormSection title={t('form.sectionStatus')}>
-          <SelectField<FarmStatus>
-            label={t('form.status')}
-            value={status}
-            onChange={setStatus}
-            error={errors.status}
-            options={STATUSES.map((v) => ({
-              value: v,
-              label: t(`farmStatus.${v}`),
-            }))}
-          />
-        </FormSection>
-
-        {/* ═══════════════════════════════════════════════════════════════
-            ★★ AE2 — TÉLÉPHONES DE NUIT ET תיק אתר.
-
-            ⚠️ UNE SECTION À ELLE, ET NON DEUX CHAMPS GLISSÉS DANS « CONTACTS ».
-               Les contacts sont des gens à qui l'on parle en journée ; ces
-               six-là sont ce qu'on lit à 03:00 en courant. Les mélanger
-               reviendrait à demander à quelqu'un de lire une section pour
-               trouver un code de portail.
-
-            ⚠️ ET LE מוקד EST À CÔTÉ DE LA MRKZIYA, AVEC SON PROPRE INDICE.
-               `councilPhone` (AA4) est la standardiste et ne répond pas la
-               nuit ; les confondre coûte une intervention.
-            ═══════════════════════════════════════════════════════════════ */}
-        {/**
-          * ⚠️ REPLIABLE ET REPLIÉE, ET `bun run layout` EST POURQUOI : cette
-          *    fiche est plafonnée à six hauteurs d'écran à 390 px (A30) et ces
-          *    six champs l'ont poussée à 6,2 — le même plafond, la même règle
-          *    et le même remède que les trois sections pliables au-dessus.
-          *
-          * ★ ET LE RÉSUMÉ DIT CE QUI COMPTE QUAND ELLE EST FERMÉE : les deux
-          *   numéros de nuit sont-ils renseignés. Un coordinateur qui parcourt
-          *   ses fiches cherche précisément ce trou-là, et il doit le voir sans
-          *   ouvrir — c'est la règle du résumé de `form.sectionLand`, appliquée
-          *   à la seule information de cette section qui se lit en urgence.
-          */}
+        {/* ═══ 7 — הערות. ═══ */}
         <FormSection
-          title={t('settings.emergencyFields.title')}
-          storageKey={`farm-form-emergency:${farmId ?? 'new'}`}
+          title={t('common.notes')}
+          testId="farm-block-notes"
+          storageKey={`farm-form-notes:${farmId ?? 'new'}`}
           defaultOpen={false}
           summary={
-            <span className="chip ms-2 bg-surface-high text-content-secondary">
-              {[standbyPhone.trim(), councilHotline.trim()].filter(Boolean).length === 2
-                ? t('settings.emergencyFields.bothSet')
-                : t('settings.emergencyFields.someMissing')}
+            <span className="ms-2 min-w-0 truncate text-caption text-content-muted">
+              {notes.trim() ? notes.trim().split('\n')[0] : t('common.none')}
             </span>
           }
         >
-          <TextField
-            label={t('settings.emergencyFields.standbyPhone')}
-            hint={t('settings.emergencyFields.standbyPhoneHint')}
-            value={standbyPhone}
-            onChange={setStandbyPhone}
-            type="tel"
-            ltr
-          />
-          <TextField
-            label={t('settings.emergencyFields.councilHotline')}
-            hint={t('settings.emergencyFields.councilHotlineHint')}
-            value={councilHotline}
-            onChange={setCouncilHotline}
-            type="tel"
-            ltr
-          />
-          <TextField
-            label={t('emergency.siteAccess')}
-            value={siteAccess}
-            onChange={setSiteAccess}
-          />
-          <TextField
-            label={t('emergency.gateCode')}
-            value={gateCode}
-            onChange={setGateCode}
-          />
-          <TextField
-            label={t('emergency.parking')}
-            value={parking}
-            onChange={setParking}
-          />
-          <TextArea
-            label={t('emergency.terrain')}
-            value={terrainNotes}
-            onChange={setTerrainNotes}
-            rows={3}
-            className="col-span-full"
-          />
-        </FormSection>
-
-        <FormSection title={t('form.sectionNotes')}>
           <TextArea
             label={t('form.notes')}
             value={notes}
@@ -1756,6 +1603,9 @@ export function FarmFormScreen() {
           cancelLabel={t('common.cancel')}
           submitLabel={t('common.save')}
           onSubmit={submit}
+          message={
+            touched && !valid ? t('form.notSaved', { count: errorCount }) : undefined
+          }
         />
       </div>
         </>

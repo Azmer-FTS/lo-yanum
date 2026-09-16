@@ -287,7 +287,7 @@ const mapBox = async (page: Page) => {
 /** Guard-post pins: the teardrop viewBox, minus the car's meeting points. */
 const anchorPins = (page: Page): Locator =>
   page.locator(
-    '.maplibregl-marker:has(svg[viewBox="0 0 24 32"]):not(:has(path[d^="M5 11"]))',
+    '.maplibregl-marker:has(svg[data-pin-svg]):not(:has(path[d^="M5 11"]))',
   )
 
 /** Every marker's hit box, so a target under 44 px is a named failure. */
@@ -363,7 +363,7 @@ check(
 // The pin's TIP is the coordinate, so growing the box must not move it.
 const pinAnchors = await page.evaluate(() =>
   [...document.querySelectorAll('.maplibregl-marker')]
-    .filter((m) => m.querySelector('svg[viewBox="0 0 24 32"]'))
+    .filter((m) => m.querySelector('svg[data-pin-svg]'))
     .map((m) => (m as HTMLElement).style.transform.includes('-50%, -100%')),
 )
 check(
@@ -828,6 +828,10 @@ await page.evaluate(() => {
 await page.waitForTimeout(3500)
 
 // The agreements section is far down a long form.
+// ★ AM3 — et REPLIÉE par défaut, comme au détail : on la déplie au stylet,
+//   comme le PO (le même geste qu'AL4 impose aux portes des réglages).
+check('"הסכמים" unfolds by STYLUS', await tapTestId(page, cdp, 'section-farm-form-agreements:farm-01'))
+await page.waitForTimeout(500)
 const added = await penTapText(page, cdp, 'הוספת הסכם')
 check('"הוספת הסכם" is reachable by STYLUS', added)
 await page.waitForTimeout(800)

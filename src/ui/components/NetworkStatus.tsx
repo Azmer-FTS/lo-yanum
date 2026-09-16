@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Icon } from './Icon'
 import { useDataState } from '../hooks/useDataState'
 import { useOnline } from '../offline'
+import { useStackBelow } from '../hooks/useStackBelow'
 
 /**
  * PO POINT 3 (2026-08-31) — ONE NETWORK PILL, ON EVERY SCREEN.
@@ -50,24 +51,66 @@ export function NetworkStatus() {
   const [justSynced, setJustSynced] = useState(false)
   const previousPending = useRef(pending)
   const wasOffline = useRef(!online)
+  /**
+   * ★★ AM6.2 (2026-09-16) — « מסונכרן » NE SE DIT QUE SUR UN CHANGEMENT D'ÉTAT.
+   *
+   * Il s'affichait après CHAQUE enregistrement : une modification part dans la
+   * file (1), la file se vide (0), et la pastille célébrait un envoi qui avait
+   * duré quarante millisecondes. Le PO le voyait revenir « périodiquement »,
+   * au rythme de ses propres gestes. Une confirmation de routine qui revient à
+   * chaque geste n'est plus lue — ni le jour où elle compte.
+   *
+   * ★ Elle ne se dit donc plus que dans les deux cas où l'état a CHANGÉ :
+   *   · le réseau revient après une coupure ;
+   *   · la file se vide alors qu'elle s'était remplie HORS LIGNE (du travail
+   *     que le PO sait non envoyé, et dont il attend la nouvelle).
+   * ★ Et « N ממתינים » attend 1,5 s avant de s'afficher en ligne : un envoi
+   *   ordinaire est parti avant.
+   * L'état permanent se lit dans הגדרות › « חיבור וסנכרון » (AI7).
+   */
+  const offlineWork = useRef(false)
+  const [pendingShown, setPendingShown] = useState(false)
 
   useEffect(() => {
+    if (!online && pending > 0) offlineWork.current = true
     const cameBack = wasOffline.current && online
-    const drained = previousPending.current > 0 && pending === 0
+    const drained = previousPending.current > 0 && pending === 0 && offlineWork.current
     previousPending.current = pending
     wasOffline.current = !online
+    if (pending === 0 && online) offlineWork.current = false
     if (!cameBack && !drained) return
 
     setJustSynced(true)
-    const timer = setTimeout(() => setJustSynced(false), 2000)
+    const timer = setTimeout(() => setJustSynced(false), 2500)
     return () => clearTimeout(timer)
   }, [online, pending])
+
+  useEffect(() => {
+    if (pending === 0) {
+      setPendingShown(false)
+      return
+    }
+    if (!online) {
+      setPendingShown(true)
+      return
+    }
+    const timer = setTimeout(() => setPendingShown(true), 1500)
+    return () => clearTimeout(timer)
+  }, [pending, online])
 
   let phase: Phase = 'quiet'
   if (!online) phase = 'offline'
   else if (status === 'loading') phase = 'syncing'
-  else if (pending > 0) phase = 'pending'
+  else if (pending > 0 && pendingShown) phase = 'pending'
   else if (justSynced) phase = 'done'
+
+  const stripRef = useRef<HTMLDivElement | null>(null)
+  const below = useStackBelow(
+    stripRef,
+    phase !== 'quiet',
+    'network',
+    '[data-top-banner], [data-top-banner-float]',
+  )
 
   if (phase === 'quiet') return null
 
@@ -99,8 +142,10 @@ export function NetworkStatus() {
        *   spanning the viewport, which is why the first capture had it in the
        *   corner over the rail. `start-0 end-0` is the pair that exists.
        */
+      ref={stripRef}
       className="pointer-events-none fixed start-0 end-0 z-40 flex justify-center"
-      style={{ insetBlockStart: 'calc(var(--shell-top) + 0.5rem)' }}
+      /* ★ AM6.1 — sous tout bandeau déjà posé en haut (`useStackBelow`). */
+      style={{ insetBlockStart: `calc(var(--shell-top) + 0.5rem + ${below}px)` }}
       // N7.1 (2026-09-02) — `data-overlay`: this strip FLOATS over the header
       // on purpose (a toast, not a bar), so the layout sweep's "no pinned
       // element covers another" rule exempts it the way it exempts a modal.

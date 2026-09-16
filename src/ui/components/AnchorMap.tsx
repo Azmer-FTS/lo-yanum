@@ -755,7 +755,7 @@ export function AnchorMap({
              here. 4.5rem is the stack's 44 px plus its 12 px gutter. */}
       {overlay && (
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col gap-2 p-3 pl-[4.5rem]">
-          <div className="pointer-events-auto">{overlay}</div>
+          <div className="pointer-events-auto" data-top-banner="map-overlay">{overlay}</div>
         </div>
       )}
 

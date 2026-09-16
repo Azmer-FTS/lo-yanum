@@ -125,7 +125,7 @@ try {
   check('A170 · changer l’heure de départ déplace les arrivées', /0[6-9]:/.test(early), early)
 
   // --- 6 · envoyer l'heure --------------------------------------------------
-  await page.locator('[data-testid="free-route-stop"] input[type="tel"]').first().fill('050-1234567')
+  await page.locator('[data-testid="free-route-stop"] input[data-kind="phone"]').first().fill('050-1234567')
   await page.waitForTimeout(500)
   const sms = (await page.locator('[data-testid="free-route-sms"]').first().getAttribute('href')) ?? ''
   const wa = (await page.locator('[data-testid="free-route-whatsapp"]').first().getAttribute('href')) ?? ''

@@ -341,6 +341,19 @@ const TEARDROP =
 const NEEDLE_PIN = 'M12 31.2 9.6 17.6a9 9 0 1 1 4.8 0z'
 
 /**
+ * ★ AM7 — la boîte de l'épingle, trait compris. La tête (rayon 9, centre
+ * 12 × 8,93) va de x 3 à 21 et de y −0,07 à 17,9 ; la pointe est à y 31,2. Le
+ * trait de `PIN_STROKE` déborde de sa moitié : la boîte commence donc à
+ * −(0,07 + 1) et finit à 31,2 + 1, arrondis au quart. Largeur = hauteur de
+ * tête + trait, donc la tête est un CERCLE dans un carré et ne touche aucun
+ * bord (A221 le vérifie sur le rendu).
+ */
+const PIN_STROKE = 1.6
+const PIN_OUTLINE = "#141b26"
+const PIN_BOX = { x: 1.75, y: -1.25, w: 20.5, h: 33.5 }
+const TEARDROP_BOX = { x: 0, y: 0, w: 24, h: 32 }
+
+/**
  * Which of the two bottom-anchored silhouettes each pin kind wears.
  *
  * ★★ AH10 — L'AIGUILLE EST DEVENUE LA RÈGLE, LA GOUTTE L'EXCEPTION. Elle
@@ -578,8 +591,17 @@ function markerElement(marker: MapMarker): HTMLElement {
     // this dot". The head carries the kind's glyph — shield for a guard post,
     // car for a meeting point — or the rank badge when the caller numbers the
     // stops, or a plain dot for the generic location pin.
-    const w = marker.emphasis ? SIZE[kind] + 6 : SIZE[kind]
-    const h = Math.round((w * 4) / 3)
+    /* ★★ AM7 — LA TÊTE N'EST PLUS ROGNÉE. Le cercle de rayon 9 monte à
+       y = −0,07 dans une boîte qui commençait à 0 ; son contour débordait
+       d'un à deux pixels et le navigateur les coupait à plat — la tête « coupée
+       en haut », « ovale ». La boîte s'élargit de la moitié du trait de chaque
+       côté (`PIN_BOX`) ; le rapport largeur/hauteur est celui de la boîte, de
+       sorte que la tête reste un cercle et garde sa taille à l'écran. */
+    const headPx = marker.emphasis ? SIZE[kind] + 6 : SIZE[kind]
+    // La goutte (`car`) remplit déjà 1…23 × 1…31 : sa boîte reste 24 × 32.
+    const box = (PIN_SHAPE[kind] ?? TEARDROP) === NEEDLE_PIN ? PIN_BOX : TEARDROP_BOX
+    const w = Math.round((headPx * box.w) / 24)
+    const h = Math.round((headPx * box.h) / 24)
     el.style.cssText = [
       `width:${w}px`,
       `height:${h}px`,
@@ -589,8 +611,8 @@ function markerElement(marker: MapMarker): HTMLElement {
       `cursor:${marker.draggable ? 'grab' : 'pointer'}`,
       'display:block',
       marker.emphasis
-        ? 'filter:drop-shadow(0 0 3px rgba(255,255,255,.4)) drop-shadow(0 4px 8px rgba(0,0,0,.55))'
-        : 'filter:drop-shadow(0 3px 6px rgba(0,0,0,.45))',
+        ? 'filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))'
+        : 'filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))',
       'transition:width 150ms cubic-bezier(.16,1,.3,1),height 150ms cubic-bezier(.16,1,.3,1),filter 150ms',
     ].join(';')
     // W5 — the silhouette and, with it, where the head's contents sit.
@@ -606,25 +628,26 @@ function markerElement(marker: MapMarker): HTMLElement {
            </g>`
         : `<circle cx="12" cy="${headY}" r="4.2" fill="${ring}"/>`
     /**
-     * ★★ AH10.3 — « CONTRASTE SUFFISANT SUR FOND SATELLITE COMME VECTORIEL, EN
-     *    THÈME CLAIR ET SOMBRE », ET C'EST DEUX TRAITS PLUTÔT QU'UN.
+     * ★★ AH10.3 → AM7 (2026-09-16) — UN SEUL CONTOUR, SOMBRE, SUR TOUS LES FONDS.
      *
-     * Le contour est `--surface-base` : quasi blanc en thème clair, quasi noir
-     * en sombre. Sur la carte vectorielle il est juste dans les deux cas — le
-     * fond est le même jeton. Sur une PHOTOGRAPHIE il ne l'est pas : la photo
-     * ne connaît pas le thème, et un contour presque noir sur un champ labouré
-     * disparaît exactement comme un contour presque blanc sur une serre.
+     * AH10 posait DEUX traits : un halo sombre translucide sous un contour
+     * `--surface-base`. Le PO en voyait deux (« un noir et un blanc »), et en
+     * thème sombre, `--surface-base` étant quasi noir, les deux étaient sombres.
      *
-     * ★ LA SOLUTION EST CELLE DES ZONES (U5, `zones-halo`) : un HALO sombre et
-     *   translucide posé SOUS le contour clair. Quel que soit le fond, l'un des
-     *   deux traits porte — et sur le vectoriel le halo se lit comme le « léger
-     *   relief » que le PO a demandé plutôt que comme un second contour.
+     * ⚠️ LE CONTOUR GARDÉ A ÉTÉ CHOISI PAR LA MESURE, PAS PAR L'ŒIL. J'ai
+     *    d'abord gardé le BLANC (la forme canonique d'une épingle) ; A221 l'a
+     *    refusé : 1,2:1 sur le vectoriel clair, 1,8:1 sur le satellite du Néguev
+     *    — du sable clair, justement le terrain du PO. Le contour SOMBRE, fixe et
+     *    indépendant du thème, tient sur le vectoriel clair et sur toute photo
+     *    claire ; sur les fonds sombres (vectoriel sombre, photo sombre) c'est le
+     *    remplissage — clair en thème sombre — qui porte le contraste. A221 le
+     *    mesure sur les quatre combinaisons.
      */
     el.innerHTML = `
-      <svg viewBox="0 0 24 32" width="${w}" height="${h}" aria-hidden="true">
-        <path d="${silhouette}" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="3.6"
-              stroke-linejoin="round"/>
-        <path d="${silhouette}" fill="${marker.color}" stroke="${ring}" stroke-width="1.6"/>
+      <svg viewBox="${box.x} ${box.y} ${box.w} ${box.h}" width="${w}" height="${h}"
+           overflow="visible" aria-hidden="true" data-pin-svg="">
+        <path d="${silhouette}" fill="${marker.color}" stroke="${PIN_OUTLINE}" stroke-width="${PIN_STROKE}"
+              stroke-linejoin="round" data-pin-outline=""/>
         ${head}
       </svg>`
     footprint = { w, h, anchorBottom: true }
@@ -2375,6 +2398,7 @@ export default function MapCanvas({
           <div
             role="status"
             data-testid="map-imagery-notice"
+            data-top-banner="imagery"
             data-state={imagery}
             className="glass pointer-events-none absolute start-1/2 top-3 z-[3] flex max-w-[min(26rem,calc(100%-7rem))] -translate-x-1/2 items-center gap-2 rounded-card px-3 py-2 text-caption font-semibold text-content-primary shadow-card rtl:translate-x-1/2"
           >

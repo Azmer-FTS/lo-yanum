@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
-  LOCALITY_POSITIONS,
   createDriver,
   isEmail,
   normalizeEmail,
@@ -11,8 +10,8 @@ import {
 import type { Driver, DriverDraft } from '@core/index'
 
 import { PhotoField } from '../../components/PhotoField'
+import { LocalityField } from '../../components/LocalityField'
 import {
-  AutocompleteField,
   TextArea,
   TextField,
   isValidPhone,
@@ -110,8 +109,7 @@ export function DriverFormModal({
           value={phone}
           onChange={setPhone}
           error={show('phone')}
-          type="tel"
-          ltr
+          kind="phone"
           required
         />
         <TextField
@@ -119,16 +117,14 @@ export function DriverFormModal({
           value={email}
           onChange={setEmail}
           error={show('email')}
-          type="email"
-          ltr
+          kind="email"
           placeholder="name@example.co.il"
           hint={t('form.emailHint')}
         />
-        <AutocompleteField
+        <LocalityField
           label={t('form.locality')}
           value={locality}
           onChange={setLocality}
-          options={Object.keys(LOCALITY_POSITIONS)}
           error={show('locality')}
           required
         />
@@ -143,8 +139,7 @@ export function DriverFormModal({
           value={seats}
           onChange={setSeats}
           error={show('seats')}
-          type="number"
-          ltr
+          kind="integer"
           required
         />
         <TextField

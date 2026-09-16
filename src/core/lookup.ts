@@ -116,7 +116,10 @@ export interface RankedOption<T> {
 export function rankOptions<T>(
   query: string,
   items: readonly T[],
-  key: (item: T) => string,
+  /* ★ AM1.1 — une clé OU PLUSIEURS : une localité se trouve par son nom, par
+     une autre graphie (למ״ס, classeur) ou par son nom latin. Le meilleur rang
+     de ses clés est le sien. */
+  key: (item: T) => string | readonly string[],
   limit = 8,
 ): Array<RankedOption<T>> {
   const q = normalizeLocality(query)
@@ -130,19 +133,21 @@ export function rankOptions<T>(
   const budget = typoBudget(q)
 
   for (const item of items) {
-    const n = normalizeLocality(key(item))
-    if (n === '') continue
-    if (n.startsWith(q)) {
+    const k = key(item)
+    const keys = (typeof k === 'string' ? [k] : k).map(normalizeLocality).filter((n) => n !== '')
+    if (keys.length === 0) continue
+    if (keys.some((n) => n.startsWith(q))) {
       prefix.push({ item, rank: 0, distance: 0 })
       if (prefix.length >= limit) break
       continue
     }
-    if (n.includes(q)) {
+    if (keys.some((n) => n.includes(q))) {
       inside.push({ item, rank: 1, distance: 0 })
       continue
     }
     if (budget > 0) {
-      const d = wordDistance(q, n, budget)
+      let d = budget + 1
+      for (const n of keys) d = Math.min(d, wordDistance(q, n, budget))
       if (d <= budget) near.push({ item, rank: 2, distance: d })
     }
   }

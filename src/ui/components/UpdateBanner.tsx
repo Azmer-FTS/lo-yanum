@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { formatDateTime } from '@core/index'
 
 import { Icon } from './Icon'
+import { useEffect, useRef } from 'react'
+
+import { useStackBelow } from '../hooks/useStackBelow'
 import { useOnline } from '../offline'
 import {
   RUNNING,
@@ -40,11 +43,13 @@ export function UpdateBanner() {
   const online = useOnline()
   const update = useUpdateState()
   const when = (iso: string) => isolate(formatDateTime(iso, i18n.language))
+  const stripRef = useRef<HTMLDivElement | null>(null)
 
-  let tone: 'info' | 'success' | 'warn'
-  let title: string
-  let body: string
-  let action: 'apply' | 'close'
+  let tone: 'info' | 'success' | 'warn' = 'info'
+  let title = ''
+  let body = ''
+  let action: 'apply' | 'close' = 'close'
+  let stackActive = true
 
   const verdict = update.applied && !update.applied.seen ? update.applied : null
   if (update.available && update.available.id !== update.dismissed && online) {
@@ -69,8 +74,27 @@ export function UpdateBanner() {
       : t('update.failedBody', { id: isolate(RUNNING.id) })
     action = 'close'
   } else {
-    return null
+    stackActive = false
   }
+  /**
+   * ★★ AM6.2 (2026-09-16) — « האפליקציה עודכנה · הגרסה הפעילה » EST UNE
+   *    CONFIRMATION, ET UNE CONFIRMATION NE RESTE PAS.
+   *
+   * Elle restait affichée dix minutes, à CHAQUE ouverture, tant que personne
+   * ne touchait « סגירה » — le « message qui revient pour dire que l'app est
+   * active » du PO, posé par-dessus le panneau de l'épingle. Réussie, elle se
+   * dit huit secondes puis s'inscrit comme lue (הגדרות › נתונים garde la ligne,
+   * AJ0.4). Un ÉCHEC, lui, reste jusqu'au geste : c'est une chose à faire.
+   */
+  const routineConfirmation = action === 'close' && verdict?.ok === true
+  useEffect(() => {
+    if (!stackActive || !routineConfirmation) return
+    const timer = window.setTimeout(acknowledgeApplied, 8000)
+    return () => window.clearTimeout(timer)
+  }, [stackActive, routineConfirmation])
+  /* ★ AM6.1 — sous un bandeau de page déjà posé en haut (la carte). */
+  const below = useStackBelow(stripRef, stackActive, 'update')
+  if (!stackActive) return null
 
   const skin = {
     info: 'border-s-status-info',
@@ -85,8 +109,10 @@ export function UpdateBanner() {
 
   return (
     <div
+      ref={stripRef}
       className="fixed start-0 end-0 z-50 flex justify-center px-3"
-      style={{ insetBlockStart: 'calc(var(--shell-top) + 0.5rem)' }}
+      style={{ insetBlockStart: `calc(var(--shell-top) + 0.5rem + ${below}px)` }}
+      data-top-banner-float="update"
       // Floats over the header on purpose, like `NetworkStatus`.
       data-overlay=""
       data-testid="update-banner"

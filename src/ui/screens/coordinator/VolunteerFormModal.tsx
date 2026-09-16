@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
-  LOCALITY_POSITIONS,
   createVolunteer,
   isEmail,
   normalizeEmail,
@@ -18,8 +17,8 @@ import type {
 } from '@core/index'
 
 import { PhotoField } from '../../components/PhotoField'
+import { LocalityField } from '../../components/LocalityField'
 import {
-  AutocompleteField,
   SelectField,
   SelectOrCreateField,
   TextArea,
@@ -150,18 +149,16 @@ export function VolunteerFormModal({
           value={phone}
           onChange={setPhone}
           error={show('phone')}
-          type="tel"
-          ltr
+          kind="phone"
           required
-          placeholder="050-0000000"
+          placeholder="(050) 000-0000"
         />
         <TextField
           label={t('form.email')}
           value={email}
           onChange={setEmail}
           error={show('email')}
-          type="email"
-          ltr
+          kind="email"
           placeholder="name@example.co.il"
           hint={t('form.emailHint')}
         />
@@ -179,8 +176,7 @@ export function VolunteerFormModal({
           value={age}
           onChange={setAge}
           error={show('age')}
-          type="number"
-          ltr
+          kind="integer"
         />
         {/* F1 — the roster's yeshivot are a suggestion, not a closed world:
             the first volunteer from a new yeshiva must not be unenterable. */}
@@ -192,11 +188,10 @@ export function VolunteerFormModal({
           createLabel={t('form.addNew')}
           backLabel={t('form.chooseExisting')}
         />
-        <AutocompleteField
+        <LocalityField
           label={t('form.locality')}
           value={locality}
           onChange={setLocality}
-          options={Object.keys(LOCALITY_POSITIONS)}
           error={show('locality')}
           required
         />

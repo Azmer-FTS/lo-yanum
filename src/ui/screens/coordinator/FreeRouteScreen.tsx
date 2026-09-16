@@ -297,8 +297,7 @@ export function FreeRouteScreen() {
             value={String(route.defaultVisitMinutes)}
             onChange={(v) => patch({ defaultVisitMinutes: Math.max(0, Number(v) || 0) })}
             testId="free-route-visit-minutes"
-            type="number"
-            ltr
+            kind="integer"
           />
         </div>
         {/* ★ AH9.2 — le point de départ se déplace en collant un lien, comme
@@ -527,8 +526,7 @@ export function FreeRouteScreen() {
                       label={t('form.contactPhone')}
                       value={leg.stop.phone}
                       onChange={(v) => patchStop(leg.stop.id, { phone: v })}
-                      type="tel"
-                      ltr
+                      kind="phone"
                     />
                     <TextField
                       label={t('freeRoute.stopMinutes')}
@@ -539,8 +537,7 @@ export function FreeRouteScreen() {
                         })
                       }
                       placeholder={String(route.defaultVisitMinutes)}
-                      type="number"
-                      ltr
+                      kind="integer"
                     />
                   </div>
 

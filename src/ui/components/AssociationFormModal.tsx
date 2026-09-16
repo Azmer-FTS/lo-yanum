@@ -269,6 +269,7 @@ export function AssociationFormModal({
           <input
             id="assoc-farmerPhone"
             data-testid="assoc-field-farmerPhone"
+            data-kind="phone"
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"

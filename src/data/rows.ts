@@ -177,6 +177,8 @@ const farmMapping: Mapping<Farm> = {
           locality_kind: f.localityKind ?? null,
           priority: f.priority ?? null,
           position_missing: f.positionMissing ?? false,
+          /* AM1.4 — « dans » ou « rattachée à » le יישוב ; null = non précisé. */
+          locality_relation: f.localityRelation ?? null,
           legal_entity: f.legalEntity ?? null,
           land_agreement: f.landAgreement ?? null,
           land_agreement_until: f.landAgreementUntil ?? null,
@@ -391,6 +393,8 @@ const farmMapping: Mapping<Farm> = {
     localityKind: optStr(p.locality_kind),
     priority: optNum(p.priority),
     positionMissing: p.position_missing === true ? true : undefined,
+    localityRelation:
+      p.locality_relation === 'in' || p.locality_relation === 'attached' ? p.locality_relation : undefined,
     legalEntity: optStr(p.legal_entity),
     landAgreement: optStr(p.land_agreement),
     landAgreementUntil: optStr(p.land_agreement_until),

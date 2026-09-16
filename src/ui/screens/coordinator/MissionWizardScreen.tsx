@@ -1069,8 +1069,7 @@ export function MissionWizardScreen() {
                   </label>
                   <TextField
                     label={t('wizard.required')}
-                    type="number"
-                    ltr
+                    kind="integer"
                     value={String(required)}
                     onChange={(v) =>
                       setRequired(Math.max(1, Math.min(12, Number(v) || 1)))
@@ -1965,7 +1964,7 @@ export function MissionWizardScreen() {
              que la barre publie déjà — c'est ce que font le bouton d'urgence
              et la barre de démonstration depuis Z6. Plus de voisinage, donc
              plus de dégagement, donc plus de nombre à tenir juste. */
-          className="fixed bottom-[var(--shell-bottom)] z-30 flex items-center gap-2 border-t border-edge-subtle bg-surface-overlay px-4 py-3 sm:px-6"
+          className="fixed bottom-[var(--shell-bottom)] z-30 am-bar-foot flex items-center gap-2 border-t border-edge-subtle bg-surface-overlay px-4 py-3 sm:px-6"
         >
           <button
             type="button"

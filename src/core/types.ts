@@ -398,6 +398,16 @@ export interface Farm {
    * cleared the moment somebody drags the pin, and set again by nothing.
    */
   positionMissing?: boolean
+  /**
+   * ★★ AM1.4 (2026-09-16) — « DANS » OU « RATTACHÉE À » LA LOCALITÉ.
+   *
+   * Le cas fréquent du PO : une ferme qui DÉPEND d'un יישוב (sa מזכירות, sa
+   * אגודה, l'adresse qu'elle donne) sans être dans son périmètre — souvent à
+   * des kilomètres, dans le Néguev. Un seul champ `locality` l'obligeait à
+   * mentir sur l'un pour dire l'autre. Le nom reste UN champ ; ce drapeau dit
+   * lequel des deux faits il porte. Absent = non précisé (les fiches d'avant).
+   */
+  localityRelation?: 'in' | 'attached'
 
   /** AA2 — an id from `LEGAL_ENTITY_OPTIONS` (core/fields.ts), or ''. */
   legalEntity?: string

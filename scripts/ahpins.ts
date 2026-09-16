@@ -82,7 +82,10 @@ const PROBE = function measurePins(): {
     }
     const svg = e.querySelector('svg')
     if (!svg) continue
-    if (svg.innerHTML.includes('rgba(0,0,0,.45)')) halo += 1
+    /* ★ AM7 — le halo sombre d'AH10 est RETIRÉ (le PO voyait deux contours).
+       Ce qui est compté maintenant : UN seul trait, sans halo. */
+    const outlined = [...svg.querySelectorAll('path')].filter((p) => (p.getAttribute('stroke') ?? 'none') !== 'none' && !p.closest('g'))
+    if (outlined.length === 1 && !svg.innerHTML.includes('rgba(0,0,0,.45)')) halo += 1
     /* Une icône DANS la tête : un `<g>` de glyphe, un `<text>` de rang, ou le
        point plein du repère générique. */
     if (svg.querySelector('g, text, circle')) glyph += 1
@@ -117,9 +120,9 @@ try {
       drawn.map((k) => `${k} ${m.anchoredBottom[k] ?? 0}/${m.kinds[k]}`).join(' · '),
     )
     check(
-      `A171 (${theme}) · chaque épingle porte le halo sombre sous son contour clair`,
+      `A171 (${theme}) · chaque épingle porte UN seul contour (AM7 remplace le halo d'AH10)`,
       m.halo >= drawn.reduce((n, k) => n + m.kinds[k], 0),
-      `${m.halo} halos`,
+      `${m.halo} épingles à un contour`,
     )
     check(
       `A171 (${theme}) · chaque tête porte une icône ou un rang`,

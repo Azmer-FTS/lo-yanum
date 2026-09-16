@@ -1,5 +1,192 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AM — LE FORMULAIRE DE FERME, REPRIS EN ENTIER. 2026-09-16. LIRE EN PREMIER.**
+>
+> Le PO a édité une ferme réelle et s'est retrouvé bloqué (« c'est un peu le
+> balagan »). Ordre suivi : AM1 → AM2 → AM3 → AM4 → AM5 → AM6 → AM7 → AM8.
+>
+> ## AM1 — LE יישוב NE BLOQUE PLUS
+>
+> ★★ **« HUIT ENTRÉES » ÉTAIT CE QUE L'ÉCRAN MONTRAIT, PAS CE QUE LA LISTE
+> CONTENAIT.** Le gazetteer portait 1 174 localités depuis N4 ; le champ
+> rendait `rankOptions(…, 8)` et, à champ vide, les huit premières de
+> l'alphabet (אבו גוש, אבו סנאן, אבטין…), toujours les mêmes, sans rien qui dise
+> qu'il y en avait d'autres. Le PO a conclu ce que l'écran disait.
+>
+> - **Liste : 1 330 localités** (`scripts/gazetteer.ts`) = Survey (1 174) +
+>   **156 du fichier du למ״ס** (`docs/data/cbs-bycode2021.xlsx`, dont ~30 שבטים
+>   du Néguev absents du Survey ; ITM → WGS84 vérifié : écart médian 89 m sur
+>   1 298 localités communes) + le **code למ״ס sur chaque ligne** + **29
+>   graphies en alias** (14 du למ״ס, 15 du classeur de prospection). Exclus :
+>   צורת יישוב 530 (« מ״א ») et 510 (camps). Les **193 codes** du classeur de
+>   prospection sont tous connus ; ses 5 lignes sans code sont des fermes hors
+>   localité (« חוות בודדים — רמת נגב »…) — exactement le cas d'AM1.2.
+> - **Champ `LocalityField`** : à vide avec une épingle → les 8 localités les
+>   plus PROCHES avec leur distance ; sans épingle → une ligne qui dit « 1330
+>   יישובים ». En tapant → **30** propositions qui défilent, tolérantes aux
+>   fautes, sur le nom, les alias et le nom latin (`rankLocalities`). Utilisé
+>   aussi par les fiches volontaire et chauffeur.
+> - ⛔ **Le יישוב n'est plus obligatoire.** **L'épingle non plus** : une fiche
+>   sans épingle garde son point de repli et `positionMissing` (le formulaire
+>   n'affiche plus ce point de repli comme une épingle ; poser une épingle fait
+>   tomber le drapeau — ce n'était pas le cas avant).
+> - **Suggestion (forme d'AL1)** : épingle posée + champ vide → « היישוב הקרוב
+>   לסיכה · X (3,5 ק״מ) » et un bouton. Rien n'est écrit sans le geste.
+> - **« Dans » ou « rattachée à »** : `Farm.localityRelation` (`'in' |
+>   'attached'`, migration `20260916000300`, **appliquée sur prod**). UN nom,
+>   deux pastilles (בתוך היישוב · משויכת ליישוב, מחוצה לו), déduites de la
+>   distance quand on choisit dans la liste (≤ 2 km = dans), modifiables ; la
+>   distance épingle ↔ centre est affichée. Le détail dit « משויכת לX ».
+> - **Un refus d'enregistrer se DIT** : message dans la barre (« לא נשמר — N
+>   שדות… ») et le premier champ fautif vient sous les yeux avec le focus.
+>
+> ### A214 — les conditions qui bloquaient l'enregistrement, une par une
+>
+> | Avant (b7a9a1f) | Maintenant | Pourquoi |
+> |---|---|---|
+> | nom de fiche (déduit de שם החווה ← חקלאי) | **gardé**, déduit aussi du יישוב | sans nom, la fiche n'existe dans aucune liste |
+> | **יישוב obligatoire** | **retiré** | décision du PO : fermes hors localité |
+> | **épingle obligatoire (A37)** | **retirée** → `positionMissing` | 9 des 15 fiches réelles n'ont pas de position : le PO ne pouvait RIEN enregistrer sur elles |
+> | **nom de chaque contact obligatoire** | **retiré** — une carte vide n'est pas enregistrée | une carte commencée n'est pas une erreur |
+> | **téléphone de chaque contact obligatoire** + format | **seul le format** reste, et seulement s'il est tapé | on n'a pas toujours le numéro devant l'agriculteur |
+> | courriel d'un contact : format si tapé | gardé | un courriel faux est pire qu'absent |
+> | סמל יישוב déjà pris par une autre fiche | gardé | l'import s'accroche à ce code |
+> | « פעילה » sans documents (AK5) | gardé | règle métier, pas un champ |
+> | *(rien)* | format si tapé : נייד de l'agriculteur, courriel, נייד de l'איש קשר, טלפון כונן | ce sont les numéros qu'on compose la nuit |
+>
+> ## AM2 — LES PERSONNES : UN SEUL ENDROIT
+>
+> **Recensement avant correctif :**
+> - Bloc « אנשי קשר » (ouvert, en 2ᵉ position) : `contacts[]` — nom, téléphone,
+>   courriel, rôle, photo, principal — et **« הוספת איש קשר » dans son en-tête**.
+>   Sur les 15 fiches d'AK1 il est VIDE : c'est le bloc vide que le PO voyait.
+> - Bloc « אנשי קשר בשטח » (**replié**, 4ᵉ) : שם החווה, ארגון מאגד, **שם החקלאי,
+>   נייד החקלאי, ת״ז/ח״פ, מייל חקלאי**, la case « même personne », איש קשר +
+>   נייד. **C'est là qu'était דני בראל, et sa ת״ז.**
+> - Bloc « טלפוני חירום » : deux numéros (pas des personnes).
+> - Au détail : l'agriculteur, sa ת״ז et l'איש קשר étaient trois lignes de
+>   « פרטים » ; les contacts un bloc au 10ᵉ rang.
+> - **Recoupements** : `farmer*` ↔ contact principal (la même personne neuf
+>   fois sur dix ; AH1.1 les « proposait » l'un dans l'autre — deux champs pour
+>   une vérité) ; איש קשר ↔ agriculteur (la case).
+>
+> **Fusion** (`core/people.ts`) : `splitPeople` fait UNE carte « החקלאי (חותם) »
+> des colonnes `farmer*` ET de la ligne de contact qui est la même personne
+> (même nom à la ponctuation près, ou même numéro aux chiffres près) ;
+> `mergePeople` réécrit les deux à l'enregistrement. **Aucun changement de
+> schéma.** Carte pré-remplie, modifiable sur place : nom, נייד, **ת״ז/ח״פ**,
+> מייל, תפקיד, photo, « איש קשר ראשי ». L'איש קשר (מועצה/אגודה) est la 2ᵉ carte
+> avec sa case. Les autres contacts suivent ; **« הוספת איש קשר נוסף » est sous
+> les cartes**. ⚠️ Agriculteur et contact principal DIFFÉRENTS → deux cartes,
+> jamais fondues. ★ Effet voulu : l'agriculteur tapé une fois devient aussi la
+> ligne de contact principale — il peut se connecter comme agriculteur et
+> apparaît à l'écran d'urgence. שם החווה / ארגון מאגד passent dans « פרטים ».
+>
+> ## AM3 — L'ÉDITION SUIT LE DÉTAIL
+>
+> Ordre commun, mêmes intitulés : *(en-tête : photo, nom)* · **סטטוס ושטחים** ·
+> **פרטים** · **אנשים** · **טלפוני חירום ותיק אתר** · **התחייבויות בעל החווה** ·
+> **הסכמים** · **הערות**. Écarts corrigés :
+> - le statut était l'AVANT-DERNIER bloc de l'édition et le PREMIER du détail ;
+>   les surfaces 5ᵉ contre 1ʳᵉ → bloc « סטטוס ושטחים » (statut, nature, trois
+>   surfaces, têtes — repliées avec leur total), et le détail porte cet
+>   intitulé au-dessus de sa bande ; la nature s'affiche dans la carte du
+>   statut (ligne vide réservée jusqu'ici) ;
+> - « זיהוי החווה » + « קרקע והסכם » (replié) → « פרטים », dans l'ordre des
+>   lignes du détail (שם החווה, ארגון מאגד, סוג יישות, יישוב, אזור, אזור
+>   סטנדרטי, סמל, מועצה, ישות, הסכם, תוקף ; la dernière visite, dérivée, en
+>   dernier au détail) ;
+> - personnes : trois endroits → « אנשים », au 3ᵉ rang des deux côtés ;
+> - « טלפוני חירום ותיק אתר » se saisissait et ne se lisait nulle part sur la
+>   fiche → bloc de lecture au détail, même rang, replié des deux côtés ;
+> - התחייבויות, הסכמים, הערות : repliés par défaut comme au détail (et c'est ce
+>   qui tient A30 : 5,7 écrans à 390 px, contre 5,9 avant la passe).
+>
+> ## AM4 — LES CLAVIERS, PARTOUT
+>
+> `TextField` prend un **`kind`** (`phone · id · integer · decimal · code ·
+> email · date · name · text`) qui décide de TOUT : type (jamais `number`),
+> `inputmode`, `pattern`, `autocomplete`, sens, mise en forme et nettoyage ; il
+> le pose en `data-kind`. `kindInputProps` fait de même pour les champs écrits à
+> la main. **Téléphones** : `core/phone.ts` — `(050) 123-4567`, `(08) 656-4111`,
+> `1-800-…`, `*6050` à la frappe ; enregistré `050-1234567` (la forme de l'app).
+> Corrigés : 7 téléphones de la fiche + chauffeur, volontaire, étape
+> d'itinéraire libre, profil du coordinateur, formulaire de signature de
+> l'agriculteur (ת״ז sans `inputmode` → pavé, portable formaté) ; surfaces,
+> têtes, סמל יישוב, places, âge, minutes, « נדרשים » : `type=number` → pavé.
+> ★★ **16 px PARTOUT, plus seulement sous `pointer: coarse`** : un iPad au
+> clavier-trackpad déclare un pointeur fin, les champs retombaient à 13,5 px.
+> **A218 balaie 28 écrans (dont modales), 136 champs, WebKit tactile ET
+> Chromium pointeur fin** : il déduit de l'intitulé ce que le champ contient
+> et refuse un clavier faux, un `data-kind` contredit, ou < 16 px.
+>
+> ## AM5 — LA BARRE D'ACTIONS
+>
+> **Mesuré sur le déployé avant correctif** (`docs/am/am5-interstice-avant.txt`) :
+> la barre est posée au-dessus de la zone sûre → **20 px** d'interstice sur
+> iPad en app installée, **34 px** sur iPhone, et le formulaire y défilait.
+> Correctif : un prolongement opaque `::after` (`.am-bar-foot`) de la hauteur
+> `--shell-bottom − --shell-foot` (zéro sous la barre d'onglets du terrain) ;
+> la hauteur publiée ne change pas. Fiche ferme ET assistant de garde. **0 px.**
+>
+> ## AM6 — LES BANDEAUX
+>
+> ★★ **Le bandeau illisible était celui de la MISE À JOUR**, pas la pastille
+> réseau : « האפליקציה עודכנה · הגרסה הפעילה… » (512 px de large) restait 10 min
+> à CHAQUE ouverture tant qu'on ne le fermait pas — mesuré sur l'iPad portrait
+> à x 260–772 × y 8–74, par-dessus « גררו את הסיכה » (x 588–948 × y 49–106).
+> - **Empilement générique** (`useStackBelow`) : un bandeau de page posé en haut
+>   porte `data-top-banner` (panneau de l'épingle, avis d'imagerie, bandeau de
+>   la carte des postes) ; les flottants (`data-top-banner-float`) se placent
+>   sous lui. Priorité : la pastille réseau évite aussi le bandeau de mise à
+>   jour, pas l'inverse.
+> - **Sur changement d'état seulement** : la confirmation de mise à jour
+>   RÉUSSIE s'affiche 8 s puis est marquée lue (un échec reste jusqu'au geste) ;
+>   « מסונכרן » ne suit plus chaque enregistrement (file 1 → 0 en 40 ms), il
+>   suit un retour du réseau ou le vidage d'une file remplie HORS LIGNE ;
+>   « N ממתינים » attend 1,5 s en ligne.
+> - L'état permanent est déjà dans הגדרות › « חיבור וסנכרון » (AI7).
+>
+> ## AM7 — LES ÉPINGLES
+>
+> - **Tête coupée** : l'arc de rayon 9 monte à y = −0,07 dans une boîte qui
+>   commençait à 0 ; les traits débordaient et étaient rognés à plat. Boîte
+>   `PIN_BOX` (1,75 −1,25 20,5 33,5), trait compris, rapport conservé → tête
+>   entière et ronde (la goutte `car` garde 24 × 32).
+> - **Deux contours** (halo `rgba(0,0,0,.45)` + trait `--surface-base`) → **un**.
+>   ⚠️★ **J'ai d'abord gardé le BLANC ; A221 l'a refusé : 1,2:1 sur le
+>   vectoriel clair, 1,8:1 sur le satellite du Néguev (sable clair).** Gardé :
+>   le contour **SOMBRE** fixe (`#141b26`) ; sur fond sombre c'est le
+>   remplissage (clair en thème sombre) qui porte. Mesuré sur les 4 fonds.
+> - L'anneau de pulsation dessinait un ovale sur une épingle → cercle.
+> - Rien d'autre (l'icône retirée de l'écran des fermes reste retirée).
+>
+> ## AM8 — LES PORTES
+>
+> ```
+> NEUVES : ampass 50/50 (A212–A216, pures)   amui 75/75 (A212 · A213 · A215–A221, Chromium + WebKit, démo + build réel/base factice)
+> ROUGE avant la passe (builds de b7a9a1f) : amui 22 PASS / 44 FAIL  (docs/am/am-rouge-avant.log)
+> LOCAL, vertes : tokens 0 · alpass 40 · akpass 56 · akdata 30 · accept 177 · persist 109 · mapping 33
+>   report 86 · deletion 61 · sync 34 · assoc 42 · acpass 52 · adpass 46 · afpass 59 · agpass 74
+>   ahpass 40 · aipass 32 · contrast · akui 119 · alui 54 · afui 72 · uipass 41 · pills 89 · settings 36
+>   ahpins 8 · ahui · ahbar 21 · ahheight · ahroute 15 · airoute 51 · ajupdate 38 · overlap 185
+>   touch vert · ground 17 · backdrop 38 · redraw 18 · freehand 30 · zones 38 · agreement 18 · demo 17
+>   layout (4 largeurs) : fiche 5,7 écrans à 390 px
+> ```
+> **Portes réécrites (pas supprimées)** : `ahpins` A171 exigeait le halo d'AH10
+> → exige UN contour ; `touch` déplie « הסכמים » au stylet avant de signer (le
+> bloc est replié comme au détail) ; `ahroute`/`airoute` cherchaient
+> `input[type=tel]` → `data-kind="phone"`.
+>
+> **Rouges PRÉ-EXISTANTS, identiques ou pires sur b7a9a1f (vérifié)** :
+> `adui` A115 (la 3ᵉ vignette « לתיחום » de la rangée défilante des fermes ne
+> vient pas entière à 1 376 px, même défilée — tâche séparée proposée) ;
+> `mapfirst` farmer-tonight (« no map found ») ; `layout` réglages à 390 px :
+> **6,5 écrans avant, 6,0 maintenant** (plafond 6).
+>
+> **DÉPLOYÉ** : voir la fin de ce bloc (rempli après le déploiement).
+
+
 > 🏁 **PASSE AL — FINITION. LA SURFACE GARDÉE SE PROPOSE, LE CLAVIER DE L'iPAD
 > EST ENFIN MESURÉ, LA DETTE EST SOLDÉE. 2026-09-16. LIRE EN PREMIER.**
 >

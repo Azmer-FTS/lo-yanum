@@ -1,3 +1,4 @@
+import { kindInputProps } from '../../components/fields'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -229,11 +230,14 @@ export function FarmerSignScreen() {
                      société et un קיבוץ écrivent trois choses différentes dans
                      cette case, et aucune validation ne doit refuser celle que
                      l'association accepte. */
-                  type={id === 'farmerPhone' ? 'tel' : 'text'}
-                  inputMode={id === 'farmerPhone' ? 'tel' : undefined}
-                  autoComplete={id === 'farmerName' ? 'name' : 'off'}
-                  value={draft[id]}
-                  onChange={(e) => set(id, e.target.value)}
+                  /* ★ AM4 — la ת״ז et le portable ouvrent le PAVÉ NUMÉRIQUE
+                     (texte, jamais nombre : le zéro initial tient), le
+                     portable se met en forme à la frappe. */
+                  {...kindInputProps(
+                    id === 'farmerPhone' ? 'phone' : id === 'farmerId' ? 'id' : id === 'farmerName' ? 'name' : 'text',
+                    draft[id],
+                    (v) => set(id, v),
+                  )}
                   onBlur={() => setPreviewSeed((n) => n + 1)}
                 />
                 {id === 'farmName' && (

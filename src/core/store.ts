@@ -592,6 +592,8 @@ export interface FarmDraft {
   localityKind?: string
   priority?: number | null
   positionMissing?: boolean
+  /** AM1.4 — « dans » ou « rattachée à » la localité. */
+  localityRelation?: 'in' | 'attached'
   legalEntity?: string
   landAgreement?: string
   landAgreementUntil?: string | null

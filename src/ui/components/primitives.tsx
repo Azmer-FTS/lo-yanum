@@ -490,6 +490,7 @@ export function Section({
     <section
       className={className}
       data-block={collapseKey}
+      data-block-title={title}
       data-open={foldable ? (open ? '1' : '0') : undefined}
     >
       {(title || action) && (

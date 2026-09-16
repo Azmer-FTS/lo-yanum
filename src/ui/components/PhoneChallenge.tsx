@@ -105,6 +105,8 @@ export function PhoneChallenge({
              zéros de tête — or un numéro israélien en est plein. */
           type="text"
           inputMode="numeric"
+          pattern="[0-9]*"
+          data-kind="integer"
           autoComplete="off"
           maxLength={CHALLENGE_DIGITS}
           disabled={waiting}

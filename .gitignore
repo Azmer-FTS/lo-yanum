@@ -127,3 +127,10 @@ dist-al-before/
 # AL5 — les captures LOCALES sont un intermédiaire de travail ; celles du
 # DÉPLOYÉ sont la preuve et restent au dossier.
 docs/screenshots/alpass/local/
+
+# AM — les builds des portes de la passe AM (jamais commités).
+dist-ampass/
+dist-amreal/
+dist-am-before/
+dist-am-before-real/
+docs/screenshots/ampass/local/

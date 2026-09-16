@@ -1,0 +1,120 @@
+$ bun run scripts/amui.ts
+  démo : http://localhost:5331
+  réel : http://localhost:5332
+
+  A212 — le champ יישוב : la liste entière, et ce qu'elle montre à vide
+  ---------------------------------------------------------------------
+  FAIL  le champ יישוב de l'édition est identifiable
+  FAIL  à champ vide, avec une épingle : les localités PROCHES, avec leur distance  — אבו גוש | אבו סנאן | אבטין
+  FAIL  et plus les huit premières de l'alphabet (אבו גוש…)
+  FAIL  « כפר » : trente propositions, pas huit  — 8
+  PASS  la liste DÉFILE
+  PASS  « באר שבה » (une faute) propose באר שבע  — באר שבע
+  PASS  « חריש » (graphie du למ״ס) est trouvé  — קציר-חריש | חרמש | נווה חריף
+
+  A213 — sans יישוב, sans épingle ; la localité proche PROPOSÉE
+  -------------------------------------------------------------
+  FAIL  une ferme neuve, un NOM seul, s'enregistre  — /#/coordinator/farms/new
+  FAIL  section interrompue  — fill: Timeout 8000ms exceeded.
+  FAIL  section interrompue  — fill: Timeout 8000ms exceeded.
+
+  A215 · A216 — une personne connue s'édite en place ; ת״ז à côté
+  ---------------------------------------------------------------
+  FAIL  la fiche de דני בראל a UNE carte « החקלאי »
+  FAIL  pré-remplie : nom
+  FAIL  pré-remplie : portable, mis en forme
+  FAIL  pré-remplie : ת״ז, zéro initial compris
+  FAIL  A216 — ת״ז, nom et portable sont dans la MÊME carte
+  PASS  aucune carte de contact vide au-dessus ou au-dessous  — 0
+  FAIL  le bouton d'ajout dit « נוסף », pas « הוספת איש קשר » tout court
+  FAIL  et il est APRÈS la personne existante
+  FAIL  plus aucun « הוספת איש קשר » au-dessus des personnes
+  FAIL  section interrompue  — fill: Timeout 8000ms exceeded.
+
+  A217 — l'ordre et les intitulés de l'édition sont ceux du détail
+  ----------------------------------------------------------------
+  FAIL  farm-01 : chaque bloc de l'édition existe au détail, sous le même intitulé
+  PASS  farm-01 : dans le même ordre  — édition  | détail 
+  FAIL  farm-02 : chaque bloc de l'édition existe au détail, sous le même intitulé
+  PASS  farm-02 : dans le même ordre  — édition  | détail 
+
+  A218 — tous les champs de tous les écrans : clavier et taille
+  -------------------------------------------------------------
+  FAIL  WebKit tactile, iPad : 28/28 écrans, 134 champs — aucun clavier faux, aucun champ sous 16 px  — farm-form · « טלפון * » : phone sans pavé numérique (inputmode="", type=tel)
+          farm-form · « טלפון * » : phone en type=tel (clavier téléphone, pas le pavé)
+          farm-form · « טלפון * » : phone sans pavé numérique (inputmode="", type=tel)
+          farm-form · « טלפון * » : phone en type=tel (clavier téléphone, pas le pavé)
+          farm-form · « סמל יישוב (למ״ס) » : code sans pavé numérique (inputmode="", type=number)
+          farm-form · « סמל יישוב (למ״ס) » : code en type=number (zéro initial perdu)
+          farm-form · « נייד החקלאי » : phone sans pavé numérique (inputmode="", type=tel)
+          farm-form · « נייד החקלאי » : phone en type=tel (clavier téléphone, pas le pavé)
+          farm-form · « נייד — איש קשר » : phone sans pavé numérique (inputmode="", type=tel)
+          farm-form · « נייד — איש קשר » : phone en type=tel (clavier téléphone, pas le pavé)
+          farm-form · « שטח מעובד (דונם) » : surface sans pavé numérique (inputmode="")
+          farm-form · « שטח מרעה (דונם) » : surface sans pavé numérique (inputmode="")
+          … et 24 de plus
+  FAIL  Chromium, pointeur FIN (iPad au trackpad, bureau) : 28/28 écrans, 134 champs — aucun clavier faux, aucun champ sous 16 px  — farm-detail · « מה נצפה, מתי, ובאיזו תדירות » : police 13.5px
+          farm-detail · « מה נצפה, מתי, ובאיזו תדירות » : police 13.5px
+          farm-detail · « מה נצפה, מתי, ובאיזו תדירות » : police 13.5px
+          farm-detail · « מה נצפה, מתי, ובאיזו תדירות » : police 13.5px
+          farm-detail · הסכם · « מה נצפה, מתי, ובאיזו תדירות » : police 13.5px
+          farm-detail · הסכם · « מה נצפה, מתי, ובאיזו תדירות » : police 13.5px
+          farm-detail · הסכם · « מה נצפה, מתי, ובאיזו תדירות » : police 13.5px
+          farm-detail · הסכם · « מה נצפה, מתי, ובאיזו תדירות » : police 13.5px
+          farm-detail · ארכיון · « מה נצפה, מתי, ובאיזו תדירות » : police 13.5px
+          farm-detail · ארכיון · « מה נצפה, מתי, ובאיזו תדירות » : police 13.5px
+          farm-detail · ארכיון · « מה נצפה, מתי, ובאיזו תדירות » : police 13.5px
+          farm-detail · ארכיון · « מה נצפה, מתי, ובאיזו תדירות » : police 13.5px
+          … et 154 de plus
+
+  A219 — la barre d'actions couvre jusqu'au bord bas
+  --------------------------------------------------
+  FAIL  iPad installé · fiche ferme : interstice visible sous la barre = 0 px (zone sûre 20 px)  — 20 px de contenu visible
+  FAIL  iPad installé · fiche ferme : barre et prolongement opaques
+  FAIL  iPad installé · assistant de garde : interstice visible sous la barre = 0 px (zone sûre 20 px)  — 20 px de contenu visible
+  FAIL  iPad installé · assistant de garde : barre et prolongement opaques
+  FAIL  iPhone · fiche ferme : interstice visible sous la barre = 0 px (zone sûre 34 px)  — 34 px de contenu visible
+  FAIL  iPhone · fiche ferme : barre et prolongement opaques
+  FAIL  iPhone · assistant de garde : interstice visible sous la barre = 0 px (zone sûre 34 px)  — 34 px de contenu visible
+  FAIL  iPhone · assistant de garde : barre et prolongement opaques
+
+  A220 — les bandeaux s'empilent ; « מסונכרן » sur changement d'état seulement
+  ----------------------------------------------------------------------------
+  PASS  1032 px : le bandeau de mise à jour ET le panneau de l'épingle sont à l'écran
+  FAIL  1032 px : ils ne se superposent pas  — bandeau 260,8,772,74 · épingle 588,49,948,106
+  FAIL  1032 px : la confirmation s'en va d'elle-même et ne reviendra pas (lue)
+  FAIL  1032 px : rouvrir l'app ne la ré-affiche pas
+  PASS  1376 px : le bandeau de mise à jour ET le panneau de l'épingle sont à l'écran
+  FAIL  1376 px : ils ne se superposent pas  — bandeau 432,8,944,74 · épingle 277,12,637,70
+  FAIL  1376 px : la confirmation s'en va d'elle-même et ne reviendra pas (lue)
+  FAIL  1376 px : rouvrir l'app ne la ré-affiche pas
+  PASS  retour du réseau : « מסונכרן » s'affiche (un changement d'état)  — done,done,done,done,done,done,done,
+  PASS  et il ne recouvre NI le panneau de l'épingle NI un bandeau déjà posé
+  FAIL  build réel : l'enregistrement ordinaire est bien parti en base
+  FAIL  … et AUCUN « מסונכרן » ni « ממתינים » ne l'a suivi  — rien
+
+  A221 — l'épingle : un contour, une tête entière et ronde, du contraste
+  ----------------------------------------------------------------------
+  PASS  light · vector : des épingles à mesurer  — 14
+  FAIL  light · vector : UN seul contour par épingle, plus de halo sombre
+  FAIL  light · vector : la tête et son trait tiennent dans la boîte (rien de rogné)
+  PASS  light · vector : boîte au rapport du dessin (le cercle reste rond)
+  PASS  light · vector : contraste contour ou remplissage / fond ≥ 3:1  — contour 18.5:1, remplissage 14.9:1
+  PASS  light · satellite : des épingles à mesurer  — 14
+  FAIL  light · satellite : UN seul contour par épingle, plus de halo sombre
+  FAIL  light · satellite : la tête et son trait tiennent dans la boîte (rien de rogné)
+  PASS  light · satellite : boîte au rapport du dessin (le cercle reste rond)
+  PASS  light · satellite : contraste contour ou remplissage / fond ≥ 3:1  — contour 11.7:1, remplissage 9.4:1
+  PASS  dark · vector : des épingles à mesurer  — 14
+  FAIL  dark · vector : UN seul contour par épingle, plus de halo sombre
+  FAIL  dark · vector : la tête et son trait tiennent dans la boîte (rien de rogné)
+  PASS  dark · vector : boîte au rapport du dessin (le cercle reste rond)
+  PASS  dark · vector : contraste contour ou remplissage / fond ≥ 3:1  — contour 1.3:1, remplissage 14.0:1
+  PASS  dark · satellite : des épingles à mesurer  — 14
+  FAIL  dark · satellite : UN seul contour par épingle, plus de halo sombre
+  FAIL  dark · satellite : la tête et son trait tiennent dans la boîte (rien de rogné)
+  PASS  dark · satellite : boîte au rapport du dessin (le cercle reste rond)
+  PASS  dark · satellite : contraste contour ou remplissage / fond ≥ 3:1  — contour 11.7:1, remplissage 1.6:1
+
+  22 passed, 44 failed
+error: script "amui" exited with code 1

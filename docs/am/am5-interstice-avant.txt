@@ -1,0 +1,6 @@
+AM5 — interstice sous la barre d'actions, MESURÉ AVANT CORRECTIF
+Build servi : https://azmer-fts.github.io/lo-yanum/demo (commit b7a9a1f), WebKit, écran d'édition farm-01,
+zone sûre du bas imposée (--safe-bottom : 20 px iPad en app installée, 34 px iPhone), barre de démo masquée.
+ipad   1032x1376 : bas de barre 1356, fenêtre 1376 → interstice 20 px ; elementFromPoint dans l'interstice = contenu (div), jamais la barre
+iphone  402x874  : bas de barre 840,  fenêtre 874  → interstice 34 px ; elementFromPoint = section/div/span du formulaire
+(avec la barre de démonstration visible, iPad : 65 px, dont 45 px de barre de démo)

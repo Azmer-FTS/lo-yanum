@@ -644,7 +644,12 @@
    *    other direction, which is a separate WebKit habit and one that has
    *    bitten this kind of layout before.
    */
-  @media (pointer: coarse) {
+  /* ★★ AM4.3 (2026-09-16) — PARTOUT, PLUS SEULEMENT SOUS `pointer: coarse`.
+     Un iPad avec un clavier-trackpad déclare un pointeur FIN ; la règle ne
+     s'appliquait plus, les champs retombaient à 13,5 px et Safari zoomait la
+     page sur l'appareil même du PO. « Aucun champ sous 16 px » ne dépend pas
+     de ce que tient la main. */
+  @media all {
     /* ★ `!important`, ON PURPOSE, AND IT IS THE ONE IN THIS FILE.
        The fields carry Tailwind's own `text-caption` utility, which is a CLASS
        and beats any element selector however it is written. Raising the
@@ -661,6 +666,26 @@
       -webkit-text-size-adjust: 100%;
       text-size-adjust: 100%;
     }
+  }
+
+  /* ★★ AM5 (2026-09-16) — LA BARRE D'ACTIONS COUVRE JUSQU'AU BORD BAS.
+     Elle est posée à `--shell-bottom`, c'est-à-dire AU-DESSUS de la zone sûre
+     (le trait du geste d'accueil) : 20 px sur l'iPad du PO en app installée,
+     34 px sur un iPhone, et le formulaire défilait à travers, lisible — mesuré
+     sur le déployé avant correctif (docs/am/am5-interstice-avant.txt).
+     ★ Un prolongement OPAQUE, de la couleur de la barre, remplit l'interstice.
+       Pas du rembourrage : la hauteur publiée (`--pinned-foot`) reste celle des
+       boutons, et rien de ce qui flotte au-dessus ne remonte pour autant.
+     ⚠️ Sa hauteur est `--shell-bottom − --shell-foot` = max(0, zone sûre −
+       barre d'onglets) : sous la barre d'onglets du terrain, qui remplit déjà
+       la zone sûre elle-même, il vaut zéro et ne la recouvre pas. */
+  .am-bar-foot::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 100%;
+    height: calc(var(--shell-bottom) - var(--shell-foot));
+    background-color: rgb(var(--surface-overlay));
   }
 
   /* A checkbox in the same language as `.input`. Left as a NATIVE control on
@@ -1301,10 +1326,16 @@
 
 /* Pulsing halo for unresolved urgent incidents. Rendered as a pseudo-element so
    the animation never scales the marker's own hit area. */
+/* ★ AM7 — un CERCLE, pas un stade : sur une épingle (plus haute que large)
+   `inset: -4px` + rayon pilule dessinait un ovale. Carré de la largeur, posé
+   en haut : son centre tombe sur celui de la tête. */
 .map-marker-pulse::after {
   content: '';
   position: absolute;
-  inset: -4px;
+  top: -4px;
+  left: -4px;
+  width: calc(100% + 8px);
+  aspect-ratio: 1 / 1;
   border-radius: var(--radius-pill);
   border: 2px solid var(--pulse-color);
   animation: marker-pulse 1.8s ease-out infinite;

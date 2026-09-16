@@ -153,6 +153,7 @@ export function PinMap({
         <div className="pointer-events-none absolute end-auto right-3 top-3 z-10 flex max-w-[calc(100%-5.5rem)] flex-col items-end gap-2">
           <div
             data-testid="pin-panel"
+            data-top-banner="pin"
             className={`pointer-events-auto flex w-fit max-w-full flex-wrap items-center gap-x-3 gap-y-2 rounded-card px-3.5 py-2.5 backdrop-blur ${
               armed
                 ? 'border border-accent bg-surface-overlay/95 shadow-glow'

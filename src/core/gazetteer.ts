@@ -35,6 +35,10 @@ export interface Locality {
   latin: string
   position: LatLng
   kind: LocalityKind
+  /** AM1.1 — סמל יישוב (למ״ס), quand la source le porte. */
+  code: number | null
+  /** AM1.1 — les autres graphies du même code (למ״ס, classeur de prospection). */
+  aliases: readonly string[]
 }
 
 const NIQQUD = /[֑-ׇ]/g
@@ -54,14 +58,16 @@ export function normalizeLocality(s: string): string {
 /** The bare name, without a parenthesised qualifier. */
 const bare = (s: string): string => s.replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s+/g, ' ').trim()
 
-export const LOCALITIES: readonly Locality[] = (rows as Array<[string, string, number, number, string]>).map(
-  ([name, latin, lat, lng, kind]) => ({
-    name,
-    latin,
-    position: { lat, lng },
-    kind: kind as LocalityKind,
-  }),
-)
+export const LOCALITIES: readonly Locality[] = (
+  rows as unknown as Array<[string, string, number, number, string, number | null, ...string[]]>
+).map(([name, latin, lat, lng, kind, code, ...aliases]) => ({
+  name,
+  latin,
+  position: { lat, lng },
+  kind: kind as LocalityKind,
+  code: code ?? null,
+  aliases,
+}))
 
 /** Exact (normalised) name → locality. */
 const byName = new Map<string, Locality>()
@@ -72,6 +78,7 @@ const byLatin = new Map<string, Locality>()
 
 for (const l of LOCALITIES) {
   byName.set(normalizeLocality(l.name), l)
+  for (const a of l.aliases) if (!byName.has(normalizeLocality(a))) byName.set(normalizeLocality(a), l)
   const b = normalizeLocality(bare(l.name))
   const list = byBare.get(b) ?? []
   list.push(l)

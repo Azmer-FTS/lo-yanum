@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 
-import { rankOptions } from '@core/index'
+import { formatPhoneTyping, idDigits, phoneValue, rankOptions } from '@core/index'
 
 import { usePublishedHeight } from '../hooks/useShellMetrics'
 import { useAnchoredBar } from './anchoredBar'
@@ -46,6 +46,104 @@ export function Field({
   )
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AM4 (2026-09-16) — LE CLAVIER EST UNE PROPRIÉTÉ DU CHAMP, PAS DE L'ÉCRAN.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * AK3 a donné le pavé numérique à la ת״ז et au נייד du formulaire de
+ * l'association ; la ת״ז de l'édition de ferme ouvrait encore le clavier
+ * complet, et dix téléphones recevaient des chiffres nus. Réparer écran par
+ * écran, c'est réparer jusqu'au prochain écran.
+ *
+ * ★ `kind` DIT CE QU'EST LA VALEUR ; le champ en déduit TOUT le reste — type,
+ *   `inputmode`, `pattern`, `autocomplete`, sens d'écriture, mise en forme à la
+ *   frappe et nettoyage. Il le pose aussi en `data-kind`, et c'est ce que la
+ *   porte A218 lit sur chaque champ de chaque écran : un champ sans `kind`, ou
+ *   dont le DOM contredit son `kind`, est un échec.
+ *
+ *   phone    pavé numérique, (050) 123-4567 à la frappe, 050-1234567 enregistré
+ *   id       pavé numérique, chiffres seuls, neuf au plus (ת״ז / ח״פ)
+ *   integer  pavé numérique, chiffres seuls (places, âge, têtes, minutes)
+ *   decimal  pavé numérique avec le point (surfaces en dounams)
+ *   code     pavé numérique, chiffres seuls, zéro initial gardé (סמל יישוב)
+ *   email    clavier courriel
+ *   date     sélecteur natif
+ *   name     clavier texte, remplissage « nom »
+ *   text     clavier texte
+ *
+ * ⚠️ JAMAIS `type="number"` : il mange le zéro initial et laisse passer « e ».
+ *    Tout ce qui est numérique est `type="text"` + `inputmode`.
+ */
+export type FieldKind =
+  | 'text'
+  | 'name'
+  | 'phone'
+  | 'id'
+  | 'integer'
+  | 'decimal'
+  | 'code'
+  | 'email'
+  | 'date'
+
+interface KindDom {
+  type: 'text' | 'email' | 'date'
+  inputMode?: 'numeric' | 'decimal' | 'email' | 'text'
+  pattern?: string
+  autoComplete?: string
+  ltr: boolean
+  /** Ce que la frappe devient avant d'atteindre l'état. */
+  clean?: (raw: string) => string
+  /** Ce que le champ affiche de l'état. */
+  show?: (value: string) => string
+}
+
+const onlyDigits = (raw: string) => raw.replace(/\D/g, '')
+const decimalDigits = (raw: string) => {
+  const s = raw.replace(/,/g, '.').replace(/[^\d.]/g, '')
+  const dot = s.indexOf('.')
+  return dot === -1 ? s : `${s.slice(0, dot + 1)}${s.slice(dot + 1).replace(/\./g, '')}`
+}
+
+export const KIND_DOM: Record<FieldKind, KindDom> = {
+  text: { type: 'text', ltr: false },
+  name: { type: 'text', autoComplete: 'name', ltr: false },
+  phone: {
+    type: 'text',
+    inputMode: 'numeric',
+    pattern: '[0-9]*',
+    autoComplete: 'tel',
+    ltr: true,
+    clean: (raw) => phoneValue(formatPhoneTyping(raw)),
+    show: formatPhoneTyping,
+  },
+  id: { type: 'text', inputMode: 'numeric', pattern: '[0-9]*', autoComplete: 'off', ltr: true, clean: idDigits },
+  integer: { type: 'text', inputMode: 'numeric', pattern: '[0-9]*', ltr: true, clean: onlyDigits },
+  decimal: { type: 'text', inputMode: 'decimal', ltr: true, clean: decimalDigits },
+  code: { type: 'text', inputMode: 'numeric', pattern: '[0-9]*', autoComplete: 'off', ltr: true, clean: onlyDigits },
+  email: { type: 'email', inputMode: 'email', autoComplete: 'email', ltr: true },
+  date: { type: 'date', ltr: true },
+}
+
+/**
+ * AM4 — les attributs d'un `kind` pour un `<input>` écrit à la main (écrans qui
+ * ne passent pas par `TextField`) : même clavier, même mise en forme.
+ */
+export function kindInputProps(kind: FieldKind, value: string, onChange: (v: string) => void) {
+  const dom = KIND_DOM[kind]
+  return {
+    type: dom.type,
+    inputMode: dom.inputMode,
+    pattern: dom.pattern,
+    autoComplete: dom.autoComplete,
+    dir: dom.ltr ? ('ltr' as const) : undefined,
+    'data-kind': kind,
+    value: dom.show ? dom.show(value) : value,
+    onChange: (e: { target: { value: string } }) =>
+      onChange(dom.clean ? dom.clean(e.target.value) : e.target.value),
+  }
+}
+
 export function TextField({
   label,
   value,
@@ -57,10 +155,8 @@ export function TextField({
   suggestion,
   readOnly = false,
   testId,
-  type = 'text',
-  ltr = false,
+  kind = 'text',
   className = '',
-  inputMode,
 }: {
   label: string
   value: string
@@ -72,39 +168,23 @@ export function TextField({
   /**
    * ★★ AH1.2 (2026-09-09) — CE QUE LE PO VIENT D'ÉCRIRE, PROPOSÉ EN GRIS.
    *
-   * « Quand une information est déjà connue ailleurs dans le formulaire, le
-   *   champ suivant se PRÉ-REMPLIT avec elle, en texte grisé, modifiable. Le
-   *   PO ne retape jamais ce qu'il vient d'écrire. »
-   *
-   * ★ C'EST UN `placeholder`, ET C'EST LA FORME EXACTE DE LA DEMANDE : gris,
-   *   lisible, et remplacé par la première frappe sans qu'on ait à effacer
-   *   quoi que ce soit. Une valeur posée dans l'état obligerait à sélectionner
-   *   puis supprimer avant de corriger, ce qui est un geste de plus et non un
-   *   geste de moins.
+   * ★ C'EST UN `placeholder` : gris, lisible, et remplacé par la première
+   *   frappe sans qu'on ait à effacer quoi que ce soit.
    *
    * ⚠️ ET C'EST L'APPELANT QUI RETIENT LA VALEUR, avec `inherited()`
-   *    (core/prefill.ts). Le champ ne décide de rien : il MONTRE. Un composant
-   *    qui remonterait la proposition par `onChange` écrirait dans l'état une
-   *    valeur que personne n'a tapée, et la première correction de la source
-   *    ne la corrigerait plus.
+   *    (core/prefill.ts). Le champ ne décide de rien : il MONTRE.
    */
   suggestion?: string
   /** AH1.3 — un champ recopié par une case à cocher : visible, non saisissable. */
   readOnly?: boolean
   testId?: string
-  /* AA2 — 'date' for תוקף ההסכם: the native picker, which is the only
-     date control a thumb can drive on an iPhone. */
-  type?: 'text' | 'tel' | 'number' | 'email' | 'date'
-  /**
-   * ★ AK3 — le clavier que le doigt reçoit. `numeric` = le pavé seul, sans
-   *   point ni signe : c'est celui d'une ת״ז et d'un portable. ⚠️ JAMAIS
-   *   `type="number"` pour une ת״ז : un nombre perd son zéro initial.
-   */
-  inputMode?: 'numeric' | 'tel' | 'text' | 'email'
-  ltr?: boolean
+  /** AM4 — ce qu'est la valeur. Voir `KIND_DOM`. */
+  kind?: FieldKind
   className?: string
 }) {
+  const dom = KIND_DOM[kind]
   const proposed = value.trim() === '' && (suggestion ?? '').trim() !== ''
+  const shown = dom.show ? dom.show(value) : value
   return (
     <Field
       label={label}
@@ -114,19 +194,24 @@ export function TextField({
       className={className}
     >
       <input
-        type={type}
-        inputMode={inputMode}
-        pattern={inputMode === 'numeric' ? '[0-9]*' : undefined}
+        type={dom.type}
+        inputMode={dom.inputMode}
+        pattern={dom.pattern}
+        autoComplete={dom.autoComplete}
+        autoCapitalize={kind === 'email' ? 'off' : undefined}
+        dir={dom.ltr ? 'ltr' : undefined}
+        data-kind={kind}
         data-testid={testId}
         data-suggested={proposed ? '1' : undefined}
         readOnly={readOnly}
         aria-readonly={readOnly || undefined}
-        className={`input ${error ? 'border-status-danger' : ''} ${ltr ? 'ltr-nums text-start' : ''} ${
+        aria-invalid={error ? true : undefined}
+        className={`input ${error ? 'border-status-danger' : ''} ${dom.ltr ? 'ltr-nums text-end' : ''} ${
           readOnly ? 'cursor-default text-content-secondary opacity-80' : ''
         }`}
-        value={value}
-        placeholder={proposed ? suggestion : placeholder}
-        onChange={(e) => onChange(e.target.value)}
+        value={shown}
+        placeholder={proposed ? (dom.show ? dom.show(suggestion ?? '') : suggestion) : placeholder}
+        onChange={(e) => onChange(dom.clean ? dom.clean(e.target.value) : e.target.value)}
       />
     </Field>
   )
@@ -179,8 +264,11 @@ export function AutocompleteField({
    *    connaît qu'une dizaine d'endroits »). Le seuil dépend de la longueur de
    *    la requête ; voir `core/lookup.ts` pour pourquoi il le doit.
    */
+  /* ★ AM1 — à champ vide, RIEN plutôt que les huit premières de l'alphabet :
+     c'est cette liste figée que le PO a prise pour « la liste ». En tapant,
+     trente propositions qui défilent. */
   const matches = useMemo(
-    () => rankOptions(query, options, (o) => o, 8).map((r) => r.item),
+    () => (query === '' ? [] : rankOptions(query, options, (o) => o, 30).map((r) => r.item)),
     [query, options],
   )
   // Exactly the typed value is not a suggestion, it is the state we are in.
@@ -203,6 +291,8 @@ export function AutocompleteField({
       <input
         type="text"
         role="combobox"
+        data-kind="text"
+        autoComplete="off"
         aria-expanded={showList}
         aria-autocomplete="list"
         className={`input ${error ? 'border-status-danger' : ''}`}
@@ -512,9 +602,12 @@ export function FormSection({
   storageKey,
   defaultOpen = true,
   summary,
+  testId,
 }: {
   title: string
   children: ReactNode
+  /** AM3 — le bloc, nommé, pour que A217 compare l'ordre au détail. */
+  testId?: string
   action?: ReactNode
   /** Present = collapsible. Absent = the plain section it has always been. */
   storageKey?: string
@@ -543,7 +636,7 @@ export function FormSection({
     })
 
   return (
-    <section className="panel-scope card card-pad">
+    <section className="panel-scope card card-pad" data-testid={testId} data-block-title={title}>
       <div className="mb-4 flex items-center justify-between gap-3">
         {storageKey ? (
           <button
@@ -586,12 +679,15 @@ export function FormActions({
   submitLabel,
   disabled,
   onSubmit,
+  message,
 }: {
   onCancel: () => void
   cancelLabel: string
   submitLabel: string
   disabled?: boolean
   onSubmit: () => void
+  /** AM1 — pourquoi rien ne s'est passé : dit DANS la barre, au bout du doigt. */
+  message?: string
 }) {
   /**
    * ★ Z6 (2026-09-07) — THE BAR SAYS HOW TALL IT IS, and the phone's folded
@@ -654,9 +750,18 @@ export function FormActions({
              que la barre publie déjà — c'est ce que font le bouton d'urgence
              et la barre de démonstration depuis Z6. Plus de voisinage, donc
              plus de dégagement, donc plus de nombre à tenir juste. */
-        className="fixed bottom-[var(--shell-bottom)] z-30 flex justify-end gap-2 border-t
+        className="fixed bottom-[var(--shell-bottom)] z-30 am-bar-foot flex justify-end gap-2 border-t
                    border-edge-subtle bg-surface-overlay px-[var(--content-pad,1rem)] py-3"
       >
+        {message && (
+          <p
+            role="alert"
+            data-testid="form-actions-message"
+            className="me-auto self-center text-caption font-semibold text-status-danger-ink"
+          >
+            {message}
+          </p>
+        )}
         <button type="button" className="btn-secondary" onClick={onCancel}>
           {cancelLabel}
         </button>

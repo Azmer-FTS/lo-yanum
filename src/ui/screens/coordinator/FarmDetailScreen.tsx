@@ -47,6 +47,7 @@ import {
   patchAnchorPoint,
   ringAreaDunams,
   totalHeads,
+  splitPeople,
 } from '@core/index'
 import type {
   CommitmentKind,
@@ -191,9 +192,30 @@ function FarmFacts({ farm }: { farm: Farm }) {
   const locale = useLocale()
 
   return (
-    <dl className="auto-cols gap-x-5 [--col-min:13rem]">
-      <KeyValue label={t('farms.filterType')} value={t(`farmType.${farm.type}`)} />
-      <KeyValue label={t('volunteers.locality')} value={farm.locality} />
+    <dl className="auto-cols gap-x-5 [--col-min:13rem]" data-testid="farm-facts">
+      {/* ★★ AM3 — L'ORDRE EST CELUI DU BLOC « פרטים » DE L'ÉDITION : שם החווה ·
+          ארגון מאגד · סוג יישות · יישוב · אזור · אזור סטנדרטי · סמל יישוב ·
+          מועצה · ישות משפטית · הסכם קרקע · תוקף. La nature est passée dans la
+          bande (carte du statut), les personnes dans « אנשים ». */}
+      {farm.farmName && <KeyValue label={t('form.farmName')} value={farm.farmName} />}
+      {farm.umbrella && <KeyValue label={t('form.umbrella')} value={farm.umbrella} />}
+      <KeyValue label={t('form.entityKind')} value={t(`entityKind.${entityKindOf(farm)}`)} />
+      {/* ★ AM1.4 — le יישוב dit s'il est le lieu ou le rattachement. */}
+      <KeyValue
+        label={t('form.locality')}
+        value={
+          <span data-testid="farm-locality-value">
+            {farm.locality
+              ? farm.localityRelation === 'attached'
+                ? t('locality.attachedTo', { name: farm.locality })
+                : farm.localityRelation === 'in'
+                  ? t('locality.inside', { name: farm.locality })
+                  : farm.locality
+              : t('common.none')}
+          </span>
+        }
+      />
+      {farm.region && <KeyValue label={t('form.region')} value={farm.region} />}
       {/* ★ X12.2 — THE STANDARD REGION, AND IT SAYS WHERE IT CAME FROM.
           Derived from the position unless somebody has set it by hand
           (`farmRegion`), so the line carries "אזור אוטומטי" while it is the
@@ -211,15 +233,6 @@ function FarmFacts({ farm }: { farm: Farm }) {
             )}
           </span>
         }
-      />
-      <KeyValue
-        label={t('farms.lastVisit')}
-        value={
-          farm.lastVisitAt
-            ? formatDate(farm.lastVisitAt, locale)
-            : t('farms.noVisitYet')
-        }
-        ltr={farm.lastVisitAt !== null}
       />
       {/**
         * ★ AA2 (2026-09-07) — THE PROSPECTION FACTS, AND ONLY THE ONES THAT
@@ -258,27 +271,16 @@ function FarmFacts({ farm }: { farm: Farm }) {
           ltr
         />
       )}
-      {(farm.farmerName || farm.farmerPhone) && (
-        <KeyValue
-          label={t('farms.farmer')}
-          value={[farm.farmerName, farm.farmerPhone].filter(Boolean).join(' · ')}
-        />
-      )}
-      {/* ★ AK3 — la ת״ז / ח״פ, TELLE QU'ELLE A ÉTÉ TAPÉE : du texte, zéro
-          initial compris (A199). */}
-      {farm.farmerId && (
-        <KeyValue
-          label={t('form.farmerId')}
-          value={<span data-testid="farm-farmer-id-value" dir="ltr">{farm.farmerId}</span>}
-          ltr
-        />
-      )}
-      {(farm.liaisonName || farm.liaisonPhone) && (
-        <KeyValue
-          label={t('farms.liaison')}
-          value={[farm.liaisonName, farm.liaisonPhone].filter(Boolean).join(' · ')}
-        />
-      )}
+      {/* Dérivée, jamais saisie : en dernier. */}
+      <KeyValue
+        label={t('farms.lastVisit')}
+        value={
+          farm.lastVisitAt
+            ? formatDate(farm.lastVisitAt, locale)
+            : t('farms.noVisitYet')
+        }
+        ltr={farm.lastVisitAt !== null}
+      />
     </dl>
   )
 }
@@ -448,7 +450,12 @@ function KeyNumbers({
               {t(`farmStatus.${farm.status}`)}
             </p>
             <p className="muted whitespace-nowrap leading-tight">{t('farms.statusLabel')}</p>
-            <p className="truncate text-micro leading-tight">&nbsp;</p>
+            {/* ★ AM3 — la nature, dans la carte du statut : c'est là que
+                l'édition la place (bloc « סטטוס ושטחים »), et la ligne était
+                une espace insécable réservée. */}
+            <p className="truncate text-micro leading-tight text-content-secondary" data-testid="band-status-type">
+              {t(`farmType.${farm.type}`)}
+            </p>
           </div>
         </div>
       </div>
@@ -610,6 +617,123 @@ function LivestockLines({ farm }: { farm: Farm }) {
         ))}
       </ul>
     </div>
+  )
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AM2 (2026-09-16) — « אנשים » : LA MÊME CARTE QU'À L'ÉDITION.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * L'agriculteur (nom, portable, ת״ז, courriel) était une ligne de « פרטים »,
+ * sa ת״ז une autre ligne, l'איש קשר une troisième, et les contacts un bloc
+ * séparé quinze sections plus bas — la même personne pouvant y figurer deux
+ * fois. `splitPeople` en fait les cartes que l'édition montre, au même rang.
+ */
+function FarmPeople({ farm }: { farm: Farm }) {
+  const { t } = useTranslation()
+  const { farmer, others } = splitPeople(farm)
+  const hasFarmer = farmer.name.trim() !== '' || farmer.phone.trim() !== ''
+  const count = (hasFarmer ? 1 : 0) + others.length
+  const liaisonShown = farm.liaisonName || farm.liaisonPhone
+  return (
+    <Section
+      title={t('people.section')}
+      collapseKey="entity-contacts"
+      summary={t('people.summary', { count })}
+    >
+      <ul className="flex flex-col divide-y divide-edge-subtle/60" data-testid="farm-people">
+        <li className="flex items-start gap-3 py-2" data-testid="farm-person-farmer">
+          <Avatar photo={farmer.photo} name={farmer.name || '?'} size="md" />
+          <div className="min-w-0 flex-1">
+            <p className="muted">{t('people.farmer')}</p>
+            {hasFarmer ? (
+              <ContactActions
+                name={farmer.name || '—'}
+                phone={farmer.phone}
+                role={[farmer.role, farmer.isPrimary && others.length > 0 ? t('people.primary') : '']
+                  .filter(Boolean)
+                  .join(' · ')}
+              />
+            ) : (
+              <p className="py-2 text-caption text-content-muted">{t('people.none')}</p>
+            )}
+            {(farmer.idNumber || farmer.email) && (
+              <dl className="auto-cols gap-x-5 [--col-min:11rem]">
+                {farmer.idNumber && (
+                  <KeyValue
+                    label={t('people.idNumber')}
+                    value={<span data-testid="farm-farmer-id-value" dir="ltr">{farmer.idNumber}</span>}
+                    ltr
+                  />
+                )}
+                {farmer.email && (
+                  <KeyValue label={t('people.email')} value={<span dir="ltr">{farmer.email}</span>} ltr />
+                )}
+              </dl>
+            )}
+          </div>
+        </li>
+        {liaisonShown && (
+          <li className="py-2" data-testid="farm-person-liaison">
+            <p className="muted">{t('people.liaison')}</p>
+            <ContactActions name={farm.liaisonName || '—'} phone={farm.liaisonPhone ?? ''} />
+          </li>
+        )}
+        {others.map((contact) => (
+          <li key={contact.id} className="flex items-center gap-3 py-2">
+            <Avatar photo={contact.photo} name={contact.name} size="md" />
+            <ContactActions
+              className="flex-1"
+              name={contact.name}
+              phone={contact.phone}
+              role={
+                contact.isPrimary
+                  ? [contact.role, t('people.primary')].filter(Boolean).join(' · ')
+                  : contact.role
+              }
+            />
+          </li>
+        ))}
+      </ul>
+    </Section>
+  )
+}
+
+/**
+ * ★ AM3 — « טלפוני חירום ותיק אתר » se SAISISSAIT à l'édition et ne se LISAIT
+ *   nulle part sur la fiche (seulement à l'écran d'urgence). Même intitulé, même
+ *   rang, replié comme à l'édition.
+ */
+function FarmEmergencyInfo({ farm }: { farm: Farm }) {
+  const { t } = useTranslation()
+  const both = Boolean(farm.standbyPhone?.trim()) && Boolean(farm.councilHotline?.trim())
+  const rows: Array<[string, string | undefined, boolean]> = [
+    [t('settings.emergencyFields.standbyPhone'), farm.standbyPhone, true],
+    [t('settings.emergencyFields.councilHotline'), farm.councilHotline, true],
+    [t('emergency.siteAccess'), farm.siteAccess, false],
+    [t('emergency.gateCode'), farm.gateCode, false],
+    [t('emergency.parking'), farm.parking, false],
+    [t('emergency.terrain'), farm.terrainNotes, false],
+  ]
+  return (
+    <Section
+      title={t('settings.emergencyFields.title')}
+      collapseKey="entity-emergency"
+      defaultOpen={false}
+      summary={t(both ? 'settings.emergencyFields.bothSet' : 'settings.emergencyFields.someMissing')}
+    >
+      <dl className="auto-cols gap-x-5 [--col-min:13rem]">
+        {rows.map(([label, value, ltr]) => (
+          <KeyValue
+            key={label}
+            label={label}
+            value={value?.trim() ? <span dir={ltr ? 'ltr' : undefined}>{value}</span> : t('common.none')}
+            ltr={ltr}
+          />
+        ))}
+      </dl>
+    </Section>
   )
 }
 
@@ -1155,10 +1279,22 @@ export function FarmDetailScreen() {
               onOpenForm={() => setFormOpen(true)}
             />
 
-            {/* G14c — the numbers first, big; the long reading below. */}
-            <KeyNumbers farm={farm} lastActivityAt={lastActivityAt} />
+            {/* G14c — the numbers first, big; the long reading below.
+                ★ AM3 — sous l'intitulé du bloc d'édition qui les saisit. */}
+            <section data-block-title={t('form.sectionStatusAreas')}>
+              <h2 className="pb-2 pt-1 text-section text-content-primary">
+                {t('form.sectionStatusAreas')}
+              </h2>
+              <KeyNumbers farm={farm} lastActivityAt={lastActivityAt} />
+            </section>
 
             <FarmIdentity farm={farm} />
+
+            {/* ★★ AM2 · AM3 — les personnes, juste après « פרטים », comme dans
+                l'édition. */}
+            <FarmPeople farm={farm} />
+
+            <FarmEmergencyInfo farm={farm} />
 
             {/* G14c — the recent-activity strip moved up from the fold: "what
                 has been going on here" is the second question after the
@@ -1456,30 +1592,6 @@ export function FarmDetailScreen() {
                 ))}
               </ul>
             )}
-          </Section>
-
-          <Section
-            title={t('farms.contacts')}
-            collapseKey="entity-contacts"
-            summary={t('blocks.contacts', { count: farm.contacts.length })}
-          >
-            <ul className="auto-cols gap-x-5 [--col-min:15rem]">
-              {farm.contacts.map((contact) => (
-                <li key={contact.id} className="flex items-center gap-3 py-1.5">
-                  <Avatar photo={contact.photo} name={contact.name} size="md" />
-                  <ContactActions
-                    className="flex-1"
-                    name={contact.name}
-                    phone={contact.phone}
-                    role={
-                      contact.isPrimary
-                        ? `${contact.role} · ${t('farms.primaryContact')}`
-                        : contact.role
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
           </Section>
 
           <Section

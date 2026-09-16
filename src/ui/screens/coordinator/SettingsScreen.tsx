@@ -1,3 +1,4 @@
+import { kindInputProps } from '../../components/fields'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -239,6 +240,8 @@ export function SettingsScreen() {
             </label>
             <input
               id="coordinator-name"
+              data-kind="name"
+              autoComplete="name"
               className="input w-full"
               data-testid="coordinator-name"
               value={me.name}
@@ -254,15 +257,12 @@ export function SettingsScreen() {
             </label>
             <input
               id="coordinator-phone"
-              dir="ltr"
-              inputMode="tel"
-              className="input w-full"
+              className="input ltr-nums w-full text-end"
               data-testid="coordinator-phone"
-              value={me.phone}
-              onChange={(e) => {
-                setMe((c) => ({ ...c, phone: e.target.value }))
+              {...kindInputProps('phone', me.phone, (phone) => {
+                setMe((c) => ({ ...c, phone }))
                 setMeSaved(false)
-              }}
+              })}
             />
           </div>
           <div>
@@ -271,6 +271,7 @@ export function SettingsScreen() {
             </label>
             <input
               id="coordinator-role"
+              data-kind="text"
               className="input w-full"
               data-testid="coordinator-role"
               value={me.role}

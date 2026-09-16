@@ -310,7 +310,7 @@ try {
       )
       const arrive = await page.locator('[data-testid="free-route-arrive"]').allInnerTexts()
       check('A188 · chaque étape a son heure d’arrivée', arrive.length === 9 && arrive.every((a) => /\d{2}:\d{2}/.test(a)))
-      await page.locator('[data-testid="free-route-stop"] input[type="tel"]').first().fill('050-1234567')
+      await page.locator('[data-testid="free-route-stop"] input[data-kind="phone"]').first().fill('050-1234567')
       await page.waitForTimeout(300)
       const sms = decodeURIComponent((await page.locator('[data-testid="free-route-sms"]').first().getAttribute('href')) ?? '')
       check('A188 · AI3.3 · le message garde « בסביבות »', sms.includes('בסביבות'), sms.slice(0, 80))

@@ -8,6 +8,10 @@
 
 - **Branche** : `main`. **Dernier commit** : voir `git log --oneline -1`
   (passe **AL**, 2026-09-16).
+- **Passe AM TERMINÉE** (2026-09-16) — le formulaire de ferme repris : יישוב et
+  épingle facultatifs, 1 330 localités, personnes en une carte, édition dans
+  l'ordre du détail, claviers partout, barre opaque, bandeaux empilés,
+  épingles. Tableau : section « AM » juste dessous.
 - **Passe AL TERMINÉE** (2026-09-16) — passe de FINITION : la surface gardée se
   propose, le clavier de l'iPad enfin mesuré, la dette `tokens` soldée, la revue
   des neuf écrans. Tableau : section « AL » juste dessous.
@@ -27,13 +31,43 @@
   - Le commit servi se lit dans `version.json` à la racine de chacune, et dans
     l'app : הגדרות › נתונים › « גרסת האפליקציה ».
 
+## Ce qui est fait dans AM
+
+| Bloc | État |
+|---|---|
+| AM1 יישוב | ✅ gazetteer 1 330 (Survey + למ״ס `docs/data/cbs-bycode2021.xlsx`, codes + 29 alias ; `bun run scripts/gazetteer.ts`) ; `LocalityField` (proches de l'épingle à vide, 30 propositions tolérantes) ; יישוב ET épingle facultatifs (`positionMissing`) ; suggestion de la localité la plus proche (geste) ; `localityRelation` in/attached (migration `20260916000300`, **appliquée sur prod**) |
+| AM2 personnes | ✅ `core/people.ts` : `splitPeople`/`mergePeople` — agriculteur (`farmer*`) + contact principal = UNE carte (nom, נייד, ת״ז, מייל, תפקיד) ; bloc « אנשים » ; ajout sous les cartes. Pas de changement de schéma |
+| AM3 ordre | ✅ en-tête · סטטוס ושטחים · פרטים · אנשים · טלפוני חירום ותיק אתר · התחייבויות · הסכמים · הערות, des deux côtés (`data-block-title`) |
+| AM4 claviers | ✅ `TextField kind=…` + `kindInputProps` ; `core/phone.ts` ; 16 px pour tout pointeur ; A218 balaie 28 écrans / 136 champs |
+| AM5 barre | ✅ interstice 20 px (iPad installé) / 34 px (iPhone) → 0 (`.am-bar-foot::after`) |
+| AM6 bandeaux | ✅ `useStackBelow` + `data-top-banner(-float)` ; confirmation de mise à jour 8 s puis lue ; « מסונכרן » sur changement d'état seulement |
+| AM7 épingles | ✅ boîte `PIN_BOX` (tête entière), UN contour sombre `#141b26` (le blanc mesuré 1,2:1 et 1,8:1, refusé), pulsation circulaire |
+| AM8 portes | ✅ `ampass` 50/50, `amui` 75/75 ; ROUGE avant 22/44 (`docs/am/am-rouge-avant.log`) |
+
+Décisions AM posées :
+1. **Le יישוב et l'épingle ne sont jamais obligatoires.** Seuls bloquent : un
+   nom (n'importe lequel), un numéro/courriel TAPÉ mais impossible, un סמל
+   יישוב déjà pris, « פעילה » sans documents. A214 compte cette liste.
+2. **Une personne = une carte.** `farmer*` et le contact principal qui lui
+   ressemble sont la même carte ; différents, deux cartes. Ne jamais réintroduire
+   un second champ pour l'agriculteur ni un bloc « ajouter » au-dessus d'une
+   personne connue.
+3. **L'édition et le détail ont les mêmes blocs, dans le même ordre, sous les
+   mêmes intitulés** ; un bloc ajouté d'un côté s'ajoute de l'autre (A217).
+4. **Le clavier est une propriété du champ (`kind`)**, jamais `type="number"`.
+   Tout champ neuf passe par `TextField kind` ou `kindInputProps` (A218).
+5. **Un bandeau posé en haut porte `data-top-banner`** ; un flottant s'empile
+   dessous. Une confirmation de routine ne se répète pas.
+6. **La proposition se fait par un geste** (AL1 → AM1.3) : l'app ne remplit
+   jamais seule un champ que le PO transmet.
+
 ## La commande pour reprendre
 
 ```bash
 cd "/Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM"
 bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
-bun run typecheck && bun run alpass && bun run tokens && bun run akpass && bun run accept
+bun run typecheck && bun run ampass && bun run alpass && bun run tokens && bun run akpass && bun run accept
 ```
 
 ## Ce qui est fait dans AL
@@ -152,6 +186,7 @@ Décisions AK posées : (1) `type` reste la seule vérité de la nature, 'unknow
 
 ```bash
 # Pures
+bun run ampass                                        # AM : A212–A216
 bun run alpass                                        # AL : A207 · A208 · A209
 bun run tokens                                        # zéro violation depuis AL4.1
 bun run akpass akdata                                 # AK : règles, et les 15 fiches
@@ -160,6 +195,9 @@ bun run accept dispatch persist mapping report deletion sync contrast
 bun run aipass ahpass afpass agpass acpass assoc     # aipass lit basemap/*.pmtiles
 
 # Navigateur, build local
+bun run amui                                          # AM : A212–A221, démo + build réel/base factice (~12 min)
+DIST=dist-am-before DIST_REAL=dist-am-before-real SKIP_BUILD=1 bun run amui   # le ROUGE (builds de b7a9a1f) : 22 PASS / 44 FAIL
+BASE_URL=https://azmer-fts.github.io/lo-yanum bun run amui                     # le DÉPLOYÉ
 bun run alui                                          # AL : A207 · A210, WebKit + Chromium (~6 min)
 DIST=dist-al-before SKIP_BUILD=1 bun run alui          # le ROUGE d'AL : 13 PASS / 13 FAIL
 bun run alcaptures                                    # AL5 : 54 captures + la sonde des 3 accidents
@@ -201,6 +239,13 @@ d'être déployé.
 
 ## Échecs PRÉ-EXISTANTS, qui ne sont pas des régressions
 
+> **Vérifiés identiques (ou pires) sur b7a9a1f pendant AM** :
+> - `adui` A115 : la vignette « לתיחום » (3ᵉ de la rangée défilante des fermes)
+>   ne vient pas entière à 1 376 px, même défilée (61 px coupés, un chevron
+>   dessus). Défaut réel de la rangée, hors AM ; tâche séparée proposée.
+> - `mapfirst` farmer-tonight : « no map found ».
+> - `layout` réglages à 390 px : 6,5 écrans avant AM, 6,0 après (plafond 6).
+
 > ✅ **AL4 A SOLDÉ TOUTE CETTE SECTION SAUF LES DEUX DERNIÈRES LIGNES.**
 > `afui` 72/72, `settings` 36/36, `pills` 89/89, `tokens` 0 violation.
 > Les quatre rouges étaient des PORTES périmées, pas des défauts de l'app :
@@ -217,12 +262,9 @@ d'être déployé.
 
 ## Questions ouvertes / ce qui attend le PO
 
-0bis. **AK — les quinze fiches sont dans la base réelle.** Elles n'ont ni
-   יישוב ni contour, et neuf n'ont pas de position : le formulaire de ferme
-   EXIGE un יישוב et une épingle (règle A37, antérieure à AK), donc la première
-   modification de l'une d'elles demandera ces deux valeurs. C'est voulu — une
-   ferme sans épingle n'existe nulle part sur la carte — mais il faut le savoir
-   avant d'ouvrir la première fiche.
+0bis. ✅ **CLOS PAR AM.** Le formulaire n'exige plus ni יישוב ni épingle : les
+   quinze fiches d'AK1 s'enregistrent telles quelles. Sur celles qui ont une
+   épingle, la localité la plus proche est PROPOSÉE (un geste l'accepte).
 
 0ter. **Les trois fiches « נחתם » n'ont pas encore de document DANS l'app** :
    leur signature est sur le papier de l'association. Le bandeau de leur fiche
