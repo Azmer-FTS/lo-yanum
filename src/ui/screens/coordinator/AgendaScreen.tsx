@@ -495,7 +495,10 @@ export function AgendaScreen() {
           type="button"
           aria-label={t('agenda.previous')}
           onClick={() => step(-1)}
-          className="rounded-field p-1.5 text-content-secondary hover:bg-surface-high hover:text-content-primary"
+          /* ⚠️ AL5 — 44 px : « le jour d'avant » et « le jour d'après » sont
+             les deux gestes les plus fréquents de cet écran, et ils
+             mesuraient 28×28 au pouce. L'encre ne change pas. */
+          className="flex h-11 w-11 items-center justify-center rounded-field text-content-secondary hover:bg-surface-high hover:text-content-primary"
         >
           <Icon name="chevron" size={16} className="ltr:-scale-x-100" />
         </button>
@@ -510,7 +513,10 @@ export function AgendaScreen() {
           type="button"
           aria-label={t('agenda.next')}
           onClick={() => step(1)}
-          className="rounded-field p-1.5 text-content-secondary hover:bg-surface-high hover:text-content-primary"
+          /* ⚠️ AL5 — 44 px : « le jour d'avant » et « le jour d'après » sont
+             les deux gestes les plus fréquents de cet écran, et ils
+             mesuraient 28×28 au pouce. L'encre ne change pas. */
+          className="flex h-11 w-11 items-center justify-center rounded-field text-content-secondary hover:bg-surface-high hover:text-content-primary"
         >
           <Icon name="chevron" size={16} className="rtl:-scale-x-100" />
         </button>

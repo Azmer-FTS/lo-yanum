@@ -260,6 +260,15 @@ export function DevToolbar() {
 
   return (
     <div
+      /* ★ AL5 — L'ÉCHAFAUDAGE SE NOMME. La forme large de cette barre n'avait
+         aucun `data-testid` : la revue de finition a donc compté ses trois
+         contrôles (un select de 35 px, deux boutons de 28) comme des cibles
+         trop petites de l'APPLICATION, sur les neuf écrans et aux trois
+         largeurs. Ils n'en sont pas : cette barre n'existe que dans le jumeau
+         de démonstration, et c'est le seul endroit où une sonde peut entrer
+         sans mot de passe. Une porte qui ne sait pas distinguer l'application
+         de l'échafaudage mesure l'échafaudage. */
+      data-testid="devbar"
       className="border-t border-edge-strong bg-surface-sunken pb-[var(--safe-bottom)]"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">

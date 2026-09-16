@@ -7,11 +7,13 @@
 ## Où en est-on
 
 - **Branche** : `main`. **Dernier commit** : voir `git log --oneline -1`
-  (passe **AJ**, 2026-09-15).
+  (passe **AL**, 2026-09-16).
+- **Passe AL TERMINÉE** (2026-09-16) — passe de FINITION : la surface gardée se
+  propose, le clavier de l'iPad enfin mesuré, la dette `tokens` soldée, la revue
+  des neuf écrans. Tableau : section « AL » juste dessous.
 - **Passe AK TERMINÉE** (2026-09-16) — reprise des données, typologie,
   formulaire calqué, documents bloquants, carte, archivage, signature à
-  l'export. Dernier commit : `02f7928`. **Les deux URLs servent `02f7928`.**
-  Tableau : section « AK » plus bas.
+  l'export. Tableau : section « AK » plus bas.
 - **Passe précédente** : AJ — AJ0 « la version installée ne se met jamais à
   jour » (bloquant, traité en premier). **Correctif livré et poussé**
   (`f94c32a`) ; `ajupdate` 38/38 en local ; **sur le déployé 11/11** avec un
@@ -28,8 +30,42 @@
 cd "/Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM"
 bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
-bun run typecheck && bun run akpass && bun run akui && bun run akmap && bun run accept
+bun run typecheck && bun run alpass && bun run tokens && bun run akpass && bun run accept
 ```
+
+## Ce qui est fait dans AL
+
+| Bloc | État |
+|---|---|
+| AL1 surface gardée | ✅ `suggestedGuardedDunams` (core/fields.ts) PROPOSE מעובד + מרעה sous le champ, grisée, avec un bouton de 44 px ; rien n'est écrit sans geste ; une valeur acceptée n'est jamais recalculée ; sans geste la colonne sort vide. **Trou fermé au passage** : « שטחים שמירה » sortait du fichier de l'association et n'y rentrait pas (`parseAssociationRow`) |
+| AL2 relief | ⛔ **CLOS, NE PAS ROUVRIR.** Aucun fond relief. A209 le tient (deux valeurs dans `BasemapBase`, aucune source d'élévation dans `src/`) |
+| AL3.1 clavier iPad | ✅ **MESURÉ** sur iPad Air 11″ / iPadOS 26.3 / Safari, sur le déployé : ת״ז et נייד ouvrent le clavier numérique, le zéro de tête tient (`021985189`), la mise en forme vit (`(050) 891-2840`), aucun zoom. Captures `docs/al/ipad-reel-*.png`. **La ligne « accès refusé » de AG/AJ/AK ne vaut plus** : `xcrun simctl` répond sans autorisation |
+| AL3.2 localisation | ✅ אבחון מיקום en place, une ligne PAR lancement (A210). **Et son bouton de copie mentait** : `CopyButton` disait « הועתק » même quand l'écriture échouait. Deux chemins + échec nommé |
+| AL4.1 `tokens` | ✅ **9 violations → 0.** 4 corrigées (radius, 2 contours, l'orange de la ligne « maintenant »), 5 nommées avec leur raison et COMPTÉES (3 cadres de document, 2 écrans d'urgence) |
+| AL4.2 rouges de porte | ✅ `settings` A54, `afui` A131 + A138, `pills` A71/A72 : quatre rouges « pré-existants » qui étaient tous des portes périmées, pas des défauts. `settings` 36/36, `afui` 72/72, `pills` 89/89 |
+| AL5 revue | ✅ 54 captures du déployé puis du local, neuf écrans × 3 largeurs × clair/sombre. **Le rail de l'iPad : 9 entrées de 39 px à 4 px l'une de l'autre → 44 et 8.** Plus : en-tête de bloc 36→44, menu du téléphone 36→44, flèches du calendrier 28→44, légende 36→44, attribution 40→44, lien Waze 26→44, « ניקוי » 21×16→44, `.btn` (zone tactile via `::before`, l'encre ne bouge pas), `.input` 41→44, pastilles de carrousel. `alcaptures` 330/330 |
+
+Décisions AL posées :
+1. **`guardedDunamsOf` répond « que vaut la colonne »** (déclaré, ou rien) et
+   c'est la SEULE que lisent l'export, la fiche et le compte rendu.
+   **`suggestedGuardedDunams` répond « qu'est-ce que l'app propose »** et son
+   unique lecteur est le formulaire. Ne jamais lire la seconde à la place de la
+   première.
+2. **Trois fichiers seulement posent `guardedDunamsManual`** — le formulaire,
+   l'import de prospection, l'import du fichier de l'association — et chacun
+   est un geste. A207 le compte.
+3. ⛔ **Pas de fond relief.** Tranché, clos.
+4. **Une zone tactile peut dépasser l'encre** (`::before`, AA1.1) et c'est le
+   chemin par défaut pour atteindre 44 px sans refaire l'arithmétique d'une
+   barre. Un `<input>` n'a pas de pseudo-élément : lui seul grandit vraiment.
+5. **Une porte qui ne fait pas le geste du PO ne mesure pas ce qu'il voit.**
+   Quatre rouges « pré-existants » venaient de là : un bloc non déplié (×2), un
+   mot-clé CSS exigé à la place d'une propriété, une rangée défilante sommée de
+   tenir entière dans l'écran.
+6. **Une correction de finition se mesure avec les ANCIENNES portes aussi.**
+   `.scroll-nudge` élargie à 44 px couvrait les pastilles qu'elle fait
+   défiler ; ma sonde neuve ne l'a pas vue (elle cherche `fixed`, celle-ci est
+   `absolute`), `bun run pills` l'a vue en deux minutes. Reprise à 32.
 
 ## Ce qui est fait dans AK
 
@@ -113,12 +149,17 @@ Décisions AK posées : (1) `type` reste la seule vérité de la nature, 'unknow
 
 ```bash
 # Pures
+bun run alpass                                        # AL : A207 · A208 · A209
+bun run tokens                                        # zéro violation depuis AL4.1
 bun run akpass akdata                                 # AK : règles, et les 15 fiches
 bun run akdata check docs/ak/ak1-prod-rows.json       # ce que la BASE a rendu
 bun run accept dispatch persist mapping report deletion sync contrast
 bun run aipass ahpass afpass agpass acpass assoc     # aipass lit basemap/*.pmtiles
 
 # Navigateur, build local
+bun run alui                                          # AL : A207 · A210, WebKit + Chromium (~6 min)
+DIST=dist-al-before SKIP_BUILD=1 bun run alui          # le ROUGE d'AL : 13 PASS / 13 FAIL
+bun run alcaptures                                    # AL5 : 54 captures + la sonde des 3 accidents
 bun run akui                                          # A196–A206, WebKit + Chromium (~8 min)
 bun run akmap                                         # A203 ; DIST=dist-ak6-before SKIP_BUILD=1 = le ROUGE
 bun run ajupdate                                      # A189–A191, deux builds A/B, WebKit + Chromium (~6 min)
@@ -142,14 +183,14 @@ bun run akcaptures                                    # 30 captures + A202 mesur
 
 ## Échecs PRÉ-EXISTANTS, qui ne sont pas des régressions
 
-- **`bun run afui` : 6 rouges** (A131 ×3 : la porte attend une barre
-  `sticky` qu'AH2 a rendue `fixed` ; A138 ×3 : la bascule de rôle est dans un
-  bloc replié depuis AH12) et **`bun run settings` : A54** (même cause).
-  Vérifiés IDENTIQUES sur le commit 9451de3 (avant AI) dans un arbre séparé.
+> ✅ **AL4 A SOLDÉ TOUTE CETTE SECTION SAUF LES DEUX DERNIÈRES LIGNES.**
+> `afui` 72/72, `settings` 36/36, `pills` 89/89, `tokens` 0 violation.
+> Les quatre rouges étaient des PORTES périmées, pas des défauts de l'app :
+> deux cherchaient une commande dans un bloc replié depuis AH12, une exigeait
+> `position: sticky` là où AH2 a délibérément ancré la barre en `fixed`, une
+> sommait une rangée défilante de tenir entière dans l'écran. Récit complet :
+> `ETAT.md`, passe AL, bloc AL4.
 
-- **`bun run tokens` : 10 violations.** A28 (un `rounded-full`), A57 (six
-  contours pleins sur des cartes), A29 (trois emplois d'`critical` hors liste).
-  Elles précèdent AH ; mesuré sur le build d'avant.
 - **`bun run write` en échec et `bun run offline` 19+SKIP** restent les
   résultats VERTS (voir `ETAT.md` §13) : il n'existe pas de compte de test sur
   cette machine.
@@ -171,6 +212,14 @@ bun run akcaptures                                    # 30 captures + A202 mesur
    « הסכם התנדבות- ארצנו ». Les quinze sont « ממתינות למסמכים » : aucun document
    de droit sur la terre n'est encore reçu.
 
+0quater. **AL — la surface gardée des quinze fiches est à COMPLÉTER PAR LUI.**
+   L'app propose désormais la somme מעובד + מרעה sous le champ, mais elle
+   n'écrit rien : les quinze fiches sortent donc avec la colonne שטחים שמירה
+   VIDE tant qu'il n'a pas touché le bouton (ou tapé un autre chiffre) sur
+   chacune. C'est voulu — cinq d'entre elles seulement ont une surface, donc le
+   bouton n'apparaît que sur celles-là. Vérifié sur la base après la passe :
+   aucune des quinze n'a été modifiée (`docs/al/a208-base-reelle.json`).
+
 0. **AJ — sur SON iPad** : la première mise à jour vers `f94c32a` ne peut pas
    s'annoncer toute seule (l'ancienne version n'a pas le bandeau). Il faut UNE
    dernière fois fermer l'app (balayer dans le sélecteur d'apps) et la
@@ -184,6 +233,13 @@ bun run akcaptures                                    # 30 captures + A202 mesur
    (simulateur iOS 26.3), pas en mode autonome (accès au simulateur non
    accordé). La ligne « המכשיר · הבחירה · מוצג » dans תצוגה dit au PO ce qui se
    passe sur SON iPad.
+2bis. ✅ **CLOS (AL3.1).** Le clavier d'un iPad RÉEL est mesuré (simulateur
+   iPad Air 11″, iPadOS 26.3, Safari, sur le déployé) : ת״ז et נייד ouvrent le
+   clavier numérique, le zéro de tête tient, aucun champ ne fait zoomer la
+   page. `docs/al/ipad-reel-*.png`. **Le mode écran d'accueil autonome reste
+   non mesuré** (le simulateur n'installe pas une PWA) — c'est la ligne 2
+   ci-dessus, et elle reste ouverte.
+
 3. **A177 sur iPad réel non mesuré.** Ici (Mac Intel) : chaud < 90 ms, ajout
    d'une étape < 1 s, froid 1,2–1,9 s pour huit étapes collées d'un coup avec
    départ Jérusalem ; en ligne sans archive téléchargée 2,1–4,1 s.

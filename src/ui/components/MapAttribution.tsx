@@ -92,7 +92,8 @@ export function MapAttribution({ className = '' }: { className?: string }) {
         aria-label={t('map.attribution')}
         title={t('map.attribution')}
         data-testid="map-attribution"
-        className={`glass flex h-10 w-10 items-center justify-center rounded-pill text-caption font-semibold
+        /* AL5 — 44 px : elle était à 40, seule de sa rangée. */
+        className={`glass flex h-11 w-11 items-center justify-center rounded-pill text-caption font-semibold
                     transition-colors duration-fast ${
                       open ? 'text-accent-ink' : 'text-content-secondary hover:text-content-primary'
                     }`}

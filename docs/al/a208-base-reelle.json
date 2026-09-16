@@ -1,0 +1,20 @@
+{
+  "_": "A208 — ce que la BASE RÉELLE (lo-yanum-prod) a rendu APRÈS la passe AL, le 2026-09-16.",
+  "_requete": "select count(*) total, count(*) filter (where guarded_dunams is not null) avec_surface_gardee, count(*) filter (where guarded_dunams_manual is true) marquees_declarees, count(*) filter (where position_missing is not true) positionnees, sum(round(coalesce(farm_dunams,0)*1 + coalesce(grazing_dunams,0)*0.02)) pondere, count(*) filter (where archived_at is not null) archivees from entities where id like 'farm-ak1-%'",
+  "quinze_fiches": {
+    "total": 15,
+    "avec_surface_gardee": 0,
+    "marquees_declarees": 0,
+    "positionnees": 6,
+    "pondere": 2160,
+    "archivees": 0
+  },
+  "_requete_table": "select count(*) entites_total, count(*) filter (where id like 'demo-%' or id like 'test-%') demo_ou_test, count(*) filter (where id not like 'farm-ak1-%') hors_ak1, max(updated_at) derniere_ecriture from entities",
+  "table_entiere": {
+    "entites_total": 15,
+    "demo_ou_test": 0,
+    "hors_ak1": 0,
+    "derniere_ecriture": "2026-09-15 22:21:00.65038+00"
+  },
+  "_conclusion": "Les quinze fiches d'AK1 sont INCHANGÉES : aucune surface gardée écrite, aucune marquée « déclarée », six positionnées, pondéré 2 160. Et la DERNIÈRE ÉCRITURE de la table précède le début de la passe AL : AL n'a rien écrit dans la base du PO, ce qui est la forme la plus forte d'A208."
+}

@@ -504,7 +504,12 @@ export function Section({
               onClick={toggle}
               aria-expanded={open}
               data-testid={`block-${collapseKey}`}
-              className="group flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-field text-start
+              /* ⚠️ AL5 — 2,75 rem ET NON `min-h-9` (36 px). C'est l'en-tête
+                 qu'on touche pour ouvrir un bloc, il y en a une douzaine dans
+                 les réglages, et il était huit pixels sous le plancher qu'AA1
+                 a posé. Il occupe déjà toute la largeur : les huit pixels
+                 rendus sont de la hauteur, pas de la place volée à un voisin. */
+              className="group flex min-h-[2.75rem] min-w-0 flex-1 items-center gap-2 rounded-field text-start
                          transition-colors duration-fast hover:bg-surface-high/70 -ms-1.5 ps-1.5"
             >
               <span

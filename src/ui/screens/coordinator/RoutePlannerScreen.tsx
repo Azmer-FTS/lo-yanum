@@ -473,7 +473,9 @@ export function RoutePlannerScreen() {
               <button
                 type="button"
                 onClick={() => setSelected(new Set())}
-                className="text-micro font-medium text-content-muted hover:underline"
+                /* AL5 — un mot de 21 × 16 px était une cible de 21 × 16 px.
+                   Le texte ne change pas ; la boîte atteint 44. */
+                className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-micro font-medium text-content-muted hover:underline"
               >
                 {t('common.clear')}
               </button>

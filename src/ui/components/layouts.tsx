@@ -266,7 +266,13 @@ export function CoordinatorLayout() {
       end={item.end}
       title={showLabel ? undefined : t(item.labelKey)}
       className={({ isActive }) =>
-        `group relative flex items-center gap-3 rounded-field px-3 py-2.5 text-caption font-medium
+        /* ⚠️★★ AL5 (2026-09-16) — 44 PX, ET C'EST LA NAVIGATION PRINCIPALE.
+           Sur l'iPad du PO, les neuf entrées du rail mesuraient 39 px de haut
+           avec 4 px entre deux voisines. C'est exactement « j'appuie sur une et
+           ça appuie sur l'autre » — la phrase d'AA1 — dans le seul endroit de
+           l'application qu'AA1 n'a pas re-mesuré, parce qu'AA1 regardait un
+           téléphone et que ce rail n'existe qu'au-dessus de 1024 px. */
+        `group relative flex min-h-11 items-center gap-3 rounded-field px-3 py-2.5 text-caption font-medium
          transition-all duration-fast ease-out ${
            isActive
              ? 'bg-accent/15 text-accent-ink'
@@ -328,7 +334,8 @@ export function CoordinatorLayout() {
             type="button"
             onClick={() => setExpanded((v) => !v)}
             aria-label={t(expanded ? 'nav.collapse' : 'nav.expand')}
-            className={`-mt-2 flex items-center gap-2 rounded-field border border-edge-subtle px-3 py-1.5
+            /* AL5 — 44 px comme ses voisines ; elle faisait 30. */
+            className={`-mt-2 flex min-h-11 items-center gap-2 rounded-field border border-edge-subtle px-3 py-1.5
                         text-content-muted transition-all duration-fast
                         hover:border-edge-strong hover:bg-surface-high hover:text-content-primary ${
                           expanded ? '' : 'justify-center px-0'
@@ -340,7 +347,10 @@ export function CoordinatorLayout() {
             )}
           </button>
 
-          <nav className="flex flex-col gap-1">
+          {/* ⚠️ AL5 — `gap-2` ET NON `gap-1` : huit pixels entre deux cibles
+              voisines, le plancher qu'AA1.2 a posé et mesuré. À quatre, deux
+              entrées de 44 px se touchent presque. */}
+          <nav className="flex flex-col gap-2">
             {COORDINATOR_NAV.map((item) => navLink(item, expanded))}
           </nav>
 
@@ -411,7 +421,9 @@ export function CoordinatorLayout() {
                 onClick={() => setMenuOpen(true)}
                 aria-label={t('a11y.openMenu')}
                 data-testid="shell-menu"
-                className="-ms-1 rounded-field p-2 text-content-secondary transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
+                /* ⚠️ AL5 — 44 px. Sur un téléphone c'est le SEUL chemin vers
+                   le menu, et il mesurait 36×36 sur le déployé. */
+                className="-ms-1 flex h-11 w-11 items-center justify-center rounded-field text-content-secondary transition-colors duration-fast hover:bg-surface-high hover:text-content-primary"
               >
                 <Icon name="menu" />
               </button>

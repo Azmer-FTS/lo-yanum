@@ -567,6 +567,15 @@
    *                  of twelve gives the eye no left edge to run down. Pills
    *                  are spent on buttons, filters and badges instead.
    */
+  /**
+   * ⚠️★★ AL5 — LE CHAMP FAIT 44 PX, ET IL EN FAISAIT 41.
+   *
+   * Un champ ne peut pas porter de `::before` (un `<input>` n'a pas d'enfants),
+   * donc le marché d'AA1 ne s'applique pas ici : c'est la boîte elle-même qui
+   * doit grandir. Trois pixels par champ, mesurés ensuite là où ça compte —
+   * `akui` A201 (« le formulaire tient dans l'écran sans défilement ») et
+   * `uipass` — plutôt que raisonnés.
+   */
   .input {
     @apply w-full rounded-field border border-edge-strong bg-surface-field
            px-3 py-2 text-caption text-content-primary
@@ -574,6 +583,7 @@
            placeholder:text-content-muted/70
            hover:border-accent/60
            focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25;
+    min-height: 2.75rem;
   }
 
   /* N7.1 (2026-09-02) — A DATE FIELD THAT STAYS IN ITS BOX. WebKit gives
@@ -738,6 +748,42 @@
   /* AA1.6 — pressed, and unmistakably on this one. */
   .filter-pill:active {
     transform: scale(0.96);
+  }
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ★★ AL5 (2026-09-16) — LE MÊME MARCHÉ POUR `.btn`, ET POUR LA MÊME RAISON.
+   * ═══════════════════════════════════════════════════════════════════════
+   *
+   * La revue de finition a mesuré les boutons secondaires sur le déployé, à
+   * 402 px : **42 px de haut**. Deux pixels sous le plancher que le PO a lui-
+   * même posé en AA1 (« je n'ai pas la place pour mes doigts »), sur des
+   * boutons qu'on presse du pouce dans un véhicule.
+   *
+   * ★ ET LE DESSIN NE BOUGE PAS D'UN PIXEL. Grossir `py-2.5` aurait fait
+   *   grandir CHAQUE bouton de l'application de deux pixels — c'est-à-dire
+   *   refaire l'arithmétique de chaque barre qu'AK9 et AA1.2 ont mesurée au
+   *   pixel près, et rouvrir en finition ce qu'une passe entière a fermé. Le
+   *   `::before` d'AA1.1 donne la zone tactile sans toucher à l'encre : c'est
+   *   exactement le marché que le PO a autorisé (« la zone tactile peut
+   *   dépasser le visuel sans l'alourdir visuellement »).
+   *
+   * ⚠️ `inset-inline: 0` COMME POUR LA PASTILLE : un bouton qui déborderait
+   *    latéralement mangerait l'écart de 8 px entre deux voisins, et deux
+   *    boutons côte à côte dans une barre d'actions, il y en a partout.
+   */
+  .btn {
+    position: relative;
+  }
+
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 50%;
+    height: 2.75rem;
+    margin-top: -1.375rem;
+    border-radius: inherit;
   }
 
   /**
@@ -1111,12 +1157,39 @@
   margin-top: 0.5rem;
 }
 
+/**
+ * ⚠️★★ AL5 — HUIT PIXELS D'ENCRE, QUARANTE-QUATRE DE DOIGT.
+ *
+ * La revue de finition les a mesurées à 8 × 8 et 10 × 10 sur le tableau de
+ * bord. Une pastille de carrousel DOIT rester petite — grossie, elle devient
+ * une rangée de boutons et vole la vedette aux alertes qu'elle indexe — donc
+ * c'est le marché d'AA1.1 mot pour mot : le `::before` transparent porte la
+ * cible, le dessin ne bouge pas.
+ *
+ * ★ Et l'écart de 6 px entre deux pastilles devient 6 px entre deux zones de
+ *   44 : elles se CHEVAUCHENT. C'est voulu et ce n'est pas la faute d'AA1.2 —
+ *   le bord de la zone tombe au milieu de l'écart, donc un doigt posé entre
+ *   deux pastilles prend la plus proche, ce qui est la bonne réponse. La règle
+ *   des 8 px vise deux commandes DIFFÉRENTES ; ici les voisines sont la page
+ *   d'à côté du même carrousel.
+ */
 .carousel-dots > button {
+  position: relative;
   width: 0.5rem;
   height: 0.5rem;
   border-radius: var(--radius-pill);
   background: rgb(var(--content-muted) / 0.35);
   transition: background var(--duration-fast, 120ms) ease-out, transform var(--duration-fast, 120ms) ease-out;
+}
+
+.carousel-dots > button::before {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 2.75rem;
+  height: 2.75rem;
+  transform: translate(-50%, -50%);
+  border-radius: var(--radius-pill);
 }
 
 .carousel-dots > button[aria-current='true'] {
@@ -1709,6 +1782,23 @@
   inset-block: 0;
   z-index: 2;
   display: flex;
+  /**
+   * ⚠️★★ AL5 — 2 REM, ET LES 44 PX ONT ÉTÉ ESSAYÉS PUIS REPRIS.
+   *
+   * La revue de finition l'a mesurée à 32 px de large et je l'ai passée à 44.
+   * `bun run pills` a répondu en deux minutes : A71 et A72 en rouge sur la
+   * barre de sommaire des réglages — trois pastilles avec une zone tactile de
+   * **1 × 1 px**. La phrase que j'avais écrite (« les douze pixels gagnés ne
+   * sont pris à aucun voisin ») était fausse : cette poussée est `absolute`
+   * au-dessus de la rangée, donc les douze pixels sont pris EXACTEMENT à ce
+   * qu'elle sert à faire défiler.
+   *
+   * ★ ET ELLE PEUT RESTER À 32, parce qu'elle est REDONDANTE : la rangée se
+   *   fait défiler au doigt, d'un bout à l'autre. Manquer cette poussée ne
+   *   coûte rien ; manquer une pastille de sommaire coûte un écran. Entre une
+   *   commande facultative plus facile à toucher et une commande réelle
+   *   couverte, il n'y a pas d'arbitrage à faire.
+   */
   width: 2rem;
   align-items: center;
   justify-content: center;

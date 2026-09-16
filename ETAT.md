@@ -1,5 +1,245 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AL — FINITION. LA SURFACE GARDÉE SE PROPOSE, LE CLAVIER DE L'iPAD
+> EST ENFIN MESURÉ, LA DETTE EST SOLDÉE. 2026-09-16. LIRE EN PREMIER.**
+>
+> Passe courte, qui ferme ce qui restait ouvert et n'ouvre rien.
+> Ordre suivi : AL1 → AL3 → AL4 → AL5 → AL6.
+>
+> ## AL1 — « שטחים שמירה » SE PROPOSE, ELLE NE SE REMPLIT PLUS SEULE
+>
+> Deux passes se contredisaient et les deux avaient raison. **AC3** remplissait
+> la colonne avec מעובד + מרעה (« leur système la remplit, c'est volontaire ») ;
+> **AK1.6** l'a vidée (« ne pas écrire dans un fichier transmis un chiffre que
+> personne n'a mesuré »). Le PO tranche, et la réponse n'est **ni l'une ni
+> l'autre** : la somme est une **SUGGESTION**.
+>
+> ★★ **QUATRE RÈGLES, ET CHACUNE EST UNE PORTE (A207).**
+> 1. `suggestedGuardedDunams` calcule la somme ; le formulaire la MONTRE sous le
+>    champ, grisée, à côté d'un bouton « להשתמש בסכום השטחים » de 44 px. **Le
+>    champ reste vide** — mesuré, dans un navigateur, avant et après.
+> 2. Un doigt l'accepte. La ligne **s'efface alors**, et ne revient que si le PO
+>    vide le champ lui-même : un bouton qui peut écraser un chiffre tapé est un
+>    bouton qui l'écrase, tôt ou tard.
+> 3. Une valeur acceptée ou saisie n'est **plus jamais** recalculée — les deux
+>    surfaces changent, elle ne bouge pas.
+> 4. Sans geste, la colonne sort **VIDE** du fichier transmis.
+>
+> ★ **LA SOMME EST CELLE DE L'ÉCRAN, pas celle de la fiche enregistrée** : le PO
+> tape 100 et 1 000 devant l'agriculteur, touche le bouton, et obtient 1 100
+> tout de suite. Elle suit aussi les cases de la nature, exactement comme
+> l'enregistrement les suit.
+>
+> ⚠️★★ **UN TROU TROUVÉ PAR LA PORTE, ET IL N'AVAIT RIEN À VOIR AVEC AL1 :**
+> « שטחים שמירה » **SORTAIT** du fichier de l'association et n'y **RENTRAIT
+> PAS**. `parseAssociationRow` lisait les deux autres surfaces et laissait
+> tomber celle-ci : un aller-retour par LEUR fichier perdait la seule
+> déclaration qu'il portait — la « perte » qu'AB6.7 promet d'éviter, restée
+> ouverte parce qu'aucune porte ne la cherchait. Corrigé, avec la règle du zéro
+> d'AA4/G15.
+>
+> ## AL2 — LE MODE RELIEF : CLOS, ET IL NE REVIENDRA PAS
+>
+> ⛔ **AUCUN FOND RELIEF NE SERA AJOUTÉ. Point clos, tranché par le PO.** Sa
+> raison : le relief montre le TERRAIN, pas les parcelles, les bâtiments ni les
+> pistes — ce dont il a besoin. Le satellite couvre ce cas. Un troisième fond
+> serait à maintenir, à tester et à télécharger hors ligne pour rien.
+> **A209 le tient** : deux valeurs dans `BasemapBase`, aucune source
+> d'élévation (`hillshade`, `raster-dem`, `terrarium`…) nulle part dans `src/`,
+> et rien qui se compare à un troisième fond.
+>
+> ## AL3.1 — ⭐ LE CLAVIER DE L'iPAD, MESURÉ POUR DE BON
+>
+> Trois passes (AG, AJ, AK) ont écrit « accès au simulateur refusé ». **Cette
+> fois il a répondu** — iPad Air 11″ (M3), iPadOS 26.3, Safari, sur le
+> DÉPLOYÉ. Ce qui est vu, et non plus déduit :
+>
+> - **ת״ז** (`inputMode="numeric"`, `type="text"`) : le clavier s'ouvre **sur
+>   les chiffres**, rangée 1…0 en haut, sans passer par « 123 ». Tapé
+>   `021985189` — **le zéro de tête est là**, à l'écran, sur l'appareil.
+>   (`docs/al/ipad-reel-clavier-tz.png`)
+> - **נייד** : même clavier, et la mise en forme vit pendant la frappe —
+>   `(050) 891-2840`. (`docs/al/ipad-reel-nieyad-mise-en-forme.png`)
+> - **טלפון d'un contact** (`type="tel"`) : idem.
+>   (`docs/al/ipad-reel-clavier-telephone.png`)
+> - **Aucun champ ne fait zoomer la page** : la mise en page est identique
+>   avant et après la frappe. C'est ce que garantissait la règle des 16 px.
+>
+> ★ **COMMENT, pour la prochaine fois** : `xcrun simctl` depuis le shell
+> (`list devices`, `openurl`, `io … screenshot`) répond sans aucune
+> autorisation ; l'outil de pilotage (toucher, taper) a répondu ensuite. La
+> ligne « refusé » des trois passes précédentes ne vaut donc plus : **il faut
+> réessayer, pas reporter.**
+>
+> ## AL3.2 — LA LOCALISATION, ET UN BOUTON QUI MENTAIT
+>
+> L'écran אבחון מיקום est **en place** et **enregistre une ligne par
+> lancement** — mesuré : un rechargement, une ligne de plus, jamais deux
+> (A210). Chaque ligne porte les trois faits d'AG7 (installée / permission /
+> nombre d'interrogations).
+>
+> ⚠️★★ **ET SON BOUTON DE COPIE DISAIT « הועתק » SANS AVOIR COPIÉ.** Le `catch`
+> de `CopyButton` était muet et l'état passait à « copié » juste après. Le PO
+> voyait la coche, allait coller le lien d'un agriculteur dans WhatsApp, et
+> collait ce qu'il avait copié une heure plus tôt. Le commentaire renvoyait à
+> « la zone de texte à côté du bouton » — il n'y en a pas dans cet écran, ni
+> dans la moitié des autres emplois (le lien de l'agriculteur, les messages de
+> la tournée, le récapitulatif d'une garde).
+> **Deux chemins maintenant** — le presse-papiers, puis une sélection sur une
+> zone de texte posée puis retirée (qui marche là où le premier ne marche pas :
+> `http://` sur un réseau local n'est pas une origine sûre) — **et un échec
+> NOMMÉ** quand les deux refusent. Mesuré dans les deux sens : le presse-papiers
+> porte vraiment les mesures (Chromium), et refusé de force, le bouton **dit**
+> l'échec.
+>
+> ## AL4 — LA DETTE : ZÉRO VIOLATION, ET DEUX ROUGES QUI ÉTAIENT DES ROUGES DE PORTE
+>
+> **`bun run tokens` : 9 violations → 0.** Chacune regardée séparément.
+>
+> | Violation | Verdict |
+> |---|---|
+> | A28 `rounded-full` (pastille נשכחו) | **CORRIGÉE** — sur 8 px, `rounded-pill` (999 px) dessine le même disque |
+> | A57 ×2 (AgendaScreen, PhoneChallenge) | **CORRIGÉES** — elles se détachaient par un trait ; elles se détachent par leur FOND, ce qu'A57 demande |
+> | A57 ×3 (photo de ת״ז, deux cadres de document) | **NOMMÉES** dans `CARD_CONTOUR_ALLOWED`, avec leur raison : ce ne sont pas des cartes, c'est du contenu blanc sur une page claire et le trait dit où le papier s'arrête. **L'exception est COMPTÉE** : un contour de plus ou de moins y est un échec |
+> | A29 ×2 (EmergencyScreen, EmergencyButton) | **NOMMÉES** — l'orange est la couleur de l'urgence ; les refuser réservait la couleur à tout sauf à sa raison d'être |
+> | A29 ×1 (`agendaGrid`) | **CORRIGÉE** — la ligne de « maintenant » était orange sur un écran où l'orange dit déjà « retour non confirmé ». Deux sens pour une couleur sur un écran, c'est la dilution qu'A29 existe pour empêcher. Elle est passée à l'accent, comme la pastille « aujourd'hui » de la même grille |
+>
+> ⚠️★★ **ET LES DEUX « ÉCHECS PRÉ-EXISTANTS » N'ÉTAIENT PAS DANS L'APPLICATION.**
+> - `settings` **A54** et `afui` **A138** cherchaient les pastilles de rôle dans
+>   un bloc **replié depuis AH12**. Elles en trouvaient zéro, et le rouge se
+>   traînait de passe en passe sous l'étiquette « pas une régression ». Elles
+>   **déplient d'abord, comme le PO**.
+> - `afui` **A131** exigeait `position: sticky` là où **AH2 a délibérément
+>   ancré la barre en `fixed`**, avec ses raisons écrites. La porte exigeait le
+>   MOT-CLÉ ; elle exige maintenant la PROPRIÉTÉ (hors du flux) et garde la
+>   mesure qui compte, déjà présente : visible à l'arrêt.
+> - **`settings` 36/36, `afui` 72/72.** Il ne reste **aucun** échec
+>   pré-existant dans ces trois portes.
+>
+> ## AL5 — LA REVUE DE FINITION : CE QUE 54 CAPTURES ET UNE SONDE ONT TROUVÉ
+>
+> Neuf écrans × trois largeurs × clair et sombre, **sur le déployé d'abord**,
+> puis sur un build local à chaque correction. `bun run alcaptures` fait les
+> deux à la fois : les images, que je regarde, **et** la sonde des trois
+> accidents que ce projet répète.
+>
+> ★★ **LA PREMIÈRE VERSION DE LA SONDE A TROUVÉ 84 « DÉFAUTS » DONT LA PLUPART
+> N'EN ÉTAIENT PAS, ET C'EST LA LEÇON DE CE BLOC.** Une sonde qui compte tout
+> croisement entre un flottant et une cible déclare en faute un « + » posé sur
+> la cinquième ligne d'une liste de trente — ce qui est ce que fait un bouton
+> flottant au-dessus d'une liste qui défile. Les quatre corrections :
+>
+> 1. **L'accident, c'est la cible qu'un pouce ne peut PAS dégager** : celle qui
+>    ne défile pas, ou la DERNIÈRE d'une liste quand le bas de page ne réserve
+>    pas la hauteur du flottant. La sonde POUSSE donc la page jusqu'à sa butée
+>    et redemande. (C'est la forme d'AA1.2 sur מתנדבים : « la pastille
+>    ישיבת שדרות mesurait une zone tactile de 1 × 1 px ».) **Zéro.**
+> 2. **Une coupure ANNONCÉE n'est pas un défaut.** « … » à la fin d'un résumé
+>    d'incident dit au lecteur qu'il en reste. Ce qui est un défaut, c'est un
+>    mot tranché sans que rien ne le dise et sans `title` ni `aria-label`.
+> 3. **La bande de vignettes DÉFILE, et c'est sa raison d'être** — AK5.3 l'a
+>    mesuré : « trois vignettes font 476 px, un téléphone en offre 370 : DEUX
+>    tiennent au repos ». Ce sont **les deux premières** qu'on mesure.
+> 4. **La zone tactile n'est pas l'encre.** Une pastille dessine 36 px et se
+>    touche sur 44 (`::before` transparent, AA1.1). Une sonde qui mesure l'encre
+>    déclare en faute la réponse même à sa question. **Et les DEUX dimensions** :
+>    la première version ne lisait que la hauteur.
+>
+> ⛔ **ET L'ÉCHAFAUDAGE A ÉTÉ NOMMÉ.** La barre de démonstration (`devbar`)
+> n'avait aucun `data-testid` dans sa forme large : la sonde comptait donc ses
+> trois contrôles (un select de 35 px, deux boutons de 28) comme des cibles trop
+> petites de l'application, **sur les neuf écrans et aux trois largeurs**. Cette
+> barre n'existe que dans le jumeau de démonstration — le seul endroit où une
+> sonde entre sans mot de passe. Une porte qui ne distingue pas l'application de
+> l'échafaudage mesure l'échafaudage.
+>
+> ### Ce qui était VRAI, et corrigé
+>
+> ★★ **LE RAIL DE NAVIGATION DE L'iPAD : NEUF ENTRÉES DE 39 PX, 4 PX ENTRE
+> DEUX.** C'est mot pour mot « j'appuie sur une et ça appuie sur l'autre », la
+> phrase qui a donné AA1 — dans le seul endroit de l'application qu'AA1 n'a
+> jamais re-mesuré, parce qu'AA1 regardait un téléphone et que ce rail n'existe
+> qu'au-dessus de 1 024 px. **44 px chacune, 8 px entre deux**, et le rail ne
+> déborde toujours pas : 1 324/1 324 en portrait, 980/980 en paysage (mesuré).
+>
+> Et, du même coup : l'en-tête de bloc repliable **36 → 44** (il y en a une
+> douzaine dans les réglages) ; le bouton de menu du téléphone **36 → 44**
+> (c'est le SEUL chemin vers le menu) ; les flèches « jour précédent / suivant »
+> du calendrier **28 → 44** ; la légende de la carte **36 → 44** ;
+> l'attribution **40 → 44** ; le lien « ouvrir dans Waze » de la journée
+> **26 → 44** (celui qu'on presse en montant dans la voiture) ; « ניקוי » du
+> planificateur **21 × 16 → 44 × 44**.
+>
+> ★ **`.btn` : 42 px, et le dessin n'a pas bougé d'un pixel.** Grossir `py-2.5`
+> aurait fait grandir CHAQUE bouton de deux pixels, c'est-à-dire refaire
+> l'arithmétique de chaque barre qu'AA1.2 et AK9 ont mesurée au pixel près. Le
+> `::before` d'AA1.1 porte la cible : c'est le marché que le PO a lui-même
+> autorisé (« la zone tactile peut dépasser le visuel sans l'alourdir »). Même
+> traitement pour les **pastilles du carrousel** (8 px d'encre, 44 de doigt).
+>
+> ★ **`.input` : 41 px → 44, et celui-là a VRAIMENT grandi.** Un `<input>` n'a
+> pas d'enfants, donc pas de `::before` : la boîte doit grandir. Trois pixels
+> par champ, **vérifiés là où ça compte** plutôt que raisonnés — `akui` 59/59
+> (dont A201, « le formulaire tient dans l'écran sans défilement ») et `uipass`
+> 41/41 après le changement.
+>
+> ### ⚠️ UNE CORRECTION ESSAYÉE PUIS REPRISE, ET C'EST LA MEILLEURE LIGNE DE CE BLOC
+>
+> La poussée de défilement au bord des rangées faisait 32 px de large. Je l'ai
+> passée à 44 **en écrivant dans le code que « les douze pixels gagnés ne sont
+> pris à aucun voisin »**. `bun run pills` a répondu en deux minutes : A71 et
+> A72 en ROUGE sur la barre de sommaire des réglages — **trois pastilles avec
+> une zone tactile de 1 × 1 px**. La phrase était fausse : cette poussée est
+> `absolute` au-dessus de la rangée, donc les douze pixels sont pris
+> exactement à ce qu'elle sert à faire défiler.
+>
+> ★ **Elle reste à 32, et la raison est un arbitrage, pas un renoncement** :
+> elle est REDONDANTE — la rangée se balaie du doigt d'un bout à l'autre.
+> Manquer cette poussée ne coûte rien ; manquer une pastille de sommaire coûte
+> un écran. La décision est écrite dans `index.css` et dans la sonde, après
+> l'avoir essayée.
+>
+> ⚠️ **ET MA PROPRE SONDE NE L'A PAS VUE** : elle cherche ce qui FLOTTE
+> (`position: fixed`), et celle-ci est `absolute`. C'est `pills`, une porte
+> d'AA1, qui l'a trouvée. Une sonde neuve ne remplace pas les anciennes.
+>
+> ### Ce qui reste petit, et pourquoi
+>
+> - **Un bloc de rendez-vous en vue SEMAINE fait 24 à 36 px de large** : c'est
+>   la largeur de sa colonne de jour, sept colonnes dans 1 032 px. L'élargir,
+>   c'est supprimer la vue semaine. La vue JOUR est à côté, le même rendez-vous
+>   y fait toute la largeur, et c'est là qu'on le touche.
+> - **L'attribution de MapLibre** : le crédit légal des tuiles, dessiné par la
+>   bibliothèque, pas par nous.
+>
+> **Résultat : `alcaptures` 330/330, 54 captures.** Zéro défilement horizontal,
+> zéro cible sous 44 px, zéro recouvrement au repos comme en bas de page, zéro
+> texte perdu en silence, zéro erreur de page — aux trois largeurs, en clair et
+> en sombre, sur les neuf écrans.
+>
+> ## AL6 — LES PORTES
+>
+> ```
+> alpass 40/40 (A207 · A208 · A209)   alui 54/54 (A207 · A210, WebKit + Chromium)
+> alcaptures 330/330 + 54 captures    tokens 0 violation    settings 36/36
+> afui 72/72                          uipass 41/41          akui 59/59 (WebKit)
+> akpass 56 · akdata 30 · accept 177 · persist 109 · mapping 33 · report 86
+> deletion 61 · sync 34 · assoc 42 · acpass 52 · adpass 46 · afpass 59
+> agpass 74 · ahpass 40 · aipass 32 · contrast vert
+> ```
+>
+> **ROUGE avant la passe**, sur un build réel de `3ee0d69` : `alui` **13 PASS /
+> 13 FAIL** (`docs/al/al-rouge-avant.log`) — pas de suggestion, pas de bouton,
+> rien qui s'accepte, et un bouton de copie sans état à lire.
+>
+> ★★ **A208 EST VÉRIFIÉE SUR LA BASE RÉELLE, APRÈS LA PASSE**
+> (`docs/al/a208-base-reelle.json`) : quinze fiches, **aucune** surface gardée,
+> **aucune** marquée déclarée, six positionnées, pondéré **2 160**, aucune
+> archivée ; la table ne porte que ces quinze (ni `demo-`, ni `test-`) ; et **la
+> dernière écriture de la table précède le début de la passe AL** — la forme la
+> plus forte de « les quinze fiches ne sont pas modifiées » : AL n'a rien écrit
+> chez le PO.
+
 > 🏁 **PASSE AK — LES QUINZE EXPLOITATIONS RÉELLES, LE FORMULAIRE CALQUÉ,
 > LES DOCUMENTS QUI BLOQUENT, L'ARCHIVAGE ET LA CARTE QUI NE BASCULE PLUS.
 > 2026-09-16. LIRE EN PREMIER.**
@@ -202,11 +442,13 @@
 > mode splitté — filtre de région compris. Les libellés restent courts et la
 > quatrième pastille (« לא ידוע ») n'est pas ajoutée : elle coûtait la barre.
 >
-> ⛔ **NON MESURÉ, DIT FRANCHEMENT** : le clavier d'un iPad RÉEL. L'accès au
-> simulateur a de nouveau été refusé (comme en AG et en AJ) ; ce qui est
+> ⛔ **NON MESURÉ EN AK, DIT FRANCHEMENT** : le clavier d'un iPad RÉEL. L'accès
+> au simulateur a de nouveau été refusé (comme en AG et en AJ) ; ce qui est
 > mesuré, c'est le moteur de Safari (WebKit) avec `hasTouch` — `inputmode`,
 > `type` et la taille des champs, c'est-à-dire tout ce dont iOS se sert pour
 > choisir le clavier.
+> **✅ FERMÉ EN AL3.1** : le simulateur a répondu, le clavier est mesuré sur un
+> iPad Air 11″ (iPadOS 26.3). Voir la passe AL, en tête.
 
 > 🏁 **PASSE AJ — LA VERSION INSTALLÉE SE MET À JOUR. 2026-09-15. LIRE EN
 > PREMIER.**

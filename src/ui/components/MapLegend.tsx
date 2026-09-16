@@ -65,7 +65,8 @@ export function MapLegend({
         aria-expanded={open}
         aria-label={t('map.legendToggle')}
         data-testid="map-legend-toggle"
-        className="flex min-h-9 w-full items-center gap-2 px-3 py-1.5 text-start"
+        /* AL5 — 44 px, comme tout ce qui se touche sur la carte. */
+        className="flex min-h-11 w-full items-center gap-2 px-3 py-1.5 text-start"
       >
         <span
           className={`text-content-muted transition-transform duration-fast ${

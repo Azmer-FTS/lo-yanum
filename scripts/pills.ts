@@ -258,9 +258,37 @@ interface HitBox {
  *    any other code in this repository.
  */
 function probePills(limit: number): HitBox[] {
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ⚠️★★ AL4.2 (2026-09-16) — UNE RANGÉE QUI DÉFILE TIENT PLUS QUE L'ÉCRAN,
+   *    ET C'EST SA RAISON D'ÊTRE. Le filtre bornait la VERTICALE et pas
+   *    l'horizontale.
+   * ═══════════════════════════════════════════════════════════════════════
+   *
+   * Le sommaire des réglages porte SEPT pastilles ; à 402 px les deux
+   * dernières (« תצוגה », « נתונים ») sont à x = −58 et x = −117, c'est-à-dire
+   * hors écran au repos, dans une rangée qu'on fait défiler du doigt. La sonde
+   * les gardait quand même, demandait à `elementFromPoint` qui possède leur
+   * centre — un point qu'elle doit d'abord ramener DANS l'écran — et obtenait
+   * bien sûr autre chose. Résultat : deux rouges par exécution, depuis qu'AI7
+   * a porté ce sommaire à sept entrées, sous l'étiquette « pré-existant ».
+   *
+   * ★ C'est la décision qu'AK5.3 a prise pour les vignettes de files, mot pour
+   *   mot : « trois font 476 px, un téléphone en offre 370 : DEUX tiennent au
+   *   repos » — et ce qui est mesuré, ce sont celles qui tiennent. Une porte
+   *   qui exige d'une rangée défilante qu'elle tienne entière dans l'écran
+   *   demande la suppression du défilement.
+   *
+   * ⚠️ ET LE BORNAGE EST STRICT : une pastille à MOITIÉ dedans reste mesurée.
+   *    C'est le cas intéressant — celui où le doigt vise un bord — et c'est
+   *    celui qu'AA1 a été écrite pour trouver. Seules sortent celles qui n'ont
+   *    AUCUN pixel à l'écran.
+   */
   const pills = [...document.querySelectorAll('.filter-pill')].filter((el) => {
     const r = el.getBoundingClientRect()
-    return r.width > 4 && r.height > 4 && r.top > -1 && r.bottom < window.innerHeight + 1
+    if (r.width <= 4 || r.height <= 4) return false
+    if (r.top <= -1 || r.bottom >= window.innerHeight + 1) return false
+    return r.right > 0 && r.left < window.innerWidth
   })
 
   const owner = (x: number, y: number): Element | null => {

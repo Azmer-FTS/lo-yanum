@@ -237,6 +237,30 @@ section('A208 — les quinze fiches d\'AK1 sont inchangées')
   check('A208 · pas de doublon', new Set(ids).size === 15)
   const margi = rows.find((r) => r.name === 'חוות מרגי')
   check('A208 · le ת״ז de חוות מרגי garde son zéro', margi?.farmer_id_no === '021985189', String(margi?.farmer_id_no))
+
+  /**
+   * ★★ ET LA FORME LA PLUS FORTE D'A208 : LA BASE RÉELLE, RELUE APRÈS LA PASSE.
+   *
+   * `docs/ak/ak1-prod-rows.json` est un instantané d'AK ; celui-ci est ce que
+   * `lo-yanum-prod` a rendu APRÈS AL, le 2026-09-16, y compris l'horodatage de
+   * la dernière écriture de la table. Une porte pure ne peut pas interroger un
+   * serveur — elle vérifie donc le RELEVÉ, et le relevé porte sa requête.
+   */
+  const live = JSON.parse(readFileSync('docs/al/a208-base-reelle.json', 'utf8')) as {
+    quinze_fiches: Record<string, number>
+    table_entiere: Record<string, number | string>
+  }
+  const f = live.quinze_fiches
+  check('A208 · la BASE RÉELLE, relue après la passe : quinze fiches, aucune surface gardée',
+    f.total === 15 && f.avec_surface_gardee === 0 && f.marquees_declarees === 0,
+    `${f.total} fiches · ${f.avec_surface_gardee} gardées · ${f.marquees_declarees} déclarées`)
+  check('A208 · six positionnées, pondéré 2 160, aucune archivée — les chiffres d\'AK1',
+    f.positionnees === 6 && f.pondere === 2160 && f.archivees === 0)
+  const t = live.table_entiere
+  check('A208 · la table ne porte QUE les quinze (ni demo-, ni test-)',
+    t.entites_total === 15 && t.demo_ou_test === 0 && t.hors_ak1 === 0)
+  check('A208 · ⚠️ et la DERNIÈRE ÉCRITURE précède la passe AL — AL n\'a rien écrit chez le PO',
+    String(t.derniere_ecriture).startsWith('2026-09-15'), String(t.derniere_ecriture))
 }
 
 // ---------------------------------------------------------------------------

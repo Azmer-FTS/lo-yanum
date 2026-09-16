@@ -122,7 +122,9 @@ function ItemRow({ item }: { item: DayPlanItem }) {
         target="_blank"
         rel="noreferrer"
         aria-label={t('myday.openInWaze')}
-        className="shrink-0 rounded-field p-1.5 text-content-muted transition-colors duration-fast hover:bg-accent/10 hover:text-accent-ink"
+        /* ⚠️ AL5 — 44 px. C'est le lien qu'on presse en montant dans la voiture,
+           et il mesurait 26 × 26. L'icône garde ses 14 px. */
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-field text-content-muted transition-colors duration-fast hover:bg-accent/10 hover:text-accent-ink"
       >
         <Icon name="external" size={14} />
       </a>
