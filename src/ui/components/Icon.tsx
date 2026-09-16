@@ -11,6 +11,8 @@ import type { ReactNode, SVGProps } from 'react'
  */
 
 export type IconName =
+  | 'backspace'
+  | 'keyboard'
   | 'landPlot'
   | 'wheat'
   | 'pawPrint'
@@ -89,6 +91,20 @@ export type IconName =
 type Props = SVGProps<SVGSVGElement> & { name: IconName; size?: number }
 
 const PATHS: Record<IconName, ReactNode> = {
+  // AN1.2 — le pavé numérique de l'iPad (Lucide `delete`, `keyboard`).
+  backspace: (
+    <>
+      <path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z" />
+      <path d="m12 9 6 6" />
+      <path d="m18 9-6 6" />
+    </>
+  ),
+  keyboard: (
+    <>
+      <path d="M10 8h.01M12 12h.01M14 8h.01M16 12h.01M18 8h.01M6 8h.01M7 16h10M8 12h.01" />
+      <rect width="20" height="16" x="2" y="4" rx="2" />
+    </>
+  ),
   // N7.2 (2026-09-02) — the content figures' icons: the holding's ground,
   // the grazing, the herd as a whole, and one glyph per livestock kind.
   // Lucide `land-plot`, `wheat`, `paw-print`, `beef`, `bird`; the sheep,

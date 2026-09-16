@@ -163,7 +163,7 @@ export function PhoneChallenge({
           d'AG2.4 et se traînait depuis. */}
       <div className="rounded-card bg-surface-raised p-4">
         <p className="text-caption text-content-secondary">{t('challenge.stuck')}</p>
-        <a
+        {coordinator.phone && (<a
           href={telHref(coordinator.phone)}
           data-testid="challenge-coordinator"
           className="mt-2 flex min-h-14 items-center justify-between gap-3 rounded-field bg-accent px-4 text-content-on-accent"
@@ -172,7 +172,7 @@ export function PhoneChallenge({
           <span className="ltr-nums shrink-0 text-heading" dir="ltr">
             {coordinator.phone}
           </span>
-        </a>
+        </a>)}
       </div>
     </div>
   )

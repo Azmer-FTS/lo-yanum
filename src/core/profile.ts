@@ -39,7 +39,11 @@ export const COORDINATOR_DEFAULT: CoordinatorProfile = {
   role: COORDINATOR.role,
 }
 
-/** The card as it stands. Never throws, never returns a blank field. */
+/**
+ * The card as it stands. Never throws.
+ * ⛔ AN1.3 — le TÉLÉPHONE n'a pas de repli : vide stocké = vide rendu. Le nom et
+ * le rôle gardent le leur (ce sont ceux du PO, pas des valeurs inventées).
+ */
 export function readCoordinator(): CoordinatorProfile {
   try {
     const raw = localStorage.getItem(KEY)
@@ -49,7 +53,7 @@ export function readCoordinator(): CoordinatorProfile {
       // A stored blank is a stored mistake: fall back field by field rather
       // than signing a message "‏ · 052-…" with an empty name.
       name: parsed.name?.trim() || COORDINATOR_DEFAULT.name,
-      phone: parsed.phone?.trim() || COORDINATOR_DEFAULT.phone,
+      phone: typeof parsed.phone === 'string' ? parsed.phone.trim() : '',
       role: parsed.role?.trim() || COORDINATOR_DEFAULT.role,
     }
   } catch {

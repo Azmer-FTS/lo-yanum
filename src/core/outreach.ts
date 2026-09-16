@@ -240,7 +240,7 @@ export function buildOutreachMessage(
     '',
     // W7 — the coordinator's card is editable now, so the signature reads it
     // at composition time rather than from a frozen constant.
-    `${labels.signature} ${readCoordinator().name} · ${readCoordinator().phone}`,
+    [labels.signature, [readCoordinator().name, readCoordinator().phone].filter(Boolean).join(' · ')].join(' '),
   )
 
   return parts.join('\n')
@@ -302,7 +302,7 @@ export function buildGroupKit(
     ...members.map((r) => `+${toInternational(r.phone)}`),
     // The coordinator adds himself: a group he is not in is a group he cannot
     // read at 02:00.
-    `+${toInternational(readCoordinator().phone)}`,
+    ...(readCoordinator().phone ? [`+${toInternational(readCoordinator().phone)}`] : []),
   ]
 
   const name = `${labels.groupName} ${view.farm.name} ${formatDate(

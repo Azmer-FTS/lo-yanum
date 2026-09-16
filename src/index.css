@@ -2417,3 +2417,11 @@ label:has(> textarea) {
 [data-bottom-rail] {
   transition: opacity var(--duration-base, 200ms) ease-out;
 }
+
+/* ★ AN1.2 — le pavé numérique de l'iPad occupe le bas de l'écran : la page et
+   le formulaire réservent sa hauteur pour que le dernier champ reste
+   atteignable au-dessus de lui. */
+html[data-numpad-open] body,
+html[data-numpad-open] [data-farm-form] {
+  padding-bottom: var(--numpad-h, 0px);
+}

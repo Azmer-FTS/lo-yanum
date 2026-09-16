@@ -1,1 +1,9 @@
-{}
+{
+  "numpad": {
+    "label": "Number pad",
+    "back": "Delete",
+    "next": "Next",
+    "done": "Done",
+    "system": "Device keyboard"
+  }
+}

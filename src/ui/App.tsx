@@ -1,3 +1,4 @@
+import { NumericPad } from './components/NumericPad'
 import type { ReactNode } from 'react'
 import { Suspense, lazy, useEffect, useReducer } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
@@ -248,6 +249,8 @@ export default function App() {
           screen" has to mean every screen, including the ones nobody
           remembered when a new layout was added. */}
       <NetworkStatus />
+      {/* ★★ AN1.2 — le pavé numérique de l'iPad, une fois pour toute l'app. */}
+      <NumericPad />
       <Routes>
         {/* The identity picker is a DEMO artefact: it hands out farmer,
             volunteer and driver sessions on mock people. A real signed-in

@@ -246,7 +246,12 @@ export function SettingsScreen() {
               data-testid="coordinator-name"
               value={me.name}
               onChange={(e) => {
-                setMe((c) => ({ ...c, name: e.target.value }))
+                const name = e.target.value
+                setMe((c) => {
+                  const next = { ...c, name }
+                  writeCoordinator(next)
+                  return next
+                })
                 setMeSaved(false)
               }}
             />
@@ -260,7 +265,14 @@ export function SettingsScreen() {
               className="input ltr-nums w-full text-end"
               data-testid="coordinator-phone"
               {...kindInputProps('phone', me.phone, (phone) => {
-                setMe((c) => ({ ...c, phone }))
+                /* ⛔ AN1.3 — enregistré à la frappe : un numéro tapé puis
+                   l'écran quitté sans « שמירה » était perdu, et le faux
+                   numéro par défaut revenait à sa place. */
+                setMe((c) => {
+                  const next = { ...c, phone }
+                  writeCoordinator(next)
+                  return next
+                })
                 setMeSaved(false)
               })}
             />
@@ -276,7 +288,12 @@ export function SettingsScreen() {
               data-testid="coordinator-role"
               value={me.role}
               onChange={(e) => {
-                setMe((c) => ({ ...c, role: e.target.value }))
+                const role = e.target.value
+                setMe((c) => {
+                  const next = { ...c, role }
+                  writeCoordinator(next)
+                  return next
+                })
                 setMeSaved(false)
               }}
             />

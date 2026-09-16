@@ -1,0 +1,11 @@
+  PASS  clair → sombre sans rechargement  — 243 244 246 → 11 17 25
+  PASS  sombre → clair sans rechargement  — 243 244 246
+  PASS  le choix du coordinateur est « system » par défaut  — system
+  FAIL  ת״ז touché → inputmode=none (le système n'ouvre pas son clavier)  — numeric
+  FAIL  le pavé de l'app est ouvert
+  FAIL  section interrompue  — click: Timeout 8000ms exceeded.
+  PASS  aucun numéro par défaut dans la carte du coordinateur  — "(052) 000-0049"
+  FAIL  tapé, écran quitté sans « שמירה », rouvert : le numéro est là  — (052) 000-0049
+  FAIL  vidé : il reste vide, aucun numéro ne revient  — "(052) 000-0049"
+  FAIL  le bundle ne contient plus 052-0000049 ni 08-0000050  — index-Cr3XRHBt.js
+  4 passed, 6 failed

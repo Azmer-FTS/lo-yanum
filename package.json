@@ -111,7 +111,9 @@
     "alcaptures": "bun run scripts/alcaptures.ts",
     "ampass": "bun run scripts/ampass.ts",
     "amui": "bun run scripts/amui.ts",
-    "amcaptures": "bun run scripts/amcaptures.ts"
+    "amcaptures": "bun run scripts/amcaptures.ts",
+    "anui": "bun run scripts/anui.ts",
+    "anpass": "bun run scripts/anpass.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "0.2.3",

@@ -171,6 +171,20 @@ export function startThemeController(): void {
   window.addEventListener('storage', (e) => {
     if (e.key === null || e.key.startsWith('lo-yanum:theme:')) sync()
   })
+
+  /* ★ AN1.1 (2026-09-16) — LA RELECTURE À INTERVALLE, TROISIÈME CEINTURE.
+     Mesuré sur le simulateur iPad (iPadOS 26.3), app INSTALLÉE en mode
+     autonome : la bascule en direct, le retour d'arrière-plan et le
+     déverrouillage suivent tous l'appareil. Le défaut du PO n'a donc pas été
+     reproduit. Si SON iPad perd l'événement, la préférence est relue toutes
+     les 15 s tant que l'app est visible, et à chaque redimensionnement
+     (rotation, Split View). Une lecture de `matchMedia` ne coûte rien. */
+  const recheck = () => {
+    if (document.visibilityState !== 'visible') return
+    if (systemPrefersDark() !== snapshot.systemDark) sync()
+  }
+  window.setInterval(recheck, 15_000)
+  window.addEventListener('resize', recheck)
 }
 
 export interface ThemeState {

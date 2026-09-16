@@ -1,1 +1,9 @@
-{}
+{
+  "numpad": {
+    "label": "Pavé numérique",
+    "back": "Effacer",
+    "next": "Suivant",
+    "done": "OK",
+    "system": "Clavier de l'appareil"
+  }
+}

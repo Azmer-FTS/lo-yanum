@@ -154,6 +154,20 @@ export function CallRow({
 }) {
   const { t } = useTranslation()
 
+  /* ⛔ AN1.3 — sans numéro, pas de lien d'appel vers un numéro vide (le faux
+     numéro par défaut a été retiré) : le nom seul, et rien à composer. */
+  if (!phone.trim()) {
+    return (
+      <div className="flex items-center gap-3 rounded-field bg-surface-raised px-3 py-2.5 shadow-card" data-no-phone="">
+        <Avatar photo={photo} name={name} size="md" />
+        <div className="min-w-0 flex-1">
+          <span className="block text-micro text-content-muted">{label}</span>
+          <span className="block truncate text-caption font-medium text-content-primary">{name}</span>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-3 rounded-field bg-surface-raised px-3 py-2.5 shadow-card">
       <Avatar photo={photo} name={name} size="md" />
