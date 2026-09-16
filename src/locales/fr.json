@@ -10,5 +10,11 @@
     "missingPosition": "Position manquante",
     "missingPositionHint": "Une ferme sans position reste dans la tournée, mais ni sur la carte ni sur le tracé.",
     "addPosition": "Ajouter la position"
+  },
+  "agreement": {
+    "signNow": "Faire signer"
+  },
+  "people": {
+    "noFarmer": "Aucun agriculteur"
   }
 }

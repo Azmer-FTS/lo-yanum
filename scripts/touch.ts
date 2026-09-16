@@ -832,15 +832,12 @@ await page.waitForTimeout(3500)
 //   comme le PO (le même geste qu'AL4 impose aux portes des réglages).
 check('"הסכמים" unfolds by STYLUS', await tapTestId(page, cdp, 'section-farm-form-agreements:farm-01'))
 await page.waitForTimeout(500)
-const added = await penTapText(page, cdp, 'הוספת הסכם')
-check('"הוספת הסכם" is reachable by STYLUS', added)
-await page.waitForTimeout(800)
-
-// ★ THE PAD IS BEHIND A BUTTON NOW (A30 — a 200 px canvas per agreement pushed
-//   the farm form past six screenfuls at 390 px, and a farmer signs when he is
-//   asked to rather than because a form scrolled past a blank rectangle).
-check('"חתימה" opens the pad by STYLUS', await penTapText(page, cdp, 'חתימה'))
-await page.waitForTimeout(700)
+// ★★ AN5 (2026-09-16) — UN GESTE. « הוספת הסכם » puis « חתימה » étaient deux
+//   étapes (et un nom et une date à saisir entre les deux) ; le bouton
+//   « החתמה » de l'en-tête épinglé ouvre directement la fenêtre, nom et date
+//   déjà inscrits. La porte suit le nouveau chemin, au stylet comme avant.
+check('"החתמה" opens the signing window by STYLUS', await penTapTestId(page, cdp, 'farm-sign'))
+await page.waitForTimeout(1500)
 
 const pad = page.locator('[data-testid="signature-pad"]').first()
 const padCount = await pad.count()

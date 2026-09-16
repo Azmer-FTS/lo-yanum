@@ -1790,6 +1790,7 @@ export function Modal({
   onClose,
   children,
   wide = false,
+  fill = false,
   header,
   testId,
 }: {
@@ -1797,6 +1798,13 @@ export function Modal({
   onClose: () => void
   children: ReactNode
   wide?: boolean
+  /**
+   * ★ AN5.4 — la fenêtre occupe TOUTE la hauteur disponible et ne défile pas :
+   * ses enfants se partagent la hauteur (`flex-1 min-h-0` pour celui qui doit
+   * céder). La fenêtre de signature en a besoin pour garder la zone d'encre et
+   * les boutons à l'écran en permanence.
+   */
+  fill?: boolean
   /** AK4 — un en-tête à soi (logo + titre), à la place du `<h2>` simple. */
   header?: ReactNode
   testId?: string
@@ -1910,9 +1918,11 @@ export function Modal({
         // DIALOG's width, not the window's. A `md:grid-cols-2` inside a 32 rem
         // dialog gave two 15 rem columns on any desktop, which is the reading
         // the breakpoint existed to prevent.
-        className={`panel-scope max-h-[90dvh] w-full animate-fade-in overflow-y-auto rounded-t-card
-                    bg-surface-overlay p-5 shadow-lift outline-none sm:rounded-card ${
-                      wide ? 'max-w-3xl' : 'max-w-lg'
+        className={`panel-scope w-full animate-fade-in rounded-t-card
+                    bg-surface-overlay shadow-lift outline-none sm:rounded-card ${
+                      fill
+                        ? 'flex h-[100dvh] max-w-4xl flex-col overflow-hidden px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:h-[calc(100dvh-3rem)] sm:p-4'
+                        : `max-h-[90dvh] overflow-y-auto p-5 ${wide ? 'max-w-3xl' : 'max-w-lg'}`
                     }`}
       >
         <div
@@ -1921,7 +1931,7 @@ export function Modal({
           onPointerMove={onPointerMove}
           onPointerUp={onPointerEnd}
           onPointerCancel={onPointerEnd}
-          className="mb-4 flex touch-none select-none items-center justify-between gap-4"
+          className={`${fill ? 'mb-2' : 'mb-4'} flex shrink-0 touch-none select-none items-center justify-between gap-4`}
         >
           {header ?? <h2 className="text-heading text-content-primary">{title}</h2>}
           <button
@@ -1936,7 +1946,7 @@ export function Modal({
             <Icon name="close" size={20} />
           </button>
         </div>
-        {children}
+        {fill ? <div className="flex min-h-0 flex-1 flex-col">{children}</div> : children}
       </div>
     </div>
   )

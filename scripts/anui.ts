@@ -479,6 +479,134 @@ try {
       })
     }
   }
+
+  if (wants('A229')) {
+    // =======================================================================
+    section('A229 — signature : un geste, nom et date inscrits et modifiables, document lisible à l\'ouverture')
+    // =======================================================================
+    for (const [w, h] of [[402, 874], [1032, 1376], [1376, 1032]] as const) {
+      for (const where of ['fiche', 'édition'] as const) {
+        await guard(async () => {
+          const ctx = await context(chrome, { viewport: { width: w, height: h } })
+          const page = await ctx.newPage()
+          await open(page, where === 'fiche' ? '#/coordinator/farms/farm-07' : '#/coordinator/farms/farm-07/edit', 3500)
+          const btn = page.locator('[data-testid="farm-sign"]:visible').first()
+          check(`${w} px · ${where} : le bouton de signature est à l'écran sans rien ouvrir`, await btn.isVisible())
+          await btn.click()
+          const modal = page.locator('[data-testid="agreement-sign-modal"]')
+          await modal.waitFor()
+          await page.waitForSelector('[data-testid="agreement-preview-page"]', { timeout: 15000 })
+          await page.waitForTimeout(800)
+          const m = await page.evaluate(() => {
+            const vh = window.innerHeight
+            const box = document.querySelector('[data-testid="agreement-preview"]') as HTMLElement
+            const img = document.querySelector('[data-testid="agreement-preview-page"]') as HTMLImageElement
+            const confirm = document.querySelector('[data-testid="agreement-sign-confirm"]') as HTMLElement
+            const pad = document.querySelector('[data-testid="agreement-sign-foot"] canvas') as HTMLElement
+            const dialog = document.querySelector('[data-testid="agreement-sign-modal"]') as HTMLElement
+            const r = (e: Element) => e.getBoundingClientRect()
+            // Largeur réellement peinte de la page (object-contain) : l'échelle de lecture.
+            const scale = Math.min(r(img).width / img.naturalWidth, r(img).height / img.naturalHeight)
+            return {
+              pages: document.querySelectorAll('[data-testid="agreement-preview-page"]').length,
+              scrolls: box.scrollHeight > box.clientHeight + 2,
+              fits: r(img).bottom <= r(box).bottom + 1 && r(img).top >= r(box).top - 1,
+              paintedWidth: Math.round(img.naturalWidth * scale),
+              dialogH: Math.round(r(dialog).height),
+              vh,
+              padVisible: r(pad).bottom <= vh && r(pad).top >= 0,
+              confirmVisible: r(confirm).bottom <= vh && r(confirm).top >= 0,
+              signer: document.querySelector('[data-testid="agreement-signer"]')?.textContent?.trim(),
+              date: document.querySelector('[data-testid="agreement-date"]')?.textContent?.trim(),
+            }
+          })
+          check(`${w} px · ${where} : la fenêtre prend la hauteur disponible`, m.dialogH >= m.vh - 60, `${m.dialogH} / ${m.vh}`)
+          check(`${w} px · ${where} : le document est entier à l'écran, sans défilement interne`, m.pages === 1 && !m.scrolls && m.fits, JSON.stringify({ pages: m.pages, scrolls: m.scrolls, fits: m.fits }))
+          /* Le corps du document est en 11 pt sur une page de 595 pt : sa taille
+             à l'écran est 11 × largeur peinte / 595. ⚠️ Un seuil « ≥ 300 px de
+             page » passait à 402 px avec un texte de 7 px : il est remplacé par
+             la taille du TEXTE, exigée ≥ 12 px sur iPad. Sur téléphone la page
+             entière sans défilement donne ~7 px : mesuré, imprimé, et annoncé
+             comme limite dans le rapport — pas déguisé en vert. */
+          const bodyPx = Math.round((11 * m.paintedWidth) / 595 * 10) / 10
+          if (w >= 1000) check(`${w} px · ${where} : le texte du document se lit (corps ≥ 12 px)`, bodyPx >= 12, `${bodyPx} px`)
+          else console.log(`  NOTE  ${w} px · ${where} : corps du texte à l'écran ${bodyPx} px (limite annoncée)`)
+          check(`${w} px · ${where} : zone d'encre et « אישור וחתימה » à l'écran`, m.padVisible && m.confirmVisible)
+          check(`${w} px · ${where} : l'agriculteur est inscrit comme signataire`, m.signer === 'עמית דרור', String(m.signer))
+          const today = new Date().toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+          check(`${w} px · ${where} : la date du jour est inscrite`, !!m.date && m.date.replace(/\D/g, '') === today.replace(/\D/g, ''), `${m.date} / ${today}`)
+          await page.screenshot({ path: `${SHOTS}/a229-${where === 'fiche' ? 'fiche' : 'edition'}-${w}-ouverture.png` })
+
+          if (w === 1032 && where === 'fiche') {
+            // Modifiable SUR PLACE : un toucher sur la valeur, pas un champ à ouvrir.
+            await page.locator('[data-testid="agreement-signer"]').click()
+            await page.locator('[data-testid="agreement-signer-input"]').fill('רות דרור')
+            await page.locator('[data-testid="agreement-signer-input"]').press('Enter')
+            check('le nom se corrige d\'un toucher sur la valeur', (await page.locator('[data-testid="agreement-signer"]').textContent())?.trim() === 'רות דרור')
+            const pad = page.locator('[data-testid="agreement-sign-foot"] canvas')
+            const b = (await pad.boundingBox())!
+            await page.mouse.move(b.x + 40, b.y + 40)
+            await page.mouse.down()
+            await page.mouse.move(b.x + 160, b.y + 80, { steps: 8 })
+            await page.mouse.move(b.x + 260, b.y + 50, { steps: 8 })
+            await page.mouse.up()
+            await page.locator('[data-testid="agreement-sign-confirm"]').click()
+            await page.waitForTimeout(800)
+            await page.locator('[data-testid="block-entity-agreements"]').click().catch(() => {})
+            await page.waitForTimeout(400)
+            const text = await page.locator('body').innerText()
+            check('signé depuis la fiche : l\'accord est enregistré au nom corrigé', text.includes('רות דרור'))
+          }
+          if (where === 'édition') {
+            const inputs = await page.locator('[data-testid="farm-block-agreements"] input[type="date"]').count()
+            check(`${w} px · édition : plus aucun champ « date de signature » dans le formulaire`, inputs === 0, String(inputs))
+          }
+          await ctx.close()
+        })
+      }
+    }
+  }
+
+  if (wants('A230')) {
+    // =======================================================================
+    section('A230 — en-tête épinglé pendant l\'édition : photo, ferme, agriculteur')
+    // =======================================================================
+    for (const [w, h] of [[402, 874], [1032, 1376], [1376, 1032]] as const) {
+      await guard(async () => {
+        const ctx = await context(chrome, { viewport: { width: w, height: h } })
+        const page = await ctx.newPage()
+        await open(page, '#/coordinator/farms/farm-07/edit', 3500)
+        // Descendre jusqu'au dernier bloc, par le contenu qui défile réellement.
+        await page.locator('[data-testid="farm-block-notes"]').scrollIntoViewIfNeeded()
+        await page.waitForTimeout(500)
+        const m = await page.evaluate(() => {
+          const bar = document.querySelector('[data-testid="farm-edit-sticky"]') as HTMLElement
+          const r = bar.getBoundingClientRect()
+          const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+          const notes = (document.querySelector('[data-testid="farm-block-notes"]') as HTMLElement).getBoundingClientRect()
+          const scrolled = notes.top < window.innerHeight
+          return {
+            top: Math.round(r.top),
+            height: Math.round(r.height),
+            onTop: !!top && bar.contains(top),
+            scrolled,
+            name: (document.querySelector('[data-testid="farm-edit-sticky-name"]') as HTMLElement).textContent,
+            farmer: (document.querySelector('[data-testid="farm-edit-sticky-farmer"]') as HTMLElement).textContent,
+            photo: !!bar.querySelector('img, [data-avatar], span'),
+          }
+        })
+        check(`${w} px : au bas du formulaire, l'en-tête est à l'écran et rien ne le recouvre`, m.scrolled && m.onTop && m.top >= 0 && m.top < 140, JSON.stringify({ top: m.top, onTop: m.onTop }))
+        check(`${w} px : compact (≤ 72 px)`, m.height <= 72, `${m.height} px`)
+        check(`${w} px : photo, ferme et agriculteur`, m.photo && m.name === 'חוות שיזפון' && m.farmer === 'עמית דרור', `${m.name} / ${m.farmer}`)
+        await page.screenshot({ path: `${SHOTS}/a230-${w}-bas-du-formulaire.png` })
+        // L'en-tête suit la frappe : c'est ce qui est à l'écran, pas la fiche enregistrée.
+        await page.locator('[data-testid="farm-form-name"]').fill('חוות שיזפון החדשה')
+        await page.waitForTimeout(200)
+        check(`${w} px : le nom de l'en-tête suit la frappe`, (await page.locator('[data-testid="farm-edit-sticky-name"]').textContent()) === 'חוות שיזפון החדשה')
+        await ctx.close()
+      })
+    }
+  }
 } finally {
   await chrome.close()
   await safari.close()

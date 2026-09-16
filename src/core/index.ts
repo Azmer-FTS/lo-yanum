@@ -69,6 +69,7 @@ export {
   setCommitmentFulfilled,
   createFarm,
   updateFarm,
+  saveFarmAgreement,
   // AK7 — archiver n'est pas supprimer.
   archiveFarm,
   unarchiveFarm,

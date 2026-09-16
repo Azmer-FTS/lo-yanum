@@ -10,5 +10,11 @@
     "missingPosition": "Missing position",
     "missingPositionHint": "A farm without a position stays in the tour, but not on the map or the route.",
     "addPosition": "Add position"
+  },
+  "agreement": {
+    "signNow": "Sign"
+  },
+  "people": {
+    "noFarmer": "No farmer yet"
   }
 }

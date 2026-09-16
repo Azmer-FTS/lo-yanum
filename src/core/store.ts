@@ -653,6 +653,22 @@ export function updateFarm(farmId: string, draft: FarmDraft): void {
 }
 
 /**
+ * ★★ AN5 — la signature depuis la FICHE (pas depuis l'édition) : un accord
+ * signé entre dans la liste, ou remplace celui qu'il complète. Rien d'autre de
+ * la ferme ne change.
+ */
+export function saveFarmAgreement(farmId: string, agreement: Agreement): void {
+  const index = data.farms.findIndex((f) => f.id === farmId)
+  if (index === -1) return
+  const farm = data.farms[index]
+  const agreements = farm.agreements.some((a) => a.id === agreement.id)
+    ? farm.agreements.map((a) => (a.id === agreement.id ? agreement : a))
+    : [...farm.agreements, agreement]
+  data.farms[index] = { ...farm, agreements }
+  commit()
+}
+
+/**
  * ═══════════════════════════════════════════════════════════════════════════
  * ★★ AD2.2 — LES DEUX GESTES DE LA NOTE D'ÉCART, EN UN GESTE CHACUN.
  * ═══════════════════════════════════════════════════════════════════════════

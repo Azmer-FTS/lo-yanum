@@ -143,9 +143,10 @@ try {
     page.setDefaultTimeout(45_000)
     await open(page, '#/coordinator/farms/farm-01/edit', 5000)
 
-    const opener = page.locator('[data-testid="signature-open"]').first()
-    check('A129 · la fiche offre la lecture-et-signature', (await opener.count()) > 0)
-    await opener.scrollIntoViewIfNeeded()
+    /* ★★ AN5 — le bouton est dans l'en-tête épinglé, visible sans rien déplier
+       (il était dans le bloc « הסכמים », replié depuis AM3). */
+    const opener = page.locator('[data-testid="farm-sign"]').first()
+    check('A129 · la fiche offre la lecture-et-signature', (await opener.count()) > 0 && (await opener.isVisible()))
     await opener.click()
     await page.waitForTimeout(4500)
 
@@ -198,13 +199,16 @@ try {
         }
         return dark
       }
+      /* ★ AN5.5 — l'aperçu est la page SANS son papier vide : les bandes sont
+         celles de la page recadrée, mesurées sur farm-01 (logo 5–15 %, champs
+         20–40 %, הצהרה 45–58 %, cadre d'encre 63–86 %). */
       return {
         width: c.width,
         height: c.height,
-        logo: band(0.02, 0.13),
-        fields: band(0.2, 0.33),
-        declaration: band(0.34, 0.46),
-        signature: band(0.6, 0.78),
+        logo: band(0.03, 0.16),
+        fields: band(0.18, 0.42),
+        declaration: band(0.43, 0.58),
+        signature: band(0.63, 0.86),
       }
     })
     check('A129 · la page est rendue', ink !== null && ink.width > 500, ink ? `${ink.width}×${ink.height}` : '')
@@ -240,8 +244,8 @@ try {
       const ctx = c.getContext('2d')
       if (!ctx) return 0
       ctx.drawImage(img, 0, 0)
-      const y0 = Math.round(c.height * 0.6)
-      const y1 = Math.round(c.height * 0.78)
+      const y0 = Math.round(c.height * 0.63)
+      const y1 = Math.round(c.height * 0.86)
       const { data } = ctx.getImageData(0, y0, c.width, y1 - y0)
       let dark = 0
       for (let i = 0; i < data.length; i += 4) {
@@ -265,6 +269,9 @@ try {
     check('A129 · le bouton d’approbation est à l’écran sans défiler', inView === true)
     await confirm.click()
     await page.waitForTimeout(1200)
+    /* Le bloc « הסכמים » est replié : on le déplie pour lire ce qu'il retient. */
+    await page.locator('[data-testid="section-farm-form-agreements:farm-01"]').click()
+    await page.waitForTimeout(500)
     const chip = await page.locator('[data-testid="signature-open"]').first().innerText()
     check('A129 · la fiche retient la signature', chip.trim().length > 0, chip.trim())
     await context.close()

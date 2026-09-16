@@ -41,8 +41,15 @@ import { PAGE, canvasesToPdfFile, newPageCanvas } from '../report/pdf'
  */
 
 const S = PAGE.scale
-/** Marge de page, en points PDF. La même que le rapport. */
-const M = 46
+/**
+ * Marge de page, en points PDF.
+ * ★ AN5.5 (2026-09-16) — 46 → 34 : « resserre les marges ». Le texte gagne
+ * vingt-quatre points de largeur, donc des lignes, donc de la hauteur — et
+ * c'est la hauteur qui faisait défiler le document à l'ouverture.
+ */
+const M = 34
+/** ★ AN5.5 — le logo ne dépasse pas cette HAUTEUR, quelle que soit sa largeur réglée. */
+const LOGO_MAX_H = 46
 /** Largeur utile. */
 const W = PAGE.width / S - 2 * M
 /** Le pied de page occupe les 44 derniers points ; le texte s'arrête avant. */
@@ -273,7 +280,11 @@ async function drawLogo(
   const img = own ? await loadImage(logo.src as string) : await loadMark()
   if (!img || img.width === 0) return y + 6
 
-  const w = logo.width
+  /* ★ AN5.5 — « réduis le logo » : la largeur réglée reste la règle, la
+     hauteur est plafonnée (un logo carré de 160 pt mangeait le premier tiers
+     de l'écran avant la première ligne du texte). */
+  const k = Math.min(1, LOGO_MAX_H / ((img.height / img.width) * logo.width))
+  const w = logo.width * k
   const h = (img.height / img.width) * w
   /* Le document est en hébreu : « start » est la DROITE de la page. */
   const x =
@@ -298,7 +309,18 @@ async function drawLogo(
       ctx.drawImage(stencil, x * S, y * S, w * S, h * S)
     }
   }
-  return y + h + 22
+  return y + h + 14
+}
+
+export interface DrawOptions {
+  /**
+   * ★★ AN5.5 — L'APERÇU DE LA FENÊTRE DE SIGNATURE. Même texte, mêmes lignes,
+   * même bloc de signature que le PDF ; deux différences, toutes deux du
+   * PAPIER VIDE : le bloc de signature suit le texte au lieu d'être descendu à
+   * mi-page, et la page est coupée sous le dernier trait (le pied suit). Le PDF,
+   * lui, reste une page A4 entière.
+   */
+  preview?: boolean
 }
 
 /**
@@ -309,6 +331,7 @@ async function drawLogo(
  */
 export async function drawAgreementPages(
   input: AgreementPageInput,
+  options: DrawOptions = {},
 ): Promise<HTMLCanvasElement[]> {
   /* Les fontes sont auto-hébergées : sans cette attente la première page sort
      en police de repli, une fois, et jamais les suivantes. */
@@ -318,7 +341,9 @@ export async function drawAgreementPages(
   const left = M
   const sheets: Sheet[] = [newSheet()]
   let sheet = sheets[0]
-  let y = 54
+  let y = options.preview ? 30 : 44
+  /** ★ AN5.5 — le bas du contenu de chaque feuille, pour la coupe de l'aperçu. */
+  const contentBottom: number[] = [0]
 
   const nextSheet = (): void => {
     sheet = newSheet()
@@ -326,7 +351,11 @@ export async function drawAgreementPages(
     y = 62
   }
   const room = (needed: number): void => {
-    if (y + needed > BOTTOM) nextSheet()
+    if (y + needed > BOTTOM) {
+      contentBottom[sheets.length - 1] = y
+      nextSheet()
+      contentBottom.push(0)
+    }
   }
 
   y = await drawLogo(sheet.ctx, input.logo, y)
@@ -376,7 +405,11 @@ export async function drawAgreementPages(
 
   // --- Le bloc de signature, jamais coupé --------------------------------
   const SIG_HEIGHT = 18 + 104 + 18 + 46
-  if (y + 40 + SIG_HEIGHT > BOTTOM) nextSheet()
+  if (y + 40 + SIG_HEIGHT > BOTTOM) {
+    contentBottom[sheets.length - 1] = y
+    nextSheet()
+    contentBottom.push(0)
+  } else if (options.preview) y += 30
   else y = Math.max(y + 40, sheets.length === 1 ? 470 : y + 40)
 
   {
@@ -429,6 +462,7 @@ export async function drawAgreementPages(
       input.dateLabel,
       input.signature ? input.signedAtText : '',
     )
+    contentBottom[sheets.length - 1] = y + 30
   }
 
   // --- Le pied, sur CHAQUE page ------------------------------------------
@@ -442,10 +476,21 @@ export async function drawAgreementPages(
       sheets.length > 1
         ? `${input.footer}   ·   ${i + 1} / ${sheets.length}`
         : input.footer
-    ctx.fillText(text, (PAGE.width / S / 2) * S, (PAGE.height / S - 30) * S)
+    const footY = options.preview
+      ? Math.min(PAGE.height / S - 30, (contentBottom[i] || BOTTOM) + 12)
+      : PAGE.height / S - 30
+    ctx.fillText(text, (PAGE.width / S / 2) * S, footY * S)
   })
 
-  return sheets.map((s) => s.canvas)
+  if (!options.preview) return sheets.map((s) => s.canvas)
+  return sheets.map((s, i) => {
+    const h = Math.min(PAGE.height / S, (contentBottom[i] || BOTTOM) + 22)
+    const out = document.createElement('canvas')
+    out.width = s.canvas.width
+    out.height = Math.round(h * S)
+    out.getContext('2d')?.drawImage(s.canvas, 0, 0)
+    return out
+  })
 }
 
 /** La première page seule — ce que l'aperçu affiche quand il n'en montre qu'une. */

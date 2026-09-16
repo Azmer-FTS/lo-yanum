@@ -22,14 +22,13 @@ import {
   activitiesOf,
   typeOfActivities,
   ringAreaDunams,
-  fromDayKey,
+  formatDate,
   haversineKm,
   isEmail,
   inherited,
   iso,
   keepsLivestock,
   liaisonIsFarmer,
-  localDayKey,
   mergePeople,
   nearestLocalities,
   newAgreementId,
@@ -65,7 +64,6 @@ import { MapSplit } from '../../components/MapSplit'
 import { PinMap } from '../../components/PinMap'
 import { PositionLinkField } from '../../components/PositionLinkField'
 import {
-  Field,
   FormActions,
   FormSection,
   SelectField,
@@ -75,6 +73,7 @@ import {
 } from '../../components/fields'
 import { PageHeader } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
+import { useLocale } from '../../hooks/useLocale'
 
 /** Compact camera/import pair for an inline contact row. */
 function PhotoCompact({
@@ -338,6 +337,7 @@ function PersonEditor({
 
 export function FarmFormScreen() {
   const { t } = useTranslation()
+  const locale = useLocale()
   const navigate = useNavigate()
   const { farmId } = useParams()
   const [params] = useSearchParams()
@@ -396,7 +396,12 @@ export function FarmFormScreen() {
   )
   const [livestockOpen, setLivestockOpen] = useState(false)
   /** P3.3 — which agreement's pad is open. */
-  const [openSignature, setOpenSignature] = useState<string | null>(null)
+  /**
+   * ★★ AN5 — l'accord en cours de signature : un accord existant non signé, ou
+   * un accord neuf qui n'entre dans la liste qu'avec l'encre. La date est
+   * celle du JOUR et le signataire l'agriculteur de la fiche, déjà inscrits.
+   */
+  const [signing, setSigning] = useState<Agreement | null>(null)
   const [agreements, setAgreements] = useState<Agreement[]>(
     existing?.agreements ?? [],
   )
@@ -739,6 +744,24 @@ export function FarmFormScreen() {
     />
   )
 
+  const startSigning = (existingAgreement?: Agreement) => {
+    const unsigned = existingAgreement ?? agreements.find((a) => !a.signature)
+    setSigning(
+      unsigned
+        ? {
+            ...unsigned,
+            signedAt: unsigned.signature ? unsigned.signedAt : iso(now()),
+            signedBy: unsigned.signedBy || farmer.name.trim(),
+          }
+        : {
+            id: newAgreementId(),
+            signedAt: iso(now()),
+            signedBy: farmer.name.trim(),
+            fileName: t('form.agreementFileName', { name: name.trim() || '—' }),
+          },
+    )
+  }
+
   const peopleCount =
     (farmer.name.trim() !== '' || farmer.phone.trim() !== '' ? 1 : 0) +
     contacts.filter((c) => c.name.trim() !== '' || c.phone.trim() !== '').length
@@ -765,6 +788,42 @@ export function FarmFormScreen() {
           label: t('farms.title'),
         }}
       />
+
+      {/**
+        * ★★ AN6 (2026-09-16) — L'EN-TÊTE ÉPINGLÉ. « Quand je fais défiler le
+        *    formulaire, je ne sais plus quelle ferme j'édite. » Photo, nom de
+        *    la ferme, nom de l'agriculteur — tels qu'ils sont À L'ÉCRAN, donc
+        *    à jour pendant la frappe — sur une ligne de 60 px collée en haut
+        *    de ce qui défile. ★ AN5 : il porte le bouton de signature, parce
+        *    que le bloc « הסכמים » est replié et qu'un bouton dans un bloc
+        *    replié ne se voit pas.
+        */}
+      <div
+        data-testid="farm-edit-sticky"
+        /* Un élément collant s'arrête au REMBOURRAGE du panneau qui défile (20 px en
+           tête) : le `::before` remplit cet interstice, sinon le formulaire y
+           passait, visible au-dessus de l'en-tête (vu sur capture à 1 376 px). */
+        className="sticky top-[var(--shell-top,0px)] z-20 -mx-[var(--content-pad,1rem)] mb-4 flex items-center gap-3 border-b border-edge-subtle bg-surface-base px-[var(--content-pad,1rem)] py-2 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-6 before:bg-surface-base before:content-['']"
+      >
+        <Avatar photo={photo} name={name || '—'} size="md" shape="square" />
+        <div className="min-w-0 flex-1">
+          <p data-testid="farm-edit-sticky-name" className="truncate text-caption font-semibold text-content-primary">
+            {name.trim() || farmName.trim() || t('farms.new')}
+          </p>
+          <p data-testid="farm-edit-sticky-farmer" className="muted truncate">
+            {farmer.name.trim() || t('people.noFarmer')}
+          </p>
+        </div>
+        <button
+          type="button"
+          data-testid="farm-sign"
+          className="btn-secondary shrink-0"
+          onClick={() => startSigning()}
+        >
+          <Icon name="edit" size={15} />
+          {t('agreement.signNow')}
+        </button>
+      </div>
 
       {/**
         * ═══════════════════════════════════════════════════════════════════
@@ -1456,23 +1515,11 @@ export function FarmFormScreen() {
           action={
             <button
               type="button"
-              onClick={() =>
-                setAgreements((prev) => [
-                  ...prev,
-                  {
-                    id: newAgreementId(),
-                    signedAt: iso(now()),
-                    signedBy: '',
-                    fileName: t('form.agreementFileName', {
-                      name: name.trim() || '—',
-                    }),
-                  },
-                ])
-              }
+              onClick={() => startSigning()}
               className="btn-ghost min-h-[2.75rem]"
             >
-              <Icon name="plus" size={15} />
-              {t('form.addAgreement')}
+              <Icon name="edit" size={15} />
+              {t('agreement.signNow')}
             </button>
           }
         >
@@ -1484,60 +1531,12 @@ export function FarmFormScreen() {
                 key={a.id}
                 className="rounded-field border border-edge-subtle bg-surface-high p-3 col-span-full"
               >
-                <div className="auto-cols gap-3 [--col-min:13rem]">
-                  <TextField
-                    label={t('farms.signedBy')}
-                    value={a.signedBy}
-                    onChange={(signedBy) =>
-                      setAgreements((prev) =>
-                        prev.map((x, j) => (j === i ? { ...x, signedBy } : x)),
-                      )
-                    }
-                    kind="name"
-                  />
-                  <Field label={t('form.signedAt')}>
-                    <input
-                      type="date"
-                      data-kind="date"
-                      dir="ltr"
-                      className="input ltr-nums"
-                      value={localDayKey(new Date(a.signedAt))}
-                      onChange={(e) => {
-                        if (!e.target.value) return
-                        const signedAt = iso(fromDayKey(e.target.value))
-                        setAgreements((prev) =>
-                          prev.map((x, j) => (j === i ? { ...x, signedAt } : x)),
-                        )
-                      }}
-                    />
-                  </Field>
-                </div>
-                {/* ★★ AF1.2 — LE DOCUMENT D'ABORD, LE PAD DESSOUS. */}
-                {openSignature === a.id && (
-                  <AgreementSignModal
-                    farm={signingFarm}
-                    agreement={a}
-                    onClose={() => setOpenSignature(null)}
-                    onCommit={(signature) => {
-                      /* ★★ AF1.3 — l'encre NEUVE date le document, et seulement elle. */
-                      setAgreements((prev) =>
-                        prev.map((x, j) =>
-                          j === i
-                            ? {
-                                ...x,
-                                signature,
-                                signedAt:
-                                  signature && signature !== x.signature
-                                    ? iso(now())
-                                    : x.signedAt,
-                              }
-                            : x,
-                        ),
-                      )
-                      setOpenSignature(null)
-                    }}
-                  />
-                )}
+                {/* ★ AN5.3 — plus de champs « signataire » et « date » ici : ils
+                    sont inscrits, et modifiables, DANS la fenêtre de signature. */}
+                <p className="text-caption text-content-primary" data-testid="agreement-summary">
+                  {a.signedBy || farmer.name.trim() || '—'}
+                  <span className="muted ltr-nums"> · {formatDate(a.signedAt, locale)}</span>
+                </p>
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                   <span className="flex items-center gap-2">
                     <span
@@ -1553,9 +1552,7 @@ export function FarmFormScreen() {
                       type="button"
                       data-testid="signature-open"
                       className="btn-ghost min-h-[2.75rem]"
-                      onClick={() =>
-                        setOpenSignature((cur) => (cur === a.id ? null : a.id))
-                      }
+                      onClick={() => startSigning(a)}
                     >
                       <Icon name="edit" size={15} />
                       {a.signature ? t('agreement.view') : t('agreement.openReader')}
@@ -1597,6 +1594,25 @@ export function FarmFormScreen() {
             className="col-span-full"
           />
         </FormSection>
+
+        {signing && (
+          <AgreementSignModal
+            farm={signingFarm}
+            agreement={signing}
+            onClose={() => setSigning(null)}
+            onCommit={(signature, meta) => {
+              /* ★★ AF1.3 — l'encre NEUVE date le document ; ★ AN5 — le nom et
+                 la date viennent de la fenêtre, où ils ont pu être corrigés. */
+              setAgreements((prev) => {
+                const next = { ...signing, ...meta, signature }
+                return prev.some((x) => x.id === signing.id)
+                  ? prev.map((x) => (x.id === signing.id ? next : x))
+                  : [...prev, next]
+              })
+              setSigning(null)
+            }}
+          />
+        )}
 
         <FormActions
           onCancel={cancel}
