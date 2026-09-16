@@ -85,8 +85,8 @@ for (const vp of VIEWPORTS) {
     await shot(page, `${tag}-3-edition-details-un-champ-par-verite`)
 
     await go(`/coordinator/farms/${dani}`)
-    await page.locator('[data-testid="farm-sign"]:visible').first().click()
-    await page.waitForSelector('[data-testid="agreement-preview-page"]', { timeout: 20000 }).catch(() => undefined)
+    await page.locator('[data-testid="farm-open-assoc-form"]').first().click()
+    await page.waitForSelector('[data-testid="assoc-form"]', { timeout: 20000 }).catch(() => undefined)
     await page.waitForTimeout(1500)
     await shot(page, `${tag}-4-signature-a-louverture`)
 

@@ -261,13 +261,15 @@ export function AssociationFormModal({
             }}
           />
           <div className="min-w-0">
-            <h2 data-testid="assoc-form-title" className="text-body font-bold text-content-primary">
-              {t('assocForm.title')}
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <h2 data-testid="assoc-form-title" className="text-body font-bold text-content-primary">
+                {t('assocForm.title')}
+              </h2>
               {/* Le lieu est CONNU (AK3 ⛔) : dit sur la même ligne, jamais choisi. */}
-              <span className="muted ms-2 font-normal" data-testid="assoc-form-place">
+              <span className="muted" data-testid="assoc-form-place">
                 {farm.farmName || farm.name}
               </span>
-            </h2>
+            </div>
           </div>
         </div>
       }

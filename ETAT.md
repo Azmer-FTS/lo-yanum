@@ -1,5 +1,212 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AN — LOGIQUE D'INTERFACE, CONTRADICTIONS, RÉGRESSIONS. 2026-09-17. LIRE EN PREMIER.**
+>
+> Consigne centrale : « une porte verte devant un défaut réel est pire qu'une
+> porte rouge ». La preuve de chaque correctif est une MESURE (simulateur iPad,
+> ou navigateur réel sur le déployé), pas une lecture d'attributs. Là où la
+> mesure est impossible, c'est écrit. Ordre suivi : AN1 → AN13.
+>
+> ## AN1 — LES TROIS CONTRADICTIONS
+>
+> **AN1.1 thème (⚠️ NON REPRODUIT).** Pour la première fois, la configuration
+> du PO a été mesurée : app INSTALLÉE sur l'écran d'accueil (« Open as Web
+> App »), mode autonome, simulateur iPad Air 11″, iPadOS 26.3, thème « לפי
+> המכשיר ». Bascule clair → sombre de l'appareil : **en direct**, **au retour
+> d'arrière-plan**, **au déverrouillage** — l'app suit à chaque fois (pixel du
+> fond 243,244,246 → 11,17,25 ; `docs/an/an1-pwa-*`). La porte de l'app réelle
+> suit aussi. Le défaut du PO n'est donc pas reproduit ; ceinture ajoutée :
+> relecture de `prefers-color-scheme` toutes les 15 s tant que l'app est
+> visible, et à chaque redimensionnement (`ui/theme.tsx`). Si ça recommence :
+> la ligne « המכשיר · הבחירה · מוצג » (הגדרות › תצוגה) dit laquelle des trois
+> valeurs ment.
+>
+> **AN1.2 clavier — LA PORTE AVAIT RAISON SUR LES ATTRIBUTS ET TORT SUR L'iPAD.**
+> Mesuré sur le simulateur iPad, clavier matériel DÉBRANCHÉ : `inputmode=
+> "numeric"`, `"tel"`, `"decimal"` et `type="tel"` ouvrent **tous le clavier
+> complet**, sur sa couche chiffres/symboles (ABC, @, #, globe —
+> `docs/an/an1-ipad-*-clavier-complet.png`). **L'iPad n'a pas de pavé numérique
+> pour une page web** ; aucun attribut ne peut donner au PO ce qu'il demande.
+> Réponse : `ui/components/NumericPad.tsx` — sur iPad seulement, un champ
+> numérique touché passe en `inputmode="none"` (le système n'ouvre rien) et un
+> pavé 3×4 de l'app s'affiche (הבא, סיום, ⌫, ⌨ pour rendre le clavier du
+> système). Les chiffres entrent par un vrai `input` : mise en forme du
+> téléphone et zéro de tête tiennent. **Vu sur le DÉPLOYÉ `a0af144`**
+> (`docs/an/an1-ipad-DEPLOYE-a0af144-tz-pave.png`). Tout champ `kind` numérique
+> est pris, aucun n'est à modifier un par un. Un iPhone garde son pavé système.
+>
+> **AN1.3 téléphone générique — trouvé et supprimé.** `config.ts` portait
+> `052-0000049` comme téléphone du coordinateur ; `readCoordinator()` le rendait
+> dès que le numéro stocké était vide, et la carte du coordinateur ne
+> s'enregistrait QUE par « שמירה » : taper son numéro et quitter l'écran le
+> perdait, le faux revenait. Aussi `regionalSecurity: 08-0000050` dans les
+> numéros d'urgence. Les deux retirés ; la carte s'enregistre à la frappe ;
+> sans numéro, pas de lien d'appel vers un vide.
+>
+> ## AN2 — AUCUNE FICHE SANS POSITION SUR UNE CARTE
+>
+> Base réelle vérifiée : les 9 fiches à `31.7683, 35.2137` (Jérusalem, dont
+> משק שלם) portent bien `position_missing` — le défaut était l'AFFICHAGE.
+> `farmPoint(farm)` (core/geo.ts) rend `null` pour une fiche sans position ;
+> toute lecture pour montrer, relier ou mesurer passe par lui.
+>
+> **Points de repli recensés et traités :**
+>
+> | Où | Avant | Maintenant |
+> |---|---|---|
+> | planificateur (`planRoute`, marqueurs) | étape 1 à Jérusalem | `route.unplaced` : sélectionnable, « מיקום חסר », hors tracé |
+> | journée (`buildDayPlan`) | horaire calculé depuis Jérusalem | `plan.unplaced` ; pas de suggestion |
+> | carte de la fiche (`AnchorMap`) | repère + zoom 13 sur Jérusalem | aucun repère, échelle du pays |
+> | lien Google Maps de la fiche | vers Jérusalem | absent |
+> | missions / chauffeur / agriculteur (dépose par défaut) | repère + Waze vers Jérusalem | absents |
+> | point de rencontre (`meet.tsx`) | dépose déplaçable posée à Jérusalem | absente tant qu'elle n'est pas posée |
+> | message du chauffeur, convocation | coordonnées + Waze vers le repli | lignes omises |
+> | lien de garde, écran d'urgence | carte du site sur le repli | pas de carte |
+> | incidents (repli de position) | incident daté à Jérusalem | `null` |
+> | nouvelle עמדה | posée au repli | NEGEV_CENTER |
+> | visite planifiée | position du repli | `null` (מיקום חסר) |
+> | région déduite (`farmRegion`, export) | région de Jérusalem | aucune |
+> | import de roster (`toFarmDrafts`) | repli **sans le drapeau** | drapeau posé |
+>
+> Restent, et c'est voulu : la caméra initiale d'une carte vide (ce n'est pas
+> une fiche placée) et le point de départ par défaut du planificateur (réglage
+> « נקודת מוצא »).
+>
+> **AN2.4** : repères dont les DESSINS se recouvrent (< 26 px centre à centre)
+> → un disque avec leur nombre ; le toucher zoome, ou liste les noms au même
+> point. ⚠️ D'abord calculé sur les points géographiques : une mission (ancrée
+> au centre) recouvrait la tête d'une épingle (ancrée à la pointe) sans être
+> regroupée — vu par A226.
+>
+> ## AN3 — LE TRACÉ SUR ROUTE PARTOUT
+>
+> Mesuré : seul l'itinéraire libre traçait sur route ; le planificateur
+> dessinait `routePolyline` (vol d'oiseau, `legacy:1` en permanence). L'agenda
+> et « ma journée » ne dessinent AUCUN trajet (repères numérotés). Branché :
+> `ui/routing/useRoadRoute.ts`, partagé. **Intermittence mesurée**
+> (`scripts/anflicker.ts`, source de la carte échantillonnée) : jamais vide,
+> même en changeant de mode ; mais à chaque étape ajoutée, tout le tracé
+> routier devenait un trait droit jusqu'au retour du calcul. Les étapes déjà
+> tracées restent désormais ; seule la nouvelle est estimée en pointillé.
+>
+> ## AN4 — LA BORDURE À DROITE
+>
+> Mesuré (`scripts/anborder.ts`, 4 modes × 3 largeurs) : en plein écran de
+> l'outil carte, la toile se calait en 0,0 au lieu de 12,12 → bande de 24 px à
+> droite (et en bas). Cause : la `className` du conteneur change au passage en
+> plein écran, React réécrit `class` et **efface `maplibregl-map`** (qui porte
+> `position: relative`) posée par MapLibre. Écrite dans la chaîne. Et en mode
+> « plein », la bordure carte/liste doublait celle du rail : retirée.
+>
+> ## AN5 — LA SIGNATURE EN UN GESTE
+>
+> ★★ **CE QUE L'iPAD A MONTRÉ.** Deux fenêtres de signature coexistaient :
+> celle de la FICHE (AK4, « הסכם התנדבות- ארצנו », bouton « החתמה על ההסכם » du
+> bandeau — déjà un seul geste, mais logo, trois champs, puis le texte plus bas :
+> c'est le « il doit défiler pour lire ») et celle de l'ÉDITION (déplier
+> « הסכמים », « הוספת הסכם », taper le signataire, choisir la date, ouvrir le
+> document : les « trois étapes »). J'ai d'abord repris la seconde et ajouté un
+> bouton sur la fiche — un DOUBLON du bouton AK4, vu sur le simulateur, retiré.
+>
+> **Maintenant, UNE fenêtre : celle d'AK4**, qui porte les règles métier (champs
+> requis, statut « נחתם », rien d'écrasé) :
+> - ouverte par le bouton du bandeau de la fiche, et par « החתמה » de l'en-tête
+>   épinglé de l'édition (mode brouillon `onSign` : rien n'est écrit avant
+>   « שמירה » du formulaire) ;
+> - pleine hauteur ; logo 32 px et titre sur une ligne ; les champs sur une
+>   ligne à l'iPad : **nom de l'agriculteur inscrit** (repris du contact
+>   principal si les colonnes sont vides) et **corrigible sur place**, ת״ז et
+>   נייד (figés s'ils sont connus, AK4.2), **date du jour inscrite et
+>   modifiable** ; l'encadré הצהרה entier à l'écran (corps 16 px) ; la zone de
+>   signature prend la hauteur restante ; « שמירה » en bas ;
+> - plus de champs signataire/date dans le formulaire ; la carte d'un accord
+>   ouvre la LECTURE de son document (`AgreementSignModal`, aperçu sans papier
+>   vide, logo ≤ 46 pt, marges 34 pt).
+>
+> Mesuré aux trois largeurs, fiche ET édition : texte entier sans défilement,
+> signature et bouton à l'écran, nom et date inscrits (A229, 46/46).
+
+> ## AN6 — EN-TÊTE ÉPINGLÉ
+>
+> 65 px collés en haut de l'édition : photo, nom de la ferme, agriculteur (tels
+> qu'à l'écran), bouton de signature. Vu sur capture : à 1 376 px le
+> rembourrage du panneau laissait passer le formulaire au-dessus — comblé.
+>
+> ## AN7 — LES DOUBLONS
+>
+> **Recensement de l'écran d'édition :**
+>
+> | Doublon | Décision |
+> |---|---|
+> | « סוג יישות » (חווה/מושב/אחר) ↔ « סוג הישות המשפטית » (dont מושב, מושב שיתופי, קיבוץ) | **FUSIONNÉS** : « סוג המקום », la liste de l'association + « אחר » ; le genre (repère, zones) en est déduit |
+> | « אזור » (texte) ↔ « אזור סטנדרטי » (liste qui ne sélectionnait rien de visible) | **FUSIONNÉS** : une liste, 1ʳᵉ ligne = la région que l'adresse désigne, « אחר » ouvre le texte |
+> | « מועצה אזורית » tapée à la main | **LISTE** des 54 conseils (למ״ס 2021), remplie par le יישוב, proposée par l'épingle |
+> | signataire + date dans la carte d'accord ↔ fenêtre de signature | **retirés du formulaire** (AN5) |
+> | photo d'une personne : avatar ↔ cercle « תמונת פנים » | **un seul** : l'avatar (AN9) |
+> | « צילום עכשיו » ↔ « העלאת קובץ » | **un seul bouton** (AN9) |
+> | nom de la personne répété sous le titre de sa carte | **retiré** ; résumé une ligne (AN10) |
+> | agriculteur ↔ contact principal | déjà fusionnés en AM2 |
+> | « איש קשר בשטח » ↔ agriculteur | gardé : la case « même personne » recopie (AH1.3) |
+> | « שם » ↔ « שם החווה » | **gardés** : le nom de la fiche (listes) et le nom officiel (documents) ; le premier se propose du second |
+> | « סמל יישוב » ↔ « יישוב » | **gardés** : le code est une clé d'import vérifiée UNIQUE par fiche ; le remplir depuis le יישוב bloquerait la 2ᵉ ferme d'un même יישוב |
+> | « מוקד המועצה » ↔ « טלפון מרכזיית המועצה » | **gardés** : deux numéros différents (AE2b.2) |
+>
+> Régions : 13, et **3 localités réelles tombaient hors de toutes** (ערד, כרם
+> שלום, מפעלי ים המלח) — rangées par une tolérance de couture de 6 km ; la mer,
+> Amman, le Sinaï restent sans région (anpass).
+>
+> ## AN8 — DÉVOILEMENT PROGRESSIF
+>
+> « תוקף ההסכם » n'apparaît qu'après le type d'accord (une date déjà saisie
+> reste visible). Une date vide affiche « בחירת תאריך » et le calendrier. Tous
+> les blocs se replient, sauf l'en-tête ; résumé sur la ligne repliée ; en
+> édition « פרטים » est replié. Un bloc replié qui contient un champ en faute
+> s'OUVRE au refus d'enregistrer (le champ reçoit le focus, AM1). Aucune option
+> retirée.
+>
+> ## AN9 — LA PHOTO
+>
+> Un `<input type="file" accept="image/*">` **sans** `capture` : iOS montre
+> alors son menu. Vu sur le simulateur : « Photo Library » et « Choose File »
+> (`docs/an/an9-ipad-un-bouton-trois-sources.png`). ⚠️ **« Take Photo » n'y
+> figure pas parce que le simulateur n'a pas d'appareil photo** : sur un vrai
+> iPad, iOS l'ajoute à ce menu. Non prouvable ici. Bouton à côté de la
+> vignette ; pour une personne, l'avatar en tête (badge appareil photo).
+>
+> ## AN10 — LE CONTACT EN RÉSUMÉ
+>
+> Le contact principal connu (l'agriculteur, par défaut) : une ligne — photo,
+> nom · portable — et « עריכה ». « הוספת איש קשר נוסף » juste dessous. Désigner
+> un autre contact le fait passer en résumé à sa place.
+>
+> ## AN11 — UN SEUL MOTIF : LA PAGE
+>
+> Ferme, moshav, garde : pages. Volontaire, conducteur, rendez-vous, événement :
+> étaient des fenêtres → **pages** (`screens/coordinator/FormPages.tsx`,
+> `Modal presentation="page"`). Choix : la page est le seul motif qui accueille
+> la carte dont ferme et moshav ont besoin, et elle a une adresse (le geste
+> retour de l'iPad la ferme). A236 a trouvé que la page de garde n'avait pas la
+> flèche retour commune : corrigé. Restent des fenêtres : confirmations,
+> lectures, signature, et le signalement d'incident (ni création ni édition
+> de la liste demandée — à trancher par le PO s'il le souhaite).
+>
+> ## AN12 — LA POSITION REDEMANDÉE
+>
+> Mesuré sur le simulateur, PWA installée : **trois invites au premier usage,
+> toutes d'iOS** — Safari (système), le site dans Safari, puis le site dans
+> l'app installée (conteneur séparé). Ensuite **aucune**, même après
+> fermeture forcée et relance. L'app n'interroge la localisation que par une
+> porte et sur un geste (A237 compte les appels). Correctifs à sa main : un
+> relevé de moins de 10 min répond dans les réglages ; une ligne dit de choisir
+> « Allow While Using App » — « Allow Once » fait redemander iOS à chaque
+> ouverture, et ça l'app ne peut pas l'empêcher.
+
+>
+> ## AN13 — VÉRIFICATION
+>
+> _(complété à la fin de la passe)_
+
+
 > 🏁 **PASSE AM — LE FORMULAIRE DE FERME, REPRIS EN ENTIER. 2026-09-16. LIRE EN PREMIER.**
 >
 > Le PO a édité une ferme réelle et s'est retrouvé bloqué (« c'est un peu le

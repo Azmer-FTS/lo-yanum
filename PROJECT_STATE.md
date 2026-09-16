@@ -8,14 +8,12 @@
 
 - **Branche** : `main`. **Dernier commit** : voir `git log --oneline -1`
   (passe **AM**, 2026-09-16).
-- **Passe AN EN COURS** (2026-09-16) — logique d'interface, contradictions,
-  régressions. Consigne : AN1 → AN13 dans l'ordre, preuve = mesure SUR LE
-  DÉPLOYÉ dans un navigateur réel (+ simulateur iPad). Fait et poussé :
-  AN1 (`a0af144`, vérifié déployé : anui 13/13 + iPad simulateur), AN2 · AN3
-  (`48abf2f`). Reste : vérifier AN2/AN3 sur le déployé, puis AN4 → AN13.
-  Porte : `bun run anui` (A222–A227 à ce jour) ; rouge `DIST=dist-an-before
-  SKIP_BUILD=1` (build de 1dacc2c + `basemap/` copié à la main, sinon la carte
-  ne charge pas). Section « AN » ci-dessous.
+- **Passe AN** (2026-09-16/17) — logique d'interface, contradictions,
+  régressions. AN1 → AN12 codés, commités, poussés (`a0af144` … `94c830d`) ;
+  AN13 (vérification sur le déployé, captures) : voir `ETAT.md` § AN13.
+  Porte : `bun run anui` (A222–A237) + `bun run anpass` ; captures
+  `bun run ancaptures`. Rouge d'avant : `DIST=dist-an-before SKIP_BUILD=1 bun
+  run anui` (build de 1dacc2c + `basemap/` copié à la main).
 - **Passe AM TERMINÉE** (2026-09-16) — le formulaire de ferme repris : יישוב et
   épingle facultatifs, 1 330 localités, personnes en une carte, édition dans
   l'ordre du détail, claviers partout, barre opaque, bandeaux empilés,
@@ -49,11 +47,28 @@
 | AN2 sans position | ✅ `farmPoint()` (core/geo.ts) partout où une ferme est montrée/reliée ; planificateur : sélectionnable, « מיקום חסר », hors tracé ; import marque enfin `positionMissing` |
 | AN2.4 regroupement | ✅ MapCanvas : disque avec le nombre, sur le centre du dessin |
 | AN3 route | ✅ `ui/routing/useRoadRoute.ts` partagé (libre + planificateur) ; étapes tracées gardées pendant un recalcul. Agenda / ma journée : aucun tracé (repères seulement) |
+| AN4 bordure | ✅ React effaçait `maplibregl-map` (position relative) au passage en plein écran → toile décalée de 12 px ; écrite dans la className (MapCanvas). Double trait carte/rail retiré en mode plein |
+| AN5 signature | ✅ bouton « החתמה » (fiche + en-tête d'édition) → fenêtre pleine hauteur, signataire/date inscrits et modifiables sur place, aperçu sans papier vide (`drawAgreementPages(…,{preview:true})`), logo ≤ 46 pt, marges 34 pt. ⚠️ téléphone : corps ≈ 7 px |
+| AN6 en-tête | ✅ `farm-edit-sticky` 65 px : photo, ferme, agriculteur, signature |
+| AN7 doublons | ✅ « סוג המקום » (une liste, genre déduit) ; « אזור » (liste + אחר) ; « מועצה אזורית » (54 du למ״ס, `core/councils.ts`, `scripts/councils.ts`), remplie par le יישוב, proposée par l'épingle ; `regionOf` tolère 6 km de couture (ערד, כרם שלום, סדום) |
+| AN8 dévoilement | ✅ tous les blocs repliables (`FormSection forceOpen` sur erreur) ; תוקף après le type ; date vide « בחירת תאריך » |
+| AN9 photo | ✅ `usePhotoPicker` : un input sans `capture` ; avatar de la personne = le bouton. ⚠️ « Take Photo » non visible sur simulateur (pas de caméra) |
+| AN10 contact | ✅ contact principal en résumé (nom · portable), ajout juste dessous (`order`) |
+| AN11 motif | ✅ page partout : `screens/coordinator/FormPages.tsx` (volontaire, conducteur, visite, rencontre), `Modal presentation="page"`, `state.returnTo` |
+| AN12 position | ✅ mesuré : 3 invites iOS au 1er usage, 0 ensuite (même relancé) ; relevé 10 min dans les réglages ; aide « Allow While Using App » après le geste |
 
 Décisions AN posées :
 1. **Une fiche sans position n'a pas de point** : toute lecture pour montrer, relier ou mesurer passe par `farmPoint(farm)`. Le repli en base (Jérusalem / NEGEV_CENTER) n'est jamais affiché.
 2. **Un clavier se prouve sur un iPad, pas par ses attributs.** Nouveau champ numérique : `TextField kind` suffit, le pavé le prend.
 3. **Aucune valeur de contact inventée** dans `config.ts`.
+4. **Toute création et toute édition est une PAGE** (adresse, flèche retour
+   commune `page-back`), jamais une fenêtre. Les fenêtres : confirmations,
+   lectures, signature, signalement d'incident.
+5. **Un champ n'existe qu'une fois par vérité** ; une valeur déductible de
+   l'adresse (מועצה, région) est remplie par le geste qui choisit le יישוב, ou
+   PROPOSÉE depuis l'épingle.
+6. **Une personne = une photo (son avatar)** ; le contact principal connu se lit
+   en résumé.
 
 ## Ce qui est fait dans AM
 
@@ -269,6 +284,10 @@ d'être déployé.
 >   dessus). Défaut réel de la rangée, hors AM ; tâche séparée proposée.
 > - `mapfirst` farmer-tonight : « no map found ».
 > - `layout` réglages à 390 px : 6,5 écrans avant AM, 6,0 après (plafond 6).
+> - **`aeui` A118 · A119 (4 rouges)** : le lien de garde d'un volontaire ne
+>   s'ouvre pas sur sa garde dans la démo. **Vu identique sur `1dacc2c` le
+>   2026-09-17** (31/4, avant toute modification d'AN) — probablement lié à la
+>   date de la garde de démonstration. Non traité dans AN.
 
 > ✅ **AL4 A SOLDÉ TOUTE CETTE SECTION SAUF LES DEUX DERNIÈRES LIGNES.**
 > `afui` 72/72, `settings` 36/36, `pills` 89/89, `tokens` 0 violation.

@@ -293,6 +293,10 @@ async function formScenario(browserType: BrowserType, engine: string): Promise<v
       structure.inputs.every((i) => i.font >= 16), structure.inputs.map((i) => `${i.id}:${i.font}`).join(' '))
 
     section(`A199 · A201 — ${engine} : le parcours au doigt`)
+    /* ★ AN5.2 — nom et portable sont désormais PRÉ-REMPLIS depuis le contact
+       principal de la fiche (« repris de la fiche ») ; pour mesurer le refus
+       d'un formulaire vide, la porte les vide d'abord, comme le PO le ferait. */
+    for (const id of ['assoc-field-farmerName', 'assoc-field-farmerPhone']) await page.getByTestId(id).fill('')
     /* Enregistrer vide : le refus nomme ce qui manque, la fenêtre reste. */
     await tap(page, 'assoc-save')
     check(`A201 · ${engine} · saving empty is refused, the window stays`, (await dialogOpen(page)) === 1 &&
