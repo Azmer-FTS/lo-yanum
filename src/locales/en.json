@@ -35,5 +35,10 @@
   "photo": {
     "choose": "Photo",
     "change": "Change photo"
+  },
+  "settings": {
+    "origin": {
+      "permissionHint": "If the device asks again at every launch: in the iOS prompt choose “Allow While Using App”, not “Allow Once”. iPad Settings › Privacy › Location Services › Safari Websites."
+    }
   }
 }

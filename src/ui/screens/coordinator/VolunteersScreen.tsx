@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
   archiveVolunteer,
@@ -42,7 +42,7 @@ import { useCoreValue } from '../../hooks/useCore'
 import { useProgressive } from '../../hooks/useProgressive'
 import { useLocale } from '../../hooks/useLocale'
 import { useWindowTable } from '../../hooks/useWindowTable'
-import { VolunteerFormModal } from './VolunteerFormModal'
+import { formRoutes } from './FormPages'
 
 type SortKey =
   | 'name'
@@ -106,7 +106,12 @@ export function VolunteersScreen() {
   const [archiving, setArchiving] = useState<Volunteer | null>(null)
   // PO POINT 8 — the delete the product owner had no way to perform.
   const del = useConfirmDelete()
-  const [editing, setEditing] = useState<Volunteer | null | 'new'>(null)
+  /* ★ AN11 — créer ou éditer un volontaire ouvre sa PAGE (FormPages.tsx). */
+  const navigateTo = useNavigate()
+  const setEditing = (v: Volunteer | null | 'new') => {
+    if (v === null) return
+    navigateTo(v === 'new' ? formRoutes.newVolunteer() : formRoutes.editVolunteer(v.id))
+  }
 
   /**
    * W4 — THE UNIFIED "+" ASKS THROUGH THE URL. The floating button lives in
@@ -118,10 +123,11 @@ export function VolunteersScreen() {
   const [params, setParams] = useSearchParams()
   useEffect(() => {
     if (params.get('new') !== '1') return
-    setEditing('new')
     const next = new URLSearchParams(params)
     next.delete('new')
     setParams(next, { replace: true })
+    navigateTo(formRoutes.newVolunteer())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params, setParams])
   const [history, setHistory] = useState<Volunteer | null>(null)
 
@@ -840,13 +846,6 @@ export function VolunteersScreen() {
       {del.dialog}
       {archiving && (
         <ArchiveDialog volunteer={archiving} onClose={() => setArchiving(null)} />
-      )}
-      {editing !== null && (
-        <VolunteerFormModal
-          volunteer={editing === 'new' ? null : editing}
-          yeshivot={yeshivot}
-          onClose={() => setEditing(null)}
-        />
       )}
       {history && (
         <HistoryDialog volunteer={history} onClose={() => setHistory(null)} />

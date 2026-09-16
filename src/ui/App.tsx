@@ -1,3 +1,4 @@
+import { DriverFormPage, MeetingFormPage, VisitFormPage, VolunteerFormPage } from './screens/coordinator/FormPages'
 import { NumericPad } from './components/NumericPad'
 import type { ReactNode } from 'react'
 import { Suspense, lazy, useEffect, useReducer } from 'react'
@@ -347,7 +348,12 @@ export default function App() {
               pour des lieux qui n'ont pas encore de fiche. */}
           <Route path="route/free" element={<FreeRouteScreen />} />
           <Route path="volunteers" element={<VolunteersScreen />} />
+          {/* ★★ AN11 — toute création, toute édition : une PAGE. */}
+          <Route path="volunteers/new" element={<VolunteerFormPage />} />
+          <Route path="volunteers/:volunteerId/edit" element={<VolunteerFormPage />} />
           <Route path="drivers" element={<DriversScreen />} />
+          <Route path="drivers/new" element={<DriverFormPage />} />
+          <Route path="drivers/:driverId/edit" element={<DriverFormPage />} />
           {/* G10 — ONE wizard, three templates. The kind lives in the path so
               a coordinator can be sent straight to the farms import, and so
               the back link knows which roster he came from. The legacy
@@ -409,6 +415,10 @@ export default function App() {
               two imports it is the counterpart of. */}
           <Route path="export" element={<ExportScreen />} />
           <Route path="agenda" element={<AgendaScreen />} />
+          <Route path="agenda/visit/new" element={<VisitFormPage />} />
+          <Route path="agenda/visit/:visitId" element={<VisitFormPage />} />
+          <Route path="agenda/meeting/new" element={<MeetingFormPage />} />
+          <Route path="agenda/meeting/:meetingId" element={<MeetingFormPage />} />
           <Route path="missions" element={<MissionsScreen />} />
           {/* Static segment before the :missionId param, or "new" is read as an id. */}
           <Route path="missions/new" element={<MissionWizardScreen />} />

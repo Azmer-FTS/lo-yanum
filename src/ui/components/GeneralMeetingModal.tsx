@@ -34,12 +34,15 @@ export function GeneralMeetingModal({
   meetingId,
   defaultAt,
   onClose,
+  presentation = 'page',
 }: {
   /** Editing an existing meeting; omit to create. */
   meetingId?: string
   /** ISO datetime the new meeting starts at. */
   defaultAt?: string
   onClose: () => void
+  /** ★ AN11 — rendu comme page du panneau (le motif unique). */
+  presentation?: 'overlay' | 'page'
 }) {
   const { t } = useTranslation()
   // PO POINT 8 — every deletion in this app now asks first. Before this,
@@ -123,6 +126,7 @@ export function GeneralMeetingModal({
 
   return (
     <Modal
+      presentation={presentation}
       title={t(existing ? 'meeting.edit' : 'meeting.new')}
       onClose={onClose}
     >

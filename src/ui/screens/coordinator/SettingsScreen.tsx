@@ -148,7 +148,16 @@ export function SettingsScreen() {
     setLocating(true)
     /* ★ AF2.3 — par la porte unique (`ui/geolocate.ts`) : une seule invite pour
        toute l'app, et le dernier point connu répond sans en poser du tout. */
-    void locate({ timeoutMs: 10_000 }).then((fix) => {
+    /* ★★ AN12 (2026-09-17) — « l'app redemande la position alors que je viens
+       de la donner ». Mesuré sur le simulateur iPad : trois invites au PREMIER
+       usage, et elles viennent d'iOS, pas de l'app — Safari (système), le site
+       dans Safari, puis le site dans l'app INSTALLÉE (un conteneur à part) ;
+       ensuite aucune, même après fermeture forcée. L'app n'appelle la
+       localisation que par cette porte et sur un geste. Ce qui reste à sa
+       main : un point relevé il y a moins de DIX minutes (et non deux) répond
+       sans réinterroger l'appareil, et la ligne dessous dit quoi choisir pour
+       qu'iOS ne redemande pas à chaque ouverture (« Allow Once »). */
+    void locate({ timeoutMs: 10_000, maxAgeMs: 10 * 60_000 }).then((fix) => {
       setLocating(false)
       if (!fix) {
         // Refusé, ou pas de relevé. Le champ se remplit toujours à la main,
@@ -746,6 +755,9 @@ export function SettingsScreen() {
             : originState === 'saved'
               ? t('settings.origin.saved', { coords: formatCoords(originPosition()) })
               : t('settings.origin.hint', { coords: formatCoords(originPosition()) })}
+        </p>
+        <p className="mt-1 text-micro text-content-muted" data-testid="origin-permission-hint">
+          {t('settings.origin.permissionHint')}
         </p>
       </Section>
       {/* ★★ AI3.2 — la marge des durées, sous le point de départ : les deux

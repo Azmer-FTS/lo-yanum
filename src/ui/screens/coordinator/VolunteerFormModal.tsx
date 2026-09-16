@@ -32,10 +32,13 @@ export function VolunteerFormModal({
   volunteer,
   yeshivot,
   onClose,
+  presentation = 'page',
 }: {
   volunteer: Volunteer | null
   yeshivot: string[]
   onClose: () => void
+  /** ★ AN11 — rendu comme page du panneau (le motif unique). */
+  presentation?: 'overlay' | 'page'
 }) {
   const { t } = useTranslation()
 
@@ -124,6 +127,7 @@ export function VolunteerFormModal({
 
   return (
     <Modal
+      presentation={presentation}
       title={t(volunteer ? 'volunteers.edit' : 'volunteers.new')}
       onClose={onClose}
       wide

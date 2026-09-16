@@ -60,7 +60,7 @@ import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
 import { PhoneTypeChip } from '../../components/badges'
 import { SelectField, TextArea, TextField } from '../../components/fields'
-import {
+import { PageHeader,
   Callout,
   CopyButton,
   EmptyState,
@@ -954,18 +954,13 @@ export function MissionWizardScreen() {
 
   return (
     <>
-      <Link
-        to="/coordinator/missions"
-        className="mb-3 inline-flex items-center gap-1.5 text-caption text-content-muted hover:text-content-primary"
-      >
-        <Icon name="chevron" size={15} className="ltr:-scale-x-100" />
-        {t('missions.title')}
-      </Link>
-
-      <header className="mb-4">
-        <h1 className="text-title text-content-primary">{t('wizard.title')}</h1>
-        <p className="muted mt-1">{t('wizard.subtitle')}</p>
-      </header>
+      {/* ★ AN11 — le MÊME en-tête que toute page de création : la flèche
+          retour ronde et le titre (c'était un lien texte, seul de son genre). */}
+      <PageHeader
+        title={t('wizard.title')}
+        subtitle={t('wizard.subtitle')}
+        back={{ to: '/coordinator/missions', label: t('missions.title') }}
+      />
 
       {/* F5.4 — the stepper is STICKY. It answers "where am I and how much is
           left", which is a question that arrives halfway down a long list of

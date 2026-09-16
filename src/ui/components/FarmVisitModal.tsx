@@ -34,6 +34,7 @@ export function FarmVisitModal({
   defaultFarmId,
   defaultAt,
   onClose,
+  presentation = 'page',
 }: {
   /** Editing an existing visit; omit to create a new one. */
   visitId?: string
@@ -41,6 +42,8 @@ export function FarmVisitModal({
   /** ISO datetime the new visit starts at. */
   defaultAt?: string
   onClose: () => void
+  /** ★ AN11 — rendu comme page du panneau (le motif unique). */
+  presentation?: 'overlay' | 'page'
 }) {
   const { t } = useTranslation()
   // PO POINT 8 — every deletion in this app now asks first. Before this,
@@ -92,6 +95,7 @@ export function FarmVisitModal({
 
   return (
     <Modal
+      presentation={presentation}
       title={t(existing ? 'agenda.editVisit' : 'agenda.planVisit')}
       onClose={onClose}
     >

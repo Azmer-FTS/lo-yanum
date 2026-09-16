@@ -22,9 +22,12 @@ import { Modal } from '../../components/primitives'
 export function DriverFormModal({
   driver,
   onClose,
+  presentation = 'page',
 }: {
   driver: Driver | null
   onClose: () => void
+  /** ★ AN11 — rendu comme page du panneau (le motif unique). */
+  presentation?: 'overlay' | 'page'
 }) {
   const { t } = useTranslation()
 
@@ -84,6 +87,7 @@ export function DriverFormModal({
 
   return (
     <Modal
+      presentation={presentation}
       title={t(driver ? 'driver.editDriver' : 'driver.addDriver')}
       onClose={onClose}
       wide

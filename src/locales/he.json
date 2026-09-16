@@ -331,7 +331,8 @@
       "saved": "נשמר. נקודת המוצא: {{coords}}",
       "unresolved": "לא זוהה מיקום. הזן שם יישוב מהרשימה, זוג קואורדינטות, או קישור מפה.",
       "here": "המיקום שלי",
-      "locating": "מאתר…"
+      "locating": "מאתר…",
+      "permissionHint": "אם המכשיר שואל שוב בכל פתיחה: בהודעה של iOS בחרו «Allow While Using App» ולא «Allow Once». אפשר לשנות בהגדרות ה־iPad › פרטיות › שירותי מיקום › Safari Websites."
     },
     "profile": {
       "title": "פרופיל הרכז",

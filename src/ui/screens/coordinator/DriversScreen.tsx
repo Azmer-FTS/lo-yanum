@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
   deleteDriver,
@@ -35,7 +35,7 @@ import { MapSplit } from '../../components/MapSplit'
 import { useCoreValue } from '../../hooks/useCore'
 import { useProgressive } from '../../hooks/useProgressive'
 import { useWindowTable } from '../../hooks/useWindowTable'
-import { DriverFormModal } from './DriverFormModal'
+import { formRoutes } from './FormPages'
 
 
 /**
@@ -66,10 +66,16 @@ export function DriversScreen() {
   const [locality, setLocality] = useState<string | null>(null)
   // X12.4 — the standard region, as a filter.
   const [region, setRegion] = useState<RegionId | null>(null)
-  const [editing, setEditing] = useState<Driver | null>(null)
+  /* ★ AN11 — la PAGE du conducteur (FormPages.tsx). */
+  const navigateTo = useNavigate()
+  const setEditing = (d: Driver | null) => {
+    if (d) navigateTo(formRoutes.editDriver(d.id))
+  }
   // PO POINT 8.
   const del = useConfirmDelete()
-  const [creating, setCreating] = useState(false)
+  const setCreating = (on: boolean) => {
+    if (on) navigateTo(formRoutes.newDriver())
+  }
 
   /** W4 — same seam as the volunteers roster: `?new=1` opens this modal. */
   const [params, setParams] = useSearchParams()
@@ -503,11 +509,8 @@ export function DriversScreen() {
         )}
       </MapSplit>
 
-      {creating && <DriverFormModal driver={null} onClose={() => setCreating(false)} />}
+
       {del.dialog}
-      {editing && (
-        <DriverFormModal driver={editing} onClose={() => setEditing(null)} />
-      )}
     </>
   )
 }

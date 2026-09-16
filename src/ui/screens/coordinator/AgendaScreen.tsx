@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { formRoutes } from './FormPages'
 
 import {
   MONTH_GRID_DAYS,
@@ -26,9 +27,7 @@ import type { AgendaEvent, LatLng, MissionStatus } from '@core/index'
 
 import { AgendaGrid } from '../../components/agendaGrid'
 import type { AgendaTone } from '../../components/agendaGrid'
-import { GeneralMeetingModal } from '../../components/GeneralMeetingModal'
 import { Icon } from '../../components/Icon'
-import { FarmVisitModal } from '../../components/FarmVisitModal'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { readToken } from '../../components/badges'
@@ -210,10 +209,11 @@ export function AgendaScreen() {
   )
   const [anchor, setAnchor] = useState(() => now())
   const [openSlot, setOpenSlot] = useState<string | null>(null)
-  const [visitAt, setVisitAt] = useState<string | null>(null)
-  const [editVisitId, setEditVisitId] = useState<string | null>(null)
-  const [meetingAt, setMeetingAt] = useState<string | null>(null)
-  const [editMeetingId, setEditMeetingId] = useState<string | null>(null)
+  /* ★ AN11 — rendez-vous et événements s'ouvrent en PAGE (FormPages.tsx). */
+  const setVisitAt = (at: string | null) => at && navigate(formRoutes.newVisit({ at }))
+  const setEditVisitId = (id: string | null) => id && navigate(formRoutes.editVisit(id))
+  const setMeetingAt = (at: string | null) => at && navigate(formRoutes.newMeeting({ at }))
+  const setEditMeetingId = (id: string | null) => id && navigate(formRoutes.editMeeting(id))
   /** AB3.3 — the one selection both the grid and the map read. */
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -231,17 +231,16 @@ export function AgendaScreen() {
    * reads it once and clears it — the same seam the two rosters have used
    * since W4, and it works from the dashboard as well as from here.
    */
-  const [params, setParams] = useSearchParams()
+  const [params] = useSearchParams()
   const asked = params.get('new')
   useEffect(() => {
     if (asked !== 'visit' && asked !== 'meeting') return
     const at = atTimeOn(now(), 10, 0)
-    if (asked === 'visit') setVisitAt(at)
-    else setMeetingAt(at)
-    const next = new URLSearchParams(params)
-    next.delete('new')
-    setParams(next, { replace: true })
-  }, [asked, params, setParams])
+    /* ★ AN11 — REMPLACE l'adresse `?new=…` par la page : effacer le paramètre
+       après coup réécrivait l'agenda par-dessus la page ouverte. */
+    navigate(asked === 'visit' ? formRoutes.newVisit({ at }) : formRoutes.newMeeting({ at }), { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asked])
 
   const { days, from, to } = useMemo(() => {
     if (view === 'day') {
@@ -875,27 +874,6 @@ export function AgendaScreen() {
         )}
       </MapPanel>
 
-      {visitAt && (
-        <FarmVisitModal defaultAt={visitAt} onClose={() => setVisitAt(null)} />
-      )}
-      {editVisitId && (
-        <FarmVisitModal
-          visitId={editVisitId}
-          onClose={() => setEditVisitId(null)}
-        />
-      )}
-      {meetingAt && (
-        <GeneralMeetingModal
-          defaultAt={meetingAt}
-          onClose={() => setMeetingAt(null)}
-        />
-      )}
-      {editMeetingId && (
-        <GeneralMeetingModal
-          meetingId={editMeetingId}
-          onClose={() => setEditMeetingId(null)}
-        />
-      )}
     </>
   )
 }

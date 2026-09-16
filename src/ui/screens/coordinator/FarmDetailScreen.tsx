@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { formRoutes } from './FormPages'
 
 import { newAgreementId, iso, saveFarmAgreement,
   FARM_PIPELINE,
@@ -63,7 +64,6 @@ import { TestDataBadge } from '../../components/TestDataBadge'
 import { BAND_H, BandCard } from '../../components/band'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { ContactActions } from '../../components/ContactActions'
-import { FarmVisitModal } from '../../components/FarmVisitModal'
 import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
 import { AnchorMap } from '../../components/AnchorMap'
@@ -996,7 +996,8 @@ export function FarmDetailScreen() {
   const coverage = useCoreValue(() => farmGuardStats(farmId))
   const available = useCoreValue(() => (farm ? availableVolunteers(farm) : 0))
 
-  const [newVisit, setNewVisit] = useState(false)
+  /* ★ AN11 — le rendez-vous s'ouvre en PAGE (FormPages.tsx). */
+  const setNewVisit = (on: boolean) => on && navigate(formRoutes.newVisit({ farm: farmId }))
   /* AH7.3 — le raccourci d'envoi du lien de signature, depuis l'en-tête. */
   const [linkOpen, setLinkOpen] = useState(false)
   /** ★★ AN5 — la signature en un geste depuis la fiche. */
@@ -1006,7 +1007,7 @@ export function FarmDetailScreen() {
   const [justSigned, setJustSigned] = useState(false)
   /* ★★ AK7.1 — l'archivage, en un geste, avec un motif court facultatif. */
   const [archiveOpen, setArchiveOpen] = useState(false)
-  const [editVisitId, setEditVisitId] = useState<string | null>(null)
+  const setEditVisitId = (id: string | null) => id && navigate(formRoutes.editVisit(id))
   const [selectedAnchorId, setSelectedAnchorId] = useState<string | null>(null)
   // G15 — zone selection lives HERE so the list's "ערוך" buttons and the
   // map's own clicks drive the same state.
@@ -1865,18 +1866,6 @@ export function FarmDetailScreen() {
         )}
       </MapSplit>
 
-      {newVisit && (
-        <FarmVisitModal
-          defaultFarmId={farm.id}
-          onClose={() => setNewVisit(false)}
-        />
-      )}
-      {editVisitId && (
-        <FarmVisitModal
-          visitId={editVisitId}
-          onClose={() => setEditVisitId(null)}
-        />
-      )}
       {del.dialog}
     </>
   )

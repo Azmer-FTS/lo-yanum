@@ -158,6 +158,8 @@ try {
       const ctx = await context(safari, { ua: IPAD_UA })
       const page = await ctx.newPage()
       await open(page, '#/coordinator/farms/farm-07/edit')
+      /* ★ AN10 — l'agriculteur est en résumé : « עריכה » ouvre ses champs. */
+      await page.locator('[data-testid="person-farmer-edit"]').click()
       const tz = page.locator('[data-testid="farm-farmer-id"]')
       await tz.scrollIntoViewIfNeeded()
       await tz.tap()
@@ -208,6 +210,7 @@ try {
       const phoneCtx = await context(safari, { ua: IPHONE_UA, viewport: PHONE })
       const p2 = await phoneCtx.newPage()
       await open(p2, '#/coordinator/farms/farm-07/edit')
+      await p2.locator('[data-testid="person-farmer-edit"]').click()
       const tz2 = p2.locator('[data-testid="farm-farmer-id"]')
       await tz2.scrollIntoViewIfNeeded()
       await tz2.tap()
@@ -702,6 +705,7 @@ try {
       check('A233 · … avec le résumé de son contenu sur la ligne', !!summary && summary.trim().length > 0 && summary !== 'אין', String(summary))
 
       // Un bloc replié qui contient un champ en faute s'ouvre au refus d'enregistrer.
+      await page.locator('[data-testid="person-farmer-edit"]').click()
       await page.locator('[data-testid="farm-form-farmerPhone"]').fill('12')
       await page.locator('[data-testid="section-farm-form-people:farm-07"]').click()
       await page.waitForTimeout(300)
@@ -763,6 +767,105 @@ try {
       const other = page.locator('[data-testid="person-contact-0"]')
       check('A235 · un autre contact choisi : il passe en résumé', (await other.getAttribute('data-summary')) === '' && /שרה כהן/.test((await other.textContent()) ?? ''))
       check('A235 · … et l\'agriculteur n\'est plus résumé comme principal', (await farmer.locator('[data-testid="person-farmer-primary"]').count()) === 0)
+      await ctx.close()
+    })
+  }
+
+  if (wants('A236')) {
+    // =======================================================================
+    section('A236 — un seul motif d\'ouverture : toute création, toute édition est une PAGE')
+    // =======================================================================
+    await guard(async () => {
+      const ctx = await context(chrome, { viewport: { width: 1032, height: 1376 } })
+      const page = await ctx.newPage()
+      const entries: Array<[string, () => Promise<void>]> = [
+        ['ferme (+)', async () => open(page, '#/coordinator/farms/new', 2500)],
+        ['moshav (+)', async () => open(page, '#/coordinator/farms/new?kind=moshav', 2500)],
+        ['ferme (édition)', async () => open(page, '#/coordinator/farms/farm-07/edit', 2500)],
+        ['volontaire (+)', async () => { await open(page, '#/coordinator/volunteers', 2500); await page.locator('[data-testid="action-fab-toggle"]').click() }],
+        ['conducteur (tuile)', async () => { await open(page, '#/coordinator/drivers', 2500); await page.locator('[data-testid="driver-tile-open"]:visible').first().click() }],
+        ['garde (+)', async () => open(page, '#/coordinator/missions/new', 2500)],
+        ['rendez-vous (menu +)', async () => open(page, '#/coordinator/agenda?new=visit', 2500)],
+        ['événement (menu +)', async () => open(page, '#/coordinator/agenda?new=meeting', 2500)],
+        ['rendez-vous (fiche)', async () => { await open(page, '#/coordinator/farms/farm-07', 2500); await page.getByText('תכנון ביקור').first().click() }],
+      ]
+      for (const [name, go] of entries) {
+        await go()
+        await page.waitForTimeout(1500)
+        const m = await page.evaluate(() => ({
+          hash: location.hash,
+          dialog: document.querySelectorAll('[role="dialog"]').length,
+          back: !!document.querySelector('[data-testid="page-back"]'),
+          title: !!document.querySelector('[data-page-title], h1'),
+        }))
+        check(`A236 · ${name} : une page (adresse, flèche retour), aucune fenêtre`, m.dialog === 0 && m.back && m.title && !/[?&]new=/.test(m.hash), JSON.stringify(m))
+      }
+      await page.locator('[data-testid="page-back"]').click()
+      await page.waitForTimeout(800)
+      check('A236 · la flèche retour ramène d\'où l\'on vient', /farms\/farm-07$/.test(await page.evaluate(() => location.hash)), await page.evaluate(() => location.hash))
+      await ctx.close()
+    })
+  }
+
+  if (wants('A237')) {
+    // =======================================================================
+    section('A237 — la position n\'est pas redemandée après avoir été donnée')
+    // =======================================================================
+    /* ⚠️ Un navigateur de test ne montre pas l'invite d'iOS : elle a été VUE
+       sur le simulateur iPad (ETAT.md, AN12). Ce qui se mesure ici, c'est ce
+       que l'app DEMANDE à l'appareil : chaque appel réel à la localisation est
+       compté. */
+    await guard(async () => {
+      const ctx = await context(chrome, { storage: { 'lo-yanum:block:settings-origin': '1' } })
+      await ctx.addInitScript(() => {
+        const w = window as unknown as { __geoCalls: number }
+        w.__geoCalls = 0
+        const real = navigator.geolocation
+        const wrap = {
+          getCurrentPosition: (ok: PositionCallback, err?: PositionErrorCallback | null, o?: PositionOptions) => {
+            w.__geoCalls++
+            real.getCurrentPosition(ok, err ?? undefined, o)
+          },
+          watchPosition: (ok: PositionCallback, err?: PositionErrorCallback | null, o?: PositionOptions) => {
+            w.__geoCalls++
+            return real.watchPosition(ok, err ?? undefined, o)
+          },
+          clearWatch: (id: number) => real.clearWatch(id),
+        }
+        Object.defineProperty(navigator, 'geolocation', { value: wrap, configurable: true })
+      })
+      const page = await ctx.newPage()
+      await open(page, '#/coordinator/settings')
+      const calls = () => page.evaluate(() => (window as unknown as { __geoCalls: number }).__geoCalls)
+      check('A237 · ouvrir les réglages ne demande rien', (await calls()) === 0, String(await calls()))
+      const here = page.locator('[data-testid="origin-here"]')
+      await here.scrollIntoViewIfNeeded()
+      await here.click()
+      await page.waitForTimeout(2500)
+      const first = await calls()
+      check('A237 · « המיקום שלי » : une demande', first === 1, String(first))
+      await here.click()
+      await page.waitForTimeout(1500)
+      check('A237 · touché une seconde fois : aucune nouvelle demande', (await calls()) === first, String(await calls()))
+      const fixAge = await page.evaluate(() => {
+        const raw = localStorage.getItem('lo-yanum:last-fix')
+        return raw ? Math.round((Date.now() - Number(JSON.parse(raw).at)) / 1000) : null
+      })
+      /* ⚠️ `goto` vers la même page avec un autre « # » ne RECHARGE pas le
+         document : le compteur ne repartait pas de zéro et comptait deux fois
+         le premier appel (vu, puis corrigé). Un vrai rechargement. */
+      await open(page, '#/coordinator/farms', 1500)
+      await page.reload({ waitUntil: 'load' })
+      await page.waitForTimeout(1500)
+      await open(page, '#/coordinator/settings')
+      await page.reload({ waitUntil: 'load' })
+      await page.waitForTimeout(2500)
+      const beforeClick = await calls()
+      await page.locator('[data-testid="origin-here"]').click()
+      await page.waitForTimeout(1500)
+      console.log(`  NOTE  appels avant le toucher : ${beforeClick}`)
+      check('A237 · écran quitté, app rechargée, retouché : aucune nouvelle demande', (await calls()) === 0, `${await calls()} appel(s) ; relevé mémorisé il y a ${fixAge} s`)
+      check('A237 · la ligne dit quoi choisir pour qu\'iOS ne redemande pas', /Allow While Using App/.test((await page.locator('[data-testid="origin-permission-hint"]').textContent()) ?? ''))
       await ctx.close()
     })
   }

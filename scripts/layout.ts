@@ -292,7 +292,8 @@ const ROUTES: Array<{
       //    that no longer exists — sixty seconds of timeout, on a button that
       //    had already done the job on the first press.
       await page.locator('[data-testid="action-fab-toggle"]').click()
-      await page.waitForSelector('[role="dialog"]', { timeout: 10_000 })
+      /* ★ AN11 — la création et l'édition s'ouvrent en PAGE, plus en fenêtre. */
+      await page.waitForSelector('[role="dialog"], [data-form-page]', { timeout: 10_000 })
       await page.waitForTimeout(600)
     },
   },
@@ -312,7 +313,8 @@ const ROUTES: Array<{
      */
     open: async (page) => {
       await page.locator('[data-testid="driver-tile-open"]:visible').first().click()
-      await page.waitForSelector('[role="dialog"]', { timeout: 10_000 })
+      /* ★ AN11 — la création et l'édition s'ouvrent en PAGE, plus en fenêtre. */
+      await page.waitForSelector('[role="dialog"], [data-form-page]', { timeout: 10_000 })
       await page.waitForTimeout(600)
     },
   },

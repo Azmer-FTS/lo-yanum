@@ -35,5 +35,10 @@
   "photo": {
     "choose": "Photo",
     "change": "Changer la photo"
+  },
+  "settings": {
+    "origin": {
+      "permissionHint": "Si l'appareil redemande à chaque ouverture : dans l'invite iOS, choisir « Allow While Using App », pas « Allow Once ». Réglages de l'iPad › Confidentialité › Service de localisation › Sites web Safari."
+    }
   }
 }

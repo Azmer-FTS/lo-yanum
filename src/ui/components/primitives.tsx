@@ -1791,6 +1791,7 @@ export function Modal({
   children,
   wide = false,
   fill = false,
+  presentation = 'overlay',
   header,
   testId,
 }: {
@@ -1805,7 +1806,63 @@ export function Modal({
    * les boutons à l'écran en permanence.
    */
   fill?: boolean
+  /**
+   * ★★ AN11 — « page » : le même contenu rendu comme un ÉCRAN du panneau
+   * (flèche retour, pas de voile), le motif unique de toute création et de
+   * toute édition. Voir `screens/coordinator/FormPages.tsx`.
+   */
+  presentation?: 'overlay' | 'page'
   /** AK4 — un en-tête à soi (logo + titre), à la place du `<h2>` simple. */
+  header?: ReactNode
+  testId?: string
+}) {
+  const { t } = useTranslation()
+  if (presentation === 'page') {
+    return (
+      <div className="mx-auto w-full max-w-3xl" data-testid={testId} data-form-page="">
+        <header className="mb-6 flex items-start gap-2.5">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t('common.back')}
+            title={t('common.back')}
+            data-testid="page-back"
+            className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-pill
+                       border border-edge-subtle bg-surface-raised text-content-secondary
+                       shadow-card transition-colors duration-fast
+                       hover:bg-surface-high hover:text-content-primary"
+          >
+            <Icon name="chevron" size={18} className="ltr:-scale-x-100" />
+          </button>
+          <div className="min-w-0 flex-1">
+            {header ?? (
+              <h1 data-page-title="" className="text-title text-content-primary">
+                {title}
+              </h1>
+            )}
+          </div>
+        </header>
+        <div className="card card-pad">{children}</div>
+      </div>
+    )
+  }
+  return <ModalOverlay title={title} onClose={onClose} wide={wide} fill={fill} header={header} testId={testId}>{children}</ModalOverlay>
+}
+
+function ModalOverlay({
+  title,
+  onClose,
+  children,
+  wide,
+  fill,
+  header,
+  testId,
+}: {
+  title: string
+  onClose: () => void
+  children: ReactNode
+  wide: boolean
+  fill: boolean
   header?: ReactNode
   testId?: string
 }) {

@@ -83,7 +83,7 @@ const NEW_MOSHAV: FabAction = {
 
 const NEW_VOLUNTEER: FabAction = {
   key: 'volunteer',
-  to: '/coordinator/volunteers?new=1',
+  to: '/coordinator/volunteers/new',
   labelKey: 'volunteers.new',
   icon: 'userPlus',
   testId: 'volunteer-new',
@@ -91,7 +91,7 @@ const NEW_VOLUNTEER: FabAction = {
 
 const NEW_DRIVER: FabAction = {
   key: 'driver',
-  to: '/coordinator/drivers?new=1',
+  to: '/coordinator/drivers/new',
   labelKey: 'driver.addDriver',
   icon: 'steering',
   testId: 'driver-new',
@@ -117,7 +117,7 @@ const NEW_INCIDENT: FabAction = {
 /** The two kinds of appointment the diary holds: a farm visit and a meeting. */
 const NEW_VISIT: FabAction = {
   key: 'visit',
-  to: '/coordinator/agenda?new=visit',
+  to: '/coordinator/agenda/visit/new',
   labelKey: 'agenda.planVisit',
   icon: 'pin',
   testId: 'fab-visit-new',
@@ -125,7 +125,7 @@ const NEW_VISIT: FabAction = {
 
 const NEW_MEETING: FabAction = {
   key: 'meeting',
-  to: '/coordinator/agenda?new=meeting',
+  to: '/coordinator/agenda/meeting/new',
   labelKey: 'meeting.new',
   icon: 'users',
   testId: 'fab-meeting-new',

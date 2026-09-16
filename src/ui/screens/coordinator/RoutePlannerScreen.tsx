@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { formRoutes } from './FormPages'
 
 import {
   addDays,
@@ -29,7 +30,6 @@ import { originLabel, originPosition } from '../../settings/origin'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
-import { FarmVisitModal } from '../../components/FarmVisitModal'
 import { useRoadRoute } from '../../routing/useRoadRoute'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
@@ -100,11 +100,11 @@ export function RoutePlannerScreen() {
     return tour ? toTimeInput(tour.departAt) : '08:30'
   })
   const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const [meetingFor, setMeetingFor] = useState<{
-    farmId: string
-    at: string
-  } | null>(null)
-  const [editVisitId, setEditVisitId] = useState<string | null>(null)
+  /* ★ AN11 — le rendez-vous s'ouvre en PAGE (FormPages.tsx). */
+  const navigateTo = useNavigate()
+  const setMeetingFor = (m: { farmId: string; at: string } | null) =>
+    m && navigateTo(formRoutes.newVisit({ farm: m.farmId, at: m.at }))
+  const setEditVisitId = (id: string | null) => id && navigateTo(formRoutes.editVisit(id))
 
   /**
    * ★★ AB1.1 · AB1.2 — `?new=step`: מסלול CREATES A STOP, NOT A FARM.
@@ -910,19 +910,6 @@ export function RoutePlannerScreen() {
         )}
       </section>
 
-      {meetingFor && (
-        <FarmVisitModal
-          defaultFarmId={meetingFor.farmId}
-          defaultAt={meetingFor.at}
-          onClose={() => setMeetingFor(null)}
-        />
-      )}
-      {editVisitId && (
-        <FarmVisitModal
-          visitId={editVisitId}
-          onClose={() => setEditVisitId(null)}
-        />
-      )}
       {del.dialog}
     </MapPanel>
   )
