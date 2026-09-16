@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import {
+import { formatPhoneTyping, findLocality, REGIONAL_COUNCILS, councilOfCode, matchCouncil, regionById, suggestCouncil, suggestRegion,
   FARM_PIPELINE,
   LAND_AGREEMENT_OPTIONS,
   LEGAL_ENTITY_OPTIONS,
@@ -57,7 +57,7 @@ import type {
 
 import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
-import { PhotoField } from '../../components/PhotoField'
+import { PhotoField, usePhotoPicker } from '../../components/PhotoField'
 import { AgreementSignModal } from '../../components/AgreementSignModal'
 import { LocalityField } from '../../components/LocalityField'
 import { MapSplit } from '../../components/MapSplit'
@@ -75,27 +75,8 @@ import { PageHeader } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
-/** Compact camera/import pair for an inline contact row. */
-function PhotoCompact({
-  value,
-  onChange,
-}: {
-  value: string | null
-  onChange: (v: string | null) => void
-}) {
-  const { t } = useTranslation()
-  return (
-    <div className="min-w-0 flex-1">
-      <PhotoField
-        label={t('photo.personLabel')}
-        value={value}
-        onChange={onChange}
-        name="?"
-        hint={t('photo.hint')}
-      />
-    </div>
-  )
-}
+/** ★ AN7 — la ligne « אחר » des listes, qui ouvre la saisie libre. */
+const OTHER = '__other'
 
 const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
 
@@ -246,91 +227,161 @@ function PersonEditor({
 }) {
   const { t } = useTranslation()
   const isFarmer = testId === 'person-farmer'
+  /* ★ AN9.3 — UNE photo par personne : l'avatar en tête, qu'on touche. */
+  const picker = usePhotoPicker((photo) => onChange({ photo }))
+  /**
+   * ★★ AN10 — LE CONTACT PRINCIPAL EN RÉSUMÉ. Une personne connue et
+   * principale (l'agriculteur signataire, presque toujours) se lit sur UNE
+   * ligne — photo, nom, portable — sans ses champs répétés dessous ; « עריכה »
+   * les ouvre. Quand le PO désigne quelqu'un d'autre, c'est CETTE personne qui
+   * passe en résumé. Un champ en faute rouvre la carte.
+   */
+  const summarizable = card.isPrimary && card.name.trim() !== ''
+  const [expanded, setExpanded] = useState(!summarizable)
+  const wasPrimary = useRef(card.isPrimary)
+  useEffect(() => {
+    if (wasPrimary.current !== card.isPrimary) setExpanded(!(card.isPrimary && card.name.trim() !== ''))
+    wasPrimary.current = card.isPrimary
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card.isPrimary])
+  const open = expanded || !summarizable || !!errors.phone || !!errors.email
+
+  const avatar = (
+    <button
+      type="button"
+      onClick={picker.open}
+      aria-label={t('photo.choose')}
+      title={t('photo.choose')}
+      data-testid={`${testId}-photo`}
+      className="relative shrink-0 rounded-pill"
+    >
+      <Avatar photo={card.photo} name={card.name || '?'} size="md" />
+      <span className="absolute -bottom-1 -end-1 flex h-6 w-6 items-center justify-center rounded-pill bg-surface-raised text-content-secondary shadow-card">
+        <Icon name="camera2" size={12} />
+      </span>
+    </button>
+  )
+
   return (
     <div
       data-testid={testId}
-      className="col-span-full rounded-field border border-edge-subtle bg-surface-high p-3"
+      data-summary={open ? undefined : ''}
+      className={`col-span-full rounded-field border border-edge-subtle bg-surface-high p-3 ${card.isPrimary ? 'order-first' : ''}`}
     >
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <Avatar photo={card.photo} name={card.name || '?'} size="md" />
+      {picker.input}
+      <div className={`${open ? 'mb-3' : ''} flex flex-wrap items-center gap-3`}>
+        {avatar}
         <div className="min-w-0 flex-1">
-          <p className="text-caption font-semibold text-content-primary">{title}</p>
-          {card.name.trim() !== '' && (
-            <p className="muted truncate" data-testid={`${testId}-name-echo`}>
+          <p className="flex flex-wrap items-center gap-2 text-caption font-semibold text-content-primary">
+            {title}
+            {card.isPrimary && (
+              <span className="chip bg-accent/15 text-accent-ink" data-testid={`${testId}-primary`}>
+                {t('people.primary')}
+              </span>
+            )}
+          </p>
+          {!open && (
+            <p className="truncate text-body text-content-primary" data-testid={`${testId}-summary`}>
               {card.name}
+              {card.phone.trim() !== '' && (
+                <>
+                  <span className="text-content-muted"> · </span>
+                  {/* Isolé : un numéro dans une ligne hébraïque garde son ordre. */}
+                  <bdi dir="ltr" className="ltr-nums text-content-secondary">
+                    {formatPhoneTyping(card.phone)}
+                  </bdi>
+                </>
+              )}
             </p>
           )}
         </div>
-        {showPrimary && (
+        {showPrimary && !card.isPrimary && (
           <label className="flex min-h-[2.75rem] items-center gap-2 text-caption text-content-secondary">
             <input
               type="radio"
               name="primary-contact"
-              checked={card.isPrimary}
+              checked={false}
               onChange={() => onChange({ isPrimary: true })}
               className="h-5 w-5 accent-accent"
+              data-testid={`${testId}-make-primary`}
             />
-            {t('people.primary')}
+            {t('people.makePrimary')}
           </label>
         )}
-      </div>
-      <div className="auto-cols gap-3 [--col-min:9rem] md:[--col-min:13rem]">
-        <TextField
-          label={t('people.name')}
-          value={card.name}
-          onChange={(name) => onChange({ name })}
-          kind="name"
-          testId={isFarmer ? 'farm-form-farmerName' : `${testId}-name`}
-        />
-        <TextField
-          label={t('people.mobile')}
-          value={card.phone}
-          onChange={(phone) => onChange({ phone })}
-          kind="phone"
-          error={errors.phone}
-          testId={isFarmer ? 'farm-form-farmerPhone' : `${testId}-phone`}
-        />
-        {withId && (
-          <TextField
-            label={t('people.idNumber')}
-            hint={t('form.farmerIdHint')}
-            value={card.idNumber ?? ''}
-            onChange={(idNumber) => onChange({ idNumber })}
-            kind="id"
-            testId="farm-farmer-id"
-          />
-        )}
-        <TextField
-          label={t('people.email')}
-          value={card.email}
-          onChange={(email) => onChange({ email })}
-          kind="email"
-          error={errors.email}
-          placeholder="name@example.co.il"
-          testId={`${testId}-email`}
-        />
-        <TextField
-          label={t('people.role')}
-          value={card.role}
-          onChange={(role) => onChange({ role })}
-          testId={`${testId}-role`}
-        />
-      </div>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <PhotoCompact value={card.photo} onChange={(photo) => onChange({ photo })} />
-        </div>
-        {onRemove && (
+        {summarizable && (
           <button
             type="button"
-            onClick={onRemove}
-            className="btn-ghost min-h-[2.75rem] text-status-danger-ink hover:bg-status-danger/10"
+            onClick={() => setExpanded(!open)}
+            className="btn-ghost min-h-[2.75rem]"
+            data-testid={`${testId}-edit`}
+            aria-expanded={open}
           >
-            <Icon name="trash" size={15} />
-            {t('people.remove')}
+            <Icon name={open ? 'check' : 'edit'} size={15} />
+            {open ? t('people.done') : t('common.edit')}
           </button>
         )}
       </div>
+      {open && (
+        <>
+          <div className="auto-cols gap-3 [--col-min:9rem] md:[--col-min:13rem]">
+            <TextField
+              label={t('people.name')}
+              value={card.name}
+              onChange={(name) => onChange({ name })}
+              kind="name"
+              testId={isFarmer ? 'farm-form-farmerName' : `${testId}-name`}
+            />
+            <TextField
+              label={t('people.mobile')}
+              value={card.phone}
+              onChange={(phone) => onChange({ phone })}
+              kind="phone"
+              error={errors.phone}
+              testId={isFarmer ? 'farm-form-farmerPhone' : `${testId}-phone`}
+            />
+            {withId && (
+              <TextField
+                label={t('people.idNumber')}
+                hint={t('form.farmerIdHint')}
+                value={card.idNumber ?? ''}
+                onChange={(idNumber) => onChange({ idNumber })}
+                kind="id"
+                testId="farm-farmer-id"
+              />
+            )}
+            <TextField
+              label={t('people.email')}
+              value={card.email}
+              onChange={(email) => onChange({ email })}
+              kind="email"
+              error={errors.email}
+              placeholder="name@example.co.il"
+              testId={`${testId}-email`}
+            />
+            <TextField
+              label={t('people.role')}
+              value={card.role}
+              onChange={(role) => onChange({ role })}
+              testId={`${testId}-role`}
+            />
+          </div>
+          {(onRemove || picker.error) && (
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-micro text-status-danger-ink">{picker.error}</p>
+              {onRemove && (
+                <button
+                  type="button"
+                  onClick={onRemove}
+                  className="btn-ghost min-h-[2.75rem] text-status-danger-ink hover:bg-status-danger/10"
+                >
+                  <Icon name="trash" size={15} />
+                  {t('people.remove')}
+                </button>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }
@@ -465,6 +516,44 @@ export function FarmFormScreen() {
   )
   const [council, setCouncil] = useState(existing?.council ?? '')
   const [legalEntity, setLegalEntity] = useState(existing?.legalEntity ?? '')
+
+  /* ★ AN7.1 — « סוג המקום » : une liste, le genre de fiche en est déduit. */
+  const placeKindValue =
+    legalEntity !== '' ? legalEntity : entityKind === 'other' ? OTHER : entityKind === 'moshav' ? 'moshav' : ''
+  const choosePlaceKind = (v: string) => {
+    if (v === OTHER) {
+      setLegalEntity('')
+      setEntityKind('other')
+      return
+    }
+    setLegalEntity(v)
+    setEntityKind(v === 'moshav' || v === 'moshav_shitufi' ? 'moshav' : 'farm')
+  }
+
+  /* ★ AN7.2 — « אזור » : la région choisie, « אחר » (texte), ou déduite. */
+  const [regionChoice, setRegionChoice] = useState<string>(() =>
+    existing?.regionId ? existing.regionId : (existing?.region ?? '').trim() !== '' ? OTHER : '',
+  )
+  const chooseRegion = (v: string) => {
+    setRegionChoice(v)
+    if (v === '' || v === OTHER) setRegionId('')
+    else setRegionId(v as RegionId)
+    if (v !== OTHER) setRegion('')
+  }
+
+  /* ★ AN7.3 — « מועצה אזורית » : la liste, ou « אחר » pour une saisie ancienne. */
+  const [councilOther, setCouncilOther] = useState(
+    () => (existing?.council ?? '').trim() !== '' && matchCouncil(existing?.council ?? '') === null,
+  )
+  const councilChoice = councilOther ? OTHER : (matchCouncil(council) ?? '')
+  const chooseCouncil = (v: string) => {
+    if (v === OTHER) {
+      setCouncilOther(true)
+      return
+    }
+    setCouncilOther(false)
+    setCouncil(v)
+  }
   const [landAgreement, setLandAgreement] = useState(existing?.landAgreement ?? '')
   const [landAgreementUntil, setLandAgreementUntil] = useState(
     existing?.landAgreementUntil ?? '',
@@ -546,6 +635,22 @@ export function FarmFormScreen() {
    * vide, pour qu'un yishuv tapé par le PO ne soit jamais écrasé.
    */
   const nearest = position ? nearestLocalities(position, 1)[0] ?? null : null
+  /* ★ AN7.2 · AN7.3 — ce que l'adresse permet de déduire. */
+  const councilSuggestion = suggestCouncil({ locality, position })
+  /* ★ AN7.3 — le יישוב saisi est le geste : quand il devient une localité
+     connue (choisie dans la liste OU tapée en entier — un nom exact ne montre
+     pas de liste, vu en mesurant), son conseil remplit la case si elle est
+     vide. Jamais au chargement : une fiche ouverte ne change pas seule. */
+  const lastLocality = useRef(locality)
+  useEffect(() => {
+    if (lastLocality.current === locality) return
+    lastLocality.current = locality
+    const l = findLocality(locality)
+    const c = l ? councilOfCode(l.code) : null
+    if (c && council.trim() === '' && !councilOther) setCouncil(c)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locality])
+  const regionSuggestion = suggestRegion({ locality, position })
   const typedPosition = locality.trim() === '' ? null : positionOfLocality(locality)
   const pinDistanceKm =
     position && typedPosition ? haversineKm(position, typedPosition) : null
@@ -863,7 +968,30 @@ export function FarmFormScreen() {
         </FormSection>
 
         {/* ═══ 1 — סטטוס ושטחים : la bande de chiffres de la fiche. ═══ */}
-        <FormSection title={t('form.sectionStatusAreas')} testId="farm-block-statusAreas">
+        {/* ★★ AN8.3 — TOUS LES BLOCS SE REPLIENT, sauf l'en-tête (photo, nom),
+            avec le résumé de leur contenu sur la ligne repliée. Ouverts
+            d'emblée : le statut et les surfaces, les personnes ; « פרטים »
+            ouvert pour une fiche NEUVE (le יישוב s'y choisit), replié en
+            édition. */}
+        <FormSection
+          title={t('form.sectionStatusAreas')}
+          testId="farm-block-statusAreas"
+          storageKey={`farm-form-status:${farmId ?? 'new'}`}
+          defaultOpen
+          forceOpen={touched && !!errors.status}
+          summary={
+            <span className="ms-2 min-w-0 truncate text-caption text-content-muted" data-testid="summary-statusAreas">
+              {[
+                t(`farmStatus.${status}`),
+                num(farmDunams) + num(grazingDunams) > 0
+                  ? t('farms.kpiDunams', { n: (num(farmDunams) + num(grazingDunams)).toLocaleString() })
+                  : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          }
+        >
           <SelectField<FarmStatus>
             label={t('form.status')}
             value={status}
@@ -1092,7 +1220,28 @@ export function FarmFormScreen() {
         </FormSection>
 
         {/* ═══ 2 — פרטים : le bloc « פרטים » de la fiche, dans son ordre. ═══ */}
-        <FormSection title={t('common.details')} testId="farm-block-details">
+        <FormSection
+          title={t('common.details')}
+          testId="farm-block-details"
+          storageKey={`farm-form-details:${farmId ?? 'new'}`}
+          defaultOpen={!isEdit}
+          forceOpen={touched && !!errors.localityCode}
+          summary={
+            <span className="ms-2 min-w-0 truncate text-caption text-content-muted" data-testid="summary-details">
+              {[
+                locality.trim(),
+                council.trim(),
+                placeKindValue === OTHER
+                  ? t('entityKind.other')
+                  : placeKindValue
+                    ? (LEGAL_ENTITY_OPTIONS.find((o) => o.id === placeKindValue)?.label ?? '')
+                    : '',
+              ]
+                .filter(Boolean)
+                .join(' · ') || t('common.none')}
+            </span>
+          }
+        >
           <TextField
             label={t('form.farmName')}
             hint={t('form.farmNameHint')}
@@ -1106,15 +1255,28 @@ export function FarmFormScreen() {
             value={umbrella}
             onChange={setUmbrella}
           />
-          {/* G16 — what KIND of entity this record is. */}
-          <SelectField<EntityKind>
-            label={t('form.entityKind')}
-            value={entityKind}
-            onChange={setEntityKind}
-            options={(['farm', 'moshav', 'other'] as EntityKind[]).map((v) => ({
-              value: v,
-              label: t(`entityKind.${v}`),
-            }))}
+          {/**
+            * ★★ AN7.1 (2026-09-16) — UNE SEULE LISTE POUR « CE QUE C'EST ».
+            * « סוג יישות » (חווה / מושב / אחר) et « סוג הישות המשפטית » (dont
+            * מושב, מושב שיתופי, קיבוץ) demandaient deux fois la même chose avec
+            * des valeurs qui se recouvrent — la règle d'AH1. Une liste : celle
+            * de l'association (elle est transmise), plus « אחר ». Le genre de
+            * fiche (G16, qui décide du repère et des zones) en est DÉDUIT :
+            * מושב / מושב שיתופי → מושב ; « אחר » → אחר ; le reste → חווה.
+            * ⚠️ Une fiche jamais qualifiée n'est pas qualifiée en silence : la
+            * liste affiche son genre, et rien n'est écrit tant qu'on n'a pas
+            * choisi.
+            */}
+          <SelectField<string>
+            label={t('form.placeKind')}
+            testId="farm-form-place-kind"
+            value={placeKindValue}
+            onChange={choosePlaceKind}
+            options={[
+              { value: '', label: t('form.notChosen') },
+              ...LEGAL_ENTITY_OPTIONS.map((o) => ({ value: o.id, label: o.label })),
+              { value: OTHER, label: t('entityKind.other') },
+            ]}
           />
 
           {/* ★★ AM1 — LE יישוב : facultatif, la liste entière, et la relation. */}
@@ -1190,17 +1352,39 @@ export function FarmFormScreen() {
               {t('form.noPin')}
             </p>
           )}
-          <TextField label={t('form.region')} value={region} onChange={setRegion} />
-          {/* X12.2 — blank = derived from the position. See `farmRegion`. */}
-          <SelectField<RegionId | ''>
-            label={t('form.regionStd')}
-            value={regionId}
-            onChange={setRegionId}
-            options={[
-              { value: '', label: t('form.regionStdHint') },
-              ...regions().map((r) => ({ value: r.id, label: r.name })),
-            ]}
-          />
+          {/**
+            * ★★ AN7.2 — UN SEUL CHAMP « אזור ». Il y en avait deux : une
+            * « région standard » qui, laissée sur sa première ligne, ne
+            * sélectionnait rien de visible, et une saisie libre. La liste des
+            * treize régions ; la première ligne DIT la région que l'adresse
+            * désigne (X12.2 : vide = déduite) ; « אחר » ouvre la saisie libre.
+            */}
+          <div className="flex flex-col gap-2">
+            <SelectField<string>
+              label={t('form.region')}
+              testId="farm-form-region"
+              value={regionChoice}
+              onChange={chooseRegion}
+              options={[
+                {
+                  value: '',
+                  label: regionSuggestion
+                    ? t('form.regionDerived', { name: regionById(regionSuggestion.value)?.name ?? '' })
+                    : t('form.regionUnknown'),
+                },
+                ...regions().map((r) => ({ value: r.id, label: r.name })),
+                { value: OTHER, label: t('form.regionOther') },
+              ]}
+            />
+            {regionChoice === OTHER && (
+              <TextField
+                label={t('form.regionFree')}
+                value={region}
+                onChange={setRegion}
+                testId="farm-form-region-free"
+              />
+            )}
+          </div>
           <TextField
             label={t('form.localityCode')}
             hint={t('form.localityCodeHint')}
@@ -1209,20 +1393,51 @@ export function FarmFormScreen() {
             error={show('localityCode')}
             kind="code"
           />
-          <TextField
-            label={t('form.council')}
-            value={council}
-            onChange={setCouncil}
-          />
-          <SelectField<string>
-            label={t('form.legalEntity')}
-            value={legalEntity}
-            onChange={setLegalEntity}
-            options={[
-              { value: '', label: t('form.notChosen') },
-              ...LEGAL_ENTITY_OPTIONS.map((o) => ({ value: o.id, label: o.label })),
-            ]}
-          />
+          {/**
+            * ★★ AN7.3 — LA מועצה אזורית : la liste complète (למ״ס, 54), et
+            * PROPOSÉE depuis le יישוב ou l'épingle. Choisir un יישוב dans la
+            * liste la remplit (c'est un geste) ; une épingle seule la propose,
+            * un toucher l'accepte. « אחר » garde la saisie libre.
+            */}
+          <div className="flex flex-col gap-1" data-testid="farm-council-block">
+            <SelectField<string>
+              label={t('form.council')}
+              testId="farm-form-council"
+              value={councilChoice}
+              onChange={chooseCouncil}
+              options={[
+                { value: '', label: t('form.notChosen') },
+                ...REGIONAL_COUNCILS.map((c) => ({ value: c, label: c })),
+                { value: OTHER, label: t('form.councilOther') },
+              ]}
+            />
+            {councilChoice === OTHER && (
+              <TextField
+                label={t('form.councilFree')}
+                value={council}
+                onChange={setCouncil}
+                testId="farm-form-council-free"
+              />
+            )}
+            {council.trim() === '' && councilSuggestion && (
+              <div className="flex flex-wrap items-center gap-2" data-testid="farm-council-suggestion">
+                <span className="muted">
+                  {councilSuggestion.source === 'locality'
+                    ? t('form.councilFromLocality', { name: councilSuggestion.via })
+                    : t('form.councilFromPin', { name: councilSuggestion.via })}{' '}
+                  · <span className="font-medium text-content-primary">{councilSuggestion.value}</span>
+                </span>
+                <button
+                  type="button"
+                  data-testid="farm-council-adopt"
+                  onClick={() => setCouncil(councilSuggestion.value)}
+                  className="inline-flex min-h-[2.75rem] items-center px-1 text-micro font-semibold text-accent-ink hover:underline"
+                >
+                  {t('form.councilUse')}
+                </button>
+              </div>
+            )}
+          </div>
           <SelectField<string>
             label={t('form.landAgreement')}
             value={landAgreement}
@@ -1232,19 +1447,31 @@ export function FarmFormScreen() {
               ...LAND_AGREEMENT_OPTIONS.map((o) => ({ value: o.id, label: o.label })),
             ]}
           />
-          <TextField
-            label={t('form.landAgreementUntil')}
-            hint={t('form.landAgreementUntilHint')}
-            value={landAgreementUntil}
-            onChange={setLandAgreementUntil}
-            kind="date"
-          />
+          {/* ★ AN8.1 — le terme d'un accord n'a de sens qu'une fois son type
+              choisi. Une date déjà saisie reste visible : rien ne se cache. */}
+          {(landAgreement !== '' || landAgreementUntil !== '') && (
+            <TextField
+              label={t('form.landAgreementUntil')}
+              hint={t('form.landAgreementUntilHint')}
+              value={landAgreementUntil}
+              onChange={setLandAgreementUntil}
+              kind="date"
+              testId="farm-form-land-until"
+            />
+          )}
         </FormSection>
 
         {/* ═══ 3 — אנשים : un seul endroit pour les personnes de la fiche. ═══ */}
         <FormSection
           title={t('people.section')}
           testId="farm-block-people"
+          storageKey={`farm-form-people:${farmId ?? 'new'}`}
+          defaultOpen
+          forceOpen={
+            touched &&
+            (!!errors.farmerPhone || !!errors.farmerEmail || !!errors.liaisonPhone ||
+              contactErrors.some((e) => e.phone || e.email))
+          }
           summary={
             <span className="chip ms-2 bg-surface-high text-content-secondary">
               {t('people.summary', { count: peopleCount })}
@@ -1347,7 +1574,10 @@ export function FarmFormScreen() {
             type="button"
             onClick={addContact}
             data-testid="person-add"
-            className="btn-ghost col-span-full min-h-[2.75rem] justify-center border border-dashed border-edge-strong"
+            /* ★ AN10.3 — « ajouter une autre personne » SOUS le résumé du
+               contact principal (`order` : la carte principale passe en tête,
+               ce bouton juste après, les autres personnes ensuite). */
+            className="btn-ghost col-span-full min-h-[2.75rem] justify-center border border-dashed border-edge-strong [order:-1]"
           >
             <Icon name="plus" size={15} />
             {t('people.addOther')}
@@ -1360,6 +1590,7 @@ export function FarmFormScreen() {
           testId="farm-block-emergency"
           storageKey={`farm-form-emergency:${farmId ?? 'new'}`}
           defaultOpen={false}
+          forceOpen={touched && !!errors.standbyPhone}
           summary={
             <span className="chip ms-2 bg-surface-high text-content-secondary">
               {[standbyPhone.trim(), councilHotline.trim()].filter(Boolean).length === 2

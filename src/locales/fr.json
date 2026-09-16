@@ -15,6 +15,25 @@
     "signNow": "Faire signer"
   },
   "people": {
-    "noFarmer": "Aucun agriculteur"
+    "noFarmer": "Aucun agriculteur",
+    "makePrimary": "Contact principal",
+    "done": "OK"
+  },
+  "form": {
+    "placeKind": "Type de lieu",
+    "regionDerived": "Selon l'adresse · {{name}}",
+    "regionUnknown": "Non choisie — déduite de la position",
+    "regionOther": "Autre (saisie libre)",
+    "regionFree": "Nom de la région",
+    "councilOther": "Autre (saisie libre)",
+    "councilFree": "Nom du conseil",
+    "councilFromLocality": "Conseil de {{name}}",
+    "councilFromPin": "Conseil de la localité la plus proche · {{name}}",
+    "councilUse": "Prendre ce conseil",
+    "pickDate": "Choisir une date"
+  },
+  "photo": {
+    "choose": "Photo",
+    "change": "Changer la photo"
   }
 }

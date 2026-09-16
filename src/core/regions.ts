@@ -370,7 +370,45 @@ export function regionOf(point: LatLng): RegionId | null {
   for (const region of regions()) {
     if (pointInRing(point, region.ring)) return region.id
   }
-  return null
+  /* ★ AN7.2 (2026-09-16) — LES COUTURES. Passées sur les 1 330 localités du
+     gazetteer, les treize régions en laissaient TROIS dehors : ערד, כרם שלום,
+     מפעלי ים המלח — des localités réelles posées dans l'interstice entre deux
+     tracés ou juste au-delà d'un bord. Un point à moins de
+     `SEAM_KM` d'une région y est rangé ; au-delà (la mer, l'étranger, une
+     coordonnée fausse) la réponse reste `null`. */
+  let best: RegionId | null = null
+  let bestKm = SEAM_KM
+  for (const region of regions()) {
+    const km = kmToRing(point, region.ring)
+    if (km < bestKm) {
+      bestKm = km
+      best = region.id
+    }
+  }
+  return best
+}
+
+/** ★ AN7.2 — la tolérance d'une couture entre deux tracés. */
+export const SEAM_KM = 6
+
+function kmToRing(p: LatLng, ring: ReadonlyArray<readonly [number, number]>): number {
+  const kx = 111.32 * Math.cos((p.lat * Math.PI) / 180)
+  const ky = 110.57
+  let min = Infinity
+  for (let i = 0; i < ring.length; i++) {
+    const [ax, ay] = ring[i]
+    const [bx, by] = ring[(i + 1) % ring.length]
+    const x1 = (ax - p.lng) * kx
+    const y1 = (ay - p.lat) * ky
+    const x2 = (bx - p.lng) * kx
+    const y2 = (by - p.lat) * ky
+    const dx = x2 - x1
+    const dy = y2 - y1
+    const len = dx * dx + dy * dy
+    const t = len === 0 ? 0 : Math.max(0, Math.min(1, -(x1 * dx + y1 * dy) / len))
+    min = Math.min(min, Math.hypot(x1 + t * dx, y1 + t * dy))
+  }
+  return min
 }
 
 /** The centre of a region's outline — where its name is drawn on the map. */

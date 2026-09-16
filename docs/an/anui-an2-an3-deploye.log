@@ -1,0 +1,17 @@
+  PASS  tableau de bord : aucun repère « משק שלם (בדיקה) »  — 13 repères
+  PASS  liste des fermes : aucun repère « משק שלם (בדיקה) »  — 13 repères
+  PASS  agenda : aucun repère « משק שלם (בדיקה) »  — 7 repères
+  PASS  planificateur : la ferme sans position est sélectionnable
+  PASS  … et signalée « מיקום חסר » sur sa carte
+  PASS  … elle est listée à part, hors du tracé
+  PASS  … aucun repère sur la carte du planificateur  — 1. חוות תלמי צאלים | 3. חוות מעלה עבדת | 4. חוות כרמי ירוחם | 5. חוות עצוז
+  PASS  … le tracé ne passe par aucun point de repli (Jérusalem, centre du Néguev)  — 3182 points
+  PASS  à l'échelle nationale, les repères qui se recouvrent sont regroupés  — [4,2]
+  PASS  tableau de bord : aucun couple de dessins de repères à moins de 20 px (centre à centre)
+  PASS  toucher un regroupement zoome (ou liste ses membres)  — 2 → 1
+  PASS  planificateur, six fermes : aucun numéro empilé
+  PASS  planificateur : le trajet est tracé sur route  — {"road":7,"gap":14}
+  PASS  planificateur : aucun trait à vol d'oiseau d'avant AN3  — {"road":7,"gap":14}
+  PASS  itinéraire libre : une étape ajoutée n'efface pas les routes déjà tracées  — avant 3, minimum pendant le calcul 2
+  PASS  itinéraire libre : jamais le trait droit global pendant le calcul  — 0 échantillons en trait droit
+  16 passed, 0 failed

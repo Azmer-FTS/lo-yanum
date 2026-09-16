@@ -201,7 +201,16 @@ function FarmFacts({ farm }: { farm: Farm }) {
           bande (carte du statut), les personnes dans « אנשים ». */}
       {farm.farmName && <KeyValue label={t('form.farmName')} value={farm.farmName} />}
       {farm.umbrella && <KeyValue label={t('form.umbrella')} value={farm.umbrella} />}
-      <KeyValue label={t('form.entityKind')} value={t(`entityKind.${entityKindOf(farm)}`)} />
+      {/* ★ AN7.1 — UNE ligne « סוג המקום », comme UNE liste à l'édition : la
+          valeur de l'association quand elle est choisie, sinon le genre. */}
+      <KeyValue
+        label={t('form.placeKind')}
+        value={
+          farm.legalEntity
+            ? optionLabel(farm.legalEntity, LEGAL_ENTITY_OPTIONS)
+            : t(`entityKind.${entityKindOf(farm)}`)
+        }
+      />
       {/* ★ AM1.4 — le יישוב dit s'il est le lieu ou le rattachement. */}
       <KeyValue
         label={t('form.locality')}
@@ -217,18 +226,19 @@ function FarmFacts({ farm }: { farm: Farm }) {
           </span>
         }
       />
-      {farm.region && <KeyValue label={t('form.region')} value={farm.region} />}
       {/* ★ X12.2 — THE STANDARD REGION, AND IT SAYS WHERE IT CAME FROM.
           Derived from the position unless somebody has set it by hand
           (`farmRegion`), so the line carries "אזור אוטומטי" while it is the
           computed answer: a field that looks typed but is derived is a field
           somebody will one day try to correct in the wrong place. */}
       <KeyValue
-        label={t('farms.colRegionStd')}
+        label={t('form.region')}
         value={
           <span className="flex items-center gap-1.5">
-            {regionById(farmRegion(farm))?.name ?? t('farms.regionNone')}
-            {!farm.regionId && (
+            {/* ★ AN7.2 — une ligne : la région choisie, le texte libre (« אחר »),
+                ou la région déduite, marquée comme telle. */}
+            {farm.regionId ? regionById(farm.regionId)?.name : farm.region || (regionById(farmRegion(farm))?.name ?? t('farms.regionNone'))}
+            {!farm.regionId && !farm.region && (
               <span className="chip bg-surface-high text-content-muted">
                 {t('farms.regionAuto')}
               </span>
@@ -252,12 +262,6 @@ function FarmFacts({ farm }: { farm: Farm }) {
         <KeyValue label={t('farms.localityCode')} value={String(farm.localityCode)} ltr />
       )}
       {farm.council && <KeyValue label={t('farms.council')} value={farm.council} />}
-      {farm.legalEntity && (
-        <KeyValue
-          label={t('farms.legalEntity')}
-          value={optionLabel(farm.legalEntity, LEGAL_ENTITY_OPTIONS)}
-        />
-      )}
       <KeyValue
         label={t('farms.landAgreement')}
         value={

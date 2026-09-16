@@ -15,6 +15,25 @@
     "signNow": "Sign"
   },
   "people": {
-    "noFarmer": "No farmer yet"
+    "noFarmer": "No farmer yet",
+    "makePrimary": "Make primary contact",
+    "done": "Done"
+  },
+  "form": {
+    "placeKind": "Kind of place",
+    "regionDerived": "From the address · {{name}}",
+    "regionUnknown": "Not chosen — set from the position",
+    "regionOther": "Other (free text)",
+    "regionFree": "Region name",
+    "councilOther": "Other (free text)",
+    "councilFree": "Council name",
+    "councilFromLocality": "Council of {{name}}",
+    "councilFromPin": "Council of the nearest locality · {{name}}",
+    "councilUse": "Use this council",
+    "pickDate": "Pick a date"
+  },
+  "photo": {
+    "choose": "Photo",
+    "change": "Change photo"
   }
 }

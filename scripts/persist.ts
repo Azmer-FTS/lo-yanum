@@ -77,6 +77,7 @@ import {
   alignDeclaredToOutline,
   keepDeclaredArea,
   updateFarm,
+  saveFarmAgreement,
   updateFarmVisit,
   updateFarmZoneRing,
   updateGeneralMeeting,
@@ -423,6 +424,19 @@ const farmDraft = () => {
   }
 }
 emits('updateFarm', () => updateFarm(farmId, farmDraft()), [['farms', farmId]])
+/* ★ AN5 — la signature depuis la fiche écrit la ferme, et seulement elle. */
+emits(
+  'saveFarmAgreement',
+  () =>
+    saveFarmAgreement(farmId, {
+      id: 'agreement-an5',
+      signedAt: '2026-09-16T08:00:00.000Z',
+      signedBy: 'AN5',
+      fileName: 'an5.pdf',
+      signature: 'data:image/png;base64,AAAA',
+    }),
+  [['farms', farmId]],
+)
 
 /**
  * ★★ AD2.2 — LES DEUX GESTES DE LA NOTE D'ÉCART, ET ILS ÉCRIVENT TOUS DEUX LA

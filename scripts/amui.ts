@@ -101,6 +101,18 @@ async function open(page: Page, base: string, hash: string, settle = 2600): Prom
   await page.waitForTimeout(800)
   await page.goto(`${base}/${hash}`, { waitUntil: 'load' })
   await page.waitForTimeout(settle)
+  /* ★ AN8 — en édition, « פרטים » est replié (résumé sur la ligne) : la porte
+     le déplie, comme le PO, avant d'y chercher le יישוב. */
+  for (const fold of await page.locator('[data-testid^="section-farm-form-details:"][aria-expanded="false"]').all()) {
+    await fold.click().catch(() => undefined)
+    await page.waitForTimeout(250)
+  }
+  /* ★ AN10 — le contact principal connu se lit en RÉSUMÉ (nom, portable) ;
+     « עריכה » ouvre ses champs, que la porte veut lire. */
+  for (const edit of await page.locator('[data-testid^="person-"][data-summary] > div > [data-testid$="-edit"]').all()) {
+    await edit.click().catch(() => undefined)
+    await page.waitForTimeout(200)
+  }
 }
 
 async function context(browser: Browser, viewport = IPAD, touch = true): Promise<BrowserContext> {

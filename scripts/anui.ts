@@ -607,6 +607,165 @@ try {
       })
     }
   }
+
+  if (wants('A231') || wants('A232')) {
+    // =======================================================================
+    section('A231 · A232 — un seul champ par vérité ; מועצה et אזור déduits de l\'adresse')
+    // =======================================================================
+    await guard(async () => {
+      const ctx = await context(chrome, { viewport: { width: 1032, height: 1376 } })
+      const page = await ctx.newPage()
+      await open(page, '#/coordinator/farms/new', 3500)
+      const labels = async () =>
+        page.locator('[data-farm-form] span.label').evaluateAll((els) =>
+          els.map((e) => (e.textContent ?? '').trim()).filter((x) => x !== ''),
+        )
+      const all = await labels()
+      const count = (re: RegExp) => all.filter((l) => re.test(l)).length
+      check('A231 · « סוג יישות » et « סוג הישות המשפטית » ne sont plus deux champs', count(/סוג יישות|סוג הישות המשפטית/) === 0 && count(/^סוג המקום/) === 1, all.filter((l) => /סוג/.test(l)).join(' | '))
+      check('A231 · « אזור סטנדרטי » n\'existe plus à côté de « אזור »', count(/אזור סטנדרטי/) === 0 && count(/^אזור$/) === 1, all.filter((l) => /אזור/.test(l)).join(' | '))
+      check('A231 · « מועצה אזורית » est une liste', (await page.locator('select[data-testid="farm-form-council"]').count()) === 1)
+      const opts = await page.locator('select[data-testid="farm-form-council"] option').count()
+      check('A231 · la liste des conseils est complète (54 du למ״ס + « לא נבחר » + « אחר »)', opts === 56, String(opts))
+      check('A231 · « אחר » ouvre la saisie libre, et SEULEMENT lui', (await page.locator('[data-testid="farm-form-council-free"]').count()) === 0)
+      await page.locator('select[data-testid="farm-form-council"]').selectOption('__other')
+      check('A231 · … « אחר » choisi : le champ libre apparaît', (await page.locator('[data-testid="farm-form-council-free"]').count()) === 1)
+      await page.locator('select[data-testid="farm-form-council"]').selectOption('')
+      const regionOpts = await page.locator('select[data-testid="farm-form-region"] option').count()
+      check('A231 · la liste des régions : 13 + « déduite » + « אחר »', regionOpts === 15, String(regionOpts))
+
+      // A232 — depuis le יישוב : choisir נבטים dans la liste remplit la מועצה.
+      await page.locator('[data-testid="farm-form-name"]').fill('חוות בדיקה')
+      const loc = page.locator('[data-testid="farm-form-locality"]')
+      /* ⚠️ Un nom tapé EN ENTIER ne montre pas de liste (il est « déjà
+         choisi ») : c'est ce chemin, le plus court, qui ne remplissait rien. */
+      await loc.click()
+      await loc.pressSequentially('נבטים', { delay: 30 })
+      await page.waitForTimeout(500)
+      await page.waitForTimeout(400)
+      const councilAfterPick = await page.locator('select[data-testid="farm-form-council"]').inputValue()
+      check('A232 · יישוב choisi → sa מועצה אזורית est remplie', councilAfterPick === 'בני שמעון', councilAfterPick)
+      const regionLabel = await page.locator('select[data-testid="farm-form-region"] option').first().textContent()
+      check('A232 · … et la région que l\'adresse désigne est dite', /הנגב/.test(regionLabel ?? ''), String(regionLabel))
+      await page.screenshot({ path: `${SHOTS}/a232-yishuv-moatsa.png` })
+
+      // A232 — depuis l'épingle seule : une ferme hors localité près de נבטים.
+      await open(page, '#/coordinator/farms/new', 3500)
+      await page.locator('[data-testid="farm-form-name"]').fill('חוות בודדת')
+      const link = page.locator('[data-testid="position-link"]').first()
+      await link.fill('31.2150, 34.8700')
+      await link.press('Enter')
+      await page.waitForTimeout(800)
+      const sug = page.locator('[data-testid="farm-council-suggestion"]')
+      check('A232 · épingle seule → la מועצה est PROPOSÉE', (await sug.count()) === 1, (await sug.textContent().catch(() => '')) ?? '')
+      check('A232 · … rien n\'est écrit sans le geste', (await page.locator('select[data-testid="farm-form-council"]').inputValue()) === '')
+      await page.locator('[data-testid="farm-council-adopt"]').click()
+      check('A232 · … un toucher l\'accepte', (await page.locator('select[data-testid="farm-form-council"]').inputValue()) !== '')
+      await ctx.close()
+    })
+  }
+
+  if (wants('A233')) {
+    // =======================================================================
+    section('A233 — dévoilement progressif : un champ dépendant après sa condition ; les dates se voient')
+    // =======================================================================
+    await guard(async () => {
+      const ctx = await context(chrome, { viewport: { width: 1032, height: 1376 } })
+      const page = await ctx.newPage()
+      await open(page, '#/coordinator/farms/new', 3500)
+      check('A233 · « תוקף ההסכם » absent tant que le type d\'accord n\'est pas choisi', (await page.locator('[data-testid="farm-form-land-until"]').count()) === 0)
+      const landSelect = page.locator('[data-testid="farm-block-details"] select').filter({ has: page.locator('option', { hasText: 'חוזה חכירה לדורות' }) })
+      await landSelect.selectOption({ index: 1 })
+      await page.waitForTimeout(300)
+      check('A233 · … il apparaît une fois le type choisi', (await page.locator('[data-testid="farm-form-land-until"]').count()) === 1)
+      const empty = page.locator('[data-testid="farm-form-land-until-empty"]')
+      check('A233 · une date vide se lit « בחירת תאריך », avec le calendrier', (await empty.count()) === 1 && /בחירת תאריך/.test((await empty.textContent()) ?? '') && (await empty.locator('svg').count()) === 1)
+      await page.locator('[data-testid="farm-form-land-until"]').fill('2027-03-01')
+      await page.waitForTimeout(200)
+      check('A233 · … et disparaît quand la date est posée', (await empty.count()) === 0)
+      await page.locator('[data-testid="farm-form-land-until"]').scrollIntoViewIfNeeded()
+      await page.screenshot({ path: `${SHOTS}/a233-date-et-dependance.png` })
+
+      await open(page, '#/coordinator/farms/farm-07/edit', 3500)
+      const blocks = await page.locator('[data-farm-form] section[data-block-title]').evaluateAll((els) =>
+        els.map((e) => ({
+          title: e.getAttribute('data-block-title'),
+          collapsible: !!e.querySelector(':scope > div > button[aria-expanded]'),
+          open: e.querySelector(':scope > div > button[aria-expanded]')?.getAttribute('aria-expanded'),
+        })),
+      )
+      const notCollapsible = blocks.filter((b) => !b.collapsible).map((b) => b.title)
+      check('A233 · tous les blocs se replient, sauf l\'en-tête (photo, nom)', notCollapsible.length === 1, notCollapsible.join(' | '))
+      const details = blocks.find((b) => /פרטים/.test(b.title ?? ''))
+      check('A233 · en édition, « פרטים » est replié…', details?.open === 'false', JSON.stringify(details))
+      const summary = await page.locator('[data-testid="summary-details"]').textContent()
+      check('A233 · … avec le résumé de son contenu sur la ligne', !!summary && summary.trim().length > 0 && summary !== 'אין', String(summary))
+
+      // Un bloc replié qui contient un champ en faute s'ouvre au refus d'enregistrer.
+      await page.locator('[data-testid="farm-form-farmerPhone"]').fill('12')
+      await page.locator('[data-testid="section-farm-form-people:farm-07"]').click()
+      await page.waitForTimeout(300)
+      check('A233 · (bloc « אנשים » replié à la main)', (await page.locator('[data-testid="farm-form-farmerPhone"]').count()) === 0)
+      await page.locator('[data-testid="form-actions"] .btn-primary').click()
+      await page.waitForTimeout(900)
+      const focused = await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))
+      check('A233 · enregistrer refusé : le bloc s\'ouvre et le champ fautif a le focus', focused === 'farm-form-farmerPhone', String(focused))
+      await ctx.close()
+    })
+  }
+
+  if (wants('A234') || wants('A235')) {
+    // =======================================================================
+    section('A234 · A235 — un bouton photo ; une photo par personne ; l\'agriculteur contact par défaut, en résumé')
+    // =======================================================================
+    await guard(async () => {
+      const ctx = await context(chrome, { viewport: { width: 1032, height: 1376 } })
+      const page = await ctx.newPage()
+      await open(page, '#/coordinator/farms/farm-07/edit', 3500)
+      const identity = page.locator('[data-testid="farm-block-identity"]')
+      const inputs = await identity.locator('input[type="file"]').evaluateAll((els) =>
+        els.map((e) => ({ capture: e.getAttribute('capture'), accept: e.getAttribute('accept') })),
+      )
+      check('A234 · photo de la ferme : UN champ fichier, sans « capture » (iOS propose alors les trois sources)', inputs.length === 1 && inputs[0].capture === null && inputs[0].accept === 'image/*', JSON.stringify(inputs))
+      const buttons = await identity.locator('button').evaluateAll((els) => els.map((e) => (e.textContent ?? '').trim()).filter(Boolean))
+      check('A234 · … et UN bouton (plus « צילום עכשיו » + « העלאת קובץ »)', !buttons.some((b) => /צילום עכשיו|העלאת קובץ/.test(b)) && buttons.filter((b) => /תמונה/.test(b)).length === 1, buttons.join(' | '))
+      const pos = await page.evaluate(() => {
+        const thumb = document.querySelector('[data-testid="photo-field-thumb"]')!.getBoundingClientRect()
+        const btn = document.querySelector('[data-testid="photo-field-choose"]')!.getBoundingClientRect()
+        return { sameRow: Math.abs(thumb.top + thumb.height / 2 - (btn.top + btn.height / 2)) < 12 }
+      })
+      check('A234 · le bouton est À CÔTÉ de la vignette, sur sa ligne', pos.sameRow)
+
+      const farmer = page.locator('[data-testid="person-farmer"]')
+      check('A234 · une personne : plus de second cercle photo dans sa carte', (await farmer.locator('[data-testid="photo-field"]').count()) === 0 && (await farmer.locator('input[type="file"]').count()) === 1)
+      check('A234 · … l\'avatar en tête ouvre le choix de photo', (await farmer.locator('[data-testid="person-farmer-photo"]').count()) === 1)
+      const chooser = page.waitForEvent('filechooser', { timeout: 3000 }).then(() => true).catch(() => false)
+      await page.locator('[data-testid="person-farmer-photo"]').click()
+      check('A234 · … et le toucher ouvre bien le sélecteur', await chooser)
+
+      check('A235 · l\'agriculteur est le contact principal', (await farmer.locator('[data-testid="person-farmer-primary"]').count()) === 1)
+      const summary = (await farmer.locator('[data-testid="person-farmer-summary"]').textContent().catch(() => '')) ?? ''
+      check('A235 · … affiché en résumé : nom et portable', /עמית דרור/.test(summary) && /\(052\) 000-0010/.test(summary), summary)
+      check('A235 · … sans ses champs répétés dessous', (await farmer.locator('input[data-kind]').count()) === 0)
+      const order = await page.evaluate(() => {
+        const r = (id: string) => document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect().top
+        return { farmer: r('person-farmer'), add: r('person-add'), liaison: r('person-liaison') }
+      })
+      check('A235 · « הוספת איש קשר נוסף » juste SOUS le résumé', order.farmer < order.add && order.add < order.liaison, JSON.stringify(order))
+      await page.locator('[data-testid="farm-block-people"]').screenshot({ path: `${SHOTS}/a235-contact-resume.png` })
+
+      // Quelqu'un d'autre devient le contact : c'est lui qui passe en résumé.
+      await page.locator('[data-testid="person-add"]').click()
+      await page.locator('[data-testid="person-contact-0-name"]').fill('שרה כהן')
+      await page.locator('[data-testid="person-contact-0-phone"]').fill('0541112233')
+      await page.locator('[data-testid="person-contact-0-make-primary"]').click()
+      await page.waitForTimeout(300)
+      const other = page.locator('[data-testid="person-contact-0"]')
+      check('A235 · un autre contact choisi : il passe en résumé', (await other.getAttribute('data-summary')) === '' && /שרה כהן/.test((await other.textContent()) ?? ''))
+      check('A235 · … et l\'agriculteur n\'est plus résumé comme principal', (await farmer.locator('[data-testid="person-farmer-primary"]').count()) === 0)
+      await ctx.close()
+    })
+  }
 } finally {
   await chrome.close()
   await safari.close()

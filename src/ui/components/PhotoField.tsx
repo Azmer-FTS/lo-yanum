@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { PHOTO_MAX_EDGE, PHOTO_QUALITY } from '@core/index'
@@ -7,22 +8,10 @@ import { Avatar } from './Avatar'
 import { Icon } from './Icon'
 
 /**
- * C5.2 — photo field with TWO paths, because coordinators acquire pictures two
- * different ways in the field:
- *
- *   (a) take it now — `capture` opens the phone camera directly;
- *   (b) import a file — the picture already arrived over WhatsApp.
- *
- * The image is cropped to a square and downscaled to PHOTO_MAX_EDGE before it
- * ever reaches the store. A modern phone photo is 3–8 MB; dropping a handful of
- * those into an in-memory store (and, in Lot 1, over a desert data connection)
- * would be untenable, so resizing is not an optimisation — it is the feature.
- *
- * Canvas and FileReader are Web APIs, which is exactly why this lives in
- * /src/ui; the sizing constants and the fallback maths stay pure in core/photo.
+ * Centre-crops to a square and downscales before the photo ever reaches state.
+ * A modern phone photo is 3–5 MB; this lands it near 30 KB, which is what lets
+ * photos live on the record at all.
  */
-
-/** Centre-crop to a square, downscale, re-encode. Returns a data URI. */
 async function toSquareDataUrl(file: File): Promise<string> {
   const bitmap = await createImageBitmap(file)
 
@@ -43,28 +32,31 @@ async function toSquareDataUrl(file: File): Promise<string> {
   return canvas.toDataURL('image/jpeg', PHOTO_QUALITY)
 }
 
-export function PhotoField({
-  label,
-  value,
-  onChange,
-  name,
-  shape = 'circle',
-  hint,
-}: {
-  label: string
-  value: string | null
-  onChange: (photo: string | null) => void
-  /** Used for the initials fallback while there is no photo. */
-  name: string
-  shape?: 'circle' | 'square'
-  hint?: string
-}) {
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AN9 (2026-09-16) — UN SEUL BOUTON PHOTO, ET IL OUVRE LES TROIS SOURCES.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Il y avait « צילום עכשיו » (un `<input capture>`) et « העלאת קובץ » (un
+ * `<input>` sans `capture`) — et sur iPad le second rouvrait le MÊME choix :
+ * un `<input type="file" accept="image/*">` SANS `capture` fait afficher par
+ * iOS son propre menu : prendre une photo, photothèque, choisir un fichier.
+ * Un seul champ suffit donc, et c'est lui qui est gardé. (Vu sur le simulateur
+ * iPad, `docs/an/an9-*`.)
+ *
+ * `usePhotoPicker` donne ce champ à qui veut le déclencher depuis autre chose
+ * qu'un bouton — l'AVATAR d'une personne, qu'on touche pour changer sa photo.
+ */
+export function usePhotoPicker(onChange: (photo: string | null) => void): {
+  open: () => void
+  busy: boolean
+  error: string | null
+  input: ReactNode
+} {
   const { t } = useTranslation()
-  const cameraRef = useRef<HTMLInputElement | null>(null)
-  const fileRef = useRef<HTMLInputElement | null>(null)
+  const ref = useRef<HTMLInputElement | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
   const handle = async (file: File | undefined) => {
     if (!file) return
     setBusy(true)
@@ -77,78 +69,90 @@ export function PhotoField({
       setBusy(false)
     }
   }
+  return {
+    open: () => ref.current?.click(),
+    busy,
+    error,
+    input: (
+      <input
+        ref={ref}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        data-testid="photo-input"
+        onChange={(e) => {
+          void handle(e.target.files?.[0])
+          e.target.value = ''
+        }}
+      />
+    ),
+  }
+}
+
+export function PhotoField({
+  label,
+  value,
+  onChange,
+  name,
+  shape = 'circle',
+  hint,
+  testId = 'photo-field',
+}: {
+  label: string
+  value: string | null
+  onChange: (photo: string | null) => void
+  name: string
+  shape?: 'circle' | 'square'
+  hint?: string
+  testId?: string
+}) {
+  const { t } = useTranslation()
+  const picker = usePhotoPicker(onChange)
 
   return (
-    <div>
+    <div data-testid={testId}>
       <span className="label">{label}</span>
-      <div className="flex items-center gap-4">
-        <div className="relative">
-          <Avatar photo={value} name={name || '?'} size="xl" shape={shape} />
-          {busy && (
+      {/* ★ AN9.2 — le bouton À CÔTÉ de la vignette, sur sa ligne. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={picker.open}
+          aria-label={t('photo.choose')}
+          className="relative shrink-0 rounded-field"
+          data-testid={`${testId}-thumb`}
+        >
+          <Avatar photo={value} name={name || '?'} size="lg" shape={shape} />
+          {picker.busy && (
             <span className="absolute inset-0 flex items-center justify-center rounded-field bg-surface-sunken/70">
               <Icon name="clock" size={20} className="animate-pulse" />
             </span>
           )}
-        </div>
-
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => cameraRef.current?.click()}
-              className="btn-secondary py-2"
-            >
-              <Icon name="camera2" size={15} />
-              {t('photo.take')}
-            </button>
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="btn-secondary py-2"
-            >
-              <Icon name="image" size={15} />
-              {t('photo.import')}
-            </button>
-            {value && (
-              <button
-                type="button"
-                onClick={() => onChange(null)}
-                className="btn-ghost py-2 text-status-danger-ink hover:bg-status-danger/10"
-              >
-                <Icon name="trash" size={15} />
-                {t('photo.remove')}
-              </button>
-            )}
-          </div>
-          <p className="text-micro text-content-muted">
-            {error ?? hint ?? t('photo.hint')}
-          </p>
-        </div>
+        </button>
+        <button
+          type="button"
+          onClick={picker.open}
+          className="btn-secondary"
+          data-testid={`${testId}-choose`}
+        >
+          <Icon name="camera2" size={15} />
+          {value ? t('photo.change') : t('photo.choose')}
+        </button>
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            aria-label={t('photo.remove')}
+            title={t('photo.remove')}
+            className="btn-ghost text-status-danger-ink hover:bg-status-danger/10"
+          >
+            <Icon name="trash" size={15} />
+          </button>
+        )}
+        {(picker.error || hint) && (
+          <p className="w-full text-micro text-content-muted">{picker.error ?? hint}</p>
+        )}
       </div>
-
-      {/* `capture` asks the phone for the camera directly; on desktop the same
-          input degrades to a normal file picker, which is why both exist. */}
-      <input
-        ref={cameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={(e) => {
-          void handle(e.target.files?.[0])
-          e.target.value = ''
-        }}
-      />
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          void handle(e.target.files?.[0])
-          e.target.value = ''
-        }}
-      />
+      {picker.input}
     </div>
   )
 }

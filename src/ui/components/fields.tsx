@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { ReactNode } from 'react'
 
 import { formatPhoneTyping, idDigits, phoneValue, rankOptions } from '@core/index'
@@ -182,6 +183,7 @@ export function TextField({
   kind?: FieldKind
   className?: string
 }) {
+  const { t } = useTranslation()
   const dom = KIND_DOM[kind]
   const proposed = value.trim() === '' && (suggestion ?? '').trim() !== ''
   const shown = dom.show ? dom.show(value) : value
@@ -193,6 +195,7 @@ export function TextField({
       required={required}
       className={className}
     >
+      <span className="relative block">
       <input
         type={dom.type}
         inputMode={dom.inputMode}
@@ -209,13 +212,28 @@ export function TextField({
         /* ★ AM8 — un portable formaté tient dans une demi-colonne d'iPhone :
            les chiffres tabulaires le rognaient d'un chiffre (« (050) 968-826 »,
            vu sur la capture). Proportionnels et sans rembourrage superflu. */
-        className={`input ${kind === 'phone' ? '!px-2.5' : ''} ${error ? 'border-status-danger' : ''} ${dom.ltr ? (kind === 'phone' ? 'text-end [font-variant-numeric:normal]' : 'ltr-nums text-end') : ''} ${
+        className={`input ${kind === 'date' && value === '' ? 'text-transparent' : ''} ${kind === 'phone' ? '!px-2.5' : ''} ${error ? 'border-status-danger' : ''} ${dom.ltr ? (kind === 'phone' ? 'text-end [font-variant-numeric:normal]' : 'ltr-nums text-end') : ''} ${
           readOnly ? 'cursor-default text-content-secondary opacity-80' : ''
         }`}
         value={shown}
         placeholder={proposed ? (dom.show ? dom.show(suggestion ?? '') : suggestion) : placeholder}
         onChange={(e) => onChange(dom.clean ? dom.clean(e.target.value) : e.target.value)}
       />
+      {/* ★ AN8.2 — « un champ de date se voit comme une date ». Vide, l'iPad
+          dessine un rectangle blanc indistinct : on y écrit « בחירת תאריך »
+          avec le calendrier, sans capter le toucher (le sélecteur natif
+          s'ouvre dessous). */}
+      {kind === 'date' && value === '' && (
+        <span
+          aria-hidden="true"
+          data-testid={testId ? `${testId}-empty` : undefined}
+          className="pointer-events-none absolute inset-0 flex items-center gap-2 px-3.5 text-body text-content-muted"
+        >
+          <Icon name="calendar" size={16} />
+          {placeholder || t('form.pickDate')}
+        </span>
+      )}
+      </span>
     </Field>
   )
 }
@@ -420,10 +438,12 @@ export function SelectField<T extends string>({
   className = '',
   emptyAction,
   emptyLabel,
+  testId,
 }: {
   label: string
   value: T
   options: Array<{ value: T; label: string }>
+  testId?: string
   onChange: (v: T) => void
   hint?: string
   error?: string
@@ -462,6 +482,7 @@ export function SelectField<T extends string>({
     >
       <select
         className={`input ${error ? 'border-status-danger' : ''}`}
+        data-testid={testId}
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
       >
@@ -606,9 +627,17 @@ export function FormSection({
   defaultOpen = true,
   summary,
   testId,
+  forceOpen = false,
 }: {
   title: string
   children: ReactNode
+  /**
+   * ★ AN8 — un bloc replié démonte ses champs : quand il en contient un en
+   * faute, il s'ouvre, pour que le refus d'enregistrer puisse MONTRER le champ
+   * (AM1). Calculé au rendu, pas par un effet : le parent cherche le champ
+   * fautif juste après ce même rendu.
+   */
+  forceOpen?: boolean
   /** AM3 — le bloc, nommé, pour que A217 compare l'ordre au détail. */
   testId?: string
   action?: ReactNode
@@ -628,6 +657,7 @@ export function FormSection({
     }
   })
 
+  const shown = open || forceOpen
   const toggle = () =>
     setOpen((v) => {
       try {
@@ -645,26 +675,26 @@ export function FormSection({
           <button
             type="button"
             onClick={toggle}
-            aria-expanded={open}
+            aria-expanded={shown}
             data-testid={`section-${storageKey}`}
             className="group flex min-w-0 flex-1 items-center gap-1.5 text-start"
           >
             <span
               className={`text-content-muted transition-transform duration-fast group-hover:text-content-primary ${
-                open ? '' : 'ltr:-rotate-90 rtl:rotate-90'
+                shown ? '' : 'ltr:-rotate-90 rtl:rotate-90'
               }`}
             >
               <Icon name="chevronDown" size={16} />
             </span>
             <h2 className="section-title">{title}</h2>
-            {!open && summary}
+            {!shown && summary}
           </button>
         ) : (
           <h2 className="section-title">{title}</h2>
         )}
-        {(!storageKey || open) && action}
+        {(!storageKey || shown) && action}
       </div>
-      {(!storageKey || open) && <div className="form-grid">{children}</div>}
+      {(!storageKey || shown) && <div className="form-grid">{children}</div>}
     </section>
   )
 }
