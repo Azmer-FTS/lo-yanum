@@ -1613,29 +1613,87 @@ export function CopyButton({
   className?: string
 }) {
   const { t } = useTranslation()
-  const [copied, setCopied] = useState(false)
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const timer = useRef<number | undefined>(undefined)
 
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ★★ AL3.2 (2026-09-16) — UN BOUTON QUI DIT « הועתק » A COPIÉ.
+   * ═══════════════════════════════════════════════════════════════════════
+   *
+   * ⚠️ IL DISAIT « הועתק » MÊME QUAND L'ÉCRITURE AVAIT ÉCHOUÉ. Le `catch` ne
+   *    faisait rien et l'état passait à « copié » juste après, donc le PO
+   *    voyait la coche, allait coller le lien de l'agriculteur dans WhatsApp,
+   *    et collait ce qu'il avait copié une heure plus tôt. Le commentaire
+   *    renvoyait à « la zone de texte à côté du bouton » — il n'y en a pas
+   *    dans l'écran de diagnostic, ni dans la moitié des autres emplois.
+   *
+   * ★ DEUX CHEMINS, ET LE SECOND MARCHE LÀ OÙ LE PREMIER NE MARCHE PAS.
+   *   `navigator.clipboard` exige une origine sûre — ce que `http://` sur le
+   *   réseau local n'est pas ; `document.execCommand('copy')` sur une zone de
+   *   texte posée puis retirée n'exige rien. Le second est obsolète, et c'est
+   *   précisément pourquoi il est encore là partout.
+   *
+   * ★ ET SI LES DEUX ÉCHOUENT, LE BOUTON LE DIT. Un échec nommé est ce qui
+   *   permet au PO de sélectionner le texte lui-même ; une coche menteuse ne
+   *   lui laisse rien.
+   */
   const copy = async () => {
+    let ok = false
     try {
       await navigator.clipboard.writeText(value)
+      ok = true
     } catch {
-      // Clipboard API is unavailable over plain http on some devices; the
-      // textarea beside this button stays selectable as a fallback.
+      ok = false
     }
-    setCopied(true)
+    if (!ok) ok = copyBySelection(value)
+    setState(ok ? 'copied' : 'failed')
     window.clearTimeout(timer.current)
-    timer.current = window.setTimeout(() => setCopied(false), 1800)
+    timer.current = window.setTimeout(() => setState('idle'), 1800)
   }
 
   return (
-    <button type="button" onClick={copy} className={className}>
-      <Icon name={copied ? 'check' : 'copy'} size={15} />
-      {copied ? t('common.copied') : (label ?? t('common.copy'))}
+    <button
+      type="button"
+      onClick={copy}
+      data-testid="copy-button"
+      data-copy-state={state}
+      className={className}
+    >
+      <Icon name={state === 'copied' ? 'check' : state === 'failed' ? 'alert' : 'copy'} size={15} />
+      {state === 'copied'
+        ? t('common.copied')
+        : state === 'failed'
+          ? t('common.copyFailed')
+          : (label ?? t('common.copy'))}
     </button>
   )
+}
+
+/**
+ * Le chemin de repli : une zone de texte posée hors écran, sélectionnée,
+ * copiée, retirée. Rend `false` quand le navigateur refuse aussi celui-ci.
+ *
+ * ⚠️ `position: fixed` ET `opacity: 0` PLUTÔT QUE `display: none` : un élément
+ *    qui n'est pas rendu n'a pas de sélection, donc rien à copier.
+ */
+function copyBySelection(value: string): boolean {
+  try {
+    const area = document.createElement('textarea')
+    area.value = value
+    area.setAttribute('readonly', '')
+    area.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;'
+    document.body.appendChild(area)
+    area.select()
+    area.setSelectionRange(0, value.length)
+    const done = document.execCommand('copy')
+    document.body.removeChild(area)
+    return done
+  } catch {
+    return false
+  }
 }
 
 export function Toggle({

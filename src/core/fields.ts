@@ -491,6 +491,11 @@ export function areaGapRatio(
  * ★★ AC3 (2026-09-08) — « שטחים שמירה » : LE PO A TRANCHÉ, C'EST DÉCLARATIF.
  * ═══════════════════════════════════════════════════════════════════════════
  *
+ * ⚠️ CE BLOC EST L'HISTOIRE, PAS LA RÈGLE EN VIGUEUR. Il est gardé parce que
+ *    le raisonnement d'AC3 est la moitié de la décision d'aujourd'hui ; ce qui
+ *    s'applique est écrit dans `guardedDunamsOf` (AK1.6 : rien n'est recopié)
+ *    et dans `suggestedGuardedDunams` (AL1 : la somme se PROPOSE).
+ *
  *   « שטחים שמירה n'est pas une recopie erronée. C'est une déclaration —
  *     "nous surveillons la totalité de cette surface". Leur système la
  *     remplit, et c'est volontaire. »
@@ -533,6 +538,33 @@ export function guardedDunamsOf(farm: HasGuardedArea): number | null {
     return Math.round(farm.guardedDunams as number)
   }
   return null
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AL1 (2026-09-16) — LA SOMME SE PROPOSE, ELLE NE S'ÉCRIT PAS.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Deux décisions opposées se sont succédé sur cette colonne, et les DEUX
+ * tenaient : AC3 remplissait שטחים שמירה avec מעובד + מרעה (« leur système la
+ * remplit, c'est volontaire ») ; AK1.6 l'a vidée (« ne pas écrire dans un
+ * fichier transmis un chiffre que personne n'a mesuré »). Le PO tranche entre
+ * les deux et la réponse n'est ni l'une ni l'autre : **la somme est une
+ * SUGGESTION**. L'app la calcule, la MONTRE, et attend un geste.
+ *
+ * ⚠️ CETTE FONCTION N'EST PAS `guardedDunamsOf` ET NE DOIT JAMAIS ÊTRE LUE À
+ *    SA PLACE. Celle-là répond « que vaut la colonne ? » — déclaré, ou rien,
+ *    et c'est elle seule que l'export, la fiche et le compte rendu lisent.
+ *    Celle-ci répond « qu'est-ce que l'app propose de taper ? », et son unique
+ *    lecteur est le FORMULAIRE, sous le champ, à côté d'un bouton.
+ *
+ * ★ `null` quand il n'y a rien à proposer (aucune surface) : un bouton qui
+ *   propose zéro est un bouton qui pose un drapeau sur un zéro, c'est-à-dire
+ *   le piège d'AA4 déguisé en suggestion.
+ */
+export function suggestedGuardedDunams(farm: HasAreas): number | null {
+  const sum = Math.round(effectiveAreas(farm).total)
+  return sum > 0 ? sum : null
 }
 
 /** Is this farm's guarded area the default, or a figure somebody typed? */

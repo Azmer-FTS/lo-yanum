@@ -119,3 +119,7 @@ dist-akpass/
 dist-akreal/
 dist-ak6-before/
 dist-ak-before/
+
+# AL — les dossiers de build de la passe de finition.
+dist-alpass/
+dist-al-before/

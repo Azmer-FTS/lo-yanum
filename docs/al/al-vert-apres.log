@@ -1,0 +1,73 @@
+$ bun run scripts/alui.ts
+
+  AL — LA SUGGESTION, LE GESTE, ET LA MESURE DE LA LOCALISATION
+  =============================================================
+  http://localhost:5311
+
+  A207 — webkit — la surface gardée se propose, elle ne se remplit pas
+  --------------------------------------------------------------------
+  PASS  A207 · webkit · le champ s'ouvre VIDE — rien n'a été écrit d'office  — «»
+  PASS  A207 · webkit · la somme est PROPOSÉE sous le champ  — avant : 240 + 2200
+  PASS  A207 · webkit · et elle vaut 1100  — 1100
+  PASS  A207 · webkit · ⚠️ LE CHAMP EST TOUJOURS VIDE — proposer n'est pas écrire  — «»
+  PASS  A207 · webkit · le bouton fait au moins 44 px de haut  — 44 px
+  PASS  A207 · webkit · le doigt touche « להשתמש בסכום השטחים »
+  PASS  A207 · webkit · le champ porte 1100  — 1100
+  PASS  A207 · webkit · et la ligne de suggestion s'efface — plus rien à écraser
+  PASS  A207 · webkit · les surfaces changent, 1100 ne bouge pas  — 1100
+  PASS  A207 · webkit · et aucune suggestion ne revient par-dessus
+  PASS  A207 · webkit · la fiche enregistrée montre 1,100  — 1,100
+  PASS  A207 · webkit · rouverte, elle porte toujours 1100  — 1100
+  PASS  A207 · webkit · et la suggestion reste muette
+  PASS  A207 · webkit · vidé, le champ redemande la suggestion  — 1 ligne(s)
+  PASS  A207 · webkit · une fiche sans geste affiche « — » sur SA vignette  — —שטחים שמירהלא הוצהר
+  PASS  A207 · webkit · et elle DIT « לא הוצהר » plutôt que de laisser deviner  — —שטחים שמירהלא הוצהר
+  PASS  A207 · webkit · aucune erreur de page
+
+  A210 — webkit — אבחון מיקום : une ligne par lancement, un bouton qui copie
+  --------------------------------------------------------------------------
+  PASS  A210 · webkit · l'écran de diagnostic est en place, dans les réglages
+  PASS  A210 · webkit · ce lancement a été enregistré  — 1 ligne(s)
+  PASS  A210 · webkit · un second lancement ajoute UNE ligne, pas zéro et pas deux  — 1 → 2
+  PASS  A210 · webkit · chaque ligne porte les trois faits  — standalone=0 permission=prompt
+  PASS  A210 · webkit · le bouton de copie existe
+  PASS  A210 · webkit · le doigt l'atteint
+  PASS  A210 · webkit · il annonce « הועתק », pas un échec  — copied
+  PASS  A210 · webkit · presse-papiers refusé → le bouton DIT l'échec  — failed
+  PASS  A210 · webkit · aucune erreur de page
+
+  A207 — chromium — la surface gardée se propose, elle ne se remplit pas
+  ----------------------------------------------------------------------
+  PASS  A207 · chromium · le champ s'ouvre VIDE — rien n'a été écrit d'office  — «»
+  PASS  A207 · chromium · la somme est PROPOSÉE sous le champ  — avant : 240 + 2200
+  PASS  A207 · chromium · et elle vaut 1100  — 1100
+  PASS  A207 · chromium · ⚠️ LE CHAMP EST TOUJOURS VIDE — proposer n'est pas écrire  — «»
+  PASS  A207 · chromium · le bouton fait au moins 44 px de haut  — 44 px
+  PASS  A207 · chromium · le doigt touche « להשתמש בסכום השטחים »
+  PASS  A207 · chromium · le champ porte 1100  — 1100
+  PASS  A207 · chromium · et la ligne de suggestion s'efface — plus rien à écraser
+  PASS  A207 · chromium · les surfaces changent, 1100 ne bouge pas  — 1100
+  PASS  A207 · chromium · et aucune suggestion ne revient par-dessus
+  PASS  A207 · chromium · la fiche enregistrée montre 1,100  — 1,100
+  PASS  A207 · chromium · rouverte, elle porte toujours 1100  — 1100
+  PASS  A207 · chromium · et la suggestion reste muette
+  PASS  A207 · chromium · vidé, le champ redemande la suggestion  — 1 ligne(s)
+  PASS  A207 · chromium · une fiche sans geste affiche « — » sur SA vignette  — —שטחים שמירהלא הוצהר
+  PASS  A207 · chromium · et elle DIT « לא הוצהר » plutôt que de laisser deviner  — —שטחים שמירהלא הוצהר
+  PASS  A207 · chromium · aucune erreur de page
+
+  A210 — chromium — אבחון מיקום : une ligne par lancement, un bouton qui copie
+  ----------------------------------------------------------------------------
+  PASS  A210 · chromium · l'écran de diagnostic est en place, dans les réglages
+  PASS  A210 · chromium · ce lancement a été enregistré  — 1 ligne(s)
+  PASS  A210 · chromium · un second lancement ajoute UNE ligne, pas zéro et pas deux  — 1 → 2
+  PASS  A210 · chromium · chaque ligne porte les trois faits  — standalone=0 permission=denied
+  PASS  A210 · chromium · le bouton de copie existe
+  PASS  A210 · chromium · le doigt l'atteint
+  PASS  A210 · chromium · il annonce « הועתק », pas un échec  — copied
+  PASS  A210 · chromium · et le presse-papiers porte VRAIMENT les mesures  — 2026-09-16T04:54:42.728Z  standalone=no  permission=denied  
+  PASS  A210 · chromium · autant de lignes copiées que de lignes affichées  — 2 / 2
+  PASS  A210 · chromium · presse-papiers refusé → le bouton DIT l'échec  — failed
+  PASS  A210 · chromium · aucune erreur de page
+
+  54 passed, 0 failed

@@ -1,0 +1,40 @@
+$ bun run scripts/alui.ts
+
+  AL — LA SUGGESTION, LE GESTE, ET LA MESURE DE LA LOCALISATION
+  =============================================================
+  http://localhost:5311
+
+  A207 — webkit — la surface gardée se propose, elle ne se remplit pas
+  --------------------------------------------------------------------
+  PASS  A207 · webkit · le champ s'ouvre VIDE — rien n'a été écrit d'office  — «»
+  FAIL  A207 · webkit · la somme est PROPOSÉE sous le champ  — avant : 240 + 2200
+  FAIL  A207 · webkit · et elle vaut 1100
+  PASS  A207 · webkit · ⚠️ LE CHAMP EST TOUJOURS VIDE — proposer n'est pas écrire  — «»
+  FAIL  A207 · webkit · le bouton fait au moins 44 px de haut  — absent
+  FAIL  A207 · webkit · le doigt touche « להשתמש בסכום השטחים »
+  FAIL  A207 · webkit · le champ porte 1100
+  PASS  A207 · webkit · et la ligne de suggestion s'efface — plus rien à écraser
+  FAIL  A207 · webkit · les surfaces changent, 1100 ne bouge pas
+  PASS  A207 · webkit · et aucune suggestion ne revient par-dessus
+  FAIL  A207 · webkit · la fiche enregistrée montre 1,100  — absent
+  FAIL  A207 · webkit · rouverte, elle porte toujours 1100
+  PASS  A207 · webkit · et la suggestion reste muette
+  FAIL  A207 · webkit · vidé, le champ redemande la suggestion  — 0 ligne(s)
+  PASS  A207 · webkit · une fiche sans geste affiche « — » sur SA vignette  — —שטחים שמירהלא הוצהר
+  PASS  A207 · webkit · et elle DIT « לא הוצהר » plutôt que de laisser deviner  — —שטחים שמירהלא הוצהר
+  PASS  A207 · webkit · aucune erreur de page
+
+  A210 — webkit — אבחון מיקום : une ligne par lancement, un bouton qui copie
+  --------------------------------------------------------------------------
+  PASS  A210 · webkit · l'écran de diagnostic est en place, dans les réglages
+  PASS  A210 · webkit · ce lancement a été enregistré  — 1 ligne(s)
+  PASS  A210 · webkit · un second lancement ajoute UNE ligne, pas zéro et pas deux  — 1 → 2
+  PASS  A210 · webkit · chaque ligne porte les trois faits  — standalone=0 permission=prompt
+  FAIL  A210 · webkit · le bouton de copie existe
+  FAIL  A210 · webkit · le doigt l'atteint
+  FAIL  A210 · webkit · il annonce « הועתק », pas un échec  — (bouton absent)
+  FAIL  A210 · webkit · presse-papiers refusé → le bouton DIT l'échec  — (bouton absent)
+  PASS  A210 · webkit · aucune erreur de page
+
+  13 passed, 13 failed
+error: script "alui" exited with code 1

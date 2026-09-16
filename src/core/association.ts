@@ -45,12 +45,14 @@ import type { Farm, LatLng } from './types'
  *    4. DATES ARE `JJ/MM/AAAA`. Ours are `YYYY-MM-DD` day-strings with no
  *       time and no zone (AA2bis), and they stay that way in the database.
  *
- * ⚠️ AND ONE TRAP THAT WAS READ AS OURS AND WAS NOT — CLOSED BY AC3. « שטחים
- *    שמירה » looked like a careless copy of « שטחים מעובדים » on their sheets,
- *    so AB6.4 refused to write it. The product owner has ruled: it is a
- *    DECLARATION, filled on purpose, and it means « we watch the whole of
- *    this ». The column is now filled from `guardedDunamsOf` — מעובד + מרעה by
- *    default, overridable farm by farm — and it no longer comes out blank.
+ * ⚠️ AND ONE COLUMN THAT CHANGED ITS MIND TWICE — AB6.4 → AC3 → AK1.6 → AL1.
+ *    « שטחים שמירה » looked like a careless copy of « שטחים מעובדים » on their
+ *    sheets, so AB6.4 refused to write it ; AC3 filled it with מעובד + מרעה
+ *    because the product owner called it a DECLARATION ; AK1.6 emptied it
+ *    again because nobody had declared those figures. **AL1 closes it :** the
+ *    app PROPOSES the sum under the field and writes nothing by itself, so
+ *    this column carries `guardedDunamsOf` — what the coordinator accepted or
+ *    typed — and comes out BLANK for a record he has not answered for.
  *
  * PURE: no SheetJS, no DOM, no React — like everything under /src/core.
  */
@@ -540,12 +542,13 @@ export interface AssociationReport {
 /**
  * Sources this app simply does not hold. Reported as such, never filled.
  *
- * ★★ AC3.3 — « שטחים שמירה » LEFT THIS SET. AB6.4 put it here because this
- *    programme recorded no guarded area and copying the cultivated one would
- *    have handed the State a figure nobody measured. The product owner has
- *    since ruled the column a DECLARATION rather than a measurement, and the
- *    app now holds one: `guardedDunamsOf`, defaulted to מעובד + מרעה and
- *    overridable farm by farm. « Elle ne sort plus vide. »
+ * ★★ AC3.3 · AL1 — « שטחים שמירה » LEFT THIS SET, AND STAYS OUT. AB6.4 put it
+ *    here because copying the cultivated area would have handed the State a
+ *    figure nobody measured — which is still true, and is exactly why AL1
+ *    makes the sum a SUGGESTION under the field rather than a default. The app
+ *    does hold a declaration (`guardedDunamsOf`), so the column is written;
+ *    what it writes is what the coordinator accepted, and an empty cell means
+ *    « personne ne l'a déclarée », which is a fact worth transmitting.
  */
 const NOT_STORED: ReadonlySet<AssociationSource> = new Set(['businessName'])
 
@@ -728,6 +731,26 @@ export function parseAssociationRow(
   if (cultivated !== null) {
     patch.farmDunams = cultivated
     set(patch, 'farmDunamsManual', cultivated > 0 ? true : undefined)
+  }
+
+  /**
+   * ★★ AL1 (2026-09-16) — ET « שטחים שמירה » RENTRE, ELLE AUSSI.
+   *
+   * ⚠️ LA COLONNE SORTAIT ET NE RENTRAIT PAS. `associationExportMatrix` l'écrit
+   *    depuis AC3, l'importateur de prospection la lit depuis AA4, et celui-ci
+   *    la laissait tomber : un aller-retour par LEUR fichier perdait la seule
+   *    déclaration qu'il portait. C'est la « perte » qu'AB6.7 promet d'éviter,
+   *    trouvée par la porte A207 en cherchant tout autre chose.
+   *
+   * ★ Une case remplie par l'association EST un geste — c'est le PO qui l'a
+   *   dit : « l'association remplit cette colonne chez elle ». Elle devient
+   *   donc une valeur déclarée, avec la règle du zéro de G15/AA4 : un zéro
+   *   n'est pas une déclaration, et il ne fige rien.
+   */
+  const guarded = num(at('guardedDunams'))
+  if (guarded !== null && guarded > 0) {
+    patch.guardedDunams = guarded
+    set(patch, 'guardedDunamsManual', true)
   }
 
   const coords = at('coordinates')

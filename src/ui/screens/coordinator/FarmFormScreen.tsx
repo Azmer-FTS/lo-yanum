@@ -18,6 +18,7 @@ import {
   getFarmZonesForFarm,
   getVisibleFarms,
   guardedDunamsOf,
+  suggestedGuardedDunams,
   closureBlocked,
   ACTIVITIES,
   activitiesOf,
@@ -150,6 +151,61 @@ function DunamSourceRow({
           {t('farms.gapAlign')}
         </button>
       )}
+    </div>
+  )
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AL1 (2026-09-16) — LA SUGGESTION DE « שטחים שמירה », ET SON GESTE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Deux passes se sont contredites sur cette colonne. AC3 l'a remplie toute
+ * seule avec מעובד + מרעה ; AK1.6 l'a vidée parce qu'un chiffre transmis au
+ * ministère doit avoir été déclaré par quelqu'un. Le PO tranche : l'app
+ * PROPOSE la somme, elle ne l'écrit pas.
+ *
+ * ★ C'est la forme de `DunamSourceRow` juste au-dessus — une valeur grisée,
+ *   un bouton — parce que la question est la même (« voici un chiffre que
+ *   l'app connaît, le voulez-vous ? ») et qu'une deuxième façon de poser la
+ *   même question est une façon de la rater.
+ *
+ * ⚠️ TROIS RÈGLES, ET CHACUNE EST UNE PORTE (A207) :
+ *    1. rien n'est écrit tant que le bouton n'est pas touché ;
+ *    2. la ligne s'efface dès que le champ porte quelque chose — la valeur du
+ *       PO n'est jamais écrasée, ni par ce bouton ni par un recalcul ;
+ *    3. pas de suggestion à zéro : ce serait un drapeau posé sur un zéro,
+ *       le piège d'AA4 sous un autre nom.
+ */
+function GuardedSuggestionRow({
+  typed,
+  suggestion,
+  onAdopt,
+}: {
+  typed: string
+  suggestion: number | null
+  onAdopt: (sum: number) => void
+}) {
+  const { t } = useTranslation()
+  if (suggestion === null || typed.trim() !== '') return null
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-2" data-testid="farm-guarded-suggestion">
+      <span className="muted">
+        {t('form.guardedSuggestHint')} ·{' '}
+        <span className="numeric ltr-nums" data-testid="farm-guarded-suggestion-value">
+          {suggestion}
+        </span>
+      </span>
+      <button
+        type="button"
+        data-testid="farm-guarded-adopt"
+        onClick={() => onAdopt(suggestion)}
+        /* ⚠️ 2,75 rem = 44 px : c'est un bouton qu'on touche du pouce sur un
+           iPad tenu d'une main, pas un lien de bas de page. */
+        className="inline-flex min-h-[2.75rem] items-center px-1 text-micro font-semibold text-accent-ink hover:underline"
+      >
+        {t('form.guardedSuggest')}
+      </button>
     </div>
   )
 }
@@ -394,6 +450,29 @@ export function FarmFormScreen() {
   const liaisonPhoneShown = liaisonSame ? inherited(farmerPhone, suggest.farmerPhone) : liaisonPhone
 
   const num = (v: string) => (v.trim() === '' ? NaN : Number(v))
+
+  /**
+   * ★★ AL1 — CE QUE L'APP PROPOSE POUR « שטחים שמירה », ET RIEN DE PLUS.
+   *
+   * ⚠️ LA SOMME EST CELLE DE L'ÉCRAN, PAS CELLE DE LA FICHE ENREGISTRÉE. Le PO
+   *    tape 100 et 1 000 devant l'agriculteur, puis touche le bouton : la
+   *    suggestion doit valoir 1 100 tout de suite, pas la valeur d'avant sa
+   *    saisie.
+   *
+   * ★ Et elle suit les cases de la nature EXACTEMENT comme l'enregistrement
+   *   les suit (`onSubmit`) : la surface d'une activité décochée est retirée à
+   *   la sauvegarde, donc elle n'a rien à faire dans un chiffre proposé.
+   */
+  const guardedSuggestion = suggestedGuardedDunams({
+    farmDunams:
+      type !== 'unknown' && !activities.crops ? 0
+      : Number.isFinite(num(farmDunams)) ? num(farmDunams)
+      : 0,
+    grazingDunams:
+      type !== 'unknown' && !activities.grazing ? 0
+      : Number.isFinite(num(grazingDunams)) ? num(grazingDunams)
+      : 0,
+  })
 
   /**
    * ★ AA2 — « סמל יישוב — entier, unique quand présent. »
@@ -1177,10 +1256,17 @@ export function FarmFormScreen() {
           </div>
           )}
           {/**
-            * ★★ AC3 → AK1.6 — « שטחים שמירה » : CE QUI A ÉTÉ DÉCLARÉ, OU RIEN.
+            * ★★ AC3 → AK1.6 → AL1 — « שטחים שמירה » : PROPOSÉE, JAMAIS ÉCRITE.
             *
-            * Il n'y a plus de défaut מעובד + מרעה ni de bouton qui le rend : le
-            * PO a demandé qu'aucune surface ne soit recopiée dans une autre.
+            * AC3 recopiait מעובד + מרעה, AK1.6 a tout vidé ; AL1 tranche entre
+            * les deux. Le champ s'ouvre VIDE — rien n'est écrit dans la colonne
+            * que l'association transmet au ministère — et l'app pose la somme
+            * SOUS le champ, grisée, à côté d'un bouton. Un geste l'accepte.
+            *
+            * ⚠️ LA LIGNE DISPARAÎT DÈS QUE LE CHAMP PORTE QUELQUE CHOSE : un
+            *    bouton qui peut écraser un chiffre tapé par le PO est un
+            *    bouton qui écrase, tôt ou tard. Vider le champ la fait revenir,
+            *    et c'est encore son geste.
             */}
           <div>
             <TextField
@@ -1194,6 +1280,14 @@ export function FarmFormScreen() {
               }}
               type="number"
               ltr
+            />
+            <GuardedSuggestionRow
+              typed={guardedDunams}
+              suggestion={guardedSuggestion}
+              onAdopt={(sum) => {
+                setGuardedDunams(String(sum))
+                setGuardedManual(true)
+              }}
             />
           </div>
         </FormSection>
