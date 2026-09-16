@@ -8,8 +8,10 @@
 
 - **Branche** : `main`. **Dernier commit** : voir `git log --oneline -1`
   (passe **AJ**, 2026-09-15).
-- **Passe en cours : AK** (2026-09-16) — formulaire calqué, typologie,
-  archivage, reprise des données. Tableau d'avancement : section « AK » plus bas.
+- **Passe AK TERMINÉE** (2026-09-16) — reprise des données, typologie,
+  formulaire calqué, documents bloquants, carte, archivage, signature à
+  l'export. Dernier commit : `02f7928`. **Les deux URLs servent `02f7928`.**
+  Tableau : section « AK » plus bas.
 - **Passe précédente** : AJ — AJ0 « la version installée ne se met jamais à
   jour » (bloquant, traité en premier). **Correctif livré et poussé**
   (`f94c32a`) ; `ajupdate` 38/38 en local ; **sur le déployé 11/11** avec un
@@ -43,7 +45,7 @@ bun run typecheck && bun run akpass && bun run akui && bun run akmap && bun run 
 | AK6 carte | ✅ CAUSE MESURÉE : événement `offline` → `MapTools.applyConnectivity` → `onBase('vector')` → `writeStoredBase('vector')` (+ `readStoredBase` filtrait par `navigator.onLine` au lancement). Correctif : plus aucune écriture automatique, bande `map-imagery-notice` (hors ligne / tuiles en échec), reprise des tuiles satellite. `akmap` ROUGE 15/11 (`dist-ak6-before`) → VERT 26/0 ; `backdrop` réécrite 38/38. Logs `docs/ak/ak6-*.log` |
 | AK7 archivage | ✅ `archivedAt` + `archiveReason` (migration `20260916000200`, appliquée sur prod) ; `archiveFarm`/`unarchiveFarm` ne touchent QUE `data.farms` ; `getVisibleFarms` retire les archivées (listes, carte, zones, postes, compteurs, objectif, compte rendu), `getFarm` les ouvre encore, `getFarmsForImport` les donne à l'import (pas de doublon, pas de désarchivage, rapport « עודכנו ונשארו בארכיון ») ; `akpass` 43/43, `akui` A204 ; `persist` 109/109 (les deux mutations y sont conduites) ; porte A152 corrigée (clés au pluriel) |
 | AK8 signature | ✅ le générateur xlsx maison écrit une PIÈCE image (`xl/media`, `drawing1.xml`, `twoCellAnchor editAs="oneCell"`) ancrée à la cellule de חתימה ; la cellule porte le `data:` (format `;;;` : rien ne s'affiche par-dessus) que le ré-import relit ; CSV idem ; `compactSignatures` redessine la signature sous 30 000 caractères (plafond Excel 32 767) sans toucher la fiche ; aller-retour vérifié (akpass A206) et fichiers téléchargés inspectés (akui) |
-| AK9 | à faire : captures du déployé, ETAT.md, déploiement des deux URLs |
+| AK9 | ✅ 30 captures du déployé (clair/sombre × iPad, iPad paysage, iPhone) + A202 mesurée 3/3 viewports sur le bundle servi ; ETAT.md en tête ; `uipass` 41/41 et `aitheme` 18/18 sur le déployé ; rouge d'avant la passe dans `docs/ak/ak-rouge-avant-akui.log` |
 
 Décisions AK posées : (1) `type` reste la seule vérité de la nature, 'unknown' = rien coché ;
 (2) שטחים שמירה = déclaré ou vide, jamais מעובד + מרעה (les portes AC/AD réécrites, pas supprimées) ;
@@ -156,15 +158,28 @@ bun run akcaptures                                    # 30 captures + A202 mesur
 
 ## Questions ouvertes / ce qui attend le PO
 
+0bis. **AK — les quinze fiches sont dans la base réelle.** Elles n'ont ni
+   יישוב ni contour, et neuf n'ont pas de position : le formulaire de ferme
+   EXIGE un יישוב et une épingle (règle A37, antérieure à AK), donc la première
+   modification de l'une d'elles demandera ces deux valeurs. C'est voulu — une
+   ferme sans épingle n'existe nulle part sur la carte — mais il faut le savoir
+   avant d'ouvrir la première fiche.
+
+0ter. **Les trois fiches « נחתם » n'ont pas encore de document DANS l'app** :
+   leur signature est sur le papier de l'association. Le bandeau de leur fiche
+   dit donc « טרם נחתם » tant que le PO ne les fait pas signer dans la fenêtre
+   « הסכם התנדבות- ארצנו ». Les quinze sont « ממתינות למסמכים » : aucun document
+   de droit sur la terre n'est encore reçu.
+
 0. **AJ — sur SON iPad** : la première mise à jour vers `f94c32a` ne peut pas
    s'annoncer toute seule (l'ancienne version n'a pas le bandeau). Il faut UNE
    dernière fois fermer l'app (balayer dans le sélecteur d'apps) et la
    rouvrir ; ensuite « גרסת האפליקציה » dans הגדרות dit la version, et les
    suivantes arrivent par le bandeau. Le mode écran d'accueil iOS réel n'a pas
    été mesuré ici (simulateur sans accès à l'interface).
-1. **Les six lignes `test-` sont toujours sur `lo-yanum-prod`** : le PO doit
-   presser « מחיקת כל נתוני ההדגמה והבדיקה » (הגדרות › נתונים) — c'est aussi la
-   preuve sur l'app réelle. Rien n'a été supprimé en production depuis ici.
+1. ✅ **CLOS (2026-09-16).** Plus aucune ligne `test-` ni `demo-` sur
+   `lo-yanum-prod` (compté table par table). La base ne porte plus que les
+   quinze exploitations d'AK1.
 2. **Thème sur la PWA installée (écran d'accueil)** : mesuré dans Safari iPad
    (simulateur iOS 26.3), pas en mode autonome (accès au simulateur non
    accordé). La ligne « המכשיר · הבחירה · מוצג » dans תצוגה dit au PO ce qui se
