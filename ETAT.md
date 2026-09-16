@@ -164,7 +164,7 @@
 > ## AM8 — LES PORTES
 >
 > ```
-> NEUVES : ampass 50/50 (A212–A216, pures)   amui 75/75 (A212 · A213 · A215–A221, Chromium + WebKit, démo + build réel/base factice)
+> NEUVES : ampass 50/50 (A212–A216, pures)   amui 77/77 (A212 · A213 · A215–A221, Chromium + WebKit, démo + build réel/base factice)
 > ROUGE avant la passe (builds de b7a9a1f) : amui 22 PASS / 44 FAIL  (docs/am/am-rouge-avant.log)
 > LOCAL, vertes : tokens 0 · alpass 40 · akpass 56 · akdata 30 · accept 177 · persist 109 · mapping 33
 >   report 86 · deletion 61 · sync 34 · assoc 42 · acpass 52 · adpass 46 · afpass 59 · agpass 74
@@ -184,7 +184,22 @@
 > `mapfirst` farmer-tonight (« no map found ») ; `layout` réglages à 390 px :
 > **6,5 écrans avant, 6,0 maintenant** (plafond 6).
 >
-> **DÉPLOYÉ** : voir la fin de ce bloc (rempli après le déploiement).
+> ★ **Trouvé SUR LA CAPTURE du déployé, pas par une porte** : à 390/402 px le
+> portable pré-rempli « (050) 968-8262 » était rogné d'un chiffre dans sa
+> demi-colonne (mesuré 154 > 142 px : chiffres tabulaires). Chiffres
+> proportionnels et rembourrage réduit pour `kind="phone"` ; `amui` le mesure
+> désormais (« aucune valeur pré-remplie rognée »), commit `c1453d5`.
+>
+> **DÉPLOYÉ (`c1453d5`, les deux URLs, `version.json` lu)** :
+> `BASE_URL=https://azmer-fts.github.io/lo-yanum bun run amui` → **77/77**
+> (`docs/am/amui-deploye.log`) — démo ET app réelle servie par la base factice ;
+> `bun run amcaptures` → **36 captures, 0 erreur de page**
+> (`docs/screenshots/ampass/deployed/`) : l'édition de **דני בראל** (la ligne
+> réelle `farm-ak1-10` rendue par la base à AK1) et d'une fiche positionnée
+> (suggestion « יתד · 0,9 ק״מ »), trois largeurs × clair/sombre, et les
+> épingles sur vectoriel et satellite. Les portes que rejoue le déploiement
+> (ground, backdrop, redraw, overlap, freehand, zones, agreement, demo) sont
+> passées sur les deux déploiements.
 
 
 > 🏁 **PASSE AL — FINITION. LA SURFACE GARDÉE SE PROPOSE, LE CLAVIER DE L'iPAD

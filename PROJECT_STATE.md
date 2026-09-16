@@ -7,7 +7,7 @@
 ## Où en est-on
 
 - **Branche** : `main`. **Dernier commit** : voir `git log --oneline -1`
-  (passe **AL**, 2026-09-16).
+  (passe **AM**, 2026-09-16).
 - **Passe AM TERMINÉE** (2026-09-16) — le formulaire de ferme repris : יישוב et
   épingle facultatifs, 1 330 localités, personnes en une carte, édition dans
   l'ordre du détail, claviers partout, barre opaque, bandeaux empilés,
@@ -22,7 +22,7 @@
   jour » (bloquant, traité en premier). **Correctif livré et poussé**
   (`f94c32a`) ; `ajupdate` 38/38 en local ; **sur le déployé 11/11** avec un
   vrai déploiement pendant que l'app restait ouverte (`ETAT.md` §AJ0.4).
-- **Déployé** : les deux URLs servent le commit d'AL. **Vérifié SUR LE
+- **Déployé** : les deux URLs servent `c1453d5` (AM) — `amui` 77/77 et 36 captures sur le déployé. Avant AM : les deux URLs servaient le commit d'AL. **Vérifié SUR LE
   DÉPLOYÉ** : `alui` 54/54 (le geste d'AL1 et l'écran de localisation) et
   `alcaptures` 330/330 avec 54 captures
   (`docs/screenshots/alpass/deployed/`).
@@ -42,7 +42,7 @@
 | AM5 barre | ✅ interstice 20 px (iPad installé) / 34 px (iPhone) → 0 (`.am-bar-foot::after`) |
 | AM6 bandeaux | ✅ `useStackBelow` + `data-top-banner(-float)` ; confirmation de mise à jour 8 s puis lue ; « מסונכרן » sur changement d'état seulement |
 | AM7 épingles | ✅ boîte `PIN_BOX` (tête entière), UN contour sombre `#141b26` (le blanc mesuré 1,2:1 et 1,8:1, refusé), pulsation circulaire |
-| AM8 portes | ✅ `ampass` 50/50, `amui` 75/75 ; ROUGE avant 22/44 (`docs/am/am-rouge-avant.log`) |
+| AM8 portes | ✅ `ampass` 50/50, `amui` 77/77 local ET **sur le déployé `c1453d5`** ; ROUGE avant 22/44 (`docs/am/am-rouge-avant.log`) ; `amcaptures` 36 captures du déployé (`docs/screenshots/ampass/deployed/`) |
 
 Décisions AM posées :
 1. **Le יישוב et l'épingle ne sont jamais obligatoires.** Seuls bloquent : un
