@@ -155,7 +155,11 @@ export function PhoneChallenge({
       </div>
 
       {/* ★ AG2.4 — L'ÉCHEC A UN RECOURS, ET IL EST SUR L'ÉCRAN DÈS LE DÉBUT. */}
-      <div className="rounded-card border border-edge-subtle p-4">
+      {/* ⚠️ AL4.1 — UNE SURFACE, PAS UN CONTOUR (A57). Ce bloc se détachait de
+          la page par un trait de 1 px ; il s'en détache maintenant comme tous
+          les autres blocs de l'application, par son fond. La dette datait
+          d'AG2.4 et se traînait depuis. */}
+      <div className="rounded-card bg-surface-raised p-4">
         <p className="text-caption text-content-secondary">{t('challenge.stuck')}</p>
         <a
           href={telHref(coordinator.phone)}

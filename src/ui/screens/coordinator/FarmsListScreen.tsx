@@ -1214,7 +1214,10 @@ function NeglectMark({
       data-neglect={coverage.state}
       title={label}
       aria-label={label}
-      className={`inline-block size-2 shrink-0 rounded-full border border-status-warn-ink/70 ${
+      /* AL4.1 — `rounded-pill` et non `rounded-full` : sur une pastille de 8 px
+         les deux dessinent le MÊME disque (`--radius-pill` vaut 999 px), et
+         A28 n'a qu'une échelle. C'était la dernière violation de radius. */
+      className={`inline-block size-2 shrink-0 rounded-pill border border-status-warn-ink/70 ${
         coverage.state === 'never' ? '' : 'bg-status-warn-ink/25'
       }`}
     />

@@ -181,6 +181,30 @@ try {
   section('A54 — THE ROLE SWITCH IS FINDABLE, AND HAS FOUR ROLES')
   // -------------------------------------------------------------------------
   {
+    /**
+     * ═══════════════════════════════════════════════════════════════════════
+     * ⚠️★★ AL4.2 (2026-09-16) — LE BLOC EST REPLIÉ DEPUIS AH12, ET LA PORTE
+     *    NE LE SAVAIT PAS. C'était un ROUGE DE PORTE, pas un défaut de l'app.
+     * ═══════════════════════════════════════════════════════════════════════
+     *
+     * AH12 a replié « מצב תצוגה » par défaut (`defaultOpen={false}`) — un écran
+     * de réglages de trois écrans de haut n'est pas un écran de réglages. La
+     * porte, elle, cherchait les pastilles de rôle dans le DOM sans rien
+     * déplier : elles n'y étaient pas, et le rouge se traînait depuis en
+     * « échec pré-existant qui n'est pas une régression ».
+     *
+     * ★ C'est la leçon la plus chère de ce dépôt, rencontrée une fois de plus :
+     *   une porte qui ne fait pas le geste du PO ne mesure pas ce qu'il voit.
+     *   Elle DÉPLIE, comme lui, puis elle lit.
+     */
+    const unfold = async (): Promise<void> => {
+      const folded = page.locator('[data-block="settings-viewas"][data-open="0"]')
+      if ((await folded.count()) > 0) {
+        await page.getByTestId('block-settings-viewas').first().click()
+        await page.waitForTimeout(500)
+      }
+    }
+    await unfold()
     const roles = await page.evaluate(() => {
       const section = [...document.querySelectorAll('section, div')].find((el) =>
         el.querySelector('[data-testid="view-as-people"]'),
@@ -198,6 +222,7 @@ try {
     for (const role of ['חקלאי', 'מתנדב', 'נהג']) {
       await page.goto(`${base}/#/coordinator/settings`, { waitUntil: 'load' })
       await page.waitForTimeout(1200)
+      await unfold()
       await page.getByRole('button', { name: new RegExp(role) }).first().click()
       await page.waitForTimeout(400)
       const person = page.locator('[data-testid="view-as-person"]').first()

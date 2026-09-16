@@ -100,6 +100,25 @@ const CRITICAL_ALLOWED: Record<string, string> = {
   'ui/screens/coordinator/MissionWizardScreen.tsx':
     'the irreversible "create the guard" button',
   'ui/screens/StyleguideScreen.tsx': 'documents the role and its call sites',
+  /**
+   * ★★ AL4.1 (2026-09-16) — LES DEUX ÉCRANS D'URGENCE, NOMMÉS ENFIN.
+   *
+   * Ils traînaient en rouge depuis plusieurs passes, et pour une raison qui
+   * n'en était pas une : personne ne les avait ajoutés. L'orange d'A29 est la
+   * couleur de l'urgence ; le bouton d'urgence et l'écran qu'il ouvre SONT
+   * l'urgence. Les refuser ici reviendrait à réserver la couleur à tout sauf
+   * à sa raison d'être.
+   *
+   * ⚠️ Ce qui a VRAIMENT été corrigé au même moment, c'est `agendaGrid.tsx` :
+   *    la ligne de « maintenant » y était orange sur un écran où l'orange dit
+   *    déjà « retour non confirmé ». Elle est passée à l'accent ; ce fichier
+   *    n'est donc PAS sur cette liste, et la boucle inverse plus bas le
+   *    vérifie.
+   */
+  'ui/screens/EmergencyScreen.tsx':
+    'the emergency screen itself — its title and the 224 px call button; this is what the colour is FOR',
+  'ui/components/EmergencyButton.tsx':
+    'the floating emergency button and its compact form — the same single action',
 }
 
 // ---------------------------------------------------------------------------
@@ -259,6 +278,39 @@ const CARD_WORDS = new Set([
   'rounded-t-card',
 ])
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AL4.1 (2026-09-16) — TROIS CADRES QUI NE SONT PAS DES CARTES, NOMMÉS.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Ces trois-là traînaient en rouge depuis plusieurs passes, et les regarder
+ * une par une a montré qu'elles n'étaient pas la même faute que les deux
+ * autres (corrigées, elles, en AL4.1) :
+ *
+ *   A57 dit qu'une CARTE se détache par sa SURFACE et non par un trait. Une
+ *   photo de carte d'identité et une page de document ne sont pas des cartes :
+ *   ce sont des CONTENUS, blancs sur une page claire, dont le trait dit où le
+ *   papier s'arrête. Le retirer, c'est faire flotter une page blanche dans le
+ *   vide en clair, et perdre le bord de la photo quand la pièce est claire.
+ *   `rounded-card` y est le RAYON, pas le rôle.
+ *
+ * ★ C'est le mécanisme que ce fichier emploie déjà pour la poignée du
+ *   séparateur (`PHYSICAL_RADIUS_ALLOWED`) et pour l'orange : une exception
+ *   n'existe que nommée, avec sa raison, et une exception devenue fausse est
+ *   elle-même un échec (la boucle inverse, plus bas).
+ */
+const CARD_CONTOUR_ALLOWED: Record<string, { count: number; why: string }> = {
+  'ui/screens/farmer/FarmerSignScreen.tsx': {
+    count: 2,
+    why: 'la photo de la ת״ז et la page du document : du contenu blanc, dont le trait dit où il s\'arrête',
+  },
+  'ui/components/AgreementSignModal.tsx': {
+    count: 1,
+    why: 'la page du document à lire avant de signer, blanche sur une page claire',
+  },
+}
+
+const cardContours = new Map<string, number>()
 for (const file of files.filter((f) => f.endsWith('.tsx'))) {
   const source = fs.readFileSync(file, 'utf8')
   for (const m of source.matchAll(CLASS_ATTR)) {
@@ -266,12 +318,29 @@ for (const file of files.filter((f) => f.endsWith('.tsx'))) {
     const words = cls.split(/\s+/).filter(Boolean)
     if (!words.some((w) => CARD_WORDS.has(w))) continue
     if (words.includes('border') && !words.includes('border-dashed')) {
-      failures.push({
-        rule: 'A57 card contour',
-        file: rel(file),
-        detail: 'card/tile element draws a full `border` contour',
-      })
+      cardContours.set(rel(file), (cardContours.get(rel(file)) ?? 0) + 1)
     }
+  }
+}
+for (const [key, found] of cardContours) {
+  const allowed = CARD_CONTOUR_ALLOWED[key]
+  if (allowed && found === allowed.count) continue
+  failures.push({
+    rule: 'A57 card contour',
+    file: key,
+    detail: allowed
+      ? `${found} contours where the allow-list names ${allowed.count} — a new one appeared, or one was removed`
+      : 'card/tile element draws a full `border` contour',
+  })
+}
+/* Une exception qui ne s'applique plus est une documentation fausse. */
+for (const [key, allowed] of Object.entries(CARD_CONTOUR_ALLOWED)) {
+  if (!cardContours.has(key)) {
+    failures.push({
+      rule: 'A57 card contour',
+      file: key,
+      detail: `allow-listed for ${allowed.count} contour(s) but draws none — remove the entry`,
+    })
   }
 }
 

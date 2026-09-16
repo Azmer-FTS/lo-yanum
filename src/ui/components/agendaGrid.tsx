@@ -637,8 +637,24 @@ export function AgendaGrid({
                   className="pointer-events-none absolute inset-x-0 z-10 flex items-center"
                   style={{ top: `${(nowMinute / 60) * hour}px` }}
                 >
-                  <span className="h-0.5 w-full bg-critical" />
-                  <span className="absolute -start-1 h-2.5 w-2.5 rounded-pill bg-critical shadow-card" />
+                  {/**
+                    * ⚠️★★ AL4.1 (2026-09-16) — LA LIGNE DE « MAINTENANT » N'EST
+                    *    PLUS ORANGE, ET C'EST UNE DETTE D'A29 SOLDÉE.
+                    *
+                    * L'orange de cette application a UN sens — l'urgence — et
+                    * sur CET écran il en avait déjà un autre : `AgendaScreen`
+                    * l'emploie pour « retour non confirmé », une vraie alerte.
+                    * Deux sens pour une couleur sur un même écran, c'est
+                    * exactement la dilution qu'A29 existe pour empêcher : le
+                    * rouge-orange qu'on cherche du regard n'est plus un
+                    * signal, c'est un décor.
+                    *
+                    * ★ L'accent dit la même chose que la pastille « aujourd'hui »
+                    *   en tête de la même grille, qui est déjà `bg-accent` : où
+                    *   nous en sommes. Une heure qui passe n'est pas une alerte.
+                    */}
+                  <span className="h-0.5 w-full bg-accent" />
+                  <span className="absolute -start-1 h-2.5 w-2.5 rounded-pill bg-accent shadow-card" />
                 </span>
               )}
             </div>

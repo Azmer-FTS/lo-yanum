@@ -774,7 +774,9 @@ export function AgendaScreen() {
                 data-testid="agenda-unplaced"
                 data-count={unplaced.length}
                 data-open={unplacedOpen ? '1' : '0'}
-                className="mt-2 shrink-0 rounded-card border border-edge-subtle bg-surface-raised"
+                /* AL4.1 — le fond FAIT déjà le détachement (A57) : le trait
+                   qui l'accompagnait était une redondance, pas une limite. */
+                className="mt-2 shrink-0 rounded-card bg-surface-raised"
               >
                 {/**
                   * ⚠️ FOLDED BY DEFAULT, AND THAT IS AB4.1 ARBITRATING AB3.4.

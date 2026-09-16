@@ -333,8 +333,24 @@ try {
       report.docScrollW <= report.clientW + 1,
       `${report.docScrollW} vs ${report.clientW}`)
 
-    check(`A131 · ${vp.name} · la barre est bien épinglée`,
-      report.footPosition === 'sticky', report.footPosition)
+    /**
+     * ═══════════════════════════════════════════════════════════════════════
+     * ⚠️★★ AL4.2 (2026-09-16) — « ÉPINGLÉE » N'EST PAS UN MOT-CLÉ CSS.
+     * ═══════════════════════════════════════════════════════════════════════
+     *
+     * Cette ligne exigeait `sticky` et AH2 a rendu la barre `fixed`, avec ses
+     * raisons écrites : ANCRÉE au bas de la fenêtre, au-dessus de la barre
+     * d'onglets et de la zone sûre, et la pilule de mode monte au-dessus
+     * d'elle. La porte a donc affiché trois rouges par passe pendant plusieurs
+     * passes pour un comportement MEILLEUR que celui qu'elle réclamait.
+     *
+     * ★ Ce qui est exigé maintenant est la PROPRIÉTÉ, pas le mot : la barre
+     *   sort du flux (les deux valeurs le font, `static` et `relative` non),
+     *   et la vérification qui suit — « elle reste à l'écran quand la page est
+     *   en haut » — est celle qui dit vraiment ce que le PO voulait.
+     */
+    check(`A131 · ${vp.name} · la barre est épinglée (hors du flux)`,
+      report.footPosition === 'fixed' || report.footPosition === 'sticky', report.footPosition)
 
     /**
      * ★★ « ÉPINGLÉE » SE MESURE, ET LA MESURE EST : EST-ELLE VISIBLE À
@@ -682,6 +698,24 @@ try {
     check(`A138 · ${vp.name} · les réglages sont à ${gestures} geste(s)`, gestures > 0 && gestures <= 2,
       String(gestures))
 
+    /**
+     * ⚠️★★ AL4.2 — LE BLOC « מצב תצוגה » EST REPLIÉ DEPUIS AH12, et cette porte
+     *    ne le dépliait pas : elle cherchait les quatre pastilles dans un bloc
+     *    fermé, en trouvait zéro, et le rouge se traînait de passe en passe
+     *    sous l'étiquette « pré-existant ». La même correction qu'A54 dans
+     *    `bun run settings`. Une porte fait le geste du PO, sinon elle mesure
+     *    autre chose que ce qu'il voit.
+     *
+     * ★ ET LE DÉPLIAGE COMPTE POUR UN GESTE — il est fait AVANT la mesure des
+     *   deux gestes ci-dessus ? Non : les réglages sont à deux gestes, le bloc
+     *   se déplie au troisième, et « deux gestes depuis l'accueil » reste la
+     *   phrase d'AF. C'est pourquoi il est déplié ICI et pas plus haut.
+     */
+    const folded = page.locator('[data-block="settings-viewas"][data-open="0"]')
+    if ((await folded.count()) > 0) {
+      await page.getByTestId('block-settings-viewas').first().click()
+      await page.waitForTimeout(600)
+    }
     const row = page.locator('[data-testid="role-switch"]')
     check(`A138 · ${vp.name} · la bascule est sur l’écran`, (await row.count()) > 0)
     const pills = await row.locator('button').count()
