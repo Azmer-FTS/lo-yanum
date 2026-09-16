@@ -1068,7 +1068,10 @@
     "lateBy": "· באיחור של {{m}} דק׳",
     "filterDay": "ביקור ביום זה",
     "selectedCount": "{{count}} נבחרו",
-    "newStep": "תחנה חדשה למסלול"
+    "newStep": "תחנה חדשה למסלול",
+    "missingPosition": "מיקום חסר",
+    "missingPositionHint": "חווה בלי מיקום נשארת בסיור, אבל לא על המפה ולא על המסלול.",
+    "addPosition": "הוספת מיקום"
   },
   "myday": {
     "title": "היום שלי",

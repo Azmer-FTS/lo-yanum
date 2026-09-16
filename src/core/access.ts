@@ -1251,7 +1251,7 @@ export function availableVolunteersByRegion(): Map<RegionId, number> {
 }
 
 export function availableVolunteers(
-  farm: { regionId?: RegionId | null; position: { lat: number; lng: number } },
+  farm: { regionId?: RegionId | null; position: { lat: number; lng: number }; positionMissing?: boolean },
   byRegion: ReadonlyMap<RegionId, number> = availableVolunteersByRegion(),
 ): number {
   const region = farmRegion(farm)

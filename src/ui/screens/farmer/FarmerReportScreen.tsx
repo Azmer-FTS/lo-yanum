@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import {
+import { farmPoint,
   readCoordinator,
   getMyContactName,
   getMyFarm,
@@ -36,7 +36,7 @@ export function FarmerReportScreen() {
           reporterId: session.entityId,
           reporterName: name ?? '',
           capturePosition: false,
-          fallbackPosition: farm.position,
+          fallbackPosition: farmPoint(farm),
           showPhoto: true,
           coordinatorName: readCoordinator().name,
           coordinatorPhone: readCoordinator().phone,

@@ -101,6 +101,8 @@ export interface DayPlan {
   driveMinutes: number
   returnAt: string | null
   mapsUrl: string | null
+  /** ★ AN2 — les fermes de la tournée sans position : hors du tracé et de l'horaire. */
+  unplaced: Farm[]
 }
 
 export interface DayPlanInput {
@@ -149,10 +151,13 @@ export function buildDayPlan(input: DayPlanInput): DayPlan {
   const origin = input.origin ?? HOME_BASE
   const tour = input.tour
   const farmsById = new Map(input.farms.map((f) => [f.id, f]))
-  const tourFarms = (tour?.farmIds ?? []).flatMap((id) => {
+  const chosenFarms = (tour?.farmIds ?? []).flatMap((id) => {
     const farm = farmsById.get(id)
     return farm ? [farm] : []
   })
+  // ★ AN2 — une ferme sans position ne se place pas sur le trajet.
+  const tourFarms = chosenFarms.filter((f) => !f.positionMissing)
+  const unplaced = chosenFarms.filter((f) => f.positionMissing)
   const tourFarmIds = new Set(tourFarms.map((f) => f.id))
 
   // A visit on a tour farm belongs to its stop; everything else is a wall.
@@ -340,7 +345,7 @@ export function buildDayPlan(input: DayPlanInput): DayPlan {
     stops,
     fixedEvents,
     items,
-    suggestions: suggestNearby(input.farms, tourFarmIds, stops, origin),
+    suggestions: suggestNearby(input.farms, new Set(chosenFarms.map((f) => f.id)), stops, origin),
     totalKm,
     driveMinutes,
     returnAt,
@@ -351,6 +356,7 @@ export function buildDayPlan(input: DayPlanInput): DayPlan {
             stops.map((s) => s.farm.position),
           )
         : null,
+    unplaced,
   }
 }
 
@@ -379,7 +385,7 @@ function suggestNearby(
 
   const out: TourSuggestion[] = []
   for (const farm of farms) {
-    if (tourFarmIds.has(farm.id) || farm.status === 'declined') continue
+    if (tourFarmIds.has(farm.id) || farm.status === 'declined' || farm.positionMissing) continue
 
     let best = Infinity
     let insertAt = 0

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
-import {
+import { farmPoint,
   readCoordinator,
   formatDateTime,
   formatTime,
@@ -11,6 +11,7 @@ import {
   getVisibleIncidents,
   wazeUrl,
 } from '@core/index'
+import type { LatLng } from '@core/index'
 
 import { CallRow } from '../../components/ContactActions'
 import { Icon } from '../../components/Icon'
@@ -170,13 +171,14 @@ export function FarmerTonightScreen() {
                       },
                       // G8 — the farmer finishes the trip: he needs to know
                       // where the car will actually stop.
-                      {
+                      // ⛔ AN2 — jamais le point de repli d'une ferme sans position.
+                      ...((mission.dropoffPoint ?? farmPoint(farm)) ? [{
                         id: 'dropoff',
-                        position: mission.dropoffPoint ?? farm.position,
+                        position: (mission.dropoffPoint ?? farmPoint(farm)) as LatLng,
                         color: meetColor(),
                         kind: 'car' as const,
                         title: t('meet.dropoff'),
-                      },
+                      }] : []),
                     ]}
                   />
                   <ZoneLegend

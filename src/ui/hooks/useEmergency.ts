@@ -76,7 +76,9 @@ export function useEmergencyContext(): EmergencyContext & {
       id: pass.farm.id,
       name: pass.farm.name,
       locality: pass.farm.locality,
-      position: pass.farm.position,
+      position: pass.farm.position ?? { lat: 0, lng: 0 },
+      // ⛔ AN2 — la position absente reste absente (drapeau), jamais inventée.
+      positionMissing: pass.farm.position === null ? true : undefined,
       siteAccess: pass.farm.siteAccess,
       gateCode: pass.farm.gateCode,
       parking: pass.farm.parking,

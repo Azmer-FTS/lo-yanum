@@ -1,6 +1,6 @@
 import { formatDate, formatTime } from './clock'
 import { EMERGENCY_SERVICES, localEmergencyNumbers } from './emergency'
-import { formatCoords, wazeUrl } from './geo'
+import { farmPoint, formatCoords, wazeUrl } from './geo'
 import type { AnchorPoint, Farm, LatLng, Mission } from './types'
 
 /**
@@ -109,8 +109,9 @@ export interface SummonsInput {
  *   volontaire qui conduit sa propre voiture sur la piste 4×4 derrière la
  *   ferme est précisément l'erreur que `pickupPoint` existe pour empêcher.
  */
-function rendezvous(input: SummonsInput): LatLng {
-  return input.mission.pickupPoint ?? input.anchor?.position ?? input.farm.position
+function rendezvous(input: SummonsInput): LatLng | null {
+  // ⛔ AN2 — jamais le point de repli d'une ferme sans position.
+  return input.mission.pickupPoint ?? input.anchor?.position ?? farmPoint(input.farm)
 }
 
 export function summonsValues(input: SummonsInput): SummonsValues {
@@ -138,7 +139,7 @@ export function summonsValues(input: SummonsInput): SummonsValues {
     /* ★ « le lieu EXACT » — les coordonnées en clair, pas seulement un nom.
        Un nom d'עמדה ne se tape pas dans un Waze et ne se lit pas à un père qui
        dépose son fils. */
-    formatCoords(point),
+    point ? formatCoords(point) : '',
   ]
     .filter((s) => s !== '')
     .join(' · ')
@@ -148,7 +149,7 @@ export function summonsValues(input: SummonsInput): SummonsValues {
 
   return {
     place,
-    navigation: wazeUrl(point),
+    navigation: point ? wazeUrl(point) : '',
     date: formatDate(mission.startAt, locale),
     from: formatTime(mission.startAt, locale),
     to: formatTime(mission.endAt, locale),

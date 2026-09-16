@@ -1,4 +1,4 @@
-import { HOME_BASE, haversineKm, wazeUrl } from './geo'
+import { HOME_BASE, farmPoint, haversineKm, wazeUrl } from './geo'
 import type { Farm, LatLng } from './types'
 
 export interface RouteStop {
@@ -20,6 +20,11 @@ export interface PlannedRoute {
   returnKm: number
   /** Total including the return leg. */
   roundTripKm: number
+  /**
+   * ★ AN2 — les fermes choisies SANS position : sélectionnées, gardées dans la
+   * tournée, mais hors du tracé et hors des distances.
+   */
+  unplaced: Farm[]
 }
 
 /**
@@ -30,7 +35,8 @@ export interface PlannedRoute {
  * than optimality when the coordinator is comparing two plans.
  */
 export function planRoute(farms: Farm[], origin: LatLng = HOME_BASE): PlannedRoute {
-  const remaining = [...farms]
+  const remaining = farms.filter((f) => farmPoint(f) !== null)
+  const unplaced = farms.filter((f) => farmPoint(f) === null)
   const stops: RouteStop[] = []
 
   let current = origin
@@ -67,6 +73,7 @@ export function planRoute(farms: Farm[], origin: LatLng = HOME_BASE): PlannedRou
     totalKm: cumulative,
     returnKm,
     roundTripKm: cumulative + returnKm,
+    unplaced,
   }
 }
 

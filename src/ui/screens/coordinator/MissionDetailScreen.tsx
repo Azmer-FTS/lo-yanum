@@ -2,7 +2,7 @@ import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useParams } from 'react-router-dom'
 
-import {
+import { farmPoint,
   formatDate,
   formatTime,
   formatWeekday,
@@ -10,7 +10,7 @@ import {
   getMissionView,
 } from '@core/index'
 import { getPresenceRows } from '@core/index'
-import type {
+import type { LatLng,
   Incident,
   MissionLeg,
   MissionView,
@@ -413,16 +413,18 @@ export function MissionDetailScreen() {
                         },
                       ]
                     : []),
-                  {
+                  // ⛔ AN2 — sans point de dépose ni position de ferme, pas de repère.
+                  ...((mission.dropoffPoint ?? farmPoint(farm))
+                    ? [{
                     id: 'dropoff',
-                    position: mission.dropoffPoint ?? farm.position,
+                    position: (mission.dropoffPoint ?? farmPoint(farm)) as LatLng,
                     color: meetColor(),
                     kind: 'car' as const,
                     title: t('meet.dropoff'),
                     subtitle: mission.dropoffPoint
                       ? undefined
                       : t('meet.dropoffDefault'),
-                  },
+                  }] : []),
                 ]}
               />
       <PointLegend showFarm={false} className="absolute bottom-2 start-2 z-10" />

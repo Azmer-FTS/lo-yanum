@@ -44,7 +44,8 @@ export function AnchorFormScreen() {
   // few hundred metres, so this is a better starting point than an empty map.
   const [position, setPosition] = useState<LatLng>(
     existing?.position ??
-      farm?.position ?? { lat: NEGEV_CENTER.lat, lng: NEGEV_CENTER.lng },
+      // ⛔ AN2 — pas le point de repli d'une ferme sans position.
+      (farm && !farm.positionMissing ? farm.position : null) ?? { lat: NEGEV_CENTER.lat, lng: NEGEV_CENTER.lng },
   )
   const [instructions, setInstructions] = useState(
     (existing?.instructions ?? []).join('\n'),
@@ -100,18 +101,19 @@ export function AnchorFormScreen() {
       <MapView
         ariaLabel={t('a11y.map')}
         className="h-full w-full rounded-none"
-        center={farm.position}
+        center={farm.positionMissing ? position : farm.position}
         zoom={14}
         onMapClick={setPosition}
         markers={[
-          {
+          // ⛔ AN2 — pas de repère de ferme au point de repli.
+          ...(farm.positionMissing ? [] : [{
             id: 'farm',
             position: farm.position,
             color: farmMarkerColor(farm),
             title: farm.name,
             subtitle: farm.locality,
             kind: entityMarkerKind(farm),
-          },
+          }]),
           {
             id: 'anchor-preview',
             position,

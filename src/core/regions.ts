@@ -398,7 +398,10 @@ export function regionCenter(region: Region): LatLng {
 export function farmRegion(farm: {
   regionId?: RegionId | null
   position: LatLng
+  positionMissing?: boolean
 }): RegionId | null {
+  // ⛔ AN2 — le point de repli (Jérusalem) ne décide d'aucune région.
+  if (farm.positionMissing) return farm.regionId ?? null
   return farm.regionId ?? regionOf(farm.position)
 }
 

@@ -58,7 +58,8 @@ export function MeetPointsEditor({
     value.returnPickupPoint !== null || value.returnDropoffPoint !== null,
   )
 
-  const dropoffEffective = value.dropoffPoint ?? farm.position
+  // ⛔ AN2 — sans dépose choisie ni position de ferme : pas de point par défaut.
+  const dropoffEffective: LatLng | null = value.dropoffPoint ?? (farm.positionMissing ? null : farm.position)
 
   useEffect(() => {
     if (!armed) return
@@ -79,14 +80,15 @@ export function MeetPointsEditor({
   }
 
   const markers: MapMarker[] = [
-    {
+    // ⛔ AN2 — pas de repère de ferme au point de repli.
+    ...(farm.positionMissing ? [] : [{
       id: farm.id,
       position: farm.position,
       color: farmMarkerColor(farm),
       title: farm.name,
       subtitle: farm.locality,
       kind: entityMarkerKind(farm),
-    },
+    }]),
     ...anchors.map((a, i) => ({
       id: a.id,
       position: a.position,
@@ -98,7 +100,7 @@ export function MeetPointsEditor({
     })),
     // The farm-side stop. Always present (defaults to the farm pin), always
     // draggable — adjusting it IS the common gesture.
-    {
+    ...(dropoffEffective === null ? [] : [{
       id: 'dropoff',
       position: dropoffEffective,
       color: meetColor(),
@@ -108,7 +110,7 @@ export function MeetPointsEditor({
       draggable: true,
       onDragEnd: (position: LatLng) =>
         onChange({ ...value, dropoffPoint: position }),
-    },
+    }]),
     ...(value.pickupPoint
       ? [
           {
@@ -234,8 +236,8 @@ export function MeetPointsEditor({
           } rounded-card transition-shadow duration-base ${
             armed ? 'ring-2 ring-accent' : ''
           }`}
-          center={farm.position}
-          zoom={11}
+          center={farm.positionMissing ? (anchors[0]?.position ?? undefined) : farm.position}
+          zoom={farm.positionMissing && anchors.length === 0 ? 7 : 11}
           markers={markers}
           onMapClick={armed ? place : undefined}
           fullscreen={{ active: fullscreen.active, onToggle: fullscreen.toggle }}
@@ -282,7 +284,7 @@ export function MeetPointsEditor({
         <span className="flex items-center gap-1.5">
           {t('meet.dropoff')}:{' '}
           <span className="ltr-nums" dir="ltr">
-            {formatCoords(dropoffEffective)}
+            {dropoffEffective ? formatCoords(dropoffEffective) : t('meet.notSet')}
           </span>
           {!value.dropoffPoint && ` (${t('meet.dropoffDefault')})`}
         </span>

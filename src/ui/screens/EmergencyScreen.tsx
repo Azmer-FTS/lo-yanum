@@ -165,7 +165,7 @@ export function EmergencyScreen() {
       role: session.role,
       phone: myPhone,
       position: fix.current,
-      fallbackPosition: ctx.farm?.position ?? null,
+      fallbackPosition: ctx.farm && !ctx.farm.positionMissing ? ctx.farm.position : null,
       farmId: ctx.farm?.id ?? null,
       farmName: ctx.farm?.name ?? '',
     })
@@ -525,7 +525,8 @@ export function SiteFile({
   farm: {
     name: string
     locality: string
-    position: { lat: number; lng: number }
+    position: { lat: number; lng: number } | null
+    positionMissing?: boolean
     siteAccess?: string
     gateCode?: string
     parking?: string
@@ -536,6 +537,8 @@ export function SiteFile({
 }) {
   const { t } = useTranslation()
   if (!farm) return null
+  // ⛔ AN2 — une ferme sans position n'a pas de carte (jamais le point de repli).
+  const point = farm.positionMissing ? null : farm.position
 
   const rows: Array<{ key: string; icon: 'route' | 'shield' | 'car' | 'alert'; value: string }> = [
     { key: 'siteAccess', icon: 'route', value: farm.siteAccess ?? '' },
@@ -575,13 +578,13 @@ export function SiteFile({
           </div>
         ))}
       </dl>
-      {outline !== null && (
+      {outline !== null && point !== null && (
         <div className="mt-3">
           <MapView
             ariaLabel={t('a11y.map')}
             className="h-56 w-full"
             cooperative
-            center={farm.position}
+            center={point}
             zoom={14}
             polygons={outline.map((ring, i) => ({
               id: `outline-${i}`,
@@ -591,7 +594,7 @@ export function SiteFile({
             markers={[
               {
                 id: 'farm',
-                position: farm.position,
+                position: point,
                 color: readToken('--accent'),
                 emphasis: true,
                 title: farm.name,

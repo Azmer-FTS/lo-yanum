@@ -1321,7 +1321,8 @@ export function FarmDetailScreen() {
             collapseKey="entity-posts"
             summary={t('blocks.posts', { count: anchors.length })}
             action={
-              <a
+              /* ⛔ AN2 — pas de lien vers le point de repli d'une ferme sans position. */
+              farm.positionMissing ? undefined : <a
                 href={googleMapsPointUrl(farm.position)}
                 target="_blank"
                 rel="noreferrer"

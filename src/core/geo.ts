@@ -662,3 +662,24 @@ export function bearingDeg(a: LatLng, b: LatLng): number {
     Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ)
   return (((Math.atan2(y, x) * 180) / Math.PI) + 360) % 360
 }
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AN2 (2026-09-16) — UNE FICHE SANS POSITION N'A PAS DE POINT.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * « Le PO sélectionne משק שלם, qui n'a pas de position, et l'app la place à
+ * Jérusalem. » Une fiche sans position porte, en base, un point de REPLI
+ * (`HOME_BASE`, Jérusalem — la colonne n'est pas nullable) et le drapeau
+ * `positionMissing`. AK1 avait décidé que ce point n'est jamais montré ; le
+ * tableau de bord et la liste des fermes filtraient le drapeau, le
+ * planificateur, la journée, l'agenda, la fiche et une douzaine d'autres
+ * lisaient `farm.position` tel quel.
+ *
+ * ⛔ TOUTE lecture de la position d'une ferme pour la MONTRER, la RELIER ou
+ *    MESURER une distance passe par ici. `null` = pas sur la carte, pas sur le
+ *    tracé, pas de lien de navigation.
+ */
+export function farmPoint(farm: { position: LatLng; positionMissing?: boolean }): LatLng | null {
+  return farm.positionMissing ? null : farm.position
+}

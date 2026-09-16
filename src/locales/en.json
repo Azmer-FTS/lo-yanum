@@ -5,5 +5,10 @@
     "next": "Next",
     "done": "Done",
     "system": "Device keyboard"
+  },
+  "route": {
+    "missingPosition": "Missing position",
+    "missingPositionHint": "A farm without a position stays in the tour, but not on the map or the route.",
+    "addPosition": "Add position"
   }
 }

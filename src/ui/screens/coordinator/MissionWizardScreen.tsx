@@ -497,7 +497,7 @@ export function MissionWizardScreen() {
   const resumeMissionId = params.get('resume')
   const skipReseedRef = useRef(false)
 
-  const destination = anchor?.position ?? farm?.position ?? null
+  const destination = anchor?.position ?? (farm && !farm.positionMissing ? farm.position : null)
 
   /**
    * The live ranking. Recomputed from the shortlist, so adding someone

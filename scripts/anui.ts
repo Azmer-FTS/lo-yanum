@@ -31,6 +31,8 @@ const IPAD_UA =
 const IPHONE_UA =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
 mkdirSync(SHOTS, { recursive: true })
+const NEGEV_LAT = 31.27
+const NEGEV_LNG = 34.79
 
 const only = (process.env.ONLY ?? '').split(',').filter(Boolean)
 const wants = (id: string) => only.length === 0 || only.includes(id)
@@ -252,6 +254,176 @@ try {
         .filter((f) => /052-0000049|08-0000050/.test(readFileSync(`${dir}/${f}`, 'utf8')))
       check('le bundle ne contient plus 052-0000049 ni 08-0000050', hits.length === 0, hits.join(', '))
     }
+  }
+
+  /* Les tracés de la source `route` de la carte, par style. */
+  const routeStyles = (page: Page) =>
+    page.evaluate(() => {
+      const m = (window as unknown as { __loYanumMap?: { getSource: (id: string) => { serialize: () => { data: { features?: Array<{ properties: { style?: string }; geometry: { coordinates: number[][] } }> } } } | undefined } }).__loYanumMap
+      const out: Record<string, number> = {}
+      const coords: number[][] = []
+      try {
+        for (const f of m?.getSource('route')?.serialize().data.features ?? []) {
+          const k = f.properties.style ?? 'legacy'
+          out[k] = (out[k] ?? 0) + 1
+          coords.push(...f.geometry.coordinates)
+        }
+      } catch {
+        /* pas de carte */
+      }
+      return { out, coords }
+    })
+  /* Les DEUX points de repli : Jérusalem (`HOME_BASE`, celui des fiches
+     importées, donc de משק שלם en production) et le centre du Néguev
+     (`NEGEV_CENTER`, celui d'une fiche créée sans épingle). ⚠️ La première
+     version ne cherchait que Jérusalem et passait sur le build d'avant. */
+  const nearFallback = (c: number[]) =>
+    [[31.7683, 35.2137], [NEGEV_LAT, NEGEV_LNG]].some(([lat, lng]) => Math.abs(c[1] - lat) < 0.01 && Math.abs(c[0] - lng) < 0.01)
+  const markerLabels = (page: Page) =>
+    page.locator('.maplibregl-marker').evaluateAll((els) =>
+      els.filter((e) => (e as HTMLElement).style.visibility !== 'hidden').map((e) => e.getAttribute('aria-label') ?? ''),
+    )
+  const MISSING = 'משק שלם (בדיקה)'
+  async function createMissing(page: Page): Promise<void> {
+    await open(page, '#/coordinator/farms/new')
+    await page.locator('[data-testid="farm-form-name"]').fill(MISSING)
+    await page.locator('[data-testid="form-actions"] .btn-primary').click()
+    await page.waitForTimeout(1500)
+  }
+
+  if (wants('A225')) {
+    // =======================================================================
+    section('A225 — une fiche sans position n\'apparaît sur AUCUNE carte (jamais à Jérusalem)')
+    // =======================================================================
+    await guard(async () => {
+      /* Le DÉPART par défaut du planificateur est Jérusalem (réglage « נקודת
+         מוצא ») : pour voir si une ferme y est posée, on part de Kiryat Gat
+         (ni Jérusalem, ni le centre du Néguev, autre point de repli). */
+      const ctx = await context(chrome, {
+        storage: { 'lo-yanum:origin': JSON.stringify({ label: 'קריית גת', position: { lat: 31.61, lng: 34.7642 } }) },
+      })
+      const page = await ctx.newPage()
+      await createMissing(page)
+      for (const [label, hash] of [
+        ['tableau de bord', '#/coordinator'],
+        ['liste des fermes', '#/coordinator/farms'],
+        ['agenda', '#/coordinator/agenda'],
+      ] as const) {
+        await open(page, hash, 4000)
+        const labels = await markerLabels(page)
+        check(`${label} : aucun repère « ${MISSING} »`, !labels.some((l) => l.includes(MISSING)), `${labels.length} repères`)
+      }
+      await open(page, '#/coordinator/route', 4000)
+      const card = page.locator('[data-testid="route-pick"]', { hasText: MISSING })
+      check('planificateur : la ferme sans position est sélectionnable', (await card.count()) === 1)
+      check('… et signalée « מיקום חסר » sur sa carte', (await card.locator('[data-testid="route-pick-missing"]').count()) === 1)
+      if ((await card.getAttribute('aria-pressed')) !== 'true') await card.click()
+      /* ⚠️ La première version cochait « nth(0) » — la carte qu'elle venait de
+         cocher, donc la décochait : le rouge était celui de la porte. */
+      const others = page.locator('[data-testid="route-pick"][aria-pressed="false"]')
+      for (let k = 0; k < 2; k++) await others.first().click()
+      await page.waitForTimeout(5000)
+      check('… elle est listée à part, hors du tracé', (await page.locator('[data-testid="route-unplaced-farm"]', { hasText: MISSING }).count()) === 1)
+      const labels = await markerLabels(page)
+      check('… aucun repère sur la carte du planificateur', !labels.some((l) => l.includes(MISSING)), labels.filter((l) => /^\d/.test(l)).join(' | '))
+      const { coords } = await routeStyles(page)
+      check('… le tracé ne passe par aucun point de repli (Jérusalem, centre du Néguev)', coords.length > 0 && !coords.some(nearFallback), `${coords.length} points`)
+      await page.screenshot({ path: `${SHOTS}/a225-planificateur-sans-position.png` })
+      await ctx.close()
+    })
+  }
+
+  if (wants('A226')) {
+    // =======================================================================
+    section('A226 — repères superposés : un disque avec leur nombre, jamais des chiffres empilés')
+    // =======================================================================
+    await guard(async () => {
+      const ctx = await context(chrome)
+      const page = await ctx.newPage()
+      await open(page, '#/coordinator', 5000)
+      const clusters = await page.locator('[data-marker-kind="cluster"]').evaluateAll((els) => els.map((e) => Number((e as HTMLElement).dataset.count)))
+      check('à l\'échelle nationale, les repères qui se recouvrent sont regroupés', clusters.length > 0 && clusters.every((n) => n >= 2), JSON.stringify(clusters))
+      const overlaps = async () =>
+        page.locator('.maplibregl-marker').evaluateAll((els) => {
+          const kinds = ['farm', 'moshav', 'mission', 'pin', 'incident', 'anchor', 'car']
+          const pts = els
+            .filter((e) => (e as HTMLElement).style.visibility !== 'hidden' && kinds.includes((e as HTMLElement).dataset.markerKind ?? ''))
+            .map((e) => {
+              const r = e.getBoundingClientRect()
+              return { x: r.left + r.width / 2, y: r.top + r.height / 2, label: e.getAttribute('aria-label') ?? '' }
+            })
+          const bad: string[] = []
+          for (let i = 0; i < pts.length; i++)
+            for (let j = i + 1; j < pts.length; j++)
+              if (Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y) < 20) bad.push(`${pts[i].label} / ${pts[j].label}`)
+          return bad
+        })
+      const bad = await overlaps()
+      check('tableau de bord : aucun couple de dessins de repères à moins de 20 px (centre à centre)', bad.length === 0, bad.slice(0, 3).join(' ; '))
+      await page.locator('[data-marker-kind="cluster"]').first().click()
+      await page.waitForTimeout(1200)
+      const after = await page.locator('[data-marker-kind="cluster"]').count()
+      check('toucher un regroupement zoome (ou liste ses membres)', after < clusters.length || (await page.locator('[data-cluster-member]').count()) > 0, `${clusters.length} → ${after}`)
+      await open(page, '#/coordinator/route', 4000)
+      const free = page.locator('[data-testid="route-pick"][aria-pressed="false"]')
+      for (let i = 0; i < 6; i++) await free.first().click()
+      await page.waitForTimeout(3000)
+      const bad2 = await overlaps()
+      check('planificateur, six fermes : aucun numéro empilé', bad2.length === 0, bad2.slice(0, 3).join(' ; '))
+      await page.screenshot({ path: `${SHOTS}/a226-planificateur-regroupes.png` })
+      await ctx.close()
+    })
+  }
+
+  if (wants('A227')) {
+    // =======================================================================
+    section('A227 — le tracé sur route partout où un trajet s\'affiche')
+    // =======================================================================
+    await guard(async () => {
+      const ctx = await context(chrome)
+      const page = await ctx.newPage()
+      await open(page, '#/coordinator/route', 4000)
+      const unpicked = page.locator('[data-testid="route-pick"][aria-pressed="false"]')
+      for (let i = 0; i < 3; i++) await unpicked.first().click()
+      let styles = (await routeStyles(page)).out
+      for (let t = 0; t < 60 && !styles.road; t++) {
+        await page.waitForTimeout(500)
+        styles = (await routeStyles(page)).out
+      }
+      check('planificateur : le trajet est tracé sur route', (styles.road ?? 0) > 0, JSON.stringify(styles))
+      /* ⚠️ Vu passer À VIDE sur le build d'avant (`{}`) : l'absence de trait
+         droit ne vaut que s'il y a un trajet. */
+      check('planificateur : aucun trait à vol d\'oiseau d\'avant AN3', Object.keys(styles).length > 0 && !styles.legacy, JSON.stringify(styles))
+
+      await open(page, '#/coordinator/route/free', 3000)
+      const field = page.locator('[data-testid="position-link"]').first()
+      for (const p of ['31.56414, 34.84146', '31.61226, 34.89577']) {
+        await field.fill(p)
+        await field.press('Enter')
+      }
+      for (let t = 0; t < 60; t++) {
+        if (((await routeStyles(page)).out.road ?? 0) >= 3) break
+        await page.waitForTimeout(500)
+      }
+      const before = (await routeStyles(page)).out.road ?? 0
+      /* Une étape LOIN et jamais calculée (Mitzpe Ramon) : le calcul dure, et
+         c'est pendant ce temps que l'ancien écran remplaçait tout le tracé par
+         un trait droit. ⚠️ La première version ajoutait une étape voisine, déjà
+         en cache, et passait sur le build d'avant. Échantillons sans pause. */
+      await field.fill('30.6103, 34.8015')
+      await field.press('Enter')
+      let minRoad = Infinity
+      let legacy = 0
+      const until = Date.now() + 4000
+      while (Date.now() < until) {
+        const o = (await routeStyles(page)).out
+        minRoad = Math.min(minRoad, o.road ?? 0)
+        legacy += o.legacy ?? 0
+      }
+      check('itinéraire libre : une étape ajoutée n\'efface pas les routes déjà tracées', before >= 3 && minRoad >= 2, `avant ${before}, minimum pendant le calcul ${minRoad}`)
+      check('itinéraire libre : jamais le trait droit global pendant le calcul', before >= 3 && legacy === 0, `${legacy} échantillons en trait droit`)
+      await ctx.close()
+    })
   }
 } finally {
   await chrome.close()

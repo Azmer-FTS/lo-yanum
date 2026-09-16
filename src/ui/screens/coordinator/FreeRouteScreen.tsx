@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
@@ -17,7 +17,6 @@ import {
   whatsappHref,
 } from '@core/index'
 import type { FreeRoute, FreeStop, LatLng } from '@core/index'
-import type { RoadLeg } from '@core/roadGraph'
 
 import { originLabel, originPosition } from '../../settings/origin'
 import {
@@ -30,7 +29,7 @@ import { Icon } from '../../components/Icon'
 import { MapPanel } from '../../components/MapPanel'
 import type { MapMarker, MapRouteLine } from '../../components/MapView'
 import { useRouteMargin } from '../../settings/routeMargin'
-import { planRoadRoute } from '../../routing/roadNetwork'
+import { useRoadRoute } from '../../routing/useRoadRoute'
 import { PositionLinkField } from '../../components/PositionLinkField'
 import { readToken } from '../../components/badges'
 import { Callout, EmptyState, PageHeader, Section } from '../../components/primitives'
@@ -93,54 +92,10 @@ export function FreeRouteScreen() {
     () => (route.stops.length === 0 ? [] : [route.origin, ...route.stops.map((s) => s.position), route.origin]),
     [route.origin, route.stops],
   )
-  const routeKey = routePoints.map((p) => `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join('|')
-  const [road, setRoad] = useState<{
-    key: string
-    legs: Array<RoadLeg | null>
-    unavailable: boolean
-    ms: number
-    tiles: number
-  } | null>(null)
-  useEffect(() => {
-    if (routePoints.length < 2) return
-    let live = true
-    /**
-     * ⚠️★ IMPORTÉ STATIQUEMENT, ET A178 L'A EXIGÉ. La première version chargeait
-     *    ce module à la demande. Le service worker ne met en cache que ce que
-     *    la page a déjà chargé en ligne : un PO qui ouvre l'itinéraire libre
-     *    pour la première fois dans le Néguev, réseau coupé, n'avait JAMAIS
-     *    ce module — l'import échouait, et l'écran restait sur « מחשב מסלול… »
-     *    pour toujours. Deux défauts en un : le module est désormais dans le
-     *    paquet principal, et un échec, quel qu'il soit, se dit (`unavailable`).
-     */
-    planRoadRoute(routePoints)
-      .then((result) => {
-        /* Pour la mesure d'A177 (`bun run airoute`) : ce que le dernier calcul a coûté. */
-        ;(window as unknown as { __loYanumLastRoad?: unknown }).__loYanumLastRoad = {
-          timings: result.timings,
-          breakdown: result.breakdown,
-          stats: result.stats,
-        }
-        if (!live) return
-        setRoad({
-          key: routeKey,
-          legs: result.legs,
-          unavailable: result.unavailable,
-          ms: Math.round(result.timings.totalMs),
-          tiles: result.timings.tilesRead,
-        })
-      })
-      .catch(() => {
-        if (!live) return
-        setRoad({ key: routeKey, legs: routePoints.slice(1).map(() => null), unavailable: true, ms: 0, tiles: 0 })
-      })
-    return () => {
-      live = false
-    }
-    // routeKey résume routePoints ; le tableau change d'identité à chaque rendu.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeKey])
-  const current = road && road.key === routeKey ? road : null
+  /* ★ AN3 — le calcul et ses règles vivent dans `useRoadRoute`, partagé avec
+     le planificateur de tournée. */
+  const road = useRoadRoute(routePoints)
+  const current = road.pending ? null : road
 
   const plan = useMemo(
     () => planFreeRoute(route, { roadLegs: current ? current.legs : null, marginPercent: margin }),
@@ -210,24 +165,10 @@ export function FreeRouteScreen() {
     })),
   ]
 
-  /* Tant que le tracé n'est pas revenu, le trait d'AH9 reste : un écran vide
-     pendant trois cents millisecondes se lit comme une panne. */
-  const line =
-    plan.legs.length === 0 || current
-      ? undefined
-      : [route.origin, ...plan.legs.map((l) => l.stop.position), route.origin]
-
-  const routeLines: MapRouteLine[] = []
-  if (current) {
-    current.legs.forEach((leg, i) => {
-      if (leg) {
-        routeLines.push({ coords: leg.coords, style: 'road' })
-        for (const gap of leg.gaps) routeLines.push({ coords: [gap[0], gap[1]], style: 'gap' })
-      } else {
-        routeLines.push({ coords: [routePoints[i], routePoints[i + 1]], style: 'estimate' })
-      }
-    })
-  }
+  /* ★ AN3 — pendant un recalcul, les étapes déjà tracées RESTENT ; seule une
+     étape nouvelle est estimée en pointillé (voir `useRoadRoute`). */
+  const line = undefined
+  const routeLines: MapRouteLine[] = road.routeLines
   const approx = (value: string | number) => t('freeRoute.approx', { value })
 
   const mapsUrl = googleMapsPointsUrl(

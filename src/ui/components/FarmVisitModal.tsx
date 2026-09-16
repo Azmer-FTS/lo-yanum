@@ -156,7 +156,11 @@ export function FarmVisitModal({
                   endAt: new Date(Date.parse(startIso) + 3_600_000).toISOString(),
                   location: farms.find((f) => f.id === farmId)?.locality ?? '',
                   note: note.trim(),
-                  position: farms.find((f) => f.id === farmId)?.position ?? null,
+                  position: (() => {
+                    // ⛔ AN2 — une ferme sans position donne une visite sans position.
+                    const f = farms.find((x) => x.id === farmId)
+                    return f && !f.positionMissing ? f.position : null
+                  })(),
                   remindMinutes: remind < 0 ? null : remind,
                 })
               }}

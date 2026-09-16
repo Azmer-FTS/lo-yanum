@@ -297,18 +297,21 @@ export function AnchorMap({
       : '',
   ].join('#')
 
+  /* ⛔ AN2 — une ferme sans position : pas de repère, pas de cadrage serré sur
+     le point de repli (Jérusalem), la carte reste à l'échelle du pays. */
+  const farmPt = farm.positionMissing ? null : farm.position
   const markers: MapMarker[] = useMemo(
     () => [
-      {
+      ...(farmPt === null ? [] : [{
         id: farm.id,
-        position: farm.position,
+        position: farmPt,
         // G7bis.1 — the farm's identity pastille: forest, always. Its status
         // lives in the chips beside the map, not in the pin's colour.
         color: farmMarkerColor(farm),
         title: farm.name,
         subtitle: farm.locality,
         kind: entityMarkerKind(farm),
-      },
+      }]),
       ...anchors.map((anchor) => {
         const rank = chosenIds.indexOf(anchor.id)
         return {
@@ -542,7 +545,7 @@ export function AnchorMap({
    */
   const finishTrace = (trace: LatLng[], zoom: number) => {
     if (!tracing) return
-    const centre = trace.length > 0 ? trace[0] : farm.position
+    const centre = trace.length > 0 ? trace[0] : (farmPt ?? farm.position)
     const toleranceM = simplifyToleranceM(zoom, centre.lat)
 
     // Under three points there is no shape; a stray tap in this mode should
@@ -662,9 +665,10 @@ export function AnchorMap({
     () => [
       ...zones.flatMap((z) => z.ring),
       ...anchors.map((a) => a.position),
-      farm.position,
+      ...(farmPt ? [farmPt] : []),
     ],
-    [zones, anchors, farm.position],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [zones, anchors, farmPt?.lat, farmPt?.lng],
   )
 
   return (
@@ -674,8 +678,8 @@ export function AnchorMap({
         className={`h-full w-full transition-shadow duration-base ${
           flush && !fullscreen.active ? 'rounded-none' : 'rounded-card'
         } ${active ? 'ring-2 ring-accent' : ''}`}
-        center={farm.position}
-        zoom={13}
+        center={farmPt ?? undefined}
+        zoom={farmPt ? 13 : 7}
         frameTo={{ points: framePoints, key: farm.id }}
         markers={markers}
         polygons={polygons}

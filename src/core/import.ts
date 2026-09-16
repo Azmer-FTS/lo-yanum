@@ -397,6 +397,8 @@ export function toFarmDrafts(
   entityKind: EntityKind
   status: FarmStatus
   position: LatLng
+  /** ⛔ AN2 — posée par le repli : la fiche le DIT, et aucune carte ne la montre. */
+  positionMissing?: true
   farmDunams: number
   grazingDunams: number
   farmDunamsManual?: boolean
@@ -416,6 +418,8 @@ export function toFarmDrafts(
     entityKind: r.entityKind,
     status: r.farmStatus,
     position: r.position ?? defaults.fallbackPosition,
+    // ⛔ AN2 — ce repli n'était PAS marqué : la ferme apparaissait à Jérusalem.
+    positionMissing: r.position ? undefined : true,
     farmDunams: r.farmDunams,
     grazingDunams: r.grazingDunams,
     farmDunamsManual: r.farmDunams > 0 || undefined,

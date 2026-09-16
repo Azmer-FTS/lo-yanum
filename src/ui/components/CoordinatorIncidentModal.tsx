@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { getVisibleFarms, readCoordinator } from '@core/index'
+import { farmPoint, getVisibleFarms, readCoordinator } from '@core/index'
 
 import { IncidentReportForm } from './IncidentReportForm'
 import { Modal } from './primitives'
@@ -79,7 +79,7 @@ export function CoordinatorIncidentModal({ onClose }: { onClose: () => void }) {
               reporterId: null,
               reporterName: me.name,
               capturePosition: false,
-              fallbackPosition: farm.position,
+              fallbackPosition: farmPoint(farm),
               coordinatorName: me.name,
               coordinatorPhone: me.phone,
               farmerName: primary?.name,

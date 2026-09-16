@@ -19,7 +19,6 @@ import {
   localDayKey,
   now,
   planRoute,
-  routePolyline,
   saveTour,
   telHref,
   wazeStepLinks,
@@ -31,6 +30,7 @@ import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
 import { FarmVisitModal } from '../../components/FarmVisitModal'
+import { useRoadRoute } from '../../routing/useRoadRoute'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { FarmStatusDot, readStatusColor,
@@ -205,7 +205,13 @@ export function RoutePlannerScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [chosen, origin.lat, origin.lng],
   )
-  const line = useMemo(() => routePolyline(route), [route])
+  /* ★★ AN3 — le trajet du planificateur suit la ROUTE, comme l'itinéraire
+     libre (il traçait `routePolyline`, un trait droit de ferme en ferme). */
+  const roadPoints = useMemo(
+    () => (route.stops.length === 0 ? [] : [route.origin, ...route.stops.map((s) => s.farm.position), route.origin]),
+    [route],
+  )
+  const road = useRoadRoute(roadPoints)
   const mapsUrl = useMemo(() => googleMapsRouteUrl(route), [route])
   const wazeSteps = useMemo(() => wazeStepLinks(route), [route])
 
@@ -214,8 +220,10 @@ export function RoutePlannerScreen() {
     return atTimeOn(fromDayKey(dayKey), h || 0, m || 0)
   }, [dayKey, departTime])
 
+  /* ★ AN2 — une ferme sans position reste DANS la tournée enregistrée, après
+     les étapes placées : elle est choisie, elle n'est simplement pas tracée. */
   const draftFarmIds = useMemo(
-    () => route.stops.map((s) => s.farm.id),
+    () => [...route.stops.map((s) => s.farm.id), ...route.unplaced.map((f) => f.id)],
     [route],
   )
 
@@ -261,7 +269,8 @@ export function RoutePlannerScreen() {
     // Unselected farms stay visible but muted, so the coordinator can see what
     // else is nearby while building the route.
     const rest = farms
-      .filter((f) => !selected.has(f.id))
+      // ★ AN2 — une ferme sans position n'a pas de repère (jamais le point de repli).
+      .filter((f) => !selected.has(f.id) && !f.positionMissing)
       .map((farm) =>
         withInteraction(
           {
@@ -317,7 +326,7 @@ export function RoutePlannerScreen() {
       screenKey="route"
       ariaLabel={t('map.routeMap')}
       markers={markers}
-      line={line}
+      routeLines={road.routeLines}
       legend={
         <p className="max-w-48 text-caption text-content-secondary">
           {t('route.liveRoute')}
@@ -393,7 +402,7 @@ export function RoutePlannerScreen() {
                 <button
                   type="button"
                   className="btn-primary"
-                  disabled={route.stops.length === 0}
+                  disabled={draftFarmIds.length === 0}
                   onClick={() =>
                     saveTour({ dayKey, departAt, farmIds: draftFarmIds })
                   }
@@ -643,6 +652,13 @@ export function RoutePlannerScreen() {
                       <span className="muted truncate" title={farm.locality}>
                         {farm.locality}
                       </span>
+                      {/* ★ AN2 — sélectionnable, et signalée. */}
+                      {farm.positionMissing && (
+                        <span className="chip self-start bg-status-warn/15 text-status-warn-ink" data-testid="route-pick-missing">
+                          <Icon name="pin" size={10} />
+                          {t('route.missingPosition')}
+                        </span>
+                      )}
                     </span>
                   </button>
                 </li>
@@ -674,6 +690,22 @@ export function RoutePlannerScreen() {
           {t('route.order')}
         </h2>
         <div className="card card-pad">
+          {route.unplaced.length > 0 && (
+            /* ★ AN2 — choisies, hors du tracé : dites en tête du bloc. */
+            <ul className="mb-3 flex flex-col gap-1.5" data-testid="route-unplaced">
+              {route.unplaced.map((farm) => (
+                <li key={farm.id} className="flex flex-wrap items-center gap-2 rounded-field bg-status-warn/10 px-2.5 py-2" data-testid="route-unplaced-farm">
+                  <Icon name="pin" size={14} className="text-status-warn-ink" />
+                  <span className="min-w-0 flex-1 truncate text-caption font-medium text-content-primary">{farm.name}</span>
+                  <span className="chip bg-status-warn/15 text-status-warn-ink">{t('route.missingPosition')}</span>
+                  <Link to={`/coordinator/farms/${farm.id}/edit`} className="btn-ghost py-1 text-micro">
+                    {t('route.addPosition')}
+                  </Link>
+                </li>
+              ))}
+              <li className="muted text-micro">{t('route.missingPositionHint')}</li>
+            </ul>
+          )}
           {route.stops.length === 0 ? (
             <EmptyState icon="route" title={t('route.emptySelection')} />
           ) : (

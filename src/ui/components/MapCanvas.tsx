@@ -1996,6 +1996,151 @@ export default function MapCanvas({
 
   /**
    * ═════════════════════════════════════════════════════════════════════════
+   * ★★ AN2.4 (2026-09-16) — DES REPÈRES SUPERPOSÉS SE REGROUPENT, AVEC LEUR
+   *    NOMBRE. JAMAIS DES CHIFFRES EMPILÉS.
+   * ═════════════════════════════════════════════════════════════════════════
+   *
+   * « Dans le planificateur, toutes les fermes sans position s'empilent au
+   * même point, et leurs numéros se superposent, illisibles. » AN2 a retiré la
+   * cause (le point de repli n'est plus jamais placé), mais deux vraies fermes
+   * voisines, à l'échelle du pays, se recouvrent aussi. Après chaque
+   * mouvement de caméra, les repères dont les pointes tombent à moins de
+   * `CLUSTER_PX` pixels les uns des autres sont masqués et remplacés par UN
+   * disque portant leur nombre. Le toucher : on zoome sur eux ; s'ils sont au
+   * même point exact, la liste de leurs noms s'ouvre.
+   *
+   * Ne se regroupent PAS : ce qu'on déplace (poignées, épingles
+   * déplaçables), l'origine, les étiquettes et bulles — et rien du tout
+   * pendant qu'une carte est armée pour poser un point. Un repère EN RELIEF se
+   * regroupe (les missions du tableau de bord le sont toujours, et c'est l'une
+   * d'elles qui recouvrait une ferme) ; le disque le dit par un anneau épais.
+   */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const CLUSTER_PX = 26
+    const groupable = (m: MapMarker) =>
+      !m.draggable &&
+      !['origin', 'label', 'bubble', 'vertex', 'move'].includes(m.kind ?? 'farm')
+    let clusters: maplibregl.Marker[] = []
+    /* Seuls les repères que CE regroupement a masqués sont rendus : une
+       étiquette porte `pointer-events:none` d'origine et doit le garder. */
+    let hidden: Array<{ el: HTMLElement; pe: string }> = []
+
+    const clear = () => {
+      for (const c of clusters) c.remove()
+      clusters = []
+      for (const h of hidden) {
+        h.el.style.visibility = ''
+        h.el.style.pointerEvents = h.pe
+      }
+      hidden = []
+    }
+
+    const regroup = () => {
+      clear()
+      if (onMapClick) return
+      const items = markers
+        .map((m, i) => ({ m, inst: markersRef.current[i] }))
+        .filter((x) => x.inst && groupable(x.m))
+        /* Le CENTRE DU DESSIN, pas le point géographique : une épingle est
+           ancrée à sa pointe et un disque de mission à son centre, et c'est la
+           tête de l'une qui recouvre l'autre (vu : חוות רתם sur חוות גבעת עשן). */
+        .map((x) => {
+          const r = x.inst.getElement().getBoundingClientRect()
+          return { ...x, px: new maplibregl.Point(r.left + r.width / 2, r.top + r.height / 2) }
+        })
+      const taken = new Set<number>()
+      for (let i = 0; i < items.length; i++) {
+        if (taken.has(i)) continue
+        const group = [i]
+        for (let j = i + 1; j < items.length; j++) {
+          if (taken.has(j)) continue
+          if (group.some((g) => items[g].px.dist(items[j].px) < CLUSTER_PX)) group.push(j)
+        }
+        if (group.length < 2) continue
+        for (const g of group) {
+          taken.add(g)
+          const el = items[g].inst.getElement()
+          hidden.push({ el, pe: el.style.pointerEvents })
+          el.style.visibility = 'hidden'
+          el.style.pointerEvents = 'none'
+        }
+        const members = group.map((g) => items[g].m)
+        const lat = members.reduce((a, m) => a + m.position.lat, 0) / members.length
+        const lng = members.reduce((a, m) => a + m.position.lng, 0) / members.length
+        const el = document.createElement('button')
+        el.type = 'button'
+        el.dataset.markerKind = 'cluster'
+        el.dataset.count = String(members.length)
+        el.setAttribute('aria-label', members.map((m) => m.title).join(' · '))
+        el.textContent = String(members.length)
+        el.style.cssText = [
+          'width:34px',
+          'height:34px',
+          'padding:0',
+          'border-radius:var(--radius-pill)',
+          `background:${readToken('--accent')}`,
+          `color:${readToken('--text-on-accent')}`,
+          `border:${members.some((m) => m.emphasis) ? 4 : 2.5}px solid ${readToken('--surface-base')}`,
+          'box-shadow:0 2px 8px rgba(0,0,0,.35)',
+          'font-family:var(--font-sans)',
+          'font-weight:700',
+          'font-size:14px',
+          'font-variant-numeric:tabular-nums',
+          'cursor:pointer',
+          'display:flex',
+          'align-items:center',
+          'justify-content:center',
+        ].join(';')
+        wrapForTouch(el, 34, 34, false)
+        el.addEventListener('click', (e) => {
+          e.stopPropagation()
+          let west = members[0].position.lng
+          let east = west
+          let south = members[0].position.lat
+          let north = south
+          for (const m of members) {
+            west = Math.min(west, m.position.lng)
+            east = Math.max(east, m.position.lng)
+            south = Math.min(south, m.position.lat)
+            north = Math.max(north, m.position.lat)
+          }
+          const spread = Math.max(east - west, north - south)
+          if (spread > 0.00005 && map.getZoom() < map.getMaxZoom() - 0.5) {
+            map.fitBounds([[west, south], [east, north]], { padding: 80, duration: 400, maxZoom: map.getMaxZoom() })
+            return
+          }
+          // Au même point exact : la liste, chaque nom sélectionnable.
+          const box = document.createElement('div')
+          box.style.cssText = 'font-family:var(--font-sans);direction:rtl;text-align:start;display:flex;flex-direction:column;gap:2px;min-width:10rem'
+          for (const m of members) {
+            const row = document.createElement('button')
+            row.type = 'button'
+            row.dataset.clusterMember = m.id
+            row.textContent = m.title
+            row.style.cssText = 'all:unset;cursor:pointer;padding:10px 6px;font-size:13px;font-weight:600;min-height:24px'
+            row.addEventListener('click', () => m.onSelect?.())
+            box.appendChild(row)
+          }
+          new maplibregl.Popup({ offset: 20, closeButton: false }).setLngLat([lng, lat]).setDOMContent(box).addTo(map)
+        })
+        clusters.push(new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([lng, lat]).addTo(map))
+      }
+    }
+
+    regroup()
+    map.on('moveend', regroup)
+    map.on('resize', regroup)
+    return () => {
+      map.off('moveend', regroup)
+      map.off('resize', regroup)
+      clear()
+    }
+  }, [markers, onMapClick, glGeneration])
+
+  /**
+   * ═════════════════════════════════════════════════════════════════════════
    * PO POINT 9b — ציור חופשי: ONE CONTINUOUS GESTURE INSTEAD OF N TAPS.
    * ═════════════════════════════════════════════════════════════════════════
    *

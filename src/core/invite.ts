@@ -276,7 +276,7 @@ export interface GuardPass {
     id: string
     name: string
     locality: string
-    position: LatLng
+    position: LatLng | null
     /** AE2c — תיק אתר, les champs libres de la fiche. */
     siteAccess: string
     gateCode: string
@@ -323,7 +323,8 @@ export function buildGuardPass(input: {
       id: farm.id,
       name: farm.name,
       locality: farm.locality,
-      position: farm.position,
+      // ⛔ AN2 — `null` pour une ferme sans position, jamais le point de repli.
+      position: farm.positionMissing ? null : farm.position,
       siteAccess: farm.siteAccess ?? '',
       gateCode: farm.gateCode ?? '',
       parking: farm.parking ?? '',

@@ -11,7 +11,7 @@ import {
   weightedDunams,
 } from './fields'
 import { googleMapsPointUrl, wazeUrl } from './geo'
-import { regionById, regionOf, regions } from './regions'
+import { regionById, farmRegion, regions } from './regions'
 import type { Farm, FarmStatus, FarmType, LatLng, RegionId } from './types'
 
 /**
@@ -1147,7 +1147,7 @@ function prospectionCell(
     case 'council':
       return farm.council ?? ''
     case 'region':
-      return regionById(farm.regionId ?? regionOf(farm.position))?.name ?? ''
+      return regionById(farmRegion(farm))?.name ?? ''
     case 'councilPhone':
       return farm.councilPhone ?? ''
     case 'legalEntity':

@@ -1,0 +1,14 @@
+  PASS  clair → sombre sans rechargement  — 243 244 246 → 11 17 25
+  PASS  sombre → clair sans rechargement  — 243 244 246
+  PASS  le choix du coordinateur est « system » par défaut  — system
+  PASS  ת״ז touché → inputmode=none (le système n'ouvre pas son clavier)  — none
+  PASS  le pavé de l'app est ouvert
+  PASS  les chiffres entrent, zéro de tête compris  — 021985189
+  PASS  portable : la mise en forme suit le pavé  — (050) 123-4567
+  PASS  « סיום » ferme le pavé
+  PASS  les 7 champs numériques de l'édition de ferme ouvrent le pavé  — 7/7
+  PASS  iPhone : le pavé du système suffit — inputmode=numeric, pas de pavé de l'app
+  PASS  aucun numéro par défaut dans la carte du coordinateur  — ""
+  PASS  tapé, écran quitté sans « שמירה », rouvert : le numéro est là  — (052) 987-6543
+  PASS  vidé : il reste vide, aucun numéro ne revient  — ""
+  13 passed, 0 failed

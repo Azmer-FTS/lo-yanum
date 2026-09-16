@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import {
+import { farmPoint,
   readCoordinator,
   formatDateTime,
   formatTime,
@@ -63,6 +63,8 @@ export function DriverTripScreen() {
   }
 
   const { mission, farm, anchorPoint } = view
+  // ⛔ AN2 — jamais le point de repli d'une ferme sans position.
+  const dropoff = mission.dropoffPoint ?? farmPoint(farm)
   const groupHolder = rows.find((r) => r.isGroupPhone)?.volunteer
 
   return (
@@ -124,8 +126,8 @@ export function DriverTripScreen() {
           title={t('driver.destination')}
           collapseKey="driver-destination"
           action={
-            <a
-              href={wazeUrl(mission.dropoffPoint ?? farm.position)}
+            dropoff && <a
+              href={wazeUrl(dropoff)}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 text-caption font-medium text-accent-ink hover:underline"
@@ -149,7 +151,7 @@ export function DriverTripScreen() {
             className="mt-3 h-64 w-full"
             cooperative
             fit={mission.pickupPoint !== null}
-            center={mission.dropoffPoint ?? farm.position}
+            center={dropoff ?? undefined}
             zoom={12}
             markers={[
               ...(mission.pickupPoint
@@ -163,14 +165,14 @@ export function DriverTripScreen() {
                     },
                   ]
                 : []),
-              {
+              ...(dropoff ? [{
                 id: 'dropoff',
-                position: mission.dropoffPoint ?? farm.position,
+                position: dropoff,
                 color: meetColor(),
                 kind: 'car' as const,
                 title: t('meet.dropoff'),
                 emphasis: true,
-              },
+              }] : []),
             ]}
           />
           {mission.pickupPoint && (

@@ -1,5 +1,5 @@
 import { formatDate, formatTime } from './clock'
-import { formatCoords, wazeUrl } from './geo'
+import { farmPoint, formatCoords, wazeUrl } from './geo'
 import type { AnchorPoint, Driver, Farm, FarmContact, Mission } from './types'
 
 /**
@@ -188,7 +188,8 @@ export function buildDriverMessage(
 ): string {
   const { farm, anchorPoint, mission } = input
   const pickup = mission?.pickupPoint ?? null
-  const dropoff = mission?.dropoffPoint ?? farm.position
+  // ⛔ AN2 — jamais le point de repli d'une ferme sans position.
+  const dropoff = mission?.dropoffPoint ?? farmPoint(farm)
 
   const parts: string[] = [
     labels.title,
@@ -196,12 +197,12 @@ export function buildDriverMessage(
     line(labels.farm, `${farm.name}, ${farm.locality}`),
   ]
   if (pickup) parts.push(line(labels.pickup, formatCoords(pickup)))
-  parts.push(line(labels.dropoff, formatCoords(dropoff)))
+  if (dropoff) parts.push(line(labels.dropoff, formatCoords(dropoff)))
 
   const schedule = scheduleLine(input, labels)
   if (schedule) parts.push(schedule)
 
-  parts.push('', line(labels.navigation, wazeUrl(dropoff)))
+  if (dropoff) parts.push('', line(labels.navigation, wazeUrl(dropoff)))
 
   if (input.passengerNames.length > 0) {
     parts.push('', `${labels.passengers}:`, ...input.passengerNames.map((n) => `• ${n}`))

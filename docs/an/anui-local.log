@@ -1,0 +1,31 @@
+  PASS  clair → sombre sans rechargement  — 243 244 246 → 11 17 25
+  PASS  sombre → clair sans rechargement  — 243 244 246
+  PASS  le choix du coordinateur est « system » par défaut  — system
+  PASS  ת״ז touché → inputmode=none (le système n'ouvre pas son clavier)  — none
+  PASS  le pavé de l'app est ouvert
+  PASS  les chiffres entrent, zéro de tête compris  — 021985189
+  PASS  portable : la mise en forme suit le pavé  — (050) 123-4567
+  PASS  « סיום » ferme le pavé
+  PASS  les 7 champs numériques de l'édition de ferme ouvrent le pavé  — 7/7
+  PASS  iPhone : le pavé du système suffit — inputmode=numeric, pas de pavé de l'app
+  PASS  aucun numéro par défaut dans la carte du coordinateur  — ""
+  PASS  tapé, écran quitté sans « שמירה », rouvert : le numéro est là  — (052) 987-6543
+  PASS  vidé : il reste vide, aucun numéro ne revient  — ""
+  PASS  le bundle ne contient plus 052-0000049 ni 08-0000050
+  PASS  tableau de bord : aucun repère « משק שלם (בדיקה) »  — 13 repères
+  PASS  liste des fermes : aucun repère « משק שלם (בדיקה) »  — 13 repères
+  PASS  agenda : aucun repère « משק שלם (בדיקה) »  — 7 repères
+  PASS  planificateur : la ferme sans position est sélectionnable
+  PASS  … et signalée « מיקום חסר » sur sa carte
+  PASS  … elle est listée à part, hors du tracé
+  PASS  … aucun repère sur la carte du planificateur  — 1. חוות תלמי צאלים | 3. חוות מעלה עבדת | 4. חוות כרמי ירוחם | 5. חוות עצוז
+  PASS  … le tracé ne passe par aucun point de repli (Jérusalem, centre du Néguev)  — 3182 points
+  PASS  à l'échelle nationale, les repères qui se recouvrent sont regroupés  — [4,2]
+  PASS  tableau de bord : aucun couple de dessins de repères à moins de 20 px (centre à centre)
+  PASS  toucher un regroupement zoome (ou liste ses membres)  — 2 → 1
+  PASS  planificateur, six fermes : aucun numéro empilé
+  PASS  planificateur : le trajet est tracé sur route  — {"road":7,"gap":14}
+  PASS  planificateur : aucun trait à vol d'oiseau d'avant AN3  — {"road":7,"gap":14}
+  PASS  itinéraire libre : une étape ajoutée n'efface pas les routes déjà tracées  — avant 3, minimum pendant le calcul 2
+  PASS  itinéraire libre : jamais le trait droit global pendant le calcul  — 0 échantillons en trait droit
+  30 passed, 0 failed
