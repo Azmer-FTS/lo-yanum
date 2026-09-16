@@ -26,7 +26,7 @@
 cd "/Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM"
 bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
-bun run typecheck && bun run ajupdate && bun run aipass && bun run accept
+bun run typecheck && bun run akpass && bun run akui && bun run akmap && bun run accept
 ```
 
 ## Ce qui est fait dans AK
@@ -111,10 +111,14 @@ Décisions AK posées : (1) `type` reste la seule vérité de la nature, 'unknow
 
 ```bash
 # Pures
+bun run akpass akdata                                 # AK : règles, et les 15 fiches
+bun run akdata check docs/ak/ak1-prod-rows.json       # ce que la BASE a rendu
 bun run accept dispatch persist mapping report deletion sync contrast
 bun run aipass ahpass afpass agpass acpass assoc     # aipass lit basemap/*.pmtiles
 
 # Navigateur, build local
+bun run akui                                          # A196–A206, WebKit + Chromium (~8 min)
+bun run akmap                                         # A203 ; DIST=dist-ak6-before SKIP_BUILD=1 = le ROUGE
 bun run ajupdate                                      # A189–A191, deux builds A/B, WebKit + Chromium (~6 min)
 DIST_A=dist-aj-before SKIP_DOWNLOAD=1 bun run ajupdate  # le ROUGE : `vite build --outDir dist-aj-before` sur ddd1fba
 bun run offline                                       # 21 + SKIP ; vérifier d'abord qu'aucun preview ne tient 5197
@@ -131,6 +135,7 @@ FROM=<commit servi> bun run scripts/ajdeployed.ts     # garde l'app ouverte, att
 BASE_URL=https://azmer-fts.github.io/lo-yanum/ bun run aitheme
 BASE_URL=https://azmer-fts.github.io/lo-yanum/demo bun run aisettings
 bun run aicaptures
+bun run akcaptures                                    # 30 captures + A202 mesurée sur le servi
 ```
 
 ## Échecs PRÉ-EXISTANTS, qui ne sont pas des régressions

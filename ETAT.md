@@ -1,5 +1,213 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AK — LES QUINZE EXPLOITATIONS RÉELLES, LE FORMULAIRE CALQUÉ,
+> LES DOCUMENTS QUI BLOQUENT, L'ARCHIVAGE ET LA CARTE QUI NE BASCULE PLUS.
+> 2026-09-16. LIRE EN PREMIER.**
+>
+> Ordre suivi : AK1 (modèle) → AK2 → AK1 (données) → AK3 → AK4 → AK5 → AK6 →
+> AK7 → AK8 → AK9.
+>
+> ## AK1 — LES QUINZE FICHES DU PORTAIL, DANS LA BASE RÉELLE
+>
+> **Créées sur `lo-yanum-prod`** (`farm-ak1-01` … `-15`), après le déploiement
+> du code qui connaît la nature « inconnue » — l'ordre compte : une valeur
+> d'énumération que le bundle servi ne connaît pas est un écran blanc sur
+> l'iPad du PO.
+>
+> ★★ **LES COORDONNÉES SONT PASSÉES PAR LE LECTEUR DE L'APPLICATION**, pas
+> retournées à la main : `readAssociationCoords` (AB6, piège 1) refuse l'ordre
+> inversé dans les deux sens. Six lignes de la source portent un מיקום, donc
+> **six fiches sont sur la carte** et neuf portent `positionMissing`.
+>
+> ★ **La nature est déduite des SURFACES et de rien d'autre** : un nom qui dit
+> « גד״ש » n'est pas une déclaration. Dix fiches sur quinze n'ont aucune
+> surface et sont donc « לא ידוע » ; חוות זעק est la seule mixte (1 000 מרעה +
+> 100 מעובד) ; משק שלם est en cultures seules.
+>
+> ★ **Le ת״ז de חוות מרגי garde son zéro : `021985189`**, du champ à la base
+> (colonne `text`), au document et aux deux fichiers d'export.
+>
+> ⚠️ **שטחים שמירה EST VIDE PARTOUT, et cela a demandé de RENVERSER AC3.** Le
+> défaut « מעובד + מרעה » recopiait une surface que personne n'avait déclarée
+> dans la colonne que l'association transmet au ministère. `guardedDunamsOf`
+> rend désormais `number | null` ; les portes d'AC et d'AD qui exigeaient la
+> recopie sont **réécrites, pas supprimées**, pour que le renversement reste au
+> dossier.
+>
+> **Vérification : `bun run akdata check docs/ak/ak1-prod-rows.json` — 15/15
+> sur ce que la BASE a rendu**, relu par la même traduction que l'app
+> (`data/rows.ts`). Somme pondérée : **2 160 dounams** (מעובד 1 100 + מרעה
+> 53 000 × 0,02).
+>
+> ## AK2 — LA NATURE EST UN CHOIX MULTIPLE, ET C'EST TOUJOURS `type`
+>
+> Deux cases — חקלאות · מרעה — sur le champ qui existait déjà : rien coché =
+> `unknown` (migration `20260916000100`), une seule = `agriculture` /
+> `livestock`, les deux = `mixed`. **Pas de seconde colonne** : ce serait le
+> « deux champs pour une seule vérité » qu'AH1 a recensé sept fois.
+>
+> ★ Les surfaces SUIVENT la nature : le champ d'une activité décochée
+> disparaît, sa valeur n'est jamais reportée dans l'autre, et l'écran annonce
+> qu'elle sera retirée à l'enregistrement. Sur une fiche de nature inconnue les
+> deux champs restent, et taper un chiffre coche la case correspondante.
+>
+> ★ `LEGAL_ENTITY_OPTIONS` porte les **dix** valeurs du PO, dans son ordre
+> (מושב שיתופי et חברה בע״מ ajoutés), dans le fichier de configuration unique.
+>
+> ## AK3 · AK4 — LE FORMULAIRE DE L'ASSOCIATION, CALQUÉ, EN FENÊTRE
+>
+> `AssociationFormModal` : titre et logo, **שם החקלאי · תז/חפ · נייד**,
+> l'encadré **הצהרה ואישור**, la signature et son effacement, « שמירה ». Rien
+> d'autre — pas d'aperçu A4, parce que leur formulaire n'en a pas.
+>
+> ⛔ **AUCUNE LISTE « מקום התנדבות »** : refus explicite du PO (chez eux elle
+> montre à l'agriculteur toutes les autres fermes). La fenêtre s'ouvre DEPUIS
+> une fiche ; le lieu est connu, il n'est pas choisi.
+>
+> ★★ **L'ENCADRÉ EST LU DU GABARIT DU DOCUMENT** (`templateSection`), gras
+> compris : le gabarit gagne `**…**` et le PDF sait dessiner des mots en gras
+> (`richLines`, mot par mot, de droite à gauche). Deux textes pour un contrat,
+> c'est la faute qu'AH5 a supprimée ; l'écran et le PDF disent la même phrase
+> parce que c'est la même phrase.
+>
+> ⚠️ **ת״ז ET נייד OUVRENT LE PAVÉ NUMÉRIQUE** (`inputmode="numeric"`,
+> `type="text"` — jamais `type="number"`, qui mange le zéro initial), le nom
+> ouvre le clavier texte, le portable se met en forme `(0XX) XXX-XXXX` pendant
+> la frappe, et **aucun champ n'est sous 16 px** : en deçà, Safari iOS zoome
+> sur le champ touché.
+>
+> ★ Ce qui est déjà sur la fiche est **affiché et figé** ; seuls les manquants
+> se saisissent (la règle d'AG4). Enregistrer passe par
+> `applyRemoteSignature` — le chemin d'écriture de la signature à distance,
+> pas un second.
+>
+> ★★ **LA FENÊTRE A TROIS SORTIES** (le défaut d'AH7 ne se reproduit pas) : la
+> croix (44 px, atteignable à `elementFromPoint`), la touche d'échappement, et
+> le GESTE — tirer l'en-tête vers le bas. Le focus entre dans la fenêtre, n'en
+> sort pas (Tab et Maj+Tab), et revient au bouton qui l'a ouverte.
+>
+> ★ La fiche porte un **bandeau nommé** — « הסכם התנדבות- ארצנו », l'état
+> (טרם נחתם / נחתם le …), le document précédent et le bouton — plutôt qu'une
+> icône de plus dans la pilule d'actions.
+>
+> ## AK5 — SANS DOCUMENTS, UNE FICHE N'EST JAMAIS COMPLÈTE
+>
+> `awaitingDocuments` / `closureBlocked` / `allowedStatus` (core/documents.ts) :
+> **une seule question, posée au même endroit** par la fiche, la file, le
+> verrou et le compte rendu.
+>
+> ★ **« פעילה » est une TRANSITION refusée**, pas un état défait : une fiche
+> déjà active n'est pas rétrogradée en silence. Le refus est dit à l'écran, et
+> tenu dans `updateFarm`, `createFarm` **et à l'import** — l'écran le dit, le
+> domaine le tient.
+>
+> ★ La bande « ממתין למסמכים » est **permanente et pleine largeur** dans le
+> bandeau de tête, nomme le papier qui manque, et passe au ton d'alerte sur une
+> fiche signée — là où le PO pourrait croire le dossier bouclé.
+>
+> ★★ **LA FILE EST DEUXIÈME, ET LA PLACE EST DE L'ARITHMÉTIQUE.** Trois
+> vignettes font 476 px, un téléphone en offre 370 : deux tiennent au repos.
+> « נשכחו » garde la première place (AC, puis AD3.2) ; cette file-ci est une
+> règle métier qui BLOQUE la clôture, donc elle passe devant « לחידוש » et
+> « לתיחום ». ⚠️ Et son nom tient sur les DEUX lignes de la vignette : sur la
+> capture à 402 px, « ממתינות למסמכים » sur une seule ligne se coupait en
+> « ממתינות ל… ».
+>
+> ★ Le compte rendu sépare les signées : **חתומות עם מסמכים** et **חתומות
+> הממתינות למסמכים**.
+>
+> ## AK6 — LA CARTE QUI RETOMBAIT EN VECTORIEL : LA CAUSE, MESURÉE
+>
+> **`bun run akmap`** provoque sept déclencheurs SEUL À SEUL sur le build
+> d'AVANT et lit, après chacun, le choix enregistré, le fond affiché et **la
+> pile d'appel de chaque écriture** de `lo-yanum:map-base`.
+>
+> ⚠️★★ **LA CAUSE, IMPRIMÉE :** un événement `offline` →
+> `MapTools.applyConnectivity` → `onBase('vector')` → `writeStoredBase('vector')`.
+> Le repli automatique ne changeait pas seulement l'affichage : **il
+> RÉÉCRIVAIT le choix du PO**, et rien ne le rétablissait — ni au retour du
+> réseau, ni sur un autre écran, ni au rechargement. Sur un iPad, une coupure
+> d'une seconde suffit. Deuxième moitié : `readStoredBase` filtrait le choix
+> par `navigator.onLine`, donc un lancement à froid sans couverture ouvrait en
+> vectoriel.
+>
+> **Ce que la mesure a DÉMENTI** : ni le délai (25 s), ni le retour en
+> avant-plan, ni `controllerchange`, ni la perte du contexte WebGL ne touchaient
+> au fond. ⛔ **Et « relief » n'existe pas** dans ce code : il n'y a que deux
+> fonds, `vector` et `satellite`.
+>
+> ★ **Correctif** : plus AUCUNE écriture automatique du choix — la seule est le
+> geste du PO sur le bouton. Hors ligne ou quand des tuiles échouent, la carte
+> **le dit** (`map-imagery-notice`) et **réessaie** les tuiles satellite une à
+> une (`_reloadTile`, avec palier) ; la bande s'en va d'elle-même quand elles
+> reviennent.
+>
+> **ROUGE avant : 11 échecs** (`DIST=dist-ak6-before`) — **VERT après : 26/26**,
+> « aucune » écriture non voulue. Logs : `docs/ak/ak6-rouge-avant.log` et
+> `docs/ak/ak6-vert-apres.log`. La porte `backdrop`, qui EXIGEAIT l'ancien
+> repli automatique, est réécrite (38/38).
+>
+> ## AK7 — ARCHIVER N'EST PAS SUPPRIMER
+>
+> `archived_at` + `archive_reason` (migration `20260916000200`).
+> `archiveFarm` / `unarchiveFarm` **ne touchent que `data.farms`** : ni zones,
+> ni postes, ni menaces, ni visites, ni tournées — et la porte le vérifie
+> plutôt que de le promettre, en comptant les collections avant et après.
+>
+> ★ `getVisibleFarms` retire les archivées **à un seul endroit**, donc elles
+> sortent des listes, de la carte (les zones et les postes se filtrent sur
+> cette liste), des compteurs, de l'objectif et du compte rendu sans qu'aucun
+> écran ait à y penser. `getFarm` les ouvre encore — une archive qu'on ne peut
+> pas rouvrir est une suppression sous un autre nom.
+>
+> ⚠️ **L'IMPORT LES CONNAÎT** (`getFarmsForImport`) : sans cela une ligne du
+> fichier ne trouverait rien et créerait un DOUBLON. Elle met à jour **sans
+> désarchiver**, et le rapport d'import le dit : « N עודכנו ונשארו בארכיון ».
+>
+> ## AK8 — LA SIGNATURE, EN PNG, DANS SA PROPRE CELLULE
+>
+> Le générateur de classeur (écrit à la main depuis AA4) sait désormais poser
+> une **pièce image** : `xl/media/imageN.png`, `xl/drawings/drawing1.xml`, une
+> ancre `twoCellAnchor editAs="oneCell"` de la cellule à la suivante. La
+> cellule, elle, porte le `data:image/png;base64,…` que le ré-import relit
+> (AA5), avec un format `;;;` qui n'affiche rien par-dessus l'image : **une
+> seule chose dans la cellule, la signature**, lisible par l'œil et par la
+> machine.
+>
+> ⚠️ **LE PLAFOND D'EXCEL EST SILENCIEUX** — 32 767 caractères par cellule,
+> tronqués à l'ouverture. Une signature tracée sur un iPad rétine les dépasse.
+> `compactSignatures` la **redessine** (au plus 480 × 160, puis par paliers)
+> sous 30 000 caractères avant d'écrire le fichier ; la signature d'origine,
+> celle du PDF, n'est pas touchée.
+>
+> **Aller-retour vérifié** : export → ré-import → la signature revient sur la
+> fiche, marquée « importée » avec son nom de fichier, sans créer de doublon.
+> Et les fichiers TÉLÉCHARGÉS depuis le navigateur sont ouverts et lus par la
+> porte (le PNG est bien une pièce du zip ; `openpyxl` ouvre le classeur et y
+> voit l'image).
+>
+> ## AK9 — LES PORTES
+>
+> ```
+> akdata 30/30 (jeu construit + aller-retour lignes) · 15/15 sur la BASE
+> akpass 56/56 · akui 117/117 (WebKit + Chromium) · akmap 26/26 (rouge 11 avant)
+> accept 177 · persist 109 · mapping 33 · report 86 · deletion 61 · sync 34
+> assoc 42 · acpass 52 · adpass 46 · afpass 59 · agpass 74 · ahpass 40 · aipass 32
+> backdrop 38 (réécrite) · uipass 41 · zones 38 · agreement 18 · demo 17
+> ```
+>
+> ⚠️ **CE QUI A ÉTÉ MESURÉ ET NON DEVINÉ, AILLEURS QU'AK6** : `uipass` a trouvé
+> qu'un libellé de nature plus long (« חקלאות ומרעה » au lieu de « מעורב »)
+> faisait basculer TOUTE la barre de filtres derrière « סינון » à 1376 px en
+> mode splitté — filtre de région compris. Les libellés restent courts et la
+> quatrième pastille (« לא ידוע ») n'est pas ajoutée : elle coûtait la barre.
+>
+> ⛔ **NON MESURÉ, DIT FRANCHEMENT** : le clavier d'un iPad RÉEL. L'accès au
+> simulateur a de nouveau été refusé (comme en AG et en AJ) ; ce qui est
+> mesuré, c'est le moteur de Safari (WebKit) avec `hasTouch` — `inputmode`,
+> `type` et la taille des champs, c'est-à-dire tout ce dont iOS se sert pour
+> choisir le clavier.
+
 > 🏁 **PASSE AJ — LA VERSION INSTALLÉE SE MET À JOUR. 2026-09-15. LIRE EN
 > PREMIER.**
 >
