@@ -427,7 +427,12 @@ export function MapSplit({
         </div>
 
         <div
-          className={`${c.mapBox} ${
+          className={`${
+            /* ★ AN4 — la bordure de la carte SÉPARE la carte de la liste ; en
+               mode plein il n'y a pas de liste, et elle doublait celle du rail
+               (deux traits de 1 px, mesuré à 1 032 et 1 376 px). */
+            mode === 'full' ? c.mapBox.replace(/\b(lg|xl):border-r\b/, '') : c.mapBox
+          } ${
             mode === 'full' ? 'min-h-0 flex-1' : splitHeight
           }`}
         >

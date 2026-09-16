@@ -425,6 +425,60 @@ try {
       await ctx.close()
     })
   }
+
+  if (wants('A228')) {
+    // =======================================================================
+    section('A228 — aucune bordure parasite : quatre modes, trois largeurs')
+    // =======================================================================
+    for (const [w, h] of [[402, 874], [1032, 1376], [1376, 1032]] as const) {
+      await guard(async () => {
+        const ctx = await context(chrome, { viewport: { width: w, height: h } })
+        const page = await ctx.newPage()
+        const probe = () =>
+          page.evaluate(() => {
+            const c = document.querySelector('.maplibregl-canvas') as HTMLElement | null
+            if (!c || c.getBoundingClientRect().width === 0) return null
+            const r = c.getBoundingClientRect()
+            const box = c.closest('[role="application"]') as HTMLElement
+            const b = box.getBoundingClientRect()
+            const cs = getComputedStyle(box)
+            const mapBox = box.closest('[data-map-panel]')?.lastElementChild as HTMLElement | null
+            return {
+              offset: [Math.round(r.left - b.left), Math.round(r.top - b.top), Math.round(b.right - r.right), Math.round(b.bottom - r.bottom)],
+              position: cs.position,
+              vw: window.innerWidth,
+              vh: window.innerHeight,
+              /* ⚠️ Les marges de la TOILE : celles du cadre étaient égales sur le build d'avant aussi. */
+              frame: [Math.round(r.left), Math.round(r.top), Math.round(window.innerWidth - r.right), Math.round(window.innerHeight - r.bottom)],
+              mapBoxBorderRight: mapBox ? getComputedStyle(mapBox).borderRightWidth : '0px',
+            }
+          })
+        await open(page, '#/coordinator/farms', 4000)
+        for (const mode of ['split', 'full', 'hidden'] as const) {
+          await page.locator(`[data-testid="map-mode-${mode}"]`).first().click()
+          await page.waitForTimeout(1500)
+          const pr = await probe()
+          if (mode === 'hidden') {
+            check(`${w} px · masquée : aucune carte dessinée`, pr === null)
+            continue
+          }
+          check(`${w} px · ${mode} : la toile remplit son cadre (0 px d'écart sur les quatre côtés)`, !!pr && pr.offset.every((v) => Math.abs(v) <= 1) && pr.position === 'relative', JSON.stringify(pr))
+          if (mode === 'full' && w >= 1024) {
+            check(`${w} px · plein : pas de bordure de séparation sans liste à séparer`, pr?.mapBoxBorderRight === '0px', String(pr?.mapBoxBorderRight))
+          }
+        }
+        await page.locator('[data-testid="map-mode-split"]').first().click()
+        await open(page, '#/coordinator/farms/farm-07', 5000)
+        await page.locator('[data-testid="map-tool-fullscreen"]:visible').first().click()
+        await page.waitForTimeout(1800)
+        const fs = await probe()
+        check(`${w} px · plein écran de l'outil : la toile reste dans son cadre`, !!fs && fs.offset.every((v) => Math.abs(v) <= 1) && fs.position === 'relative', JSON.stringify(fs))
+        check(`${w} px · plein écran de l'outil : marge égale à droite et à gauche, en haut et en bas`, !!fs && Math.abs(fs.frame[0] - fs.frame[2]) <= 1 && Math.abs(fs.frame[1] - fs.frame[3]) <= 1, JSON.stringify(fs?.frame))
+        await page.screenshot({ path: `${SHOTS}/a228-${w}-outil-plein-ecran.png` })
+        await ctx.close()
+      })
+    }
+  }
 } finally {
   await chrome.close()
   await safari.close()

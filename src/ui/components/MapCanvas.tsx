@@ -2533,7 +2533,16 @@ export default function MapCanvas({
         ref={containerRef}
         role="application"
         aria-label={ariaLabel}
-        className={`overflow-hidden rounded-card bg-surface-sunken ${
+        /* ★★ AN4 (2026-09-16) — `maplibregl-map` EST ÉCRIT ICI, ET C'ÉTAIT LA
+           BORDURE. MapLibre pose cette classe (qui porte `position: relative`)
+           sur le conteneur à sa création. Dès que `className` change — le
+           plein écran de l'outil carte, ou une carte armée pour poser un
+           point — React réécrit l'attribut `class` et l'efface : le conteneur
+           redevient `static`, la toile (`absolute`) se cale sur le cadre fixe
+           du plein écran en ignorant sa marge de 12 px, et une bande grise
+           apparaît à droite (mesuré : toile en 0,0, cadre en 12,12, 1 352 px
+           de large). Écrite dans la chaîne, la classe survit à tout rendu. */
+        className={`maplibregl-map relative overflow-hidden rounded-card bg-surface-sunken ${
           onMapClick ? '[&_.maplibregl-canvas]:cursor-crosshair' : ''
         } ${className}`}
       />

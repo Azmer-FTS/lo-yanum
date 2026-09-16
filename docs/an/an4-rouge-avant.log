@@ -1,0 +1,9 @@
+  FAIL  402 px · plein écran de l'outil : la toile reste dans son cadre  — {"offset":[-8,-8,8,8],"position":"static","vw":402,"vh":874,"frame":[0,0,16,16],"mapBoxBorderRight":"0px"}
+  FAIL  402 px · plein écran de l'outil : marge égale à droite et à gauche, en haut et en bas  — [0,0,16,16]
+  FAIL  1032 px · plein : pas de bordure de séparation sans liste à séparer  — 1px
+  FAIL  1032 px · plein écran de l'outil : la toile reste dans son cadre  — {"offset":[-12,-12,12,12],"position":"static","vw":1032,"vh":1376,"frame":[0,0,24,24],"mapBoxBorderRight":"0px"}
+  FAIL  1032 px · plein écran de l'outil : marge égale à droite et à gauche, en haut et en bas  — [0,0,24,24]
+  FAIL  1376 px · plein : pas de bordure de séparation sans liste à séparer  — 1px
+  FAIL  1376 px · plein écran de l'outil : la toile reste dans son cadre  — {"offset":[-12,-12,12,12],"position":"static","vw":1376,"vh":1032,"frame":[0,0,24,24],"mapBoxBorderRight":"1px"}
+  FAIL  1376 px · plein écran de l'outil : marge égale à droite et à gauche, en haut et en bas  — [0,0,24,24]
+  9 passed, 8 failed
