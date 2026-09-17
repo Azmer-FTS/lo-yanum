@@ -204,7 +204,38 @@
 >
 > ## AN13 — VÉRIFICATION
 >
-> _(complété à la fin de la passe)_
+> **Sur le déployé (`cfb834a`, les deux URLs le servent)** :
+> `BASE_URL=https://azmer-fts.github.io/lo-yanum bun run anui` → **155/155**
+> (`docs/an/anui-deploye-cfb834a.log`), A222 → A237 : thème suivi sans
+> rechargement, pavé iPad, aucun numéro générique, aucune fiche sans position
+> sur une carte (ni à Jérusalem, ni au centre du Néguev), disques de
+> regroupement, tracé sur route, 4 modes × 3 largeurs sans bordure, signature
+> (nom/date inscrits, texte lisible à l'ouverture), en-tête épinglé, un champ
+> par vérité, dévoilement, une photo par personne, contact en résumé, pages,
+> zéro demande de localisation sans geste.
+>
+> **Captures du déployé** : `bun run ancaptures` → 36 captures, 0 erreur de
+> page (`docs/screenshots/anpass/deployed-captures/`, journal
+> `docs/an/ancaptures-deploye-cfb834a.log`) — iPad portrait, iPad paysage,
+> iPhone × clair/sombre : édition de דני בראל (haut, personnes, détails),
+> fenêtre de signature à l'ouverture, planificateur avec משק שלם et דני בראל
+> sans position. Regardées : elles ont fait trouver deux défauts que les portes
+> ne voyaient pas (noms réduits à une lettre dans « מיקום חסר », portable coupé
+> sur iPhone) → corrigés dans `cfb834a` et ajoutés à A225/A235.
+>
+> **Simulateur iPad, sur le déployé** : pavé (`docs/an/an1-ipad-DEPLOYE-a0af144-tz-pave.png`),
+> signature (`docs/an/an5-ipad-DEPLOYE-bba6447-signature-ouverture.png`).
+>
+> **Rouges vus** : `anui` sur le build d'avant (`1dacc2c`) 7 PASS / 18 FAIL
+> (`docs/an/an-rouge-avant.log`), A228 d'avant 9/17 (`docs/an/an4-rouge-avant.log`) ;
+> portes réalignées pendant la passe : `amui` 70/7, `akui` 113/6, `afui` A129,
+> `touch`, `layout` X5 et A30 — toutes revenues au vert. Pré-existants, identiques
+> sur `1dacc2c` : `aeui` A118/A119 (4), `adui` A115, `mapfirst` farmer-tonight.
+>
+> **Non prouvé** : AN1.1 (thème de la PWA installée) jamais reproduit — une
+> ceinture a été posée, pas une cause trouvée ; « Take Photo » dans le menu iOS
+> (le simulateur n'a pas de caméra) ; les invites de localisation d'iOS, que
+> l'app ne peut pas supprimer.
 
 
 > 🏁 **PASSE AM — LE FORMULAIRE DE FERME, REPRIS EN ENTIER. 2026-09-16. LIRE EN PREMIER.**

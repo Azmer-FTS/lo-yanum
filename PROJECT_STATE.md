@@ -7,10 +7,10 @@
 ## Où en est-on
 
 - **Branche** : `main`. **Dernier commit** : voir `git log --oneline -1`
-  (passe **AM**, 2026-09-16).
-- **Passe AN** (2026-09-16/17) — logique d'interface, contradictions,
-  régressions. AN1 → AN12 codés, commités, poussés (`a0af144` … `94c830d`) ;
-  AN13 (vérification sur le déployé, captures) : voir `ETAT.md` § AN13.
+  (passe **AN**, 2026-09-17).
+- **Passe AN TERMINÉE** (2026-09-17) — logique d'interface, contradictions,
+  régressions. AN1 → AN13 poussés (`a0af144` … `cfb834a` + docs) ; déployé
+  `cfb834a` : `anui` 155/155, 36 captures, 0 erreur (`ETAT.md` § AN13).
   Porte : `bun run anui` (A222–A237) + `bun run anpass` ; captures
   `bun run ancaptures`. Rouge d'avant : `DIST=dist-an-before SKIP_BUILD=1 bun
   run anui` (build de 1dacc2c + `basemap/` copié à la main).
@@ -28,7 +28,7 @@
   jour » (bloquant, traité en premier). **Correctif livré et poussé**
   (`f94c32a`) ; `ajupdate` 38/38 en local ; **sur le déployé 11/11** avec un
   vrai déploiement pendant que l'app restait ouverte (`ETAT.md` §AJ0.4).
-- **Déployé** : les deux URLs servent `c1453d5` (AM) — `amui` 77/77 et 36 captures sur le déployé. Avant AM : les deux URLs servaient le commit d'AL. **Vérifié SUR LE
+- **Déployé** : les deux URLs servent le dernier commit d'AN (`cfb834a` pour le code ; `anui` 155/155). Avant : `c1453d5` (AM) — `amui` 77/77 et 36 captures sur le déployé. Avant AM : les deux URLs servaient le commit d'AL. **Vérifié SUR LE
   DÉPLOYÉ** : `alui` 54/54 (le geste d'AL1 et l'écran de localisation) et
   `alcaptures` 330/330 avec 54 captures
   (`docs/screenshots/alpass/deployed/`).
@@ -37,7 +37,7 @@
   - Le commit servi se lit dans `version.json` à la racine de chacune, et dans
     l'app : הגדרות › נתונים › « גרסת האפליקציה ».
 
-## Ce qui est fait dans AN (en cours)
+## Ce qui est fait dans AN
 
 | Bloc | État |
 |---|---|
@@ -106,7 +106,7 @@ Décisions AM posées :
 cd "/Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM"
 bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
-bun run typecheck && bun run ampass && bun run alpass && bun run tokens && bun run akpass && bun run accept
+bun run typecheck && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run akpass && bun run accept
 ```
 
 ## Ce qui est fait dans AL
