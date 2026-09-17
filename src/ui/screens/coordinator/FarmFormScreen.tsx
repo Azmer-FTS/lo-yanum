@@ -279,16 +279,14 @@ function PersonEditor({
             )}
           </p>
           {!open && (
-            <p className="truncate text-body text-content-primary" data-testid={`${testId}-summary`}>
-              {card.name}
+            <p className="flex flex-wrap items-baseline gap-x-2 text-body text-content-primary" data-testid={`${testId}-summary`}>
+              <span className="min-w-0 truncate">{card.name}</span>
               {card.phone.trim() !== '' && (
-                <>
-                  <span className="text-content-muted"> · </span>
-                  {/* Isolé : un numéro dans une ligne hébraïque garde son ordre. */}
-                  <bdi dir="ltr" className="ltr-nums text-content-secondary">
-                    {formatPhoneTyping(card.phone)}
-                  </bdi>
-                </>
+                /* Isolé, et jamais coupé : sur un iPhone le numéro passait « …(50 »
+                   (vu sur capture du déployé) ; il va à la ligne plutôt. */
+                <bdi dir="ltr" className="ltr-nums whitespace-nowrap text-content-secondary">
+                  {formatPhoneTyping(card.phone)}
+                </bdi>
               )}
             </p>
           )}

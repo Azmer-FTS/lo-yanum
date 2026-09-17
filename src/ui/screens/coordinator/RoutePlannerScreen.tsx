@@ -694,9 +694,11 @@ export function RoutePlannerScreen() {
             /* ★ AN2 — choisies, hors du tracé : dites en tête du bloc. */
             <ul className="mb-3 flex flex-col gap-1.5" data-testid="route-unplaced">
               {route.unplaced.map((farm) => (
-                <li key={farm.id} className="flex flex-wrap items-center gap-2 rounded-field bg-status-warn/10 px-2.5 py-2" data-testid="route-unplaced-farm">
+                <li key={farm.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-field bg-status-warn/10 px-2.5 py-2" data-testid="route-unplaced-farm">
                   <Icon name="pin" size={14} className="text-status-warn-ink" />
-                  <span className="min-w-0 flex-1 truncate text-caption font-medium text-content-primary">{farm.name}</span>
+                  {/* Le nom sur sa ligne : dans une colonne étroite, la pastille et le
+                      bouton le réduisaient à une lettre (vu sur capture du déployé). */}
+                  <span className="min-w-[8rem] flex-1 text-caption font-medium text-content-primary" data-testid="route-unplaced-name">{farm.name}</span>
                   <span className="chip bg-status-warn/15 text-status-warn-ink">{t('route.missingPosition')}</span>
                   <Link to={`/coordinator/farms/${farm.id}/edit`} className="btn-ghost py-1 text-micro">
                     {t('route.addPosition')}

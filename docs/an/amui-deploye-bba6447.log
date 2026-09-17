@@ -1,0 +1,78 @@
+  PASS  le champ יישוב de l'édition est identifiable
+  PASS  à champ vide, avec une épingle : les localités PROCHES, avec leur distance  — רתמים 3.5 ק״מ | ביר הדאג' 5.9 ק״מ | רביבים 6.7 ק״מ
+  PASS  et plus les huit premières de l'alphabet (אבו גוש…)
+  PASS  « כפר » : trente propositions, pas huit  — 30
+  PASS  la liste DÉFILE
+  PASS  « באר שבה » (une faute) propose באר שבע  — באר שבע
+  PASS  « חריש » (graphie du למ״ס) est trouvé  — קציר-חריש
+  PASS  une ferme neuve, un NOM seul, s'enregistre  — /#/coordinator/farms/farm-mu4s2fl9-1
+  PASS  build RÉEL : la fiche sans יישוב ni épingle arrive en base  — 1 ligne(s)
+  PASS  … sans יישוב, et marquée sans position
+  PASS  … le portable tapé « 0521234567 » est enregistré 052-1234567  — 052-1234567
+  PASS  … et l'agriculteur devient la ligne de contact principale (une seule)  — 1
+  PASS  épingle posée, champ vide : la localité la plus proche est PROPOSÉE  — רתמים
+  PASS  … et le champ reste VIDE tant que rien n'est touché
+  PASS  un geste l'accepte : le champ porte le nom proposé
+  PASS  … et la relation « dans / rattachée » est déduite de la distance, modifiable
+  PASS  la valeur reste MODIFIABLE (tapée par-dessus)
+  PASS  le détail dit « משויכת ל… » après enregistrement  — משויכת לטללים
+  PASS  la fiche de דני בראל a UNE carte « החקלאי »
+  PASS  pré-remplie : nom  — דני בראל
+  PASS  pré-remplie : portable, mis en forme  — (052) 123-4567
+  PASS  pré-remplie : ת״ז, zéro initial compris  — 021985189
+  PASS  A216 — ת״ז, nom et portable sont dans la MÊME carte
+  PASS  aucune carte de contact vide au-dessus ou au-dessous  — 0
+  PASS  le bouton d'ajout dit « נוסף », pas « הוספת איש קשר » tout court  — הוספת איש קשר נוסף
+  PASS  et il est APRÈS la personne existante
+  PASS  plus aucun « הוספת איש קשר » au-dessus des personnes
+  PASS  enregistrer : une seule ligne de contact, et c'est lui  — 1
+  PASS  rouvrir : toujours une seule carte, courriel retrouvé
+  PASS  390 px : aucune valeur pré-remplie rognée dans son champ  — 5 champs remplis
+  PASS  402 px : aucune valeur pré-remplie rognée dans son champ  — 5 champs remplis
+  PASS  farm-01 : chaque bloc de l'édition existe au détail, sous le même intitulé
+  PASS  farm-01 : dans le même ordre  — édition סטטוס ושטחים › פרטים › אנשים › טלפוני חירום ותיק אתר › התחייבויות בעל החווה › הסכמים › הערות | détail סטטוס ושטחים › פרטים › אנשים › טלפוני חירום ותיק אתר › התחייבויות בעל החווה › הסכמים › הערות
+  PASS  farm-02 : chaque bloc de l'édition existe au détail, sous le même intitulé
+  PASS  farm-02 : dans le même ordre  — édition סטטוס ושטחים › פרטים › אנשים › טלפוני חירום ותיק אתר › התחייבויות בעל החווה › הסכמים › הערות | détail סטטוס ושטחים › פרטים › אנשים › טלפוני חירום ותיק אתר › התחייבויות בעל החווה › הסכמים › הערות
+  PASS  WebKit tactile, iPad : 28/28 écrans, 124 champs — aucun clavier faux, aucun champ sous 16 px
+  PASS  Chromium, pointeur FIN (iPad au trackpad, bureau) : 28/28 écrans, 124 champs — aucun clavier faux, aucun champ sous 16 px
+  PASS  iPad installé · fiche ferme : interstice visible sous la barre = 0 px (zone sûre 20 px)  — 0 px de contenu visible
+  PASS  iPad installé · fiche ferme : barre et prolongement opaques
+  PASS  iPad installé · assistant de garde : interstice visible sous la barre = 0 px (zone sûre 20 px)  — 0 px de contenu visible
+  PASS  iPad installé · assistant de garde : barre et prolongement opaques
+  PASS  iPhone · fiche ferme : interstice visible sous la barre = 0 px (zone sûre 34 px)  — 0 px de contenu visible
+  PASS  iPhone · fiche ferme : barre et prolongement opaques
+  PASS  iPhone · assistant de garde : interstice visible sous la barre = 0 px (zone sûre 34 px)  — 0 px de contenu visible
+  PASS  iPhone · assistant de garde : barre et prolongement opaques
+  PASS  1032 px : le bandeau de mise à jour ET le panneau de l'épingle sont à l'écran
+  PASS  1032 px : ils ne se superposent pas  — bandeau 260,114,772,180 · épingle 588,49,948,106
+  PASS  1032 px : la confirmation s'en va d'elle-même et ne reviendra pas (lue)
+  PASS  1032 px : rouvrir l'app ne la ré-affiche pas
+  PASS  1376 px : le bandeau de mise à jour ET le panneau de l'épingle sont à l'écran
+  PASS  1376 px : ils ne se superposent pas  — bandeau 432,78,944,143 · épingle 277,12,637,70
+  PASS  1376 px : la confirmation s'en va d'elle-même et ne reviendra pas (lue)
+  PASS  1376 px : rouvrir l'app ne la ré-affiche pas
+  PASS  retour du réseau : « מסונכרן » s'affiche (un changement d'état)  — done,done,done,done,done,done,done,done
+  PASS  et il ne recouvre NI le panneau de l'épingle NI un bandeau déjà posé
+  PASS  build réel : l'enregistrement ordinaire est bien parti en base
+  PASS  … et AUCUN « מסונכרן » ni « ממתינים » ne l'a suivi  — rien
+  PASS  light · vector : des épingles à mesurer  — 14
+  PASS  light · vector : UN seul contour par épingle, plus de halo sombre
+  PASS  light · vector : la tête et son trait tiennent dans la boîte (rien de rogné)
+  PASS  light · vector : boîte au rapport du dessin (le cercle reste rond)
+  PASS  light · vector : contraste contour ou remplissage / fond ≥ 3:1  — contour 14.5:1, remplissage 3.4:1
+  PASS  light · satellite : des épingles à mesurer  — 14
+  PASS  light · satellite : UN seul contour par épingle, plus de halo sombre
+  PASS  light · satellite : la tête et son trait tiennent dans la boîte (rien de rogné)
+  PASS  light · satellite : boîte au rapport du dessin (le cercle reste rond)
+  PASS  light · satellite : contraste contour ou remplissage / fond ≥ 3:1  — contour 9.8:1, remplissage 2.3:1
+  PASS  dark · vector : des épingles à mesurer  — 14
+  PASS  dark · vector : UN seul contour par épingle, plus de halo sombre
+  PASS  dark · vector : la tête et son trait tiennent dans la boîte (rien de rogné)
+  PASS  dark · vector : boîte au rapport du dessin (le cercle reste rond)
+  PASS  dark · vector : contraste contour ou remplissage / fond ≥ 3:1  — contour 1.1:1, remplissage 7.2:1
+  PASS  dark · satellite : des épingles à mesurer  — 14
+  PASS  dark · satellite : UN seul contour par épingle, plus de halo sombre
+  PASS  dark · satellite : la tête et son trait tiennent dans la boîte (rien de rogné)
+  PASS  dark · satellite : boîte au rapport du dessin (le cercle reste rond)
+  PASS  dark · satellite : contraste contour ou remplissage / fond ≥ 3:1  — contour 9.8:1, remplissage 1.2:1
+  77 passed, 0 failed

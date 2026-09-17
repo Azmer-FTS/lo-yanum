@@ -1,0 +1,154 @@
+  PASS  clair → sombre sans rechargement  — 243 244 246 → 11 17 25
+  PASS  sombre → clair sans rechargement  — 243 244 246
+  PASS  le choix du coordinateur est « system » par défaut  — system
+  PASS  ת״ז touché → inputmode=none (le système n'ouvre pas son clavier)  — none
+  PASS  le pavé de l'app est ouvert
+  PASS  les chiffres entrent, zéro de tête compris  — 021985189
+  PASS  portable : la mise en forme suit le pavé  — (050) 123-4567
+  PASS  « סיום » ferme le pavé
+  PASS  les 6 champs numériques de l'édition de ferme ouvrent le pavé  — 6/6
+  PASS  iPhone : le pavé du système suffit — inputmode=numeric, pas de pavé de l'app
+  PASS  aucun numéro par défaut dans la carte du coordinateur  — ""
+  PASS  tapé, écran quitté sans « שמירה », rouvert : le numéro est là  — (052) 987-6543
+  PASS  vidé : il reste vide, aucun numéro ne revient  — ""
+  PASS  tableau de bord : aucun repère « משק שלם (בדיקה) »  — 13 repères
+  PASS  liste des fermes : aucun repère « משק שלם (בדיקה) »  — 13 repères
+  PASS  agenda : aucun repère « משק שלם (בדיקה) »  — 7 repères
+  PASS  planificateur : la ferme sans position est sélectionnable
+  PASS  … et signalée « מיקום חסר » sur sa carte
+  PASS  … elle est listée à part, hors du tracé
+  PASS  … aucun repère sur la carte du planificateur  — 1. חוות תלמי צאלים | 3. חוות מעלה עבדת | 4. חוות כרמי ירוחם | 5. חוות עצוז
+  PASS  … le tracé ne passe par aucun point de repli (Jérusalem, centre du Néguev)  — 3182 points
+  PASS  à l'échelle nationale, les repères qui se recouvrent sont regroupés  — [4,2]
+  PASS  tableau de bord : aucun couple de dessins de repères à moins de 20 px (centre à centre)
+  PASS  toucher un regroupement zoome (ou liste ses membres)  — 2 → 1
+  PASS  planificateur, six fermes : aucun numéro empilé
+  PASS  planificateur : le trajet est tracé sur route  — {"road":5,"gap":10,"estimate":2}
+  PASS  planificateur : aucun trait à vol d'oiseau d'avant AN3  — {"road":5,"gap":10,"estimate":2}
+  PASS  itinéraire libre : une étape ajoutée n'efface pas les routes déjà tracées  — avant 3, minimum pendant le calcul 2
+  PASS  itinéraire libre : jamais le trait droit global pendant le calcul  — 0 échantillons en trait droit
+  PASS  402 px · split : la toile remplit son cadre (0 px d'écart sur les quatre côtés)  — {"offset":[0,0,0,0],"position":"relative","vw":402,"vh":874,"frame":[0,106,0,418],"mapBoxBorderRight":"0px"}
+  PASS  402 px · full : la toile remplit son cadre (0 px d'écart sur les quatre côtés)  — {"offset":[0,0,0,0],"position":"relative","vw":402,"vh":874,"frame":[0,106,0,0],"mapBoxBorderRight":"0px"}
+  PASS  402 px · masquée : aucune carte dessinée
+  PASS  402 px · plein écran de l'outil : la toile reste dans son cadre  — {"offset":[0,0,0,0],"position":"relative","vw":402,"vh":874,"frame":[8,8,8,8],"mapBoxBorderRight":"0px"}
+  PASS  402 px · plein écran de l'outil : marge égale à droite et à gauche, en haut et en bas  — [8,8,8,8]
+  PASS  1032 px · split : la toile remplit son cadre (0 px d'écart sur les quatre côtés)  — {"offset":[0,0,0,0],"position":"relative","vw":1032,"vh":1376,"frame":[0,0,395,52],"mapBoxBorderRight":"1px"}
+  PASS  1032 px · full : la toile remplit son cadre (0 px d'écart sur les quatre côtés)  — {"offset":[0,0,0,0],"position":"relative","vw":1032,"vh":1376,"frame":[0,37,72,52],"mapBoxBorderRight":"0px"}
+  PASS  1032 px · plein : pas de bordure de séparation sans liste à séparer  — 0px
+  PASS  1032 px · masquée : aucune carte dessinée
+  PASS  1032 px · plein écran de l'outil : la toile reste dans son cadre  — {"offset":[0,0,0,0],"position":"relative","vw":1032,"vh":1376,"frame":[12,12,12,12],"mapBoxBorderRight":"0px"}
+  PASS  1032 px · plein écran de l'outil : marge égale à droite et à gauche, en haut et en bas  — [12,12,12,12]
+  PASS  1376 px · split : la toile remplit son cadre (0 px d'écart sur les quatre côtés)  — {"offset":[0,0,0,0],"position":"relative","vw":1376,"vh":1032,"frame":[0,0,510,52],"mapBoxBorderRight":"1px"}
+  PASS  1376 px · full : la toile remplit son cadre (0 px d'écart sur les quatre côtés)  — {"offset":[0,0,0,0],"position":"relative","vw":1376,"vh":1032,"frame":[0,37,72,52],"mapBoxBorderRight":"0px"}
+  PASS  1376 px · plein : pas de bordure de séparation sans liste à séparer  — 0px
+  PASS  1376 px · masquée : aucune carte dessinée
+  PASS  1376 px · plein écran de l'outil : la toile reste dans son cadre  — {"offset":[0,0,0,0],"position":"relative","vw":1376,"vh":1032,"frame":[12,12,12,12],"mapBoxBorderRight":"1px"}
+  PASS  1376 px · plein écran de l'outil : marge égale à droite et à gauche, en haut et en bas  — [12,12,12,12]
+  PASS  402 px · fiche : UN bouton de signature, à l'écran sans rien ouvrir  — 1
+  PASS  402 px · fiche : la fenêtre prend la hauteur disponible  — 874 / 874
+  PASS  402 px · fiche : le texte du document est entier à l'écran, sans défilement  — {"inView":true,"scrolls":false}
+  PASS  402 px · fiche : lisible (corps 16 px ≥ 16)
+  PASS  402 px · fiche : zone de signature et « שמירה » à l'écran
+  PASS  402 px · fiche : l'agriculteur est inscrit, modifiable sur place  — עמית דרור
+  PASS  402 px · fiche : la date du jour est inscrite  — 2026-09-17 / 2026-09-17
+  PASS  402 px · édition : UN bouton de signature, à l'écran sans rien ouvrir  — 1
+  PASS  402 px · édition : la fenêtre prend la hauteur disponible  — 874 / 874
+  PASS  402 px · édition : le texte du document est entier à l'écran, sans défilement  — {"inView":true,"scrolls":false}
+  PASS  402 px · édition : lisible (corps 16 px ≥ 16)
+  PASS  402 px · édition : zone de signature et « שמירה » à l'écran
+  PASS  402 px · édition : l'agriculteur est inscrit, modifiable sur place  — עמית דרור
+  PASS  402 px · édition : la date du jour est inscrite  — 2026-09-17 / 2026-09-17
+  PASS  402 px · édition : plus aucun champ « date de signature » dans le formulaire  — 0
+  PASS  1032 px · fiche : UN bouton de signature, à l'écran sans rien ouvrir  — 1
+  PASS  1032 px · fiche : la fenêtre prend la hauteur disponible  — 1328 / 1376
+  PASS  1032 px · fiche : le texte du document est entier à l'écran, sans défilement  — {"inView":true,"scrolls":false}
+  PASS  1032 px · fiche : lisible (corps 16 px ≥ 16)
+  PASS  1032 px · fiche : zone de signature et « שמירה » à l'écran
+  PASS  1032 px · fiche : l'agriculteur est inscrit, modifiable sur place  — עמית דרור
+  PASS  1032 px · fiche : la date du jour est inscrite  — 2026-09-17 / 2026-09-17
+  PASS  signé depuis la fiche : l'accord porte le nom corrigé sur place  — נחתם ב־17.09.2026 · רות דרור
+  PASS  1032 px · édition : UN bouton de signature, à l'écran sans rien ouvrir  — 1
+  PASS  1032 px · édition : la fenêtre prend la hauteur disponible  — 1328 / 1376
+  PASS  1032 px · édition : le texte du document est entier à l'écran, sans défilement  — {"inView":true,"scrolls":false}
+  PASS  1032 px · édition : lisible (corps 16 px ≥ 16)
+  PASS  1032 px · édition : zone de signature et « שמירה » à l'écran
+  PASS  1032 px · édition : l'agriculteur est inscrit, modifiable sur place  — עמית דרור
+  PASS  1032 px · édition : la date du jour est inscrite  — 2026-09-17 / 2026-09-17
+  PASS  1032 px · édition : plus aucun champ « date de signature » dans le formulaire  — 0
+  PASS  1376 px · fiche : UN bouton de signature, à l'écran sans rien ouvrir  — 1
+  PASS  1376 px · fiche : la fenêtre prend la hauteur disponible  — 984 / 1032
+  PASS  1376 px · fiche : le texte du document est entier à l'écran, sans défilement  — {"inView":true,"scrolls":false}
+  PASS  1376 px · fiche : lisible (corps 16 px ≥ 16)
+  PASS  1376 px · fiche : zone de signature et « שמירה » à l'écran
+  PASS  1376 px · fiche : l'agriculteur est inscrit, modifiable sur place  — עמית דרור
+  PASS  1376 px · fiche : la date du jour est inscrite  — 2026-09-17 / 2026-09-17
+  PASS  1376 px · édition : UN bouton de signature, à l'écran sans rien ouvrir  — 1
+  PASS  1376 px · édition : la fenêtre prend la hauteur disponible  — 984 / 1032
+  PASS  1376 px · édition : le texte du document est entier à l'écran, sans défilement  — {"inView":true,"scrolls":false}
+  PASS  1376 px · édition : lisible (corps 16 px ≥ 16)
+  PASS  1376 px · édition : zone de signature et « שמירה » à l'écran
+  PASS  1376 px · édition : l'agriculteur est inscrit, modifiable sur place  — עמית דרור
+  PASS  1376 px · édition : la date du jour est inscrite  — 2026-09-17 / 2026-09-17
+  PASS  1376 px · édition : plus aucun champ « date de signature » dans le formulaire  — 0
+  PASS  402 px : au bas du formulaire, l'en-tête est à l'écran et rien ne le recouvre  — {"top":69,"onTop":true}
+  PASS  402 px : compact (≤ 72 px)  — 65 px
+  PASS  402 px : photo, ferme et agriculteur  — חוות שיזפון / עמית דרור
+  PASS  402 px : le nom de l'en-tête suit la frappe
+  PASS  1032 px : au bas du formulaire, l'en-tête est à l'écran et rien ne le recouvre  — {"top":0,"onTop":true}
+  PASS  1032 px : compact (≤ 72 px)  — 65 px
+  PASS  1032 px : photo, ferme et agriculteur  — חוות שיזפון / עמית דרור
+  PASS  1032 px : le nom de l'en-tête suit la frappe
+  PASS  1376 px : au bas du formulaire, l'en-tête est à l'écran et rien ne le recouvre  — {"top":20,"onTop":true}
+  PASS  1376 px : compact (≤ 72 px)  — 65 px
+  PASS  1376 px : photo, ferme et agriculteur  — חוות שיזפון / עמית דרור
+  PASS  1376 px : le nom de l'en-tête suit la frappe
+  PASS  A231 · « סוג יישות » et « סוג הישות המשפטית » ne sont plus deux champs  — סוג המקום | סוג הסכם קרקע
+  PASS  A231 · « אזור סטנדרטי » n'existe plus à côté de « אזור »  — אזור | מועצה אזורית
+  PASS  A231 · « מועצה אזורית » est une liste
+  PASS  A231 · la liste des conseils est complète (54 du למ״ס + « לא נבחר » + « אחר »)  — 56
+  PASS  A231 · « אחר » ouvre la saisie libre, et SEULEMENT lui
+  PASS  A231 · … « אחר » choisi : le champ libre apparaît
+  PASS  A231 · la liste des régions : 13 + « déduite » + « אחר »  — 15
+  PASS  A232 · יישוב choisi → sa מועצה אזורית est remplie  — בני שמעון
+  PASS  A232 · … et la région que l'adresse désigne est dite  — לפי הכתובת · הנגב
+  PASS  A232 · épingle seule → la מועצה est PROPOSÉE  — המועצה של היישוב הקרוב · נבטים · בני שמעוןלהשתמש במועצה הזו
+  PASS  A232 · … rien n'est écrit sans le geste
+  PASS  A232 · … un toucher l'accepte
+  PASS  A233 · « תוקף ההסכם » absent tant que le type d'accord n'est pas choisi
+  PASS  A233 · … il apparaît une fois le type choisi
+  PASS  A233 · une date vide se lit « בחירת תאריך », avec le calendrier
+  PASS  A233 · … et disparaît quand la date est posée
+  PASS  A233 · tous les blocs se replient, sauf l'en-tête (photo, nom)  — זיהוי החווה
+  PASS  A233 · en édition, « פרטים » est replié…  — {"title":"פרטים","collapsible":true,"open":"false"}
+  PASS  A233 · … avec le résumé de son contenu sur la ligne  — שיזפון
+  PASS  A233 · (bloc « אנשים » replié à la main)
+  PASS  A233 · enregistrer refusé : le bloc s'ouvre et le champ fautif a le focus  — farm-form-farmerPhone
+  PASS  A234 · photo de la ferme : UN champ fichier, sans « capture » (iOS propose alors les trois sources)  — [{"capture":null,"accept":"image/*"}]
+  PASS  A234 · … et UN bouton (plus « צילום עכשיו » + « העלאת קובץ »)  — חש | תמונה
+  PASS  A234 · le bouton est À CÔTÉ de la vignette, sur sa ligne
+  PASS  A234 · une personne : plus de second cercle photo dans sa carte
+  PASS  A234 · … l'avatar en tête ouvre le choix de photo
+  PASS  A234 · … et le toucher ouvre bien le sélecteur
+  PASS  A235 · l'agriculteur est le contact principal
+  PASS  A235 · … affiché en résumé : nom et portable  — עמית דרור · (052) 000-0010
+  PASS  A235 · … sans ses champs répétés dessous
+  PASS  A235 · « הוספת איש קשר נוסף » juste SOUS le résumé  — {"farmer":649.90625,"add":741.59375,"liaison":801.59375}
+  PASS  A235 · un autre contact choisi : il passe en résumé
+  PASS  A235 · … et l'agriculteur n'est plus résumé comme principal
+  PASS  A236 · ferme (+) : une page (adresse, flèche retour), aucune fenêtre  — {"hash":"#/coordinator/farms/new","dialog":0,"back":true,"title":true}
+  PASS  A236 · moshav (+) : une page (adresse, flèche retour), aucune fenêtre  — {"hash":"#/coordinator/farms/new?kind=moshav","dialog":0,"back":true,"title":true}
+  PASS  A236 · ferme (édition) : une page (adresse, flèche retour), aucune fenêtre  — {"hash":"#/coordinator/farms/farm-07/edit","dialog":0,"back":true,"title":true}
+  PASS  A236 · volontaire (+) : une page (adresse, flèche retour), aucune fenêtre  — {"hash":"#/coordinator/volunteers/new","dialog":0,"back":true,"title":true}
+  PASS  A236 · conducteur (tuile) : une page (adresse, flèche retour), aucune fenêtre  — {"hash":"#/coordinator/drivers/drv-01/edit","dialog":0,"back":true,"title":true}
+  PASS  A236 · garde (+) : une page (adresse, flèche retour), aucune fenêtre  — {"hash":"#/coordinator/missions/new","dialog":0,"back":true,"title":true}
+  PASS  A236 · rendez-vous (menu +) : une page (adresse, flèche retour), aucune fenêtre  — {"hash":"#/coordinator/agenda/visit/new?at=2026-09-17T07%3A00%3A00.000Z","dialog":0,"back":true,"title":true}
+  PASS  A236 · événement (menu +) : une page (adresse, flèche retour), aucune fenêtre  — {"hash":"#/coordinator/agenda/meeting/new?at=2026-09-17T07%3A00%3A00.000Z","dialog":0,"back":true,"title":true}
+  PASS  A236 · rendez-vous (fiche) : une page (adresse, flèche retour), aucune fenêtre  — {"hash":"#/coordinator/agenda/visit/new?farm=farm-07","dialog":0,"back":true,"title":true}
+  PASS  A236 · la flèche retour ramène d'où l'on vient  — #/coordinator/farms/farm-07
+  PASS  A237 · ouvrir les réglages ne demande rien  — 0
+  PASS  A237 · « המיקום שלי » : une demande  — 1
+  PASS  A237 · touché une seconde fois : aucune nouvelle demande  — 1
+  NOTE  appels avant le toucher : 0
+  PASS  A237 · écran quitté, app rechargée, retouché : aucune nouvelle demande  — 0 appel(s) ; relevé mémorisé il y a 9 s
+  PASS  A237 · la ligne dit quoi choisir pour qu'iOS ne redemande pas
+  152 passed, 0 failed

@@ -327,6 +327,11 @@ try {
       for (let k = 0; k < 2; k++) await others.first().click()
       await page.waitForTimeout(5000)
       check('… elle est listée à part, hors du tracé', (await page.locator('[data-testid="route-unplaced-farm"]', { hasText: MISSING }).count()) === 1)
+      /* Vu sur capture du déployé : le nom réduit à une lettre dans la colonne. */
+      const nameCut = await page.locator('[data-testid="route-unplaced-name"]').evaluateAll((els) =>
+        els.filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().width < 60).length,
+      )
+      check('… son nom se lit en entier', nameCut === 0, `${nameCut} nom(s) coupé(s)`)
       const labels = await markerLabels(page)
       check('… aucun repère sur la carte du planificateur', !labels.some((l) => l.includes(MISSING)), labels.filter((l) => /^\d/.test(l)).join(' | '))
       const { coords } = await routeStyles(page)
@@ -736,6 +741,14 @@ try {
       const summary = (await farmer.locator('[data-testid="person-farmer-summary"]').textContent().catch(() => '')) ?? ''
       check('A235 · … affiché en résumé : nom et portable', /עמית דרור/.test(summary) && /\(052\) 000-0010/.test(summary), summary)
       check('A235 · … sans ses champs répétés dessous', (await farmer.locator('input[data-kind]').count()) === 0)
+      for (const vw of [402, 1032]) {
+        await page.setViewportSize({ width: vw, height: 874 })
+        await page.waitForTimeout(400)
+        const phoneCut = await farmer.locator('[data-testid="person-farmer-summary"] bdi').evaluate((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().right > (e.closest('[data-testid="person-farmer"]') as HTMLElement).getBoundingClientRect().right)
+        check(`A235 · ${vw} px : le portable du résumé n'est pas coupé`, !phoneCut)
+      }
+      await page.setViewportSize({ width: 1032, height: 1376 })
+      await page.waitForTimeout(400)
       const order = await page.evaluate(() => {
         const r = (id: string) => document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect().top
         return { farmer: r('person-farmer'), add: r('person-add'), liaison: r('person-liaison') }
