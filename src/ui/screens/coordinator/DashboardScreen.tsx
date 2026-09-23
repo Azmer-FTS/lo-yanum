@@ -40,6 +40,7 @@ import {
 } from '../../settings/target'
 import { Avatar } from '../../components/Avatar'
 import { BandCard } from '../../components/band'
+import { ActivityReportButton } from '../../report/ActivityReportButton'
 import { ReportButton } from '../../report/ReportButton'
 import { readReportRecipient } from '../../report/recipient'
 import { Icon } from '../../components/Icon'
@@ -748,7 +749,15 @@ export function DashboardScreen() {
         {/* PO POINT 7 — the employer's report. W4 took the "create a guard"
             button out of this header: creating is the floating "+" now, on
             every screen, so the header keeps only the paperwork. */}
-        <ReportButton recipient={readReportRecipient()} />
+        {/* ★★ AO3 (2026-09-24) — DEUX DOCUMENTS, CÔTE À CÔTE, ET C'EST VOULU.
+            « דוח » répond « où en est le programme » (un ÉTAT, pour un
+            bailleur) ; « דוח פעילות » répond « qu'est-ce que j'ai fait depuis
+            la dernière fois » (une ÉVOLUTION, pour WhatsApp, le soir). Les
+            fondre aurait donné une page qui répond mal aux deux. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <ActivityReportButton />
+          <ReportButton recipient={readReportRecipient()} />
+        </div>
       </header>
 
       {/* W3.1 (2026-09-02, passe finale) — THE ORDER OF IMPORTANCE IS THE

@@ -79,3 +79,26 @@ drop policy if exists entity_livestock_farmer_read on entity_livestock;
 create policy entity_livestock_farmer_read on entity_livestock
   for select to authenticated
   using (entity_id = private.my_entity_id());
+
+-- ---------------------------------------------------------------------------
+-- ★★ AO0 (2026-09-24) — LES AUTORISATIONS D'API, AJOUTÉES APRÈS COUP.
+-- ---------------------------------------------------------------------------
+--
+-- Supabase a annoncé qu'à partir du 30 octobre 2026 une table créée dans
+-- `public` n'est PLUS automatiquement exposée à l'API : les `grant` implicites
+-- sur le schéma ne s'appliquent qu'aux tables antérieures. Celle-ci existe
+-- depuis le 2026-08-31 et n'est donc pas concernée sur `lo-yanum-prod` — mais
+-- une base REJOUÉE depuis zéro (un `supabase db reset`, un projet de secours)
+-- la recréerait après la date et l'API ne la verrait plus.
+--
+-- ⚠️ RIEN POUR `anon`, ET C'EST LA RÈGLE DU PROJET, pas un oubli. Aucune des
+--    32 politiques de `20260830000200_rls.sql` ne vise `anon` : l'application
+--    n'a aucune surface anonyme, et `bun run auth` PROUVE qu'une lecture
+--    anonyme est refusée. Donner `select to anon` ici ne ferait que remplacer
+--    un refus franc (403, pas de droit) par un refus par politique — et
+--    ouvrirait la porte le jour où quelqu'un désactiverait RLS « une minute
+--    pour déboguer ».
+--
+-- Idempotent : `grant` se rejoue sans erreur.
+grant select, insert, update, delete on public.entity_livestock to authenticated;
+grant select, insert, update, delete on public.entity_livestock to service_role;

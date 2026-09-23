@@ -1,6 +1,7 @@
 import { MINUTE, iso } from './clock'
 import { HOME_BASE, haversineKm, wazeUrl } from './geo'
 import { estimateDriveMinutes, googleMapsPointsUrl } from './routing'
+import { countsTowardProgramme } from './types'
 import type { AgendaEvent, Farm, LatLng } from './types'
 
 /**
@@ -385,7 +386,11 @@ function suggestNearby(
 
   const out: TourSuggestion[] = []
   for (const farm of farms) {
-    if (tourFarmIds.has(farm.id) || farm.status === 'declined' || farm.positionMissing) continue
+    /* AO2 — on ne PROPOSE pas une tournée vers une fiche hors programme
+       (refus, gardien en place, aide ailleurs). Elle reste cherchable et
+       ajoutable à la main : « le PO ne ferme jamais une porte ». */
+    if (tourFarmIds.has(farm.id) || !countsTowardProgramme(farm.status) || farm.positionMissing)
+      continue
 
     let best = Infinity
     let insertAt = 0

@@ -1,5 +1,226 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AO — REPRISE DES DONNÉES TERRAIN ET RAPPORT D'ACTIVITÉ. 2026-09-24. LIRE EN PREMIER.**
+>
+> Ordre suivi : AO0 → AO1 → AO2 → AO3 → AO4.
+>
+> ## ⛔ AO0.4/AO0.5 — LE COMPTE SUPABASE DU MCP A CHANGÉ, ET RIEN N'A PU ÊTRE ÉCRIT SUR PROD
+>
+> **C'est le seul point de la passe qui n'est pas livré, et il n'est pas
+> contournable depuis cette session.** Le brief dit « Passe par l'outil MCP
+> Supabase, qui a le bon compte, comme en AK et en AM ». Ce n'est plus vrai :
+>
+> ```
+> list_organizations → [{ id: "uzrwmkwkulcighotovyb", name: "mgnamsellem" }]
+> list_projects      → am-kids, socialpay, mgnamsellem's Project,
+>                      am-phone-prod, am-smart-catalog
+> get_project("lvrptqmkjikkkhcxocbe") → "You do not have permission"
+> ```
+>
+> L'outil MCP de cette session est connecté **au SECOND compte**, celui que le
+> brief interdit de toucher (AO0.4). `lo-yanum-prod` vit dans l'organisation
+> `jkqsqykhquutilldvcsv` et n'est **pas visible** d'ici. Le CLI `supabase` de
+> la machine est sur ce même second compte depuis AB (ETAT §AB). Il n'existe
+> donc, sur ce poste, **aucun chemin vers `lo-yanum-prod`**.
+>
+> ⛔ **Rien n'a été touché sur le second compte.** Trois appels en lecture
+> (`list_organizations`, `list_projects`, `get_project`) et zéro écriture.
+>
+> **Ce qui est livré à la place, et qui est complet :**
+> - `docs/ao/ao1-prod.sql` — la reprise des 25, prête à coller dans le SQL
+>   editor de `lo-yanum-prod`. 15 `update` (identifiants d'AK1 conservés) et
+>   10 `insert`. Généré par `bun run aodata sql`, donc régénérable.
+> - les deux migrations (`20260924000100`, `20260924000200`), à appliquer avant.
+> - **les captures du DÉPLOYÉ montrent les 25 vraies lignes**, servies au
+>   bundle servi par `FakeDb` dans la forme EXACTE que le SQL écrira
+>   (`bun run aocaptures`). Ce n'est pas une maquette : c'est le bundle de
+>   production lisant les lignes de production.
+> - **AO0.5 (actif ou en pause ?) est SANS RÉPONSE** : le statut d'un projet se
+>   lit par l'API de gestion, qui refuse ce compte.
+>
+> ## AO0 — LES AUTORISATIONS DANS LES MIGRATIONS
+>
+> Supabase : à partir du **30 octobre 2026**, une table créée dans `public`
+> n'est plus automatiquement exposée à l'API. Trois migrations créaient des
+> tables sans `grant` — `20260830000100_schema.sql` (26 tables),
+> `20260831000400_entity_livestock.sql`, `20260908000300_emergency.sql` — plus
+> `user_settings` sans `service_role`. Toutes complétées **dans leur propre
+> fichier**, parce qu'une migration corrective séparée laisserait cassée toute
+> base rejouée ENTRE les deux.
+>
+> ⚠️ **Sur `lo-yanum-prod`, cela n'ouvre rien** : ces tables sont antérieures au
+> 30 octobre et gardent leur accès. Ce qui est réparé, c'est le **REJEU** —
+> `supabase db reset`, un projet de secours, une base de recette montée en
+> novembre : sans ces lignes l'application recevrait un 401 sur tout, sans
+> qu'aucune ligne de code ait bougé et sans aucune erreur SQL.
+>
+> ⛔ **RIEN POUR `anon`, et c'est « le besoin réel » du point 1.** Aucune des
+> 32 politiques de `20260830000200_rls.sql` ne vise `anon` ; Lo Yanum n'a
+> aucune surface anonyme. Le modèle du brief (`grant select … to anon`) est le
+> modèle GÉNÉRAL de Supabase ; ici le besoin d'`anon` est nul, et ne pas
+> accorder le droit garde le refus vrai même si RLS était désactivée « une
+> minute pour déboguer ». Règle écrite en tête de `PROJECT_STATE.md`, porte
+> **A238** (elle lit les migrations hors commentaires, compte 30 tables de
+> `public`, et échoue sur tout `grant … to anon`).
+>
+> ## AO1 — LES 25 EXPLOITATIONS : L'APPARIEMENT ÉTAIT LE PIÈGE
+>
+> **15 mises à jour, 10 créations, 0 doublon, 0 orpheline.**
+>
+> ★★ **« גד״ש תדהר — החווה של אופק » s'appelle maintenant « 05 - גד״ש תדהר —
+> החווה של אופק ».** Une reprise par nom exact aurait créé un doublon, et le
+> PO se serait retrouvé avec deux fiches pour une exploitation dont une seule
+> porte son historique. `pairingKey()` retire le préfixe « 0N - » pour
+> RETROUVER une fiche existante.
+>
+> ★★ **Et le piège inverse est juste à côté** : quatre lignes s'appellent
+> « 0N - שדה משה חקלאות » et partagent un point. Le préfixe est donc gardé
+> comme IDENTITÉ entre deux lignes neuves. Un appariement ambigu n'est jamais
+> tranché en silence : il devient une création ET une ligne de rapport.
+>
+> ⚠️ **« Les cinq lignes 02 à 05 » : le brief se contredit, le tableau
+> tranche.** Le tableau porte QUATRE voisins (02, 03, 04, 05) sans contact ni
+> ת״ז, plus « 01 - תומר שדה משה חקלאות » qui est SA fiche à lui — contact, ח״פ,
+> 280 dounams, et surtout un AUTRE point (34.794011 contre 34.813112). Les
+> cinq lignes du secteur sont donc 01 à 05 ; les quatre qui partagent un point
+> sont 02 à 05. **À faire confirmer par le PO.**
+>
+> ★★ **UNE MISE À JOUR N'ÉCRIT QUE LES COLONNES DU PORTAIL.** La première
+> version du générateur émettait un `insert … on conflict do update set` qui
+> repoussait les 51 colonnes : sur les 15 fiches d'AK1, cela aurait écrasé tout
+> ce que le PO a posé depuis dans l'app — photo, visite, תיק אתר, שטחים שמירה
+> accepté d'un geste (AL1), contact ajouté — en les remettant à `null`.
+> Quatorze colonnes seulement sont écrites, et `notes` **uniquement** quand le
+> portail porte un commentaire (7 lignes sur 25).
+>
+> **Les chiffres (AO1.4)** : 8 830 dounams מעובד · 54 000 מרעה ·
+> **9 910 pondérés** (8 830 + 54 000 × 0,02 ; AK1 en donnait 2 160).
+> 19 fiches positionnées, 6 sans מיקום. Statuts : 6 טרם נוצר קשר ·
+> 10 מוכן לחתימה · 7 נחתם · 1 לא רלוונטי כרגע · 1 בהמתנה.
+>
+> **Coordonnées (AO1 / A240)** : la source est en longitude, latitude et passe
+> par `readAssociationCoords`, le lecteur de l'app, qui refuse l'ordre inversé
+> dans les deux sens. Vérifié contre deux points nommables sans la source :
+> חוות מרגי à **8,2 km** du parc d'Adoulam, et « 02 - מושב פתיש » à **0,0 km**
+> de מושב פתיש.
+>
+> **ת״ז / ח״פ (AO1.1 · AO1.2 · A242)** : sept numéros, en texte, le zéro
+> initial de חוות מרגי (`021985189`) tenu partout. ⚠️ **La règle « 9 chiffres
+> commençant par 57 » a dû être élargie à « commençant par 5 »** : la source
+> elle-même porte `557457074` (55…), que la règle littérale aurait affiché
+> comme une ת״ז. Les plages d'entreprise israéliennes sont 51/52/54/55/57/58/59.
+> La somme de contrôle ne départage rien — elle est la même pour les deux, et
+> les quatre numéros à neuf chiffres la passent tous. `identityNumberKind()`
+> NOMME, il ne juge pas : aucune validation, aucun refus, les numéros plus
+> courts (7010797, 23505696, 24015877) restent « ת״ז / ח״פ ».
+>
+> ## AO2 — LES DEUX PORTES QUE LE PO NE FERME PAS
+>
+> « לא רלוונטי כרגע » et « בהמתנה ». **Hors des compteurs et de l'objectif,
+> DANS les listes, filtrables, avec leur raison.**
+>
+> ★ **`countsTowardProgramme()` est une fonction nommée, et `declined` y passe
+> aussi.** Avant AO2, `getDunamKpis` portait `f.status !== 'declined'` écrit à
+> la main : ajouter un statut hors compteurs sans toucher cette ligne l'aurait
+> fait peser sur l'objectif **en silence**. Mesuré, pas supposé — 4 242 dounams
+> « בהמתנה » et 50 000 « לא רלוונטי כרגע » posés dans le store ne bougent ni le
+> potentiel, ni la surface gardée, ni le pondéré, et les deux fiches restent
+> dans `getVisibleFarms` et dans le compte par statut (A243).
+>
+> ⚠️ **« לא רלוונטי כרגע » ne doit pas tomber sur « לא רלוונטי » (`declined`),
+> et les deux chemins de lecture ne sont pas écrits pareil.** `readOption`
+> compare des chaînes ENTIÈRES ; `readFarmStatus` fait un `includes` trié par
+> longueur décroissante. Les deux sont mesurés séparément.
+>
+> Aussi : les trois écrans qui listaient `[...FARM_PIPELINE, 'declined']`
+> lisent maintenant `ALL_FARM_STATUSES` de @core (A243 le vérifie dans le
+> source) ; deux teintes neuves, clair et sombre, vif et encre, distinctes de
+> celle de « סירבה » ; les deux statuts n'attendent plus de documents et ne
+> sont plus proposés en tournée. **AO2.5** : la règle d'AK5 tient — une fiche
+> signée sans documents reste « ממתינה למסמכים » et « פעילה » lui est refusée.
+>
+> ## AO3 — LE RAPPORT D'ACTIVITÉ
+>
+> ★★ **CE N'EST PAS LE « דוח » D'AVANT, ET LES DEUX COEXISTENT.**
+> `core/report.ts` répond « où en est le programme » : un ÉTAT, pour un
+> bailleur. `core/activity.ts` répond « qu'est-ce que j'ai fait depuis la
+> dernière fois » : une ÉVOLUTION, pour WhatsApp, le soir. Les fondre aurait
+> donné une page qui répond mal aux deux. Deux boutons côte à côte sur le
+> tableau de bord.
+>
+> ★★ **AO3.3 COMMANDE TOUTE LA FORME DU FICHIER.** Un état se recalcule ; une
+> évolution a besoin d'un point de comparaison, et ce point est **le rapport
+> précédent** — pas « la base il y a trente jours », qui n'existe nulle part.
+> D'où `ActivityReportRecord`, qui garde l'**instantané par exploitation** :
+> les totaux disent qu'il y a une signée de plus, ils ne disent pas laquelle.
+>
+> ⚠️ **DEUX FAMILLES DE CHIFFRES, ET LE RAPPORT DIT LAQUELLE EST LAQUELLE.**
+> Ce qui porte un horodatage réel — visites (`FarmVisit.at`), signatures
+> (`Agreement.signedAt`), documents (`ProvidedDocument.providedAt`) — est
+> compté **sur la période choisie**, exactement. Ce qui n'en porte pas — une
+> fiche créée, un statut qui change, un contact obtenu — est compté **par
+> différence avec le rapport précédent**. Une exploitation n'a pas de date de
+> création dans ce modèle ; en inventer une aurait été pire que de nommer la
+> limite. **Sans rapport précédent, ces lignes sont vides et le rapport
+> l'écrit** (« זהו הדוח הראשון ») : un premier rapport qui prétendrait que les
+> 25 exploitations ont été créées cette semaine serait un mensonge poli.
+>
+> ★ **Le repère** : le dernier rapport dont la période se termine AVANT le
+> début de celle-ci ; à défaut, le plus récent tout court ; jamais soi-même.
+>
+> ★ **« Envoyé » déclenche l'enregistrement, pas « ouvert ».** Sans cette
+> règle, le rapport ouvert le matin pour vérifier un chiffre deviendrait « le
+> rapport précédent » de celui du soir, et la comparaison du mois prochain
+> porterait sur douze heures.
+>
+> **Le texte WhatsApp (AO3.5)** : hébreu **écrit en dur**, et c'est un choix —
+> la langue de la SORTIE est une propriété du destinataire, pas de l'appareil ;
+> passer par `t()` ferait partir un rapport en français si le PO mettait son
+> iPad en français. « Mis en forme pour ce support » a un sens précis :
+> WhatsApp ne connaît que `*gras*`, `_italique_` et les blocs de code — ni
+> tableau, ni tabulation — et une colonne alignée avec des espaces se disloque
+> en RTL immédiatement. Donc : un fait par ligne, une puce, deux-points, la
+> valeur. **Zéro arithmétique dans la mise en forme** (la règle de PO POINT 7c,
+> étendue) : A247 relit les deux fichiers et échoue sur un calcul entre deux
+> champs du rapport.
+>
+> ★★ **CE QUE LE PDF A MONTRÉ ET QU'AUCUNE PORTE N'AURAIT VU.** Le pied de page
+> imprimait **« 2 / 1 »** et la ligne de l'objectif **« (6%) 100,000 / 5,970 »**.
+> Cause : la barre oblique, la parenthèse et le signe `+` sont des caractères
+> **neutres** au sens de l'algorithme bidi et prennent la direction du
+> paragraphe, alors que les chiffres sont toujours LTR. Correctif : les valeurs
+> et le folio sont dessinés en `direction: 'ltr'`, et les écarts signés du
+> texte comme des puces sont encadrés d'une marque LTR (U+200E) invisible.
+> **Vu sur le PDF rendu, pas déduit.**
+>
+> **AO3.4** : « pas besoin d'en faire des salades » — trois phrases au maximum,
+> et elles disent ce qu'un nombre ne dit pas seul : que « 7 נחתם » n'est pas
+> 7 dossiers complets (AK5), et que le pondéré n'est pas la somme des dounams.
+> **AO3.7** : les fiches hors compteurs sont **nommées** dans le rapport avec
+> leur raison, et ne sont pas dans `totals.farms`.
+>
+> ## AO4 — CE QUI A ÉTÉ MESURÉ
+>
+> | Porte | Résultat |
+> |---|---|
+> | `bun run aodata` | **82/82** — appariement, coordonnées, ת״ז, parcelles, pondéré, sur le jeu construit ET l'aller-retour par `data/rows.ts` |
+> | `bun run aopass` | **103/103** — A238, A243–A248 |
+> | `bun run aoui` | **38/38** — A243, A244, A245, A247 dans Chromium et WebKit, PDF téléchargé et son en-tête lu |
+> | `bun run aocaptures` | captures du DÉPLOYÉ, 3 viewports × clair/sombre, avec les 25 vraies lignes |
+> | rejouées | `anpass` 27 · `ampass` 50 · `alpass` 40 · `akpass` 56 · `accept` 177 · `report` 86 · `mapping` 33 · `persist` 110 · `tokens` · `contrast` · `anui` 156 |
+>
+> **Deux faux rouges corrigés dans mes propres portes, et ils valent d'être
+> écrits :**
+> 1. A238 comptait `create table if not exists archive.%I` (une sauvegarde dans
+>    le schéma `archive`, fabriquée par `format()` dans une fonction PL/pgSQL)
+>    comme une table de `public` nommée « archive » : une porte rouge devant du
+>    code juste. Le schéma explicite est maintenant lu.
+> 2. A244 sommait `farmDunams` brut et trouvait 4 880 contre 5 594. « La »
+>    surface est `effectiveAreas` (AD1.4) — déclarée d'abord, mesurée à défaut —
+>    et c'est celle que le tableau de bord additionne. L'écart, c'étaient les
+>    fiches dont la surface vient de leur polygone.
+>
+
 > 🏁 **PASSE AN — LOGIQUE D'INTERFACE, CONTRADICTIONS, RÉGRESSIONS. 2026-09-17. LIRE EN PREMIER.**
 >
 > Consigne centrale : « une porte verte devant un défaut réel est pire qu'une

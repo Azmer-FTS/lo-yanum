@@ -36,7 +36,12 @@ import type {
   Volunteer,
   VolunteerStats,
 } from './types'
-import { FARM_PIPELINE, resolveConfirmation, totalHeads } from './types'
+import {
+  ALL_FARM_STATUSES,
+  countsTowardProgramme,
+  resolveConfirmation,
+  totalHeads,
+} from './types'
 
 /**
  * ROLE-FILTERED DATA ACCESS — the single gate between the store and the UI.
@@ -318,7 +323,10 @@ export function getFarmsForImport(): Farm[] {
 export function getFarmStatusCounts(): FarmStatusCount[] {
   /* AH3.5 — la file de prospection est un chiffre de programme, pas une liste. */
   const farms = getCountableFarms()
-  const statuses: FarmStatus[] = [...FARM_PIPELINE, 'declined']
+  /* AO2 — les neuf statuts sont COMPTÉS ET AFFICHÉS ; ce que les deux
+     nouveaux quittent, c'est l'objectif et les dounams (`getDunamKpis`), pas
+     la liste par statut que l'écran des fermes dessine. */
+  const statuses: readonly FarmStatus[] = ALL_FARM_STATUSES
   return statuses.map((status) => ({
     status,
     count: farms.filter((f) => f.status === status).length,
@@ -370,7 +378,11 @@ export function getDunamKpis(): DunamKpis {
       guardedDunams += dunams
       weightedSigned += weightedDunams(f)
       guardedHeads += totalHeads(f) ?? 0
-    } else if (f.status !== 'declined') potentialDunams += dunams
+      /* AO2.3 — `declined`, `not_relevant_now` et `on_hold` sortent du
+         potentiel par UNE fonction nommée. Avant, le seul `declined` était
+         écrit ici à la main : ajouter un statut hors compteurs sans toucher
+         cette ligne l'aurait fait peser sur l'objectif en silence. */
+    } else if (countsTowardProgramme(f.status)) potentialDunams += dunams
   }
   return { guardedDunams, potentialDunams, guardedHeads, weightedSigned }
 }

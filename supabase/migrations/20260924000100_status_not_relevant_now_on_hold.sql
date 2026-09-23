@@ -1,0 +1,35 @@
+-- ===========================================================================
+-- ★★ AO2 (2026-09-24) — LES DEUX PORTES QUE LE PO NE FERME PAS.
+-- ===========================================================================
+--
+--   « Le PO ne ferme jamais une porte : une exploitation qui refuse
+--     aujourd'hui peut accepter dans six mois. »
+--
+--   · « לא רלוונטי כרגע » — elle a déjà un gardien, elle n'a pas besoin de
+--     nous POUR L'INSTANT (גד״ש להב : « יש להם שומר קבוע »).
+--   · « בהמתנה » — elle a de l'aide en ce moment et préfère la laisser à
+--     d'autres (חוות ניסים : « קיבל 6 בני שירות לכל השנה »).
+--
+-- ⚠️ CE N'EST NI UN ARCHIVAGE NI UNE SUPPRESSION, et rien ici ne cache une
+--    ligne. La fiche reste dans `entities`, dans les listes, sur la carte et
+--    dans le rapport ; ce qu'elle quitte, ce sont les COMPTEURS et l'objectif,
+--    et cette exclusion-là vit dans le client (`countsTowardProgramme`,
+--    core/types.ts), pas dans une vue SQL. Une base qui déciderait elle-même
+--    de ce qui compte donnerait un second endroit où la règle peut diverger.
+--
+-- ⚠️ `add value` ET NON un nouveau type : renommer/recréer `farm_status`
+--    demanderait de réécrire la colonne de `entities` et casserait toute
+--    session ouverte pendant la migration. `if not exists` la rend rejouable.
+--
+-- ⚠️ POSTGRES INTERDIT D'UTILISER UNE VALEUR D'ENUM AJOUTÉE DANS LA MÊME
+--    TRANSACTION QUE L'AJOUT. C'est pourquoi cette migration N'ÉCRIT AUCUNE
+--    LIGNE : la reprise des 25 exploitations (AO1) est un fichier séparé,
+--    `docs/ao/ao1-prod.sql`, joué APRÈS celle-ci.
+--
+-- ADDITIVE : aucune table, aucune colonne, aucune politique touchée. Aucune
+-- table créée, donc aucun `grant` à poser (voir la règle AO0 dans
+-- PROJECT_STATE.md) — les autorisations d'`entities` ne changent pas.
+-- ===========================================================================
+
+alter type farm_status add value if not exists 'not_relevant_now';
+alter type farm_status add value if not exists 'on_hold';

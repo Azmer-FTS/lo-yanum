@@ -472,7 +472,9 @@
     "verbal_ok": "מוכן לחתימה",
     "signed": "נחתם",
     "active": "פעילה",
-    "declined": "סירבה"
+    "declined": "סירבה",
+    "not_relevant_now": "לא רלוונטי כרגע",
+    "on_hold": "בהמתנה"
   },
   "farmType": {
     "agriculture": "חקלאות",
@@ -2245,8 +2247,27 @@
     "close": "סגירה"
   },
   "activity": {
-    "crops": "חקלאות",
-    "grazing": "מרעה"
+    "action": "דוח פעילות",
+    "title": "דוח פעילות",
+    "building": "מכין…",
+    "periodLabel": "תקופה",
+    "today": "היום",
+    "week": "השבוע",
+    "month": "החודש",
+    "custom": "תאריכים",
+    "from": "מתאריך",
+    "to": "עד תאריך",
+    "textLabel": "הטקסט ל־WhatsApp",
+    "share": "שיתוף עם הקובץ",
+    "copy": "העתקת הטקסט",
+    "download": "הורדת PDF",
+    "whatsapp": "שליחה ב־WhatsApp",
+    "history": "דוחות קודמים",
+    "noHistory": "עדיין לא נשלח אף דוח",
+    "comparedTo": "בהשוואה לדוח מ־{{day}}",
+    "noPrevious": "זהו הדוח הראשון — אין בסיס להשוואה",
+    "savedHint": "דוח נשמר כשהוא יוצא — שיתוף, הורדה או העתקה",
+    "reopen": "פתיחה"
   },
   "assocForm": {
     "title": "הסכם התנדבות- ארצנו",

@@ -72,3 +72,5 @@ create policy "own settings delete" on public.user_settings
   using (user_id = auth.uid());
 
 grant select, insert, update, delete on public.user_settings to authenticated;
+
+grant select, insert, update, delete on public.user_settings to service_role;

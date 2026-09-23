@@ -118,3 +118,15 @@ create policy mission_checkpoints_group_insert on mission_checkpoints
         and a.is_group_phone
     )
   );
+
+-- ---------------------------------------------------------------------------
+-- ★★ AO0 (2026-09-24) — LES AUTORISATIONS D'API, AJOUTÉES APRÈS COUP.
+-- ---------------------------------------------------------------------------
+--
+-- Même raison que dans `20260831000400_entity_livestock.sql` : à partir du
+-- 30 octobre 2026 une table neuve de `public` n'est plus exposée d'office.
+-- `mission_checkpoints` est antérieure sur `lo-yanum-prod`, mais un rejeu à
+-- neuf la recréerait après la date. Rien pour `anon` — le projet n'a aucune
+-- surface anonyme (voir la note là-bas).
+grant select, insert, update, delete on public.mission_checkpoints to authenticated;
+grant select, insert, update, delete on public.mission_checkpoints to service_role;

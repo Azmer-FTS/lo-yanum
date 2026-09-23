@@ -46,6 +46,34 @@ export type FarmStatus =
   | 'signed'
   | 'active'
   | 'declined'
+  /**
+   * ═════════════════════════════════════════════════════════════════════════
+   * ★★ AO2 (2026-09-24) — LES DEUX PORTES QUE LE PO NE FERME PAS.
+   * ═════════════════════════════════════════════════════════════════════════
+   *
+   *   « Le PO ne ferme jamais une porte : une exploitation qui refuse
+   *     aujourd'hui peut accepter dans six mois. »
+   *
+   * · `not_relevant_now` — « לא רלוונטי כרגע » : elle a déjà un gardien,
+   *   elle n'a pas besoin de nous POUR L'INSTANT (גד״ש להב, « יש להם
+   *   שומר קבוע »).
+   * · `on_hold` — « בהמתנה » : elle a de l'aide en ce moment et préfère la
+   *   laisser à d'autres (חוות ניסים, « קיבל 6 בני שירות לכל השנה »).
+   *
+   * ⚠️ CE NE SONT NI UN ARCHIVAGE NI UNE SUPPRESSION. La fiche RESTE dans
+   *    les listes, sur la carte, dans les filtres et dans le rapport ; ce
+   *    qu'elle quitte, ce sont les COMPTEURS et l'objectif — exactement la
+   *    frontière d'AH3.5, `getVisibleFarms` contre `getCountableFarms`, sauf
+   *    qu'ici elle passe par le statut et non par l'identifiant.
+   *
+   * ⚠️ ET CE N'EST PAS « לא רלוונטי » (`declined`) NON PLUS, malgré le
+   *    libellé voisin. `declined` dit « elle a dit non » ; `not_relevant_now`
+   *    dit « elle n'a pas besoin de nous EN CE MOMENT », et le « כרגע » est
+   *    tout l'objet du statut : c'est une fiche à rappeler, pas une fiche
+   *    classée.
+   */
+  | 'not_relevant_now'
+  | 'on_hold'
 
 /**
  * ★★ AK2 (2026-09-16) — LA NATURE DE L'ACTIVITÉ EST UN CHOIX MULTIPLE À DEUX
@@ -108,6 +136,50 @@ export const FARM_PIPELINE: readonly FarmStatus[] = [
   'signed',
   'active',
 ] as const
+
+/**
+ * ★★ AO2 — LES STATUTS HORS-PIPELINE, DANS L'ORDRE OÙ ILS S'AFFICHENT.
+ *
+ * Une seule liste, pour que l'écran des fermes, le formulaire, le styleguide
+ * et les compteurs ne puissent pas en connaître trois versions différentes.
+ */
+export const FARM_STATUSES_OFF_PIPELINE: readonly FarmStatus[] = [
+  'declined',
+  'not_relevant_now',
+  'on_hold',
+] as const
+
+/** Les neuf statuts, pipeline puis hors-pipeline. LA liste de référence. */
+export const ALL_FARM_STATUSES: readonly FarmStatus[] = [
+  ...FARM_PIPELINE,
+  ...FARM_STATUSES_OFF_PIPELINE,
+] as const
+
+/**
+ * ★★ AO2.3 — « CES DEUX STATUTS SORTENT DES COMPTEURS ET DE L'OBJECTIF,
+ *    MAIS LA FICHE RESTE DANS LES LISTES, FILTRABLE. »
+ *
+ * ⚠️ C'EST UNE FONCTION NOMMÉE ET NON UN `.filter` RECOPIé, pour la même
+ *    raison que `getCountableFarms` (AH3.5) : le prochain compteur ajouté au
+ *    tableau de bord se posera la question parce qu'elle porte un nom.
+ *
+ * ⚠️ `declined` EN FAIT PARTIE DEPUIS TOUJOURS — `getDunamKpis` l'excluait
+ *    déjà du potentiel par un `f.status !== 'declined'` écrit à la main. Les
+ *    trois passent maintenant par ici, donc il n'y a plus un endroit où
+ *    l'ancien est traité et les nouveaux oubliés.
+ */
+export function countsTowardProgramme(status: FarmStatus): boolean {
+  return !FARM_STATUSES_OFF_PIPELINE.includes(status)
+}
+
+/**
+ * AO3.7 — pourquoi une fiche est hors compteurs, en un mot, ou `null` quand
+ * elle compte. Le rapport d'activité s'en sert pour la NOMMER plutôt que de la
+ * faire disparaître.
+ */
+export function offCountReason(status: FarmStatus): FarmStatus | null {
+  return countsTowardProgramme(status) ? null : status
+}
 
 /**
  * PO POINT 6 (2026-08-31) — HOW MANY HEAD, AND OF WHAT.

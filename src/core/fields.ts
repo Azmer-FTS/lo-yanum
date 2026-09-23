@@ -91,6 +91,51 @@ export function optionLabel(id: string | null | undefined, options: readonly Fie
   return options.find((o) => o.id === id)?.label ?? id
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AO1.2 (2026-09-24) — ת״ז OU ח״פ ? LE CHAMP EN PORTE DEUX, ET LA FICHE
+ *    DOIT DIRE LEQUEL.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ *   « Les numéros à neuf chiffres commençant par 57 sont des ח״פ, pas des
+ *     ת״ז. »
+ *
+ * ★ LA RÈGLE A DÛ ÊTRE ÉLARGIE DE 57 À 5, ET LA SOURCE ELLE-MÊME LE MONTRE.
+ *   « 01 - תומר שדה משה חקלאות » porte `557457074` : neuf chiffres, commençant
+ *   par **55**. La règle littérale du PO l'aurait affiché comme une ת״ז, ce
+ *   qui est faux — les numéros d'entreprise israéliens occupent la plage
+ *   51/52/54/55/57/58/59, et aucune ת״ז ne commence par 5 en pratique. La
+ *   règle posée ici est donc « neuf chiffres commençant par 5 → ח״פ », et
+ *   les trois numéros concernés de la source (557457074, 570014266,
+ *   570055368) la vérifient.
+ *
+ * ⛔ ET SURTOUT : AUCUNE VALIDATION, AUCUN REFUS. Ce champ est du TEXTE LIBRE
+ *    depuis AF1 et le reste. La somme de contrôle israélienne ne départage
+ *    d'ailleurs RIEN — elle est la même pour une ת״ז et un ח״פ, et les quatre
+ *    numéros à neuf chiffres de la source la passent tous. On NOMME, on ne
+ *    juge pas : un numéro plus court (7010797, 23505696, 24015877) reste
+ *    'unknown' et s'affiche tel quel, sous l'étiquette « ת״ז / ח״פ ».
+ *
+ * ⚠️ LE ZÉRO INITIAL EST LA RAISON DU `string`. `021985189` est une ת״ז
+ *    valide ; passée par un `number` elle deviendrait 21985189 et changerait
+ *    d'identité. Rien ici ne convertit.
+ */
+export type IdentityNumberKind = 'person' | 'company' | 'unknown'
+
+export function identityNumberKind(raw: string | null | undefined): IdentityNumberKind {
+  const digits = (raw ?? '').replace(/\D/gu, '')
+  if (digits.length !== 9) return 'unknown'
+  return digits.startsWith('5') ? 'company' : 'person'
+}
+
+/** L'étiquette hébraïque du champ, précisée quand on sait. */
+export function identityNumberLabel(raw: string | null | undefined): string {
+  const kind = identityNumberKind(raw)
+  if (kind === 'company') return 'ח״פ'
+  if (kind === 'person') return 'ת״ז'
+  return 'ת״ז / ח״פ'
+}
+
 // ---------------------------------------------------------------------------
 // AA2 — סוג הישות המשפטית
 // ---------------------------------------------------------------------------
@@ -697,6 +742,24 @@ export const FARM_STATUS_OPTIONS: readonly FieldOption[] = [
   { id: 'signed', label: 'הסכמה נחתמה', aliases: ['נחתם', 'חתמה', 'signed'] },
   { id: 'active', label: 'פעילה', aliases: ['פעיל', 'active'] },
   { id: 'declined', label: 'לא רלוונטי', aliases: ['סירבה', 'סירב', 'declined'] },
+  /**
+   * ★★ AO2 (2026-09-24) — les deux portes que le PO ne ferme pas.
+   *
+   * ⚠️ « לא רלוונטי כרגע » EST LISTÉ AVANT « לא רלוונטי » DANS LES ALIAS DE
+   *    PERSONNE, et c'est pour ça qu'il faut lire `readOption` avec soin : la
+   *    reconnaissance d'option compare des chaînes ENTIÈRES (label ou alias),
+   *    jamais un `includes`, donc « לא רלוונטי כרגע » ne peut pas tomber sur
+   *    `declined`. `readFarmStatus` (core/templates.ts), lui, fait un
+   *    `includes` et trie par longueur décroissante — l'indice le plus long
+   *    gagne, donc « כרגע » l'emporte là aussi. Les deux chemins ont été
+   *    vérifiés, pas supposés (porte A243).
+   */
+  {
+    id: 'not_relevant_now',
+    label: 'לא רלוונטי כרגע',
+    aliases: ['יש שומר', 'not_relevant_now', 'not-relevant-now'],
+  },
+  { id: 'on_hold', label: 'בהמתנה', aliases: ['ממתין', 'on_hold', 'on-hold', 'hold'] },
 ]
 
 /**

@@ -192,6 +192,11 @@
   --farm-signed: 143 99 232; /* #8F63E8 violet    */
   --farm-active: 15 142 117; /* #0F8E75 teal      */
   --farm-declined: 239 79 40; /* #EF4F28 orange    */
+  /* AO2 — les deux portes que le PO ne ferme pas. Deux teintes SOURDES :
+     ces fiches doivent se voir sans peser dans une liste, parce qu'elles ne
+     pèsent pas dans les compteurs. */
+  --farm-not-relevant-now: 150 106 58; /* #966A3A sépia    */
+  --farm-on-hold: 92 104 168; /* #5C68A8 indigo    */
 
   --farm-to-contact-ink: 60 72 84; /* #3C4854 */
   --farm-contacted-ink: 126 78 3; /* #7E4E03 */
@@ -200,6 +205,8 @@
   --farm-signed-ink: 91 52 168; /* #5B34A8 */
   --farm-active-ink: 10 100 85; /* #0A6455 */
   --farm-declined-ink: 166 42 17; /* #A62A11 */
+  --farm-not-relevant-now-ink: 106 72 34; /* #6A4822 */
+  --farm-on-hold-ink: 66 76 130; /* #424C82 */
 
   /* Elevation. G17 removed the card borders, so the shadow is now the ONLY
      separator in light — soft, slate-tinted (a neutral shadow on a neutral
@@ -496,6 +503,8 @@
   --farm-signed: 178 149 250; /* #B295FA */
   --farm-active: 52 201 166; /* #34C9A6 */
   --farm-declined: 255 129 99; /* #FF8163 */
+  --farm-not-relevant-now: 209 162 108; /* #D1A26C */
+  --farm-on-hold: 149 162 232; /* #95A2E8 */
 
   --farm-to-contact-ink: 178 190 205; /* #B2BECD */
   --farm-contacted-ink: 232 169 60;
@@ -504,6 +513,8 @@
   --farm-signed-ink: 207 186 253; /* #CFBAFD */
   --farm-active-ink: 52 201 166;
   --farm-declined-ink: 255 174 153; /* #FFAE99 */
+  --farm-not-relevant-now-ink: 224 186 143; /* #E0BA8F */
+  --farm-on-hold-ink: 175 186 245; /* #AFBAF5 */
 
   /* On dark, a grey drop-shadow vanishes: use deep black plus a 1px inset top
      highlight so a card reads as catching light from above. */
@@ -585,6 +596,8 @@
     --farm-signed: 178 149 250;
     --farm-active: 52 201 166;
     --farm-declined: 255 129 99;
+    --farm-not-relevant-now: 209 162 108;
+    --farm-on-hold: 149 162 232;
 
     --farm-to-contact-ink: 178 190 205;
     --farm-contacted-ink: 232 169 60;
@@ -593,6 +606,8 @@
     --farm-signed-ink: 207 186 253;
     --farm-active-ink: 52 201 166;
     --farm-declined-ink: 255 174 153;
+    --farm-not-relevant-now-ink: 224 186 143;
+    --farm-on-hold-ink: 175 186 245;
 
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.45), 0 4px 16px rgb(0 0 0 / 0.3),
       inset 0 1px 0 rgb(255 255 255 / 0.06);

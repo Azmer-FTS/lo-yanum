@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
-  FARM_PIPELINE,
+  ALL_FARM_STATUSES,
   areaGapRatio,
   effectiveAreas,
   hasAreaGap,
@@ -72,7 +72,9 @@ import { useAreaGapThreshold } from '../../settings/areaGap'
 import { useCoverageSettings } from '../../settings/coverage'
 import { useRenewalWindow } from '../../settings/renewal'
 
-const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
+/* AO2 — les neuf statuts, dans l'ordre de @core. Les deux nouveaux filtrent
+   comme les autres : c'est la moitié de « la fiche reste dans les listes ». */
+const STATUSES: readonly FarmStatus[] = ALL_FARM_STATUSES
 /**
  * ⚠️ AK2 — ET « לא ידוע » N'EST PAS UNE QUATRIÈME PASTILLE ICI, PARCE QUE LA
  *    MESURE L'INTERDIT. `bun run uipass` : à 1376 px en mode splitté le panneau

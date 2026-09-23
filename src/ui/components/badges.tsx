@@ -33,6 +33,8 @@ const FARM_STATUS_TOKEN: Record<FarmStatus, string> = {
   signed: '--farm-signed',
   active: '--farm-active',
   declined: '--farm-declined',
+  not_relevant_now: '--farm-not-relevant-now',
+  on_hold: '--farm-on-hold',
 }
 
 /**
@@ -147,6 +149,8 @@ const FARM_STATUS_CLASS: Record<FarmStatus, string> = {
   signed: 'bg-farm-signed/15 text-farm-signed-ink',
   active: 'bg-farm-active/15 text-farm-active-ink',
   declined: 'bg-farm-declined/15 text-farm-declined-ink',
+  not_relevant_now: 'bg-farm-not-relevant-now/15 text-farm-not-relevant-now-ink',
+  on_hold: 'bg-farm-on-hold/15 text-farm-on-hold-ink',
 }
 
 const FARM_STATUS_DOT: Record<FarmStatus, string> = {
@@ -157,6 +161,8 @@ const FARM_STATUS_DOT: Record<FarmStatus, string> = {
   signed: 'bg-farm-signed',
   active: 'bg-farm-active',
   declined: 'bg-farm-declined',
+  not_relevant_now: 'bg-farm-not-relevant-now',
+  on_hold: 'bg-farm-on-hold',
 }
 
 export function FarmStatusChip({ status }: { status: FarmStatus }) {

@@ -551,3 +551,83 @@ begin
   end loop;
 end;
 $$;
+
+-- ===========================================================================
+-- ★★ AO0 (2026-09-24) — LES AUTORISATIONS D'API DES VINGT-SIX TABLES.
+-- ===========================================================================
+--
+--   « À partir du 30 octobre, une table créée dans le schéma `public` ne sera
+--     plus automatiquement accessible par l'API. Les tables existantes ne
+--     changent pas ; toute NOUVELLE table le sera. »
+--
+-- ★ CES VINGT-SIX-LÀ SONT ANTÉRIEURES ET NE CHANGENT DONC PAS SUR
+--   `lo-yanum-prod` : ce bloc n'ouvre rien qui ne fût déjà ouvert, il ÉCRIT ce
+--   qui était implicite. Ce qu'il sert vraiment, c'est le REJEU : un
+--   `supabase db reset`, un projet de secours, une base de recette montée en
+--   novembre créeraient ces tables APRÈS la date, et l'application recevrait
+--   des 401 sur tout, sans qu'aucune ligne de code ait bougé.
+--
+-- ⚠️ RIEN POUR `anon`, ET C'EST LA RÈGLE DU PROJET. Aucune des 32 politiques
+--    de `20260830000200_rls.sql` ne vise `anon` ; Lo Yanum n'a aucune surface
+--    anonyme (les laissez-passer volontaire et agriculteur passent par un
+--    jeton et une session). `bun run auth` PROUVE qu'une lecture anonyme est
+--    refusée : ce bloc le garde vrai à deux tours de clé plutôt qu'un.
+--
+-- ⚠️ `insert/update/delete` ET PAS SEULEMENT `select` : le coordinateur écrit
+--    dans chacune de ces tables depuis l'appareil. RLS décide QUI et QUOI ;
+--    le `grant` décide seulement que la table est visible de l'API.
+--
+-- Idempotent : `grant` se rejoue sans erreur.
+grant select, insert, update, delete on public.entities to authenticated;
+grant select, insert, update, delete on public.entity_contacts to authenticated;
+grant select, insert, update, delete on public.entity_commitments to authenticated;
+grant select, insert, update, delete on public.agreements to authenticated;
+grant select, insert, update, delete on public.zones to authenticated;
+grant select, insert, update, delete on public.zone_vertices to authenticated;
+grant select, insert, update, delete on public.guard_posts to authenticated;
+grant select, insert, update, delete on public.threat_zones to authenticated;
+grant select, insert, update, delete on public.threat_zone_vertices to authenticated;
+grant select, insert, update, delete on public.threat_vectors to authenticated;
+grant select, insert, update, delete on public.volunteers to authenticated;
+grant select, insert, update, delete on public.drivers to authenticated;
+grant select, insert, update, delete on public.missions to authenticated;
+grant select, insert, update, delete on public.mission_guard_posts to authenticated;
+grant select, insert, update, delete on public.mission_drivers to authenticated;
+grant select, insert, update, delete on public.mission_driver_passengers to authenticated;
+grant select, insert, update, delete on public.mission_assignments to authenticated;
+grant select, insert, update, delete on public.presence_marks to authenticated;
+grant select, insert, update, delete on public.cancel_notices to authenticated;
+grant select, insert, update, delete on public.farm_visits to authenticated;
+grant select, insert, update, delete on public.general_meetings to authenticated;
+grant select, insert, update, delete on public.tours to authenticated;
+grant select, insert, update, delete on public.tour_stops to authenticated;
+grant select, insert, update, delete on public.incidents to authenticated;
+grant select, insert, update, delete on public.incident_entries to authenticated;
+grant select, insert, update, delete on public.app_users to authenticated;
+
+grant select, insert, update, delete on public.entities to service_role;
+grant select, insert, update, delete on public.entity_contacts to service_role;
+grant select, insert, update, delete on public.entity_commitments to service_role;
+grant select, insert, update, delete on public.agreements to service_role;
+grant select, insert, update, delete on public.zones to service_role;
+grant select, insert, update, delete on public.zone_vertices to service_role;
+grant select, insert, update, delete on public.guard_posts to service_role;
+grant select, insert, update, delete on public.threat_zones to service_role;
+grant select, insert, update, delete on public.threat_zone_vertices to service_role;
+grant select, insert, update, delete on public.threat_vectors to service_role;
+grant select, insert, update, delete on public.volunteers to service_role;
+grant select, insert, update, delete on public.drivers to service_role;
+grant select, insert, update, delete on public.missions to service_role;
+grant select, insert, update, delete on public.mission_guard_posts to service_role;
+grant select, insert, update, delete on public.mission_drivers to service_role;
+grant select, insert, update, delete on public.mission_driver_passengers to service_role;
+grant select, insert, update, delete on public.mission_assignments to service_role;
+grant select, insert, update, delete on public.presence_marks to service_role;
+grant select, insert, update, delete on public.cancel_notices to service_role;
+grant select, insert, update, delete on public.farm_visits to service_role;
+grant select, insert, update, delete on public.general_meetings to service_role;
+grant select, insert, update, delete on public.tours to service_role;
+grant select, insert, update, delete on public.tour_stops to service_role;
+grant select, insert, update, delete on public.incidents to service_role;
+grant select, insert, update, delete on public.incident_entries to service_role;
+grant select, insert, update, delete on public.app_users to service_role;

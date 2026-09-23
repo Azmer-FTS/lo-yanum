@@ -37,6 +37,8 @@ export * from './summons'
 export * from './agreementTemplate'
 export * from './testData'
 export * from './freeRoute'
+/* AO3 — le rapport d'activité (les chiffres ; la mise en forme est dans ui/). */
+export * from './activity'
 export * from './lookup'
 export * from './localitySearch'
 export * from './access'

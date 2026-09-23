@@ -7,7 +7,16 @@
 ## Où en est-on
 
 - **Branche** : `main`. **Dernier commit** : voir `git log --oneline -1`
-  (passe **AN**, 2026-09-17).
+  (passe **AO**, 2026-09-24).
+- **Passe AO TERMINÉE** (2026-09-24) — autorisations d'API dans les migrations,
+  reprise des 25 exploitations, deux statuts hors compteurs, RAPPORT
+  D'ACTIVITÉ. Portes : `bun run aodata` (82), `bun run aopass` (103),
+  `bun run aoui` (38) ; captures `bun run aocaptures`.
+  ⛔ **UN SEUL POINT NON LIVRÉ, ET IL EST BLOQUANT POUR LES DONNÉES** :
+  l'outil MCP Supabase de la session est connecté au SECOND compte (celui
+  qu'il ne faut pas toucher) et ne voit PAS `lo-yanum-prod`. Rien n'a donc pu
+  être écrit en base, et AO0.5 (projet actif ou en pause ?) est sans réponse.
+  Le SQL prêt est `docs/ao/ao1-prod.sql`. Détail : `ETAT.md` § AO0.
 - **Passe AN TERMINÉE** (2026-09-17) — logique d'interface, contradictions,
   régressions. AN1 → AN13 poussés (`a0af144` … `cfb834a` + docs) ; déployé
   `cfb834a` : `anui` 155/155, 36 captures, 0 erreur (`ETAT.md` § AN13).
@@ -36,6 +45,85 @@
   - Jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
   - Le commit servi se lit dans `version.json` à la racine de chacune, et dans
     l'app : הגדרות › נתונים › « גרסת האפליקציה ».
+
+## ⚠️ RÈGLE PERMANENTE — TOUTE MIGRATION QUI CRÉE UNE TABLE PORTE SES AUTORISATIONS (AO0, 2026-09-24)
+
+Supabase l'a annoncé au PO : **à partir du 30 octobre 2026, une table créée
+dans le schéma `public` n'est plus automatiquement accessible par l'API.** Les
+tables antérieures ne changent pas ; toute table NEUVE naît invisible du REST
+tant qu'elle n'a pas reçu ses `grant`.
+
+**Dans la MÊME migration que le `create table`, et jamais dans une migration
+suivante** (une base rejouée entre les deux serait cassée) :
+
+```sql
+grant select, insert, update, delete on public.<table> to authenticated;
+grant select, insert, update, delete on public.<table> to service_role;
+```
+
+⛔ **RIEN POUR `anon`, ET C'EST LA RÈGLE DE CE PROJET.** Aucune des 32
+politiques de `20260830000200_rls.sql` ne vise `anon` : Lo Yanum n'a aucune
+surface anonyme (les laissez-passer volontaire et agriculteur passent par un
+jeton et une session). `bun run auth` PROUVE qu'une lecture anonyme est
+refusée ; ne pas accorder le droit garde ce refus vrai même si RLS était
+désactivée « une minute pour déboguer ». Le modèle du brief (`grant select on
+… to anon`) est le modèle GÉNÉRAL de Supabase — ici, on adapte au besoin réel,
+et le besoin réel d'`anon` est nul.
+
+⚠️ **Le `grant` n'est pas une politique.** Il dit seulement que la table est
+visible de l'API ; QUI voit QUELLES lignes reste l'affaire de RLS, qui doit
+être activée dans la même migration (`enable row level security` +
+`force row level security` + au moins une politique).
+
+**Fait en AO0** : les autorisations écrites dans les trois migrations qui
+créaient des tables sans elles — `20260830000100_schema.sql` (26 tables),
+`20260831000400_entity_livestock.sql`, `20260908000300_emergency.sql` — plus
+`service_role` sur `20260910000100_user_settings.sql`. Aucune n'ouvre quoi que
+ce soit sur prod (ces tables sont antérieures au 30 octobre) : ce qui est
+réparé, c'est le REJEU d'une base à neuf. `bun run aopass` (A238) le compte :
+toute migration qui crée une table et ne porte pas ses `grant` est rouge.
+
+**Porte** : `bun run aopass` section A238.
+
+## Ce qui est fait dans AO
+
+| Bloc | État |
+|---|---|
+| AO0 autorisations | ✅ `grant` ajoutés DANS LEUR PROPRE migration à `20260830000100_schema.sql` (26 tables), `20260831000400_entity_livestock.sql`, `20260908000300_emergency.sql`, + `service_role` sur `user_settings`. Rien pour `anon`. Règle écrite en tête de ce fichier ; porte A238 |
+| AO0.4/0.5 prod | ⛔ **NON LIVRÉ** : le MCP Supabase de la session est sur le SECOND compte (`mgnamsellem` / `uzrwmkwkulcighotovyb`) et ne voit pas `lo-yanum-prod` (`jkqsqykhquutilldvcsv`). Aucune écriture, aucun statut de projet. Trois appels en LECTURE seulement, rien touché sur le second compte |
+| AO1 les 25 | ✅ `scripts/aodata.ts` : 15 mises à jour (identifiants d'AK1 conservés), 10 créations, 0 doublon, 0 orpheline. SQL prêt : `docs/ao/ao1-prod.sql`. 8 830 מעובד · 54 000 מרעה · **9 910 pondérés**. 19 positionnées, 6 sans מיקום |
+| AO1 appariement | ✅ `pairingKey()` retire « 0N - » pour RETROUVER une fiche (גד״ש תדהר renommée), et le garde comme IDENTITÉ entre lignes neuves (les 4 voisins שדה משה). Un appariement ambigu devient une création ET une ligne de rapport — jamais tranché en silence |
+| AO1 ת״ז / ח״פ | ✅ `identityNumberKind()` : 9 chiffres commençant par **5** → ח״פ (la règle « 57 » du brief ratait `557457074`). Aucune validation, aucun refus ; zéro initial `021985189` tenu |
+| AO2 statuts | ✅ `not_relevant_now` · `on_hold` ; `countsTowardProgramme()` — `declined` y passe aussi ; teintes clair/sombre ; les 3 écrans lisent `ALL_FARM_STATUSES` de @core ; migration `20260924000100` |
+| AO3 rapport | ✅ `core/activity.ts` (les chiffres), `ui/report/activityText.ts` (WhatsApp), `activityDraw.ts` (PDF multi-pages), `activityHistory.ts` + `data/activityReports.ts` (conservés), `ActivityReportButton.tsx`. Migration `20260924000200` (table neuve AVEC ses `grant`) |
+| AO4 portes | ✅ `aodata` 82/82 · `aopass` 103/103 · `aoui` 38/38 ; rejouées : `anpass` 27, `ampass` 50, `alpass` 40, `akpass` 56, `accept` 177, `report` 86, `mapping` 33, `persist` 110, `anui` 156, `amui` 77, `akui` 119 |
+
+Décisions AO posées :
+1. ⚠️ **TOUTE MIGRATION QUI CRÉE UNE TABLE PORTE SES `grant`**, dans le même
+   fichier, jamais dans une migration suivante. Rien pour `anon`. Voir la
+   section en tête de ce document.
+2. **Une reprise de données MET À JOUR, elle ne recrée pas** — et elle n'écrit
+   que les colonnes que la SOURCE connaît. Repousser toutes les colonnes d'un
+   `insert … on conflict do update` écraserait ce que le PO a posé dans l'app
+   depuis la reprise précédente (photo, visite, תיק אתר, surface gardée).
+3. **Un préfixe d'ordre (« 05 - ») est ignoré pour RETROUVER une fiche et
+   gardé comme IDENTITÉ entre deux fiches neuves.** Les deux pièges sont dans
+   la même passe et se répondent.
+4. **Hors des compteurs ≠ hors des listes.** `countsTowardProgramme(status)`
+   est la seule définition ; `getVisibleFarms` / `getCountableFarms` (AH3.5)
+   restent la frontière par identifiant. Un nouveau compteur pose la question
+   parce que la fonction porte un nom.
+5. **Le rapport d'activité est une ÉVOLUTION, le compte rendu est un ÉTAT.**
+   Deux fichiers, deux boutons, jamais fondus.
+6. **Ce qui n'a pas d'horodatage se compte par DIFFÉRENCE avec le rapport
+   précédent**, et un rapport sans précédent le DIT au lieu d'inventer.
+7. **Le texte qui part est conservé au caractère près**, avec l'instantané par
+   exploitation : sans lui, « quelles fiches ont changé » est indécidable.
+8. **La langue d'une SORTIE est une propriété de son destinataire.** Le
+   message WhatsApp est en hébreu écrit en dur, jamais via `t()`.
+9. ⚠️ **En RTL, `+`, `/` et `(` sont des caractères NEUTRES.** Toute valeur
+   numérique composée se dessine en `direction: 'ltr'` (canvas) ou s'encadre
+   d'une marque U+200E (texte). Vu sur le PDF, pas déduit.
 
 ## Ce qui est fait dans AN
 
@@ -106,7 +194,7 @@ Décisions AM posées :
 cd "/Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM"
 bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
-bun run typecheck && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run akpass && bun run accept
+bun run typecheck && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run akpass && bun run accept
 ```
 
 ## Ce qui est fait dans AL
@@ -304,6 +392,20 @@ d'être déployé.
   corrigées en U4 ; celles qui restent sont ailleurs.
 
 ## Questions ouvertes / ce qui attend le PO
+
+0-AO. ⛔ **LE COMPTE SUPABASE — C'EST LE PREMIER GESTE DE LA PROCHAINE
+   SESSION.** L'outil MCP ne voit plus `lo-yanum-prod`. Tant que ce n'est pas
+   rétabli, AUCUNE session ne peut écrire en base. Ce qui attend, dans
+   l'ordre : (1) `supabase/migrations/20260924000100_status_not_relevant_now_on_hold.sql`,
+   (2) `supabase/migrations/20260924000200_activity_reports.sql`,
+   (3) `docs/ao/ao1-prod.sql`. Ensuite relire les lignes et jouer
+   `bun run aodata check <rows.json>`.
+
+0-AO bis. **« Les cinq lignes שדה משה 02 à 05 » — à confirmer.** Le tableau du
+   portail porte QUATRE voisins (02–05) sans contact ni ת״ז, plus
+   « 01 - תומר שדה משה חקלאות » qui est la fiche de תומר (contact, ח״פ,
+   280 dounams, un autre point). Cinq lignes au secteur, quatre voisins. Si le
+   PO voulait dire cinq VOISINS, il en manque un dans la source.
 
 0bis. ✅ **CLOS PAR AM.** Le formulaire n'exige plus ni יישוב ni épingle : les
    quinze fiches d'AK1 s'enregistrent telles quelles. Sur celles qui ont une

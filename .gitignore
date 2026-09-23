@@ -135,3 +135,7 @@ dist-am-before/
 dist-am-before-real/
 docs/screenshots/ampass/local/
 dist-an*/
+
+# AO — les builds des portes de la passe AO (jamais commités).
+dist-ao*/
+docs/screenshots/aopass/local/

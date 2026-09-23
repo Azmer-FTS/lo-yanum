@@ -10,7 +10,7 @@ import {
   parseChannels,
 } from '@core/index'
 import type { FarmStatus, IncidentSeverity, MissionStatus, Rgb } from '@core/index'
-import { FARM_PIPELINE } from '@core/index'
+import { ALL_FARM_STATUSES as CORE_FARM_STATUSES } from '@core/index'
 
 import { Icon } from '../components/Icon'
 import { ThemeToggle } from '../components/ThemeToggle'
@@ -301,7 +301,8 @@ const MISSION_STATUSES: MissionStatus[] = [
   'completed',
   'return_not_confirmed',
 ]
-const ALL_FARM_STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
+/* AO2 — LA liste de référence de @core, pas une copie locale. */
+const ALL_FARM_STATUSES: readonly FarmStatus[] = CORE_FARM_STATUSES
 
 export function StyleguideScreen() {
   const { t } = useTranslation()

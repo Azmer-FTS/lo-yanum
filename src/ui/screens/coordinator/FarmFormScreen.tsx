@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { formatPhoneTyping, findLocality, REGIONAL_COUNCILS, councilOfCode, matchCouncil, regionById, suggestCouncil, suggestRegion,
-  FARM_PIPELINE,
+  ALL_FARM_STATUSES,
   LAND_AGREEMENT_OPTIONS,
   LEGAL_ENTITY_OPTIONS,
   parsePositionInput,
@@ -76,7 +76,9 @@ import { useLocale } from '../../hooks/useLocale'
 /** ★ AN7 — la ligne « אחר » des listes, qui ouvre la saisie libre. */
 const OTHER = '__other'
 
-const STATUSES: FarmStatus[] = [...FARM_PIPELINE, 'declined']
+/* AO2 — les neuf statuts. Le PO doit pouvoir POSER « לא רלוונטי כרגע » et
+   « בהמתנה » sur une fiche ; sans cette ligne ils n'existeraient qu'à l'import. */
+const STATUSES: readonly FarmStatus[] = ALL_FARM_STATUSES
 
 /**
  * R5.1 — farm create/edit.
@@ -983,6 +985,7 @@ export function FarmFormScreen() {
             value={status}
             onChange={setStatus}
             error={errors.status}
+            testId="farm-status"
             options={STATUSES.map((v) => ({
               value: v,
               label: t(`farmStatus.${v}`),

@@ -1,4 +1,5 @@
 import { landRightIssue } from './fields'
+import { countsTowardProgramme } from './types'
 import type { Farm, FarmType, ProvidedDocument } from './types'
 
 export type { ProvidedDocument }
@@ -133,7 +134,16 @@ export function awaitingDocuments(
   farm: Pick<Farm, 'type' | 'providedDocuments' | 'status'> & { archivedAt?: string | null },
 ): boolean {
   if (farm.archivedAt) return false
-  if (farm.status === 'declined') return false
+  /**
+   * ★ AO2 — ET LES DEUX NOUVEAUX STATUTS N'ATTENDENT RIEN NON PLUS. Une
+   *   exploitation qui a déjà un gardien (« לא רלוונטי כרגע ») ou qui préfère
+   *   laisser l'aide à d'autres (« בהמתנה ») n'a aucun papier à nous remettre ;
+   *   la laisser dans la file « ממתינות למסמכים » ferait grossir une file de
+   *   travail avec des lignes sur lesquelles il n'y a rien à faire.
+   *   `countsTowardProgramme` est la MÊME fonction que les compteurs, pour
+   *   qu'il n'y ait pas deux définitions de « hors programme ».
+   */
+  if (!countsTowardProgramme(farm.status)) return false
   const provided = farm.providedDocuments ?? []
   if (farm.type === 'unknown') return provided.length === 0
   return missingDocumentCount(farm) > 0
@@ -149,7 +159,13 @@ export function awaitingDocuments(
 export function closureBlocked(
   farm: Pick<Farm, 'type' | 'providedDocuments' | 'status'> & { archivedAt?: string | null },
 ): boolean {
-  return awaitingDocuments({ ...farm, status: farm.status === 'declined' ? 'signed' : farm.status })
+  /* AO2 — la question posée est « si elle devenait פעילה, lui manquerait-il un
+     papier ? ». Un statut hors programme court-circuiterait la réponse
+     ci-dessus, donc on interroge sur 'signed', quel que soit lequel. */
+  return awaitingDocuments({
+    ...farm,
+    status: countsTowardProgramme(farm.status) ? farm.status : 'signed',
+  })
 }
 
 /** Le statut qu'une écriture a le droit de poser, étant donné le verrou. */

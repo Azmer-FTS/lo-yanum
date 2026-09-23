@@ -103,6 +103,10 @@ export default {
           'active-ink': token('farm-active-ink'),
           declined: token('farm-declined'),
           'declined-ink': token('farm-declined-ink'),
+          'not-relevant-now': token('farm-not-relevant-now'),
+          'not-relevant-now-ink': token('farm-not-relevant-now-ink'),
+          'on-hold': token('farm-on-hold'),
+          'on-hold-ink': token('farm-on-hold-ink'),
         },
       },
       backgroundImage: {

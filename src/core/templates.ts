@@ -672,6 +672,13 @@ const FARM_STATUS_HINTS: ReadonlyArray<[string, FarmStatus]> = [
   ['פעיל', 'active'],
   ['סירבה', 'declined'],
   ['סירב', 'declined'],
+  /* AO2 — l'indice LE PLUS LONG gagne (tri par longueur, juste en dessous),
+     donc « לא רלוונטי כרגע » ne peut pas être lu comme « לא רלוונטי ». */
+  ['לא רלוונטי כרגע', 'not_relevant_now'],
+  ['לא רלוונטי', 'declined'],
+  ['יש להם שומר', 'not_relevant_now'],
+  ['בהמתנה', 'on_hold'],
+  ['ממתינה', 'on_hold'],
   ['to_contact', 'to_contact'],
   ['contacted', 'contacted'],
   ['visited', 'visited'],
@@ -679,6 +686,8 @@ const FARM_STATUS_HINTS: ReadonlyArray<[string, FarmStatus]> = [
   ['signed', 'signed'],
   ['active', 'active'],
   ['declined', 'declined'],
+  ['not_relevant_now', 'not_relevant_now'],
+  ['on_hold', 'on_hold'],
 ]
 
 export function readFarmStatus(raw: string): FarmStatus {
