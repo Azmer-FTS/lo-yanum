@@ -12,11 +12,10 @@
   reprise des 25 exploitations, deux statuts hors compteurs, RAPPORT
   D'ACTIVITÉ. Portes : `bun run aodata` (82), `bun run aopass` (111),
   `bun run aoui` (40) ; captures `bun run aocaptures`.
-  ⛔ **UN SEUL POINT NON LIVRÉ, ET IL EST BLOQUANT POUR LES DONNÉES** :
-  l'outil MCP Supabase de la session est connecté au SECOND compte (celui
-  qu'il ne faut pas toucher) et ne voit PAS `lo-yanum-prod`. Rien n'a donc pu
-  être écrit en base, et AO0.5 (projet actif ou en pause ?) est sans réponse.
-  Le SQL prêt est `docs/ao/ao1-prod.sql`. Détail : `ETAT.md` § AO0.
+  ✅ **APPLIQUÉ SUR `lo-yanum-prod`** (2026-09-24) via le MCP rebranché sur
+  l'organisation Azmer-FTS : **15 mises à jour, 10 créations, 25 en base**,
+  9 910 dounams pondérés, `bun run live` **49/49**, `entities.status` à neuf
+  étiquettes. `lo-yanum-prod` est **ACTIVE_HEALTHY**. Détail : `ETAT.md` § AO5.
 - **Passe AN TERMINÉE** (2026-09-17) — logique d'interface, contradictions,
   régressions. AN1 → AN13 poussés (`a0af144` … `cfb834a` + docs) ; déployé
   `cfb834a` : `anui` 155/155, 36 captures, 0 erreur (`ETAT.md` § AN13).
@@ -396,13 +395,12 @@ d'être déployé.
 
 ## Questions ouvertes / ce qui attend le PO
 
-0-AO. ⛔ **LE COMPTE SUPABASE — C'EST LE PREMIER GESTE DE LA PROCHAINE
-   SESSION.** L'outil MCP ne voit plus `lo-yanum-prod`. Tant que ce n'est pas
-   rétabli, AUCUNE session ne peut écrire en base. Ce qui attend, dans
-   l'ordre : (1) `supabase/migrations/20260924000100_status_not_relevant_now_on_hold.sql`,
-   (2) `supabase/migrations/20260924000200_activity_reports.sql`,
-   (3) `docs/ao/ao1-prod.sql`. Ensuite relire les lignes et jouer
-   `bun run aodata check <rows.json>`.
+0-AO. ✅ **CLOS (2026-09-24).** Les trois fichiers sont appliqués sur
+   `lo-yanum-prod`. ⚠️ **Mais retenir la leçon** : l'historique des migrations
+   était disjoint et un `supabase db push` nu aurait joué
+   `20260909000200_reset_business_data.sql`, qui VIDE les 26 tables métier.
+   Toujours lancer `supabase migration list` AVANT tout push, et ne pousser
+   que si la liste en attente est exactement ce qu'on croit.
 
 0-AO bis. **« Les cinq lignes שדה משה 02 à 05 » — à confirmer.** Le tableau du
    portail porte QUATRE voisins (02–05) sans contact ni ת״ז, plus

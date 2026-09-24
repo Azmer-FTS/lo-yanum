@@ -498,22 +498,40 @@ if (!import.meta.main) {
      *    telle quelle, parce qu'une colonne vide au portail veut dire « le PO
      *    n'a rien écrit LÀ », pas « efface ce qu'il a écrit ICI ».
      */
+    /**
+     * ═══════════════════════════════════════════════════════════════════════
+     * ★★ ET TROIS DE CES COLONNES NE S'ÉCRASENT PAS : ELLES SE COMPLÈTENT.
+     * ═══════════════════════════════════════════════════════════════════════
+     *
+     * ⚠️ VU EN LISANT LA BASE AVANT D'ÉCRIRE, le 2026-09-24 : trois fiches
+     *    (`farm-ak1-11` הר-שמש, `-12` זעק, `-13` מרגי) portaient un
+     *    `updated_at` du jour. Le PO avait DÉPLACÉ LEURS ÉPINGLES à la main
+     *    — de 45 à 210 m — et choisi `legal_entity = 'herder'` sur מרגי, que
+     *    le portail ne connaît pas. Une reprise « le portail fait autorité »
+     *    aurait remis les trois épingles à la coordonnée du portail et effacé
+     *    son choix, sans que rien ne le dise.
+     *
+     * · `lat` / `lng` / `position_missing` — le portail ne sert QUE les fiches
+     *   que l'app n'a pas encore placées. **Une épingle posée par le PO gagne
+     *   toujours** : c'est lui qui a vu le terrain, pas le tableur.
+     * · `legal_entity`, `farmer_name`, `farmer_phone`, `farmer_id_no` — le
+     *   portail gagne QUAND IL A UNE VALEUR ; une colonne vide au portail ne
+     *   vide jamais celle de l'app.
+     *
+     * Le reste (nom, statut, nature, surfaces) est bien au portail : c'est la
+     * raison d'être de la reprise.
+     */
     const PORTAL_COLUMNS = [
       'name',
       'status',
       'type',
-      'lat',
-      'lng',
-      'position_missing',
       'farm_dunams',
       'grazing_dunams',
       'farm_dunams_manual',
       'grazing_dunams_manual',
-      'legal_entity',
-      'farmer_name',
-      'farmer_phone',
-      'farmer_id_no',
     ]
+    /** Le portail comble un vide, il n'écrase pas une valeur. */
+    const FILL_ONLY = ['legal_entity', 'farmer_name', 'farmer_phone', 'farmer_id_no']
     const lines: string[] = [
       '-- AO1 — la reprise des 25 exploitations du portail, pour `lo-yanum-prod`.',
       '--',
@@ -538,10 +556,18 @@ if (!import.meta.main) {
       const parent = MAPPINGS.farms.toRows(farm)[0].rows[0]
       if (updateIds.has(farm.id)) {
         const was = renamed.get(farm.id)
-        const sets = PORTAL_COLUMNS.filter(
-          /* la note ne s'écrit que si le portail en porte une */
-          (c) => c !== 'notes',
-        ).map((c) => `  ${c} = ${sqlLiteral(parent[c])}`)
+        const sets = PORTAL_COLUMNS.map((c) => `  ${c} = ${sqlLiteral(parent[c])}`)
+        /* Le portail comble un vide, il n'écrase jamais une valeur de l'app. */
+        for (const c of FILL_ONLY) {
+          sets.push(`  ${c} = coalesce(nullif(${sqlLiteral(parent[c])}, ''), ${c})`)
+        }
+        /* ★ L'ÉPINGLE DU PO GAGNE. Le portail ne sert que les fiches que
+           l'app n'a pas encore placées (`position_missing`). */
+        sets.push(
+          `  lat = case when position_missing then ${sqlLiteral(parent.lat)} else lat end`,
+          `  lng = case when position_missing then ${sqlLiteral(parent.lng)} else lng end`,
+          `  position_missing = case when position_missing then ${sqlLiteral(parent.position_missing)} else false end`,
+        )
         if (farm.notes !== '') sets.push(`  notes = ${sqlLiteral(farm.notes)}`)
         lines.push(
           `-- MISE À JOUR ${farm.id} — ${farm.name}${was ? `  (renommée depuis « ${was} »)` : ''}`,

@@ -151,7 +151,12 @@ section('3 — the closed sets, spelled the way the mapper spells them')
     ['presence_marks', 'source', ['driver', 'group', 'self']],
     ['presence_marks', 'mark', ['present', 'absent']],
     ['entities', 'entity_kind', ['farm', 'moshav', 'other']],
-    ['entities', 'status', ['to_contact', 'contacted', 'visited', 'verbal_ok', 'signed', 'active', 'declined']],
+    /* ★★ AO2 (2026-09-24) — NEUF, ET LA PORTE LE DEMANDE VRAIMENT. Cette
+       ligne portait sept étiquettes et elle est restée VERTE après que
+       `not_relevant_now` et `on_hold` eurent été ajoutés en base : elle ne
+       posait la question que pour les sept qu'elle connaissait. Une porte qui
+       ne demande pas la chose neuve ne peut pas la prouver. */
+    ['entities', 'status', ['to_contact', 'contacted', 'visited', 'verbal_ok', 'signed', 'active', 'declined', 'not_relevant_now', 'on_hold']],
     ['missions', 'status', ['recruiting', 'planned', 'in_progress', 'completed', 'return_not_confirmed', 'cancelled']],
     ['missions', 'cancel_reason', ['no_volunteers', 'no_driver', 'farmer_request', 'weather', 'security_forces', 'other']],
     ['volunteers', 'phone_type', ['smartphone', 'kosher']],

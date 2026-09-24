@@ -4,7 +4,63 @@
 >
 > Ordre suivi : AO0 → AO1 → AO2 → AO3 → AO4.
 >
-> ## ⛔ AO0.4/AO0.5 — LE COMPTE SUPABASE DU MCP A CHANGÉ, ET RIEN N'A PU ÊTRE ÉCRIT SUR PROD
+> ## ✅ AO5 (2026-09-24, même jour) — APPLIQUÉ SUR `lo-yanum-prod`
+>
+> Le connecteur MCP a été rebranché sur l'organisation **Azmer-FTS**
+> (`jkqsqykhquutilldvcsv`). Les trois fichiers sont passés par
+> `apply_migration`, comme en AK, AM et AN.
+>
+> **15 mises à jour · 10 créations · 25 exploitations en base.**
+> 8 830 dounams מעובד · 54 000 מרעה · **9 910 pondérés** · 6 sans position ·
+> 7 commentaires · 1 `on_hold` · 1 `not_relevant_now`.
+> `bun run live` : **49/49**. `entities.status` : **neuf étiquettes**.
+> `activity_reports` : RLS activée ET forcée, 4 politiques.
+>
+> ★★ **CE QUE LA LECTURE DE LA BASE A SAUVÉ, ET QU'AUCUNE PORTE N'AURAIT VU.**
+> Avant d'écrire, j'ai relu les 15 lignes. Trois portaient un `updated_at` du
+> jour : le PO avait **déplacé leurs épingles à la main** (de 45 à 210 m sur
+> הר-שמש, זעק et מרגי) et choisi `legal_entity = 'herder'` sur מרגי, que le
+> portail ne connaît pas. La reprise « le portail fait autorité » aurait remis
+> les trois épingles à la coordonnée du tableur et **effacé son choix**, sans
+> que rien ne le dise. Les mises à jour ont donc été rendues PROTECTRICES :
+>
+> | Colonne | Règle |
+> |---|---|
+> | nom, statut, nature, surfaces | le portail fait autorité |
+> | `legal_entity`, `farmer_name/phone/id_no` | le portail COMBLE un vide (`coalesce(nullif(…),col)`) |
+> | `lat`, `lng`, `position_missing` | **l'épingle du PO gagne toujours** (`case when position_missing`) |
+> | `notes` | seulement les 7 lignes dont le portail porte un commentaire |
+>
+> Vérifié après coup : les trois épingles sont **au chiffre près** celles du
+> PO, et `legal_entity = 'herder'` est toujours là.
+>
+> ⚠️ **DEUX FAUX ROUGES / FAUX VERTS DANS MES PROPRES CONTRÔLES :**
+> 1. Ma requête de contrôle annonçait « épingles intactes : 0 » — c'était une
+>    comparaison de tuples `double precision` contre des littéraux `numeric`.
+>    Les données étaient justes ; la sonde mentait.
+> 2. **`bun run live` est resté VERT après l'ajout des deux statuts**, en
+>    annonçant « entities.status — 7 labels » : sa liste était figée à sept et
+>    il ne posait jamais la question pour les deux nouveaux. Corrigé à neuf.
+>    L'API, elle, les acceptait bien (probe REST : 200 / 200, et 400 sur un
+>    faux statut).
+>
+> ⚠️ **L'HISTORIQUE DES MIGRATIONS ÉTAIT DISJOINT, ET `db push` AURAIT VIDÉ LA
+> BASE.** Les migrations d'AK/AM/AN avaient été appliquées par le MCP, qui les
+> horodate au moment de l'application : les 21 fichiers locaux apparaissaient
+> tous comme « jamais appliqués », y compris
+> `20260909000200_reset_business_data.sql`. Réaligné par
+> `migration repair --status applied` (21 versions) + 21 fichiers-jalons sans
+> instruction, qui **conservent** la trace MCP au lieu de l'effacer comme le
+> CLI le proposait. Récit : `docs/ao/ao-historique-migrations-avant.md`.
+>
+> ⚠️ **`anon` avait le droit sur `activity_reports`** — non par la migration,
+> qui ne le demandait pas, mais par les privilèges PAR DÉFAUT du schéma
+> `public`. Révoqué : la règle AO0 tient maintenant en vrai, et le refus est
+> par DROIT et non seulement par politique.
+>
+> **AO0.5 répondu** : `lo-yanum-prod` est **ACTIVE_HEALTHY**, pas en pause.
+>
+> ## ⛔ AO0.4/AO0.5 — CE QUI AVAIT BLOQUÉ (résolu ci-dessus)
 >
 > **C'est le seul point de la passe qui n'est pas livré, et il n'est pas
 > contournable depuis cette session.** Le brief dit « Passe par l'outil MCP

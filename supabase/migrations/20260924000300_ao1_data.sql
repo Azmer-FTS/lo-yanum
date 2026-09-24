@@ -1,30 +1,35 @@
 -- ===========================================================================
--- AO1 (2026-09-24) — LA REPRISE DES 25 EXPLOITATIONS, COMME MIGRATION.
+-- AO1 (2026-09-24) — LA REPRISE DES 25 EXPLOITATIONS.
 -- ===========================================================================
 --
--- ⚠️ POURQUOI UNE MIGRATION POUR DES DONNÉES. Le CLI n'a pas de commande
---    « exécute ce fichier sur le distant » (`supabase db` n'offre que diff,
---    dump, push, pull, reset, lint) et aucun mot de passe base n'est
---    disponible sur ce poste, donc `psql` est hors jeu. `db push` est le SEUL
---    chemin d'exécution, et il n'exécute que des migrations. Le contenu est
---    celui de `docs/ao/ao1-prod.sql`, au mot près, moins son `begin/commit`
---    (le CLI enveloppe déjà chaque fichier : un `commit` imbriqué fermerait
---    sa transaction au milieu du fichier).
+-- Contenu de `docs/ao/ao1-prod.sql`, moins son `begin/commit` (l'appelant
+-- enveloppe déjà chaque migration), plus un bloc de contrôle final.
 --
 -- ⚠️ ELLE DOIT PASSER APRÈS `20260924000100`, ET PAS DANS LA MÊME
---    TRANSACTION. Postgres refuse d'utiliser une valeur d'enum ajoutée dans
---    la transaction qui l'a ajoutée — et cette migration pose
---    `not_relevant_now` et `on_hold`. Si `db push` venait à enrober TOUT le
---    lot dans une seule transaction, elle échouerait proprement sur
---    « unsafe use of new value of enum type » et TOUT serait annulé : c'est
---    un échec récupérable, pas une base à moitié écrite. Dans ce cas :
---    pousser `20260924000100` seule d'abord, puis celle-ci.
+--    TRANSACTION : Postgres refuse d'utiliser une valeur d'enum ajoutée dans
+--    la transaction qui l'a ajoutée, et celle-ci pose `not_relevant_now` et
+--    `on_hold`.
 --
--- ⚠️ 15 `update` ET 10 `insert`, ET LES `update` N'ÉCRIVENT QUE LES 14
---    COLONNES DU PORTAIL. Tout ce que le PO a posé dans l'app depuis AK1 —
---    photo, visite, תיק אתר, שטחים שמירה accepté d'un geste, contacts —
---    n'est pas touché. `notes` n'est écrit que sur les 7 lignes dont le
---    portail porte un commentaire.
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ★★ CE QU'UNE MISE À JOUR ÉCRASE, ET CE QU'ELLE SE CONTENTE DE COMBLER.
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- ⚠️ VU EN LISANT LA BASE AVANT D'ÉCRIRE. Trois fiches (`farm-ak1-11`
+--    הר-שמש, `-12` זעק, `-13` מרגי) portaient un `updated_at` du jour : le PO
+--    avait DÉPLACÉ LEURS ÉPINGLES à la main — de 45 à 210 m — et choisi
+--    `legal_entity = 'herder'` sur מרגי, que le portail ne connaît pas. Une
+--    reprise « le portail fait autorité » aurait remis les trois épingles à
+--    la coordonnée du tableur et effacé son choix, sans que rien ne le dise.
+--
+--   · nom, statut, nature, surfaces          → le portail fait autorité
+--   · legal_entity, farmer_name/phone/id_no  → le portail COMBLE un vide
+--   · lat / lng / position_missing           → l'épingle du PO gagne TOUJOURS
+--   · notes                                  → seulement les 7 lignes
+--                                              dont le portail porte un
+--                                              commentaire
+--
+-- Tout le reste de la fiche — photo, visite, תיק אתר, שטחים שמירה, contacts,
+-- שם החווה — n'est pas même nommé ici, donc pas touché.
 -- ===========================================================================
 
 -- AO1 — la reprise des 25 exploitations du portail, pour `lo-yanum-prod`.
@@ -47,17 +52,17 @@ update public.entities set
   name = 'גד״ש דביר',
   status = 'to_contact',
   type = 'unknown',
-  lat = 31.7683,
-  lng = 35.2137,
-  position_missing = true,
   farm_dunams = 0,
   grazing_dunams = 0,
   farm_dunams_manual = false,
   grazing_dunams_manual = false,
-  legal_entity = 'gadash',
-  farmer_name = 'לירן',
-  farmer_phone = '052-6067361',
-  farmer_id_no = null
+  legal_entity = coalesce(nullif('gadash', ''), legal_entity),
+  farmer_name = coalesce(nullif('לירן', ''), farmer_name),
+  farmer_phone = coalesce(nullif('052-6067361', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif(null, ''), farmer_id_no),
+  lat = case when position_missing then 31.7683 else lat end,
+  lng = case when position_missing then 35.2137 else lng end,
+  position_missing = case when position_missing then true else false end
 where id = 'farm-ak1-01';
 
 -- MISE À JOUR farm-ak1-02 — גד״ש להב
@@ -65,17 +70,17 @@ update public.entities set
   name = 'גד״ש להב',
   status = 'not_relevant_now',
   type = 'unknown',
-  lat = 31.7683,
-  lng = 35.2137,
-  position_missing = true,
   farm_dunams = 0,
   grazing_dunams = 0,
   farm_dunams_manual = false,
   grazing_dunams_manual = false,
-  legal_entity = 'gadash',
-  farmer_name = 'אמיר פרץ',
-  farmer_phone = '054-6614679',
-  farmer_id_no = null,
+  legal_entity = coalesce(nullif('gadash', ''), legal_entity),
+  farmer_name = coalesce(nullif('אמיר פרץ', ''), farmer_name),
+  farmer_phone = coalesce(nullif('054-6614679', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif(null, ''), farmer_id_no),
+  lat = case when position_missing then 31.7683 else lat end,
+  lng = case when position_missing then 35.2137 else lng end,
+  position_missing = case when position_missing then true else false end,
   notes = 'יש להם שומר קבוע'
 where id = 'farm-ak1-02';
 
@@ -84,17 +89,17 @@ update public.entities set
   name = 'גד״ש רוחמה',
   status = 'to_contact',
   type = 'unknown',
-  lat = 31.7683,
-  lng = 35.2137,
-  position_missing = true,
   farm_dunams = 0,
   grazing_dunams = 0,
   farm_dunams_manual = false,
   grazing_dunams_manual = false,
-  legal_entity = 'gadash',
-  farmer_name = 'רו (מנכ״ל)',
-  farmer_phone = '054-7995091',
-  farmer_id_no = null
+  legal_entity = coalesce(nullif('gadash', ''), legal_entity),
+  farmer_name = coalesce(nullif('רו (מנכ״ל)', ''), farmer_name),
+  farmer_phone = coalesce(nullif('054-7995091', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif(null, ''), farmer_id_no),
+  lat = case when position_missing then 31.7683 else lat end,
+  lng = case when position_missing then 35.2137 else lng end,
+  position_missing = case when position_missing then true else false end
 where id = 'farm-ak1-03';
 
 -- MISE À JOUR farm-ak1-04 — גד״ש שומריה
@@ -102,17 +107,17 @@ update public.entities set
   name = 'גד״ש שומריה',
   status = 'to_contact',
   type = 'unknown',
-  lat = 31.7683,
-  lng = 35.2137,
-  position_missing = true,
   farm_dunams = 0,
   grazing_dunams = 0,
   farm_dunams_manual = false,
   grazing_dunams_manual = false,
-  legal_entity = 'gadash',
-  farmer_name = 'אלחנן',
-  farmer_phone = '054-6673596',
-  farmer_id_no = null
+  legal_entity = coalesce(nullif('gadash', ''), legal_entity),
+  farmer_name = coalesce(nullif('אלחנן', ''), farmer_name),
+  farmer_phone = coalesce(nullif('054-6673596', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif(null, ''), farmer_id_no),
+  lat = case when position_missing then 31.7683 else lat end,
+  lng = case when position_missing then 35.2137 else lng end,
+  position_missing = case when position_missing then true else false end
 where id = 'farm-ak1-04';
 
 -- MISE À JOUR farm-ak1-06 — חוות אורחאן
@@ -120,17 +125,17 @@ update public.entities set
   name = 'חוות אורחאן',
   status = 'to_contact',
   type = 'unknown',
-  lat = 31.7683,
-  lng = 35.2137,
-  position_missing = true,
   farm_dunams = 0,
   grazing_dunams = 0,
   farm_dunams_manual = false,
   grazing_dunams_manual = false,
-  legal_entity = null,
-  farmer_name = 'צביקה שלמה',
-  farmer_phone = '050-6270230',
-  farmer_id_no = null
+  legal_entity = coalesce(nullif(null, ''), legal_entity),
+  farmer_name = coalesce(nullif('צביקה שלמה', ''), farmer_name),
+  farmer_phone = coalesce(nullif('050-6270230', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif(null, ''), farmer_id_no),
+  lat = case when position_missing then 31.7683 else lat end,
+  lng = case when position_missing then 35.2137 else lng end,
+  position_missing = case when position_missing then true else false end
 where id = 'farm-ak1-06';
 
 -- MISE À JOUR farm-ak1-07 — משק ישי ספז
@@ -138,17 +143,17 @@ update public.entities set
   name = 'משק ישי ספז',
   status = 'to_contact',
   type = 'unknown',
-  lat = 31.2056556,
-  lng = 34.3175954,
-  position_missing = false,
   farm_dunams = 0,
   grazing_dunams = 0,
   farm_dunams_manual = false,
   grazing_dunams_manual = false,
-  legal_entity = null,
-  farmer_name = 'ישי ספז',
-  farmer_phone = '052-6067344',
-  farmer_id_no = null
+  legal_entity = coalesce(nullif(null, ''), legal_entity),
+  farmer_name = coalesce(nullif('ישי ספז', ''), farmer_name),
+  farmer_phone = coalesce(nullif('052-6067344', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif(null, ''), farmer_id_no),
+  lat = case when position_missing then 31.2056556 else lat end,
+  lng = case when position_missing then 34.3175954 else lng end,
+  position_missing = case when position_missing then false else false end
 where id = 'farm-ak1-07';
 
 -- MISE À JOUR farm-ak1-08 — קיבוץ להב — חווה טיפולית
@@ -156,17 +161,17 @@ update public.entities set
   name = 'קיבוץ להב — חווה טיפולית',
   status = 'to_contact',
   type = 'unknown',
-  lat = 31.7683,
-  lng = 35.2137,
-  position_missing = true,
   farm_dunams = 0,
   grazing_dunams = 0,
   farm_dunams_manual = false,
   grazing_dunams_manual = false,
-  legal_entity = null,
-  farmer_name = 'ניר',
-  farmer_phone = '052-6841023',
-  farmer_id_no = null
+  legal_entity = coalesce(nullif(null, ''), legal_entity),
+  farmer_name = coalesce(nullif('ניר', ''), farmer_name),
+  farmer_phone = coalesce(nullif('052-6841023', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif(null, ''), farmer_id_no),
+  lat = case when position_missing then 31.7683 else lat end,
+  lng = case when position_missing then 35.2137 else lng end,
+  position_missing = case when position_missing then true else false end
 where id = 'farm-ak1-08';
 
 -- CRÉATION farm-ao1-01 — 01 - תומר שדה משה חקלאות
@@ -214,17 +219,17 @@ update public.entities set
   name = '05 - גד״ש תדהר — החווה של אופק',
   status = 'verbal_ok',
   type = 'unknown',
-  lat = 31.379197,
-  lng = 34.626769,
-  position_missing = false,
   farm_dunams = 0,
   grazing_dunams = 0,
   farm_dunams_manual = false,
   grazing_dunams_manual = false,
-  legal_entity = 'gadash',
-  farmer_name = 'אופק',
-  farmer_phone = '052-5321261',
-  farmer_id_no = null
+  legal_entity = coalesce(nullif('gadash', ''), legal_entity),
+  farmer_name = coalesce(nullif('אופק', ''), farmer_name),
+  farmer_phone = coalesce(nullif('052-5321261', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif(null, ''), farmer_id_no),
+  lat = case when position_missing then 31.379197 else lat end,
+  lng = case when position_missing then 34.626769 else lng end,
+  position_missing = case when position_missing then false else false end
 where id = 'farm-ak1-05';
 
 -- CRÉATION farm-ao1-09 — 06 - חוות נעמ״א
@@ -242,17 +247,17 @@ update public.entities set
   name = 'בקר מושב אמציה',
   status = 'signed',
   type = 'livestock',
-  lat = 31.5406799,
-  lng = 34.9001389,
-  position_missing = false,
   farm_dunams = 0,
   grazing_dunams = 26000,
   farm_dunams_manual = false,
   grazing_dunams_manual = true,
-  legal_entity = null,
-  farmer_name = 'שימי רוזן',
-  farmer_phone = '050-8851686',
-  farmer_id_no = '570014266'
+  legal_entity = coalesce(nullif(null, ''), legal_entity),
+  farmer_name = coalesce(nullif('שימי רוזן', ''), farmer_name),
+  farmer_phone = coalesce(nullif('050-8851686', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif('570014266', ''), farmer_id_no),
+  lat = case when position_missing then 31.5406799 else lat end,
+  lng = case when position_missing then 34.9001389 else lng end,
+  position_missing = case when position_missing then false else false end
 where id = 'farm-ak1-09';
 
 -- MISE À JOUR farm-ak1-10 — דני בראל לכיש
@@ -260,17 +265,17 @@ update public.entities set
   name = 'דני בראל לכיש',
   status = 'verbal_ok',
   type = 'livestock',
-  lat = 31.571997,
-  lng = 34.8312961,
-  position_missing = false,
   farm_dunams = 0,
   grazing_dunams = 21000,
   farm_dunams_manual = false,
   grazing_dunams_manual = true,
-  legal_entity = null,
-  farmer_name = 'דני בראל',
-  farmer_phone = '050-9688262',
-  farmer_id_no = null
+  legal_entity = coalesce(nullif(null, ''), legal_entity),
+  farmer_name = coalesce(nullif('דני בראל', ''), farmer_name),
+  farmer_phone = coalesce(nullif('050-9688262', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif(null, ''), farmer_id_no),
+  lat = case when position_missing then 31.571997 else lat end,
+  lng = case when position_missing then 34.8312961 else lng end,
+  position_missing = case when position_missing then false else false end
 where id = 'farm-ak1-10';
 
 -- MISE À JOUR farm-ak1-11 — חוות הר-שמש
@@ -278,17 +283,17 @@ update public.entities set
   name = 'חוות הר-שמש',
   status = 'signed',
   type = 'mixed',
-  lat = 31.3926639,
-  lng = 34.8401384,
-  position_missing = false,
   farm_dunams = 200,
   grazing_dunams = 1000,
   farm_dunams_manual = true,
   grazing_dunams_manual = true,
-  legal_entity = 'moshav_shitufi',
-  farmer_name = 'הר שמש מושב שיתופי',
-  farmer_phone = '055-6849979',
-  farmer_id_no = '570055368'
+  legal_entity = coalesce(nullif('moshav_shitufi', ''), legal_entity),
+  farmer_name = coalesce(nullif('הר שמש מושב שיתופי', ''), farmer_name),
+  farmer_phone = coalesce(nullif('055-6849979', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif('570055368', ''), farmer_id_no),
+  lat = case when position_missing then 31.3926639 else lat end,
+  lng = case when position_missing then 34.8401384 else lng end,
+  position_missing = case when position_missing then false else false end
 where id = 'farm-ak1-11';
 
 -- MISE À JOUR farm-ak1-12 — חוות זעק
@@ -296,17 +301,17 @@ update public.entities set
   name = 'חוות זעק',
   status = 'verbal_ok',
   type = 'mixed',
-  lat = 31.4131105,
-  lng = 34.8640847,
-  position_missing = false,
   farm_dunams = 100,
   grazing_dunams = 1000,
   farm_dunams_manual = true,
   grazing_dunams_manual = true,
-  legal_entity = null,
-  farmer_name = 'דוד דהן',
-  farmer_phone = '052-3231260',
-  farmer_id_no = null
+  legal_entity = coalesce(nullif(null, ''), legal_entity),
+  farmer_name = coalesce(nullif('דוד דהן', ''), farmer_name),
+  farmer_phone = coalesce(nullif('052-3231260', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif(null, ''), farmer_id_no),
+  lat = case when position_missing then 31.4131105 else lat end,
+  lng = case when position_missing then 34.8640847 else lng end,
+  position_missing = case when position_missing then false else false end
 where id = 'farm-ak1-12';
 
 -- MISE À JOUR farm-ak1-13 — חוות מרגי
@@ -314,17 +319,17 @@ update public.entities set
   name = 'חוות מרגי',
   status = 'signed',
   type = 'livestock',
-  lat = 31.670483,
-  lng = 35.034498,
-  position_missing = false,
   farm_dunams = 0,
   grazing_dunams = 5000,
   farm_dunams_manual = false,
   grazing_dunams_manual = true,
-  legal_entity = null,
-  farmer_name = 'יונתן מרגי',
-  farmer_phone = '050-8912840',
-  farmer_id_no = '021985189'
+  legal_entity = coalesce(nullif(null, ''), legal_entity),
+  farmer_name = coalesce(nullif('יונתן מרגי', ''), farmer_name),
+  farmer_phone = coalesce(nullif('050-8912840', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif('021985189', ''), farmer_id_no),
+  lat = case when position_missing then 31.670483 else lat end,
+  lng = case when position_missing then 35.034498 else lng end,
+  position_missing = case when position_missing then false else false end
 where id = 'farm-ak1-13';
 
 -- MISE À JOUR farm-ak1-14 — חוות ניסים
@@ -332,17 +337,17 @@ update public.entities set
   name = 'חוות ניסים',
   status = 'on_hold',
   type = 'unknown',
-  lat = 31.4908558,
-  lng = 34.6739116,
-  position_missing = false,
   farm_dunams = 0,
   grazing_dunams = 0,
   farm_dunams_manual = false,
   grazing_dunams_manual = false,
-  legal_entity = null,
-  farmer_name = 'ניסים פרץ',
-  farmer_phone = '050-5404866',
-  farmer_id_no = null,
+  legal_entity = coalesce(nullif(null, ''), legal_entity),
+  farmer_name = coalesce(nullif('ניסים פרץ', ''), farmer_name),
+  farmer_phone = coalesce(nullif('050-5404866', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif(null, ''), farmer_id_no),
+  lat = case when position_missing then 31.4908558 else lat end,
+  lng = case when position_missing then 34.6739116 else lng end,
+  position_missing = case when position_missing then false else false end,
   notes = 'קיבל 6 בני שירות לכל השנה'
 where id = 'farm-ak1-14';
 
@@ -351,17 +356,17 @@ update public.entities set
   name = 'משק שלם',
   status = 'verbal_ok',
   type = 'agriculture',
-  lat = 31.4729415,
-  lng = 34.6425293,
-  position_missing = false,
   farm_dunams = 1000,
   grazing_dunams = 0,
   farm_dunams_manual = true,
   grazing_dunams_manual = false,
-  legal_entity = null,
-  farmer_name = 'רותם',
-  farmer_phone = '055-0505055',
-  farmer_id_no = null
+  legal_entity = coalesce(nullif(null, ''), legal_entity),
+  farmer_name = coalesce(nullif('רותם', ''), farmer_name),
+  farmer_phone = coalesce(nullif('055-0505055', ''), farmer_phone),
+  farmer_id_no = coalesce(nullif(null, ''), farmer_id_no),
+  lat = case when position_missing then 31.4729415 else lat end,
+  lng = case when position_missing then 34.6425293 else lng end,
+  position_missing = case when position_missing then false else false end
 where id = 'farm-ak1-15';
 
 
@@ -369,38 +374,42 @@ where id = 'farm-ak1-15';
 -- LE CONTRÔLE, RENDU PAR LE SERVEUR LUI-MÊME.
 -- ---------------------------------------------------------------------------
 --
--- ⚠️ UN `select` NE SE VOIT PAS DANS LA SORTIE DE `db push`, UN `raise notice`
---    SI. Et c'est une mesure côté serveur, pas une sonde qui relit ce qu'elle
---    vient d'écrire depuis le client.
---
 -- `farm-ak1-*` ne peut pas avoir été CRÉÉ ici (ce sont des `update`), et
 -- `farm-ao1-*` ne peut pas avoir été MIS À JOUR (ils n'existaient pas) : les
 -- deux comptes disent donc exactement « mises à jour » et « créations ».
 do $$
 declare
-  n_ak1 int; n_ao1 int; n_total int; n_hold int; n_away int; n_barel record;
+  n_ak1 int; n_ao1 int; n_total int; n_hold int; n_away int;
+  n_pin int;
 begin
   select count(*) filter (where id like 'farm-ak1-%'),
          count(*) filter (where id like 'farm-ao1-%'),
-         count(*)
-    into n_ak1, n_ao1, n_total
-    from public.entities;
-  select count(*) filter (where status = 'on_hold'),
+         count(*),
+         count(*) filter (where status = 'on_hold'),
          count(*) filter (where status = 'not_relevant_now')
-    into n_hold, n_away
+    into n_ak1, n_ao1, n_total, n_hold, n_away
     from public.entities;
-  select lat, lng into n_barel from public.entities where id = 'farm-ak1-10';
+
+  /* Les trois épingles que le PO a posées le 24/09 : intactes ? */
+  select count(*) into n_pin from public.entities
+   where id in ('farm-ak1-11','farm-ak1-12','farm-ak1-13')
+     and (lat, lng) in ((31.3928483502347, 34.8429416589365),
+                        (31.4127807449566, 34.86694138306),
+                        (31.6692346391939, 35.0331576786348));
 
   raise notice 'AO1 — MISES A JOUR (farm-ak1-*) : %', n_ak1;
   raise notice 'AO1 — CREATIONS   (farm-ao1-*) : %', n_ao1;
   raise notice 'AO1 — entities au total        : %', n_total;
   raise notice 'AO2 — on_hold : % · not_relevant_now : %', n_hold, n_away;
-  raise notice 'AO1 — dani barel (mise a jour reelle) lat=% lng=%', n_barel.lat, n_barel.lng;
+  raise notice 'AO1 — epingles du PO preservees : % / 3', n_pin;
 
   if n_ak1 <> 15 or n_ao1 <> 10 then
     raise exception 'AO1 — attendu 15 mises a jour et 10 creations, obtenu % et %', n_ak1, n_ao1;
   end if;
   if n_hold <> 1 or n_away <> 1 then
     raise exception 'AO2 — attendu 1 on_hold et 1 not_relevant_now, obtenu % et %', n_hold, n_away;
+  end if;
+  if n_pin <> 3 then
+    raise exception 'AO1 — une epingle posee par le PO a ete ecrasee (% / 3)', n_pin;
   end if;
 end $$;
