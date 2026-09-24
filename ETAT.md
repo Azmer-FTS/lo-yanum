@@ -206,7 +206,8 @@
 > | `bun run aodata` | **82/82** — appariement, coordonnées, ת״ז, parcelles, pondéré, sur le jeu construit ET l'aller-retour par `data/rows.ts` |
 > | `bun run aopass` | **111/111** — A238, A243–A249 |
 > | `bun run aoui` | **40/40** — A243, A244, A245, A247 dans Chromium et WebKit, PDF téléchargé et son en-tête lu |
-> | `bun run aocaptures` | captures du DÉPLOYÉ, 3 viewports × clair/sombre, avec les 25 vraies lignes |
+> | `bun run aoui` sur le **DÉPLOYÉ `e56c8f1`** | **40/40** |
+> | `bun run aocaptures` sur le **DÉPLOYÉ** | **30 captures**, 3 viewports × clair/sombre, 0 erreur de page, avec les 25 vraies lignes (`docs/screenshots/aopass/deployed/`) |
 > | rejouées | `anpass` 27 · `ampass` 50 · `alpass` 40 · `akpass` 56 · `accept` 177 · `report` 86 · `mapping` 33 · `persist` 110 · `tokens` · `contrast` · `anui` 156 |
 >
 > **Deux choses que SEULES les captures du build réel ont montrées :**

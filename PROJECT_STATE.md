@@ -37,7 +37,7 @@
   jour » (bloquant, traité en premier). **Correctif livré et poussé**
   (`f94c32a`) ; `ajupdate` 38/38 en local ; **sur le déployé 11/11** avec un
   vrai déploiement pendant que l'app restait ouverte (`ETAT.md` §AJ0.4).
-- **Déployé** : les deux URLs servent le dernier commit d'AN (`cfb834a` pour le code ; `anui` 155/155). Avant : `c1453d5` (AM) — `amui` 77/77 et 36 captures sur le déployé. Avant AM : les deux URLs servaient le commit d'AL. **Vérifié SUR LE
+- **Déployé** : les deux URLs servent **`e56c8f1`** (AO) — `aoui` **40/40** sur le déployé, 30 captures (`docs/screenshots/aopass/deployed/`). Avant : `cfb834a` (AN) — `anui` 155/155. Avant : `c1453d5` (AM) — `amui` 77/77 et 36 captures sur le déployé. Avant AM : les deux URLs servaient le commit d'AL. **Vérifié SUR LE
   DÉPLOYÉ** : `alui` 54/54 (le geste d'AL1 et l'écran de localisation) et
   `alcaptures` 330/330 avec 54 captures
   (`docs/screenshots/alpass/deployed/`).
