@@ -115,6 +115,21 @@ for (const vp of VIEWPORTS) {
     await go('/coordinator/farms', 5000)
     await shot(page, `${tag}-1-vingt-cinq-exploitations`)
 
+    /**
+     * ★★ AO6 — ET LA MÊME LISTE DÉROULÉE, PARCE QUE LA PREMIÈRE N'EN MONTRE
+     *    QUE VINGT. `useProgressive` s'arrête à 20 lignes et propose
+     *    « הצגת עוד 5 » : la capture ci-dessus, qui s'appelle pourtant
+     *    « vingt-cinq », montre 20 tuiles et le compteur « 25/25 ». Un PO qui
+     *    compte les lignes y trouve cinq exploitations manquantes. La porte
+     *    A250 mesure les deux états ; voici le second en image.
+     */
+    const more = page.getByRole('button', { name: /הצגת עוד/ })
+    if ((await more.count()) > 0) {
+      await more.first().click()
+      await page.waitForTimeout(1500)
+      await shot(page, `${tag}-1b-liste-deroulee`)
+    }
+
     await go(`/coordinator/farms/${LAHAV}`, 4000)
     await shot(page, `${tag}-2-lo-relevanti-karega`)
 

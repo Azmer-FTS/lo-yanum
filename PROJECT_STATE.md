@@ -46,12 +46,23 @@ trace au lieu de l'effacer). Récit : `docs/ao/ao-historique-migrations-avant.md
 
 ## Où en est-on
 
-- **Branche** : `main`. **Dernier commit** : voir `git log --oneline -1`
-  (passe **AO**, 2026-09-24).
-- **Passe AO TERMINÉE** (2026-09-24) — autorisations d'API dans les migrations,
-  reprise des 25 exploitations, deux statuts hors compteurs, RAPPORT
-  D'ACTIVITÉ. Portes : `bun run aodata` (82), `bun run aopass` (111),
-  `bun run aoui` (40) ; captures `bun run aocaptures`.
+- **Branche** : `main`, à jour avec `origin/main` — **rien en attente de push**
+  (vérifier : `git log --oneline origin/main..HEAD` doit être vide).
+  **Dernier commit de la passe AO6** : voir `git log --oneline -1`. Le commit
+  DÉPLOYÉ et vérifié est **`226e6f8`** ; les commits postérieurs ne touchent
+  que `ETAT.md`, `PROJECT_STATE.md`, `scripts/` et `docs/` — **aucun `src/`**,
+  donc le bundle servi est le même code.
+- ⚠️ **L'arbre de travail porte des captures modifiées à chaque passe**
+  (`docs/screenshots/**`) : c'est normal, ce sont les portes qui les
+  réécrivent. **Ne JAMAIS `git add -A` pendant qu'une porte tourne.**
+- **Passe AO TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-09-24) — autorisations d'API
+  dans les migrations, reprise des 25 exploitations, deux statuts hors
+  compteurs, RAPPORT D'ACTIVITÉ. Portes : `bun run aodata` (82),
+  `bun run aopass` (111), `bun run aoui` (40), **`bun run aodeployed` (35)** ;
+  captures `bun run aocaptures` (36).
+  ✅ **DÉPLOYÉ : les deux URLs servent `226e6f8`** et tout a été revérifié
+  DESSUS — `aodeployed` 35/35, `aoui` 40/40, `aocaptures` 36 captures / 0
+  erreur, `live` 49/49, `contrast` vert. Détail : `ETAT.md` § AO6.
   ✅ **APPLIQUÉ SUR `lo-yanum-prod`** (2026-09-24) via le MCP rebranché sur
   l'organisation Azmer-FTS : **15 mises à jour, 10 créations, 25 en base**,
   9 910 dounams pondérés, `bun run live` **49/49**, `entities.status` à neuf
@@ -76,7 +87,7 @@ trace au lieu de l'effacer). Récit : `docs/ao/ao-historique-migrations-avant.md
   jour » (bloquant, traité en premier). **Correctif livré et poussé**
   (`f94c32a`) ; `ajupdate` 38/38 en local ; **sur le déployé 11/11** avec un
   vrai déploiement pendant que l'app restait ouverte (`ETAT.md` §AJ0.4).
-- **Déployé** : les deux URLs servent **`e56c8f1`** (AO) — `aoui` **40/40** sur le déployé, 30 captures (`docs/screenshots/aopass/deployed/`). Avant : `cfb834a` (AN) — `anui` 155/155. Avant : `c1453d5` (AM) — `amui` 77/77 et 36 captures sur le déployé. Avant AM : les deux URLs servaient le commit d'AL. **Vérifié SUR LE
+- **Déployé** : les deux URLs servent **`226e6f8`** (AO6, 2026-09-24) — `aodeployed` **35/35**, `aoui` **40/40**, **36 captures** (`docs/screenshots/aopass/deployed/`), 0 erreur de page. Avant : `e56c8f1` (AO) — `aoui` 40/40, 30 captures. Avant : `cfb834a` (AN) — `anui` 155/155. Avant : `c1453d5` (AM) — `amui` 77/77 et 36 captures sur le déployé. Avant AM : les deux URLs servaient le commit d'AL. **Vérifié SUR LE
   DÉPLOYÉ** : `alui` 54/54 (le geste d'AL1 et l'écran de localisation) et
   `alcaptures` 330/330 avec 54 captures
   (`docs/screenshots/alpass/deployed/`).
@@ -139,6 +150,9 @@ toute migration qui crée une table et ne porte pas ses `grant` est rouge.
 | AO5.1 protection | ✅ Trois fiches portaient un `updated_at` du jour (épingles déplacées à la main, `legal_entity='herder'`) : les mises à jour ont été rendues PROTECTRICES avant d'écrire. Vérifié après coup, les trois épingles sont au chiffre près celles du PO. Règle 9bis |
 | AO5.2 portes figées | ✅ `live.ts` (statuts figés à 7) et `contrast.ts` (teintes sans les deux neuves, **qui échouaient** à 3,94 et 3,57 pour 4,5) corrigées. Teintes reprises : `#A87741` sépia, `#6D7BC6` indigo. `contrast` : All pairs meet WCAG AA. Règles 10 et 11 |
 | AO5.3 `anon` | ✅ `anon` avait le droit sur `activity_reports` par les privilèges PAR DÉFAUT du schéma `public` (pas par la migration) : **révoqué**. Le refus est par DROIT et non seulement par politique |
+| AO6 déploiement | ✅ **POUSSÉ ET DÉPLOYÉ** : `52f506c..226e6f8` sur `origin/main`, les deux URLs servent `226e6f8`. Revérifié DESSUS : `aodeployed` 35/35, `aoui` 40/40, 36 captures / 0 erreur, `live` 49/49, `contrast` vert. Le rouge du déploiement précédent était un `curl: (35)` de la porte d'APRÈS publication, pas une régression |
+| AO6.1 porte neuve | ✅ `scripts/aodeployed.ts` (A250·A251·A252). Première écriture pointée sur `/demo` : **19 rouges sur 20**, elle mesurait le jeu de démonstration. Règle 12 |
+| AO6.2 plafond de liste | ✅ `useProgressive` s'arrête à **20** : la capture « vingt-cinq » montrait 20 tuiles sous « 25/25 ». A250 mesure les deux états ; capture `…-1b-liste-deroulee.png` ajoutée (30 → 36) |
 | AO4 portes | ✅ `aodata` 82/82 · `aopass` 111/111 · `aoui` 40/40 ; rejouées : `anpass` 27, `ampass` 50, `alpass` 40, `akpass` 56, `accept` 177, `report` 86, `mapping` 33, `persist` 110, `anui` 156, `amui` 77, `akui` 119 |
 
 Décisions AO posées :
@@ -192,6 +206,28 @@ Décisions AO posées :
    Les deux listes à tenir aujourd'hui :
    - `scripts/live.ts`, tableau `cases` — les enums du schéma ;
    - `scripts/contrast.ts`, tableau `HUES` — les teintes sémantiques.
+12. ★★ **UNE PORTE DE DONNÉES POINTÉE SUR `/demo` NE MESURE RIEN.** Le jumeau
+   est construit SANS paire Supabase (`SUPABASE_CONFIGURED === false`,
+   `src/data/config.ts`) : il tourne sur son jeu de démonstration et ne parle
+   **jamais** à `*.supabase.co` — or `installFakeSupabase` intercepte
+   précisément ces requêtes. Pointée là, une porte mesure 14 fiches inventées
+   en croyant en mesurer 25, **et elle peut très bien être verte**.
+
+   | Ce qu'on prouve | L'URL |
+   |---|---|
+   | un écran, une fenêtre, un PDF, une teinte, un clavier | **`/demo`** (pas de porte à ouvrir) |
+   | ce que les DONNÉES donnent à voir | **l'app réelle** + session fabriquée + `FakeDb` |
+
+   Le signe qui a trahi le défaut : un pondéré d'objectif de **2 728**, qui
+   n'était le chiffre d'AUCUNE des deux bases. Un nombre qu'on ne sait pas
+   expliquer est un défaut de porte tant qu'on ne l'a pas expliqué.
+
+13. ★ **UN PLAFOND DE LISTE SE PROUVE, IL NE SE DÉCOUVRE PAS SUR UNE CAPTURE.**
+   `useProgressive` n'affiche que **20** lignes : une liste de 25 s'ouvre sur
+   20 tuiles sous un compteur « 25/25 ». Toute porte qui compte des lignes
+   mesure les deux états et déroule avant de conclure ; toute capture d'une
+   liste longue a sa jumelle déroulée.
+
 11. ⚠️ **`--text-on-accent` EST UN QUASI-NOIR** (`#0B1220`), pas du blanc. Un
    aplat de couleur qui échoue le contraste est donc trop SOMBRE, et la
    correction est de l'ÉCLAIRCIR. Contre-intuitif, et je m'y suis trompé une
@@ -274,7 +310,18 @@ bun run typecheck && bun run aodata && bun run aopass && bun run aoui && bun run
 
 # La base RÉELLE (schéma seul, aucun mot de passe, aucune ligne lue) :
 bun run live
+
+# CE QUE LE PO VOIT SUR L'URL SERVIE (les 25, les compteurs, les deux teintes) :
+BASE_URL=https://azmer-fts.github.io/lo-yanum bun run aodeployed   # 35/35
+BASE_URL=https://azmer-fts.github.io/lo-yanum bun run aoui         # 40/40
+BASE_URL=https://azmer-fts.github.io/lo-yanum bun run aocaptures   # 36 captures
 ```
+
+⚠️ **`aodeployed` et `aocaptures` visent l'APP RÉELLE ; `aoui` vise `/demo`.**
+Ce n'est pas un détail de style : le jumeau est construit SANS paire Supabase,
+donc il ne parle jamais à `*.supabase.co` et `installFakeSupabase` n'y
+intercepte rien. Une porte de DONNÉES pointée sur `/demo` mesure les 14 fiches
+inventées en croyant mesurer les 25 (règle 12 ci-dessous).
 
 ⚠️ `bun run live` et `bun run contrast` sont les deux portes qui ÉNUMÈRENT à
 la main : les relire quand on ajoute une valeur à un ensemble fermé (règle 10
@@ -474,6 +521,27 @@ d'être déployé.
 - Les deux violations A57 de `AnchorMap.tsx` signalées en §36.6 ont été
   corrigées en U4 ; celles qui restent sont ailleurs.
 
+## Ce que le PO fait à l'ouverture (AO6, 2026-09-24)
+
+1. **Ouvrir l'app** : https://azmer-fts.github.io/lo-yanum/ — et laisser la
+   mise à jour se poser. Si le bandeau « גרסה חדשה » apparaît, le toucher ;
+   sinon, fermer l'app (balayer dans le sélecteur d'apps) et la rouvrir UNE
+   fois. Vérifier ensuite הגדרות › נתונים › « גרסת האפליקציה » : elle doit
+   dire **`226e6f8`** ou plus récent.
+2. **חוות** : le compteur en tête dit **25/25**. ⚠️ **La liste n'affiche que
+   20 lignes au départ** — le bouton « הצגת עוד 5 » en bas montre les cinq
+   dernières. Ce n'est pas une perte de données (règle 13).
+3. **Les deux statuts neufs** se posent depuis l'édition d'une fiche
+   (« לא רלוונטי כרגע », « בהמתנה »). Une fiche qui les porte **reste dans
+   les listes** et **sort des compteurs et de l'objectif**.
+4. **דוח פעילות**, bouton sur le tableau de bord : deux sorties, WhatsApp
+   (שליחה/העתקה) et PDF (הורדה). **Sortir** un rapport l'enregistre —
+   l'ouvrir ne l'enregistre pas — et le suivant se comparera à celui-là.
+5. **Ce qui lui reste à faire à la main** : « שטחים שמירה » sur les fiches qui
+   ont une surface (l'app la PROPOSE, elle n'écrit rien sans geste — point
+   0quater), et la signature dans l'app des trois fiches « נחתם » sur papier
+   (point 0ter).
+
 ## Questions ouvertes / ce qui attend le PO
 
 0-AO. ✅ **CLOS (2026-09-24).** Les trois fichiers sont appliqués sur
@@ -483,18 +551,23 @@ d'être déployé.
    Toujours lancer `supabase migration list` AVANT tout push, et ne pousser
    que si la liste en attente est exactement ce qu'on croit.
 
-0-AO ter. **Les captures du déployé datent d'AVANT la reprise en base.**
-   `docs/screenshots/aopass/deployed/` montre les 25 exploitations servies au
-   bundle déployé par `FakeDb`. Maintenant qu'elles sont VRAIMENT en base, une
-   capture du déployé lu par la production serait une preuve plus forte — mais
-   elle demande la session du PO (son mot de passe, §14.4), donc elle ne peut
-   pas être prise ici. Les chiffres, eux, sont vérifiés en SQL.
+0-AO ter. ⛔ **CLOS — LIMITE ASSUMÉE, PAS UN POINT OUVERT (PO, 2026-09-24).**
+   Il ne donnera pas son mot de passe de coordinateur, et il a raison : c'est
+   le sien (§14.4). **Les captures actuelles suffisent, il l'a dit.** Ce
+   qu'elles sont : le bundle DÉPLOYÉ, avec les 25 vraies lignes servies par
+   `FakeDb` dans la forme EXACTE de ce qui est en base. Ce qui est prouvé
+   autrement, et mieux : les chiffres sont vérifiés **en SQL** sur
+   `lo-yanum-prod` (25 lignes, 8 830 / 54 000 / 9 910, les 3 épingles, `herder`
+   — tableau `ETAT.md` §AO6.3) et `bun run live` lit le schéma déployé sans
+   mot de passe. **Ne pas redemander cet accès.**
 
-0-AO bis. **« Les cinq lignes שדה משה 02 à 05 » — à confirmer.** Le tableau du
-   portail porte QUATRE voisins (02–05) sans contact ni ת״ז, plus
-   « 01 - תומר שדה משה חקלאות » qui est la fiche de תומר (contact, ח״פ,
-   280 dounams, un autre point). Cinq lignes au secteur, quatre voisins. Si le
-   PO voulait dire cinq VOISINS, il en manque un dans la source.
+0-AO bis. ✅ **CLOS — CONFIRMÉ PAR LE PO (2026-09-24).** Les quatre lignes
+   שדה משה sont **justes**. Il a bien créé quatre voisins de תומר שדה משה,
+   **plus la fiche de תומר lui-même** à des coordonnées voisines — quatre
+   voisins (02–05) sans contact ni ת״ז partageant un point, et
+   « 01 - תומר שדה משה חקלאות » (contact, ח״פ, 280 dounams, un autre point).
+   **Il n'en manque aucun.** ⛔ Ne pas chercher un cinquième voisin : « les
+   cinq lignes 02 à 05 » du brief comptait תומר avec les voisins.
 
 0bis. ✅ **CLOS PAR AM.** Le formulaire n'exige plus ni יישוב ni épingle : les
    quinze fiches d'AK1 s'enregistrent telles quelles. Sur celles qui ont une

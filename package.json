@@ -118,7 +118,8 @@
     "aodata": "bun run scripts/aodata.ts",
     "aopass": "bun run scripts/aopass.ts",
     "aoui": "bun run scripts/aoui.ts",
-    "aocaptures": "bun run scripts/aocaptures.ts"
+    "aocaptures": "bun run scripts/aocaptures.ts",
+    "aodeployed": "bun run scripts/aodeployed.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "0.2.3",

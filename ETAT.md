@@ -2,7 +2,97 @@
 
 > 🏁 **PASSE AO — REPRISE DES DONNÉES TERRAIN ET RAPPORT D'ACTIVITÉ. 2026-09-24. LIRE EN PREMIER.**
 >
-> Ordre suivi : AO0 → AO1 → AO2 → AO3 → AO4.
+> Ordre suivi : AO0 → AO1 → AO2 → AO3 → AO4 → AO5 → **AO6**.
+>
+> ## ✅ AO6 (2026-09-24) — POUSSÉ, DÉPLOYÉ, ET VÉRIFIÉ SUR L'URL SERVIE
+>
+> **Les quatre commits d'AO sont sur `origin/main`** (`52f506c..226e6f8`) et le
+> déploiement a réussi : les DEUX URLs servent **`226e6f8`**
+> (`version.json` — app `09:58:08Z`, jumeau `09:57:55Z`).
+>
+> ⚠️ **Le déploiement précédent (`52f506c`) était en échec, et ce n'était PAS
+> une régression.** Le job avait publié ; c'est la porte d'APRÈS publication
+> (« served », qui relit la tuile z14 de Jérusalem par une requête de plage)
+> qui a rendu `curl: (35) Recv failure: Connection reset by peer`. Un incident
+> de réseau chez GitHub, rejoué vert dans la foulée sur `226e6f8`. **Un rouge
+> de déploiement se lit AVANT d'être traité comme un défaut du produit.**
+>
+> ### Ce qui a été mesuré sur le déployé `226e6f8`
+>
+> | Porte | Résultat |
+> |---|---|
+> | `bun run aodeployed` (**neuve**, A250·A251·A252) | **35/35** sur l'app déployée |
+> | `bun run aoui` | **40/40** sur le déployé, Chromium ET WebKit |
+> | `bun run aocaptures` | **36 captures**, 3 viewports × clair/sombre, **0 erreur de page** |
+> | `bun run live` | **49/49** sur `lo-yanum-prod` |
+> | `bun run contrast` | All pairs meet WCAG AA |
+> | SQL de contrôle sur `lo-yanum-prod` | 25 lignes, 8 830 / 54 000 / **9 910**, 3 épingles intactes, `herder` tenu |
+>
+> ### ★★ AO6.1 — LA PORTE VISAIT LE JUMEAU `/demo`, ET NE MESURAIT RIEN
+>
+> Première écriture d'`aodeployed`, pointée sur `…/lo-yanum/demo` comme
+> `aoui` : **19 rouges sur 20**, dont « les 25 noms sont absents ». Le défaut
+> était la porte.
+>
+> ⚠️ **Le jumeau de démonstration est construit SANS paire Supabase**
+> (`SUPABASE_CONFIGURED === false`, `src/data/config.ts`) : il tourne sur son
+> jeu de démonstration et **ne parle jamais à `*.supabase.co`**. Or
+> `installFakeSupabase` intercepte précisément ces requêtes — sur le jumeau,
+> elle n'intercepte RIEN. La porte mesurait les 14 fiches inventées en croyant
+> mesurer les 25 ; le pondéré de l'objectif y valait **2 728**, qui n'est le
+> chiffre d'aucune des deux bases, et c'est ce qui a mis la puce à l'oreille.
+>
+> **La règle, et les deux chemins ne se remplacent pas :**
+>
+> | Ce qu'on veut prouver | L'URL à viser |
+> |---|---|
+> | l'écran, la fenêtre, le PDF, une teinte, un clavier | **`/demo`** — le sélecteur d'identité remplace la porte, aucune session n'est nécessaire |
+> | ce que les DONNÉES donnent à voir (compte, statuts, surfaces, compteurs) | **l'app réelle** — elle est configurée, donc la session fabriquée ouvre la porte et `FakeDb` répond à la place de Supabase (c'est le chemin d'`aocaptures`) |
+>
+> ### ★★ AO6.2 — UNE LISTE QUI DIT « 25/25 » N'AFFICHE QUE VINGT LIGNES
+>
+> `useProgressive` s'arrête à **20** éléments et propose « הצגת עוד 5 ». La
+> capture `…-1-vingt-cinq-exploitations.png`, qui porte pourtant ce nom depuis
+> AO4, montre **20 tuiles** sous un compteur « 25/25 ». Un PO qui compte les
+> lignes y trouve cinq exploitations manquantes ; rien n'est perdu, la liste
+> se déroule.
+>
+> **A250 mesure les DEUX états** (20 au premier rendu, 25 après le geste) et
+> `aocaptures` ajoute `…-1b-liste-deroulee.png` — d'où 36 captures au lieu de
+> 30. ★ **Un plafond de liste est une chose à PROUVER, pas à découvrir sur une
+> capture** : toute porte qui compte des lignes déroule d'abord.
+>
+> ### AO6.3 — LES TROIS ÉPINGLES ET `herder`, RELUS SUR LA PRODUCTION
+>
+> | Fiche | Épingle en base | Épingle du portail | Écart | `legal_entity` |
+> |---|---|---|---|---|
+> | חוות הר-שמש | 31.3928483502347 / 34.8429416589365 | 31.3926639 / 34.8401384 | **267 m** | `moshav_shitufi` |
+> | חוות זעק | 31.4127807449566 / 34.86694138306 | 31.4131105 / 34.8640847 | **274 m** | (vide) |
+> | חוות מרגי | 31.6692346391939 / 35.0331576786348 | 31.670483 / 35.034498 | **188 m** | ★ **`herder`** |
+>
+> Les trois `updated_at` sont ceux de l'écriture d'AO5 (09:37:54Z) et
+> identiques : **rien n'a bougé depuis**. L'écart au portail PROUVE que la
+> reprise n'a pas écrasé l'épingle du PO — `position_missing` était `false`,
+> donc la clause `case when position_missing` n'a pas touché `lat`/`lng`.
+>
+> ⚠️ **AO5 annonçait « de 45 à 210 m » ; la mesure d'ici donne 188 à 274 m.**
+> L'écart porté ici est celui à la coordonnée du PORTAIL (la seule référence
+> qui survit à la passe) ; le chiffre d'AO5 comparait à l'épingle d'AK1. Les
+> deux mesurent des choses différentes — c'est celui-ci qui vaut, parce qu'il
+> est reproductible par la requête ci-dessus.
+>
+> ### AO6.4 — CE QUE LE PO A TRANCHÉ, ET QUI N'EST PLUS OUVERT
+>
+> 1. **שדה משה : les quatre lignes sont justes.** Voir §AO1 ci-dessous —
+>    quatre voisins + la fiche de תומר. **Il n'en manque aucun.**
+> 2. **Les captures depuis la VRAIE base : abandonnées, et c'est une LIMITE
+>    ASSUMÉE, pas un point ouvert.** Le PO ne donnera pas son mot de passe de
+>    coordinateur, et il a raison : c'est le sien (§14.4). Les captures
+>    actuelles — bundle déployé, données réelles servies par `FakeDb` dans la
+>    forme EXACTE des lignes en base — lui suffisent. ★ **Ce qui reste prouvé
+>    par un autre chemin, et mieux** : les chiffres sont vérifiés EN SQL sur
+>    `lo-yanum-prod` (tableau AO6.3 et les totaux), et `bun run live` lit le
+>    schéma déployé sans mot de passe. ⛔ **Ne pas rouvrir, ne pas redemander.**
 >
 > ## ✅ AO5 (2026-09-24, même jour) — APPLIQUÉ SUR `lo-yanum-prod`
 >
@@ -183,12 +273,19 @@
 > comme IDENTITÉ entre deux lignes neuves. Un appariement ambigu n'est jamais
 > tranché en silence : il devient une création ET une ligne de rapport.
 >
-> ⚠️ **« Les cinq lignes 02 à 05 » : le brief se contredit, le tableau
-> tranche.** Le tableau porte QUATRE voisins (02, 03, 04, 05) sans contact ni
-> ת״ז, plus « 01 - תומר שדה משה חקלאות » qui est SA fiche à lui — contact, ח״פ,
-> 280 dounams, et surtout un AUTRE point (34.794011 contre 34.813112). Les
-> cinq lignes du secteur sont donc 01 à 05 ; les quatre qui partagent un point
-> sont 02 à 05. **À faire confirmer par le PO.**
+> ✅ **CONFIRMÉ PAR LE PO (2026-09-24, AO6) — LES QUATRE LIGNES שדה משה SONT
+> JUSTES, ET CE N'EST PLUS UNE QUESTION OUVERTE.** Sa réponse, mot pour mot :
+> il a bien créé **quatre voisins** de תומר שדה משה, **plus la fiche de תומר
+> lui-même** à des coordonnées voisines. **Il n'en manque aucun.** La lecture
+> du tableau était donc la bonne : QUATRE voisins (02, 03, 04, 05) sans
+> contact ni ת״ז, partageant un point, plus « 01 - תומר שדה משה חקלאות » qui
+> est SA fiche — contact, ח״פ, 280 dounams, et un AUTRE point (34.794011
+> contre 34.813112). Cinq lignes au secteur, quatre voisins.
+>
+> ⛔ **NE PAS ROUVRIR, ET NE PAS CHERCHER UN CINQUIÈME VOISIN.** La formule
+> « les cinq lignes 02 à 05 » du brief comptait la fiche de תומר avec les
+> voisins ; elle ne décrivait pas une source incomplète. Rien à importer,
+> rien à réclamer.
 >
 > ★★ **UNE MISE À JOUR N'ÉCRIT QUE LES COLONNES DU PORTAIL.** La première
 > version du générateur émettait un `insert … on conflict do update set` qui
