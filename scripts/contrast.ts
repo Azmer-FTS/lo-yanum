@@ -100,6 +100,14 @@ const HUES = [
   'farm-signed',
   'farm-active',
   'farm-declined',
+  /* ★★ AO2 (2026-09-24) — LES DEUX STATUTS NEUFS, ET ILS MANQUAIENT.
+     Cette liste est énumérée À LA MAIN : elle est restée verte pendant toute
+     la passe AO sans jamais mesurer `farm-not-relevant-now` ni `farm-on-hold`.
+     Une pastille de statut dont personne n'a mesuré l'encre est une pastille
+     illisible qui passe la porte. Même défaut que la liste figée à sept de
+     `scripts/live.ts` — voir la règle dans PROJECT_STATE.md. */
+  'farm-not-relevant-now',
+  'farm-on-hold',
 ]
 
 function buildChecks(theme: 'light' | 'dark'): Check[] {

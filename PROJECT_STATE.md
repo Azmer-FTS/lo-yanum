@@ -4,6 +4,46 @@
 > pouvoir repartir d'ici sans poser de question. Le récit complet des décisions
 > est dans `ETAT.md`, en tête (la passe la plus récente est la première).
 
+## ⚠️ LIRE EN PREMIER — LES DEUX COMPTES DE CETTE MACHINE (AO, 2026-09-24)
+
+Cette machine porte **deux comptes Supabase et deux comptes GitHub**, et une
+passe sur deux se perd dedans. Les deux gestes d'ouverture :
+
+```
+# 1. Supabase — outil MCP
+list_organizations  →  DOIT rendre jkqsqykhquutilldvcsv (« Azmer-FTS »)
+```
+Si c'est `uzrwmkwkulcighotovyb` (« mgnamsellem »), **aucune écriture n'est
+possible** : ce second compte porte am-phone-prod, am-kids, am-smart-catalog
+et socialpay, et ⛔ **il ne faut JAMAIS y toucher**. La reconnexion se fait
+par l'interface (Connecteurs / `/mcp`), pas par le terminal.
+
+```bash
+# 2. GitHub
+gh auth status   # l'actif DOIT être Azmer-FTS, sinon `git push` rend un 403
+gh auth switch --user Azmer-FTS
+```
+
+**Le chemin d'écriture en base est `apply_migration` du MCP**, comme en AK, AM
+et AN. Le CLI ne sert qu'à lire (`migration list`) : il n'a pas de commande
+« exécute ce fichier », le `pooler-url` mis en cache par `supabase link` ne
+porte pas de mot de passe (donc pas de `psql`), `db dump` exige Docker
+(absent), et le classificateur refuse `supabase db push`.
+
+## ⛔ `supabase db push` AURAIT VIDÉ LA PRODUCTION — LA RÈGLE
+
+L'historique des migrations de `lo-yanum-prod` et `supabase/migrations/` ont
+DIVERGÉ : AK, AM et AN ont été appliquées par le MCP, qui horodate au moment
+de l'application et non avec le nom du fichier. Résultat, en AO,
+`supabase migration list` montrait **24 fichiers « jamais appliqués »**, dont
+`20260909000200_reset_business_data.sql` — qui fait `delete from` sur les
+26 tables métier.
+
+**`supabase migration list` AVANT tout push, et ne pousser QUE si la liste en
+attente est exactement ce qu'on croit.** Réaligné en AO (21 versions marquées
+`applied` + 21 fichiers-jalons portant les numéros MCP, qui CONSERVENT la
+trace au lieu de l'effacer). Récit : `docs/ao/ao-historique-migrations-avant.md`.
+
 ## Où en est-on
 
 - **Branche** : `main`. **Dernier commit** : voir `git log --oneline -1`
@@ -95,6 +135,10 @@ toute migration qui crée une table et ne porte pas ses `grant` est rouge.
 | AO1 ת״ז / ח״פ | ✅ `identityNumberKind()` : 9 chiffres commençant par **5** → ח״פ (la règle « 57 » du brief ratait `557457074`). Aucune validation, aucun refus ; zéro initial `021985189` tenu |
 | AO2 statuts | ✅ `not_relevant_now` · `on_hold` ; `countsTowardProgramme()` — `declined` y passe aussi ; teintes clair/sombre ; les 3 écrans lisent `ALL_FARM_STATUSES` de @core ; migration `20260924000100` |
 | AO3 rapport | ✅ `core/activity.ts` (les chiffres), `ui/report/activityText.ts` (WhatsApp), `activityDraw.ts` (PDF multi-pages), `activityHistory.ts` + `data/activityReports.ts` (conservés), `ActivityReportButton.tsx`. Migration `20260924000200` (table neuve AVEC ses `grant`) |
+| AO5 prod | ✅ **APPLIQUÉ sur `lo-yanum-prod`** le 2026-09-24 par `apply_migration` : **15 mises à jour, 10 créations, 25 en base**, 9 910 pondérés, 6 sans position, 7 commentaires, 1 `on_hold`, 1 `not_relevant_now`. `bun run live` 49/49, `entities.status` à **9** étiquettes. Projet **ACTIVE_HEALTHY** (AO0.5 répondu) |
+| AO5.1 protection | ✅ Trois fiches portaient un `updated_at` du jour (épingles déplacées à la main, `legal_entity='herder'`) : les mises à jour ont été rendues PROTECTRICES avant d'écrire. Vérifié après coup, les trois épingles sont au chiffre près celles du PO. Règle 9bis |
+| AO5.2 portes figées | ✅ `live.ts` (statuts figés à 7) et `contrast.ts` (teintes sans les deux neuves, **qui échouaient** à 3,94 et 3,57 pour 4,5) corrigées. Teintes reprises : `#A87741` sépia, `#6D7BC6` indigo. `contrast` : All pairs meet WCAG AA. Règles 10 et 11 |
+| AO5.3 `anon` | ✅ `anon` avait le droit sur `activity_reports` par les privilèges PAR DÉFAUT du schéma `public` (pas par la migration) : **révoqué**. Le refus est par DROIT et non seulement par politique |
 | AO4 portes | ✅ `aodata` 82/82 · `aopass` 111/111 · `aoui` 40/40 ; rejouées : `anpass` 27, `ampass` 50, `alpass` 40, `akpass` 56, `accept` 177, `report` 86, `mapping` 33, `persist` 110, `anui` 156, `amui` 77, `akui` 119 |
 
 Décisions AO posées :
@@ -122,6 +166,36 @@ Décisions AO posées :
    message WhatsApp est en hébreu écrit en dur, jamais via `t()`.
 9. **Un préfixe d'ordre n'est pas une initiale** (A249) : `initialsOf` le
    retire, le NOM le garde. Vu sur les captures du build réel.
+9bis. ★★ **UNE REPRISE DE DONNÉES NE TOUCHE JAMAIS CE QUE LE PO A SAISI À LA
+   MAIN.** Trouvé en RELISANT la base avant d'écrire : trois fiches portaient
+   un `updated_at` du jour — épingles déplacées à la main (45 à 210 m) et
+   `legal_entity = 'herder'` choisi sur חוות מרגי, que le portail ignore. Une
+   reprise « la source fait autorité » les aurait écrasées en silence. Trois
+   régimes de colonne, et tout fichier de reprise futur les reprend :
+
+   | Colonne | Régime |
+   |---|---|
+   | nom, statut, nature, surfaces | la source fait autorité |
+   | `legal_entity`, `farmer_name/phone/id_no` | la source COMBLE un vide : `coalesce(nullif('<val>',''), col)` |
+   | `lat`, `lng`, `position_missing` | **l'épingle du PO gagne TOUJOURS** : `case when position_missing then <val> else col end` |
+   | `notes` | écrite seulement si la source porte un commentaire |
+   | tout le reste (photo, visite, תיק אתר, שטחים שמירה, contacts, שם החווה) | **jamais nommé, donc jamais touché** |
+
+   ⚠️ **ET ON RELIT LA BASE AVANT D'ÉCRIRE, PAS APRÈS.** Aucune porte locale
+   ne pouvait voir ces trois lignes : elles n'existent que sur la production.
+10. ★★ **UNE PORTE QUI ÉNUMÈRE À LA MAIN LES VALEURS D'UN ENSEMBLE FERMÉ RESTE
+   VERTE QUAND L'ENSEMBLE GRANDIT.** Deux trouvées en AO, aucune ne s'était
+   signalée : `scripts/live.ts` (liste de statuts figée à 7 alors que la base
+   en portait 9) et `scripts/contrast.ts` (liste de teintes sans les deux
+   neuves — **qui échouaient**, 3,94 et 3,57 pour 4,5 requis). **Ajouter une
+   valeur à un ensemble fermé = faire le tour des portes qui l'énumèrent.**
+   Les deux listes à tenir aujourd'hui :
+   - `scripts/live.ts`, tableau `cases` — les enums du schéma ;
+   - `scripts/contrast.ts`, tableau `HUES` — les teintes sémantiques.
+11. ⚠️ **`--text-on-accent` EST UN QUASI-NOIR** (`#0B1220`), pas du blanc. Un
+   aplat de couleur qui échoue le contraste est donc trop SOMBRE, et la
+   correction est de l'ÉCLAIRCIR. Contre-intuitif, et je m'y suis trompé une
+   fois avant de mesurer.
 10. ⚠️ **En RTL, `+`, `/` et `(` sont des caractères NEUTRES.** Toute valeur
    numérique composée se dessine en `direction: 'ltr'` (canvas) ou s'encadre
    d'une marque U+200E (texte). Et une PARENTHÈSE est miroitée : ne jamais
@@ -196,8 +270,15 @@ Décisions AM posées :
 cd "/Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM"
 bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
-bun run typecheck && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run akpass && bun run accept
+bun run typecheck && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run contrast && bun run akpass && bun run accept
+
+# La base RÉELLE (schéma seul, aucun mot de passe, aucune ligne lue) :
+bun run live
 ```
+
+⚠️ `bun run live` et `bun run contrast` sont les deux portes qui ÉNUMÈRENT à
+la main : les relire quand on ajoute une valeur à un ensemble fermé (règle 10
+ci-dessous).
 
 ## Ce qui est fait dans AL
 
@@ -401,6 +482,13 @@ d'être déployé.
    `20260909000200_reset_business_data.sql`, qui VIDE les 26 tables métier.
    Toujours lancer `supabase migration list` AVANT tout push, et ne pousser
    que si la liste en attente est exactement ce qu'on croit.
+
+0-AO ter. **Les captures du déployé datent d'AVANT la reprise en base.**
+   `docs/screenshots/aopass/deployed/` montre les 25 exploitations servies au
+   bundle déployé par `FakeDb`. Maintenant qu'elles sont VRAIMENT en base, une
+   capture du déployé lu par la production serait une preuve plus forte — mais
+   elle demande la session du PO (son mot de passe, §14.4), donc elle ne peut
+   pas être prise ici. Les chiffres, eux, sont vérifiés en SQL.
 
 0-AO bis. **« Les cinq lignes שדה משה 02 à 05 » — à confirmer.** Le tableau du
    portail porte QUATRE voisins (02–05) sans contact ni ת״ז, plus

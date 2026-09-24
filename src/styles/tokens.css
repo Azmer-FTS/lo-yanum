@@ -194,9 +194,14 @@
   --farm-declined: 239 79 40; /* #EF4F28 orange    */
   /* AO2 — les deux portes que le PO ne ferme pas. Deux teintes SOURDES :
      ces fiches doivent se voir sans peser dans une liste, parce qu'elles ne
-     pèsent pas dans les compteurs. */
-  --farm-not-relevant-now: 150 106 58; /* #966A3A sépia    */
-  --farm-on-hold: 92 104 168; /* #5C68A8 indigo    */
+     pèsent pas dans les compteurs.
+     ⚠️ ÉCLAIRCIES APRÈS MESURE (AO5) : les premières valeurs (#966A3A,
+     #5C68A8) échouaient « texte-sur-accent » à 3,94 et 3,57 pour 4,5 requis —
+     `--text-on-accent` est un QUASI-NOIR, donc un vif trop sombre est le
+     défaut, pas un vif trop clair. `bun run contrast` ne les mesurait pas :
+     sa liste de teintes est énumérée à la main et ne les contenait pas. */
+  --farm-not-relevant-now: 168 119 65; /* #A87741 sépia    */
+  --farm-on-hold: 109 123 198; /* #6D7BC6 indigo    */
 
   --farm-to-contact-ink: 60 72 84; /* #3C4854 */
   --farm-contacted-ink: 126 78 3; /* #7E4E03 */

@@ -34,15 +34,36 @@
 > Vérifié après coup : les trois épingles sont **au chiffre près** celles du
 > PO, et `legal_entity = 'herder'` est toujours là.
 >
-> ⚠️ **DEUX FAUX ROUGES / FAUX VERTS DANS MES PROPRES CONTRÔLES :**
-> 1. Ma requête de contrôle annonçait « épingles intactes : 0 » — c'était une
->    comparaison de tuples `double precision` contre des littéraux `numeric`.
->    Les données étaient justes ; la sonde mentait.
-> 2. **`bun run live` est resté VERT après l'ajout des deux statuts**, en
->    annonçant « entities.status — 7 labels » : sa liste était figée à sept et
->    il ne posait jamais la question pour les deux nouveaux. Corrigé à neuf.
->    L'API, elle, les acceptait bien (probe REST : 200 / 200, et 400 sur un
->    faux statut).
+> ## ★★ AO5.2 — LES PORTES FIGÉES : DEUX TROUVÉES, ET C'EST UNE FAMILLE
+>
+> **Une porte qui énumère À LA MAIN les valeurs d'un ensemble fermé reste
+> VERTE quand l'ensemble grandit.** Elle ne ment pas sur ce qu'elle mesure :
+> elle ne mesure simplement jamais la chose neuve. Deux cas dans cette passe,
+> trouvés en les cherchant — aucun ne s'était signalé :
+>
+> 1. **`scripts/live.ts`** annonçait « entities.status — 7 labels » alors que
+>    la base en portait neuf : sa liste était codée à sept. Passée à neuf.
+>    (L'API, elle, acceptait bien les deux nouveaux — probe REST : 200/200, et
+>    400 sur un faux statut. Le défaut était la porte, pas le schéma.)
+> 2. **`scripts/contrast.ts`** énumère les teintes une par une et ne contenait
+>    pas `farm-not-relevant-now` ni `farm-on-hold` : **mes deux couleurs
+>    neuves ont traversé toute la passe sans jamais être mesurées.** Ajoutées
+>    — et elles ÉCHOUAIENT : « texte-sur-accent » à **3,94** et **3,57** pour
+>    4,5 requis, en clair, seules des neuf teintes à échouer.
+>
+> ★ **ET LA CAUSE DE L'ÉCHEC EST CONTRE-INTUITIVE, D'OÙ LA MESURE.**
+> `--text-on-accent` est un **quasi-noir** (`#0B1220`), pas du blanc : un vif
+> trop SOMBRE est le défaut, et la correction est d'ÉCLAIRCIR. J'avais d'abord
+> assombri, en raisonnant sur du texte blanc. Valeurs retenues :
+> `#966A3A → #A87741` (sépia) et `#5C68A8 → #6D7BC6` (indigo), qui satisfont
+> les trois contraintes à la fois (encre sur lavis 15 %, pastille sur fond,
+> texte sur aplat), en clair comme en sombre. `bun run contrast` : **All pairs
+> meet WCAG AA.**
+>
+> ⚠️ **Une troisième, dans mon propre SQL de contrôle** : « épingles
+> intactes : 0 » venait d'une comparaison de tuples `double precision` contre
+> des littéraux `numeric`. Les données étaient justes ; c'est la sonde qui
+> mentait. Relu colonne par colonne pour en être sûr.
 >
 > ⚠️ **L'HISTORIQUE DES MIGRATIONS ÉTAIT DISJOINT, ET `db push` AURAIT VIDÉ LA
 > BASE.** Les migrations d'AK/AM/AN avaient été appliquées par le MCP, qui les
@@ -60,39 +81,67 @@
 >
 > **AO0.5 répondu** : `lo-yanum-prod` est **ACTIVE_HEALTHY**, pas en pause.
 >
-> ## ⛔ AO0.4/AO0.5 — CE QUI AVAIT BLOQUÉ (résolu ci-dessus)
+> ## ⛔ AO0.4 — LE PARCOURS DU COMBATTANT VERS LA PRODUCTION (résolu, mais à relire)
 >
-> **C'est le seul point de la passe qui n'est pas livré, et il n'est pas
-> contournable depuis cette session.** Le brief dit « Passe par l'outil MCP
-> Supabase, qui a le bon compte, comme en AK et en AM ». Ce n'est plus vrai :
+> Cette machine porte **DEUX comptes de tout** — deux comptes Supabase, deux
+> comptes GitHub — et la passe a buté sur les deux. Ce qui suit est écrit pour
+> qu'une session neuve ne reperde pas la demi-journée.
+>
+> **1. Le MCP était sur le mauvais compte.** Le brief disait « passe par
+> l'outil MCP Supabase, qui a le bon compte, comme en AK et en AM ». Ce
+> n'était plus vrai :
 >
 > ```
 > list_organizations → [{ id: "uzrwmkwkulcighotovyb", name: "mgnamsellem" }]
-> list_projects      → am-kids, socialpay, mgnamsellem's Project,
->                      am-phone-prod, am-smart-catalog
 > get_project("lvrptqmkjikkkhcxocbe") → "You do not have permission"
 > ```
 >
-> L'outil MCP de cette session est connecté **au SECOND compte**, celui que le
-> brief interdit de toucher (AO0.4). `lo-yanum-prod` vit dans l'organisation
-> `jkqsqykhquutilldvcsv` et n'est **pas visible** d'ici. Le CLI `supabase` de
-> la machine est sur ce même second compte depuis AB (ETAT §AB). Il n'existe
-> donc, sur ce poste, **aucun chemin vers `lo-yanum-prod`**.
+> ⚠️ **PREMIER GESTE DE TOUTE PASSE QUI TOUCHE AUX DONNÉES :
+> `list_organizations`.** Si la réponse n'est pas `jkqsqykhquutilldvcsv`
+> (**Azmer-FTS**), aucune écriture n'est possible ; le second compte
+> (`mgnamsellem` : am-phone-prod, am-kids, am-smart-catalog, socialpay) ne
+> doit JAMAIS être touché. Résolu en le ré-autorisant depuis l'interface
+> (Connecteurs / `/mcp`) — pas depuis le terminal.
 >
-> ⛔ **Rien n'a été touché sur le second compte.** Trois appels en lecture
-> (`list_organizations`, `list_projects`, `get_project`) et zéro écriture.
+> **2. Le CLI `supabase`, une fois rebranché, ne suffisait pas non plus.**
+> `supabase db` n'a aucune commande « exécute ce fichier sur le distant »
+> (diff, dump, push, pull, reset, lint — c'est tout), et le `pooler-url` que
+> `supabase link` met en cache ne porte **que le nom d'utilisateur**, pas de
+> mot de passe : `psql` est hors jeu. `db dump` exige Docker, absent.
 >
-> **Ce qui est livré à la place, et qui est complet :**
-> - `docs/ao/ao1-prod.sql` — la reprise des 25, prête à coller dans le SQL
->   editor de `lo-yanum-prod`. 15 `update` (identifiants d'AK1 conservés) et
->   10 `insert`. Généré par `bun run aodata sql`, donc régénérable.
-> - les deux migrations (`20260924000100`, `20260924000200`), à appliquer avant.
-> - **les captures du DÉPLOYÉ montrent les 25 vraies lignes**, servies au
->   bundle servi par `FakeDb` dans la forme EXACTE que le SQL écrira
->   (`bun run aocaptures`). Ce n'est pas une maquette : c'est le bundle de
->   production lisant les lignes de production.
-> - **AO0.5 (actif ou en pause ?) est SANS RÉPONSE** : le statut d'un projet se
->   lit par l'API de gestion, qui refuse ce compte.
+> **3. Le classificateur bloque les écritures en production.** `supabase db
+> push` et `migration repair --status reverted` ont été refusés
+> (`[Production Deploy]`, `[Modify Shared Resources]`). `apply_migration` du
+> MCP, lui, passe — **c'est le chemin, et c'est celui d'AK, AM et AN.**
+>
+> **4. GitHub aussi a deux comptes.** `git push` rend
+> `Permission to Azmer-FTS/lo-yanum.git denied to mgnamsellem` tant que le
+> compte `gh` actif n'est pas le bon : `gh auth switch --user Azmer-FTS`.
+> (Laissé actif sur Azmer-FTS à la fin de cette passe.)
+>
+> ## ⚠️ AO0.4bis — `supabase db push` AURAIT VIDÉ LA PRODUCTION
+>
+> **À lire avant de pousser quoi que ce soit, un jour.** L'historique des
+> migrations de `lo-yanum-prod` et le dossier `supabase/migrations/` étaient
+> **entièrement disjoints** : AK, AM et AN avaient été appliquées par le MCP,
+> qui horodate une entrée AU MOMENT OÙ IL L'APPLIQUE et non avec le nom du
+> fichier. `supabase migration list` montrait donc **24 fichiers « jamais
+> appliqués »**, dont `20260909000200_reset_business_data.sql`, qui archive
+> puis fait `delete from` sur les 26 tables métier.
+>
+> ⛔ **Un `supabase db push` nu aurait détruit la base.** Il a été refusé par
+> le classificateur — mais il ne faut pas compter là-dessus.
+>
+> **La règle : `supabase migration list` AVANT tout push, et ne pousser que si
+> la liste en attente est EXACTEMENT ce qu'on croit.**
+>
+> Réalignement fait : `migration repair --status applied` sur les 21 versions
+> locales (preuve qu'elles étaient bien en place : `bun run live` 49/49 avant
+> toute écriture), puis **21 fichiers-jalons** sans instruction portant les
+> numéros MCP. Le CLI proposait de les EFFACER
+> (`migration repair --status reverted`) ; les jalons font l'inverse et
+> **conservent** la trace de ce qui a réellement tourné sur la production
+> entre AK et AN. Récit : `docs/ao/ao-historique-migrations-avant.md`.
 >
 > ## AO0 — LES AUTORISATIONS DANS LES MIGRATIONS
 >
