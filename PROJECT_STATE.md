@@ -60,7 +60,9 @@ trace au lieu de l'effacer). Récit : `docs/ao/ao-historique-migrations-avant.md
   compteurs, RAPPORT D'ACTIVITÉ. Portes : `bun run aodata` (82),
   `bun run aopass` (111), `bun run aoui` (40), **`bun run aodeployed` (35)** ;
   captures `bun run aocaptures` (36).
-  ✅ **DÉPLOYÉ : les deux URLs servent `226e6f8`** et tout a été revérifié
+  ✅ **DÉPLOYÉ** — dernier commit de CODE vérifié : **`226e6f8`** ; les commits
+  suivants ne touchent aucun `src/`. `aodeployed` rejouée verte (35/35) sur le
+  commit servi après le push de documentation. Tout a été revérifié
   DESSUS — `aodeployed` 35/35, `aoui` 40/40, `aocaptures` 36 captures / 0
   erreur, `live` 49/49, `contrast` vert. Détail : `ETAT.md` § AO6.
   ✅ **APPLIQUÉ SUR `lo-yanum-prod`** (2026-09-24) via le MCP rebranché sur

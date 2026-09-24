@@ -7,8 +7,19 @@
 > ## ✅ AO6 (2026-09-24) — POUSSÉ, DÉPLOYÉ, ET VÉRIFIÉ SUR L'URL SERVIE
 >
 > **Les quatre commits d'AO sont sur `origin/main`** (`52f506c..226e6f8`) et le
-> déploiement a réussi : les DEUX URLs servent **`226e6f8`**
-> (`version.json` — app `09:58:08Z`, jumeau `09:57:55Z`).
+> déploiement a réussi : les DEUX URLs ont servi **`226e6f8`**, sur lequel
+> toutes les mesures ci-dessous ont été prises.
+>
+> Le commit de documentation d'AO6 (`02d36b9`) a été poussé et déployé à son
+> tour ; **il ne touche AUCUN fichier de `src/`** (vérifié :
+> `git diff 226e6f8..02d36b9 --name-only | grep '^src/'` est vide), donc le
+> code servi est le même. `aodeployed` a tout de même été **rejouée sur
+> `02d36b9` une fois servi : 35/35**, aux mêmes chiffres à la décimale près.
+>
+> ★ **La règle qui évite la boucle** : un commit de documentation redéploie et
+> devient le commit servi. Ce qui est écrit ici est donc « le dernier commit
+> de CODE vérifié est `226e6f8` », pas un numéro qui périme à chaque
+> `git push` de `ETAT.md`.
 >
 > ⚠️ **Le déploiement précédent (`52f506c`) était en échec, et ce n'était PAS
 > une régression.** Le job avait publié ; c'est la porte d'APRÈS publication
