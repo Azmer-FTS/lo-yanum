@@ -1,0 +1,27 @@
+-- ===========================================================================
+-- AO (2026-09-24) — JALON D'HISTORIQUE, VOLONTAIREMENT SANS INSTRUCTION.
+-- ===========================================================================
+--
+-- ⛔ CE FICHIER N'EXÉCUTE RIEN, ET C'EST TOUT SON OBJET.
+--
+-- La version 20260831161210 a été inscrite dans
+-- `supabase_migrations.schema_migrations` de `lo-yanum-prod` par l'outil MCP
+-- Supabase, qui horodate une migration AU MOMENT OÙ IL L'APPLIQUE et non avec
+-- le nom du fichier. Le DDL correspondant vit donc dans l'un des fichiers
+-- datés de ce dossier (`202608…`, `202609…`), déjà appliqué.
+--
+-- Résultat : l'historique distant portait 21 versions sans fichier local, et
+-- `supabase db push` refusait de travailler
+-- (« Remote migration versions not found in local migrations directory »).
+--
+-- ★ LE CLI PROPOSE DE LES EFFACER (`migration repair --status reverted`).
+--   Ce jalon fait l'inverse et c'est délibéré : effacer ferait DISPARAÎTRE la
+--   trace de ce qui a réellement été appliqué sur la production entre AK et
+--   AN. Un fichier vide réconcilie les deux côtés en ne perdant rien.
+--
+-- ⚠️ NE PAS Y METTRE D'INSTRUCTION. Le travail réel est dans les fichiers
+--    nommés ; en dupliquer une ligne ici la rejouerait sur une base remontée
+--    à neuf. Le récit complet : `docs/ao/ao-historique-migrations-avant.md`.
+-- ===========================================================================
+
+select 1 where false;
