@@ -141,7 +141,14 @@ export function activityReportText(report: ActivityReport): string {
     push(`*מה זז מאז הדוח הקודם (${heDay(report.previous.period.to)})*`)
     push(`• יישויות: ${signed(d.farms)}`)
     push(`• דונם מעובד: ${signed(d.cultivatedDunams)} · מרעה: ${signed(d.grazingDunams)}`)
-    push(`• משוקלל: ${signed(d.weightedDunams)} (${signed(d.targetPercentPoints)} נק׳ אחוז)`)
+    /**
+     * ⚠️ PAS DE PARENTHÈSES AUTOUR D'UN MÉLANGE CHIFFRES/HÉBREU. Vu sur les
+     *    captures : « +7 750 (+8 נק׳ אחוז) » s'affichait
+     *    « +7,750 (+8) נק׳ אחוז) » — une parenthèse est MIROITÉE par
+     *    l'algorithme bidi et change de côté selon ce qu'elle entoure. Une
+     *    puce médiane (·) n'a pas de miroir.
+     */
+    push(`• משוקלל: ${signed(d.weightedDunams)} · ${signed(d.targetPercentPoints)} נק׳ אחוז`)
     push(`• נחתמו: ${signed(d.signed)} · עם מסמכים: ${signed(d.signedWithDocuments)}`)
     push(`• אנשי קשר: ${signed(d.contacts)}`)
     if (report.created.length > 0) push(`• נוספו: ${report.created.join(', ')}`)

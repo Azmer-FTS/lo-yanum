@@ -4,6 +4,7 @@ import { mkdirSync } from 'node:fs'
 
 import { FakeDb, installFakeSession, installFakeSupabase } from './fake-supabase'
 import { buildFarms } from './aodata'
+import { snapshotFarm, totalsOf } from '../src/core/activity'
 import { MAPPINGS } from '../src/data/rows'
 
 /**
@@ -39,27 +40,25 @@ console.log(
   `  ${ROWS.length} exploitations servies au bundle déployé (${pairing.updates.length} mises à jour, ${pairing.creations.length} créations)`,
 )
 
-/** Le rapport « précédent » qui rend la comparaison visible sur la capture. */
+/**
+ * Le rapport « précédent » qui rend la comparaison visible sur la capture.
+ *
+ * ⚠️ IL PORTE L'INSTANTANÉ DES QUINZE FICHES D'AK1, pas un tableau vide. Une
+ *    première version le laissait vide : les vingt-cinq apparaissaient alors
+ *    comme « נוספו », ce qui est faux et ce qu'une capture ne doit jamais
+ *    montrer. Avec les quinze, la ligne « נוספו » porte exactement les dix
+ *    créations — ce que le PO verra le jour où il sortira son rapport.
+ */
+const AK1 = farms.filter((f) => f.id.startsWith('farm-ak1-'))
 const PREVIOUS = [
   {
     id: 'ao-capture-precedent',
     period: { id: 'custom', from: '2026-08-01', to: '2026-08-31' },
     generatedAt: '2026-08-31T18:00:00.000Z',
     previousId: null,
-    totals: {
-      farms: 15,
-      offCount: 0,
-      cultivatedDunams: 1100,
-      grazingDunams: 53000,
-      weightedDunams: 2160,
-      targetWeighted: 100000,
-      targetPercent: 2,
-      signed: 3,
-      signedWithDocuments: 0,
-      signedAwaitingDocuments: 3,
-      contacts: 15,
-    },
-    farms: [],
+    /* Les quinze DANS L'ÉTAT D'AK1 : le pondéré d'alors était 2 160. */
+    totals: { ...totalsOf(AK1, 100000), weightedDunams: 2160, cultivatedDunams: 1100, grazingDunams: 53000 },
+    farms: AK1.map(snapshotFarm),
     body: 'הדוח של אוגוסט',
   },
 ]

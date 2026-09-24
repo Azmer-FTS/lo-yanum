@@ -495,5 +495,33 @@ section('A248 — les rapports conservés, et le choix du repère')
   check('le repère du rapport gardé est nommé', kept.previousId === (report.previous?.id ?? null))
 }
 
+// ---------------------------------------------------------------------------
+section('A249 — un préfixe d\'ordre n\'est pas une initiale')
+// ---------------------------------------------------------------------------
+/**
+ * ★ VU SUR LES CAPTURES DU BUILD RÉEL, pas déduit : dix des vingt-cinq noms du
+ *   portail commencent par « 0N - », et l'avatar de la liste rendait « 0- »
+ *   pour toutes les dix — dans un écran où l'avatar EST ce qui distingue une
+ *   ligne de la suivante du coin de l'œil.
+ */
+{
+  const { initialsOf } = await import('../src/core/photo')
+  check('« 01 - תומר שדה משה חקלאות » → les initiales de תומר שדה',
+    initialsOf('01 - תומר שדה משה חקלאות') === 'תש', initialsOf('01 - תומר שדה משה חקלאות'))
+  check('« 02 - שדה משה חקלאות » → שמ', initialsOf('02 - שדה משה חקלאות') === 'שמ',
+    initialsOf('02 - שדה משה חקלאות'))
+  check('« 05 - גד״ש תדהר — החווה של אופק » → גת',
+    initialsOf('05 - גד״ש תדהר — החווה של אופק') === 'גת',
+    initialsOf('05 - גד״ש תדהר — החווה של אופק'))
+  check('★ aucune des dix fiches préfixées ne rend « 0- »',
+    !['01 - א ב', '02 - ג ד', '07 - מושב איתן'].some((n) => initialsOf(n).startsWith('0')))
+  check('un nom SANS préfixe est inchangé (חוות מרגי)', initialsOf('חוות מרגי') === 'חמ')
+  check('un nom qui commence par un chiffre SANS tiret est inchangé',
+    initialsOf('2 חוות') === '2ח', initialsOf('2 חוות'))
+  check('★ un nom qui n\'est QUE son numéro ne devient pas « ? »',
+    initialsOf('03 - ') !== '?', initialsOf('03 - '))
+  check('un nom vide rend toujours « ? »', initialsOf('   ') === '?')
+}
+
 console.log(`\n  ${passed} passed, ${failed} failed`)
 process.exit(failed === 0 ? 0 : 1)

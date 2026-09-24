@@ -19,9 +19,23 @@ export const PHOTO_QUALITY = 0.82
 /**
  * Initials fallback. Takes the first letter of the first two words, which works
  * for "אריאל כהן" and for "חוות רתם" alike.
+ *
+ * ★★ AO1 (2026-09-24) — UN PRÉFIXE D'ORDRE N'EST PAS UNE INITIALE, ET C'EST
+ *    LES CAPTURES DU BUILD RÉEL QUI L'ONT MONTRÉ.
+ *
+ *    Le portail de l'association numérote ses lignes : « 01 - תומר שדה משה
+ *    חקלאות », « 02 - שדה משה חקלאות »… Dix des vingt-cinq fiches portaient
+ *    donc un avatar « ‎0- », identique pour toutes, dans une liste où l'avatar
+ *    EST ce qui distingue une ligne de la suivante du coin de l'œil.
+ *
+ * ⚠️ LE PRÉFIXE EST RETIRÉ POUR LES INITIALES SEULEMENT. Le NOM garde son
+ *    numéro partout ailleurs — c'est le nom du portail, et le PO s'y retrouve
+ *    par lui. Et si le nom n'est QUE son numéro (rien après le tiret), on
+ *    retombe sur le nom entier plutôt que de rendre « ? ».
  */
 export function initialsOf(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean)
+  const stripped = name.replace(/^\s*\d{1,3}\s*[-–—]\s*/u, '').trim()
+  const words = (stripped === '' ? name : stripped).trim().split(/\s+/).filter(Boolean)
   if (words.length === 0) return '?'
   if (words.length === 1) return words[0].slice(0, 2)
   return words[0][0] + words[1][0]

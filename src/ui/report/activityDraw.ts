@@ -274,7 +274,10 @@ export function drawActivityReport(report: ActivityReport): HTMLCanvasElement[] 
     sheet.row('יישויות', sign(d.farms))
     sheet.row('דונם מעובד', sign(d.cultivatedDunams))
     sheet.row('דונם מרעה', sign(d.grazingDunams))
-    sheet.row('דונם משוקלל', `${sign(d.weightedDunams)}  (${sign(d.targetPercentPoints)} נק׳ אחוז)`)
+    /* ⚠️ DEUX LIGNES, PAS UNE PARENTHÈSE : `row()` dessine sa valeur en LTR,
+       et « נק׳ אחוז » à l'intérieur d'un îlot LTR repartirait à l'envers. */
+    sheet.row('דונם משוקלל', sign(d.weightedDunams))
+    sheet.row('נקודות אחוז מהיעד', sign(d.targetPercentPoints))
     sheet.row('נחתמו', sign(d.signed))
     sheet.row('אנשי קשר', sign(d.contacts))
     sheet.gap(6)

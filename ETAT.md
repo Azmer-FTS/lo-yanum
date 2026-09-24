@@ -204,10 +204,22 @@
 > | Porte | Résultat |
 > |---|---|
 > | `bun run aodata` | **82/82** — appariement, coordonnées, ת״ז, parcelles, pondéré, sur le jeu construit ET l'aller-retour par `data/rows.ts` |
-> | `bun run aopass` | **103/103** — A238, A243–A248 |
-> | `bun run aoui` | **38/38** — A243, A244, A245, A247 dans Chromium et WebKit, PDF téléchargé et son en-tête lu |
+> | `bun run aopass` | **111/111** — A238, A243–A249 |
+> | `bun run aoui` | **40/40** — A243, A244, A245, A247 dans Chromium et WebKit, PDF téléchargé et son en-tête lu |
 > | `bun run aocaptures` | captures du DÉPLOYÉ, 3 viewports × clair/sombre, avec les 25 vraies lignes |
 > | rejouées | `anpass` 27 · `ampass` 50 · `alpass` 40 · `akpass` 56 · `accept` 177 · `report` 86 · `mapping` 33 · `persist` 110 · `tokens` · `contrast` · `anui` 156 |
+>
+> **Deux choses que SEULES les captures du build réel ont montrées :**
+> 1. **L'avatar de dix fiches sur vingt-cinq rendait « 0- ».** Le portail
+>    numérote ses lignes (« 01 - תומר שדה משה חקלאות ») et `initialsOf` prenait
+>    les deux premiers caractères — dans un écran où l'avatar EST ce qui
+>    distingue une ligne de la suivante du coin de l'œil. Le préfixe est
+>    maintenant retiré POUR LES INITIALES SEULEMENT ; le nom garde son numéro
+>    partout ailleurs, c'est le nom du portail. Porte **A249**.
+> 2. **« +7 750 (+8 נק׳ אחוז) » s'affichait « +7,750 (+8) נק׳ אחוז) ».** Une
+>    parenthèse est MIROITÉE par l'algorithme bidi et change de côté selon ce
+>    qu'elle entoure. Remplacée par une puce médiane dans le texte, et par une
+>    ligne séparée dans le PDF.
 >
 > **Deux faux rouges corrigés dans mes propres portes, et ils valent d'être
 > écrits :**

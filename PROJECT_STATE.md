@@ -10,8 +10,8 @@
   (passe **AO**, 2026-09-24).
 - **Passe AO TERMINÉE** (2026-09-24) — autorisations d'API dans les migrations,
   reprise des 25 exploitations, deux statuts hors compteurs, RAPPORT
-  D'ACTIVITÉ. Portes : `bun run aodata` (82), `bun run aopass` (103),
-  `bun run aoui` (38) ; captures `bun run aocaptures`.
+  D'ACTIVITÉ. Portes : `bun run aodata` (82), `bun run aopass` (111),
+  `bun run aoui` (40) ; captures `bun run aocaptures`.
   ⛔ **UN SEUL POINT NON LIVRÉ, ET IL EST BLOQUANT POUR LES DONNÉES** :
   l'outil MCP Supabase de la session est connecté au SECOND compte (celui
   qu'il ne faut pas toucher) et ne voit PAS `lo-yanum-prod`. Rien n'a donc pu
@@ -96,7 +96,7 @@ toute migration qui crée une table et ne porte pas ses `grant` est rouge.
 | AO1 ת״ז / ח״פ | ✅ `identityNumberKind()` : 9 chiffres commençant par **5** → ח״פ (la règle « 57 » du brief ratait `557457074`). Aucune validation, aucun refus ; zéro initial `021985189` tenu |
 | AO2 statuts | ✅ `not_relevant_now` · `on_hold` ; `countsTowardProgramme()` — `declined` y passe aussi ; teintes clair/sombre ; les 3 écrans lisent `ALL_FARM_STATUSES` de @core ; migration `20260924000100` |
 | AO3 rapport | ✅ `core/activity.ts` (les chiffres), `ui/report/activityText.ts` (WhatsApp), `activityDraw.ts` (PDF multi-pages), `activityHistory.ts` + `data/activityReports.ts` (conservés), `ActivityReportButton.tsx`. Migration `20260924000200` (table neuve AVEC ses `grant`) |
-| AO4 portes | ✅ `aodata` 82/82 · `aopass` 103/103 · `aoui` 38/38 ; rejouées : `anpass` 27, `ampass` 50, `alpass` 40, `akpass` 56, `accept` 177, `report` 86, `mapping` 33, `persist` 110, `anui` 156, `amui` 77, `akui` 119 |
+| AO4 portes | ✅ `aodata` 82/82 · `aopass` 111/111 · `aoui` 40/40 ; rejouées : `anpass` 27, `ampass` 50, `alpass` 40, `akpass` 56, `accept` 177, `report` 86, `mapping` 33, `persist` 110, `anui` 156, `amui` 77, `akui` 119 |
 
 Décisions AO posées :
 1. ⚠️ **TOUTE MIGRATION QUI CRÉE UNE TABLE PORTE SES `grant`**, dans le même
@@ -121,9 +121,12 @@ Décisions AO posées :
    exploitation : sans lui, « quelles fiches ont changé » est indécidable.
 8. **La langue d'une SORTIE est une propriété de son destinataire.** Le
    message WhatsApp est en hébreu écrit en dur, jamais via `t()`.
-9. ⚠️ **En RTL, `+`, `/` et `(` sont des caractères NEUTRES.** Toute valeur
+9. **Un préfixe d'ordre n'est pas une initiale** (A249) : `initialsOf` le
+   retire, le NOM le garde. Vu sur les captures du build réel.
+10. ⚠️ **En RTL, `+`, `/` et `(` sont des caractères NEUTRES.** Toute valeur
    numérique composée se dessine en `direction: 'ltr'` (canvas) ou s'encadre
-   d'une marque U+200E (texte). Vu sur le PDF, pas déduit.
+   d'une marque U+200E (texte). Et une PARENTHÈSE est miroitée : ne jamais
+   en mettre autour d'un mélange chiffres/hébreu. Vu, pas déduit.
 
 ## Ce qui est fait dans AN
 

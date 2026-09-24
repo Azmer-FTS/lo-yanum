@@ -317,7 +317,15 @@ try {
     check('★ la fenêtre nomme le rapport de référence', compare.includes('31.08.2026'), compare)
     const text = (await page.locator('[data-testid="activity-text"]').textContent()) ?? ''
     check('★ le texte porte la section d\'évolution', text.includes('מה זז מאז הדוח הקודם (31.08.2026)'))
-    check('★ … avec des écarts SIGNÉS', /יישויות: \+\d/.test(text), (text.match(/יישויות: [^\n]*/) ?? ['—'])[0])
+    /* ⚠️ `\u200E` ENTOURE LE SIGNE (correctif bidi d'AO3) : une porte qui
+       cherchait « : +10 » sans lui échouait devant un texte juste. */
+    check('★ … avec des écarts SIGNÉS', /יישויות: \u200E\+\d/.test(text),
+      JSON.stringify((text.match(/יישויות: [^\n]*/) ?? ['—'])[0]))
+    check('★ … et le signe est isolé en LTR (sinon « +10 » s\'affiche « 10+ »)',
+      text.includes('\u200E+'))
+    check('★ … et les points de pourcentage ne sont PAS entre parenthèses',
+      /משוקלל: [^\n]*·[^\n]*נק׳ אחוז/.test(text) && !/\(\u200E?[+\-]/.test(text),
+      JSON.stringify((text.match(/משוקלל: [^\n]*/) ?? ['—'])[0]))
     check('★ … et il ne dit plus « זהו הדוח הראשון »', !text.includes('זהו הדוח הראשון'))
     check('le journal montre le rapport d\'août',
       ((await page.locator('[data-testid="activity-history"]').textContent()) ?? '').includes('31.08.2026'))
