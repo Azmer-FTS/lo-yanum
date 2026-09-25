@@ -18,6 +18,7 @@ import {
 } from './components/layouts'
 import { DataBanner } from './components/DataBanner'
 import { NetworkStatus } from './components/NetworkStatus'
+import { IntakeBanner } from './intake/IntakeBanner'
 import { useTruncationTitles } from './hooks/useTruncationTitles'
 import { useReminderScheduler } from './hooks/useReminders'
 import { useAuth } from './hooks/useAuth'
@@ -237,6 +238,8 @@ export default function App() {
   /* ★★ AG3.1 — et l'identité que porte l'appareil, reposée avant le routeur.
      Voir `useFarmerPassSession` : sur la racine ET sur un rechargement direct. */
   useFarmerPassSession()
+  /* ★★ AQ2 — le bandeau des demandes neuves : le coordinateur, lui-même. */
+  const role = useCoreValue(() => getSession().role)
 
   if (auth.status === 'loading') return <AuthSplash />
   if (auth.status === 'signed-out' && !passesTheDoor()) return <LoginScreen />
@@ -250,6 +253,8 @@ export default function App() {
           screen" has to mean every screen, including the ones nobody
           remembered when a new layout was added. */}
       <NetworkStatus />
+      {/* ★★ AQ2 — ce qui est arrivé depuis la dernière fois (IntakeBanner). */}
+      <IntakeBanner enabled={role === 'coordinator'} />
       {/* ★★ AN1.2 — le pavé numérique de l'iPad, une fois pour toute l'app. */}
       <NumericPad />
       <Routes>

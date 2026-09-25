@@ -156,6 +156,52 @@ export function ScrollRow({
   }, [children])
 
   /**
+   * ★★ AQ0 (2026-09-25) — UNE RANGÉE QUI ÉTAIT À SA TÊTE Y RESTE QUAND UNE
+   *    VIGNETTE S'Y INSÈRE.
+   *
+   * C'est ce qui cachait la demande du PO. Les vignettes de file (« בקשות
+   * נכנסות », « נשכחו »…) n'existent que quand elles ont quelque chose à dire,
+   * donc elles naissent APRÈS l'hydratation, insérées dans une rangée déjà
+   * peinte. `scroll-snap` recolle alors la rangée sur la vignette où elle
+   * était accrochée (la spécification l'exige après un changement de mise en
+   * page) : « נשכחו » ne bouge pas, et la nouvelle première est poussée hors
+   * du bord — mesurée à `scrollLeft` −268, x = 502 sur un écran de 402.
+   *
+   * ⚠️ SEULEMENT SI LA RANGÉE ÉTAIT À SA TÊTE. Un PO qui l'a fait défiler pour
+   *    lire la cinquième vignette n'est pas ramené au début par une donnée qui
+   *    arrive.
+   */
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let atHead = Math.abs(el.scrollLeft) <= 2
+    let settling = 0
+    const onScroll = (): void => {
+      if (performance.now() < settling) return
+      atHead = Math.abs(el.scrollLeft) <= 2
+    }
+    const observer = new MutationObserver(() => {
+      if (!atHead) return
+      settling = performance.now() + 400
+      const back = (): void => {
+        if (Math.abs(el.scrollLeft) > 2) el.scrollLeft = 0
+      }
+      back()
+      requestAnimationFrame(() => {
+        back()
+        requestAnimationFrame(back)
+      })
+      window.setTimeout(back, 120)
+    })
+    observer.observe(el, { childList: true })
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      observer.disconnect()
+      el.removeEventListener('scroll', onScroll)
+    }
+  }, [])
+
+  /**
    * ★★ Z4.3 (2026-09-07) — AND A CHEVRON, BECAUSE A FADE IS NOT AN
    *    INSTRUCTION.
    *
@@ -809,7 +855,9 @@ function SearchOverlay({
   }, [open])
 
   return (
-    <div ref={box} className="relative shrink-0">
+    /* ★★ AQ4 — PAS `relative` ICI : le panneau se place sur la RANGÉE DE
+       TITRE (voir plus bas), pas sur la loupe. */
+    <div ref={box} className="shrink-0">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -832,7 +880,20 @@ function SearchOverlay({
           role="dialog"
           aria-label={placeholder ?? t('common.search')}
           data-testid="list-search-panel"
-          className="glass absolute end-0 top-full z-40 mt-1.5 flex w-[min(22rem,80vw)] items-center gap-2 rounded-card p-2 shadow-lift"
+          /**
+           * ★★ AQ4 (2026-09-25) — « LE CHAMP DE RECHERCHE SE SUPERPOSE AU MENU,
+           *    IL N'EST PAS EN PLEINE LARGEUR. »
+           *
+           * Mesuré sur le déployé : en mode partagé, à 1 032 et 1 376 px, le
+           * panneau faisait 22 rem ACCROCHÉS À LA LOUPE (`end-0`) — en RTL, il
+           * partait de la loupe vers la droite, sortait du panneau de liste et
+           * passait SOUS le rail de navigation (quatre points sur dix-huit
+           * recouverts, bord droit hors écran). Il se place désormais sur la
+           * rangée de titre de `ListTop`, qui est `relative` : exactement la
+           * largeur du panneau, quel que soit le mode, la largeur du panneau
+           * que le PO a tirée, ou la place de la loupe dans la rangée.
+           */
+          className="glass absolute inset-x-0 top-full z-40 mt-1.5 flex items-center gap-2 rounded-card p-2 shadow-lift"
         >
           <div className="relative min-w-0 flex-1">
             <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
@@ -1001,7 +1062,7 @@ export function ListTop({
       {/* X1.3 — [title] [search] [⋯], one line, every list. `flex-wrap` is
           the 390 px escape hatch: the search box drops to its own line rather
           than squeezing the title to three characters or widening the page. */}
-      <div data-title-row="" className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+      <div data-title-row="" className="relative flex flex-wrap items-center gap-x-2 gap-y-1.5">
         {/* ⚠️ `min-w-[6rem]` — A FLOOR, NOT A WIDTH, and it is what makes the
             row wrap instead of shaving the title. With `min-w-0` the title is
             the item that gives way, so at 25 % of the seam "מתנדבים" was

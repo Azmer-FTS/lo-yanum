@@ -61,6 +61,7 @@ import type {
 
 import { Avatar } from '../../components/Avatar'
 import { TestDataBadge } from '../../components/TestDataBadge'
+import { IntakeStrip } from '../../intake/IntakeStrip'
 import { BAND_H, BandCard } from '../../components/band'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { ContactActions } from '../../components/ContactActions'
@@ -1244,6 +1245,10 @@ export function FarmDetailScreen() {
                 </span>
               </div>
             )}
+
+            {/* ★★ AQ1.5 — née d'une demande publique : la date, ce qui est
+                demandé, le rendez-vous, et le geste qui la dit traitée. */}
+            <IntakeStrip farm={farm} />
 
             {/* ★★ AK7.2 — UNE FICHE ARCHIVÉE LE DIT EN TÊTE, ET SE REND EN UN
                 GESTE. Elle n'est nulle part ailleurs : ni liste, ni carte, ni

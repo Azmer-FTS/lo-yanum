@@ -146,11 +146,16 @@ export function formatRelative(atIso: string, locale: string, from: Date = now()
   const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
   const deltaMs = new Date(atIso).getTime() - from.getTime()
   const minutes = Math.round(deltaMs / MINUTE)
+  /* ★ AQ (2026-09-25) — ICU écrit en hébreu « לפני שעתיים (2) » et « לפני שעה
+     (1) » : le duel suivi du nombre entre parenthèses. Vu sur la tuile d'une
+     demande entrante. La parenthèse, en RTL, est de surcroît miroitée (règle
+     10 d'AO) ; le mot seul dit déjà le nombre. */
+  const clean = (s: string): string => s.replace(/\s*\(\d+\)\s*$/, '')
 
-  if (Math.abs(minutes) < 60) return rtf.format(minutes, 'minute')
+  if (Math.abs(minutes) < 60) return clean(rtf.format(minutes, 'minute'))
   const hours = Math.round(deltaMs / HOUR)
-  if (Math.abs(hours) < 24) return rtf.format(hours, 'hour')
-  return rtf.format(Math.round(deltaMs / DAY), 'day')
+  if (Math.abs(hours) < 24) return clean(rtf.format(hours, 'hour'))
+  return clean(rtf.format(Math.round(deltaMs / DAY), 'day'))
 }
 
 /** An ISO timestamp `h` hours from now (negative for the past). */

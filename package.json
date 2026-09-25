@@ -125,7 +125,9 @@
     "apshipped": "bun run scripts/apshipped.ts",
     "appass": "bun run scripts/appass.ts",
     "apui": "bun run scripts/apui.ts",
-    "apcaptures": "bun run scripts/apcaptures.ts"
+    "apcaptures": "bun run scripts/apcaptures.ts",
+    "aqui": "bun run scripts/aqui.ts",
+    "aqmail": "bun run scripts/aqmail.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "0.2.3",

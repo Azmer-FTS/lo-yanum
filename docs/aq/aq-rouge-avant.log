@@ -1,0 +1,106 @@
+$ bun run scripts/aqui.ts
+  app : https://azmer-fts.github.io/lo-yanum  (DÉPLOYÉ)
+
+  A260 — le tableau de bord, en tête : le bloc et son nombre ; absent sans demande
+  --------------------------------------------------------------------------------
+  FAIL  402 — le bloc « בקשות נכנסות » est là
+  FAIL  A260 402 — section interrompue  — textContent: Timeout 30000ms exceeded.
+  FAIL  1032 — le bloc « בקשות נכנסות » est là
+  FAIL  A260 1032 — section interrompue  — textContent: Timeout 30000ms exceeded.
+  FAIL  1376 — le bloc « בקשות נכנסות » est là
+  FAIL  A260 1376 — section interrompue  — textContent: Timeout 30000ms exceeded.
+  PASS  sans demande, le bloc est ABSENT (pas une vignette à zéro)
+
+  A261 — חוות : la demande EN PREMIER, sans filtre, visuellement distincte
+  ------------------------------------------------------------------------
+  FAIL  402 — ★ la PREMIÈRE tuile est la demande  — תש01 - תומר שדה משה חקלאות · חקלאות280דונם280משוקלל
+  PASS  402 — sans aucun filtre actif
+  FAIL  402 — ★ distincte : liseré et fond propres  — {"cls":false,"ring":true,"bg":"rgb(255, 255, 255)"}
+  FAIL  A261 402 — section interrompue  — textContent: Timeout 30000ms exceeded.
+  FAIL  1032 — ★ la PREMIÈRE tuile est la demande  — תש01 - תומר שדה משה חקלאות · חקלאות280דונם280משוקלל
+  PASS  1032 — sans aucun filtre actif
+  FAIL  1032 — ★ distincte : liseré et fond propres  — {"cls":false,"ring":true,"bg":"rgb(255, 255, 255)"}
+  FAIL  A261 1032 — section interrompue  — textContent: Timeout 30000ms exceeded.
+  FAIL  1376 — ★ la PREMIÈRE tuile est la demande  — תש01 - תומר שדה משה חקלאות · חקלאות280דונם280משוקלל
+  PASS  1376 — sans aucun filtre actif
+  FAIL  1376 — ★ distincte : liseré et fond propres  — {"cls":false,"ring":true,"bg":"rgb(255, 255, 255)"}
+  FAIL  A261 1376 — section interrompue  — textContent: Timeout 30000ms exceeded.
+
+  A262 — la vignette de filtre, visible et recouverte par rien, aux trois largeurs
+  --------------------------------------------------------------------------------
+  PASS  402 — la vignette existe
+  PASS  402 — ★ entière dans l'écran  — 72…224 / 402, 535…619 / 874
+  PASS  402 — ★ recouverte par RIEN (21 points)  — 21/21 
+  PASS  402 — ★ entière dans sa bande (pas coupée par le bord qui défile)
+  FAIL  402 — première de la bande  — farms-neglected
+  PASS  402 — la toucher filtre : une seule fiche  — 1
+  PASS  1032 — la vignette existe
+  PASS  1032 — ★ entière dans l'écran  — 626…778 / 1032, 130…214 / 1376
+  FAIL  1032 — ★ recouverte par RIEN (21 points)  — 15/21 button[scroll-nudge-end] span[]
+  FAIL  1032 — ★ entière dans sa bande (pas coupée par le bord qui défile)
+  FAIL  1032 — première de la bande  — farms-neglected
+  PASS  1032 — la toucher filtre : une seule fiche  — 1
+  PASS  1376 — la vignette existe
+  PASS  1376 — ★ entière dans l'écran  — 970…1122 / 1376, 80…164 / 1032
+  PASS  1376 — ★ recouverte par RIEN (21 points)  — 21/21 
+  PASS  1376 — ★ entière dans sa bande (pas coupée par le bord qui défile)
+  FAIL  1376 — première de la bande  — farms-neglected
+  PASS  1376 — la toucher filtre : une seule fiche  — 1
+
+  A263 — le bandeau de nouveauté : au retour, sans minuteur, sans répétition, sans superposition
+  ----------------------------------------------------------------------------------------------
+  FAIL  au démarrage, une demande non vue → le bandeau
+  FAIL  A263 — section interrompue  — textContent: Timeout 30000ms exceeded.
+
+  A264 — une demande ne cesse d'être entrante que sur un GESTE du PO
+  ------------------------------------------------------------------
+  FAIL  la fiche porte la bande « בקשה מהעמוד הציבורי »
+  FAIL  A264 — section interrompue  — textContent: Timeout 30000ms exceeded.
+
+  A267 — le champ de recherche ne passe sous rien : trois largeurs, trois modes
+  -----------------------------------------------------------------------------
+  PASS  402 split — le champ s'ouvre
+  PASS  402 split — ★ recouvert par RIEN  — 21/21 
+  PASS  402 split — ★ entier dans l'écran  — 68…390 / 402
+  FAIL  402 split — ★ pleine largeur du panneau  — champ 68…390, rangée 16…386
+  PASS  402 split — on y tape
+  PASS  402 hidden — le champ s'ouvre
+  PASS  402 hidden — ★ recouvert par RIEN  — 21/21 
+  PASS  402 hidden — ★ entier dans l'écran  — 68…390 / 402
+  FAIL  402 hidden — ★ pleine largeur du panneau  — champ 68…390, rangée 16…386
+  PASS  402 hidden — on y tape
+  PASS  402 carte seule — aucune liste, donc aucun champ (sans objet)
+  PASS  1032 split — le champ s'ouvre
+  FAIL  1032 split — ★ recouvert par RIEN  — 9/21 aside[] button[]
+  FAIL  1032 split — ★ entier dans l'écran  — 791…1143 / 1032
+  FAIL  1032 split — ★ pleine largeur du panneau  — champ 791…1143, rangée 660…940
+  PASS  1032 split — on y tape
+  PASS  1032 hidden — le champ s'ouvre
+  PASS  1032 hidden — ★ recouvert par RIEN  — 21/21 
+  PASS  1032 hidden — ★ entier dans l'écran  — 203…555 / 1032
+  FAIL  1032 hidden — ★ pleine largeur du panneau  — champ 203…555, rangée 20…940
+  PASS  1032 hidden — on y tape
+  PASS  1032 carte seule — aucune liste, donc aucun champ (sans objet)
+  PASS  1376 split — le champ s'ouvre
+  FAIL  1376 split — ★ recouvert par RIEN  — 15/21 svg[] button[] aside[]
+  FAIL  1376 split — ★ entier dans l'écran  — 1072…1424 / 1376
+  FAIL  1376 split — ★ pleine largeur du panneau  — champ 1072…1424, rangée 889…1284
+  PASS  1376 split — on y tape
+  PASS  1376 hidden — le champ s'ouvre
+  PASS  1376 hidden — ★ recouvert par RIEN  — 21/21 
+  PASS  1376 hidden — ★ entier dans l'écran  — 203…555 / 1376
+  FAIL  1376 hidden — ★ pleine largeur du panneau  — champ 203…555, rangée 20…1284
+  PASS  1376 hidden — on y tape
+  PASS  1376 carte seule — aucune liste, donc aucun champ (sans objet)
+
+  Captures — tableau de bord et חוות, avec une demande, clair et sombre, trois viewports
+  --------------------------------------------------------------------------------------
+  PASS  clair 402 — trois captures, aucune erreur de page
+  PASS  clair 1032 — trois captures, aucune erreur de page
+  PASS  clair 1376 — trois captures, aucune erreur de page
+  PASS  sombre 402 — trois captures, aucune erreur de page
+  PASS  sombre 1032 — trois captures, aucune erreur de page
+  PASS  sombre 1376 — trois captures, aucune erreur de page
+
+  46 passed, 34 failed
+error: script "aqui" exited with code 1

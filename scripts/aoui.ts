@@ -2,6 +2,8 @@ import { chromium, webkit } from 'playwright'
 import type { Browser, BrowserContext, Page } from 'playwright'
 import { mkdirSync } from 'node:fs'
 
+import { ALL_FARM_STATUSES } from '../src/core/types'
+
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * AO — LE RAPPORT D'ACTIVITÉ, DANS UN VRAI NAVIGATEUR. A243 · A244 · A247 · A248
@@ -170,7 +172,10 @@ try {
     await open(page, '#/coordinator/farms/farm-07/edit')
     const select = page.locator('[data-testid="farm-status"]')
     const options = await select.locator('option').allTextContents()
-    check('le formulaire propose les NEUF statuts', options.length === 9, options.join(' | '))
+    /* ⚠️ AQ — AP a ajouté « בקשה נכנסת » (dixième) sans relire cette porte :
+       la règle 10 d'AO, une fois de plus. Le compte vient désormais de la
+       liste de référence, pas d'un chiffre écrit à la main. */
+    check(`le formulaire propose les ${ALL_FARM_STATUSES.length} statuts`, options.length === ALL_FARM_STATUSES.length, options.join(' | '))
     check('… dont « לא רלוונטי כרגע » et « בהמתנה »',
       options.includes('לא רלוונטי כרגע') && options.includes('בהמתנה'), options.join(' | '))
     await select.selectOption({ label: 'בהמתנה' })

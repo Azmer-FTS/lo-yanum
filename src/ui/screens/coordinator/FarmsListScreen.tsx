@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
@@ -27,6 +27,10 @@ import {
   awaitingDocuments,
   getArchivedFarms,
   now,
+  incomingFirst,
+  isIncoming,
+  formatRelative,
+  requestForFarm,
 } from '@core/index'
 import type { Farm, FarmCoverage, FarmStatus, FarmType, RegionId } from '@core/index'
 
@@ -71,6 +75,7 @@ import { useWindowTable } from '../../hooks/useWindowTable'
 import { useAreaGapThreshold } from '../../settings/areaGap'
 import { useCoverageSettings } from '../../settings/coverage'
 import { useRenewalWindow } from '../../settings/renewal'
+import { useIntakeRequests } from '../../intake/intakeState'
 
 /* AO2 — les neuf statuts, dans l'ordre de @core. Les deux nouveaux filtrent
    comme les autres : c'est la moitié de « la fiche reste dans les listes ». */
@@ -269,7 +274,13 @@ export function FarmsListScreen() {
    *    attend depuis des semaines et peut attendre un jour de plus ; quelqu'un
    *    qui vient de demander de l'aide, non. A249 mesure les DEUX rectangles.
    */
-  const [intakeOnly, setIntakeOnly] = useState(false)
+  const [intakeOnly, setIntakeOnly] = useState(() => params.get('intake') === '1')
+  /* AQ2 — le bandeau « לפתיחה » arrive ici avec `?intake=1`, écran déjà monté ou non. */
+  const intakeParam = params.get('intake') === '1'
+  useEffect(() => {
+    if (intakeParam) setIntakeOnly(true)
+  }, [intakeParam])
+  const intakeRequests = useIntakeRequests()
   const intakeCount = useMemo(
     () => farms.filter((f) => f.status === 'incoming_request').length,
     [farms],
@@ -365,9 +376,12 @@ export function FarmsListScreen() {
    *    `filtered` is a memo the markers also read — sorting it in place would
    *    re-order the map's own list as a side effect of rendering the roster.
    */
+  /* ★★ AQ1.2 — les demandes entrantes EN TÊTE, quel que soit le tri choisi,
+     sans filtre : le tri du PO n'est pas remplacé, il est précédé
+     (`incomingFirst`, une partition stable). Liste ET tableau lisent ceci. */
   const sorted = useMemo(
-    () => sortFarms(filtered, sort, coverageOf, gapThreshold),
-    [filtered, sort, coverageOf, gapThreshold],
+    () => incomingFirst(sortFarms(filtered, sort, coverageOf, gapThreshold), intakeRequests),
+    [filtered, sort, coverageOf, gapThreshold, intakeRequests],
   )
 
   const page = useProgressive(sorted)
@@ -463,6 +477,37 @@ export function FarmsListScreen() {
         *    learns to distrust; on a roster of 198 leads with no signed farm
         *    yet, « נשכחו » has nothing to say and says nothing.
         */}
+      {/**
+        * ═══════════════════════════════════════════════════════════════════
+        * ★★ AQ1.3 — « בקשות נכנסות » PASSE PREMIÈRE, DEVANT « נשכחו ».
+        * ═══════════════════════════════════════════════════════════════════
+        *
+        * ⚠️ AP l'avait mise DEUXIÈME, et la capture du déployé d'AQ0 a montré
+        *    ce que ça coûtait : à 1 032 px (l'iPad du PO en portrait) la
+        *    vignette était coupée de 14 px par le bord de la bande défilante,
+        *    sous son chevron. Une personne qui attend une réponse passe devant
+        *    un arriéré de gardes — c'est aussi ce que dit l'ordre du tableau
+        *    de bord (AQ1.1). A262 mesure le rectangle aux trois largeurs.
+        *
+        * ⚠️ ET ELLE NE SUFFIT PLUS : les demandes sont EN TÊTE de la liste,
+        *    sans filtre (`incomingFirst`). La vignette complète, elle ne
+        *    remplace pas.
+        */}
+      {intakeCount > 0 && (
+        /* Même découpe en deux lignes que la file des documents, et pour la
+           même raison mesurée : « בקשות נכנסות » sur une ligne se coupe à
+           402 px dans une vignette de 152 px. */
+        <KpiChip
+          label={t('intake.queueLine1')}
+          value={intakeCount}
+          icon="user"
+          tone="accent"
+          hint={<span className="font-semibold text-content-primary">{t('intake.queueLine2')}</span>}
+          active={intakeOnly}
+          onClick={() => setIntakeOnly((v) => !v)}
+          testId="farms-intake"
+        />
+      )}
       {neglectedCount > 0 && (
         <KpiChip
           label={t('farms.filterNeglected')}
@@ -530,21 +575,6 @@ export function FarmsListScreen() {
         * d'avant cette passe, et le PO ne voit pas une vignette à zéro dont il
         * apprendrait à ne rien attendre.
         */}
-      {intakeCount > 0 && (
-        /* Même découpe en deux lignes que la file des documents, et pour la
-           même raison mesurée : « בקשות נכנסות » sur une ligne se coupe à
-           402 px dans une vignette de 152 px. */
-        <KpiChip
-          label={t('intake.queueLine1')}
-          value={intakeCount}
-          icon="user"
-          tone="accent"
-          hint={<span className="font-semibold text-content-primary">{t('intake.queueLine2')}</span>}
-          active={intakeOnly}
-          onClick={() => setIntakeOnly((v) => !v)}
-          testId="farms-intake"
-        />
-      )}
       {docsCount > 0 && (
         /* ⚠️ Le nom de la file tient sur les DEUX lignes de la vignette : à
            152 px (gabarit Y5, non négociable) « ממתינות למסמכים » sur une ligne
@@ -950,6 +980,11 @@ export function FarmsListScreen() {
                     <li key={farm.id}>
                       <FarmTile
                         farm={farm}
+                        intakeAt={
+                          isIncoming(farm)
+                            ? (requestForFarm(farm.id, intakeRequests)?.createdAt ?? null)
+                            : undefined
+                        }
                         active={farm.id === hoveredId || farm.id === selectedId}
                         heads={totalHeads(farm)}
                         coverage={coverageOf.get(farm.id) ?? null}
@@ -995,6 +1030,7 @@ export function FarmsListScreen() {
  */
 function FarmTile({
   farm,
+  intakeAt,
   active,
   heads,
   coverage,
@@ -1006,6 +1042,11 @@ function FarmTile({
   previewProps,
 }: {
   farm: Farm
+  /**
+   * ★★ AQ1.2 — `undefined` : une fiche ordinaire. Une chaîne ou `null` : une
+   * demande entrante, reçue à cette date (ou date inconnue).
+   */
+  intakeAt?: string | null
   active: boolean
   heads: number | null
   coverage: FarmCoverage | null
@@ -1022,6 +1063,15 @@ function FarmTile({
   return (
     <ListTile
       testId="farm-tile"
+      /* ★★ AQ1.2 — VISUELLEMENT DISTINCTE, sans rien ajouter à la hauteur de
+         la tuile (le plafond de vingt et le gabarit Y4 en dépendent) : un
+         liseré et un fond de la teinte « בקשה נכנסת », et la ligne secondaire
+         dit ce qu'elle est au lieu de la localité, souvent vide. */
+      className={
+        intakeAt !== undefined
+          ? 'farm-tile-intake bg-farm-incoming-request/10 ring-2 ring-farm-incoming-request'
+          : ''
+      }
       photo={farm.photo}
       name={farm.name}
       active={active}
@@ -1077,9 +1127,16 @@ function FarmTile({
             marques de la même famille, une seule chose à apprendre. */}
         <AreaGapMark farm={farm} />
       </span>
-      <span className="muted block truncate" title={`${farm.locality} · ${t(`farmType.${farm.type}`)}`}>
-        {farm.locality} · {t(`farmType.${farm.type}`)}
-      </span>
+      {intakeAt !== undefined ? (
+        <span className="block truncate text-micro font-semibold text-farm-incoming-request-ink" data-testid="farm-tile-intake">
+          {t('intake.tag')}
+          {intakeAt ? ` · ${t('intake.received', { when: formatRelative(intakeAt, locale) })}` : ''}
+        </span>
+      ) : (
+        <span className="muted block truncate" title={`${farm.locality} · ${t(`farmType.${farm.type}`)}`}>
+          {farm.locality} · {t(`farmType.${farm.type}`)}
+        </span>
+      )}
       <span className="flex flex-wrap items-center gap-x-2.5 text-micro text-content-muted">
         <span className="inline-flex items-center gap-1 whitespace-nowrap">
           <Icon name="landPlot" size={11} />
@@ -1353,8 +1410,11 @@ function FarmsTable({
                 height: item.size,
                 transform: `translateY(${item.start - margin}px)`,
               }}
-              className="roster-row border-b border-edge-subtle/50 px-4 text-start
-                         transition-colors duration-fast hover:bg-surface-high/60"
+              data-intake={isIncoming(farm) ? 'true' : undefined}
+              className={`roster-row border-b border-edge-subtle/50 px-4 text-start
+                         transition-colors duration-fast hover:bg-surface-high/60 ${
+                           isIncoming(farm) ? 'border-s-4 border-s-farm-incoming-request bg-farm-incoming-request/10' : ''
+                         }`}
             >
               {/* 1 — name, with whatever has lost its column merged under it. */}
               <span className="flex min-w-0 items-center gap-2.5">

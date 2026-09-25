@@ -48,6 +48,7 @@ import { GrowthCharts } from '../../components/GrowthCharts'
 import { MyDayBlock } from '../../components/MyDayBlock'
 import type { IconName } from '../../components/Icon'
 import { MapPanel } from '../../components/MapPanel'
+import { IntakeDashboardBlock } from '../../intake/IntakeDashboardBlock'
 import type { MapMarker } from '../../components/MapView'
 import {
   FarmStatusDot,
@@ -738,6 +739,8 @@ export function DashboardScreen() {
         </ul>
       }
     >
+      {/* ★★ AQ1.1 — les demandes entrantes, AVANT tout le reste. */}
+      <IntakeDashboardBlock />
       <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 data-page-title="" className="text-title text-content-primary">

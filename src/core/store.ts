@@ -1,4 +1,6 @@
 import { allowedStatus } from './documents'
+import { INTAKE_HANDLED_STATUSES } from './intake'
+import type { IntakeHandledStatus } from './intake'
 import { changesBetween, indexOf } from './backend'
 import { deletionPlan } from './deletion'
 import type { StoreBackend, StoreData, StoreIndex } from './backend'
@@ -1839,6 +1841,26 @@ export function unarchiveFarm(farmId: string): boolean {
      EXACTEMENT ce qu'elle était (A204 compare les deux objets), et `toRows`
      écrit `null` en base pour l'un comme pour l'autre. */
   data.farms[index] = { ...data.farms[index], archivedAt: undefined, archiveReason: undefined }
+  commit()
+  return true
+}
+
+/**
+ * ★★ AQ1.4 — « UNE DEMANDE CESSE D'ÊTRE ENTRANTE QUAND LE PO L'A OUVERTE ET
+ *    TRAITÉE — UN GESTE EXPLICITE DE SA PART, JAMAIS UN SIMPLE AFFICHAGE. »
+ *
+ * Le seul chemin, avec le choix d'un autre statut dans l'édition. Aucune
+ * lecture, aucun rendu, aucun bandeau ne l'appelle ; A264 le vérifie en
+ * ouvrant la fiche et en relisant la base.
+ */
+export function markIntakeHandled(
+  farmId: string,
+  next: IntakeHandledStatus = 'contacted',
+): boolean {
+  const index = data.farms.findIndex((f) => f.id === farmId)
+  if (index === -1 || data.farms[index].status !== 'incoming_request') return false
+  if (!INTAKE_HANDLED_STATUSES.includes(next)) return false
+  data.farms[index] = { ...data.farms[index], status: next }
   commit()
   return true
 }

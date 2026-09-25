@@ -39,6 +39,8 @@ export * from './testData'
 export * from './freeRoute'
 /* AO3 — le rapport d'activité (les chiffres ; la mise en forme est dans ui/). */
 export * from './activity'
+/* AQ — les demandes entrantes : en tête, vues ou non, courriels. */
+export * from './intake'
 export * from './lookup'
 export * from './localitySearch'
 export * from './access'
@@ -76,6 +78,7 @@ export {
   // AK7 — archiver n'est pas supprimer.
   archiveFarm,
   unarchiveFarm,
+  markIntakeHandled,
   // AD2.2 — les deux gestes de la note d'écart.
   alignDeclaredToOutline,
   keepDeclaredArea,
