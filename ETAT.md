@@ -1,6 +1,216 @@
 # לא ינום — ETAT
 
-> 🏁 **PASSE AO — REPRISE DES DONNÉES TERRAIN ET RAPPORT D'ACTIVITÉ. 2026-09-24. LIRE EN PREMIER.**
+> 🏁 **PASSE AP — PAGE PUBLIQUE DE DEMANDE D'AIDE. 2026-09-25. LIRE EN PREMIER.**
+>
+> Ordre suivi : AP1 → AP2 → AP3 → AP4 → AP5 → AP6.
+>
+> ## L'ADRESSE, ET C'EST CE QUE LE PO ENVOIE À L'ASSOCIATION
+>
+> ### **https://azmer-fts.github.io/lo-yanum/bakasha/**
+>
+> Ouvrable par n'importe qui, sans compte, sans lien de garde. Servie depuis le
+> commit **`24b344c`**, à côté de l'application (`/lo-yanum/`) et du jumeau de
+> démonstration (`/lo-yanum/demo/`), par le même déploiement.
+>
+> ## CE QUE C'EST
+>
+> Aujourd'hui le PO démarche les agriculteurs un par un. Cette page fait
+> l'inverse : **un agriculteur y demande lui-même de l'aide**, et il arrive
+> déjà convaincu. Une photo des volontaires d'ארצנו dans les champs, trois
+> phrases, **un seul bouton** — « **אני רוצה לקבל עזרה** » — puis sept étapes à
+> **une question par écran**.
+>
+> ⚠️ **Le lecteur type a décidé de tout** : « un agriculteur, sur son
+> téléphone, entre deux tâches, qui n'a pas d'ordinateur et peu l'habitude des
+> formulaires en ligne ». D'où un **build séparé de 57 ko gzippés** — sans
+> i18next, sans `@supabase/supabase-js`, sans le magasin, sans MapLibre, sans
+> service worker — là où l'application en pèse plusieurs centaines.
+>
+> ## ★★ AP4.4 — LE PLUS IMPORTANT DE CETTE PASSE N'ÉTAIT PAS DEMANDÉ
+>
+> En ouvrant la première surface anonyme du projet, mesuré sur
+> `lo-yanum-prod` :
+>
+> ```
+> select table_name from information_schema.role_table_grants
+>  where grantee = 'anon' and table_schema = 'public';
+> → TRENTE tables, chacune avec
+>   DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
+> ```
+>
+> **Personne ne les avait accordés.** Ils viennent des privilèges PAR DÉFAUT du
+> schéma `public` de Supabase : toute table créée là naît avec ce paquet.
+> AO5.3 l'avait vu sur `activity_reports` et révoqué — sur cette table-là
+> seulement, parce que c'était celle que la passe venait de créer. Les
+> vingt-neuf autres n'avaient jamais été regardées.
+>
+> **Ce n'était pas une porte ouverte**, et c'est pourquoi personne ne l'a vu :
+> RLS est active ET forcée sur les trente, aucune des 32 politiques ne vise
+> `anon`, et `bun run auth` était vert depuis P2.2. Le droit était là, la
+> politique tenait la porte.
+>
+> ⚠️ **Ce qui change, c'est qu'une clé `anon` est désormais PUBLIÉE.** Jusqu'ici
+> la clé publiable n'était dans les mains de personne d'autre que le PO. À
+> partir d'aujourd'hui elle est dans le code source d'une page que
+> l'association enverra à ses agriculteurs — ce qui est normal et prévu, elle
+> n'autorise rien par elle-même. Mais « une politique RLS mal écrite un jour »
+> ne vaut plus « un accident interne » : elle vaut « n'importe qui, depuis
+> n'importe où ».
+>
+> **`20260925000300_revoke_anon_everywhere.sql`** : tout révoqué, les tables à
+> venir naissent fermées (`alter default privileges`), `usage` sur le schéma
+> conservé. Mesuré après :
+>
+> ```
+> entities · aid_requests · farm_visits · missions · user_settings
+>   → 401 {"code":"42501", "hint":"Grant the required privileges…"}
+> anon sur une table de `public` → 0
+> ```
+>
+> **Le refus est désormais par DROIT et non seulement par politique.** Et la
+> surface anonyme entière du projet tient en **trois fonctions nommées** :
+> `submit_aid_request`, `public_busy_intervals`, `public_agreement_template`.
+>
+> ★ **Pourquoi trois fonctions plutôt qu'un `grant insert` + `with check`** : un
+> droit de table laisse choisir TOUTES les colonnes, y compris celles qu'on
+> ajoutera dans six mois — une colonne neuve naît ouverte. Le corps d'une
+> fonction nomme les colonnes une par une : une colonne neuve naît fermée.
+> C'est la différence entre une liste de refus et une liste d'acceptation.
+>
+> ### ⚠️ ET ÇA A COÛTÉ QUELQUE CHOSE : `bun run live` NE PEUT PLUS LIRE LE SCHÉMA
+>
+> `live.ts` reposait sur un fait qui n'est plus vrai — `?select=` était résolu
+> contre le schéma avant RLS, donc un anonyme apprenait qu'une colonne existe.
+> C'est exactement ce qu'on vient de fermer. La porte a été **réécrite, pas
+> assouplie** :
+>
+> - avec la seule clé publiable, elle prouve le **42501 sur cinq tables** et
+>   que les **trois RPC répondent quand même** — une assertion PLUS FORTE que
+>   l'ancienne, puisqu'un anonyme n'apprend même plus qu'une table existe ;
+> - les sections de schéma (colonnes, enums) sont **SAUTÉES et le disent** ;
+>   `SUPABASE_READ_KEY=<clé de service> bun run live` les rejoue.
+>
+> Pour cette passe, le contrôle de schéma a été fait **par le MCP** :
+> `farm_status` porte bien dix étiquettes, `farm_visits.pending_confirmation`
+> existe avec son défaut, `aid_requests` a ses dix-huit colonnes.
+>
+> ## CE QUI A ÉTÉ FAIT
+>
+> | Bloc | État |
+> |---|---|
+> | AP1 charte | ✅ Relevée sur `artzenu.org.il` par `getComputedStyle`, pas à l'œil : `#14A185` / `#EF4F28` / `#6E9558` / `#0B3D2C` / `#E9F2EA`, pilules de **30 px**, logo, photos, textes. Récit : `docs/ap/ap-charte-2026-09-25.md` |
+> | AP1 police | ⚠️ **PAS la leur**, et c'est mesuré : leur serveur ne rend AUCUN en-tête CORS sur `atlas-*.woff2` — un `@font-face` distant serait refusé par le navigateur — et les recopier serait redistribuer une licence commerciale. G17 avait tranché la même question. **Rubik**, déjà dans le dépôt, SIL OFL |
+> | AP1 photos | ✅ `22-1.jpg` (les volontaires en t-shirt « ארצנו », celle que le PO a nommée) et `ארצנו-3.jpg`, recompressées et servies par cette page. ⛔ `ארצנו-2.jpg` ÉCARTÉE : son EXIF dit `Copyright (c) 2016 … /Shutterstock. No use without permission.` |
+> | AP2 accueil | ✅ Photo en tête, trois phrases, **un** bouton de 60 px. Aucun menu, **aucun lien** — un lien est une sortie, une sortie est un abandon. A249 compte les deux à zéro |
+> | AP2 libellé | ✅ « **אני רוצה לקבל עזרה** ». Leur site sépare déjà « בואו להיות שותפים » (qui donne) et « קדימה להתנדבות » (qui aide) ; il n'avait pas de formule pour qui **reçoit**. À la première personne : la voix de l'agriculteur |
+> | AP3 étapes | ✅ Sept, une question par écran, barre de progression, retour sans rien perdre. L'état vit au-dessus des étapes ; aucune ne le remet à zéro en se démontant |
+> | AP3 claviers | ✅ ★ **La table `KIND_DOM` d'AM4 A DÉMÉNAGÉ dans `@core/fieldKind`** et les DEUX produits la lisent. Copier valait la garantie qu'un jour l'une dirait `type="number"` et mangerait le zéro d'un ת״ז d'un seul côté |
+> | AP3 documents | ✅ La liste se déduit de l'étape 2 par `expectedDocuments` — **la fonction d'AG6**, pas une copie. Photos composées en PDF par `photosToPdf` (AG6.2), chargé PARESSEUSEMENT : qui passe l'étape ne le télécharge pas |
+> | AP3 accord | ✅ Lu du gabarit des réglages par `public_agreement_template()`, rendu par `renderAgreementTemplate` / `parseAgreementBlocks` / `richRuns` — les fonctions d'AH5 et d'AK3. Le texte livré est **engendré** depuis `he.json` (`bun run apshipped`) et une porte compare |
+> | AP3 rendez-vous | ✅ Règles en **constantes nommées** (`core/availability.ts`) : vendredi et samedi fermés, fêtes lues dans le calendrier HÉBRAÏQUE par `Intl` (pas une table grégorienne qui périmerait), créneaux d'une heure de 09:00 à 17:00 **à l'heure de Jérusalem**, délai de 24 h, horizon de 30 jours |
+> | AP4 statut | ✅ « **בקשה נכנסת** » — dixième statut, en TÊTE, dans sa propre liste (`FARM_STATUSES_INTAKE`). Il **compte** dans les compteurs, contrairement aux deux d'AO2 |
+> | AP4 file | ✅ Vignette « בקשות נכנסות » sur l'écran חוות, **deuxième** — « נשכחו » garde la première place (AC, puis AD3.2 : « pas question de la déplacer une troisième fois »), et une personne qui attend une réponse passe devant un arriéré de papiers |
+> | AP4 sécurité | ✅ Voir AP4.4 ci-dessus. Plafonds appliqués **en SQL** (8 Mio par document, 2 documents, PDF seulement, signature ≤ 2 Mio), garde-fou de débit (3 demandes par numéro et par jour), créneau revérifié **au moment de l'écriture** |
+> | AP5 hébergement | ✅ Troisième build plié dans `dist/bakasha/` par le déploiement, avec quatre portes de publication : pas d'archive cartographique, la VRAIE paire Supabase (l'inverse du jumeau), et **aucun service worker** |
+> | AP6 portes | ✅ `appass` **107/107** · `apui` **136/136 en local** (Chromium ET WebKit) et **67/67 SUR LE DÉPLOYÉ** (Chromium) · `apcaptures` **60 captures, 0 erreur de page** · `apreal` bout en bout sur `lo-yanum-prod` |
+> | AP6 WebKit à distance | ⚠️ **Ne tient pas sur cette machine, et ce n'est PAS la page.** Passé quelques contextes, WebKit cesse d'ouvrir la moindre socket vers `github.io` — `page.goto` rend, le module n'arrive jamais, `lsof` ne montre AUCUNE connexion. Quatre remèdes mesurés (`networkidle`→`load`, la barre finale contre la 301, trois reprises de `goto`, le navigateur relancé à 6 puis à 1 — ce dernier PIRE). Le moteur se CHOISIT : `AP_ENGINES`. WebKit passe 136/136 sur le build LOCAL du même source |
+>
+> ## CE QUE LES PORTES ONT TROUVÉ, ET QU'UNE RELECTURE N'AURAIT PAS VU
+>
+> | Défaut | Comment il s'est montré |
+> |---|---|
+> | Le **logo couvrait toute la photo** | `.az-hero img` (0,1,1) l'emportait sur `.az-hero-logo` (0,1,0). Vu sur capture, pas déduit |
+> | Le **bouton touchait les deux bords** de l'écran | `.az-foot` posée sur `.az-wrap` : un `padding` complet écrasait les gouttières. Mesuré `x=0, w=375` sur un téléphone de 375 |
+> | La barre de progression affichait **0 %** à la première étape | Une barre vide se lit « la page n'a pas chargé », pas « tu commences » |
+> | **Téléphone et courriel du PO à 0 px d'écart** | Un pouce qui vise « appeler » lance un client de messagerie. Trouvé par A249, pas par la relecture |
+> | Le texte de l'accord poussait **la signature hors de l'écran** | 44vh de texte + 190 px de pavé + le pied collant. Le geste que l'étape existe pour obtenir n'était pas visible |
+>
+> ## ★★ ET TROIS PORTES SE SONT TROMPÉES AVANT DE SERVIR
+>
+> 1. **`apui` mesurait les champs invisibles.** Les deux `<input type="file">`
+>    hors écran rendaient « 11 px » et faisaient échouer la règle des 16 px. Un
+>    champ qu'aucun doigt ne touche n'ouvre aucun clavier : la question ne se
+>    pose pas pour lui.
+> 2. **`appass` lisait la prose au lieu des `import`.** Les en-têtes de
+>    `Signature.tsx` et d'`api.ts` EXPLIQUENT pourquoi ils n'emploient ni
+>    `react-i18next` ni `@supabase/supabase-js` ; un `includes` sur le texte
+>    entier trouvait les deux noms et déclarait rouge la page qui fait
+>    exactement ce qu'on lui demande. ★ **Un commentaire qui nomme ce qu'il
+>    refuse ne doit pas faire échouer la porte.**
+> 3. **Deux motifs traversaient les points-virgules.** `grant … to anon` avec un
+>    `[\s\S]*?` au milieu rattachait le `grant … to authenticated` de la table
+>    au `to anon` d'une fonction trente lignes plus bas ; `/documents.*is
+>    null.*raise/s` trouvait trois mots n'importe où dans mille lignes.
+>    ★ **Une porte qui lit deux instructions comme une seule accuse du code
+>    innocent.**
+>
+> Et une quatrième, ailleurs : **`mapping` ne savait pas lire un `alter table`
+> qualifié par son schéma.** `alter table public.farm_visits add column …` ne
+> correspondait pas à `(\w+)` : la porte a déclaré absente d'une migration une
+> colonne que cette migration porte.
+>
+> ## TROIS PORTES DE L'APPLICATION ONT DÛ ÊTRE MISES À JOUR
+>
+> - **`aopass`** disait « neuf statuts » et « aucun `grant … to anon` ». Les
+>   deux sont mis à jour — le premier à **dix**, le second **resserré** : ce
+>   qui est interdit est précisément « `anon` sur une TABLE », un `grant
+>   execute on function` étant une porte dont le corps est écrit dans la
+>   migration. La ligne ne dit pas `>= 9` : sa fonction est d'exiger qu'on la
+>   relise quand l'ensemble grandit.
+> - **`tokens`** voyait `src/bakasha/brand.css` et comptait 16 violations de
+>   l'échelle de rayons. `src/bakasha` en est **exclu**, avec la raison écrite :
+>   cette page a, sur ordre du brief, une AUTRE identité. Ce qui compte pour un
+>   doigt (44 px, 8 px, 16 px) est mesuré par `apui`, sur deux moteurs.
+> - **`contrast`** et **`live`** ont reçu la valeur neuve, comme le veut la
+>   règle 10. La teinte `farm-incoming-request` (`#5D8D2A` en clair,
+>   `#96C85C` en sombre) mesure 6,46 / 3,59 / 4,73 — tout passe, mais la
+>   dernière est à 5 % du seuil et a été notée comme telle.
+>
+> ## CE QUI N'EST PAS FAIT, ET POURQUOI — À LIRE
+>
+> ### ⛔ AUCUN COURRIEL NE PART, NI VERS LE PO NI VERS L'AGRICULTEUR
+>
+> Le brief le demandait en prévenant : « si cela demande un service qui
+> n'existe pas dans ce projet, DIS-LE et propose ce qui est faisable sans en
+> ajouter un ». **C'est le cas.** Ce projet n'a aucun service d'envoi :
+> Supabase n'expédie de courriel que pour l'authentification, et brancher
+> Resend/SendGrid serait ajouter un fournisseur, une clé secrète, une facture
+> et une dépendance externe — en silence, dans une passe qui n'en parle pas.
+>
+> **Ce qui est fait à la place, sans rien ajouter :**
+>
+> - **Le PO est averti DANS SON APP** : la vignette « בקשות נכנסות » n'apparaît
+>   que lorsqu'il y a quelque chose, et porte le compte. Il ouvre déjà l'app
+>   tous les jours ; c'est le seul canal dont on est sûr qu'il le regarde.
+> - **Le rendez-vous demandé se pose dans son agenda**, marqué « ⏳ ממתין
+>   לאישור » : il le voit en balayant sa semaine, sans rien ouvrir.
+> - **L'agriculteur reçoit sa confirmation À L'ÉCRAN**, avec une **référence**
+>   (`2159DD`) et les coordonnées du PO en un toucher (`tel:` et `mailto:`).
+>
+> **Ce qu'il faudrait pour aller plus loin, et la décision appartient au PO** :
+> une fonction Edge appelée par un déclencheur sur `aid_requests`, plus un
+> compte chez un expéditeur. C'est une demi-journée et une facture, pas un
+> détail de code.
+>
+> ### Les jours intermédiaires (חול המועד) restent ouverts
+>
+> `JEWISH_HOLIDAYS` porte les huit jours où le travail est interdit (Roch
+> Hachana ×2, Kippour, Souccot, Chemini Atseret, Pessah ×2, Chavouot). Pourim,
+> Yom HaAtsmaout, le 9 Av et les jours intermédiaires ne ferment PAS : ce sont
+> des jours ouvrables pour la plupart des exploitations, et les fermer d'office
+> retirerait dix créneaux par an à un agriculteur qui, lui, travaille. Le PO
+> peut toujours déplacer ou refuser un rendez-vous ; la liste, elle, ne se
+> répare pas toute seule. **À revoir avec lui.**
+>
+> ### La fiche naît SANS épingle
+>
+> `position_missing = true` (décision AN n°1 : « une fiche sans position n'a pas
+> de point »). Déduire la position du יישוב donnerait au champ de l'agriculteur
+> le centre de son village — un point que personne n'a choisi, et qu'une carte
+> affiche comme un fait.
+
+
+> 🏁 **PASSE AO — REPRISE DES DONNÉES TERRAIN ET RAPPORT D'ACTIVITÉ. 2026-09-24.**
 >
 > Ordre suivi : AO0 → AO1 → AO2 → AO3 → AO4 → AO5 → **AO6**.
 >

@@ -30,6 +30,37 @@ et AN. Le CLI ne sert qu'à lire (`migration list`) : il n'a pas de commande
 porte pas de mot de passe (donc pas de `psql`), `db dump` exige Docker
 (absent), et le classificateur refuse `supabase db push`.
 
+## ⚠️ LIRE EN DEUXIÈME — DEPUIS AP, UNE CLÉ `anon` EST PUBLIÉE (2026-09-25)
+
+`/lo-yanum/bakasha/` est une page **publique**, ouvrable sans compte, dont le
+bundle porte la clé publiable de `lo-yanum-prod`. C'est normal et prévu — elle
+n'autorise rien par elle-même — **mais cela change ce qu'une erreur de RLS
+coûte** : plus « un accident interne », mais « n'importe qui, depuis n'importe
+où ».
+
+```
+# Ce qu'un anonyme DOIT obtenir, et ce qu'il doit obtenir quand même :
+curl -s "$SB_URL/rest/v1/entities?select=*&limit=1" -H "apikey: $SB_KEY"
+  → 401 {"code":"42501", …}                       ← par DROIT, pas par politique
+curl -s -X POST "$SB_URL/rest/v1/rpc/public_busy_intervals" …
+  → 200                                            ← la page publique, elle, répond
+```
+
+⛔ **`anon` N'A AUCUN DROIT DE TABLE, ET LES TABLES À VENIR NAISSENT FERMÉES.**
+`20260925000300_revoke_anon_everywhere.sql` a révoqué les privilèges PAR DÉFAUT
+du schéma `public` (que personne n'avait accordés et que les TRENTE tables
+avaient) et posé un `alter default privileges` pour la trente-et-unième.
+
+✅ **La surface anonyme entière du projet tient en TROIS fonctions nommées** :
+`submit_aid_request`, `public_busy_intervals`, `public_agreement_template`.
+Toute passe future qui veut en ouvrir une quatrième écrit son corps dans la
+migration — jamais un `grant` sur une table. `bun run appass` (A262) le compte.
+
+⚠️ **CONSÉQUENCE SUR `bun run live`** : il ne peut plus lire le schéma en
+anonyme, ce qui est le but. Il prouve désormais le 42501 et **saute** les
+sections de schéma en le disant. Pour les rejouer :
+`SUPABASE_READ_KEY=<clé de service> bun run live`.
+
 ## ⛔ `supabase db push` AURAIT VIDÉ LA PRODUCTION — LA RÈGLE
 
 L'historique des migrations de `lo-yanum-prod` et `supabase/migrations/` ont
@@ -46,6 +77,19 @@ trace au lieu de l'effacer). Récit : `docs/ao/ao-historique-migrations-avant.md
 
 ## Où en est-on
 
+- **Passe AP TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-09-25) — **la page publique
+  de demande d'aide**, à
+  **https://azmer-fts.github.io/lo-yanum/bakasha/** (commit `24b344c`).
+  Un agriculteur y demande lui-même de l'aide : photo des volontaires d'ארצנו,
+  un bouton « אני רוצה לקבל עזרה », puis sept étapes à une question par écran.
+  Build SÉPARÉ de 57 ko gzippés (`vite.bakasha.config.ts`), sans i18next, sans
+  `supabase-js`, sans magasin, sans service worker.
+  Portes : `bun run appass` (107), `bun run apui` (136, Chromium + WebKit),
+  `bun run apcaptures` ; bout en bout réel : `bun run scripts/apreal.ts`
+  (`docs/ap/ap-bout-en-bout.md`). Charte : `docs/ap/ap-charte-2026-09-25.md`.
+  ★ **Et elle a fermé un trou qui n'était pas dans le brief** : `anon` avait
+  tous les droits sur les trente tables. Voir la section « LIRE EN DEUXIÈME »
+  ci-dessus.
 - **Branche** : `main`, à jour avec `origin/main` — **rien en attente de push**
   (vérifier : `git log --oneline origin/main..HEAD` doit être vide).
   **Dernier commit de la passe AO6** : voir `git log --oneline -1`. Le commit
@@ -95,6 +139,8 @@ trace au lieu de l'effacer). Récit : `docs/ao/ao-historique-migrations-avant.md
   (`docs/screenshots/alpass/deployed/`).
   - App réelle : https://azmer-fts.github.io/lo-yanum/
   - Jumeau de démonstration : https://azmer-fts.github.io/lo-yanum/demo/
+  - **Page publique de demande d'aide (AP) : https://azmer-fts.github.io/lo-yanum/bakasha/**
+    — sans compte, avec la VRAIE paire Supabase, sans service worker.
   - Le commit servi se lit dans `version.json` à la racine de chacune, et dans
     l'app : הגדרות › נתונים › « גרסת האפליקציה ».
 
@@ -136,6 +182,70 @@ réparé, c'est le REJEU d'une base à neuf. `bun run aopass` (A238) le compte :
 toute migration qui crée une table et ne porte pas ses `grant` est rouge.
 
 **Porte** : `bun run aopass` section A238.
+
+## Ce qui est fait dans AP
+
+| Bloc | État |
+|---|---|
+| AP1 charte | ✅ Relevée sur `artzenu.org.il` par `getComputedStyle`, pas à l'œil : `#14A185` (teal) · `#EF4F28` (l'orange de leur appel à l'action) · `#6E9558` · `#0B3D2C` · `#E9F2EA`, pilules de **30 px**. Récit et provenance : `docs/ap/ap-charte-2026-09-25.md` |
+| AP1 police | ⚠️ **Rubik, PAS la leur.** Leur serveur ne rend AUCUN en-tête CORS sur `atlas-*.woff2` (mesuré) — un `@font-face` distant serait refusé par le navigateur — et les recopier serait redistribuer une licence commerciale. G17 avait tranché la même question pour l'app |
+| AP1 photos | ✅ `22-1.jpg` (les volontaires en t-shirt « ארצנו ») et `ארצנו-3.jpg`, recompressées et servies par cette page. ⛔ `ארצנו-2.jpg` écartée : EXIF Shutterstock |
+| AP2 accueil | ✅ Photo en tête, trois phrases, **UN** bouton de 60 px, **aucun menu et aucun lien** (A249 les compte à zéro) |
+| AP2 libellé | ✅ « **אני רוצה לקבל עזרה** » — leur site n'avait de formule que pour qui DONNE et qui AIDE, pas pour qui REÇOIT |
+| AP3 étapes | ✅ Sept, une question par écran, barre de progression, retour sans rien perdre. L'état vit au-dessus des étapes |
+| AP3 claviers | ✅ ★ `KIND_DOM` (AM4) **déménagée dans `@core/fieldKind`** ; `fields.tsx` la réexporte et les deux produits la lisent. Aucune copie, donc aucune divergence possible |
+| AP3 documents | ✅ Liste déduite par `expectedDocuments` (la fonction d'AG6). `photosToPdf` (AG6.2) importé PARESSEUSEMENT. Étape FACULTATIVE |
+| AP3 accord | ✅ `public_agreement_template()` lit le gabarit des réglages ; le rendu est celui d'AH5/AK3. Le texte livré est ENGENDRÉ depuis `he.json` (`bun run apshipped`) et A260 compare |
+| AP3 rendez-vous | ✅ `core/availability.ts` : `CLOSED_WEEKDAYS`, `JEWISH_HOLIDAYS` (dates HÉBRAÏQUES lues par `Intl`), créneaux d'une heure 09–17 **à l'heure de Jérusalem**, délai 24 h, horizon 30 j |
+| AP4 statut | ✅ « בקשה נכנסת », dixième, en tête, dans `FARM_STATUSES_INTAKE`. Il **compte** dans les compteurs, contrairement aux deux d'AO2 |
+| AP4 file | ✅ Vignette « בקשות נכנסות » sur חוות, **deuxième** (« נשכחו » garde la première depuis AC/AD3.2) |
+| AP4 agenda | ✅ Le créneau demandé devient une `farm_visits` avec `pending_confirmation = true`, préfixée « ⏳ » dans l'agenda du PO |
+| AP4.4 sécurité | ✅ ★★ **Les droits d'`anon` révoqués sur les trente tables** (voir la section en tête). Plafonds en SQL, garde-fou de débit, créneau revérifié à l'écriture |
+| AP5 hébergement | ✅ Troisième build plié dans `dist/bakasha/`, avec quatre portes de publication (pas d'archive, la VRAIE paire, aucun service worker) |
+| AP6 portes | ✅ `appass` 107/107 · `apui` **136/136 en local (Chromium + WebKit)** et **67/67 sur le DÉPLOYÉ (Chromium)** · `apcaptures` **60 captures, 0 erreur de page** · `apreal` bout en bout sur `lo-yanum-prod`, puis nettoyé (25 fiches, 0 demande) |
+| AP6 WebKit à distance | ⚠️ **Ne tient pas sur CETTE machine, et ce n'est pas la page.** Passé quelques contextes, WebKit cesse d'ouvrir la moindre socket vers `github.io` (`lsof` : aucune). Quatre remèdes mesurés, aucun ne suffit. Le moteur se CHOISIT désormais : `AP_ENGINES=chromium` pour le déployé ici, `chromium,webkit` partout ailleurs. Détail dans l'en-tête de `scripts/apui.ts` |
+
+Décisions AP posées :
+
+1. ⛔ **`anon` N'A AUCUN DROIT DE TABLE, ET LES TABLES À VENIR NAISSENT
+   FERMÉES.** La règle d'AO0 (« rien pour `anon` ») ne s'annule pas, elle se
+   PRÉCISE : la surface anonyme du projet est une liste de FONCTIONS nommées,
+   jamais un droit de table. Un `grant insert … to anon` laisse choisir toutes
+   les colonnes, y compris celles qu'on ajoutera dans six mois ; le corps d'une
+   fonction les nomme une par une. **Liste de refus contre liste d'acceptation.**
+2. ★★ **UN DROIT QUE PERSONNE N'A ACCORDÉ EST QUAND MÊME UN DROIT.** Les trente
+   tables avaient DELETE/INSERT/SELECT/UPDATE pour `anon` par les privilèges PAR
+   DÉFAUT du schéma `public`. RLS tenait la porte, `bun run auth` était vert, et
+   c'est resté invisible un mois. **Le refus doit être par DROIT ; la politique
+   est la seconde serrure, pas la première.**
+3. **La page publique est un AUTRE PRODUIT, pas une route de l'application.**
+   Build séparé, charte séparée, bundle séparé (57 ko contre plusieurs
+   centaines), aucun service worker. Le lecteur est « sur son téléphone, entre
+   deux tâches » : chaque kilo-octet est un abandon possible.
+4. **Une règle écrite deux fois finit écrite de deux façons.** Les plafonds
+   (SQL ↔ TS), le texte livré de l'accord (`he.json` ↔ `agreementShipped.ts`),
+   la table des claviers : chaque couple est soit UNE source, soit comparé par
+   une porte (A260). Jamais un commentaire qui dit « les deux doivent être
+   égaux ».
+5. **Aucune étape obligatoire de plus que nécessaire.** Bloquent : un nom de
+   lieu, un nom de personne, un נייד possible, et un courriel TAPÉ mais
+   impossible. Rien d'autre — ni ת״ז, ni יישוב, ni document, ni signature, ni
+   rendez-vous. « Une demande sans document vaut mieux que pas de demande. »
+6. **Un refus ne doit jamais coincer.** Deux fichiers refusés d'affilée, et le
+   parcours continue (A256 le mesure). Hors ligne se dit autrement qu'un refus :
+   le second envoie recommencer depuis le début.
+7. ⚠️ **AUCUN COURRIEL NE PART.** Ce projet n'a aucun service d'envoi et AP n'en
+   a pas ajouté un en silence. Le PO est averti DANS SON APP (la vignette) et
+   dans SON AGENDA (le « ⏳ ») ; l'agriculteur reçoit sa référence à l'écran.
+   Aller plus loin = une fonction Edge + un compte chez un expéditeur, et
+   **c'est une décision du PO**.
+8. ★ **Un commentaire qui nomme ce qu'il refuse ne doit pas faire échouer la
+   porte.** `appass` lisait le texte entier des fichiers et trouvait
+   `react-i18next` dans l'en-tête qui explique pourquoi on ne l'emploie PAS.
+   Une porte qui cherche un import lit les `import`.
+9. ★ **Une porte qui lit deux instructions SQL comme une seule accuse du code
+   innocent.** Deux motifs à `[\s\S]*?` traversaient les points-virgules. On
+   découpe sur `;` avant de chercher.
 
 ## Ce qui est fait dans AO
 
@@ -308,7 +418,14 @@ Décisions AM posées :
 cd "/Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM"
 bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
-bun run typecheck && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run contrast && bun run akpass && bun run accept
+bun run typecheck && bun run appass && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run contrast && bun run akpass && bun run accept
+
+# LA PAGE PUBLIQUE (AP) :
+bun run appass                                                     # 107, pure
+bun run apui                                                       # 136, Chromium + WebKit, build local
+AP_ENGINES=chromium BASE_URL=https://azmer-fts.github.io/lo-yanum/bakasha/ bun run apui   # le DÉPLOYÉ (67/67)
+bun run apcaptures                                                 # les captures du déployé
+bun run bakasha                                                    # le serveur de dév, port 5188 (PAS 5199 : c'est celui d'`auth`)
 
 # La base RÉELLE (schéma seul, aucun mot de passe, aucune ligne lue) :
 bun run live
@@ -445,6 +562,7 @@ Décisions AK posées : (1) `type` reste la seule vérité de la nature, 'unknow
 
 ```bash
 # Pures
+bun run appass                                        # AP : A250–A262 (la page publique)
 bun run ampass                                        # AM : A212–A216
 bun run alpass                                        # AL : A207 · A208 · A209
 bun run tokens                                        # zéro violation depuis AL4.1
@@ -454,6 +572,9 @@ bun run accept dispatch persist mapping report deletion sync contrast
 bun run aipass ahpass afpass agpass acpass assoc     # aipass lit basemap/*.pmtiles
 
 # Navigateur, build local
+bun run apui                                          # AP : A249–A259, Chromium + WebKit (~7 min)
+AP_ENGINES=chromium BASE_URL=https://azmer-fts.github.io/lo-yanum/bakasha/ bun run apui   # le déployé (~7 min)
+bun run apcaptures                                    # AP6 : 60 captures du déployé, clair/sombre × 3 largeurs
 bun run amui                                          # AM : A212–A221, démo + build réel/base factice (~12 min)
 DIST=dist-am-before DIST_REAL=dist-am-before-real SKIP_BUILD=1 bun run amui   # le ROUGE (builds de b7a9a1f) : 22 PASS / 44 FAIL
 BASE_URL=https://azmer-fts.github.io/lo-yanum bun run amui                     # le DÉPLOYÉ
@@ -520,8 +641,48 @@ d'être déployé.
 - **`bun run write` en échec et `bun run offline` 19+SKIP** restent les
   résultats VERTS (voir `ETAT.md` §13) : il n'existe pas de compte de test sur
   cette machine.
+
+> **Vérifiés identiques SUR `81f1fc8` (l'arbre d'avant AP) pendant AP** :
+>
+> - **`bun run auth` ne termine pas sur cette machine**, et ce n'est PAS une
+>   régression d'AP. Le serveur de développement démarre (`/` répond en 0,1 s)
+>   mais **`/src/main.tsx` n'est jamais servi** : `vite dev` reste bloqué sur
+>   le graphe de modules, y compris après un `rm -rf node_modules/.vite`.
+>   Mesuré à l'identique dans un `git worktree` sur `81f1fc8`.
+>   ⚠️ **Le premier diagnostic était FAUX** : un serveur de dév de la page
+>   publique était resté ouvert sur **5199**, le port que `scripts/auth.ts`
+>   tient pour son « mode réel ». Déplacé sur **5188**
+>   (`vite.bakasha.config.ts`) — mais le blocage subsiste sans lui.
+>   **`lsof` AVANT de conclure à une régression**, pour la troisième fois.
+> - **`bun run aipass` A177** : « le tracé seul tient sous une seconde » rend
+>   2 845 ms ici et **6 494 ms sur `81f1fc8`**, avec une construction de graphe
+>   qui varie de 6 à 22 s d'un lancement à l'autre. C'est une mesure de
+>   PERFORMANCE sur une machine chargée, pas un défaut du produit ; AP ne
+>   touche rien dans `roadGraph`/`routing`. Les 31 autres passent.
 - Les deux violations A57 de `AnchorMap.tsx` signalées en §36.6 ont été
   corrigées en U4 ; celles qui restent sont ailleurs.
+
+## Ce que le PO fait à l'ouverture (AP6, 2026-09-25)
+
+1. **Ouvrir la page publique sur son téléphone** :
+   **https://azmer-fts.github.io/lo-yanum/bakasha/** — c'est l'adresse à
+   envoyer à l'association. Faire le parcours une fois de bout en bout, comme
+   un agriculteur. ⚠️ **Toute demande déposée depuis cette page arrive dans la
+   VRAIE base** : un essai crée une vraie fiche, qu'il faudra supprimer depuis
+   l'app (ou demander la suppression de la ligne).
+2. **Dans l'app, écran חוות** : la vignette « **בקשות נכנסות** » apparaît (en
+   deuxième, après « נשכחו ») dès qu'une demande est arrivée. La toucher filtre
+   la liste ; la retoucher annule le filtre.
+3. **Dans son agenda** : un rendez-vous demandé porte « **⏳** » et la note
+   « ממתין לאישור ». Il le confirme ou le déplace comme n'importe quelle visite.
+4. ⚠️ **Aucun courriel ne part** — ni vers lui, ni vers l'agriculteur. Voir la
+   décision AP n°7 : la vignette et l'agenda SONT l'alerte. S'il veut un
+   courriel, c'est une fonction Edge et un compte chez un expéditeur, et la
+   décision lui appartient.
+5. **Ce qu'il peut vouloir faire dire autrement** : le libellé du bouton
+   (« אני רוצה לקבל עזרה »), les trois phrases de l'accueil, et la liste des
+   jours de fête — les jours intermédiaires (חול המועד) restent OUVERTS, ce qui
+   est une décision à confirmer avec lui.
 
 ## Ce que le PO fait à l'ouverture (AO6, 2026-09-24)
 

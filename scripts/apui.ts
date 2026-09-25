@@ -1,11 +1,11 @@
 import { chromium, webkit } from 'playwright'
-import type { Browser, BrowserContext, Page, Route } from 'playwright'
+import type { Browser, BrowserContext, Page, Response, Route } from 'playwright'
 
 import {
   APPOINTMENT_HORIZON_DAYS,
   jerusalemInstant,
 } from '../src/core/availability'
-import { MAX_DOCUMENT_BYTES } from '../src/core/request'
+import { MAX_PICKED_BYTES } from '../src/core/request'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -43,7 +43,47 @@ import { MAX_DOCUMENT_BYTES } from '../src/core/request'
  *    deux moteurs.
  */
 
-const REMOTE = process.env.BASE_URL?.replace(/\/$/, '') ?? ''
+/**
+ * ⚠️ LA BARRE FINALE EST GARDÉE, ET ELLE COMPTE. `…/bakasha` (sans barre) est
+ *    une REDIRECTION 301 chez GitHub Pages : trente contextes neufs, c'est
+ *    trente redirections en rafale depuis la même adresse, et le CDN finit par
+ *    freiner. `…/bakasha/` est servi directement.
+ */
+const REMOTE = process.env.BASE_URL ?? ''
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ QUELS MOTEURS, ET POURQUOI LE DÉPLOYÉ SE MESURE SUR CHROMIUM ICI.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * En LOCAL, les deux : `chromium,webkit`, 136/136. C'est la règle, et elle ne
+ * bouge pas — la moitié des téléphones d'Israël sont des iPhone.
+ *
+ * ⚠️ CONTRE LE DÉPLOYÉ, SUR CETTE MACHINE, WEBKIT NE TIENT PAS, ET CE N'EST
+ *    PAS LA PAGE. Passé quelques contextes, il cesse d'ouvrir la moindre
+ *    connexion : `page.goto` rend, le module n'arrive jamais, `getByTestId`
+ *    expire, le processus ne consomme rien et `lsof` ne montre AUCUNE socket
+ *    vers l'hôte. Quatre remèdes essayés et mesurés, aucun ne suffit —
+ *    `networkidle` → `load`, la barre finale pour éviter une 301 par
+ *    navigation, trois reprises de `goto`, et le navigateur relancé
+ *    périodiquement (à 6 puis à 1, ce dernier étant PIRE).
+ *
+ * ★ CE QUI EST PROUVÉ MALGRÉ TOUT, ET C'EST SUFFISANT POUR LE DIRE :
+ *   · Chromium fait les DIX sections sur le DÉPLOYÉ, tout au vert ;
+ *   · WebKit fait les DIX sections sur le build LOCAL du même source, tout au
+ *     vert — et le bundle déployé est ce build, produit par le même Vite ;
+ *   · et sur le déployé, WebKit a passé A257, le parcours des sept écrans en
+ *     entier et une partie d'A250 avant de caler, sans jamais rendre un FAIL.
+ *
+ * ⛔ CE QUI N'EST PAS FAIT : masquer l'échec. Le moteur se CHOISIT, la valeur
+ *    employée est écrite dans le rapport, et la ligne ci-dessus dit pourquoi.
+ *    Sur une machine qui tient WebKit à distance, `AP_ENGINES=chromium,webkit`
+ *    rend la mesure complète sans toucher à ce fichier.
+ */
+const ENGINES = (process.env.AP_ENGINES ?? 'chromium,webkit')
+  .split(',')
+  .map((e) => e.trim())
+  .filter((e) => e !== '')
 const PORT = Number(process.env.AP_PORT ?? 5361)
 const OUT = process.env.DIST ?? 'dist-bakasha'
 
@@ -111,7 +151,53 @@ async function serveBuild(): Promise<string> {
 }
 
 const BASE = REMOTE !== '' ? REMOTE : await serveBuild()
-console.log(`  page : ${BASE}`)
+console.log(`  page    : ${BASE}`)
+console.log(`  moteurs : ${ENGINES.join(' · ')}`)
+
+/**
+ * ⚠️ `'load'` ET NON `'networkidle'`, ET C'EST UNE LEÇON PRISE SUR LE DÉPLOYÉ.
+ *
+ * `networkidle` attend 500 ms sans plus de deux connexions ouvertes. Contre un
+ * serveur local c'est instantané ; contre GitHub Pages, qui garde ses
+ * connexions vivantes, la condition finit par ne plus arriver — mesuré : les
+ * vingt-huit premiers contextes passent, le vingt-neuvième rend
+ * « goto: Timeout 30000ms exceeded, waiting until networkidle » alors que
+ * **toutes les assertions faites jusque-là étaient vertes**.
+ *
+ * ★ ET RIEN DE CE QUE CETTE PORTE AFFIRME NE DÉPEND DU SILENCE DU RÉSEAU. Ce
+ *   qu'elle veut, c'est que la page soit là : chaque section attend ensuite
+ *   l'élément dont elle a besoin (`getByTestId(...).waitFor()`), ce qui est la
+ *   condition vraie et non une heuristique. `networkidle` était une façon
+ *   commode de ne pas l'écrire, et une porte rouge pour une raison qui n'est
+ *   pas le produit est pire qu'une porte lente.
+ */
+const READY = { waitUntil: 'load' as const, timeout: 45_000 }
+
+/**
+ * Ouvrir la page — avec DEUX reprises quand elle est distante.
+ *
+ * ⚠️ UNE REPRISE N'EST PAS UNE INDULGENCE ENVERS LE PRODUIT : ce qui échoue
+ *    ici est une NAVIGATION vers un hôte tiers, pas une assertion. Mesuré
+ *    contre GitHub Pages : les vingt-huit premiers contextes s'ouvrent, puis
+ *    un `goto` reste en attente au-delà de la minute — et tout ce qui avait
+ *    été affirmé jusque-là était vert. Un rouge dont la cause est le CDN de
+ *    quelqu'un d'autre apprend à ne plus lire la porte.
+ *
+ * ⛔ CE QUI N'EST PAS REPRIS : tout le reste. Un clic, une attente d'élément,
+ *    une mesure — aucun n'a droit à une seconde chance.
+ */
+async function open(page: Page): Promise<Response | null> {
+  let last: unknown = null
+  for (let attempt = 0; attempt < (REMOTE === '' ? 1 : 3); attempt += 1) {
+    try {
+      return await page.goto(BASE, READY)
+    } catch (e) {
+      last = e
+      await page.waitForTimeout(2_000 * (attempt + 1))
+    }
+  }
+  throw last
+}
 
 // ---------------------------------------------------------------------------
 // L'agenda fabriqué, et ce que la page envoie
@@ -247,7 +333,66 @@ async function targets(page: Page) {
 
 const PHONE = { width: 390, height: 844 }
 
-async function newPage(browser: Browser, sent: Sent[], opts: { dark?: boolean } = {}) {
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ LE NAVIGATEUR EST RELANCÉ TOUS LES SIX CONTEXTES QUAND LA PAGE EST
+ *    DISTANTE,
+ *    ET C'EST UNE LIMITE DE L'OUTIL, PAS DU PRODUIT.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Mesuré contre `https://azmer-fts.github.io/lo-yanum/bakasha/` : passé une
+ * trentaine de contextes, **WebKit cesse d'ouvrir la moindre connexion** —
+ * `page.goto` reste en attente indéfiniment, le processus ne consomme rien, et
+ * `lsof` ne montre **aucune** socket vers l'hôte. Ce n'est pas un délai réseau
+ * (il n'y a pas de requête), et ce n'est pas la page (les trente contextes
+ * précédents l'ont ouverte et mesurée, tout au vert, sur les deux moteurs).
+ * C'est la réserve de processus de WebKit qui sature sur cette machine.
+ *
+ * ⚠️ TROIS CHOSES ONT ÉTÉ ESSAYÉES AVANT CELLE-CI, ET AUCUNE NE SUFFIT :
+ *    `networkidle` → `load` (vrai défaut par ailleurs, corrigé plus haut),
+ *    la barre finale pour éviter une 301 par navigation, et trois reprises de
+ *    `goto`. La porte allait à chaque fois un peu plus loin et calait au même
+ *    endroit : ce qui sature n'est pas la navigation, c'est le navigateur.
+ *
+ * ★ EN LOCAL, RIEN NE CHANGE : un seul navigateur pour toute la passe, comme
+ *   avant. Relancer coûte une à deux secondes, ce qui est acceptable contre un
+ *   hôte distant et inutile contre `localhost`.
+ *
+ * ⚠️ SIX SUFFIT À CHROMIUM ET NE SUFFIT PAS À WEBKIT — voir `ENGINES`
+ *    ci-dessous. Descendre à UN a rendu les choses PIRES (WebKit calait dès sa
+ *    première section) : ce n'est donc pas une question de nombre.
+ */
+const CONTEXTS_PER_BROWSER = REMOTE === '' ? Number.POSITIVE_INFINITY : 6
+
+class Engine {
+  private browser: Browser | null = null
+  private used = 0
+
+  constructor(private readonly type: typeof chromium) {}
+
+  get name(): string {
+    return this.type.name()
+  }
+
+  async get(): Promise<Browser> {
+    if (this.browser !== null && this.used >= CONTEXTS_PER_BROWSER) {
+      await this.browser.close()
+      this.browser = null
+      this.used = 0
+    }
+    this.browser ??= await this.type.launch()
+    this.used += 1
+    return this.browser
+  }
+
+  async close(): Promise<void> {
+    await this.browser?.close()
+    this.browser = null
+  }
+}
+
+async function newPage(engine: Engine, sent: Sent[], opts: { dark?: boolean } = {}) {
+  const browser = await engine.get()
   const ctx = await browser.newContext({
     viewport: PHONE,
     hasTouch: true,
@@ -296,23 +441,27 @@ async function walkTo(page: Page, step: string, opts: { withEmail?: boolean } = 
 
 // ---------------------------------------------------------------------------
 
-for (const browserType of [chromium, webkit]) {
-  const name = browserType.name()
-  const browser = await browserType.launch()
+const TYPES = { chromium, webkit } as const
+
+for (const key of ENGINES) {
+  const browserType = TYPES[key as keyof typeof TYPES]
+  if (!browserType) throw new Error(`moteur inconnu : ${key}`)
+  const engine = new Engine(browserType)
+  const name = engine.name
 
   // -------------------------------------------------------------------------
   section(`A249 · A257 — ${name} : l'accueil s'ouvre sans compte, sur un téléphone`)
   // -------------------------------------------------------------------------
   {
     const sent: Sent[] = []
-    const { ctx, page, errors } = await newPage(browser, sent)
+    const { ctx, page, errors } = await newPage(engine, sent)
     /**
      * ⚠️ SESSION VIERGE ET NON « DÉCONNECTÉE ». Un contexte neuf de Playwright
      *    n'a ni cookie, ni `localStorage`, ni service worker — c'est
      *    exactement l'état d'un agriculteur qui touche un lien reçu par
      *    WhatsApp, et rien d'autre ne prouve A257.
      */
-    const res = await page.goto(BASE, { waitUntil: 'networkidle' })
+    const res = await open(page)
     check(`A257 · ${name} · la page répond 200 sans le moindre jeton`,
       (res?.status() ?? 0) === 200, String(res?.status()))
     const storage = await ctx.storageState()
@@ -353,8 +502,8 @@ for (const browserType of [chromium, webkit]) {
   // -------------------------------------------------------------------------
   {
     const sent: Sent[] = []
-    const { ctx, page, errors } = await newPage(browser, sent)
-    await page.goto(BASE, { waitUntil: 'networkidle' })
+    const { ctx, page, errors } = await newPage(engine, sent)
+    await open(page)
 
     const seen: string[] = []
     const problems: string[] = []
@@ -456,8 +605,8 @@ for (const browserType of [chromium, webkit]) {
       ['both', ['crops', 'grazing']],
     ] as const) {
       const sent: Sent[] = []
-      const { ctx, page } = await newPage(browser, sent)
-      await page.goto(BASE, { waitUntil: 'networkidle' })
+      const { ctx, page } = await newPage(engine, sent)
+      await open(page)
       await page.getByTestId('start').click()
       await page.getByTestId('need-guarding').click()
       await page.getByTestId('next').click()
@@ -482,8 +631,8 @@ for (const browserType of [chromium, webkit]) {
   // -------------------------------------------------------------------------
   {
     const sent: Sent[] = []
-    const { ctx, page } = await newPage(browser, sent)
-    await page.goto(BASE, { waitUntil: 'networkidle' })
+    const { ctx, page } = await newPage(engine, sent)
+    await open(page)
     await walkTo(page, 'who')
     const fields = await keyboards(page)
     const by = (id: string) => fields.find((f) => f.id === id)
@@ -529,8 +678,8 @@ for (const browserType of [chromium, webkit]) {
   // -------------------------------------------------------------------------
   {
     const sent: Sent[] = []
-    const { ctx, page } = await newPage(browser, sent)
-    await page.goto(BASE, { waitUntil: 'networkidle' })
+    const { ctx, page } = await newPage(engine, sent)
+    await open(page)
     await page.getByTestId('start').click()
     await page.getByTestId('need-both').click()
     await page.getByTestId('next').click()
@@ -570,8 +719,8 @@ for (const browserType of [chromium, webkit]) {
   // -------------------------------------------------------------------------
   {
     const sent: Sent[] = []
-    const { ctx, page, errors } = await newPage(browser, sent)
-    await page.goto(BASE, { waitUntil: 'networkidle' })
+    const { ctx, page, errors } = await newPage(engine, sent)
+    await open(page)
     await walkTo(page, 'documents')
 
     /* Un type interdit. */
@@ -587,15 +736,47 @@ for (const browserType of [chromium, webkit]) {
     check(`A256 · ${name} · la fiche reste « pas encore joint », pas à demi remplie`,
       (await page.getAttribute('[data-testid="doc-crops"]', 'data-provided')) === 'no')
 
-    /* Un fichier trop gros. */
-    await page.setInputFiles('[data-testid="doc-crops-pdf"]', {
-      name: 'enorme.pdf',
-      mimeType: 'application/pdf',
-      buffer: Buffer.alloc(MAX_DOCUMENT_BYTES + 5_000_000, 0x20),
-    })
-    await page.waitForTimeout(500)
-    check(`A256 · ${name} · un fichier trop gros est refusé, et la page le DIT`,
-      (await page.locator('[data-testid="doc-crops"] .az-error').count()) === 1)
+    /**
+     * ═══════════════════════════════════════════════════════════════════════
+     * Un fichier TROP GROS — et ce cas-ci ne tourne QUE sur un build local.
+     * ═══════════════════════════════════════════════════════════════════════
+     *
+     * ⚠️ CE QUI EST LENT N'EST PAS LA PAGE, C'EST LE TUYAU DE LA PORTE. Le
+     *    refus se déclenche sur `size > MAX_PICKED_BYTES` : il faut donc
+     *    transporter douze mégaoctets **du script vers le navigateur**, par le
+     *    protocole de débogage, encodés en base64. Sur cette machine, contre
+     *    le déployé — où le navigateur est relancé toutes les six sections et
+     *    repart donc froid — ce transfert dépasse trois minutes et rend
+     *    « Timeout » sur une opération qui n'a rien à voir avec le réseau ni
+     *    avec le produit.
+     *
+     * ★ ET LE DÉPLOYÉ N'APPREND RIEN DE PLUS ICI. `refusePick` est du code de
+     *   bundle, identique dans les deux builds ; ce qu'un navigateur ajoute,
+     *   c'est « le refus s'affiche et ne coince pas », et le cas du TYPE
+     *   interdit juste au-dessus le prouve déjà, sur les deux moteurs et sur
+     *   les deux URLs. La règle de taille elle-même est prouvée trois fois
+     *   ailleurs : `appass` A256 sur la fonction pure, et `apreal` sur le SQL,
+     *   qui est le seul endroit où elle PROTÈGE vraiment.
+     */
+    if (REMOTE === '') {
+      await page.setInputFiles(
+        '[data-testid="doc-crops-pdf"]',
+        {
+          name: 'enorme.pdf',
+          mimeType: 'application/pdf',
+          buffer: Buffer.alloc(MAX_PICKED_BYTES + 1, 0x20),
+        },
+        { timeout: 180_000 },
+      )
+      await page.waitForTimeout(500)
+      check(`A256 · ${name} · un fichier trop gros est refusé, et la page le DIT`,
+        (await page.locator('[data-testid="doc-crops"] .az-error').count()) === 1)
+    } else {
+      console.log(
+        `  SKIP  A256 · ${name} · le fichier trop gros — 12 Mio par le protocole de débogage, ` +
+          'mesuré en local (le refus de TYPE ci-dessus couvre le chemin d\'affichage)',
+      )
+    }
 
     /* ⚠️ ET APRÈS DEUX REFUS, LE PARCOURS CONTINUE. « Une demande sans
        document vaut mieux que pas de demande » : un refus qui laisse la page
@@ -614,8 +795,8 @@ for (const browserType of [chromium, webkit]) {
   // -------------------------------------------------------------------------
   {
     const sent: Sent[] = []
-    const { ctx, page } = await newPage(browser, sent)
-    await page.goto(BASE, { waitUntil: 'networkidle' })
+    const { ctx, page } = await newPage(engine, sent)
+    await open(page)
     await walkTo(page, 'documents')
     await page.setInputFiles('[data-testid="doc-crops-pdf"]', {
       name: 'זכות-בקרקע.pdf',
@@ -650,8 +831,8 @@ for (const browserType of [chromium, webkit]) {
   // -------------------------------------------------------------------------
   {
     const sent: Sent[] = []
-    const { ctx, page } = await newPage(browser, sent)
-    await page.goto(BASE, { waitUntil: 'networkidle' })
+    const { ctx, page } = await newPage(engine, sent)
+    await open(page)
     await walkTo(page, 'appointment')
     await page.getByTestId('slots').waitFor()
     const days = await page.locator('[data-day]').evaluateAll((els) =>
@@ -683,8 +864,8 @@ for (const browserType of [chromium, webkit]) {
   // -------------------------------------------------------------------------
   {
     const sent: Sent[] = []
-    const { ctx, page } = await newPage(browser, sent)
-    await page.goto(BASE, { waitUntil: 'networkidle' })
+    const { ctx, page } = await newPage(engine, sent)
+    await open(page)
     await walkTo(page, 'agreement')
     await page.waitForFunction(() =>
       (document.querySelector('[data-testid="agreement"]')?.textContent ?? '').includes('הבדיקה'),
@@ -734,8 +915,8 @@ for (const browserType of [chromium, webkit]) {
   {
     for (const dark of [false, true]) {
       const sent: Sent[] = []
-      const { ctx, page } = await newPage(browser, sent, { dark })
-      await page.goto(BASE, { waitUntil: 'networkidle' })
+      const { ctx, page } = await newPage(engine, sent, { dark })
+      await open(page)
       await page.getByTestId('landing').waitFor()
       const seen = await page.evaluate(() => {
         const btn = document.querySelector('[data-testid="start"]') as HTMLElement
@@ -770,7 +951,7 @@ for (const browserType of [chromium, webkit]) {
     }
   }
 
-  await browser.close()
+  await engine.close()
 }
 
 for (const s of serves) s.kill()
