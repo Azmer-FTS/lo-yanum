@@ -466,6 +466,7 @@
     "backToLogin": "מסך פתיחה"
   },
   "farmStatus": {
+    "incoming_request": "בקשה נכנסת",
     "to_contact": "טרם נוצר קשר",
     "contacted": "נוצר קשר",
     "visited": "בוקרה",
@@ -2296,6 +2297,14 @@
     "signedAwaiting": "נחתם, אך התיק אינו שלם בלי מסמכי הזכות בקרקע",
     "queueLine1": "ממתינות",
     "queueLine2": "למסמכים"
+  },
+  "intake": {
+    "queueLine1": "בקשות",
+    "queueLine2": "נכנסות",
+    "hint": "חקלאי שפנה מיוזמתו דרך העמוד הציבורי",
+    "banner": "הבקשה הגיעה מהעמוד הציבורי של ארצנו",
+    "appointmentPending": "ממתין לאישור",
+    "requested": "מועד מבוקש"
   },
   "archive": {
     "action": "העברה לארכיון",

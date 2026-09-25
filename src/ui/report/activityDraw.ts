@@ -48,6 +48,7 @@ function palette() {
 }
 
 const HE_STATUS: Record<FarmStatus, string> = {
+  incoming_request: 'בקשה נכנסת',
   to_contact: 'טרם נוצר קשר',
   contacted: 'נוצר קשר',
   visited: 'בוקרה',

@@ -109,16 +109,47 @@ section('A238 — toute migration qui crée une table porte ses autorisations')
   check(`${created.length} tables créées dans les migrations`, created.length >= 29, String(created.length))
   check('chacune porte ses `grant` DANS SA PROPRE migration', offending.length === 0, offending.join(' | '))
 
-  /* ⛔ Et rien pour `anon` : le besoin réel de ce projet. */
+  /**
+   * ⛔ ET RIEN POUR `anon` — AVEC UNE PRÉCISION QUE LA PASSE AP A RENDUE
+   *    NÉCESSAIRE, ET QUI RESSERRE LA RÈGLE AU LIEU DE L'ASSOUPLIR.
+   *
+   * Jusqu'à AP, ce contrôle disait « aucun `grant … to anon`, nulle part »,
+   * parce que Lo Yanum n'avait aucune surface anonyme. AP lui en donne une :
+   * la page publique de demande d'aide. Elle NE reçoit AUCUN droit de table —
+   * `20260925000300` les révoque même sur les trente qui les avaient par les
+   * privilèges PAR DÉFAUT du schéma — et seulement `execute` sur trois
+   * fonctions nommées.
+   *
+   * ⚠️ CE QUI EST INTERDIT EST DONC PRÉCISÉMENT « `anon` SUR UNE TABLE ». Un
+   *    `grant execute on function` est une porte dont le corps est écrit dans
+   *    la migration ; un `grant select on table` est une porte sur tout ce que
+   *    la table portera un jour. La différence n'est pas de degré.
+   */
   const anon: string[] = []
   for (const file of files) {
     const code = readFileSync(`${dir}/${file}`, 'utf8')
       .split('\n')
       .filter((l) => !/^\s*--/.test(l))
       .join('\n')
-    if (/grant[^;]*\sto\s+anon\b/i.test(code)) anon.push(file)
+    for (const statement of code.split(';')) {
+      const st = statement.trim()
+      if (!/^grant\b/i.test(st) || !/\bto\s+anon\b/i.test(st)) continue
+      /* Les deux seules formes tolérées : une fonction nommée, et `usage` sur
+         le schéma (sans lequel PostgREST ne résout plus ces fonctions). */
+      if (/^grant\s+execute\s+on\s+function\b/i.test(st)) continue
+      if (/^grant\s+usage\s+on\s+schema\s+public\b/i.test(st)) continue
+      anon.push(`${file} → ${st.split('\n')[0].slice(0, 60)}`)
+    }
   }
-  check('aucune table n\'est ouverte à `anon` (Lo Yanum n\'a aucune surface anonyme)', anon.length === 0, anon.join(', '))
+  check('aucune TABLE n\'est ouverte à `anon` (seules trois fonctions le sont — AP4.4)',
+    anon.length === 0, anon.join(' | '))
+
+  /* ★ ET LA RÉVOCATION GÉNÉRALE EXISTE, elle aussi : c'est elle qui fait du
+     refus un fait de DROIT et non seulement de politique. */
+  const revoke = readFileSync(`${dir}/20260925000300_revoke_anon_everywhere.sql`, 'utf8')
+  check('… et les droits par défaut du schéma sont révoqués pour `anon`',
+    /revoke all privileges on all tables in schema public from anon/.test(revoke) &&
+      /alter default privileges in schema public revoke all on tables from anon/.test(revoke))
 
   const state = readFileSync('PROJECT_STATE.md', 'utf8')
   check('la règle est écrite dans PROJECT_STATE.md', /RÈGLE PERMANENTE[^\n]*AUTORISATIONS/u.test(state))
@@ -138,8 +169,12 @@ section('A238 — toute migration qui crée une table porte ses autorisations')
 // ---------------------------------------------------------------------------
 section('A243 — les deux statuts : hors compteurs, dans les listes')
 // ---------------------------------------------------------------------------
-check('neuf statuts en tout', ALL_FARM_STATUSES.length === 9, String(ALL_FARM_STATUSES.length))
-check('six dans le pipeline, trois dehors', FARM_PIPELINE.length === 6 && FARM_STATUSES_OFF_PIPELINE.length === 3)
+/* ⚠️ DIX DEPUIS AP4 : « בקשה נכנסת » s'est ajouté en tête (`FARM_STATUSES_INTAKE`).
+   Ce nombre est mis à jour ICI plutôt qu'assoupli en `>= 9` : c'est la
+   fonction de cette ligne d'exiger qu'on la relise quand l'ensemble grandit. */
+check('dix statuts en tout', ALL_FARM_STATUSES.length === 10, String(ALL_FARM_STATUSES.length))
+check('six dans le pipeline, trois dehors, un en entrée',
+  FARM_PIPELINE.length === 6 && FARM_STATUSES_OFF_PIPELINE.length === 3)
 check('`not_relevant_now` et `on_hold` sont hors compteurs',
   !countsTowardProgramme('not_relevant_now') && !countsTowardProgramme('on_hold'))
 check('`declined` aussi, et par la MÊME fonction', !countsTowardProgramme('declined'))
@@ -233,7 +268,8 @@ const newFarm = (over: Partial<Farm>): Farm =>
   check('★ … et dans le compte par statut (donc filtrables)',
     getFarmStatusCounts().find((c) => c.status === 'on_hold')?.count === 1 &&
       getFarmStatusCounts().find((c) => c.status === 'not_relevant_now')?.count === 1)
-  check('le compte par statut couvre les neuf', getFarmStatusCounts().length === 9)
+  check('le compte par statut couvre les dix (AP4)', getFarmStatusCounts().length === 10,
+    String(getFarmStatusCounts().length))
 
   /* AO2.4 — le commentaire est sur la fiche et survit à une relecture. */
   check('le commentaire libre est enregistré tel quel',

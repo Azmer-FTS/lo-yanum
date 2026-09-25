@@ -1,0 +1,730 @@
+/* ===========================================================================
+   ★★ AP1 (2026-09-25) — LA CHARTE, RELEVÉE SUR artzenu.org.il.
+   ===========================================================================
+
+   Mesurée sur le site le 2026-09-25, pas approchée à l'œil : les couleurs
+   sortent des variables globales du thème (`--e-global-color-*`), les formes
+   de bouton de `getComputedStyle` sur ses propres boutons.
+
+     primaire        #14A185   le teal de l'en-tête et des titres
+     secondaire      #EF4F28   l'orange de « היו שותפים » — LEUR appel à
+                               l'action, donc le nôtre
+     accent          #6E9558   l'olive de « לכל התגובות »
+     vert profond    #0B3D2C   le fond du bandeau « לתרומה לקרן »
+     vert pâle       #E9F2EA   leur fond de section
+     texte           #414141
+     gris            #787878 · #A7A7A7 · #D9D9D9
+
+   FORME DES BOUTONS, relevée : `border-radius: 30px` (une pilule), texte
+   blanc, `padding: 15px 24px`, 18 px. Reprise telle quelle, en plus grand.
+
+   ⚠️ LA POLICE N'EST PAS LA LEUR, ET C'EST UNE DÉCISION DÉJÀ PRISE DANS CE
+      PROJET. Le site emploie « אטלס » et « מקומי », deux fontes hébraïques
+      COMMERCIALES servies depuis leur domaine — sans en-tête CORS, donc un
+      `@font-face` distant serait de toute façon refusé par le navigateur, et
+      les recopier ici serait redistribuer une licence qui n'est pas la nôtre.
+      G17 a tranché exactement cette question pour l'application : « toutes les
+      fontes sont libres (SIL OFL), ce qui a retiré la question de licence du
+      lot 0.8 en même temps que les fontes d'Artzenu ». On garde donc Rubik,
+      déjà dans le dépôt, déjà auto-hébergée — une grotesque hébraïque de la
+      même famille visuelle qu'Atlas. Tout le reste de la charte est le leur.
+
+   ⚠️ ET IL Y A UN THÈME SOMBRE, QUE LEUR SITE N'A PAS. Le lecteur type est
+      « sur son téléphone, entre deux tâches » : la moitié des téléphones sont
+      en sombre, et une page qui reste blanche la nuit éblouit. Le sombre
+      reprend leur vert profond comme sol et garde leur orange intact — c'est
+      la même identité, pas une seconde.
+   =========================================================================== */
+
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('./rubik-hebrew.woff2') format('woff2');
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC,
+    U+FB1D-FB4F;
+}
+
+@font-face {
+  font-family: 'Rubik';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('./rubik-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  --az-primary: #14a185;
+  --az-cta: #ef4f28;
+  --az-cta-press: #d33f1b;
+  --az-accent: #6e9558;
+  --az-deep: #0b3d2c;
+  --az-pale: #e9f2ea;
+
+  --az-ground: #ffffff;
+  --az-card: #ffffff;
+  --az-sunk: #f4f7f4;
+  --az-ink: #2b2b2b;
+  --az-ink-soft: #5c5c5c;
+  --az-ink-faint: #787878;
+  --az-line: #d9d9d9;
+  --az-line-soft: #e8e8e8;
+  --az-on-colour: #ffffff;
+  --az-shadow: 0 1px 2px rgb(11 61 44 / 0.06), 0 8px 24px rgb(11 61 44 / 0.08);
+
+  /* ★ 44 px ET 8 px, LES DEUX RÈGLES D'AA1 ET D'AM4, REPRISES ICI PARCE QUE
+       CETTE PAGE NE PARTAGE PAS LA FEUILLE DE L'APPLICATION. Une porte les
+       mesure (A249) plutôt que de faire confiance à ces deux lignes. */
+  --az-touch: 48px;
+  --az-gap: 12px;
+  --az-radius: 18px;
+  --az-pill: 30px;
+}
+
+/* ⚠️ DEUX SÉLECTEURS POUR LE SOMBRE, comme partout ailleurs dans ce projet :
+      la préférence de l'appareil, ET le choix explicite d'une porte de
+      capture (`data-theme`), qui doit pouvoir demander l'un ou l'autre sans
+      dépendre du réglage de la machine qui l'exécute. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --az-ground: #0e1a14;
+    --az-card: #14261d;
+    --az-sunk: #10201a;
+    --az-ink: #edf3ee;
+    --az-ink-soft: #b9c9bf;
+    --az-ink-faint: #93a89b;
+    --az-line: #2b4436;
+    --az-line-soft: #22392c;
+    --az-primary: #35c2a5;
+    --az-accent: #9cc283;
+    --az-pale: #172c21;
+    --az-deep: #0a1611;
+    --az-shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 30px rgb(0 0 0 / 0.4);
+  }
+}
+
+:root[data-theme='dark'] {
+  --az-ground: #0e1a14;
+  --az-card: #14261d;
+  --az-sunk: #10201a;
+  --az-ink: #edf3ee;
+  --az-ink-soft: #b9c9bf;
+  --az-ink-faint: #93a89b;
+  --az-line: #2b4436;
+  --az-line-soft: #22392c;
+  --az-primary: #35c2a5;
+  --az-accent: #9cc283;
+  --az-pale: #172c21;
+  --az-deep: #0a1611;
+  --az-shadow: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 30px rgb(0 0 0 / 0.4);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--az-ground);
+  color: var(--az-ink);
+  font-family: 'Rubik', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* ⚠️ 17 px DE CORPS, PAS 16. Le brief dit « gros texte » et « aucun champ
+        sous 16 px » ; 16 est le plancher qui empêche iOS de zoomer, pas une
+        cible. Le lecteur lit dehors, au soleil. */
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- l'ossature ---------------------------------------------------------- */
+
+.az-page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.az-wrap {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  /* 16 px de gouttière, et la marge de l'encoche en plus. */
+  padding: 0 max(16px, env(safe-area-inset-right)) 0
+    max(16px, env(safe-area-inset-left));
+}
+
+/* --- l'accueil ----------------------------------------------------------- */
+
+.az-hero {
+  position: relative;
+  width: 100%;
+  /* ★ LA PHOTO EN TÊTE, EN GRAND (AP2.1). Assez haute pour qu'on voie les
+       t-shirts verts sur un téléphone, jamais au point de repousser le bouton
+       hors de l'écran : c'est le bouton qui décide de la hauteur. */
+  aspect-ratio: 3 / 2;
+  max-height: 46vh;
+  overflow: hidden;
+  background: var(--az-deep);
+}
+
+/* ⚠️ `:not(.az-hero-logo)` ET CE N'EST PAS DE LA COQUETTERIE DE SÉLECTEUR.
+   `.az-hero img` (0,1,1) l'emporte sur `.az-hero-logo` (0,1,0) : sans cette
+   exclusion, le logo héritait de `width: 100%` et couvrait toute la photo.
+   Vu sur capture, pas déduit. */
+.az-hero > img:not(.az-hero-logo) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Les volontaires sont en haut de l'image ; un recadrage centré les coupe. */
+  object-position: 50% 32%;
+  display: block;
+}
+
+.az-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgb(11 61 44 / 0.35) 0%,
+    rgb(11 61 44 / 0) 45%,
+    rgb(11 61 44 / 0.55) 100%
+  );
+}
+
+.az-hero-logo {
+  position: absolute;
+  top: 14px;
+  inset-inline-start: 16px;
+  z-index: 1;
+  width: 132px;
+  height: auto;
+  filter: drop-shadow(0 2px 8px rgb(0 0 0 / 0.45));
+}
+
+.az-lede {
+  font-size: 26px;
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--az-deep);
+  margin: 22px 0 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .az-lede {
+    color: var(--az-primary);
+  }
+}
+
+:root[data-theme='dark'] .az-lede {
+  color: var(--az-primary);
+}
+
+.az-body {
+  font-size: 18px;
+  color: var(--az-ink-soft);
+  margin: 0 0 18px;
+}
+
+.az-body strong {
+  color: var(--az-ink);
+  font-weight: 600;
+}
+
+/* --- les boutons --------------------------------------------------------- */
+
+.az-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 60px;
+  padding: 16px 24px;
+  border: 0;
+  border-radius: var(--az-pill);
+  background: var(--az-cta);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgb(239 79 40 / 0.28);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.az-btn:active {
+  background: var(--az-cta-press);
+}
+
+.az-btn:disabled {
+  background: var(--az-line);
+  color: var(--az-ink-faint);
+  box-shadow: none;
+  cursor: default;
+}
+
+.az-btn-quiet {
+  background: transparent;
+  color: var(--az-ink-soft);
+  border: 1px solid var(--az-line);
+  box-shadow: none;
+  min-height: var(--az-touch);
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.az-btn-quiet:active {
+  background: var(--az-sunk);
+}
+
+.az-btn-green {
+  background: var(--az-deep);
+  box-shadow: 0 6px 18px rgb(11 61 44 / 0.25);
+}
+
+:root[data-theme='dark'] .az-btn-green,
+.az-btn-green {
+  color: #ffffff;
+}
+
+/* --- les choix visuels (étapes 1 et 2) ----------------------------------- */
+
+.az-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--az-gap);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.az-choice {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 76px;
+  padding: 14px 18px;
+  border: 2px solid var(--az-line);
+  border-radius: var(--az-radius);
+  background: var(--az-card);
+  color: var(--az-ink);
+  font-family: inherit;
+  font-size: 19px;
+  font-weight: 500;
+  text-align: start;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.az-choice[aria-pressed='true'] {
+  border-color: var(--az-primary);
+  background: var(--az-pale);
+}
+
+.az-choice-mark {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--az-line);
+  display: grid;
+  place-items: center;
+}
+
+.az-choice[aria-pressed='true'] .az-choice-mark {
+  border-color: var(--az-primary);
+  background: var(--az-primary);
+  color: #ffffff;
+}
+
+.az-choice-note {
+  display: block;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--az-ink-faint);
+}
+
+/* --- les champs ---------------------------------------------------------- */
+
+.az-field {
+  display: block;
+  margin-bottom: 18px;
+}
+
+.az-label {
+  display: block;
+  font-size: 17px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--az-ink);
+}
+
+.az-optional {
+  font-weight: 400;
+  color: var(--az-ink-faint);
+  font-size: 15px;
+}
+
+.az-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 14px;
+  border: 1px solid var(--az-line);
+  border-radius: 14px;
+  background: var(--az-card);
+  color: var(--az-ink);
+  font-family: inherit;
+  /* ⚠️ 17 px ET JAMAIS MOINS DE 16 : sous 16 px, iOS zoome sur le champ au
+        moment de la frappe et le lecteur perd la page des yeux (AM4). */
+  font-size: 17px;
+}
+
+.az-input:focus-visible {
+  outline: 2px solid var(--az-primary);
+  outline-offset: 1px;
+}
+
+.az-input[aria-invalid='true'] {
+  border-color: var(--az-cta);
+}
+
+.az-error {
+  display: block;
+  margin-top: 6px;
+  color: var(--az-cta);
+  font-size: 15px;
+}
+
+/* --- la barre de progression --------------------------------------------- */
+
+.az-top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--az-ground);
+  border-bottom: 1px solid var(--az-line-soft);
+  padding-top: env(safe-area-inset-top);
+}
+
+.az-top-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+}
+
+.az-back {
+  flex: 0 0 auto;
+  width: var(--az-touch);
+  height: var(--az-touch);
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--az-ink-soft);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.az-back:active {
+  background: var(--az-sunk);
+}
+
+.az-step-count {
+  margin-inline-start: auto;
+  font-size: 15px;
+  color: var(--az-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.az-progress {
+  height: 6px;
+  background: var(--az-line-soft);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.az-progress-fill {
+  height: 100%;
+  background: var(--az-primary);
+  border-radius: 3px;
+  transition: width 220ms ease;
+}
+
+/* --- le corps d'une étape ------------------------------------------------ */
+
+.az-step {
+  flex: 1 1 auto;
+  padding-bottom: 24px;
+}
+
+.az-q {
+  font-size: 24px;
+  line-height: 1.3;
+  font-weight: 600;
+  margin: 22px 0 6px;
+}
+
+.az-hint {
+  font-size: 16px;
+  color: var(--az-ink-faint);
+  margin: 0 0 18px;
+}
+
+.az-foot {
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(
+    to top,
+    var(--az-ground) 62%,
+    rgb(0 0 0 / 0) 100%
+  );
+  /* ⚠️ `padding-block` ET NON `padding`. `.az-foot` est posée SUR `.az-wrap` ;
+     un `padding` complet écrasait les gouttières de 16 px de celle-ci, et le
+     bouton touchait les deux bords de l'écran. Mesuré (x=0, w=375 sur un
+     téléphone de 375), pas relu. */
+  padding-block: 14px max(14px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* --- les documents ------------------------------------------------------- */
+
+.az-doc {
+  border: 1px solid var(--az-line);
+  border-radius: var(--az-radius);
+  background: var(--az-card);
+  padding: 16px;
+  margin-bottom: var(--az-gap);
+}
+
+.az-doc-name {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 0 4px;
+}
+
+.az-doc-state {
+  font-size: 15px;
+  color: var(--az-ink-faint);
+  margin: 0 0 12px;
+}
+
+.az-doc-done {
+  color: var(--az-primary);
+  font-weight: 500;
+}
+
+.az-doc-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.az-doc-actions .az-btn-quiet {
+  flex: 1 1 140px;
+  width: auto;
+}
+
+/* --- l'accord ------------------------------------------------------------ */
+
+.az-agreement {
+  border: 1px solid var(--az-line);
+  border-radius: var(--az-radius);
+  background: var(--az-sunk);
+  padding: 16px;
+  /* ⚠️ HAUTEUR BORNÉE ET DÉFILANTE. Le gabarit fait une page entière ; posé
+        tel quel, le trait de signature partirait à deux écrans du texte. */
+  /* ⚠️ 34vh ET NON 44. Mesuré sur un téléphone de 812 px : à 44vh, le texte
+     (357 px) + le pavé de signature (190 px) + le pied collant poussaient la
+     ligne « חתימה כאן · מחיקה » hors de l'écran — c'est-à-dire que le geste
+     que cette étape existe pour obtenir n'était pas visible. Le texte défile,
+     il est fait pour ; le trait de signature, non. */
+  max-height: 34vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  font-size: 16px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin-bottom: 16px;
+}
+
+.az-agreement strong {
+  font-weight: 600;
+}
+
+.az-sign {
+  border: 2px dashed var(--az-line);
+  border-radius: var(--az-radius);
+  background: var(--az-card);
+  /* Le doigt a besoin de place : 190 px, la même hauteur que le pavé de
+     l'application. */
+  height: 190px;
+  width: 100%;
+  touch-action: none;
+  display: block;
+}
+
+.az-sign-signed {
+  border-style: solid;
+  border-color: var(--az-primary);
+}
+
+/* --- le rendez-vous ------------------------------------------------------ */
+
+.az-day {
+  margin-bottom: 20px;
+}
+
+.az-day-name {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--az-ink);
+}
+
+.az-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: var(--az-gap);
+}
+
+.az-slot {
+  min-height: var(--az-touch);
+  padding: 10px 8px;
+  border: 2px solid var(--az-line);
+  border-radius: 14px;
+  background: var(--az-card);
+  color: var(--az-ink);
+  font-family: inherit;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.az-slot[aria-pressed='true'] {
+  border-color: var(--az-primary);
+  background: var(--az-pale);
+  font-weight: 600;
+}
+
+/* --- l'arrivée ----------------------------------------------------------- */
+
+.az-done-mark {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: var(--az-primary);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  margin: 28px auto 18px;
+}
+
+.az-ref {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  font-size: 22px;
+  font-weight: 600;
+  background: var(--az-pale);
+  color: var(--az-deep);
+  border-radius: 12px;
+  padding: 8px 16px;
+  /* En RTL, une référence latine se lit à l'envers sans cette marque. */
+  direction: ltr;
+}
+
+:root[data-theme='dark'] .az-ref {
+  color: var(--az-primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .az-ref {
+    color: var(--az-primary);
+  }
+}
+
+.az-contact {
+  border: 1px solid var(--az-line);
+  border-radius: var(--az-radius);
+  background: var(--az-card);
+  padding: 16px;
+  margin: 20px 0;
+}
+
+/* ⚠️ `+ a` : 8 PX ENTRE LE TÉLÉPHONE ET LE COURRIEL. Les deux cibles se
+   touchaient (écart mesuré : 0 px), et un pouce qui vise « appeler » lance un
+   client de messagerie. Même règle qu'AA1 et AL5 dans l'application ; c'est la
+   porte qui l'a trouvée, pas la relecture. */
+.az-contact a {
+  display: flex;
+  align-items: center;
+  min-height: var(--az-touch);
+  gap: 10px;
+  color: var(--az-primary);
+  font-size: 18px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.az-contact a + a {
+  margin-top: 8px;
+}
+
+.az-photo-strip {
+  width: 100%;
+  border-radius: var(--az-radius);
+  display: block;
+  margin: 18px 0 0;
+}
+
+/* --- les avis ------------------------------------------------------------ */
+
+.az-notice {
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 16px;
+  margin-bottom: 14px;
+}
+
+.az-notice-bad {
+  background: rgb(239 79 40 / 0.12);
+  color: var(--az-cta);
+}
+
+.az-notice-soft {
+  background: var(--az-pale);
+  color: var(--az-ink-soft);
+}
+
+/* --- le pied ------------------------------------------------------------- */
+
+.az-credit {
+  text-align: center;
+  font-size: 14px;
+  color: var(--az-ink-faint);
+  padding: 22px 0 max(22px, env(safe-area-inset-bottom));
+}
+
+.az-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

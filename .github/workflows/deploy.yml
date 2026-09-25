@@ -67,6 +67,33 @@ jobs:
           # And the archive is the real app's, by absolute URL.
           VITE_BASEMAP_URL: https://azmer-fts.github.io/lo-yanum/basemap/israel-20260831-z14.pmtiles.png
 
+      # ═══════════════════════════════════════════════════════════════════
+      # ★★ AP5 (2026-09-25) — LA PAGE PUBLIQUE DE DEMANDE D'AIDE, EN TROISIÈME
+      #    BUILD.
+      # ═══════════════════════════════════════════════════════════════════
+      #
+      # Publiée à `/lo-yanum/bakasha/` : l'adresse que le PO enverra à
+      # l'association. Ouvrable sans compte et sans lien de garde.
+      #
+      # ⚠️ ELLE A SA PROPRE PAIRE SUPABASE, ET C'EST LA VRAIE. Contrairement au
+      #    jumeau de démonstration, cette page DOIT parler à `lo-yanum-prod` :
+      #    c'est là que la demande de l'agriculteur se pose. La clé publiable
+      #    n'autorise rien par elle-même — depuis la migration
+      #    `20260925000300`, `anon` n'a plus aucun droit de table sur les
+      #    trente tables et ne peut appeler que trois fonctions nommées.
+      #
+      # ⚠️ ET ELLE EST CONSTRUITE AVANT L'ÉTAPE QUI POSE L'ARCHIVE DANS
+      #    `public/`, POUR LA MÊME RAISON QUE LE JUMEAU : `publicDir` est
+      #    recopié en entier dans la sortie. Ici le risque est moindre — sa
+      #    racine est `bakasha/public` — mais l'ordre reste celui qui se
+      #    raconte en une phrase : tout ce qui n'est pas l'application se
+      #    construit d'abord.
+      - name: Build — la page publique de demande d'aide (/bakasha/)
+        run: bun x vite build --config vite.bakasha.config.ts
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+
       # PO POINT 0 — WHICH BASEMAP THIS BUILD POINTS AT, AND WHY IT IS NO LONGER
       # A QUESTION. REWRITTEN 2026-09-01; ETAT §27 AND §28 ARE THE MEASUREMENT.
       #
@@ -315,6 +342,44 @@ jobs:
             exit 1
           fi
           echo "::notice::Demo twin: /lo-yanum/demo/ published from this same commit, no Supabase pair, sharing the app's archive."
+
+      # ★★ AP5 — ET LA PAGE PUBLIQUE, AU MÊME ENDROIT ET POUR LA MÊME RAISON :
+      #    après la porte qui lit `dist/assets/*.js` et exige UN seul nom
+      #    d'archive. Un second `assets/` dans la portée du glob la ferait
+      #    échouer sur rien.
+      - name: Fold the public request page into the Pages payload
+        run: |
+          set -euo pipefail
+          mv dist-bakasha dist/bakasha
+          test -f dist/bakasha/index.html
+          # ⚠️ ELLE NE DOIT PAS PORTER L'ARCHIVE CARTOGRAPHIQUE. Si cela se
+          #    produit, c'est qu'elle a été construite après l'étape de staging.
+          if [ -e dist/bakasha/basemap ]; then
+            echo "::error::The public request page carries a copy of the basemap. It must be built BEFORE the archive is staged into public/. Refusing to deploy."
+            exit 1
+          fi
+          # ⚠️ ET ELLE DOIT PORTER LA VRAIE PAIRE, ce qui est l'exact inverse du
+          #    jumeau : une page de demande qui ne parle à aucune base recueille
+          #    des demandes que personne ne reçoit. Le test est la VALEUR de la
+          #    clé (le préfixe seul est un littéral de la bibliothèque — la
+          #    leçon apprise sur le jumeau juste au-dessus).
+          if ! grep -rqE 'https://[a-z0-9]+\.supabase\.co' dist/bakasha/assets/*.js; then
+            echo "::error::The public request page names no Supabase project, so every request it collects would go nowhere. Refusing to deploy."
+            exit 1
+          fi
+          if ! grep -rqE '(sb_publishable_[A-Za-z0-9_-]{20,}|eyJ[A-Za-z0-9_-]{20,})' dist/bakasha/assets/*.js; then
+            echo "::error::The public request page carries no publishable key. Refusing to deploy."
+            exit 1
+          fi
+          # ⚠️ ET ELLE NE DOIT PAS ENREGISTRER DE SERVICE WORKER. Celui de
+          #    l'application prend la main sur son `scope` ; une page publique
+          #    qui en poserait un servirait un jour une version périmée à un
+          #    agriculteur qui l'ouvre pour la première et dernière fois.
+          if grep -rq 'serviceWorker' dist/bakasha/assets/*.js; then
+            echo "::error::The public request page registers a service worker. It is opened once and must never be cached by one. Refusing to deploy."
+            exit 1
+          fi
+          echo "::notice::Public request page: /lo-yanum/bakasha/ published from this same commit, with the real Supabase pair, no service worker."
 
       # PO RULE, 2026-09-01 — THE ONLY EVIDENCE HE ACCEPTS ON THE BASEMAP IS A
       # REAL BROWSER ON A BLANK PROFILE. AND IT IS PERMANENT, NOT A ONE-OFF.

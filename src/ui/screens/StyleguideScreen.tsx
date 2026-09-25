@@ -57,7 +57,12 @@ const STATUS_HUES = [
   'status-info',
   'status-violet',
 ]
+/* ⚠️ AP4 — CETTE LISTE ÉTAIT PÉRIMÉE DEPUIS AO : elle ignorait
+   `farm-not-relevant-now` et `farm-on-hold`, donc le styleguide montrait sept
+   teintes de statut alors que l'application en portait neuf. Règle 10 encore,
+   sur une troisième liste que personne n'avait recensée. Dix aujourd'hui. */
 const FARM_HUES = [
+  'farm-incoming-request',
   'farm-to-contact',
   'farm-contacted',
   'farm-visited',
@@ -65,6 +70,8 @@ const FARM_HUES = [
   'farm-signed',
   'farm-active',
   'farm-declined',
+  'farm-not-relevant-now',
+  'farm-on-hold',
 ]
 
 const ALL_TOKENS = [

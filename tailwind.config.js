@@ -107,6 +107,8 @@ export default {
           'not-relevant-now-ink': token('farm-not-relevant-now-ink'),
           'on-hold': token('farm-on-hold'),
           'on-hold-ink': token('farm-on-hold-ink'),
+          'incoming-request': token('farm-incoming-request'),
+          'incoming-request-ink': token('farm-incoming-request-ink'),
         },
       },
       backgroundImage: {

@@ -26,6 +26,8 @@ import { Icon } from './Icon'
 
 /** Token name per farm status; `readStatusColor` resolves it to a real colour. */
 const FARM_STATUS_TOKEN: Record<FarmStatus, string> = {
+  /* AP4 — la demande entrante, en tête comme dans `ALL_FARM_STATUSES`. */
+  incoming_request: '--farm-incoming-request',
   to_contact: '--farm-to-contact',
   contacted: '--farm-contacted',
   visited: '--farm-visited',
@@ -142,6 +144,7 @@ export function MarkerSwatch({
 
 /** Tinted chip: INK text on a 15 % wash of the matching VIVID colour. */
 const FARM_STATUS_CLASS: Record<FarmStatus, string> = {
+  incoming_request: 'bg-farm-incoming-request/15 text-farm-incoming-request-ink',
   to_contact: 'bg-farm-to-contact/15 text-farm-to-contact-ink',
   contacted: 'bg-farm-contacted/15 text-farm-contacted-ink',
   visited: 'bg-farm-visited/15 text-farm-visited-ink',
@@ -154,6 +157,7 @@ const FARM_STATUS_CLASS: Record<FarmStatus, string> = {
 }
 
 const FARM_STATUS_DOT: Record<FarmStatus, string> = {
+  incoming_request: 'bg-farm-incoming-request',
   to_contact: 'bg-farm-to-contact',
   contacted: 'bg-farm-contacted',
   visited: 'bg-farm-visited',

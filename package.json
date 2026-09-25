@@ -119,7 +119,13 @@
     "aopass": "bun run scripts/aopass.ts",
     "aoui": "bun run scripts/aoui.ts",
     "aocaptures": "bun run scripts/aocaptures.ts",
-    "aodeployed": "bun run scripts/aodeployed.ts"
+    "aodeployed": "bun run scripts/aodeployed.ts",
+    "bakasha": "vite --config vite.bakasha.config.ts",
+    "bakasha:build": "vite build --config vite.bakasha.config.ts",
+    "apshipped": "bun run scripts/apshipped.ts",
+    "appass": "bun run scripts/appass.ts",
+    "apui": "bun run scripts/apui.ts",
+    "apcaptures": "bun run scripts/apcaptures.ts"
   },
   "dependencies": {
     "@mapbox/mapbox-gl-rtl-text": "0.2.3",

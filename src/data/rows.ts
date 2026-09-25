@@ -1026,6 +1026,10 @@ const farmVisitMapping: Mapping<FarmVisit> = {
           note: v.note,
           done: v.done,
           remind_minutes: v.remindMinutes ?? null,
+          /* AP3.6 — un rendez-vous demandé depuis la page publique tant que le
+             PO ne l'a pas confirmé. `?? false` et non `?? null` : la colonne
+             est `not null default false`. */
+          pending_confirmation: v.pendingConfirmation ?? false,
         },
       ],
     },
@@ -1037,6 +1041,7 @@ const farmVisitMapping: Mapping<FarmVisit> = {
     note: str(p.note),
     done: bool(p.done),
     remindMinutes: typeof p.remind_minutes === 'number' ? p.remind_minutes : undefined,
+    pendingConfirmation: p.pending_confirmation === true ? true : undefined,
   }),
 }
 

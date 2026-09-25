@@ -108,6 +108,12 @@ const HUES = [
      `scripts/live.ts` — voir la règle dans PROJECT_STATE.md. */
   'farm-not-relevant-now',
   'farm-on-hold',
+  /* ★★ AP4 (2026-09-25) — « בקשה נכנסת ». Ajoutée ICI DANS LA MÊME PASSE que
+     le jeton, parce que la règle 10 de PROJECT_STATE.md dit exactement cela :
+     ajouter une valeur à un ensemble fermé = faire le tour des portes qui
+     l'énumèrent. En AO, les deux teintes neuves ont vécu une passe entière
+     sans être mesurées — et elles ÉCHOUAIENT. */
+  'farm-incoming-request',
 ]
 
 function buildChecks(theme: 'light' | 'dark'): Check[] {

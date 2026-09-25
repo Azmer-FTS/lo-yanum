@@ -413,8 +413,17 @@ section('5 — every column the mapper writes exists, and every required one is 
       cols.set(name, !required)
     }
   }
+  /**
+   * ⚠️ `(?:public\.)?` A ÉTÉ AJOUTÉ EN AP4, ET LA PORTE AVAIT RAISON DE ROUGIR
+   *    MAIS POUR LA MAUVAISE RAISON. `20260925000200` écrit
+   *    `alter table public.farm_visits add column pending_confirmation` —
+   *    qualifié par son schéma, comme tout ce que le MCP applique. Le motif
+   *    n'acceptait que le nom nu : il a donc déclaré la colonne absente d'une
+   *    migration qui la porte. Une porte qui ne sait lire qu'une des deux
+   *    écritures du même SQL accuse du code correct.
+   */
   for (const m of sql.matchAll(
-    /alter table (\w+)\s+add column (?:if not exists )?(\w+)([^;]*);/g,
+    /alter table (?:public\.)?(\w+)\s+add column (?:if not exists )?(\w+)([^;]*);/g,
   )) {
     const required = /\bnot null\b/i.test(m[3]) && !/\bdefault\b/i.test(m[3])
     columnsOf(m[1]).set(m[2], !required)

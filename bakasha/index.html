@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      ★★ AP5 (2026-09-25) — LA PAGE PUBLIQUE, ET ELLE EST UN BUILD À PART.
+
+      ⚠️ PAS UNE ROUTE DE L'APPLICATION, ET LA RAISON EST LE LECTEUR TYPE :
+         « un agriculteur, sur son téléphone, entre deux tâches ». Le bundle de
+         Lo Yanum porte MapLibre, PMTiles, l'archive nationale et le tableur —
+         plusieurs centaines de kilo-octets qu'il n'ouvrira jamais. Et
+         `App.tsx` commence par une porte de connexion : la page doit s'ouvrir
+         sans compte, ce qui n'est pas une exception à faire dans un routeur,
+         c'est un autre produit.
+
+      ⚠️ ET ELLE A SA PROPRE CHARTE. Elle doit « avoir l'air de venir d'eux » :
+         les couleurs, le logo et les photos sont ceux d'artzenu.org.il, pas
+         l'identité neutre de l'application.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <!--
+      ⚠️ `theme-color` EN DEUX EXEMPLAIRES. La barre du navigateur suit le
+         thème du téléphone ; une seule valeur donne une barre verte sur un
+         appareil en sombre et un liseré qui ne ressemble à rien.
+    -->
+    <meta
+      name="theme-color"
+      content="#14A185"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#0B3D2C"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta
+      name="description"
+      content="ארצנו — בקשת סיוע לחקלאים ולחוואים. שמירה על השטח ועזרה בעבודה חקלאית."
+    />
+    <!-- ⛔ AUCUN MOTEUR NE DOIT L'INDEXER AVANT QUE L'ASSOCIATION L'AIT
+         ADOPTÉE : c'est une page qu'ils mettront sur LEUR site, à LEUR
+         adresse. Deux copies indexées de la même demande sèmeraient le doute
+         sur laquelle est la vraie. -->
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="./artzenu-logo.png" />
+    <title>ארצנו — בקשת סיוע</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./entry.tsx"></script>
+  </body>
+</html>

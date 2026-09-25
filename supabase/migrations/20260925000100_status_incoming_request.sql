@@ -1,0 +1,41 @@
+-- ===========================================================================
+-- ★★ AP4 (2026-09-25) — « בקשה נכנסת » : LE STATUT D'UNE FICHE QUE PERSONNE
+--    N'A DÉMARCHÉE.
+-- ===========================================================================
+--
+--   « Aujourd'hui le PO démarche les agriculteurs un par un. Il veut
+--     l'inverse : une page publique où un agriculteur DEMANDE lui-même de
+--     l'aide. Quelqu'un qui vient de lui-même est déjà convaincu. »
+--
+-- ⚠️ CE N'EST PAS `to_contact`. `to_contact` dit « nous ne l'avons pas encore
+--    appelé » — une fiche que le PO a fabriquée en prospectant. Celle-ci dit
+--    « IL nous a appelés » : le dossier est déjà rempli, souvent signé, et la
+--    seule chose qui manque est la réponse. Les confondre ferait disparaître
+--    une demande dans la file de prospection, c'est-à-dire perdrait la seule
+--    personne du programme qui n'a pas besoin d'être convaincue.
+--
+-- ⚠️ ELLE COMPTE DANS LES COMPTEURS (`countsTowardProgramme`, core/types.ts),
+--    contrairement aux deux statuts d'AO2. Hors compteurs veut dire « le
+--    programme ne l'attend pas » ; une demande entrante est au contraire ce
+--    qu'il attend le plus.
+--
+-- ⚠️ `add value` ET NON UN NOUVEAU TYPE — même raison qu'en AO2 : recréer
+--    `farm_status` demanderait de réécrire la colonne d'`entities` et
+--    casserait toute session ouverte. `if not exists` la rend rejouable.
+--
+-- ⚠️ POSTGRES INTERDIT D'EMPLOYER UNE VALEUR D'ENUM AJOUTÉE DANS LA MÊME
+--    TRANSACTION QUE L'AJOUT. C'est pourquoi cette migration N'ÉCRIT RIEN et
+--    ne définit aucune fonction qui la nomme : tout cela est dans
+--    `20260925000200_aid_requests.sql`, jouée APRÈS.
+--
+-- ⚠️ ET LA RÈGLE 10 DE PROJECT_STATE.md S'APPLIQUE : ajouter une valeur à un
+--    ensemble fermé = faire le tour des portes qui l'énumèrent à la main.
+--    Faites dans la même passe : `scripts/live.ts` (les dix étiquettes),
+--    `scripts/contrast.ts` (la teinte `farm-incoming-request`),
+--    `StyleguideScreen` (qui était encore à SEPT depuis AO).
+--
+-- ADDITIVE : aucune table, aucune colonne, aucune politique. Aucune table
+-- créée, donc aucun `grant` à poser (règle AO0).
+-- ===========================================================================
+
+alter type farm_status add value if not exists 'incoming_request';

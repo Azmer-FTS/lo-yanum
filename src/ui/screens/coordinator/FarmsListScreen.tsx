@@ -249,6 +249,31 @@ export function FarmsListScreen() {
   /* ★★ AK5.3 — la file « ממתינות למסמכים », même forme que les autres. */
   const [docsOnly, setDocsOnly] = useState(false)
   const docsCount = useMemo(() => farms.filter((f) => awaitingDocuments(f)).length, [farms])
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ★★ AP4.1 (2026-09-25) — « בקשות נכנסות », LA FILE DE LA PAGE PUBLIQUE.
+   * ═══════════════════════════════════════════════════════════════════════════
+   *
+   *   « Le PO la retrouve dans une file dédiée sur l'écran חוות. »
+   *
+   * ⚠️ UNE FILE ET NON UNE PASTILLE DE STATUT, bien que ce SOIT un statut. Les
+   *    pastilles de la barre de filtres servent à explorer un effectif ; une
+   *    file dit « il y a quelque chose à faire aujourd'hui ». Une demande
+   *    entrante est une personne qui attend une réponse : c'est une file.
+   *
+   * ⚠️ DEUXIÈME, ET LA PLACE N'EST PAS LIBRE DE LE DEVENIR. À 402 px, DEUX
+   *    vignettes seulement tiennent au repos (AG5.2 : 3 × 152 + 20 > 370).
+   *    « נשכחו » garde la première place — AC l'y a mise, AD3.2 dit qu'il n'est
+   *    pas question de l'en bouger, et ç'aurait été la troisième fois. Celle-ci
+   *    prend la seconde, devant « ממתינות למסמכים » : un arriéré de papiers
+   *    attend depuis des semaines et peut attendre un jour de plus ; quelqu'un
+   *    qui vient de demander de l'aide, non. A249 mesure les DEUX rectangles.
+   */
+  const [intakeOnly, setIntakeOnly] = useState(false)
+  const intakeCount = useMemo(
+    () => farms.filter((f) => f.status === 'incoming_request').length,
+    [farms],
+  )
   /** AA6 — where the sort control is rendered; see `sortControl`. */
   const phone = usePhoneShape()
   /** A new key is a new request to (re)anchor — and to pan only if off screen. */
@@ -297,6 +322,8 @@ export function FarmsListScreen() {
       if (renewOnly && !renewIds.has(farm.id)) return false
       /* AK5.3 — les fiches dont les documents de droit sur la terre manquent. */
       if (docsOnly && !awaitingDocuments(farm)) return false
+      /* AP4.1 — les demandes arrivées par la page publique, pas encore traitées. */
+      if (intakeOnly && farm.status !== 'incoming_request') return false
       /* AC4.4 — « qui est oublié », as a narrowing of the same roster. */
       if (neglected) {
         const state = coverageOf.get(farm.id)?.state
@@ -327,6 +354,7 @@ export function FarmsListScreen() {
     renewOnly,
     renewIds,
     docsOnly,
+    intakeOnly,
     gapThreshold,
     coverageOf,
     query,
@@ -491,6 +519,32 @@ export function FarmsListScreen() {
         *    la clôture, pas un arriéré : elle passe devant « לחידוש » et
         *    « לתיחום ». Mesurée sur CAPTURE du déployé à 402 et 1376 (A202).
         */}
+      {/**
+        * ═══════════════════════════════════════════════════════════════════
+        * ★★ AP4.1 — « בקשות נכנסות », DEUXIÈME, JUSTE APRÈS « נשכחו ».
+        * ═══════════════════════════════════════════════════════════════════
+        *
+        * Voir la note sur `intakeOnly` plus haut pour la place. Comme ses
+        * voisines, elle ne s'affiche QUE quand elle a quelque chose à dire :
+        * tant qu'aucun agriculteur n'a écrit, la bande est exactement celle
+        * d'avant cette passe, et le PO ne voit pas une vignette à zéro dont il
+        * apprendrait à ne rien attendre.
+        */}
+      {intakeCount > 0 && (
+        /* Même découpe en deux lignes que la file des documents, et pour la
+           même raison mesurée : « בקשות נכנסות » sur une ligne se coupe à
+           402 px dans une vignette de 152 px. */
+        <KpiChip
+          label={t('intake.queueLine1')}
+          value={intakeCount}
+          icon="user"
+          tone="accent"
+          hint={<span className="font-semibold text-content-primary">{t('intake.queueLine2')}</span>}
+          active={intakeOnly}
+          onClick={() => setIntakeOnly((v) => !v)}
+          testId="farms-intake"
+        />
+      )}
       {docsCount > 0 && (
         /* ⚠️ Le nom de la file tient sur les DEUX lignes de la vignette : à
            152 px (gabarit Y5, non négociable) « ממתינות למסמכים » sur une ligne
@@ -729,6 +783,7 @@ export function FarmsListScreen() {
         (noOutlineOnly ? 1 : 0) +
         (renewOnly ? 1 : 0) +
         (docsOnly ? 1 : 0) +
+        (intakeOnly ? 1 : 0) +
         (archivedOnly ? 1 : 0)
       }
       onClear={() => {
@@ -738,6 +793,7 @@ export function FarmsListScreen() {
         setRegion(null)
         setHasAreas(false)
         setNeglected(false)
+        setIntakeOnly(false)
         setGapOnly(false)
         setNoOutlineOnly(false)
         setDocsOnly(false)

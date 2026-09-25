@@ -123,11 +123,33 @@ const CRITICAL_ALLOWED: Record<string, string> = {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * ★★ AP1 (2026-09-25) — `src/bakasha` EST HORS DE CETTE PORTE, ET C'EST UNE
+ *    DÉCISION, PAS UNE EXEMPTION DE CONFORT.
+ *
+ * Tout ce que compte ce fichier — une seule échelle de rayons, l'orange rare,
+ * pas de contour de carte — décrit L'IDENTITÉ NEUTRE de l'application, celle
+ * que G17 a posée. La page publique de demande d'aide a, sur ordre du brief,
+ * une AUTRE identité : celle d'ארצנו, relevée sur leur site. Ses boutons sont
+ * des pilules de 30 px parce que les leurs le sont ; son orange est leur
+ * `#EF4F28` et il est partout, parce que c'est leur appel à l'action.
+ * Lui appliquer la discipline de l'application reviendrait à lui interdire de
+ * ressembler à ce qu'on lui demande de ressembler.
+ *
+ * ⚠️ ELLE N'EST PAS POUR AUTANT SANS PORTE. `bun run apui` mesure sur elle ce
+ *    qui compte vraiment pour un doigt : 44 px de cible, 8 px d'écart, 16 px
+ *    de texte, aucun débordement — et sur DEUX moteurs. Ce qui est relâché
+ *    ici, c'est la cohérence d'une identité qui n'est pas la sienne.
+ */
+const OUT_OF_SCOPE = ['bakasha']
+
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name)
-    if (entry.isDirectory()) walk(full, out)
-    else if (/\.(tsx?|css)$/.test(entry.name)) out.push(full)
+    if (entry.isDirectory()) {
+      if (OUT_OF_SCOPE.includes(entry.name) && path.dirname(full) === SRC) continue
+      walk(full, out)
+    } else if (/\.(tsx?|css)$/.test(entry.name)) out.push(full)
   }
   return out
 }

@@ -139,3 +139,12 @@ dist-an*/
 # AO — les builds des portes de la passe AO (jamais commités).
 dist-ao*/
 docs/screenshots/aopass/local/
+
+# AP — les builds de la page publique de demande d'aide. Même raison que
+# toutes les lignes ci-dessus : un build d'aperçu est un artefact, pas une
+# source. `dist-bakasha` est celui de `apui` ; `dist-bakasha-real` est celui
+# que `apreal` sert avec la VRAIE paire Supabase, et il ne doit surtout pas
+# être commité — il porte la clé publiable dans un fichier haché.
+dist-bakasha/
+dist-bakasha-real/
+docs/screenshots/appass/local/

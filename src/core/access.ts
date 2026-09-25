@@ -736,7 +736,15 @@ export function getAgendaEvents(from: Date, to: Date): AgendaEvent[] {
       at: visit.at,
       endAt: visit.at,
       title: farm.name,
-      subtitle: visit.note,
+      /* ★★ AP3.6 — UN RENDEZ-VOUS DEMANDÉ DEPUIS LA PAGE PUBLIQUE LE DIT DANS
+         L'AGENDA, EN TÊTE DE SA LIGNE. La note porte déjà la phrase complète ;
+         ce préfixe est ce que le PO lit en balayant sa semaine, sans ouvrir.
+         Sans lui, il partirait un matin chez quelqu'un à qui il n'a jamais
+         dit oui. */
+      subtitle:
+        visit.pendingConfirmation === true
+          ? `⏳ ${visit.note}`
+          : visit.note,
       href: `/coordinator/farms/${farm.id}`,
       missionStatus: null,
       done: visit.done,

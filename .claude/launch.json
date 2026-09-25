@@ -10,6 +10,15 @@
       ],
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "bakasha",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": [
+        "run",
+        "bakasha"
+      ],
+      "port": 5188
     }
   ]
 }

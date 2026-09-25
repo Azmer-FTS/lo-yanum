@@ -39,6 +39,33 @@ export interface LatLng {
 // ---------------------------------------------------------------------------
 
 export type FarmStatus =
+  /**
+   * ═════════════════════════════════════════════════════════════════════════
+   * ★★ AP4 (2026-09-25) — « בקשה נכנסת » : L'AGRICULTEUR EST VENU DE LUI-MÊME.
+   * ═════════════════════════════════════════════════════════════════════════
+   *
+   *   « Aujourd'hui le PO démarche les agriculteurs un par un. Il veut
+   *     l'inverse : une page publique où un agriculteur DEMANDE lui-même de
+   *     l'aide. »
+   *
+   * ⚠️ CE N'EST PAS `to_contact`, ET LA DIFFÉRENCE EST LE SENS DU CONTACT.
+   *    `to_contact` dit « nous ne l'avons pas encore appelé » — c'est une
+   *    fiche que le PO a fabriquée en prospectant. `incoming_request` dit
+   *    « IL nous a appelés » : le dossier est déjà rempli, souvent signé, et
+   *    la seule chose qui manque est la réponse du PO. Les confondre ferait
+   *    disparaître une demande dans la file de prospection, c'est-à-dire
+   *    perdrait la seule personne du programme qui n'a pas besoin d'être
+   *    convaincue.
+   *
+   * ⚠️ ET ELLE COMPTE (`countsTowardProgramme`). Hors compteurs = « le
+   *    programme ne l'attend pas » (AO2) ; une demande entrante est au
+   *    contraire ce que le programme attend le plus.
+   *
+   * ⚠️ HORS PIPELINE tout de même : le pas suivant n'est pas mécanique. Le PO
+   *    lit la demande, puis décide s'il commence à `contacted`, `visited` ou
+   *    directement `signed` quand l'accord est déjà signé au doigt.
+   */
+  | 'incoming_request'
   | 'to_contact'
   | 'contacted'
   | 'visited'
@@ -149,8 +176,23 @@ export const FARM_STATUSES_OFF_PIPELINE: readonly FarmStatus[] = [
   'on_hold',
 ] as const
 
-/** Les neuf statuts, pipeline puis hors-pipeline. LA liste de référence. */
+/**
+ * ★★ AP4 — LE STATUT D'ENTRÉE, SEUL DANS SA LISTE ET EN TÊTE DE TOUT.
+ *
+ * ⚠️ IL N'EST NI DANS `FARM_PIPELINE` NI DANS `FARM_STATUSES_OFF_PIPELINE`,
+ *    et c'est voulu : le premier est le pas-à-pas que le PO fait avancer, le
+ *    second est ce qui SORT des compteurs. Une demande entrante n'est ni l'un
+ *    ni l'autre — elle est ce qui n'a encore été traité par personne.
+ *
+ * ⚠️ UNE TROISIÈME LISTE ET NON UNE VALEUR AJOUTÉE À L'UNE DES DEUX, parce
+ *    que `countsTowardProgramme` lit `FARM_STATUSES_OFF_PIPELINE` : l'y
+ *    glisser aurait fait disparaître les demandes des compteurs en silence.
+ */
+export const FARM_STATUSES_INTAKE: readonly FarmStatus[] = ['incoming_request'] as const
+
+/** Les dix statuts : entrée, pipeline, hors-pipeline. LA liste de référence. */
 export const ALL_FARM_STATUSES: readonly FarmStatus[] = [
+  ...FARM_STATUSES_INTAKE,
   ...FARM_PIPELINE,
   ...FARM_STATUSES_OFF_PIPELINE,
 ] as const
@@ -1198,6 +1240,23 @@ export interface FarmVisit {
   done: boolean
   /** AF4.2 — voir `GeneralMeeting.remindMinutes`. */
   remindMinutes?: number | null
+  /**
+   * ★★ AP3.6 (2026-09-25) — « LE RENDEZ-VOUS SE POSE DANS L'AGENDA DU PO EN
+   *    ATTENTE DE CONFIRMATION — IL CONFIRME OU DÉPLACE DEPUIS SON APP. »
+   *
+   * ⚠️ POSÉ PAR UN AGRICULTEUR, PAS PAR LE PO, et c'est toute la différence
+   *    que ce booléen existe pour porter. Un rendez-vous que le coordinateur
+   *    a pris est un fait de son agenda ; celui-ci est une DEMANDE qui occupe
+   *    une case en attendant sa réponse. Sans ce drapeau, les deux se
+   *    ressembleraient — et il partirait un matin chez quelqu'un sans savoir
+   *    qu'il n'avait jamais dit oui.
+   *
+   * ⚠️ IL OCCUPE QUAND MÊME LE CRÉNEAU (`public_busy_intervals` le compte) :
+   *    deux agriculteurs ne doivent pas demander la même heure.
+   *
+   * Absent = un rendez-vous ordinaire, ce qu'est toute visite d'avant AP.
+   */
+  pendingConfirmation?: boolean
 }
 
 // ---------------------------------------------------------------------------

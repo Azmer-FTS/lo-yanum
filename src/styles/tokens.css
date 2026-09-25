@@ -202,6 +202,15 @@
      sa liste de teintes est énumérée à la main et ne les contenait pas. */
   --farm-not-relevant-now: 168 119 65; /* #A87741 sépia    */
   --farm-on-hold: 109 123 198; /* #6D7BC6 indigo    */
+  /* ★★ AP4 — « בקשה נכנסת ». Un VERT D'HERBE, et c'est la seule teinte de la
+     famille qui vienne de l'extérieur du programme : elle arrive de la page
+     publique. Elle est délibérément distincte du teal de « פעילה » (#0F8E75),
+     qui dit « elle est chez nous depuis longtemps » — les confondre d'un coup
+     d'œil dans une liste serait confondre un dossier neuf et un dossier abouti.
+     ⚠️ MESURÉE PAR `bun run contrast`, DONT LA LISTE `HUES` A ÉTÉ COMPLÉTÉE
+        DANS LA MÊME PASSE (règle 10 : un ensemble fermé qui grandit fait le
+        tour des portes qui l'énumèrent). */
+  --farm-incoming-request: 93 141 42; /* #5D8D2A herbe     */
 
   --farm-to-contact-ink: 60 72 84; /* #3C4854 */
   --farm-contacted-ink: 126 78 3; /* #7E4E03 */
@@ -212,6 +221,7 @@
   --farm-declined-ink: 166 42 17; /* #A62A11 */
   --farm-not-relevant-now-ink: 106 72 34; /* #6A4822 */
   --farm-on-hold-ink: 66 76 130; /* #424C82 */
+  --farm-incoming-request-ink: 60 92 25; /* #3C5C19 */
 
   /* Elevation. G17 removed the card borders, so the shadow is now the ONLY
      separator in light — soft, slate-tinted (a neutral shadow on a neutral
@@ -510,6 +520,7 @@
   --farm-declined: 255 129 99; /* #FF8163 */
   --farm-not-relevant-now: 209 162 108; /* #D1A26C */
   --farm-on-hold: 149 162 232; /* #95A2E8 */
+  --farm-incoming-request: 150 200 92; /* #96C85C */
 
   --farm-to-contact-ink: 178 190 205; /* #B2BECD */
   --farm-contacted-ink: 232 169 60;
@@ -520,6 +531,7 @@
   --farm-declined-ink: 255 174 153; /* #FFAE99 */
   --farm-not-relevant-now-ink: 224 186 143; /* #E0BA8F */
   --farm-on-hold-ink: 175 186 245; /* #AFBAF5 */
+  --farm-incoming-request-ink: 178 214 131; /* #B2D683 */
 
   /* On dark, a grey drop-shadow vanishes: use deep black plus a 1px inset top
      highlight so a card reads as catching light from above. */
@@ -603,6 +615,7 @@
     --farm-declined: 255 129 99;
     --farm-not-relevant-now: 209 162 108;
     --farm-on-hold: 149 162 232;
+    --farm-incoming-request: 150 200 92;
 
     --farm-to-contact-ink: 178 190 205;
     --farm-contacted-ink: 232 169 60;
@@ -613,6 +626,7 @@
     --farm-declined-ink: 255 174 153;
     --farm-not-relevant-now-ink: 224 186 143;
     --farm-on-hold-ink: 175 186 245;
+    --farm-incoming-request-ink: 178 214 131;
 
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.45), 0 4px 16px rgb(0 0 0 / 0.3),
       inset 0 1px 0 rgb(255 255 255 / 0.06);
