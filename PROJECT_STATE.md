@@ -77,6 +77,18 @@ trace au lieu de l'effacer). Récit : `docs/ao/ao-historique-migrations-avant.md
 
 ## Où en est-on
 
+- **Passe AQ TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-09-25) — **les demandes
+  entrantes se voient, et les courriels sont branchés**. Commit de CODE vérifié
+  sur le déployé : **`0bd084f`** (les commits suivants ne touchent que
+  `ETAT.md`, `PROJECT_STATE.md`, `scripts/aqmail.ts`, `docs/`).
+  Portes : `bun run aqui` (**118/118 en local ET sur le déployé**, 34 rouges sur
+  le déployé d'avant — `docs/aq/aq-rouge-avant.log`), `bun run aqmail`
+  (**47/47**, A265 sur doublures + A266 sur le build ET sur les 30 scripts
+  servis). Rejouées vertes sur le déployé : `apui` 67/67, `aodeployed` 35/35.
+  ⚠️ **AUCUN COURRIEL NE PART ENCORE** : la chaîne est en place et vérifiée
+  sur la production jusqu'à l'expéditeur, mais **aucune clé Resend n'est
+  posée** — décision et compte du PO (voir « Questions ouvertes », 0-AQ).
+  Récit : `ETAT.md` § AQ ; courriels : `docs/aq/aq3-courriels.md`.
 - **Passe AP TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-09-25) — **la page publique
   de demande d'aide**, à
   **https://azmer-fts.github.io/lo-yanum/bakasha/**. Commit de CODE vérifié :
@@ -93,7 +105,7 @@ trace au lieu de l'effacer). Récit : `docs/ao/ao-historique-migrations-avant.md
   ★ **Et elle a fermé un trou qui n'était pas dans le brief** : `anon` avait
   tous les droits sur les trente tables. Voir la section « LIRE EN DEUXIÈME »
   ci-dessus.
-- **Branche** : `main`, à jour avec `origin/main` — **rien en attente de push**
+- **Branche** : `main`, à jour avec `origin/main` après AQ — **rien en attente de push**
   (vérifier : `git log --oneline origin/main..HEAD` doit être vide).
   **Dernier commit de la passe AO6** : voir `git log --oneline -1`. Le commit
   DÉPLOYÉ et vérifié est **`226e6f8`** ; les commits postérieurs ne touchent
@@ -136,7 +148,7 @@ trace au lieu de l'effacer). Récit : `docs/ao/ao-historique-migrations-avant.md
   jour » (bloquant, traité en premier). **Correctif livré et poussé**
   (`f94c32a`) ; `ajupdate` 38/38 en local ; **sur le déployé 11/11** avec un
   vrai déploiement pendant que l'app restait ouverte (`ETAT.md` §AJ0.4).
-- **Déployé** : les deux URLs servent **`226e6f8`** (AO6, 2026-09-24) — `aodeployed` **35/35**, `aoui` **40/40**, **36 captures** (`docs/screenshots/aopass/deployed/`), 0 erreur de page. Avant : `e56c8f1` (AO) — `aoui` 40/40, 30 captures. Avant : `cfb834a` (AN) — `anui` 155/155. Avant : `c1453d5` (AM) — `amui` 77/77 et 36 captures sur le déployé. Avant AM : les deux URLs servaient le commit d'AL. **Vérifié SUR LE
+- **Déployé** : les trois URLs servent **`0bd084f`** (AQ, 2026-09-25) — `aqui` **118/118**, `aqmail` **47/47**, `apui` 67/67, `aodeployed` 35/35, captures `docs/screenshots/aqpass/deployed/`. Avant : **`226e6f8`** (AO6, 2026-09-24) — `aodeployed` **35/35**, `aoui` **40/40**, **36 captures** (`docs/screenshots/aopass/deployed/`), 0 erreur de page. Avant : `e56c8f1` (AO) — `aoui` 40/40, 30 captures. Avant : `cfb834a` (AN) — `anui` 155/155. Avant : `c1453d5` (AM) — `amui` 77/77 et 36 captures sur le déployé. Avant AM : les deux URLs servaient le commit d'AL. **Vérifié SUR LE
   DÉPLOYÉ** : `alui` 54/54 (le geste d'AL1 et l'écran de localisation) et
   `alcaptures` 330/330 avec 54 captures
   (`docs/screenshots/alpass/deployed/`).
@@ -185,6 +197,42 @@ réparé, c'est le REJEU d'une base à neuf. `bun run aopass` (A238) le compte :
 toute migration qui crée une table et ne porte pas ses `grant` est rouge.
 
 **Porte** : `bun run aopass` section A238.
+
+## Ce qui est fait dans AQ
+
+| Bloc | État |
+|---|---|
+| AQ0 mesure | ✅ **Deux causes, aucune n'était l'absence de la vignette.** (1) Sur le bundle déployé, avec la VRAIE ligne de la demande, la vignette était rendue — mais à 1 032 px coupée et recouverte à **15/21** par le chevron de la bande ; et quand elle naît APRÈS l'hydratation, **`scroll-snap` recolle la bande sur « נשכחו »** et la pousse hors écran (mesuré x = 502 sur 402 px, `scrollLeft` −268). (2) **L'app ne relisait JAMAIS ses données** : hydratation une fois à l'ouverture, aucun retour en avant-plan ; une PWA reprise ne navigue pas (AJ0.1). Et la fiche était 17ᵉ par ordre alphabétique, sans marque |
+| AQ1.1 tableau de bord | ✅ `ui/intake/IntakeDashboardBlock.tsx` : AU-DESSUS du titre, nombre en grand, trois lignes (qui, ferme, besoin, date, rendez-vous, courriel raté), « לכל הבקשות » au-delà. Absent à zéro |
+| AQ1.2 חוות | ✅ `incomingFirst` (`core/intake.ts`) : partition STABLE en tête, quel que soit le tri, liste ET tableau. Tuile : liseré + fond `farm-incoming-request`, ligne « בקשה נכנסת · התקבלה … » |
+| AQ1.3 vignette | ✅ **PREMIÈRE** de la bande (devant « נשכחו ») ; `ScrollRow` garde une rangée qui était à sa tête à sa tête quand une vignette s'y insère ; `?intake=1` l'ouvre filtrée |
+| AQ1.4 traitement | ✅ `markIntakeHandled` (`core/store.ts`) — deux boutons sur la fiche : « טופלה · נוצר קשר » (`contacted`) et « טופלה · טרם נוצר קשר » (`to_contact`). Ouvrir, lire, voir le bandeau : rien ne change (A264 relit la base) |
+| AQ1.5 bande de fiche | ✅ `ui/intake/IntakeStrip.tsx` : origine publique, date, référence, besoin, rendez-vous, documents, état des courriels, « שליחה חוזרת ». Reste après traitement, discrète |
+| AQ2 bandeau | ✅ `ui/intake/IntakeBanner.tsx` + `intakeState.ts` : relecture au démarrage et au retour (`visibilitychange`/`pageshow`/`focus`, 10 s mini, par `refreshData`). Aucun minuteur. « Vu » par appareil (`lo-yanum:intake:seen`) : ne commande QUE la répétition du bandeau. S'empile sous la mise à jour (priorité page → mise à jour → demandes → réseau) |
+| AQ3 courriels | ✅ **Resend**, fonction Edge `intake-mail` (`supabase/functions/`), déclenchée par `pg_net` APRÈS l'écriture (`20260925000400_intake_mail.sql`, **appliquée sur prod**). État sur `aid_requests.mail_po/mail_farmer/mail_error`. Idempotente, cinq tentatives au plus, UUID seulement. **Déployée et vérifiée sur prod : `not_configured` (aucune clé)**. ⛔ ni ת״ז, ni signature, ni fichiers dans un courriel |
+| AQ3.3 clé | ✅ Secret de fonction Edge (`supabase secrets set`), lu par `Deno.env` ; jamais `VITE_*`. A266 : 0 secret dans `dist*/` et dans 30 scripts servis |
+| AQ4 recherche | ✅ Le panneau de 22 rem pendait à la loupe et passait SOUS le rail en mode partagé (9/21 et 15/21 points recouverts, bord hors écran). Il couvre désormais la rangée de titre de `ListTop` : 21/21 à 402/1032/1376 × partagé/liste ; « carte seule » n'a pas de liste (sans objet) |
+| Au passage | ✅ `formatRelative` : ICU rend « לפני שעתיים (2) » en hébreu → parenthèse retirée. `aoui` : « NEUF statuts » écrit en dur depuis AO, rouge depuis AP → lit `ALL_FARM_STATUSES` |
+
+Décisions AQ posées :
+
+1. ★★ **« ENTRANTE » EST UN STATUT EN BASE ; « VUE » EST UNE MÉMOIRE D'APPAREIL.**
+   Le premier fait la tête de liste et le tableau de bord, et ne change QUE sur
+   un geste. Le second ne commande que la répétition du bandeau ; le perdre
+   fait au pire revenir un bandeau, jamais disparaître une demande.
+2. ★★ **L'APP RELIT AU RETOUR EN AVANT-PLAN.** Toute donnée qui arrive d'ailleurs
+   (page publique, autre appareil) n'existait pas pour une app ouverte le
+   matin. Même chemin que « tirer pour rafraîchir » (file vidée d'abord).
+3. ★★ **UNE VIGNETTE QUI NAÎT APRÈS LE PREMIER RENDU SE MESURE APRÈS
+   L'HYDRATATION.** Toutes les portes précédentes la mesuraient sur un rendu
+   où elle existait dès le départ ; le re-snap ne se voit que quand elle
+   s'insère. A262 sert la ligne au bundle, qui l'insère.
+4. **Un courriel perdu ne perd jamais une demande** : l'envoi part d'un
+   `after insert` mis en FILE (`pg_net`), rattrapé par `exception when
+   others`, et consigne son issue sur la ligne ; l'app le dit.
+5. **La surface anonyme reste de TROIS fonctions** (AP) : la fonction Edge
+   n'ouvre aucune table ; elle ne fait rien pour une demande qui n'est pas
+   en attente, et au plus cinq fois.
 
 ## Ce qui est fait dans AP
 
@@ -423,6 +471,12 @@ bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
 bun run typecheck && bun run appass && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run contrast && bun run akpass && bun run accept
 
+# LES DEMANDES ENTRANTES (AQ) :
+bun run aqui                                                       # 118, build local en mode réel (FakeDb)
+BASE_URL=https://azmer-fts.github.io/lo-yanum bun run aqui         # le DÉPLOYÉ (118/118)
+bun run build && bun run aqmail                                    # 47 : courriels sur doublures + aucun secret servi
+BASE_URL=https://azmer-fts.github.io/lo-yanum bun run aqmail       # + les scripts réellement servis
+
 # LA PAGE PUBLIQUE (AP) :
 bun run appass                                                     # 107, pure
 bun run apui                                                       # 136, Chromium + WebKit, build local
@@ -622,6 +676,24 @@ d'être déployé.
 
 ## Échecs PRÉ-EXISTANTS, qui ne sont pas des régressions
 
+> **Vérifiés identiques SUR `756730c` (l'arbre d'avant AQ, dans un worktree) pendant AQ** :
+> - **`agui` A141** « la bascule est sur l'écran de réglages » : le clic sur
+>   `[data-testid="role-switch"] button` (2ᵉ) n'aboutit pas en 45 s, et la
+>   porte s'arrête là. Même arrêt sur `756730c`.
+> - **`adui` A115** : « לתיחום » à −223 px du début d'une bande de 435 px à
+>   1 376 px, et recouverte — 15 PASS et les deux mêmes FAIL au pixel près
+>   avant et après AQ (la ligne AM ci-dessous disait « 61 px » ; le chiffre a
+>   bougé avant AQ).
+> - **`bun run import`** exige un serveur de dév déjà lancé sur 5173 : il ne
+>   démarre rien lui-même (`ERR_CONNECTION_REFUSED`), à l'identique avant AQ.
+> - ⚠️ **L'historique des migrations a de nouveau divergé depuis AO/AP** :
+>   `supabase migration list` montre 8 versions MCP sans fichier
+>   (`20260924093521` … `20260924213418`) et 7 fichiers « non appliqués » qui
+>   le SONT (`20260924000100-300`, `20260925000100-400`). Rien de destructeur
+>   n'est en attente, mais **ne pas lancer `supabase db push`** avant d'avoir
+>   posé les jalons comme en AO.
+
+
 > **Vérifiés identiques (ou pires) sur b7a9a1f pendant AM** :
 > - `adui` A115 : la vignette « לתיחום » (3ᵉ de la rangée défilante des fermes)
 >   ne vient pas entière à 1 376 px, même défilée (61 px coupés, un chevron
@@ -664,6 +736,25 @@ d'être déployé.
 >   touche rien dans `roadGraph`/`routing`. Les 31 autres passent.
 - Les deux violations A57 de `AnchorMap.tsx` signalées en §36.6 ont été
   corrigées en U4 ; celles qui restent sont ailleurs.
+
+## Ce que le PO fait à l'ouverture (AQ, 2026-09-25)
+
+1. **Laisser l'app se mettre à jour** : « גרסת האפליקציה » doit dire
+   **`0bd084f`** ou plus récent (bandeau « גרסה חדשה » → « עדכון עכשיו », ou
+   fermer/rouvrir l'app une fois).
+2. **À l'ouverture, un bandeau « בקשת עזרה חדשה »** nomme sa demande d'hier
+   (דובי בן שושן · חווה דובי) : « לפתיחה » ouvre la fiche, « סגירה » le
+   renvoie. Il ne reviendra pas pour elle.
+3. **Tableau de bord** : le bloc « בקשות נכנסות · 1 » est tout en haut.
+   **חוות** : la demande est la première tuile, bordée de vert, et la vignette
+   « בקשות נכנסות » est la première de la bande.
+4. **Sur la fiche** : la bande verte dit la date, la référence (542FAE), ce
+   qui est demandé, le rendez-vous et les documents — et « לא נשלח דוא״ל :
+   שירות הדוא״ל טרם הוגדר ». C'est vrai : aucun courriel n'est parti.
+5. **Quand il l'a traitée** : « טופלה · נוצר קשר » (ou « טרם נוצר קשר »). Le
+   bloc et la vignette disparaissent ; la bande reste, grise. Rien d'autre ne
+   la fait sortir — l'ouvrir ne suffit pas, et c'est voulu.
+6. **Décider pour les courriels** — point 0-AQ ci-dessous.
 
 ## Ce que le PO fait à l'ouverture (AP6, 2026-09-25)
 
@@ -709,6 +800,18 @@ d'être déployé.
    (point 0ter).
 
 ## Questions ouvertes / ce qui attend le PO
+
+0-AQ. ⏳ **LES COURRIELS ATTENDENT SA VALIDATION ET SON COMPTE.** Expéditeur
+   proposé : **Resend** — gratuit jusqu'à 3 000 courriels/mois et 100/jour
+   (payant au-delà ; tarif à relire sur resend.com/pricing à l'inscription).
+   Ce qui part chez eux : adresses, noms, téléphone, lieu, besoin, NOMS des
+   documents, rendez-vous, référence, coordonnées du PO — **jamais** ת״ז,
+   signature ni fichiers. À créer par lui : **un compte Resend, un domaine
+   vérifié** (sans lui, seul le PO reçoit — jamais l'agriculteur), une clé.
+   Puis : `supabase secrets set --project-ref lvrptqmkjikkkhcxocbe
+   RESEND_API_KEY=… INTAKE_MAIL_FROM='לא ינום <…@domaine>'`, et
+   « שליחה חוזרת » sur la fiche de חווה דובי. Détail :
+   `docs/aq/aq3-courriels.md`. **Aucune dépense n'a été engagée.**
 
 0-AO. ✅ **CLOS (2026-09-24).** Les trois fichiers sont appliqués sur
    `lo-yanum-prod`. ⚠️ **Mais retenir la leçon** : l'historique des migrations

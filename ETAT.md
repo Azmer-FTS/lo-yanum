@@ -1,5 +1,68 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AQ — LES DEMANDES ENTRANTES SE VOIENT, ET LES COURRIELS SONT BRANCHÉS. 2026-09-25. LIRE EN PREMIER.**
+>
+> Ordre suivi : AQ0 → AQ1 → AQ2 → AQ4 → AQ3 → AQ5. Déployé : **`0bd084f`**
+> sur les trois URLs (app, `/demo/`, `/bakasha/`).
+>
+> ## AQ0 — CE QUE LE PO A VÉCU, MESURÉ AVANT D'ÊTRE CORRIGÉ
+>
+> La vraie demande (חווה דובי, référence 542FAE) était en base, statut
+> `incoming_request`, rendez-vous `pending_confirmation` — tout juste. Servie
+> TELLE QUELLE (775 ko de documents compris) au bundle déployé `756730c` :
+>
+> - **la vignette « בקשות נכנסות » était rendue**, aux trois largeurs. Donc
+>   ni « non livrée », ni « derrière un seuil » ;
+> - **mais à 1 032 px — l'iPad du PO en portrait — elle était coupée et
+>   recouverte à 15 points sur 21** par le chevron de la bande défilante ;
+> - **et quand elle naît APRÈS l'hydratation** (le cas réel : la liste se
+>   peint, puis les données arrivent), **`scroll-snap` recolle la bande sur
+>   « נשכחו »**, où elle était accrochée, et pousse la nouvelle venue hors du
+>   bord : mesurée à x = 502 sur un écran de 402, `scrollLeft` −268. Aucune
+>   porte ne l'avait vu : toutes mesuraient une vignette présente dès le
+>   premier rendu ;
+> - **l'app ne relisait JAMAIS ses données.** Hydratation une fois, à
+>   l'ouverture ; aucun retour en avant-plan ne redemandait rien, et une PWA
+>   reprise ne navigue pas (AJ0.1). Une demande arrivée pendant que l'app
+>   dormait n'existait pas pour elle ;
+> - **et la fiche était 17ᵉ par ordre alphabétique**, marquée d'un seul point
+>   de couleur.
+>
+> ## CE QUI EST LIVRÉ
+>
+> | | |
+> |---|---|
+> | **Tableau de bord** | Bloc « בקשות נכנסות » AU-DESSUS du titre : le nombre, puis qui / quelle ferme / quoi / quand / quel rendez-vous, et si le courriel n'est pas parti. Absent à zéro (A260) |
+> | **חוות** | Les demandes EN TÊTE, quel que soit le tri, liste ET tableau, liseré et fond verts, « בקשה נכנסת · התקבלה לפני … » (A261). Vignette PREMIÈRE de la bande, entière et découverte à 402/1032/1376 (A262) |
+> | **Fiche** | Bande « בקשה מהעמוד הציבורי » : date, référence, besoin, rendez-vous, documents, courriels. Deux gestes : « טופלה · נוצר קשר », « טופלה · טרם נוצר קשר ». **Rien d'autre ne la fait sortir** (A264 relit la base après ouverture et lecture) |
+> | **Bandeau** | Au démarrage ET au retour en avant-plan, l'app relit (A263). « בקשת עזרה חדשה » : qui, quelle ferme, quel rendez-vous ; « לפתיחה » / « סגירה » ; aucun minuteur ; ne revient pas pour la même ; s'empile SOUS le bandeau de mise à jour |
+> | **Courriels** | Resend, fonction Edge `intake-mail`, appelée par `pg_net` APRÈS l'écriture. PO : nom, téléphone, besoin, documents, rendez-vous, lien. Agriculteur : accusé, référence, coordonnées du PO. État consigné sur `aid_requests` et montré dans l'app. **Vérifié sur prod jusqu'à l'expéditeur : `not_configured`, demande intacte** (A265, `docs/aq/aq3-courriels.md`) |
+> | **Clé** | Secret de fonction Edge, `Deno.env` ; jamais `VITE_*`. 0 secret dans le build ni dans 30 scripts servis (A266) |
+> | **Recherche** | Le panneau pendait à la loupe (22 rem) et passait SOUS le rail en mode partagé. Il couvre la rangée de titre : 21/21 points, 402/1032/1376 × partagé/liste (A267) |
+>
+> ## ⚠️ CE QUI N'EST PAS FAIT, ET POURQUOI
+>
+> **Aucun courriel ne part encore.** La clé Resend et le domaine vérifié sont
+> au PO ; le brief exige sa validation avant toute dépense. Tant qu'ils
+> manquent, chaque demande porte « not_configured » et l'app le dit sur la
+> fiche et le tableau de bord. Le premier envoi RÉEL (et la lecture de
+> l'adresse du PO dans `auth.users`) n'a donc pas été observé.
+>
+> ## LES PORTES
+>
+> | Porte | Local | Déployé `0bd084f` | Déployé d'avant `756730c` |
+> |---|---|---|---|
+> | `aqui` (A260–A264, A267, captures) | 118/118 | **118/118** | **46 / 34 rouges** (`docs/aq/aq-rouge-avant.log`) |
+> | `aqmail` (A265, A266) | 46/46 | **47/47** (+ scripts servis) | — (le code n'existait pas) |
+> | rejouées | `appass` 107 · `aopass` 113 · `anpass` 27 · `ampass` 50 · `alpass` 40 · `akpass` 56 · `accept` 177 · `aoui` 40 · `akui` 119 · `acui` 12 · `pills` 89 · `amui` 77 · `sheets` 15 · `overlap` 185 · `tokens` · `contrast` | `apui` 67/67 · `aodeployed` 35/35 | |
+>
+> Rouges ANTÉRIEURS, identiques sur `756730c` (worktree) : `agui` A141,
+> `adui` A115, `import` (exige un serveur sur 5173). `aoui` était rouge depuis
+> AP (« NEUF statuts » en dur) : corrigée, elle lit `ALL_FARM_STATUSES`.
+>
+> Défaut ANTÉRIEUR vu en capture, hors AQ, proposé en tâche séparée : sur la
+> fiche à 402 px, la pilule d'actions recouvre le nom de la ferme.
+
 > 🏁 **PASSE AP — PAGE PUBLIQUE DE DEMANDE D'AIDE. 2026-09-25. LIRE EN PREMIER.**
 >
 > Ordre suivi : AP1 → AP2 → AP3 → AP4 → AP5 → AP6.

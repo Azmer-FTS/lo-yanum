@@ -1,0 +1,62 @@
+$ bun run scripts/aqmail.ts
+
+  A265 — les deux courriels partent, avec ce que le brief exige
+  -------------------------------------------------------------
+  PASS  la demande est traitée  — {"status":"done","po":"sent","farmer":"sent","error":null}
+  PASS  ★ DEUX messages envoyés  — 2
+  PASS  un au PO
+  PASS  un à l'agriculteur
+  PASS  PO — le nom  — ישראל ישראלי
+  PASS  PO — le téléphone  — 052-0000000
+  PASS  PO — ce qui est demandé  — שמירה
+  PASS  PO — les documents fournis  — מסמך זכות בקרקע — גידולים
+  PASS  PO — le rendez-vous souhaité  — ממתין לאישור
+  PASS  PO — le lien vers la fiche  — #/coordinator/farms/farm-req-aq00000001
+  PASS  PO — le rendez-vous à l'heure de Jérusalem (10:00)  — מועד מבוקש: יום שני, 28 בספטמבר בשעה 10:00 (ממתין לאישור)
+  PASS  PO — ⛔ pas de numéro d'identité
+  PASS  PO — « répondre » écrit à l'agriculteur
+  PASS  PO — hébreu, de droite à gauche
+  PASS  agriculteur — l'accusé de réception  — קיבלנו את בקשתך · אסמכתא AQ0001
+  PASS  agriculteur — sa référence
+  PASS  agriculteur — les coordonnées du PO (nom, téléphone, courriel)
+  PASS  agriculteur — « répondre » écrit au PO
+  PASS  ★ l'état est consigné sur la ligne : sent / sent  — sent / sent
+  PASS  ★ rappelée, elle n'envoie RIEN de plus  — {"status":"skipped"}
+  PASS  … même en « שליחה חוזרת » quand tout est parti
+  PASS  sans adresse de l'agriculteur : UN seul message, au PO  — 1
+  PASS  … et l'état le dit (skipped)
+  PASS  sans rendez-vous ni document, le message le DIT
+
+  A265 — l'échec d'envoi ne perd pas la demande, et se voit
+  ---------------------------------------------------------
+  PASS  ★ sans clé d'expéditeur : aucun envoi tenté
+  PASS  … l'état est « not_configured » des deux côtés  — not_configured / not_configured
+  PASS  … avec la raison  — RESEND_API_KEY absent : aucun expéditeur configuré
+  PASS  … et la ligne de demande est entière (rien d'effacé)
+  PASS  la fonction rend « done », pas une erreur
+  PASS  ★ expéditeur en panne : failed / failed, avec l'erreur  — coordinateur : 500 boom ; agriculteur : 500 boom
+  PASS  … la demande est intacte
+  PASS  sans « retry », un échec n'est pas relancé tout seul
+  PASS  ★ « שליחה חוזרת » renvoie les deux  — 2 · sent
+  PASS  un seul des deux en échec : chacun porte SON état  — sent / failed
+  PASS  … et la nouvelle tentative ne renvoie QUE celui qui a échoué  — farmer@example.org
+  PASS  plafond : au-delà de 5 tentatives, plus rien (un appel anonyme ne peut pas arroser)
+  PASS  une exception de l'expéditeur devient un « failed » consigné  — coordinateur : Error: réseau coupé ; agriculteur : Error: réseau coupé
+  PASS  un identifiant inconnu ne fait rien
+
+  A265 — le chemin en base : l'envoi part APRÈS l'écriture, et ne peut pas la défaire
+  -----------------------------------------------------------------------------------
+  PASS  le déclencheur d'envoi est AFTER INSERT  — create trigger aid_requests_mail_dispatch after insert on public.aid_requests fo
+  PASS  ★ l'appel est rattrapé : « exception when others » (jamais d'échec de l'insertion)
+  PASS  il passe par pg_net (file asynchrone, hors transaction)
+  PASS  il n'envoie que l'identifiant, pas la demande
+  PASS  ⛔ aucun droit pour anon dans cette migration
+
+  A266 — aucune clé secrète dans le code servi au navigateur
+  ----------------------------------------------------------
+  PASS  ★ dist/ : 31 fichiers lus, aucun secret
+  PASS  ★ DÉPLOYÉ : 30 scripts servis lus (entrées ET morceaux paresseux), aucun secret
+  PASS  aucune clé d'expéditeur ni clé secrète dans les fichiers suivis
+  PASS  la fonction lit sa clé dans Deno.env, jamais en dur
+
+  47 passed, 0 failed

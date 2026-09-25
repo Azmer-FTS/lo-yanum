@@ -1,0 +1,143 @@
+$ bun run scripts/aqui.ts
+  app : https://azmer-fts.github.io/lo-yanum  (DÉPLOYÉ)
+
+  A260 — le tableau de bord, en tête : le bloc et son nombre ; absent sans demande
+  --------------------------------------------------------------------------------
+  PASS  402 — le bloc « בקשות נכנסות » est là
+  PASS  402 — il porte leur NOMBRE  — « 2 »
+  PASS  402 — ★ AVANT le titre et les chiffres  — {"block":475,"title":790,"hero":911,"bottom":774,"vh":874}
+  PASS  402 — ★ dans l'écran au repos, sans défiler  — bas 774 / 874
+  PASS  402 — recouvert par rien  — 21/21 
+  PASS  402 — aucune erreur de page
+  PASS  1032 — le bloc « בקשות נכנסות » est là
+  PASS  1032 — il porte leur NOMBRE  — « 2 »
+  PASS  1032 — ★ AVANT le titre et les chiffres  — {"block":20,"title":355,"hero":476,"bottom":339,"vh":1376}
+  PASS  1032 — ★ dans l'écran au repos, sans défiler  — bas 339 / 1376
+  PASS  1032 — recouvert par rien  — 21/21 
+  PASS  1032 — aucune erreur de page
+  PASS  1376 — le bloc « בקשות נכנסות » est là
+  PASS  1376 — il porte leur NOMBRE  — « 2 »
+  PASS  1376 — ★ AVANT le titre et les chiffres  — {"block":20,"title":323,"hero":390,"bottom":307,"vh":1032}
+  PASS  1376 — ★ dans l'écran au repos, sans défiler  — bas 307 / 1032
+  PASS  1376 — recouvert par rien  — 21/21 
+  PASS  1376 — aucune erreur de page
+  PASS  sans demande, le bloc est ABSENT (pas une vignette à zéro)
+
+  A261 — חוות : la demande EN PREMIER, sans filtre, visuellement distincte
+  ------------------------------------------------------------------------
+  PASS  402 — ★ la PREMIÈRE tuile est la demande  — חהחוות הבדיקהבקשה נכנסת · התקבלה לפני שעתיים0דונם
+  PASS  402 — sans aucun filtre actif
+  PASS  402 — ★ distincte : liseré et fond propres  — {"cls":true,"ring":true,"bg":"rgba(93, 141, 42, 0.1)"}
+  PASS  402 — elle se nomme « בקשה נכנסת » avec sa date  — בקשה נכנסת · התקבלה לפני שעתיים
+  PASS  402 — la suivante est une fiche ordinaire
+  PASS  402 — tableau : la demande en tête aussi  — חהחוות הבדיקהקרני שומרון · מעורב · קרני 
+  PASS  1032 — ★ la PREMIÈRE tuile est la demande  — חהחוות הבדיקהבקשה נכנסת · התקבלה לפני שעתיים0דונם
+  PASS  1032 — sans aucun filtre actif
+  PASS  1032 — ★ distincte : liseré et fond propres  — {"cls":true,"ring":true,"bg":"rgba(93, 141, 42, 0.1)"}
+  PASS  1032 — elle se nomme « בקשה נכנסת » avec sa date  — בקשה נכנסת · התקבלה לפני שעתיים
+  PASS  1032 — la suivante est une fiche ordinaire
+  PASS  1032 — tableau : la demande en tête aussi  — חהחוות הבדיקהקרני שומרון · מעורב · קרני 
+  PASS  1376 — ★ la PREMIÈRE tuile est la demande  — חהחוות הבדיקהבקשה נכנסת · התקבלה לפני שעתיים0דונם
+  PASS  1376 — sans aucun filtre actif
+  PASS  1376 — ★ distincte : liseré et fond propres  — {"cls":true,"ring":true,"bg":"rgba(93, 141, 42, 0.1)"}
+  PASS  1376 — elle se nomme « בקשה נכנסת » avec sa date  — בקשה נכנסת · התקבלה לפני שעתיים
+  PASS  1376 — la suivante est une fiche ordinaire
+  PASS  1376 — tableau : la demande en tête aussi  — חהחוות הבדיקהקרני שומרון · מעורב · קרני 
+
+  A262 — la vignette de filtre, visible et recouverte par rien, aux trois largeurs
+  --------------------------------------------------------------------------------
+  PASS  402 — la vignette existe
+  PASS  402 — ★ entière dans l'écran  — 234…386 / 402, 535…619 / 874
+  PASS  402 — ★ recouverte par RIEN (21 points)  — 21/21 
+  PASS  402 — ★ entière dans sa bande (pas coupée par le bord qui défile)
+  PASS  402 — première de la bande  — farms-intake
+  PASS  402 — la toucher filtre : une seule fiche  — 1
+  PASS  1032 — la vignette existe
+  PASS  1032 — ★ entière dans l'écran  — 788…940 / 1032, 130…214 / 1376
+  PASS  1032 — ★ recouverte par RIEN (21 points)  — 21/21 
+  PASS  1032 — ★ entière dans sa bande (pas coupée par le bord qui défile)
+  PASS  1032 — première de la bande  — farms-intake
+  PASS  1032 — la toucher filtre : une seule fiche  — 1
+  PASS  1376 — la vignette existe
+  PASS  1376 — ★ entière dans l'écran  — 1132…1284 / 1376, 80…164 / 1032
+  PASS  1376 — ★ recouverte par RIEN (21 points)  — 21/21 
+  PASS  1376 — ★ entière dans sa bande (pas coupée par le bord qui défile)
+  PASS  1376 — première de la bande  — farms-intake
+  PASS  1376 — la toucher filtre : une seule fiche  — 1
+
+  A263 — le bandeau de nouveauté : au retour, sans minuteur, sans répétition, sans superposition
+  ----------------------------------------------------------------------------------------------
+  PASS  au démarrage, une demande non vue → le bandeau
+  PASS  il nomme l'agriculteur et la ferme  — ישראל ישראלי · חוות הבדיקה
+  PASS  il dit le rendez-vous demandé
+  PASS  (le bandeau de mise à jour est provoqué)
+  PASS  ★ les deux bandeaux ne se SUPERPOSENT pas, ils s'empilent  — {"a":[8,123],"b":[131,217],"overlap":false}
+  PASS  ★ il ne disparaît PAS seul (12 s plus tard)
+  PASS  « סגירה » le renvoie
+  PASS  ★ il ne revient pas pour la MÊME demande
+  PASS  ★ au retour en avant-plan, la NOUVELLE demande → le bandeau
+  PASS  … et il ne parle que d'elle  — 1 · חקלאי 2 · חווה חדשה 2
+  PASS  … et le tableau de bord compte 2, sans recharger  — 2
+  PASS  « לפתיחה » ouvre la fiche  — https://azmer-fts.github.io/lo-yanum/?aq=1790341624836#/coordinator/farms/farm-req-aq00000002
+  PASS  … et le bandeau est parti
+
+  A264 — une demande ne cesse d'être entrante que sur un GESTE du PO
+  ------------------------------------------------------------------
+  PASS  la fiche porte la bande « בקשה מהעמוד הציבורי »
+  PASS  … avec sa date, sa référence, ce qui est demandé  — בקשה מהעמוד הציבוריהתקבלה ב־25.09.2026 · 14:36 · אסמכתא AQ0001ביקש/ה: שמירהמועד מבוקש: 28.09.2026 · 10:00מסמך אחד צורףלא נשלח דוא״ל: שירות ה
+  PASS  … le rendez-vous et les documents
+  PASS  … et que le courriel n'est pas parti (AQ3.4)
+  PASS  ★ OUVRIR et LIRE la fiche ne la traite pas (en base : toujours entrante)  — incoming_request
+  PASS  … et le tableau de bord la montre encore
+  PASS  ★ le geste « טופלה · נוצר קשר » la traite (en base : contacted)  — contacted
+  PASS  … la bande reste, discrète, sans les boutons
+  PASS  ★ le bloc du tableau de bord a DISPARU
+  PASS  … et la vignette aussi
+  PASS  … et elle a rejoint l'ordre ordinaire
+
+  A267 — le champ de recherche ne passe sous rien : trois largeurs, trois modes
+  -----------------------------------------------------------------------------
+  PASS  402 split — le champ s'ouvre
+  PASS  402 split — ★ recouvert par RIEN  — 21/21 
+  PASS  402 split — ★ entier dans l'écran  — 16…386 / 402
+  PASS  402 split — ★ pleine largeur du panneau  — champ 16…386, rangée 16…386
+  PASS  402 split — on y tape
+  PASS  402 hidden — le champ s'ouvre
+  PASS  402 hidden — ★ recouvert par RIEN  — 21/21 
+  PASS  402 hidden — ★ entier dans l'écran  — 16…386 / 402
+  PASS  402 hidden — ★ pleine largeur du panneau  — champ 16…386, rangée 16…386
+  PASS  402 hidden — on y tape
+  PASS  402 carte seule — aucune liste, donc aucun champ (sans objet)
+  PASS  1032 split — le champ s'ouvre
+  PASS  1032 split — ★ recouvert par RIEN  — 21/21 
+  PASS  1032 split — ★ entier dans l'écran  — 660…940 / 1032
+  PASS  1032 split — ★ pleine largeur du panneau  — champ 660…940, rangée 660…940
+  PASS  1032 split — on y tape
+  PASS  1032 hidden — le champ s'ouvre
+  PASS  1032 hidden — ★ recouvert par RIEN  — 21/21 
+  PASS  1032 hidden — ★ entier dans l'écran  — 20…940 / 1032
+  PASS  1032 hidden — ★ pleine largeur du panneau  — champ 20…940, rangée 20…940
+  PASS  1032 hidden — on y tape
+  PASS  1032 carte seule — aucune liste, donc aucun champ (sans objet)
+  PASS  1376 split — le champ s'ouvre
+  PASS  1376 split — ★ recouvert par RIEN  — 21/21 
+  PASS  1376 split — ★ entier dans l'écran  — 889…1284 / 1376
+  PASS  1376 split — ★ pleine largeur du panneau  — champ 889…1284, rangée 889…1284
+  PASS  1376 split — on y tape
+  PASS  1376 hidden — le champ s'ouvre
+  PASS  1376 hidden — ★ recouvert par RIEN  — 21/21 
+  PASS  1376 hidden — ★ entier dans l'écran  — 20…1284 / 1376
+  PASS  1376 hidden — ★ pleine largeur du panneau  — champ 20…1284, rangée 20…1284
+  PASS  1376 hidden — on y tape
+  PASS  1376 carte seule — aucune liste, donc aucun champ (sans objet)
+
+  Captures — tableau de bord et חוות, avec une demande, clair et sombre, trois viewports
+  --------------------------------------------------------------------------------------
+  PASS  clair 402 — trois captures, aucune erreur de page
+  PASS  clair 1032 — trois captures, aucune erreur de page
+  PASS  clair 1376 — trois captures, aucune erreur de page
+  PASS  sombre 402 — trois captures, aucune erreur de page
+  PASS  sombre 1032 — trois captures, aucune erreur de page
+  PASS  sombre 1376 — trois captures, aucune erreur de page
+
+  118 passed, 0 failed

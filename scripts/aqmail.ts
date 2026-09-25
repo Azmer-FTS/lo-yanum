@@ -263,26 +263,30 @@ if (existsSync(DIST)) {
 
 const REMOTE = process.env.BASE_URL?.replace(/\/$/, '')
 if (REMOTE) {
+  /* ★ EN LARGEUR : chaque script servi est lu, et chaque nom de script qu'il
+     porte (morceaux paresseux compris) est suivi — une clé cachée dans un
+     écran chargé à la demande est servie au navigateur tout autant. */
   const hits: string[] = []
-  let read = 0
+  const seen = new Set<string>()
+  const queue: string[] = []
   for (const root of [`${REMOTE}/`, `${REMOTE}/bakasha/`, `${REMOTE}/demo/`]) {
     const html = await (await fetch(`${root}?aqmail=${Date.now()}`)).text()
     scan(root, html, hits)
-    for (const m of html.matchAll(/(?:src|href)="([^"]+\.js)"/g)) {
-      const url = new URL(m[1], root).href
-      const js = await (await fetch(url)).text()
-      read++
-      scan(url, js, hits)
-      /* Les morceaux paresseux que ce script nomme. */
-      for (const c of js.matchAll(/["'`](\.?\.?\/?assets\/[A-Za-z0-9_.-]+\.js)["'`]/g)) {
-        const chunk = new URL(c[1], url).href
-        const body = await (await fetch(chunk)).text()
-        read++
-        scan(chunk, body, hits)
-      }
+    for (const m of html.matchAll(/(?:src|href)="([^"]+\.js)"/g)) queue.push(new URL(m[1], root).href)
+  }
+  while (queue.length > 0 && seen.size < 400) {
+    const url = queue.shift() as string
+    if (seen.has(url)) continue
+    seen.add(url)
+    const res = await fetch(url)
+    if (!res.ok) continue
+    const js = await res.text()
+    scan(url, js, hits)
+    for (const c of js.matchAll(/["'`(,]\s*(?:\.\.?\/)?(?:assets\/)?([A-Za-z0-9_.-]+-[A-Za-z0-9_-]{6,}\.js)["'`]/g)) {
+      queue.push(new URL(c[1], url).href)
     }
   }
-  check(`★ DÉPLOYÉ : ${read} scripts servis lus, aucun secret`, read > 0 && hits.length === 0, hits.slice(0, 4).join(' | '))
+  check(`★ DÉPLOYÉ : ${seen.size} scripts servis lus (entrées ET morceaux paresseux), aucun secret`, seen.size > 10 && hits.length === 0, hits.slice(0, 4).join(' | '))
 }
 
 /* Le secret n'a pas de place dans le dépôt non plus. */
