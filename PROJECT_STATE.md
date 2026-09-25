@@ -79,8 +79,9 @@ trace au lieu de l'effacer). Récit : `docs/ao/ao-historique-migrations-avant.md
 
 - **Passe AQ TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-09-25) — **les demandes
   entrantes se voient, et les courriels sont branchés**. Commit de CODE vérifié
-  sur le déployé : **`0bd084f`** (les commits suivants ne touchent que
-  `ETAT.md`, `PROJECT_STATE.md`, `scripts/aqmail.ts`, `docs/`).
+  sur le déployé : **`0bd084f`** ; le commit servi est **`4c96ad6`** (documentation
+  et `scripts/aqmail.ts` seulement — `git diff 0bd084f 4c96ad6 -- src supabase
+  bakasha` est vide), et `aqui` a été **rejouée dessus : 118/118**.
   Portes : `bun run aqui` (**118/118 en local ET sur le déployé**, 34 rouges sur
   le déployé d'avant — `docs/aq/aq-rouge-avant.log`), `bun run aqmail`
   (**47/47**, A265 sur doublures + A266 sur le build ET sur les 30 scripts

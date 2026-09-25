@@ -2,8 +2,9 @@
 
 > 🏁 **PASSE AQ — LES DEMANDES ENTRANTES SE VOIENT, ET LES COURRIELS SONT BRANCHÉS. 2026-09-25. LIRE EN PREMIER.**
 >
-> Ordre suivi : AQ0 → AQ1 → AQ2 → AQ4 → AQ3 → AQ5. Déployé : **`0bd084f`**
-> sur les trois URLs (app, `/demo/`, `/bakasha/`).
+> Ordre suivi : AQ0 → AQ1 → AQ2 → AQ4 → AQ3 → AQ5. Code vérifié : **`0bd084f`** ;
+> commit servi **`4c96ad6`** (documentation seule), `aqui` rejouée dessus : **118/118**.
+> Les trois URLs : app, `/demo/`, `/bakasha/`.
 >
 > ## AQ0 — CE QUE LE PO A VÉCU, MESURÉ AVANT D'ÊTRE CORRIGÉ
 >
