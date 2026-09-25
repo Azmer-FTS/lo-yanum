@@ -79,7 +79,10 @@ trace au lieu de l'effacer). Récit : `docs/ao/ao-historique-migrations-avant.md
 
 - **Passe AP TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-09-25) — **la page publique
   de demande d'aide**, à
-  **https://azmer-fts.github.io/lo-yanum/bakasha/** (commit `24b344c`).
+  **https://azmer-fts.github.io/lo-yanum/bakasha/**. Commit de CODE vérifié :
+  **`24b344c`** ; le commit servi est `5522d9e` (documentation seule, aucun
+  fichier de `src/`, `bakasha/` ni `supabase/`), et `apui` a été rejouée
+  dessus : **67/67**.
   Un agriculteur y demande lui-même de l'aide : photo des volontaires d'ארצנו,
   un bouton « אני רוצה לקבל עזרה », puis sept étapes à une question par écran.
   Build SÉPARÉ de 57 ko gzippés (`vite.bakasha.config.ts`), sans i18next, sans

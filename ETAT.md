@@ -9,7 +9,9 @@
 > ### **https://azmer-fts.github.io/lo-yanum/bakasha/**
 >
 > Ouvrable par n'importe qui, sans compte, sans lien de garde. Servie depuis le
-> commit **`24b344c`**, à côté de l'application (`/lo-yanum/`) et du jumeau de
+> commit **`5522d9e`** — dont le code est celui de **`24b344c`** (le commit de
+> documentation ne touche AUCUN fichier de `src/`, `bakasha/` ni `supabase/`,
+> vérifié), et `apui` a été **rejouée dessus : 67/67** — à côté de l'application (`/lo-yanum/`) et du jumeau de
 > démonstration (`/lo-yanum/demo/`), par le même déploiement.
 >
 > ## CE QUE C'EST
