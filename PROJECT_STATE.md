@@ -74,6 +74,33 @@ de l'application et non avec le nom du fichier. Résultat, en AO,
 attente est exactement ce qu'on croit.** Réaligné en AO (21 versions marquées
 `applied` + 21 fichiers-jalons portant les numéros MCP, qui CONSERVENT la
 trace au lieu de l'effacer). Récit : `docs/ao/ao-historique-migrations-avant.md`.
+Rediverge en AP/AQ (7 fichiers + 9 versions MCP), **réaligné en AR4**
+(`docs/ar/ar4-historique-migrations.md`) : 58 versions, 0 divergente.
+
+### ★ APRÈS CHAQUE `apply_migration` DU MCP — LA PROCÉDURE (AR4, 2026-09-26)
+
+Le MCP inscrit la migration sous l'HEURE d'application (`20260925122303`),
+pas sous le nom du fichier (`20260925000400`). Chaque application crée donc
+DEUX lignes divergentes. À faire dans la MÊME passe, avant le commit :
+
+```bash
+# 0. Le fichier local existe déjà : supabase/migrations/<AAAAMMJJ>000N00_<nom>.sql
+# 1. Relever la version que le MCP a inscrite :
+supabase migration list            # la ligne « remote » sans « local »
+# 2. Marquer le FICHIER comme appliqué (n'écrit que schema_migrations) :
+supabase migration repair --status applied <AAAAMMJJ000N00>
+# 3. Poser un JALON vide pour la version MCP, en copiant un jalon existant
+#    et en y nommant le fichier porteur :
+cp supabase/migrations/20260925122303_jalon_historique_mcp.sql \
+   supabase/migrations/<version MCP>_jalon_historique_mcp.sql   # puis éditer l'en-tête
+# 4. Prouver :
+bun run armigrations               # A273 : 0 en attente, 0 orpheline, jalons vides
+```
+
+⛔ **Jamais `repair --status reverted`** sur une version MCP : ça efface la
+trace de ce qui a réellement tourné sur la production. ⛔ **Jamais `db push`**,
+même en `--dry-run`, pour « vérifier » : `migration list` suffit.
+⛔ **Jamais de DDL dans un jalon** : il se rejouerait sur une base neuve.
 
 ## Où en est-on
 
@@ -687,12 +714,8 @@ d'être déployé.
 >   bougé avant AQ).
 > - **`bun run import`** exige un serveur de dév déjà lancé sur 5173 : il ne
 >   démarre rien lui-même (`ERR_CONNECTION_REFUSED`), à l'identique avant AQ.
-> - ⚠️ **L'historique des migrations a de nouveau divergé depuis AO/AP** :
->   `supabase migration list` montre 8 versions MCP sans fichier
->   (`20260924093521` … `20260924213418`) et 7 fichiers « non appliqués » qui
->   le SONT (`20260924000100-300`, `20260925000100-400`). Rien de destructeur
->   n'est en attente, mais **ne pas lancer `supabase db push`** avant d'avoir
->   posé les jalons comme en AO.
+> - ✅ ~~L'historique des migrations a de nouveau divergé~~ — **réaligné en
+>   AR4** (58/58, `bun run armigrations`). Procédure en tête de ce fichier.
 
 
 > **Vérifiés identiques (ou pires) sur b7a9a1f pendant AM** :

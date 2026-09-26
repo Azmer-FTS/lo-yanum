@@ -8,6 +8,7 @@
     "dev": "vite",
     "dev:real": "vite --mode real",
     "build": "tsc --noEmit && vite build",
+    "armigrations": "bun run scripts/armigrations.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "screenshots": "bun run scripts/screenshots.ts",

@@ -1,0 +1,24 @@
+-- ===========================================================================
+-- AR4 (2026-09-26) — JALON D'HISTORIQUE, VOLONTAIREMENT SANS INSTRUCTION.
+-- ===========================================================================
+--
+-- ⛔ CE FICHIER N'EXÉCUTE RIEN, ET C'EST TOUT SON OBJET.
+--
+-- La version 20260925122303 (« intake_mail ») a été inscrite dans
+-- `supabase_migrations.schema_migrations` de `lo-yanum-prod` par l'outil MCP
+-- Supabase (`apply_migration`), qui horodate une migration AU MOMENT OÙ IL
+-- L'APPLIQUE et non avec le nom du fichier. Le DDL correspondant vit dans :
+--
+--     20260925000400_intake_mail.sql
+--
+-- déjà appliqué, et marqué comme tel par `migration repair --status applied`.
+--
+-- Même remède qu'en AO (`20260916115054_jalon_historique_mcp.sql`) : un fichier
+-- vide réconcilie les deux côtés SANS effacer la trace de ce qui a réellement
+-- été appliqué. ⚠️ NE PAS Y METTRE D'INSTRUCTION : une base remontée à neuf
+-- rejouerait le travail deux fois.
+-- Procédure permanente : PROJECT_STATE.md, « APRÈS CHAQUE apply_migration ».
+-- Récit : docs/ar/ar4-historique-migrations.md.
+-- ===========================================================================
+
+select 1 where false;
