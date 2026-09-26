@@ -1,0 +1,151 @@
+  app : https://azmer-fts.github.io/lo-yanum  (DÉPLOYÉ)
+  nom le plus long : « 05 - גד״ש תדהר — החווה של אופק » (30 caractères)
+
+  A272 — le nom de la ferme n'est recouvert par rien : trois largeurs, trois modes, clair et sombre
+  -------------------------------------------------------------------------------------------------
+  FAIL  clair 402 split demande — ★ le nom et la localité recouverts par RIEN  — 15/25 button[flex h-12 w-12 items] div[sheet-actions] a[flex h-12 w-12 items]
+  PASS  clair 402 split demande — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":262,"t":519,"r":262,"b":574,"w":0} pilule {"l":16,"t":519,"r":258,"b":569,"w":242}
+  PASS  clair 402 split demande — la pilule est entière dans l'écran  — {"l":16,"t":519,"r":258,"b":569,"w":242}
+  FAIL  clair 402 split demande — ★ la colonne du titre n'est pas écrasée  — colonne 0 px, nom 111 px
+  PASS  clair 402 split demande — aucune erreur de page
+  FAIL  clair 402 split long — ★ le nom et la localité recouverts par RIEN  — 37/45 button[flex h-12 w-12 items] div[flex flex-wrap items]
+  PASS  clair 402 split long — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":262,"t":519,"r":262,"b":740,"w":0} pilule {"l":16,"t":519,"r":258,"b":569,"w":242}
+  PASS  clair 402 split long — la pilule est entière dans l'écran  — {"l":16,"t":519,"r":258,"b":569,"w":242}
+  FAIL  clair 402 split long — ★ la colonne du titre n'est pas écrasée  — colonne 0 px, nom 303 px
+  PASS  clair 402 split long — aucune erreur de page
+  FAIL  clair 402 hidden demande — ★ le nom et la localité recouverts par RIEN  — 15/25 button[flex h-12 w-12 items] div[sheet-actions] a[flex h-12 w-12 items]
+  PASS  clair 402 hidden demande — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":262,"t":89,"r":262,"b":144,"w":0} pilule {"l":16,"t":89,"r":258,"b":139,"w":242}
+  PASS  clair 402 hidden demande — la pilule est entière dans l'écran  — {"l":16,"t":89,"r":258,"b":139,"w":242}
+  FAIL  clair 402 hidden demande — ★ la colonne du titre n'est pas écrasée  — colonne 0 px, nom 111 px
+  PASS  clair 402 hidden demande — aucune erreur de page
+  FAIL  clair 402 hidden long — ★ le nom et la localité recouverts par RIEN  — 37/45 button[flex h-12 w-12 items] div[flex flex-wrap items]
+  PASS  clair 402 hidden long — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":262,"t":89,"r":262,"b":310,"w":0} pilule {"l":16,"t":89,"r":258,"b":139,"w":242}
+  PASS  clair 402 hidden long — la pilule est entière dans l'écran  — {"l":16,"t":89,"r":258,"b":139,"w":242}
+  FAIL  clair 402 hidden long — ★ la colonne du titre n'est pas écrasée  — colonne 0 px, nom 303 px
+  PASS  clair 402 hidden long — aucune erreur de page
+  PASS  clair 402 full demande — carte seule : la fiche est repliée, aucun titre à recouvrir (sans objet)  — {"hidden":true}
+  PASS  clair 402 full demande — aucune erreur de page
+  PASS  clair 402 full long — carte seule : la fiche est repliée, aucun titre à recouvrir (sans objet)  — {"hidden":true}
+  PASS  clair 402 full long — aucune erreur de page
+  PASS  clair 1032 split demande — ★ le nom et la localité recouverts par RIEN  — 10/10 
+  PASS  clair 1032 split demande — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":709,"t":676,"r":820,"b":703,"w":111} pilule {"l":16,"t":676,"r":258,"b":726,"w":242}
+  PASS  clair 1032 split demande — la pilule est entière dans l'écran  — {"l":16,"t":676,"r":258,"b":726,"w":242}
+  PASS  clair 1032 split demande — ★ la colonne du titre n'est pas écrasée  — colonne 111 px, nom 111 px
+  PASS  clair 1032 split demande — aucune erreur de page
+  PASS  clair 1032 split long — ★ le nom et la localité recouverts par RIEN  — 15/15 
+  PASS  clair 1032 split long — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":517,"t":676,"r":820,"b":703,"w":303} pilule {"l":16,"t":676,"r":258,"b":726,"w":242}
+  PASS  clair 1032 split long — la pilule est entière dans l'écran  — {"l":16,"t":676,"r":258,"b":726,"w":242}
+  PASS  clair 1032 split long — ★ la colonne du titre n'est pas écrasée  — colonne 303 px, nom 303 px
+  PASS  clair 1032 split long — aucune erreur de page
+  PASS  clair 1032 hidden demande — ★ le nom et la localité recouverts par RIEN  — 10/10 
+  PASS  clair 1032 hidden demande — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":709,"t":20,"r":820,"b":48,"w":111} pilule {"l":16,"t":20,"r":258,"b":70,"w":242}
+  PASS  clair 1032 hidden demande — la pilule est entière dans l'écran  — {"l":16,"t":20,"r":258,"b":70,"w":242}
+  PASS  clair 1032 hidden demande — ★ la colonne du titre n'est pas écrasée  — colonne 111 px, nom 111 px
+  PASS  clair 1032 hidden demande — aucune erreur de page
+  PASS  clair 1032 hidden long — ★ le nom et la localité recouverts par RIEN  — 15/15 
+  PASS  clair 1032 hidden long — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":517,"t":20,"r":820,"b":48,"w":303} pilule {"l":16,"t":20,"r":258,"b":70,"w":242}
+  PASS  clair 1032 hidden long — la pilule est entière dans l'écran  — {"l":16,"t":20,"r":258,"b":70,"w":242}
+  PASS  clair 1032 hidden long — ★ la colonne du titre n'est pas écrasée  — colonne 303 px, nom 303 px
+  PASS  clair 1032 hidden long — aucune erreur de page
+  PASS  clair 1032 full demande — carte seule : la fiche est repliée, aucun titre à recouvrir (sans objet)  — {"hidden":true}
+  PASS  clair 1032 full demande — aucune erreur de page
+  PASS  clair 1032 full long — carte seule : la fiche est repliée, aucun titre à recouvrir (sans objet)  — {"hidden":true}
+  PASS  clair 1032 full long — aucune erreur de page
+  PASS  clair 1376 split demande — ★ le nom et la localité recouverts par RIEN  — 10/10 
+  PASS  clair 1376 split demande — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":1049,"t":20,"r":1160,"b":48,"w":111} pilule {"l":776,"t":20,"r":1018,"b":70,"w":242}
+  PASS  clair 1376 split demande — la pilule est entière dans l'écran  — {"l":776,"t":20,"r":1018,"b":70,"w":242}
+  PASS  clair 1376 split demande — ★ la colonne du titre n'est pas écrasée  — colonne 111 px, nom 111 px
+  PASS  clair 1376 split demande — aucune erreur de page
+  PASS  clair 1376 split long — ★ le nom et la localité recouverts par RIEN  — 30/30 
+  PASS  clair 1376 split long — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":1030,"t":20,"r":1160,"b":130,"w":130} pilule {"l":776,"t":20,"r":1018,"b":70,"w":242}
+  PASS  clair 1376 split long — la pilule est entière dans l'écran  — {"l":776,"t":20,"r":1018,"b":70,"w":242}
+  FAIL  clair 1376 split long — ★ la colonne du titre n'est pas écrasée  — colonne 130 px, nom 303 px
+  PASS  clair 1376 split long — aucune erreur de page
+  PASS  clair 1376 hidden demande — ★ le nom et la localité recouverts par RIEN  — 10/10 
+  PASS  clair 1376 hidden demande — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":1049,"t":20,"r":1160,"b":48,"w":111} pilule {"l":20,"t":20,"r":262,"b":70,"w":242}
+  PASS  clair 1376 hidden demande — la pilule est entière dans l'écran  — {"l":20,"t":20,"r":262,"b":70,"w":242}
+  PASS  clair 1376 hidden demande — ★ la colonne du titre n'est pas écrasée  — colonne 111 px, nom 111 px
+  PASS  clair 1376 hidden demande — aucune erreur de page
+  PASS  clair 1376 hidden long — ★ le nom et la localité recouverts par RIEN  — 15/15 
+  PASS  clair 1376 hidden long — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":857,"t":20,"r":1160,"b":48,"w":303} pilule {"l":20,"t":20,"r":262,"b":70,"w":242}
+  PASS  clair 1376 hidden long — la pilule est entière dans l'écran  — {"l":20,"t":20,"r":262,"b":70,"w":242}
+  PASS  clair 1376 hidden long — ★ la colonne du titre n'est pas écrasée  — colonne 303 px, nom 303 px
+  PASS  clair 1376 hidden long — aucune erreur de page
+  PASS  clair 1376 full demande — carte seule : la fiche est repliée, aucun titre à recouvrir (sans objet)  — {"hidden":true}
+  PASS  clair 1376 full demande — aucune erreur de page
+  PASS  clair 1376 full long — carte seule : la fiche est repliée, aucun titre à recouvrir (sans objet)  — {"hidden":true}
+  PASS  clair 1376 full long — aucune erreur de page
+  FAIL  sombre 402 split demande — ★ le nom et la localité recouverts par RIEN  — 15/25 button[flex h-12 w-12 items] div[sheet-actions] a[flex h-12 w-12 items]
+  PASS  sombre 402 split demande — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":262,"t":519,"r":262,"b":574,"w":0} pilule {"l":16,"t":519,"r":258,"b":569,"w":242}
+  PASS  sombre 402 split demande — la pilule est entière dans l'écran  — {"l":16,"t":519,"r":258,"b":569,"w":242}
+  FAIL  sombre 402 split demande — ★ la colonne du titre n'est pas écrasée  — colonne 0 px, nom 111 px
+  PASS  sombre 402 split demande — aucune erreur de page
+  FAIL  sombre 402 split long — ★ le nom et la localité recouverts par RIEN  — 37/45 button[flex h-12 w-12 items] div[flex flex-wrap items]
+  PASS  sombre 402 split long — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":262,"t":519,"r":262,"b":740,"w":0} pilule {"l":16,"t":519,"r":258,"b":569,"w":242}
+  PASS  sombre 402 split long — la pilule est entière dans l'écran  — {"l":16,"t":519,"r":258,"b":569,"w":242}
+  FAIL  sombre 402 split long — ★ la colonne du titre n'est pas écrasée  — colonne 0 px, nom 303 px
+  PASS  sombre 402 split long — aucune erreur de page
+  FAIL  sombre 402 hidden demande — ★ le nom et la localité recouverts par RIEN  — 15/25 button[flex h-12 w-12 items] div[sheet-actions] a[flex h-12 w-12 items]
+  PASS  sombre 402 hidden demande — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":262,"t":89,"r":262,"b":144,"w":0} pilule {"l":16,"t":89,"r":258,"b":139,"w":242}
+  PASS  sombre 402 hidden demande — la pilule est entière dans l'écran  — {"l":16,"t":89,"r":258,"b":139,"w":242}
+  FAIL  sombre 402 hidden demande — ★ la colonne du titre n'est pas écrasée  — colonne 0 px, nom 111 px
+  PASS  sombre 402 hidden demande — aucune erreur de page
+  FAIL  sombre 402 hidden long — ★ le nom et la localité recouverts par RIEN  — 37/45 button[flex h-12 w-12 items] div[flex flex-wrap items]
+  PASS  sombre 402 hidden long — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":262,"t":89,"r":262,"b":310,"w":0} pilule {"l":16,"t":89,"r":258,"b":139,"w":242}
+  PASS  sombre 402 hidden long — la pilule est entière dans l'écran  — {"l":16,"t":89,"r":258,"b":139,"w":242}
+  FAIL  sombre 402 hidden long — ★ la colonne du titre n'est pas écrasée  — colonne 0 px, nom 303 px
+  PASS  sombre 402 hidden long — aucune erreur de page
+  PASS  sombre 402 full demande — carte seule : la fiche est repliée, aucun titre à recouvrir (sans objet)  — {"hidden":true}
+  PASS  sombre 402 full demande — aucune erreur de page
+  PASS  sombre 402 full long — carte seule : la fiche est repliée, aucun titre à recouvrir (sans objet)  — {"hidden":true}
+  PASS  sombre 402 full long — aucune erreur de page
+  PASS  sombre 1032 split demande — ★ le nom et la localité recouverts par RIEN  — 10/10 
+  PASS  sombre 1032 split demande — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":709,"t":676,"r":820,"b":703,"w":111} pilule {"l":16,"t":676,"r":258,"b":726,"w":242}
+  PASS  sombre 1032 split demande — la pilule est entière dans l'écran  — {"l":16,"t":676,"r":258,"b":726,"w":242}
+  PASS  sombre 1032 split demande — ★ la colonne du titre n'est pas écrasée  — colonne 111 px, nom 111 px
+  PASS  sombre 1032 split demande — aucune erreur de page
+  PASS  sombre 1032 split long — ★ le nom et la localité recouverts par RIEN  — 15/15 
+  PASS  sombre 1032 split long — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":517,"t":676,"r":820,"b":703,"w":303} pilule {"l":16,"t":676,"r":258,"b":726,"w":242}
+  PASS  sombre 1032 split long — la pilule est entière dans l'écran  — {"l":16,"t":676,"r":258,"b":726,"w":242}
+  PASS  sombre 1032 split long — ★ la colonne du titre n'est pas écrasée  — colonne 303 px, nom 303 px
+  PASS  sombre 1032 split long — aucune erreur de page
+  PASS  sombre 1032 hidden demande — ★ le nom et la localité recouverts par RIEN  — 10/10 
+  PASS  sombre 1032 hidden demande — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":709,"t":20,"r":820,"b":48,"w":111} pilule {"l":16,"t":20,"r":258,"b":70,"w":242}
+  PASS  sombre 1032 hidden demande — la pilule est entière dans l'écran  — {"l":16,"t":20,"r":258,"b":70,"w":242}
+  PASS  sombre 1032 hidden demande — ★ la colonne du titre n'est pas écrasée  — colonne 111 px, nom 111 px
+  PASS  sombre 1032 hidden demande — aucune erreur de page
+  PASS  sombre 1032 hidden long — ★ le nom et la localité recouverts par RIEN  — 15/15 
+  PASS  sombre 1032 hidden long — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":517,"t":20,"r":820,"b":48,"w":303} pilule {"l":16,"t":20,"r":258,"b":70,"w":242}
+  PASS  sombre 1032 hidden long — la pilule est entière dans l'écran  — {"l":16,"t":20,"r":258,"b":70,"w":242}
+  PASS  sombre 1032 hidden long — ★ la colonne du titre n'est pas écrasée  — colonne 303 px, nom 303 px
+  PASS  sombre 1032 hidden long — aucune erreur de page
+  PASS  sombre 1032 full demande — carte seule : la fiche est repliée, aucun titre à recouvrir (sans objet)  — {"hidden":true}
+  PASS  sombre 1032 full demande — aucune erreur de page
+  PASS  sombre 1032 full long — carte seule : la fiche est repliée, aucun titre à recouvrir (sans objet)  — {"hidden":true}
+  PASS  sombre 1032 full long — aucune erreur de page
+  PASS  sombre 1376 split demande — ★ le nom et la localité recouverts par RIEN  — 10/10 
+  PASS  sombre 1376 split demande — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":1049,"t":20,"r":1160,"b":48,"w":111} pilule {"l":776,"t":20,"r":1018,"b":70,"w":242}
+  PASS  sombre 1376 split demande — la pilule est entière dans l'écran  — {"l":776,"t":20,"r":1018,"b":70,"w":242}
+  PASS  sombre 1376 split demande — ★ la colonne du titre n'est pas écrasée  — colonne 111 px, nom 111 px
+  PASS  sombre 1376 split demande — aucune erreur de page
+  PASS  sombre 1376 split long — ★ le nom et la localité recouverts par RIEN  — 30/30 
+  PASS  sombre 1376 split long — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":1030,"t":20,"r":1160,"b":130,"w":130} pilule {"l":776,"t":20,"r":1018,"b":70,"w":242}
+  PASS  sombre 1376 split long — la pilule est entière dans l'écran  — {"l":776,"t":20,"r":1018,"b":70,"w":242}
+  FAIL  sombre 1376 split long — ★ la colonne du titre n'est pas écrasée  — colonne 130 px, nom 303 px
+  PASS  sombre 1376 split long — aucune erreur de page
+  PASS  sombre 1376 hidden demande — ★ le nom et la localité recouverts par RIEN  — 10/10 
+  PASS  sombre 1376 hidden demande — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":1049,"t":20,"r":1160,"b":48,"w":111} pilule {"l":20,"t":20,"r":262,"b":70,"w":242}
+  PASS  sombre 1376 hidden demande — la pilule est entière dans l'écran  — {"l":20,"t":20,"r":262,"b":70,"w":242}
+  PASS  sombre 1376 hidden demande — ★ la colonne du titre n'est pas écrasée  — colonne 111 px, nom 111 px
+  PASS  sombre 1376 hidden demande — aucune erreur de page
+  PASS  sombre 1376 hidden long — ★ le nom et la localité recouverts par RIEN  — 15/15 
+  PASS  sombre 1376 hidden long — ★ le titre et la pilule ne se chevauchent pas  — titre {"l":857,"t":20,"r":1160,"b":48,"w":303} pilule {"l":20,"t":20,"r":262,"b":70,"w":242}
+  PASS  sombre 1376 hidden long — la pilule est entière dans l'écran  — {"l":20,"t":20,"r":262,"b":70,"w":242}
+  PASS  sombre 1376 hidden long — ★ la colonne du titre n'est pas écrasée  — colonne 303 px, nom 303 px
+  PASS  sombre 1376 hidden long — aucune erreur de page
+  PASS  sombre 1376 full demande — carte seule : la fiche est repliée, aucun titre à recouvrir (sans objet)  — {"hidden":true}
+  PASS  sombre 1376 full demande — aucune erreur de page
+  PASS  sombre 1376 full long — carte seule : la fiche est repliée, aucun titre à recouvrir (sans objet)  — {"hidden":true}
+  PASS  sombre 1376 full long — aucune erreur de page
+
+  126 passed, 18 failed

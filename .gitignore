@@ -152,3 +152,7 @@ docs/screenshots/appass/local/
 # AQ — les builds des portes aqui (local et « avant »). Jamais commités.
 dist-aqpass/
 dist-aq-before/
+
+# AR — builds des portes arui / arfiche
+dist-arfiche/
+dist-bakasha/

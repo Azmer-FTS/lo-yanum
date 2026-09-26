@@ -104,6 +104,13 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **Passe AR EN COURS DE DÉPLOIEMENT** (2026-09-26) — le formulaire public
+  avance seul sur ses deux choix uniques, quatre défauts du parcours corrigés,
+  la pilule d'actions ne recouvre plus le nom, l'historique des migrations est
+  réaligné. Portes : `bun run armigrations` (A273, 35/35), `bun run arui`
+  (A268–A271, 72/72 Chromium + WebKit ; `CAPTURES=1` pour les captures),
+  `bun run arfiche` (A272, 144/144). Rouges d'avant : `docs/ar/*.log`.
+  Récit : `ETAT.md` § AR.
 - **Passe AQ TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-09-25) — **les demandes
   entrantes se voient, et les courriels sont branchés**. Commit de CODE vérifié
   sur le déployé : **`0bd084f`** ; le commit servi est **`4c96ad6`** (documentation

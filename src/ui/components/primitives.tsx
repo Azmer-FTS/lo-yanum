@@ -323,7 +323,16 @@ export function PageHeader({
   return (
     <header className="mb-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-1 items-start gap-2.5">
+        {/* ★★ AR3 (2026-09-26) — `flex-auto` ET NON `flex-1`, ET C'EST TOUTE LA
+            CORRECTION. `flex-1` pose une base de 0 % : pour décider du retour
+            à la ligne, le navigateur comptait ce groupe LARGE DE ZÉRO, donc les
+            actions « tenaient » toujours à côté, et le titre était écrasé
+            dessous — 0 px mesurés à 402 sur la fiche, dont la pilule est passée
+            de 3 à 5 icônes (AH7.3, AK7.1). Avec la base NATURELLE (le nom sur
+            une ligne), les actions passent à la ligne dès que le nom entier ne
+            tient plus à côté d'elles — quel que soit leur nombre demain. Aucune
+            marge, aucune largeur en dur. A272 (`bun run arfiche`). */}
+        <div className="flex min-w-0 flex-auto items-start gap-2.5">
           {back && (
             <Link
               to={back.to}

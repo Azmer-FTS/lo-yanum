@@ -10,6 +10,7 @@
     "build": "tsc --noEmit && vite build",
     "armigrations": "bun run scripts/armigrations.ts",
     "arui": "bun run scripts/arui.ts",
+    "arfiche": "bun run scripts/arfiche.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "screenshots": "bun run scripts/screenshots.ts",

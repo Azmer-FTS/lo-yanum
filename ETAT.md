@@ -1,5 +1,86 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AR — LE FORMULAIRE AVANCE SEUL, ET DEUX DETTES. 2026-09-26. LIRE EN PREMIER.**
+>
+> Ordre suivi : AR4 → AR1 → AR2 → AR3 → AR5. Commit de code vérifié : voir
+> PROJECT_STATE.md « Où en est-on ».
+>
+> ## AR4 — L'HISTORIQUE DES MIGRATIONS, RÉALIGNÉ SANS RIEN EFFACER
+>
+> Avant : 58 lignes, **16 divergentes** — 7 fichiers d'AO/AP/AQ « jamais
+> appliqués » qui l'étaient (relu en SQL avant d'écrire : dix statuts,
+> `aid_requests`, 0 droit `anon`, trois fonctions anonymes, déclencheurs de
+> courriel, 25 fiches) et 9 inscriptions MCP sans fichier. Fait :
+> `migration repair --status applied` sur les 7 fichiers, et 9 **jalons vides**
+> qui portent les numéros MCP et nomment le fichier porteur. Après : **58/58,
+> 0 en attente**. `bun run armigrations` (A273) : 35/35. ⛔ Aucun `db push`,
+> même à blanc. Procédure « après chaque `apply_migration` » : PROJECT_STATE.md,
+> section ⛔ db push. Récit : `docs/ar/ar4-historique-migrations.md`.
+>
+> ## AR1 — LES DEUX CHOIX UNIQUES AVANCENT SEULS
+>
+> « מה אתם מחפשים? » et « מה יש לכם בשטח? » : toucher une ligne la coche, et
+> l'écran passe seul après **`AUTO_ADVANCE_DELAY_MS` = 450 ms**
+> (`src/core/request.ts`, avec la liste fermée `AUTO_ADVANCE_STEPS`). Plus de
+> « המשך » ni de pied sur ces deux écrans. Deux touchers rapides : une seule
+> avance, le dernier choix gagne. « חזרה » pendant le délai l'annule. Revenir
+> retrouve la ligne cochée ; la retoucher avance. Le focus va à la question.
+> ⛔ Aucune étape de saisie n'avance seule — ni les champs, ni la touche du
+> clavier, ni un document, ni la signature, ni un créneau (A269).
+>
+> ## AR2 — LA REVUE DU PARCOURS : QUATRE DÉFAUTS, TOUS CORRIGÉS
+>
+> 1. ★ **La signature disparaissait au retour.** Le trait restait dans le
+>    brouillon (et partait !), mais le canevas renaissait vide sous un cadre
+>    « signé » : l'agriculteur croit l'avoir perdue et re-signe par-dessus.
+>    Le PNG gardé est désormais repeint (`Signature.tsx`).
+> 2. ★ **Un papier joint pour une autre nature de terre partait quand même.**
+>    Changer « גידולים » en « מרעה » après avoir joint un document le cachait
+>    de l'écran mais l'envoyait. `documentsToSend` (core) : ce qui part est ce
+>    que l'étape 4 montre. Revenir à « גידולים » le retrouve.
+> 3. **Aux documents, deux boutons pour un seul effet** (« המשך » et « אני
+>    אשלח בהמשך » faisaient la même chose). Un seul : « אני אשלח בהמשך » sans
+>    document, « המשך » avec.
+> 4. **La touche « הבא » du clavier ne faisait rien** sur « מי אתם » : il
+>    fallait fermer le clavier pour viser le champ suivant. Elle enchaîne les
+>    six champs ; sur le dernier (« סיום ») elle ferme le clavier — elle
+>    n'avance PAS l'étape.
+>
+> Vérifié sans défaut : aucune information n'est demandée deux fois (l'accord
+> se remplit des réponses de l'étape 3) ; le retour ne perd rien aux six
+> étapes (A270, aller-retour complet puis envoi : tout part).
+>
+> **Gestes supprimés** : deux « המשך » (étapes 1 et 2) ; un bouton en double
+> aux documents ; jusqu'à six fermetures de clavier + visées de champ à
+> l'étape 3 ; une seconde signature après un retour. Parcours minimal
+> accueil → confirmation : **10 → 8 touchers de bouton** (A271).
+>
+> ## AR3 — LA PILULE D'ACTIONS NE RECOUVRE PLUS LE NOM
+>
+> Mesuré sur le déployé d'avant : à 402 px, **la colonne du titre faisait
+> 0 px**, 15 points sur 25 du nom sous la pilule ; à 1 376 px partagé, le nom
+> le plus long écrasé à 130 px. **Cause** : dans `PageHeader`, le groupe du
+> titre était `flex-1`, donc de base **0 %** — pour décider du retour à la
+> ligne, le navigateur le comptait large de zéro, et les actions « tenaient »
+> toujours à côté. Invisible à trois icônes (W6/X4.2), rouge à cinq
+> (AH7.3 lien, AK7.1 archive). **Correction** : `flex-auto` (base naturelle).
+> Pas de marge, pas de largeur en dur : la pilule passe sous le nom dès que le
+> nom entier ne tient plus à côté, quel que soit le nombre d'icônes demain.
+> A272 : **144/144** local (3 largeurs × 3 modes × clair/sombre × 2 fiches) ;
+> rouge d'avant : 18 FAIL (`docs/ar/ar3-rouge-avant.log`).
+>
+> ## LES PORTES
+>
+> | Porte | Local | Déployé d'avant (AQ) |
+> |---|---|---|
+> | `armigrations` (A273) | 35/35 | — (lit la base) |
+> | `arui` (A268–A271) | 72/72 Chromium + WebKit | **4 / 5 rouges** (`docs/ar/ar-rouge-avant.log`) |
+> | `arfiche` (A272) | 144/144 | **126 / 18 rouges** (`docs/ar/ar3-rouge-avant.log`) |
+> | rejouées | `apui` 136/136 · `appass` 107 · `aopass` 113 | |
+>
+> Portes anciennes réécrites (elles cliquaient « המשך » après un choix) :
+> `apui`, `apcaptures`, `apreal`.
+
 > 🏁 **PASSE AQ — LES DEMANDES ENTRANTES SE VOIENT, ET LES COURRIELS SONT BRANCHÉS. 2026-09-25. LIRE EN PREMIER.**
 >
 > Ordre suivi : AQ0 → AQ1 → AQ2 → AQ4 → AQ3 → AQ5. Code vérifié : **`0bd084f`** ;
