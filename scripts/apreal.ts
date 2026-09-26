@@ -49,9 +49,11 @@ page.on('pageerror', (e) => errors.push(String(e)))
 await page.goto(BASE, { waitUntil: 'networkidle' })
 await page.getByTestId('start').click()
 await page.getByTestId('need-both').click()
-await page.getByTestId('next').click()
+/* AR1 — le choix avance seul, sans « המשך ». */
+await page.waitForSelector('[data-step="land"]')
 await page.getByTestId('land-both').click()
-await page.getByTestId('next').click()
+/* AR1 — le choix avance seul, sans « המשך ». */
+await page.waitForSelector('[data-step="who"]')
 await page.getByTestId('farmName').fill(MARK)
 await page.getByTestId('fullName').fill('ישראל ישראלי (בדיקה)')
 await page.getByTestId('idNumber').fill('021985189')

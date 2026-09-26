@@ -21,6 +21,7 @@
  *    P2.3, et elle est d'autant plus vraie depuis la révocation ci-dessus.
  */
 
+import { documentsToSend } from '@core/request'
 import type { AidRequestDraft } from '@core/request'
 import type { BusyInterval } from '@core/availability'
 
@@ -115,7 +116,7 @@ export async function submitRequest(draft: AidRequestDraft): Promise<SubmitResul
       phone: draft.phone.trim(),
       email: draft.email.trim(),
       locality: draft.locality.trim(),
-      documents: draft.documents.map((d) => ({
+      documents: documentsToSend(draft).map((d) => ({
         id: d.id,
         fileName: d.fileName,
         file: d.file,

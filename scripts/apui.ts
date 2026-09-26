@@ -418,10 +418,12 @@ async function walkTo(page: Page, step: string, opts: { withEmail?: boolean } = 
   await page.getByTestId('start').click()
   await page.getByTestId('need-both').click()
   if (step === 'need') return
-  await page.getByTestId('next').click()
+  /* AR1 — le choix avance seul, sans « המשך ». */
+  await page.waitForSelector('[data-step="land"]')
   await page.getByTestId('land-both').click()
   if (step === 'land') return
-  await page.getByTestId('next').click()
+  /* AR1 — le choix avance seul, sans « המשך ». */
+  await page.waitForSelector('[data-step="who"]')
   await page.getByTestId('farmName').fill('חוות הבדיקה')
   await page.getByTestId('fullName').fill('ישראל ישראלי')
   await page.getByTestId('idNumber').fill('021985189')
@@ -540,12 +542,15 @@ for (const key of ENGINES) {
       if (overflow > 1) problems.push(`${label}: débordement horizontal de ${overflow} px`)
     }
 
-    await page.getByTestId('need-both').click()
+    /* AR1 — mesuré AVANT le toucher : après lui, l'écran s'en va seul. */
     await auditScreen('1 · מה אתם מחפשים')
-    await page.getByTestId('next').click()
-    await page.getByTestId('land-both').click()
+    await page.getByTestId('need-both').click()
+    /* AR1 — le choix avance seul, sans « המשך ». */
+    await page.waitForSelector('[data-step="land"]')
     await auditScreen('2 · מה יש לכם בשטח')
-    await page.getByTestId('next').click()
+    await page.getByTestId('land-both').click()
+    /* AR1 — le choix avance seul, sans « המשך ». */
+    await page.waitForSelector('[data-step="who"]')
     await page.getByTestId('farmName').fill('חוות הבדיקה')
     await page.getByTestId('fullName').fill('ישראל ישראלי')
     await page.getByTestId('idNumber').fill('021985189')
@@ -609,9 +614,11 @@ for (const key of ENGINES) {
       await open(page)
       await page.getByTestId('start').click()
       await page.getByTestId('need-guarding').click()
-      await page.getByTestId('next').click()
+      /* AR1 — le choix avance seul, sans « המשך ». */
+      await page.waitForSelector('[data-step="land"]')
       await page.getByTestId(`land-${land}`).click()
-      await page.getByTestId('next').click()
+      /* AR1 — le choix avance seul, sans « המשך ». */
+      await page.waitForSelector('[data-step="who"]')
       await page.getByTestId('farmName').fill('א')
       await page.getByTestId('fullName').fill('ב')
       await page.getByTestId('phone').fill('0525274774')
@@ -682,9 +689,11 @@ for (const key of ENGINES) {
     await open(page)
     await page.getByTestId('start').click()
     await page.getByTestId('need-both').click()
-    await page.getByTestId('next').click()
+    /* AR1 — le choix avance seul, sans « המשך ». */
+    await page.waitForSelector('[data-step="land"]')
     await page.getByTestId('land-crops').click()
-    await page.getByTestId('next').click()
+    /* AR1 — le choix avance seul, sans « המשך ». */
+    await page.waitForSelector('[data-step="who"]')
     /* Rien de rempli : « המשך » ne doit pas avancer, et il doit DIRE pourquoi. */
     await page.getByTestId('next').click()
     await page.waitForTimeout(150)

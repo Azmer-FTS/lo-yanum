@@ -130,11 +130,13 @@ for (const vp of VIEWPORTS) {
     await page.getByTestId('need-both').click()
     await shot(page, `ap-${tag}-1-mah-atem-mechapsim`)
 
-    await page.getByTestId('next').click()
+    /* AR1 — le choix avance seul, sans « המשך ». */
+    await page.waitForSelector('[data-step="land"]')
     await page.getByTestId('land-both').click()
     await shot(page, `ap-${tag}-2-mah-yesh-lachem`)
 
-    await page.getByTestId('next').click()
+    /* AR1 — le choix avance seul, sans « המשך ». */
+    await page.waitForSelector('[data-step="who"]')
     await page.getByTestId('farmName').fill('חוות מעיין הבשור')
     await page.getByTestId('fullName').fill('יוסי כהן')
     await page.getByTestId('idNumber').fill('021985189')

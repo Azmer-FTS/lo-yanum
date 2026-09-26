@@ -2,11 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   AID_NEEDS,
+  AUTO_ADVANCE_DELAY_MS,
+  AUTO_ADVANCE_STEPS,
   LAND_KINDS,
   REQUEST_STEPS,
   SKIPPABLE_STEPS,
   aidRequestProblems,
   canSubmit,
+  documentsToSend,
   emptyAidRequest,
   stepProgress,
 } from '@core/request'
@@ -47,7 +50,11 @@ const LOGO = './artzenu-logo.png'
  *      bouton. Pas de menu, pas de liens (AP2.4) — un lien sur cette page est
  *      une sortie, et une sortie est un abandon.
  *    · Le bouton « המשך » est toujours au MÊME endroit, collé en bas, sur
- *      chaque écran. Le pouce n'a jamais à le chercher.
+ *      chaque écran OÙ IL SERT. Le pouce n'a jamais à le chercher.
+ *    · ★ AR1 — sur les deux écrans à choix unique (`AUTO_ADVANCE_STEPS`), il
+ *      n'y a PAS de bouton : le toucher est la réponse, la page montre la
+ *      coche `AUTO_ADVANCE_DELAY_MS`, puis passe. Les écrans de SAISIE
+ *      gardent leur bouton — c'est la personne qui dit quand elle a fini.
  *    · Le retour ne perd rien : l'état de la demande vit ICI, au-dessus des
  *      étapes, et aucune étape ne le remet à zéro en se démontant (AP3.6).
  *    · Les deux étapes facultatives le DISENT avec un bouton, jamais avec une
@@ -67,6 +74,17 @@ export default function App() {
   const [failure, setFailure] = useState<string | null>(null)
   const [reference, setReference] = useState<string | null>(null)
   const top = useRef<HTMLDivElement | null>(null)
+  /* ★ AR1 — l'avance automatique en attente. UNE seule à la fois : toucher
+       une autre ligne pendant le délai la remplace (le dernier choix gagne),
+       et « חזרה » l'annule. */
+  const advance = useRef<number | null>(null)
+  const [advancing, setAdvancing] = useState(false)
+  const cancelAdvance = () => {
+    if (advance.current !== null) window.clearTimeout(advance.current)
+    advance.current = null
+    setAdvancing(false)
+  }
+  useEffect(() => cancelAdvance, [])
 
   const patch = (p: Partial<AidRequestDraft>) => setDraft((d) => ({ ...d, ...p }))
 
@@ -80,6 +98,11 @@ export default function App() {
   useEffect(() => {
     top.current?.scrollIntoView({ block: 'start' })
     window.scrollTo(0, 0)
+    /* ★ AR1 — LE FOCUS VA À LA QUESTION. Le bouton touché (une ligne de choix)
+       vient de disparaître avec son écran : sans cela, un lecteur d'écran et
+       un clavier repartent de nulle part. `preventScroll` : le défilement
+       ci-dessus fait déjà foi. */
+    top.current?.querySelector<HTMLElement>('.az-q')?.focus({ preventScroll: true })
   }, [step, started])
 
   if (!started) return <Landing onStart={() => setStarted(true)} />
@@ -123,10 +146,48 @@ export default function App() {
     }
   }
 
+  /* ★ AR1 — UN CHOIX UNIQUE EST UNE RÉPONSE ENTIÈRE. On pose le choix (la
+     coche se peint), on attend `AUTO_ADVANCE_DELAY_MS`, puis on passe — à
+     l'étape qui SUIT CELLE-CI, même si l'état a bougé entre-temps : un
+     « חזרה » pendant le délai a déjà annulé l'avance, et toucher à nouveau la
+     ligne déjà cochée (retour arrière, rien à changer) avance aussi. */
+  function pick(p: Partial<AidRequestDraft>) {
+    patch(p)
+    if (!AUTO_ADVANCE_STEPS.includes(step)) return
+    const from = step
+    const to = REQUEST_STEPS[Math.min(index + 1, REQUEST_STEPS.length - 1)]
+    if (advance.current !== null) window.clearTimeout(advance.current)
+    setAdvancing(true)
+    advance.current = window.setTimeout(() => {
+      advance.current = null
+      setAdvancing(false)
+      setShowProblems(false)
+      setStep((s) => (s === from ? to : s))
+    }, AUTO_ADVANCE_DELAY_MS)
+  }
+
+  const auto = AUTO_ADVANCE_STEPS.includes(step)
+  /* ★ AR2 — À L'ÉTAPE DES DOCUMENTS, UN SEUL BOUTON. « המשך » et « אני אשלח
+     בהמשך » y faisaient EXACTEMENT la même chose (l'étape est facultative) :
+     deux boutons pour un seul effet, c'est une hésitation. Sans document,
+     le bouton dit ce qui se passe (« j'enverrai plus tard ») ; avec au moins
+     un, il dit « המשך ». */
+  /* ⚠️ `documentsToSend`, PAS `draft.documents` : un papier joint pour une
+     AUTRE nature de terre reste dans le brouillon mais n'est plus à l'écran —
+     il ne doit pas transformer « אני אשלח בהמשך » en « המשך » (vu par A271). */
+  const docsGiven = step === 'documents' && documentsToSend(draft).length > 0
+  const showNext = !auto && step !== 'appointment' && (step !== 'documents' || docsGiven)
+  const showSkip = SKIPPABLE_STEPS.includes(step) && !docsGiven
+
   if (step === 'done') return <Done reference={reference} />
 
   return (
-    <div className="az-page" data-step={step}>
+    <div
+      className="az-page"
+      data-step={step}
+      data-auto-advance={auto ? 'yes' : 'no'}
+      data-advancing={advancing ? 'yes' : 'no'}
+    >
       <header className="az-top">
         <div className="az-wrap">
           <div className="az-top-row">
@@ -135,7 +196,11 @@ export default function App() {
               className="az-back"
               data-testid="back"
               aria-label={T.back}
-              onClick={() => setStep(REQUEST_STEPS[Math.max(index - 1, 0)])}
+              onClick={() => {
+                cancelAdvance()
+                setShowProblems(false)
+                setStep(REQUEST_STEPS[Math.max(index - 1, 0)])
+              }}
               disabled={index === 0}
               style={index === 0 ? { visibility: 'hidden' } : undefined}
             >
@@ -164,13 +229,13 @@ export default function App() {
       <main className="az-wrap az-step" ref={top}>
         {step === 'need' && (
           <>
-            <h1 className="az-q">{T.q1}</h1>
+            <h1 className="az-q" tabIndex={-1}>{T.q1}</h1>
             <Choices
               options={AID_NEEDS}
               value={draft.need}
               label={(k: AidNeed) => T.need[k]}
               note={(k: AidNeed) => T.needNote[k]}
-              onPick={(k) => patch({ need: k })}
+              onPick={(k) => pick({ need: k })}
               testId="need"
             />
             {problemOf('need') && <p className="az-error">{T.err.need}</p>}
@@ -179,14 +244,14 @@ export default function App() {
 
         {step === 'land' && (
           <>
-            <h1 className="az-q">{T.q2}</h1>
+            <h1 className="az-q" tabIndex={-1}>{T.q2}</h1>
             <p className="az-hint">{T.q2Hint}</p>
             <Choices
               options={LAND_KINDS}
               value={draft.landKind}
               label={(k: LandKind) => T.land[k]}
               note={() => ''}
-              onPick={(k) => patch({ landKind: k })}
+              onPick={(k) => pick({ landKind: k })}
               testId="land"
             />
             {problemOf('landKind') && <p className="az-error">{T.err.landKind}</p>}
@@ -195,7 +260,7 @@ export default function App() {
 
         {step === 'who' && (
           <>
-            <h1 className="az-q">{T.q3}</h1>
+            <h1 className="az-q" tabIndex={-1}>{T.q3}</h1>
             <p className="az-hint">{T.q3Hint}</p>
             {/* ⛔ AUCUNE LISTE DÉROULANTE DE LIEUX POUR LE NOM DU LIEU (AP3.3).
                 Le portail de l'association fait choisir dans une liste ; ici
@@ -258,13 +323,14 @@ export default function App() {
               value={draft.locality}
               onChange={(v) => patch({ locality: v })}
               testId="locality"
+              last
             />
           </>
         )}
 
         {step === 'documents' && draft.landKind !== null && (
           <>
-            <h1 className="az-q">{T.q4}</h1>
+            <h1 className="az-q" tabIndex={-1}>{T.q4}</h1>
             <p className="az-hint">{T.q4Hint}</p>
             <DocumentsStep
               landKind={draft.landKind}
@@ -276,7 +342,7 @@ export default function App() {
 
         {step === 'agreement' && (
           <>
-            <h1 className="az-q">{T.q5}</h1>
+            <h1 className="az-q" tabIndex={-1}>{T.q5}</h1>
             <p className="az-hint">{T.q5Hint}</p>
             <Agreement draft={draft} />
             <Signature
@@ -288,7 +354,7 @@ export default function App() {
 
         {step === 'appointment' && (
           <>
-            <h1 className="az-q">{T.q6}</h1>
+            <h1 className="az-q" tabIndex={-1}>{T.q6}</h1>
             <p className="az-hint">{T.q6Hint}</p>
             <AppointmentStep
               chosen={draft.appointmentAt}
@@ -303,6 +369,8 @@ export default function App() {
         )}
       </main>
 
+      {/* ★ AR1 — un écran à choix unique n'a pas de pied : rien à y toucher. */}
+      {!(auto && failure === null) && (
       <footer className="az-wrap az-foot">
         {failure !== null && (
           <p className="az-notice az-notice-bad" data-testid="failure">
@@ -319,18 +387,18 @@ export default function App() {
           >
             {sending ? T.sending : T.send}
           </button>
-        ) : (
+        ) : showNext ? (
           <button type="button" className="az-btn" data-testid="next" onClick={forward}>
             {T.next}
           </button>
-        )}
+        ) : null}
         {/* ★ LES DEUX ÉTAPES FACULTATIVES, ET ELLES SE NOMMENT. « אני אשלח
             בהמשך » dit ce qui se passe ensuite ; « דלג » ne dit rien et se lit
             comme un aveu. */}
-        {SKIPPABLE_STEPS.includes(step) && (
+        {showSkip && (
           <button
             type="button"
-            className="az-btn az-btn-quiet"
+            className={step === 'documents' ? 'az-btn' : 'az-btn az-btn-quiet'}
             data-testid="skip"
             onClick={() => {
               if (step === 'appointment') {
@@ -346,6 +414,7 @@ export default function App() {
           </button>
         )}
       </footer>
+      )}
     </div>
   )
 }
@@ -544,7 +613,9 @@ function Text({
   optional,
   placeholder,
   testId,
+  last,
 }: {
+  last?: boolean
   label: string
   value: string
   onChange: (v: string) => void
@@ -570,6 +641,22 @@ function Text({
         aria-invalid={error ? 'true' : undefined}
         data-testid={testId}
         {...kindInputProps(kind, value, onChange)}
+        enterKeyHint={last ? 'done' : 'next'}
+        onKeyDown={(e) => {
+          /* ★ AR2 — « הבא » DU CLAVIER VA AU CHAMP SUIVANT. Sans cela, la
+             touche du clavier ne fait rien et il faut fermer le clavier pour
+             viser le champ d'après. ⛔ Elle n'AVANCE PAS l'étape, même sur le
+             dernier champ : elle ferme le clavier, et c'est « המשך » qui dit
+             qu'on a fini (AR1.4). */
+          if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
+          e.preventDefault()
+          const all = [
+            ...(e.currentTarget.closest('main')?.querySelectorAll<HTMLInputElement>('.az-input') ?? []),
+          ]
+          const next = all[all.indexOf(e.currentTarget) + 1]
+          if (next) next.focus()
+          else e.currentTarget.blur()
+        }}
       />
       {error && <span className="az-error">{error}</span>}
     </label>

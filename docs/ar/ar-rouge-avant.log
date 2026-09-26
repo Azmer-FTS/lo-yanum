@@ -1,0 +1,26 @@
+  page    : https://azmer-fts.github.io/lo-yanum/bakasha/
+  moteurs : chromium
+  délai   : 450 ms
+
+  A268 — chromium · 402 px : les choix uniques avancent seuls
+  -----------------------------------------------------------
+  PASS  A268 · la liste des étapes qui avancent seules est exactement « need, land »  — ["need","land"]
+  PASS  A268 · le délai est une constante nommée, entre 250 et 700 ms  — 450 ms
+  FAIL  A268 · chromium · « מה אתם מחפשים » n'a pas de « המשך »  — ["next"]
+  PASS  A268 · chromium · need : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"need","pressed":"true","ms":45}
+  PASS  A268 · chromium · need : encore affiché à 276 ms (le choix se lit)  — {"step":"need","ms":276}
+  FAIL  section interrompue  — TimeoutError: waitForSelector: Timeout 3000ms exceeded.
+
+  A269 — chromium · 402 px : aucune étape de saisie n'avance seule
+  ----------------------------------------------------------------
+  FAIL  section interrompue  — TimeoutError: waitForSelector: Timeout 30000ms exceeded.
+
+  A270 — chromium · 402 px : le retour retrouve tout, à chaque étape
+  ------------------------------------------------------------------
+  FAIL  section interrompue  — TimeoutError: waitForSelector: Timeout 30000ms exceeded.
+
+  A271 — chromium · 402 px : les gestes évitables sont partis
+  -----------------------------------------------------------
+  FAIL  section interrompue  — TimeoutError: waitForSelector: Timeout 30000ms exceeded.
+
+  4 passed, 5 failed

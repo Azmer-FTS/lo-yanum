@@ -9,6 +9,7 @@
     "dev:real": "vite --mode real",
     "build": "tsc --noEmit && vite build",
     "armigrations": "bun run scripts/armigrations.ts",
+    "arui": "bun run scripts/arui.ts",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "screenshots": "bun run scripts/screenshots.ts",

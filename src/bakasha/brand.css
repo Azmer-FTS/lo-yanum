@@ -476,6 +476,18 @@ body {
   margin: 22px 0 6px;
 }
 
+/* ★ AR1 — la question reçoit le focus à chaque étape (lecteur d'écran,
+   clavier) ; elle n'est pas un contrôle, elle ne porte donc pas d'anneau. */
+.az-q:focus {
+  outline: none;
+}
+
+/* ★ AR1 — un écran à choix unique n'a pas de pied : la dernière ligne ne doit
+   pas se coller au bord ni sous la barre d'accueil de l'iPhone. */
+.az-page[data-auto-advance='yes'] .az-step {
+  padding-bottom: max(28px, env(safe-area-inset-bottom));
+}
+
 .az-hint {
   font-size: 16px;
   color: var(--az-ink-faint);

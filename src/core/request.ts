@@ -16,6 +16,7 @@
  *    de trop est un écran de trop.
  */
 
+import { expectedDocuments } from './documents'
 import type { ExpectedDocumentId } from './documents'
 import type { FarmType } from './types'
 
@@ -266,6 +267,43 @@ export const SKIPPABLE_STEPS: readonly RequestStep[] = [
   /* AP3.6 — « s'il préfère ne pas choisir maintenant, il peut passer ». */
   'appointment',
 ]
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AR1 (2026-09-26) — LES ÉTAPES À CHOIX UNIQUE AVANCENT SEULES.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ *   « Il doit toucher “suivant” après chaque choix, alors que la réponse est
+ *     déjà donnée. Pour un agriculteur pressé, c'est un geste de trop. »
+ *
+ * ★ LA LISTE EST FERMÉE ET NOMMÉE : seules les étapes où UN toucher EST la
+ *   réponse entière. ⛔ Jamais une étape de SAISIE (nom, ת״ז, téléphone,
+ *   documents, signature) : là, c'est la personne qui dit quand elle a fini,
+ *   par un bouton. Et une étape à choix MULTIPLE garderait son bouton — on ne
+ *   devine pas quand quelqu'un a fini de cocher. A269 compte cette liste.
+ */
+export const AUTO_ADVANCE_STEPS: readonly RequestStep[] = ['need', 'land']
+
+/**
+ * ★ LE DÉLAI QUI LAISSE VOIR LE CHOIX. Sans lui l'écran change sous le doigt
+ *   et l'agriculteur doute d'avoir touché la bonne ligne ; au-delà d'une
+ *   demi-seconde, il cherche un bouton qui n'existe plus. 450 ms : la coche
+ *   et le fond sont peints (une image suffit), puis le temps d'un regard.
+ */
+export const AUTO_ADVANCE_DELAY_MS = 450
+
+/**
+ * ★ AR2 — CE QUI PART, C'EST CE QUE L'ÉTAPE 4 MONTRE POUR L'ÉTAPE 2 CHOISIE.
+ *   Revenir à l'étape 2 et changer « גידולים » en « מרעה » change la liste
+ *   des papiers ; ceux déjà joints pour l'ancienne liste RESTENT dans le
+ *   brouillon (revenir à « גידולים » les retrouve — le retour ne perd rien),
+ *   mais ils ne partent pas : ils n'étaient plus à l'écran.
+ */
+export function documentsToSend(draft: AidRequestDraft): RequestDocument[] {
+  if (draft.landKind === null) return []
+  const wanted = new Set<string>(expectedDocuments(farmTypeOf(draft.landKind)))
+  return draft.documents.filter((d) => wanted.has(d.id))
+}
 
 /**
  * Où en est la barre : l'étape `done` n'en fait pas partie, c'est l'arrivée.

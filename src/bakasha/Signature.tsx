@@ -51,6 +51,20 @@ export function Signature({
        un PDF blanc que l'association imprime. Une encre claire prise sur le
        thème sombre donnerait une page vide (même règle qu'en AG6.2). */
     ctx.strokeStyle = '#111111'
+    /* ★ AR2 — LE RETOUR NE PERD PAS LA SIGNATURE. Le trait vit dans le
+       brouillon (`value`), mais le canevas renaît vide à chaque montage :
+       revenir à l'étape 5 montrait un cadre « signé » SANS trait — lu comme
+       « ma signature a disparu », et signé une seconde fois par-dessus. On
+       repeint donc le PNG gardé, à la taille CSS du cadre. */
+    if (value !== null) {
+      const img = new Image()
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, rect.width, rect.height)
+        dirty.current = true
+      }
+      img.src = value
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- au montage seulement
   }, [])
 
   const point = (e: React.PointerEvent<HTMLCanvasElement>) => {
