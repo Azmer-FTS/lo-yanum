@@ -7,13 +7,13 @@
   PASS  A268 · la liste des étapes qui avancent seules est exactement « need, land »  — ["need","land"]
   PASS  A268 · le délai est une constante nommée, entre 250 et 700 ms  — 450 ms
   PASS  A268 · webkit · « מה אתם מחפשים » n'a pas de « המשך »  — []
-  PASS  A268 · webkit · need : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"need","pressed":"true","ms":35}
-  PASS  A268 · webkit · need : encore affiché à 280 ms (le choix se lit)  — {"step":"need","ms":280}
-  PASS  A268 · webkit · need → land tout seul, en 578 ms  — 578 ms
+  PASS  A268 · webkit · need : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"need","pressed":"true","ms":26}
+  PASS  A268 · webkit · need : encore affiché à 281 ms (le choix se lit)  — {"step":"need","ms":281}
+  PASS  A268 · webkit · need → land tout seul, en 573 ms  — 573 ms
   PASS  A268 · webkit · « מה יש לכם בשטח » n'a pas de « המשך »
-  PASS  A268 · webkit · land : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"land","pressed":"true","ms":33}
-  PASS  A268 · webkit · land : encore affiché à 277 ms (le choix se lit)  — {"step":"land","ms":277}
-  PASS  A268 · webkit · land → who tout seul, en 577 ms  — 577 ms
+  PASS  A268 · webkit · land : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"land","pressed":"true","ms":34}
+  PASS  A268 · webkit · land : encore affiché à 275 ms (le choix se lit)  — {"step":"land","ms":275}
+  PASS  A268 · webkit · land → who tout seul, en 571 ms  — 571 ms
   PASS  A268 · webkit · le focus est sur la question de l'étape suivante
   PASS  A268 · webkit · deux touchers rapides : UNE avance, pas deux  — who
   PASS  A268 · webkit · … et c'est le DERNIER choix qui est gardé

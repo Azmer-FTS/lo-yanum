@@ -7,13 +7,13 @@
   PASS  A268 · la liste des étapes qui avancent seules est exactement « need, land »  — ["need","land"]
   PASS  A268 · le délai est une constante nommée, entre 250 et 700 ms  — 450 ms
   PASS  A268 · chromium · « מה אתם מחפשים » n'a pas de « המשך »  — []
-  PASS  A268 · chromium · need : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"need","pressed":"true","ms":17}
-  PASS  A268 · chromium · need : encore affiché à 277 ms (le choix se lit)  — {"step":"need","ms":277}
-  PASS  A268 · chromium · need → land tout seul, en 477 ms  — 477 ms
+  PASS  A268 · chromium · need : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"need","pressed":"true","ms":33}
+  PASS  A268 · chromium · need : encore affiché à 276 ms (le choix se lit)  — {"step":"need","ms":276}
+  PASS  A268 · chromium · need → land tout seul, en 567 ms  — 567 ms
   PASS  A268 · chromium · « מה יש לכם בשטח » n'a pas de « המשך »
-  PASS  A268 · chromium · land : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"land","pressed":"true","ms":41}
-  PASS  A268 · chromium · land : encore affiché à 279 ms (le choix se lit)  — {"step":"land","ms":279}
-  PASS  A268 · chromium · land → who tout seul, en 576 ms  — 576 ms
+  PASS  A268 · chromium · land : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"land","pressed":"true","ms":46}
+  PASS  A268 · chromium · land : encore affiché à 278 ms (le choix se lit)  — {"step":"land","ms":278}
+  PASS  A268 · chromium · land → who tout seul, en 579 ms  — 579 ms
   PASS  A268 · chromium · le focus est sur la question de l'étape suivante
   PASS  A268 · chromium · deux touchers rapides : UNE avance, pas deux  — who
   PASS  A268 · chromium · … et c'est le DERNIER choix qui est gardé

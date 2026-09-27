@@ -2,8 +2,8 @@
 
 > 🏁 **PASSE AR — LE FORMULAIRE AVANCE SEUL, ET DEUX DETTES. 2026-09-26. LIRE EN PREMIER.**
 >
-> Ordre suivi : AR4 → AR1 → AR2 → AR3 → AR5. Commit de code vérifié : voir
-> PROJECT_STATE.md « Où en est-on ».
+> Ordre suivi : AR4 → AR1 → AR2 → AR3 → AR5. **Commit de code vérifié et
+> servi : `0bd2cb5`** sur les trois URLs (app, `/demo/`, `/bakasha/`).
 >
 > ## AR4 — L'HISTORIQUE DES MIGRATIONS, RÉALIGNÉ SANS RIEN EFFACER
 >
@@ -46,6 +46,18 @@
 >    six champs ; sur le dernier (« סיום ») elle ferme le clavier — elle
 >    n'avance PAS l'étape.
 >
+> 5. ★ **En sombre, la signature se lisait à peine** (encre noire imposée par
+>    le PDF, sur la carte sombre) — vu sur les captures du déployé en AR5.
+>    Le cadre est une feuille blanche dans les deux thèmes.
+> 6. ★ **Un créneau visible mais mort, à 1 px des boutons.** Le pied était un
+>    dégradé transparent en haut : au repos, une rangée de créneaux s'y voyait
+>    à travers, mais le toucher tombait sur le pied. Selon le JOUR (la
+>    disposition des créneaux change), `apui` A249 le voyait ou non — rouge
+>    aujourd'hui, identique au pixel près sur le code d'avant AR (worktree
+>    `aaf6f78`), donc antérieur. Pied opaque, fondu posé AU-DESSUS sans zone
+>    tactile ; A249 vérifie désormais l'opacité (rouge sur le déployé d'avant,
+>    `docs/ar/ar-pied-rouge-avant.log`) et ne compte que la part touchable.
+>
 > Vérifié sans défaut : aucune information n'est demandée deux fois (l'accord
 > se remplit des réponses de l'étape 3) ; le retour ne perd rien aux six
 > étapes (A270, aller-retour complet puis envoi : tout part).
@@ -71,12 +83,19 @@
 >
 > ## LES PORTES
 >
-> | Porte | Local | Déployé d'avant (AQ) |
-> |---|---|---|
-> | `armigrations` (A273) | 35/35 | — (lit la base) |
-> | `arui` (A268–A271) | 72/72 Chromium + WebKit | **4 / 5 rouges** (`docs/ar/ar-rouge-avant.log`) |
-> | `arfiche` (A272) | 144/144 | **126 / 18 rouges** (`docs/ar/ar3-rouge-avant.log`) |
-> | rejouées | `apui` 136/136 · `appass` 107 · `aopass` 113 | |
+> | Porte | Local | Déployé `0bd2cb5` | Déployé d'avant |
+> |---|---|---|---|
+> | `armigrations` (A273) | 35/35 | — (lit la base) | 16 lignes divergentes |
+> | `arui` (A268–A271) | 74/74 Chromium + WebKit | **39/39 Chromium + 78 captures · 37/37 WebKit** | **4 / 5 rouges** (`ar-rouge-avant.log`) ; signature sombre 1 rouge (`ar-signature-rouge-avant.log`) |
+> | `arfiche` (A272) | 144/144 | **144/144** | **126 / 18 rouges** (`ar3-rouge-avant.log`) |
+> | `apui` (A249 renforcée) | 136/136 | **67/67** | 1 rouge : pied non opaque (`ar-pied-rouge-avant.log`) |
+> | rejouées | `appass` 107 · `aopass` 113 · `aqui` 118 · `overlap` 185 · `pills` 89 · `tokens` | `aqui` 118/118 | |
+>
+> Captures du déployé : `docs/screenshots/arpass/deployed/` (78 : 13 écrans ×
+> 402/1032/1376 × clair/sombre, dont la coche pendant le délai, et les deux
+> retours) et `docs/screenshots/arpass/fiche-deployed/` (20 : la fiche).
+> ⚠️ WebKit a tenu à distance cette fois (37/37) ; il reste réputé instable
+> sur cette machine (AP6).
 >
 > Portes anciennes réécrites (elles cliquaient « המשך » après un choix) :
 > `apui`, `apcaptures`, `apreal`.

@@ -104,12 +104,16 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **Passe AR EN COURS DE DÉPLOIEMENT** (2026-09-26) — le formulaire public
+- **Passe AR TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-09-27) — commit de CODE
+  vérifié et servi : **`0bd2cb5`** (les commits suivants : documentation seule).
+  Le formulaire public
   avance seul sur ses deux choix uniques, quatre défauts du parcours corrigés,
   la pilule d'actions ne recouvre plus le nom, l'historique des migrations est
   réaligné. Portes : `bun run armigrations` (A273, 35/35), `bun run arui`
-  (A268–A271, 72/72 Chromium + WebKit ; `CAPTURES=1` pour les captures),
-  `bun run arfiche` (A272, 144/144). Rouges d'avant : `docs/ar/*.log`.
+  (A268–A271, 74/74 local Chromium + WebKit ; déployé 39/39 + 37/37 WebKit ;
+  `CAPTURES=1` pour les 78 captures), `bun run arfiche` (A272, 144/144 local
+  ET déployé), `apui` 136/136 local, 67/67 déployé. Rouges d'avant :
+  `docs/ar/*.log`. **Rien en attente dans l'historique des migrations.**
   Récit : `ETAT.md` § AR.
 - **Passe AQ TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-09-25) — **les demandes
   entrantes se voient, et les courriels sont branchés**. Commit de CODE vérifié
@@ -183,7 +187,7 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
   jour » (bloquant, traité en premier). **Correctif livré et poussé**
   (`f94c32a`) ; `ajupdate` 38/38 en local ; **sur le déployé 11/11** avec un
   vrai déploiement pendant que l'app restait ouverte (`ETAT.md` §AJ0.4).
-- **Déployé** : les trois URLs servent **`0bd084f`** (AQ, 2026-09-25) — `aqui` **118/118**, `aqmail` **47/47**, `apui` 67/67, `aodeployed` 35/35, captures `docs/screenshots/aqpass/deployed/`. Avant : **`226e6f8`** (AO6, 2026-09-24) — `aodeployed` **35/35**, `aoui` **40/40**, **36 captures** (`docs/screenshots/aopass/deployed/`), 0 erreur de page. Avant : `e56c8f1` (AO) — `aoui` 40/40, 30 captures. Avant : `cfb834a` (AN) — `anui` 155/155. Avant : `c1453d5` (AM) — `amui` 77/77 et 36 captures sur le déployé. Avant AM : les deux URLs servaient le commit d'AL. **Vérifié SUR LE
+- **Déployé** : les trois URLs servent **`0bd2cb5`** (AR, 2026-09-27) — `arui`, `arfiche`, `apui`, `aqui` verts dessus. Avant : **`0bd084f`** (AQ, 2026-09-25) — `aqui` **118/118**, `aqmail` **47/47**, `apui` 67/67, `aodeployed` 35/35, captures `docs/screenshots/aqpass/deployed/`. Avant : **`226e6f8`** (AO6, 2026-09-24) — `aodeployed` **35/35**, `aoui` **40/40**, **36 captures** (`docs/screenshots/aopass/deployed/`), 0 erreur de page. Avant : `e56c8f1` (AO) — `aoui` 40/40, 30 captures. Avant : `cfb834a` (AN) — `anui` 155/155. Avant : `c1453d5` (AM) — `amui` 77/77 et 36 captures sur le déployé. Avant AM : les deux URLs servaient le commit d'AL. **Vérifié SUR LE
   DÉPLOYÉ** : `alui` 54/54 (le geste d'AL1 et l'écran de localisation) et
   `alcaptures` 330/330 avec 54 captures
   (`docs/screenshots/alpass/deployed/`).
@@ -506,6 +510,13 @@ bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
 bun run typecheck && bun run appass && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run contrast && bun run akpass && bun run accept
 
+# LA PASSE AR :
+bun run armigrations                                               # A273 : historique aligné (lit seulement)
+bun run arui                                                       # A268–A271, Chromium + WebKit
+CAPTURES=1 AR_ENGINES=chromium BASE_URL=https://azmer-fts.github.io/lo-yanum/bakasha/ bun run arui   # déployé + 78 captures
+bun run arfiche                                                    # A272, la fiche : 3 largeurs × 3 modes × 2 thèmes
+BASE_URL=https://azmer-fts.github.io/lo-yanum bun run arfiche      # le déployé
+
 # LES DEMANDES ENTRANTES (AQ) :
 bun run aqui                                                       # 118, build local en mode réel (FakeDb)
 BASE_URL=https://azmer-fts.github.io/lo-yanum bun run aqui         # le DÉPLOYÉ (118/118)
@@ -768,6 +779,20 @@ d'être déployé.
 - Les deux violations A57 de `AnchorMap.tsx` signalées en §36.6 ont été
   corrigées en U4 ; celles qui restent sont ailleurs.
 
+## Ce que le PO fait à l'ouverture (AR, 2026-09-27)
+
+1. **Refaire le parcours public sur son téléphone** :
+   https://azmer-fts.github.io/lo-yanum/bakasha/ — aux deux premières
+   questions, toucher une réponse suffit (la coche s'affiche, l'écran passe
+   seul une demi-seconde après). Revenir avec la flèche retrouve la réponse
+   cochée ; la retoucher avance. ⚠️ Toute demande ENVOYÉE arrive dans la vraie
+   base : s'arrêter avant « שליחת הבקשה », ou supprimer la fiche ensuite.
+2. **Dans l'app, ouvrir une fiche sur le téléphone** : le nom est entier, la
+   pilule d'actions est sur sa propre ligne, dessous. Mettre à jour d'abord si
+   « גרסת האפליקציה » ne dit pas `0bd2cb5`.
+3. **Décider** (questions ouvertes 0-AR) : le délai de 450 ms lui convient-il ?
+4. Toujours ouvert depuis AQ : les courriels (0-AQ).
+
 ## Ce que le PO fait à l'ouverture (AQ, 2026-09-25)
 
 1. **Laisser l'app se mettre à jour** : « גרסת האפליקציה » doit dire
@@ -831,6 +856,11 @@ d'être déployé.
    (point 0ter).
 
 ## Questions ouvertes / ce qui attend le PO
+
+0-AR. **Le délai d'avance automatique : 450 ms** (`AUTO_ADVANCE_DELAY_MS`,
+   `src/core/request.ts`). Choisi pour que la coche se voie sans qu'on cherche
+   un bouton. S'il le trouve trop lent ou trop rapide sur son téléphone, c'est
+   une seule constante (A268 exige 250–700 ms).
 
 0-AQ. ⏳ **LES COURRIELS ATTENDENT SA VALIDATION ET SON COMPTE.** Expéditeur
    proposé : **Resend** — gratuit jusqu'à 3 000 courriels/mois et 100/jour
