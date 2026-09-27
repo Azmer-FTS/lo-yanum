@@ -1,0 +1,104 @@
+$ bun run scripts/apui.ts
+  page    : https://azmer-fts.github.io/lo-yanum/bakasha/
+  moteurs : chromium
+
+  A249 · A257 — chromium : l'accueil s'ouvre sans compte, sur un téléphone
+  ------------------------------------------------------------------------
+  PASS  A257 · chromium · la page répond 200 sans le moindre jeton  — 200
+  PASS  A257 · chromium · aucun cookie, aucun stockage n'a été exigé  — 0 cookies · 0 origines
+  PASS  A257 · chromium · aucun écran de connexion ne s'interpose
+  PASS  A257 · chromium · et aucun service worker n'est posé
+  PASS  A249 · chromium · la photo des volontaires est en tête
+  PASS  A249 · chromium · elle est en GRAND (au moins un cinquième de l'écran)  — 260 px
+  PASS  A249 · chromium · UN SEUL bouton, large, sur l'accueil
+  PASS  A249 · chromium · il fait au moins 56 px de haut et la largeur de l'écran  — 358 × 60
+  PASS  A249 · chromium · et AUCUN lien qui fasse sortir de la page (AP2.4)
+  PASS  A249 · chromium · aucun menu
+  PASS  A249 · chromium · aucune erreur de page sur l'accueil
+
+  A249 — chromium : le parcours entier, écran par écran
+  -----------------------------------------------------
+  PASS  A249 · chromium · les sept écrans se sont enchaînés sans blocage  — 1 · מה אתם מחפשים → 2 · מה יש לכם בשטח → 3 · מי אתם → 4 · מסמכים → 5 · הסכם → 6 · מועד → 7 · אישור
+  FAIL  A249 · chromium · toutes les cibles font 44 px, se tiennent à 8 px, et rien ne déborde  — 3 · מי אתם: pied non opaque (linear-gradient(to top, rgb(255, 255, 255) 62%, rgba(0, 0, 0, 0) 100%) rgba(0, 0, 0, 0)) — ce qui passe dessous se voit sans répondre | 4 · מסמכים: pied non opaque (linear-gradient(to top, rgb(255, 255, 255) 62%, rgba(0, 0, 0, 0) 100%) rgba(0, 0, 0, 0)) — ce qui passe dessous se voit sans répondre | 5 · הסכם: pied non opaque (linear-gradient(to top, rgb(255, 255, 255) 62%, rgba(0, 0, 0, 0) 100%) rgba(0, 0, 0, 0)) — ce qui passe dessous se voit sans répondre
+  PASS  A249 · chromium · la confirmation porte la référence
+  PASS  A249 · chromium · et les coordonnées du PO
+  PASS  A249 · chromium · aucune erreur de page sur tout le parcours
+  PASS  A252 · chromium · le zéro initial du ת״ז est dans ce qui part  — 021985189
+  PASS  A253 · chromium · le mail parti est vide, et la demande est passée  — ""
+  PASS  A259 · chromium · le créneau choisi est parti avec son début ET sa fin  — 2026-09-28T11:00:00.000Z → 2026-09-28T12:00:00.000Z
+  PASS  A251 · chromium · aucun document, et la demande est partie quand même
+
+  A250 — chromium : les documents demandés suivent l'étape 2
+  ----------------------------------------------------------
+  PASS  A250 · chromium · crops → 1 document(s) à l'écran  — crops
+  PASS  A250 · chromium · grazing → 1 document(s) à l'écran  — grazing
+  PASS  A250 · chromium · both → 2 document(s) à l'écran  — crops · grazing
+
+  A254 — chromium : les claviers, tels que le navigateur les décide
+  -----------------------------------------------------------------
+  PASS  A254 · chromium · les six champs portent tous un `kind`  — farmName:text · fullName:name · idNumber:id · phone:phone · email:email · locality:text
+  PASS  A254 · ת״ז — chromium · pavé numérique, et TEXTE (le zéro tient)  — text / numeric
+  PASS  A254 · נייד — chromium · pavé numérique  — text / numeric
+  PASS  A254 · מייל — chromium · clavier courriel  — email
+  PASS  A254 · שם / יישוב — chromium · clavier texte, jamais numérique
+  PASS  A254 · chromium · AUCUN `type="number"` nulle part
+  PASS  A254 · chromium · et aucun champ sous 16 px (iOS zoomerait à la frappe)  — farmName:17 · fullName:17 · idNumber:17 · phone:17 · email:17 · locality:17
+  PASS  A254 · chromium · le נייד se met en forme sous le doigt  — (052) 527-4774
+  PASS  A252 · chromium · et le ת״ז garde son zéro à la frappe  — 021985189
+
+  A253 — chromium : le refus est nommé, et il ne bloque que ce qu'il doit
+  -----------------------------------------------------------------------
+  PASS  A253 · chromium · sans rien, la page reste sur l'étape et nomme ce qui manque  — 3 reproches
+  PASS  A253 · chromium · le נייד reste le dernier obstacle
+  PASS  A253 · chromium · un mail TAPÉ mais impossible bloque à son tour
+  PASS  A253 · chromium · vidé, il ne bloque plus — le mail est bien FACULTATIF
+
+  A256 — chromium : un fichier refusé l'est PROPREMENT
+  ----------------------------------------------------
+  PASS  A256 · chromium · un exécutable est refusé, et la page le DIT en hébreu  — אפשר רק PDF או תמונה.
+  PASS  A256 · chromium · la fiche reste « pas encore joint », pas à demi remplie
+  SKIP  A256 · chromium · le fichier trop gros — 12 Mio par le protocole de débogage, mesuré en local (le refus de TYPE ci-dessus couvre le chemin d'affichage)
+  PASS  A256 · chromium · et après deux refus, la demande continue
+  PASS  A256 · chromium · aucune erreur de page pendant les refus
+
+  A251 — chromium : un PDF déposé, lui, part avec la demande
+  ----------------------------------------------------------
+  PASS  A251 · chromium · le document déposé s'affiche comme joint
+  PASS  A251 · chromium · et celui du pâturage reste vide, sans bloquer
+  PASS  A251 · chromium · UN seul document part, celui qui a été déposé  — ["crops"]
+  PASS  A251 · chromium · et c'est un PDF, pas autre chose
+  PASS  A251 · chromium · passer le rendez-vous envoie la demande sans créneau  — null
+
+  A258 — chromium : aucun créneau fermé, aucun créneau déjà pris
+  --------------------------------------------------------------
+  PASS  A258 · chromium · aucun vendredi, aucun samedi dans les jours proposés
+  PASS  A258 · chromium · la journée occupée par l'agenda a DISPARU en entier  — 2026-10-05 — 21 jours proposés
+  PASS  A258 · chromium · et les autres jours sont restés  — 21 jours
+  PASS  A258 · chromium · rien au-delà de l'horizon annoncé  — 2026-10-27
+  PASS  A258 · chromium · aucun nom de ferme, aucun titre de rendez-vous à l'écran
+
+  AP3.5 — chromium : l'accord vient du gabarit des réglages
+  ---------------------------------------------------------
+  PASS  AP3.5 · chromium · le texte affiché est CELUI DES RÉGLAGES, pas le livré
+  PASS  AP3.5 · chromium · et ses variables sont remplies avec ce qui a été saisi
+  PASS  AP3.5 · chromium · le pavé de signature est visible sans défiler  — y=395 h=190
+  PASS  AP3.5 · chromium · il est vide au départ
+  PASS  AP3.5 · chromium · un trait au doigt le remplit
+  PASS  AP3.5 · chromium · et « מחיקה » le rend vierge
+  PASS  AP3.5 · chromium · la signature part en PNG avec la demande
+
+  AP1 — chromium : la charte d'ארצנו, en clair et en sombre
+  ---------------------------------------------------------
+  PASS  AP1 · chromium · clair · le bouton porte l'orange d'ארצנו  — rgb(239, 79, 40)
+  PASS  AP1 · chromium · clair · et sa forme de pilule (30 px)  — 30px
+  PASS  AP1 · chromium · clair · la page est dans le bon thème  — rgb(255, 255, 255)
+  PASS  AP1 · chromium · clair · la police est auto-hébergée (Rubik)  — Rubik, system-ui, -apple-system, "Segoe UI", sans-serif
+  PASS  AP1 · chromium · clair · le logo est servi par cette page  — https://azmer-fts.github.io/lo-yanum/bakasha/artzenu-logo.png
+  PASS  AP1 · chromium · sombre · le bouton porte l'orange d'ארצנו  — rgb(239, 79, 40)
+  PASS  AP1 · chromium · sombre · et sa forme de pilule (30 px)  — 30px
+  PASS  AP1 · chromium · sombre · la page est dans le bon thème  — rgb(14, 26, 20)
+  PASS  AP1 · chromium · sombre · la police est auto-hébergée (Rubik)  — Rubik, system-ui, -apple-system, "Segoe UI", sans-serif
+  PASS  AP1 · chromium · sombre · le logo est servi par cette page  — https://azmer-fts.github.io/lo-yanum/bakasha/artzenu-logo.png
+
+  66 passed, 1 failed
+error: script "apui" exited with code 1

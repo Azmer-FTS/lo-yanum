@@ -497,11 +497,12 @@ body {
 .az-foot {
   position: sticky;
   bottom: 0;
-  background: linear-gradient(
-    to top,
-    var(--az-ground) 62%,
-    rgb(0 0 0 / 0) 100%
-  );
+  /* ★ AR2 — OPAQUE, ET LE FONDU EST AU-DESSUS (`::before`). Avec un dégradé
+     transparent sur son tiers haut, une rangée de créneaux passait à moitié
+     sous le pied, visible et touchable à 1–5 px de « אקבע מועד בהמשך » :
+     un toucher à côté. Mesuré par A249 (selon le jour, la rangée tombe là
+     ou non). Ce qui est sous le pied est désormais caché ET intouchable. */
+  background: var(--az-ground);
   /* ⚠️ `padding-block` ET NON `padding`. `.az-foot` est posée SUR `.az-wrap` ;
      un `padding` complet écrasait les gouttières de 16 px de celle-ci, et le
      bouton touchait les deux bords de l'écran. Mesuré (x=0, w=375 sur un
@@ -510,6 +511,16 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.az-foot::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: 100%;
+  height: 22px;
+  background: linear-gradient(to top, var(--az-ground), rgb(0 0 0 / 0));
+  pointer-events: none;
 }
 
 /* --- les documents ------------------------------------------------------- */

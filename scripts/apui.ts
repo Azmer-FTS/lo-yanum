@@ -318,7 +318,18 @@ async function targets(page: Page) {
       })
       .map((el) => {
         const r = el.getBoundingClientRect()
+        /* ★ AR2 — CE QUI EST SOUS LE PIED N'EST PAS TOUCHABLE : le pied est
+           au-dessus dans la pile, le toucher y tombe sur lui. Pour l'ÉCART (pas
+           pour la taille), on ne compte que la part touchable. ⚠️ Avant AR2 le
+           pied était TRANSPARENT en haut : cette part se VOYAIT sans répondre
+           — un créneau mort à 1 px du bouton. C'est l'opacité du pied qui le
+           règle, et `auditScreen` la vérifie à part. */
+        const foot = document.querySelector('.az-foot')?.getBoundingClientRect()
+        const inFoot = el.closest('.az-foot') !== null
+        const vb = !inFoot && foot && r.bottom > foot.top && r.top < foot.top ? foot.top : r.bottom
         return {
+          vb: Math.round(vb),
+          hiddenUnderFoot: !inFoot && !!foot && r.top >= foot.top,
           tag: el.tagName,
           id: (el as HTMLElement).dataset.testid ?? '',
           text: (el.textContent ?? '').trim().slice(0, 24),
@@ -519,13 +530,22 @@ for (const key of ENGINES) {
       const small = t.filter((b) => b.h < 44 || b.w < 44)
       if (small.length > 0)
         problems.push(`${label}: cibles < 44 px → ${small.map((s) => `${s.id || s.text} ${s.w}×${s.h}`).join(', ')}`)
+      /* ★ AR2 — le pied est OPAQUE : rien ne se voit dessous sans répondre. */
+      const footBg = await page.evaluate(() => {
+        const f = document.querySelector('.az-foot')
+        if (!f) return null
+        const cs = getComputedStyle(f)
+        return { image: cs.backgroundImage, color: cs.backgroundColor }
+      })
+      if (footBg && (footBg.image !== 'none' || /rgba\(.*, 0(\.\d+)?\)$/.test(footBg.color) || footBg.color === 'transparent'))
+        problems.push(`${label}: pied non opaque (${footBg.image} ${footBg.color}) — ce qui passe dessous se voit sans répondre`)
       /* 8 px d'écart entre deux cibles qui se suivent verticalement. */
-      const sorted = [...t].sort((a, b) => a.y - b.y)
+      const sorted = [...t].filter((b) => !b.hiddenUnderFoot).sort((a, b) => a.y - b.y)
       for (let i = 1; i < sorted.length; i += 1) {
         const prev = sorted[i - 1]
         const cur = sorted[i]
         const sameColumn = cur.x < prev.x + prev.w && prev.x < cur.x + cur.w
-        const gap = cur.y - (prev.y + prev.h)
+        const gap = cur.y - prev.vb
         if (sameColumn && gap >= 0 && gap < 8)
           problems.push(`${label}: ${prev.id || prev.text} / ${cur.id || cur.text} écart ${gap} px`)
       }

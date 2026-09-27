@@ -7,13 +7,13 @@
   PASS  A268 · la liste des étapes qui avancent seules est exactement « need, land »  — ["need","land"]
   PASS  A268 · le délai est une constante nommée, entre 250 et 700 ms  — 450 ms
   PASS  A268 · webkit · « מה אתם מחפשים » n'a pas de « המשך »  — []
-  PASS  A268 · webkit · need : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"need","pressed":"true","ms":40}
-  PASS  A268 · webkit · need : encore affiché à 279 ms (le choix se lit)  — {"step":"need","ms":279}
-  PASS  A268 · webkit · need → land tout seul, en 491 ms  — 491 ms
+  PASS  A268 · webkit · need : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"need","pressed":"true","ms":35}
+  PASS  A268 · webkit · need : encore affiché à 280 ms (le choix se lit)  — {"step":"need","ms":280}
+  PASS  A268 · webkit · need → land tout seul, en 578 ms  — 578 ms
   PASS  A268 · webkit · « מה יש לכם בשטח » n'a pas de « המשך »
-  PASS  A268 · webkit · land : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"land","pressed":"true","ms":57}
-  PASS  A268 · webkit · land : encore affiché à 276 ms (le choix se lit)  — {"step":"land","ms":276}
-  PASS  A268 · webkit · land → who tout seul, en 574 ms  — 574 ms
+  PASS  A268 · webkit · land : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"land","pressed":"true","ms":33}
+  PASS  A268 · webkit · land : encore affiché à 277 ms (le choix se lit)  — {"step":"land","ms":277}
+  PASS  A268 · webkit · land → who tout seul, en 577 ms  — 577 ms
   PASS  A268 · webkit · le focus est sur la question de l'étape suivante
   PASS  A268 · webkit · deux touchers rapides : UNE avance, pas deux  — who
   PASS  A268 · webkit · … et c'est le DERNIER choix qui est gardé
@@ -37,7 +37,7 @@
   PASS  A270 · webkit · מה אתם מחפשים : le choix est coché, pas un écran vide
   PASS  A270 · webkit · retoucher le choix déjà coché avance (il n'y a plus de « המשך »)
   PASS  A270 · webkit · מועד : le créneau choisi est encore sélectionné
-  PASS  A270 · webkit · après l'aller-retour, TOUT part : besoin, terre, ת״ז, document, signature, créneau  — {"need":"farm_work","landKind":"crops","farmName":"חוות הבדיקה","fullName":"ישראל ישראלי","idNumber":"021985189","phone":"052-5274774","email":"dov@example.com","locality":"מיצד","documents":1,"signature":"data:image/png;base64,","appointmentAt":"2026-09-28T07:00:00.000Z","appointmentEndAt":"2026-09-28T08:00:00.000Z"}
+  PASS  A270 · webkit · après l'aller-retour, TOUT part : besoin, terre, ת״ז, document, signature, créneau  — {"need":"farm_work","landKind":"crops","farmName":"חוות הבדיקה","fullName":"ישראל ישראלי","idNumber":"021985189","phone":"052-5274774","email":"dov@example.com","locality":"מיצד","documents":1,"signature":"data:image/png;base64,","appointmentAt":"2026-09-28T12:00:00.000Z","appointmentEndAt":"2026-09-28T13:00:00.000Z"}
   PASS  A270 · webkit · aucune erreur de page
 
   A271 — webkit · 402 px : les gestes évitables sont partis
@@ -50,4 +50,8 @@
   PASS  A271 · webkit · accueil → confirmation en 8 touchers de bouton (AP : 10, deux « המשך » en moins)  — 8
   PASS  A271 · webkit · terre changée en « מרעה » : le papier « גידולים » n'est plus montré ET ne part pas  — ["doc-grazing"] · 0 parti(s)
 
-  36 passed, 0 failed
+  A270 — webkit · 402 px sombre : l'encre de la signature se voit
+  ---------------------------------------------------------------
+  PASS  A270 · webkit · en sombre, le cadre de signature est une feuille blanche (l'encre noire s'y lit)  — rgb(255, 255, 255)
+
+  37 passed, 0 failed
