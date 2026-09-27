@@ -496,6 +496,29 @@ for (const engineName of ENGINES) {
   })
 
   // -------------------------------------------------------------------------
+  section(`A270 — ${name} · 402 px sombre : l'encre de la signature se voit`)
+  // -------------------------------------------------------------------------
+  await guarded(async () => {
+    const sent: Sent[] = []
+    const { ctx, page } = await newPage(browser, sent, '402', true)
+    await page.getByTestId('start').click()
+    await page.getByTestId('need-both').click()
+    await page.waitForSelector('[data-step="land"]')
+    await page.getByTestId('land-both').click()
+    await page.waitForSelector('[data-step="who"]')
+    await fillWho(page)
+    await page.getByTestId('next').click()
+    await page.getByTestId('documents-step').waitFor()
+    await page.getByTestId('skip').click()
+    await page.getByTestId('agreement').waitFor()
+    const bg = await page.$eval('[data-testid="signature"]', (el) => getComputedStyle(el).backgroundColor)
+    /* Encre #111111 : il faut un fond clair (contraste ≥ 7 contre blanc). */
+    check(`A270 · ${name} · en sombre, le cadre de signature est une feuille blanche (l'encre noire s'y lit)`,
+      bg === 'rgb(255, 255, 255)', bg)
+    await ctx.close()
+  })
+
+  // -------------------------------------------------------------------------
   if (CAPTURES && name === 'chromium') {
     section(`Captures — chaque étape, 402 · 1032 · 1376, clair et sombre`)
     mkdirSync(SHOTS, { recursive: true })

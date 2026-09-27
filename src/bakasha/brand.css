@@ -580,7 +580,11 @@ body {
 .az-sign {
   border: 2px dashed var(--az-line);
   border-radius: var(--az-radius);
-  background: var(--az-card);
+  /* ★ AR2 — UNE FEUILLE BLANCHE, DANS LES DEUX THÈMES. L'encre est noire en
+     dur (elle part dans un PDF imprimé, `Signature.tsx`) ; sur la carte
+     sombre elle se lisait à peine — vu sur les captures du déployé, AR5.
+     On signe sur du papier : le cadre en est un. */
+  background: #ffffff;
   /* Le doigt a besoin de place : 190 px, la même hauteur que le pavé de
      l'application. */
   height: 190px;

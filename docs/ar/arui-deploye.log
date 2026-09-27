@@ -1,0 +1,58 @@
+  page    : https://azmer-fts.github.io/lo-yanum/bakasha/
+  moteurs : chromium
+  délai   : 450 ms
+
+  A268 — chromium · 402 px : les choix uniques avancent seuls
+  -----------------------------------------------------------
+  PASS  A268 · la liste des étapes qui avancent seules est exactement « need, land »  — ["need","land"]
+  PASS  A268 · le délai est une constante nommée, entre 250 et 700 ms  — 450 ms
+  PASS  A268 · chromium · « מה אתם מחפשים » n'a pas de « המשך »  — []
+  PASS  A268 · chromium · need : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"need","pressed":"true","ms":44}
+  PASS  A268 · chromium · need : encore affiché à 280 ms (le choix se lit)  — {"step":"need","ms":280}
+  PASS  A268 · chromium · need → land tout seul, en 573 ms  — 573 ms
+  PASS  A268 · chromium · « מה יש לכם בשטח » n'a pas de « המשך »
+  PASS  A268 · chromium · land : au toucher, la ligne est COCHÉE et l'écran reste  — {"step":"land","pressed":"true","ms":53}
+  PASS  A268 · chromium · land : encore affiché à 277 ms (le choix se lit)  — {"step":"land","ms":277}
+  PASS  A268 · chromium · land → who tout seul, en 579 ms  — 579 ms
+  PASS  A268 · chromium · le focus est sur la question de l'étape suivante
+  PASS  A268 · chromium · deux touchers rapides : UNE avance, pas deux  — who
+  PASS  A268 · chromium · … et c'est le DERNIER choix qui est gardé
+  PASS  A268 · chromium · « חזרה » pendant le délai l'ANNULE (on reste où on est revenu)  — need
+  PASS  A268 · chromium · aucune erreur de page
+
+  A269 — chromium · 402 px : aucune étape de saisie n'avance seule
+  ----------------------------------------------------------------
+  PASS  A269 · chromium · מי אתם : tout rempli, « הבא » du dernier champ — l'étape RESTE  — who
+  PASS  A269 · chromium · מי אתם : un bouton explicite le dit
+  PASS  A269 · chromium · מסמכים : un document joint — l'étape RESTE
+  PASS  A269 · chromium · הסכם : signé — l'étape RESTE
+  PASS  A269 · chromium · מועד : créneau choisi — RIEN ne part tout seul  — appointment · 0 envoi(s)
+
+  A270 — chromium · 402 px : le retour retrouve tout, à chaque étape
+  ------------------------------------------------------------------
+  PASS  A270 · chromium · הסכם : la signature est REPEINTE (636 px d'encre, 636 avant)  — 636/636
+  PASS  A270 · chromium · מסמכים : le document est encore joint
+  PASS  A270 · chromium · מי אתם : les six champs sont intacts  — ["חוות הבדיקה","ישראל ישראלי","021985189","(052) 527-4774","dov@example.com","מיצד"]
+  PASS  A270 · chromium · מה יש לכם בשטח : « גידולים » est coché
+  PASS  A270 · chromium · מה אתם מחפשים : le choix est coché, pas un écran vide
+  PASS  A270 · chromium · retoucher le choix déjà coché avance (il n'y a plus de « המשך »)
+  PASS  A270 · chromium · מועד : le créneau choisi est encore sélectionné
+  PASS  A270 · chromium · après l'aller-retour, TOUT part : besoin, terre, ת״ז, document, signature, créneau  — {"need":"farm_work","landKind":"crops","farmName":"חוות הבדיקה","fullName":"ישראל ישראלי","idNumber":"021985189","phone":"052-5274774","email":"dov@example.com","locality":"מיצד","documents":1,"signature":"data:image/png;base64,","appointmentAt":"2026-09-28T07:00:00.000Z","appointmentEndAt":"2026-09-28T08:00:00.000Z"}
+  PASS  A270 · chromium · aucune erreur de page
+
+  A271 — chromium · 402 px : les gestes évitables sont partis
+  -----------------------------------------------------------
+  PASS  A271 · chromium · la touche du clavier dit « הבא » partout, « סיום » sur le dernier  — ["next","next","next","next","next","done"]
+  PASS  A271 · chromium · « הבא » enchaîne les six champs dans l'ordre, sans un toucher  — farmName,fullName,idNumber,phone,email,locality
+  PASS  A271 · chromium · … et le dernier ferme le clavier sans quitter l'étape
+  PASS  A271 · chromium · מסמכים sans document : UN seul bouton, qui dit « אני אשלח בהמשך »  — ["skip"]
+  PASS  A271 · chromium · avec un document : UN seul bouton, « המשך »  — ["next"]
+  PASS  A271 · chromium · accueil → confirmation en 8 touchers de bouton (AP : 10, deux « המשך » en moins)  — 8
+  PASS  A271 · chromium · terre changée en « מרעה » : le papier « גידולים » n'est plus montré ET ne part pas  — ["doc-grazing"] · 0 parti(s)
+
+  Captures — chaque étape, 402 · 1032 · 1376, clair et sombre
+  -----------------------------------------------------------
+  PASS  captures : 78 écrans dans docs/screenshots/arpass/deployed  — 78
+  PASS  captures : 0 erreur de page  — 0
+
+  38 passed, 0 failed
