@@ -354,13 +354,16 @@ for (const width of WIDTHS) {
       const modal = document.querySelector('[data-testid="assoc-form"]')?.closest('[role="dialog"]') ?? document.querySelector('[data-testid="assoc-form"]')
       const logo = document.querySelector('[data-testid="assoc-form-logo"]')!.getBoundingClientRect()
       const pad = document.querySelector('[data-testid="assoc-signature"] canvas')!.getBoundingClientRect()
-      const decl = document.querySelector('[data-testid="assoc-declaration"]')?.getBoundingClientRect()
-      return { logo: Math.round(logo.height), pad: Math.round(pad.height), decl: Math.round(decl?.height ?? 0), modal: Math.round((modal as HTMLElement).getBoundingClientRect().height), vh: innerHeight }
+      const declEl = document.querySelector('[data-testid="assoc-declaration"]') as HTMLElement | null
+      const decl = declEl?.getBoundingClientRect()
+      const line = document.querySelector('[data-testid="assoc-declaration-line"]') as HTMLElement | null
+      return { logo: Math.round(logo.height), logoW: Math.round(logo.width), pad: Math.round(pad.height), decl: Math.round(decl?.height ?? 0), font: line ? parseFloat(getComputedStyle(line).fontSize) : 0, whole: declEl ? declEl.scrollHeight <= declEl.clientHeight + 1 : false, modal: Math.round((modal as HTMLElement).getBoundingClientRect().height), vh: innerHeight }
     })
     measures[`sign-${width}`] = m
-    check('A305 · logo agrandi (≥ 64 px, il en faisait 32)', m.logo >= 64, JSON.stringify(m))
+    check('A305 · logo agrandi : boîte ≥ 112 × 56 px à ses proportions (avant : 32 × 32, la marque 2:1 y faisait 16 px de haut)', m.logoW >= 112 && m.logo >= 56, JSON.stringify(m))
     check('A305 · cadre de signature réduit : ≤ 32 % de la hauteur de l’écran', m.pad <= m.vh * 0.32, `${m.pad} / ${m.vh}`)
-    check('A305 · la déclaration a plus de place que l’encre', m.decl >= m.pad * 0.9, `déclaration ${m.decl} · encre ${m.pad}`)
+    check('A305 · la déclaration est ENTIÈRE à l’ouverture, sans défiler (AN5)', m.whole, JSON.stringify(m))
+    check('A305 · la place rendue va au texte : plus grand sur iPad (≥ 20 px), 16 px sur téléphone', width < 640 ? m.font >= 16 : m.font >= 20, `${m.font} px`)
     if (CAPTURES) await page.screenshot({ path: `${SHOTS}/a305-signature-${width}-light.png` })
     const before = String(db.rows('entities').find((r) => r.id === target)?.name)
     await page.click('[data-testid="assoc-form-place"]')

@@ -143,11 +143,13 @@ export function AssociationFormModal({
       const pad = padBox.current
       let room = share
       if (decl && pad) {
-        const kids = [...decl.children] as HTMLElement[]
-        const content = kids.length ? kids[kids.length - 1].offsetTop + kids[kids.length - 1].offsetHeight - kids[0].offsetTop + 28 : 0
+        const kids = [...col.children] as HTMLElement[]
+        const gap = parseFloat(getComputedStyle(col).rowGap) || 0
+        const others = kids.filter((k) => k !== decl && k !== pad).reduce((n, k) => n + k.offsetHeight, 0)
         const canvas = pad.querySelector('canvas')
-        const free = decl.offsetHeight + (canvas?.offsetHeight ?? 0) - content
-        room = Math.min(share, free - 4)
+        const padChrome = pad.offsetHeight - (canvas?.offsetHeight ?? 0)
+        const content = decl.scrollHeight
+        room = Math.min(share, col.clientHeight - others - content - padChrome - gap * (kids.length - 1) - 2)
       }
       setPadHeight(Math.max(96, Math.min(420, room)))
     }
@@ -287,12 +289,13 @@ export function AssociationFormModal({
         <div className="flex min-w-0 items-center gap-4">
           {/* Le logo d'ארצנו est blanc sur transparent : il est posé en MASQUE,
               teinté à l'encre de l'app, comme sur le PDF.
-              ★★ AT6.1 — 32 → 64 px (80 sur iPad) : « le logo est devenu
-              minuscule », et c'est ce que l'agriculteur voit en premier. */}
+              ★★ AT6.1 — « le logo est devenu minuscule ». La marque fait 2:1
+              (640 × 319) : une boîte CARRÉE de 32 px la réduisait à 16 px de
+              haut. Boîte à ses proportions : 112 × 56 (160 × 80 sur iPad). */}
           <span
             aria-hidden="true"
             data-testid="assoc-form-logo"
-            className="block h-16 w-16 shrink-0 bg-content-primary sm:h-20 sm:w-20"
+            className="block h-14 w-28 shrink-0 bg-content-primary sm:h-20 sm:w-40"
             style={{
               WebkitMaskImage: `url(${import.meta.env.BASE_URL}artzenu-mark.png)`,
               maskImage: `url(${import.meta.env.BASE_URL}artzenu-mark.png)`,
@@ -448,16 +451,16 @@ export function AssociationFormModal({
         {declaration && (
           <section
             data-testid="assoc-declaration"
-            className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-card border-2 border-edge-strong bg-surface-base px-4 py-3"
+            className="mt-auto min-h-0 shrink overflow-auto overscroll-contain rounded-card border-2 border-edge-strong bg-surface-base px-4 py-3 sm:px-6 sm:py-5"
           >
-            <h3 className="mb-1.5 text-body font-bold text-content-primary">
+            <h3 className="mb-1.5 text-body font-bold text-content-primary sm:mb-3 sm:text-title">
               {declaration.heading}
             </h3>
             {declaration.lines.map((line, i) =>
               line.trim() === '' ? (
                 <div key={i} className="h-2" />
               ) : (
-                <p key={i} data-testid="assoc-declaration-line" className="text-body leading-relaxed text-content-primary sm:text-heading sm:font-normal">
+                <p key={i} data-testid="assoc-declaration-line" className="text-body leading-relaxed text-content-primary sm:text-section sm:font-normal sm:leading-relaxed">
                   {richRuns(line).map((run, j) =>
                     run.bold ? <strong key={j}>{run.text}</strong> : <span key={j}>{run.text}</span>,
                   )}
@@ -469,7 +472,7 @@ export function AssociationFormModal({
 
         {/* 6 — חתימה, avec son bouton d'effacement (dans le pad). */}
         {/* En bas, et plus grande quand l'écran le permet (un iPad tenu debout). */}
-        <div data-testid="assoc-signature" ref={padBox} className="flex shrink-0 flex-col justify-end">
+        <div data-testid="assoc-signature" ref={padBox} className="mb-auto flex shrink-0 flex-col justify-end">
           <p className="label">{t('assocForm.signature')}</p>
           <SignaturePad value={signature} onChange={setSignature} height={padHeight} />
           {fieldError('signature')}
