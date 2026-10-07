@@ -30,6 +30,8 @@ const COORDINATOR_NAV: NavItem[] = [
   { to: '/coordinator', icon: 'dashboard', labelKey: 'nav.dashboard', end: true },
   { to: '/coordinator/agenda', icon: 'calendar', labelKey: 'nav.agenda' },
   { to: '/coordinator/farms', icon: 'farm', labelKey: 'nav.farms' },
+  // ★★ AS6 — la salle d'attente, juste après les fermes : des pistes, pas des fermes.
+  { to: '/coordinator/leads', icon: 'userPlus', labelKey: 'nav.leads' },
   { to: '/coordinator/route', icon: 'route', labelKey: 'nav.route' },
   { to: '/coordinator/volunteers', icon: 'users', labelKey: 'nav.volunteers' },
   { to: '/coordinator/drivers', icon: 'steering', labelKey: 'nav.drivers' },
@@ -55,6 +57,7 @@ const BLEED_ROUTES = [
   // ★★ AB3.1 — the agenda joined the gabarit: it carries a map now.
   '/coordinator/agenda',
   '/coordinator/farms',
+  '/coordinator/leads',
   '/coordinator/route',
   '/coordinator/volunteers',
   '/coordinator/drivers',

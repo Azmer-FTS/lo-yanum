@@ -42,6 +42,8 @@ import { FarmerSignScreen } from './screens/farmer/FarmerSignScreen'
 import { FarmerReportScreen } from './screens/farmer/FarmerReportScreen'
 import { FarmerTonightScreen } from './screens/farmer/FarmerTonightScreen'
 import { AgendaScreen } from './screens/coordinator/AgendaScreen'
+import { LeadsScreen } from './screens/coordinator/LeadsScreen'
+import { PortalImportScreen } from './screens/coordinator/PortalImportScreen'
 import { AnchorFormScreen } from './screens/coordinator/AnchorFormScreen'
 import { AnchorSheetScreen } from './screens/coordinator/AnchorSheetScreen'
 import { DashboardScreen } from './screens/coordinator/DashboardScreen'
@@ -404,6 +406,8 @@ export default function App() {
               </Suspense>
             }
           />
+          {/* ★★ AS1 — l'export CSV du portail de l'association, répétable. */}
+          <Route path="import/portal" element={<PortalImportScreen />} />
           <Route
             path="import/:kind"
             element={
@@ -420,6 +424,8 @@ export default function App() {
               two imports it is the counterpart of. */}
           <Route path="export" element={<ExportScreen />} />
           <Route path="agenda" element={<AgendaScreen />} />
+          {/* ★★ AS6 — la salle d'attente des contacts. */}
+          <Route path="leads" element={<LeadsScreen />} />
           <Route path="agenda/visit/new" element={<VisitFormPage />} />
           <Route path="agenda/visit/:visitId" element={<VisitFormPage />} />
           <Route path="agenda/meeting/new" element={<MeetingFormPage />} />

@@ -1,5 +1,5 @@
 import { canonicalPhone } from './association'
-import { FARM_STATUS_OPTIONS, identityNumberKind, normaliseValue, readOption, typeFromAreas } from './fields'
+import { FARM_STATUS_OPTIONS, normaliseValue, readOption, typeFromAreas } from './fields'
 import type { Farm, FarmStatus, LandDocument, LatLng, Lead, LeadStatus } from './types'
 
 /**
@@ -403,7 +403,7 @@ export function planPortalImport(input: PortalPlanInput): PortalPlan {
   for (const row of rows) {
     const digits = row.idNo.replace(/\D/gu, '')
     if (digits !== '' && digits.length !== 9) {
-      warn(row, 'id-not-9-digits', `${row.idNo} — ${digits.length} ספרות (${identityNumberKind(row.idNo) === 'unknown' ? 'לבדוק' : ''})`.replace(' ()', ''))
+      warn(row, 'id-not-9-digits', `${row.idNo} — ${digits.length} ספרות`)
     }
     for (const loc of row.locations) {
       if (loc.kind === 'text') warn(row, 'location-text', loc.value)

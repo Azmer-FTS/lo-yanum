@@ -140,6 +140,13 @@ export {
   isReadOnly,
   setReadOnly,
   ReadOnlyViolation,
+  // ★★ AS6 — les pistes, et l'import du portail (AS1).
+  createLeads,
+  updateLead,
+  moveLead,
+  deleteLead,
+  convertLeadToFarm,
+  applyPortalPlan,
 } from './store'
 export type {
   NewIncidentInput,
@@ -155,6 +162,7 @@ export type {
   MissionDraft,
   TourDraft,
   RemoteSignatureInput,
+  LeadDraft,
 } from './store'
 
 export {
@@ -168,3 +176,4 @@ export type { Locality, LocalityKind } from './gazetteer'
 
 export { configurePhotoPool, photoSource } from './photo'
 export * from './portalImport'
+export * from './leads'

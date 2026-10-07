@@ -741,6 +741,15 @@ export function FarmsListScreen() {
            reached from THIS screen because that is where the coordinator is
            when he thinks about them; the tab row inside the wizard then moves
            him between all five. */
+        /* ★★ AS1 — l'export CSV du portail : EN TÊTE des trois fichiers de
+           l'association, c'est celui qu'il refera après chaque saisie chez eux. */
+        {
+          key: 'portal',
+          label: t('portal.title'),
+          icon: 'upload',
+          to: '/coordinator/import/portal',
+          testId: 'farms-import-portal',
+        },
         {
           key: 'prospection',
           label: t('import.prospectionTitle'),

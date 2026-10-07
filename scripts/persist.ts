@@ -88,7 +88,15 @@ import {
   seedTestData,
   purgeTestData,
   _raw,
+  createLeads,
+  updateLead,
+  moveLead,
+  deleteLead,
+  convertLeadToFarm,
+  applyPortalPlan,
+  markIntakeHandled,
 } from '../src/core/store'
+import { planPortalImport } from '../src/core/portalImport'
 import { TEST_FARM_ID } from '../src/core/testData'
 import { DEFAULT_AVAILABILITY } from '../src/core/types'
 
@@ -1244,6 +1252,43 @@ section("6bis — AH3 · le jeu d'essai produit de vraies écritures")
     gone.every((c) => c.json === null) && gone.length >= 6,
     `${gone.length} suppressions`,
   )
+}
+
+// --- 6bis. ★★ AS — les pistes, l'import du portail, la demande traitée ------
+
+{
+  section('6bis — AS : les pistes et l’import du portail')
+  let leadIds: string[] = []
+  const created = drive('createLeads', () => {
+    leadIds = createLeads([
+      { name: 'פיסה', contactName: 'בדיקה', phone: '050-0000999', place: '', position: null, regionId: null, notes: '', source: 'paste', raw: '' },
+      { name: 'פיסה ב', contactName: '', phone: '', place: '', position: null, regionId: null, notes: '', source: 'paste', raw: '' },
+    ]).map((l) => l.id)
+  })
+  check('createLeads : une ligne `leads` par piste', leadIds.every((id) => hit(created, 'leads', id)?.json))
+  emits('updateLead', () => updateLead(leadIds[0], { notes: 'AS' }), [['leads', leadIds[0]]])
+  emits('moveLead', () => moveLead(leadIds[0], { status: 'call_back' }), [['leads', leadIds[0]]])
+  let farmFromLead = ''
+  const conv = drive('convertLeadToFarm', () => {
+    farmFromLead = convertLeadToFarm(leadIds[0], { lat: 31.5, lng: 34.6 })?.id ?? ''
+  })
+  check('convertLeadToFarm : une ferme NEUVE et la piste marquée convertie', hit(conv, 'farms', farmFromLead)?.json != null && hit(conv, 'leads', leadIds[0])?.json != null)
+  emits('deleteLead', () => deleteLead(leadIds[1]), [], [['leads', leadIds[1]]])
+  const plan = planPortalImport({
+    matrix: [['שם המקום', 'נייד איש קשר'], ['*פיסת בדיקה*', '0500000777']],
+    farms: _raw().farms,
+    leads: _raw().leads,
+    fileName: 'as.csv',
+    nowIso: new Date().toISOString(),
+  })
+  const applied = drive('applyPortalPlan', () => applyPortalPlan(plan, { lat: 31.5, lng: 34.6 }))
+  check('applyPortalPlan : la ligne étoilée devient une piste', applied.some((c) => c.collection === 'leads' && c.json?.includes('פיסת בדיקה')))
+  const incoming = _raw().farms[0]
+  const before = incoming.status
+  ;(incoming as { status: string }).status = 'incoming_request'
+  const handled = drive('markIntakeHandled', () => markIntakeHandled(incoming.id, before === 'contacted' ? 'to_contact' : 'contacted'))
+  check('markIntakeHandled : la ferme est réécrite', hit(handled, 'farms', incoming.id)?.json != null)
+  ;(incoming as { status: string }).status = before
 }
 
 // --- 7. Coverage: no mutation added without a line in this file ------------

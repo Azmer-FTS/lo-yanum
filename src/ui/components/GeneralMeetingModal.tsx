@@ -13,7 +13,7 @@ import {
   updateGeneralMeeting,
   positionParam,
 } from '@core/index'
-import type { LatLng } from '@core/index'
+import type { GeneralMeeting, LatLng } from '@core/index'
 
 import { AutocompleteField, Field, SelectField, TextArea, TextField } from './fields'
 import { useConfirmDelete } from './ConfirmDelete'
@@ -35,7 +35,13 @@ export function GeneralMeetingModal({
   defaultAt,
   onClose,
   presentation = 'page',
+  prefill,
+  onCreated,
 }: {
+  /** ★ AS6.6 — un rendez-vous posé depuis une piste : ses champs, et le lien. */
+  prefill?: { title?: string; location?: string; person?: string; note?: string; position?: LatLng | null; leadId?: string }
+  /** ★ AS6.6 — appelé avec le rendez-vous créé. */
+  onCreated?: (meeting: GeneralMeeting) => void
   /** Editing an existing meeting; omit to create. */
   meetingId?: string
   /** ISO datetime the new meeting starts at. */
@@ -60,19 +66,19 @@ export function GeneralMeetingModal({
   const fromLocalInput = (value: string): string =>
     new Date(value).toISOString()
 
-  const [title, setTitle] = useState(existing?.title ?? '')
+  const [title, setTitle] = useState(existing?.title ?? prefill?.title ?? '')
   const [at, setAt] = useState(
     toLocalInput(existing?.at ?? defaultAt ?? new Date().toISOString()),
   )
   const [endTime, setEndTime] = useState(
     existing ? toLocalInput(existing.endAt).slice(11, 16) : '',
   )
-  const [location, setLocation] = useState(existing?.location ?? '')
-  const [person, setPerson] = useState(existing?.person ?? '')
-  const [note, setNote] = useState(existing?.note ?? '')
+  const [location, setLocation] = useState(existing?.location ?? prefill?.location ?? '')
+  const [person, setPerson] = useState(existing?.person ?? prefill?.person ?? '')
+  const [note, setNote] = useState(existing?.note ?? prefill?.note ?? '')
   const [touched, setTouched] = useState(false)
   /* ★ AF3.1 — le point collé depuis un lien, gardé tel quel. */
-  const [position, setPosition] = useState<LatLng | null>(existing?.position ?? null)
+  const [position, setPosition] = useState<LatLng | null>(existing?.position ?? prefill?.position ?? null)
   /* ★ AF4.2 — l'alerte, en minutes avant. `-1` dans le sélecteur = aucune. */
   const [remind, setRemind] = useState<number>(existing?.remindMinutes ?? -1)
   const navigate = useNavigate()
@@ -118,9 +124,10 @@ export function GeneralMeetingModal({
          pour dessiner ; ce champ-ci ne porte QUE ce qu'on lui a donné. */
       position,
       remindMinutes: remind < 0 ? null : remind,
+      leadId: existing?.leadId ?? prefill?.leadId ?? null,
     }
     if (existing) updateGeneralMeeting(existing.id, draft)
-    else createGeneralMeeting(draft)
+    else onCreated?.(createGeneralMeeting(draft))
     onClose()
   }
 

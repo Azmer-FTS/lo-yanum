@@ -217,6 +217,66 @@ section('A290 · AS4 — la fusion des réglages, clé par clé (pure)')
   check('laissez-passer et temporisation restent LOCAUX', !SYNCED_SETTING_KEYS.some((k) => /farmer-pass|guard-pass|link-unlock|theme/.test(k)) && LOCAL_ONLY_KEYS.some((l) => l.key === 'lo-yanum:farmer-pass') && LOCAL_ONLY_KEYS.some((l) => l.key === 'lo-yanum:link-unlock'))
 }
 
+section('A292 · AS6 — un bloc collé de plusieurs contacts → autant de pistes')
+{
+  const { parseLeadBlock } = await import('../src/core/leads')
+  const block = [
+    'שלום, הנה אנשי קשר מהקבוצה:',
+    'משה כהן 050-1234567 נתיבות',
+    'דנה לוי - 0527654321 - משק לוי בשדרות',
+    '+972 54 111 2233 יוסי מאופקים',
+    'רפת השקמה',
+    '052 999 8888',
+    'אופקים',
+    '[7.10.2026, 12:13:09] אבי: חוות האלה 0501112222',
+    'BEGIN:VCARD', 'VERSION:3.0', 'N:מזרחי;יוסי;;;', 'FN:יוסי מזרחי', 'TEL;type=CELL;waid=972503334444:+972 50-333-4444', 'END:VCARD',
+    'משה כהן 050 123 4567',
+    'תודה!',
+  ].join('\n')
+  const got = parseLeadBlock(block, { farms: [{ name: 'חוות קיימת', farmerPhone: '052-9998888' }] })
+  const withPhone = got.filter((g) => !g.noPhone)
+  check('six contacts distincts avec numéro (le doublon fusionné)', withPhone.length === 6, String(withPhone.length))
+  check('la carte de contact WhatsApp (vCard) est lue', got.some((g) => g.contactName === 'יוסי מזרחי' && g.phone === '050-3334444'))
+  check('+972 et espaces → 054-1112233, lieu « מאופקים » reconnu', got.some((g) => g.phone === '054-1112233' && g.place === 'אופקים'))
+  check('nom sur la ligne d’AVANT, lieu sur la ligne d’APRÈS', got.some((g) => g.name === 'רפת השקמה' && g.place === 'אופקים'))
+  check('« משק לוי » est l’exploitation, « דנה לוי » la personne', got.some((g) => g.name === 'משק לוי' && g.contactName === 'דנה לוי' && g.place === 'שדרות'))
+  check('l’horodatage et l’expéditeur d’un export de discussion sont retirés', got.some((g) => g.phone === '050-1112222' && !g.name.includes('אבי')))
+  check('un numéro déjà connu d’une ferme est SIGNALÉ', got.some((g) => g.phone === '052-9998888' && g.duplicateOf?.kind === 'farm'))
+  check('le bavardage sans numéro est proposé décoché, jamais perdu', got.some((g) => g.noPhone && g.name === 'תודה!'))
+  check('le préambule « שלום, הנה… » ne devient pas une piste', !got.some((g) => g.raw.startsWith('שלום')))
+}
+
+section('A296 · AS6 — aucune piste ne compte, nulle part')
+{
+  const store = await import('../src/core/store')
+  const access = await import('../src/core/access')
+  const { buildProgrammeReport } = await import('../src/core/report')
+  const { buildActivityReport } = await import('../src/core/activity')
+  const kpi0 = JSON.stringify(access.getDunamKpis())
+  const counts0 = JSON.stringify(access.getFarmStatusCounts())
+  const farms0 = access.getCountableFarms().length
+  const leads0 = store._raw().leads.length
+  store.createLeads(
+    Array.from({ length: 20 }, (_, i) => ({
+      name: `פיסה ${i}`, contactName: '', phone: `050-00011${String(i).padStart(2, '0')}`, place: 'נתיבות',
+      position: { lat: 31.42, lng: 34.59 }, regionId: null, notes: '', source: 'paste' as const, raw: '', status: 'meeting_set' as const,
+    })),
+  )
+  check('20 pistes ajoutées', store._raw().leads.length === leads0 + 20)
+  check('l’objectif et les dounams ne bougent pas', JSON.stringify(access.getDunamKpis()) === kpi0)
+  check('les compteurs par statut ne bougent pas', JSON.stringify(access.getFarmStatusCounts()) === counts0)
+  check('les fermes comptables ne bougent pas', access.getCountableFarms().length === farms0)
+  check('les fermes comptables ne sont pas vides (le test mesure quelque chose)', farms0 > 0, String(farms0))
+  check('ni le compte rendu ni le rapport d’activité ne lisent `leads`', !/\bleads\b/u.test(readFileSync('src/core/report.ts', 'utf8')) && !/\bleads\b/u.test(readFileSync('src/core/activity.ts', 'utf8')) && typeof buildProgrammeReport === 'function' && typeof buildActivityReport === 'function')
+  const lead = store._raw().leads[0]
+  const farm = store.convertLeadToFarm(lead.id, { lat: 31.5, lng: 34.6 })
+  check('A294 · convertie : une ferme SANS ressaisie (nom, téléphone, lieu, point)', !!farm && farm.name === lead.name && farm.farmerPhone === lead.phone && farm.locality === lead.place && farm.position.lat === lead.position!.lat)
+  check('A294 · … et la piste quitte la salle d’attente', !access.getVisibleLeads().some((l) => l.id === lead.id))
+  const refused = store._raw().leads.find((l) => !l.convertedFarmId)!
+  store.moveLead(refused.id, { status: 'not_interested' })
+  check('une piste refusée RESTE, marquée « לא מעוניין »', access.getVisibleLeads().some((l) => l.id === refused.id && l.status === 'not_interested'))
+}
+
 const REAL = 'private/portal-export-2026-10-07.csv'
 if (existsSync(REAL) && existsSync('private/as-db-avant.json')) {
   section('Le VRAI export (hors dépôt) contre la base relue avant écriture')
