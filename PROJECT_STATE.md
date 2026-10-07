@@ -115,7 +115,11 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
     jalons `20261007120823/120958` : `armigrations` 37/37, 62/62.
   - ⚠️ **LE DÉPÔT EST PUBLIC** : le vrai CSV et l'instantané de la base sont
     dans `private/` (ignoré par git). Ne jamais les commiter.
-  - ⏳ Reste : AS4 (réglages), AS5 (onglets), AS6 (écran des pistes + collage
+  - ✅ **AS4 fait** (commit `ccbdcec`) : `ui/settings/sync.ts` (fusion clé par
+    clé, `__stamps` dans le bloc), `data/settings.ts` (écriture conditionnelle),
+    `SettingsSyncNotice`. Porte `bun run assettings` 18/18 local ; **rouge
+    8/18 sur le déployé 0bd2cb5** (`docs/as/as4-rouge-deploye-0bd2cb5.log`).
+  - ⏳ Reste : AS5 (onglets), AS6 (écran des pistes + collage
     + carte + rendez-vous + conversion), écran d'import du portail dans
     l'app, AS7 (adresse), AS8 (portes UI + déployé + captures), rapport.
   - ℹ️ `bun run persist` : 1 rouge PRÉ-EXISTANT (`markIntakeHandled` non
