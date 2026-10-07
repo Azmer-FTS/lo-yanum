@@ -655,6 +655,11 @@ export function getVisibleLeads(): Lead[] {
   return getSession().role === 'coordinator' ? _raw().leads.filter((l) => !l.convertedFarmId) : []
 }
 
+/** ★ AT2.1 — les pistes devenues fermes : la trace, et le chemin du retour. */
+export function getConvertedLeads(): Lead[] {
+  return getSession().role === 'coordinator' ? _raw().leads.filter((l) => !!l.convertedFarmId) : []
+}
+
 /** Toutes, converties comprises — pour retrouver une piste depuis sa ferme. */
 export function getAllLeads(): Lead[] {
   return getSession().role === 'coordinator' ? _raw().leads : []

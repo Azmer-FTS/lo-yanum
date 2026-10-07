@@ -93,6 +93,9 @@ import {
   moveLead,
   deleteLead,
   convertLeadToFarm,
+  setLeadStatus,
+  revertLeadConversion,
+  correctFarmName,
   applyPortalPlan,
   markIntakeHandled,
 } from '../src/core/store'
@@ -1268,11 +1271,15 @@ section("6bis — AH3 · le jeu d'essai produit de vraies écritures")
   check('createLeads : une ligne `leads` par piste', leadIds.every((id) => hit(created, 'leads', id)?.json))
   emits('updateLead', () => updateLead(leadIds[0], { notes: 'AS' }), [['leads', leadIds[0]]])
   emits('moveLead', () => moveLead(leadIds[0], { status: 'call_back' }), [['leads', leadIds[0]]])
+  emits('setLeadStatus', () => setLeadStatus(leadIds[0], 'meeting_set'), [['leads', leadIds[0]]])
   let farmFromLead = ''
   const conv = drive('convertLeadToFarm', () => {
     farmFromLead = convertLeadToFarm(leadIds[0], { lat: 31.5, lng: 34.6 })?.id ?? ''
   })
   check('convertLeadToFarm : une ferme NEUVE et la piste marquée convertie', hit(conv, 'farms', farmFromLead)?.json != null && hit(conv, 'leads', leadIds[0])?.json != null)
+  const reverted = drive('revertLeadConversion', () => revertLeadConversion(leadIds[0]))
+  check('revertLeadConversion : la ferme née de la conversion est SUPPRIMÉE et la piste réécrite', hit(reverted, 'leads', leadIds[0])?.json != null && reverted.some((c) => c.collection === 'farms' && c.id === farmFromLead && c.json == null))
+  emits('correctFarmName', () => correctFarmName(_raw().farms[0].id, `${_raw().farms[0].name} (AT)`), [['farms', _raw().farms[0].id]])
   emits('deleteLead', () => deleteLead(leadIds[1]), [], [['leads', leadIds[1]]])
   const plan = planPortalImport({
     matrix: [['שם המקום', 'נייד איש קשר'], ['*פיסת בדיקה*', '0500000777']],

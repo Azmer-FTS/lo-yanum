@@ -8,7 +8,6 @@ import { KeyValue, Section } from '../components/primitives'
 import { isStandalone } from '../standalone'
 import { RUNNING, checkAndApply, isolate, useUpdateState } from '../update'
 import type { CheckOutcome } from '../update'
-import { lastSettingsSyncAt, syncSettings } from './sync'
 
 /** L'adresse ouverte, sans fragment ni paramètre : ce qu'on recopie ou installe. */
 export function currentAddress(): string {
@@ -38,8 +37,6 @@ export function AppVersionSection() {
   const { t, i18n } = useTranslation()
   const update = useUpdateState()
   const [asked, setAsked] = useState<CheckOutcome | null>(null)
-  const [syncedAt, setSyncedAt] = useState(() => lastSettingsSyncAt())
-  const [syncing, setSyncing] = useState(false)
   const when = (iso: string) => isolate(formatDateTime(iso, i18n.language))
 
   const onCheck = async () => {
@@ -83,15 +80,6 @@ export function AppVersionSection() {
           label={t('settings.version.address')}
           value={<span data-testid="app-address" dir="ltr">{currentAddress()}</span>}
           ltr
-        />
-        {/* ★★ AS4 — la dernière synchronisation des réglages de CET appareil. */}
-        <KeyValue
-          label={t('settingsSync.lastSync')}
-          value={
-            <span data-testid="settings-last-sync">
-              {syncedAt > 0 ? when(new Date(syncedAt).toISOString()) : t('settingsSync.never')}
-            </span>
-          }
         />
         <KeyValue
           label={t('settings.version.mode')}
@@ -137,22 +125,6 @@ export function AppVersionSection() {
             : update.checking
               ? t('settings.version.checking')
               : t('settings.version.check')}
-        </button>
-        <button
-          type="button"
-          className="btn-secondary"
-          data-testid="settings-sync-now"
-          disabled={syncing}
-          onClick={() => {
-            setSyncing(true)
-            void syncSettings().finally(() => {
-              setSyncing(false)
-              setSyncedAt(lastSettingsSyncAt())
-            })
-          }}
-        >
-          <Icon name="history" size={16} />
-          {t('settingsSync.syncNow')}
         </button>
       </div>
 

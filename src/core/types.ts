@@ -1494,6 +1494,8 @@ export interface Lead {
   contactName: string
   /** Format de l'app : `05X-XXXXXXX` quand c'est un mobile israélien. */
   phone: string
+  /** ★ AT3 — le courriel, quand le collage en portait un (`''` sinon). */
+  email: string
   /** Le lieu TEL QU'IL A ÉTÉ DIT — texte libre, souvent une localité. */
   place: string
   /** Le point, quand il est connu. `null` est une vraie réponse (AB3.4). */

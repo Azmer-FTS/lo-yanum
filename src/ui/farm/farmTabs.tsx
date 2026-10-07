@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
+
+import { TabBar } from '../components/TabBar'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -72,8 +74,11 @@ export function useFarmTab(farmId: string): [FarmTab, (t: FarmTab) => void] {
 }
 
 /**
- * La rangée. Des ONGLETS (role=tablist), pas un menu : défilable à
- * l'horizontale au doigt, 44 px de haut, l'actif marqué et ramené dans la vue.
+ * La rangée. ★★ AT4 — DE VRAIS ONGLETS (`TabBar`) : pleine largeur, posés sur
+ * un trait, l'actif souligné ; plus de `filter-pill`. L'onglet des GARDES est
+ * d'une couleur à lui, plus vive, et porte un point rouge quand une alerte de
+ * cette ferme attend (incident urgent ouvert, présence contredite, retour non
+ * confirmé — la liste du tableau de bord, `getAlerts`).
  */
 export function FarmTabRow({
   tabs,
@@ -81,54 +86,33 @@ export function FarmTabRow({
   onSelect,
   idPrefix,
   counts,
+  guardsAlert,
 }: {
   tabs: readonly FarmTab[]
   active: FarmTab | null
   onSelect: (t: FarmTab) => void
   idPrefix: string
   counts?: Partial<Record<FarmTab, number>>
+  /** Texte de l'alerte qui attend dans l'onglet des gardes, ou rien. */
+  guardsAlert?: string | null
 }) {
   const { t } = useTranslation()
-  const row = useRef<HTMLDivElement | null>(null)
-  /* L'onglet actif ramené dans la RANGÉE — et seulement dans elle. Un
-     `scrollIntoView` ferait aussi défiler la page : dans l'édition, où la
-     rangée n'est pas épinglée, il remontait le formulaire (vu par `anui`). */
-  useEffect(() => {
-    const box = row.current
-    const el = box?.querySelector<HTMLElement>('[aria-selected="true"]')
-    if (!box || !el) return
-    const r = box.getBoundingClientRect()
-    const e = el.getBoundingClientRect()
-    if (e.left < r.left) box.scrollLeft -= r.left - e.left + 8
-    else if (e.right > r.right) box.scrollLeft += e.right - r.right + 8
-  }, [active])
   return (
-    <div
-      ref={row}
-      role="tablist"
-      aria-label={t('farmTabs.label')}
-      data-testid={`${idPrefix}-tabs`}
-      className="-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1 pb-1 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      {tabs.map((id) => {
-        const on = id === active
-        return (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            id={`${idPrefix}-tab-${id}`}
-            aria-selected={on}
-            aria-controls={`${idPrefix}-panel-${id}`}
-            data-testid={`${idPrefix}-tab-${id}`}
-            onClick={() => onSelect(id)}
-            className={`filter-pill min-h-[2.75rem] shrink-0 snap-start px-4 ${on ? 'filter-pill-active' : ''}`}
-          >
-            {t(`farmTabs.${id}`)}
-            {counts?.[id] ? <span className="filter-count">{counts[id]}</span> : null}
-          </button>
-        )
-      })}
+    <div className="pt-2">
+      <TabBar
+        items={tabs.map((id) => ({
+          key: id,
+          label: t(`farmTabs.${id}`),
+          count: counts?.[id],
+          tone: id === 'guards' ? ('vivid' as const) : undefined,
+          alert: id === 'guards' ? (guardsAlert ?? null) : null,
+        }))}
+        active={active}
+        onSelect={onSelect}
+        label={t('farmTabs.label')}
+        idPrefix={idPrefix}
+        testId={`${idPrefix}-tabs`}
+      />
     </div>
   )
 }

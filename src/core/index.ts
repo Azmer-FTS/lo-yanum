@@ -146,6 +146,9 @@ export {
   moveLead,
   deleteLead,
   convertLeadToFarm,
+  setLeadStatus,
+  correctFarmName,
+  revertLeadConversion,
   applyPortalPlan,
 } from './store'
 export type {
@@ -177,3 +180,4 @@ export type { Locality, LocalityKind } from './gazetteer'
 export { configurePhotoPool, photoSource } from './photo'
 export * from './portalImport'
 export * from './leads'
+export * from './farmName'

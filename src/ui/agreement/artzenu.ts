@@ -48,8 +48,12 @@ const S = PAGE.scale
  * c'est la hauteur qui faisait défiler le document à l'ouverture.
  */
 const M = 34
-/** ★ AN5.5 — le logo ne dépasse pas cette HAUTEUR, quelle que soit sa largeur réglée. */
-const LOGO_MAX_H = 46
+/**
+ * ★ AN5.5 — le logo ne dépasse pas cette HAUTEUR, quelle que soit sa largeur réglée.
+ * ★★ AT6.1 — 46 → 84 pt : « le logo est devenu minuscule », et c'est ce que
+ * l'agriculteur voit en premier. Le cadre d'encre a rendu sa place (AT6.2).
+ */
+const LOGO_MAX_H = 84
 /** Largeur utile. */
 const W = PAGE.width / S - 2 * M
 /** Le pied de page occupe les 44 derniers points ; le texte s'arrête avant. */

@@ -34,6 +34,7 @@ import { formatPhoneTyping, findLocality, REGIONAL_COUNCILS, councilOfCode, matc
   positionOfLocality,
   splitPeople,
   updateFarm,
+  correctedNames,
 } from '@core/index'
 import type {
   Agreement,
@@ -1632,7 +1633,7 @@ export function FarmFormScreen() {
           title={t('settings.emergencyFields.title')}
           testId="farm-block-emergency"
           storageKey={`farm-form-emergency:${farmId ?? 'new'}`}
-          defaultOpen={false}
+          /* AT4.4 — déplié par défaut dans son onglet ; le pli du PO (collapseKey) prime. */
           forceOpen={touched && !!errors.standbyPhone}
           summary={
             <span className="chip ms-2 bg-surface-high text-content-secondary">
@@ -1687,7 +1688,7 @@ export function FarmFormScreen() {
           testId="farm-block-commitments"
           /* ★ AM3 — replié par défaut, COMME AU DÉTAIL (et A30 : 390 px). */
           storageKey={`farm-form-commitments:${farmId ?? 'new'}`}
-          defaultOpen={false}
+          /* AT4.4 — déplié par défaut dans son onglet ; le pli du PO (collapseKey) prime. */
           summary={
             <span className="chip ms-2 bg-surface-high text-content-secondary">
               {t('blocks.commitments', {
@@ -1780,7 +1781,7 @@ export function FarmFormScreen() {
           title={t('farms.agreements')}
           testId="farm-block-agreements"
           storageKey={`farm-form-agreements:${farmId ?? 'new'}`}
-          defaultOpen={false}
+          /* AT4.4 — déplié par défaut dans son onglet ; le pli du PO (collapseKey) prime. */
           summary={
             <span className="chip ms-2 bg-surface-high text-content-secondary">
               {t('blocks.agreements', { count: agreements.length })}
@@ -1856,7 +1857,7 @@ export function FarmFormScreen() {
           title={t('common.notes')}
           testId="farm-block-notes"
           storageKey={`farm-form-notes:${farmId ?? 'new'}`}
-          defaultOpen={false}
+          /* AT4.4 — déplié par défaut dans son onglet ; le pli du PO (collapseKey) prime. */
           summary={
             <span className="ms-2 min-w-0 truncate text-caption text-content-muted">
               {notes.trim() ? notes.trim().split('\n')[0] : t('common.none')}
@@ -1874,6 +1875,11 @@ export function FarmFormScreen() {
 
         {assocOpen && (
           <AssociationFormModal
+            onFarmName={(next) => {
+              const out = correctedNames(name, farmName, next)
+              setName(out.name)
+              setFarmName(out.farmName ?? '')
+            }}
             farm={signingFarm}
             onClose={() => setAssocOpen(false)}
             onSign={(agreement, fields) => {
@@ -1895,6 +1901,14 @@ export function FarmFormScreen() {
             farm={signingFarm}
             agreement={signing}
             onClose={() => setSigning(null)}
+            onFarmName={(next) => {
+              /* ★★ AT6.3 — la faute corrigée à la signature va dans la FICHE
+                 (règle `correctedNames`) ; elle part avec l'enregistrement qui
+                 porte la signature. */
+              const out = correctedNames(name, farmName, next)
+              setName(out.name)
+              setFarmName(out.farmName ?? '')
+            }}
             onCommit={(signature, meta) => {
               /* ★★ AF1.3 — l'encre NEUVE date le document ; ★ AN5 — le nom et
                  la date viennent de la fenêtre, où ils ont pu être corrigés. */

@@ -203,52 +203,27 @@ await guard('A292', async () => {
   await page.click('[data-testid="leads-paste-create"]')
   await page.waitForTimeout(2500)
   const after = await page.locator('[data-lead-id]').count()
-  check('cinq cartes de plus sur le tableau', after === before + 5, `${before} → ${after}`)
+  check('cinq lignes de plus dans la liste', after === before + 5, `${before} → ${after}`)
   check('… et cinq lignes de plus dans `leads` (base)', db.rows('leads').length === LEAD_ROWS.length + 5, String(db.rows('leads').length))
   check('aucune ferme créée par le collage', db.rows('entities').length === ROWS.length)
   if (CAPTURES) await page.screenshot({ path: `${SHOTS}/as6-apres-collage-1032.png` })
   await ctx.close()
 })
 
-section('A293 — statut en un geste ; déplacement AU DOIGT sur iPad ; flèches')
+section('A293 — statut en un geste (AT2 : la liste remplace les colonnes, `atui` A301)')
 await guard('A293', async () => {
   const { ctx, page, db } = await open(WIDTHS[1], { touch: true })
   await go(page, '/coordinator/leads')
   const id = String(LEAD_ROWS[0].id)
-  /* Un geste : la pilule de statut est un <select> natif. */
-  await page.selectOption(`[data-testid="lead-status-${id}"] select`, 'call_back')
+  /* ★ AT2 — le statut est un sélecteur segmenté sur la ligne : UN toucher. */
+  await page.click(`[data-testid="lead-status-${id}-call_back"]`)
   await page.waitForTimeout(500)
   check('le statut change d’un geste', (await page.locator(`[data-testid="lead-${id}"]`).getAttribute('data-status')) === 'call_back')
-  check('… et la carte est dans la colonne « לחזור אליו »', (await page.locator(`[data-testid="leads-col-call_back"] [data-lead-id="${id}"]`).count()) === 1)
-  /* Les flèches de 44 px. */
-  const next = page.locator(`[data-testid="lead-next-${id}"]`)
-  const nb = await next.boundingBox()
-  check('les flèches font au moins 44 px', !!nb && nb.width >= 43.5 && nb.height >= 43.5, nb ? `${nb.width}×${nb.height}` : '')
-  await next.click()
-  await page.waitForTimeout(400)
-  check('la flèche passe à la colonne suivante (« קבעתי פגישה »)', (await page.locator(`[data-testid="lead-${id}"]`).getAttribute('data-status')) === 'meeting_set')
-  /* Le DOIGT : de vrais événements tactiles (CDP), pas des clics. */
-  const id2 = String(LEAD_ROWS[1].id)
-  const handle = await page.locator(`[data-testid="lead-drag-${id2}"]`).boundingBox()
-  const target = page.locator('[data-testid="leads-col-message_sent"]')
-  await page.locator(`[data-testid="lead-drag-${id2}"]`).scrollIntoViewIfNeeded()
-  const tb = await target.boundingBox()
-  const hb = await page.locator(`[data-testid="lead-drag-${id2}"]`).boundingBox()
-  if (!handle || !tb || !hb) throw new Error('poignée ou colonne introuvable')
-  const cdp = await ctx.newCDPSession(page)
-  const from = { x: hb.x + hb.width / 2, y: hb.y + hb.height / 2 }
-  const to = { x: tb.x + tb.width / 2, y: tb.y + 60 }
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: from.x, y: from.y }] })
-  for (let i = 1; i <= 12; i++) {
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: from.x + ((to.x - from.x) * i) / 12, y: from.y + ((to.y - from.y) * i) / 12 }] })
-    await page.waitForTimeout(30)
-  }
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
-  await page.waitForTimeout(800)
-  check('glissée AU DOIGT, la carte change de colonne', (await page.locator(`[data-testid="lead-${id2}"]`).getAttribute('data-status')) === 'message_sent')
+  const seg = await page.locator(`[data-testid="lead-status-${id}-meeting_set"]`).boundingBox()
+  check('chaque case fait au moins 44 px de haut', !!seg && seg.height >= 43.5, seg ? `${seg.width}×${seg.height}` : '')
   await page.waitForTimeout(2000)
-  const row = db.rows('leads').find((r) => r.id === id2)
-  check('… et la base le sait', row?.status === 'message_sent', String(row?.status))
+  const row = db.rows('leads').find((r) => r.id === id)
+  check('… et la base le sait', row?.status === 'call_back', String(row?.status))
   await ctx.close()
 })
 
@@ -257,7 +232,13 @@ await guard('A294', async () => {
   const { ctx, page, db } = await open(WIDTHS[1])
   await go(page, '/coordinator/leads')
   const lead = LEADS[0]
+  /* ★ AT2.1 — la conversion passe par « ⋯ » et une CONFIRMATION, puis on
+     ouvre la fiche par le bandeau. */
+  await page.click(`[data-testid="lead-menu-${lead.id}-toggle"]`)
   await page.click(`[data-testid="lead-convert-${lead.id}"]`)
+  await page.click('[data-testid="leads-confirm-ok"]')
+  await page.waitForTimeout(1500)
+  await page.locator('[data-testid="leads-toast"] button').first().click()
   await page.waitForTimeout(2500)
   check('on arrive sur la fiche de la nouvelle ferme', /#\/coordinator\/farms\/farm-/u.test(page.url()), page.url())
   check('la fiche porte le nom de la piste', (await page.locator('[data-page-title]').innerText()).includes(lead.name))
@@ -266,10 +247,10 @@ await guard('A294', async () => {
   await go(page, '/coordinator/leads')
   check('la piste n’est plus dans la salle d’attente', (await page.locator(`[data-lead-id="${lead.id}"]`).count()) === 0)
   check('elle garde la trace de sa ferme (base)', !!db.rows('leads').find((r) => r.id === lead.id)?.converted_farm_id)
-  const refused = LEADS[4]
-  await page.selectOption(`[data-testid="lead-status-${refused.id}"] select`, 'not_interested')
+  const refused = LEADS[3]
+  await page.click(`[data-testid="lead-status-${refused.id}-not_now"]`)
   await page.waitForTimeout(400)
-  check('une piste « לא מעוניין » RESTE, marquée', await page.locator(`[data-testid="lead-closed-${refused.id}"]`).isVisible())
+  check('une piste « לא רלוונטי » RESTE, marquée (sur place jusqu’au prochain onglet)', (await page.locator(`[data-testid="lead-${refused.id}"]`).getAttribute('data-status')) === 'not_now')
   await ctx.close()
 })
 
@@ -278,6 +259,7 @@ await guard('A295', async () => {
   const { ctx, page, db } = await open(WIDTHS[1])
   await go(page, '/coordinator/leads')
   const lead = LEADS[1]
+  await page.click(`[data-testid="lead-menu-${lead.id}-toggle"]`)
   await page.click(`[data-testid="lead-meeting-${lead.id}"]`)
   await page.waitForTimeout(1200)
   const m = await page.evaluate(() => ({ hash: location.hash, dialog: document.querySelectorAll('[role="dialog"]').length }))
@@ -288,7 +270,7 @@ await guard('A295', async () => {
   const meeting = db.rows('general_meetings').find((r) => r.lead_id === lead.id)
   check('la rencontre est en base, liée à la piste', !!meeting, meeting ? String(meeting.title) : 'aucune')
   await go(page, '/coordinator/leads', 3000)
-  check('la piste passe à « קבעתי פגישה »', (await page.locator(`[data-testid="lead-${lead.id}"]`).getAttribute('data-status')) === 'meeting_set')
+  check('la piste passe à « נקבעה פגישה »', (await page.locator(`[data-testid="lead-${lead.id}"]`).getAttribute('data-status')) === 'meeting_set')
   await go(page, '/coordinator/agenda')
   const text = await page.locator('main, #root').first().innerText()
   check('l’agenda la montre', text.includes(lead.name), lead.name)
@@ -327,7 +309,8 @@ if (CAPTURES) {
       await page.screenshot({ path: `${SHOTS}/as5-fiche-documents-${vp.width}-${theme}.png` })
       await go(page, '/coordinator/leads')
       await page.screenshot({ path: `${SHOTS}/as6-salle-${vp.width}-${theme}.png` })
-      await page.click('[data-testid="leads-by-region"]')
+      /* ★ AT2.6 — plus de colonnes par région : le tri « לפי אזור ». */
+      await page.selectOption('[data-testid="leads-sort"]', 'region')
       await page.waitForTimeout(400)
       await page.screenshot({ path: `${SHOTS}/as6-salle-par-region-${vp.width}-${theme}.png` })
       n += 5

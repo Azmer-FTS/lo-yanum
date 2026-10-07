@@ -5,6 +5,7 @@ import { IMPORT_KINDS, IMPORT_TEMPLATES } from '@core/index'
 import type { ImportKind } from '@core/index'
 
 import { Icon } from './Icon'
+import { TabBar } from './TabBar'
 import type { IconName } from './Icon'
 
 /**
@@ -72,25 +73,30 @@ export function ImportTabs({
   const navigate = useNavigate()
 
   return (
-    /* AA1.2 — `.pill-row`, like every other row of pills in the app. */
-    <div className="pill-row mb-4" data-testid="import-tabs">
-      {ALL_IMPORT_KINDS.map((k) => (
-        <button
-          key={k}
-          type="button"
-          onClick={() => {
-            if (k === current) return
-            onLeave?.()
-            navigate(`/coordinator/import/${k}`)
-          }}
-          aria-pressed={k === current}
-          data-testid={`import-tab-${k}`}
-          className={`filter-pill px-3 ${k === current ? 'filter-pill-active' : ''}`}
-        >
-          <Icon name={ICON[k]} size={14} />
-          {t(LABEL_KEY[k])}
-        </button>
-      ))}
+    /* ★ AT4 — de vrais onglets (`TabBar`), plus une rangée de pilules. */
+    <div className="mb-4">
+      <TabBar
+        items={ALL_IMPORT_KINDS.map((k) => ({
+          key: k,
+          label: (
+            <span className="flex items-center gap-1.5">
+              <Icon name={ICON[k]} size={14} />
+              {t(LABEL_KEY[k])}
+            </span>
+          ),
+          testId: `import-tab-${k}`,
+        }))}
+        active={current}
+        onSelect={(k) => {
+          if (k === current) return
+          onLeave?.()
+          navigate(`/coordinator/import/${k}`)
+        }}
+        label={t('import.tabsLabel', { defaultValue: 'ייבוא' })}
+        idPrefix="import"
+        testId="import-tabs"
+        size="sm"
+      />
     </div>
   )
 }

@@ -80,6 +80,16 @@ export class FakeDb {
   /** Milliseconds to hold every GET before answering — a slow hydration. */
   slowReads = 0
   /**
+   * ★ AT1 — a dead connection out of sleep: REST requests are held and never
+   * answered (what iOS does to a stale socket). `release()` aborts the held ones.
+   */
+  hang = false
+  held: Route[] = []
+  async release(): Promise<void> {
+    const list = this.held.splice(0)
+    for (const r of list) await r.abort('timedout').catch(() => undefined)
+  }
+  /**
    * `on delete cascade`, as the schema declares it: parent table → the child
    * tables and the column that points back. Registered by the gate from the
    * mapper, so the fake forgets children exactly where Postgres would.
@@ -252,6 +262,11 @@ export function installFakeSupabase(context: BrowserContext, db: FakeDb): Promis
     }
 
     if (url.pathname.includes('/rest/v1/')) {
+      if (db.hang) {
+        db.log.push(`HANG ${method} ${url.pathname.replace(/^.*\/rest\/v1\//, '')}`)
+        db.held.push(route)
+        return
+      }
       if (db.offline) {
         db.log.push(`ABORT ${method} ${url.pathname.replace(/^.*\/rest\/v1\//, '')}`)
         await route.abort('internetdisconnected')

@@ -224,7 +224,7 @@ export function FarmerLinkBlock({ farm }: { farm: Farm }) {
     <Section
       title={t('renewal.linkTitle')}
       collapseKey="entity-farmer-link"
-      defaultOpen={false}
+      /* AT4.4 — déplié par défaut dans son onglet ; le pli du PO (collapseKey) prime. */
       summary={renewal.state === 'due' ? t('renewal.title') : undefined}
     >
       {renewal.state === 'due' && (

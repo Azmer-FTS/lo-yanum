@@ -40,6 +40,7 @@ import {
   getFarmZonesForFarm,
   updateFarmZoneRing,
   getFarmVisitsForFarm,
+  getAlerts,
   getVisibleIncidentViews,
   getVisibleMissionViews,
   entityKindOf,
@@ -727,7 +728,7 @@ function FarmEmergencyInfo({ farm }: { farm: Farm }) {
     <Section
       title={t('settings.emergencyFields.title')}
       collapseKey="entity-emergency"
-      defaultOpen={false}
+      /* AT4.4 — déplié par défaut dans son onglet ; le pli du PO (collapseKey) prime. */
       summary={t(both ? 'settings.emergencyFields.bothSet' : 'settings.emergencyFields.someMissing')}
     >
       <dl className="auto-cols gap-x-5 [--col-min:13rem]">
@@ -1012,6 +1013,14 @@ export function FarmDetailScreen() {
   /* AC4.1 · AC4.2 — read through `useCoreValue` like everything else on this
      screen, so a guard cancelled in another tab moves the counters here. */
   const coverage = useCoreValue(() => farmGuardStats(farmId))
+  /* ★ AT4.3 — les alertes du tableau de bord qui concernent CETTE ferme. */
+  const guardAlerts = useCoreValue(() => {
+    const ids = [
+      ...getVisibleIncidentViews().filter((v) => v.incident.farmId === farmId).map((v) => v.incident.id),
+      ...getVisibleMissionViews().filter((v) => v.mission.farmId === farmId).map((v) => v.mission.id),
+    ]
+    return getAlerts().filter((a) => ids.some((id) => a.href.endsWith(`/${id}`))).length
+  })
   const available = useCoreValue(() => (farm ? availableVolunteers(farm) : 0))
 
   /* ★ AN11 — le rendez-vous s'ouvre en PAGE (FormPages.tsx). */
@@ -1175,7 +1184,15 @@ export function FarmDetailScreen() {
             testId="farm-sticky"
             title={farm.name}
             subtitle={[farm.farmerName || t('people.noFarmer'), farm.locality].filter(Boolean).join(' · ')}
-            below={<FarmTabRow tabs={FARM_TABS} active={tab} onSelect={selectTab} idPrefix="farm" />}
+            below={
+              <FarmTabRow
+                tabs={FARM_TABS}
+                active={tab}
+                onSelect={selectTab}
+                idPrefix="farm"
+                guardsAlert={guardAlerts > 0 ? t('farmTabs.guardsAlert', { count: guardAlerts }) : null}
+              />
+            }
             back={{ to: '/coordinator/farms', label: t('farms.title') }}
             /* X4.1 — the picture he tapped in the roster, so the sheet is
                recognisably the place he came from. */
@@ -1577,7 +1594,7 @@ export function FarmDetailScreen() {
           <Section
             title={t('zone.zonesTitle')}
             collapseKey="entity-zones"
-            defaultOpen={false}
+            /* AT4.4 — déplié par défaut dans son onglet ; le pli du PO (collapseKey) prime. */
             summary={t('blocks.zones', { count: zones.length })}
           >
             {zones.length === 0 ? (

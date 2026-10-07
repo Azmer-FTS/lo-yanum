@@ -125,7 +125,7 @@ export function ThreatPanel({
     <Section
       title={t('threat.layer')}
       collapseKey="entity-threats"
-      defaultOpen={false}
+      /* AT4.4 — déplié par défaut dans son onglet ; le pli du PO (collapseKey) prime. */
       summary={t('blocks.threats', { zones: zones.length, vectors: vectors.length })}
       // The role restriction is stated on the panel itself, once: a
       // coordinator writing an assessment should know who can read it back.

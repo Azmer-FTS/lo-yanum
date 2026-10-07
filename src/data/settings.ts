@@ -28,29 +28,90 @@ export interface RemoteSettings {
   updatedAt: string | null
 }
 
+/**
+ * ★★ AT1 — LA SESSION SE LIT SUR L'APPAREIL, PAS SUR LE RÉSEAU.
+ *    `getUser()` faisait un aller-retour vers `/auth/v1/user` à chaque cycle,
+ *    sans délai : au sortir de veille, une connexion morte tenait la roue de
+ *    « סנכרון עכשיו » sans qu'aucune requête n'arrive (mesuré sur les journaux
+ *    du serveur : aucune trace de l'iPad). `getSession()` lit le jeton stocké
+ *    et ne sort que pour le rafraîchir.
+ */
 async function userClient() {
   if (!SUPABASE_CONFIGURED) return null
   const client = await getSupabase()
   if (!client) return null
-  const { data: user } = await client.auth.getUser()
-  const id = user.user?.id
+  const { data } = await client.auth.getSession()
+  const id = data.session?.user?.id
   if (!id) return null
   return { client, id }
 }
 
-/** `null` = pas de session ou pas de réseau : rien n'est conclu. */
-export async function loadRemoteSettingsRow(): Promise<RemoteSettings | null> {
-  const u = await userClient()
-  if (!u) return null
-  const { data, error } = await u.client
-    .from('user_settings')
-    .select('data, updated_at')
-    .eq('user_id', u.id)
-    .maybeSingle()
-  if (error) return null
+/** ★ AT1 — une requête de réglages ne dure JAMAIS plus que ceci. */
+export const SETTINGS_REQUEST_TIMEOUT_MS = 12_000
+
+/** Une erreur nommée : l'écran la DIT au lieu de tourner. */
+export class SettingsSyncError extends Error {
+  constructor(public readonly reason: 'no-session' | 'timeout' | 'network' | 'server', detail = '') {
+    super(detail ? `${reason}: ${detail}` : reason)
+  }
+}
+
+function withTimeout<T>(run: (signal: AbortSignal) => PromiseLike<T>): Promise<T> {
+  const ctl = new AbortController()
+  let timer: ReturnType<typeof setTimeout> | null = null
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      ctl.abort()
+      reject(new SettingsSyncError('timeout'))
+    }, SETTINGS_REQUEST_TIMEOUT_MS)
+  })
+  return Promise.race([Promise.resolve(run(ctl.signal)), timeout]).finally(() => {
+    if (timer) clearTimeout(timer)
+  })
+}
+
+async function requireClient() {
+  const u = await withTimeout(() => userClient())
+  if (!u) throw new SettingsSyncError('no-session')
+  return u
+}
+
+function fail(error: { message?: string; code?: string } | null): never {
+  const msg = error?.message ?? ''
+  if (/abort/i.test(msg)) throw new SettingsSyncError('timeout')
+  if (/fetch|network|load failed/i.test(msg)) throw new SettingsSyncError('network', msg)
+  throw new SettingsSyncError('server', [error?.code, msg].filter(Boolean).join(' '))
+}
+
+/**
+ * ★ AT1 — la question bon marché : « la ligne a-t-elle changé ? ». La ligne
+ * porte le logo du contrat (≈ 200 ko) ; la relire toutes les 30 s sur un
+ * téléphone serait un gaspillage. `undefined` = aucune ligne.
+ */
+export async function loadRemoteSettingsStamp(): Promise<string | null> {
+  const u = await requireClient()
+  const { data, error } = await withTimeout((signal) =>
+    u.client.from('user_settings').select('updated_at').eq('user_id', u.id).abortSignal(signal).maybeSingle(),
+  )
+  if (error) fail(error)
+  return (data?.updated_at as string | undefined) ?? null
+}
+
+/** La ligne entière. Jette une `SettingsSyncError` nommée. */
+export async function loadRemoteSettingsRowStrict(): Promise<RemoteSettings> {
+  const u = await requireClient()
+  const { data, error } = await withTimeout((signal) =>
+    u.client.from('user_settings').select('data, updated_at').eq('user_id', u.id).abortSignal(signal).maybeSingle(),
+  )
+  if (error) fail(error)
   if (!data) return { blob: {}, updatedAt: null }
   const blob = (data.data ?? {}) as SettingsBlob
   return { blob: blob && typeof blob === 'object' ? blob : {}, updatedAt: (data.updated_at as string) ?? null }
+}
+
+/** `null` = pas de session ou pas de réseau : rien n'est conclu. */
+export async function loadRemoteSettingsRow(): Promise<RemoteSettings | null> {
+  return loadRemoteSettingsRowStrict().catch(() => null)
 }
 
 /** Compatibilité : la lecture d'avant AS4 (le bloc seul). */
@@ -68,30 +129,44 @@ export async function saveRemoteSettingsIf(
   blob: SettingsBlob,
   expectedUpdatedAt: string | null,
 ): Promise<'ok' | 'conflict' | 'error'> {
-  const u = await userClient()
-  if (!u) return 'error'
+  const r = await saveRemoteSettingsIfStrict(blob, expectedUpdatedAt).catch(() => 'error' as const)
+  return r
+}
+
+/** ★ AT1 — la même écriture, bornée dans le temps, qui DIT son erreur. */
+export async function saveRemoteSettingsIfStrict(
+  blob: SettingsBlob,
+  expectedUpdatedAt: string | null,
+): Promise<'ok' | 'conflict'> {
+  const u = await requireClient()
   const stamp = new Date().toISOString()
   if (expectedUpdatedAt === null) {
-    const { data, error } = await u.client
-      .from('user_settings')
-      .upsert({ user_id: u.id, data: blob, updated_at: stamp }, { onConflict: 'user_id', ignoreDuplicates: true })
-      .select('user_id')
-    if (error) return 'error'
+    const { data, error } = await withTimeout((signal) =>
+      u.client
+        .from('user_settings')
+        .upsert({ user_id: u.id, data: blob, updated_at: stamp }, { onConflict: 'user_id', ignoreDuplicates: true })
+        .select('user_id')
+        .abortSignal(signal),
+    )
+    if (error) fail(error)
     return (data?.length ?? 0) === 1 ? 'ok' : 'conflict'
   }
-  const { data, error } = await u.client
-    .from('user_settings')
-    .update({ data: blob, updated_at: stamp })
-    .eq('user_id', u.id)
-    .eq('updated_at', expectedUpdatedAt)
-    .select('user_id')
-  if (error) return 'error'
+  const { data, error } = await withTimeout((signal) =>
+    u.client
+      .from('user_settings')
+      .update({ data: blob, updated_at: stamp })
+      .eq('user_id', u.id)
+      .eq('updated_at', expectedUpdatedAt)
+      .select('user_id')
+      .abortSignal(signal),
+  )
+  if (error) fail(error)
   return (data?.length ?? 0) === 1 ? 'ok' : 'conflict'
 }
 
 /** Compatibilité : l'écriture inconditionnelle d'avant AS4. */
 export async function saveRemoteSettings(blob: SettingsBlob): Promise<boolean> {
-  const u = await userClient()
+  const u = await userClient().catch(() => null)
   if (!u) return false
   const { error } = await u.client
     .from('user_settings')
@@ -105,6 +180,8 @@ export async function onSignedIn(cb: () => void): Promise<void> {
   const client = await getSupabase()
   if (!client) return
   client.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_IN') cb()
+    /* ★ AT1 — jamais d'appel d'authentification DANS le rappel (auth-js le
+       déconseille : il tient la session pendant qu'il nous appelle). */
+    if (event === 'SIGNED_IN') setTimeout(cb, 0)
   })
 }

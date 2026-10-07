@@ -17,6 +17,7 @@ import { SummonsSection } from '../../settings/SummonsSection'
 import { AgreementDocSection } from '../../settings/AgreementDocSection'
 import { SampleDataSection } from '../../settings/SampleDataSection'
 import { AppVersionSection } from '../../settings/AppVersionSection'
+import { SettingsSyncSection } from '../../settings/SettingsSyncSection'
 import { VigilSection } from '../../settings/VigilSection'
 import { RenewalSection } from '../../settings/RenewalSection'
 import { GeoDiagnosticsSection } from '../../settings/GeoDiagnosticsSection'
@@ -874,6 +875,8 @@ export function SettingsScreen() {
       {/* ★★ AJ0 · A190 — la version installée, sa date, et la recherche
           manuelle. En dernier, là où une app range « à propos ». */}
       <AppVersionSection />
+      {/* ★★ AT1.5 — la synchronisation des réglages, lisible : quand, quoi, l'erreur. */}
+      <SettingsSyncSection />
 
       {/* ⚠️ `<DisplayDiagnostics />` WAS HERE AND IS GONE (PO return
           2026-09-02). It was PO point 1's instrument: a temporary panel

@@ -52,6 +52,36 @@ const COORDINATOR_NAV: NavItem[] = [
  * map-first inside its own stepper shell (Lot 0.9 F2) — the shell's padding is
  * what keeps the stepper aligned with steps 2–4.
  */
+/**
+ * ★ AT7 — une couleur par entrée du menu du téléphone. Seulement des teintes
+ * dont la paire « encre sur 15 % » est mesurée par `scripts/contrast.ts`.
+ */
+const TILE_HUE: Record<string, string> = {
+  '/coordinator': 'accent', // pervenche
+  '/coordinator/agenda': 'farm-incoming-request', // herbe
+  '/coordinator/farms': 'status-success', // sarcelle
+  '/coordinator/leads': 'status-violet', // violet
+  '/coordinator/route': 'farm-to-contact', // gris-bleu
+  '/coordinator/volunteers': 'status-warn', // ocre
+  '/coordinator/drivers': 'farm-visited', // magenta
+  '/coordinator/missions': 'status-info', // cyan
+  '/coordinator/incidents': 'status-danger', // rouge-orangé
+  '/coordinator/settings': 'farm-not-relevant-now', // sépia
+}
+/* Écrites en entier pour que Tailwind les voie (pas de classe composée). */
+const TILE_CLASS: Record<string, string> = {
+  accent: 'bg-accent/15 text-accent-ink',
+  'farm-incoming-request': 'bg-farm-incoming-request/15 text-farm-incoming-request-ink',
+  'status-success': 'bg-status-success/15 text-status-success-ink',
+  'status-violet': 'bg-status-violet/15 text-status-violet-ink',
+  'farm-to-contact': 'bg-farm-to-contact/15 text-farm-to-contact-ink',
+  'status-warn': 'bg-status-warn/15 text-status-warn-ink',
+  'farm-visited': 'bg-farm-visited/15 text-farm-visited-ink',
+  'status-info': 'bg-status-info/15 text-status-info-ink',
+  'status-danger': 'bg-status-danger/15 text-status-danger-ink',
+  'farm-not-relevant-now': 'bg-farm-not-relevant-now/15 text-farm-not-relevant-now-ink',
+}
+
 const BLEED_ROUTES = [
   '/coordinator',
   // ★★ AB3.1 — the agenda joined the gabarit: it carries a map now.
@@ -473,35 +503,58 @@ export function CoordinatorLayout() {
         {!solo && pathname !== EMERGENCY_ROUTE && <ActionFab />}
       </div>
 
+      {/*
+        ★★ AT7 (2026-10-07) — LE MENU DU TÉLÉPHONE EST UNE GRILLE DE TUILES.
+        « Une liste d'icônes et de libellés » → des tuiles CARRÉES en plein
+        écran, l'icône au centre, le libellé dessous, et une COULEUR PAR ENTRÉE
+        pour la reconnaître sans lire. Chaque couleur est une paire déjà
+        mesurée par `bun run contrast` (« <teinte>-ink sur 15 % de <teinte> »,
+        sur surface-raised) : aucune paire nouvelle, donc aucun contraste non
+        mesuré. Trois colonnes à 402 px, quatre au-delà ; 44 px largement
+        dépassés. L'entrée courante porte un anneau.
+      */}
       {menuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            type="button"
-            aria-label={t('a11y.closeMenu')}
-            className="absolute inset-0 bg-surface-sunken/80 backdrop-blur-sm"
-            onClick={() => setMenuOpen(false)}
-          />
-          <div className="absolute inset-y-0 start-0 flex w-72 max-w-[85%] animate-fade-in flex-col gap-5 border-e border-edge-strong bg-surface-raised px-3 pb-4 pt-[calc(var(--status-inset)+1rem)] shadow-lift">
-            <div className="flex items-center justify-between px-1">
-              <Brand />
-              <button
-                type="button"
+        <div
+          className="fixed inset-0 z-50 flex animate-fade-in flex-col overflow-y-auto bg-surface-raised px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(var(--status-inset)+0.75rem)] lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('a11y.openMenu')}
+          data-testid="shell-menu-grid"
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <Brand />
+            <button
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              aria-label={t('a11y.closeMenu')}
+              data-testid="shell-menu-close"
+              className="flex h-11 w-11 items-center justify-center rounded-field text-content-secondary hover:bg-surface-high hover:text-content-primary"
+            >
+              <Icon name="close" size={20} />
+            </button>
+          </div>
+          <nav className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+            {COORDINATOR_NAV.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
                 onClick={() => setMenuOpen(false)}
-                aria-label={t('a11y.closeMenu')}
-                className="rounded-field p-1.5 text-content-muted hover:bg-surface-high hover:text-content-primary"
+                data-testid={`menu-tile-${item.to.split('/').pop() || 'home'}`}
+                data-tile-hue={TILE_HUE[item.to] ?? 'accent'}
+                className={({ isActive }) =>
+                  `flex aspect-square flex-col items-center justify-center gap-2 rounded-card p-2 text-center transition-transform duration-fast active:scale-[0.97] ${
+                    TILE_CLASS[TILE_HUE[item.to] ?? 'accent']
+                  } ${isActive ? 'ring-2 ring-content-primary ring-offset-2 ring-offset-surface-raised' : ''}`
+                }
               >
-                <Icon name="close" size={18} />
-              </button>
-            </div>
-            <nav className="flex flex-col gap-1">
-              {COORDINATOR_NAV.map((item) => navLink(item, true))}
-            </nav>
-
-            {/* The rail's account block is desktop-only, and a phone is where
-                a shared laptop's coordinator most needs to be able to get out. */}
-            <div className="mt-auto">
-              <AccountBlock expanded />
-            </div>
+                <Icon name={item.icon} size={30} />
+                <span className="line-clamp-2 text-caption font-semibold leading-tight">{t(item.labelKey)}</span>
+              </NavLink>
+            ))}
+          </nav>
+          <div className="mt-auto pt-6">
+            <AccountBlock expanded />
           </div>
         </div>
       )}

@@ -108,12 +108,20 @@ export function AgreementSignModal({
   agreement,
   onCommit,
   onClose,
+  onFarmName,
 }: {
   farm: Farm
   agreement: Agreement
   /** L'encre retenue, et le nom et la date tels qu'ils sont à l'écran. */
   onCommit: (signature: string | null, meta: SignMeta) => void
   onClose: () => void
+  /**
+   * ★★ AT6.3 — LE NOM DE LA FERME SE CORRIGE ICI. Cas réel : au moment de
+   * signer, l'agriculteur signale une faute dans le nom. L'appelant écrit la
+   * correction dans la FICHE (le même enregistrement que la signature) ; le
+   * document se redessine avec elle.
+   */
+  onFarmName?: (next: string) => void
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -142,12 +150,24 @@ export function AgreementSignModal({
       alive = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ink, farm, meta.signedBy, meta.signedAt])
+  }, [ink, farm, farm.name, farm.farmName, meta.signedBy, meta.signedAt])
 
   return (
     <Modal title={t('agreement.readTitle')} onClose={onClose} fill testId="agreement-sign-modal">
-      {/* ★ AN5.2 — déjà inscrits, modifiables sur place. */}
-      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 pb-2" data-testid="agreement-meta">
+      {/* ★ AN5.2 — déjà inscrits, modifiables sur place. ★ AT6.3 — le nom de la
+          ferme en tête, sur sa ligne ; signataire et date dessous, côte à côte. */}
+      <div className="flex shrink-0 flex-col gap-0.5 pb-2" data-testid="agreement-meta">
+        {onFarmName && (
+          <InlineValue
+            label={t('agreement.farmNameLabel')}
+            value={(farm.farmName || farm.name || '').trim()}
+            display={(farm.farmName || farm.name || '').trim()}
+            type="text"
+            testId="agreement-farm-name"
+            onChange={(next) => onFarmName(next.trim())}
+          />
+        )}
+        <div className="flex flex-nowrap items-center gap-x-4 overflow-hidden">
         <InlineValue
           label={t('farms.signedBy')}
           value={meta.signedBy}
@@ -164,6 +184,7 @@ export function AgreementSignModal({
           testId="agreement-date"
           onChange={(day) => setMeta((m) => ({ ...m, signedAt: iso(fromDayKey(day)) }))}
         />
+        </div>
       </div>
 
       {/* ★ LE DOCUMENT, lisible dès l'ouverture : ajusté à la hauteur restante. */}
@@ -194,8 +215,10 @@ export function AgreementSignModal({
 
       {/* ★ AN5.6 — l'encre et la décision ne quittent jamais l'écran. */}
       <div className="shrink-0 pt-2" data-testid="agreement-sign-foot">
-        <SignaturePad value={ink} onChange={setInk} height={120} />
-        <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+        {/* ★ AT6.2 — le cadre d'encre réduit d'un tiers (120 → 80 px) : la place
+            gagnée revient au document — logo et texte. */}
+        <SignaturePad value={ink} onChange={setInk} height={80} />
+        <div className="mt-2 flex flex-nowrap items-center justify-end gap-2">
           {touched && !ink && (
             <span
               role="alert"

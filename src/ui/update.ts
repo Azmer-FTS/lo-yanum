@@ -320,11 +320,18 @@ function settlePending(): void {
   writeJson(PENDING_KEY, null)
   // A stale record (the reload never happened, the app was killed) says nothing.
   if (Date.now() - pending.at > 5 * 60 * 1000) return
-  const to = pending.to ?? RUNNING.id
+  /*
+   * ★★ AT1.3 — « LA MISE À JOUR N'A PAS ÉTÉ PRISE EN COMPTE » ÉTAIT FAUX.
+   *    Le 2026-10-07, le bandeau proposait `0b97ed4` ; le serveur publiait
+   *    `b632ace` 27 s avant que le PO touche « עדכון עכשיו ». L'iPad s'est
+   *    rechargé sur le PLUS récent, et l'ancienne règle (`RUNNING === cible`)
+   *    a déclaré l'échec d'une mise à jour réussie. Réussi = le code qui tourne
+   *    n'est plus celui d'avant ; « vers » dit ce qui tourne VRAIMENT.
+   */
   const verdict: AppliedVerdict = {
     from: pending.from,
-    to,
-    ok: RUNNING.id === to && RUNNING.id !== pending.from,
+    to: RUNNING.id,
+    ok: RUNNING.id !== pending.from,
     at: Date.now(),
   }
   writeJson(VERDICT_KEY, verdict)

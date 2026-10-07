@@ -28,6 +28,8 @@ import { SUPABASE_CONFIGURED } from '../../data/config'
 const SEEN_KEY = 'lo-yanum:intake:seen'
 /** Un retour toutes les dix secondes au plus : iOS émet `focus`, `pageshow` et `visibilitychange` d'un coup. */
 const MIN_INTERVAL_MS = 10_000
+/** ★ AT1 — la relecture des données sans retour en avant-plan. */
+export const DATA_HEARTBEAT_MS = 3 * 60_000
 
 let requests: readonly IntakeRequest[] = []
 let seen: ReadonlySet<string> = readSeen()
@@ -132,7 +134,12 @@ export function useForegroundRefresh(enabled: boolean): void {
     document.addEventListener('visibilitychange', onReturn)
     window.addEventListener('pageshow', onReturn)
     window.addEventListener('focus', onReturn)
+    /* ★★ AT1 — et sans retour : un appareil posé, écran allumé, n'en fait
+       jamais (l'iPad du PO, 2026-10-07). Une relecture toutes les 3 minutes,
+       page visible ; le même chemin, donc la file part d'abord. */
+    const beat = window.setInterval(onReturn, DATA_HEARTBEAT_MS)
     return () => {
+      window.clearInterval(beat)
       document.removeEventListener('visibilitychange', onReturn)
       window.removeEventListener('pageshow', onReturn)
       window.removeEventListener('focus', onReturn)

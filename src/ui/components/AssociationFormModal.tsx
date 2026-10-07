@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
+  correctFarmName,
   agreementValues,
   applyRemoteSignature,
   canonicalPhone,
@@ -78,11 +79,15 @@ import { SignaturePad } from './SignaturePad'
  *   champs manquants sont complétés sans rien écraser, le statut passe à
  *   « נחתם » sans jamais reculer une fiche « פעילה ». Pas de second chemin.
  */
+/** ★ AT6.2 — la part de la colonne donnée à l'encre (mesurée : ≈ ⅔ d'avant). */
+export const PAD_SHARE = 0.3
+
 export function AssociationFormModal({
   farm,
   onClose,
   onSaved,
   onSign,
+  onFarmName,
 }: {
   farm: Farm
   onClose: () => void
@@ -93,6 +98,12 @@ export function AssociationFormModal({
    * formulaire, que « שמירה » enregistrera.
    */
   onSign?: (agreement: Agreement, fields: { farmerName: string; farmerId: string; farmerPhone: string }) => void
+  /**
+   * ★★ AT6.3 — depuis l'ÉDITION, la correction du nom va au BROUILLON du
+   * formulaire. Sans elle (ouverte depuis la fiche), elle est écrite tout de
+   * suite dans la fiche (`correctFarmName`).
+   */
+  onFarmName?: (next: string) => void
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -117,15 +128,46 @@ export function AssociationFormModal({
   const padBox = useRef<HTMLDivElement | null>(null)
   const [padHeight, setPadHeight] = useState(130)
   useLayoutEffect(() => {
-    const el = padBox.current
-    if (!el) return
-    const measure = () => setPadHeight(Math.max(120, Math.min(640, Math.floor(el.clientHeight) - 56)))
+    const col = padBox.current?.parentElement
+    if (!col) return
+    /* ★★ AT6.2 — UN TIERS PLUS PETIT (« le cadre est trop grand »). Avant, la
+       zone d'encre prenait TOUTE la hauteur restante (jusqu'à 640 px) ; elle
+       est maintenant une part fixe de la colonne, et la déclaration, qui
+       passe en `flex-1`, reçoit la place rendue. Calculée sur la colonne, pas
+       sur sa propre boîte : aucune boucle de mesure. */
+    const measure = () => {
+      const share = Math.round(col.clientHeight * PAD_SHARE)
+      /* ★ AN5 tient toujours : le texte de la déclaration est ENTIER à
+         l'ouverture. Sur un téléphone, l'encre cède d'abord (jamais sous 96 px). */
+      const decl = col.querySelector<HTMLElement>('[data-testid="assoc-declaration"]')
+      const pad = padBox.current
+      let room = share
+      if (decl && pad) {
+        const kids = [...decl.children] as HTMLElement[]
+        const content = kids.length ? kids[kids.length - 1].offsetTop + kids[kids.length - 1].offsetHeight - kids[0].offsetTop + 28 : 0
+        const canvas = pad.querySelector('canvas')
+        const free = decl.offsetHeight + (canvas?.offsetHeight ?? 0) - content
+        room = Math.min(share, free - 4)
+      }
+      setPadHeight(Math.max(96, Math.min(420, room)))
+    }
     measure()
     const ro = new ResizeObserver(measure)
-    ro.observe(el)
+    ro.observe(col)
     return () => ro.disconnect()
   }, [])
   const [tried, setTried] = useState(false)
+  /* ★★ AT6.3 — le nom de la ferme, corrigé sur place. */
+  const [placeName, setPlaceName] = useState(() => (farm.farmName || farm.name || '').trim())
+  const [placeEdit, setPlaceEdit] = useState<string | null>(null)
+  const commitPlace = () => {
+    const next = (placeEdit ?? '').trim()
+    setPlaceEdit(null)
+    if (!next || next === placeName) return
+    setPlaceName(next)
+    if (onFarmName) onFarmName(next)
+    else if (!isReadOnly()) correctFarmName(farm.id, next)
+  }
 
   const values = {
     farmerName: nameEdit !== null ? nameEdit.trim() : given.farmerName || farmerName.trim(),
@@ -242,13 +284,15 @@ export function AssociationFormModal({
       fill
       testId="assoc-form"
       header={
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-4">
           {/* Le logo d'ארצנו est blanc sur transparent : il est posé en MASQUE,
-              teinté à l'encre de l'app, comme sur le PDF. */}
+              teinté à l'encre de l'app, comme sur le PDF.
+              ★★ AT6.1 — 32 → 64 px (80 sur iPad) : « le logo est devenu
+              minuscule », et c'est ce que l'agriculteur voit en premier. */}
           <span
             aria-hidden="true"
             data-testid="assoc-form-logo"
-            className="block h-8 w-8 shrink-0 bg-content-primary"
+            className="block h-16 w-16 shrink-0 bg-content-primary sm:h-20 sm:w-20"
             style={{
               WebkitMaskImage: `url(${import.meta.env.BASE_URL}artzenu-mark.png)`,
               maskImage: `url(${import.meta.env.BASE_URL}artzenu-mark.png)`,
@@ -260,16 +304,40 @@ export function AssociationFormModal({
               maskPosition: 'center',
             }}
           />
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-baseline gap-x-2">
-              <h2 data-testid="assoc-form-title" className="text-body font-bold text-content-primary">
-                {t('assocForm.title')}
-              </h2>
-              {/* Le lieu est CONNU (AK3 ⛔) : dit sur la même ligne, jamais choisi. */}
-              <span className="muted" data-testid="assoc-form-place">
-                {farm.farmName || farm.name}
-              </span>
-            </div>
+          <div className="min-w-0 flex-1">
+            <h2 data-testid="assoc-form-title" className="text-section font-bold text-content-primary">
+              {t('assocForm.title')}
+            </h2>
+            {/* Le lieu est CONNU (AK3 ⛔) : dit, jamais choisi — mais CORRIGIBLE
+                sur place (AT6.3), et la correction va dans la fiche. */}
+            {placeEdit !== null ? (
+              <input
+                autoFocus
+                type="text"
+                data-kind="name"
+                aria-label={t('agreement.farmNameLabel')}
+                className="input mt-1 h-11 min-h-0 w-full max-w-[24rem] py-1 text-body"
+                value={placeEdit}
+                onChange={(e) => setPlaceEdit(e.target.value)}
+                onBlur={commitPlace}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitPlace()
+                  if (e.key === 'Escape') setPlaceEdit(null)
+                }}
+                data-testid="assoc-form-place-input"
+              />
+            ) : (
+              <button
+                type="button"
+                data-testid="assoc-form-place"
+                title={t('agreement.farmNameEdit')}
+                onClick={() => setPlaceEdit(placeName)}
+                className="mt-0.5 flex min-h-[2.75rem] max-w-full items-center gap-1.5 rounded-field px-1 text-start text-body font-semibold text-content-secondary hover:bg-surface-high"
+              >
+                <span className="truncate">{placeName || '—'}</span>
+                <Icon name="edit" size={14} className="shrink-0" />
+              </button>
+            )}
           </div>
         </div>
       }
@@ -380,7 +448,7 @@ export function AssociationFormModal({
         {declaration && (
           <section
             data-testid="assoc-declaration"
-            className="min-h-0 shrink overflow-auto overscroll-contain rounded-card border-2 border-edge-strong bg-surface-base px-4 py-3"
+            className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-card border-2 border-edge-strong bg-surface-base px-4 py-3"
           >
             <h3 className="mb-1.5 text-body font-bold text-content-primary">
               {declaration.heading}
@@ -389,7 +457,7 @@ export function AssociationFormModal({
               line.trim() === '' ? (
                 <div key={i} className="h-2" />
               ) : (
-                <p key={i} data-testid="assoc-declaration-line" className="text-body leading-relaxed text-content-primary">
+                <p key={i} data-testid="assoc-declaration-line" className="text-body leading-relaxed text-content-primary sm:text-heading sm:font-normal">
                   {richRuns(line).map((run, j) =>
                     run.bold ? <strong key={j}>{run.text}</strong> : <span key={j}>{run.text}</span>,
                   )}
@@ -401,7 +469,7 @@ export function AssociationFormModal({
 
         {/* 6 — חתימה, avec son bouton d'effacement (dans le pad). */}
         {/* En bas, et plus grande quand l'écran le permet (un iPad tenu debout). */}
-        <div data-testid="assoc-signature" ref={padBox} className="flex min-h-[11rem] flex-1 flex-col justify-end">
+        <div data-testid="assoc-signature" ref={padBox} className="flex shrink-0 flex-col justify-end">
           <p className="label">{t('assocForm.signature')}</p>
           <SignaturePad value={signature} onChange={setSignature} height={padHeight} />
           {fieldError('signature')}

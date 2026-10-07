@@ -36,7 +36,6 @@ export function PortalImportScreen() {
   const farms = useCoreValue(() => getVisibleFarms())
   const leads = useCoreValue(() => getAllLeads())
   const [file, setFile] = useState<{ name: string; text: string } | null>(null)
-  const [signed, setSigned] = useState<Set<number>>(new Set())
   const [done, setDone] = useState<ReturnType<typeof applyPortalPlan> | null>(null)
 
   const plan: PortalPlan | null = useMemo(() => {
@@ -82,7 +81,6 @@ export function PortalImportScreen() {
               const f = e.target.files?.[0]
               if (!f) return
               setDone(null)
-              setSigned(new Set())
               setFile({ name: f.name, text: await f.text() })
             }}
           />
@@ -135,27 +133,10 @@ export function PortalImportScreen() {
                     <span className="font-semibold">{w.name || t('portal.file')}</span>
                     <span className="text-content-secondary">{t(`portal.warn.${w.code}`)}</span>
                     <span className="muted" dir="auto">{w.detail}</span>
-                    {w.code === 'signature-without-signed-status' && (
-                      <label className="ms-auto flex min-h-[2.75rem] items-center gap-2">
-                        <input
-                          type="checkbox"
-                          className="h-5 w-5"
-                          data-testid={`portal-signed-${w.line}`}
-                          checked={signed.has(w.line)}
-                          onChange={() => {
-                            const next = new Set(signed)
-                            if (next.has(w.line)) next.delete(w.line)
-                            else next.add(w.line)
-                            setSigned(next)
-                          }}
-                        />
-                        {t('portal.markSigned')}
-                      </label>
-                    )}
                   </li>
                 ))}
               </ul>
-              {askSigned.length > 0 && <p className="muted mt-2">{t('portal.signedHint')}</p>}
+              {askSigned.length > 0 && <p className="muted mt-2">{t('portal.signedKept')}</p>}
             </Section>
           )}
 
@@ -173,7 +154,7 @@ export function PortalImportScreen() {
               type="button"
               className="btn-primary min-h-[2.75rem]"
               data-testid="portal-apply"
-              onClick={() => setDone(applyPortalPlan(plan, HOME_BASE, signed))}
+              onClick={() => setDone(applyPortalPlan(plan, HOME_BASE))}
             >
               <Icon name="check" size={16} />
               {t('portal.apply')}

@@ -61,7 +61,8 @@ const WIDE = [
 
 /** Nine screens that carry a filter row, at 402 px. */
 const SCREENS = [
-  { name: 'ייבוא', key: null, hash: '#/coordinator/import/farms' },
+  /* ★ AT4 — « ייבוא » N'A PLUS de rangée de pilules : ses types d'import sont
+     de vrais onglets (`TabBar`), mesurés par `atui` A303/A304. */
   { name: 'חוות', key: 'farms', hash: '#/coordinator/farms' },
   { name: 'מתנדבים', key: 'volunteers', hash: '#/coordinator/volunteers' },
   { name: 'נהגים', key: 'drivers', hash: '#/coordinator/drivers' },

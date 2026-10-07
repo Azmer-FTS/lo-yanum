@@ -161,6 +161,8 @@ export function looksLikePortalExport(headers: readonly string[]): boolean {
 export type LocationCellKind = 'coords' | 'email' | 'text' | 'empty'
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u
+/** Un courriel DANS une cellule (pas toute la cellule). */
+const ANY_EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/u
 const PAIR = /^\s*\(?\s*(-?\d{1,3}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*\)?\s*$/u
 
 /** Les deux plages ne se recouvrent pas : l'ordre se déduit. */
@@ -279,6 +281,16 @@ export function readPortalRows(matrix: readonly (readonly string[])[]): {
     const coords = locations.find((l) => l.kind === 'coords' && l.position)
     const typedEmail = cell(r, 'email').trim()
     const locatedEmail = locations.find((l) => l.kind === 'email')?.value ?? ''
+    /* ★★ AT8.6 — « ON NE RECOPIE PAS LEURS ERREURS » : un courriel va au champ
+       courriel, OÙ QU'IL SOIT dans la ligne (contact, adresse, nom, n'importe
+       quelle colonne), sauf la signature (base64). Le premier trouvé gagne
+       après la colonne « מייל » et les colonnes de lieu. */
+    const sigCol = columns.signature
+    const strayEmail =
+      r
+        .filter((_, j) => j !== sigCol)
+        .map((c) => ANY_EMAIL.exec(c ?? '')?.[0] ?? '')
+        .find(Boolean) ?? ''
     const sig = cell(r, 'signature').trim()
     const agreement = cell(r, 'landAgreement').trim()
     const statusCell = cell(r, 'status').trim()
@@ -287,9 +299,9 @@ export function readPortalRows(matrix: readonly (readonly string[])[]): {
       rawName: cell(r, 'name'),
       name,
       starred,
-      contact: cell(r, 'contact').trim(),
+      contact: cell(r, 'contact').replace(ANY_EMAIL, '').trim(),
       phone: canonicalPhone(cell(r, 'phone')),
-      email: EMAIL.test(typedEmail) ? typedEmail : locatedEmail,
+      email: EMAIL.test(typedEmail) ? typedEmail : locatedEmail || strayEmail,
       idNo: readPortalIdNo(cell(r, 'idNo')),
       grazing: readPortalArea(cell(r, 'grazing')),
       cultivated: readPortalArea(cell(r, 'cultivated')),
@@ -626,6 +638,7 @@ export function planPortalImport(input: PortalPlanInput): PortalPlan {
           name: comparableName(farm.name) === comparableName(row.name) ? readPortalName(farm.name).name : row.name,
           contactName: contact ?? '',
           phone: farm.farmerPhone?.trim() ? farm.farmerPhone : row.phone,
+          email: farm.farmerEmail?.trim() ? farm.farmerEmail : row.email,
           place: farm.locality ?? '',
           position: !farm.positionMissing && farm.position ? farm.position : row.position,
           regionId: farm.regionId ?? null,
@@ -648,6 +661,7 @@ export function planPortalImport(input: PortalPlanInput): PortalPlan {
         name: row.name,
         contactName: row.contact,
         phone: row.phone,
+        email: row.email,
         place: '',
         position: row.position,
         regionId: null,

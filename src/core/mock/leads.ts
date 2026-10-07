@@ -5,6 +5,7 @@ import type { Lead } from '../types'
  * aucune vraie personne : le jumeau /demo est public.
  */
 const base = {
+  email: '',
   notes: '',
   raw: '',
   createdAt: '2026-10-01T08:00:00.000Z',

@@ -339,19 +339,54 @@ export function PageHeader({
   below?: ReactNode
   testId?: string
 }) {
+  /*
+   * ★★ AT5 (2026-10-07) — LA LIGNE DE TITRE NE PASSE PLUS JAMAIS À LA LIGNE.
+   *   AR3 laissait la pilule d'actions descendre sous le nom quand les deux ne
+   *   tenaient plus côte à côte : juste pour le nom, mais la barre ÉPINGLÉE
+   *   doublait de hauteur (le PO : « énorme »). Désormais la rangée est
+   *   `nowrap` et c'est la PILULE qui cède : quand le nom ENTIER (sa largeur
+   *   naturelle, `scrollWidth`) et la pilule dépliée ne tiennent plus ensemble,
+   *   elle se replie en un « ⋯ » de 44 px qui ouvre les mêmes entrées, avec
+   *   leurs libellés. Mesuré, pas deviné : une `ResizeObserver` sur la rangée.
+   */
+  const rowRef = useRef<HTMLDivElement | null>(null)
+  const titleRef = useRef<HTMLHeadingElement | null>(null)
+  const actionsRef = useRef<HTMLDivElement | null>(null)
+  const unfolded = useRef(0)
+  const [folded, setFolded] = useState(false)
+  useEffect(() => {
+    const row = rowRef.current
+    if (!row || !actions || typeof ResizeObserver === 'undefined') return
+    const measure = () => {
+      const a = actionsRef.current
+      if (!a || !titleRef.current) return
+      if (!a.querySelector('[data-actions-folded]')) unfolded.current = a.scrollWidth
+      const lead = row.firstElementChild as HTMLElement | null
+      const titleBox = titleRef.current
+      /* La largeur NATURELLE du nom, sur une ligne : un clone hors champ (le
+         titre lui-même peut passer sur deux lignes, sa propre largeur ne dit
+         donc rien). */
+      const probe = titleBox.cloneNode(true) as HTMLElement
+      probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;width:auto;left:-9999px;top:0'
+      document.body.appendChild(probe)
+      const natural = probe.getBoundingClientRect().width
+      probe.remove()
+      /* Ce que le groupe de tête occupe hors du titre (retour, vignette, écarts). */
+      const leadFixed = lead ? lead.getBoundingClientRect().width - titleBox.getBoundingClientRect().width : 0
+      const need = leadFixed + natural + 12 + unfolded.current
+      setFolded(need > row.clientWidth + 0.5)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(row)
+    if (titleRef.current) ro.observe(titleRef.current)
+    return () => ro.disconnect()
+  }, [actions, title])
+
   return (
     <header className={sticky ? `${STICKY_BAR} mb-4 pb-1 pt-2` : 'mb-6'} data-testid={testId} data-sticky-header={sticky ? '' : undefined}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        {/* ★★ AR3 (2026-09-26) — `flex-auto` ET NON `flex-1`, ET C'EST TOUTE LA
-            CORRECTION. `flex-1` pose une base de 0 % : pour décider du retour
-            à la ligne, le navigateur comptait ce groupe LARGE DE ZÉRO, donc les
-            actions « tenaient » toujours à côté, et le titre était écrasé
-            dessous — 0 px mesurés à 402 sur la fiche, dont la pilule est passée
-            de 3 à 5 icônes (AH7.3, AK7.1). Avec la base NATURELLE (le nom sur
-            une ligne), les actions passent à la ligne dès que le nom entier ne
-            tient plus à côté d'elles — quel que soit leur nombre demain. Aucune
-            marge, aucune largeur en dur. A272 (`bun run arfiche`). */}
-        <div className="flex min-w-0 flex-auto items-start gap-2.5">
+      <div ref={rowRef} className="flex flex-nowrap items-start justify-between gap-3" data-header-row="">
+        <div className="flex min-w-0 flex-1 items-start gap-2.5">
           {back && (
             <Link
               to={back.to}
@@ -371,21 +406,36 @@ export function PageHeader({
               {media}
             </span>
           )}
-          <div className="min-w-0">
-            <h1 data-page-title="" className={`${sticky ? 'text-section sm:text-title' : 'text-title'} text-content-primary`}>
+          <div className="min-w-0 flex-1">
+            <h1
+              ref={titleRef}
+              data-page-title=""
+              title={typeof title === 'string' ? title : undefined}
+              /* ★ AT5 + AR3 — les icônes se replient d'abord ; si le nom entier ne
+                 tient TOUJOURS pas (402 px, nom de 30 lettres), c'est LUI qui prend
+                 une deuxième ligne, jamais les icônes. Le nom reste entier. */
+              className={`${sticky ? 'line-clamp-2 text-section sm:text-title' : 'text-title'} text-content-primary [overflow-wrap:anywhere]`}
+            >
               {title}
             </h1>
-            {subtitle && <p className="muted mt-1">{subtitle}</p>}
+            {subtitle && <p className={`muted mt-1 ${sticky ? 'truncate' : ''}`}>{subtitle}</p>}
           </div>
         </div>
         {actions && (
-          <div className="flex flex-wrap items-center gap-2">{actions}</div>
+          <div ref={actionsRef} className="flex shrink-0 flex-nowrap items-center gap-2" data-header-actions="">
+            <HeaderFoldContext.Provider value={folded}>{actions}</HeaderFoldContext.Provider>
+          </div>
         )}
       </div>
       {below}
     </header>
   )
 }
+
+/** ★ AT5 — la pilule d'un en-tête trop étroit se replie (voir `PageHeader`). */
+const HeaderFoldContext = createContext(false)
+/** Dans le menu replié : l'entrée se dessine en LIGNE (icône + libellé) et referme. */
+const ActionMenuContext = createContext<null | (() => void)>(null)
 
 /**
  * ★ W6 — THE SHEET'S ACTIONS ARE ONE PILL.
@@ -406,6 +456,57 @@ export function ActionPill({
   children: ReactNode
   className?: string
 }) {
+  const { t } = useTranslation()
+  const folded = useContext(HeaderFoldContext)
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('pointerdown', onDown, true)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  useEffect(() => {
+    if (!folded) setOpen(false)
+  }, [folded])
+
+  if (folded) {
+    return (
+      <div ref={box} className="relative shrink-0" data-actions-folded="" data-testid="sheet-actions">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-haspopup="menu"
+          aria-label={t('common.actions')}
+          title={t('common.actions')}
+          data-testid="sheet-actions-more"
+          className={`flex h-11 w-11 items-center justify-center rounded-pill border shadow-card transition-colors duration-fast ${
+            open ? 'border-accent bg-accent/15 text-accent-ink' : 'border-edge-subtle bg-surface-raised text-content-secondary hover:bg-surface-high'
+          }`}
+        >
+          <Icon name="more" size={19} />
+        </button>
+        {open && (
+          <div
+            role="menu"
+            data-testid="sheet-actions-menu"
+            data-overlay=""
+            className="glass absolute end-0 top-[calc(100%+0.375rem)] z-40 flex w-60 max-w-[calc(100vw-2rem)] animate-fade-in flex-col gap-0.5 rounded-card p-1.5 shadow-lift"
+          >
+            <ActionMenuContext.Provider value={() => setOpen(false)}>{children}</ActionMenuContext.Provider>
+          </div>
+        )}
+      </div>
+    )
+  }
   return (
     <div
       data-testid="sheet-actions"
@@ -449,6 +550,37 @@ export function ActionPillItem({
                    ? 'text-status-danger-ink hover:bg-status-danger/10'
                    : 'text-content-secondary hover:bg-surface-high hover:text-content-primary'
                }`
+  const closeMenu = useContext(ActionMenuContext)
+  if (closeMenu) {
+    /* ★ AT5 — la même entrée, dans le menu « ⋯ » : icône ET libellé. */
+    const row = `flex min-h-11 w-full items-center gap-2.5 rounded-field px-2.5 py-2 text-start text-caption transition-colors duration-fast ${
+      danger ? 'text-status-danger-ink hover:bg-status-danger/10' : 'text-content-primary hover:bg-surface-high'
+    }`
+    const inner = (
+      <>
+        <Icon name={icon} size={17} className="shrink-0" />
+        <span className="min-w-0 flex-1 truncate">{label}</span>
+      </>
+    )
+    return to ? (
+      <Link to={to} role="menuitem" data-testid={testId} className={row} onClick={closeMenu}>
+        {inner}
+      </Link>
+    ) : (
+      <button
+        type="button"
+        role="menuitem"
+        data-testid={testId}
+        className={row}
+        onClick={() => {
+          closeMenu()
+          onClick?.()
+        }}
+      >
+        {inner}
+      </button>
+    )
+  }
   const body = <Icon name={icon} size={19} />
   return to ? (
     <Link to={to} data-testid={testId} className={cls} title={label} aria-label={label}>

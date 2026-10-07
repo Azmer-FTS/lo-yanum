@@ -71,9 +71,13 @@ if (SUPABASE_CONFIGURED) {
     /* ★★ AS4 — un cycle complet (lire, fusionner, appliquer, écrire), puis la
        même chose à la connexion, au retour en avant-plan et après chaque
        changement local. Voir `ui/settings/sync.ts` pour les cinq trous. */
-    sync.startSettingsSync({ load: remote.loadRemoteSettingsRow, save: remote.saveRemoteSettingsIf })
-    void remote.onSignedIn(() => void sync.syncSettings())
-    await sync.syncSettings()
+    sync.startSettingsSync({
+      load: remote.loadRemoteSettingsRowStrict,
+      save: remote.saveRemoteSettingsIfStrict,
+      stamp: remote.loadRemoteSettingsStamp,
+    })
+    void remote.onSignedIn(() => void sync.syncSettings('sign-in'))
+    await sync.syncSettings('boot')
   })()
 }
 

@@ -1,6 +1,7 @@
 import type { Collection, StoreData } from '@core/backend'
 import type { Tour } from '@core/tours'
 import { splitLegacyDunams } from '@core/fields'
+import { normalizeLeadStatus } from '@core/leads'
 import type {
   Agreement,
   AnchorPoint,
@@ -1133,6 +1134,7 @@ const leadMapping: Mapping<Lead> = {
           name: l.name,
           contact_name: l.contactName,
           phone: l.phone,
+          email: l.email ?? '',
           place: l.place,
           lat: l.position?.lat ?? null,
           lng: l.position?.lng ?? null,
@@ -1155,10 +1157,12 @@ const leadMapping: Mapping<Lead> = {
     name: str(p.name),
     contactName: str(p.contact_name),
     phone: str(p.phone),
+    email: str(p.email),
     place: str(p.place),
     position: typeof p.lat === 'number' && typeof p.lng === 'number' ? { lat: p.lat, lng: p.lng } : null,
     regionId: typeof p.region_id === 'string' && p.region_id !== '' ? (p.region_id as Lead['regionId']) : null,
-    status: str(p.status) as Lead['status'],
+    /* AT2.5 — deux anciens statuts replis à la lecture. */
+    status: normalizeLeadStatus(str(p.status)),
     notes: str(p.notes),
     source: str(p.source) as Lead['source'],
     raw: str(p.raw),

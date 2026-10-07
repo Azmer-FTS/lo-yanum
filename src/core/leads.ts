@@ -12,7 +12,7 @@ import type { Lead, LeadStatus, RegionId } from './types'
  *
  * Une PISTE n'est pas une ferme (voir `Lead`). Ce module est pur : le bloc
  * collé → des pistes proposées ; une piste → sa région ; des pistes → des
- * colonnes.
+ * listes triées.
  *
  * ★★ LE COLLAGE EST TOLÉRANT, PARCE QUE CES TEXTES NE SONT JAMAIS BIEN FORMÉS.
  *   Formes reconnues, mesurées sur ce que WhatsApp produit réellement :
@@ -29,19 +29,33 @@ import type { Lead, LeadStatus, RegionId } from './types'
  *   Un numéro déjà connu (piste ou ferme) est SIGNALÉ et décoché, pas refusé.
  */
 
-/** L'ordre des colonnes du tableau. */
-export const LEAD_STATUSES: readonly LeadStatus[] = [
-  'not_called',
-  'no_answer',
-  'message_sent',
-  'call_back',
-  'meeting_set',
-  'not_now',
-  'not_interested',
-]
+/**
+ * ★★ AT2.5 — CINQ STATUTS, PAS SEPT. Ce que le PO note après un appel, et
+ *    rien d'autre :
+ *    - חדש (`not_called`)         : reçu, pas encore appelé ;
+ *    - ממתין לתשובה (`no_answer`) : appelé sans réponse OU message laissé — dans
+ *      les deux cas la balle est chez eux, et le geste suivant est le même
+ *      (réessayer). « שלחתי הודעה » (`message_sent`, ajouté en AS) s'y fond ;
+ *    - לחזור אליו (`call_back`)   : on s'est parlé, on se rappelle ;
+ *    - נקבעה פגישה (`meeting_set`) ;
+ *    - לא רלוונטי (`not_now`)     : la porte se ferme — pour l'instant ou pour
+ *      de bon, le geste est le même (la ligne sort de la liste active, reste
+ *      consultable). « לא מעוניין » (`not_interested`, ajouté en AS) s'y fond.
+ * ⚠️ Les deux anciennes valeurs restent LISIBLES (base, appareils pas encore à
+ *    jour) : `normalizeLeadStatus` les replie ; la contrainte de la base les
+ *    accepte toujours, pour qu'un iPad d'hier n'échoue pas à écrire.
+ */
+export const LEAD_STATUSES: readonly LeadStatus[] = ['not_called', 'no_answer', 'call_back', 'meeting_set', 'not_now']
 
-/** Les deux statuts « porte non fermée » : la piste reste, marquée. */
-export const LEAD_CLOSED_STATUSES: readonly LeadStatus[] = ['not_now', 'not_interested']
+/** Les statuts de la liste ACTIVE (le reste est replié en bas). */
+export const LEAD_OPEN_STATUSES: readonly LeadStatus[] = ['not_called', 'no_answer', 'call_back', 'meeting_set']
+export const LEAD_CLOSED_STATUSES: readonly LeadStatus[] = ['not_now']
+
+export function normalizeLeadStatus(s: string): LeadStatus {
+  if (s === 'message_sent') return 'no_answer'
+  if (s === 'not_interested') return 'not_now'
+  return (LEAD_STATUSES as readonly string[]).includes(s) ? (s as LeadStatus) : 'not_called'
+}
 
 export function leadRegionId(lead: Pick<Lead, 'regionId' | 'position'> & Partial<Pick<Lead, 'place'>>): RegionId | null {
   if (lead.regionId) return lead.regionId
@@ -51,24 +65,45 @@ export function leadRegionId(lead: Pick<Lead, 'regionId' | 'position'> & Partial
   return loc ? regionOf(loc.position) : null
 }
 
-export type LeadGrouping = 'status' | 'region'
+/**
+ * ★★ AT2.6 — LES TRIS. « Le plus récent d'abord » (demandé), « mis à jour
+ *    récemment » (ce que j'ai touché hier), l'alphabet, et la région (la veille
+ *    d'une tournée). Tri STABLE : à égalité, le plus récent d'abord.
+ */
+export type LeadSort = 'newest' | 'updated' | 'name' | 'region'
+export const LEAD_SORTS: readonly LeadSort[] = ['newest', 'updated', 'name', 'region']
 
-export interface LeadColumn {
-  key: string
-  status: LeadStatus | null
-  regionId: RegionId | null | 'none'
-  leads: Lead[]
+export function sortLeads(leads: readonly Lead[], sort: LeadSort, regionName: (id: RegionId) => string = String): Lead[] {
+  const newest = (a: Lead, b: Lead) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id)
+  const label = (l: Lead) => (l.name || l.contactName || l.phone).trim()
+  const list = [...leads]
+  switch (sort) {
+    case 'newest':
+      return list.sort(newest)
+    case 'updated':
+      return list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || newest(a, b))
+    case 'name':
+      return list.sort((a, b) => label(a).localeCompare(label(b), 'he') || newest(a, b))
+    case 'region': {
+      const r = (l: Lead) => {
+        const id = leadRegionId(l)
+        return id ? regionName(id) : '\uffff'
+      }
+      return list.sort((a, b) => r(a).localeCompare(r(b), 'he') || newest(a, b))
+    }
+  }
 }
 
-export function leadColumns(leads: readonly Lead[], by: LeadGrouping, regionOrder: readonly RegionId[]): LeadColumn[] {
-  const open = leads.filter((l) => !l.convertedFarmId)
-  const sorted = [...open].sort((a, b) => a.rank - b.rank || a.createdAt.localeCompare(b.createdAt))
-  if (by === 'status') {
-    return LEAD_STATUSES.map((s) => ({ key: s, status: s, regionId: null, leads: sorted.filter((l) => l.status === s) }))
+/** Les comptes de la rangée d'onglets : tout ce qui est ouvert, puis par statut. */
+export function leadCounts(leads: readonly Lead[]): Record<LeadStatus | 'open', number> {
+  const out = { open: 0, not_called: 0, no_answer: 0, message_sent: 0, call_back: 0, meeting_set: 0, not_now: 0, not_interested: 0 }
+  for (const l of leads) {
+    if (l.convertedFarmId) continue
+    const s = normalizeLeadStatus(l.status)
+    out[s] += 1
+    if (s !== 'not_now') out.open += 1
   }
-  const cols: LeadColumn[] = regionOrder.map((r) => ({ key: r, status: null, regionId: r, leads: sorted.filter((l) => leadRegionId(l) === r) }))
-  cols.push({ key: 'none', status: null, regionId: 'none', leads: sorted.filter((l) => leadRegionId(l) === null) })
-  return cols.filter((c) => c.leads.length > 0 || c.regionId === 'none')
+  return out
 }
 
 // ---------------------------------------------------------------------------
@@ -79,6 +114,8 @@ export interface ParsedLead {
   name: string
   contactName: string
   phone: string
+  /** ★ AT3 — un courriel trouvé n'importe où dans le bloc. */
+  email: string
   place: string
   position: { lat: number; lng: number } | null
   notes: string
@@ -92,6 +129,54 @@ export interface ParsedLead {
 const PHONE = /(?:\+?\s*9\s*7\s*2[\s\-.]*|\b0)(?:5\d|[23489]|7\d)(?:[\s\-.]*\d){7}\b/gu
 const BIDI = /[‎‏‪-‮⁦-⁩﻿]/gu
 const CHAT_PREFIX = /^\s*\[?\d{1,2}[./]\d{1,2}[./]\d{2,4},?\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:[AaPp][Mm])?\]?\s*(?:-\s*)?(?:[^:\n]{1,40}:\s+)?/u
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/u
+/** WhatsApp préfixe d'un « ~ » le nom d'un numéro absent du carnet. */
+const TILDE = /^\s*~\s*/u
+/**
+ * ★★ AT3 — LES FICHES « ÉTIQUETÉES ». Ce que Tamir envoie souvent, une ligne
+ * par champ : « שם: … / טלפון: … / ישוב: … / מייל: … ». Reconnues par
+ * l'étiquette, dans n'importe quel ordre, une fiche par paragraphe.
+ */
+const LABELS: ReadonlyArray<{ field: 'farm' | 'contact' | 'phone' | 'place' | 'email' | 'notes'; re: RegExp }> = [
+  { field: 'farm', re: /^(?:שם\s*(?:ה)?(?:חווה|משק|עסק)|חווה|משק|ארגון|org)\s*[:：-]\s*/iu },
+  { field: 'contact', re: /^(?:שם(?:\s*מלא)?|איש\s*קשר|שם\s*איש\s*(?:ה)?קשר|name)\s*[:：-]\s*/iu },
+  { field: 'phone', re: /^(?:טלפון|טל[׳']?|נייד|פלאפון|סלולרי|מספר|phone|tel)\s*[:：-]\s*/iu },
+  { field: 'place', re: /^(?:ישוב|יישוב|מקום|מושב|קיבוץ|כתובת|אזור|עיר|place|address)\s*[:：-]\s*/iu },
+  { field: 'email', re: /^(?:מייל|אימייל|דוא[״"]?ל|email|e-mail)\s*[:：-]\s*/iu },
+  { field: 'notes', re: /^(?:הערות?|הערה|פרטים|notes?)\s*[:：-]\s*/iu },
+]
+
+function parseLabelled(block: string): Omit<ParsedLead, 'duplicateOf' | 'noPhone'> | null {
+  const got: Partial<Record<(typeof LABELS)[number]['field'], string>> = {}
+  let hits = 0
+  for (const raw of block.split('\n')) {
+    const line = raw.replace(CHAT_PREFIX, '').trim()
+    for (const { field, re } of LABELS) {
+      if (re.test(line)) {
+        got[field] = line.replace(re, '').trim()
+        hits++
+        break
+      }
+    }
+  }
+  if (hits < 2) return null
+  const phone = got.phone ? ([...got.phone.matchAll(PHONE)][0]?.[0] ?? '') : ''
+  const place = findPlaceIn(got.place ?? '')
+  const email = (got.email && EMAIL_RE.exec(got.email)?.[0]) || EMAIL_RE.exec(block)?.[0] || ''
+  const names = splitNames(got.contact ?? '')
+  const farm = got.farm?.trim() || names.name
+  return {
+    name: farm || got.contact || place.place,
+    contactName: names.contactName || got.contact || '',
+    phone: phone ? canonicalLeadPhone(phone) : '',
+    email,
+    place: place.place || (got.place ?? ''),
+    position: place.position,
+    notes: got.notes ?? '',
+    raw: block.trim(),
+  }
+}
+
 const FARM_WORDS = /(חוות?|משק|רפת|דיר|לול|גד״ש|גד"ש|גדש|מושב|קיבוץ|מכוורת|כרם|מטע|שח״ם|שח"ם)/u
 
 /** Le numéro au format de l'app : `05X-XXXXXXX`, `0X-XXXXXXX`. */
@@ -151,17 +236,28 @@ function splitNames(text: string): { name: string; contactName: string } {
   return { name: t, contactName: t }
 }
 
-function parseVCards(text: string): { cards: Array<{ fn: string; tel: string; note: string; adr: string }>; rest: string } {
-  const cards: Array<{ fn: string; tel: string; note: string; adr: string }> = []
-  const rest = text.replace(/BEGIN:VCARD[\s\S]*?END:VCARD/giu, (block) => {
-    const line = (k: string): string => {
-      const m = new RegExp(`^${k}(?:;[^:\\n]*)?:(.*)$`, 'imu').exec(block)
-      return m ? m[1].trim() : ''
-    }
+function parseVCards(text: string): { cards: Array<{ fn: string; org: string; tel: string; tels: string[]; email: string; note: string; adr: string }>; rest: string } {
+  const cards: Array<{ fn: string; org: string; tel: string; tels: string[]; email: string; note: string; adr: string }> = []
+  const rest = text.replace(/BEGIN:VCARD[\s\S]*?END:VCARD/giu, (raw) => {
+    /* Lignes repliées (RFC 6350 : une ligne qui commence par un espace continue la précédente). */
+    const block = raw.replace(/\n[ \t]/gu, '')
+    /* `item1.TEL;…:` — le préfixe de groupe d'Apple et de WhatsApp. */
+    const all = (k: string): string[] =>
+      [...block.matchAll(new RegExp(`^(?:item\\d+\\.)?${k}(?:;[^:\\n]*)?:(.*)$`, 'gimu'))].map((m) => m[1].trim()).filter(Boolean)
+    const line = (k: string): string => all(k)[0] ?? ''
     let fn = line('FN')
     if (!fn) fn = line('N').split(';').filter(Boolean).reverse().join(' ')
-    const tel = line('TEL') || (/waid=(\d+)/iu.exec(block)?.[1] ?? '')
-    cards.push({ fn, tel, note: line('NOTE'), adr: line('ADR').split(';').filter(Boolean).join(' ') })
+    const waids = [...block.matchAll(/waid=(\d+)/giu)].map((m) => m[1])
+    const tels = all('TEL').length ? all('TEL') : waids
+    cards.push({
+      fn,
+      org: line('ORG').split(';').filter(Boolean).join(' '),
+      tel: tels[0] ?? '',
+      tels,
+      email: line('EMAIL'),
+      note: line('NOTE'),
+      adr: line('ADR').split(';').filter(Boolean).join(' '),
+    })
     return '\n'
   })
   return { cards, rest }
@@ -195,24 +291,45 @@ export function parseLeadBlock(text: string, ctx: ParseContext = {}): ParsedLead
   const clean = text.replace(BIDI, '').replace(/\r\n?/gu, '\n')
   const { cards, rest } = parseVCards(clean)
   for (const c of cards) {
-    const names = splitNames(c.fn)
-    const place = findPlaceIn(`${c.adr} ${c.note}`.trim())
+    const fn = c.fn.replace(TILDE, '')
+    const names = splitNames(fn)
+    const place = findPlaceIn(`${c.adr} ${c.org} ${c.note}`.trim())
     push({
-      name: names.name || c.fn,
-      contactName: names.contactName || c.fn,
+      /* ORG est le nom de l'exploitation quand la carte en porte un. */
+      name: c.org || names.name || fn,
+      contactName: c.org ? fn : names.contactName || fn,
       phone: canonicalLeadPhone(c.tel),
+      email: EMAIL_RE.exec(c.email)?.[0] ?? '',
       place: place.place,
       position: place.position,
-      notes: c.note,
-      raw: `${c.fn} ${c.tel}`.trim(),
+      notes: [c.note, ...c.tels.slice(1).map(canonicalLeadPhone)].filter(Boolean).join(' · '),
+      raw: `${fn} ${c.tel}`.trim(),
     })
+  }
+
+  /* ★ AT3 — les fiches étiquetées, un paragraphe chacune. */
+  const paragraphs = rest.split(/\n\s*\n/u)
+  const unlabelled: string[] = []
+  for (const para of paragraphs) {
+    const rec = parseLabelled(para)
+    if (rec) push(rec)
+    else unlabelled.push(para)
   }
 
   let pending: string[] = []
   let last: ParsedLead | null = null
-  for (const rawLine of rest.split('\n')) {
-    const line = rawLine.replace(CHAT_PREFIX, '').trim()
+  for (const rawLine of unlabelled.join('\n').split('\n')) {
+    let line = rawLine.replace(CHAT_PREFIX, '').replace(TILDE, '').trim()
     if (!line) continue
+    /* ★ AT3 — un courriel sur la ligne : il va au champ courriel, pas au nom. */
+    const mail = EMAIL_RE.exec(line)?.[0] ?? ''
+    if (mail) {
+      line = line.replace(mail, ' ').trim()
+      if (last && !last.email && ![...line.matchAll(PHONE)].length && cleanText(line).length < 3) {
+        last.email = mail
+        continue
+      }
+    }
     const phones = [...line.matchAll(PHONE)].map((m) => m[0])
     if (phones.length === 0) {
       /* Une ligne qui n'est QU'UN lieu, juste après un contact : son lieu. */
@@ -237,6 +354,7 @@ export function parseLeadBlock(text: string, ctx: ParseContext = {}): ParsedLead
       name: names.name || names.contactName || place.place,
       contactName: names.contactName,
       phone: canonicalLeadPhone(phones[0]),
+      email: mail,
       place: place.place,
       position: place.position,
       notes: phones.slice(1).map(canonicalLeadPhone).join(' · '),
@@ -250,7 +368,7 @@ export function parseLeadBlock(text: string, ctx: ParseContext = {}): ParsedLead
     if (t.length < 2) continue
     const place = findPlaceIn(t)
     const names = splitNames(place.rest)
-    push({ name: names.name || place.place, contactName: names.contactName, phone: '', place: place.place, position: place.position, notes: '', raw: line })
+    push({ name: names.name || place.place, contactName: names.contactName, phone: '', email: EMAIL_RE.exec(line)?.[0] ?? '', place: place.place, position: place.position, notes: '', raw: line })
   }
   return out
 }

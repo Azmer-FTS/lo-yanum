@@ -111,6 +111,8 @@ export interface MergeResult {
   conflicts: string[]
   /** Faut-il écrire en base ? */
   push: boolean
+  /** ★ AT1 — les clés que CET appareil fait monter (ce que l'écran nomme). */
+  pushed: string[]
 }
 
 export function readRemoteSide(blob: SettingsBlob): SettingsSide {
@@ -139,6 +141,7 @@ export function mergeSettings(local: SettingsSide, remote: SettingsSide, lastSyn
   const next: SettingsSide = { values: { ...local.values }, stamps: { ...local.stamps } }
   const applied: string[] = []
   const conflicts: string[] = []
+  const pushed: string[] = []
   let push = false
   for (const key of SYNCED_SETTING_KEYS) {
     const lv = local.values[key] ?? null
@@ -153,12 +156,18 @@ export function mergeSettings(local: SettingsSide, remote: SettingsSide, lastSyn
       }
       next.stamps[key] = rs
     } else if (ls > rs) {
-      if (lv !== rv || rs === 0) push = true
+      if (lv !== rv || rs === 0) {
+        push = true
+        if (lv !== rv) pushed.push(key)
+      }
     } else if (lv !== rv) {
       if (rv !== null) {
         next.values[key] = rv
         applied.push(key)
-      } else push = true
+      } else {
+        push = true
+        pushed.push(key)
+      }
     }
   }
   const remoteOut: SettingsBlob = {}
@@ -170,7 +179,7 @@ export function mergeSettings(local: SettingsSide, remote: SettingsSide, lastSyn
     if (s > 0) stampsOut[key] = s
   }
   remoteOut[STAMPS_FIELD] = JSON.stringify(stampsOut)
-  return { local: next, remote: remoteOut, applied, conflicts, push }
+  return { local: next, remote: remoteOut, applied, conflicts, push, pushed }
 }
 
 // ---------------------------------------------------------------------------
@@ -257,15 +266,42 @@ export function applySettings(blob: SettingsBlob): number {
 // ---------------------------------------------------------------------------
 
 export interface SyncDeps {
-  load: () => Promise<RemoteSettings | null>
-  save: (blob: SettingsBlob, expectedUpdatedAt: string | null) => Promise<'ok' | 'conflict' | 'error'>
+  /** Jette une erreur NOMMÉE (`reason`) : pas de session, délai, réseau, serveur. */
+  load: () => Promise<RemoteSettings>
+  save: (blob: SettingsBlob, expectedUpdatedAt: string | null) => Promise<'ok' | 'conflict'>
+  /** ★ AT1 — « la ligne a-t-elle changé ? » sans la relire (le logo pèse 200 ko). */
+  stamp?: () => Promise<string | null>
 }
 
+/**
+ * ★★ AT1 — CE QUE LE PO VOIT DANS הגדרות › נתונים : LA DERNIÈRE SYNCHRONISATION,
+ *    CE QUI EST MONTÉ, CE QUI EST DESCENDU, ET L'ERREUR. Gardé sur l'appareil
+ *    (jamais synchronisé : c'est l'histoire de CET appareil).
+ */
+export type SyncTrigger = 'boot' | 'sign-in' | 'resume' | 'online' | 'change' | 'heartbeat' | 'manual'
+export interface SyncReport {
+  at: number
+  trigger: SyncTrigger
+  ok: boolean
+  /** `no-session` · `timeout` · `network` · `server: …` */
+  error: string | null
+  /** Clés reçues d'un autre appareil. */
+  down: string[]
+  /** Clés que cet appareil a fait monter. */
+  up: string[]
+  conflicts: string[]
+  /** L'instant de la ligne en base après ce cycle. */
+  remoteUpdatedAt: string | null
+}
+const REPORT_KEY = 'lo-yanum:settings-sync-report'
+
 let deps: SyncDeps | null = null
-let inFlight: Promise<void> | null = null
-let again = false
+let inFlight: Promise<SyncReport | null> | null = null
+let again: SyncTrigger | null = null
 let timer: number | null = null
 let lastForeground = 0
+/** L'instant de la ligne tel que CET appareil l'a lu en dernier (mémoire seule). */
+let lastSeenRemote: string | null | undefined = undefined
 
 export type SyncOutcome = { applied: string[]; conflicts: string[]; pushed: boolean; ok: boolean }
 let lastOutcome: SyncOutcome | null = null
@@ -273,47 +309,114 @@ export function lastSettingsSyncOutcome(): SyncOutcome | null {
   return lastOutcome
 }
 
-async function cycle(): Promise<void> {
-  if (!deps) return
+let report: SyncReport | null = readJson<SyncReport | null>(REPORT_KEY, null)
+const reportListeners = new Set<() => void>()
+export function lastSettingsSyncReport(): SyncReport | null {
+  return report
+}
+export function subscribeSettingsSync(listener: () => void): () => void {
+  reportListeners.add(listener)
+  return () => reportListeners.delete(listener)
+}
+export function isSettingsSyncing(): boolean {
+  return inFlight !== null
+}
+function publish(next: SyncReport): void {
+  report = next
+  writeRaw(REPORT_KEY, JSON.stringify(next))
+  for (const l of reportListeners) l()
+}
+function reasonOf(err: unknown): string {
+  const e = err as { reason?: string; message?: string } | null
+  if (e?.reason === 'server' || e?.reason === 'network') return e.message ?? e.reason
+  return e?.reason ?? e?.message ?? 'network'
+}
+
+async function cycle(trigger: SyncTrigger): Promise<SyncReport | null> {
+  if (!deps) return null
+  const done = (r: Omit<SyncReport, 'at' | 'trigger'>): SyncReport => {
+    const full = { ...r, at: Date.now(), trigger }
+    publish(full)
+    lastOutcome = { applied: r.down, conflicts: r.conflicts, pushed: r.up.length > 0, ok: r.ok }
+    return full
+  }
+  const down: string[] = []
+  const up: string[] = []
+  const conflicts: string[] = []
   for (let attempt = 0; attempt < 3; attempt++) {
-    const row = await deps.load().catch(() => null)
-    if (!row) {
-      lastOutcome = { applied: [], conflicts: [], pushed: false, ok: false }
-      return
+    let row: RemoteSettings
+    try {
+      row = await deps.load()
+    } catch (err) {
+      return done({ ok: false, error: reasonOf(err), down, up, conflicts, remoteUpdatedAt: lastSeenRemote ?? null })
     }
     const merged = mergeSettings(localSide(), readRemoteSide(row.blob), lastSettingsSyncAt())
     for (const key of merged.applied) writeRaw(key, merged.local.values[key] ?? null)
     writeRaw(STAMPS_KEY, JSON.stringify(merged.local.stamps))
     if (merged.applied.length > 0) announceSettingsApplied(merged.applied)
     if (merged.conflicts.length > 0) announceSettingsConflict(merged.conflicts)
+    for (const k of merged.applied) if (!down.includes(k)) down.push(k)
+    for (const k of merged.conflicts) if (!conflicts.includes(k)) conflicts.push(k)
+    lastSeenRemote = row.updatedAt
     if (merged.push) {
-      const res = await deps.save(merged.remote, row.updatedAt).catch(() => 'error' as const)
-      if (res === 'conflict') continue
-      if (res === 'error') {
-        lastOutcome = { applied: merged.applied, conflicts: merged.conflicts, pushed: false, ok: false }
-        return
+      let res: 'ok' | 'conflict'
+      try {
+        res = await deps.save(merged.remote, row.updatedAt)
+      } catch (err) {
+        return done({ ok: false, error: reasonOf(err), down, up, conflicts, remoteUpdatedAt: row.updatedAt })
       }
+      if (res === 'conflict') continue
+      for (const k of merged.pushed) if (!up.includes(k)) up.push(k)
+      /* La ligne vient de changer sous NOTRE main : le prochain battement la
+         relira une fois (bon marché), puis se taira. */
+      lastSeenRemote = undefined
     }
     writeRaw(SYNCED_AT_KEY, JSON.stringify(Date.now()))
-    lastOutcome = { applied: merged.applied, conflicts: merged.conflicts, pushed: merged.push, ok: true }
-    return
+    return done({ ok: true, error: null, down, up, conflicts, remoteUpdatedAt: row.updatedAt })
   }
+  return done({ ok: false, error: 'conflict', down, up, conflicts, remoteUpdatedAt: lastSeenRemote ?? null })
 }
 
 /** Une synchronisation, maintenant ; deux demandes rapprochées n'en font qu'une de plus. */
-export function syncSettings(): Promise<void> {
+export function syncSettings(trigger: SyncTrigger = 'manual'): Promise<SyncReport | null> {
   if (inFlight) {
-    again = true
+    again = trigger
     return inFlight
   }
-  inFlight = cycle().finally(() => {
+  inFlight = cycle(trigger).finally(() => {
     inFlight = null
+    for (const l of reportListeners) l()
     if (again) {
-      again = false
-      void syncSettings()
+      const t = again
+      again = null
+      void syncSettings(t)
     }
   })
+  for (const l of reportListeners) l()
   return inFlight
+}
+
+/**
+ * ★★ AT1 — LE BATTEMENT DE CŒUR. Un appareil posé, écran allumé, ne « revient »
+ *    jamais en avant-plan : c'est ce que l'iPad du PO a fait le 2026-10-07 (il a
+ *    lu à 15:06:08, l'iPhone a écrit à 15:06:53, et plus rien ne l'a fait
+ *    relire — `docs/at/at1-synchronisation.md`). Toutes les 30 s, page
+ *    visible : on demande l'instant de la ligne (quelques octets) ; la ligne
+ *    entière n'est relue que s'il a changé.
+ */
+export const HEARTBEAT_MS = 30_000
+async function heartbeat(): Promise<void> {
+  if (!deps || inFlight || document.visibilityState === 'hidden') return
+  if (!deps.stamp || lastSeenRemote === undefined) {
+    await syncSettings('heartbeat')
+    return
+  }
+  try {
+    const now = await deps.stamp()
+    if (now !== lastSeenRemote) await syncSettings('heartbeat')
+  } catch {
+    /* Le battement suivant réessaiera ; l'erreur n'est publiée que par un cycle. */
+  }
 }
 
 /**
@@ -341,7 +444,7 @@ export function startSettingsSync(d: SyncDeps): void {
     /* 1,2 s : le PO tape dans une zone de texte de gabarit. */
     timer = window.setTimeout(() => {
       timer = null
-      void syncSettings()
+      void syncSettings('change')
     }, 1200)
   }
   storage.setItem = (key: string, value: string): void => {
@@ -359,10 +462,11 @@ export function startSettingsSync(d: SyncDeps): void {
     const t = Date.now()
     if (t - lastForeground < 10_000) return
     lastForeground = t
-    void syncSettings()
+    void syncSettings('resume')
   }
   document.addEventListener('visibilitychange', resume)
   window.addEventListener('pageshow', resume)
   window.addEventListener('focus', resume)
-  window.addEventListener('online', () => void syncSettings())
+  window.addEventListener('online', () => void syncSettings('online'))
+  window.setInterval(() => void heartbeat(), HEARTBEAT_MS)
 }

@@ -1,0 +1,40 @@
+$ bun run scripts/atsync.ts
+  app : https://azmer-fts.github.io/lo-yanum  (DÉPLOYÉ)
+
+  1 — la séquence du 2026-10-07 : l’iPad crée la ligne, l’iPhone écrit après, l’iPad reste ouvert
+  -----------------------------------------------------------------------------------------------
+  PASS  avant : aucune ligne de réglages en base
+  PASS  l’iPad (ouvert le premier) a créé la ligne
+  PASS  … sans nom (il n’en a pas)  — {}
+  PASS  l’iPhone, ouvert ensuite, a écrit son nom dans la base  — 1003 ms
+  FAIL  A298 · l’iPad, resté OUVERT sans aucun retour en avant-plan, reçoit nom + téléphone + région en ≤ 45 s  — rien après 45156 ms : {}
+
+  2 — le panneau de l’iPad le DIT : quand, ce qui est descendu
+  ------------------------------------------------------------
+  FAIL  le panneau « סנכרון בין מכשירים » est affiché
+  FAIL  statut : réussi
+  FAIL  « התקבל ממכשיר אחר » nomme « כרטיס הרכז »
+
+  3 — un changement sur l’iPhone descend seul sur l’iPad (aucun événement)
+  ------------------------------------------------------------------------
+  PASS  l’iPhone a fait monter le téléphone changé (≤ 10 s)  — 2006 ms
+  FAIL  le panneau de l’iPhone nomme ce qui est MONTÉ
+  FAIL  A298 · l’iPad, toujours ouvert, le reçoit en ≤ 45 s  — — ms
+
+  4 — le battement est léger : la ligne entière n’est relue que si elle a changé
+  ------------------------------------------------------------------------------
+  FAIL  en 65 s sans changement : ≥ 2 questions légères (updated_at), 0 relecture de la ligne  — légères +0, entières +0
+
+  5 — une connexion morte : la roue s’arrête et l’erreur est DITE
+  ---------------------------------------------------------------
+  FAIL  « סנכרון עכשיו » se termine en ≤ 20 s au lieu de tourner sans fin  — — ms
+  FAIL  l’erreur est dite en mots (« השרת לא ענה … »)
+  FAIL  le réseau revenu, le même bouton réussit  — — ms
+
+  6 — AT1.3 : un rechargement sur un build PLUS RÉCENT que la cible est une RÉUSSITE
+  ----------------------------------------------------------------------------------
+  FAIL  cible 0b97ed4, servi b632ace : « הוחלה גרסה חדשה », pas « לא נקלט »  — העדכון ל־⁨cible-depassee⁩ לא נקלט — עדיין ⁨ancien-build⁩ · ⁨07.10.2026 · 20:12⁩
+  PASS  le même code qu’avant après rechargement : l’échec est toujours dit
+
+  atsync : 6 PASS · 11 FAIL
+error: script "atsync" exited with code 1

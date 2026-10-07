@@ -1,3 +1,4 @@
+import { correctedNames } from './farmName'
 import { allowedStatus } from './documents'
 import { INTAKE_HANDLED_STATUSES } from './intake'
 import type { IntakeHandledStatus } from './intake'
@@ -655,6 +656,23 @@ export function updateFarm(farmId: string, draft: FarmDraft): void {
      sans attendre la prochaine mutation de polygone. */
   remeasureFarm(farmId)
   commit()
+}
+
+/**
+ * ★★ AT6.3 — LE NOM CORRIGÉ À LA SIGNATURE. La faute que l'agriculteur signale
+ * est dans ce que le document imprime (« שם החווה » = `farmName`, sinon `name`) ;
+ * la correction va dans ce champ, et dans le nom de la fiche s'il portait la
+ * même faute. Rend la paire écrite (pour l'appelant qui garde un brouillon).
+ */
+export function correctFarmName(farmId: string, next: string): { name: string; farmName: string | undefined } | null {
+  const index = data.farms.findIndex((f) => f.id === farmId)
+  const clean = next.trim()
+  if (index === -1 || !clean) return null
+  const farm = data.farms[index]
+  const out = correctedNames(farm.name, farm.farmName, clean)
+  data.farms[index] = { ...farm, name: out.name, farmName: out.farmName }
+  commit()
+  return out
 }
 
 /**
@@ -2129,7 +2147,7 @@ export function removeProvidedDocument(farmId: string, id: ProvidedDocument['id'
 // ===========================================================================
 
 export type LeadDraft = Pick<Lead, 'name' | 'contactName' | 'phone' | 'place' | 'position' | 'regionId' | 'notes' | 'source' | 'raw'> &
-  Partial<Pick<Lead, 'status'>>
+  Partial<Pick<Lead, 'status' | 'email'>>
 
 /** Plusieurs pistes d'un coup (le bloc collé) — en TÊTE de « טרם התקשרתי ». */
 export function createLeads(drafts: readonly LeadDraft[]): Lead[] {
@@ -2137,6 +2155,7 @@ export function createLeads(drafts: readonly LeadDraft[]): Lead[] {
   const created = drafts.map((d, i): Lead => ({
     id: nextId('lead'),
     ...d,
+    email: d.email ?? '',
     status: d.status ?? 'not_called',
     createdAt: stamp,
     updatedAt: stamp,
@@ -2183,6 +2202,19 @@ export function moveLead(
   commit()
 }
 
+/**
+ * ★★ AT2 — LE GESTE LE PLUS FRÉQUENT : CHANGER LE STATUT. Rend l'ancien, pour
+ *    que l'écran propose « ביטול » sans rien deviner. La place dans la liste ne
+ *    change pas (le tri ne lit pas le statut) : la ligne reste sous le doigt.
+ */
+export function setLeadStatus(leadId: string, status: LeadStatus): LeadStatus | null {
+  const lead = data.leads.find((l) => l.id === leadId)
+  if (!lead || lead.status === status) return null
+  const before = lead.status
+  updateLead(leadId, { status })
+  return before
+}
+
 export function deleteLead(leadId: string): void {
   data.leads = data.leads.filter((l) => l.id !== leadId)
   data.generalMeetings = data.generalMeetings.map((m) => (m.leadId === leadId ? { ...m, leadId: null } : m))
@@ -2217,6 +2249,7 @@ export function convertLeadToFarm(leadId: string, fallbackPosition: LatLng): Far
     notes: lead.notes,
     farmerName: lead.contactName || undefined,
     farmerPhone: lead.phone || undefined,
+    farmerEmail: lead.email || undefined,
   })
   const stamp = iso(now())
   data.leads = data.leads.map((l) => (l.id === leadId ? { ...l, convertedFarmId: farm.id, convertedAt: stamp, updatedAt: stamp } : l))
@@ -2224,6 +2257,27 @@ export function convertLeadToFarm(leadId: string, fallbackPosition: LatLng): Far
      rencontre avec la ferme, sans changer de nature (pas de visite inventée). */
   commit()
   return farm
+}
+
+/**
+ * ★★ AT2.1 — UNE CONVERSION S'ANNULE. Le 2026-10-07 une pression accidentelle
+ *    a fait de « גד״ש דביר » une ferme, sans confirmation ni retour. Annuler :
+ *    la fiche née de la conversion est retirée PAR LA RÈGLE DE SUPPRESSION
+ *    COMMUNE (`deletionPlan`, point 8) — donc seulement si rien ne s'y est
+ *    encore attaché (visite, garde, accord…) — et la piste revient, telle
+ *    qu'elle était. Sinon : refus nommé, rien n'est perdu.
+ */
+export function revertLeadConversion(leadId: string): 'ok' | 'not-converted' | 'farm-has-data' {
+  const lead = data.leads.find((l) => l.id === leadId)
+  if (!lead || !lead.convertedFarmId) return 'not-converted'
+  const farmId = lead.convertedFarmId
+  if (data.farms.some((f) => f.id === farmId)) {
+    if (!deleteFarm(farmId)) return 'farm-has-data'
+  }
+  const stamp = iso(now())
+  data.leads = data.leads.map((l) => (l.id === leadId ? { ...l, convertedFarmId: null, convertedAt: null, updatedAt: stamp } : l))
+  commit()
+  return 'ok'
 }
 
 /**
