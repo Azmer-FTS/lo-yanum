@@ -961,9 +961,14 @@ export function FarmFormScreen() {
           {t('agreement.signNow')}
         </button>
         </div>
-        {/* ★★ AS5.6 — la MÊME rangée que la fiche, aux mêmes intitulés et dans
-            le même ordre (AM3) ; ici elle AMÈNE au groupe au lieu de filtrer :
-            un formulaire garde tous ses champs montés (validation, focus). */}
+      </div>
+      {/* ★★ AS5.6 — la MÊME rangée que la fiche, aux mêmes intitulés et dans
+          le même ordre (AM3) ; ici elle AMÈNE au groupe au lieu de filtrer :
+          un formulaire garde tous ses champs montés (validation, focus).
+          ⚠️ HORS de la barre épinglée : AN6 l'a voulue compacte (≤ 72 px,
+          `anui`), et c'est une décision du PO — elle garde ce qui identifie la
+          ferme, pas la navigation. */}
+      <div className="-mt-2 mb-4">
         <FarmTabRow tabs={FARM_FORM_TABS} active={formTab} onSelect={jumpTo} idPrefix="farm-edit" />
       </div>
 

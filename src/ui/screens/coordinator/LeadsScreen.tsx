@@ -19,7 +19,7 @@ import {
   whatsappHref,
 } from '@core/index'
 import type { Lead, LeadGrouping, LeadStatus, ParsedLead, RegionId } from '@core/index'
-import { GeneralMeetingModal } from '../../components/GeneralMeetingModal'
+import { formRoutes } from './FormPages'
 import { Icon } from '../../components/Icon'
 import { MapSplit } from '../../components/MapSplit'
 import { MapView } from '../../components/MapView'
@@ -71,7 +71,6 @@ export function LeadsScreen() {
   const [pasteOpen, setPasteOpen] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
   const [flyKey, setFlyKey] = useState(0)
-  const [meetingFor, setMeetingFor] = useState<Lead | null>(null)
   const regionOrder = useMemo(() => regions().map((r) => r.id), [])
   const columns = useMemo(() => leadColumns(leads, grouping, regionOrder), [leads, grouping, regionOrder])
   const selectedLead = leads.find((l) => l.id === selected) ?? null
@@ -166,25 +165,10 @@ export function LeadsScreen() {
             onSelect={(id) => select(id, true)}
             onMove={moveTo}
             neighbour={neighbour}
-            onMeeting={setMeetingFor}
+            onMeeting={(lead) => navigate(formRoutes.newMeeting({ lead: lead.id }))}
             onConvert={convert}
           />
 
-          {meetingFor && (
-            <GeneralMeetingModal
-              presentation="overlay"
-              prefill={{
-                title: t('leads.meetingTitle', { name: meetingFor.name }),
-                person: [meetingFor.contactName, meetingFor.phone].filter(Boolean).join(' · '),
-                location: meetingFor.place,
-                position: meetingFor.position,
-                note: meetingFor.notes,
-                leadId: meetingFor.id,
-              }}
-              onCreated={() => moveLead(meetingFor.id, { status: 'meeting_set' })}
-              onClose={() => setMeetingFor(null)}
-            />
-          )}
         </>
       )}
     </MapSplit>
@@ -260,8 +244,8 @@ function Board({
           data-lead-col={col.key}
           data-testid={`leads-col-${col.key}`}
           aria-label={columnTitle(col)}
-          className={`flex w-[min(84vw,19.5rem)] shrink-0 snap-start flex-col gap-2 rounded-card border bg-surface-sunken p-2 ${
-            drag?.over === col.key ? 'border-accent' : 'border-edge-subtle'
+          className={`flex w-[min(84vw,19.5rem)] shrink-0 snap-start flex-col gap-2 rounded-card bg-surface-sunken p-2 ${
+            drag?.over === col.key ? 'ring-2 ring-accent' : ''
           }`}
         >
           <h2 className="flex items-center justify-between px-1 pt-1 text-caption font-semibold text-content-primary">
@@ -402,7 +386,7 @@ function LeadCard({
       <div className="flex items-center gap-0.5">
         <button
           type="button"
-          className="btn-ghost h-11 w-11 justify-center p-0"
+          className="btn-ghost h-11 w-11 min-w-[2.75rem] shrink-0 justify-center p-0"
           aria-label={prevLabel ? t('leads.moveTo', { to: prevLabel }) : undefined}
           title={prevLabel ? t('leads.moveTo', { to: prevLabel }) : undefined}
           disabled={!onPrev}
@@ -413,7 +397,7 @@ function LeadCard({
         </button>
         <button
           type="button"
-          className="btn-ghost h-11 w-11 justify-center p-0"
+          className="btn-ghost h-11 w-11 min-w-[2.75rem] shrink-0 justify-center p-0"
           aria-label={nextLabel ? t('leads.moveTo', { to: nextLabel }) : undefined}
           title={nextLabel ? t('leads.moveTo', { to: nextLabel }) : undefined}
           disabled={!onNext}
@@ -425,18 +409,18 @@ function LeadCard({
         <span className="flex-1" />
         {lead.phone && (
           <>
-            <a className="btn-ghost h-11 w-11 justify-center p-0" href={`tel:${lead.phone.replace(/\D/gu, '')}`} aria-label={t('leads.call')} title={t('leads.call')}>
+            <a className="btn-ghost h-11 w-11 min-w-[2.75rem] shrink-0 justify-center p-0" href={`tel:${lead.phone.replace(/\D/gu, '')}`} aria-label={t('leads.call')} title={t('leads.call')}>
               <Icon name="phone" size={17} />
             </a>
-            <a className="btn-ghost h-11 w-11 justify-center p-0" href={whatsappHref(lead.phone)} target="_blank" rel="noreferrer" aria-label="WhatsApp" title="WhatsApp">
+            <a className="btn-ghost h-11 w-11 min-w-[2.75rem] shrink-0 justify-center p-0" href={whatsappHref(lead.phone)} target="_blank" rel="noreferrer" aria-label="WhatsApp" title="WhatsApp">
               <Icon name="whatsapp" size={17} />
             </a>
           </>
         )}
-        <button type="button" className="btn-ghost h-11 w-11 justify-center p-0" aria-label={t('leads.meeting')} title={t('leads.meeting')} data-testid={`lead-meeting-${lead.id}`} onClick={onMeeting}>
+        <button type="button" className="btn-ghost h-11 w-11 min-w-[2.75rem] shrink-0 justify-center p-0" aria-label={t('leads.meeting')} title={t('leads.meeting')} data-testid={`lead-meeting-${lead.id}`} onClick={onMeeting}>
           <Icon name="calendar" size={17} />
         </button>
-        <button type="button" className="btn-ghost h-11 w-11 justify-center p-0" aria-label={t('leads.convert')} title={t('leads.convert')} data-testid={`lead-convert-${lead.id}`} onClick={onConvert}>
+        <button type="button" className="btn-ghost h-11 w-11 min-w-[2.75rem] shrink-0 justify-center p-0" aria-label={t('leads.convert')} title={t('leads.convert')} data-testid={`lead-convert-${lead.id}`} onClick={onConvert}>
           <Icon name="farm" size={17} />
         </button>
       </div>

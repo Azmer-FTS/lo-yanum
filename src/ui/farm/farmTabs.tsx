@@ -90,9 +90,17 @@ export function FarmTabRow({
 }) {
   const { t } = useTranslation()
   const row = useRef<HTMLDivElement | null>(null)
+  /* L'onglet actif ramené dans la RANGÉE — et seulement dans elle. Un
+     `scrollIntoView` ferait aussi défiler la page : dans l'édition, où la
+     rangée n'est pas épinglée, il remontait le formulaire (vu par `anui`). */
   useEffect(() => {
-    const el = row.current?.querySelector<HTMLElement>('[aria-selected="true"]')
-    el?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    const box = row.current
+    const el = box?.querySelector<HTMLElement>('[aria-selected="true"]')
+    if (!box || !el) return
+    const r = box.getBoundingClientRect()
+    const e = el.getBoundingClientRect()
+    if (e.left < r.left) box.scrollLeft -= r.left - e.left + 8
+    else if (e.right > r.right) box.scrollLeft += e.right - r.right + 8
   }, [active])
   return (
     <div

@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import { atTimeOn, getDrivers, getVolunteers, now } from '@core/index'
+import { atTimeOn, getAllLeads, getDrivers, getVolunteers, moveLead, now } from '@core/index'
+import { useTranslation } from 'react-i18next'
 
 import { FarmVisitModal } from '../../components/FarmVisitModal'
 import { GeneralMeetingModal } from '../../components/GeneralMeetingModal'
@@ -88,13 +89,31 @@ export function VisitFormPage() {
 export function MeetingFormPage() {
   const { meetingId } = useParams()
   const [params] = useSearchParams()
+  const { t } = useTranslation()
   const back = useBack('/coordinator/agenda')
+  /* ★★ AS6.6 — `?lead=` : le rendez-vous naît d'une piste. Ses champs sont
+     pré-remplis, le lien est gardé, et la piste passe à « קבעתי פגישה ». */
+  const leadId = params.get('lead')
+  const lead = useCoreValue(() => (leadId ? (getAllLeads().find((l) => l.id === leadId) ?? null) : null))
   return (
     <GeneralMeetingModal
       meetingId={meetingId}
       defaultAt={params.get('at') ?? atTimeOn(now(), 10, 0)}
       onClose={back}
       presentation="page"
+      prefill={
+        lead
+          ? {
+              title: t('leads.meetingTitle', { name: lead.name }),
+              person: [lead.contactName, lead.phone].filter(Boolean).join(' · '),
+              location: lead.place,
+              position: lead.position,
+              note: lead.notes,
+              leadId: lead.id,
+            }
+          : undefined
+      }
+      onCreated={lead ? () => moveLead(lead.id, { status: 'meeting_set' }) : undefined}
     />
   )
 }
@@ -113,7 +132,12 @@ export const formRoutes = {
     return `/coordinator/agenda/visit/new${s ? `?${s}` : ''}`
   },
   editVisit: (id: string) => `/coordinator/agenda/visit/${id}`,
-  newMeeting: (opts: { at?: string } = {}) =>
-    `/coordinator/agenda/meeting/new${opts.at ? `?at=${encodeURIComponent(opts.at)}` : ''}`,
+  newMeeting: (opts: { at?: string; lead?: string } = {}) => {
+    const q = new URLSearchParams()
+    if (opts.at) q.set('at', opts.at)
+    if (opts.lead) q.set('lead', opts.lead)
+    const s = q.toString()
+    return `/coordinator/agenda/meeting/new${s ? `?${s}` : ''}`
+  },
   editMeeting: (id: string) => `/coordinator/agenda/meeting/${id}`,
 }

@@ -785,7 +785,7 @@ try {
         ['garde (+)', async () => open(page, '#/coordinator/missions/new', 2500)],
         ['rendez-vous (menu +)', async () => open(page, '#/coordinator/agenda?new=visit', 2500)],
         ['événement (menu +)', async () => open(page, '#/coordinator/agenda?new=meeting', 2500)],
-        ['rendez-vous (fiche)', async () => { await open(page, '#/coordinator/farms/farm-07', 2500); await page.getByText('תכנון ביקור').first().click() }],
+        ['rendez-vous (fiche)', async () => { await open(page, '#/coordinator/farms/farm-07', 2500); /* ★ AS5 — l'action de l'EN-TÊTE (le bloc des visites est dans l'onglet « יומן »). */ await page.locator('[data-testid="sheet-actions"] [aria-label="תכנון ביקור"]').click() }],
       ]
       for (const [name, go] of entries) {
         await go()
