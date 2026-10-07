@@ -12,6 +12,7 @@ import type {
   FarmVisit,
   FarmZone,
   GeneralMeeting,
+  Lead,
   Incident,
   IncidentEntry,
   LatLng,
@@ -234,6 +235,10 @@ const farmMapping: Mapping<Farm> = {
             ? JSON.stringify(f.providedDocuments)
             : null,
           id_photo: f.idPhoto ?? null,
+          /* ★★ AS1.5 — les contrats de terre. Envoyés en TABLEAU (pas en
+             chaîne comme `provided_documents`) : le déclencheur
+             `entities_land_documents_dispatch` lit `$[*].status` en jsonb. */
+          land_documents: f.landDocuments && f.landDocuments.length > 0 ? f.landDocuments : null,
           /* ★ AK7 — l'archive : un instant et un motif, deux colonnes
              nullables. `?? null` comme les autres : « désarchivée » doit être
              une valeur que l'aller-retour porte, pas une clé omise. */
@@ -433,6 +438,7 @@ const farmMapping: Mapping<Farm> = {
     // AG6 · AG4 — et le retour de l'agriculteur.
     providedDocuments: readProvidedDocuments(p.provided_documents),
     idPhoto: optStr(p.id_photo),
+    landDocuments: readLandDocuments(p.land_documents),
     /* AK7 — absente tant que rien n'a été archivé ; `null` est « désarchivée »
        et c'est une valeur que l'aller-retour doit porter (voir `toRows`). */
     /* `undefined` quand la colonne est vide — comme `positionMissing` : « pas
@@ -454,6 +460,24 @@ const farmMapping: Mapping<Farm> = {
  *    été fourni — ce qui est déjà ce que `undefined` veut dire ici, et ce qui
  *    la remet dans la file plutôt que de l'en sortir à tort.
  */
+/** ★★ AS1.5 — tableau jsonb, ou sa forme en chaîne (tolérée), ou rien. */
+function readLandDocuments(raw: unknown): Farm['landDocuments'] {
+  let value = raw
+  if (typeof raw === 'string') {
+    try {
+      value = JSON.parse(raw) as unknown
+    } catch {
+      return undefined
+    }
+  }
+  if (!Array.isArray(value)) return undefined
+  const rows = value.filter(
+    (d): d is NonNullable<Farm['landDocuments']>[number] =>
+      !!d && typeof d === 'object' && typeof (d as { id?: unknown }).id === 'string',
+  )
+  return rows.length > 0 ? rows : undefined
+}
+
 function readProvidedDocuments(raw: unknown): Farm['providedDocuments'] {
   const value =
     typeof raw === 'string'
@@ -1066,6 +1090,8 @@ const generalMeetingMapping: Mapping<GeneralMeeting> = {
           lat: m.position?.lat ?? null,
           lng: m.position?.lng ?? null,
           remind_minutes: m.remindMinutes ?? null,
+          /* AS6.6 — la piste dont ce rendez-vous est né. */
+          lead_id: m.leadId ?? null,
         },
       ],
     },
@@ -1087,6 +1113,60 @@ const generalMeetingMapping: Mapping<GeneralMeeting> = {
         ? { lat: p.lat, lng: p.lng }
         : undefined,
     remindMinutes: typeof p.remind_minutes === 'number' ? p.remind_minutes : undefined,
+    leadId: typeof p.lead_id === 'string' ? p.lead_id : undefined,
+  }),
+}
+
+/**
+ * ★★ AS6 — les pistes. Une table, aucune fille. Le point est deux colonnes
+ * nullables comme pour `general_meetings` ; `null` est une vraie réponse.
+ */
+const leadMapping: Mapping<Lead> = {
+  table: 'leads',
+  children: [],
+  toRows: (l) => [
+    {
+      table: 'leads',
+      rows: [
+        {
+          id: l.id,
+          name: l.name,
+          contact_name: l.contactName,
+          phone: l.phone,
+          place: l.place,
+          lat: l.position?.lat ?? null,
+          lng: l.position?.lng ?? null,
+          region_id: l.regionId,
+          status: l.status,
+          notes: l.notes,
+          source: l.source,
+          raw: l.raw,
+          rank: l.rank,
+          converted_farm_id: l.convertedFarmId,
+          converted_at: l.convertedAt,
+          created_at: l.createdAt,
+          updated_at: l.updatedAt,
+        },
+      ],
+    },
+  ],
+  fromRows: (p): Lead => ({
+    id: str(p.id),
+    name: str(p.name),
+    contactName: str(p.contact_name),
+    phone: str(p.phone),
+    place: str(p.place),
+    position: typeof p.lat === 'number' && typeof p.lng === 'number' ? { lat: p.lat, lng: p.lng } : null,
+    regionId: typeof p.region_id === 'string' && p.region_id !== '' ? (p.region_id as Lead['regionId']) : null,
+    status: str(p.status) as Lead['status'],
+    notes: str(p.notes),
+    source: str(p.source) as Lead['source'],
+    raw: str(p.raw),
+    rank: typeof p.rank === 'number' ? p.rank : 0,
+    convertedFarmId: typeof p.converted_farm_id === 'string' ? p.converted_farm_id : null,
+    convertedAt: typeof p.converted_at === 'string' ? ts(p.converted_at) : null,
+    createdAt: ts(p.created_at),
+    updatedAt: ts(p.updated_at),
   }),
 }
 
@@ -1124,6 +1204,7 @@ const tourMapping: Mapping<Tour> = {
  */
 export const MAPPINGS: { [K in Collection]: Mapping<StoreData[K][number]> } = {
   farms: farmMapping,
+  leads: leadMapping,
   farmZones: farmZoneMapping,
   anchorPoints: anchorMapping,
   threatZones: threatZoneMapping,

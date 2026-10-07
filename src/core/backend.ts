@@ -7,6 +7,7 @@ import type {
   FarmZone,
   GeneralMeeting,
   Incident,
+  Lead,
   Mission,
   Session,
   ThreatVector,
@@ -42,6 +43,8 @@ import type {
 export interface StoreData {
   farms: Farm[]
   generalMeetings: GeneralMeeting[]
+  /** ★★ AS6 — les pistes : JAMAIS lues par un compteur (voir `Lead`). */
+  leads: Lead[]
   farmZones: FarmZone[]
   /** G18 — the coordinator-only threat layer. */
   threatZones: ThreatZone[]
@@ -65,6 +68,8 @@ export interface StoreData {
  */
 export const COLLECTIONS = [
   'farms',
+  /* AS6 — après `farms` (converted_farm_id), avant `generalMeetings` (lead_id). */
+  'leads',
   'farmZones',
   'anchorPoints',
   'threatZones',

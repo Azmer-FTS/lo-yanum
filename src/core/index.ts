@@ -167,3 +167,4 @@ export {
 export type { Locality, LocalityKind } from './gazetteer'
 
 export { configurePhotoPool, photoSource } from './photo'
+export * from './portalImport'

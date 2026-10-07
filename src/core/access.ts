@@ -1,4 +1,5 @@
 import { DAY, addDays, fromDayKey, isTonight, localDayKey, now } from './clock'
+import type { Lead } from './types'
 import type { AssociationInput } from './association'
 import { effectiveAreas, guardedDunamsOf, weightedDunams } from './fields'
 import { isTestId } from './testData'
@@ -644,6 +645,19 @@ export function getFarmVisit(visitId: string): FarmVisit | null {
  */
 export function getVisibleGeneralMeetings(): GeneralMeeting[] {
   return getSession().role === 'coordinator' ? _raw().generalMeetings : []
+}
+
+/**
+ * ★★ AS6 — les pistes de la salle d'attente : coordinateur seulement, et
+ * SANS celles qui sont devenues des fermes. Aucun compteur n'appelle ceci.
+ */
+export function getVisibleLeads(): Lead[] {
+  return getSession().role === 'coordinator' ? _raw().leads.filter((l) => !l.convertedFarmId) : []
+}
+
+/** Toutes, converties comprises — pour retrouver une piste depuis sa ferme. */
+export function getAllLeads(): Lead[] {
+  return getSession().role === 'coordinator' ? _raw().leads : []
 }
 
 export function getGeneralMeeting(meetingId: string): GeneralMeeting | null {

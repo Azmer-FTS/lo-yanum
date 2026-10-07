@@ -14,6 +14,7 @@ import type { SignaturePlan } from './signatures'
 import { buildTestData, isTestId } from './testData'
 import type { ProspectionPlan } from './prospection'
 import type { Tour } from './tours'
+import type { PortalPlan } from './portalImport'
 import type {
   Agreement,
   AnchorPoint,
@@ -36,6 +37,8 @@ import type {
   IncidentSeverity,
   IncidentSource,
   LatLng,
+  Lead,
+  LeadStatus,
   Mission,
   MissionAssignment,
   MissionDriver,
@@ -1293,6 +1296,8 @@ export interface GeneralMeetingDraft {
   position?: LatLng | null
   /** AF4.2 — l'alerte, en minutes avant. */
   remindMinutes?: number | null
+  /** AS6.6 — la piste dont il est né. */
+  leadId?: string | null
 }
 
 export function createGeneralMeeting(draft: GeneralMeetingDraft): GeneralMeeting {
@@ -2116,4 +2121,177 @@ export function removeProvidedDocument(farmId: string, id: ProvidedDocument['id'
   if (farm.providedDocuments.length === before) return false
   commit()
   return true
+}
+
+
+// ===========================================================================
+// ★★ AS6 (2026-10-07) — LES PISTES
+// ===========================================================================
+
+export type LeadDraft = Pick<Lead, 'name' | 'contactName' | 'phone' | 'place' | 'position' | 'regionId' | 'notes' | 'source' | 'raw'> &
+  Partial<Pick<Lead, 'status'>>
+
+/** Plusieurs pistes d'un coup (le bloc collé) — en TÊTE de « טרם התקשרתי ». */
+export function createLeads(drafts: readonly LeadDraft[]): Lead[] {
+  const stamp = iso(now())
+  const created = drafts.map((d, i): Lead => ({
+    id: nextId('lead'),
+    ...d,
+    status: d.status ?? 'not_called',
+    createdAt: stamp,
+    updatedAt: stamp,
+    rank: -drafts.length + i,
+    convertedFarmId: null,
+    convertedAt: null,
+  }))
+  data.leads = [...created, ...data.leads]
+  commit()
+  return created
+}
+
+export function updateLead(leadId: string, patch: Partial<Omit<Lead, 'id'>>): void {
+  const index = data.leads.findIndex((l) => l.id === leadId)
+  if (index === -1) return
+  data.leads[index] = { ...data.leads[index], ...patch, updatedAt: iso(now()) }
+  commit()
+}
+
+/**
+ * Déplacer une piste : vers une autre colonne (statut OU région), à un rang.
+ * Le même appel sert au glisser, aux flèches de 44 px et au menu de statut.
+ */
+export function moveLead(
+  leadId: string,
+  to: { status?: LeadStatus; regionId?: RegionId | null; before?: string | null },
+): void {
+  const lead = data.leads.find((l) => l.id === leadId)
+  if (!lead) return
+  const status = to.status ?? lead.status
+  const regionId = to.regionId === undefined ? lead.regionId : to.regionId
+  const column = data.leads
+    .filter((l) => l.id !== leadId && !l.convertedFarmId && l.status === status)
+    .sort((a, b) => a.rank - b.rank)
+  const at = to.before ? Math.max(0, column.findIndex((l) => l.id === to.before)) : column.length
+  const ordered = [...column.slice(0, at), lead, ...column.slice(at)]
+  const stamp = iso(now())
+  const ranks = new Map(ordered.map((l, i) => [l.id, i]))
+  data.leads = data.leads.map((l) => {
+    if (l.id === leadId) return { ...l, status, regionId, rank: ranks.get(l.id)!, updatedAt: stamp }
+    const r = ranks.get(l.id)
+    return r !== undefined && r !== l.rank ? { ...l, rank: r } : l
+  })
+  commit()
+}
+
+export function deleteLead(leadId: string): void {
+  data.leads = data.leads.filter((l) => l.id !== leadId)
+  data.generalMeetings = data.generalMeetings.map((m) => (m.leadId === leadId ? { ...m, leadId: null } : m))
+  commit()
+}
+
+/**
+ * ★★ AS6.6 — UNE PISTE DEVIENT UNE FERME SANS RESSAISIE. Nom, personne,
+ * téléphone, lieu, point, région, notes passent tels quels ; la piste garde
+ * l'identifiant de la fiche et QUITTE la salle d'attente (sans être effacée :
+ * c'est la trace d'où vient la fiche). Une piste « קבעתי פגישה » donne une
+ * fiche « נוצר קשר » ; toute autre, « טרם נוצר קשר ».
+ */
+export function convertLeadToFarm(leadId: string, fallbackPosition: LatLng): Farm | null {
+  const lead = data.leads.find((l) => l.id === leadId)
+  if (!lead || lead.convertedFarmId) return null
+  const farm = createFarm({
+    photo: null,
+    name: lead.name || lead.contactName,
+    locality: lead.place,
+    region: '',
+    regionId: lead.regionId,
+    type: 'unknown',
+    status: lead.status === 'meeting_set' || lead.status === 'call_back' ? 'contacted' : 'to_contact',
+    position: lead.position ?? fallbackPosition,
+    positionMissing: !lead.position,
+    farmDunams: 0,
+    grazingDunams: 0,
+    contacts: [],
+    commitments: [],
+    agreements: [],
+    notes: lead.notes,
+    farmerName: lead.contactName || undefined,
+    farmerPhone: lead.phone || undefined,
+  })
+  const stamp = iso(now())
+  data.leads = data.leads.map((l) => (l.id === leadId ? { ...l, convertedFarmId: farm.id, convertedAt: stamp, updatedAt: stamp } : l))
+  /* Ses rendez-vous suivent : une rencontre « avec la piste » devient une
+     rencontre avec la ferme, sans changer de nature (pas de visite inventée). */
+  commit()
+  return farm
+}
+
+/**
+ * ★★ AS1 — APPLIQUER LE PLAN DE L'EXPORT DU PORTAIL. Le plan a déjà tout
+ * décidé (`planPortalImport`, régimes d'AO) ; ceci ne fait qu'écrire.
+ * `acceptSigned` : les lignes dont le PO a coché « סמן כנחתם » (le fichier
+ * n'a pas de colonne de statut, la signature seule ne suffit pas à trancher —
+ * « משק שלם » est signée et « מוכן לחתימה » chez eux).
+ */
+export function applyPortalPlan(
+  plan: PortalPlan,
+  fallbackPosition: LatLng,
+  acceptSigned: ReadonlySet<number> = new Set(),
+): { updated: number; created: number; leads: number; converted: number } {
+  const out = { updated: 0, created: 0, leads: 0, converted: 0 }
+  const stamp = iso(now())
+  const newLeads: Lead[] = []
+  for (const action of plan.actions) {
+    if (action.kind === 'update') {
+      const i = data.farms.findIndex((f) => f.id === action.farmId)
+      if (i === -1) continue
+      const patch: Partial<Farm> = { ...action.patch }
+      if (acceptSigned.has(action.row.line) && !['signed', 'active'].includes(data.farms[i].status)) patch.status = 'signed'
+      if (Object.keys(patch).length === 0) continue
+      const previous = data.farms[i].status
+      data.farms[i] = { ...data.farms[i], ...patch }
+      data.farms[i].status = allowedStatus(previous, data.farms[i].status, data.farms[i])
+      out.updated++
+    } else if (action.kind === 'create-farm') {
+      const f = action.farm
+      const farm: Farm = {
+        id: nextId('farm'),
+        photo: null,
+        locality: '',
+        region: '',
+        regionId: null,
+        type: 'unknown',
+        contacts: [],
+        commitments: [],
+        agreements: [],
+        notes: '',
+        farmDunams: 0,
+        grazingDunams: 0,
+        lastVisitAt: null,
+        nextVisitAt: null,
+        ...f,
+        status: f.status ?? 'verbal_ok',
+        position: f.position ?? fallbackPosition,
+        positionMissing: !f.position,
+      } as Farm
+      farm.status = allowedStatus(null, farm.status, farm)
+      data.farms = [farm, ...data.farms]
+      out.created++
+    } else if (action.kind === 'farm-to-lead') {
+      if (!deletionPlan('entity', action.farmId).allowed) continue
+      newLeads.push({ ...action.lead, id: nextId('lead'), rank: newLeads.length })
+      data.farms = data.farms.filter((f) => f.id !== action.farmId)
+      out.converted++
+    } else if (action.kind === 'lead-update') {
+      const i = data.leads.findIndex((l) => l.id === action.leadId)
+      if (i === -1 || Object.keys(action.patch).length === 0) continue
+      data.leads[i] = { ...data.leads[i], ...action.patch, updatedAt: stamp }
+    } else if (action.kind === 'lead-create') {
+      newLeads.push({ ...action.lead, id: nextId('lead'), rank: newLeads.length })
+      out.leads++
+    }
+  }
+  if (newLeads.length) data.leads = [...newLeads, ...data.leads]
+  commit()
+  return out
 }

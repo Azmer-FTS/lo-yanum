@@ -145,9 +145,10 @@ check(
     'and between them they cover the schema',
     // PO POINT 6 added `entity_livestock`; ★★ AE3.3 added
     // `mission_checkpoints`. 28 tables in the schema, minus `app_users`, which
-    // is who a login speaks for rather than data the app writes.
-    tables.size === 27,
-    `${tables.size} tables (28 minus app_users, which is identity, not data)`,
+    // is who a login speaks for rather than data the app writes. ★★ AS6 added
+    // `leads` (the waiting room), hence 28.
+    tables.size === 28,
+    `${tables.size} tables (29 minus app_users, which is identity, not data)`,
   )
   check(
     'app_users is NOT one of them',
@@ -401,7 +402,7 @@ section('5 — every column the mapper writes exists, and every required one is 
   // the bare form silently stops seeing a table the moment somebody writes the
   // safer version of the same statement.
   for (const m of sql.matchAll(
-    /create table (?:if not exists )?(\w+)\s*\(([\s\S]*?)\n\);/g,
+    /create table (?:if not exists )?(?:public\.)?(\w+)\s*\(([\s\S]*?)\n\);/g,
   )) {
     const cols = columnsOf(m[1])
     for (const line of m[2].split('\n')) {

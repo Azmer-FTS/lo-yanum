@@ -681,6 +681,14 @@ export interface Farm {
    * quiconque ait demandé un papier.
    */
   providedDocuments?: ProvidedDocument[]
+  /**
+   * ★★ AS1.5 — LES CONTRATS DE DROIT SUR LA TERRE (הסכם רעיה/חכירה), EN FICHIERS.
+   * Ils arrivent du portail sous forme de LIEN : le navigateur ne peut pas les
+   * lire (leur S3 ne rend aucun en-tête CORS, mesuré), donc la fonction Edge
+   * `portal-document` les recopie dans le seau privé `agreements`. Une entrée
+   * `pending` est une file d'attente, pas un fichier.
+   */
+  landDocuments?: LandDocument[]
 
   /**
    * ★★ AG4.1 — LA PHOTO DE LA CARTE D'IDENTITÉ DU SIGNATAIRE.
@@ -761,6 +769,22 @@ export interface ProvidedDocument {
   pages?: number
 }
 
+
+/** ★★ AS1.5 — un contrat de terre rattaché à une fiche. */
+export interface LandDocument {
+  id: string
+  source: 'portal' | 'upload'
+  /** Le lien d'origine (portail), gardé : c'est la preuve de provenance. */
+  url: string | null
+  fileName: string
+  addedAt: string
+  /** `pending` = en file pour la fonction Edge ; `stored` = dans le seau. */
+  status: 'pending' | 'stored' | 'failed'
+  /** Clé dans le seau `agreements` une fois recopié. */
+  storageKey: string | null
+  size: number | null
+  error?: string | null
+}
 
 /** AA5.4 — how a farm came to be signed. */
 export interface SignatureOrigin {
@@ -1400,6 +1424,8 @@ export interface DashboardAlert {
  */
 export interface GeneralMeeting {
   id: string
+  /** ★ AS6.6 — la piste dont ce rendez-vous est né, s'il y en a une. */
+  leadId?: string | null
   title: string
   at: string
   endAt: string
@@ -1431,6 +1457,61 @@ export interface GeneralMeeting {
    * `src/ui/reminders.ts`.
    */
   remindMinutes?: number | null
+}
+
+// ---------------------------------------------------------------------------
+// ★★ AS6 (2026-10-07) — LES PISTES : DES CONTACTS, PAS DES EXPLOITATIONS
+// ---------------------------------------------------------------------------
+
+/**
+ * Où en est le PO avec une piste. Les cinq du brief, plus deux :
+ *  - `message_sent` « שלחתי הודעה » — le canal réel est WhatsApp ; un message
+ *    laissé n'est ni « pas appelé » ni « pas répondu » ;
+ *  - `not_now` « לא רלוונטי כרגע » — intéressé sur le principe, pas
+ *    maintenant (גד״ש להב a un gardien fixe). ≠ « לא מעוניין ».
+ * ⚠️ L'ORDRE EST CELUI DES COLONNES DU TABLEAU.
+ */
+export type LeadStatus =
+  | 'not_called'
+  | 'no_answer'
+  | 'message_sent'
+  | 'call_back'
+  | 'meeting_set'
+  | 'not_now'
+  | 'not_interested'
+
+/**
+ * ★★ AS6 — UNE PISTE N'EST PAS UNE FERME, ET C'EST TOUT L'OBJET DU TYPE.
+ * Elle vit dans `StoreData.leads`, jamais dans `farms` : aucun compteur
+ * (objectif, dounams, compte rendu, rapport d'activité) ne la voit, parce
+ * qu'aucun ne lit cette collection. Convertie, elle garde `convertedFarmId`
+ * et quitte la salle d'attente ; refusée, elle y reste, marquée.
+ */
+export interface Lead {
+  id: string
+  /** Le libellé : un lieu, une exploitation, sinon le nom de la personne. */
+  name: string
+  contactName: string
+  /** Format de l'app : `05X-XXXXXXX` quand c'est un mobile israélien. */
+  phone: string
+  /** Le lieu TEL QU'IL A ÉTÉ DIT — texte libre, souvent une localité. */
+  place: string
+  /** Le point, quand il est connu. `null` est une vraie réponse (AB3.4). */
+  position: LatLng | null
+  /** La région choisie à la main, pour une piste sans point. */
+  regionId: RegionId | null
+  status: LeadStatus
+  notes: string
+  /** D'où elle vient : collée, le portail, une ancienne fiche, la main. */
+  source: 'paste' | 'portal' | 'farm' | 'manual'
+  /** Le texte collé d'origine, au caractère près. */
+  raw: string
+  createdAt: string
+  updatedAt: string
+  /** Rang dans sa colonne (plus petit = plus haut). */
+  rank: number
+  convertedFarmId: string | null
+  convertedAt: string | null
 }
 
 /** D4 — one entry in the agenda, whatever kind of thing it is. */
