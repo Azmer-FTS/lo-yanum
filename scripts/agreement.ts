@@ -180,7 +180,7 @@ try {
   // ---- download ----------------------------------------------------------
   const [download] = await Promise.all([
     page.waitForEvent('download', { timeout: 15_000 }).catch(() => null),
-    page.locator('[data-testid="agreement-download"]').first().click(),
+    page.locator('[data-testid="agreement-download"]:visible').first().click(), // ★ AS5 — le visible : le bandeau de « החווה » est dans un onglet masqué
   ])
   /**
    * ★★ AF1.3 (2026-09-09) — LE NOM VIENT DÉSORMAIS DU DOCUMENT PRODUIT, PAS DE
