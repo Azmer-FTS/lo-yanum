@@ -305,12 +305,26 @@ export function ScrollRow({
  * and it costs 140 px of a column that is already a long read; the square
  * costs nothing, because the header row was that tall anyway.
  */
+/**
+ * ★★ AN6 · AS5.1 — LA BARRE ÉPINGLÉE D'UNE FICHE, UNE SEULE DÉFINITION.
+ * Collée en haut de ce qui défile, sous la coquille (`--shell-top`). Le
+ * `::before` remplit le rembourrage du panneau qui défile (20 px en tête) :
+ * sans lui le contenu passait, visible, au-dessus de la barre (AN6, capture à
+ * 1 376 px). L'édition (`farm-edit-sticky`) et la consultation (`farm-sticky`)
+ * la partagent.
+ */
+export const STICKY_BAR =
+  "sticky top-[var(--shell-top,0px)] z-20 -mx-[var(--content-pad,1rem)] border-b border-edge-subtle bg-surface-base px-[var(--content-pad,1rem)] before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-6 before:bg-surface-base before:content-['']"
+
 export function PageHeader({
   title,
   subtitle,
   actions,
   back,
   media,
+  sticky = false,
+  below,
+  testId,
 }: {
   title: ReactNode
   subtitle?: string
@@ -319,9 +333,14 @@ export function PageHeader({
   back?: { to: string; label: string }
   /** A square thumbnail of the record — its photo, or its initials. */
   media?: ReactNode
+  /** ★ AS5.1 — épinglé pendant le défilement (`STICKY_BAR`). */
+  sticky?: boolean
+  /** ★ AS5.2 — sous la ligne de titre, dans la barre : la rangée d'onglets. */
+  below?: ReactNode
+  testId?: string
 }) {
   return (
-    <header className="mb-6">
+    <header className={sticky ? `${STICKY_BAR} mb-4 pb-1 pt-2` : 'mb-6'} data-testid={testId} data-sticky-header={sticky ? '' : undefined}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         {/* ★★ AR3 (2026-09-26) — `flex-auto` ET NON `flex-1`, ET C'EST TOUTE LA
             CORRECTION. `flex-1` pose une base de 0 % : pour décider du retour
@@ -353,7 +372,7 @@ export function PageHeader({
             </span>
           )}
           <div className="min-w-0">
-            <h1 data-page-title="" className="text-title text-content-primary">
+            <h1 data-page-title="" className={`${sticky ? 'text-section sm:text-title' : 'text-title'} text-content-primary`}>
               {title}
             </h1>
             {subtitle && <p className="muted mt-1">{subtitle}</p>}
@@ -363,6 +382,7 @@ export function PageHeader({
           <div className="flex flex-wrap items-center gap-2">{actions}</div>
         )}
       </div>
+      {below}
     </header>
   )
 }

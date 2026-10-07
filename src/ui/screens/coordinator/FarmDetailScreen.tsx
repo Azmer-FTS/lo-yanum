@@ -98,6 +98,8 @@ import {
   Section,
   ScrollRow,
 } from '../../components/primitives'
+import { FARM_TABS, FarmTabRow, useFarmTab } from '../../farm/farmTabs'
+import { LandDocumentsSection } from '../../farm/LandDocumentsSection'
 import { useCoreValue } from '../../hooks/useCore'
 import { useHydrated } from '../../hooks/useDataState'
 import { useLocale } from '../../hooks/useLocale'
@@ -977,6 +979,23 @@ export function FarmDetailScreen() {
   const del = useConfirmDelete()
 
   const farm = useCoreValue(() => getFarm(farmId))
+  /* ★★ AS5 — l'onglet ouvert, retenu par fiche. */
+  const [tab, setTab] = useFarmTab(farmId)
+  /* Changer d'onglet après avoir défilé : le haut du panneau revient sous la
+     barre épinglée, sinon on arrive au milieu d'un autre contenu. */
+  const selectTab = (next: typeof tab): void => {
+    setTab(next)
+    requestAnimationFrame(() => {
+      const header = document.querySelector<HTMLElement>('[data-testid="farm-sticky"]')
+      const panel = document.getElementById(`farm-panel-${next}`)
+      if (!header || !panel) return
+      const h = header.getBoundingClientRect()
+      if (panel.getBoundingClientRect().top < h.bottom) {
+        panel.style.scrollMarginTop = `${h.height + 8}px`
+        panel.scrollIntoView({ block: 'start' })
+      }
+    })
+  }
   const anchors = useCoreValue(() => getAnchorPointsForFarm(farmId))
   const zones = useCoreValue(() => getFarmZonesForFarm(farmId))
   // G18 — attached to THIS farm plus everything free at map level. A threat
@@ -1148,14 +1167,20 @@ export function FarmDetailScreen() {
         {({ mode: mapMode, setMode: setMapMode }) => (
           <>
           <EnsureMapVisible armed={armZone !== null} mode={mapMode} setMode={setMapMode} />
+          {/* ★★ AS5.1 — L'EN-TÊTE ÉPINGLÉ. C'est celui d'AN6 (mêmes classes,
+              `STICKY_BAR`), complété : le nom de la ferme, l'AGRICULTEUR, les
+              actions principales, et la rangée d'onglets dessous. */}
           <PageHeader
+            sticky
+            testId="farm-sticky"
             title={farm.name}
-            subtitle={`${farm.locality} · ${farm.region}`}
+            subtitle={[farm.farmerName || t('people.noFarmer'), farm.locality].filter(Boolean).join(' · ')}
+            below={<FarmTabRow tabs={FARM_TABS} active={tab} onSelect={selectTab} idPrefix="farm" />}
             back={{ to: '/coordinator/farms', label: t('farms.title') }}
             /* X4.1 — the picture he tapped in the roster, so the sheet is
                recognisably the place he came from. */
             media={
-              <Avatar photo={farm.photo} name={farm.name} size="lg" shape="square" />
+              <Avatar photo={farm.photo} name={farm.name} size="md" shape="square" />
             }
             /* ★ W6 — THE THREE ACTIONS ARE ONE PILL. See `ActionPill`: three
                skins for one idea, wrapping to two rows on an iPad in
@@ -1280,6 +1305,15 @@ export function FarmDetailScreen() {
               </div>
             )}
 
+            {/* ★★ AS5 — onglet « farm ». */}
+            <div
+              role="tabpanel"
+              id="farm-panel-farm"
+              aria-labelledby="farm-tab-farm"
+              data-testid="farm-panel-farm"
+              hidden={tab !== 'farm'}
+              className={tab === 'farm' ? 'flex flex-col gap-4' : 'hidden'}
+            >
             {/* ★★ AK4 · AK5 — LE PAPIER DE LA FERME, EN TÊTE DE LA FICHE : l'accord
                 de l'association (signé ou non, et le bouton qui ouvre le
                 formulaire) et les documents de droit sur la terre. */}
@@ -1300,32 +1334,171 @@ export function FarmDetailScreen() {
 
             <FarmIdentity farm={farm} />
 
+            </div>
+
+            {/* ★★ AS5 — onglet « people ». */}
+            <div
+              role="tabpanel"
+              id="farm-panel-people"
+              aria-labelledby="farm-tab-people"
+              data-testid="farm-panel-people"
+              hidden={tab !== 'people'}
+              className={tab === 'people' ? 'flex flex-col gap-4' : 'hidden'}
+            >
             {/* ★★ AM2 · AM3 — les personnes, juste après « פרטים », comme dans
                 l'édition. */}
             <FarmPeople farm={farm} />
 
             <FarmEmergencyInfo farm={farm} />
 
-            {/* G14c — the recent-activity strip moved up from the fold: "what
-                has been going on here" is the second question after the
-                numbers, not an appendix. */}
-            <Section
-              title={t('timeline.farmActivity')}
-              collapseKey="entity-activity"
-              defaultOpen={false}
-              summary={
-                lastActivityAt
-                  ? formatRelative(lastActivityAt, locale)
-                  : t('timeline.noActivity')
-              }
-            >
-              {activity.length === 0 ? (
-                <EmptyState icon="history" title={t('timeline.noActivity')} />
-              ) : (
-                <Timeline withDate entries={activity} />
-              )}
-            </Section>
+            </div>
 
+            {/* ★★ AS5 — onglet « guards ». */}
+            <div
+              role="tabpanel"
+              id="farm-panel-guards"
+              aria-labelledby="farm-tab-guards"
+              data-testid="farm-panel-guards"
+              hidden={tab !== 'guards'}
+              className={tab === 'guards' ? 'flex flex-col gap-4' : 'hidden'}
+            >
+            <div className="panel-scope">
+            <div className="pair-grid">
+          {/**
+            * ═══════════════════════════════════════════════════════════════
+            * ★★ AC4.1 · AC4.2 — CE QUE CETTE FERME A REÇU, ET CE QU'ELLE PEUT
+            *    RECEVOIR.
+            * ═══════════════════════════════════════════════════════════════
+            *
+            * Three figures, above the history rather than inside it, because
+            * the question they answer is asked BEFORE the list is read: has
+            * this farm been served, when last, and is there anybody to send.
+            *
+            * ⚠️ « מתנדבים זמינים » IS A REGIONAL FIGURE AND SAYS SO. Two
+            *    neighbouring farms share a vivier and will show the same
+            *    number; the hint states it, because a coordinator who reads
+            *    it as « ces gens sont à cette ferme » would double-count.
+            */}
+          <Section
+            title={t('farms.coverageTitle')}
+            collapseKey="entity-coverage"
+            summary={
+              coverage.lastGuardAt
+                ? formatDate(coverage.lastGuardAt, locale)
+                : t('farms.neverGuarded')
+            }
+          >
+            <dl className="auto-cols gap-3 [--col-min:9rem]" data-testid="farm-coverage">
+              <div>
+                <dt className="muted">{t('farms.guardsCount')}</dt>
+                <dd
+                  data-testid="coverage-guards"
+                  data-guards={coverage.guards}
+                  className="numeric ltr-nums text-heading font-semibold text-content-primary"
+                >
+                  {coverage.guards.toLocaleString(locale)}
+                </dd>
+              </div>
+              <div>
+                <dt className="muted">{t('farms.volunteeringCount')}</dt>
+                <dd className="numeric ltr-nums text-heading font-semibold text-content-primary">
+                  {coverage.volunteering.toLocaleString(locale)}
+                </dd>
+              </div>
+              <div>
+                <dt className="muted">{t('farms.lastGuard')}</dt>
+                <dd
+                  data-testid="coverage-last"
+                  className="ltr-nums text-heading font-semibold text-content-primary"
+                >
+                  {coverage.lastGuardAt
+                    ? formatDate(coverage.lastGuardAt, locale)
+                    : t('farms.neverGuarded')}
+                </dd>
+              </div>
+              <div>
+                <dt className="muted">{t('farms.availableVolunteers')}</dt>
+                <dd
+                  data-testid="coverage-available"
+                  data-available={available}
+                  className="numeric ltr-nums text-heading font-semibold text-content-primary"
+                >
+                  {available.toLocaleString(locale)}
+                </dd>
+              </div>
+            </dl>
+            <p className="muted mt-2">{t('farms.availableVolunteersHint')}</p>
+          </Section>
+
+          <Section
+            title={t('farms.guardHistory')}
+            collapseKey="entity-guards"
+            summary={t('blocks.guards', { count: missions.length })}
+          >
+            {missions.length === 0 ? (
+              <EmptyState icon="shield" title={t('missions.empty')} />
+            ) : (
+              <ul className="divide-y divide-edge-subtle">
+                {missions.map((view) => (
+                  <li key={view.mission.id}>
+                    <RowLink to={`/coordinator/missions/${view.mission.id}`}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="ltr-nums text-caption font-medium text-content-primary">
+                          {formatDate(view.mission.startAt, locale)}
+                        </span>
+                        <MissionStatusChip status={view.mission.status} />
+                      </div>
+                      <p className="muted mt-0.5">
+                        {view.anchorPoint.name} ·{' '}
+                        {view.volunteers.map((v) => v.volunteer.name).join(', ')}
+                      </p>
+                    </RowLink>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+
+          <Section
+            title={t('farms.recentIncidents')}
+            collapseKey="entity-incidents"
+            summary={t('blocks.incidents', { count: incidents.length })}
+          >
+            {incidents.length === 0 ? (
+              <EmptyState icon="alert" title={t('incidents.empty')} />
+            ) : (
+              <ul className="divide-y divide-edge-subtle">
+                {incidents.slice(0, 4).map(({ incident }) => (
+                  <li key={incident.id}>
+                    <RowLink to={`/coordinator/incidents/${incident.id}`}>
+                      <div className="flex items-center gap-2">
+                        <SeverityChip severity={incident.severity} />
+                        <span className="ltr-nums text-micro text-content-muted">
+                          {formatDateTime(incident.reportedAt, locale)}
+                        </span>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-caption text-content-secondary">
+                        {incident.description}
+                      </p>
+                    </RowLink>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+            </div>
+            </div>
+            </div>
+
+            {/* ★★ AS5 — onglet « terrain ». */}
+            <div
+              role="tabpanel"
+              id="farm-panel-terrain"
+              aria-labelledby="farm-tab-terrain"
+              data-testid="farm-panel-terrain"
+              hidden={tab !== 'terrain'}
+              className={tab === 'terrain' ? 'flex flex-col gap-4' : 'hidden'}
+            >
             <Section
             title={t('farms.anchorPoints')}
             collapseKey="entity-posts"
@@ -1474,141 +1647,24 @@ export function FarmDetailScreen() {
             currentFarmId={farm.id}
           />
 
-          {/* P0bis.3b — THE LOWER HALF PAIRS UP. Guard history, incidents,
-              contacts, commitments, the agreement and the visits are each a
-              short list; stacked they turn the panel into five screenfuls of
-              mostly-empty column. They go two per row as soon as the panel can
-              hold two, which — the panel being draggable now — is a question
-              only the panel can answer. */}
-          <div className="panel-scope">
+            </div>
+
+            {/* ★★ AS5 — onglet « docs ». */}
+            <div
+              role="tabpanel"
+              id="farm-panel-docs"
+              aria-labelledby="farm-tab-docs"
+              data-testid="farm-panel-docs"
+              hidden={tab !== 'docs'}
+              className={tab === 'docs' ? 'flex flex-col gap-4' : 'hidden'}
+            >
+            <div className="panel-scope">
             <div className="pair-grid">
-          {/**
-            * ═══════════════════════════════════════════════════════════════
-            * ★★ AC4.1 · AC4.2 — CE QUE CETTE FERME A REÇU, ET CE QU'ELLE PEUT
-            *    RECEVOIR.
-            * ═══════════════════════════════════════════════════════════════
-            *
-            * Three figures, above the history rather than inside it, because
-            * the question they answer is asked BEFORE the list is read: has
-            * this farm been served, when last, and is there anybody to send.
-            *
-            * ⚠️ « מתנדבים זמינים » IS A REGIONAL FIGURE AND SAYS SO. Two
-            *    neighbouring farms share a vivier and will show the same
-            *    number; the hint states it, because a coordinator who reads
-            *    it as « ces gens sont à cette ferme » would double-count.
-            */}
-          <Section
-            title={t('farms.coverageTitle')}
-            collapseKey="entity-coverage"
-            summary={
-              coverage.lastGuardAt
-                ? formatDate(coverage.lastGuardAt, locale)
-                : t('farms.neverGuarded')
-            }
-          >
-            <dl className="auto-cols gap-3 [--col-min:9rem]" data-testid="farm-coverage">
-              <div>
-                <dt className="muted">{t('farms.guardsCount')}</dt>
-                <dd
-                  data-testid="coverage-guards"
-                  data-guards={coverage.guards}
-                  className="numeric ltr-nums text-heading font-semibold text-content-primary"
-                >
-                  {coverage.guards.toLocaleString(locale)}
-                </dd>
-              </div>
-              <div>
-                <dt className="muted">{t('farms.volunteeringCount')}</dt>
-                <dd className="numeric ltr-nums text-heading font-semibold text-content-primary">
-                  {coverage.volunteering.toLocaleString(locale)}
-                </dd>
-              </div>
-              <div>
-                <dt className="muted">{t('farms.lastGuard')}</dt>
-                <dd
-                  data-testid="coverage-last"
-                  className="ltr-nums text-heading font-semibold text-content-primary"
-                >
-                  {coverage.lastGuardAt
-                    ? formatDate(coverage.lastGuardAt, locale)
-                    : t('farms.neverGuarded')}
-                </dd>
-              </div>
-              <div>
-                <dt className="muted">{t('farms.availableVolunteers')}</dt>
-                <dd
-                  data-testid="coverage-available"
-                  data-available={available}
-                  className="numeric ltr-nums text-heading font-semibold text-content-primary"
-                >
-                  {available.toLocaleString(locale)}
-                </dd>
-              </div>
-            </dl>
-            <p className="muted mt-2">{t('farms.availableVolunteersHint')}</p>
-          </Section>
-
-          <Section
-            title={t('farms.guardHistory')}
-            collapseKey="entity-guards"
-            summary={t('blocks.guards', { count: missions.length })}
-          >
-            {missions.length === 0 ? (
-              <EmptyState icon="shield" title={t('missions.empty')} />
-            ) : (
-              <ul className="divide-y divide-edge-subtle">
-                {missions.map((view) => (
-                  <li key={view.mission.id}>
-                    <RowLink to={`/coordinator/missions/${view.mission.id}`}>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="ltr-nums text-caption font-medium text-content-primary">
-                          {formatDate(view.mission.startAt, locale)}
-                        </span>
-                        <MissionStatusChip status={view.mission.status} />
-                      </div>
-                      <p className="muted mt-0.5">
-                        {view.anchorPoint.name} ·{' '}
-                        {view.volunteers.map((v) => v.volunteer.name).join(', ')}
-                      </p>
-                    </RowLink>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-
-          <Section
-            title={t('farms.recentIncidents')}
-            collapseKey="entity-incidents"
-            summary={t('blocks.incidents', { count: incidents.length })}
-          >
-            {incidents.length === 0 ? (
-              <EmptyState icon="alert" title={t('incidents.empty')} />
-            ) : (
-              <ul className="divide-y divide-edge-subtle">
-                {incidents.slice(0, 4).map(({ incident }) => (
-                  <li key={incident.id}>
-                    <RowLink to={`/coordinator/incidents/${incident.id}`}>
-                      <div className="flex items-center gap-2">
-                        <SeverityChip severity={incident.severity} />
-                        <span className="ltr-nums text-micro text-content-muted">
-                          {formatDateTime(incident.reportedAt, locale)}
-                        </span>
-                      </div>
-                      <p className="mt-1 line-clamp-2 text-caption text-content-secondary">
-                        {incident.description}
-                      </p>
-                    </RowLink>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
 
           <Section
             title={t('commitment.title')}
             collapseKey="entity-commitments"
-            defaultOpen={false}
+            defaultOpen /* AS5 — seul dans son onglet */
             summary={t('blocks.commitments', {
               count: farm.commitments.length,
               done: farm.commitments.filter((c) => c.fulfilled).length,
@@ -1664,7 +1720,7 @@ export function FarmDetailScreen() {
           <Section
             title={t('farms.agreements')}
             collapseKey="entity-agreements"
-            defaultOpen={false}
+            defaultOpen /* AS5 — seul dans son onglet */
             summary={t('blocks.agreements', { count: farm.agreements.length })}
           >
             {/**
@@ -1765,10 +1821,28 @@ export function FarmDetailScreen() {
             )}
           </Section>
 
+          {/* ★★ AS1.5 — les contrats de terre venus du portail. */}
+          <LandDocumentsSection farm={farm} />
+
+            </div>
+            </div>
+            </div>
+
+            {/* ★★ AS5 — onglet « log ». */}
+            <div
+              role="tabpanel"
+              id="farm-panel-log"
+              aria-labelledby="farm-tab-log"
+              data-testid="farm-panel-log"
+              hidden={tab !== 'log'}
+              className={tab === 'log' ? 'flex flex-col gap-4' : 'hidden'}
+            >
+            <div className="panel-scope">
+            <div className="pair-grid">
           <Section
             title={t('common.notes')}
             collapseKey="entity-notes"
-            defaultOpen={false}
+            defaultOpen /* AS5 — seul dans son onglet */
             summary={farm.notes ? farm.notes.split('\n')[0] : t('common.none')}
           >
             <p className="whitespace-pre-line text-caption leading-relaxed text-content-secondary">
@@ -1779,7 +1853,7 @@ export function FarmDetailScreen() {
           <Section
             title={t('agenda.visits')}
             collapseKey="entity-visits"
-            defaultOpen={false}
+            defaultOpen /* AS5 — seul dans son onglet */
             summary={t('blocks.visits', { count: visits.length })}
             action={
               <button
@@ -1829,8 +1903,30 @@ export function FarmDetailScreen() {
               </ul>
             )}
           </Section>
-          </div>
-          </div>
+            {/* G14c — the recent-activity strip moved up from the fold: "what
+                has been going on here" is the second question after the
+                numbers, not an appendix. */}
+            <Section
+              title={t('timeline.farmActivity')}
+              collapseKey="entity-activity"
+              defaultOpen /* AS5 — seul dans son onglet */
+              summary={
+                lastActivityAt
+                  ? formatRelative(lastActivityAt, locale)
+                  : t('timeline.noActivity')
+              }
+            >
+              {activity.length === 0 ? (
+                <EmptyState icon="history" title={t('timeline.noActivity')} />
+              ) : (
+                <Timeline withDate entries={activity} />
+              )}
+            </Section>
+
+            </div>
+            </div>
+            </div>
+
           </div>
           </>
         )}

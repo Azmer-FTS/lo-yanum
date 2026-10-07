@@ -69,7 +69,9 @@ import {
   TextField,
   isValidPhone,
 } from '../../components/fields'
-import { PageHeader } from '../../components/primitives'
+import { PageHeader, STICKY_BAR } from '../../components/primitives'
+import { FARM_FORM_TABS, FarmTabRow } from '../../farm/farmTabs'
+import type { FarmTab } from '../../farm/farmTabs'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
@@ -387,8 +389,49 @@ function PersonEditor({
   )
 }
 
+/** ★ AS5.6 — le premier bloc de chaque onglet, dans l'édition. */
+const FORM_GROUP_START: Record<FarmTab, string> = {
+  farm: 'farm-block-identity',
+  people: 'farm-block-people',
+  guards: '',
+  terrain: '',
+  docs: 'farm-block-commitments',
+  log: 'farm-block-notes',
+}
+
 export function FarmFormScreen() {
   const { t } = useTranslation()
+  /* ★★ AS5.6 — la rangée d'onglets de l'édition : où est-on, et y aller. */
+  const [formTab, setFormTab] = useState<FarmTab>('farm')
+  const jumpTo = (tab: FarmTab): void => {
+    setFormTab(tab)
+    const el = document.querySelector<HTMLElement>(`[data-testid="${FORM_GROUP_START[tab]}"]`)
+    if (!el) return
+    const bar = document.querySelector<HTMLElement>('[data-testid="farm-edit-sticky"]')
+    el.style.scrollMarginTop = `${(bar?.getBoundingClientRect().height ?? 0) + 16}px`
+    el.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }
+  useEffect(() => {
+    let raf = 0
+    const onScroll = (): void => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        const bar = document.querySelector<HTMLElement>('[data-testid="farm-edit-sticky"]')
+        const limit = (bar?.getBoundingClientRect().bottom ?? 0) + 24
+        let current: FarmTab = 'farm'
+        for (const tab of FARM_FORM_TABS) {
+          const el = document.querySelector<HTMLElement>(`[data-testid="${FORM_GROUP_START[tab]}"]`)
+          if (el && el.getBoundingClientRect().top <= limit) current = tab
+        }
+        setFormTab(current)
+      })
+    }
+    document.addEventListener('scroll', onScroll, true)
+    return () => {
+      cancelAnimationFrame(raf)
+      document.removeEventListener('scroll', onScroll, true)
+    }
+  }, [])
   const locale = useLocale()
   const navigate = useNavigate()
   const { farmId } = useParams()
@@ -896,8 +939,9 @@ export function FarmFormScreen() {
         /* Un élément collant s'arrête au REMBOURRAGE du panneau qui défile (20 px en
            tête) : le `::before` remplit cet interstice, sinon le formulaire y
            passait, visible au-dessus de l'en-tête (vu sur capture à 1 376 px). */
-        className="sticky top-[var(--shell-top,0px)] z-20 -mx-[var(--content-pad,1rem)] mb-4 flex items-center gap-3 border-b border-edge-subtle bg-surface-base px-[var(--content-pad,1rem)] py-2 before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-6 before:bg-surface-base before:content-['']"
+        className={`${STICKY_BAR} mb-4 py-2`}
       >
+        <div className="flex items-center gap-3">
         <Avatar photo={photo} name={name || '—'} size="md" shape="square" />
         <div className="min-w-0 flex-1">
           <p data-testid="farm-edit-sticky-name" className="truncate text-caption font-semibold text-content-primary">
@@ -916,6 +960,11 @@ export function FarmFormScreen() {
           <Icon name="edit" size={15} />
           {t('agreement.signNow')}
         </button>
+        </div>
+        {/* ★★ AS5.6 — la MÊME rangée que la fiche, aux mêmes intitulés et dans
+            le même ordre (AM3) ; ici elle AMÈNE au groupe au lieu de filtrer :
+            un formulaire garde tous ses champs montés (validation, focus). */}
+        <FarmTabRow tabs={FARM_FORM_TABS} active={formTab} onSelect={jumpTo} idPrefix="farm-edit" />
       </div>
 
       {/**
