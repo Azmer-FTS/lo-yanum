@@ -104,6 +104,24 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- ⏳ **PASSE AS EN COURS** (2026-10-07) — brief : import du portail, sync des
+  réglages, fiche en onglets, salle d'attente des pistes. Ordre AS1 → AS8.
+  - ✅ **AS1–AS3 faits et APPLIQUÉS sur `lo-yanum-prod`** (commit `5c3016a`) :
+    `src/core/portalImport.ts` (pur), `scripts/asdata.ts`, porte
+    `bun run aspass` (55/55). Base : 19 fermes, **6 pistes** (table `leads`),
+    10 signatures (md5 vérifiés), 4 contrats recopiés par la fonction Edge
+    `portal-document` dans `agreements/land/<fiche>/…pdf`. `farm-ak1-06`
+    (ex-אורחאן) = **החווה של צביקה**. Migrations `20261007000100/000200` +
+    jalons `20261007120823/120958` : `armigrations` 37/37, 62/62.
+  - ⚠️ **LE DÉPÔT EST PUBLIC** : le vrai CSV et l'instantané de la base sont
+    dans `private/` (ignoré par git). Ne jamais les commiter.
+  - ⏳ Reste : AS4 (réglages), AS5 (onglets), AS6 (écran des pistes + collage
+    + carte + rendez-vous + conversion), écran d'import du portail dans
+    l'app, AS7 (adresse), AS8 (portes UI + déployé + captures), rapport.
+  - ℹ️ `bun run persist` : 1 rouge PRÉ-EXISTANT (`markIntakeHandled` non
+    piloté) — identique sur `de948a6` (vérifié dans un worktree).
+
+
 - **Passe AR TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-09-27) — commit de CODE
   vérifié et servi : **`0bd2cb5`** (les commits suivants : documentation seule).
   Le formulaire public
