@@ -119,7 +119,14 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
     clé, `__stamps` dans le bloc), `data/settings.ts` (écriture conditionnelle),
     `SettingsSyncNotice`. Porte `bun run assettings` 18/18 local ; **rouge
     8/18 sur le déployé 0bd2cb5** (`docs/as/as4-rouge-deploye-0bd2cb5.log`).
-  - ⏳ Reste : AS5 (onglets), AS6 (écran des pistes + collage
+  - ✅ **AS5 fait** (`0464281`) : `src/ui/farm/farmTabs.tsx`, `STICKY_BAR`
+    partagé (primitives), `LandDocumentsSection`. arfiche 144, amui 77, aqui 118, akui 119.
+  - ✅ **AS6 + écran d'import fait** (`73bd885`) : `core/leads.ts`,
+    `LeadsScreen.tsx` (`/coordinator/leads`), `PortalImportScreen.tsx`
+    (`/coordinator/import/portal`, menu ⋯ des fermes). aspass 84, persist 117.
+  - ⏳ Reste : AS7 (réponse bureau), AS8 (`scripts/asui.ts` à écrire :
+    A291–A297 + captures ; build local puis DÉPLOYÉ), docs, push, rapport.
+  - ⏳ (ancien) Reste : AS5 (onglets), AS6 (écran des pistes + collage
     + carte + rendez-vous + conversion), écran d'import du portail dans
     l'app, AS7 (adresse), AS8 (portes UI + déployé + captures), rapport.
   - ℹ️ `bun run persist` : 1 rouge PRÉ-EXISTANT (`markIntakeHandled` non
