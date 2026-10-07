@@ -1,5 +1,171 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AT — SYNCHRONISATION, SALLE D'ATTENTE REPENSÉE, ONGLETS, SIGNATURE. 2026-10-07. LIRE EN PREMIER.**
+>
+> Ordre suivi : AT1 → AT2 → AT4 → AT5 → AT6 → AT7 → AT3 → AT8 → AT9 → AT10.
+>
+> ## AT1 — LA SYNCHRONISATION : MESURÉE SUR LES DEUX APPAREILS DU PO
+>
+> Pas de session fabriquée, pas de mot de passe : `auth.sessions` et les
+> journaux de la passerelle (`edge_logs`, avec l'identifiant de session de
+> chaque jeton) racontent requête par requête ce que l'iPhone (`d607b989…`) et
+> l'iPad (`c13e9f13…`, qui s'annonce comme un Mac — c'est iPadOS) ont fait le
+> 2026-10-07. Récit complet : `docs/at/at1-synchronisation.md`.
+> - Un seul compte ; la ligne `user_settings` existe et porte nom, téléphone,
+>   « רכז דרום » (écrite par l'iPhone à 15:06:53). Avant 15:05 : AUCUNE ligne.
+> - L'iPad (mis à jour) a créé la ligne à 15:05:49 avec ses valeurs vides, l'a
+>   relue à 15:06:08 ; l'iPhone a écrit 45 s APRÈS ; l'iPad, posé écran allumé,
+>   n'a plus jamais relu : rien ne déclenchait de lecture sans « retour en
+>   avant-plan ». La porte d'AS4 SIMULAIT ce retour (`resume()`) : elle
+>   mesurait un événement que la réalité n'a pas produit.
+> - « העדכון לא נקלט » était FAUX : `b632ace` (documentation) publié 27 s
+>   avant que le PO touche « עדכון עכשיו » sur l'offre `0b97ed4` ; l'iPad s'est
+>   rechargé sur le PLUS récent et la règle exigeait l'égalité stricte.
+> - Remèdes : battement de cœur de 30 s page visible (question légère sur
+>   `updated_at`, la ligne entière — 207 ko à cause du logo — seulement si elle a
+>   changé) ; relecture des DONNÉES toutes les 3 min ; session lue sur
+>   l'appareil (`getSession`) ; délai de 12 s sur chaque requête de réglages ;
+>   erreurs nommées ; panneau « סנכרון בין מכשירים » (הגדרות) : heure, résultat,
+>   ce qui est descendu, ce qui est monté, l'erreur en mots ; « סנכרון עכשיו »
+>   relit aussi les données ; verdict de mise à jour = « le code a changé ».
+> - Porte `bun run atsync` (A298) : la séquence réelle rejouée SANS aucun
+>   événement de retour. Déployé d'avant (`b632ace`) : **6 PASS / 11 FAIL**
+>   (`docs/at/at1-rouge-deploye-b632ace.log`, « rien après 45 s : {} »).
+>
+> ## AT2 — LA SALLE D'ATTENTE REPENSÉE
+>
+> Une LISTE verticale (plus de colonnes) ; en tête une rangée d'ONGLETS de
+> filtre comptés (הכול · חדש · ממתין · לחזור · פגישה) ; sur chaque ligne, les
+> cinq statuts toujours visibles en sélecteur segmenté — un toucher, la ligne
+> ne bouge pas, le compte de l'onglet visé monte, « ביטול » 8 s. « לא
+> רלוונטי » et « הפכו לחוות » repliés en bas. Appeler / WhatsApp : un geste ;
+> rendez-vous, conversion, suppression : menu « ⋯ ». Conversion et
+> suppression : CONFIRMATION, puis « ביטול » ; une conversion d'hier s'annule
+> depuis « הפכו לחוות » (`revertLeadConversion`, par la règle de suppression
+> commune : refus nommé si la ferme a déjà des données).
+> Cinq statuts au lieu de sept (`message_sent` → `no_answer` « ממתין
+> לתשובה », `not_interested` → `not_now` « לא רלוונטי ») ; la contrainte
+> de la base garde les anciens (appareils pas à jour), l'app les replie.
+> Tris : plus récent (défaut), mis à jour, א–ת, région.
+> **Réparé sur `lo-yanum-prod`** : la conversion accidentelle de 15:15:25 était
+> « **גד״ש דביר** » (`lead-as-ak1-01` → `farm-muy91mrb-1`). La ferme (0 ligne
+> fille dans 14 tables, sauvegardée dans `private/at/`) est supprimée ; la
+> piste reste, statut « ממתין » (le « שלחתי הודעה » que le PO lui a donné à
+> 15:19). ⚠️ À 15:19 un appareil qui ignorait la conversion a réécrit la piste
+> ENTIÈRE (lien de conversion effacé) : une piste s'écrit en ligne complète.
+>
+> ## AT3 — WHATSAPP
+>
+> Réponse au PO dans le rapport (pas d'accès aux conversations personnelles ;
+> le chemin praticable : « Partager » une carte de contact vers l'app, via le
+> Web Share Target d'une PWA installée — Android seulement ; sur iPhone un
+> Raccourci). Rien construit. Le collage reconnaît désormais : carte vCard
+> (ORG = exploitation, FN = personne, `item1.TEL`, EMAIL, lignes repliées),
+> fiches étiquetées (« שם: / חווה: / טלפון: / ישוב: / מייל: »), le « ~ » des
+> inconnus, un courriel n'importe où → champ courriel (colonne `leads.email`).
+> L'aperçu est une fiche de contact (initiales, nom, personne, téléphone,
+> courriel, lieu).
+>
+> ## AT4 — DE VRAIS ONGLETS
+>
+> `ui/components/TabBar.tsx` : rangée pleine largeur posée sur un trait,
+> chaque onglet s'élargit, l'actif souligné 3 px ; jamais de `filter-pill`.
+> Fiche, édition, filtres des pistes, import. L'onglet « שמירות » est cyan vif
+> et porte un point rouge quand une alerte de la ferme attend (`getAlerts`).
+> Tous les blocs dépliés par défaut (le pli mémorisé du PO prime).
+>
+> ## AT5 — LA BARRE QUI DOUBLAIT
+>
+> `PageHeader` : rangée `nowrap`. Les actions se REPLIENT en « ⋯ » quand le
+> nom entier et la pilule ne tiennent plus ensemble (mesuré par
+> `ResizeObserver`, largeur naturelle du nom sur un clone) ; si le nom ne tient
+> toujours pas, c'est LUI qui prend une 2ᵉ ligne (AR3 : le nom reste entier).
+> Barre épinglée de la fiche : 117 px à 402, 120 px à 1032/1376 (titre +
+> onglets), contre deux lignes d'icônes avant. Balayage A304 sur neuf écrans ×
+> trois largeurs.
+>
+> ## AT6 — LA FENÊTRE DE SIGNATURE
+>
+> (`AssociationFormModal`, « la seule fenêtre de signature ».) Logo : la marque
+> fait 2:1 et vivait dans une boîte carrée de 32 px (16 px de haut) → 112 × 56
+> (160 × 80 sur iPad) ; titre plus grand ; zone d'encre = 30 % de la colonne au plus
+> (avant : TOUTE la hauteur restante, jusqu'à 640 px), cédant d'abord pour que
+> la déclaration reste entière (AN5) ; déclaration en 20 px sur iPad ; bloc
+> texte + signature centré. Le nom
+> de la ferme se corrige sur place : depuis la fiche → `correctFarmName`
+> (base) ; depuis l'édition → le brouillon (`correctedNames`), enregistré avec
+> la signature. PDF : plafond du logo 46 → 84 pt.
+>
+> ## AT7 — LE MENU DU TÉLÉPHONE
+>
+> Grille plein écran de tuiles carrées (3 colonnes, 4 au-delà de 640 px),
+> icône au centre, libellé dessous, dix teintes distinctes — uniquement des
+> paires « encre sur 15 % » déjà mesurées par `contrast` ; A306 remesure au
+> rendu (≥ 4,5:1).
+>
+> ## AT8 — LES DONNÉES
+>
+> Migration `20261007000300_at_leads_email_portal_values.sql` (jalon MCP
+> `20261007174333`) : `leads.email` ; statuts repliés ; מרגי `21985189` ; רוחמה
+> « רן ». Statuts de signature : la base correspond déjà à la capture du
+> portail (9 נחתם, 10 מוכן לחתימה — חוות ניסים reste « בהמתנה », choix du PO).
+> L'import ne fait plus cocher ligne par ligne. Un courriel trouvé dans
+> n'importe quelle cellule va au champ courriel. Adresse libre : NON (le יישוב
+> + l'épingle situent ; « גישה לאתר » porte les indications).
+>
+> ## AT9 — ⛔ DÉPÔT NON RENDU PRIVÉ
+>
+> Le compte GitHub Azmer-FTS est au forfait GRATUIT (sonde : « Your current
+> plan does not support GitHub Pages for this repository », 422, rien
+> modifié). Rendre le dépôt privé DÉPUBLIE automatiquement les trois adresses.
+> Non fait ; solutions dans « Questions ouvertes » 0-AT.
+>
+> ## AT10 — PORTES
+>
+> **Déployé et servi : `c50cadd`** (code d'AT : `ee4ecb0` + `c50cadd`). Vérifié
+> SUR LE DÉPLOYÉ : `atsync` **17/17** (rouge **6/11** sur `b632ace`,
+> `docs/at/at1-rouge-deploye-b632ace.log`), `atui` **202/202** avec captures
+> clair/sombre × 402/1032/1376 (`docs/screenshots/atpass/deployed/`) — rouge
+> **53 PASS / 41 FAIL** sur le build de `b632ace` (`docs/at/atui-rouge-avant-b632ace.log`).
+> Barre épinglée de la fiche, avant → après : 402 px 179 → 117 (141 pour le
+> nom de 30 lettres, sur deux lignes, icônes repliées) ; 1032 : 120 → 120 ;
+> 1376 : 182 → 120. Cadre d'encre : 1032 px 640 → 362 ; 1376 : 549 → 259 ;
+> 402 : 265 → 227 (le téléphone garde le texte entier d'AN5 d'abord).
+> En local : `persist` 119 (trois mutations neuves exercées), `aspass` 84,
+> `asui` 57 (sections pistes réécrites pour la liste), `arfiche` 144, `anui`
+> 156, `amui` 77, `akui` 119, `aqui` 118, `assettings` 18, `ajupdate` 38,
+> `armigrations` 38, demo 17, zones 38, agreement 18, `pills` (« ייבוא » n'a
+> plus de pilules : retiré de la liste), `overlap`, `tokens`, `contrast`.
+> Rouges vus pendant la passe : `asui` mesurait MON `vite preview` oublié sur
+> 5395 (leçon des ports, encore) ; `arfiche` 4 rouges (nom tronqué par « … »
+> à 402 : le nom passe désormais sur deux lignes, jamais les icônes) ; `anui`
+> 2 rouges (déclaration qui défilait à 402 : l'encre cède d'abord) ; `persist`
+> 1 (mutations neuves non exercées) ; `atui` 2 (largeur mesurée contre la
+> barre au lieu de son contenu).
+>
+> ## Décisions AT
+>
+> 1. ★★ **UNE PORTE QUI FABRIQUE L'ÉVÉNEMENT QU'ELLE ATTEND NE MESURE RIEN.**
+>    AS4 envoyait `visibilitychange` à l'iPad ; la réalité ne l'a pas fait.
+>    `atsync` ne simule AUCUN événement : seul le temps passe.
+> 2. ★★ **LES JOURNAUX DU SERVEUR SONT LA MESURE DU CAS RÉEL.** `edge_logs`
+>    porte l'identifiant de session de chaque requête : on y lit ce que CHAQUE
+>    appareil du PO a demandé et reçu, sans son mot de passe.
+> 3. ★★ **« MISE À JOUR RÉUSSIE » = LE CODE QUI TOURNE A CHANGÉ**, pas « est
+>    égal à la cible » : un déploiement peut en suivre un autre.
+> 4. ★★ **LE GESTE FRÉQUENT EST TOUJOURS VISIBLE ; LE GESTE IRRÉVERSIBLE EST
+>    CONFIRMÉ PUIS ANNULABLE.** Statut : un toucher. Conversion/suppression :
+>    « ⋯ », confirmation, « ביטול ».
+> 5. ★★ **UNE BARRE ÉPINGLÉE NE PASSE JAMAIS À LA LIGNE** : les icônes se
+>    replient en « ⋯ » ; seul le NOM peut prendre une 2ᵉ ligne (AR3).
+> 6. **Un onglet n'est pas une pilule** : `TabBar` partout où l'on choisit une
+>    vue ; `filter-pill` reste aux FILTRES des listes.
+> 7. ⛔ **Le dépôt reste public tant que le forfait est gratuit** : le passer
+>    privé coupe les trois adresses (0-AT).
+>
+> ---
+>
+
 > 🏁 **PASSE AS — IMPORT DU PORTAIL, RÉGLAGES SYNCHRONISÉS, FICHE EN ONGLETS, SALLE D'ATTENTE. 2026-10-07. LIRE EN PREMIER.**
 >
 > Ordre suivi : AS1 → AS2 → AS3 → AS4 → AS5 → AS6 → AS7 → AS8.

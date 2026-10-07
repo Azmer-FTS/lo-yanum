@@ -1,0 +1,80 @@
+{
+  "bar-402-farm-ak1-05": {
+    "bar": 141,
+    "row": 72,
+    "actionsBelowTitle": false,
+    "folded": true,
+    "title": "05 - גד״ש תדהר — החווה של אופק",
+    "titleCut": false
+  },
+  "bar-402-farm-ak1-08": {
+    "bar": 117,
+    "row": 48,
+    "actionsBelowTitle": false,
+    "folded": true,
+    "title": "קיבוץ להב — חווה טיפולית",
+    "titleCut": false
+  },
+  "bar-1032-farm-ak1-05": {
+    "bar": 120,
+    "row": 51,
+    "actionsBelowTitle": false,
+    "folded": false,
+    "title": "05 - גד״ש תדהר — החווה של אופק",
+    "titleCut": false
+  },
+  "bar-1032-farm-ak1-08": {
+    "bar": 120,
+    "row": 51,
+    "actionsBelowTitle": false,
+    "folded": false,
+    "title": "קיבוץ להב — חווה טיפולית",
+    "titleCut": false
+  },
+  "bar-1376-farm-ak1-05": {
+    "bar": 120,
+    "row": 51,
+    "actionsBelowTitle": false,
+    "folded": true,
+    "title": "05 - גד״ש תדהר — החווה של אופק",
+    "titleCut": false
+  },
+  "bar-1376-farm-ak1-08": {
+    "bar": 120,
+    "row": 51,
+    "actionsBelowTitle": false,
+    "folded": true,
+    "title": "קיבוץ להב — חווה טיפולית",
+    "titleCut": false
+  },
+  "sign-402": {
+    "logo": 56,
+    "logoW": 112,
+    "pad": 227,
+    "decl": 241,
+    "font": 16,
+    "whole": true,
+    "modal": 874,
+    "vh": 874
+  },
+  "sign-1032": {
+    "logo": 80,
+    "logoW": 160,
+    "pad": 362,
+    "decl": 214,
+    "font": 20,
+    "whole": true,
+    "modal": 1328,
+    "vh": 1376
+  },
+  "sign-1376": {
+    "logo": 80,
+    "logoW": 160,
+    "pad": 259,
+    "decl": 214,
+    "font": 20,
+    "whole": true,
+    "modal": 984,
+    "vh": 1032
+  }
+}

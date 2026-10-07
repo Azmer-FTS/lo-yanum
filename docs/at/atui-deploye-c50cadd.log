@@ -1,0 +1,257 @@
+$ bun run scripts/atui.ts
+  app : https://azmer-fts.github.io/lo-yanum  (DÉPLOYÉ)
+
+  A307 — un courriel trouvé ailleurs qu’à sa place va au champ courriel
+  ---------------------------------------------------------------------
+  PASS  portail : courriel dans la colonne « איש קשר » → champ courriel  — dani@farm.co.il
+  PASS  portail : … et retiré du nom du contact  — דני
+  PASS  portail : courriel dans « כתובת » → champ courriel (pas un lieu)
+  PASS  collage : carte WhatsApp → nom de l’exploitation (ORG), personne, téléphone, courriel  — {"name":"משק כהן","contactName":"משה כהן","phone":"050-1234567","email":"moshe@example.com","place":"","position":null,"notes":"","raw":"משה כהן +972 50-123-4567","duplicateOf":null,"noPhone":false}
+  PASS  collage : fiche étiquetée (שם/חווה/טלפון/ישוב/מייל) → une piste complète  — {"name":"רפת השקמה","contactName":"דנה לוי","phone":"052-7654321","email":"dana@farm.co.il","place":"שדרות","position":{"lat":31.5259,"lng":34.59775},"notes":"","raw":"שם: דנה לוי\nחווה: רפת השקמה\nטלפון: 052-7654321\nישוב: שדרות\nמייל: dana@farm.co.il","duplicateOf":null,"noPhone":false}
+  PASS  collage : courriel sur une ligne de discussion → champ courriel, pas dans le nom  — {"name":"אבי","contactName":"אבי","phone":"050-5551234","email":"avi@gmail.com","place":"אופקים","position":{"lat":31.31092,"lng":34.62162},"notes":"","raw":"[7.10.2026, 12:13] Tamir: ~ אבי 050-555-1234 אופקים avi@gmail.com","duplicateOf":null,"noPhone":false}
+
+  A301 · A302 · A299 — la salle d’attente à 402 px
+  ------------------------------------------------
+  PASS  une rangée d’onglets de filtre (role=tablist), pas de pilule
+  PASS  aucune colonne : plus de tableau à défiler en deux sens
+  PASS  les cinq pistes ouvertes sont dans UNE liste (la « לא רלוונטי » repliée)  — 5
+  PASS  A301 · cinq choix de statut visibles sur la ligne
+  PASS  A301 · aucun libellé de statut ne passe à la ligne ni n’est rogné
+  PASS  A301 · UN toucher : le statut change
+  PASS  A301 · la ligne ne bouge pas sous le doigt  — 618.609375 → 618.609375
+  PASS  A301 · le compte de l’onglet « לחזור » dit où elle est partie (+1)  — 1 → 2
+  PASS  A301 · un bandeau propose « ביטול »
+  PASS  … et la base a reçu le statut
+  PASS  « ביטול » rend l’ancien statut (écran ET base)
+  PASS  A301 · l’ancien « שלחתי הודעה » se lit « ממתין »
+  PASS  A302 · tris : plus récent, mis à jour, alphabétique, région  — newest,updated,name,region
+  PASS  A302 · par défaut, le plus récent d’abord  — משק אלון · רפת זית · בקר השקמה · דיר הגבעה · גד״ש דביר
+  PASS  A302 · alphabétique (א–ת)  — בקר השקמה · גד״ש דביר · דיר הגבעה · משק אלון · רפת זית
+  PASS  A299 · « הפיכה לחווה » DEMANDE confirmation (fenêtre ouverte)
+  PASS  A299 · … et rien n’est encore écrit
+  PASS  A299 · confirmée : une ferme naît
+  PASS  A299 · on reste sur la liste (pas emporté vers la fiche)
+  PASS  A299 · « ביטול » : la ferme disparaît de la base  — 25
+  PASS  A299 · … et la piste revient dans la liste
+  PASS  A299 · « החזרה לרשימה » demande confirmation
+  PASS  A299 · une conversion d’hier s’annule aussi : piste de retour, ferme retirée
+  PASS  A299 · supprimer demande confirmation
+  PASS  A299 · « ביטול » de la fenêtre : rien n’est supprimé
+  PASS  aucune erreur de page
+
+  A301 · A302 · A299 — la salle d’attente à 1032 px
+  -------------------------------------------------
+  PASS  une rangée d’onglets de filtre (role=tablist), pas de pilule
+  PASS  aucune colonne : plus de tableau à défiler en deux sens
+  PASS  les cinq pistes ouvertes sont dans UNE liste (la « לא רלוונטי » repliée)  — 5
+  PASS  A301 · cinq choix de statut visibles sur la ligne
+  PASS  A301 · aucun libellé de statut ne passe à la ligne ni n’est rogné
+  PASS  A301 · UN toucher : le statut change
+  PASS  A301 · la ligne ne bouge pas sous le doigt  — 725.3125 → 725.3125
+  PASS  A301 · le compte de l’onglet « לחזור » dit où elle est partie (+1)  — 1 → 2
+  PASS  A301 · un bandeau propose « ביטול »
+  PASS  … et la base a reçu le statut
+  PASS  « ביטול » rend l’ancien statut (écran ET base)
+  PASS  A301 · l’ancien « שלחתי הודעה » se lit « ממתין »
+  PASS  A302 · tris : plus récent, mis à jour, alphabétique, région  — newest,updated,name,region
+  PASS  A302 · par défaut, le plus récent d’abord  — משק אלון · רפת זית · בקר השקמה · דיר הגבעה · גד״ש דביר
+  PASS  A302 · alphabétique (א–ת)  — בקר השקמה · גד״ש דביר · דיר הגבעה · משק אלון · רפת זית
+  PASS  A299 · « הפיכה לחווה » DEMANDE confirmation (fenêtre ouverte)
+  PASS  A299 · … et rien n’est encore écrit
+  PASS  A299 · confirmée : une ferme naît
+  PASS  A299 · on reste sur la liste (pas emporté vers la fiche)
+  PASS  A299 · « ביטול » : la ferme disparaît de la base  — 25
+  PASS  A299 · … et la piste revient dans la liste
+  PASS  A299 · « החזרה לרשימה » demande confirmation
+  PASS  A299 · une conversion d’hier s’annule aussi : piste de retour, ferme retirée
+  PASS  A299 · supprimer demande confirmation
+  PASS  A299 · « ביטול » de la fenêtre : rien n’est supprimé
+  PASS  aucune erreur de page
+
+  A301 · A302 · A299 — la salle d’attente à 1376 px
+  -------------------------------------------------
+  PASS  une rangée d’onglets de filtre (role=tablist), pas de pilule
+  PASS  aucune colonne : plus de tableau à défiler en deux sens
+  PASS  les cinq pistes ouvertes sont dans UNE liste (la « לא רלוונטי » repliée)  — 5
+  PASS  A301 · cinq choix de statut visibles sur la ligne
+  PASS  A301 · aucun libellé de statut ne passe à la ligne ni n’est rogné
+  PASS  A301 · UN toucher : le statut change
+  PASS  A301 · la ligne ne bouge pas sous le doigt  — 207.15625 → 207.15625
+  PASS  A301 · le compte de l’onglet « לחזור » dit où elle est partie (+1)  — 1 → 2
+  PASS  A301 · un bandeau propose « ביטול »
+  PASS  … et la base a reçu le statut
+  PASS  « ביטול » rend l’ancien statut (écran ET base)
+  PASS  A301 · l’ancien « שלחתי הודעה » se lit « ממתין »
+  PASS  A302 · tris : plus récent, mis à jour, alphabétique, région  — newest,updated,name,region
+  PASS  A302 · par défaut, le plus récent d’abord  — משק אלון · רפת זית · בקר השקמה · דיר הגבעה · גד״ש דביר
+  PASS  A302 · alphabétique (א–ת)  — בקר השקמה · גד״ש דביר · דיר הגבעה · משק אלון · רפת זית
+  PASS  A299 · « הפיכה לחווה » DEMANDE confirmation (fenêtre ouverte)
+  PASS  A299 · … et rien n’est encore écrit
+  PASS  A299 · confirmée : une ferme naît
+  PASS  A299 · on reste sur la liste (pas emporté vers la fiche)
+  PASS  A299 · « ביטול » : la ferme disparaît de la base  — 25
+  PASS  A299 · … et la piste revient dans la liste
+  PASS  A299 · « החזרה לרשימה » demande confirmation
+  PASS  A299 · une conversion d’hier s’annule aussi : piste de retour, ferme retirée
+  PASS  A299 · supprimer demande confirmation
+  PASS  A299 · « ביטול » de la fenêtre : rien n’est supprimé
+  PASS  aucune erreur de page
+
+  A303 · A304 — la fiche à 402 px
+  -------------------------------
+  PASS  A303 · role=tablist, aucune pilule (`filter-pill`)
+  PASS  A303 · la rangée occupe toute la largeur du contenu de la barre (celle de la ligne de titre)  — 370 / 370
+  PASS  A303 · les six onglets tiennent sans défiler
+  PASS  A303 · l’actif est souligné (3 px)
+  PASS  A303 · l’onglet des gardes se distingue (teinte propre)
+  PASS  A303 · … et porte un signal quand une alerte y attend (incident urgent ouvert)
+  PASS  A304 · aucun libellé d’onglet ne passe à la ligne
+  PASS  AT4.4 · tous les blocs dépliés par défaut (fiche neuve sur cet appareil)  — 0 replié(s)
+  PASS  A304 · 05 - גד״ש תדהר — החווה של אופק : les icônes ne passent jamais sous le nom (ligne ≤ 2 lignes de titre)  — {"bar":141,"row":72,"actionsBelowTitle":false,"folded":true,"title":"05 - גד״ש תדהר — החווה של אופק","titleCut":false}
+  PASS  A304 · … le nom reste ENTIER (jamais coupé par « … »)  — {"bar":141,"row":72,"actionsBelowTitle":false,"folded":true,"title":"05 - גד״ש תדהר — החווה של אופק","titleCut":false}
+  PASS  A304 · … barre épinglée ≤ 150 px (titre + onglets)  — 141 px · actions repliées « ⋯ »
+  PASS  A304 · repliées, les actions sont dans le menu « ⋯ » (cinq entrées)  — 5
+  PASS  A304 · קיבוץ להב — חווה טיפולית : les icônes ne passent jamais sous le nom (ligne ≤ 2 lignes de titre)  — {"bar":117,"row":48,"actionsBelowTitle":false,"folded":true,"title":"קיבוץ להב — חווה טיפולית","titleCut":false}
+  PASS  A304 · … le nom reste ENTIER (jamais coupé par « … »)  — {"bar":117,"row":48,"actionsBelowTitle":false,"folded":true,"title":"קיבוץ להב — חווה טיפולית","titleCut":false}
+  PASS  A304 · … barre épinglée ≤ 150 px (titre + onglets)  — 117 px · actions repliées « ⋯ »
+  PASS  A304 · repliées, les actions sont dans le menu « ⋯ » (cinq entrées)  — 5
+
+  A303 · A304 — la fiche à 1032 px
+  --------------------------------
+  PASS  A303 · role=tablist, aucune pilule (`filter-pill`)
+  PASS  A303 · la rangée occupe toute la largeur du contenu de la barre (celle de la ligne de titre)  — 928 / 928
+  PASS  A303 · les six onglets tiennent sans défiler
+  PASS  A303 · l’actif est souligné (3 px)
+  PASS  A303 · l’onglet des gardes se distingue (teinte propre)
+  PASS  A303 · … et porte un signal quand une alerte y attend (incident urgent ouvert)
+  PASS  A304 · aucun libellé d’onglet ne passe à la ligne
+  PASS  AT4.4 · tous les blocs dépliés par défaut (fiche neuve sur cet appareil)  — 0 replié(s)
+  PASS  A304 · 05 - גד״ש תדהר — החווה של אופק : les icônes ne passent jamais sous le nom (ligne ≤ 2 lignes de titre)  — {"bar":120,"row":51,"actionsBelowTitle":false,"folded":false,"title":"05 - גד״ש תדהר — החווה של אופק","titleCut":false}
+  PASS  A304 · … le nom reste ENTIER (jamais coupé par « … »)  — {"bar":120,"row":51,"actionsBelowTitle":false,"folded":false,"title":"05 - גד״ש תדהר — החווה של אופק","titleCut":false}
+  PASS  A304 · … barre épinglée ≤ 150 px (titre + onglets)  — 120 px
+  PASS  A304 · קיבוץ להב — חווה טיפולית : les icônes ne passent jamais sous le nom (ligne ≤ 2 lignes de titre)  — {"bar":120,"row":51,"actionsBelowTitle":false,"folded":false,"title":"קיבוץ להב — חווה טיפולית","titleCut":false}
+  PASS  A304 · … le nom reste ENTIER (jamais coupé par « … »)  — {"bar":120,"row":51,"actionsBelowTitle":false,"folded":false,"title":"קיבוץ להב — חווה טיפולית","titleCut":false}
+  PASS  A304 · … barre épinglée ≤ 150 px (titre + onglets)  — 120 px
+
+  A303 · A304 — la fiche à 1376 px
+  --------------------------------
+  PASS  A303 · role=tablist, aucune pilule (`filter-pill`)
+  PASS  A303 · la rangée occupe toute la largeur du contenu de la barre (celle de la ligne de titre)  — 508 / 508
+  PASS  A303 · les six onglets tiennent sans défiler
+  PASS  A303 · l’actif est souligné (3 px)
+  PASS  A303 · l’onglet des gardes se distingue (teinte propre)
+  PASS  A303 · … et porte un signal quand une alerte y attend (incident urgent ouvert)
+  PASS  A304 · aucun libellé d’onglet ne passe à la ligne
+  PASS  AT4.4 · tous les blocs dépliés par défaut (fiche neuve sur cet appareil)  — 0 replié(s)
+  PASS  A304 · 05 - גד״ש תדהר — החווה של אופק : les icônes ne passent jamais sous le nom (ligne ≤ 2 lignes de titre)  — {"bar":120,"row":51,"actionsBelowTitle":false,"folded":true,"title":"05 - גד״ש תדהר — החווה של אופק","titleCut":false}
+  PASS  A304 · … le nom reste ENTIER (jamais coupé par « … »)  — {"bar":120,"row":51,"actionsBelowTitle":false,"folded":true,"title":"05 - גד״ש תדהר — החווה של אופק","titleCut":false}
+  PASS  A304 · … barre épinglée ≤ 150 px (titre + onglets)  — 120 px · actions repliées « ⋯ »
+  PASS  A304 · repliées, les actions sont dans le menu « ⋯ » (cinq entrées)  — 5
+  PASS  A304 · קיבוץ להב — חווה טיפולית : les icônes ne passent jamais sous le nom (ligne ≤ 2 lignes de titre)  — {"bar":120,"row":51,"actionsBelowTitle":false,"folded":true,"title":"קיבוץ להב — חווה טיפולית","titleCut":false}
+  PASS  A304 · … le nom reste ENTIER (jamais coupé par « … »)  — {"bar":120,"row":51,"actionsBelowTitle":false,"folded":true,"title":"קיבוץ להב — חווה טיפולית","titleCut":false}
+  PASS  A304 · … barre épinglée ≤ 150 px (titre + onglets)  — 120 px · actions repliées « ⋯ »
+  PASS  A304 · repliées, les actions sont dans le menu « ⋯ » (cinq entrées)  — 5
+
+  A304 — en-têtes des écrans à 402 px (aucune action passée à la ligne)
+  ---------------------------------------------------------------------
+  PASS  A304 · /coordinator/farms
+  PASS  A304 · /coordinator/leads
+  PASS  A304 · /coordinator/volunteers
+  PASS  A304 · /coordinator/drivers
+  PASS  A304 · /coordinator/missions
+  PASS  A304 · /coordinator/incidents
+  PASS  A304 · /coordinator/agenda
+  PASS  A304 · /coordinator/settings
+  PASS  A304 · /coordinator/farms/farm-ak1-01/edit
+
+  A304 — en-têtes des écrans à 1032 px (aucune action passée à la ligne)
+  ----------------------------------------------------------------------
+  PASS  A304 · /coordinator/farms
+  PASS  A304 · /coordinator/leads
+  PASS  A304 · /coordinator/volunteers
+  PASS  A304 · /coordinator/drivers
+  PASS  A304 · /coordinator/missions
+  PASS  A304 · /coordinator/incidents
+  PASS  A304 · /coordinator/agenda
+  PASS  A304 · /coordinator/settings
+  PASS  A304 · /coordinator/farms/farm-ak1-01/edit
+
+  A304 — en-têtes des écrans à 1376 px (aucune action passée à la ligne)
+  ----------------------------------------------------------------------
+  PASS  A304 · /coordinator/farms
+  PASS  A304 · /coordinator/leads
+  PASS  A304 · /coordinator/volunteers
+  PASS  A304 · /coordinator/drivers
+  PASS  A304 · /coordinator/missions
+  PASS  A304 · /coordinator/incidents
+  PASS  A304 · /coordinator/agenda
+  PASS  A304 · /coordinator/settings
+  PASS  A304 · /coordinator/farms/farm-ak1-01/edit
+
+  A305 — la fenêtre de signature à 402 px
+  ---------------------------------------
+  PASS  A305 · logo agrandi : boîte ≥ 112 × 56 px à ses proportions (avant : 32 × 32, la marque 2:1 y faisait 16 px de haut)  — {"logo":56,"logoW":112,"pad":227,"decl":241,"font":16,"whole":true,"modal":874,"vh":874}
+  PASS  A305 · cadre de signature réduit : ≤ 32 % de la hauteur de l’écran  — 227 / 874
+  PASS  A305 · la déclaration est ENTIÈRE à l’ouverture, sans défiler (AN5)  — {"logo":56,"logoW":112,"pad":227,"decl":241,"font":16,"whole":true,"modal":874,"vh":874}
+  PASS  A305 · la place rendue va au texte : plus grand sur iPad (≥ 20 px), 16 px sur téléphone  — 16 px
+  PASS  A305 · le nom de la ferme se corrige SUR PLACE
+  PASS  A305 · … et la correction est dans la FICHE (base)  — גד״ש דביר תוקן / null
+  PASS  aucune erreur de page
+
+  A305 — la fenêtre de signature à 1032 px
+  ----------------------------------------
+  PASS  A305 · logo agrandi : boîte ≥ 112 × 56 px à ses proportions (avant : 32 × 32, la marque 2:1 y faisait 16 px de haut)  — {"logo":80,"logoW":160,"pad":362,"decl":214,"font":20,"whole":true,"modal":1328,"vh":1376}
+  PASS  A305 · cadre de signature réduit : ≤ 32 % de la hauteur de l’écran  — 362 / 1376
+  PASS  A305 · la déclaration est ENTIÈRE à l’ouverture, sans défiler (AN5)  — {"logo":80,"logoW":160,"pad":362,"decl":214,"font":20,"whole":true,"modal":1328,"vh":1376}
+  PASS  A305 · la place rendue va au texte : plus grand sur iPad (≥ 20 px), 16 px sur téléphone  — 20 px
+  PASS  A305 · le nom de la ferme se corrige SUR PLACE
+  PASS  A305 · … et la correction est dans la FICHE (base)  — גד״ש דביר תוקן / null
+  PASS  aucune erreur de page
+
+  A305 — la fenêtre de signature à 1376 px
+  ----------------------------------------
+  PASS  A305 · logo agrandi : boîte ≥ 112 × 56 px à ses proportions (avant : 32 × 32, la marque 2:1 y faisait 16 px de haut)  — {"logo":80,"logoW":160,"pad":259,"decl":214,"font":20,"whole":true,"modal":984,"vh":1032}
+  PASS  A305 · cadre de signature réduit : ≤ 32 % de la hauteur de l’écran  — 259 / 1032
+  PASS  A305 · la déclaration est ENTIÈRE à l’ouverture, sans défiler (AN5)  — {"logo":80,"logoW":160,"pad":259,"decl":214,"font":20,"whole":true,"modal":984,"vh":1032}
+  PASS  A305 · la place rendue va au texte : plus grand sur iPad (≥ 20 px), 16 px sur téléphone  — 20 px
+  PASS  A305 · le nom de la ferme se corrige SUR PLACE
+  PASS  A305 · … et la correction est dans la FICHE (base)  — גד״ש דביר תוקן / null
+  PASS  aucune erreur de page
+
+  A306 — le menu du téléphone à 402 px (clair)
+  --------------------------------------------
+  PASS  A306 · plein écran
+  PASS  A306 · dix tuiles  — 10
+  PASS  A306 · tuiles CARRÉES (|l − h| ≤ 2 px)  — 115×115 115×115 115×115
+  PASS  A306 · ≥ 3 colonnes (3)
+  PASS  A306 · une couleur PROPRE à chaque entrée
+  PASS  A306 · contraste du libellé ≥ 4,5:1 sur sa tuile, mesuré au rendu  — min 5.87
+
+  A306 — le menu du téléphone à 402 px (sombre)
+  ---------------------------------------------
+  PASS  A306 · plein écran
+  PASS  A306 · dix tuiles  — 10
+  PASS  A306 · tuiles CARRÉES (|l − h| ≤ 2 px)  — 115×115 115×115 115×115
+  PASS  A306 · ≥ 3 colonnes (3)
+  PASS  A306 · une couleur PROPRE à chaque entrée
+  PASS  A306 · contraste du libellé ≥ 4,5:1 sur sa tuile, mesuré au rendu  — min 4.87
+
+  A306 — le menu du téléphone à 768 px (clair)
+  --------------------------------------------
+  PASS  A306 · plein écran
+  PASS  A306 · dix tuiles  — 10
+  PASS  A306 · tuiles CARRÉES (|l − h| ≤ 2 px)  — 175×175 175×175 175×175
+  PASS  A306 · ≥ 3 colonnes (4)
+  PASS  A306 · une couleur PROPRE à chaque entrée
+  PASS  A306 · contraste du libellé ≥ 4,5:1 sur sa tuile, mesuré au rendu  — min 5.87
+
+  A306 — le menu du téléphone à 768 px (sombre)
+  ---------------------------------------------
+  PASS  A306 · plein écran
+  PASS  A306 · dix tuiles  — 10
+  PASS  A306 · tuiles CARRÉES (|l − h| ≤ 2 px)  — 175×175 175×175 175×175
+  PASS  A306 · ≥ 3 colonnes (4)
+  PASS  A306 · une couleur PROPRE à chaque entrée
+  PASS  A306 · contraste du libellé ≥ 4,5:1 sur sa tuile, mesuré au rendu  — min 4.87
+
+  atui : 202 PASS · 0 FAIL

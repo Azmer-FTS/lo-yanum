@@ -104,6 +104,22 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **Passe AT TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-10-07) — commit de code
+  servi et vérifié : **`c50cadd`** (avec `ee4ecb0`) sur les trois URLs.
+  Synchronisation mesurée sur les deux appareils réels du PO (journaux du
+  serveur) et réparée (battement 30 s, délais 12 s, panneau « סנכרון בין
+  מכשירים », faux « העדכון לא נקלט » corrigé) ; salle d'attente en LISTE
+  (statut en un toucher, 5 statuts, confirmation + annulation, tris) ;
+  `TabBar` (vrais onglets) ; barre épinglée qui ne passe plus à la ligne ;
+  fenêtre de signature (logo, encre réduite, nom de ferme corrigible) ; menu
+  téléphone en tuiles. **Appliqué sur `lo-yanum-prod`** : `leads.email`,
+  statuts repliés, מרגי `21985189`, רוחמה « רן », doublon « גד״ש דביר »
+  retiré (la piste reste). Les commits suivants ne touchent que `ETAT.md`,
+  `PROJECT_STATE.md` et `docs/` (aucun `src/`). Portes : `bun run atsync` (A298, **17/17 déployé**,
+  rouge 6/11 avant), `bun run atui` (A299–A307, **202/202 déployé**, rouge
+  53/41 avant). Récit : `ETAT.md` § AT ; `docs/at/`.
+  - ⛔ **LE DÉPÔT EST TOUJOURS PUBLIC** : forfait GitHub gratuit, le rendre
+    privé dépublie les trois adresses (sonde 422). Question 0-AT.
 - **Passe AS TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-10-07) — commit servi et
   vérifié : **`0b97ed4`** sur les trois URLs. Import du portail (répétable :
   `/coordinator/import/portal`), réglages synchronisés clé par clé, fiche en
@@ -524,6 +540,13 @@ bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
 bun run typecheck && bun run appass && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run contrast && bun run akpass && bun run accept
 
+# LA PASSE AT :
+bun run atsync                                                     # A298 : deux appareils, AUCUN événement de retour simulé
+BASE_URL=https://azmer-fts.github.io/lo-yanum bun run atsync       # le DÉPLOYÉ (17/17)
+bun run atui                                                       # A299–A307, build local (202)
+CAPTURES=1 BASE_URL=https://azmer-fts.github.io/lo-yanum bun run atui   # le DÉPLOYÉ + 25 captures
+# ⚠️ vérifier qu'aucun `vite preview` ne tient 5394/5395/5396 (lsof) : une porte sert alors le MAUVAIS build
+
 # LA PASSE AR :
 bun run aspass                                                     # AS : A284–A288, A290, A292, A294, A296 (pure)
 bun run assettings                                                 # AS4 : A289, deux appareils, build local
@@ -799,6 +822,26 @@ d'être déployé.
 - Les deux violations A57 de `AnchorMap.tsx` signalées en §36.6 ont été
   corrigées en U4 ; celles qui restent sont ailleurs.
 
+## Ce que le PO fait à l'ouverture (AT, 2026-10-07)
+
+1. **Mettre à jour l'iPhone ET l'iPad** (bandeau « גרסה חדשה » → « עדכון
+   עכשיו ») : « גרסת האפליקציה » doit dire `c50cadd` ou plus récent. Si un
+   message d'échec apparaît encore, il dit maintenant vers quelle version.
+2. **Réglages › « סנכרון בין מכשירים »** sur l'iPad : dans les 30 s, « התקבל
+   ממכשיר אחר : כרטיס הרכז » — son nom, son téléphone, sa région. Changer
+   quelque chose sur l'iPhone, laisser l'iPad ouvert sans y toucher : le
+   changement arrive seul en moins d'une minute.
+3. **« אנשי קשר לטיפול »** : une liste ; toucher un statut sur la ligne ; les
+   chiffres des onglets bougent ; « ביטול » en bas. « גד״ש דביר » est de
+   retour comme piste (« ממתין »). Convertir passe par « ⋯ » et demande
+   confirmation.
+4. **Une fiche** : de vrais onglets ; « שמירות » en bleu vif, point rouge s'il
+   y a une alerte. Sur le téléphone, les icônes sont dans « ⋯ ».
+5. **Signer** : logo grand, cadre plus petit, toucher le nom de la ferme pour
+   le corriger.
+6. **Décider** : le dépôt (0-AT), WhatsApp (`docs/at/at3-whatsapp.md`), et la
+   ת״ז de נעמ״א (`7010797`, gardée telle quelle).
+
 ## Ce que le PO fait à l'ouverture (AS, 2026-10-07)
 
 1. **Mettre l'app à jour** sur l'iPhone ET sur l'iPad (« גרסה חדשה » →
@@ -893,6 +936,25 @@ d'être déployé.
    (point 0ter).
 
 ## Questions ouvertes / ce qui attend le PO
+
+0-AT. ⛔ **LE DÉPÔT NE PEUT PAS DEVENIR PRIVÉ SANS COUPER L'APPLICATION.**
+   Compte Azmer-FTS au forfait GitHub GRATUIT (sonde du 2026-10-07 : « Your
+   current plan does not support GitHub Pages for this repository », 422) ;
+   GitHub dépublie les Pages d'un dépôt passé privé. Rien n'a été basculé.
+   Solutions : (1) **GitHub Pro (≈ 4 $/mois)** → privé, mêmes adresses, rien
+   d'autre ne change — recommandé ; (2) rester public et purger de
+   l'historique `docs/ak/ak1-prod-rows.json` (téléphones, ת״ז) — réécriture
+   d'historique ; (3) héberger ailleurs (Cloudflare Pages accepte un dépôt
+   privé) — nouvelles adresses, réinstallation de l'app, nouveau lien pour
+   l'association. Après (1) : `gh repo edit Azmer-FTS/lo-yanum --visibility
+   private --accept-visibility-change-consequences`, puis vérifier les trois
+   `version.json`.
+   - WhatsApp : réponse et chiffrage dans `docs/at/at3-whatsapp.md` (rien
+     construit).
+   - נעמ״א `7010797` (sept chiffres) : gardée, à vérifier par le PO.
+   - Une piste s'écrit en ligne ENTIÈRE : un appareil resté sur une vieille
+     image peut défaire une conversion (vu à 15:19 le 2026-10-07). Le battement
+     de 3 min réduit la fenêtre ; une écriture par champ la fermerait.
 
 0-AS. **À vérifier par le PO (import du portail, 2026-10-07)** :
    - ת״ז/ח״פ qui n'ont pas neuf chiffres, importés TELS QUELS : 23505696

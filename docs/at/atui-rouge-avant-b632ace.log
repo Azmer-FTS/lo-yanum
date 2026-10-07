@@ -1,0 +1,150 @@
+$ bun run scripts/atui.ts
+  app : http://localhost:5396  (build local dist-at-before)
+
+  A307 — un courriel trouvé ailleurs qu’à sa place va au champ courriel
+  ---------------------------------------------------------------------
+  PASS  portail : courriel dans la colonne « איש קשר » → champ courriel  — dani@farm.co.il
+  PASS  portail : … et retiré du nom du contact  — דני
+  PASS  portail : courriel dans « כתובת » → champ courriel (pas un lieu)
+  PASS  collage : carte WhatsApp → nom de l’exploitation (ORG), personne, téléphone, courriel  — {"name":"משק כהן","contactName":"משה כהן","phone":"050-1234567","email":"moshe@example.com","place":"","position":null,"notes":"","raw":"משה כהן +972 50-123-4567","duplicateOf":null,"noPhone":false}
+  PASS  collage : fiche étiquetée (שם/חווה/טלפון/ישוב/מייל) → une piste complète  — {"name":"רפת השקמה","contactName":"דנה לוי","phone":"052-7654321","email":"dana@farm.co.il","place":"שדרות","position":{"lat":31.5259,"lng":34.59775},"notes":"","raw":"שם: דנה לוי\nחווה: רפת השקמה\nטלפון: 052-7654321\nישוב: שדרות\nמייל: dana@farm.co.il","duplicateOf":null,"noPhone":false}
+  PASS  collage : courriel sur une ligne de discussion → champ courriel, pas dans le nom  — {"name":"אבי","contactName":"אבי","phone":"050-5551234","email":"avi@gmail.com","place":"אופקים","position":{"lat":31.31092,"lng":34.62162},"notes":"","raw":"[7.10.2026, 12:13] Tamir: ~ אבי 050-555-1234 אופקים avi@gmail.com","duplicateOf":null,"noPhone":false}
+
+  A301 · A302 · A299 — la salle d’attente à 402 px
+  ------------------------------------------------
+  FAIL  salle d’attente 402 — section interrompue  — getAttribute: Timeout 30000ms exceeded.
+
+  A301 · A302 · A299 — la salle d’attente à 1032 px
+  -------------------------------------------------
+  FAIL  salle d’attente 1032 — section interrompue  — getAttribute: Timeout 30000ms exceeded.
+
+  A301 · A302 · A299 — la salle d’attente à 1376 px
+  -------------------------------------------------
+  FAIL  salle d’attente 1376 — section interrompue  — getAttribute: Timeout 30000ms exceeded.
+
+  A303 · A304 — la fiche à 402 px
+  -------------------------------
+  FAIL  A303 · role=tablist, aucune pilule (`filter-pill`)
+  PASS  A303 · la rangée occupe toute la largeur du contenu de la barre (celle de la ligne de titre)  — 378 / 370
+  FAIL  A303 · les six onglets tiennent sans défiler
+  FAIL  A303 · l’actif est souligné (3 px)
+  FAIL  A303 · l’onglet des gardes se distingue (teinte propre)
+  FAIL  A303 · … et porte un signal quand une alerte y attend (incident urgent ouvert)
+  PASS  A304 · aucun libellé d’onglet ne passe à la ligne
+  FAIL  AT4.4 · tous les blocs dépliés par défaut (fiche neuve sur cet appareil)  — 3 replié(s)
+  FAIL  A304 · 05 - גד״ש תדהר — החווה של אופק : les icônes ne passent jamais sous le nom (ligne ≤ 2 lignes de titre)  — {"bar":179,"row":110,"actionsBelowTitle":true,"folded":false,"title":"05 - גד״ש תדהר — החווה של אופק","titleCut":false}
+  PASS  A304 · … le nom reste ENTIER (jamais coupé par « … »)  — {"bar":179,"row":110,"actionsBelowTitle":true,"folded":false,"title":"05 - גד״ש תדהר — החווה של אופק","titleCut":false}
+  FAIL  A304 · … barre épinglée ≤ 150 px (titre + onglets)  — 179 px
+  FAIL  A304 · קיבוץ להב — חווה טיפולית : les icônes ne passent jamais sous le nom (ligne ≤ 2 lignes de titre)  — {"bar":179,"row":110,"actionsBelowTitle":true,"folded":false,"title":"קיבוץ להב — חווה טיפולית","titleCut":false}
+  PASS  A304 · … le nom reste ENTIER (jamais coupé par « … »)  — {"bar":179,"row":110,"actionsBelowTitle":true,"folded":false,"title":"קיבוץ להב — חווה טיפולית","titleCut":false}
+  FAIL  A304 · … barre épinglée ≤ 150 px (titre + onglets)  — 179 px
+
+  A303 · A304 — la fiche à 1032 px
+  --------------------------------
+  FAIL  A303 · role=tablist, aucune pilule (`filter-pill`)
+  PASS  A303 · la rangée occupe toute la largeur du contenu de la barre (celle de la ligne de titre)  — 936 / 928
+  PASS  A303 · les six onglets tiennent sans défiler
+  FAIL  A303 · l’actif est souligné (3 px)
+  FAIL  A303 · l’onglet des gardes se distingue (teinte propre)
+  FAIL  A303 · … et porte un signal quand une alerte y attend (incident urgent ouvert)
+  PASS  A304 · aucun libellé d’onglet ne passe à la ligne
+  FAIL  AT4.4 · tous les blocs dépliés par défaut (fiche neuve sur cet appareil)  — 3 replié(s)
+  PASS  A304 · 05 - גד״ש תדהר — החווה של אופק : les icônes ne passent jamais sous le nom (ligne ≤ 2 lignes de titre)  — {"bar":120,"row":51,"actionsBelowTitle":false,"folded":false,"title":"05 - גד״ש תדהר — החווה של אופק","titleCut":false}
+  PASS  A304 · … le nom reste ENTIER (jamais coupé par « … »)  — {"bar":120,"row":51,"actionsBelowTitle":false,"folded":false,"title":"05 - גד״ש תדהר — החווה של אופק","titleCut":false}
+  PASS  A304 · … barre épinglée ≤ 150 px (titre + onglets)  — 120 px
+  PASS  A304 · קיבוץ להב — חווה טיפולית : les icônes ne passent jamais sous le nom (ligne ≤ 2 lignes de titre)  — {"bar":120,"row":51,"actionsBelowTitle":false,"folded":false,"title":"קיבוץ להב — חווה טיפולית","titleCut":false}
+  PASS  A304 · … le nom reste ENTIER (jamais coupé par « … »)  — {"bar":120,"row":51,"actionsBelowTitle":false,"folded":false,"title":"קיבוץ להב — חווה טיפולית","titleCut":false}
+  PASS  A304 · … barre épinglée ≤ 150 px (titre + onglets)  — 120 px
+
+  A303 · A304 — la fiche à 1376 px
+  --------------------------------
+  FAIL  A303 · role=tablist, aucune pilule (`filter-pill`)
+  PASS  A303 · la rangée occupe toute la largeur du contenu de la barre (celle de la ligne de titre)  — 516 / 508
+  PASS  A303 · les six onglets tiennent sans défiler
+  FAIL  A303 · l’actif est souligné (3 px)
+  FAIL  A303 · l’onglet des gardes se distingue (teinte propre)
+  FAIL  A303 · … et porte un signal quand une alerte y attend (incident urgent ouvert)
+  PASS  A304 · aucun libellé d’onglet ne passe à la ligne
+  FAIL  AT4.4 · tous les blocs dépliés par défaut (fiche neuve sur cet appareil)  — 3 replié(s)
+  FAIL  A304 · 05 - גד״ש תדהר — החווה של אופק : les icônes ne passent jamais sous le nom (ligne ≤ 2 lignes de titre)  — {"bar":182,"row":113,"actionsBelowTitle":true,"folded":false,"title":"05 - גד״ש תדהר — החווה של אופק","titleCut":false}
+  PASS  A304 · … le nom reste ENTIER (jamais coupé par « … »)  — {"bar":182,"row":113,"actionsBelowTitle":true,"folded":false,"title":"05 - גד״ש תדהר — החווה של אופק","titleCut":false}
+  FAIL  A304 · … barre épinglée ≤ 150 px (titre + onglets)  — 182 px
+  FAIL  A304 · קיבוץ להב — חווה טיפולית : les icônes ne passent jamais sous le nom (ligne ≤ 2 lignes de titre)  — {"bar":182,"row":113,"actionsBelowTitle":true,"folded":false,"title":"קיבוץ להב — חווה טיפולית","titleCut":false}
+  PASS  A304 · … le nom reste ENTIER (jamais coupé par « … »)  — {"bar":182,"row":113,"actionsBelowTitle":true,"folded":false,"title":"קיבוץ להב — חווה טיפולית","titleCut":false}
+  FAIL  A304 · … barre épinglée ≤ 150 px (titre + onglets)  — 182 px
+
+  A304 — en-têtes des écrans à 402 px (aucune action passée à la ligne)
+  ---------------------------------------------------------------------
+  PASS  A304 · /coordinator/farms
+  PASS  A304 · /coordinator/leads
+  PASS  A304 · /coordinator/volunteers
+  PASS  A304 · /coordinator/drivers
+  PASS  A304 · /coordinator/missions
+  PASS  A304 · /coordinator/incidents
+  PASS  A304 · /coordinator/agenda
+  PASS  A304 · /coordinator/settings
+  PASS  A304 · /coordinator/farms/farm-ak1-01/edit
+
+  A304 — en-têtes des écrans à 1032 px (aucune action passée à la ligne)
+  ----------------------------------------------------------------------
+  PASS  A304 · /coordinator/farms
+  PASS  A304 · /coordinator/leads
+  PASS  A304 · /coordinator/volunteers
+  PASS  A304 · /coordinator/drivers
+  PASS  A304 · /coordinator/missions
+  PASS  A304 · /coordinator/incidents
+  PASS  A304 · /coordinator/agenda
+  PASS  A304 · /coordinator/settings
+  PASS  A304 · /coordinator/farms/farm-ak1-01/edit
+
+  A304 — en-têtes des écrans à 1376 px (aucune action passée à la ligne)
+  ----------------------------------------------------------------------
+  PASS  A304 · /coordinator/farms
+  PASS  A304 · /coordinator/leads
+  PASS  A304 · /coordinator/volunteers
+  PASS  A304 · /coordinator/drivers
+  PASS  A304 · /coordinator/missions
+  PASS  A304 · /coordinator/incidents
+  PASS  A304 · /coordinator/agenda
+  PASS  A304 · /coordinator/settings
+  PASS  A304 · /coordinator/farms/farm-ak1-01/edit
+
+  A305 — la fenêtre de signature à 402 px
+  ---------------------------------------
+  FAIL  A305 · logo agrandi (≥ 64 px, il en faisait 32)  — {"logo":32,"pad":265,"decl":242,"modal":874,"vh":874}
+  PASS  A305 · cadre de signature réduit : ≤ 32 % de la hauteur de l’écran  — 265 / 874
+  PASS  A305 · la déclaration a plus de place que l’encre  — déclaration 242 · encre 265
+  FAIL  signature 402 — section interrompue  — fill: Timeout 30000ms exceeded.
+
+  A305 — la fenêtre de signature à 1032 px
+  ----------------------------------------
+  FAIL  A305 · logo agrandi (≥ 64 px, il en faisait 32)  — {"logo":32,"pad":640,"decl":138,"modal":1328,"vh":1376}
+  FAIL  A305 · cadre de signature réduit : ≤ 32 % de la hauteur de l’écran  — 640 / 1376
+  FAIL  A305 · la déclaration a plus de place que l’encre  — déclaration 138 · encre 640
+  FAIL  signature 1032 — section interrompue  — fill: Timeout 30000ms exceeded.
+
+  A305 — la fenêtre de signature à 1376 px
+  ----------------------------------------
+  FAIL  A305 · logo agrandi (≥ 64 px, il en faisait 32)  — {"logo":32,"pad":549,"decl":138,"modal":984,"vh":1032}
+  FAIL  A305 · cadre de signature réduit : ≤ 32 % de la hauteur de l’écran  — 549 / 1032
+  FAIL  A305 · la déclaration a plus de place que l’encre  — déclaration 138 · encre 549
+  FAIL  signature 1376 — section interrompue  — fill: Timeout 30000ms exceeded.
+
+  A306 — le menu du téléphone à 402 px (clair)
+  --------------------------------------------
+  FAIL  menu 402 false — section interrompue  — evaluate: TypeError: Cannot read properties of null (reading 'getBoundingClientRect')
+
+  A306 — le menu du téléphone à 402 px (sombre)
+  ---------------------------------------------
+  FAIL  menu 402 true — section interrompue  — evaluate: TypeError: Cannot read properties of null (reading 'getBoundingClientRect')
+
+  A306 — le menu du téléphone à 768 px (clair)
+  --------------------------------------------
+  FAIL  menu 768 false — section interrompue  — evaluate: TypeError: Cannot read properties of null (reading 'getBoundingClientRect')
+
+  A306 — le menu du téléphone à 768 px (sombre)
+  ---------------------------------------------
+  FAIL  menu 768 true — section interrompue  — evaluate: TypeError: Cannot read properties of null (reading 'getBoundingClientRect')
+
+  atui : 53 PASS · 41 FAIL
+error: script "atui" exited with code 1
