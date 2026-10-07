@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 import { DEFAULT_VISIT_MINUTES, FREE_ROUTE_ORIGIN, newFreeRouteId } from '@core/index'
 import type { FreeRoute } from '@core/index'
+import { onSettingsApplied } from './applied'
 
 /**
  * ★★ AH9.6 (2026-09-09) — « L'ITINÉRAIRE S'ENREGISTRE ET SE REPREND. »
@@ -20,6 +21,13 @@ const listeners = new Set<() => void>()
 let cache: FreeRoute[] | undefined
 /** `useSyncExternalStore` exige une référence STABLE tant que rien n'a changé. */
 let snapshot: FreeRoute[] = []
+
+/* ★ AS4 — arrivé d'un autre appareil. */
+onSettingsApplied([KEY], () => {
+  cache = undefined
+  readFreeRoutes()
+  for (const l of listeners) l()
+})
 
 function load(): FreeRoute[] {
   try {

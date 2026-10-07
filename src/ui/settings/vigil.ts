@@ -6,6 +6,7 @@ import {
   GUARD_CLOSE_GRACE_MINUTES_INITIAL,
 } from '@core/index'
 import type { VigilThresholds } from '@core/index'
+import { onSettingsApplied } from './applied'
 
 /**
  * ★★ AE3.2 · AE3.3 (2026-09-08) — LES TROIS DÉLAIS, RÉGLABLES.
@@ -60,6 +61,12 @@ function read(): VigilThresholds {
 
 let current: VigilThresholds = read()
 const listeners = new Set<() => void>()
+
+/* ★ AS4 — une valeur arrivée d'un autre appareil remplace le cache. */
+onSettingsApplied([KEY], () => {
+  current = read()
+  for (const l of listeners) l()
+})
 
 function publish(next: VigilThresholds): void {
   current = next

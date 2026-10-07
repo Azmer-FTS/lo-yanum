@@ -10,6 +10,7 @@
     "build": "tsc --noEmit && vite build",
     "aspass": "bun run scripts/aspass.ts",
     "asdata": "bun run scripts/asdata.ts",
+    "assettings": "bun run scripts/assettings.ts",
     "armigrations": "bun run scripts/armigrations.ts",
     "arui": "bun run scripts/arui.ts",
     "arfiche": "bun run scripts/arfiche.ts",

@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 import { missingSummonsTokens } from '@core/index'
+import { onSettingsApplied } from './applied'
 
 /**
  * ★★ AE4 (2026-09-08) — LE GABARIT DU SMS DE CONVOCATION, MODIFIABLE.
@@ -25,6 +26,12 @@ const KEY = 'lo-yanum:summons-template'
 const listeners = new Set<() => void>()
 
 let cache: string | null | undefined
+
+/* ★ AS4 — arrivé d'un autre appareil. */
+onSettingsApplied([KEY], () => {
+  cache = undefined
+  for (const l of listeners) l()
+})
 
 function load(): string | null {
   try {

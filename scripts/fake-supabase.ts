@@ -177,26 +177,36 @@ export class FakeDb {
       const rows = Array.isArray(incoming) ? incoming : [incoming]
       const list = this.rows(table)
       const merge = prefer.includes('merge-duplicates')
+      const ignore = prefer.includes('ignore-duplicates')
       const conflict = params.get('on_conflict') ?? 'id'
+      const written: Row[] = []
       for (const row of rows) {
-        const index = merge ? list.findIndex((r) => r[conflict] === row[conflict]) : -1
-        if (index === -1) list.push({ ...row })
-        else list[index] = { ...list[index], ...row }
+        const index = merge || ignore ? list.findIndex((r) => r[conflict] === row[conflict]) : -1
+        if (index === -1) {
+          list.push({ ...row })
+          written.push(row)
+        } else if (!ignore) {
+          list[index] = { ...list[index], ...row }
+          written.push(row)
+        }
       }
       this.log.push(`POST ${table} +${rows.length}${merge ? ' (upsert)' : ''}`)
-      return { status: 201, body: prefer.includes('return=representation') ? JSON.stringify(rows) : '' }
+      return { status: 201, body: prefer.includes('return=representation') ? JSON.stringify(written) : '' }
     }
 
     if (method === 'PATCH') {
       const patch = JSON.parse(body || '{}') as Row
-      let n = 0
+      const touched: Row[] = []
       for (const row of this.rows(table)) {
         if (this.matches(row, params)) {
           Object.assign(row, patch)
-          n++
+          touched.push(row)
         }
       }
-      this.log.push(`PATCH ${table} ~${n}`)
+      this.log.push(`PATCH ${table} ~${touched.length}`)
+      /* ★ AS4 — comme PostgREST : `return=representation` rend les lignes
+         touchées. L'écriture CONDITIONNELLE des réglages compte sur ce nombre. */
+      if (prefer.includes('return=representation')) return { status: 200, body: JSON.stringify(touched) }
       return { status: 204, body: '' }
     }
 

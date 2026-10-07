@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 import { NEGLECT_DAYS_INITIAL } from '@core/index'
+import { onSettingsApplied } from './applied'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -55,6 +56,12 @@ function read(): CoverageSettings {
 
 let current: CoverageSettings = read()
 const listeners = new Set<() => void>()
+
+/* ★ AS4 — une valeur arrivée d'un autre appareil remplace le cache. */
+onSettingsApplied([KEY], () => {
+  current = read()
+  for (const l of listeners) l()
+})
 
 function publish(next: CoverageSettings): void {
   current = next

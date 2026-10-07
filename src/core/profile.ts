@@ -91,6 +91,11 @@ export function resetCoordinator(): void {
 // so a save in one repaints the other without a reload.
 const listeners = new Set<() => void>()
 
+/** ★ AS4 — la carte vient d'arriver d'un autre appareil : repeindre. */
+export function notifyCoordinatorChanged(): void {
+  for (const l of listeners) l()
+}
+
 export function subscribeCoordinator(listener: () => void): () => void {
   listeners.add(listener)
   return () => listeners.delete(listener)

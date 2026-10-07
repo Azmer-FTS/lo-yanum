@@ -1,0 +1,42 @@
+  app : https://azmer-fts.github.io/lo-yanum  (DÉPLOYÉ)
+
+  1 — ce qui MONTE quand A change sa carte de coordinateur
+  --------------------------------------------------------
+  PASS  A289 · la carte de A est dans la base  — {"name":"רכז מהאייפון","phone":"","role":"רכז אזורי — נגב"}
+  PASS  la base ne porte AUCUNE clé hors liste (A290)  — lo-yanum:coordinator
+
+  2 — B, déjà ouvert, au RETOUR EN AVANT-PLAN (sans recharger)
+  ------------------------------------------------------------
+  PASS  avant : B porte encore l’ancienne carte
+  FAIL  A289 · après retour en avant-plan, B porte la carte de A  — undefined
+  FAIL  … et l’ÉCRAN ouvert la montre (pas seulement le stockage)  — דובי בן שושן
+  FAIL  le PO est informé que des réglages sont arrivés
+
+  2bis — B après RAFRAÎCHISSEMENT
+  -------------------------------
+  PASS  A289 · après rafraîchissement, B porte la carte de A
+
+  3 — un EFFACEMENT voyage aussi
+  ------------------------------
+  FAIL  le retour à la carte livrée MONTE (la clé disparaît de la base)  — {"name":"רכז מהאייפון","phone":"","role":"רכז אזורי — נגב"}
+  FAIL  … et B l’applique  — {"name":"רכז מהאייפון","phone":"","role":"רכז אזורי — נגב"}
+
+  4 — un appareil aux valeurs d’hier n’écrase pas ce qu’il n’a pas touché
+  -----------------------------------------------------------------------
+  PASS  la marge de A est dans la base  — 25
+  FAIL  A289 · l’écriture de B n’a PAS effacé la marge posée par A  — undefined
+  PASS  … et le point de départ de B est monté
+
+  5 — deux appareils en conflit : la plus récente gagne, et le PO le sait
+  -----------------------------------------------------------------------
+  PASS  hors ligne, l’écriture de B n’est pas montée  — {"name":"רכז מהאייפון","phone":"","role":"רכז אזורי — נגב"}
+  PASS  l’écriture la plus récente (A) est dans la base  — {"name":"דובי בן שושן","phone":"","role":"תפקיד מהאייפון"}
+  FAIL  A289 · B adopte la plus récente  — תפקיד מהאייפד
+  FAIL  … et un bandeau de CONFLIT dit au PO ce qui a été remplacé  — null
+
+  6 — A290 · ce qui ne doit jamais monter
+  ---------------------------------------
+  PASS  ni thème, ni laissez-passer, ni temporisation dans la base  — lo-yanum:coordinator,lo-yanum:route-margin
+  PASS  B garde SON thème
+
+  8 of 18 checks FAILED.

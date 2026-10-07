@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 import { RENEWAL_WINDOW_DAYS_DEFAULT } from '@core/index'
+import { onSettingsApplied } from './applied'
 
 /**
  * ★★ AG5.1 (2026-09-09) — LE DÉLAI DE RENOUVELLEMENT, RÉGLABLE, SUR CET
@@ -81,6 +82,11 @@ export function writeRequiresIdPhoto(required: boolean): void {
 }
 
 const listeners = new Set<() => void>()
+
+/* ★ AS4 — arrivé d'un autre appareil : les deux réglages se relisent à chaque appel. */
+onSettingsApplied([KEY, PHOTO_KEY], () => {
+  for (const l of listeners) l()
+})
 
 export function subscribeRenewal(listener: () => void): () => void {
   listeners.add(listener)

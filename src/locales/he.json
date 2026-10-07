@@ -456,7 +456,8 @@
       },
       "applied": "עדכון אחרון",
       "appliedOk": "הוחלה גרסה חדשה: מ־{{from}} ל־{{to}} · {{date}}",
-      "appliedFailed": "העדכון ל־{{to}} לא נקלט — עדיין {{from}} · {{date}}"
+      "appliedFailed": "העדכון ל־{{to}} לא נקלט — עדיין {{from}} · {{date}}",
+      "address": "כתובת האפליקציה"
     }
   },
   "devbar": {
@@ -2379,5 +2380,30 @@
     "next": "הבא",
     "done": "סיום",
     "system": "מקלדת המכשיר"
+  },
+  "settingsSync": {
+    "appliedTitle": "ההגדרות עודכנו ממכשיר אחר",
+    "conflictTitle": "שינוי שעשית כאן הוחלף בשינוי חדש יותר ממכשיר אחר",
+    "conflictHint": "נשמר הערך האחרון שנכתב. אפשר לשנות שוב בהגדרות.",
+    "dismiss": "הבנתי",
+    "lastSync": "סנכרון הגדרות אחרון",
+    "never": "טרם סונכרן",
+    "syncNow": "סנכרון עכשיו",
+    "keys": {
+      "target": "יעד התוכנית",
+      "coverage": "סף פריסת שמירות",
+      "vigil": "ספי ערנות",
+      "renewal-window": "חלון חידוש",
+      "area-gap": "סף פער שטחים",
+      "require-id-photo": "חובת צילום ת״ז",
+      "summons-template": "תבנית הודעת זימון",
+      "agreement-doc-template": "נוסח ההסכם",
+      "agreement-doc-logo": "לוגו ההסכם",
+      "region-rings": "גבולות אזורים",
+      "coordinator": "כרטיס הרכז",
+      "origin": "נקודת יציאה",
+      "free-routes": "מסלולים חופשיים",
+      "route-margin": "מרווח זמני נסיעה"
+    }
   }
 }

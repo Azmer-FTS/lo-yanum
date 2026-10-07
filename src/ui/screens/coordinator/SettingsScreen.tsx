@@ -1,5 +1,6 @@
 import { kindInputProps } from '../../components/fields'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { onSettingsApplied } from '../../settings/applied'
 import { useTranslation } from 'react-i18next'
 
 import { formatCoords, readCoordinator, resetCoordinator, writeCoordinator } from '@core/index'
@@ -95,6 +96,22 @@ export function SettingsScreen() {
   // on the device rather than in the database.
   const [me, setMe] = useState(() => readCoordinator())
   const [meSaved, setMeSaved] = useState(false)
+  /* ★ AS4 — la carte arrive d'un autre appareil pendant que l'écran est
+     ouvert : le formulaire la montre, SAUF si le PO est en train de taper
+     (alors sa saisie gagne, et le bandeau de conflit dira le reste). */
+  const meBase = useRef(me)
+  const meRef = useRef(me)
+  meRef.current = me
+  useEffect(
+    () =>
+      onSettingsApplied(['lo-yanum:coordinator', 'lo-yanum:origin'], () => {
+        const fresh = readCoordinator()
+        if (JSON.stringify(meRef.current) === JSON.stringify(meBase.current)) setMe(fresh)
+        meBase.current = fresh
+        setOrigin(originLabel())
+      }),
+    [],
+  )
   // PO RETURN 2026-09-02 — נקודת מוצא.
   const [origin, setOrigin] = useState(() => originLabel())
   const [originState, setOriginState] = useState<'idle' | 'saved' | 'bad'>('idle')

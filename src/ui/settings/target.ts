@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 import { WEIGHTED_DUNAM_TARGET, localDayKey, now } from '@core/index'
+import { onSettingsApplied } from './applied'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -128,6 +129,12 @@ function read(): TargetState {
 
 let current: TargetState = read()
 const listeners = new Set<() => void>()
+
+/* ★ AS4 — une valeur arrivée d'un autre appareil remplace le cache. */
+onSettingsApplied([KEY], () => {
+  current = read()
+  for (const l of listeners) l()
+})
 
 function publish(next: TargetState): void {
   current = next

@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 import { ROUTE_MARGIN_INITIAL } from '@core/index'
+import { onSettingsApplied } from './applied'
 
 /**
  * ★★ AI3.2 (2026-09-14) — LA MARGE DES DURÉES DE ROULAGE.
@@ -34,6 +35,12 @@ function read(): number {
    garderait la valeur d'avant la restauration. */
 let current: number | null = null
 const listeners = new Set<() => void>()
+
+/* ★ AS4 — arrivé d'un autre appareil. */
+onSettingsApplied([KEY], () => {
+  current = null
+  for (const l of listeners) l()
+})
 
 export function writeRouteMargin(percent: number | null): void {
   current = percent === null ? ROUTE_MARGIN_INITIAL : Math.round(percent)

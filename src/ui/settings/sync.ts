@@ -1,22 +1,45 @@
 import { SUPABASE_CONFIGURED } from '../../data/config'
-import type { SettingsBlob } from '../../data/settings'
+import type { RemoteSettings, SettingsBlob } from '../../data/settings'
+import { announceSettingsApplied, announceSettingsConflict } from './applied'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  * ★★ AH11.2 (2026-09-10) — CE QUI VOYAGE D'UN APPAREIL À L'AUTRE, ET CE QUI
  *    NE VOYAGE PAS.
+ * ★★ AS4 (2026-10-07) — ET POURQUOI ÇA NE VOYAGEAIT PAS.
  * ═══════════════════════════════════════════════════════════════════════════
  *
- *   « Les réglages, régions et gabarits du PO vivent dans le navigateur. Un
- *     changement d'appareil ou un nettoyage de Safari les perd. »
+ *   « Il modifie ses données sur son iPhone, ouvre son iPad, rien n'a changé. »
  *
- * ★★ LA LISTE EST FERMÉE ET ÉCRITE À LA MAIN, ET C'EST LA DÉCISION DU BLOC.
- *    Le raccourci évident — « tout ce qui commence par `lo-yanum:` » — aurait
- *    emporté avec lui le laissez-passer de l'agriculteur (`farmerPass`), la
- *    mémoire de temporisation d'AG2 et le pli de chaque bloc. Les deux
- *    premiers sont des faits d'APPAREIL dont la copie sur un autre appareil
- *    annulerait la protection qu'ils sont ; le troisième est une disposition
- *    d'écran qui n'a de sens que sur l'écran choisi.
+ * ★★ LA LISTE EST FERMÉE ET ÉCRITE À LA MAIN, ET C'EST LA DÉCISION D'AH11.2.
+ *    « Tout ce qui commence par `lo-yanum:` » aurait emporté le laissez-passer
+ *    de l'agriculteur, la mémoire de temporisation d'AG2 et le pli de chaque
+ *    bloc — des faits d'APPAREIL. Ils restent locaux (voir `LOCAL_ONLY`).
+ *
+ * ⚠️ AS4 — CE QUI ÉTAIT FAUX, MESURÉ (docs/as/as4-reglages.md) :
+ *   1. le serveur n'était LU qu'au démarrage À FROID — une PWA installée
+ *      reprise ne redémarre presque jamais (AJ0.1) : l'iPad ne relisait rien ;
+ *   2. rien n'était lu APRÈS la connexion (au démarrage, pas de session) ;
+ *   3. un effacement (`removeItem` : retour au gabarit livré, origine effacée,
+ *      photo de ת״ז redevenue facultative) ne MONTAIT jamais ;
+ *   4. l'envoi poussait le BLOC ENTIER : un iPad aux valeurs d'hier écrasait
+ *      au premier geste les réglages du jour posés sur l'iPhone ;
+ *   5. quatre modules gardent leur valeur en cache dès leur import : une
+ *      lecture tardive n'atteignait pas l'écran.
+ *
+ * ★★ LE REMÈDE : UN INSTANT PAR CLÉ, ET « LA DERNIÈRE ÉCRITURE GAGNE », CLÉ
+ *    PAR CLÉ. Chaque `setItem`/`removeItem` d'une clé suivie note l'instant
+ *    (`lo-yanum:settings-stamps`, local). Le bloc distant porte `__stamps`.
+ *    Une synchronisation LIT, FUSIONNE (`mergeSettings`, pure), APPLIQUE,
+ *    puis ÉCRIT sous condition (`updated_at` inchangé). Elle part : au
+ *    démarrage, à la connexion, au retour en avant-plan (comme la
+ *    vérification de version d'AJ), au retour du réseau, et 1,2 s après un
+ *    changement local.
+ *
+ * ★★ AUCUNE PERTE SILENCIEUSE. Une valeur locale modifiée depuis la dernière
+ *    synchronisation et battue par une écriture PLUS RÉCENTE d'un autre
+ *    appareil est un CONFLIT : la plus récente gagne, et le PO est averti
+ *    (bandeau `SettingsSyncNotice`) de ce qui a été remplacé.
  */
 export const SYNCED_SETTING_KEYS: readonly string[] = [
   /* Le programme : cible, seuils, couvertures, rappels. */
@@ -44,6 +67,125 @@ export const SYNCED_SETTING_KEYS: readonly string[] = [
   'lo-yanum:route-margin',
 ]
 
+/**
+ * ★ AS4 — CE QUI RESTE SUR L'APPAREIL, VOLONTAIREMENT, ET POURQUOI. Écrit ici
+ * pour que la question « et celle-ci ? » ait une réponse à côté de la liste.
+ */
+export const LOCAL_ONLY_KEYS: ReadonlyArray<{ key: string; why: string }> = [
+  { key: 'lo-yanum:farmer-pass', why: 'laissez-passer de l’agriculteur : un fait de CET appareil (AL11.2)' },
+  { key: 'lo-yanum:guard-pass', why: 'laissez-passer du gardien : idem' },
+  { key: 'lo-yanum:link-unlock', why: 'mémoire de temporisation (AG2) : la copier annulerait la protection' },
+  { key: 'lo-yanum:theme:<rôle>', why: 'thème : choisi pour CET écran (AI6)' },
+  { key: 'lo-yanum:view-as', why: '« voir comme » : un état d’écran, pas un réglage' },
+  { key: 'lo-yanum:report-recipient', why: 'destinataire du compte rendu : délibérément local (voir recipient.ts)' },
+  { key: 'lo-yanum:activity-reports', why: 'historique local des rapports ; la base en garde la trace (activity_reports)' },
+  { key: 'lo-yanum:intake:seen', why: 'demandes « vues » : ne commande que la répétition d’un bandeau sur CET appareil (AQ)' },
+  { key: 'lo-yanum:sheet-mapping:<type>', why: 'correspondance de colonnes du dernier fichier importé ICI' },
+  { key: 'lo-yanum:farm-tab:<fiche>', why: 'onglet ouvert d’une fiche (AS5) : disposition d’écran' },
+  { key: 'map-mode, map-ratio, map-last, map-layers, map-base, layout-sync, block:*, numpad', why: 'disposition d’écran et de carte' },
+  { key: 'last-fix, geo-granted, geo-diag, map-attempt', why: 'localisation et diagnostics de CET appareil' },
+  { key: 'update-pending, update-verdict', why: 'mise à jour du build de CET appareil (AJ)' },
+  { key: 'last-session, last-email, lo-yanum:auth', why: 'la session elle-même' },
+  { key: 'lo-yanum:settings-stamps, lo-yanum:settings-synced-at', why: 'la mémoire de synchronisation de CET appareil (AS4)' },
+]
+
+export const STAMPS_FIELD = '__stamps'
+const STAMPS_KEY = 'lo-yanum:settings-stamps'
+const SYNCED_AT_KEY = 'lo-yanum:settings-synced-at'
+
+export type Stamps = Record<string, number>
+
+export interface SettingsSide {
+  values: Record<string, string | null>
+  stamps: Stamps
+}
+
+export interface MergeResult {
+  /** Ce que l'appareil doit porter après fusion. */
+  local: SettingsSide
+  /** Le bloc à écrire en base (valeurs à plat + `__stamps`). */
+  remote: SettingsBlob
+  /** Clés que l'autre appareil a changées et qu'on applique ici. */
+  applied: string[]
+  /** Clés modifiées ICI depuis la dernière synchro et battues par plus récent. */
+  conflicts: string[]
+  /** Faut-il écrire en base ? */
+  push: boolean
+}
+
+export function readRemoteSide(blob: SettingsBlob): SettingsSide {
+  let stamps: Stamps = {}
+  try {
+    const raw = blob[STAMPS_FIELD]
+    if (typeof raw === 'string') stamps = JSON.parse(raw) as Stamps
+  } catch {
+    stamps = {}
+  }
+  const values: Record<string, string | null> = {}
+  for (const key of SYNCED_SETTING_KEYS) values[key] = typeof blob[key] === 'string' ? blob[key] : null
+  return { values, stamps }
+}
+
+/**
+ * ★★ LA FUSION, PURE (la porte `aspass` la rejoue sans navigateur).
+ *
+ *  - instant distant > instant local → le distant gagne ; si la valeur locale
+ *    avait changé depuis `lastSyncAt`, c'est un CONFLIT (dit, pas tu) ;
+ *  - instant local > instant distant → le local gagne et MONTE ;
+ *  - aucun instant des deux côtés (réglages d'avant AS4) → la règle d'AH11.2,
+ *    « le compte gagne », sauf si le compte n'a rien : alors le local monte.
+ */
+export function mergeSettings(local: SettingsSide, remote: SettingsSide, lastSyncAt: number): MergeResult {
+  const next: SettingsSide = { values: { ...local.values }, stamps: { ...local.stamps } }
+  const applied: string[] = []
+  const conflicts: string[] = []
+  let push = false
+  for (const key of SYNCED_SETTING_KEYS) {
+    const lv = local.values[key] ?? null
+    const rv = remote.values[key] ?? null
+    const ls = local.stamps[key] ?? 0
+    const rs = remote.stamps[key] ?? 0
+    if (rs > ls) {
+      if (lv !== rv) {
+        next.values[key] = rv
+        applied.push(key)
+        if (ls > lastSyncAt) conflicts.push(key)
+      }
+      next.stamps[key] = rs
+    } else if (ls > rs) {
+      if (lv !== rv || rs === 0) push = true
+    } else if (lv !== rv) {
+      if (rv !== null) {
+        next.values[key] = rv
+        applied.push(key)
+      } else push = true
+    }
+  }
+  const remoteOut: SettingsBlob = {}
+  const stampsOut: Stamps = {}
+  for (const key of SYNCED_SETTING_KEYS) {
+    const v = next.values[key]
+    if (typeof v === 'string') remoteOut[key] = v
+    const s = Math.max(next.stamps[key] ?? 0, remote.stamps[key] ?? 0)
+    if (s > 0) stampsOut[key] = s
+  }
+  remoteOut[STAMPS_FIELD] = JSON.stringify(stampsOut)
+  return { local: next, remote: remoteOut, applied, conflicts, push }
+}
+
+// ---------------------------------------------------------------------------
+// L'appareil
+// ---------------------------------------------------------------------------
+
+function readJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as T) : fallback
+  } catch {
+    return fallback
+  }
+}
+
 /** Ce que l'appareil porte aujourd'hui, pour les clés qui voyagent. */
 export function snapshotSettings(): SettingsBlob {
   const out: SettingsBlob = {}
@@ -58,22 +200,42 @@ export function snapshotSettings(): SettingsBlob {
   return out
 }
 
+function localSide(): SettingsSide {
+  const values: Record<string, string | null> = {}
+  for (const key of SYNCED_SETTING_KEYS) {
+    try {
+      values[key] = localStorage.getItem(key)
+    } catch {
+      values[key] = null
+    }
+  }
+  return { values, stamps: readJson<Stamps>(STAMPS_KEY, {}) }
+}
+
+/** Dernière synchronisation réussie de CET appareil (ms), 0 = jamais. */
+export function lastSettingsSyncAt(): number {
+  return readJson<number>(SYNCED_AT_KEY, 0)
+}
+
+let applying = false
+let rawSet: ((k: string, v: string) => void) | null = null
+let rawRemove: ((k: string) => void) | null = null
+
+function writeRaw(key: string, value: string | null): void {
+  applying = true
+  try {
+    if (value === null) (rawRemove ?? localStorage.removeItem.bind(localStorage))(key)
+    else (rawSet ?? localStorage.setItem.bind(localStorage))(key, value)
+  } catch {
+    /* Navigation privée. */
+  } finally {
+    applying = false
+  }
+}
+
 /**
- * ★★ APPLIQUÉ AVANT QUE QUOI QUE CE SOIT NE RENDE, ET C'EST CE QUI ÉVITE UN
- *    REFACTOR DE DOUZE MODULES.
- *
- * Chaque module de réglage garde sa valeur dans un cache de portée module,
- * rempli à la PREMIÈRE lecture. Écrire dans `localStorage` avant que le
- * premier écran ne monte suffit donc à ce que tous lisent la bonne valeur,
- * sans qu'aucun n'ait à savoir qu'un serveur existe. Appliqué plus tard, il
- * aurait fallu un registre d'invalidation dans les douze.
- *
- * ⚠️ ET LE SERVEUR GAGNE AU DÉMARRAGE, PAS À CHAQUE INSTANT. C'est la lecture
- *    d'AH11.2 : « côté serveur, avec le LOCAL EN CACHE pour le hors-ligne ».
- *    Le cache sert quand le réseau manque ; quand le réseau répond, la vérité
- *    est celle du compte. Une fusion clé par clé aurait demandé un horodatage
- *    par réglage et aurait rendu « pourquoi ce chiffre a-t-il changé » sans
- *    réponse.
+ * Compatibilité d'AH11.2 (démarrage sans fusion) : applique un bloc tel quel.
+ * Gardée pour les portes qui l'appellent ; le démarrage passe par `syncSettings`.
  */
 export function applySettings(blob: SettingsBlob): number {
   let applied = 0
@@ -82,7 +244,7 @@ export function applySettings(blob: SettingsBlob): number {
     if (typeof v !== 'string') continue
     try {
       if (localStorage.getItem(key) !== v) applied += 1
-      localStorage.setItem(key, v)
+      writeRaw(key, v)
     } catch {
       /* Idem. */
     }
@@ -91,43 +253,116 @@ export function applySettings(blob: SettingsBlob): number {
 }
 
 // ---------------------------------------------------------------------------
-// L'écriture, en différé
+// Le cycle : lire, fusionner, appliquer, écrire
 // ---------------------------------------------------------------------------
 
+export interface SyncDeps {
+  load: () => Promise<RemoteSettings | null>
+  save: (blob: SettingsBlob, expectedUpdatedAt: string | null) => Promise<'ok' | 'conflict' | 'error'>
+}
+
+let deps: SyncDeps | null = null
+let inFlight: Promise<void> | null = null
+let again = false
 let timer: number | null = null
-let pushing = false
+let lastForeground = 0
+
+export type SyncOutcome = { applied: string[]; conflicts: string[]; pushed: boolean; ok: boolean }
+let lastOutcome: SyncOutcome | null = null
+export function lastSettingsSyncOutcome(): SyncOutcome | null {
+  return lastOutcome
+}
+
+async function cycle(): Promise<void> {
+  if (!deps) return
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const row = await deps.load().catch(() => null)
+    if (!row) {
+      lastOutcome = { applied: [], conflicts: [], pushed: false, ok: false }
+      return
+    }
+    const merged = mergeSettings(localSide(), readRemoteSide(row.blob), lastSettingsSyncAt())
+    for (const key of merged.applied) writeRaw(key, merged.local.values[key] ?? null)
+    writeRaw(STAMPS_KEY, JSON.stringify(merged.local.stamps))
+    if (merged.applied.length > 0) announceSettingsApplied(merged.applied)
+    if (merged.conflicts.length > 0) announceSettingsConflict(merged.conflicts)
+    if (merged.push) {
+      const res = await deps.save(merged.remote, row.updatedAt).catch(() => 'error' as const)
+      if (res === 'conflict') continue
+      if (res === 'error') {
+        lastOutcome = { applied: merged.applied, conflicts: merged.conflicts, pushed: false, ok: false }
+        return
+      }
+    }
+    writeRaw(SYNCED_AT_KEY, JSON.stringify(Date.now()))
+    lastOutcome = { applied: merged.applied, conflicts: merged.conflicts, pushed: merged.push, ok: true }
+    return
+  }
+}
+
+/** Une synchronisation, maintenant ; deux demandes rapprochées n'en font qu'une de plus. */
+export function syncSettings(): Promise<void> {
+  if (inFlight) {
+    again = true
+    return inFlight
+  }
+  inFlight = cycle().finally(() => {
+    inFlight = null
+    if (again) {
+      again = false
+      void syncSettings()
+    }
+  })
+  return inFlight
+}
 
 /**
- * ★★ L'ÉCRITURE EST DÉCLENCHÉE PAR `localStorage.setItem` LUI-MÊME, ET C'EST
- *    LE SEUL ENDROIT DU PROGRAMME QUI ENVELOPPE UNE FONCTION DU NAVIGATEUR.
+ * ★★ L'ÉCRITURE EST DÉCLENCHÉE PAR `localStorage` LUI-MÊME (AH11.2), ET AS4
+ *    Y AJOUTE `removeItem` : un retour au défaut est un changement comme un
+ *    autre, et c'était le trou n°3.
  *
- * ⚠️ POURQUOI CE CHOIX PLUTÔT QUE D'APPELER `pushSettings()` DEPUIS LES DOUZE
- *    MODULES : parce que le treizième ne l'appellerait pas. Une règle qui
- *    demande d'ajouter une ligne à chaque nouveau réglage est une règle qui
- *    aura un trou, et le trou serait silencieux — le PO découvrirait sur un
- *    autre iPad qu'un seul de ses réglages n'a pas suivi. Ici la règle est
- *    « ce qui est dans la liste voyage », et elle n'a qu'un endroit.
- *
- * ⚠️ ET L'ENVELOPPE EST TRANSPARENTE : elle appelle l'original, ne jette
- *    jamais, et ne fait rien du tout hors d'un build réel connecté.
+ * ⚠️ L'enveloppe est transparente : elle appelle l'original, ne jette jamais,
+ *    et ne fait rien hors d'un build réel connecté. Une valeur écrite PAR la
+ *    synchronisation (`applying`) ne reçoit pas d'instant neuf.
  */
-export function startSettingsSync(push: (blob: SettingsBlob) => Promise<boolean>): void {
-  if (!SUPABASE_CONFIGURED) return
-  const original = window.localStorage.setItem.bind(window.localStorage)
+export function startSettingsSync(d: SyncDeps): void {
+  if (!SUPABASE_CONFIGURED || deps) return
+  deps = d
+  const storage = window.localStorage
+  rawSet = storage.setItem.bind(storage)
+  rawRemove = storage.removeItem.bind(storage)
   const watched = new Set(SYNCED_SETTING_KEYS)
-  window.localStorage.setItem = (key: string, value: string): void => {
-    original(key, value)
-    if (!watched.has(key)) return
+  const touched = (key: string): void => {
+    if (applying || !watched.has(key)) return
+    const stamps = readJson<Stamps>(STAMPS_KEY, {})
+    stamps[key] = Date.now()
+    rawSet!(STAMPS_KEY, JSON.stringify(stamps))
     if (timer !== null) window.clearTimeout(timer)
-    /* 1,2 s : le PO tape dans une zone de texte de gabarit, et une écriture
-       par frappe serait une requête par frappe. */
+    /* 1,2 s : le PO tape dans une zone de texte de gabarit. */
     timer = window.setTimeout(() => {
       timer = null
-      if (pushing) return
-      pushing = true
-      void push(snapshotSettings()).finally(() => {
-        pushing = false
-      })
+      void syncSettings()
     }, 1200)
   }
+  storage.setItem = (key: string, value: string): void => {
+    rawSet!(key, value)
+    touched(key)
+  }
+  storage.removeItem = (key: string): void => {
+    rawRemove!(key)
+    touched(key)
+  }
+  /* Au retour en avant-plan — la même liste d'événements que la vérification
+     de version d'AJ0 et la relecture des données d'AQ2 ; 10 s au plus souvent. */
+  const resume = (): void => {
+    if (document.visibilityState === 'hidden') return
+    const t = Date.now()
+    if (t - lastForeground < 10_000) return
+    lastForeground = t
+    void syncSettings()
+  }
+  document.addEventListener('visibilitychange', resume)
+  window.addEventListener('pageshow', resume)
+  window.addEventListener('focus', resume)
+  window.addEventListener('online', () => void syncSettings())
 }

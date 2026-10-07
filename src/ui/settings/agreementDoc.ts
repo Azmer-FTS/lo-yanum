@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { onSettingsApplied } from './applied'
 
 import { plainText, unknownAgreementVars } from '@core/index'
 
@@ -104,6 +105,13 @@ export function resetAgreementTemplate(): void {
 // --- le logo ----------------------------------------------------------------
 
 let logoCache: AgreementLogo | undefined
+
+/* ★ AS4 — le texte ou le logo arrivés d'un autre appareil. */
+onSettingsApplied([TEMPLATE_KEY, LOGO_KEY], () => {
+  templateCache = undefined
+  logoCache = undefined
+  notify()
+})
 
 export function readAgreementLogo(): AgreementLogo {
   if (logoCache === undefined) {

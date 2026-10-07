@@ -190,6 +190,33 @@ function applyInMemory(farms: Farm[], p: PortalPlan): { farms: Farm[]; leads: Le
   return { farms: out, leads }
 }
 
+section('A290 · AS4 — la fusion des réglages, clé par clé (pure)')
+{
+  const { mergeSettings, readRemoteSide, SYNCED_SETTING_KEYS, LOCAL_ONLY_KEYS } = await import('../src/ui/settings/sync')
+  const T = 'lo-yanum:target'
+  const C = 'lo-yanum:coordinator'
+  const side = (values: Record<string, string | null>, stamps: Record<string, number>) => ({ values, stamps })
+  let m = mergeSettings(side({ [T]: 'old' }, { [T]: 100 }), side({ [T]: 'new' }, { [T]: 200 }), 150)
+  check('distant plus récent → appliqué ici, sans conflit (rien changé ici depuis la synchro)', m.local.values[T] === 'new' && m.applied.includes(T) && m.conflicts.length === 0 && !m.push)
+  m = mergeSettings(side({ [T]: 'mine' }, { [T]: 180 }), side({ [T]: 'theirs' }, { [T]: 200 }), 150)
+  check('changé ici ET plus récent ailleurs → le plus récent gagne, CONFLIT signalé', m.local.values[T] === 'theirs' && m.conflicts.includes(T))
+  m = mergeSettings(side({ [T]: 'mine' }, { [T]: 300 }), side({ [T]: 'theirs' }, { [T]: 200 }), 150)
+  check('local plus récent → il MONTE, le distant ne l’écrase pas', m.local.values[T] === 'mine' && m.push && m.remote[T] === 'mine')
+  m = mergeSettings(side({ [T]: 'a', [C]: 'stale' }, { [T]: 300, [C]: 10 }), side({ [T]: 'b', [C]: 'fresh' }, { [T]: 200, [C]: 250 }), 260)
+  check('un appareil aux valeurs d’hier ne pousse QUE ce qu’il a changé', m.remote[T] === 'a' && m.remote[C] === 'fresh' && m.local.values[C] === 'fresh')
+  m = mergeSettings(side({ [C]: null }, { [C]: 300 }), side({ [C]: 'card' }, { [C]: 200 }), 250)
+  check('un EFFACEMENT plus récent monte (la clé quitte le bloc)', m.push && m.remote[C] === undefined)
+  m = mergeSettings(side({ [T]: 'local' }, {}), side({ [T]: 'server' }, {}), 0)
+  check('réglages d’avant AS4 (aucun instant) : le compte gagne, comme AH11.2', m.local.values[T] === 'server')
+  m = mergeSettings(side({ [T]: 'local' }, {}), side({}, {}), 0)
+  check('… et un compte vide reçoit ce que l’appareil porte', m.push && m.remote[T] === 'local')
+  check('le bloc porte ses instants (`__stamps`)', typeof m.remote.__stamps === 'string')
+  check('readRemoteSide lit un bloc d’avant AS4 sans instants', readRemoteSide({ [T]: 'x' }).values[T] === 'x')
+  const want = ['lo-yanum:target', 'lo-yanum:coverage', 'lo-yanum:vigil', 'lo-yanum:area-gap', 'lo-yanum:summons-template', 'lo-yanum:agreement-doc-template', 'lo-yanum:region-rings', 'lo-yanum:coordinator', 'lo-yanum:origin']
+  check('carte, seuils, gabarits, régions, objectif, point de départ VOYAGENT', want.every((k) => SYNCED_SETTING_KEYS.includes(k)))
+  check('laissez-passer et temporisation restent LOCAUX', !SYNCED_SETTING_KEYS.some((k) => /farmer-pass|guard-pass|link-unlock|theme/.test(k)) && LOCAL_ONLY_KEYS.some((l) => l.key === 'lo-yanum:farmer-pass') && LOCAL_ONLY_KEYS.some((l) => l.key === 'lo-yanum:link-unlock'))
+}
+
 const REAL = 'private/portal-export-2026-10-07.csv'
 if (existsSync(REAL) && existsSync('private/as-db-avant.json')) {
   section('Le VRAI export (hors dépôt) contre la base relue avant écriture')

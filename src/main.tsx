@@ -24,6 +24,7 @@ import { loadRegionEdits } from './ui/settings/regionEdits'
 import { startThemeController } from './ui/theme'
 import { startUpdateWatcher } from './ui/update'
 import { UpdateBanner } from './ui/components/UpdateBanner'
+import { SettingsSyncNotice } from './ui/settings/SettingsSyncNotice'
 
 /**
  * P2.6b — WHICH STORE THIS BUILD RUNS ON, DECIDED BEFORE ANYTHING RENDERS.
@@ -65,9 +66,14 @@ if (SUPABASE_CONFIGURED) {
   settingsReady = (async () => {
     const sync = await import('./ui/settings/sync')
     const remote = await import('./data/settings')
-    const blob = await remote.loadRemoteSettings().catch(() => null)
-    if (blob) sync.applySettings(blob)
-    sync.startSettingsSync(remote.saveRemoteSettings)
+    const hooks = await import('./ui/settings/appliedHooks')
+    hooks.installSettingsAppliedHooks()
+    /* ★★ AS4 — un cycle complet (lire, fusionner, appliquer, écrire), puis la
+       même chose à la connexion, au retour en avant-plan et après chaque
+       changement local. Voir `ui/settings/sync.ts` pour les cinq trous. */
+    sync.startSettingsSync({ load: remote.loadRemoteSettingsRow, save: remote.saveRemoteSettingsIf })
+    void remote.onSignedIn(() => void sync.syncSettings())
+    await sync.syncSettings()
   })()
 }
 
@@ -219,6 +225,8 @@ function mount(): void {
       {/* ★★ AJ0 — above the app, so the door, the map and the farmer's three
           tabs all carry it. See `ui/components/UpdateBanner.tsx`. */}
       <UpdateBanner />
+      {/* ★★ AS4.6 — ce qui est arrivé d'un autre appareil, et ce qui a été remplacé. */}
+      <SettingsSyncNotice />
       <App />
     </StrictMode>,
   )
