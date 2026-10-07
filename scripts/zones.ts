@@ -134,6 +134,12 @@ async function mapBox(page: Page) {
 async function unfoldZones(page: Page): Promise<void> {
   const block = page.locator('[data-block="entity-zones"]')
   if ((await block.count()) === 0) return
+  /* ★ AS5 — la liste des zones est dans l'onglet « שטח » de la fiche. */
+  const tab = page.locator('[data-testid="farm-tab-terrain"]')
+  if ((await tab.count()) > 0 && (await tab.getAttribute('aria-selected')) !== 'true') {
+    await tab.click()
+    await page.waitForTimeout(250)
+  }
   if ((await block.getAttribute('data-open')) === '0') {
     await page.locator('[data-testid="block-entity-zones"]').click()
     await page.waitForTimeout(250)

@@ -156,7 +156,8 @@ try {
   await waitMap()
   await page.waitForTimeout(3500)
   await page.screenshot({ path: `${SHOTS}/4-national-map.png` })
-  await page.goto(`${BASE}/#/coordinator/farms/demo-farm-01`, { waitUntil: 'load' })
+  /* ★ AS5 — les zones sont dans l'onglet « שטח ». */
+  await page.goto(`${BASE}/#/coordinator/farms/demo-farm-01?tab=terrain`, { waitUntil: 'load' })
   await waitMap()
   await page.waitForTimeout(3000)
   await page.screenshot({ path: `${SHOTS}/5-entity-with-zones.png`, fullPage: true })

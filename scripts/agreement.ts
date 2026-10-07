@@ -99,10 +99,10 @@ try {
   const pages: string[] = []
   context.on('page', (p) => pages.push(p.url()))
 
-  await page.goto(`${BASE}/#/coordinator/farms/farm-a89`, { waitUntil: 'load' })
+  await page.goto(`${BASE}/#/coordinator/farms/farm-a89?tab=docs`, { waitUntil: 'load' })
   await page.waitForTimeout(3000)
   if (!page.url().endsWith('farm-a89')) {
-    await page.goto(`${BASE}/#/coordinator/farms/farm-a89`, { waitUntil: 'load' })
+    await page.goto(`${BASE}/#/coordinator/farms/farm-a89?tab=docs`, { waitUntil: 'load' })
     await page.waitForTimeout(2500)
   }
   const url = page.url()
