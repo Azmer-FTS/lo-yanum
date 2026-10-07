@@ -104,35 +104,20 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- ⏳ **PASSE AS EN COURS** (2026-10-07) — brief : import du portail, sync des
-  réglages, fiche en onglets, salle d'attente des pistes. Ordre AS1 → AS8.
-  - ✅ **AS1–AS3 faits et APPLIQUÉS sur `lo-yanum-prod`** (commit `5c3016a`) :
-    `src/core/portalImport.ts` (pur), `scripts/asdata.ts`, porte
-    `bun run aspass` (55/55). Base : 19 fermes, **6 pistes** (table `leads`),
-    10 signatures (md5 vérifiés), 4 contrats recopiés par la fonction Edge
-    `portal-document` dans `agreements/land/<fiche>/…pdf`. `farm-ak1-06`
-    (ex-אורחאן) = **החווה של צביקה**. Migrations `20261007000100/000200` +
-    jalons `20261007120823/120958` : `armigrations` 37/37, 62/62.
+- **Passe AS TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-10-07) — commit servi et
+  vérifié : **`0b97ed4`** sur les trois URLs. Import du portail (répétable :
+  `/coordinator/import/portal`), réglages synchronisés clé par clé, fiche en
+  six onglets, salle d'attente des contacts (`/coordinator/leads`, table
+  `leads`). **Appliqué sur `lo-yanum-prod`** : 19 fermes, 6 pistes,
+  10 signatures, 4 contrats recopiés (fonction Edge `portal-document`).
+  Portes : `bun run aspass` (84, pure), `bun run assettings` (18 ; rouge 8/18
+  sur `0bd2cb5`), `bun run asui` (60 local, **66 sur le déployé** avec
+  `CAPTURES=1` → 30 captures). Récit : `ETAT.md` § AS ; réglages :
+  `docs/as/as4-reglages.md`.
   - ⚠️ **LE DÉPÔT EST PUBLIC** : le vrai CSV et l'instantané de la base sont
     dans `private/` (ignoré par git). Ne jamais les commiter.
-  - ✅ **AS4 fait** (commit `ccbdcec`) : `ui/settings/sync.ts` (fusion clé par
-    clé, `__stamps` dans le bloc), `data/settings.ts` (écriture conditionnelle),
-    `SettingsSyncNotice`. Porte `bun run assettings` 18/18 local ; **rouge
-    8/18 sur le déployé 0bd2cb5** (`docs/as/as4-rouge-deploye-0bd2cb5.log`).
-  - ✅ **AS5 fait** (`0464281`) : `src/ui/farm/farmTabs.tsx`, `STICKY_BAR`
-    partagé (primitives), `LandDocumentsSection`. arfiche 144, amui 77, aqui 118, akui 119.
-  - ✅ **AS6 + écran d'import fait** (`73bd885`) : `core/leads.ts`,
-    `LeadsScreen.tsx` (`/coordinator/leads`), `PortalImportScreen.tsx`
-    (`/coordinator/import/portal`, menu ⋯ des fermes). aspass 84, persist 117.
-  - ⏳ Reste : AS7 (réponse bureau), AS8 (`scripts/asui.ts` à écrire :
-    A291–A297 + captures ; build local puis DÉPLOYÉ), docs, push, rapport.
-  - ⏳ (ancien) Reste : AS5 (onglets), AS6 (écran des pistes + collage
-    + carte + rendez-vous + conversion), écran d'import du portail dans
-    l'app, AS7 (adresse), AS8 (portes UI + déployé + captures), rapport.
-  - ℹ️ `bun run persist` : 1 rouge PRÉ-EXISTANT (`markIntakeHandled` non
-    piloté) — identique sur `de948a6` (vérifié dans un worktree).
-
-
+  - Historique des migrations : 62/62 (`armigrations` 37/37) après les deux
+    migrations AS + leurs jalons.
 - **Passe AR TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-09-27) — commit de CODE
   vérifié et servi : **`0bd2cb5`** (les commits suivants : documentation seule).
   Le formulaire public
@@ -540,6 +525,12 @@ lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview 
 bun run typecheck && bun run appass && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run contrast && bun run akpass && bun run accept
 
 # LA PASSE AR :
+bun run aspass                                                     # AS : A284–A288, A290, A292, A294, A296 (pure)
+bun run assettings                                                 # AS4 : A289, deux appareils, build local
+BASE_URL=https://azmer-fts.github.io/lo-yanum bun run assettings   # le DÉPLOYÉ (18/18)
+bun run asui                                                       # AS8 : A286, A291–A295, A297, build local
+CAPTURES=1 BASE_URL=https://azmer-fts.github.io/lo-yanum bun run asui   # le DÉPLOYÉ (66/66) + 30 captures
+bun run asdata                                                     # le plan de l'export réel (exige private/)
 bun run armigrations                                               # A273 : historique aligné (lit seulement)
 bun run arui                                                       # A268–A271, Chromium + WebKit
 CAPTURES=1 AR_ENGINES=chromium BASE_URL=https://azmer-fts.github.io/lo-yanum/bakasha/ bun run arui   # déployé + 78 captures
@@ -808,6 +799,23 @@ d'être déployé.
 - Les deux violations A57 de `AnchorMap.tsx` signalées en §36.6 ont été
   corrigées en U4 ; celles qui restent sont ailleurs.
 
+## Ce que le PO fait à l'ouverture (AS, 2026-10-07)
+
+1. **Mettre l'app à jour** sur l'iPhone ET sur l'iPad (« גרסה חדשה » →
+   « עדכון עכשיו », ou fermer/rouvrir) : הגדרות › נתונים doit afficher la
+   nouvelle « גרסת האפליקציה » et, juste au-dessus, « כתובת האפליקציה ».
+2. **Les réglages** : changer un réglage sur l'iPhone, revenir sur l'iPad
+   (sans rien fermer) — le bandeau « ההגדרות עודכנו ממכשיר אחר » le dit. Les
+   DEUX appareils doivent être à jour : un ancien build écrase encore le bloc.
+3. **Les fermes** : 19 fermes (au lieu de 25) ; « החווה של צביקה » remplace
+   « חוות אורחאן ». Onglet « מסמכים » : signature importée et, pour quatre
+   fiches, le contrat de terre (« פתיחה »).
+4. **La salle d'attente** (menu : « אנשי קשר לטיפול ») : les six contacts à
+   astérisques y sont. Essayer « הדבקת אנשי קשר » avec un bloc WhatsApp.
+5. **Dans le portail** : supprimer la ligne `*חוות אורחאן*` ; et, si Tadabase
+   le permet, ajouter la colonne « סטטוס חתימה » à l'export.
+6. **Trancher** les numéros listés en « Questions ouvertes » 0-AS.
+
 ## Ce que le PO fait à l'ouverture (AR, 2026-09-27)
 
 1. **Refaire le parcours public sur son téléphone** :
@@ -885,6 +893,24 @@ d'être déployé.
    (point 0ter).
 
 ## Questions ouvertes / ce qui attend le PO
+
+0-AS. **À vérifier par le PO (import du portail, 2026-10-07)** :
+   - ת״ז/ח״פ qui n'ont pas neuf chiffres, importés TELS QUELS : 23505696
+     (02 - מושב פתיש), 24015877 (03 - אבן חן), **7010797** (06 - נעמ״א, sept
+     chiffres), 57739120 (החווה של צביקה), 21985189 (חוות מרגי — la base porte
+     `021985189` depuis AO, non écrasé : lequel est juste ?).
+   - גד״ש רוחמה : contact « רו (מנכ״ל) » dans l'app, « רן » dans le portail.
+   - משק שלם : signature dans le portail mais « מוכן לחתימה » à son écran — gardé
+     « מוכן לחתימה » ; et « ניר עקובא » dans sa colonne מיקום (une note ?).
+   - Le statut n'est pas dans l'export : ajouter « סטטוס חתימה » à l'export
+     Tadabase rendrait l'import complet.
+   - ⚠️ **Dépôt PUBLIC** : `docs/ak/ak1-prod-rows.json` (depuis AK) publie
+     téléphones et ת״ז ; le retirer de l'historique demande une réécriture
+     (décision du PO, rien n'a été touché).
+   - Bureau (AS7) : l'app s'installe déjà depuis Chrome/Edge sur Mac (0 erreur
+     d'installabilité mesurée) et via « Ajouter au Dock » de Safari. Une
+     icône PNG 512 px rendrait l'icône du Dock nette (≈ 15 min) ; une app
+     native (Tauri/Electron) : 2–4 jours + signature Apple (99 $/an). À décider.
 
 0-AR. **Le délai d'avance automatique : 450 ms** (`AUTO_ADVANCE_DELAY_MS`,
    `src/core/request.ts`). Choisi pour que la coche se voie sans qu'on cherche

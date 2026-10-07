@@ -1,0 +1,95 @@
+$ bun run scripts/asui.ts
+  app : https://azmer-fts.github.io/lo-yanum  (DÉPLOYÉ)
+
+  A291 — en-tête épinglé aux trois largeurs ; onglets ; onglet retenu
+  -------------------------------------------------------------------
+  PASS  @402 · l’en-tête de fiche existe, avec le nom
+  PASS  @402 · … le nom de l’agriculteur
+  PASS  @402 · … les actions
+  PASS  @402 · … et six onglets (role=tab)
+  PASS  @402 · après défilement, l’en-tête est À L’ÉCRAN, en haut  — y=69 h=179
+  PASS  @402 · … et rien ne le recouvre
+  PASS  @402 · « אנשים » : seul son panneau est visible  — farm-panel-people
+  PASS  @402 · le bloc « אנשים » y est
+  PASS  @402 · les blocs des autres onglets restent dans la page (A217)
+  PASS  @402 · revenir sur la fiche rouvre « אנשים »
+  PASS  @402 · une AUTRE fiche s’ouvre sur « החווה »
+  PASS  @402 · aucune erreur de page
+  PASS  @1032 · l’en-tête de fiche existe, avec le nom
+  PASS  @1032 · … le nom de l’agriculteur
+  PASS  @1032 · … les actions
+  PASS  @1032 · … et six onglets (role=tab)
+  PASS  @1032 · après défilement, l’en-tête est À L’ÉCRAN, en haut  — y=562 h=120
+  PASS  @1032 · … et rien ne le recouvre
+  PASS  @1032 · « אנשים » : seul son panneau est visible  — farm-panel-people
+  PASS  @1032 · le bloc « אנשים » y est
+  PASS  @1032 · les blocs des autres onglets restent dans la page (A217)
+  PASS  @1032 · revenir sur la fiche rouvre « אנשים »
+  PASS  @1032 · une AUTRE fiche s’ouvre sur « החווה »
+  PASS  @1032 · aucune erreur de page
+  PASS  @1376 · l’en-tête de fiche existe, avec le nom
+  PASS  @1376 · … le nom de l’agriculteur
+  PASS  @1376 · … les actions
+  PASS  @1376 · … et six onglets (role=tab)
+  PASS  @1376 · après défilement, l’en-tête est À L’ÉCRAN, en haut  — y=20 h=120
+  PASS  @1376 · … et rien ne le recouvre
+  PASS  @1376 · « אנשים » : seul son panneau est visible  — farm-panel-people
+  PASS  @1376 · le bloc « אנשים » y est
+  PASS  @1376 · les blocs des autres onglets restent dans la page (A217)
+  PASS  @1376 · revenir sur la fiche rouvre « אנשים »
+  PASS  @1376 · une AUTRE fiche s’ouvre sur « החווה »
+  PASS  @1376 · aucune erreur de page
+
+  A286 — la signature importée et le contrat de terre, dans « מסמכים »
+  --------------------------------------------------------------------
+  PASS  le contrat recopié est listé, « שמור באפליקציה »
+  PASS  la signature importée du portail est montrée
+
+  A292 — un bloc collé de plusieurs contacts crée autant de pistes
+  ----------------------------------------------------------------
+  PASS  l’aperçu montre cinq contacts  — 5
+  PASS  cinq cartes de plus sur le tableau  — 5 → 10
+  PASS  … et cinq lignes de plus dans `leads` (base)  — 10
+  PASS  aucune ferme créée par le collage
+
+  A293 — statut en un geste ; déplacement AU DOIGT sur iPad ; flèches
+  -------------------------------------------------------------------
+  PASS  le statut change d’un geste
+  PASS  … et la carte est dans la colonne « לחזור אליו »
+  PASS  les flèches font au moins 44 px  — 44×44
+  PASS  la flèche passe à la colonne suivante (« קבעתי פגישה »)
+  PASS  glissée AU DOIGT, la carte change de colonne
+  PASS  … et la base le sait  — message_sent
+
+  A294 — une piste devient une ferme sans ressaisie, et quitte la salle d’attente
+  -------------------------------------------------------------------------------
+  PASS  on arrive sur la fiche de la nouvelle ferme  — https://azmer-fts.github.io/lo-yanum/?as=1791384148983#/coordinator/farms/farm-muy7vfz2-1
+  PASS  la fiche porte le nom de la piste
+  PASS  … en base : téléphone, personne, lieu, point, sans ressaisie  — {"p":"050-0000101","n":"אבי כהן","l":"נתיבות"}
+  PASS  la piste n’est plus dans la salle d’attente
+  PASS  elle garde la trace de sa ferme (base)
+  PASS  une piste « לא מעוניין » RESTE, marquée
+
+  A295 — un rendez-vous posé depuis une piste apparaît dans l’agenda
+  ------------------------------------------------------------------
+  PASS  le rendez-vous s’ouvre en PAGE (AN11), pas en fenêtre  — {"hash":"#/coordinator/agenda/meeting/new?lead=lead-demo-02","dialog":0}
+  PASS  … pré-rempli depuis la piste
+  PASS  la rencontre est en base, liée à la piste  — פגישה — רפת השקמה
+  PASS  la piste passe à « קבעתי פגישה »
+  PASS  l’agenda la montre  — רפת השקמה
+
+  A297 — l’adresse courante s’affiche dans הגדרות › נתונים
+  --------------------------------------------------------
+  PASS  l’adresse affichée est celle ouverte  — https://azmer-fts.github.io/lo-yanum/
+
+  Captures — clair et sombre, trois largeurs : fiche en onglets, salle d’attente
+  ------------------------------------------------------------------------------
+  PASS  captures @402 clair : aucune erreur de page
+  PASS  captures @1032 clair : aucune erreur de page
+  PASS  captures @1376 clair : aucune erreur de page
+  PASS  captures @402 sombre : aucune erreur de page
+  PASS  captures @1032 sombre : aucune erreur de page
+  PASS  captures @1376 sombre : aucune erreur de page
+  30 captures dans docs/screenshots/aspass/deployed
+
+  All 66 checks passed.

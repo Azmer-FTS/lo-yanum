@@ -1,5 +1,148 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AS — IMPORT DU PORTAIL, RÉGLAGES SYNCHRONISÉS, FICHE EN ONGLETS, SALLE D'ATTENTE. 2026-10-07. LIRE EN PREMIER.**
+>
+> Ordre suivi : AS1 → AS2 → AS3 → AS4 → AS5 → AS6 → AS7 → AS8.
+>
+> ## AS1 — L'EXPORT CSV DU PORTAIL, IMPORTÉ ET RÉPÉTABLE
+>
+> `src/core/portalImport.ts` (pur) · écran `ייבוא מהפורטל` (`/coordinator/import/portal`,
+> menu ⋯ des fermes) · `scripts/asdata.ts` (le même plan, en SQL) · porte
+> `bun run aspass`. Les cinq pièges, plus ce que le VRAI fichier a montré :
+> 1. tout est lu en TEXTE (`parsePortalCsv`, RFC 4180, BOM) : `0526067361` →
+>    `052-6067361`, `21985189` reste à 8 chiffres (aucun zéro inventé) ;
+> 2. ⚠️ **« מיקום » N'EST PAS LA COLONNE DES COORDONNÉES DANS L'EXPORT RÉEL** :
+>    elle porte un courriel (`01 - תומר` → devient son courriel), un nom
+>    (« ניר עקובא » sur משק שלם → signalé, pas interprété) ou rien. Les
+>    coordonnées sont dans « כתובת ». On ne croit aucun en-tête : chaque cellule
+>    des deux colonnes est typée. Ordre lat, lng déduit (les plages ne se
+>    recouvrent pas), point hors d'Israël refusé, ordre inversé retourné et dit ;
+> 3. surfaces `26,000` → 26000 ;
+> 4. `חתימה` = PNG base64 → `entities.signature` (comble un vide, origine
+>    `imported`) ; `הסכם רעיה/חכירה` = lien S3 → `entities.land_documents`,
+>    recopié par la fonction Edge `portal-document` (S3 ne rend AUCUN en-tête
+>    CORS : le navigateur ne peut pas le lire) dans `agreements/land/<fiche>/` ;
+> 5. ⚠️ **L'EXPORT N'A PAS DE COLONNE DE STATUT.** Une signature ne suffit pas à
+>    dire « נחתם » : משק שלם est signée et « מוכן לחתימה » dans le portail.
+>    L'écran propose une case « לסמן כנחתם » par ligne ; la colonne
+>    « סטטוס חתימה » est lue si le PO l'ajoute à son export.
+> Régimes d'AO inchangés (nom/statut/surfaces font autorité ; ת״ז/contact/
+> téléphone/courriel comblent un vide ; l'épingle du PO gagne ; photo, visite,
+> תיק אתר, שטחים שמירה, notes jamais touchés). Base RELUE avant d'écrire.
+>
+> **Appliqué sur `lo-yanum-prod`** : 19 fiches, 10 signatures (md5 vérifiés
+> contre le fichier), 4 contrats recopiés (tailles = `Content-Length` S3) :
+> 02 - מושב פתיש עדר בקר · 03 - אבן חן חקלאות · בקר מושב אמציה · החווה של צביקה.
+> Surfaces : פתיש מרעה 0 → 1 058 ; אבן חן מעובד 650 → 652 ; צביקה מעובד 894
+> (⚠️ le brief disait « pâturage » : le fichier et l'écran du portail disent
+> שטחים מעובדים). 05 - שדה משה : עמית גבע, 054-2177811, ח״פ 557016151.
+> Statut « נחתם » posé pour 05 - שדה משה et החווה של צביקה (écran du portail).
+> ת״ז/ח״פ hors neuf chiffres, à vérifier : 23505696 (פתיש), 24015877 (אבן חן),
+> 7010797 (נעמ״א, SEPT chiffres), 57739120 (צביקה), 21985189 (מרגי —
+> ⚠️ la base porte `021985189` depuis AO : jamais écrasé, à trancher par le PO).
+> Épingles du PO gardées : הר-שמש (267 m), זעק (274 m), מרגי (188 m).
+>
+> ## AS2 — צביקה / אורחאן : UNE FICHE
+>
+> La ligne « החווה של צביקה » ne retrouvait aucune fiche par son nom : elle a
+> retrouvé `farm-ak1-06` (ex « חוות אורחאן ») par son TÉLÉPHONE, unique — même
+> identifiant, renommée, complétée. La ligne `*חוות אורחאן*` est un vestige
+> (étoilée, même téléphone qu'une ligne non étoilée) : ni fiche ni piste.
+> L'import suivant, sans la ligne en double, apparie par le nom (testé).
+>
+> ## AS3 — LES SIX NOMS À ASTÉRISQUES SONT DES PISTES
+>
+> `farm-ak1-01/02/03/04/07/08` → `lead-as-ak1-…`, supprimées de `entities`
+> SEULEMENT après vérification de 13 tables filles (aucune ligne). Statuts
+> traduits (`not_relevant_now` → « לא רלוונטי כרגע »), note « יש להם שומר
+> קבוע » gardée sur גד״ש להב, point de משק ישי ספז gardé. Aucune astérisque
+> dans un libellé (׳׳ et ’’ → ״). Une fiche étoilée AVEC histoire ne serait pas
+> convertie (signalée). ⚠️ `legal_entity = gadash` des quatre גד״ש n'a pas de
+> colonne côté piste : perdu à la conversion, retrouvé si la piste redevient
+> ferme et que le PO le choisit.
+>
+> ## AS4 — LES RÉGLAGES NE VOYAGEAIENT PAS : MESURÉ, PUIS RÉPARÉ
+>
+> Mesuré sur le DÉPLOYÉ `0bd2cb5`, deux contextes = deux appareils, une base
+> (`bun run assettings`) : **8 rouges sur 18** (`docs/as/as4-rouge-deploye-0bd2cb5.log`).
+> Cinq trous : lu seulement au démarrage À FROID (une PWA reprise ne redémarre
+> pas) ; rien relu après connexion ; un effacement ne montait pas ; le bloc
+> ENTIER était poussé (un iPad d'hier écrasait l'iPhone du jour) ; quatre
+> modules gardaient l'ancienne valeur en cache. Remède : instant PAR CLÉ
+> (`__stamps` dans le bloc), la dernière écriture gagne clé par clé, écriture
+> conditionnelle (`updated_at`), synchro au démarrage, à la connexion, au
+> retour en avant-plan, au retour du réseau et 1,2 s après un changement ;
+> bandeau `SettingsSyncNotice` (« עודכנו ממכשיר אחר » / « הוחלף », pas de perte
+> silencieuse). **18/18** après. Liste des clés : `SYNCED_SETTING_KEYS` et
+> `LOCAL_ONLY_KEYS` (`ui/settings/sync.ts`).
+>
+> ## AS5 — LA FICHE EN ONGLETS
+>
+> החווה · אנשים · שמירות · שטח · מסמכים · יומן — l'ordre de l'édition (AM3).
+> L'en-tête est celui d'AN6, partagé (`STICKY_BAR`) : nom, agriculteur,
+> actions, rangée d'onglets. Panneaux gardés dans le DOM (`hidden`, A217).
+> Onglet retenu par fiche (`lo-yanum:farm-tab:<id>`, local), `?tab=` prioritaire.
+> L'édition porte la même rangée, HORS de sa barre (AN6 : ≤ 72 px).
+>
+> ## AS6 — LA SALLE D'ATTENTE
+>
+> `/coordinator/leads`, table `leads` (avec ses `grant`, rien pour `anon`).
+> Collage tolérant (`core/leads.ts`), statuts + « שלחתי הודעה » et « לא
+> רלוונטי כרגע », colonnes par statut (défaut) ou par région, glisser au
+> pointeur (doigt vérifié par de vrais événements tactiles) + flèches 44 px +
+> statut en un geste, carte à côté, région à la main, rendez-vous en PAGE
+> (`/agenda/meeting/new?lead=`, `general_meetings.lead_id`), conversion sans
+> ressaisie. Aucune piste dans aucun compteur (A296).
+>
+> ## AS7 — ADRESSES ET BUREAU
+>
+> Adresse courante dans הגדרות › נתונים (`app-address`). Installabilité
+> MESURÉE (Chromium, `Page.getInstallabilityErrors`) : 0 erreur sur l'app et
+> la démo — Chrome/Edge sur Mac proposent « Installer » ; Safari (macOS 14+) :
+> Fichier › Ajouter au Dock. Aucune app native construite.
+>
+> ## AS8 — PORTES
+>
+> **Déployé et servi : `0b97ed4`** (app, `/demo/`, `/bakasha/`). Vérifié SUR
+> LE DÉPLOYÉ : `assettings` **18/18** (rouge **8/18** sur `0bd2cb5`, même
+> porte), `asui` **66/66** avec **30 captures** clair/sombre × 402/1032/1376
+> (`docs/screenshots/aspass/deployed/`), `arfiche` 144/144, `aqui` 118/118.
+> En local : `aspass` 84 · `asui` 60 · `persist` 117 (le rouge pré-existant
+> `markIntakeHandled` soldé) · `mapping` 34 · `armigrations` 37 · `amui` 77 ·
+> `anui` 156 · `akui` 119 · zones 38 · demo 17 · agreement 18 · `tokens` 0
+> violation · `contrast` AA.
+> ⚠️ **Premier déploiement (`2ec5c50`) REFUSÉ par sa propre porte** :
+> `agreement` cliquait le premier « הורדת ההסכם » du DOM, celui du bandeau de
+> l'onglet « החווה », masqué. En local je l'avais crue verte : la porte avait
+> planté SANS bilan et mon filtre ne montrait que ses PASS. Corrigé (`:visible`),
+> redéployé. Règle : lire le code de sortie, pas une ligne filtrée.
+> Rouges vus pendant la passe : `assettings` 8/18 (déployé d'avant) ;
+> `asui` 3 (flèches de 43 px — vrai défaut corrigé ; glisser au doigt — la
+> porte défilait la poignée hors écran) ; `tokens` 1 (contour de colonne, A57) ;
+> `anui` 4 (barre d'édition à 121 px > 72 : la rangée d'onglets sortie de la
+> barre ; la rangée faisait remonter la page au défilement — corrigé ; A236
+> visait un bouton passé dans un onglet) ; zones / demo / agreement (blocs
+> passés dans des onglets).
+>
+> ## Décisions AS
+>
+> 1. ★★ **UN EN-TÊTE N'EST PAS UNE IDENTITÉ — UNE CELLULE SE TYPE AVANT DE SE
+>    LIRE.** L'export réel avait les coordonnées sous « כתובת » et un courriel
+>    sous « מיקום ».
+> 2. ★★ **LE MÊME TÉLÉPHONE, C'EST LA MÊME EXPLOITATION** quand le nom ne
+>    retrouve rien et qu'une seule fiche le porte ; jamais quand deux le portent.
+> 3. ★★ **UNE SIGNATURE N'EST PAS UN STATUT.** Sans colonne de statut, l'import
+>    demande, il ne déduit pas.
+> 4. ★★ **UN RÉGLAGE A UN INSTANT, PAS UN BLOC.** La dernière écriture gagne
+>    clé par clé ; et le PO voit ce qui a été remplacé.
+> 5. **Une piste n'est pas une ferme** : table à part, que rien ne compte.
+> 6. ⚠️ **LE DÉPÔT EST PUBLIC.** Le vrai CSV (signatures, ת״ז) et les
+>    instantanés de base restent dans `private/` (ignoré). `docs/ak/ak1-prod-rows.json`
+>    publie déjà téléphones et ת״ז depuis AK : décision du PO (question ouverte).
+>
+> ---
+>
+
 > 🏁 **PASSE AR — LE FORMULAIRE AVANCE SEUL, ET DEUX DETTES. 2026-09-26. LIRE EN PREMIER.**
 >
 > Ordre suivi : AR4 → AR1 → AR2 → AR3 → AR5. **Commit de code vérifié et
