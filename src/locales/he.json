@@ -2794,6 +2794,21 @@
       "positionUncertain": "ודאות מיקום"
     },
     "title_two": "{{count}} מוסדות",
-    "title_many": "{{count}} מוסדות"
+    "title_many": "{{count}} מוסדות",
+    "toConfirm": "לאשר",
+    "toConfirmTab": "לאשר",
+    "confirm": "אישור",
+    "confirmAria": "אישור: {{name}} — {{status}}",
+    "toConfirmLong": "סומן „{{status}}” בלי אישור. נכון? „אישור” — או בחירת הסטטוס הנכון למטה.",
+    "toConfirmBanner_one": "מוסד אחד סומן חתום — לאשר",
+    "toConfirmBanner_two": "{{count}} מוסדות סומנו חתום — לאשר",
+    "toConfirmBanner_other": "{{count}} מוסדות סומנו חתום — לאשר",
+    "metOn": "נפגשו",
+    "metOnShort": "נפגשו {{date}}",
+    "students": "תלמידים",
+    "studentsShort_one": "תלמיד אחד",
+    "studentsShort_two": "{{count}} תלמידים",
+    "studentsShort_other": "{{count}} תלמידים",
+    "positionSource": "מקור המיקום"
   }
 }

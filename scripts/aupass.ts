@@ -96,6 +96,34 @@ check('A320 piste sans lieu comptée, hors carte', r20.leadsUnplaced === 1 && r2
 const meet = computeCoverage({ farms: F, leads: L, institutions: I, radiusKm: 20, visible: COVERAGE_PRESETS.meeting })
 check('A319 « פגישה » : ni pistes, ni en cours, ni à démarcher', meet.places.every((p) => p.family === 'signed' || p.family === 'engaged'))
 
+// --- A328 — les onze de la tournée ne sont pas dupliquées par le classeur ------
+
+section('A328 — un import ultérieur ne duplique aucune des onze (AV1)')
+{
+  const sql = readFileSync('supabase/migrations/20261008000200_av_institutions_tournee.sql', 'utf8')
+  const tour: Institution[] = [...sql.matchAll(/\('(inst-[^']+)', '([^']+)', '([^']+)', '([^']+)', '([^']+)', '[^']*', ([\d.]+), ([\d.]+), (true|false),[\s\S]*?'([^']*)'\)(?:,|\n)/g)].map((m) => ({
+    ...created[0], id: m[1], name: m[2], locality: m[3], kind: m[4] as Institution['kind'], audience: m[5] as Institution['audience'],
+    position: { lat: +m[6], lng: +m[7] }, positionUncertain: m[8] === 'true', engagement: 'signed', engagementConfirmed: false,
+    positionSource: 'web', aliases: m[9], contactName: 'הרב', source: 'manual',
+  }))
+  check('A328 onze lignes lues dans la migration', tour.length === 11, `${tour.length}`)
+  // Le classeur les écrit AUTREMENT (autres noms, « קרית » au lieu de « קריית ») — et ajoute deux pièges.
+  const book: string[][] = [['שם המוסד', 'יישוב', 'סוג', 'lat', 'lng'],
+    ['ישיבת אפיקי דעת', 'שדרות', 'ישיבת הסדר', '31.5243', '34.5914'], ['ישיבת ההסדר קרית גת', 'קרית גת', 'ישיבת הסדר', '31.6057', '34.7618'],
+    ['ישיבת ההסדר דרך חיים', 'קרית גת', 'ישיבת הסדר', '', ''], ['ישיבת נווה דקלים', 'אשדוד', 'ישיבת הסדר', '', ''],
+    ['ישיבת אור עציון', 'מרכז שפירא', 'ישיבת הסדר', '', ''], ['ישיבת כרם ביבנה', 'כרם ביבנה', 'ישיבת הסדר', '', ''],
+    ['ישיבת בית יהודה', 'כפר מימון', '', '', ''], ['מכינת כאייל', 'אופקים', 'מכינה', '', ''], ['שומריה לצעירים', 'שומריה', '', '', ''],
+    ['מכינת עצמונה', 'נווה', 'מכינה', '31.06', '34.31'], ['ישיבה תיכונית נווה', 'נווה', '', '', ''],
+    ['ממדבר מתנה', 'נווה', 'מכינה', '31.07', '34.32'], ['אולפנת נווה דקלים', 'אשדוד', '', '', '']]
+  const p = planInstitutionImport({ matrix: book, existing: tour, nowIso: '2026-10-09T00:00:00.000Z' })
+  const creates = p.actions.filter((a) => a.kind === 'create').map((a) => a.row.name)
+  check('A328 aucune des onze n’est recréée', p.actions.filter((a) => a.kind !== 'create').length === 11, `créées : ${creates.join(' · ')}`)
+  check('A328 les deux autres établissements SONT créés (ni confondus, ni perdus)', creates.length === 2 && creates.includes('ממדבר מתנה') && creates.includes('אולפנת נווה דקלים'))
+  const touched = p.actions.filter((a) => a.kind === 'update') as Array<{ patch: Partial<Institution> }>
+  check('A328 le réimport ne touche ni le statut, ni « à confirmer », ni le responsable', touched.every((a) => !('engagement' in a.patch) && !('engagementConfirmed' in a.patch) && !('contactName' in a.patch)))
+  check('A328 un point vérifié n’est pas remplacé ni re-déclaré douteux (עצמונה)', touched.every((a) => !('position' in a.patch) && a.patch.positionUncertain !== true))
+}
+
 // --- A320 · A321 — le code --------------------------------------------------------
 
 section('A320 · A321 — aucun compteur de dounams ou d’objectif ne lit pistes ni institutions')

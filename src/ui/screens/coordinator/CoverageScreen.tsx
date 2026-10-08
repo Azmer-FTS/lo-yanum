@@ -16,13 +16,14 @@ import {
   getVisibleLeads,
   haversineKm,
   isInstitutionEngaged,
+  isInstitutionToConfirm,
   updateInstitution,
 } from '@core/index'
 import type { CoverageFamily, Farm, Institution, InstitutionEngagement, LatLng, Visible } from '@core/index'
 
 import { readToken } from '../../components/badges'
 import { EntityQuickCard } from '../../components/EntityQuickCard'
-import { Icon } from '../../components/Icon'
+import { ChevronForward, Icon } from '../../components/Icon'
 import { MapPanel } from '../../components/MapPanel'
 import type { MapLink, MapMarker, MapRouteLine } from '../../components/MapView'
 import { PageHeader, Section } from '../../components/primitives'
@@ -164,6 +165,8 @@ export function CoverageScreen() {
   const [selected, setSelected] = useState<Selected>(null)
   const [selectKey, setSelectKey] = useState(0)
   const [routeTo, setRouteTo] = useState<string | null>(null)
+  const [listFilter, setListFilter] = useState<ListFilter>(() => (getInstitutions().some(isInstitutionToConfirm) ? 'toConfirm' : 'all'))
+  const toConfirmCount = institutions.filter(isInstitutionToConfirm).length
   const usage = usageOf(prefs.visible)
 
   const selectedInst = selected?.kind === 'institution' ? (institutions.find((i) => i.id === selected.id) ?? null) : null
@@ -333,6 +336,22 @@ export function CoverageScreen() {
           testId="coverage-usage"
         />
         <p className="muted mt-2 text-caption">{t(`coverage.usage.${usage}Hint`)}</p>
+        {usage !== 'meeting' && toConfirmCount > 0 && (
+          <button
+            type="button"
+            data-testid="coverage-to-confirm"
+            data-count={toConfirmCount}
+            onClick={() => {
+              setListFilter('toConfirm')
+              document.querySelector('[data-testid="institutions-list"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
+            className="mt-3 flex min-h-11 w-full items-center gap-2 rounded-field bg-status-warn/15 px-3 py-2 text-start text-caption font-semibold text-status-warn-ink"
+          >
+            <Icon name="alert" size={16} />
+            <span className="min-w-0 flex-1">{t('institutions.toConfirmBanner', { count: toConfirmCount })}</span>
+            <ChevronForward size={16} />
+          </button>
+        )}
 
         {/* ---------------------------------------------------------------- */}
         {/* LES CINQ FAMILLES — les interrupteurs SONT la légende            */}
@@ -468,6 +487,8 @@ export function CoverageScreen() {
         {!meeting && institutions.length > 0 && (
           <InstitutionList
             institutions={institutions}
+            filter={listFilter}
+            setFilter={setListFilter}
             selectedId={selectedInst?.id ?? null}
             onPick={(id) => {
               setSelected({ kind: 'institution', id })
@@ -655,7 +676,17 @@ function InstitutionCard({ inst, reach, onClose }: { inst: Institution; reach: A
         {inst.positionUncertain && (
           <span className="chip bg-status-warn/15 text-status-warn-ink" data-testid="coverage-uncertain-chip">{t('institutions.uncertain')}</span>
         )}
+        {isInstitutionToConfirm(inst) && <span className="chip bg-status-warn/15 text-status-warn-ink">{t('institutions.toConfirm')}</span>}
       </div>
+      {(inst.contactName || inst.metOn || inst.students !== null) && (
+        <p className="mt-2 text-caption text-content-secondary" data-testid="coverage-institution-facts">
+          {[
+            inst.contactName,
+            inst.metOn ? t('institutions.metOnShort', { date: inst.metOn.split('-').reverse().join('.') }) : '',
+            inst.students !== null ? t('institutions.studentsShort', { count: inst.students }) : '',
+          ].filter(Boolean).join(' · ')}
+        </p>
+      )}
     </div>
   )
 }
@@ -681,7 +712,32 @@ function InstitutionEditor({ inst }: { inst: Institution }) {
           {t('institutions.uncertainLong')}
         </p>
       )}
-      <EngagementSegments value={inst.engagement} onChange={(e) => updateInstitution(inst.id, { engagement: e })} testId="institution-engagement" />
+      {isInstitutionToConfirm(inst) && (
+        <div className="flex flex-wrap items-center gap-2 rounded-field bg-status-warn/15 px-3 py-2" data-testid="institution-to-confirm">
+          <p className="min-w-0 flex-1 text-caption font-semibold text-status-warn-ink">
+            {t('institutions.toConfirmLong', { status: t(`institutions.engagement.${inst.engagement}`) })}
+          </p>
+          <button type="button" className="btn-primary min-h-11" onClick={() => updateInstitution(inst.id, { engagementConfirmed: true })} data-testid="institution-confirm">
+            <Icon name="check" size={16} />
+            {t('institutions.confirm')}
+          </button>
+        </div>
+      )}
+      {/* ★★ AV1 — CORRIGER = CONFIRMER : choisir un statut, c'est le dire. */}
+      <EngagementSegments value={inst.engagement} onChange={(e) => updateInstitution(inst.id, { engagement: e, engagementConfirmed: true })} testId="institution-engagement" />
+      {(inst.metOn || inst.students !== null || inst.positionSource) && (
+        <dl className="grid gap-1 text-caption" data-testid="institution-facts">
+          {inst.metOn && (
+            <div className="flex gap-2"><dt className="text-content-muted">{t('institutions.metOn')}</dt><dd className="ltr-nums font-semibold text-content-primary">{inst.metOn.split('-').reverse().join('.')}</dd></div>
+          )}
+          {inst.students !== null && (
+            <div className="flex gap-2"><dt className="text-content-muted">{t('institutions.students')}</dt><dd className="ltr-nums font-semibold text-content-primary">{inst.students}</dd></div>
+          )}
+          {inst.positionSource && (
+            <div className="flex gap-2"><dt className="shrink-0 text-content-muted">{t('institutions.positionSource')}</dt><dd className="text-content-secondary">{inst.positionSource}</dd></div>
+          )}
+        </dl>
+      )}
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="flex flex-col gap-1">
           <span className="text-caption font-semibold text-content-secondary">{t('institutions.contactName')}</span>
@@ -769,26 +825,33 @@ function ReachList({
   )
 }
 
+type ListFilter = 'all' | 'toConfirm' | InstitutionEngagement
+
 function InstitutionList({
   institutions,
   selectedId,
   onPick,
+  filter,
+  setFilter,
 }: {
   institutions: readonly Institution[]
   selectedId: string | null
   onPick: (id: string) => void
+  filter: ListFilter
+  setFilter: (f: ListFilter) => void
 }) {
   const { t } = useTranslation()
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<'all' | InstitutionEngagement>('all')
   const listRef = useRef<HTMLUListElement | null>(null)
   const q = query.trim()
+  const toConfirm = institutions.filter(isInstitutionToConfirm).length
   const rows = institutions
-    .filter((i) => filter === 'all' || i.engagement === filter)
+    .filter((i) => filter === 'all' || (filter === 'toConfirm' ? isInstitutionToConfirm(i) : i.engagement === filter))
     .filter((i) => !q || `${i.name} ${i.locality} ${i.network}`.includes(q))
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name, 'he'))
-  const counts = (e: 'all' | InstitutionEngagement) => (e === 'all' ? institutions.length : institutions.filter((i) => i.engagement === e).length)
+  const counts = (e: ListFilter) =>
+    e === 'all' ? institutions.length : e === 'toConfirm' ? toConfirm : institutions.filter((i) => i.engagement === e).length
   return (
     <Section
       title={t('institutions.title', { count: institutions.length })}
@@ -803,10 +866,11 @@ function InstitutionList({
     >
       <TabBar
         size="sm"
-        items={(['all', ...INSTITUTION_ENGAGEMENTS] as const).map((k) => ({
+        items={([...(toConfirm > 0 ? (['toConfirm'] as const) : []), 'all', ...INSTITUTION_ENGAGEMENTS] as ListFilter[]).map((k) => ({
           key: k,
-          label: k === 'all' ? t('institutions.all') : t(`institutions.engagementShort.${k}`),
+          label: k === 'all' ? t('institutions.all') : k === 'toConfirm' ? t('institutions.toConfirmTab') : t(`institutions.engagementShort.${k}`),
           count: counts(k),
+          ...(k === 'toConfirm' ? { tone: 'vivid' as const } : {}),
         }))}
         active={filter}
         onSelect={setFilter}
@@ -817,13 +881,14 @@ function InstitutionList({
       <input type="search" className="input mt-3 w-full" placeholder={t('institutions.search')} value={query} onChange={(e) => setQuery(e.target.value)} data-testid="institutions-search" />
       <ul ref={listRef} className="mt-3 flex flex-col gap-1.5" data-testid="institutions-list">
         {rows.map((i) => (
-          <li key={i.id}>
+          <li key={i.id} className="flex items-stretch gap-1.5">
             <button
               type="button"
               onClick={() => onPick(i.id)}
               aria-pressed={selectedId === i.id}
               data-testid={`institution-row-${i.id}`}
-              className={`flex min-h-11 w-full items-center gap-2 rounded-field border px-3 py-1.5 text-start ${selectedId === i.id ? 'border-accent bg-accent/10' : 'border-edge-subtle hover:bg-surface-high'}`}
+              data-to-confirm={isInstitutionToConfirm(i) ? '' : undefined}
+              className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-field border px-3 py-1.5 text-start ${selectedId === i.id ? 'border-accent bg-accent/10' : 'border-edge-subtle hover:bg-surface-high'}`}
             >
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-caption font-semibold text-content-primary">{i.name}</span>
@@ -834,7 +899,21 @@ function InstitutionList({
               {!i.position && <span className="chip bg-surface-high text-content-muted">{t('institutions.noPoint')}</span>}
               {i.positionUncertain && <span className="chip bg-status-warn/15 text-status-warn-ink">{t('institutions.uncertainShort')}</span>}
               <span className={`chip shrink-0 border ${ENGAGEMENT_ON[i.engagement]}`}>{t(`institutions.engagementShort.${i.engagement}`)}</span>
+              {isInstitutionToConfirm(i) && <span className="chip shrink-0 bg-status-warn/15 text-status-warn-ink">{t('institutions.toConfirm')}</span>}
             </button>
+            {/* ★★ AV1 — confirmer : UN toucher, sans ouvrir la fiche. */}
+            {isInstitutionToConfirm(i) && (
+              <button
+                type="button"
+                onClick={() => updateInstitution(i.id, { engagementConfirmed: true })}
+                data-testid={`institution-confirm-${i.id}`}
+                aria-label={t('institutions.confirmAria', { name: i.name, status: t(`institutions.engagement.${i.engagement}`) })}
+                className="btn-secondary min-h-11 shrink-0 px-3"
+              >
+                <Icon name="check" size={16} />
+                {t('institutions.confirm')}
+              </button>
+            )}
           </li>
         ))}
       </ul>

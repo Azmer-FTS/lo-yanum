@@ -19,13 +19,18 @@ const base = {
   notes: '',
   extra: '',
   source: 'import' as const,
+  engagementConfirmed: true,
+  metOn: null,
+  students: null,
+  positionSource: '',
+  aliases: '',
   createdAt: '2026-10-01T08:00:00.000Z',
   updatedAt: '2026-10-01T08:00:00.000Z',
 }
 
 export const INSTITUTIONS: Institution[] = [
   { ...base, id: 'inst-demo-01', name: 'מכינת אופק הדרום', locality: 'שדרות', kind: 'mechina', audience: 'mixed', network: 'רשת המכינות (הדגמה)', position: at('שדרות', 0.004, -0.006), engagement: 'signed', contactName: 'נועה', contactPhone: '050-0000201' },
-  { ...base, id: 'inst-demo-02', name: 'ישיבת ההסדר גבעות הנגב', locality: 'נתיבות', kind: 'hesder', audience: 'boys', position: at('נתיבות', -0.006, 0.004), engagement: 'signed' },
+  { ...base, id: 'inst-demo-02', name: 'ישיבת ההסדר גבעות הנגב', locality: 'נתיבות', kind: 'hesder', audience: 'boys', position: at('נתיבות', -0.006, 0.004), engagement: 'signed', engagementConfirmed: false, metOn: '2026-10-08', students: 120, contactName: 'הרב (הדגמה)' },
   { ...base, id: 'inst-demo-03', name: 'מדרשת שבילי הבשור', locality: 'אופקים', kind: 'midrasha', audience: 'girls', position: at('אופקים', 0.005, 0.005), engagement: 'interested' },
   { ...base, id: 'inst-demo-04', name: 'מכינת נחל צין', locality: 'ירוחם', kind: 'mechina', audience: 'boys', position: at('ירוחם'), engagement: 'contacted' },
   { ...base, id: 'inst-demo-05', name: 'מכינת מעלה הרוח', locality: 'מצפה רמון', kind: 'mechina', audience: 'mixed', position: at('מצפה רמון'), engagement: 'not_contacted' },

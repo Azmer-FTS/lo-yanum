@@ -73,9 +73,26 @@ export interface Institution {
   /** Les colonnes du classeur que l'app ne lit pas (distances…), au texte près. */
   extra: string
   source: 'import' | 'manual'
+  /**
+   * ★★ AV1 — FAUX = le statut a été posé SANS être confirmé (« חתום » mis par
+   * le PO pendant sa tournée du 08.10.2026, « à confirmer »). Choisir un
+   * statut, ou toucher « אישור », le rend vrai : un geste.
+   */
+  engagementConfirmed: boolean
+  /** ★★ AV1 — date de la rencontre (`AAAA-MM-JJ`), quand il y en a eu une. */
+  metOn: string | null
+  /** ★★ AV1 — effectif quand il est public ; `null` = inconnu (jamais deviné). */
+  students: number | null
+  /** ★★ AV1 — d'où vient la coordonnée, et la confiance qu'on lui accorde. */
+  positionSource: string
+  /** ★★ AV1 — les autres noms, séparés par « · » : l'import les apparie. */
+  aliases: string
   createdAt: string
   updatedAt: string
 }
+
+/** ★★ AV1 — un « חתום » qui attend la confirmation du PO. */
+export const isInstitutionToConfirm = (i: Pick<Institution, 'engagementConfirmed'>): boolean => !i.engagementConfirmed
 
 /** ★ La seule définition d'« engagée ». */
 export const isInstitutionEngaged = (i: Pick<Institution, 'engagement'>): boolean => i.engagement === 'signed'
@@ -348,6 +365,8 @@ export function planInstitutionImport(input: {
 }): InstitutionPlan {
   const { rows, columns, unknownHeaders } = readInstitutionRows(input.matrix)
   const byKey = new Map(input.existing.map((i) => [institutionKey(i.name, i.locality), i]))
+  const findExisting = (row: InstitutionRow): Institution | undefined =>
+    byKey.get(institutionKey(row.name, row.locality)) ?? matchInstitution(row, input.existing)
   const seen = new Map<string, number>()
   const actions: InstitutionAction[] = []
   for (const row of rows) {
@@ -358,7 +377,7 @@ export function planInstitutionImport(input: {
       continue
     }
     seen.set(key, row.line)
-    const found = byKey.get(key)
+    const found = findExisting(row)
     if (!found) {
       actions.push({
         kind: 'create',
@@ -378,6 +397,11 @@ export function planInstitutionImport(input: {
           notes: row.notes,
           extra: row.extra,
           source: 'import',
+          engagementConfirmed: true,
+          metOn: null,
+          students: null,
+          positionSource: row.position ? 'classeur' : '',
+          aliases: '',
           createdAt: input.nowIso,
           updatedAt: input.nowIso,
         },
@@ -402,7 +426,9 @@ export function planInstitutionImport(input: {
     if (row.position && (!found.position || (found.positionUncertain && !row.positionUncertain))) {
       set('position', row.position)
       set('positionUncertain', row.positionUncertain)
-    } else if (row.positionUncertain && !found.positionUncertain) {
+    } else if (row.positionUncertain && !found.positionUncertain && !found.positionSource) {
+      // ★ AV1.6 — un point VÉRIFIÉ dans l'app (sa provenance est écrite) n'est
+      // pas re-déclaré douteux par la liste du classeur.
       set('positionUncertain', true)
     }
     actions.push(changed.length ? { kind: 'update', row, id: found.id, patch, changed } : { kind: 'same', row, id: found.id })
@@ -414,4 +440,76 @@ export function planInstitutionImport(input: {
     unknownHeaders,
     missingName: columns.name === undefined,
   }
+}
+
+// ---------------------------------------------------------------------------
+// ★★ AV1.6 — L'APPARIEMENT : une institution saisie à la main (la tournée)
+// n'est pas dupliquée par le classeur qui l'écrit autrement.
+// ---------------------------------------------------------------------------
+
+/** « קרית » et « קריית », « נוה » et « נווה » : une seule graphie pour comparer. */
+export function comparableLocality(s: string): string {
+  return comparableInstitutionName(s).replace(/קריית/g, 'קרית').replace(/(^|\s)נוה(\s|$)/g, '$1נווה$2')
+}
+
+/** Le cœur d'un nom, avec ses variantes d'écriture ramenées à une seule. */
+function looseCore(s: string): string {
+  return nameCore(s)
+    .replace(/^(ההסדר|הסדר|תיכונית|ישיבה תיכונית|תיכונית תורנית)\s+/u, '')
+    .replace(/קריית/g, 'קרית')
+    .replace(/נוה/g, 'נווה')
+    .replace(/מיימון/g, 'מימון')
+    .trim()
+}
+
+/** Le mot de type en tête d'un nom ; deux types différents = deux établissements. */
+function typeWord(s: string): 'mechina' | 'yeshiva' | 'midrasha' | 'ulpana' | null {
+  const n = comparableInstitutionName(s)
+  if (/^(המכינה|מכינת|מכינה)/.test(n)) return 'mechina'
+  if (/^(ישיבת|ישיבה|הישיבה)/.test(n)) return 'yeshiva'
+  if (/^(מדרשת|מדרשה)/.test(n)) return 'midrasha'
+  if (/^(אולפנת|אולפנה|אולפנא)/.test(n)) return 'ulpana'
+  return null
+}
+const sameType = (a: string, b: string): boolean => {
+  const x = typeWord(a)
+  const y = typeWord(b)
+  return !x || !y || x === y
+}
+
+function namesOf(i: Pick<Institution, 'name' | 'aliases'>): string[] {
+  return [i.name, ...i.aliases.split('·').map((a) => a.trim()).filter(Boolean)]
+}
+
+/**
+ * Trois règles, de la plus sûre à la plus large, et jamais deux candidats :
+ *   1. un NOM (ou un autre nom) identique après normalisation, même localité ;
+ *   2. même localité, et l'un des cœurs de nom contient l'autre ;
+ *   3. à moins de 1,5 km l'un de l'autre, et un même cœur de nom.
+ * Un appariement AMBIGU (deux candidats) n'apparie rien : la ligne devient
+ * une création, que l'aperçu montre — jamais tranché en silence (règle d'AO).
+ */
+export function matchInstitution(row: Pick<InstitutionRow, 'name' | 'locality' | 'position'>, existing: readonly Institution[]): Institution | undefined {
+  const loc = comparableLocality(row.locality)
+  const core = looseCore(row.name)
+  if (!core) return undefined
+  const sameLoc = (i: Institution) => !loc || !i.locality || comparableLocality(i.locality) === loc
+  const pick = (c: Institution[]) => (c.length === 1 ? c[0] : undefined)
+  const r1 = existing.filter((i) => sameLoc(i) && namesOf(i).some((n) => sameType(n, row.name) && looseCore(n) === core))
+  if (r1.length) return pick(r1)
+  const r2 = existing.filter((i) => sameLoc(i) && loc !== '' && namesOf(i).some((n) => {
+    if (!sameType(n, row.name)) return false
+    const c = looseCore(n)
+    return c.length >= 3 && (c.includes(core) || core.includes(c))
+  }))
+  if (r2.length) return pick(r2)
+  if (!row.position) return undefined
+  const near = (i: Institution) => {
+    if (!i.position) return false
+    const dLat = (i.position.lat - row.position!.lat) * 111
+    const dLng = (i.position.lng - row.position!.lng) * 95
+    return Math.hypot(dLat, dLng) <= 1.5
+  }
+  const r3 = existing.filter((i) => near(i) && namesOf(i).some((n) => sameType(n, row.name) && (looseCore(n) === core || (looseCore(n).length >= 3 && (looseCore(n).includes(core) || core.includes(looseCore(n)))))))
+  return pick(r3)
 }

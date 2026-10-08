@@ -1,0 +1,159 @@
+$ bun run scripts/persist.ts
+
+  A73 — the store interface and its derived write-through (P2.6)
+
+  1 — the default implementation is DEMO, and it costs nothing
+  --------------------------------------------------------------------
+  PASS  the default backend is the demo one  — demo
+  PASS  it seeds the fixtures, not an empty app  — 14 farms, 300 volunteers
+  PASS  the demo backend declares no persistence
+  PASS  and therefore has no onChange to call
+  PASS  a mutation on the demo backend emits nothing
+
+  2 — every array in the snapshot is a persisted collection
+  --------------------------------------------------------------------
+  PASS  no collection is missing from COLLECTIONS  — 14 collections
+  PASS  and none is listed that does not exist
+  PASS  session is NOT a collection — it is who is looking
+
+  3 — every exported mutation emits the aggregates it changed
+  --------------------------------------------------------------------
+  PASS  the recording backend is installed
+  PASS  installing re-seeded the snapshot  — 14 farms
+  PASS  addIncident  — incidents/inc-muzif3bj-1
+  PASS  addIncident emitted the new incident
+  PASS  addIncidentEntry  — incidents/inc-01
+  PASS  setIncidentResolved  — incidents/inc-01
+  PASS  confirmArrival  — missions/mission-01
+  PASS  recordCheckpoint  — missions/mission-01
+  PASS  setPresence  — missions/mission-01
+  PASS  confirmGuardEnd  — missions/mission-01
+  PASS  setMissionDriverConfirmed  — missions/mission-01
+  PASS  updateMissionStaffing  — missions/mission-01
+  PASS  cancelMission  — missions/mission-01
+  PASS  setOutreachSent  — missions/mission-01
+  PASS  reactivateMission  — missions/mission-01
+  PASS  createMission  — missions/mission-muzif3bz-3
+  PASS  createMission emitted the new guard
+  PASS  archiveVolunteer  — volunteers/vol-001
+  PASS  reactivateVolunteer  — volunteers/vol-001
+  PASS  createVolunteer  — volunteers/vol-muzif3c2-4
+  PASS  createVolunteer emitted the new volunteer
+  PASS  createDriver  — drivers/driver-muzif3c4-5
+  PASS  createDriver emitted the new driver
+  PASS  updateDriver  — drivers/drv-01
+  PASS  updateFarm  — farms/farm-01
+  PASS  saveFarmAgreement  — farms/farm-01
+  PASS  keepDeclaredArea  — farms/farm-01
+  PASS  alignDeclaredToOutline  — farms/farm-01
+  PASS  createFarm  — farms/farm-muzif3cc-6
+  PASS  createFarm emitted the new entity
+  PASS  setCommitmentFulfilled  — farms/farm-muzif3cc-6 farms/farm-01
+  PASS  archiveFarm  — farms/farm-01
+  PASS  unarchiveFarm  — farms/farm-01
+  PASS  createFarmZone  — farms/farm-01 farmZones/zone-muzif3ch-7
+  PASS  createFarmZone emitted the zone too
+  PASS  updateFarmZoneRing  — farms/farm-01 farmZones/zone-01
+  PASS  deleteFarmZone  — farms/farm-01 farmZones/zone-muzif3ch-7 ✗
+  PASS  createAnchorPoint  — anchorPoints/anchor-muzif3ck-8
+  PASS  createAnchorPoint emitted the post
+  PASS  updateAnchorPoint  — anchorPoints/anchor-01
+  PASS  patchAnchorPoint  — anchorPoints/anchor-01
+  PASS  deleteAnchorPoint  — anchorPoints/anchor-muzif3ck-8 ✗
+  PASS  createThreatZone  — threatZones/threat-muzif3cq-9
+  PASS  createThreatZone emitted it
+  PASS  updateThreatZone  — threatZones/threat-01
+  PASS  deleteThreatZone  — threatZones/threat-muzif3cq-9 ✗
+  PASS  createThreatVector  — threatVectors/vector-muzif3ct-10
+  PASS  createThreatVector emitted it
+  PASS  updateThreatVector  — threatVectors/vector-01
+  PASS  deleteThreatVector  — threatVectors/vector-muzif3ct-10 ✗
+  PASS  createFarmVisit  — farms/farm-01 farmVisits/visit-muzif3cx-11
+  PASS  createFarmVisit emitted the visit too
+  PASS  updateFarmVisit  — farmVisits/visit-past-farm-01
+  PASS  deleteFarmVisit  — farms/farm-01 farmVisits/visit-muzif3cx-11 ✗
+  PASS  createGeneralMeeting  — generalMeetings/meet-muzif3d0-12
+  PASS  createGeneralMeeting emitted it
+  PASS  updateGeneralMeeting  — generalMeetings/meet-01
+  PASS  deleteGeneralMeeting  — generalMeetings/meet-muzif3d0-12 ✗
+  PASS  saveTour (new day)  — tours/tour-muzif3d4-13
+  PASS  saveTour created a tour
+  PASS  saveTour  — tours/tour-today
+  PASS  deleteTour  — tours/tour-muzif3d4-13 ✗
+  PASS  deleteFarmZoneChecked  — farms/farm-muzif3d8-14 farmZones/zone-muzif3dc-15 ✗
+  PASS  deleteFarmVisitChecked  — farms/farm-muzif3d8-14 farmVisits/visit-muzif3de-16 ✗
+  PASS  deleteTourById  — tours/tour-muzif3dg-17 ✗
+  PASS  deleteFarm  — farms/farm-muzif3d8-14 ✗ anchorPoints/anchor-muzif3di-18 ✗
+  PASS  deleteDriver  — volunteers/vol-muzif3dl-19 drivers/driver-muzif3dl-20 ✗
+  PASS  deleteVolunteer  — volunteers/vol-muzif3dl-19 ✗
+  PASS  deleteFarmContact  — farms/farm-muzif3cc-6
+  PASS  deleteMission REFUSES a real guard and writes nothing  — 0 change(s)
+  PASS  clearMissionMeetingPoints  — missions/mission-muzif3dq-21
+  PASS  deleteMission  — missions/mission-muzif3dq-21 ✗
+  PASS  importFarms emits one change per imported entity  — 1 changes
+  PASS  applyProspection emits the created entity and the updated one  — 2 changes, 1 new
+  PASS  applySignatures emits the signed entity and the one it created  — 2 changes, 1 new
+  PASS  applyAssociation emits the updated entity, the one it created, and the signatures  — 4 changes, 1 new
+  PASS  importDrivers emits the imported driver  — 1 changes
+  PASS  importVolunteers emits the imported volunteer  — 1 changes
+
+  4 — the fan-outs: one mutation, two aggregates
+  --------------------------------------------------------------------
+  PASS  G15 — drawing a polygon also rewrites the farm it belongs to  — farms + farmZones
+  PASS  G5.2 — the dual hat materialises a driver row, and it is persisted  — volunteers + drivers
+  PASS  and un-ticking it DELETES that row rather than orphaning it  — volunteers + drivers✗
+  PASS  G5.2 — editing the driver half writes the volunteer half back  — volunteers + drivers
+  PASS  decision 35 — a visit rewrites the farm cache that reads it  — farms + farmVisits
+
+  5 — the mutations that write IN PLACE are still seen
+  --------------------------------------------------------------------
+  PASS  setIncidentResolved — an object mutated behind an unchanged reference  — 1 change(s)
+  PASS  confirmArrival — an object mutated behind an unchanged reference  — 1 change(s)
+  PASS  archiveVolunteer — an object mutated behind an unchanged reference  — 1 change(s)
+  PASS  setMissionDriverConfirmed — a nested object mutated in place  — 1 change(s)
+  PASS  setting the same value twice emits nothing at all  — 0 change(s)
+
+  5bis — la signature à distance et les documents fournis (AG4 · AG6)
+  --------------------------------------------------------------------
+  PASS  applyRemoteSignature — la fiche change  — 1 change(s)
+  PASS  applyRemoteSignature — et l'accord est dedans, pas dans une seconde écriture  — 2 → 3
+  PASS  attachProvidedDocument — la fiche change  — 1 change(s)
+  PASS  removeProvidedDocument — la fiche change  — 1 change(s)
+
+  6 — three things that must never reach the database
+  --------------------------------------------------------------------
+  PASS  changing who is looking writes nothing  — 0 change(s)
+  PASS  resetStore does not turn the seed into a wave of deletes  — 0 change(s)
+  PASS  hydration is not echoed back to the server it came from  — 0 change(s)
+  PASS  and it really did replace the snapshot  — 3 farms
+  PASS  while keeping the session — identity is not hydrated data  — coordinator
+
+  6bis — AH3 · le jeu d'essai produit de vraies écritures
+  --------------------------------------------------------------------
+  PASS  AH3 · poser le jeu produit un changement par ligne, la ferme comprise  — 7 changements
+  PASS  ⚠️ AH3 · le poser DEUX FOIS ne crée pas une seconde ferme  — 4 changements au second appel
+  PASS  AH3 · le retirer produit une suppression par ligne  — 7 suppressions
+
+  6bis — AS : les pistes et l’import du portail
+  --------------------------------------------------------------------
+  PASS  createLeads : une ligne `leads` par piste
+  PASS  updateLead  — leads/lead-muzif3ev-32
+  PASS  moveLead  — leads/lead-muzif3ev-32
+  PASS  setLeadStatus  — leads/lead-muzif3ev-32
+  PASS  convertLeadToFarm : une ferme NEUVE et la piste marquée convertie
+  PASS  revertLeadConversion : la ferme née de la conversion est SUPPRIMÉE et la piste réécrite
+  PASS  correctFarmName  — farms/farm-01
+  PASS  deleteLead  — leads/lead-muzif3ev-33 ✗
+  PASS  applyPortalPlan : la ligne étoilée devient une piste
+  PASS  markIntakeHandled : la ferme est réécrite
+  PASS  applyInstitutionPlan : une ligne `institutions`
+  PASS  updateInstitution : la ligne est réécrite
+  PASS  createInstitution : une ligne neuve
+  PASS  deleteInstitution : la ligne disparaît
+
+  7 — every mutation @core exports is driven above
+  --------------------------------------------------------------------
+  PASS  every mutation is exercised by this gate  — 82 mutations
+  PASS  the export block was actually found and parsed  — 82 names
+
+  All 124 checks passed.

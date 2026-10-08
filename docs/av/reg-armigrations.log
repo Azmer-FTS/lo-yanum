@@ -1,0 +1,43 @@
+$ bun run scripts/armigrations.ts
+PASS  A273 jalon vide : 20260830053807_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260830053844_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260830053951_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260830204605_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260830210700_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260831071424_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260831073640_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260831122515_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260831152128_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260831161210_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260907213428_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260908062945_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260908123227_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260908164311_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260909050408_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260909124657_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260909161517_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260909213651_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260915220315_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260915231335_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260916115054_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260924093521_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260924093546_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260924093609_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260924093715_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260924093754_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260924213133_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260924213247_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260924213418_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20260925122303_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20261007120823_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20261007120958_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20261007174333_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20261008031127_jalon_historique_mcp.sql
+PASS  A273 jalon vide : 20261008122125_jalon_historique_mcp.sql
+PASS  A273 `supabase migration list` répond (68 versions)
+PASS  A273 aucun fichier local « jamais appliqué »
+PASS  A273 aucune version distante sans fichier
+PASS  A273 autant de versions que de fichiers (68)
+PASS  A273 toute version MCP porte un jalon, pas du DDL en double
+
+40 PASS, 0 FAIL

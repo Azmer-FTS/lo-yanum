@@ -1,0 +1,55 @@
+$ bun run scripts/mapping.ts
+
+  A74 — the nested model and the 26 tables, in both directions (P2.6b)
+
+  1 — twelve collections, twelve mappings
+  --------------------------------------------------------------------
+  PASS  every collection in COLLECTIONS has a mapping  — 14 collections
+  PASS  and between them they cover the schema  — 29 tables (30 minus app_users, which is identity, not data)
+  PASS  app_users is NOT one of them  — who a login speaks for is not an aggregate the app writes
+  PASS  each aggregate writes exactly one parent row, keyed by its own id
+
+  2 — every aggregate in the fixtures survives the round trip
+  --------------------------------------------------------------------
+  PASS  farms — 14 aggregates  — entities + entity_contacts + entity_commitments + entity_livestock + agreements
+  PASS  leads — 5 aggregates  — leads
+  PASS  farmZones — 14 aggregates  — zones + zone_vertices
+  PASS  anchorPoints — 4 aggregates  — guard_posts
+  PASS  threatZones — 2 aggregates  — threat_zones + threat_zone_vertices
+  PASS  threatVectors — 2 aggregates  — threat_vectors
+  PASS  volunteers — 300 aggregates  — volunteers
+  PASS  drivers — 9 aggregates  — drivers
+  PASS  missions — 32 aggregates  — missions + mission_guard_posts + mission_assignments + presence_marks + mission_drivers + mission_driver_passengers + mission_checkpoints + cancel_notices
+  PASS  incidents — 5 aggregates  — incidents + incident_entries
+  PASS  farmVisits — 19 aggregates  — farm_visits
+  PASS  generalMeetings — 3 aggregates  — general_meetings
+  PASS  tours — 1 aggregate  — tours + tour_stops
+  PASS  institutions — 11 aggregates  — institutions
+  PASS  every aggregate in the fixtures was actually tried  — 421 of 421
+
+  3 — the shapes a fixture set can silently lack
+  --------------------------------------------------------------------
+  PASS  a guard where two channels both marked the same person  — mission-01
+  PASS  and one where they DISAGREE — the mark rows must not merge  — mission-01
+  PASS  G5.3 — a guard with two cars, so passenger lists cannot be flattened  — mission-02
+  PASS  F2 — a guard covering more than the rendezvous  — mission-01: +1
+  PASS  G18 — a threat attached to no entity (the nullable FK is real)  — threat-02
+  PASS  G5.2 — a driver who is also a volunteer  — drv-v01
+  PASS  a farm with more than one commitment — the ORDER is addressable data  — farm-01: 3
+  PASS  and it comes back in the SAME order — an index addresses the same thing  — shelter → water → food
+
+  4 — the empty shapes, which is what the real app starts with
+  --------------------------------------------------------------------
+  PASS  a guard with no team, no car and no notice  — identical
+  PASS  and its child tables are written as empty sets, not skipped  — 8 tables addressed
+  PASS  a farm with no contact, no commitment and no photo  — identical
+
+  5 — every column the mapper writes exists, and every required one is written
+  --------------------------------------------------------------------
+  PASS  the migrations parsed into a schema at all  — 33 tables, 351 columns
+  PASS  no table is left unchecked because no sample happens to fill it  — all filled
+  PASS  every column the mapper writes exists in a migration  — no phantom columns
+  PASS  and every NOT NULL column with no default is written  — no column would reject an insert
+  PASS  the P2.6 catch-up columns are present  — email ×3, cancel_notices.event, entity_commitments.position
+
+  All 35 checks passed.

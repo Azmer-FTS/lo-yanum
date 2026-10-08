@@ -200,6 +200,21 @@
       "notes": "notes",
       "position": "point",
       "positionUncertain": "certitude du point"
-    }
+    },
+    "toConfirm": "À confirmer",
+    "toConfirmTab": "À confirmer",
+    "confirm": "Confirmer",
+    "confirmAria": "Confirmer : {{name}} — {{status}}",
+    "toConfirmLong": "Marqué « {{status}} » sans confirmation. Juste ? « Confirmer » — ou choisir le bon statut ci-dessous.",
+    "toConfirmBanner_one": "1 institution marquée signée — à confirmer",
+    "toConfirmBanner_two": "{{count}} institutions marquées signées — à confirmer",
+    "toConfirmBanner_other": "{{count}} institutions marquées signées — à confirmer",
+    "metOn": "Rencontrée le",
+    "metOnShort": "rencontrée le {{date}}",
+    "students": "Élèves",
+    "studentsShort_one": "1 élève",
+    "studentsShort_two": "{{count}} élèves",
+    "studentsShort_other": "{{count}} élèves",
+    "positionSource": "Source du point"
   }
 }

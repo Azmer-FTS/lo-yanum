@@ -1,0 +1,20 @@
+$ bun run scripts/tokens.ts
+Token discipline — A28 (one radius scale, no tinted field) + A29 (rare orange) + A57 (no card contour, shape hierarchy)
+
+  radius scale        field / card / pill
+  physical side       ui/components/splitter.tsx — the seam grip is a tab on the map side, and the map is physically left in both directions
+  orange call sites   12 files
+    styles/tokens.css                                declares --critical and --shadow-critical
+    index.css                                        defines .btn-critical / .chip-critical / .card-critical
+    ui/components/badges.tsx                         the דחוף severity badge, return_not_confirmed, driver/group mismatch
+    ui/components/IncidentReportForm.tsx             the urgent severity choice, the urgent submit, the emergency call button
+    ui/screens/coordinator/DashboardScreen.tsx       the urgent alert card and the two unaccounted-for alerts, and their markers
+    ui/screens/coordinator/IncidentsScreen.tsx       urgent incident marker and row bar
+    ui/screens/coordinator/MissionsScreen.tsx        return_not_confirmed marker, driver/group mismatch chip
+    ui/screens/coordinator/AgendaScreen.tsx          return_not_confirmed event tone and dot
+    ui/screens/coordinator/MissionWizardScreen.tsx   the irreversible "create the guard" button
+    ui/screens/StyleguideScreen.tsx                  documents the role and its call sites
+    ui/screens/EmergencyScreen.tsx                   the emergency screen itself — its title and the 224 px call button; this is what the colour is FOR
+    ui/components/EmergencyButton.tsx                the floating emergency button and its compact form — the same single action
+
+  A28, A29 and A57 hold across src/.

@@ -1,0 +1,62 @@
+$ bun run scripts/aupass.ts
+
+  A317 — lecture du classeur, statut, quatre points incertains
+  ------------------------------------------------------------
+  PASS  A317 64 lignes lues  — 64
+  PASS  A317 colonnes reconnues : nom, localité, type, public, réseau, lat, lng  — {"name":0,"locality":1,"kind":2,"audience":3,"network":4,"lat":5,"lng":6}
+  PASS  A317 type lu (mékhina, hesder, midrasha)
+  PASS  A317 public : hesder → garçons, midrasha → filles quand muet ; « מעורב » lu
+  PASS  A317 les colonnes non lues (distances) sont GARDÉES
+  PASS  A317 chaque institution porte un statut d’engagement
+  PASS  A317 les QUATRE points incertains sont signalés, et eux seuls  — ממדבר מתנה · מכינת עצמונה · מדבר שור · ישיבת מרחבעם
+  PASS  A317 « מדבר מתנה » ailleurs qu’à נווה n’est pas confondu
+  PASS  A317 réimport : aucune création
+  PASS  A317 réimport : statut, contact et téléphone du PO intacts
+  PASS  A317 identifiant stable
+  PASS  A317 un point incertain le reste après réimport
+  PASS  A317 aller-retour ligne ↔ institution identique
+
+  A318 · A320 — le calcul de couverture
+  -------------------------------------
+  PASS  A318 couvertes / non couvertes / potentiel  — {"farms":3,"covered":1,"uncovered":2,"potential":1,"unreachable":1}
+  PASS  A318 « לא רלוונטי » ne couvre rien et est compté à part
+  PASS  A318 « declined » n’est sur la carte dans aucune famille
+  PASS  A318 le rayon élargi recompose  — {"farms":3,"covered":3,"uncovered":0,"potential":0,"unreachable":0}
+  PASS  A318 la ROUTE retire un lien que le vol d’oiseau gardait
+  PASS  A318 lien réel ≠ lien possible
+  PASS  A320 les pistes ne comptent dans aucune ferme
+  PASS  A320 piste sans lieu comptée, hors carte
+  PASS  A319 « פגישה » : ni pistes, ni en cours, ni à démarcher
+
+  A328 — un import ultérieur ne duplique aucune des onze (AV1)
+  ------------------------------------------------------------
+  PASS  A328 onze lignes lues dans la migration  — 11
+  PASS  A328 aucune des onze n’est recréée  — créées : ממדבר מתנה · אולפנת נווה דקלים
+  PASS  A328 les deux autres établissements SONT créés (ni confondus, ni perdus)
+  PASS  A328 le réimport ne touche ni le statut, ni « à confirmer », ni le responsable
+  PASS  A328 un point vérifié n’est pas remplacé ni re-déclaré douteux (עצמונה)
+
+  A320 · A321 — aucun compteur de dounams ou d’objectif ne lit pistes ni institutions
+  -----------------------------------------------------------------------------------
+  PASS  A321 src/core/activity.ts ne lit pas les institutions
+  PASS  A320 src/core/activity.ts ne lit pas les pistes
+  PASS  A321 src/core/report.ts ne lit pas les institutions
+  PASS  A320 src/core/report.ts ne lit pas les pistes
+  PASS  A321 src/core/fields.ts ne lit pas les institutions
+  PASS  A320 src/core/fields.ts ne lit pas les pistes
+  PASS  A321 src/core/prospection.ts ne lit pas les institutions
+  PASS  A320 src/core/prospection.ts ne lit pas les pistes
+  PASS  A321 src/core/tours.ts ne lit pas les institutions
+  PASS  A320 src/core/tours.ts ne lit pas les pistes
+  PASS  A321 src/ui/report/activityText.ts ne lit pas les institutions
+  PASS  A320 src/ui/report/activityText.ts ne lit pas les pistes
+  PASS  A321 src/ui/report/activityDraw.ts ne lit pas les institutions
+  PASS  A320 src/ui/report/activityDraw.ts ne lit pas les pistes
+  PASS  A321 access.ts : fonctions de compteur trouvées  — getFarmStatusCounts, getCountableFarms, getDunamKpis, associationCounts
+  PASS  A321 getFarmStatusCounts ne lit ni institutions ni pistes
+  PASS  A321 getCountableFarms ne lit ni institutions ni pistes
+  PASS  A321 getDunamKpis ne lit ni institutions ni pistes
+  PASS  A321 associationCounts ne lit ni institutions ni pistes
+  PASS  A321 seuls la carte de couverture et son import lisent les institutions  — src/ui/screens/coordinator/CoverageScreen.tsx, src/ui/screens/coordinator/InstitutionsImportScreen.tsx, src/core/access.ts
+
+  47 PASS, 0 FAIL

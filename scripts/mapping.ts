@@ -423,11 +423,15 @@ section('5 — every column the mapper writes exists, and every required one is 
    *    migration qui la porte. Une porte qui ne sait lire qu'une des deux
    *    écritures du même SQL accuse du code correct.
    */
-  for (const m of sql.matchAll(
-    /alter table (?:public\.)?(\w+)\s+add column (?:if not exists )?(\w+)([^;]*);/g,
-  )) {
-    const required = /\bnot null\b/i.test(m[3]) && !/\bdefault\b/i.test(m[3])
-    columnsOf(m[1]).set(m[2], !required)
+  /* ★ AV1 — et une instruction peut porter PLUSIEURS clauses
+     (`add column a …, add column b …`) : chacune est lue, pas la première. */
+  for (const m of sql.matchAll(/alter table (?:public\.)?(\w+)\s+(add column [^;]*);/g)) {
+    for (const clause of m[2].split(/,\s*(?=add column\b)/i)) {
+      const c = /add column (?:if not exists )?(\w+)([\s\S]*)/i.exec(clause)
+      if (!c) continue
+      const required = /\bnot null\b/i.test(c[2]) && !/\bdefault\b/i.test(c[2])
+      columnsOf(m[1]).set(c[1], !required)
+    }
   }
 
   check(

@@ -200,6 +200,21 @@
       "notes": "notes",
       "position": "place",
       "positionUncertain": "place certainty"
-    }
+    },
+    "toConfirm": "To confirm",
+    "toConfirmTab": "To confirm",
+    "confirm": "Confirm",
+    "confirmAria": "Confirm: {{name}} — {{status}}",
+    "toConfirmLong": "Marked “{{status}}” without confirmation. Right? “Confirm” — or pick the right status below.",
+    "toConfirmBanner_one": "1 institution marked signed — to confirm",
+    "toConfirmBanner_two": "{{count}} institutions marked signed — to confirm",
+    "toConfirmBanner_other": "{{count}} institutions marked signed — to confirm",
+    "metOn": "Met on",
+    "metOnShort": "met {{date}}",
+    "students": "Students",
+    "studentsShort_one": "1 student",
+    "studentsShort_two": "{{count}} students",
+    "studentsShort_other": "{{count}} students",
+    "positionSource": "Place source"
   }
 }
