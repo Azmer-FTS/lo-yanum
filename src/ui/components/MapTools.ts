@@ -74,6 +74,12 @@ export interface MapToolsOptions {
   fullscreen?: { active: boolean; onToggle: () => void }
   /** מיקומי — off on a map that is not the operator's own position. */
   locate?: boolean
+  /**
+   * ★★ AV2 — « poser une épingle » : le geste DÉDIÉ, visible, à côté de
+   * l'appui long (qui ne se devine pas). Un toucher arme la carte, le
+   * suivant pose l'épingle. Absent hors du rôle coordinateur.
+   */
+  pin?: { label: string; armedLabel: string; onToggle: () => void }
 }
 
 /** 24×24 stroke paths, the same silhouettes as `Icon.tsx`. */
@@ -92,6 +98,8 @@ const PATHS: Record<string, string> = {
    */
   locate:
     '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
+  /** ★★ AV2 — une épingle et un « + » : poser un lieu. */
+  pinAdd: '<path d="M12 21s-6-5.6-6-10.5a6 6 0 0 1 12 0C18 15.4 12 21 12 21z"/><path d="M12 7.5v6M9 10.5h6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   minus: '<path d="M5 12h14"/>',
 }
@@ -113,6 +121,8 @@ export class MapTools implements IControl {
   private baseButton: HTMLButtonElement | null = null
   private fullscreenButton: HTMLButtonElement | null = null
   private locateButton: HTMLButtonElement | null = null
+  private pinButton: HTMLButtonElement | null = null
+  private pinArmed = false
 
   private base: BasemapBase
   private locateState: LocateState = 'idle'
@@ -170,6 +180,10 @@ export class MapTools implements IControl {
         this.options.fullscreen?.onToggle(),
       )
       view.append(this.fullscreenButton)
+    }
+    if (this.options.pin) {
+      this.pinButton = this.button('map-tool-pin', () => this.options.pin?.onToggle())
+      view.append(this.pinButton)
     }
     container.append(view)
 
@@ -282,6 +296,21 @@ export class MapTools implements IControl {
     return b
   }
 
+  /** ★★ AV2 — l'état « armé » du bouton d'épingle, posé par la carte. */
+  setPinArmed(armed: boolean): void {
+    this.pinArmed = armed
+    const b = this.pinButton
+    const pin = this.options.pin
+    if (!b || !pin) return
+    b.innerHTML = icon('pinAdd')
+    const label = armed ? pin.armedLabel : pin.label
+    b.title = label
+    b.setAttribute('aria-label', label)
+    b.setAttribute('aria-pressed', String(armed))
+    b.classList.toggle('bg-accent', armed)
+    b.classList.toggle('text-content-on-accent', armed)
+  }
+
   /** A hairline between the groups of this stack. */
   private rule(): HTMLSpanElement {
     const hr = document.createElement('span')
@@ -303,6 +332,7 @@ export class MapTools implements IControl {
 
   private paint(): void {
     const l = this.options.labels
+    this.setPinArmed(this.pinArmed)
 
     if (this.baseButton) {
       const satellite = this.base === 'satellite'

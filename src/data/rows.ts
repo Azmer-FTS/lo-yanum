@@ -3,6 +3,7 @@ import type { Tour } from '@core/tours'
 import { splitLegacyDunams } from '@core/fields'
 import { normalizeLeadStatus } from '@core/leads'
 import type { Institution } from '@core/institutions'
+import type { Landmark } from '@core/landmarks'
 import type {
   Agreement,
   AnchorPoint,
@@ -1240,6 +1241,26 @@ const institutionMapping: Mapping<Institution> = {
   }),
 }
 
+/** ★★ AV2 — les points de repère. Une table, aucune fille. */
+const landmarkMapping: Mapping<Landmark> = {
+  table: 'landmarks',
+  children: [],
+  toRows: (l) => [
+    {
+      table: 'landmarks',
+      rows: [{ id: l.id, name: l.name, lat: l.position.lat, lng: l.position.lng, note: l.note, created_at: l.createdAt, updated_at: l.updatedAt }],
+    },
+  ],
+  fromRows: (p): Landmark => ({
+    id: str(p.id),
+    name: str(p.name),
+    position: { lat: Number(p.lat), lng: Number(p.lng) },
+    note: str(p.note),
+    createdAt: ts(p.created_at),
+    updatedAt: ts(p.updated_at),
+  }),
+}
+
 const tourMapping: Mapping<Tour> = {
   table: 'tours',
   children: [{ table: 'tour_stops', fk: 'tour_id' }],
@@ -1287,6 +1308,7 @@ export const MAPPINGS: { [K in Collection]: Mapping<StoreData[K][number]> } = {
   generalMeetings: generalMeetingMapping,
   tours: tourMapping,
   institutions: institutionMapping,
+  landmarks: landmarkMapping,
 }
 
 /** Every table an aggregate of this collection lives in, parent first. */

@@ -2810,5 +2810,34 @@
     "studentsShort_two": "{{count}} תלמידים",
     "studentsShort_other": "{{count}} תלמידים",
     "positionSource": "מקור המיקום"
+  },
+  "quickPin": {
+    "button": "הנחת סיכה על המפה",
+    "buttonArmed": "ביטול הנחת סיכה",
+    "armedHint": "גע במפה במקום הרצוי",
+    "nameTitle": "איך קוראים למקום?",
+    "kindTitle": "מה זה „{{name}}”?",
+    "landmarkTitle": "נקודת ציון",
+    "name": "שם",
+    "namePlaceholder": "למשל: חוות הגבעה",
+    "nameRequired": "בלי שם אין סיכה — רק השם, השאר אחר כך.",
+    "next": "המשך",
+    "save": "שמירה",
+    "delete": "מחיקה",
+    "back": "חזרה לשם",
+    "open": "פתיחה",
+    "done": "נוצר: {{name}} · {{kind}}",
+    "kind": {
+      "farm": "חווה חדשה",
+      "institution": "מוסד חדש",
+      "lead": "פנייה לטיפול",
+      "landmark": "נקודת ציון"
+    },
+    "kindHint": {
+      "farm": "כרטיס עם שם ומיקום — טרם נוצר קשר",
+      "institution": "מכינה, ישיבה, מדרשה — לפנייה",
+      "lead": "לחדר ההמתנה · לא נספרת",
+      "landmark": "מקום בעל שם בלבד · לא נספר"
+    }
   }
 }

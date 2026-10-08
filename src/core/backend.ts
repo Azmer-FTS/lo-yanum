@@ -1,4 +1,5 @@
 import type { Institution } from './institutions'
+import type { Landmark } from './landmarks'
 import type { Tour } from './tours'
 import type {
   AnchorPoint,
@@ -51,6 +52,8 @@ export interface StoreData {
    * pistes, JAMAIS lues par un compteur de dounams ou d'objectif.
    */
   institutions: Institution[]
+  /** ★★ AV2 — les points de repère : dans AUCUN compteur. */
+  landmarks: Landmark[]
   farmZones: FarmZone[]
   /** G18 — the coordinator-only threat layer. */
   threatZones: ThreatZone[]
@@ -89,6 +92,8 @@ export const COLLECTIONS = [
   'tours',
   /* AU3 — aucune clé étrangère, ni vers elle ni depuis elle. */
   'institutions',
+  /* AV2 — aucune clé étrangère. */
+  'landmarks',
 ] as const
 
 export type Collection = (typeof COLLECTIONS)[number]

@@ -216,5 +216,34 @@
     "studentsShort_two": "{{count}} élèves",
     "studentsShort_other": "{{count}} élèves",
     "positionSource": "Source du point"
+  },
+  "quickPin": {
+    "button": "Poser une épingle sur la carte",
+    "buttonArmed": "Annuler la pose d’épingle",
+    "armedHint": "Touchez la carte à l’endroit voulu",
+    "nameTitle": "Comment s’appelle ce lieu ?",
+    "kindTitle": "Qu’est-ce que « {{name}} » ?",
+    "landmarkTitle": "Point de repère",
+    "name": "Nom",
+    "namePlaceholder": "par ex. : la ferme de la colline",
+    "nameRequired": "Pas de nom, pas d’épingle — le nom seul, le reste plus tard.",
+    "next": "Suivant",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "back": "Revenir au nom",
+    "open": "Ouvrir",
+    "done": "Créé : {{name}} · {{kind}}",
+    "kind": {
+      "farm": "Nouvelle ferme",
+      "institution": "Nouvelle institution",
+      "lead": "Piste à démarcher",
+      "landmark": "Point de repère"
+    },
+    "kindHint": {
+      "farm": "Une fiche nom + position — pas encore contactée",
+      "institution": "Mékhina, yeshiva, midrasha — à démarcher",
+      "lead": "Vers la salle d’attente · non comptée",
+      "landmark": "Un lieu nommé, sans plus · non compté"
+    }
   }
 }

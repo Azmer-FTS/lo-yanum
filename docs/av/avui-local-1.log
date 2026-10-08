@@ -1,0 +1,69 @@
+$ bun run scripts/avui.ts
+  app : http://localhost:5399  (build local dist-avui)
+
+  A322 — les onze institutions de la tournée : sur la carte, « חתום », à confirmer
+  --------------------------------------------------------------------------------
+  PASS  A322 onze institutions sur la carte, nommées  — 11
+  PASS  A322 le bandeau dit « 11 à confirmer »  — 11 מוסדות סומנו חתום — לאשר
+  PASS  A322 la liste s’ouvre sur « לאשר » : 11 lignes  — 11
+  PASS  A322 confirmer = UN toucher, écrit en base  — {"engagement":"signed","confirmed":true}
+  PASS  A322 corriger le statut en un toucher (מעוניין) le confirme  — {"engagement":"interested","confirmed":true}
+  PASS  A322 la bulle porte le responsable et la date de rencontre  — שומריה לצעירים שומריה מוסד אחר · קהל לא ידוע · רשת המכינות (הדגמה) מעוניין מגיע ל-10 חוות מיקום לא ודאי יונתן רום · נפגש
+  PASS  A322 aucune erreur de page
+
+  A323 · A327 — l’appui long au doigt pose une épingle, sur TOUS les écrans à carte
+  ---------------------------------------------------------------------------------
+  FAIL  A327 1032 /coordinator : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 1032 /coordinator/agenda : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 1032 /coordinator/farms : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 1032 /coordinator/leads : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 1032 /coordinator/route : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 1032 /coordinator/route/free : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 1032 /coordinator/coverage : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 1032 /coordinator/volunteers : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 1032 /coordinator/drivers : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 1032 /coordinator/missions : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 1032 /coordinator/incidents : appui long → la demande de nom  — ouverte · focus 
+  PASS  A323 1032 un glisser de la carte n’ouvre rien
+  FAIL  A327 402 /coordinator : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 402 /coordinator/agenda : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 402 /coordinator/farms : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 402 /coordinator/leads : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 402 /coordinator/route : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 402 /coordinator/route/free : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 402 /coordinator/coverage : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 402 /coordinator/volunteers : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 402 /coordinator/drivers : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 402 /coordinator/missions : appui long → la demande de nom  — ouverte · focus 
+  FAIL  A327 402 /coordinator/incidents : appui long → la demande de nom  — ouverte · focus 
+  PASS  A323 402 un glisser de la carte n’ouvre rien
+  PASS  A323 1440 souris : appui long → la demande de nom
+  PASS  A323 1440 clic droit → la demande de nom
+  PASS  A323 le bouton « épingle + » arme la carte, et le DIT
+  PASS  A323 le toucher suivant ouvre la demande de nom
+
+  A324 · A325 · A326 — pas d’épingle sans nom ; la fiche naît avec son nom et son point
+  -------------------------------------------------------------------------------------
+  PASS  A324 nom vide : « המשך » éteint
+  PASS  A324 des espaces ne font pas un nom
+  PASS  A324 Entrée sans nom ne mène nulle part
+  PASS  A324 annuler : rien n’est créé nulle part  — {"entities":25,"landmarks":0,"institutions":11,"leads":0}
+  PASS  A325 farm : créé avec son nom et SA position (là où le doigt s’est posé)  — 31.59248, 34.51153
+  PASS  A325 ferme : rien d’autre de rempli (יישוב vide, טרם נוצר קשר, 0 דונם)  — {"locality":"","status":"to_contact"}
+  PASS  A325 farm : la confirmation s’affiche
+  PASS  A325 farm : aucune erreur de page
+  PASS  A325 institution : créé avec son nom et SA position (là où le doigt s’est posé)  — 31.59248, 34.51153
+  PASS  A325 institution : la confirmation s’affiche
+  PASS  A325 institution : aucune erreur de page
+  PASS  A325 lead : créé avec son nom et SA position (là où le doigt s’est posé)  — 31.59248, 34.51153
+  PASS  A325 lead : la confirmation s’affiche
+  PASS  A325 lead : aucune erreur de page
+  PASS  A325 landmark : créé avec son nom et SA position (là où le doigt s’est posé)  — 31.59248, 34.51153
+  PASS  A325 landmark : la confirmation s’affiche
+  PASS  A325 le repère est sur la carte, nommé  — שער הכניסה
+  PASS  A326 un repère ne change AUCUN compteur de couverture  — {"farms":"18","covered":"18"} → {"farms":"18","covered":"18"}
+  PASS  A327 le repère paraît sur les AUTRES cartes (חוות)  — 1
+  PASS  A325 landmark : aucune erreur de page
+
+  33 PASS, 22 FAIL
+error: script "avui" exited with code 1

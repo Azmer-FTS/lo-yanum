@@ -6,12 +6,15 @@ import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { HOME_BASE, bearingDeg, boundsOf } from '@core/index'
-import type { LatLng } from '@core/index'
+import { HOME_BASE, bearingDeg, boundsOf, getLandmarks, getSession } from '@core/index'
+import type { LatLng, Landmark } from '@core/index'
 
 import { readToken } from './badges'
 import { readStoredBase, writeStoredBase } from './mapBase'
 import { MapTools } from './MapTools'
+import { QuickPinSheet, pinHref } from './QuickPin'
+import type { PinCreated } from './QuickPin'
+import { useCoreValue } from '../hooks/useCore'
 import { MARKER_LAYER, setMapLayer, useMapLayers } from './mapLayers'
 import { MAP_MAX_BOUNDS, buildBasemapStyle, registerPmtilesProtocol, resolvedThemeOf } from './basemap'
 import { regionById, regionOf, regions } from '@core/index'
@@ -53,6 +56,8 @@ export type MarkerKind =
   | 'institution'
   /** ★★ AU4 — une piste de la salle d'attente : un petit rond en pointillé. */
   | 'lead'
+  /** ★★ AV2 — un point de repère nommé (נקודת ציון) : un petit drapeau. */
+  | 'landmark'
 
 export interface MapMarker {
   id: string
@@ -187,6 +192,8 @@ export interface MapViewProps {
   routeLines?: MapRouteLine[]
   /** ★★ AU4 — les liens de couverture, sous les marqueurs. */
   links?: MapLink[]
+  /** ★★ AV2 — poser une épingle (appui long, clic droit, bouton). Vrai par défaut. */
+  quickPin?: boolean
   center?: LatLng
   zoom?: number
   /** Frame all markers instead of using center/zoom. */
@@ -318,6 +325,7 @@ const SIZE: Record<MarkerKind, number> = {
   move: 26,
   institution: 26,
   lead: 14,
+  landmark: 24,
   // P0.2 — a bubble sizes itself from its count; SIZE is only the floor a
   // caller gets if it forgets to pass one.
   bubble: 30,
@@ -449,6 +457,8 @@ const GLYPH: Partial<Record<MarkerKind, string>> = {
   incident: 'M12 4.4 21 19.8H3Z M12 10.6v3.4 M12 16.4v.2',
   // ★★ AU4 — la toque de l'institution (études), lisible à 16 px.
   institution: 'M2 9.5 12 5l10 4.5L12 14Z M6 11.5v4.2c0 1.3 2.7 2.8 6 2.8s6-1.5 6-2.8v-4.2 M22 9.5v5',
+  // ★★ AV2 — le drapeau du point de repère.
+  landmark: 'M6 21V4M6 4h11l-2.5 4L17 12H6',
   // G15 — the whole-polygon move handle: a four-way arrow cross.
   move: 'M12 2v20M2 12h20M12 2l-2.5 2.5M12 2l2.5 2.5M12 22l-2.5-2.5M12 22l2.5-2.5M2 12l2.5-2.5M2 12l2.5 2.5M22 12l-2.5-2.5M22 12l-2.5 2.5',
 }
@@ -846,7 +856,7 @@ function withLabel(el: HTMLElement, marker: MapMarker): HTMLElement {
 }
 
 export default function MapCanvas({
-  markers: allMarkers,
+  markers: screenMarkers,
   polygons: allPolygons,
   threatZones: allThreatZones,
   threatVectors: allThreatVectors,
@@ -869,8 +879,81 @@ export default function MapCanvas({
   fullscreen,
   locate = true,
   freehand,
+  quickPin = true,
 }: MapViewProps) {
   const { t } = useTranslation()
+  /**
+   * ═════════════════════════════════════════════════════════════════════════
+   * ★★ AV2 (2026-10-08) — POSER UNE ÉPINGLE, SUR TOUTES LES CARTES.
+   * ═════════════════════════════════════════════════════════════════════════
+   *
+   * Trois façons, une seule suite (`QuickPinSheet` : le nom, puis la nature) :
+   *   · l'APPUI LONG (550 ms, doigt ou souris, immobile à 10 px près), le
+   *     geste du rendez-vous, debout, iPad en main ;
+   *   · le CLIC DROIT sur ordinateur ;
+   *   · le BOUTON « épingle + » de la barre de la carte, qui arme le toucher
+   *     suivant — l'appui long ne se devine pas, un bouton se voit.
+   * Ici, dans `MapCanvas`, et nulle part ailleurs : chaque écran à carte l'a,
+   * aucun ne peut l'oublier (A327). Coupé quand la carte est déjà armée pour
+   * autre chose (poser un poste, dessiner) et hors du rôle coordinateur.
+   */
+  const isCoordinator = useCoreValue(() => getSession().role === 'coordinator')
+  const landmarks = useCoreValue(() => getLandmarks())
+  const quickPinOn = quickPin && interactive && isCoordinator && !onMapClick && !freehand?.active
+  const [pinDraft, setPinDraft] = useState<{ position: LatLng; landmark?: Landmark | null } | null>(null)
+  const [pinArmed, setPinArmed] = useState(false)
+  const [pinDone, setPinDone] = useState<PinCreated | null>(null)
+  const lastPinAt = useRef(0)
+  const quickRef = useRef({ on: false, armed: false, fire: (_p: LatLng) => {}, toggle: () => {} })
+  quickRef.current = {
+    on: quickPinOn,
+    armed: pinArmed,
+    fire: (p: LatLng) => {
+      if (Date.now() - lastPinAt.current < 800) return
+      lastPinAt.current = Date.now()
+      try {
+        navigator.vibrate?.(12)
+      } catch {
+        /* pas de vibreur : rien */
+      }
+      setPinArmed(false)
+      setPinDone(null)
+      setPinDraft({ position: p })
+    },
+    toggle: () => setPinArmed((a) => !a),
+  }
+  useEffect(() => {
+    if (!pinDone) return
+    const id = window.setTimeout(() => setPinDone(null), 8000)
+    return () => window.clearTimeout(id)
+  }, [pinDone])
+  useEffect(() => {
+    if (!pinArmed) return
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setPinArmed(false)
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [pinArmed])
+  const allMarkers = useMemo<MapMarker[]>(() => {
+    const extra: MapMarker[] = []
+    if (isCoordinator && interactive) {
+      const flag = readToken('--status-info')
+      for (const l of landmarks) {
+        extra.push({
+          id: l.id,
+          position: l.position,
+          color: flag,
+          title: l.name,
+          kind: 'landmark',
+          label: l.name,
+          onSelect: () => quickRef.current.on && setPinDraft({ position: l.position, landmark: l }),
+        })
+      }
+    }
+    if (pinDraft && !pinDraft.landmark) {
+      extra.push({ id: '__quick-pin', position: pinDraft.position, color: readToken('--accent'), title: '', kind: 'pin', emphasis: true, essential: true })
+    }
+    return extra.length ? [...screenMarkers, ...extra] : screenMarkers
+  }, [screenMarkers, landmarks, pinDraft, isCoordinator, interactive])
   /**
    * U4.3 (2026-09-02) — THE LAYER SWITCHES ARE APPLIED HERE, ONCE, for every
    * map in the app: what a screen hands over is filtered by the remembered
@@ -1613,7 +1696,16 @@ export default function MapCanvas({
     // long press. MapLibre already separates a click from the end of a pan, so
     // this never fires because somebody dragged the map.
     const place = (e: maplibregl.MapMouseEvent) => {
-      clickRef.current?.({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+      if (clickRef.current) {
+        clickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+        return
+      }
+      // ★★ AV2 — le clic droit, ou le toucher qui suit le bouton « épingle + ».
+      const q = quickRef.current
+      if (q.on && (e.type === 'contextmenu' || q.armed)) {
+        e.preventDefault()
+        q.fire({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+      }
     }
     if (dblClickRef.current) map.doubleClickZoom.disable()
     map.on('click', place)
@@ -1723,6 +1815,10 @@ export default function MapCanvas({
             }
           : undefined,
         locate: locateRef.current,
+        pin:
+          getSession().role === 'coordinator'
+            ? { label: t('quickPin.button'), armedLabel: t('quickPin.buttonArmed'), onToggle: () => quickRef.current.on && quickRef.current.toggle() }
+            : undefined,
       })
       toolsRef.current = tools
       map.addControl(tools, 'top-left')
@@ -2498,6 +2594,68 @@ export default function MapCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [freehand?.active, glGeneration])
 
+  useEffect(() => {
+    toolsRef.current?.setPinArmed(pinArmed)
+  }, [pinArmed, glGeneration])
+
+  /**
+   * ★★ AV2 — L'APPUI LONG. MapLibre ne le donne pas au doigt sur iPadOS (pas
+   * de `contextmenu` tactile dans Safari) : il est mesuré ici, sur le
+   * conteneur, en phase de capture. Un second doigt (pincement), un
+   * déplacement de plus de 10 px ou un mouvement de caméra l'annulent ; un
+   * appui sur un marqueur, un bouton ou une bulle n'est pas un appui sur la
+   * carte.
+   */
+  useEffect(() => {
+    const el = containerRef.current
+    const map = mapRef.current
+    if (!el || !map) return
+    const LONG_PRESS_MS = 550
+    let timer = 0
+    let start: { x: number; y: number } | null = null
+    const pointers = new Set<number>()
+    const clear = () => {
+      window.clearTimeout(timer)
+      start = null
+    }
+    const down = (e: PointerEvent) => {
+      pointers.add(e.pointerId)
+      if (!quickRef.current.on || pointers.size > 1) return clear()
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      if ((e.target as HTMLElement).closest('.maplibregl-marker, .maplibregl-ctrl, .maplibregl-popup, button, a, input, textarea')) return
+      start = { x: e.clientX, y: e.clientY }
+      const at = { x: e.clientX, y: e.clientY }
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        if (!start) return
+        const r = el.getBoundingClientRect()
+        const ll = map.unproject([at.x - r.left, at.y - r.top])
+        quickRef.current.fire({ lat: ll.lat, lng: ll.lng })
+        start = null
+      }, LONG_PRESS_MS)
+    }
+    const move = (e: PointerEvent) => {
+      if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) clear()
+    }
+    const up = (e: PointerEvent) => {
+      pointers.delete(e.pointerId)
+      clear()
+    }
+    el.addEventListener('pointerdown', down, true)
+    el.addEventListener('pointermove', move, true)
+    el.addEventListener('pointerup', up, true)
+    el.addEventListener('pointercancel', up, true)
+    map.on('movestart', clear)
+    return () => {
+      clear()
+      el.removeEventListener('pointerdown', down, true)
+      el.removeEventListener('pointermove', move, true)
+      el.removeEventListener('pointerup', up, true)
+      el.removeEventListener('pointercancel', up, true)
+      map.off('movestart', clear)
+    }
+  }, [glGeneration])
+
   /**
    * PO RETURN 2026-09-02 — repaint the stack when the host's fullscreen state
    * changes. Cheap: it rewrites one icon and one label.
@@ -2721,11 +2879,51 @@ export default function MapCanvas({
            du plein écran en ignorant sa marge de 12 px, et une bande grise
            apparaît à droite (mesuré : toile en 0,0, cadre en 12,12, 1 352 px
            de large). Écrite dans la chaîne, la classe survit à tout rendu. */
-        className={`maplibregl-map relative overflow-hidden rounded-card bg-surface-sunken ${
-          onMapClick ? '[&_.maplibregl-canvas]:cursor-crosshair' : ''
+        className={`maplibregl-map relative overflow-hidden rounded-card bg-surface-sunken [-webkit-touch-callout:none] ${
+          onMapClick || pinArmed ? '[&_.maplibregl-canvas]:cursor-crosshair' : ''
         } ${className}`}
       />
       {anchored && createPortal(anchored.node, popupHost)}
+      {pinDraft && (
+        <QuickPinSheet
+          position={pinDraft.position}
+          landmark={pinDraft.landmark}
+          onClose={() => setPinDraft(null)}
+          onCreated={(c) => {
+            setPinDraft(null)
+            setPinDone(c)
+          }}
+        />
+      )}
+      {interactive && noticeHost && (pinArmed || pinDone) &&
+        createPortal(
+          <div
+            role="status"
+            data-testid={pinArmed ? 'quick-pin-armed' : 'quick-pin-done'}
+            className="glass pointer-events-auto absolute bottom-20 start-1/2 z-[4] flex max-w-[min(26rem,calc(100%-2rem))] -translate-x-1/2 items-center gap-2 rounded-pill px-4 py-2 text-caption font-semibold text-content-primary shadow-card rtl:translate-x-1/2"
+          >
+            {pinArmed ? (
+              <>
+                <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 animate-pulse rounded-pill bg-accent" />
+                {t('quickPin.armedHint')}
+                <button type="button" className="ms-1 text-accent-ink" onClick={() => setPinArmed(false)}>
+                  {t('common.cancel')}
+                </button>
+              </>
+            ) : pinDone ? (
+              <>
+                <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 rounded-pill bg-status-success" />
+                <span className="min-w-0 truncate">{t('quickPin.done', { name: pinDone.name, kind: t(`quickPin.kind.${pinDone.kind}`) })}</span>
+                {pinHref(pinDone) && (
+                  <a href={pinHref(pinDone)!} className="shrink-0 text-accent-ink" data-testid="quick-pin-open">
+                    {t('quickPin.open')}
+                  </a>
+                )}
+              </>
+            ) : null}
+          </div>,
+          noticeHost,
+        )}
       {interactive && noticeHost && hiddenEntities > 0 &&
         createPortal(
           <button

@@ -216,5 +216,34 @@
     "studentsShort_two": "{{count}} students",
     "studentsShort_other": "{{count}} students",
     "positionSource": "Place source"
+  },
+  "quickPin": {
+    "button": "Drop a pin on the map",
+    "buttonArmed": "Cancel dropping a pin",
+    "armedHint": "Tap the map where you want it",
+    "nameTitle": "What is this place called?",
+    "kindTitle": "What is “{{name}}”?",
+    "landmarkTitle": "Landmark",
+    "name": "Name",
+    "namePlaceholder": "e.g. Hilltop farm",
+    "nameRequired": "No name, no pin — just the name, the rest later.",
+    "next": "Next",
+    "save": "Save",
+    "delete": "Delete",
+    "back": "Back to the name",
+    "open": "Open",
+    "done": "Created: {{name}} · {{kind}}",
+    "kind": {
+      "farm": "New farm",
+      "institution": "New institution",
+      "lead": "Lead to call",
+      "landmark": "Landmark"
+    },
+    "kindHint": {
+      "farm": "A file with name and place — not yet contacted",
+      "institution": "Mechina, yeshiva, midrasha — to approach",
+      "lead": "To the waiting room · not counted",
+      "landmark": "Just a named place · not counted"
+    }
   }
 }

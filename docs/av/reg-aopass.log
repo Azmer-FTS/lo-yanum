@@ -2,8 +2,8 @@ $ bun run scripts/aopass.ts
 
   A238 — toute migration qui crée une table porte ses autorisations
   -----------------------------------------------------------------
-  PASS  68 migrations lues
-  PASS  33 tables créées dans les migrations  — 33
+  PASS  70 migrations lues
+  PASS  34 tables créées dans les migrations  — 34
   PASS  chacune porte ses `grant` DANS SA PROPRE migration
   PASS  aucune TABLE n'est ouverte à `anon` (seules trois fonctions le sont — AP4.4)
   PASS  … et les droits par défaut du schéma sont révoqués pour `anon`

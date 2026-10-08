@@ -1,6 +1,7 @@
 import { DAY, addDays, fromDayKey, isTonight, localDayKey, now } from './clock'
 import type { Lead } from './types'
 import type { Institution } from './institutions'
+import type { Landmark } from './landmarks'
 import type { AssociationInput } from './association'
 import { effectiveAreas, guardedDunamsOf, weightedDunams } from './fields'
 import { isTestId } from './testData'
@@ -667,6 +668,11 @@ export function getConvertedLeads(): Lead[] {
  */
 export function getInstitutions(): Institution[] {
   return getSession().role === 'coordinator' ? _raw().institutions : []
+}
+
+/** ★★ AV2 — les points de repère : coordinateur seulement, AUCUN compteur. */
+export function getLandmarks(): Landmark[] {
+  return getSession().role === 'coordinator' ? _raw().landmarks : []
 }
 
 /** Toutes, converties comprises — pour retrouver une piste depuis sa ferme. */

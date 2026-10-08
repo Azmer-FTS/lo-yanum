@@ -102,6 +102,9 @@ import {
   updateInstitution,
   createInstitution,
   deleteInstitution,
+  createLandmark,
+  updateLandmark,
+  deleteLandmark,
 } from '../src/core/store'
 import { planPortalImport } from '../src/core/portalImport'
 import { planInstitutionImport } from '../src/core/institutions'
@@ -1320,6 +1323,17 @@ section("6bis — AH3 · le jeu d'essai produit de vraies écritures")
   check('createInstitution : une ligne neuve', hit(made, 'institutions', manualId)?.json != null)
   const gone = drive('deleteInstitution', () => deleteInstitution(manualId))
   check('deleteInstitution : la ligne disparaît', gone.some((c) => c.collection === 'institutions' && c.id === manualId && c.json == null))
+
+  // ★★ AV2 — les points de repère.
+  let lmId = ''
+  const lm = drive('createLandmark', () => {
+    lmId = createLandmark({ name: 'שער בדיקה', position: { lat: 31.2, lng: 34.6 } })!.id
+  })
+  check('createLandmark : une ligne `landmarks`', hit(lm, 'landmarks', lmId)?.json != null)
+  const renamed = drive('updateLandmark', () => updateLandmark(lmId, { name: 'שער חדש' }))
+  check('updateLandmark : la ligne est réécrite', hit(renamed, 'landmarks', lmId)?.json?.includes('שער חדש') === true)
+  const lmGone = drive('deleteLandmark', () => deleteLandmark(lmId))
+  check('deleteLandmark : la ligne disparaît', lmGone.some((c) => c.collection === 'landmarks' && c.id === lmId && c.json == null))
 }
 
 // --- 7. Coverage: no mutation added without a line in this file ------------

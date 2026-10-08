@@ -12,7 +12,7 @@ $ bun run scripts/persist.ts
 
   2 — every array in the snapshot is a persisted collection
   --------------------------------------------------------------------
-  PASS  no collection is missing from COLLECTIONS  — 14 collections
+  PASS  no collection is missing from COLLECTIONS  — 15 collections
   PASS  and none is listed that does not exist
   PASS  session is NOT a collection — it is who is looking
 
@@ -20,7 +20,7 @@ $ bun run scripts/persist.ts
   --------------------------------------------------------------------
   PASS  the recording backend is installed
   PASS  installing re-seeded the snapshot  — 14 farms
-  PASS  addIncident  — incidents/inc-muzif3bj-1
+  PASS  addIncident  — incidents/inc-muzkof5v-1
   PASS  addIncident emitted the new incident
   PASS  addIncidentEntry  — incidents/inc-01
   PASS  setIncidentResolved  — incidents/inc-01
@@ -33,63 +33,63 @@ $ bun run scripts/persist.ts
   PASS  cancelMission  — missions/mission-01
   PASS  setOutreachSent  — missions/mission-01
   PASS  reactivateMission  — missions/mission-01
-  PASS  createMission  — missions/mission-muzif3bz-3
+  PASS  createMission  — missions/mission-muzkof6c-3
   PASS  createMission emitted the new guard
   PASS  archiveVolunteer  — volunteers/vol-001
   PASS  reactivateVolunteer  — volunteers/vol-001
-  PASS  createVolunteer  — volunteers/vol-muzif3c2-4
+  PASS  createVolunteer  — volunteers/vol-muzkof6g-4
   PASS  createVolunteer emitted the new volunteer
-  PASS  createDriver  — drivers/driver-muzif3c4-5
+  PASS  createDriver  — drivers/driver-muzkof6h-5
   PASS  createDriver emitted the new driver
   PASS  updateDriver  — drivers/drv-01
   PASS  updateFarm  — farms/farm-01
   PASS  saveFarmAgreement  — farms/farm-01
   PASS  keepDeclaredArea  — farms/farm-01
   PASS  alignDeclaredToOutline  — farms/farm-01
-  PASS  createFarm  — farms/farm-muzif3cc-6
+  PASS  createFarm  — farms/farm-muzkof6s-6
   PASS  createFarm emitted the new entity
-  PASS  setCommitmentFulfilled  — farms/farm-muzif3cc-6 farms/farm-01
+  PASS  setCommitmentFulfilled  — farms/farm-muzkof6s-6 farms/farm-01
   PASS  archiveFarm  — farms/farm-01
   PASS  unarchiveFarm  — farms/farm-01
-  PASS  createFarmZone  — farms/farm-01 farmZones/zone-muzif3ch-7
+  PASS  createFarmZone  — farms/farm-01 farmZones/zone-muzkof6x-7
   PASS  createFarmZone emitted the zone too
   PASS  updateFarmZoneRing  — farms/farm-01 farmZones/zone-01
-  PASS  deleteFarmZone  — farms/farm-01 farmZones/zone-muzif3ch-7 ✗
-  PASS  createAnchorPoint  — anchorPoints/anchor-muzif3ck-8
+  PASS  deleteFarmZone  — farms/farm-01 farmZones/zone-muzkof6x-7 ✗
+  PASS  createAnchorPoint  — anchorPoints/anchor-muzkof71-8
   PASS  createAnchorPoint emitted the post
   PASS  updateAnchorPoint  — anchorPoints/anchor-01
   PASS  patchAnchorPoint  — anchorPoints/anchor-01
-  PASS  deleteAnchorPoint  — anchorPoints/anchor-muzif3ck-8 ✗
-  PASS  createThreatZone  — threatZones/threat-muzif3cq-9
+  PASS  deleteAnchorPoint  — anchorPoints/anchor-muzkof71-8 ✗
+  PASS  createThreatZone  — threatZones/threat-muzkof76-9
   PASS  createThreatZone emitted it
   PASS  updateThreatZone  — threatZones/threat-01
-  PASS  deleteThreatZone  — threatZones/threat-muzif3cq-9 ✗
-  PASS  createThreatVector  — threatVectors/vector-muzif3ct-10
+  PASS  deleteThreatZone  — threatZones/threat-muzkof76-9 ✗
+  PASS  createThreatVector  — threatVectors/vector-muzkof7a-10
   PASS  createThreatVector emitted it
   PASS  updateThreatVector  — threatVectors/vector-01
-  PASS  deleteThreatVector  — threatVectors/vector-muzif3ct-10 ✗
-  PASS  createFarmVisit  — farms/farm-01 farmVisits/visit-muzif3cx-11
+  PASS  deleteThreatVector  — threatVectors/vector-muzkof7a-10 ✗
+  PASS  createFarmVisit  — farms/farm-01 farmVisits/visit-muzkof7e-11
   PASS  createFarmVisit emitted the visit too
   PASS  updateFarmVisit  — farmVisits/visit-past-farm-01
-  PASS  deleteFarmVisit  — farms/farm-01 farmVisits/visit-muzif3cx-11 ✗
-  PASS  createGeneralMeeting  — generalMeetings/meet-muzif3d0-12
+  PASS  deleteFarmVisit  — farms/farm-01 farmVisits/visit-muzkof7e-11 ✗
+  PASS  createGeneralMeeting  — generalMeetings/meet-muzkof7i-12
   PASS  createGeneralMeeting emitted it
   PASS  updateGeneralMeeting  — generalMeetings/meet-01
-  PASS  deleteGeneralMeeting  — generalMeetings/meet-muzif3d0-12 ✗
-  PASS  saveTour (new day)  — tours/tour-muzif3d4-13
+  PASS  deleteGeneralMeeting  — generalMeetings/meet-muzkof7i-12 ✗
+  PASS  saveTour (new day)  — tours/tour-muzkof7m-13
   PASS  saveTour created a tour
   PASS  saveTour  — tours/tour-today
-  PASS  deleteTour  — tours/tour-muzif3d4-13 ✗
-  PASS  deleteFarmZoneChecked  — farms/farm-muzif3d8-14 farmZones/zone-muzif3dc-15 ✗
-  PASS  deleteFarmVisitChecked  — farms/farm-muzif3d8-14 farmVisits/visit-muzif3de-16 ✗
-  PASS  deleteTourById  — tours/tour-muzif3dg-17 ✗
-  PASS  deleteFarm  — farms/farm-muzif3d8-14 ✗ anchorPoints/anchor-muzif3di-18 ✗
-  PASS  deleteDriver  — volunteers/vol-muzif3dl-19 drivers/driver-muzif3dl-20 ✗
-  PASS  deleteVolunteer  — volunteers/vol-muzif3dl-19 ✗
-  PASS  deleteFarmContact  — farms/farm-muzif3cc-6
+  PASS  deleteTour  — tours/tour-muzkof7m-13 ✗
+  PASS  deleteFarmZoneChecked  — farms/farm-muzkof7p-14 farmZones/zone-muzkof7r-15 ✗
+  PASS  deleteFarmVisitChecked  — farms/farm-muzkof7p-14 farmVisits/visit-muzkof7z-16 ✗
+  PASS  deleteTourById  — tours/tour-muzkof82-17 ✗
+  PASS  deleteFarm  — farms/farm-muzkof7p-14 ✗ anchorPoints/anchor-muzkof84-18 ✗
+  PASS  deleteDriver  — volunteers/vol-muzkof88-19 drivers/driver-muzkof88-20 ✗
+  PASS  deleteVolunteer  — volunteers/vol-muzkof88-19 ✗
+  PASS  deleteFarmContact  — farms/farm-muzkof6s-6
   PASS  deleteMission REFUSES a real guard and writes nothing  — 0 change(s)
-  PASS  clearMissionMeetingPoints  — missions/mission-muzif3dq-21
-  PASS  deleteMission  — missions/mission-muzif3dq-21 ✗
+  PASS  clearMissionMeetingPoints  — missions/mission-muzkof8e-21
+  PASS  deleteMission  — missions/mission-muzkof8e-21 ✗
   PASS  importFarms emits one change per imported entity  — 1 changes
   PASS  applyProspection emits the created entity and the updated one  — 2 changes, 1 new
   PASS  applySignatures emits the signed entity and the one it created  — 2 changes, 1 new
@@ -137,23 +137,26 @@ $ bun run scripts/persist.ts
   6bis — AS : les pistes et l’import du portail
   --------------------------------------------------------------------
   PASS  createLeads : une ligne `leads` par piste
-  PASS  updateLead  — leads/lead-muzif3ev-32
-  PASS  moveLead  — leads/lead-muzif3ev-32
-  PASS  setLeadStatus  — leads/lead-muzif3ev-32
+  PASS  updateLead  — leads/lead-muzkof9r-32
+  PASS  moveLead  — leads/lead-muzkof9r-32
+  PASS  setLeadStatus  — leads/lead-muzkof9r-32
   PASS  convertLeadToFarm : une ferme NEUVE et la piste marquée convertie
   PASS  revertLeadConversion : la ferme née de la conversion est SUPPRIMÉE et la piste réécrite
   PASS  correctFarmName  — farms/farm-01
-  PASS  deleteLead  — leads/lead-muzif3ev-33 ✗
+  PASS  deleteLead  — leads/lead-muzkof9r-33 ✗
   PASS  applyPortalPlan : la ligne étoilée devient une piste
   PASS  markIntakeHandled : la ferme est réécrite
   PASS  applyInstitutionPlan : une ligne `institutions`
   PASS  updateInstitution : la ligne est réécrite
   PASS  createInstitution : une ligne neuve
   PASS  deleteInstitution : la ligne disparaît
+  PASS  createLandmark : une ligne `landmarks`
+  PASS  updateLandmark : la ligne est réécrite
+  PASS  deleteLandmark : la ligne disparaît
 
   7 — every mutation @core exports is driven above
   --------------------------------------------------------------------
-  PASS  every mutation is exercised by this gate  — 82 mutations
-  PASS  the export block was actually found and parsed  — 82 names
+  PASS  every mutation is exercised by this gate  — 85 mutations
+  PASS  the export block was actually found and parsed  — 85 names
 
-  All 124 checks passed.
+  All 127 checks passed.

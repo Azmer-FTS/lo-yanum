@@ -155,6 +155,10 @@ export {
   updateInstitution,
   createInstitution,
   deleteInstitution,
+  // ★★ AV2 — l'épingle posée sur la carte.
+  createLandmark,
+  updateLandmark,
+  deleteLandmark,
 } from './store'
 export type {
   NewIncidentInput,
@@ -187,4 +191,5 @@ export * from './portalImport'
 export * from './leads'
 export * from './institutions'
 export * from './coverage'
+export * from './landmarks'
 export * from './farmName'

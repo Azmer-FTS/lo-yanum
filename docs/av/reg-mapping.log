@@ -4,8 +4,8 @@ $ bun run scripts/mapping.ts
 
   1 — twelve collections, twelve mappings
   --------------------------------------------------------------------
-  PASS  every collection in COLLECTIONS has a mapping  — 14 collections
-  PASS  and between them they cover the schema  — 29 tables (30 minus app_users, which is identity, not data)
+  PASS  every collection in COLLECTIONS has a mapping  — 15 collections
+  PASS  and between them they cover the schema  — 30 tables (31 minus app_users, which is identity, not data)
   PASS  app_users is NOT one of them  — who a login speaks for is not an aggregate the app writes
   PASS  each aggregate writes exactly one parent row, keyed by its own id
 
@@ -25,6 +25,7 @@ $ bun run scripts/mapping.ts
   PASS  generalMeetings — 3 aggregates  — general_meetings
   PASS  tours — 1 aggregate  — tours + tour_stops
   PASS  institutions — 11 aggregates  — institutions
+  PASS  landmarks — 0 aggregates  — landmarks
   PASS  every aggregate in the fixtures was actually tried  — 421 of 421
 
   3 — the shapes a fixture set can silently lack
@@ -46,10 +47,10 @@ $ bun run scripts/mapping.ts
 
   5 — every column the mapper writes exists, and every required one is written
   --------------------------------------------------------------------
-  PASS  the migrations parsed into a schema at all  — 33 tables, 351 columns
+  PASS  the migrations parsed into a schema at all  — 34 tables, 358 columns
   PASS  no table is left unchecked because no sample happens to fill it  — all filled
   PASS  every column the mapper writes exists in a migration  — no phantom columns
   PASS  and every NOT NULL column with no default is written  — no column would reject an insert
   PASS  the P2.6 catch-up columns are present  — email ×3, cancel_notices.event, entity_commitments.position
 
-  All 35 checks passed.
+  All 36 checks passed.

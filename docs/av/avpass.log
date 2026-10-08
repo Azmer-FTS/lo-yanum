@@ -1,0 +1,22 @@
+$ bun run scripts/avpass.ts
+
+  A324 — pas d’épingle sans nom, à chaque étage
+  PASS  A324 nom vide refusé
+  PASS  A324 createLandmark("  ") ne crée rien
+  PASS  A324 un nom est gardé, sans ses espaces
+  PASS  A324 renommer en vide est refusé
+  PASS  A324 la BASE refuse aussi un nom vide (check)
+  PASS  A324 la table naît avec ses grant, rien pour anon
+  PASS  A324 aller-retour ligne ↔ repère identique
+
+  A326 — un repère n’entre dans AUCUN compteur
+  PASS  A326 src/core/activity.ts ne lit pas les repères
+  PASS  A326 src/core/report.ts ne lit pas les repères
+  PASS  A326 src/core/fields.ts ne lit pas les repères
+  PASS  A326 src/core/coverage.ts ne lit pas les repères
+  PASS  A326 src/core/prospection.ts ne lit pas les repères
+  PASS  A326 src/ui/report/activityText.ts ne lit pas les repères
+  PASS  A326 src/ui/report/activityDraw.ts ne lit pas les repères
+  PASS  A326 seule la carte (MapCanvas) lit les repères  — src/ui/components/MapCanvas.tsx, src/core/access.ts
+
+  15 PASS, 0 FAIL

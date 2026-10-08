@@ -17,6 +17,7 @@ import type { ProspectionPlan } from './prospection'
 import type { Tour } from './tours'
 import type { PortalPlan } from './portalImport'
 import type { Institution, InstitutionPlan } from './institutions'
+import type { Landmark } from './landmarks'
 import type {
   Agreement,
   AnchorPoint,
@@ -2420,5 +2421,34 @@ export function createInstitution(
 export function deleteInstitution(id: string): void {
   if (!data.institutions.some((i) => i.id === id)) return
   data.institutions = data.institutions.filter((i) => i.id !== id)
+  commit()
+}
+
+// ===========================================================================
+// ★★ AV2 (2026-10-08) — LES POINTS DE REPÈRE
+// ===========================================================================
+
+/** ⛔ Sans nom, rien n'est créé (A324) : la règle est ici, pas seulement à l'écran. */
+export function createLandmark(draft: { name: string; position: LatLng; note?: string }): Landmark | null {
+  const name = draft.name.trim()
+  if (!name) return null
+  const stamp = iso(now())
+  const created: Landmark = { id: nextId('lm'), name, position: draft.position, note: draft.note ?? '', createdAt: stamp, updatedAt: stamp }
+  data.landmarks = [...data.landmarks, created]
+  commit()
+  return created
+}
+
+export function updateLandmark(id: string, patch: Partial<Pick<Landmark, 'name' | 'position' | 'note'>>): void {
+  const index = data.landmarks.findIndex((l) => l.id === id)
+  if (index === -1) return
+  if (patch.name !== undefined && !patch.name.trim()) return
+  data.landmarks[index] = { ...data.landmarks[index], ...patch, updatedAt: iso(now()) }
+  commit()
+}
+
+export function deleteLandmark(id: string): void {
+  if (!data.landmarks.some((l) => l.id === id)) return
+  data.landmarks = data.landmarks.filter((l) => l.id !== id)
   commit()
 }

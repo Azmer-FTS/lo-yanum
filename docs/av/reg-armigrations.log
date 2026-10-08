@@ -34,10 +34,11 @@ PASS  A273 jalon vide : 20261007120958_jalon_historique_mcp.sql
 PASS  A273 jalon vide : 20261007174333_jalon_historique_mcp.sql
 PASS  A273 jalon vide : 20261008031127_jalon_historique_mcp.sql
 PASS  A273 jalon vide : 20261008122125_jalon_historique_mcp.sql
-PASS  A273 `supabase migration list` répond (68 versions)
+PASS  A273 jalon vide : 20261008123118_jalon_historique_mcp.sql
+PASS  A273 `supabase migration list` répond (70 versions)
 PASS  A273 aucun fichier local « jamais appliqué »
 PASS  A273 aucune version distante sans fichier
-PASS  A273 autant de versions que de fichiers (68)
+PASS  A273 autant de versions que de fichiers (70)
 PASS  A273 toute version MCP porte un jalon, pas du DDL en double
 
-40 PASS, 0 FAIL
+41 PASS, 0 FAIL
