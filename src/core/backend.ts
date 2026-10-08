@@ -1,3 +1,4 @@
+import type { Institution } from './institutions'
 import type { Tour } from './tours'
 import type {
   AnchorPoint,
@@ -45,6 +46,11 @@ export interface StoreData {
   generalMeetings: GeneralMeeting[]
   /** ★★ AS6 — les pistes : JAMAIS lues par un compteur (voir `Lead`). */
   leads: Lead[]
+  /**
+   * ★★ AU3 — les institutions (מכינות, ישיבות הסדר, מדרשות). Comme les
+   * pistes, JAMAIS lues par un compteur de dounams ou d'objectif.
+   */
+  institutions: Institution[]
   farmZones: FarmZone[]
   /** G18 — the coordinator-only threat layer. */
   threatZones: ThreatZone[]
@@ -81,6 +87,8 @@ export const COLLECTIONS = [
   'farmVisits',
   'generalMeetings',
   'tours',
+  /* AU3 — aucune clé étrangère, ni vers elle ni depuis elle. */
+  'institutions',
 ] as const
 
 export type Collection = (typeof COLLECTIONS)[number]

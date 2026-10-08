@@ -8,6 +8,7 @@ import { MapView } from './MapView'
 import type {
   MapMarker,
   MapPolygon,
+  MapLink,
   MapRouteLine,
   MapThreatVector,
   MapThreatZone,
@@ -55,6 +56,8 @@ export interface MapPanelProps {
   line?: LatLng[]
   /** AI2 — the free route's road trace, its off-network ends and its fallback. */
   routeLines?: MapRouteLine[]
+  /** ★★ AU4 — les liens de couverture. */
+  links?: MapLink[]
   center?: LatLng
   zoom?: number
   fit?: boolean
@@ -122,6 +125,7 @@ export function MapPanel({
   threatVectors,
   line,
   routeLines,
+  links,
   center,
   zoom,
   fit = true,
@@ -156,6 +160,7 @@ export function MapPanel({
             threatVectors={threatVectors}
             line={line}
             routeLines={routeLines}
+            links={links}
             center={center}
             zoom={zoom}
             fit={fit}

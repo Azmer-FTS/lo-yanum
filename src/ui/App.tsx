@@ -57,6 +57,8 @@ import { MissionDetailScreen } from './screens/coordinator/MissionDetailScreen'
 import { MissionWizardScreen } from './screens/coordinator/MissionWizardScreen'
 import { MissionsScreen } from './screens/coordinator/MissionsScreen'
 import { FreeRouteScreen } from './screens/coordinator/FreeRouteScreen'
+import { CoverageScreen } from './screens/coordinator/CoverageScreen'
+import { InstitutionsImportScreen } from './screens/coordinator/InstitutionsImportScreen'
 import { RoutePlannerScreen } from './screens/coordinator/RoutePlannerScreen'
 import { RegionsEditScreen } from './screens/coordinator/RegionsEditScreen'
 import { SettingsScreen } from './screens/coordinator/SettingsScreen'
@@ -354,6 +356,8 @@ export default function App() {
               la même question — « dans quel ordre je roule demain » — posée
               pour des lieux qui n'ont pas encore de fiche. */}
           <Route path="route/free" element={<FreeRouteScreen />} />
+          <Route path="coverage" element={<CoverageScreen />} />
+          <Route path="import/institutions" element={<InstitutionsImportScreen />} />
           <Route path="volunteers" element={<VolunteersScreen />} />
           {/* ★★ AN11 — toute création, toute édition : une PAGE. */}
           <Route path="volunteers/new" element={<VolunteerFormPage />} />

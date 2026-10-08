@@ -945,6 +945,7 @@ export function FarmsListScreen() {
             farm={selected}
             posts={postsOf(selected.id)}
             onClose={() => select(null)}
+            situate
           />
         )
       }

@@ -1,0 +1,137 @@
+$ bun run scripts/appass.ts
+
+  A250 — les documents demandés suivent le choix de l'étape 2
+  -----------------------------------------------------------
+  PASS  A250 · חקלאות seule → UN document, celui des cultures  — crops
+  PASS  A250 · מרעה seul → UN document, celui du pâturage  — grazing
+  PASS  A250 · שניהם → LES DEUX  — crops · grazing
+  PASS  A250 · et la page appelle `expectedDocuments`, elle n'a pas sa propre table
+  PASS  A250 · la page ne connaît AUCUN nom de document en dur
+
+  A251 — l'étape des documents se passe, et la demande part
+  ---------------------------------------------------------
+  PASS  A251 · « documents » est déclarée facultative
+  PASS  A251 · « appointment » aussi
+  PASS  A251 · une demande SANS aucun document peut partir
+  PASS  A251 · une demande sans rendez-vous peut partir
+  PASS  A251 · et sans signature non plus rien ne bloque
+  PASS  A251 · et le SQL n'exige ni document, ni signature, ni rendez-vous
+  PASS  A251 · les sept étapes, dans l'ordre du brief  — need → land → who → documents → agreement → appointment → done
+  PASS  A251 · la barre de progression part au-dessus de zéro et finit à cent  — 17% … 100%
+
+  A252 — le zéro initial d'un ת״ז est conservé
+  --------------------------------------------
+  PASS  A252 · `idNumberValue` garde le zéro de tête  — 021985189
+  PASS  A252 · et ne rogne pas non plus un ח״פ de neuf chiffres
+  PASS  A252 · la ponctuation collée est retirée, les chiffres ne bougent pas
+  PASS  A252 · dix chiffres sont tronqués à neuf, pas réinterprétés
+  PASS  A252 · le clavier `id` est un TEXTE avec un pavé numérique  — text / numeric
+  PASS  A252 · `aid_requests.id_number` est du TEXTE en base
+  PASS  A252 · et la page n'emploie nulle part `type="number"`
+
+  A253 — courriel facultatif, téléphone obligatoire
+  -------------------------------------------------
+  PASS  A253 · sans נייד, la demande ne part pas
+  PASS  A253 · un נייד impossible est nommé comme tel, pas comme manquant
+  PASS  A253 · SANS mail, la demande part
+  PASS  A253 · avec un mail valable aussi
+  PASS  A253 · un mail TAPÉ mais impossible bloque — et lui seul
+  PASS  A253 · un numéro international recopié de WhatsApp passe
+  PASS  A253 · un fixe passe aussi (08-6564111)
+  PASS  A253 · TROIS champs bloquent, et pas un de plus  — farmName · fullName · phone
+  PASS  A253 · ni ת״ז, ni יישוב, ni mail dans cette liste
+  PASS  A253 · le SQL refuse un numéro impossible
+  PASS  A253 · et n'examine le courriel QUE s'il est non vide
+
+  A256 — un fichier trop gros ou d'un type interdit est refusé
+  ------------------------------------------------------------
+  PASS  A256 · un PDF de taille normale est accepté
+  PASS  A256 · une photo est acceptée (elle sera composée en PDF)
+  PASS  A256 · un fichier trop gros est refusé, et le refus dit « trop gros »
+  PASS  A256 · un exécutable est refusé pour son TYPE
+  PASS  A256 · un type vide n'est PAS un type interdit (Android le rend parfois)
+  PASS  A256 · un fichier à la fois trop gros et interdit s'entend dire « trop gros »
+  PASS  A256 · ce qui PART est mesuré aussi, pas seulement ce qui est choisi
+  PASS  A256 · un PNG déguisé en document est refusé au départ
+  PASS  A256 · un PDF au-delà du plafond est refusé au départ  — 8388612 octets pour un plafond de 8388608
+  PASS  A256 · `base64Bytes` compte le rembourrage  — 3 · 2 · 1
+  PASS  A256 · le SQL refuse un document qui n'est pas un PDF
+  PASS  A256 · le SQL mesure la taille sur la chaîne reçue
+  PASS  A256 · le SQL borne le NOMBRE de documents
+  PASS  A256 · et il borne la signature aussi
+
+  A258 — jamais un vendredi, un samedi, ni un jour de fête
+  --------------------------------------------------------
+  PASS  A258 · les jours fermés sont NOMMÉS : vendredi (5) et samedi (6)  — 5 · 6
+  PASS  A258 · 2026-09-25 est un vendredi → fermé  — weekend
+  PASS  A258 · 2026-09-26 est un samedi → fermé  — weekend
+  PASS  A258 · 2026-09-27 est un dimanche → ouvert
+  PASS  A258 · 2026-09-21 = 10 Tishri → יום כיפור, fermé  — יום כיפור
+  PASS  A258 · 2027-10-11 = 10 Tishri → יום כיפור, fermé  — יום כיפור
+  PASS  A258 · 2028-09-30 = 10 Tishri → יום כיפור, fermé  — יום כיפור
+  PASS  A258 · le 15 Nissan (פסח) est fermé  — פסח
+  PASS  A258 · le 6 Sivan (שבועות) est fermé  — שבועות
+  PASS  A258 · le 1er Tishri (ראש השנה) est fermé  — ראש השנה
+  PASS  A258 · un mardi ordinaire n'est pas une fête
+  PASS  A258 · huit jours de fête nommés, en dates HÉBRAÏQUES  — 1 Tishri · 2 Tishri · 10 Tishri · 15 Tishri · 22 Tishri · 15 Nisan · 21 Nisan · 6 Sivan
+  PASS  A258 · aucun créneau proposé un jour fermé, sur tout l'horizon
+  PASS  A258 · et rien avant le délai de 24 h
+  PASS  A258 · ni au-delà de l'horizon  — 2026-09-27 … 2026-10-25
+  PASS  A258 · la journée porte le nombre de créneaux annoncé par ses constantes  — 8
+  PASS  A258 · une occupation qui recouvre la journée en efface tous les créneaux
+  PASS  A258 · et ne touche pas les autres jours
+  PASS  A258 · une visite (un point) occupe BUSY_MIN_MINUTES, pas zéro minute  — 45 min
+  PASS  A258 · et elle ne mange que son créneau
+  PASS  A258 · 09:00 à Jérusalem en juillet = 06:00 UTC (heure d'été, +3)  — 2026-07-14T06:00:00.000Z
+  PASS  A258 · et 07:00 UTC en décembre (heure d'hiver, +2)  — 2026-12-15T07:00:00.000Z
+  PASS  A258 · le jour de Jérusalem d'un instant tardif n'est pas celui d'UTC  — 2026-07-15
+  PASS  A258 · le SQL refuse un vendredi ou un samedi à l'écriture
+  PASS  A258 · et il revérifie que le créneau est encore libre
+  PASS  A258 · les trois sources de l'agenda sont interrogées
+  PASS  A258 · et `public_busy_intervals` ne rend QUE deux dates
+
+  A260 — les deux moitiés d'une même règle sont égales
+  ----------------------------------------------------
+  PASS  A260 · le plafond d'un document est le MÊME nombre en SQL et en TS  — 8388608 octets
+  PASS  A260 · le nombre de documents aussi  — 2
+  PASS  A260 · et le SQL nomme les constantes TS qu'il double
+  PASS  A260 · le texte livré de l'accord est MOT POUR MOT celui de he.json
+  PASS  A260 · et c'est bien le gabarit que lit l'application
+  PASS  A260 · la fonction SQL lit la clé exacte de `ui/settings/sync.ts`
+  PASS  A260 · `fields.tsx` ne redéfinit plus la table, il la réexporte
+  PASS  A260 · et la page publique lit la MÊME table
+  PASS  A260 · le נייד se met en forme à la frappe des deux côtés  — (052) 527-4774
+  PASS  A260 · la page publique n'IMPORTE ni i18next, ni le barillet @core/index
+  PASS  A260 · ni `@supabase/supabase-js` (100 ko pour trois `fetch`)  — react · @core/request · @core/fieldKind · @core/fieldKind · @core/availability · ./Appointment · ./Agreement · ./Documents · ./Signature · ./api · ./text · react · @core/documents · @core/documents · @core/request · ./text · react · @core/availability · ./api · ./text · react · @core/request · ./api · ./agreementShipped · react · ./text · @core/request · @core/request · @core/availability · react · react-dom/client · ./App
+  PASS  A260 · ni le magasin, ni un service worker
+
+  A261 — « בקשה נכנסת » est passée par toutes les listes fermées
+  --------------------------------------------------------------
+  PASS  A261 · le statut existe et il est en TÊTE de la liste de référence  — incoming_request · to_contact · contacted · visited · verbal_ok · signed · active · declined · not_relevant_now · on_hold
+  PASS  A261 · il n'est NI dans le pipeline NI dans les hors-pipeline
+  PASS  A261 · et il COMPTE dans les compteurs, contrairement aux deux d'AO2
+  PASS  A261 · `scripts/live.ts` demande les DIX étiquettes à la base
+  PASS  A261 · `scripts/contrast.ts` mesure la teinte neuve
+  PASS  A261 · la teinte est définie en clair, en sombre, ET dans la requête média  — 3 définitions
+  PASS  A261 · son encre aussi
+  PASS  A261 · Tailwind expose la paire
+  PASS  A261 · le styleguide montre les DIX teintes (il était resté à sept depuis AO)
+  PASS  A261 · il porte un libellé hébreu  — בקשה נכנסת
+  PASS  A261 · le rapport d'activité sait le nommer, en WhatsApp et en PDF
+  PASS  A261 · l'écran חוות porte une file dédiée
+  PASS  A261 · et la migration l'ajoute sans l'employer dans la même transaction
+
+  A262 — la surface anonyme est aussi étroite que possible
+  --------------------------------------------------------
+  PASS  A262 · les droits de table d'`anon` sont révoqués sur tout le schéma
+  PASS  A262 · et les tables À VENIR naissent fermées
+  PASS  A262 · `usage` sur le schéma est CONSERVÉ (sinon les RPC tombent)
+  PASS  A262 · la migration d'AP n'accorde à `anon` que des `execute`  — grant execute on function public.public_busy_intervals(timestamptz, timestamptz) to anon | grant execute on function public.public_agreement_template() to anon | grant execute on function public.submit_aid_request(jsonb) to anon
+  PASS  A262 · TROIS fonctions, et trois seulement  — public.public_busy_intervals · public.public_agreement_template · public.submit_aid_request
+  PASS  A262 · aucune politique RLS de la table neuve ne vise `anon`  — 4 politiques
+  PASS  A262 · les trois fonctions figent leur `search_path`  — 3
+  PASS  A262 · et il y a un garde-fou de débit
+  PASS  A262 · `aid_requests` porte ses `grant` dans la migration qui la crée
+  PASS  A262 · avec RLS activée ET forcée
+
+  107 passed, 0 failed

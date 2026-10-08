@@ -1,0 +1,75 @@
+$ bun run scripts/auui.ts
+  app : http://localhost:5397  (build local dist-auui)
+
+  A315 — les épingles s’affichent sur ordinateur, trois largeurs, quatre modes
+  ----------------------------------------------------------------------------
+  PASS  A315 402 split : épingles de fermes sur la carte  — 24 repères
+  PASS  A315 402 full : épingles de fermes sur la carte  — 24 repères
+  PASS  A315 402 overlay : épingles de fermes sur la carte  — 24 repères
+  FAIL  A315 402 « מוסתר » : pas de carte, la liste est là  — {"mapShown":false,"listed":false}
+  PASS  A315 1032 split : épingles de fermes sur la carte  — 24 repères
+  PASS  A315 1032 full : épingles de fermes sur la carte  — 21 repères
+  PASS  A315 1032 overlay : épingles de fermes sur la carte  — 24 repères
+  PASS  A315 1032 « מוסתר » : pas de carte, la liste est là  — {"mapShown":false,"listed":true}
+  PASS  A315 1440 split : épingles de fermes sur la carte  — 21 repères
+  PASS  A315 1440 full : épingles de fermes sur la carte  — 21 repères
+  PASS  A315 1440 overlay : épingles de fermes sur la carte  — 21 repères
+  FAIL  A315 1440 « מוסתר » : pas de carte, la liste est là  — {"mapShown":false,"listed":false}
+  PASS  A315 1032 calque « ישויות » éteint : la carte le DIT  — 19 חוות מוסתרות במקרא הצגה
+  PASS  A315 1032 un geste les rend  — 24 repères
+  PASS  A315 1032 fiche, calque éteint : l'épingle de la ferme est posée  — 1
+  PASS  A315 1440 calque « ישויות » éteint : la carte le DIT  — 19 חוות מוסתרות במקרא הצגה
+  PASS  A315 1440 un geste les rend  — 21 repères
+  PASS  A315 1440 fiche, calque éteint : l'épingle de la ferme est posée  — 1
+  PASS  A315 402 bulle d'information ≥ 300 px et situe le lieu  — 320 px · « ליד יתד · 0.9 ק״מ »
+  PASS  A315 1032 bulle d'information ≥ 440 px et situe le lieu  — 448 px · « ליד יתד · 0.9 ק״מ »
+  PASS  A315 1440 bulle d'information ≥ 440 px et situe le lieu  — 448 px · « ליד יתד · 0.9 ק״מ »
+
+  A316 — la carte descend jusqu’en bas, aucun défilement parasite
+  ---------------------------------------------------------------
+  PASS  A316 1440×900 /coordinator  — page 900/900 · carte 0→900
+  PASS  A316 1440×900 /coordinator/agenda  — page 900/900 · carte 0→900
+  PASS  A316 1440×900 /coordinator/farms  — page 900/900 · carte 0→900
+  PASS  A316 1440×900 /coordinator/leads  — page 900/900 · carte 0→900
+  PASS  A316 1440×900 /coordinator/route  — page 900/900 · carte 0→900
+  PASS  A316 1440×900 /coordinator/route/free  — page 900/900 · carte 0→900
+  PASS  A316 1440×900 /coordinator/coverage  — page 900/900 · carte 0→900
+  PASS  A316 1440×900 /coordinator/volunteers  — page 900/900 · carte 0→900
+  PASS  A316 1440×900 /coordinator/drivers  — page 900/900 · carte 0→900
+  PASS  A316 1440×900 /coordinator/missions  — page 900/900 · carte 0→900
+  PASS  A316 1440×900 /coordinator/incidents  — page 900/900 · carte 0→900
+  PASS  A316 1376×1032 /coordinator  — page 1032/1032 · carte 0→1032
+  PASS  A316 1376×1032 /coordinator/agenda  — page 1032/1032 · carte 0→1032
+  PASS  A316 1376×1032 /coordinator/farms  — page 1032/1032 · carte 0→1032
+  PASS  A316 1376×1032 /coordinator/leads  — page 1032/1032 · carte 0→1032
+  PASS  A316 1376×1032 /coordinator/route  — page 1032/1032 · carte 0→1032
+  PASS  A316 1376×1032 /coordinator/route/free  — page 1032/1032 · carte 0→1032
+  PASS  A316 1376×1032 /coordinator/coverage  — page 1032/1032 · carte 0→1032
+  PASS  A316 1376×1032 /coordinator/volunteers  — page 1032/1032 · carte 0→1032
+  PASS  A316 1376×1032 /coordinator/drivers  — page 1032/1032 · carte 0→1032
+  PASS  A316 1376×1032 /coordinator/missions  — page 1032/1032 · carte 0→1032
+  PASS  A316 1376×1032 /coordinator/incidents  — page 1032/1032 · carte 0→1032
+  PASS  A316 402 itinéraire libre : aucun défilement horizontal  — 402/402
+
+  A318 · A319 · A320 — la carte de couverture
+  -------------------------------------------
+  PASS  A318 compteurs à 35 km = calcul indépendant  — app {"farms":18,"covered":16,"uncovered":2,"potential":2} · attendu {"farms":18,"covered":16,"uncovered":2,"potential":2,"unreachable":0}
+  PASS  A318 liens tracés à 35 km  — 71 (attendu 71)
+  PASS  A318 rayon 15 km : compteurs recomposés  — {"farms":18,"covered":5,"uncovered":13,"potential":10} · attendu {"farms":18,"covered":5,"uncovered":13,"potential":10,"unreachable":3}
+  PASS  A318 rayon 15 km : liens recomposés  — 21 < 71
+  PASS  A318 la valeur du rayon est affichée
+  PASS  A318 institution choisie : distances mesurées SUR LA ROUTE  — 17/17 mesurées
+  PASS  A318 aucune erreur de page
+  PASS  A319 cinq familles : épingle pleine ET creuse, carré plein ET creux, rond pointillé  — fermes 2 remplissages · institutions 2 · pistes 2
+  PASS  A319 les institutions engagées sont NOMMÉES sur la carte  — 3
+  PASS  A319 lien réel = trait plein, lien possible = tirets  — {"real":null,"potential":[2.2,2],"hasReal":true}
+  PASS  A319 un geste éteint une famille (institutions à démarcher)  — 9 → 3
+  PASS  A319 l’usage passe en « מותאם »
+  PASS  A319 « פגישה » en un geste : ni pistes ni institutions à démarcher  — ["farm","institution"]
+  PASS  A319 « פגישה » : rien d’interne à l’écran
+  PASS  A320 des pistes sont sur la carte  — 2 (2 ont un lieu et sont ouvertes)
+  PASS  A320 afficher/masquer les pistes ne change AUCUN compteur  — 18 = 18
+  PASS  A320 le nombre de pistes sans lieu est DIT  — 2 פניות בלי מיקום — לא על המפה. למקם אותן
+
+  59 PASS, 2 FAIL
+error: script "auui" exited with code 1

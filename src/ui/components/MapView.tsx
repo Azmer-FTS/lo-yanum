@@ -5,6 +5,7 @@ import type { MapViewProps } from './MapCanvas'
 export type {
   MapMarker,
   MapPolygon,
+  MapLink,
   MapRouteLine,
   MapThreatVector,
   MapThreatZone,

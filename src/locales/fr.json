@@ -40,5 +40,166 @@
     "origin": {
       "permissionHint": "Si l'appareil redemande à chaque ouverture : dans l'invite iOS, choisir « Allow While Using App », pas « Allow Once ». Réglages de l'iPad › Confidentialité › Service de localisation › Sites web Safari."
     }
+  },
+  "map": {
+    "hiddenEntities_one": "1 ferme masquée par la légende",
+    "hiddenEntities_other": "{{count}} fermes masquées par la légende",
+    "showHidden": "Afficher",
+    "nearLocality": "Près de {{name}} · {{km}} km"
+  },
+  "nav": {
+    "coverage": "Carte de couverture"
+  },
+  "coverage": {
+    "title": "Carte de couverture",
+    "subtitle": "Institutions, fermes, et ce qui reste à conquérir",
+    "mapLabel": "Carte de couverture — institutions et fermes",
+    "toRoute": "Planifier un itinéraire",
+    "usage": {
+      "label": "Usage",
+      "meeting": "Rendez-vous",
+      "prepare": "Préparation",
+      "custom": "Sur mesure",
+      "meetingHint": "En rendez-vous : les fermes signées et les institutions déjà engagées, nommées. Ni pistes ni information interne.",
+      "prepareHint": "Préparation : tout, pistes comprises — pour mesurer le potentiel d’une zone.",
+      "customHint": "Votre propre choix de familles."
+    },
+    "side": {
+      "land": "Terres",
+      "institutions": "Institutions"
+    },
+    "family": {
+      "signed": "Fermes signées",
+      "pipeline": "En route vers la signature",
+      "leads": "Pistes à démarcher",
+      "engaged": "Institutions engagées",
+      "prospect": "Institutions à démarcher"
+    },
+    "familyHint": {
+      "signed": "Le parc réel",
+      "pipeline": "Démarchées, pas encore engagées",
+      "leads": "De la salle d’attente, avec un lieu",
+      "engaged": "Ont signé",
+      "prospect": "Pas contactées · contactées · intéressées"
+    },
+    "linkReal": "Couverture réelle",
+    "linkPotential": "Couverture possible",
+    "radius": "Rayon",
+    "km": "{{km}} km",
+    "distanceRule": "Filtré à vol d’oiseau ; choisir une institution mesure la route.",
+    "covered": "Couvertes",
+    "uncovered": "Non couvertes",
+    "potential": "Potentiel",
+    "countsScope": "Sur {{n}} fermes affichées · pistes non comptées",
+    "focusOn": "Seules ces fermes sont montrées — toucher à nouveau pour annuler",
+    "unreachable_one": "1 ferme qu’aucune institution n’atteint, même à démarcher",
+    "unreachable_other": "{{count}} fermes qu’aucune institution n’atteint, même à démarcher",
+    "leadsUnplaced_one": "1 piste sans lieu — absente de la carte. La localiser",
+    "leadsUnplaced_other": "{{count}} pistes sans lieu — absentes de la carte. Les localiser",
+    "institutionsUnplaced_one": "1 institution sans point — absente de la carte",
+    "institutionsUnplaced_other": "{{count}} institutions sans point — absentes de la carte",
+    "uncertainLinks_one": "1 lien part d’une institution au point incertain",
+    "uncertainLinks_other": "{{count}} liens partent d’institutions au point incertain",
+    "notRelevantHidden_one": "1 institution « non pertinente » masquée",
+    "notRelevantHidden_other": "{{count}} institutions « non pertinentes » masquées",
+    "noInstitutions": "Aucune institution pour l’instant",
+    "noInstitutionsHint": "Importer le classeur des מכינות, ישיבות et מדרשות les affichera ici.",
+    "reachTitle": "Fermes à {{km}} km ou moins",
+    "measuringRoad_one": "Mesure de la route vers 1 ferme…",
+    "measuringRoad_other": "Mesure de la route vers {{count}} fermes…",
+    "roadKm": "{{km}} km par la route",
+    "airKm": "{{km}} km à vol d’oiseau",
+    "noRoad": "{{km}} km à vol d’oiseau · pas de route",
+    "outByRoad": "Hors rayon par la route",
+    "reachNone": "Aucune ferme dans ce rayon.",
+    "noInstitutionPosition": "L’institution n’a pas de point — pas de couverture mesurable.",
+    "reaches_one": "Atteint 1 ferme",
+    "reaches_other": "Atteint {{count}} fermes",
+    "leadNotCounted": "Une piste de la salle d’attente — dans aucun compteur.",
+    "openLeads": "Ouvrir la salle d’attente"
+  },
+  "institutions": {
+    "title_one": "1 institution",
+    "title_other": "{{count}} institutions",
+    "all": "Toutes",
+    "search": "Chercher une institution, un lieu, un réseau",
+    "engagementLabel": "Statut d’engagement",
+    "engagement": {
+      "not_contacted": "Pas contactée",
+      "contacted": "Contactée",
+      "interested": "Intéressée",
+      "signed": "Signée",
+      "not_relevant": "Non pertinente"
+    },
+    "engagementShort": {
+      "not_contacted": "Pas encore",
+      "contacted": "Contactée",
+      "interested": "Intéressée",
+      "signed": "Signée",
+      "not_relevant": "Non pert."
+    },
+    "kind": {
+      "mechina": "Mékhina",
+      "hesder": "Yeshivat hesder",
+      "midrasha": "Midrasha",
+      "other": "Autre"
+    },
+    "audience": {
+      "boys": "Garçons",
+      "girls": "Filles",
+      "mixed": "Mixte",
+      "unknown": "Public inconnu"
+    },
+    "uncertain": "Point incertain",
+    "uncertainShort": "Point à vérifier",
+    "uncertainLong": "Le point de cette institution est marqué incertain dans le classeur. Ses liens sont tracés, mais le point est à vérifier.",
+    "noPoint": "Sans point",
+    "contactName": "Contact",
+    "contactPhone": "Téléphone",
+    "notes": "Notes",
+    "call": "Appeler",
+    "import": {
+      "title": "Importer les institutions",
+      "short": "Importer",
+      "subtitle": "Mékhinot, yeshivot hesder et midrashot — réimport à volonté",
+      "step1": "1 · Le fichier",
+      "step2": "2 · Ce qui va changer",
+      "howTo": "Un fichier Excel ou CSV, une ligne par institution. Réimporter ne duplique rien et n’efface jamais un statut, contact ou téléphone saisi dans l’app.",
+      "columns": "Colonnes lues : nom · localité · type · public · réseau · lat · lng (ou « coordonnées ») · certitude · statut · contact · téléphone · notes. Les autres sont gardées telles quelles.",
+      "choose": "Choisir un fichier",
+      "unreadable": "Le fichier n’a pas pu être lu",
+      "missingName": "Aucune colonne « nom » — rien à importer.",
+      "kind": {
+        "create": "Nouvelles",
+        "update": "Mises à jour",
+        "same": "Inchangées",
+        "duplicate": "Doublons du fichier"
+      },
+      "uncertainTitle_one": "1 point incertain — importé et signalé à vérifier",
+      "uncertainTitle_other": "{{count}} points incertains — importés et signalés à vérifier",
+      "uncertainBy": {
+        "named": "sur la liste des points à vérifier",
+        "column": "d’après la colonne de certitude"
+      },
+      "unplaced_one": "1 institution sans coordonnées — importée, absente de la carte",
+      "unplaced_other": "{{count}} institutions sans coordonnées — importées, absentes de la carte",
+      "kept": "Gardées telles quelles : {{headers}}",
+      "apply_one": "Importer 1 institution",
+      "apply_other": "Importer {{count}} institutions",
+      "doneTitle": "Import terminé",
+      "done": "{{created}} nouvelles · {{updated}} mises à jour",
+      "toMap": "Vers la carte de couverture"
+    },
+    "field": {
+      "kind": "type",
+      "audience": "public",
+      "network": "réseau",
+      "extra": "autres colonnes",
+      "contactName": "contact",
+      "contactPhone": "téléphone",
+      "notes": "notes",
+      "position": "point",
+      "positionUncertain": "certitude du point"
+    }
   }
 }

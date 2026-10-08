@@ -426,10 +426,11 @@ for (const width of [402, 768]) {
         return { full: g.width >= innerWidth - 1 && g.height >= innerHeight - 1, rows, cols: new Set(rows.map((r) => r.top)).size ? rows.filter((r) => r.top === rows[0].top).length : 0 }
       })
       check('A306 · plein écran', m.full)
-      check('A306 · dix tuiles', m.rows.length === 10, String(m.rows.length))
+      /* AU4.8 — onze entrées depuis la carte de couverture. */
+      check('A306 · onze tuiles', m.rows.length === 11, String(m.rows.length))
       check('A306 · tuiles CARRÉES (|l − h| ≤ 2 px)', m.rows.every((r) => Math.abs(r.w - r.h) <= 2), m.rows.map((r) => `${r.w}×${r.h}`).slice(0, 3).join(' '))
       check(`A306 · ≥ 3 colonnes (${m.cols})`, m.cols >= 3)
-      check('A306 · une couleur PROPRE à chaque entrée', new Set(m.rows.map((r) => r.hue)).size === 10)
+      check('A306 · une couleur PROPRE à chaque entrée', new Set(m.rows.map((r) => r.hue)).size === m.rows.length, `${new Set(m.rows.map((r) => r.hue)).size}/${m.rows.length}`)
       const low = m.rows.filter((r) => r.ratio < 4.5)
       check('A306 · contraste du libellé ≥ 4,5:1 sur sa tuile, mesuré au rendu', low.length === 0, low.map((r) => `${r.label} ${r.ratio}`).join(', ') || `min ${Math.min(...m.rows.map((r) => r.ratio))}`)
       if (CAPTURES) await o.page.screenshot({ path: `${SHOTS}/a306-menu-${width}-${dark ? 'dark' : 'light'}.png` })

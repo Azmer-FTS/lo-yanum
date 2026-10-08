@@ -98,8 +98,13 @@ import {
   correctFarmName,
   applyPortalPlan,
   markIntakeHandled,
+  applyInstitutionPlan,
+  updateInstitution,
+  createInstitution,
+  deleteInstitution,
 } from '../src/core/store'
 import { planPortalImport } from '../src/core/portalImport'
+import { planInstitutionImport } from '../src/core/institutions'
 import { TEST_FARM_ID } from '../src/core/testData'
 import { DEFAULT_AVAILABILITY } from '../src/core/types'
 
@@ -1296,6 +1301,25 @@ section("6bis — AH3 · le jeu d'essai produit de vraies écritures")
   const handled = drive('markIntakeHandled', () => markIntakeHandled(incoming.id, before === 'contacted' ? 'to_contact' : 'contacted'))
   check('markIntakeHandled : la ferme est réécrite', hit(handled, 'farms', incoming.id)?.json != null)
   ;(incoming as { status: string }).status = before
+
+  // ★★ AU3 — les institutions : une ligne `institutions` par geste.
+  const iplan = planInstitutionImport({
+    matrix: [['שם', 'יישוב', 'סוג', 'lat', 'lng'], ['מכינת בדיקה', 'נתיבות', 'מכינה', '31.42', '34.59']],
+    existing: _raw().institutions,
+    nowIso: new Date().toISOString(),
+  })
+  const imported = drive('applyInstitutionPlan', () => applyInstitutionPlan(iplan))
+  const instId = (iplan.actions[0] as { institution: { id: string } }).institution.id
+  check('applyInstitutionPlan : une ligne `institutions`', hit(imported, 'institutions', instId)?.json != null)
+  const engaged = drive('updateInstitution', () => updateInstitution(instId, { engagement: 'signed', contactPhone: '050-0000999' }))
+  check('updateInstitution : la ligne est réécrite', hit(engaged, 'institutions', instId)?.json?.includes('signed') === true)
+  let manualId = ''
+  const made = drive('createInstitution', () => {
+    manualId = createInstitution({ name: 'מדרשת בדיקה', locality: 'אופקים', kind: 'midrasha', audience: 'girls' }).id
+  })
+  check('createInstitution : une ligne neuve', hit(made, 'institutions', manualId)?.json != null)
+  const gone = drive('deleteInstitution', () => deleteInstitution(manualId))
+  check('deleteInstitution : la ligne disparaît', gone.some((c) => c.collection === 'institutions' && c.id === manualId && c.json == null))
 }
 
 // --- 7. Coverage: no mutation added without a line in this file ------------

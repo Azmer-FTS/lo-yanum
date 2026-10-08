@@ -150,6 +150,11 @@ export {
   correctFarmName,
   revertLeadConversion,
   applyPortalPlan,
+  // ★★ AU3 — les institutions.
+  applyInstitutionPlan,
+  updateInstitution,
+  createInstitution,
+  deleteInstitution,
 } from './store'
 export type {
   NewIncidentInput,
@@ -180,4 +185,6 @@ export type { Locality, LocalityKind } from './gazetteer'
 export { configurePhotoPool, photoSource } from './photo'
 export * from './portalImport'
 export * from './leads'
+export * from './institutions'
+export * from './coverage'
 export * from './farmName'

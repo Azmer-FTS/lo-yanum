@@ -311,6 +311,8 @@ export function AnchorMap({
         title: farm.name,
         subtitle: farm.locality,
         kind: entityMarkerKind(farm),
+        // ★★ AU1 — la ferme de la fiche est le SUJET : aucun calque ne la cache.
+        essential: true,
       }]),
       ...anchors.map((anchor) => {
         const rank = chosenIds.indexOf(anchor.id)

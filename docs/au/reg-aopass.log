@@ -1,0 +1,143 @@
+$ bun run scripts/aopass.ts
+
+  A238 — toute migration qui crée une table porte ses autorisations
+  -----------------------------------------------------------------
+  PASS  66 migrations lues
+  PASS  33 tables créées dans les migrations  — 33
+  PASS  chacune porte ses `grant` DANS SA PROPRE migration
+  PASS  aucune TABLE n'est ouverte à `anon` (seules trois fonctions le sont — AP4.4)
+  PASS  … et les droits par défaut du schéma sont révoqués pour `anon`
+  PASS  la règle est écrite dans PROJECT_STATE.md
+  PASS  … avec la date du 30 octobre et le motif
+  PASS  … et l'interdit sur `anon`
+  PASS  `activity_reports` : RLS activée, forcée, quatre politiques
+  PASS  `activity_reports` : ses `grant` sont dans la même migration
+
+  A243 — les deux statuts : hors compteurs, dans les listes
+  ---------------------------------------------------------
+  PASS  dix statuts en tout  — 10
+  PASS  six dans le pipeline, trois dehors, un en entrée
+  PASS  `not_relevant_now` et `on_hold` sont hors compteurs
+  PASS  `declined` aussi, et par la MÊME fonction
+  PASS  les six du pipeline comptent tous
+  PASS  libellés : « לא רלוונטי כרגע » et « בהמתנה »
+  PASS  readOption : « לא רלוונטי כרגע » → not_relevant_now
+  PASS  readOption : « לא רלוונטי » reste declined
+  PASS  readFarmStatus : « לא רלוונטי כרגע » → not_relevant_now  — not_relevant_now
+  PASS  readFarmStatus : « לא רלוונטי » reste declined  — declined
+  PASS  readFarmStatus : « בהמתנה » → on_hold
+  PASS  readFarmStatus : « יש להם שומר קבוע » → not_relevant_now
+  PASS  « incoming_request » : libellé hébreu
+  PASS  « to_contact » : libellé hébreu
+  PASS  « contacted » : libellé hébreu
+  PASS  « visited » : libellé hébreu
+  PASS  « verbal_ok » : libellé hébreu
+  PASS  « signed » : libellé hébreu
+  PASS  « active » : libellé hébreu
+  PASS  « declined » : libellé hébreu
+  PASS  « not_relevant_now » : libellé hébreu
+  PASS  « on_hold » : libellé hébreu
+  PASS  --farm-not-relevant-now : clair ET sombre, vif ET encre  — 3 / 3
+  PASS  badges.tsx connaît farm-not-relevant-now
+  PASS  --farm-on-hold : clair ET sombre, vif ET encre  — 3 / 3
+  PASS  badges.tsx connaît farm-on-hold
+  PASS  FarmsListScreen.tsx : la liste vient de @core
+  PASS  FarmFormScreen.tsx : la liste vient de @core
+  PASS  StyleguideScreen.tsx : la liste vient de @core
+
+  A243 (suite) — mesuré sur un vrai store
+  ---------------------------------------
+  PASS  ★ 4 242 dounams « בהמתנה » ne bougent pas le potentiel  — 16230 → 16230
+  PASS  ★ 50 000 dounams « לא רלוונטי כרגע » non plus
+  PASS  ★ et les DEUX fiches sont bien dans les listes
+  PASS  ★ … et dans le compte par statut (donc filtrables)
+  PASS  le compte par statut couvre les dix (AP4)  — 10
+  PASS  le commentaire libre est enregistré tel quel
+  PASS  … et pour l'autre aussi
+  PASS  ★ une fiche signée SANS documents compte comme « ממתינה למסמכים »  — 0 + 6 = 6
+  PASS  ★ et elle N'EST PAS « פעילה » : la transition est refusée  — signed
+
+  A244 — les chiffres du rapport, recalculés indépendamment
+  ---------------------------------------------------------
+  PASS  יישויות במניין  — 14 / 14
+  PASS  hors compteurs
+  PASS  dounams מעובד  — 5594 / 5594
+  PASS  dounams מרעה  — 23786 / 23786
+  PASS  dounams pondérés  — 6070 / 6070
+  PASS  pourcentage du יעד
+  PASS  signées = avec documents + en attente
+  PASS  l'instantané porte UNE ligne par exploitation comptée ou non
+  PASS  ★ une période de janvier 2000 n'a ni visite, ni signature, ni document
+  PASS  ★ mais les totaux restent l'ÉTAT du jour (ce n'est pas une période)
+  PASS  « היום » est un seul jour
+  PASS  « השבוע » commence un dimanche  — 2026-10-04
+  PASS  « החודש » commence le 1er  — 2026-10-01
+  PASS  une période à l'envers se remet à l'endroit
+  PASS  la période du jour se termine aujourd'hui
+
+  A245 — la comparaison avec le rapport précédent
+  -----------------------------------------------
+  PASS  ★ sans rapport précédent, AUCUN écart n'est inventé
+  PASS  le repère est nommé
+  PASS  ★ la fiche neuve est LA seule « nouvelle »  — AO · nouvelle
+  PASS  ★ le changement de statut est nommé, avec son avant et son après  — [{"farm":"חוות עצוז","from":"to_contact","to":"visited"}]
+  PASS  ★ le contact gagné est compté sur la BONNE fiche  — [{"farm":"AO · נחתם","added":1}]
+  PASS  ★ l'écart de dounams est exactement celui de la fiche ajoutée  — 700
+  PASS  ★ l'écart d'exploitations est +1  — 1
+  PASS  l'écart pondéré est cohérent avec les totaux
+  PASS  les points de pourcentage sont des POINTS
+  PASS  ★ deux rapports identiques ne montrent AUCUN mouvement
+
+  A246 — les commentaires, repris TELS QUELS
+  ------------------------------------------
+  PASS  ★ le commentaire est byte pour byte celui de la fiche  — "יש להם שומר קבוע — 24/7, «בדוק», 50% מהזמן\nשורה שנייה"
+  PASS  … guillemets, barre oblique, pourcentage et saut de ligne compris
+  PASS  une fiche sans commentaire n'apparaît pas dans la liste
+  PASS  l'instantané garde aussi le commentaire
+  PASS  ★ les fiches hors compteurs sont NOMMÉES dans le rapport  — ["AO · לא רלוונטי כרגע/not_relevant_now","AO · בהמתנה/on_hold","חוות מעיין חצבה/declined"]
+  PASS  ★ … les deux nouveaux statuts y sont
+  PASS  ★ … avec la raison que le PO a écrite  — ["יש להם שומר קבוע","קיבל 6 בני שירות לכל השנה","מעדיף חברת שמירה בתשלום. ביקש לא לפנות שוב השנה."]
+  PASS  ★ … et elles ne sont PAS dans `totals.farms`
+
+  A247 — le texte WhatsApp et le PDF
+  ----------------------------------
+  PASS  le texte n'est pas vide  — 3039 caractères
+  PASS  ★ il commence par un titre en gras WhatsApp
+  PASS  ★ il ne contient AUCUNE syntaxe que WhatsApp ne sait pas rendre
+  PASS  ★ aucune ligne vide triple (WhatsApp les garde toutes)
+  PASS  ★ il ne se termine pas par du blanc
+  PASS  les astérisques de gras vont par paires  — 14
+  PASS  les nombres sont en chiffres groupés (he-IL)
+  PASS  le pourcentage du יעד y est
+  PASS  ★ la section de comparaison existe TOUJOURS, même vide
+  PASS  ★ sans repère, elle le DIT au lieu d'inventer
+  PASS  les commentaires du PO sont dans le texte
+  PASS  les hors-compteurs sont dans le texte avec leur statut
+  PASS  le titre du fichier porte la période
+  PASS  activityText.ts : aucun calcul entre deux champs du rapport
+  PASS  activityDraw.ts : aucun calcul entre deux champs du rapport
+
+  A248 — les rapports conservés, et le choix du repère
+  ----------------------------------------------------
+  PASS  ★ le repère d'octobre est SEPTEMBRE, le dernier qui se termine avant
+  PASS  ★ le repère d'août est JUILLET, pas septembre (qui vient après)
+  PASS  ★ sans aucun rapport antérieur, on ne se compare pas à SOI-MÊME
+  PASS  ★ mais un rapport d'une AUTRE période sert de repli
+  PASS  aucun rapport gardé → aucun repère
+  PASS  ★ le texte envoyé est conservé au caractère près
+  PASS  l'identifiant porte la période
+  PASS  l'instantané par exploitation est gardé (sinon pas de comparaison)
+  PASS  le repère du rapport gardé est nommé
+
+  A249 — un préfixe d'ordre n'est pas une initiale
+  ------------------------------------------------
+  PASS  « 01 - תומר שדה משה חקלאות » → les initiales de תומר שדה  — תש
+  PASS  « 02 - שדה משה חקלאות » → שמ  — שמ
+  PASS  « 05 - גד״ש תדהר — החווה של אופק » → גת  — גת
+  PASS  ★ aucune des dix fiches préfixées ne rend « 0- »
+  PASS  un nom SANS préfixe est inchangé (חוות מרגי)
+  PASS  un nom qui commence par un chiffre SANS tiret est inchangé  — 2ח
+  PASS  ★ un nom qui n'est QUE son numéro ne devient pas « ? »  — 0-
+  PASS  un nom vide rend toujours « ? »
+
+  113 passed, 0 failed

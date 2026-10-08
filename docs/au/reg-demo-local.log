@@ -1,0 +1,27 @@
+$ bun run scripts/demo.ts
+
+  A90 — SEED → PURGE → ONLY THE REAL DATA SURVIVES
+  ================================================
+  base:   http://localhost:5398
+  fake database: 534 demo rows across 30 tables, plus the real entity
+  PASS  the real app shows the seeded programme
+  PASS  the entities count reads 19  — 19/19
+  PASS  the entity screen lists its two persisted zones  — 2 rows
+  PASS  the report builds on the demo programme
+  PASS  הגדרות counts the demo rows  — בבסיס הנתונים כרגע 196 רשומות הדגמה: 18 יישויות, 56 מתנדבים, 33 שמירות.
+  PASS  and names 18 entities
+  PASS  A187 · le jeu d’essai est bien arrivé en base (1 ferme, 1 volontaire, 1 conducteur)  — 1 · 1 · 1
+  (verdict after 807 ms)
+  PASS  ★ the purge asks TWICE before it acts  — 2 confirmations
+  PASS  ★★ every demo row is gone from every table  — 534 → 0
+  PASS  A187 · aucune ligne du jeu d’essai ne subsiste, dans aucune table  — 0 lignes
+  PASS  A187 · en base : aucune ferme hors la vraie, aucun volontaire, aucun conducteur  — entities 1 · volunteers 0 · drivers 0
+  PASS  A187 · l’écran dit que le serveur a été recompté  — נמחקו 203 רשומות לדוגמה. בשרת לא נשארה אף אחת. הנתונים האמיתיים לא נגעו.
+  PASS  ★★ the real entity survived, with its zone
+  PASS  the grant row survived too
+  PASS  the screen says how many were removed
+  PASS  ★★ A187 · and the device is empty of it too — no demo or test row in the cache, no queued write  — 0 demo keys of 2 cached, outbox 0
+  PASS  and the list shows only the real entity, without a reload  — 1/1
+
+  17 passed, 0 failed
+

@@ -1,0 +1,102 @@
+$ bun run scripts/pills.ts
+
+  A71 · A72 · A73 · A74 — THE FILTER PILLS UNDER A THUMB (chromium)
+  ==========================================================
+
+  A71 · A72 — the thumb, on nine screens at 402 px
+  ------------------------------------------------
+  PASS  A71 · חוות: 5 pills, centre + 4 px from each edge  — every tap landed on its own pill
+  PASS  A72 · חוות: every hit area ≥ 44×44  — smallest 45
+  PASS  A72 · חוות: neighbouring hit areas ≥ 8 px apart  — no two targets closer than 8 px
+  PASS  A71 · מתנדבים: 5 pills, centre + 4 px from each edge  — every tap landed on its own pill
+  PASS  A72 · מתנדבים: every hit area ≥ 44×44  — smallest 45
+  PASS  A72 · מתנדבים: neighbouring hit areas ≥ 8 px apart  — no two targets closer than 8 px
+  PASS  A71 · נהגים: 1 pills, centre + 4 px from each edge  — every tap landed on its own pill
+  PASS  A72 · נהגים: every hit area ≥ 44×44  — smallest 45
+  PASS  A72 · נהגים: neighbouring hit areas ≥ 8 px apart  — no two targets closer than 8 px
+  PASS  A71 · שמירות: 6 pills, centre + 4 px from each edge  — every tap landed on its own pill
+  PASS  A72 · שמירות: every hit area ≥ 44×44  — smallest 45
+  PASS  A72 · שמירות: neighbouring hit areas ≥ 8 px apart  — no two targets closer than 8 px
+  PASS  A71 · אירועים: 7 pills, centre + 4 px from each edge  — every tap landed on its own pill
+  PASS  A72 · אירועים: every hit area ≥ 44×44  — smallest 45
+  PASS  A72 · אירועים: neighbouring hit areas ≥ 8 px apart  — no two targets closer than 8 px
+  PASS  A71 · מסלול: 5 pills, centre + 4 px from each edge  — every tap landed on its own pill
+  PASS  A72 · מסלול: every hit area ≥ 44×44  — smallest 45
+  PASS  A72 · מסלול: neighbouring hit areas ≥ 8 px apart  — no two targets closer than 8 px
+  PASS  A71 · יומן: 4 pills, centre + 4 px from each edge  — every tap landed on its own pill
+  PASS  A72 · יומן: every hit area ≥ 44×44  — smallest 44
+  PASS  A72 · יומן: neighbouring hit areas ≥ 8 px apart  — no two targets closer than 8 px
+  PASS  A71 · הגדרות: 5 pills, centre + 4 px from each edge  — every tap landed on its own pill
+  PASS  A72 · הגדרות: every hit area ≥ 44×44  — smallest 45
+  PASS  A72 · הגדרות: neighbouring hit areas ≥ 8 px apart  — no two targets closer than 8 px
+
+  A73 — equal widths in a grid, and the region on its own line
+  ------------------------------------------------------------
+  PASS  A73 · חוות: the three type pills are on the phone  — חקלאות7 · מרעה3 · מעורב4
+  PASS  A73 · חוות: the three type pills are the same width  — חקלאות7=109 · מרעה3=109 · מעורב4=109
+  PASS  A73 · חוות: the region selector is a drop-down on its own line  — shape=block w=346/346
+  PASS  A73 · חוות: the region drop-down carries a downward chevron  — true
+
+  A85 · A86 — the "+", on the nine screens
+  ----------------------------------------
+  PASS  A85 · לוח בקרה: the "+" offers exactly 8  — 8
+  PASS  A85 · לוח בקרה: the menu is farm · moshav · volunteer · driver · mission · visit · meeting · incident and nothing else  — farm · moshav · volunteer · driver · mission · visit · meeting · incident
+  PASS  A85 · חוות: the "+" offers exactly 2  — 2
+  PASS  A85 · חוות: the menu is farm · moshav and nothing else  — farm · moshav
+  PASS  A85 · מתנדבים: the "+" offers exactly 1  — 1
+  PASS  A85 · מתנדבים: one creation, so the "+" IS it — no menu  — direct=volunteer
+  PASS  A85 · מתנדבים: pressing it opens volunteer straight away  — #/coordinator/volunteers/new
+  PASS  A85 · נהגים: the "+" offers exactly 1  — 1
+  PASS  A85 · נהגים: one creation, so the "+" IS it — no menu  — direct=driver
+  PASS  A85 · נהגים: pressing it opens driver straight away  — #/coordinator/drivers/new
+  PASS  A85 · שמירות: the "+" offers exactly 1  — 1
+  PASS  A85 · שמירות: one creation, so the "+" IS it — no menu  — direct=mission
+  PASS  A85 · שמירות: pressing it opens mission straight away  — #/coordinator/missions/new
+  PASS  A85 · אירועים: the "+" offers exactly 1  — 1
+  PASS  A85 · אירועים: one creation, so the "+" IS it — no menu  — direct=incident
+  PASS  A85 · אירועים: pressing it opens incident straight away  — #/coordinator/incidents
+  PASS  A85 · יומן: the "+" offers exactly 3  — 3
+  PASS  A85 · יומן: the menu is visit · meeting · mission and nothing else  — visit · meeting · mission
+  PASS  A85 · מסלול: the "+" offers exactly 1  — 1
+  PASS  A85 · מסלול: one creation, so the "+" IS it — no menu  — direct=step
+  PASS  A85 · מסלול: pressing it opens step straight away  — #/coordinator/route
+  PASS  A85 · הגדרות: no "+" — this screen creates nothing  — absent
+  PASS  A85 · ייבוא: no "+" — this screen creates nothing  — absent
+  PASS  A86 · חוות: the "+" is on nothing  — no pinned control under it
+  PASS  A86 · חוות (filters open): the "+" is on nothing  — no pinned control under it
+  PASS  A86 · מתנדבים: the "+" is on nothing  — no pinned control under it
+  PASS  A86 · מתנדבים (filters open): the "+" is on nothing  — no pinned control under it
+  PASS  A86 · נהגים: the "+" is on nothing  — no pinned control under it
+  PASS  A86 · נהגים (filters open): the "+" is on nothing  — no pinned control under it
+  PASS  A86 · שמירות: the "+" is on nothing  — no pinned control under it
+  PASS  A86 · שמירות (filters open): the "+" is on nothing  — no pinned control under it
+  PASS  A86 · אירועים: the "+" is on nothing  — no pinned control under it
+  PASS  A86 · אירועים (filters open): the "+" is on nothing  — no pinned control under it
+  PASS  A86 · מסלול: the "+" is on nothing  — no pinned control under it
+  PASS  A86 · מסלול (filters open): the "+" is on nothing  — no pinned control under it
+  PASS  A86 · יומן: the "+" is on nothing  — no pinned control under it
+  PASS  A86 · הגדרות: the "+" is on nothing  — no pinned control under it
+
+  A74 — on iPad and desktop the pills are visible when they fit
+  -------------------------------------------------------------
+  PASS  A74 · ipad · חוות: they do not fit, so they fold  — 374 needed / 280 available · shape=phone
+  PASS  A74 · ipad · מתנדבים: they do not fit, so they fold  — 678 needed / 555 available · shape=phone
+  PASS  A74 · ipad · נהגים: they fit, so they are shown  — 108 needed / 555 available · shape=wide
+  PASS  A74 · ipad · שמירות: they do not fit, so they fold  — 565 needed / 280 available · shape=phone
+  PASS  A74 · ipad · אירועים: they do not fit, so they fold  — 573 needed / 280 available · shape=phone
+  PASS  A74 · ipad · מסלול: they do not fit, so they fold  — 576 needed / 240 available · shape=phone
+  PASS  A74 · ipad · יומן: has a filter row  — no [data-filter-row]; 4 pills
+  PASS  A74 · ipad · הגדרות: has a filter row  — no [data-filter-row]; 14 pills
+  PASS  A72 · ipad · חוות: every hit area ≥ 44×44  — 2 pills
+  PASS  A74 · desktop · חוות: they fit, so they are shown  — 364 needed / 395 available · shape=wide
+  PASS  A74 · desktop · מתנדבים: they fit, so they are shown  — 678 needed / 768 available · shape=wide
+  PASS  A74 · desktop · נהגים: they fit, so they are shown  — 108 needed / 768 available · shape=wide
+  PASS  A74 · desktop · שמירות: they do not fit, so they fold  — 551 needed / 395 available · shape=phone
+  PASS  A74 · desktop · אירועים: they do not fit, so they fold  — 573 needed / 395 available · shape=phone
+  PASS  A74 · desktop · מסלול: they do not fit, so they fold  — 576 needed / 355 available · shape=phone
+  PASS  A74 · desktop · יומן: has a filter row  — no [data-filter-row]; 4 pills
+  PASS  A74 · desktop · הגדרות: has a filter row  — no [data-filter-row]; 14 pills
+  PASS  A72 · desktop · חוות: every hit area ≥ 44×44  — 5 pills
+
+  83 passed, 0 failed  (chromium)
+

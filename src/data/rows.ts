@@ -2,6 +2,7 @@ import type { Collection, StoreData } from '@core/backend'
 import type { Tour } from '@core/tours'
 import { splitLegacyDunams } from '@core/fields'
 import { normalizeLeadStatus } from '@core/leads'
+import type { Institution } from '@core/institutions'
 import type {
   Agreement,
   AnchorPoint,
@@ -1174,6 +1175,60 @@ const leadMapping: Mapping<Lead> = {
   }),
 }
 
+/**
+ * ★★ AU3 — les institutions. Une table, aucune fille. Le point est deux
+ * colonnes nullables (`null` = hors carte) ; `position_uncertain` le marque à
+ * vérifier (AU3.4).
+ */
+const institutionMapping: Mapping<Institution> = {
+  table: 'institutions',
+  children: [],
+  toRows: (i) => [
+    {
+      table: 'institutions',
+      rows: [
+        {
+          id: i.id,
+          name: i.name,
+          locality: i.locality,
+          kind: i.kind,
+          audience: i.audience,
+          network: i.network,
+          lat: i.position?.lat ?? null,
+          lng: i.position?.lng ?? null,
+          position_uncertain: i.positionUncertain,
+          engagement: i.engagement,
+          contact_name: i.contactName,
+          contact_phone: i.contactPhone,
+          notes: i.notes,
+          extra: i.extra,
+          source: i.source,
+          created_at: i.createdAt,
+          updated_at: i.updatedAt,
+        },
+      ],
+    },
+  ],
+  fromRows: (p): Institution => ({
+    id: str(p.id),
+    name: str(p.name),
+    locality: str(p.locality),
+    kind: str(p.kind) as Institution['kind'],
+    audience: str(p.audience) as Institution['audience'],
+    network: str(p.network),
+    position: typeof p.lat === 'number' && typeof p.lng === 'number' ? { lat: p.lat, lng: p.lng } : null,
+    positionUncertain: p.position_uncertain === true,
+    engagement: str(p.engagement) as Institution['engagement'],
+    contactName: str(p.contact_name),
+    contactPhone: str(p.contact_phone),
+    notes: str(p.notes),
+    extra: str(p.extra),
+    source: str(p.source) as Institution['source'],
+    createdAt: ts(p.created_at),
+    updatedAt: ts(p.updated_at),
+  }),
+}
+
 const tourMapping: Mapping<Tour> = {
   table: 'tours',
   children: [{ table: 'tour_stops', fk: 'tour_id' }],
@@ -1220,6 +1275,7 @@ export const MAPPINGS: { [K in Collection]: Mapping<StoreData[K][number]> } = {
   farmVisits: farmVisitMapping,
   generalMeetings: generalMeetingMapping,
   tours: tourMapping,
+  institutions: institutionMapping,
 }
 
 /** Every table an aggregate of this collection lives in, parent first. */

@@ -11,6 +11,8 @@
     "aspass": "bun run scripts/aspass.ts",
     "asdata": "bun run scripts/asdata.ts",
     "atui": "bun run scripts/atui.ts",
+    "auui": "bun run scripts/auui.ts",
+    "aupass": "bun run scripts/aupass.ts",
     "atsync": "bun run scripts/atsync.ts",
     "assettings": "bun run scripts/assettings.ts",
     "asui": "bun run scripts/asui.ts",

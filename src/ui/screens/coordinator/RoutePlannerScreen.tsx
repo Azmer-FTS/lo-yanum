@@ -343,10 +343,17 @@ export function RoutePlannerScreen() {
             un écran qu'on atteint depuis le menu principal serait un second
             planificateur ; posé ici, il est l'autre réponse à la question
             qu'on est déjà en train de se poser. */}
-        <Link to="/coordinator/route/free" className="btn-secondary shrink-0" data-testid="open-free-route">
-          <Icon name="pin" size={16} />
-          {t('freeRoute.title')}
-        </Link>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Link to="/coordinator/route/free" className="btn-secondary shrink-0" data-testid="open-free-route">
+            <Icon name="pin" size={16} />
+            {t('freeRoute.title')}
+          </Link>
+          {/* ★★ AU4.8 — la carte de couverture : « où aller cette saison ». */}
+          <Link to="/coordinator/coverage" className="btn-secondary shrink-0" data-testid="open-coverage">
+            <Icon name="map" size={16} />
+            {t('coverage.title')}
+          </Link>
+        </div>
       </header>
 
       {/* G9.1 — the day this route belongs to, and its saved state. */}

@@ -40,5 +40,166 @@
     "origin": {
       "permissionHint": "If the device asks again at every launch: in the iOS prompt choose “Allow While Using App”, not “Allow Once”. iPad Settings › Privacy › Location Services › Safari Websites."
     }
+  },
+  "map": {
+    "hiddenEntities_one": "1 farm hidden by the legend",
+    "hiddenEntities_other": "{{count}} farms hidden by the legend",
+    "showHidden": "Show",
+    "nearLocality": "Near {{name}} · {{km}} km"
+  },
+  "nav": {
+    "coverage": "Coverage map"
+  },
+  "coverage": {
+    "title": "Coverage map",
+    "subtitle": "Institutions, farms, and what is left to win",
+    "mapLabel": "Coverage map — institutions and farms",
+    "toRoute": "Plan a route",
+    "usage": {
+      "label": "Use",
+      "meeting": "Meeting",
+      "prepare": "Preparation",
+      "custom": "Custom",
+      "meetingHint": "For a meeting with an institution: signed farms and institutions already on board, by name. No leads, nothing internal.",
+      "prepareHint": "Preparation: everything, including leads not yet called — to measure an area’s potential.",
+      "customHint": "Your own choice of layers."
+    },
+    "side": {
+      "land": "Land",
+      "institutions": "Institutions"
+    },
+    "family": {
+      "signed": "Signed farms",
+      "pipeline": "Toward signing",
+      "leads": "Leads to call",
+      "engaged": "Partner institutions",
+      "prospect": "Institutions to approach"
+    },
+    "familyHint": {
+      "signed": "The actual network",
+      "pipeline": "In contact, not yet signed",
+      "leads": "From the waiting room, with a place",
+      "engaged": "Signed",
+      "prospect": "Not contacted · contacted · interested"
+    },
+    "linkReal": "Actual coverage",
+    "linkPotential": "Possible coverage",
+    "radius": "Radius",
+    "km": "{{km}} km",
+    "distanceRule": "Filtered as the crow flies; choosing an institution measures the road.",
+    "covered": "Covered",
+    "uncovered": "Not covered",
+    "potential": "Potential",
+    "countsScope": "Out of {{n}} farms on the map · leads not counted",
+    "focusOn": "Only the chosen farms are shown — tap again to clear",
+    "unreachable_one": "1 farm no institution reaches, not even one to approach",
+    "unreachable_other": "{{count}} farms no institution reaches, not even one to approach",
+    "leadsUnplaced_one": "1 lead without a place — not on the map. Locate it",
+    "leadsUnplaced_other": "{{count}} leads without a place — not on the map. Locate them",
+    "institutionsUnplaced_one": "1 institution without a place — not on the map",
+    "institutionsUnplaced_other": "{{count}} institutions without a place — not on the map",
+    "uncertainLinks_one": "1 link starts from an institution whose place is uncertain",
+    "uncertainLinks_other": "{{count}} links start from institutions whose place is uncertain",
+    "notRelevantHidden_one": "1 “not relevant” institution hidden",
+    "notRelevantHidden_other": "{{count}} “not relevant” institutions hidden",
+    "noInstitutions": "No institutions yet",
+    "noInstitutionsHint": "Importing the workbook of mechinot, yeshivot and midrashot will show them here.",
+    "reachTitle": "Farms within {{km}} km",
+    "measuringRoad_one": "Measuring the road to 1 farm…",
+    "measuringRoad_other": "Measuring the road to {{count}} farms…",
+    "roadKm": "{{km}} km by road",
+    "airKm": "{{km}} km as the crow flies",
+    "noRoad": "{{km}} km as the crow flies · no road",
+    "outByRoad": "Out of radius by road",
+    "reachNone": "No farm within this radius.",
+    "noInstitutionPosition": "The institution has no place — coverage cannot be measured.",
+    "reaches_one": "Reaches 1 farm",
+    "reaches_other": "Reaches {{count}} farms",
+    "leadNotCounted": "A waiting-room lead — not in any counter.",
+    "openLeads": "Open the waiting room"
+  },
+  "institutions": {
+    "title_one": "1 institution",
+    "title_other": "{{count}} institutions",
+    "all": "All",
+    "search": "Search institution, place or network",
+    "engagementLabel": "Engagement",
+    "engagement": {
+      "not_contacted": "Not contacted",
+      "contacted": "Contacted",
+      "interested": "Interested",
+      "signed": "Signed",
+      "not_relevant": "Not relevant"
+    },
+    "engagementShort": {
+      "not_contacted": "Not yet",
+      "contacted": "Contacted",
+      "interested": "Interested",
+      "signed": "Signed",
+      "not_relevant": "N/A"
+    },
+    "kind": {
+      "mechina": "Pre-army academy",
+      "hesder": "Hesder yeshiva",
+      "midrasha": "Midrasha",
+      "other": "Other"
+    },
+    "audience": {
+      "boys": "Boys",
+      "girls": "Girls",
+      "mixed": "Mixed",
+      "unknown": "Audience unknown"
+    },
+    "uncertain": "Uncertain place",
+    "uncertainShort": "Check place",
+    "uncertainLong": "This institution’s place is marked uncertain in the workbook. Its links are drawn, but the point must be checked.",
+    "noPoint": "No place",
+    "contactName": "Contact",
+    "contactPhone": "Phone",
+    "notes": "Notes",
+    "call": "Call",
+    "import": {
+      "title": "Import institutions",
+      "short": "Import",
+      "subtitle": "Mechinot, hesder yeshivot and midrashot — re-import any time",
+      "step1": "1 · The file",
+      "step2": "2 · What will change",
+      "howTo": "An Excel or CSV file, one row per institution. Re-importing never duplicates and never erases a status, contact or phone typed in the app.",
+      "columns": "Columns read: name · locality · type · audience · network · lat · lng (or “coordinates”) · certainty · status · contact · phone · notes. Other columns are kept as they are.",
+      "choose": "Choose a file",
+      "unreadable": "The file could not be read",
+      "missingName": "No “name” column found — nothing to import.",
+      "kind": {
+        "create": "New",
+        "update": "Update",
+        "same": "Unchanged",
+        "duplicate": "Duplicates in the file"
+      },
+      "uncertainTitle_one": "1 uncertain place — imported and flagged for checking",
+      "uncertainTitle_other": "{{count}} uncertain places — imported and flagged for checking",
+      "uncertainBy": {
+        "named": "on the list of places to check",
+        "column": "per the certainty column"
+      },
+      "unplaced_one": "1 institution without coordinates — imported, not on the map",
+      "unplaced_other": "{{count}} institutions without coordinates — imported, not on the map",
+      "kept": "Kept as they are: {{headers}}",
+      "apply_one": "Import 1 institution",
+      "apply_other": "Import {{count}} institutions",
+      "doneTitle": "Import done",
+      "done": "{{created}} new · {{updated}} updated",
+      "toMap": "To the coverage map"
+    },
+    "field": {
+      "kind": "type",
+      "audience": "audience",
+      "network": "network",
+      "extra": "other columns",
+      "contactName": "contact",
+      "contactPhone": "phone",
+      "notes": "notes",
+      "position": "place",
+      "positionUncertain": "place certainty"
+    }
   }
 }

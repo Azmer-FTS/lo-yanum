@@ -16,6 +16,7 @@ import { buildTestData, isTestId } from './testData'
 import type { ProspectionPlan } from './prospection'
 import type { Tour } from './tours'
 import type { PortalPlan } from './portalImport'
+import type { Institution, InstitutionPlan } from './institutions'
 import type {
   Agreement,
   AnchorPoint,
@@ -2348,4 +2349,71 @@ export function applyPortalPlan(
   if (newLeads.length) data.leads = [...newLeads, ...data.leads]
   commit()
   return out
+}
+
+// ===========================================================================
+// ★★ AU3 (2026-10-08) — LES INSTITUTIONS
+// ===========================================================================
+
+/**
+ * Applique le plan d'import (`planInstitutionImport`) : créations et mises à
+ * jour en UN commit. Les lignes `same` et `duplicate` ne touchent rien.
+ */
+export function applyInstitutionPlan(plan: InstitutionPlan): { created: number; updated: number } {
+  const out = { created: 0, updated: 0 }
+  const stamp = iso(now())
+  const created: Institution[] = []
+  for (const action of plan.actions) {
+    if (action.kind === 'create') {
+      if (data.institutions.some((i) => i.id === action.institution.id)) continue
+      created.push({ ...action.institution, createdAt: stamp, updatedAt: stamp })
+      out.created++
+    } else if (action.kind === 'update') {
+      const i = data.institutions.findIndex((x) => x.id === action.id)
+      if (i === -1) continue
+      data.institutions[i] = { ...data.institutions[i], ...action.patch, updatedAt: stamp }
+      out.updated++
+    }
+  }
+  if (created.length) data.institutions = [...data.institutions, ...created]
+  if (out.created || out.updated) commit()
+  return out
+}
+
+export function updateInstitution(id: string, patch: Partial<Omit<Institution, 'id'>>): void {
+  const index = data.institutions.findIndex((i) => i.id === id)
+  if (index === -1) return
+  data.institutions[index] = { ...data.institutions[index], ...patch, updatedAt: iso(now()) }
+  commit()
+}
+
+/** Une institution saisie à la main (sans classeur). */
+export function createInstitution(
+  draft: Pick<Institution, 'name' | 'locality' | 'kind' | 'audience'> & Partial<Omit<Institution, 'id' | 'createdAt' | 'updatedAt'>>,
+): Institution {
+  const stamp = iso(now())
+  const created: Institution = {
+    id: nextId('inst'),
+    network: '',
+    position: null,
+    positionUncertain: false,
+    engagement: 'not_contacted',
+    contactName: '',
+    contactPhone: '',
+    notes: '',
+    extra: '',
+    source: 'manual',
+    ...draft,
+    createdAt: stamp,
+    updatedAt: stamp,
+  }
+  data.institutions = [...data.institutions, created]
+  commit()
+  return created
+}
+
+export function deleteInstitution(id: string): void {
+  if (!data.institutions.some((i) => i.id === id)) return
+  data.institutions = data.institutions.filter((i) => i.id !== id)
+  commit()
 }

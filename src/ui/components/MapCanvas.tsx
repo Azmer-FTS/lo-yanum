@@ -12,7 +12,7 @@ import type { LatLng } from '@core/index'
 import { readToken } from './badges'
 import { readStoredBase, writeStoredBase } from './mapBase'
 import { MapTools } from './MapTools'
-import { MARKER_LAYER, useMapLayers } from './mapLayers'
+import { MARKER_LAYER, setMapLayer, useMapLayers } from './mapLayers'
 import { MAP_MAX_BOUNDS, buildBasemapStyle, registerPmtilesProtocol, resolvedThemeOf } from './basemap'
 import { regionById, regionOf, regions } from '@core/index'
 import type { BasemapBase } from './basemap'
@@ -49,6 +49,10 @@ export type MarkerKind =
   | 'label'
   | 'move'
   | 'bubble'
+  /** ★★ AU4 — une מכינה / ישיבה / מדרשה : un carré arrondi, une toque. */
+  | 'institution'
+  /** ★★ AU4 — une piste de la salle d'attente : un petit rond en pointillé. */
+  | 'lead'
 
 export interface MapMarker {
   id: string
@@ -61,6 +65,23 @@ export interface MapMarker {
   emphasis?: boolean
   /** Draw a pulsing halo (unresolved urgent incidents). */
   pulse?: boolean
+  /**
+   * ★★ AU1 (2026-10-08) — LE SUJET DE L'ÉCRAN. Jamais masqué par un calque du
+   * מקרא : la ferme ouverte, la ferme sélectionnée. Le PO avait éteint
+   * « ישויות » sur l'ordinateur (mémorisé par appareil) et sa fiche se
+   * centrait… sur rien. Un marqueur mis en avant (`emphasis`) survit aussi.
+   */
+  essential?: boolean
+  /**
+   * ★★ AU4 — LE POTENTIEL EST CREUX, L'ACQUIS EST PLEIN. Même silhouette,
+   * même teinte : seul le remplissage change, et c'est ce que l'œil lit en
+   * premier (« ce qui est à moi » / « ce qui reste à conquérir »).
+   */
+  hollow?: boolean
+  /** ★★ AU4 — un point à VÉRIFIER (AU3.4) : contour en pointillé. */
+  uncertain?: boolean
+  /** ★★ AU4 — le nom écrit sous le marqueur, toujours visible (rendez-vous). */
+  label?: string
   /** Step number for route planning; rendered inside the marker. */
   badge?: string
   /**
@@ -126,6 +147,20 @@ export interface MapThreatVector {
   emphasis?: boolean
 }
 
+/**
+ * ★★ AU4 — UN LIEN DE COUVERTURE : une institution → une ferme dans le rayon.
+ * Ce n'est pas un trajet (un trait droit dit « atteint », pas « par où ») ;
+ * plein = couverture RÉELLE (institution engagée), tirets = POSSIBLE.
+ */
+export interface MapLink {
+  from: LatLng
+  to: LatLng
+  tone: 'real' | 'potential'
+  color: string
+  /** Le lien d'une institution choisie, plus épais. */
+  emphasis?: boolean
+}
+
 export interface MapRouteLine {
   coords: LatLng[]
   style: 'road' | 'gap' | 'estimate'
@@ -150,6 +185,8 @@ export interface MapViewProps {
    *   (AI2.6). Un repli dessiné comme une route serait un tracé qui ment.
    */
   routeLines?: MapRouteLine[]
+  /** ★★ AU4 — les liens de couverture, sous les marqueurs. */
+  links?: MapLink[]
   center?: LatLng
   zoom?: number
   /** Frame all markers instead of using center/zoom. */
@@ -279,6 +316,8 @@ const SIZE: Record<MarkerKind, number> = {
   car: 28,
   label: 0,
   move: 26,
+  institution: 26,
+  lead: 14,
   // P0.2 — a bubble sizes itself from its count; SIZE is only the floor a
   // caller gets if it forgets to pass one.
   bubble: 30,
@@ -408,6 +447,8 @@ const GLYPH: Partial<Record<MarkerKind, string>> = {
      triangle plein qu'il était perdait la pointe ; le remplacer par un rond
      aurait perdu le panneau. */
   incident: 'M12 4.4 21 19.8H3Z M12 10.6v3.4 M12 16.4v.2',
+  // ★★ AU4 — la toque de l'institution (études), lisible à 16 px.
+  institution: 'M2 9.5 12 5l10 4.5L12 14Z M6 11.5v4.2c0 1.3 2.7 2.8 6 2.8s6-1.5 6-2.8v-4.2 M22 9.5v5',
   // G15 — the whole-polygon move handle: a four-way arrow cross.
   move: 'M12 2v20M2 12h20M12 2l-2.5 2.5M12 2l2.5 2.5M12 22l-2.5-2.5M12 22l2.5-2.5M2 12l2.5-2.5M2 12l2.5 2.5M22 12l-2.5-2.5M22 12l-2.5 2.5',
 }
@@ -551,6 +592,52 @@ function markerElement(marker: MapMarker): HTMLElement {
     return el
   }
 
+  if (kind === 'lead') {
+    // ★★ AU4 — une PISTE : un petit rond creux en pointillé, sans glyphe. Le
+    // plus discret des cinq : c'est un nom saisi, pas encore un lieu démarché.
+    const d = marker.emphasis ? SIZE.lead + 6 : SIZE.lead
+    el.style.cssText = [
+      `width:${d}px`,
+      `height:${d}px`,
+      'padding:0',
+      'border-radius:var(--radius-pill)',
+      `background:${ring}`,
+      `border:2.5px dashed ${marker.color}`,
+      'cursor:pointer',
+      'box-shadow:0 1px 4px rgba(0,0,0,.35)',
+    ].join(';')
+    wrapForTouch(el, d, d, false)
+    return withLabel(el, marker)
+  }
+
+  if (kind === 'institution') {
+    // ★★ AU4 — une INSTITUTION : un carré arrondi (un bâtiment, pas un champ),
+    // la toque dedans. Pleine = engagée, creuse = à démarcher ; pointillée =
+    // point à vérifier.
+    const size = marker.emphasis ? SIZE.institution + 8 : SIZE.institution
+    const ink = marker.hollow ? marker.color : ring
+    el.style.cssText = [
+      `width:${size}px`,
+      `height:${size}px`,
+      'padding:0',
+      'border-radius:var(--radius-field)',
+      `background:${marker.hollow ? ring : marker.color}`,
+      `border:2.5px ${marker.uncertain ? 'dashed' : 'solid'} ${marker.hollow ? marker.color : PIN_OUTLINE}`,
+      'cursor:pointer',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      marker.emphasis ? 'box-shadow:0 4px 12px rgba(0,0,0,.5)' : 'box-shadow:0 2px 6px rgba(0,0,0,.4)',
+    ].join(';')
+    el.innerHTML = `
+      <svg viewBox="0 0 24 24" width="${Math.round(size * 0.66)}" height="${Math.round(size * 0.66)}" aria-hidden="true"
+           fill="none" stroke="${ink}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="${GLYPH.institution}"/>
+      </svg>`
+    wrapForTouch(el, size, size, false)
+    return withLabel(el, marker)
+  }
+
   if (kind === 'vertex') {
     // G1 — a polygon-vertex handle: a small ROUND grip (G7bis.1 — the raw
     // square read as debris next to the new pins). The VISIBLE dot is small so
@@ -622,7 +709,7 @@ function markerElement(marker: MapMarker): HTMLElement {
       ? `<text x="12" y="${headY + 3.6}" text-anchor="middle" font-family="var(--font-sans)"
                font-size="10.5" font-weight="700" fill="${ring}">${escapeHtml(marker.badge)}</text>`
       : GLYPH[kind]
-        ? `<g fill="none" stroke="${ring}" stroke-width="2.4" stroke-linecap="round"
+        ? `<g fill="none" stroke="${marker.hollow ? marker.color : ring}" stroke-width="2.4" stroke-linecap="round"
               stroke-linejoin="round" transform="translate(5.4 ${headY - 6.6}) scale(0.55)">
              <path d="${GLYPH[kind]}"/>
            </g>`
@@ -646,7 +733,8 @@ function markerElement(marker: MapMarker): HTMLElement {
     el.innerHTML = `
       <svg viewBox="${box.x} ${box.y} ${box.w} ${box.h}" width="${w}" height="${h}"
            overflow="visible" aria-hidden="true" data-pin-svg="">
-        <path d="${silhouette}" fill="${marker.color}" stroke="${PIN_OUTLINE}" stroke-width="${PIN_STROKE}"
+        <path d="${silhouette}" fill="${marker.hollow ? ring : marker.color}"
+              stroke="${marker.hollow ? marker.color : PIN_OUTLINE}" stroke-width="${marker.hollow ? 2.4 : PIN_STROKE}"
               stroke-linejoin="round" data-pin-outline=""/>
         ${head}
       </svg>`
@@ -719,6 +807,41 @@ function markerElement(marker: MapMarker): HTMLElement {
     el.addEventListener('mouseleave', () => marker.onHover?.(null))
   }
 
+  return withLabel(el, marker)
+}
+
+/**
+ * ★★ AU4 — LE NOM SOUS LE MARQUEUR. En rendez-vous, l'institution reçue voit
+ * les institutions engagées autour d'elle NOMMÉES, sans toucher l'écran : une
+ * bulle qu'il faut ouvrir une à une n'est pas un argument. Pastille opaque
+ * (lisible sur le satellite comme sur le vectoriel), jamais cliquable.
+ */
+function withLabel(el: HTMLElement, marker: MapMarker): HTMLElement {
+  if (!marker.label) return el
+  const tag = document.createElement('span')
+  tag.dataset.markerLabel = ''
+  tag.textContent = marker.label
+  tag.style.cssText = [
+    'position:absolute',
+    'top:100%',
+    'left:50%',
+    'transform:translate(-50%,2px)',
+    'pointer-events:none',
+    'white-space:nowrap',
+    'max-width:14rem',
+    'overflow:hidden',
+    'text-overflow:ellipsis',
+    'padding:1px 7px',
+    'border-radius:var(--radius-pill)',
+    'background:rgb(var(--surface-overlay) / .92)',
+    'color:rgb(var(--text-primary))',
+    'font-family:var(--font-sans)',
+    'font-size:12px',
+    'font-weight:700',
+    'line-height:1.35',
+    'box-shadow:0 1px 4px rgba(0,0,0,.3)',
+  ].join(';')
+  el.appendChild(tag)
   return el
 }
 
@@ -730,6 +853,7 @@ export default function MapCanvas({
   onPolygonClick,
   line,
   routeLines,
+  links,
   center,
   zoom = 8,
   fit = false,
@@ -766,10 +890,20 @@ export default function MapCanvas({
    */
   const layersRef = useRef(layers)
   layersRef.current = layers
+  /**
+   * ★★ AU1 — UN CALQUE ÉTEINT SE VOIT SUR LA CARTE. « ישויות » éteint
+   * vidait toutes les cartes de CET appareil sans un mot (le PO : « aucune
+   * épingle sur l'ordinateur, elles sont là sur le téléphone »). Le compte de
+   * ce qui est caché est dit sur la carte, et un geste le rend.
+   */
+  const hiddenEntities = layers.entities
+    ? 0
+    : allMarkers.filter((m) => MARKER_LAYER[m.kind ?? 'farm'] === 'entities' && !m.essential && !m.emphasis).length
   const markers = useMemo(
     () =>
       allMarkers
         .filter((m) => {
+          if (m.essential || m.emphasis) return true
           const layer = MARKER_LAYER[m.kind ?? 'farm']
           return layer ? layers[layer] : true
         })
@@ -930,6 +1064,7 @@ export default function MapCanvas({
   // can apply it the moment the source exists, whatever order things mounted in.
   const lineRef = useRef<LatLng[] | undefined>(line)
   const routeLinesRef = useRef<MapRouteLine[] | undefined>(routeLines)
+  const linksRef = useRef<MapLink[] | undefined>(links)
   const polygonsRef = useRef<MapPolygon[] | undefined>(polygons)
   const threatZonesRef = useRef<MapThreatZone[] | undefined>(threatZones)
   const threatVectorsRef = useRef<MapThreatVector[] | undefined>(threatVectors)
@@ -1325,6 +1460,40 @@ export default function MapCanvas({
       })
 
       applyThreats(map, threatZonesRef.current, threatVectorsRef.current)
+
+      /* ★★ AU4 — les liens de couverture : deux couches, une par écriture
+         (`line-dasharray` n'accepte pas d'expression par entité). Le rayon
+         change → un `setData`, jamais une couche recréée. */
+      map.addSource('coverage-links', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      })
+      map.addLayer({
+        id: 'coverage-links-potential',
+        type: 'line',
+        source: 'coverage-links',
+        filter: ['==', ['get', 'tone'], 'potential'],
+        layout: { 'line-cap': 'butt', 'line-join': 'round' },
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': ['case', ['get', 'emphasis'], 2.6, 1.6],
+          'line-opacity': ['case', ['get', 'emphasis'], 0.95, 0.6],
+          'line-dasharray': [2.2, 2],
+        },
+      })
+      map.addLayer({
+        id: 'coverage-links-real',
+        type: 'line',
+        source: 'coverage-links',
+        filter: ['==', ['get', 'tone'], 'real'],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': ['case', ['get', 'emphasis'], 4, 2.6],
+          'line-opacity': ['case', ['get', 'emphasis'], 1, 0.8],
+        },
+      })
+      applyLinks(map, linksRef.current)
 
       // Declared up-front with an empty source so route updates are a cheap
       // setData() rather than an add/remove layer cycle on every keystroke.
@@ -2021,7 +2190,10 @@ export default function MapCanvas({
     const CLUSTER_PX = 26
     const groupable = (m: MapMarker) =>
       !m.draggable &&
-      !['origin', 'label', 'bubble', 'vertex', 'move'].includes(m.kind ?? 'farm')
+      /* ★★ AU4 — ni les institutions (le sujet de la carte de couverture,
+         nommées) ni les pistes (un disque de fermes qui en compterait une
+         mentirait sur son nombre) ne se regroupent. */
+      !['origin', 'label', 'bubble', 'vertex', 'move', 'institution', 'lead'].includes(m.kind ?? 'farm')
     let clusters: maplibregl.Marker[] = []
     /* Seuls les repères que CE regroupement a masqués sont rendus : une
        étiquette porte `pointer-events:none` d'origine et doit le garder. */
@@ -2355,6 +2527,12 @@ export default function MapCanvas({
   }, [line, routeLines, glGeneration])
 
   useEffect(() => {
+    linksRef.current = links
+    const map = mapRef.current
+    if (map) applyLinks(map, links)
+  }, [links, glGeneration])
+
+  useEffect(() => {
     polygonsRef.current = polygons
     const map = mapRef.current
     if (map) applyPolygons(map, polygons)
@@ -2496,7 +2674,8 @@ export default function MapCanvas({
         closeOnClick: false,
         // Clear of a 44 px pin, so the tip lands on the marker rather than in it.
         offset: 26,
-        maxWidth: '20rem',
+        // ★ AU1.3 — la carte fixe sa largeur (20 rem, 28 rem dès `lg`).
+        maxWidth: 'none',
         className: 'lo-anchored',
       }).setDOMContent(popupHost)
     }
@@ -2547,6 +2726,22 @@ export default function MapCanvas({
         } ${className}`}
       />
       {anchored && createPortal(anchored.node, popupHost)}
+      {interactive && noticeHost && hiddenEntities > 0 &&
+        createPortal(
+          <button
+            type="button"
+            data-testid="map-hidden-entities"
+            onClick={() => setMapLayer('entities', true)}
+            className={`glass pointer-events-auto absolute start-1/2 z-[3] flex min-h-11 max-w-[min(26rem,calc(100%-7rem))] -translate-x-1/2 items-center gap-2 rounded-pill px-4 py-2 text-caption font-semibold text-content-primary shadow-card rtl:translate-x-1/2 ${
+              imagery !== 'ok' ? 'top-16' : 'top-3'
+            }`}
+          >
+            <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 rounded-pill bg-status-warn" />
+            {t('map.hiddenEntities', { count: hiddenEntities })}
+            <span className="text-accent-ink">{t('map.showHidden')}</span>
+          </button>,
+          noticeHost,
+        )}
       {interactive && noticeHost && imagery !== 'ok' &&
         createPortal(
           <div
@@ -2751,6 +2946,26 @@ function applyPolygons(
           ],
         },
       })),
+  })
+}
+
+/** ★★ AU4 — les liens dans leur source, si elle existe déjà. */
+function applyLinks(map: maplibregl.Map, links: MapLink[] | undefined): void {
+  const source = map.getSource('coverage-links') as maplibregl.GeoJSONSource | undefined
+  if (!source) return
+  source.setData({
+    type: 'FeatureCollection',
+    features: (links ?? []).map((l) => ({
+      type: 'Feature' as const,
+      properties: { tone: l.tone, color: l.color, emphasis: l.emphasis ?? false },
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: [
+          [l.from.lng, l.from.lat],
+          [l.to.lng, l.to.lat],
+        ],
+      },
+    })),
   })
 }
 

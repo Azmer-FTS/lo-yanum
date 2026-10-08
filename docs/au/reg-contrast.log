@@ -1,0 +1,170 @@
+$ bun run scripts/contrast.ts
+WCAG AA contrast audit — src/styles/tokens.css
+
+  LIGHT
+  pair                                             ratio   min  result
+  ------------------------------------------------------------------------
+  text-primary on surface-base                     15.39   4.5  PASS
+  text-secondary on surface-base                    8.74   4.5  PASS
+  text-muted on surface-base                        5.16   4.5  PASS
+  accent-ink on surface-base                        6.56   4.5  PASS
+  text-primary on surface-raised                   16.93   4.5  PASS
+  text-secondary on surface-raised                  9.62   4.5  PASS
+  text-muted on surface-raised                      5.68   4.5  PASS
+  accent-ink on surface-raised                      7.22   4.5  PASS
+  text-primary on surface-overlay                  16.93   4.5  PASS
+  text-secondary on surface-overlay                 9.62   4.5  PASS
+  text-muted on surface-overlay                     5.68   4.5  PASS
+  accent-ink on surface-overlay                     7.22   4.5  PASS
+  text-primary on surface-high                     14.94   4.5  PASS
+  text-secondary on surface-high                    8.48   4.5  PASS
+  text-muted on surface-high                        5.01   4.5  PASS
+  accent-ink on surface-high                        6.37   4.5  PASS
+  text-primary on surface-field                    16.93   4.5  PASS
+  text-secondary on surface-field                   9.62   4.5  PASS
+  text-muted on surface-field                       5.68   4.5  PASS
+  accent-ink on surface-field                       7.22   4.5  PASS
+  text-on-accent on accent                          5.24   4.5  PASS
+  text-on-accent on accent-strong                   6.86   4.5  PASS
+  text-on-accent on accent-dim                      4.74   4.5  PASS
+  text-on-brand on plate-from                       7.94   4.5  PASS
+  text-on-brand on plate-to                        15.96   4.5  PASS
+  accent-ink on accent chip                         6.15   4.5  PASS
+  status-success chip (ink on 15% tint)             5.87   4.5  PASS
+  status-warn chip (ink on 15% tint)                5.98   4.5  PASS
+  status-danger chip (ink on 15% tint)              5.89   4.5  PASS
+  status-info chip (ink on 15% tint)                6.11   4.5  PASS
+  status-violet chip (ink on 15% tint)              7.03   4.5  PASS
+  farm-to-contact chip (ink on 15% tint)            7.97   4.5  PASS
+  farm-contacted chip (ink on 15% tint)             5.98   4.5  PASS
+  farm-visited chip (ink on 15% tint)               6.77   4.5  PASS
+  farm-verbal-ok chip (ink on 15% tint)             6.11   4.5  PASS
+  farm-signed chip (ink on 15% tint)                7.03   4.5  PASS
+  farm-active chip (ink on 15% tint)                5.87   4.5  PASS
+  farm-declined chip (ink on 15% tint)              5.89   4.5  PASS
+  farm-not-relevant-now chip (ink on 15% tint)      6.93   4.5  PASS
+  farm-on-hold chip (ink on 15% tint)               6.83   4.5  PASS
+  farm-incoming-request chip (ink on 15% tint)      6.46   4.5  PASS
+  status-success dot on surface-base                3.71     3  PASS
+  status-warn dot on surface-base                   3.17     3  PASS
+  status-danger dot on surface-base                 3.28     3  PASS
+  status-info dot on surface-base                   3.73     3  PASS
+  status-violet dot on surface-base                 3.73     3  PASS
+  farm-to-contact dot on surface-base               3.28     3  PASS
+  farm-contacted dot on surface-base                3.17     3  PASS
+  farm-visited dot on surface-base                  3.54     3  PASS
+  farm-verbal-ok dot on surface-base                3.73     3  PASS
+  farm-signed dot on surface-base                   3.73     3  PASS
+  farm-active dot on surface-base                   3.71     3  PASS
+  farm-declined dot on surface-base                 3.28     3  PASS
+  farm-not-relevant-now dot on surface-base         3.55     3  PASS
+  farm-on-hold dot on surface-base                  3.60     3  PASS
+  farm-incoming-request dot on surface-base         3.59     3  PASS
+  text-on-accent on solid status-success            4.59   4.5  PASS
+  text-on-accent on solid status-warn               5.37   4.5  PASS
+  text-on-accent on solid status-danger             5.19   4.5  PASS
+  text-on-accent on solid status-info               4.57   4.5  PASS
+  text-on-accent on solid status-violet             4.56   4.5  PASS
+  text-on-accent on solid farm-to-contact           5.18   4.5  PASS
+  text-on-accent on solid farm-contacted            5.37   4.5  PASS
+  text-on-accent on solid farm-visited              4.81   4.5  PASS
+  text-on-accent on solid farm-verbal-ok            4.57   4.5  PASS
+  text-on-accent on solid farm-signed               4.56   4.5  PASS
+  text-on-accent on solid farm-active               4.59   4.5  PASS
+  text-on-accent on solid farm-declined             5.19   4.5  PASS
+  text-on-accent on solid farm-not-relevant-now     4.80   4.5  PASS
+  text-on-accent on solid farm-on-hold              4.72   4.5  PASS
+  text-on-accent on solid farm-incoming-request     4.73   4.5  PASS
+  border-strong on surface-field (the field edge)    2.20   1.8  PASS
+  surface-field vs surface-raised (field in a card)    1.00     1  PASS
+  text-on-accent on solid critical                  5.19   4.5  PASS
+  critical bar on surface-raised                    3.61     3  PASS
+  critical marker on surface-base                   3.28     3  PASS
+  border-subtle on surface-base                     1.24   1.2  PASS
+  surface-raised vs surface-base (elevation)        1.10  1.05  PASS
+  surface-high vs surface-raised (hover row)        1.13  1.04  PASS
+
+  DARK
+  pair                                             ratio   min  result
+  ------------------------------------------------------------------------
+  text-primary on surface-base                     16.39   4.5  PASS
+  text-secondary on surface-base                   11.79   4.5  PASS
+  text-muted on surface-base                        7.37   4.5  PASS
+  accent-ink on surface-base                       10.52   4.5  PASS
+  text-primary on surface-raised                   12.86   4.5  PASS
+  text-secondary on surface-raised                  9.25   4.5  PASS
+  text-muted on surface-raised                      5.78   4.5  PASS
+  accent-ink on surface-raised                      8.26   4.5  PASS
+  text-primary on surface-overlay                  11.68   4.5  PASS
+  text-secondary on surface-overlay                 8.40   4.5  PASS
+  text-muted on surface-overlay                     5.25   4.5  PASS
+  accent-ink on surface-overlay                     7.50   4.5  PASS
+  text-primary on surface-high                     10.56   4.5  PASS
+  text-secondary on surface-high                    7.60   4.5  PASS
+  text-muted on surface-high                        4.75   4.5  PASS
+  accent-ink on surface-high                        6.78   4.5  PASS
+  text-primary on surface-field                    15.95   4.5  PASS
+  text-secondary on surface-field                  11.48   4.5  PASS
+  text-muted on surface-field                       7.17   4.5  PASS
+  accent-ink on surface-field                      10.24   4.5  PASS
+  text-on-accent on accent                          8.73   4.5  PASS
+  text-on-accent on accent-strong                  10.73   4.5  PASS
+  text-on-accent on accent-dim                      6.13   4.5  PASS
+  text-on-brand on plate-from                       7.94   4.5  PASS
+  text-on-brand on plate-to                        15.96   4.5  PASS
+  accent-ink on accent chip                         6.11   4.5  PASS
+  status-success chip (ink on 15% tint)             5.32   4.5  PASS
+  status-warn chip (ink on 15% tint)                5.43   4.5  PASS
+  status-danger chip (ink on 15% tint)              6.56   4.5  PASS
+  status-info chip (ink on 15% tint)                4.89   4.5  PASS
+  status-violet chip (ink on 15% tint)              6.59   4.5  PASS
+  farm-to-contact chip (ink on 15% tint)            6.19   4.5  PASS
+  farm-contacted chip (ink on 15% tint)             5.43   4.5  PASS
+  farm-visited chip (ink on 15% tint)               6.28   4.5  PASS
+  farm-verbal-ok chip (ink on 15% tint)             4.89   4.5  PASS
+  farm-signed chip (ink on 15% tint)                6.59   4.5  PASS
+  farm-active chip (ink on 15% tint)                5.32   4.5  PASS
+  farm-declined chip (ink on 15% tint)              6.56   4.5  PASS
+  farm-not-relevant-now chip (ink on 15% tint)      6.27   4.5  PASS
+  farm-on-hold chip (ink on 15% tint)               6.04   4.5  PASS
+  farm-incoming-request chip (ink on 15% tint)      6.67   4.5  PASS
+  status-success dot on surface-base                9.07     3  PASS
+  status-warn dot on surface-base                   9.18     3  PASS
+  status-danger dot on surface-base                 7.73     3  PASS
+  status-info dot on surface-base                   8.21     3  PASS
+  status-violet dot on surface-base                 7.73     3  PASS
+  farm-to-contact dot on surface-base               6.70     3  PASS
+  farm-contacted dot on surface-base                9.18     3  PASS
+  farm-visited dot on surface-base                  7.11     3  PASS
+  farm-verbal-ok dot on surface-base                8.21     3  PASS
+  farm-signed dot on surface-base                   7.73     3  PASS
+  farm-active dot on surface-base                   9.07     3  PASS
+  farm-declined dot on surface-base                 7.73     3  PASS
+  farm-not-relevant-now dot on surface-base         8.21     3  PASS
+  farm-on-hold dot on surface-base                  7.77     3  PASS
+  farm-incoming-request dot on surface-base         9.66     3  PASS
+  text-on-accent on solid status-success            8.96   4.5  PASS
+  text-on-accent on solid status-warn               9.07   4.5  PASS
+  text-on-accent on solid status-danger             7.64   4.5  PASS
+  text-on-accent on solid status-info               8.11   4.5  PASS
+  text-on-accent on solid status-violet             7.64   4.5  PASS
+  text-on-accent on solid farm-to-contact           6.62   4.5  PASS
+  text-on-accent on solid farm-contacted            9.07   4.5  PASS
+  text-on-accent on solid farm-visited              7.03   4.5  PASS
+  text-on-accent on solid farm-verbal-ok            8.11   4.5  PASS
+  text-on-accent on solid farm-signed               7.64   4.5  PASS
+  text-on-accent on solid farm-active               8.96   4.5  PASS
+  text-on-accent on solid farm-declined             7.64   4.5  PASS
+  text-on-accent on solid farm-not-relevant-now     8.11   4.5  PASS
+  text-on-accent on solid farm-on-hold              7.68   4.5  PASS
+  text-on-accent on solid farm-incoming-request     9.55   4.5  PASS
+  border-strong on surface-field (the field edge)    3.10   1.8  PASS
+  surface-field vs surface-raised (field in a card)    1.24   1.2  PASS
+  text-on-accent on solid critical                  5.19   4.5  PASS
+  critical bar on surface-raised                    4.12     3  PASS
+  critical marker on surface-base                   5.25     3  PASS
+  border-subtle on surface-base                     1.64   1.2  PASS
+  surface-raised vs surface-base (elevation)        1.27  1.25  PASS
+  surface-high vs surface-raised (hover row)        1.22  1.04  PASS
+
+  All pairs meet WCAG AA.

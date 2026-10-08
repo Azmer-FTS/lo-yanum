@@ -1,0 +1,211 @@
+$ bun run scripts/overlap.ts
+
+  A86 — NO MAP CONTROL COVERS ANOTHER ONE
+  =======================================
+  engine: chromium
+
+  phone — 390×844, touch
+  -------------------
+  PASS  farms: no control covers another (4 on the map)
+  PASS  farms: every control-stack button is at least 44 px
+  PASS  farms: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  farms: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  farms: the mode pill sits BESIDE the "+", on its line  — + bottom 824 h52 right 64 | pill bottom 824 h52 left 76 — gap 12px, rail gap 12px
+  PASS  farm-detail: no control covers another (6 on the map)
+  PASS  farm-detail: every control-stack button is at least 44 px
+  PASS  farm-detail: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  farm-form-new: no control covers another (3 on the map)
+  PASS  farm-form-new: every control-stack button is at least 44 px
+  PASS  farm-form-new: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  anchor-form: no control covers another (2 on the map)
+  PASS  anchor-form: every control-stack button is at least 44 px
+  PASS  anchor-form: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  route-planner: no control covers another (4 on the map)
+  PASS  route-planner: every control-stack button is at least 44 px
+  PASS  route-planner: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  route-planner: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  route-planner: the mode pill sits BESIDE the "+", on its line  — + bottom 824 h52 right 64 | pill bottom 824 h52 left 76 — gap 12px, rail gap 12px
+  PASS  missions: no control covers another (4 on the map)
+  PASS  missions: every control-stack button is at least 44 px
+  PASS  missions: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  missions: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  missions: the mode pill sits BESIDE the "+", on its line  — + bottom 824 h52 right 64 | pill bottom 824 h52 left 76 — gap 12px, rail gap 12px
+  PASS  mission-detail: no control covers another (3 on the map)
+  PASS  mission-detail: every control-stack button is at least 44 px
+  PASS  mission-detail: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  incidents: no control covers another (4 on the map)
+  PASS  incidents: every control-stack button is at least 44 px
+  PASS  incidents: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  incidents: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  incidents: the mode pill sits BESIDE the "+", on its line  — + bottom 824 h52 right 64 | pill bottom 824 h52 left 76 — gap 12px, rail gap 12px
+  PASS  dashboard: no control covers another (4 on the map)
+  PASS  dashboard: every control-stack button is at least 44 px
+  PASS  dashboard: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  dashboard: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  dashboard: the mode pill sits BESIDE the "+", on its line  — + bottom 824 h52 right 64 | pill bottom 824 h52 left 76 — gap 12px, rail gap 12px
+
+  iphone — 402×874, touch
+  --------------------
+  PASS  farms: no control covers another (4 on the map)
+  PASS  farms: every control-stack button is at least 44 px
+  PASS  farms: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  farms: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  farms: the mode pill sits BESIDE the "+", on its line  — + bottom 854 h52 right 64 | pill bottom 854 h52 left 76 — gap 12px, rail gap 12px
+  PASS  farm-detail: no control covers another (6 on the map)
+  PASS  farm-detail: every control-stack button is at least 44 px
+  PASS  farm-detail: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  farm-form-new: no control covers another (3 on the map)
+  PASS  farm-form-new: every control-stack button is at least 44 px
+  PASS  farm-form-new: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  anchor-form: no control covers another (2 on the map)
+  PASS  anchor-form: every control-stack button is at least 44 px
+  PASS  anchor-form: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  route-planner: no control covers another (4 on the map)
+  PASS  route-planner: every control-stack button is at least 44 px
+  PASS  route-planner: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  route-planner: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  route-planner: the mode pill sits BESIDE the "+", on its line  — + bottom 854 h52 right 64 | pill bottom 854 h52 left 76 — gap 12px, rail gap 12px
+  PASS  missions: no control covers another (4 on the map)
+  PASS  missions: every control-stack button is at least 44 px
+  PASS  missions: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  missions: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  missions: the mode pill sits BESIDE the "+", on its line  — + bottom 854 h52 right 64 | pill bottom 854 h52 left 76 — gap 12px, rail gap 12px
+  PASS  mission-detail: no control covers another (3 on the map)
+  PASS  mission-detail: every control-stack button is at least 44 px
+  PASS  mission-detail: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  incidents: no control covers another (4 on the map)
+  PASS  incidents: every control-stack button is at least 44 px
+  PASS  incidents: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  incidents: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  incidents: the mode pill sits BESIDE the "+", on its line  — + bottom 854 h52 right 64 | pill bottom 854 h52 left 76 — gap 12px, rail gap 12px
+  PASS  dashboard: no control covers another (4 on the map)
+  PASS  dashboard: every control-stack button is at least 44 px
+  PASS  dashboard: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  dashboard: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window <64rem, drawn false
+  PASS  dashboard: the mode pill sits BESIDE the "+", on its line  — + bottom 854 h52 right 64 | pill bottom 854 h52 left 76 — gap 12px, rail gap 12px
+
+  ipad — 1032×1376, touch
+  ------------------
+  PASS  farms: no control covers another (4 on the map)
+  PASS  farms: every control-stack button is at least 44 px
+  PASS  farms: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  farms: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  farms: the mode pill sits BESIDE the "+", on its line  — + bottom 1304 h52 right 64 | pill bottom 1304 h52 left 76 — gap 12px, rail gap 12px
+  PASS  farm-detail: no control covers another (6 on the map)
+  PASS  farm-detail: every control-stack button is at least 44 px
+  PASS  farm-detail: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  farm-form-new: no control covers another (3 on the map)
+  PASS  farm-form-new: every control-stack button is at least 44 px
+  PASS  farm-form-new: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  anchor-form: no control covers another (2 on the map)
+  PASS  anchor-form: every control-stack button is at least 44 px
+  PASS  anchor-form: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  route-planner: no control covers another (4 on the map)
+  PASS  route-planner: every control-stack button is at least 44 px
+  PASS  route-planner: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  route-planner: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  route-planner: the mode pill sits BESIDE the "+", on its line  — + bottom 1304 h52 right 64 | pill bottom 1304 h52 left 76 — gap 12px, rail gap 12px
+  PASS  missions: no control covers another (4 on the map)
+  PASS  missions: every control-stack button is at least 44 px
+  PASS  missions: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  missions: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  missions: the mode pill sits BESIDE the "+", on its line  — + bottom 1304 h52 right 64 | pill bottom 1304 h52 left 76 — gap 12px, rail gap 12px
+  PASS  mission-detail: no control covers another (3 on the map)
+  PASS  mission-detail: every control-stack button is at least 44 px
+  PASS  mission-detail: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  incidents: no control covers another (4 on the map)
+  PASS  incidents: every control-stack button is at least 44 px
+  PASS  incidents: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  incidents: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  incidents: the mode pill sits BESIDE the "+", on its line  — + bottom 1304 h52 right 64 | pill bottom 1304 h52 left 76 — gap 12px, rail gap 12px
+  PASS  dashboard: no control covers another (4 on the map)
+  PASS  dashboard: every control-stack button is at least 44 px
+  PASS  dashboard: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  dashboard: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  dashboard: the mode pill sits BESIDE the "+", on its line  — + bottom 1304 h52 right 64 | pill bottom 1304 h52 left 76 — gap 12px, rail gap 12px
+
+  ipad-ls — 1376×1032, touch
+  ---------------------
+  PASS  farms: no control covers another (4 on the map)
+  PASS  farms: every control-stack button is at least 44 px
+  PASS  farms: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  farms: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  farms: the mode pill sits BESIDE the "+", on its line  — + bottom 960 h52 right 64 | pill bottom 960 h52 left 76 — gap 12px, rail gap 12px
+  PASS  farm-detail: no control covers another (6 on the map)
+  PASS  farm-detail: every control-stack button is at least 44 px
+  PASS  farm-detail: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  farm-form-new: no control covers another (3 on the map)
+  PASS  farm-form-new: every control-stack button is at least 44 px
+  PASS  farm-form-new: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  anchor-form: no control covers another (2 on the map)
+  PASS  anchor-form: every control-stack button is at least 44 px
+  PASS  anchor-form: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  route-planner: no control covers another (4 on the map)
+  PASS  route-planner: every control-stack button is at least 44 px
+  PASS  route-planner: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  route-planner: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  route-planner: the mode pill sits BESIDE the "+", on its line  — + bottom 960 h52 right 64 | pill bottom 960 h52 left 76 — gap 12px, rail gap 12px
+  PASS  missions: no control covers another (4 on the map)
+  PASS  missions: every control-stack button is at least 44 px
+  PASS  missions: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  missions: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  missions: the mode pill sits BESIDE the "+", on its line  — + bottom 960 h52 right 64 | pill bottom 960 h52 left 76 — gap 12px, rail gap 12px
+  PASS  mission-detail: no control covers another (3 on the map)
+  PASS  mission-detail: every control-stack button is at least 44 px
+  PASS  mission-detail: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  incidents: no control covers another (4 on the map)
+  PASS  incidents: every control-stack button is at least 44 px
+  PASS  incidents: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  incidents: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  incidents: the mode pill sits BESIDE the "+", on its line  — + bottom 960 h52 right 64 | pill bottom 960 h52 left 76 — gap 12px, rail gap 12px
+  PASS  dashboard: no control covers another (4 on the map)
+  PASS  dashboard: every control-stack button is at least 44 px
+  PASS  dashboard: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  dashboard: the zoom pair is OFF the rail (touch or narrow)  — pointer coarse, window ≥64rem, drawn false
+  PASS  dashboard: the mode pill sits BESIDE the "+", on its line  — + bottom 960 h52 right 64 | pill bottom 960 h52 left 76 — gap 12px, rail gap 12px
+
+  desktop — 1440×900, mouse
+  ---------------------
+  PASS  farms: no control covers another (6 on the map)
+  PASS  farms: every control-stack button is at least 44 px
+  PASS  farms: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  farms: the zoom pair is ON the rail (mouse, wide window)  — pointer fine, window ≥64rem, drawn true
+  PASS  farms: the mode pill sits BESIDE the "+", on its line  — + bottom 828 h52 right 64 | pill bottom 828 h52 left 76 — gap 12px, rail gap 12px
+  PASS  farm-detail: no control covers another (8 on the map)
+  PASS  farm-detail: every control-stack button is at least 44 px
+  PASS  farm-detail: the zoom pair is ON the rail (mouse, wide window)  — pointer fine, window ≥64rem, drawn true
+  PASS  farm-form-new: no control covers another (5 on the map)
+  PASS  farm-form-new: every control-stack button is at least 44 px
+  PASS  farm-form-new: the zoom pair is ON the rail (mouse, wide window)  — pointer fine, window ≥64rem, drawn true
+  PASS  anchor-form: no control covers another (4 on the map)
+  PASS  anchor-form: every control-stack button is at least 44 px
+  PASS  anchor-form: the zoom pair is ON the rail (mouse, wide window)  — pointer fine, window ≥64rem, drawn true
+  PASS  route-planner: no control covers another (6 on the map)
+  PASS  route-planner: every control-stack button is at least 44 px
+  PASS  route-planner: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  route-planner: the zoom pair is ON the rail (mouse, wide window)  — pointer fine, window ≥64rem, drawn true
+  PASS  route-planner: the mode pill sits BESIDE the "+", on its line  — + bottom 828 h52 right 64 | pill bottom 828 h52 left 76 — gap 12px, rail gap 12px
+  PASS  missions: no control covers another (6 on the map)
+  PASS  missions: every control-stack button is at least 44 px
+  PASS  missions: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  missions: the zoom pair is ON the rail (mouse, wide window)  — pointer fine, window ≥64rem, drawn true
+  PASS  missions: the mode pill sits BESIDE the "+", on its line  — + bottom 828 h52 right 64 | pill bottom 828 h52 left 76 — gap 12px, rail gap 12px
+  PASS  mission-detail: no control covers another (5 on the map)
+  PASS  mission-detail: every control-stack button is at least 44 px
+  PASS  mission-detail: the zoom pair is ON the rail (mouse, wide window)  — pointer fine, window ≥64rem, drawn true
+  PASS  incidents: no control covers another (6 on the map)
+  PASS  incidents: every control-stack button is at least 44 px
+  PASS  incidents: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  incidents: the zoom pair is ON the rail (mouse, wide window)  — pointer fine, window ≥64rem, drawn true
+  PASS  incidents: the mode pill sits BESIDE the "+", on its line  — + bottom 828 h52 right 64 | pill bottom 828 h52 left 76 — gap 12px, rail gap 12px
+  PASS  dashboard: no control covers another (6 on the map)
+  PASS  dashboard: every control-stack button is at least 44 px
+  PASS  dashboard: the vertical rail is one axis, one width  — map-tools @12 w52 | action-fab-toggle @12 w52
+  PASS  dashboard: the zoom pair is ON the rail (mouse, wide window)  — pointer fine, window ≥64rem, drawn true
+  PASS  dashboard: the mode pill sits BESIDE the "+", on its line  — + bottom 828 h52 right 64 | pill bottom 828 h52 left 76 — gap 12px, rail gap 12px
+
+  VERDICT
+  -------
+  185 passed, 0 failed
+  captures: docs/screenshots/overlap/
+

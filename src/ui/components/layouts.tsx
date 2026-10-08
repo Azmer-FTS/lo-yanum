@@ -33,6 +33,12 @@ const COORDINATOR_NAV: NavItem[] = [
   // ★★ AS6 — la salle d'attente, juste après les fermes : des pistes, pas des fermes.
   { to: '/coordinator/leads', icon: 'userPlus', labelKey: 'nav.leads' },
   { to: '/coordinator/route', icon: 'route', labelKey: 'nav.route' },
+  /* ★★ AU4.8 — la carte de couverture, JUSTE APRÈS la planification : les
+     deux répondent à « où aller », l'une pour la journée, l'autre pour la
+     saison. Un onglet DANS l'écran d'itinéraire l'aurait enterrée sous un
+     écran qu'on ouvre le matin d'une tournée ; c'est un écran qu'on ouvre la
+     veille d'un rendez-vous. Les deux se renvoient l'un à l'autre. */
+  { to: '/coordinator/coverage', icon: 'map', labelKey: 'nav.coverage' },
   { to: '/coordinator/volunteers', icon: 'users', labelKey: 'nav.volunteers' },
   { to: '/coordinator/drivers', icon: 'steering', labelKey: 'nav.drivers' },
   { to: '/coordinator/missions', icon: 'shield', labelKey: 'nav.missions' },
@@ -62,6 +68,7 @@ const TILE_HUE: Record<string, string> = {
   '/coordinator/farms': 'status-success', // sarcelle
   '/coordinator/leads': 'status-violet', // violet
   '/coordinator/route': 'farm-to-contact', // gris-bleu
+  '/coordinator/coverage': 'farm-on-hold', // indigo — la seule teinte mesurée encore libre (AU)
   '/coordinator/volunteers': 'status-warn', // ocre
   '/coordinator/drivers': 'farm-visited', // magenta
   '/coordinator/missions': 'status-info', // cyan
@@ -80,6 +87,7 @@ const TILE_CLASS: Record<string, string> = {
   'status-info': 'bg-status-info/15 text-status-info-ink',
   'status-danger': 'bg-status-danger/15 text-status-danger-ink',
   'farm-not-relevant-now': 'bg-farm-not-relevant-now/15 text-farm-not-relevant-now-ink',
+  'farm-on-hold': 'bg-farm-on-hold/15 text-farm-on-hold-ink',
 }
 
 const BLEED_ROUTES = [
@@ -89,6 +97,15 @@ const BLEED_ROUTES = [
   '/coordinator/farms',
   '/coordinator/leads',
   '/coordinator/route',
+  /* ★★ AU2 (2026-10-08) — l'itinéraire libre porte une carte (`MapPanel`)
+     depuis AH9 mais n'était pas ici : la coquille lui gardait le rembourrage
+     d'une page (pt-5 + réserve du bas), la carte commençait 24 px plus bas et
+     la page défilait de 108 px à 1 440 × 900 — « la carte ne descend pas
+     jusqu'en bas, défilement parasite ». `auui` (A316) compare désormais
+     CHAQUE route qui monte une carte à cette liste, au rendu. */
+  '/coordinator/route/free',
+  /* ★★ AU4 — la carte de couverture. */
+  '/coordinator/coverage',
   '/coordinator/volunteers',
   '/coordinator/drivers',
   '/coordinator/missions',

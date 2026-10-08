@@ -9,6 +9,7 @@ import { TOURS } from './mock/tours'
 import { FARM_VISITS, GENERAL_MEETINGS } from './mock/visits'
 import { FARM_ZONES } from './mock/zones'
 import { LEADS } from './mock/leads'
+import { INSTITUTIONS } from './mock/institutions'
 
 /**
  * P2.6 — THE DEMO IMPLEMENTATION OF THE STORE INTERFACE.
@@ -47,6 +48,7 @@ export const DEMO_BACKEND: StoreBackend = {
       farms: clone(FARMS),
       generalMeetings: clone(GENERAL_MEETINGS),
       leads: clone(LEADS),
+      institutions: clone(INSTITUTIONS),
       farmZones: clone(FARM_ZONES),
       threatZones: clone(THREAT_ZONES),
       threatVectors: clone(THREAT_VECTORS),
@@ -73,6 +75,7 @@ export const emptyData = (): StoreData => ({
   farms: [],
   generalMeetings: [],
   leads: [],
+  institutions: [],
   farmZones: [],
   threatZones: [],
   threatVectors: [],

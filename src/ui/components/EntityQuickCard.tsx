@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
-import { effectiveAreas, entityKindOf, formatDate, totalHeads } from '@core/index'
+import { effectiveAreas, entityKindOf, farmPoint, formatDate, nearestLocalities, totalHeads } from '@core/index'
 import type { Farm } from '@core/index'
 
 import { Avatar } from './Avatar'
@@ -27,6 +27,7 @@ export function EntityQuickCard({
   posts,
   onClose,
   compact = false,
+  situate = false,
 }: {
   farm: Farm
   /** Number of guard posts, when the caller knows it. */
@@ -34,11 +35,27 @@ export function EntityQuickCard({
   onClose?: () => void
   /** The list preview: no close button, denser. */
   compact?: boolean
+  /**
+   * ★★ AU1.3 (2026-10-08) — LA BULLE DE LA CARTE, QUI DOIT SITUER LE LIEU.
+   * « Trop petite sur ordinateur : agrandis-la pour qu'on situe le lieu d'un
+   * coup d'œil. » 20 rem sur un écran de 1 440 px, c'était une étiquette. Dès
+   * `lg` elle passe à 28 rem, photo et nom plus grands, et une ligne « où »
+   * dit la localité et, faute de יישוב, la localité connue la plus proche
+   * avec sa distance — le PO lit « à 4 km de נתיבות », pas des coordonnées.
+   */
+  situate?: boolean
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
   const heads = totalHeads(farm)
   const moshav = entityKindOf(farm) === 'moshav'
+  const point = situate ? farmPoint(farm) : null
+  const near = point ? nearestLocalities(point, 1)[0] : undefined
+  const where = farm.locality
+    ? `${farm.locality} · ${farm.region}`
+    : near
+      ? t('map.nearLocality', { name: near.locality.name, km: near.km.toFixed(near.km < 10 ? 1 : 0) })
+      : t('farms.noPosition')
 
   const figure = (icon: IconName, value: ReactNode, label: string, tone = '') => (
     <div className="flex min-w-0 items-center gap-2">
@@ -57,19 +74,47 @@ export function EntityQuickCard({
   return (
     <div
       data-testid="entity-quick-card"
+      data-situate={situate ? '' : undefined}
       className={`animate-fade-in rounded-card bg-surface-overlay/95 shadow-lift backdrop-blur ${
         compact ? 'p-3' : 'p-4'
-      }`}
+      } ${situate ? 'w-[min(20rem,calc(100vw-2rem))] lg:w-[28rem] lg:p-5' : ''}`}
     >
       <div className="flex items-start gap-3">
-        <Avatar photo={farm.photo} name={farm.name} size={compact ? 'md' : 'lg'} shape="square" />
+        {situate ? (
+          <>
+            <span className="lg:hidden">
+              <Avatar photo={farm.photo} name={farm.name} size="lg" shape="square" />
+            </span>
+            <span className="hidden lg:block">
+              <Avatar photo={farm.photo} name={farm.name} size="xl" shape="square" />
+            </span>
+          </>
+        ) : (
+          <Avatar photo={farm.photo} name={farm.name} size={compact ? 'md' : 'lg'} shape="square" />
+        )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-heading text-content-primary" title={farm.name}>
+          <p
+            className={`truncate text-heading text-content-primary ${situate ? 'lg:whitespace-normal lg:text-title' : ''}`}
+            title={farm.name}
+          >
             {farm.name}
           </p>
-          <p className="muted mt-0.5 truncate" title={`${farm.locality} · ${farm.region}`}>
-            {farm.locality} · {farm.region}
-          </p>
+          {situate && (
+            <p
+              data-testid="quick-card-where"
+              className="mt-1 flex items-center gap-1.5 text-caption font-semibold text-content-primary lg:text-body"
+            >
+              <span className="shrink-0 text-accent-ink">
+                <Icon name="pin" size={16} />
+              </span>
+              <span className="min-w-0 truncate">{where}</span>
+            </p>
+          )}
+          {!situate && (
+            <p className="muted mt-0.5 truncate" title={`${farm.locality} · ${farm.region}`}>
+              {farm.locality} · {farm.region}
+            </p>
+          )}
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             <FarmStatusChip status={farm.status} />
             <span className="chip bg-surface-high text-content-secondary">

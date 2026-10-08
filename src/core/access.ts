@@ -1,5 +1,6 @@
 import { DAY, addDays, fromDayKey, isTonight, localDayKey, now } from './clock'
 import type { Lead } from './types'
+import type { Institution } from './institutions'
 import type { AssociationInput } from './association'
 import { effectiveAreas, guardedDunamsOf, weightedDunams } from './fields'
 import { isTestId } from './testData'
@@ -658,6 +659,14 @@ export function getVisibleLeads(): Lead[] {
 /** ★ AT2.1 — les pistes devenues fermes : la trace, et le chemin du retour. */
 export function getConvertedLeads(): Lead[] {
   return getSession().role === 'coordinator' ? _raw().leads.filter((l) => !!l.convertedFarmId) : []
+}
+
+/**
+ * ★★ AU3 — les institutions : coordinateur seulement. ⛔ Aucun compteur de
+ * dounams ni d'objectif n'appelle ceci (A321 le vérifie).
+ */
+export function getInstitutions(): Institution[] {
+  return getSession().role === 'coordinator' ? _raw().institutions : []
 }
 
 /** Toutes, converties comprises — pour retrouver une piste depuis sa ferme. */

@@ -137,7 +137,8 @@
     "groupRoster": "הקבוצה שלי",
     "agenda": "יומן",
     "settings": "הגדרות",
-    "leads": "אנשי קשר לטיפול"
+    "leads": "אנשי קשר לטיפול",
+    "coverage": "מפת כיסוי"
   },
   "login": {
     "title": "כניסה לגרסת הדגמה",
@@ -968,7 +969,8 @@
     "linkDoneMany_one": "נוספה נקודה אחת",
     "linkDoneMany_other": "נוספו {{count}} נקודות",
     "linkBadRest": "מה שנשאר בשדה לא זוהה כמיקום — אפשר לתקן ולהוסיף",
-    "linkPlaceholderShort": "https://…"
+    "linkPlaceholderShort": "https://…",
+    "linkDoneMany_two": "נוספו {{count}} נקודות"
   },
   "map": {
     "title": "מפת חוות",
@@ -1033,7 +1035,13 @@
       "failed": "המיקום אינו זמין כרגע"
     },
     "attribution": "מקורות המפה",
-    "agendaMap": "מפת היומן"
+    "agendaMap": "מפת היומן",
+    "hiddenEntities_one": "חווה אחת מוסתרת במקרא",
+    "hiddenEntities_other": "{{count}} חוות מוסתרות במקרא",
+    "showHidden": "הצגה",
+    "nearLocality": "ליד {{name}} · {{km}} ק״מ",
+    "hiddenEntities_two": "{{count}} חוות מוסתרות במקרא",
+    "hiddenEntities_many": "{{count}} חוות מוסתרות במקרא"
   },
   "route": {
     "title": "תכנון מסלול ביקורים",
@@ -1549,7 +1557,8 @@
     "councilFromLocality": "המועצה של {{name}}",
     "councilFromPin": "המועצה של היישוב הקרוב · {{name}}",
     "councilUse": "להשתמש במועצה הזו",
-    "pickDate": "בחירת תאריך"
+    "pickDate": "בחירת תאריך",
+    "notSaved_two": "לא נשמר — {{count}} שדות דורשים תיקון"
   },
   "import": {
     "title": "ייבוא מקובץ",
@@ -2344,7 +2353,10 @@
     "newBody": "{{name}} · {{farm}}",
     "newAppt": "מבקש/ת פגישה ב־{{when}}",
     "open": "לפתיחה",
-    "dismiss": "סגירה"
+    "dismiss": "סגירה",
+    "dashCount_two": "{{count}} בקשות ממתינות לטיפול",
+    "docs_two": "{{count}} מסמכים צורפו",
+    "newTitle_two": "{{count}} בקשות עזרה חדשות"
   },
   "archive": {
     "action": "העברה לארכיון",
@@ -2609,5 +2621,179 @@
       "status-column-missing": "אין בקובץ עמודת „סטטוס חתימה” — הסטטוסים לא שונו"
     },
     "signedKept": "בקובץ אין עמודת סטטוס חתימה: הסטטוס של כל חווה נשאר כפי שהוא באפליקציה (הוא תואם את מסך הפורטל). שינוי סטטוס — מכרטיס החווה."
+  },
+  "coverage": {
+    "title": "מפת כיסוי",
+    "subtitle": "מוסדות, חוות, ומה שנשאר להשיג",
+    "mapLabel": "מפת כיסוי — מוסדות וחוות",
+    "toRoute": "לתכנון מסלול",
+    "usage": {
+      "label": "שימוש",
+      "meeting": "פגישה",
+      "prepare": "הכנה",
+      "custom": "מותאם",
+      "meetingHint": "לפגישה עם מוסד: החוות החתומות והמוסדות שכבר שותפים, בשמם. בלי פניות ובלי מידע פנימי.",
+      "prepareHint": "להכנה: הכול, כולל פניות שעוד לא טופלו — כדי למדוד את הפוטנציאל של אזור.",
+      "customHint": "בחירה אישית של שכבות."
+    },
+    "side": {
+      "land": "שטחים",
+      "institutions": "מוסדות"
+    },
+    "family": {
+      "signed": "חוות חתומות",
+      "pipeline": "בדרך לחתימה",
+      "leads": "פניות לטיפול",
+      "engaged": "מוסדות שותפים",
+      "prospect": "מוסדות לפנייה"
+    },
+    "familyHint": {
+      "signed": "הפארק בפועל",
+      "pipeline": "בקשר, טרם חתמו",
+      "leads": "מחדר ההמתנה, עם מיקום",
+      "engaged": "חתמו",
+      "prospect": "טרם נוצר קשר · נוצר קשר · מעוניין"
+    },
+    "linkReal": "כיסוי בפועל",
+    "linkPotential": "כיסוי אפשרי",
+    "radius": "רדיוס",
+    "km": "{{km}} ק״מ",
+    "distanceRule": "הסינון בקו אווירי; בחירת מוסד מודדת את הדרך בכביש.",
+    "covered": "מכוסות",
+    "uncovered": "לא מכוסות",
+    "potential": "פוטנציאל",
+    "countsScope": "מתוך {{n}} חוות על המפה · פניות לא נספרות",
+    "focusOn": "מוצגות רק החוות שנבחרו — נגיעה נוספת מבטלת",
+    "unreachable_one": "חווה אחת שאף מוסד לא מגיע אליה, גם לא מוסד לפנייה",
+    "unreachable_other": "{{count}} חוות שאף מוסד לא מגיע אליהן, גם לא מוסד לפנייה",
+    "leadsUnplaced_one": "פנייה אחת בלי מיקום — לא על המפה. למקם אותה",
+    "leadsUnplaced_other": "{{count}} פניות בלי מיקום — לא על המפה. למקם אותן",
+    "institutionsUnplaced_one": "מוסד אחד בלי מיקום — לא על המפה",
+    "institutionsUnplaced_other": "{{count}} מוסדות בלי מיקום — לא על המפה",
+    "uncertainLinks_one": "קישור אחד יוצא ממוסד שמיקומו לא ודאי",
+    "uncertainLinks_other": "{{count}} קישורים יוצאים ממוסדות שמיקומם לא ודאי",
+    "notRelevantHidden_one": "מוסד אחד „לא רלוונטי” לא מוצג",
+    "notRelevantHidden_other": "{{count}} מוסדות „לא רלוונטי” לא מוצגים",
+    "noInstitutions": "אין עדיין מוסדות",
+    "noInstitutionsHint": "ייבוא הקובץ של המכינות, הישיבות והמדרשות יציג אותן כאן.",
+    "reachTitle": "חוות ברדיוס {{km}} ק״מ",
+    "measuringRoad_one": "מודד דרך בכביש לחווה אחת…",
+    "measuringRoad_other": "מודד דרך בכביש ל-{{count}} חוות…",
+    "roadKm": "{{km}} ק״מ בכביש",
+    "airKm": "{{km}} ק״מ באוויר",
+    "noRoad": "{{km}} ק״מ באוויר · אין דרך",
+    "outByRoad": "מחוץ לרדיוס בכביש",
+    "reachNone": "אין חוות ברדיוס הזה.",
+    "noInstitutionPosition": "למוסד אין מיקום — אי אפשר למדוד כיסוי.",
+    "reaches_one": "מגיע לחווה אחת",
+    "reaches_other": "מגיע ל-{{count}} חוות",
+    "leadNotCounted": "פנייה מחדר ההמתנה — לא נספרת באף מונה.",
+    "openLeads": "לחדר ההמתנה",
+    "unreachable_two": "{{count}} חוות שאף מוסד לא מגיע אליהן, גם לא מוסד לפנייה",
+    "unreachable_many": "{{count}} חוות שאף מוסד לא מגיע אליהן, גם לא מוסד לפנייה",
+    "leadsUnplaced_two": "{{count}} פניות בלי מיקום — לא על המפה. למקם אותן",
+    "leadsUnplaced_many": "{{count}} פניות בלי מיקום — לא על המפה. למקם אותן",
+    "institutionsUnplaced_two": "{{count}} מוסדות בלי מיקום — לא על המפה",
+    "institutionsUnplaced_many": "{{count}} מוסדות בלי מיקום — לא על המפה",
+    "uncertainLinks_two": "{{count}} קישורים יוצאים ממוסדות שמיקומם לא ודאי",
+    "uncertainLinks_many": "{{count}} קישורים יוצאים ממוסדות שמיקומם לא ודאי",
+    "notRelevantHidden_two": "{{count}} מוסדות „לא רלוונטי” לא מוצגים",
+    "notRelevantHidden_many": "{{count}} מוסדות „לא רלוונטי” לא מוצגים",
+    "measuringRoad_two": "מודד דרך בכביש ל-{{count}} חוות…",
+    "measuringRoad_many": "מודד דרך בכביש ל-{{count}} חוות…",
+    "reaches_two": "מגיע ל-{{count}} חוות",
+    "reaches_many": "מגיע ל-{{count}} חוות"
+  },
+  "institutions": {
+    "title_one": "מוסד אחד",
+    "title_other": "{{count}} מוסדות",
+    "all": "הכול",
+    "search": "חיפוש מוסד, יישוב או רשת",
+    "engagementLabel": "סטטוס התקשרות",
+    "engagement": {
+      "not_contacted": "טרם נוצר קשר",
+      "contacted": "נוצר קשר",
+      "interested": "מעוניין",
+      "signed": "חתום",
+      "not_relevant": "לא רלוונטי"
+    },
+    "engagementShort": {
+      "not_contacted": "טרם",
+      "contacted": "בקשר",
+      "interested": "מעוניין",
+      "signed": "חתום",
+      "not_relevant": "לא רלוונטי"
+    },
+    "kind": {
+      "mechina": "מכינה",
+      "hesder": "ישיבת הסדר",
+      "midrasha": "מדרשה",
+      "other": "מוסד אחר"
+    },
+    "audience": {
+      "boys": "בנים",
+      "girls": "בנות",
+      "mixed": "מעורב",
+      "unknown": "קהל לא ידוע"
+    },
+    "uncertain": "מיקום לא ודאי",
+    "uncertainShort": "לבדוק מיקום",
+    "uncertainLong": "המיקום של המוסד הזה מסומן בקובץ כלא ודאי. הקישורים ממנו מצוירים, אבל צריך לאמת את הנקודה — אפשר לשלוח מיקום מגוגל מפות.",
+    "noPoint": "בלי מיקום",
+    "contactName": "איש קשר",
+    "contactPhone": "טלפון",
+    "notes": "הערות",
+    "call": "להתקשר",
+    "import": {
+      "title": "ייבוא מוסדות",
+      "short": "ייבוא",
+      "subtitle": "מכינות, ישיבות הסדר ומדרשות — אפשר לחזור על הייבוא בכל עת",
+      "step1": "1 · הקובץ",
+      "step2": "2 · מה ישתנה",
+      "howTo": "קובץ Excel או CSV, שורה לכל מוסד. ייבוא חוזר של אותו קובץ לא יוצר כפילויות ולא מוחק סטטוס, איש קשר או טלפון שהוזנו באפליקציה.",
+      "columns": "עמודות שנקראות: שם · יישוב · סוג · קהל · רשת/עמותה · lat · lng (או „קואורדינטות”) · ודאות · סטטוס · איש קשר · טלפון · הערות. עמודות אחרות נשמרות כמו שהן.",
+      "choose": "בחירת קובץ",
+      "unreadable": "לא הצלחתי לקרוא את הקובץ",
+      "missingName": "לא נמצאה עמודת „שם” — אין מה לייבא.",
+      "kind": {
+        "create": "חדשים",
+        "update": "עדכון",
+        "same": "ללא שינוי",
+        "duplicate": "כפולים בקובץ"
+      },
+      "uncertainTitle_one": "מיקום אחד לא ודאי — ייובא ויסומן לבדיקה",
+      "uncertainTitle_other": "{{count}} מיקומים לא ודאיים — ייובאו ויסומנו לבדיקה",
+      "uncertainBy": {
+        "named": "ברשימת המיקומים לבדיקה",
+        "column": "לפי עמודת הוודאות"
+      },
+      "unplaced_one": "מוסד אחד בלי קואורדינטות — ייובא, לא יופיע על המפה",
+      "unplaced_other": "{{count}} מוסדות בלי קואורדינטות — ייובאו, לא יופיעו על המפה",
+      "kept": "נשמרות כמו שהן: {{headers}}",
+      "apply_one": "ייבוא מוסד אחד",
+      "apply_other": "ייבוא {{count}} מוסדות",
+      "doneTitle": "הייבוא הושלם",
+      "done": "{{created}} חדשים · {{updated}} עודכנו",
+      "toMap": "למפת הכיסוי",
+      "uncertainTitle_two": "{{count}} מיקומים לא ודאיים — ייובאו ויסומנו לבדיקה",
+      "uncertainTitle_many": "{{count}} מיקומים לא ודאיים — ייובאו ויסומנו לבדיקה",
+      "unplaced_two": "{{count}} מוסדות בלי קואורדינטות — ייובאו, לא יופיעו על המפה",
+      "unplaced_many": "{{count}} מוסדות בלי קואורדינטות — ייובאו, לא יופיעו על המפה",
+      "apply_two": "ייבוא {{count}} מוסדות",
+      "apply_many": "ייבוא {{count}} מוסדות"
+    },
+    "field": {
+      "kind": "סוג",
+      "audience": "קהל",
+      "network": "רשת",
+      "extra": "עמודות נוספות",
+      "contactName": "איש קשר",
+      "contactPhone": "טלפון",
+      "notes": "הערות",
+      "position": "מיקום",
+      "positionUncertain": "ודאות מיקום"
+    },
+    "title_two": "{{count}} מוסדות",
+    "title_many": "{{count}} מוסדות"
   }
 }
