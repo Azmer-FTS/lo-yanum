@@ -1,0 +1,39 @@
+$ bun run scripts/atsync.ts
+  app : https://azmer-fts.github.io/lo-yanum  (DÉPLOYÉ)
+
+  1 — la séquence du 2026-10-07 : l’iPad crée la ligne, l’iPhone écrit après, l’iPad reste ouvert
+  -----------------------------------------------------------------------------------------------
+  PASS  avant : aucune ligne de réglages en base
+  PASS  l’iPad (ouvert le premier) a créé la ligne
+  PASS  … sans nom (il n’en a pas)  — {}
+  PASS  l’iPhone, ouvert ensuite, a écrit son nom dans la base  — 1019 ms
+  PASS  A298 · l’iPad, resté OUVERT sans aucun retour en avant-plan, reçoit nom + téléphone + région en ≤ 45 s  — 22501 ms
+
+  2 — le panneau de l’iPad le DIT : quand, ce qui est descendu
+  ------------------------------------------------------------
+  PASS  le panneau « סנכרון בין מכשירים » est affiché
+  PASS  statut : réussi  — סונכרן בהצלחה · ⁨08.10.2026 · 13:42⁩
+  PASS  « התקבל ממכשיר אחר » nomme « כרטיס הרכז »  — כרטיס הרכז
+
+  3 — un changement sur l’iPhone descend seul sur l’iPad (aucun événement)
+  ------------------------------------------------------------------------
+  PASS  l’iPhone a fait monter le téléphone changé (≤ 10 s)  — 1001 ms
+  PASS  le panneau de l’iPhone nomme ce qui est MONTÉ  — כרטיס הרכז
+  PASS  A298 · l’iPad, toujours ouvert, le reçoit en ≤ 45 s  — 27240 ms
+
+  4 — le battement est léger : la ligne entière n’est relue que si elle a changé
+  ------------------------------------------------------------------------------
+  PASS  en 65 s sans changement : ≥ 2 questions légères (updated_at), 0 relecture de la ligne  — légères +2, entières +0
+
+  5 — une connexion morte : la roue s’arrête et l’erreur est DITE
+  ---------------------------------------------------------------
+  PASS  « סנכרון עכשיו » se termine en ≤ 20 s au lieu de tourner sans fin  — 12079 ms
+  PASS  l’erreur est dite en mots (« השרת לא ענה … »)  — השרת לא ענה תוך 12 שניות — כנראה שאין רשת יציבה. אפשר לנסות שוב
+  PASS  le réseau revenu, le même bouton réussit  — 12 ms
+
+  6 — AT1.3 : un rechargement sur un build PLUS RÉCENT que la cible est une RÉUSSITE
+  ----------------------------------------------------------------------------------
+  PASS  cible 0b97ed4, servi b632ace : « הוחלה גרסה חדשה », pas « לא נקלט »  — הוחלה גרסה חדשה: מ־⁨ancien-build⁩ ל־⁨485d2cc⁩ · ⁨08.10.2026 · 13:44⁩
+  PASS  le même code qu’avant après rechargement : l’échec est toujours dit
+
+  atsync : 17 PASS · 0 FAIL

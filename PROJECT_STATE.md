@@ -104,6 +104,24 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **Passe AU TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-10-08) — commit de code
+  servi et vérifié : **`485d2cc`**. Épingles sur ordinateur (calque « ישויות »
+  éteint par appareil : le sujet n'est plus jamais masqué, une pastille le
+  dit), bulle d'aperçu 28 rem qui situe le lieu, itinéraire libre plein écran
+  (`BLEED_ROUTES`), table `institutions` (migration `20261008000100` +
+  jalon MCP `20261008031127`, appliquée sur `lo-yanum-prod`, rien pour
+  `anon`), import répétable `/coordinator/import/institutions`, **carte de
+  couverture `/coordinator/coverage`** (rail, après « תכנון מסלול »), duel
+  hébreu `_two`. Portes : `bun run auui` (A315–A320, **61/61 déployé**, rouge
+  33/14 sur `c50cadd`), `bun run aupass` (42/42). AT rejouées sur le déployé :
+  `atui` 202/202, `atsync` 17/17. Récit : `ETAT.md` § AU ; `docs/au/`.
+  - ⚠️ **LES 64 INSTITUTIONS NE SONT PAS EN BASE** : le classeur annoncé
+    n'était pas joint au brief ni sur la machine. Question 0-AU.
+  - Rejouer : `bun run aupass` ; `bun run auui` (local) ;
+    `BASE_URL=https://azmer-fts.github.io/lo-yanum ONLY=checks bun run auui` ;
+    captures : `ONLY=captures CAPTURES=1 …` (chaque moitié < 10 min).
+  - Rouge d'avant : `DIST=dist-au-before SKIP_BUILD=1 ONLY=checks bun run auui`
+    (build de `c50cadd` avec la base factice + `basemap/` recopié à la main).
 - **Passe AT TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-10-07) — commit de code
   servi et vérifié : **`c50cadd`** (avec `ee4ecb0`) sur les trois URLs.
   Synchronisation mesurée sur les deux appareils réels du PO (journaux du
@@ -936,6 +954,18 @@ d'être déployé.
    (point 0ter).
 
 ## Questions ouvertes / ce qui attend le PO
+
+0-AU. ⚠️ **LE CLASSEUR DES 64 INSTITUTIONS N'ÉTAIT PAS JOINT.** Le PO
+   l'importe lui-même : מפת כיסוי › ייבוא (ou `/coordinator/import/institutions`),
+   xlsx ou csv, aperçu avant écriture, répétable. Les quatre points incertains
+   (ממדבר מתנה · מכינת עצמונה · מדבר שור · ישיבת מרחבעם) sont reconnus par
+   leur nom. Si le PO préfère que ce soit fait pour lui : déposer le fichier
+   dans `private/` (ignoré par git) et lancer `AU_WORKBOOK=<csv> bun run aupass`
+   pour vérifier la lecture, puis l'importer par l'écran.
+   **Format des contacts** : colonnes « איש קשר » (nom libre) et « טלפון »
+   (`05X-XXXXXXX`, ou 10 chiffres) dans le classeur, ou directement dans l'app
+   (carte de couverture › choisir l'institution). Un réimport ne les écrase
+   jamais.
 
 0-AT. ⛔ **LE DÉPÔT NE PEUT PAS DEVENIR PRIVÉ SANS COUPER L'APPLICATION.**
    Compte Azmer-FTS au forfait GitHub GRATUIT (sonde du 2026-10-07 : « Your

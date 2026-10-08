@@ -1,5 +1,171 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AU — CARTE DE COUVERTURE, ÉPINGLES SUR ORDINATEUR, INSTITUTIONS. 2026-10-08. LIRE EN PREMIER.**
+>
+> Ordre suivi : AU1 → AU2 → AU3 → AU4 → AU5.
+>
+> ## AU1 — LA CARTE VIDE SUR ORDINATEUR : REPRODUIT, DEUX CAUSES
+>
+> Mesuré sur le DÉPLOYÉ `c50cadd` en navigateur de bureau, SANS écran tactile
+> (`scripts/auprobe*.ts`, captures `docs/au/probe*`). ★ Toutes les portes
+> précédentes ouvraient leurs contextes avec `hasTouch: true` : elles mesuraient
+> un iPad, même à 1 376 px.
+> - Chromium, WebKit : 21 épingles à 1 440 px. Le moteur n'y est pour rien.
+> - ★★ **La cause qui reproduit EXACTEMENT le constat** : l'interrupteur
+>   « ישויות » du מקרא (U4.3) est mémorisé PAR APPAREIL (`lo-yanum:map-layers`,
+>   clé locale, jamais synchronisée). Éteint sur l'ordinateur, il vide toutes
+>   les cartes de CET appareil (0 épingle, « מקרא 4/9 » au lieu de 5/9), le
+>   téléphone et l'iPad gardent les leurs, et la fiche se centre sur la ferme…
+>   sans épingle. Je ne peux pas lire le stockage du navigateur du PO : c'est
+>   la seule cause trouvée qui produit les trois symptômes à la fois.
+> - Remède, pour que ça ne puisse plus être silencieux : (1) le SUJET d'un
+>   écran (`essential` : la ferme ouverte ; et tout marqueur en relief, la
+>   ferme choisie) n'est JAMAIS masqué par un calque ; (2) quand « ישויות »
+>   cache des fermes, la carte le DIT : pastille « N חוות מוסתרות במקרא ·
+>   הצגה », un geste les rend.
+> - La « petite bulle » = la carte d'aperçu ancrée (X4.3), `maxWidth: 20rem`.
+>   Désormais 20 rem au téléphone, **28 rem dès `lg`** (448 px mesurés), photo
+>   96 px, nom en `title`, et une ligne « où » : la localité, ou faute de יישוב
+>   « ליד <localité la plus proche> · x ק״מ » (gazetteer, 1 330 localités).
+>
+> ## AU2 — LE DÉFILEMENT PARASITE DE L'ITINÉRAIRE LIBRE
+>
+> Mesuré : à 1 440 × 900, carte de 24 → 924 px, page de 1 008 px (108 px de
+> trop) ; à 1 032 × 1 376, carte jusqu'à 1 400. Cause : `/coordinator/route/free`
+> porte une carte (`MapPanel`) depuis AH9 mais manquait à `BLEED_ROUTES` de la
+> coquille, qui lui gardait le rembourrage d'une page (`pt-5` + réserve du bas).
+> Ajouté (avec `/coordinator/coverage`). A316 mesure désormais ONZE écrans à
+> carte à 1 440 × 900 et 1 376 × 1 032 : page = fenêtre, carte de 0 au bas.
+>
+> ## AU3 — LES INSTITUTIONS
+>
+> ⚠️ **LE CLASSEUR ANNONCÉ N'ÉTAIT PAS JOINT** : ni dans la conversation, ni
+> sur la machine (recherche Spotlight et disque : seule une liste de
+> VOLONTAIRES dans Téléchargements, sans rapport, non touchée). Les 64 ne sont
+> donc PAS en base. Tout est prêt pour qu'elles y entrent en un geste :
+> - table `institutions` (`20261008000100_institutions.sql`, appliquée sur
+>   `lo-yanum-prod` par le MCP, jalon `20261008031127`, historique 39/39) ;
+>   RLS forcée, coordinateur seulement, `grant` dans la même migration, **rien
+>   pour `anon`** (vérifié sur la production : authenticated, postgres,
+>   service_role) ;
+> - `src/core/institutions.ts` (pur) : en-têtes hébreu/anglais, type
+>   (מכינה / ישיבת הסדר / מדרשה), public (déduit du type quand la cellule est
+>   muette : הסדר → בנים, מדרשה → בנות), réseau, coordonnées en deux colonnes ou
+>   une (ordre lat/lng deviné), colonnes non lues (distances…) GARDÉES dans
+>   `extra` ;
+> - écran « ייבוא מוסדות » (`/coordinator/import/institutions`, depuis la
+>   carte de couverture) : xlsx ou csv, aperçu avant écriture, répétable
+>   (identité = nom + localité ; le statut, le contact et le téléphone saisis
+>   dans l'app ne sont jamais écrasés) ;
+> - ★ **les quatre points incertains** (ממדבר מתנה à נווה, מכינת עצמונה, מדבר
+>   שור à אשכול, ישיבת מרחבעם) sont reconnus PAR LEUR NOM, en plus de toute
+>   colonne « ודאות », importés avec `position_uncertain = true` : contour en
+>   pointillé sur la carte, bandeau sur la fiche, compte des liens qui en
+>   dépendent. Un réimport ne les rend jamais « sûrs ».
+> - Statuts d'engagement : les CINQ du PO, gardés. « Engagée » = חתום et rien
+>   d'autre ; « à démarcher » = טרם / נוצר קשר / מעוניין ; « לא רלוונטי » quitte
+>   la carte (compté). Pas de « פעיל » : rien ne relie aujourd'hui un volontaire
+>   à son institution de façon fiable.
+> - ⛔ Aucun compteur de dounams ni d'objectif ne lit la collection (A321,
+>   lu dans le code).
+>
+> ## AU4 — LA CARTE DE COUVERTURE (`/coordinator/coverage`)
+>
+> - **Où** : dans le rail, JUSTE APRÈS « תכנון מסלול » (les deux répondent à
+>   « où aller » : l'une pour la journée, l'autre pour la saison), avec un
+>   bouton de l'une vers l'autre. Un onglet dans l'itinéraire l'aurait enterrée
+>   sous un écran qu'on ouvre le matin d'une tournée.
+> - **Sans légende à relire** : la TEINTE dit le côté (sarcelle = terres,
+>   violet = institutions), la FORME dit la chose (épingle = ferme, carré à
+>   toque = institution, petit rond pointillé = piste), le REMPLISSAGE dit
+>   l'acquis (plein = à moi, creux = à conquérir). Liens : trait plein =
+>   couverture réelle, tirets = possible. Les interrupteurs du panneau portent
+>   le même dessin : ils SONT la légende.
+> - **Deux usages, un geste chacun** (onglets) : « פגישה » = parc + institutions
+>   engagées, NOMMÉES sur la carte, rien d'interne à l'écran ; « הכנה » = tout,
+>   pistes comprises, avec ce qui manque (pistes sans lieu — lien vers la salle
+>   d'attente —, institutions sans point, liens incertains). Un interrupteur
+>   touché → « מותאם ».
+> - **Rayon** 5–80 km (défaut 35), le dessin et les compteurs se recomposent
+>   immédiatement (`setData`, jamais une couche recréée).
+> - **Compteurs** sur les fermes affichées : מכוסות (≥ 1 institution engagée),
+>   לא מכוסות, פוטנציאל (+N couvertes si les institutions à démarcher
+>   signaient) ; toucher un compteur ne montre que ces fermes. En préparation :
+>   les fermes que personne n'atteint, même à démarcher.
+> - **Distance** : le vol d'oiseau filtre (il ne manque aucune ferme : la route
+>   est toujours plus longue) ; choisir une institution mesure la ROUTE vers
+>   chacune de ses fermes, hors ligne (réseau d'AI2) ; un lien que la route met
+>   hors rayon disparaît des compteurs ; toucher une ferme trace le trajet.
+>   Toutes les paires sur route (64 × le parc ≈ un millier de trajets lisant des
+>   tuiles) coûteraient des minutes et des centaines de Mo sur un iPad.
+> - Pistes : sur la carte quand elles ont un lieu, dans aucun compteur (A320).
+> - Institutions et pistes ne se regroupent jamais en disques numérotés.
+> - Gestion des institutions dans le même panneau : liste filtrée par statut,
+>   recherche, statut en un toucher (5 cases), contact, téléphone, notes.
+>
+> ## AU5 — VÉRIFICATION
+>
+> **Déployé et servi : `485d2cc`** (app et `/demo/` : `version.json` ; `/bakasha/` répond 200).
+> - `bun run auui` (A315 · A316 · A318 · A319 · A320) : **61/61 en local ET sur
+>   le déployé** (`docs/au/auui-deploye-485d2cc.log`). **Rouge avant**, build de
+>   `c50cadd` : **33 PASS / 14 FAIL** (`docs/au/auui-rouge-avant-c50cadd.log` :
+>   aucune pastille de calque, fiche sans épingle, bulle 303 px sans lieu,
+>   itinéraire libre 1 008/900 et 1 140/1 032, pas de carte de couverture).
+> - `bun run aupass` (A317 · A318 · A320 · A321, pur et lecture du code) : **42/42**.
+> - Captures du DÉPLOYÉ, clair et sombre × 402 / 1 032 / 1 440, les deux usages
+>   (« parc seul » = פגישה, « tout » = הכנה), plus fermes et itinéraire libre :
+>   `docs/screenshots/aupass/deployed/` (20 images, 0 erreur de page).
+> - Portes d'AT rejouées SUR LE DÉPLOYÉ : `atui` **202/202** ; `atsync` **17/17**
+>   au second passage — le premier : 10/15, `click: Timeout 30000ms` sur
+>   « סנכרון עכשיו » de l'« iPhone », la synchronisation elle-même passant
+>   (l'iPad recevait en 19 s) : délai réseau, journal gardé
+>   (`docs/au/reg-atsync-deploye-485d2cc.log`).
+> - En local : `persist` 124 (les quatre mutations neuves exercées), `mapping`
+>   35 (29 tables), `tokens`, `contrast`, `aopass` (A238 : la table neuve porte
+>   ses `grant`), `appass` (surface anonyme : 3 fonctions), `armigrations` 39,
+>   `pills`, `overlap`, `demo` 17/17.
+> - Rouges vus pendant la passe : `auui` (mon sélecteur du mode « מוסתר » ;
+>   le DUEL hébreu, vrai défaut) ; `tokens` A57 (contours de carte → surfaces
+>   neutres) ; `mapping` (28 tables écrit en dur) ; `persist` (mutations non
+>   exercées) ; `atui` A306 (onze tuiles ; et la teinte réutilisée, que la porte
+>   ne voyait pas : corrigée) ; `demo` (vise par défaut le déployé d'AVANT, qui
+>   ignore la table : 17/17 sur le build local).
+> - Base réelle (`lo-yanum-prod`, lue le 2026-10-08) : **0 institution** (le
+>   classeur manque), 9 fermes au parc, 6 pistes dont **5 sans lieu** — la
+>   carte de couverture le dira au PO.
+>
+> ## Décisions AU
+>
+> 1. ★★ **UN NAVIGATEUR DE BUREAU N'A PAS D'ÉCRAN TACTILE.** Toutes les portes
+>    ouvraient `hasTouch: true` ; `auui` mesure l'ordinateur à la souris.
+> 2. ★★ **UN RÉGLAGE QUI CACHE LE SUJET D'UN ÉCRAN NE PEUT PAS ÊTRE SILENCIEUX.**
+>    Le sujet (`essential`) n'est jamais filtré ; ce qu'un calque cache est
+>    compté sur la carte et se rend en un geste.
+> 3. ★★ **TOUTE ROUTE QUI MONTE UNE CARTE EST DANS `BLEED_ROUTES`**, et A316
+>    le mesure au rendu sur onze écrans.
+> 4. ★★ **ACQUIS = PLEIN, POTENTIEL = CREUX ; TEINTE = CÔTÉ ; FORME = CHOSE.**
+>    Le même dessin dans les interrupteurs : ils sont la légende.
+> 5. **« Engagée » = חתום, rien d'autre.** Une « intéressée » montrée comme
+>    acquise devant une autre institution serait un argument qui ment.
+> 6. **Vol d'oiseau pour filtrer, route pour l'institution choisie.** Le filtre
+>    ne manque aucune ferme ; la route retire, jamais n'ajoute.
+> 7. **Une institution ou une piste ne compte dans aucun compteur de dounams
+>    ni d'objectif** (A320/A321 lisent le code).
+> 8. **Le duel hébreu (`_two`) est obligatoire** pour toute clé plurielle.
+>
+> ## AU — AU PASSAGE
+>
+> - ★ **Le duel hébreu** : i18next suit `Intl.PluralRules('he')` (one / two /
+>   other). Sans clé `_two`, « 2 » affichait la CLÉ BRUTE (`coverage.leadsUnplaced`)
+>   — sauf là où une clé nue servait de repli. `_two` ajouté partout où il
+>   manquait (5 clés anciennes comprises).
+> - Menu du téléphone : onze tuiles, la carte de couverture en indigo
+>   (`farm-on-hold`, la seule teinte mesurée par `contrast` encore libre). A306
+>   exige maintenant « une teinte par entrée » quel que soit leur nombre.
+>
+
+---
+
 > 🏁 **PASSE AT — SYNCHRONISATION, SALLE D'ATTENTE REPENSÉE, ONGLETS, SIGNATURE. 2026-10-07. LIRE EN PREMIER.**
 >
 > Ordre suivi : AT1 → AT2 → AT4 → AT5 → AT6 → AT7 → AT3 → AT8 → AT9 → AT10.

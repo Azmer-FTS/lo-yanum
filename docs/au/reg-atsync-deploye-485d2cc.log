@@ -1,0 +1,50 @@
+$ bun run scripts/atsync.ts
+  app : https://azmer-fts.github.io/lo-yanum  (DÉPLOYÉ)
+
+  1 — la séquence du 2026-10-07 : l’iPad crée la ligne, l’iPhone écrit après, l’iPad reste ouvert
+  -----------------------------------------------------------------------------------------------
+  PASS  avant : aucune ligne de réglages en base
+  PASS  l’iPad (ouvert le premier) a créé la ligne
+  PASS  … sans nom (il n’en a pas)  — {}
+  FAIL  l’iPhone, ouvert ensuite, a écrit son nom dans la base  — — ms
+  FAIL  A298 · l’iPad, resté OUVERT sans aucun retour en avant-plan, reçoit nom + téléphone + région en ≤ 45 s  — rien après 47963 ms : {}
+
+  2 — le panneau de l’iPad le DIT : quand, ce qui est descendu
+  ------------------------------------------------------------
+  PASS  le panneau « סנכרון בין מכשירים » est affiché
+  PASS  statut : réussi  — סונכרן בהצלחה · ⁨08.10.2026 · 13:30⁩
+  PASS  « התקבל ממכשיר אחר » nomme « כרטיס הרכז »  — כרטיס הרכז
+
+  3 — un changement sur l’iPhone descend seul sur l’iPad (aucun événement)
+  ------------------------------------------------------------------------
+  FAIL  l’iPhone a fait monter le téléphone changé (≤ 10 s)  — — ms
+  FAIL  le panneau de l’iPhone nomme ce qui est MONTÉ  — אין שינוי
+  PASS  A298 · l’iPad, toujours ouvert, le reçoit en ≤ 45 s  — 19006 ms
+
+  4 — le battement est léger : la ligne entière n’est relue que si elle a changé
+  ------------------------------------------------------------------------------
+  PASS  en 65 s sans changement : ≥ 2 questions légères (updated_at), 0 relecture de la ligne  — légères +2, entières +0
+
+  5 — une connexion morte : la roue s’arrête et l’erreur est DITE
+  ---------------------------------------------------------------
+  PASS  « סנכרון עכשיו » se termine en ≤ 20 s au lieu de tourner sans fin  — 3919 ms
+  PASS  l’erreur est dite en mots (« השרת לא ענה … »)  — השרת לא ענה תוך 12 שניות — כנראה שאין רשת יציבה. אפשר לנסות שוב
+57340 |       throw new Error("Serialized error must have either an error or a value");
+57341 |     return parseSerializedValue(error.value, void 0);
+57342 |   }
+57343 |   let e;
+57344 |   if (error.error.name === "TimeoutError")
+57345 |     e = new TimeoutError2(error.error.message);
+                    ^
+TimeoutError: click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('[data-testid="settings-sync-now"]')
+    - locator resolved to <button type="button" class="btn-secondary" data-testid="settings-sync-now">…</button>
+
+  log: [ "  - waiting for locator('[data-testid=\"settings-sync-now\"]')", "    - locator resolved to <button type=\"button\" class=\"btn-secondary\" data-testid=\"settings-sync-now\">…</button>" ],
+
+      at /Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM/node_modules/playwright-core/lib/coreBundle.js:57345:13
+
+
+  atsync : 10 PASS · 5 FAIL
+error: script "atsync" exited with code 1
