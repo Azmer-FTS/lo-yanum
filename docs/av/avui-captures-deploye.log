@@ -1,0 +1,22 @@
+$ bun run scripts/avui.ts
+  app : https://azmer-fts.github.io/lo-yanum  (DÉPLOYÉ)
+
+  A322 — les onze institutions de la tournée : sur la carte, « חתום », à confirmer
+  --------------------------------------------------------------------------------
+
+  A323 · A327 — l’appui long au doigt pose une épingle, sur TOUS les écrans à carte
+  ---------------------------------------------------------------------------------
+
+  A324 · A325 · A326 — pas d’épingle sans nom ; la fiche naît avec son nom et son point
+  -------------------------------------------------------------------------------------
+
+  Captures — la demande de nom et la carte, clair et sombre, trois largeurs
+  -------------------------------------------------------------------------
+  PASS  capture 402 clair
+  PASS  capture 1032 clair
+  PASS  capture 1440 clair
+  PASS  capture 402 sombre
+  PASS  capture 1032 sombre
+  PASS  capture 1440 sombre
+
+  6 PASS, 0 FAIL

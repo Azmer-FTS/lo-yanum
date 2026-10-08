@@ -881,7 +881,7 @@ function InstitutionList({
       <input type="search" className="input mt-3 w-full" placeholder={t('institutions.search')} value={query} onChange={(e) => setQuery(e.target.value)} data-testid="institutions-search" />
       <ul ref={listRef} className="mt-3 flex flex-col gap-1.5" data-testid="institutions-list">
         {rows.map((i) => (
-          <li key={i.id} className="flex items-stretch gap-1.5">
+          <li key={i.id} className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => onPick(i.id)}
@@ -890,16 +890,18 @@ function InstitutionList({
               data-to-confirm={isInstitutionToConfirm(i) ? '' : undefined}
               className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-field border px-3 py-1.5 text-start ${selectedId === i.id ? 'border-accent bg-accent/10' : 'border-edge-subtle hover:bg-surface-high'}`}
             >
+              {/* ★ AV1 — le NOM d'abord, en entier : à 1 032 px les pastilles le
+                  réduisaient à « … ». Elles passent sous lui. */}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-caption font-semibold text-content-primary">{i.name}</span>
-                <span className="block truncate text-micro text-content-muted">
-                  {[i.locality, t(`institutions.kind.${i.kind}`), t(`institutions.audience.${i.audience}`)].filter(Boolean).join(' · ')}
+                <span className="block text-caption font-semibold leading-snug text-content-primary">{i.name}</span>
+                <span className="mt-0.5 flex flex-wrap items-center gap-1 text-micro text-content-muted">
+                  <span>{[i.locality, t(`institutions.kind.${i.kind}`)].filter(Boolean).join(' · ')}</span>
+                  <span className={`chip border ${ENGAGEMENT_ON[i.engagement]}`}>{t(`institutions.engagementShort.${i.engagement}`)}</span>
+                  {isInstitutionToConfirm(i) && <span className="chip bg-status-warn/15 text-status-warn-ink">{t('institutions.toConfirm')}</span>}
+                  {!i.position && <span className="chip bg-surface-high text-content-muted">{t('institutions.noPoint')}</span>}
+                  {i.positionUncertain && <span className="chip bg-status-warn/15 text-status-warn-ink">{t('institutions.uncertainShort')}</span>}
                 </span>
               </span>
-              {!i.position && <span className="chip bg-surface-high text-content-muted">{t('institutions.noPoint')}</span>}
-              {i.positionUncertain && <span className="chip bg-status-warn/15 text-status-warn-ink">{t('institutions.uncertainShort')}</span>}
-              <span className={`chip shrink-0 border ${ENGAGEMENT_ON[i.engagement]}`}>{t(`institutions.engagementShort.${i.engagement}`)}</span>
-              {isInstitutionToConfirm(i) && <span className="chip shrink-0 bg-status-warn/15 text-status-warn-ink">{t('institutions.toConfirm')}</span>}
             </button>
             {/* ★★ AV1 — confirmer : UN toucher, sans ouvrir la fiche. */}
             {isInstitutionToConfirm(i) && (
