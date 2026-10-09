@@ -136,7 +136,8 @@
       "beyond_one": "Pour un lien, le plus rapide passe au-delà de la Ligne verte — trajet par Israël mesuré",
       "beyond_other": "Pour {{count}} liens, le plus rapide passe au-delà de la Ligne verte — trajet par Israël mesuré",
       "noRoad_one": "Une paire sans route sur la carte",
-      "noRoad_other": "{{count}} paires sans route sur la carte"
+      "noRoad_other": "{{count}} paires sans route sur la carte",
+      "loadingRoads": "Lecture du réseau routier de la carte…"
     }
   },
   "institutions": {
@@ -266,5 +267,135 @@
       "lead": "Vers la salle d’attente · non comptée",
       "landmark": "Un lieu nommé, sans plus · non compté"
     }
+  },
+  "add": {
+    "title": "Ajouter des contacts",
+    "subtitle": "Agriculteurs, institutions ou volontaires — saisis, fiches de contact ou collage",
+    "kindTitle": "Qu'ajoutez-vous ?",
+    "kind": {
+      "farm": "Fermes",
+      "institution": "Institutions",
+      "volunteer": "Volontaires"
+    },
+    "kindHint": {
+      "farm": "Un agriculteur et sa ferme → salle d'attente",
+      "institution": "Yeshiva, mékhina, midrasha et son responsable → carte de couverture",
+      "volunteer": "Les volontaires d'une institution → liste des volontaires"
+    },
+    "kindPlural": {
+      "farm": "des fermes",
+      "institution": "des institutions",
+      "volunteer": "des volontaires"
+    },
+    "chooseKindFirst": "Choisissez d'abord ce que vous ajoutez : cela décide où vont les fiches et comment le nom est découpé.",
+    "chooseInstitutionFirst": "Choisissez d'abord l'institution des volontaires — une fois pour tout le lot.",
+    "institutionLabel": "L'institution de tous les volontaires du lot",
+    "institutionChoose": "Choisir une institution…",
+    "institutionNew": "Institution absente — la créer maintenant",
+    "institutionNewName": "Nom de l'institution",
+    "institutionCreate": "Créer l'institution",
+    "pathsTitle": "Comment ajouter {{what}} ? Trois chemins, au choix",
+    "pathsTitleNone": "Comment ajouter ? Trois chemins, au choix",
+    "form": {
+      "title": "Saisie",
+      "hint": "Un contact, avec ce que vous avez. Seul le nom est obligatoire.",
+      "first": "Prénom",
+      "last": "Nom",
+      "phone": "Mobile",
+      "org": {
+        "farm": "Nom de la ferme",
+        "institution": "Nom de l'institution"
+      },
+      "location": "Emplacement",
+      "locationPlaceholder": "Lien Waze, lien Google Maps ou coordonnées",
+      "onlyName": "Aucun champ obligatoire en dehors d'un nom.",
+      "save": "Enregistrer",
+      "saveAnyway": "Existe déjà — enregistrer quand même"
+    },
+    "files": {
+      "title": "Fiches de contact (.vcf)",
+      "hint": "Depuis le téléphone : « partager le contact » produit un .vcf. Plusieurs fichiers d'un coup, ou un fichier à plusieurs contacts.",
+      "drop": "Déposez des fichiers ici",
+      "choose": "Choisir des fichiers",
+      "report_one": "{{files}} fichier(s) · un contact lu",
+      "report_other": "{{files}} fichier(s) · {{count}} contacts lus",
+      "unreadable": "Non lu (pas une fiche de contact) : {{names}}"
+    },
+    "paste": {
+      "title": "Coller du texte",
+      "hint": "Depuis WhatsApp, Excel ou des notes : une ligne par contact — nom, téléphone, localité s'il y en a.",
+      "placeholder": "אריאל גדש עציון 052-890-2606",
+      "read": "Lire"
+    },
+    "location": {
+      "hint": "Collez un lien Waze, un lien Google Maps ou des coordonnées : l'épingle se pose seule.",
+      "via": {
+        "waze": "Lien Waze",
+        "google": "Lien Google Maps",
+        "coords": "Coordonnées",
+        "locality": "Centre de la localité"
+      },
+      "shortLink": "Lien raccourci — sans position. Ouvrez-le et copiez le lien complet",
+      "unreadable": "Emplacement non reconnu",
+      "empty": ""
+    },
+    "previewTitle_one": "Avant d'enregistrer — un contact",
+    "previewTitle_other": "Avant d'enregistrer — {{count}} contacts",
+    "previewHint": "Rien n'est encore écrit. Corrigez, décochez ou retirez une ligne — puis enregistrez.",
+    "summary": {
+      "new_one": "un nouveau",
+      "new_other": "{{count}} nouveaux",
+      "dups_one": "un existe déjà (décoché)",
+      "dups_other": "{{count}} existent déjà (décochés)",
+      "problems_one": "un incomplet ou non compris",
+      "problems_other": "{{count}} incomplets ou non compris"
+    },
+    "preview": {
+      "splitHint": "Touchez le mot où commence « {{org}} » — ce qui précède est la personne",
+      "splitHintVolunteer": "Touchez le mot où commence un nom d'institution écrit sur la fiche",
+      "noOrg": "Pas de « {{org}} » dans le nom",
+      "cardInstitution": "Institution de la fiche",
+      "autoSplit": "Découpé automatiquement — à vérifier",
+      "placeApprox": "📍 {{place}} (centre de la localité — à vérifier)",
+      "placeNoPin": "{{place}} — sans épingle",
+      "noPlace": "Sans lieu",
+      "noPhone": "Sans téléphone",
+      "noName": "Sans nom",
+      "noOrgName": "Nom de l'institution manquant",
+      "splitUncertain": "Personne et lieu incertains",
+      "cardSays": "Sur la fiche : {{name}}",
+      "edit": "Corriger",
+      "remove": "Retirer de la liste"
+    },
+    "dup": {
+      "lead": "Déjà en salle d'attente : {{name}}",
+      "farm": "Ferme existante : {{name}}",
+      "institution": "Institution existante : {{name}}",
+      "volunteer": "Volontaire existant : {{name}}",
+      "batch": "Deux fois dans la liste : {{name}}"
+    },
+    "create": {
+      "farm_one": "Ajouter un contact à la salle d'attente",
+      "farm_other": "Ajouter {{count}} contacts à la salle d'attente",
+      "institution_one": "Créer une institution",
+      "institution_other": "Créer {{count}} institutions",
+      "volunteer_one": "Ajouter un volontaire à {{institution}}",
+      "volunteer_other": "Ajouter {{count}} volontaires à {{institution}}"
+    },
+    "clear": "Vider la liste",
+    "done": {
+      "farm_one": "Un contact ajouté à la salle d'attente.",
+      "farm_other": "{{count}} contacts ajoutés à la salle d'attente.",
+      "institution_one": "Une institution créée.",
+      "institution_other": "{{count}} institutions créées.",
+      "volunteer_one": "Un volontaire ajouté à {{institution}}.",
+      "volunteer_other": "{{count}} volontaires ajoutés à {{institution}}."
+    },
+    "open": {
+      "farm": "Salle d'attente",
+      "institution": "Carte de couverture",
+      "volunteer": "Volontaires"
+    },
+    "entry": "Ajouter des contacts"
   }
 }

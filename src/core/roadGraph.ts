@@ -162,12 +162,18 @@ function tileToLat(y: number, z: number): number {
   return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)))
 }
 
+export function lngToTileXFrac(lng: number, z: number): number {
+  return ((lng + 180) / 360) * 2 ** z
+}
+export function latToTileYFrac(lat: number, z: number): number {
+  const r = lat * RAD
+  return ((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * 2 ** z
+}
 export function lngToTileX(lng: number, z: number): number {
-  return Math.floor(((lng + 180) / 360) * 2 ** z)
+  return Math.floor(lngToTileXFrac(lng, z))
 }
 export function latToTileY(lat: number, z: number): number {
-  const r = lat * RAD
-  return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * 2 ** z)
+  return Math.floor(latToTileYFrac(lat, z))
 }
 
 // ---------------------------------------------------------------------------
@@ -230,6 +236,8 @@ export class RoadGraph {
   /** Case de 250 m → segments (une arête « aller » par segment physique). */
   private readonly cells = new Map<number, number[]>()
   private readonly tiles = new Set<string>()
+  /** Le zoom des tuiles lues (un seul : `ROAD_ZOOM`), -1 avant la première. */
+  private zoom = -1
   private component: Int32Array | null = null
   private componentSize: number[] = []
 
@@ -319,6 +327,7 @@ export class RoadGraph {
     const key = `${tile.z}/${tile.x}/${tile.y}`
     if (this.tiles.has(key)) return
     this.tiles.add(key)
+    this.zoom = tile.z
     this.component = null
     const E = tile.extent
     const toLatLng = (px: number, py: number): [number, number] => [
@@ -395,6 +404,16 @@ export class RoadGraph {
     const still: number[] = []
     for (const node of candidates) {
       if (this.degree[node] !== 1) continue
+      /* ★★ AW1 — UN BOUT AU BORD D'UNE TUILE DONT LA VOISINE N'EST PAS ENCORE LUE
+         N'EST PAS UN BOUT PENDANT : sa suite est dans la voisine. Le relier
+         maintenant à une arête à 5 m fabriquait un passage qui n'existe pas, et
+         le graphe — donc les distances — dépendait de l'ORDRE de lecture des
+         tuiles (mesuré : 29 paires sur 129 différaient de plus de 500 m entre
+         « paire par paire » et « tout d'un coup »). Il attend la voisine. */
+      if (this.awaitsNeighbour(node)) {
+        still.push(node)
+        continue
+      }
       const hit = this.nearestEdgeExcluding(node, JOIN_METERS)
       if (!hit) {
         still.push(node)
@@ -425,6 +444,24 @@ export class RoadGraph {
     this.unresolved = still
     if (joinedNow > 0) this.component = null
     return joinedNow
+  }
+
+  /** Le sommet est sur le bord d'une tuile dont la voisine, de ce côté, manque. */
+  private awaitsNeighbour(node: number): boolean {
+    const z = this.zoom
+    if (z < 0) return false
+    const fx = lngToTileXFrac(this.lng[node], z)
+    const fy = latToTileYFrac(this.lat[node], z)
+    const x = Math.floor(fx)
+    const y = Math.floor(fy)
+    const EPS = 2e-3 // ~4 m sur une tuile de 2,1 km : le quantum de découpe et sa marge
+    const dx = fx - x
+    const dy = fy - y
+    if (dx < EPS && !this.hasTile(z, x - 1, y)) return true
+    if (dx > 1 - EPS && !this.hasTile(z, x + 1, y)) return true
+    if (dy < EPS && !this.hasTile(z, x, y - 1)) return true
+    if (dy > 1 - EPS && !this.hasTile(z, x, y + 1)) return true
+    return false
   }
 
   private nearestEdgeExcluding(node: number, maxMeters: number): { edge: number; t: number } | null {

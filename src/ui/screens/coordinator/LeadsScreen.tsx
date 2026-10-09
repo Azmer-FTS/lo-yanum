@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   HOME_BASE,
   LEAD_SORTS,
@@ -9,11 +9,9 @@ import {
   createLeads,
   deleteLead,
   getConvertedLeads,
-  getVisibleFarms,
   getVisibleLeads,
   leadCounts,
   leadRegionId,
-  parseLeadBlock,
   regionById,
   regions,
   revertLeadConversion,
@@ -22,7 +20,7 @@ import {
   updateLead,
   whatsappHref,
 } from '@core/index'
-import type { Lead, LeadSort, LeadStatus, ParsedLead, RegionId } from '@core/index'
+import type { Lead, LeadSort, LeadStatus, RegionId } from '@core/index'
 import { formRoutes } from './FormPages'
 import { Icon } from '../../components/Icon'
 import { MapSplit } from '../../components/MapSplit'
@@ -117,12 +115,10 @@ export function LeadsScreen() {
   const navigate = useNavigate()
   const leads = useCoreValue(() => getVisibleLeads())
   const converted = useCoreValue(() => getConvertedLeads())
-  const farms = useCoreValue(() => getVisibleFarms())
   const [filter, setFilterState] = useState<Filter>('open')
   /* Les lignes touchées DANS le filtre courant y restent jusqu'au prochain onglet. */
   const [kept, setKept] = useState<Set<string>>(new Set())
   const [sort, setSortState] = useState<LeadSort>(() => readSort())
-  const [pasteOpen, setPasteOpen] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
   const [flyKey, setFlyKey] = useState(0)
   const [showClosed, setShowClosed] = useState(false)
@@ -272,25 +268,15 @@ export function LeadsScreen() {
             title={t('leads.title')}
             subtitle={t('leads.subtitle', { count: counts.open })}
             actions={
-              <button type="button" className="btn-primary min-h-[2.75rem] whitespace-nowrap" data-testid="leads-paste-open" onClick={() => setPasteOpen((v) => !v)}>
+              /* ★★ AW2 — l'ajout (saisie, fiches .vcf, collage) a son écran, le
+                 type « חווה » déjà choisi : le collage n'est plus un panneau
+                 caché ici. */
+              <Link to="/coordinator/add?type=farm" className="btn-primary min-h-[2.75rem] whitespace-nowrap" data-testid="leads-add">
                 <Icon name="plus" size={16} />
-                {t('leads.paste')}
-              </button>
+                {t('add.entry')}
+              </Link>
             }
           />
-
-          {pasteOpen && (
-            <PastePanel
-              onClose={() => setPasteOpen(false)}
-              existingLeads={leads}
-              farms={farms}
-              onCreated={(ids) => {
-                setPasteOpen(false)
-                setFilter('open')
-                if (ids[0]) select(ids[0], true)
-              }}
-            />
-          )}
 
           <TabBar
             items={FILTERS.map((f) => ({
@@ -608,148 +594,4 @@ function LeadDetails({ lead }: { lead: Lead }) {
   )
 }
 
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/u).filter(Boolean)
-  return (parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '') || '·'
-}
 
-// ---------------------------------------------------------------------------
-// L'entrée en masse
-// ---------------------------------------------------------------------------
-
-function PastePanel({
-  onClose,
-  onCreated,
-  existingLeads,
-  farms,
-}: {
-  onClose: () => void
-  onCreated: (ids: string[]) => void
-  existingLeads: readonly Lead[]
-  farms: ReadonlyArray<{ farmerPhone?: string; liaisonPhone?: string; name: string }>
-}) {
-  const { t } = useTranslation()
-  const [text, setText] = useState('')
-  const [off, setOff] = useState<Set<number>>(new Set())
-  const parsed: ParsedLead[] = useMemo(() => parseLeadBlock(text, { leads: existingLeads, farms }), [text, existingLeads, farms])
-  const defaultOff = (p: ParsedLead): boolean => p.noPhone || p.duplicateOf !== null
-  const isOn = (i: number): boolean => (off.has(i) ? false : off.has(-i - 1) ? true : !defaultOff(parsed[i]))
-  const toggle = (i: number): void => {
-    const next = new Set(off)
-    const on = isOn(i)
-    next.delete(i)
-    next.delete(-i - 1)
-    if (on) next.add(i)
-    else next.add(-i - 1)
-    setOff(next)
-  }
-  const chosen = parsed.filter((_, i) => isOn(i))
-
-  const create = (): void => {
-    const made = createLeads(
-      chosen.map((p) => ({
-        name: p.name || p.contactName || p.phone,
-        contactName: p.contactName,
-        phone: p.phone,
-        email: p.email,
-        place: p.place,
-        position: p.position,
-        regionId: null,
-        notes: p.notes,
-        source: 'paste' as const,
-        raw: p.raw,
-      })),
-    )
-    onCreated(made.map((m) => m.id))
-  }
-
-  return (
-    <div className="card card-pad mb-4 flex flex-col gap-3" data-testid="leads-paste">
-      <label className="flex flex-col gap-1.5">
-        <span className="text-caption font-semibold text-content-primary">{t('leads.pasteLabel')}</span>
-        <textarea
-          className="input min-h-[8rem]"
-          dir="auto"
-          value={text}
-          placeholder={t('leads.pastePlaceholder')}
-          data-testid="leads-paste-text"
-          onChange={(e) => {
-            setText(e.target.value)
-            setOff(new Set())
-          }}
-        />
-        <span className="muted">{t('leads.pasteHint')}</span>
-      </label>
-      {/* ★★ AT3.4 — CHAQUE CONTACT RECONNU SE PRÉSENTE COMME UNE FICHE DE
-          CONTACT : initiales, nom, personne, téléphone, courriel, lieu — ce qui
-          sera créé, lisible avant de créer. La case décide. */}
-      {parsed.length > 0 && (
-        <ul className="grid gap-2 sm:grid-cols-2" data-testid="leads-paste-preview">
-          {parsed.map((p, i) => {
-            const on = isOn(i)
-            const title = p.name || p.contactName || p.phone || '—'
-            return (
-              <li key={`${p.phone}-${i}`}>
-                <label
-                  className={`card flex cursor-pointer items-start gap-3 p-3 transition-opacity duration-fast ${on ? '' : 'opacity-60'}`}
-                  data-testid={`leads-paste-card-${i}`}
-                >
-                  <span
-                    aria-hidden="true"
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-status-violet/15 text-body font-bold text-status-violet-ink"
-                  >
-                    {initials(p.contactName || p.name)}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold text-content-primary">{title}</span>
-                    {p.contactName && p.contactName !== p.name && <span className="block truncate text-caption text-content-secondary">{p.contactName}</span>}
-                    {p.phone && (
-                      <span className="flex items-center gap-1.5 text-caption text-content-secondary">
-                        <Icon name="phone" size={13} />
-                        <span dir="ltr" className="ltr-nums">{p.phone}</span>
-                      </span>
-                    )}
-                    {p.email && (
-                      <span className="flex min-w-0 items-center gap-1.5 text-caption text-content-secondary" data-testid={`leads-paste-email-${i}`}>
-                        <Icon name="message" size={13} />
-                        <span dir="ltr" className="truncate">{p.email}</span>
-                      </span>
-                    )}
-                    {p.place && (
-                      <span className="flex items-center gap-1.5 text-caption text-content-secondary">
-                        <Icon name="region" size={13} />
-                        {p.place}
-                      </span>
-                    )}
-                    {p.duplicateOf && (
-                      <span className="mt-1 block text-caption font-semibold text-status-warn-ink">
-                        {t(p.duplicateOf.kind === 'farm' ? 'leads.dupFarm' : 'leads.dupLead', { name: p.duplicateOf.name })}
-                      </span>
-                    )}
-                    {p.noPhone && <span className="mt-1 block text-caption text-content-muted">{t('leads.noPhone')}</span>}
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-5 w-5 shrink-0"
-                    checked={on}
-                    onChange={() => toggle(i)}
-                    data-testid={`leads-paste-row-${i}`}
-                    aria-label={title}
-                  />
-                </label>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-      <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className="btn-primary min-h-[2.75rem]" disabled={chosen.length === 0} onClick={create} data-testid="leads-paste-create">
-          {t('leads.create', { count: chosen.length })}
-        </button>
-        <button type="button" className="btn-secondary min-h-[2.75rem]" onClick={onClose}>
-          {t('common.cancel')}
-        </button>
-      </div>
-    </div>
-  )
-}

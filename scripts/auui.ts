@@ -259,13 +259,16 @@ const TRUTH = makeTruth()
 async function expected(radiusKm: number, visible = COVERAGE_PRESETS.prepare) {
   const fs = ROWS.map((r) => MAPPINGS.farms.fromRows(r as never, {} as never) as Farm)
   const ls = LEAD_ROWS.map((r) => MAPPINGS.leads.fromRows(r as never, {} as never) as Lead)
+  const pairs: Array<{ from: { lat: number; lng: number }; to: { lat: number; lng: number } }> = []
   for (const i of INSTITUTIONS) {
     if (!i.position || i.engagement === 'not_relevant') continue
     for (const f of fs) {
       const p = farmPoint(f)
-      if (p && haversineKm(i.position, p) <= radiusKm) await TRUTH.measure(i.position, p)
+      if (p && haversineKm(i.position, p) <= radiusKm) pairs.push({ from: i.position, to: p })
     }
   }
+  await TRUTH.preload(pairs)
+  for (const p of pairs) await TRUTH.measure(p.from, p.to)
   return computeCoverage({ farms: fs, leads: ls, institutions: INSTITUTIONS, radiusKm, visible, road: TRUTH.road })
 }
 /** ★ AW1 — attendre la fin du calcul routier de l'app. */

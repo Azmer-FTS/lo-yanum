@@ -677,7 +677,12 @@ export function VolunteersScreen() {
                           <span data-merge="lg" style={{ ['--col-display' as string]: 'inline' }}>
                             {v.yeshiva} · {v.locality} ·{' '}
                           </span>
-                          {t('volunteers.age')} <span className="ltr-nums">{v.age}</span>
+                          {/* ★ AW2 — 0 = âge inconnu (fiche de contact) : rien d'affiché. */}
+                          {v.age > 0 && (
+                            <>
+                              {t('volunteers.age')} <span className="ltr-nums">{v.age}</span>
+                            </>
+                          )}
                           <span data-merge="md" style={{ ['--col-display' as string]: 'inline' }}>
                             {' '}· <span className="ltr-nums">{v.phone}</span>
                           </span>

@@ -919,7 +919,7 @@ function MeshStatus({
             <div className="h-full rounded-pill bg-status-violet transition-[width]" style={{ width: `${pct}%` }} />
           </div>
           <p className="ltr-nums mt-1 text-caption text-content-secondary">
-            {t('coverage.mesh.progress', { done: progress.done, total: progress.total })}
+            {progress.phase === 'tiles' ? t('coverage.mesh.loadingRoads') : t('coverage.mesh.progress', { done: progress.done, total: progress.total })}
           </p>
           <p className="muted text-micro">{t('coverage.mesh.provisional')}</p>
         </div>
@@ -978,10 +978,17 @@ function InstitutionList({
       className="mt-4"
       collapseKey="coverage-institutions"
       action={
-        <Link to="/coordinator/import/institutions" className="btn-ghost py-1.5" data-testid="coverage-import-link">
-          <Icon name="upload" size={16} />
-          {t('institutions.import.short')}
-        </Link>
+        <span className="flex flex-wrap gap-1">
+          {/* ★ AW2 — une institution avec son responsable, d'une fiche ou à la main. */}
+          <Link to="/coordinator/add?type=institution" className="btn-ghost py-1.5" data-testid="coverage-add-link">
+            <Icon name="userPlus" size={16} />
+            {t('add.entry')}
+          </Link>
+          <Link to="/coordinator/import/institutions" className="btn-ghost py-1.5" data-testid="coverage-import-link">
+            <Icon name="upload" size={16} />
+            {t('institutions.import.short')}
+          </Link>
+        </span>
       }
     >
       <TabBar

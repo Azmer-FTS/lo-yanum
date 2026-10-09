@@ -136,7 +136,8 @@
       "beyond_one": "For one link the fastest route crosses the Green Line — route inside Israel measured",
       "beyond_other": "For {{count}} links the fastest route crosses the Green Line — route inside Israel measured",
       "noRoad_one": "One pair has no road on the map",
-      "noRoad_other": "{{count}} pairs have no road on the map"
+      "noRoad_other": "{{count}} pairs have no road on the map",
+      "loadingRoads": "Reading the road network from the map…"
     }
   },
   "institutions": {
@@ -266,5 +267,135 @@
       "lead": "To the waiting room · not counted",
       "landmark": "Just a named place · not counted"
     }
+  },
+  "add": {
+    "title": "Add contacts",
+    "subtitle": "Farmers, institutions or volunteers — typed, contact cards or pasted",
+    "kindTitle": "What are you adding?",
+    "kind": {
+      "farm": "Farms",
+      "institution": "Institutions",
+      "volunteer": "Volunteers"
+    },
+    "kindHint": {
+      "farm": "A farmer and his farm → waiting room",
+      "institution": "Yeshiva, mechina, midrasha and its contact → coverage map",
+      "volunteer": "Volunteers of one institution → volunteer list"
+    },
+    "kindPlural": {
+      "farm": "farms",
+      "institution": "institutions",
+      "volunteer": "volunteers"
+    },
+    "chooseKindFirst": "Choose what you are adding first: it decides where the cards go and how names are split.",
+    "chooseInstitutionFirst": "Choose the volunteers' institution first — once for the whole batch.",
+    "institutionLabel": "The institution of every volunteer in this batch",
+    "institutionChoose": "Choose an institution…",
+    "institutionNew": "Not listed — create it now",
+    "institutionNewName": "Institution name",
+    "institutionCreate": "Create institution",
+    "pathsTitle": "How to add {{what}}? Three ways, your choice",
+    "pathsTitleNone": "How to add? Three ways, your choice",
+    "form": {
+      "title": "Type it",
+      "hint": "One contact, with whatever you have. Only a name is required.",
+      "first": "First name",
+      "last": "Last name",
+      "phone": "Mobile",
+      "org": {
+        "farm": "Farm name",
+        "institution": "Institution name"
+      },
+      "location": "Location",
+      "locationPlaceholder": "Waze link, Google Maps link or coordinates",
+      "onlyName": "No required field except a name.",
+      "save": "Save",
+      "saveAnyway": "Already exists — save anyway"
+    },
+    "files": {
+      "title": "Contact cards (.vcf)",
+      "hint": "From the phone: 'share contact' makes a .vcf. Many files at once, or one file with many contacts.",
+      "drop": "Drop files here",
+      "choose": "Choose files",
+      "report_one": "{{files}} file(s) · one contact read",
+      "report_other": "{{files}} file(s) · {{count}} contacts read",
+      "unreadable": "Not read (not a contact card): {{names}}"
+    },
+    "paste": {
+      "title": "Paste text",
+      "hint": "From WhatsApp, Excel or notes: one line per contact — name, phone, place if any.",
+      "placeholder": "אריאל גדש עציון 052-890-2606",
+      "read": "Read"
+    },
+    "location": {
+      "hint": "Paste a Waze link, a Google Maps link or coordinates — the pin drops itself.",
+      "via": {
+        "waze": "Waze link",
+        "google": "Google Maps link",
+        "coords": "Coordinates",
+        "locality": "Locality centre"
+      },
+      "shortLink": "Shortened link — no position in it. Open it and copy the full link",
+      "unreadable": "No location recognised",
+      "empty": ""
+    },
+    "previewTitle_one": "Before saving — one contact",
+    "previewTitle_other": "Before saving — {{count}} contacts",
+    "previewHint": "Nothing is saved yet. Fix, untick or remove a line — then save.",
+    "summary": {
+      "new_one": "one new",
+      "new_other": "{{count}} new",
+      "dups_one": "one already exists (unticked)",
+      "dups_other": "{{count}} already exist (unticked)",
+      "problems_one": "one incomplete or not understood",
+      "problems_other": "{{count}} incomplete or not understood"
+    },
+    "preview": {
+      "splitHint": "Tap the word where the {{org}} starts — what comes before is the person",
+      "splitHintVolunteer": "Tap the word where an institution name written on the card starts",
+      "noOrg": "No {{org}} in the name",
+      "cardInstitution": "Institution on the card",
+      "autoSplit": "Split automatically — check",
+      "placeApprox": "📍 {{place}} (locality centre — check)",
+      "placeNoPin": "{{place}} — no pin",
+      "noPlace": "No location",
+      "noPhone": "No phone",
+      "noName": "No name",
+      "noOrgName": "Institution name missing",
+      "splitUncertain": "Person and place unclear",
+      "cardSays": "On the card: {{name}}",
+      "edit": "Fix",
+      "remove": "Remove from list"
+    },
+    "dup": {
+      "lead": "Already in the waiting room: {{name}}",
+      "farm": "Already a farm: {{name}}",
+      "institution": "Already an institution: {{name}}",
+      "volunteer": "Already a volunteer: {{name}}",
+      "batch": "Twice in this list: {{name}}"
+    },
+    "create": {
+      "farm_one": "Add one contact to the waiting room",
+      "farm_other": "Add {{count}} contacts to the waiting room",
+      "institution_one": "Create one institution",
+      "institution_other": "Create {{count}} institutions",
+      "volunteer_one": "Add one volunteer to {{institution}}",
+      "volunteer_other": "Add {{count}} volunteers to {{institution}}"
+    },
+    "clear": "Clear list",
+    "done": {
+      "farm_one": "One contact added to the waiting room.",
+      "farm_other": "{{count}} contacts added to the waiting room.",
+      "institution_one": "One institution created.",
+      "institution_other": "{{count}} institutions created.",
+      "volunteer_one": "One volunteer added to {{institution}}.",
+      "volunteer_other": "{{count}} volunteers added to {{institution}}."
+    },
+    "open": {
+      "farm": "Waiting room",
+      "institution": "Coverage map",
+      "volunteer": "Volunteers"
+    },
+    "entry": "Add contacts"
   }
 }

@@ -298,6 +298,13 @@ await guard('A325', async () => {
   for (const k of KINDS) {
     const o = await open(1032, { touch: true })
     await go(o.page, '/coordinator/coverage')
+    /* ★ AW1 — les compteurs suivent la ROUTE, mesurée au premier passage :
+       on les lit une fois le maillage complet (sinon ils montent pendant). */
+    await o.page.waitForFunction(() => {
+      const m = document.querySelector('[data-testid="coverage-mesh"]')
+      return !m || (m.getAttribute('data-running') === 'false' && m.getAttribute('data-pending') === '0')
+    }, undefined, { timeout: 180_000 })
+    await o.page.waitForTimeout(500)
     const counts = async () => ({
       farms: await o.page.locator('[data-testid="coverage-counts"]').getAttribute('data-farms'),
       covered: await o.page.locator('[data-testid="coverage-counts"]').getAttribute('data-covered'),

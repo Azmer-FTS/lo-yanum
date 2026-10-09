@@ -661,6 +661,7 @@ const volunteerMapping: Mapping<Volunteer> = {
           phone_type: v.phoneType,
           email: v.email,
           yeshiva: v.yeshiva,
+          institution_id: v.institutionId ?? null,
           locality: v.locality,
           guards_count: v.guardsCount,
           status: v.status,
@@ -687,6 +688,8 @@ const volunteerMapping: Mapping<Volunteer> = {
     phoneType: str(p.phone_type, 'smartphone') as Volunteer['phoneType'],
     email: str(p.email),
     yeshiva: str(p.yeshiva),
+    // ★ AW2 — absent tant qu'aucune institution n'est rattachée (fiches d'avant AW).
+    ...(p.institution_id ? { institutionId: str(p.institution_id) } : {}),
     locality: str(p.locality),
     guardsCount: num(p.guards_count),
     status: str(p.status, 'active') as Volunteer['status'],

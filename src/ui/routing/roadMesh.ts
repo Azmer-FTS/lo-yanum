@@ -5,7 +5,7 @@ import type { PairRoad } from '@core/roadMesh'
 import type { LatLng } from '@core/types'
 
 import { BASEMAP_URL } from '../components/basemap'
-import { measureMeshPair, roadGraphStats } from './roadNetwork'
+import { loadBreakdown, measureMeshPair, preloadCorridors, roadGraphStats } from './roadNetwork'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -73,6 +73,8 @@ export interface MeshProgress {
   /** done + pending : pour la barre. */
   total: number
   running: boolean
+  /** `tiles` = lecture du réseau (une fois), `routes` = paire par paire. */
+  phase: 'tiles' | 'routes'
   /** L'archive n'a pas pu être lue (ni téléchargée, ni joignable). */
   unavailable: boolean
   /** Durée du dernier calcul complet, ms. */
@@ -80,7 +82,7 @@ export interface MeshProgress {
 }
 
 let version = 0
-let progress: MeshProgress = { pending: 0, done: 0, total: 0, running: false, unavailable: false, lastMs: null }
+let progress: MeshProgress = { pending: 0, done: 0, total: 0, running: false, phase: 'routes', unavailable: false, lastMs: null }
 const queue = new Map<string, { from: LatLng; to: LatLng }>()
 const listeners = new Set<() => void>()
 function emit(): void {
@@ -113,7 +115,18 @@ export function requestMeshPairs(pairs: Array<{ from: LatLng; to: LatLng }>): vo
 
 async function run(): Promise<void> {
   const t0 = performance.now()
-  progress = { ...progress, running: true, unavailable: false }
+  progress = { ...progress, running: true, phase: 'tiles', unavailable: false }
+  emit()
+  // Les tuiles de toute la file d'abord, en un lot (voir `preloadCorridors`).
+  const loaded = await preloadCorridors([...queue.values()])
+  const preloadMs = Math.round(performance.now() - t0)
+  if (!loaded) {
+    queue.clear()
+    progress = { ...progress, pending: 0, running: false, unavailable: true }
+    emit()
+    return
+  }
+  progress = { ...progress, phase: 'routes' }
   emit()
   let sincePersist = 0
   while (queue.size > 0) {
@@ -141,7 +154,7 @@ async function run(): Promise<void> {
   persist()
   const ms = Math.round(performance.now() - t0)
   progress = { ...progress, pending: 0, running: false, lastMs: ms }
-  ;(window as unknown as { __loYanumMesh?: unknown }).__loYanumMesh = { ms, pairs: progress.done, stats: roadGraphStats() }
+  ;(window as unknown as { __loYanumMesh?: unknown }).__loYanumMesh = { ms, preloadMs, pairs: progress.done, stats: roadGraphStats(), breakdown: { ...loadBreakdown } }
   emit()
 }
 

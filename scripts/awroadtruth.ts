@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { PMTiles } from 'pmtiles'
 
-import { RoadGraph } from '../src/core/roadGraph'
+import { RoadGraph, corridorTiles } from '../src/core/roadGraph'
 import { BorderEdges, measurePair, pairKey } from '../src/core/roadMesh'
 import type { PairRoad } from '../src/core/roadMesh'
 import type { LatLng } from '../src/core/types'
@@ -36,6 +36,17 @@ export function makeTruth() {
   return {
     graph,
     known,
+    /**
+     * ★ Comme l'app (`preloadCorridors`) : l'union des couloirs d'un lot est
+     *   lue d'abord, puis chaque paire est routée sur ce réseau commun. Sans
+     *   cela le plus rapide d'une paire dépendrait des paires routées avant.
+     */
+    async preload(pairs: ReadonlyArray<{ from: LatLng; to: LatLng }>): Promise<void> {
+      const todo = pairs.filter((p) => !known.has(pairKey(p.from, p.to)))
+      const all: Array<[number, number, number]> = []
+      for (const p of todo) all.push(...corridorTiles(p.from, p.to))
+      await load([...new Map(all.map((t) => [t.join('/'), t])).values()])
+    },
     async measure(from: LatLng, to: LatLng): Promise<PairRoad> {
       const k = pairKey(from, to)
       const hit = known.get(k)

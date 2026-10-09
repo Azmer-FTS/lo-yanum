@@ -59,6 +59,7 @@ import { MissionsScreen } from './screens/coordinator/MissionsScreen'
 import { FreeRouteScreen } from './screens/coordinator/FreeRouteScreen'
 import { CoverageScreen } from './screens/coordinator/CoverageScreen'
 import { InstitutionsImportScreen } from './screens/coordinator/InstitutionsImportScreen'
+import { AddContactsScreen } from './screens/coordinator/AddContactsScreen'
 import { RoutePlannerScreen } from './screens/coordinator/RoutePlannerScreen'
 import { RegionsEditScreen } from './screens/coordinator/RegionsEditScreen'
 import { SettingsScreen } from './screens/coordinator/SettingsScreen'
@@ -358,6 +359,7 @@ export default function App() {
           <Route path="route/free" element={<FreeRouteScreen />} />
           <Route path="coverage" element={<CoverageScreen />} />
           <Route path="import/institutions" element={<InstitutionsImportScreen />} />
+          <Route path="add" element={<AddContactsScreen />} />
           <Route path="volunteers" element={<VolunteersScreen />} />
           {/* ★★ AN11 — toute création, toute édition : une PAGE. */}
           <Route path="volunteers/new" element={<VolunteerFormPage />} />

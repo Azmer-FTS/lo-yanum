@@ -152,7 +152,7 @@ function walk(dir: string) {
   }
 }
 walk('src')
-check('A321 seuls la carte de couverture et son import lisent les institutions', callers.every((p) => /CoverageScreen|InstitutionsImportScreen|access\.ts/.test(p)), callers.join(', '))
+check('A321 seuls la carte de couverture et son import lisent les institutions', callers.every((p) => /CoverageScreen|InstitutionsImportScreen|AddContactsScreen|access\.ts/.test(p)), callers.join(', '))
 
 console.log(`\n  ${passed} PASS, ${failed} FAIL`)
 process.exit(failed === 0 ? 0 : 1)

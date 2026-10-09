@@ -1,0 +1,22 @@
+$ bun run scripts/awui.ts
+  app : http://localhost:5398  (build local dist-aw-before)
+  fiche réelle : private/aw/אריאל גדש עציון.vcf
+
+  A329 · A330 · A331 · A332 · A333 — le maillage routier, au rendu
+  ----------------------------------------------------------------
+  FAIL  A329 — section interrompue  — waitForFunction: Timeout 180000ms exceeded.
+
+  A334 · A335 · A336 — le type d’abord, les trois chemins
+  -------------------------------------------------------
+  FAIL  A334 — section interrompue  — evaluate: Timeout 30000ms exceeded.
+  FAIL  A335 — section interrompue  — evaluate: Timeout 30000ms exceeded.
+  FAIL  A336 — section interrompue  — isDisabled: Timeout 30000ms exceeded.
+
+  A337 → A342 — les fiches .vcf
+  -----------------------------
+  FAIL  A337 — section interrompue  — async setInputFiles: Timeout 30000ms exceeded.
+  FAIL  A341 — section interrompue  — async setInputFiles: Timeout 30000ms exceeded.
+  FAIL  A342 — section interrompue  — evaluate: Timeout 30000ms exceeded.
+
+  0 PASS, 7 FAIL
+error: script "awui" exited with code 1

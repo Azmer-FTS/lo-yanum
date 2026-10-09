@@ -927,6 +927,8 @@ export interface VolunteerDraft {
   /** P0bis.5a — optional; '' means "no address", not "unknown". */
   email?: string
   yeshiva: string
+  /** ★ AW2.0 — l'institution choisie pour le lot (`null` = aucune fiche). */
+  institutionId?: string | null
   locality: string
   status: VolunteerStatus
   inactiveReason: string | null

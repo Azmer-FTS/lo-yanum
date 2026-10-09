@@ -2728,7 +2728,8 @@
       "noRoad_one": "לזוג אחד אין דרך במפה",
       "noRoad_two": "ל-{{count}} זוגות אין דרך במפה",
       "noRoad_many": "ל-{{count}} זוגות אין דרך במפה",
-      "noRoad_other": "ל-{{count}} זוגות אין דרך במפה"
+      "noRoad_other": "ל-{{count}} זוגות אין דרך במפה",
+      "loadingRoads": "קורא את רשת הכבישים מהמפה…"
     }
   },
   "institutions": {
@@ -2866,5 +2867,157 @@
       "lead": "לחדר ההמתנה · לא נספרת",
       "landmark": "מקום בעל שם בלבד · לא נספר"
     }
+  },
+  "add": {
+    "title": "הוספת אנשי קשר",
+    "subtitle": "חקלאים, מוסדות או מתנדבים — בהקלדה, מקבצי איש קשר או בהדבקה",
+    "kindTitle": "מה מוסיפים?",
+    "kind": {
+      "farm": "חוות",
+      "institution": "מוסדות",
+      "volunteer": "מתנדבים"
+    },
+    "kindHint": {
+      "farm": "חקלאי והחווה שלו ← לחדר ההמתנה",
+      "institution": "ישיבה, מכינה, מדרשה והאחראי ← למפת הכיסוי",
+      "volunteer": "מתנדבים של מוסד אחד ← לרשימת המתנדבים"
+    },
+    "kindPlural": {
+      "farm": "חוות",
+      "institution": "מוסדות",
+      "volunteer": "מתנדבים"
+    },
+    "chooseKindFirst": "בוחרים קודם מה מוסיפים — זה קובע לאן הכרטיסים יגיעו ואיך השם יפוצל.",
+    "chooseInstitutionFirst": "בוחרים קודם את המוסד של המתנדבים — פעם אחת לכל הקבוצה.",
+    "institutionLabel": "המוסד של כל המתנדבים בקבוצה",
+    "institutionChoose": "בחירת מוסד…",
+    "institutionNew": "מוסד שלא ברשימה — ליצור עכשיו",
+    "institutionNewName": "שם המוסד",
+    "institutionCreate": "יצירת המוסד",
+    "pathsTitle": "איך מוסיפים {{what}}? שלוש דרכים, לבחירה",
+    "pathsTitleNone": "איך מוסיפים? שלוש דרכים, לבחירה",
+    "form": {
+      "title": "הקלדה",
+      "hint": "איש קשר אחד, עם מה שיש ביד. רק השם חובה.",
+      "first": "שם פרטי",
+      "last": "שם משפחה",
+      "phone": "נייד",
+      "org": {
+        "farm": "שם החווה",
+        "institution": "שם המוסד"
+      },
+      "location": "מיקום",
+      "locationPlaceholder": "קישור Waze, קישור Google Maps או קואורדינטות",
+      "onlyName": "אין שדה חובה מלבד שם (פרטי, משפחה או שם המקום).",
+      "save": "שמירה",
+      "saveAnyway": "כבר קיים — לשמור בכל זאת"
+    },
+    "files": {
+      "title": "קבצי איש קשר (.vcf)",
+      "hint": "מהטלפון: „שיתוף איש קשר” שומר קובץ ‎.vcf. אפשר הרבה קבצים בבת אחת, וגם קובץ עם הרבה אנשי קשר.",
+      "drop": "גוררים לכאן קבצים",
+      "choose": "בחירת קבצים",
+      "report_one": "{{files}} קבצים · איש קשר אחד נקרא",
+      "report_two": "{{files}} קבצים · {{count}} אנשי קשר נקראו",
+      "report_many": "{{files}} קבצים · {{count}} אנשי קשר נקראו",
+      "report_other": "{{files}} קבצים · {{count}} אנשי קשר נקראו",
+      "unreadable": "לא נקרא (זה לא כרטיס איש קשר): {{names}}"
+    },
+    "paste": {
+      "title": "הדבקת טקסט",
+      "hint": "מוואטסאפ, אקסל או הערות: שורה לכל איש קשר — שם, טלפון, ואם יש גם יישוב.",
+      "placeholder": "אריאל גדש עציון 052-890-2606\nיוסי משק כהן 050-1234567 נתיבות",
+      "read": "קריאה"
+    },
+    "location": {
+      "hint": "מדביקים קישור Waze, קישור Google Maps או קואורדינטות — הסיכה תונח לבד.",
+      "via": {
+        "waze": "קישור Waze",
+        "google": "קישור Google Maps",
+        "coords": "קואורדינטות",
+        "locality": "מרכז היישוב"
+      },
+      "shortLink": "קישור מקוצר — אין בו מיקום. פותחים אותו ומעתיקים את הקישור המלא",
+      "unreadable": "לא זוהה מיקום",
+      "empty": ""
+    },
+    "previewTitle_one": "לפני שמירה — איש קשר אחד",
+    "previewTitle_two": "לפני שמירה — {{count}} אנשי קשר",
+    "previewTitle_many": "לפני שמירה — {{count}} אנשי קשר",
+    "previewTitle_other": "לפני שמירה — {{count}} אנשי קשר",
+    "previewHint": "שום דבר עוד לא נשמר. מתקנים, מורידים סימון או מוחקים שורה — ואז שומרים.",
+    "summary": {
+      "new_one": "אחד חדש",
+      "new_two": "{{count}} חדשים",
+      "new_many": "{{count}} חדשים",
+      "new_other": "{{count}} חדשים",
+      "dups_one": "אחד כבר קיים (לא מסומן)",
+      "dups_two": "{{count}} כבר קיימים (לא מסומנים)",
+      "dups_many": "{{count}} כבר קיימים (לא מסומנים)",
+      "dups_other": "{{count}} כבר קיימים (לא מסומנים)",
+      "problems_one": "באחד חסר משהו או לא הובן",
+      "problems_two": "ב-{{count}} חסר משהו או לא הובן",
+      "problems_many": "ב-{{count}} חסר משהו או לא הובן",
+      "problems_other": "ב-{{count}} חסר משהו או לא הובן"
+    },
+    "preview": {
+      "splitHint": "נוגעים במילה שבה מתחיל {{org}} — מה שלפניה הוא איש הקשר",
+      "splitHintVolunteer": "נוגעים במילה שבה מתחיל שם מוסד שנכתב בכרטיס — מה שלפניה הוא המתנדב",
+      "noOrg": "בלי {{org}} בשם",
+      "cardInstitution": "מוסד מהכרטיס",
+      "autoSplit": "פוצל אוטומטית — לבדוק",
+      "placeApprox": "📍 {{place}} (מרכז היישוב — לבדוק)",
+      "placeNoPin": "{{place}} — בלי סיכה",
+      "noPlace": "בלי מיקום",
+      "noPhone": "בלי טלפון",
+      "noName": "בלי שם",
+      "noOrgName": "חסר שם המוסד",
+      "splitUncertain": "לא ברור מי האיש ומה המקום",
+      "cardSays": "בכרטיס: {{name}}",
+      "edit": "תיקון",
+      "remove": "הסרה מהרשימה"
+    },
+    "dup": {
+      "lead": "כבר בחדר ההמתנה: {{name}}",
+      "farm": "כבר קיים כחווה: {{name}}",
+      "institution": "כבר קיים כמוסד: {{name}}",
+      "volunteer": "כבר קיים כמתנדב: {{name}}",
+      "batch": "מופיע פעמיים ברשימה: {{name}}"
+    },
+    "create": {
+      "farm_one": "הוספת איש קשר אחד לחדר ההמתנה",
+      "farm_two": "הוספת {{count}} אנשי קשר לחדר ההמתנה",
+      "farm_many": "הוספת {{count}} אנשי קשר לחדר ההמתנה",
+      "farm_other": "הוספת {{count}} אנשי קשר לחדר ההמתנה",
+      "institution_one": "יצירת מוסד אחד",
+      "institution_two": "יצירת {{count}} מוסדות",
+      "institution_many": "יצירת {{count}} מוסדות",
+      "institution_other": "יצירת {{count}} מוסדות",
+      "volunteer_one": "הוספת מתנדב אחד ל{{institution}}",
+      "volunteer_two": "הוספת {{count}} מתנדבים ל{{institution}}",
+      "volunteer_many": "הוספת {{count}} מתנדבים ל{{institution}}",
+      "volunteer_other": "הוספת {{count}} מתנדבים ל{{institution}}"
+    },
+    "clear": "ניקוי הרשימה",
+    "done": {
+      "farm_one": "נוסף איש קשר אחד לחדר ההמתנה.",
+      "farm_two": "נוספו {{count}} אנשי קשר לחדר ההמתנה.",
+      "farm_many": "נוספו {{count}} אנשי קשר לחדר ההמתנה.",
+      "farm_other": "נוספו {{count}} אנשי קשר לחדר ההמתנה.",
+      "institution_one": "נוצר מוסד אחד.",
+      "institution_two": "נוצרו {{count}} מוסדות.",
+      "institution_many": "נוצרו {{count}} מוסדות.",
+      "institution_other": "נוצרו {{count}} מוסדות.",
+      "volunteer_one": "נוסף מתנדב אחד ל{{institution}}.",
+      "volunteer_two": "נוספו {{count}} מתנדבים ל{{institution}}.",
+      "volunteer_many": "נוספו {{count}} מתנדבים ל{{institution}}.",
+      "volunteer_other": "נוספו {{count}} מתנדבים ל{{institution}}."
+    },
+    "open": {
+      "farm": "לחדר ההמתנה",
+      "institution": "למפת הכיסוי",
+      "volunteer": "למתנדבים"
+    },
+    "entry": "הוספת אנשי קשר"
   }
 }

@@ -923,6 +923,11 @@ export interface Volunteer {
    */
   email: string
   yeshiva: string
+  /**
+   * ★★ AW2.0 — l'institution du volontaire, quand il a été rattaché à une
+   * fiche (lot de volontaires). `yeshiva` reste le nom affiché et exporté.
+   */
+  institutionId?: string | null
   locality: string
   guardsCount: number
   status: VolunteerStatus
@@ -1505,7 +1510,7 @@ export interface Lead {
   status: LeadStatus
   notes: string
   /** D'où elle vient : collée, le portail, une ancienne fiche, la main. */
-  source: 'paste' | 'portal' | 'farm' | 'manual'
+  source: 'paste' | 'portal' | 'farm' | 'manual' | 'vcf'
   /** Le texte collé d'origine, au caractère près. */
   raw: string
   createdAt: string

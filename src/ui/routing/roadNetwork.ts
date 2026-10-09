@@ -42,7 +42,7 @@ import { decodeRoadTile } from './decodeRoads'
 const CHUNK = 256 * 1024
 /** Au-delà, une étape sans chemin se replie au lieu d'élargir (voir plus bas). */
 const MAX_WIDEN_TILES = 160
-const MAX_CHUNKS = 96
+const MAX_CHUNKS = 160
 
 class ChunkedSource implements Source {
   private readonly chunks = new Map<number, Promise<ArrayBuffer>>()
@@ -271,4 +271,23 @@ export async function measureMeshPair(from: LatLng, to: LatLng): Promise<PairRoa
 
 export function roadGraphStats(): ReturnType<RoadGraph['stats']> {
   return graph.stats()
+}
+
+/**
+ * ★★ AW1.3 — LE MAILLAGE CHARGE SES TUILES EN UN SEUL LOT. Paire par paire,
+ *    chaque couloir lisait ses tuiles puis réparait les jonctions : 101 lots,
+ *    101 réparations, et des blocs de 256 Kio relus parce que le cache de
+ *    blocs (96) se vidait entre deux couloirs. L'union des couloirs, lue d'un
+ *    coup, partage les blocs et ne répare qu'une fois.
+ *    `false` = l'archive n'a pas pu être lue.
+ */
+export async function preloadCorridors(pairs: ReadonlyArray<{ from: LatLng; to: LatLng }>): Promise<boolean> {
+  const wanted: Array<[number, number, number]> = []
+  for (const p of pairs) wanted.push(...corridorTiles(p.from, p.to))
+  try {
+    await ensureTiles(wanted)
+    return true
+  } catch {
+    return false
+  }
 }

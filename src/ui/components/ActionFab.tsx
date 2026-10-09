@@ -105,6 +105,25 @@ const NEW_MISSION: FabAction = {
   testId: 'fab-mission-new',
 }
 
+/**
+ * ★★ AW2 — AJOUTER DES CONTACTS : l'écran unique (saisie, fiches .vcf,
+ *    collage). Sur la liste des volontaires il s'ouvre le type déjà choisi.
+ */
+const ADD_CONTACTS: FabAction = {
+  key: 'contacts',
+  to: '/coordinator/add',
+  labelKey: 'add.entry',
+  icon: 'userPlus',
+  testId: 'fab-add-contacts',
+}
+const ADD_VOLUNTEERS: FabAction = {
+  key: 'contacts',
+  to: '/coordinator/add?type=volunteer',
+  labelKey: 'add.entry',
+  icon: 'upload',
+  testId: 'fab-add-contacts',
+}
+
 /** AB1 — אירועים: the coordinator files one himself, from his own desk. */
 const NEW_INCIDENT: FabAction = {
   key: 'incident',
@@ -175,9 +194,10 @@ const CREATIONS: Record<string, readonly FabAction[]> = {
     NEW_VISIT,
     NEW_MEETING,
     NEW_INCIDENT,
+    ADD_CONTACTS,
   ],
   '/coordinator/farms': [NEW_FARM, NEW_MOSHAV],
-  '/coordinator/volunteers': [NEW_VOLUNTEER],
+  '/coordinator/volunteers': [NEW_VOLUNTEER, ADD_VOLUNTEERS],
   '/coordinator/drivers': [NEW_DRIVER],
   '/coordinator/missions': [NEW_MISSION],
   '/coordinator/incidents': [NEW_INCIDENT],
