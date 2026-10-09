@@ -9,6 +9,7 @@ import {
   INSTITUTION_ENGAGEMENTS,
   RADIUS_MAX_KM,
   RADIUS_MIN_KM,
+  clampRadiusKm,
   computeCoverage,
   farmPoint,
   getInstitutions,
@@ -20,6 +21,7 @@ import {
   updateInstitution,
 } from '@core/index'
 import type { CoverageFamily, Farm, Institution, InstitutionEngagement, LatLng, Visible } from '@core/index'
+import type { PairRoad } from '@core/roadMesh'
 
 import { readToken } from '../../components/badges'
 import { EntityQuickCard } from '../../components/EntityQuickCard'
@@ -29,7 +31,9 @@ import type { MapLink, MapMarker, MapRouteLine } from '../../components/MapView'
 import { PageHeader, Section } from '../../components/primitives'
 import { TabBar } from '../../components/TabBar'
 import { useCoreValue } from '../../hooks/useCore'
-import { planRoadRoute } from '../../routing/roadNetwork'
+import { measureMeshPair } from '../../routing/roadNetwork'
+import { meshPair, requestMeshPairs, useRoadMesh } from '../../routing/roadMesh'
+import { useRouteMargin } from '../../settings/routeMargin'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -53,13 +57,14 @@ import { planRoadRoute } from '../../routing/roadNetwork'
  *   « הכנה » — tout, pistes comprises, avec ce qui manque.
  *   Toucher un interrupteur fait passer en « מותאם » sans rien perdre.
  *
- * ★ LA DISTANCE (AU4.6). Toutes les paires à vol d'oiseau, pour filtrer :
- *   64 institutions × le parc, c'est un millier de trajets sur route, chacun
- *   lisant des tuiles du réseau — plusieurs minutes et des centaines de Mo sur
- *   un iPad. Le vol d'oiseau ne manque aucune ferme (la route est toujours plus
- *   longue). Choisir une institution calcule la ROUTE vers chacune de ses
- *   fermes, hors ligne ; un lien que la route met hors rayon disparaît, et
- *   toucher une ferme de la liste trace son trajet.
+ * ★★ LA DISTANCE — AW1 (2026-10-09), QUI ANNULE AU4.6. « À 35 km, TOUT est
+ *   relié à TOUT » : le vol d'oiseau filtrait, et la route fait +69 % dans la
+ *   zone. Désormais TOUTES les paires sont mesurées sur la route, hors ligne
+ *   (`routing/roadMesh.ts` : une fois, gardées sur l'appareil, seules les
+ *   paires neuves ou déplacées recalculées, progression affichée). Le vol
+ *   d'oiseau n'écarte que l'impossible. Chaque lien porte ses kilomètres
+ *   routiers et sa durée ; un lien dont la seule route franchit la Ligne verte
+ *   est en pointillé d'alerte, et ne compte pas.
  *
  * ⛔ AUCUN DE CES COMPTEURS N'EST UN COMPTEUR D'OBJECTIF NI DE DOUNAMS : ils
  *    comptent des lieux atteints. Les pistes n'entrent dans aucun (AS6.8).
@@ -97,7 +102,8 @@ function writePrefs(p: Prefs): void {
     /* idem */
   }
 }
-const clampRadius = (km: number) => Math.min(RADIUS_MAX_KM, Math.max(RADIUS_MIN_KM, Math.round(km)))
+/* ★ AW1.7 — AUCUN PLAFOND : la réglette s'arrête à RADIUS_MAX_KM, le champ chiffré non. */
+const clampRadius = clampRadiusKm
 
 function usageOf(v: Visible): Usage {
   const same = (a: Visible, b: Visible) => (Object.keys(a) as CoverageFamily[]).every((k) => a[k] === b[k])
@@ -106,50 +112,38 @@ function usageOf(v: Visible): Usage {
   return 'custom'
 }
 
-// --- La route, institution par institution (mémoire de la page) -------------
+// --- La route d'une paire, tracé compris (mémoire de la page) -----------------
 
-interface RoadHit {
-  km: number | null
-  coords: LatLng[]
-}
-const roadCache = new Map<string, RoadHit>()
-const roadKey = (from: LatLng, to: LatLng) =>
-  `${from.lat.toFixed(5)},${from.lng.toFixed(5)}>${to.lat.toFixed(5)},${to.lng.toFixed(5)}`
-
-/** Calcule (une fois) la route d'une institution vers chacune de ses fermes. */
-function useInstitutionRoads(inst: Institution | null, targets: Array<{ id: string; position: LatLng }>) {
-  const [version, setVersion] = useState(0)
-  const [pending, setPending] = useState(0)
-  const ids = targets.map((t) => t.id).join(',')
+/**
+ * Le TRACÉ d'une paire n'est pas gardé sur l'appareil (seuls km et durée le
+ * sont) : toucher une ferme le redemande, et le graphe déjà chargé répond en
+ * dizaines de millisecondes.
+ */
+const traceCache = new Map<string, LatLng[]>()
+const traceKey = (a: LatLng, b: LatLng) => `${a.lat.toFixed(5)},${a.lng.toFixed(5)}>${b.lat.toFixed(5)},${b.lng.toFixed(5)}`
+function useTrace(from: LatLng | null | undefined, to: LatLng | null | undefined): LatLng[] {
+  const [, bump] = useState(0)
+  const key = from && to ? traceKey(from, to) : ''
   useEffect(() => {
-    if (!inst?.position) return
-    const from = inst.position
-    const todo = targets.filter((t) => !roadCache.has(roadKey(from, t.position)))
-    if (todo.length === 0) return
+    if (!from || !to || traceCache.has(key)) return
     let alive = true
-    setPending(todo.length)
-    void (async () => {
-      for (const t of todo) {
-        if (!alive) return
-        try {
-          const r = await planRoadRoute([from, t.position])
-          const leg = r.legs[0]
-          roadCache.set(roadKey(from, t.position), leg ? { km: leg.meters / 1000, coords: leg.coords } : { km: null, coords: [] })
-        } catch {
-          roadCache.set(roadKey(from, t.position), { km: null, coords: [] })
-        }
-        if (!alive) return
-        setPending((n) => Math.max(0, n - 1))
-        setVersion((v) => v + 1)
-      }
-    })()
+    void measureMeshPair(from, to).then((r) => {
+      if (r && r.kind !== 'none' && r.coords) traceCache.set(key, r.coords)
+      if (alive) bump((n) => n + 1)
+    })
     return () => {
       alive = false
-      setPending(0)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inst?.id, inst?.position?.lat, inst?.position?.lng, ids])
-  return { version, pending }
+  }, [key])
+  return traceCache.get(key) ?? []
+}
+
+/** « 23 ק״מ · 28 דק׳ » — la durée avec la marge du PO (AI3.2). */
+export function useLinkLabel(): (km: number, seconds: number) => string {
+  const { t } = useTranslation()
+  const margin = useRouteMargin()
+  return (km, seconds) => t('coverage.linkLabel', { km: km.toFixed(km < 10 ? 1 : 0), min: Math.max(1, Math.round((seconds / 60) * (1 + margin / 100))) })
 }
 
 // --- L'écran ------------------------------------------------------------------
@@ -176,38 +170,47 @@ export function CoverageScreen() {
 
   const selectedInst = selected?.kind === 'institution' ? (institutions.find((i) => i.id === selected.id) ?? null) : null
 
-  // Les fermes que l'institution choisie atteint à vol d'oiseau : ce que la route doit mesurer.
-  const airTargets = useMemo(() => {
-    if (!selectedInst?.position) return []
-    const out: Array<{ id: string; position: LatLng }> = []
+  /* ★★ AW1 — LES PAIRES À MESURER SUR LA ROUTE : toute institution placée ×
+     toute ferme affichable que le vol d'oiseau laisse dans le rayon. Les
+     paires déjà gardées ne coûtent rien ; les autres partent dans la file. */
+  const mesh = useRoadMesh()
+  const linkLabel = useLinkLabel()
+  const wanted = useMemo(() => {
+    const out: Array<{ from: LatLng; to: LatLng }> = []
+    const pts: LatLng[] = []
     for (const f of farms) {
       const p = farmPoint(f)
-      if (p && haversineKm(selectedInst.position, p) <= prefs.radiusKm) out.push({ id: f.id, position: p })
+      if (!p) continue
+      const fam = f.status === 'signed' || f.status === 'active' ? 'signed' : ['incoming_request', 'to_contact', 'contacted', 'visited', 'verbal_ok'].includes(f.status) ? 'pipeline' : null
+      if (fam && prefs.visible[fam]) pts.push(p)
+    }
+    for (const i of institutions) {
+      if (!i.position || i.engagement === 'not_relevant') continue
+      for (const p of pts) if (haversineKm(i.position, p) <= prefs.radiusKm) out.push({ from: i.position, to: p })
     }
     return out
-  }, [selectedInst, farms, prefs.radiusKm])
-  const roads = useInstitutionRoads(selectedInst, airTargets)
-
-  const coverage = useMemo(() => {
-    const instById = new Map(institutions.map((i) => [i.id, i]))
-    const farmById = new Map(farms.map((f) => [f.id, f]))
-    return computeCoverage({
-      farms,
-      leads,
-      institutions,
-      radiusKm: prefs.radiusKm,
-      visible: prefs.visible,
-      roadKm: (iid, fid) => {
-        const i = instById.get(iid)
-        const p = farmById.get(fid)
-        const fp = p ? farmPoint(p) : null
-        if (!i?.position || !fp) return undefined
-        return roadCache.get(roadKey(i.position, fp))?.km ?? undefined
-      },
-    })
-    // `roads.version` : une route mesurée recompose le dessin.
+  }, [farms, institutions, prefs.radiusKm, prefs.visible])
+  const wantedKey = wanted.map((w) => `${w.from.lat},${w.from.lng}>${w.to.lat},${w.to.lng}`).join('|')
+  const [retry, setRetry] = useState(0)
+  useEffect(() => {
+    requestMeshPairs(wanted)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [farms, leads, institutions, prefs, roads.version])
+  }, [wantedKey, retry])
+
+  const coverage = useMemo(
+    () =>
+      computeCoverage({
+        farms,
+        leads,
+        institutions,
+        radiusKm: prefs.radiusKm,
+        visible: prefs.visible,
+        road: (from, to) => meshPair(from, to),
+      }),
+    // `mesh.version` : une paire mesurée recompose le dessin et les compteurs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [farms, leads, institutions, prefs, mesh.version],
+  )
 
   const land = readToken('--status-success')
   const school = readToken('--status-violet')
@@ -262,19 +265,24 @@ export function CoverageScreen() {
         .filter((l) => shownFarm(l.farmId))
         // Une institution choisie : seuls ses liens, épaissis.
         .filter((l) => !selectedInst || l.institutionId === selectedInst.id)
-        .map((l) => ({ from: l.from, to: l.to, tone: l.tone, color: school, emphasis: !!selectedInst })),
+        .map((l) => ({
+          from: l.from,
+          to: l.to,
+          tone: l.blocked ? ('blocked' as const) : l.tone,
+          color: school,
+          emphasis: !!selectedInst,
+          label: `${l.blocked || l.fastestBeyond ? '⚠ ' : ''}${linkLabel(l.km, l.seconds)}`,
+        })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [coverage, selectedInst, focus, school],
+    [coverage, selectedInst, focus, school, linkLabel],
   )
 
-  const routeLines: MapRouteLine[] = useMemo(() => {
-    if (!selectedInst?.position || !routeTo) return []
-    const f = farms.find((x) => x.id === routeTo)
-    const fp = f ? farmPoint(f) : null
-    const hit = fp ? roadCache.get(roadKey(selectedInst.position, fp)) : undefined
-    return hit && hit.coords.length > 1 ? [{ coords: hit.coords, style: 'road' as const }] : []
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedInst, routeTo, farms, roads.version])
+  const routeFarm = routeTo ? farms.find((x) => x.id === routeTo) : undefined
+  const trace = useTrace(routeTo ? selectedInst?.position : null, routeFarm ? farmPoint(routeFarm) : null)
+  const routeLines: MapRouteLine[] = useMemo(
+    () => (trace.length > 1 ? [{ coords: trace, style: 'road' as const }] : []),
+    [trace],
+  )
 
   const setVisible = (family: CoverageFamily, on: boolean) => setPrefs((p) => ({ ...p, visible: { ...p.visible, [family]: on } }))
   const choose = (u: Usage) => {
@@ -290,7 +298,7 @@ export function CoverageScreen() {
   const detail: ReactNode = selectedFarm ? (
     <EntityQuickCard farm={selectedFarm} onClose={() => setSelected(null)} situate />
   ) : selectedInst ? (
-    <InstitutionCard inst={selectedInst} reach={coverage.links.filter((l) => l.institutionId === selectedInst.id)} onClose={() => setSelected(null)} />
+    <InstitutionCard inst={selectedInst} reach={coverage.links.filter((l) => l.institutionId === selectedInst.id && !l.blocked)} onClose={() => setSelected(null)} />
   ) : selectedLead ? (
     <div className="w-[min(18rem,calc(100vw-2rem))] rounded-card bg-surface-overlay/95 p-4 shadow-lift backdrop-blur" data-testid="coverage-lead-card">
       <p className="text-heading text-content-primary">{selectedLead.name}</p>
@@ -392,7 +400,7 @@ export function CoverageScreen() {
           <input
             type="range"
             min={RADIUS_MIN_KM}
-            max={RADIUS_MAX_KM}
+            max={Math.max(RADIUS_MAX_KM, prefs.radiusKm)}
             step={5}
             value={prefs.radiusKm}
             onChange={(e) => setPrefs((p) => ({ ...p, radiusKm: clampRadius(Number(e.target.value)) }))}
@@ -400,8 +408,33 @@ export function CoverageScreen() {
             data-testid="coverage-radius-input"
             aria-valuetext={t('coverage.km', { km: prefs.radiusKm })}
           />
-          <span className="muted block text-micro">{t('coverage.distanceRule')}</span>
+          <span className="mt-1 flex items-center gap-2 text-caption text-content-secondary">
+            {/* ★ AW1.7 — un champ chiffré, SANS plafond : la réglette n'est qu'un raccourci. */}
+            <span>{t('coverage.radiusAny')}</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={prefs.radiusKm}
+              onChange={(e) => {
+                const n = Number(e.target.value)
+                if (Number.isFinite(n) && n >= 1) setPrefs((p) => ({ ...p, radiusKm: clampRadius(n) }))
+              }}
+              className="input ltr-nums h-11 w-24 text-center"
+              data-testid="coverage-radius-number"
+              aria-label={t('coverage.radius')}
+            />
+            <span>{t('coverage.kmUnit')}</span>
+          </span>
+          <span className="muted mt-1 block text-micro">{t('coverage.distanceRule')}</span>
         </label>
+
+        <MeshStatus
+          progress={mesh.progress}
+          mesh={coverage.mesh}
+          radiusKm={prefs.radiusKm}
+          onRetry={() => setRetry((n) => n + 1)}
+        />
 
         {/* ---------------------------------------------------------------- */}
         {/* CE QU'IL FAUT VOIR D'UN COUP D'ŒIL                                */}
@@ -472,7 +505,7 @@ export function CoverageScreen() {
             <InstitutionEditor inst={selectedInst} />
             <p className="mt-3 text-caption font-bold text-content-secondary">
               {t('coverage.reachTitle', { km: prefs.radiusKm })}
-              {roads.pending > 0 && <span className="muted ms-2 font-normal">{t('coverage.measuringRoad', { count: roads.pending })}</span>}
+              {mesh.progress.pending > 0 && <span className="muted ms-2 font-normal">{t('coverage.measuringRoad', { count: mesh.progress.pending })}</span>}
             </p>
             <ReachList
               inst={selectedInst}
@@ -480,7 +513,7 @@ export function CoverageScreen() {
               radiusKm={prefs.radiusKm}
               routeTo={routeTo}
               onRoute={(id) => setRouteTo(routeTo === id ? null : id)}
-              version={roads.version}
+              version={mesh.version}
             />
           </Section>
           </div>
@@ -783,50 +816,132 @@ function ReachList({
   version: number
 }) {
   const { t } = useTranslation()
+  const label = useLinkLabel()
   const rows = useMemo(() => {
     if (!inst.position) return []
-    const out: Array<{ farm: Farm; air: number; road: number | null | undefined }> = []
+    const out: Array<{ farm: Farm; air: number; road: PairRoad | undefined }> = []
     for (const f of farms) {
       const p = farmPoint(f)
       if (!p) continue
       const air = haversineKm(inst.position, p)
       if (air > radiusKm) continue
-      const road = roadCache.get(roadKey(inst.position, p))?.km
-      out.push({ farm: f, air, road })
+      out.push({ farm: f, air, road: meshPair(inst.position, p) })
     }
-    return out.sort((a, b) => (a.road ?? a.air) - (b.road ?? b.air))
+    const km = (r: PairRoad | undefined, air: number) => (r && r.kind !== 'none' ? r.km : 1e6 + air)
+    return out.sort((a, b) => km(a.road, a.air) - km(b.road, b.air))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inst, farms, radiusKm, version])
   if (!inst.position) return <p className="muted mt-1">{t('coverage.noInstitutionPosition')}</p>
   if (rows.length === 0) return <p className="muted mt-1">{t('coverage.reachNone')}</p>
   return (
     <ul className="mt-2 flex flex-col gap-1.5" data-testid="coverage-reach-list">
-      {rows.map(({ farm, air, road }) => {
-        const out = typeof road === 'number' && road > radiusKm
+      {rows.map(({ farm, road }) => {
+        const measured = road && road.kind !== 'none' ? road : null
+        const out = !!measured && measured.km > radiusKm
+        const blocked = road?.kind === 'beyondOnly'
+        const beyond = road?.kind === 'road' ? road.fastestBeyond : null
         return (
           <li key={farm.id}>
             <button
               type="button"
               onClick={() => onRoute(farm.id)}
               aria-pressed={routeTo === farm.id}
-              className={`flex min-h-11 w-full items-center gap-2 rounded-field border px-3 py-1.5 text-start text-caption ${routeTo === farm.id ? 'border-accent bg-accent/10' : 'border-edge-subtle hover:bg-surface-high'} ${out ? 'opacity-60' : ''}`}
+              className={`flex min-h-11 w-full flex-wrap items-center gap-x-2 gap-y-0.5 rounded-field border px-3 py-1.5 text-start text-caption ${routeTo === farm.id ? 'border-accent bg-accent/10' : 'border-edge-subtle hover:bg-surface-high'} ${out ? 'opacity-60' : ''}`}
               data-testid={`coverage-reach-${farm.id}`}
-              data-road={road ?? ''}
+              data-road={measured ? measured.km.toFixed(2) : ''}
+              data-state={road === undefined ? 'pending' : road.kind === 'none' ? 'none' : blocked ? 'blocked' : out ? 'out' : 'in'}
             >
               <span className="min-w-0 flex-1 truncate font-semibold text-content-primary">{farm.name}</span>
               <span className="ltr-nums shrink-0 text-content-secondary">
-                {typeof road === 'number'
-                  ? t('coverage.roadKm', { km: road.toFixed(1) })
-                  : road === null
-                    ? t('coverage.noRoad', { km: air.toFixed(1) })
-                    : t('coverage.airKm', { km: air.toFixed(1) })}
+                {measured ? label(measured.km, measured.seconds) : road?.kind === 'none' ? t('coverage.noRoadShort') : t('coverage.measuringOne')}
               </span>
               {out && <span className="chip bg-surface-high text-content-muted">{t('coverage.outByRoad')}</span>}
+              {blocked && <span className="chip bg-status-danger/15 text-status-danger-ink" data-testid="coverage-reach-blocked">{t('coverage.beyondOnly')}</span>}
+              {beyond && (
+                <span className="w-full text-micro text-status-warn-ink" data-testid="coverage-reach-beyond">
+                  {t('coverage.fastestBeyond', { km: beyond.km.toFixed(1) })}
+                </span>
+              )}
             </button>
           </li>
         )
       })}
     </ul>
+  )
+}
+
+/**
+ * ★★ AW1.3 · AW1.4 — CE QUE FAIT LE CALCUL, DIT À L'ÉCRAN : la progression la
+ * première fois, puis le bilan du maillage — combien de paires le vol
+ * d'oiseau laissait passer, combien la route garde, combien elle écarte.
+ */
+function MeshStatus({
+  progress,
+  mesh,
+  radiusKm,
+  onRetry,
+}: {
+  progress: ReturnType<typeof useRoadMesh>['progress']
+  mesh: { airPairs: number; roadPairs: number; dropped: number; pending: number; noRoad: number; blocked: number; fastestBeyond: number }
+  radiusKm: number
+  onRetry: () => void
+}) {
+  const { t } = useTranslation()
+  const running = progress.running && progress.total > 0
+  const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0
+  return (
+    <div
+      className="mt-3 rounded-card bg-surface-raised p-3 shadow-card"
+      data-testid="coverage-mesh"
+      data-running={running ? 'true' : 'false'}
+      data-air={mesh.airPairs}
+      data-road={mesh.roadPairs}
+      data-dropped={mesh.dropped}
+      data-pending={mesh.pending}
+      data-blocked={mesh.blocked}
+      data-beyond={mesh.fastestBeyond}
+      data-last-ms={progress.lastMs ?? ''}
+    >
+      <p className="flex items-center gap-2 text-caption font-bold text-content-secondary">
+        <Icon name="route" size={16} />
+        {t('coverage.mesh.title')}
+      </p>
+      {progress.unavailable ? (
+        <div className="mt-1.5" data-testid="coverage-mesh-unavailable">
+          <p className="text-caption font-semibold text-status-warn-ink">{t('coverage.mesh.unavailable')}</p>
+          <button type="button" className="btn-secondary mt-2 min-h-11" onClick={onRetry}>
+            {t('coverage.mesh.retry')}
+          </button>
+        </div>
+      ) : running || mesh.pending > 0 ? (
+        <div className="mt-1.5" data-testid="coverage-mesh-progress">
+          <div className="h-2 overflow-hidden rounded-pill bg-surface-high" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+            <div className="h-full rounded-pill bg-status-violet transition-[width]" style={{ width: `${pct}%` }} />
+          </div>
+          <p className="ltr-nums mt-1 text-caption text-content-secondary">
+            {t('coverage.mesh.progress', { done: progress.done, total: progress.total })}
+          </p>
+          <p className="muted text-micro">{t('coverage.mesh.provisional')}</p>
+        </div>
+      ) : (
+        <p className="ltr-nums mt-1 text-caption text-content-primary" data-testid="coverage-mesh-summary">
+          {t('coverage.mesh.summary', { road: mesh.roadPairs, air: mesh.airPairs, dropped: mesh.dropped, km: radiusKm })}
+        </p>
+      )}
+      {mesh.blocked > 0 && (
+        <p className="mt-1 flex items-center gap-1.5 text-caption font-semibold text-status-danger-ink" data-testid="coverage-mesh-blocked">
+          <Icon name="alert" size={14} />
+          {t('coverage.mesh.blocked', { count: mesh.blocked })}
+        </p>
+      )}
+      {mesh.fastestBeyond > 0 && (
+        <p className="mt-1 flex items-center gap-1.5 text-caption text-status-warn-ink" data-testid="coverage-mesh-beyond">
+          <Icon name="alert" size={14} />
+          {t('coverage.mesh.beyond', { count: mesh.fastestBeyond })}
+        </p>
+      )}
+      {mesh.noRoad > 0 && <p className="muted mt-1 text-micro">{t('coverage.mesh.noRoad', { count: mesh.noRoad })}</p>}
+    </div>
   )
 }
 

@@ -8,6 +8,9 @@ import { MAPPINGS } from '../src/data/rows'
 import { INSTITUTIONS } from '../src/core/mock/institutions'
 import { computeCoverage, COVERAGE_PRESETS } from '../src/core/coverage'
 import type { Farm, Lead } from '../src/core/types'
+import { farmPoint } from '../src/core/geo'
+import { haversineKm } from '../src/core/geo'
+import { makeTruth } from './awroadtruth'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -248,11 +251,30 @@ await guard('A316 402', async () => {
 
 section('A318 · A319 · A320 — la carte de couverture')
 
-/** La vérité, calculée HORS de l'app avec le même module pur. */
-function expected(radiusKm: number, visible = COVERAGE_PRESETS.prepare) {
+/**
+ * La vérité, calculée HORS de l'app avec le même module pur — et, depuis AW1,
+ * la même ROUTE (`awroadtruth` : l'archive lue depuis le disque).
+ */
+const TRUTH = makeTruth()
+async function expected(radiusKm: number, visible = COVERAGE_PRESETS.prepare) {
   const fs = ROWS.map((r) => MAPPINGS.farms.fromRows(r as never, {} as never) as Farm)
   const ls = LEAD_ROWS.map((r) => MAPPINGS.leads.fromRows(r as never, {} as never) as Lead)
-  return computeCoverage({ farms: fs, leads: ls, institutions: INSTITUTIONS, radiusKm, visible })
+  for (const i of INSTITUTIONS) {
+    if (!i.position || i.engagement === 'not_relevant') continue
+    for (const f of fs) {
+      const p = farmPoint(f)
+      if (p && haversineKm(i.position, p) <= radiusKm) await TRUTH.measure(i.position, p)
+    }
+  }
+  return computeCoverage({ farms: fs, leads: ls, institutions: INSTITUTIONS, radiusKm, visible, road: TRUTH.road })
+}
+/** ★ AW1 — attendre la fin du calcul routier de l'app. */
+async function meshDone(page: Page, timeout = 120_000): Promise<void> {
+  await page.waitForFunction(() => {
+    const m = document.querySelector('[data-testid="coverage-mesh"]')
+    return !!m && m.getAttribute('data-running') === 'false' && m.getAttribute('data-pending') === '0'
+  }, undefined, { timeout })
+  await page.waitForTimeout(600)
 }
 
 await guard('A318', async () => {
@@ -270,7 +292,8 @@ await guard('A318', async () => {
     const src = map?.getSource('coverage-links') as unknown as { _data?: { features?: unknown[] }; serialize?: () => { data?: { features?: unknown[] } } } | undefined
     return src?.serialize?.().data?.features?.length ?? src?._data?.features?.length ?? -1
   })
-  const e35 = expected(35)
+  await meshDone(o.page)
+  const e35 = await expected(35)
   const a35 = await read()
   check('A318 compteurs à 35 km = calcul indépendant', JSON.stringify(a35) === JSON.stringify({ farms: e35.counts.farms, covered: e35.counts.covered, uncovered: e35.counts.uncovered, potential: e35.counts.potential }), `app ${JSON.stringify(a35)} · attendu ${JSON.stringify(e35.counts)}`)
   const l35 = await linkCount()
@@ -278,7 +301,8 @@ await guard('A318', async () => {
   // Le rayon change → le dessin se recompose.
   await o.page.locator('[data-testid="coverage-radius-input"]').fill('15')
   await o.page.waitForTimeout(700)
-  const e15 = expected(15)
+  await meshDone(o.page)
+  const e15 = await expected(15)
   const a15 = await read()
   const l15 = await linkCount()
   check('A318 rayon 15 km : compteurs recomposés', a15.covered === e15.counts.covered && a15.potential === e15.counts.potential, `${JSON.stringify(a15)} · attendu ${JSON.stringify(e15.counts)}`)

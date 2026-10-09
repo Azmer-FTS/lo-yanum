@@ -160,10 +160,13 @@ export interface MapThreatVector {
 export interface MapLink {
   from: LatLng
   to: LatLng
-  tone: 'real' | 'potential'
+  /** ★ AW1.6 — `blocked` : la seule route franchit la Ligne verte / une frontière. */
+  tone: 'real' | 'potential' | 'blocked'
   color: string
   /** Le lien d'une institution choisie, plus épais. */
   emphasis?: boolean
+  /** ★ AW1.4 — les kilomètres PAR LA ROUTE et la durée, portés par le lien. */
+  label?: string
 }
 
 export interface MapRouteLine {
@@ -1574,6 +1577,47 @@ export default function MapCanvas({
           'line-color': ['get', 'color'],
           'line-width': ['case', ['get', 'emphasis'], 4, 2.6],
           'line-opacity': ['case', ['get', 'emphasis'], 1, 0.8],
+        },
+      })
+      /* ★★ AW1.6 — la seule route passe au-delà de la Ligne verte : un trait
+         d'ALERTE, pointillé serré, qui ne se confond ni avec le réel ni avec
+         le possible. Il ne compte dans aucune couverture. */
+      map.addLayer({
+        id: 'coverage-links-blocked',
+        type: 'line',
+        source: 'coverage-links',
+        filter: ['==', ['get', 'tone'], 'blocked'],
+        layout: { 'line-cap': 'butt', 'line-join': 'round' },
+        paint: {
+          'line-color': readToken('--status-danger'),
+          'line-width': ['case', ['get', 'emphasis'], 3, 2],
+          'line-opacity': 0.9,
+          'line-dasharray': [0.8, 1.2],
+        },
+      })
+      /* ★★ AW1.4 — LE LIEN PORTE SES KILOMÈTRES ROUTIERS ET SA DURÉE, au
+         milieu du trait. Les étiquettes qui se chevauchent sont écartées par
+         MapLibre (collision), et reviennent en zoomant. */
+      map.addLayer({
+        id: 'coverage-links-label',
+        type: 'symbol',
+        source: 'coverage-links',
+        filter: ['!=', ['get', 'label'], ''],
+        layout: {
+          'symbol-placement': 'line-center',
+          'text-field': ['get', 'label'],
+          'text-font': ['Noto Sans Regular'],
+          'text-size': ['case', ['get', 'emphasis'], 13, 11.5],
+          'text-allow-overlap': false,
+          'text-padding': 4,
+          // Horizontal, jamais couché le long du trait : un chiffre se lit droit.
+          'text-rotation-alignment': 'viewport',
+          'text-pitch-alignment': 'viewport',
+        },
+        paint: {
+          'text-color': readToken('--text-primary'),
+          'text-halo-color': readToken('--surface-base'),
+          'text-halo-width': 1.8,
         },
       })
       applyLinks(map, linksRef.current)
@@ -3155,7 +3199,7 @@ function applyLinks(map: maplibregl.Map, links: MapLink[] | undefined): void {
     type: 'FeatureCollection',
     features: (links ?? []).map((l) => ({
       type: 'Feature' as const,
-      properties: { tone: l.tone, color: l.color, emphasis: l.emphasis ?? false },
+      properties: { tone: l.tone, color: l.color, emphasis: l.emphasis ?? false, label: l.label ?? '' },
       geometry: {
         type: 'LineString' as const,
         coordinates: [

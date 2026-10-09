@@ -646,7 +646,7 @@ export class RoadGraph {
    * Du point rattaché `from` au point rattaché `to`. `null` quand aucun chemin
    * n'existe dans ce que le graphe contient (AI2.6 : l'appelant se replie).
    */
-  shortestPath(from: Snap, to: Snap): RoadPath | null {
+  shortestPath(from: Snap, to: Snap, blocked?: (edge: number) => boolean): RoadPath | null {
     const n = this.lat.length
     const TARGET = n
     const g = new Float64Array(n + 1).fill(Infinity)
@@ -708,6 +708,9 @@ export class RoadGraph {
       for (const e of this.out[u]) {
         const v = this.eTo[e]
         if (done[v]) continue
+        /* ★ AW1.6 — une arête interdite (elle franchit la Ligne verte ou une
+           frontière) n'existe pas pour ce calcul. */
+        if (blocked && blocked(e)) continue
         const cost = g[u] + this.eSeconds[e]
         if (cost < g[v]) {
           g[v] = cost
@@ -950,8 +953,9 @@ export function roadLeg(
   to: LatLng,
   fromSnap: Snap,
   toSnap: Snap,
+  blocked?: (edge: number) => boolean,
 ): RoadLeg | null {
-  const path = graph.shortestPath(fromSnap, toSnap)
+  const path = graph.shortestPath(fromSnap, toSnap, blocked)
   if (!path) return null
   const gaps: Array<[LatLng, LatLng]> = []
   let gapMeters = 0

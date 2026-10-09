@@ -86,7 +86,7 @@
     "linkPotential": "Possible coverage",
     "radius": "Radius",
     "km": "{{km}} km",
-    "distanceRule": "Filtered as the crow flies; choosing an institution measures the road.",
+    "distanceRule": "A link is drawn only if the ROAD fits in the radius. Each link carries its road km and estimated drive time (margin included).",
     "covered": "Covered",
     "uncovered": "Not covered",
     "potential": "Potential",
@@ -116,7 +116,28 @@
     "reaches_one": "Reaches 1 farm",
     "reaches_other": "Reaches {{count}} farms",
     "leadNotCounted": "A waiting-room lead — not in any counter.",
-    "openLeads": "Open the waiting room"
+    "openLeads": "Open the waiting room",
+    "radiusAny": "or any radius:",
+    "kmUnit": "km",
+    "linkLabel": "{{km}} km · {{min}} min",
+    "noRoadShort": "no road",
+    "measuringOne": "measuring…",
+    "beyondOnly": "only beyond the Green Line",
+    "fastestBeyond": "fastest route goes beyond the Green Line ({{km}} km) — route inside Israel shown",
+    "mesh": {
+      "title": "Road distances",
+      "progress": "Measuring road distances: {{done}} of {{total}}",
+      "provisional": "Computed once and kept on this device. Until then, counts are partial.",
+      "summary": "{{road}} road links up to {{km}} km · {{dropped}} dropped (straight line: {{air}})",
+      "unavailable": "Road distances unavailable: the map is not on this device. Offline, download it in settings.",
+      "retry": "Retry",
+      "blocked_one": "One link only runs beyond the Green Line or a border — red, not counted",
+      "blocked_other": "{{count}} links only run beyond the Green Line or a border — red, not counted",
+      "beyond_one": "For one link the fastest route crosses the Green Line — route inside Israel measured",
+      "beyond_other": "For {{count}} links the fastest route crosses the Green Line — route inside Israel measured",
+      "noRoad_one": "One pair has no road on the map",
+      "noRoad_other": "{{count}} pairs have no road on the map"
+    }
   },
   "institutions": {
     "title_one": "1 institution",

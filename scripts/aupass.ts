@@ -1,3 +1,4 @@
+import { haversineKm } from '../src/core/geo'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -82,18 +83,21 @@ const inst = (id: string, engagement: Institution['engagement'], lat: number, ln
 const F = [farm('f1', 'signed', 31.0, 34.5), farm('f2', 'active', 31.5, 34.5), farm('f3', 'visited', 31.0, 34.9), farm('f4', 'declined', 31.0, 34.51)]
 const I = [inst('iA', 'signed', 31.0, 34.6), inst('iB', 'interested', 31.5, 34.6), inst('iC', 'not_relevant', 31.0, 34.5)]
 const L = [{ id: 'l1', name: 'l1', position: { lat: 31, lng: 34.5 }, status: 'not_called', convertedFarmId: null }, { id: 'l2', name: 'l2', position: null, status: 'not_called', convertedFarmId: null }] as unknown as Lead[]
-const r20 = computeCoverage({ farms: F, leads: L, institutions: I, radiusKm: 20, visible: COVERAGE_PRESETS.prepare })
+/* ★ AW1 — sans route mesurée, AUCUN lien (plus de repli au vol d'oiseau) : la
+   doublure dit « route = vol d'oiseau » pour garder ces vérifications-là. */
+const asRoad = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => ({ kind: 'road' as const, km: haversineKm(a, b), seconds: haversineKm(a, b) * 60, trackKm: 0, fastestBeyond: null })
+const r20 = computeCoverage({ farms: F, leads: L, institutions: I, radiusKm: 20, visible: COVERAGE_PRESETS.prepare, road: asRoad })
 check('A318 couvertes / non couvertes / potentiel', r20.counts.farms === 3 && r20.counts.covered === 1 && r20.counts.uncovered === 2 && r20.counts.potential === 1 && r20.counts.unreachable === 1, JSON.stringify(r20.counts))
 check('A318 « לא רלוונטי » ne couvre rien et est compté à part', r20.institutionsNotRelevant === 1)
 check('A318 « declined » n’est sur la carte dans aucune famille', !r20.places.some((p) => p.id === 'f4'))
-const r60 = computeCoverage({ farms: F, leads: L, institutions: I, radiusKm: 60, visible: COVERAGE_PRESETS.prepare })
+const r60 = computeCoverage({ farms: F, leads: L, institutions: I, radiusKm: 60, visible: COVERAGE_PRESETS.prepare, road: asRoad })
 check('A318 le rayon élargi recompose', r60.counts.covered === 3 && r60.links.length > r20.links.length, JSON.stringify(r60.counts))
-const road = computeCoverage({ farms: F, leads: L, institutions: I, radiusKm: 20, visible: COVERAGE_PRESETS.prepare, roadKm: (i, f) => (i === 'iA' && f === 'f1' ? 25 : undefined) })
-check('A318 la ROUTE retire un lien que le vol d’oiseau gardait', road.counts.covered === 0 && road.roadLinks === 0)
+const road = computeCoverage({ farms: F, leads: L, institutions: I, radiusKm: 20, visible: COVERAGE_PRESETS.prepare, road: (a, b) => (a.lat === 31 && a.lng === 34.6 && b.lat === 31 && b.lng === 34.5 ? { ...asRoad(a, b), km: 25 } : asRoad(a, b)) })
+check('A318 la ROUTE retire un lien que le vol d’oiseau gardait', road.counts.covered === 0 && road.mesh.dropped >= 1)
 check('A318 lien réel ≠ lien possible', r20.links.some((l) => l.tone === 'real') && r20.links.some((l) => l.tone === 'potential'))
 check('A320 les pistes ne comptent dans aucune ferme', r20.counts.farms === 3 && computeCoverage({ farms: F, leads: [], institutions: I, radiusKm: 20, visible: COVERAGE_PRESETS.prepare }).counts.farms === 3)
 check('A320 piste sans lieu comptée, hors carte', r20.leadsUnplaced === 1 && r20.leadsPlaced === 1)
-const meet = computeCoverage({ farms: F, leads: L, institutions: I, radiusKm: 20, visible: COVERAGE_PRESETS.meeting })
+const meet = computeCoverage({ farms: F, leads: L, institutions: I, radiusKm: 20, visible: COVERAGE_PRESETS.meeting, road: asRoad })
 check('A319 « פגישה » : ni pistes, ni en cours, ni à démarcher', meet.places.every((p) => p.family === 'signed' || p.family === 'engaged'))
 
 // --- A328 — les onze de la tournée ne sont pas dupliquées par le classeur ------

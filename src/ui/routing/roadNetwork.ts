@@ -7,6 +7,8 @@ import {
   roadLeg,
 } from '@core/roadGraph'
 import type { RoadLeg, Snap } from '@core/roadGraph'
+import { BorderEdges, measurePair } from '@core/roadMesh'
+import type { PairRoad } from '@core/roadMesh'
 import type { LatLng } from '@core/types'
 
 import { BASEMAP_URL, RetryingSource } from '../components/basemap'
@@ -248,4 +250,25 @@ export async function planRoadRoute(points: LatLng[]): Promise<RoadRouteResult> 
     stats: graph.stats(),
     breakdown: { ...loadBreakdown },
   }
+}
+
+/**
+ * ★★ AW1 — UNE PAIRE DU MAILLAGE DE COUVERTURE, SUR LE MÊME GRAPHE que les
+ *    itinéraires : une tuile lue pour une tournée sert au maillage, et
+ *    inversement. `null` = l'archive n'a pas pu être lue (rien n'est gardé :
+ *    ce n'est pas « sans chemin », c'est « pas encore mesurable »).
+ */
+const borderEdges = new BorderEdges(graph)
+export async function measureMeshPair(from: LatLng, to: LatLng): Promise<PairRoad | null> {
+  try {
+    return await measurePair(graph, borderEdges, async (tiles) => {
+      await ensureTiles(tiles)
+    }, from, to)
+  } catch {
+    return null
+  }
+}
+
+export function roadGraphStats(): ReturnType<RoadGraph['stats']> {
+  return graph.stats()
 }

@@ -86,7 +86,7 @@
     "linkPotential": "Couverture possible",
     "radius": "Rayon",
     "km": "{{km}} km",
-    "distanceRule": "Filtré à vol d’oiseau ; choisir une institution mesure la route.",
+    "distanceRule": "Un lien n'est tracé que si la ROUTE tient dans le rayon. Chaque lien porte ses km par la route et sa durée estimée (marge comprise).",
     "covered": "Couvertes",
     "uncovered": "Non couvertes",
     "potential": "Potentiel",
@@ -116,7 +116,28 @@
     "reaches_one": "Atteint 1 ferme",
     "reaches_other": "Atteint {{count}} fermes",
     "leadNotCounted": "Une piste de la salle d’attente — dans aucun compteur.",
-    "openLeads": "Ouvrir la salle d’attente"
+    "openLeads": "Ouvrir la salle d’attente",
+    "radiusAny": "ou n'importe quel rayon :",
+    "kmUnit": "km",
+    "linkLabel": "{{km}} km · {{min}} min",
+    "noRoadShort": "aucune route",
+    "measuringOne": "calcul…",
+    "beyondOnly": "seulement au-delà de la Ligne verte",
+    "fastestBeyond": "le plus rapide passe au-delà de la Ligne verte ({{km}} km) — trajet par Israël affiché",
+    "mesh": {
+      "title": "Distances par la route",
+      "progress": "Calcul des distances routières : {{done}} sur {{total}}",
+      "provisional": "Calculé une fois et gardé sur l'appareil. D'ici là, les compteurs sont partiels.",
+      "summary": "{{road}} liens par la route jusqu'à {{km}} km · {{dropped}} écartés (vol d'oiseau : {{air}})",
+      "unavailable": "Distances routières impossibles : la carte n'est pas disponible sur l'appareil. Hors ligne, il faut la télécharger dans les réglages.",
+      "retry": "Réessayer",
+      "blocked_one": "Un lien ne passe qu'au-delà de la Ligne verte ou d'une frontière — en rouge, non compté",
+      "blocked_other": "{{count}} liens ne passent qu'au-delà de la Ligne verte ou d'une frontière — en rouge, non comptés",
+      "beyond_one": "Pour un lien, le plus rapide passe au-delà de la Ligne verte — trajet par Israël mesuré",
+      "beyond_other": "Pour {{count}} liens, le plus rapide passe au-delà de la Ligne verte — trajet par Israël mesuré",
+      "noRoad_one": "Une paire sans route sur la carte",
+      "noRoad_other": "{{count}} paires sans route sur la carte"
+    }
   },
   "institutions": {
     "title_one": "1 institution",

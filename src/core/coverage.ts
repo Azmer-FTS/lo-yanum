@@ -1,6 +1,8 @@
 import { farmPoint, haversineKm } from './geo'
 import { isInstitutionEngaged, isInstitutionProspect } from './institutions'
 import type { Institution } from './institutions'
+import type { BorderKind } from './borders'
+import type { PairRoad } from './roadMesh'
 import type { Farm, FarmStatus, LatLng, Lead } from './types'
 
 /**
@@ -19,12 +21,18 @@ import type { Farm, FarmStatus, LatLng, Lead } from './types'
  *    et les pistes n'entrent dans AUCUN de ses compteurs de fermes (AS6.8,
  *    AU4.7) : elles sont des points de contexte, comptées à part.
  *
- * ★ LA DISTANCE. Un lien existe si la ferme est à `radiusKm` ou moins de
- *   l'institution. La distance retenue est celle de la ROUTE quand elle est
- *   connue (`roadKm`), sinon le vol d'oiseau, et chaque lien dit laquelle.
- *   La route étant toujours plus longue que le vol d'oiseau, le filtre à vol
- *   d'oiseau ne manque JAMAIS une ferme : il en garde au plus quelques-unes de
- *   trop, que la route retire dès qu'elle est mesurée.
+ * ★★ LA DISTANCE — AW1 (2026-10-09), QUI REMPLACE AU4.6. Un lien existe si
+ *   la ROUTE tient dans `radiusKm`, et seulement alors. Le vol d'oiseau ne
+ *   sert qu'à écarter sans calcul ce qui est de toute façon hors de portée
+ *   (une route n'est jamais plus courte) ; une paire que le vol d'oiseau
+ *   laisse passer et dont la route n'est PAS ENCORE mesurée n'est pas un
+ *   lien : elle est comptée « en cours », jamais dessinée, jamais comptée.
+ *   ⛔ Aucun repli au vol d'oiseau : c'est lui qui reliait tout à tout.
+ *
+ * ★ LA LIGNE VERTE (AW1.6). Un lien dont la seule route franchit la Ligne
+ *   verte ou une frontière est `blocked` : dessiné à part, compté dans
+ *   AUCUNE couverture. Un lien dont le plus RAPIDE la franchit mais qui a un
+ *   trajet par Israël porte ce trajet, et le dit (`fastestBeyond`).
  */
 
 export type CoverageFamily = 'signed' | 'pipeline' | 'leads' | 'engaged' | 'prospect'
@@ -37,7 +45,17 @@ export const PIPELINE_STATUSES: readonly FarmStatus[] = ['incoming_request', 'to
 
 export const DEFAULT_RADIUS_KM = 35
 export const RADIUS_MIN_KM = 5
-export const RADIUS_MAX_KM = 80
+/**
+ * ★ AW1.7 — la fin de la RÉGLETTE, pas une limite : le champ chiffré à côté
+ *   accepte n'importe quel rayon (`clampRadiusKm`), sans plafond.
+ */
+export const RADIUS_MAX_KM = 150
+
+/** Un rayon saisi : entier, au moins 1 km, AUCUN plafond (AW1.7). */
+export function clampRadiusKm(km: number): number {
+  if (!Number.isFinite(km)) return DEFAULT_RADIUS_KM
+  return Math.max(1, Math.round(km))
+}
 
 export type Visible = Record<CoverageFamily, boolean>
 
@@ -53,8 +71,14 @@ export interface CoverageLink {
   farmId: string
   /** Réelle (institution engagée) ou possible (à démarcher). */
   tone: 'real' | 'potential'
+  /** Kilomètres PAR LA ROUTE (le trajet par Israël quand il existe). */
   km: number
-  measured: 'road' | 'air'
+  /** Durée de roulage estimée, en secondes, sans marge. */
+  seconds: number
+  /** La seule route franchit la Ligne verte / une frontière : non comptée. */
+  blocked: BorderKind | null
+  /** Le plus rapide passe au-delà ; `km` est alors celui du trajet par Israël. */
+  fastestBeyond: null | { line: BorderKind; km: number; seconds: number }
   from: LatLng
   to: LatLng
 }
@@ -85,8 +109,23 @@ export interface CoverageResult {
   institutionsNotRelevant: number
   /** Liens dont l'institution a un point à vérifier (AU3.4). */
   uncertainLinks: number
-  /** Liens dont la distance est celle de la route. */
-  roadLinks: number
+  /** AW1 — le maillage : ce que la route a fait du filtre à vol d'oiseau. */
+  mesh: {
+    /** Paires que le vol d'oiseau laisse dans le rayon (toutes familles). */
+    airPairs: number
+    /** Dont la route tient dans le rayon : les liens (comptés ou bloqués). */
+    roadPairs: number
+    /** Écartées : la route dépasse le rayon. */
+    dropped: number
+    /** Pas encore mesurées. */
+    pending: number
+    /** Sans aucun chemin sur le réseau. */
+    noRoad: number
+    /** La seule route passe au-delà d'une ligne. */
+    blocked: number
+    /** Le plus rapide passe au-delà, un trajet par Israël existe. */
+    fastestBeyond: number
+  }
 }
 
 export interface CoverageInput {
@@ -95,8 +134,8 @@ export interface CoverageInput {
   institutions: readonly Institution[]
   radiusKm: number
   visible: Visible
-  /** La distance sur route connue entre une institution et une ferme, en km. */
-  roadKm?: (institutionId: string, farmId: string) => number | undefined
+  /** La route mesurée entre une institution et une ferme ; `undefined` = pas encore. */
+  road?: (institution: LatLng, farm: LatLng) => PairRoad | undefined
 }
 
 export function farmFamily(status: FarmStatus): 'signed' | 'pipeline' | null {
@@ -162,29 +201,48 @@ export function computeCoverage(input: CoverageInput): CoverageResult {
   for (const f of farmPlaces) reach.set(f.id, { real: 0, potential: 0 })
   const links: CoverageLink[] = []
   let uncertainLinks = 0
-  let roadLinks = 0
+  const mesh = { airPairs: 0, roadPairs: 0, dropped: 0, pending: 0, noRoad: 0, blocked: 0, fastestBeyond: 0 }
   for (const { i, family, position } of institutions) {
     for (const f of farmPlaces) {
-      const air = haversineKm(position, f.position)
-      if (air > radiusKm) continue
-      const road = input.roadKm?.(i.id, f.id)
-      const km = road ?? air
-      if (km > radiusKm) continue
-      const r = reach.get(f.id)!
-      if (family === 'engaged') r.real++
-      else r.potential++
+      // Le filtre EXACT : une route n'est jamais plus courte que le vol d'oiseau.
+      if (haversineKm(position, f.position) > radiusKm) continue
+      mesh.airPairs++
+      const road = input.road?.(position, f.position)
+      if (road === undefined) {
+        mesh.pending++
+        continue
+      }
+      if (road.kind === 'none') {
+        mesh.noRoad++
+        continue
+      }
+      if (road.km > radiusKm) {
+        mesh.dropped++
+        continue
+      }
+      mesh.roadPairs++
+      const blocked = road.kind === 'beyondOnly' ? road.line : null
+      const fastestBeyond = road.kind === 'road' ? road.fastestBeyond : null
+      if (blocked) mesh.blocked++
+      if (fastestBeyond) mesh.fastestBeyond++
+      if (!blocked) {
+        const r = reach.get(f.id)!
+        if (family === 'engaged') r.real++
+        else r.potential++
+      }
       if (!visible[family]) continue
       links.push({
         institutionId: i.id,
         farmId: f.id,
         tone: family === 'engaged' ? 'real' : 'potential',
-        km,
-        measured: road === undefined ? 'air' : 'road',
+        km: road.km,
+        seconds: road.seconds,
+        blocked,
+        fastestBeyond,
         from: position,
         to: f.position,
       })
       if (i.positionUncertain) uncertainLinks++
-      if (road !== undefined) roadLinks++
     }
   }
 
@@ -206,7 +264,7 @@ export function computeCoverage(input: CoverageInput): CoverageResult {
     institutionsUnplaced,
     institutionsNotRelevant,
     uncertainLinks,
-    roadLinks,
+    mesh,
   }
 }
 
