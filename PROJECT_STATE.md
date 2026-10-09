@@ -104,6 +104,21 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **Passe AV TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-10-08) — commit de code
+  servi : **`ec062a2`**. Les **onze institutions de la tournée** sont en base
+  (« חתום » à confirmer, provenance de chaque point dans `position_source` et
+  `ETAT.md` § AV1) ; confirmation en un toucher dans מפת כיסוי ; import
+  apparié (alias, graphies, type, proximité). **Épingle d'un appui long / clic
+  droit / bouton** sur toutes les cartes : nom d'abord, puis ferme ·
+  institution · piste · point de repère (table `landmarks`, aucun compteur).
+  Migrations `20261008000200` + `20261008000300` (jalons `20261008122125`,
+  `20261008123118`) appliquées par le MCP ; historique 41/41.
+  Portes : `bun run avui` (A322–A327, **55/55 déployé**, rouge 3/27 sur
+  `485d2cc`), `bun run avpass` (15), `bun run aupass` (47, dont A328).
+  Rejouer sur le déployé : `BASE_URL=https://azmer-fts.github.io/lo-yanum ONLY=checks bun run avui`.
+  - ⚠️ **מכינת עצמונה est au מושב נווה, pas à שומריה (60 km)** ; la
+    ישיבה תיכונית נווה est dans le même מושב. Trois points « à vérifier » :
+    כפר מימון, כאייל, שומריה לצעירים.
 - **Passe AU TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-10-08) — commit de code
   servi et vérifié : **`485d2cc`**. Épingles sur ordinateur (calque « ישויות »
   éteint par appareil : le sujet n'est plus jamais masqué, une pastille le
@@ -954,6 +969,12 @@ d'être déployé.
    (point 0ter).
 
 ## Questions ouvertes / ce qui attend le PO
+
+0-AV. **Confirmer les onze** (מפת כיסוי › « לאשר » › ✓ ou le bon statut), et
+   dire où sont exactement **מכינת כאייל**, **ישיבת כפר מיימון** (« בית
+   יהודה ») et **שומריה לצעירים** (introuvable en ligne) : un appui long sur le
+   bon endroit… crée une nouvelle fiche ; pour DÉPLACER une institution, il
+   faut aujourd'hui passer par Supabase ou par moi (pas encore d'écran).
 
 0-AU. ⚠️ **LE CLASSEUR DES 64 INSTITUTIONS N'ÉTAIT PAS JOINT.** Le PO
    l'importe lui-même : מפת כיסוי › ייבוא (ou `/coordinator/import/institutions`),

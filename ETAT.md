@@ -1,5 +1,120 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AV — LES ONZE INSTITUTIONS DE LA TOURNÉE, ET POSER UNE ÉPINGLE SUR LA CARTE. 2026-10-08. LIRE EN PREMIER.**
+>
+> Ordre suivi : AV1 (déployé seul d'abord, `aad9190` : le PO en avait besoin le jour même) → AV2 → AV3.
+>
+> ## AV1 — LES ONZE INSTITUTIONS DU 08.10.2026
+>
+> **En base sur `lo-yanum-prod`** (migration `20261008000200_av_institutions_tournee.sql`,
+> jalon MCP `20261008122125`) : 11 lignes, toutes « חתום » ET **à confirmer**
+> (`engagement_confirmed = false`), positionnées, responsable, `met_on =
+> 2026-10-08`. Elles étaient visibles sur la carte de l'app en ligne dès
+> l'écriture en base, avant tout déploiement (l'app ignore les colonnes
+> qu'elle ne connaît pas). Colonnes neuves : `engagement_confirmed`, `met_on`,
+> `students`, `position_source`, `aliases`.
+>
+> **Provenance des coordonnées** (recherche faite : he.wikipedia API
+> `prop=coordinates`, OpenStreetMap Nominatim/Overpass, sites des réseaux) :
+>
+> | Institution | Point | Source | Confiance |
+> |---|---|---|---|
+> | ישיבת ההסדר שדרות (= אפיקי דעת) | 31.52453, 34.59071 | OSM « ישיבת הסדר אפיקי דעת », rue ההסתדרות + he.wikipedia, 70 m d'écart | haute |
+> | ישיבת הסדר קרית גת | 31.60576, 34.76184 | he.wikipedia | moyenne-haute (une source) |
+> | ישיבת דרך חיים (קרית גת) | 31.60831, 34.77654 | he.wikipedia | moyenne-haute ; ⚠️ les sources nomment le הרב אמיר ממן à la tête |
+> | ישיבת נוה דקלים (אשדוד) | 31.77892, 34.65042 | he.wikipedia | moyenne-haute ; ≠ אולפנת נווה דקלים (OSM 31.7395, 34.6375) |
+> | ישיבת אור עציון (מרכז שפירא) | 31.69871, 34.70866 | he.wikipedia, dans le village | haute |
+> | ישיבת כרם ביבנה | 31.81843, 34.72221 | OSM + he.wikipedia identiques | haute |
+> | ישיבת כפר מיימון (« בית יהודה », ישיבה תיכונית) | 31.43081, 34.53638 | centre du מושב (OSM/wiki), bâtiment non trouvé | moyenne, ≤ 1 km — **signalée « à vérifier »** |
+> | מכינת כאייל (אופקים) | 31.31258, 34.62085 | mechinot.org.il « au cœur d'אופקים » ; centre-ville | basse-moyenne, ≤ 2 km — **à vérifier** |
+> | שומריה לצעירים | 31.43223, 34.88374 | introuvable en ligne ; centre du קיבוץ שומריה | lieu sûr, institution non vérifiée — **à vérifier** |
+> | מכינת עצמונה (= מכינת עצם) | 31.16198, 34.32989 | he.wikipedia « מכינה קדם-צבאית עצם » + OSM « מכינת עצם », 450 m | haute |
+> | ישיבה תיכונית נווה | 31.16217, 34.32981 | he.wikipedia (ynave.co.il) | haute |
+>
+> ★★ **מכינת עצמונה N'EST PAS À שומריה.** La מכינה fondée à עצמונה (Gouch
+> Katif) est passée par יתד puis s'est installée en 2010-2011 au **מושב נווה**
+> (מ״א אשכול, près de la frontière égyptienne). שומריה a bien accueilli des
+> évacués d'עצמונה en 2006, mais la מכינה n'y est pas : **60 km** séparent
+> les deux points. Les deux rendez-vous du PO sont donc dans deux lieux
+> distincts. Et **la ישיבה תיכונית נווה est dans ce même מושב נווה**, à 25 m
+> de la מכינה (seule localité « נווה » plausible : מושב נווה, fondé en 2008 par
+> des familles d'עצמונה — trouvée, pas devinée).
+>
+> Effectifs publiés : שדרות **500** (chiffre du PO ; המכלול dit ~600, le plus
+> gros vivier), מכינת עצם **~300** (ancien site de la מכינה), ישיבה תיכונית נווה
+> **~190** (he.wikipedia, תשפ״ו), דרך חיים ~150 (ויקישיבה, NON saisi : la
+> fiche ne nomme pas le même responsable). Les autres : vides.
+> Responsables : ceux du PO, tels quels (« הרב רעי פרץ » gardé ; le fondateur
+> connu de la מכינה est le הרב רפי פרץ — signalé, pas corrigé ; « הרב פנדל »
+> complété en « הרב דוד פנדל », confirmé par les sources).
+>
+> **Dans l'app** : bandeau « 11 מוסדות סומנו חתום — לאשר », onglet « לאשר »
+> par défaut tant qu'il en reste, bouton « ✓ אישור » sur chaque ligne (un
+> toucher), et choisir un autre statut = corriger ET confirmer. La bulle
+> porte responsable, date de rencontre, effectif ; la fiche, la provenance
+> du point.
+> **Import ultérieur** : appariement par nom ET localité, avec les autres noms
+> (`aliases`), « קרית/קריית », « נוה/נווה », le mot de type (une אולפנה n'est
+> pas une ישיבה) et la proximité (1,5 km) ; ambigu = création montrée, jamais
+> tranchée en silence. Un point vérifié n'est ni remplacé ni re-déclaré douteux.
+>
+> ## AV2 — POSER UNE ÉPINGLE SUR LA CARTE
+>
+> Dans `MapCanvas`, donc sur **tous** les écrans à carte : **appui long**
+> (550 ms, doigt ou souris, immobile à 10 px), **clic droit**, et un **bouton
+> dédié** « épingle + » dans la barre de la carte (l'appui long ne se devine
+> pas). Une fenêtre demande **le nom, et rien d'autre** ; « המשך » reste
+> éteint sans nom (la base refuse aussi un nom vide). Puis **quatre natures** :
+> חווה חדשה · מוסד חדש · **פנייה לטיפול** (ajoutée : « il y a un éleveur
+> là-bas » n'est pas encore une ferme — c'est une piste, salle d'attente, dans
+> aucun compteur) · נקודת ציון. Pas de « rendez-vous » : il exige date et
+> heure, donc un formulaire. La fiche naît avec son nom et son point, יישוב
+> vide (la localité la plus proche est AFFICHÉE pour situer, jamais écrite).
+> Table `landmarks` (migration `20261008000300`, jalon `20261008123118`,
+> `grant`, rien pour `anon`) ; un repère paraît sur toutes les cartes,
+> nommé ; le toucher permet de le renommer ou le supprimer. ⛔ Dans aucun
+> compteur.
+> ★★ **Défaut trouvé au vrai doigt** : la fenêtre naît pendant l'appui, et le
+> doigt qui se lève rendait le focus à la carte — le clavier de l'iPad ne se
+> serait pas ouvert. Le focus est repris dans le `touchend`, le seul moment où
+> iPadOS accepte d'ouvrir le clavier.
+>
+> ## AV3 — VÉRIFICATION
+>
+> **Déployé et servi : `ec062a2`** (code ; AV1 seul d'abord en `aad9190`).
+> - `bun run avui` (A322–A327, appui long par `Input.dispatchTouchEvent`, onze
+>   écrans × 1 032 et 402, souris et clic droit à 1 440) : **55/55 sur le
+>   déployé**. **Rouge avant** (`485d2cc`) : **3 PASS / 27 FAIL**
+>   (`docs/av/avui-rouge-avant-485d2cc.log`).
+> - `bun run avpass` (A324 domaine + base, A326 code) : 15/15. `aupass`
+>   (A328 : les onze contre un classeur qui les écrit autrement + deux pièges,
+>   ממדבר מתנה et אולפנת נווה דקלים) : 47/47.
+> - Régressions : `auui` 61/61, `atui` 202/202, `persist`, `mapping` (30
+>   tables ; et la porte lit désormais les `alter` à plusieurs clauses),
+>   `tokens`, `aopass`, `armigrations` 41.
+> - Rouges vus : `avui` (focus perdu au lever du doigt — vrai défaut) ;
+>   `mapping` (ne lisait que la 1re clause d'un `alter`) ; `auui` sur le
+>   déployé `da7f968`, A318 : la liste s'ouvrait sur « לאשר » ou non selon la
+>   vitesse d'hydratation — vrai défaut, filtre décidé à chaque rendu.
+> - Captures du déployé, clair et sombre × 402 / 1 032 / 1 440 :
+>   `docs/screenshots/avpass/deployed/` (fond de carte sombre parfois absent
+>   sur les captures : tuiles lentes du navigateur de test, pas l'app).
+>
+> ## Décisions AV
+>
+> 1. ★★ **« חתום » posé sans confirmation se distingue de « חתום »**
+>    (`engagement_confirmed`) ; confirmer = un toucher ; corriger = confirmer.
+> 2. ★★ **Un point de coordonnées dit d'où il vient** (`position_source`) ;
+>    un point approximatif est « à vérifier », jamais présenté comme sûr.
+> 3. ★★ **Une épingle a un nom ou n'existe pas** — écran, domaine, base.
+> 4. ★★ **Un geste disponible sur « tous les écrans à carte » vit dans
+>    `MapCanvas`**, pas dans les écrans.
+> 5. **Un appui long se teste au vrai doigt** (protocole du navigateur).
+> 6. **Un état par défaut qui dépend des données se décide à chaque rendu**,
+>    jamais au premier (l'hydratation arrive après).
+>
+> ---
+>
 > 🏁 **PASSE AU — CARTE DE COUVERTURE, ÉPINGLES SUR ORDINATEUR, INSTITUTIONS. 2026-10-08. LIRE EN PREMIER.**
 >
 > Ordre suivi : AU1 → AU2 → AU3 → AU4 → AU5.
