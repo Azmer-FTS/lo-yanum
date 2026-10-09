@@ -165,8 +165,13 @@ export function CoverageScreen() {
   const [selected, setSelected] = useState<Selected>(null)
   const [selectKey, setSelectKey] = useState(0)
   const [routeTo, setRouteTo] = useState<string | null>(null)
-  const [listFilter, setListFilter] = useState<ListFilter>(() => (getInstitutions().some(isInstitutionToConfirm) ? 'toConfirm' : 'all'))
+  /* ★ AV1 — `null` = automatique : « לאשר » tant qu'il en reste, sinon « הכול ».
+     Décidé à CHAQUE rendu et non au premier : l'hydratation arrive après,
+     et un choix figé sur une liste encore vide changeait selon la vitesse
+     du réseau (vu par `auui` sur le déployé). Le choix du PO, lui, reste. */
+  const [chosenFilter, setListFilter] = useState<ListFilter | null>(null)
   const toConfirmCount = institutions.filter(isInstitutionToConfirm).length
+  const listFilter: ListFilter = chosenFilter ?? (toConfirmCount > 0 ? 'toConfirm' : 'all')
   const usage = usageOf(prefs.visible)
 
   const selectedInst = selected?.kind === 'institution' ? (institutions.find((i) => i.id === selected.id) ?? null) : null

@@ -288,6 +288,9 @@ await guard('A318', async () => {
   const engaged = INSTITUTIONS.find((i) => i.engagement === 'signed' && i.position)!
   await o.page.locator('[data-testid="coverage-radius-input"]').fill('35')
   await o.page.waitForTimeout(500)
+  // AV1 — la liste peut s'ouvrir sur « לאשר » : « הכול » d'abord.
+  await o.page.locator('#institutions-filter-tab-all').first().click()
+  await o.page.waitForTimeout(300)
   await o.page.locator(`[data-testid="institution-row-${engaged.id}"]`).click()
   await o.page.waitForTimeout(12_000)
   const roads = await o.page.locator('[data-testid="coverage-reach-list"] button[data-road]').evaluateAll((els) => els.map((e) => e.getAttribute('data-road')))

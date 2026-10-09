@@ -1,0 +1,44 @@
+$ bun run scripts/avui.ts
+  app : http://localhost:5399  (build local dist-av-before)
+
+  A322 — les onze institutions de la tournée : sur la carte, « חתום », à confirmer
+  --------------------------------------------------------------------------------
+  PASS  A322 onze institutions sur la carte, nommées  — 11
+  FAIL  A322 — section interrompue  — getAttribute: Timeout 30000ms exceeded.
+
+  A323 · A327 — l’appui long au doigt pose une épingle, sur TOUS les écrans à carte
+  ---------------------------------------------------------------------------------
+  FAIL  A327 1032 /coordinator : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 1032 /coordinator/agenda : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 1032 /coordinator/farms : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 1032 /coordinator/leads : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 1032 /coordinator/route : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 1032 /coordinator/route/free : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 1032 /coordinator/coverage : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 1032 /coordinator/volunteers : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 1032 /coordinator/drivers : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 1032 /coordinator/missions : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 1032 /coordinator/incidents : appui long → la demande de nom  — rien · focus 
+  PASS  A323 1032 un glisser de la carte n’ouvre rien
+  FAIL  A327 402 /coordinator : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 402 /coordinator/agenda : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 402 /coordinator/farms : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 402 /coordinator/leads : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 402 /coordinator/route : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 402 /coordinator/route/free : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 402 /coordinator/coverage : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 402 /coordinator/volunteers : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 402 /coordinator/drivers : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 402 /coordinator/missions : appui long → la demande de nom  — rien · focus 
+  FAIL  A327 402 /coordinator/incidents : appui long → la demande de nom  — rien · focus 
+  PASS  A323 402 un glisser de la carte n’ouvre rien
+  FAIL  A323 1440 souris : appui long → la demande de nom
+  FAIL  A323 souris — section interrompue  — click: Timeout 30000ms exceeded.
+
+  A324 · A325 · A326 — pas d’épingle sans nom ; la fiche naît avec son nom et son point
+  -------------------------------------------------------------------------------------
+  FAIL  A324 — section interrompue  — isDisabled: Timeout 30000ms exceeded.
+  FAIL  A325 — section interrompue  — fill: Timeout 30000ms exceeded.
+
+  3 PASS, 27 FAIL
+error: script "avui" exited with code 1
