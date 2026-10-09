@@ -176,7 +176,7 @@ const noOrg = applySplit(r0, null, "farm")
 check('A341 « pas d’exploitation dans le nom »', noOrg.orgName === "" && noOrg.firstName === "אריאל" && noOrg.lastName === 'גדש עציון')
 const inst = draftsFromPaste('הרב אמיר ממן ישיבת דרך חיים 050-1231234', 'institution')[0]
 check('A341 institution : titre gardé avec le prénom, ישיבת = début de l’institution', inst.firstName === 'הרב אמיר' && inst.lastName === 'ממן' && inst.orgName === 'ישיבת דרך חיים', `${inst.firstName} | ${inst.lastName} | ${inst.orgName}`)
-const paste = draftsFromPaste('אריאל גדש עציון 0528902606', 'farm')[0]
+const paste = draftsFromPaste('אריאל גדש עציון 0500000001', 'farm')[0]
 check('A339 collage : « אריאל » n’est pas pris pour la ville', paste.firstName === 'אריאל' && paste.orgName === 'גד״ש עציון' && paste.place === '', `${paste.firstName} | ${paste.orgName} | ${paste.place}`)
 
 section('A336 — l’emplacement : Waze, Google Maps, coordonnées')

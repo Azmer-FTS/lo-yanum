@@ -306,8 +306,8 @@ export function locateDraft(d: ContactDraft, text: string, kind: ContactKind): C
 // ---------------------------------------------------------------------------
 
 /**
- * « +972 52-890-2606 » → « 052-890-2606 » : le format LOCAL du PO, pour
- * l'affichage. L'app stocke `052-8902606` depuis AA4 (`canonicalLeadPhone`) ;
+ * « +972 50-123-4567 » → « 050-123-4567 » : le format LOCAL du PO, pour
+ * l'affichage. L'app stocke `050-1234567` depuis AA4 (`canonicalLeadPhone`) ;
  * les deux écritures désignent les mêmes chiffres, que comparent les doublons.
  */
 export function localPhoneDisplay(phone: string): string {
