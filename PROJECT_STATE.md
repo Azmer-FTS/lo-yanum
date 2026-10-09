@@ -104,6 +104,31 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **Passe AW TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-10-09) — commit de code
+  servi : **`5679ccd`** (AW1 seul d'abord en `c02dce6`). Branche `main`, à
+  jour avec `origin/main` (vérifier : `git log --oneline origin/main..HEAD`).
+  - **AW1** — carte de couverture : un lien n'existe que si la ROUTE tient
+    dans le rayon (35 km, jeu réel : 121 liens au vol d'oiseau → 70 par la
+    route) ; km routiers + durée (avec la marge) sur chaque lien ; calcul une
+    fois par appareil, gardé (`lo-yanum:road-mesh:v1`), seules les paires
+    neuves/déplacées recalculées, progression affichée ; Ligne verte /
+    frontières (`src/core/borders.json`, régénérable par
+    `bun run scripts/awborders.ts`) : trajet par Israël mesuré, lien
+    « au-delà seulement » rouge et non compté ; rayon sans plafond (champ
+    chiffré). Graphe routier rendu indépendant de l'ordre des tuiles.
+  - **AW2** — écran `/coordinator/add` : type d'abord (חוות → pistes,
+    מוסדות → institutions, מתנדבים → volontaires rattachés à UNE institution
+    choisie ou créée sur place), trois chemins (saisie, .vcf multiples,
+    collage), aperçu corrigeable d'un toucher. Migration
+    `20261009000100_aw_contacts.sql` (jalon MCP `20261009142649`) appliquée :
+    `volunteers.institution_id`, `leads.source` + `vcf`. Historique 42/42.
+  - Portes : `bun run awpass` (60, pur), `bun run awui` (51, **51/51
+    déployé**, rouge 0/7 sur `3b6424a`). Rejouer sur le déployé :
+    `BASE_URL=https://azmer-fts.github.io/lo-yanum ONLY=checks bun run awui`,
+    captures : `ONLY=captures CAPTURES=1 …` (chaque moitié < 10 min).
+    Le fichier .vcf réel du PO : `private/aw/` (ignoré), les portes le lisent
+    s'il est là, sinon `docs/aw/fixtures/forme-reelle.vcf` (fictif).
+  - Récit : `ETAT.md` § AW.
 - **Passe AV TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-10-08) — commit de code
   servi : **`ec062a2`**. Les **onze institutions de la tournée** sont en base
   (« חתום » à confirmer, provenance de chaque point dans `position_source` et
@@ -573,6 +598,11 @@ bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
 bun run typecheck && bun run appass && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run contrast && bun run akpass && bun run accept
 
+# LA PASSE AW :
+bun run awpass                                                     # A329–A342 en pur (archive + jeu réels)
+bun run awui                                                       # A329–A342 au rendu, build local (51)
+BASE_URL=https://azmer-fts.github.io/lo-yanum ONLY=checks bun run awui   # le DÉPLOYÉ (51/51)
+
 # LA PASSE AT :
 bun run atsync                                                     # A298 : deux appareils, AUCUN événement de retour simulé
 BASE_URL=https://azmer-fts.github.io/lo-yanum bun run atsync       # le DÉPLOYÉ (17/17)
@@ -855,6 +885,16 @@ d'être déployé.
 - Les deux violations A57 de `AnchorMap.tsx` signalées en §36.6 ont été
   corrigées en U4 ; celles qui restent sont ailleurs.
 
+## Ce que le PO fait à l'ouverture (AW, 2026-10-09)
+
+1. **Mettre l'app à jour** sur l'iPhone ET l'iPad (« גרסה חדשה » → « עדכון
+   עכשיו ») : version `5679ccd` ou plus récente.
+2. **מפת כיסוי** : la première fois, laisser l'écran ouvert pendant « מחשב
+   מרחקים בכביש » (une fois par appareil). Lire le bilan « N קישורים בכביש עד
+   35 ק״מ · M נפסלו » et les km/minutes sur chaque trait.
+3. **הוספת אנשי קשר** (salle d'attente › bouton, ou « + ») : choisir חוות,
+   déposer ou choisir les fiches .vcf, corriger dans « לפני שמירה », valider.
+
 ## Ce que le PO fait à l'ouverture (AT, 2026-10-07)
 
 1. **Mettre à jour l'iPhone ET l'iPad** (bandeau « גרסה חדשה » → « עדכון
@@ -969,6 +1009,16 @@ d'être déployé.
    (point 0ter).
 
 ## Questions ouvertes / ce qui attend le PO
+
+0-AW. **Le vrai numéro de la fiche .vcf jointe au brief est dans
+   l'historique public** (commit `f175d0d`, retiré dans `5679ccd`). Le
+   purger demande une réécriture d'historique (`git filter-repo` + push
+   forcé) : décision du PO. Même sujet que 0-AT (passer le dépôt en privé
+   avec GitHub Pro règle les deux).
+   **Distance = trajet le plus RAPIDE** (comme Waze), pas le plus court en
+   km : à confirmer par le PO pour son engagement de 30–35 km.
+   **Temps du premier calcul sur l'iPad réel** : non mesuré (~20 s dans le
+   navigateur de test) — à regarder à l'ouverture.
 
 0-AV. **Confirmer les onze** (מפת כיסוי › « לאשר » › ✓ ou le bon statut), et
    dire où sont exactement **מכינת כאייל**, **ישיבת כפר מיימון** (« בית

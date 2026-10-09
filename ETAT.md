@@ -1,5 +1,203 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AW — DISTANCES ROUTIÈRES SUR LE MAILLAGE, ET AJOUT DE CONTACTS (.vcf, saisie, collage). 2026-10-09. LIRE EN PREMIER.**
+>
+> Ordre suivi : AW1 (déployé seul d'abord, `c02dce6`) → AW2 → AW3.
+>
+> ## AW1 — LE MAILLAGE SUR LA ROUTE
+>
+> **Le constat se reproduisait exactement** : sur le jeu réel (19 fermes de
+> `lo-yanum-prod`, les 11 institutions de la tournée, toutes « חתום »), à
+> 35 km le vol d'oiseau traçait **121 liens** ; la route n'en garde que
+> **70** — **51 écartés**. À 30 km : 104 → 49 (55 écartés). La route fait en
+> moyenne **×1,66** le vol d'oiseau sur les liens gardés (×1,72 à 30 km),
+> cohérent avec les +69 % d'AI3. Fermes couvertes : 17 → 16 sur 18.
+>
+> - **Règle** : un lien n'existe que si la ROUTE tient dans le rayon
+>   (`core/coverage.ts`). Le vol d'oiseau ne sert plus qu'à écarter SANS
+>   calcul ce qui est de toute façon hors de portée — c'est exact, pas une
+>   approximation : une route n'est jamais plus courte que le vol d'oiseau.
+>   ⛔ Une paire pas encore mesurée n'est PAS un lien (ni tracée, ni comptée).
+> - **Distance affichée = la route**, durée estimée avec la marge du PO
+>   (réglage AI3.2) : chaque lien porte « 23 ק״מ · 28 דק׳ » au milieu du
+>   trait (calque `coverage-links-label`, horizontal, collisions écartées par
+>   MapLibre) ; la liste de l'institution choisie aussi.
+> - **Le plus rapide (en temps), comme Waze** : la distance est celle du
+>   trajet le plus rapide, pas du plus court en km. Un trajet plus court mais
+>   plus lent existe parfois (ex. שדרות → une ferme : 27,7 km par les petites
+>   routes, 36,5 km par la voie rapide). C'est le trajet qu'un volontaire
+>   roulera.
+> - **Le calcul** (`core/roadMesh.ts`, pur ; `ui/routing/roadMesh.ts`) :
+>   1. **Calculé une fois, GARDÉ sur l'appareil** (`lo-yanum:road-mesh:v1`,
+>      clé = les deux points au mètre + l'archive de la carte) : ni fermes
+>      ni institutions ne bougent d'elles-mêmes.
+>   2. **Seul ce qui change est recalculé** : une épingle déplacée change SA
+>      clé ; une ferme ajoutée n'ajoute que ses paires ; un rayon élargi
+>      n'ajoute que les paires nouvelles.
+>   3. **Les tuiles de toute la file en UN lot** (`preloadCorridors`), puis
+>      les paires une à une en rendant la main entre deux : l'écran répond.
+>   4. **Progression affichée** (« קורא את רשת הכבישים… », puis « מחשב
+>      מרחקים בכביש: 37 מתוך 101 », barre), puis le BILAN : « 70 קישורים
+>      בכביש עד 35 ק״מ · 51 נפסלו (בקו אווירי היו 121) ».
+> - **Temps mesuré (A332)** — jeu complet à 35 km :
+>   | | paires | temps |
+>   |---|---:|---:|
+>   | hors navigateur (Bun, Mac Intel), à froid | 129 | **3,9 s** (686 tuiles, 340 000 sommets) |
+>   | hors navigateur, à chaud (graphe construit) | 129 | **2,2 s** |
+>   | relu de la mémoire de l'appareil | 129 | **2 ms** |
+>   | Chromium (build local), à froid | 101 | **18,7–20,8 s** (738 tuiles, 352 000 sommets) |
+>   | Chromium, rouvert (mémoire gardée) | 101 | **0 recalcul**, maillage complet 1,5 s après l'ouverture |
+>   | Chromium, DÉPLOYÉ `5679ccd`, à froid | 101 | **22,6 s** (738 tuiles, 352 000 sommets) |
+>   | Chromium, DÉPLOYÉ, rouvert | 101 | **0 recalcul**, maillage complet 1,5 s après l'ouverture |
+>   Le premier calcul est long dans le navigateur de test (rendu de carte
+>   logiciel, machine chargée) ; il n'a lieu qu'une fois par appareil.
+> - **Ligne verte (A331)** : les lignes viennent de l'archive de la carte
+>   elle-même (`boundaries`, `kind = country`, `scripts/awborders.ts` →
+>   `core/borders.json`, 25 Ko gzip) : disputées = Ligne verte / Golan ;
+>   reconnues = Gaza, Égypte, Jordanie, Liban. Si le plus rapide franchit une
+>   ligne, un second calcul INTERDIT les arêtes qui la coupent : le lien porte
+>   alors le **trajet par Israël**, et le dit (« הדרך המהירה עוברת מעבר לקו
+>   הירוק (X ק״מ) — מוצגת הדרך בתוך ישראל », « ⚠ » sur l'étiquette). S'il n'y
+>   a pas de trajet par Israël : lien « au-delà seulement », pointillé ROUGE,
+>   compté dans AUCUNE couverture. Jeu réel : à 35 km, aucun ; à 60 km,
+>   שומריה לצעירים → חוות מרגי (55,7 km au-delà, 58,1 km par Israël) ; à
+>   80 km, dix, tous vers « החווה של צביקה » (Jérusalem, par la 443).
+> - **Rayon libre (A333)** : réglette 5–150 km (elle s'étend au rayon saisi)
+>   ET un champ chiffré sans plafond (250 km vérifié : 198/198 paires).
+> - ★★ **Défaut trouvé en mesurant (et corrigé)** : le graphe routier
+>   dépendait de l'ORDRE de lecture des tuiles. `repairJunctions` reliait à
+>   une route voisine (≤ 5 m) un bout de route posé au bord d'une tuile dont
+>   la voisine n'était pas encore lue — un passage qui n'existe pas. Un bout
+>   au bord attend maintenant sa voisine (`awaitsNeighbour`). Et le maillage
+>   charge l'union des couloirs AVANT de router : sinon le plus rapide d'une
+>   paire dépendait des paires routées avant (29 paires sur 129 différaient
+>   de plus de 500 m).
+>
+> ## AW2 — AJOUTER DES CONTACTS : `/coordinator/add`
+>
+> Un écran, trois étapes numérotées, qui dit lui-même ce qu'il attend :
+> 1. **« מה מוסיפים? »** — trois grandes tuiles : **חוות** (→ salle
+>    d'attente), **מוסדות** (→ carte de couverture), **מתנדבים** (→ liste des
+>    volontaires). Tant que rien n'est choisi, les chemins sont grisés et
+>    l'écran dit pourquoi. Pour des volontaires, **l'institution du lot**,
+>    choisie UNE fois (liste) ou **créée sur place** (« מוסד שלא ברשימה »).
+>    ★ **Pourquoi le type d'abord, et où il sert** : il décide où la fiche va,
+>    QUELS MOTS du nom sont l'exploitation (גד״ש, משק, חוות…) ou l'institution
+>    (ישיבת, מכינת…), et contre quoi on cherche les doublons — pour un lot de
+>    vingt, une question au lieu de vingt. ⚠️ Là où il ne sert pas : quand on
+>    vient d'un écran qui le sait déjà (salle d'attente → `?type=farm`,
+>    volontaires → `?type=volunteer`, carte de couverture → `?type=institution`),
+>    il est déjà choisi : on ne repose pas la question.
+> 2. **Trois chemins côte à côte**, nommés : « הקלדה » (prénom, nom, נייד,
+>    nom de la ferme / de l'institution, UN champ « מיקום » : lien Waze —
+>    complet, live-map, ou court à géohash —, lien Google Maps — le point du
+>    lieu `!3d!4d` avant le centre de la vue —, coordonnées décimales ou en
+>    degrés ; reconnu à la frappe, « ✓ קישור Waze · 31.42140, 34.58820 » ;
+>    un lien raccourci `maps.app.goo.gl` est DIT, jamais deviné ; seul un nom
+>    est obligatoire), « קבצי איש קשר (.vcf) » (glisser-déposer + bouton
+>    « בחירת קבצים », plusieurs fichiers, plusieurs fiches par fichier),
+>    « הדבקת טקסט » (le lecteur d'AS6/AT3).
+> 3. **« לפני שמירה »** — chaque fiche lue : titre, personne, numéro AU
+>    FORMAT LOCAL (05X-XXX-XXXX), lieu (« 📍 נתיבות (מרכז היישוב — לבדוק) » ou
+>    « בלי מיקום »), doublon (« כבר בחדר ההמתנה: … », décoché), ce qui
+>    manque. ★ **Le découpage se corrige d'un toucher** : les mots du nom
+>    d'origine sont des pastilles, toucher un mot fait commencer
+>    l'exploitation à ce mot ; « בלי שם החווה בשם » l'annule ; « ✎ » ouvre
+>    les champs pour un nom FAUX. Rien n'est écrit avant « הוספת N… ».
+>
+> **Le format réel (A339, A340)** : le fichier du PO (7 lignes, sans retour
+> final, `item1.TEL;waid=…`, `X-ABLabel`) donne **אריאל** (contact) et
+> **גד״ש עציון** (exploitation, graphie ramenée au גרשיים), numéro local
+> 05X-XXX-XXXX affiché, `05X-XXXXXXX` stocké (format de l'app depuis AA4).
+> Lus aussi : vCard 2.1 d'Android en quoted-printable, CRLF, lignes
+> repliées, `END:VCARD` manquant, ORG, EMAIL, ADR (→ localité épinglée « à
+> vérifier »), NOTE, URL/GEO portant un lien de lieu, fiche sans nom (dite).
+> ⛔ Le vrai fichier est dans `private/aw/` (ignoré) : le dépôt est public.
+> Les tests du dépôt utilisent la même forme avec un numéro fictif.
+>
+> **Ce qui est écrit** : ferme → **piste** de la salle d'attente (nom =
+> exploitation, contact = personne, source `vcf` / `paste` / `manual`) — ⚠️
+> pas une fiche de ferme : un contact reçu n'est pas encore une exploitation
+> du parc, et la piste ne compte dans aucun compteur (AS6.8) ; institution →
+> fiche d'institution (type déduit du nom, statut « טרם נוצר קשר », point
+> d'une localité = « à vérifier ») ; volontaire → volontaire rattaché
+> (`institution_id` + nom de l'institution dans `yeshiva`), âge inconnu = 0,
+> non affiché ; une institution nommée sur SA fiche part en note. Une
+> institution créée depuis un lot de volontaires naît « נוצר קשר ».
+>
+> **Base** : migration `20261009000100_aw_contacts.sql` (jalon MCP
+> `20261009142649`) appliquée sur `lo-yanum-prod` : `volunteers.institution_id`
+> (→ `institutions`, `on delete set null`, index) ; `leads.source` accepte
+> `vcf`. Aucune table neuve, rien pour `anon`.
+>
+> **Entrées** : salle d'attente (le bouton « הדבקה » ouvre l'écran, type
+> חווה — l'ancien panneau de collage a disparu), « + » du tableau de bord et
+> de la liste des volontaires, carte de couverture (« הוספת אנשי קשר » à côté
+> de « ייבוא »). Pas d'entrée dans le rail : plus aucune teinte libre (AU).
+>
+> ## AW3 — VÉRIFICATION
+>
+> **Déployé et servi : `5679ccd`** (code ; AW1 seul d'abord en `c02dce6`).
+> `/demo/` et `/bakasha/` répondent 200.
+> - `bun run awpass` (pur, archive et jeu réels) : **60/60** — A329 (121 → 70
+>   liens à 35 km), A330, A331, A332 (temps), A333, et AW2 en pur (fiche
+>   réelle, quoted-printable, lignes repliées, Waze/Google/coordonnées,
+>   doublons, découpage).
+> - `bun run awui` (A329–A342 au rendu, Chromium + WebKit tactile pour
+>   l'iPad) : **51/51 en local ET sur le déployé `5679ccd`**
+>   (`docs/aw/awui-deploye-5679ccd.log`). **Rouge avant** (build de
+>   `3b6424a`) : **0 PASS / 7 FAIL** (`docs/aw/awui-rouge-avant-3b6424a.log` :
+>   pas de bilan routier, pas d'écran d'ajout).
+> - Captures du DÉPLOYÉ, clair et sombre × 402 / 1 032 / 1 440, maillage
+>   routier et écran d'ajout avec ses trois chemins et l'aperçu :
+>   `docs/screenshots/awpass/deployed/` (12 images, 0 erreur de page).
+> - Régressions vertes en local : `auui` 61/61, `asui` 57/57, `atui`
+>   202/202, `avui` 55/55, `aupass` 47/47, `aipass` 32/32, `mapping` 36/36,
+>   `persist` 127, `tokens`, `contrast`, `appass` 107, `aopass` 113,
+>   `aspass` 84, `armigrations` 42.
+> - **Rouges vus pendant la passe** : `auui` A318 (le graphe dépendait de
+>   l'ordre des tuiles — vrai défaut, voir AW1) ; `awui` A335 (un volontaire
+>   « אריאל גדש עציון » : les marqueurs d'exploitation n'étaient pas cherchés
+>   pour un volontaire — vrai défaut) ; `awui` A334 (ma porte : les mêmes
+>   numéros dans deux types SONT des doublons) ; `asui` A292 (« רפת בדיקה »
+>   sur la ligne d'avant son numéro était perdu, et les tirets restaient dans
+>   le nom — vrais défauts) ; `avui` A326 (lisait les compteurs pendant le
+>   calcul) ; `mapping` (`institutionId` absent ≠ null) ; `tokens` A57 (un
+>   contour de carte) ; `aupass` A321 (l'écran d'ajout lit les institutions :
+>   pour les choisir, pas pour compter).
+> - ⚠️ **Le premier calcul du maillage prend ~20 s dans le navigateur de
+>   test** (Mac Intel, rendu logiciel) ; il n'a lieu qu'une fois par appareil.
+>   Non mesuré sur l'iPad réel du PO.
+> - ⚠️ **Le vrai numéro de la fiche jointe a été poussé** dans `f175d0d`
+>   (placeholder du collage, un commentaire, un test), retiré dans `5679ccd` ;
+>   il reste dans l'HISTORIQUE du dépôt public (pas de réécriture
+>   d'historique sans l'accord du PO).
+>
+> ## Décisions AW
+>
+> 1. ★★ **UN LIEN DE COUVERTURE = LA ROUTE TIENT DANS LE RAYON.** Le vol
+>    d'oiseau n'écarte que l'impossible ; jamais de repli.
+> 2. ★★ **La distance est celle du trajet le plus RAPIDE** (comme Waze), et
+>    la durée porte la marge du PO.
+> 3. ★★ **Un trajet qui franchit la Ligne verte ou une frontière n'est pas
+>    un lien** ; le trajet par Israël le remplace et le dit, sinon le lien est
+>    « au-delà seulement », rouge, non compté.
+> 4. ★★ **Un calcul long se fait UNE fois par appareil** et se garde ; seul
+>    ce qui change se recalcule ; la progression se voit.
+> 5. ★★ **Le graphe routier ne dépend pas de l'ordre de lecture** des
+>    tuiles (un bout au bord attend sa voisine).
+> 6. ★★ **Le type d'abord, pour tout un lot** ; il décide la destination, le
+>    découpage du nom et les doublons.
+> 7. ★★ **Un découpage de nom est une PROPOSITION**, corrigeable d'un
+>    toucher ; jamais de contact au nom complet collé quand un marqueur est
+>    trouvé. Le prénom d'une personne n'est jamais lu comme une localité.
+> 8. **Un contact « ferme » devient une piste**, pas une ferme du parc.
+> 9. ⛔ **Aucune donnée personnelle réelle dans le dépôt public** (fiches de
+>    test fictives ; le vrai fichier dans `private/`).
+>
+> ---
+>
+
 > 🏁 **PASSE AV — LES ONZE INSTITUTIONS DE LA TOURNÉE, ET POSER UNE ÉPINGLE SUR LA CARTE. 2026-10-08. LIRE EN PREMIER.**
 >
 > Ordre suivi : AV1 (déployé seul d'abord, `aad9190` : le PO en avait besoin le jour même) → AV2 → AV3.

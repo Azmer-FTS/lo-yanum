@@ -1,0 +1,67 @@
+$ bun run scripts/awui.ts
+  app : https://azmer-fts.github.io/lo-yanum  (DÉPLOYÉ)
+  fiche réelle : private/aw/אריאל גדש עציון.vcf
+
+  A329 · A330 · A331 · A332 · A333 — le maillage routier, au rendu
+  ----------------------------------------------------------------
+  A332 froid : 22571 ms de calcul, 101 paires, 738 tuiles, 351790 sommets · 24767 ms de l'ouverture au maillage complet
+  PASS  A332 la PROGRESSION s’affiche pendant le premier calcul
+  PASS  A332 premier calcul complet mesuré  — 22571 ms
+  PASS  A329 le bilan dit la route ET le vol d’oiseau  — מרחקים בכביש 72 קישורים בכביש עד 35 ק״מ · 53 נפסלו (בקו אווירי היו 125)
+  PASS  A329 liens tracés = liens tenus par la route  — 72 tracés, 72 par la route, 125 au vol d’oiseau
+  PASS  A330 chaque lien tracé porte « km · דק׳ »  — 35 ק״מ · 37 דק׳ | 32 ק״מ · 31 דק׳
+  PASS  A330 le calque d’étiquettes et le trait d’alerte existent  — {"layer":true,"blockedLayer":true}
+  PASS  A331 un trajet au-delà de la Ligne verte est signalé  — 1 « le plus rapide passe au-delà », 0 « au-delà seulement »
+  PASS  A331 … et son lien porte « ⚠ »  — 1 liens
+  PASS  A333 rayon 250 km accepté, la réglette suit  — 250 ק״מ · réglette 250/250
+  PASS  A333 à 250 km, toutes les paires sont mesurées  — 198/198
+  PASS  A329 aucune erreur de page
+  A332 rouvert : maillage complet 1464 ms après l'ouverture (mémoire de l'appareil)
+  PASS  A332 rouvert : aucune paire recalculée, même maillage  — 72 = 72
+
+  A334 · A335 · A336 — le type d’abord, les trois chemins
+  -------------------------------------------------------
+  PASS  A334 avant le type : les trois chemins sont inactifs, l’écran dit pourquoi
+  PASS  A334 les trois chemins sur le même écran, nommés
+  PASS  A334 aucune erreur de page
+  PASS  A334 « farm » : saisie + fichier + collage → leads  — 1 → 6
+  PASS  A334 « farm » : aucune erreur de page
+  PASS  A334 « institution » : saisie + fichier + collage → institutions  — 11 → 16
+  PASS  A334 « institution » : aucune erreur de page
+  PASS  A335 volontaires : rien avant l’institution
+  PASS  A335 institution créée SANS quitter l’écran  — inst-mv152xx3-1
+  PASS  A335 tout le lot rattaché EN UNE FOIS à l’institution  — 4/4
+  PASS  A335 un volontaire n’hérite pas d’une exploitation dans son nom  — אריאל
+  PASS  A336 sans nom, « שמירה » est éteint
+  PASS  A336 un nom seul suffit
+  PASS  A336 Waze reconnu et épinglé  — 31.4214, 34.5882
+  PASS  A336 Google Maps reconnu et épinglé  — 31.38123, 34.61234
+  PASS  A336 coordonnées reconnu et épinglé  — 31.33333, 34.59501
+  PASS  A336 une fiche avec SEULEMENT un nom est créée
+  PASS  A336 un lien raccourci est DIT, pas deviné
+
+  A337 → A342 — les fiches .vcf
+  -----------------------------
+  PASS  A337 trois fichiers d’un coup → cinq fiches lues  — {"files":"3","contacts":"5"}
+  PASS  A337 le doublon est signalé et décoché  — {"org":"רפת השקד","dup":"lead","on":"false"}
+  PASS  A337 rien n’est écrit avant « הוספה »
+  PASS  A337 autant de fiches que de cochées (4), le doublon non  — 4
+  PASS  A338 un .vcf à trois contacts les crée tous  — גד״ש עציון · משק כהן · חוות הגבעה · משה
+  PASS  A339 le fichier réel : אריאל = contact, גד״ש עציון = exploitation  — גד״ש עציון / אריאל
+  PASS  A339 jamais un contact nommé « אריאל גדש עציון »
+  PASS  A340 +972 … → numéro local 052-890-2606  — 052-8902606
+  PASS  A340 source « vcf »
+  PASS  A338 un lien Waze dans la fiche pose l’épingle
+  PASS  A338 une adresse exploitable pose l’épingle (centre de la localité)  — נתיבות 31.42151
+  PASS  A340 l’aperçu affiche 052-890-2606  — 052-890-2606
+  PASS  A341 un toucher déplace la limite personne / exploitation  — אריאל | גדש | עציון
+  PASS  A341 … et revient d’un autre toucher
+  PASS  A341 le nom corrigé est celui écrit  — גד״ש עציון החדש / אריאלי
+  PASS  A341 une ligne se retire
+  PASS  A342 sélecteur : plusieurs fichiers, .vcf accepté  — {"multiple":true,"accept":".vcf,.vcard,text/vcard,text/x-vcard,text/directory"}
+  PASS  A342 WebKit (iPad) : deux fichiers par le sélecteur → quatre fiches
+  PASS  A342 le bouton de sélection fait au moins 44 px  — 44 px
+  PASS  A342 ordinateur : deux fichiers déposés → six fiches
+  PASS  A342 aucune erreur de page
+
+  51 PASS, 0 FAIL
