@@ -104,9 +104,10 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **Passe AX — REMISE EN ORDRE DE L'ARCHITECTURE** (2026-10-10/11) — commit de
-  code **`b4b3562`** (poussé, déployé : voir `ETAT.md` § AX11 pour le commit
-  servi et les chiffres sur le déployé). Branche `main`.
+- **Passe AX TERMINÉE, POUSSÉE ET DÉPLOYÉE — REMISE EN ORDRE DE
+  L'ARCHITECTURE** (2026-10-10/11) — commit de code servi et vérifié :
+  **`905158c`** (après `b4b3562`). Branche `main`, à jour avec `origin/main`.
+  Sur le déployé : `axui` 111/111, clics 5/5, 98 captures, 0 erreur.
   - **Inventaire AVANT toute modification** : `docs/ax/ax2-inventaire.md`
     (écrans, doublons D1→D12, écrans à réunir/séparer, chemins sans retour,
     clics, architecture, DÉCOUPAGE). Carte des écrans atteignables :
@@ -631,6 +632,13 @@ bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
 bun run typecheck && bun run appass && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run contrast && bun run akpass && bun run accept
 
+# LA PASSE AX :
+bun run axpass                                                     # A343 · A344 · A345–A347 · A350 · A353 en pur (40)
+bun run axui                                                       # A345–A354 au rendu, build local (111)
+BEFORE=dist-ax-before SKIP_BUILD=1 ONLY=clicks bun run axui        # A354 avant/après (build de e8570e5 : `git worktree` + vite build avec la base factice)
+BASE_URL=https://azmer-fts.github.io/lo-yanum ONLY=checks bun run axui   # le DÉPLOYÉ (111/111)
+BASE_URL=https://azmer-fts.github.io/lo-yanum/demo OUT=docs/ax/atteignable-deploye.json bun run axmap   # carte des écrans (jumeau)
+
 # LA PASSE AW :
 bun run awpass                                                     # A329–A342 en pur (archive + jeu réels)
 bun run awui                                                       # A329–A342 au rendu, build local (51)
@@ -918,6 +926,25 @@ d'être déployé.
 - Les deux violations A57 de `AnchorMap.tsx` signalées en §36.6 ont été
   corrigées en U4 ; celles qui restent sont ailleurs.
 
+## Ce que le PO fait à l'ouverture (AX, 2026-10-11)
+
+1. **Mettre l'app à jour** sur l'iPhone ET l'iPad : version `905158c` ou
+   plus récente (הגדרות › נתונים › « גרסת האפליקציה »).
+2. **Le rail** : trois temps titrés — גיוס · תכנון · ביצוע — chaque entrée
+   nommée. Le bouton sous le logo le déplie (le choix reste).
+3. **מוסדות** (nouvel écran) : confirmer les institutions « לאשר », voir
+   leurs volontaires.
+4. **מפת כיסוי** : choisir « דקות נסיעה » (35), régler « תוספת לילה » si les
+   trajets de nuit sont plus lents ; ⓘ à côté de « טווח » dit de quoi est
+   faite la durée.
+5. **תכנון מסלול** : donner un nom aux tournées ; « המסלולים השמורים » les
+   garde toutes (même jour compris).
+6. **Les régions mal tracées** : חוות › ⋯ › « עריכת אזורים » → choisir la
+   région, déplacer les sommets (ou ✎ pour tout redessiner au doigt), שמירה.
+7. **Ajouter** : « + » → le nom, puis ce que c'est. Une liste de volontaires
+   reçue d'une institution : « + » › מתנדב… ou `/add` › « רשימה בקובץ Excel
+   / CSV » › choisir l'institution › le fichier.
+
 ## Ce que le PO fait à l'ouverture (AW, 2026-10-09)
 
 1. **Mettre l'app à jour** sur l'iPhone ET l'iPad (« גרסה חדשה » → « עדכון
@@ -1042,6 +1069,14 @@ d'être déployé.
    (point 0ter).
 
 ## Questions ouvertes / ce qui attend le PO
+
+0-AX. **Lancer AY (la seconde partie de la remise en ordre) ?** Un écran
+   d'import, un seul planificateur, les réglages métier vers leur écran,
+   une garde créée depuis la ferme, le formulaire volontaire relié aux
+   institutions (`docs/ax/ax2-inventaire.md` § 6.3). **Tenue de nuit** :
+   0 % par défaut — à régler par le PO selon ses trajets réels. **Ajouter
+   une ferme** coûte un clic de plus qu'avant au tableau de bord (4 au lieu
+   de 3 ; 3 avec Entrée) : c'est le prix de l'entrée unique.
 
 0-AW. **Le vrai numéro de la fiche .vcf jointe au brief est dans
    l'historique public** (commit `f175d0d`, retiré dans `5679ccd`). Le

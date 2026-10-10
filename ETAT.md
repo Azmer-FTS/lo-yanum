@@ -4,7 +4,8 @@
 >
 > Ordre suivi : AX2 (inventaire, AVANT toute modification) → AX1 → AX3…AX10
 > → AX11. Inventaire complet, doublons nommés, architecture argumentée et
-> découpage : **`docs/ax/ax2-inventaire.md`**. Commit de code : `b4b3562`.
+> découpage : **`docs/ax/ax2-inventaire.md`**. Commits de code : `b4b3562`,
+> puis `905158c` (le secteur d'un contact) — **servi : `905158c`**.
 >
 > ## AX2 — L'INVENTAIRE (résumé ; le détail est dans le document)
 >
@@ -170,10 +171,16 @@
 >
 > ## AX11 — VÉRIFICATION
 >
+> **Servi et vérifié SUR LE DÉPLOYÉ : `905158c`** (les trois adresses ;
+> `version.json`). `axui` **111/111** sur le déployé (vérifications) + **5/5**
+> gestes aboutis (clics) + **98 captures** clair/sombre × 402/1032/1440 des
+> écrans touchés, 0 erreur de page (`docs/screenshots/axpass/deployed/`).
+> Carte des écrans du jumeau déployé : `docs/ax/atteignable-deploye.json`.
+>
 > Portes : `bun run axpass` (40, pur : inventaire, avant/après, règles dans le
-> code, minutes sur le jeu réel), `bun run axui` (120 au rendu sur le build
-> réel + base factice : A345–A354, captures `CAPTURES=1`), carte des écrans
-> `bun run axmap`. Clics mesurés (le robot exécute les gestes, build d'AVANT
+> code, minutes sur le jeu réel), `bun run axui` (111 au rendu sur le build
+> réel + base factice : A345–A354, + 10 de clics avec `BEFORE=`, captures
+> `CAPTURES=1`), carte des écrans `bun run axmap`. Clics mesurés (le robot exécute les gestes, build d'AVANT
 > `e8570e5` contre build d'APRÈS) :
 >
 > | Geste | Avant | Après |
