@@ -104,6 +104,39 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **Passe AX — REMISE EN ORDRE DE L'ARCHITECTURE** (2026-10-10/11) — commit de
+  code **`b4b3562`** (poussé, déployé : voir `ETAT.md` § AX11 pour le commit
+  servi et les chiffres sur le déployé). Branche `main`.
+  - **Inventaire AVANT toute modification** : `docs/ax/ax2-inventaire.md`
+    (écrans, doublons D1→D12, écrans à réunir/séparer, chemins sans retour,
+    clics, architecture, DÉCOUPAGE). Carte des écrans atteignables :
+    `docs/ax/atteignable-avant.json` (35) → `atteignable-apres.json` (37).
+  - Fait : rail en trois temps titrés (גיוס · תכנון · ביצוע), libellés
+    visibles ; écran **מוסדות** (`/coordinator/institutions`) ; une rangée de
+    filtres par écran (tuiles des fermes = filtres ; files de travail
+    visibles même repliées) ; **ⓘ** (`components/InfoTip.tsx`) partout ;
+    contacts en **tableau** (`components/DataTable.tsx`) ; `.line-row` (une
+    ligne reste une ligne) ; couverture **km OU minutes** + tenue de nuit
+    (clé `lo-yanum:coverage-map`) ; **tournées nommées, plusieurs par jour,
+    listées** ; itinéraire libre « שמירה כמסלול חדש » ; colonne région =
+    région qui classe, dès 60 rem ; **un seul `/add` par étapes** (nom → type
+    → ce qu'il demande ; .vcf / collage / liste Excel-CSV rattachée à une
+    institution) ; retours qui suivent le chemin.
+  - **Migration appliquée sur `lo-yanum-prod` par le MCP** :
+    `20261010000100_ax_tours_named.sql` (unicité `tours.day_key` levée,
+    `tours.name`) + jalon `20261010191347`. `armigrations` 43/43.
+  - Portes : `bun run axpass` (40, pur), `bun run axui` (120 au rendu ;
+    `BEFORE=dist-ax-before ONLY=clicks` pour les clics avant/après, build de
+    `e8570e5` avec la base factice), `bun run axmap` (la carte des écrans,
+    sur le jumeau). Rejouer sur le déployé :
+    `BASE_URL=https://azmer-fts.github.io/lo-yanum ONLY=checks bun run axui`,
+    captures `ONLY=captures CAPTURES=1 …`.
+  - Portes d'avant ADAPTÉES à la nouvelle forme (et seulement là) : awui,
+    atui, asui, auui, aqui, aupass (A321), persist. Toutes vertes.
+  - **Seconde partie proposée (AY)** : un écran d'import ; un planificateur ;
+    réglages métier vers leur écran ; garde créée depuis la ferme ;
+    formulaire volontaire relié aux institutions ; une règle de région sur
+    la fiche. Détail : `docs/ax/ax2-inventaire.md` § 6.3.
 - **Passe AW TERMINÉE, POUSSÉE ET DÉPLOYÉE** (2026-10-09) — commit de code
   servi : **`5679ccd`** (AW1 seul d'abord en `c02dce6`). Branche `main`, à
   jour avec `origin/main` (vérifier : `git log --oneline origin/main..HEAD`).

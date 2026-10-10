@@ -1,5 +1,234 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AX — REMISE EN ORDRE DE L'ARCHITECTURE. 2026-10-10/11. LIRE EN PREMIER.**
+>
+> Ordre suivi : AX2 (inventaire, AVANT toute modification) → AX1 → AX3…AX10
+> → AX11. Inventaire complet, doublons nommés, architecture argumentée et
+> découpage : **`docs/ax/ax2-inventaire.md`**. Commit de code : `b4b3562`.
+>
+> ## AX2 — L'INVENTAIRE (résumé ; le détail est dans le document)
+>
+> - **35 écrans atteignables** depuis le tableau de bord avant AX, relevés par
+>   une sonde qui suit chaque lien et clique chaque entrée de menu
+>   (`scripts/axmap.ts` → `docs/ax/atteignable-avant.json`) ; **37 après**
+>   (`atteignable-apres.json`) : + מוסדות, + modifier un poste.
+> - **Ce qui égarait le PO** : un rail de ONZE icônes sans libellé, dans
+>   l'ordre d'arrivée des passes ; l'étape 1 du métier (les institutions)
+>   SANS écran ; « ajouter » à DOUZE endroits, dont un (« חוות » sur l'écran
+>   d'ajout) qui créait une piste et pas une ferme ; ~290 paragraphes d'aide
+>   ouverts d'office.
+> - **Doublons nommés D1→D12** (ajouter une ferme / un volontaire / une
+>   institution ; poser un rendez-vous ; statut d'un contact en onglets ET en
+>   cases ; statut d'une ferme à trois endroits ; RÉGION à trois règles ;
+>   deux planificateurs ; sept imports…).
+> - **Chemins sans retour** : `/add`, garde, incident, fiche de poste, fin
+>   d'import (« חזרה לרשימה » menait TOUJOURS aux volontaires), édition des
+>   régions. Tous corrigés.
+>
+> ## AX1 — L'ARCHITECTURE : TROIS TEMPS, PAS CINQ ÉTAPES
+>
+> Le rail suit le métier du PO, en **trois temps titrés**, chaque entrée
+> NOMMÉE (sous l'icône quand le rail est compact ; dépliable, choix gardé) :
+> `לוח בקרה · יומן` | **גיוס** `אנשי קשר · חוות · מוסדות · מתנדבים · נהגים` |
+> **תכנון** `כיסוי · מסלול` | **ביצוע** `שמירות · אירועים` | `הגדרות`.
+> Pourquoi pas les cinq étapes numérotées : institutions et fermes arrivent
+> en **flux parallèles et continus** (un rail numéroté ferait croire qu'on
+> finit l'étape 1 avant la 2) ; les étapes 1-2-3 ont la même forme (des gens
+> qu'on appelle, qui deviennent des fiches) ; l'étape 5 (les gardes, « le
+> gros du travail ») doit être une DESTINATION qui grandira, pas la dernière
+> ligne d'une liste. Le menu du téléphone prend les mêmes trois groupes.
+> **Écran neuf `/coordinator/institutions`** : tableau (nom, יישוב, סוג,
+> statut + « אישור » d'un toucher, contact, téléphone, **volontaires
+> rattachés**, lieu), filtres d'engagement, tri par colonnes, fiche dépliable
+> (l'éditeur d'AV, extrait dans `ui/institutions/institutionUi.tsx`), carte.
+>
+> ## AX3 — FILTRES ET ONGLETS
+>
+> Règle : un onglet découpe un CONTENU, un filtre restreint une MÊME liste ;
+> **une seule rangée de filtres par écran**. Corrigés :
+> - **contacts** : les cinq onglets de statut → FILTRES (+ « לא רלוונטי »,
+>   qui était une section repliée de plus) ;
+> - **couverture** : l'onglet d'engagement des institutions → filtre ;
+>   « פגישה / הכנה / מותאם » → **un interrupteur « מצב פגישה »** (c'est un
+>   MODE de l'écran, ni onglet ni filtre) ;
+> - **fermes, volontaires, chauffeurs** : la bande de tuiles AU-DESSUS de la
+>   rangée de filtres a disparu ; ses tuiles sont des pastilles DANS la rangée ;
+> - restent des onglets : la fiche de ferme (six contenus) et la barre
+>   d'imports (des écrans différents) ; « קרובות / עברו / בוטלו » des gardes
+>   étaient déjà des filtres.
+> **Les tuiles des fermes (AX3.5) — tranché : ce sont des FILTRES.** On les
+> touche et la liste rétrécit ; leur chiffre est le compte de ce qu'elles
+> gardent, comme « חקלאות 7 ». Elles prennent la forme d'un filtre. Les
+> **files de travail** (בקשות נכנסות, נשכחו, ממתינות למסמכים, לחידוש,
+> לתיחום, פערי שטח) restent VISIBLES même quand la rangée se replie à côté de
+> la carte (AQ1.3 : la demande entrante en tête) ; statut (neuf choix → un
+> sélecteur), type, région, surfaces, מושבים, archive se replient derrière
+> « סינון ». Le seul vrai CHIFFRE (dounams · pondérés) se lit en tête, ne se
+> touche pas, et suit les filtres. La légende de la carte dit les couleurs,
+> plus les comptes. **Couverture** : là, les trois nombres SONT les deux (on
+> les montre à une institution, de loin) — l'écran le dit en une ligne.
+>
+> ## AX4 — L'INFORMATION SECONDAIRE : ⓘ, UNE FORME
+>
+> `components/InfoTip.tsx`. Un ⓘ discret à côté de ce qu'il explique ; le
+> toucher ouvre SUR PLACE un panneau sous la ligne, refermé par ⓘ ou ×.
+> Fermé par défaut, jamais retenu ouvert. **Pas une bulle** : elle cache ce
+> qu'elle explique, se fait couper sur l'iPad près d'un bord ou en RTL, et
+> n'a pas de « survol » au doigt. **Pas un « en savoir plus »** : un libellé
+> de plus partout. Branché sur `PageHeader`, `ListTop`, `Section` et `Field`
+> (une aide de champ de plus de 56 signes passe derrière le ⓘ du libellé ;
+> une courte reste visible). Rangés : sous-titres explicatifs, intros de
+> réglages (19 par deux scripts `scripts/axsweep*.py`, motif exact), aides
+> de l'itinéraire libre, des imports, de la couverture. Mesure (A347) : sur
+> les 14 écrans principaux, **0 paragraphe d'explication (> 80 signes)
+> ouvert d'office** et 0 panneau ouvert.
+>
+> ## AX5 — LES CONTACTS EN TABLEAU
+>
+> `components/DataTable.tsx` (partagé avec מוסדות) : colonnes שם · איש קשר ·
+> טלפון (appel, WhatsApp) · מקום · אזור · סטטוס · הערה · עודכן · נוסף · ⋯ ;
+> **tri par les en-têtes** (un toucher trie, un second inverse, `aria-sort`) ;
+> statuts en filtres ; **ouvrir se voit** : chaque ligne finit par « פרטים ▾ »,
+> la ligne entière se touche, une note vide dit « ✎ הערה », et la fiche se
+> déplie SOUS la ligne (note, **secteur = région**, maintenant choisissable
+> même quand la position la donne, « automatique — X »). Le statut se change
+> DANS sa colonne (quatre cases de 44 px en grand, liste déroulante en étroit ;
+> « לא רלוונטי » dans le ⋯). Les colonnes secondaires cèdent quand le tableau
+> est étroit — jamais une cellule qui passe à la ligne.
+>
+> ## AX6 — UNE LIGNE RESTE UNE LIGNE
+>
+> Règle CSS `.line-row` / `.line-scope` (`index.css`), mesurée sur le
+> CONTENEUR : nom · heure · km · durée sur UNE ligne dès 20 rem, gestes
+> compris dès 40 rem. Appliquée à : étapes du planificateur (qui portent
+> désormais la distance ET la durée PAR LA ROUTE, marge comprise), « היום
+> שלי » (tableau de bord, vue jour de l'agenda), étapes de l'itinéraire libre
+> (quatre rangées → une ligne + une rangée de gestes), gardes de ce soir,
+> totaux du planificateur, tournées et itinéraires enregistrés, contacts,
+> institutions. ⚠️ Le panneau du planificateur à côté de la carte fait 372 px
+> à 1 440 : la pastille « שעה קבועה » est passée avec les gestes pour que les
+> chiffres tiennent.
+>
+> ## AX7 — KILOMÈTRES OU MINUTES
+>
+> Le PO CHOISIT (« דקות נסיעה / ק״מ בכביש », gardé, synchronisé). En
+> minutes : un lien existe si `route × (1 + marge) × (1 + nuit) ≤ minutes`
+> (`core/coverage.ts`, `limitMinutes`) ; le pré-filtre à vol d'oiseau reste
+> EXACT (minutes × 95 km/h, la vitesse la plus haute du graphe). **Chaque lien
+> porte toujours les deux** (« 23 ק״מ · 28 דק׳ »). **La durée est faite de** :
+> le trajet le plus rapide sur le réseau de la carte, à des vitesses de
+> circulation LIBRE par type de route (autoroute 95, principale 70–80,
+> régionale 60, locale 40–50, rue 30, piste 20 km/h) — c'est déjà la nuit
+> pour le trafic — + la marge du PO (15 %, הגדרות) + **une « תוספת לילה »
+> réglable sur l'écran** (0 % par défaut : routes non éclairées, pistes,
+> barrages). Jeu réel (A350) : **35 km → 70 liens ; 35 min (+15 %) → 60 ;
+> avec +25 % de nuit → 41.** Au passage : cet écran partageait la clé
+> `lo-yanum:coverage` avec le seuil des fermes oubliées et l'écrasait à chaque
+> ouverture → `lo-yanum:coverage-map`, écrite sur un geste seulement.
+>
+> ## AX8 — LES ITINÉRAIRES ENREGISTRÉS
+>
+> **Reproduit dans le code, puis au rendu** : `tours.day_key` était UNIQUE
+> (une tournée par JOUR) — la seconde du même jour REMPLAÇAIT la première ;
+> changer la date rechargeait « la » tournée du jour ; et il n'existait AUCUNE
+> liste des tournées : décocher les points effaçait le seul repère. L'itinéraire
+> libre gardait son identifiant après un enregistrement (le vider et le
+> renommer écrasait le premier) et son brouillon ne vivait qu'en mémoire.
+> Corrigé : **migration `20261010000100_ax_tours_named.sql`** (unicité levée,
+> `name`, index ; appliquée par le MCP sur `lo-yanum-prod`, jalon
+> `20261010191347`, historique 43/43) ; enregistrer = METTRE À JOUR la tournée
+> ouverte, « שמירה כמסלול חדש » en crée une autre ; **liste « המסלולים
+> השמורים »** (ouvrir, renommer, supprimer confirmé) ; itinéraire libre idem
+> + brouillon gardé sur l'appareil + suppression confirmée. **Vérifié** :
+> deux tournées le même jour, décochées → deux ; rouvertes → deux ; **autre
+> appareil → deux, avec leur nom** ; itinéraire libre sur un autre appareil
+> (réglages synchronisés) → deux.
+>
+> ## AX9 — LA RÉGION
+>
+> La colonne « אזור » n'apparaissait qu'à 78 rem de tableau — l'iPad du PO
+> en a 77,8 — et affichait le TEXTE LIBRE `farm.region` (vide sur les fiches
+> importées) quand le filtre classait par `farmRegion` (polygone). Désormais
+> dès 60 rem, et c'est la région QUI CLASSE. **Redessiner les limites** :
+> c'est possible depuis l'application (`/coordinator/settings/regions`,
+> Y2) — accessible maintenant aussi par חוות › ⋯ › « עריכת אזורים ».
+>
+> ## AX10 — AJOUTER : UN ENDROIT, PAR ÉTAPES
+>
+> `/coordinator/add` prolongé (pas d'écran de plus) : **① le nom
+> (obligatoire) → ② ce que c'est (cinq types : חקלאי לפנות אליו, כרטיס חווה,
+> מוסד, מתנדב, נהג) → ③ seulement ce que ce type demande.** Rien d'ouvert
+> d'avance (les trois chemins d'AW2 étaient côte à côte, grisés). Les autres
+> sources se choisissent d'un toucher sous le nom : fiches .vcf, texte collé,
+> **liste Excel/CSV** — pour des volontaires, l'institution d'abord, puis
+> l'assistant d'import qui RATTACHE toute la liste (`?institution=`). Une
+> institution s'ajoute à la main, une par une. Le « + » : sur une liste, il
+> va droit à `/add` avec le type ; au tableau de bord, il offre les cinq
+> types (même écran) puis les événements. Entrée dans le nom = « et
+> ensuite ». Les formulaires complets (ferme/מושב, volontaire, chauffeur)
+> restent, nom repris.
+>
+> ## AX11 — VÉRIFICATION
+>
+> Portes : `bun run axpass` (40, pur : inventaire, avant/après, règles dans le
+> code, minutes sur le jeu réel), `bun run axui` (120 au rendu sur le build
+> réel + base factice : A345–A354, captures `CAPTURES=1`), carte des écrans
+> `bun run axmap`. Clics mesurés (le robot exécute les gestes, build d'AVANT
+> `e8570e5` contre build d'APRÈS) :
+>
+> | Geste | Avant | Après |
+> |---|---:|---:|
+> | G1 changer le statut d'un contact | 2 | 2 |
+> | G2 ajouter une ferme | 3 | 4 (3 avec Entrée) |
+> | G3 voir les gardes d'une ferme | 3 | 3 |
+> | G4 poser un rendez-vous de visite | 5 | 5 |
+> | G5 écrire un commentaire sur un contact | 2 (si on le sait) | 2 (annoncé) |
+>
+> Portes d'avant ADAPTÉES là où AX change volontairement la forme (et
+> seulement là) : `awui` (l'ajout par étapes), `atui` (la salle d'attente en
+> tableau, menu en douze tuiles groupées), `asui` (le « + » des contacts, « לא
+> רלוונטי » dans le ⋯), `auui` (filtre et interrupteur de la couverture),
+> `aqui` (la vignette entrante = première des files, visible même repliée),
+> `aupass` A321 (des ÉCRANS lisent les institutions, aucun compteur),
+> `persist` (renommer une tournée ; deux tournées le même jour).
+> Défauts trouvés EN CHEMIN et corrigés : menu ⋯ d'une ligne de tableau coupé
+> (invisible) ; « לא רלוונטי » inatteignable en grand écran ; cases de statut
+> à 40 px ; âge 0 qui bloquait l'enregistrement d'un volontaire (et un vide
+> devenait « 20 ») ; nom d'institution et `institution_id` qui divergeaient ;
+> fiche de poste sans « modifier ».
+>
+> ## Le découpage (AX seule ne range pas tout)
+>
+> **AY, proposée** : un seul écran d'import (7 aujourd'hui) ; un seul
+> planificateur (fiches + points libres, un seul calcul, depuis le point de
+> départ réglé — le planificateur calcule encore la durée TOTALE à vol
+> d'oiseau × 1,35) ; les réglages métier vers leur écran ; une garde se crée
+> depuis la ferme (`/missions/new?farm=`) ; le formulaire volontaire relié à
+> la table des institutions ; une seule règle de région sur la fiche.
+>
+> ## Décisions AX
+>
+> 1. ★★ **Trois temps, pas cinq étapes** (גיוס · תכנון · ביצוע), chaque
+>    entrée NOMMÉE. Les gardes sont une destination, pas une dernière ligne.
+> 2. ★★ **Un onglet découpe un contenu ; un filtre restreint une liste ; une
+>    rangée de filtres par écran.** Une tuile qu'on touche est un filtre et en
+>    a la forme ; un chiffre ne se touche pas.
+> 3. ★★ **Les files de travail restent visibles** quand les filtres se
+>    replient.
+> 4. ★★ **L'aide se range derrière ⓘ, fermée, une seule forme** ; l'essentiel
+>    reste visible en une ligne.
+> 5. ★★ **Une ligne reste une ligne** : ce sont les colonnes qui cèdent, et
+>    la mesure est celle du conteneur, jamais de la fenêtre.
+> 6. ★★ **La borne de couverture se choisit (km ou minutes) ; un lien porte
+>    toujours les deux ; la durée dit de quoi elle est faite.**
+> 7. ★★ **Une tournée s'enregistre par son identifiant, jamais par sa date.**
+> 8. ★★ **Ajouter, c'est `/add`** : le nom, ce que c'est, ce que ça demande.
+> 9. ★ **Un retour suit le chemin pris.**
+> 10. ★ **Une clé de stockage = un réglage.** Une clé synchronisée ne s'écrit
+>     que sur un geste.
+>
+> ---
+>
 > 🏁 **PASSE AW — DISTANCES ROUTIÈRES SUR LE MAILLAGE, ET AJOUT DE CONTACTS (.vcf, saisie, collage). 2026-10-09. LIRE EN PREMIER.**
 >
 > Ordre suivi : AW1 (déployé seul d'abord, `c02dce6`) → AW2 → AW3.

@@ -156,7 +156,9 @@ async function guard(label: string, run: () => Promise<void>): Promise<void> {
   try {
     await run()
   } catch (e) {
-    check(`${label} — section interrompue`, false, (e as Error).message.split('\n')[0])
+    const m = (e as Error).message.split('\n')
+    const w = m.find((l) => /waiting for|locator\(/.test(l))
+    check(`${label} — section interrompue`, false, m[0] + (w ? ` · ${w.trim()}` : ''))
   }
 }
 const box = (l: Locator) => l.boundingBox()
@@ -297,6 +299,9 @@ await guard('A348', async () => {
       await o.page.locator('tr[data-row-key="lead-ax-1"] td').first().click()
       const notes = o.page.locator('[data-testid="lead-notes-lead-ax-1"]')
       check('A348 toucher la ligne OUVRE la fiche : note et secteur', (await notes.isVisible()) && (await o.page.locator('[data-testid="lead-region-lead-ax-1"]').isVisible()))
+      // נתיבות → הנגב : la région DÉDUITE du lieu, celle que montre la colonne « אזור ».
+      const auto = await o.page.locator('[data-testid="lead-region-lead-ax-1"] option').first().innerText()
+      check('A348 le secteur proposé est celui que déduit le lieu (comme la colonne)', /הנגב/.test(auto), auto)
       await notes.fill('לחזור אחרי החג')
       await o.page.locator('[data-testid="leads-top"] h1').click()
       await o.page.waitForTimeout(1500)

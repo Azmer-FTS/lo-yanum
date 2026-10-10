@@ -648,7 +648,8 @@ function LeadDetails({ lead }: { lead: Lead }) {
   const { t } = useTranslation()
   const [notes, setNotes] = useState(lead.notes)
   useEffect(() => setNotes(lead.notes), [lead.notes])
-  const auto = lead.position ? leadRegionId({ ...lead, regionId: null }) : null
+  /* La région qu'on DÉDUIT (point, sinon lieu dit) : la même que la colonne. */
+  const auto = leadRegionId({ ...lead, regionId: null })
   const facts = [lead.contactName !== lead.name ? lead.contactName : '', lead.place].filter(Boolean).join(' · ')
   return (
     <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" data-testid={`lead-details-${lead.id}`}>
