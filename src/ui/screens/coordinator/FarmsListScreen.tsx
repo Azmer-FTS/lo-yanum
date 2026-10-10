@@ -13,6 +13,7 @@ import {
   totalWeightedDunams,
   farmCoverage,
   farmRegion,
+  regionById,
   formatDate,
   getAllVisibleAnchorPoints,
   getAllVisibleFarmZones,
@@ -498,11 +499,10 @@ export function FarmsListScreen() {
            même raison mesurée : « בקשות נכנסות » sur une ligne se coupe à
            402 px dans une vignette de 152 px. */
         <KpiChip
-          label={t('intake.queueLine1')}
+          label={`${t('intake.queueLine1')} ${t('intake.queueLine2')}`}
           value={intakeCount}
           icon="user"
           tone="accent"
-          hint={<span className="font-semibold text-content-primary">{t('intake.queueLine2')}</span>}
           active={intakeOnly}
           onClick={() => setIntakeOnly((v) => !v)}
           testId="farms-intake"
@@ -582,11 +582,10 @@ export function FarmsListScreen() {
            ligne, réservée à la note, porte la fin du nom — le nom entier se
            lit, et la hauteur de la bande ne change pas. */
         <KpiChip
-          label={t('docs.queueLine1')}
+          label={`${t('docs.queueLine1')} ${t('docs.queueLine2')}`}
           value={docsCount}
           icon="document"
           tone="alert"
-          hint={<span className="font-semibold text-content-primary">{t('docs.queueLine2')}</span>}
           active={docsOnly}
           onClick={() => setDocsOnly((v) => !v)}
           testId="farms-awaiting-docs"
@@ -658,60 +657,6 @@ export function FarmsListScreen() {
           testId="farms-area-gap"
         />
       )}
-      {statusKpis.map((k) => (
-        <KpiChip
-          key={k.status}
-          label={t(`farmStatus.${k.status}`)}
-          value={k.count}
-          dot={<FarmStatusDot status={k.status} />}
-          hint={t('farms.kpiDunams', { n: k.dunams.toLocaleString(locale) })}
-          active={status === k.status}
-          onClick={() => setStatus(status === k.status ? null : k.status)}
-          testId={`kpi-${k.status}`}
-        />
-      ))}
-      {/**
-        * ★★ AA3.3 (2026-09-07) — « TOTAL PONDÉRÉ TRIABLE ET FILTRABLE », AND
-        *    THE FILTER IS A KPI CHIP.
-        *
-        * It began as a pill in the filter row and `bun run uipass` costed it:
-        * two more lines of sticky header and two fewer farms on screen. This
-        * strip is where it belongs anyway — G14d's rule for this screen is
-        * that the CHIP IS THE FILTER, the chips already carry a figure under
-        * their count, and this strip scrolls sideways so a chip costs no
-        * height at all. The figure it carries is the one the association
-        * reports.
-        */}
-      <KpiChip
-        label={t('farms.weighted')}
-        value={withAreas.length}
-        icon="landPlot"
-        tone="accent"
-        hint={t('farms.kpiDunams', {
-          n: totalWeightedDunams(farms).toLocaleString(locale),
-        })}
-        active={hasAreas}
-        onClick={() => setHasAreas((v) => !v)}
-        testId="kpi-weighted"
-      />
-      {/* G16 — the entity-kind chip: how many of these records are moshavim,
-          weighted like the status chips, and the chip is the filter. */}
-      {moshavim.length > 0 && (
-        <KpiChip
-          label={t('farms.kpiMoshavim')}
-          value={moshavim.length}
-          icon="home"
-          tone="accent"
-          hint={t('farms.kpiDunams', {
-            n: moshavim
-              .reduce((sum, f) => sum + effectiveAreas(f).total, 0)
-              .toLocaleString(locale),
-          })}
-          active={moshavOnly}
-          onClick={() => setMoshavOnly((v) => !v)}
-          testId="kpi-moshavim"
-        />
-      )}
     </>
   )
 
@@ -773,6 +718,16 @@ export function FarmsListScreen() {
           icon: 'download',
           to: '/coordinator/export',
           testId: 'farms-export',
+        },
+        /* ★★ AX9 — « les limites de mes régions sont mal tracées » : l'éditeur
+           existe (Y2), mais n'était atteignable que par Réglages › מפה ואזורים.
+           Il est aussi ici, là où l'on voit la région d'une ferme. */
+        {
+          key: 'regions',
+          label: t('regionEdit.title'),
+          icon: 'region',
+          to: '/coordinator/settings/regions',
+          testId: 'farms-edit-regions',
         },
       ]}
     />
@@ -839,6 +794,45 @@ export function FarmsListScreen() {
         setArchivedOnly(false)
       }}
     >
+      {/* ★★ AX3.4 — le statut, les surfaces, les מושבים : des FILTRES ordinaires
+          (ils se replient) ; les files de travail, elles, restent en vue. */}
+      {/* ★★ AX3.5 — LE STATUT EST UN CHOIX PARMI NEUF : un sélecteur, son compte
+          dans chaque option (c'étaient neuf tuiles). Les liens « ?status= » du
+          tableau de bord l'ouvrent déjà réglé. */}
+      <PillSelect<FarmStatus | 'all'>
+        value={status ?? 'all'}
+        onChange={(v) => setStatus(v === 'all' ? null : v)}
+        active={status !== null}
+        label={t('farms.statusFilter')}
+        testId="farms-status"
+        options={[
+          { value: 'all', label: t('farms.statusAll') },
+          ...statusKpis.map((k) => ({ value: k.status, label: `${t(`farmStatus.${k.status}`)} · ${k.count}` })),
+        ]}
+      />
+      <KpiChip
+        label={t('farms.withAreas')}
+        value={withAreas.length}
+        icon="landPlot"
+        tone="accent"
+        hint={t('farms.withAreasHint')}
+        active={hasAreas}
+        onClick={() => setHasAreas((v) => !v)}
+        testId="kpi-weighted"
+      />
+      {/* G16 — the entity-kind chip: how many of these records are moshavim,
+          weighted like the status chips, and the chip is the filter. */}
+      {moshavim.length > 0 && (
+        <KpiChip
+          label={t('farms.kpiMoshavim')}
+          value={moshavim.length}
+          icon="home"
+          tone="accent"
+          active={moshavOnly}
+          onClick={() => setMoshavOnly((v) => !v)}
+          testId="kpi-moshavim"
+        />
+      )}
       <RegionFilter value={region} onChange={setRegion} counts={regionCounts} testId="farms-region" />
       {/* G14d — the status pills are gone: the KPI chips above carry status
           filtering now. Only the type pills remain, they have no chip.
@@ -906,6 +900,23 @@ export function FarmsListScreen() {
       searchPlaceholder={t('farms.searchPlaceholder')}
       kpis={kpiChips}
       filters={filterRow}
+      /* ★★ AX3.5 — le seul vrai CHIFFRE de la liste : il suit les filtres. */
+      stat={t('farms.statDunams', {
+        n: filtered.reduce((sum, f) => sum + effectiveAreas(f).total, 0).toLocaleString(locale),
+        w: totalWeightedDunams(filtered).toLocaleString(locale),
+      })}
+      info={
+        <>
+          <p>{t('farms.info')}</p>
+          <ul className="mt-1.5 list-disc ps-5">
+            <li>{t('farms.filterNeglectedHint', { days: neglectDays })}</li>
+            <li>{t('renewal.hint')}</li>
+            <li>{t('farms.filterNoOutlineHint')}</li>
+            <li>{t('farms.filterGapHint', { percent: Math.round(gapThreshold * 100) })}</li>
+            <li>{t('farms.withAreasHint')}</li>
+          </ul>
+        </>
+      }
     >
       {extra}
     </ListTop>
@@ -923,15 +934,14 @@ export function FarmsListScreen() {
         <>
         <ThreatLegend zones={threatZones} vectors={threatVectors} className="mb-2" />
         <ZoneLegend zones={zones} farms={farms} className="mb-2" />
+        {/* ★★ AX3.4 — la légende dit ce que veulent dire les COULEURS ; les
+            comptes sont dans le filtre de statut, à un seul endroit. */}
         <ul className="flex flex-col gap-1.5">
           {STATUSES.map((s) => (
             <li key={s} className="flex items-center gap-2">
               <FarmStatusDot status={s} />
               <span className="text-caption text-content-secondary">
                 {t(`farmStatus.${s}`)}
-              </span>
-              <span className="numeric ms-auto ps-3 text-caption text-content-muted">
-                {farms.filter((f) => f.status === s).length}
               </span>
             </li>
           ))}
@@ -1349,6 +1359,17 @@ function NeglectMark({
   )
 }
 
+/**
+ * ★★ AX9 — « Si l'application sait classer, elle doit savoir afficher. » La
+ * colonne disait `farm.region` (texte libre, vide sur les fiches importées)
+ * quand le filtre classait par `farmRegion` (la région choisie, sinon le
+ * polygone du point). Une seule règle désormais : celle qui classe.
+ */
+export function regionLabel(farm: Farm): string {
+  const id = farmRegion(farm)
+  return (id ? regionById(id)?.name : null) ?? farm.region ?? ''
+}
+
 function FarmsTableHead() {
   const { t } = useTranslation()
   return (
@@ -1360,7 +1381,7 @@ function FarmsTableHead() {
       >
         <RosterHead label={t('missions.farm')} />
         <RosterHead label={t('volunteers.colLocality')} tier="lg" />
-        <RosterHead label={t('farms.colRegion')} tier="xl" />
+        <RosterHead label={t('farms.colRegion')} tier="lg" />
         <RosterHead label={t('farms.colType')} tier="lg" />
         <RosterHead label={t('farms.colStatus')} tier="md" />
         <RosterHead label={t('farms.colDunams')} tier="xl" />
@@ -1446,13 +1467,10 @@ function FarmsTable({
                   </span>
                   <span
                     className="muted block truncate"
-                    title={`${farm.locality} · ${farm.region} · ${t(`farmType.${farm.type}`)}`}
+                    title={`${farm.locality} · ${regionLabel(farm)} · ${t(`farmType.${farm.type}`)}`}
                   >
                     <span data-merge="lg" style={{ ['--col-display' as string]: 'inline' }}>
-                      {farm.locality} · {t(`farmType.${farm.type}`)}
-                    </span>
-                    <span data-merge="xl" style={{ ['--col-display' as string]: 'inline' }}>
-                      {' '}· {farm.region}
+                      {farm.locality} · {regionLabel(farm)} · {t(`farmType.${farm.type}`)}
                     </span>
                   </span>
                 </span>
@@ -1463,9 +1481,10 @@ function FarmsTable({
                 {farm.locality}
               </span>
 
-              {/* 3 — region */}
-              <span data-col="xl" className="truncate text-caption text-content-secondary">
-                {farm.region}
+              {/* 3 — region. ★★ AX9 — LA RÉGION QUI CLASSE est celle qui s'affiche
+                  (`farmRegion`, celle du filtre), pas le texte libre saisi. */}
+              <span data-col="lg" className="truncate text-caption text-content-secondary" data-testid="farm-region-cell">
+                {regionLabel(farm)}
               </span>
 
               {/* 4 — type */}

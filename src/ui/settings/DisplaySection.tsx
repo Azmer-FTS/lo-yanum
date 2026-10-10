@@ -56,8 +56,7 @@ export function DisplaySection() {
   const mismatch = choice === 'system' && shown !== null && shown !== device
 
   return (
-    <Section title={t('settings.display.title')} className="mt-6" collapseKey="settings-display">
-      <p className="muted">{t('settings.display.hint')}</p>
+    <Section title={t('settings.display.title')} className="mt-6" collapseKey="settings-display" info={t('settings.display.hint')}>
 
       <div className="mt-3">
         <span className="label">{t('theme.label')}</span>
@@ -139,8 +138,7 @@ export function DisplaySection() {
 export function RegionsEditSection() {
   const { t } = useTranslation()
   return (
-    <Section title={t('regionEdit.title')} className="mt-6" collapseKey="settings-regions">
-      <p className="muted">{t('regionEdit.hint')}</p>
+    <Section title={t('regionEdit.title')} className="mt-6" collapseKey="settings-regions" info={t('regionEdit.hint')}>
       <Link
         to="/coordinator/settings/regions"
         data-testid="settings-regions-open"

@@ -122,8 +122,8 @@ export function AgreementDocSection() {
           ? t('settings.agreementDoc.summaryShipped')
           : t('settings.agreementDoc.summaryChanged')
       }
+      info={t('settings.agreementDoc.intro')}
     >
-      <p className="muted mb-3">{t('settings.agreementDoc.intro')}</p>
 
       <textarea
         dir="rtl"

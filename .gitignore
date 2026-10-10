@@ -157,3 +157,6 @@ dist-aq-before/
 dist-arfiche/
 dist-bakasha/
 private/
+
+# AX — builds des portes et sondes
+dist-ax*/

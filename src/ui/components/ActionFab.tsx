@@ -64,38 +64,8 @@ interface FabAction {
   testId?: string
 }
 
-const NEW_FARM: FabAction = {
-  key: 'farm',
-  to: '/coordinator/farms/new',
-  labelKey: 'farms.new',
-  icon: 'farm',
-  testId: 'fab-farm-new',
-}
 
-/** G16 — the same form, opened on the other entity kind. */
-const NEW_MOSHAV: FabAction = {
-  key: 'moshav',
-  to: '/coordinator/farms/new?kind=moshav',
-  labelKey: 'farms.newMoshav',
-  icon: 'home',
-  testId: 'fab-moshav-new',
-}
 
-const NEW_VOLUNTEER: FabAction = {
-  key: 'volunteer',
-  to: '/coordinator/volunteers/new',
-  labelKey: 'volunteers.new',
-  icon: 'userPlus',
-  testId: 'volunteer-new',
-}
-
-const NEW_DRIVER: FabAction = {
-  key: 'driver',
-  to: '/coordinator/drivers/new',
-  labelKey: 'driver.addDriver',
-  icon: 'steering',
-  testId: 'driver-new',
-}
 
 const NEW_MISSION: FabAction = {
   key: 'mission',
@@ -109,20 +79,20 @@ const NEW_MISSION: FabAction = {
  * ★★ AW2 — AJOUTER DES CONTACTS : l'écran unique (saisie, fiches .vcf,
  *    collage). Sur la liste des volontaires il s'ouvre le type déjà choisi.
  */
-const ADD_CONTACTS: FabAction = {
-  key: 'contacts',
-  to: '/coordinator/add',
-  labelKey: 'add.entry',
-  icon: 'userPlus',
-  testId: 'fab-add-contacts',
-}
-const ADD_VOLUNTEERS: FabAction = {
-  key: 'contacts',
-  to: '/coordinator/add?type=volunteer',
-  labelKey: 'add.entry',
-  icon: 'upload',
-  testId: 'fab-add-contacts',
-}
+/**
+ * ★★ AX10 (2026-10-10) — AJOUTER QUELQUE CHOSE : UNE SEULE ENTRÉE, `/add`.
+ * Le menu du tableau de bord proposait cinq façons d'ajouter (ferme, מושב,
+ * volontaire, chauffeur, contacts) à côté des événements ; elles sont UNE, et
+ * l'écran demande le nom puis ce que c'est. Sur une liste, le « + » y mène
+ * directement, le type déjà dit (un seul choix = aucun menu).
+ */
+const addOf = (type: string, labelKey: string, icon: IconName): FabAction => ({
+  key: `add-${type}`,
+  to: `/coordinator/add?type=${type}`,
+  labelKey,
+  icon,
+  testId: `fab-add-${type}`,
+})
 
 /** AB1 — אירועים: the coordinator files one himself, from his own desk. */
 const NEW_INCIDENT: FabAction = {
@@ -184,21 +154,25 @@ const NEW_STEP: FabAction = {
  *   no second list to keep in step: a screen that creates nothing has no "+".
  */
 const CREATIONS: Record<string, readonly FabAction[]> = {
-  // לוח בקרה — the home screen, about no single object, so it offers all.
+  // לוח בקרה — the home screen, about no single object: ONE way to add, then the events.
+  /* ★★ AX10 — les cinq façons d'ajouter mènent TOUTES au même écran (`/add`),
+     le type déjà dit : un menu de raccourcis, pas cinq écrans différents. */
   '/coordinator': [
-    NEW_FARM,
-    NEW_MOSHAV,
-    NEW_VOLUNTEER,
-    NEW_DRIVER,
+    addOf('farm', 'add.type.farm', 'userPlus'),
+    addOf('farmFile', 'add.type.farmFile', 'farm'),
+    addOf('institution', 'add.type.institution', 'school'),
+    addOf('volunteer', 'add.type.volunteer', 'users'),
+    addOf('driver', 'add.type.driver', 'steering'),
     NEW_MISSION,
     NEW_VISIT,
     NEW_MEETING,
     NEW_INCIDENT,
-    ADD_CONTACTS,
   ],
-  '/coordinator/farms': [NEW_FARM, NEW_MOSHAV],
-  '/coordinator/volunteers': [NEW_VOLUNTEER, ADD_VOLUNTEERS],
-  '/coordinator/drivers': [NEW_DRIVER],
+  '/coordinator/farms': [addOf('farmFile', 'farms.new', 'farm')],
+  '/coordinator/leads': [addOf('farm', 'add.type.farm', 'userPlus')],
+  '/coordinator/institutions': [addOf('institution', 'add.type.institution', 'school')],
+  '/coordinator/volunteers': [addOf('volunteer', 'volunteers.new', 'userPlus')],
+  '/coordinator/drivers': [addOf('driver', 'driver.addDriver', 'steering')],
   '/coordinator/missions': [NEW_MISSION],
   '/coordinator/incidents': [NEW_INCIDENT],
   '/coordinator/agenda': [NEW_VISIT, NEW_MEETING, NEW_MISSION],

@@ -67,8 +67,7 @@ export function PortalImportScreen() {
     <div className="mx-auto w-full max-w-4xl" data-testid="portal-import">
       <PageHeader title={t('portal.title')} subtitle={t('portal.subtitle')} back={{ to: '/coordinator/farms', label: t('farms.title') }} />
 
-      <Section title={t('portal.step1')} collapseKey="portal-file">
-        <p className="muted mb-3">{t('portal.howTo')}</p>
+      <Section title={t('portal.step1')} collapseKey="portal-file" info={t('portal.howTo')}>
         <label className="btn-primary inline-flex min-h-[2.75rem] cursor-pointer items-center gap-2">
           <Icon name="upload" size={16} />
           {file ? file.name : t('portal.choose')}

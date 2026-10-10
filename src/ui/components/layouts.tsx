@@ -26,26 +26,97 @@ interface NavItem {
   end?: boolean
 }
 
-const COORDINATOR_NAV: NavItem[] = [
-  { to: '/coordinator', icon: 'dashboard', labelKey: 'nav.dashboard', end: true },
-  { to: '/coordinator/agenda', icon: 'calendar', labelKey: 'nav.agenda' },
-  { to: '/coordinator/farms', icon: 'farm', labelKey: 'nav.farms' },
-  // ★★ AS6 — la salle d'attente, juste après les fermes : des pistes, pas des fermes.
-  { to: '/coordinator/leads', icon: 'userPlus', labelKey: 'nav.leads' },
-  { to: '/coordinator/route', icon: 'route', labelKey: 'nav.route' },
-  /* ★★ AU4.8 — la carte de couverture, JUSTE APRÈS la planification : les
-     deux répondent à « où aller », l'une pour la journée, l'autre pour la
-     saison. Un onglet DANS l'écran d'itinéraire l'aurait enterrée sous un
-     écran qu'on ouvre le matin d'une tournée ; c'est un écran qu'on ouvre la
-     veille d'un rendez-vous. Les deux se renvoient l'un à l'autre. */
-  { to: '/coordinator/coverage', icon: 'map', labelKey: 'nav.coverage' },
-  { to: '/coordinator/volunteers', icon: 'users', labelKey: 'nav.volunteers' },
-  { to: '/coordinator/drivers', icon: 'steering', labelKey: 'nav.drivers' },
-  { to: '/coordinator/missions', icon: 'shield', labelKey: 'nav.missions' },
-  { to: '/coordinator/incidents', icon: 'alert', labelKey: 'nav.incidents' },
-  // P2.5a — last in the rail on purpose: it is consulted, not worked in.
-  { to: '/coordinator/settings', icon: 'switch', labelKey: 'nav.settings' },
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AX1 (2026-10-10) — LE RAIL SUIT LES TROIS TEMPS DU MÉTIER.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * « Je clique et ça m'amène ailleurs, puis ailleurs, et je suis perdu. »
+ * L'inventaire (docs/ax/ax2-inventaire.md) : ONZE icônes sans libellé, dans
+ * l'ordre d'arrivée des passes. Le rail est désormais rangé comme le métier
+ * du PO — recruter (qui travaille avec nous), préparer (qui va où),
+ * exécuter (les gardes) — et chaque entrée porte son nom, toujours.
+ *
+ * ⚠️ TROIS TEMPS ET NON CINQ ÉTAPES NUMÉROTÉES : les institutions et les
+ *    fermes arrivent en flux continus et parallèles ; un rail numéroté ferait
+ *    croire qu'on termine l'étape 1 avant d'ouvrir la 2. Les étapes 1, 2, 3
+ *    sont trois listes sœurs (« גיוס »). Les gardes (étape 5, le gros du
+ *    travail à venir) ont leur propre temps, qui grandira.
+ */
+interface NavGroup {
+  /** Titre du groupe (`nav.group.*`) ; `null` = sans titre (accueil, réglages). */
+  key: string | null
+  items: NavItem[]
+}
+const NAV_GROUPS: NavGroup[] = [
+  {
+    key: null,
+    items: [
+      { to: '/coordinator', icon: 'dashboard', labelKey: 'nav.dashboard', end: true },
+      { to: '/coordinator/agenda', icon: 'calendar', labelKey: 'nav.agenda' },
+    ],
+  },
+  {
+    key: 'recruit',
+    items: [
+      // ★★ AS6 — les pistes d'abord : c'est là qu'on appelle, ce qui devient une ferme.
+      { to: '/coordinator/leads', icon: 'userPlus', labelKey: 'nav.leads' },
+      { to: '/coordinator/farms', icon: 'farm', labelKey: 'nav.farms' },
+      // ★★ AX1 — l'étape 1 du métier avait un écran enfoui dans la carte de couverture.
+      { to: '/coordinator/institutions', icon: 'school', labelKey: 'nav.institutions' },
+      { to: '/coordinator/volunteers', icon: 'users', labelKey: 'nav.volunteers' },
+      { to: '/coordinator/drivers', icon: 'steering', labelKey: 'nav.drivers' },
+    ],
+  },
+  {
+    key: 'plan',
+    items: [
+      /* ★★ AU4.8 — la carte de couverture et la tournée se renvoient l'une à
+         l'autre : les deux répondent à « où aller ». */
+      { to: '/coordinator/coverage', icon: 'map', labelKey: 'nav.coverage' },
+      { to: '/coordinator/route', icon: 'route', labelKey: 'nav.route' },
+    ],
+  },
+  {
+    key: 'execute',
+    items: [
+      { to: '/coordinator/missions', icon: 'shield', labelKey: 'nav.missions' },
+      { to: '/coordinator/incidents', icon: 'alert', labelKey: 'nav.incidents' },
+    ],
+  },
+  {
+    key: null,
+    // P2.5a — last on purpose: it is consulted, not worked in.
+    items: [{ to: '/coordinator/settings', icon: 'switch', labelKey: 'nav.settings' }],
+  },
 ]
+/** La liste à plat, dans l'ordre du rail (portes, menus). */
+export const COORDINATOR_NAV: NavItem[] = NAV_GROUPS.flatMap((g) => g.items)
+
+/**
+ * ★★ AX1 — LE RAIL DÉPLIÉ OU COMPACT, ET LE CHOIX EST GARDÉ (par appareil :
+ * c'est une affaire d'écran, pas de compte). Compact, chaque entrée porte
+ * quand même son nom, sous l'icône.
+ */
+const RAIL_KEY = 'lo-yanum:rail:expanded'
+function readRailExpanded(): boolean {
+  try {
+    const v = localStorage.getItem(RAIL_KEY)
+    if (v === '1') return true
+    if (v === '0') return false
+  } catch {
+    /* stockage indisponible */
+  }
+  // Par défaut : déplié là où la place ne manque pas (ordinateur large).
+  return typeof window !== 'undefined' && window.innerWidth >= 1600
+}
+function writeRailExpanded(v: boolean): void {
+  try {
+    localStorage.setItem(RAIL_KEY, v ? '1' : '0')
+  } catch {
+    /* stockage indisponible */
+  }
+}
 
 /**
  * Routes that manage their own full-bleed canvas and must not be padded.
@@ -69,6 +140,7 @@ const TILE_HUE: Record<string, string> = {
   '/coordinator/leads': 'status-violet', // violet
   '/coordinator/route': 'farm-to-contact', // gris-bleu
   '/coordinator/coverage': 'farm-on-hold', // indigo — la seule teinte mesurée encore libre (AU)
+  '/coordinator/institutions': 'farm-verbal-ok', // AX1 — l'accord oral, ce que donne une institution
   '/coordinator/volunteers': 'status-warn', // ocre
   '/coordinator/drivers': 'farm-visited', // magenta
   '/coordinator/missions': 'status-info', // cyan
@@ -88,6 +160,7 @@ const TILE_CLASS: Record<string, string> = {
   'status-danger': 'bg-status-danger/15 text-status-danger-ink',
   'farm-not-relevant-now': 'bg-farm-not-relevant-now/15 text-farm-not-relevant-now-ink',
   'farm-on-hold': 'bg-farm-on-hold/15 text-farm-on-hold-ink',
+  'farm-verbal-ok': 'bg-farm-verbal-ok/15 text-farm-verbal-ok-ink',
 }
 
 const BLEED_ROUTES = [
@@ -96,6 +169,8 @@ const BLEED_ROUTES = [
   '/coordinator/agenda',
   '/coordinator/farms',
   '/coordinator/leads',
+  /* ★★ AX1 — les institutions : une liste et sa carte, comme leurs sœurs. */
+  '/coordinator/institutions',
   '/coordinator/route',
   /* ★★ AU2 (2026-10-08) — l'itinéraire libre porte une carte (`MapPanel`)
      depuis AH9 mais n'était pas ici : la coquille lui gardait le rembourrage
@@ -281,7 +356,13 @@ function AccountBlock({ expanded }: { expanded: boolean }) {
 export function CoordinatorLayout() {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpandedState] = useState(readRailExpanded)
+  const setExpanded = (f: (v: boolean) => boolean) =>
+    setExpandedState((v) => {
+      const next = f(v)
+      writeRailExpanded(next)
+      return next
+    })
   const { pathname } = useLocation()
   // F5.4 — the wizard's sticky stepper offsets by this bar's real height.
   const topBarRef = useRef<HTMLElement | null>(null)
@@ -315,6 +396,7 @@ export function CoordinatorLayout() {
       to={item.to}
       end={item.end}
       title={showLabel ? undefined : t(item.labelKey)}
+      data-testid={`rail-${item.to.split('/').pop() || 'home'}`}
       className={({ isActive }) =>
         /* ⚠️★★ AL5 (2026-09-16) — 44 PX, ET C'EST LA NAVIGATION PRINCIPALE.
            Sur l'iPad du PO, les neuf entrées du rail mesuraient 39 px de haut
@@ -322,12 +404,12 @@ export function CoordinatorLayout() {
            ça appuie sur l'autre » — la phrase d'AA1 — dans le seul endroit de
            l'application qu'AA1 n'a pas re-mesuré, parce qu'AA1 regardait un
            téléphone et que ce rail n'existe qu'au-dessus de 1024 px. */
-        `group relative flex min-h-11 items-center gap-3 rounded-field px-3 py-2.5 text-caption font-medium
+        `group relative flex min-h-11 rounded-field font-medium
          transition-all duration-fast ease-out ${
            isActive
              ? 'bg-accent/15 text-accent-ink'
              : 'text-content-secondary hover:bg-surface-high hover:text-content-primary'
-         } ${showLabel ? '' : 'justify-center px-0'}`
+         } ${showLabel ? 'items-center gap-3 px-3 py-2.5 text-caption' : 'flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-center'}`
       }
     >
       {({ isActive }) => (
@@ -339,7 +421,14 @@ export function CoordinatorLayout() {
             }`}
           />
           <Icon name={item.icon} size={19} />
-          {showLabel && <span className="truncate">{t(item.labelKey)}</span>}
+          {showLabel ? (
+            <span className="truncate">{t(item.labelKey)}</span>
+          ) : (
+            /* ★★ AX1 — compact, le nom reste : court, sous l'icône. */
+            <span className="w-full truncate text-[0.6875rem] leading-tight" data-testid="rail-short-label">
+              {t(item.labelKey.replace('nav.', 'nav.short.'))}
+            </span>
+          )}
         </>
       )}
     </NavLink>
@@ -369,7 +458,7 @@ export function CoordinatorLayout() {
                       pb-[calc(var(--safe-bottom)+1rem)]
                       pt-[calc(var(--status-inset)+1rem)]
                       transition-[width] duration-base ease-out lg:flex ${
-                        expanded ? 'w-60' : 'w-[4.5rem]'
+                        expanded ? 'w-60' : 'w-[5.25rem]'
                       }`}
         >
           <div className={expanded ? '' : 'flex justify-center'}>
@@ -400,8 +489,23 @@ export function CoordinatorLayout() {
           {/* ⚠️ AL5 — `gap-2` ET NON `gap-1` : huit pixels entre deux cibles
               voisines, le plancher qu'AA1.2 a posé et mesuré. À quatre, deux
               entrées de 44 px se touchent presque. */}
-          <nav className="flex flex-col gap-2">
-            {COORDINATOR_NAV.map((item) => navLink(item, expanded))}
+          <nav className="flex flex-col gap-1" data-testid="rail-nav" data-expanded={expanded}>
+            {NAV_GROUPS.map((g, gi) => (
+              <div key={gi} className="flex flex-col gap-1" data-testid={g.key ? `rail-group-${g.key}` : undefined}>
+                {g.key && (
+                  /* ★★ AX1 — le titre du temps ; compact, un trait et un mot. */
+                  <p
+                    className={`mt-1 border-t border-edge-subtle pt-1.5 font-semibold text-content-muted ${
+                      expanded ? 'px-3 text-micro' : 'text-center text-[0.625rem] leading-none'
+                    }`}
+                  >
+                    {t(`nav.group.${g.key}`)}
+                  </p>
+                )}
+                {g.key === null && gi > 0 && <span className="mt-1 border-t border-edge-subtle" aria-hidden />}
+                {g.items.map((item) => navLink(item, expanded))}
+              </div>
+            ))}
           </nav>
 
           {/* PO POINT 3 — THE TWO BADGES ARE GONE FROM HERE, and that is the
@@ -550,8 +654,12 @@ export function CoordinatorLayout() {
               <Icon name="close" size={20} />
             </button>
           </div>
+          {/* ★★ AX1 — les mêmes trois temps que le rail, chacun sous son titre. */}
+          {NAV_GROUPS.map((g, gi) => (
+          <section key={gi} className="mb-4" data-testid={g.key ? `menu-group-${g.key}` : undefined}>
+          {g.key && <h2 className="mb-2 text-caption font-semibold text-content-muted">{t(`nav.group.${g.key}`)}</h2>}
           <nav className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-            {COORDINATOR_NAV.map((item) => (
+            {g.items.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -570,6 +678,8 @@ export function CoordinatorLayout() {
               </NavLink>
             ))}
           </nav>
+          </section>
+          ))}
           <div className="mt-auto pt-6">
             <AccountBlock expanded />
           </div>

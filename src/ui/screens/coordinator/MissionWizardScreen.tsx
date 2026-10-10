@@ -958,7 +958,7 @@ export function MissionWizardScreen() {
           retour ronde et le titre (c'était un lien texte, seul de son genre). */}
       <PageHeader
         title={t('wizard.title')}
-        subtitle={t('wizard.subtitle')}
+        info={t('wizard.subtitle')}
         back={{ to: '/coordinator/missions', label: t('missions.title') }}
       />
 
@@ -1742,8 +1742,8 @@ export function MissionWizardScreen() {
         <Section
           title={t('meet.sectionTitle')}
           className="mt-4"
+          info={t('meet.sectionHint')}
         >
-          <p className="muted mb-3">{t('meet.sectionHint')}</p>
           <MeetPointsEditor
             farm={farm}
             anchors={chosenAnchors}

@@ -25,6 +25,7 @@ const soonest = FARMS.filter((f) => f.nextVisitAt !== null)
 export const TOURS: Tour[] = [
   {
     id: 'tour-today',
+    name: '',
     dayKey: localDayKey(now()),
     departAt: atTime(0, 8, 30),
     farmIds: planRoute(soonest, HOME_BASE).stops.map((s) => s.farm.id),

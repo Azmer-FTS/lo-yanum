@@ -1270,7 +1270,7 @@ const tourMapping: Mapping<Tour> = {
   toRows: (t) => [
     {
       table: 'tours',
-      rows: [{ id: t.id, day_key: t.dayKey, depart_at: t.departAt }],
+      rows: [{ id: t.id, day_key: t.dayKey, depart_at: t.departAt, name: t.name ?? '' }],
     },
     {
       table: 'tour_stops',
@@ -1284,6 +1284,7 @@ const tourMapping: Mapping<Tour> = {
   fromRows: (p, kids): Tour => ({
     id: str(p.id),
     dayKey: day(p.day_key),
+    name: str(p.name),
     departAt: ts(p.depart_at),
     farmIds: ordered(kids.tour_stops).map((r) => str(r.entity_id)),
   }),

@@ -7,6 +7,10 @@ import { rankOptions } from '@core/index'
 import { usePublishedHeight } from '../hooks/useShellMetrics'
 import { useAnchoredBar } from './anchoredBar'
 import { Icon } from './Icon'
+import { useInfoTip } from './InfoTip'
+
+/** ★★ AX4 — au-delà, une aide de champ n'est plus « une ligne » à 402 px. */
+export const HINT_LINE = 56
 
 /**
  * Form field primitives shared by every create/edit flow (R5).
@@ -31,17 +35,30 @@ export function Field({
   children: ReactNode
   className?: string
 }) {
+  /* ★★ AX4 — L'ESSENTIEL RESTE VISIBLE EN UNE LIGNE, LE RESTE SE RANGE.
+     Une aide courte (« 05X-XXXXXXX », « אופציונלי ») se lit d'un coup d'œil
+     sous le champ ; une explication (plus d'une ligne à 402 px) passe
+     derrière le ⓘ du libellé. */
+  const long = typeof hint === 'string' && hint.length > HINT_LINE
+  const shortHint = long ? undefined : hint
+  const tip = useInfoTip(long ? hint : undefined)
   return (
-    <label className={`block ${className}`}>
-      <span className="label">
+    <label className={`relative block ${className}`}>
+      <span className={`label ${tip.button ? 'pe-9' : ''}`}>
         {label}
         {required && <span className="text-status-danger-ink"> *</span>}
       </span>
       {children}
+      {/* ★★ AX4 — le ⓘ est APRÈS le champ dans le document (le premier
+          élément « étiquetable » d'un <label> en devient la cible : placé
+          avant, toucher le libellé ouvrirait l'aide au lieu du champ), et
+          dessiné au bout de la ligne du libellé. */}
+      {tip.button && <span className="absolute end-0 top-0 -mt-1.5">{tip.button}</span>}
+      {tip.panel && <span className="mt-1.5 block">{tip.panel}</span>}
       {error ? (
         <span className="mt-1 block text-micro text-status-danger-ink">{error}</span>
       ) : (
-        hint && <span className="mt-1 block text-micro text-content-muted">{hint}</span>
+        shortHint && <span className="mt-1 block text-micro text-content-muted">{shortHint}</span>
       )}
     </label>
   )

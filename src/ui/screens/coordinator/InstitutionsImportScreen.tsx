@@ -68,10 +68,9 @@ export function InstitutionsImportScreen() {
 
   return (
     <div className="mx-auto w-full max-w-4xl" data-testid="institutions-import">
-      <PageHeader title={t('institutions.import.title')} subtitle={t('institutions.import.subtitle')} back={{ to: '/coordinator/coverage', label: t('coverage.title') }} />
+      <PageHeader title={t('institutions.import.title')} info={t('institutions.import.subtitle')} back={{ to: '/coordinator/coverage', label: t('coverage.title') }} />
 
-      <Section title={t('institutions.import.step1')} collapseKey="institutions-import-file">
-        <p className="muted mb-2">{t('institutions.import.howTo')}</p>
+      <Section title={t('institutions.import.step1')} collapseKey="institutions-import-file" info={t('institutions.import.howTo')}>
         <p className="mb-3 text-caption text-content-secondary">{t('institutions.import.columns')}</p>
         <label className="btn-primary inline-flex min-h-[2.75rem] cursor-pointer items-center gap-2">
           <Icon name="upload" size={16} />

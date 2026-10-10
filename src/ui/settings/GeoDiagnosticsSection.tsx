@@ -42,8 +42,8 @@ export function GeoDiagnosticsSection() {
       collapseKey="settings-geo-diag"
       defaultOpen={false}
       summary={rows.length > 0 ? String(rows.length) : undefined}
+      info={t('geoDiag.hint')}
     >
-      <p className="muted">{t('geoDiag.hint')}</p>
 
       {rows.length === 0 ? (
         <p className="muted mt-2" data-testid="geo-diag-empty">

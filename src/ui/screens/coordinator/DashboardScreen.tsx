@@ -43,6 +43,7 @@ import { BandCard } from '../../components/band'
 import { ActivityReportButton } from '../../report/ActivityReportButton'
 import { ReportButton } from '../../report/ReportButton'
 import { readReportRecipient } from '../../report/recipient'
+import { TitleWithInfo } from '../../components/InfoTip'
 import { Icon } from '../../components/Icon'
 import { GrowthCharts } from '../../components/GrowthCharts'
 import { MyDayBlock } from '../../components/MyDayBlock'
@@ -743,10 +744,10 @@ export function DashboardScreen() {
       <IntakeDashboardBlock />
       <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 data-page-title="" className="text-title text-content-primary">
-            {t('dashboard.title')}
-          </h1>
-          <p className="muted mt-1">{t('app.tagline')}</p>
+          {/* ★★ AX4 — l'accroche passe derrière ⓘ. */}
+          <TitleWithInfo as="span" info={t('app.tagline')} className="text-title text-content-primary">
+            <h1 data-page-title="">{t('dashboard.title')}</h1>
+          </TitleWithInfo>
         </div>
         {/* Desktop half of the persistent action; the phone gets the FAB. */}
         {/* PO POINT 7 — the employer's report. W4 took the "create a guard"
@@ -1010,14 +1011,16 @@ export function DashboardScreen() {
           {tonight.length === 0 ? (
             <EmptyState title={t('dashboard.noTonightGuards')} />
           ) : (
-            <ul className="stagger flex flex-col gap-1">
+            <ul className="line-scope stagger flex flex-col gap-1">
               {tonight.map((view) => (
                 <li key={view.mission.id}>
                   <Link
                     to={`/coordinator/missions/${view.mission.id}`}
-                    className="flex items-center gap-3 rounded-field px-2 py-2 transition-colors duration-fast hover:bg-surface-high"
+                    /* ★★ AX6 — équipe · ferme · poste et heure · statut : une ligne. */
+                    className="line-row rounded-field px-2 py-2 transition-colors duration-fast hover:bg-surface-high"
+                    data-testid="tonight-row"
                   >
-                    <span className="flex -space-x-2 rtl:space-x-reverse">
+                    <span data-area="lead" className="flex -space-x-2 rtl:space-x-reverse">
                       {view.volunteers.slice(0, 3).map(({ volunteer }) => (
                         <Avatar
                           key={volunteer.id}
@@ -1027,19 +1030,15 @@ export function DashboardScreen() {
                         />
                       ))}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span className="text-caption font-medium text-content-primary">
-                          {view.farm.name}
-                        </span>
-                        <MissionStatusChip status={view.mission.status} />
-                      </span>
-                      <span className="muted mt-0.5 block truncate">
-                        {view.anchorPoint.name} ·{' '}
-                        <span className="ltr-nums">
-                          {formatTime(view.mission.startAt, locale)}
-                        </span>
-                      </span>
+                    <span data-area="name" className="truncate text-caption font-medium text-content-primary">
+                      {view.farm.name}
+                    </span>
+                    <span data-area="meta" className="muted line-figs">
+                      <span data-fig="time" className="ltr-nums">{formatTime(view.mission.startAt, locale)}</span>
+                      <span className="truncate">{view.anchorPoint.name}</span>
+                    </span>
+                    <span data-area="act">
+                      <MissionStatusChip status={view.mission.status} />
                     </span>
                   </Link>
                 </li>

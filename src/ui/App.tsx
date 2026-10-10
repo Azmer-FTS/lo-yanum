@@ -59,6 +59,7 @@ import { MissionsScreen } from './screens/coordinator/MissionsScreen'
 import { FreeRouteScreen } from './screens/coordinator/FreeRouteScreen'
 import { CoverageScreen } from './screens/coordinator/CoverageScreen'
 import { InstitutionsImportScreen } from './screens/coordinator/InstitutionsImportScreen'
+import { InstitutionsScreen } from './screens/coordinator/InstitutionsScreen'
 import { AddContactsScreen } from './screens/coordinator/AddContactsScreen'
 import { RoutePlannerScreen } from './screens/coordinator/RoutePlannerScreen'
 import { RegionsEditScreen } from './screens/coordinator/RegionsEditScreen'
@@ -358,6 +359,8 @@ export default function App() {
               pour des lieux qui n'ont pas encore de fiche. */}
           <Route path="route/free" element={<FreeRouteScreen />} />
           <Route path="coverage" element={<CoverageScreen />} />
+          {/* ★★ AX1 — l'étape 1 du métier a son écran (elle était au fond de la couverture). */}
+          <Route path="institutions" element={<InstitutionsScreen />} />
           <Route path="import/institutions" element={<InstitutionsImportScreen />} />
           <Route path="add" element={<AddContactsScreen />} />
           <Route path="volunteers" element={<VolunteersScreen />} />

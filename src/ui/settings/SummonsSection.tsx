@@ -61,8 +61,8 @@ export function SummonsSection() {
       collapseKey="settings-summons"
       defaultOpen={false}
       summary={override === null ? undefined : t('common.edited')}
+      info={t('settings.summons.intro')}
     >
-      <p className="muted mb-3">{t('settings.summons.intro')}</p>
       <textarea
         dir="rtl"
         rows={12}

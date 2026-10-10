@@ -95,8 +95,8 @@ export function TargetSection() {
       summary={`${state.current.dunams.toLocaleString(locale)}${
         state.current.label ? ` · ${state.current.label}` : ''
       }`}
+      info={t('settings.target.hint')}
     >
-      <p className="muted mb-3">{t('settings.target.hint')}</p>
 
       <div className="auto-cols gap-3 [--col-min:11rem]">
         {field('target-label', 'settings.target.label', label, setLabel, 'text', 'target-label', t('settings.target.labelPlaceholder'))}

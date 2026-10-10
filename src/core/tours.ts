@@ -17,8 +17,14 @@ import type { AgendaEvent, Farm, LatLng } from './types'
 
 export interface Tour {
   id: string
-  /** Local day key `YYYY-MM-DD` — a tour IS a calendar day, one per day. */
+  /**
+   * Local day key `YYYY-MM-DD`. ★★ AX8 — PLUS « une par jour » : deux tournées
+   * du même jour REMPLAÇAIENT la première (le PO les perdait). Le jour reste
+   * la clé de l'agenda ; l'identifiant, celle de la tournée.
+   */
   dayKey: string
+  /** ★★ AX8 — le nom que le PO lui donne (« סבב הנגב »), '' = sans nom. */
+  name: string
   /** ISO datetime of the departure from the home base. */
   departAt: string
   /** Farm ids in visit order, as saved from the planner. */

@@ -444,16 +444,11 @@ export function MissionDetailScreen() {
       >
         {() => (
           <>
-      <Link
-        to="/coordinator/missions"
-        className="mb-3 inline-flex items-center gap-1.5 text-caption text-content-muted hover:text-content-primary"
-      >
-        <Icon name="chevron" size={15} className="ltr:-scale-x-100" />
-        {t('missions.title')}
-      </Link>
-
       <PageHeader
         title={farm.name}
+        /* ★★ AX2.4 — LA flèche commune, qui suit le chemin pris (venu d'une
+           ferme, on revient à la ferme). C'était un lien texte vers la liste. */
+        back={{ to: '/coordinator/missions', label: t('missions.title') }}
         subtitle={`${formatWeekday(mission.startAt, locale)} · ${formatDate(
           mission.startAt,
           locale,

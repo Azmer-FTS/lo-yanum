@@ -2,13 +2,16 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
+  comparableInstitutionName,
   createVolunteer,
+  getInstitutions,
   isEmail,
   normalizeEmail,
   updateVolunteer,
 } from '@core/index'
 import { DEFAULT_AVAILABILITY } from '@core/index'
 import type {
+  Institution,
   PhoneType,
   Volunteer,
   VolunteerAvailability,
@@ -26,6 +29,16 @@ import {
   isValidPhone,
 } from '../../components/fields'
 import { Modal } from '../../components/primitives'
+import { useCoreValue } from '../../hooks/useCore'
+
+/** L'institution que nomme ce texte : celle déjà liée si le nom est le sien, sinon celle qui porte ce nom. */
+function institutionIdFor(name: string, institutions: readonly Institution[], current: string | null): string | null {
+  const wanted = comparableInstitutionName(name)
+  if (!wanted) return null
+  const linked = institutions.find((i) => i.id === current)
+  if (linked && comparableInstitutionName(linked.name) === wanted) return linked.id
+  return institutions.find((i) => comparableInstitutionName(i.name) === wanted)?.id ?? null
+}
 
 /** R5.3 — volunteer create/edit. `volunteer === null` means create. */
 export function VolunteerFormModal({
@@ -33,8 +46,14 @@ export function VolunteerFormModal({
   yeshivot,
   onClose,
   presentation = 'page',
+  initialName,
+  institution,
 }: {
   volunteer: Volunteer | null
+  /** ★★ AX10 — le nom déjà tapé dans « הוספה ». */
+  initialName?: string
+  /** ★★ AX10 — l'institution choisie dans « הוספה » : le volontaire lui est rattaché. */
+  institution?: { id: string; name: string } | null
   yeshivot: string[]
   onClose: () => void
   /** ★ AN11 — rendu comme page du panneau (le motif unique). */
@@ -42,8 +61,10 @@ export function VolunteerFormModal({
 }) {
   const { t } = useTranslation()
 
-  const [name, setName] = useState(volunteer?.name ?? '')
-  const [age, setAge] = useState(String(volunteer?.age ?? ''))
+  const [name, setName] = useState(volunteer?.name ?? initialName ?? '')
+  /* ⚠️ AX — un âge INCONNU (0, posé par l'ajout de contacts) s'affichait « 0 »
+     et le contrôle (≥ 14) refusait d'enregistrer la fiche sans qu'on y touche. */
+  const [age, setAge] = useState(volunteer?.age ? String(volunteer.age) : '')
   const [phone, setPhone] = useState(volunteer?.phone ?? '')
   const [phoneType, setPhoneType] = useState<PhoneType>(
     volunteer?.phoneType ?? 'smartphone',
@@ -51,7 +72,8 @@ export function VolunteerFormModal({
   // P0bis.5a — optional, and validated only if filled: a blank address is a
   // fact about this person, not an omission to nag about.
   const [email, setEmail] = useState(volunteer?.email ?? '')
-  const [yeshiva, setYeshiva] = useState(volunteer?.yeshiva ?? yeshivot[0] ?? '')
+  const [yeshiva, setYeshiva] = useState(volunteer?.yeshiva ?? institution?.name ?? yeshivot[0] ?? '')
+  const institutions = useCoreValue(getInstitutions)
   const [locality, setLocality] = useState(volunteer?.locality ?? '')
   const [status, setStatus] = useState<VolunteerStatus>(
     volunteer?.status ?? 'active',
@@ -102,11 +124,15 @@ export function VolunteerFormModal({
     const draft: VolunteerDraft = {
       photo,
       name: name.trim(),
-      age: Number.isFinite(ageNum) && ageNum > 0 ? ageNum : 20,
+      /* ⚠️ AX — vide = inconnu (0), jamais un âge inventé (c'était 20). */
+      age: Number.isFinite(ageNum) && ageNum > 0 ? ageNum : 0,
       phone: phone.trim(),
       phoneType,
       email: normalizeEmail(email),
       yeshiva,
+      /* ★★ AX — le RATTACHEMENT suit le nom : changer le texte de l'institution
+         ne laissait jamais `institutionId` le suivre (deux vérités). */
+      institutionId: institutionIdFor(yeshiva, institutions, volunteer?.institutionId ?? institution?.id ?? null),
       locality: locality.trim(),
       status,
       inactiveReason: status === 'inactive' ? inactiveReason.trim() : null,

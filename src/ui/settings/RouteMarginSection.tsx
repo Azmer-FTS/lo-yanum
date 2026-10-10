@@ -35,8 +35,8 @@ export function RouteMarginSection() {
       collapseKey="settings-route-margin"
       defaultOpen={false}
       summary={`${margin}%`}
+      info={t('settings.routeMargin.intro')}
     >
-      <p className="muted mb-3">{t('settings.routeMargin.intro')}</p>
       <div className="flex flex-wrap items-end gap-2">
         <div>
           <label className="label" htmlFor="route-margin">

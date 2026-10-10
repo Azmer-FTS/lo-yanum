@@ -86,8 +86,8 @@ export function VigilSection() {
       collapseKey="settings-vigil"
       defaultOpen={false}
       summary={`${current.arrivalGraceMinutes} / ${current.checkpointIntervalMinutes} / ${current.closeGraceMinutes}`}
+      info={t('settings.vigil.intro')}
     >
-      <p className="muted mb-3">{t('settings.vigil.intro')}</p>
       <div className="auto-cols gap-3 [--col-min:11rem]">
         {field('vigil-arrival', t('settings.vigil.arrival'), arrival, setArrival)}
         {field('vigil-checkpoint', t('settings.vigil.checkpoint'), checkpoint, setCheckpoint)}

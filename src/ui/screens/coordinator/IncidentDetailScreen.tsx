@@ -156,16 +156,11 @@ export function IncidentDetailScreen() {
 
   const content = (
     <>
-      <Link
-        to="/coordinator/incidents"
-        className="mb-3 inline-flex items-center gap-1.5 text-caption text-content-muted hover:text-content-primary"
-      >
-        <Icon name="chevron" size={15} className="ltr:-scale-x-100" />
-        {t('incidents.title')}
-      </Link>
-
       <PageHeader
         title={farm.name}
+        /* ★★ AX2.4 — LA flèche commune, qui suit le chemin pris (venu d'une
+           ferme, on revient à la ferme). C'était un lien texte vers la liste. */
+        back={{ to: '/coordinator/incidents', label: t('incidents.title') }}
         subtitle={formatDateTime(incident.reportedAt, locale)}
         /* X10.1 — the closing action left this header for the last entry of
            the follow-up thread, which is what it acts on. */

@@ -212,6 +212,9 @@ export function DriversScreen() {
         search={query}
         onSearch={setQuery}
         searchPlaceholder={t('common.search')}
+        /* ★★ AX3.5 — les places sont un CHIFFRE : elles se lisent. La vignette
+           était un bouton « effacer les filtres » déguisé (« ניקוי » le fait). */
+        stat={`${stats.totalSeats} ${t('driver.statsSeats')}`}
         kpis={
           <>
 
@@ -231,14 +234,6 @@ export function DriversScreen() {
             * the same. What it did BESIDES saying nine, clearing the filters,
             * the ניקוי pill in the row below already does and says.
             */}
-          <KpiChip
-            label={t('driver.statsSeats')}
-            value={stats.totalSeats}
-            tone="accent"
-            icon="users"
-            active={false}
-            onClick={clearFilters}
-          />
           <KpiChip
             label={t('driver.statsSevenPlus')}
             value={stats.sevenPlusSeats}

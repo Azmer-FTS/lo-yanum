@@ -82,27 +82,29 @@ function ItemRow({ item }: { item: DayPlanItem }) {
   const stop = item.stop
   if (!stop) return null
   return (
-    <li className="flex items-center gap-2.5 rounded-field px-2 py-1.5 transition-colors duration-fast hover:bg-surface-high">
-      <span className="ltr-nums numeric w-11 shrink-0 text-micro font-semibold text-content-primary">
-        {formatTime(stop.arriveAt, locale)}
-      </span>
-      <span className="numeric flex h-6 w-6 shrink-0 items-center justify-center rounded-pill bg-accent text-micro font-bold text-content-on-accent">
-        {stop.order}
-      </span>
-      <span className="min-w-0 flex-1">
-        <Link
-          to={`/coordinator/farms/${stop.farm.id}`}
-          className="block truncate text-caption font-medium text-content-primary hover:underline"
-        >
-          {stop.farm.name}
-        </Link>
-        <span className="muted ltr-nums block truncate">
-          {t('myday.driveLeg', {
-            km: km(stop.legKm),
-            minutes: stop.driveMinutes,
-          })}
+    /* ★★ AX6 — heure · n° · nom · km · durée, sur UNE ligne (le nom et ses
+       chiffres étaient empilés à toute largeur). */
+    <li className="line-row rounded-field px-2 py-1.5 transition-colors duration-fast hover:bg-surface-high" data-testid="myday-stop">
+      <span data-area="lead" className="flex items-center gap-2">
+        <span className="ltr-nums numeric w-11 shrink-0 text-micro font-semibold text-content-primary">
+          {formatTime(stop.arriveAt, locale)}
+        </span>
+        <span className="numeric flex h-6 w-6 shrink-0 items-center justify-center rounded-pill bg-accent text-micro font-bold text-content-on-accent">
+          {stop.order}
         </span>
       </span>
+      <Link
+        data-area="name"
+        to={`/coordinator/farms/${stop.farm.id}`}
+        className="block truncate text-caption font-medium text-content-primary hover:underline"
+      >
+        {stop.farm.name}
+      </Link>
+      <span data-area="meta" className="muted line-figs" data-testid="myday-figs">
+        <span data-fig="km" className="ltr-nums">{km(stop.legKm)} {t('common.km')}</span>
+        <span data-fig="min" className="ltr-nums">{t('common.durationM', { m: stop.driveMinutes })}</span>
+      </span>
+      <span data-area="act" className="flex shrink-0 items-center gap-1.5">
       {stop.waitMinutes > 0 && (
         <span className="chip shrink-0 bg-status-warn/15 text-status-warn-ink">
           {t('myday.waitChip', { count: stop.waitMinutes })}
@@ -128,6 +130,7 @@ function ItemRow({ item }: { item: DayPlanItem }) {
       >
         <Icon name="external" size={14} />
       </a>
+      </span>
     </li>
   )
 }
@@ -211,7 +214,7 @@ export function MyDayBlock({ dayKey }: { dayKey: string }) {
         </span>
       </div>
 
-      <ol className="flex flex-col divide-y divide-edge-subtle">
+      <ol className="line-scope flex flex-col divide-y divide-edge-subtle" data-testid="myday-stops">
         {plan.items.map((item) => (
           <ItemRow
             key={

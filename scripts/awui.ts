@@ -252,9 +252,12 @@ section('A334 · A335 · A336 — le type d’abord, les trois chemins')
 await guard('A334', async () => {
   const o = await open(1440)
   await go(o.page, '/coordinator/add')
-  const disabled = await o.page.locator('[data-testid="add-paths"]').evaluate((e) => (e as HTMLFieldSetElement).disabled)
-  check('A334 avant le type : les trois chemins sont inactifs, l’écran dit pourquoi', disabled && (await o.page.locator('[data-testid="add-not-ready"]').count()) === 1)
-  const paths = await o.page.locator('[data-testid="add-path-form"], [data-testid="add-path-files"], [data-testid="add-path-paste"]').count()
+  /* ★★ AX10 — l'écran est devenu PAR ÉTAPES : avant le nom (ou le choix d'une
+     autre source), rien d'autre ; les trois chemins restent sur le même écran,
+     choisis d'un toucher (« … או להוסיף מ »). */
+  const nothing = (await o.page.locator('[data-testid="add-step-2"], [data-testid="add-step-3"], input[type="file"], main textarea').count()) === 0
+  check('A334 avant le nom ou la source : aucun chemin ouvert d’avance (AX10)', nothing)
+  const paths = await o.page.locator('[data-testid="add-name"], [data-testid="add-source-vcf"], [data-testid="add-source-paste"]').count()
   check('A334 les trois chemins sur le même écran, nommés', paths === 3)
   check('A334 aucune erreur de page', o.errors.length === 0, o.errors.slice(0, 2).join(' | '))
   await o.ctx.close()
@@ -263,14 +266,24 @@ await guard('A334', async () => {
   for (const [kind, table] of [['farm', 'leads'], ['institution', 'institutions']] as const) {
     const o = await open(1440)
     await go(o.page, '/coordinator/add')
-    await o.page.click(`[data-testid="add-kind-${kind}"]`)
     const before = o.db.rows(table).length
-    await o.page.fill('[data-testid="add-form-first"]', kind === 'farm' ? 'אבי' : 'הרב')
-    await o.page.fill('[data-testid="add-form-org"]', kind === 'farm' ? 'רפת הזית' : 'ישיבת הבדיקה')
+    // Saisie : le nom, puis le type, puis ce qu'il demande.
+    await o.page.fill('[data-testid="add-name"]', kind === 'farm' ? 'אבי' : 'ישיבת הבדיקה')
+    await o.page.click(`[data-testid="add-kind-${kind}"]`)
+    await o.page.fill('[data-testid="add-form-org"]', kind === 'farm' ? 'רפת הזית' : 'הרב')
     await o.page.click('[data-testid="add-form-save"]')
     await o.page.waitForTimeout(300)
+    // Fiches .vcf : la source, (le type est gardé), le fichier.
+    await o.page.click('[data-testid="add-source-vcf"]')
+    await o.page.click(`[data-testid="add-kind-${kind}"]`)
     await o.page.setInputFiles('[data-testid="add-files-input"]', [MULTI_VCF])
     await o.page.waitForTimeout(300)
+    await o.page.click('[data-testid="add-create"]')
+    await o.page.waitForTimeout(600)
+    // Collage : retour au nom, puis la source « הדבקה », le texte.
+    await o.page.click('[data-testid="add-source-name"]')
+    await o.page.click('[data-testid="add-source-paste"]')
+    await o.page.click(`[data-testid="add-kind-${kind}"]`)
     await o.page.fill('[data-testid="add-paste-text"]', kind === 'farm' ? 'רון גד״ש הנגב 050-4445566' : 'יעקב מכינת הדרום 050-4445567')
     await o.page.click('[data-testid="add-paste-read"]')
     await o.page.waitForTimeout(300)
@@ -285,8 +298,8 @@ await guard('A334', async () => {
 
 await guard('A335', async () => {
   const o = await open(1032, { touch: true })
-  await go(o.page, '/coordinator/add?type=volunteer')
-  const disabled = await o.page.locator('[data-testid="add-paths"]').evaluate((e) => (e as HTMLFieldSetElement).disabled)
+  await go(o.page, '/coordinator/add?type=volunteer&source=vcf')
+  const disabled = (await o.page.locator('[data-testid="add-step-3"], input[type="file"]').count()) === 0
   check('A335 volontaires : rien avant l’institution', disabled)
   await o.page.click('[data-testid="add-institution-new"]')
   await o.page.fill('[data-testid="add-institution-new-name"]', 'מכינת עין הבשור')
@@ -309,8 +322,8 @@ await guard('A335', async () => {
 await guard('A336', async () => {
   const o = await open(402, { touch: true })
   await go(o.page, '/coordinator/add?type=farm')
-  check('A336 sans nom, « שמירה » est éteint', await o.page.locator('[data-testid="add-form-save"]').isDisabled())
-  await o.page.fill('[data-testid="add-form-org"]', 'חוות רק שם')
+  check('A336 sans nom, aucun « שמירה » (AX10 : l’étape ③ n’existe pas)', (await o.page.locator('[data-testid="add-form-save"]').count()) === 0)
+  await o.page.fill('[data-testid="add-name"]', 'חוות רק שם')
   check('A336 un nom seul suffit', await o.page.locator('[data-testid="add-form-save"]').isEnabled())
   const forms: Array<[string, string, number, number]> = [
     ['Waze', 'https://waze.com/ul?ll=31.42140%2C34.58820&navigate=yes', 31.4214, 34.5882],
@@ -318,7 +331,7 @@ await guard('A336', async () => {
     ['coordonnées', '31.33333, 34.59501', 31.33333, 34.59501],
   ]
   for (const [label, text, lat, lng] of forms) {
-    await o.page.fill('[data-testid="add-form-org"]', `חוות ${label}`)
+    await o.page.fill('[data-testid="add-name"]', `חוות ${label}`)
     await o.page.fill('[data-testid="add-form-location"]', text)
     await o.page.waitForTimeout(200)
     const echo = await o.page.locator('[data-testid="add-location-ok"]').count()
@@ -327,10 +340,11 @@ await guard('A336', async () => {
     const row = o.db.rows('leads').find((r) => r.name === `חוות ${label}`)
     check(`A336 ${label} reconnu et épinglé`, echo === 1 && !!row && Math.abs(Number(row.lat) - lat) < 1e-4 && Math.abs(Number(row.lng) - lng) < 1e-4, row ? `${row.lat}, ${row.lng}` : 'rien')
   }
-  await o.page.fill('[data-testid="add-form-org"]', 'חוות רק שם')
+  await o.page.fill('[data-testid="add-name"]', 'חוות רק שם')
   await o.page.click('[data-testid="add-form-save"]')
   await o.page.waitForTimeout(1500)
   check('A336 une fiche avec SEULEMENT un nom est créée', o.db.rows('leads').some((r) => r.name === 'חוות רק שם' && r.phone === '' && r.lat === null))
+  await o.page.fill('[data-testid="add-name"]', 'חוות קישור קצר')
   await o.page.fill('[data-testid="add-form-location"]', 'https://maps.app.goo.gl/AbCdEf')
   check('A336 un lien raccourci est DIT, pas deviné', (await o.page.locator('[data-testid="add-location-bad"][data-reason="shortLink"]').count()) === 1)
   await o.ctx.close()
@@ -342,7 +356,7 @@ section('A337 → A342 — les fiches .vcf')
 
 await guard('A337', async () => {
   const o = await open(1440)
-  await go(o.page, '/coordinator/add?type=farm')
+  await go(o.page, '/coordinator/add?type=farm&source=vcf')
   await o.page.setInputFiles('[data-testid="add-files-input"]', [REAL_VCF, MULTI_VCF, DUP_VCF])
   await o.page.waitForTimeout(600)
   const rep = await o.page.locator('[data-testid="add-files-report"]').evaluate((e) => ({ files: e.getAttribute('data-files'), contacts: e.getAttribute('data-contacts') }))
@@ -372,7 +386,7 @@ await guard('A337', async () => {
 
 await guard('A341', async () => {
   const o = await open(1032, { touch: true })
-  await go(o.page, '/coordinator/add?type=farm')
+  await go(o.page, '/coordinator/add?type=farm&source=vcf')
   await o.page.setInputFiles('[data-testid="add-files-input"]', [REAL_VCF])
   await o.page.waitForTimeout(500)
   const row = o.page.locator('[data-testid="add-draft"]').first()
@@ -403,7 +417,7 @@ await guard('A341', async () => {
 await guard('A342', async () => {
   // iPad : WebKit, tactile, 1032 × 1376 — par le SÉLECTEUR, plusieurs fichiers.
   const o = await open(1032, { touch: true, webkit: true })
-  await go(o.page, '/coordinator/add?type=farm')
+  await go(o.page, '/coordinator/add?type=farm&source=vcf')
   const accept = await o.page.locator('[data-testid="add-files-input"]').evaluate((e) => ({ multiple: (e as HTMLInputElement).multiple, accept: (e as HTMLInputElement).accept }))
   check('A342 sélecteur : plusieurs fichiers, .vcf accepté', accept.multiple && accept.accept.includes('.vcf'), JSON.stringify(accept))
   await o.page.setInputFiles('[data-testid="add-files-input"]', [REAL_VCF, MULTI_VCF])
@@ -414,7 +428,7 @@ await guard('A342', async () => {
   await o.ctx.close()
   // Ordinateur : le glisser-déposer (événement `drop` avec de vrais fichiers).
   const d = await open(1440)
-  await go(d.page, '/coordinator/add?type=farm')
+  await go(d.page, '/coordinator/add?type=farm&source=vcf')
   const text = await Bun.file(MULTI_VCF).text()
   await d.page.evaluate((content) => {
     const dt = new DataTransfer()
@@ -447,11 +461,8 @@ await guard('captures', async () => {
       await o.page.waitForTimeout(2500)
       await o.page.screenshot({ path: `${SHOTS}/maillage-${tag}.png` })
       shots++
-      await go(o.page, '/coordinator/add?type=farm', 1500)
-      await o.page.fill('[data-testid="add-form-first"]', 'אבי')
-      await o.page.fill('[data-testid="add-form-location"]', 'https://waze.com/ul?ll=31.42140%2C34.58820&navigate=yes')
+      await go(o.page, '/coordinator/add?type=farm&source=vcf', 1500)
       await o.page.setInputFiles('[data-testid="add-files-input"]', [REAL_VCF, MULTI_VCF, DUP_VCF])
-      await o.page.fill('[data-testid="add-paste-text"]', 'רון גד״ש הנגב 050-4445566')
       await o.page.waitForTimeout(800)
       await o.page.screenshot({ path: `${SHOTS}/ajout-${tag}.png`, fullPage: true })
       shots++

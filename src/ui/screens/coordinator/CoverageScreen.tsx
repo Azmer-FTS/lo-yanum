@@ -10,8 +10,10 @@ import {
   RADIUS_MAX_KM,
   RADIUS_MIN_KM,
   clampRadiusKm,
+  airBoundKm,
   computeCoverage,
   farmPoint,
+  linkMinutes,
   getInstitutions,
   getVisibleFarms,
   getVisibleLeads,
@@ -28,12 +30,14 @@ import { EntityQuickCard } from '../../components/EntityQuickCard'
 import { ChevronForward, Icon } from '../../components/Icon'
 import { MapPanel } from '../../components/MapPanel'
 import type { MapLink, MapMarker, MapRouteLine } from '../../components/MapView'
-import { PageHeader, Section } from '../../components/primitives'
-import { TabBar } from '../../components/TabBar'
+import { FilterPill, PageHeader, Section } from '../../components/primitives'
+import { ENGAGEMENT_ON, InstitutionEditor } from '../../institutions/institutionUi'
 import { useCoreValue } from '../../hooks/useCore'
 import { measureMeshPair } from '../../routing/roadNetwork'
 import { meshPair, requestMeshPairs, useRoadMesh } from '../../routing/roadMesh'
 import { useRouteMargin } from '../../settings/routeMargin'
+import { onSettingsApplied } from '../../settings/applied'
+import { InfoTip } from '../../components/InfoTip'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -70,30 +74,63 @@ import { useRouteMargin } from '../../settings/routeMargin'
  *    comptent des lieux atteints. Les pistes n'entrent dans aucun (AS6.8).
  */
 
-const PREFS_KEY = 'lo-yanum:coverage'
+/**
+ * ⚠️★★ AX (2026-10-10) — UNE CLÉ À ELLE. Cet écran écrivait `lo-yanum:coverage`,
+ *    que le réglage « פריסת שמירות » (`settings/coverage.ts`, le seuil des
+ *    fermes oubliées) écrit AUSSI : chacun effaçait l'autre, et ouvrir cette
+ *    carte remettait le seuil à son défaut — synchronisé vers l'autre
+ *    appareil. Lue une fois depuis l'ancienne clé (rayon, familles), puis plus
+ *    jamais touchée.
+ */
+const PREFS_KEY = 'lo-yanum:coverage-map'
+const LEGACY_PREFS_KEY = 'lo-yanum:coverage'
 type Usage = 'meeting' | 'prepare' | 'custom'
+/** ★★ AX7 — la borne : kilomètres de route, ou minutes de trajet. */
+type Unit = 'km' | 'min'
+export const DEFAULT_LIMIT_MINUTES = 35
+export const NIGHT_PCT_INITIAL = 0
 type Focus = null | 'covered' | 'uncovered' | 'potential'
 type Selected = { kind: 'farm' | 'lead' | 'institution'; id: string } | null
 
 interface Prefs {
   radiusKm: number
+  /** ★★ AX7 — la borne en minutes, gardée même quand l'unité choisie est le km. */
+  minutes: number
+  unit: Unit
+  /**
+   * ★★ AX7.2 — LA NUIT. Les gardes sont de nuit. La durée de base suppose des
+   * routes VIDES (vitesses de circulation libre par type de route) — c'est
+   * déjà la nuit pour le trafic ; ce pourcentage, que le PO règle, ajoute ce
+   * que la nuit coûte en plus : routes non éclairées, pistes, barrages.
+   */
+  nightPct: number
   visible: Visible
 }
 
+function parsePrefs(raw: string | null): Partial<Prefs> | null {
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as Partial<Prefs>
+  } catch {
+    return null
+  }
+}
 function readPrefs(): Prefs {
   try {
-    const raw = localStorage.getItem(PREFS_KEY)
-    if (raw) {
-      const p = JSON.parse(raw) as Partial<Prefs>
-      return {
-        radiusKm: clampRadius(Number(p.radiusKm) || DEFAULT_RADIUS_KM),
-        visible: { ...COVERAGE_PRESETS.prepare, ...(p.visible ?? {}) },
-      }
+    const p = parsePrefs(localStorage.getItem(PREFS_KEY)) ?? parsePrefs(localStorage.getItem(LEGACY_PREFS_KEY)) ?? {}
+    const minutes = Number(p.minutes)
+    const night = Number(p.nightPct)
+    return {
+      radiusKm: clampRadius(Number(p.radiusKm) || DEFAULT_RADIUS_KM),
+      minutes: Number.isFinite(minutes) && minutes >= 1 ? Math.round(minutes) : DEFAULT_LIMIT_MINUTES,
+      unit: p.unit === 'min' ? 'min' : 'km',
+      nightPct: Number.isFinite(night) && night >= 0 && night <= 200 ? Math.round(night) : NIGHT_PCT_INITIAL,
+      visible: { ...COVERAGE_PRESETS.prepare, ...(p.visible ?? {}) },
     }
   } catch {
     /* une préférence perdue n'est qu'un retour au défaut */
   }
-  return { radiusKm: DEFAULT_RADIUS_KM, visible: COVERAGE_PRESETS.prepare }
+  return { radiusKm: DEFAULT_RADIUS_KM, minutes: DEFAULT_LIMIT_MINUTES, unit: 'km', nightPct: NIGHT_PCT_INITIAL, visible: COVERAGE_PRESETS.prepare }
 }
 function writePrefs(p: Prefs): void {
   try {
@@ -139,11 +176,19 @@ function useTrace(from: LatLng | null | undefined, to: LatLng | null | undefined
   return traceCache.get(key) ?? []
 }
 
-/** « 23 ק״מ · 28 דק׳ » — la durée avec la marge du PO (AI3.2). */
-export function useLinkLabel(): (km: number, seconds: number) => string {
+/**
+ * « 23 ק״מ · 28 דק׳ » — TOUJOURS les deux (AX7.3), quelle que soit la borne.
+ * La durée = la route (vitesses de circulation libre) × la marge du PO
+ * (AI3.2) × la tenue de nuit (AX7.2).
+ */
+export function useLinkLabel(nightPct = 0): (km: number, seconds: number) => string {
   const { t } = useTranslation()
+  const factor = useTimeFactor(nightPct)
+  return (km, seconds) => t('coverage.linkLabel', { km: km.toFixed(km < 10 ? 1 : 0), min: linkMinutes(seconds, factor) })
+}
+export function useTimeFactor(nightPct: number): number {
   const margin = useRouteMargin()
-  return (km, seconds) => t('coverage.linkLabel', { km: km.toFixed(km < 10 ? 1 : 0), min: Math.max(1, Math.round((seconds / 60) * (1 + margin / 100))) })
+  return (1 + margin / 100) * (1 + nightPct / 100)
 }
 
 // --- L'écran ------------------------------------------------------------------
@@ -153,10 +198,29 @@ export function CoverageScreen() {
   const farms = useCoreValue(() => getVisibleFarms())
   const leads = useCoreValue(() => getVisibleLeads())
   const institutions = useCoreValue(() => getInstitutions())
-  const [prefs, setPrefs] = useState<Prefs>(readPrefs)
-  useEffect(() => writePrefs(prefs), [prefs])
+  const [prefs, setPrefsState] = useState<Prefs>(readPrefs)
+  /* ⚠️ ÉCRIT SUR UN GESTE, PAS AU MONTAGE : une clé synchronisée réécrite à
+     chaque ouverture deviendrait « la plus récente » et écraserait le choix
+     fait sur l'autre appareil. */
+  const setPrefs = (f: (p: Prefs) => Prefs) =>
+    setPrefsState((p) => {
+      const next = f(p)
+      writePrefs(next)
+      return next
+    })
+  /* ★ AS4 — un choix fait sur l'autre appareil arrive ici. */
+  useEffect(() => onSettingsApplied([PREFS_KEY], () => setPrefsState(readPrefs())), [])
+  const margin = useRouteMargin()
+  const factor = useTimeFactor(prefs.nightPct)
+  const limitMinutes = prefs.unit === 'min' ? { minutes: prefs.minutes, factor } : null
+  const airBound = airBoundKm({ radiusKm: prefs.radiusKm, limitMinutes })
+  const limitText = prefs.unit === 'min' ? t('coverage.minutes', { min: prefs.minutes }) : t('coverage.km', { km: prefs.radiusKm })
   const [focus, setFocus] = useState<Focus>(null)
-  const [selected, setSelected] = useState<Selected>(null)
+  /* ★★ AX1 — ouverte depuis l'écran מוסדות : l'institution arrive choisie. */
+  const [selected, setSelected] = useState<Selected>(() => {
+    const inst = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('inst')
+    return inst ? { kind: 'institution', id: inst } : null
+  })
   const [selectKey, setSelectKey] = useState(0)
   const [routeTo, setRouteTo] = useState<string | null>(null)
   /* ★ AV1 — `null` = automatique : « לאשר » tant qu'il en reste, sinon « הכול ».
@@ -174,7 +238,7 @@ export function CoverageScreen() {
      toute ferme affichable que le vol d'oiseau laisse dans le rayon. Les
      paires déjà gardées ne coûtent rien ; les autres partent dans la file. */
   const mesh = useRoadMesh()
-  const linkLabel = useLinkLabel()
+  const linkLabel = useLinkLabel(prefs.nightPct)
   const wanted = useMemo(() => {
     const out: Array<{ from: LatLng; to: LatLng }> = []
     const pts: LatLng[] = []
@@ -186,10 +250,10 @@ export function CoverageScreen() {
     }
     for (const i of institutions) {
       if (!i.position || i.engagement === 'not_relevant') continue
-      for (const p of pts) if (haversineKm(i.position, p) <= prefs.radiusKm) out.push({ from: i.position, to: p })
+      for (const p of pts) if (haversineKm(i.position, p) <= airBound) out.push({ from: i.position, to: p })
     }
     return out
-  }, [farms, institutions, prefs.radiusKm, prefs.visible])
+  }, [farms, institutions, airBound, prefs.visible])
   const wantedKey = wanted.map((w) => `${w.from.lat},${w.from.lng}>${w.to.lat},${w.to.lng}`).join('|')
   const [retry, setRetry] = useState(0)
   useEffect(() => {
@@ -204,12 +268,13 @@ export function CoverageScreen() {
         leads,
         institutions,
         radiusKm: prefs.radiusKm,
+        limitMinutes,
         visible: prefs.visible,
         road: (from, to) => meshPair(from, to),
       }),
     // `mesh.version` : une paire mesurée recompose le dessin et les compteurs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [farms, leads, institutions, prefs, mesh.version],
+    [farms, leads, institutions, prefs, mesh.version, factor],
   )
 
   const land = readToken('--status-success')
@@ -327,7 +392,12 @@ export function CoverageScreen() {
       <div data-testid="coverage-screen" data-usage={usage}>
         <PageHeader
           title={t('coverage.title')}
-          subtitle={t('coverage.subtitle')}
+          info={
+            <>
+              <p>{t('coverage.subtitle')}</p>
+              <p className="mt-1">{t(`coverage.usage.${usage}Hint`)}</p>
+            </>
+          }
           actions={
             <Link to="/coordinator/route" className="btn-ghost min-h-11" data-testid="coverage-to-route">
               <Icon name="route" size={16} />
@@ -336,19 +406,23 @@ export function CoverageScreen() {
           }
         />
 
-        <TabBar
-          items={[
-            { key: 'meeting', label: t('coverage.usage.meeting') },
-            { key: 'prepare', label: t('coverage.usage.prepare') },
-            ...(usage === 'custom' ? [{ key: 'custom' as const, label: t('coverage.usage.custom') }] : []),
-          ]}
-          active={usage}
-          onSelect={choose}
-          label={t('coverage.usage.label')}
-          idPrefix="coverage-usage"
-          testId="coverage-usage"
-        />
-        <p className="muted mt-2 text-caption">{t(`coverage.usage.${usage}Hint`)}</p>
+        {/* ★★ AX3 — « פגישה » N'ÉTAIT NI UN ONGLET NI UN FILTRE : c'est un MODE
+            de l'écran (on le montre à une institution : rien d'interne). Un
+            interrupteur, à sa place ; les familles ci-dessous sont LES filtres. */}
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-card bg-surface-raised px-3 py-2 shadow-card" data-testid="coverage-usage" data-usage={usage}>
+          <input
+            type="checkbox"
+            role="switch"
+            className="h-5 w-5 shrink-0 accent-[rgb(var(--accent))]"
+            checked={usage === 'meeting'}
+            onChange={(e) => choose(e.target.checked ? 'meeting' : 'prepare')}
+            data-testid="coverage-usage-meeting"
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block text-caption font-semibold text-content-primary">{t('coverage.meetingMode')}</span>
+            <span className="block truncate text-micro text-content-muted">{t(`coverage.usage.${usage}Short`)}</span>
+          </span>
+        </label>
         {usage !== 'meeting' && toConfirmCount > 0 && (
           <button
             type="button"
@@ -390,49 +464,134 @@ export function CoverageScreen() {
         {/* ---------------------------------------------------------------- */}
         {/* LE RAYON                                                          */}
         {/* ---------------------------------------------------------------- */}
-        <label className="mt-4 block rounded-card bg-surface-raised p-3 shadow-card" data-testid="coverage-radius">
-          <span className="flex items-baseline justify-between gap-3">
-            <span className="text-caption font-bold text-content-secondary">{t('coverage.radius')}</span>
+        {/* ★★ AX7 — LA BORNE, EN KILOMÈTRES OU EN MINUTES : le choix est au PO.
+            Son engagement auprès des institutions est de 35 MINUTES. */}
+        <div className="mt-4 block rounded-card bg-surface-raised p-3 shadow-card" data-testid="coverage-radius" data-unit={prefs.unit}>
+          <span className="flex flex-nowrap items-center justify-between gap-3">
+            <span className="flex items-center text-caption font-bold text-content-secondary">
+              {t('coverage.limit')}
+              <InfoTip label={t('coverage.durationWhat')} testId="coverage-duration-info" className="contents">
+                <p>{t('coverage.durationIs')}</p>
+                <p className="mt-1">{t('coverage.durationSpeeds')}</p>
+                <p className="mt-1">{t('coverage.durationMargin', { percent: margin })}</p>
+                <p className="mt-1">{t('coverage.durationNight', { percent: prefs.nightPct })}</p>
+                <p className="mt-1">{t('coverage.distanceRule')}</p>
+              </InfoTip>
+            </span>
             <span className="numeric ltr-nums text-title text-content-primary" data-testid="coverage-radius-value">
-              {t('coverage.km', { km: prefs.radiusKm })}
+              {limitText}
             </span>
           </span>
-          <input
-            type="range"
-            min={RADIUS_MIN_KM}
-            max={Math.max(RADIUS_MAX_KM, prefs.radiusKm)}
-            step={5}
-            value={prefs.radiusKm}
-            onChange={(e) => setPrefs((p) => ({ ...p, radiusKm: clampRadius(Number(e.target.value)) }))}
-            className="mt-2 h-11 w-full accent-[rgb(var(--status-violet))]"
-            data-testid="coverage-radius-input"
-            aria-valuetext={t('coverage.km', { km: prefs.radiusKm })}
-          />
-          <span className="mt-1 flex items-center gap-2 text-caption text-content-secondary">
-            {/* ★ AW1.7 — un champ chiffré, SANS plafond : la réglette n'est qu'un raccourci. */}
-            <span>{t('coverage.radiusAny')}</span>
+          <span role="radiogroup" aria-label={t('coverage.unitLabel')} className="mt-2 flex flex-nowrap gap-1" data-testid="coverage-unit">
+            {(['min', 'km'] as const).map((u) => (
+              <button
+                key={u}
+                type="button"
+                role="radio"
+                aria-checked={prefs.unit === u}
+                onClick={() => setPrefs((p) => ({ ...p, unit: u }))}
+                data-testid={`coverage-unit-${u}`}
+                className={`flex min-h-11 flex-1 items-center justify-center rounded-field border text-caption font-semibold ${
+                  prefs.unit === u ? 'border-accent bg-accent/15 text-accent-ink' : 'border-edge-subtle text-content-secondary hover:bg-surface-high'
+                }`}
+              >
+                {t(`coverage.unit.${u}`)}
+              </button>
+            ))}
+          </span>
+          {prefs.unit === 'km' ? (
+            <>
+              <input
+                type="range"
+                min={RADIUS_MIN_KM}
+                max={Math.max(RADIUS_MAX_KM, prefs.radiusKm)}
+                step={5}
+                value={prefs.radiusKm}
+                onChange={(e) => setPrefs((p) => ({ ...p, radiusKm: clampRadius(Number(e.target.value)) }))}
+                className="mt-2 h-11 w-full accent-[rgb(var(--status-violet))]"
+                data-testid="coverage-radius-input"
+                aria-valuetext={t('coverage.km', { km: prefs.radiusKm })}
+              />
+              <span className="mt-1 flex items-center gap-2 text-caption text-content-secondary">
+                {/* ★ AW1.7 — un champ chiffré, SANS plafond : la réglette n'est qu'un raccourci. */}
+                <span>{t('coverage.radiusAny')}</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={prefs.radiusKm}
+                  onChange={(e) => {
+                    const n = Number(e.target.value)
+                    if (Number.isFinite(n) && n >= 1) setPrefs((p) => ({ ...p, radiusKm: clampRadius(n) }))
+                  }}
+                  className="input ltr-nums h-11 w-24 text-center"
+                  data-testid="coverage-radius-number"
+                  aria-label={t('coverage.radius')}
+                />
+                <span>{t('coverage.kmUnit')}</span>
+              </span>
+            </>
+          ) : (
+            <>
+              <input
+                type="range"
+                min={10}
+                max={Math.max(90, prefs.minutes)}
+                step={5}
+                value={prefs.minutes}
+                onChange={(e) => setPrefs((p) => ({ ...p, minutes: Math.max(1, Math.round(Number(e.target.value))) }))}
+                className="mt-2 h-11 w-full accent-[rgb(var(--status-violet))]"
+                data-testid="coverage-minutes-input"
+                aria-valuetext={t('coverage.minutes', { min: prefs.minutes })}
+              />
+              <span className="mt-1 flex flex-wrap items-center gap-2 text-caption text-content-secondary">
+                <span>{t('coverage.minutesAny')}</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={prefs.minutes}
+                  onChange={(e) => {
+                    const n = Number(e.target.value)
+                    if (Number.isFinite(n) && n >= 1) setPrefs((p) => ({ ...p, minutes: Math.round(n) }))
+                  }}
+                  className="input ltr-nums h-11 w-20 text-center"
+                  data-testid="coverage-minutes-number"
+                  aria-label={t('coverage.limit')}
+                />
+                <span>{t('coverage.minUnit')}</span>
+              </span>
+            </>
+          )}
+          {/* ★★ AX7.2 — LA NUIT, RÉGLABLE PAR LE PO, ET DITE EN UNE LIGNE. */}
+          <span className="mt-2 flex flex-wrap items-center gap-2 border-t border-edge-subtle pt-2 text-caption text-content-secondary">
+            <Icon name="moon" size={14} />
+            <span>{t('coverage.nightLabel')}</span>
             <input
               type="number"
               inputMode="numeric"
-              min={1}
-              value={prefs.radiusKm}
+              min={0}
+              max={200}
+              value={prefs.nightPct}
               onChange={(e) => {
                 const n = Number(e.target.value)
-                if (Number.isFinite(n) && n >= 1) setPrefs((p) => ({ ...p, radiusKm: clampRadius(n) }))
+                if (Number.isFinite(n) && n >= 0 && n <= 200) setPrefs((p) => ({ ...p, nightPct: Math.round(n) }))
               }}
-              className="input ltr-nums h-11 w-24 text-center"
-              data-testid="coverage-radius-number"
-              aria-label={t('coverage.radius')}
+              className="input ltr-nums h-11 w-20 text-center"
+              data-testid="coverage-night"
+              aria-label={t('coverage.nightLabel')}
             />
-            <span>{t('coverage.kmUnit')}</span>
+            <span>%</span>
+            <span className="muted ms-auto text-micro" data-testid="coverage-duration-line">
+              {t('coverage.durationLine', { margin, night: prefs.nightPct })}
+            </span>
           </span>
-          <span className="muted mt-1 block text-micro">{t('coverage.distanceRule')}</span>
-        </label>
+        </div>
 
         <MeshStatus
           progress={mesh.progress}
           mesh={coverage.mesh}
-          radiusKm={prefs.radiusKm}
+          limitText={limitText}
           onRetry={() => setRetry((n) => n + 1)}
         />
 
@@ -444,9 +603,11 @@ export function CoverageScreen() {
           <Counter testId="coverage-uncovered" value={c.uncovered} of={c.farms} label={t('coverage.uncovered')} tone="warn" active={focus === 'uncovered'} onClick={() => setFocus(focus === 'uncovered' ? null : 'uncovered')} />
           <Counter testId="coverage-potential" value={c.potential} of={c.uncovered} label={t('coverage.potential')} tone="violet" plus active={focus === 'potential'} onClick={() => setFocus(focus === 'potential' ? null : 'potential')} />
         </div>
+        {/* ★★ AX3.5 — ICI, CHIFFRES ET FILTRES À LA FOIS, ET L'ÉCRAN LE DIT : ce
+            sont les nombres qu'on montre à une institution (gros, lisibles de
+            loin) ; les toucher isole ces fermes sur la carte. */}
         <p className="muted mt-1.5 text-micro">
-          {t('coverage.countsScope', { n: c.farms })}
-          {focus ? ` · ${t('coverage.focusOn')}` : ''}
+          {t('coverage.countsScope', { n: c.farms })} · {focus ? t('coverage.focusOn') : t('coverage.countsTap')}
         </p>
         {!meeting && c.unreachable > 0 && (
           <p className="mt-1 text-caption font-semibold text-status-warn-ink" data-testid="coverage-unreachable">
@@ -504,13 +665,15 @@ export function CoverageScreen() {
           <Section title={selectedInst.name} className="mt-4">
             <InstitutionEditor inst={selectedInst} />
             <p className="mt-3 text-caption font-bold text-content-secondary">
-              {t('coverage.reachTitle', { km: prefs.radiusKm })}
+              {t('coverage.reachTitleLimit', { limit: limitText })}
               {mesh.progress.pending > 0 && <span className="muted ms-2 font-normal">{t('coverage.measuringRoad', { count: mesh.progress.pending })}</span>}
             </p>
             <ReachList
               inst={selectedInst}
               farms={farms}
-              radiusKm={prefs.radiusKm}
+              airBound={airBound}
+              inLimit={(r) => (limitMinutes ? linkMinutes(r.seconds, factor) <= limitMinutes.minutes : r.km <= prefs.radiusKm)}
+              nightPct={prefs.nightPct}
               routeTo={routeTo}
               onRoute={(id) => setRouteTo(routeTo === id ? null : id)}
               version={mesh.version}
@@ -653,42 +816,6 @@ function Counter({
   )
 }
 
-const ENGAGEMENT_ON: Record<InstitutionEngagement, string> = {
-  not_contacted: 'border-status-info bg-status-info/15 text-status-info-ink',
-  contacted: 'border-status-warn bg-status-warn/15 text-status-warn-ink',
-  interested: 'border-accent bg-accent/15 text-accent-ink',
-  signed: 'border-status-violet bg-status-violet/15 text-status-violet-ink',
-  not_relevant: 'border-edge-strong bg-surface-high text-content-primary',
-}
-
-export function EngagementSegments({ value, onChange, testId }: { value: InstitutionEngagement; onChange: (e: InstitutionEngagement) => void; testId: string }) {
-  const { t } = useTranslation()
-  return (
-    <div role="radiogroup" aria-label={t('institutions.engagementLabel')} data-testid={testId} className="flex flex-nowrap gap-1">
-      {INSTITUTION_ENGAGEMENTS.map((s) => {
-        const on = s === value
-        return (
-          <button
-            key={s}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            aria-label={t(`institutions.engagement.${s}`)}
-            title={t(`institutions.engagement.${s}`)}
-            data-testid={`${testId}-${s}`}
-            onClick={() => onChange(s)}
-            className={`flex min-h-[2.75rem] flex-auto items-center justify-center whitespace-nowrap rounded-field border px-1.5 text-caption font-semibold transition-colors duration-fast ${
-              on ? ENGAGEMENT_ON[s] : 'border-edge-subtle text-content-secondary hover:bg-surface-high'
-            }`}
-          >
-            {t(`institutions.engagementShort.${s}`)}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 function InstitutionCard({ inst, reach, onClose }: { inst: Institution; reach: Array<{ tone: 'real' | 'potential' }>; onClose: () => void }) {
   const { t } = useTranslation()
   return (
@@ -729,94 +856,28 @@ function InstitutionCard({ inst, reach, onClose }: { inst: Institution; reach: A
   )
 }
 
-/** Statut d'engagement, contact, téléphone, note : éditables sur place. */
-function InstitutionEditor({ inst }: { inst: Institution }) {
-  const { t } = useTranslation()
-  const [contact, setContact] = useState(inst.contactName)
-  const [phone, setPhone] = useState(inst.contactPhone)
-  const [notes, setNotes] = useState(inst.notes)
-  useEffect(() => {
-    setContact(inst.contactName)
-    setPhone(inst.contactPhone)
-    setNotes(inst.notes)
-  }, [inst.id, inst.contactName, inst.contactPhone, inst.notes])
-  return (
-    <div className="flex flex-col gap-3" data-testid="institution-editor">
-      <p className="muted text-caption">
-        {[inst.locality, t(`institutions.kind.${inst.kind}`), t(`institutions.audience.${inst.audience}`), inst.network].filter(Boolean).join(' · ')}
-      </p>
-      {inst.positionUncertain && (
-        <p className="rounded-field bg-status-warn/15 px-3 py-2 text-caption font-semibold text-status-warn-ink" data-testid="institution-uncertain">
-          {t('institutions.uncertainLong')}
-        </p>
-      )}
-      {isInstitutionToConfirm(inst) && (
-        <div className="flex flex-wrap items-center gap-2 rounded-field bg-status-warn/15 px-3 py-2" data-testid="institution-to-confirm">
-          <p className="min-w-0 flex-1 text-caption font-semibold text-status-warn-ink">
-            {t('institutions.toConfirmLong', { status: t(`institutions.engagement.${inst.engagement}`) })}
-          </p>
-          <button type="button" className="btn-primary min-h-11" onClick={() => updateInstitution(inst.id, { engagementConfirmed: true })} data-testid="institution-confirm">
-            <Icon name="check" size={16} />
-            {t('institutions.confirm')}
-          </button>
-        </div>
-      )}
-      {/* ★★ AV1 — CORRIGER = CONFIRMER : choisir un statut, c'est le dire. */}
-      <EngagementSegments value={inst.engagement} onChange={(e) => updateInstitution(inst.id, { engagement: e, engagementConfirmed: true })} testId="institution-engagement" />
-      {(inst.metOn || inst.students !== null || inst.positionSource) && (
-        <dl className="grid gap-1 text-caption" data-testid="institution-facts">
-          {inst.metOn && (
-            <div className="flex gap-2"><dt className="text-content-muted">{t('institutions.metOn')}</dt><dd className="ltr-nums font-semibold text-content-primary">{inst.metOn.split('-').reverse().join('.')}</dd></div>
-          )}
-          {inst.students !== null && (
-            <div className="flex gap-2"><dt className="text-content-muted">{t('institutions.students')}</dt><dd className="ltr-nums font-semibold text-content-primary">{inst.students}</dd></div>
-          )}
-          {inst.positionSource && (
-            <div className="flex gap-2"><dt className="shrink-0 text-content-muted">{t('institutions.positionSource')}</dt><dd className="text-content-secondary">{inst.positionSource}</dd></div>
-          )}
-        </dl>
-      )}
-      <div className="grid gap-2 sm:grid-cols-2">
-        <label className="flex flex-col gap-1">
-          <span className="text-caption font-semibold text-content-secondary">{t('institutions.contactName')}</span>
-          <input className="input" value={contact} onChange={(e) => setContact(e.target.value)} onBlur={() => contact !== inst.contactName && updateInstitution(inst.id, { contactName: contact.trim() })} data-testid="institution-contact" />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-caption font-semibold text-content-secondary">{t('institutions.contactPhone')}</span>
-          <input className="input ltr-nums" inputMode="tel" dir="ltr" placeholder="05X-XXXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} onBlur={() => phone !== inst.contactPhone && updateInstitution(inst.id, { contactPhone: phone.trim() })} data-testid="institution-phone" />
-        </label>
-      </div>
-      <label className="flex flex-col gap-1">
-        <span className="text-caption font-semibold text-content-secondary">{t('institutions.notes')}</span>
-        <textarea className="input min-h-[3.5rem]" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={() => notes !== inst.notes && updateInstitution(inst.id, { notes })} />
-      </label>
-      {inst.contactPhone && (
-        <a href={`tel:${inst.contactPhone.replace(/[^\d+]/g, '')}`} className="btn-secondary self-start">
-          <Icon name="phone" size={16} />
-          {t('institutions.call')}
-        </a>
-      )}
-    </div>
-  )
-}
-
 function ReachList({
   inst,
   farms,
-  radiusKm,
+  airBound,
+  inLimit,
+  nightPct,
   routeTo,
   onRoute,
   version,
 }: {
   inst: Institution
   farms: readonly Farm[]
-  radiusKm: number
+  /** ★★ AX7 — ce que le vol d'oiseau laisse passer (km, ou minutes × 95 km/h). */
+  airBound: number
+  inLimit: (road: { km: number; seconds: number }) => boolean
+  nightPct: number
   routeTo: string | null
   onRoute: (id: string) => void
   version: number
 }) {
   const { t } = useTranslation()
-  const label = useLinkLabel()
+  const label = useLinkLabel(nightPct)
   const rows = useMemo(() => {
     if (!inst.position) return []
     const out: Array<{ farm: Farm; air: number; road: PairRoad | undefined }> = []
@@ -824,20 +885,20 @@ function ReachList({
       const p = farmPoint(f)
       if (!p) continue
       const air = haversineKm(inst.position, p)
-      if (air > radiusKm) continue
+      if (air > airBound) continue
       out.push({ farm: f, air, road: meshPair(inst.position, p) })
     }
     const km = (r: PairRoad | undefined, air: number) => (r && r.kind !== 'none' ? r.km : 1e6 + air)
     return out.sort((a, b) => km(a.road, a.air) - km(b.road, b.air))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inst, farms, radiusKm, version])
+  }, [inst, farms, airBound, version])
   if (!inst.position) return <p className="muted mt-1">{t('coverage.noInstitutionPosition')}</p>
   if (rows.length === 0) return <p className="muted mt-1">{t('coverage.reachNone')}</p>
   return (
     <ul className="mt-2 flex flex-col gap-1.5" data-testid="coverage-reach-list">
       {rows.map(({ farm, road }) => {
         const measured = road && road.kind !== 'none' ? road : null
-        const out = !!measured && measured.km > radiusKm
+        const out = !!measured && !inLimit(measured)
         const blocked = road?.kind === 'beyondOnly'
         const beyond = road?.kind === 'road' ? road.fastestBeyond : null
         return (
@@ -878,12 +939,12 @@ function ReachList({
 function MeshStatus({
   progress,
   mesh,
-  radiusKm,
+  limitText,
   onRetry,
 }: {
   progress: ReturnType<typeof useRoadMesh>['progress']
   mesh: { airPairs: number; roadPairs: number; dropped: number; pending: number; noRoad: number; blocked: number; fastestBeyond: number }
-  radiusKm: number
+  limitText: string
   onRetry: () => void
 }) {
   const { t } = useTranslation()
@@ -925,7 +986,7 @@ function MeshStatus({
         </div>
       ) : (
         <p className="ltr-nums mt-1 text-caption text-content-primary" data-testid="coverage-mesh-summary">
-          {t('coverage.mesh.summary', { road: mesh.roadPairs, air: mesh.airPairs, dropped: mesh.dropped, km: radiusKm })}
+          {t('coverage.mesh.summaryLimit', { road: mesh.roadPairs, air: mesh.airPairs, dropped: mesh.dropped, limit: limitText })}
         </p>
       )}
       {mesh.blocked > 0 && (
@@ -991,20 +1052,21 @@ function InstitutionList({
         </span>
       }
     >
-      <TabBar
-        size="sm"
-        items={([...(toConfirm > 0 ? (['toConfirm'] as const) : []), 'all', ...INSTITUTION_ENGAGEMENTS] as ListFilter[]).map((k) => ({
-          key: k,
-          label: k === 'all' ? t('institutions.all') : k === 'toConfirm' ? t('institutions.toConfirmTab') : t(`institutions.engagementShort.${k}`),
-          count: counts(k),
-          ...(k === 'toConfirm' ? { tone: 'vivid' as const } : {}),
-        }))}
-        active={filter}
-        onSelect={setFilter}
-        label={t('institutions.engagementLabel')}
-        idPrefix="institutions-filter"
-        testId="institutions-filter"
-      />
+      {/* ★★ AX3 — L'ENGAGEMENT EST UN FILTRE (les mêmes institutions, moins
+          nombreuses), pas un onglet. */}
+      <div className="pill-row" role="group" aria-label={t('institutions.engagementLabel')} data-testid="institutions-filter" data-filter-row="">
+        {([...(toConfirm > 0 ? (['toConfirm'] as const) : []), 'all', ...INSTITUTION_ENGAGEMENTS] as ListFilter[]).map((k) => (
+          <FilterPill
+            key={k}
+            active={filter === k}
+            onClick={() => setFilter(k)}
+            count={counts(k)}
+            testId={`institutions-filter-${k}`}
+          >
+            {k === 'all' ? t('institutions.all') : k === 'toConfirm' ? t('institutions.toConfirmTab') : t(`institutions.engagementShort.${k}`)}
+          </FilterPill>
+        ))}
+      </div>
       <input type="search" className="input mt-3 w-full" placeholder={t('institutions.search')} value={query} onChange={(e) => setQuery(e.target.value)} data-testid="institutions-search" />
       <ul ref={listRef} className="mt-3 flex flex-col gap-1.5" data-testid="institutions-list">
         {rows.map((i) => (

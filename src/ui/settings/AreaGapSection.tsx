@@ -50,8 +50,8 @@ export function AreaGapSection() {
       collapseKey="settings-area-gap"
       defaultOpen={false}
       summary={`${gapPercent}%`}
+      info={t('settings.areaGapIntro')}
     >
-      <p className="muted mb-3">{t('settings.areaGapIntro')}</p>
       <div className="auto-cols gap-3 [--col-min:11rem]">
         <div>
           <label className="label" htmlFor="area-gap-percent">

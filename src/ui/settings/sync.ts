@@ -45,6 +45,10 @@ export const SYNCED_SETTING_KEYS: readonly string[] = [
   /* Le programme : cible, seuils, couvertures, rappels. */
   'lo-yanum:target',
   'lo-yanum:coverage',
+  /* ★★ AX7 — la carte de couverture : la borne (km OU minutes), la nuit, les
+     familles. Elle partageait `lo-yanum:coverage` avec le seuil des fermes
+     oubliées, et chacun effaçait l'autre. */
+  'lo-yanum:coverage-map',
   'lo-yanum:vigil',
   /* ⚠️ AI7 — `lo-yanum:reminders` RETIRÉ : aucun module ne lit ni n'écrit cette
      clé. Les rappels d'AF4 sont une AUTORISATION du navigateur, qui ne voyage
@@ -82,6 +86,9 @@ export const LOCAL_ONLY_KEYS: ReadonlyArray<{ key: string; why: string }> = [
   { key: 'lo-yanum:intake:seen', why: 'demandes « vues » : ne commande que la répétition d’un bandeau sur CET appareil (AQ)' },
   { key: 'lo-yanum:sheet-mapping:<type>', why: 'correspondance de colonnes du dernier fichier importé ICI' },
   { key: 'lo-yanum:farm-tab:<fiche>', why: 'onglet ouvert d’une fiche (AS5) : disposition d’écran' },
+  { key: 'lo-yanum:rail:expanded', why: 'rail déplié ou compact (AX1) : une affaire d’écran' },
+  { key: 'lo-yanum:leads-sort, lo-yanum:institutions-sort', why: 'tri des tableaux (AX5) : disposition d’écran' },
+  { key: 'lo-yanum:free-route-draft', why: 'l’itinéraire libre EN COURS (AX8) ; les itinéraires ENREGISTRÉS, eux, voyagent (free-routes)' },
   { key: 'map-mode, map-ratio, map-last, map-layers, map-base, layout-sync, block:*, numpad', why: 'disposition d’écran et de carte' },
   { key: 'last-fix, geo-granted, geo-diag, map-attempt', why: 'localisation et diagnostics de CET appareil' },
   { key: 'update-pending, update-verdict', why: 'mise à jour du build de CET appareil (AJ)' },

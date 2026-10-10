@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import * as React from 'react'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useInfoTip } from './InfoTip'
 
 import { useFilterFold, useNarrow, usePhoneShape } from '../hooks/useNarrow'
 import { BandCard } from './band'
@@ -324,10 +325,13 @@ export function PageHeader({
   media,
   sticky = false,
   below,
+  info,
   testId,
 }: {
   title: ReactNode
   subtitle?: string
+  /** ★★ AX4 — l'explication de l'écran : derrière un ⓘ, fermée par défaut. */
+  info?: ReactNode
   actions?: ReactNode
   /** The parent list. Rendered as a round back arrow beside the title. */
   back?: { to: string; label: string }
@@ -352,6 +356,8 @@ export function PageHeader({
   const rowRef = useRef<HTMLDivElement | null>(null)
   const titleRef = useRef<HTMLHeadingElement | null>(null)
   const actionsRef = useRef<HTMLDivElement | null>(null)
+  const tip = useInfoTip(info, { testId: 'page-info' })
+  const goBack = useHistoryBack()
   const unfolded = useRef(0)
   const [folded, setFolded] = useState(false)
   useEffect(() => {
@@ -390,6 +396,9 @@ export function PageHeader({
           {back && (
             <Link
               to={back.to}
+              /* ★★ AX2.4 — LE RETOUR SUIT LE CHEMIN PRIS : venu d'une ferme, on
+                 revient à la ferme ; ouvert directement, on va à la liste. */
+              onClick={(e) => goBack(e)}
               aria-label={back.label}
               title={back.label}
               data-testid="page-back"
@@ -417,6 +426,7 @@ export function PageHeader({
               className={`${sticky ? 'line-clamp-2 text-section sm:text-title' : 'text-title'} text-content-primary [overflow-wrap:anywhere]`}
             >
               {title}
+              {tip.button && <span className="ms-1 inline-flex align-middle">{tip.button}</span>}
             </h1>
             {subtitle && <p className={`muted mt-1 ${sticky ? 'truncate' : ''}`}>{subtitle}</p>}
           </div>
@@ -427,9 +437,27 @@ export function PageHeader({
           </div>
         )}
       </div>
+      {tip.panel}
       {below}
     </header>
   )
+}
+
+/**
+ * ★★ AX2.4 — « JE SUIS PERDU » : un retour qui renvoie à la liste alors qu'on
+ * venait d'une ferme est un retour qui égare. Si l'application a un écran
+ * PRÉCÉDENT dans sa propre histoire, on y retourne ; sinon (lien ouvert à
+ * froid, rechargement), le lien suit sa cible écrite.
+ */
+export function useHistoryBack(): (e: { preventDefault(): void }) => void {
+  const navigate = useNavigate()
+  return (e) => {
+    const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0
+    if (idx > 0) {
+      e.preventDefault()
+      navigate(-1)
+    }
+  }
 }
 
 /** ★ AT5 — la pilule d'un en-tête trop étroit se replie (voir `PageHeader`). */
@@ -666,8 +694,11 @@ export function Section({
   collapseKey,
   defaultOpen = true,
   summary,
+  info,
 }: {
   title?: string
+  /** ★★ AX4 — l'explication du bloc, derrière un ⓘ à côté du titre. */
+  info?: ReactNode
   action?: ReactNode
   children: ReactNode
   className?: string
@@ -692,6 +723,7 @@ export function Section({
     })
   }
   const foldable = collapseKey !== undefined
+  const tip = useInfoTip(info)
 
   return (
     <section
@@ -730,6 +762,7 @@ export function Section({
               </span>
               {/* The title never gives way; the summary beside it does. */}
               <h2 className="shrink-0 text-section text-content-primary">{title}</h2>
+              {tip.button}
               {!open && summary && (
                 <span
                   className="min-w-0 truncate text-caption text-content-muted"
@@ -740,11 +773,17 @@ export function Section({
               )}
             </button>
           ) : (
-            title && <h2 className="text-section text-content-primary">{title}</h2>
+            title && (
+              <h2 className="flex min-w-0 items-center text-section text-content-primary">
+                {title}
+                {tip.button}
+              </h2>
+            )
           )}
           {action}
         </div>
       )}
+      {open && tip.panel && <div className="mb-2">{tip.panel}</div>}
       {open &&
         (bare ? (
           children
@@ -967,9 +1006,45 @@ export function KpiFilter({
  *    `KpiFilter` now, and the two are the same card because they were always
  *    meant to be the same card.
  */
-export function KpiChip(props: Parameters<typeof KpiFilter>[0]) {
-  return <KpiFilter {...props} />
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AX3.5 (2026-10-10) — UN FILTRE EST UN FILTRE. LA VIGNETTE DEVIENT PASTILLE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * « Les tuiles du haut sont à la fois des statistiques et des filtres, et je
+ *   n'en comprends pas l'intérêt. » Il fallait trancher : ce sont des FILTRES
+ * (on les touche, la liste rétrécit) — leur chiffre est le COMPTE de ce qu'ils
+ * gardent, exactement comme la pastille « חקלאות 7 ». Elles prennent donc la
+ * forme d'un filtre et rejoignent L'UNIQUE rangée de filtres (`ListTop` les y
+ * glisse, voir `KpiSlot`) : plus de bande de tuiles AU-DESSUS d'une rangée de
+ * pastilles — deux rangées qui faisaient la même chose.
+ *
+ * Les chiffres qui n'étaient QUE des chiffres (dounams pondérés, places) sont
+ * sortis des filtres : ils se lisent, ils ne se touchent pas (`ListTop.stat`).
+ * L'explication de chaque file (`hint`) passe en infobulle, et l'écran la dit
+ * derrière son ⓘ.
+ *
+ * Le nom `KpiChip` est gardé : trois écrans l'importent, la forme change seule.
+ */
+export function KpiChip({ label, value, icon, dot, hint, tone = 'default', active, onClick, testId }: Parameters<typeof KpiFilter>[0]) {
+  const ink = TONES[tone].ink
+  return (
+    <FilterPill
+      active={active}
+      onClick={onClick}
+      count={typeof value === 'number' ? value : undefined}
+      title={typeof hint === 'string' ? hint : undefined}
+      testId={testId}
+      dot={dot ?? (icon ? <Icon name={icon} size={13} className={`shrink-0 ${active ? '' : ink}`} /> : undefined)}
+    >
+      {label}
+      {typeof value !== 'number' && <span className="filter-count">{value}</span>}
+    </FilterPill>
+  )
 }
+
+/** ★★ AX3.5 — les pastilles-files d'un `ListTop`, glissées EN TÊTE de sa rangée de filtres. */
+const KpiSlot = createContext<ReactNode>(null)
 
 /**
  * ★★ Y12 (2026-09-04) — THE SEARCH PANEL. See the note at its call site in
@@ -1130,9 +1205,15 @@ export function ListTop({
   kpis,
   filters,
   children,
+  info,
+  stat,
   testId,
 }: {
   title: ReactNode
+  /** ★★ AX3.5 — un CHIFFRE de la liste (dounams pondérés…) : se lit, ne se touche pas. */
+  stat?: ReactNode
+  /** ★★ AX4 — l'explication de la liste, derrière un ⓘ à côté du titre. */
+  info?: ReactNode
   /**
    * ★★ Z3 (2026-09-07) — TWO NUMBERS, NOT A SENTENCE.
    *
@@ -1171,6 +1252,7 @@ export function ListTop({
    * measures 880–1224 and always does.
    */
   const { ref: widthRef, narrow } = useNarrow(30 * 16)
+  const tip = useInfoTip(info, { testId: 'list-info' })
   const hasCount = typeof shown === 'number' && typeof total === 'number'
   const long = hasCount && !!children && narrow === false
   const counter = hasCount ? (
@@ -1181,6 +1263,11 @@ export function ListTop({
                  bg-surface-high px-2.5 py-1 text-micro text-content-secondary"
     >
       {long ? t('common.showingOf', { shown, total }) : `${shown}/${total}`}
+      {stat && (
+        <span className="ms-1.5 border-s border-edge-subtle ps-1.5 font-semibold text-content-primary" data-list-stat="">
+          {stat}
+        </span>
+      )}
     </span>
   ) : null
 
@@ -1239,9 +1326,10 @@ export function ListTop({
             name. */}
         <h1
           data-page-title=""
-          className="min-w-[6rem] flex-1 truncate text-title text-content-primary"
+          className="flex min-w-[6rem] flex-1 items-center text-title text-content-primary"
         >
-          {title}
+          <span className="min-w-0 truncate">{title}</span>
+          {tip.button}
         </h1>
         {/**
           * ★★ Y12 (2026-09-04) — THE MAGNIFIER OPENS A PANEL; IT IS NOT A BOX
@@ -1277,6 +1365,7 @@ export function ListTop({
         {actions}
         {menu}
       </div>
+      {tip.panel}
       {/**
         * ★★ Y6 (2026-09-04) — THE KPI ROW HAS ITS OWN LINE NOW, and the
         *    counter has moved down to the filters'.
@@ -1300,15 +1389,9 @@ export function ListTop({
         *    gaps are `--list-rhythm` now (see `tokens.css`), applied as
         *    padding on the row itself so the negative margin cannot eat it.
         */}
-      {kpis && (
-        <ScrollRow
-          className="min-w-0"
-          testId="kpi-strip"
-          style={{ marginTop: 'calc(var(--list-rhythm) - var(--row-shadow-room))' }}
-        >
-          {kpis}
-        </ScrollRow>
-      )}
+      {/* ★★ AX3.4 — PLUS DE BANDE DE TUILES AU-DESSUS DES FILTRES : les files
+          (`kpis`) entrent dans la rangée de filtres, en tête (`KpiSlot`). Un
+          écran, UNE rangée de filtres. */}
       {(counter || filters) && (
         <div style={{ marginTop: 'var(--list-rhythm)' }}>
           {/**
@@ -1327,7 +1410,9 @@ export function ListTop({
             * its own line, which is where it has always been.
             */}
           <CounterSlot.Provider value={counter}>
-            {filters ?? <div className="flex items-center justify-end">{counter}</div>}
+            <KpiSlot.Provider value={kpis ?? null}>
+              {filters ?? <div className="flex items-center justify-end">{counter}</div>}
+            </KpiSlot.Provider>
           </CounterSlot.Provider>
         </div>
       )}
@@ -1512,6 +1597,8 @@ export function FilterRow({
   const box = useRef<HTMLDivElement | null>(null)
   /** Z3 — the counter `ListTop` built, if this row is inside one. */
   const counter = useContext(CounterSlot)
+  /** ★★ AX3.4 — les files de travail de `ListTop`, en tête des pastilles. */
+  const kpis = useContext(KpiSlot)
 
   /**
    * ★ AA1.2 — WHILE THE PANEL IS OPEN, THE BOTTOM RAIL STEPS ASIDE.
@@ -1603,14 +1690,25 @@ export function FilterRow({
               * RTL row it pins the count to the reading start and pushes
               * everything else to the far end.
               */}
-            {counter && <span className="me-auto flex items-center">{counter}</span>}
+            {counter && <span className={`${kpis ? '' : 'me-auto '}flex items-center`}>{counter}</span>}
+            {/* ★★ AX3.4 — LES FILES DE TRAVAIL RESTENT VISIBLES, SUR LA MÊME LIGNE.
+                Repliées derrière « סינון », elles disparaissaient du panneau à
+                côté de la carte — dont la vignette des demandes entrantes qu'AQ1.3
+                veut en tête. Les filtres ORDINAIRES se replient ; les files non. */}
+            {kpis && (
+              /* Entières, jamais coupées par un bord qui défile : elles passent à
+                 la ligne DANS la même zone si la largeur manque (AQ1.3). */
+              <div className="flex flex-wrap items-center gap-2" data-testid="work-queues" data-kpis-inline="">
+                {kpis}
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
               aria-expanded={open}
               aria-haspopup="dialog"
               data-testid="filter-dropdown"
-              className={`filter-pill px-3 ${active ? 'filter-pill-active' : ''}`}
+              className={`filter-pill px-3 ${kpis ? 'ms-auto' : ''} ${active ? 'filter-pill-active' : ''}`}
             >
               <Icon name="filter" size={12} />
               {t('common.filters')}
@@ -1681,6 +1779,11 @@ export function FilterRow({
               AB2 — and it is the row `useFilterFold` measures: its children's
               own widths are what decides whether this shape can exist. */}
           <div ref={pillsRef} className="pill-row mt-2">
+            {kpis && (
+              <span className="contents" data-testid="work-queues">
+                {kpis}
+              </span>
+            )}
             {children}
             {clearPill}
           </div>

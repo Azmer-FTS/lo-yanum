@@ -48,8 +48,8 @@ export function CoverageSection() {
       collapseKey="settings-coverage"
       defaultOpen={false}
       summary={String(neglectDays)}
+      info={t('settings.coverageIntro')}
     >
-      <p className="muted mb-3">{t('settings.coverageIntro')}</p>
       <div className="auto-cols gap-3 [--col-min:11rem]">
         <div>
           <label className="label" htmlFor="coverage-days">

@@ -152,7 +152,10 @@ function walk(dir: string) {
   }
 }
 walk('src')
-check('A321 seuls la carte de couverture et son import lisent les institutions', callers.every((p) => /CoverageScreen|InstitutionsImportScreen|AddContactsScreen|access\.ts/.test(p)), callers.join(', '))
+/* ★★ AX1 — les institutions ont leur écran (מוסדות), et un volontaire se
+   rattache à la sienne (formulaire, import d'une liste) : des ÉCRANS qui les
+   lisent, toujours aucun COMPTEUR (le reste de la section le vérifie). */
+check('A321 seuls les écrans des institutions et de leurs volontaires les lisent', callers.every((p) => /CoverageScreen|InstitutionsImportScreen|InstitutionsScreen|AddContactsScreen|FormPages|ImportWizardScreen|VolunteerFormModal|access\.ts/.test(p)), callers.join(', '))
 
 console.log(`\n  ${passed} PASS, ${failed} FAIL`)
 process.exit(failed === 0 ? 0 : 1)

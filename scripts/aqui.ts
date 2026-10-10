@@ -322,18 +322,21 @@ try {
       if (ex) {
         check(`${vp.name} — ★ entière dans l'écran`, ex.left >= 0 && ex.right <= ex.vw && ex.top >= 0 && ex.bottom <= ex.vh, `${ex.left}…${ex.right} / ${ex.vw}, ${ex.top}…${ex.bottom} / ${ex.vh}`)
         check(`${vp.name} — ★ recouverte par RIEN (21 points)`, ex.hits === ex.total, `${ex.hits}/${ex.total} ${ex.blockers.join(' ')}`)
+        /* ★★ AX3.4 — la bande de tuiles est devenue LES FILES de l'unique rangée
+           de filtres (`work-queues`) ; elles restent visibles quand la rangée
+           se replie. Mêmes exigences : entière, en tête, rien dessus. */
         const panel = await page.evaluate(() => {
-          const row = document.querySelector('[data-testid="kpi-strip"]')!.getBoundingClientRect()
+          const row = document.querySelector('[data-testid="farms-intake"]')!.closest('[data-filter-row]')!.getBoundingClientRect()
           const chip = document.querySelector('[data-testid="farms-intake"]')!.getBoundingClientRect()
           return { inRow: chip.left >= row.left - 0.5 && chip.right <= row.right + 0.5 }
         })
         check(`${vp.name} — ★ entière dans sa bande (pas coupée par le bord qui défile)`, panel.inRow)
         const first = await page.evaluate(() => {
-          const strip = document.querySelector('[data-testid="kpi-strip"]')!
+          const strip = [...document.querySelectorAll('[data-testid="work-queues"]')].find((e) => e.querySelector('[data-testid="farms-intake"]'))!
           const chips = [...strip.querySelectorAll('[data-testid^="farms-"]')] as HTMLElement[]
           return chips[0]?.dataset.testid ?? ''
         })
-        check(`${vp.name} — première de la bande`, first === 'farms-intake', first)
+        check(`${vp.name} — première des files de travail`, first === 'farms-intake', first)
       }
       await page.locator('[data-testid="farms-intake"]').first().click()
       await page.waitForTimeout(600)

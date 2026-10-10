@@ -9,7 +9,20 @@
   "route": {
     "missingPosition": "Position manquante",
     "missingPositionHint": "Une ferme sans position reste dans la tournée, mais ni sur la carte ni sur le tracé.",
-    "addPosition": "Ajouter la position"
+    "addPosition": "Ajouter la position",
+    "tourName": "Nom de la tournée",
+    "tourNamePlaceholder": "ex. : tournée du Néguev",
+    "saveChanges": "Enregistrer les changements",
+    "saveAsNew": "Enregistrer comme nouvelle tournée",
+    "copyName": "{{name}} (copie)",
+    "unsaved": "Changements non enregistrés",
+    "newTour": "Nouvelle tournée",
+    "savedTours": "Tournées enregistrées · {{count}}",
+    "unnamed": "Tournée sans nom",
+    "stopsCount_one": "1 étape",
+    "stopsCount_other": "{{count}} étapes",
+    "rename": "Renommer",
+    "confirmDelete": "Supprimer ?"
   },
   "agreement": {
     "signNow": "Faire signer"
@@ -48,7 +61,27 @@
     "nearLocality": "Près de {{name}} · {{km}} km"
   },
   "nav": {
-    "coverage": "Carte de couverture"
+    "coverage": "Carte de couverture",
+    "institutions": "Institutions",
+    "group": {
+      "recruit": "Recruter",
+      "plan": "Préparer",
+      "execute": "Exécuter"
+    },
+    "short": {
+      "dashboard": "Accueil",
+      "agenda": "Agenda",
+      "leads": "Contacts",
+      "farms": "Fermes",
+      "institutions": "Institutions",
+      "volunteers": "Volontaires",
+      "drivers": "Chauffeurs",
+      "coverage": "Couverture",
+      "route": "Tournée",
+      "missions": "Gardes",
+      "incidents": "Incidents",
+      "settings": "Réglages"
+    }
   },
   "coverage": {
     "title": "Carte de couverture",
@@ -62,7 +95,10 @@
       "custom": "Sur mesure",
       "meetingHint": "En rendez-vous : les fermes signées et les institutions déjà engagées, nommées. Ni pistes ni information interne.",
       "prepareHint": "Préparation : tout, pistes comprises — pour mesurer le potentiel d’une zone.",
-      "customHint": "Votre propre choix de familles."
+      "customHint": "Votre propre choix de familles.",
+      "meetingShort": "Seulement les fermes signées et les institutions partenaires, nommées",
+      "prepareShort": "Tout, contacts compris — pour préparer",
+      "customShort": "Choix personnel des calques"
     },
     "side": {
       "land": "Terres",
@@ -137,8 +173,28 @@
       "beyond_other": "Pour {{count}} liens, le plus rapide passe au-delà de la Ligne verte — trajet par Israël mesuré",
       "noRoad_one": "Une paire sans route sur la carte",
       "noRoad_other": "{{count}} paires sans route sur la carte",
-      "loadingRoads": "Lecture du réseau routier de la carte…"
-    }
+      "loadingRoads": "Lecture du réseau routier de la carte…",
+      "summaryLimit": "{{road}} liens par la route à {{limit}} · {{dropped}} écartés (à vol d'oiseau : {{air}})"
+    },
+    "meetingMode": "Rendez-vous avec une institution",
+    "limit": "Portée",
+    "durationWhat": "De quoi est faite la durée",
+    "durationIs": "La durée se mesure sur le réseau routier de la carte, par le trajet le plus rapide — comme Waze, sans bouchons.",
+    "durationSpeeds": "Vitesse par type de route, route vide : autoroute 95 km/h, route principale 70–80, régionale 60, locale 40–50, rue 30, piste 20. Route vide — comme la nuit, sans circulation.",
+    "durationMargin": "Marge de sécurité : +{{percent}} % (Réglages › Carte et régions).",
+    "durationNight": "Supplément de nuit : +{{percent}} % — routes non éclairées, pistes, barrages. Il se règle ici, sur la ligne de la lune.",
+    "unitLabel": "Unité de la portée",
+    "unit": {
+      "min": "Minutes de trajet",
+      "km": "km de route"
+    },
+    "minutes": "{{min}} min",
+    "minutesAny": "ou toute durée :",
+    "minUnit": "minutes",
+    "nightLabel": "Supplément de trajet de nuit",
+    "durationLine": "durée = route vide +{{margin}} % marge +{{night}} % nuit",
+    "countsTap": "Toucher un nombre isole ces fermes sur la carte",
+    "reachTitleLimit": "Fermes à {{limit}}"
   },
   "institutions": {
     "title_one": "1 institution",
@@ -310,7 +366,16 @@
       "locationPlaceholder": "Lien Waze, lien Google Maps ou coordonnées",
       "onlyName": "Aucun champ obligatoire en dehors d'un nom.",
       "save": "Enregistrer",
-      "saveAnyway": "Existe déjà — enregistrer quand même"
+      "saveAnyway": "Existe déjà — enregistrer quand même",
+      "other": {
+        "farm": "Nom de la ferme",
+        "institution": "Le contact à l'institution"
+      },
+      "saveAs": {
+        "farm": "Enregistrer dans les contacts",
+        "institution": "Enregistrer l'institution",
+        "volunteer": "Enregistrer le volontaire"
+      }
     },
     "files": {
       "title": "Fiches de contact (.vcf)",
@@ -393,9 +458,119 @@
     },
     "open": {
       "farm": "Salle d'attente",
-      "institution": "Carte de couverture",
+      "institution": "Vers les institutions",
       "volunteer": "Volontaires"
     },
-    "entry": "Ajouter des contacts"
+    "entry": "Ajouter des contacts",
+    "short": "Ajouter",
+    "titleOne": "Ajouter",
+    "info": "Tout ce qu'on ajoute — agriculteur, ferme, institution, volontaire, chauffeur — entre par ici. D'abord le nom, puis ce que c'est, puis seulement ce que ce type demande. On peut aussi ajouter depuis des fiches de contact, un texte collé, ou une liste Excel/CSV envoyée par une institution.",
+    "step": {
+      "name": "Quel nom ?",
+      "type": "Qu'ajoute-t-on ?",
+      "typeNamed": "Qu'est-ce que « {{name}} » ?",
+      "details": {
+        "farm": "Que sait-on d'autre ? (facultatif)",
+        "institution": "Que sait-on d'autre ? (facultatif)",
+        "volunteer": "Que sait-on d'autre ? (facultatif)",
+        "farmFile": "Ferme ou moshav ?",
+        "driver": "Le chauffeur",
+        "vcf": "Les fiches",
+        "paste": "Le texte",
+        "list": "Le fichier"
+      }
+    },
+    "namePlaceholder": "Nom de la personne, de la ferme ou de l'institution",
+    "orFrom": "ou ajouter depuis",
+    "source": {
+      "vcf": "Fiches de contact (.vcf)",
+      "paste": "Un texte collé",
+      "list": "Une liste Excel / CSV",
+      "backToName": "Taper un nom"
+    },
+    "type": {
+      "farm": "Agriculteur à appeler",
+      "farmFile": "Fiche de ferme",
+      "institution": "Institution",
+      "volunteer": "Volontaire",
+      "driver": "Chauffeur bénévole"
+    },
+    "typeHint": {
+      "farm": "Pas encore une ferme — vers les contacts",
+      "farmFile": "Une ferme ou un moshav, tous les détails",
+      "institution": "Yeshiva, mékhina ou midrasha",
+      "volunteer": "D'une institution",
+      "driver": "Conduit les volontaires aux gardes"
+    },
+    "fullForm": "Formulaire complet",
+    "farmKind": "Ferme ou moshav",
+    "farmGo": "Continuer vers la fiche",
+    "driverGo": "Continuer vers le chauffeur",
+    "list": {
+      "volunteer": "La liste des volontaires de {{name}} : chaque ligne devient un volontaire de l'institution.",
+      "institution": "Une liste d'institutions : une ligne chacune. Un nouvel import ne crée pas de doublon.",
+      "farmFile": "Une liste de fermes : une ligne chacune.",
+      "go": "Choisir le fichier"
+    },
+    "fabAny": "Ajouter — agriculteur, ferme, institution, volontaire, chauffeur"
+  },
+  "info": {
+    "more": "Explication"
+  },
+  "leads": {
+    "info": "Les personnes qui ne sont pas encore une ferme : les agriculteurs à appeler. Toucher une ligne pour écrire une note ou choisir une région.",
+    "search": "Chercher un nom, un téléphone, un lieu, une note",
+    "filterAllLong": "Tous les ouverts (sans les non pertinents)",
+    "openRow": "Détails",
+    "addNote": "Note",
+    "notesPlaceholder": "Ce qui a été dit, quand rappeler…",
+    "regionAuto": "Automatique — {{name}}",
+    "col": {
+      "name": "Nom",
+      "contact": "Contact",
+      "phone": "Téléphone",
+      "place": "Lieu",
+      "region": "Région",
+      "status": "Statut",
+      "notes": "Note",
+      "updated": "Mis à jour",
+      "created": "Ajouté"
+    }
+  },
+  "table": {
+    "open": "Détails",
+    "empty": "Personne ici"
+  },
+  "institutionsScreen": {
+    "info": "Yeshivot, mékhinot et midrashot. Une institution donne un accord de principe, oral — elle ne signe rien. On voit où en est chacune, son contact et combien de ses volontaires sont déjà inscrits. Toucher une ligne pour la mettre à jour.",
+    "mapLabel": "Carte des institutions",
+    "toCoverage": "Carte de couverture — fermes à portée",
+    "seeReach": "Quelles fermes sont à portée — sur la carte de couverture",
+    "empty": "Aucune institution. « Ajouter » — une par une ou depuis un fichier.",
+    "col": {
+      "name": "Institution",
+      "locality": "Localité",
+      "kind": "Type",
+      "engagement": "Statut",
+      "contact": "Contact",
+      "phone": "Téléphone",
+      "volunteers": "Volontaires",
+      "place": "Lieu"
+    }
+  },
+  "farms": {
+    "statusFilter": "Filtrer par statut",
+    "statusAll": "Tous les statuts",
+    "withAreas": "Avec surface pondérée",
+    "withAreasHint": "Seulement les fermes qui ont une surface pondérée (mesurée ou déclarée)",
+    "statDunams": "{{n}} dounams · {{w}} pondérés",
+    "info": "Tous les filtres sont sur une seule rangée. Les premiers sont des files de travail — des fermes qui attendent une action, avec leur nombre. Le chiffre en tête (dounams · pondérés) suit les filtres."
+  },
+  "freeRoute": {
+    "saved": "Enregistré",
+    "offlineTitle": "Calculé sur l'appareil"
+  },
+  "import": {
+    "forInstitution": "Chaque volontaire du fichier sera rattaché à {{name}}"
   }
 }

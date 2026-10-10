@@ -229,8 +229,10 @@ export function RegionsEditScreen() {
         <div data-title-row="" className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
           <button
             type="button"
-            onClick={() => navigate('/coordinator/settings')}
+            /* ★★ AX2.4 — on revient d'où l'on vient (les fermes ou les réglages). */
+            onClick={() => (((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0 ? navigate(-1) : navigate('/coordinator/settings'))}
             aria-label={t('common.back')}
+            data-testid="regions-back"
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-pill
                        text-content-secondary hover:bg-surface-high"
           >

@@ -197,8 +197,12 @@ await guard('A292', async () => {
   const before = await page.locator('[data-lead-id]').count()
   /* ★ AW2 — le collage vit sur l'écran d'ajout, ouvert type « חווה » depuis
      la salle d'attente. Même bloc, même résultat attendu. */
-  await page.click('[data-testid="leads-add"]')
+  /* ★★ AX10 — le « + » de la salle d'attente ouvre l'écran d'ajout, type
+     « חקלאי » déjà dit ; la source « הדבקה » se choisit d'un toucher. */
+  await page.click('[data-testid="action-fab-toggle"]')
   await page.waitForTimeout(800)
+  await page.click('[data-testid="add-source-paste"]')
+  await page.click('[data-testid="add-kind-farm"]')
   await page.fill('[data-testid="add-paste-text"]', BLOCK)
   await page.click('[data-testid="add-paste-read"]')
   await page.waitForTimeout(300)
@@ -253,7 +257,9 @@ await guard('A294', async () => {
   check('la piste n’est plus dans la salle d’attente', (await page.locator(`[data-lead-id="${lead.id}"]`).count()) === 0)
   check('elle garde la trace de sa ferme (base)', !!db.rows('leads').find((r) => r.id === lead.id)?.converted_farm_id)
   const refused = LEADS[3]
-  await page.click(`[data-testid="lead-status-${refused.id}-not_now"]`)
+  /* ★★ AX5 — « לא רלוונטי » : le ⋯ de la ligne en grand écran. */
+  await page.click(`[data-testid="lead-menu-${refused.id}-toggle"]`)
+  await page.click(`[data-testid="lead-notnow-${refused.id}"]`)
   await page.waitForTimeout(400)
   check('une piste « לא רלוונטי » RESTE, marquée (sur place jusqu’au prochain onglet)', (await page.locator(`[data-testid="lead-${refused.id}"]`).getAttribute('data-status')) === 'not_now')
   await ctx.close()
@@ -315,7 +321,8 @@ if (CAPTURES) {
       await go(page, '/coordinator/leads')
       await page.screenshot({ path: `${SHOTS}/as6-salle-${vp.width}-${theme}.png` })
       /* ★ AT2.6 — plus de colonnes par région : le tri « לפי אזור ». */
-      await page.selectOption('[data-testid="leads-sort"]', 'region')
+      /* ★★ AX5 — le tri par la COLONNE « אזור » (montrée quand le tableau a la place). */
+      await page.click('[data-testid="leads-table-sort-region"]', { timeout: 3000 }).catch(() => undefined)
       await page.waitForTimeout(400)
       await page.screenshot({ path: `${SHOTS}/as6-salle-par-region-${vp.width}-${theme}.png` })
       n += 5

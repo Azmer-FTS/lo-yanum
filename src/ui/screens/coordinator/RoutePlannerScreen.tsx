@@ -7,7 +7,6 @@ import {
   addDays,
   atTimeOn,
   buildDayPlan,
-  deleteTour,
   estimateDriveMinutes,
   farmRegion,
   splitDuration,
@@ -15,6 +14,9 @@ import {
   fromDayKey,
   getAgendaEvents,
   getTourForDay,
+  getTours,
+  deleteTourById,
+  renameTour,
   getVisibleFarms,
   googleMapsRouteUrl,
   localDayKey,
@@ -24,13 +26,15 @@ import {
   telHref,
   wazeStepLinks,
 } from '@core/index'
-import type { AgendaEvent, Farm, FarmStatus, RegionId } from '@core/index'
+import type { AgendaEvent, Farm, FarmStatus, RegionId, Tour } from '@core/index'
 
 import { originLabel, originPosition } from '../../settings/origin'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
+import { TitleWithInfo } from '../../components/InfoTip'
 import { Icon } from '../../components/Icon'
 import type { IconName } from '../../components/Icon'
 import { useRoadRoute } from '../../routing/useRoadRoute'
+import { useRouteMargin } from '../../settings/routeMargin'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { FarmStatusDot, readStatusColor,
@@ -91,14 +95,18 @@ export function RoutePlannerScreen() {
   const [params, setParams] = useSearchParams()
 
   const todayKey = localDayKey(now())
-  const [dayKey, setDayKey] = useState(() => params.get('date') ?? todayKey)
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(getTourForDay(params.get('date') ?? todayKey)?.farmIds ?? []),
-  )
-  const [departTime, setDepartTime] = useState(() => {
-    const tour = getTourForDay(params.get('date') ?? todayKey)
-    return tour ? toTimeInput(tour.departAt) : '08:30'
+  /* ★★ AX8 — la tournée ouverte : `?tour=` (depuis la liste), sinon la
+     première du jour demandé (`?date=`, depuis l'agenda), sinon une neuve. */
+  const [initialTour] = useState(() => {
+    const id = params.get('tour')
+    if (id) return getTours().find((x) => x.id === id) ?? null
+    return getTourForDay(params.get('date') ?? todayKey)
   })
+  const [editingId, setEditingId] = useState<string | null>(initialTour?.id ?? null)
+  const [tourName, setTourName] = useState(initialTour?.name ?? '')
+  const [dayKey, setDayKey] = useState(() => initialTour?.dayKey ?? params.get('date') ?? todayKey)
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(initialTour?.farmIds ?? []))
+  const [departTime, setDepartTime] = useState(() => (initialTour ? toTimeInput(initialTour.departAt) : '08:30'))
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   /* ★ AN11 — le rendez-vous s'ouvre en PAGE (FormPages.tsx). */
   const navigateTo = useNavigate()
@@ -137,16 +145,32 @@ export function RoutePlannerScreen() {
   }, [params, setParams])
 
   const farms = useCoreValue(getVisibleFarms)
-  const savedTour = useCoreValue(() => getTourForDay(dayKey))
+  const allTours = useCoreValue(getTours)
+  const savedTour = editingId ? (allTours.find((x) => x.id === editingId) ?? null) : null
 
-  /** The selection follows the day: each date edits ITS tour, not a shared one. */
+  /**
+   * ★★ AX8 — CHANGER LA DATE NE CHARGE PLUS « LA » TOURNÉE DU JOUR : elle
+   * déplace la tournée ouverte. C'était là que tout se perdait — une date
+   * touchée remplaçait la sélection par celle du jour, et un « שמירה » écrasait.
+   */
   const changeDay = (key: string) => {
     if (!key) return
     setDayKey(key)
-    setParams({ date: key }, { replace: true })
-    const tour = getTourForDay(key)
-    setSelected(new Set(tour?.farmIds ?? []))
-    setDepartTime(tour ? toTimeInput(tour.departAt) : '08:30')
+  }
+  const openTour = (tour: Tour) => {
+    setEditingId(tour.id)
+    setTourName(tour.name ?? '')
+    setDayKey(tour.dayKey)
+    setSelected(new Set(tour.farmIds))
+    setDepartTime(toTimeInput(tour.departAt))
+    setParams({ tour: tour.id }, { replace: true })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  const newTour = () => {
+    setEditingId(null)
+    setTourName('')
+    setSelected(new Set())
+    setParams({ date: dayKey }, { replace: true })
   }
 
   const chosen = useMemo(
@@ -212,6 +236,7 @@ export function RoutePlannerScreen() {
     [route],
   )
   const road = useRoadRoute(roadPoints)
+  const margin = useRouteMargin()
   const mapsUrl = useMemo(() => googleMapsRouteUrl(route), [route])
   const wazeSteps = useMemo(() => wazeStepLinks(route), [route])
 
@@ -235,7 +260,7 @@ export function RoutePlannerScreen() {
     const day = fromDayKey(dayKey)
     return buildDayPlan({
       dayKey,
-      tour: { id: 'draft', dayKey, departAt, farmIds: draftFarmIds },
+      tour: { id: 'draft', name: '', dayKey, departAt, farmIds: draftFarmIds },
       farms: getVisibleFarms(),
       events: getAgendaEvents(day, addDays(day, 1)),
     })
@@ -244,6 +269,8 @@ export function RoutePlannerScreen() {
   const isSaved =
     savedTour !== null &&
     savedTour.departAt === departAt &&
+    savedTour.dayKey === dayKey &&
+    (savedTour.name ?? '') === tourName.trim() &&
     savedTour.farmIds.length === draftFarmIds.length &&
     savedTour.farmIds.every((id, i) => id === draftFarmIds[i])
 
@@ -335,8 +362,9 @@ export function RoutePlannerScreen() {
     >
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-title text-content-primary">{t('route.title')}</h1>
-          <p className="muted mt-1">{t('route.subtitle')}</p>
+          <TitleWithInfo as="span" info={t('route.subtitle')} className="text-title text-content-primary">
+            <h1>{t('route.title')}</h1>
+          </TitleWithInfo>
         </div>
         {/* ★★ AH9 — LA PORTE DE L'ITINÉRAIRE LIBRE, ICI ET NULLE PART AILLEURS.
             C'est la même question — « dans quel ordre je roule demain » — et
@@ -378,47 +406,79 @@ export function RoutePlannerScreen() {
                 onChange={(e) => setDepartTime(e.target.value)}
               />
             </label>
-            <div className="ms-auto flex items-center gap-2">
+            {/* ★★ AX8 — le nom : on retrouve une tournée par lui. */}
+            <label className="min-w-[10rem] flex-1">
+              <span className="label">{t('route.tourName')}</span>
+              <input
+                className="input"
+                value={tourName}
+                placeholder={t('route.tourNamePlaceholder')}
+                onChange={(e) => setTourName(e.target.value)}
+                data-testid="tour-name"
+              />
+            </label>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="tour-actions" data-editing={editingId ?? ''} data-saved={isSaved ? 'true' : 'false'}>
+            {isSaved ? (
+              <span className="chip bg-status-success/15 text-status-success-ink" data-testid="tour-saved-chip">
+                <Icon name="check" size={12} />
+                {t('route.tourSaved')}
+              </span>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={draftFarmIds.length === 0}
+                  data-testid="tour-save"
+                  onClick={() => {
+                    const saved = saveTour({ id: savedTour?.id, name: tourName.trim(), dayKey, departAt, farmIds: draftFarmIds })
+                    setEditingId(saved.id)
+                    setParams({ tour: saved.id }, { replace: true })
+                  }}
+                >
+                  <Icon name="calendar" size={15} />
+                  {savedTour ? t('route.saveChanges') : t('route.saveTour')}
+                </button>
+                {savedTour && draftFarmIds.length > 0 && (
+                  /* ★★ AX8 — l'autre geste qu'on croyait faire : une SECONDE tournée. */
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    data-testid="tour-save-as-new"
+                    onClick={() => {
+                      const saved = saveTour({ name: tourName.trim() || t('route.copyName', { name: savedTour.name || dayKey }), dayKey, departAt, farmIds: draftFarmIds })
+                      setEditingId(saved.id)
+                      setTourName(saved.name ?? '')
+                      setParams({ tour: saved.id }, { replace: true })
+                    }}
+                  >
+                    <Icon name="plus" size={15} />
+                    {t('route.saveAsNew')}
+                  </button>
+                )}
+                {savedTour && <span className="text-micro font-semibold text-status-warn-ink" data-testid="tour-dirty">{t('route.unsaved')}</span>}
+              </>
+            )}
+            <span className="ms-auto flex items-center gap-2">
+              {(savedTour || selected.size > 0) && (
+                <button type="button" className="btn-ghost" onClick={newTour} data-testid="tour-new">
+                  <Icon name="plus" size={14} />
+                  {t('route.newTour')}
+                </button>
+              )}
               {savedTour && (
                 <button
                   type="button"
                   className="btn-ghost text-status-danger-ink hover:bg-status-danger/10"
                   data-testid="tour-delete"
-                  onClick={() =>
-                    del.ask(
-                      'tour',
-                      savedTour.id,
-                      () => {
-                        deleteTour(dayKey)
-                        return true
-                      },
-                      { after: () => setSelected(new Set()) },
-                    )
-                  }
+                  onClick={() => del.ask('tour', savedTour.id, () => deleteTourById(savedTour.id), { after: newTour })}
                 >
                   <Icon name="trash" size={14} />
                   {t('route.deleteTour')}
                 </button>
               )}
-              {isSaved ? (
-                <span className="chip bg-status-success/15 text-status-success-ink">
-                  <Icon name="check" size={12} />
-                  {t('route.tourSaved')}
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  className="btn-primary"
-                  disabled={draftFarmIds.length === 0}
-                  onClick={() =>
-                    saveTour({ dayKey, departAt, farmIds: draftFarmIds })
-                  }
-                >
-                  <Icon name="calendar" size={15} />
-                  {t('route.saveTour')}
-                </button>
-              )}
-            </div>
+            </span>
           </div>
 
           {/* The day's fixed hours — the constraints the drive folds around.
@@ -477,6 +537,29 @@ export function RoutePlannerScreen() {
         * is — choose, then read the day — instead of two things competing for
         * the same line.
         */}
+      {/* ★★ AX8 — LES TOURNÉES ENREGISTRÉES SE RETROUVENT : elles sont ici,
+          toutes, avec leur nom et leur jour ; on les ouvre, les renomme, les
+          supprime. Décocher des fermes ne touche à aucune d'elles. */}
+      {allTours.length > 0 && (
+        <Section title={t('route.savedTours', { count: allTours.length })} collapseKey="route-saved" className="mb-4">
+          <ul className="flex flex-col gap-1.5" data-testid="tour-list">
+            {allTours.map((tour) => (
+              <SavedTourRow
+                key={tour.id}
+                tour={tour}
+                current={tour.id === editingId}
+                onOpen={() => openTour(tour)}
+                onRename={(name) => {
+                  renameTour(tour.id, name)
+                  if (tour.id === editingId) setTourName(name.trim())
+                }}
+                onDelete={() => del.ask('tour', tour.id, () => deleteTourById(tour.id), { after: () => tour.id === editingId && newTour() })}
+              />
+            ))}
+          </ul>
+        </Section>
+      )}
+
       <div ref={pickerRef} data-testid="route-step-picker">
       <Section
         key={`route-select-${pickerNonce}`}
@@ -719,7 +802,7 @@ export function RoutePlannerScreen() {
             <EmptyState icon="route" title={t('route.emptySelection')} />
           ) : (
             <>
-              <ol className="flex flex-col divide-y divide-edge-subtle/60">
+              <ol className="line-scope flex flex-col divide-y divide-edge-subtle/60" data-testid="route-stops">
                 {/**
                   * ★★ Y9.3 — THE LIST IS THE SCHEDULE, NOT THE SAVED ORDER.
                   *
@@ -743,20 +826,26 @@ export function RoutePlannerScreen() {
                   const planStop = plan.stops.find((ps) => ps.farm.id === stop.farm.id)
                   const contact = contactOf(stop.farm)
                   const waze = wazeSteps.find((w) => w.order === stop.order)
+                  /* ★★ AX6 — la distance ET la durée de l'étape, par la ROUTE
+                     quand le tracé est là (marge comprise), sinon l'estimation. */
+                  const legIdx = route.stops.findIndex((r) => r.farm.id === stop.farm.id)
+                  const leg = legIdx >= 0 ? road.legs[legIdx] : null
+                  const legKm = leg ? leg.meters / 1000 : stop.legKm
+                  const legMin = leg ? Math.max(1, Math.round((leg.seconds / 60) * (1 + margin / 100))) : estimateDriveMinutes(stop.legKm)
                   return (
                     <li
                       key={stop.farm.id}
                       data-testid="route-stop"
                       onMouseEnter={() => setHoveredId(stop.farm.id)}
                       onMouseLeave={() => setHoveredId(null)}
-                      /* X6 — `flex-wrap`: the action group drops to its own
-                         line rather than pushing the row past the panel. */
-                      className={`flex flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-field px-1.5 py-2
+                      /* ★★ AX6 — UNE ligne : n° · nom · heure · km · durée · gestes.
+                         Pliée en deux seulement dans un panneau étroit (`.line-row`). */
+                      className={`line-row rounded-field px-1.5 py-2
                                   transition-colors duration-fast ${
                                     hoveredId === stop.farm.id ? 'bg-accent/10' : ''
                                   }`}
                     >
-                      <span className="numeric flex h-7 w-7 shrink-0 items-center justify-center rounded-pill bg-accent text-micro font-bold text-content-on-accent">
+                      <span data-area="lead" className="numeric flex h-7 w-7 shrink-0 items-center justify-center rounded-pill bg-accent text-micro font-bold text-content-on-accent">
                         {stop.order}
                       </span>
 
@@ -771,43 +860,47 @@ export function RoutePlannerScreen() {
                         *    figures stack under each other whatever the names
                         *    do.
                         */}
-                      <span className="min-w-[9rem] flex-1">
                         <span
+                          data-area="name"
                           className="block truncate text-caption font-medium text-content-primary"
                           title={stop.farm.name}
                         >
                           {stop.farm.name}
                         </span>
-                        <span className="muted grid items-baseline gap-x-2 leading-tight [grid-template-columns:3.5rem_4.5rem_auto]">
+                        <span data-area="meta" className="muted line-figs leading-tight" data-testid="route-stop-figs">
                           {/* G9 — with a departure time every stop has an
                               expected arrival; without one, only the leg. */}
                           <span
+                            data-fig="time"
                             className={`ltr-nums numeric font-semibold ${
                               planStop?.fixed ? 'text-status-violet-ink' : 'text-accent-ink'
                             }`}
                           >
                             {planStop ? formatTime(planStop.arriveAt, locale) : '—'}
                           </span>
-                          <span className="ltr-nums">
-                            {km(stop.legKm)} {t('common.km')}
+                          <span data-fig="km" className="ltr-nums" style={{ ['--fig-w' as string]: '3.5rem' }}>
+                            {km(legKm)} {t('common.km')}
                           </span>
-                          {/* ★★ Y9.3 — a pinned hour says so, and an impossible
-                              one says by how much. Neither is ever moved. */}
-                          {planStop?.fixed && (
-                            <span className="chip bg-status-violet/15 text-status-violet-ink">
-                              <Icon name="clock" size={10} />
-                              {t('route.fixedHour')}
-                              {planStop.lateBy > 0 && (
-                                <span className="ltr-nums">
-                                  {t('route.lateBy', { m: planStop.lateBy })}
-                                </span>
-                              )}
-                            </span>
-                          )}
+                          <span data-fig="min" className="ltr-nums" style={{ ['--fig-w' as string]: '3.5rem' }}>
+                            {t('common.durationM', { m: legMin })}
+                          </span>
                         </span>
-                      </span>
 
-                      <span className="flex shrink-0 items-center gap-1">
+                      <span data-area="act" className="flex shrink-0 items-center gap-1">
+                          {/* ★★ Y9.3 — a pinned hour says so, and an impossible
+                            one says by how much. Neither is ever moved. */}
+                        {planStop?.fixed && (
+                          <span className="chip bg-status-violet/15 text-status-violet-ink">
+                            <Icon name="clock" size={10} />
+                            {t('route.fixedHour')}
+                            {planStop.lateBy > 0 && (
+                              <span className="ltr-nums">
+                                {t('route.lateBy', { m: planStop.lateBy })}
+                              </span>
+                            )}
+                          </span>
+                        )}
+
                         {contact ? (
                           <a
                             href={telHref(contact.phone)}
@@ -879,15 +972,16 @@ export function RoutePlannerScreen() {
               {/* ★ X8.5 — THE TOTALS ARE A TABLE, NOT TWO LOOSE PARAGRAPHS.
                   Same label scale, same figure scale, same baseline, one rule
                   above them; and the duration is hours and minutes (X8.4). */}
-              <dl className="mt-3 grid gap-x-4 gap-y-2 border-t border-edge-subtle pt-3 [grid-template-columns:auto_1fr]">
-                <dt className="muted self-baseline">{t('route.roundTrip')}</dt>
-                <dd className="ltr-nums numeric self-baseline text-heading text-content-primary">
+              {/* ★★ AX6 — les deux totaux sur UNE ligne, côte à côte. */}
+              <dl className="mt-3 flex flex-nowrap items-baseline gap-x-2 overflow-hidden whitespace-nowrap border-t border-edge-subtle pt-3" data-testid="route-totals">
+                <dt className="muted">{t('route.roundTrip')}</dt>
+                <dd className="ltr-nums numeric me-3 text-body font-semibold text-content-primary">
                   {km(route.roundTripKm)} {t('common.km')}
                 </dd>
-                <dt className="muted self-baseline">{t('route.estimatedDrive')}</dt>
+                <dt className="muted">{t('route.estimatedDrive')}</dt>
                 <dd
                   data-testid="route-drive-time"
-                  className="numeric self-baseline text-heading text-content-primary"
+                  className="numeric text-body font-semibold text-content-primary"
                 >
                   {duration(estimateDriveMinutes(route.roundTripKm))}
                 </dd>
@@ -921,5 +1015,50 @@ export function RoutePlannerScreen() {
 
       {del.dialog}
     </MapPanel>
+  )
+}
+
+/** ★★ AX8 — une tournée enregistrée, sur UNE ligne : nom · jour · étapes · gestes. */
+function SavedTourRow({ tour, current, onOpen, onRename, onDelete }: { tour: Tour; current: boolean; onOpen: () => void; onRename: (name: string) => void; onDelete: () => void }) {
+  const { t } = useTranslation()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(tour.name ?? '')
+  const [y, m, d] = tour.dayKey.split('-')
+  return (
+    <li
+      className={`flex flex-nowrap items-center gap-2 rounded-field border px-3 py-1.5 ${current ? 'border-accent bg-accent/10' : 'border-edge-subtle'}`}
+      data-testid={`tour-row-${tour.id}`}
+      data-tour-name={tour.name ?? ''}
+    >
+      {editing ? (
+        <form
+          className="flex min-w-0 flex-1 items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            onRename(draft)
+            setEditing(false)
+          }}
+        >
+          <input className="input min-h-[2.5rem] min-w-0 flex-1 py-1" value={draft} autoFocus onChange={(e) => setDraft(e.target.value)} data-testid={`tour-rename-input-${tour.id}`} />
+          <button type="submit" className="btn-primary min-h-[2.5rem] px-3 py-1" data-testid={`tour-rename-ok-${tour.id}`}>
+            <Icon name="check" size={14} />
+          </button>
+        </form>
+      ) : (
+        <button type="button" onClick={onOpen} className="flex min-h-11 min-w-0 flex-1 flex-nowrap items-center gap-3 text-start" data-testid={`tour-open-${tour.id}`}>
+          <span className="min-w-0 flex-1 truncate font-semibold text-content-primary">{tour.name || t('route.unnamed')}</span>
+          <span className="ltr-nums shrink-0 text-caption text-content-secondary">{`${d}.${m}.${y}`}</span>
+          <span className="shrink-0 whitespace-nowrap text-caption text-content-muted">{t('route.stopsCount', { count: tour.farmIds.length })}</span>
+        </button>
+      )}
+      {!editing && (
+        <button type="button" className="btn-ghost h-10 w-10 shrink-0 justify-center p-0" aria-label={t('route.rename')} title={t('route.rename')} onClick={() => { setDraft(tour.name ?? ''); setEditing(true) }} data-testid={`tour-rename-${tour.id}`}>
+          <Icon name="edit" size={15} />
+        </button>
+      )}
+      <button type="button" className="btn-ghost h-10 w-10 shrink-0 justify-center p-0 text-status-danger-ink" aria-label={t('route.deleteTour')} title={t('route.deleteTour')} onClick={onDelete} data-testid={`tour-row-delete-${tour.id}`}>
+        <Icon name="trash" size={15} />
+      </button>
+    </li>
   )
 }

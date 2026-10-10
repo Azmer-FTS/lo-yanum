@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import { atTimeOn, getAllLeads, getDrivers, getVolunteers, moveLead, now } from '@core/index'
+import { atTimeOn, getAllLeads, getDrivers, getInstitutions, getVolunteers, moveLead, now } from '@core/index'
 import { useTranslation } from 'react-i18next'
 
 import { FarmVisitModal } from '../../components/FarmVisitModal'
@@ -58,8 +58,21 @@ export function VolunteerFormPage() {
   const volunteers = useCoreValue(getVolunteers)
   const yeshivot = useMemo(() => [...new Set(volunteers.map((v) => v.yeshiva))].sort(), [volunteers])
   const volunteer = volunteerId ? (volunteers.find((v) => v.id === volunteerId) ?? null) : null
+  /* ★★ AX10 — arrivé de « הוספה » : le nom et l'institution déjà dits. */
+  const [params] = useSearchParams()
+  const institutions = useCoreValue(getInstitutions)
+  const institution = institutions.find((i) => i.id === params.get('institution')) ?? null
   if (volunteerId && !volunteer) return <Navigate to="/coordinator/volunteers" replace />
-  return <VolunteerFormModal volunteer={volunteer} yeshivot={yeshivot} onClose={back} presentation="page" />
+  return (
+    <VolunteerFormModal
+      volunteer={volunteer}
+      yeshivot={yeshivot}
+      onClose={back}
+      presentation="page"
+      initialName={params.get('name') ?? undefined}
+      institution={institution}
+    />
+  )
 }
 
 export function DriverFormPage() {
@@ -67,8 +80,9 @@ export function DriverFormPage() {
   const back = useBack('/coordinator/drivers')
   const drivers = useCoreValue(getDrivers)
   const driver = driverId ? (drivers.find((d) => d.id === driverId) ?? null) : null
+  const [params] = useSearchParams()
   if (driverId && !driver) return <Navigate to="/coordinator/drivers" replace />
-  return <DriverFormModal driver={driver} onClose={back} presentation="page" />
+  return <DriverFormModal driver={driver} onClose={back} presentation="page" initialName={params.get('name') ?? undefined} />
 }
 
 export function VisitFormPage() {

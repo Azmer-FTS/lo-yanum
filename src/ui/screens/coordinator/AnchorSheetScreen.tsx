@@ -193,19 +193,20 @@ export function AnchorSheetScreen() {
     >
       {() => (
         <>
-      <Link
-        to={`/coordinator/farms/${farm.id}`}
-        className="mb-3 inline-flex items-center gap-1.5 text-caption text-content-muted hover:text-content-primary"
-      >
-        <Icon name="chevron" size={15} className="ltr:-scale-x-100" />
-        {farm.name}
-      </Link>
-
       <PageHeader
         title={anchor.name}
+        /* ★★ AX2.4 — LA flèche commune, qui suit le chemin pris (venu d'une
+           ferme, on revient à la ferme). C'était un lien texte vers la liste. */
+        back={{ to: `/coordinator/farms/${farm.id}`, label: farm.name }}
         subtitle={`${t('anchor.title')} · ${farm.name}`}
         actions={
           <>
+            {/* ★★ AX2 — la fiche du poste n'avait pas de « modifier » : le
+                formulaire n'était atteignable que depuis la fiche de la ferme. */}
+            <Link to={`/coordinator/farms/${farm.id}/anchors/${anchor.id}/edit`} className="btn-secondary" data-testid="edit-anchor">
+              <Icon name="edit" size={16} />
+              {t('common.edit')}
+            </Link>
             <a
               href={wazeUrl(anchor.position)}
               target="_blank"

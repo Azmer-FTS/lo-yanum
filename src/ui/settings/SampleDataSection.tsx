@@ -99,8 +99,8 @@ export function SampleDataSection() {
       collapseKey="settings-sample-data"
       defaultOpen={open}
       summary={total > 0 ? t('settings.sample.summary', { count: total }) : t('settings.sample.summaryNone')}
+      info={t('settings.sample.intro')}
     >
-      <p className="muted">{t('settings.sample.intro')}</p>
 
       <ul className="mt-3 space-y-1 text-caption font-medium text-content-primary">
         {SUPABASE_CONFIGURED && (

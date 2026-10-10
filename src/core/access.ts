@@ -809,6 +809,12 @@ export function getTourForDay(dayKey: string): Tour | null {
   return _raw().tours.find((t) => t.dayKey === dayKey) ?? null
 }
 
+/** ★★ AX8 — TOUTES les tournées enregistrées, la plus proche d'abord. */
+export function getTours(): Tour[] {
+  if (getSession().role !== 'coordinator') return []
+  return [..._raw().tours].sort((a, b) => b.dayKey.localeCompare(a.dayKey) || a.id.localeCompare(b.id))
+}
+
 /**
  * The "היום שלי" engine, store-fed: the day's saved tour folded around the
  * day's fixed hours. The maths lives in tours.ts as a pure function so the

@@ -128,7 +128,8 @@ async function guard(label: string, run: () => Promise<void>): Promise<void> {
   try {
     await run()
   } catch (e) {
-    check(`${label} — section interrompue`, false, (e as Error).message.split('\n')[0])
+    const m = (e as Error).message.split('\n')
+    check(`${label} — section interrompue`, false, m[0] + (m.find((l) => /waiting for|locator\(/.test(l)) ? ` · ${m.find((l) => /waiting for|locator\(/.test(l))!.trim()}` : ''))
   }
 }
 const WIDTHS = [402, 1032, 1376]
@@ -161,46 +162,57 @@ for (const width of WIDTHS) {
     const o = await open(width)
     const { page, db } = o
     await go(page, '/coordinator/leads')
-    const tabs = page.locator('[data-testid="leads-tabs"]')
-    check('une rangée d’onglets de filtre (role=tablist), pas de pilule', (await tabs.getAttribute('role')) === 'tablist' && (await tabs.locator('.filter-pill').count()) === 0)
-    check('aucune colonne : plus de tableau à défiler en deux sens', (await page.locator('[data-testid="leads-board"]').count()) === 0)
-    const list = page.locator('[data-testid="leads-list"] article[data-lead-id]')
-    check('les cinq pistes ouvertes sont dans UNE liste (la « לא רלוונטי » repliée)', (await list.count()) === 5, String(await list.count()))
-    const row = page.locator('[data-testid="lead-lead-at-01"]')
-    const seg = row.locator('[role="radiogroup"] [role="radio"]')
-    check('A301 · cinq choix de statut visibles sur la ligne', (await seg.count()) === 5)
-    const wrapped = await seg.evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().height > 48).map((e) => e.textContent))
-    check('A301 · aucun libellé de statut ne passe à la ligne ni n’est rogné', wrapped.length === 0, wrapped.join(','))
+    /* ★★ AX5 (2026-10-10) — LA SALLE D'ATTENTE EST UN TABLEAU, À LA DEMANDE DU
+       PO, et ses statuts sont des FILTRES (AX3). Les garanties d'AT restent
+       vérifiées une à une : un toucher change le statut, la ligne ne bouge
+       pas, le compte du filtre suit, « ביטול » rend l'ancien, les tris. */
+    const filters = page.locator('[data-testid="leads-filters"] .filter-pill, [data-testid="filter-dropdown"]')
+    check('AX5 · les statuts sont des FILTRES (pastilles ou « סינון »), aucun onglet', (await filters.count()) > 0 && (await page.locator('main [role="tab"]').count()) === 0)
+    check('aucune colonne kanban : plus de tableau à défiler en deux sens', (await page.locator('[data-testid="leads-board"]').count()) === 0)
+    const list = page.locator('[data-testid="leads-table"] tbody tr[data-row-key]')
+    check('les cinq pistes ouvertes sont dans UNE liste (la « לא רלוונטי » est un filtre)', (await list.count()) === 5, String(await list.count()))
+    const row = page.locator('tr[data-testid="lead-lead-at-01"]')
+    const wide = (await page.locator('[data-testid="lead-status-lead-at-01"][role="radiogroup"]').count()) === 1
+    if (wide) {
+      const seg = row.locator('[role="radiogroup"] [role="radio"]')
+      check('A301 · les quatre statuts ouverts visibles dans la colonne (« לא רלוונטי » : liste ou ⋯)', (await seg.count()) === 4)
+      const wrapped = await seg.evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().height > 48).map((e) => e.textContent))
+      check('A301 · aucun libellé de statut ne passe à la ligne ni n’est rogné', wrapped.length === 0, wrapped.join(','))
+    } else {
+      check('A301 · étroit : le statut est une liste déroulante de la couleur du statut', (await page.locator('select[data-testid="lead-status-lead-at-01"]').count()) === 1)
+    }
     const yBefore = (await row.boundingBox())!.y
-    const countBefore = Number((await page.locator('[data-testid="leads-count-call_back"]').textContent().catch(() => '0')) || 0)
-    await page.click('[data-testid="lead-status-lead-at-01-call_back"]')
+    const countOf = async () => Number((await page.locator('[data-testid="leads-filter-call_back"] .filter-count').textContent({ timeout: 1000 }).catch(() => '')) || NaN)
+    const countBefore = await countOf()
+    if (wide) await page.click('[data-testid="lead-status-lead-at-01-call_back"]')
+    else await page.selectOption('select[data-testid="lead-status-lead-at-01"]', 'call_back')
     await page.waitForTimeout(600)
-    check('A301 · UN toucher : le statut change', (await page.getAttribute('[data-testid="lead-status-lead-at-01-call_back"]', 'aria-checked')) === 'true')
+    const statusIs = async (id: string, s: string) =>
+      (await page.locator(`[data-testid="lead-status-${id}"]`).getAttribute('data-value')) === s
+    check('A301 · UN toucher : le statut change', await statusIs('lead-at-01', 'call_back'))
     const yAfter = (await row.boundingBox())!.y
     check('A301 · la ligne ne bouge pas sous le doigt', Math.abs(yAfter - yBefore) < 2, `${yBefore} → ${yAfter}`)
-    const countAfter = Number((await page.locator('[data-testid="leads-count-call_back"]').textContent()) || 0)
-    check('A301 · le compte de l’onglet « לחזור » dit où elle est partie (+1)', countAfter === countBefore + 1, `${countBefore} → ${countAfter}`)
+    const countAfter = await countOf()
+    if (!Number.isNaN(countBefore)) check('A301 · le compte du filtre « לחזור » dit où elle est partie (+1)', countAfter === countBefore + 1, `${countBefore} → ${countAfter}`)
     check('A301 · un bandeau propose « ביטול »', await page.locator('[data-testid="leads-undo"]').isVisible())
     await page.waitForTimeout(1600)
     check('… et la base a reçu le statut', db.rows('leads').find((l) => l.id === 'lead-at-01')?.status === 'call_back')
     await page.click('[data-testid="leads-undo"]')
     await page.waitForTimeout(1600)
-    check('« ביטול » rend l’ancien statut (écran ET base)', (await page.getAttribute('[data-testid="lead-status-lead-at-01-not_called"]', 'aria-checked')) === 'true' && db.rows('leads').find((l) => l.id === 'lead-at-01')?.status === 'not_called')
-    check('A301 · l’ancien « שלחתי הודעה » se lit « ממתין »', (await page.getAttribute('[data-testid="lead-status-lead-at-02-no_answer"]', 'aria-checked')) === 'true')
+    check('« ביטול » rend l’ancien statut (écran ET base)', (await statusIs('lead-at-01', 'not_called')) && db.rows('leads').find((l) => l.id === 'lead-at-01')?.status === 'not_called')
+    check('A301 · l’ancien « שלחתי הודעה » se lit « ממתין »', await statusIs('lead-at-02', 'no_answer'))
     if (CAPTURES) await page.screenshot({ path: `${SHOTS}/a301-leads-${width}-light.png` })
 
-    // A302
-    const opts = await page.locator('[data-testid="leads-sort"] option').evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value))
-    check('A302 · tris : plus récent, mis à jour, alphabétique, région', ['newest', 'updated', 'name', 'region'].every((v) => opts.includes(v)), opts.join(','))
-    const names = async () => list.evaluateAll((els) => els.map((e) => e.querySelector('p')?.textContent ?? ''))
+    // A302 → AX5.4 : le tri par les colonnes.
+    const names = async () => list.evaluateAll((els) => els.map((e) => (e.querySelector('td') as HTMLElement | null)?.innerText.trim() ?? ''))
     const newest = await names()
     check('A302 · par défaut, le plus récent d’abord', newest[0] === 'משק אלון' && newest[newest.length - 1] === 'גד״ש דביר', newest.join(' · '))
-    await page.selectOption('[data-testid="leads-sort"]', 'name')
+    await page.click('[data-testid="leads-table-sort-name"]')
     await page.waitForTimeout(300)
     const alpha = await names()
     const sorted = [...alpha].sort((a, b) => a.localeCompare(b, 'he'))
-    check('A302 · alphabétique (א–ת)', alpha.join('|') === sorted.join('|'), alpha.join(' · '))
-    await page.selectOption('[data-testid="leads-sort"]', 'newest')
+    check('A302 · alphabétique (א–ת), par la colonne « שם »', alpha.join('|') === sorted.join('|'), alpha.join(' · '))
+    await page.evaluate(() => localStorage.removeItem('lo-yanum:leads-sort'))
 
     // A299 — conversion
     const farmsBefore = db.rows('entities').length
@@ -423,11 +435,16 @@ for (const width of [402, 768]) {
           const ratio = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05)
           return { hue: t.getAttribute('data-tile-hue'), w: Math.round(r.width), h: Math.round(r.height), top: Math.round(r.top), ratio: Math.round(ratio * 100) / 100, label: label.textContent }
         })
-        return { full: g.width >= innerWidth - 1 && g.height >= innerHeight - 1, rows, cols: new Set(rows.map((r) => r.top)).size ? rows.filter((r) => r.top === rows[0].top).length : 0 }
+        /* ★★ AX1 — les tuiles sont rangées en trois temps (une grille par groupe) :
+           les colonnes se comptent sur la rangée la plus pleine, pas la première. */
+        const perTop = new Map<number, number>()
+        for (const r of rows) perTop.set(r.top, (perTop.get(r.top) ?? 0) + 1)
+        return { full: g.width >= innerWidth - 1 && g.height >= innerHeight - 1, rows, cols: Math.max(0, ...perTop.values()) }
       })
       check('A306 · plein écran', m.full)
-      /* AU4.8 — onze entrées depuis la carte de couverture. */
-      check('A306 · onze tuiles', m.rows.length === 11, String(m.rows.length))
+      /* AU4.8 — onze entrées depuis la carte de couverture ; ★★ AX1 — douze
+         avec l'écran des institutions. */
+      check('A306 · douze tuiles', m.rows.length === 12, String(m.rows.length))
       check('A306 · tuiles CARRÉES (|l − h| ≤ 2 px)', m.rows.every((r) => Math.abs(r.w - r.h) <= 2), m.rows.map((r) => `${r.w}×${r.h}`).slice(0, 3).join(' '))
       check(`A306 · ≥ 3 colonnes (${m.cols})`, m.cols >= 3)
       check('A306 · une couleur PROPRE à chaque entrée', new Set(m.rows.map((r) => r.hue)).size === m.rows.length, `${new Set(m.rows.map((r) => r.hue)).size}/${m.rows.length}`)

@@ -127,6 +127,7 @@ export {
   createMission,
   updateMissionStaffing,
   saveTour,
+  renameTour,
   deleteTour,
   cancelMission,
   setOutreachSent,

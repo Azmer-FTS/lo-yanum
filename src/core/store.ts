@@ -1373,29 +1373,52 @@ export function deleteFarmVisit(visitId: string): void {
 // --- G9: tours — the saved field day ----------------------------------------
 
 export interface TourDraft {
+  /** ★★ AX8 — présent = METTRE À JOUR cette tournée ; absent = en créer une. */
+  id?: string
+  name?: string
   dayKey: string
   departAt: string
   farmIds: string[]
 }
 
 /**
- * Save a tour — an UPSERT keyed on the day, because a tour IS a calendar day:
- * "the route for Tuesday" is one object however many times it is re-planned,
- * and two tours on one day would make the "היום שלי" block ambiguous about
- * which one the coordinator is actually driving.
+ * Save a tour.
+ *
+ * ★★ AX8 (2026-10-10) — PAR SON IDENTIFIANT, PLUS PAR SON JOUR. L'ancienne
+ * règle (« a tour IS a calendar day ») faisait de la seconde tournée d'un jour
+ * l'écrasement de la première : « j'en crée un second, je l'enregistre… et mes
+ * itinéraires n'existent plus ». Un brouillon SANS `id` crée toujours.
+ *
+ * ⚠️ Compatibilité : un appel sans `id` mais avec un jour qui a DÉJÀ une seule
+ *    tournée sans nom (les appels d'avant AX : « ma journée » qui insère une
+ *    suggestion) la met à jour — c'est ce que voulait cet appelant.
  */
 export function saveTour(draft: TourDraft): Tour {
-  const existing = data.tours.find((t) => t.dayKey === draft.dayKey)
+  const byId = draft.id ? data.tours.find((t) => t.id === draft.id) : undefined
+  const legacy = !draft.id && draft.name === undefined ? data.tours.find((t) => t.dayKey === draft.dayKey) : undefined
+  const existing = byId ?? legacy
   if (existing) {
+    existing.dayKey = draft.dayKey
     existing.departAt = draft.departAt
     existing.farmIds = [...draft.farmIds]
+    if (draft.name !== undefined) existing.name = draft.name
+    data.tours = [...data.tours]
     commit()
     return existing
   }
-  const tour: Tour = { id: nextId('tour'), ...draft, farmIds: [...draft.farmIds] }
+  const tour: Tour = { id: nextId('tour'), dayKey: draft.dayKey, departAt: draft.departAt, farmIds: [...draft.farmIds], name: draft.name ?? '' }
   data.tours = [...data.tours, tour]
   commit()
   return tour
+}
+
+/** ★★ AX8 — renommer, sans rien changer d'autre. */
+export function renameTour(tourId: string, name: string): void {
+  const tour = data.tours.find((t) => t.id === tourId)
+  if (!tour) return
+  tour.name = name.trim()
+  data.tours = [...data.tours]
+  commit()
 }
 
 export function deleteTour(dayKey: string): void {

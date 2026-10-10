@@ -2143,8 +2143,11 @@
 }
 
 @container (min-width: 60rem) {
+  /* ★★ AX9 — la RÉGION dès ce palier : elle n'arrivait qu'à 78 rem, et le
+     tableau de l'iPad du PO (1 376 px, rail compris) en mesure 77,8 — le PO
+     filtrait sur נגב et ne voyait la région nulle part. */
   .roster-farms .roster-row {
-    --roster-cols: minmax(0, 1.4fr) minmax(0, 1fr) 5.5rem 7.5rem 6.5rem 1.5rem;
+    --roster-cols: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.8fr) 5.5rem 7.5rem 6.5rem 1.5rem;
   }
 }
 
@@ -2430,3 +2433,65 @@ html[data-numpad-open] body,
 html[data-numpad-open] [data-farm-form] {
   padding-bottom: var(--numpad-h, 0px);
 }
+
+/* ---------------------------------------------------------------------------
+   ★★ AX6 (2026-10-10) — UNE LIGNE RESTE UNE LIGNE QUAND LA PLACE LE PERMET.
+   ---------------------------------------------------------------------------
+   « Au lieu de tout mettre sur une ligne, l'application fait passer à la ligne
+   alors qu'il y a de la place. » Le nom au-dessus, les chiffres dessous : c'est
+   la forme d'un téléphone, appliquée partout. Désormais la ligne se lit
+   « 1, 2, 3, comme un tableau » — n° · nom · heure · distance · durée · gestes
+   — et ne se plie en deux que si SON conteneur (pas la fenêtre : un panneau à
+   côté d'une carte) est trop étroit.
+
+   `.line-scope` mesure ; `.line-row` place ; chaque enfant dit sa zone :
+     data-area="lead"  le numéro, la pastille
+     data-area="name"  le nom (tronqué, jamais à la ligne)
+     data-area="meta"  les chiffres, en colonnes fixes (`.line-figs`)
+     data-area="act"   les gestes
+   --------------------------------------------------------------------------- */
+.line-scope {
+  container-type: inline-size;
+}
+.line-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'lead name act'
+    'lead meta meta';
+  column-gap: 0.625rem;
+  row-gap: 0.125rem;
+  align-items: center;
+}
+.line-row > [data-area='lead'] { grid-area: lead; }
+.line-row > [data-area='name'] { grid-area: name; min-width: 0; }
+.line-row > [data-area='meta'] { grid-area: meta; min-width: 0; }
+.line-row > [data-area='act'] { grid-area: act; }
+/* Un panneau moyen (à côté d'une carte, ~26–40 rem) : le nom et ses
+   chiffres sur UNE ligne — c'est ce que le PO lit — et les gestes dessous. */
+@container (min-width: 20rem) {
+  .line-row {
+    grid-template-columns: auto minmax(6rem, 1fr) auto;
+    grid-template-areas:
+      'lead name meta'
+      'lead act act';
+  }
+  .line-row > [data-area='act'] { justify-self: end; }
+}
+/* Large : tout sur une ligne, gestes compris. */
+@container (min-width: 40rem) {
+  .line-row {
+    grid-template-columns: auto minmax(6rem, 1fr) auto auto;
+    grid-template-areas: 'lead name meta act';
+  }
+}
+/* Les chiffres : des pistes fixes, alignées d'une ligne à l'autre. */
+.line-figs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  column-gap: 0.5rem;
+  align-items: baseline;
+  white-space: nowrap;
+}
+.line-figs > [data-fig] { min-width: var(--fig-w, 3rem); font-variant-numeric: tabular-nums; }

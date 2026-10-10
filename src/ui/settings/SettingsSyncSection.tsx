@@ -1,4 +1,5 @@
 import { useState, useSyncExternalStore } from 'react'
+import { InfoTip } from '../components/InfoTip'
 import { useTranslation } from 'react-i18next'
 
 import { formatDateTime } from '@core/index'
@@ -107,7 +108,7 @@ export function SettingsSyncSection() {
           />
         </dl>
       )}
-      <p className="muted mt-1">{t('settingsSync.hint')}</p>
+      <InfoTip className="mt-1" testId="settings-sync-hint">{t('settingsSync.hint')}</InfoTip>
       <div className="mt-3">
         <button
           type="button"

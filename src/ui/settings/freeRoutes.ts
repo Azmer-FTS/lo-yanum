@@ -90,3 +90,34 @@ function subscribe(listener: () => void): () => void {
 export function useFreeRoutes(): FreeRoute[] {
   return useSyncExternalStore(subscribe, readFreeRoutes, readFreeRoutes)
 }
+
+// ---------------------------------------------------------------------------
+// ★★ AX8 — le brouillon de l'écran (local, non synchronisé : un travail en cours)
+// ---------------------------------------------------------------------------
+
+const DRAFT_KEY = 'lo-yanum:free-route-draft'
+
+export function readFreeRouteDraft(): FreeRoute | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return null
+    const r = JSON.parse(raw) as FreeRoute
+    return r && typeof r.id === 'string' && Array.isArray(r.stops) ? r : null
+  } catch {
+    return null
+  }
+}
+
+export function writeFreeRouteDraft(route: FreeRoute): void {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(route))
+  } catch {
+    /* navigation privée */
+  }
+}
+
+/** Même contenu (l'horodatage d'enregistrement mis à part). */
+export function sameFreeRoute(a: FreeRoute, b: FreeRoute): boolean {
+  const strip = (r: FreeRoute) => JSON.stringify({ ...r, updatedAt: '' })
+  return strip(a) === strip(b)
+}

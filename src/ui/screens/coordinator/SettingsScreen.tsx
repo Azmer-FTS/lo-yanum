@@ -7,6 +7,7 @@ import { formatCoords, readCoordinator, resetCoordinator, writeCoordinator } fro
 
 import { SUPABASE_CONFIGURED } from '../../../data/config'
 import { signOut } from '../../../data/auth'
+import { InfoTip } from '../../components/InfoTip'
 import { Icon } from '../../components/Icon'
 import { Callout, KeyValue, PageHeader, Section } from '../../components/primitives'
 import { readReportRecipient, writeReportRecipient } from '../../report/recipient'
@@ -196,7 +197,7 @@ export function SettingsScreen() {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
+      <PageHeader title={t('settings.title')} info={t('settings.subtitle')} />
       {/**
         * ═══════════════════════════════════════════════════════════════════
         * ★★ AF7 (2026-09-09) — LA PAGE EST RANGÉE EN SEPT SECTIONS NOMMÉES,
@@ -260,8 +261,7 @@ export function SettingsScreen() {
           generated WhatsApp / SMS, and the number those messages tell a
           farmer to call back. The one identity he could not change was the
           one going out under his name. */}
-      <Section title={t('settings.profile.title')} className="mt-6" collapseKey="settings-profile">
-        <p className="muted mb-3">{t('settings.profile.hint')}</p>
+      <Section title={t('settings.profile.title')} className="mt-6" collapseKey="settings-profile" info={t('settings.profile.hint')}>
         <div className="auto-cols gap-3 [--col-min:13rem]">
           <div>
             <label className="label" htmlFor="coordinator-name">
@@ -512,9 +512,9 @@ export function SettingsScreen() {
                   file is the same PMTiles archive it always was; only the
                   served extension changed. */}
               {/\.png$/.test(wantedArchive) && (
-                <p className="muted mt-1" data-testid="archive-suffix-note">
+                <InfoTip className="mt-1" testId="archive-suffix-note">
                   {t('settings.offline.suffixNote')}
-                </p>
+                </InfoTip>
               )}
               {heldArchive && heldArchive !== wantedArchive && (
                 <KeyValue

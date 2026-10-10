@@ -316,7 +316,8 @@ await guard('A318', async () => {
   await o.page.locator('[data-testid="coverage-radius-input"]').fill('35')
   await o.page.waitForTimeout(500)
   // AV1 — la liste peut s'ouvrir sur « לאשר » : « הכול » d'abord.
-  await o.page.locator('#institutions-filter-tab-all').first().click()
+  /* ★★ AX3 — l'engagement est un FILTRE (pastille), plus un onglet. */
+  await o.page.locator('[data-testid="institutions-filter-all"]').first().click()
   await o.page.waitForTimeout(300)
   await o.page.locator(`[data-testid="institution-row-${engaged.id}"]`).click()
   await o.page.waitForTimeout(12_000)
@@ -359,7 +360,8 @@ await guard('A319', async () => {
   const after = (await markerKinds(o.page)).filter((k) => k === 'institution').length
   check('A319 un geste éteint une famille (institutions à démarcher)', after < before, `${before} → ${after}`)
   check('A319 l’usage passe en « מותאם »', (await o.page.locator('[data-testid="coverage-screen"]').getAttribute('data-usage')) === 'custom')
-  await o.page.locator('#coverage-usage-meeting, [data-testid="coverage-usage"] [role="tab"]').first().click()
+  /* ★★ AX3 — « פגישה » est un MODE : un interrupteur, plus un onglet. */
+  await o.page.locator('[data-testid="coverage-usage-meeting"]').click()
   await o.page.waitForTimeout(500)
   const kinds = await markerKinds(o.page)
   check('A319 « פגישה » en un geste : ni pistes ni institutions à démarcher', (await o.page.locator('[data-testid="coverage-screen"]').getAttribute('data-usage')) === 'meeting' && !kinds.includes('lead'), JSON.stringify([...new Set(kinds)]))

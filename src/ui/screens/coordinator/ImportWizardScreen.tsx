@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import {
   HOME_BASE,
@@ -10,6 +10,7 @@ import {
   fieldsFor,
   getDrivers,
   getFarmsForImport,
+  getInstitutions,
   getVolunteers,
   guessField,
   importDrivers,
@@ -103,6 +104,12 @@ export function ImportWizardScreen() {
   const navigate = useNavigate()
   const { kind: kindParam } = useParams<{ kind: string }>()
   const volunteers = useCoreValue(getVolunteers)
+  /* ★★ AX10 — UNE LISTE FOURNIE PAR UNE INSTITUTION : chaque volontaire du
+     fichier lui est rattaché (`institutionId`), quoi que dise sa colonne. On
+     arrive ici depuis « הוספה › רשימת מתנדבים », l'institution déjà choisie. */
+  const [params] = useSearchParams()
+  const institutions = useCoreValue(getInstitutions)
+  const listInstitution = institutions.find((i) => i.id === params.get('institution')) ?? null
   const drivers = useCoreValue(getDrivers)
   /* AK7.5 — archivées comprises : une ligne ne doit pas créer un doublon. */
   const farms = useCoreValue(getFarmsForImport)
@@ -267,7 +274,11 @@ export function ImportWizardScreen() {
         ? importFarms(toFarmDrafts(rows, defaults))
         : kind === 'drivers'
           ? importDrivers(toDriverDrafts(rows, defaults))
-          : importVolunteers(toVolunteerDrafts(rows, defaults))
+          : importVolunteers(
+              toVolunteerDrafts(rows, defaults).map((d) =>
+                listInstitution ? { ...d, institutionId: listInstitution.id, yeshiva: listInstitution.name } : d,
+              ),
+            )
     setResult({ imported, skipped: analysis.rejected.length })
     setStep('done')
   }
@@ -285,6 +296,11 @@ export function ImportWizardScreen() {
         subtitle={t(template.titleKey)}
         back={{ to: back.to, label: t(back.labelKey) }}
       />
+      {kind === 'volunteers' && listInstitution && (
+        <div data-testid="import-institution" data-institution={listInstitution.id}>
+          <Callout tone="info" icon="school" title={t('import.forInstitution', { name: listInstitution.name })} />
+        </div>
+      )}
 
       {/* G10 — the templates are one tap apart. A coordinator who lands here
           from the volunteers list and realises he meant the farms sheet should
@@ -600,7 +616,8 @@ export function ImportWizardScreen() {
                 <button
                   type="button"
                   className="btn-primary"
-                  onClick={() => navigate('/coordinator/volunteers')}
+                  /* ★★ AX2.4 — la liste du type IMPORTÉ (c'était toujours les volontaires). */
+                  onClick={() => navigate(back.to)}
                 >
                   {t('import.backToList')}
                 </button>

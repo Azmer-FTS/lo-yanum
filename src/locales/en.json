@@ -9,7 +9,20 @@
   "route": {
     "missingPosition": "Missing position",
     "missingPositionHint": "A farm without a position stays in the tour, but not on the map or the route.",
-    "addPosition": "Add position"
+    "addPosition": "Add position",
+    "tourName": "Route name",
+    "tourNamePlaceholder": "e.g. Negev round",
+    "saveChanges": "Save changes",
+    "saveAsNew": "Save as a new route",
+    "copyName": "{{name}} (copy)",
+    "unsaved": "Unsaved changes",
+    "newTour": "New route",
+    "savedTours": "Saved routes · {{count}}",
+    "unnamed": "Unnamed route",
+    "stopsCount_one": "1 stop",
+    "stopsCount_other": "{{count}} stops",
+    "rename": "Rename",
+    "confirmDelete": "Delete?"
   },
   "agreement": {
     "signNow": "Sign"
@@ -48,7 +61,27 @@
     "nearLocality": "Near {{name}} · {{km}} km"
   },
   "nav": {
-    "coverage": "Coverage map"
+    "coverage": "Coverage map",
+    "institutions": "Institutions",
+    "group": {
+      "recruit": "Recruit",
+      "plan": "Plan",
+      "execute": "Guards"
+    },
+    "short": {
+      "dashboard": "Home",
+      "agenda": "Agenda",
+      "leads": "Contacts",
+      "farms": "Farms",
+      "institutions": "Institutions",
+      "volunteers": "Volunteers",
+      "drivers": "Drivers",
+      "coverage": "Coverage",
+      "route": "Route",
+      "missions": "Guards",
+      "incidents": "Incidents",
+      "settings": "Settings"
+    }
   },
   "coverage": {
     "title": "Coverage map",
@@ -62,7 +95,10 @@
       "custom": "Custom",
       "meetingHint": "For a meeting with an institution: signed farms and institutions already on board, by name. No leads, nothing internal.",
       "prepareHint": "Preparation: everything, including leads not yet called — to measure an area’s potential.",
-      "customHint": "Your own choice of layers."
+      "customHint": "Your own choice of layers.",
+      "meetingShort": "Only signed farms and partner institutions, named",
+      "prepareShort": "Everything, contacts included — to prepare",
+      "customShort": "Your own choice of layers"
     },
     "side": {
       "land": "Land",
@@ -137,8 +173,28 @@
       "beyond_other": "For {{count}} links the fastest route crosses the Green Line — route inside Israel measured",
       "noRoad_one": "One pair has no road on the map",
       "noRoad_other": "{{count}} pairs have no road on the map",
-      "loadingRoads": "Reading the road network from the map…"
-    }
+      "loadingRoads": "Reading the road network from the map…",
+      "summaryLimit": "{{road}} road links within {{limit}} · {{dropped}} dropped (as the crow flies: {{air}})"
+    },
+    "meetingMode": "Meeting with an institution",
+    "limit": "Range",
+    "durationWhat": "What the drive time is made of",
+    "durationIs": "Drive time is measured on the road network of the map, along the fastest route — like Waze, without traffic.",
+    "durationSpeeds": "Speed by road type, on an empty road: motorway 95 km/h, main road 70–80, regional 60, local 40–50, street 30, dirt track 20. An empty road — like at night, no traffic.",
+    "durationMargin": "Safety margin: +{{percent}}% (Settings › Map and regions).",
+    "durationNight": "Night addition: +{{percent}}% — unlit roads, tracks, checkpoints. Change it here, on the moon line.",
+    "unitLabel": "Range unit",
+    "unit": {
+      "min": "Drive minutes",
+      "km": "Road km"
+    },
+    "minutes": "{{min}} min",
+    "minutesAny": "or any time:",
+    "minUnit": "minutes",
+    "nightLabel": "Night drive addition",
+    "durationLine": "time = empty road +{{margin}}% margin +{{night}}% night",
+    "countsTap": "Tap a number to highlight those farms on the map",
+    "reachTitleLimit": "Farms within {{limit}}"
   },
   "institutions": {
     "title_one": "1 institution",
@@ -310,7 +366,16 @@
       "locationPlaceholder": "Waze link, Google Maps link or coordinates",
       "onlyName": "No required field except a name.",
       "save": "Save",
-      "saveAnyway": "Already exists — save anyway"
+      "saveAnyway": "Already exists — save anyway",
+      "other": {
+        "farm": "Farm name",
+        "institution": "Contact at the institution"
+      },
+      "saveAs": {
+        "farm": "Save to contacts",
+        "institution": "Save the institution",
+        "volunteer": "Save the volunteer"
+      }
     },
     "files": {
       "title": "Contact cards (.vcf)",
@@ -393,9 +458,119 @@
     },
     "open": {
       "farm": "Waiting room",
-      "institution": "Coverage map",
+      "institution": "To institutions",
       "volunteer": "Volunteers"
     },
-    "entry": "Add contacts"
+    "entry": "Add contacts",
+    "short": "Add",
+    "titleOne": "Add",
+    "info": "Everything you add — farmer, farm, institution, volunteer, driver — goes in here. First the name, then what it is, then only what that type needs. You can also add from contact files, pasted text, or an Excel/CSV list an institution sent.",
+    "step": {
+      "name": "What is the name?",
+      "type": "What are you adding?",
+      "typeNamed": "What is “{{name}}”?",
+      "details": {
+        "farm": "Anything else known? (optional)",
+        "institution": "Anything else known? (optional)",
+        "volunteer": "Anything else known? (optional)",
+        "farmFile": "Farm or moshav?",
+        "driver": "Driver details",
+        "vcf": "The files",
+        "paste": "The text",
+        "list": "The file"
+      }
+    },
+    "namePlaceholder": "Name of the person, farm or institution",
+    "orFrom": "or add from",
+    "source": {
+      "vcf": "Contact files (.vcf)",
+      "paste": "Pasted text",
+      "list": "An Excel / CSV list",
+      "backToName": "Type one name"
+    },
+    "type": {
+      "farm": "Farmer to call",
+      "farmFile": "Farm file",
+      "institution": "Institution",
+      "volunteer": "Volunteer",
+      "driver": "Volunteer driver"
+    },
+    "typeHint": {
+      "farm": "Not a farm yet — to the contacts list",
+      "farmFile": "A farm or a moshav, with all details",
+      "institution": "Yeshiva, mechina or midrasha",
+      "volunteer": "Of one institution",
+      "driver": "Drives volunteers to guards"
+    },
+    "fullForm": "Full form",
+    "farmKind": "Farm or moshav",
+    "farmGo": "Continue to the file",
+    "driverGo": "Continue to the driver",
+    "list": {
+      "volunteer": "{{name}}'s volunteer list: each row becomes a volunteer of that institution.",
+      "institution": "A list of institutions: one row each. Re-importing creates no duplicates.",
+      "farmFile": "A list of farms: one row each.",
+      "go": "Choose the file"
+    },
+    "fabAny": "Add — farmer, farm, institution, volunteer, driver"
+  },
+  "info": {
+    "more": "About this"
+  },
+  "leads": {
+    "info": "People who are not a farm yet: farmers to call. Tap a row to write a note or pick a region.",
+    "search": "Search name, phone, place or note",
+    "filterAllLong": "All open (not the not-relevant ones)",
+    "openRow": "Details",
+    "addNote": "Note",
+    "notesPlaceholder": "What was said, when to call back…",
+    "regionAuto": "Automatic — {{name}}",
+    "col": {
+      "name": "Name",
+      "contact": "Contact",
+      "phone": "Phone",
+      "place": "Place",
+      "region": "Region",
+      "status": "Status",
+      "notes": "Note",
+      "updated": "Updated",
+      "created": "Added"
+    }
+  },
+  "table": {
+    "open": "Details",
+    "empty": "Nobody here"
+  },
+  "institutionsScreen": {
+    "info": "Yeshivot, mechinot and midrashot. An institution gives an oral agreement in principle — it signs nothing. See where each one stands, who the contact is and how many of its volunteers are already listed. Tap a row to update.",
+    "mapLabel": "Institutions map",
+    "toCoverage": "Coverage map — farms in reach",
+    "seeReach": "Which farms are in reach — on the coverage map",
+    "empty": "No institutions yet. “Add” — one by one or from a file.",
+    "col": {
+      "name": "Institution",
+      "locality": "Locality",
+      "kind": "Type",
+      "engagement": "Status",
+      "contact": "Contact",
+      "phone": "Phone",
+      "volunteers": "Volunteers",
+      "place": "Location"
+    }
+  },
+  "farms": {
+    "statusFilter": "Filter by status",
+    "statusAll": "All statuses",
+    "withAreas": "With weighted area",
+    "withAreasHint": "Only farms that have a weighted area (measured or declared)",
+    "statDunams": "{{n}} dunam · {{w}} weighted",
+    "info": "All the filters are on one row. The first ones are work queues — farms waiting for an action, with how many. The figure at the top (dunam · weighted) follows the filters."
+  },
+  "freeRoute": {
+    "saved": "Saved",
+    "offlineTitle": "Computed on the device"
+  },
+  "import": {
+    "forInstitution": "Every volunteer in the file will be attached to {{name}}"
   }
 }

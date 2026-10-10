@@ -23,15 +23,18 @@ export function DriverFormModal({
   driver,
   onClose,
   presentation = 'page',
+  initialName,
 }: {
   driver: Driver | null
+  /** ★★ AX10 — le nom déjà tapé dans « הוספה ». */
+  initialName?: string
   onClose: () => void
   /** ★ AN11 — rendu comme page du panneau (le motif unique). */
   presentation?: 'overlay' | 'page'
 }) {
   const { t } = useTranslation()
 
-  const [name, setName] = useState(driver?.name ?? '')
+  const [name, setName] = useState(driver?.name ?? initialName ?? '')
   const [phone, setPhone] = useState(driver?.phone ?? '')
   // P0bis.5a — optional; see the volunteer form.
   const [email, setEmail] = useState(driver?.email ?? '')

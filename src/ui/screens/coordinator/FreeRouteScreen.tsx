@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   formatCoords,
   googleMapsPointsUrl,
+  newFreeRouteId,
   newFreeStopId,
   positionParam,
   moveStop,
@@ -22,9 +23,13 @@ import { originLabel, originPosition } from '../../settings/origin'
 import {
   blankFreeRoute,
   deleteFreeRoute,
+  readFreeRouteDraft,
+  sameFreeRoute,
   saveFreeRoute,
   useFreeRoutes,
+  writeFreeRouteDraft,
 } from '../../settings/freeRoutes'
+import { InfoTip } from '../../components/InfoTip'
 import { Icon } from '../../components/Icon'
 import { MapPanel } from '../../components/MapPanel'
 import type { MapMarker, MapRouteLine } from '../../components/MapView'
@@ -67,9 +72,22 @@ export function FreeRouteScreen() {
   const saved = useFreeRoutes()
   const coordinator = readCoordinator()
 
-  const [route, setRoute] = useState<FreeRoute>(() =>
-    blankFreeRoute(t('freeRoute.newName'), originLabel() || t('settings.origin.title')),
+  /* ★★ AX8 — le brouillon SURVIT à un départ de l'écran (il ne vivait qu'en
+     mémoire : quitter l'écran perdait l'itinéraire en cours). Local à
+     l'appareil : c'est un travail en cours, pas un itinéraire enregistré. */
+  const [route, setRouteState] = useState<FreeRoute>(() =>
+    readFreeRouteDraft() ?? blankFreeRoute(t('freeRoute.newName'), originLabel() || t('settings.origin.title')),
   )
+  const setRoute: typeof setRouteState = (next) =>
+    setRouteState((cur) => {
+      const value = typeof next === 'function' ? next(cur) : next
+      writeFreeRouteDraft(value)
+      return value
+    })
+  const savedVersion = saved.find((r) => r.id === route.id) ?? null
+  const isSaved = savedVersion !== null && sameFreeRoute(savedVersion, route)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [renaming, setRenaming] = useState<{ id: string; name: string } | null>(null)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [proposed, setProposed] = useState<FreeStop[] | null>(null)
 
@@ -194,15 +212,14 @@ export function FreeRouteScreen() {
     >
       <PageHeader
         title={t('freeRoute.title')}
-        subtitle={t('freeRoute.subtitle')}
+        info={t('freeRoute.subtitle')}
         back={{ to: '/coordinator/route', label: t('route.title') }}
       />
 
       {/* ------------------------------------------------------------------ */}
       {/* 1 — COLLER LES LIENS (AH9.1)                                        */}
       {/* ------------------------------------------------------------------ */}
-      <Section title={t('freeRoute.pasteTitle')} collapseKey="free-route-paste">
-        <p className="muted mb-2">{t('freeRoute.pasteHint')}</p>
+      <Section title={t('freeRoute.pasteTitle')} collapseKey="free-route-paste" info={t('freeRoute.pasteHint')}>
         {/* ★★ AI5 — le champ se vide après chaque ajout, garde le curseur, et
             lit un bloc de liens collés d'un coup. */}
         <PositionLinkField
@@ -355,7 +372,7 @@ export function FreeRouteScreen() {
               <p className="muted mt-2">{t('freeRoute.suggestIgnored')}</p>
             )}
 
-            <ul className="mt-3 flex flex-col gap-2" data-testid="free-route-stops">
+            <ul className="line-scope mt-3 flex flex-col gap-2" data-testid="free-route-stops">
               {plan.legs.map((leg, i) => (
                 <li
                   key={leg.stop.id}
@@ -384,17 +401,30 @@ export function FreeRouteScreen() {
                   }}
                   className="rounded-field border border-edge-subtle bg-surface-high p-3"
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="chip bg-accent/15 text-accent-ink ltr-nums">
+                  {/* ★★ AX6 — LA LIGNE DE L'ÉTAPE : n° · nom · arrivée · km · durée ·
+                      vol d'oiseau · gestes, côte à côte quand la place le permet
+                      (c'étaient quatre rangées empilées). */}
+                  <div className="line-row">
+                    <span data-area="lead" className="chip bg-accent/15 text-accent-ink ltr-nums">
                       {leg.order}
                     </span>
                     <input
-                      className="input min-w-0 flex-1"
+                      data-area="name"
+                      className="input min-w-0"
                       data-testid="free-route-stop-label"
                       value={leg.stop.label}
                       onChange={(e) => patchStop(leg.stop.id, { label: e.target.value })}
                     />
-                    <span className="flex shrink-0 items-center gap-1">
+                    <span data-area="meta" className="muted line-figs" title={formatCoords(leg.stop.position)}>
+                      <span data-fig="arrive" data-testid="free-route-arrive" className="ltr-nums font-semibold text-content-primary" title={t('freeRoute.arriveAt')}>
+                        {leg.arriveAt}
+                      </span>
+                      <span data-fig="leg" className="ltr-nums" data-testid="free-route-leg" style={{ ['--fig-w' as string]: '8rem' }}>
+                        {leg.legKm.toFixed(1)} {t('freeRoute.km')} · {approx(leg.driveMinutes)} {t('freeRoute.minutes')}
+                      </span>
+                      <span data-fig="air" className="ltr-nums">{t('freeRoute.airKm', { km: leg.airKm.toFixed(1) })}</span>
+                    </span>
+                    <span data-area="act" className="flex shrink-0 items-center gap-1">
                       <button
                         type="button"
                         className="btn-ghost h-11 w-11 justify-center p-0"
@@ -435,20 +465,6 @@ export function FreeRouteScreen() {
                     </span>
                   </div>
 
-                  <p className="muted mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span data-testid="free-route-arrive">
-                      {t('freeRoute.arriveAt')}{' '}
-                      <span className="ltr-nums font-semibold text-content-primary">
-                        {leg.arriveAt}
-                      </span>
-                    </span>
-                    <span className="ltr-nums" data-testid="free-route-leg">
-                      {leg.legKm.toFixed(1)} {t('freeRoute.km')} · {approx(leg.driveMinutes)}{' '}
-                      {t('freeRoute.minutes')}
-                    </span>
-                    <span className="ltr-nums">{t('freeRoute.airKm', { km: leg.airKm.toFixed(1) })}</span>
-                    <span className="ltr-nums">{formatCoords(leg.stop.position)}</span>
-                  </p>
                   {/* ★ AI2.6 — le repli se DIT, il ne se devine pas au trait. */}
                   {leg.mode === 'straight' && current && !current.unavailable && (
                     <p className="mt-1 text-micro text-status-warn-ink" data-testid="free-route-estimate">
@@ -462,7 +478,9 @@ export function FreeRouteScreen() {
                     </p>
                   )}
 
-                  <div className="mt-2 auto-cols gap-2 [--col-min:9rem]">
+                  {/* ★★ AX6 — téléphone, durée sur place et les trois gestes : une rangée. */}
+                  <div className="mt-2 flex flex-wrap items-end gap-2">
+                  <div className="grid min-w-[16rem] flex-1 grid-cols-2 gap-2">
                     <TextField
                       label={t('form.contactPhone')}
                       value={leg.stop.phone}
@@ -483,7 +501,7 @@ export function FreeRouteScreen() {
                   </div>
 
                   {/* ★★ AH9.5 — DEUX GESTES DEPUIS UNE ÉTAPE. */}
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <a
                       href={smsHref([leg.stop.phone], message(leg))}
                       data-testid="free-route-sms"
@@ -522,6 +540,7 @@ export function FreeRouteScreen() {
                       <Icon name="plus" size={15} />
                       {t('freeRoute.toFarm')}
                     </button>
+                  </div>
                   </div>
                 </li>
               ))}
@@ -567,15 +586,42 @@ export function FreeRouteScreen() {
           </Field>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn-primary"
-            data-testid="free-route-save"
-            onClick={() => saveFreeRoute(route)}
-          >
-            <Icon name="check" size={16} />
-            {t('common.save')}
-          </button>
+          {/* ★★ AX8 — « שמירה » MET À JOUR l'itinéraire ouvert ; « שמירה כחדש »
+              en CRÉE un autre. Avant, l'itinéraire gardait son identifiant après
+              un enregistrement : vider ses étapes, en coller d'autres, le
+              renommer et enregistrer REMPLAÇAIT le premier. */}
+          {isSaved ? (
+            <span className="chip self-center bg-status-success/15 text-status-success-ink" data-testid="free-route-saved-chip">
+              <Icon name="check" size={12} />
+              {t('freeRoute.saved')}
+            </span>
+          ) : (
+            <button
+              type="button"
+              className="btn-primary"
+              data-testid="free-route-save"
+              onClick={() => saveFreeRoute(route)}
+            >
+              <Icon name="check" size={16} />
+              {savedVersion ? t('route.saveChanges') : t('common.save')}
+            </button>
+          )}
+          {savedVersion && (
+            <button
+              type="button"
+              className="btn-secondary"
+              data-testid="free-route-save-as-new"
+              onClick={() => {
+                const copy = { ...route, id: newFreeRouteId(), name: route.name === savedVersion.name ? t('route.copyName', { name: route.name }) : route.name }
+                saveFreeRoute(copy)
+                setRoute(copy)
+              }}
+            >
+              <Icon name="plus" size={16} />
+              {t('route.saveAsNew')}
+            </button>
+          )}
+          {savedVersion && !isSaved && <span className="self-center text-micro font-semibold text-status-warn-ink" data-testid="free-route-dirty">{t('route.unsaved')}</span>}
           <button
             type="button"
             className="btn-ghost"
@@ -594,30 +640,68 @@ export function FreeRouteScreen() {
             {saved.map((r) => (
               <li
                 key={r.id}
-                className="flex flex-wrap items-center gap-2 rounded-field border border-edge-subtle bg-surface-high px-3 py-2"
+                data-testid={`free-route-row-${r.id}`}
+                className={`flex flex-nowrap items-center gap-2 rounded-field border px-3 py-1.5 ${r.id === route.id ? 'border-accent bg-accent/10' : 'border-edge-subtle bg-surface-high'}`}
               >
-                <button
-                  type="button"
-                  className="min-w-0 flex-1 text-start"
-                  data-testid="free-route-open"
-                  onClick={() => setRoute(r)}
-                >
-                  <span className="truncate text-caption font-medium text-content-primary">
-                    {r.name}
-                  </span>
-                  <span className="muted block truncate ltr-nums">
-                    {r.dayKey ?? new Date(r.updatedAt).toLocaleDateString(locale)} ·{' '}
-                    {r.stops.length} {t('freeRoute.stopsShort')}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="btn-ghost py-1.5 text-status-danger-ink"
-                  data-testid="free-route-delete"
-                  onClick={() => deleteFreeRoute(r.id)}
-                >
-                  <Icon name="trash" size={15} />
-                </button>
+                {renaming?.id === r.id ? (
+                  <form
+                    className="flex min-w-0 flex-1 items-center gap-2"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      const name = renaming.name.trim() || r.name
+                      saveFreeRoute({ ...r, name })
+                      if (r.id === route.id) patch({ name })
+                      setRenaming(null)
+                    }}
+                  >
+                    <input className="input min-h-[2.5rem] min-w-0 flex-1 py-1" autoFocus value={renaming.name} onChange={(e) => setRenaming({ id: r.id, name: e.target.value })} data-testid="free-route-rename-input" />
+                    <button type="submit" className="btn-primary min-h-[2.5rem] px-3 py-1" data-testid="free-route-rename-ok">
+                      <Icon name="check" size={14} />
+                    </button>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    className="flex min-h-11 min-w-0 flex-1 flex-nowrap items-center gap-3 text-start"
+                    data-testid="free-route-open"
+                    onClick={() => setRoute(r)}
+                  >
+                    <span className="min-w-0 flex-1 truncate text-caption font-semibold text-content-primary">{r.name}</span>
+                    <span className="ltr-nums shrink-0 text-caption text-content-secondary">{r.dayKey ?? new Date(r.updatedAt).toLocaleDateString(locale)}</span>
+                    <span className="w-16 shrink-0 text-caption text-content-muted">
+                      {r.stops.length} {t('freeRoute.stopsShort')}
+                    </span>
+                  </button>
+                )}
+                {renaming?.id !== r.id && (
+                  <button type="button" className="btn-ghost h-10 w-10 shrink-0 justify-center p-0" aria-label={t('route.rename')} title={t('route.rename')} data-testid="free-route-rename" onClick={() => setRenaming({ id: r.id, name: r.name })}>
+                    <Icon name="edit" size={15} />
+                  </button>
+                )}
+                {confirmDelete === r.id ? (
+                  /* ★★ AX8 — supprimer se CONFIRME (c'était un seul toucher). */
+                  <button
+                    type="button"
+                    className="btn-danger min-h-[2.5rem] shrink-0 px-3 py-1"
+                    data-testid="free-route-delete-confirm"
+                    onClick={() => {
+                      deleteFreeRoute(r.id)
+                      setConfirmDelete(null)
+                    }}
+                  >
+                    {t('route.confirmDelete')}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-ghost h-10 w-10 shrink-0 justify-center p-0 text-status-danger-ink"
+                    data-testid="free-route-delete"
+                    aria-label={t('route.deleteTour')}
+                    onClick={() => setConfirmDelete(r.id)}
+                  >
+                    <Icon name="trash" size={15} />
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -638,13 +722,15 @@ export function FreeRouteScreen() {
           * dire — un objet à moitié vivant, et la moitié manquante serait
           * découverte le matin de la tournée.
           */}
-        <p className="muted mt-4">{t('freeRoute.agendaNote')}</p>
+        <InfoTip className="mt-3" testId="free-route-agenda-note">
+          {t('freeRoute.agendaNote')}
+        </InfoTip>
       </Section>
 
       {/* ⛔ AH9.7 — dit à l'écran, pas seulement dans le code. */}
-      <p className="muted mt-4" data-testid="free-route-offline-note">
+      <InfoTip className="mt-3" label={t('freeRoute.offlineTitle')} testId="free-route-offline-note">
         {t('freeRoute.offlineNote')}
-      </p>
+      </InfoTip>
     </MapPanel>
   )
 }

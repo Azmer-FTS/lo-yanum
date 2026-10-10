@@ -1,3 +1,4 @@
+import { SPEED_MOTORWAY_KMH } from './roadGraph'
 import { farmPoint, haversineKm } from './geo'
 import { isInstitutionEngaged, isInstitutionProspect } from './institutions'
 import type { Institution } from './institutions'
@@ -133,6 +134,14 @@ export interface CoverageInput {
   leads: readonly Lead[]
   institutions: readonly Institution[]
   radiusKm: number
+  /**
+   * ★★ AX7 (2026-10-10) — « MON ENGAGEMENT N'A JAMAIS ÉTÉ DE 35 KILOMÈTRES,
+   * C'ÉTAIT 35 MINUTES. » Présent = la borne est une DURÉE : un lien existe si
+   * le trajet, avec la marge et la tenue de nuit (`factor`), tient en
+   * `minutes`. Absent = la borne est `radiusKm` (route). Les DEUX valeurs
+   * restent sur chaque lien, quelle que soit la borne choisie.
+   */
+  limitMinutes?: { minutes: number; factor: number } | null
   visible: Visible
   /** La route mesurée entre une institution et une ferme ; `undefined` = pas encore. */
   road?: (institution: LatLng, farm: LatLng) => PairRoad | undefined
@@ -149,8 +158,25 @@ export function isLeadOpen(l: Lead): boolean {
   return !l.convertedFarmId && l.status !== 'not_now' && l.status !== 'not_interested'
 }
 
+/**
+ * ★★ AX7 — LA BORNE À VOL D'OISEAU d'une durée : aucun trajet ne roule plus
+ * vite que l'autoroute (`SPEED_MOTORWAY_KMH`), et le facteur (marge, nuit) ne
+ * fait que l'allonger. Donc tout point plus loin que `minutes × 95 km/h` est
+ * hors de portée — EXACT, comme le filtre en kilomètres.
+ */
+export function airBoundKm(input: Pick<CoverageInput, 'radiusKm' | 'limitMinutes'>): number {
+  return input.limitMinutes ? (input.limitMinutes.minutes / 60) * SPEED_MOTORWAY_KMH : input.radiusKm
+}
+
+/** La durée telle qu'on l'affiche et qu'on la compare : route × marge × nuit. */
+export function linkMinutes(seconds: number, factor: number): number {
+  return Math.max(1, Math.round((seconds / 60) * factor))
+}
+
 export function computeCoverage(input: CoverageInput): CoverageResult {
   const { visible, radiusKm } = input
+  const limit = input.limitMinutes ?? null
+  const airBound = airBoundKm(input)
   const places: CoveragePlace[] = []
   const farmPlaces: CoveragePlace[] = []
   for (const f of input.farms) {
@@ -205,7 +231,7 @@ export function computeCoverage(input: CoverageInput): CoverageResult {
   for (const { i, family, position } of institutions) {
     for (const f of farmPlaces) {
       // Le filtre EXACT : une route n'est jamais plus courte que le vol d'oiseau.
-      if (haversineKm(position, f.position) > radiusKm) continue
+      if (haversineKm(position, f.position) > airBound) continue
       mesh.airPairs++
       const road = input.road?.(position, f.position)
       if (road === undefined) {
@@ -216,7 +242,7 @@ export function computeCoverage(input: CoverageInput): CoverageResult {
         mesh.noRoad++
         continue
       }
-      if (road.km > radiusKm) {
+      if (limit ? linkMinutes(road.seconds, limit.factor) > limit.minutes : road.km > radiusKm) {
         mesh.dropped++
         continue
       }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
   createInstitution,
@@ -34,6 +34,7 @@ import type { ContactDraft, ContactKind, Duplicate } from '@core/contacts'
 
 import { Icon } from '../../components/Icon'
 import { PageHeader } from '../../components/primitives'
+import { InfoTip, TitleWithInfo } from '../../components/InfoTip'
 import { useCoreValue } from '../../hooks/useCore'
 
 /**
@@ -65,31 +66,79 @@ import { useCoreValue } from '../../hooks/useCore'
  *    choisi — `?type=` — : on ne repose pas la question).
  */
 
-type Done = { kind: ContactKind; count: number } | null
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AX10 (2026-10-10) — AJOUTER QUOI QUE CE SOIT : UN SEUL ENDROIT, PAR ÉTAPES.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * « Je suis perdu entre les façons d'ajouter une ferme, une institution, un
+ *   volontaire, un contact. » L'inventaire en comptait DOUZE. Celui-ci est
+ * l'unique point d'entrée (le « + » y mène, les listes y mènent, le type déjà
+ * dit) — et il prolonge AW2 au lieu d'ajouter un écran.
+ *
+ * L'ORDRE EST CELUI DU PO : « d'abord un nom, obligatoire, puis ce que c'est,
+ * puis ce que ce type-là demande ». Chaque étape n'apparaît que quand la
+ * précédente a sa réponse ; RIEN N'EST DÉPLOYÉ D'AVANCE (les trois chemins
+ * d'AW2 étaient ouverts côte à côte, grisés, avant même le type).
+ *
+ * Ce qu'on DÉPOSE au lieu de taper — des fiches .vcf, un texte collé, une
+ * liste Excel/CSV qu'une institution a fournie — se choisit d'un toucher sous
+ * le nom ; puis, là aussi, ce que c'est.
+ *
+ * Les CINQ types et ce qu'ils deviennent :
+ *   חקלאי לפנות אליו → une piste (`leads`, comme AW2 « חוות »)
+ *   כרטיס חווה        → le formulaire complet de la ferme (ou du מושב), nom repris
+ *   מוסד              → une institution (`institutions`)
+ *   מתנדב             → un volontaire RATTACHÉ à son institution
+ *   נהג מתנדב         → le formulaire du chauffeur, nom repris
+ */
+type AddType = 'farm' | 'farmFile' | 'institution' | 'volunteer' | 'driver'
+type Source = 'name' | 'vcf' | 'paste' | 'list'
+const ADD_TYPES: readonly AddType[] = ['farm', 'farmFile', 'institution', 'volunteer', 'driver']
+const FILE_TYPES: readonly AddType[] = ['farm', 'institution', 'volunteer']
+const LIST_TYPES: readonly AddType[] = ['volunteer', 'institution', 'farmFile']
+const isContactKind = (k: AddType | null): k is ContactKind => k === 'farm' || k === 'institution' || k === 'volunteer'
 
-const KIND_ICON: Record<ContactKind, ReactNode> = {
-  farm: <Icon name="farm" size={26} />,
-  institution: (
-    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M2 9.5 12 5l10 4.5L12 14Z M6 11.5v4.2c0 1.3 2.7 2.8 6 2.8s6-1.5 6-2.8v-4.2 M22 9.5v5" />
-    </svg>
-  ),
-  volunteer: <Icon name="users" size={26} />,
+const KIND_ICON: Record<AddType, ReactNode> = {
+  farm: <Icon name="userPlus" size={24} />,
+  farmFile: <Icon name="farm" size={24} />,
+  institution: <Icon name="school" size={24} />,
+  volunteer: <Icon name="users" size={24} />,
+  driver: <Icon name="steering" size={24} />,
 }
+
+type Done = { kind: ContactKind; count: number } | null
 
 export function AddContactsScreen() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const initial = params.get('type')
-  const [kind, setKindState] = useState<ContactKind | null>(initial === 'farm' || initial === 'institution' || initial === 'volunteer' ? initial : null)
-  const setKind = (k: ContactKind) => {
-    setKindState(k)
+  const [type, setTypeState] = useState<AddType | null>(
+    (ADD_TYPES as readonly string[]).includes(initial ?? '') ? (initial as AddType) : null,
+  )
+  const initialSource = params.get('source')
+  const [source, setSourceState] = useState<Source>(initialSource === 'vcf' || initialSource === 'paste' || initialSource === 'list' ? initialSource : 'name')
+  const [name, setName] = useState('')
+  const kind: ContactKind | null = isContactKind(type) ? type : null
+  const setType = (k: AddType) => {
+    setTypeState(k)
     setDone(null)
     // Le type change le découpage de TOUS les brouillons déjà lus.
-    setDrafts((ds) => ds.map((d) => resplit(d, k)))
+    if (isContactKind(k)) setDrafts((ds) => ds.map((d) => resplit(d, k)))
     const next = new URLSearchParams(params)
     next.set('type', k)
     setParams(next, { replace: true })
+  }
+  const setSource = (s: Source) => {
+    setSourceState(s)
+    setDone(null)
+    const next = new URLSearchParams(params)
+    if (s === 'name') next.delete('source')
+    else next.set('source', s)
+    setParams(next, { replace: true })
+    // Un type que cette source ne sait pas lire est oublié, pas gardé en silence.
+    if (type && !(s === 'name' ? ADD_TYPES : s === 'list' ? LIST_TYPES : FILE_TYPES).includes(type)) setTypeState(null)
   }
   const institutions = useCoreValue(() => getInstitutions())
   const leads = useCoreValue(() => getVisibleLeads())
@@ -101,7 +150,8 @@ export function AddContactsScreen() {
   const [skip, setSkip] = useState<Record<string, boolean>>({})
   const [done, setDone] = useState<Done>(null)
 
-  const ready = kind !== null && (kind !== 'volunteer' || institution !== null)
+  const needsInstitution = type === 'volunteer'
+  const ready = type !== null && (!needsInstitution || institution !== null)
   const existing = useMemo(
     () => ({ leads, farms, institutions, volunteers }),
     [leads, farms, institutions, volunteers],
@@ -136,91 +186,181 @@ export function AddContactsScreen() {
     setDone({ kind, count: n })
   }
 
+  const named = name.trim().length > 0
+  /* Les étapes : ② dès qu'il y a un nom (ou une autre source) ; ③ dès que le type est dit. */
+  const showType = source !== 'name' || named
+  const showDetails = showType && ready
+  const types = source === 'name' ? ADD_TYPES : source === 'list' ? LIST_TYPES : FILE_TYPES
+
   return (
-    <div data-testid="add-contacts" data-kind={kind ?? ''}>
-      <PageHeader title={t('add.title')} subtitle={t('add.subtitle')} />
+    <div className="mx-auto max-w-4xl" data-testid="add-contacts" data-kind={type ?? ''} data-source={source} data-step={showDetails ? 3 : showType ? 2 : 1}>
+      <PageHeader
+        title={t('add.titleOne')}
+        info={<p>{t('add.info')}</p>}
+        back={{ to: '/coordinator', label: t('nav.dashboard') }}
+      />
 
       {/* ------------------------------------------------------------------ */}
-      {/* ① LE TYPE                                                           */}
+      {/* ① LE NOM — ou ce qu'on dépose                                       */}
       {/* ------------------------------------------------------------------ */}
-      <section aria-labelledby="add-kind-title" className="mt-2">
-        <h2 id="add-kind-title" className="flex items-center gap-2 text-heading text-content-primary">
-          <StepNumber n={1} />
-          {t('add.kindTitle')}
-        </h2>
-        <div role="radiogroup" aria-labelledby="add-kind-title" className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3" data-testid="add-kind">
-          {(['farm', 'institution', 'volunteer'] as const).map((k) => {
-            const on = kind === k
-            return (
-              <button
-                key={k}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => setKind(k)}
-                data-testid={`add-kind-${k}`}
-                className={`flex min-h-[4.5rem] items-center gap-3 rounded-card border-2 p-3 text-start transition-colors duration-fast ${on ? 'border-accent bg-accent/10' : 'border-edge-subtle bg-surface-raised hover:bg-surface-high'}`}
-              >
-                <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-pill ${on ? 'bg-accent text-content-on-accent' : 'bg-surface-high text-content-secondary'}`}>
-                  {KIND_ICON[k]}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-body font-bold text-content-primary">{t(`add.kind.${k}`)}</span>
-                  <span className="block text-caption text-content-secondary">{t(`add.kindHint.${k}`)}</span>
-                </span>
+      <section aria-labelledby="add-name-title" className="mt-2" data-testid="add-step-1">
+        {source === 'name' ? (
+          <>
+            <label id="add-name-title" htmlFor="add-name" className="flex items-center gap-2 text-heading text-content-primary">
+              <StepNumber n={1} />
+              {t('add.step.name')}
+              <span aria-hidden="true" className="text-status-danger-ink">*</span>
+            </label>
+            <input
+              id="add-name"
+              className="input mt-3 min-h-[3.25rem] w-full text-body"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value)
+                setDone(null)
+              }}
+              dir="auto"
+              autoFocus
+              placeholder={t('add.namePlaceholder')}
+              data-testid="add-name"
+              /* ★★ AX10 — Entrée = « et ensuite » : le formulaire du type déjà dit
+                 (ferme, chauffeur), sinon le premier champ de l'étape ③. */
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' || !name.trim()) return
+                e.preventDefault()
+                if (type === 'farmFile') navigate(`/coordinator/farms/new?name=${encodeURIComponent(name.trim())}`)
+                else if (type === 'driver') navigate(`/coordinator/drivers/new?name=${encodeURIComponent(name.trim())}`)
+                else requestAnimationFrame(() => document.querySelector<HTMLInputElement>('[data-testid="add-form-phone"]')?.focus())
+              }}
+            />
+            <p className="mt-2 flex flex-wrap items-center gap-1.5 text-caption text-content-muted" data-testid="add-sources">
+              <span>{t('add.orFrom')}</span>
+              <button type="button" className="btn-ghost min-h-11 px-2.5 py-1" onClick={() => setSource('vcf')} data-testid="add-source-vcf">
+                <Icon name="user" size={15} />
+                {t('add.source.vcf')}
               </button>
-            )
-          })}
-        </div>
-        {kind === 'volunteer' && (
-          <InstitutionPicker institutions={institutions} value={instId} onChange={setInstId} />
-        )}
-        {!ready && (
-          <p className="mt-3 flex items-center gap-2 text-caption font-semibold text-status-warn-ink" data-testid="add-not-ready">
-            <Icon name="info" size={16} />
-            {kind === null ? t('add.chooseKindFirst') : t('add.chooseInstitutionFirst')}
-          </p>
+              <button type="button" className="btn-ghost min-h-11 px-2.5 py-1" onClick={() => setSource('paste')} data-testid="add-source-paste">
+                <Icon name="copy" size={15} />
+                {t('add.source.paste')}
+              </button>
+              <button type="button" className="btn-ghost min-h-11 px-2.5 py-1" onClick={() => setSource('list')} data-testid="add-source-list">
+                <Icon name="table" size={15} />
+                {t('add.source.list')}
+              </button>
+            </p>
+          </>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="add-name-title" className="flex items-center gap-2 text-heading text-content-primary">
+              <StepNumber n={1} />
+              {t(`add.source.${source}`)}
+            </h2>
+            <button type="button" className="btn-ghost min-h-11" onClick={() => setSource('name')} data-testid="add-source-name">
+              <Icon name="edit" size={15} />
+              {t('add.source.backToName')}
+            </button>
+          </div>
         )}
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* ② LES TROIS CHEMINS                                                 */}
+      {/* ② CE QUE C'EST                                                      */}
       {/* ------------------------------------------------------------------ */}
-      <section aria-labelledby="add-paths-title" className="mt-6">
-        <h2 id="add-paths-title" className="flex items-center gap-2 text-heading text-content-primary">
-          <StepNumber n={2} />
-          {kind ? t('add.pathsTitle', { what: t(`add.kindPlural.${kind}`) }) : t('add.pathsTitleNone')}
-        </h2>
-        <fieldset disabled={!ready} className={`mt-3 grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-3 ${ready ? '' : 'opacity-50'}`} data-testid="add-paths">
-          <FormPath kind={kind} onSave={(d) => {
-            const n = write([d])
-            if (kind && n) setDone({ kind, count: n })
-          }} existing={existing} />
-          <FilesPath kind={kind} onDrafts={addDrafts} />
-          <PastePath kind={kind} onDrafts={addDrafts} />
-        </fieldset>
-      </section>
+      {showType && (
+        <section aria-labelledby="add-kind-title" className="mt-6 animate-fade-in" data-testid="add-step-2">
+          <h2 id="add-kind-title" className="flex items-center gap-2 text-heading text-content-primary">
+            <StepNumber n={2} />
+            {source === 'name' ? t('add.step.typeNamed', { name: name.trim() }) : t('add.step.type')}
+          </h2>
+          <div role="radiogroup" aria-labelledby="add-kind-title" className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="add-kind">
+            {types.map((k) => {
+              const on = type === k
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setType(k)}
+                  data-testid={`add-kind-${k}`}
+                  className={`flex min-h-[4rem] items-center gap-3 rounded-card border-2 p-3 text-start transition-colors duration-fast ${on ? 'border-accent bg-accent/10' : 'border-edge-subtle bg-surface-raised hover:bg-surface-high'}`}
+                >
+                  <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-pill ${on ? 'bg-accent text-content-on-accent' : 'bg-surface-high text-content-secondary'}`}>
+                    {KIND_ICON[k]}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-body font-bold text-content-primary">{t(`add.type.${k}`)}</span>
+                    <span className="block truncate text-caption text-content-secondary">{t(`add.typeHint.${k}`)}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          {needsInstitution && <InstitutionPicker institutions={institutions} value={instId} onChange={setInstId} />}
+        </section>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* ③ CE QUE CE TYPE-LÀ DEMANDE                                         */}
+      {/* ------------------------------------------------------------------ */}
+      {showDetails && type && (
+        <section aria-labelledby="add-details-title" className="mt-6 animate-fade-in" data-testid="add-step-3" data-type={type}>
+          <h2 id="add-details-title" className="flex items-center gap-2 text-heading text-content-primary">
+            <StepNumber n={3} />
+            {t(`add.step.details.${source === 'name' ? type : source}`)}
+          </h2>
+          <div className="mt-3">
+            {source === 'name' && kind && (
+              <ManualDetails
+                kind={kind}
+                name={name.trim()}
+                institution={institution}
+                existing={existing}
+                onSave={(d) => {
+                  const n = write([d])
+                  if (n) {
+                    setDone({ kind, count: n })
+                    setName('')
+                  }
+                }}
+              />
+            )}
+            {source === 'name' && type === 'farmFile' && <FarmFileStep name={name.trim()} onGo={(to) => navigate(to)} />}
+            {source === 'name' && type === 'driver' && (
+              <button type="button" className="btn-primary min-h-11" onClick={() => navigate(`/coordinator/drivers/new?name=${encodeURIComponent(name.trim())}`)} data-testid="add-driver-go">
+                <Icon name="steering" size={16} />
+                {t('add.driverGo')}
+              </button>
+            )}
+            {source === 'vcf' && <FilesPath kind={kind} onDrafts={addDrafts} />}
+            {source === 'paste' && <PastePath kind={kind} onDrafts={addDrafts} />}
+            {source === 'list' && <ListStep type={type} institution={institution} onGo={(to) => navigate(to)} />}
+          </div>
+        </section>
+      )}
 
       {done && (
         <div className="mt-4 flex flex-wrap items-center gap-3 rounded-card bg-status-success/15 p-3 text-caption font-semibold text-status-success-ink" role="status" data-testid="add-done" data-count={done.count}>
           <Icon name="check" size={18} />
           <span className="flex-1">{t(`add.done.${done.kind}`, { count: done.count, institution: institution?.name ?? '' })}</span>
-          <Link to={done.kind === 'farm' ? '/coordinator/leads' : done.kind === 'institution' ? '/coordinator/coverage' : '/coordinator/volunteers'} className="btn-secondary min-h-11">
+          <Link to={done.kind === 'farm' ? '/coordinator/leads' : done.kind === 'institution' ? '/coordinator/institutions' : '/coordinator/volunteers'} className="btn-secondary min-h-11" data-testid="add-done-open">
             {t(`add.open.${done.kind}`)}
           </Link>
         </div>
       )}
 
       {/* ------------------------------------------------------------------ */}
-      {/* ③ L'APERÇU                                                          */}
+      {/* ④ L'APERÇU (fiches et collage)                                      */}
       {/* ------------------------------------------------------------------ */}
       {kind && drafts.length > 0 && (
         <section aria-labelledby="add-preview-title" className="mt-6" data-testid="add-preview" data-count={drafts.length} data-chosen={chosen.length}>
           <h2 id="add-preview-title" className="flex items-center gap-2 text-heading text-content-primary">
-            <StepNumber n={3} />
+            <StepNumber n={4} />
             {t('add.previewTitle', { count: drafts.length })}
           </h2>
-          <p className="muted mt-1">{t('add.previewHint')}</p>
+          <InfoTip testId="add-preview-info" className="mt-1">
+            <p>{t('add.previewHint')}</p>
+          </InfoTip>
           <PreviewSummary drafts={drafts} dups={dups} />
           <ul className="mt-3 flex flex-col gap-2">
             {drafts.map((d, i) => (
@@ -247,6 +387,136 @@ export function AddContactsScreen() {
           </div>
         </section>
       )}
+    </div>
+  )
+}
+
+/** ③ pour une piste, une institution, un volontaire tapés à la main : le reste, tout facultatif. */
+function ManualDetails({
+  kind,
+  name,
+  institution,
+  existing,
+  onSave,
+}: {
+  kind: ContactKind
+  name: string
+  institution: Institution | null
+  existing: Parameters<typeof findDuplicates>[1]
+  onSave: (d: ContactDraft) => void
+}) {
+  const { t } = useTranslation()
+  const [phone, setPhone] = useState('')
+  const [other, setOther] = useState('')
+  const [where, setWhere] = useState('')
+  const [confirmDup, setConfirmDup] = useState(false)
+  const draft = useMemo(() => {
+    if (kind === 'institution') {
+      // Le nom tapé EST l'institution ; « autre » est la personne à appeler.
+      const base = draftFromName({ fullName: other.trim(), phone, origin: { path: 'form' }, locationText: where }, 'institution')
+      return { ...base, orgName: name, split: 'form' as const }
+    }
+    const base = draftFromName({ fullName: name, orgField: kind === 'farm' ? other.trim() || undefined : undefined, phone, origin: { path: 'form' }, locationText: where }, kind)
+    return base
+  }, [kind, name, phone, other, where])
+  const dup = useMemo(() => findDuplicates([draft], existing, kind)[0] ?? null, [draft, existing, kind])
+  useEffect(() => setConfirmDup(false), [name, phone, other])
+  const save = () => {
+    if (!name) return
+    if (dup && !confirmDup) {
+      setConfirmDup(true)
+      return
+    }
+    onSave(draft)
+    setPhone('')
+    setOther('')
+    setWhere('')
+    setConfirmDup(false)
+  }
+  return (
+    <div className="flex flex-col gap-3 rounded-card bg-surface-raised p-4 shadow-card" data-testid="add-path-form">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label={t('add.form.phone')} value={phone} onChange={(v) => setPhone(formatPhoneTyping(v))} testId="add-form-phone" type="tel" ltr />
+        {kind !== 'volunteer' && <Field label={t(`add.form.other.${kind}`)} value={other} onChange={setOther} testId="add-form-org" />}
+      </div>
+      {kind !== 'volunteer' && (
+        <label className="flex flex-col gap-1">
+          <span className="text-caption font-semibold text-content-secondary">{t('add.form.location')}</span>
+          <input className="input min-h-11" value={where} onChange={(e) => setWhere(e.target.value)} dir="ltr" placeholder={t('add.form.locationPlaceholder')} data-testid="add-form-location" />
+          <LocationEcho text={where} />
+        </label>
+      )}
+      {dup && (
+        <p className="text-caption font-semibold text-status-warn-ink" data-testid="add-form-dup">
+          {t(`add.dup.${dup.kind}`, { name: dup.name })}
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" className="btn-primary min-h-11" disabled={!name} onClick={save} data-testid="add-form-save">
+          <Icon name="check" size={16} />
+          {dup && confirmDup ? t('add.form.saveAnyway') : t(`add.form.saveAs.${kind}`)}
+        </button>
+        {kind === 'volunteer' && institution && (
+          /* Le formulaire complet (âge, disponibilités, permis…), le nom et l'institution repris. */
+          <Link to={`/coordinator/volunteers/new?name=${encodeURIComponent(name)}&institution=${institution.id}`} className="btn-ghost min-h-11" data-testid="add-volunteer-full">
+            {t('add.fullForm')}
+          </Link>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** ③ pour une ferme : le formulaire complet, le nom repris — ferme ou מושב. */
+function FarmFileStep({ name, onGo }: { name: string; onGo: (to: string) => void }) {
+  const { t } = useTranslation()
+  const [moshav, setMoshav] = useState(false)
+  return (
+    <div className="flex flex-col gap-3 rounded-card bg-surface-raised p-4 shadow-card" data-testid="add-farm-file">
+      <span role="radiogroup" aria-label={t('add.farmKind')} className="flex flex-nowrap gap-1">
+        {[false, true].map((m) => (
+          <button
+            key={String(m)}
+            type="button"
+            role="radio"
+            aria-checked={moshav === m}
+            onClick={() => setMoshav(m)}
+            data-testid={`add-farm-kind-${m ? 'moshav' : 'farm'}`}
+            className={`flex min-h-11 flex-1 items-center justify-center rounded-field border text-caption font-semibold ${moshav === m ? 'border-accent bg-accent/15 text-accent-ink' : 'border-edge-subtle text-content-secondary hover:bg-surface-high'}`}
+          >
+            {t(m ? 'farms.newMoshav' : 'farms.new')}
+          </button>
+        ))}
+      </span>
+      <button
+        type="button"
+        className="btn-primary min-h-11 self-start"
+        onClick={() => onGo(`/coordinator/farms/new?name=${encodeURIComponent(name)}${moshav ? '&kind=moshav' : ''}`)}
+        data-testid="add-farm-go"
+      >
+        <Icon name="farm" size={16} />
+        {t('add.farmGo')}
+      </button>
+    </div>
+  )
+}
+
+/** ③ pour une liste Excel/CSV : l'assistant d'import du bon type, l'institution reprise. */
+function ListStep({ type, institution, onGo }: { type: AddType; institution: Institution | null; onGo: (to: string) => void }) {
+  const { t } = useTranslation()
+  const to =
+    type === 'volunteer'
+      ? `/coordinator/import/volunteers${institution ? `?institution=${institution.id}` : ''}`
+      : type === 'institution'
+        ? '/coordinator/import/institutions'
+        : '/coordinator/import/farms'
+  return (
+    <div className="flex flex-col gap-3 rounded-card bg-surface-raised p-4 shadow-card" data-testid="add-list">
+      <p className="text-caption text-content-secondary">{t(`add.list.${type}`, { name: institution?.name ?? '' })}</p>
+      <button type="button" className="btn-primary min-h-11 self-start" onClick={() => onGo(to)} data-testid="add-list-go" data-to={to}>
+        <Icon name="upload" size={16} />
+        {t('add.list.go')}
+      </button>
     </div>
   )
 }
@@ -326,13 +596,10 @@ function InstitutionPicker({ institutions, value, onChange }: { institutions: re
 function PathCard({ icon, title, hint, children, testId }: { icon: ReactNode; title: string; hint: string; children: ReactNode; testId: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-3 rounded-card bg-surface-raised p-4 shadow-card" data-testid={testId}>
-      <div>
-        <h3 className="flex items-center gap-2 text-body font-bold text-content-primary">
-          {icon}
-          {title}
-        </h3>
-        <p className="muted mt-0.5 text-caption">{hint}</p>
-      </div>
+      <TitleWithInfo as="h3" info={hint} className="gap-2 text-body font-bold text-content-primary">
+        {icon}
+        {title}
+      </TitleWithInfo>
       {children}
     </div>
   )
@@ -355,66 +622,6 @@ function LocationEcho({ text }: { text: string }) {
       <Icon name="alert" size={13} />
       {t(`add.location.${r.reason}`)}
     </span>
-  )
-}
-
-function FormPath({ kind, onSave, existing }: { kind: ContactKind | null; onSave: (d: ContactDraft) => void; existing: Parameters<typeof findDuplicates>[1] }) {
-  const { t } = useTranslation()
-  const [first, setFirst] = useState('')
-  const [last, setLast] = useState('')
-  const [phone, setPhone] = useState('')
-  const [org, setOrg] = useState('')
-  const [where, setWhere] = useState('')
-  const [confirmDup, setConfirmDup] = useState(false)
-  const k = kind ?? 'farm'
-  const draft = useMemo(() => {
-    const base = draftFromName({ fullName: `${first} ${last}`.trim(), phone, origin: { path: 'form' }, locationText: where }, k)
-    // La saisie est déjà découpée : aucun découpage automatique sur des champs séparés.
-    return { ...base, firstName: first.trim(), lastName: last.trim(), orgName: k === 'volunteer' ? '' : org.trim(), split: 'form' as const }
-  }, [first, last, phone, org, where, k])
-  const named = !!(first.trim() || last.trim() || (k !== 'volunteer' && org.trim()))
-  const dup = useMemo(() => (named ? findDuplicates([draft], existing, k)[0] : null), [draft, existing, k, named])
-  useEffect(() => setConfirmDup(false), [first, last, phone, org])
-  const save = () => {
-    if (!named) return
-    if (dup && !confirmDup) {
-      setConfirmDup(true)
-      return
-    }
-    onSave(draft)
-    setFirst('')
-    setLast('')
-    setPhone('')
-    setOrg('')
-    setWhere('')
-    setConfirmDup(false)
-  }
-  return (
-    <PathCard icon={<Icon name="edit" size={18} />} title={t('add.form.title')} hint={t('add.form.hint')} testId="add-path-form">
-      <div className="grid grid-cols-2 gap-2">
-        <Field label={t('add.form.first')} value={first} onChange={setFirst} testId="add-form-first" required={!last && !org} />
-        <Field label={t('add.form.last')} value={last} onChange={setLast} testId="add-form-last" />
-      </div>
-      <Field label={t('add.form.phone')} value={phone} onChange={(v) => setPhone(formatPhoneTyping(v))} testId="add-form-phone" type="tel" ltr />
-      {k !== 'volunteer' && <Field label={t(`add.form.org.${k}`)} value={org} onChange={setOrg} testId="add-form-org" />}
-      {k !== 'volunteer' && (
-        <label className="flex flex-col gap-1">
-          <span className="text-caption font-semibold text-content-secondary">{t('add.form.location')}</span>
-          <input className="input min-h-11" value={where} onChange={(e) => setWhere(e.target.value)} dir="ltr" placeholder={t('add.form.locationPlaceholder')} data-testid="add-form-location" />
-          <LocationEcho text={where} />
-        </label>
-      )}
-      <p className="muted text-micro">{t('add.form.onlyName')}</p>
-      {dup && (
-        <p className="text-caption font-semibold text-status-warn-ink" data-testid="add-form-dup">
-          {t(`add.dup.${dup.kind}`, { name: dup.name })}
-        </p>
-      )}
-      <button type="button" className="btn-primary min-h-11" disabled={!named} onClick={save} data-testid="add-form-save">
-        <Icon name="check" size={16} />
-        {dup && confirmDup ? t('add.form.saveAnyway') : t('add.form.save')}
-      </button>
-    </PathCard>
   )
 }
 

@@ -64,6 +64,7 @@ import {
   replaceSnapshot,
   resetStore,
   saveTour,
+  renameTour,
   archiveFarm,
   unarchiveFarm,
   setCommitmentFulfilled,
@@ -688,6 +689,16 @@ emits(
     }),
   [['tours', _raw().tours.find((t) => t.dayKey === tourDayKey)!.id]],
 )
+/* ★★ AX8 — renommer une tournée est une mutation : elle doit voyager. Et une
+   seconde tournée du MÊME jour en crée une autre, elle n'écrase plus la première. */
+{
+  const tid = _raw().tours.find((t) => t.dayKey === tourDayKey)!.id
+  emits('renameTour', () => renameTour(tid, 'סבב הנגב'), [['tours', tid]])
+  check('renameTour wrote the name', _raw().tours.find((t) => t.id === tid)?.name === 'סבב הנגב')
+  const before = _raw().tours.filter((t) => t.dayKey === tourDayKey).length
+  emits('saveTour (second tour, same day)', () => void saveTour({ name: 'סבב ב', dayKey: tourDayKey, departAt: new Date().toISOString(), farmIds: [farmId] }), [])
+  check('a second tour of the same day does NOT replace the first (AX8)', _raw().tours.filter((t) => t.dayKey === tourDayKey).length === before + 1)
+}
 emits('deleteTour', () => deleteTour('2027-01-01'), [], [
   ['tours', _raw().tours.find((t) => t.dayKey === '2027-01-01')?.id ?? 'gone'],
 ])

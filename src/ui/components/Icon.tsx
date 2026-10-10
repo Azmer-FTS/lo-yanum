@@ -27,6 +27,7 @@ export type IconName =
   | 'map'
   | 'route'
   | 'users'
+  | 'school'
   | 'shield'
   | 'alert'
   | 'phone'
@@ -204,6 +205,8 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M8.5 18h6a3.5 3.5 0 0 0 0-7h-5a3.5 3.5 0 0 1 0-7h6" />
     </>
   ),
+  /* ★★ AX1 — une institution (yeshiva, mékhina, midrasha) : le chapeau d'étudiant. */
+  school: <path d="M2 9.5 12 5l10 4.5L12 14Z M6 11.5v4.2c0 1.3 2.7 2.8 6 2.8s6-1.5 6-2.8v-4.2 M22 9.5v5" />,
   users: (
     <>
       <circle cx="9" cy="8" r="3.2" />

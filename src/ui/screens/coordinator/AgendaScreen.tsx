@@ -27,6 +27,7 @@ import type { AgendaEvent, LatLng, MissionStatus } from '@core/index'
 
 import { AgendaGrid } from '../../components/agendaGrid'
 import type { AgendaTone } from '../../components/agendaGrid'
+import { TitleWithInfo } from '../../components/InfoTip'
 import { Icon } from '../../components/Icon'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
@@ -732,8 +733,9 @@ export function AgendaScreen() {
             className="flex min-h-0 flex-1 flex-col"
           >
             <header className="mb-3">
-              <h1 className="text-title text-content-primary">{t('agenda.title')}</h1>
-              <p className="muted mt-1">{t('agenda.subtitle')}</p>
+              <TitleWithInfo as="span" info={t('agenda.subtitle')} className="text-title text-content-primary">
+                <h1>{t('agenda.title')}</h1>
+              </TitleWithInfo>
             </header>
 
             {controls}
