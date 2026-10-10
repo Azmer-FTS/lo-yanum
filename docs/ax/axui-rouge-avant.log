@@ -1,0 +1,105 @@
+$ bun run scripts/axui.ts
+  app : http://localhost:5399  (build local dist-ax-before)
+
+  AX1 — le rail suit les trois temps du métier, chaque entrée nommée
+  ------------------------------------------------------------------
+  FAIL  AX1 1440 px : trois temps — גיוס · תכנון · ביצוע
+  FAIL  AX1 1440 px : les 0 entrées portent un nom visible
+  FAIL  AX1 — section interrompue  — evaluate: Timeout 30000ms exceeded. · - waiting for locator('[data-testid="rail-settings"]')
+
+  A345 · A346 · A347 — onglets / filtres, une rangée, une forme d’aide
+  --------------------------------------------------------------------
+  PASS  A346 /coordinator : au plus UNE rangée de filtres, aucune bande de tuiles  — 0 rangée(s), 0 bande(s)
+  PASS  A347 /coordinator : aucune explication ouverte d’office
+  PASS  A346 /coordinator/agenda : au plus UNE rangée de filtres, aucune bande de tuiles  — 0 rangée(s), 0 bande(s)
+  PASS  A347 /coordinator/agenda : aucune explication ouverte d’office
+  PASS  A346 /coordinator/leads : au plus UNE rangée de filtres, aucune bande de tuiles  — 0 rangée(s), 0 bande(s)
+  FAIL  A345 /coordinator/leads : aucun onglet pour restreindre une liste  — 5 onglet(s)
+  PASS  A347 /coordinator/leads : aucune explication ouverte d’office
+  FAIL  A346 /coordinator/farms : au plus UNE rangée de filtres, aucune bande de tuiles  — 1 rangée(s), 1 bande(s)
+  PASS  A347 /coordinator/farms : aucune explication ouverte d’office
+  PASS  A346 /coordinator/institutions : au plus UNE rangée de filtres, aucune bande de tuiles  — 0 rangée(s), 0 bande(s)
+  PASS  A345 /coordinator/institutions : aucun onglet pour restreindre une liste  — 0 onglet(s)
+  PASS  A347 /coordinator/institutions : aucune explication ouverte d’office
+  FAIL  A346 /coordinator/volunteers : au plus UNE rangée de filtres, aucune bande de tuiles  — 1 rangée(s), 1 bande(s)
+  PASS  A347 /coordinator/volunteers : aucune explication ouverte d’office
+  FAIL  A346 /coordinator/drivers : au plus UNE rangée de filtres, aucune bande de tuiles  — 1 rangée(s), 1 bande(s)
+  PASS  A347 /coordinator/drivers : aucune explication ouverte d’office
+  PASS  A346 /coordinator/coverage : au plus UNE rangée de filtres, aucune bande de tuiles  — 0 rangée(s), 0 bande(s)
+  FAIL  A345 /coordinator/coverage : aucun onglet pour restreindre une liste  — 9 onglet(s)
+  PASS  A347 /coordinator/coverage : aucune explication ouverte d’office
+  PASS  A346 /coordinator/route : au plus UNE rangée de filtres, aucune bande de tuiles  — 1 rangée(s), 0 bande(s)
+  PASS  A347 /coordinator/route : aucune explication ouverte d’office
+  PASS  A346 /coordinator/route/free : au plus UNE rangée de filtres, aucune bande de tuiles  — 0 rangée(s), 0 bande(s)
+  FAIL  A347 /coordinator/route/free : aucune explication ouverte d’office  — כל קישור שמקבלים בוואטסאפ הופך לעצירה. אפשר להדביק אחד אחרי  | עצירה שהומרה לכרטיס חווה מצטרפת למתכנן היום הרגיל, עם שאר הב | המסלול, המרחקים והזמנים מחושבים במכשיר עצמו, על מפת הכבישים 
+  PASS  A346 /coordinator/missions : au plus UNE rangée de filtres, aucune bande de tuiles  — 1 rangée(s), 0 bande(s)
+  PASS  A345 /coordinator/missions : aucun onglet pour restreindre une liste  — 0 onglet(s)
+  PASS  A347 /coordinator/missions : aucune explication ouverte d’office
+  PASS  A346 /coordinator/incidents : au plus UNE rangée de filtres, aucune bande de tuiles  — 1 rangée(s), 0 bande(s)
+  PASS  A347 /coordinator/incidents : aucune explication ouverte d’office
+  PASS  A346 /coordinator/add : au plus UNE rangée de filtres, aucune bande de tuiles  — 0 rangée(s), 0 bande(s)
+  FAIL  A347 /coordinator/add : aucune explication ouverte d’office  — מהטלפון: „שיתוף איש קשר” שומר קובץ ‎.vcf. אפשר הרבה קבצים בב
+  PASS  A346 /coordinator/settings : au plus UNE rangée de filtres, aucune bande de tuiles  — 0 rangée(s), 0 bande(s)
+  FAIL  A347 /coordinator/settings : aucune explication ouverte d’office  — ה־PDF הרשמי של העמותה, אם יש כזה. כל עוד לא הועלה — המסמך שנ | שרטוט מחדש של גבולות שלושה־עשר האזורים. הגבולות שנשמרים כאן  | הסיומת ‎.png‎ מכוונת: הקובץ הוא ארכיון PMTiles, אך השרת דוחס | המכשיר בודק כל 30 שניות אם השתנה משהו בחשבון, וגם בכל חזרה ל
+  /coordinator f=0 t=0 ⓘ=0 long=0
+  /coordinator/agenda f=0 t=0 ⓘ=0 long=0
+  /coordinator/leads f=0 t=5 ⓘ=0 long=0
+  /coordinator/farms f=1 t=0 ⓘ=0 long=0
+  /coordinator/institutions f=0 t=0 ⓘ=0 long=0
+  /coordinator/volunteers f=1 t=0 ⓘ=0 long=0
+  /coordinator/drivers f=1 t=0 ⓘ=0 long=0
+  /coordinator/coverage f=0 t=9 ⓘ=0 long=0
+  /coordinator/route f=1 t=0 ⓘ=0 long=0
+  /coordinator/route/free f=0 t=0 ⓘ=0 long=3
+  /coordinator/missions f=1 t=0 ⓘ=0 long=0
+  /coordinator/incidents f=1 t=0 ⓘ=0 long=0
+  /coordinator/add f=0 t=0 ⓘ=0 long=1
+  /coordinator/settings f=0 t=0 ⓘ=0 long=4
+  FAIL  A345 — section interrompue  — click: Timeout 30000ms exceeded. · - waiting for locator('main [data-info-toggle]').first()
+
+  A348 — l’écran des contacts est un tableau
+  ------------------------------------------
+  FAIL  A348 1440 px : un TABLEAU, avec ses en-têtes de colonnes
+  FAIL  A348 1440 px : les statuts sont des FILTRES en haut (pas des onglets)  — 0 pastille(s)
+  FAIL  A348 1440 px : chaque ligne DIT qu’elle s’ouvre (« פרטים »)
+  FAIL  A348 — section interrompue  — click: Timeout 30000ms exceeded. · - waiting for locator('[data-testid="leads-table-sort-name"]')
+
+  A349 — en grand écran, une ligne reste une ligne
+  ------------------------------------------------
+  FAIL  A349 1440 px : « היום שלי » — heure · nom · km · durée sur UNE ligne  — 0 étape(s)
+  FAIL  A349 — section interrompue  — boundingBox: Timeout 30000ms exceeded. · - waiting for locator('[data-testid="route-stop"]').first().locator('[data-area="name"]')
+
+  A350 — kilomètres ou minutes ; les deux sur chaque lien
+  -------------------------------------------------------
+  FAIL  A350 en km : la borne se lit en ק״מ  — 35 ק״מ
+  PASS  A350 chaque lien porte km ET minutes (borne en km)  — 35 ק״מ · 37 דק׳ | 32 ק״מ · 31 דק׳
+  FAIL  A350 — section interrompue  — click: Timeout 30000ms exceeded. · - waiting for locator('[data-testid="coverage-unit-min"]')
+
+  A351 — un itinéraire enregistré se retrouve (fermeture, autre appareil)
+  -----------------------------------------------------------------------
+  FAIL  A351 — section interrompue  — fill: Timeout 30000ms exceeded. · - waiting for locator('[data-testid="tour-name"]')
+
+  A352 — la région, en colonne, dans le tableau des fermes
+  --------------------------------------------------------
+  FAIL  A352 1376 px : la colonne « אזור » est AFFICHÉE  — 0 cellules
+  PASS  A352 1376 px : chaque ferme placée montre sa région (vides : seulement les 6 sans point ni région)  — 0 vide(s) · 
+  FAIL  A352 filtrer sur une région : CHAQUE ligne la montre dans sa colonne  — הנגב : 
+  PASS  aucune erreur de page
+  FAIL  A352 1440 px : la colonne « אזור » est AFFICHÉE  — 0 cellules
+  PASS  A352 1440 px : chaque ferme placée montre sa région (vides : seulement les 6 sans point ni région)  — 0 vide(s) · 
+  PASS  aucune erreur de page
+
+  A353 — un seul point d’entrée, par étapes, rien de déployé d’avance
+  -------------------------------------------------------------------
+  FAIL  A353 le « + » : les cinq ajouts mènent tous au même écran  — fab-farm-new, fab-moshav-new, volunteer-new, driver-new, fab-mission-new, fab-visit-new, fab-meeting-new, fab-incident-new, fab-add-contacts
+  FAIL  A353 à l’ouverture : SEULEMENT le nom (ni type, ni fichier, ni collage)  — {"s2":0,"s3":0,"files":1,"areas":1}
+  FAIL  A353 — section interrompue  — fill: Timeout 30000ms exceeded. · - waiting for locator('[data-testid="add-name"]')
+
+  A354 — les cinq gestes du PO, comptés en clics, avant / après
+  -------------------------------------------------------------
+
+  Captures — clair et sombre, trois largeurs, les écrans touchés
+  --------------------------------------------------------------
+
+  29 PASS, 27 FAIL
+error: script "axui" exited with code 1

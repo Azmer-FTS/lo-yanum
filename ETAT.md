@@ -177,6 +177,13 @@
 > écrans touchés, 0 erreur de page (`docs/screenshots/axpass/deployed/`).
 > Carte des écrans du jumeau déployé : `docs/ax/atteignable-deploye.json`.
 >
+> **Vue rouge avant** : `axui` sur le build d'AVANT (`e8570e5`) → **29 PASS,
+> 27 FAIL** (`docs/ax/axui-rouge-avant.log`) — rail sans noms ni groupes,
+> 5 onglets sur les contacts et 9 sur la couverture, bande de tuiles sur
+> fermes/volontaires/chauffeurs, explications ouvertes sur 3 écrans, pas de
+> tableau, pas de colonne région à 1 376, pas d'unité minutes, pas de nom de
+> tournée, « + » à cinq formulaires différents, ajout tout déplié.
+>
 > Portes : `bun run axpass` (40, pur : inventaire, avant/après, règles dans le
 > code, minutes sur le jeu réel), `bun run axui` (111 au rendu sur le build
 > réel + base factice : A345–A354, + 10 de clics avec `BEFORE=`, captures
