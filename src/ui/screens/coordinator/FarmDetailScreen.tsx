@@ -240,8 +240,12 @@ function FarmFacts({ farm }: { farm: Farm }) {
           <span className="flex items-center gap-1.5">
             {/* ★ AN7.2 — une ligne : la région choisie, le texte libre (« אחר »),
                 ou la région déduite, marquée comme telle. */}
-            {farm.regionId ? regionById(farm.regionId)?.name : farm.region || (regionById(farmRegion(farm))?.name ?? t('farms.regionNone'))}
-            {!farm.regionId && !farm.region && (
+            {/* ★★ AY12.6 — UNE SEULE RÈGLE : la région affichée est celle qui
+                CLASSE la ferme (`farmRegion` — choisie à la main, sinon déduite
+                du point), la même que la colonne et le filtre. Le texte libre
+                d'une ancienne fiche ne s'affiche plus que s'il n'y a rien d'autre. */}
+            {regionById(farmRegion(farm))?.name ?? (farm.region || t('farms.regionNone'))}
+            {!farm.regionId && farmRegion(farm) !== null && (
               <span className="chip bg-surface-high text-content-muted">
                 {t('farms.regionAuto')}
               </span>
@@ -1380,6 +1384,14 @@ export function FarmDetailScreen() {
               hidden={tab !== 'guards'}
               className={tab === 'guards' ? 'flex flex-col gap-4' : 'hidden'}
             >
+            {/* ★★ AY12.4 — UNE GARDE SE CRÉE DEPUIS LA FERME : la ferme est déjà
+                choisie dans l'assistant, on part du jour et des volontaires. */}
+            {!isArchived(farm) && (
+              <Link to={`/coordinator/missions/new?farm=${farm.id}`} className="btn-primary min-h-11 self-start" data-testid="farm-new-guard">
+                <Icon name="shield" size={16} />
+                {t('farms.newGuardHere')}
+              </Link>
+            )}
             <div className="panel-scope">
             <div className="pair-grid">
           {/**

@@ -25,8 +25,14 @@ import {
   saveTour,
   telHref,
   wazeStepLinks,
+  FREE_STOP_PREFIX,
+  freeStopAsFarm,
+  isFreeStopId,
 } from '@core/index'
-import type { AgendaEvent, Farm, FarmStatus, RegionId, Tour } from '@core/index'
+import type { AgendaEvent, Farm, FarmStatus, FreeRoute, LatLng, RegionId, Tour, TourFreeStop } from '@core/index'
+import { useFreeRoutes } from '../../settings/freeRoutes'
+import { OverflowMenu } from '../../components/OverflowMenu'
+import { PositionLinkField } from '../../components/PositionLinkField'
 
 import { originLabel, originPosition } from '../../settings/origin'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
@@ -106,6 +112,11 @@ export function RoutePlannerScreen() {
   const [tourName, setTourName] = useState(initialTour?.name ?? '')
   const [dayKey, setDayKey] = useState(() => initialTour?.dayKey ?? params.get('date') ?? todayKey)
   const [selected, setSelected] = useState<Set<string>>(() => new Set(initialTour?.farmIds ?? []))
+  /* ★★ AY12.2 — UN SEUL PLANIFICATEUR : les points libres (un lien collé) roulent
+     dans la même tournée que les fiches, ordonnés avec elles, par la route. */
+  const [freeStops, setFreeStops] = useState<TourFreeStop[]>(() => initialTour?.freeStops ?? [])
+  const [freeName, setFreeName] = useState('')
+  const [freePhone, setFreePhone] = useState('')
   const [departTime, setDepartTime] = useState(() => (initialTour ? toTimeInput(initialTour.departAt) : '08:30'))
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   /* ★ AN11 — le rendez-vous s'ouvre en PAGE (FormPages.tsx). */
@@ -162,20 +173,52 @@ export function RoutePlannerScreen() {
     setTourName(tour.name ?? '')
     setDayKey(tour.dayKey)
     setSelected(new Set(tour.farmIds))
+    setFreeStops(tour.freeStops ?? [])
     setDepartTime(toTimeInput(tour.departAt))
     setParams({ tour: tour.id }, { replace: true })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+  /* ★ AY12.2 — `?tour=` ouvert AVANT que les données n'arrivent (app reprise,
+     autre appareil) : la tournée s'ouvre dès qu'elle est là. */
+  const pendingTour = useRef<string | null>(initialTour ? null : params.get('tour'))
+  useEffect(() => {
+    const id = pendingTour.current
+    if (!id) return
+    const found = allTours.find((x) => x.id === id)
+    if (found) {
+      pendingTour.current = null
+      openTour(found)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allTours])
   const newTour = () => {
     setEditingId(null)
     setTourName('')
     setSelected(new Set())
+    setFreeStops([])
     setParams({ date: dayKey }, { replace: true })
   }
 
+  const savedFreeRoutes = useFreeRoutes()
+  const loadFreeRoute = (fr: FreeRoute) => {
+    setFreeStops((cur) => [
+      ...cur,
+      ...fr.stops.map((st, i) => ({ id: `${FREE_STOP_PREFIX}${Date.now().toString(36)}-${i}`, name: st.label || t('route.freePoint', { n: cur.length + i + 1 }), lat: st.position.lat, lng: st.position.lng, phone: st.phone })),
+    ])
+    if (!tourName.trim() && fr.name) setTourName(fr.name)
+  }
+  const addFreeStop = (position: LatLng) => {
+    setFreeStops((cur) => [
+      ...cur,
+      { id: `${FREE_STOP_PREFIX}${Date.now().toString(36)}`, name: freeName.trim() || t('route.freePoint', { n: cur.length + 1 }), lat: position.lat, lng: position.lng, phone: freePhone.trim() },
+    ])
+    setFreeName('')
+    setFreePhone('')
+  }
+  const freeFarms = useMemo(() => freeStops.map(freeStopAsFarm), [freeStops])
   const chosen = useMemo(
-    () => farms.filter((f) => selected.has(f.id)),
-    [farms, selected],
+    () => [...farms.filter((f) => selected.has(f.id)), ...freeFarms],
+    [farms, selected, freeFarms],
   )
 
   /**
@@ -268,18 +311,22 @@ export function RoutePlannerScreen() {
     return buildDayPlan({
       dayKey,
       tour: { id: 'draft', name: '', dayKey, departAt, farmIds: draftFarmIds },
-      farms: getVisibleFarms(),
+      farms: [...getVisibleFarms(), ...freeFarms],
       events: getAgendaEvents(day, addDays(day, 1)),
     })
   })
 
+  const savedFarmIds = draftFarmIds.filter((id) => !isFreeStopId(id))
+  const sameFree = (a: readonly TourFreeStop[] = [], b: readonly TourFreeStop[] = []) =>
+    a.length === b.length && a.every((x) => b.some((y) => y.id === x.id && y.lat === x.lat && y.lng === x.lng && y.name === x.name))
   const isSaved =
     savedTour !== null &&
+    sameFree(savedTour.freeStops, freeStops) &&
     savedTour.departAt === departAt &&
     savedTour.dayKey === dayKey &&
     (savedTour.name ?? '') === tourName.trim() &&
-    savedTour.farmIds.length === draftFarmIds.length &&
-    savedTour.farmIds.every((id, i) => id === draftFarmIds[i])
+    savedTour.farmIds.length === savedFarmIds.length &&
+    savedTour.farmIds.every((id, i) => id === savedFarmIds[i])
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -325,14 +372,14 @@ export function RoutePlannerScreen() {
         {
           id: stop.farm.id,
           position: stop.farm.position,
-          color: readStatusColor(stop.farm.status),
+          color: isFreeStopId(stop.farm.id) ? readToken('--accent') : readStatusColor(stop.farm.status),
           title: `${stop.order}. ${stop.farm.name}`,
           subtitle: stop.farm.locality,
-          kind: entityMarkerKind(stop.farm),
+          kind: isFreeStopId(stop.farm.id) ? ('pin' as const) : entityMarkerKind(stop.farm),
           badge: String(stop.order),
         },
         { hoveredId, selectedId: null },
-        { onHover: setHoveredId, onSelect: () => toggle(stop.farm.id) },
+        { onHover: setHoveredId, onSelect: () => (isFreeStopId(stop.farm.id) ? undefined : toggle(stop.farm.id)) },
       ),
     )
 
@@ -379,10 +426,20 @@ export function RoutePlannerScreen() {
             planificateur ; posé ici, il est l'autre réponse à la question
             qu'on est déjà en train de se poser. */}
         <div className="flex shrink-0 flex-wrap gap-2">
-          <Link to="/coordinator/route/free" className="btn-secondary shrink-0" data-testid="open-free-route">
-            <Icon name="pin" size={16} />
-            {t('freeRoute.title')}
-          </Link>
+          {/* ★★ AY12.2 — l'itinéraire libre n'est plus un second écran : ses
+              itinéraires enregistrés se CHARGENT ici, comme points libres. */}
+          {savedFreeRoutes.length > 0 && (
+            <OverflowMenu
+              testId="route-load-free"
+              label={t('route.loadFree')}
+              items={savedFreeRoutes.map((fr) => ({
+                key: fr.id,
+                icon: 'pin' as const,
+                label: `${fr.name || t('route.freeUnnamed')} · ${t('route.freeCount', { count: fr.stops.length })}`,
+                onClick: () => loadFreeRoute(fr),
+              }))}
+            />
+          )}
           {/* ★★ AU4.8 — la carte de couverture : « où aller cette saison ». */}
           <Link to="/coordinator/coverage" className="btn-secondary shrink-0" data-testid="open-coverage">
             <Icon name="map" size={16} />
@@ -439,7 +496,7 @@ export function RoutePlannerScreen() {
                   disabled={draftFarmIds.length === 0}
                   data-testid="tour-save"
                   onClick={() => {
-                    const saved = saveTour({ id: savedTour?.id, name: tourName.trim(), dayKey, departAt, farmIds: draftFarmIds })
+                    const saved = saveTour({ id: savedTour?.id, name: tourName.trim(), dayKey, departAt, farmIds: savedFarmIds, freeStops })
                     setEditingId(saved.id)
                     setParams({ tour: saved.id }, { replace: true })
                   }}
@@ -454,7 +511,7 @@ export function RoutePlannerScreen() {
                     className="btn-secondary"
                     data-testid="tour-save-as-new"
                     onClick={() => {
-                      const saved = saveTour({ name: tourName.trim() || t('route.copyName', { name: savedTour.name || dayKey }), dayKey, departAt, farmIds: draftFarmIds })
+                      const saved = saveTour({ name: tourName.trim() || t('route.copyName', { name: savedTour.name || dayKey }), dayKey, departAt, farmIds: savedFarmIds, freeStops })
                       setEditingId(saved.id)
                       setTourName(saved.name ?? '')
                       setParams({ tour: saved.id }, { replace: true })
@@ -566,6 +623,36 @@ export function RoutePlannerScreen() {
           </ul>
         </Section>
       )}
+
+      {/* ★★ AY12.2 — un point qui n'a pas de fiche (un lien Waze ou Google, des
+          coordonnées) entre dans la MÊME tournée. */}
+      <Section title={t('route.freeTitle')} collapseKey="route-free" summary={t('route.freeCount', { count: freeStops.length })} info={t('route.freeInfo')}>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="flex flex-col gap-1">
+            <span className="label">{t('route.freeName')}</span>
+            <input className="input min-h-11" value={freeName} onChange={(e) => setFreeName(e.target.value)} placeholder={t('route.freeNamePlaceholder')} data-testid="route-free-name" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="label">{t('form.contactPhone')}</span>
+            <input className="input ltr-nums min-h-11" inputMode="tel" dir="ltr" value={freePhone} onChange={(e) => setFreePhone(e.target.value)} placeholder="05X-XXXXXXX" data-testid="route-free-phone" />
+          </label>
+        </div>
+        <PositionLinkField className="mt-2" onResolve={addFreeStop} applyLabel={t('route.freeAdd')} />
+        {freeStops.length > 0 && (
+          <ul className="mt-3 flex flex-col gap-1.5" data-testid="route-free-list">
+            {freeStops.map((f) => (
+              <li key={f.id} className="flex items-center gap-2 rounded-field bg-surface-raised px-2.5 py-1.5" data-testid="route-free-stop">
+                <Icon name="pin" size={15} className="shrink-0 text-accent-ink" />
+                <span className="min-w-0 flex-1 truncate text-caption font-medium">{f.name}</span>
+                {f.phone && <span className="ltr-nums text-micro text-content-muted" dir="ltr">{f.phone}</span>}
+                <button type="button" className="btn-ghost h-10 w-10 min-w-0 justify-center p-0" aria-label={t('common.remove')} onClick={() => setFreeStops((cur) => cur.filter((x) => x.id !== f.id))} data-testid="route-free-remove">
+                  <Icon name="close" size={15} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
 
       <div ref={pickerRef} data-testid="route-step-picker">
       <Section
@@ -715,6 +802,7 @@ export function RoutePlannerScreen() {
                     onClick={() => toggle(farm.id)}
                     aria-pressed={on}
                     data-testid="route-pick"
+                    data-farm-id={farm.id}
                     onMouseEnter={() => setHoveredId(farm.id)}
                     onMouseLeave={() => setHoveredId(null)}
                     className={`group relative flex w-full flex-col overflow-hidden rounded-card text-start
@@ -927,7 +1015,13 @@ export function RoutePlannerScreen() {
                           </span>
                         )}
 
-                        {planStop?.visitEvent ? (
+                        {isFreeStopId(stop.farm.id) ? (
+                          /* ★★ AY12.2 — un point libre n'a pas de fiche : pas de rendez-vous à poser, une pastille le dit. */
+                          <span className="chip bg-accent/15 text-micro text-accent-ink" data-testid="route-stop-free">
+                            <Icon name="pin" size={11} />
+                            {t('route.freeChip')}
+                          </span>
+                        ) : planStop?.visitEvent ? (
                           <button
                             type="button"
                             onClick={() => setEditVisitId(planStop.visitEvent?.id ?? null)}

@@ -14,8 +14,9 @@ import { usePublishedHeight } from '../hooks/useShellMetrics'
 export const SETTINGS_GROUPS = [
   'profile',
   'target',
+  /* ★★ AY12.3 — seuils et gabarits vivent dans leurs écrans (חוות, שמירות) :
+     un seul groupe, qui y renvoie. */
   'thresholds',
-  'templates',
   'map',
   'display',
   'data',

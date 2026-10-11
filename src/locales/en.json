@@ -23,7 +23,17 @@
     "stopsCount_other": "{{count}} stops",
     "rename": "Rename",
     "confirmDelete": "Delete?",
-    "measuringRoad": "measuring by road…"
+    "measuringRoad": "measuring by road…",
+    "loadFree": "Load a saved free route",
+    "freeUnnamed": "Free route",
+    "freeCount": "{{count}} free points",
+    "freePoint": "Point {{n}}",
+    "freeTitle": "Free points",
+    "freeInfo": "A point without a card (Waze or Google link, coordinates) joins the same route, by road, with the farms.",
+    "freeName": "Point name",
+    "freeNamePlaceholder": "e.g. the kibbutz gate",
+    "freeAdd": "Add to the route",
+    "freeChip": "Free point"
   },
   "agreement": {
     "signNow": "Sign"
@@ -727,6 +737,20 @@
         "title": "Association file",
         "hint": "The file the association sends back"
       }
+    }
+  },
+  "screenSettings": {
+    "farms": {
+      "title": "Farm settings",
+      "hint": "Neglect threshold, area gap, renewal window and the signature document."
+    },
+    "missions": {
+      "title": "Guard settings",
+      "hint": "Silence delays, reminders and the summons SMS template."
+    },
+    "moved": {
+      "title": "Thresholds and templates moved to their screens",
+      "hint": "Farm settings are on the Farms screen (⋯), guard settings on the Guards screen (⋯). They also open from here."
     }
   }
 }

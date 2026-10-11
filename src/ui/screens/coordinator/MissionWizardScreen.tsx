@@ -352,7 +352,11 @@ export function MissionWizardScreen() {
   const stepOneRatio = useMapRatio('mission-wizard', 42)
 
   // --- Step 1 state --------------------------------------------------------
-  const [farmId, setFarmId] = useState(farms[0]?.id ?? '')
+  /* ★★ AY12.4 — ouverte depuis une ferme (`?farm=`) : la ferme est choisie. */
+  const [farmId, setFarmId] = useState(() => {
+    const wanted = params.get('farm')
+    return wanted && farms.some((f) => f.id === wanted) ? wanted : (farms[0]?.id ?? '')
+  })
   const anchors = useCoreValue(() => getAnchorPointsForFarm(farmId))
   const zones = useCoreValue(() => getFarmZonesForFarm(farmId))
   const threats = useCoreValue(() => getThreatsForFarm(farmId))

@@ -18,6 +18,8 @@ import { Avatar } from '../../components/Avatar'
 import { Icon } from '../../components/Icon'
 import { TestDataBadge } from '../../components/TestDataBadge'
 import { ListTile } from '../../components/ListTile'
+import { OverflowMenu } from '../../components/OverflowMenu'
+import { useScreenSettings } from '../../settings/ScreenSettings'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { MissionStatusChip, readToken } from '../../components/badges'
@@ -64,6 +66,7 @@ const STATUSES: MissionStatus[] = [
  */
 export function MissionsScreen() {
   const { t } = useTranslation()
+  const missionSettings = useScreenSettings('missions')
   const navigate = useNavigate()
 
   const upcoming = useCoreValue(getUpcomingMissionViews)
@@ -148,9 +151,12 @@ export function MissionsScreen() {
     >
       {({ mode }) => (
       <>
+      {missionSettings.dialog}
       <ListTop
         testId="missions-top"
         title={t('missions.title')}
+        /* ★★ AY12.3 — délais de silence et SMS de convocation : réglés ICI. */
+        menu={<OverflowMenu testId="missions-menu" items={[missionSettings.item]} />}
         /* Z3 — the same two numbers as every other roster, said the same way.
            It used to print "N שמירות": a third sentence for one idea, and one
            the component that draws it could not shorten. */

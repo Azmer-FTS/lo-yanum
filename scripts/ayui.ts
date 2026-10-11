@@ -1,7 +1,7 @@
 import type { Page } from 'playwright'
 
 import { FakeDb } from './fake-supabase'
-import { CAPTURES, REMOTE, check, farms, finish, go, guard, open, section, seed, serveBuild, shots } from './ayharness'
+import { CAPTURES, REMOTE, TOUR, check, farms, finish, go, guard, open, section, seed, serveBuild, shots } from './ayharness'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -36,10 +36,28 @@ const NUMERIC_SCREENS: Array<{ route: string; prep?: (p: Page) => Promise<void> 
   { route: '/coordinator/coverage', prep: async (p) => void (await p.locator('[data-testid="coverage-unit-min"]').click()) },
   { route: `/coordinator/farms/${FARM.id}/edit` },
   { route: '/coordinator/settings', prep: openAllBlocks },
+  /* ★★ AY12.3 — les seuils et délais ont rejoint leur écran : leurs fenêtres. */
+  { route: '/coordinator/farms', prep: async (p) => openScreenSettings(p, 'farms') },
+  { route: '/coordinator/missions', prep: async (p) => openScreenSettings(p, 'missions') },
+  { route: '/coordinator/route' },
+  { route: `/coordinator/institutions/${TOUR[0].id}` },
+  { route: '/coordinator/leads/lead-ay-1' },
   { route: '/coordinator/route/free' },
   { route: '/coordinator/volunteers/new' },
   { route: '/coordinator/drivers/new' },
 ]
+
+async function openScreenSettings(p: Page, scope: 'farms' | 'missions'): Promise<void> {
+  await p.locator(`[data-testid="${scope}-menu-toggle"]`).first().click()
+  await p.locator(`[data-testid="open-screen-settings-${scope}"]`).click()
+  await p.waitForTimeout(400)
+  for (let i = 0; i < 12; i++) {
+    const closed = p.locator(`[data-testid="screen-settings-${scope}"] [data-testid^="block-"][aria-expanded="false"]`)
+    if ((await closed.count()) === 0) break
+    await closed.first().click().catch(() => undefined)
+    await p.waitForTimeout(80)
+  }
+}
 
 async function openAllBlocks(p: Page): Promise<void> {
   for (let i = 0; i < 40; i++) {
@@ -56,7 +74,7 @@ async function markNumeric(p: Page): Promise<string[]> {
     const out: string[] = []
     let n = 0
     document.querySelectorAll('[data-ay-num]').forEach((e) => e.removeAttribute('data-ay-num'))
-    for (const el of document.querySelectorAll<HTMLInputElement>('main input, [role="dialog"] input')) {
+    for (const el of document.querySelectorAll<HTMLInputElement>('main input, [role="dialog"] input, [data-testid^="screen-settings-"] input')) {
       const mode = el.dataset.padMode ?? el.getAttribute('inputmode') ?? ''
       const numeric = ['numeric', 'decimal', 'tel'].includes(mode) || el.type === 'number' || el.type === 'tel'
       if (!numeric || el.readOnly || el.disabled) continue

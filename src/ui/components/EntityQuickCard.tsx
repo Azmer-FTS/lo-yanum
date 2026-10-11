@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
-import { effectiveAreas, entityKindOf, farmPoint, formatDate, nearestLocalities, totalHeads } from '@core/index'
+import { effectiveAreas, entityKindOf, farmPoint, farmRegion, formatDate, nearestLocalities, regionById, totalHeads } from '@core/index'
 import type { Farm } from '@core/index'
 
 import { Avatar } from './Avatar'
@@ -49,10 +49,12 @@ export function EntityQuickCard({
   const locale = useLocale()
   const heads = totalHeads(farm)
   const moshav = entityKindOf(farm) === 'moshav'
+  /* ★★ AY12.6 — la région qui classe (`farmRegion`), pas le texte libre. */
+  const regionName = regionById(farmRegion(farm))?.name ?? farm.region
   const point = situate ? farmPoint(farm) : null
   const near = point ? nearestLocalities(point, 1)[0] : undefined
   const where = farm.locality
-    ? `${farm.locality} · ${farm.region}`
+    ? `${farm.locality} · ${regionName}`
     : near
       ? t('map.nearLocality', { name: near.locality.name, km: near.km.toFixed(near.km < 10 ? 1 : 0) })
       : t('farms.noPosition')
@@ -111,8 +113,8 @@ export function EntityQuickCard({
             </p>
           )}
           {!situate && (
-            <p className="muted mt-0.5 truncate" title={`${farm.locality} · ${farm.region}`}>
-              {farm.locality} · {farm.region}
+            <p className="muted mt-0.5 truncate" title={`${farm.locality} · ${regionName}`}>
+              {farm.locality} · {regionName}
             </p>
           )}
           <div className="mt-1.5 flex flex-wrap gap-1.5">

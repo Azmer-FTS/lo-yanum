@@ -1,3 +1,4 @@
+import { buildTestData } from './testData'
 import { MINUTE, iso } from './clock'
 import { HOME_BASE, haversineKm, wazeUrl } from './geo'
 import { estimateDriveMinutes, googleMapsPointsUrl } from './routing'
@@ -29,6 +30,54 @@ export interface Tour {
   departAt: string
   /** Farm ids in visit order, as saved from the planner. */
   farmIds: string[]
+  /**
+   * ★★ AY12.2 — les POINTS LIBRES de la tournée (un lien collé, un nom, un
+   * téléphone) : un seul planificateur pour les fiches et les points libres.
+   */
+  freeStops?: TourFreeStop[]
+}
+
+export interface TourFreeStop {
+  id: string
+  name: string
+  lat: number
+  lng: number
+  phone: string
+}
+
+export const FREE_STOP_PREFIX = 'free-'
+export const isFreeStopId = (id: string): boolean => id.startsWith(FREE_STOP_PREFIX)
+
+/**
+ * ★★ AY12.2 — un point libre, présenté au planificateur comme une ferme (le
+ * même calcul d'ordre, la même route, la même heure d'arrivée). Bâti sur la
+ * fiche complète du jeu d'essai pour que chaque champ ait une valeur sûre ;
+ * tout ce qui est propre à une ferme (gens, contrats, surfaces) est vidé.
+ */
+export function freeStopAsFarm(stop: TourFreeStop): Farm {
+  const template = buildTestData().farms[0]
+  return {
+    ...template,
+    id: stop.id,
+    name: stop.name,
+    farmName: stop.name,
+    locality: '',
+    region: '',
+    regionId: null,
+    status: 'to_contact',
+    position: { lat: stop.lat, lng: stop.lng },
+    positionMissing: false,
+    farmDunams: 0,
+    grazingDunams: 0,
+    contacts: stop.phone ? [{ id: `${stop.id}-c`, name: stop.name, phone: stop.phone, email: '', role: '', photo: null, isPrimary: true }] : [],
+    commitments: [],
+    livestock: [],
+    agreements: [],
+    notes: '',
+    lastVisitAt: null,
+    nextVisitAt: null,
+    photo: null,
+  }
 }
 
 /**

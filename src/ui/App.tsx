@@ -56,7 +56,6 @@ import { IncidentsScreen } from './screens/coordinator/IncidentsScreen'
 import { MissionDetailScreen } from './screens/coordinator/MissionDetailScreen'
 import { MissionWizardScreen } from './screens/coordinator/MissionWizardScreen'
 import { MissionsScreen } from './screens/coordinator/MissionsScreen'
-import { FreeRouteScreen } from './screens/coordinator/FreeRouteScreen'
 import { CoverageScreen } from './screens/coordinator/CoverageScreen'
 import { InstitutionEditScreen, InstitutionsScreen } from './screens/coordinator/InstitutionsScreen'
 import { AddContactsScreen } from './screens/coordinator/AddContactsScreen'
@@ -351,7 +350,8 @@ export default function App() {
           {/* ★★ AH9 — l'itinéraire libre. Sous « route » et non à côté : c'est
               la même question — « dans quel ordre je roule demain » — posée
               pour des lieux qui n'ont pas encore de fiche. */}
-          <Route path="route/free" element={<FreeRouteScreen />} />
+          {/* ★★ AY12.2 — un seul planificateur : l'itinéraire libre y est intégré. */}
+          <Route path="route/free" element={<Navigate to="/coordinator/route" replace />} />
           <Route path="coverage" element={<CoverageScreen />} />
           {/* ★★ AX1 — l'étape 1 du métier a son écran (elle était au fond de la couverture). */}
           <Route path="institutions" element={<InstitutionsScreen />} />

@@ -38,6 +38,7 @@ import type { Farm, FarmCoverage, FarmStatus, FarmType, RegionId } from '@core/i
 import { EntityTable } from '../../components/EntityTable'
 import type { EntityColumn, RowAction } from '../../components/EntityTable'
 import { PreviewPanel, PreviewRow, PreviewSection } from '../../components/PreviewPanel'
+import { useScreenSettings } from '../../settings/ScreenSettings'
 import { EntityQuickCard } from '../../components/EntityQuickCard'
 import { Icon } from '../../components/Icon'
 import { AreaGapMark } from '../../components/areaGap'
@@ -707,6 +708,7 @@ export function FarmsListScreen() {
    *    mode. Choosing "contenu plein" is choosing the table, and there is one
    *    control for both because they were always one idea.
    */
+  const farmSettings = useScreenSettings('farms')
   const menu = (
     <OverflowMenu
       testId="farms-menu"
@@ -740,6 +742,8 @@ export function FarmsListScreen() {
           to: '/coordinator/settings/regions',
           testId: 'farms-edit-regions',
         },
+        /* ★★ AY12.3 — les réglages des fermes, ici. */
+        farmSettings.item,
       ]}
     />
   )
@@ -1018,6 +1022,7 @@ export function FarmsListScreen() {
               testId="farms-table"
             />
           )}
+          {farmSettings.dialog}
           {preview && <FarmPreview farm={preview} posts={postsOf(preview.id)} coverage={coverageOf.get(preview.id) ?? null} onClose={() => setPreviewId(null)} />}
         </>
       )}

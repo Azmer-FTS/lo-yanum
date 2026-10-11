@@ -317,13 +317,17 @@ export function VolunteersScreen() {
               search={query}
               onSearch={setQuery}
               searchPlaceholder={t('volunteers.searchPlaceholder')}
+              /* ★★ AY4.2 — LE bouton qui isole les conducteurs : dans la zone qui
+                 ne se replie JAMAIS (avec peu de lignes, la rangée de filtres se
+                 range derrière « סינון » — le bouton y disparaissait). */
+              kpis={
+                <FilterPill active={onlyDrivers} onClick={() => setOnlyDrivers((v) => !v)} count={driverCount} testId="people-filter-drivers">
+                  <Icon name="steering" size={12} />
+                  {t('people.drivers')}
+                </FilterPill>
+              }
               filters={
-                <FilterRow activeCount={activeFilters} onClear={clear}>
-                  {/* ★★ AY4.2 — LE bouton : isoler les conducteurs, en tête, toujours visible. */}
-                  <FilterPill active={onlyDrivers} onClick={() => setOnlyDrivers((v) => !v)} count={driverCount} testId="people-filter-drivers">
-                    <Icon name="steering" size={12} />
-                    {t('people.drivers')}
-                  </FilterPill>
+                <FilterRow activeCount={activeFilters - (onlyDrivers ? 1 : 0)} onClear={clear}>
                   <FilterPill active={status === 'active'} onClick={() => setStatus(status === 'active' ? null : 'active')} count={stats.active} testId="people-filter-active">
                     {t('volunteerStatus.active')}
                   </FilterPill>

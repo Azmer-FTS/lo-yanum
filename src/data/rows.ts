@@ -1274,7 +1274,7 @@ const tourMapping: Mapping<Tour> = {
   toRows: (t) => [
     {
       table: 'tours',
-      rows: [{ id: t.id, day_key: t.dayKey, depart_at: t.departAt, name: t.name ?? '' }],
+      rows: [{ id: t.id, day_key: t.dayKey, depart_at: t.departAt, name: t.name ?? '', free_stops: t.freeStops ?? [] }],
     },
     {
       table: 'tour_stops',
@@ -1291,6 +1291,14 @@ const tourMapping: Mapping<Tour> = {
     name: str(p.name),
     departAt: ts(p.depart_at),
     farmIds: ordered(kids.tour_stops).map((r) => str(r.entity_id)),
+    /* ★★ AY12.2 — les points libres ; absents tant qu'il n'y en a aucun. */
+    ...(Array.isArray(p.free_stops) && p.free_stops.length > 0
+      ? {
+          freeStops: (p.free_stops as Array<Record<string, unknown>>)
+            .filter((f) => typeof f.lat === 'number' && typeof f.lng === 'number')
+            .map((f) => ({ id: str(f.id), name: str(f.name), lat: f.lat as number, lng: f.lng as number, phone: str(f.phone) })),
+        }
+      : {}),
   }),
 }
 

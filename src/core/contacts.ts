@@ -592,10 +592,10 @@ export function photoOfCard(card: VCard): string | null {
   const p = card.props.find((x) => x.name === 'PHOTO')
   if (!p) return null
   const v = p.value.trim().replace(/\s+/gu, '')
-  if (/^data:image\/(?:jpe?g|png|gif|webp);base64,/iu.test(v)) return v.length > 120 ? v : null
+  if (/^data:image\/(?:jpe?g|png|gif|webp);base64,/iu.test(v)) return v.length > 60 ? v : null
   const enc = `${p.params.ENCODING ?? ''} ${p.params.TYPE ?? ''}`.toUpperCase()
   if (!/\bB\b|BASE64/u.test(enc.replace(/[,;]/gu, ' '))) return null
-  if (!/^[A-Za-z0-9+/=]+$/u.test(v) || v.length < 120) return null
+  if (!/^[A-Za-z0-9+/=]+$/u.test(v) || v.length < 40) return null
   const type = /PNG/u.test(enc) ? 'png' : /GIF/u.test(enc) ? 'gif' : 'jpeg'
   return `data:image/${type};base64,${v}`
 }

@@ -23,7 +23,17 @@
     "stopsCount_other": "{{count}} étapes",
     "rename": "Renommer",
     "confirmDelete": "Supprimer ?",
-    "measuringRoad": "calcul par la route…"
+    "measuringRoad": "calcul par la route…",
+    "loadFree": "Charger un itinéraire libre enregistré",
+    "freeUnnamed": "Itinéraire libre",
+    "freeCount": "{{count}} points libres",
+    "freePoint": "Point {{n}}",
+    "freeTitle": "Points libres",
+    "freeInfo": "Un point sans fiche (lien Waze ou Google, coordonnées) entre dans la même tournée, par la route, avec les fermes.",
+    "freeName": "Nom du point",
+    "freeNamePlaceholder": "ex. le portail du kibboutz",
+    "freeAdd": "Ajouter à la tournée",
+    "freeChip": "Point libre"
   },
   "agreement": {
     "signNow": "Faire signer"
@@ -727,6 +737,20 @@
         "title": "Fichier de l’association",
         "hint": "Le fichier renvoyé par l’association"
       }
+    }
+  },
+  "screenSettings": {
+    "farms": {
+      "title": "Réglages des fermes",
+      "hint": "Seuil d’oubli, écart de surface, renouvellement, document de signature."
+    },
+    "missions": {
+      "title": "Réglages des gardes",
+      "hint": "Délais de silence, rappels, SMS de convocation."
+    },
+    "moved": {
+      "title": "Seuils et gabarits ont rejoint leurs écrans",
+      "hint": "Fermes (⋯) et Gardes (⋯) ; ils s’ouvrent aussi d’ici."
     }
   }
 }

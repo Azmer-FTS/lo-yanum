@@ -161,7 +161,7 @@ async function mouseLongPress(page: Page, at: { x: number; y: number }): Promise
 }
 const sheet = (page: Page) => page.locator('[data-testid="quick-pin"]')
 
-const MAP_ROUTES = ['/coordinator', '/coordinator/agenda', '/coordinator/farms', '/coordinator/leads', '/coordinator/route', '/coordinator/route/free', '/coordinator/coverage', '/coordinator/volunteers', '/coordinator/drivers', '/coordinator/missions', '/coordinator/incidents']
+const MAP_ROUTES = ['/coordinator', '/coordinator/agenda', '/coordinator/farms', '/coordinator/leads', '/coordinator/route', '/coordinator/coverage', '/coordinator/volunteers', '/coordinator/missions', '/coordinator/incidents']
 
 // --- A322 — les onze, à confirmer -------------------------------------------------
 

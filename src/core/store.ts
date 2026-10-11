@@ -1458,6 +1458,8 @@ export interface TourDraft {
   dayKey: string
   departAt: string
   farmIds: string[]
+  /** ★★ AY12.2 — les points libres de la tournée. */
+  freeStops?: import('./tours').TourFreeStop[]
 }
 
 /**
@@ -1481,11 +1483,19 @@ export function saveTour(draft: TourDraft): Tour {
     existing.departAt = draft.departAt
     existing.farmIds = [...draft.farmIds]
     if (draft.name !== undefined) existing.name = draft.name
+    if (draft.freeStops !== undefined) existing.freeStops = draft.freeStops.length > 0 ? draft.freeStops.map((f) => ({ ...f })) : undefined
     data.tours = [...data.tours]
     commit()
     return existing
   }
-  const tour: Tour = { id: nextId('tour'), dayKey: draft.dayKey, departAt: draft.departAt, farmIds: [...draft.farmIds], name: draft.name ?? '' }
+  const tour: Tour = {
+    id: nextId('tour'),
+    dayKey: draft.dayKey,
+    departAt: draft.departAt,
+    farmIds: [...draft.farmIds],
+    name: draft.name ?? '',
+    ...(draft.freeStops && draft.freeStops.length > 0 ? { freeStops: draft.freeStops.map((f) => ({ ...f })) } : {}),
+  }
   data.tours = [...data.tours, tour]
   commit()
   return tour

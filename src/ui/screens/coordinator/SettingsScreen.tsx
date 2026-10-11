@@ -11,23 +11,16 @@ import { InfoTip } from '../../components/InfoTip'
 import { Icon } from '../../components/Icon'
 import { Callout, KeyValue, PageHeader, Section } from '../../components/primitives'
 import { readReportRecipient, writeReportRecipient } from '../../report/recipient'
-import { AgreementTemplateSection } from '../../settings/AgreementTemplateSection'
 import { DisplaySection, RegionsEditSection } from '../../settings/DisplaySection'
-import { AreaGapSection } from '../../settings/AreaGapSection'
-import { SummonsSection } from '../../settings/SummonsSection'
-import { AgreementDocSection } from '../../settings/AgreementDocSection'
 import { SampleDataSection } from '../../settings/SampleDataSection'
 import { AppVersionSection } from '../../settings/AppVersionSection'
 import { SettingsSyncSection } from '../../settings/SettingsSyncSection'
-import { VigilSection } from '../../settings/VigilSection'
-import { RenewalSection } from '../../settings/RenewalSection'
 import { GeoDiagnosticsSection } from '../../settings/GeoDiagnosticsSection'
-import { CoverageSection } from '../../settings/CoverageSection'
 import { TargetSection } from '../../settings/TargetSection'
 import { ViewAsSection } from '../../settings/ViewAsSection'
-import { RemindersSection } from '../../settings/RemindersSection'
 import { RouteMarginSection } from '../../settings/RouteMarginSection'
 import { SettingsGroup, SettingsToc } from '../../settings/SettingsGroup'
+import { MovedSettingsNotice } from '../../settings/ScreenSettings'
 import {
   originLabel,
   originPosition,
@@ -440,32 +433,9 @@ export function SettingsScreen() {
       <TargetSection />
 
       <SettingsGroup id="thresholds" />
-      {/* AC4.5 — le seuil d'oubli, juste sous l'objectif : les deux disent au
-          coordinateur ce que le programme attend de lui ce mois-ci. */}
-      <CoverageSection />
-      {/* AD2.3 — le seuil d'écart, à côté du seuil d'oubli : deux réglages qui
-          décident tous les deux quand une fiche se met à parler. */}
-      <AreaGapSection />
-      {/* ★★ AE3 · AE4 — les délais des trois silences, puis le gabarit du SMS
-          de convocation. Ils suivent les seuils d'AC4.5 et d'AD2.3 parce que
-          ce sont les mêmes objets : des nombres que le coordinateur règle pour
-          SON programme, sur SON appareil. */}
-      <VigilSection />
-      <RemindersSection />
-      {/* ★★ AG5.1 · AG4.1 — le délai du renouvellement et la photo de carte.
-          Ici et pas dans une huitième section : ce sont deux seuils, et « ספים
-          והתראות » est la section des seuils depuis AF7. */}
-      <RenewalSection />
-
-      <SettingsGroup id="templates" />
-      <SummonsSection />
-      {/* ★★ AH5 — le gabarit du document de signature, son logo, son aperçu.
-          Il REMPLACE `DeclarationSection` : celle-ci ne réglait qu'un
-          paragraphe d'un document dont le reste vivait dans le code, et deux
-          endroits pour régler un seul papier est exactement ce qu'AH5 supprime. */}
-      <AgreementDocSection />
-      {/* N2 (2026-09-02) — the association's contract, uploaded once. */}
-      <AgreementTemplateSection />
+      {/* ★★ AY12.3 — seuils, délais et gabarits ont rejoint leur écran (חוות ›
+          ⋯, שמירות › ⋯). Ici, le renvoi — et les mêmes fenêtres. */}
+      <MovedSettingsNotice />
 
       <SettingsGroup id="map" />
       {/* ★★ Y2.1 — the door to the region editor. Above the offline block on

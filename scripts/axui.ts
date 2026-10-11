@@ -179,7 +179,6 @@ const LIST_SCREENS = [
   '/coordinator/drivers',
   '/coordinator/coverage',
   '/coordinator/route',
-  '/coordinator/route/free',
   '/coordinator/missions',
   '/coordinator/incidents',
   '/coordinator/add',
@@ -464,33 +463,26 @@ await guard('A351', async () => {
   check('aucune erreur de page', b.errors.length === 0, b.errors.join(' | '))
   await b.ctx.close()
 
-  // L'itinéraire LIBRE : le même défaut (il gardait son identifiant).
+  /* ★★ AY12.2 (adapté) — l'itinéraire libre n'est plus un second écran : ses
+     points entrent dans la tournée, s'enregistrent avec elle, et voyagent. */
   const c = await open(1440, { db })
-  await go(c.page, '/coordinator/route/free')
-  const addStop = async (txt: string) => {
-    await c.page.locator('[data-testid="position-link"]').first().fill(txt)
-    await c.page.locator('[data-testid="position-link-apply"]').first().click()
-    await c.page.waitForTimeout(400)
-  }
-  await addStop('31.4167, 34.5880')
-  await c.page.locator('[data-testid="free-route-name"]').fill('חופשי א')
-  await c.page.locator('[data-testid="free-route-save"]').click()
-  // On vide ses étapes, on en colle d'autres, on renomme, on « enregistre comme nouveau ».
-  await c.page.locator('[data-testid="free-route-remove"]').first().click()
-  await addStop('31.2500, 34.7900')
-  await c.page.locator('[data-testid="free-route-name"]').fill('חופשי ב')
-  await c.page.locator('[data-testid="free-route-save-as-new"]').click()
-  await c.page.waitForTimeout(600)
-  const names = await c.page.locator('[data-testid="free-route-list"] li').allInnerTexts()
-  check('A351 itinéraire libre : « שמירה כמסלול חדש » GARDE le premier', names.length === 2 && names.some((n) => n.includes('חופשי א')) && names.some((n) => n.includes('חופשי ב')), names.map((n) => n.split('\n')[0]).join(', '))
-  await go(c.page, '/coordinator/route/free')
-  check('A351 itinéraire libre : rouvert, les deux sont là ; le brouillon aussi', (await c.page.locator('[data-testid="free-route-list"] li').count()) === 2 && (await c.page.locator('[data-testid="free-route-name"]').inputValue()) === 'חופשי ב')
-  await c.page.waitForTimeout(4000)
+  await go(c.page, '/coordinator/route?tour=' + String(db.rows('tours')[0]?.id ?? ''))
+  await c.page.locator('[data-testid="block-route-free"][aria-expanded="false"]').click().catch(() => undefined)
+  await c.page.locator('[data-testid="route-free-name"]').fill('שער הקיבוץ')
+  await c.page.locator('[data-testid="route-free-name"]').locator('xpath=ancestor::section[1]').locator('[data-testid="position-link"]').fill('31.4167, 34.5880')
+  await c.page.locator('[data-testid="route-free-name"]').locator('xpath=ancestor::section[1]').locator('[data-testid="position-link-apply"]').click()
+  await c.page.waitForTimeout(800)
+  check('A351 un point libre entre dans la MÊME tournée', (await c.page.locator('[data-testid="route-free-stop"]').count()) === 1 && (await c.page.locator('[data-testid="route-stop-free"]').count()) === 1)
+  await c.page.locator('[data-testid="tour-save"]').click()
+  await c.page.waitForTimeout(1500)
+  const fs = db.rows('tours').find((r) => Array.isArray(r.free_stops) && (r.free_stops as unknown[]).length === 1)
+  check('A351 le point libre s’enregistre AVEC la tournée (tours.free_stops)', !!fs, JSON.stringify(db.rows('tours').map((r) => r.free_stops)))
   await c.ctx.close()
   const d = await open(1032, { db })
-  await go(d.page, '/coordinator/route/free', 6000)
-  const other = await d.page.locator('[data-testid="free-route-list"] li').count()
-  check('A351 itinéraire libre : sur un AUTRE appareil (réglages synchronisés), les deux sont là', other === 2, `${other}`)
+  await go(d.page, `/coordinator/route?tour=${String(fs?.id ?? '')}`, 6000)
+  check('A351 sur un AUTRE appareil : la tournée revient avec son point libre', (await d.page.locator('[data-testid="route-stop-free"]').count()) === 1)
+  await go(d.page, '/coordinator/route/free', 3000)
+  check('A351 l’ancienne adresse de l’itinéraire libre mène au planificateur unique', /#\/coordinator\/route(\?|$)/.test(d.page.url()), d.page.url())
   await d.ctx.close()
 })
 
@@ -721,7 +713,6 @@ await guard('captures', async () => {
     ['couverture', '/coordinator/coverage'],
     ['couverture-minutes', '/coordinator/coverage', async (p) => void (await p.locator('[data-testid="coverage-unit-min"]').click().catch(() => undefined))],
     ['tournee', '/coordinator/route?tour=tour-ax-today'],
-    ['itineraire-libre', '/coordinator/route/free'],
     ['ajout-1-nom', '/coordinator/add'],
     ['ajout-3-type', '/coordinator/add', async (p) => {
       await p.locator('[data-testid="add-name"]').fill('משק דוגמה')
