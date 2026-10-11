@@ -285,7 +285,7 @@ export function LeadsScreen() {
 
   return (
     <MapSplit screenKey="leads" ariaLabel={t('leads.mapLabel')} breakpoint="xl" contentPercent={66} splitHeight="h-[35dvh]" map={() => mapBody}>
-      {() => (
+      {({ mode }) => (
         <>
           <ListTop
             title={t('leads.title')}
@@ -339,6 +339,11 @@ export function LeadsScreen() {
             empty={t('leads.empty')}
             label={t('leads.title')}
             testId="leads-table"
+            tiles={mode !== 'hidden'}
+            /* ★★ AZ4 — le statut, d'un toucher, aussi sur la vignette (AT2.4). */
+            tileFoot={(l) => <StatusCell lead={l} wide onChange={(s) => changeStatus(l, s)} />}
+            where={(l) => [l.place, l.contactName !== l.name ? l.contactName : ''].filter(Boolean).join(' · ')}
+            hidden={mode !== 'hidden' && !!selectedLead}
           />
 
           {selectedLead && (
@@ -347,6 +352,7 @@ export function LeadsScreen() {
               regionName={regionName}
               onStatus={(s) => changeStatus(selectedLead, s)}
               onClose={() => setSelected(null)}
+              docked={mode !== 'hidden'}
             />
           )}
 
@@ -704,12 +710,37 @@ function LeadDetails({ lead }: { lead: Lead }) {
  * le joindre, où il en est (le statut se change d'un toucher : c'est le geste
  * du téléphone, après un appel), la note. Le reste s'édite sur sa page.
  */
-function LeadPreview({ lead, regionName, onStatus, onClose }: { lead: Lead; regionName: (id: RegionId) => string; onStatus: (s: LeadStatus) => void; onClose: () => void }) {
+/**
+ * ★★ AZ4 — LA NOTE S'ÉCRIT DANS L'APERÇU. En AX, la ligne dépliée portait
+ * la note, et on l'écrivait sans quitter la liste (AX5.3) ; AY3 l'a mise en
+ * lecture seule dans l'aperçu, et il fallait ouvrir la page d'édition pour un
+ * mot. Écrite à la sortie du champ, comme sur la page.
+ */
+function PreviewNote({ lead }: { lead: Lead }) {
+  const { t } = useTranslation()
+  const [notes, setNotes] = useState(lead.notes)
+  useEffect(() => setNotes(lead.notes), [lead.notes, lead.id])
+  return (
+    <textarea
+      className="input mt-1 min-h-[4.5rem] w-full"
+      dir="auto"
+      value={notes}
+      placeholder={t('leads.notesPlaceholder')}
+      aria-label={t('leads.notes')}
+      data-testid={`lead-notes-${lead.id}`}
+      onChange={(e) => setNotes(e.target.value)}
+      onBlur={() => notes !== lead.notes && updateLead(lead.id, { notes })}
+    />
+  )
+}
+
+function LeadPreview({ lead, regionName, onStatus, onClose, docked }: { lead: Lead; regionName: (id: RegionId) => string; onStatus: (s: LeadStatus) => void; onClose: () => void; docked?: boolean }) {
   const { t } = useTranslation()
   const region = leadRegionId(lead)
   const digits = lead.phone.replace(/\D/gu, '')
   return (
     <PreviewPanel
+      docked={docked}
       title={leadLabel(lead)}
       subtitle={[lead.contactName !== lead.name ? lead.contactName : '', lead.place].filter(Boolean).join(' · ')}
       position={lead.position}
@@ -747,7 +778,7 @@ function LeadPreview({ lead, regionName, onStatus, onClose }: { lead: Lead; regi
         <PreviewRow label={t('leads.col.created')}>{dayMonth(lead.createdAt)}</PreviewRow>
       </PreviewSection>
       <PreviewSection title={t('leads.notes')}>
-        <p className="whitespace-pre-wrap py-2 text-caption text-content-primary" dir="auto">{lead.notes || t('leads.noNote')}</p>
+        <PreviewNote lead={lead} />
       </PreviewSection>
       {lead.raw && (
         <PreviewSection title={t('leads.raw')}>

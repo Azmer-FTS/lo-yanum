@@ -32,6 +32,7 @@ import {
   isIncoming,
   formatRelative,
   requestForFarm,
+  isTestId,
 } from '@core/index'
 import type { Farm, FarmCoverage, FarmStatus, FarmType, RegionId } from '@core/index'
 
@@ -453,7 +454,7 @@ export function FarmsListScreen() {
    * same rule as the pills they replace.
    */
   const statusKpis = STATUSES.map((s) => {
-    const inStatus = farms.filter((f) => f.status === s)
+    const inStatus = farms.filter((f) => f.status === s && !isTestId(f.id))
     return {
       status: s,
       count: inStatus.length,
@@ -719,8 +720,33 @@ export function FarmsListScreen() {
           key: 'import',
           label: t('importHub.title'),
           icon: 'upload',
-          to: '/coordinator/import',
+          to: '/coordinator/import?from=farms',
           testId: 'farms-import',
+        },
+        /* ★★ AZ4 — LES TROIS FICHIERS DE L'ASSOCIATION, À UN TOUCHER, COMME
+           AVANT AY12 (AA4 · AA5 · AS1). L'écran unique reste la porte
+           générale ; le portail — refait après chaque saisie chez eux — et
+           ses deux voisins s'ouvrent directement dessus. */
+        {
+          key: 'portal',
+          label: t('portal.title'),
+          icon: 'upload',
+          to: '/coordinator/import?kind=portal&from=farms',
+          testId: 'farms-import-portal',
+        },
+        {
+          key: 'prospection',
+          label: t('import.prospectionTitle'),
+          icon: 'table',
+          to: '/coordinator/import?kind=prospection&from=farms',
+          testId: 'farms-import-prospection',
+        },
+        {
+          key: 'signatures',
+          label: t('import.signaturesTitle'),
+          icon: 'edit',
+          to: '/coordinator/import?kind=signatures&from=farms',
+          testId: 'farms-import-signatures',
         },
         /* ★★ AB6.6 — and the way OUT, in the same menu as the ways in. The
            coordinator's sentence is « j'importe, j'enrichis, je ressors un
@@ -904,8 +930,8 @@ export function FarmsListScreen() {
     <ListTop
       testId="farms-top"
       title={t('farms.title')}
-      shown={filtered.length}
-      total={farms.length}
+      shown={filtered.filter((f) => !isTestId(f.id)).length}
+      total={farms.filter((f) => !isTestId(f.id)).length}
       menu={menu}
       /* AA6 — on a wide screen the order sits with the search and the « ⋯ »,
          on the one row that already has the room. See `sortControl`. */
@@ -917,8 +943,9 @@ export function FarmsListScreen() {
       filters={filterRow}
       /* ★★ AX3.5 — le seul vrai CHIFFRE de la liste : il suit les filtres. */
       stat={t('farms.statDunams', {
-        n: filtered.reduce((sum, f) => sum + effectiveAreas(f).total, 0).toLocaleString(locale),
-        w: totalWeightedDunams(filtered).toLocaleString(locale),
+        /* ★★ AZ3.4 — le jeu d'essai ne compte pas dans les dounams (AH3.5). */
+        n: filtered.filter((f) => !isTestId(f.id)).reduce((sum, f) => sum + effectiveAreas(f).total, 0).toLocaleString(locale),
+        w: totalWeightedDunams(filtered.filter((f) => !isTestId(f.id))).toLocaleString(locale),
       })}
       info={
         <>
@@ -965,7 +992,8 @@ export function FarmsListScreen() {
       }
       detailAt={selected ? { position: selected.position, key: previewKey } : undefined}
       detail={
-        selected && (
+        /* ★★ AZ2.2 — l'aperçu ancré dit déjà tout : pas de seconde fiche sur l'épingle. */
+        selected && selected.id !== previewId && (
           <EntityQuickCard
             farm={selected}
             posts={postsOf(selected.id)}
@@ -975,7 +1003,7 @@ export function FarmsListScreen() {
         )
       }
     >
-      {() => (
+      {({ mode }) => (
         /* ★★ AY3 — LA FORME COMMUNE, dans les deux lectures : le tableau
            (photo · nom, colonnes, gestes au bout) ; à côté de la carte, la même
            liste se resserre en lignes à deux étages. Toucher une ligne ouvre
@@ -1000,6 +1028,7 @@ export function FarmsListScreen() {
                     <TestDataBadge id={f.id} />
                   </>
                 ),
+                alwaysTestId: isIncoming(f) ? 'farm-tile-intake' : undefined,
                 always: isIncoming(f)
                   ? [`${t('intake.tag')}${requestForFarm(f.id, intakeRequests)?.createdAt ? ` · ${t('intake.received', { when: formatRelative(requestForFarm(f.id, intakeRequests)!.createdAt, locale) })}` : ''}`]
                   : undefined,
@@ -1020,10 +1049,16 @@ export function FarmsListScreen() {
               rowAttrs={(f) => ({ 'data-testid': `farm-row-${f.id}`, 'data-intake': isIncoming(f) ? 'true' : undefined })}
               label={t('farms.title')}
               testId="farms-table"
+              tiles={mode !== 'hidden'}
+              tileTestId="farm-tile"
+              /* ★★ AQ1.2 — la demande entrante, distincte aussi en vignette. */
+              tileTone={(f) => (isIncoming(f) ? 'farm-tile-intake bg-farm-incoming-request/10 ring-2 ring-farm-incoming-request' : undefined)}
+              where={(f) => [f.locality, regionLabel(f)].filter(Boolean).join(' · ')}
+              hidden={mode !== 'hidden' && !!preview}
             />
           )}
           {farmSettings.dialog}
-          {preview && <FarmPreview farm={preview} posts={postsOf(preview.id)} coverage={coverageOf.get(preview.id) ?? null} onClose={() => setPreviewId(null)} />}
+          {preview && <FarmPreview farm={preview} posts={postsOf(preview.id)} coverage={coverageOf.get(preview.id) ?? null} onClose={() => { setPreviewId(null); select(null) }} docked={mode !== 'hidden'} />}
         </>
       )}
     </MapPanel>
@@ -1228,7 +1263,7 @@ function tableToFarmSort(s: { key: string; dir: 'asc' | 'desc' }): FarmSort {
  * points), le statut, les chiffres qui comptent, les gens et leurs numéros.
  * « לכרטיס המלא » ouvre la fiche, « עריכה » le formulaire.
  */
-function FarmPreview({ farm, posts, coverage, onClose }: { farm: Farm; posts: number; coverage: FarmCoverage | null; onClose: () => void }) {
+function FarmPreview({ farm, posts, coverage, onClose, docked }: { farm: Farm; posts: number; coverage: FarmCoverage | null; onClose: () => void; docked?: boolean }) {
   const { t } = useTranslation()
   const locale = useLocale()
   const areas = effectiveAreas(farm)
@@ -1236,6 +1271,7 @@ function FarmPreview({ farm, posts, coverage, onClose }: { farm: Farm; posts: nu
   const n = (x: number) => x.toLocaleString(locale)
   return (
     <PreviewPanel
+      docked={docked}
       title={farm.name}
       subtitle={[farm.locality, regionLabel(farm), t(`farmType.${farm.type}`)].filter(Boolean).join(' · ')}
       photo={farm.photo}

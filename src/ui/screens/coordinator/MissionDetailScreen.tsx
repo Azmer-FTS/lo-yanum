@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next'
+import { TestDataBadge } from '../../components/TestDataBadge'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useParams } from 'react-router-dom'
 
@@ -455,6 +456,8 @@ export function MissionDetailScreen() {
         )}`}
         actions={
           <span className="flex flex-wrap items-center gap-2">
+            {/* ★★ AZ3.4 — la garde d'exemple dit ce qu'elle est. */}
+            <TestDataBadge id={mission.id} />
             <MissionStatusChip status={mission.status} />
             {/* G9bis — a night can be called off while it is still a plan.
                 An in-progress guard is aborted by phone, not by button, and a

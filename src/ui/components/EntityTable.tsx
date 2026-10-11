@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
@@ -7,6 +7,7 @@ import { Avatar } from './Avatar'
 import type { Column, SortState } from './DataTable'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
+import { ListTile } from './ListTile'
 import { OverflowMenu } from './OverflowMenu'
 
 /**
@@ -41,6 +42,34 @@ import { OverflowMenu } from './OverflowMenu'
  *    CONSULTER.
  */
 
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AZ1 · AZ2 (2026-10-11) — LA FORME D'AVANT, RENDUE AU TABLEAU ; ET LE
+ *    MODE DE CARTE, PAS LA LARGEUR, CHOISIT LA LECTURE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * AY3 avait réuni les listes en reprenant le CONTENU du tableau des fermes et
+ * pas sa FORME. Ce qui faisait la qualité de la grille « roster » (X5 · Y9,
+ * jusqu'à 905158c), et qui revient ici :
+ *
+ *  - **UN FOND PROPRE** : le tableau est une carte (`surface-raised`) posée
+ *    sur la page (`surface-base`) — en sombre, #1E2836 sur #0B1119. AY posait
+ *    les lignes à même la page : « fond sur fond ».
+ *  - **UN EN-TÊTE TEINTÉ ET COLLÉ** : `surface-overlay`, petites capitales
+ *    espacées, et `position: sticky` juste sous le bandeau de la liste
+ *    (`ListTop`, collant lui aussi), dont la hauteur est mesurée. Le PO ne
+ *    perd plus le nom des colonnes en défilant.
+ *  - **DES LIGNES QUI SE DÉTACHENT** : 64 px (`ROSTER_ROW_HEIGHT`), un filet
+ *    entre chaque, une ligne sur deux très légèrement teintée pour suivre une
+ *    ligne du regard d'un bout à l'autre, et le repère au survol.
+ *  - **DE LA RESPIRATION** : 1 rem aux deux bords de la carte.
+ *
+ * ★ ET LA RÈGLE DU PO, MOT POUR MOT : « carte visible → vignettes ; tableau
+ *   seul → le tableau ». `tiles` vient du mode de carte de l'écran (`split`
+ *   ou `full` → vignettes, `hidden` → tableau). Au téléphone, carte masquée,
+ *   c'est donc le TABLEAU : les colonnes cèdent sous le nom comme partout et
+ *   les gestes se replient dans « ⋯ ».
+ */
 export interface EntityColumn<T> extends Column<T> {
   /** Ce que la colonne devient SOUS le nom quand elle n'a pas sa place. */
   sub?: (row: T) => string | null | undefined
@@ -69,7 +98,12 @@ export interface EntityLead {
   marks?: ReactNode
   /** Toujours sous le nom, quelle que soit la largeur. */
   always?: string[]
+  /** L'identifiant de la ligne `always` sur la vignette (« בקשה נכנסת »…). */
+  alwaysTestId?: string
 }
+
+/** La vignette à retrouver quand l'aperçu ancré se referme, par liste. */
+const returnTo = new Map<string, string>()
 
 /** Largeur (px) du conteneur sous laquelle la liste passe en lignes à deux étages. */
 export const STACK_BELOW = 560
@@ -94,6 +128,14 @@ export function EntityTable<T>({
   empty,
   testId,
   label,
+  tiles = false,
+  where,
+  hidden = false,
+  tileAction,
+  tileFoot,
+  tileTestId,
+  tileTone,
+  groupOf,
 }: {
   rows: readonly T[]
   rowKey: (row: T) => string
@@ -117,10 +159,37 @@ export function EntityTable<T>({
   empty?: ReactNode
   testId?: string
   label: string
+  /** ★★ AZ2 — la carte de l'écran est visible : la liste se lit en VIGNETTES. */
+  tiles?: boolean
+  /** ★★ AZ2 — ce qui situe la fiche sur la vignette (lieu, région…). */
+  where?: (row: T) => string | null | undefined
+  /** ★★ AZ2.2 — l'aperçu ancré occupe la colonne : la liste se retire. */
+  hidden?: boolean
+  /**
+   * ★★ AZ4 — le geste d'une colonne « interactive » (confirmer…) qui, sur
+   * une vignette, n'a plus de colonne : il se pose à côté de « ⋯ ».
+   */
+  tileAction?: (row: T) => ReactNode
+  /**
+   * ★★ AZ4 — un geste trop large pour la place d'à côté (les statuts d'un
+   * contact) : il se pose SOUS la vignette, dans la même carte.
+   */
+  tileFoot?: (row: T) => ReactNode
+  /** L'identifiant des vignettes (« farm-tile » : celui des portes d'avant AY). */
+  tileTestId?: string
+  /** La teinte d'une vignette mise en avant (la ligne du tableau a `rowTone`). */
+  tileTone?: (row: T) => string | undefined
+  /**
+   * ★★ AZ4 — le regroupement (« קיבוץ לפי ישיבה » des volontaires, d'avant
+   * AY) : les lignes, déjà triées par groupe, reçoivent un en-tête repliable
+   * avec leur compte, en tableau comme en vignettes.
+   */
+  groupOf?: (row: T) => string
 }) {
   const { t } = useTranslation()
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const [width, setWidth] = useState(0)
+  const [headTop, setHeadTop] = useState(0)
   useLayoutEffect(() => {
     const el = wrapRef.current
     if (!el) return
@@ -128,15 +197,75 @@ export function EntityTable<T>({
     if (typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver(() => setWidth(el.clientWidth))
     ro.observe(el)
-    return () => ro.disconnect()
+    /* ★★ AZ1.2 — l'en-tête se colle SOUS le bandeau de la liste, qui est
+       collant lui aussi : on mesure sa hauteur (elle change avec les filtres
+       repliés, la recherche ouverte, la largeur). */
+    let top: HTMLElement | null = null
+    for (let n: HTMLElement | null = el.parentElement; n && !top; n = n.parentElement) {
+      top = n.querySelector<HTMLElement>(':scope > [data-list-top]')
+    }
+    const measure = () => setHeadTop(top ? top.offsetHeight : 0)
+    measure()
+    if (top) ro.observe(top)
+    const ro2 = new ResizeObserver(measure)
+    if (top) ro2.observe(top)
+    return () => {
+      ro.disconnect()
+      ro2.disconnect()
+    }
   }, [])
+  /* ★★ AZ2.2 — en refermant l'aperçu ancré, on retrouve la vignette touchée.
+     ⚠️ La mémoire est HORS du composant : un écran peut remonter sa liste à
+     la fermeture (les fermes le font), et une `useRef` repartirait de zéro. */
+  if (hidden && activeKey) returnTo.set(testId ?? label, activeKey)
+  useEffect(() => {
+    if (hidden) return
+    const k = returnTo.get(testId ?? label)
+    if (!k) return
+    returnTo.delete(testId ?? label)
+    wrapRef.current?.querySelector(`[data-row-key="${CSS.escape(k)}"]`)?.scrollIntoView({ block: 'center' })
+  }, [hidden, testId, label])
+  const [closedGroups, setClosedGroups] = useState<ReadonlySet<string>>(new Set())
+  const groupCount = new Map<string, number>()
+  if (groupOf) for (const r of rows) groupCount.set(groupOf(r), (groupCount.get(groupOf(r)) ?? 0) + 1)
+  const toggleGroup = (g: string) =>
+    setClosedGroups((cur) => {
+      const next = new Set(cur)
+      if (next.has(g)) next.delete(g)
+      else next.add(g)
+      return next
+    })
+  /** L'en-tête d'un groupe, avant sa première ligne ; et si la ligne est repliée. */
+  const groupStep = (r: T, i: number): { head: string | null; hidden: boolean } => {
+    if (!groupOf) return { head: null, hidden: false }
+    const g = groupOf(r)
+    const head = i === 0 || groupOf(rows[i - 1]) !== g ? g : null
+    return { head, hidden: closedGroups.has(g) }
+  }
+  const groupButton = (g: string) => (
+    <button
+      type="button"
+      onClick={() => toggleGroup(g)}
+      aria-expanded={!closedGroups.has(g)}
+      data-testid={testId ? `${testId}-group` : undefined}
+      data-group={g}
+      className="flex min-h-11 w-full items-center gap-2 px-3 text-start text-caption font-semibold text-content-primary"
+    >
+      <Icon name="chevronDown" size={14} className={`shrink-0 transition-transform duration-fast ${closedGroups.has(g) ? '-rotate-90 rtl:rotate-90' : ''}`} />
+      <span className="truncate">{g || '—'}</span>
+      <span className="numeric rounded-pill bg-surface-raised px-2 text-micro text-content-secondary">{groupCount.get(g) ?? 0}</span>
+    </button>
+  )
   const stacked = width > 0 && width < STACK_BELOW
   /* ★ LE NOM D'ABORD : il garde toujours ses 15 rem. Les colonnes qui ne
      tiennent pas à côté de lui cèdent, la moins prioritaire (le seuil le plus
      haut) en premier, et passent sous le nom. Mesuré sur la largeur du
      TABLEAU (un panneau à côté d'une carte n'a pas celle de la fenêtre). */
-  const inlineCountAll = rows.length > 0 ? (actions?.(rows[0]) ?? []).filter((a) => a.inline).length : 0
-  const menuAll = rows.some((r) => (actions?.(r) ?? []).some((a) => !a.inline))
+  /* Au téléphone (tableau étroit), les gestes se replient dans « ⋯ » : le nom
+     garde sa place. */
+  const foldActions = stacked
+  const inlineCountAll = foldActions ? 0 : rows.length > 0 ? (actions?.(rows[0]) ?? []).filter((a) => a.inline).length : 0
+  const menuAll = rows.some((r) => (actions?.(r) ?? []).some((a) => foldActions || !a.inline))
   const actionsPx = (inlineCountAll * 2.5 + (menuAll ? 2.75 : 0) + 0.75) * 16
   const colPx = (c: EntityColumn<T>): number => {
     const m = /w-\[(\d+(?:\.\d+)?)(rem|%)\]/.exec(c.className ?? '')
@@ -145,17 +274,17 @@ export function EntityTable<T>({
   }
   let shown = columns.filter((c) => !c.minWidth || width === 0 || width >= c.minWidth)
   if (width > 0) {
-    const budget = width - LEAD_MIN_PX - actionsPx
+    const budget = width - (stacked ? LEAD_MIN_PX * 0.6 : LEAD_MIN_PX) - actionsPx - 32
     while (shown.length > 0 && shown.reduce((n, c) => n + colPx(c), 0) > budget) {
       const drop = [...shown].sort((a, b) => (b.minWidth ?? 0) - (a.minWidth ?? 0))[0]
       shown = shown.filter((c) => c !== drop)
     }
   }
-  const hidden = stacked ? columns : columns.filter((c) => !shown.includes(c))
+  const folded = columns.filter((c) => !shown.includes(c))
 
   const subOf = (r: T): string => {
     const l = lead(r)
-    const parts = [...(l.always ?? []), ...hidden.map((c) => c.sub?.(r) ?? '').filter(Boolean)]
+    const parts = [...(l.always ?? []), ...folded.map((c) => c.sub?.(r) ?? '').filter(Boolean)]
     return parts.filter(Boolean).join(' · ')
   }
 
@@ -250,144 +379,220 @@ export function EntityTable<T>({
 
   const actionsWidth = `${Math.max(16, actionsPx)}px`
 
+  /* ★★ AZ2.1 — LA VIGNETTE : lisible d'un coup d'œil, à bonne distance. Le
+     nom en 18 px (il était à 13,5 px dans les lignes à deux étages d'AY), ce
+     qui situe la fiche en 16 px, l'état en pastille, et la photo sur toute la
+     hauteur de la tuile (`ListTile`, la tuile commune des cinq listes depuis
+     Y4). Mesuré par `azui` A372. */
+  const whereOf = (r: T): string => {
+    const own = where?.(r)
+    if (own) return own
+    return columns
+      .map((c) => c.sub?.(r) ?? '')
+      .filter(Boolean)
+      .slice(0, 2)
+      .join(' · ')
+  }
+
+  if (tiles) {
+    return (
+      <div
+        ref={wrapRef}
+        className="entity-tiles w-full"
+        hidden={hidden}
+        data-testid={testId}
+        data-entity-table=""
+        data-tiles=""
+        data-table-width={Math.round(width)}
+      >
+        {rows.length === 0 ? (
+          <p className="px-2 py-8 text-center text-body text-content-muted">{empty ?? t('table.empty')}</p>
+        ) : (
+          <ul aria-label={label} className="flex flex-col gap-2">
+            {rows.map((r, i) => {
+              const k = rowKey(r)
+              const l = lead(r)
+              const w = whereOf(r)
+              const step = groupStep(r, i)
+              const head = step.head !== null && (
+                <li key={`group-${step.head}`} className="mt-2 rounded-field bg-surface-high" data-group-head="">
+                  {groupButton(step.head)}
+                </li>
+              )
+              if (step.hidden) return head || null
+              const more = (l.always ?? []).filter(Boolean).join(' · ')
+              const foot = tileFoot?.(r)
+              return (
+                <Fragment key={k}>
+                {head}
+                <li
+                  key={k}
+                  data-row-key={k}
+                  data-open={activeKey === k ? '' : undefined}
+                  {...(rowAttrs?.(r) ?? {})}
+                  className={foot ? 'overflow-hidden rounded-card bg-surface-raised shadow-card' : undefined}
+                >
+                  <ListTile
+                    testId={tileTestId ?? (testId ? `${testId}-tile` : 'entity-tile')}
+                    photo={l.photo ?? null}
+                    name={l.title}
+                    active={activeKey === k}
+                    onOpen={() => onPreview?.(r)}
+                    openLabel={t('table.view')}
+                    className={`entity-tile ${foot ? '!rounded-none !shadow-none' : ''} ${tileTone ? (tileTone(r) ?? '') : (rowTone?.(r) ?? '')}`}
+                    action={
+                      <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        {tileAction?.(r)}
+                        {menu(r, true)}
+                      </span>
+                    }
+                  >
+                    <span className="flex min-w-0 items-center gap-2" data-row-open="">
+                      {l.dot}
+                      <span className="truncate text-heading font-semibold text-content-primary" data-entity-title="" title={l.title}>
+                        {l.title}
+                      </span>
+                      {l.marks}
+                    </span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      {phoneEnd && <span className="shrink-0">{phoneEnd(r)}</span>}
+                      {w && (
+                        <span className="truncate text-body text-content-secondary" data-entity-where="" title={w}>
+                          {w}
+                        </span>
+                      )}
+                    </span>
+                    {more && (
+                      <span className="truncate text-caption text-content-muted" title={more} data-testid={l.alwaysTestId}>
+                        {more}
+                      </span>
+                    )}
+                  </ListTile>
+                  {foot && (
+                    <div className="border-t border-edge-subtle/70 px-3 py-2" data-tile-foot="">
+                      {foot}
+                    </div>
+                  )}
+                </li>
+                </Fragment>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+    )
+  }
+
+  const thBase =
+    'sticky z-10 bg-surface-high border-b border-edge-subtle py-2 text-start align-middle text-micro font-semibold uppercase tracking-wide text-content-muted'
+  const headStyle = { top: `calc(var(--shell-top, 0px) + ${headTop}px)` }
+  const tdBase = 'h-16 border-b border-edge-subtle/70 align-middle'
+
   return (
     <div
       ref={wrapRef}
-      className="entity-table w-full"
+      className="entity-table card w-full"
+      hidden={hidden}
       data-testid={testId}
       data-entity-table=""
       data-stacked={stacked ? '' : undefined}
       data-table-width={Math.round(width)}
-      data-columns={stacked ? 'lead' : ['lead', ...shown.map((c) => c.key)].join(',')}
+      data-columns={['lead', ...shown.map((c) => c.key)].join(',')}
     >
-      {stacked ? (
-        <>
-          <div className="flex items-center justify-between gap-2 border-b border-edge-subtle px-1 pb-1 text-micro text-content-muted">
-            {sortButton('name', leadLabel, !!leadSort)}
-            {columns.some((c) => c.sort) && (
-              <label className="inline-flex items-center gap-1">
-                <span className="sr-only">{t('table.sortBy')}</span>
-                <select
-                  className="input min-h-[2.5rem] w-auto py-1 text-micro"
-                  value={sort.key}
-                  onChange={(e) => onSort({ key: e.target.value, dir: sort.dir })}
-                  data-testid={testId ? `${testId}-sort-select` : undefined}
-                >
-                  {leadSort && <option value="name">{leadLabel}</option>}
-                  {columns
-                    .filter((c) => c.sort)
-                    .map((c) => (
-                      <option key={c.key} value={c.key}>
-                        {c.label}
-                      </option>
-                    ))}
-                </select>
-              </label>
-            )}
-          </div>
-          {rows.length === 0 ? (
-            <p className="px-2 py-8 text-center text-caption text-content-muted">{empty ?? t('table.empty')}</p>
-          ) : (
-            <ul aria-label={label} className="divide-y divide-edge-subtle">
-              {rows.map((r) => {
-                const k = rowKey(r)
-                const active = activeKey === k
-                return (
-                  <li
-                    key={k}
-                    data-row-key={k}
-                    data-open={active ? '' : undefined}
-                    {...(rowAttrs?.(r) ?? {})}
-                    className={`flex min-h-[3.75rem] items-center gap-1 ${active ? 'bg-accent/10' : ''} ${rowTone?.(r) ?? ''}`}
-                  >
-                    <button
-                      type="button"
-                      className="flex min-w-0 flex-1 items-center gap-2 py-2 ps-1 text-start"
-                      onClick={onPreview ? () => onPreview(r) : undefined}
-                      data-row-open=""
-                      data-testid={testId ? `${testId}-open-${k}` : undefined}
-                    >
-                      <span className="min-w-0 flex-1">{leadCell(r, true)}</span>
-                      {phoneEnd && <span className="shrink-0">{phoneEnd(r)}</span>}
-                    </button>
-                    <span className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                      {menu(r, true)}
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </>
-      ) : (
-        <table className="w-full table-fixed border-separate border-spacing-0 text-caption" aria-label={label}>
-          <thead>
-            <tr>
-              <th scope="col" aria-sort={leadSort ? (sort.key === 'name' ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined} className="border-b border-edge-subtle px-2 py-1.5 text-start align-bottom font-semibold text-content-muted">
-                {sortButton('name', leadLabel, !!leadSort)}
-              </th>
-              {shown.map((c) => {
-                const active = sort.key === c.key
-                return (
-                  <th
-                    key={c.key}
-                    scope="col"
-                    aria-sort={c.sort ? (active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
-                    className="border-b border-edge-subtle px-2 py-1.5 text-start align-bottom font-semibold text-content-muted"
-                    style={{ width: `${Math.round(colPx(c))}px` }}
-                  >
-                    {sortButton(c.key, c.label, !!c.sort)}
-                  </th>
-                )
-              })}
-              <th scope="col" className="border-b border-edge-subtle px-1 py-1.5" style={{ width: actionsWidth }}>
-                <span className="sr-only">{t('table.actions')}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={shown.length + 2} className="px-2 py-8 text-center text-content-muted">
-                  {empty ?? t('table.empty')}
-                </td>
-              </tr>
-            )}
-            {rows.map((r) => {
-              const k = rowKey(r)
-              const active = activeKey === k
+      <table className="w-full table-fixed border-separate border-spacing-0 text-caption" aria-label={label}>
+        <thead>
+          <tr data-entity-head="">
+            <th
+              scope="col"
+              aria-sort={leadSort ? (sort.key === 'name' ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
+              className={`${thBase} rounded-ss-card ps-4 pe-2`}
+              style={headStyle}
+            >
+              {sortButton('name', leadLabel, !!leadSort)}
+            </th>
+            {shown.map((c) => {
+              const active = sort.key === c.key
               return (
-                <tr
-                  key={k}
-                  data-row-key={k}
-                  data-open={active ? '' : undefined}
-                  {...(rowAttrs?.(r) ?? {})}
-                  onClick={onPreview ? () => onPreview(r) : undefined}
-                  className={`group ${onPreview ? 'cursor-pointer' : ''} ${active ? 'bg-accent/10' : onPreview ? 'hover:bg-surface-high' : ''} ${rowTone?.(r) ?? ''}`}
+                <th
+                  key={c.key}
+                  scope="col"
+                  aria-sort={c.sort ? (active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
+                  className={`${thBase} px-2`}
+                  style={{ ...headStyle, width: `${Math.round(colPx(c))}px` }}
                 >
-                  <td className="h-14 overflow-hidden border-b border-edge-subtle px-2 py-1 align-middle">{leadCell(r, false)}</td>
-                  {shown.map((c) => (
-                    <td
-                      key={c.key}
-                      onClick={c.interactive ? (e) => e.stopPropagation() : undefined}
-                      title={c.title?.(r)}
-                      className={`relative h-14 whitespace-nowrap border-b border-edge-subtle px-2 py-1 align-middle ${c.interactive ? 'overflow-visible' : 'overflow-hidden text-ellipsis'} ${c.className ?? ''}`}
-                    >
-                      {c.render(r, { width })}
-                    </td>
-                  ))}
-                  <td className="h-14 border-b border-edge-subtle px-1 py-1 align-middle" onClick={(e) => e.stopPropagation()} data-row-actions="">
-                    <span className="flex flex-nowrap items-center justify-end gap-0.5">
-                      {inlineActions(r)}
-                      {menu(r, false)}
-                    </span>
-                  </td>
-                </tr>
+                  {sortButton(c.key, c.label, !!c.sort)}
+                </th>
               )
             })}
-          </tbody>
-        </table>
-      )}
+            <th scope="col" className={`${thBase} rounded-se-card pe-3 ps-1`} style={{ ...headStyle, width: actionsWidth }}>
+              <span className="sr-only">{t('table.actions')}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={shown.length + 2} className="px-2 py-8 text-center text-content-muted">
+                {empty ?? t('table.empty')}
+              </td>
+            </tr>
+          )}
+          {rows.map((r, i) => {
+            const k = rowKey(r)
+            const active = activeKey === k
+            const step = groupStep(r, i)
+            const head = step.head !== null && (
+              <tr key={`group-${step.head}`} data-group-head="">
+                <td colSpan={shown.length + 2} className="border-b border-edge-subtle bg-surface-high/80 p-0">
+                  {groupButton(step.head)}
+                </td>
+              </tr>
+            )
+            if (step.hidden) return head || null
+            return (
+              <Fragment key={k}>
+              {head}
+              <tr
+                key={k}
+                data-row-key={k}
+                data-open={active ? '' : undefined}
+                {...(rowAttrs?.(r) ?? {})}
+                onClick={onPreview ? () => onPreview(r) : undefined}
+                className={`entity-row group transition-colors duration-fast ${onPreview ? 'cursor-pointer' : ''} ${active ? 'bg-accent/10' : ''} ${rowTone?.(r) ?? ''}`}
+              >
+                <td className={`${tdBase} overflow-hidden ps-4 pe-2`}>
+                  <span
+                    className="flex min-w-0 items-center gap-2"
+                    data-row-open={onPreview ? '' : undefined}
+                    data-testid={onPreview && testId ? `${testId}-open-${k}` : undefined}
+                  >
+                    <span className="min-w-0 flex-1">{leadCell(r, stacked)}</span>
+                    {/* Au téléphone, l'état se lit au bout du nom quand sa colonne a cédé. */}
+                    {stacked && phoneEnd && !shown.some((c) => c.key === 'status') && <span className="shrink-0">{phoneEnd(r)}</span>}
+                  </span>
+                </td>
+                {shown.map((c) => (
+                  <td
+                    key={c.key}
+                    onClick={c.interactive ? (e) => e.stopPropagation() : undefined}
+                    title={c.title?.(r)}
+                    className={`relative ${tdBase} whitespace-nowrap px-2 ${c.interactive ? 'overflow-visible' : 'overflow-hidden text-ellipsis'} ${c.className ?? ''}`}
+                  >
+                    {c.render(r, { width })}
+                  </td>
+                ))}
+                <td className={`${tdBase} pe-3 ps-1`} onClick={(e) => e.stopPropagation()} data-row-actions="">
+                  <span className="flex flex-nowrap items-center justify-end gap-0.5">
+                    {!foldActions && inlineActions(r)}
+                    {menu(r, foldActions)}
+                  </span>
+                </td>
+              </tr>
+              </Fragment>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }

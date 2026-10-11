@@ -271,6 +271,10 @@ await guard('A348', async () => {
   for (const w of [1440, 1032]) {
     const o = await open(w)
     await go(o.page, '/coordinator/leads')
+    /* ★★ AZ2.3 — ADAPTÉE : « carte visible → vignettes ; tableau seul → le
+       tableau ». Le tableau des contacts se lit carte masquée. */
+    await o.page.locator('[data-testid="map-mode-hidden"]').first().click().catch(() => undefined)
+    await o.page.waitForTimeout(600)
     const table = o.page.locator('[data-testid="leads-table"] table')
     check(`A348 ${w} px : un TABLEAU, avec ses en-têtes de colonnes`, (await table.count()) === 1 && (await table.locator('thead th').count()) >= 4)
     const filters = await o.page.locator('[data-testid^="leads-filter-"]').count()
@@ -316,7 +320,11 @@ await guard('A348', async () => {
       await o.page.waitForTimeout(1500)
       check('A348 le statut se change DANS sa colonne, un toucher, et s’écrit', o.db.rows('leads').find((r) => r.id === 'lead-ax-2')?.status === 'call_back')
       const h = await o.page.locator('[data-testid="leads-table"] tbody tr[data-row-key]').evaluateAll((rs) => rs.map((r) => Math.round(r.getBoundingClientRect().height)))
-      check('A349 contacts 1 440 px : chaque ligne tient sur UNE ligne (≤ 56 px)', h.every((x) => x <= 56), h.join(','))
+      /* ★★ AZ1 — ADAPTÉE, MÊME GARANTIE : la ligne du tableau a repris la
+         hauteur de la grille d'avant AY (64 px, `ROSTER_ROW_HEIGHT`, Y9 : « des
+         lignes plus hautes »). Une ligne qui passerait à la ligne en ferait
+         ≥ 80 ; « une ligne reste une ligne » se mesure donc à ≤ 64. */
+      check('A349 contacts 1 440 px : chaque ligne tient sur UNE ligne (≤ 64 px)', h.every((x) => x <= 64), h.join(','))
     }
     check('aucune erreur de page', o.errors.length === 0, o.errors.join(' | '))
     await o.ctx.close()
@@ -348,8 +356,10 @@ await guard('A349', async () => {
     check(`A349 ${w} px : les deux totaux côte à côte`, await sameLine(o.page.locator('[data-testid="route-totals"] dt').first(), o.page.locator('[data-testid="route-drive-time"]')))
     // Les institutions.
     await go(o.page, '/coordinator/institutions')
+    await o.page.locator('[data-testid="map-mode-hidden"]').first().click().catch(() => undefined)
+    await o.page.waitForTimeout(600)
     const ih = await o.page.locator('[data-testid="institutions-table"] tbody tr[data-row-key]').evaluateAll((rs) => rs.map((r) => Math.round(r.getBoundingClientRect().height)))
-    check(`A349 ${w} px : מוסדות — une ligne par institution (≤ 56 px)`, ih.length > 0 && ih.every((x) => x <= 56), ih.join(','))
+    check(`A349 ${w} px : מוסדות — une ligne par institution (≤ 64 px)`, ih.length > 0 && ih.every((x) => x <= 64), ih.join(','))
     check('aucune erreur de page', o.errors.length === 0, o.errors.join(' | '))
     await o.ctx.close()
   }
@@ -626,6 +636,10 @@ function gestures(after: boolean): Gesture[] {
       run: async (p, _db, click) => {
         await click(rail(p, 'farms'))
         await click(p.locator(`[data-testid="farm-tile-open"]`).first())
+        /* ★★ AZ — ADAPTÉE : depuis AY3, toucher une vignette ouvre l'APERÇU
+           (choix du PO) ; la fiche complète est à un geste (« לכרטיס המלא »).
+           Le clic de plus est COMPTÉ, pas caché. */
+        if (after) await click(p.locator('[data-testid="farm-preview-open"]'))
         await click(p.locator('[data-testid="farm-tab-guards"]'))
         return /tab=guards|farms\//.test(p.url()) && (await p.locator('[data-testid="farm-tab-guards"][aria-selected="true"]').count()) === 1
       },
@@ -637,6 +651,7 @@ function gestures(after: boolean): Gesture[] {
         const before = db.rows('farm_visits').length
         await click(rail(p, 'farms'))
         await click(p.locator(`[data-testid="farm-tile-open"]`).first())
+        if (after) await click(p.locator('[data-testid="farm-preview-open"]'))
         /* Un nom long replie la pilule d'actions en « ⋯ » (AT5) : l'ouvrir est un clic, compté. */
         const plan = p.getByRole('button', { name: 'תכנון ביקור' }).first()
         if (!(await plan.isVisible().catch(() => false))) await click(p.locator('[data-testid="sheet-actions-more"]'))
@@ -652,7 +667,7 @@ function gestures(after: boolean): Gesture[] {
       label: 'écrire un commentaire sur un contact',
       run: async (p, _db, click) => {
         await click(rail(p, 'leads'))
-        if (after) await click(p.locator('tr[data-row-key="lead-ax-3"] td').first())
+        if (after) await click(p.locator('[data-row-key="lead-ax-3"] [data-row-open]').first())
         else await click(p.locator('[data-testid="lead-open-lead-ax-3"]'))
         return p.locator('[data-testid="lead-notes-lead-ax-3"]').isVisible()
       },

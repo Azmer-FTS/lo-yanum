@@ -56,7 +56,10 @@
     "empty": "No volunteers yet. Add each institution's volunteers, and who drives.",
     "availability": "Availability",
     "driving": "Driving",
-    "passengers": "Rides with him"
+    "passengers": "Rides with him",
+    "email": "Email",
+    "ungroup": "Ungroup",
+    "noInstitution": "No institution"
   },
   "form": {
     "placeKind": "Kind of place",
@@ -572,7 +575,8 @@
       "recommended": "recommended",
       "effect": "{{count}} existing cards will receive new details",
       "andMerge": "and complete {{count}}",
-      "done": "{{count}} existing cards completed"
+      "done": "{{count}} existing cards completed",
+      "createAnyway": "Create a new card anyway (do not merge)"
     }
   },
   "info": {

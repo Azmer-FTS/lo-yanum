@@ -57,7 +57,10 @@ export function SampleDataSection() {
   const total = demoTotal + tests
   /* Le verdict d'une suppression reste lisible : la section ne se replie pas
      sous le message qui dit ce qui vient de partir. */
-  const open = total > 0 || state !== 'idle'
+  /* ★★ AZ3 — OUVERTE, TOUJOURS. Elle se repliait tant qu'il n'y avait rien
+     à supprimer : le bouton qui POSE les exemples était donc caché au moment
+     précis où il servait, et le PO n'a jamais vu ses exemples. */
+  const open = true
 
   const seed = () => {
     const { added } = runUndoable(t('undo.sampleSeeded'), () => seedTestData())

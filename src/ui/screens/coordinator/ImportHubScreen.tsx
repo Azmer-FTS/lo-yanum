@@ -53,11 +53,18 @@ export function ImportHubScreen() {
     setParams(next)
   }
 
+  const from = params.get('from')
+  const backTo =
+    from === 'farms' || from === 'volunteers' || from === 'institutions'
+      ? { to: `/coordinator/${from}`, label: t(`nav.${from}`) }
+      : { to: '/coordinator', label: t('nav.dashboard') }
+
   return (
     <div className="mx-auto max-w-5xl" data-testid="import-hub" data-kind={kind ?? ''}>
       {!kind ? (
         <>
-          <PageHeader title={t('importHub.title')} info={<p>{t('importHub.info')}</p>} back={{ to: '/coordinator', label: t('nav.dashboard') }} />
+          {/* ★★ AZ4 — le retour suit le chemin : venu des fermes, on revient aux fermes. */}
+          <PageHeader title={t('importHub.title')} info={<p>{t('importHub.info')}</p>} back={backTo} />
           <p className="mt-2 text-body font-semibold text-content-primary">① {t('importHub.what')}</p>
           {GROUPS.map((g) => (
             <section key={g.key} className="mt-4" data-testid={`import-group-${g.key}`}>

@@ -55,6 +55,10 @@ const ALLOWED_RADIUS = new Set([
   'field', 'card', 'pill', 'none',
   't-card', 't-none', 'b-card',
   's-card', 'e-card', 's-pill', 'e-pill',
+  // ★★ AZ1 — les deux coins du HAUT d'un tableau, posés sur les cellules
+  // d'en-tête (un `<tr>` ne porte pas de rayon) : la valeur CARD, sur un coin
+  // logique. Pas un quatrième rayon.
+  'ss-card', 'se-card',
 ])
 
 /**

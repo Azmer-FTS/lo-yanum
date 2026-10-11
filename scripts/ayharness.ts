@@ -143,7 +143,10 @@ export async function open(
     }
   }, init)
   const page = await ctx.newPage()
-  page.setDefaultTimeout(8000)
+  /* ★ AZ — `PW_TIMEOUT` : sur une machine à court de mémoire (8 Go, échange
+     plein, le 2026-10-11), 8 s mesuraient l'engorgement et non l'app. Le
+     défaut reste 8 s ; un délai plus long n'attend que l'ÉLÉMENT. */
+  page.setDefaultTimeout(Number(process.env.PW_TIMEOUT ?? 8000))
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(e.message))
   page.on('crash', () => console.log('  ⚠ onglet PLANTÉ'))

@@ -3,7 +3,7 @@ import { NumericPad } from './components/NumericPad'
 import { UndoToast } from './components/UndoToast'
 import type { ReactNode } from 'react'
 import { useEffect, useReducer } from 'react'
-import { HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom'
 
 import { getSession, homeRouteFor, setSession } from '@core/index'
 import type { Role } from '@core/index'
@@ -74,6 +74,12 @@ import { VolunteerReportScreen } from './screens/volunteer/VolunteerReportScreen
  * switching identity in the dev toolbar).
  */
 /** ★★ AY12.1 — `/coordinator/import/<fichier>` → l'écran unique, le fichier choisi (les paramètres suivent). */
+/** ★★ AZ4 — `/coordinator/drivers?new=1` (un favori d'avant AY) ouvre encore « נהג חדש ». */
+function DriversRedirect() {
+  const [params] = useSearchParams()
+  return <Navigate to={params.get('new') === '1' ? '/coordinator/volunteers/new?driver=1' : '/coordinator/volunteers?drivers=1'} replace />
+}
+
 function ImportKindRedirect() {
   const { kind } = useParams()
   const extra = window.location.hash.split('?')[1] ?? ''
@@ -362,7 +368,7 @@ export default function App() {
           <Route path="volunteers/new" element={<VolunteerFormPage />} />
           <Route path="volunteers/:volunteerId/edit" element={<VolunteerFormPage />} />
           {/* ★★ AY4 — volontaires et conducteurs : un écran. */}
-          <Route path="drivers" element={<Navigate to="/coordinator/volunteers?drivers=1" replace />} />
+          <Route path="drivers" element={<DriversRedirect />} />
           <Route path="drivers/new" element={<Navigate to="/coordinator/volunteers/new?driver=1" replace />} />
           <Route path="drivers/:driverId/edit" element={<DriverFormPage />} />
           {/* G10 — ONE wizard, three templates. The kind lives in the path so

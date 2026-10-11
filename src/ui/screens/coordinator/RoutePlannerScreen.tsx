@@ -28,6 +28,10 @@ import {
   FREE_STOP_PREFIX,
   freeStopAsFarm,
   isFreeStopId,
+  readCoordinator,
+  renderArrivalMessage,
+  smsHref,
+  whatsappHref,
 } from '@core/index'
 import type { AgendaEvent, Farm, FarmStatus, FreeRoute, LatLng, RegionId, Tour, TourFreeStop } from '@core/index'
 import { useFreeRoutes } from '../../settings/freeRoutes'
@@ -1014,6 +1018,53 @@ export function RoutePlannerScreen() {
                             <Icon name="phone" size={15} />
                           </span>
                         )}
+
+                        {/* ★★ AZ4 (2026-10-11) — L'HEURE D'ARRIVÉE, PAR SMS OU WHATSAPP,
+                            DEPUIS CHAQUE ÉTAPE. C'était un geste de l'ancien
+                            itinéraire libre (AH9.5) resté au bord du chemin
+                            quand AY12 a réuni les deux planificateurs. Même
+                            message (`freeRoute.messageTemplate`), même calcul
+                            d'heure (celle de la ligne), pour une ferme comme
+                            pour un point libre. Sans heure (pas de départ
+                            posé) ou sans téléphone, le geste est grisé. */}
+                        {(() => {
+                          const phone = contact?.phone ?? ''
+                          const body = planStop
+                            ? renderArrivalMessage(t('freeRoute.messageTemplate'), {
+                                name: contact?.name || stop.farm.name,
+                                time: formatTime(planStop.arriveAt, locale),
+                                coordinator: readCoordinator().name,
+                              })
+                            : ''
+                          const off = !phone.trim() || !planStop
+                          const cls = `flex h-9 w-9 items-center justify-center rounded-pill bg-surface-high text-content-primary transition-all duration-fast ease-out hover:bg-gradient-accent hover:text-content-on-accent active:scale-95 ${off ? 'pointer-events-none opacity-40' : ''}`
+                          return (
+                            <>
+                              <a
+                                href={off ? undefined : smsHref([phone], body)}
+                                aria-disabled={off || undefined}
+                                title={t('freeRoute.sendSms')}
+                                aria-label={`${t('freeRoute.sendSms')} · ${stop.farm.name}`}
+                                className={cls}
+                                data-testid="route-stop-sms"
+                              >
+                                <Icon name="message" size={15} />
+                              </a>
+                              <a
+                                href={off ? undefined : whatsappHref(phone, body)}
+                                target="_blank"
+                                rel="noreferrer"
+                                aria-disabled={off || undefined}
+                                title="WhatsApp"
+                                aria-label={`WhatsApp · ${stop.farm.name}`}
+                                className={cls}
+                                data-testid="route-stop-whatsapp"
+                              >
+                                <Icon name="whatsapp" size={15} />
+                              </a>
+                            </>
+                          )
+                        })()}
 
                         {isFreeStopId(stop.farm.id) ? (
                           /* ★★ AY12.2 — un point libre n'a pas de fiche : pas de rendez-vous à poser, une pastille le dit. */

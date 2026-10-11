@@ -167,13 +167,20 @@ export function AddContactsScreen() {
      nouvelles restent cochées une à une. Un doublon DANS le lot (deux fois la
      même personne) n'est jamais créé deux fois. */
   const [mode, setMode] = useState<MergeMode>('fill')
-  const isExisting = (i: number) => dups[i] !== null && dups[i]?.kind !== 'batch' && !!dups[i]?.id
-  const included = (d: ContactDraft, i: number) => (dups[i] !== null ? false : d.key in skip ? !skip[d.key] : !d.problems.includes('noName'))
+  /* ★★ AZ4 — « CRÉER QUAND MÊME », REMIS. Avant AY10, une fiche signalée
+     déjà présente arrivait décochée mais se cochait : deux « דוד כהן », ou un
+     agriculteur qui est AUSSI volontaire, se créaient. AY10 l'a rendue
+     intouchable. Le PO peut de nouveau la créer, explicitement ; elle sort
+     alors de la fusion. (Un doublon DANS le lot reste écarté.) */
+  const [force, setForce] = useState<Record<string, boolean>>({})
+  const forced = (d: ContactDraft, i: number) => !!force[d.key] && dups[i] !== null && dups[i]?.kind !== 'batch'
+  const isExisting = (i: number) => dups[i] !== null && dups[i]?.kind !== 'batch' && !!dups[i]?.id && !force[drafts[i]?.key ?? '']
+  const included = (d: ContactDraft, i: number) => (dups[i] !== null ? forced(d, i) : d.key in skip ? !skip[d.key] : !d.problems.includes('noName'))
   const chosen = drafts.filter((d, i) => included(d, i))
   const existingCount = drafts.filter((_, i) => isExisting(i)).length
   const toMerge = drafts
     .map((d, i) => ({ d, dup: dups[i] }))
-    .filter((x): x is { d: ContactDraft; dup: Duplicate & { id: string } } => !!x.dup && x.dup.kind !== 'batch' && !!x.dup.id)
+    .filter((x): x is { d: ContactDraft; dup: Duplicate & { id: string } } => !!x.dup && x.dup.kind !== 'batch' && !!x.dup.id && !force[x.d.key])
     .map((x) => {
       const target = mergeTargetOf(x.dup.kind as 'lead' | 'farm' | 'institution' | 'volunteer', x.dup.id)
       return { ...x, patch: target && kind ? mergePatch(target, x.d, kind, mode) : {} }
@@ -427,6 +434,8 @@ export function AddContactsScreen() {
                 dup={dups[i]}
                 on={included(d, i)}
                 onToggle={(on) => setSkip((s) => ({ ...s, [d.key]: !on }))}
+                forced={!!force[d.key]}
+                onForce={(on) => setForce((f) => ({ ...f, [d.key]: on }))}
                 onChange={(next) => setDrafts((ds) => ds.map((x) => (x.key === d.key ? next : x)))}
                 onRemove={() => setDrafts((ds) => ds.filter((x) => x.key !== d.key))}
               />
@@ -816,11 +825,15 @@ function DraftRow({
   onToggle,
   onChange,
   onRemove,
+  forced = false,
+  onForce,
 }: {
   d: ContactDraft
   kind: ContactKind
   dup: Duplicate | null
   on: boolean
+  forced?: boolean
+  onForce?: (on: boolean) => void
   onToggle: (on: boolean) => void
   onChange: (d: ContactDraft) => void
   onRemove: () => void
@@ -913,6 +926,12 @@ function DraftRow({
             <p className="mt-1.5 text-caption font-semibold text-status-warn-ink" data-testid="add-draft-dup">
               {t(`add.dup.${dup.kind}`, { name: dup.name })}
             </p>
+          )}
+          {dup && dup.kind !== 'batch' && onForce && (
+            <label className="mt-1.5 inline-flex min-h-11 cursor-pointer items-center gap-2 text-caption text-content-secondary">
+              <input type="checkbox" className="h-5 w-5" checked={forced} onChange={(e) => onForce(e.target.checked)} data-testid="add-draft-force" />
+              {t('add.existing.createAnyway')}
+            </label>
           )}
           {open && (
             <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2" data-testid="add-draft-edit">

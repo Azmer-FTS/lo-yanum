@@ -104,6 +104,34 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **Passe AZ EN COURS** (2026-10-11) — brief : rétablir le tableau, puis le
+  filet de sécurité (AZ1 → AZ7). Ordre imposé : AZ1 + AZ2 commités ET
+  déployés AVANT le reste, puis AZ3, puis AZ4–AZ6. Point d'étape (rien de
+  commité au moment où ces lignes sont écrites) :
+  - **AZ1 fait (arbre de travail)** : `EntityTable` (carte `surface-raised`,
+    en-tête `surface-high` collé sous `ListTop` mesuré, lignes 64 px, filet,
+    une sur deux teintée — CSS en fin d'`index.css`) ; gardes : zébrure par
+    rang + en-tête `surface-high`.
+  - **AZ2 fait** : `tiles` = mode de carte ≠ `hidden` (les 4 écrans passent
+    `({ mode })`) ; vignettes `ListTile` 18/16 px ; aperçu ANCRÉ dans la
+    colonne en mode divisé (`PreviewPanel docked`), retour sur la vignette
+    (`returnTo`, hors composant). Décision : `docs/az/az2-vignettes-et-apercu.md`.
+  - **AZ3 en cours** : garde d'exemple enrichie (`testData.ts`), compteurs
+    sans `test-` (fermes, institutions, gardes), marques, section
+    « נתוני הדגמה ובדיקה » toujours ouverte. **Constat** : la prod n'a
+    AUCUNE ligne `test-` (0 volontaire, 0 garde) — SQL de pose généré par
+    `bun run scripts/azseed.ts` → `private/az/seed.sql` (ignoré), essai à
+    blanc OK ; **pose réelle par le MCP `execute_sql` à faire** après le
+    déploiement.
+  - **AZ4** : SMS + WhatsApp par étape remis dans `RoutePlannerScreen`.
+    Inventaire des autres pertes : agent lancé, rapport à reporter dans
+    `docs/az/az4-pertes.md`.
+  - Portes : `bun run azui` (A370–A374, **120/120 local**, rouge sur le
+    déployé `5c09db6` : 15/65 → `docs/az/azui-rouge-avant.log`),
+    `aztheme` (A378, à lancer), `azcaptures`. Adaptées : `ayscreens`
+    (A359/A360 en mode tableau, 57/57), `axui` (A348/A349), `tokens` (A28
+    `ss-card`/`se-card`).
+
 - **Passe AY TERMINÉE, POUSSÉE ET DÉPLOYÉE — BUGS BLOQUANTS, MOBILE, UNE
   FORME DE TABLEAU** (2026-10-11). Commits : `cfab595` (AY1, déployé seul
   d'abord), `833e010` (AY2–AY5), `4a25ce3`, `cf80a04`, `f6dc665` (AY6–AY12,

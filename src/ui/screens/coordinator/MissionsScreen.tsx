@@ -11,6 +11,7 @@ import {
   getPastMissionViews,
   getUpcomingMissionViews,
   resolveConfirmation,
+  isTestId,
 } from '@core/index'
 import type { MissionStatus, MissionView, RegionId } from '@core/index'
 
@@ -160,8 +161,8 @@ export function MissionsScreen() {
         /* Z3 — the same two numbers as every other roster, said the same way.
            It used to print "N שמירות": a third sentence for one idea, and one
            the component that draws it could not shorten. */
-        shown={list.length}
-        total={byTab[tab].length}
+        shown={list.filter((v) => !isTestId(v.mission.id)).length}
+        total={byTab[tab].filter((v) => !isTestId(v.mission.id)).length}
         filters={
           /* D7.3 — the upcoming/past switch and the status filter share one
              row. Status counts are computed against the ACTIVE tab, so a
@@ -318,8 +319,10 @@ function MissionTile({
       }}
     >
       <span className="flex flex-wrap items-center gap-2">
+        {/* ★★ AZ2.1 — le nom se lit à distance (18 px), comme sur les quatre autres listes. */}
         <span
-          className={`text-caption font-medium text-content-primary ${
+          data-entity-title=""
+          className={`text-heading font-semibold text-content-primary ${
             mission.status === 'cancelled' ? 'line-through opacity-70' : ''
           }`}
         >
@@ -344,7 +347,7 @@ function MissionTile({
         )}
       </span>
 
-      <span className="muted mt-1 block">
+      <span className="mt-1 block text-body text-content-secondary" data-entity-where="">
         <span className="ltr-nums">{formatDate(mission.startAt, locale)}</span>{' '}
         · {formatWeekday(mission.startAt, locale)} ·{' '}
         <span className="ltr-nums">
@@ -352,7 +355,7 @@ function MissionTile({
         </span>
       </span>
 
-      <span className="muted mt-0.5 block truncate">
+      <span className="mt-0.5 block truncate text-caption text-content-secondary">
         {anchorPoint.name}
         {driver ? ` · ${driver.name}` : ` · ${t('missions.noDriver')}`}
       </span>
@@ -386,7 +389,7 @@ export function MissionsTableHead() {
       <div
         data-roster-head=""
         className="roster-row rounded-t-card border-b border-edge-subtle
-                   bg-surface-overlay px-4 py-2"
+                   bg-surface-high px-4 py-2"
       >
         <RosterHead label={t('missions.farm')} />
         <RosterHead label={t('missions.date')} tier="md" />
@@ -431,8 +434,12 @@ function MissionsTable({
                 height: item.size,
                 transform: `translateY(${item.start - margin}px)`,
               }}
-              className="roster-row border-b border-edge-subtle/50 px-4 text-start
-                         transition-colors duration-fast hover:bg-surface-high/60"
+              /* ★★ AZ1 — une ligne sur deux teintée (par son RANG, pas par
+                 `nth-child` : le virtualiseur ne rend qu'une fenêtre de lignes,
+                 et la parité de `nth-child` basculerait en défilant). */
+              data-row-index={item.index}
+              className={`roster-row border-b border-edge-subtle/70 px-4 text-start
+                         transition-colors duration-fast hover:bg-surface-high ${item.index % 2 ? 'bg-surface-high/55' : ''}`}
             >
               {/* 1 — the farm, with whatever has lost its column merged under it. */}
               <span className="flex min-w-0 items-center gap-2.5">
@@ -444,6 +451,7 @@ function MissionsTable({
                     }`}
                   >
                     {farm.name}
+                    <TestDataBadge id={mission.id} />
                   </span>
                   <span className="muted block truncate">
                     <span data-merge="md" style={{ ['--col-display' as string]: 'inline' }}>

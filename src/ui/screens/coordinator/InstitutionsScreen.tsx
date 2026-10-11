@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { TestDataBadge } from '../../components/TestDataBadge'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
@@ -10,6 +11,7 @@ import {
   getVolunteers,
   isInstitutionToConfirm,
   updateInstitution,
+  isTestId,
 } from '@core/index'
 import type { Institution, InstitutionEngagement, Volunteer } from '@core/index'
 
@@ -83,8 +85,10 @@ export function InstitutionsScreen() {
   }
 
   const counts = useMemo(() => {
-    const out: Record<Filter, number> = { all: institutions.length, toConfirm: 0, not_contacted: 0, contacted: 0, interested: 0, signed: 0, not_relevant: 0 }
-    for (const i of institutions) {
+    /* ★★ AZ3.4 — le jeu d'essai se voit, marqué, mais ne compte pas. */
+    const counted = institutions.filter((i) => !isTestId(i.id))
+    const out: Record<Filter, number> = { all: counted.length, toConfirm: 0, not_contacted: 0, contacted: 0, interested: 0, signed: 0, not_relevant: 0 }
+    for (const i of counted) {
       out[i.engagement] += 1
       if (isInstitutionToConfirm(i)) out.toConfirm += 1
     }
@@ -96,6 +100,23 @@ export function InstitutionsScreen() {
   const visible = institutions
     .filter((i) => filter === 'all' || (filter === 'toConfirm' ? isInstitutionToConfirm(i) : i.engagement === filter))
     .filter((i) => !q || `${i.name} ${i.locality} ${i.network} ${i.contactName} ${i.aliases}`.includes(q))
+
+  /* ★★ AV1 — confirmer : UN toucher, sans ouvrir la fiche. Dans la colonne
+     du tableau, et sur la vignette (★★ AZ4 — il ne doit pas disparaître quand
+     la carte est visible). */
+  const confirmButton = (i: Institution) =>
+    isInstitutionToConfirm(i) && (
+      <button
+        type="button"
+        onClick={() => runUndoable(t('undo.confirmed', { name: i.name }), () => updateInstitution(i.id, { engagementConfirmed: true }))}
+        data-testid={`institution-confirm-${i.id}`}
+        aria-label={t('institutions.confirmAria', { name: i.name, status: t(`institutions.engagement.${i.engagement}`) })}
+        className="btn-secondary min-h-[2.5rem] shrink-0 px-2.5 py-1"
+      >
+        <Icon name="check" size={14} />
+        {t('institutions.confirm')}
+      </button>
+    )
 
   const columns: EntityColumn<Institution>[] = [
     { key: 'locality', sub: (i) => i.locality, label: t('institutionsScreen.col.locality'), sort: (i) => i.locality, title: (i) => i.locality, className: 'w-[12%]', minWidth: 560, render: (i) => <span className="text-content-secondary">{i.locality || '—'}</span> },
@@ -110,19 +131,7 @@ export function InstitutionsScreen() {
       render: (i) => (
         <span className="flex flex-nowrap items-center gap-1.5">
           <span className={`chip border ${ENGAGEMENT_ON[i.engagement]}`}>{t(`institutions.engagementShort.${i.engagement}`)}</span>
-          {isInstitutionToConfirm(i) && (
-            /* ★★ AV1 — confirmer : UN toucher, sans ouvrir la fiche. */
-            <button
-              type="button"
-              onClick={() => runUndoable(t('undo.confirmed', { name: i.name }), () => updateInstitution(i.id, { engagementConfirmed: true }))}
-              data-testid={`institution-confirm-${i.id}`}
-              aria-label={t('institutions.confirmAria', { name: i.name, status: t(`institutions.engagement.${i.engagement}`) })}
-              className="btn-secondary min-h-[2.5rem] shrink-0 px-2.5 py-1"
-            >
-              <Icon name="check" size={14} />
-              {t('institutions.confirm')}
-            </button>
-          )}
+          {confirmButton(i)}
         </span>
       ),
     },
@@ -205,13 +214,13 @@ export function InstitutionsScreen() {
         />
       )}
     >
-      {() => (
+      {({ mode }) => (
         <>
           <ListTop
             title={t('nav.institutions')}
             info={<p>{t('institutionsScreen.info')}</p>}
-            shown={visible.length}
-            total={institutions.length}
+            shown={visible.filter((i) => !isTestId(i.id)).length}
+            total={counts.all}
             search={query}
             onSearch={setQuery}
             searchPlaceholder={t('institutions.search')}
@@ -220,7 +229,7 @@ export function InstitutionsScreen() {
               <OverflowMenu
                 testId="institutions-menu"
                 items={[
-                  { key: 'import', icon: 'upload', label: t('institutions.import.title'), to: '/coordinator/import/institutions', testId: 'institutions-import' },
+                  { key: 'import', icon: 'upload', label: t('institutions.import.title'), to: '/coordinator/import?kind=institutions&from=institutions', testId: 'institutions-import' },
                   { key: 'coverage', icon: 'map', label: t('institutionsScreen.toCoverage'), to: '/coordinator/coverage', testId: 'institutions-coverage' },
                 ]}
               />
@@ -246,7 +255,7 @@ export function InstitutionsScreen() {
           <EntityTable
             rows={rows}
             rowKey={(i) => i.id}
-            lead={(i) => ({ title: i.name, shape: 'square', dot: <span className="h-2.5 w-2.5 shrink-0 rounded-pill" style={{ backgroundColor: readToken(ENGAGEMENT_TOKEN[i.engagement]) }} aria-hidden /> })}
+            lead={(i) => ({ title: i.name, shape: 'square', dot: <span className="h-2.5 w-2.5 shrink-0 rounded-pill" style={{ backgroundColor: readToken(ENGAGEMENT_TOKEN[i.engagement]) }} aria-hidden />, marks: <TestDataBadge id={i.id} /> })}
             leadLabel={t('institutionsScreen.col.name')}
             leadSort={(i) => i.name}
             columns={columns}
@@ -263,8 +272,11 @@ export function InstitutionsScreen() {
             empty={institutions.length === 0 ? t('institutionsScreen.empty') : t('table.empty')}
             label={t('nav.institutions')}
             testId="institutions-table"
+            tiles={mode !== 'hidden'}
+            hidden={mode !== 'hidden' && !!openInst}
+            tileAction={confirmButton}
           />
-          {openInst && <InstitutionPreview inst={openInst} onClose={() => setOpen(null)} />}
+          {openInst && <InstitutionPreview inst={openInst} onClose={() => setOpen(null)} docked={mode !== 'hidden'} />}
         </>
       )}
     </MapSplit>
@@ -276,10 +288,11 @@ export function InstitutionsScreen() {
  * volontaires et SES conducteurs (combien, qui part avec qui). L'édition
  * complète est sur sa page.
  */
-function InstitutionPreview({ inst, onClose }: { inst: Institution; onClose: () => void }) {
+function InstitutionPreview({ inst, onClose, docked }: { inst: Institution; onClose: () => void; docked?: boolean }) {
   const { t } = useTranslation()
   return (
     <PreviewPanel
+      docked={docked}
       title={inst.name}
       subtitle={[inst.locality, t(`institutions.kind.${inst.kind}`), inst.network].filter(Boolean).join(' · ')}
       shape="square"

@@ -56,7 +56,10 @@
     "empty": "Aucun volontaire pour l’instant. Ajoutez ceux de chaque institution, et qui conduit.",
     "availability": "Disponibilité",
     "driving": "Conduite",
-    "passengers": "Partent avec lui"
+    "passengers": "Partent avec lui",
+    "email": "Courriel",
+    "ungroup": "Dégrouper",
+    "noInstitution": "Sans institution"
   },
   "form": {
     "placeKind": "Type de lieu",
@@ -572,7 +575,8 @@
       "recommended": "recommandé",
       "effect": "{{count}} fiches existantes recevront des détails",
       "andMerge": "et compléter {{count}}",
-      "done": "{{count}} fiches existantes complétées"
+      "done": "{{count}} fiches existantes complétées",
+      "createAnyway": "Créer quand même une nouvelle fiche (ne pas fusionner)"
     }
   },
   "info": {

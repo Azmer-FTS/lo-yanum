@@ -47,6 +47,7 @@ export function PreviewPanel({
   chips,
   quick,
   children,
+  docked = false,
   testId = 'preview-panel',
 }: {
   title: string
@@ -68,6 +69,12 @@ export function PreviewPanel({
   /** Appeler, WhatsApp : les gestes d'un coup d'œil. */
   quick?: ReactNode
   children: ReactNode
+  /**
+   * ★★ AZ2.2 — LA CARTE DE L'ÉCRAN EST DÉJÀ VISIBLE (mode divisé) : l'aperçu
+   * prend la place de la liste, dans sa colonne, SANS seconde carte. Voir la
+   * note en tête du fichier.
+   */
+  docked?: boolean
   testId?: string
 }) {
   const { t } = useTranslation()
@@ -83,20 +90,107 @@ export function PreviewPanel({
 
   // ★ En grand écran, la liste se resserre au lieu de passer sous le panneau.
   useEffect(() => {
+    if (docked) return
     const root = document.documentElement
     root.setAttribute('data-preview-open', '')
     return () => root.removeAttribute('data-preview-open')
-  }, [])
+  }, [docked])
 
   // Un nouvel aperçu repart du haut.
   useEffect(() => {
+    if (docked) {
+      /* L'aperçu ancré suit le bandeau de la liste : on remonte en haut de ce
+         qui défile (la colonne, ou la page), sinon son titre passerait sous le
+         bandeau collant. */
+      for (let n: HTMLElement | null = ref.current?.parentElement ?? null; n; n = n.parentElement) {
+        const oy = getComputedStyle(n).overflowY
+        if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight) {
+          n.scrollTo({ top: 0 })
+          return
+        }
+      }
+      window.scrollTo({ top: 0 })
+      return
+    }
     ref.current?.querySelector('[data-preview-scroll]')?.scrollTo({ top: 0 })
-  }, [title])
+  }, [title, docked])
 
   const pins: MapMarker[] = [
     ...(markers ?? []),
     ...(position ? [{ id: 'preview-self', position, color: readToken('--accent'), title, emphasis: true, essential: true } as MapMarker] : []),
   ]
+
+  const closeButton = (cls: string) => (
+    <button
+      type="button"
+      onClick={onClose}
+      className={cls}
+      aria-label={t('common.close')}
+      data-testid={`${testId}-close`}
+    >
+      <Icon name="close" size={18} />
+    </button>
+  )
+
+  const head = (
+    <div className="flex items-center gap-3">
+      <Avatar photo={photo} name={title} size="md" shape={shape} />
+      <div className="min-w-0 flex-1">
+        <h2 className="truncate text-heading text-content-primary" data-testid={`${testId}-title`}>
+          {title}
+        </h2>
+        {subtitle && <p className="muted truncate text-caption">{subtitle}</p>}
+        {chips && <div className="mt-1 flex flex-wrap items-center gap-1.5">{chips}</div>}
+      </div>
+    </div>
+  )
+
+  const foot = (editTo || openTo) && (
+    <>
+      {editTo && (
+        <Link to={editTo} className="btn-primary min-h-11 flex-1 justify-center" data-testid={`${testId}-edit`}>
+          <Icon name="edit" size={16} />
+          {editLabel ?? t('table.edit')}
+        </Link>
+      )}
+      {openTo && (
+        <Link to={openTo} className="btn-secondary min-h-11 flex-1 justify-center" data-testid={`${testId}-open`}>
+          <Icon name="external" size={16} />
+          {openLabel ?? t('preview.openFull')}
+        </Link>
+      )}
+    </>
+  )
+
+  /* ★★ AZ2.2 — EN MODE DIVISÉ, L'APERÇU EST DANS LA COLONNE DE LA LISTE.
+     Le PO touchait une vignette : l'aperçu s'ouvrait par-dessus la carte de
+     l'écran avec SA PROPRE carte, et deux cartes s'empilaient. La carte de
+     l'écran est déjà là, elle situe la fiche (son épingle est sélectionnée) ;
+     l'aperçu remplace donc la liste dans sa colonne, sans carte, et « ✕ »
+     ramène à la vignette touchée. */
+  if (docked) {
+    return (
+      <section
+        ref={ref}
+        aria-label={title}
+        data-testid={testId}
+        data-docked=""
+        className="preview-docked card mt-1 overflow-hidden"
+      >
+        <div className="border-b border-edge-subtle bg-surface-overlay px-4 py-3">
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">{head}</div>
+            {closeButton('flex h-11 w-11 shrink-0 items-center justify-center rounded-pill bg-surface-high text-content-primary')}
+          </div>
+          {quick && <div className="mt-3 flex flex-wrap items-center gap-2">{quick}</div>}
+        </div>
+        <div className="px-4 py-4" data-preview-scroll="">
+          {children}
+        </div>
+        {foot && <div className="flex flex-wrap gap-2 border-t border-edge-subtle px-4 py-3">{foot}</div>}
+      </section>
+    )
+  }
 
   return (
     <aside

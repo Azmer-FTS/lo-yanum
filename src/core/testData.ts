@@ -187,7 +187,14 @@ export function buildTestData(): TestDataset {
     farmId: TEST_FARM_ID,
     name: 'עמדת בדיקה',
     position: { lat: CENTER.lat + 0.002, lng: CENTER.lng + 0.002 },
-    instructions: ['עמדה של נתוני בדיקה.'],
+    /* ★★ AZ3.3 — un point de garde qui ressemble à un vrai : où se poster,
+       quoi surveiller, qui appeler. */
+    instructions: [
+      'עמדה של נתוני בדיקה.',
+      'לעמוד ליד המכולה, מול השער הצפוני — משם רואים את הדיר ואת שביל הגישה.',
+      'סיור רגלי סביב הדיר פעם בשעה, עם פנס.',
+      'בכל תנועה חשודה: להתקשר לכונן (050-0000001) ולא להתקרב.',
+    ],
     accessDescription: 'מכביש 204, פנייה מזרחה. שער צפוני.',
   }
 
@@ -336,8 +343,15 @@ export function buildTestData(): TestDataset {
     completedAt: hoursFromNow(-22),
   }
 
+  /* ★★ AZ3.3 — « UNE GARDE RÉELLE, posée sur une ferme, avec ses volontaires,
+     son conducteur, son horaire et son point de garde. » Le PO n'avait jamais
+     vu à quoi ressemble le cœur de son métier : quatre volontaires de la
+     ישיבת בדיקה, ramassés par « נהג בדיקה » dans sa טרנזיט de huit places,
+     de 21:00 à 05:00 sur la עמדת בדיקה de la חוות בדיקה. */
+  const team = [TEST_VOLUNTEER_ID, `${TEST_PREFIX}vol-p1`, `${TEST_PREFIX}vol-p2`, `${TEST_PREFIX}vol-p3`]
   const next: Mission = {
     ...skeleton,
+    requiredVolunteers: team.length,
     id: TEST_MISSION_NEXT_ID,
     /* `guardNight` rend la PAIRE 21:00 → 05:00, en heure locale et sûre au
        changement d'heure — voir `clock.ts`. Recalculer une fin en ajoutant huit
@@ -345,17 +359,13 @@ export function buildTestData(): TestDataset {
        éviter. */
     ...guardNight(2),
     status: 'planned',
-    assignments: [
-      {
-        volunteerId: TEST_VOLUNTEER_ID,
-        isGroupPhone: true,
-        outbound: { ...EMPTY_LEG },
-        inbound: { ...EMPTY_LEG },
-      },
-    ],
-    drivers: [
-      { driverId: TEST_DRIVER_ID, passengerVolunteerIds: [TEST_VOLUNTEER_ID], confirmed: false },
-    ],
+    assignments: team.map((volunteerId, n) => ({
+      volunteerId,
+      isGroupPhone: n === 0,
+      outbound: { ...EMPTY_LEG },
+      inbound: { ...EMPTY_LEG },
+    })),
+    drivers: [{ driverId: TEST_DRIVER_ID, passengerVolunteerIds: team, confirmed: true }],
     arrivalConfirmedAt: null,
     endConfirmedAt: null,
     createdAt: at,

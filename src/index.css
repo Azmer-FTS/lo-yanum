@@ -2573,3 +2573,38 @@ html[data-numpad-open] [data-farm-form] {
     padding-inline-end: min(32rem, 42vw);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★★ AZ1 (2026-10-11) — LES LIGNES DU TABLEAU SE DÉTACHENT.
+   ═══════════════════════════════════════════════════════════════════════════
+   Le tableau est une carte (`.entity-table.card`, voir EntityTable.tsx) ; ses
+   lignes portent un filet, et une sur deux une teinte légère pour suivre une
+   ligne du regard d'un bout à l'autre ; le survol la marque (pointeur fin
+   seulement — au doigt, le survol « colle »). `:where()` : spécificité nulle,
+   pour qu'une ligne mise en avant (demande entrante, aperçu ouvert) garde sa
+   propre teinte. */
+@layer components {
+  :where(.entity-table tbody tr.entity-row:nth-child(even)) {
+    background-color: rgb(var(--surface-high) / 0.55);
+  }
+  @media (hover: hover) {
+    :where(.entity-table tbody tr.entity-row:hover) {
+      background-color: rgb(var(--surface-high));
+    }
+  }
+}
+
+/* ★★ AZ1 — la demande entrante garde son liseré dans le tableau. Un `<tr>`
+   ne dessine pas de bordure dans un tableau à bordures séparées : le liseré
+   est posé sur la première cellule, côté début de ligne. */
+.entity-table tr[data-intake='true'] > td:first-child {
+  position: relative;
+}
+.entity-table tr[data-intake='true'] > td:first-child::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 4px;
+  background-color: rgb(var(--farm-incoming-request));
+}

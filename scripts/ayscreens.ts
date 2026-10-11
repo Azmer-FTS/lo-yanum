@@ -23,11 +23,20 @@ const SHOTS = shots('screens')
 const only = (label: string) => !process.env.GUARD || label.startsWith(process.env.GUARD)
 const run = (label: string, fn: () => Promise<void>) => (only(label) ? guard(label, fn) : Promise.resolve())
 
+/* ★★ AZ2.3 (2026-10-11) — ADAPTÉE, MÊME GARANTIE. La règle du PO : « carte
+   visible → vignettes ; tableau seul → le tableau ». A359/A360 vérifient le
+   TABLEAU commun et son aperçu latéral : on masque donc la carte d'abord, sur
+   les quatre listes et aux deux largeurs (AY ne le faisait que pour les
+   fermes, les trois autres montraient un tableau à côté de la carte). Au
+   téléphone, carte masquée, c'est le tableau étroit : colonnes sous le nom,
+   gestes repliés dans UN « ⋯ ». Les vignettes ont leur propre porte (azui
+   A372 · A373). */
+const tableMode = async (p: Page) => void (await p.locator('[data-testid="map-mode-hidden"]').first().click().catch(() => undefined))
 const LISTS = [
-  { name: 'fermes', route: '/coordinator/farms', table: 'farms-table', preview: 'farm-preview', prep: async (p: Page) => void (await p.locator('[data-testid="map-mode-hidden"]').click().catch(() => undefined)) },
-  { name: 'institutions', route: '/coordinator/institutions', table: 'institutions-table', preview: 'institution-preview' },
-  { name: 'contacts', route: '/coordinator/leads', table: 'leads-table', preview: 'lead-preview' },
-  { name: 'volontaires', route: '/coordinator/volunteers', table: 'people-table', preview: 'person-preview' },
+  { name: 'fermes', route: '/coordinator/farms', table: 'farms-table', preview: 'farm-preview', prep: tableMode },
+  { name: 'institutions', route: '/coordinator/institutions', table: 'institutions-table', preview: 'institution-preview', prep: tableMode },
+  { name: 'contacts', route: '/coordinator/leads', table: 'leads-table', preview: 'lead-preview', prep: tableMode },
+  { name: 'volontaires', route: '/coordinator/volunteers', table: 'people-table', preview: 'person-preview', prep: tableMode },
 ] as Array<{ name: string; route: string; table: string; preview: string; prep?: (p: Page) => Promise<void> }>
 
 // ===========================================================================
@@ -38,7 +47,7 @@ await run('A359', async () => {
     const o = await open(w)
     for (const l of LISTS) {
       await go(o.page, APP, l.route, 3500)
-      if (l.prep && w >= 1000) await l.prep(o.page)
+      if (l.prep) await l.prep(o.page)
       await o.page.waitForTimeout(500)
       const t = o.page.locator(`[data-testid="${l.table}"][data-entity-table]`)
       const ok = (await t.count()) === 1
@@ -46,7 +55,7 @@ await run('A359', async () => {
       const firstRow = t.locator('[data-row-key]').first()
       const actions = w >= 1000 ? await firstRow.locator('[data-row-action="view"], [data-row-action="edit"]').count() : await firstRow.locator('[data-testid$="-toggle"]').count()
       check(
-        `A359 ${w} px · ${l.name} : la forme commune${w >= 1000 ? ' (tableau, gestes voir · modifier au bout)' : ' (lignes à deux étages, un seul bouton ⋯)'}`,
+        `A359 ${w} px · ${l.name} : la forme commune${w >= 1000 ? ' (tableau, gestes voir · modifier au bout)' : ' (tableau étroit, un seul bouton ⋯)'}`,
         ok && (w >= 1000 ? !stacked && actions === 2 : stacked && actions === 1),
         `table ${ok} · empilée ${stacked} · gestes ${actions}`,
       )
@@ -81,6 +90,8 @@ await run('A360', async () => {
   // Au téléphone : la même chose, en feuille plein écran.
   const p = await open(402)
   await go(p.page, APP, '/coordinator/institutions', 3500)
+  await tableMode(p.page)
+  await p.page.waitForTimeout(500)
   await p.page.locator('[data-testid="institutions-table"] [data-row-open]').first().click()
   await p.page.waitForTimeout(2500)
   const b = await p.page.locator('[data-testid="institution-preview"]').boundingBox()

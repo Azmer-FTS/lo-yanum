@@ -1,0 +1,99 @@
+$ bun run scripts/azui.ts
+
+  A370 — les cinq tableaux ont un fond propre et des lignes qui se détachent (clair ET sombre)
+  --------------------------------------------------------------------------------------------
+  FAIL  A370 light · fermes : le tableau se détache de la page (ΔE ≥ 3)  — page #f3f4f6 · tableau #f3f4f6 · ΔE 0.0 · contraste 1.00:1
+  FAIL  A370 light · fermes : une ligne sur deux se distingue (ΔE ≥ 1,5) et un filet les sépare  — ligne 1 #f3f4f6 · ligne 2 #f3f4f6 · ΔE 0.0 · filet 1 px
+  FAIL  A370 light · fermes : l’en-tête a son propre fond (ΔE ≥ 1,5)  — en-tête #f3f4f6 · ΔE 0.0
+  FAIL  A370 light · institutions : le tableau se détache de la page (ΔE ≥ 3)  — page #f3f4f6 · tableau #f3f4f6 · ΔE 0.0 · contraste 1.00:1
+  FAIL  A370 light · institutions : une ligne sur deux se distingue (ΔE ≥ 1,5) et un filet les sépare  — ligne 1 #f3f4f6 · ligne 2 #f3f4f6 · ΔE 0.0 · filet 1 px
+  FAIL  A370 light · institutions : l’en-tête a son propre fond (ΔE ≥ 1,5)  — en-tête #f3f4f6 · ΔE 0.0
+  FAIL  A370 light · contacts : le tableau se détache de la page (ΔE ≥ 3)  — page #f3f4f6 · tableau #f3f4f6 · ΔE 0.0 · contraste 1.00:1
+  FAIL  A370 light · contacts : une ligne sur deux se distingue (ΔE ≥ 1,5) et un filet les sépare  — ligne 1 #f3f4f6 · ligne 2 #f3f4f6 · ΔE 0.0 · filet 1 px
+  FAIL  A370 light · contacts : l’en-tête a son propre fond (ΔE ≥ 1,5)  — en-tête #f3f4f6 · ΔE 0.0
+  FAIL  A370 light · volontaires : le tableau se détache de la page (ΔE ≥ 3)  — page #f3f4f6 · tableau #f3f4f6 · ΔE 0.0 · contraste 1.00:1
+  FAIL  A370 light · volontaires : une ligne sur deux se distingue (ΔE ≥ 1,5) et un filet les sépare  — ligne 1 #f3f4f6 · ligne 2 #f3f4f6 · ΔE 0.0 · filet 1 px
+  FAIL  A370 light · volontaires : l’en-tête a son propre fond (ΔE ≥ 1,5)  — en-tête #f3f4f6 · ΔE 0.0
+  PASS  A370 light · gardes : le tableau se détache de la page (ΔE ≥ 3)  — page #f3f4f6 · tableau #ffffff · ΔE 4.0 · contraste 1.10:1
+  FAIL  A370 light · gardes : une ligne sur deux se distingue (ΔE ≥ 1,5) et un filet les sépare  — ligne 1 #ffffff · ligne 2 #ffffff · ΔE 0.0 · filet 1 px
+  FAIL  A370 light · gardes : l’en-tête a son propre fond (ΔE ≥ 1,5)  — en-tête #ffffff · ΔE 0.0
+  PASS  A370 light : aucune erreur de page
+  FAIL  A370 dark · fermes : le tableau se détache de la page (ΔE ≥ 3)  — page #0b1119 · tableau #0b1119 · ΔE 0.0 · contraste 1.00:1
+  FAIL  A370 dark · fermes : une ligne sur deux se distingue (ΔE ≥ 1,5) et un filet les sépare  — ligne 1 #0b1119 · ligne 2 #0b1119 · ΔE 0.0 · filet 1 px
+  FAIL  A370 dark · fermes : l’en-tête a son propre fond (ΔE ≥ 1,5)  — en-tête #0b1119 · ΔE 0.0
+  FAIL  A370 dark · institutions : le tableau se détache de la page (ΔE ≥ 3)  — page #0b1119 · tableau #0b1119 · ΔE 0.0 · contraste 1.00:1
+  FAIL  A370 dark · institutions : une ligne sur deux se distingue (ΔE ≥ 1,5) et un filet les sépare  — ligne 1 #0b1119 · ligne 2 #0b1119 · ΔE 0.0 · filet 1 px
+  FAIL  A370 dark · institutions : l’en-tête a son propre fond (ΔE ≥ 1,5)  — en-tête #0b1119 · ΔE 0.0
+  FAIL  A370 dark · contacts : le tableau se détache de la page (ΔE ≥ 3)  — page #0b1119 · tableau #0b1119 · ΔE 0.0 · contraste 1.00:1
+  FAIL  A370 dark · contacts : une ligne sur deux se distingue (ΔE ≥ 1,5) et un filet les sépare  — ligne 1 #0b1119 · ligne 2 #0b1119 · ΔE 0.0 · filet 1 px
+  FAIL  A370 dark · contacts : l’en-tête a son propre fond (ΔE ≥ 1,5)  — en-tête #0b1119 · ΔE 0.0
+  FAIL  A370 dark · volontaires : le tableau se détache de la page (ΔE ≥ 3)  — page #0b1119 · tableau #0b1119 · ΔE 0.0 · contraste 1.00:1
+  FAIL  A370 dark · volontaires : une ligne sur deux se distingue (ΔE ≥ 1,5) et un filet les sépare  — ligne 1 #0b1119 · ligne 2 #0b1119 · ΔE 0.0 · filet 1 px
+  FAIL  A370 dark · volontaires : l’en-tête a son propre fond (ΔE ≥ 1,5)  — en-tête #0b1119 · ΔE 0.0
+  PASS  A370 dark · gardes : le tableau se détache de la page (ΔE ≥ 3)  — page #0b1119 · tableau #1e2836 · ΔE 11.8 · contraste 1.27:1
+  FAIL  A370 dark · gardes : une ligne sur deux se distingue (ΔE ≥ 1,5) et un filet les sépare  — ligne 1 #1e2836 · ligne 2 #1e2836 · ΔE 0.0 · filet 1 px
+  PASS  A370 dark · gardes : l’en-tête a son propre fond (ΔE ≥ 1,5)  — en-tête #242f40 · ΔE 3.8
+  PASS  A370 dark : aucune erreur de page
+
+  A371 — l’en-tête reste visible pendant tout le défilement, sur les cinq listes
+  ------------------------------------------------------------------------------
+  FAIL  A371 1440 px · fermes : l’en-tête reste en haut, visible, pendant le défilement  — y -897 · au premier plan false · défilé true
+  FAIL  A371 1440 px · institutions : l’en-tête reste en haut, visible, pendant le défilement  — y -113 · au premier plan false · défilé true
+  FAIL  A371 1440 px · contacts : l’en-tête reste en haut, visible, pendant le défilement  — y -729 · au premier plan false · défilé true
+  FAIL  A371 1440 px · volontaires : l’en-tête reste en haut, visible, pendant le défilement  — y -1121 · au premier plan false · défilé true
+  PASS  A371 1440 px · gardes : l’en-tête reste en haut, visible, pendant le défilement  — y 144 → 144 → 144 → 144 · défilé true
+  PASS  A371 1440 px : aucune erreur de page
+  FAIL  A371 1032 px · fermes : l’en-tête reste en haut, visible, pendant le défilement  — y -697 · au premier plan false · défilé true
+  FAIL  A371 1032 px · institutions : l’en-tête reste en haut, visible, pendant le défilement  — y 87 · au premier plan false · défilé true
+  FAIL  A371 1032 px · contacts : l’en-tête reste en haut, visible, pendant le défilement  — y -529 · au premier plan false · défilé true
+  FAIL  A371 1032 px · volontaires : l’en-tête reste en haut, visible, pendant le défilement  — y -921 · au premier plan false · défilé true
+  PASS  A371 1032 px · gardes : l’en-tête reste en haut, visible, pendant le défilement  — y 144 → 144 → 144 → 144 · défilé true
+  PASS  A371 1032 px : aucune erreur de page
+  FAIL  A371 — section interrompue  — boundingBox: Timeout 8000ms exceeded. · - waiting for locator('[data-entity-table]:not([data-tiles]) thead th:first-child, [data-list-top] [data-roster-head]').first()
+
+  A372 — les vignettes du mode divisé sont lisibles (taille de texte mesurée)
+  ---------------------------------------------------------------------------
+  FAIL  A372 1440 px · fermes : carte visible → vignettes (pas de tableau)  — vignettes false · tableau true
+  FAIL  A372 1440 px · fermes : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 13.5 px · lieu 0 px · hauteur 0 px
+  FAIL  A372 1440 px · institutions : carte visible → vignettes (pas de tableau)  — vignettes false · tableau true
+  FAIL  A372 1440 px · institutions : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 13.5 px · lieu 0 px · hauteur 0 px
+  FAIL  A372 1440 px · contacts : carte visible → vignettes (pas de tableau)  — vignettes false · tableau true
+  FAIL  A372 1440 px · contacts : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 13.5 px · lieu 0 px · hauteur 0 px
+  FAIL  A372 1440 px · volontaires : carte visible → vignettes (pas de tableau)  — vignettes false · tableau true
+  FAIL  A372 1440 px · volontaires : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 13.5 px · lieu 0 px · hauteur 0 px
+  PASS  A372 1440 px · gardes : carte visible → vignettes (pas de tableau)  — vignettes true · tableau false
+  FAIL  A372 1440 px · gardes : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 0 px · lieu 0 px · hauteur 127 px
+  PASS  A372 1440 px : aucune erreur de page
+  FAIL  A372 1032 px · fermes : carte visible → vignettes (pas de tableau)  — vignettes false · tableau true
+  FAIL  A372 1032 px · fermes : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 13.5 px · lieu 0 px · hauteur 0 px
+  FAIL  A372 1032 px · institutions : carte visible → vignettes (pas de tableau)  — vignettes false · tableau true
+  FAIL  A372 1032 px · institutions : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 13.5 px · lieu 0 px · hauteur 0 px
+  FAIL  A372 1032 px · contacts : carte visible → vignettes (pas de tableau)  — vignettes false · tableau true
+  FAIL  A372 1032 px · contacts : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 13.5 px · lieu 0 px · hauteur 0 px
+  FAIL  A372 1032 px · volontaires : carte visible → vignettes (pas de tableau)  — vignettes false · tableau true
+  FAIL  A372 1032 px · volontaires : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 13.5 px · lieu 0 px · hauteur 0 px
+  PASS  A372 1032 px · gardes : carte visible → vignettes (pas de tableau)  — vignettes true · tableau false
+  FAIL  A372 1032 px · gardes : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 0 px · lieu 0 px · hauteur 206 px
+  PASS  A372 1032 px : aucune erreur de page
+  FAIL  A372 402 px · fermes : carte visible → vignettes (pas de tableau)  — vignettes false · tableau true
+  FAIL  A372 402 px · fermes : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 13.5 px · lieu 0 px · hauteur 0 px
+  FAIL  A372 402 px · institutions : carte visible → vignettes (pas de tableau)  — vignettes false · tableau true
+  FAIL  A372 402 px · institutions : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 13.5 px · lieu 0 px · hauteur 0 px
+  FAIL  A372 402 px · contacts : carte visible → vignettes (pas de tableau)  — vignettes false · tableau true
+  FAIL  A372 402 px · contacts : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 13.5 px · lieu 0 px · hauteur 0 px
+  FAIL  A372 402 px · volontaires : carte visible → vignettes (pas de tableau)  — vignettes false · tableau true
+  FAIL  A372 402 px · volontaires : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 13.5 px · lieu 0 px · hauteur 0 px
+  PASS  A372 402 px · gardes : carte visible → vignettes (pas de tableau)  — vignettes true · tableau false
+  FAIL  A372 402 px · gardes : le nom ≥ 18 px, ce qui situe ≥ 16 px, vignette ≥ 88 px de haut  — nom 0 px · lieu 0 px · hauteur 127 px
+  PASS  A372 402 px : aucune erreur de page
+
+  A373 — toucher une vignette n’empile pas deux cartes à l’écran
+  --------------------------------------------------------------
+  FAIL  A373 — section interrompue  — getAttribute: Timeout 8000ms exceeded. · - waiting for locator('[data-tiles] li[data-row-key]').nth(2)
+
+  A374 — exemples : volontaire, conducteur ET garde — marqués, hors compteurs, supprimables
+  -----------------------------------------------------------------------------------------
+  FAIL  A374 — section interrompue  — scrollIntoViewIfNeeded: Timeout 8000ms exceeded. · - waiting for locator('[data-testid="test-data-seed"]')
+
+  15 PASS, 65 FAIL
+error: script "azui" exited with code 1
