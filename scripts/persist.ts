@@ -106,6 +106,7 @@ import {
   markIntakeHandled,
   applyInstitutionPlan,
   updateInstitution,
+  setInstitutionContacts,
   createInstitution,
   deleteInstitution,
   createLandmark,
@@ -1377,6 +1378,9 @@ section("6bis — AH3 · le jeu d'essai produit de vraies écritures")
   check('applyInstitutionPlan : une ligne `institutions`', hit(imported, 'institutions', instId)?.json != null)
   const engaged = drive('updateInstitution', () => updateInstitution(instId, { engagement: 'signed', contactPhone: '050-0000999' }))
   check('updateInstitution : la ligne est réécrite', hit(engaged, 'institutions', instId)?.json?.includes('signed') === true)
+  /* ★★ AZ5 — les contacts rangés par rôle : la même ligne, colonne `contacts`. */
+  const ranked = drive('setInstitutionContacts', () => setInstitutionContacts(instId, [{ id: 'ic-p1', role: 'head', name: 'הרב בדיקה', phone: '050-0000998', note: '' }]))
+  check('setInstitutionContacts : la ligne porte le contact et le miroir du rang 1', (hit(ranked, 'institutions', instId)?.json ?? '').includes('הרב בדיקה') && (hit(ranked, 'institutions', instId)?.json ?? '').includes('050-0000998'))
   let manualId = ''
   const made = drive('createInstitution', () => {
     manualId = createInstitution({ name: 'מדרשת בדיקה', locality: 'אופקים', kind: 'midrasha', audience: 'girls' }).id
@@ -1453,6 +1457,8 @@ section('7 — every mutation @core exports is driven above')
        `getVersion` : rien à relire derrière. Ses deux frères `seedTestData` et
        `purgeTestData`, eux, sont conduits en 6bis. */
     'testDataCount',
+    /* ★★ AZ5 — fabrique un identifiant de contact, n'écrit rien. */
+    'newInstitutionContactId',
   ])
   const mutations = exported.filter((n) => !NOT_MUTATIONS.has(n))
   const uncovered = mutations.filter((n) => !driven.has(n))

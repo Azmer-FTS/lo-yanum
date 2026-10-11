@@ -161,6 +161,8 @@ export {
   // ★★ AU3 — les institutions.
   applyInstitutionPlan,
   updateInstitution,
+  setInstitutionContacts,
+  newInstitutionContactId,
   createInstitution,
   deleteInstitution,
   // ★★ AV2 — l'épingle posée sur la carte.

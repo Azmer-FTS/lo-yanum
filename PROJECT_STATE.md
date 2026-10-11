@@ -104,6 +104,32 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **AZ5 — CONTACTS D'INSTITUTION RANGÉS PAR RÔLE** (2026-10-11, tâche de
+  données courte, faite AU MILIEU de la passe AZ). Commit : __AZ5_COMMIT__.
+  Récit complet : `ETAT.md` § AZ5 (en tête). L'essentiel :
+  - **Modèle** : `institutions.contacts` (jsonb), rôles `head` (ראש ישיבה /
+    מנהל si `kind='school'`, UN SEUL) → `ram` → `coordinator` (0..1) →
+    `assistant`/`contact`. `contact_name/phone` = MIROIR du rang 1, tenu par
+    `settleInstitution` (TOUTE écriture d'institution passe par elle dans le
+    store, et `fromRows`). Sans rang 1 : miroir vide + « חסר ראש ישיבה ».
+    ⛔ Jamais de « premier à appeler », jamais de promotion d'un autre rôle.
+    « קטינים » (`minors_age_min/max`) : information seule, aucune règle.
+  - **Base** : migration `20261011000400` appliquée par le MCP, jalon
+    `20261011202550`, repair fait. Données posées (SQL protecteur, privé :
+    `private/az/az5-contacts.sql`, valeurs d'avant `private/az/az5-avant.txt`).
+    Relu : 13 institutions, 14 contacts, miroir faux 0.
+  - **Portes** : `bun run az5pass` (A380–A384, 18/18), `bun run az5ui`
+    (A385–A387, 21/21 local ; déployé : __AZ5_DEPLOYED__).
+  - **Questions ouvertes au PO** : « מכינת עצם » = מכינת עצמונה ? ; ישיבה
+    תיכונית נווה = ישיבת נוה דקלים (fusion) ? ; כפר מיימון ou שדות נגב ?
+  - ⚠️ **Travail AZ4 d'une autre session NON commité dans l'arbre** :
+    `src/core/routing.ts`, `src/core/tours.ts`, hunks « plan » de
+    `src/core/store.ts` et `src/data/rows.ts`, et
+    `supabase/migrations/20261011000300_az_tour_plan.sql` (PAS appliquée en
+    base : `migration list` la montre en attente). AZ5 a été commité SANS ces
+    hunks (`git apply --cached` d'un patch filtré) ; ils sont toujours dans
+    l'arbre de travail, intacts.
+
 - **Passe AZ EN COURS** (2026-10-11) — brief : rétablir le tableau, puis le
   filet de sécurité (AZ1 → AZ7). Ordre imposé : AZ1 + AZ2 commités ET
   déployés AVANT le reste, puis AZ3, puis AZ4–AZ6. Point d'étape (rien de

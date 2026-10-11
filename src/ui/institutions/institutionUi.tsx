@@ -3,10 +3,28 @@ import { useTranslation } from 'react-i18next'
 
 import { Link } from 'react-router-dom'
 
-import { INSTITUTION_ENGAGEMENTS, comparableInstitutionName, getDrivers, getVolunteers, isInstitutionToConfirm, setVolunteerRideWith, updateInstitution } from '@core/index'
-import type { Driver, Institution, InstitutionEngagement, Volunteer } from '@core/index'
+import {
+  INSTITUTION_CONTACT_ROLES,
+  INSTITUTION_ENGAGEMENTS,
+  SINGLE_CONTACT_ROLES,
+  comparableInstitutionName,
+  contactRoleKey,
+  getDrivers,
+  getVolunteers,
+  headRoleKey,
+  institutionContacts,
+  isInstitutionHeadMissing,
+  isInstitutionToConfirm,
+  minorsLabel,
+  newInstitutionContactId,
+  setInstitutionContacts,
+  setVolunteerRideWith,
+  updateInstitution,
+} from '@core/index'
+import type { Driver, Institution, InstitutionContact, InstitutionContactRole, InstitutionEngagement, Volunteer } from '@core/index'
 
 import { Avatar } from '../components/Avatar'
+import { NumberField } from '../components/fields'
 import { Icon } from '../components/Icon'
 import { useCoreValue } from '../hooks/useCore'
 import { runUndoable } from '../components/UndoToast'
@@ -53,22 +71,193 @@ export function EngagementSegments({ value, onChange, testId }: { value: Institu
   )
 }
 
-/** Statut d'engagement, contact, téléphone, note : éditables sur place. */
+/**
+ * ★★ AZ5 — « חסר ראש ישיבה » : le rang 1 n'est pas encore saisi. Une fiche à
+ * relancer, pas une alerte ; le libellé suit la nature (מנהל pour une école).
+ */
+export function HeadMissingChip({ inst }: { inst: Institution }) {
+  const { t } = useTranslation()
+  if (!isInstitutionHeadMissing(inst)) return null
+  return (
+    <span className="chip border border-status-warn bg-status-warn/15 text-micro text-status-warn-ink" data-testid={`institution-head-missing-${inst.id}`}>
+      {t(`institutions.headMissing.${headRoleKey(inst)}`)}
+    </span>
+  )
+}
+
+/**
+ * ★★ AZ5 — « קטינים » et la tranche d'âge. ⛔ UNE INFORMATION : ton neutre,
+ * aucune règle, aucun blocage, aucun avertissement n'en dépend.
+ */
+export function MinorsChip({ inst }: { inst: Institution }) {
+  const { t } = useTranslation()
+  const range = minorsLabel(inst)
+  if (!range) return null
+  return (
+    <span className="chip bg-surface-high text-micro text-content-secondary" data-testid={`institution-minors-${inst.id}`}>
+      <span className="ltr-nums">{t('institutions.minors', { range })}</span>
+    </span>
+  )
+}
+
+const telOf = (phone: string): string => `tel:${phone.replace(/[^\d+]/g, '')}`
+
+/**
+ * ★★ AZ5 — LES CONTACTS, RANGÉS PAR RÔLE, ÉDITÉS DEPUIS LA FICHE. Chaque
+ * ligne : rôle, nom, téléphone, note. Le rang 1 (ראש ישיבה / מנהל) et le רכז
+ * ne se portent qu'une fois : leur rôle est grisé ailleurs dès qu'il est pris.
+ * ⛔ Aucun « premier à appeler » : chaque ligne a son propre bouton d'appel.
+ */
+export function InstitutionContactsEditor({ inst }: { inst: Institution }) {
+  const { t } = useTranslation()
+  const contacts = institutionContacts(inst)
+  const [draft, setDraft] = useState<InstitutionContact | null>(null)
+  const taken = (role: InstitutionContactRole, self: string) => SINGLE_CONTACT_ROLES.includes(role) && contacts.some((c) => c.role === role && c.id !== self)
+  const save = (c: InstitutionContact) => {
+    if (contacts.some((x) => x.id === c.id)) {
+      setInstitutionContacts(inst.id, contacts.map((x) => (x.id === c.id ? c : x)))
+    } else if (c.name.trim() || c.phone.trim()) {
+      setInstitutionContacts(inst.id, [...contacts, c])
+      setDraft(null)
+    } else {
+      setDraft(c)
+    }
+  }
+  const remove = (c: InstitutionContact) =>
+    runUndoable(t('undo.deleted', { name: c.name || t(`institutions.role.${contactRoleKey(inst, c.role)}`) }), () =>
+      setInstitutionContacts(inst.id, contacts.filter((x) => x.id !== c.id)),
+    )
+  return (
+    <section className="flex flex-col gap-2" data-testid="institution-contacts" data-count={contacts.length}>
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-label font-semibold text-content-primary">{t('institutions.contacts')}</h3>
+        <HeadMissingChip inst={inst} />
+      </div>
+      {contacts.length === 0 && !draft && <p className="muted text-caption">{t('institutions.noContacts')}</p>}
+      <ul className="flex flex-col gap-2">
+        {[...contacts, ...(draft ? [draft] : [])].map((c) => (
+          <ContactRow key={c.id} inst={inst} contact={c} taken={(r) => taken(r, c.id)} onSave={save} onRemove={contacts.some((x) => x.id === c.id) ? () => remove(c) : () => setDraft(null)} />
+        ))}
+      </ul>
+      {!draft && (
+        <button
+          type="button"
+          className="btn-secondary min-h-11 self-start"
+          data-testid="institution-contact-add"
+          onClick={() => setDraft({ id: newInstitutionContactId(), role: isInstitutionHeadMissing(inst) ? 'head' : 'contact', name: '', phone: '', note: '' })}
+        >
+          <Icon name="plus" size={16} />
+          {t('institutions.addContact')}
+        </button>
+      )}
+    </section>
+  )
+}
+
+function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institution; contact: InstitutionContact; taken: (r: InstitutionContactRole) => boolean; onSave: (c: InstitutionContact) => void; onRemove: () => void }) {
+  const { t } = useTranslation()
+  const [name, setName] = useState(contact.name)
+  const [phone, setPhone] = useState(contact.phone)
+  const [note, setNote] = useState(contact.note)
+  useEffect(() => {
+    setName(contact.name)
+    setPhone(contact.phone)
+    setNote(contact.note)
+  }, [contact.id, contact.name, contact.phone, contact.note])
+  const commit = (patch: Partial<InstitutionContact>) => {
+    const next = { ...contact, name, phone, note, ...patch }
+    if (next.role !== contact.role || next.name !== contact.name || next.phone !== contact.phone || next.note !== contact.note) onSave(next)
+  }
+  const roleName = t(`institutions.role.${contactRoleKey(inst, contact.role)}`)
+  return (
+    <li className="rounded-card bg-surface-raised p-2.5 shadow-card" data-testid={`institution-contact-${contact.id}`} data-role={contact.role}>
+      <div className="grid gap-2 sm:grid-cols-[9.5rem_minmax(0,1fr)_10rem]">
+        <label className="flex flex-col gap-1">
+          <span className="text-micro font-semibold text-content-muted">{t('institutions.roleLabel')}</span>
+          <select className="input min-h-11" value={contact.role} onChange={(e) => commit({ role: e.target.value as InstitutionContactRole })} data-testid="institution-contact-role">
+            {INSTITUTION_CONTACT_ROLES.map((r) => (
+              <option key={r} value={r} disabled={taken(r)}>
+                {t(`institutions.role.${contactRoleKey(inst, r)}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-micro font-semibold text-content-muted">{t('institutions.contactName')}</span>
+          <input className="input min-h-11" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => commit({})} data-testid="institution-contact-name" />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-micro font-semibold text-content-muted">{t('institutions.contactPhone')}</span>
+          <input className="input ltr-nums min-h-11" inputMode="tel" dir="ltr" placeholder="05X-XXX-XXXX" value={phone} onChange={(e) => setPhone(e.target.value)} onBlur={() => commit({})} data-testid="institution-contact-phone" />
+        </label>
+      </div>
+      <div className="mt-2 flex flex-wrap items-end gap-2">
+        <label className="flex min-w-[12rem] flex-1 flex-col gap-1">
+          <span className="text-micro font-semibold text-content-muted">{t('institutions.contactNote')}</span>
+          <input className="input min-h-11" value={note} onChange={(e) => setNote(e.target.value)} onBlur={() => commit({})} data-testid="institution-contact-note" />
+        </label>
+        {contact.phone && (
+          <a href={telOf(contact.phone)} className="btn-secondary min-h-11" aria-label={t('institutions.callContact', { name: contact.name || roleName })}>
+            <Icon name="phone" size={16} />
+            {t('institutions.call')}
+          </a>
+        )}
+        <button type="button" className="btn-ghost min-h-11" onClick={onRemove} aria-label={t('institutions.removeContact', { name: contact.name || roleName })} data-testid="institution-contact-remove">
+          <Icon name="trash" size={16} />
+        </button>
+      </div>
+    </li>
+  )
+}
+
+/**
+ * ★★ AZ5 — les contacts, en lecture, rangés par rôle (aperçu, carte de
+ * couverture). Le rang 1 manquant est dit, jamais remplacé.
+ */
+export function InstitutionContactsList({ inst }: { inst: Institution }) {
+  const { t } = useTranslation()
+  const contacts = institutionContacts(inst)
+  return (
+    <ul className="flex flex-col divide-y divide-edge-subtle/60" data-testid="institution-contacts-list" data-count={contacts.length}>
+      {isInstitutionHeadMissing(inst) && (
+        <li className="py-2">
+          <HeadMissingChip inst={inst} />
+        </li>
+      )}
+      {contacts.map((c) => (
+        <li key={c.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-2 text-caption" data-role={c.role} data-testid={`institution-contact-line-${c.id}`}>
+          <span className="w-[5.5rem] shrink-0 text-content-muted">{t(`institutions.role.${contactRoleKey(inst, c.role)}`)}</span>
+          <span className="min-w-0 flex-1 font-semibold text-content-primary">{c.name || '—'}</span>
+          {c.phone && (
+            <a className="ltr-nums inline-flex min-h-[2.5rem] items-center gap-1 text-content-secondary hover:text-accent-ink" href={telOf(c.phone)} dir="ltr">
+              <Icon name="phone" size={14} />
+              {c.phone}
+            </a>
+          )}
+          {c.note && <span className="basis-full text-micro text-content-muted" dir="auto">{c.note}</span>}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** Statut d'engagement, contacts (★★ AZ5), note : éditables sur place. */
 export function InstitutionEditor({ inst }: { inst: Institution }) {
   const { t } = useTranslation()
-  const [contact, setContact] = useState(inst.contactName)
-  const [phone, setPhone] = useState(inst.contactPhone)
   const [notes, setNotes] = useState(inst.notes)
   useEffect(() => {
-    setContact(inst.contactName)
-    setPhone(inst.contactPhone)
     setNotes(inst.notes)
-  }, [inst.id, inst.contactName, inst.contactPhone, inst.notes])
+  }, [inst.id, inst.notes])
   return (
     <div className="flex flex-col gap-3" data-testid="institution-editor">
       <p className="muted text-caption">
         {[inst.locality, t(`institutions.kind.${inst.kind}`), t(`institutions.audience.${inst.audience}`), inst.network].filter(Boolean).join(' · ')}
       </p>
+      {inst.minorsAge && (
+        <p className="flex flex-wrap gap-1.5">
+          <MinorsChip inst={inst} />
+        </p>
+      )}
       {inst.positionUncertain && (
         <p className="rounded-field bg-status-warn/15 px-3 py-2 text-caption font-semibold text-status-warn-ink" data-testid="institution-uncertain">
           {t('institutions.uncertainLong')}
@@ -100,26 +289,16 @@ export function InstitutionEditor({ inst }: { inst: Institution }) {
           )}
         </dl>
       )}
-      <div className="grid gap-2 sm:grid-cols-2">
-        <label className="flex flex-col gap-1">
-          <span className="text-caption font-semibold text-content-secondary">{t('institutions.contactName')}</span>
-          <input className="input" value={contact} onChange={(e) => setContact(e.target.value)} onBlur={() => contact !== inst.contactName && updateInstitution(inst.id, { contactName: contact.trim() })} data-testid="institution-contact" />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-caption font-semibold text-content-secondary">{t('institutions.contactPhone')}</span>
-          <input className="input ltr-nums" inputMode="tel" dir="ltr" placeholder="05X-XXXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} onBlur={() => phone !== inst.contactPhone && updateInstitution(inst.id, { contactPhone: phone.trim() })} data-testid="institution-phone" />
-        </label>
-      </div>
+      <InstitutionContactsEditor inst={inst} />
       <label className="flex flex-col gap-1">
         <span className="text-caption font-semibold text-content-secondary">{t('institutions.notes')}</span>
         <textarea className="input min-h-[3.5rem]" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={() => notes !== inst.notes && updateInstitution(inst.id, { notes })} />
       </label>
-      {inst.contactPhone && (
-        <a href={`tel:${inst.contactPhone.replace(/[^\d+]/g, '')}`} className="btn-secondary self-start">
-          <Icon name="phone" size={16} />
-          {t('institutions.call')}
-        </a>
-      )}
+      {/* ★★ AZ5 — la mention « קטינים » : une information, modifiable ici. */}
+      <div className="grid grid-cols-2 gap-2 sm:max-w-[20rem]" data-testid="institution-minors-edit">
+        <NumberField label={`${t('institutions.minorsLabel')} · ${t('institutions.minorsFrom')}`} value={inst.minorsAge?.min ?? null} allowEmpty min={0} max={25} onCommit={(n) => updateInstitution(inst.id, { minorsAge: n === null ? null : { min: n, max: Math.max(n, inst.minorsAge?.max ?? n) } })} />
+        <NumberField label={t('institutions.minorsTo')} value={inst.minorsAge?.max ?? null} allowEmpty min={0} max={25} onCommit={(n) => updateInstitution(inst.id, { minorsAge: n === null ? null : { min: Math.min(n, inst.minorsAge?.min ?? n), max: n } })} />
+      </div>
     </div>
   )
 }

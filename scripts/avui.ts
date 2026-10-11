@@ -79,6 +79,9 @@ const TOUR = [...sql.matchAll(/\('(inst-[^']+)', '([^']+)', '([^']+)', '([^']+)'
   ...MAPPINGS.institutions.toRows(INSTITUTIONS[0])[0].rows[0],
   id: m[1], name: m[2], locality: m[3], kind: m[4], audience: m[5], lat: +m[6], lng: +m[7], position_uncertain: m[8] === 'true',
   engagement: 'signed', engagement_confirmed: false, contact_name: m[9], met_on: '2026-10-08', source: 'manual', aliases: '', position_source: 'web', students: null,
+  /* ★★ AZ5 — la forme de la base depuis AZ5 : la personne nommée en AV est le rang 1. */
+  contacts: m[9] ? [{ id: `ic-${m[1]}`, role: 'head', name: m[9], phone: '', note: '' }] : [],
+  contact_phone: '',
 }))
 
 function seed(db: FakeDb): void {

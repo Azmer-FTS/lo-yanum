@@ -30,7 +30,7 @@ import { ChevronForward, Icon } from '../../components/Icon'
 import { MapPanel } from '../../components/MapPanel'
 import type { MapLink, MapMarker, MapRouteLine } from '../../components/MapView'
 import { PageHeader, Section } from '../../components/primitives'
-import { ENGAGEMENT_ON, peopleOf } from '../../institutions/institutionUi'
+import { ENGAGEMENT_ON, HeadMissingChip, MinorsChip, peopleOf } from '../../institutions/institutionUi'
 import { useCoreValue } from '../../hooks/useCore'
 import { measureMeshPair } from '../../routing/roadNetwork'
 import { meshPair, requestMeshPairs, useRoadMesh } from '../../routing/roadMesh'
@@ -863,6 +863,9 @@ function InstitutionFigures({
             <span className={`chip border ${ENGAGEMENT_ON[inst.engagement]}`}>{t(`institutions.engagement.${inst.engagement}`)}</span>
             {isInstitutionToConfirm(inst) && <span className="chip bg-status-warn/15 text-status-warn-ink">{t('institutions.toConfirm')}</span>}
             {inst.positionUncertain && <span className="chip bg-status-warn/15 text-status-warn-ink" data-testid="coverage-uncertain-chip">{t('institutions.uncertain')}</span>}
+            {/* ★★ AZ5 — le contact affiché est le rang 1 ; sans lui, on le dit. */}
+            <HeadMissingChip inst={inst} />
+            <MinorsChip inst={inst} />
           </p>
           {(inst.contactName || inst.metOn || inst.students !== null) && (
             <p className="mt-1 text-caption text-content-secondary" data-testid="coverage-institution-facts">

@@ -269,6 +269,7 @@
       "mechina": "Mékhina",
       "hesder": "Yeshivat hesder",
       "midrasha": "Midrasha",
+      "school": "Lycée",
       "other": "Autre"
     },
     "audience": {
@@ -343,7 +344,32 @@
     "studentsShort_two": "{{count}} élèves",
     "studentsShort_other": "{{count}} élèves",
     "positionSource": "Source du point",
-    "audienceLabel": "Public"
+    "audienceLabel": "Public",
+    "role": {
+      "head": "Rosh yeshiva",
+      "principal": "Directeur",
+      "ram": "Ram",
+      "coordinator": "Rakaz",
+      "assistant": "Assistant",
+      "contact": "Contact"
+    },
+    "headMissing": {
+      "head": "Rosh yeshiva manquant",
+      "principal": "Directeur manquant"
+    },
+    "headMissingTab": "Chef manquant",
+    "headMissingTitle": "Institutions dont le chef n’est pas encore saisi",
+    "contacts": "Contacts",
+    "addContact": "Ajouter un contact",
+    "contactNote": "Note",
+    "removeContact": "Retirer {{name}}",
+    "roleLabel": "Rôle",
+    "noContacts": "Aucun contact pour l’instant",
+    "minors": "Mineurs · {{range}}",
+    "minorsLabel": "Mineurs — âges",
+    "minorsFrom": "De",
+    "minorsTo": "À",
+    "callContact": "Appeler {{name}}"
   },
   "quickPin": {
     "button": "Poser une épingle sur la carte",

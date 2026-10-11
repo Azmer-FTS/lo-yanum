@@ -23,6 +23,8 @@
     "ayui": "bun run scripts/ayui.ts",
     "azui": "bun run scripts/azui.ts",
     "aztheme": "bun run scripts/aztheme.ts",
+    "az5pass": "bun run scripts/az5pass.ts",
+    "az5ui": "bun run scripts/az5ui.ts",
     "azcaptures": "bun run scripts/azcaptures.ts",
     "aymobile": "bun run scripts/aymobile.ts",
     "aypins": "bun run scripts/aypins.ts",

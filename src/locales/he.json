@@ -2892,6 +2892,7 @@
       "mechina": "מכינה",
       "hesder": "ישיבת הסדר",
       "midrasha": "מדרשה",
+      "school": "תיכון",
       "other": "מוסד אחר"
     },
     "audience": {
@@ -2974,7 +2975,32 @@
     "studentsShort_two": "{{count}} תלמידים",
     "studentsShort_other": "{{count}} תלמידים",
     "positionSource": "מקור המיקום",
-    "audienceLabel": "קהל"
+    "audienceLabel": "קהל",
+    "role": {
+      "head": "ראש ישיבה",
+      "principal": "מנהל",
+      "ram": "ר״מ",
+      "coordinator": "רכז",
+      "assistant": "עוזר",
+      "contact": "איש קשר"
+    },
+    "headMissing": {
+      "head": "חסר ראש ישיבה",
+      "principal": "חסר מנהל"
+    },
+    "headMissingTab": "חסר ראש",
+    "headMissingTitle": "מוסדות שעוד חסר בהם ראש הישיבה או המנהל",
+    "contacts": "אנשי קשר",
+    "addContact": "הוספת איש קשר",
+    "contactNote": "הערה",
+    "removeContact": "הסרת {{name}}",
+    "roleLabel": "תפקיד",
+    "noContacts": "אין עדיין אנשי קשר",
+    "minors": "קטינים · {{range}}",
+    "minorsLabel": "קטינים — גילאים",
+    "minorsFrom": "מגיל",
+    "minorsTo": "עד גיל",
+    "callContact": "להתקשר אל {{name}}"
   },
   "quickPin": {
     "button": "הנחת סיכה על המפה",

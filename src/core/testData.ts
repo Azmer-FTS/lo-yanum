@@ -253,6 +253,12 @@ export function buildTestData(): TestDataset {
     engagement: 'signed',
     contactName: 'רב בדיקה',
     contactPhone: '050-0000010',
+    /* ★★ AZ5 — la hiérarchie, pour juger l'écran : rang 1, ר״מ, רכז. */
+    contacts: [
+      { id: `${TEST_PREFIX}ic-1`, role: 'head', name: 'רב בדיקה', phone: '050-0000010', note: '' },
+      { id: `${TEST_PREFIX}ic-2`, role: 'ram', name: 'ר״מ בדיקה', phone: '050-0000011', note: '' },
+      { id: `${TEST_PREFIX}ic-3`, role: 'coordinator', name: 'רכז בדיקה', phone: '050-0000012', note: 'תלמיד' },
+    ],
     notes: 'נתוני בדיקה',
     extra: '',
     source: 'manual',

@@ -31,7 +31,7 @@ import type { LatLng } from './types'
  *   affiché, pas un sixième statut.
  */
 
-export type InstitutionKind = 'mechina' | 'hesder' | 'midrasha' | 'other'
+export type InstitutionKind = 'mechina' | 'hesder' | 'midrasha' | 'school' | 'other'
 export type InstitutionAudience = 'boys' | 'girls' | 'mixed' | 'unknown'
 export type InstitutionEngagement = 'not_contacted' | 'contacted' | 'interested' | 'signed' | 'not_relevant'
 
@@ -43,7 +43,7 @@ export const INSTITUTION_ENGAGEMENTS: readonly InstitutionEngagement[] = [
   'not_relevant',
 ] as const
 
-export const INSTITUTION_KINDS: readonly InstitutionKind[] = ['mechina', 'hesder', 'midrasha', 'other'] as const
+export const INSTITUTION_KINDS: readonly InstitutionKind[] = ['mechina', 'hesder', 'midrasha', 'school', 'other'] as const
 export const INSTITUTION_AUDIENCES: readonly InstitutionAudience[] = ['boys', 'girls', 'mixed', 'unknown'] as const
 
 export interface Institution {
@@ -65,10 +65,22 @@ export interface Institution {
    */
   positionUncertain: boolean
   engagement: InstitutionEngagement
-  /** AU3.3 — à compléter par le PO. */
+  /**
+   * ★★ AZ5 — LE CONTACT QUI REPRÉSENTE L'INSTITUTION = le rang 1 (ראש ישיבה /
+   * מנהל), et lui seul. ⛔ Ce n'est PLUS un champ qu'on saisit : c'est le
+   * MIROIR de `contacts`, tenu par `settleInstitution` (store). Vide quand il
+   * n'y a pas de rang 1 — jamais un autre contact à sa place.
+   */
   contactName: string
-  /** Format de l'app : `05X-XXXXXXX` (voir `formatContactPhone`). */
+  /** Le téléphone du rang 1 (miroir), même règle. */
   contactPhone: string
+  /** ★★ AZ5 — tous les contacts, rangés par rôle (`sortInstitutionContacts`). */
+  contacts?: InstitutionContact[]
+  /**
+   * ★★ AZ5 — mention « קטינים » et sa tranche d'âge. UNE INFORMATION, rien
+   * d'autre : aucune règle, aucun blocage, aucune alerte n'en dépend.
+   */
+  minorsAge?: { min: number; max: number } | null
   notes: string
   /** Les colonnes du classeur que l'app ne lit pas (distances…), au texte près. */
   extra: string
@@ -99,6 +111,101 @@ export const isInstitutionEngaged = (i: Pick<Institution, 'engagement'>): boolea
 /** ★ La seule définition d'« à démarcher ». */
 export const isInstitutionProspect = (i: Pick<Institution, 'engagement'>): boolean =>
   i.engagement === 'not_contacted' || i.engagement === 'contacted' || i.engagement === 'interested'
+
+// ---------------------------------------------------------------------------
+// ★★ AZ5 (2026-10-11) — LES CONTACTS D'UNE INSTITUTION, RANGÉS PAR RÔLE.
+// ---------------------------------------------------------------------------
+
+/**
+ * La hiérarchie est FIXE, et l'application RANGE, elle ne choisit pas :
+ *   1. `head` — ראש ישיבה / מנהל. UN SEUL. Il représente l'institution
+ *      (liste, tableau, carte, aperçu, export), même s'il décroche rarement.
+ *   2. `ram` — ר״מ, sous son autorité. Zéro, un ou plusieurs.
+ *   3. `coordinator` — רכז, désigné pour les volontaires. Zéro ou un.
+ *   4. `assistant` / `contact` — עוזר, איש קשר. Zéro ou plusieurs.
+ * ⛔ Pas de « premier à appeler » : le PO juge lui-même qui appeler.
+ * ⛔ Sans rang 1, l'institution n'a PAS de contact affiché : « חסר ראש
+ *    ישיבה », jamais le ר״מ ou le רכז promu à sa place.
+ */
+export type InstitutionContactRole = 'head' | 'ram' | 'coordinator' | 'assistant' | 'contact'
+export const INSTITUTION_CONTACT_ROLES: readonly InstitutionContactRole[] = ['head', 'ram', 'coordinator', 'assistant', 'contact'] as const
+export const CONTACT_ROLE_RANK: Record<InstitutionContactRole, number> = { head: 1, ram: 2, coordinator: 3, assistant: 4, contact: 4 }
+/** Les rôles qui ne se portent qu'une fois par institution. */
+export const SINGLE_CONTACT_ROLES: readonly InstitutionContactRole[] = ['head', 'coordinator'] as const
+
+export interface InstitutionContact {
+  id: string
+  role: InstitutionContactRole
+  name: string
+  phone: string
+  /** Une note libre, courte. */
+  note: string
+}
+
+/** Rangés par rôle ; à rôle égal, l'ordre de saisie est gardé (tri stable). */
+export function sortInstitutionContacts(contacts: readonly InstitutionContact[]): InstitutionContact[] {
+  return [...contacts].sort((a, b) => CONTACT_ROLE_RANK[a.role] - CONTACT_ROLE_RANK[b.role])
+}
+
+export const institutionContacts = (i: Pick<Institution, 'contacts'>): InstitutionContact[] => sortInstitutionContacts(i.contacts ?? [])
+
+/** Le rang 1, ou `null`. */
+export const institutionHead = (i: Pick<Institution, 'contacts'>): InstitutionContact | null => (i.contacts ?? []).find((c) => c.role === 'head') ?? null
+
+/** ★ La seule définition de « חסר ראש ישיבה ». */
+export const isInstitutionHeadMissing = (i: Pick<Institution, 'contacts'>): boolean => institutionHead(i) === null
+
+/**
+ * Le libellé du rang 1 suit la nature de l'établissement : מנהל pour une
+ * école, ראש ישיבה pour les autres (clé `institutions.role.head` / `principal`).
+ */
+export const headRoleKey = (i: Pick<Institution, 'kind'>): 'head' | 'principal' => (i.kind === 'school' ? 'principal' : 'head')
+export const contactRoleKey = (i: Pick<Institution, 'kind'>, role: InstitutionContactRole): string => (role === 'head' ? headRoleKey(i) : role)
+
+const digitsOf = (s: string): string => s.replace(/\D/g, '')
+
+/**
+ * ★★ AZ5 — LA RÈGLE, À UN SEUL ENDROIT. Chaque écriture d'une institution
+ * passe par ici (store) :
+ *   · un `contactName` / `contactPhone` écrit par un chemin d'avant AZ5
+ *     (import d'un classeur, fusion d'une fiche .vcf, /add) ne sait pas QUI
+ *     est la personne : elle entre comme « איש קשר », jamais comme rang 1 ;
+ *   · le miroir est ensuite recalculé depuis le rang 1 ;
+ *   · un deuxième « ראש ישיבה » ou « רכז » est rétrogradé en איש קשר (la
+ *     personne n'est pas perdue, le rang reste unique).
+ */
+export function settleInstitution<T extends Institution>(next: T, prev?: Institution): T {
+  let contacts = [...(next.contacts ?? [])]
+  const mirror = (cs: readonly InstitutionContact[]) => {
+    const h = cs.find((c) => c.role === 'head')
+    return { name: h?.name ?? '', phone: h?.phone ?? '' }
+  }
+  const before = mirror(prev ? prev.contacts ?? [] : contacts)
+  const legacyName = next.contactName !== before.name && next.contactName.trim() !== '' ? next.contactName.trim() : ''
+  const legacyPhone = next.contactPhone !== before.phone && next.contactPhone.trim() !== '' ? next.contactPhone.trim() : ''
+  const contactsTouched = prev ? next.contacts !== prev.contacts : false
+  if (!contactsTouched && (legacyName || legacyPhone)) {
+    const known = contacts.some(
+      (c) => (legacyPhone && digitsOf(c.phone) !== '' && digitsOf(c.phone) === digitsOf(legacyPhone)) || (legacyName && !legacyPhone && c.name.trim() === legacyName),
+    )
+    if (!known) {
+      contacts.push({ id: `ic-${next.id}-${contacts.length + 1}-${digitsOf(legacyPhone) || legacyName.length}`, role: 'contact', name: legacyName, phone: legacyPhone, note: '' })
+    }
+  }
+  const seen = new Set<InstitutionContactRole>()
+  contacts = contacts.map((c) => {
+    if (!SINGLE_CONTACT_ROLES.includes(c.role)) return c
+    if (seen.has(c.role)) return { ...c, role: 'contact' as const }
+    seen.add(c.role)
+    return c
+  })
+  contacts = sortInstitutionContacts(contacts)
+  const m = mirror(contacts)
+  return { ...next, contacts, contactName: m.name, contactPhone: m.phone }
+}
+
+/** « קטינים · 15–18 », ou rien. */
+export const minorsLabel = (i: Pick<Institution, 'minorsAge'>): string | null => (i.minorsAge ? `${i.minorsAge.min}–${i.minorsAge.max}` : null)
 
 // ---------------------------------------------------------------------------
 // AU3.4 — les quatre points marqués incertains dans le classeur du PO.
@@ -192,6 +299,7 @@ export function readInstitutionKind(raw: string, name = ''): InstitutionKind {
   if (/מכינ|mechin|pre.?army/i.test(s)) return 'mechina'
   if (/הסדר|hesder|ישיב/i.test(s)) return 'hesder'
   if (/מדרש|midrash/i.test(s)) return 'midrasha'
+  if (/תיכון|בית ספר|school/i.test(s)) return 'school'
   if (raw.trim() === '' && name) return readInstitutionKind(name)
   return 'other'
 }
@@ -382,7 +490,8 @@ export function planInstitutionImport(input: {
       actions.push({
         kind: 'create',
         row,
-        institution: {
+        /* ★★ AZ5 — déjà rangée : la personne du classeur n'est pas le rang 1. */
+        institution: settleInstitution({
           id: institutionIdOf(row.name, row.locality),
           name: row.name,
           locality: row.locality,
@@ -404,7 +513,7 @@ export function planInstitutionImport(input: {
           aliases: '',
           createdAt: input.nowIso,
           updatedAt: input.nowIso,
-        },
+        }),
       })
       continue
     }

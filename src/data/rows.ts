@@ -2,7 +2,8 @@ import type { Collection, StoreData } from '@core/backend'
 import type { Tour } from '@core/tours'
 import { splitLegacyDunams } from '@core/fields'
 import { normalizeLeadStatus } from '@core/leads'
-import type { Institution } from '@core/institutions'
+import type { Institution, InstitutionContact } from '@core/institutions'
+import { INSTITUTION_CONTACT_ROLES, settleInstitution } from '@core/institutions'
 import type { Landmark } from '@core/landmarks'
 import type {
   Agreement,
@@ -1208,6 +1209,9 @@ const institutionMapping: Mapping<Institution> = {
           engagement: i.engagement,
           contact_name: i.contactName,
           contact_phone: i.contactPhone,
+          contacts: i.contacts ?? [],
+          minors_age_min: i.minorsAge?.min ?? null,
+          minors_age_max: i.minorsAge?.max ?? null,
           notes: i.notes,
           extra: i.extra,
           source: i.source,
@@ -1222,7 +1226,9 @@ const institutionMapping: Mapping<Institution> = {
       ],
     },
   ],
-  fromRows: (p): Institution => ({
+  /* ★★ AZ5 — `settleInstitution` : une ligne d'avant AZ5 (sans `contacts`)
+     garde sa personne comme « איש קשר », jamais promue rang 1. */
+  fromRows: (p): Institution => settleInstitution({
     id: str(p.id),
     name: str(p.name),
     locality: str(p.locality),
@@ -1245,7 +1251,23 @@ const institutionMapping: Mapping<Institution> = {
     aliases: str(p.aliases),
     createdAt: ts(p.created_at),
     updatedAt: ts(p.updated_at),
+    ...(typeof p.minors_age_min === 'number' && typeof p.minors_age_max === 'number' ? { minorsAge: { min: p.minors_age_min, max: p.minors_age_max } } : {}),
+    contacts: readInstitutionContacts(p.contacts),
   }),
+}
+
+const CONTACT_ROLES = new Set<string>(INSTITUTION_CONTACT_ROLES)
+function readInstitutionContacts(raw: unknown): InstitutionContact[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((c): c is Record<string, unknown> => !!c && typeof c === 'object')
+    .map((c, n) => ({
+      id: str(c.id) || `ic-${n + 1}`,
+      role: (CONTACT_ROLES.has(str(c.role)) ? str(c.role) : 'contact') as InstitutionContact['role'],
+      name: str(c.name),
+      phone: str(c.phone),
+      note: str(c.note),
+    }))
 }
 
 /** ★★ AV2 — les points de repère. Une table, aucune fille. */

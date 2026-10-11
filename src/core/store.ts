@@ -16,7 +16,8 @@ import { buildTestData, isTestId } from './testData'
 import type { ProspectionPlan } from './prospection'
 import type { Tour } from './tours'
 import type { PortalPlan } from './portalImport'
-import type { Institution, InstitutionPlan } from './institutions'
+import type { Institution, InstitutionContact, InstitutionPlan } from './institutions'
+import { settleInstitution } from './institutions'
 import type { Landmark } from './landmarks'
 import type {
   Agreement,
@@ -2540,12 +2541,12 @@ export function applyInstitutionPlan(plan: InstitutionPlan): { created: number; 
   for (const action of plan.actions) {
     if (action.kind === 'create') {
       if (data.institutions.some((i) => i.id === action.institution.id)) continue
-      created.push({ ...action.institution, createdAt: stamp, updatedAt: stamp })
+      created.push(settleInstitution({ ...action.institution, createdAt: stamp, updatedAt: stamp }))
       out.created++
     } else if (action.kind === 'update') {
       const i = data.institutions.findIndex((x) => x.id === action.id)
       if (i === -1) continue
-      data.institutions[i] = { ...data.institutions[i], ...action.patch, updatedAt: stamp }
+      data.institutions[i] = settleInstitution({ ...data.institutions[i], ...action.patch, updatedAt: stamp }, data.institutions[i])
       out.updated++
     }
   }
@@ -2557,9 +2558,19 @@ export function applyInstitutionPlan(plan: InstitutionPlan): { created: number; 
 export function updateInstitution(id: string, patch: Partial<Omit<Institution, 'id'>>): void {
   const index = data.institutions.findIndex((i) => i.id === id)
   if (index === -1) return
-  data.institutions[index] = { ...data.institutions[index], ...patch, updatedAt: iso(now()) }
+  data.institutions[index] = settleInstitution({ ...data.institutions[index], ...patch, updatedAt: iso(now()) }, data.institutions[index])
   commit()
 }
+
+/**
+ * ★★ AZ5 — les contacts d'une institution, depuis sa fiche. La liste entière
+ * est réécrite ; `settleInstitution` la range et recalcule le rang 1 affiché.
+ */
+export function setInstitutionContacts(id: string, contacts: InstitutionContact[]): void {
+  updateInstitution(id, { contacts: contacts.map((c) => ({ ...c, name: c.name.trim(), phone: c.phone.trim(), note: c.note.trim() })) })
+}
+
+export const newInstitutionContactId = (): string => nextId('ic')
 
 /** Une institution saisie à la main (sans classeur). */
 export function createInstitution(
@@ -2586,6 +2597,7 @@ export function createInstitution(
     createdAt: stamp,
     updatedAt: stamp,
   }
+  Object.assign(created, settleInstitution(created))
   data.institutions = [...data.institutions, created]
   commit()
   return created

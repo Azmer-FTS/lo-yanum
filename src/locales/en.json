@@ -269,6 +269,7 @@
       "mechina": "Pre-army academy",
       "hesder": "Hesder yeshiva",
       "midrasha": "Midrasha",
+      "school": "High school",
       "other": "Other"
     },
     "audience": {
@@ -343,7 +344,32 @@
     "studentsShort_two": "{{count}} students",
     "studentsShort_other": "{{count}} students",
     "positionSource": "Place source",
-    "audienceLabel": "Audience"
+    "audienceLabel": "Audience",
+    "role": {
+      "head": "Rosh yeshiva",
+      "principal": "Principal",
+      "ram": "Ram",
+      "coordinator": "Coordinator",
+      "assistant": "Assistant",
+      "contact": "Contact"
+    },
+    "headMissing": {
+      "head": "No rosh yeshiva yet",
+      "principal": "No principal yet"
+    },
+    "headMissingTab": "No head",
+    "headMissingTitle": "Institutions whose head is not entered yet",
+    "contacts": "Contacts",
+    "addContact": "Add a contact",
+    "contactNote": "Note",
+    "removeContact": "Remove {{name}}",
+    "roleLabel": "Role",
+    "noContacts": "No contacts yet",
+    "minors": "Minors · {{range}}",
+    "minorsLabel": "Minors — ages",
+    "minorsFrom": "From",
+    "minorsTo": "To",
+    "callContact": "Call {{name}}"
   },
   "quickPin": {
     "button": "Drop a pin on the map",

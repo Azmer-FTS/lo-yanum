@@ -78,6 +78,8 @@ export const TOUR: Institution[] = AW_INSTITUTIONS.map((i, n) => ({
   positionUncertain: false,
   contactName: n === 0 ? 'רב בדיקה' : '',
   contactPhone: n === 0 ? '050-0000301' : '',
+  /* ★★ AZ5 — la forme de la base depuis AZ5 : le contact affiché est le rang 1. */
+  contacts: n === 0 ? [{ id: 'ic-ay-1', role: 'head' as const, name: 'רב בדיקה', phone: '050-0000301', note: '' }] : [],
 }))
 const INST_ROWS = TOUR.map((i) => MAPPINGS.institutions.toRows(i)[0].rows[0])
 const now = new Date().toISOString()

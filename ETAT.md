@@ -1,5 +1,64 @@
 # לא ינום — ETAT
 
+> 🏁 **AZ5 — LES CONTACTS D'UNE INSTITUTION, RANGÉS PAR RÔLE. 2026-10-11.**
+>
+> **Le modèle.** Une institution porte PLUSIEURS contacts (`institutions.contacts`,
+> jsonb : `{id, role, name, phone, note}`), rangés par une hiérarchie FIXE :
+> `head` (ראש ישיבה, ou מנהל quand `kind = 'school'` — UN SEUL) → `ram` (ר״מ,
+> 0..n) → `coordinator` (רכז, 0..1) → `assistant` / `contact` (עוזר, איש קשר,
+> 0..n). **Le rang 1 REPRÉSENTE l'institution** : `contact_name` /
+> `contact_phone` restent, mais comme MIROIR du rang 1, recalculé à chaque
+> écriture par `settleInstitution` (`src/core/institutions.ts`) — liste,
+> tableau, vignette, aperçu, carte de couverture lisent ce miroir. Sans rang 1,
+> le miroir est VIDE et l'écran dit « חסר ראש ישיבה » / « חסר מנהל » — jamais
+> un ר״מ ou un רכז à sa place. ⛔ Aucun « premier à appeler » : chaque contact
+> a son bouton d'appel, le PO choisit. Un chemin d'avant AZ5 qui écrit
+> `contactName` (import d'un classeur, fusion .vcf, /add) ne sait pas QUI est
+> la personne : elle entre comme « איש קשר », jamais comme rang 1. Un second
+> rang 1 / רכז est rétrogradé en איש קשר (gardé, pas perdu). Il n'existe pas
+> d'export des institutions dans l'app (vérifié) : rien à aligner de ce côté.
+>
+> **« קטינים ».** `minors_age_min` / `minors_age_max` : une INFORMATION, ton
+> neutre, sur la fiche, la ligne, la vignette, l'aperçu, la carte de
+> couverture. ⛔ Aucune règle, aucun blocage, aucun avertissement n'en dépend —
+> A384 vérifie dans le code que rien d'autre ne la lit.
+>
+> **Où.** Fiche `/coordinator/institutions/:id` : `InstitutionContactsEditor`
+> (rôle, nom, téléphone, note ; ajouter, retirer avec annulation ; rôles uniques
+> grisés quand pris). Liste : colonne « איש קשר » = rang 1 ou la marque ; filtre
+> « חסר ראש » (`?filter=headMissing`) pour retrouver les fiches à relancer ;
+> aperçu : `InstitutionContactsList`.
+>
+> **Migration** `20261011000400_az_institution_contacts.sql` (additive :
+> `contacts`, `minors_age_*`, `kind` + `school`), appliquée par le MCP ; jalon
+> `20261011202550_jalon_historique_mcp.sql` ; `repair --status applied
+> 20261011000400`. `20261011000300_az_tour_plan.sql` (AZ4, autre session, NON
+> commitée) reste « en attente » — ce n'est pas une régression d'AZ5.
+>
+> **Données posées sur `lo-yanum-prod`** (SQL PROTECTEUR, règle 9bis : chaque
+> fiche n'est touchée que si `contacts = '[]'` ET `updated_at = created_at`, et
+> les onze l'étaient — aucune saisie du PO depuis AV). SQL et valeurs « avant » :
+> `private/az/` (ignoré : numéros réels, dépôt public). Relu après écriture :
+> **13 institutions, 14 contacts**, miroir faux 0, deux créées
+> (ישיבת אשקלון, ישיבת לב לדעת : « חתום » à confirmer, SANS point ni
+> localité — `position_source` le dit), aucune en double. Aucune institution
+> existante n'a changé de nom, de statut ni de position. Changements voulus :
+> שומריה לצעירים passe `kind other → school` + « קטינים 15–18 » ; ישיבת כפר
+> מיימון gagne l'alias « ישיבת שדות נגב » ; deux noms gardés/complétés (le nom
+> en base plus complet que le brief est gardé, le brief plus complet que la
+> base est pris). **Sans rang 1 (« חסר ראש ישיבה »)** : ישיבת דרך חיים
+> (ר״מ seul), מכינת כאייל (רכז seul), ישיבה תיכונית נווה (aucun contact).
+>
+> **Questions au PO** (rapport de la passe) : (1) le contact « מכינת עצם »
+> posé en איש קשר de מכינת עצמונה avec « לאישור » — même מכינה ? (2) ישיבה
+> תיכונית נווה = ישיבת נוה דקלים (à fusionner) ? (3) כפר מיימון ou שדות נגב :
+> quel nom est le bon (l'autre reste alias) ?
+>
+> **Portes.** `bun run az5pass` (A380–A384, pur, 18/18) ; `bun run az5ui`
+> (A385–A387, build réel ou déployé + base factice aux noms INVENTÉS, 21/21).
+> Adaptées : `persist` (setInstitutionContacts conduit), `ayharness` (la
+> fixture porte son rang 1, forme de la base depuis AZ5).
+
 > 🏁 **PASSE AY — BUGS BLOQUANTS, PUIS COHÉRENCE ET MOBILE. 2026-10-11. LIRE EN PREMIER.**
 >
 > Ordre suivi : AY1 (déployé seul d'abord, `cfab595`) → AY2–AY5 (`833e010`,

@@ -9,6 +9,7 @@ import {
   comparableInstitutionName,
   getInstitutions,
   getVolunteers,
+  isInstitutionHeadMissing,
   isInstitutionToConfirm,
   updateInstitution,
   isTestId,
@@ -28,7 +29,7 @@ import type { MapMarker } from '../../components/MapView'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { FilterPill, FilterRow, ListTop, PageHeader } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
-import { ENGAGEMENT_ON, InstitutionEditor, InstitutionPeople } from '../../institutions/institutionUi'
+import { ENGAGEMENT_ON, HeadMissingChip, InstitutionContactsList, InstitutionEditor, InstitutionPeople, MinorsChip } from '../../institutions/institutionUi'
 import { runUndoable } from '../../components/UndoToast'
 
 /**
@@ -48,7 +49,7 @@ import { runUndoable } from '../../components/UndoToast'
  * voit enfin rattachés à elle (étape 3).
  */
 
-type Filter = 'all' | 'toConfirm' | InstitutionEngagement
+type Filter = 'all' | 'toConfirm' | 'headMissing' | InstitutionEngagement
 const SORT_KEY = 'lo-yanum:institutions-sort'
 
 const ENGAGEMENT_TOKEN: Record<InstitutionEngagement, string> = {
@@ -70,7 +71,11 @@ export function InstitutionsScreen() {
   const institutions = useCoreValue(() => getInstitutions())
   const volunteers = useCoreValue(() => getVolunteers())
   /* ★ AY6 — la carte de couverture renvoie ici « à confirmer » (`?filter=toConfirm`). */
-  const [filter, setFilter] = useState<Filter>(() => (new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('filter') === 'toConfirm' ? 'toConfirm' : 'all'))
+  /* ★★ AZ5 — et « חסר ראש » (`?filter=headMissing`) : les fiches à relancer. */
+  const [filter, setFilter] = useState<Filter>(() => {
+    const f = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('filter')
+    return f === 'toConfirm' || f === 'headMissing' ? f : 'all'
+  })
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState<string | null>(null)
   const [flyKey, setFlyKey] = useState(0)
@@ -87,10 +92,11 @@ export function InstitutionsScreen() {
   const counts = useMemo(() => {
     /* ★★ AZ3.4 — le jeu d'essai se voit, marqué, mais ne compte pas. */
     const counted = institutions.filter((i) => !isTestId(i.id))
-    const out: Record<Filter, number> = { all: counted.length, toConfirm: 0, not_contacted: 0, contacted: 0, interested: 0, signed: 0, not_relevant: 0 }
+    const out: Record<Filter, number> = { all: counted.length, toConfirm: 0, headMissing: 0, not_contacted: 0, contacted: 0, interested: 0, signed: 0, not_relevant: 0 }
     for (const i of counted) {
       out[i.engagement] += 1
       if (isInstitutionToConfirm(i)) out.toConfirm += 1
+      if (isInstitutionHeadMissing(i)) out.headMissing += 1
     }
     return out
   }, [institutions])
@@ -98,8 +104,8 @@ export function InstitutionsScreen() {
 
   const q = query.trim()
   const visible = institutions
-    .filter((i) => filter === 'all' || (filter === 'toConfirm' ? isInstitutionToConfirm(i) : i.engagement === filter))
-    .filter((i) => !q || `${i.name} ${i.locality} ${i.network} ${i.contactName} ${i.aliases}`.includes(q))
+    .filter((i) => filter === 'all' || (filter === 'toConfirm' ? isInstitutionToConfirm(i) : filter === 'headMissing' ? isInstitutionHeadMissing(i) : i.engagement === filter))
+    .filter((i) => !q || `${i.name} ${i.locality} ${i.network} ${(i.contacts ?? []).map((c) => c.name).join(' ')} ${i.aliases}`.includes(q))
 
   /* ★★ AV1 — confirmer : UN toucher, sans ouvrir la fiche. Dans la colonne
      du tableau, et sur la vignette (★★ AZ4 — il ne doit pas disparaître quand
@@ -135,7 +141,18 @@ export function InstitutionsScreen() {
         </span>
       ),
     },
-    { key: 'contact', sub: (i) => i.contactName, label: t('institutionsScreen.col.contact'), sort: (i) => i.contactName, title: (i) => i.contactName, className: 'w-[13%]', minWidth: 980, render: (i) => <span className="text-content-secondary">{i.contactName || '—'}</span> },
+    /* ★★ AZ5 — « le contact » = le rang 1 (ראש ישיבה / מנהל), et lui seul. Sans
+       lui : « חסר ראש ישיבה », jamais un ר״מ ou un רכז à sa place. */
+    {
+      key: 'contact',
+      sub: (i) => i.contactName || t(`institutions.headMissing.${i.kind === 'school' ? 'principal' : 'head'}`),
+      label: t('institutionsScreen.col.contact'),
+      sort: (i) => i.contactName,
+      title: (i) => i.contactName,
+      className: 'w-[13%]',
+      minWidth: 980,
+      render: (i) => (i.contactName ? <span className="text-content-secondary">{i.contactName}</span> : <HeadMissingChip inst={i} />),
+    },
     {
       key: 'phone',
       sub: (i) => i.contactPhone,
@@ -193,7 +210,7 @@ export function InstitutionsScreen() {
     }))
   const openInst = institutions.find((i) => i.id === open) ?? null
 
-  const FILTERS: Filter[] = ['all', ...(counts.toConfirm > 0 ? (['toConfirm'] as const) : []), ...INSTITUTION_ENGAGEMENTS]
+  const FILTERS: Filter[] = ['all', ...(counts.toConfirm > 0 ? (['toConfirm'] as const) : []), ...(counts.headMissing > 0 ? (['headMissing'] as const) : []), ...INSTITUTION_ENGAGEMENTS]
 
   return (
     <MapSplit
@@ -242,10 +259,10 @@ export function InstitutionsScreen() {
                     active={filter === f}
                     onClick={() => setFilter(f)}
                     count={counts[f]}
-                    title={f === 'all' ? undefined : f === 'toConfirm' ? t('institutions.toConfirm') : t(`institutions.engagement.${f}`)}
+                    title={f === 'all' ? undefined : f === 'toConfirm' ? t('institutions.toConfirm') : f === 'headMissing' ? t('institutions.headMissingTitle') : t(`institutions.engagement.${f}`)}
                     testId={`institutions-filter-${f}`}
                   >
-                    {f === 'all' ? t('institutions.all') : f === 'toConfirm' ? t('institutions.toConfirmTab') : t(`institutions.engagementShort.${f}`)}
+                    {f === 'all' ? t('institutions.all') : f === 'toConfirm' ? t('institutions.toConfirmTab') : f === 'headMissing' ? t('institutions.headMissingTab') : t(`institutions.engagementShort.${f}`)}
                   </FilterPill>
                 ))}
               </FilterRow>
@@ -255,7 +272,12 @@ export function InstitutionsScreen() {
           <EntityTable
             rows={rows}
             rowKey={(i) => i.id}
-            lead={(i) => ({ title: i.name, shape: 'square', dot: <span className="h-2.5 w-2.5 shrink-0 rounded-pill" style={{ backgroundColor: readToken(ENGAGEMENT_TOKEN[i.engagement]) }} aria-hidden />, marks: <TestDataBadge id={i.id} /> })}
+            lead={(i) => ({ title: i.name, shape: 'square', dot: <span className="h-2.5 w-2.5 shrink-0 rounded-pill" style={{ backgroundColor: readToken(ENGAGEMENT_TOKEN[i.engagement]) }} aria-hidden />, marks: (
+                <>
+                  <TestDataBadge id={i.id} />
+                  <MinorsChip inst={i} />
+                </>
+              ) })}
             leadLabel={t('institutionsScreen.col.name')}
             leadSort={(i) => i.name}
             columns={columns}
@@ -300,7 +322,12 @@ function InstitutionPreview({ inst, onClose, docked }: { inst: Institution; onCl
       editTo={`/coordinator/institutions/${inst.id}`}
       onClose={onClose}
       testId="institution-preview"
-      chips={<span className={`chip border text-micro ${ENGAGEMENT_ON[inst.engagement]}`}>{t(`institutions.engagement.${inst.engagement}`)}</span>}
+      chips={
+        <>
+          <span className={`chip border text-micro ${ENGAGEMENT_ON[inst.engagement]}`}>{t(`institutions.engagement.${inst.engagement}`)}</span>
+          <MinorsChip inst={inst} />
+        </>
+      }
       quick={
         <>
           {inst.contactPhone && (
@@ -316,14 +343,16 @@ function InstitutionPreview({ inst, onClose, docked }: { inst: Institution; onCl
         </>
       }
     >
+      {/* ★★ AZ5 — les contacts, rangés par rôle ; le rang 1 en tête. */}
+      <PreviewSection title={t('institutions.contacts')}>
+        <InstitutionContactsList inst={inst} />
+      </PreviewSection>
       <PreviewSection title={t('institutionPeople.title')}>
         <div className="py-2">
           <InstitutionPeople inst={inst} />
         </div>
       </PreviewSection>
       <PreviewSection title={t('preview.details')}>
-        <PreviewRow label={t('institutionsScreen.col.contact')}>{inst.contactName}</PreviewRow>
-        <PreviewRow label={t('institutionsScreen.col.phone')}>{inst.contactPhone ? <span dir="ltr" className="ltr-nums">{inst.contactPhone}</span> : ''}</PreviewRow>
         <PreviewRow label={t('institutions.audienceLabel')}>{t(`institutions.audience.${inst.audience}`)}</PreviewRow>
         <PreviewRow label={t('institutions.students')}>{inst.students ?? ''}</PreviewRow>
         <PreviewRow label={t('institutions.metOn')}>{inst.metOn ? inst.metOn.split('-').reverse().join('.') : ''}</PreviewRow>

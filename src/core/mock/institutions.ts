@@ -28,7 +28,7 @@ const base = {
   updatedAt: '2026-10-01T08:00:00.000Z',
 }
 
-export const INSTITUTIONS: Institution[] = [
+const RAW: Institution[] = [
   { ...base, id: 'inst-demo-01', name: 'מכינת אופק הדרום', locality: 'שדרות', kind: 'mechina', audience: 'mixed', network: 'רשת המכינות (הדגמה)', position: at('שדרות', 0.004, -0.006), engagement: 'signed', contactName: 'נועה', contactPhone: '050-0000201' },
   { ...base, id: 'inst-demo-02', name: 'ישיבת ההסדר גבעות הנגב', locality: 'נתיבות', kind: 'hesder', audience: 'boys', position: at('נתיבות', -0.006, 0.004), engagement: 'signed', engagementConfirmed: false, metOn: '2026-10-08', students: 120, contactName: 'הרב (הדגמה)' },
   { ...base, id: 'inst-demo-03', name: 'מדרשת שבילי הבשור', locality: 'אופקים', kind: 'midrasha', audience: 'girls', position: at('אופקים', 0.005, 0.005), engagement: 'interested' },
@@ -41,3 +41,16 @@ export const INSTITUTIONS: Institution[] = [
   { ...base, id: 'inst-demo-10', name: 'מדרשת חולות', locality: 'ניצנה', kind: 'midrasha', audience: 'girls', position: at('ניצנה'), engagement: 'not_relevant' },
   { ...base, id: 'inst-demo-11', name: 'מכינת הגבעה הדרומית', locality: 'דימונה', kind: 'mechina', audience: 'mixed', position: null, engagement: 'not_contacted' },
 ]
+
+/**
+ * ★★ AZ5 — les contacts rangés par rôle. Le nom d'avant devient le rang 1 ;
+ * deux fiches montrent la hiérarchie (ר״מ, רכז) et un rang 1 manquant.
+ */
+const EXTRA: Record<string, Institution['contacts']> = {
+  'inst-demo-01': [{ id: 'ic-demo-01-2', role: 'ram', name: 'דני (הדגמה)', phone: '050-0000202', note: '' }],
+  'inst-demo-04': [{ id: 'ic-demo-04-1', role: 'coordinator', name: 'אורי (הדגמה)', phone: '050-0000204', note: 'תלמיד' }],
+}
+export const INSTITUTIONS: Institution[] = RAW.map((i) => {
+  const head = i.contactName ? [{ id: `ic-${i.id}-1`, role: 'head' as const, name: i.contactName, phone: i.contactPhone, note: '' }] : []
+  return { ...i, contacts: [...head, ...(EXTRA[i.id] ?? [])] }
+})
