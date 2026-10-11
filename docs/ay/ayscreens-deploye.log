@@ -1,0 +1,84 @@
+$ bun run scripts/ayscreens.ts
+
+  A359 · A360 — une seule forme de tableau ; en grand écran, l’aperçu latéral
+  ---------------------------------------------------------------------------
+  PASS  A359 1440 px · fermes : la forme commune (tableau, gestes voir · modifier au bout)  — table true · empilée false · gestes 2
+  PASS  A359 1440 px · institutions : la forme commune (tableau, gestes voir · modifier au bout)  — table true · empilée false · gestes 2
+  PASS  A359 1440 px · contacts : la forme commune (tableau, gestes voir · modifier au bout)  — table true · empilée false · gestes 2
+  PASS  A359 1440 px · volontaires : la forme commune (tableau, gestes voir · modifier au bout)  — table true · empilée false · gestes 2
+  PASS  A359 1440 px : aucune erreur de page
+  PASS  A359 402 px · fermes : la forme commune (lignes à deux étages, un seul bouton ⋯)  — table true · empilée true · gestes 1
+  PASS  A359 402 px · institutions : la forme commune (lignes à deux étages, un seul bouton ⋯)  — table true · empilée true · gestes 1
+  PASS  A359 402 px · contacts : la forme commune (lignes à deux étages, un seul bouton ⋯)  — table true · empilée true · gestes 1
+  PASS  A359 402 px · volontaires : la forme commune (lignes à deux étages, un seul bouton ⋯)  — table true · empilée true · gestes 1
+  PASS  A359 402 px : aucune erreur de page
+  PASS  A360 fermes : un clic sur la ligne ouvre un panneau LATÉRAL pleine hauteur  — 0,0 512×900
+  PASS  A360 fermes : la carte est épinglée EN HAUT du panneau, et un bouton mène à l’édition  — carte 288 px · édition 1
+  PASS  A360 institutions : un clic sur la ligne ouvre un panneau LATÉRAL pleine hauteur  — 0,0 512×900
+  PASS  A360 institutions : la carte est épinglée EN HAUT du panneau, et un bouton mène à l’édition  — carte 288 px · édition 1
+  PASS  A360 contacts : un clic sur la ligne ouvre un panneau LATÉRAL pleine hauteur  — 0,0 512×900
+  PASS  A360 contacts : la carte est épinglée EN HAUT du panneau, et un bouton mène à l’édition  — carte 288 px · édition 1
+  PASS  A360 volontaires : un clic sur la ligne ouvre un panneau LATÉRAL pleine hauteur  — 0,0 512×900
+  PASS  A360 volontaires : la carte est épinglée EN HAUT du panneau, et un bouton mène à l’édition  — carte 288 px · édition 1
+  PASS  A360 aucune erreur de page
+  PASS  A360 402 px : l’aperçu est une feuille plein écran, carte en haut  — 402×805
+
+  A361 — volontaires et conducteurs réunis ; ceux d’une institution, depuis sa fiche
+  ----------------------------------------------------------------------------------
+  PASS  A361 « נהגים » mène à l’écran des volontaires, conducteurs isolés  — https://azmer-fts.github.io/lo-yanum/?ay=1791717211244#/coordinator/volunteers?drivers=1
+  PASS  A361 avec le bouton : seulement ceux qui conduisent  — 2/2
+  PASS  A361 le rail n’a plus d’entrée « נהגים »
+  PASS  A361 la fiche de l’institution montre SES volontaires et SES conducteurs  — 2 volontaires (attendu 2) · 1 conducteurs (attendu 1)
+  PASS  A361 « יוצא עם » : la correspondance se pose d’un toucher et s’écrit
+  PASS  A361 aucune erreur de page
+
+  A362 — confirmer avant, pouvoir annuler après
+  ---------------------------------------------
+  PASS  A362 supprimer demande confirmation
+  PASS  A362 … puis « ביטול » est offert  — supprimé true
+  PASS  A362 « ביטול » rend la fiche, en base
+  PASS  A362 confirmer une institution (un toucher) s’annule aussi
+  PASS  A362 aucune erreur de page
+
+  A364 — la fiche d’institution sur la carte : quatre chiffres, le nom au toucher
+  -------------------------------------------------------------------------------
+  PASS  A364 aucun nom d’institution affiché en permanence sur la carte  — 0
+  PASS  A364 toucher l’institution : son nom et QUATRE chiffres, gros  — 4 chiffres · 40px
+  PASS  A364 … et son nom apparaît alors sur la carte
+  PASS  A364 le reste est derrière ⓘ (fermé)
+  PASS  A363 la carte de couverture n’a plus de filtres d’engagement, mais un raccourci
+  PASS  A364 aucune erreur de page
+
+  A366 — aucun encadré gris sur un bloc replié touché
+  ---------------------------------------------------
+  PASS  A366 au doigt : aucun fond gris sur l’en-tête touché (plus de survol collé)  — fond rgba(0, 0, 0, 0) · ombre none
+
+  A367 — l’import : la photo, « X déjà présents sur Y », trois choix
+  ------------------------------------------------------------------
+  PASS  A367 « 15 déjà présents sur 20 », en une phrase  — 15 כבר קיימים מתוך 20
+  PASS  A367 trois boutons, « compléter » choisi par défaut
+  PASS  A367 la photo de chaque fiche est récupérée  — 20/20
+  PASS  A367 cinq créés, quinze complétés (aucun doublon)  — 20
+  PASS  A367 « compléter » : la photo arrive sur les fiches existantes
+  PASS  A367 « compléter » : ce que le PO avait saisi n’est PAS écrasé  — saisi@example.invalid
+  PASS  A367 aucune erreur de page
+
+  A368 — le jeu d’essai volontaires et conducteurs : marqué, hors compteurs, supprimable
+  --------------------------------------------------------------------------------------
+  PASS  A368 le jeu : volontaires rattachés à une institution d’essai, dont des conducteurs avec leur voiture  — 7 volontaires · 3 voitures
+  PASS  A368 marqué « נתוני בדיקה » sur chaque ligne  — 7
+  PASS  A368 exclu des compteurs (le total ne bouge pas)  — 3 → 3
+  PASS  A368 supprimé en un geste (rien de « test- » ne reste)
+
+  A369 — un seul écran d’import, un seul planificateur, la durée par la route
+  ---------------------------------------------------------------------------
+  PASS  A369 un écran d’import : ① ce qu’on importe (huit fichiers)  — 8
+  PASS  A369 l’ancienne adresse /coordinator/import/volunteers mène à l’écran unique  — https://azmer-fts.github.io/lo-yanum/?ay=1791717287651#/coordinator/import?kind=volunteers
+  PASS  A369 l’ancienne adresse /coordinator/import/portal mène à l’écran unique  — https://azmer-fts.github.io/lo-yanum/?ay=1791717290489#/coordinator/import?kind=portal
+  PASS  A369 l’ancienne adresse /coordinator/import/institutions mène à l’écran unique  — https://azmer-fts.github.io/lo-yanum/?ay=1791717293275#/coordinator/import?kind=institutions
+  PASS  A369 l’ancienne adresse /coordinator/import/signatures mène à l’écran unique  — https://azmer-fts.github.io/lo-yanum/?ay=1791717296007#/coordinator/import?kind=signatures
+  PASS  A369 un seul planificateur (l’itinéraire libre y mène)
+  PASS  A369 la durée totale est calculée PAR LA ROUTE (plus à vol d’oiseau)  — base road · 288 min
+  PASS  A369 aucune erreur de page
+
+  57 PASS, 0 FAIL

@@ -104,16 +104,66 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **Passe AY EN COURS (2026-10-11)** — bugs bloquants, mobile, une forme de
-  tableau. Commits poussés : `cfab595` (AY1), `833e010` (AY2–AY5), `4a25ce3`
-  (AY6–AY12.2). Migration `20261011000100_ay_people.sql` appliquée par le MCP
-  (+ jalon `20261011064458`), `armigrations` 44/44.
-  Reste : AY12.2 (planificateur unique, points libres), AY12.3–12.6, AY13
-  (vérification sur le déployé, captures), ETAT.md, rapport. Portes AY :
-  `bun run aypass` (pur), `bun run ayui` (A355–A357), `bun run aymobile`
-  (A358, jumeau 402 px), `bun run aypins` (A365 contraste des épingles).
-  Rouges d'avant : `docs/ay/ay1-rouge-avant.log`, `docs/ay/ay2-mobile-avant.json`,
-  `docs/ay/ay8-epingles-avant.log` (build de `905158c` : `dist-ay-before`).
+- **Passe AY TERMINÉE, POUSSÉE ET DÉPLOYÉE — BUGS BLOQUANTS, MOBILE, UNE
+  FORME DE TABLEAU** (2026-10-11). Commits : `cfab595` (AY1, déployé seul
+  d'abord), `833e010` (AY2–AY5), `4a25ce3`, `cf80a04`, `f6dc665` (AY6–AY12,
+  portes du déploiement), puis documentation. Le commit SERVI se lit dans
+  `version.json` ; vérification sur le déployé : voir `ETAT.md` § AY13.
+  - **AY1** : pavé numérique réparé (sélection au toucher, brouillon
+    `useNumberDraft`/`NumberField`/`NumInput`, plus aucun `type="number"`,
+    fermeture sur toucher ailleurs / changement d'écran / disparition) ;
+    maillage : la borne réelle du PO valait **3 minutes** (conséquence du
+    pavé) — message + « חזרה ל־35 » (⚠️ son réglage n'a PAS été touché en
+    base) ; thème du coordinateur synchronisé (`lo-yanum:theme:coordinator`
+    dans `SYNCED_SETTING_KEYS`, `STAMPED_ONLY_KEYS`).
+  - **AY2** : rien ne défile de côté sous 48 rem (`index.css`, fin du
+    fichier) ; 48 écrans mesurés à 402 px (`aymobile`).
+  - **AY3** : `components/EntityTable.tsx` (fermes, institutions, contacts,
+    volontaires) + `components/PreviewPanel.tsx` (aperçu latéral, carte
+    épinglée) ; pages `/coordinator/leads/:id`, `/coordinator/institutions/:id`.
+  - **AY4** : `VolunteersScreen.tsx` réécrit (volontaires + conducteurs) ;
+    `DriversScreen.tsx` SUPPRIMÉ ; `/coordinator/drivers` → `?drivers=1` ;
+    `InstitutionPeople` (institutionUi.tsx) ; `setVolunteerRideWith`,
+    `updateVolunteerDriving`.
+  - **AY5** : `undoable()` (store) + `components/UndoToast.tsx` (8 s).
+  - **AY6–AY9** : couverture (raccourci, `InstitutionFigures`, nom au
+    toucher) ; épingles redessinées (`MapCanvas.tsx`, `data-pin-style="ay8"`),
+    tokens `--map-farm/-institution/-lead` ; `hoverOnlyWhenSupported`
+    (tailwind.config.js).
+  - **AY10** : `photoOfCard`, `mergePatch`, `MergeMode` (contacts.ts),
+    `applyContactMerge`, `mergeTargetOf` (store) ; trois choix dans `/add`.
+  - **AY11** : `buildTestData()` porte une institution d'essai + 7
+    volontaires (3 conducteurs).
+  - **AY12** : `ImportHubScreen.tsx` (`/coordinator/import`, huit anciennes
+    adresses redirigées ; `importTabs.tsx` SUPPRIMÉ) ; planificateur unique
+    (`tours.free_stops`, `freeStopAsFarm`, `FreeRouteScreen.tsx` SUPPRIMÉ,
+    `/route/free` redirigé) ; durée totale par la route ;
+    `settings/ScreenSettings.tsx` (réglages des fermes / des gardes dans
+    leurs écrans) ; garde depuis la ferme (`?farm=`) ; région = `farmRegion`.
+  - **Migrations appliquées par le MCP sur `lo-yanum-prod`** :
+    `20261011000100_ay_people.sql` (jalon `20261011064458`) et
+    `20261011000200_ay_tour_free_stops.sql` (jalon `20261011093137`) ;
+    `armigrations` 45/45.
+  - **Portes AY** : `bun run aypass` (25, pur), `ayui` (A355–A357, 94 au
+    total), `aymobile` (A358, jumeau à 402 px, 48 écrans), `ayscreens`
+    (A359–A369, 57), `aypins` (A365, contraste au pixel, 36), `aycaptures`
+    (captures clair/sombre × 402/1032/1440). Rouges d'avant :
+    `docs/ay/ay1-rouge-avant.log` (b4b3562 : 48/33),
+    `docs/ay/ay2-mobile-avant.json` (12/48 défilaient),
+    `docs/ay/ay8-epingles-avant.log` (905158c : 13 bords sous 3:1).
+    Le build d'avant pour `aypins` : `dist-ay-before` (worktree sur
+    `905158c`, `basemap/` recopié à la main).
+  - **Portes d'avant ADAPTÉES** là où AY change volontairement la forme :
+    `axui` (11 entrées de rail, gestes au bout de ligne, aperçu, itinéraire
+    libre → planificateur), `auui` (A318/A319 : plus de liste filtrée, plus
+    de nom permanent), `avui` (A322 : confirmation dans מוסדות), `assettings`
+    (le thème monte désormais), `aspass` (thème coordinateur synchronisé),
+    `aupass` A321 (VolunteersScreen lit les institutions), `awpass` A333,
+    `ahpass` A160, `amui` A221 (épingle ay8), `persist` (nouvelles
+    mutations), `deletion` (DriversScreen retiré), `demo` A187 et
+    `agreement` (portes du DÉPLOIEMENT — à rejouer en local avant chaque
+    push : `bun run ground backdrop redraw overlap freehand` puis, build réel
+    + base factice servi sur 5197, `zones agreement demo`).
 
 - **Passe AX TERMINÉE, POUSSÉE ET DÉPLOYÉE — REMISE EN ORDRE DE
   L'ARCHITECTURE** (2026-10-10/11) — commit de code servi et vérifié :
@@ -643,6 +693,17 @@ bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
 bun run typecheck && bun run appass && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run contrast && bun run akpass && bun run accept
 
+# LA PASSE AY :
+bun run aypass                                                     # pur (25)
+bun run ayui                                                       # A355–A357, build local
+bun run ayscreens                                                  # A359–A369, build local
+bun run aymobile                                                   # A358, jumeau à 402 px (48 écrans)
+bun run aypins                                                     # A365, contraste des épingles
+DIST=dist-ay-before SKIP_BUILD=1 bun run aypins                    # le ROUGE (905158c)
+BASE_URL=https://azmer-fts.github.io/lo-yanum bun run ayui         # le DÉPLOYÉ (idem ayscreens, aypins, aycaptures)
+BASE_URL=https://azmer-fts.github.io/lo-yanum/demo bun run aymobile   # le jumeau DÉPLOYÉ
+# ⚠️ Avant chaque push : les portes du déploiement (voir « Où en est-on » › AY).
+
 # LA PASSE AX :
 bun run axpass                                                     # A343 · A344 · A345–A347 · A350 · A353 en pur (40)
 bun run axui                                                       # A345–A354 au rendu, build local (111)
@@ -936,6 +997,27 @@ d'être déployé.
 >   touche rien dans `roadGraph`/`routing`. Les 31 autres passent.
 - Les deux violations A57 de `AnchorMap.tsx` signalées en §36.6 ont été
   corrigées en U4 ; celles qui restent sont ailleurs.
+
+## Ce que le PO fait à l'ouverture (AY, 2026-10-11)
+
+1. **Carte de couverture** : un bandeau dit « אף קישור לא נכנס בטווח 3 דק׳ » —
+   c'est le réglage que l'ancien pavé a laissé. Toucher « חזרה ל־35 דק׳ » (ou
+   taper 35 : le champ se sélectionne, le chiffre remplace, ⌫ efface tout).
+2. **Thème** : sur l'ordinateur, choisir une fois « כהה » (ou « לפי המכשיר »)
+   dans הגדרות › תצוגה ; le téléphone le reçoit au retour en avant-plan ou dans
+   les 30 s, et l'applique sans recharger.
+3. **Téléphone** : ouvrir חוות, מוסדות, אנשי קשר, מתנדבים — une ligne à deux
+   étages par fiche, toucher = l'aperçu plein écran (carte en haut) ; ⋯ pour
+   appeler ou modifier.
+4. **Ordinateur** : un clic sur une ligne ouvre l'aperçu à gauche ; « עריכה »
+   ouvre la page d'édition.
+5. **Une institution** : מוסדות › une ligne › l'aperçu montre SES volontaires et
+   SES conducteurs ; « יוצא עם » relie chaque volontaire à un conducteur.
+6. **Jeu d'essai** (pour juger ces écrans) : הגדרות › נתונים › נתוני בדיקה ›
+   « הוספה » ; il se retire d'un geste au même endroit.
+7. **Importer des fiches .vcf** (photos) : « + » › מתנדב/מוסד/חקלאי › קבצי
+   .vcf ; « X כבר קיימים מתוך Y » → « להשלים את החסר » (rien n'est écrasé).
+8. Se servir de « ביטול » (8 s) après n'importe quel geste.
 
 ## Ce que le PO fait à l'ouverture (AX, 2026-10-11)
 

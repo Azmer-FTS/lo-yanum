@@ -1,0 +1,51 @@
+$ bun run scripts/aymobile.ts
+  PASS  A358 tableau-de-bord          /coordinator  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 ajout                    /coordinator/add  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 ajout-institution        /coordinator/add?type=institution  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 agenda                   /coordinator/agenda  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 agenda-reunion           /coordinator/agenda/meeting/new  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 agenda-visite            /coordinator/agenda/visit/new  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 couverture               /coordinator/coverage  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 conducteurs              /coordinator/drivers → /coordinator/volunteers  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 conducteur-edition       /coordinator/drivers/drv-01/edit  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 conducteur-nouveau       /coordinator/drivers/new → /coordinator/volunteers/new  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 export                   /coordinator/export  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 fermes                   /coordinator/farms  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 fermes-liste             /coordinator/farms  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 ferme                    /coordinator/farms/farm-01  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 ferme-point              /coordinator/farms/farm-01/anchors/anchor-01  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 ferme-point-edition      /coordinator/farms/farm-01/anchors/anchor-01/edit  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 ferme-edition            /coordinator/farms/farm-11/edit  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 ferme-nouvelle           /coordinator/farms/new  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 import-conducteurs       /coordinator/import/drivers → /coordinator/import  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 import-fermes            /coordinator/import/farms → /coordinator/import  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 import-institutions      /coordinator/import/institutions → /coordinator/import  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 import-portail           /coordinator/import/portal → /coordinator/import  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 import-prospection       /coordinator/import/prospection → /coordinator/import  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 import-signatures        /coordinator/import/signatures → /coordinator/import  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 import-volontaires       /coordinator/import/volunteers → /coordinator/import  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 incidents                /coordinator/incidents  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 incident                 /coordinator/incidents/inc-01  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 institutions             /coordinator/institutions  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 contacts                 /coordinator/leads  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 gardes                   /coordinator/missions  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 garde                    /coordinator/missions/mission-01  déborde 0px · défile 0 · hors écran 0 · tableaux 2
+  PASS  A358 garde-nouvelle           /coordinator/missions/new  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 tournee                  /coordinator/route  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 itineraire-libre         /coordinator/route/free → /coordinator/route  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 reglages                 /coordinator/settings  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 regions                  /coordinator/settings/regions  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 volontaires              /coordinator/volunteers  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 volontaire-edition       /coordinator/volunteers/vol-055/edit  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 volontaire-nouveau       /coordinator/volunteers/new  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 agriculteur              /farmer  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 agriculteur-gardes       /farmer/guards  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 agriculteur-documents    /farmer/documents  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 agriculteur-signer       /farmer/sign  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 agriculteur-signaler     /farmer/report  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 volontaire-terrain       /volunteer  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 volontaire-equipe        /volunteer/roster  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 volontaire-signaler      /volunteer/report  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+  PASS  A358 conducteur-terrain       /driver  déborde 0px · défile 0 · hors écran 0 · tableaux 0
+
+  48 PASS, 0 FAIL  (48 écrans à 402 px) → docs/ay/ay2-mobile-deploye.json

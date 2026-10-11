@@ -1,0 +1,63 @@
+$ bun run scripts/aypins.ts
+
+  A365 — épingles : contraste mesuré sur les deux fonds, dans les deux thèmes
+  ---------------------------------------------------------------------------
+  PASS  A365 vectoriel clair · farm-full : le bord se détache du fond (≥ 3:1)  — 6.11:1 (5)
+  PASS  A365 vectoriel clair · farm-full : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 83
+  PASS  A365 vectoriel clair · farm-hollow : le bord se détache du fond (≥ 3:1)  — 5.25:1 (4)
+  PASS  A365 vectoriel clair · farm-hollow : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 88
+  PASS  A365 vectoriel clair · institution-full : le bord se détache du fond (≥ 3:1)  — 3.96:1 (5)
+  PASS  A365 vectoriel clair · institution-full : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 97
+  PASS  A365 vectoriel clair · lead : le bord se détache du fond (≥ 3:1)  — 7.53:1 (1)
+  PASS  A365 vectoriel clair · lead : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 18
+  PASS  A365 vectoriel clair : aucune erreur de page
+  PASS  A365 vectoriel sombre · farm-full : le bord se détache du fond (≥ 3:1)  — 13.04:1 (5)
+  PASS  A365 vectoriel sombre · farm-full : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 95
+  PASS  A365 vectoriel sombre · farm-hollow : le bord se détache du fond (≥ 3:1)  — 11.84:1 (4)
+  PASS  A365 vectoriel sombre · farm-hollow : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 99
+  PASS  A365 vectoriel sombre · institution-full : le bord se détache du fond (≥ 3:1)  — 13.22:1 (5)
+  PASS  A365 vectoriel sombre · institution-full : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 80
+  PASS  A365 vectoriel sombre · lead : le bord se détache du fond (≥ 3:1)  — 9.75:1 (1)
+  PASS  A365 vectoriel sombre · lead : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 72
+  PASS  A365 vectoriel sombre : aucune erreur de page
+  PASS  A365 satellite clair · farm-full : le bord se détache du fond (≥ 3:1)  — 3.98:1 (5)
+  PASS  A365 satellite clair · farm-full : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 59
+  PASS  A365 satellite clair · farm-hollow : le bord se détache du fond (≥ 3:1)  — 3.30:1 (4)
+  PASS  A365 satellite clair · farm-hollow : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 62
+  PASS  A365 satellite clair · institution-full : le bord se détache du fond (≥ 3:1)  — 3.38:1 (5)
+  PASS  A365 satellite clair · institution-full : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 96
+  PASS  A365 satellite clair · lead : le bord se détache du fond (≥ 3:1)  — 6.55:1 (1)
+  PASS  A365 satellite clair · lead : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 25
+  PASS  A365 satellite clair : aucune erreur de page
+  PASS  A365 satellite sombre · farm-full : le bord se détache du fond (≥ 3:1)  — 3.98:1 (5)
+  PASS  A365 satellite sombre · farm-full : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 59
+  PASS  A365 satellite sombre · farm-hollow : le bord se détache du fond (≥ 3:1)  — 3.30:1 (4)
+  PASS  A365 satellite sombre · farm-hollow : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 62
+  PASS  A365 satellite sombre · institution-full : le bord se détache du fond (≥ 3:1)  — 3.46:1 (5)
+  PASS  A365 satellite sombre · institution-full : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 96
+  PASS  A365 satellite sombre · lead : le bord se détache du fond (≥ 3:1)  — 5.46:1 (1)
+  PASS  A365 satellite sombre · lead : la couleur ressort du fond (ΔE ≥ 40)  — ΔE 31
+  PASS  A365 satellite sombre : aucune erreur de page
+
+  vectoriel clair    farm-full            5 épingle(s) isolée(s) · bord (médiane) 6.11:1 · tête 2.62:1, ΔE 83
+  vectoriel clair    farm-hollow          4 épingle(s) isolée(s) · bord (médiane) 5.25:1 · tête 2.80:1, ΔE 88
+  vectoriel clair    institution-full     5 épingle(s) isolée(s) · bord (médiane) 3.96:1 · tête 4.36:1, ΔE 97
+  vectoriel clair    institution-hollow  — aucune à l'écran
+  vectoriel clair    lead                 1 épingle(s) isolée(s) · bord (médiane) 7.53:1 · tête 1.61:1, ΔE 18
+  vectoriel sombre   farm-full            5 épingle(s) isolée(s) · bord (médiane) 13.04:1 · tête 3.77:1, ΔE 95
+  vectoriel sombre   farm-hollow          4 épingle(s) isolée(s) · bord (médiane) 11.84:1 · tête 3.73:1, ΔE 99
+  vectoriel sombre   institution-full     5 épingle(s) isolée(s) · bord (médiane) 13.22:1 · tête 2.32:1, ΔE 80
+  vectoriel sombre   institution-hollow  — aucune à l'écran
+  vectoriel sombre   lead                 1 épingle(s) isolée(s) · bord (médiane) 9.75:1 · tête 9.75:1, ΔE 72
+  satellite clair    farm-full            5 épingle(s) isolée(s) · bord (médiane) 3.98:1 · tête 1.18:1, ΔE 59
+  satellite clair    farm-hollow          4 épingle(s) isolée(s) · bord (médiane) 3.30:1 · tête 1.12:1, ΔE 62
+  satellite clair    institution-full     5 épingle(s) isolée(s) · bord (médiane) 3.38:1 · tête 1.86:1, ΔE 96
+  satellite clair    institution-hollow  — aucune à l'écran
+  satellite clair    lead                 1 épingle(s) isolée(s) · bord (médiane) 6.55:1 · tête 1.85:1, ΔE 25
+  satellite sombre   farm-full            5 épingle(s) isolée(s) · bord (médiane) 3.98:1 · tête 1.18:1, ΔE 59
+  satellite sombre   farm-hollow          4 épingle(s) isolée(s) · bord (médiane) 3.30:1 · tête 1.12:1, ΔE 62
+  satellite sombre   institution-full     5 épingle(s) isolée(s) · bord (médiane) 3.46:1 · tête 1.82:1, ΔE 96
+  satellite sombre   institution-hollow  — aucune à l'écran
+  satellite sombre   lead                 1 épingle(s) isolée(s) · bord (médiane) 5.46:1 · tête 2.23:1, ΔE 31
+
+  36 PASS, 0 FAIL

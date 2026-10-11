@@ -157,6 +157,29 @@ export function SettingsToc() {
           d'une page qu'il sert à raccourcir se paie deux fois. AI7 retire en
           plus la carte et son libellé : épinglée, la barre est sous les yeux
           en permanence, et chaque pixel qu'elle prend est pris à tout l'écran. */}
+      {/* ★★ AY2 — au téléphone, une seule ligne qui ne défile pas : un menu
+          déroulant « קפיצה אל… ». (La rangée de pastilles passait à la ligne sur
+          trois rangs épinglés — un tiers d'écran — et recouvrait le titre.) */}
+      <label className="flex items-center gap-2 md:hidden">
+        <span className="shrink-0 text-caption text-content-muted">{t('settings.group.jump')}</span>
+        <select
+          className="input min-h-11 flex-1 py-1.5"
+          value={active}
+          data-testid="settings-toc-select"
+          onChange={(e) => {
+            const id = e.target.value as SettingsGroupId
+            setActive(id)
+            document.getElementById(anchorId(id))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }}
+        >
+          {SETTINGS_GROUPS.map((id) => (
+            <option key={id} value={id}>
+              {t(`settings.group.${id}`)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="hidden md:block">
       <ScrollRow>
         {SETTINGS_GROUPS.map((id) => (
           <button
@@ -176,6 +199,7 @@ export function SettingsToc() {
           </button>
         ))}
       </ScrollRow>
+      </div>
     </nav>
   )
 }

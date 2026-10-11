@@ -1,7 +1,7 @@
 {
   "app": "http://localhost:5420",
   "width": 402,
-  "at": "2026-10-11T07:34:56.847Z",
+  "at": "2026-10-11T10:56:51.591Z",
   "results": [
     {
       "name": "tableau-de-bord",
@@ -168,7 +168,7 @@
     {
       "name": "import-conducteurs",
       "hash": "/coordinator/import/drivers",
-      "landed": "/coordinator/import/drivers",
+      "landed": "/coordinator/import",
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
@@ -177,7 +177,7 @@
     {
       "name": "import-fermes",
       "hash": "/coordinator/import/farms",
-      "landed": "/coordinator/import/farms",
+      "landed": "/coordinator/import",
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
@@ -186,7 +186,7 @@
     {
       "name": "import-institutions",
       "hash": "/coordinator/import/institutions",
-      "landed": "/coordinator/import/institutions",
+      "landed": "/coordinator/import",
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
@@ -195,7 +195,7 @@
     {
       "name": "import-portail",
       "hash": "/coordinator/import/portal",
-      "landed": "/coordinator/import/portal",
+      "landed": "/coordinator/import",
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
@@ -204,7 +204,7 @@
     {
       "name": "import-prospection",
       "hash": "/coordinator/import/prospection",
-      "landed": "/coordinator/import/prospection",
+      "landed": "/coordinator/import",
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
@@ -213,7 +213,7 @@
     {
       "name": "import-signatures",
       "hash": "/coordinator/import/signatures",
-      "landed": "/coordinator/import/signatures",
+      "landed": "/coordinator/import",
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
@@ -222,7 +222,7 @@
     {
       "name": "import-volontaires",
       "hash": "/coordinator/import/volunteers",
-      "landed": "/coordinator/import/volunteers",
+      "landed": "/coordinator/import",
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
@@ -303,7 +303,7 @@
     {
       "name": "itineraire-libre",
       "hash": "/coordinator/route/free",
-      "landed": "/coordinator/route/free",
+      "landed": "/coordinator/route",
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],

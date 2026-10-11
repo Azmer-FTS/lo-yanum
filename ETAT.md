@@ -1,5 +1,208 @@
 # לא ינום — ETAT
 
+> 🏁 **PASSE AY — BUGS BLOQUANTS, PUIS COHÉRENCE ET MOBILE. 2026-10-11. LIRE EN PREMIER.**
+>
+> Ordre suivi : AY1 (déployé seul d'abord, `cfab595`) → AY2–AY5 (`833e010`,
+> déployé) → AY6–AY12 (`4a25ce3`, `cf80a04`, `f6dc665`) → AY13. Portes :
+> `bun run aypass` (pur), `ayui` (A355–A357), `aymobile` (A358, 48 écrans à
+> 402 px sur le jumeau), `ayscreens` (A359–A369), `aypins` (A365, contraste
+> au pixel), `aycaptures`. Rouges d'avant gardés dans `docs/ay/`.
+>
+> ## AY1 — LES TROIS BUGS QUI BLOQUAIENT
+>
+> **AY1.1 — le pavé numérique.** Reproduit sur la carte de couverture, au
+> pavé ET au clavier. Trois causes : (1) le toucher posait le curseur en fin
+> de valeur → le premier chiffre s'ajoutait ; (2) les champs étaient liés à
+> un NOMBRE et refusaient le vide (`value={prefs.radiusKm}` + « n'appliquer
+> que si n ≥ 1 ») : effacer « 35 » s'arrêtait à « 3 », et React remettait
+> l'ancienne valeur — même forme pour `Number(v) || 0` (minutes de visite),
+> `Number(v) || 1` (nombre de gardes) ; et les `type="number"` des réglages
+> n'ont pas de sélection, donc ⌫ ne savait pas où était le curseur ; (3) sur
+> iPad, toucher une zone inerte ne retire PAS le focus (le système n'a pas de
+> clavier à fermer puisque `inputmode="none"`), et un champ retiré de la page
+> ne déclenche aucun `focusout` → le pavé restait.
+> Réparé, pas remplacé : toucher/cliquer un champ chiffré SÉLECTIONNE la
+> valeur (pavé et clavier) ; `useNumberDraft` / `NumberField` / `NumInput`
+> (`fields.tsx`) : le champ montre un brouillon, vide compris, applique ce
+> qui est valide, rétablit en quittant ; plus aucun `type="number"` dans
+> l'application ; le pavé se ferme sur « סיום », un toucher ailleurs, un
+> changement d'écran et la disparition du champ. **Vérifié sur 30 champs de
+> 12 écrans** (couverture km/minutes/nuit, fiche ferme × 8, coordinateur,
+> objectif, marge, seuils et délais dans leurs fenêtres, planificateur,
+> institution, contact, volontaire, conducteur) : `ayui` A355 94/94 ; rouge
+> sur le build d'avant `b4b3562` : 48 PASS / 33 FAIL
+> (`docs/ay/ay1-rouge-avant.log`).
+>
+> **AY1.2 — le maillage « disparu ».** Mesuré dans la base réelle : la borne
+> de couverture du PO valait **3 minutes** (`lo-yanum:coverage-map` :
+> `"minutes":3,"unit":"min"`) — c'est AY1.1 : « 35 » effacé chiffre à chiffre
+> s'arrêtait à « 3 ». Aucun lien ne tient en 3 minutes, et l'écran ne le
+> disait pas. Désormais une borne qui écarte TOUS les liens se dit (« אף קישור
+> לא נכנס בטווח 3 דק׳ — הטווח קצר מדי? ») et se rétablit d'un toucher
+> (« חזרה ל־35 דק׳ ») : A356, 62 liens revenus.
+> ⚠️ **Le réglage du PO n'a PAS été modifié en base** : à l'ouverture, il voit
+> le message et touche le bouton.
+>
+> **AY1.3 — le thème ne suivait pas sur le téléphone.** Les passes Z5.2,
+> AI6, AN1 et AT1 cherchaient un événement perdu (bascule du système, retour
+> d'arrière-plan). Mesuré dans `user_settings` de `lo-yanum-prod` : **aucune
+> clé de thème** — AI6 l'avait gardé « pour CET écran » ; le téléphone n'avait
+> rien à recevoir. Le choix du coordinateur (`lo-yanum:theme:coordinator`)
+> voyage désormais comme les autres réglages ; « selon l'appareil » suit
+> chaque appareil ; un thème jamais choisi (sans instant) ne bouge pas, pour
+> que le premier appareil synchronisé n'éteigne pas le sombre de l'autre.
+> Deux appareils, une base : A357 3/3 ; `assettings` adaptée (décision
+> retournée par le PO).
+>
+> ## AY2 — LE TÉLÉPHONE
+>
+> Mesuré à 402 px sur les 48 écrans du jumeau (`bun run aymobile`) :
+> **12 défilaient de côté** (`docs/ay/ay2-mobile-avant.json`) — tableau de
+> bord (rangée de chiffres 832/402, carrousel d'alertes 952/402, un nom de
+> poste qui sortait de 41 px), contacts (le tableau débordait de 198 px :
+> « une moitié hors écran »), fiche ferme (chiffres 1318/402, fil d'étapes),
+> garde (chiffres 832/402), cinq écrans d'import (onglets 589/370), export
+> (aperçu 1959/370), réglages (sommaire), régions (sélecteur 1103/402).
+> **Après : 48/48.** Règle : sous 48 rem, AUCUN conteneur ne défile de côté —
+> une rangée de cartes devient une grille, le carrousel une pile, les onglets
+> passent à la ligne, l'aperçu d'export devient une fiche par ligne ; la carte
+> reste la seule chose qu'on déplace au doigt.
+> **Un tableau au téléphone n'est pas un tableau** : les cinq listes passent
+> en lignes à deux étages (photo · nom · ce qui le situe, l'état à droite, UN
+> bouton ⋯ qui rassemble les gestes) ; toucher la ligne = l'aperçu plein
+> écran, carte épinglée en haut. C'est la consultation, ce que le PO fait au
+> téléphone. Les gardes restent pleinement opérationnelles (liste, fiche,
+> assistant : 0 défilement de côté, gestes à 44 px).
+>
+> ## AY3 — UNE SEULE FORME DE TABLEAU
+>
+> `components/EntityTable.tsx` pour fermes, institutions, contacts,
+> volontaires (conducteurs compris) : photo · NOM (dessous, ce qui a perdu sa
+> colonne) · colonnes de l'écran · gestes au bout (👁 voir, ✎ modifier, ↗ la
+> fiche pour une ferme, puis ⋯ : appeler, WhatsApp, garde ici, archiver…).
+> Les colonnes cèdent d'elles-mêmes : le nom garde toujours 15 rem.
+> **L'aperçu** (`components/PreviewPanel.tsx`) : un clic sur la ligne ouvre
+> un panneau sur le côté (la gauche en hébreu), pleine hauteur, carte réelle
+> épinglée en haut (pincer, molette, boutons), les informations défilent
+> dessous, « עריכה » mène à la page d'édition ; la liste se resserre au lieu
+> de passer dessous. Pages d'édition neuves : contact
+> (`/coordinator/leads/:id`) et institution (`/coordinator/institutions/:id`).
+> A359 8/8 · A360 9/9.
+>
+> ## AY4 — VOLONTAIRES ET CONDUCTEURS NE FONT QU'UN
+>
+> **Argument.** G5.2 avait déjà fait d'un volontaire qui conduit UNE personne
+> (`canDrive` + une ligne `drivers` liée) : deux écrans montraient deux fois
+> les mêmes gens, et l'institution — ce qui rend une garde possible — n'était
+> un filtre dans aucun. Donc : un écran « מתנדבים ונהגים » ; le bouton
+> « נהגים » dans la zone qui ne se replie JAMAIS (la porte l'a trouvé caché
+> derrière « סינון » avec peu de lignes) ; l'institution en colonne et en
+> filtre ; la voiture (véhicule, places, disponibilités) se saisit sur la
+> fiche du volontaire ; `/coordinator/drivers` y mène, conducteurs isolés ;
+> plus d'entrée « נהגים » dans le rail. **Depuis la fiche d'une
+> institution** (`InstitutionPeople`) : combien de volontaires, combien
+> conduisent, combien de places libres, et pour chaque volontaire SON
+> conducteur (« יוצא עם »), choisi parmi ceux de la même maison, avec le
+> remplissage de chaque voiture (2/4). Migration `ay_people`
+> (`volunteers.ride_with`, `leads.photo`) appliquée par le MCP. A361 6/6.
+>
+> ## AY5 — CONFIRMER AVANT, ANNULER APRÈS
+>
+> `undoable()` (store) déduit ce qu'un geste a touché (comme P2.6 déduit ce
+> qu'il faut pousser) et sait le remettre — seulement ces enregistrements,
+> poussé en base comme un geste. `UndoToast` : « c'est fait · ביטול », 8 s,
+> une bande pour toute l'application. Branché sur : toute suppression
+> confirmée (dix sortes), archiver/restaurer une ferme, archiver/réactiver un
+> volontaire, annuler/réactiver une garde, résoudre un événement, traiter
+> une demande entrante, confirmer une institution (un toucher) et changer
+> son statut, les huit imports, le jeu d'essai, l'enregistrement d'une fiche
+> de ferme ou de volontaire (les contacts avaient déjà les leurs). A362 4/4.
+>
+> ## AY6 · AY7 — LA CARTE DE COUVERTURE
+>
+> Filtres d'engagement retirés ; à leur place un raccourci (le compte, « לאשר »,
+> « למסך המוסדות »). La fiche d'une institution sur la carte tient en **quatre
+> gros chiffres** : volontaires, fermes desservies, distance de la plus
+> proche, borne ; le reste derrière ⓘ. Le nom n'est plus écrit en permanence
+> sur la carte : il vient au toucher. A363 · A364 7/7.
+>
+> ## AY8 — LES ÉPINGLES
+>
+> L'épingle d'AH10, enfin entière : tige fine et sombre effilée jusqu'à la
+> coordonnée, ombre au sol, tête ronde à **liseré blanc puis fil sombre**
+> (le double bord détache de tout fond), reflet, icône blanche. Teintes de
+> carte fixes dans les deux thèmes, hors du paysage : fermes orange brûlé
+> `#E8590C`, institutions violet profond `#6741D9`, contacts framboise
+> `#C2255C` (`--map-*`). **Mesuré au pixel** (`aypins`, vectoriel et
+> satellite × clair et sombre, cinq familles) : avant (`905158c`) 13 bords
+> sous 3:1 sur 20 (épingle creuse sur satellite 1,2:1, vectoriel sombre
+> 1,3:1, contacts 1,1:1) ; **après 20/20 ≥ 3:1**, et la teinte ressort du fond
+> (ΔE 59 à 99). `docs/ay/ay8-epingles-{avant,apres}.log`.
+>
+> ## AY9 — L'ENCADRÉ GRIS
+>
+> C'était le survol resté collé au doigt (iPad) sur l'en-tête touché.
+> `hoverOnlyWhenSupported` : les survols ne s'appliquent plus qu'aux
+> appareils qui survolent, partout ; le repère de sélection devient le
+> chevron coloré (bloc ouvert) et un trait d'accent au clavier. A366.
+>
+> ## AY10 — L'IMPORT DE CONTACTS
+>
+> La photo de la fiche (3.0 WhatsApp/Apple, 2.1 Android en lignes non
+> indentées, 4.0 data URL ; une adresse http n'est jamais suivie), réduite à
+> 256 px, montrée dans l'aperçu. « 15 déjà présents sur 20 », et trois
+> boutons : ne créer que les nouveaux · **compléter ce qui manque sans rien
+> écraser (par défaut)** · tout écraser. La règle d'AO tient : en
+> « compléter », seul un champ VIDE reçoit une valeur. Réimporter d'anciennes
+> fiches rapporte ainsi les photos manquantes. A367 7/7.
+>
+> ## AY11 — LE JEU D'ESSAI
+>
+> Une institution d'essai et sept volontaires, dont trois conducteurs avec
+> leur voiture et qui part avec qui ; marqué « נתוני בדיקה », hors compteurs,
+> retiré d'un geste (AH3). A368 4/4.
+>
+> ## AY12 — CE QUE L'INVENTAIRE D'AX AVAIT LAISSÉ
+>
+> 1. **Un écran d'import** (`/coordinator/import`) : ① ce qu'on importe (huit
+>    fichiers en trois groupes), ② l'importeur en place ; les huit anciennes
+>    adresses y mènent.
+> 2. **Un planificateur** : les points libres (lien collé, nom, téléphone)
+>    entrent dans la tournée, ordonnés avec les fermes, enregistrés avec elle
+>    (`tours.free_stops`, migration par le MCP) ; les itinéraires libres
+>    enregistrés s'y chargent ; `/route/free` y mène. **Durée totale par la
+>    route** (somme des étapes routières + marge), plus à vol d'oiseau × 1,35 ;
+>    tant qu'une étape manque, l'estimation est dite.
+> 3. **Réglages métier dans leur écran** : חוות › ⋯ › « הגדרות החוות » (oubli,
+>    écart, renouvellement, document de signature) ; שמירות › ⋯ (délais,
+>    rappels, SMS) ; הגדרות y renvoie.
+> 4. **Une garde depuis la ferme** : onglet שמירות et menu ⋯ du tableau
+>    (`/missions/new?farm=`, ferme choisie).
+> 5. **Le formulaire volontaire relié aux institutions** (choix dans la table,
+>    « אחר » garde la saisie libre).
+> 6. **Une règle de région** : la fiche et la bulle montrent la région qui
+>    classe (`farmRegion`), comme la colonne et le filtre.
+> A369 7/7.
+>
+> ## Décisions AY
+>
+> 1. ★★ **Un champ chiffré montre un brouillon** (vide compris) ; jamais lié
+>    directement à un nombre. Plus de `type="number"`.
+> 2. ★★ **Une borne qui écarte tout se dit.** Une carte muette est un bug.
+> 3. ★★ **Le thème du coordinateur voyage** (décision du PO, contre AI6).
+> 4. ★★ **Sous 48 rem, rien ne défile de côté** ; au téléphone une liste est
+>    une liste, pas un tableau.
+> 5. ★★ **Une forme de tableau ; un clic = l'aperçu, pas une page.**
+> 6. ★★ **Un conducteur est un volontaire qui conduit** ; l'institution
+>    est la maison des deux.
+> 7. ★★ **Tout geste se défait** (8 s), en plus de la confirmation des gestes
+>    lourds.
+> 8. ★ **Les teintes de carte sont fixes et choisies hors du paysage** ; le
+>    double bord porte le contraste.
+> 9. ★ **Importer ne remplace jamais une saisie**, sauf « tout écraser ».
+>
+> ---
+>
 > 🏁 **PASSE AX — REMISE EN ORDRE DE L'ARCHITECTURE. 2026-10-10/11. LIRE EN PREMIER.**
 >
 > Ordre suivi : AX2 (inventaire, AVANT toute modification) → AX1 → AX3…AX10
