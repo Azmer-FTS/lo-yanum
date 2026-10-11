@@ -1,0 +1,33 @@
+$ bun run scripts/az5ui.ts
+
+  A385 — la liste : le rang 1, « חסר ראש ישיבה », « קטינים »
+  ----------------------------------------------------------
+  PASS  A385 la ligne montre le rang 1  — יה ישיבת הדגמה מלאה הרב ראשי נתיבות ישיבת הסדר חתום אישור 050-0000601 0 
+  PASS  A385 … et aucun autre rôle à sa place
+  PASS  A385 sans rang 1 : « חסר ראש ישיבה »  — יה ישיבת הדגמה בלי ראש חסר ראש ישיבה נתיבות ישיבת הסדר חתום אישור — 0 
+  PASS  A385 … et JAMAIS le ר״מ comme contact
+  PASS  A385 l’école : « קטינים · 15–18 » dans la liste  — תה תיכון הדגמה קטינים · 15–18 מנהל הדגמה נתיבות תיכון חתום אישור 050-0000606 0 
+  PASS  A385 l’école : son chef est « le contact »
+  PASS  A385 le filtre « חסר ראש » existe
+  PASS  A385 il retrouve la fiche sans rang 1, et pas les autres  — institution-row-inst-1jkb2k7, institution-row-inst-1b9rz4e, institution-row-inst-1tztnmz, institution-row-inst-az5-ram, institution-row-inst-v8rhiu, institution-row-inst-limvku, institution-row-inst-pn8lxl, institution-row-inst-l8yyn8, institution-row-inst-176u708, institution-row-inst-bj6ody, institution-row-inst-u4yt4w
+  PASS  A385 aucune erreur de page
+
+  A386 — la fiche : rangés par rôle, en ajouter un
+  ------------------------------------------------
+  PASS  A386 rangés : ראש → ר״מ → רכז → איש קשר  — head,ram,coordinator,contact
+  PASS  A386 le rang 1 d’une yeshiva s’appelle « ראש ישיבה »  — ראש ישיבה
+  PASS  A386 le nouveau ר״מ prend sa place (après les ר״מ, avant le רכז)  — head,ram,ram,coordinator,contact
+  PASS  A386 gardé en base (5 contacts, le nouveau avec sa note)  — ["הרב ראשי","הרב רם","הרב חדש","רכז הדגמה","איש קשר הדגמה"]
+  PASS  A386 le rang 1 affiché n’a pas changé  — הרב ראשי 050-0000601
+  PASS  A386 le rang 1 d’une école s’appelle « מנהל »  — מנהל
+  PASS  A386 la fiche de l’école porte « קטינים · 15–18 »
+  PASS  A386 … sur un ton neutre (une information, pas une alerte)  — chip bg-surface-high text-micro text-content-secondary
+  PASS  A386 aucune erreur de page
+
+  A387 — l’aperçu : rangés, « להתקשר » appelle le rang 1
+  ------------------------------------------------------
+  PASS  A387 l’aperçu range les contacts par rôle  — head,ram,coordinator,contact
+  PASS  A387 « להתקשר » appelle le rang 1  — tel:0500000601
+  PASS  A387 aucune erreur de page
+
+  21 PASS, 0 FAIL
