@@ -41,6 +41,15 @@ import { announceSettingsApplied, announceSettingsConflict } from './applied'
  *    appareil est un CONFLIT : la plus récente gagne, et le PO est averti
  *    (bandeau `SettingsSyncNotice`) de ce qui a été remplacé.
  */
+export const THEME_SYNC_KEY = 'lo-yanum:theme:coordinator'
+/**
+ * ★ AY1.3 — une clé qui ne voyage qu'une fois CHOISIE (instant posé). Sans
+ * instant des deux côtés (thème d'avant AY), « le compte gagne » ferait
+ * gagner le premier appareil synchronisé — le téléphone pourrait éteindre le
+ * sombre de l'ordinateur. Rien ne bouge tant que le PO n'a pas choisi.
+ */
+export const STAMPED_ONLY_KEYS: ReadonlySet<string> = new Set([THEME_SYNC_KEY])
+
 export const SYNCED_SETTING_KEYS: readonly string[] = [
   /* Le programme : cible, seuils, couvertures, rappels. */
   'lo-yanum:target',
@@ -69,6 +78,16 @@ export const SYNCED_SETTING_KEYS: readonly string[] = [
   'lo-yanum:free-routes',
   /* AI3.2 — la marge des durées de roulage. */
   'lo-yanum:route-margin',
+  /* ★★ AY1.3 (2026-10-11) — LE THÈME DU COORDINATEUR VOYAGE.
+     AI6 l'avait gardé « pour CET écran ». Le PO dit l'inverse, et depuis
+     Z5.2 : « je passe en sombre sur l'ordinateur, le téléphone ne suit pas ;
+     tout le reste s'y synchronise ». Mesuré dans la base réelle : aucune clé
+     de thème dans `user_settings` — le téléphone n'avait RIEN à recevoir.
+     Toutes les passes précédentes cherchaient un événement perdu (bascule
+     du système, retour d'arrière-plan) ; le défaut était une décision.
+     Le CHOIX voyage (clair · sombre · « selon l'appareil ») ; « selon
+     l'appareil » continue de suivre CHAQUE appareil. */
+  THEME_SYNC_KEY,
 ]
 
 /**
@@ -79,7 +98,7 @@ export const LOCAL_ONLY_KEYS: ReadonlyArray<{ key: string; why: string }> = [
   { key: 'lo-yanum:farmer-pass', why: 'laissez-passer de l’agriculteur : un fait de CET appareil (AL11.2)' },
   { key: 'lo-yanum:guard-pass', why: 'laissez-passer du gardien : idem' },
   { key: 'lo-yanum:link-unlock', why: 'mémoire de temporisation (AG2) : la copier annulerait la protection' },
-  { key: 'lo-yanum:theme:<rôle>', why: 'thème : choisi pour CET écran (AI6)' },
+  { key: 'lo-yanum:theme:<autres rôles>', why: 'thème des rôles de terrain (volontaire, agriculteur) : l’écran de CET appareil ; celui du coordinateur voyage depuis AY1.3' },
   { key: 'lo-yanum:view-as', why: '« voir comme » : un état d’écran, pas un réglage' },
   { key: 'lo-yanum:report-recipient', why: 'destinataire du compte rendu : délibérément local (voir recipient.ts)' },
   { key: 'lo-yanum:activity-reports', why: 'historique local des rapports ; la base en garde la trace (activity_reports)' },
@@ -155,6 +174,7 @@ export function mergeSettings(local: SettingsSide, remote: SettingsSide, lastSyn
     const rv = remote.values[key] ?? null
     const ls = local.stamps[key] ?? 0
     const rs = remote.stamps[key] ?? 0
+    if (ls === 0 && rs === 0 && STAMPED_ONLY_KEYS.has(key)) continue
     if (rs > ls) {
       if (lv !== rv) {
         next.values[key] = rv

@@ -20,6 +20,8 @@
     "axpass": "bun run scripts/axpass.ts",
     "axui": "bun run scripts/axui.ts",
     "axmap": "bun run scripts/axmap.ts",
+    "ayui": "bun run scripts/ayui.ts",
+    "aypass": "bun run scripts/aypass.ts",
     "atsync": "bun run scripts/atsync.ts",
     "assettings": "bun run scripts/assettings.ts",
     "asui": "bun run scripts/asui.ts",

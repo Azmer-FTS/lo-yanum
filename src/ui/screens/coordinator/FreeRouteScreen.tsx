@@ -38,7 +38,7 @@ import { useRoadRoute } from '../../routing/useRoadRoute'
 import { PositionLinkField } from '../../components/PositionLinkField'
 import { readToken } from '../../components/badges'
 import { Callout, EmptyState, PageHeader, Section } from '../../components/primitives'
-import { Field, TextField } from '../../components/fields'
+import { Field, NumberField, TextField } from '../../components/fields'
 import { useLocale } from '../../hooks/useLocale'
 
 /**
@@ -250,12 +250,12 @@ export function FreeRouteScreen() {
               onChange={(e) => patch({ departAt: e.target.value })}
             />
           </Field>
-          <TextField
+          <NumberField
+            min={0}
             label={t('freeRoute.visitMinutes')}
-            value={String(route.defaultVisitMinutes)}
-            onChange={(v) => patch({ defaultVisitMinutes: Math.max(0, Number(v) || 0) })}
+            value={route.defaultVisitMinutes}
+            onCommit={(n) => patch({ defaultVisitMinutes: n ?? 0 })}
             testId="free-route-visit-minutes"
-            kind="integer"
           />
         </div>
         {/* ★ AH9.2 — le point de départ se déplace en collant un lien, comme

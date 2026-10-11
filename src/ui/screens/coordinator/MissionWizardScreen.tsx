@@ -59,7 +59,7 @@ import { Avatar } from '../../components/Avatar'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
 import { Icon } from '../../components/Icon'
 import { PhoneTypeChip } from '../../components/badges'
-import { SelectField, TextArea, TextField } from '../../components/fields'
+import { NumberField, SelectField, TextArea, TextField } from '../../components/fields'
 import { PageHeader,
   Callout,
   CopyButton,
@@ -1062,13 +1062,12 @@ export function MissionWizardScreen() {
                       onChange={(e) => setDayKey(e.target.value)}
                     />
                   </label>
-                  <TextField
+                  <NumberField
                     label={t('wizard.required')}
-                    kind="integer"
-                    value={String(required)}
-                    onChange={(v) =>
-                      setRequired(Math.max(1, Math.min(12, Number(v) || 1)))
-                    }
+                    min={1}
+                    max={12}
+                    value={required}
+                    onCommit={(n) => n !== null && setRequired(n)}
                     hint={t('wizard.requiredHint', {
                       count: shortlistSize(required),
                     })}

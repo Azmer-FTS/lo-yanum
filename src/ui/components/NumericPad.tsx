@@ -25,6 +25,22 @@ import { Icon } from './Icon'
  * forme du téléphone, le nettoyage du ת״ז et l'état React suivent comme à la
  * frappe. Un clavier matériel continue de taper normalement. « ⌨ » rend le
  * clavier du système pour ce champ, si le PO en a besoin.
+ *
+ * ★★ AY1.1 (2026-10-11) — RÉPARÉ, PAS REMPLACÉ (« le pavé me plaît beaucoup »).
+ *   Trois défauts reproduits sur la carte de couverture :
+ *   1. « le chiffre s'ajoute » : le toucher posait le curseur EN FIN de
+ *      valeur → toucher un champ SÉLECTIONNE désormais toute la valeur, et
+ *      le premier chiffre la remplace (au pavé comme au clavier).
+ *   2. « je ne peux pas effacer le dernier chiffre » : le champ était lié à
+ *      un nombre et refusait le vide (voir `useNumberDraft`, `fields.tsx`) ;
+ *      et `type="number"` n'a pas de sélection, donc ⌫ ne savait pas où
+ *      était le curseur. Plus aucun `type="number"` dans l'application.
+ *   3. « le clavier reste affiché » : sur iPad, toucher une zone qui ne
+ *      prend pas le focus NE RETIRE PAS le focus du champ (le système n'a
+ *      pas de clavier à fermer, puisque `inputmode="none"`) ; et un champ
+ *      retiré de la page (changement d'écran) ne déclenche aucun `focusout`.
+ *      Le pavé se ferme donc : sur « סיום », sur un toucher hors du pavé et
+ *      du champ, au changement d'écran, et quand le champ disparaît.
  */
 
 const NUMERIC_MODES = new Set(['numeric', 'decimal', 'tel'])
@@ -79,6 +95,14 @@ function writeValue(el: HTMLInputElement, next: string, caret: number): void {
   })
 }
 
+function selectAll(el: HTMLInputElement): void {
+  try {
+    el.setSelectionRange(0, el.value.length)
+  } catch {
+    el.select?.()
+  }
+}
+
 function selection(el: HTMLInputElement): [number, number] {
   try {
     const s = el.selectionStart
@@ -102,6 +126,47 @@ export function NumericPad() {
   const [target, setTarget] = useState<HTMLInputElement | null>(null)
   const [kind, setKind] = useState<'digits' | 'decimal'>('digits')
   const padRef = useRef<HTMLDivElement>(null)
+  const targetRef = useRef<HTMLInputElement | null>(null)
+  targetRef.current = target
+
+  // ★ AY1.1 — un champ retiré de la page (écran quitté, fiche refermée) ne
+  // déclenche aucun `focusout` : le pavé le constate et se ferme.
+  useEffect(() => {
+    if (!target) return
+    const mo = new MutationObserver(() => {
+      if (!target.isConnected || target.offsetParent === null) setTarget(null)
+    })
+    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] })
+    return () => mo.disconnect()
+  }, [target])
+
+  // ★ AY1.1 — AU CLAVIER AUSSI : un champ chiffré pris au clic ou à la
+  // tabulation sélectionne sa valeur ; le clic qui suit ne la désélectionne pas.
+  useEffect(() => {
+    let justFocused: HTMLInputElement | null = null
+    const onFocus = (e: FocusEvent) => {
+      const el = e.target
+      if (!(el instanceof HTMLInputElement) || !numericKind(el)) return
+      justFocused = el
+      requestAnimationFrame(() => selectAll(el))
+      window.setTimeout(() => {
+        if (justFocused === el) justFocused = null
+      }, 400)
+    }
+    const onUp = (e: MouseEvent) => {
+      if (justFocused && e.target === justFocused) {
+        e.preventDefault()
+        selectAll(justFocused)
+        justFocused = null
+      }
+    }
+    document.addEventListener('focusin', onFocus)
+    document.addEventListener('mouseup', onUp, true)
+    return () => {
+      document.removeEventListener('focusin', onFocus)
+      document.removeEventListener('mouseup', onUp, true)
+    }
+  }, [])
 
   useEffect(() => {
     if (!enabled) return
@@ -118,17 +183,29 @@ export function NumericPad() {
         setKind(k)
         setTarget(el)
         requestAnimationFrame(() => {
-          // Un doigt pose le curseur à peu près n'importe où ; corriger un
-          // numéro se fait par la fin.
-          try {
-            const n = el.value.length
-            el.setSelectionRange(n, n)
-          } catch {
-            // type="number"
-          }
+          // ★ AY1.1 — toucher le champ SÉLECTIONNE la valeur : le premier
+          // chiffre la remplace (ce que le PO attend d'un champ chiffré).
+          selectAll(el)
           el.scrollIntoView({ block: 'center', behavior: 'smooth' })
         })
       }
+    }
+    // ★ AY1.1 — tout toucher hors du pavé et hors du champ ferme le pavé
+    // (l'iPad ne retire pas le focus sur une zone inerte).
+    const onOutside = (e: Event) => {
+      const cur = targetRef.current
+      if (!cur) return
+      const node = e.target instanceof Node ? e.target : null
+      if (node && padRef.current?.contains(node)) return
+      if (node === cur) return
+      const el = node instanceof Element ? node.closest('input') : null
+      if (el && numericKind(el)) return // le focus passe à cet autre champ
+      cur.blur()
+      setTarget(null)
+    }
+    const close = () => {
+      targetRef.current?.blur()
+      setTarget(null)
     }
     const onBlur = () => {
       // Un bouton du pavé retient le focus (pointerdown empêché) ; tout autre
@@ -139,13 +216,19 @@ export function NumericPad() {
       }, 0)
     }
     document.addEventListener('pointerdown', onDown, true)
+    document.addEventListener('pointerdown', onOutside, true)
     document.addEventListener('touchstart', onDown, { capture: true, passive: true })
+    window.addEventListener('hashchange', close)
+    window.addEventListener('popstate', close)
     document.addEventListener('focusin', onFocus)
     document.addEventListener('focusout', onBlur)
     return () => {
       document.documentElement.removeAttribute('data-numpad')
       document.removeEventListener('pointerdown', onDown, true)
+      document.removeEventListener('pointerdown', onOutside, true)
       document.removeEventListener('touchstart', onDown, true)
+      window.removeEventListener('hashchange', close)
+      window.removeEventListener('popstate', close)
       document.removeEventListener('focusin', onFocus)
       document.removeEventListener('focusout', onBlur)
     }
@@ -249,7 +332,10 @@ export function NumericPad() {
         <button
           type="button"
           className={`${base} bg-accent text-body font-semibold text-content-on-accent`}
-          onClick={() => target.blur()}
+          onClick={() => {
+            target.blur()
+            setTarget(null)
+          }}
           data-numpad-key="done"
         >
           {t('numpad.done')}

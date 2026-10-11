@@ -2795,7 +2795,9 @@
       "noRoad_many": "ל-{{count}} זוגות אין דרך במפה",
       "noRoad_other": "ל-{{count}} זוגות אין דרך במפה",
       "loadingRoads": "קורא את רשת הכבישים מהמפה…",
-      "summaryLimit": "{{road}} קישורים בכביש בטווח {{limit}} · {{dropped}} נפסלו (בקו אווירי היו {{air}})"
+      "summaryLimit": "{{road}} קישורים בכביש בטווח {{limit}} · {{dropped}} נפסלו (בקו אווירי היו {{air}})",
+      "empty": "אף קישור לא נכנס בטווח {{limit}} — הטווח קצר מדי?",
+      "reset": "חזרה ל־{{limit}}"
     },
     "meetingMode": "מצב פגישה עם מוסד",
     "limit": "טווח",

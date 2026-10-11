@@ -194,9 +194,12 @@ try {
   })
   await A.page.waitForTimeout(2600)
   const keys = Object.keys(remoteBlob())
-  check('ni thème, ni laissez-passer, ni temporisation dans la base', !keys.some((k) => /theme|farmer-pass|link-unlock|guard-pass/.test(k)), keys.join(','))
+  check('ni laissez-passer, ni temporisation dans la base', !keys.some((k) => /farmer-pass|link-unlock|guard-pass/.test(k)), keys.join(','))
+  // ★★ AY1.3 — le PO tranche contre AI6 : le thème du COORDINATEUR voyage.
+  check('AY1.3 · le thème du coordinateur, lui, monte', keys.includes('lo-yanum:theme:coordinator'), keys.join(','))
   await resume(B)
-  check('B garde SON thème', (await ls(B, 'lo-yanum:theme:coordinator')) !== 'dark')
+  check('AY1.3 · B reçoit le sombre choisi sur A', (await ls(B, 'lo-yanum:theme:coordinator')) === 'dark')
+  check('AY1.3 · … et l’applique sans recharger', (await B.page.evaluate(() => document.documentElement.getAttribute('data-theme'))) === 'dark')
 
   await A.ctx.close()
   await B.ctx.close()

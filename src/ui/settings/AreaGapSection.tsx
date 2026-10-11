@@ -59,14 +59,16 @@ export function AreaGapSection() {
           </label>
           <input
             id="area-gap-percent"
-            type="number"
+            type="text"
+            pattern="[0-9]*"
+            data-kind="integer"
             dir="ltr"
             inputMode="numeric"
             className="input w-full"
             data-testid="area-gap-percent"
             value={percent}
             onChange={(e) => {
-              setPercent(e.target.value)
+              setPercent(e.target.value.replace(/\D/g, ''))
               setSaved('idle')
             }}
           />

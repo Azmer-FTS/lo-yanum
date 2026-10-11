@@ -56,7 +56,9 @@ export function RenewalSection() {
       <input
         id="renewal-window"
         data-testid="renewal-window"
-        type="number"
+        type="text"
+            pattern="[0-9]*"
+            data-kind="integer"
         dir="ltr"
         inputMode="numeric"
         min={RENEWAL_WINDOW_MIN}
@@ -64,7 +66,7 @@ export function RenewalSection() {
         className="input ltr-nums"
         value={value}
         onChange={(e) => {
-          setValue(e.target.value)
+          setValue(e.target.value.replace(/\D/g, ''))
           setState('idle')
         }}
         onBlur={save}

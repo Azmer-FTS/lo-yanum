@@ -44,7 +44,9 @@ export function RouteMarginSection() {
           </label>
           <input
             id="route-margin"
-            type="number"
+            type="text"
+            pattern="[0-9]*"
+            data-kind="integer"
             min={0}
             max={ROUTE_MARGIN_MAX}
             dir="ltr"
@@ -53,7 +55,7 @@ export function RouteMarginSection() {
             data-testid="route-margin"
             value={value}
             onChange={(e) => {
-              setValue(e.target.value)
+              setValue(e.target.value.replace(/\D/g, ''))
               setState('idle')
             }}
             onKeyDown={(e) => {

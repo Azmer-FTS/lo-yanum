@@ -174,7 +174,9 @@
       "noRoad_one": "One pair has no road on the map",
       "noRoad_other": "{{count}} pairs have no road on the map",
       "loadingRoads": "Reading the road network from the map…",
-      "summaryLimit": "{{road}} road links within {{limit}} · {{dropped}} dropped (as the crow flies: {{air}})"
+      "summaryLimit": "{{road}} road links within {{limit}} · {{dropped}} dropped (as the crow flies: {{air}})",
+      "empty": "No link fits within {{limit}} — is the limit too short?",
+      "reset": "Back to {{limit}}"
     },
     "meetingMode": "Meeting with an institution",
     "limit": "Range",

@@ -55,14 +55,16 @@ export function VigilSection() {
       </label>
       <input
         id={id}
-        type="number"
+        type="text"
+            pattern="[0-9]*"
+            data-kind="integer"
         dir="ltr"
         inputMode="numeric"
         className="input w-full"
         data-testid={id}
         value={value}
         onChange={(e) => {
-          set(e.target.value)
+          set(e.target.value.replace(/\D/g, ''))
           setSaved('idle')
         }}
       />

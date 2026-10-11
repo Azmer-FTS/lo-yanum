@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Icon } from '../components/Icon'
 import { useStackBelow } from '../hooks/useStackBelow'
 import { onSettingsApplied, onSettingsConflict } from './applied'
+import { THEME_SYNC_KEY } from './sync'
 
 /**
  * ★★ AS4.6 — LE PO EST INFORMÉ, IL N'Y A PAS DE PERTE SILENCIEUSE.
@@ -29,8 +30,15 @@ export function SettingsSyncNotice() {
   )
 
   useEffect(() => {
-    const offA = onSettingsApplied(null, (keys) => setApplied((prev) => [...new Set([...prev, ...keys])]))
-    const offC = onSettingsConflict((keys) => setConflicts((prev) => [...new Set([...prev, ...keys])]))
+    // ★ AY1.3 — le thème se VOIT changer : inutile de l'annoncer.
+    const offA = onSettingsApplied(null, (keys) => {
+      const shown = keys.filter((k) => k !== THEME_SYNC_KEY)
+      if (shown.length > 0) setApplied((prev) => [...new Set([...prev, ...shown])])
+    })
+    const offC = onSettingsConflict((keys) => {
+      const shown = keys.filter((k) => k !== THEME_SYNC_KEY)
+      if (shown.length > 0) setConflicts((prev) => [...new Set([...prev, ...shown])])
+    })
     return () => {
       offA()
       offC()

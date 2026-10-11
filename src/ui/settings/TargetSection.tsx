@@ -72,15 +72,17 @@ export function TargetSection() {
       </label>
       <input
         id={id}
-        type={type}
+        type={type === 'number' ? 'text' : type}
         dir={type === 'text' ? undefined : 'ltr'}
         inputMode={type === 'number' ? 'numeric' : undefined}
+        pattern={type === 'number' ? '[0-9]*' : undefined}
+        data-kind={type === 'number' ? 'integer' : undefined}
         className="input w-full"
         data-testid={testId}
         placeholder={placeholder}
         value={value}
         onChange={(e) => {
-          onChange(e.target.value)
+          onChange(type === 'number' ? e.target.value.replace(/\D/g, '') : e.target.value)
           setSaved('idle')
         }}
       />

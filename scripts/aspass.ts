@@ -214,7 +214,7 @@ section('A290 · AS4 — la fusion des réglages, clé par clé (pure)')
   check('readRemoteSide lit un bloc d’avant AS4 sans instants', readRemoteSide({ [T]: 'x' }).values[T] === 'x')
   const want = ['lo-yanum:target', 'lo-yanum:coverage', 'lo-yanum:vigil', 'lo-yanum:area-gap', 'lo-yanum:summons-template', 'lo-yanum:agreement-doc-template', 'lo-yanum:region-rings', 'lo-yanum:coordinator', 'lo-yanum:origin']
   check('carte, seuils, gabarits, régions, objectif, point de départ VOYAGENT', want.every((k) => SYNCED_SETTING_KEYS.includes(k)))
-  check('laissez-passer et temporisation restent LOCAUX', !SYNCED_SETTING_KEYS.some((k) => /farmer-pass|guard-pass|link-unlock|theme/.test(k)) && LOCAL_ONLY_KEYS.some((l) => l.key === 'lo-yanum:farmer-pass') && LOCAL_ONLY_KEYS.some((l) => l.key === 'lo-yanum:link-unlock'))
+  check('laissez-passer et temporisation restent LOCAUX', !SYNCED_SETTING_KEYS.some((k) => /farmer-pass|guard-pass|link-unlock|theme:(volunteer|farmer|driver)/.test(k)) && LOCAL_ONLY_KEYS.some((l) => l.key === 'lo-yanum:farmer-pass') && LOCAL_ONLY_KEYS.some((l) => l.key === 'lo-yanum:link-unlock'))
 }
 
 section('A292 · AS6 — un bloc collé de plusieurs contacts → autant de pistes')

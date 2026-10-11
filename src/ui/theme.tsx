@@ -9,6 +9,8 @@ import {
   themeStorageKey,
 } from '@core/index'
 import type { Role, ThemeChoice } from '@core/index'
+import { onSettingsApplied } from './settings/applied'
+import { THEME_SYNC_KEY } from './settings/sync'
 
 /**
  * Theme application — the DOM half of the theme system.
@@ -171,6 +173,10 @@ export function startThemeController(): void {
   window.addEventListener('storage', (e) => {
     if (e.key === null || e.key.startsWith('lo-yanum:theme:')) sync()
   })
+  /* ★★ AY1.3 — un choix fait sur un autre appareil arrive par la
+     synchronisation des réglages (aucun événement `storage` dans la page qui
+     l'écrit) : on l'applique sur-le-champ. */
+  onSettingsApplied([THEME_SYNC_KEY], sync)
 
   /* ★ AN1.1 (2026-09-16) — LA RELECTURE À INTERVALLE, TROISIÈME CEINTURE.
      Mesuré sur le simulateur iPad (iPadOS 26.3), app INSTALLÉE en mode

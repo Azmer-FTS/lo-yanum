@@ -77,6 +77,146 @@ import type { FieldKind } from '@core/fieldKind'
 export { KIND_DOM, kindInputProps } from '@core/fieldKind'
 export type { FieldKind } from '@core/fieldKind'
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AY1.1 (2026-10-11) — UN CHAMP CHIFFRÉ SE VIDE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * « Je ne peux pas effacer le dernier chiffre. » Reproduit sur la carte de
+ * couverture, au pavé ET au clavier : le champ était lié à un NOMBRE
+ * (`value={prefs.radiusKm}`) et la frappe n'était retenue que si elle donnait
+ * un nombre valide — vider le champ ne changeait donc pas l'état, et React
+ * remettait aussitôt l'ancienne valeur. Même forme ailleurs : `Number(v) || 0`
+ * (minutes de visite : vide → « 0 »), `Number(v) || 1` (nombre de gardes).
+ *
+ * Règle : le champ montre un BROUILLON (le texte tapé, vide compris) tant
+ * qu'on y est ; un brouillon valide est appliqué aussitôt ; en quittant le
+ * champ, un brouillon vide ou hors bornes rend la valeur gardée (ou la borne).
+ * `allowEmpty` : le vide est une valeur (« selon le défaut »).
+ */
+export function useNumberDraft(
+  value: number | null,
+  commit: (n: number | null) => void,
+  opts: { min?: number; max?: number; integer?: boolean; allowEmpty?: boolean } = {},
+): { value: string; onChange: (raw: string) => void; onBlur: () => void } {
+  const { min = -Infinity, max = Infinity, integer = true, allowEmpty = false } = opts
+  const [draft, setDraft] = useState<string | null>(null)
+  const parse = (s: string): number | null => {
+    if (s.trim() === '' || s === '.') return null
+    const n = Number(s)
+    if (!Number.isFinite(n)) return null
+    return integer ? Math.round(n) : n
+  }
+  return {
+    value: draft ?? (value === null || value === undefined ? '' : String(value)),
+    onChange: (raw) => {
+      const s = integer ? raw.replace(/\D/g, '') : raw.replace(/,/g, '.').replace(/[^\d.]/g, '')
+      setDraft(s)
+      const n = parse(s)
+      if (n === null) {
+        if (allowEmpty && s === '') commit(null)
+        return
+      }
+      if (n >= min && n <= max) commit(n)
+    },
+    onBlur: () => {
+      if (draft !== null) {
+        const n = parse(draft)
+        if (n !== null && (n < min || n > max)) commit(Math.min(max, Math.max(min, n)))
+      }
+      setDraft(null)
+    },
+  }
+}
+
+/** ★ AY1.1 — un champ de formulaire lié à un NOMBRE (et pas à un texte). */
+export function NumberField({
+  label,
+  value,
+  onCommit,
+  min,
+  max,
+  integer = true,
+  allowEmpty = false,
+  hint,
+  error,
+  testId,
+  placeholder,
+}: {
+  label: string
+  value: number | null
+  onCommit: (n: number | null) => void
+  min?: number
+  max?: number
+  integer?: boolean
+  allowEmpty?: boolean
+  hint?: string
+  error?: string
+  testId?: string
+  placeholder?: string
+}) {
+  const d = useNumberDraft(value, onCommit, { min, max, integer, allowEmpty })
+  return (
+    <TextField
+      label={label}
+      value={d.value}
+      onChange={d.onChange}
+      onBlur={d.onBlur}
+      hint={hint}
+      error={error}
+      testId={testId}
+      placeholder={placeholder}
+      kind={integer ? 'integer' : 'decimal'}
+    />
+  )
+}
+
+/** ★ AY1.1 — un `<input>` chiffré nu (réglages en ligne, carte de couverture). */
+export function NumInput({
+  value,
+  onCommit,
+  min,
+  max,
+  integer = true,
+  allowEmpty = false,
+  className = '',
+  testId,
+  ariaLabel,
+  placeholder,
+  id,
+}: {
+  value: number | null
+  onCommit: (n: number | null) => void
+  min?: number
+  max?: number
+  integer?: boolean
+  allowEmpty?: boolean
+  className?: string
+  testId?: string
+  ariaLabel?: string
+  placeholder?: string
+  id?: string
+}) {
+  const d = useNumberDraft(value, onCommit, { min, max, integer, allowEmpty })
+  return (
+    <input
+      id={id}
+      type="text"
+      inputMode={integer ? 'numeric' : 'decimal'}
+      pattern={integer ? '[0-9]*' : undefined}
+      dir="ltr"
+      data-kind={integer ? 'integer' : 'decimal'}
+      className={`input ltr-nums ${className}`}
+      value={d.value}
+      onChange={(e) => d.onChange(e.target.value)}
+      onBlur={d.onBlur}
+      data-testid={testId}
+      aria-label={ariaLabel}
+      placeholder={placeholder}
+    />
+  )
+}
+
 export function TextField({
   label,
   value,
@@ -90,10 +230,13 @@ export function TextField({
   testId,
   kind = 'text',
   className = '',
+  onBlur,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
+  /** ★ AY1.1 — `useNumberDraft` rend la valeur gardée quand on quitte le champ. */
+  onBlur?: () => void
   error?: string
   hint?: string
   required?: boolean
@@ -150,6 +293,7 @@ export function TextField({
         value={shown}
         placeholder={proposed ? (dom.show ? dom.show(suggestion ?? '') : suggestion) : placeholder}
         onChange={(e) => onChange(dom.clean ? dom.clean(e.target.value) : e.target.value)}
+        onBlur={onBlur}
       />
       {/* ★ AN8.2 — « un champ de date se voit comme une date ». Vide, l'iPad
           dessine un rectangle blanc indistinct : on y écrit « בחירת תאריך »

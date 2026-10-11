@@ -57,14 +57,16 @@ export function CoverageSection() {
           </label>
           <input
             id="coverage-days"
-            type="number"
+            type="text"
+            pattern="[0-9]*"
+            data-kind="integer"
             dir="ltr"
             inputMode="numeric"
             className="input w-full"
             data-testid="coverage-days"
             value={days}
             onChange={(e) => {
-              setDays(e.target.value)
+              setDays(e.target.value.replace(/\D/g, ''))
               setSaved('idle')
             }}
           />

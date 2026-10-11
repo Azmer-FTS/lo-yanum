@@ -174,7 +174,9 @@
       "noRoad_one": "Une paire sans route sur la carte",
       "noRoad_other": "{{count}} paires sans route sur la carte",
       "loadingRoads": "Lecture du réseau routier de la carte…",
-      "summaryLimit": "{{road}} liens par la route à {{limit}} · {{dropped}} écartés (à vol d'oiseau : {{air}})"
+      "summaryLimit": "{{road}} liens par la route à {{limit}} · {{dropped}} écartés (à vol d'oiseau : {{air}})",
+      "empty": "Aucun lien ne tient dans {{limit}} — la borne est-elle trop courte ?",
+      "reset": "Revenir à {{limit}}"
     },
     "meetingMode": "Rendez-vous avec une institution",
     "limit": "Portée",

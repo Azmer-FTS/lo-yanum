@@ -38,6 +38,7 @@ import { meshPair, requestMeshPairs, useRoadMesh } from '../../routing/roadMesh'
 import { useRouteMargin } from '../../settings/routeMargin'
 import { onSettingsApplied } from '../../settings/applied'
 import { InfoTip } from '../../components/InfoTip'
+import { NumInput } from '../../components/fields'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -515,18 +516,13 @@ export function CoverageScreen() {
               <span className="mt-1 flex items-center gap-2 text-caption text-content-secondary">
                 {/* ★ AW1.7 — un champ chiffré, SANS plafond : la réglette n'est qu'un raccourci. */}
                 <span>{t('coverage.radiusAny')}</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
+                <NumInput
                   min={1}
                   value={prefs.radiusKm}
-                  onChange={(e) => {
-                    const n = Number(e.target.value)
-                    if (Number.isFinite(n) && n >= 1) setPrefs((p) => ({ ...p, radiusKm: clampRadius(n) }))
-                  }}
-                  className="input ltr-nums h-11 w-24 text-center"
-                  data-testid="coverage-radius-number"
-                  aria-label={t('coverage.radius')}
+                  onCommit={(n) => n !== null && setPrefs((p) => ({ ...p, radiusKm: clampRadius(n) }))}
+                  className="h-11 w-24 text-center"
+                  testId="coverage-radius-number"
+                  ariaLabel={t('coverage.radius')}
                 />
                 <span>{t('coverage.kmUnit')}</span>
               </span>
@@ -546,18 +542,13 @@ export function CoverageScreen() {
               />
               <span className="mt-1 flex flex-wrap items-center gap-2 text-caption text-content-secondary">
                 <span>{t('coverage.minutesAny')}</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
+                <NumInput
                   min={1}
                   value={prefs.minutes}
-                  onChange={(e) => {
-                    const n = Number(e.target.value)
-                    if (Number.isFinite(n) && n >= 1) setPrefs((p) => ({ ...p, minutes: Math.round(n) }))
-                  }}
-                  className="input ltr-nums h-11 w-20 text-center"
-                  data-testid="coverage-minutes-number"
-                  aria-label={t('coverage.limit')}
+                  onCommit={(n) => n !== null && setPrefs((p) => ({ ...p, minutes: n }))}
+                  className="h-11 w-20 text-center"
+                  testId="coverage-minutes-number"
+                  ariaLabel={t('coverage.limit')}
                 />
                 <span>{t('coverage.minUnit')}</span>
               </span>
@@ -567,19 +558,14 @@ export function CoverageScreen() {
           <span className="mt-2 flex flex-wrap items-center gap-2 border-t border-edge-subtle pt-2 text-caption text-content-secondary">
             <Icon name="moon" size={14} />
             <span>{t('coverage.nightLabel')}</span>
-            <input
-              type="number"
-              inputMode="numeric"
+            <NumInput
               min={0}
               max={200}
               value={prefs.nightPct}
-              onChange={(e) => {
-                const n = Number(e.target.value)
-                if (Number.isFinite(n) && n >= 0 && n <= 200) setPrefs((p) => ({ ...p, nightPct: Math.round(n) }))
-              }}
-              className="input ltr-nums h-11 w-20 text-center"
-              data-testid="coverage-night"
-              aria-label={t('coverage.nightLabel')}
+              onCommit={(n) => n !== null && setPrefs((p) => ({ ...p, nightPct: n }))}
+              className="h-11 w-20 text-center"
+              testId="coverage-night"
+              ariaLabel={t('coverage.nightLabel')}
             />
             <span>%</span>
             <span className="muted ms-auto text-micro" data-testid="coverage-duration-line">
@@ -593,6 +579,9 @@ export function CoverageScreen() {
           mesh={coverage.mesh}
           limitText={limitText}
           onRetry={() => setRetry((n) => n + 1)}
+          resetText={prefs.unit === 'min' ? t('coverage.minutes', { min: DEFAULT_LIMIT_MINUTES }) : t('coverage.km', { km: DEFAULT_RADIUS_KM })}
+          onReset={() => setPrefs((p) => (p.unit === 'min' ? { ...p, minutes: DEFAULT_LIMIT_MINUTES } : { ...p, radiusKm: DEFAULT_RADIUS_KM }))}
+          farmsShown={c.farms}
         />
 
         {/* ---------------------------------------------------------------- */}
@@ -941,11 +930,17 @@ function MeshStatus({
   mesh,
   limitText,
   onRetry,
+  resetText,
+  onReset,
+  farmsShown,
 }: {
   progress: ReturnType<typeof useRoadMesh>['progress']
   mesh: { airPairs: number; roadPairs: number; dropped: number; pending: number; noRoad: number; blocked: number; fastestBeyond: number }
   limitText: string
   onRetry: () => void
+  resetText: string
+  onReset: () => void
+  farmsShown: number
 }) {
   const { t } = useTranslation()
   const running = progress.running && progress.total > 0
@@ -988,6 +983,21 @@ function MeshStatus({
         <p className="ltr-nums mt-1 text-caption text-content-primary" data-testid="coverage-mesh-summary">
           {t('coverage.mesh.summaryLimit', { road: mesh.roadPairs, air: mesh.airPairs, dropped: mesh.dropped, limit: limitText })}
         </p>
+      )}
+      {/* ★★ AY1.2 — « le maillage a disparu » : chez le PO, la borne valait
+          3 minutes (le pavé ne laissait pas vider le champ : « 35 » effacé
+          s'arrêtait à « 3 »). Aucun lien ne tient alors, et rien ne le disait.
+          Une borne qui écarte TOUT se dit, et se rétablit d'un toucher. */}
+      {!running && mesh.pending === 0 && !progress.unavailable && mesh.roadPairs === 0 && farmsShown > 0 && (
+        <div className="mt-2 rounded-field border border-status-warn/40 bg-status-warn/10 p-2.5" data-testid="coverage-mesh-empty">
+          <p className="flex items-center gap-1.5 text-caption font-semibold text-status-warn-ink">
+            <Icon name="alert" size={14} />
+            {t('coverage.mesh.empty', { limit: limitText })}
+          </p>
+          <button type="button" className="btn-secondary mt-2 min-h-11" onClick={onReset} data-testid="coverage-mesh-reset">
+            {t('coverage.mesh.reset', { limit: resetText })}
+          </button>
+        </div>
       )}
       {mesh.blocked > 0 && (
         <p className="mt-1 flex items-center gap-1.5 text-caption font-semibold text-status-danger-ink" data-testid="coverage-mesh-blocked">

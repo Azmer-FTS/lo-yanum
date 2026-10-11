@@ -1,0 +1,101 @@
+  app : http://localhost:5412  (build dist-axui)
+
+  A355 — le pavé et le clavier, sur TOUS les champs chiffrés
+  ----------------------------------------------------------
+  FAIL  A355 clavier · /coordinator/coverage · « coverage-radius-number »  — evaluate: Timeout 8000ms exceeded.
+  FAIL  A355 clavier · /coordinator/coverage · « coverage-night »  — scrollIntoViewIfNeeded: Timeout 4000ms exceeded.
+  FAIL  A355 clavier · /coordinator/coverage · « coverage-minutes-number »  — scrollIntoViewIfNeeded: Timeout 4000ms exceeded.
+  FAIL  A355 clavier · /coordinator/coverage · « coverage-night »  — scrollIntoViewIfNeeded: Timeout 4000ms exceeded.
+  PASS  A355 clavier · /coordinator/farms/farm-ak1-07/edit · « farm-area-cultivated » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant «  » · sélection 0/0/0 · après « 7 » : « 7 » · après ⌫⌫ : «  »
+  PASS  A355 clavier · /coordinator/farms/farm-ak1-07/edit · « farm-area-grazing » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant «  » · sélection 0/0/0 · après « 7 » : « 7 » · après ⌫⌫ : «  »
+  PASS  A355 clavier · /coordinator/farms/farm-ak1-07/edit · « farm-area-guarded » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant «  » · sélection 0/0/0 · après « 7 » : « 7 » · après ⌫⌫ : «  »
+  PASS  A355 clavier · /coordinator/farms/farm-ak1-07/edit · « liaison-phone » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant «  » · sélection 0/0/0 · après « 7 » : « 7 » · après ⌫⌫ : «  »
+  PASS  A355 clavier · /coordinator/farms/farm-ak1-07/edit · « כיתת כוננות היישוב » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant «  » · sélection 0/0/0 · après « 7 » : « 7 » · après ⌫⌫ : «  »
+  FAIL  A355 clavier · /coordinator/farms/farm-ak1-07/edit · « מוקד המועצה »  — scrollIntoViewIfNeeded: Timeout 4000ms exceeded.
+  PASS  A355 clavier · /coordinator/settings · « coordinator-phone » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant «  » · sélection 0/0/0 · après « 7 » : « 7 » · après ⌫⌫ : «  »
+  FAIL  A355 clavier · /coordinator/settings · « target-dunams » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant « 100000 » · sélection //6 · après « 7 » : « 1000007 » · après ⌫⌫ : « 10000 »
+  FAIL  A355 clavier · /coordinator/settings · « coverage-days » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant « 30 » · sélection //2 · après « 7 » : « 307 » · après ⌫⌫ : « 3 »
+  FAIL  A355 clavier · /coordinator/settings · « area-gap-percent » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant « 10 » · sélection //2 · après « 7 » : « 107 » · après ⌫⌫ : « 1 »
+  FAIL  A355 clavier · /coordinator/settings · « vigil-arrival » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant « 30 » · sélection //2 · après « 7 » : « 307 » · après ⌫⌫ : « 3 »
+  FAIL  A355 clavier · /coordinator/settings · « vigil-checkpoint » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant « 120 » · sélection //3 · après « 7 » : « 1207 » · après ⌫⌫ : « 12 »
+  FAIL  A355 clavier · /coordinator/settings · « vigil-close » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant « 60 » · sélection //2 · après « 7 » : « 607 » · après ⌫⌫ : « 6 »
+  FAIL  A355 clavier · /coordinator/settings · « renewal-window » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant « 60 » · sélection //2 · après « 7 » : « 760 » · après ⌫⌫ : « 60 »
+  FAIL  A355 clavier · /coordinator/settings · « route-margin » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant « 15 » · sélection //2 · après « 7 » : « 157 » · après ⌫⌫ : « 1 »
+  FAIL  A355 clavier · /coordinator/route/free · « free-route-visit-minutes » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant « 30 » · sélection 0/0/2 · après « 7 » : « 730 » · après ⌫⌫ : « 30 »
+  PASS  A355 clavier · /coordinator/volunteers/new · « טלפון * » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant «  » · sélection 0/0/0 · après « 7 » : « 7 » · après ⌫⌫ : «  »
+  PASS  A355 clavier · /coordinator/volunteers/new · « גיל » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant «  » · sélection 0/0/0 · après « 7 » : « 7 » · après ⌫⌫ : «  »
+  PASS  A355 clavier · /coordinator/drivers/new · « טלפון * » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant «  » · sélection 0/0/0 · après « 7 » : « 7 » · après ⌫⌫ : «  »
+  FAIL  A355 clavier · /coordinator/drivers/new · « מקומות * » : clic = valeur sélectionnée, la frappe REMPLACE, ⌫ vide le champ  — avant « 4 » · sélection 0/0/1 · après « 7 » : « 74 » · après ⌫⌫ : « 4 »
+  PASS  A355 aucune erreur de page (clavier)
+  FAIL  A355 pavé · /coordinator/coverage · « coverage-radius-number »  — scrollIntoViewIfNeeded: Timeout 4000ms exceeded.
+  PASS  A355 pavé · /coordinator/coverage · « coverage-radius-number » : un toucher ailleurs ferme le pavé
+  FAIL  A355 pavé · /coordinator/coverage · « coverage-night »  — scrollIntoViewIfNeeded: Timeout 4000ms exceeded.
+  PASS  A355 pavé · /coordinator/coverage · « coverage-night » : un toucher ailleurs ferme le pavé
+  FAIL  A355 pavé · /coordinator/coverage · « coverage-minutes-number »  — scrollIntoViewIfNeeded: Timeout 4000ms exceeded.
+  PASS  A355 pavé · /coordinator/coverage · « coverage-minutes-number » : un toucher ailleurs ferme le pavé
+  FAIL  A355 pavé · /coordinator/coverage · « coverage-night » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant « 0 » · « 4 » → « 04 » · ⌫⌫ → « 0 » · « 25 » → « 025 »
+  PASS  A355 pavé · /coordinator/coverage · « coverage-night » : un toucher ailleurs ferme le pavé
+  PASS  A355 pavé · /coordinator/farms/farm-ak1-07/edit · « farm-area-cultivated » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant «  » · « 4 » → « 4 » · ⌫⌫ → «  » · « 25 » → « 25 »
+  PASS  A355 pavé · /coordinator/farms/farm-ak1-07/edit · « farm-area-cultivated » : un toucher ailleurs ferme le pavé
+  PASS  A355 pavé · /coordinator/farms/farm-ak1-07/edit · « farm-area-grazing » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant «  » · « 4 » → « 4 » · ⌫⌫ → «  » · « 25 » → « 25 »
+  PASS  A355 pavé · /coordinator/farms/farm-ak1-07/edit · « farm-area-grazing » : un toucher ailleurs ferme le pavé
+  PASS  A355 pavé · /coordinator/farms/farm-ak1-07/edit · « farm-area-guarded » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant «  » · « 4 » → « 4 » · ⌫⌫ → «  » · « 25 » → « 25 »
+  PASS  A355 pavé · /coordinator/farms/farm-ak1-07/edit · « farm-area-guarded » : un toucher ailleurs ferme le pavé
+  PASS  A355 pavé · /coordinator/farms/farm-ak1-07/edit · « liaison-phone » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant «  » · « 4 » → « 4 » · ⌫⌫ → «  » · « 25 » → « 25 »
+  PASS  A355 pavé · /coordinator/farms/farm-ak1-07/edit · « liaison-phone » : un toucher ailleurs ferme le pavé
+  PASS  A355 pavé · /coordinator/farms/farm-ak1-07/edit · « כיתת כוננות היישוב » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant «  » · « 4 » → « 4 » · ⌫⌫ → «  » · « 25 » → « 25 »
+  PASS  A355 pavé · /coordinator/farms/farm-ak1-07/edit · « כיתת כוננות היישוב » : un toucher ailleurs ferme le pavé
+  FAIL  A355 pavé · /coordinator/farms/farm-ak1-07/edit · « מוקד המועצה »  — scrollIntoViewIfNeeded: Timeout 4000ms exceeded.
+  PASS  A355 pavé · /coordinator/farms/farm-ak1-07/edit · « מוקד המועצה » : un toucher ailleurs ferme le pavé
+  PASS  A355 pavé · /coordinator/settings · « coordinator-phone » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant «  » · « 4 » → « 4 » · ⌫⌫ → «  » · « 25 » → « 25 »
+  PASS  A355 pavé · /coordinator/settings · « coordinator-phone » : un toucher ailleurs ferme le pavé
+  FAIL  A355 pavé · /coordinator/settings · « target-dunams » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant « 100000 » · « 4 » → « 1000004 » · ⌫⌫ → « 10000 » · « 25 » → « 1000025 »
+  PASS  A355 pavé · /coordinator/settings · « target-dunams » : un toucher ailleurs ferme le pavé
+  FAIL  A355 pavé · /coordinator/settings · « coverage-days » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant « 30 » · « 4 » → « 304 » · ⌫⌫ → « 3 » · « 25 » → « 325 »
+  PASS  A355 pavé · /coordinator/settings · « coverage-days » : un toucher ailleurs ferme le pavé
+  FAIL  A355 pavé · /coordinator/settings · « area-gap-percent » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant « 10 » · « 4 » → « 104 » · ⌫⌫ → « 1 » · « 25 » → « 125 »
+  PASS  A355 pavé · /coordinator/settings · « area-gap-percent » : un toucher ailleurs ferme le pavé
+  FAIL  A355 pavé · /coordinator/settings · « vigil-arrival » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant « 30 » · « 4 » → « 304 » · ⌫⌫ → « 3 » · « 25 » → « 325 »
+  PASS  A355 pavé · /coordinator/settings · « vigil-arrival » : un toucher ailleurs ferme le pavé
+  FAIL  A355 pavé · /coordinator/settings · « vigil-checkpoint » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant « 120 » · « 4 » → « 1204 » · ⌫⌫ → « 12 » · « 25 » → « 1225 »
+  PASS  A355 pavé · /coordinator/settings · « vigil-checkpoint » : un toucher ailleurs ferme le pavé
+  FAIL  A355 pavé · /coordinator/settings · « vigil-close » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant « 60 » · « 4 » → « 604 » · ⌫⌫ → « 6 » · « 25 » → « 625 »
+  PASS  A355 pavé · /coordinator/settings · « vigil-close » : un toucher ailleurs ferme le pavé
+  FAIL  A355 pavé · /coordinator/settings · « renewal-window » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant « 60 » · « 4 » → « 604 » · ⌫⌫ → « 6 » · « 25 » → « 625 »
+  PASS  A355 pavé · /coordinator/settings · « renewal-window » : un toucher ailleurs ferme le pavé
+  FAIL  A355 pavé · /coordinator/settings · « route-margin » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant « 15 » · « 4 » → « 154 » · ⌫⌫ → « 1 » · « 25 » → « 125 »
+  PASS  A355 pavé · /coordinator/settings · « route-margin » : un toucher ailleurs ferme le pavé
+  FAIL  A355 pavé · /coordinator/route/free · « free-route-visit-minutes »  — scrollIntoViewIfNeeded: Timeout 4000ms exceeded.
+  PASS  A355 pavé · /coordinator/route/free · « free-route-visit-minutes » : un toucher ailleurs ferme le pavé
+  PASS  A355 pavé · /coordinator/volunteers/new · « טלפון * » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant «  » · « 4 » → « 4 » · ⌫⌫ → «  » · « 25 » → « 25 »
+  PASS  A355 pavé · /coordinator/volunteers/new · « טלפון * » : un toucher ailleurs ferme le pavé
+  PASS  A355 pavé · /coordinator/volunteers/new · « גיל » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant «  » · « 4 » → « 4 » · ⌫⌫ → «  » · « 25 » → « 25 »
+  PASS  A355 pavé · /coordinator/volunteers/new · « גיל » : un toucher ailleurs ferme le pavé
+  PASS  A355 pavé · /coordinator/drivers/new · « טלפון * » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant «  » · « 4 » → « 4 » · ⌫⌫ → «  » · « 25 » → « 25 »
+  PASS  A355 pavé · /coordinator/drivers/new · « טלפון * » : un toucher ailleurs ferme le pavé
+  FAIL  A355 pavé · /coordinator/drivers/new · « מקומות * » : le premier chiffre REMPLACE, ⌫ vide entièrement, puis on retape  — avant « 4 » · « 4 » → « 44 » · ⌫⌫ → «  » · « 25 » → « 25 »
+  PASS  A355 pavé · /coordinator/drivers/new · « מקומות * » : un toucher ailleurs ferme le pavé
+  PASS  A355 pavé : quitter l’écran ferme le pavé  — ouvert true · fermé après true
+  PASS  A355 pavé : « סיום » ferme le pavé
+  PASS  A355 aucune erreur de page (pavé)
+  écrans vérifiés :
+    /coordinator/coverage : 2 champ(s) — coverage-radius-number, coverage-night
+    /coordinator/coverage (+) : 2 champ(s) — coverage-minutes-number, coverage-night
+    /coordinator/farms/farm-ak1-07/edit : 6 champ(s) — farm-area-cultivated, farm-area-grazing, farm-area-guarded, liaison-phone, כיתת כוננות היישוב, מוקד המועצה
+    /coordinator/settings (+) : 9 champ(s) — coordinator-phone, target-dunams, coverage-days, area-gap-percent, vigil-arrival, vigil-checkpoint, vigil-close, renewal-window, route-margin
+    /coordinator/route/free : 1 champ(s) — free-route-visit-minutes
+    /coordinator/volunteers/new : 2 champ(s) — טלפון *, גיל
+    /coordinator/drivers/new : 2 champ(s) — טלפון *, מקומות *
+
+  A356 — le maillage sur la carte de couverture (borne réelle du PO : 3 min)
+  --------------------------------------------------------------------------
+  FAIL  A356 une borne qui écarte TOUS les liens se dit (au lieu d’une carte muette)  — aucun message
+  FAIL  A356 « חזרה ל־35 דק׳ » : le maillage revient sur la carte  — 0 lien(s) tracé(s), borne 3 min
+
+  A357 — le thème choisi sur l’ordinateur arrive sur le téléphone
+  ---------------------------------------------------------------
+  PASS  A357 l’ordinateur passe en sombre  — dark
+  FAIL  A357 le téléphone reçoit le sombre et l’applique, sans recharger  — avant null · après null
+  PASS  A357 « לפי המכשיר » voyage aussi : le téléphone suit de nouveau SON système  — system · 
+
+  48 PASS, 33 FAIL
