@@ -8,6 +8,7 @@ import type { InstitutionAction, InstitutionPlan } from '@core/index'
 import { Icon } from '../../components/Icon'
 import { PageHeader, Section } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
+import { runUndoable } from '../../components/UndoToast'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -146,7 +147,7 @@ export function InstitutionsImportScreen() {
                 type="button"
                 className="btn-primary mt-4"
                 disabled={count('create') + count('update') === 0}
-                onClick={() => setDone(applyInstitutionPlan(plan))}
+                onClick={() => setDone(runUndoable(t('undo.imported'), () => applyInstitutionPlan(plan)))}
                 data-testid="institutions-apply"
               >
                 {t('institutions.import.apply', { count: count('create') + count('update') })}

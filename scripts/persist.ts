@@ -35,6 +35,9 @@ import {
   createThreatVector,
   createThreatZone,
   createVolunteer,
+  setVolunteerRideWith,
+  updateVolunteerDriving,
+  undoable,
   clearMissionMeetingPoints,
   deleteAnchorPoint,
   deleteDriver,
@@ -388,6 +391,46 @@ check(
   'createVolunteer emitted the new volunteer',
   hit(recorded, 'volunteers', createdVolunteerId) !== undefined,
 )
+
+// ★★ AY4 — un volontaire qui conduit, sa voiture, et qui part avec lui.
+let drivingVolunteerId = ''
+emits(
+  'createVolunteer (conduit)',
+  () => {
+    drivingVolunteerId = createVolunteer({
+      photo: null,
+      name: 'נ-מתנדב',
+      age: 22,
+      phone: '050-9999905',
+      phoneType: 'smartphone',
+      yeshiva: '',
+      locality: 'באר שבע',
+      status: 'active',
+      inactiveReason: null,
+      notes: '',
+      hasLicense: true,
+      hasCar: true,
+      canDrive: true,
+      availability: { ...DEFAULT_AVAILABILITY },
+    }).id
+  },
+  [],
+)
+emits('setVolunteerRideWith', () => void setVolunteerRideWith(createdVolunteerId, drivingVolunteerId), [['volunteers', createdVolunteerId]])
+check('setVolunteerRideWith wrote ride_with', _raw().volunteers.find((v) => v.id === createdVolunteerId)?.rideWith === drivingVolunteerId)
+check('setVolunteerRideWith refuses a non-driver', setVolunteerRideWith(drivingVolunteerId, createdVolunteerId) === false)
+const carId = _raw().drivers.find((d) => d.volunteerId === drivingVolunteerId)?.id ?? ''
+emits('updateVolunteerDriving', () => updateVolunteerDriving(drivingVolunteerId, { vehicle: 'טויוטה לבנה', seats: 7 }), [['drivers', carId]])
+check('updateVolunteerDriving wrote the car', _raw().drivers.find((d) => d.id === carId)?.seats === 7)
+
+// ★★ AY5 — défaire : le geste écrit, l'annulation remet l'enregistrement tel qu'il était.
+let undoArchive: (() => void) | null = null
+emits('undoable', () => {
+  undoArchive = undoable(() => archiveVolunteer(createdVolunteerId, 'בדיקה')).undo
+}, [['volunteers', createdVolunteerId]])
+check('undoable : le geste a écrit', _raw().volunteers.find((v) => v.id === createdVolunteerId)?.status === 'inactive')
+const undoChanges = drive('undoable → undo', () => undoArchive?.())
+check('undoable → undo remet l’enregistrement et le POUSSE', _raw().volunteers.find((v) => v.id === createdVolunteerId)?.status === 'active' && hit(undoChanges, 'volunteers', createdVolunteerId) !== undefined)
 
 let createdDriverId = ''
 emits(

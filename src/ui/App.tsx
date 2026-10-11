@@ -1,5 +1,6 @@
 import { DriverFormPage, MeetingFormPage, VisitFormPage, VolunteerFormPage } from './screens/coordinator/FormPages'
 import { NumericPad } from './components/NumericPad'
+import { UndoToast } from './components/UndoToast'
 import type { ReactNode } from 'react'
 import { Suspense, lazy, useEffect, useReducer } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
@@ -33,7 +34,6 @@ import { LandingScreen } from './screens/LandingScreen'
 import { AuthSplash, LoginScreen } from './screens/LoginScreen'
 import { StyleguideScreen } from './screens/StyleguideScreen'
 import { DriverTripScreen } from './screens/driver/DriverTripScreen'
-import { DriversScreen } from './screens/coordinator/DriversScreen'
 import { FarmerDocumentsScreen } from './screens/farmer/FarmerDocumentsScreen'
 import { FarmerGate } from './screens/farmer/FarmerGate'
 import { FarmerGuardsScreen } from './screens/farmer/FarmerGuardsScreen'
@@ -42,7 +42,7 @@ import { FarmerSignScreen } from './screens/farmer/FarmerSignScreen'
 import { FarmerReportScreen } from './screens/farmer/FarmerReportScreen'
 import { FarmerTonightScreen } from './screens/farmer/FarmerTonightScreen'
 import { AgendaScreen } from './screens/coordinator/AgendaScreen'
-import { LeadsScreen } from './screens/coordinator/LeadsScreen'
+import { LeadEditScreen, LeadsScreen } from './screens/coordinator/LeadsScreen'
 import { PortalImportScreen } from './screens/coordinator/PortalImportScreen'
 import { AnchorFormScreen } from './screens/coordinator/AnchorFormScreen'
 import { AnchorSheetScreen } from './screens/coordinator/AnchorSheetScreen'
@@ -59,7 +59,7 @@ import { MissionsScreen } from './screens/coordinator/MissionsScreen'
 import { FreeRouteScreen } from './screens/coordinator/FreeRouteScreen'
 import { CoverageScreen } from './screens/coordinator/CoverageScreen'
 import { InstitutionsImportScreen } from './screens/coordinator/InstitutionsImportScreen'
-import { InstitutionsScreen } from './screens/coordinator/InstitutionsScreen'
+import { InstitutionEditScreen, InstitutionsScreen } from './screens/coordinator/InstitutionsScreen'
 import { AddContactsScreen } from './screens/coordinator/AddContactsScreen'
 import { RoutePlannerScreen } from './screens/coordinator/RoutePlannerScreen'
 import { RegionsEditScreen } from './screens/coordinator/RegionsEditScreen'
@@ -263,6 +263,8 @@ export default function App() {
       <IntakeBanner enabled={role === 'coordinator'} />
       {/* ★★ AN1.2 — le pavé numérique de l'iPad, une fois pour toute l'app. */}
       <NumericPad />
+      {/* ★★ AY5 — « c'est fait · ביטול », une bande pour toute l'application. */}
+      <UndoToast />
       <Routes>
         {/* The identity picker is a DEMO artefact: it hands out farmer,
             volunteer and driver sessions on mock people. A real signed-in
@@ -361,14 +363,16 @@ export default function App() {
           <Route path="coverage" element={<CoverageScreen />} />
           {/* ★★ AX1 — l'étape 1 du métier a son écran (elle était au fond de la couverture). */}
           <Route path="institutions" element={<InstitutionsScreen />} />
+          <Route path="institutions/:institutionId" element={<InstitutionEditScreen />} />
           <Route path="import/institutions" element={<InstitutionsImportScreen />} />
           <Route path="add" element={<AddContactsScreen />} />
           <Route path="volunteers" element={<VolunteersScreen />} />
           {/* ★★ AN11 — toute création, toute édition : une PAGE. */}
           <Route path="volunteers/new" element={<VolunteerFormPage />} />
           <Route path="volunteers/:volunteerId/edit" element={<VolunteerFormPage />} />
-          <Route path="drivers" element={<DriversScreen />} />
-          <Route path="drivers/new" element={<DriverFormPage />} />
+          {/* ★★ AY4 — volontaires et conducteurs : un écran. */}
+          <Route path="drivers" element={<Navigate to="/coordinator/volunteers?drivers=1" replace />} />
+          <Route path="drivers/new" element={<Navigate to="/coordinator/volunteers/new?driver=1" replace />} />
           <Route path="drivers/:driverId/edit" element={<DriverFormPage />} />
           {/* G10 — ONE wizard, three templates. The kind lives in the path so
               a coordinator can be sent straight to the farms import, and so
@@ -435,6 +439,7 @@ export default function App() {
           <Route path="agenda" element={<AgendaScreen />} />
           {/* ★★ AS6 — la salle d'attente des contacts. */}
           <Route path="leads" element={<LeadsScreen />} />
+          <Route path="leads/:leadId" element={<LeadEditScreen />} />
           <Route path="agenda/visit/new" element={<VisitFormPage />} />
           <Route path="agenda/visit/:visitId" element={<VisitFormPage />} />
           <Route path="agenda/meeting/new" element={<MeetingFormPage />} />

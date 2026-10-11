@@ -187,6 +187,53 @@ function commit(): void {
 }
 
 /**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AY5 (2026-10-11) — TOUT GESTE QUI CHANGE UN ÉTAT SE DÉFAIT.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * « Je clique et ça part je ne sais où, je ne peux pas revenir en arrière. »
+ * Écrire un « défaire » par mutation, c'est cinquante occasions d'oublier — et
+ * les mutations se propagent (une ferme archivée touche ses visites, un
+ * volontaire qui conduit matérialise un conducteur). Même parti que P2.6 :
+ * le changement se DÉDUIT de l'instantané. `undoable` note, pour chaque
+ * enregistrement que le geste a touché (et SEULEMENT ceux-là), ce qu'il était
+ * avant ; `undo` les remet tels quels et passe par `commit`, donc le retour
+ * en arrière est poussé en base comme n'importe quel geste.
+ *
+ * ⚠️ Seuls les enregistrements touchés reviennent : une donnée arrivée d'un
+ *    autre appareil entre-temps n'est pas effacée par l'annulation.
+ */
+export function undoable<R>(fn: () => R): { result: R; changed: number; undo: () => void } {
+  const before = indexOf(data)
+  const result = fn()
+  const after = indexOf(data)
+  const touched = changesBetween(before, after).map((c) => ({
+    collection: c.collection,
+    id: c.id,
+    prior: before.get(c.collection)?.get(c.id) ?? null,
+  }))
+  return {
+    result,
+    changed: touched.length,
+    undo: () => {
+      if (touched.length === 0) return
+      for (const { collection, id, prior } of touched) {
+        const list = (data[collection] as Array<{ id: string }>).filter((r) => r.id !== id)
+        if (prior !== null) {
+          const original = (data[collection] as Array<{ id: string }>).findIndex((r) => r.id === id)
+          const row = JSON.parse(prior) as { id: string }
+          if (original >= 0) list.splice(Math.min(original, list.length), 0, row)
+          else list.push(row)
+        }
+        ;(data as unknown as Record<string, unknown>)[collection] = list
+      }
+      data = remeasureFarms(data)
+      commit()
+    },
+  }
+}
+
+/**
  * ★★ Y2 — SOMETHING OUTSIDE THE STORE CHANGED WHAT THE STORE'S DATA MEANS.
  *
  * The region outlines are not store data — they are a pure function the store's
@@ -1008,6 +1055,35 @@ function syncVolunteerDriver(volunteer: Volunteer): void {
   } else if (!volunteer.canDrive && linked) {
     data.drivers = data.drivers.filter((d) => d.id !== linked.id)
   }
+}
+
+/**
+ * ★★ AY4 — « qui part avec qui ». Posé depuis la fiche d'une institution :
+ * le volontaire `volunteerId` part d'habitude avec le volontaire-conducteur
+ * `driverVolunteerId` (null = personne). Refusé si ce dernier ne conduit pas.
+ */
+export function setVolunteerRideWith(volunteerId: string, driverVolunteerId: string | null): boolean {
+  const index = data.volunteers.findIndex((v) => v.id === volunteerId)
+  if (index === -1) return false
+  if (driverVolunteerId !== null) {
+    const driver = data.volunteers.find((v) => v.id === driverVolunteerId)
+    if (!driver || !driver.canDrive || driver.id === volunteerId) return false
+  }
+  data.volunteers[index] = { ...data.volunteers[index], rideWith: driverVolunteerId }
+  commit()
+  return true
+}
+
+/**
+ * ★★ AY4 — les faits de CONDUCTEUR d'un volontaire qui conduit (véhicule,
+ * places, disponibilités), saisis sur SA fiche : la ligne `drivers` liée
+ * (G5.2) les porte. Sans effet si le volontaire ne conduit pas.
+ */
+export function updateVolunteerDriving(volunteerId: string, patch: { vehicle?: string; seats?: number; availabilityNote?: string }): void {
+  const linked = data.drivers.find((d) => d.volunteerId === volunteerId)
+  if (!linked) return
+  data.drivers = data.drivers.map((d) => (d.id === linked.id ? { ...d, ...patch } : d))
+  commit()
 }
 
 // --- G5.1: driver create/edit ----------------------------------------------

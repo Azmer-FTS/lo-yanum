@@ -15,6 +15,7 @@ import type { PortalAction, PortalPlan } from '@core/index'
 import { Icon } from '../../components/Icon'
 import { PageHeader, Section } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
+import { runUndoable } from '../../components/UndoToast'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -153,7 +154,7 @@ export function PortalImportScreen() {
               type="button"
               className="btn-primary min-h-[2.75rem]"
               data-testid="portal-apply"
-              onClick={() => setDone(applyPortalPlan(plan, HOME_BASE))}
+              onClick={() => setDone(runUndoable(t('undo.imported'), () => applyPortalPlan(plan, HOME_BASE)))}
             >
               <Icon name="check" size={16} />
               {t('portal.apply')}

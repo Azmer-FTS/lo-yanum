@@ -39,6 +39,7 @@ import { useRouteMargin } from '../../settings/routeMargin'
 import { onSettingsApplied } from '../../settings/applied'
 import { InfoTip } from '../../components/InfoTip'
 import { NumInput } from '../../components/fields'
+import { runUndoable } from '../../components/UndoToast'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -1106,7 +1107,7 @@ function InstitutionList({
             {isInstitutionToConfirm(i) && (
               <button
                 type="button"
-                onClick={() => updateInstitution(i.id, { engagementConfirmed: true })}
+                onClick={() => runUndoable(t('undo.confirmed', { name: i.name }), () => updateInstitution(i.id, { engagementConfirmed: true }))}
                 data-testid={`institution-confirm-${i.id}`}
                 aria-label={t('institutions.confirmAria', { name: i.name, status: t(`institutions.engagement.${i.engagement}`) })}
                 className="btn-secondary min-h-11 shrink-0 px-3"

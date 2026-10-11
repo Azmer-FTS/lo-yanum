@@ -30,7 +30,22 @@
   "people": {
     "noFarmer": "No farmer yet",
     "makePrimary": "Make primary contact",
-    "done": "Done"
+    "done": "Done",
+    "title": "Volunteers and drivers",
+    "info": "Everyone in one place: volunteers, and which of them drive. The \"Drivers\" button isolates those with a car. Matching volunteers with their institution's drivers is done from the institution's card.",
+    "call": "Call",
+    "carLine": "{{vehicle}} · {{seats}} seats",
+    "col": {
+      "institution": "Institution",
+      "drives": "Car"
+    },
+    "drivers": "Drivers",
+    "allInstitutions": "All institutions",
+    "newDriver": "New driver (a volunteer who drives)",
+    "empty": "No volunteers yet. Add each institution's volunteers, and who drives.",
+    "availability": "Availability",
+    "driving": "Driving",
+    "passengers": "Rides with him"
   },
   "form": {
     "placeKind": "Kind of place",
@@ -295,7 +310,8 @@
     "studentsShort_one": "1 student",
     "studentsShort_two": "{{count}} students",
     "studentsShort_other": "{{count}} students",
-    "positionSource": "Place source"
+    "positionSource": "Place source",
+    "audienceLabel": "Audience"
   },
   "quickPin": {
     "button": "Drop a pin on the map",
@@ -537,11 +553,16 @@
       "notes": "Note",
       "updated": "Updated",
       "created": "Added"
-    }
+    },
+    "noNote": "No note"
   },
   "table": {
     "open": "Details",
-    "empty": "Nobody here"
+    "empty": "Nobody here",
+    "sortBy": "Sort by",
+    "actions": "Actions",
+    "view": "Preview",
+    "edit": "Edit"
   },
   "institutionsScreen": {
     "info": "Yeshivot, mechinot and midrashot. An institution gives an oral agreement in principle — it signs nothing. See where each one stands, who the contact is and how many of its volunteers are already listed. Tap a row to update.",
@@ -558,7 +579,8 @@
       "phone": "Phone",
       "volunteers": "Volunteers",
       "place": "Location"
-    }
+    },
+    "volunteersSub": "{{count}} volunteers"
   },
   "farms": {
     "statusFilter": "Filter by status",
@@ -566,7 +588,10 @@
     "withAreas": "With weighted area",
     "withAreasHint": "Only farms that have a weighted area (measured or declared)",
     "statDunams": "{{n}} dunam · {{w}} weighted",
-    "info": "All the filters are on one row. The first ones are work queues — farms waiting for an action, with how many. The figure at the top (dunam · weighted) follows the filters."
+    "info": "All the filters are on one row. The first ones are work queues — farms waiting for an action, with how many. The figure at the top (dunam · weighted) follows the filters.",
+    "newGuardHere": "New guard at this farm",
+    "planVisit": "Plan a visit",
+    "noPosition": "Position unknown"
   },
   "freeRoute": {
     "saved": "Saved",
@@ -574,5 +599,58 @@
   },
   "import": {
     "forInstitution": "Every volunteer in the file will be attached to {{name}}"
+  },
+  "preview": {
+    "mapLabel": "Map of {{name}}",
+    "noPosition": "No position yet",
+    "openFull": "Open the full file",
+    "details": "Details",
+    "lastGuard": "Last guard",
+    "posts": "Guard posts"
+  },
+  "common": {
+    "done": "Done",
+    "delete": "Delete"
+  },
+  "institutionPeople": {
+    "volunteers": "Volunteers",
+    "drivers": "Drivers",
+    "seats": "Free seats in cars",
+    "none": "No volunteers from this institution yet.",
+    "driver": "Driver",
+    "carLine": "{{vehicle}} · {{taken}}/{{seats}} seats taken",
+    "privateCar": "Private car",
+    "ridesWith": "Rides with",
+    "noDriver": "No driver here",
+    "nobody": "— not set —",
+    "add": "Add a volunteer",
+    "seeAll": "All its volunteers",
+    "title": "Volunteers and drivers"
+  },
+  "volunteerForm": {
+    "noInstitution": "— no institution —",
+    "otherInstitution": "Other (not listed)",
+    "otherName": "Institution name",
+    "vehiclePlaceholder": "e.g. white Toyota, 7 seats"
+  },
+  "undo": {
+    "undo": "Undo",
+    "deleted": "Deleted {{name}}",
+    "archived": "{{name}} archived",
+    "unarchived": "{{name}} restored",
+    "confirmed": "{{name}} confirmed",
+    "engagement": "{{name}}: {{status}}",
+    "cancelled": "Guard cancelled",
+    "reactivated": "Guard reactivated",
+    "resolved": "Incident resolved",
+    "reopened": "Incident reopened",
+    "intakeHandled": "Request marked handled",
+    "imported": "Import done",
+    "sampleSeeded": "Test data added",
+    "sampleRemoved": "Test data removed",
+    "saved": "Saved: {{name}}",
+    "volunteerArchived": "{{name}} set inactive",
+    "volunteerReactivated": "{{name}} active again",
+    "outreach": "Marked as sent"
   }
 }

@@ -27,6 +27,7 @@ import {
 import { useCoreValue } from '../../hooks/useCore'
 import { useHydrated } from '../../hooks/useDataState'
 import { useLocale } from '../../hooks/useLocale'
+import { runUndoable } from '../../components/UndoToast'
 
 export function IncidentDetailScreen() {
   const { t } = useTranslation()
@@ -100,7 +101,7 @@ export function IncidentDetailScreen() {
               ? 'btn-ghost mt-1 py-1.5 text-micro'
               : 'btn-primary mt-1 py-1.5 text-micro'
           }
-          onClick={() => setIncidentResolved(incident.id, !incident.resolved)}
+          onClick={() => runUndoable(t(incident.resolved ? 'undo.reopened' : 'undo.resolved'), () => setIncidentResolved(incident.id, !incident.resolved))}
         >
           <Icon name={incident.resolved ? 'history' : 'check'} size={14} />
           {t(incident.resolved ? 'incidents.reopen' : 'incidents.resolve')}

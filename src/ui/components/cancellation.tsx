@@ -14,6 +14,7 @@ import { OutreachPanel } from './outreach'
 import { Modal } from './primitives'
 import { SelectField, TextArea } from './fields'
 import { useLocale } from '../hooks/useLocale'
+import { runUndoable } from './UndoToast'
 
 /**
  * G9bis — calling a guard off, telling everyone, and coming back from it.
@@ -93,7 +94,7 @@ export function CancelMissionModal({
             disabled={!valid}
             onClick={() => {
               if (reason === '') return
-              cancelMission(missionId, reason, note)
+              runUndoable(t('undo.cancelled'), () => cancelMission(missionId, reason, note))
               onClose()
             }}
           >
@@ -165,7 +166,7 @@ export function CancellationPanel({ view }: { view: MissionView }) {
           <button
             type="button"
             className="btn-primary"
-            onClick={() => reactivateMission(mission.id)}
+            onClick={() => runUndoable(t('undo.reactivated'), () => reactivateMission(mission.id))}
           >
             <Icon name="history" size={15} />
             {t('cancel.reactivate')}

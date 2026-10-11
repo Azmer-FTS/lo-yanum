@@ -71,6 +71,7 @@ export function VolunteerFormPage() {
       presentation="page"
       initialName={params.get('name') ?? undefined}
       institution={institution}
+      driver={params.get('driver') === '1'}
     />
   )
 }

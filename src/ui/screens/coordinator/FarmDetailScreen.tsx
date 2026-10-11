@@ -104,6 +104,7 @@ import { LandDocumentsSection } from '../../farm/LandDocumentsSection'
 import { useCoreValue } from '../../hooks/useCore'
 import { useHydrated } from '../../hooks/useDataState'
 import { useLocale } from '../../hooks/useLocale'
+import { runUndoable } from '../../components/UndoToast'
 
 const COMMITMENT_ICON: Record<CommitmentKind, IconName> = {
   shelter: 'home',
@@ -948,7 +949,7 @@ function ArchiveModal({
           className="btn-primary"
           data-testid="archive-confirm"
           onClick={() => {
-            archiveFarm(farm.id, reason)
+            runUndoable(t('undo.archived', { name: farm.name }), () => archiveFarm(farm.id, reason))
             onDone()
           }}
         >
@@ -1235,7 +1236,7 @@ export function FarmDetailScreen() {
                   label={t(isArchived(farm) ? 'archive.undo' : 'archive.action')}
                   testId="farm-archive"
                   onClick={() => {
-                    if (isArchived(farm)) unarchiveFarm(farm.id)
+                    if (isArchived(farm)) runUndoable(t('undo.unarchived', { name: farm.name }), () => unarchiveFarm(farm.id))
                     else setArchiveOpen(true)
                   }}
                 />
@@ -1314,7 +1315,7 @@ export function FarmDetailScreen() {
                   type="button"
                   data-testid="farm-unarchive"
                   className="btn-secondary min-h-[2.75rem]"
-                  onClick={() => unarchiveFarm(farm.id)}
+                  onClick={() => runUndoable(t('undo.unarchived', { name: farm.name }), () => unarchiveFarm(farm.id))}
                 >
                   <Icon name="undo" size={16} />
                   {t('archive.undo')}

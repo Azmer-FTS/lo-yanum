@@ -972,7 +972,7 @@ export function MissionWizardScreen() {
           on a 390 px row is unreadable at any font size. */}
       {/* ★ Y7 — opaque, and its spacing is padding rather than margin: a
           sticky bar with a bottom margin shows the page through the gap. */}
-      <ol className="sticky-top top-[var(--shell-top)] z-30 -mx-4 mb-4 flex items-center gap-1 overflow-x-auto border-b border-edge-subtle px-4 py-2.5 sm:-mx-6 sm:px-6">
+      <ol className="wrap-phone sticky-top top-[var(--shell-top)] z-30 -mx-4 mb-4 flex items-center gap-1 overflow-x-auto border-b border-edge-subtle px-4 py-2.5 sm:-mx-6 sm:px-6">
         {([1, 2, 3, 4, 5] as Step[]).map((s, i) => {
           const done = s < step
           const current = s === step

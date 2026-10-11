@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import {
   HOME_BASE,
@@ -14,16 +14,20 @@ import {
 import type { Institution, InstitutionEngagement, Volunteer } from '@core/index'
 
 import { readToken } from '../../components/badges'
-import { DataTable, readSortState, sortRows } from '../../components/DataTable'
-import type { Column, SortState } from '../../components/DataTable'
+import { readSortState, sortRows } from '../../components/DataTable'
+import type { SortState } from '../../components/DataTable'
+import { EntityTable } from '../../components/EntityTable'
+import type { EntityColumn, RowAction } from '../../components/EntityTable'
+import { PreviewPanel, PreviewRow, PreviewSection } from '../../components/PreviewPanel'
 import { Icon } from '../../components/Icon'
 import { MapSplit } from '../../components/MapSplit'
 import { MapView } from '../../components/MapView'
 import type { MapMarker } from '../../components/MapView'
 import { OverflowMenu } from '../../components/OverflowMenu'
-import { FilterPill, FilterRow, ListTop } from '../../components/primitives'
+import { FilterPill, FilterRow, ListTop, PageHeader } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
-import { ENGAGEMENT_ON, InstitutionEditor } from '../../institutions/institutionUi'
+import { ENGAGEMENT_ON, InstitutionEditor, InstitutionPeople } from '../../institutions/institutionUi'
+import { runUndoable } from '../../components/UndoToast'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -92,15 +96,15 @@ export function InstitutionsScreen() {
     .filter((i) => filter === 'all' || (filter === 'toConfirm' ? isInstitutionToConfirm(i) : i.engagement === filter))
     .filter((i) => !q || `${i.name} ${i.locality} ${i.network} ${i.contactName} ${i.aliases}`.includes(q))
 
-  const columns: Column<Institution>[] = [
-    { key: 'name', label: t('institutionsScreen.col.name'), sort: (i) => i.name, title: (i) => i.name, className: 'w-[24%] min-w-[9rem]', render: (i) => <span className="font-semibold text-content-primary">{i.name}</span> },
-    { key: 'locality', label: t('institutionsScreen.col.locality'), sort: (i) => i.locality, title: (i) => i.locality, className: 'w-[12%]', minWidth: 560, render: (i) => <span className="text-content-secondary">{i.locality || '—'}</span> },
-    { key: 'kind', label: t('institutionsScreen.col.kind'), sort: (i) => t(`institutions.kind.${i.kind}`), className: 'w-[10%]', minWidth: 860, render: (i) => <span className="text-content-secondary">{t(`institutions.kind.${i.kind}`)}</span> },
+  const columns: EntityColumn<Institution>[] = [
+    { key: 'locality', sub: (i) => i.locality, label: t('institutionsScreen.col.locality'), sort: (i) => i.locality, title: (i) => i.locality, className: 'w-[12%]', minWidth: 560, render: (i) => <span className="text-content-secondary">{i.locality || '—'}</span> },
+    { key: 'kind', sub: (i) => t(`institutions.kind.${i.kind}`), label: t('institutionsScreen.col.kind'), sort: (i) => t(`institutions.kind.${i.kind}`), className: 'w-[10%]', minWidth: 860, render: (i) => <span className="text-content-secondary">{t(`institutions.kind.${i.kind}`)}</span> },
     {
       key: 'engagement',
       label: t('institutionsScreen.col.engagement'),
       sort: (i) => INSTITUTION_ENGAGEMENTS.indexOf(i.engagement),
       interactive: true,
+      minWidth: 560,
       className: 'w-[13.5rem]',
       render: (i) => (
         <span className="flex flex-nowrap items-center gap-1.5">
@@ -109,7 +113,7 @@ export function InstitutionsScreen() {
             /* ★★ AV1 — confirmer : UN toucher, sans ouvrir la fiche. */
             <button
               type="button"
-              onClick={() => updateInstitution(i.id, { engagementConfirmed: true })}
+              onClick={() => runUndoable(t('undo.confirmed', { name: i.name }), () => updateInstitution(i.id, { engagementConfirmed: true }))}
               data-testid={`institution-confirm-${i.id}`}
               aria-label={t('institutions.confirmAria', { name: i.name, status: t(`institutions.engagement.${i.engagement}`) })}
               className="btn-secondary min-h-[2.5rem] shrink-0 px-2.5 py-1"
@@ -121,9 +125,10 @@ export function InstitutionsScreen() {
         </span>
       ),
     },
-    { key: 'contact', label: t('institutionsScreen.col.contact'), sort: (i) => i.contactName, title: (i) => i.contactName, className: 'w-[13%]', minWidth: 980, render: (i) => <span className="text-content-secondary">{i.contactName || '—'}</span> },
+    { key: 'contact', sub: (i) => i.contactName, label: t('institutionsScreen.col.contact'), sort: (i) => i.contactName, title: (i) => i.contactName, className: 'w-[13%]', minWidth: 980, render: (i) => <span className="text-content-secondary">{i.contactName || '—'}</span> },
     {
       key: 'phone',
+      sub: (i) => i.contactPhone,
       label: t('institutionsScreen.col.phone'),
       sort: (i) => i.contactPhone,
       interactive: true,
@@ -139,7 +144,7 @@ export function InstitutionsScreen() {
           <span className="text-content-muted">—</span>
         ),
     },
-    { key: 'volunteers', label: t('institutionsScreen.col.volunteers'), sort: (i) => volunteerCount.get(i.id) ?? 0, className: 'w-[6.5rem]', minWidth: 760, render: (i) => <span className="numeric text-content-secondary">{volunteerCount.get(i.id) ?? 0}</span> },
+    { key: 'volunteers', sub: (i) => t('institutionsScreen.volunteersSub', { count: volunteerCount.get(i.id) ?? 0 }), label: t('institutionsScreen.col.volunteers'), sort: (i) => volunteerCount.get(i.id) ?? 0, className: 'w-[6.5rem]', minWidth: 760, render: (i) => <span className="numeric text-content-secondary">{volunteerCount.get(i.id) ?? 0}</span> },
     {
       key: 'place',
       label: t('institutionsScreen.col.place'),
@@ -156,7 +161,14 @@ export function InstitutionsScreen() {
         ),
     },
   ]
-  const rows = sortRows(visible, columns, sort)
+  const rows = sortRows(visible, [{ key: 'name', label: '', sort: (i: Institution) => i.name, render: () => null }, ...columns], sort)
+  const instActions = (i: Institution): RowAction[] => [
+    { key: 'view', icon: 'eye', label: t('table.view'), inline: true, onClick: () => setOpen(i.id), testId: `institution-view-${i.id}` },
+    { key: 'edit', icon: 'edit', label: t('table.edit'), inline: true, to: `/coordinator/institutions/${i.id}`, testId: `institution-edit-${i.id}` },
+    ...(i.contactPhone ? [{ key: 'call', icon: 'phone' as const, label: t('institutions.call'), onClick: () => window.open(`tel:${i.contactPhone.replace(/[^\d+]/g, '')}`, '_self') }] : []),
+    { key: 'coverage', icon: 'map', label: t('institutionsScreen.seeReach'), to: `/coordinator/coverage?inst=${i.id}`, testId: `institution-coverage-${i.id}` },
+    { key: 'volunteer', icon: 'userPlus', label: t('institutionPeople.add'), to: `/coordinator/volunteers/new?institution=${i.id}` },
+  ]
 
   const markers: MapMarker[] = institutions
     .filter((i) => i.position)
@@ -229,34 +241,114 @@ export function InstitutionsScreen() {
               </FilterRow>
             }
           />
-          <DataTable
+          {/* ★★ AY3 — la forme commune : photo · nom, colonnes, gestes au bout. */}
+          <EntityTable
             rows={rows}
-            columns={columns}
             rowKey={(i) => i.id}
+            lead={(i) => ({ title: i.name, shape: 'square', dot: <span className="h-2.5 w-2.5 shrink-0 rounded-pill" style={{ backgroundColor: readToken(ENGAGEMENT_TOKEN[i.engagement]) }} aria-hidden /> })}
+            leadLabel={t('institutionsScreen.col.name')}
+            leadSort={(i) => i.name}
+            columns={columns}
             sort={sort}
             onSort={setSort}
-            onOpen={(i) => {
-              setOpen((cur) => (cur === i.id ? null : i.id))
+            onPreview={(i) => {
+              setOpen(i.id)
               setFlyKey((k) => k + 1)
             }}
-            openKey={open}
-            renderOpen={(i) => (
-              <div className="flex flex-col gap-3">
-                <InstitutionEditor inst={i} />
-                <Link to={`/coordinator/coverage?inst=${i.id}`} className="btn-ghost self-start" data-testid={`institution-coverage-${i.id}`}>
-                  <Icon name="map" size={16} />
-                  {t('institutionsScreen.seeReach')}
-                </Link>
-              </div>
-            )}
-            openLabel={t('table.open')}
+            activeKey={open}
+            actions={(i) => instActions(i)}
+            phoneEnd={(i) => <span className={`chip border text-micro ${ENGAGEMENT_ON[i.engagement]}`}>{t(`institutions.engagementShort.${i.engagement}`)}</span>}
             rowAttrs={(i) => ({ 'data-testid': `institution-row-${i.id}`, 'data-to-confirm': isInstitutionToConfirm(i) ? '' : undefined })}
             empty={institutions.length === 0 ? t('institutionsScreen.empty') : t('table.empty')}
             label={t('nav.institutions')}
             testId="institutions-table"
           />
+          {openInst && <InstitutionPreview inst={openInst} onClose={() => setOpen(null)} />}
         </>
       )}
     </MapSplit>
+  )
+}
+
+/**
+ * ★★ AY3.3 · AY4.3 — L'APERÇU D'UNE INSTITUTION : la carte, le statut, et SES
+ * volontaires et SES conducteurs (combien, qui part avec qui). L'édition
+ * complète est sur sa page.
+ */
+function InstitutionPreview({ inst, onClose }: { inst: Institution; onClose: () => void }) {
+  const { t } = useTranslation()
+  return (
+    <PreviewPanel
+      title={inst.name}
+      subtitle={[inst.locality, t(`institutions.kind.${inst.kind}`), inst.network].filter(Boolean).join(' · ')}
+      shape="square"
+      position={inst.position}
+      editTo={`/coordinator/institutions/${inst.id}`}
+      onClose={onClose}
+      testId="institution-preview"
+      chips={<span className={`chip border text-micro ${ENGAGEMENT_ON[inst.engagement]}`}>{t(`institutions.engagement.${inst.engagement}`)}</span>}
+      quick={
+        <>
+          {inst.contactPhone && (
+            <a className="btn-primary min-h-11" href={`tel:${inst.contactPhone.replace(/[^\d+]/g, '')}`}>
+              <Icon name="phone" size={16} />
+              {t('institutions.call')}
+            </a>
+          )}
+          <Link to={`/coordinator/coverage?inst=${inst.id}`} className="btn-secondary min-h-11" data-testid="institution-preview-coverage">
+            <Icon name="map" size={16} />
+            {t('institutionsScreen.seeReach')}
+          </Link>
+        </>
+      }
+    >
+      <PreviewSection title={t('institutionPeople.title')}>
+        <div className="py-2">
+          <InstitutionPeople inst={inst} />
+        </div>
+      </PreviewSection>
+      <PreviewSection title={t('preview.details')}>
+        <PreviewRow label={t('institutionsScreen.col.contact')}>{inst.contactName}</PreviewRow>
+        <PreviewRow label={t('institutionsScreen.col.phone')}>{inst.contactPhone ? <span dir="ltr" className="ltr-nums">{inst.contactPhone}</span> : ''}</PreviewRow>
+        <PreviewRow label={t('institutions.audienceLabel')}>{t(`institutions.audience.${inst.audience}`)}</PreviewRow>
+        <PreviewRow label={t('institutions.students')}>{inst.students ?? ''}</PreviewRow>
+        <PreviewRow label={t('institutions.metOn')}>{inst.metOn ? inst.metOn.split('-').reverse().join('.') : ''}</PreviewRow>
+        <PreviewRow label={t('institutions.positionSource')}>{inst.positionSource}</PreviewRow>
+      </PreviewSection>
+      {inst.notes && (
+        <PreviewSection title={t('institutions.notes')}>
+          <p className="whitespace-pre-wrap py-2 text-caption" dir="auto">{inst.notes}</p>
+        </PreviewSection>
+      )}
+    </PreviewPanel>
+  )
+}
+
+/** ★★ AY3.3 — la page d'édition d'une institution (fiche + ses gens). */
+export function InstitutionEditScreen() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { institutionId } = useParams()
+  const inst = useCoreValue(() => getInstitutions().find((i) => i.id === institutionId) ?? null)
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-6" data-testid="institution-edit">
+      <PageHeader title={inst?.name ?? t('nav.institutions')} back={{ to: '/coordinator/institutions', label: t('nav.institutions') }} />
+      {!inst ? (
+        <p className="muted mt-4">{t('table.empty')}</p>
+      ) : (
+        <>
+          <div className="mt-4">
+            <InstitutionEditor inst={inst} />
+          </div>
+          <h2 className="mb-2 mt-8 text-heading text-content-primary">{t('institutionPeople.title')}</h2>
+          <InstitutionPeople inst={inst} />
+          <div className="mt-6 flex justify-end">
+            <button type="button" className="btn-primary min-h-11" onClick={() => navigate('/coordinator/institutions')}>
+              {t('common.done')}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   )
 }

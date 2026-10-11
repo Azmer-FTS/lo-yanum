@@ -43,6 +43,7 @@ import type { SheetKind } from '../../components/importTabs'
 import { Callout, EmptyState, PageHeader, Section } from '../../components/primitives'
 import { downloadMatrix } from '../../report/download'
 import { useCoreValue } from '../../hooks/useCore'
+import { runUndoable } from '../../components/UndoToast'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -325,7 +326,7 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
             .length
     if (kind === 'prospection') {
       const plan = analysis.plan as ProspectionPlan
-      const applied = applyProspection(plan, HOME_BASE)
+      const applied = runUndoable(t('undo.imported'), () => applyProspection(plan, HOME_BASE))
       setReport({
         created: applied.created,
         updated: applied.updated,
@@ -337,12 +338,7 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
     } else if (kind === 'association') {
       const plan = analysis.plan as ProspectionPlan
       const rows = (analysis as { rows: Parameters<typeof associationSignatures>[0] }).rows
-      const applied = applyAssociation(
-        plan,
-        associationSignatures(rows),
-        fileName,
-        HOME_BASE,
-      )
+      const applied = runUndoable(t('undo.imported'), () => applyAssociation(plan, associationSignatures(rows), fileName, HOME_BASE))
       setReport({
         created: applied.created,
         updated: applied.updated,
@@ -353,7 +349,7 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
       })
     } else {
       const plan = analysis.plan as SignaturePlan
-      const applied = applySignatures(plan, fileName, HOME_BASE)
+      const applied = runUndoable(t('undo.imported'), () => applySignatures(plan, fileName, HOME_BASE))
       setReport({
         created: applied.created,
         updated: applied.attached,

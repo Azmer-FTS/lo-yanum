@@ -2495,3 +2495,81 @@ html[data-numpad-open] [data-farm-form] {
   white-space: nowrap;
 }
 .line-figs > [data-fig] { min-width: var(--fig-w, 3rem); font-variant-numeric: tabular-nums; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★★ AY2 (2026-10-11) — SUR TÉLÉPHONE, RIEN NE DÉFILE DE CÔTÉ.
+   ═══════════════════════════════════════════════════════════════════════════
+   « Une catastrophe sur le smartphone » : des rangées et des tableaux qui
+   défilent de gauche à droite, une moitié hors de l'écran. Mesuré à 402 px sur
+   les 48 écrans (`bun run aymobile`) : douze défilaient de côté. La règle est
+   désormais : SOUS 48 rem DE FENÊTRE, AUCUN CONTENEUR NE DÉFILE
+   HORIZONTALEMENT. Une rangée de cartes devient une grille qui passe à la
+   ligne ; le carrousel d'alertes devient une pile ; les onglets passent à la
+   ligne ; un fil d'étapes aussi. La carte reste la seule chose qu'on déplace
+   au doigt — c'est son rôle.
+   (Les fondus et les chevrons de Y5/Z4 restent ceux de l'iPad et de
+   l'ordinateur, où une rangée défilante garde son sens.) */
+@media (max-width: 47.99rem) {
+  .scroll-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
+    overflow: visible;
+    scroll-snap-type: none;
+    padding-inline: 0;
+  }
+  .scroll-row > *,
+  .kpi-row > * {
+    width: auto;
+    min-width: 0;
+  }
+  .carousel-2 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    overflow: visible;
+    scroll-snap-type: none;
+    padding-inline: 0;
+  }
+  .carousel-2 > * {
+    min-width: 0;
+  }
+  .carousel-dots,
+  .scroll-nudge {
+    display: none !important;
+  }
+  .scroll-nav > .scroll-veil {
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+    margin-inline: 0 !important;
+  }
+  .scroll-x {
+    overflow-x: visible;
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+  .scroll-x.flex,
+  .wrap-phone {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+  .tabbar {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}
+/* ★ AY2 — un texte libre dans une rangée de chiffres (le nom d'un point de
+   garde) ne pousse jamais la ligne hors de l'écran : il se tronque. */
+.line-figs > :not([data-fig]) {
+  max-width: 7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.line-row > [data-area='meta'] {
+  max-width: 100%;
+  overflow: hidden;
+}
+/* ★★ AY3.3 — le panneau d'aperçu ne recouvre pas la liste : elle se resserre. */
+@media (min-width: 64rem) {
+  html[data-preview-open] main {
+    padding-inline-end: min(32rem, 42vw);
+  }
+}

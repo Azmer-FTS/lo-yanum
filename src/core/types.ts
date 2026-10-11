@@ -943,6 +943,12 @@ export interface Volunteer {
   /** G5.2 — "יכול לשמש כנהג": maintains a linked Driver row while true. */
   canDrive: boolean
   /**
+   * ★★ AY4 — le volontaire-conducteur avec qui il part d'habitude (même
+   * institution) : posé depuis la fiche de l'institution. Une suggestion pour
+   * composer une garde, jamais une règle.
+   */
+  rideWith?: string | null
+  /**
    * G3.4 — slot preferences, applied as a SOFT signal in scoring, never as a
    * hard filter: an empty object means "whenever needed", which is the common
    * case and must stay the cheap one.
@@ -1519,6 +1525,8 @@ export interface Lead {
   rank: number
   convertedFarmId: string | null
   convertedAt: string | null
+  /** ★★ AY10 — la photo de la fiche .vcf (WhatsApp), en data URL réduite. */
+  photo?: string | null
 }
 
 /** D4 — one entry in the agenda, whatever kind of thing it is. */

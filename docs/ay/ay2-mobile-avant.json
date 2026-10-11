@@ -1,0 +1,478 @@
+{
+  "app": "http://localhost:5420",
+  "width": 402,
+  "at": "2026-10-11T06:30:41.704Z",
+  "results": [
+    {
+      "name": "tableau-de-bord",
+      "hash": "/coordinator",
+      "landed": "/coordinator",
+      "docOverflow": 41,
+      "scrollers": [
+        "div[kpi-row] « 4 חוות פעילות 1332 ראשים בשמירה 254 מתנד » (832/402)",
+        "div[alerts-carousel] « לא אושרה הגעה אתמול חוות רתם · עברו 27 ש » (952/402)"
+      ],
+      "outside": [
+        "span « משרד החווה — חלקה מערבית » [-41…122]"
+      ],
+      "tables": 0
+    },
+    {
+      "name": "ajout",
+      "hash": "/coordinator/add",
+      "landed": "/coordinator/add",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "ajout-institution",
+      "hash": "/coordinator/add?type=institution",
+      "landed": "/coordinator/add",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "agenda",
+      "hash": "/coordinator/agenda",
+      "landed": "/coordinator/agenda",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "agenda-reunion",
+      "hash": "/coordinator/agenda/meeting/new",
+      "landed": "/coordinator/agenda/meeting/new",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "agenda-visite",
+      "hash": "/coordinator/agenda/visit/new",
+      "landed": "/coordinator/agenda/visit/new",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "couverture",
+      "hash": "/coordinator/coverage",
+      "landed": "/coordinator/coverage",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "conducteurs",
+      "hash": "/coordinator/drivers",
+      "landed": "/coordinator/drivers",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "conducteur-edition",
+      "hash": "/coordinator/drivers/drv-01/edit",
+      "landed": "/coordinator/drivers/drv-01/edit",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "conducteur-nouveau",
+      "hash": "/coordinator/drivers/new",
+      "landed": "/coordinator/drivers/new",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "export",
+      "hash": "/coordinator/export",
+      "landed": "/coordinator/export",
+      "docOverflow": 0,
+      "scrollers": [
+        "div[export-preview] « שם המקום איש קשר נייד איש קשר הסכם רעיה/ » (1959/370)"
+      ],
+      "outside": [],
+      "tables": 1
+    },
+    {
+      "name": "fermes",
+      "hash": "/coordinator/farms",
+      "landed": "/coordinator/farms",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "fermes-liste",
+      "hash": "/coordinator/farms",
+      "landed": "/coordinator/farms",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "ferme",
+      "hash": "/coordinator/farms/farm-01",
+      "landed": "/coordinator/farms/farm-01",
+      "docOverflow": 0,
+      "scrollers": [
+        "div[farm-key-numbers] « פעילה סטטוס מעורב 420 שטח מעובד מדוד 415 » (1318/402)",
+        "ol « טרם נוצר קשר נוצר קשר בוקרה מוכן לחתימה  » (640/346)"
+      ],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "ferme-point",
+      "hash": "/coordinator/farms/farm-01/anchors/anchor-01",
+      "landed": "/coordinator/farms/farm-01/anchors/anchor-01",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "ferme-point-edition",
+      "hash": "/coordinator/farms/farm-01/anchors/anchor-01/edit",
+      "landed": "/coordinator/farms/farm-01/anchors/anchor-01/edit",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "ferme-edition",
+      "hash": "/coordinator/farms/farm-11/edit",
+      "landed": "/coordinator/farms/farm-11/edit",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "ferme-nouvelle",
+      "hash": "/coordinator/farms/new",
+      "landed": "/coordinator/farms/new",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "import-conducteurs",
+      "hash": "/coordinator/import/drivers",
+      "landed": "/coordinator/import/drivers",
+      "docOverflow": 0,
+      "scrollers": [
+        "div[import-tabs] « מתנדבים חוות ומושבים נהגים קובץ איתור הס » (589/370)"
+      ],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "import-fermes",
+      "hash": "/coordinator/import/farms",
+      "landed": "/coordinator/import/farms",
+      "docOverflow": 0,
+      "scrollers": [
+        "div[import-tabs] « מתנדבים חוות ומושבים נהגים קובץ איתור הס » (589/370)"
+      ],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "import-institutions",
+      "hash": "/coordinator/import/institutions",
+      "landed": "/coordinator/import/institutions",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "import-portail",
+      "hash": "/coordinator/import/portal",
+      "landed": "/coordinator/import/portal",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "import-prospection",
+      "hash": "/coordinator/import/prospection",
+      "landed": "/coordinator/import/prospection",
+      "docOverflow": 0,
+      "scrollers": [
+        "div[import-tabs] « מתנדבים חוות ומושבים נהגים קובץ איתור הס » (589/370)"
+      ],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "import-signatures",
+      "hash": "/coordinator/import/signatures",
+      "landed": "/coordinator/import/signatures",
+      "docOverflow": 0,
+      "scrollers": [
+        "div[import-tabs] « מתנדבים חוות ומושבים נהגים קובץ איתור הס » (589/370)"
+      ],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "import-volontaires",
+      "hash": "/coordinator/import/volunteers",
+      "landed": "/coordinator/import/volunteers",
+      "docOverflow": 0,
+      "scrollers": [
+        "div[import-tabs] « מתנדבים חוות ומושבים נהגים קובץ איתור הס » (589/370)"
+      ],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "incidents",
+      "hash": "/coordinator/incidents",
+      "landed": "/coordinator/incidents",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "incident",
+      "hash": "/coordinator/incidents/inc-01",
+      "landed": "/coordinator/incidents/inc-01",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "institutions",
+      "hash": "/coordinator/institutions",
+      "landed": "/coordinator/institutions",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 1
+    },
+    {
+      "name": "contacts",
+      "hash": "/coordinator/leads",
+      "landed": "/coordinator/leads",
+      "docOverflow": 198,
+      "scrollers": [],
+      "outside": [
+        "table[אנשי קשר לטיפול] « שם טלפון סטטוס פרטים משק כהן 050-0000101 » [-198…386]",
+        "thead « שם טלפון סטטוס פרטים » [-198…386]",
+        "tr « שם טלפון סטטוס פרטים » [-198…386]",
+        "th « סטטוס » [-62…202]",
+        "th « פרטים » [-198…-110]",
+        "span « פרטים » [-154…-153]",
+        "tbody « משק כהן 050-0000101 חדש — טרם התקשרתי ממ » [-198…386]",
+        "tr[lead-lead-demo-01] « משק כהן 050-0000101 חדש — טרם התקשרתי ממ » [-198…386]",
+        "td « חדש — טרם התקשרתי ממתין לתשובה (לא ענה / » [-62…202]",
+        "td « פרטים » [-198…-110]",
+        "button[leads-table-open-lead-demo-01] « פרטים » [-194…-114]",
+        "span « פרטים » [-160…-130]"
+      ],
+      "tables": 1
+    },
+    {
+      "name": "gardes",
+      "hash": "/coordinator/missions",
+      "landed": "/coordinator/missions",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "garde",
+      "hash": "/coordinator/missions/mission-01",
+      "landed": "/coordinator/missions/mission-01",
+      "docOverflow": 0,
+      "scrollers": [
+        "div[mission-key-numbers] « 07:29 תחילת שמירה 15:29 סיום מתוכנן 3 קב » (832/402)"
+      ],
+      "outside": [],
+      "tables": 2
+    },
+    {
+      "name": "garde-nouvelle",
+      "hash": "/coordinator/missions/new",
+      "landed": "/coordinator/missions/new",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "tournee",
+      "hash": "/coordinator/route",
+      "landed": "/coordinator/route",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "itineraire-libre",
+      "hash": "/coordinator/route/free",
+      "landed": "/coordinator/route/free",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "reglages",
+      "hash": "/coordinator/settings",
+      "landed": "/coordinator/settings",
+      "docOverflow": 0,
+      "scrollers": [
+        "div « פרופיל ותפקיד יעד ספים והתראות תבניות מפ » (535/402)"
+      ],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "regions",
+      "hash": "/coordinator/settings/regions",
+      "landed": "/coordinator/settings/regions",
+      "docOverflow": 0,
+      "scrollers": [
+        "div[region-chooser] « אילת הערבה ים המלח בקעת הירדן רמת הגולן  » (1103/402)"
+      ],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "volontaires",
+      "hash": "/coordinator/volunteers",
+      "landed": "/coordinator/volunteers",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "volontaire-edition",
+      "hash": "/coordinator/volunteers/vol-055/edit",
+      "landed": "/coordinator/volunteers/vol-055/edit",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "volontaire-nouveau",
+      "hash": "/coordinator/volunteers/new",
+      "landed": "/coordinator/volunteers/new",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "agriculteur",
+      "hash": "/farmer",
+      "landed": "/farmer",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "agriculteur-gardes",
+      "hash": "/farmer/guards",
+      "landed": "/farmer/guards",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "agriculteur-documents",
+      "hash": "/farmer/documents",
+      "landed": "/farmer/documents",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "agriculteur-signer",
+      "hash": "/farmer/sign",
+      "landed": "/farmer/sign",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "agriculteur-signaler",
+      "hash": "/farmer/report",
+      "landed": "/farmer/report",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "volontaire-terrain",
+      "hash": "/volunteer",
+      "landed": "/volunteer",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "volontaire-equipe",
+      "hash": "/volunteer/roster",
+      "landed": "/volunteer/roster",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "volontaire-signaler",
+      "hash": "/volunteer/report",
+      "landed": "/volunteer/report",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    },
+    {
+      "name": "conducteur-terrain",
+      "hash": "/driver",
+      "landed": "/driver",
+      "docOverflow": 0,
+      "scrollers": [],
+      "outside": [],
+      "tables": 0
+    }
+  ]
+}

@@ -73,7 +73,9 @@ const val = (p: Page, i: number) => p.locator(`[data-ay-num="${i}"]`).inputValue
 
 async function keyboardCase(p: Page, i: number, name: string, where: string): Promise<void> {
   const f = p.locator(`[data-ay-num="${i}"]`)
-  await f.scrollIntoViewIfNeeded({ timeout: 4000 })
+  // La première carte d'un contexte neuf charge lourdement : on attend le champ, puis on le montre.
+  await f.waitFor({ state: 'attached', timeout: 15000 })
+  await f.evaluate((el) => el.scrollIntoView({ block: 'center' }))
   const v0 = await f.inputValue()
   await f.click()
   await p.waitForTimeout(200)
@@ -103,7 +105,9 @@ async function keyboardCase(p: Page, i: number, name: string, where: string): Pr
 
 async function padCase(p: Page, i: number, name: string, where: string): Promise<void> {
   const f = p.locator(`[data-ay-num="${i}"]`)
-  await f.scrollIntoViewIfNeeded({ timeout: 4000 })
+  // La première carte d'un contexte neuf charge lourdement : on attend le champ, puis on le montre.
+  await f.waitFor({ state: 'attached', timeout: 15000 })
+  await f.evaluate((el) => el.scrollIntoView({ block: 'center' }))
   const v0 = await f.inputValue()
   await f.click()
   await p.waitForTimeout(250)

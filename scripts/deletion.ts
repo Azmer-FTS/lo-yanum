@@ -498,7 +498,6 @@ section('11 — every kind the policy answers for is reachable from a screen')
     'src/ui/screens/coordinator/FarmDetailScreen.tsx',
     'src/ui/screens/coordinator/AnchorSheetScreen.tsx',
     'src/ui/screens/coordinator/VolunteersScreen.tsx',
-    'src/ui/screens/coordinator/DriversScreen.tsx',
     'src/ui/screens/coordinator/RoutePlannerScreen.tsx',
     'src/ui/screens/coordinator/MissionWizardScreen.tsx',
     'src/ui/components/ThreatPanel.tsx',

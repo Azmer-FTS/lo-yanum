@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon'
 import { Callout, Section } from '../components/primitives'
 import { useCoreValue, useCoreVersion } from '../hooks/useCore'
 import { stopViewAs, useViewAs } from './viewAs'
+import { runUndoable } from '../components/UndoToast'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -59,7 +60,7 @@ export function SampleDataSection() {
   const open = total > 0 || state !== 'idle'
 
   const seed = () => {
-    const { added } = seedTestData()
+    const { added } = runUndoable(t('undo.sampleSeeded'), () => seedTestData())
     setMessage(t('testData.seeded', { count: added }))
     setState('done')
   }

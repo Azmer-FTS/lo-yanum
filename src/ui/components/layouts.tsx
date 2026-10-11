@@ -65,7 +65,8 @@ const NAV_GROUPS: NavGroup[] = [
       // ★★ AX1 — l'étape 1 du métier avait un écran enfoui dans la carte de couverture.
       { to: '/coordinator/institutions', icon: 'school', labelKey: 'nav.institutions' },
       { to: '/coordinator/volunteers', icon: 'users', labelKey: 'nav.volunteers' },
-      { to: '/coordinator/drivers', icon: 'steering', labelKey: 'nav.drivers' },
+      /* ★★ AY4 — « נהגים » n'est plus un écran : un conducteur est un volontaire
+         qui conduit (מתנדבים › « נהגים »). */
     ],
   },
   {
@@ -182,7 +183,6 @@ const BLEED_ROUTES = [
   /* ★★ AU4 — la carte de couverture. */
   '/coordinator/coverage',
   '/coordinator/volunteers',
-  '/coordinator/drivers',
   '/coordinator/missions',
   '/coordinator/incidents',
 ]

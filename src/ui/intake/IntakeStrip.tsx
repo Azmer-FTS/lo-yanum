@@ -6,6 +6,7 @@ import type { Farm, IntakeRequest } from '@core/index'
 import { Icon } from '../components/Icon'
 import { useLocale } from '../hooks/useLocale'
 import { refreshIntake, useIntakeRequests } from './intakeState'
+import { runUndoable } from '../components/UndoToast'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -109,7 +110,7 @@ function Strip({ farm, request, incoming }: { farm: Farm; request: IntakeRequest
               type="button"
               className="btn-primary min-h-[2.75rem]"
               data-testid="farm-intake-handled"
-              onClick={() => markIntakeHandled(farm.id, 'contacted')}
+              onClick={() => runUndoable(t('undo.intakeHandled'), () => markIntakeHandled(farm.id, 'contacted'))}
             >
               <Icon name="check" size={16} />
               {t('intake.handleContacted')}
@@ -118,7 +119,7 @@ function Strip({ farm, request, incoming }: { farm: Farm; request: IntakeRequest
               type="button"
               className="btn-secondary min-h-[2.75rem]"
               data-testid="farm-intake-handled-later"
-              onClick={() => markIntakeHandled(farm.id, 'to_contact')}
+              onClick={() => runUndoable(t('undo.intakeHandled'), () => markIntakeHandled(farm.id, 'to_contact'))}
             >
               {t('intake.handleLater')}
             </button>

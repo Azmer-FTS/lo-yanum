@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import {
   ALL_FARM_STATUSES,
@@ -35,16 +35,16 @@ import {
 } from '@core/index'
 import type { Farm, FarmCoverage, FarmStatus, FarmType, RegionId } from '@core/index'
 
-import { Avatar } from '../../components/Avatar'
-import { EntityQuickCard, useQuickPreview } from '../../components/EntityQuickCard'
-import { ChevronForward, Icon } from '../../components/Icon'
+import { EntityTable } from '../../components/EntityTable'
+import type { EntityColumn, RowAction } from '../../components/EntityTable'
+import { PreviewPanel, PreviewRow, PreviewSection } from '../../components/PreviewPanel'
+import { EntityQuickCard } from '../../components/EntityQuickCard'
+import { Icon } from '../../components/Icon'
 import { AreaGapMark } from '../../components/areaGap'
-import { ListTile } from '../../components/ListTile'
 import { TestDataBadge } from '../../components/TestDataBadge'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { RegionFilter } from '../../components/RegionFilter'
-import { ROSTER_ROW_HEIGHT, RosterHead } from '../../components/roster'
 import {
   ThreatLegend,
   threatVectorShapes,
@@ -65,14 +65,11 @@ import {
   PillSelect,
   KpiChip,
   ListTop,
-  LoadMore,
 } from '../../components/primitives'
 import { ZoneLegend, zonePolygons } from '../../components/zones'
 import { usePhoneShape } from '../../hooks/useNarrow'
-import { useProgressive } from '../../hooks/useProgressive'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
-import { useWindowTable } from '../../hooks/useWindowTable'
 import { useAreaGapThreshold } from '../../settings/areaGap'
 import { useCoverageSettings } from '../../settings/coverage'
 import { useRenewalWindow } from '../../settings/renewal'
@@ -102,7 +99,6 @@ const TYPES: FarmType[] = ['agriculture', 'livestock', 'mixed']
 export function FarmsListScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
-  const navigate = useNavigate()
   /**
    * ★★ AK7.3 — LE RÔLE, ET LA FILE DES ARCHIVÉES À CÔTÉ.
    *
@@ -295,7 +291,6 @@ export function FarmsListScreen() {
   }
   const anchors = useCoreValue(getAllVisibleAnchorPoints)
   const postsOf = (farmId: string) => anchors.filter((a) => a.farmId === farmId).length
-  const quick = useQuickPreview<Farm>()
   const centerOn = (farm: Farm) => select(farm.id)
   /**
    * G7 — two readings of the same roster. The MAP stays the default (A18:
@@ -385,7 +380,6 @@ export function FarmsListScreen() {
     [filtered, sort, coverageOf, gapThreshold, intakeRequests],
   )
 
-  const page = useProgressive(sorted)
 
   const markers: MapMarker[] = useMemo(
     () =>
@@ -408,6 +402,48 @@ export function FarmsListScreen() {
   )
 
   const selected = filtered.find((f) => f.id === selectedId) ?? null
+
+  /* ★★ AY3 — l'aperçu (panneau latéral / feuille), et le tableau commun. */
+  const [previewId, setPreviewId] = useState<string | null>(null)
+  const preview = farms.find((f) => f.id === previewId) ?? null
+  const tableSort = farmSortToTable(sort)
+  const onTableSort = (s: { key: string; dir: 'asc' | 'desc' }) => setSort(tableToFarmSort(s))
+  const dunamsText = (n: number) => n.toLocaleString(locale)
+  const farmColumns: EntityColumn<Farm>[] = [
+    { key: 'locality', label: t('volunteers.colLocality'), sub: (f) => f.locality, minWidth: 620, className: 'w-[8rem]', render: (f) => <span className="text-content-secondary">{f.locality || '—'}</span>, title: (f) => f.locality },
+    { key: 'region', label: t('farms.colRegion'), sub: (f) => regionLabel(f), minWidth: 660, className: 'w-[7rem]', render: (f) => <span className="text-content-secondary" data-testid="farm-region-cell">{regionLabel(f) || '—'}</span> },
+    { key: 'type', label: t('farms.colType'), sub: (f) => t(`farmType.${f.type}`), minWidth: 780, className: 'w-[8rem]', render: (f) => <span className="text-content-secondary">{t(`farmType.${f.type}`)}</span> },
+    { key: 'status', label: t('farms.colStatus'), sort: () => 0, minWidth: 560, className: 'w-[8.5rem]', render: (f) => <FarmStatusChip status={f.status} /> },
+    { key: 'dunams', label: t('farms.colDunams'), sub: (f) => `${dunamsText(effectiveAreas(f).cultivated)} / ${dunamsText(effectiveAreas(f).grazing)}`, minWidth: 900, className: 'w-[7.5rem]', render: (f) => <span className="ltr-nums numeric text-content-secondary">{dunamsText(effectiveAreas(f).cultivated)} / {dunamsText(effectiveAreas(f).grazing)}</span> },
+    { key: 'weighted', label: t('farms.colWeighted'), sort: () => 0, minWidth: 600, className: 'w-[6.5rem]', render: (f) => <span className="ltr-nums numeric font-semibold text-content-primary" data-weighted={weightedDunams(f)}>{dunamsText(weightedDunams(f))}</span> },
+    {
+      key: 'guards',
+      label: t('farms.colGuards'),
+      sort: () => 0,
+      minWidth: 840,
+      className: 'w-[7rem]',
+      render: (f) => (
+        <span className="ltr-nums numeric text-content-secondary" data-guards={coverageOf.get(f.id)?.stats.guards ?? 0}>
+          {(coverageOf.get(f.id)?.stats.guards ?? 0).toLocaleString(locale)}
+          <span className="muted ms-1 text-micro">{coverageOf.get(f.id)?.stats.lastGuardAt ? formatDate(coverageOf.get(f.id)?.stats.lastGuardAt as string, locale) : '—'}</span>
+        </span>
+      ),
+    },
+    { key: 'nextVisit', label: t('farms.nextVisit'), sort: () => 0, minWidth: 720, className: 'w-[7rem]', render: (f) => <span className="ltr-nums text-micro text-content-muted">{f.nextVisitAt ? formatDate(f.nextVisitAt, locale) : t('farms.noVisitYet')}</span> },
+  ]
+  const farmActions = (f: Farm): RowAction[] => {
+    const phoneNo = f.contacts.find((c) => c.phone)?.phone ?? f.farmerPhone
+    return [
+      { key: 'view', icon: 'eye', label: t('table.view'), inline: true, onClick: () => { setPreviewId(f.id); select(f.id) }, testId: `farm-view-${f.id}` },
+      { key: 'edit', icon: 'edit', label: t('table.edit'), inline: true, to: `/coordinator/farms/${f.id}/edit`, testId: `farm-edit-${f.id}` },
+      { key: 'open', icon: 'external', label: t('preview.openFull'), inline: true, to: `/coordinator/farms/${f.id}`, testId: `farm-open-${f.id}` },
+      ...(phoneNo ? [{ key: 'call', icon: 'phone' as const, label: t('people.call'), onClick: () => window.open(`tel:${phoneNo.replace(/[^\d+]/g, '')}`, '_self') }] : []),
+      { key: 'guard', icon: 'shield', label: t('farms.newGuardHere'), to: `/coordinator/missions/new?farm=${f.id}`, testId: `farm-new-guard-${f.id}` },
+      { key: 'visit', icon: 'calendar', label: t('farms.planVisit'), to: `/coordinator/agenda/visit/new?farm=${f.id}` },
+      { key: 'center', icon: 'pin', label: t('farms.centerOnMap'), onClick: () => centerOn(f) },
+      ...(needsOutline(f) ? [{ key: 'draw', icon: 'landPlot' as const, label: t('farms.drawOutline'), to: `/coordinator/farms/${f.id}?draw=farm_boundary` }] : []),
+    ]
+  }
 
   /**
    * G14d — one KPI card per status IN USE, count big and the status's dunam
@@ -960,251 +996,60 @@ export function FarmsListScreen() {
         )
       }
     >
-      {({ mode }) =>
-        /**
-         * ★★ Y4 — THE MODE CHOOSES THE READING, and the same three lines are
-         *    written on all five lists. `full` never reaches here: `MapSplit`
-         *    hides this column itself.
-         */
-        mode === 'hidden' ? (
-          <>
-            {/* G14d/A51 — the whole top rides the page from lg, column headers
-                included, same construction as the volunteers roster. */}
-            {top(filtered.length > 0 && <FarmsTableHead />)}
-            {filtered.length === 0 ? (
-              <EmptyState icon="farm" title={t('farms.empty')} />
-            ) : (
-              <FarmsTable
-                farms={sorted}
-                coverageOf={coverageOf}
-                neglectDays={neglectDays}
-                onOpen={(id) => navigate(`/coordinator/farms/${id}`)}
-              />
-            )}
-          </>
-        ) : (
-          <>
-            {top()}
-
-            {filtered.length === 0 ? (
-              <EmptyState icon="farm" title={t('farms.empty')} />
-            ) : (
-              // P0bis.3b — two farm cards per row as soon as the panel can hold
-              // two. In the map reading the panel is a third of the screen, so
-              // this is normally one column; it earns its keep the moment the
-              // seam is dragged, which is exactly when a stretched row looks
-              // emptiest.
-              <div className="panel-scope">
-                <ul className="stagger pair-grid gap-1.5">
-                  {page.visible.map((farm) => (
-                    <li key={farm.id}>
-                      <FarmTile
-                        farm={farm}
-                        intakeAt={
-                          isIncoming(farm)
-                            ? (requestForFarm(farm.id, intakeRequests)?.createdAt ?? null)
-                            : undefined
-                        }
-                        active={farm.id === hoveredId || farm.id === selectedId}
-                        heads={totalHeads(farm)}
-                        coverage={coverageOf.get(farm.id) ?? null}
-                        neglectDays={neglectDays}
-                        onHover={setHoveredId}
-                        onOpen={() => navigate(`/coordinator/farms/${farm.id}`)}
-                        onCenter={() => centerOn(farm)}
-                        onDraw={
-                          noOutlineOnly && needsOutline(farm)
-                            ? () => navigate(`/coordinator/farms/${farm.id}?draw=farm_boundary`)
-                            : null
-                        }
-                        previewProps={quick.bind(farm)}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {quick.portal((farm) => (
-              <EntityQuickCard farm={farm} posts={postsOf(farm.id)} compact />
-            ))}
-            <LoadMore shown={page.shown} total={page.total} onMore={page.more} />
-          </>
-        )
-      }
+      {() => (
+        /* ★★ AY3 — LA FORME COMMUNE, dans les deux lectures : le tableau
+           (photo · nom, colonnes, gestes au bout) ; à côté de la carte, la même
+           liste se resserre en lignes à deux étages. Toucher une ligne ouvre
+           l'APERÇU ; la fiche complète est à un geste (↗). */
+        <>
+          {top()}
+          {filtered.length === 0 ? (
+            <EmptyState icon="farm" title={t('farms.empty')} />
+          ) : (
+            <EntityTable
+              rows={sorted}
+              rowKey={(f) => f.id}
+              lead={(f) => ({
+                title: f.name,
+                photo: f.photo,
+                shape: 'square',
+                dot: <FarmStatusDot status={f.status} />,
+                marks: (
+                  <>
+                    <NeglectMark coverage={coverageOf.get(f.id) ?? null} neglectDays={neglectDays} />
+                    <AreaGapMark farm={f} />
+                    <TestDataBadge id={f.id} />
+                  </>
+                ),
+                always: isIncoming(f)
+                  ? [`${t('intake.tag')}${requestForFarm(f.id, intakeRequests)?.createdAt ? ` · ${t('intake.received', { when: formatRelative(requestForFarm(f.id, intakeRequests)!.createdAt, locale) })}` : ''}`]
+                  : undefined,
+              })}
+              leadLabel={t('missions.farm')}
+              leadSort={(f) => f.name}
+              columns={farmColumns}
+              sort={tableSort}
+              onSort={onTableSort}
+              onPreview={(f) => {
+                setPreviewId(f.id)
+                select(f.id)
+              }}
+              activeKey={previewId}
+              actions={farmActions}
+              phoneEnd={(f) => <FarmStatusChip status={f.status} />}
+              rowTone={(f) => (isIncoming(f) ? 'border-s-4 border-s-farm-incoming-request bg-farm-incoming-request/10' : undefined)}
+              rowAttrs={(f) => ({ 'data-testid': `farm-row-${f.id}`, 'data-intake': isIncoming(f) ? 'true' : undefined })}
+              label={t('farms.title')}
+              testId="farms-table"
+            />
+          )}
+          {preview && <FarmPreview farm={preview} posts={postsOf(preview.id)} coverage={coverageOf.get(preview.id) ?? null} onClose={() => setPreviewId(null)} />}
+        </>
+      )}
     </MapPanel>
   )
 }
 
-/**
- * U8 (2026-09-02) — THE LIVING TILE. The photo takes the tile's whole height,
- * edge to edge, and it is the tile's second click zone: "centre on the map",
- * with a pin badge in its corner saying so. The text zone opens the file.
- * Hover (mouse) or a long press (touch) opens the quick card beside the tile.
- *
- * ★★ Y4 (2026-09-04) — THE SHAPE IS `ListTile` NOW, SHARED WITH THE FOUR
- *    OTHER LISTS, and the photo has moved to the PHYSICAL RIGHT with it. U8
- *    put it on the physical left and said so in as many words; the product
- *    owner has asked four times for the other side, which is where a Hebrew
- *    reader's eye starts. See `ListTile` for why that is a matter of child
- *    ORDER rather than of a direction-specific class.
- */
-function FarmTile({
-  farm,
-  intakeAt,
-  active,
-  heads,
-  coverage,
-  neglectDays,
-  onHover,
-  onOpen,
-  onCenter,
-  onDraw,
-  previewProps,
-}: {
-  farm: Farm
-  /**
-   * ★★ AQ1.2 — `undefined` : une fiche ordinaire. Une chaîne ou `null` : une
-   * demande entrante, reçue à cette date (ou date inconnue).
-   */
-  intakeAt?: string | null
-  active: boolean
-  heads: number | null
-  coverage: FarmCoverage | null
-  neglectDays: number
-  onHover: (id: string | null) => void
-  onOpen: () => void
-  onCenter: () => void
-  /** AD3.3 — présent seulement quand la file « לתיחום » est ouverte. */
-  onDraw: (() => void) | null
-  previewProps: Record<string, unknown>
-}) {
-  const { t } = useTranslation()
-  const locale = useLocale()
-  return (
-    <ListTile
-      testId="farm-tile"
-      /* ★★ AQ1.2 — VISUELLEMENT DISTINCTE, sans rien ajouter à la hauteur de
-         la tuile (le plafond de vingt et le gabarit Y4 en dépendent) : un
-         liseré et un fond de la teinte « בקשה נכנסת », et la ligne secondaire
-         dit ce qu'elle est au lieu de la localité, souvent vide. */
-      className={
-        intakeAt !== undefined
-          ? 'farm-tile-intake bg-farm-incoming-request/10 ring-2 ring-farm-incoming-request'
-          : ''
-      }
-      photo={farm.photo}
-      name={farm.name}
-      active={active}
-      onOpen={onOpen}
-      onCentre={onCenter}
-      centreLabel={t('farms.centerOnMap')}
-      openLabel={t('farms.openFile')}
-      hoverProps={{
-        ...previewProps,
-        onMouseEnter: () => onHover(farm.id),
-        onMouseLeave: () => onHover(null),
-      }}
-      /**
-        * ★★ AD3.3 — LE GESTE DIRECT, ET IL N'EXISTE QUE DANS LA FILE.
-        *
-        * « Depuis cette file, un geste ouvre directement la carte de la ferme
-        *   en mode tracé, pour enchaîner les contours sans repasser par la
-        *   liste. » Hors de la file, ce bouton serait posé sur la moitié d'un
-        *   rôle de 198 lignes pour un travail que le coordinateur n'est pas en
-        *   train de faire ; dans la file, il est la seule chose que chaque
-        *   rangée demande.
-        *
-        * ⚠️ ET IL EST UN FRÈRE DU BOUTON DE LA TUILE, PAS UN ENFANT — voir le
-        *    créneau `action` de `ListTile`.
-        */
-      action={
-        onDraw === null ? undefined : (
-          <button
-            type="button"
-            data-testid="farm-draw-outline"
-            title={t('farms.drawOutline')}
-            aria-label={`${t('farms.drawOutline')} — ${farm.name}`}
-            onClick={onDraw}
-            className="inline-flex items-center gap-1 whitespace-nowrap rounded-pill
-                       bg-accent/15 px-2.5 py-1 text-micro font-semibold text-accent-ink
-                       hover:bg-accent/25"
-          >
-            <Icon name="landPlot" size={12} />
-            {t('farms.drawOutline')}
-          </button>
-        )
-      }
-    >
-      <span className="flex min-w-0 items-center gap-2">
-        <FarmStatusDot status={farm.status} />
-        <span className="truncate text-caption font-semibold text-content-primary" title={farm.name}>
-          {farm.name}
-        </span>
-        {/* AH3.2 — la marque du jeu d'essai, en tête des autres marques. */}
-        <TestDataBadge id={farm.id} />
-        <NeglectMark coverage={coverage} neglectDays={neglectDays} />
-        {/* AD2.5 — le signal d'écart, à côté de celui de l'oubli : deux
-            marques de la même famille, une seule chose à apprendre. */}
-        <AreaGapMark farm={farm} />
-      </span>
-      {intakeAt !== undefined ? (
-        <span className="block truncate text-micro font-semibold text-farm-incoming-request-ink" data-testid="farm-tile-intake">
-          {t('intake.tag')}
-          {intakeAt ? ` · ${t('intake.received', { when: formatRelative(intakeAt, locale) })}` : ''}
-        </span>
-      ) : (
-        <span className="muted block truncate" title={`${farm.locality} · ${t(`farmType.${farm.type}`)}`}>
-          {farm.locality} · {t(`farmType.${farm.type}`)}
-        </span>
-      )}
-      <span className="flex flex-wrap items-center gap-x-2.5 text-micro text-content-muted">
-        <span className="inline-flex items-center gap-1 whitespace-nowrap">
-          <Icon name="landPlot" size={11} />
-          <span className="numeric">{effectiveAreas(farm).total.toLocaleString(locale)}</span>
-          {t('farms.dunams')}
-        </span>
-        {/* AA3.3 — and the weighted figure beside the flat one, on the tile
-            too: « en liste comme en tableau ». Only when there is one — a
-            « 0 משוקלל » on every unmeasured lead is noise on 198 rows. */}
-        {weightedDunams(farm) > 0 && (
-          <span className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-content-secondary">
-            <span className="numeric">{weightedDunams(farm).toLocaleString(locale)}</span>
-            {t('farms.weightedShort')}
-          </span>
-        )}
-        {heads !== null && (
-          <span className="inline-flex items-center gap-1 whitespace-nowrap">
-            <Icon name="pawPrint" size={11} />
-            <span className="numeric">{heads.toLocaleString(locale)}</span>
-          </span>
-        )}
-        {farm.nextVisitAt && (
-          <span className="inline-flex items-center gap-1 whitespace-nowrap">
-            <Icon name="calendar" size={11} />
-            <span className="ltr-nums">{formatDate(farm.nextVisitAt, locale)}</span>
-          </span>
-        )}
-      </span>
-    </ListTile>
-  )
-}
-
-
-/**
- * ★★ AA3.3 (2026-09-07) — THE FOUR ORDERS, AND WHY THERE ARE ONLY FOUR.
- *
- * A roster with a sort menu of every column is a roster nobody sorts: the
- * useful orders are the questions somebody actually asks of this list. « Who
- * is biggest » (weighted, both ways — the small ones matter when he is looking
- * for what is left to measure), « where am I in the pipeline » and « who is
- * next ». The alphabet is the default because it is the only order in which a
- * name can be FOUND rather than read.
- *
- * ⚠️ A FARM WITH NO NEXT VISIT SORTS LAST, NOT FIRST. `null` compared as a
- *    string puts it wherever the engine likes; here it is `Infinity`, which is
- *    the honest answer to "when is the next visit" for a place nobody has
- *    booked.
- */
 export type FarmSort =
   | 'name'
   | 'weightedDesc'
@@ -1370,184 +1215,104 @@ export function regionLabel(farm: Farm): string {
   return (id ? regionById(id)?.name : null) ?? farm.region ?? ''
 }
 
-function FarmsTableHead() {
-  const { t } = useTranslation()
-  return (
-    <div className="roster roster-farms">
-      <div
-        data-roster-head=""
-        className="roster-row rounded-t-card border-b border-edge-subtle
-                   bg-surface-overlay px-4 py-2"
-      >
-        <RosterHead label={t('missions.farm')} />
-        <RosterHead label={t('volunteers.colLocality')} tier="lg" />
-        <RosterHead label={t('farms.colRegion')} tier="lg" />
-        <RosterHead label={t('farms.colType')} tier="lg" />
-        <RosterHead label={t('farms.colStatus')} tier="md" />
-        <RosterHead label={t('farms.colDunams')} tier="xl" />
-        {/* AA3.3 — the weighted total, in the table, next to what it is made
-            of. `xl` like the pair it follows: below that width the row shows
-            the areas merged under the name and a third number would not fit. */}
-        <RosterHead label={t('farms.colWeighted')} tier="xl" className="text-end" />
-        {/* AC4.4 — how many nights this farm has had, and how long ago. */}
-        <RosterHead label={t('farms.colGuards')} tier="xl" className="text-end" />
-        <RosterHead label={t('farms.colContacts')} tier="xl" />
-        <RosterHead label={t('farms.nextVisit')} tier="md" />
-        <RosterHead label="" className="text-end" />
-      </div>
-    </div>
-  )
+/** ★★ AY3 — le tri du tableau commun ↔ le tri des fermes (qui a ses ordres propres). */
+function farmSortToTable(sort: FarmSort): { key: string; dir: 'asc' | 'desc' } {
+  switch (sort) {
+    case 'weightedDesc':
+      return { key: 'weighted', dir: 'desc' }
+    case 'weightedAsc':
+      return { key: 'weighted', dir: 'asc' }
+    case 'guardsAsc':
+      return { key: 'guards', dir: 'asc' }
+    case 'guardsDesc':
+      return { key: 'guards', dir: 'desc' }
+    case 'status':
+      return { key: 'status', dir: 'asc' }
+    case 'nextVisit':
+      return { key: 'nextVisit', dir: 'asc' }
+    case 'name':
+      return { key: 'name', dir: 'asc' }
+    default:
+      return { key: sort, dir: 'desc' }
+  }
+}
+function tableToFarmSort(s: { key: string; dir: 'asc' | 'desc' }): FarmSort {
+  if (s.key === 'weighted') return s.dir === 'asc' ? 'weightedAsc' : 'weightedDesc'
+  if (s.key === 'guards') return s.dir === 'asc' ? 'guardsAsc' : 'guardsDesc'
+  if (s.key === 'status' || s.key === 'nextVisit') return s.key
+  return 'name'
 }
 
-function FarmsTable({
-  farms,
-  coverageOf,
-  neglectDays,
-  onOpen,
-}: {
-  farms: Farm[]
-  coverageOf: ReadonlyMap<string, FarmCoverage>
-  neglectDays: number
-  onOpen: (farmId: string) => void
-}) {
+/**
+ * ★★ AY3.3 — L'APERÇU D'UNE FERME : la carte épinglée (son contour, ses
+ * points), le statut, les chiffres qui comptent, les gens et leurs numéros.
+ * « לכרטיס המלא » ouvre la fiche, « עריכה » le formulaire.
+ */
+function FarmPreview({ farm, posts, coverage, onClose }: { farm: Farm; posts: number; coverage: FarmCoverage | null; onClose: () => void }) {
   const { t } = useTranslation()
   const locale = useLocale()
-
-  const { listRef, virtualizer, margin } = useWindowTable(
-    farms.length,
-    () => ROSTER_ROW_HEIGHT,
-  )
-
-  const dunams = (n: number) => n.toLocaleString(locale)
-
+  const areas = effectiveAreas(farm)
+  const heads = totalHeads(farm)
+  const n = (x: number) => x.toLocaleString(locale)
   return (
-    <div className="roster roster-farms card lg:rounded-t-none">
-      <div
-        ref={listRef}
-        style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
-      >
-        {virtualizer.getVirtualItems().map((item) => {
-          const farm = farms[item.index]
-          return (
-            <button
-              key={farm.id}
-              type="button"
-              onClick={() => onOpen(farm.id)}
-              style={{
-                position: 'absolute',
-                insetInlineStart: 0,
-                insetInlineEnd: 0,
-                top: 0,
-                height: item.size,
-                transform: `translateY(${item.start - margin}px)`,
-              }}
-              data-intake={isIncoming(farm) ? 'true' : undefined}
-              className={`roster-row border-b border-edge-subtle/50 px-4 text-start
-                         transition-colors duration-fast hover:bg-surface-high/60 ${
-                           isIncoming(farm) ? 'border-s-4 border-s-farm-incoming-request bg-farm-incoming-request/10' : ''
-                         }`}
-            >
-              {/* 1 — name, with whatever has lost its column merged under it. */}
-              <span className="flex min-w-0 items-center gap-2.5">
-                <Avatar photo={farm.photo} name={farm.name} size="xs" shape="square" />
-                <span className="min-w-0">
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span data-merge="md" style={{ ['--col-display' as string]: 'inline-block' }}>
-                      <FarmStatusDot status={farm.status} />
-                    </span>
-                    <span className="truncate text-caption font-medium text-content-primary">
-                      {farm.name}
-                    </span>
-                    <NeglectMark
-                      coverage={coverageOf.get(farm.id) ?? null}
-                      neglectDays={neglectDays}
-                    />
-                    {/* AD2.5 — « un signal discret dans la liste ET le tableau ». */}
-                    <AreaGapMark farm={farm} />
-                  </span>
-                  <span
-                    className="muted block truncate"
-                    title={`${farm.locality} · ${regionLabel(farm)} · ${t(`farmType.${farm.type}`)}`}
-                  >
-                    <span data-merge="lg" style={{ ['--col-display' as string]: 'inline' }}>
-                      {farm.locality} · {regionLabel(farm)} · {t(`farmType.${farm.type}`)}
-                    </span>
-                  </span>
-                </span>
-              </span>
-
-              {/* 2 — locality */}
-              <span data-col="lg" className="truncate text-caption text-content-secondary">
-                {farm.locality}
-              </span>
-
-              {/* 3 — region. ★★ AX9 — LA RÉGION QUI CLASSE est celle qui s'affiche
-                  (`farmRegion`, celle du filtre), pas le texte libre saisi. */}
-              <span data-col="lg" className="truncate text-caption text-content-secondary" data-testid="farm-region-cell">
-                {regionLabel(farm)}
-              </span>
-
-              {/* 4 — type */}
-              <span data-col="lg" className="truncate text-caption text-content-secondary">
-                {t(`farmType.${farm.type}`)}
-              </span>
-
-              {/* 5 — status */}
-              <span data-col="md">
-                <FarmStatusChip status={farm.status} />
-              </span>
-
-              {/* 6 — dunams */}
-              <span data-col="xl" className="ltr-nums numeric truncate text-caption text-content-secondary">
-                {dunams(effectiveAreas(farm).cultivated)} / {dunams(effectiveAreas(farm).grazing)}
-              </span>
-
-              {/* 7 — AA3.3: the weighted total */}
-              <span
-                data-col="xl"
-                data-weighted={weightedDunams(farm)}
-                className="ltr-nums numeric truncate text-end text-caption font-semibold text-content-primary"
-              >
-                {dunams(weightedDunams(farm))}
-              </span>
-
-              {/* 8 — AC4.4: the nights received, and how long ago the last was */}
-              <span
-                data-col="xl"
-                data-guards={coverageOf.get(farm.id)?.stats.guards ?? 0}
-                className="ltr-nums numeric truncate text-end text-caption text-content-secondary"
-              >
-                {(coverageOf.get(farm.id)?.stats.guards ?? 0).toLocaleString(locale)}
-                <span className="muted ms-1 text-micro">
-                  {coverageOf.get(farm.id)?.stats.lastGuardAt
-                    ? formatDate(
-                        coverageOf.get(farm.id)?.stats.lastGuardAt as string,
-                        locale,
-                      )
-                    : '—'}
-                </span>
-              </span>
-
-              {/* 9 — contacts */}
-              <span data-col="xl" className="numeric truncate text-caption text-content-secondary">
-                {farm.contacts.length}
-              </span>
-
-              {/* 10 — next visit */}
-              <span data-col="md" className="ltr-nums truncate text-micro text-content-muted">
-                {farm.nextVisitAt
-                  ? formatDate(farm.nextVisitAt, locale)
-                  : t('farms.noVisitYet')}
-              </span>
-
-              {/* 11 — the way in */}
-              <span data-actions="" className="flex items-center justify-end text-content-muted/60">
-                <ChevronForward size={14} />
-              </span>
-            </button>
-          )
-        })}
+    <PreviewPanel
+      title={farm.name}
+      subtitle={[farm.locality, regionLabel(farm), t(`farmType.${farm.type}`)].filter(Boolean).join(' · ')}
+      photo={farm.photo}
+      shape="square"
+      position={farm.positionMissing ? null : farm.position}
+      editTo={`/coordinator/farms/${farm.id}/edit`}
+      openTo={`/coordinator/farms/${farm.id}`}
+      onClose={onClose}
+      testId="farm-preview"
+      chips={<FarmStatusChip status={farm.status} />}
+      quick={
+        <Link to={`/coordinator/missions/new?farm=${farm.id}`} className="btn-secondary min-h-11" data-testid="farm-preview-guard">
+          <Icon name="shield" size={16} />
+          {t('farms.newGuardHere')}
+        </Link>
+      }
+    >
+      <div className="mb-5 grid grid-cols-3 gap-2">
+        {[
+          { v: n(weightedDunams(farm)), l: t('farms.colWeighted') },
+          { v: n(coverage?.stats.guards ?? 0), l: t('farms.colGuards') },
+          { v: n(posts), l: t('preview.posts') },
+        ].map((x) => (
+          <div key={x.l} className="rounded-card bg-surface-raised p-2.5 text-center shadow-card">
+            <p className="numeric text-title font-bold text-content-primary">{x.v}</p>
+            <p className="text-micro text-content-muted">{x.l}</p>
+          </div>
+        ))}
       </div>
-    </div>
+      <PreviewSection title={t('preview.details')}>
+        <PreviewRow label={t('farms.colDunams')}>{`${n(areas.cultivated)} / ${n(areas.grazing)}`}</PreviewRow>
+        <PreviewRow label={t('livestock.heads')}>{heads ? n(heads) : ''}</PreviewRow>
+        <PreviewRow label={t('farms.nextVisit')}>{farm.nextVisitAt ? formatDate(farm.nextVisitAt, locale) : ''}</PreviewRow>
+        <PreviewRow label={t('preview.lastGuard')}>{coverage?.stats.lastGuardAt ? formatDate(coverage.stats.lastGuardAt, locale) : ''}</PreviewRow>
+      </PreviewSection>
+      {farm.contacts.length > 0 && (
+        <PreviewSection title={t('people.section')}>
+          {farm.contacts.map((c) => (
+            <div key={c.id} className="flex items-center gap-2 border-b border-edge-subtle/60 py-2">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-caption font-semibold text-content-primary">{c.name}</span>
+                <span className="muted block truncate text-micro">{c.role || (c.isPrimary ? t('people.primary') : t('people.other'))}</span>
+              </span>
+              {c.phone && (
+                <a href={`tel:${c.phone.replace(/[^\d+]/g, '')}`} className="btn-ghost h-10 w-10 min-w-0 justify-center p-0" aria-label={t('people.call')}>
+                  <Icon name="phone" size={16} />
+                </a>
+              )}
+            </div>
+          ))}
+        </PreviewSection>
+      )}
+      {farm.notes && (
+        <PreviewSection title={t('form.notes')}>
+          <p className="whitespace-pre-wrap py-2 text-caption" dir="auto">{farm.notes}</p>
+        </PreviewSection>
+      )}
+    </PreviewPanel>
   )
 }

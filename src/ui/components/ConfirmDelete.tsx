@@ -5,6 +5,7 @@ import { deletionPlan } from '@core/index'
 import type { DeletableKind } from '@core/index'
 
 import { Icon } from './Icon'
+import { runUndoable } from './UndoToast'
 import { Callout, Modal } from './primitives'
 
 /**
@@ -190,6 +191,7 @@ export function useConfirmDelete(): {
   ) => void
   dialog: JSX.Element | null
 } {
+  const { t } = useTranslation()
   const [pending, setPending] = useState<{
     kind: DeletableKind
     id: string
@@ -208,7 +210,8 @@ export function useConfirmDelete(): {
         label={pending.label}
         onClose={() => setPending(null)}
         onConfirm={() => {
-          const ok = pending.perform()
+          /* ★★ AY5 — confirmé AVANT, et encore défaisable APRÈS (8 s). */
+          const ok = runUndoable(t('undo.deleted', { name: pending.label ?? '' }).replace(/\s+·\s*$/, ''), pending.perform)
           if (ok) pending.after?.()
           return ok
         }}

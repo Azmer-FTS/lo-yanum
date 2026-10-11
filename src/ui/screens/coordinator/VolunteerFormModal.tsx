@@ -4,10 +4,12 @@ import { useTranslation } from 'react-i18next'
 import {
   comparableInstitutionName,
   createVolunteer,
+  getDrivers,
   getInstitutions,
   isEmail,
   normalizeEmail,
   updateVolunteer,
+  updateVolunteerDriving,
 } from '@core/index'
 import { DEFAULT_AVAILABILITY } from '@core/index'
 import type {
@@ -22,13 +24,14 @@ import type {
 import { PhotoField } from '../../components/PhotoField'
 import { LocalityField } from '../../components/LocalityField'
 import {
+  NumberField,
   SelectField,
-  SelectOrCreateField,
   TextArea,
   TextField,
   isValidPhone,
 } from '../../components/fields'
 import { Modal } from '../../components/primitives'
+import { runUndoable } from '../../components/UndoToast'
 import { useCoreValue } from '../../hooks/useCore'
 
 /** L'institution que nomme ce texte : celle déjà liée si le nom est le sien, sinon celle qui porte ce nom. */
@@ -48,8 +51,11 @@ export function VolunteerFormModal({
   presentation = 'page',
   initialName,
   institution,
+  driver = false,
 }: {
   volunteer: Volunteer | null
+  /** ★★ AY4 — « נהג חדש » : un volontaire qui conduit, cases déjà cochées. */
+  driver?: boolean
   /** ★★ AX10 — le nom déjà tapé dans « הוספה ». */
   initialName?: string
   /** ★★ AX10 — l'institution choisie dans « הוספה » : le volontaire lui est rattaché. */
@@ -83,9 +89,19 @@ export function VolunteerFormModal({
   )
   const [notes, setNotes] = useState(volunteer?.notes ?? '')
   // G5.2 — licence / car / dual hat.
-  const [hasLicense, setHasLicense] = useState(volunteer?.hasLicense ?? false)
-  const [hasCar, setHasCar] = useState(volunteer?.hasCar ?? false)
-  const [canDrive, setCanDrive] = useState(volunteer?.canDrive ?? false)
+  const [hasLicense, setHasLicense] = useState(volunteer?.hasLicense ?? driver)
+  const [hasCar, setHasCar] = useState(volunteer?.hasCar ?? driver)
+  const [canDrive, setCanDrive] = useState(volunteer?.canDrive ?? driver)
+  /* ★★ AY4 — la voiture se saisit sur la fiche du volontaire (la ligne
+     `drivers` liée la porte). */
+  const car = useCoreValue(getDrivers).find((d) => volunteer && d.volunteerId === volunteer.id)
+  const [vehicle, setVehicle] = useState(car?.vehicle ?? '')
+  const [seats, setSeats] = useState<number>(car?.seats ?? 4)
+  const [availabilityNote, setAvailabilityNote] = useState(car?.availabilityNote ?? '')
+  /* ★★ AY12.5 — l'institution se CHOISIT dans la table des institutions ;
+     « אחר » garde la saisie libre pour une maison pas encore fichée. */
+  const initialInst = volunteer?.institutionId ?? institution?.id ?? institutionIdFor(volunteer?.yeshiva ?? '', institutions, null)
+  const [instChoice, setInstChoice] = useState<string>(initialInst ?? (volunteer?.yeshiva ? '__other' : ''))
   // G3.4 — slot preferences.
   const [availability, setAvailability] = useState<VolunteerAvailability>(
     volunteer?.availability ?? { ...DEFAULT_AVAILABILITY },
@@ -129,10 +145,9 @@ export function VolunteerFormModal({
       phone: phone.trim(),
       phoneType,
       email: normalizeEmail(email),
-      yeshiva,
-      /* ★★ AX — le RATTACHEMENT suit le nom : changer le texte de l'institution
-         ne laissait jamais `institutionId` le suivre (deux vérités). */
-      institutionId: institutionIdFor(yeshiva, institutions, volunteer?.institutionId ?? institution?.id ?? null),
+      /* ★★ AY12.5 — une institution choisie dans la table : son nom ET son id. */
+      yeshiva: instChoice && instChoice !== '__other' ? (institutions.find((i) => i.id === instChoice)?.name ?? yeshiva) : yeshiva,
+      institutionId: instChoice && instChoice !== '__other' ? instChoice : institutionIdFor(yeshiva, institutions, null),
       locality: locality.trim(),
       status,
       inactiveReason: status === 'inactive' ? inactiveReason.trim() : null,
@@ -144,8 +159,10 @@ export function VolunteerFormModal({
       availability,
     }
 
-    if (volunteer) updateVolunteer(volunteer.id, draft)
-    else createVolunteer(draft)
+    runUndoable(t('undo.saved', { name: draft.name }), () => {
+      const id = volunteer ? (updateVolunteer(volunteer.id, draft), volunteer.id) : createVolunteer(draft).id
+      if (draft.canDrive) updateVolunteerDriving(id, { vehicle: vehicle.trim(), seats, availabilityNote: availabilityNote.trim() })
+    })
     onClose()
   }
 
@@ -208,16 +225,24 @@ export function VolunteerFormModal({
           error={show('age')}
           kind="integer"
         />
-        {/* F1 — the roster's yeshivot are a suggestion, not a closed world:
-            the first volunteer from a new yeshiva must not be unenterable. */}
-        <SelectOrCreateField
+        {/* ★★ AY12.5 — LE FORMULAIRE EST RELIÉ AUX INSTITUTIONS : on choisit
+            une fiche (celle qui compte ses volontaires et ses conducteurs) ;
+            « אחר » garde la saisie libre (F1 : une première venue d'une
+            maison pas encore fichée ne doit pas être bloquée). */}
+        <SelectField<string>
           label={t('form.yeshiva')}
-          value={yeshiva}
-          onChange={setYeshiva}
-          options={yeshivot}
-          createLabel={t('form.addNew')}
-          backLabel={t('form.chooseExisting')}
+          value={instChoice}
+          onChange={setInstChoice}
+          options={[
+            { value: '', label: t('volunteerForm.noInstitution') },
+            ...institutions.map((i) => ({ value: i.id, label: i.name })),
+            { value: '__other', label: t('volunteerForm.otherInstitution') },
+          ]}
+          testId="volunteer-institution"
         />
+        {instChoice === '__other' && (
+          <TextField label={t('volunteerForm.otherName')} value={yeshiva} onChange={setYeshiva} testId="volunteer-institution-other" />
+        )}
         <LocalityField
           label={t('form.locality')}
           value={locality}
@@ -288,6 +313,13 @@ export function VolunteerFormModal({
             <p className="muted">{t('form.canDriveHint')}</p>
           )}
         </div>
+        {canDrive && hasLicense && hasCar && (
+          <>
+            <TextField label={t('driver.vehicle')} value={vehicle} onChange={setVehicle} placeholder={t('volunteerForm.vehiclePlaceholder')} testId="volunteer-vehicle" />
+            <NumberField label={t('driver.seats')} value={seats} onCommit={(n) => n !== null && setSeats(n)} min={1} max={9} testId="volunteer-seats" />
+            <TextField label={t('driver.availabilityNote')} value={availabilityNote} onChange={setAvailabilityNote} testId="volunteer-availability-note" />
+          </>
+        )}
 
         {/* G3.4 — availability preferences; everything on = no constraint. */}
         <div className="flex flex-col gap-2 col-span-full">

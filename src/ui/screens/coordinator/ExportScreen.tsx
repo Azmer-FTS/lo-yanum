@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -190,7 +190,26 @@ export function ExportScreen() {
         ) : (
           /* The table is wider than any panel; it scrolls inside its own box
              rather than making the page scroll sideways. */
-          <div className="overflow-x-auto" data-testid="export-preview">
+          <>
+          {/* ★★ AY2 — sur téléphone, une fiche par ligne (titre : valeur), jamais
+              un tableau qui défile de côté. */}
+          <ul className="divide-y divide-edge-subtle md:hidden" data-testid="export-preview-cards">
+            {preview.slice(0, 5).map((row, i) => (
+              <li key={i} className="px-4 py-3">
+                <dl className="grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)] gap-x-3 gap-y-1 text-micro">
+                  {row.map((cell, j) =>
+                    cell ? (
+                      <Fragment key={j}>
+                        <dt className="truncate text-content-muted">{header[j]}</dt>
+                        <dd className="min-w-0 break-words text-content-primary" dir="auto">{cell}</dd>
+                      </Fragment>
+                    ) : null,
+                  )}
+                </dl>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto md:block" data-testid="export-preview">
             <table className="w-max min-w-full text-start text-micro">
               <thead>
                 <tr className="border-b border-edge-subtle">
@@ -236,6 +255,7 @@ export function ExportScreen() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Section>
 

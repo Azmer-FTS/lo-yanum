@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { INSTITUTION_ENGAGEMENTS, isInstitutionToConfirm, updateInstitution } from '@core/index'
-import type { Institution, InstitutionEngagement } from '@core/index'
+import { Link } from 'react-router-dom'
 
+import { INSTITUTION_ENGAGEMENTS, comparableInstitutionName, getDrivers, getVolunteers, isInstitutionToConfirm, setVolunteerRideWith, updateInstitution } from '@core/index'
+import type { Driver, Institution, InstitutionEngagement, Volunteer } from '@core/index'
+
+import { Avatar } from '../components/Avatar'
 import { Icon } from '../components/Icon'
+import { useCoreValue } from '../hooks/useCore'
+import { runUndoable } from '../components/UndoToast'
 
 /**
  * ★★ AX1 — L'INSTITUTION, UNE SEULE FOIS : son statut d'engagement et sa
@@ -74,14 +79,14 @@ export function InstitutionEditor({ inst }: { inst: Institution }) {
           <p className="min-w-0 flex-1 text-caption font-semibold text-status-warn-ink">
             {t('institutions.toConfirmLong', { status: t(`institutions.engagement.${inst.engagement}`) })}
           </p>
-          <button type="button" className="btn-primary min-h-11" onClick={() => updateInstitution(inst.id, { engagementConfirmed: true })} data-testid="institution-confirm">
+          <button type="button" className="btn-primary min-h-11" onClick={() => runUndoable(t('undo.confirmed', { name: inst.name }), () => updateInstitution(inst.id, { engagementConfirmed: true }))} data-testid="institution-confirm">
             <Icon name="check" size={16} />
             {t('institutions.confirm')}
           </button>
         </div>
       )}
       {/* ★★ AV1 — CORRIGER = CONFIRMER : choisir un statut, c'est le dire. */}
-      <EngagementSegments value={inst.engagement} onChange={(e) => updateInstitution(inst.id, { engagement: e, engagementConfirmed: true })} testId="institution-engagement" />
+      <EngagementSegments value={inst.engagement} onChange={(e) => runUndoable(t('undo.engagement', { name: inst.name, status: t(`institutions.engagement.${e}`) }), () => updateInstitution(inst.id, { engagement: e, engagementConfirmed: true }))} testId="institution-engagement" />
       {(inst.metOn || inst.students !== null || inst.positionSource) && (
         <dl className="grid gap-1 text-caption" data-testid="institution-facts">
           {inst.metOn && (
@@ -119,3 +124,115 @@ export function InstitutionEditor({ inst }: { inst: Institution }) {
   )
 }
 
+
+/** Les volontaires d'une institution : rattachés par `institutionId`, ou (anciens) par le nom. */
+export function peopleOf(inst: Institution, volunteers: readonly Volunteer[]): Volunteer[] {
+  const name = comparableInstitutionName(inst.name)
+  return volunteers.filter((v) => v.institutionId === inst.id || (!v.institutionId && !!v.yeshiva && comparableInstitutionName(v.yeshiva) === name))
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AY4.3 (2026-10-11) — SES VOLONTAIRES ET SES CONDUCTEURS, MIS EN
+ *    CORRESPONDANCE, DEPUIS LA FICHE DE L'INSTITUTION.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * « Chaque institution a SES PROPRES conducteurs : c'est ce que je leur
+ * demande, et c'est ce qui rend les gardes possibles. » Ici, d'un coup d'œil :
+ * combien de volontaires, combien conduisent, combien de places ; puis chaque
+ * volontaire avec SON conducteur (« יוצא עם »), choisi d'un toucher parmi les
+ * conducteurs DE LA MÊME institution. Un conducteur dit combien de places il
+ * a, et combien il en a déjà promis.
+ */
+export function InstitutionPeople({ inst, compact = false }: { inst: Institution; compact?: boolean }) {
+  const { t } = useTranslation()
+  const volunteers = useCoreValue(() => getVolunteers())
+  const drivers = useCoreValue(() => getDrivers())
+  const people = peopleOf(inst, volunteers).filter((v) => v.status !== 'inactive')
+  const driving = people.filter((v) => v.canDrive)
+  const riders = people.filter((v) => !v.canDrive)
+  const car = (v: Volunteer): Driver | undefined => drivers.find((d) => d.volunteerId === v.id)
+  const seats = driving.reduce((n, v) => n + Math.max(0, (car(v)?.seats ?? 4) - 1), 0)
+  const promised = (v: Volunteer) => riders.filter((r) => r.rideWith === v.id).length
+  return (
+    <div data-testid="institution-people" data-volunteers={people.length} data-drivers={driving.length}>
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { n: people.length, label: t('institutionPeople.volunteers'), testId: 'institution-people-count' },
+          { n: driving.length, label: t('institutionPeople.drivers'), testId: 'institution-drivers-count' },
+          { n: seats, label: t('institutionPeople.seats'), testId: 'institution-seats-count' },
+        ].map((x) => (
+          <div key={x.testId} className="rounded-card bg-surface-raised p-2.5 text-center shadow-card" data-testid={x.testId}>
+            <p className="numeric text-title font-bold text-content-primary">{x.n}</p>
+            <p className="text-micro text-content-muted">{x.label}</p>
+          </div>
+        ))}
+      </div>
+      {people.length === 0 ? (
+        <p className="muted mt-3 text-caption">{t('institutionPeople.none')}</p>
+      ) : (
+        <ul className="mt-3 divide-y divide-edge-subtle">
+          {[...driving, ...riders].map((v) => {
+            const c = car(v)
+            const ride = riders.includes(v)
+            return (
+              <li key={v.id} className="flex flex-wrap items-center gap-2 py-2" data-testid={`institution-person-${v.id}`} data-driver={v.canDrive ? '' : undefined}>
+                <Avatar photo={v.photo} name={v.name} size="sm" />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate text-caption font-semibold text-content-primary">{v.name}</span>
+                    {v.canDrive && (
+                      <span className="chip bg-status-info/15 text-micro text-status-info-ink">
+                        <Icon name="steering" size={12} />
+                        {t('institutionPeople.driver')}
+                      </span>
+                    )}
+                  </span>
+                  <span className="muted block truncate text-micro">
+                    {v.canDrive
+                      ? t('institutionPeople.carLine', { vehicle: c?.vehicle || t('institutionPeople.privateCar'), taken: promised(v), seats: Math.max(0, (c?.seats ?? 4) - 1) })
+                      : v.phone}
+                  </span>
+                </span>
+                {ride && !compact && (
+                  <label className="flex min-w-[11rem] items-center gap-1.5 text-micro text-content-muted">
+                    <span className="shrink-0">{t('institutionPeople.ridesWith')}</span>
+                    <select
+                      className="input min-h-[2.5rem] flex-1 py-1 text-caption"
+                      value={v.rideWith ?? ''}
+                      onChange={(e) => setVolunteerRideWith(v.id, e.target.value || null)}
+                      data-testid={`institution-ride-${v.id}`}
+                      disabled={driving.length === 0}
+                    >
+                      <option value="">{driving.length === 0 ? t('institutionPeople.noDriver') : t('institutionPeople.nobody')}</option>
+                      {driving.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name} ({promised(d)}/{Math.max(0, (car(d)?.seats ?? 4) - 1)})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {ride && compact && v.rideWith && (
+                  <span className="muted text-micro">
+                    {t('institutionPeople.ridesWith')} {people.find((p) => p.id === v.rideWith)?.name ?? ''}
+                  </span>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Link to={`/coordinator/volunteers/new?institution=${inst.id}`} className="btn-secondary min-h-11" data-testid="institution-add-volunteer">
+          <Icon name="userPlus" size={16} />
+          {t('institutionPeople.add')}
+        </Link>
+        <Link to={`/coordinator/volunteers?institution=${inst.id}`} className="btn-ghost min-h-11" data-testid="institution-see-volunteers">
+          <Icon name="users" size={16} />
+          {t('institutionPeople.seeAll')}
+        </Link>
+      </div>
+    </div>
+  )
+}

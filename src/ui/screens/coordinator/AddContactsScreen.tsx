@@ -229,7 +229,7 @@ export function AddContactsScreen() {
                 if (e.key !== 'Enter' || !name.trim()) return
                 e.preventDefault()
                 if (type === 'farmFile') navigate(`/coordinator/farms/new?name=${encodeURIComponent(name.trim())}`)
-                else if (type === 'driver') navigate(`/coordinator/drivers/new?name=${encodeURIComponent(name.trim())}`)
+                else if (type === 'driver') navigate(`/coordinator/volunteers/new?driver=1&name=${encodeURIComponent(name.trim())}`)
                 else requestAnimationFrame(() => document.querySelector<HTMLInputElement>('[data-testid="add-form-phone"]')?.focus())
               }}
             />
@@ -327,7 +327,7 @@ export function AddContactsScreen() {
             )}
             {source === 'name' && type === 'farmFile' && <FarmFileStep name={name.trim()} onGo={(to) => navigate(to)} />}
             {source === 'name' && type === 'driver' && (
-              <button type="button" className="btn-primary min-h-11" onClick={() => navigate(`/coordinator/drivers/new?name=${encodeURIComponent(name.trim())}`)} data-testid="add-driver-go">
+              <button type="button" className="btn-primary min-h-11" onClick={() => navigate(`/coordinator/volunteers/new?driver=1&name=${encodeURIComponent(name.trim())}`)} data-testid="add-driver-go">
                 <Icon name="steering" size={16} />
                 {t('add.driverGo')}
               </button>

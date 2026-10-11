@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   HOME_BASE,
   LEAD_OPEN_STATUSES,
@@ -25,11 +25,13 @@ import { Icon } from '../../components/Icon'
 import { MapSplit } from '../../components/MapSplit'
 import { MapView } from '../../components/MapView'
 import type { MapMarker } from '../../components/MapView'
-import { OverflowMenu } from '../../components/OverflowMenu'
 import { readToken } from '../../components/badges'
-import { DataTable, readSortState } from '../../components/DataTable'
-import type { Column, SortState } from '../../components/DataTable'
-import { FilterPill, FilterRow, ListTop, Modal } from '../../components/primitives'
+import { readSortState } from '../../components/DataTable'
+import type { SortState } from '../../components/DataTable'
+import { EntityTable } from '../../components/EntityTable'
+import type { EntityColumn, RowAction } from '../../components/EntityTable'
+import { PreviewPanel, PreviewRow, PreviewSection } from '../../components/PreviewPanel'
+import { FilterPill, FilterRow, ListTop, Modal, PageHeader } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 
 /**
@@ -243,7 +245,7 @@ export function LeadsScreen() {
     }))
 
   function select(id: string, fly: boolean): void {
-    setSelected((cur) => (cur === id && fly ? null : id))
+    setSelected(id)
     if (fly) setFlyKey((k) => k + 1)
   }
 
@@ -262,11 +264,24 @@ export function LeadsScreen() {
   const columns = useLeadColumns({
     regionName,
     onStatus: changeStatus,
-    onMeeting: (lead) => navigate(formRoutes.newMeeting({ lead: lead.id })),
-    onConvert: (lead) => setConfirm({ kind: 'convert', lead }),
-    onDelete: (lead) => setConfirm({ kind: 'delete', lead }),
   })
-  const rows = sortRowsBy(visible, columns, sort)
+  const rows = sortRowsBy(visible, [{ key: 'name', label: '', sort: leadLabel, render: () => null }, ...columns], sort)
+  const leadActions = (l: Lead): RowAction[] => [
+    { key: 'view', icon: 'eye', label: t('table.view'), inline: true, onClick: () => select(l.id, false), testId: `lead-view-${l.id}` },
+    { key: 'edit', icon: 'edit', label: t('table.edit'), inline: true, to: `/coordinator/leads/${l.id}`, testId: `lead-edit-${l.id}` },
+    ...(l.phone
+      ? [
+          { key: 'call', icon: 'phone' as const, label: t('leads.call'), onClick: () => window.open(`tel:${l.phone.replace(/\D/gu, '')}`, '_self') },
+          { key: 'whatsapp', icon: 'whatsapp' as const, label: 'WhatsApp', onClick: () => window.open(whatsappHref(l.phone), '_blank') },
+        ]
+      : []),
+    { key: 'meeting', icon: 'calendar', label: t('leads.meeting'), onClick: () => navigate(formRoutes.newMeeting({ lead: l.id })), testId: `lead-meeting-${l.id}` },
+    ...(l.status !== 'not_now'
+      ? [{ key: 'notNow', icon: 'eyeOff' as const, label: t('leads.status.not_now'), onClick: () => changeStatus(l, 'not_now'), testId: `lead-notnow-${l.id}` }]
+      : []),
+    { key: 'convert', icon: 'farm', label: t('leads.convertAsk'), onClick: () => setConfirm({ kind: 'convert', lead: l }), testId: `lead-convert-${l.id}` },
+    { key: 'delete', icon: 'trash', label: t('leads.deleteAsk'), onClick: () => setConfirm({ kind: 'delete', lead: l }), danger: true, testId: `lead-delete-${l.id}` },
+  ]
 
   return (
     <MapSplit screenKey="leads" ariaLabel={t('leads.mapLabel')} breakpoint="xl" contentPercent={66} splitHeight="h-[35dvh]" map={() => mapBody}>
@@ -306,21 +321,34 @@ export function LeadsScreen() {
             }
           />
 
-          <DataTable
+          {/* ★★ AY3 — la forme commune : photo · nom, colonnes, gestes au bout. */}
+          <EntityTable
             rows={rows}
-            columns={columns}
             rowKey={(l) => l.id}
+            lead={(l) => ({ title: leadLabel(l), photo: l.photo, dot: <span className="h-2.5 w-2.5 shrink-0 rounded-pill" style={{ backgroundColor: readToken(STATUS_TOKEN[l.status]) }} aria-hidden /> })}
+            leadLabel={t('leads.col.name')}
+            leadSort={leadLabel}
+            columns={columns}
             sort={sort}
             onSort={setSort}
-            onOpen={(l) => select(l.id, true)}
-            openKey={selected}
-            renderOpen={(l) => <LeadDetails lead={l} />}
-            openLabel={t('leads.openRow')}
+            onPreview={(l) => select(l.id, true)}
+            activeKey={selected}
+            actions={(l) => leadActions(l)}
+            phoneEnd={(l) => <span className={`chip border text-micro ${STATUS_ON[l.status]}`}>{t(`leads.short.${l.status}`)}</span>}
             rowAttrs={(l) => ({ 'data-lead-id': l.id, 'data-testid': `lead-${l.id}`, 'data-status': l.status })}
             empty={t('leads.empty')}
             label={t('leads.title')}
             testId="leads-table"
           />
+
+          {selectedLead && (
+            <LeadPreview
+              lead={selectedLead}
+              regionName={regionName}
+              onStatus={(s) => changeStatus(selectedLead, s)}
+              onClose={() => setSelected(null)}
+            />
+          )}
 
           {converted.length > 0 && (
             <section className="mt-4" data-testid="leads-converted">
@@ -416,7 +444,7 @@ export function LeadsScreen() {
 // ★★ AX5 — les colonnes
 // ---------------------------------------------------------------------------
 
-function sortRowsBy(rows: readonly Lead[], columns: readonly Column<Lead>[], sort: SortState): Lead[] {
+function sortRowsBy(rows: readonly Lead[], columns: readonly EntityColumn<Lead>[], sort: SortState): Lead[] {
   const col = columns.find((c) => c.key === sort.key)
   const get = col?.sort
   if (!get) return [...rows]
@@ -441,16 +469,10 @@ const dayMonth = (iso: string) => {
 function useLeadColumns({
   regionName,
   onStatus,
-  onMeeting,
-  onConvert,
-  onDelete,
 }: {
   regionName: (id: RegionId) => string
   onStatus: (lead: Lead, s: LeadStatus) => void
-  onMeeting: (lead: Lead) => void
-  onConvert: (lead: Lead) => void
-  onDelete: (lead: Lead) => void
-}): Column<Lead>[] {
+}): EntityColumn<Lead>[] {
   const { t } = useTranslation()
   const region = (l: Lead) => {
     const id = leadRegionId(l)
@@ -458,16 +480,9 @@ function useLeadColumns({
   }
   return [
     {
-      key: 'name',
-      label: t('leads.col.name'),
-      sort: leadLabel,
-      title: leadLabel,
-      className: 'w-[22%] min-w-[9rem]',
-      render: (l) => <span className="font-semibold text-content-primary">{leadLabel(l)}</span>,
-    },
-    {
       key: 'contact',
       label: t('leads.col.contact'),
+      sub: (l) => (l.contactName !== l.name ? l.contactName : ''),
       sort: (l) => (l.contactName !== l.name ? l.contactName : ''),
       title: (l) => l.contactName,
       minWidth: 1000,
@@ -477,6 +492,8 @@ function useLeadColumns({
     {
       key: 'phone',
       label: t('leads.col.phone'),
+      minWidth: 560,
+      sub: (l) => l.phone,
       sort: (l) => l.phone,
       interactive: true,
       className: 'w-[11.5rem]',
@@ -498,6 +515,7 @@ function useLeadColumns({
     {
       key: 'place',
       label: t('leads.col.place'),
+      sub: (l) => l.place,
       sort: (l) => l.place,
       title: (l) => l.place,
       minWidth: 640,
@@ -507,6 +525,7 @@ function useLeadColumns({
     {
       key: 'region',
       label: t('leads.col.region'),
+      sub: (l) => region(l),
       sort: region,
       minWidth: 900,
       className: 'w-[9%]',
@@ -553,27 +572,6 @@ function useLeadColumns({
       minWidth: 1260,
       className: 'w-[4.5rem]',
       render: (l) => <span className="ltr-nums text-content-muted">{dayMonth(l.createdAt)}</span>,
-    },
-    {
-      key: 'menu',
-      label: '',
-      interactive: true,
-      className: 'w-12',
-      render: (l) => (
-        <OverflowMenu
-          testId={`lead-menu-${l.id}`}
-          items={[
-            { key: 'meeting', icon: 'calendar', label: t('leads.meeting'), onClick: () => onMeeting(l), testId: `lead-meeting-${l.id}` },
-            /* ★★ AX5 — en grand écran, la colonne montre les QUATRE statuts ouverts ;
-               « לא רלוונטי » (qui retire la ligne de la vue) est ici, à un geste. */
-            ...(l.status !== 'not_now'
-              ? [{ key: 'notNow', icon: 'eyeOff' as const, label: t('leads.status.not_now'), onClick: () => onStatus(l, 'not_now'), testId: `lead-notnow-${l.id}` }]
-              : []),
-            { key: 'convert', icon: 'farm', label: t('leads.convertAsk'), onClick: () => onConvert(l), testId: `lead-convert-${l.id}` },
-            { key: 'delete', icon: 'trash', label: t('leads.deleteAsk'), onClick: () => onDelete(l), danger: true, testId: `lead-delete-${l.id}` },
-          ]}
-        />
-      ),
     },
   ]
 }
@@ -697,6 +695,128 @@ function LeadDetails({ lead }: { lead: Lead }) {
           {t('leads.raw')}: {lead.raw}
         </p>
       )}
+    </div>
+  )
+}
+
+/**
+ * ★★ AY3.3 — L'APERÇU D'UN CONTACT : la carte épinglée, qui il est, comment
+ * le joindre, où il en est (le statut se change d'un toucher : c'est le geste
+ * du téléphone, après un appel), la note. Le reste s'édite sur sa page.
+ */
+function LeadPreview({ lead, regionName, onStatus, onClose }: { lead: Lead; regionName: (id: RegionId) => string; onStatus: (s: LeadStatus) => void; onClose: () => void }) {
+  const { t } = useTranslation()
+  const region = leadRegionId(lead)
+  const digits = lead.phone.replace(/\D/gu, '')
+  return (
+    <PreviewPanel
+      title={leadLabel(lead)}
+      subtitle={[lead.contactName !== lead.name ? lead.contactName : '', lead.place].filter(Boolean).join(' · ')}
+      position={lead.position}
+      editTo={`/coordinator/leads/${lead.id}`}
+      onClose={onClose}
+      testId="lead-preview"
+      chips={<span className={`chip border text-micro ${STATUS_ON[lead.status]}`}>{t(`leads.status.${lead.status}`)}</span>}
+      quick={
+        lead.phone ? (
+          <>
+            <a className="btn-primary min-h-11" href={`tel:${digits}`} data-testid="lead-preview-call">
+              <Icon name="phone" size={16} />
+              {t('leads.call')}
+            </a>
+            <a className="btn-secondary min-h-11" href={whatsappHref(lead.phone)} target="_blank" rel="noreferrer">
+              <Icon name="whatsapp" size={16} />
+              WhatsApp
+            </a>
+          </>
+        ) : undefined
+      }
+    >
+      <PreviewSection title={t('leads.col.status')}>
+        <div className="py-2">
+          <StatusSegments value={lead.status} onChange={onStatus} testId={`lead-preview-status-${lead.id}`} statuses={LEAD_OPEN_STATUSES} />
+        </div>
+      </PreviewSection>
+      <PreviewSection title={t('preview.details')}>
+        <PreviewRow label={t('leads.col.contact')}>{lead.contactName !== lead.name ? lead.contactName : ''}</PreviewRow>
+        <PreviewRow label={t('leads.col.phone')}>{lead.phone ? <span dir="ltr" className="ltr-nums">{lead.phone}</span> : ''}</PreviewRow>
+        <PreviewRow label={t('leads.col.place')}>{lead.place}</PreviewRow>
+        <PreviewRow label={t('leads.col.region')}>{region ? regionName(region) : ''}</PreviewRow>
+        <PreviewRow label="Email">{lead.email ? <a href={`mailto:${lead.email}`} dir="ltr" className="text-accent-ink">{lead.email}</a> : ''}</PreviewRow>
+        <PreviewRow label={t('leads.col.updated')}>{dayMonth(lead.updatedAt)}</PreviewRow>
+        <PreviewRow label={t('leads.col.created')}>{dayMonth(lead.createdAt)}</PreviewRow>
+      </PreviewSection>
+      <PreviewSection title={t('leads.notes')}>
+        <p className="whitespace-pre-wrap py-2 text-caption text-content-primary" dir="auto">{lead.notes || t('leads.noNote')}</p>
+      </PreviewSection>
+      {lead.raw && (
+        <PreviewSection title={t('leads.raw')}>
+          <p className="muted whitespace-pre-wrap py-2 text-micro" dir="auto">{lead.raw}</p>
+        </PreviewSection>
+      )}
+    </PreviewPanel>
+  )
+}
+
+/** ★★ AY3.3 — la page d'édition d'un contact (ce que la ligne dépliée faisait). */
+export function LeadEditScreen() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { leadId } = useParams()
+  const lead = useCoreValue(() => getVisibleLeads().find((l) => l.id === leadId) ?? null)
+  if (!lead) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-6">
+        <PageHeader title={t('leads.title')} back={{ to: '/coordinator/leads', label: t('leads.title') }} />
+        <p className="muted mt-4">{t('leads.empty')}</p>
+      </div>
+    )
+  }
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-6" data-testid="lead-edit">
+      <PageHeader title={leadLabel(lead)} back={{ to: '/coordinator/leads', label: t('leads.title') }} />
+      <LeadFields lead={lead} />
+      <div className="mt-4">
+        <span className="label">{t('leads.col.status')}</span>
+        <StatusSegments value={lead.status} onChange={(s) => setLeadStatus(lead.id, s)} testId={`lead-status-${lead.id}`} />
+      </div>
+      <div className="mt-4">
+        <LeadDetails lead={lead} />
+      </div>
+      <div className="mt-6 flex justify-end">
+        <button type="button" className="btn-primary min-h-11" onClick={() => navigate('/coordinator/leads')} data-testid="lead-edit-done">
+          {t('common.done')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** Nom, contact, téléphone, lieu : enregistrés en quittant le champ. */
+function LeadFields({ lead }: { lead: Lead }) {
+  const { t } = useTranslation()
+  const [v, setV] = useState({ name: lead.name, contactName: lead.contactName, phone: lead.phone, place: lead.place, email: lead.email })
+  const field = (key: keyof typeof v, label: string, ltr = false) => (
+    <label className="flex flex-col gap-1">
+      <span className="label">{label}</span>
+      <input
+        className={`input min-h-11 ${ltr ? 'ltr-nums' : ''}`}
+        dir={ltr ? 'ltr' : 'auto'}
+        inputMode={key === 'phone' ? 'tel' : undefined}
+        value={v[key]}
+        onChange={(e) => setV((x) => ({ ...x, [key]: e.target.value }))}
+        onBlur={() => v[key] !== lead[key] && updateLead(lead.id, { [key]: v[key].trim() })}
+        data-testid={`lead-field-${key}`}
+      />
+    </label>
+  )
+  return (
+    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      {field('name', t('leads.col.name'))}
+      {field('contactName', t('leads.col.contact'))}
+      {field('phone', t('leads.col.phone'), true)}
+      {field('place', t('leads.col.place'))}
+      {field('email', 'Email', true)}
     </div>
   )
 }

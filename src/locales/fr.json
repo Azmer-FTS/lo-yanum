@@ -30,7 +30,22 @@
   "people": {
     "noFarmer": "Aucun agriculteur",
     "makePrimary": "Contact principal",
-    "done": "OK"
+    "done": "OK",
+    "title": "Volontaires et conducteurs",
+    "info": "Tout le monde au même endroit : les volontaires, et lesquels conduisent. Le bouton « Conducteurs » isole ceux qui ont une voiture. La mise en correspondance avec les conducteurs de l’institution se fait depuis sa fiche.",
+    "call": "Appeler",
+    "carLine": "{{vehicle}} · {{seats}} places",
+    "col": {
+      "institution": "Institution",
+      "drives": "Voiture"
+    },
+    "drivers": "Conducteurs",
+    "allInstitutions": "Toutes les institutions",
+    "newDriver": "Nouveau conducteur (un volontaire qui conduit)",
+    "empty": "Aucun volontaire pour l’instant. Ajoutez ceux de chaque institution, et qui conduit.",
+    "availability": "Disponibilité",
+    "driving": "Conduite",
+    "passengers": "Partent avec lui"
   },
   "form": {
     "placeKind": "Type de lieu",
@@ -295,7 +310,8 @@
     "studentsShort_one": "1 élève",
     "studentsShort_two": "{{count}} élèves",
     "studentsShort_other": "{{count}} élèves",
-    "positionSource": "Source du point"
+    "positionSource": "Source du point",
+    "audienceLabel": "Public"
   },
   "quickPin": {
     "button": "Poser une épingle sur la carte",
@@ -537,11 +553,16 @@
       "notes": "Note",
       "updated": "Mis à jour",
       "created": "Ajouté"
-    }
+    },
+    "noNote": "Aucune note"
   },
   "table": {
     "open": "Détails",
-    "empty": "Personne ici"
+    "empty": "Personne ici",
+    "sortBy": "Trier par",
+    "actions": "Actions",
+    "view": "Aperçu",
+    "edit": "Modifier"
   },
   "institutionsScreen": {
     "info": "Yeshivot, mékhinot et midrashot. Une institution donne un accord de principe, oral — elle ne signe rien. On voit où en est chacune, son contact et combien de ses volontaires sont déjà inscrits. Toucher une ligne pour la mettre à jour.",
@@ -558,7 +579,8 @@
       "phone": "Téléphone",
       "volunteers": "Volontaires",
       "place": "Lieu"
-    }
+    },
+    "volunteersSub": "{{count}} volontaires"
   },
   "farms": {
     "statusFilter": "Filtrer par statut",
@@ -566,7 +588,10 @@
     "withAreas": "Avec surface pondérée",
     "withAreasHint": "Seulement les fermes qui ont une surface pondérée (mesurée ou déclarée)",
     "statDunams": "{{n}} dounams · {{w}} pondérés",
-    "info": "Tous les filtres sont sur une seule rangée. Les premiers sont des files de travail — des fermes qui attendent une action, avec leur nombre. Le chiffre en tête (dounams · pondérés) suit les filtres."
+    "info": "Tous les filtres sont sur une seule rangée. Les premiers sont des files de travail — des fermes qui attendent une action, avec leur nombre. Le chiffre en tête (dounams · pondérés) suit les filtres.",
+    "newGuardHere": "Nouvelle garde dans cette ferme",
+    "planVisit": "Planifier une visite",
+    "noPosition": "Position inconnue"
   },
   "freeRoute": {
     "saved": "Enregistré",
@@ -574,5 +599,58 @@
   },
   "import": {
     "forInstitution": "Chaque volontaire du fichier sera rattaché à {{name}}"
+  },
+  "preview": {
+    "mapLabel": "Carte de {{name}}",
+    "noPosition": "Pas encore placé",
+    "openFull": "Ouvrir la fiche complète",
+    "details": "Détails",
+    "lastGuard": "Dernière garde",
+    "posts": "Points de garde"
+  },
+  "common": {
+    "done": "Terminé",
+    "delete": "Supprimer"
+  },
+  "institutionPeople": {
+    "volunteers": "Volontaires",
+    "drivers": "Conducteurs",
+    "seats": "Places libres",
+    "none": "Aucun volontaire de cette institution pour l’instant.",
+    "driver": "Conducteur",
+    "carLine": "{{vehicle}} · {{taken}}/{{seats}} places prises",
+    "privateCar": "Voiture privée",
+    "ridesWith": "Part avec",
+    "noDriver": "Aucun conducteur",
+    "nobody": "— non défini —",
+    "add": "Ajouter un volontaire",
+    "seeAll": "Tous ses volontaires",
+    "title": "Volontaires et conducteurs"
+  },
+  "volunteerForm": {
+    "noInstitution": "— aucune institution —",
+    "otherInstitution": "Autre (pas dans la liste)",
+    "otherName": "Nom de l’institution",
+    "vehiclePlaceholder": "ex. Toyota blanche, 7 places"
+  },
+  "undo": {
+    "undo": "Annuler",
+    "deleted": "Supprimé {{name}}",
+    "archived": "{{name}} archivé",
+    "unarchived": "{{name}} restauré",
+    "confirmed": "{{name}} confirmé",
+    "engagement": "{{name}} : {{status}}",
+    "cancelled": "Garde annulée",
+    "reactivated": "Garde réactivée",
+    "resolved": "Événement traité",
+    "reopened": "Événement rouvert",
+    "intakeHandled": "Demande traitée",
+    "imported": "Import fait",
+    "sampleSeeded": "Jeu d’essai ajouté",
+    "sampleRemoved": "Jeu d’essai retiré",
+    "saved": "Enregistré : {{name}}",
+    "volunteerArchived": "{{name}} inactif",
+    "volunteerReactivated": "{{name}} de nouveau actif",
+    "outreach": "Marqué envoyé"
   }
 }

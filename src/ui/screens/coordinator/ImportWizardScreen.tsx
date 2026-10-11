@@ -35,6 +35,7 @@ import {
   Section,
 } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
+import { runUndoable } from '../../components/UndoToast'
 
 type Step = 'upload' | 'mapping' | 'preview' | 'done'
 
@@ -269,7 +270,7 @@ export function ImportWizardScreen() {
       fallbackPosition: HOME_BASE,
     }
     const rows = analysis.importable
-    const imported =
+    const imported = runUndoable(t('undo.imported'), () =>
       kind === 'farms'
         ? importFarms(toFarmDrafts(rows, defaults))
         : kind === 'drivers'
@@ -278,7 +279,7 @@ export function ImportWizardScreen() {
               toVolunteerDrafts(rows, defaults).map((d) =>
                 listInstitution ? { ...d, institutionId: listInstitution.id, yeshiva: listInstitution.name } : d,
               ),
-            )
+            ))
     setResult({ imported, skipped: analysis.rejected.length })
     setStep('done')
   }

@@ -112,6 +112,8 @@ export {
   updateAnchorPoint,
   createVolunteer,
   updateVolunteer,
+  setVolunteerRideWith,
+  updateVolunteerDriving,
   importVolunteers,
   importFarms,
   applyAssociation,
@@ -133,6 +135,8 @@ export {
   setOutreachSent,
   reactivateMission,
   notifyDerivedChange,
+  // ★★ AY5 — défaire n'importe quel geste.
+  undoable,
   // ★★ AG4 · AG6 — ce que l'agriculteur renvoie à sa fiche.
   applyRemoteSignature,
   attachProvidedDocument,

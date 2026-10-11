@@ -75,6 +75,7 @@ import { FARM_FORM_TABS, FarmTabRow } from '../../farm/farmTabs'
 import type { FarmTab } from '../../farm/farmTabs'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
+import { runUndoable } from '../../components/UndoToast'
 
 /** ★ AN7 — la ligne « אחר » des listes, qui ouvre la saisie libre. */
 const OTHER = '__other'
@@ -872,11 +873,12 @@ export function FarmFormScreen() {
       umbrella: umbrella.trim(),
     }
 
+    /* ★★ AY5 — un enregistrement se défait aussi, 8 s. */
     if (isEdit && farmId) {
-      updateFarm(farmId, draft)
+      runUndoable(t('undo.saved', { name: draft.name }), () => updateFarm(farmId, draft))
       navigate(`/coordinator/farms/${farmId}`)
     } else {
-      const farm = createFarm(draft)
+      const farm = runUndoable(t('undo.saved', { name: draft.name }), () => createFarm(draft))
       navigate(`/coordinator/farms/${farm.id}`)
     }
   }
