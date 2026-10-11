@@ -197,9 +197,11 @@ try {
   await page.waitForTimeout(5000)
   const testIn = (table: string) => db.rows(table).filter((r) => typeof r.id === 'string' && (r.id as string).startsWith('test-')).length
   check(
-    'A187 · le jeu d’essai est bien arrivé en base (1 ferme, 1 volontaire, 1 conducteur)',
-    testIn('entities') === 1 && testIn('volunteers') === 1 && testIn('drivers') === 1,
-    `${testIn('entities')} · ${testIn('volunteers')} · ${testIn('drivers')}`,
+    /* ★★ AY11 (adapté) — le jeu porte une institution d'essai et SES gens :
+       sept volontaires, dont trois conducteurs avec leur voiture. */
+    'A187 · le jeu d’essai est bien arrivé en base (1 ferme, 1 institution, 7 volontaires, 3 conducteurs)',
+    testIn('entities') === 1 && testIn('institutions') === 1 && testIn('volunteers') === 7 && testIn('drivers') === 3,
+    `${testIn('entities')} · ${testIn('institutions')} · ${testIn('volunteers')} · ${testIn('drivers')}`,
   )
 
   let dialogs = 0

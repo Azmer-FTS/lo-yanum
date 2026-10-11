@@ -205,10 +205,14 @@ try {
   check('share is a button as well', (await shareBtn.evaluate((el) => el.tagName)) === 'BUTTON')
 
   // ---- the settings section ----------------------------------------------
+  /* ★★ AY12.3 (adapté) — la section a rejoint les réglages DES FERMES (חוות ›
+     ⋯ › הגדרות החוות) ; הגדרות y renvoie et ouvre la même fenêtre. */
   await page.goto(`${BASE}/#/coordinator/settings`, { waitUntil: 'load' })
   await page.waitForTimeout(2000)
+  await page.locator('[data-testid="settings-moved-farms"]').click()
+  await page.waitForTimeout(800)
   const status = page.locator('[data-testid="agreement-template-status"]')
-  check('הגדרות has the תבנית הסכם section', (await status.count()) === 1)
+  check('הגדרות has the תבנית הסכם section (in the farm settings it opens)', (await status.count()) === 1)
   /**
    * ★★ AH4 (2026-09-09) — IL N'Y A PLUS DE « MOSMAKH LEDUGMA ». Le PO a regardé
    *    l'exemple et a tranché : « une IMAGE générée autrefois, sans texte
