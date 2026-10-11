@@ -614,10 +614,12 @@ function markerElement(marker: MapMarker): HTMLElement {
       `height:${d}px`,
       'padding:0',
       'border-radius:var(--radius-pill)',
-      `background:${ring}`,
+      'background:#ffffff',
       `border:2.5px dashed ${marker.color}`,
       'cursor:pointer',
-      'box-shadow:0 1px 4px rgba(0,0,0,.35)',
+      /* ★★ AY8 — liseré blanc PUIS fil sombre, dehors : le contact se détache
+         du fond sombre comme du clair. */
+      `box-shadow:0 0 0 1.5px #ffffff, 0 0 0 2.6px ${PIN_OUTLINE}, 0 1px 4px rgba(0,0,0,.35)`,
     ].join(';')
     wrapForTouch(el, d, d, false)
     return withLabel(el, marker)
@@ -627,20 +629,22 @@ function markerElement(marker: MapMarker): HTMLElement {
     // ★★ AU4 — une INSTITUTION : un carré arrondi (un bâtiment, pas un champ),
     // la toque dedans. Pleine = engagée, creuse = à démarcher ; pointillée =
     // point à vérifier.
+    /* ★★ AY8 — le même double bord que l'épingle (liseré blanc, fil sombre) :
+       le carré se détache de tout fond ; creux = blanc cerclé de la couleur. */
     const size = marker.emphasis ? SIZE.institution + 8 : SIZE.institution
-    const ink = marker.hollow ? marker.color : ring
+    const ink = marker.hollow ? marker.color : '#ffffff'
     el.style.cssText = [
       `width:${size}px`,
       `height:${size}px`,
       'padding:0',
       'border-radius:var(--radius-field)',
-      `background:${marker.hollow ? ring : marker.color}`,
-      `border:2.5px ${marker.uncertain ? 'dashed' : 'solid'} ${marker.hollow ? marker.color : PIN_OUTLINE}`,
+      `background:${marker.hollow ? '#ffffff' : marker.color}`,
+      `border:2.5px ${marker.uncertain ? 'dashed' : 'solid'} ${marker.hollow ? marker.color : '#ffffff'}`,
       'cursor:pointer',
       'display:flex',
       'align-items:center',
       'justify-content:center',
-      marker.emphasis ? 'box-shadow:0 4px 12px rgba(0,0,0,.5)' : 'box-shadow:0 2px 6px rgba(0,0,0,.4)',
+      `box-shadow:0 0 0 1.2px ${PIN_OUTLINE}, ${marker.emphasis ? '0 4px 12px rgba(0,0,0,.5)' : '0 2px 6px rgba(0,0,0,.4)'}`,
     ].join(';')
     el.innerHTML = `
       <svg viewBox="0 0 24 24" width="${Math.round(size * 0.66)}" height="${Math.round(size * 0.66)}" aria-hidden="true"
@@ -743,10 +747,69 @@ function markerElement(marker: MapMarker): HTMLElement {
      *    remplissage — clair en thème sombre — qui porte le contraste. A221 le
      *    mesure sur les quatre combinaisons.
      */
-    el.innerHTML = `
+    /**
+     * ═══════════════════════════════════════════════════════════════════════
+     * ★★ AY8 (2026-10-11) — L'ÉPINGLE DEMANDÉE EN AH10, ENFIN ENTIÈRE.
+     * ═══════════════════════════════════════════════════════════════════════
+     *
+     * « Ça manque de visibilité, ça se fond, je ne suis pas fan de ces
+     * épingles. » Sa demande d'AH10 : FINE, tête RONDE, LÉGER RELIEF, pointe
+     * EFFILÉE, une icône au centre. L'aiguille d'AH10 était une goutte pleine
+     * (tête et pointe d'un seul tenant, de la couleur du statut) : sur un fond
+     * de la même famille de teinte, elle disparaissait entière.
+     *
+     *  - une TIGE fine et sombre, effilée jusqu'à la coordonnée, et une ombre
+     *    portée au sol : l'épingle est PLANTÉE ;
+     *  - une tête ronde cerclée de BLANC puis d'un fil sombre : ce double bord
+     *    la détache de N'IMPORTE QUEL fond (clair, sombre, photo) — la couleur
+     *    n'a plus à porter seule le contraste ;
+     *  - un reflet en haut à gauche : le léger relief ;
+     *  - l'icône, blanche, au centre.
+     * Le contraste est MESURÉ sur le rendu (vectoriel et satellite, clair et
+     * sombre) : `bun run ayui` A365.
+     */
+    /* Creux = tête BLANCHE cerclée de la couleur, dans les deux thèmes (le
+       fond de la page, sombre la nuit, la faisait disparaître). */
+    const fill = marker.hollow ? '#ffffff' : marker.color
+    const glyphInk = marker.hollow ? marker.color : '#ffffff'
+    /* Tête 7,2 ; liseré BLANC de 1,8 ; fil sombre de 1 : le blanc doit se VOIR
+       (2 px à l'écran), sinon il ne détache rien — mesuré par A365. */
+    const headR = 7.2
+    const hy = headY
+    const isNeedle = silhouette === NEEDLE_PIN
+    const headContent = marker.badge
+      ? `<text x="12" y="${hy + 3.6}" text-anchor="middle" font-family="var(--font-sans)"
+               font-size="10" font-weight="700" fill="${glyphInk}">${escapeHtml(marker.badge)}</text>`
+      : GLYPH[kind]
+        ? `<g fill="none" stroke="${glyphInk}" stroke-width="2.6" stroke-linecap="round"
+              stroke-linejoin="round" transform="translate(${12 - 12 * 0.5} ${hy - 12 * 0.5}) scale(0.5)">
+             <path d="${GLYPH[kind]}"/>
+           </g>`
+        : `<circle cx="12" cy="${hy}" r="3.2" fill="${glyphInk}"/>`
+    el.innerHTML = isNeedle
+      ? `
+      <svg viewBox="${box.x} ${box.y} ${box.w} ${box.h}" width="${w}" height="${h}"
+           overflow="visible" aria-hidden="true" data-pin-svg="" data-pin-style="ay8">
+        <defs>
+          <radialGradient id="pin-relief" cx="0.35" cy="0.3" r="0.75">
+            <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+            <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
+            <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+          </radialGradient>
+        </defs>
+        <ellipse cx="12" cy="31.2" rx="3.2" ry="1.1" fill="#000000" fill-opacity="0.28"/>
+        <path d="M10.7 ${hy + headR - 0.6} L13.3 ${hy + headR - 0.6} L12.25 31.1 L11.75 31.1 Z" fill="${PIN_OUTLINE}" data-pin-needle=""/>
+        <path d="M ${12 - headR - 2.3} ${hy} a ${headR + 2.3} ${headR + 2.3} 0 1 0 ${2 * (headR + 2.3)} 0 a ${headR + 2.3} ${headR + 2.3} 0 1 0 ${-2 * (headR + 2.3)} 0 Z"
+              fill="#ffffff" stroke="${PIN_OUTLINE}" stroke-width="1" data-pin-halo=""/>
+        <path d="M ${12 - (marker.hollow ? headR - 1.1 : headR)} ${hy} a ${marker.hollow ? headR - 1.1 : headR} ${marker.hollow ? headR - 1.1 : headR} 0 1 0 ${2 * (marker.hollow ? headR - 1.1 : headR)} 0 a ${marker.hollow ? headR - 1.1 : headR} ${marker.hollow ? headR - 1.1 : headR} 0 1 0 ${-2 * (marker.hollow ? headR - 1.1 : headR)} 0 Z"
+              fill="${fill}" stroke="${marker.hollow ? marker.color : 'none'}" stroke-width="${marker.hollow ? 2.2 : 0}" data-pin-outline=""/>
+        ${marker.hollow ? '' : `<circle cx="12" cy="${hy}" r="${headR}" fill="url(#pin-relief)"/>`}
+        ${headContent}
+      </svg>`
+      : `
       <svg viewBox="${box.x} ${box.y} ${box.w} ${box.h}" width="${w}" height="${h}"
            overflow="visible" aria-hidden="true" data-pin-svg="">
-        <path d="${silhouette}" fill="${marker.hollow ? ring : marker.color}"
+        <path d="${silhouette}" fill="${fill}"
               stroke="${marker.hollow ? marker.color : PIN_OUTLINE}" stroke-width="${marker.hollow ? 2.4 : PIN_STROKE}"
               stroke-linejoin="round" data-pin-outline=""/>
         ${head}

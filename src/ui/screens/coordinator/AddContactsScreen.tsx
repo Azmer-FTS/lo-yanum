@@ -4,9 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
+  applyContactMerge,
   createInstitution,
   createLeads,
   createVolunteer,
+  mergeTargetOf,
   formatPhoneTyping,
   getInstitutions,
   getVisibleFarms,
@@ -26,11 +28,14 @@ import {
   leadFromDraft,
   localPhoneDisplay,
   locateDraft,
+  mergePatch,
   personName,
   readLocation,
   volunteerFromDraft,
 } from '@core/contacts'
-import type { ContactDraft, ContactKind, Duplicate } from '@core/contacts'
+import type { ContactDraft, ContactKind, Duplicate, MergeMode } from '@core/contacts'
+import { runUndoable } from '../../components/UndoToast'
+import { Avatar } from '../../components/Avatar'
 
 import { Icon } from '../../components/Icon'
 import { PageHeader } from '../../components/primitives'
@@ -107,7 +112,7 @@ const KIND_ICON: Record<AddType, ReactNode> = {
   driver: <Icon name="steering" size={24} />,
 }
 
-type Done = { kind: ContactKind; count: number } | null
+type Done = { kind: ContactKind; count: number; merged?: number } | null
 
 export function AddContactsScreen() {
   const { t } = useTranslation()
@@ -157,9 +162,23 @@ export function AddContactsScreen() {
     [leads, farms, institutions, volunteers],
   )
   const dups = useMemo(() => (kind ? findDuplicates(drafts, existing, kind) : drafts.map(() => null)), [drafts, existing, kind])
-  /* ★ Un doublon est proposé DÉCOCHÉ ; le PO peut le cocher quand même. */
-  const included = (d: ContactDraft, i: number) => (d.key in skip ? !skip[d.key] : dups[i] === null && !d.problems.includes('noName'))
+  /* ★★ AY10 — UNE FICHE QUI EXISTE DÉJÀ N'EST PLUS « DÉCOCHÉE » EN SILENCE :
+     le PO choisit, une fois pour toutes, ce qu'on en fait (`mode`). Les
+     nouvelles restent cochées une à une. Un doublon DANS le lot (deux fois la
+     même personne) n'est jamais créé deux fois. */
+  const [mode, setMode] = useState<MergeMode>('fill')
+  const isExisting = (i: number) => dups[i] !== null && dups[i]?.kind !== 'batch' && !!dups[i]?.id
+  const included = (d: ContactDraft, i: number) => (dups[i] !== null ? false : d.key in skip ? !skip[d.key] : !d.problems.includes('noName'))
   const chosen = drafts.filter((d, i) => included(d, i))
+  const existingCount = drafts.filter((_, i) => isExisting(i)).length
+  const toMerge = drafts
+    .map((d, i) => ({ d, dup: dups[i] }))
+    .filter((x): x is { d: ContactDraft; dup: Duplicate & { id: string } } => !!x.dup && x.dup.kind !== 'batch' && !!x.dup.id)
+    .map((x) => {
+      const target = mergeTargetOf(x.dup.kind as 'lead' | 'farm' | 'institution' | 'volunteer', x.dup.id)
+      return { ...x, patch: target && kind ? mergePatch(target, x.d, kind, mode) : {} }
+    })
+  const mergeCount = toMerge.filter((x) => Object.keys(x.patch).length > 0).length
 
   const addDrafts = (more: ContactDraft[]) => {
     setDone(null)
@@ -179,11 +198,17 @@ export function AddContactsScreen() {
   }
 
   const saveAll = () => {
-    const n = write(chosen)
-    if (!kind || n === 0) return
-    const keys = new Set(chosen.map((d) => d.key))
+    if (!kind) return
+    let n = 0
+    let merged = 0
+    runUndoable(t('undo.imported'), () => {
+      n = write(chosen)
+      if (mode !== 'skip') for (const x of toMerge) if (applyContactMerge(x.dup.kind as 'lead' | 'farm' | 'institution' | 'volunteer', x.dup.id, x.patch)) merged++
+    })
+    if (n === 0 && merged === 0) return
+    const keys = new Set([...chosen.map((d) => d.key), ...toMerge.map((x) => x.d.key)])
     setDrafts((ds) => ds.filter((d) => !keys.has(d.key)))
-    setDone({ kind, count: n })
+    setDone({ kind, count: n, merged })
   }
 
   const named = name.trim().length > 0
@@ -342,7 +367,10 @@ export function AddContactsScreen() {
       {done && (
         <div className="mt-4 flex flex-wrap items-center gap-3 rounded-card bg-status-success/15 p-3 text-caption font-semibold text-status-success-ink" role="status" data-testid="add-done" data-count={done.count}>
           <Icon name="check" size={18} />
-          <span className="flex-1">{t(`add.done.${done.kind}`, { count: done.count, institution: institution?.name ?? '' })}</span>
+          <span className="flex-1">
+            {t(`add.done.${done.kind}`, { count: done.count, institution: institution?.name ?? '' })}
+            {done.merged ? ` · ${t('add.existing.done', { count: done.merged })}` : ''}
+          </span>
           <Link to={done.kind === 'farm' ? '/coordinator/leads' : done.kind === 'institution' ? '/coordinator/institutions' : '/coordinator/volunteers'} className="btn-secondary min-h-11" data-testid="add-done-open">
             {t(`add.open.${done.kind}`)}
           </Link>
@@ -362,6 +390,34 @@ export function AddContactsScreen() {
             <p>{t('add.previewHint')}</p>
           </InfoTip>
           <PreviewSummary drafts={drafts} dups={dups} />
+          {/* ★★ AY10 — « 15 déjà présents sur 20 », et trois boutons. */}
+          {existingCount > 0 && (
+            <div className="mt-3 rounded-card border-s-4 border-s-status-warn bg-status-warn/10 p-3" data-testid="add-existing" data-count={existingCount} data-total={drafts.length}>
+              <p className="text-body font-semibold text-content-primary" data-testid="add-existing-sentence">
+                {t('add.existing.sentence', { count: existingCount, total: drafts.length })}
+              </p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label={t('add.existing.label')}>
+                {(['skip', 'fill', 'overwrite'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="radio"
+                    aria-checked={mode === m}
+                    onClick={() => setMode(m)}
+                    data-testid={`add-existing-${m}`}
+                    className={`flex min-h-11 flex-col items-start justify-center rounded-field border px-3 py-2 text-start ${mode === m ? 'border-accent bg-accent/15 text-accent-ink' : 'border-edge-subtle bg-surface-raised text-content-primary'}`}
+                  >
+                    <span className="text-caption font-semibold">
+                      {t(`add.existing.${m}`)}
+                      {m === 'fill' && <span className="ms-1 font-normal text-content-muted">· {t('add.existing.recommended')}</span>}
+                    </span>
+                    <span className="text-micro text-content-muted">{t(`add.existing.${m}Hint`)}</span>
+                  </button>
+                ))}
+              </div>
+              {mode !== 'skip' && <p className="muted mt-2 text-micro" data-testid="add-existing-effect" data-merge={mergeCount}>{t('add.existing.effect', { count: mergeCount })}</p>}
+            </div>
+          )}
           <ul className="mt-3 flex flex-col gap-2">
             {drafts.map((d, i) => (
               <DraftRow
@@ -377,9 +433,10 @@ export function AddContactsScreen() {
             ))}
           </ul>
           <div className="sticky bottom-0 z-10 -mx-1 mt-3 flex flex-wrap items-center gap-2 bg-surface-base/95 px-1 py-3 backdrop-blur">
-            <button type="button" className="btn-primary min-h-11" disabled={chosen.length === 0 || !ready} onClick={saveAll} data-testid="add-create">
+            <button type="button" className="btn-primary min-h-11" disabled={(chosen.length === 0 && (mode === 'skip' || mergeCount === 0)) || !ready} onClick={saveAll} data-testid="add-create">
               <Icon name="check" size={16} />
               {t(`add.create.${kind}`, { count: chosen.length, institution: institution?.name ?? '' })}
+              {mode !== 'skip' && mergeCount > 0 ? ` · ${t('add.existing.andMerge', { count: mergeCount })}` : ''}
             </button>
             <button type="button" className="btn-ghost min-h-11" onClick={() => setDrafts([])} data-testid="add-clear">
               {t('add.clear')}
@@ -659,7 +716,8 @@ function FilesPath({ kind, onDrafts }: { kind: ContactKind | null; onDrafts: (d:
       out.push(...r.drafts)
     }
     setReport({ files: list.length, contacts: out.length, unreadable })
-    onDrafts(out)
+    // ★★ AY10 — une photo de fiche peut peser 200 ko : réduite à 256 px avant tout.
+    onDrafts(await Promise.all(out.map(async (d) => (d.photo ? { ...d, photo: await shrinkPhoto(d.photo) } : d))))
     if (input.current) input.current.value = ''
   }
   return (
@@ -787,7 +845,11 @@ function DraftRow({
       data-problems={d.problems.join(' ')}
     >
       <div className="flex items-start gap-3">
-        <input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={on} onChange={(e) => onToggle(e.target.checked)} aria-label={title} data-testid="add-draft-on" />
+        <input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={on} disabled={dup !== null} onChange={(e) => onToggle(e.target.checked)} aria-label={title} data-testid="add-draft-on" />
+        {/* ★★ AY10 — la photo de la fiche : c'est à elle que le PO reconnaît son contact. */}
+        <span data-testid="add-draft-photo" data-has-photo={d.photo ? 'true' : 'false'}>
+          <Avatar photo={d.photo ?? null} name={title} size="md" />
+        </span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold text-content-primary" data-testid="add-draft-title">{title}</p>
           <p className="flex flex-wrap items-center gap-x-2 text-caption text-content-secondary">
@@ -905,4 +967,27 @@ function Chip({ tone, children, testId }: { tone: 'violet' | 'warn' | 'success' 
       {children}
     </span>
   )
+}
+
+/**
+ * ★★ AY10 — réduire une photo de fiche (data URL) à 256 px de côté, JPEG
+ * 0,82 : ce que la base garde est une vignette qui sert à reconnaître, pas
+ * une archive. Une image illisible est abandonnée (pas de photo plutôt
+ * qu'une photo cassée).
+ */
+async function shrinkPhoto(src: string, edge = 256): Promise<string | null> {
+  try {
+    const img = new Image()
+    img.src = src
+    await img.decode()
+    const k = Math.min(1, edge / Math.max(img.naturalWidth, img.naturalHeight))
+    if (k === 1 && src.length < 60_000) return src
+    const c = document.createElement('canvas')
+    c.width = Math.max(1, Math.round(img.naturalWidth * k))
+    c.height = Math.max(1, Math.round(img.naturalHeight * k))
+    c.getContext('2d')?.drawImage(img, 0, 0, c.width, c.height)
+    return c.toDataURL('image/jpeg', 0.82)
+  } catch {
+    return null
+  }
 }

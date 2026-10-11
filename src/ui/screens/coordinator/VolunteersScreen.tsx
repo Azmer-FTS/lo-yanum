@@ -11,6 +11,7 @@ import {
   getInstitutions,
   getVolunteerStats,
   getVolunteers,
+  isTestId,
   looseMatch,
   normalizeLocality,
   reactivateVolunteer,
@@ -158,7 +159,9 @@ export function VolunteersScreen() {
     return out
   }, [volunteers, drivers, institutions])
 
-  const driverCount = people.filter((p) => p.drives).length
+  /* ★★ AY11 — le jeu d'essai se VOIT (marqué) mais ne COMPTE pas. */
+  const counted = people.filter((p) => !isTestId(p.key))
+  const driverCount = counted.filter((p) => p.drives).length
   const q = query.trim().toLowerCase()
   const beforeLocality = people.filter((p) => {
     if (onlyDrivers && !p.drives) return false
@@ -301,7 +304,7 @@ export function VolunteersScreen() {
               title={t('people.title')}
               info={<p>{t('people.info')}</p>}
               shown={visible.length}
-              total={people.length}
+              total={counted.length}
               menu={
                 <OverflowMenu
                   testId="volunteers-menu"

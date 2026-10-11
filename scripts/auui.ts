@@ -315,12 +315,11 @@ await guard('A318', async () => {
   const engaged = INSTITUTIONS.find((i) => i.engagement === 'signed' && i.position)!
   await o.page.locator('[data-testid="coverage-radius-input"]').fill('35')
   await o.page.waitForTimeout(500)
-  // AV1 — la liste peut s'ouvrir sur « לאשר » : « הכול » d'abord.
-  /* ★★ AX3 — l'engagement est un FILTRE (pastille), plus un onglet. */
-  await o.page.locator('[data-testid="institutions-filter-all"]').first().click()
-  await o.page.waitForTimeout(300)
-  await o.page.locator(`[data-testid="institution-row-${engaged.id}"]`).click()
-  await o.page.waitForTimeout(12_000)
+  /* ★★ AY6 (adapté) — plus de liste filtrée sur cette carte (un raccourci vers
+     מוסדות) : l'institution se choisit sur la carte, ou arrive choisie (`?inst=`). */
+  await go(o.page, `/coordinator/coverage?inst=${engaged.id}`)
+  await meshDone(o.page)
+  await o.page.waitForTimeout(6_000)
   const roads = await o.page.locator('[data-testid="coverage-reach-list"] button[data-road]').evaluateAll((els) => els.map((e) => e.getAttribute('data-road')))
   const measured = roads.filter((r) => r !== '' && r !== null).length
   check('A318 institution choisie : distances mesurées SUR LA ROUTE', roads.length > 0 && measured > 0, `${measured}/${roads.length} mesurées`)
@@ -346,8 +345,10 @@ await guard('A319', async () => {
   )
   const fills = (kind: string) => new Set(shape.filter((s) => s.kind === kind).map((s) => s.fill))
   check('A319 cinq familles : épingle pleine ET creuse, carré plein ET creux, rond pointillé', fills('farm').size >= 2 && fills('institution').size >= 2 && shape.some((s) => s.kind === 'lead' && s.border === 'dashed'), `fermes ${fills('farm').size} remplissages · institutions ${fills('institution').size} · pistes ${shape.filter((s) => s.kind === 'lead').length}`)
+  /* ★★ AY7.3 (adapté) — le PO l'a retourné : le nom permanent MASQUAIT la carte.
+     Il n'apparaît plus qu'au toucher (vérifié par ayui A364). */
   const labels = shape.filter((s) => s.kind === 'institution' && s.label).length
-  check('A319 les institutions engagées sont NOMMÉES sur la carte', labels === INSTITUTIONS.filter((i) => i.engagement === 'signed' && i.position).length, `${labels}`)
+  check('A319 aucune institution n’est nommée en permanence (le nom vient au toucher)', labels === 0, `${labels}`)
   const paint = await o.page.evaluate(() => {
     const map = (window as unknown as { __loYanumMap?: { getPaintProperty(l: string, p: string): unknown; getLayer(l: string): unknown } }).__loYanumMap
     return { real: map?.getPaintProperty('coverage-links-real', 'line-dasharray') ?? null, potential: map?.getPaintProperty('coverage-links-potential', 'line-dasharray') ?? null, hasReal: !!map?.getLayer('coverage-links-real') }

@@ -148,6 +148,9 @@ export {
   // ★★ AS6 — les pistes, et l'import du portail (AS1).
   createLeads,
   updateLead,
+  // ★★ AY10 — compléter ou écraser une fiche existante depuis un import.
+  applyContactMerge,
+  mergeTargetOf,
   moveLead,
   deleteLead,
   convertLeadToFarm,

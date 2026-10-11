@@ -321,6 +321,7 @@ export function seedTestData(): { added: number } {
       added += 1
     }
   }
+  put(data.institutions, set.institutions)
   put(data.farms, set.farms)
   put(data.farmZones, set.farmZones)
   put(data.anchorPoints, set.anchorPoints)
@@ -341,6 +342,7 @@ export function purgeTestData(): { removed: number } {
   }
   data = {
     ...data,
+    institutions: strip(data.institutions),
     farms: strip(data.farms),
     farmZones: strip(data.farmZones),
     anchorPoints: strip(data.anchorPoints),
@@ -358,6 +360,7 @@ export function purgeTestData(): { removed: number } {
 export function testDataCount(): number {
   const d = data
   return (
+    d.institutions.filter((r) => isTestId(r.id)).length +
     d.farms.filter((r) => isTestId(r.id)).length +
     d.farmZones.filter((r) => isTestId(r.id)).length +
     d.anchorPoints.filter((r) => isTestId(r.id)).length +
@@ -2269,6 +2272,65 @@ export function createLeads(drafts: readonly LeadDraft[]): Lead[] {
   data.leads = [...created, ...data.leads]
   commit()
   return created
+}
+
+/**
+ * ★★ AY10 — compléter (ou écraser, sur décision) une fiche existante depuis un
+ * contact importé. `patch` vient de `mergePatch` (contacts.ts) : il ne porte
+ * QUE ce qui doit changer. Une ferme (fiche complète) ne reçoit que sa photo.
+ */
+export type MergeKind = 'lead' | 'farm' | 'institution' | 'volunteer'
+export function mergeTargetOf(kind: MergeKind, id: string): { photo?: string | null; phone?: string; email?: string; place?: string; contactName?: string } | null {
+  if (kind === 'lead') {
+    const l = data.leads.find((x) => x.id === id)
+    return l ? { photo: l.photo ?? null, phone: l.phone, email: l.email, place: l.place, contactName: l.contactName } : null
+  }
+  if (kind === 'institution') {
+    const i = data.institutions.find((x) => x.id === id)
+    return i ? { phone: i.contactPhone, place: i.locality, contactName: i.contactName } : null
+  }
+  if (kind === 'volunteer') {
+    const v = data.volunteers.find((x) => x.id === id)
+    return v ? { photo: v.photo, phone: v.phone, email: v.email, place: v.locality } : null
+  }
+  const f = data.farms.find((x) => x.id === id)
+  return f ? { photo: f.photo } : null
+}
+export function applyContactMerge(kind: MergeKind, id: string, patch: { photo?: string | null; phone?: string; email?: string; place?: string; contactName?: string }): boolean {
+  if (Object.keys(patch).length === 0) return false
+  if (kind === 'lead') {
+    const i = data.leads.findIndex((x) => x.id === id)
+    if (i < 0) return false
+    data.leads[i] = { ...data.leads[i], ...patch, updatedAt: iso(now()) }
+  } else if (kind === 'institution') {
+    const i = data.institutions.findIndex((x) => x.id === id)
+    if (i < 0) return false
+    const cur = data.institutions[i]
+    data.institutions[i] = {
+      ...cur,
+      ...(patch.phone !== undefined ? { contactPhone: patch.phone } : {}),
+      ...(patch.place !== undefined ? { locality: patch.place } : {}),
+      ...(patch.contactName !== undefined ? { contactName: patch.contactName } : {}),
+    }
+  } else if (kind === 'volunteer') {
+    const i = data.volunteers.findIndex((x) => x.id === id)
+    if (i < 0) return false
+    const cur = data.volunteers[i]
+    data.volunteers[i] = {
+      ...cur,
+      ...(patch.photo !== undefined ? { photo: patch.photo } : {}),
+      ...(patch.phone !== undefined ? { phone: patch.phone } : {}),
+      ...(patch.email !== undefined ? { email: patch.email } : {}),
+      ...(patch.place !== undefined ? { locality: patch.place } : {}),
+    }
+    syncVolunteerDriver(data.volunteers[i])
+  } else {
+    const i = data.farms.findIndex((x) => x.id === id)
+    if (i < 0 || patch.photo === undefined) return false
+    data.farms[i] = { ...data.farms[i], photo: patch.photo }
+  }
+  commit()
+  return true
 }
 
 export function updateLead(leadId: string, patch: Partial<Omit<Lead, 'id'>>): void {

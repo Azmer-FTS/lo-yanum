@@ -138,6 +138,12 @@ export interface ContactDraft {
   origin: { path: 'form' | 'vcf' | 'paste'; file?: string }
   /** Ce qui n'a pas été compris ou manque, en codes (traduits à l'écran). */
   problems: ContactProblem[]
+  /**
+   * ★★ AY10 — LA PHOTO DE LA FICHE (WhatsApp l'y met souvent), en data URL.
+   * « Je reconnais mes contacts à leur image. » Réduite par l'écran avant
+   * d'être écrite (`shrinkPhoto`) ; une adresse http n'est jamais suivie.
+   */
+  photo?: string | null
 }
 
 export type ContactProblem = 'noName' | 'noPhone' | 'noPlace' | 'shortLink' | 'unreadLocation' | 'splitUncertain' | 'noOrg'
@@ -475,6 +481,19 @@ export function parseVcf(text: string): VCard[] {
     }
     lines.push(line)
   }
+  /* ★★ AY10 — vCard 2.1 (Android, anciens exports WhatsApp) : la photo en
+     base64 continue sur des lignes NON indentées, jusqu'à une ligne vide. */
+  const joined: string[] = []
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i]
+    const head = line.split(':')[0] ?? ''
+    if (/^(?:[\w-]+\.)?PHOTO[;:]/iu.test(line) && /ENCODING=(?:B|BASE64)|;BASE64/iu.test(head)) {
+      while (i + 1 < lines.length && /^[A-Za-z0-9+/=]+$/u.test(lines[i + 1].trim()) && lines[i + 1].trim() !== '') line += lines[++i].trim()
+    }
+    joined.push(line)
+  }
+  lines.length = 0
+  lines.push(...joined)
   const cards: VCard[] = []
   let cur: VCard | null = null
   for (const line of lines) {
@@ -546,7 +565,7 @@ export function draftFromVCard(card: VCard, kind: ContactKind, file?: string): C
   const geo = one('GEO').replace(/^geo:/iu, '').replace(';', ',')
   const notes = all('NOTE').map((p) => unescapeValue(p.value)).filter(Boolean)
   const locationText = [geo, ...urls, ...notes].find((x) => readLocation(x).ok) ?? urls.find((u) => /waze|goo\.gl|google|maps\.app/iu.test(u)) ?? ''
-  return draftFromName(
+  const draft = draftFromName(
     {
       fullName,
       orgField: org,
@@ -561,6 +580,24 @@ export function draftFromVCard(card: VCard, kind: ContactKind, file?: string): C
     },
     kind,
   )
+  return { ...draft, photo: photoOfCard(card) }
+}
+
+/**
+ * ★★ AY10 — la photo d'une fiche : `PHOTO;ENCODING=b;TYPE=JPEG:…` (3.0, Apple,
+ * WhatsApp), `PHOTO;JPEG;ENCODING=BASE64:…` (2.1), `PHOTO:data:image/…` (4.0).
+ * Une photo par URL (http) n'est pas suivie : rien ne part d'ici vers Internet.
+ */
+export function photoOfCard(card: VCard): string | null {
+  const p = card.props.find((x) => x.name === 'PHOTO')
+  if (!p) return null
+  const v = p.value.trim().replace(/\s+/gu, '')
+  if (/^data:image\/(?:jpe?g|png|gif|webp);base64,/iu.test(v)) return v.length > 120 ? v : null
+  const enc = `${p.params.ENCODING ?? ''} ${p.params.TYPE ?? ''}`.toUpperCase()
+  if (!/\bB\b|BASE64/u.test(enc.replace(/[,;]/gu, ' '))) return null
+  if (!/^[A-Za-z0-9+/=]+$/u.test(v) || v.length < 120) return null
+  const type = /PNG/u.test(enc) ? 'png' : /GIF/u.test(enc) ? 'gif' : 'jpeg'
+  return `data:image/${type};base64,${v}`
 }
 
 /** Un fichier : ses fiches, ou la raison pour laquelle il n'a pas été lu. */
@@ -621,16 +658,18 @@ export function draftsFromPaste(text: string, kind: ContactKind): ContactDraft[]
 // ---------------------------------------------------------------------------
 
 export interface Existing {
-  leads: ReadonlyArray<Pick<Lead, 'name' | 'contactName' | 'phone' | 'convertedFarmId'>>
-  farms: ReadonlyArray<{ name: string; farmerPhone?: string; liaisonPhone?: string; farmerName?: string }>
-  institutions: ReadonlyArray<Pick<Institution, 'name' | 'contactPhone' | 'aliases'>>
-  volunteers: ReadonlyArray<{ name: string; phone: string }>
+  leads: ReadonlyArray<Pick<Lead, 'name' | 'contactName' | 'phone' | 'convertedFarmId'> & { id?: string }>
+  farms: ReadonlyArray<{ id?: string; name: string; farmerPhone?: string; liaisonPhone?: string; farmerName?: string }>
+  institutions: ReadonlyArray<Pick<Institution, 'name' | 'contactPhone' | 'aliases'> & { id?: string }>
+  volunteers: ReadonlyArray<{ id?: string; name: string; phone: string }>
 }
 
 export interface Duplicate {
   kind: 'lead' | 'farm' | 'institution' | 'volunteer' | 'batch'
   name: string
   by: 'phone' | 'name'
+  /** ★★ AY10 — la fiche existante, pour la compléter ou l'écraser. */
+  id?: string
 }
 
 const comparable = (s: string) =>
@@ -646,13 +685,13 @@ export function findDuplicates(drafts: readonly ContactDraft[], existing: Existi
     const k = phoneKeyOf(phone)
     if (k && !phones.has(k)) phones.set(k, d)
   }
-  for (const v of existing.volunteers) add(v.phone, { kind: 'volunteer', name: v.name, by: 'phone' })
-  for (const i of existing.institutions) add(i.contactPhone, { kind: 'institution', name: i.name, by: 'phone' })
+  for (const v of existing.volunteers) add(v.phone, { kind: 'volunteer', name: v.name, by: 'phone', id: v.id })
+  for (const i of existing.institutions) add(i.contactPhone, { kind: 'institution', name: i.name, by: 'phone', id: i.id })
   for (const f of existing.farms) {
-    add(f.farmerPhone, { kind: 'farm', name: f.name, by: 'phone' })
-    add(f.liaisonPhone, { kind: 'farm', name: f.name, by: 'phone' })
+    add(f.farmerPhone, { kind: 'farm', name: f.name, by: 'phone', id: f.id })
+    add(f.liaisonPhone, { kind: 'farm', name: f.name, by: 'phone', id: f.id })
   }
-  for (const l of existing.leads) add(l.phone, { kind: 'lead', name: l.name, by: 'phone' })
+  for (const l of existing.leads) add(l.phone, { kind: 'lead', name: l.name, by: 'phone', id: l.id })
 
   const names = new Map<string, Duplicate>()
   const addName = (n: string, d: Duplicate) => {
@@ -661,14 +700,14 @@ export function findDuplicates(drafts: readonly ContactDraft[], existing: Existi
   }
   if (kind === 'institution') {
     for (const i of existing.institutions) {
-      addName(i.name, { kind: 'institution', name: i.name, by: 'name' })
-      for (const a of i.aliases.split('·')) if (a.trim()) addName(a, { kind: 'institution', name: i.name, by: 'name' })
+      addName(i.name, { kind: 'institution', name: i.name, by: 'name', id: i.id })
+      for (const a of i.aliases.split('·')) if (a.trim()) addName(a, { kind: 'institution', name: i.name, by: 'name', id: i.id })
     }
   } else if (kind === 'farm') {
-    for (const f of existing.farms) addName(f.name, { kind: 'farm', name: f.name, by: 'name' })
-    for (const l of existing.leads) if (!l.convertedFarmId) addName(l.name, { kind: 'lead', name: l.name, by: 'name' })
+    for (const f of existing.farms) addName(f.name, { kind: 'farm', name: f.name, by: 'name', id: f.id })
+    for (const l of existing.leads) if (!l.convertedFarmId) addName(l.name, { kind: 'lead', name: l.name, by: 'name', id: l.id })
   } else {
-    for (const v of existing.volunteers) addName(v.name, { kind: 'volunteer', name: v.name, by: 'name' })
+    for (const v of existing.volunteers) addName(v.name, { kind: 'volunteer', name: v.name, by: 'name', id: v.id })
   }
 
   const seenPhone = new Map<string, string>()
@@ -701,6 +740,7 @@ const POSITION_SOURCE: Record<NonNullable<ContactDraft['positionFrom']>, string>
 /** Une ferme = une PISTE de la salle d'attente (dans aucun compteur, AS6.8). */
 export function leadFromDraft(d: ContactDraft) {
   return {
+    photo: d.photo ?? null,
     name: displayName(d, 'farm') || localPhoneDisplay(d.phone),
     contactName: d.orgName ? personName(d) : personName(d) === displayName(d, 'farm') ? personName(d) : '',
     phone: d.phone,
@@ -747,7 +787,54 @@ export function volunteerFromDraft(d: ContactDraft, institution: Pick<Institutio
     locality: d.place,
     status: 'active' as const,
     inactiveReason: null,
-    photo: null,
+    photo: d.photo ?? null,
     notes: [d.notes, ...d.otherPhones, d.cardInstitution && comparable(d.cardInstitution) !== comparable(institution.name) ? `בכרטיס: ${d.cardInstitution}` : ''].filter(Boolean).join(' · '),
   }
+}
+
+// ---------------------------------------------------------------------------
+// ★★ AY10 — UNE FICHE QUI EXISTE DÉJÀ : NE RIEN FAIRE, COMPLÉTER, OU ÉCRASER
+// ---------------------------------------------------------------------------
+
+/**
+ * « J'importe vingt fiches, quinze existent déjà. » Trois réponses, pas un
+ * questionnaire :
+ *   - `skip`      : ne créer que les nouvelles (les quinze ne bougent pas) ;
+ *   - `fill`      : compléter ce qui MANQUE, sans rien écraser (recommandé) —
+ *                   c'est ce qui rend une réimportation utile : les photos
+ *                   arrivent sur les fiches qui n'en avaient pas ;
+ *   - `overwrite` : tout ce que la fiche importée porte remplace l'existant.
+ * ★ LA RÈGLE D'AO : ce que le PO a saisi n'est jamais écrasé, sauf s'il choisit
+ *   explicitement `overwrite`. En `fill`, seul un champ VIDE reçoit une valeur.
+ */
+export type MergeMode = 'skip' | 'fill' | 'overwrite'
+
+export interface MergeTarget {
+  photo?: string | null
+  phone?: string
+  email?: string
+  place?: string
+  contactName?: string
+}
+
+/** Les champs que la fiche importée apporte à la fiche existante (vide = rien à faire). */
+export function mergePatch(current: MergeTarget, d: ContactDraft, kind: ContactKind, mode: MergeMode): Partial<MergeTarget> {
+  if (mode === 'skip') return {}
+  const offered: MergeTarget = {
+    photo: d.photo ?? null,
+    phone: d.phone,
+    email: d.email,
+    place: d.place,
+    contactName: kind === 'volunteer' ? '' : d.orgName ? personName(d) : '',
+  }
+  const out: Partial<MergeTarget> = {}
+  for (const key of Object.keys(offered) as Array<keyof MergeTarget>) {
+    if (!(key in current)) continue
+    const v = offered[key]
+    if (v === null || v === undefined || v === '') continue
+    const cur = current[key]
+    const empty = cur === null || cur === undefined || cur === ''
+    if (mode === 'overwrite' ? cur !== v : empty) (out as Record<string, unknown>)[key] = v
+  }
+  return out
 }

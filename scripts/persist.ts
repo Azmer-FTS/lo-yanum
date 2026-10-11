@@ -38,6 +38,8 @@ import {
   setVolunteerRideWith,
   updateVolunteerDriving,
   undoable,
+  applyContactMerge,
+  mergeTargetOf,
   clearMissionMeetingPoints,
   deleteAnchorPoint,
   deleteDriver,
@@ -422,6 +424,11 @@ check('setVolunteerRideWith refuses a non-driver', setVolunteerRideWith(drivingV
 const carId = _raw().drivers.find((d) => d.volunteerId === drivingVolunteerId)?.id ?? ''
 emits('updateVolunteerDriving', () => updateVolunteerDriving(drivingVolunteerId, { vehicle: 'טויוטה לבנה', seats: 7 }), [['drivers', carId]])
 check('updateVolunteerDriving wrote the car', _raw().drivers.find((d) => d.id === carId)?.seats === 7)
+
+// ★★ AY10 — compléter une fiche existante depuis un contact importé.
+emits('applyContactMerge', () => void applyContactMerge('volunteer', createdVolunteerId, { photo: 'data:image/jpeg;base64,AAAA', email: 'x@example.invalid' }), [['volunteers', createdVolunteerId]])
+driven.add('mergeTargetOf')
+check('mergeTargetOf relit la fiche complétée', mergeTargetOf('volunteer', createdVolunteerId)?.photo === 'data:image/jpeg;base64,AAAA')
 
 // ★★ AY5 — défaire : le geste écrit, l'annulation remet l'enregistrement tel qu'il était.
 let undoArchive: (() => void) | null = null

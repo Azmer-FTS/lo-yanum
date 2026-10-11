@@ -72,7 +72,7 @@ export const TOUR: Institution[] = AW_INSTITUTIONS.map((i, n) => ({
   id: i.id,
   name: i.name,
   locality: '',
-  engagement: 'signed',
+  engagement: n % 3 === 2 ? 'contacted' : 'signed',
   engagementConfirmed: n % 4 !== 1,
   position: { lat: i.lat, lng: i.lng },
   positionUncertain: false,
@@ -85,7 +85,7 @@ export const LEADS = [
   { id: 'lead-ay-1', name: 'משק אלון', contact_name: 'אבי אלון', phone: '050-0000401', status: 'not_called' },
   { id: 'lead-ay-2', name: 'רפת בית', contact_name: 'דנה', phone: '050-0000402', status: 'no_answer' },
   { id: 'lead-ay-3', name: 'גידולי זיו', contact_name: 'זיו', phone: '050-0000403', status: 'call_back' },
-].map((l, i) => ({ ...l, email: '', place: 'נתיבות', lat: null, lng: null, region_id: null, notes: '', source: 'paste', raw: '', rank: i, converted_farm_id: null, converted_at: null, created_at: new Date(Date.now() - i * 86_400_000).toISOString(), updated_at: now }))
+].map((l, i) => ({ ...l, email: '', place: 'נתיבות', lat: i === 0 ? 31.42 : i === 1 ? 31.30 : null, lng: i === 0 ? 34.59 : i === 1 ? 34.62 : null, region_id: null, notes: '', source: 'paste', raw: '', rank: i, converted_farm_id: null, converted_at: null, created_at: new Date(Date.now() - i * 86_400_000).toISOString(), updated_at: now }))
 
 export const VOLUNTEERS = [
   { id: 'vol-ay-1', name: 'יוסף כהן', phone: '050-0000501', institution_id: TOUR[0].id, can_drive: true, has_car: true, has_license: true },

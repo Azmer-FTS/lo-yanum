@@ -22,7 +22,8 @@
     "stopsCount_one": "1 étape",
     "stopsCount_other": "{{count}} étapes",
     "rename": "Renommer",
-    "confirmDelete": "Supprimer ?"
+    "confirmDelete": "Supprimer ?",
+    "measuringRoad": "calcul par la route…"
   },
   "agreement": {
     "signNow": "Faire signer"
@@ -211,7 +212,22 @@
     "nightLabel": "Supplément de trajet de nuit",
     "durationLine": "durée = route vide +{{margin}} % marge +{{night}} % nuit",
     "countsTap": "Toucher un nombre isole ces fermes sur la carte",
-    "reachTitleLimit": "Fermes à {{limit}}"
+    "reachTitleLimit": "Fermes à {{limit}}",
+    "figures": {
+      "volunteers": "Volontaires",
+      "farms": "Fermes desservies",
+      "nearest": "Ferme la plus proche",
+      "limit": "Borne",
+      "km": "{{km}} km",
+      "more": "En savoir plus",
+      "edit": "Modifier l’institution",
+      "selected": "Institution choisie"
+    },
+    "shortcut": {
+      "institutions": "institutions sur la carte",
+      "toConfirm": "{{count}} à confirmer",
+      "open": "Écran des institutions"
+    }
   },
   "institutions": {
     "title_one": "1 institution",
@@ -530,7 +546,21 @@
       "farmFile": "Une liste de fermes : une ligne chacune.",
       "go": "Choisir le fichier"
     },
-    "fabAny": "Ajouter — agriculteur, ferme, institution, volontaire, chauffeur"
+    "fabAny": "Ajouter — agriculteur, ferme, institution, volontaire, chauffeur",
+    "existing": {
+      "sentence": "{{count}} déjà présents sur {{total}}",
+      "label": "Que faire de ceux qui existent ?",
+      "skip": "Ne créer que les nouveaux",
+      "skipHint": "Les existants ne changent pas",
+      "fill": "Compléter ce qui manque",
+      "fillHint": "N’ajoute que ce qui manque (photo, téléphone, courriel) — n’écrase rien",
+      "overwrite": "Tout écraser",
+      "overwriteHint": "Ce que portent les fichiers remplace l’existant",
+      "recommended": "recommandé",
+      "effect": "{{count}} fiches existantes recevront des détails",
+      "andMerge": "et compléter {{count}}",
+      "done": "{{count}} fiches existantes complétées"
+    }
   },
   "info": {
     "more": "Explication"
@@ -652,5 +682,51 @@
     "volunteerArchived": "{{name}} inactif",
     "volunteerReactivated": "{{name}} de nouveau actif",
     "outreach": "Marqué envoyé"
+  },
+  "importHub": {
+    "title": "Import",
+    "info": "Tous les fichiers importables, au même endroit : choisir ce que contient le fichier, puis importer.",
+    "what": "Qu’importe-t-on ?",
+    "chosen": "On importe :",
+    "change": "Changer",
+    "group": {
+      "people": "Personnes",
+      "institutions": "Institutions",
+      "farms": "Fermes et agriculteurs"
+    },
+    "kind": {
+      "volunteers": {
+        "title": "Liste de volontaires",
+        "hint": "Excel ou CSV envoyé par une institution — chaque ligne lui est rattachée"
+      },
+      "drivers": {
+        "title": "Liste de conducteurs",
+        "hint": "Excel ou CSV — volontaires qui conduisent"
+      },
+      "institutions": {
+        "title": "Liste d’institutions",
+        "hint": "Le fichier des institutions — réimportable sans doublon"
+      },
+      "farms": {
+        "title": "Liste de fermes",
+        "hint": "Excel ou CSV des fermes et moshavim"
+      },
+      "portal": {
+        "title": "Export du portail",
+        "hint": "Le CSV téléchargé du portail"
+      },
+      "prospection": {
+        "title": "Fichier de prospection",
+        "hint": "Le fichier d’appels de l’association"
+      },
+      "signatures": {
+        "title": "Fichier des signatures",
+        "hint": "Qui a signé et quand"
+      },
+      "association": {
+        "title": "Fichier de l’association",
+        "hint": "Le fichier renvoyé par l’association"
+      }
+    }
   }
 }

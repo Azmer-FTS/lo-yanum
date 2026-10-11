@@ -8,6 +8,7 @@ import type {
   Mission,
   Volunteer,
 } from './types'
+import type { Institution } from './institutions'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -61,7 +62,11 @@ export const TEST_DRIVER_ID = `${TEST_PREFIX}drv`
 export const TEST_MISSION_PAST_ID = `${TEST_PREFIX}mission-past`
 export const TEST_MISSION_NEXT_ID = `${TEST_PREFIX}mission-next`
 
+export const TEST_INSTITUTION_ID = `${TEST_PREFIX}inst`
+
 export interface TestDataset {
+  /** ★★ AY11 — une institution d'essai, et SES volontaires et conducteurs. */
+  institutions: Institution[]
   farms: Farm[]
   farmZones: FarmZone[]
   anchorPoints: AnchorPoint[]
@@ -195,6 +200,8 @@ export function buildTestData(): TestDataset {
     email: '',
     availability: { nights: true, days: false, weekends: false, excludedDates: [] },
     yeshiva: 'ישיבת בדיקה',
+    institutionId: TEST_INSTITUTION_ID,
+    rideWith: `${TEST_PREFIX}vol-drv1`,
     locality: 'ירוחם',
     guardsCount: 1,
     status: 'active',
@@ -218,8 +225,74 @@ export function buildTestData(): TestDataset {
     photo: null,
     availabilityNote: 'א׳–ה׳ בערב',
     notes: 'נתוני בדיקה',
-    volunteerId: null,
+    /* ★★ AY4 — un conducteur est un volontaire qui conduit : le conducteur
+       d'essai est la voiture du volontaire « נהג בדיקה ». */
+    volunteerId: `${TEST_PREFIX}vol-drv1`,
   }
+
+  /* ★★ AY11 — « Je ne peux pas juger ces écrans : ils sont vides. » Une
+     institution d'essai, six volontaires dont trois conduisent (voiture,
+     places), et qui part avec qui. Tout porte le préfixe `test-` : marqué
+     « נתוני בדיקה », hors compteurs, retiré d'un geste (AH3). */
+  const institution: Institution = {
+    id: TEST_INSTITUTION_ID,
+    name: 'ישיבת בדיקה',
+    locality: 'ירוחם',
+    kind: 'hesder',
+    audience: 'boys',
+    network: '',
+    position: { lat: CENTER.lat + 0.03, lng: CENTER.lng - 0.02 },
+    positionUncertain: false,
+    engagement: 'signed',
+    contactName: 'רב בדיקה',
+    contactPhone: '050-0000010',
+    notes: 'נתוני בדיקה',
+    extra: '',
+    source: 'manual',
+    engagementConfirmed: true,
+    metOn: null,
+    students: 40,
+    positionSource: '',
+    aliases: '',
+    createdAt: at,
+    updatedAt: at,
+  }
+  const person = (n: number, name: string, drives: boolean, rideWith: string | null): Volunteer => ({
+    id: `${TEST_PREFIX}vol-${drives ? 'drv' : 'p'}${n}`,
+    name,
+    age: 19 + n,
+    phone: `050-00000${20 + n + (drives ? 10 : 0)}`,
+    phoneType: n % 2 ? 'kosher' : 'smartphone',
+    email: '',
+    availability: { nights: true, days: false, weekends: n % 2 === 0, excludedDates: [] },
+    yeshiva: 'ישיבת בדיקה',
+    institutionId: TEST_INSTITUTION_ID,
+    rideWith,
+    locality: 'ירוחם',
+    guardsCount: n,
+    status: 'active',
+    inactiveReason: null,
+    notes: 'נתוני בדיקה',
+    lastActivityAt: null,
+    photo: null,
+    hasLicense: drives,
+    hasCar: drives,
+    canDrive: drives,
+  })
+  const crew: Volunteer[] = [
+    person(1, 'נהג בדיקה', true, null),
+    person(2, 'נהגת בדיקה ב׳', true, null),
+    person(3, 'נהג בדיקה ג׳', true, null),
+    person(1, 'מתנדב בדיקה א׳', false, `${TEST_PREFIX}vol-drv1`),
+    person(2, 'מתנדב בדיקה ב׳', false, `${TEST_PREFIX}vol-drv2`),
+    person(3, 'מתנדב בדיקה ג׳', false, null),
+  ]
+  const cars: Driver[] = [
+    { ...driver },
+    { id: `${TEST_PREFIX}drv2`, name: 'נהגת בדיקה ב׳', phone: crew[1].phone, email: '', vehicle: 'סקודה אוקטביה (בדיקה)', seats: 5, locality: 'ירוחם', photo: null, availabilityNote: 'לילות בלבד', notes: 'נתוני בדיקה', volunteerId: `${TEST_PREFIX}vol-drv2` },
+    { id: `${TEST_PREFIX}drv3`, name: 'נהג בדיקה ג׳', phone: crew[2].phone, email: '', vehicle: 'קיה קרניבל (בדיקה)', seats: 7, locality: 'דימונה', photo: null, availabilityNote: '', notes: 'נתוני בדיקה', volunteerId: `${TEST_PREFIX}vol-drv3` },
+  ]
+  cars[0] = { ...cars[0], name: crew[0].name, phone: crew[0].phone }
 
   const skeleton = {
     anchorPointId: TEST_ANCHOR_ID,
@@ -292,11 +365,12 @@ export function buildTestData(): TestDataset {
   }
 
   return {
+    institutions: [institution],
     farms: [farm],
     farmZones: [zone],
     anchorPoints: [anchor],
-    volunteers: [volunteer],
-    drivers: [driver],
+    volunteers: [volunteer, ...crew],
+    drivers: cars,
     missions: [past, next],
   }
 }

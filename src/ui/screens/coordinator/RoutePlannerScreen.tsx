@@ -237,6 +237,13 @@ export function RoutePlannerScreen() {
   )
   const road = useRoadRoute(roadPoints)
   const margin = useRouteMargin()
+  /* ★★ AY12.2 — les totaux par la route, dès que toutes les étapes sont mesurées. */
+  const roadTotals = useMemo(() => {
+    if (road.pending || road.legs.length === 0 || road.legs.length !== Math.max(0, roadPoints.length - 1) || road.legs.some((l) => !l)) return null
+    const meters = road.legs.reduce((n, l) => n + (l?.meters ?? 0), 0)
+    const seconds = road.legs.reduce((n, l) => n + (l?.seconds ?? 0), 0)
+    return { km: meters / 1000, minutes: Math.max(1, Math.round((seconds / 60) * (1 + margin / 100))) }
+  }, [road, roadPoints.length, margin])
   const mapsUrl = useMemo(() => googleMapsRouteUrl(route), [route])
   const wazeSteps = useMemo(() => wazeStepLinks(route), [route])
 
@@ -973,18 +980,29 @@ export function RoutePlannerScreen() {
                   Same label scale, same figure scale, same baseline, one rule
                   above them; and the duration is hours and minutes (X8.4). */}
               {/* ★★ AX6 — les deux totaux sur UNE ligne, côte à côte. */}
-              <dl className="mt-3 flex flex-nowrap items-baseline gap-x-2 overflow-hidden whitespace-nowrap border-t border-edge-subtle pt-3" data-testid="route-totals">
+              {/* ★★ AY12.2 — LA DURÉE TOTALE SUIT LA ROUTE. Elle était calculée à vol
+                  d'oiseau × 1,35 (`estimateDriveMinutes`) pendant que chaque étape
+                  affichait déjà sa durée par la route : deux vérités sur un écran.
+                  Total = somme des étapes routières (marge du PO comprise) ; tant
+                  qu'une étape manque, l'estimation est dite comme telle. */}
+              <dl
+                className="mt-3 flex flex-nowrap items-baseline gap-x-2 overflow-hidden whitespace-nowrap border-t border-edge-subtle pt-3"
+                data-testid="route-totals"
+                data-basis={roadTotals ? 'road' : 'air'}
+              >
                 <dt className="muted">{t('route.roundTrip')}</dt>
-                <dd className="ltr-nums numeric me-3 text-body font-semibold text-content-primary">
-                  {km(route.roundTripKm)} {t('common.km')}
+                <dd className="ltr-nums numeric me-3 text-body font-semibold text-content-primary" data-testid="route-total-km">
+                  {roadTotals ? km(roadTotals.km) : `≈ ${km(route.roundTripKm)}`} {t('common.km')}
                 </dd>
                 <dt className="muted">{t('route.estimatedDrive')}</dt>
                 <dd
                   data-testid="route-drive-time"
+                  data-minutes={roadTotals ? roadTotals.minutes : undefined}
                   className="numeric text-body font-semibold text-content-primary"
                 >
-                  {duration(estimateDriveMinutes(route.roundTripKm))}
+                  {roadTotals ? duration(roadTotals.minutes) : `≈ ${duration(estimateDriveMinutes(route.roundTripKm))}`}
                 </dd>
+                {!roadTotals && <dd className="muted text-micro">{t('route.measuringRoad')}</dd>}
               </dl>
             </>
           )}

@@ -11,6 +11,15 @@ const token = (name) => `rgb(var(--${name}) / <alpha-value>)`
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
+  /**
+   * ★★ AY9 (2026-10-11) — « UN ENCADRÉ GRIS APPARAÎT QUAND JE SÉLECTIONNE UN
+   * BLOC REPLIABLE. » C'était le survol RESTÉ COLLÉ : sur l'iPad, toucher un
+   * en-tête déclenche `:hover` et il ne se relâche qu'au toucher suivant —
+   * `hover:bg-surface-high/70` dessinait alors un cadre gris arrondi autour
+   * du titre. Les survols ne s'appliquent désormais qu'aux appareils qui
+   * SURVOLENT vraiment (souris, trackpad) : `@media (hover: hover)`, partout.
+   */
+  future: { hoverOnlyWhenSupported: true },
   theme: {
     /**
      * F3 — REPLACES Tailwind's radius scale rather than extending it.

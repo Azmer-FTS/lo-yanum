@@ -22,6 +22,7 @@
     "axmap": "bun run scripts/axmap.ts",
     "ayui": "bun run scripts/ayui.ts",
     "aymobile": "bun run scripts/aymobile.ts",
+    "aypins": "bun run scripts/aypins.ts",
     "aypass": "bun run scripts/aypass.ts",
     "atsync": "bun run scripts/atsync.ts",
     "assettings": "bun run scripts/assettings.ts",

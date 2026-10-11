@@ -2,8 +2,8 @@ import { DriverFormPage, MeetingFormPage, VisitFormPage, VolunteerFormPage } fro
 import { NumericPad } from './components/NumericPad'
 import { UndoToast } from './components/UndoToast'
 import type { ReactNode } from 'react'
-import { Suspense, lazy, useEffect, useReducer } from 'react'
-import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { useEffect, useReducer } from 'react'
+import { HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 
 import { getSession, homeRouteFor, setSession } from '@core/index'
 import type { Role } from '@core/index'
@@ -43,7 +43,7 @@ import { FarmerReportScreen } from './screens/farmer/FarmerReportScreen'
 import { FarmerTonightScreen } from './screens/farmer/FarmerTonightScreen'
 import { AgendaScreen } from './screens/coordinator/AgendaScreen'
 import { LeadEditScreen, LeadsScreen } from './screens/coordinator/LeadsScreen'
-import { PortalImportScreen } from './screens/coordinator/PortalImportScreen'
+import { ImportHubScreen } from './screens/coordinator/ImportHubScreen'
 import { AnchorFormScreen } from './screens/coordinator/AnchorFormScreen'
 import { AnchorSheetScreen } from './screens/coordinator/AnchorSheetScreen'
 import { DashboardScreen } from './screens/coordinator/DashboardScreen'
@@ -58,7 +58,6 @@ import { MissionWizardScreen } from './screens/coordinator/MissionWizardScreen'
 import { MissionsScreen } from './screens/coordinator/MissionsScreen'
 import { FreeRouteScreen } from './screens/coordinator/FreeRouteScreen'
 import { CoverageScreen } from './screens/coordinator/CoverageScreen'
-import { InstitutionsImportScreen } from './screens/coordinator/InstitutionsImportScreen'
 import { InstitutionEditScreen, InstitutionsScreen } from './screens/coordinator/InstitutionsScreen'
 import { AddContactsScreen } from './screens/coordinator/AddContactsScreen'
 import { RoutePlannerScreen } from './screens/coordinator/RoutePlannerScreen'
@@ -69,26 +68,19 @@ import { VolunteerGuardScreen } from './screens/volunteer/VolunteerGuardScreen'
 import { VolunteerRosterScreen } from './screens/volunteer/VolunteerRosterScreen'
 import { VolunteerReportScreen } from './screens/volunteer/VolunteerReportScreen'
 
-/** Coordinator-only and rarely opened — keep it out of the initial bundle. */
-const ImportWizardScreen = lazy(() =>
-  import('./screens/coordinator/ImportWizardScreen').then((m) => ({
-    default: m.ImportWizardScreen,
-  })),
-)
-
-/** AA4 · AA5 — the same reasoning, and it also pulls SheetJS on demand. */
-const SheetImportScreen = lazy(() =>
-  import('./screens/coordinator/SheetImportScreen').then((m) => ({
-    default: m.SheetImportScreen,
-  })),
-)
-
 /**
  * Navigation-level half of the role gate. The data-level half — the half that
  * actually matters — lives in @core/access; this only stops a role from
  * *landing* on a screen built for another role (e.g. a stale bookmark after
  * switching identity in the dev toolbar).
  */
+/** ★★ AY12.1 — `/coordinator/import/<fichier>` → l'écran unique, le fichier choisi (les paramètres suivent). */
+function ImportKindRedirect() {
+  const { kind } = useParams()
+  const extra = window.location.hash.split('?')[1] ?? ''
+  return <Navigate to={`/coordinator/import?kind=${kind ?? ''}${extra ? `&${extra}` : ''}`} replace />
+}
+
 function RequireRole({ role, children }: { role: Role; children: ReactNode }) {
   const session = useCoreValue(getSession)
   if (session.role !== role) {
@@ -364,7 +356,6 @@ export default function App() {
           {/* ★★ AX1 — l'étape 1 du métier a son écran (elle était au fond de la couverture). */}
           <Route path="institutions" element={<InstitutionsScreen />} />
           <Route path="institutions/:institutionId" element={<InstitutionEditScreen />} />
-          <Route path="import/institutions" element={<InstitutionsImportScreen />} />
           <Route path="add" element={<AddContactsScreen />} />
           <Route path="volunteers" element={<VolunteersScreen />} />
           {/* ★★ AN11 — toute création, toute édition : une PAGE. */}
@@ -391,48 +382,10 @@ export default function App() {
                  one, and found no file input — the second screen had inherited
                  the first one's step. A key per kind makes the switch a
                  remount, which is what a different file plainly is. */}
-          <Route
-            path="import/prospection"
-            element={
-              <Suspense fallback={<div className="skeleton h-96 rounded-card" />}>
-                <SheetImportScreen key="prospection" kind="prospection" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="import/signatures"
-            element={
-              <Suspense fallback={<div className="skeleton h-96 rounded-card" />}>
-                <SheetImportScreen key="signatures" kind="signatures" />
-              </Suspense>
-            }
-          />
-          {/* ★★ AB6.7 — and the association's own file, coming back. Same
-              screen, same `key` rule: three routes render one lazy component,
-              and without a key per kind React reconciles one into the next and
-              KEEPS its step (see the note on the two above). */}
-          <Route
-            path="import/association"
-            element={
-              <Suspense fallback={<div className="skeleton h-96 rounded-card" />}>
-                <SheetImportScreen key="association" kind="association" />
-              </Suspense>
-            }
-          />
-          {/* ★★ AS1 — l'export CSV du portail de l'association, répétable. */}
-          <Route path="import/portal" element={<PortalImportScreen />} />
-          <Route
-            path="import/:kind"
-            element={
-              <Suspense fallback={<div className="skeleton h-96 rounded-card" />}>
-                <ImportWizardScreen />
-              </Suspense>
-            }
-          />
-          <Route
-            path="volunteers/import"
-            element={<Navigate to="/coordinator/import/volunteers" replace />}
-          />
+          {/* ★★ AY12.1 — UN écran d'import ; les huit anciennes adresses y mènent, le fichier choisi. */}
+          <Route path="import" element={<ImportHubScreen />} />
+          <Route path="import/:kind" element={<ImportKindRedirect />} />
+          <Route path="volunteers/import" element={<Navigate to="/coordinator/import?kind=volunteers" replace />} />
           {/* ★★ AB6.6 — l'écran d'export. Reached from חוות → ⋯, beside the
               two imports it is the counterpart of. */}
           <Route path="export" element={<ExportScreen />} />

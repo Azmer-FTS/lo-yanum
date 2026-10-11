@@ -657,7 +657,8 @@ try {
             const vb = (svg.getAttribute('viewBox') ?? '0 0 0 0').split(/\s+/).map(Number)
             const r = svg.getBoundingClientRect()
             const d = paths[0]?.getAttribute('d') ?? ''
-            const needle = /a9 9 0 1 1/.test(d)
+            // ★★ AY8 (adapté) — l'épingle redessinée (liseré blanc + fil sombre) se reconnaît à son attribut.
+            const needle = /a9 9 0 1 1/.test(d) || svg.getAttribute('data-pin-style') === 'ay8'
             const stroke = Number(paths[0]?.getAttribute('stroke-width') ?? 0)
             return {
               needle,

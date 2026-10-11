@@ -67,7 +67,8 @@ export function InstitutionsScreen() {
   const { t } = useTranslation()
   const institutions = useCoreValue(() => getInstitutions())
   const volunteers = useCoreValue(() => getVolunteers())
-  const [filter, setFilter] = useState<Filter>('all')
+  /* ★ AY6 — la carte de couverture renvoie ici « à confirmer » (`?filter=toConfirm`). */
+  const [filter, setFilter] = useState<Filter>(() => (new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('filter') === 'toConfirm' ? 'toConfirm' : 'all'))
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState<string | null>(null)
   const [flyKey, setFlyKey] = useState(0)

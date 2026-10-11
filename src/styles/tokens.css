@@ -168,6 +168,15 @@
   --zone-boundary-moshav-sat: 125 211 252; /* #7DD3FC sky */
   --zone-grazing-moshav-sat: 192 132 252; /* #C084FC violet */
   --status-violet: 143 99 232; /* #8F63E8 violet               */
+  /* ★★ AY8 (2026-10-11) — LES TEINTES DES ÉPINGLES DE LA CARTE, FIXES DANS LES
+     DEUX THÈMES : c'est le FOND de carte qui change (vectoriel clair ou sombre,
+     photo), pas l'épingle. Choisies hors des teintes du paysage (vert des
+     cultures, beige du sable, brun, bleu de l'eau), qui avalaient le vert des
+     fermes et le violet pâle des institutions. Le bord blanc + fil sombre de
+     l'épingle porte le contraste sur tout fond (A365, `bun run aypins`). */
+  --map-farm: 232 89 12; /* #E8590C orange brûlé — les fermes */
+  --map-institution: 103 65 217; /* #6741D9 violet profond — les institutions */
+  --map-lead: 194 37 92; /* #C2255C framboise — les contacts */
 
   /* G7bis.1 — the farm's identity pastille on every map. A deep green:
      distinct from every status hue, and consistent with the farm zone family. */

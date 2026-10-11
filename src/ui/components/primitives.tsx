@@ -749,13 +749,16 @@ export function Section({
                  les réglages, et il était huit pixels sous le plancher qu'AA1
                  a posé. Il occupe déjà toute la largeur : les huit pixels
                  rendus sont de la hauteur, pas de la place volée à un voisin. */
+              /* ★★ AY9 — plus de cadre gris (survol collé au doigt, voir
+                 tailwind.config.js) ; le repère de sélection est discret et
+                 net : le chevron prend la couleur d'accent, et au clavier un
+                 trait d'accent sous le titre. */
               className="group flex min-h-[2.75rem] min-w-0 flex-1 items-center gap-2 rounded-field text-start
-                         transition-colors duration-fast hover:bg-surface-high/70 -ms-1.5 ps-1.5"
+                         -ms-1.5 ps-1.5 focus-visible:ring-0 focus-visible:ring-offset-0 [&:focus-visible_h2]:underline [&:focus-visible_h2]:decoration-accent [&:focus-visible_h2]:decoration-2 [&:focus-visible_h2]:underline-offset-4"
             >
               <span
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-pill bg-surface-high text-content-secondary
-                            transition-transform duration-fast group-hover:text-content-primary ${
-                              open ? '' : 'ltr:-rotate-90 rtl:rotate-90'
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-pill transition-transform duration-fast group-hover:text-content-primary ${
+                              open ? 'bg-accent/15 text-accent-ink' : 'bg-surface-high text-content-secondary ltr:-rotate-90 rtl:rotate-90'
                             }`}
               >
                 <Icon name="chevronDown" size={14} />

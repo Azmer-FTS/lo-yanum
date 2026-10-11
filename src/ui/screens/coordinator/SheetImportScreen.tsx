@@ -38,8 +38,8 @@ import type {
 
 import { Icon } from '../../components/Icon'
 import { SelectField } from '../../components/fields'
-import { ImportTabs } from '../../components/importTabs'
-import type { SheetKind } from '../../components/importTabs'
+/** Les trois fichiers de l'association (l'écran d'import unique, AY12.1, choisit lequel). */
+export type SheetKind = 'prospection' | 'signatures' | 'association'
 import { Callout, EmptyState, PageHeader, Section } from '../../components/primitives'
 import { downloadMatrix } from '../../report/download'
 import { useCoreValue } from '../../hooks/useCore'
@@ -403,7 +403,6 @@ export function SheetImportScreen({ kind }: { kind: SheetKind }) {
         back={{ to: '/coordinator/farms', label: t('farms.title') }}
       />
 
-      <ImportTabs current={kind} onLeave={reset} />
       <StepBar current={step} />
 
       {error && (

@@ -711,39 +711,14 @@ export function FarmsListScreen() {
     <OverflowMenu
       testId="farms-menu"
       items={[
+        /* ★★ AY12.1 — UNE entrée « ייבוא » : l'écran unique demande quel fichier
+           (liste de fermes, portail, prospection, signatures, association). */
         {
           key: 'import',
-          label: t('volunteers.import'),
+          label: t('importHub.title'),
           icon: 'upload',
-          to: '/coordinator/import/farms',
+          to: '/coordinator/import',
           testId: 'farms-import',
-        },
-        /* AA4 · AA5 — the two files that come from the association. They are
-           reached from THIS screen because that is where the coordinator is
-           when he thinks about them; the tab row inside the wizard then moves
-           him between all five. */
-        /* ★★ AS1 — l'export CSV du portail : EN TÊTE des trois fichiers de
-           l'association, c'est celui qu'il refera après chaque saisie chez eux. */
-        {
-          key: 'portal',
-          label: t('portal.title'),
-          icon: 'upload',
-          to: '/coordinator/import/portal',
-          testId: 'farms-import-portal',
-        },
-        {
-          key: 'prospection',
-          label: t('import.prospectionTitle'),
-          icon: 'table',
-          to: '/coordinator/import/prospection',
-          testId: 'farms-import-prospection',
-        },
-        {
-          key: 'signatures',
-          label: t('import.signaturesTitle'),
-          icon: 'edit',
-          to: '/coordinator/import/signatures',
-          testId: 'farms-import-signatures',
         },
         /* ★★ AB6.6 — and the way OUT, in the same menu as the ways in. The
            coordinator's sentence is « j'importe, j'enrichis, je ressors un

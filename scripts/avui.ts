@@ -115,6 +115,7 @@ async function go(page: Page, hash: string, settle = 4500): Promise<void> {
   await page.waitForTimeout(settle)
 }
 async function guard(label: string, run: () => Promise<void>): Promise<void> {
+  if (process.env.GUARD && !label.startsWith(process.env.GUARD)) return
   if (ONLY === 'captures' && !label.startsWith('capture')) return
   if (ONLY === 'checks' && label.startsWith('capture')) return
   try {
@@ -168,27 +169,35 @@ section('A322 — les onze institutions de la tournée : sur la carte, « חתו
 await guard('A322', async () => {
   const o = await open(1440, { touch: false, storage: { 'lo-yanum:coverage': JSON.stringify({ radiusKm: 35, visible: { signed: true, pipeline: true, leads: true, engaged: true, prospect: true } }) } })
   await go(o.page, '/coordinator/coverage')
+  /* ★★ AY6 · AY7 (adapté) — sur la carte : onze CARRÉS, sans nom permanent (le nom
+     masquait la carte) ; « à confirmer » mène à l'écran מוסדות, où la confirmation
+     reste d'UN toucher ; la fiche d'une institution sur la carte tient en quatre
+     chiffres, le responsable et la rencontre derrière ⓘ. */
   const kinds = await o.page.evaluate(() => [...document.querySelectorAll<HTMLElement>('.maplibregl-marker[data-marker-kind="institution"]')].map((e) => e.querySelector('[data-marker-label]')?.textContent ?? ''))
-  check('A322 onze institutions sur la carte, nommées', kinds.filter(Boolean).length === 11, `${kinds.filter(Boolean).length}`)
+  check('A322 onze institutions sur la carte, sans nom permanent', kinds.length === 11 && kinds.filter(Boolean).length === 0, `${kinds.length} marqueurs, ${kinds.filter(Boolean).length} nommés`)
   const banner = o.page.locator('[data-testid="coverage-to-confirm"]')
   check('A322 le bandeau dit « 11 à confirmer »', (await banner.getAttribute('data-count')) === '11', (await banner.count()) ? await banner.innerText() : 'absent')
+  await banner.click()
+  await o.page.waitForTimeout(2500)
   const rows = await o.page.locator('[data-testid^="institution-row-"][data-to-confirm]').count()
-  check('A322 la liste s’ouvre sur « לאשר » : 11 lignes', rows === 11, `${rows}`)
+  check('A322 le bandeau mène à מוסדות, filtré « לאשר » : 11 lignes', /\/coordinator\/institutions/.test(o.page.url()) && rows === 11, `${rows} · ${o.page.url()}`)
   const first = TOUR.find((i) => i.name === 'ישיבת ההסדר שדרות')!
   await o.page.locator(`[data-testid="institution-confirm-${first.id}"]`).click()
   await o.page.waitForTimeout(1500)
   const saved = o.db.rows('institutions').find((r) => r.id === first.id)
   check('A322 confirmer = UN toucher, écrit en base', saved?.engagement_confirmed === true, JSON.stringify({ engagement: saved?.engagement, confirmed: saved?.engagement_confirmed }))
-  // Corriger = choisir un statut : il est aussi confirmé.
+  // Corriger = choisir un statut (sur la fiche de l'institution) : il est aussi confirmé.
   const other = TOUR.find((i) => i.name === 'שומריה לצעירים')!
-  await o.page.locator(`[data-testid="institution-row-${other.id}"]`).click()
-  await o.page.waitForTimeout(600)
+  await go(o.page, `/coordinator/institutions/${other.id}`)
   await o.page.locator('[data-testid="institution-engagement-interested"]').click()
   await o.page.waitForTimeout(1500)
   const fixed = o.db.rows('institutions').find((r) => r.id === other.id)
   check('A322 corriger le statut en un toucher (מעוניין) le confirme', fixed?.engagement === 'interested' && fixed?.engagement_confirmed === true, JSON.stringify({ engagement: fixed?.engagement, confirmed: fixed?.engagement_confirmed }))
+  await go(o.page, `/coordinator/coverage?inst=${other.id}`)
+  await o.page.locator('[data-testid="coverage-institution-card"] [data-testid="coverage-institution-info-toggle"]').first().click().catch(() => undefined)
+  await o.page.waitForTimeout(500)
   const facts = await o.page.locator('[data-testid="coverage-institution-card"]').innerText().catch(() => '')
-  check('A322 la bulle porte le responsable et la date de rencontre', facts.includes('יונתן רום') && facts.includes('08.10.2026'), facts.replace(/\s+/g, ' ').slice(0, 120))
+  check('A322 la bulle : le nom, quatre chiffres ; le responsable et la date derrière ⓘ', facts.includes('יונתן רום') && facts.includes('08.10.2026') && (await o.page.locator('[data-testid="coverage-institution-card"] [data-testid^="coverage-fig-"]').count()) === 4, facts.replace(/\s+/g, ' ').slice(0, 140))
   if (CAPTURES) await o.page.screenshot({ path: `${SHOTS}/a322-a-confirmer-1440.png` })
   check('A322 aucune erreur de page', o.errors.length === 0, o.errors.slice(0, 2).join(' | '))
   await o.ctx.close()
@@ -323,8 +332,13 @@ await guard('A325', async () => {
     await o.page.waitForTimeout(300)
     if (CAPTURES && k.kind === 'farm') await o.page.screenshot({ path: `${SHOTS}/a325-nature-1032.png` })
     await o.page.locator(`[data-testid="quick-pin-kind-${k.kind}"]`).click()
-    await o.page.waitForTimeout(2000)
-    const row = o.db.rows(k.table).find((r) => r.name === k.name)
+    // L'écriture part par la file du magasin ; une ferme neuve relance aussi le maillage routier.
+    let row = o.db.rows(k.table).find((r) => r.name === k.name)
+    for (let i = 0; i < 20 && !row; i++) {
+      await o.page.waitForTimeout(500)
+      row = o.db.rows(k.table).find((r) => r.name === k.name)
+    }
+    if (process.env.DEBUG) console.log(k.kind, o.errors, o.db.log.slice(-6))
     const near = row && Math.abs(Number(row.lat) - expect.lat) < 1e-4 && Math.abs(Number(row.lng) - expect.lng) < 1e-4
     check(`A325 ${k.kind} : créé avec son nom et SA position (là où le doigt s’est posé)`, !!row && !!near, row ? `${Number(row.lat).toFixed(5)}, ${Number(row.lng).toFixed(5)}` : 'aucune ligne')
     if (k.kind === 'farm') check('A325 ferme : rien d’autre de rempli (יישוב vide, טרם נוצר קשר, 0 דונם)', row?.locality === '' && row?.status === 'to_contact' && row?.farm_dunams === 0 && row?.position_missing === false, JSON.stringify({ locality: row?.locality, status: row?.status }))

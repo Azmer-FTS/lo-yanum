@@ -131,7 +131,12 @@ section('A333 — le rayon reste librement réglable, sans plafond')
 // ---------------------------------------------------------------------------
 check('A333 clampRadiusKm(500) = 500, (1000) = 1000', clampRadiusKm(500) === 500 && clampRadiusKm(1000) === 1000)
 check('A333 la réglette va au-delà de 80 km', RADIUS_MAX_KM >= 150)
-check('A333 champ chiffré sans attribut max', /data-testid="coverage-radius-number"/.test(src) && !/type="number"[^>]*max=/.test(src.slice(src.indexOf('coverage-radius-number') - 600, src.indexOf('coverage-radius-number'))))
+// ★★ AY1.1 (adapté) — le champ est un `NumInput` (plus de type="number") : toujours sans plafond.
+{
+  const at = src.indexOf('coverage-radius-number')
+  const near = src.slice(at - 400, at)
+  check('A333 champ chiffré sans attribut max', at > 0 && /(data-testid|testId)="coverage-radius-number"/.test(src) && !/\bmax=\{/.test(near.slice(near.lastIndexOf('<NumInput'))))
+}
 check('A333 la réglette s’étend au rayon saisi', src.includes('max={Math.max(RADIUS_MAX_KM, prefs.radiusKm)}'))
 const r200 = computeCoverage({ farms, leads: [], institutions, radiusKm: 200, visible: ALL })
 check('A333 un rayon de 200 km est calculé (paires demandées)', r200.mesh.airPairs === r200.counts.farms * AW_INSTITUTIONS.length, `${r200.mesh.airPairs}`)

@@ -199,10 +199,15 @@ resetStore()
   const { added } = seedTestData()
   check('A160 · le jeu est posé', added > 0, `${added} lignes`)
   check(
-    'A160 · une ferme, un volontaire, un conducteur, deux gardes',
+    /* ★★ AY11 (adapté) — le jeu porte désormais une institution d'essai et SES
+       volontaires (dont trois conducteurs, avec leur voiture). */
+    'A160 · une ferme, une institution, sept volontaires dont trois conducteurs, deux gardes',
     buildTestData().farms.length === 1 &&
-      buildTestData().volunteers.length === 1 &&
-      buildTestData().drivers.length === 1 &&
+      buildTestData().institutions.length === 1 &&
+      buildTestData().volunteers.length === 7 &&
+      buildTestData().volunteers.filter((v) => v.canDrive).length === 3 &&
+      buildTestData().drivers.length === 3 &&
+      buildTestData().drivers.every((d) => d.volunteerId !== null) &&
       buildTestData().missions.length === 2,
   )
   check(

@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import {
   COVERAGE_PRESETS,
   DEFAULT_RADIUS_KM,
-  INSTITUTION_ENGAGEMENTS,
   RADIUS_MAX_KM,
   RADIUS_MIN_KM,
   clampRadiusKm,
@@ -15,14 +14,14 @@ import {
   farmPoint,
   linkMinutes,
   getInstitutions,
+  getVolunteers,
   getVisibleFarms,
   getVisibleLeads,
   haversineKm,
   isInstitutionEngaged,
   isInstitutionToConfirm,
-  updateInstitution,
 } from '@core/index'
-import type { CoverageFamily, Farm, Institution, InstitutionEngagement, LatLng, Visible } from '@core/index'
+import type { CoverageFamily, Farm, Institution, LatLng, Visible } from '@core/index'
 import type { PairRoad } from '@core/roadMesh'
 
 import { readToken } from '../../components/badges'
@@ -30,8 +29,8 @@ import { EntityQuickCard } from '../../components/EntityQuickCard'
 import { ChevronForward, Icon } from '../../components/Icon'
 import { MapPanel } from '../../components/MapPanel'
 import type { MapLink, MapMarker, MapRouteLine } from '../../components/MapView'
-import { FilterPill, PageHeader, Section } from '../../components/primitives'
-import { ENGAGEMENT_ON, InstitutionEditor } from '../../institutions/institutionUi'
+import { PageHeader, Section } from '../../components/primitives'
+import { ENGAGEMENT_ON, peopleOf } from '../../institutions/institutionUi'
 import { useCoreValue } from '../../hooks/useCore'
 import { measureMeshPair } from '../../routing/roadNetwork'
 import { meshPair, requestMeshPairs, useRoadMesh } from '../../routing/roadMesh'
@@ -39,7 +38,6 @@ import { useRouteMargin } from '../../settings/routeMargin'
 import { onSettingsApplied } from '../../settings/applied'
 import { InfoTip } from '../../components/InfoTip'
 import { NumInput } from '../../components/fields'
-import { runUndoable } from '../../components/UndoToast'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -197,9 +195,11 @@ export function useTimeFactor(nightPct: number): number {
 
 export function CoverageScreen() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const farms = useCoreValue(() => getVisibleFarms())
   const leads = useCoreValue(() => getVisibleLeads())
   const institutions = useCoreValue(() => getInstitutions())
+  const volunteers = useCoreValue(() => getVolunteers())
   const [prefs, setPrefsState] = useState<Prefs>(readPrefs)
   /* ⚠️ ÉCRIT SUR UN GESTE, PAS AU MONTAGE : une clé synchronisée réécrite à
      chaque ouverture deviendrait « la plus récente » et écraserait le choix
@@ -229,9 +229,7 @@ export function CoverageScreen() {
      Décidé à CHAQUE rendu et non au premier : l'hydratation arrive après,
      et un choix figé sur une liste encore vide changeait selon la vitesse
      du réseau (vu par `auui` sur le déployé). Le choix du PO, lui, reste. */
-  const [chosenFilter, setListFilter] = useState<ListFilter | null>(null)
   const toConfirmCount = institutions.filter(isInstitutionToConfirm).length
-  const listFilter: ListFilter = chosenFilter ?? (toConfirmCount > 0 ? 'toConfirm' : 'all')
   const usage = usageOf(prefs.visible)
 
   const selectedInst = selected?.kind === 'institution' ? (institutions.find((i) => i.id === selected.id) ?? null) : null
@@ -279,8 +277,10 @@ export function CoverageScreen() {
     [farms, leads, institutions, prefs, mesh.version, factor],
   )
 
-  const land = readToken('--status-success')
-  const school = readToken('--status-violet')
+  /* ★★ AY8 — les teintes de la carte, choisies pour ressortir (tokens.css). */
+  const land = readToken('--map-farm')
+  const school = readToken('--map-institution')
+  const leadTone = readToken('--map-lead')
 
   const shownFarm = (id: string): boolean => {
     if (!focus) return true
@@ -304,7 +304,7 @@ export function CoverageScreen() {
         if (!shownFarm(p.id)) continue
         out.push({ id: p.id, position: p.position, color: land, title: p.name, kind: 'farm', hollow: p.family === 'pipeline', emphasis: isSel, essential: isSel, onSelect: pick })
       } else if (p.family === 'leads') {
-        out.push({ id: p.id, position: p.position, color: land, title: p.name, kind: 'lead', emphasis: isSel, onSelect: pick })
+        out.push({ id: p.id, position: p.position, color: leadTone, title: p.name, kind: 'lead', emphasis: isSel, onSelect: pick })
       } else {
         const inst = institutions.find((i) => i.id === p.id)
         out.push({
@@ -315,8 +315,9 @@ export function CoverageScreen() {
           kind: 'institution',
           hollow: p.family === 'prospect',
           uncertain: inst?.positionUncertain,
-          // ★ En rendez-vous, les engagées sont NOMMÉES ; une à démarcher l'est quand on la choisit.
-          label: p.family === 'engaged' || isSel ? p.name : undefined,
+          /* ★★ AY7.3 — le nom ne s'affiche plus en permanence (il masquait la
+             carte) : il apparaît quand on touche l'institution. */
+          label: isSel ? p.name : undefined,
           emphasis: isSel,
           onSelect: pick,
         })
@@ -358,6 +359,9 @@ export function CoverageScreen() {
     setFocus(null)
   }
 
+  /* ★★ AY7 — les chiffres d'une institution : SES volontaires, les fermes qu'elle dessert. */
+  const reachOf = (id: string) => coverage.links.filter((l) => l.institutionId === id && !l.blocked)
+  const volunteersOfInst = (inst: Institution) => peopleOf(inst, volunteers).filter((v) => v.status !== 'inactive').length
   const selectedPlace = selected ? coverage.places.find((p) => p.id === selected.id) : undefined
   const selectedFarm = selected?.kind === 'farm' ? farms.find((f) => f.id === selected.id) : undefined
   const selectedLead = selected?.kind === 'lead' ? leads.find((l) => l.id === selected.id) : undefined
@@ -365,7 +369,7 @@ export function CoverageScreen() {
   const detail: ReactNode = selectedFarm ? (
     <EntityQuickCard farm={selectedFarm} onClose={() => setSelected(null)} situate />
   ) : selectedInst ? (
-    <InstitutionCard inst={selectedInst} reach={coverage.links.filter((l) => l.institutionId === selectedInst.id && !l.blocked)} onClose={() => setSelected(null)} />
+    <InstitutionFigures bubble inst={selectedInst} reach={reachOf(selectedInst.id)} volunteers={volunteersOfInst(selectedInst)} limitText={limitText} onClose={() => setSelected(null)} />
   ) : selectedLead ? (
     <div className="w-[min(18rem,calc(100vw-2rem))] rounded-card bg-surface-overlay/95 p-4 shadow-lift backdrop-blur" data-testid="coverage-lead-card">
       <p className="text-heading text-content-primary">{selectedLead.name}</p>
@@ -430,10 +434,7 @@ export function CoverageScreen() {
             type="button"
             data-testid="coverage-to-confirm"
             data-count={toConfirmCount}
-            onClick={() => {
-              setListFilter('toConfirm')
-              document.querySelector('[data-testid="institutions-list"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }}
+            onClick={() => navigate('/coordinator/institutions?filter=toConfirm')}
             className="mt-3 flex min-h-11 w-full items-center gap-2 rounded-field bg-status-warn/15 px-3 py-2 text-start text-caption font-semibold text-status-warn-ink"
           >
             <Icon name="alert" size={16} />
@@ -450,7 +451,7 @@ export function CoverageScreen() {
             <legend className="px-1 text-caption font-bold text-content-secondary">{t('coverage.side.land')}</legend>
             <FamilyToggle family="signed" on={prefs.visible.signed} onChange={setVisible} count={coverage.places.filter((p) => p.family === 'signed').length || countFamily(farms, 'signed')} swatch={<Swatch kind="pin" color={land} />} />
             <FamilyToggle family="pipeline" on={prefs.visible.pipeline} onChange={setVisible} count={countFamily(farms, 'pipeline')} swatch={<Swatch kind="pin" color={land} hollow />} />
-            <FamilyToggle family="leads" on={prefs.visible.leads} onChange={setVisible} count={coverage.leadsPlaced} swatch={<Swatch kind="lead" color={land} />} />
+            <FamilyToggle family="leads" on={prefs.visible.leads} onChange={setVisible} count={coverage.leadsPlaced} swatch={<Swatch kind="lead" color={leadTone} />} />
           </fieldset>
           <fieldset className="min-w-0 rounded-card bg-surface-raised p-3 shadow-card">
             <legend className="px-1 text-caption font-bold text-content-secondary">{t('coverage.side.institutions')}</legend>
@@ -652,8 +653,8 @@ export function CoverageScreen() {
         {/* ---------------------------------------------------------------- */}
         {selectedInst && (
           <div data-testid="coverage-selected">
-          <Section title={selectedInst.name} className="mt-4">
-            <InstitutionEditor inst={selectedInst} />
+          <Section title={t('coverage.figures.selected')} className="mt-4">
+            <InstitutionFigures inst={selectedInst} reach={reachOf(selectedInst.id)} volunteers={volunteersOfInst(selectedInst)} limitText={limitText} />
             <p className="mt-3 text-caption font-bold text-content-secondary">
               {t('coverage.reachTitleLimit', { limit: limitText })}
               {mesh.progress.pending > 0 && <span className="muted ms-2 font-normal">{t('coverage.measuringRoad', { count: mesh.progress.pending })}</span>}
@@ -675,18 +676,20 @@ export function CoverageScreen() {
         {/* ---------------------------------------------------------------- */}
         {/* LES INSTITUTIONS — le démarchage, en liste                        */}
         {/* ---------------------------------------------------------------- */}
+        {/* ★★ AY6 — PLUS DE FILTRES EN DOUBLE : l'écran מוסדות a les siens. Ici,
+            un raccourci — combien, combien à confirmer — et le chemin. */}
         {!meeting && institutions.length > 0 && (
-          <InstitutionList
-            institutions={institutions}
-            filter={listFilter}
-            setFilter={setListFilter}
-            selectedId={selectedInst?.id ?? null}
-            onPick={(id) => {
-              setSelected({ kind: 'institution', id })
-              setSelectKey((k) => k + 1)
-              setRouteTo(null)
-            }}
-          />
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-card bg-surface-raised p-3 shadow-card" data-testid="coverage-institutions-shortcut">
+            <span className="numeric text-title font-bold text-content-primary">{institutions.length}</span>
+            <span className="min-w-0 flex-1 text-caption text-content-secondary">
+              {t('coverage.shortcut.institutions', { count: institutions.length })}
+              {toConfirmCount > 0 && <span className="ms-1 font-semibold text-status-warn-ink">· {t('coverage.shortcut.toConfirm', { count: toConfirmCount })}</span>}
+            </span>
+            <Link to="/coordinator/institutions" className="btn-secondary min-h-11" data-testid="coverage-to-institutions">
+              <Icon name="school" size={16} />
+              {t('coverage.shortcut.open')}
+            </Link>
+          </div>
         )}
       </div>
     </MapPanel>
@@ -711,13 +714,15 @@ function Swatch({ kind, color, hollow = false }: { kind: 'pin' | 'lead' | 'schoo
       </svg>
     )
   }
+  void ring
+  /* ★★ AY8 — la légende dessine EXACTEMENT les marqueurs de la carte. */
   if (kind === 'lead') {
-    return <span aria-hidden="true" className="inline-block h-3.5 w-3.5 rounded-pill" style={{ border: `2.5px dashed ${color}`, background: ring }} />
+    return <span aria-hidden="true" className="inline-block h-3.5 w-3.5 rounded-pill" style={{ border: `2.5px dashed ${color}`, background: '#ffffff', boxShadow: '0 0 0 1.2px #141b26' }} />
   }
   if (kind === 'school') {
     return (
-      <span aria-hidden="true" className="inline-flex h-6 w-6 items-center justify-center rounded-field" style={{ background: hollow ? ring : color, border: `2.5px solid ${hollow ? color : '#141b26'}` }}>
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke={hollow ? color : ring} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <span aria-hidden="true" className="inline-flex h-6 w-6 items-center justify-center rounded-field" style={{ background: hollow ? '#ffffff' : color, border: `2.5px solid ${hollow ? color : '#ffffff'}`, boxShadow: '0 0 0 1.2px #141b26' }}>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke={hollow ? color : '#ffffff'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2 9.5 12 5l10 4.5L12 14Z M6 11.5v4.2c0 1.3 2.7 2.8 6 2.8s6-1.5 6-2.8v-4.2 M22 9.5v5" />
         </svg>
       </span>
@@ -725,7 +730,9 @@ function Swatch({ kind, color, hollow = false }: { kind: 'pin' | 'lead' | 'schoo
   }
   return (
     <svg width="18" height="28" viewBox="1.75 -1.25 20.5 33.5" aria-hidden="true">
-      <path d="M12 31.2 9.6 17.6a9 9 0 1 1 4.8 0z" fill={hollow ? ring : color} stroke={hollow ? color : '#141b26'} strokeWidth={hollow ? 2.4 : 1.6} strokeLinejoin="round" />
+      <path d="M10.7 15.9 L13.3 15.9 L12.25 31.1 L11.75 31.1 Z" fill="#141b26" />
+      <circle cx="12" cy="8.9" r="9.1" fill="#ffffff" stroke="#141b26" strokeWidth="1.1" />
+      <circle cx="12" cy="8.9" r="7.6" fill={hollow ? '#ffffff' : color} stroke={hollow ? color : 'none'} strokeWidth={hollow ? 2.2 : 0} />
     </svg>
   )
 }
@@ -806,42 +813,81 @@ function Counter({
   )
 }
 
-function InstitutionCard({ inst, reach, onClose }: { inst: Institution; reach: Array<{ tone: 'real' | 'potential' }>; onClose: () => void }) {
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ AY7 (2026-10-11) — LA FICHE D'UNE INSTITUTION, LISIBLE DE LOIN.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * « Trop dense, je mets du temps à la lire. » Ce que le PO montre en deux
+ * secondes, en rendez-vous, à la personne en face : le NOM, et quatre
+ * chiffres en gros — combien de volontaires, combien de fermes desservies
+ * (le lien existe sur la route, dans la borne), à quelle distance (la plus
+ * proche desservie), et la borne elle-même. Le reste (lieu, type, statut,
+ * contact, rencontre) est derrière ⓘ.
+ */
+function InstitutionFigures({
+  inst,
+  reach,
+  volunteers,
+  limitText,
+  onClose,
+  bubble = false,
+}: {
+  inst: Institution
+  reach: Array<{ tone: 'real' | 'potential'; km: number; seconds: number }>
+  volunteers: number
+  limitText: string
+  onClose?: () => void
+  bubble?: boolean
+}) {
   const { t } = useTranslation()
+  const nearest = reach.length > 0 ? Math.min(...reach.map((r) => r.km)) : null
+  const figures = [
+    { v: String(volunteers), l: t('coverage.figures.volunteers'), testId: 'coverage-fig-volunteers' },
+    { v: String(reach.length), l: t('coverage.figures.farms'), testId: 'coverage-fig-farms' },
+    { v: nearest === null ? '—' : t('coverage.figures.km', { km: nearest.toFixed(nearest < 10 ? 1 : 0) }), l: t('coverage.figures.nearest'), testId: 'coverage-fig-nearest' },
+    { v: limitText, l: t('coverage.figures.limit'), testId: 'coverage-fig-limit' },
+  ]
   return (
-    <div className="w-[min(20rem,calc(100vw-2rem))] rounded-card bg-surface-overlay/95 p-4 shadow-lift backdrop-blur lg:w-[26rem] lg:p-5" data-testid="coverage-institution-card">
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-heading text-content-primary lg:text-title">{inst.name}</p>
-          <p className="mt-1 flex items-center gap-1.5 text-caption font-semibold text-content-primary lg:text-body">
-            <span className="shrink-0 text-accent-ink"><Icon name="pin" size={16} /></span>
-            {inst.locality || t('farms.noPosition')}
-          </p>
-          <p className="muted mt-0.5 text-caption">
-            {[t(`institutions.kind.${inst.kind}`), t(`institutions.audience.${inst.audience}`), inst.network].filter(Boolean).join(' · ')}
-          </p>
-        </div>
-        <button type="button" onClick={onClose} aria-label={t('common.close')} className="shrink-0 rounded-field p-1 text-content-muted hover:bg-surface-high hover:text-content-primary">
-          <Icon name="close" size={16} />
-        </button>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-edge-subtle pt-3">
-        <span className={`chip border ${ENGAGEMENT_ON[inst.engagement]}`}>{t(`institutions.engagement.${inst.engagement}`)}</span>
-        <span className="chip bg-surface-high text-content-secondary">{t('coverage.reaches', { count: reach.length })}</span>
-        {inst.positionUncertain && (
-          <span className="chip bg-status-warn/15 text-status-warn-ink" data-testid="coverage-uncertain-chip">{t('institutions.uncertain')}</span>
-        )}
-        {isInstitutionToConfirm(inst) && <span className="chip bg-status-warn/15 text-status-warn-ink">{t('institutions.toConfirm')}</span>}
-      </div>
-      {(inst.contactName || inst.metOn || inst.students !== null) && (
-        <p className="mt-2 text-caption text-content-secondary" data-testid="coverage-institution-facts">
-          {[
-            inst.contactName,
-            inst.metOn ? t('institutions.metOnShort', { date: inst.metOn.split('-').reverse().join('.') }) : '',
-            inst.students !== null ? t('institutions.studentsShort', { count: inst.students }) : '',
-          ].filter(Boolean).join(' · ')}
+    <div
+      className={bubble ? 'w-[min(22rem,calc(100vw-2rem))] rounded-card bg-surface-overlay/95 p-4 shadow-lift backdrop-blur lg:w-[28rem] lg:p-5' : ''}
+      data-testid={bubble ? 'coverage-institution-card' : 'coverage-institution-figures'}
+    >
+      <div className="flex items-start gap-2">
+        <p className="min-w-0 flex-1 text-title font-bold leading-tight text-content-primary lg:text-[1.75rem]" data-testid="coverage-institution-name">
+          {inst.name}
         </p>
-      )}
+        <InfoTip label={t('coverage.figures.more')} testId="coverage-institution-info">
+          <p className="text-caption text-content-primary">{[inst.locality, t(`institutions.kind.${inst.kind}`), t(`institutions.audience.${inst.audience}`), inst.network].filter(Boolean).join(' · ')}</p>
+          <p className="mt-1 flex flex-wrap gap-1">
+            <span className={`chip border ${ENGAGEMENT_ON[inst.engagement]}`}>{t(`institutions.engagement.${inst.engagement}`)}</span>
+            {isInstitutionToConfirm(inst) && <span className="chip bg-status-warn/15 text-status-warn-ink">{t('institutions.toConfirm')}</span>}
+            {inst.positionUncertain && <span className="chip bg-status-warn/15 text-status-warn-ink" data-testid="coverage-uncertain-chip">{t('institutions.uncertain')}</span>}
+          </p>
+          {(inst.contactName || inst.metOn || inst.students !== null) && (
+            <p className="mt-1 text-caption text-content-secondary" data-testid="coverage-institution-facts">
+              {[inst.contactName, inst.metOn ? t('institutions.metOnShort', { date: inst.metOn.split('-').reverse().join('.') }) : '', inst.students !== null ? t('institutions.studentsShort', { count: inst.students }) : ''].filter(Boolean).join(' · ')}
+            </p>
+          )}
+          <Link to={`/coordinator/institutions/${inst.id}`} className="btn-ghost mt-1 min-h-11 px-0">
+            <Icon name="edit" size={15} />
+            {t('coverage.figures.edit')}
+          </Link>
+        </InfoTip>
+        {onClose && (
+          <button type="button" onClick={onClose} aria-label={t('common.close')} className="h-11 w-11 shrink-0 rounded-field text-content-muted hover:bg-surface-high hover:text-content-primary">
+            <Icon name="close" size={18} />
+          </button>
+        )}
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {figures.map((f) => (
+          <div key={f.testId} className="rounded-card bg-surface-raised px-3 py-2.5 text-center shadow-card" data-testid={f.testId}>
+            <p className="numeric ltr-nums text-[2rem] font-bold leading-none text-content-primary lg:text-[2.5rem]">{f.v}</p>
+            <p className="mt-1 text-caption font-semibold text-content-secondary">{f.l}</p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -1017,108 +1063,4 @@ function MeshStatus({
   )
 }
 
-type ListFilter = 'all' | 'toConfirm' | InstitutionEngagement
 
-function InstitutionList({
-  institutions,
-  selectedId,
-  onPick,
-  filter,
-  setFilter,
-}: {
-  institutions: readonly Institution[]
-  selectedId: string | null
-  onPick: (id: string) => void
-  filter: ListFilter
-  setFilter: (f: ListFilter) => void
-}) {
-  const { t } = useTranslation()
-  const [query, setQuery] = useState('')
-  const listRef = useRef<HTMLUListElement | null>(null)
-  const q = query.trim()
-  const toConfirm = institutions.filter(isInstitutionToConfirm).length
-  const rows = institutions
-    .filter((i) => filter === 'all' || (filter === 'toConfirm' ? isInstitutionToConfirm(i) : i.engagement === filter))
-    .filter((i) => !q || `${i.name} ${i.locality} ${i.network}`.includes(q))
-    .slice()
-    .sort((a, b) => a.name.localeCompare(b.name, 'he'))
-  const counts = (e: ListFilter) =>
-    e === 'all' ? institutions.length : e === 'toConfirm' ? toConfirm : institutions.filter((i) => i.engagement === e).length
-  return (
-    <Section
-      title={t('institutions.title', { count: institutions.length })}
-      className="mt-4"
-      collapseKey="coverage-institutions"
-      action={
-        <span className="flex flex-wrap gap-1">
-          {/* ★ AW2 — une institution avec son responsable, d'une fiche ou à la main. */}
-          <Link to="/coordinator/add?type=institution" className="btn-ghost py-1.5" data-testid="coverage-add-link">
-            <Icon name="userPlus" size={16} />
-            {t('add.entry')}
-          </Link>
-          <Link to="/coordinator/import/institutions" className="btn-ghost py-1.5" data-testid="coverage-import-link">
-            <Icon name="upload" size={16} />
-            {t('institutions.import.short')}
-          </Link>
-        </span>
-      }
-    >
-      {/* ★★ AX3 — L'ENGAGEMENT EST UN FILTRE (les mêmes institutions, moins
-          nombreuses), pas un onglet. */}
-      <div className="pill-row" role="group" aria-label={t('institutions.engagementLabel')} data-testid="institutions-filter" data-filter-row="">
-        {([...(toConfirm > 0 ? (['toConfirm'] as const) : []), 'all', ...INSTITUTION_ENGAGEMENTS] as ListFilter[]).map((k) => (
-          <FilterPill
-            key={k}
-            active={filter === k}
-            onClick={() => setFilter(k)}
-            count={counts(k)}
-            testId={`institutions-filter-${k}`}
-          >
-            {k === 'all' ? t('institutions.all') : k === 'toConfirm' ? t('institutions.toConfirmTab') : t(`institutions.engagementShort.${k}`)}
-          </FilterPill>
-        ))}
-      </div>
-      <input type="search" className="input mt-3 w-full" placeholder={t('institutions.search')} value={query} onChange={(e) => setQuery(e.target.value)} data-testid="institutions-search" />
-      <ul ref={listRef} className="mt-3 flex flex-col gap-1.5" data-testid="institutions-list">
-        {rows.map((i) => (
-          <li key={i.id} className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => onPick(i.id)}
-              aria-pressed={selectedId === i.id}
-              data-testid={`institution-row-${i.id}`}
-              data-to-confirm={isInstitutionToConfirm(i) ? '' : undefined}
-              className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-field border px-3 py-1.5 text-start ${selectedId === i.id ? 'border-accent bg-accent/10' : 'border-edge-subtle hover:bg-surface-high'}`}
-            >
-              {/* ★ AV1 — le NOM d'abord, en entier : à 1 032 px les pastilles le
-                  réduisaient à « … ». Elles passent sous lui. */}
-              <span className="min-w-0 flex-1">
-                <span className="block text-caption font-semibold leading-snug text-content-primary">{i.name}</span>
-                <span className="mt-0.5 flex flex-wrap items-center gap-1 text-micro text-content-muted">
-                  <span>{[i.locality, t(`institutions.kind.${i.kind}`)].filter(Boolean).join(' · ')}</span>
-                  <span className={`chip border ${ENGAGEMENT_ON[i.engagement]}`}>{t(`institutions.engagementShort.${i.engagement}`)}</span>
-                  {isInstitutionToConfirm(i) && <span className="chip bg-status-warn/15 text-status-warn-ink">{t('institutions.toConfirm')}</span>}
-                  {!i.position && <span className="chip bg-surface-high text-content-muted">{t('institutions.noPoint')}</span>}
-                  {i.positionUncertain && <span className="chip bg-status-warn/15 text-status-warn-ink">{t('institutions.uncertainShort')}</span>}
-                </span>
-              </span>
-            </button>
-            {/* ★★ AV1 — confirmer : UN toucher, sans ouvrir la fiche. */}
-            {isInstitutionToConfirm(i) && (
-              <button
-                type="button"
-                onClick={() => runUndoable(t('undo.confirmed', { name: i.name }), () => updateInstitution(i.id, { engagementConfirmed: true }))}
-                data-testid={`institution-confirm-${i.id}`}
-                aria-label={t('institutions.confirmAria', { name: i.name, status: t(`institutions.engagement.${i.engagement}`) })}
-                className="btn-secondary min-h-11 shrink-0 px-3"
-              >
-                <Icon name="check" size={16} />
-                {t('institutions.confirm')}
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
-    </Section>
-  )
-}

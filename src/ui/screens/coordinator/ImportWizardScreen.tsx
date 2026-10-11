@@ -25,7 +25,6 @@ import type { ImportField, ImportKind, ParsedRow } from '@core/index'
 
 import { Icon } from '../../components/Icon'
 import { SelectField } from '../../components/fields'
-import { ImportTabs } from '../../components/importTabs'
 import { LoadMore } from '../../components/primitives'
 import { useProgressive } from '../../hooks/useProgressive'
 import {
@@ -100,10 +99,12 @@ function StepBar({ current }: { current: Step }) {
  * list and the drivers roster can each send the coordinator straight to their
  * own template instead of to a picker he has to read.
  */
-export function ImportWizardScreen() {
+export function ImportWizardScreen({ kind: kindProp }: { kind?: string } = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { kind: kindParam } = useParams<{ kind: string }>()
+  const { kind: routeKind } = useParams<{ kind: string }>()
+  /* ★★ AY12.1 — rendu DANS l'écran d'import unique, qui lui dit quoi lire. */
+  const kindParam = kindProp ?? routeKind
   const volunteers = useCoreValue(getVolunteers)
   /* ★★ AX10 — UNE LISTE FOURNIE PAR UNE INSTITUTION : chaque volontaire du
      fichier lui est rattaché (`institutionId`), quoi que dise sa colonne. On
@@ -303,26 +304,8 @@ export function ImportWizardScreen() {
         </div>
       )}
 
-      {/* G10 — the templates are one tap apart. A coordinator who lands here
-          from the volunteers list and realises he meant the farms sheet should
-          not have to go back out through two screens. Switching resets the
-          wizard: a mapping guessed for one template is meaningless against
-          another's columns.
-          AA4 · AA5 — and the row now carries the two imports that come from
-          outside the programme, which are a screen of their own. */}
-      <ImportTabs
-        current={kind}
-        onLeave={() => {
-          setStep('upload')
-          setResult(null)
-          setMatrix([])
-          setHeaders([])
-          setMapping([])
-          setFileName('')
-          setError(null)
-        }}
-      />
-
+      {/* ★★ AY12.1 — les onglets d'import ont disparu : le choix du fichier est
+          l'étape ① de l'écran d'import unique (`ImportHubScreen`). */}
       <StepBar current={step} />
 
       {error && (
