@@ -184,6 +184,32 @@
 >    classe (`farmRegion`), comme la colonne et le filtre.
 > A369 7/7.
 >
+> ## AY13 — VÉRIFIÉ SUR LE DÉPLOYÉ
+>
+> Servi : **`85b3ef1`** (les trois adresses, `version.json`). Code de AY
+> complet depuis `f6dc665` ; `85b3ef1` n'ajoute que le sommaire des réglages
+> au téléphone et la documentation.
+>
+> | Porte | Sur le déployé | Rouge d'avant |
+> |---|---:|---|
+> | `ayui` A355–A357 (pavé et clavier sur 30 champs de 12 écrans ; maillage ; thème sur deux appareils) | **93/93** (`f6dc665`) | `b4b3562` : 48/33 |
+> | `aymobile` A358 (48 écrans à 402 px, jumeau) | **48/48** (`85b3ef1`) | 12 défilaient (`ay2-mobile-avant.json`) |
+> | `ayscreens` A359–A369 | **57/57** (`f6dc665`) | — (formes nouvelles) |
+> | `aypins` A365 (contraste au pixel, 4 fonds × 5 familles) | **36/36** (`f6dc665`) | `905158c` : 13 bords sous 3:1 |
+> | `axui` (non-régression AX) | **111/111** (`f6dc665`) | — |
+> | `aycaptures` (24 écrans × clair/sombre × 402/1032/1440) | **144 captures, 0 erreur** (`85b3ef1`) | — |
+> | portes du déploiement (zones, agreement, demo, ground, backdrop, redraw, overlap, freehand) | vertes dans le workflow | — |
+>
+> Captures : `docs/screenshots/aypass/deployed/captures/` (et `…/mobile/`
+> pour les 48 écrans à 402 px). Journaux : `docs/ay/*-deploye.log`.
+>
+> ⚠️ **AY1.3 mesuré dans les conditions réelles, jusqu'où c'est possible
+> sans le mot de passe du PO** : la cause est lue dans la base réelle (aucune
+> clé de thème dans `user_settings`) ; le correctif est prouvé sur le build
+> servi, deux appareils, même base (A357). Il agira chez le PO dès qu'il
+> aura CHOISI un thème une fois sur un appareil (un thème jamais choisi ne
+> voyage pas, par construction).
+>
 > ## Décisions AY
 >
 > 1. ★★ **Un champ chiffré montre un brouillon** (vide compris) ; jamais lié

@@ -107,8 +107,10 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 - **Passe AY TERMINÉE, POUSSÉE ET DÉPLOYÉE — BUGS BLOQUANTS, MOBILE, UNE
   FORME DE TABLEAU** (2026-10-11). Commits : `cfab595` (AY1, déployé seul
   d'abord), `833e010` (AY2–AY5), `4a25ce3`, `cf80a04`, `f6dc665` (AY6–AY12,
-  portes du déploiement), puis documentation. Le commit SERVI se lit dans
-  `version.json` ; vérification sur le déployé : voir `ETAT.md` § AY13.
+  portes du déploiement), `85b3ef1` (sommaire des réglages au téléphone +
+  docs). **SERVI ET VÉRIFIÉ : `85b3ef1`** — ayui 93/93, ayscreens 57/57,
+  aypins 36/36, axui 111/111 (sur `f6dc665`, même code), aymobile 48/48 et
+  144 captures sur `85b3ef1`. Détail : `ETAT.md` § AY13.
   - **AY1** : pavé numérique réparé (sélection au toucher, brouillon
     `useNumberDraft`/`NumberField`/`NumInput`, plus aucun `type="number"`,
     fermeture sur toucher ailleurs / changement d'écran / disparition) ;

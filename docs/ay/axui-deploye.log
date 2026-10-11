@@ -1,0 +1,158 @@
+$ bun run scripts/axui.ts
+  app : https://azmer-fts.github.io/lo-yanum  (DÉPLOYÉ)
+
+  AX1 — le rail suit les trois temps du métier, chaque entrée nommée
+  ------------------------------------------------------------------
+  PASS  AX1 1440 px : trois temps — גיוס · תכנון · ביצוע  — rail-group-recruit,rail-group-plan,rail-group-execute
+  PASS  AX1 1440 px : les 11 entrées portent un nom visible  — לוח בקרה | יומן | אנשי קשר | חוות | מוסדות | מתנדבים | כיסוי | מסלול | שמירות | אירועים | הגדרות
+  PASS  AX1 1440 px : le rail tient sans défiler (הגדרות visible)
+  PASS  AX1 1376 px : trois temps — גיוס · תכנון · ביצוע  — rail-group-recruit,rail-group-plan,rail-group-execute
+  PASS  AX1 1376 px : les 11 entrées portent un nom visible  — לוח בקרה | יומן | אנשי קשר | חוות | מוסדות | מתנדבים | כיסוי | מסלול | שמירות | אירועים | הגדרות
+  PASS  AX1 1376 px : le rail tient sans défiler (הגדרות visible)
+
+  A345 · A346 · A347 — onglets / filtres, une rangée, une forme d’aide
+  --------------------------------------------------------------------
+  PASS  A346 /coordinator : au plus UNE rangée de filtres, aucune bande de tuiles  — 0 rangée(s), 0 bande(s)
+  PASS  A347 /coordinator : aucune explication ouverte d’office
+  PASS  A346 /coordinator/agenda : au plus UNE rangée de filtres, aucune bande de tuiles  — 0 rangée(s), 0 bande(s)
+  PASS  A347 /coordinator/agenda : aucune explication ouverte d’office
+  PASS  A346 /coordinator/leads : au plus UNE rangée de filtres, aucune bande de tuiles  — 1 rangée(s), 0 bande(s)
+  PASS  A345 /coordinator/leads : aucun onglet pour restreindre une liste  — 0 onglet(s)
+  PASS  A347 /coordinator/leads : aucune explication ouverte d’office
+  PASS  A346 /coordinator/farms : au plus UNE rangée de filtres, aucune bande de tuiles  — 1 rangée(s), 0 bande(s)
+  PASS  A347 /coordinator/farms : aucune explication ouverte d’office
+  PASS  A346 /coordinator/institutions : au plus UNE rangée de filtres, aucune bande de tuiles  — 1 rangée(s), 0 bande(s)
+  PASS  A345 /coordinator/institutions : aucun onglet pour restreindre une liste  — 0 onglet(s)
+  PASS  A347 /coordinator/institutions : aucune explication ouverte d’office
+  PASS  A346 /coordinator/volunteers : au plus UNE rangée de filtres, aucune bande de tuiles  — 1 rangée(s), 0 bande(s)
+  PASS  A347 /coordinator/volunteers : aucune explication ouverte d’office
+  PASS  A346 /coordinator/drivers : au plus UNE rangée de filtres, aucune bande de tuiles  — 1 rangée(s), 0 bande(s)
+  PASS  A347 /coordinator/drivers : aucune explication ouverte d’office
+  PASS  A346 /coordinator/coverage : au plus UNE rangée de filtres, aucune bande de tuiles  — 0 rangée(s), 0 bande(s)
+  PASS  A345 /coordinator/coverage : aucun onglet pour restreindre une liste  — 0 onglet(s)
+  PASS  A347 /coordinator/coverage : aucune explication ouverte d’office
+  PASS  A346 /coordinator/route : au plus UNE rangée de filtres, aucune bande de tuiles  — 1 rangée(s), 0 bande(s)
+  PASS  A347 /coordinator/route : aucune explication ouverte d’office
+  PASS  A346 /coordinator/missions : au plus UNE rangée de filtres, aucune bande de tuiles  — 1 rangée(s), 0 bande(s)
+  PASS  A345 /coordinator/missions : aucun onglet pour restreindre une liste  — 0 onglet(s)
+  PASS  A347 /coordinator/missions : aucune explication ouverte d’office
+  PASS  A346 /coordinator/incidents : au plus UNE rangée de filtres, aucune bande de tuiles  — 1 rangée(s), 0 bande(s)
+  PASS  A347 /coordinator/incidents : aucune explication ouverte d’office
+  PASS  A346 /coordinator/add : au plus UNE rangée de filtres, aucune bande de tuiles  — 0 rangée(s), 0 bande(s)
+  PASS  A347 /coordinator/add : aucune explication ouverte d’office
+  PASS  A346 /coordinator/settings : au plus UNE rangée de filtres, aucune bande de tuiles  — 0 rangée(s), 0 bande(s)
+  PASS  A347 /coordinator/settings : aucune explication ouverte d’office
+  /coordinator f=0 t=0 ⓘ=1 long=0
+  /coordinator/agenda f=0 t=0 ⓘ=1 long=0
+  /coordinator/leads f=1 t=0 ⓘ=1 long=0
+  /coordinator/farms f=1 t=0 ⓘ=1 long=0
+  /coordinator/institutions f=1 t=0 ⓘ=1 long=0
+  /coordinator/volunteers f=1 t=0 ⓘ=1 long=0
+  /coordinator/drivers f=1 t=0 ⓘ=1 long=0
+  /coordinator/coverage f=0 t=0 ⓘ=2 long=0
+  /coordinator/route f=1 t=0 ⓘ=2 long=0
+  /coordinator/missions f=1 t=0 ⓘ=0 long=0
+  /coordinator/incidents f=1 t=0 ⓘ=0 long=0
+  /coordinator/add f=0 t=0 ⓘ=1 long=0
+  /coordinator/settings f=0 t=0 ⓘ=11 long=0
+  PASS  A347 /coordinator/farms : ⓘ ouvre l’explication sur place, × la referme  — 1 → 0
+  PASS  A347 /coordinator/leads : ⓘ ouvre l’explication sur place, × la referme  — 1 → 0
+  PASS  A347 /coordinator/coverage : ⓘ ouvre l’explication sur place, × la referme  — 1 → 0
+  PASS  A347 /coordinator/add : ⓘ ouvre l’explication sur place, × la referme  — 1 → 0
+  PASS  A347 /coordinator/institutions : ⓘ ouvre l’explication sur place, × la referme  — 1 → 0
+  PASS  A346 חוות : les files de travail et le statut sont dans l’unique rangée de filtres
+  PASS  A345 חוות : le chiffre (dounams · pondérés) se lit, ne se touche pas  — 62,830 דונם · 9,910 משוקלל
+  PASS  aucune erreur de page
+
+  A348 — l’écran des contacts est un tableau
+  ------------------------------------------
+  PASS  A348 1440 px : un TABLEAU, avec ses en-têtes de colonnes
+  PASS  A348 1440 px : les statuts sont des FILTRES en haut (pas des onglets)  — 6 pastille(s)
+  PASS  A348 1440 px : chaque ligne porte ses gestes au bout (voir · modifier · ⋯)
+  PASS  A348 le tri se fait par la colonne : un toucher trie, un second inverse  — גידולי זיו, דיר העמק, משק אלון, רפת בית / רפת בית, משק אלון, דיר העמק, גידולי זיו
+  PASS  A348 l’en-tête dit le sens (aria-sort)
+  PASS  A348 le filtre « לחזור » ne garde que les contacts à rappeler  — call_back
+  PASS  A348 toucher la ligne ouvre l’aperçu latéral
+  PASS  A348 « עריכה » ouvre la fiche : note et secteur
+  PASS  A348 le secteur proposé est celui que déduit le lieu (comme la colonne)  — אוטומטי — הנגב
+  PASS  A348 la note est ÉCRITE en base
+  PASS  A348 le statut se change DANS sa colonne, un toucher, et s’écrit
+  PASS  A349 contacts 1 440 px : chaque ligne tient sur UNE ligne (≤ 56 px)  — 56,56,56,56
+  PASS  aucune erreur de page
+  PASS  A348 1032 px : un TABLEAU, avec ses en-têtes de colonnes
+  PASS  A348 1032 px : les statuts sont des FILTRES en haut (pas des onglets)  — 6 pastille(s)
+  PASS  A348 1032 px : chaque ligne porte ses gestes au bout (voir · modifier · ⋯)
+  PASS  aucune erreur de page
+
+  A349 — en grand écran, une ligne reste une ligne
+  ------------------------------------------------
+  PASS  A349 1440 px : « היום שלי » — heure · nom · km · durée sur UNE ligne  — 3 étape(s)
+  PASS  A349 1440 px : תכנון מסלול — nom · heure · km · durée sur UNE ligne  — 3 étape(s)
+  PASS  A349 1440 px : l’étape porte la distance ET la durée  — time,km,min
+  PASS  A349 1440 px : les deux totaux côte à côte
+  PASS  A349 1440 px : מוסדות — une ligne par institution (≤ 56 px)  — 56,56,56,56,56,56,56,56,56,56,56
+  PASS  aucune erreur de page
+  PASS  A349 1376 px : « היום שלי » — heure · nom · km · durée sur UNE ligne  — 3 étape(s)
+  PASS  A349 1376 px : תכנון מסלול — nom · heure · km · durée sur UNE ligne  — 3 étape(s)
+  PASS  A349 1376 px : l’étape porte la distance ET la durée  — time,km,min
+  PASS  A349 1376 px : les deux totaux côte à côte
+  PASS  A349 1376 px : מוסדות — une ligne par institution (≤ 56 px)  — 56,56,56,56,56,56,56,56,56,56,56
+  PASS  aucune erreur de page
+
+  A350 — kilomètres ou minutes ; les deux sur chaque lien
+  -------------------------------------------------------
+  PASS  A350 en km : la borne se lit en ק״מ  — 35 ק״מ
+  PASS  A350 chaque lien porte km ET minutes (borne en km)  — 35 ק״מ · 37 דק׳ | 32 ק״מ · 31 דק׳
+  PASS  A350 le PO CHOISIT les minutes : la borne se lit en דק׳  — 35 דק׳
+  PASS  A350 chaque lien porte km ET minutes (borne en minutes)  — 62 liens
+  PASS  A350 la borne en minutes change le maillage  — 72 → 62
+  PASS  A350 la tenue de NUIT se règle et resserre la borne  — 62 → 43
+  PASS  A350 l’écran DIT de quoi est faite la durée (vitesses, marge, nuit)
+  PASS  A350 le choix est gardé (et voyage : clé synchronisée)
+  PASS  aucune erreur de page
+
+  A351 — un itinéraire enregistré se retrouve (fermeture, autre appareil)
+  -----------------------------------------------------------------------
+  PASS  A351 deux tournées du même jour : DEUX dans la liste, même après avoir décoché  — 25 fermes choisissables · סבב א, סבב ב
+  PASS  A351 les deux sont ÉCRITES en base, avec leur nom  — סבב א, סבב ב
+  PASS  A351 l’application fermée puis rouverte : les deux sont là  — סבב א, סבב ב
+  PASS  A351 rouvrir une tournée la recharge (nom, étapes, « enregistrée »)
+  PASS  A351 se renomme (et s’écrit)
+  PASS  A351 sur un AUTRE appareil : les deux tournées, avec leur nom  — סבב א, סבב הנגב
+  PASS  A351 se supprime, après confirmation
+  PASS  aucune erreur de page
+  PASS  A351 un point libre entre dans la MÊME tournée
+  PASS  A351 le point libre s’enregistre AVEC la tournée (tours.free_stops)  — [[{"id":"free-mv3rew2s","name":"שער הקיבוץ","lat":31.4167,"lng":34.588,"phone":""}]]
+  PASS  A351 sur un AUTRE appareil : la tournée revient avec son point libre
+  PASS  A351 l’ancienne adresse de l’itinéraire libre mène au planificateur unique  — https://azmer-fts.github.io/lo-yanum/?ax=1791719315418#/coordinator/route
+
+  A352 — la région, en colonne, dans le tableau des fermes
+  --------------------------------------------------------
+  PASS  A352 1376 px : la colonne « אזור » est AFFICHÉE  — 25 cellules
+  PASS  A352 1376 px : chaque ferme placée montre sa région (vides : seulement les 6 sans point ni région)  — 6 vide(s) · מישור החוף, הנגב, מישור החוף, מישור החוף, מישור החוף, מישור החוף
+  PASS  A352 filtrer sur une région : CHAQUE ligne la montre dans sa colonne  — הנגב : הנגב, הנגב, הנגב, הנגב, הנגב, הנגב, הנגב, הנגב
+  PASS  aucune erreur de page
+  PASS  A352 1440 px : la colonne « אזור » est AFFICHÉE  — 25 cellules
+  PASS  A352 1440 px : chaque ferme placée montre sa région (vides : seulement les 6 sans point ni région)  — 6 vide(s) · מישור החוף, הנגב, מישור החוף, מישור החוף, מישור החוף, מישור החוף
+  PASS  aucune erreur de page
+
+  A353 — un seul point d’entrée, par étapes, rien de déployé d’avance
+  -------------------------------------------------------------------
+  PASS  A353 le « + » : les cinq ajouts mènent tous au même écran  — fab-add-farm, fab-add-farmFile, fab-add-institution, fab-add-volunteer, fab-add-driver, fab-mission-new, fab-visit-new, fab-meeting-new, fab-incident-new
+  PASS  A353 à l’ouverture : SEULEMENT le nom (ni type, ni fichier, ni collage)  — {"s2":0,"s3":0,"files":0,"areas":0}
+  PASS  A353 un nom → l’étape ② (ce que c’est) apparaît, pas la ③
+  PASS  A353 le type → l’étape ③ : ce que CE type demande
+  PASS  A353 enregistré : un contact de plus, écrit en base
+  PASS  A353 une institution s’ajoute À LA MAIN, une par une
+  PASS  A353 liste CSV/Excel de volontaires → l’import, l’institution reprise  — /coordinator/import/volunteers?institution=inst-1s4q9zh
+  PASS  A353 l’import dit à quelle institution la liste sera rattachée
+  PASS  A353 depuis מתנדבים, « + » → /add?type=volunteer  — https://azmer-fts.github.io/lo-yanum/?ax=1791719341664#/coordinator/add?type=volunteer
+  PASS  aucune erreur de page
+
+  A354 — les cinq gestes du PO, comptés en clics, avant / après
+  -------------------------------------------------------------
+
+  Captures — clair et sombre, trois largeurs, les écrans touchés
+  --------------------------------------------------------------
+
+  111 PASS, 0 FAIL
