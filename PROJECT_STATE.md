@@ -104,6 +104,17 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **Passe AY EN COURS (2026-10-11)** — bugs bloquants, mobile, une forme de
+  tableau. Commits poussés : `cfab595` (AY1), `833e010` (AY2–AY5), `4a25ce3`
+  (AY6–AY12.2). Migration `20261011000100_ay_people.sql` appliquée par le MCP
+  (+ jalon `20261011064458`), `armigrations` 44/44.
+  Reste : AY12.2 (planificateur unique, points libres), AY12.3–12.6, AY13
+  (vérification sur le déployé, captures), ETAT.md, rapport. Portes AY :
+  `bun run aypass` (pur), `bun run ayui` (A355–A357), `bun run aymobile`
+  (A358, jumeau 402 px), `bun run aypins` (A365 contraste des épingles).
+  Rouges d'avant : `docs/ay/ay1-rouge-avant.log`, `docs/ay/ay2-mobile-avant.json`,
+  `docs/ay/ay8-epingles-avant.log` (build de `905158c` : `dist-ay-before`).
+
 - **Passe AX TERMINÉE, POUSSÉE ET DÉPLOYÉE — REMISE EN ORDRE DE
   L'ARCHITECTURE** (2026-10-10/11) — commit de code servi et vérifié :
   **`905158c`** (après `b4b3562`). Branche `main`, à jour avec `origin/main`.
