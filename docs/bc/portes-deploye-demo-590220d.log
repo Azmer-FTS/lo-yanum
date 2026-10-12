@@ -1,0 +1,18 @@
+# BC — portes rejouées 2026-10-12T13:03:38.940Z
+
+## bcmobile — exit=0
+
+246 PASS · 0 FAIL  → docs/bc/bcmobile-deploye.json
+
+## aymobile — exit=0
+
+48 PASS, 0 FAIL  (48 écrans à 402 px) → docs/ay/ay2-mobile-deploye.json
+
+## aitheme — exit=0
+
+18 passed · 0 failed
+
+# BILAN
+OK   bcmobile       exit=0 178s  246 PASS · 0 FAIL  → docs/bc/bcmobile-deploye.json
+OK   aymobile       exit=0 225s  48 PASS, 0 FAIL  (48 écrans à 402 px) → docs/ay/ay2-mobile-deploye.json
+OK   aitheme        exit=0 32s  18 passed · 0 failed

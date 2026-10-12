@@ -1,0 +1,330 @@
+{
+  "base": "https://azmer-fts.github.io/lo-yanum/demo",
+  "at": "2026-10-12T13:14:03.942Z",
+  "results": [
+    {
+      "rest": 194,
+      "scrolled": 126,
+      "share": 77,
+      "viewport": "phone-390",
+      "height": 844,
+      "mode": "hidden",
+      "screen": "fermes"
+    },
+    {
+      "rest": 194,
+      "scrolled": 126,
+      "share": 77,
+      "viewport": "phone-390",
+      "height": 844,
+      "mode": "hidden",
+      "screen": "institutions"
+    },
+    {
+      "rest": 190,
+      "scrolled": 132,
+      "share": 77,
+      "viewport": "phone-390",
+      "height": 844,
+      "mode": "hidden",
+      "screen": "contacts"
+    },
+    {
+      "rest": 194,
+      "scrolled": 126,
+      "share": 77,
+      "viewport": "phone-390",
+      "height": 844,
+      "mode": "hidden",
+      "screen": "volontaires"
+    },
+    {
+      "rest": 210,
+      "scrolled": 152,
+      "share": 75,
+      "viewport": "phone-390",
+      "height": 844,
+      "mode": "hidden",
+      "screen": "gardes"
+    },
+    {
+      "rest": 206,
+      "scrolled": 148,
+      "share": 76,
+      "viewport": "phone-390",
+      "height": 844,
+      "mode": "hidden",
+      "screen": "incidents"
+    },
+    {
+      "rest": 194,
+      "scrolled": 126,
+      "share": 77,
+      "viewport": "phone-390",
+      "height": 844,
+      "mode": "split",
+      "screen": "fermes"
+    },
+    {
+      "rest": 194,
+      "scrolled": 126,
+      "share": 77,
+      "viewport": "phone-390",
+      "height": 844,
+      "mode": "split",
+      "screen": "institutions"
+    },
+    {
+      "rest": 190,
+      "scrolled": 132,
+      "share": 77,
+      "viewport": "phone-390",
+      "height": 844,
+      "mode": "split",
+      "screen": "contacts"
+    },
+    {
+      "rest": 194,
+      "scrolled": 126,
+      "share": 77,
+      "viewport": "phone-390",
+      "height": 844,
+      "mode": "split",
+      "screen": "volontaires"
+    },
+    {
+      "rest": 210,
+      "scrolled": 152,
+      "share": 75,
+      "viewport": "phone-390",
+      "height": 844,
+      "mode": "split",
+      "screen": "gardes"
+    },
+    {
+      "rest": 206,
+      "scrolled": 148,
+      "share": 76,
+      "viewport": "phone-390",
+      "height": 844,
+      "mode": "split",
+      "screen": "incidents"
+    },
+    {
+      "rest": 374,
+      "scrolled": 354,
+      "share": 68,
+      "viewport": "tablet-820",
+      "height": 1180,
+      "mode": "hidden",
+      "screen": "fermes"
+    },
+    {
+      "rest": 296,
+      "scrolled": 274,
+      "share": 75,
+      "viewport": "tablet-820",
+      "height": 1180,
+      "mode": "hidden",
+      "screen": "institutions"
+    },
+    {
+      "rest": 296,
+      "scrolled": 274,
+      "share": 75,
+      "viewport": "tablet-820",
+      "height": 1180,
+      "mode": "hidden",
+      "screen": "contacts"
+    },
+    {
+      "rest": 262,
+      "scrolled": 242,
+      "share": 78,
+      "viewport": "tablet-820",
+      "height": 1180,
+      "mode": "hidden",
+      "screen": "volontaires"
+    },
+    {
+      "rest": 280,
+      "scrolled": 260,
+      "share": 76,
+      "viewport": "tablet-820",
+      "height": 1180,
+      "mode": "hidden",
+      "screen": "gardes"
+    },
+    {
+      "rest": 264,
+      "scrolled": 244,
+      "share": 78,
+      "viewport": "tablet-820",
+      "height": 1180,
+      "mode": "hidden",
+      "screen": "incidents"
+    },
+    {
+      "rest": 206,
+      "scrolled": 158,
+      "share": 83,
+      "viewport": "tablet-820",
+      "height": 1180,
+      "mode": "split",
+      "screen": "fermes"
+    },
+    {
+      "rest": 206,
+      "scrolled": 158,
+      "share": 83,
+      "viewport": "tablet-820",
+      "height": 1180,
+      "mode": "split",
+      "screen": "institutions"
+    },
+    {
+      "rest": 202,
+      "scrolled": 202,
+      "share": 83,
+      "viewport": "tablet-820",
+      "height": 1180,
+      "mode": "split",
+      "screen": "contacts"
+    },
+    {
+      "rest": 206,
+      "scrolled": 138,
+      "share": 83,
+      "viewport": "tablet-820",
+      "height": 1180,
+      "mode": "split",
+      "screen": "volontaires"
+    },
+    {
+      "rest": 206,
+      "scrolled": 206,
+      "share": 83,
+      "viewport": "tablet-820",
+      "height": 1180,
+      "mode": "split",
+      "screen": "gardes"
+    },
+    {
+      "rest": 202,
+      "scrolled": 202,
+      "share": 83,
+      "viewport": "tablet-820",
+      "height": 1180,
+      "mode": "split",
+      "screen": "incidents"
+    },
+    {
+      "rest": 306,
+      "scrolled": 286,
+      "share": 63,
+      "viewport": "tablet-1180",
+      "height": 820,
+      "mode": "hidden",
+      "screen": "fermes"
+    },
+    {
+      "rest": 226,
+      "scrolled": 206,
+      "share": 72,
+      "viewport": "tablet-1180",
+      "height": 820,
+      "mode": "hidden",
+      "screen": "institutions"
+    },
+    {
+      "rest": 226,
+      "scrolled": 206,
+      "share": 72,
+      "viewport": "tablet-1180",
+      "height": 820,
+      "mode": "hidden",
+      "screen": "contacts"
+    },
+    {
+      "rest": 226,
+      "scrolled": 206,
+      "share": 72,
+      "viewport": "tablet-1180",
+      "height": 820,
+      "mode": "hidden",
+      "screen": "volontaires"
+    },
+    {
+      "rest": 212,
+      "scrolled": 192,
+      "share": 74,
+      "viewport": "tablet-1180",
+      "height": 820,
+      "mode": "hidden",
+      "screen": "gardes"
+    },
+    {
+      "rest": 194,
+      "scrolled": 174,
+      "share": 76,
+      "viewport": "tablet-1180",
+      "height": 820,
+      "mode": "hidden",
+      "screen": "incidents"
+    },
+    {
+      "rest": 136,
+      "scrolled": 88,
+      "share": 83,
+      "viewport": "tablet-1180",
+      "height": 820,
+      "mode": "split",
+      "screen": "fermes"
+    },
+    {
+      "rest": 136,
+      "scrolled": 88,
+      "share": 83,
+      "viewport": "tablet-1180",
+      "height": 820,
+      "mode": "split",
+      "screen": "institutions"
+    },
+    {
+      "rest": 132,
+      "scrolled": 132,
+      "share": 84,
+      "viewport": "tablet-1180",
+      "height": 820,
+      "mode": "split",
+      "screen": "contacts"
+    },
+    {
+      "rest": 136,
+      "scrolled": 68,
+      "share": 83,
+      "viewport": "tablet-1180",
+      "height": 820,
+      "mode": "split",
+      "screen": "volontaires"
+    },
+    {
+      "rest": 136,
+      "scrolled": 88,
+      "share": 83,
+      "viewport": "tablet-1180",
+      "height": 820,
+      "mode": "split",
+      "screen": "gardes"
+    },
+    {
+      "rest": 132,
+      "scrolled": 112,
+      "share": 84,
+      "viewport": "tablet-1180",
+      "height": 820,
+      "mode": "split",
+      "screen": "incidents"
+    }
+  ]
+}

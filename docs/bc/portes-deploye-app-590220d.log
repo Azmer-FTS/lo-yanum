@@ -1,0 +1,95 @@
+# BC — portes rejouées 2026-10-12T13:14:04.039Z
+
+## ayscreens — exit=0
+
+57 PASS, 0 FAIL
+
+## ayui — exit=0
+
+108 PASS, 0 FAIL
+
+## azui — exit=0
+
+125 PASS, 0 FAIL
+
+## az5ui — exit=0
+
+21 PASS, 0 FAIL
+
+## axui — exit=0
+
+116 PASS, 0 FAIL
+
+## baui — exit=0
+
+48 PASS, 0 FAIL
+
+## bbui — exit=0
+
+82 PASS, 0 FAIL
+
+## avui — exit=0
+
+51 PASS, 0 FAIL
+
+## auui — exit=0
+
+60 PASS, 0 FAIL
+
+## awui — exit=0
+
+57 PASS, 0 FAIL
+
+## amui — exit=0
+
+77 passed, 0 failed
+
+## aqui — exit=0
+
+108 passed, 0 failed
+
+## anui — exit=1
+FAIL  A236 · volontaire (+) : une page (adresse, flèche retour), aucune fenêtre  — {"hash":"#/coordinator/volunteers","dialog":0,"back":false,"title":true}
+FAIL  section interrompue  — click: Timeout 8000ms exceeded.
+147 passed, 2 failed
+
+## atui — exit=1
+FAIL  A301 · étroit : le statut est une liste déroulante de la couleur du statut
+FAIL  salle d’attente 402 — section interrompue  — selectOption: Timeout 30000ms exceeded. · - waiting for locator('select[data-testid="lead-status-lead-at-01"]')
+FAIL  les cinq pistes ouvertes sont dans UNE liste (la « לא רלוונטי » est un filtre)  — 0
+FAIL  A301 · étroit : le statut est une liste déroulante de la couleur du statut
+FAIL  salle d’attente 1032 — section interrompue  — boundingBox: Timeout 30000ms exceeded. · - waiting for locator('tr[data-testid="lead-lead-at-01"]')
+FAIL  les cinq pistes ouvertes sont dans UNE liste (la « לא רלוונטי » est un filtre)  — 0
+FAIL  A301 · étroit : le statut est une liste déroulante de la couleur du statut
+FAIL  salle d’attente 1376 — section interrompue  — boundingBox: Timeout 30000ms exceeded. · - waiting for locator('tr[data-testid="lead-lead-at-01"]')
+FAIL  AT4.4 · tous les blocs dépliés par défaut (fiche neuve sur cet appareil)  — 1 replié(s)
+FAIL  AT4.4 · tous les blocs dépliés par défaut (fiche neuve sur cet appareil)  — 1 replié(s)
+FAIL  AT4.4 · tous les blocs dépliés par défaut (fiche neuve sur cet appareil)  — 1 replié(s)
+FAIL  A306 · douze tuiles  — 11
+atui : 124 PASS · 15 FAIL
+
+## arfiche — exit=0
+
+144 passed, 0 failed
+
+## assettings — exit=0
+
+All 20 checks passed.
+
+# BILAN
+OK   ayscreens      exit=0 189s  57 PASS, 0 FAIL
+OK   ayui           exit=0 514s  108 PASS, 0 FAIL
+OK   azui           exit=0 348s  125 PASS, 0 FAIL
+OK   az5ui          exit=0 23s  21 PASS, 0 FAIL
+OK   axui           exit=0 285s  116 PASS, 0 FAIL
+OK   baui           exit=0 64s  48 PASS, 0 FAIL
+OK   bbui           exit=0 119s  82 PASS, 0 FAIL
+OK   avui           exit=0 254s  51 PASS, 0 FAIL
+OK   auui           exit=0 240s  60 PASS, 0 FAIL
+OK   awui           exit=0 260s  57 PASS, 0 FAIL
+OK   amui           exit=0 470s  77 passed, 0 failed
+OK   aqui           exit=0 309s  108 passed, 0 failed
+ROUGE anui           exit=1 336s  147 passed, 2 failed
+ROUGE atui           exit=1 311s  atui : 124 PASS · 15 FAIL
+OK   arfiche        exit=0 237s  144 passed, 0 failed
+OK   assettings     exit=0 70s  All 20 checks passed.

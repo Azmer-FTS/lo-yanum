@@ -1,7 +1,7 @@
 {
   "app": "https://azmer-fts.github.io/lo-yanum/demo",
   "width": 402,
-  "at": "2026-10-11T11:53:12.317Z",
+  "at": "2026-10-12T13:10:22.548Z",
   "results": [
     {
       "name": "tableau-de-bord",
@@ -73,7 +73,7 @@
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
-      "tables": 0
+      "tables": 1
     },
     {
       "name": "conducteur-edition",
@@ -109,7 +109,7 @@
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
-      "tables": 0
+      "tables": 1
     },
     {
       "name": "fermes-liste",
@@ -118,7 +118,7 @@
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
-      "tables": 0
+      "tables": 1
     },
     {
       "name": "ferme",
@@ -253,7 +253,7 @@
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
-      "tables": 0
+      "tables": 1
     },
     {
       "name": "contacts",
@@ -262,7 +262,7 @@
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
-      "tables": 0
+      "tables": 1
     },
     {
       "name": "gardes",
@@ -334,7 +334,7 @@
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
-      "tables": 0
+      "tables": 1
     },
     {
       "name": "volontaire-edition",

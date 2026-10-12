@@ -36,7 +36,16 @@
 > déployé, `docs/bc/bc-entete-avant.json`) : au téléphone, liste seule, l'en-tête
 > mangeait 374 px sur les fermes (56 % de données) ; en mode partagé, la première
 > ferme apparaissait à 688 px (18 %) ; en tablette 820 px, mode partagé, à
-> 822 px (30 %). Les motifs nommés par le brief, et eux seuls :
+> 822 px (30 %). APRÈS, même mesure sur le jumeau déployé de `590220d`
+> (`docs/bc/bc-entete-avant-apres.md`, tableau complet, repos / défilé) :
+> téléphone 390, liste — fermes 374 → 194 px (77 %), institutions · contacts ·
+> volontaires 262 → 190–194 (77 %), gardes 248 → 210 (75 %), incidents
+> 232 → 206 (76 %) ; défilé, il reste 126–152 px ; un téléphone neuf (avant : le
+> mode partagé) — fermes 688 → 194, les autres 534–576 → 190–210 ; tablette 820,
+> défaut (carte à côté) — fermes 822 → 206, toutes à 83 % ; tablette 1180, défaut
+> — institutions et contacts 488 → 136 (40 → 83 %). Tablette en « liste seule »
+> (pleine largeur) : la forme LARGE de BA reste (A397 de BA à 1 032 px), donc
+> inchangée — fermes 68 % à 820, 63 % à 1180 : question ouverte au PO. Les motifs nommés par le brief, et eux seuls :
 >   a) LE GRAND TITRE (iOS large title / Material collapsing toolbar) : titre,
 >      compte et « ⋯ » défilent avec la liste ; la barre fine collée garde la
 >      recherche et les déclencheurs (`ListTop` forme compacte) ;
@@ -136,6 +145,17 @@
 > **9 · L'ALIAS.** « ישיבת בית יהודה » retiré des alias de ישיבת ההסדר שדות נגב ;
 > les autres alias restent.
 >
+> **Données** (posées APRÈS le déploiement de `590220d`, par un bloc SQL gardé —
+> chaque instruction doit toucher exactement une ligne, sinon tout est annulé —
+> relu avant et après ; SQL et instantané dans `private/bc/`) : 19 localités de
+> repère CALCULÉES (même fonction que l'application) et 5 SAISIES, marquées
+> saisies (les cinq fermes sans point), aucune ferme sans repère ; nature
+> pré-remplie, drapeau « à confirmer » levé, sur 11 fermes (בקר, צאן, גד״ש, חווה
+> טיפולית) et 7 contacts à traiter (בקר, כרם, מטעים, גד״ש), les 13 autres
+> fermes vides ; « ישיבת בית יהודה » retiré des alias de ישיבת ההסדר שדות נגב (les
+> trois autres restent) ; la note du contact de tête de ישיבת דרך חיים marquée
+> comme restreignant son téléphone — la seule de la base.
+>
 > **Portes.** Nouvelles : `bcpass` (A411–A417, calcul : plan d'AZ4, sélection ≠
 > bulle et flèches, localité de repère, nature, appel gardé liste + fiche, thème
 > synchronisé, mise à jour au réveil) ; `bcmobile` (A418–A426, au rendu,
@@ -173,7 +193,28 @@
 > `anui` (A236), `akui` (A199 WebKit), `atui` (salle d'attente, AT4.4, A306),
 > `uipass` (`kpi-strip`), `sheets` (`import-tabs`, AY12), et la course de
 > `amui` A215 (BC 4/8, `HEAD` 5/8 sur le parcours exact ; tâche proposée).
-> Sur le déployé : (à compléter).
+> **Sur le déployé `590220d`** (servi à 16:03 après une relance : le premier
+> déploiement est tombé sur une erreur 500 de GitHub au téléchargement du fond
+> de carte, sans rapport avec le code) — jumeau `…/lo-yanum/demo` : `bcmobile`
+> 246/246, `aymobile` 48/48 (stricte), `aitheme` 18/18 ; app `…/lo-yanum` :
+> `ayscreens` 57/57 · `ayui` 108/108 · `azui` 125/125 · `az5ui` 21/21 · `axui`
+> 116/116 · `baui` 48/48 · `bbui` 82/82 · `avui` 51/51 · `auui` 60/60 · `awui`
+> 57/57 · `amui` 77/77 · `aqui` 108/108 · `arfiche` 144/144 · `assettings`
+> 20/20 ; `anui` 147/2 et `atui` 124/15 : leurs rouges d'avant BC, à
+> l'identique (`docs/bc/portes-deploye-*-590220d.log`).
+>
+> **Questions ouvertes au PO.** (1) Tablette en « liste seule » (pleine
+> largeur) : garder la rangée de BA (ce que BA a validé à 1 032 px ; 63–75 % de
+> données) ou passer à la forme compacte (≥ 83 %) ? (2) Les demandes entrantes
+> en forme compacte : la file « בקשות נכנסות » est dans la feuille (comme toutes
+> les files) ; la demande elle-même reste la PREMIÈRE ligne, distincte, et
+> « בקשה נכנסת » la première valeur des statuts — si le PO veut une pastille
+> visible sans geste, elle ira dans la barre (au prix de la place de la
+> recherche). Toujours ouvertes d'avant : le titre du rosh de ישיבת שומריה
+> לצעירים (BB), la purge des données réelles déjà suivies (BA).
+> **Proposées en tâches séparées** (puces dans l'app) : le formulaire
+> d'édition qui attend l'hydratation (course `amui` A215), la virtualisation
+> d'`EntityTable` (`layout` A30, volontaires).
 
 > 🏁 **BB — INSTITUTIONS, DEUX ARBITRAGES, DEUX BUGS. 2026-10-12.**
 >

@@ -104,55 +104,53 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **BC — LA PASSE QUI DOIT CLORE L'INTERFACE — EN COURS** (2026-10-12).
-  Brief : 9 parties (AZ4, bulle de couverture, MOBILE = cœur, thème, mise à
-  jour, localité de repère, nature d'exploitation, avertissement d'appel,
-  alias à retirer). Récit et portes : `ETAT.md` § BC (en tête).
-  - **BC1 commité (`b2f999f`)** : AZ4 fini ; migration `20261011000300`
-    appliquée + jalon `20261012071847` ; armigrations verte.
-  - **BC2 = tout le reste** (code, portes, migration `20261012000300`
-    APPLIQUÉE par le MCP + jalon `20261012072911`, repair fait) : commité
-    juste après cette mise à jour, puis poussé.
-  - **Thème (réponse factuelle)** : clé `lo-yanum:theme:coordinator` = `"dark"`,
-    PRÉSENTE, SANS instant dans `__stamps` ⇒ vrai bug, corrigé dans
-    `ui/settings/sync.ts` + phrase « thème — d'où vient la décision ».
-  - **Décisions prises en fin de passe (à garder)** :
-    · au téléphone, une liste = « liste ↔ carte » (pas de divisé) ; carte
-      masquée → TABLEAU (règle AZ2 du PO) ; ce tableau étroit reprend la
-      lisibilité des vignettes d'AZ2 (nom 18 px, ce qui situe 16 px, localité
-      13,5 px ; `EntityTable` `leadCell(big)`, grille des gardes `md:`).
-      Porte : `bcmobile` A425 + `azui` A372 à 402 ;
+- **BC — LA PASSE QUI DOIT CLORE L'INTERFACE — TERMINÉE, POUSSÉE, DÉPLOYÉE,
+  DONNÉES POSÉES** (2026-10-12). Branche `main`. Commits : `b2f999f` (BC1,
+  AZ4), `590220d` (BC2, tout le reste, SERVI : `version.json` = 590220d), puis
+  le commit de documentation de fin de passe (ETAT, PROJECT_STATE, mesures et
+  journaux du déployé). Récit, décisions, portes, questions : `ETAT.md` § BC
+  (en tête) — c'est la source de vérité de la passe.
+  - **Fait** : les 9 parties du brief. Migrations `20261011000300` (AZ4) et
+    `20261012000300` (BC) appliquées par le MCP + jalons `20261012071847`,
+    `20261012072911` ; armigrations 50/50. Données posées APRÈS le
+    déploiement et relues : 19 repères calculés + 5 saisis (0 manquant), 11
+    natures de ferme + 7 de pistes (toutes « à confirmer »), alias retiré
+    (3 restent), drapeau d'appel sur `ic-bb-01` de `inst-1tztnmz` (le seul).
+  - **Thème (réponse factuelle)** : clé `lo-yanum:theme:coordinator` =
+    `"dark"`, PRÉSENTE, SANS instant dans `__stamps` ⇒ vrai bug, corrigé
+    (`ui/settings/sync.ts`) + phrase « thème appliqué — d'où vient la
+    décision » dans les réglages.
+  - **Décisions de fin de passe (permanentes)** :
+    · téléphone : une liste = « liste ↔ carte » ; carte masquée → TABLEAU
+      (règle AZ2) ; ce tableau étroit a la lisibilité des vignettes d'AZ2
+      (nom 18 px, ce qui situe 16 px, localité 13,5 px) — `bcmobile` A425 ;
+    · tablette : carte à côté dès 48 rem ; en-tête compact tant que le
+      panneau est étroit ; en « liste seule » pleine largeur, la forme LARGE
+      de BA (question ouverte au PO) ;
+    · la feuille de filtres porte TOUTES les familles (statuts compris, leur
+      déclencheur l'ouvre sur leur section), lignes à 10 px ; la file
+      « בקשות נכנסות » y est, la demande reste la 1re ligne (question au PO) ;
+    · vignette d'un contact : une pastille de statut + choix compact +
+      balayage ; G1 d'AX = 3 clics en mode partagé (1 toucher en tableau) ;
     · `ListTop` garde le MÊME élément `data-list-top` dans ses deux formes ;
-      `EntityTable` re-cherche l'en-tête s'il est détaché (défaut à 1 032 px) ;
-    · vignette d'un contact : UNE pastille de statut (+ choix compact) au lieu
-      des quatre boutons ; G1 d'AX passe de 2 à 3 clics en mode divisé ; en
-      tableau seul la colonne de statut reste à un toucher ;
-    · forme compacte : la file « בקשות נכנסות » (AQ) est dans la FEUILLE avec
-      les autres files ; la demande elle-même reste visible sans geste —
-      PREMIÈRE ligne / vignette, distincte (A261) ; dans la feuille,
-      « בקשה נכנסת » est aussi la première valeur des statuts. À DIRE AU PO ;
-    · la feuille porte TOUTES les familles, statuts compris (leur déclencheur
-      l'ouvre sur leur section) ; lignes à 10 px d'écart ;
-    · `scripts/bcleak.ts` : avant chaque commit, l'index ne doit porter aucune
-      aiguille de TOUT `private/` — `awpass`/`awui` IMPRIMENT un vrai numéro
-      quand la fiche privée d'AW est sur le disque : les journaux complets
-      (`*-full.log`) vont dans `private/bc/logs/`, jamais dans `docs/`.
-  - **Portes (locales, code final)** : voir `ETAT.md` § BC « Portes » ;
-    rouges ANTÉRIEURS établis sur un worktree de `b2f999f` :
-    `docs/bc/portes-reference-head.md`. Deux tâches proposées au PO (puces) :
-    attendre l'hydratation dans le formulaire d'édition (course `amui` A215),
-    virtualiser `EntityTable` (`layout` A30 volontaires).
-  - **Après le push** : attendre `version.json` = sha ; rejouer sur le
-    déployé (app : `BASE_URL=https://azmer-fts.github.io/lo-yanum` ; jumeau :
-    `…/lo-yanum/demo` pour bcmobile, aymobile, aitheme) ; mesurer l'APRÈS
-    (`BASE_URL=https://azmer-fts.github.io/lo-yanum/demo OUT=docs/bc/bc-entete-apres.json
-    bun run scripts/bcbefore.ts` puis `bun run scripts/bcheadtable.ts`).
-  - **Données (APRÈS déploiement, jamais avant)** : `bun run scripts/bcdata.ts`
-    → `private/bc/data.sql` (44 instructions gardées : 19 repères calculés,
-    5 saisis, 11 natures de ferme, 7 de pistes, l'alias, le drapeau d'appel du
-    contact `ic-bb-01` de `inst-1tztnmz`). Relire l'état AVANT (updated_at),
-    exécuter par le MCP `execute_sql` (org jkqsqykhquutilldvcsv), puis relire.
-  - Mesures d'en-tête AVANT : `docs/bc/bc-entete-avant.json`.
+    · `scripts/bcleak.ts` AVANT CHAQUE COMMIT (aiguilles de tout `private/`) ;
+      journaux complets de portes → `private/bc/logs/`, jamais `docs/`.
+  - **Rouges ANTÉRIEURS (non régressions), établis sur un worktree de
+    `b2f999f`** (`docs/bc/portes-reference-head.md`) : `pills` (A85, A71
+    réglages, A74/A72 grand écran des fermes), `rhythm` (A62), `anui` (A236),
+    `akui` (plante, A199 WebKit), `atui` (salle d'attente, AT4.4, A306),
+    `uipass` (`kpi-strip`), `sheets` (`import-tabs`), `layout` (volunteer-
+    modal, driver-modal ; et A30 volontaires = `EntityTable` non virtualisé,
+    exposé par la liste par défaut du téléphone), course `amui` A215 (~50 %
+    sur HEAD comme sur BC ; 77/77 sur le déployé).
+  - **Questions ouvertes au PO** : (1) tablette en liste seule : rangée de
+    BA ou forme compacte ? (2) pastille « בקשות נכנסות » visible sans geste
+    en forme compacte ? (3, BB) titre du rosh de ישיבת שומריה לצעירים ;
+    (4, BA) purge des données réelles déjà suivies par git.
+  - **Tâches proposées (puces)** : formulaire d'édition qui attend
+    l'hydratation ; virtualiser `EntityTable`.
+  - **Mesures d'en-tête** : `docs/bc/bc-entete-avant.json`,
+    `docs/bc/bc-entete-apres.json`, tableau `docs/bc/bc-entete-avant-apres.md`.
 
 - **BB — INSTITUTIONS, DEUX ARBITRAGES, DEUX BUGS** (2026-10-12). Commit de
   code `8a621ff`, poussé, DÉPLOYÉ et servi (`version.json` = 8a621ff) ;
@@ -864,6 +862,14 @@ cd "/Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM"
 bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
 bun run typecheck && bun run appass && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run contrast && bun run akpass && bun run accept
+
+# LA PASSE BC :
+bun run bcpass                                                     # A411–A417 en pur (75)
+bun run bcmobile                                                   # A418–A426 au rendu, jumeau local (246)
+BASE_URL=https://azmer-fts.github.io/lo-yanum/demo bun run bcmobile   # le jumeau DÉPLOYÉ
+bun run scripts/bcleak.ts                                          # AVANT CHAQUE COMMIT (index prêt)
+GATES="aymobile azui baui" LOG=docs/bc/x.log bun run scripts/bcgates.ts   # rejouer une liste, codes de sortie
+BASE_URL=https://azmer-fts.github.io/lo-yanum/demo OUT=docs/bc/bc-entete-apres.json bun run scripts/bcbefore.ts && bun run scripts/bcheadtable.ts
 
 # LA PASSE BB :
 bun run bbpass                                                     # A401–A407 en pur (51)
