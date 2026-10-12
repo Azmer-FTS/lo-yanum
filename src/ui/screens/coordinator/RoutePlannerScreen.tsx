@@ -22,7 +22,9 @@ import {
   localDayKey,
   now,
   planRoute,
+  routeInOrder,
   saveTour,
+  TOUR_STOP_MINUTES,
   telHref,
   wazeStepLinks,
   FREE_STOP_PREFIX,
@@ -33,11 +35,11 @@ import {
   smsHref,
   whatsappHref,
 } from '@core/index'
-import type { AgendaEvent, Farm, FarmStatus, FreeRoute, LatLng, RegionId, Tour, TourFreeStop } from '@core/index'
+import type { AgendaEvent, Farm, FarmStatus, FreeRoute, LatLng, RegionId, Tour, TourFreeStop, TourPlan } from '@core/index'
 import { useFreeRoutes } from '../../settings/freeRoutes'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { PositionLinkField } from '../../components/PositionLinkField'
-import { TextField } from '../../components/fields'
+import { NumInput, TextField } from '../../components/fields'
 
 import { originLabel, originPosition } from '../../settings/origin'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
@@ -76,6 +78,24 @@ function toTimeInput(isoValue: string): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
+
+/**
+ * ★★ AZ4 → BC (2026-10-12) — LE PLAN D'UNE TOURNÉE, SANS SES CASES VIDES.
+ * `{}` veut dire « comme avant AZ » (ordre calculé, 45 min, départ des
+ * réglages) ; un ordre vide, une table de durées vide ne sont pas un choix.
+ * C'est cette forme qu'on enregistre et qu'on compare (« נשמר »).
+ */
+function cleanPlan(p: TourPlan): TourPlan {
+  const out: TourPlan = {}
+  if (p.order && p.order.length > 0) out.order = [...p.order]
+  if (typeof p.visitMinutes === 'number' && p.visitMinutes !== TOUR_STOP_MINUTES) out.visitMinutes = p.visitMinutes
+  const stops = Object.entries(p.stopMinutes ?? {}).filter(([, v]) => typeof v === 'number')
+  if (stops.length > 0) out.stopMinutes = Object.fromEntries(stops)
+  if (p.origin) out.origin = { ...p.origin }
+  return out
+}
+const samePlan = (a: TourPlan | undefined, b: TourPlan): boolean => JSON.stringify(cleanPlan(a ?? {})) === JSON.stringify(cleanPlan(b))
+const pairKey = (a: LatLng, b: LatLng) => `${a.lat.toFixed(6)},${a.lng.toFixed(6)}>${b.lat.toFixed(6)},${b.lng.toFixed(6)}`
 
 /**
  * C1.2 → G9 — the route planner, now the AGENDA'S working surface.
@@ -123,6 +143,12 @@ export function RoutePlannerScreen() {
   const [freeName, setFreeName] = useState('')
   const [freePhone, setFreePhone] = useState('')
   const [departTime, setDepartTime] = useState(() => (initialTour ? toTimeInput(initialTour.departAt) : '08:30'))
+  /* ★★ AZ4 → BC — ce que l'itinéraire libre savait régler, gardé avec la
+     tournée (`tours.plan`) : l'ordre choisi à la main, la durée sur place
+     (tournée et étape), un départ propre. */
+  const [tourPlan, setTourPlan] = useState<TourPlan>(() => initialTour?.plan ?? {})
+  const [originEdit, setOriginEdit] = useState(false)
+  const [originDraftName, setOriginDraftName] = useState('')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   /* ★ AN11 — le rendez-vous s'ouvre en PAGE (FormPages.tsx). */
   const navigateTo = useNavigate()
@@ -179,6 +205,7 @@ export function RoutePlannerScreen() {
     setDayKey(tour.dayKey)
     setSelected(new Set(tour.farmIds))
     setFreeStops(tour.freeStops ?? [])
+    setTourPlan(tour.plan ?? {})
     setDepartTime(toTimeInput(tour.departAt))
     setParams({ tour: tour.id }, { replace: true })
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -201,6 +228,7 @@ export function RoutePlannerScreen() {
     setTourName('')
     setSelected(new Set())
     setFreeStops([])
+    setTourPlan({})
     setParams({ date: dayKey }, { replace: true })
   }
 
@@ -266,16 +294,27 @@ export function RoutePlannerScreen() {
    *   arrival time on this screen was measured from a point nobody chose. It
    *   is now the הגדרות setting, with the same constant as its default.
    */
-  const origin = originPosition()
-  const originName = originLabel() || t('route.originName')
+  /* ★★ AZ4 → BC — un départ PROPRE à cette tournée, sinon celui des réglages. */
+  const settingsOrigin = originPosition()
+  const origin: LatLng = tourPlan.origin ? { lat: tourPlan.origin.lat, lng: tourPlan.origin.lng } : settingsOrigin
+  const originName = tourPlan.origin?.label || originLabel() || t('route.originName')
 
+  /* ★★ AZ4 → BC — L'ORDRE DU COORDINATEUR, quand il en a choisi un (↑ ↓) :
+     « seulement après la traite » ne se calcule pas, il se décide. Une étape
+     ajoutée après coup se range au bout ; sans ordre, le plus court. */
+  const manualOrder = tourPlan.order ?? []
   const route = useMemo(
-    () => planRoute(chosen, origin),
+    () => {
+      if (manualOrder.length === 0) return planRoute(chosen, origin)
+      const rank = new Map(manualOrder.map((id, i) => [id, i]))
+      const ordered = [...chosen].sort((a, b) => (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER))
+      return routeInOrder(ordered, origin)
+    },
     // The origin is a stored preference, not React state: it changes only when
     // הגדרות is saved, which remounts this screen anyway. Keyed on its VALUE so
     // a returning coordinator gets the new plan rather than the cached one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [chosen, origin.lat, origin.lng],
+    [chosen, origin.lat, origin.lng, manualOrder.join('|')],
   )
   /* ★★ AN3 — le trajet du planificateur suit la ROUTE, comme l'itinéraire
      libre (il traçait `routePolyline`, un trait droit de ferme en ferme). */
@@ -292,6 +331,19 @@ export function RoutePlannerScreen() {
     const seconds = road.legs.reduce((n, l) => n + (l?.seconds ?? 0), 0)
     return { km: meters / 1000, minutes: Math.max(1, Math.round((seconds / 60) * (1 + margin / 100))) }
   }, [road, roadPoints.length, margin])
+  /* ★★ AZ4 → BC — LES HEURES D'ARRIVÉE PAR LA ROUTE. Chaque tronçon mesuré
+     (marge du PO comprise) sert à l'horaire ; un tronçon que la route n'a pas
+     (encore) mesuré est estimé à vol d'oiseau, et la ligne le dit (≈). */
+  const roadLegOf = useMemo(() => {
+    const m = new Map<string, { km: number; minutes: number }>()
+    if (road.pending) return m
+    roadPoints.forEach((p, i) => {
+      const q = roadPoints[i + 1]
+      const l = road.legs[i]
+      if (q && l) m.set(pairKey(p, q), { km: l.meters / 1000, minutes: Math.max(1, Math.round((l.seconds / 60) * (1 + margin / 100))) })
+    })
+    return m
+  }, [road, roadPoints, margin])
   const mapsUrl = useMemo(() => googleMapsRouteUrl(route), [route])
   const wazeSteps = useMemo(() => wazeStepLinks(route), [route])
 
@@ -318,6 +370,12 @@ export function RoutePlannerScreen() {
       tour: { id: 'draft', name: '', dayKey, departAt, farmIds: draftFarmIds },
       farms: [...getVisibleFarms(), ...freeFarms],
       events: getAgendaEvents(day, addDays(day, 1)),
+      /* ★★ AZ4 → BC — le départ de CETTE tournée (il partait toujours de
+         HOME_BASE ici, pendant que le tracé partait des réglages). */
+      origin,
+      visitMinutes: tourPlan.visitMinutes,
+      stopMinutes: tourPlan.stopMinutes,
+      legOf: (a, b) => roadLegOf.get(pairKey(a, b)) ?? null,
     })
   })
 
@@ -331,7 +389,8 @@ export function RoutePlannerScreen() {
     savedTour.dayKey === dayKey &&
     (savedTour.name ?? '') === tourName.trim() &&
     savedTour.farmIds.length === savedFarmIds.length &&
-    savedTour.farmIds.every((id, i) => id === savedFarmIds[i])
+    savedTour.farmIds.every((id, i) => id === savedFarmIds[i]) &&
+    samePlan(savedTour.plan, tourPlan)
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -486,7 +545,56 @@ export function RoutePlannerScreen() {
                 data-testid="tour-name"
               />
             </label>
+            {/* ★★ AZ4 → BC — la durée sur place de CETTE tournée (45 min par défaut). */}
+            <label className="min-w-0">
+              <span className="label">{t('route.stayLabel')}</span>
+              <NumInput
+                min={0}
+                max={600}
+                value={tourPlan.visitMinutes ?? TOUR_STOP_MINUTES}
+                onCommit={(n) => n !== null && setTourPlan((p) => ({ ...p, visitMinutes: n }))}
+                className="h-11 w-24 text-center"
+                testId="tour-stay"
+                ariaLabel={t('route.stayLabel')}
+              />
+            </label>
           </div>
+          {/* ★★ AZ4 → BC — LE DÉPART : celui des réglages, ou un point propre à
+              cette tournée (un lien ou des coordonnées collés). */}
+          <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="tour-origin" data-custom={tourPlan.origin ? 'true' : 'false'}>
+            <Icon name="home" size={15} className="shrink-0 text-content-muted" />
+            <span className="min-w-0 flex-1 text-caption text-content-secondary">
+              {t('route.originLine', { name: originName })}
+              {tourPlan.origin && <span className="ms-1.5 font-semibold text-accent-ink">· {t('route.originCustom')}</span>}
+            </span>
+            {tourPlan.origin && (
+              <button type="button" className="btn-ghost min-h-11" onClick={() => setTourPlan((p) => ({ ...p, origin: undefined }))} data-testid="tour-origin-reset">
+                <Icon name="undo" size={14} />
+                {t('route.originReset')}
+              </button>
+            )}
+            <button type="button" className="btn-secondary min-h-11" aria-expanded={originEdit} onClick={() => setOriginEdit((v) => !v)} data-testid="tour-origin-edit">
+              <Icon name="edit" size={14} />
+              {t('route.originChange')}
+            </button>
+          </div>
+          {originEdit && (
+            <div className="mt-2 rounded-field bg-surface-high p-2.5" data-testid="tour-origin-panel">
+              <label className="flex flex-col gap-1">
+                <span className="label">{t('route.originNameLabel')}</span>
+                <input className="input min-h-11" value={originDraftName} onChange={(e) => setOriginDraftName(e.target.value)} placeholder={t('route.originNamePlaceholder')} data-testid="tour-origin-name" />
+              </label>
+              <PositionLinkField
+                className="mt-2"
+                applyLabel={t('route.originApply')}
+                onResolve={(position) => {
+                  setTourPlan((p) => ({ ...p, origin: { lat: position.lat, lng: position.lng, label: originDraftName.trim() } }))
+                  setOriginDraftName('')
+                  setOriginEdit(false)
+                }}
+              />
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="tour-actions" data-editing={editingId ?? ''} data-saved={isSaved ? 'true' : 'false'}>
             {isSaved ? (
               <span className="chip bg-status-success/15 text-status-success-ink" data-testid="tour-saved-chip">
@@ -501,7 +609,7 @@ export function RoutePlannerScreen() {
                   disabled={draftFarmIds.length === 0}
                   data-testid="tour-save"
                   onClick={() => {
-                    const saved = saveTour({ id: savedTour?.id, name: tourName.trim(), dayKey, departAt, farmIds: savedFarmIds, freeStops })
+                    const saved = saveTour({ id: savedTour?.id, name: tourName.trim(), dayKey, departAt, farmIds: savedFarmIds, freeStops, plan: cleanPlan(tourPlan) })
                     setEditingId(saved.id)
                     setParams({ tour: saved.id }, { replace: true })
                   }}
@@ -516,7 +624,7 @@ export function RoutePlannerScreen() {
                     className="btn-secondary"
                     data-testid="tour-save-as-new"
                     onClick={() => {
-                      const saved = saveTour({ name: tourName.trim() || t('route.copyName', { name: savedTour.name || dayKey }), dayKey, departAt, farmIds: savedFarmIds, freeStops })
+                      const saved = saveTour({ name: tourName.trim() || t('route.copyName', { name: savedTour.name || dayKey }), dayKey, departAt, farmIds: savedFarmIds, freeStops, plan: cleanPlan(tourPlan) })
                       setEditingId(saved.id)
                       setTourName(saved.name ?? '')
                       setParams({ tour: saved.id }, { replace: true })
@@ -902,6 +1010,19 @@ export function RoutePlannerScreen() {
             <EmptyState icon="route" title={t('route.emptySelection')} />
           ) : (
             <>
+              {/* ★★ AZ4 → BC — l'ordre : calculé (le plus court), ou choisi à la main. */}
+              <div className="mb-2 flex flex-wrap items-center gap-2" data-testid="route-order-mode" data-manual={manualOrder.length > 0 ? 'true' : 'false'}>
+                <span className="chip bg-surface-high text-micro text-content-secondary">
+                  <Icon name="route" size={11} />
+                  {manualOrder.length > 0 ? t('route.orderManual') : t('route.orderShortest')}
+                </span>
+                {manualOrder.length > 0 && (
+                  <button type="button" className="btn-ghost min-h-11 text-caption" onClick={() => setTourPlan((p) => ({ ...p, order: undefined }))} data-testid="route-order-reset">
+                    <Icon name="undo" size={14} />
+                    {t('route.orderReset')}
+                  </button>
+                )}
+              </div>
               <ol className="line-scope flex flex-col divide-y divide-edge-subtle/60" data-testid="route-stops">
                 {/**
                   * ★★ Y9.3 — THE LIST IS THE SCHEDULE, NOT THE SAVED ORDER.
@@ -922,8 +1043,17 @@ export function RoutePlannerScreen() {
                   lateBy: 0,
                   visitEvent: null,
                   wazeUrl: '',
-                }))).map((stop) => {
+                }))).map((stop, idx, shown) => {
                   const planStop = plan.stops.find((ps) => ps.farm.id === stop.farm.id)
+                  /* ★★ AZ4 → BC — ↑ ↓ : l'ordre affiché devient l'ordre choisi. */
+                  const move = (dir: -1 | 1) => {
+                    const ids = shown.map((x) => x.farm.id)
+                    const j = idx + dir
+                    if (j < 0 || j >= ids.length) return
+                    ;[ids[idx], ids[j]] = [ids[j], ids[idx]]
+                    setTourPlan((p) => ({ ...p, order: ids }))
+                  }
+                  const stay = tourPlan.stopMinutes?.[stop.farm.id] ?? tourPlan.visitMinutes ?? TOUR_STOP_MINUTES
                   const contact = contactOf(stop.farm)
                   const waze = wazeSteps.find((w) => w.order === stop.order)
                   /* ★★ AX6 — la distance ET la durée de l'étape, par la ROUTE
@@ -932,6 +1062,7 @@ export function RoutePlannerScreen() {
                   const leg = legIdx >= 0 ? road.legs[legIdx] : null
                   const legKm = leg ? leg.meters / 1000 : stop.legKm
                   const legMin = leg ? Math.max(1, Math.round((leg.seconds / 60) * (1 + margin / 100))) : estimateDriveMinutes(stop.legKm)
+                  const estimated = planStop?.estimated ?? !leg
                   return (
                     <li
                       key={stop.farm.id}
@@ -976,7 +1107,7 @@ export function RoutePlannerScreen() {
                               planStop?.fixed ? 'text-status-violet-ink' : 'text-accent-ink'
                             }`}
                           >
-                            {planStop ? formatTime(planStop.arriveAt, locale) : '—'}
+                            {planStop ? `${estimated ? '≈ ' : ''}${formatTime(planStop.arriveAt, locale)}` : '—'}
                           </span>
                           <span data-fig="km" className="ltr-nums" style={{ ['--fig-w' as string]: '3.5rem' }}>
                             {km(legKm)} {t('common.km')}
@@ -986,7 +1117,31 @@ export function RoutePlannerScreen() {
                           </span>
                         </span>
 
-                      <span data-area="act" className="flex shrink-0 items-center gap-1">
+                      <span data-area="act" className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                        <button type="button" className="btn-ghost h-11 w-11 min-w-0 justify-center p-0" disabled={idx === 0} onClick={() => move(-1)} aria-label={t('route.moveUp', { name: stop.farm.name })} title={t('route.moveUp', { name: stop.farm.name })} data-testid="route-stop-up">
+                          <Icon name="chevronUp" size={16} />
+                        </button>
+                        <button type="button" className="btn-ghost h-11 w-11 min-w-0 justify-center p-0" disabled={idx === shown.length - 1} onClick={() => move(1)} aria-label={t('route.moveDown', { name: stop.farm.name })} title={t('route.moveDown', { name: stop.farm.name })} data-testid="route-stop-down">
+                          <Icon name="chevronDown" size={16} />
+                        </button>
+                        {/* ★★ AZ4 → BC — la durée sur place de CETTE étape. */}
+                        <NumInput
+                          min={0}
+                          max={600}
+                          value={stay}
+                          onCommit={(n) =>
+                            n !== null &&
+                            setTourPlan((p) => {
+                              const m = { ...(p.stopMinutes ?? {}) }
+                              if (n === (p.visitMinutes ?? TOUR_STOP_MINUTES)) delete m[stop.farm.id]
+                              else m[stop.farm.id] = n
+                              return { ...p, stopMinutes: m }
+                            })
+                          }
+                          className="h-11 w-16 text-center"
+                          testId="route-stop-stay"
+                          ariaLabel={t('route.stopStay', { name: stop.farm.name })}
+                        />
                           {/* ★★ Y9.3 — a pinned hour says so, and an impossible
                             one says by how much. Neither is ever moved. */}
                         {planStop?.fixed && (
@@ -1006,7 +1161,7 @@ export function RoutePlannerScreen() {
                             href={telHref(contact.phone)}
                             title={`${t('common.call')} · ${contact.name}`}
                             aria-label={`${t('common.call')} · ${contact.name}`}
-                            className="flex h-9 w-9 items-center justify-center rounded-pill bg-surface-high text-content-primary
+                            className="flex h-11 w-11 items-center justify-center rounded-pill bg-surface-high text-content-primary
                                        transition-all duration-fast ease-out hover:bg-gradient-accent hover:text-content-on-accent active:scale-95"
                           >
                             <Icon name="phone" size={15} />
@@ -1014,7 +1169,7 @@ export function RoutePlannerScreen() {
                         ) : (
                           <span
                             title={t('route.noContact')}
-                            className="flex h-9 w-9 items-center justify-center text-content-muted/40"
+                            className="flex h-11 w-11 items-center justify-center text-content-muted/40"
                           >
                             <Icon name="phone" size={15} />
                           </span>
@@ -1038,7 +1193,7 @@ export function RoutePlannerScreen() {
                               })
                             : ''
                           const off = !phone.trim() || !planStop
-                          const cls = `flex h-9 w-9 items-center justify-center rounded-pill bg-surface-high text-content-primary transition-all duration-fast ease-out hover:bg-gradient-accent hover:text-content-on-accent active:scale-95 ${off ? 'pointer-events-none opacity-40' : ''}`
+                          const cls = `flex h-11 w-11 items-center justify-center rounded-pill bg-surface-high text-content-primary transition-all duration-fast ease-out hover:bg-gradient-accent hover:text-content-on-accent active:scale-95 ${off ? 'pointer-events-none opacity-40' : ''}`
                           return (
                             <>
                               <a
@@ -1110,7 +1265,7 @@ export function RoutePlannerScreen() {
                             rel="noreferrer"
                             title={t('common.openInWaze')}
                             aria-label={t('common.openInWaze')}
-                            className="flex h-9 w-9 items-center justify-center rounded-pill bg-surface-high text-accent-ink
+                            className="flex h-11 w-11 items-center justify-center rounded-pill bg-surface-high text-accent-ink
                                        transition-all duration-fast ease-out hover:bg-gradient-accent hover:text-content-on-accent active:scale-95"
                           >
                             <Icon name="navigation" size={15} />
@@ -1150,6 +1305,12 @@ export function RoutePlannerScreen() {
                 </dd>
                 {!roadTotals && <dd className="muted text-micro">{t('route.measuringRoad')}</dd>}
               </dl>
+              {/* ★★ AZ4 → BC — « חזרה בסביבות », l'heure de retour au départ. */}
+              {plan.returnAt && (
+                <p className="mt-1.5 text-caption text-content-secondary" data-testid="route-return" data-estimated={plan.returnEstimated ? 'true' : 'false'}>
+                  {t('route.returnAround', { time: `${plan.returnEstimated ? '≈ ' : ''}${formatTime(plan.returnAt, locale)}`, name: originName })}
+                </p>
+              )}
             </>
           )}
         </div>

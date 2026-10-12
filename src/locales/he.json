@@ -1145,7 +1145,22 @@
     "freeName": "שם הנקודה",
     "freeNamePlaceholder": "למשל: שער הקיבוץ",
     "freeAdd": "הוספה למסלול",
-    "freeChip": "נקודה חופשית"
+    "freeChip": "נקודה חופשית",
+    "stayLabel": "זמן בכל עצירה (דק׳)",
+    "stopStay": "זמן שהייה ב{{name}} (דק׳)",
+    "originLine": "יציאה מ{{name}}",
+    "originCustom": "נקודת יציאה לסיור הזה",
+    "originReset": "לנקודת היציאה הקבועה",
+    "originChange": "שינוי נקודת יציאה",
+    "originNameLabel": "שם נקודת היציאה",
+    "originNamePlaceholder": "למשל: הבית, משרד המועצה",
+    "originApply": "קביעה כנקודת יציאה",
+    "orderManual": "סדר ידני",
+    "orderShortest": "הסדר הקצר ביותר",
+    "orderReset": "חזרה לסדר הקצר ביותר",
+    "moveUp": "להקדים את {{name}}",
+    "moveDown": "לדחות את {{name}}",
+    "returnAround": "חזרה ל{{name}} בסביבות {{time}}"
   },
   "myday": {
     "title": "היום שלי",

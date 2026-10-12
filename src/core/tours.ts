@@ -35,6 +35,24 @@ export interface Tour {
    * téléphone) : un seul planificateur pour les fiches et les points libres.
    */
   freeStops?: TourFreeStop[]
+  /** ★★ AZ4 — ordre manuel, durées sur place, départ propre (`tours.plan`). */
+  plan?: TourPlan
+}
+
+/**
+ * ★★ AZ4 — CE QUE L'ITINÉRAIRE LIBRE SAVAIT RÉGLER, GARDÉ AVEC LA TOURNÉE
+ * (colonne `tours.plan`, jsonb). Tout est facultatif : vide = comme avant AZ
+ * (ordre calculé, 45 min par étape, départ des réglages).
+ */
+export interface TourPlan {
+  /** Les ids (fermes ET points libres) dans l'ordre choisi à la main. */
+  order?: string[]
+  /** La durée sur place par défaut de CETTE tournée (min). */
+  visitMinutes?: number
+  /** La durée sur place d'une étape donnée (min), par id. */
+  stopMinutes?: Record<string, number>
+  /** Un point de départ propre à cette tournée. */
+  origin?: { lat: number; lng: number; label: string }
 }
 
 export interface TourFreeStop {
@@ -114,6 +132,10 @@ export interface DayPlanStop {
    * it. See `buildDayPlan`.
    */
   fixed: boolean
+  /** ★★ AZ4 — la durée sur place retenue pour cette étape (min). */
+  stayMinutes?: number
+  /** ★★ AZ4 — l'étape n'a pas de mesure par la route : durée ESTIMÉE (vol d'oiseau). */
+  estimated?: boolean
   /**
    * ★★ Y9.3 — minutes by which the drive cannot make a pinned hour, when the
    * day as ordered is simply impossible. Zero on every feasible plan.
@@ -159,6 +181,8 @@ export interface DayPlan {
   mapsUrl: string | null
   /** ★ AN2 — les fermes de la tournée sans position : hors du tracé et de l'horaire. */
   unplaced: Farm[]
+  /** ★★ AZ4 — le retour n'a pas de mesure par la route (estimé). */
+  returnEstimated?: boolean
 }
 
 export interface DayPlanInput {
@@ -169,6 +193,15 @@ export interface DayPlanInput {
   /** The day's agenda events, whatever their kind. */
   events: AgendaEvent[]
   origin?: LatLng
+  /** ★★ AZ4 — durée sur place par défaut (min) ; sinon `TOUR_STOP_MINUTES`. */
+  visitMinutes?: number
+  /** ★★ AZ4 — durée sur place d'une étape (min), par id de ferme / point libre. */
+  stopMinutes?: Record<string, number>
+  /**
+   * ★★ AZ4 — LA ROUTE, quand elle est mesurée : la durée (min, marge comprise)
+   * et la distance (km) d'un tronçon. `null` = pas de mesure, on estime.
+   */
+  legOf?: (from: LatLng, to: LatLng) => { km: number; minutes: number } | null
 }
 
 interface Window {
@@ -206,6 +239,14 @@ function windowOf(event: AgendaEvent): Window {
 export function buildDayPlan(input: DayPlanInput): DayPlan {
   const origin = input.origin ?? HOME_BASE
   const tour = input.tour
+  const stay = (farm: Farm): number => input.stopMinutes?.[farm.id] ?? input.visitMinutes ?? TOUR_STOP_MINUTES
+  /** Un tronçon : par la route si elle est mesurée, sinon l'estimation d'avant. */
+  const leg = (from: LatLng, to: LatLng): { km: number; minutes: number; estimated: boolean } => {
+    const road = input.legOf?.(from, to) ?? null
+    if (road) return { ...road, estimated: false }
+    const km = haversineKm(from, to)
+    return { km, minutes: estimateDriveMinutes(km), estimated: true }
+  }
   const farmsById = new Map(input.farms.map((f) => [f.id, f]))
   const chosenFarms = (tour?.farmIds ?? []).flatMap((id) => {
     const farm = farmsById.get(id)
@@ -293,21 +334,23 @@ export function buildDayPlan(input: DayPlanInput): DayPlan {
 
   /** Place one floating farm at the cursor, pushed past any wall it hits. */
   const placeFloating = (farm: Farm): void => {
-    const legKm = haversineKm(position, farm.position)
-    const legMinutes = estimateDriveMinutes(legKm)
+    const l = leg(position, farm.position)
+    const legKm = l.km
+    const legMinutes = l.minutes
+    const minutes = stay(farm)
     let arrive = cursor + legMinutes * MINUTE
 
     // Push past every fixed hour the stop would collide with. The walls are
     // sorted, so one forward pass settles the final slot.
     const unobstructed = arrive
     for (const wall of walls) {
-      const departs = arrive + TOUR_STOP_MINUTES * MINUTE
+      const departs = arrive + minutes * MINUTE
       if (arrive < wall.end && departs > wall.start) {
         arrive = wall.end
       }
     }
 
-    const departAt = arrive + TOUR_STOP_MINUTES * MINUTE
+    const departAt = arrive + minutes * MINUTE
     stops.push({
       farm,
       order: stops.length + 1,
@@ -320,6 +363,8 @@ export function buildDayPlan(input: DayPlanInput): DayPlan {
       visitEvent: null,
       fixed: false,
       lateBy: 0,
+      stayMinutes: minutes,
+      estimated: l.estimated,
     })
 
     totalKm += legKm
@@ -332,11 +377,12 @@ export function buildDayPlan(input: DayPlanInput): DayPlan {
   const placePinned = (farm: Farm): void => {
     const event = absorbedByFarm.get(farm.id) as AgendaEvent
     const at = new Date(event.at).getTime()
-    const legKm = haversineKm(position, farm.position)
-    const legMinutes = estimateDriveMinutes(legKm)
+    const l = leg(position, farm.position)
+    const legKm = l.km
+    const legMinutes = l.minutes
     const earliest = cursor + legMinutes * MINUTE
     // The appointment lasts as long as it says, or a stop, whichever is more.
-    const ends = Math.max(new Date(event.endAt).getTime(), at + TOUR_STOP_MINUTES * MINUTE)
+    const ends = Math.max(new Date(event.endAt).getTime(), at + stay(farm) * MINUTE)
 
     stops.push({
       farm,
@@ -350,6 +396,8 @@ export function buildDayPlan(input: DayPlanInput): DayPlan {
       visitEvent: event,
       fixed: true,
       lateBy: Math.max(0, Math.round((earliest - at) / MINUTE)),
+      stayMinutes: Math.round((ends - at) / MINUTE),
+      estimated: l.estimated,
     })
 
     totalKm += legKm
@@ -365,9 +413,9 @@ export function buildDayPlan(input: DayPlanInput): DayPlan {
     for (;;) {
       const next = queue[0]
       if (!next) break
-      const toNext = estimateDriveMinutes(haversineKm(position, next.position)) * MINUTE
-      const onward = estimateDriveMinutes(haversineKm(next.position, pin.position)) * MINUTE
-      const done = cursor + toNext + TOUR_STOP_MINUTES * MINUTE
+      const toNext = leg(position, next.position).minutes * MINUTE
+      const onward = leg(next.position, pin.position).minutes * MINUTE
+      const done = cursor + toNext + stay(next) * MINUTE
       if (done + onward > at) break
       queue.shift()
       placeFloating(next)
@@ -377,9 +425,12 @@ export function buildDayPlan(input: DayPlanInput): DayPlan {
   for (const farm of queue) placeFloating(farm)
 
   let returnAt: string | null = null
+  let returnEstimated = false
   if (stops.length > 0) {
-    const returnKm = haversineKm(position, origin)
-    const returnMinutes = estimateDriveMinutes(returnKm)
+    const back = leg(position, origin)
+    const returnKm = back.km
+    const returnMinutes = back.minutes
+    returnEstimated = back.estimated
     totalKm += returnKm
     driveMinutes += returnMinutes
     returnAt = iso(new Date(cursor + returnMinutes * MINUTE))
@@ -413,6 +464,7 @@ export function buildDayPlan(input: DayPlanInput): DayPlan {
           )
         : null,
     unplaced,
+    returnEstimated,
   }
 }
 

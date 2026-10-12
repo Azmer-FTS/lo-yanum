@@ -1,5 +1,5 @@
 import type { Collection, StoreData } from '@core/backend'
-import type { Tour } from '@core/tours'
+import type { Tour, TourPlan } from '@core/tours'
 import { splitLegacyDunams } from '@core/fields'
 import { normalizeLeadStatus } from '@core/leads'
 import type { Institution, InstitutionContact, PhoneLabel } from '@core/institutions'
@@ -1320,13 +1320,29 @@ const landmarkMapping: Mapping<Landmark> = {
   }),
 }
 
+function planOf(raw: unknown): TourPlan | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const r = raw as Record<string, unknown>
+  const out: TourPlan = {}
+  if (Array.isArray(r.order)) out.order = r.order.filter((x): x is string => typeof x === 'string')
+  if (typeof r.visitMinutes === 'number' && r.visitMinutes >= 0) out.visitMinutes = r.visitMinutes
+  if (r.stopMinutes && typeof r.stopMinutes === 'object' && !Array.isArray(r.stopMinutes)) {
+    const m: Record<string, number> = {}
+    for (const [k, v] of Object.entries(r.stopMinutes as Record<string, unknown>)) if (typeof v === 'number' && v >= 0) m[k] = v
+    if (Object.keys(m).length > 0) out.stopMinutes = m
+  }
+  const o = r.origin as Record<string, unknown> | undefined
+  if (o && typeof o.lat === 'number' && typeof o.lng === 'number') out.origin = { lat: o.lat, lng: o.lng, label: typeof o.label === 'string' ? o.label : '' }
+  return Object.keys(out).length > 0 ? out : null
+}
+
 const tourMapping: Mapping<Tour> = {
   table: 'tours',
   children: [{ table: 'tour_stops', fk: 'tour_id' }],
   toRows: (t) => [
     {
       table: 'tours',
-      rows: [{ id: t.id, day_key: t.dayKey, depart_at: t.departAt, name: t.name ?? '', free_stops: t.freeStops ?? [] }],
+      rows: [{ id: t.id, day_key: t.dayKey, depart_at: t.departAt, name: t.name ?? '', free_stops: t.freeStops ?? [], plan: t.plan ?? {} }],
     },
     {
       table: 'tour_stops',
@@ -1351,6 +1367,8 @@ const tourMapping: Mapping<Tour> = {
             .map((f) => ({ id: str(f.id), name: str(f.name), lat: f.lat as number, lng: f.lng as number, phone: str(f.phone) })),
         }
       : {}),
+    /* ★★ AZ4 — ordre manuel, durées sur place, départ propre ; absent = comme avant. */
+    ...(planOf(p.plan) ? { plan: planOf(p.plan) as TourPlan } : {}),
   }),
 }
 

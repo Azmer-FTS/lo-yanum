@@ -1,0 +1,21 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- ★★ AZ4 (2026-10-11) — CE QUE L'ITINÉRAIRE LIBRE SAVAIT FAIRE, DANS LA TOURNÉE.
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- AY12 a réuni l'itinéraire libre et le planificateur en un seul écran, et
+-- plusieurs gestes de l'itinéraire libre sont restés au bord du chemin
+-- (`docs/az/az4-pertes.md`). Trois d'entre eux sont des RÉGLAGES DE LA
+-- TOURNÉE, qu'il faut garder avec elle pour qu'ils voyagent d'un appareil à
+-- l'autre :
+--
+--   · l'ORDRE choisi à la main (flèches ↑ ↓) — sinon l'ordre calculé ;
+--   · la DURÉE SUR PLACE, pour la tournée et pour une étape donnée ;
+--   · un POINT DE DÉPART propre à la tournée — sinon celui des réglages.
+--
+-- Une colonne jsonb, additive : le code d'avant AZ n'écrit pas `plan` et
+-- continue de fonctionner (`plan` prend '{}', c'est-à-dire « comme avant »).
+--   { "order": ["<id>", …], "visitMinutes": 45,
+--     "stopMinutes": { "<id>": 20 }, "origin": { "lat": …, "lng": …, "label": "…" } }
+-- ⛔ Rien pour `anon` (règle d'AP) ; la table existe déjà avec ses droits.
+
+alter table public.tours add column if not exists plan jsonb not null default '{}'::jsonb;

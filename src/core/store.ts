@@ -1499,6 +1499,8 @@ export interface TourDraft {
   farmIds: string[]
   /** ★★ AY12.2 — les points libres de la tournée. */
   freeStops?: import('./tours').TourFreeStop[]
+  /** ★★ AZ4 — ordre manuel, durées sur place, départ propre. */
+  plan?: import('./tours').TourPlan
 }
 
 /**
@@ -1523,6 +1525,7 @@ export function saveTour(draft: TourDraft): Tour {
     existing.farmIds = [...draft.farmIds]
     if (draft.name !== undefined) existing.name = draft.name
     if (draft.freeStops !== undefined) existing.freeStops = draft.freeStops.length > 0 ? draft.freeStops.map((f) => ({ ...f })) : undefined
+    if (draft.plan !== undefined) existing.plan = Object.keys(draft.plan).length > 0 ? structuredClone(draft.plan) : undefined
     data.tours = [...data.tours]
     commit()
     return existing
@@ -1534,6 +1537,7 @@ export function saveTour(draft: TourDraft): Tour {
     farmIds: [...draft.farmIds],
     name: draft.name ?? '',
     ...(draft.freeStops && draft.freeStops.length > 0 ? { freeStops: draft.freeStops.map((f) => ({ ...f })) } : {}),
+    ...(draft.plan && Object.keys(draft.plan).length > 0 ? { plan: structuredClone(draft.plan) } : {}),
   }
   data.tours = [...data.tours, tour]
   commit()

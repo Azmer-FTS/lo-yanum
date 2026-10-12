@@ -77,6 +77,27 @@ export function planRoute(farms: Farm[], origin: LatLng = HOME_BASE): PlannedRou
   }
 }
 
+/**
+ * ★★ AZ4 — L'ORDRE DU COORDINATEUR. Les mêmes distances que `planRoute`, mais
+ * dans l'ordre donné (flèches ↑ ↓ du planificateur) : « seulement après la
+ * traite » ne se calcule pas, il se décide.
+ */
+export function routeInOrder(farms: Farm[], origin: LatLng = HOME_BASE): PlannedRoute {
+  const placed = farms.filter((f) => farmPoint(f) !== null)
+  const unplaced = farms.filter((f) => farmPoint(f) === null)
+  const stops: RouteStop[] = []
+  let current = origin
+  let cumulative = 0
+  for (const farm of placed) {
+    const legKm = haversineKm(current, farm.position)
+    cumulative += legKm
+    stops.push({ farm, order: stops.length + 1, legKm, cumulativeKm: cumulative })
+    current = farm.position
+  }
+  const returnKm = stops.length > 0 ? haversineKm(current, origin) : 0
+  return { origin, stops, totalKm: cumulative, returnKm, roundTripKm: cumulative + returnKm, unplaced }
+}
+
 const coord = (p: LatLng): string => `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`
 
 /**

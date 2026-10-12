@@ -62,6 +62,7 @@ export type IconName =
   | 'sortAsc'
   | 'sortDesc'
   | 'chevronDown'
+  | 'chevronUp'
   | 'userPlus'
   | 'history'
   | 'undo'
@@ -416,6 +417,8 @@ const PATHS: Record<IconName, ReactNode> = {
   sortAsc: <path d="M7 14.5 12 9l5 5.5" />,
   sortDesc: <path d="M7 9.5 12 15l5-5.5" />,
   chevronDown: <path d="M5.5 9.5 12 16l6.5-6.5" />,
+  /* ★ BC — ↑ du planificateur (faire monter une étape). */
+  chevronUp: <path d="M5.5 14.5 12 8l6.5 6.5" />,
   userPlus: (
     <>
       <circle cx="9.5" cy="8" r="3.2" />
