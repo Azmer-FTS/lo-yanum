@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
-import { formatDateTime, formatRelative, getVisibleFarms, incomingFarms, mailProblem, requestForFarm } from '@core/index'
+import { formatDate, formatDateTime, formatRelative, getVisibleFarms, incomingFarms, mailProblem, requestForFarm } from '@core/index'
 import type { Farm, IntakeRequest } from '@core/index'
 import { ChevronForward, Icon } from '../components/Icon'
 import { useCoreValue } from '../hooks/useCore'
@@ -50,7 +50,8 @@ export function IntakeDashboardBlock() {
         </span>
         <div className="min-w-0 flex-1">
           <h2 id="dash-intake-title" className="text-section text-content-primary">
-            {t('intake.dashTitle')}
+            {/* ★★ BD 6 a) — « בקשות חדשות », la plus récente en haut. */}
+            {t('intake.dashTitleNew')}
           </h2>
           <p className="text-caption font-semibold text-farm-incoming-request-ink" data-testid="dash-intake-count-line">
             {t('intake.dashCount', { count: incoming.length })}
@@ -81,9 +82,12 @@ export function IntakeDashboardBlock() {
 function IntakeRow({ farm, request, locale }: { farm: Farm; request: IntakeRequest | null; locale: string }) {
   const { t } = useTranslation()
   const who = farm.farmerName || request?.fullName || ''
+  /* ★★ BD 6 a) — le nom, le LIEU et la DATE ; la nature de la demande ensuite. */
   const parts: string[] = []
+  const place = farm.locality || farm.nearestLocality || ''
+  if (place) parts.push(place)
+  if (request) parts.push(`${formatDate(request.createdAt, locale)} (${formatRelative(request.createdAt, locale)})`)
   if (request) parts.push(t(`intake.need.${request.need}`))
-  if (request) parts.push(t('intake.received', { when: formatRelative(request.createdAt, locale) }))
   const appointment = request?.appointmentAt ?? null
   return (
     <li>

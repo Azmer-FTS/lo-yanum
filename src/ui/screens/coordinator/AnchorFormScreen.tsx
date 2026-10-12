@@ -14,8 +14,10 @@ import type { AnchorDraft, LatLng } from '@core/index'
 
 import { Icon } from '../../components/Icon'
 import { MapSplit } from '../../components/MapSplit'
+import { PLACE_FORM_SPLIT } from '../../components/formPage'
 import { MapView } from '../../components/MapView'
-import { entityMarkerKind, farmMarkerColor, postColor } from '../../components/badges'
+import { farmMarkerColor, postColor } from '../../components/badges'
+import { farmPin } from '../../components/placeMarkers'
 import {
   FormActions,
   FormSection,
@@ -23,14 +25,28 @@ import {
   TextField,
 } from '../../components/fields'
 import {
-  LoadingState,
+  FormWaiting,
   PageHeader,
 } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useHydrated } from '../../hooks/useDataState'
 
-/** R5.2 — anchor point create/edit, reached from the farm detail screen. */
+/**
+ * R5.2 — anchor point create/edit, reached from the farm detail screen.
+ * ★★ BD 8a — les champs naissent du point AU MONTAGE : tant que la ferme (et,
+ * en édition, le point) ne sont pas arrivés, aucun formulaire saisissable ;
+ * arrivés, il monte une fois, rempli (`key`).
+ */
 export function AnchorFormScreen() {
+  const { farmId = '', anchorId } = useParams()
+  const farm = useCoreValue(() => getFarm(farmId))
+  const existing = useCoreValue(() => (anchorId ? getAnchorPoint(anchorId) : null))
+  const hydrated = useHydrated()
+  if (!farm || (anchorId && !existing)) return hydrated ? <Navigate to={farm ? `/coordinator/farms/${farmId}` : '/coordinator/farms'} replace /> : <FormWaiting />
+  return <AnchorForm key={`${farmId}:${anchorId ?? 'new'}`} />
+}
+
+function AnchorForm() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { farmId = '', anchorId } = useParams()
@@ -56,10 +72,8 @@ export function AnchorFormScreen() {
   const [touched, setTouched] = useState(false)
 
   // N1 (2026-09-02) — a missing record before the snapshot has arrived is
-  // "not loaded yet", never "gone": redirecting here on a reload was how a
-  // coordinator's own farm closed itself. See `useHydrated`.
-  const hydrated = useHydrated()
-  if (!farm) return hydrated ? <Navigate to="/coordinator/farms" replace /> : <LoadingState />
+  // "not loaded yet", never "gone" — ★★ BD 8a : gardé par `AnchorFormScreen`.
+  if (!farm) return null
 
   const errors = {
     name: !name.trim() ? t('form.required') : undefined,
@@ -112,7 +126,7 @@ export function AnchorFormScreen() {
             color: farmMarkerColor(farm),
             title: farm.name,
             subtitle: farm.locality,
-            kind: entityMarkerKind(farm),
+            ...farmPin(farm),
           }]),
           {
             id: 'anchor-preview',
@@ -141,9 +155,9 @@ export function AnchorFormScreen() {
     <MapSplit
       screenKey="anchor-form"
       ariaLabel={t('form.sectionLocation')}
-      breakpoint="xl"
-      contentPercent={50}
-      splitHeight="h-[42dvh] min-h-[18rem]"
+      breakpoint={PLACE_FORM_SPLIT.breakpoint}
+      contentPercent={PLACE_FORM_SPLIT.contentPercent}
+      splitHeight={PLACE_FORM_SPLIT.splitHeight}
       map={() => mapBody}
     >
       {() => (
@@ -154,7 +168,7 @@ export function AnchorFormScreen() {
         back={{ to: `/coordinator/farms/${farm.id}`, label: farm.name }}
       />
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4" data-form-family="lieu" data-form-screen="anchor-form">
         <FormSection title={t('anchor.title')}>
           <TextField
             label={t('form.anchorName')}

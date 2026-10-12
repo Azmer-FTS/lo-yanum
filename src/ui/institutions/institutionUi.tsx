@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { callRestrictions, isCallRestricted, restrictsCalls } from '@core/calls'
 import type { CallContact } from '@core/calls'
@@ -8,7 +9,10 @@ import { Link } from 'react-router-dom'
 import {
   INSTITUTION_CONTACT_ROLES,
   INSTITUTION_ENGAGEMENTS,
-  PHONE_LABELS,
+  SECRETARIAT_LABEL,
+  isKnownPhoneLabel,
+  isSecretariatEntry,
+  phoneLabelChoices,
   SINGLE_CONTACT_ROLES,
   comparableInstitutionName,
   contactPhones,
@@ -30,7 +34,7 @@ import {
 import type { ContactPhone, Driver, Institution, InstitutionContact, InstitutionContactRole, InstitutionEngagement, PhoneLabel, Volunteer } from '@core/index'
 
 import { Avatar } from '../components/Avatar'
-import { NumberField, TextField } from '../components/fields'
+import { FormSection, NumberField, TextField } from '../components/fields'
 import { Icon } from '../components/Icon'
 import { useCoreValue } from '../hooks/useCore'
 import { runUndoable } from '../components/UndoToast'
@@ -107,6 +111,9 @@ export function MinorsChip({ inst }: { inst: Institution }) {
 }
 
 export const telOf = (phone: string): string => `tel:${phone.replace(/[^\d+]/g, '')}`
+
+/** ★★ BD — le texte d'une étiquette : traduite quand elle est connue, telle que saisie sinon. */
+export const phoneLabelText = (label: PhoneLabel, t: (k: string) => string): string => (label === '' || isKnownPhoneLabel(label) ? t(`institutions.phoneLabel.${label}`) : label)
 
 /**
  * ★★ BB — « נדרש תיאום מוקדם ». Le marqueur et SON TEXTE (par qui passer)
@@ -250,19 +257,33 @@ export function InstitutionContactsEditor({ inst }: { inst: Institution }) {
         ))}
       </ul>
       {!draft && (
-        <button
-          type="button"
-          className="btn-secondary min-h-11 self-start"
-          data-testid="institution-contact-add"
-          onClick={() => setDraft({ id: newInstitutionContactId(), role: isInstitutionHeadMissing(inst) ? 'head' : 'contact', name: '', phone: '', note: '' })}
-        >
-          <Icon name="plus" size={16} />
-          {t('institutions.addContact')}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn-secondary min-h-11"
+            data-testid="institution-contact-add"
+            onClick={() => setDraft({ id: newInstitutionContactId(), role: isInstitutionHeadMissing(inst) ? 'head' : 'contact', name: '', phone: '', note: '' })}
+          >
+            <Icon name="plus" size={16} />
+            {t('institutions.addContact')}
+          </button>
+          {/* ★★ BD — une entrée sans personne : le numéro et son étiquette « מזכירות ». */}
+          <button
+            type="button"
+            className="btn-ghost min-h-11"
+            data-testid="institution-secretariat-add"
+            onClick={() => setDraft({ id: newInstitutionContactId(), role: 'contact', name: '', phone: '', phones: [{ number: '', label: SECRETARIAT_LABEL }], note: '' })}
+          >
+            <Icon name="phone" size={16} />
+            {t('institutions.addSecretariat')}
+          </button>
+        </div>
       )}
     </section>
   )
 }
+
+const CUSTOM_LABEL = '__custom'
 
 function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institution; contact: InstitutionContact; taken: (r: InstitutionContactRole) => boolean; onSave: (c: InstitutionContact) => void; onRemove: () => void }) {
   const { t } = useTranslation()
@@ -274,6 +295,9 @@ function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institut
   }
   const [phones, setPhones] = useState<ContactPhone[]>(initialPhones)
   const [note, setNote] = useState(contact.note)
+  const [customAt, setCustomAt] = useState<number | null>(null)
+  /* ★★ BD — les étiquettes connues, puis toutes celles déjà saisies dans la base. */
+  const labelChoices = useCoreValue(() => phoneLabelChoices(getInstitutions()))
   const phonesKey = JSON.stringify(contactPhones(contact))
   useEffect(() => {
     setName(contact.name)
@@ -293,7 +317,9 @@ function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institut
     setPhones(next)
     if (save) commit({}, next)
   }
-  const roleName = t(`institutions.role.${contactRoleKey(inst, contact.role)}`)
+  /* L'entrée telle qu'elle est À L'ÉCRAN (nom et étiquettes en cours de saisie). */
+  const secretariat = isSecretariatEntry({ name, phone: '', phones: phones.map((p) => ({ ...p, number: p.number || '0' })) })
+  const roleName = secretariat ? t('institutions.phoneLabel.secretariat') : t(`institutions.role.${contactRoleKey(inst, contact.role)}`)
   const first = phones.find((p) => p.number.trim())?.number ?? ''
   return (
     <li className="rounded-card bg-surface-raised p-2.5 shadow-card" data-testid={`institution-contact-${contact.id}`} data-role={contact.role} data-phones={contactPhones(contact).length}>
@@ -303,19 +329,28 @@ function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institut
         </div>
       )}
       <div className="grid gap-2 sm:grid-cols-[9.5rem_minmax(0,1fr)]">
-        <label className="flex flex-col gap-1">
-          <span className="text-micro font-semibold text-content-muted">{t('institutions.roleLabel')}</span>
-          <select className="input min-h-11" value={contact.role} onChange={(e) => commit({ role: e.target.value as InstitutionContactRole })} data-testid="institution-contact-role">
-            {INSTITUTION_CONTACT_ROLES.map((r) => (
-              <option key={r} value={r} disabled={taken(r)}>
-                {t(`institutions.role.${contactRoleKey(inst, r)}`)}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* ★★ BD — une entrée « מזכירות » (sans nom, numéros étiquetés מזכירות)
+            ne prend pas de rang : pas de sélecteur de rôle, son étiquette suffit. */}
+        {secretariat ? (
+          <p className="flex min-h-11 flex-col justify-end gap-1" data-testid="institution-contact-secretariat">
+            <span className="text-micro font-semibold text-content-muted">{t('institutions.roleLabel')}</span>
+            <span className="text-caption font-semibold text-content-primary">{t('institutions.phoneLabel.secretariat')}</span>
+          </p>
+        ) : (
+          <label className="flex flex-col gap-1">
+            <span className="text-micro font-semibold text-content-muted">{t('institutions.roleLabel')}</span>
+            <select className="input min-h-11" value={contact.role} onChange={(e) => commit({ role: e.target.value as InstitutionContactRole })} data-testid="institution-contact-role">
+              {INSTITUTION_CONTACT_ROLES.map((r) => (
+                <option key={r} value={r} disabled={taken(r)}>
+                  {t(`institutions.role.${contactRoleKey(inst, r)}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="flex flex-col gap-1">
           <span className="text-micro font-semibold text-content-muted">{t('institutions.contactName')}</span>
-          <input className="input min-h-11" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => commit()} data-testid="institution-contact-name" />
+          <input className="input min-h-11" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => commit()} placeholder={secretariat ? t('institutions.secretariatNoName') : undefined} data-testid="institution-contact-name" />
         </label>
       </div>
       <ul className="mt-2 flex flex-col gap-2" data-testid="institution-contact-phones">
@@ -323,21 +358,40 @@ function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institut
           <li key={n} className="flex flex-wrap items-end gap-2" data-testid={`institution-contact-phone-${n}`}>
             <label className="flex w-[7.5rem] flex-col gap-1">
               <span className="text-micro font-semibold text-content-muted">{t('institutions.contactPhone')}</span>
-              <select
-                className="input min-h-11"
-                value={p.label}
-                onChange={(e) => setPhoneAt(n, { label: e.target.value as PhoneLabel }, true)}
-                data-testid="institution-contact-phone-label"
-              >
-                {PHONE_LABELS.map((l) => (
-                  <option key={l || 'none'} value={l}>
-                    {t(`institutions.phoneLabel.${l}`)}
-                  </option>
-                ))}
-              </select>
+              {customAt === n ? (
+                /* ★★ BD — « תווית אחרת… » : l'étiquette se saisit, et rejoint la liste. */
+                <input
+                  className="input min-h-11"
+                  autoFocus
+                  defaultValue=""
+                  maxLength={24}
+                  placeholder={t('institutions.phoneLabelCustom')}
+                  onBlur={(e) => {
+                    setCustomAt(null)
+                    const label = e.currentTarget.value.trim()
+                    if (label) setPhoneAt(n, { label }, true)
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                  data-testid="institution-contact-phone-label-custom"
+                />
+              ) : (
+                <select
+                  className="input min-h-11"
+                  value={p.label}
+                  onChange={(e) => (e.target.value === CUSTOM_LABEL ? setCustomAt(n) : setPhoneAt(n, { label: e.target.value as PhoneLabel }, true))}
+                  data-testid="institution-contact-phone-label"
+                >
+                  {[...labelChoices, ...(labelChoices.includes(p.label) ? [] : [p.label])].map((l) => (
+                    <option key={l || 'none'} value={l}>
+                      {phoneLabelText(l, t)}
+                    </option>
+                  ))}
+                  <option value={CUSTOM_LABEL}>{t('institutions.phoneLabelOther')}</option>
+                </select>
+              )}
             </label>
             <div className="min-w-[10rem] flex-1" onBlur={() => commit()}>
-              <TextField label={`${t('institutions.contactPhone')}${p.label ? ` · ${t(`institutions.phoneLabel.${p.label}`)}` : ''}`} kind="phone" value={p.number} onChange={(v) => setPhoneAt(n, { number: v })} testId="institution-contact-phone" />
+              <TextField label={`${t('institutions.contactPhone')}${p.label ? ` · ${phoneLabelText(p.label, t)}` : ''}`} kind="phone" value={p.number} onChange={(v) => setPhoneAt(n, { number: v })} testId="institution-contact-phone" />
             </div>
             {p.number.trim() && (
               <a
@@ -346,7 +400,7 @@ function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institut
                 className={`${callTone(inst, 'btn-secondary', contact)} min-h-11`}
                 data-testid="institution-contact-call"
                 data-guarded={isCallGuarded(inst, contact) ? '' : undefined}
-                aria-label={t('institutions.callNumber', { name: contact.name || roleName, label: t(`institutions.phoneLabel.${p.label}`) })}
+                aria-label={t('institutions.callNumber', { name: contact.name || roleName, label: phoneLabelText(p.label, t) })}
               >
                 <Icon name="phone" size={16} />
                 {t('institutions.call')}
@@ -425,8 +479,9 @@ export function InstitutionContactsList({ inst }: { inst: Institution }) {
           <li key={c.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-2 text-caption" data-role={c.role} data-testid={`institution-contact-line-${c.id}`} data-phones={phones.length}>
             {/* ★★ BA — la photo de la personne, retrouvée par son téléphone. */}
             <Avatar phone={phones[0]?.number ?? ''} name={c.name || '?'} size="xs" />
-            <span className="w-[5.5rem] shrink-0 text-content-muted">{t(`institutions.role.${contactRoleKey(inst, c.role)}`)}</span>
-            <span className="min-w-0 flex-1 font-semibold text-content-primary">{c.name || '—'}</span>
+            {/* ★★ BD — une entrée « מזכירות » n'a ni rôle ni nom : son étiquette les remplace. */}
+            <span className="w-[5.5rem] shrink-0 text-content-muted">{isSecretariatEntry(c) ? t('institutions.phoneLabel.secretariat') : t(`institutions.role.${contactRoleKey(inst, c.role)}`)}</span>
+            <span className="min-w-0 flex-1 font-semibold text-content-primary">{c.name || (isSecretariatEntry(c) ? '' : '—')}</span>
             {/* ★★ BB — chaque numéro, appelable, avec son étiquette ; le premier d'abord. */}
             {phones.map((p, n) => (
               <a
@@ -440,7 +495,7 @@ export function InstitutionContactsList({ inst }: { inst: Institution }) {
               >
                 <Icon name={isCallGuarded(inst, c) ? 'alert' : 'phone'} size={14} />
                 {p.number}
-                {p.label && phones.length > 1 && <span className="text-micro text-content-muted">({t(`institutions.phoneLabel.${p.label}`)})</span>}
+                {p.label && phones.length > 1 && <span className="text-micro text-content-muted">({phoneLabelText(p.label, t)})</span>}
               </a>
             ))}
             {c.note && !restrictsCalls(c) && <span className="basis-full text-micro text-content-muted" dir="auto">{c.note}</span>}
@@ -452,19 +507,6 @@ export function InstitutionContactsList({ inst }: { inst: Institution }) {
           </li>
         )
       })}
-      {/* ★★ BB — la מזכירות : pas une personne, pas de rang ; à la fin. */}
-      {(inst.officePhone || inst.officeAddress) && (
-        <li className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-2 text-caption" data-testid="institution-office-line">
-          <span className="w-[5.5rem] shrink-0 text-content-muted">{t('institutions.office')}</span>
-          <span className="min-w-0 flex-1 text-content-secondary" dir="auto">{inst.officeAddress || ''}</span>
-          {inst.officePhone && (
-            <a className={`ltr-nums inline-flex min-h-[2.5rem] items-center gap-1 hover:text-accent-ink ${needsPriorCoordination(inst) ? 'text-status-warn-ink' : 'text-content-secondary'}`} href={telOf(inst.officePhone)} onClick={guardCall(inst, t)} dir="ltr" data-testid="institution-office-call" aria-label={t('institutions.callOffice')}>
-              <Icon name="phone" size={14} />
-              {inst.officePhone}
-            </a>
-          )}
-        </li>
-      )}
     </ul>
   )
 }
@@ -527,39 +569,18 @@ export function RelatedInstitutions({ inst, editable = false }: { inst: Institut
   )
 }
 
-/** ★★ BB — la מזכירות et la coordination préalable, éditables sur la fiche. */
-function OfficeAndCoordinationEditor({ inst }: { inst: Institution }) {
+/**
+ * ★★ BB — la coordination préalable, éditable sur la fiche. ★★ BD — la
+ * מזכירות n'est plus ici : c'est une entrée de la liste des contacts.
+ */
+function CoordinationEditor({ inst }: { inst: Institution }) {
   const { t } = useTranslation()
-  const [phone, setPhone] = useState(inst.officePhone ?? '')
-  const [address, setAddress] = useState(inst.officeAddress ?? '')
   const [by, setBy] = useState(inst.coordinationNote ?? '')
   useEffect(() => {
-    setPhone(inst.officePhone ?? '')
-    setAddress(inst.officeAddress ?? '')
     setBy(inst.coordinationNote ?? '')
-  }, [inst.id, inst.officePhone, inst.officeAddress, inst.coordinationNote])
+  }, [inst.id, inst.coordinationNote])
   return (
     <>
-      <section className="flex flex-col gap-2" data-testid="institution-office">
-        <h3 className="text-label font-semibold text-content-primary">{t('institutions.officeTitle')}</h3>
-        <p className="muted text-micro">{t('institutions.officeHint')}</p>
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
-          <div onBlur={() => phone !== (inst.officePhone ?? '') && updateInstitution(inst.id, { officePhone: phone })}>
-            <TextField label={t('institutions.officePhone')} kind="phone" value={phone} onChange={setPhone} testId="institution-office-phone" />
-          </div>
-          <label className="flex flex-col gap-1">
-            <span className="label">{t('institutions.officeAddress')}</span>
-            <input className="input min-h-11" value={address} onChange={(e) => setAddress(e.target.value)} onBlur={() => address !== (inst.officeAddress ?? '') && updateInstitution(inst.id, { officeAddress: address })} data-testid="institution-office-address" />
-          </label>
-        </div>
-        {inst.officePhone && (
-          <a href={telOf(inst.officePhone)} onClick={guardCall(inst, t)} className={`${callTone(inst, 'btn-secondary')} min-h-11 self-start`} data-testid="institution-office-call" aria-label={t('institutions.callOffice')}>
-            <Icon name="phone" size={16} />
-            {t('institutions.office')}
-            <span className="ltr-nums" dir="ltr">{inst.officePhone}</span>
-          </a>
-        )}
-      </section>
       <section className="flex flex-col gap-2 rounded-field border border-edge-subtle p-2.5" data-testid="institution-coordination-edit">
         <label className="flex min-h-11 items-center gap-2 text-caption font-semibold text-content-primary">
           <input
@@ -582,71 +603,92 @@ function OfficeAndCoordinationEditor({ inst }: { inst: Institution }) {
   )
 }
 
-/** Statut d'engagement, contacts (★★ AZ5), note : éditables sur place. */
-export function InstitutionEditor({ inst }: { inst: Institution }) {
+/**
+ * Statut d'engagement, contacts (★★ AZ5), note : éditables sur place.
+ * ★★ BD 7 — rendu en `FormSection` (la grammaire des formulaires) : l'état,
+ * le lieu (`place`, fourni par la page : adresse et point), les contacts, les
+ * notes. Chaque champ s'enregistre en quittant le champ.
+ */
+export function InstitutionEditor({ inst, place }: { inst: Institution; place?: ReactNode }) {
   const { t } = useTranslation()
   const [notes, setNotes] = useState(inst.notes)
   useEffect(() => {
     setNotes(inst.notes)
   }, [inst.id, inst.notes])
   return (
-    <div className="flex flex-col gap-3" data-testid="institution-editor">
-      <CoordinationBanner inst={inst} />
-      <p className="muted text-caption">
-        {[inst.locality, t(`institutions.kind.${inst.kind}`), t(`institutions.audience.${inst.audience}`), inst.network].filter(Boolean).join(' · ')}
-      </p>
-      {inst.minorsAge && (
-        <p className="flex flex-wrap gap-1.5">
-          <MinorsChip inst={inst} />
-        </p>
-      )}
-      {inst.positionUncertain && (
-        <p className="rounded-field bg-status-warn/15 px-3 py-2 text-caption font-semibold text-status-warn-ink" data-testid="institution-uncertain">
-          {t('institutions.uncertainLong')}
-        </p>
-      )}
-      {isInstitutionToConfirm(inst) && (
-        <div className="flex flex-wrap items-center gap-2 rounded-field bg-status-warn/15 px-3 py-2" data-testid="institution-to-confirm">
-          <p className="min-w-0 flex-1 text-caption font-semibold text-status-warn-ink">
-            {t('institutions.toConfirmLong', { status: t(`institutions.engagement.${inst.engagement}`) })}
+    <div className="flex flex-col gap-4" data-testid="institution-editor">
+      <FormSection title={t('institutions.sectionStatus')} testId="institution-block-status">
+        <div className="col-span-full flex flex-col gap-3">
+          <CoordinationBanner inst={inst} />
+          <p className="muted text-caption">
+            {[inst.locality, t(`institutions.kind.${inst.kind}`), t(`institutions.audience.${inst.audience}`), inst.network].filter(Boolean).join(' · ')}
           </p>
-          <button type="button" className="btn-primary min-h-11" onClick={() => runUndoable(t('undo.confirmed', { name: inst.name }), () => updateInstitution(inst.id, { engagementConfirmed: true }))} data-testid="institution-confirm">
-            <Icon name="check" size={16} />
-            {t('institutions.confirm')}
-          </button>
+          {inst.minorsAge && (
+            <p className="flex flex-wrap gap-1.5">
+              <MinorsChip inst={inst} />
+            </p>
+          )}
+          {isInstitutionToConfirm(inst) && (
+            <div className="flex flex-wrap items-center gap-2 rounded-field bg-status-warn/15 px-3 py-2" data-testid="institution-to-confirm">
+              <p className="min-w-0 flex-1 text-caption font-semibold text-status-warn-ink">
+                {t('institutions.toConfirmLong', { status: t(`institutions.engagement.${inst.engagement}`) })}
+              </p>
+              <button type="button" className="btn-primary min-h-11" onClick={() => runUndoable(t('undo.confirmed', { name: inst.name }), () => updateInstitution(inst.id, { engagementConfirmed: true }))} data-testid="institution-confirm">
+                <Icon name="check" size={16} />
+                {t('institutions.confirm')}
+              </button>
+            </div>
+          )}
+          {/* ★★ AV1 — CORRIGER = CONFIRMER : choisir un statut, c'est le dire. */}
+          <EngagementSegments value={inst.engagement} onChange={(e) => runUndoable(t('undo.engagement', { name: inst.name, status: t(`institutions.engagement.${e}`) }), () => updateInstitution(inst.id, { engagement: e, engagementConfirmed: true }))} testId="institution-engagement" />
+          {(inst.metOn || inst.students !== null) && (
+            <dl className="grid gap-1 text-caption" data-testid="institution-facts">
+              {inst.metOn && (
+                <div className="flex gap-2"><dt className="text-content-muted">{t('institutions.metOn')}</dt><dd className="ltr-nums font-semibold text-content-primary">{inst.metOn.split('-').reverse().join('.')}</dd></div>
+              )}
+              {inst.students !== null && (
+                <div className="flex gap-2"><dt className="text-content-muted">{t('institutions.students')}</dt><dd className="ltr-nums font-semibold text-content-primary">{inst.students}</dd></div>
+              )}
+            </dl>
+          )}
         </div>
-      )}
-      {/* ★★ AV1 — CORRIGER = CONFIRMER : choisir un statut, c'est le dire. */}
-      <EngagementSegments value={inst.engagement} onChange={(e) => runUndoable(t('undo.engagement', { name: inst.name, status: t(`institutions.engagement.${e}`) }), () => updateInstitution(inst.id, { engagement: e, engagementConfirmed: true }))} testId="institution-engagement" />
-      {(inst.metOn || inst.students !== null || inst.positionSource) && (
-        <dl className="grid gap-1 text-caption" data-testid="institution-facts">
-          {inst.metOn && (
-            <div className="flex gap-2"><dt className="text-content-muted">{t('institutions.metOn')}</dt><dd className="ltr-nums font-semibold text-content-primary">{inst.metOn.split('-').reverse().join('.')}</dd></div>
+      </FormSection>
+      {place && (
+        <FormSection title={t('place.positionTitle')} testId="institution-block-place">
+          {inst.positionUncertain && (
+            <p className="col-span-full rounded-field bg-status-warn/15 px-3 py-2 text-caption font-semibold text-status-warn-ink" data-testid="institution-uncertain">
+              {t('institutions.uncertainLong')}
+            </p>
           )}
-          {inst.students !== null && (
-            <div className="flex gap-2"><dt className="text-content-muted">{t('institutions.students')}</dt><dd className="ltr-nums font-semibold text-content-primary">{inst.students}</dd></div>
-          )}
+          {place}
           {inst.positionSource && (
-            <div className="flex gap-2"><dt className="shrink-0 text-content-muted">{t('institutions.positionSource')}</dt><dd className="text-content-secondary">{inst.positionSource}</dd></div>
+            <p className="col-span-full text-micro text-content-muted" data-testid="institution-position-source">
+              {t('institutions.positionSource')} · {inst.positionSource}
+            </p>
           )}
-        </dl>
+        </FormSection>
       )}
-      <InstitutionContactsEditor inst={inst} />
-      <OfficeAndCoordinationEditor inst={inst} />
-      <RelatedInstitutions inst={inst} editable />
-      <label className="flex flex-col gap-1">
-        <span className="text-caption font-semibold text-content-secondary">{t('institutions.notes')}</span>
-        <textarea className="input min-h-[3.5rem]" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={() => notes !== inst.notes && updateInstitution(inst.id, { notes })} />
-      </label>
-      {/* ★★ AZ5 — la mention « קטינים » : une information, modifiable ici. */}
-      <div className="grid grid-cols-2 gap-2 sm:max-w-[20rem]" data-testid="institution-minors-edit">
+      <FormSection title={t('institutions.contacts')} testId="institution-block-contacts">
+        <div className="col-span-full flex flex-col gap-3">
+          <InstitutionContactsEditor inst={inst} />
+          <CoordinationEditor inst={inst} />
+        </div>
+      </FormSection>
+      <FormSection title={t('institutions.notes')} testId="institution-block-notes">
+        <div className="col-span-full">
+          <RelatedInstitutions inst={inst} editable />
+        </div>
+        <label className="col-span-full block">
+          <span className="label">{t('institutions.notes')}</span>
+          <textarea className="input min-h-[5.5rem]" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={() => notes !== inst.notes && updateInstitution(inst.id, { notes })} data-testid="institution-notes" />
+        </label>
+        {/* ★★ AZ5 — la mention « קטינים » : une information, modifiable ici. */}
         <NumberField label={`${t('institutions.minorsLabel')} · ${t('institutions.minorsFrom')}`} value={inst.minorsAge?.min ?? null} allowEmpty min={0} max={25} onCommit={(n) => updateInstitution(inst.id, { minorsAge: n === null ? null : { min: n, max: Math.max(n, inst.minorsAge?.max ?? n) } })} />
         <NumberField label={t('institutions.minorsTo')} value={inst.minorsAge?.max ?? null} allowEmpty min={0} max={25} onCommit={(n) => updateInstitution(inst.id, { minorsAge: n === null ? null : { min: Math.min(n, inst.minorsAge?.min ?? n), max: n } })} />
-      </div>
+      </FormSection>
     </div>
   )
 }
-
 
 /** Les volontaires d'une institution : rattachés par `institutionId`, ou (anciens) par le nom. */
 export function peopleOf(inst: Institution, volunteers: readonly Volunteer[]): Volunteer[] {

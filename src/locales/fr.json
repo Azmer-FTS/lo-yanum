@@ -72,7 +72,8 @@
     "councilFromLocality": "Conseil de {{name}}",
     "councilFromPin": "Conseil de la localité la plus proche · {{name}}",
     "councilUse": "Prendre ce conseil",
-    "pickDate": "Choisir une date"
+    "pickDate": "Choisir une date",
+    "done": "Terminé"
   },
   "photo": {
     "choose": "Photo",
@@ -90,7 +91,20 @@
     "hiddenEntities_one": "1 ferme masquée par la légende",
     "hiddenEntities_other": "{{count}} fermes masquées par la légende",
     "showHidden": "Afficher",
-    "nearLocality": "Près de {{name}} · {{km}} km"
+    "nearLocality": "Près de {{name}} · {{km}} km",
+    "layers": {
+      "entities": "Fermes et moshavim",
+      "institutions": "Institutions",
+      "leads": "Contacts à traiter",
+      "branchNone": "Sans nature",
+      "inst_signed": "Signées",
+      "inst_other": "Les autres",
+      "subAll": "Tout",
+      "only": "Seul",
+      "showAll": "Tout montrer"
+    },
+    "legendAllStatuses": "Afficher tous les statuts ({{count}} vides)",
+    "legendFewerStatuses": "Seulement les statuts de la carte"
   },
   "nav": {
     "coverage": "Carte de couverture",
@@ -378,17 +392,13 @@
       "mobile": "Portable",
       "home": "Domicile",
       "office": "Bureau",
-      "": "—"
+      "": "—",
+      "secretariat": "Secrétariat"
     },
     "addPhone": "Ajouter un numéro",
     "removePhone": "Retirer le numéro {{number}}",
     "callNumber": "Appeler {{name}} · {{label}}",
     "office": "Secrétariat",
-    "officeTitle": "Secrétariat de l'établissement",
-    "officeHint": "Le téléphone et l'adresse de l'établissement — pas une personne. Quand le rosh ne répond pas.",
-    "officePhone": "Téléphone du secrétariat",
-    "officeAddress": "Adresse",
-    "callOffice": "Appeler le secrétariat",
     "coordination": "Coordination préalable requise",
     "coordinationTab": "Coordination préalable",
     "coordinationTitle": "Établissements à ne pas appeler directement — coordonner d'abord",
@@ -399,7 +409,16 @@
     "relatedAdd": "Lier un établissement…",
     "relatedRemove": "Retirer le lien vers {{name}}",
     "heads_other": "{{count}} roshim",
-    "heads_one": "1 rosh"
+    "heads_one": "1 rosh",
+    "phoneLabelOther": "Autre étiquette…",
+    "phoneLabelCustom": "p. ex. Fax",
+    "addSecretariat": "Ajouter le secrétariat",
+    "secretariatNoName": "Sans nom — c'est le secrétariat",
+    "sectionStatus": "État",
+    "noCoordinatorTab": "Sans רכז",
+    "noCoordinatorTitle": "Aucun רכז désigné pour les volontaires",
+    "coordinationPendingTab": "Coordination à faire",
+    "coordinationPendingTitle": "Coordination préalable requise, pas encore approchée"
   },
   "quickPin": {
     "button": "Poser une épingle sur la carte",
@@ -657,7 +676,10 @@
       "updated": "Mis à jour",
       "created": "Ajouté"
     },
-    "noNote": "Aucune note"
+    "noNote": "Aucune note",
+    "sectionDetails": "Coordonnées",
+    "staleTab": "Plus de deux semaines",
+    "staleTitle": "Ouverts depuis plus de {{days}} jours"
   },
   "table": {
     "open": "Détails",
@@ -754,7 +776,9 @@
     "saved": "Enregistré : {{name}}",
     "volunteerArchived": "{{name}} inactif",
     "volunteerReactivated": "{{name}} de nouveau actif",
-    "outreach": "Marqué envoyé"
+    "outreach": "Marqué envoyé",
+    "placed": "{{name}} posé sur la carte",
+    "unplaced": "Position de {{name}} retirée"
   },
   "importHub": {
     "title": "Import",
@@ -815,5 +839,55 @@
       "title": "Seuils et gabarits ont rejoint leurs écrans",
       "hint": "Fermes (⋯) et Gardes (⋯) ; ils s’ouvrent aussi d’ici."
     }
+  },
+  "pin": {
+    "placeHint": "Touchez la carte, ou appui long, pour poser le point",
+    "dragHint": "Glissez l'épingle, ou appui long ailleurs",
+    "proposalLabel": "Point proposé",
+    "proposal": {
+      "coords": "Point des coordonnées",
+      "address": "Proposé : {{label}}",
+      "locality": "Centre de {{label}} (approximatif)"
+    },
+    "proposalHint": "Glissez pour corriger, puis validez",
+    "proposalAccept": "Valider le point"
+  },
+  "place": {
+    "address": "Adresse",
+    "addressHint": "Une adresse, une localité, ou un lien Google Maps / Waze",
+    "findOnMap": "Chercher sur la carte",
+    "finding": "Recherche…",
+    "notFound": "Aucun point pour cette adresse — touchez la carte ou appui long",
+    "noPosition": "Sans position",
+    "placeIt": "Le poser sur la carte",
+    "positionTitle": "Emplacement",
+    "clear": "Retirer la position",
+    "sourceMap": "Posé sur la carte",
+    "source": {
+      "address": "D'après l'adresse ({{label}}), validé sur la carte",
+      "locality": "Centre de {{label}}, validé sur la carte",
+      "coords": "Coordonnées collées"
+    }
+  },
+  "dashboard": {
+    "work": {
+      "title": "À faire",
+      "institutionsNoCoordinator": "Institutions sans רכז",
+      "farmsNotContacted": "Fermes sans premier contact",
+      "agreementsToSign": "Accords prêts à signer",
+      "coordinationPending": "Institutions à coordination préalable",
+      "staleLeads": "Contacts ouverts depuis plus de deux semaines"
+    },
+    "funnel": {
+      "title": "Avancement",
+      "leads": "Contacts",
+      "farms": "Fermes",
+      "readyToSign": "À signer",
+      "signed": "Signées",
+      "active": "Actives"
+    }
+  },
+  "intake": {
+    "dashTitleNew": "Nouvelles demandes"
   }
 }

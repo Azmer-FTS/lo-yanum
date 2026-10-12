@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { formatCoords } from '@core/index'
-import type { LatLng } from '@core/index'
+import type { AddressPoint, LatLng } from '@core/index'
 
 import { Icon } from './Icon'
 import { MapView } from './MapView'
@@ -33,6 +33,9 @@ export function PinMap({
   error,
   className = 'h-[46dvh] min-h-[20rem] w-full',
   flush = false,
+  proposal = null,
+  onProposal,
+  testId,
 }: {
   value: LatLng | null
   onChange: (position: LatLng) => void
@@ -48,6 +51,15 @@ export function PinMap({
    * "below the map" left to put it in.
    */
   flush?: boolean
+  /**
+   * ★★ BD (2026-10-12) — LE POINT PROPOSÉ PAR UNE ADRESSE. Dessiné à part
+   * (épingle creuse, déplaçable), il n'est PAS la position tant que le PO ne
+   * l'a pas validé (« אישור הנקודה ») ; « ביטול » l'écarte. Le déplacer, c'est
+   * le corriger avant de le valider.
+   */
+  proposal?: AddressPoint | null
+  onProposal?: (next: AddressPoint | null) => void
+  testId?: string
 }) {
   const { t } = useTranslation()
   const [rearming, setRearming] = useState(false)
@@ -65,6 +77,13 @@ export function PinMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [centreKey])
 
+  /* ★★ BD — une proposition arrivée : la carte va la montrer. */
+  const proposalKey = proposal ? `${proposal.position.lat},${proposal.position.lng}` : ''
+  useEffect(() => {
+    if (proposal) setCenter(proposal.position)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proposalKey])
+
   useEffect(() => {
     if (!rearming) return
     const onKey = (e: KeyboardEvent) => {
@@ -77,10 +96,11 @@ export function PinMap({
   const place = (position: LatLng) => {
     onChange(position)
     setRearming(false)
+    onProposal?.(null)
   }
 
   return (
-    <div className={flush ? 'relative h-full w-full' : undefined}>
+    <div className={flush ? 'relative h-full w-full' : undefined} data-testid={testId} data-pin-map="" data-has-point={value ? 'true' : 'false'} data-has-proposal={proposal ? 'true' : 'false'}>
       <div
         className={fullscreenShell(
           fullscreen.active,
@@ -99,10 +119,12 @@ export function PinMap({
             armed ? 'ring-2 ring-accent' : error ? 'ring-2 ring-status-danger' : ''
           }`}
           center={center}
-          zoom={value ? zoom : emptyZoom}
+          zoom={value || proposal ? zoom : emptyZoom}
           onMapClick={armed ? place : undefined}
-          markers={
-            value
+          /* ★★ BD — l'appui long pose le point, qu'il y en ait un ou non. */
+          onLongPress={place}
+          markers={[
+            ...(value
               ? [
                   {
                     id: 'pin',
@@ -111,11 +133,28 @@ export function PinMap({
                     title: t('pin.markerLabel'),
                     kind: 'pin' as const,
                     draggable: true,
+                    essential: true,
                     onDragEnd: place,
                   },
                 ]
-              : []
-          }
+              : []),
+            ...(proposal
+              ? [
+                  {
+                    id: 'pin-proposal',
+                    position: proposal.position,
+                    color: readToken('--status-warn'),
+                    title: t('pin.proposalLabel'),
+                    kind: 'pin' as const,
+                    hollow: true,
+                    emphasis: true,
+                    essential: true,
+                    draggable: true,
+                    onDragEnd: (position: LatLng) => onProposal?.({ ...proposal, position }),
+                  },
+                ]
+              : []),
+          ]}
         />
 
         {/**
@@ -206,6 +245,27 @@ export function PinMap({
               )
             )}
           </div>
+
+          {/* ★★ BD — la proposition de l'adresse : la valider, ou l'écarter. */}
+          {proposal && (
+            <div
+              data-testid="pin-proposal"
+              data-source={proposal.source}
+              className="pointer-events-auto flex w-fit max-w-full flex-wrap items-center gap-x-3 gap-y-2 rounded-card border-s-4 border-s-status-warn bg-surface-overlay/95 px-3.5 py-2.5 shadow-card backdrop-blur"
+            >
+              <p className="min-w-0 text-caption text-content-secondary">
+                <span className="block font-semibold text-content-primary">{t(`pin.proposal.${proposal.source}`, { label: proposal.label })}</span>
+                <span className="block text-micro text-content-muted">{t('pin.proposalHint')}</span>
+              </p>
+              <button type="button" className="btn-primary min-h-11 shrink-0" onClick={() => place(proposal.position)} data-testid="pin-proposal-accept">
+                <Icon name="check" size={15} />
+                {t('pin.proposalAccept')}
+              </button>
+              <button type="button" className="btn-secondary min-h-11 shrink-0" onClick={() => onProposal?.(null)} data-testid="pin-proposal-dismiss">
+                {t('common.cancel')}
+              </button>
+            </div>
+          )}
 
           {/* ★ L'ERREUR REJOINT LA MÊME PILE au lieu d'occuper le haut à elle
               seule : deux blocs flottants aux deux bouts d'une carte de 42dvh

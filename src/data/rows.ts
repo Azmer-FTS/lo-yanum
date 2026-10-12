@@ -4,7 +4,7 @@ import { splitLegacyDunams } from '@core/fields'
 import { normalizeLeadStatus } from '@core/leads'
 import { normalizeBranches } from '@core/branches'
 import type { Institution, InstitutionContact, PhoneLabel } from '@core/institutions'
-import { INSTITUTION_CONTACT_ROLES, PHONE_LABELS, settleInstitution } from '@core/institutions'
+import { INSTITUTION_CONTACT_ROLES, foldLegacyOffice, settleInstitution } from '@core/institutions'
 import type { Landmark } from '@core/landmarks'
 import type {
   Agreement,
@@ -1242,9 +1242,9 @@ const institutionMapping: Mapping<Institution> = {
           students: i.students,
           position_source: i.positionSource,
           aliases: i.aliases,
-          /* ★★ BB — le secrétariat, la coordination préalable, les fiches liées. */
-          office_phone: i.officePhone ?? '',
-          office_address: i.officeAddress ?? '',
+          /* ★★ BD — l'adresse du lieu ; le secrétariat est une entrée de `contacts`.
+             ★★ BB — la coordination préalable, les fiches liées. */
+          address: i.address ?? '',
           coordination_required: i.coordinationRequired === true,
           coordination_note: i.coordinationNote ?? '',
           related_ids: i.relatedIds ?? [],
@@ -1256,7 +1256,10 @@ const institutionMapping: Mapping<Institution> = {
   ],
   /* ★★ AZ5 — `settleInstitution` : une ligne d'avant AZ5 (sans `contacts`)
      garde sa personne comme « איש קשר », jamais promue rang 1. */
-  fromRows: (p): Institution => settleInstitution({
+  /* ★★ BD — une ligne qui porte encore `office_phone` / `office_address` (avant
+     la migration de BD) est REPLIÉE à la lecture : le numéro devient une entrée
+     « מזכירות » sans nom, l'adresse devient celle du lieu (`foldLegacyOffice`). */
+  fromRows: (p): Institution => settleInstitution(foldLegacyOffice({
     id: str(p.id),
     name: str(p.name),
     locality: str(p.locality),
@@ -1279,8 +1282,7 @@ const institutionMapping: Mapping<Institution> = {
     aliases: str(p.aliases),
     /* ★★ BB — présents seulement quand ils portent quelque chose : une ligne
        d'avant BB (ou vide) fait l'aller-retour à l'identique. */
-    ...(str(p.office_phone) ? { officePhone: str(p.office_phone) } : {}),
-    ...(str(p.office_address) ? { officeAddress: str(p.office_address) } : {}),
+    ...(str(p.address) ? { address: str(p.address) } : {}),
     ...(p.coordination_required === true ? { coordinationRequired: true } : {}),
     ...(str(p.coordination_note) ? { coordinationNote: str(p.coordination_note) } : {}),
     ...(Array.isArray(p.related_ids) && p.related_ids.length > 0 ? { relatedIds: p.related_ids.filter((x): x is string => typeof x === 'string') } : {}),
@@ -1288,7 +1290,7 @@ const institutionMapping: Mapping<Institution> = {
     updatedAt: ts(p.updated_at),
     ...(typeof p.minors_age_min === 'number' && typeof p.minors_age_max === 'number' ? { minorsAge: { min: p.minors_age_min, max: p.minors_age_max } } : {}),
     contacts: readInstitutionContacts(p.contacts),
-  }),
+  }, str(p.office_phone), str(p.office_address))),
 }
 
 const CONTACT_ROLES = new Set<string>(INSTITUTION_CONTACT_ROLES)
@@ -1309,12 +1311,12 @@ function readInstitutionContacts(raw: unknown): InstitutionContact[] {
         ? {
             phones: (c.phones as unknown[])
               .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object')
-              .map((x) => ({ number: str(x.number), label: (PHONE_LABEL_SET.has(str(x.label)) ? str(x.label) : '') as PhoneLabel })),
+              /* ★★ BD — toute étiquette saisie est gardée (liste ouverte), au plus 24 signes. */
+              .map((x) => ({ number: str(x.number), label: str(x.label).trim().slice(0, 24) as PhoneLabel })),
           }
         : {}),
     }))
 }
-const PHONE_LABEL_SET = new Set<string>(PHONE_LABELS)
 
 /** ★★ AV2 — les points de repère. Une table, aucune fille. */
 const landmarkMapping: Mapping<Landmark> = {

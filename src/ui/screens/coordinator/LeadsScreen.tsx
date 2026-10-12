@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   HOME_BASE,
   LEAD_OPEN_STATUSES,
+  STALE_LEAD_DAYS,
+  isLeadStale,
+  isTestId,
+  now,
   LEAD_STATUSES,
   convertLeadToFarm,
   createLeads,
@@ -20,7 +24,7 @@ import {
   updateLead,
   whatsappHref,
 } from '@core/index'
-import type { Lead, LeadStatus, RegionId } from '@core/index'
+import type { AddressPoint, Lead, LeadStatus, RegionId } from '@core/index'
 import { formRoutes } from './FormPages'
 import { Icon } from '../../components/Icon'
 import { MapSplit } from '../../components/MapSplit'
@@ -30,10 +34,14 @@ import { readToken } from '../../components/badges'
 import { readSortState } from '../../components/DataTable'
 import type { SortState } from '../../components/DataTable'
 import { EntityTable } from '../../components/EntityTable'
-import { PositionLinkField } from '../../components/PositionLinkField'
+import { FormActions, FormSection, TextField } from '../../components/fields'
+import { LEAD_STATUS_TOKEN as STATUS_TOKEN, leadPin, useContextMarkers } from '../../components/placeMarkers'
+import { AddressPointField, NoPositionButton, PlaceFormPage, PlaceOnArrival } from '../../components/formPage'
+import { runUndoable } from '../../components/UndoToast'
+import { useHydrated } from '../../hooks/useDataState'
 import type { EntityColumn, RowAction } from '../../components/EntityTable'
 import { PreviewPanel, PreviewRow, PreviewSection } from '../../components/PreviewPanel'
-import { FilterPill, FilterRow, ListTop, Modal, PageHeader } from '../../components/primitives'
+import { FilterPill, FilterRow, FormWaiting, ListTop, Modal } from '../../components/primitives'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { sortFamily } from '../../components/ListFilters'
 import type { CompactFilters } from '../../components/ListFilters'
@@ -77,15 +85,6 @@ import { useCoreValue } from '../../hooks/useCore'
  * ⛔ AUCUN COMPTEUR NE VOIT CES PISTES (A296).
  */
 
-const STATUS_TOKEN: Record<LeadStatus, string> = {
-  not_called: '--status-info',
-  no_answer: '--status-warn',
-  message_sent: '--status-warn',
-  call_back: '--accent',
-  meeting_set: '--status-success',
-  not_now: '--text-muted',
-  not_interested: '--text-muted',
-}
 
 /** La teinte d'un segment ACTIF — fond léger, encre lisible (contrastes d'AN). */
 const STATUS_ON: Record<LeadStatus, string> = {
@@ -103,7 +102,8 @@ const STATUS_ON: Record<LeadStatus, string> = {
  * contacts, moins nombreux. « לא רלוונטי » en est un aussi (c'était une
  * section repliée en bas : une deuxième façon de restreindre la même liste).
  */
-type Filter = 'open' | LeadStatus
+/* ★★ BD 6 — `stale` : « ouverts depuis plus de deux semaines », la ligne de « מה לעשות ». */
+type Filter = 'open' | 'stale' | LeadStatus
 const FILTERS: readonly Filter[] = ['open', 'not_called', 'no_answer', 'call_back', 'meeting_set', 'not_now']
 const SORT_KEY = 'lo-yanum:leads-sort'
 /** L'ancien tri (une liste déroulante, AS6) devient une colonne. */
@@ -136,7 +136,7 @@ export function LeadsScreen() {
   const navigate = useNavigate()
   const leads = useCoreValue(() => getVisibleLeads())
   const converted = useCoreValue(() => getConvertedLeads())
-  const [filter, setFilterState] = useState<Filter>('open')
+  const [filter, setFilterState] = useState<Filter>(() => (new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('filter') === 'stale' ? 'stale' : 'open'))
   /* Les lignes touchées DANS le filtre courant y restent jusqu'au prochain onglet. */
   const [kept, setKept] = useState<Set<string>>(new Set())
   const [sort, setSortState] = useState<SortState>(() => readSort())
@@ -147,12 +147,13 @@ export function LeadsScreen() {
   const [toast, setToast] = useState<Undo | null>(null)
   const toastTimer = useRef<number | null>(null)
 
-  const counts = useMemo(() => leadCounts(leads), [leads])
+  const nowMs = now().getTime()
+  const counts = useMemo(() => ({ ...leadCounts(leads), stale: leads.filter((l) => !isTestId(l.id) && isLeadStale(l, nowMs)).length }), [leads, nowMs])
   const regionName = (id: RegionId) => regionById(id)?.name ?? ''
   const [query, setQuery] = useState('')
   const q = query.trim()
   const visible = leads.filter((l) =>
-    (kept.has(l.id) ? true : filter === 'open' ? l.status !== 'not_now' : l.status === filter) &&
+    (kept.has(l.id) ? true : filter === 'open' ? l.status !== 'not_now' : filter === 'stale' ? isLeadStale(l, nowMs) : l.status === filter) &&
     (!q || `${l.name} ${l.contactName} ${l.phone} ${l.place} ${l.notes}`.includes(q)),
   )
   const selectedLead = leads.find((l) => l.id === selected) ?? null
@@ -238,17 +239,21 @@ export function LeadsScreen() {
     })
   }
 
-  const markers: MapMarker[] = leads
+  /* ★★ BD 3 — le combiné en contour, à la couleur du statut ;
+     ★★ BD 4 — les fermes et les institutions en contexte, selon les couches. */
+  const context = useContextMarkers(['farms', 'institutions'])
+  const subject: MapMarker[] = leads
     .filter((l) => l.position)
     .map((l) => ({
       id: l.id,
       position: l.position!,
-      color: readToken(STATUS_TOKEN[l.status]),
+      ...leadPin(l),
       title: l.name,
       subtitle: t(`leads.status.${l.status}`),
       emphasis: l.id === selected,
       onSelect: () => select(l.id, false),
     }))
+  const markers: MapMarker[] = [...subject, ...context]
 
   function select(id: string, fly: boolean): void {
     setSelected(id)
@@ -262,7 +267,7 @@ export function LeadsScreen() {
       markers={markers}
       center={HOME_BASE}
       zoom={8}
-      fit={markers.length > 0}
+      fit={subject.length > 0}
       flyTo={selectedLead?.position ? { position: selectedLead.position, key: flyKey, zoom: 12 } : undefined}
     />
   )
@@ -297,7 +302,7 @@ export function LeadsScreen() {
       title: t('filters.family.status'),
       single: true,
       testId: 'leads-status-family',
-      options: FILTERS.filter((f): f is LeadStatus => f !== 'open').map((f) => ({
+      options: FILTERS.filter((f): f is LeadStatus => f !== 'open' && f !== 'stale').map((f) => ({
         key: f,
         label: t(`leads.short.${f}`),
         count: counts[f],
@@ -309,8 +314,12 @@ export function LeadsScreen() {
       })),
     },
     statusAll: { label: t('leads.filterAll'), count: counts.open },
-    families: [sortFamily(t, [{ key: 'name', label: t('leads.col.name') }, ...columns.filter((c) => c.sort).map((c) => ({ key: c.key, label: c.label }))], sort, setSort, 'leads')],
-    activeCount: 0,
+    families: [
+      ...(counts.stale > 0 || filter === 'stale'
+        ? [{ key: 'work', title: t('filters.family.flags'), single: true, options: [{ key: 'stale', label: t('leads.staleTab'), count: counts.stale, active: filter === 'stale', onToggle: () => setFilter(filter === 'stale' ? 'open' : 'stale'), hint: t('leads.staleTitle', { days: STALE_LEAD_DAYS }), testId: 'leads-filter-stale' }] }]
+        : []),
+      sortFamily(t, [{ key: 'name', label: t('leads.col.name') }, ...columns.filter((c) => c.sort).map((c) => ({ key: c.key, label: c.label }))], sort, setSort, 'leads')],
+    activeCount: filter === 'stale' ? 1 : 0,
     onClear: () => setFilter('open'),
     results: visible.length,
   }
@@ -337,16 +346,16 @@ export function LeadsScreen() {
             filters={
               <FilterRow activeCount={filter === 'open' ? 0 : 1} onClear={() => setFilter('open')}>
                 <span role="group" aria-label={t('leads.filterLabel')} data-testid="leads-filters" className="contents">
-                  {FILTERS.map((f) => (
+                  {[...FILTERS, ...(counts.stale > 0 || filter === 'stale' ? (['stale'] as const) : [])].map((f) => (
                     <FilterPill
                       key={f}
                       active={filter === f}
                       onClick={() => setFilter(f)}
                       count={f === 'open' ? counts.open : counts[f]}
-                      title={f === 'open' ? t('leads.filterAllLong') : t(`leads.status.${f}`)}
+                      title={f === 'open' ? t('leads.filterAllLong') : f === 'stale' ? t('leads.staleTitle', { days: STALE_LEAD_DAYS }) : t(`leads.status.${f}`)}
                       testId={`leads-filter-${f}`}
                     >
-                      {f === 'open' ? t('leads.filterAll') : t(`leads.short.${f}`)}
+                      {f === 'open' ? t('leads.filterAll') : f === 'stale' ? t('leads.staleTab') : t(`leads.short.${f}`)}
                     </FilterPill>
                   ))}
                 </span>
@@ -836,16 +845,27 @@ function LeadPreview({ lead, regionName, onStatus, onClose, docked }: { lead: Le
       testId="lead-preview"
       chips={<span className={`chip border text-micro ${STATUS_ON[lead.status]}`}>{t(`leads.status.${lead.status}`)}</span>}
       quick={
-        lead.phone ? (
+        lead.phone || !lead.position ? (
           <>
-            <a className="btn-primary min-h-11" href={`tel:${digits}`} data-testid="lead-preview-call">
-              <Icon name="phone" size={16} />
-              {t('leads.call')}
-            </a>
-            <a className="btn-secondary min-h-11" href={whatsappHref(lead.phone)} target="_blank" rel="noreferrer">
-              <Icon name="whatsapp" size={16} />
-              WhatsApp
-            </a>
+            {lead.phone && (
+              <>
+                <a className="btn-primary min-h-11" href={`tel:${digits}`} data-testid="lead-preview-call">
+                  <Icon name="phone" size={16} />
+                  {t('leads.call')}
+                </a>
+                <a className="btn-secondary min-h-11" href={whatsappHref(lead.phone)} target="_blank" rel="noreferrer">
+                  <Icon name="whatsapp" size={16} />
+                  WhatsApp
+                </a>
+              </>
+            )}
+            {/* ★★ BD 1 — sans position, le dire est le bouton qui mène au geste. */}
+            {!lead.position && (
+              <Link to={`/coordinator/leads/${lead.id}?place=1`} className="btn-secondary min-h-11 border-status-warn text-status-warn-ink" data-testid="lead-preview-no-position">
+                <Icon name="pin" size={16} />
+                {t('place.noPosition')} · {t('place.placeIt')}
+              </Link>
+            )}
           </>
         ) : undefined
       }
@@ -883,100 +903,107 @@ function LeadPreview({ lead, regionName, onStatus, onClose, docked }: { lead: Le
   )
 }
 
-/** ★★ AY3.3 — la page d'édition d'un contact (ce que la ligne dépliée faisait). */
+/**
+ * ★★ AY3.3 — la page d'édition d'un contact (ce que la ligne dépliée faisait).
+ * ★★ BD 1 · 7 (2026-10-12) — UN CONTACT À TRAITER EST UN LIEU : sa page a la
+ * forme de celle d'une ferme (`PlaceFormPage`) — la carte, le lieu qui propose
+ * un point, l'appui long, l'épingle qui se glisse — et les sections de la
+ * grammaire des formulaires. Chaque champ s'enregistre en le quittant.
+ */
 export function LeadEditScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { leadId } = useParams()
   const lead = useCoreValue(() => getVisibleLeads().find((l) => l.id === leadId) ?? null)
-  if (!lead) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-6">
-        <PageHeader title={t('leads.title')} back={{ to: '/coordinator/leads', label: t('leads.title') }} />
-        <p className="muted mt-4">{t('leads.empty')}</p>
-      </div>
-    )
-  }
+  const hydrated = useHydrated()
+  const [proposal, setProposal] = useState<AddressPoint | null>(null)
+  const [params] = useSearchParams()
+  if (!lead) return hydrated ? <Navigate to="/coordinator/leads" replace /> : <FormWaiting />
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6" data-testid="lead-edit">
-      <PageHeader title={leadLabel(lead)} back={{ to: '/coordinator/leads', label: t('leads.title') }} />
-      <LeadFields lead={lead} />
-      <LeadPositionField lead={lead} />
-      {/* ★★ BC — la nature de l'exploitation (בקר, צאן, מטעים…), « לאישור » tant que le PO n'a pas validé. */}
-      <section className="mt-4 flex flex-col gap-2" data-testid="lead-branches">
-        <span className="label">{t('branches.title')}</span>
-        <BranchEditor value={lead.branches} onChange={(next) => setLeadBranches(lead.id, next)} testId={`lead-branches-edit-${lead.id}`} />
-      </section>
-      <div className="mt-4">
-        <span className="label">{t('leads.col.status')}</span>
-        <StatusSegments value={lead.status} onChange={(s) => setLeadStatus(lead.id, s)} testId={`lead-status-${lead.id}`} />
-      </div>
-      <div className="mt-4">
-        <LeadDetails lead={lead} />
-      </div>
-      <div className="mt-6 flex justify-end">
-        <button type="button" className="btn-primary min-h-11" onClick={() => navigate('/coordinator/leads')} data-testid="lead-edit-done">
-          {t('common.done')}
-        </button>
-      </div>
-    </div>
+    <PlaceFormPage
+      screenKey="lead-form"
+      testId="lead-edit"
+      title={leadLabel(lead)}
+      back={{ to: '/coordinator/leads', label: t('leads.title') }}
+      map={{
+        value: lead.position,
+        onChange: (position) => runUndoable(t('undo.placed', { name: leadLabel(lead) }), () => updateLead(lead.id, { position })),
+        locality: lead.place,
+        proposal,
+        onProposal: setProposal,
+      }}
+      actions={<FormActions autosave onSubmit={() => navigate('/coordinator/leads')} />}
+    >
+      {(state) => (
+        <>
+          <PlaceOnArrival state={state} addressId="lead-address" active={params.get('place') === '1' && !lead.position} />
+          {!lead.position && (
+            <div className="flex flex-wrap items-center gap-2" data-testid="lead-no-position">
+              <NoPositionButton state={state} addressId="lead-address" />
+            </div>
+          )}
+          <FormSection title={t('leads.sectionDetails')} testId="lead-block-details">
+            <LeadFields lead={lead} />
+          </FormSection>
+          <FormSection title={t('place.positionTitle')} testId="lead-position">
+            <AddressPointField
+              id="lead-address"
+              value={lead.place}
+              onAddress={(place) => updateLead(lead.id, { place })}
+              onProposal={setProposal}
+              position={lead.position}
+              onClear={() => updateLead(lead.id, { position: null })}
+            />
+          </FormSection>
+          <FormSection title={t('leads.col.status')} testId="lead-block-status">
+            <div className="col-span-full flex flex-col gap-3">
+              <StatusSegments value={lead.status} onChange={(s) => setLeadStatus(lead.id, s)} testId={`lead-status-${lead.id}`} />
+              {/* ★★ BC — la nature de l'exploitation (בקר, צאן, מטעים…), « לאישור » tant que le PO n'a pas validé. */}
+              <div className="flex flex-col gap-2" data-testid="lead-branches">
+                <span className="label">{t('branches.title')}</span>
+                <BranchEditor value={lead.branches} onChange={(next) => setLeadBranches(lead.id, next)} testId={`lead-branches-edit-${lead.id}`} />
+              </div>
+            </div>
+          </FormSection>
+          <FormSection title={t('leads.notes')} testId="lead-block-notes">
+            <div className="col-span-full">
+              <LeadDetails lead={lead} />
+            </div>
+          </FormSection>
+        </>
+      )}
+    </PlaceFormPage>
   )
 }
 
 /**
- * ★★ BA (2026-10-12) — LES COORDONNÉES D'UN CONTACT À TRAITER. Le PO relève le
- * point sur le terrain AVANT d'avoir une fiche : il le colle ici (lien Google
- * Maps / Waze, ou « 31.5, 34.6 »), et la conversion en ferme le reporte tel
- * quel (`convertLeadToFarm` : `position: lead.position`).
+ * Nom, contact, téléphone, courriel : enregistrés en quittant le champ.
+ * ★★ BD 7 — les champs partagés (`TextField`) de la grammaire : le
+ * téléphone a son pavé (iPad), la grille est celle du `FormSection`. Le lieu
+ * est dans « מיקום » (`AddressPointField`).
  */
-function LeadPositionField({ lead }: { lead: Lead }) {
-  const { t } = useTranslation()
-  return (
-    <section className="mt-4 flex flex-col gap-2" data-testid="lead-position" data-has-position={lead.position ? 'true' : 'false'}>
-      <span className="label">{t('leads.position')}</span>
-      {lead.position ? (
-        <p className="flex flex-wrap items-center gap-2 text-caption">
-          <span className="ltr-nums rounded-field bg-surface-high px-2.5 py-1.5 text-content-primary" dir="ltr" data-testid="lead-position-value">
-            {lead.position.lat.toFixed(6)}, {lead.position.lng.toFixed(6)}
-          </span>
-          <button type="button" className="btn-ghost min-h-11" onClick={() => updateLead(lead.id, { position: null })} data-testid="lead-position-clear">
-            <Icon name="close" size={14} />
-            {t('leads.positionClear')}
-          </button>
-        </p>
-      ) : (
-        <p className="muted text-caption">{t('leads.positionNone')}</p>
-      )}
-      <PositionLinkField onResolve={(position) => updateLead(lead.id, { position })} applyLabel={t('leads.positionSet')} />
-    </section>
-  )
-}
-
-/** Nom, contact, téléphone, lieu : enregistrés en quittant le champ. */
 function LeadFields({ lead }: { lead: Lead }) {
   const { t } = useTranslation()
-  const [v, setV] = useState({ name: lead.name, contactName: lead.contactName, phone: lead.phone, place: lead.place, email: lead.email })
-  const field = (key: keyof typeof v, label: string, ltr = false) => (
-    <label className="flex flex-col gap-1">
-      <span className="label">{label}</span>
-      <input
-        className={`input min-h-11 ${ltr ? 'ltr-nums' : ''}`}
-        dir={ltr ? 'ltr' : 'auto'}
-        inputMode={key === 'phone' ? 'tel' : undefined}
-        value={v[key]}
-        onChange={(e) => setV((x) => ({ ...x, [key]: e.target.value }))}
-        onBlur={() => v[key] !== lead[key] && updateLead(lead.id, { [key]: v[key].trim() })}
-        data-testid={`lead-field-${key}`}
-      />
-    </label>
+  const [v, setV] = useState({ name: lead.name, contactName: lead.contactName, phone: lead.phone, email: lead.email })
+  useEffect(() => {
+    setV({ name: lead.name, contactName: lead.contactName, phone: lead.phone, email: lead.email })
+  }, [lead.id, lead.name, lead.contactName, lead.phone, lead.email])
+  const field = (key: keyof typeof v, label: string, kind: 'text' | 'phone' | 'email' = 'text') => (
+    <TextField
+      label={label}
+      kind={kind}
+      value={v[key]}
+      onChange={(x) => setV((cur) => ({ ...cur, [key]: x }))}
+      onBlur={() => v[key] !== lead[key] && updateLead(lead.id, { [key]: v[key].trim() })}
+      testId={`lead-field-${key}`}
+    />
   )
   return (
-    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+    <>
       {field('name', t('leads.col.name'))}
       {field('contactName', t('leads.col.contact'))}
-      {field('phone', t('leads.col.phone'), true)}
-      {field('place', t('leads.col.place'))}
-      {field('email', 'Email', true)}
-    </div>
+      {field('phone', t('leads.col.phone'), 'phone')}
+      {field('email', 'Email', 'email')}
+    </>
   )
 }

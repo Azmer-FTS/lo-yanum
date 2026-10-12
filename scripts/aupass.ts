@@ -158,7 +158,17 @@ walk('src')
 /* ★★ AY4 — l'écran des volontaires (et conducteurs) montre et filtre par
    institution : un ÉCRAN de plus, toujours aucun compteur. */
 /* ★★ BB — la fiche liste ses fiches LIÉES (`institutionUi.tsx`) : un écran d'institution. */
-check('A321 seuls les écrans des institutions et de leurs volontaires les lisent', callers.every((p) => /institutionUi|CoverageScreen|InstitutionsImportScreen|InstitutionsScreen|AddContactsScreen|FormPages|ImportWizardScreen|VolunteerFormModal|VolunteersScreen|access\.ts/.test(p)), callers.join(', '))
+/* ★★ BD 4 · 6 — la carte les dessine en CONTEXTE (`placeMarkers.ts`, une couche
+   de la légende) et le tableau de bord compte « מוסדות בלי רכז » dans sa liste
+   de TRAVAIL (`core/dashboard.ts`, qu'il lit par `getInstitutions`) : ni l'un
+   ni l'autre n'est un compteur d'objectif, de dounams ou de rapport (la
+   première moitié de cette section le vérifie dans `access.ts`). */
+check('A321 seuls les écrans des institutions et de leurs volontaires les lisent', callers.every((p) => /institutionUi|CoverageScreen|InstitutionsImportScreen|InstitutionsScreen|AddContactsScreen|FormPages|ImportWizardScreen|VolunteerFormModal|VolunteersScreen|placeMarkers|access\.ts/.test(p)), callers.join(', '))
+{
+  const dash = readFileSync('src/core/dashboard.ts', 'utf8')
+  const imports = (dash.match(/^import[^\n]*$/gm) ?? []).join('\n')
+  check('A321 ★★ BD — la liste de travail n\'importe aucun calcul de dounams ni d\'objectif', !/Dunam|weighted|effectiveAreas|target|Objective|report/i.test(imports), imports)
+}
 
 console.log(`\n  ${passed} PASS, ${failed} FAIL`)
 process.exit(failed === 0 ? 0 : 1)

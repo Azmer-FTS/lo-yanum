@@ -72,7 +72,8 @@
     "councilFromLocality": "Council of {{name}}",
     "councilFromPin": "Council of the nearest locality · {{name}}",
     "councilUse": "Use this council",
-    "pickDate": "Pick a date"
+    "pickDate": "Pick a date",
+    "done": "Done"
   },
   "photo": {
     "choose": "Photo",
@@ -90,7 +91,20 @@
     "hiddenEntities_one": "1 farm hidden by the legend",
     "hiddenEntities_other": "{{count}} farms hidden by the legend",
     "showHidden": "Show",
-    "nearLocality": "Near {{name}} · {{km}} km"
+    "nearLocality": "Near {{name}} · {{km}} km",
+    "layers": {
+      "entities": "Farms and moshavim",
+      "institutions": "Institutions",
+      "leads": "Contacts to handle",
+      "branchNone": "No branch",
+      "inst_signed": "Signed",
+      "inst_other": "The others",
+      "subAll": "All",
+      "only": "Only",
+      "showAll": "Show all"
+    },
+    "legendAllStatuses": "Show all statuses ({{count}} empty)",
+    "legendFewerStatuses": "Only the statuses on the map"
   },
   "nav": {
     "coverage": "Coverage map",
@@ -378,17 +392,13 @@
       "mobile": "Mobile",
       "home": "Home",
       "office": "Office",
-      "": "—"
+      "": "—",
+      "secretariat": "Office"
     },
     "addPhone": "Add a number",
     "removePhone": "Remove number {{number}}",
     "callNumber": "Call {{name}} · {{label}}",
     "office": "Office",
-    "officeTitle": "Institution office",
-    "officeHint": "The institution's own phone and address — not a person. For when the head does not answer.",
-    "officePhone": "Office phone",
-    "officeAddress": "Address",
-    "callOffice": "Call the office",
     "coordination": "Prior coordination required",
     "coordinationTab": "Coordinate first",
     "coordinationTitle": "Institutions not to be contacted directly — coordinate first",
@@ -399,7 +409,16 @@
     "relatedAdd": "Link an institution…",
     "relatedRemove": "Remove the link to {{name}}",
     "heads_other": "{{count}} heads",
-    "heads_one": "1 head"
+    "heads_one": "1 head",
+    "phoneLabelOther": "Other label…",
+    "phoneLabelCustom": "e.g. Fax",
+    "addSecretariat": "Add the office line",
+    "secretariatNoName": "No name — this is the office",
+    "sectionStatus": "Status",
+    "noCoordinatorTab": "No coordinator",
+    "noCoordinatorTitle": "No coordinator named for the volunteers",
+    "coordinationPendingTab": "Coordination to do",
+    "coordinationPendingTitle": "Prior coordination needed, not yet contacted"
   },
   "quickPin": {
     "button": "Drop a pin on the map",
@@ -657,7 +676,10 @@
       "updated": "Updated",
       "created": "Added"
     },
-    "noNote": "No note"
+    "noNote": "No note",
+    "sectionDetails": "Details",
+    "staleTab": "Over two weeks",
+    "staleTitle": "Open for more than {{days}} days"
   },
   "table": {
     "open": "Details",
@@ -754,7 +776,9 @@
     "saved": "Saved: {{name}}",
     "volunteerArchived": "{{name}} set inactive",
     "volunteerReactivated": "{{name}} active again",
-    "outreach": "Marked as sent"
+    "outreach": "Marked as sent",
+    "placed": "{{name}} placed on the map",
+    "unplaced": "Position of {{name}} removed"
   },
   "importHub": {
     "title": "Import",
@@ -815,5 +839,55 @@
       "title": "Thresholds and templates moved to their screens",
       "hint": "Farm settings are on the Farms screen (⋯), guard settings on the Guards screen (⋯). They also open from here."
     }
+  },
+  "pin": {
+    "placeHint": "Tap the map, or long-press, to place the point",
+    "dragHint": "Drag the pin, or long-press elsewhere",
+    "proposalLabel": "Proposed point",
+    "proposal": {
+      "coords": "Point from the coordinates",
+      "address": "Proposed: {{label}}",
+      "locality": "Centre of {{label}} (approximate)"
+    },
+    "proposalHint": "Drag to adjust, then confirm",
+    "proposalAccept": "Confirm the point"
+  },
+  "place": {
+    "address": "Address",
+    "addressHint": "An address, a locality, or a Google Maps / Waze link",
+    "findOnMap": "Find on the map",
+    "finding": "Searching…",
+    "notFound": "No point found for this address — tap the map or long-press",
+    "noPosition": "No position",
+    "placeIt": "Place it on the map",
+    "positionTitle": "Location",
+    "clear": "Remove the position",
+    "sourceMap": "Placed on the map",
+    "source": {
+      "address": "From the address ({{label}}), confirmed on the map",
+      "locality": "Centre of {{label}}, confirmed on the map",
+      "coords": "Pasted coordinates"
+    }
+  },
+  "dashboard": {
+    "work": {
+      "title": "To do",
+      "institutionsNoCoordinator": "Institutions without a coordinator",
+      "farmsNotContacted": "Farms not yet contacted",
+      "agreementsToSign": "Agreements ready to sign",
+      "coordinationPending": "Institutions needing prior coordination",
+      "staleLeads": "Contacts open for over two weeks"
+    },
+    "funnel": {
+      "title": "Progress",
+      "leads": "Contacts",
+      "farms": "Farms",
+      "readyToSign": "To sign",
+      "signed": "Signed",
+      "active": "Active"
+    }
+  },
+  "intake": {
+    "dashTitleNew": "New requests"
   }
 }

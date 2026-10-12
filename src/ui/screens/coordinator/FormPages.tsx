@@ -1,12 +1,14 @@
 import { useMemo } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import { atTimeOn, getAllLeads, getDrivers, getInstitutions, getVolunteers, moveLead, now } from '@core/index'
+import { atTimeOn, getAllLeads, getDrivers, getFarmVisit, getGeneralMeeting, getInstitutions, getVolunteers, moveLead, now } from '@core/index'
 import { useTranslation } from 'react-i18next'
 
 import { FarmVisitModal } from '../../components/FarmVisitModal'
 import { GeneralMeetingModal } from '../../components/GeneralMeetingModal'
+import { FormWaiting } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
+import { useHydrated } from '../../hooks/useDataState'
 import { DriverFormModal } from './DriverFormModal'
 import { VolunteerFormModal } from './VolunteerFormModal'
 
@@ -62,7 +64,9 @@ export function VolunteerFormPage() {
   const [params] = useSearchParams()
   const institutions = useCoreValue(getInstitutions)
   const institution = institutions.find((i) => i.id === params.get('institution')) ?? null
-  if (volunteerId && !volunteer) return <Navigate to="/coordinator/volunteers" replace />
+  /* ★★ BD 8a — avant l'arrivée des données, une fiche absente n'est pas « supprimée ». */
+  const hydrated = useHydrated()
+  if (volunteerId && !volunteer) return hydrated ? <Navigate to="/coordinator/volunteers" replace /> : <FormWaiting />
   return (
     <VolunteerFormModal
       volunteer={volunteer}
@@ -82,7 +86,8 @@ export function DriverFormPage() {
   const drivers = useCoreValue(getDrivers)
   const driver = driverId ? (drivers.find((d) => d.id === driverId) ?? null) : null
   const [params] = useSearchParams()
-  if (driverId && !driver) return <Navigate to="/coordinator/drivers" replace />
+  const hydrated = useHydrated()
+  if (driverId && !driver) return hydrated ? <Navigate to="/coordinator/drivers" replace /> : <FormWaiting />
   return <DriverFormModal driver={driver} onClose={back} presentation="page" initialName={params.get('name') ?? undefined} />
 }
 
@@ -90,8 +95,13 @@ export function VisitFormPage() {
   const { visitId } = useParams()
   const [params] = useSearchParams()
   const back = useBack('/coordinator/agenda')
+  /* ★★ BD 8a — le formulaire naît de la fiche au montage : il attend qu'elle soit là. */
+  const existing = useCoreValue(() => (visitId ? getFarmVisit(visitId) : null))
+  const hydrated = useHydrated()
+  if (visitId && !existing) return hydrated ? <Navigate to="/coordinator/agenda" replace /> : <FormWaiting />
   return (
     <FarmVisitModal
+      key={visitId ?? 'new'}
       visitId={visitId}
       defaultFarmId={params.get('farm') ?? undefined}
       defaultAt={params.get('at') ?? atTimeOn(now(), 10, 0)}
@@ -110,8 +120,13 @@ export function MeetingFormPage() {
      pré-remplis, le lien est gardé, et la piste passe à « קבעתי פגישה ». */
   const leadId = params.get('lead')
   const lead = useCoreValue(() => (leadId ? (getAllLeads().find((l) => l.id === leadId) ?? null) : null))
+  const existing = useCoreValue(() => (meetingId ? getGeneralMeeting(meetingId) : null))
+  const hydrated = useHydrated()
+  if (meetingId && !existing) return hydrated ? <Navigate to="/coordinator/agenda" replace /> : <FormWaiting />
+  if (leadId && !lead && !hydrated) return <FormWaiting />
   return (
     <GeneralMeetingModal
+      key={meetingId ?? 'new'}
       meetingId={meetingId}
       defaultAt={params.get('at') ?? atTimeOn(now(), 10, 0)}
       onClose={back}

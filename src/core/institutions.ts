@@ -105,13 +105,12 @@ export interface Institution {
   /** ★★ AV1 — les autres noms, séparés par « · » : l'import les apparie. */
   aliases: string
   /**
-   * ★★ BB — LE SECRÉTARIAT (מזכירות) : le téléphone et l'adresse de
-   * l'ÉTABLISSEMENT. Ce n'est pas une personne : pas de rang, jamais à la
-   * place du contact de tête dans une liste. Le recours quand le rosh ne
-   * répond pas — appelable depuis la fiche.
+   * ★★ BD (2026-10-12) — L'ADRESSE DU LIEU. Une institution est un lieu : son
+   * adresse PROPOSE un point (`proposePointForAddress`, UI), que le PO valide
+   * ou corrige. Elle reprend l'ancienne « כתובת המזכירות » de BB. Le téléphone
+   * du secrétariat, lui, est une entrée de `contacts` (`isSecretariatEntry`).
    */
-  officePhone?: string
-  officeAddress?: string
+  address?: string
   /**
    * ★★ BB — « נדרש תיאום מוקדם » : on ne l'appelle pas directement. Le texte
    * dit PAR QUI passer ; il accompagne toujours le marqueur, et le bouton
@@ -139,10 +138,10 @@ export function institutionMatchesQuery(i: Institution, query: string): boolean 
   const norm = (s: string) => comparableLocality(s).replace(/מיימון/g, 'מימון')
   const nq = norm(q)
   const digits = q.replace(/\D/g, '')
-  const hay = norm([i.name, i.aliases, i.locality, i.network, ...(i.contacts ?? []).map((c) => c.name)].join(' · '))
+  const hay = norm([i.name, i.aliases, i.locality, i.network, i.address ?? '', ...(i.contacts ?? []).map((c) => c.name)].join(' · '))
   if (nq && hay.includes(nq)) return true
   if (digits.length >= 3) {
-    const nums = [i.officePhone ?? '', ...(i.contacts ?? []).flatMap((c) => contactPhones(c).map((p) => p.number))].map((n) => n.replace(/\D/g, ''))
+    const nums = [...(i.contacts ?? []).flatMap((c) => contactPhones(c).map((p) => p.number))].map((n) => n.replace(/\D/g, ''))
     if (nums.some((n) => n.includes(digits) || (digits.startsWith('0') && n.startsWith('972') && n.slice(3).includes(digits.slice(1))))) return true
   }
   return false
@@ -186,9 +185,22 @@ export const SINGLE_CONTACT_ROLES: readonly InstitutionContactRole[] = ['coordin
  * L'ordre est STABLE et le portable passe d'abord (`contactPhones`) : le
  * PREMIER est celui des boutons d'appel des listes ; la fiche les montre tous,
  * chacun appelable. `phone` reste, comme MIROIR du premier.
+ *
+ * ★★ BD (2026-10-12) — LES ÉTIQUETTES SONT UNE LISTE OUVERTE. Les quatre
+ * connues (נייד · בית · משרד · מזכירות) ont leur traduction ; toute autre est
+ * gardée TELLE QU'ELLE A ÉTÉ SAISIE (« פקס », « שלוחה 3 ») et proposée ensuite
+ * partout où une étiquette se choisit (`phoneLabelChoices`) — la liste
+ * s'étend sans toucher au code. `''` = sans étiquette (lignes d'avant BB).
  */
-export type PhoneLabel = 'mobile' | 'home' | 'office' | ''
-export const PHONE_LABELS: readonly PhoneLabel[] = ['mobile', 'home', 'office', ''] as const
+export type PhoneLabel = string
+export const KNOWN_PHONE_LABELS = ['mobile', 'home', 'office', 'secretariat'] as const
+export type KnownPhoneLabel = (typeof KNOWN_PHONE_LABELS)[number]
+/** Les étiquettes proposées d'office, dans l'ordre du sélecteur. */
+export const PHONE_LABELS: readonly PhoneLabel[] = [...KNOWN_PHONE_LABELS, ''] as const
+export const isKnownPhoneLabel = (l: string): l is KnownPhoneLabel => (KNOWN_PHONE_LABELS as readonly string[]).includes(l)
+/** ★★ BD — l'étiquette du secrétariat (מזכירות). */
+export const SECRETARIAT_LABEL: KnownPhoneLabel = 'secretariat'
+
 export interface ContactPhone {
   number: string
   label: PhoneLabel
@@ -197,6 +209,10 @@ export interface ContactPhone {
 export interface InstitutionContact {
   id: string
   role: InstitutionContactRole
+  /**
+   * ★★ BD — PEUT ÊTRE VIDE : une entrée sans personne, qui ne porte qu'une
+   * étiquette (le secrétariat, `isSecretariatEntry`), est une entrée valable.
+   */
   name: string
   /** Le premier numéro (miroir de `phones[0]`), celui des listes. */
   phone: string
@@ -213,27 +229,103 @@ export interface InstitutionContact {
   restrictsCalls?: boolean
 }
 
-/** Le portable (ou un numéro sans étiquette) d'abord ; à rang égal, l'ordre de saisie. */
-const PHONE_RANK: Record<PhoneLabel, number> = { mobile: 0, '': 0, home: 1, office: 1 }
+/**
+ * Le portable (ou un numéro sans étiquette) d'abord, puis la maison, le bureau
+ * et toute étiquette saisie, le secrétariat en dernier ; à rang égal, l'ordre
+ * de saisie.
+ */
+const phoneRank = (label: PhoneLabel): number => (label === 'mobile' || label === '' ? 0 : label === SECRETARIAT_LABEL ? 2 : 1)
 
 /** ★★ BB — les numéros d'un contact, rangés (portable d'abord, tri stable), vides retirés. */
 export function contactPhones(c: Pick<InstitutionContact, 'phone' | 'phones'>): ContactPhone[] {
   const list = c.phones && c.phones.length > 0 ? c.phones : c.phone.trim() ? [{ number: c.phone, label: '' as PhoneLabel }] : []
-  return list.filter((p) => p.number.trim() !== '').map((p, n) => ({ p, n })).sort((a, b) => PHONE_RANK[a.p.label] - PHONE_RANK[b.p.label] || a.n - b.n).map(({ p }) => p)
+  return list.filter((p) => p.number.trim() !== '').map((p, n) => ({ p, n })).sort((a, b) => phoneRank(a.p.label) - phoneRank(b.p.label) || a.n - b.n).map(({ p }) => p)
 }
 
 /** ★★ BB — le numéro des boutons d'appel des listes : le premier. */
 export const primaryPhone = (c: Pick<InstitutionContact, 'phone' | 'phones'>): string => contactPhones(c)[0]?.number ?? ''
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ BD (2026-10-12) — LE SECRÉTARIAT EST UNE ENTRÉE, PAS UN CHAMP.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * BB avait créé `officePhone` / `officeAddress` pour une chose que quelques
+ * fiches seulement possèdent, à côté du mécanisme qui la disait déjà : une
+ * liste de numéros, chacun avec son étiquette. Le secrétariat est désormais
+ * une ENTRÉE de la liste des contacts : SANS nom de personne, dont les numéros
+ * portent l'étiquette « מזכירות ».
+ *
+ * ⛔ UNE TELLE ENTRÉE NE PREND PAS DE RANG : elle n'est jamais un contact de
+ *    tête (`institutionHeads` la saute, quel que soit son `role`), ne compte
+ *    pas pour le רכז unique, se range APRÈS toutes les personnes, et n'apparaît
+ *    donc jamais à la place du contact de tête dans une liste — exactement ce
+ *    que faisait le champ dédié (A403).
+ * Une entrée sans nom dont un numéro porte une AUTRE étiquette reste une
+ * personne en cours de saisie (le numéro tapé avant le nom) : elle garde son
+ * rôle.
+ */
+export function isSecretariatEntry(c: Pick<InstitutionContact, 'name' | 'phone' | 'phones'>): boolean {
+  if (c.name.trim() !== '') return false
+  const phones = contactPhones(c)
+  return phones.length > 0 && phones.every((p) => p.label === SECRETARIAT_LABEL)
+}
+
+/** ★★ BD — les entrées « מזכירות » d'une institution. */
+export const institutionSecretariats = (i: Pick<Institution, 'contacts'>): InstitutionContact[] => (i.contacts ?? []).filter(isSecretariatEntry)
+
+/**
+ * ★★ BD — LES ÉTIQUETTES À PROPOSER : les quatre connues, puis toutes celles
+ * déjà saisies ailleurs dans la base (une fois chacune, dans l'ordre où elles
+ * apparaissent). C'est ce qui rend la liste extensible sans toucher au code.
+ */
+export function phoneLabelChoices(all: ReadonlyArray<Pick<Institution, 'contacts'>>): PhoneLabel[] {
+  const seen = new Set<string>(PHONE_LABELS)
+  const out: PhoneLabel[] = [...KNOWN_PHONE_LABELS]
+  for (const i of all) for (const c of i.contacts ?? []) for (const p of c.phones ?? []) {
+    const l = p.label.trim()
+    if (l && !seen.has(l)) {
+      seen.add(l)
+      out.push(l)
+    }
+  }
+  return out
+}
+
+/**
+ * ★★ BD — LA MIGRATION DE L'ANCIEN CHAMP, À UN SEUL ENDROIT (lecture d'une
+ * ligne qui le porte encore, et la migration SQL qui fait la même chose) :
+ * `office_phone` devient une entrée « מזכירות » sans nom — sauf si une entrée
+ * porte déjà ce numéro —, `office_address` devient l'ADRESSE du lieu
+ * (`address`) quand elle est vide. Rien n'est perdu.
+ */
+export function foldLegacyOffice<T extends Pick<Institution, 'id' | 'contacts' | 'address'>>(i: T, officePhone: string, officeAddress: string): T {
+  let next = i
+  const phone = officePhone.trim()
+  if (phone) {
+    const d = digitsOf(phone)
+    const known = (i.contacts ?? []).some((c) => contactPhones(c).some((p) => digitsOf(p.number) === d))
+    if (!known) {
+      const entry: InstitutionContact = { id: `ic-${i.id}-office`, role: 'contact', name: '', phone, phones: [{ number: phone, label: SECRETARIAT_LABEL }], note: '' }
+      next = { ...next, contacts: [...(i.contacts ?? []), entry] }
+    }
+  }
+  const address = officeAddress.trim()
+  if (address && !(i.address ?? '').trim()) next = { ...next, address }
+  return next
+}
+
 /** Rangés par rôle ; à rôle égal, l'ordre de saisie est gardé (tri stable). */
 export function sortInstitutionContacts(contacts: readonly InstitutionContact[]): InstitutionContact[] {
-  return [...contacts].sort((a, b) => CONTACT_ROLE_RANK[a.role] - CONTACT_ROLE_RANK[b.role])
+  /* ★★ BD — une entrée « מזכירות » n'a pas de rang : après toutes les personnes. */
+  const rank = (c: InstitutionContact) => (isSecretariatEntry(c) ? 9 : CONTACT_ROLE_RANK[c.role])
+  return [...contacts].sort((a, b) => rank(a) - rank(b))
 }
 
 export const institutionContacts = (i: Pick<Institution, 'contacts'>): InstitutionContact[] => sortInstitutionContacts(i.contacts ?? [])
 
 /** ★★ BB — TOUS les contacts de tête, dans l'ordre de la liste. */
-export const institutionHeads = (i: Pick<Institution, 'contacts'>): InstitutionContact[] => (i.contacts ?? []).filter((c) => c.role === 'head')
+export const institutionHeads = (i: Pick<Institution, 'contacts'>): InstitutionContact[] => (i.contacts ?? []).filter((c) => c.role === 'head' && !isSecretariatEntry(c))
 
 /**
  * ★★ BB — LE contact de tête des écrans étroits : le PREMIER rang 1 qui a un
@@ -295,7 +387,7 @@ export function settleInstitution<T extends Institution>(next: T, prev?: Institu
     const phones = contactPhones(c)
     const tidy: InstitutionContact = { ...c, phone: phones[0]?.number ?? '' }
     if (c.phones !== undefined) tidy.phones = phones
-    if (!SINGLE_CONTACT_ROLES.includes(c.role)) return tidy
+    if (!SINGLE_CONTACT_ROLES.includes(c.role) || isSecretariatEntry(c)) return tidy
     if (seen.has(c.role)) return { ...tidy, role: 'contact' as const }
     seen.add(c.role)
     return tidy

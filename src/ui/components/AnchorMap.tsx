@@ -26,7 +26,8 @@ import { ThreatLegend, threatVectorShapes, threatZoneShapes } from './threats'
 import { ZoneLegend, zoneColor, zoneLabelKey, zoneSatColor } from './zones'
 import { PointLegend } from './meet'
 import { MapLegend } from './MapLegend'
-import { entityMarkerKind, farmMarkerColor, postColor, readToken } from './badges'
+import { farmMarkerColor, postColor, readToken } from './badges'
+import { farmPin } from './placeMarkers'
 import { fullscreenShell, useMapFullscreen } from './fullscreen'
 
 /**
@@ -310,7 +311,7 @@ export function AnchorMap({
         color: farmMarkerColor(farm),
         title: farm.name,
         subtitle: farm.locality,
-        kind: entityMarkerKind(farm),
+        ...farmPin(farm),
         // ★★ AU1 — la ferme de la fiche est le SUJET : aucun calque ne la cache.
         essential: true,
       }]),

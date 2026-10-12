@@ -29,6 +29,7 @@ import {
   TextArea,
   TextField,
   isValidPhone,
+  FormActions,
 } from '../../components/fields'
 import { Modal } from '../../components/primitives'
 import { runUndoable } from '../../components/UndoToast'
@@ -362,14 +363,8 @@ export function VolunteerFormModal({
         />
       </div>
 
-      <div className="mt-5 flex justify-end gap-2">
-        <button type="button" className="btn-secondary" onClick={onClose}>
-          {t('common.cancel')}
-        </button>
-        <button type="button" className="btn-primary" onClick={submit}>
-          {t('common.save')}
-        </button>
-      </div>
+      {/* ★★ BD 7 — la barre de tous les formulaires, au bas de la fenêtre. */}
+      <FormActions onCancel={onClose} onSubmit={submit} />
     </Modal>
   )
 }

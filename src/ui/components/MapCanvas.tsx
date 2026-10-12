@@ -15,7 +15,7 @@ import { MapTools } from './MapTools'
 import { QuickPinSheet, pinHref } from './QuickPin'
 import type { PinCreated } from './QuickPin'
 import { useCoreValue } from '../hooks/useCore'
-import { MARKER_LAYER, setMapLayer, useMapLayers } from './mapLayers'
+import { BRANCH_LAYERS, MARKER_LAYER, markerShown, setMapLayers, useMapLayers } from './mapLayers'
 import { MAP_MAX_BOUNDS, buildBasemapStyle, registerPmtilesProtocol, resolvedThemeOf } from './basemap'
 import { regionById, regionOf, regions } from '@core/index'
 import type { BasemapBase } from './basemap'
@@ -54,7 +54,10 @@ export type MarkerKind =
   | 'bubble'
   /** ★★ AU4 — une מכינה / ישיבה / מדרשה : un carré arrondi, une toque. */
   | 'institution'
-  /** ★★ AU4 — une piste de la salle d'attente : un petit rond en pointillé. */
+  /**
+   * ★★ AU4 — une piste de la salle d'attente. ★★ BD 3 : une épingle CREUSE
+   * (en contour) portant un combiné — le contact est à appeler.
+   */
   | 'lead'
   /** ★★ AV2 — un point de repère nommé (נקודת ציון) : un petit drapeau. */
   | 'landmark'
@@ -68,6 +71,13 @@ export interface MapMarker {
   kind?: MarkerKind
   /** Render larger with a ring — hover, selection, or the focal point. */
   emphasis?: boolean
+  /**
+   * ★★ BD 3 — L'ICÔNE DIT CE QU'IL Y A SUR PLACE : la nature de la ferme
+   * (`pinGlyphFor`), à la place de la silhouette de ferme. Une clé de `GLYPH`.
+   */
+  glyph?: string
+  /** ★★ BD 4 — les replis de couche qui le gouvernent (`branch:cattle`, `inst:signed`…). */
+  layerTags?: readonly string[]
   /** Draw a pulsing halo (unresolved urgent incidents). */
   pulse?: boolean
   /**
@@ -248,6 +258,13 @@ export interface MapViewProps {
    * en croix, ni appui long — rien d'« armé » : c'est un toucher ordinaire.
    */
   onBackgroundTap?: () => void
+  /**
+   * ★★ BD (2026-10-12) — L'APPUI LONG POSE LE POINT DE LA FICHE. Donné, il
+   * remplace le repère rapide (AV2) sur cette carte : appui long (550 ms) ou
+   * clic droit → `onLongPress(position)`. C'est le geste de la fiche d'une
+   * ferme et de celle d'une institution (`PinMap`), avec ou sans point déjà posé.
+   */
+  onLongPress?: (position: LatLng) => void
   interactive?: boolean
   className?: string
   ariaLabel: string
@@ -321,8 +338,11 @@ const SIZE: Record<MarkerKind, number> = {
      une aiguille de 35 px de haut — la même famille que le poste de garde,
      plus fine que la pastille de 26 px qu'elle remplace, qui occupait 26 px
      dans les deux sens. */
-  farm: 26,
-  moshav: 26,
+  /* ★★ BD 3 — « TROP PETITES POUR ÊTRE VUES ». À bout de bras, téléphone tenu
+     dans une voiture : la tête passe de 26 à 38 (l'icône de 13 à 20 px), la
+     pointe reste fine. `bdmap` le mesure à 390 px. */
+  farm: 38,
+  moshav: 38,
   anchor: 30,
   incident: 26,
   mission: 22,
@@ -332,8 +352,8 @@ const SIZE: Record<MarkerKind, number> = {
   car: 28,
   label: 0,
   move: 26,
-  institution: 26,
-  lead: 14,
+  institution: 34,
+  lead: 34,
   landmark: 24,
   // P0.2 — a bubble sizes itself from its count; SIZE is only the floor a
   // caller gets if it forgets to pass one.
@@ -367,6 +387,7 @@ const SIZE: Record<MarkerKind, number> = {
  *   étiquettes, pas des lieux.
  */
 const PIN_KINDS: ReadonlyArray<MarkerKind> = [
+  'lead',
   'pin',
   'anchor',
   'car',
@@ -420,6 +441,7 @@ const TEARDROP_BOX = { x: 0, y: 0, w: 24, h: 32 }
  *    que les deux silhouettes restent à un coup d'œil l'une de l'autre.
  */
 const PIN_SHAPE: Partial<Record<MarkerKind, string>> = {
+  lead: NEEDLE_PIN,
   anchor: NEEDLE_PIN,
   farm: NEEDLE_PIN,
   moshav: NEEDLE_PIN,
@@ -429,6 +451,7 @@ const PIN_SHAPE: Partial<Record<MarkerKind, string>> = {
 
 /** Where the head's centre sits in the 24×32 box, per silhouette. */
 const HEAD_Y: Partial<Record<MarkerKind, number>> = {
+  lead: 8.9,
   anchor: 8.9,
   farm: 8.9,
   moshav: 8.9,
@@ -448,8 +471,32 @@ const CAR_PATH =
  * incident is a warning triangle — recognisable by shape before colour, which
  * is what colour-blindness and a sun-washed iPad both require.
  */
-const GLYPH: Partial<Record<MarkerKind, string>> = {
-  farm: 'M3 10.5 12 4l9 6.5M5 10v10h14V10M9.5 20v-5h5v5',
+const GLYPH: Partial<Record<string, string>> = {
+  /* ★★ BD 3 — la grange (même tracé que l'icône `farm`, le menu « חוות »). */
+  farm: 'M3 20.5V11l2.6-4.4L12 3.5l6.4 3.1L21 11v9.5zM9 20.5v-6h6v6M9 14.5l6 6M15 14.5l-6 6M10.5 9.2h3',
+  /* ═════════════════════════════════════════════════════════════════════
+     ★★ BD 3 — UNE ICÔNE PAR NATURE (`pinGlyphFor`), dessinée au trait comme
+     tout le reste, lisible à 18 px dans la tête de l'épingle :
+     בקר une tête de vache (cornes, oreilles, mufle) · צאן une tête de mouton
+     (laine en nuage) · מטעים un arbre à fruits · כרם une grappe · גד״ש un épi
+     · ירקות une feuille · חווה טיפולית une tête de cheval · לול une poule.
+     ═════════════════════════════════════════════════════════════════════ */
+  cattle:
+    'M3.5 4.5c0 2.6 2 4 4.5 4M20.5 4.5c0 2.6-2 4-4.5 4M8 9.5 4 10.5M16 9.5l4 1M8 8.5h8v6M8 8.5v6M8.5 14.5h7a2.6 2.6 0 0 1 0 5.2h-7a2.6 2.6 0 0 1 0-5.2zM10.6 17.1h.01M13.4 17.1h.01',
+  sheep:
+    'M6 9.6a2.6 2.6 0 0 1 1.8-4.4 2.7 2.7 0 0 1 4.2-1.4 2.7 2.7 0 0 1 4.2 1.4A2.6 2.6 0 0 1 18 9.6M7.6 10.6 3.8 12.2M16.4 10.6l3.8 1.6M8 9.6c0 5.2 1.8 10 4 10s4-4.8 4-10M10.2 12.6h.01M13.8 12.6h.01',
+  orchards: 'M12 21.5v-7.5M12 14l-2.6-2.2M12 2.8a6.2 6.2 0 0 0-6.2 6.2c0 2.9 2.8 5 6.2 5s6.2-2.1 6.2-5A6.2 6.2 0 0 0 12 2.8zM9.4 8.6h.01M14.6 10.2h.01M12.4 6.2h.01',
+  vineyard:
+    'M12 2.5v3.2M12 4.4c1.6-1.6 3.8-1.6 5.4 0M8.4 9.2m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M15.6 9.2m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M12 9.2m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M10.2 12.8m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M13.8 12.8m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M12 16.4m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
+  fieldCrops:
+    'M12 22V4.5M12 9c-2 0-3.6-1.6-3.6-3.6 2 0 3.6 1.6 3.6 3.6zM12 9c2 0 3.6-1.6 3.6-3.6-2 0-3.6 1.6-3.6 3.6zM12 13.6c-2 0-3.6-1.6-3.6-3.6 2 0 3.6 1.6 3.6 3.6zM12 13.6c2 0 3.6-1.6 3.6-3.6-2 0-3.6 1.6-3.6 3.6zM12 18.2c-2 0-3.6-1.6-3.6-3.6 2 0 3.6 1.6 3.6 3.6zM12 18.2c2 0 3.6-1.6 3.6-3.6-2 0-3.6 1.6-3.6 3.6z',
+  vegetables: 'M4.5 19.5C4.5 11 10 4.8 20 4c0 10.4-6.4 15.5-15.5 15.5zM4.5 19.5l8.5-8.5M9.2 14.8h4M12 12V8.6',
+  therapeutic:
+    'M8.5 21.5v-4.8C6.6 15.6 5 13.6 5 11.2L7.2 6 6.4 2.8l3 1.6 2.2-1.4H14c3.6 0 6.6 3 6.6 7.2v1.4l-2.6 1.6-2.2-1.6h-1.4L13.6 17v4.5M10.6 8.4h.01M9 4.8c-1.1 2-1.1 4.2 0 6.2',
+  poultry:
+    'M7.5 21h6.5M10.6 21v-2.6M6 8.2A3.2 3.2 0 0 1 9.2 5h.6a3.2 3.2 0 0 1 3.2 3.2v2l5.4-3.2c1.2 4.2-.6 8.6-4.8 10.2h-3.4A5.2 5.2 0 0 1 5 12V9.8L3.2 8.6 6 8.2zM7.6 4.2c.5-1.6 2-1.6 2.6 0 .5-1.6 2-1.6 2.6 0M8.8 8.4h.01',
+  /* ★★ BD 3 — le contact à traiter : un combiné (l'icône `phone`), en contour. */
+  lead: 'M6.5 3.5h3l1.5 4-2 1.5a12 12 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2.2 2A17 17 0 0 1 4.5 5.7a2 2 0 0 1 2-2.2z',
   // G16 — a moshav is a VILLAGE: two rooftops on its disc, not one barn.
   moshav:
     'M2.5 20v-6l4-3.5 4 3.5v6M10.5 20v-8.5L15.5 7l5 4.5V20M2 20h20M13.5 20v-4h4v4',
@@ -546,6 +593,9 @@ function markerElement(marker: MapMarker): HTMLElement {
    *   Reading it off a class name would be reading off a colour.
    */
   el.dataset.markerKind = kind
+  /* ★★ BD 3 — l'icône et la sélection, sur l'élément : `bdmap` les lit. */
+  if (marker.glyph) el.dataset.glyph = marker.glyph
+  if (marker.emphasis) el.dataset.selected = ''
   const ring = readToken('--surface-base')
   // P0.3 — filled in by whichever branch draws the marker, then handed to
   // `wrapForTouch` at the bottom. Declared here so no branch can forget it and
@@ -611,25 +661,9 @@ function markerElement(marker: MapMarker): HTMLElement {
     return el
   }
 
-  if (kind === 'lead') {
-    // ★★ AU4 — une PISTE : un petit rond creux en pointillé, sans glyphe. Le
-    // plus discret des cinq : c'est un nom saisi, pas encore un lieu démarché.
-    const d = marker.emphasis ? SIZE.lead + 6 : SIZE.lead
-    el.style.cssText = [
-      `width:${d}px`,
-      `height:${d}px`,
-      'padding:0',
-      'border-radius:var(--radius-pill)',
-      'background:#ffffff',
-      `border:2.5px dashed ${marker.color}`,
-      'cursor:pointer',
-      /* ★★ AY8 — liseré blanc PUIS fil sombre, dehors : le contact se détache
-         du fond sombre comme du clair. */
-      `box-shadow:0 0 0 1.5px #ffffff, 0 0 0 2.6px ${PIN_OUTLINE}, 0 1px 4px rgba(0,0,0,.35)`,
-    ].join(';')
-    wrapForTouch(el, d, d, false)
-    return withLabel(el, marker)
-  }
+  /* ★★ BD 3 — la piste (contact à traiter) n'est plus un petit rond en
+     pointillé : c'est une épingle CREUSE au combiné, dessinée plus bas avec
+     les autres épingles (`PIN_KINDS`). */
 
   if (kind === 'institution') {
     // ★★ AU4 — une INSTITUTION : un carré arrondi (un bâtiment, pas un champ),
@@ -650,7 +684,9 @@ function markerElement(marker: MapMarker): HTMLElement {
       'display:flex',
       'align-items:center',
       'justify-content:center',
-      `box-shadow:0 0 0 1.2px ${PIN_OUTLINE}, ${marker.emphasis ? '0 4px 12px rgba(0,0,0,.5)' : '0 2px 6px rgba(0,0,0,.4)'}`,
+      /* ★★ BD 3 — la sélection se lit sans la couleur : plus grande, et un
+         double anneau (blanc, puis sombre) autour du carré. */
+      `box-shadow:${marker.emphasis ? `0 0 0 3px #ffffff, 0 0 0 5px ${PIN_OUTLINE}, 0 4px 12px rgba(0,0,0,.5)` : `0 0 0 1.2px ${PIN_OUTLINE}, 0 2px 6px rgba(0,0,0,.4)`}`,
     ].join(';')
     el.innerHTML = `
       <svg viewBox="0 0 24 24" width="${Math.round(size * 0.66)}" height="${Math.round(size * 0.66)}" aria-hidden="true"
@@ -707,7 +743,12 @@ function markerElement(marker: MapMarker): HTMLElement {
        en haut », « ovale ». La boîte s'élargit de la moitié du trait de chaque
        côté (`PIN_BOX`) ; le rapport largeur/hauteur est celui de la boîte, de
        sorte que la tête reste un cercle et garde sa taille à l'écran. */
-    const headPx = marker.emphasis ? SIZE[kind] + 6 : SIZE[kind]
+    /* ★★ BD 3 — l'icône de la nature (`glyph`), sinon celle du genre ; le
+       contact à traiter est toujours en contour (creux). Sélectionnée, la tête
+       grandit d'un tiers et prend un anneau : lisible sans la couleur. */
+    const glyphPath = GLYPH[marker.glyph ?? kind]
+    const hollow = marker.hollow || (kind as MarkerKind) === 'lead'
+    const headPx = marker.emphasis ? Math.round(SIZE[kind] * 1.3) : SIZE[kind]
     // La goutte (`car`) remplit déjà 1…23 × 1…31 : sa boîte reste 24 × 32.
     const box = (PIN_SHAPE[kind] ?? TEARDROP) === NEEDLE_PIN ? PIN_BOX : TEARDROP_BOX
     const w = Math.round((headPx * box.w) / 24)
@@ -731,10 +772,10 @@ function markerElement(marker: MapMarker): HTMLElement {
     const head = marker.badge
       ? `<text x="12" y="${headY + 3.6}" text-anchor="middle" font-family="var(--font-sans)"
                font-size="10.5" font-weight="700" fill="${ring}">${escapeHtml(marker.badge)}</text>`
-      : GLYPH[kind]
-        ? `<g fill="none" stroke="${marker.hollow ? marker.color : ring}" stroke-width="2.4" stroke-linecap="round"
+      : glyphPath
+        ? `<g fill="none" stroke="${hollow ? marker.color : ring}" stroke-width="2.4" stroke-linecap="round"
               stroke-linejoin="round" transform="translate(5.4 ${headY - 6.6}) scale(0.55)">
-             <path d="${GLYPH[kind]}"/>
+             <path d="${glyphPath}"/>
            </g>`
         : `<circle cx="12" cy="${headY}" r="4.2" fill="${ring}"/>`
     /**
@@ -776,8 +817,8 @@ function markerElement(marker: MapMarker): HTMLElement {
      */
     /* Creux = tête BLANCHE cerclée de la couleur, dans les deux thèmes (le
        fond de la page, sombre la nuit, la faisait disparaître). */
-    const fill = marker.hollow ? '#ffffff' : marker.color
-    const glyphInk = marker.hollow ? marker.color : '#ffffff'
+    const fill = hollow ? '#ffffff' : marker.color
+    const glyphInk = hollow ? marker.color : '#ffffff'
     /* Tête 7,2 ; liseré BLANC de 1,8 ; fil sombre de 1 : le blanc doit se VOIR
        (2 px à l'écran), sinon il ne détache rien — mesuré par A365. */
     const headR = 7.2
@@ -786,10 +827,10 @@ function markerElement(marker: MapMarker): HTMLElement {
     const headContent = marker.badge
       ? `<text x="12" y="${hy + 3.6}" text-anchor="middle" font-family="var(--font-sans)"
                font-size="10" font-weight="700" fill="${glyphInk}">${escapeHtml(marker.badge)}</text>`
-      : GLYPH[kind]
+      : glyphPath
         ? `<g fill="none" stroke="${glyphInk}" stroke-width="2.6" stroke-linecap="round"
               stroke-linejoin="round" transform="translate(${12 - 12 * 0.5} ${hy - 12 * 0.5}) scale(0.5)">
-             <path d="${GLYPH[kind]}"/>
+             <path d="${glyphPath}"/>
            </g>`
         : `<circle cx="12" cy="${hy}" r="3.2" fill="${glyphInk}"/>`
     el.innerHTML = isNeedle
@@ -807,16 +848,17 @@ function markerElement(marker: MapMarker): HTMLElement {
         <path d="M10.7 ${hy + headR - 0.6} L13.3 ${hy + headR - 0.6} L12.25 31.1 L11.75 31.1 Z" fill="${PIN_OUTLINE}" data-pin-needle=""/>
         <path d="M ${12 - headR - 2.3} ${hy} a ${headR + 2.3} ${headR + 2.3} 0 1 0 ${2 * (headR + 2.3)} 0 a ${headR + 2.3} ${headR + 2.3} 0 1 0 ${-2 * (headR + 2.3)} 0 Z"
               fill="#ffffff" stroke="${PIN_OUTLINE}" stroke-width="1" data-pin-halo=""/>
-        <path d="M ${12 - (marker.hollow ? headR - 1.1 : headR)} ${hy} a ${marker.hollow ? headR - 1.1 : headR} ${marker.hollow ? headR - 1.1 : headR} 0 1 0 ${2 * (marker.hollow ? headR - 1.1 : headR)} 0 a ${marker.hollow ? headR - 1.1 : headR} ${marker.hollow ? headR - 1.1 : headR} 0 1 0 ${-2 * (marker.hollow ? headR - 1.1 : headR)} 0 Z"
-              fill="${fill}" stroke="${marker.hollow ? marker.color : 'none'}" stroke-width="${marker.hollow ? 2.2 : 0}" data-pin-outline=""/>
-        ${marker.hollow ? '' : `<circle cx="12" cy="${hy}" r="${headR}" fill="url(#pin-relief)"/>`}
+        ${marker.emphasis ? `<circle cx="12" cy="${hy}" r="${headR + 4.4}" fill="none" stroke="${PIN_OUTLINE}" stroke-width="1.6" data-pin-selected=""/>` : ''}
+        <path d="M ${12 - (hollow ? headR - 1.1 : headR)} ${hy} a ${hollow ? headR - 1.1 : headR} ${hollow ? headR - 1.1 : headR} 0 1 0 ${2 * (hollow ? headR - 1.1 : headR)} 0 a ${hollow ? headR - 1.1 : headR} ${hollow ? headR - 1.1 : headR} 0 1 0 ${-2 * (hollow ? headR - 1.1 : headR)} 0 Z"
+              fill="${fill}" stroke="${hollow ? marker.color : 'none'}" stroke-width="${hollow ? 2.2 : 0}" data-pin-outline=""/>
+        ${hollow ? '' : `<circle cx="12" cy="${hy}" r="${headR}" fill="url(#pin-relief)"/>`}
         ${headContent}
       </svg>`
       : `
       <svg viewBox="${box.x} ${box.y} ${box.w} ${box.h}" width="${w}" height="${h}"
            overflow="visible" aria-hidden="true" data-pin-svg="">
         <path d="${silhouette}" fill="${fill}"
-              stroke="${marker.hollow ? marker.color : PIN_OUTLINE}" stroke-width="${marker.hollow ? 2.4 : PIN_STROKE}"
+              stroke="${hollow ? marker.color : PIN_OUTLINE}" stroke-width="${hollow ? 2.4 : PIN_STROKE}"
               stroke-linejoin="round" data-pin-outline=""/>
         ${head}
       </svg>`
@@ -947,6 +989,7 @@ export default function MapCanvas({
   ariaLabel,
   onMapClick,
   onBackgroundTap,
+  onLongPress,
   onMapDblClick,
   cooperative = false,
   fullscreen,
@@ -972,7 +1015,7 @@ export default function MapCanvas({
    */
   const isCoordinator = useCoreValue(() => getSession().role === 'coordinator')
   const landmarks = useCoreValue(() => getLandmarks())
-  const quickPinOn = quickPin && interactive && isCoordinator && !onMapClick && !freehand?.active
+  const quickPinOn = quickPin && interactive && isCoordinator && !onMapClick && !onLongPress && !freehand?.active
   const [pinDraft, setPinDraft] = useState<{ position: LatLng; landmark?: Landmark | null } | null>(null)
   const [pinArmed, setPinArmed] = useState(false)
   const [pinDone, setPinDone] = useState<PinCreated | null>(null)
@@ -1052,16 +1095,14 @@ export default function MapCanvas({
    * épingle sur l'ordinateur, elles sont là sur le téléphone »). Le compte de
    * ce qui est caché est dit sur la carte, et un geste le rend.
    */
-  const hiddenEntities = layers.entities
-    ? 0
-    : allMarkers.filter((m) => MARKER_LAYER[m.kind ?? 'farm'] === 'entities' && !m.essential && !m.emphasis).length
+  /* ★★ BD 4 — les fermes cachées par leur couche OU par le repli des natures. */
+  const hiddenEntities = allMarkers.filter((m) => MARKER_LAYER[m.kind ?? 'farm'] === 'entities' && !m.essential && !m.emphasis && !markerShown(m, layers)).length
   const markers = useMemo(
     () =>
       allMarkers
         .filter((m) => {
           if (m.essential || m.emphasis) return true
-          const layer = MARKER_LAYER[m.kind ?? 'farm']
-          return layer ? layers[layer] : true
+          return markerShown(m, layers)
         })
         /**
          * ★ X12.5 — THE DEMONSTRATION COLOURING. With `regionColors` on, an
@@ -1119,6 +1160,8 @@ export default function MapCanvas({
   clickRef.current = onMapClick
   const bgTapRef = useRef(onBackgroundTap)
   bgTapRef.current = onBackgroundTap
+  const longPressRef = useRef(onLongPress)
+  longPressRef.current = onLongPress
   const polygonClickRef = useRef(onPolygonClick)
   polygonClickRef.current = onPolygonClick
   const dblClickRef = useRef(onMapDblClick)
@@ -1812,6 +1855,12 @@ export default function MapCanvas({
     // long press. MapLibre already separates a click from the end of a pan, so
     // this never fires because somebody dragged the map.
     const place = (e: maplibregl.MapMouseEvent) => {
+      /* ★★ BD — le clic droit est l'appui long de l'ordinateur. */
+      if (e.type === 'contextmenu' && longPressRef.current) {
+        e.preventDefault()
+        longPressRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+        return
+      }
       if (clickRef.current) {
         clickRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng })
         return
@@ -2402,7 +2451,8 @@ export default function MapCanvas({
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    const CLUSTER_PX = 26
+    /* ★★ BD 3 — les épingles ont grandi (tête 38) : on regroupe plus tôt. */
+    const CLUSTER_PX = 32
     const groupable = (m: MapMarker) =>
       !m.draggable &&
       /* ★★ AU4 — ni les institutions (le sujet de la carte de couverture,
@@ -2739,7 +2789,7 @@ export default function MapCanvas({
     }
     const down = (e: PointerEvent) => {
       pointers.add(e.pointerId)
-      if (!quickRef.current.on || pointers.size > 1) return clear()
+      if ((!quickRef.current.on && !longPressRef.current) || pointers.size > 1) return clear()
       if (e.pointerType === 'mouse' && e.button !== 0) return
       if ((e.target as HTMLElement).closest('.maplibregl-marker, .maplibregl-ctrl, .maplibregl-popup, button, a, input, textarea')) return
       start = { x: e.clientX, y: e.clientY }
@@ -2749,7 +2799,14 @@ export default function MapCanvas({
         if (!start) return
         const r = el.getBoundingClientRect()
         const ll = map.unproject([at.x - r.left, at.y - r.top])
-        quickRef.current.fire({ lat: ll.lat, lng: ll.lng })
+        if (longPressRef.current) {
+          try {
+            navigator.vibrate?.(12)
+          } catch {
+            /* pas de vibreur : rien */
+          }
+          longPressRef.current({ lat: ll.lat, lng: ll.lng })
+        } else quickRef.current.fire({ lat: ll.lat, lng: ll.lng })
         start = null
       }, LONG_PRESS_MS)
     }
@@ -3048,7 +3105,7 @@ export default function MapCanvas({
           <button
             type="button"
             data-testid="map-hidden-entities"
-            onClick={() => setMapLayer('entities', true)}
+            onClick={() => setMapLayers({ entities: true, ...Object.fromEntries(BRANCH_LAYERS.map((k) => [k, true])) })}
             className={`glass pointer-events-auto absolute start-1/2 z-[3] flex min-h-11 max-w-[min(26rem,calc(100%-7rem))] -translate-x-1/2 items-center gap-2 rounded-pill px-4 py-2 text-caption font-semibold text-content-primary shadow-card rtl:translate-x-1/2 ${
               imagery !== 'ok' ? 'top-16' : 'top-3'
             }`}

@@ -474,6 +474,9 @@ function inIsrael(lat: number, lng: number): boolean {
   )
 }
 
+/** ★★ BD — la même boîte, pour un point (le géocodeur d'adresse). */
+export const isInIsrael = (p: LatLng): boolean => inIsrael(p.lat, p.lng)
+
 /**
  * A latitude/longitude pair somewhere in `raw`, or null.
  *

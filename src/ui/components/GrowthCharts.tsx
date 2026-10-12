@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { getGuardsPerWeek, getSignedGrowth } from '@core/index'
+import { getGuardsPerWeek, getSignedGrowth, getVisibleMissions } from '@core/index'
 import type { GrowthPoint } from '@core/index'
 
 import { useCoreValue } from '../hooks/useCore'
@@ -301,6 +301,9 @@ export function GrowthCharts() {
   const signed = useCoreValue(() => getSignedGrowth(12))
   const guards = useCoreValue(() => getGuardsPerWeek(12))
   const guardsTotal = guards.reduce((s, p) => s + p.added, 0)
+  /* ★★ BD 6 — la courbe des gardes ne s'affiche qu'à partir de la PREMIÈRE
+     garde : avant, c'est une ligne plate qui n'apprend rien. */
+  const firstGuard = useCoreValue(() => getVisibleMissions().some((m) => m.status === 'completed'))
 
   return (
     // U3 — one under the other in a narrow column. W3.2 (passe finale) — the
@@ -309,7 +312,7 @@ export function GrowthCharts() {
     // of growing (`.growth-grid`, a container query).
     <div className="growth-wrap" data-testid="growth-charts">
       <div className="growth-grid">
-      <div className="card card-pad min-w-0 bg-status-success/[0.05]">
+      <div className="card card-pad min-w-0 bg-status-success/[0.05]" data-testid="chart-signed">
         <div className="flex items-center justify-between gap-2">
           <p className="text-caption font-semibold text-content-primary">{t('dashboard.growth.signed')}</p>
           <Icon name="document" size={24} strokeWidth={1.4} className="shrink-0 text-status-success-ink" />
@@ -320,7 +323,8 @@ export function GrowthCharts() {
           <p className="muted mt-1">{t('dashboard.growth.undated', { count: signed.undated })}</p>
         )}
       </div>
-      <div className="card card-pad min-w-0 bg-accent/[0.05]">
+      {firstGuard && (
+      <div className="card card-pad min-w-0 bg-accent/[0.05]" data-testid="chart-guards">
         <div className="flex items-center justify-between gap-2">
           <p className="text-caption font-semibold text-content-primary">{t('dashboard.growth.guards')}</p>
           <Icon name="shield" size={24} strokeWidth={1.4} className="shrink-0 text-accent-ink" />
@@ -328,6 +332,7 @@ export function GrowthCharts() {
         <p className="muted mb-1">{t('dashboard.growth.guardsHint', { weeks: 12, count: guardsTotal })}</p>
         <BarChart points={guards} locale={locale} colour="rgb(var(--accent))" />
       </div>
+      )}
       </div>
     </div>
   )

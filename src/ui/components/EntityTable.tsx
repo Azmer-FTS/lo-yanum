@@ -214,6 +214,10 @@ export function EntityTable<T>({
 }) {
   const { t } = useTranslation()
   const wrapRef = useRef<HTMLDivElement | null>(null)
+  const rowsRef = useRef(rows)
+  rowsRef.current = rows
+  const rowKeyRef = useRef(rowKey)
+  rowKeyRef.current = rowKey
   const [width, setWidth] = useState(0)
   const [headTop, setHeadTop] = useState(0)
   useLayoutEffect(() => {
@@ -267,7 +271,13 @@ export function EntityTable<T>({
     const k = returnTo.get(testId ?? label)
     if (!k) return
     returnTo.delete(testId ?? label)
-    wrapRef.current?.querySelector(`[data-row-key="${CSS.escape(k)}"]`)?.scrollIntoView({ block: 'center' })
+    const el = wrapRef.current?.querySelector(`[data-row-key="${CSS.escape(k)}"]`)
+    if (el) el.scrollIntoView({ block: 'center' })
+    else {
+      /* ★★ BD 8b — la ligne n'est pas rendue (fenêtre de lignes) : on va à sa place. */
+      const idx = rowsRef.current.findIndex((r) => rowKeyRef.current(r) === k)
+      if (idx >= 0 && wrapRef.current) scrollToRow(wrapRef.current, idx)
+    }
   }, [hidden, testId, label])
   const [closedGroups, setClosedGroups] = useState<ReadonlySet<string>>(new Set())
   const groupCount = new Map<string, number>()
@@ -286,6 +296,9 @@ export function EntityTable<T>({
     const head = i === 0 || groupOf(rows[i - 1]) !== g ? g : null
     return { head, hidden: closedGroups.has(g) }
   }
+  /* ★★ BD 8b — la fenêtre de lignes (voir `useRowWindow`). */
+  const virtual = !tiles && !groupOf && rows.length > VIRTUAL_FROM
+  const rowWin = useRowWindow(virtual, wrapRef, rows.length)
   const groupButton = (g: string) => (
     <button
       type="button"
@@ -584,6 +597,8 @@ export function EntityTable<T>({
       data-stacked={stacked ? '' : undefined}
       data-table-width={Math.round(width)}
       data-columns={['lead', ...shown.map((c) => c.key)].join(',')}
+      data-rows={rows.length}
+      data-virtual={virtual ? `${rowWin.start}-${rowWin.end}` : undefined}
     >
       <table className="w-full table-fixed border-separate border-spacing-0 text-caption" aria-label={label}>
         {/* ★★ BC — les largeurs vivent dans un `<colgroup>` : sans ligne
@@ -639,7 +654,13 @@ export function EntityTable<T>({
               </td>
             </tr>
           )}
-          {rows.map((r, i) => {
+          {virtual && rowWin.start > 0 && (
+            <tr aria-hidden="true" data-virtual-pad="top" style={{ height: rowWin.start * rowWin.rowPx }}>
+              <td colSpan={shown.length + 2} className="p-0" />
+            </tr>
+          )}
+          {(virtual ? rows.slice(rowWin.start, rowWin.end) : rows).map((r, n) => {
+            const i = virtual ? rowWin.start + n : n
             const k = rowKey(r)
             const active = activeKey === k
             const step = groupStep(r, i)
@@ -708,8 +729,96 @@ export function EntityTable<T>({
               </Fragment>
             )
           })}
+          {virtual && rowWin.end < rows.length && (
+            <tr aria-hidden="true" data-virtual-pad="bottom" style={{ height: (rows.length - rowWin.end) * rowWin.rowPx }}>
+              <td colSpan={shown.length + 2} className="p-0" />
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
   )
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ BD 8b (2026-10-12) — LE TABLEAU NE POSE PLUS SES TROIS CENTS LIGNES.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Le tableau des volontaires mettait toutes ses lignes dans la page (`layout`
+ * A30 : lent, exposé par la liste par défaut du téléphone depuis BC). Au-delà
+ * de `VIRTUAL_FROM` lignes, et sans groupes, seules les lignes VISIBLES (plus
+ * une marge de `OVERSCAN`) sont rendues ; deux lignes d'espacement gardent la
+ * hauteur du tableau, donc la barre de défilement et l'en-tête collé.
+ *
+ * ★ LE DÉFILEMENT EST CELUI DE N'IMPORTE QUEL ANCÊTRE, OU DE LA FENÊTRE. Une
+ *   liste vit tantôt dans un panneau qui défile (`MapSplit` « panel »), tantôt
+ *   dans la page : l'écoute est en CAPTURE sur le document, et la fenêtre de
+ *   lignes est recalculée depuis la position du `<tbody>` dans l'écran — la
+ *   même lecture quel que soit le conteneur. Les lignes du tableau ont une
+ *   hauteur fixe (`h-16`) : la première rendue donne le pas.
+ */
+export const VIRTUAL_FROM = 60
+const OVERSCAN = 10
+
+function viewportOf(el: HTMLElement): { top: number; height: number } {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const oy = getComputedStyle(p).overflowY
+    if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) {
+      const r = p.getBoundingClientRect()
+      return { top: Math.max(0, r.top), height: Math.min(window.innerHeight, r.bottom) - Math.max(0, r.top) }
+    }
+  }
+  return { top: 0, height: window.innerHeight }
+}
+
+function useRowWindow(enabled: boolean, wrapRef: { current: HTMLDivElement | null }, count: number): { start: number; end: number; rowPx: number } {
+  const [win, setWin] = useState({ start: 0, end: Math.min(count, VIRTUAL_FROM), rowPx: 65 })
+  useLayoutEffect(() => {
+    if (!enabled) return
+    let raf = 0
+    const compute = () => {
+      const wrap = wrapRef.current
+      const body = wrap?.querySelector('tbody')
+      if (!wrap || !body) return
+      const row = body.querySelector<HTMLElement>('tr[data-row-key]')
+      const rowPx = Math.max(24, Math.round(row?.getBoundingClientRect().height ?? 65))
+      const view = viewportOf(wrap)
+      const above = view.top - body.getBoundingClientRect().top
+      const start = Math.max(0, Math.min(count, Math.floor(above / rowPx) - OVERSCAN))
+      const end = Math.max(start, Math.min(count, Math.ceil((above + view.height) / rowPx) + OVERSCAN))
+      setWin((p) => (p.start === start && p.end === end && p.rowPx === rowPx ? p : { start, end, rowPx }))
+    }
+    const schedule = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(compute)
+    }
+    compute()
+    document.addEventListener('scroll', schedule, { capture: true, passive: true })
+    window.addEventListener('resize', schedule)
+    return () => {
+      cancelAnimationFrame(raf)
+      document.removeEventListener('scroll', schedule, { capture: true })
+      window.removeEventListener('resize', schedule)
+    }
+  }, [enabled, count, wrapRef])
+  return enabled ? win : { start: 0, end: count, rowPx: win.rowPx }
+}
+
+/** ★★ BD 8b — amener la ligne `idx` au milieu de ce qui défile, rendue ou non. */
+function scrollToRow(wrap: HTMLDivElement, idx: number): void {
+  const body = wrap.querySelector('tbody')
+  const row = body?.querySelector<HTMLElement>('tr[data-row-key]')
+  if (!body) return
+  const rowPx = row?.getBoundingClientRect().height ?? 65
+  const view = viewportOf(wrap)
+  const delta = body.getBoundingClientRect().top + idx * rowPx - (view.top + view.height / 2)
+  for (let p = wrap.parentElement; p; p = p.parentElement) {
+    const oy = getComputedStyle(p).overflowY
+    if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) {
+      p.scrollBy({ top: delta })
+      return
+    }
+  }
+  window.scrollBy({ top: delta })
 }

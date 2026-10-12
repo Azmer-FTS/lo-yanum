@@ -10,7 +10,7 @@ import {
   updateFarmVisit,
 } from '@core/index'
 
-import { Field, SelectField, TextArea } from './fields'
+import { Field, FormActions, SelectField, TextArea } from './fields'
 import { useConfirmDelete } from './ConfirmDelete'
 import { Icon } from './Icon'
 import { Modal } from './primitives'
@@ -99,7 +99,8 @@ export function FarmVisitModal({
       title={t(existing ? 'agenda.editVisit' : 'agenda.planVisit')}
       onClose={onClose}
     >
-      <div className="flex flex-col gap-4">
+      {/* ★★ BD 7 — une seule grille : deux colonnes dès que la carte en a la place. */}
+      <div className="form-grid">
         <SelectField
           label={t('missions.farm')}
           value={farmId}
@@ -134,7 +135,7 @@ export function FarmVisitModal({
             proposeraient deux rappels différents seraient deux choses à
             réapprendre ; `ui/reminders.ts` dit ce que chacune des deux voies
             déclenche vraiment, et ce qu'une PWA ne peut pas faire. */}
-        <div className="form-grid">
+        <div className="contents">
           <SelectField<string>
             label={t('meeting.remindField')}
             value={String(remind)}
@@ -181,9 +182,10 @@ export function FarmVisitModal({
           onChange={setNote}
           rows={3}
           placeholder={t('agenda.notePlaceholder')}
+          className="col-span-full"
         />
 
-        <label className="flex cursor-pointer items-center gap-2.5 rounded-field bg-surface-high px-3 py-2.5">
+        <label className="col-span-full flex min-h-11 cursor-pointer items-center gap-2.5 rounded-field bg-surface-high px-3 py-2.5">
           <input
             type="checkbox"
             checked={done}
@@ -195,37 +197,14 @@ export function FarmVisitModal({
           </span>
         </label>
 
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-edge-subtle pt-3">
-          {existing && (
-            <button
-              type="button"
-              className="btn-ghost me-auto text-status-danger-ink hover:bg-status-danger/10"
-              data-testid="visit-delete"
-              onClick={() =>
-                del.ask(
-                  'farmVisit',
-                  existing.id,
-                  () => deleteFarmVisitChecked(existing.id),
-                  { after: onClose },
-                )
-              }
-            >
-              <Icon name="trash" size={15} />
-              {t('common.remove')}
-            </button>
-          )}
-          <button type="button" className="btn-secondary" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={!valid}
-            onClick={submit}
-          >
-            {t('common.save')}
-          </button>
-        </div>
+        {/* ★★ BD 7 — la barre de tous les formulaires : supprimer à l'autre bout. */}
+        <FormActions
+          onCancel={onClose}
+          onSubmit={submit}
+          disabled={!valid}
+          onDelete={existing ? () => del.ask('farmVisit', existing.id, () => deleteFarmVisitChecked(existing.id), { after: onClose }) : undefined}
+          deleteTestId="visit-delete"
+        />
       </div>
       {del.dialog}
     </Modal>

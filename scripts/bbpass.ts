@@ -97,15 +97,17 @@ section('A402 — plusieurs numéros par contact')
 section('A403 — la מזכירות ne prend jamais la place du contact de tête')
 // ---------------------------------------------------------------------------
 {
-  const noHead = settleInstitution(inst({ officePhone: '08-6000710', officeAddress: 'רח׳ הדגמה 1', contacts: [c('r', 'ram', 'הרב רם', '050-0000711')] }))
+  /* ★★ BD — la מזכירות est une ENTRÉE sans nom, étiquetée « secretariat » (plus un champ). */
+  const office = (n: string): InstitutionContact => ({ id: 'o', role: 'contact', name: '', phone: n, phones: [{ number: n, label: 'secretariat' }], note: '' })
+  const noHead = settleInstitution(inst({ address: 'רח׳ הדגמה 1', contacts: [office('08-6000710'), c('r', 'ram', 'הרב רם', '050-0000711')] }))
   check('A403 sans rang 1 : le miroir des listes reste VIDE, même avec une מזכירות', noHead.contactPhone === '' && noHead.contactName === '')
   check('A403 … et « חסר ראש ישיבה » reste vrai', isInstitutionHeadMissing(noHead))
-  const withHead = settleInstitution(inst({ officePhone: '08-6000710', contacts: [c('h', 'head', 'ראש', '050-0000712')] }))
+  const withHead = settleInstitution(inst({ contacts: [office('08-6000710'), c('h', 'head', 'ראש', '050-0000712')] }))
   check('A403 avec rang 1 : la liste montre son numéro, pas celui de la מזכירות', withHead.contactPhone === '050-0000712')
   const src = readFileSync('src/ui/screens/coordinator/InstitutionsScreen.tsx', 'utf8')
   const columns = src.slice(src.indexOf('const columns'), src.indexOf('const rows = sortRows'))
   const actions = src.slice(src.indexOf('const instActions'), src.indexOf('const markers'))
-  check('A403 ni les colonnes ni les gestes de la liste ne lisent `officePhone`', !columns.includes('officePhone') && !actions.includes('officePhone'))
+  check('A403 ni les colonnes ni les gestes de la liste ne lisent la מזכירות', !/officePhone|isSecretariatEntry|institutionSecretariats/.test(columns + actions))
 }
 
 // ---------------------------------------------------------------------------
@@ -133,7 +135,8 @@ section('A404 — « נדרש תיאום מוקדם »')
   check('A404 la bannière porte le texte', ui.slice(ui.indexOf('export function CoordinationBanner')).slice(0, 900).includes('inst.coordinationNote'))
   check('A404 la puce est dans la ligne de la liste, l’aperçu et la carte de couverture',
     list.includes('<CoordinationChip inst={i} />') && list.includes('<CoordinationChip inst={inst} full />') && readFileSync('src/ui/screens/coordinator/CoverageScreen.tsx', 'utf8').includes('<CoordinationChip inst={inst} full />'))
-  check('A404 un filtre les retrouve (`?filter=coordination`)', list.includes("f === 'coordination'") && list.includes('needsPriorCoordination(i)'))
+  /* ★★ BD — les files de l'écran sont une table (`FLAG_TEST`) : même filtre, une seule écriture. */
+  check('A404 un filtre les retrouve (`?filter=coordination`)', /'coordination'/.test(list) && list.includes('coordination: needsPriorCoordination') && list.includes('isFlag(f) ? f'))
 }
 
 // ---------------------------------------------------------------------------
@@ -185,16 +188,17 @@ section('A407 — la base : aller-retour')
 // ---------------------------------------------------------------------------
 {
   const i = settleInstitution(inst({
-    id: 'inst-bb-rt', officePhone: '08-6000740', officeAddress: 'ת.ד. 1, הדגמה', coordinationRequired: true, coordinationNote: 'דרך רכז ההדגמה', relatedIds: ['inst-bb-other'],
+    id: 'inst-bb-rt', address: 'ת.ד. 1, הדגמה', coordinationRequired: true, coordinationNote: 'דרך רכז ההדגמה', relatedIds: ['inst-bb-other'],
     contacts: [c('h', 'head', 'ראש', '', { phones: [{ number: '08-6000741', label: 'home' }, { number: '050-0000742', label: 'mobile' }] }), c('h2', 'head', 'ראש שני', '050-0000743')],
   }))
   const row = MAPPINGS.institutions.toRows(i)[0].rows[0] as Record<string, unknown>
-  check('A407 colonnes écrites', row.office_phone === '08-6000740' && row.coordination_required === true && row.coordination_note === 'דרך רכז ההדגמה' && Array.isArray(row.related_ids))
+  /* ★★ BD — `office_phone` / `office_address` ont disparu : `address` reste, la מזכירות est dans `contacts`. */
+  check('A407 colonnes écrites', row.address === 'ת.ד. 1, הדגמה' && !('office_phone' in row) && row.coordination_required === true && row.coordination_note === 'דרך רכז ההדגמה' && Array.isArray(row.related_ids))
   const back = MAPPINGS.institutions.fromRows(JSON.parse(JSON.stringify(row)), {} as never) as Institution
-  check('A407 relu : מזכירות, coordination, liens', back.officePhone === '08-6000740' && back.officeAddress === 'ת.ד. 1, הדגמה' && back.coordinationRequired === true && back.coordinationNote === 'דרך רכז ההדגמה' && back.relatedIds?.[0] === 'inst-bb-other')
+  check('A407 relu : adresse, coordination, liens', back.address === 'ת.ד. 1, הדגמה' && back.coordinationRequired === true && back.coordinationNote === 'דרך רכז ההדגמה' && back.relatedIds?.[0] === 'inst-bb-other')
   check('A407 relu : deux têtes, deux numéros, portable d’abord', institutionHeads(back).length === 2 && contactPhones(back.contacts![0]).map((p) => p.number).join(' ') === '050-0000742 08-6000741' && back.contactPhone === '050-0000742')
-  const old = MAPPINGS.institutions.fromRows({ ...row, office_phone: undefined, coordination_required: undefined, coordination_note: undefined, related_ids: undefined, office_address: undefined, contacts: [{ id: 'x', role: 'head', name: 'ישן', phone: '050-0000744', note: '' }] }, {} as never) as Institution
-  check('A407 une ligne d’avant BB se lit : sans marqueur, un numéro', !needsPriorCoordination(old) && (old.officePhone ?? '') === '' && contactPhones(old.contacts![0]).length === 1)
+  const old = MAPPINGS.institutions.fromRows({ ...row, address: undefined, office_phone: undefined, coordination_required: undefined, coordination_note: undefined, related_ids: undefined, office_address: undefined, contacts: [{ id: 'x', role: 'head', name: 'ישן', phone: '050-0000744', note: '' }] }, {} as never) as Institution
+  check('A407 une ligne d’avant BB se lit : sans marqueur, un numéro', !needsPriorCoordination(old) && (old.address ?? '') === '' && contactPhones(old.contacts![0]).length === 1)
   const mig = readFileSync('supabase/migrations/20261012000200_bb_institutions_office_coordination.sql', 'utf8')
   check('A407 la migration est additive et ne touche pas `anon`', /add column if not exists office_phone/.test(mig) && !/drop column|grant|anon\b.*to/i.test(mig.replace(/--[^\n]*/g, '')))
 }

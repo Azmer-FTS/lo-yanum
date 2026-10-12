@@ -1,5 +1,7 @@
+import { NOT_FARMS, farmPin, useContextMarkers } from '../../components/placeMarkers'
+import { StatusLegend } from '../../components/StatusLegend'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -13,12 +15,17 @@ import {
   getDunamKpis,
   formatDate,
   regionById,
-  getFarmStatusCounts,
+  dashboardBlocks,
+  funnel,
+  getInstitutions,
+  getVisibleLeads,
+  getVisibleMissions,
+  incomingFarms,
+  workList,
   getTonightMissionViews,
   getUpcomingAgendaEvents,
   getVisibleFarms,
   getVisibleIncidents,
-  getVolunteerStats,
   isSameDay,
   localDayKey,
   now,
@@ -28,6 +35,8 @@ import {
 import type {
   AgendaEvent,
   DashboardAlert,
+  FunnelStep,
+  WorkItem,
   MissionStatus,
   RegionId,
 } from '@core/index'
@@ -44,22 +53,20 @@ import { ActivityReportButton } from '../../report/ActivityReportButton'
 import { ReportButton } from '../../report/ReportButton'
 import { readReportRecipient } from '../../report/recipient'
 import { TitleWithInfo } from '../../components/InfoTip'
-import { Icon } from '../../components/Icon'
+import { ChevronForward, Icon } from '../../components/Icon'
 import { GrowthCharts } from '../../components/GrowthCharts'
 import { MyDayBlock } from '../../components/MyDayBlock'
 import type { IconName } from '../../components/Icon'
 import { MapPanel } from '../../components/MapPanel'
 import { IntakeDashboardBlock } from '../../intake/IntakeDashboardBlock'
+import { useIntakeRequests } from '../../intake/intakeState'
 import type { MapMarker } from '../../components/MapView'
 import {
-  FarmStatusDot,
   MissionStatusChip,
-  entityMarkerKind,
   readStatusColor,
   readToken,
 } from '../../components/badges'
 import { EmptyState, ScrollRow, Section, bandTone } from '../../components/primitives'
-import type { KpiTone } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 
@@ -415,42 +422,6 @@ function HeroFigure({
   )
 }
 
-/**
- * The dashboard's KPI row.
- *
- * ★★ Y5 — `BandCard`, on the same terms as `HeroFigure` above: this row was
- *    the third geometry — a bare 24 px glyph with no disc at all — and the
- *    product owner reads a disc-less icon beside a disced one as two designs.
- */
-function Kpi({
-  label,
-  value,
-  icon,
-  tone = 'default',
-  to,
-  testId,
-}: {
-  label: string
-  value: ReactNode
-  icon: IconName
-  tone?: KpiTone
-  to: string
-  testId?: string
-}) {
-  const { tint, ink } = bandTone(tone)
-  return (
-    <BandCard
-      to={to}
-      testId={testId}
-      icon={icon}
-      tint={tint}
-      ink={ink}
-      figure={value}
-      label={label}
-    />
-  )
-}
-
 // --- Agenda widget ---------------------------------------------------------
 
 const EVENT_DOT: Record<MissionStatus | 'visit' | 'meeting', string> = {
@@ -489,6 +460,8 @@ function AgendaWidget() {
     getAgendaEvents(week[0], addDays(week[0], 7)),
   )
   const upcoming = useCoreValue(() => getUpcomingAgendaEvents(3))
+  /* ★★ BD 6 — une semaine vide et rien à venir : le bloc n'a rien à dire. */
+  const empty = events.length === 0 && upcoming.length === 0
 
   const byDay = useMemo(() => {
     const map = new Map<string, AgendaEvent[]>()
@@ -501,6 +474,7 @@ function AgendaWidget() {
     return map
   }, [events])
 
+  if (empty) return null
   return (
     <Section
       title={t('agenda.title')}
@@ -635,6 +609,72 @@ function RegionBars({
   )
 }
 
+/**
+ * ★★ BD 6 b) — « מה לעשות » : ce que la base sait déjà et qui attend le PO.
+ * Chaque ligne porte son compte et mène à la liste filtrée qui contient
+ * exactement ces fiches ; une catégorie vide n'a pas de ligne (`workList`).
+ */
+function WorkBlock({ items }: { items: readonly WorkItem[] }) {
+  const { t } = useTranslation()
+  return (
+    <section className="card mb-4 p-3.5" data-testid="dash-work" data-count={items.length} aria-labelledby="dash-work-title">
+      <h2 id="dash-work-title" className="text-section text-content-primary">
+        {t('dashboard.work.title')}
+      </h2>
+      <ul className="mt-2 flex flex-col gap-1.5">
+        {items.map((w) => (
+          <li key={w.key}>
+            <Link
+              to={w.to}
+              data-testid={`dash-work-${w.key}`}
+              data-count={w.count}
+              className="tile-interactive flex min-h-11 items-center gap-3 rounded-field bg-surface-overlay px-3 py-2"
+            >
+              <span className="numeric min-w-[2rem] text-heading font-bold text-accent-ink">{w.count}</span>
+              <span className="min-w-0 flex-1 text-caption font-semibold text-content-primary">{t(`dashboard.work.${w.key}`, { count: w.count })}</span>
+              <ChevronForward size={16} />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+/**
+ * ★★ BD 6 c) — L'ENTONNOIR, en une ligne : contacts à traiter → fermes →
+ * prêtes à signer → signées → actives. Il remplace les chiffres isolés qui
+ * affichaient zéro ; chaque marche mène à sa liste filtrée.
+ */
+function FunnelLine({ steps }: { steps: readonly FunnelStep[] }) {
+  const { t } = useTranslation()
+  return (
+    <section className="card mb-4 p-3.5" data-testid="dash-funnel" aria-label={t('dashboard.funnel.title')}>
+      <h2 className="mb-2 text-section text-content-primary">{t('dashboard.funnel.title')}</h2>
+      <ol className="flex flex-wrap items-stretch gap-x-1 gap-y-2">
+        {steps.map((step, n) => (
+          <li key={step.key} className="flex items-center gap-1">
+            {n > 0 && (
+              <span aria-hidden="true" className="text-content-muted">
+                <ChevronForward size={14} />
+              </span>
+            )}
+            <Link
+              to={step.to}
+              data-testid={`dash-funnel-${step.key}`}
+              data-count={step.count}
+              className="tile-interactive flex min-h-11 min-w-[4.5rem] flex-col items-center justify-center rounded-field bg-surface-overlay px-2.5 py-1.5 text-center"
+            >
+              <span className={`numeric text-heading font-bold leading-tight ${step.count > 0 ? 'text-content-primary' : 'text-content-muted'}`}>{step.count}</span>
+              <span className="text-micro text-content-secondary">{t(`dashboard.funnel.${step.key}`)}</span>
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </section>
+  )
+}
+
 export function DashboardScreen() {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -644,16 +684,30 @@ export function DashboardScreen() {
   const dunams = useCoreValue(getDunamKpis)
   // X12.4 — the same computation the PDF report prints. See `dunamsByRegion`.
   const byRegion = useMemo(() => dunamsByRegion(farms), [farms])
-  const statusCounts = useCoreValue(getFarmStatusCounts)
   const alerts = useCoreValue(getAlerts)
   const tonight = useCoreValue(getTonightMissionViews)
-  const stats = useCoreValue(getVolunteerStats)
   const openIncidents = useCoreValue(() =>
     getVisibleIncidents().filter((i) => !i.resolved),
   )
 
   const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const activeFarms = farms.filter((f) => f.status === 'active').length
+  /* ★★ BD 6 — la liste de travail, l'entonnoir, et les blocs qui ont quelque chose à dire. */
+  const institutions = useCoreValue(getInstitutions)
+  const leads = useCoreValue(getVisibleLeads)
+  const intakeRequests = useIntakeRequests()
+  const nowMs = now().getTime()
+  const completedGuards = useCoreValue(() => getVisibleMissions().filter((m) => m.status === 'completed').length)
+  const source = { farms, institutions, leads, nowMs }
+  const work = workList(source)
+  const steps = funnel(source)
+  const blocks = dashboardBlocks({
+    requests: incomingFarms(farms, intakeRequests).length,
+    work,
+    guards: completedGuards,
+    alerts: alerts.length,
+    tonight: tonight.length,
+    guardedDunams: dunams.guardedDunams,
+  })
 
   /**
    * ★★ AB5a — THE TARGET, AND ITS ONE SIDE EFFECT, IN AN EFFECT.
@@ -671,6 +725,8 @@ export function DashboardScreen() {
   /** The most recent closed campaign, for the line under the bar. */
   const lastReached = target.history[0] ?? null
 
+  /* ★★ BD 4 — les institutions et les contacts à traiter, sous leurs couches. */
+  const context = useContextMarkers(NOT_FARMS)
   const markers: MapMarker[] = useMemo(() => {
     /* AK1 — une fiche sans position (neuf des quinze du portail) n'a pas
        d'épingle : posée au point de repli, elle ferait croire à une ferme à
@@ -681,7 +737,7 @@ export function DashboardScreen() {
       color: readStatusColor(farm.status),
       title: farm.name,
       subtitle: farm.locality,
-      kind: entityMarkerKind(farm),
+      ...farmPin(farm),
       emphasis: farm.id === hoveredId,
       onHover: setHoveredId,
       onSelect: () => navigate(`/coordinator/farms/${farm.id}`),
@@ -715,8 +771,8 @@ export function DashboardScreen() {
         onSelect: () => navigate(`/coordinator/incidents/${incident.id}`),
       }))
 
-    return [...farmMarkers, ...tonightMarkers, ...urgentMarkers]
-  }, [farms, tonight, openIncidents, hoveredId, navigate, t])
+    return [...farmMarkers, ...tonightMarkers, ...urgentMarkers, ...context]
+  }, [farms, tonight, openIncidents, hoveredId, navigate, t, context])
 
   return (
     <MapPanel
@@ -724,24 +780,17 @@ export function DashboardScreen() {
       ariaLabel={t('map.farmsMap')}
       markers={markers}
       contentWidth="half"
-      legend={
-        <ul className="flex flex-col gap-1.5">
-          {statusCounts.map(({ status, count }) => (
-            <li key={status} className="flex items-center gap-2">
-              <FarmStatusDot status={status} />
-              <span className="text-caption text-content-secondary">
-                {t(`farmStatus.${status}`)}
-              </span>
-              <span className="numeric ms-auto ps-3 text-caption text-content-muted">
-                {count}
-              </span>
-            </li>
-          ))}
-        </ul>
-      }
+      /* ★★ BD 5 — les statuts présents sur la carte, avec leur compte ; les vides repliés. */
+      legend={<StatusLegend statuses={farms.filter((f) => !f.positionMissing).map((f) => f.status)} />}
     >
-      {/* ★★ AQ1.1 — les demandes entrantes, AVANT tout le reste. */}
-      <IntakeDashboardBlock />
+      {/* ═══════════════════════════════════════════════════════════════════
+          ★★ BD 6 (2026-10-12) — LE TABLEAU DE BORD SUIT L'ÉTAPE DU PROJET.
+          Un bloc qui n'a rien à dire ne s'affiche pas (`dashboardBlocks`) ;
+          il réapparaît le jour où il a du sens. Dans l'ordre du PO :
+          a) בקשות חדשות · b) מה לעשות · c) l'entonnoir · d) le dounam ·
+          e) les courbes · f) היום שלי — puis, quand il y en a : les alertes,
+          les gardes de ce soir, l'agenda, les dounams par région.
+          ═══════════════════════════════════════════════════════════════════ */}
       <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           {/* ★★ AX4 — l'accroche passe derrière ⓘ. */}
@@ -764,53 +813,38 @@ export function DashboardScreen() {
         </div>
       </header>
 
-      {/* W3.1 (2026-09-02, passe finale) — THE ORDER OF IMPORTANCE IS THE
-          PRODUCT OWNER'S: the association's budget depends on the DUNAMS, not
-          on the livestock. Two big cards first, never hidden; then ONE
-          swipable row of small cards — the livestock deliberately among the
-          small ones. */}
-      <div className="auto-cols mb-2.5 gap-2.5 [--col-min:12rem]" data-testid="hero-figures">
-        <HeroFigure
-          value={dunams.guardedDunams.toLocaleString(locale)}
-          label={t('dashboard.guardedDunams')}
-          hint={t('dashboard.guardedDunamsHint')}
-          icon="shield"
-          tone="good"
-          testId="hero-guarded"
-        />
-        <HeroFigure
-          value={dunams.potentialDunams.toLocaleString(locale)}
-          label={t('dashboard.potentialDunams')}
-          hint={t('dashboard.potentialDunamsHint')}
-          icon="map"
-          tone="accent"
-          testId="hero-potential"
-        />
-      </div>
+      {/* a) — les demandes arrivées par la page publique (absent sans demande). */}
+      <IntakeDashboardBlock />
 
-      {/**
-        * ═══════════════════════════════════════════════════════════════════
-        * ★★ AA3.2 (2026-09-07) — LE TOTAL PONDÉRÉ, L'OBJECTIF, ET OÙ ON EN EST.
-        * ═══════════════════════════════════════════════════════════════════
-        *
-        * ★ IT IS A BAR AND NOT A THIRD BIG NUMBER, and that is the whole
-        *   design of this card. « 34 200 » beside « 100 000 » is arithmetic
-        *   the reader has to do; a bar that is a third full is the answer
-        *   already done. The association reports this figure monthly and the
-        *   only question ever asked of it is how far along it is.
-        *
-        * ★ THE FORMULA IS PRINTED UNDER IT. « מעובד × 1 · מרעה × 0.02 » is
-        *   four characters of hint and it is what stops the next person from
-        *   reading the total as dunams of ground and concluding the programme
-        *   has shrunk. The ratio has a source (`WEIGHTED_DUNAM`), and a number
-        *   whose source is invisible is a number somebody re-derives wrongly.
-        *
-        * ⚠️ THE PERCENTAGE IS NOT CAPPED AND THE BAR IS. Passing the target is
-        *    a fact worth printing — « 118% מהיעד » is exactly the sentence the
-        *    association wants to be able to say — but a bar drawn at 118 %
-        *    would overflow its own track, so the WIDTH is clamped and the
-        *    figure is not.
-        */}
+      {/* b) — la liste de travail : chaque ligne, son compte, sa liste filtrée. */}
+      {blocks.work && <WorkBlock items={work} />}
+
+      {/* c) — l'avancement, en une ligne. */}
+      <FunnelLine steps={steps} />
+
+      {/* Les dounams sous garde : dès la première garde (avant, ils sont à zéro). */}
+      {blocks.guardedFigures && (
+        <div className="auto-cols mb-2.5 gap-2.5 [--col-min:12rem]" data-testid="hero-figures">
+          <HeroFigure
+            value={dunams.guardedDunams.toLocaleString(locale)}
+            label={t('dashboard.guardedDunams')}
+            hint={t('dashboard.guardedDunamsHint')}
+            icon="shield"
+            tone="good"
+            testId="hero-guarded"
+          />
+          <HeroFigure
+            value={dunams.potentialDunams.toLocaleString(locale)}
+            label={t('dashboard.potentialDunams')}
+            hint={t('dashboard.potentialDunamsHint')}
+            icon="map"
+            tone="accent"
+            testId="hero-potential"
+          />
+        </div>
+      )}
+
+      {/* d) — LE DOUNAM : l'engagement de l'association, la barre vers l'objectif et la date butoir. */}
       <div
         className="card mb-2.5 p-4"
         data-testid="weighted-target"
@@ -896,49 +930,7 @@ export function DashboardScreen() {
         )}
       </div>
 
-      {/* 1 — the compact KPI row: swipable sideways when the column is
-          narrow, never wrapping. */}
-      <ScrollRow className="kpi-row mb-5" testId="kpi-row">
-        <Kpi
-          label={t('dashboard.activeFarms')}
-          value={activeFarms}
-          icon="farm"
-          tone="good"
-          to="/coordinator/farms?status=active"
-        />
-        <Kpi
-          label={t('livestock.totalGuarded')}
-          value={dunams.guardedHeads}
-          icon="cattle"
-          to="/coordinator/farms"
-          testId="kpi-guarded-heads"
-        />
-        <Kpi
-          label={t('dashboard.availableVolunteers')}
-          value={stats.active}
-          icon="users"
-          to="/coordinator/volunteers"
-        />
-        <Kpi
-          label={t('dashboard.tonightGuards')}
-          value={tonight.length}
-          icon="shield"
-          tone="accent"
-          to="/coordinator/missions"
-        />
-        <Kpi
-          label={t('dashboard.openAlerts')}
-          value={alerts.length}
-          icon="alert"
-          tone={alerts.length > 0 ? 'alert' : 'default'}
-          to="/coordinator/incidents"
-        />
-      </ScrollRow>
-
-      {/* U3 (2026-09-02) — THE PRODUCT OWNER'S ORDER: the big figures, then
-          DIRECTLY under them the two growth charts one under the other, then
-          the alerts as a compact swipable carousel, then the day, the agenda
-          and the reference blocks. Every block folds (U1). */}
+      {/* e) — les courbes : les dounams signés ; celle des gardes dès la première garde. */}
       <Section
         title={t('dashboard.growth.title')}
         collapseKey="dash-growth"
@@ -948,148 +940,98 @@ export function DashboardScreen() {
         <GrowthCharts />
       </Section>
 
-      {/* ★ X12.4 — THE DUNAMS, BY REGION. The two hero figures say how much
-          ground is under guard; this says WHERE it is, which is the question
-          the association's own maps are about. One `dunamsByRegion` feeds
-          both this block and the PDF report, so the two cannot disagree —
-          the same rule `getDunamKpis` is written under. Folded by default:
-          it is a reference, not a daily read. */}
-      <Section
-        title={t('dashboard.dunamsByRegion')}
-        collapseKey="dash-regions"
-        defaultOpen={false}
-        className="mb-5"
-        summary={t('blocks.regions', { count: byRegion.length })}
-      >
-        <RegionBars rows={byRegion} />
-      </Section>
-
-      <Section
-        title={t('dashboard.alerts')}
-        collapseKey="dash-alerts"
-        bare
-        className="mb-5"
-        summary={t('blocks.alerts', { count: alerts.length })}
-        action={
-          alerts.length > 0 ? (
-            <span className="chip bg-status-danger/15 text-status-danger-ink">
-              <span className="numeric">{alerts.length}</span>
-            </span>
-          ) : undefined
-        }
-      >
-        {alerts.length === 0 ? (
-          <div className="card card-pad">
-            <EmptyState icon="check" title={t('dashboard.noAlerts')} />
-          </div>
-        ) : (
-          <AlertsCarousel alerts={alerts} />
-        )}
-      </Section>
-
-      {/* G9 — "היום שלי": today as the coordinator will drive it. */}
+      {/* f) — היום שלי : la journée telle que le PO la conduira. */}
       <Section title={t('myday.title')} collapseKey="dash-myday" bare className="mb-5">
         <MyDayBlock dayKey={localDayKey(now())} />
       </Section>
 
-      {/* 3 — Agenda. */}
+      {/* Selon l'étape : rien de tout cela ne s'affiche à vide. */}
+      {blocks.alerts && (
+        <Section
+          title={t('dashboard.alerts')}
+          collapseKey="dash-alerts"
+          bare
+          className="mb-5"
+          summary={t('blocks.alerts', { count: alerts.length })}
+          action={
+            alerts.length > 0 ? (
+              <span className="chip bg-status-danger/15 text-status-danger-ink">
+                <span className="numeric">{alerts.length}</span>
+              </span>
+            ) : undefined
+          }
+        >
+          {alerts.length === 0 ? (
+            <div className="card card-pad">
+              <EmptyState icon="check" title={t('dashboard.noAlerts')} />
+            </div>
+          ) : (
+            <AlertsCarousel alerts={alerts} />
+          )}
+        </Section>
+      )}
+
       <AgendaWidget />
 
-      {/* 4 — Tonight, then the pipeline. Reference, not decisions — and
-          P0bis.3b: two reference blocks side by side once the panel can hold
-          them, instead of two more screenfuls under the decisions. The wide
-          threshold, not the ordinary one: both carry lists, and a 18 rem
-          column of "farm · 21:00 · 4 people" wraps every row. */}
-      <div className="panel-scope">
-        <div className="pair-grid-wide">
-      <Section
-        title={t('dashboard.tonightGuards')}
-        collapseKey="dash-tonight"
-        className="mb-5"
-        summary={t('blocks.guards', { count: tonight.length })}
-      >
-          {tonight.length === 0 ? (
-            <EmptyState title={t('dashboard.noTonightGuards')} />
-          ) : (
-            <ul className="line-scope stagger flex flex-col gap-1">
-              {tonight.map((view) => (
-                <li key={view.mission.id}>
-                  <Link
-                    to={`/coordinator/missions/${view.mission.id}`}
-                    /* ★★ AX6 — équipe · ferme · poste et heure · statut : une ligne. */
-                    className="line-row rounded-field px-2 py-2 transition-colors duration-fast hover:bg-surface-high"
-                    data-testid="tonight-row"
-                  >
-                    <span data-area="lead" className="flex -space-x-2 rtl:space-x-reverse">
-                      {view.volunteers.slice(0, 3).map(({ volunteer }) => (
-                        <Avatar
-                          key={volunteer.id}
-                          photo={volunteer.photo}
-                          name={volunteer.name}
-                          size="xs"
-                        />
-                      ))}
-                    </span>
-                    <span data-area="name" className="truncate text-caption font-medium text-content-primary">
-                      {view.farm.name}
-                    </span>
-                    <span data-area="meta" className="muted line-figs">
-                      <span data-fig="time" className="ltr-nums">{formatTime(view.mission.startAt, locale)}</span>
-                      <span className="truncate">{view.anchorPoint.name}</span>
-                    </span>
-                    <span data-area="act">
-                      <MissionStatusChip status={view.mission.status} />
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-      </Section>
+      {blocks.tonight && (
+        <Section
+          title={t('dashboard.tonightGuards')}
+          collapseKey="dash-tonight"
+          className="mb-5"
+          summary={t('blocks.guards', { count: tonight.length })}
+        >
+            {tonight.length === 0 ? (
+              <EmptyState title={t('dashboard.noTonightGuards')} />
+            ) : (
+              <ul className="line-scope stagger flex flex-col gap-1">
+                {tonight.map((view) => (
+                  <li key={view.mission.id}>
+                    <Link
+                      to={`/coordinator/missions/${view.mission.id}`}
+                      /* ★★ AX6 — équipe · ferme · poste et heure · statut : une ligne. */
+                      className="line-row rounded-field px-2 py-2 transition-colors duration-fast hover:bg-surface-high"
+                      data-testid="tonight-row"
+                    >
+                      <span data-area="lead" className="flex -space-x-2 rtl:space-x-reverse">
+                        {view.volunteers.slice(0, 3).map(({ volunteer }) => (
+                          <Avatar
+                            key={volunteer.id}
+                            photo={volunteer.photo}
+                            name={volunteer.name}
+                            size="xs"
+                          />
+                        ))}
+                      </span>
+                      <span data-area="name" className="truncate text-caption font-medium text-content-primary">
+                        {view.farm.name}
+                      </span>
+                      <span data-area="meta" className="muted line-figs">
+                        <span data-fig="time" className="ltr-nums">{formatTime(view.mission.startAt, locale)}</span>
+                        <span className="truncate">{view.anchorPoint.name}</span>
+                      </span>
+                      <span data-area="act">
+                        <MissionStatusChip status={view.mission.status} />
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+        </Section>
+      )}
 
-      <Section
-        title={t('dashboard.farmsByStatus')}
-        collapseKey="dash-pipeline"
-        defaultOpen={false}
-        className="mb-5"
-        summary={t('farms.count', { count: farms.length })}
-      >
-          <ul className="auto-cols gap-x-4 [--col-min:12rem]">
-            {statusCounts.map(({ status, count }) => (
-              <li key={status}>
-                <Link
-                  to={`/coordinator/farms?status=${status}`}
-                  className="flex items-center gap-2.5 rounded-field px-1.5 py-1.5 transition-colors duration-fast hover:bg-surface-high"
-                >
-                  <FarmStatusDot status={status} />
-                  <span className="flex-1 truncate text-caption text-content-secondary">
-                    {t(`farmStatus.${status}`)}
-                  </span>
-                  <span className="numeric text-caption font-bold text-content-primary">
-                    {count}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-edge-subtle pt-3">
-            <div>
-              <p className="muted">{t('volunteers.statsSmartphone')}</p>
-              <p className="numeric text-heading text-content-primary">
-                {stats.smartphone}
-              </p>
-            </div>
-            <div>
-              <p className="muted">{t('volunteers.statsKosher')}</p>
-              <p className="numeric text-heading text-accent-ink">
-                {stats.kosher}
-              </p>
-            </div>
-          </div>
-      </Section>
-        </div>
-      </div>
+      {/* ★ X12.4 — les dounams par région, dès qu'il y en a. */}
+      {byRegion.length > 0 && (
+        <Section
+          title={t('dashboard.dunamsByRegion')}
+          collapseKey="dash-regions"
+          defaultOpen={false}
+          className="mb-5"
+          summary={t('blocks.regions', { count: byRegion.length })}
+        >
+          <RegionBars rows={byRegion} />
+        </Section>
+      )}
     </MapPanel>
   )
 }

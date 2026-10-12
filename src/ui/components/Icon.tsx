@@ -186,11 +186,15 @@ const PATHS: Record<IconName, ReactNode> = {
       <rect x="3" y="16" width="7" height="5" rx="1.5" />
     </>
   ),
+  /* ★★ BD 3 — une GRANGE (toit à deux pentes cassées, porte en croix), et non
+     plus une maison : c'est l'icône du menu « חוות » et de l'épingle d'une
+     ferme sans nature connue. Le même tracé que `GLYPH.farm` (MapCanvas). */
   farm: (
     <>
-      <path d="M3 10.5 12 4l9 6.5" />
-      <path d="M5 10v10h14V10" />
-      <path d="M9.5 20v-5h5v5" />
+      <path d="M3 20.5V11l2.6-4.4L12 3.5l6.4 3.1L21 11v9.5z" />
+      <path d="M9 20.5v-6h6v6" />
+      <path d="m9 14.5 6 6m0-6-6 6" />
+      <path d="M10.5 9.2h3" />
     </>
   ),
   map: (

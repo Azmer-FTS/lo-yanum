@@ -7,7 +7,8 @@ import type { AnchorPoint, Farm, LatLng } from '@core/index'
 import { Icon } from './Icon'
 import { MapView } from './MapView'
 import type { MapMarker } from './MapView'
-import { MarkerSwatch, entityMarkerKind, farmMarkerColor, postColor, readToken } from './badges'
+import { MarkerSwatch, farmMarkerColor, postColor, readToken } from './badges'
+import { farmPin } from './placeMarkers'
 import { fullscreenShell, useMapFullscreen } from './fullscreen'
 
 /**
@@ -87,7 +88,7 @@ export function MeetPointsEditor({
       color: farmMarkerColor(farm),
       title: farm.name,
       subtitle: farm.locality,
-      kind: entityMarkerKind(farm),
+      ...farmPin(farm),
     }]),
     ...anchors.map((a, i) => ({
       id: a.id,

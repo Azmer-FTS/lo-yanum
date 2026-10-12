@@ -1,3 +1,5 @@
+import { NOT_FARMS, farmPin, useContextMarkers } from '../../components/placeMarkers'
+import { StatusLegend } from '../../components/StatusLegend'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -68,7 +70,6 @@ import type { MapMarker } from '../../components/MapView'
 import {
   FarmStatusChip,
   FarmStatusDot,
-  entityMarkerKind,
   readStatusColor,
 } from '../../components/badges'
 import {
@@ -413,7 +414,10 @@ export function FarmsListScreen() {
   )
 
 
-  const markers: MapMarker[] = useMemo(
+  /* ★★ BD 4 — composer sa carte : les institutions et les contacts à traiter
+     en contexte, chacun sous sa couche de la légende. */
+  const context = useContextMarkers(NOT_FARMS)
+  const farmMarkers: MapMarker[] = useMemo(
     () =>
       /* AK1 — pas d'épingle au point de repli pour une fiche sans position. */
       filtered.filter((farm) => !farm.positionMissing).map((farm) =>
@@ -424,7 +428,7 @@ export function FarmsListScreen() {
             color: readStatusColor(farm.status),
             title: farm.name,
             subtitle: farm.locality,
-            kind: entityMarkerKind(farm),
+            ...farmPin(farm),
           },
           { hoveredId, selectedId },
           { onHover: setHoveredId, onSelect: select },
@@ -432,6 +436,7 @@ export function FarmsListScreen() {
       ),
     [filtered, hoveredId, selectedId],
   )
+  const markers = useMemo(() => [...farmMarkers, ...context], [farmMarkers, context])
 
   const selected = filtered.find((f) => f.id === selectedId) ?? null
 
@@ -1168,16 +1173,8 @@ export function FarmsListScreen() {
         <ZoneLegend zones={zones} farms={farms} className="mb-2" />
         {/* ★★ AX3.4 — la légende dit ce que veulent dire les COULEURS ; les
             comptes sont dans le filtre de statut, à un seul endroit. */}
-        <ul className="flex flex-col gap-1.5">
-          {STATUSES.map((s) => (
-            <li key={s} className="flex items-center gap-2">
-              <FarmStatusDot status={s} />
-              <span className="text-caption text-content-secondary">
-                {t(`farmStatus.${s}`)}
-              </span>
-            </li>
-          ))}
-        </ul>
+        {/* ★★ BD 5 — les statuts présents sur la carte, avec leur compte ; les vides repliés. */}
+        <StatusLegend statuses={filtered.filter((f) => !f.positionMissing).map((f) => f.status)} />
         {/* ★★ BA — les deux autres marques du nom, avec leur phrase écrite :
             une légende se lit, elle ne se survole pas. */}
         <ul className="mt-2 flex flex-col gap-1.5 border-t border-edge-subtle pt-2" data-testid="map-legend-marks">

@@ -670,7 +670,23 @@
     "weightedPercent": "{{percent}}% מהיעד",
     "weightedReached": "היעד הושג",
     "weightedReachedHint": "{{label}} — הושג ב־{{date}} עם {{total}} דונם משוקלל.",
-    "weightedDue": "עד {{date}}"
+    "weightedDue": "עד {{date}}",
+    "work": {
+      "title": "מה לעשות",
+      "institutionsNoCoordinator": "מוסדות בלי רכז",
+      "farmsNotContacted": "חוות שטרם נוצר איתן קשר",
+      "agreementsToSign": "הסכמים מוכנים לחתימה",
+      "coordinationPending": "מוסדות שנדרש בהם תיאום מוקדם",
+      "staleLeads": "אנשי קשר פתוחים יותר משבועיים"
+    },
+    "funnel": {
+      "title": "התקדמות",
+      "leads": "אנשי קשר",
+      "farms": "חוות",
+      "readyToSign": "לחתימה",
+      "signed": "חתומות",
+      "active": "פעילות"
+    }
   },
   "alerts": {
     "urgent_incident": "אירוע דחוף",
@@ -989,8 +1005,8 @@
   },
   "pin": {
     "markerLabel": "המיקום שנבחר",
-    "placeHint": "לחצו על המפה להצבת הסיכה",
-    "dragHint": "גררו את הסיכה לדיוק המיקום",
+    "placeHint": "הקישו על המפה, או לחיצה ארוכה, להצבת הנקודה",
+    "dragHint": "גררו את הסיכה, או לחיצה ארוכה במקום אחר",
     "rePlace": "מיקום מחדש",
     "linkLabel": "הדבקת קישור מיקום",
     "linkHint": "Waze · Google Maps · מפות אפל · או צמד קואורדינטות",
@@ -1004,7 +1020,15 @@
     "linkDoneMany_other": "נוספו {{count}} נקודות",
     "linkBadRest": "מה שנשאר בשדה לא זוהה כמיקום — אפשר לתקן ולהוסיף",
     "linkPlaceholderShort": "https://…",
-    "linkDoneMany_two": "נוספו {{count}} נקודות"
+    "linkDoneMany_two": "נוספו {{count}} נקודות",
+    "proposalLabel": "נקודה מוצעת",
+    "proposal": {
+      "coords": "נקודה מהקואורדינטות",
+      "address": "נקודה מוצעת: {{label}}",
+      "locality": "מרכז היישוב {{label}} (משוער)"
+    },
+    "proposalHint": "גררו לדיוק, ואשרו",
+    "proposalAccept": "אישור הנקודה"
   },
   "map": {
     "title": "מפת חוות",
@@ -1052,7 +1076,7 @@
     "legendToggle": "הצגה או הסתרה של המקרא",
     "layers": {
       "title": "שכבות",
-      "entities": "סימוני יישויות",
+      "entities": "חוות ומושבים",
       "boundaries": "גבולות יישויות",
       "grazing": "שטחי מרעה",
       "posts": "עמדות שמירה",
@@ -1060,7 +1084,15 @@
       "threatZones": "אזורי איום",
       "threatVectors": "וקטורי איום",
       "regions": "אזורים",
-      "regionColors": "צבע לפי אזור"
+      "regionColors": "צבע לפי אזור",
+      "institutions": "מוסדות",
+      "leads": "אנשי קשר לטיפול",
+      "branchNone": "ללא ענף",
+      "inst_signed": "חתומים",
+      "inst_other": "שאר המוסדות",
+      "subAll": "הכל",
+      "only": "רק",
+      "showAll": "להציג הכל"
     },
     "locate": {
       "label": "מיקומי",
@@ -1075,7 +1107,9 @@
     "showHidden": "הצגה",
     "nearLocality": "ליד {{name}} · {{km}} ק״מ",
     "hiddenEntities_two": "{{count}} חוות מוסתרות במקרא",
-    "hiddenEntities_many": "{{count}} חוות מוסתרות במקרא"
+    "hiddenEntities_many": "{{count}} חוות מוסתרות במקרא",
+    "legendAllStatuses": "הצג את כל הסטטוסים ({{count}} ריקים)",
+    "legendFewerStatuses": "רק הסטטוסים שעל המפה"
   },
   "route": {
     "title": "תכנון מסלול ביקורים",
@@ -1633,7 +1667,8 @@
     "councilFromPin": "המועצה של היישוב הקרוב · {{name}}",
     "councilUse": "להשתמש במועצה הזו",
     "pickDate": "בחירת תאריך",
-    "notSaved_two": "לא נשמר — {{count}} שדות דורשים תיקון"
+    "notSaved_two": "לא נשמר — {{count}} שדות דורשים תיקון",
+    "done": "סיום"
   },
   "import": {
     "title": "ייבוא מקובץ",
@@ -2460,7 +2495,8 @@
     "dismiss": "סגירה",
     "dashCount_two": "{{count}} בקשות ממתינות לטיפול",
     "docs_two": "{{count}} מסמכים צורפו",
-    "newTitle_two": "{{count}} בקשות עזרה חדשות"
+    "newTitle_two": "{{count}} בקשות עזרה חדשות",
+    "dashTitleNew": "בקשות חדשות"
   },
   "archive": {
     "action": "העברה לארכיון",
@@ -2683,7 +2719,10 @@
     "position": "מיקום (קואורדינטות)",
     "positionNone": "עוד אין מיקום. אפשר להדביק קישור מגוגל מפות או Waze, או ״31.5, 34.6״. המיקום יעבור לחווה בהמרה.",
     "positionSet": "שמירת המיקום",
-    "positionClear": "הסרת המיקום"
+    "positionClear": "הסרת המיקום",
+    "sectionDetails": "פרטים",
+    "staleTab": "מעל שבועיים",
+    "staleTitle": "פתוחים יותר מ־{{days}} ימים"
   },
   "portal": {
     "title": "ייבוא מהפורטל של העמותה",
@@ -3048,17 +3087,13 @@
       "mobile": "נייד",
       "home": "בית",
       "office": "משרד",
-      "": "—"
+      "": "—",
+      "secretariat": "מזכירות"
     },
     "addPhone": "הוספת מספר",
     "removePhone": "הסרת המספר {{number}}",
     "callNumber": "להתקשר אל {{name}} · {{label}}",
     "office": "מזכירות",
-    "officeTitle": "מזכירות המוסד",
-    "officeHint": "הטלפון והכתובת של המוסד עצמו — לא איש קשר. כשראש הישיבה לא עונה.",
-    "officePhone": "טלפון המזכירות",
-    "officeAddress": "כתובת",
-    "callOffice": "להתקשר למזכירות",
     "coordination": "נדרש תיאום מוקדם",
     "coordinationTab": "תיאום מוקדם",
     "coordinationTitle": "מוסדות שאין לפנות אליהם ישירות — יש לתאם קודם",
@@ -3071,7 +3106,16 @@
     "heads_other": "{{count}} ראשי ישיבה",
     "heads_one": "ראש ישיבה אחד",
     "heads_two": "{{count}} ראשי ישיבה",
-    "heads_many": "{{count}} ראשי ישיבה"
+    "heads_many": "{{count}} ראשי ישיבה",
+    "phoneLabelOther": "תווית אחרת…",
+    "phoneLabelCustom": "למשל: פקס",
+    "addSecretariat": "הוספת מזכירות",
+    "secretariatNoName": "ללא שם — זו מזכירות",
+    "sectionStatus": "מצב",
+    "noCoordinatorTab": "בלי רכז",
+    "noCoordinatorTitle": "אין רכז שמונה למתנדבים",
+    "coordinationPendingTab": "תיאום לטיפול",
+    "coordinationPendingTitle": "נדרש תיאום מוקדם, וטרם נוצר קשר"
   },
   "quickPin": {
     "button": "הנחת סיכה על המפה",
@@ -3405,7 +3449,9 @@
     "saved": "נשמר: {{name}}",
     "volunteerArchived": "{{name}} סומן כלא פעיל",
     "volunteerReactivated": "{{name}} חזר לפעילות",
-    "outreach": "סומן כנשלח"
+    "outreach": "סומן כנשלח",
+    "placed": "{{name}} הוצב על המפה",
+    "unplaced": "המיקום של {{name}} הוסר"
   },
   "importHub": {
     "title": "ייבוא",
@@ -3557,5 +3603,22 @@
     "recompute": "חזרה לחישוב מהנקודה ({{place}})",
     "none": "אין יישוב קרוב — אין נקודה על המפה; אפשר להזין ידנית",
     "short": "ליד"
+  },
+  "place": {
+    "address": "כתובת",
+    "addressHint": "כתובת, יישוב, או קישור מגוגל מפות / וייז",
+    "findOnMap": "חיפוש במפה",
+    "finding": "מחפש…",
+    "notFound": "לא נמצאה נקודה לכתובת הזו — הקישו על המפה או לחיצה ארוכה",
+    "noPosition": "אין מיקום",
+    "placeIt": "להצבה על המפה",
+    "positionTitle": "מיקום",
+    "clear": "הסרת המיקום",
+    "sourceMap": "הוצב על המפה",
+    "source": {
+      "address": "לפי הכתובת ({{label}}), אושר על המפה",
+      "locality": "מרכז היישוב {{label}}, אושר על המפה",
+      "coords": "קואורדינטות שהודבקו"
+    }
   }
 }

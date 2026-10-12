@@ -2300,7 +2300,11 @@ export function Modal({
   const { t } = useTranslation()
   if (presentation === 'page') {
     return (
-      <div className="mx-auto w-full max-w-3xl" data-testid={testId} data-form-page="">
+      /* ★★ BD 7 — la famille « fiche » de la grammaire des formulaires : une
+         colonne centrée de 48 rem, l'en-tête de page, la carte des champs (une
+         `panel-scope`, pour que `.form-grid` passe à deux colonnes dès que la
+         carte en a la place), et `FormActions` au bas de la fenêtre. */
+      <div className="mx-auto w-full max-w-3xl" data-testid={testId} data-form-page="" data-form-family="record">
         <header className="mb-6 flex items-start gap-2.5">
           <button
             type="button"
@@ -2323,7 +2327,7 @@ export function Modal({
             )}
           </div>
         </header>
-        <div className="card card-pad">{children}</div>
+        <div className="panel-scope card card-pad">{children}</div>
       </div>
     )
   }
@@ -2540,6 +2544,19 @@ export function LoadingState() {
     >
       <Skeleton className="h-2 w-40" />
       <p className="muted">{t('data.loading')}</p>
+    </div>
+  )
+}
+
+/**
+ * ★★ BD 8a — l'attente d'un formulaire d'ÉDITION dont la fiche n'est pas encore
+ * arrivée : aucun champ saisissable tant qu'elle n'est pas là. Les formulaires
+ * d'édition rendent ceci au lieu de monter vides (voir `FarmFormScreen`).
+ */
+export function FormWaiting() {
+  return (
+    <div data-testid="form-waiting" data-form-waiting="">
+      <LoadingState />
     </div>
   )
 }

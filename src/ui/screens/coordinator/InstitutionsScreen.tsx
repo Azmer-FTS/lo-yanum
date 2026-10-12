@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { TestDataBadge } from '../../components/TestDataBadge'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import {
   HOME_BASE,
@@ -12,13 +12,15 @@ import {
   headRoleKey,
   institutionHead,
   institutionMatchesQuery,
+  isCoordinationPending,
   isInstitutionHeadMissing,
+  isInstitutionWithoutCoordinator,
   needsPriorCoordination,
   isInstitutionToConfirm,
   updateInstitution,
   isTestId,
 } from '@core/index'
-import type { Institution, InstitutionEngagement, Volunteer } from '@core/index'
+import type { AddressPoint, Institution, InstitutionEngagement, LatLng, Volunteer } from '@core/index'
 
 import { readToken } from '../../components/badges'
 import { readSortState, sortRows } from '../../components/DataTable'
@@ -31,7 +33,11 @@ import { MapSplit } from '../../components/MapSplit'
 import { MapView } from '../../components/MapView'
 import type { MapMarker } from '../../components/MapView'
 import { OverflowMenu } from '../../components/OverflowMenu'
-import { FilterPill, FilterRow, ListTop, PageHeader } from '../../components/primitives'
+import { FilterPill, FilterRow, FormWaiting, ListTop } from '../../components/primitives'
+import { FormActions, FormSection } from '../../components/fields'
+import { ENGAGEMENT_TOKEN, institutionPin, useContextMarkers } from '../../components/placeMarkers'
+import { AddressPointField, NoPositionButton, PlaceFormPage, PlaceOnArrival } from '../../components/formPage'
+import { useHydrated } from '../../hooks/useDataState'
 import { sortFamily } from '../../components/ListFilters'
 import type { CompactFilters } from '../../components/ListFilters'
 import { useCoreValue } from '../../hooks/useCore'
@@ -55,16 +61,22 @@ import { runUndoable } from '../../components/UndoToast'
  * voit enfin rattachés à elle (étape 3).
  */
 
-type Filter = 'all' | 'toConfirm' | 'headMissing' | 'coordination' | InstitutionEngagement
+/* ★★ BD 6 — `noCoordinator` et `coordinationPending` : les lignes de « מה לעשות ». */
+type Flag = 'toConfirm' | 'headMissing' | 'coordination' | 'noCoordinator' | 'coordinationPending'
+type Filter = 'all' | Flag | InstitutionEngagement
+const FLAGS: readonly Flag[] = ['toConfirm', 'headMissing', 'coordination', 'noCoordinator', 'coordinationPending']
+const isFlag = (f: string | null): f is Flag => (FLAGS as readonly string[]).includes(f ?? '')
+const FLAG_TEST: Record<Flag, (i: Institution) => boolean> = {
+  toConfirm: isInstitutionToConfirm,
+  headMissing: isInstitutionHeadMissing,
+  coordination: needsPriorCoordination,
+  noCoordinator: isInstitutionWithoutCoordinator,
+  coordinationPending: isCoordinationPending,
+}
+const FLAG_TAB: Record<Flag, string> = { toConfirm: 'institutions.toConfirmTab', headMissing: 'institutions.headMissingTab', coordination: 'institutions.coordinationTab', noCoordinator: 'institutions.noCoordinatorTab', coordinationPending: 'institutions.coordinationPendingTab' }
+const FLAG_HINT: Record<Flag, string> = { toConfirm: 'institutions.toConfirm', headMissing: 'institutions.headMissingTitle', coordination: 'institutions.coordinationTitle', noCoordinator: 'institutions.noCoordinatorTitle', coordinationPending: 'institutions.coordinationPendingTitle' }
 const SORT_KEY = 'lo-yanum:institutions-sort'
 
-const ENGAGEMENT_TOKEN: Record<InstitutionEngagement, string> = {
-  not_contacted: '--status-info',
-  contacted: '--status-warn',
-  interested: '--accent',
-  signed: '--status-violet',
-  not_relevant: '--text-muted',
-}
 
 /** Les volontaires d'une institution : rattachés par `institutionId`, ou (anciens) par le nom. */
 export function volunteersOf(inst: Institution, volunteers: readonly Volunteer[]): number {
@@ -81,10 +93,12 @@ export function InstitutionsScreen() {
   const [filter, setFilter] = useState<Filter>(() => {
     const f = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('filter')
     /* ★★ BB — et « תיאום מוקדם » (`?filter=coordination`). */
-    return f === 'toConfirm' || f === 'headMissing' || f === 'coordination' ? f : 'all'
+    return isFlag(f) ? f : 'all'
   })
   const [query, setQuery] = useState('')
-  const [open, setOpen] = useState<string | null>(null)
+  /* ★★ BD 4 — arrivé d'une autre carte (`?open=`), l'aperçu de l'institution touchée. */
+  const [listParams] = useSearchParams()
+  const [open, setOpen] = useState<string | null>(() => listParams.get('open'))
   const [flyKey, setFlyKey] = useState(0)
   const [sort, setSortState] = useState<SortState>(() => readSortState(SORT_KEY, { key: 'name', dir: 'asc' }))
   const setSort = (s: SortState) => {
@@ -99,12 +113,10 @@ export function InstitutionsScreen() {
   const counts = useMemo(() => {
     /* ★★ AZ3.4 — le jeu d'essai se voit, marqué, mais ne compte pas. */
     const counted = institutions.filter((i) => !isTestId(i.id))
-    const out: Record<Filter, number> = { all: counted.length, toConfirm: 0, headMissing: 0, coordination: 0, not_contacted: 0, contacted: 0, interested: 0, signed: 0, not_relevant: 0 }
+    const out: Record<Filter, number> = { all: counted.length, toConfirm: 0, headMissing: 0, coordination: 0, noCoordinator: 0, coordinationPending: 0, not_contacted: 0, contacted: 0, interested: 0, signed: 0, not_relevant: 0 }
     for (const i of counted) {
       out[i.engagement] += 1
-      if (isInstitutionToConfirm(i)) out.toConfirm += 1
-      if (isInstitutionHeadMissing(i)) out.headMissing += 1
-      if (needsPriorCoordination(i)) out.coordination += 1
+      for (const f of FLAGS) if (FLAG_TEST[f](i)) out[f] += 1
     }
     return out
   }, [institutions])
@@ -112,7 +124,7 @@ export function InstitutionsScreen() {
 
   const q = query.trim()
   const visible = institutions
-    .filter((i) => filter === 'all' || (filter === 'toConfirm' ? isInstitutionToConfirm(i) : filter === 'headMissing' ? isInstitutionHeadMissing(i) : filter === 'coordination' ? needsPriorCoordination(i) : i.engagement === filter))
+    .filter((i) => filter === 'all' || (isFlag(filter) ? FLAG_TEST[filter](i) : i.engagement === filter))
     /* ★★ BB — nom, alias, localité, réseau, contacts et numéros, normalisés. */
     .filter((i) => institutionMatchesQuery(i, q))
 
@@ -208,7 +220,11 @@ export function InstitutionsScreen() {
       minWidth: 1120,
       render: (i) =>
         !i.position ? (
-          <span className="chip bg-surface-high text-content-muted">{t('institutions.noPoint')}</span>
+          /* ★★ BD 1 — « sans point » est le bouton qui mène au geste qui le pose. */
+          <Link to={`/coordinator/institutions/${i.id}?place=1`} onClick={(e) => e.stopPropagation()} className="chip min-h-11 border border-status-warn bg-status-warn/10 text-status-warn-ink hover:bg-status-warn/20" data-testid={`institution-place-${i.id}`}>
+            <Icon name="pin" size={12} />
+            {t('institutions.noPoint')}
+          </Link>
         ) : i.positionUncertain ? (
           <span className="chip bg-status-warn/15 text-status-warn-ink">{t('institutions.uncertainShort')}</span>
         ) : (
@@ -232,12 +248,13 @@ export function InstitutionsScreen() {
     { key: 'volunteer', icon: 'userPlus', label: t('institutionPeople.add'), to: `/coordinator/volunteers/new?institution=${i.id}` },
   ]
 
-  const FILTERS: Filter[] = ['all', ...(counts.toConfirm > 0 ? (['toConfirm'] as const) : []), ...(counts.headMissing > 0 ? (['headMissing'] as const) : []), ...(counts.coordination > 0 ? (['coordination'] as const) : []), ...INSTITUTION_ENGAGEMENTS]
+  /* Une file vide n'a pas de pastille — sauf celle par laquelle on est arrivé. */
+  const FILTERS: Filter[] = ['all', ...FLAGS.filter((f) => counts[f] > 0 || filter === f), ...INSTITUTION_ENGAGEMENTS]
   /* ★★ BC — la forme compacte : l'engagement a son déclencheur (le statut d'une
      institution) ; « לבדיקה » (à confirmer, sans rang 1, coordination) et le tri
      vivent dans la feuille. Un seul choix à la fois, comme la rangée de pastilles. */
-  const engagementKeys = FILTERS.filter((f) => f !== 'all' && f !== 'toConfirm' && f !== 'headMissing' && f !== 'coordination')
-  const flagKeys = (['toConfirm', 'headMissing', 'coordination'] as const).filter((f) => FILTERS.includes(f))
+  const engagementKeys = FILTERS.filter((f) => f !== 'all' && !isFlag(f))
+  const flagKeys = FLAGS.filter((f) => FILTERS.includes(f))
   const compactFilters: CompactFilters = {
     status: {
       key: 'status',
@@ -262,11 +279,11 @@ export function InstitutionsScreen() {
         single: true,
         options: flagKeys.map((f) => ({
           key: f,
-          label: f === 'toConfirm' ? t('institutions.toConfirmTab') : f === 'headMissing' ? t('institutions.headMissingTab') : t('institutions.coordinationTab'),
+          label: t(FLAG_TAB[f]),
           count: counts[f],
           active: filter === f,
           onToggle: () => setFilter(filter === f ? 'all' : f),
-          hint: f === 'toConfirm' ? t('institutions.toConfirm') : f === 'headMissing' ? t('institutions.headMissingTitle') : t('institutions.coordinationTitle'),
+          hint: t(FLAG_HINT[f]),
           testId: `institutions-filter-${f}`,
         })),
       },
@@ -277,17 +294,23 @@ export function InstitutionsScreen() {
     results: visible.filter((i) => !isTestId(i.id)).length,
   }
 
-  const markers: MapMarker[] = institutions
-    .filter((i) => i.position)
-    .map((i) => ({
-      id: i.id,
-      position: i.position!,
-      color: readToken(ENGAGEMENT_TOKEN[i.engagement]),
-      title: i.name,
-      subtitle: t(`institutions.engagement.${i.engagement}`),
-      emphasis: i.id === open,
-      onSelect: () => setOpen(i.id),
-    }))
+  /* ★★ BD 3 — l'école (le carré à toque), à la couleur de l'engagement ;
+     ★★ BD 4 — les fermes et les contacts en contexte, selon les couches. */
+  const context = useContextMarkers(['farms', 'leads'])
+  const markers: MapMarker[] = [
+    ...institutions
+      .filter((i) => i.position)
+      .map((i) => ({
+        id: i.id,
+        position: i.position!,
+        ...institutionPin(i),
+        title: i.name,
+        subtitle: t(`institutions.engagement.${i.engagement}`),
+        emphasis: i.id === open,
+        onSelect: () => setOpen(i.id),
+      })),
+    ...context,
+  ]
   const openInst = institutions.find((i) => i.id === open) ?? null
 
 
@@ -341,10 +364,10 @@ export function InstitutionsScreen() {
                     active={filter === f}
                     onClick={() => setFilter(f)}
                     count={counts[f]}
-                    title={f === 'all' ? undefined : f === 'toConfirm' ? t('institutions.toConfirm') : f === 'headMissing' ? t('institutions.headMissingTitle') : f === 'coordination' ? t('institutions.coordinationTitle') : t(`institutions.engagement.${f}`)}
+                    title={f === 'all' ? undefined : isFlag(f) ? t(FLAG_HINT[f]) : t(`institutions.engagement.${f}`)}
                     testId={`institutions-filter-${f}`}
                   >
-                    {f === 'all' ? t('institutions.all') : f === 'toConfirm' ? t('institutions.toConfirmTab') : f === 'headMissing' ? t('institutions.headMissingTab') : f === 'coordination' ? t('institutions.coordinationTab') : t(`institutions.engagementShort.${f}`)}
+                    {f === 'all' ? t('institutions.all') : isFlag(f) ? t(FLAG_TAB[f]) : t(`institutions.engagementShort.${f}`)}
                   </FilterPill>
                 ))}
               </FilterRow>
@@ -420,6 +443,13 @@ function InstitutionPreview({ inst, onClose, docked }: { inst: Institution; onCl
               {t('institutions.call')}
             </a>
           )}
+          {/* ★★ BD 1 — sans position, le dire est le bouton qui mène au geste. */}
+          {!inst.position && (
+            <Link to={`/coordinator/institutions/${inst.id}?place=1`} className="btn-secondary min-h-11 border-status-warn text-status-warn-ink" data-testid="institution-preview-no-position">
+              <Icon name="pin" size={16} />
+              {t('place.noPosition')} · {t('place.placeIt')}
+            </Link>
+          )}
           <Link to={`/coordinator/coverage?inst=${inst.id}`} className="btn-secondary min-h-11" data-testid="institution-preview-coverage">
             <Icon name="map" size={16} />
             {t('institutionsScreen.seeReach')}
@@ -460,31 +490,77 @@ function InstitutionPreview({ inst, onClose, docked }: { inst: Institution; onCl
   )
 }
 
-/** ★★ AY3.3 — la page d'édition d'une institution (fiche + ses gens). */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ BD 1 (2026-10-12) — LA FICHE D'UNE INSTITUTION EST UN LIEU.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * « Une institution n'avait pas de position. Je modifie sa fiche, je cherche
+ * l'adresse sur Google, je la saisis : rien ne se passe. » La fiche était une
+ * colonne centrée, sans carte, et son seul champ « כתובת » était celui de la
+ * מזכירות. Elle prend la forme d'une fiche de ferme (`PlaceFormPage`, la même
+ * que `FarmFormScreen`) : la carte à la même place, l'adresse qui PROPOSE un
+ * point (validé ou corrigé par le PO), l'appui long qui le pose, l'épingle qui
+ * se glisse, et — sans position — un bouton qui mène au geste. Chaque champ
+ * s'enregistre en le quittant : la barre du bas n'a que « סיום ».
+ */
 export function InstitutionEditScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { institutionId } = useParams()
   const inst = useCoreValue(() => getInstitutions().find((i) => i.id === institutionId) ?? null)
+  const hydrated = useHydrated()
+  const [proposal, setProposal] = useState<AddressPoint | null>(null)
+  const [params] = useSearchParams()
+  if (!inst) return hydrated ? <Navigate to="/coordinator/institutions" replace /> : <FormWaiting />
+  const place = (position: LatLng, source = t('place.sourceMap')) =>
+    runUndoable(t('undo.placed', { name: inst.name }), () => updateInstitution(inst.id, { position, positionUncertain: false, positionSource: source }))
+  const accept = (next: AddressPoint | null) => setProposal(next)
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6" data-testid="institution-edit">
-      <PageHeader title={inst?.name ?? t('nav.institutions')} back={{ to: '/coordinator/institutions', label: t('nav.institutions') }} />
-      {!inst ? (
-        <p className="muted mt-4">{t('table.empty')}</p>
-      ) : (
+    <PlaceFormPage
+      screenKey="institution-form"
+      testId="institution-edit"
+      title={inst.name}
+      subtitle={[inst.locality, t(`institutions.kind.${inst.kind}`)].filter(Boolean).join(' · ')}
+      back={{ to: '/coordinator/institutions', label: t('nav.institutions') }}
+      map={{
+        value: inst.position,
+        onChange: (p) => place(p, proposal && proposal.source !== 'coords' ? t(`place.source.${proposal.source}`, { label: proposal.label }) : t('place.sourceMap')),
+        locality: inst.locality,
+        proposal,
+        onProposal: accept,
+      }}
+      actions={<FormActions autosave onSubmit={() => navigate('/coordinator/institutions')} />}
+    >
+      {(state) => (
         <>
-          <div className="mt-4">
-            <InstitutionEditor inst={inst} />
-          </div>
-          <h2 className="mb-2 mt-8 text-heading text-content-primary">{t('institutionPeople.title')}</h2>
-          <InstitutionPeople inst={inst} />
-          <div className="mt-6 flex justify-end">
-            <button type="button" className="btn-primary min-h-11" onClick={() => navigate('/coordinator/institutions')}>
-              {t('common.done')}
-            </button>
-          </div>
+          <PlaceOnArrival state={state} addressId="institution-address" active={params.get('place') === '1' && !inst.position} />
+          {!inst.position && (
+            <div className="flex flex-wrap items-center gap-2" data-testid="institution-no-position">
+              <NoPositionButton state={state} addressId="institution-address" />
+            </div>
+          )}
+          <InstitutionEditor
+            inst={inst}
+            place={
+              <AddressPointField
+                id="institution-address"
+                value={inst.address ?? ''}
+                onAddress={(address) => updateInstitution(inst.id, { address })}
+                locality={inst.locality}
+                onProposal={setProposal}
+                position={inst.position}
+                onClear={() => runUndoable(t('undo.unplaced', { name: inst.name }), () => updateInstitution(inst.id, { position: null }))}
+              />
+            }
+          />
+          <FormSection title={t('institutionPeople.title')} testId="institution-block-people">
+            <div className="col-span-full">
+              <InstitutionPeople inst={inst} />
+            </div>
+          </FormSection>
         </>
       )}
-    </div>
+    </PlaceFormPage>
   )
 }

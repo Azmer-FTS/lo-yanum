@@ -782,6 +782,15 @@ export function FormSection({
  * CONTENU, et sur un formulaire dont quatre sections s'ouvrent repliées le
  * contenu est plus court que l'écran.
  */
+/**
+ * ★★ BD 7 (2026-10-12) — LA MÊME BARRE POUR TOUS LES FORMULAIRES. Une seule
+ * grammaire (ETAT.md § BD 7) : au bas de la fenêtre, toujours ; dans cet ordre,
+ * de la fin vers le début de la ligne : [שמירה] [ביטול] … [מחיקה] (la
+ * suppression à l'autre bout, en rouge, loin du doigt qui enregistre). Un
+ * formulaire qui enregistre champ par champ n'a qu'un bouton, « סיום ».
+ * Les libellés viennent d'ici (`common.save`, `common.cancel`,
+ * `common.delete`, `form.done`) : la même action porte le même mot partout.
+ */
 export function FormActions({
   onCancel,
   cancelLabel,
@@ -789,15 +798,28 @@ export function FormActions({
   disabled,
   onSubmit,
   message,
+  onDelete,
+  deleteLabel,
+  autosave = false,
+  deleteTestId = 'form-delete',
+  submitTestId = 'form-submit',
 }: {
-  onCancel: () => void
-  cancelLabel: string
-  submitLabel: string
+  deleteTestId?: string
+  submitTestId?: string
+  onCancel?: () => void
+  cancelLabel?: string
+  submitLabel?: string
   disabled?: boolean
   onSubmit: () => void
   /** AM1 — pourquoi rien ne s'est passé : dit DANS la barre, au bout du doigt. */
   message?: string
+  /** ★★ BD 7 — la suppression, quand le formulaire la porte. */
+  onDelete?: () => void
+  deleteLabel?: string
+  /** ★★ BD 7 — le formulaire enregistre chaque champ : un seul bouton, « סיום ». */
+  autosave?: boolean
 }) {
+  const { t } = useTranslation()
   /**
    * ★ Z6 (2026-09-07) — THE BAR SAYS HOW TALL IT IS, and the phone's folded
    *   role button reads it. `bun run layout` caught the new disc overlapping
@@ -859,28 +881,39 @@ export function FormActions({
              que la barre publie déjà — c'est ce que font le bouton d'urgence
              et la barre de démonstration depuis Z6. Plus de voisinage, donc
              plus de dégagement, donc plus de nombre à tenir juste. */
+        data-form-actions={autosave ? 'autosave' : 'save'}
         className="fixed bottom-[var(--shell-bottom)] z-30 am-bar-foot flex justify-end gap-2 border-t
                    border-edge-subtle bg-surface-overlay px-[var(--content-pad,1rem)] py-3"
       >
+        {onDelete && (
+          <button type="button" className="btn-ghost me-auto min-h-11 text-status-danger-ink" onClick={onDelete} data-testid={deleteTestId} data-form-action="delete">
+            <Icon name="trash" size={16} />
+            {deleteLabel ?? t('common.delete')}
+          </button>
+        )}
         {message && (
           <p
             role="alert"
             data-testid="form-actions-message"
-            className="me-auto self-center text-caption font-semibold text-status-danger-ink"
+            className={`${onDelete ? '' : 'me-auto'} self-center text-caption font-semibold text-status-danger-ink`}
           >
             {message}
           </p>
         )}
-        <button type="button" className="btn-secondary" onClick={onCancel}>
-          {cancelLabel}
-        </button>
+        {!autosave && onCancel && (
+          <button type="button" className="btn-secondary min-h-11" onClick={onCancel} data-testid="form-cancel" data-form-action="cancel">
+            {cancelLabel ?? t('common.cancel')}
+          </button>
+        )}
         <button
           type="button"
-          className="btn-primary"
+          className="btn-primary min-h-11"
           disabled={disabled}
           onClick={onSubmit}
+          data-testid={submitTestId}
+          data-form-action={autosave ? 'done' : 'save'}
         >
-          {submitLabel}
+          {submitLabel ?? (autosave ? t('form.done') : t('common.save'))}
         </button>
       </div>
     </>

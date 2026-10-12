@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { formatPhoneTyping, findLocality, REGIONAL_COUNCILS, councilOfCode, matchCouncil, regionById, suggestCouncil, suggestRegion,
   ALL_FARM_STATUSES,
@@ -60,6 +60,7 @@ import { AgreementSignModal } from '../../components/AgreementSignModal'
 import { AssociationFormModal } from '../../components/AssociationFormModal'
 import { LocalityField } from '../../components/LocalityField'
 import { MapSplit } from '../../components/MapSplit'
+import { PLACE_FORM_SPLIT } from '../../components/formPage'
 import { PinMap } from '../../components/PinMap'
 import { PositionLinkField } from '../../components/PositionLinkField'
 import {
@@ -70,10 +71,11 @@ import {
   TextField,
   isValidPhone,
 } from '../../components/fields'
-import { PageHeader, STICKY_BAR } from '../../components/primitives'
+import { FormWaiting, PageHeader, STICKY_BAR } from '../../components/primitives'
 import { FARM_FORM_TABS, FarmTabRow } from '../../farm/farmTabs'
 import type { FarmTab } from '../../farm/farmTabs'
 import { useCoreValue } from '../../hooks/useCore'
+import { useHydrated } from '../../hooks/useDataState'
 import { useLocale } from '../../hooks/useLocale'
 import { runUndoable } from '../../components/UndoToast'
 
@@ -401,7 +403,31 @@ const FORM_GROUP_START: Record<FarmTab, string> = {
   log: 'farm-block-notes',
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ BD 8a (2026-10-12) — LE FORMULAIRE NE S'OUVRE JAMAIS VIDE SUR UNE FICHE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Les champs naissent de `existing` AU MONTAGE (`useState(existing?.name …)`).
+ * Ouvert directement sur `/farms/:id/edit` (rechargement, lien, retour de
+ * veille), le premier rendu d'un vrai build n'a pas encore la fiche : le
+ * formulaire montait VIDE et le restait quand elle arrivait — et le PO pouvait
+ * saisir par-dessus, puis « שמירה » écrasait la fiche (course `amui` A215).
+ *
+ * ★ TANT QUE LA FICHE N'EST PAS LÀ, IL N'Y A PAS DE FORMULAIRE : l'attente
+ *   (`LoadingState`), sans un seul champ saisissable. La fiche arrivée, le
+ *   formulaire monte UNE fois, rempli (`key` = l'id). Hydratée et toujours
+ *   absente, la fiche n'existe pas : retour à la liste, comme le détail.
+ */
 export function FarmFormScreen() {
+  const { farmId } = useParams()
+  const existing = useCoreValue(() => (farmId ? getFarm(farmId) : null))
+  const hydrated = useHydrated()
+  if (farmId && !existing) return hydrated ? <Navigate to="/coordinator/farms" replace /> : <FormWaiting />
+  return <FarmForm key={farmId ?? 'new'} />
+}
+
+function FarmForm() {
   const { t } = useTranslation()
   /* ★★ AS5.6 — la rangée d'onglets de l'édition : où est-on, et y aller. */
   const [formTab, setFormTab] = useState<FarmTab>('farm')
@@ -909,9 +935,9 @@ export function FarmFormScreen() {
     <MapSplit
       screenKey="farm-form"
       ariaLabel={t('form.sectionFarmLocation')}
-      breakpoint="xl"
-      contentPercent={50}
-      splitHeight="h-[42dvh] min-h-[18rem]"
+      breakpoint={PLACE_FORM_SPLIT.breakpoint}
+      contentPercent={PLACE_FORM_SPLIT.contentPercent}
+      splitHeight={PLACE_FORM_SPLIT.splitHeight}
       map={() => mapBody}
     >
       {() => (
@@ -989,7 +1015,7 @@ export function FarmFormScreen() {
         * incidents, visites) n'ont pas de rang ici. `bun run amui` (A217)
         * compare les deux listes d'intitulés.
         */}
-      <div className="flex flex-col gap-4" data-farm-form="">
+      <div className="flex flex-col gap-4" data-farm-form="" data-form-family="lieu" data-form-screen="farm-form">
         {/* L'en-tête de la fiche : la photo et le nom. */}
         <FormSection title={t('form.sectionIdentity')} testId="farm-block-identity">
           <div className="col-span-full">

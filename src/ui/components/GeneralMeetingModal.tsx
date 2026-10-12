@@ -15,7 +15,7 @@ import {
 } from '@core/index'
 import type { GeneralMeeting, LatLng } from '@core/index'
 
-import { AutocompleteField, Field, SelectField, TextArea, TextField } from './fields'
+import { AutocompleteField, Field, FormActions, SelectField, TextArea, TextField } from './fields'
 import { useConfirmDelete } from './ConfirmDelete'
 import { Icon } from './Icon'
 import { PositionLinkField } from './PositionLinkField'
@@ -137,15 +137,17 @@ export function GeneralMeetingModal({
       title={t(existing ? 'meeting.edit' : 'meeting.new')}
       onClose={onClose}
     >
-      <div className="flex flex-col gap-4">
+      {/* ★★ BD 7 — une seule grille : deux colonnes dès que la carte en a la place. */}
+      <div className="form-grid">
         <TextField
           label={t('meeting.titleField')}
           value={title}
           onChange={setTitle}
           error={touched ? titleError : undefined}
           required
+          className="col-span-full"
         />
-        <div className="form-grid">
+        <div className="contents">
           <Field label={t('meeting.startField')} required>
             <input
               type="datetime-local"
@@ -182,8 +184,8 @@ export function GeneralMeetingModal({
             pour « בית שאן », impuissant pour une parcelle au bout d'un chemin,
             qui est exactement le cas du brief. Le point collé est gardé TEL
             QUEL et c'est lui que l'agenda dessine. */}
-        <PositionLinkField onResolve={setPosition} />
-        <p className="muted -mt-2" data-testid="meeting-position">
+        <PositionLinkField onResolve={setPosition} className="col-span-full" />
+        <p className="muted col-span-full -mt-2" data-testid="meeting-position">
           {position ? (
             <span className="flex flex-wrap items-center gap-2">
               <Icon name="pin" size={13} />
@@ -208,7 +210,7 @@ export function GeneralMeetingModal({
             et la seconde est celle qui réveille un iPad dont l'app est
             fermée : voir `ui/reminders.ts`, qui dit aussi ce qu'une PWA ne
             peut pas faire. */}
-        <div className="form-grid">
+        <div className="contents">
           <SelectField<string>
             label={t('meeting.remindField')}
             value={String(remind)}
@@ -251,7 +253,7 @@ export function GeneralMeetingModal({
         {position && (
           <button
             type="button"
-            className="btn-secondary self-start"
+            className="btn-secondary col-span-full justify-self-start"
             data-testid="meeting-make-farm"
             onClick={() => {
               const query = new URLSearchParams({
@@ -280,45 +282,31 @@ export function GeneralMeetingModal({
           value={note}
           onChange={setNote}
           rows={3}
+          className="col-span-full"
         />
       </div>
 
-      <div className="mt-5 flex items-center gap-2">
-        {existing && (
-          <button
-            type="button"
-            className="btn-ghost text-status-danger-ink hover:bg-status-danger/10"
-            data-testid="meeting-delete"
-            onClick={() =>
-              del.ask(
-                'generalMeeting',
-                existing.id,
-                () => {
-                  deleteGeneralMeeting(existing.id)
-                  return true
-                },
-                { after: onClose },
-              )
-            }
-          >
-            <Icon name="trash" size={15} />
-            {t('meeting.delete')}
-          </button>
-        )}
-        <div className="ms-auto flex gap-2">
-          <button type="button" className="btn-secondary" onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            className="btn-primary"
-            data-testid="meeting-save"
-            onClick={submit}
-          >
-            {t('common.save')}
-          </button>
-        </div>
-      </div>
+      {/* ★★ BD 7 — la barre de tous les formulaires : supprimer à l'autre bout. */}
+      <FormActions
+        onCancel={onClose}
+        onSubmit={submit}
+        submitTestId="meeting-save"
+        onDelete={
+          existing
+            ? () =>
+                del.ask(
+                  'generalMeeting',
+                  existing.id,
+                  () => {
+                    deleteGeneralMeeting(existing.id)
+                    return true
+                  },
+                  { after: onClose },
+                )
+            : undefined
+        }
+        deleteTestId="meeting-delete"
+      />
       {del.dialog}
     </Modal>
   )

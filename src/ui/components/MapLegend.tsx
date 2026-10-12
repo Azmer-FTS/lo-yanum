@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Icon } from './Icon'
 import { MapAttribution } from './MapAttribution'
-import { MAP_LAYERS, useMapLayers } from './mapLayers'
+import { MAP_LAYERS, SUB_LAYERS, setMapLayers, useMapLayers } from './mapLayers'
+import type { MapLayerKey } from './mapLayers'
 import { readBlockOpen, writeBlockOpen } from './primitives'
 
 /**
@@ -89,16 +90,20 @@ export function MapLegend({
             <ul className="mb-2 flex flex-col gap-0.5 border-b border-edge-subtle pb-2" data-testid="map-layers">
               {offered.map((key) => (
                 <li key={key}>
-                  <label className="flex min-h-8 cursor-pointer items-center gap-2 text-caption text-content-secondary">
-                    <input
-                      type="checkbox"
-                      className="check"
-                      checked={visible[key]}
-                      onChange={(e) => setLayer(key, e.target.checked)}
-                      data-testid={`layer-${key}`}
-                    />
-                    {t(`map.layers.${key}`)}
-                  </label>
+                  <div className="flex items-center gap-1">
+                    <label className="flex min-h-8 flex-1 cursor-pointer items-center gap-2 text-caption text-content-secondary">
+                      <input
+                        type="checkbox"
+                        className="check"
+                        checked={visible[key]}
+                        onChange={(e) => setLayer(key, e.target.checked)}
+                        data-testid={`layer-${key}`}
+                      />
+                      {t(`map.layers.${key}`)}
+                    </label>
+                    {SUB_LAYERS[key] && <SubLayerToggle parent={key} />}
+                  </div>
+                  {SUB_LAYERS[key] && <SubLayers parent={key} disabled={!visible[key]} />}
                 </li>
               ))}
             </ul>
@@ -113,5 +118,96 @@ export function MapLegend({
     </div>
       <MapAttribution />
     </div>
+  )
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ BD 4 (2026-10-12) — LES REPLIS D'UNE COUCHE : par NATURE dans les fermes
+ *    (« ne voir que les גד״ש »), signées / les autres dans les institutions.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Dans le même panneau et de la même façon que les couches : des cases, sous
+ * la couche qu'elles détaillent, repliées derrière un bouton (mémorisé comme
+ * la légende). « רק » ne garde que cette valeur ; « הכל » les rallume toutes.
+ * Le choix voyage avec les autres couches (`lo-yanum:map-layers`, synchronisé
+ * avec le compte comme les autres réglages d'écran).
+ */
+function subLabel(key: MapLayerKey, t: (k: string) => string): string {
+  if (key === 'branch:none') return t('map.layers.branchNone')
+  if (key.startsWith('branch:')) return t(`branches.kind.${key.slice(7)}`)
+  return t(`map.layers.${key.replace(':', '_')}`)
+}
+
+function SubLayerToggle({ parent }: { parent: MapLayerKey }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(() => readBlockOpen(`map-legend-sub-${parent}`, false))
+  const [visible] = useMapLayers()
+  const subs = SUB_LAYERS[parent] ?? []
+  const on = subs.filter((k) => visible[k]).length
+  return (
+    <button
+      type="button"
+      aria-expanded={open}
+      data-testid={`layer-sub-toggle-${parent}`}
+      className="flex min-h-8 shrink-0 items-center gap-1 rounded-field px-1.5 text-micro text-content-muted hover:bg-surface-high"
+      onClick={() => {
+        writeBlockOpen(`map-legend-sub-${parent}`, !open)
+        setOpen(!open)
+        window.dispatchEvent(new CustomEvent('lo-yanum:legend-sub', { detail: parent }))
+      }}
+    >
+      <span className="numeric">{on === subs.length ? t('map.layers.subAll') : `${on}/${subs.length}`}</span>
+      <span className={`transition-transform duration-fast ${open ? '' : 'ltr:-rotate-90 rtl:rotate-90'}`}>
+        <Icon name="chevronDown" size={12} />
+      </span>
+    </button>
+  )
+}
+
+function SubLayers({ parent, disabled }: { parent: MapLayerKey; disabled: boolean }) {
+  const { t } = useTranslation()
+  const [visible, setLayer] = useMapLayers()
+  const [open, setOpen] = useState(() => readBlockOpen(`map-legend-sub-${parent}`, false))
+  useEffect(() => {
+    const onToggle = (e: Event) => {
+      if ((e as CustomEvent).detail === parent) setOpen(readBlockOpen(`map-legend-sub-${parent}`, false))
+    }
+    window.addEventListener('lo-yanum:legend-sub', onToggle)
+    return () => window.removeEventListener('lo-yanum:legend-sub', onToggle)
+  }, [parent])
+  const subs = SUB_LAYERS[parent] ?? []
+  if (!open) return null
+  return (
+    <ul className={`mb-1 ms-6 flex flex-col gap-0.5 border-s border-edge-subtle ps-2 ${disabled ? 'opacity-50' : ''}`} data-testid={`layer-subs-${parent}`}>
+      {subs.map((k) => (
+        <li key={k} className="flex items-center gap-1">
+          <label className="flex min-h-8 flex-1 cursor-pointer items-center gap-2 text-micro text-content-secondary">
+            <input type="checkbox" className="check" checked={visible[k]} disabled={disabled} onChange={(e) => setLayer(k, e.target.checked)} data-testid={`layer-${k}`} />
+            {subLabel(k, t)}
+          </label>
+          <button
+            type="button"
+            className="min-h-8 shrink-0 rounded-field px-1.5 text-micro text-accent-ink hover:bg-surface-high"
+            disabled={disabled}
+            data-testid={`layer-only-${k}`}
+            onClick={() => setMapLayers({ [parent]: true, ...Object.fromEntries(subs.map((x) => [x, x === k])) })}
+          >
+            {t('map.layers.only')}
+          </button>
+        </li>
+      ))}
+      <li>
+        <button
+          type="button"
+          className="min-h-8 rounded-field px-1.5 text-micro text-accent-ink hover:bg-surface-high"
+          disabled={disabled}
+          data-testid={`layer-all-${parent}`}
+          onClick={() => setMapLayers(Object.fromEntries(subs.map((x) => [x, true])))}
+        >
+          {t('map.layers.showAll')}
+        </button>
+      </li>
+    </ul>
   )
 }

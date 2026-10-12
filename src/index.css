@@ -597,7 +597,9 @@
     @apply block min-w-0 max-w-full;
     -webkit-appearance: none;
     appearance: none;
-    min-height: 2.5rem;
+    /* ★★ BD 7 — la grammaire des formulaires : tous les champs à 44 px, les
+       dates comprises (elles en faisaient 40). */
+    min-height: 2.75rem;
   }
   .input[type='date']::-webkit-date-and-time-value,
   .input[type='time']::-webkit-date-and-time-value,

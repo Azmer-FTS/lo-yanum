@@ -112,3 +112,30 @@ export function matchesBranches(e: { branches?: readonly FarmBranch[] }, wanted:
   const own = new Set(branchesOf(e).map((b) => b.kind))
   return wanted.some((k) => own.has(k))
 }
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ BD 3 (2026-10-12) — LA COULEUR DIT LE STATUT, L'ICÔNE DIT CE QU'IL Y A
+ *    SUR PLACE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * L'icône d'une épingle de ferme vient de sa NATURE : une nature donne son
+ * icône ; plusieurs natures donnent la PREMIÈRE de sa liste (l'ordre de
+ * `FARM_BRANCHES`, celui de la fiche et de l'aperçu — le reste est dans
+ * l'aperçu) ; aucune nature, ou « אחר », donne la silhouette de ferme
+ * générique. ⛔ Pas d'icône composite. Une nature « à confirmer » compte : la
+ * pré-saisie de BC est faite pour être vue. Un moshav garde son village.
+ */
+export type PinGlyph = Exclude<FarmBranchKind, 'other'> | 'farm' | 'moshav'
+
+export function pinGlyphFor(e: { branches?: readonly FarmBranch[]; entityKind?: string }): PinGlyph {
+  if (e.entityKind === 'moshav') return 'moshav'
+  const first = branchesOf(e)[0]?.kind
+  return !first || first === 'other' ? 'farm' : first
+}
+
+/** ★★ BD 4 — la nature d'une ferme pour le repli de la carte : toutes, ou « sans nature ». */
+export function branchLayerKeys(e: { branches?: readonly FarmBranch[] }): string[] {
+  const kinds = branchesOf(e).map((b) => b.kind)
+  return kinds.length === 0 ? ['branch:none'] : kinds.map((k) => `branch:${k}`)
+}

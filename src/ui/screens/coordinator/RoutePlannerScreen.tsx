@@ -1,3 +1,4 @@
+import { farmPin } from '../../components/placeMarkers'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -424,7 +425,7 @@ export function RoutePlannerScreen() {
             color: readToken('--text-muted'),
             title: farm.name,
             subtitle: farm.locality,
-            kind: entityMarkerKind(farm),
+            ...farmPin(farm),
           },
           { hoveredId, selectedId: null },
           { onHover: setHoveredId, onSelect: () => toggle(farm.id) },
