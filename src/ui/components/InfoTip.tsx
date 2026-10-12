@@ -58,7 +58,7 @@ export function useInfoTip(content: ReactNode | undefined, opts: { label?: strin
       data-info-toggle=""
       data-testid={opts.testId ? `${opts.testId}-toggle` : undefined}
       /* 44 px de cible pour 20 px de dessin : discret à l'œil, facile au doigt. */
-      className={`-my-2 inline-flex h-11 w-9 shrink-0 items-center justify-center rounded-pill align-middle transition-colors duration-fast ${
+      className={`-my-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-pill align-middle transition-colors duration-fast ${
         open ? 'text-accent-ink' : 'text-content-muted hover:text-content-primary'
       }`}
     >
@@ -83,7 +83,7 @@ export function useInfoTip(content: ReactNode | undefined, opts: { label?: strin
         }}
         aria-label={t('common.close')}
         data-info-close=""
-        className="absolute end-1 top-1 flex h-9 w-9 items-center justify-center rounded-pill text-content-muted hover:bg-surface-raised hover:text-content-primary"
+        className="absolute end-0.5 top-0.5 flex h-11 w-11 items-center justify-center rounded-pill text-content-muted hover:bg-surface-raised hover:text-content-primary"
       >
         <Icon name="close" size={14} />
       </button>

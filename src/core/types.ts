@@ -321,6 +321,12 @@ export interface FarmContact {
    * לא זמין »). Absente sur les fiches d'avant BA.
    */
   note?: string
+  /**
+   * ★★ BC (2026-10-12) — la NOTE de ce contact restreint l'usage de son
+   * téléphone : tout bouton d'appel le montre et demande confirmation (le
+   * mécanisme de « נדרש תיאום מוקדם », BB). Absent = appel ordinaire.
+   */
+  restrictsCalls?: boolean
 }
 
 export interface Agreement {
@@ -563,6 +569,20 @@ export interface Farm {
    * l'application l'a été après un contact). Lire par `isContactEstablished`.
    */
   contactEstablished?: boolean
+  /**
+   * ★★ BC (2026-10-12) — LA LOCALITÉ DE REPÈRE (« ליד … »), calculée depuis le
+   * point par la liste des localités de l'app et rangée en base ; voir
+   * `core/nearestLocality.ts`. `nearestLocalityManual` : saisie par le PO,
+   * jamais écrasée par un recalcul.
+   */
+  nearestLocality?: string
+  nearestLocalityManual?: boolean
+  /**
+   * ★★ BC (2026-10-12) — LA NATURE DE L'EXPLOITATION (בקר, צאן, מטעים…),
+   * plusieurs valeurs, chacune « à confirmer » ou validée ; voir
+   * `core/branches.ts`. Absent = rien n'est dit.
+   */
+  branches?: import('./branches').FarmBranch[]
   /** AC2 — מייל חקלאי, a column of the 32-column workbook since AC2. */
   farmerEmail?: string
   /**
@@ -1543,6 +1563,8 @@ export interface Lead {
   convertedAt: string | null
   /** ★★ AY10 — la photo de la fiche .vcf (WhatsApp), en data URL réduite. */
   photo?: string | null
+  /** ★★ BC — la nature de l'exploitation ; elle suit la fiche quand elle devient une ferme. */
+  branches?: import('./branches').FarmBranch[]
 }
 
 /** D4 — one entry in the agenda, whatever kind of thing it is. */

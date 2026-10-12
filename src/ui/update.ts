@@ -81,6 +81,24 @@ const VERDICT_KEY = 'lo-yanum:update-verdict'
 
 /** A burst of `visibilitychange` + `focus` + `pageshow` is ONE return. */
 const THROTTLE_MS = 4000
+/**
+ * ★★ BC (2026-10-12) — « LE TÉLÉPHONE MET LONGTEMPS À VOIR LA NOUVELLE
+ *    VERSION ». La question partait bien à chaque retour (AJ0.2) ; deux trous
+ *    la rendaient muette pendant des minutes sur un téléphone qui SORT de
+ *    veille :
+ *    1. AUCUN DÉLAI. Une requête lancée pendant que le réseau du téléphone se
+ *       réveille peut pendre longtemps ; `inFlight` la gardait, et chaque
+ *       retour suivant RENDAIT LA MÊME requête pendante au lieu d'en poser une.
+ *       → 8 s au plus, puis « réseau », et la place est libre.
+ *    2. UN ÉCHEC NE RÉESSAYAIT PAS. Au réveil, la première requête échoue
+ *       souvent (réseau pas encore là) et la suivante attendait le retour
+ *       d'après — ou le quart d'heure. → trois nouvelles tentatives
+ *       rapprochées (3 s, 10 s, 30 s) tant que l'app est visible.
+ *    Et le retour du réseau (`online`) pose la question SANS attendre la
+ *    fenêtre des 4 s : c'est précisément le moment où elle a une réponse.
+ */
+const FETCH_TIMEOUT_MS = 8000
+export const RETRY_DELAYS_MS: readonly number[] = [3000, 10_000, 30_000]
 /** And a page left open in the foreground still asks, now and then. */
 const INTERVAL_MS = 15 * 60 * 1000
 
@@ -176,7 +194,14 @@ export function checkForUpdate(): Promise<CheckOutcome> {
     try {
       const url = new URL('version.json', document.baseURI)
       url.searchParams.set('t', String(Date.now()))
-      response = await fetch(url.href, { cache: 'no-store' })
+      /* ★★ BC — jamais une requête pendante : 8 s au plus (voir FETCH_TIMEOUT_MS). */
+      const ctrl = typeof AbortController === 'undefined' ? null : new AbortController()
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS) : null
+      try {
+        response = await fetch(url.href, { cache: 'no-store', signal: ctrl?.signal })
+      } finally {
+        if (timer) clearTimeout(timer)
+      }
     } catch {
       return { kind: 'error', reason: 'network' }
     }
@@ -350,21 +375,41 @@ export function startUpdateWatcher(): void {
   started = true
   settlePending()
 
+  /* ★★ BC — un échec au réveil réessaie, rapproché, tant que l'app est visible. */
+  let retryTimer: number | null = null
+  const ask = (attempt: number) => {
+    if (retryTimer !== null) {
+      window.clearTimeout(retryTimer)
+      retryTimer = null
+    }
+    void checkForUpdate().then((outcome) => {
+      if (outcome.kind !== 'error' || attempt >= RETRY_DELAYS_MS.length) return
+      retryTimer = window.setTimeout(() => {
+        retryTimer = null
+        if (document.visibilityState !== 'hidden') ask(attempt + 1)
+      }, RETRY_DELAYS_MS[attempt])
+    })
+  }
   const onReturn = () => {
     if (document.visibilityState === 'hidden') return
     if (Date.now() - lastStarted < THROTTLE_MS) return
     // A return is a new occasion: a banner put aside last time comes back.
     if (state.dismissed) set({ dismissed: null })
-    void checkForUpdate()
+    ask(0)
+  }
+  /* ★★ BC — le réseau revient : on demande tout de suite, sans la fenêtre des 4 s. */
+  const onOnline = () => {
+    if (document.visibilityState === 'hidden') return
+    ask(0)
   }
 
   document.addEventListener('visibilitychange', onReturn)
   window.addEventListener('pageshow', onReturn)
   window.addEventListener('focus', onReturn)
-  window.addEventListener('online', onReturn)
+  window.addEventListener('online', onOnline)
   window.setInterval(onReturn, INTERVAL_MS)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('controllerchange', () => set({ worker: workerState() }))
   }
-  void checkForUpdate()
+  ask(0)
 }

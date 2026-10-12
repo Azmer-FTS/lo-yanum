@@ -13,7 +13,7 @@ import { Callout, KeyValue, PageHeader, Section } from '../../components/primiti
 import { readReportRecipient, writeReportRecipient } from '../../report/recipient'
 import { DisplaySection, RegionsEditSection } from '../../settings/DisplaySection'
 import { SampleDataSection } from '../../settings/SampleDataSection'
-import { AppVersionSection } from '../../settings/AppVersionSection'
+import { AppVersionLine, AppVersionSection } from '../../settings/AppVersionSection'
 import { SettingsSyncSection } from '../../settings/SettingsSyncSection'
 import { GeoDiagnosticsSection } from '../../settings/GeoDiagnosticsSection'
 import { TargetSection } from '../../settings/TargetSection'
@@ -191,6 +191,8 @@ export function SettingsScreen() {
   return (
     <div className="mx-auto w-full max-w-2xl">
       <PageHeader title={t('settings.title')} info={t('settings.subtitle')} />
+      {/* ★★ BC — la version qui tourne, en petit, toujours visible. */}
+      <AppVersionLine />
       {/**
         * ═══════════════════════════════════════════════════════════════════
         * ★★ AF7 (2026-09-09) — LA PAGE EST RANGÉE EN SEPT SECTIONS NOMMÉES,

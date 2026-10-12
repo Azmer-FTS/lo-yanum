@@ -43,6 +43,10 @@ export * from './activity'
 export * from './intake'
 export * from './lookup'
 export * from './localitySearch'
+export * from './nearestLocality'
+export * from './branches'
+export * from './calls'
+export * from './coverageSelection'
 export * from './access'
 export * from './dispatch'
 export * from './sessions'
@@ -74,6 +78,10 @@ export {
   setCommitmentFulfilled,
   createFarm,
   updateFarm,
+  // ★★ BC — localité de repère, nature de l'exploitation.
+  setFarmNearestLocality,
+  setFarmBranches,
+  setLeadBranches,
   saveFarmAgreement,
   // AK7 — archiver n'est pas supprimer.
   archiveFarm,

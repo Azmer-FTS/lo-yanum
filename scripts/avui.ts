@@ -211,7 +211,12 @@ await guard('A322', async () => {
 section('A323 · A327 — l’appui long au doigt pose une épingle, sur TOUS les écrans à carte')
 for (const width of [1032, 402]) {
   await guard(`A327 ${width}`, async () => {
-    const o = await open(width, { touch: true, storage: Object.fromEntries(MAP_ROUTES.map((r) => [`lo-yanum:map-mode:${r.split('/').pop() || 'dashboard'}`, 'split'])) })
+    /* ★★ BC — ADAPTÉE : au téléphone, un écran de LISTE n'a plus que deux états
+       (liste ↔ carte, brief BC 3h) ; sa carte s'y voit en plein écran, c'est là
+       que le doigt pose l'épingle. Les autres écrans à carte gardent le divisé. */
+    const PHONE_LISTS = new Set(['farms', 'leads', 'volunteers', 'missions', 'incidents', 'institutions'])
+    const modeOf = (key: string) => (width < 768 && PHONE_LISTS.has(key) ? 'full' : 'split')
+    const o = await open(width, { touch: true, storage: Object.fromEntries(MAP_ROUTES.map((r) => r.split('/').pop() || 'dashboard').map((k) => [`lo-yanum:map-mode:${k}`, modeOf(k)])) })
     for (const route of MAP_ROUTES) {
       await go(o.page, route, 3500)
       const at = await emptySpot(o.page)

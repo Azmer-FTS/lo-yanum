@@ -7,6 +7,8 @@ import type { Farm, FarmContact } from '@core/index'
 import { Avatar } from '../components/Avatar'
 import { Icon } from '../components/Icon'
 import { runUndoable } from '../components/UndoToast'
+import { TextField } from '../components/fields'
+import { CallRestrictionChip, callTone, guardCall, isCallGuarded } from '../institutions/institutionUi'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -84,9 +86,16 @@ function FarmContactRow({ contact, rank, onSave, onUp, onRemove }: { contact: Fa
     setRole(contact.role)
     setNote(contact.note ?? '')
   }, [contact.id, contact.name, contact.phone, contact.role, contact.note])
-  const commit = () => {
-    const next: FarmContact = { ...contact, name, phone, role, note }
-    if (next.name !== contact.name || next.phone !== contact.phone || next.role !== contact.role || (next.note ?? '') !== (contact.note ?? '')) onSave(next)
+  const commit = (patch: Partial<FarmContact> = {}) => {
+    const next: FarmContact = { ...contact, name, phone, role, note, ...patch }
+    if (
+      next.name !== contact.name ||
+      next.phone !== contact.phone ||
+      next.role !== contact.role ||
+      (next.note ?? '') !== (contact.note ?? '') ||
+      (next.restrictsCalls === true) !== (contact.restrictsCalls === true)
+    )
+      onSave(next)
   }
   return (
     <li className="rounded-card bg-surface-raised p-2.5 shadow-card" data-testid={`farm-contact-${contact.id}`} data-rank={rank}>
@@ -109,26 +118,42 @@ function FarmContactRow({ contact, rank, onSave, onUp, onRemove }: { contact: Fa
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="flex flex-col gap-1">
           <span className="text-micro font-semibold text-content-muted">{t('farmContacts.name')}</span>
-          <input className="input min-h-11" value={name} onChange={(e) => setName(e.target.value)} onBlur={commit} data-testid="farm-contact-name" />
+          <input className="input min-h-11" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => commit()} data-testid="farm-contact-name" />
         </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-micro font-semibold text-content-muted">{t('farmContacts.phone')}</span>
-          <input className="input ltr-nums min-h-11" inputMode="tel" dir="ltr" placeholder="05X-XXX-XXXX" value={phone} onChange={(e) => setPhone(e.target.value)} onBlur={commit} data-testid="farm-contact-phone" />
-        </label>
+        {/* ★ BC — le pavé numérique, comme tout champ de téléphone (`kind="phone"`) :
+            un `inputMode="tel"` brut ouvrait le clavier complet sur iPad (BB, 16). */}
+        <div onBlur={() => commit()}>
+          <TextField label={t('farmContacts.phone')} kind="phone" value={phone} onChange={setPhone} placeholder="05X-XXX-XXXX" testId="farm-contact-phone" />
+        </div>
         <label className="flex flex-col gap-1">
           <span className="text-micro font-semibold text-content-muted">{t('farmContacts.role')}</span>
-          <input className="input min-h-11" value={role} onChange={(e) => setRole(e.target.value)} onBlur={commit} data-testid="farm-contact-role" />
+          <input className="input min-h-11" value={role} onChange={(e) => setRole(e.target.value)} onBlur={() => commit()} data-testid="farm-contact-role" />
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-micro font-semibold text-content-muted">{t('farmContacts.note')}</span>
-          <input className="input min-h-11" value={note} onChange={(e) => setNote(e.target.value)} onBlur={commit} data-testid="farm-contact-note" />
+          <input className="input min-h-11" value={note} onChange={(e) => setNote(e.target.value)} onBlur={() => commit()} data-testid="farm-contact-note" />
         </label>
       </div>
+      {/* ★★ BC — la note restreint l'usage du téléphone : tout bouton d'appel de
+          ce contact le montre et demande confirmation. */}
+      <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-2 text-caption text-content-secondary">
+        <input
+          type="checkbox"
+          className="h-5 w-5 shrink-0 accent-[rgb(var(--status-warn))]"
+          checked={contact.restrictsCalls === true}
+          onChange={(e) => commit({ restrictsCalls: e.target.checked ? true : undefined })}
+          data-testid="farm-contact-restricts"
+        />
+        {t('calls.restrictsLabel')}
+      </label>
       {contact.phone && (
-        <a href={telOf(contact.phone)} className="btn-secondary mt-2 min-h-11" data-testid="farm-contact-call">
-          <Icon name="phone" size={16} />
-          {t('farmContacts.call')}
-        </a>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <a href={telOf(contact.phone)} onClick={guardCall(null, t, contact)} className={`${callTone(null, 'btn-secondary', contact)} min-h-11`} data-testid="farm-contact-call" data-guarded={isCallGuarded(null, contact) ? '' : undefined}>
+            <Icon name={isCallGuarded(null, contact) ? 'alert' : 'phone'} size={16} />
+            {t('farmContacts.call')}
+          </a>
+          <CallRestrictionChip contact={contact} full />
+        </div>
       )}
     </li>
   )

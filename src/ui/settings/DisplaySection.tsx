@@ -1,7 +1,8 @@
+import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
-import { THEME_CHOICES } from '@core/index'
+import { THEME_CHOICES, isThemeChoice, resolveTheme } from '@core/index'
 import type { ThemeChoice } from '@core/index'
 
 import { ChevronForward, Icon } from '../components/Icon'
@@ -11,6 +12,8 @@ import { useLayoutSync, writeLayoutSync } from '../components/mapMode'
 import type { LayoutSync } from '../components/mapMode'
 import { resolvedThemeOf } from '../components/basemap'
 import { useTheme } from '../theme'
+import { SUPABASE_CONFIGURED } from '../../data/config'
+import { THEME_SYNC_KEY, lastRemoteSetting, lastSettingsSyncReport, settingStamp, subscribeSettingsSync, themeSourceOf } from './sync'
 
 const THEME_ICON: Record<ThemeChoice, IconName> = {
   light: 'sun',
@@ -54,6 +57,20 @@ export function DisplaySection() {
   const shown = typeof document === 'undefined' ? null : resolvedThemeOf()
   const device = systemDark ? 'dark' : 'light'
   const mismatch = choice === 'system' && shown !== null && shown !== device
+  /* ★★ BC — « QUEL THÈME, ET D'OÙ VIENT LA DÉCISION », en une phrase. Relue
+     après chaque cycle de synchronisation (un choix arrivé d'un autre
+     appareil change la réponse). */
+  useSyncExternalStore(subscribeSettingsSync, lastSettingsSyncReport, lastSettingsSyncReport)
+  const stored = (() => {
+    try {
+      return localStorage.getItem(THEME_SYNC_KEY)
+    } catch {
+      return null
+    }
+  })()
+  const remote = lastRemoteSetting(THEME_SYNC_KEY)
+  const { source, accountDiffers } = themeSourceOf({ stored, stamp: settingStamp(THEME_SYNC_KEY), remote, connected: SUPABASE_CONFIGURED })
+  const applied = shown ?? resolveTheme(choice, systemDark)
 
   return (
     <Section title={t('settings.display.title')} className="mt-6" collapseKey="settings-display" info={t('settings.display.hint')}>
@@ -80,11 +97,31 @@ export function DisplaySection() {
             </button>
           ))}
         </div>
+        {/* ★★ BC — LA RÉPONSE À « POURQUOI MON TÉLÉPHONE EST CLAIR ? ». */}
+        <div className="mt-2 rounded-field bg-surface-high px-3 py-2" data-testid="theme-source" data-source={source} data-applied={applied} data-account={remote ?? ''}>
+          <p className="text-caption font-semibold text-content-primary">
+            {t(`theme.source.${source}`, { theme: t(`theme.${applied}`) })}
+          </p>
+          {source === 'legacy' && (
+            <button type="button" className="btn-secondary mt-2 min-h-11" onClick={() => setChoice(choice)} data-testid="theme-sync-now">
+              <Icon name="switch" size={14} />
+              {t('theme.syncNow')}
+            </button>
+          )}
+          {accountDiffers && remote && isThemeChoice(remote) && (
+            <p className="mt-2 flex flex-wrap items-center gap-2 text-caption text-content-secondary" data-testid="theme-account">
+              <span>{t('theme.accountHas', { theme: t(`theme.${remote}`) })}</span>
+              <button type="button" className="btn-ghost min-h-11" onClick={() => setChoice(remote)} data-testid="theme-apply-account">
+                {t('theme.applyHere')}
+              </button>
+            </p>
+          )}
+        </div>
         {/* ★★ AI6 — LES TROIS VALEURS, À L'ÉCRAN DU PO. « Mon iPad est sombre et
             l'app est claire » devient une ligne qu'il peut lire, et une
             capture qu'il peut envoyer, au lieu d'une impression. */}
         <p
-          className={`mt-1.5 text-caption ${mismatch ? 'text-status-danger-ink' : 'text-content-muted'}`}
+          className={`mt-1.5 text-micro ${mismatch ? 'text-status-danger-ink' : 'text-content-muted'}`}
           data-testid="theme-diagnostic"
           data-device={device}
           data-shown={shown ?? ''}

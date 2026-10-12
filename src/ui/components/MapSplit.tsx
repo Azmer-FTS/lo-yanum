@@ -2,6 +2,8 @@ import { useRef } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 
 import { MapModePill, clampRatio, useMapMode, useMapRatio } from './mapMode'
+import type { MapMode } from './mapMode'
+import { useViewportTier } from '../hooks/useNarrow'
 import { PullToRefresh } from './PullToRefresh'
 import type { MapModeState } from './mapMode'
 import { PanelSplitter } from './splitter'
@@ -83,7 +85,14 @@ import { PanelSplitter } from './splitter'
  * `usePublishedHeight`) and every one of these rules is inert.
  */
 export type MapSplitScroll = 'panel' | 'page'
-export type MapSplitBreakpoint = 'lg' | 'xl'
+/**
+ * ★★ BC (2026-10-12) — `md`, LE PALIER TABLETTE. Une liste (`list`) met sa carte
+ * À CÔTÉ d'elle dès 48 rem : empilée au-dessus, à 820 px, la première ferme
+ * n'apparaissait qu'à 822 px de haut (30 % de l'écran aux données, mesuré
+ * sur le déployé d'avant BC). La barre du haut existe encore sous `lg` : les
+ * hauteurs la retranchent (`--shell-top`), et `lg:` reprend la règle d'avant.
+ */
+export type MapSplitBreakpoint = 'md' | 'lg' | 'xl'
 
 /**
  * Tailwind scans the SOURCE for literal class names, so a breakpoint cannot be
@@ -188,6 +197,28 @@ interface BreakpointClasses {
  *    et c'est la page qui doit défiler.
  */
 const BP: Record<MapSplitBreakpoint, BreakpointClasses> = {
+  md: {
+    shellPanel:
+      'flex flex-col md:h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] md:min-h-0 md:flex-row-reverse md:rtl:flex-row lg:h-[calc(100dvh-var(--shell-foot))] lg:pt-[var(--shell-top)]',
+    shellPage:
+      'flex flex-col md:flex-row-reverse md:items-start md:rtl:flex-row lg:pt-[var(--shell-top)]',
+    contentPanel:
+      'order-2 min-w-0 flex-1 px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 ' +
+      'md:order-none md:overflow-y-auto md:overflow-x-clip md:[--shell-top:0px]',
+    contentPage: 'order-2 min-w-0 flex-1 px-4 [--content-pad:1rem] pb-[var(--float-reserve)] pt-5 md:order-none',
+    contentHidden: 'md:w-full md:px-5 md:[--content-pad:1.25rem]',
+    contentSplit: 'md:w-[var(--content-w)] md:flex-none md:px-5 md:[--content-pad:1.25rem]',
+    mapCol: 'order-1 flex-col md:order-none md:min-w-0 md:flex-1',
+    mapColPage:
+      'md:sticky md:top-[var(--shell-top)] md:h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] md:self-start',
+    mapBox: 'relative w-full border-edge-subtle md:h-full md:border-r md:!h-full',
+    bar: 'flex md:hidden',
+    switchInContent: 'hidden md:flex',
+    splitter: 'hidden md:flex',
+    splitterPage:
+      'md:sticky md:top-[var(--shell-top)] md:h-[calc(100dvh-var(--shell-top)-var(--shell-foot))] md:self-start',
+    pill: 'flex',
+  },
   lg: {
     shellPanel:
       'flex flex-col lg:h-[calc(100dvh-var(--shell-foot))] lg:min-h-0 lg:flex-row-reverse lg:pt-[var(--shell-top)] lg:rtl:flex-row',
@@ -291,6 +322,18 @@ export interface MapSplitProps {
    * hour ladder ended above the fold and the block under it below it.
    */
   keepPanelScroll?: boolean
+  /**
+   * ★★ BC (2026-10-12) — UN ÉCRAN DE LISTE (fermes, institutions, contacts,
+   * volontaires, gardes, incidents). Trois effets, un par palier :
+   *   · téléphone — « liste ↔ carte », le motif d'Airbnb et de Booking : le
+   *     mode partagé n'existe pas (la carte empilée mangeait l'écran avant la
+   *     première ligne : 18 % de données sur les fermes, mesuré) ; la carte est
+   *     à un toucher, plein écran ;
+   *   · tablette — la carte À CÔTÉ dès 48 rem (`md`), la liste à moitié de la
+   *     largeur tant que le PO n'a pas tiré la séparation ;
+   *   · ordinateur — inchangé.
+   */
+  list?: boolean
 }
 
 export function MapSplit({
@@ -306,12 +349,18 @@ export function MapSplit({
   barExtra,
   contentClassName = '',
   keepPanelScroll = false,
+  list = false,
 }: MapSplitProps) {
-  const state = useMapMode(screenKey)
-  const { mode, setMode } = state
-  const ratioState = useMapRatio(screenKey, contentPercent)
+  const tier = useViewportTier()
+  const raw = useMapMode(screenKey)
+  /* ★★ BC — au téléphone, un écran de liste n'a que deux états (voir `list`). */
+  const phoneTwoState = list && tier === 'phone'
+  const mode: MapMode = phoneTwoState && raw.mode === 'split' ? 'hidden' : raw.mode
+  const setMode = raw.setMode
+  const state: MapModeState = { mode, setMode }
+  const ratioState = useMapRatio(screenKey, list && tier === 'tablet' ? 50 : contentPercent)
   const { ratio } = ratioState
-  const c = BP[breakpoint]
+  const c = BP[list ? 'md' : breakpoint]
 
   const shellRef = useRef<HTMLDivElement | null>(null)
 
@@ -431,7 +480,7 @@ export function MapSplit({
             /* ★ AN4 — la bordure de la carte SÉPARE la carte de la liste ; en
                mode plein il n'y a pas de liste, et elle doublait celle du rail
                (deux traits de 1 px, mesuré à 1 032 et 1 376 px). */
-            mode === 'full' ? c.mapBox.replace(/\b(lg|xl):border-r\b/, '') : c.mapBox
+            mode === 'full' ? c.mapBox.replace(/\b(md|lg|xl):border-r\b/, '') : c.mapBox
           } ${
             mode === 'full' ? 'min-h-0 flex-1' : splitHeight
           }`}
@@ -452,7 +501,7 @@ export function MapSplit({
           fill the map and it has to exist at every width. It is `raised`
           above the unified "+" in the same corner, and `data-overlay` says
           what it has always said: it is deliberately over things. */}
-      <MapModePill mode={mode} onChange={setMode} className={c.pill} />
+      <MapModePill mode={mode} onChange={setMode} className={c.pill} modes={phoneTwoState ? ['hidden', 'full'] : undefined} />
     </div>
   )
 }

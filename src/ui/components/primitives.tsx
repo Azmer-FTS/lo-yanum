@@ -5,7 +5,9 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { useInfoTip } from './InfoTip'
 
-import { useFilterFold, useNarrow, usePhoneShape } from '../hooks/useNarrow'
+import { useFilterFold, useNarrow, usePhoneShape, useViewportTier } from '../hooks/useNarrow'
+import { ActiveChips, FilterButton, FilterSheet, StatusTrigger, useFilterSheet } from './ListFilters'
+import type { CompactFilters } from './ListFilters'
 import { BandCard } from './band'
 import { ChevronForward, Icon } from './Icon'
 import type { IconName } from './Icon'
@@ -1211,7 +1213,23 @@ export function ListTop({
   info,
   stat,
   testId,
+  compactFilters,
+  wideChildren,
+  barExtra,
 }: {
+  /**
+   * ★★ BC — UN geste qui ne se replie JAMAIS, posé dans la barre fine de la
+   * forme compacte (« נהגים » des volontaires, AY4.2) — à côté de « סינון ».
+   */
+  barExtra?: ReactNode
+  /**
+   * ★★ BC — les filtres DÉCLARÉS (familles, valeurs, comptes). Fournis, ils
+   * remplacent `filters` quand la liste est étroite : bouton « סינון »,
+   * déclencheur des statuts, pastilles actives, feuille montante.
+   */
+  compactFilters?: CompactFilters
+  /** ★★ BC — ce qui n'existe qu'en forme large (la rangée épinglée des statuts de BA). */
+  wideChildren?: ReactNode
   title: ReactNode
   /** ★★ AX3.5 — un CHIFFRE de la liste (dounams pondérés…) : se lit, ne se touche pas. */
   stat?: ReactNode
@@ -1255,6 +1273,13 @@ export function ListTop({
    * measures 880–1224 and always does.
    */
   const { ref: widthRef, narrow } = useNarrow(30 * 16)
+  /* ★★ BC — LA FORME COMPACTE : au téléphone, toujours ; en tablette, tant que
+     le panneau de la liste est étroit (sous 40 rem) ; jamais sur ordinateur
+     (la forme de BA y reste). Décidé sur la largeur RÉELLE du panneau (AB2). */
+  const tier = useViewportTier()
+  const { ref: panelRef, narrow: panelNarrow } = useNarrow(40 * 16)
+  const compact = !!compactFilters && (tier === 'phone' || (tier === 'tablet' && panelNarrow !== false))
+  const sheet = useFilterSheet()
   const tip = useInfoTip(info, { testId: 'list-info' })
   const hasCount = typeof shown === 'number' && typeof total === 'number'
   const long = hasCount && !!children && narrow === false
@@ -1274,9 +1299,94 @@ export function ListTop({
     </span>
   ) : null
 
+  if (compact && compactFilters) {
+    const cf = compactFilters
+    const hasFilters = cf.families.some((f) => !f.sort && f.options.length > 0) || cf.families.some((f) => f.sort)
+    return (
+      <>
+        {/* ★★ BC — LE GRAND TITRE (iOS « large title », Material « collapsing
+            toolbar ») : le titre, le compte et le « ⋯ » DÉFILENT avec la liste ;
+            seule la barre fine ci-dessous reste collée. Au repos tout se voit ;
+            dès que la liste défile, il ne reste que la recherche et les
+            déclencheurs — et au moins les trois quarts de l'écran aux données. */}
+        <div
+          data-list-title-row=""
+          data-title-row=""
+          /* Au-dessus du rideau de la barre collante (`.sticky-top::before`,
+             z 20) : sans quoi ce rideau, peint 2,5 rem AU-DESSUS de la barre,
+             recouvrait le titre au repos. */
+          className="relative z-[21] -mx-4 flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1 bg-surface-base px-4 pb-1 lg:-mx-5 lg:px-5"
+        >
+          <h1 data-page-title="" className="flex min-w-0 items-center text-title text-content-primary">
+            <span className="min-w-0 truncate">{title}</span>
+            {tip.button}
+          </h1>
+          {counter}
+          <span className="ms-auto flex shrink-0 items-center gap-2">
+            {/* Le tri d'une liste compacte vit dans la feuille (famille « מיון ») :
+                pas une seconde fois ici. */}
+            {!cf.families.some((f) => f.sort) && actions}
+            {menu}
+          </span>
+        </div>
+        {tip.panel}
+        <div
+          ref={(node) => {
+            widthRef(node)
+            panelRef(node)
+          }}
+          data-list-top=""
+          data-compact=""
+          data-testid={testId}
+          className="sticky-top -mx-4 px-4 lg:-mx-5 lg:px-5"
+          style={{ top: 'var(--shell-top, 0px)', paddingBottom: '0.5rem' }}
+        >
+          <div data-compact-bar="" className="flex items-center gap-2 py-2">
+            {onSearch && (
+              <label className="relative min-w-0 flex-1">
+                <span className="sr-only">{searchPlaceholder ?? t('common.search')}</span>
+                <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-content-muted">
+                  <Icon name="search" size={16} />
+                </span>
+                <input
+                  type="search"
+                  className="input min-h-11 py-1.5 ps-9"
+                  value={search ?? ''}
+                  placeholder={searchPlaceholder ?? t('common.search')}
+                  onChange={(e) => onSearch(e.target.value)}
+                  data-testid="list-search"
+                  enterKeyHint="search"
+                />
+              </label>
+            )}
+            {!onSearch && <span className="flex-1" />}
+            {cf.status && <StatusTrigger family={cf.status} all={cf.statusAll} onOpen={() => sheet.show(cf.status!.key)} />}
+            {barExtra}
+            {hasFilters && <FilterButton count={cf.activeCount} onOpen={() => sheet.show()} />}
+          </div>
+          <ActiveChips filters={cf} />
+          {children && <div style={{ marginTop: 'var(--list-rhythm)' }}>{children}</div>}
+        </div>
+        <FilterSheet open={sheet.open} onClose={sheet.close} filters={cf} section={sheet.section} />
+      </>
+    )
+  }
+
+  /* ★★ BC — LE MÊME ÉLÉMENT `data-list-top` DANS LES DEUX FORMES. Le fragment
+     garde ses positions (titre · info · BARRE · feuille), si bien que React
+     réutilise la barre quand la liste passe de compacte à large (tablette, au
+     premier rendu, avant que la largeur soit mesurée). `EntityTable` y accroche
+     son en-tête collé : un élément remplacé, et il mesurait un nœud détaché
+     (hauteur 0) — l'en-tête du tableau passait SOUS la barre (azui A371, 1032 px). */
   return (
+    <>
+    {null}
+    {null}
     <div
-      ref={widthRef}
+      ref={(node) => {
+        widthRef(node)
+        panelRef(node)
+      }}
       data-list-top=""
       data-testid={testId}
       className="sticky-top -mx-4 px-4 lg:-mx-5 lg:px-5"
@@ -1305,7 +1415,7 @@ export function ListTop({
        */
       style={{
         top: 'var(--shell-top, 0px)',
-        paddingBottom: children
+        paddingBottom: children || wideChildren
           ? 'calc(var(--list-rhythm) - var(--row-shadow-room))'
           : 'var(--list-rhythm)',
       }}
@@ -1421,8 +1531,11 @@ export function ListTop({
       )}
       {/* Z1 — whatever closes the header starts on the rhythm, like every
           other block in it. On a table screen this is the column heads. */}
+      {wideChildren && <div style={{ marginTop: 'var(--list-rhythm)' }}>{wideChildren}</div>}
       {children && <div style={{ marginTop: 'var(--list-rhythm)' }}>{children}</div>}
     </div>
+    {null}
+    </>
   )
 }
 

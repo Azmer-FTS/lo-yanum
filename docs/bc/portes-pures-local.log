@@ -1,0 +1,128 @@
+# BC — portes rejouées 2026-10-12T09:34:04.627Z
+
+## typecheck — exit=0
+
+$ tsc --noEmit
+
+## tokens — exit=0
+
+$ bun run scripts/tokens.ts
+
+## contrast — exit=0
+
+All pairs meet WCAG AA.
+
+## armigrations — exit=0
+
+50 PASS, 0 FAIL
+
+## bcpass — exit=0
+
+$ bun run scripts/bcpass.ts
+
+## bbpass — exit=0
+
+$ bun run scripts/bbpass.ts
+
+## bapass — exit=0
+
+$ bun run scripts/bapass.ts
+
+## az5pass — exit=0
+
+$ bun run scripts/az5pass.ts
+
+## aypass — exit=0
+
+$ bun run scripts/aypass.ts
+
+## axpass — exit=0
+
+$ bun run scripts/axpass.ts
+
+## awpass — exit=0
+
+$ bun run scripts/awpass.ts
+
+## avpass — exit=0
+
+$ bun run scripts/avpass.ts
+
+## aupass — exit=0
+
+$ bun run scripts/aupass.ts
+
+## aopass — exit=0
+
+$ bun run scripts/aopass.ts
+
+## appass — exit=0
+
+$ bun run scripts/appass.ts
+
+## aspass — exit=0
+
+$ bun run scripts/aspass.ts
+
+## persist — exit=0
+
+All 148 checks passed.
+
+## mapping — exit=0
+
+All 36 checks passed.
+
+## deletion — exit=0
+
+All 61 checks passed.
+
+## assoc — exit=0
+
+42 passed, 0 failed
+
+## acpass — exit=0
+
+$ bun run scripts/acpass.ts
+
+## akpass — exit=0
+
+$ bun run scripts/akpass.ts
+
+## ampass — exit=0
+
+$ bun run scripts/ampass.ts
+
+## alpass — exit=0
+
+$ bun run scripts/alpass.ts
+
+## anpass — exit=0
+
+$ bun run scripts/anpass.ts
+
+# BILAN
+OK   typecheck      exit=0 17s  $ tsc --noEmit
+OK   tokens         exit=0 0s  $ bun run scripts/tokens.ts
+OK   contrast       exit=0 0s  All pairs meet WCAG AA.
+OK   armigrations   exit=0 3s  50 PASS, 0 FAIL
+OK   bcpass         exit=0 0s  $ bun run scripts/bcpass.ts
+OK   bbpass         exit=0 0s  $ bun run scripts/bbpass.ts
+OK   bapass         exit=0 21s  $ bun run scripts/bapass.ts
+OK   az5pass        exit=0 0s  $ bun run scripts/az5pass.ts
+OK   aypass         exit=0 0s  $ bun run scripts/aypass.ts
+OK   axpass         exit=0 9s  $ bun run scripts/axpass.ts
+OK   awpass         exit=0 7s  $ bun run scripts/awpass.ts
+OK   avpass         exit=0 0s  $ bun run scripts/avpass.ts
+OK   aupass         exit=0 0s  $ bun run scripts/aupass.ts
+OK   aopass         exit=0 0s  $ bun run scripts/aopass.ts
+OK   appass         exit=0 0s  $ bun run scripts/appass.ts
+OK   aspass         exit=0 0s  $ bun run scripts/aspass.ts
+OK   persist        exit=0 0s  All 148 checks passed.
+OK   mapping        exit=0 0s  All 36 checks passed.
+OK   deletion       exit=0 0s  All 61 checks passed.
+OK   assoc          exit=0 1s  42 passed, 0 failed
+OK   acpass         exit=0 1s  $ bun run scripts/acpass.ts
+OK   akpass         exit=0 0s  $ bun run scripts/akpass.ts
+OK   ampass         exit=0 0s  $ bun run scripts/ampass.ts
+OK   alpass         exit=0 0s  $ bun run scripts/alpass.ts
+OK   anpass         exit=0 0s  $ bun run scripts/anpass.ts

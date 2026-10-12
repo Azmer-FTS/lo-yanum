@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { callRestrictions, isCallRestricted, restrictsCalls } from '@core/calls'
+import type { CallContact } from '@core/calls'
 
 import { Link } from 'react-router-dom'
 
@@ -116,17 +118,45 @@ export function coordinationText(inst: Institution, t: (k: string, o?: Record<st
   return t('institutions.coordinationCall', { note: (inst.coordinationNote ?? '').trim() || t('institutions.coordination') })
 }
 
-/** À poser sur le `onClick` d'un lien d'appel : rien quand le marqueur n'est pas posé. */
-export function guardCall(inst: Institution, t: (k: string, o?: Record<string, unknown>) => string) {
+/**
+ * ★★ BC (2026-10-12) — LE MÊME GARDE, ÉTENDU AU CONTACT. Un contact dont la
+ * NOTE restreint l'usage du téléphone (`restrictsCalls`) passe par le même
+ * chemin que « נדרש תיאום מוקדם » : teinte d'avertissement, icône ⚠, et un
+ * appel qui ne part qu'après avoir relu le texte. Un seul mécanisme, pour les
+ * contacts d'institution comme pour ceux d'une ferme (`inst = null`).
+ */
+export type { CallContact } from '@core/calls'
+export { restrictsCalls } from '@core/calls'
+
+/** Les textes à relire avant d'appeler : l'institution d'abord, puis le contact (`callRestrictions`, @core). */
+export function callNotices(inst: Institution | null, contact: CallContact | null | undefined, t: (k: string, o?: Record<string, unknown>) => string): string[] {
+  return callRestrictions(inst, contact).map((r) =>
+    r.kind === 'coordination'
+      ? t('institutions.coordinationCall', { note: r.note || t('institutions.coordination') })
+      : t('calls.restricted', { name: r.name || t('calls.thisContact'), note: r.note || t('calls.restrictedNoNote') }),
+  )
+}
+
+/** Le bouton doit-il se montrer en avertissement ? */
+export const isCallGuarded = (inst: Institution | null, contact?: CallContact | null): boolean => isCallRestricted(inst, contact)
+
+/** Faut-il composer ? `true` sans rien demander quand rien ne restreint l'appel. */
+export function confirmCall(inst: Institution | null, contact: CallContact | null | undefined, t: (k: string, o?: Record<string, unknown>) => string): boolean {
+  const notices = callNotices(inst, contact, t)
+  if (notices.length === 0) return true
+  return window.confirm(`${notices.join('\n\n')}\n\n${t('institutions.coordinationCallAnyway')}?`)
+}
+
+/** À poser sur le `onClick` d'un lien d'appel : rien quand rien ne restreint l'appel. */
+export function guardCall(inst: Institution | null, t: (k: string, o?: Record<string, unknown>) => string, contact?: CallContact | null) {
   return (e: { preventDefault: () => void }) => {
-    if (!needsPriorCoordination(inst)) return
-    if (!window.confirm(`${coordinationText(inst, t)}\n\n${t('institutions.coordinationCallAnyway')}?`)) e.preventDefault()
+    if (!confirmCall(inst, contact, t)) e.preventDefault()
   }
 }
 
-/** La classe d'un bouton d'appel : ordinaire, ou d'avertissement quand le marqueur est posé. */
-export const callTone = (inst: Institution, ordinary: string): string =>
-  needsPriorCoordination(inst) ? 'btn-secondary border-status-warn bg-status-warn/15 text-status-warn-ink' : ordinary
+/** La classe d'un bouton d'appel : ordinaire, ou d'avertissement quand quelque chose restreint l'appel. */
+export const callTone = (inst: Institution | null, ordinary: string, contact?: CallContact | null): string =>
+  isCallGuarded(inst, contact) ? 'btn-secondary border-status-warn bg-status-warn/15 text-status-warn-ink' : ordinary
 
 /** ★★ BB — le marqueur, AVEC son texte. Liste, vignette, aperçu, carte de couverture. */
 export function CoordinationChip({ inst, full = false }: { inst: Institution; full?: boolean }) {
@@ -142,6 +172,27 @@ export function CoordinationChip({ inst, full = false }: { inst: Institution; fu
     >
       <Icon name="alert" size={12} className="shrink-0" />
       <span className={full ? '' : 'truncate'}>{note ? `${t('institutions.coordination')} · ${note}` : t('institutions.coordination')}</span>
+    </span>
+  )
+}
+
+/**
+ * ★★ BC — la restriction d'un contact, AVEC sa note : à côté du bouton d'appel
+ * de la LISTE, là où le PO compose par réflexe. Rien quand rien ne restreint.
+ */
+export function CallRestrictionChip({ contact, full = false }: { contact: CallContact | null | undefined; full?: boolean }) {
+  const { t } = useTranslation()
+  if (!restrictsCalls(contact)) return null
+  const note = (contact?.note ?? '').trim()
+  return (
+    <span
+      className={`chip border border-status-warn bg-status-warn/15 text-micro font-semibold text-status-warn-ink ${full ? 'whitespace-normal' : 'max-w-full'}`}
+      title={note || undefined}
+      data-testid="call-restriction-chip"
+      dir="auto"
+    >
+      <Icon name="alert" size={12} className="shrink-0" />
+      <span className={full ? '' : 'truncate'}>{note ? `${t('calls.restrictedShort')} · ${note}` : t('calls.restrictedShort')}</span>
     </span>
   )
 }
@@ -234,7 +285,7 @@ function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institut
     const kept = nextPhones.filter((p) => p.number.trim() !== '')
     const next: InstitutionContact = { ...contact, name, note, phone: kept[0]?.number ?? '', phones: kept, ...patch }
     const changed =
-      next.role !== contact.role || next.name !== contact.name || next.note !== contact.note || JSON.stringify(contactPhones(next)) !== phonesKey
+      next.role !== contact.role || next.name !== contact.name || next.note !== contact.note || next.restrictsCalls !== contact.restrictsCalls || JSON.stringify(contactPhones(next)) !== phonesKey
     if (changed) onSave(next)
   }
   const setPhoneAt = (n: number, p: Partial<ContactPhone>, save = false) => {
@@ -291,10 +342,10 @@ function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institut
             {p.number.trim() && (
               <a
                 href={telOf(p.number)}
-                onClick={guardCall(inst, t)}
-                className={`${callTone(inst, 'btn-secondary')} min-h-11`}
+                onClick={guardCall(inst, t, contact)}
+                className={`${callTone(inst, 'btn-secondary', contact)} min-h-11`}
                 data-testid="institution-contact-call"
-                data-guarded={needsPriorCoordination(inst) ? '' : undefined}
+                data-guarded={isCallGuarded(inst, contact) ? '' : undefined}
                 aria-label={t('institutions.callNumber', { name: contact.name || roleName, label: t(`institutions.phoneLabel.${p.label}`) })}
               >
                 <Icon name="phone" size={16} />
@@ -337,6 +388,19 @@ function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institut
           <Icon name="trash" size={16} />
         </button>
       </div>
+      {/* ★★ BC — « cette note restreint l'usage du téléphone » : tout bouton
+          d'appel de ce contact, dans la liste comme ici, le montre et demande
+          confirmation. */}
+      <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-2 text-caption text-content-secondary">
+        <input
+          type="checkbox"
+          className="h-5 w-5 shrink-0 accent-[rgb(var(--status-warn))]"
+          checked={contact.restrictsCalls === true}
+          onChange={(e) => commit({ restrictsCalls: e.target.checked ? true : undefined })}
+          data-testid="institution-contact-restricts"
+        />
+        {t('calls.restrictsLabel')}
+      </label>
     </li>
   )
 }
@@ -367,19 +431,24 @@ export function InstitutionContactsList({ inst }: { inst: Institution }) {
             {phones.map((p, n) => (
               <a
                 key={n}
-                className={`ltr-nums inline-flex min-h-[2.5rem] items-center gap-1 hover:text-accent-ink ${needsPriorCoordination(inst) ? 'text-status-warn-ink' : 'text-content-secondary'}`}
+                className={`ltr-nums inline-flex min-h-[2.75rem] items-center gap-1 hover:text-accent-ink ${isCallGuarded(inst, c) ? 'font-semibold text-status-warn-ink' : 'text-content-secondary'}`}
                 href={telOf(p.number)}
-                onClick={guardCall(inst, t)}
+                onClick={guardCall(inst, t, c)}
                 dir="ltr"
                 data-testid="institution-contact-line-call"
-                data-guarded={needsPriorCoordination(inst) ? '' : undefined}
+                data-guarded={isCallGuarded(inst, c) ? '' : undefined}
               >
-                <Icon name="phone" size={14} />
+                <Icon name={isCallGuarded(inst, c) ? 'alert' : 'phone'} size={14} />
                 {p.number}
                 {p.label && phones.length > 1 && <span className="text-micro text-content-muted">({t(`institutions.phoneLabel.${p.label}`)})</span>}
               </a>
             ))}
-            {c.note && <span className="basis-full text-micro text-content-muted" dir="auto">{c.note}</span>}
+            {c.note && !restrictsCalls(c) && <span className="basis-full text-micro text-content-muted" dir="auto">{c.note}</span>}
+            {restrictsCalls(c) && (
+              <span className="basis-full">
+                <CallRestrictionChip contact={c} full />
+              </span>
+            )}
           </li>
         )
       })}

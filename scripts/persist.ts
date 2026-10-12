@@ -109,6 +109,9 @@ import {
   setInstitutionContacts,
   setFarmContacts,
   setFarmContactEstablished,
+  setFarmNearestLocality,
+  setFarmBranches,
+  setLeadBranches,
   newFarmContactId,
   createInstitution,
   deleteInstitution,
@@ -1345,6 +1348,8 @@ section("6bis — AH3 · le jeu d'essai produit de vraies écritures")
   emits('updateLead', () => updateLead(leadIds[0], { notes: 'AS' }), [['leads', leadIds[0]]])
   emits('moveLead', () => moveLead(leadIds[0], { status: 'call_back' }), [['leads', leadIds[0]]])
   emits('setLeadStatus', () => setLeadStatus(leadIds[0], 'meeting_set'), [['leads', leadIds[0]]])
+  /* ★★ BC — la nature de l'exploitation, sur une piste. */
+  emits('setLeadBranches', () => setLeadBranches(leadIds[0], [{ kind: 'cattle', toConfirm: true }]), [['leads', leadIds[0]]])
   let farmFromLead = ''
   const conv = drive('convertLeadToFarm', () => {
     farmFromLead = convertLeadToFarm(leadIds[0], { lat: 31.5, lng: 34.6 })?.id ?? ''
@@ -1392,6 +1397,11 @@ section("6bis — AH3 · le jeu d'essai produit de vraies écritures")
   const wasEstablished = _raw().farms[0].contactEstablished !== false
   const fEst = drive('setFarmContactEstablished', () => setFarmContactEstablished(fid, !wasEstablished))
   check('setFarmContactEstablished : la ferme est réécrite', hit(fEst, 'farms', fid)?.json != null)
+  /* ★★ BC — la localité de repère saisie, et la nature de l'exploitation. */
+  const fNear = drive('setFarmNearestLocality', () => setFarmNearestLocality(fid, 'יישוב בדיקה'))
+  check('setFarmNearestLocality : la ferme porte la valeur saisie', (hit(fNear, 'farms', fid)?.json ?? '').includes('יישוב בדיקה'))
+  const fBr = drive('setFarmBranches', () => setFarmBranches(fid, [{ kind: 'sheep' }]))
+  check('setFarmBranches : la ferme porte sa nature', (hit(fBr, 'farms', fid)?.json ?? '').includes('sheep'))
   const ranked = drive('setInstitutionContacts', () => setInstitutionContacts(instId, [{ id: 'ic-p1', role: 'head', name: 'הרב בדיקה', phone: '050-0000998', note: '' }]))
   check('setInstitutionContacts : la ligne porte le contact et le miroir du rang 1', (hit(ranked, 'institutions', instId)?.json ?? '').includes('הרב בדיקה') && (hit(ranked, 'institutions', instId)?.json ?? '').includes('050-0000998'))
   let manualId = ''

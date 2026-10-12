@@ -192,11 +192,17 @@ section('A371 — l’en-tête reste visible pendant tout le défilement, sur le
 // ===========================================================================
 await run('A371', async () => {
   for (const [w, h] of [[1440, 700], [1032, 900], [402, 874]] as const) {
+    /* ★★ BC — ADAPTÉE : au téléphone, le tableau étroit n'a plus de ligne
+       d'en-têtes (elle mangeait 56 px collés pour dire « חווה » au-dessus d'une
+       seule colonne ; le tri est dans la feuille de filtres). L'en-tête qui
+       reste collé y est la BARRE FINE (recherche, statuts, « סינון ») ; le grand
+       titre, lui, défile (brief BC 3a). */
+    const headSel = w < 768 ? '[data-list-top][data-compact]' : HEAD
     const o = await open(w, { height: h, db: db() })
     for (const l of LISTS) {
       await go(o.page, APP, l.route, 3000)
       await mode(o.page, 'hidden')
-      const head = o.page.locator(HEAD).first()
+      const head = o.page.locator(headSel).first()
       const before = await head.boundingBox()
       const steps: number[] = []
       let visible = true
@@ -213,7 +219,7 @@ await run('A371', async () => {
                 const heads = [...document.querySelectorAll(sel as string)]
                 return heads.some((hd) => hd.contains(el) || hd.closest('tr, [data-roster-head]')?.contains(el))
               },
-              [b.x + b.width / 2, b.y + b.height / 2, HEAD],
+              [b.x + b.width / 2, b.y + b.height / 2, headSel],
             )
           : false
         if (!b || b.y < -1 || b.y + b.height > h || !hit) {
@@ -241,7 +247,12 @@ await run('A371', async () => {
 section('A372 — les vignettes du mode divisé sont lisibles (taille de texte mesurée)')
 // ===========================================================================
 await run('A372', async () => {
-  for (const w of [1440, 1032, 402]) {
+  /* ★★ BC — ADAPTÉE : au téléphone, une liste n'a plus de mode divisé (liste ↔
+     carte, brief BC 3h) ; ses vignettes du mode divisé n'y existent plus. Le
+     téléphone est vérifié plus bas : deux états seulement, et la liste (le
+     tableau étroit, règle AZ2 du PO : carte masquée → tableau) garde la
+     lisibilité des vignettes. */
+  for (const w of [1440, 1032]) {
     const o = await open(w, { db: db() })
     for (const l of LISTS) {
       await go(o.page, APP, l.route, 3000)
@@ -275,6 +286,30 @@ await run('A372', async () => {
     check(`A372 ${w} px : aucune erreur de page`, o.errors.length === 0, o.errors.slice(0, 2).join(' | '))
     await o.ctx.close()
   }
+  const o = await open(402, { db: db() })
+  for (const l of LISTS) {
+    await go(o.page, APP, l.route, 3000)
+    const modes = await o.page.evaluate(() => [...document.querySelectorAll('[data-testid^="map-mode-"]')].map((b) => b.getAttribute('data-testid')).filter((id) => id !== 'map-mode-pill'))
+    check(`A372 402 px · ${l.name} : deux états, la liste et la carte (plus de mode divisé)`, modes.length === 2 && modes.includes('map-mode-hidden') && modes.includes('map-mode-full'), modes.join(','))
+    await mode(o.page, 'hidden')
+    const m = await o.page.evaluate((rows) => {
+      const row = document.querySelector(rows) as HTMLElement | null
+      const px = (sel: string) => {
+        const el = row?.querySelector(sel)
+        return el ? parseFloat(getComputedStyle(el).fontSize) : null
+      }
+      return { tiles: !!document.querySelector('[data-tiles]:not([hidden])'), row: !!row, name: px('[data-entity-title]'), person: px('[data-entity-person]'), sub: px('[data-entity-sub]') }
+    }, ROWS)
+    check(`A372 402 px · ${l.name} : carte masquée → le tableau (pas de vignettes)`, m.row && !m.tiles, `ligne ${m.row} · vignettes ${m.tiles}`)
+    check(
+      `A372 402 px · ${l.name} : la ligne garde la lisibilité des vignettes (nom ≥ 18 px, ce qui situe ≥ 16 px)`,
+      (m.name ?? 0) >= 18 && (m.person === null || m.person >= 16) && (m.sub === null || m.sub >= 16),
+      `nom ${m.name} px · personne ${m.person ?? '—'} px · ce qui situe ${m.sub ?? '—'} px`,
+    )
+    await o.page.screenshot({ path: `${SHOTS}/a372-${l.name}-liste-402.png` })
+  }
+  check('A372 402 px : aucune erreur de page', o.errors.length === 0, o.errors.slice(0, 2).join(' | '))
+  await o.ctx.close()
 })
 
 // ===========================================================================
@@ -294,7 +329,10 @@ await run('A373', async () => {
         return !!el && (c.parentElement?.contains(el) ?? false)
       }).length
     })
-  for (const w of [1440, 1032, 402]) {
+  /* ★★ BC — ADAPTÉE : au téléphone, plus de mode divisé pour une liste ; on y
+     touche une LIGNE de la liste (carte masquée) et l'aperçu est la feuille
+     plein écran d'AY3.3, avec SA carte — la seule à l'écran. Vérifié plus bas. */
+  for (const w of [1440, 1032]) {
     const o = await open(w, { db: db() })
     for (const l of LISTS.filter((x) => x.name !== 'gardes')) {
       await go(o.page, APP, l.route, 3500)
@@ -334,6 +372,30 @@ await run('A373', async () => {
     check(`A373 ${w} px : aucune erreur de page`, o.errors.length === 0, o.errors.slice(0, 2).join(' | '))
     await o.ctx.close()
   }
+  const o = await open(402, { db: db() })
+  for (const l of LISTS.filter((x) => x.name !== 'gardes')) {
+    await go(o.page, APP, l.route, 3500)
+    await mode(o.page, 'hidden')
+    const row = o.page.locator(ROWS).nth(2)
+    const key = await row.getAttribute('data-row-key')
+    await row.locator('[data-row-open]').first().click()
+    await o.page.waitForTimeout(2000)
+    const after = await visibleMaps(o.page)
+    const sheetOpen = await o.page.locator('[role="dialog"][data-testid$="-preview"]').first().isVisible().catch(() => false)
+    check(`A373 402 px · ${l.name} : l’aperçu s’ouvre en feuille, une seule carte à l’écran`, sheetOpen && after <= 1, `aperçu ${sheetOpen} · cartes visibles ${after}`)
+    if (l.name === 'fermes') await o.page.screenshot({ path: `${SHOTS}/a373-${l.name}-apercu-402.png` })
+    await o.page.locator('[role="dialog"][data-testid$="-preview"] [data-testid$="-close"]').first().click()
+    await o.page.waitForTimeout(800)
+    const back = await o.page.evaluate((k) => {
+      const tr = document.querySelector(`[data-entity-table] tbody tr[data-row-key="${CSS.escape(k ?? '')}"]`)
+      if (!tr) return false
+      const r = tr.getBoundingClientRect()
+      return r.top >= 0 && r.bottom <= innerHeight && (tr as HTMLElement).offsetParent !== null
+    }, key)
+    check(`A373 402 px · ${l.name} : « ✕ » ramène à la liste, sur la ligne touchée`, back)
+  }
+  check('A373 402 px : aucune erreur de page', o.errors.length === 0, o.errors.slice(0, 2).join(' | '))
+  await o.ctx.close()
 })
 
 // ===========================================================================

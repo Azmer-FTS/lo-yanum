@@ -19,6 +19,9 @@ import type { PortalPlan } from './portalImport'
 import type { Institution, InstitutionContact, InstitutionPlan } from './institutions'
 import { settleInstitution } from './institutions'
 import { settleFarmContacts, withFarmContacts } from './people'
+import { settleNearestLocality } from './nearestLocality'
+import { normalizeBranches } from './branches'
+import type { FarmBranch } from './branches'
 import type { Landmark } from './landmarks'
 import type {
   Agreement,
@@ -890,11 +893,16 @@ function remeasureFarms(next: StoreData): StoreData {
   return next
 }
 
-/** ★★ BA — voir `settleFarmContacts` (core/people.ts). */
+/**
+ * ★★ BA — voir `settleFarmContacts` (core/people.ts).
+ * ★★ BC — et la localité de repère, tenue à jour quand le point bouge
+ *    (`settleNearestLocality`, core/nearestLocality.ts) : jamais par-dessus une
+ *    valeur saisie, jamais sur une ferme sans point.
+ */
 function settleAllFarms(next: StoreData): void {
   let changed = false
   const farms = next.farms.map((f) => {
-    const s = settleFarmContacts(f)
+    const s = settleNearestLocality(settleFarmContacts(f))
     if (s !== f) changed = true
     return s
   })
@@ -913,6 +921,40 @@ export function setFarmContacts(farmId: string, contacts: readonly FarmContact[]
 }
 
 export const newFarmContactId = (): string => nextId('contact')
+
+/**
+ * ★★ BC — la localité de repère, à la main. Un nom = SAISIE (jamais écrasée
+ * par un recalcul) ; vide = retour au calcul depuis le point.
+ */
+export function setFarmNearestLocality(farmId: string, name: string | null): void {
+  const index = data.farms.findIndex((f) => f.id === farmId)
+  if (index === -1) return
+  const { nearestLocality: _n, nearestLocalityManual: _m, ...rest } = data.farms[index]
+  const typed = (name ?? '').trim()
+  data.farms[index] = typed ? { ...rest, nearestLocality: typed, nearestLocalityManual: true } : rest
+  commit()
+}
+
+/** ★★ BC — la nature de l'exploitation d'une ferme (liste propre, ordre de la nomenclature). */
+export function setFarmBranches(farmId: string, branches: readonly FarmBranch[]): void {
+  const index = data.farms.findIndex((f) => f.id === farmId)
+  if (index === -1) return
+  const { branches: _b, ...rest } = data.farms[index]
+  const list = normalizeBranches(branches)
+  data.farms[index] = list.length > 0 ? { ...rest, branches: list } : rest
+  commit()
+}
+
+/** ★★ BC — la nature, sur un contact à traiter ; elle suivra la fiche (`convertLeadToFarm`). */
+export function setLeadBranches(leadId: string, branches: readonly FarmBranch[]): void {
+  const lead = data.leads.find((l) => l.id === leadId)
+  if (!lead) return
+  const list = normalizeBranches(branches)
+  const { branches: _b, ...rest } = lead
+  const next = list.length > 0 ? { ...rest, branches: list } : rest
+  data.leads = data.leads.map((l) => (l.id === leadId ? { ...next, updatedAt: iso(now()) } : l))
+  commit()
+}
 
 /** ★★ BA — « טרם נוצר קשר » ⇄ « נוצר קשר », à la main, sur la fiche. */
 export function setFarmContactEstablished(farmId: string, established: boolean): void {
@@ -2468,6 +2510,8 @@ export function convertLeadToFarm(leadId: string, fallbackPosition: LatLng): Far
     farmerName: lead.contactName || undefined,
     farmerPhone: lead.phone || undefined,
     farmerEmail: lead.email || undefined,
+    /* ★★ BC — la nature de l'exploitation suit la fiche, drapeaux compris. */
+    ...(normalizeBranches(lead.branches ?? []).length > 0 ? { branches: normalizeBranches(lead.branches ?? []) } : {}),
   })
   const stamp = iso(now())
   data.leads = data.leads.map((l) => (l.id === leadId ? { ...l, convertedFarmId: farm.id, convertedAt: stamp, updatedAt: stamp } : l))

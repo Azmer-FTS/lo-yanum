@@ -123,6 +123,8 @@ export function IncidentsScreen() {
     <>
     {creating && <CoordinatorIncidentModal onClose={() => setCreating(false)} />}
     <MapPanel
+      /* ★★ BC — écran de liste : liste ↔ carte au téléphone, carte à côté en tablette. */
+      list
       screenKey="incidents"
       ariaLabel={t('map.incidentsMap')}
       markers={markers}
@@ -150,6 +152,42 @@ export function IncidentsScreen() {
       {({ mode }) => (
       <>
       <ListTop
+        compactFilters={{
+          /* ★★ BC — la forme compacte : gravité, ouverts, période — une famille chacune. */
+          families: [
+            {
+              key: 'severity',
+              title: t('filters.family.severity'),
+              single: true,
+              options: SEVERITIES.map((sv) => ({ key: sv, label: t(`severity.${sv}`), count: views.filter((v) => v.incident.severity === sv).length, active: severity === sv, onToggle: () => setSeverity(severity === sv ? null : sv), testId: `incidents-severity-${sv}` })),
+            },
+            {
+              key: 'open',
+              title: t('filters.family.status'),
+              options: [{ key: 'open', label: t('incidents.openOnly'), count: views.filter((v) => !v.incident.resolved).length, active: openOnly, onToggle: () => setOpenOnly(!openOnly), testId: 'incidents-open-only' }],
+            },
+            {
+              key: 'time',
+              title: t('filters.family.time'),
+              single: true,
+              options: (['week', 'month'] as const).map((w) => ({
+                key: w,
+                label: t(w === 'week' ? 'incidents.dateWeek' : 'incidents.dateMonth'),
+                count: views.filter((v) => new Date(v.incident.reportedAt).getTime() >= Date.now() - (w === 'week' ? 7 : 30) * 86_400_000).length,
+                active: since === w,
+                onToggle: () => setSince(since === w ? ALL : w),
+                testId: `incidents-since-${w}`,
+              })),
+            },
+          ],
+          activeCount: (severity !== null ? 1 : 0) + (openOnly ? 1 : 0) + (since !== ALL ? 1 : 0),
+          onClear: () => {
+            setSeverity(null)
+            setOpenOnly(false)
+            setSince(ALL)
+          },
+          results: filtered.length,
+        }}
         testId="incidents-top"
         title={t('incidents.title')}
         shown={filtered.length}

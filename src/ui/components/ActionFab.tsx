@@ -257,7 +257,7 @@ export function ActionFab() {
          screens (A86), not only on the one where it was found. */
       data-bottom-rail=""
       /* X3.1 — THE SAME AXIS AS THE MAP RAIL. */
-      className="fixed bottom-[calc(var(--shell-bottom)+1.25rem)] end-[var(--map-rail)] z-40 flex flex-col items-end"
+      className="fixed bottom-[calc(var(--shell-bottom)+var(--pinned-foot,0px)+1.25rem)] end-[var(--map-rail)] z-40 flex flex-col items-end"
     >
       {open && !only && (
         <div

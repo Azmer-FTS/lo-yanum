@@ -1,5 +1,180 @@
 # לא ינום — ETAT
 
+> 🏁 **BC — LA PASSE QUI DOIT CLORE L'INTERFACE. 2026-10-12.**
+>
+> ⛔ **DONNÉES RÉELLES.** Aucun nom ni téléphone de personne réelle ici ni dans
+> le dépôt. Le plan de données et le SQL gardé sont dans `private/bc/` (ignoré :
+> `plan.json`, `avant/farms.json`, `data.sql`, `reperes-calcules.json`) ;
+> `scripts/bcdata.ts` les produit sans rien porter de réel. Les portes
+> `bcpass` / `bcmobile` n'utilisent que des noms inventés ou le jumeau.
+>
+> **1 · LE CHANTIER AZ4 (commit `b2f999f`, BC1).** Il dormait trois passes dans
+> l'arbre : le MODÈLE du plan d'une tournée était écrit (`tours.plan`, ordre
+> manuel, durée sur place, départ propre, horaire par la route) mais l'écran ne
+> s'en servait pas, et sa migration n'était pas appliquée (d'où `armigrations`
+> rouge à chaque passe). Fini : ↑ ↓ sur chaque étape, « חזרה לסדר הקצר ביותר »,
+> durée de la tournée et de l'étape, départ propre (lien collé), heures par la
+> route (≈ quand un tronçon est estimé), « חזרה … בסביבות », et le plan voyage
+> avec « שמירה ». Au passage, l'horaire partait de HOME_BASE pendant que le tracé
+> partait des réglages. Aucune contradiction avec BA ni BB. Migration
+> `20261011000300` appliquée par le MCP, jalon `20261012071847` : **armigrations
+> verte** (49/49, puis 50/50 avec la migration de BC).
+>
+> **2 · LA CARTE DE COUVERTURE.** Sélectionner et ouvrir la bulle sont deux états
+> (`core/coverageSelection.ts`, pur) : fermer la bulle GARDE la sélection (ses
+> trajets restent seuls, son épingle marquée) ; une barre de rappel (nom +
+> chiffres en une ligne) porte ‹ › (l'institution voisine, par nom, la carte
+> recadre sur elle et ses trajets, la bulle garde son état), « פרטים » (rouvre la
+> bulle) et × ; toucher le fond de la carte (`MapCanvas.onBackgroundTap`) ou ×
+> désélectionne ; toucher l'épingle rouvre la bulle. Grand écran : la bulle est
+> RANGÉE au coin de la carte, sous la barre (plus jamais ancrée sur l'institution,
+> au milieu de ses trajets). Écran étroit : feuille ANCRÉE en bas
+> (`DockedSheet`), sa barre = la barre de rappel, glisser pour l'ouvrir / la
+> réduire, un toucher sur la poignée aussi.
+>
+> **3 · LE MOBILE.** Mesuré avant d'écrire (`scripts/bcbefore.ts` sur le jumeau
+> déployé, `docs/bc/bc-entete-avant.json`) : au téléphone, liste seule, l'en-tête
+> mangeait 374 px sur les fermes (56 % de données) ; en mode partagé, la première
+> ferme apparaissait à 688 px (18 %) ; en tablette 820 px, mode partagé, à
+> 822 px (30 %). Les motifs nommés par le brief, et eux seuls :
+>   a) LE GRAND TITRE (iOS large title / Material collapsing toolbar) : titre,
+>      compte et « ⋯ » défilent avec la liste ; la barre fine collée garde la
+>      recherche et les déclencheurs (`ListTop` forme compacte) ;
+>   b) LA FEUILLE DE FILTRES (`ListFilters.tsx`, `Sheet.tsx`) : UN bouton
+>      « סינון » avec le nombre de filtres actifs, une feuille aux trois quarts
+>      de l'écran, toutes les familles avec leurs valeurs et leurs comptes,
+>      lignes de 48 px espacées de 8, « נקה הכל » et « הצג N תוצאות » ; sous la
+>      barre, les filtres actifs en pastilles à croix ; rien d'autre ;
+>   c) LES STATUTS : leur propre déclencheur (statut courant + compte), qui ouvre
+>      la même feuille sur leur section ; la légende des trois marques sous eux
+>      (`FarmMarksLegend`) ; en grand écran, la rangée de BA reste ;
+>   d) PLUS AUCUN DÉFILEMENT DE CÔTÉ SOUS 48 REM : l'exception `.one-line-row`
+>      d'`aymobile` est retirée ; la porte est stricte ;
+>   e) CONTACTS À TRAITER : la rangée de quatre boutons part ; UNE pastille de
+>      statut ouvre un choix compact (`OverflowMenu trigger`) ; balayage comme
+>      une boîte mail (`SwipeCell`) : vers la droite « ממתין », vers la gauche
+>      « לא רלוונטי » ; deux étages de texte plus la photo ;
+>   f) LES CIBLES : ≥ 44 × 44 px (zone tactile comprise) et ≥ 8 px entre deux
+>      voisines, MESURÉES (`bcmobile` A419) — elles ont trouvé : le ⓘ à 36 px, la
+>      pilule de mode à 2 px, le rail à 4 px (régression silencieuse : la note
+>      d'AL5 dit gap-2), la fente d'action des vignettes à 4 px, les outils de
+>      carte à 2 px, les interrupteurs de la couverture collés ;
+>   g) RIEN N'EST RETIRÉ : tri, files de travail, légende, filtres passent dans
+>      la feuille ; la carte est à un toucher ; la devise de la barre du haut
+>      cède au téléphone seulement (elle reste au menu, en tablette, ailleurs) ;
+>   h) LA TABLETTE, VRAI PALIER (`useViewportTier` : <48 rem · 48–80 · ≥80) :
+>      la carte À CÔTÉ de la liste dès 48 rem (`MapSplit` palier `md`, `list`),
+>      la liste à moitié de la largeur, l'en-tête compact tant que son panneau
+>      est étroit ; au téléphone les listes sont « liste ↔ carte » (Airbnb,
+>      Booking) — le mode partagé, qui y mettait la carte au-dessus de la liste,
+>      n'existe plus pour elles.
+>
+>   Conséquence de h), trouvée en sondant avant d'adapter une porte : sur un
+>   téléphone neuf, le défaut passait des vignettes (nom en 18 px, AZ2) au
+>   tableau étroit (règle AZ2 du PO : carte masquée → tableau), dont le nom
+>   était en 13,5 px — la taille dont le PO s'était plaint en AY. Le tableau
+>   étroit reprend donc la lisibilité des vignettes : nom 18 px, ce qui situe
+>   16 px, localité de repère 13,5 px, plus rien à 11,5 px ; la grille des
+>   gardes aussi (`md:` rend la densité dès 48 rem). Mesuré : `bcmobile` A425,
+>   `azui` A372 à 402 px. Et un vrai défaut de tablette, trouvé par `azui`
+>   A371 à 1 032 px : la liste se croyait d'abord étroite, montait la forme
+>   compacte, puis la remplaçait — l'en-tête collé du tableau mesurait un
+>   nœud détaché et tombait à y = 0 sous la barre. `ListTop` garde désormais
+>   le MÊME élément dans ses deux formes, et `EntityTable` re-cherche l'en-tête.
+>
+> **4 · LE THÈME.** Réponse factuelle, lue dans `user_settings` AVANT d'écrire :
+> la clé `lo-yanum:theme:coordinator` **existe**, valeur **`"dark"`**, mais **sans
+> instant** dans `__stamps` (qui n'en porte que pour `coverage` et
+> `coverage-map`). Le sombre a été choisi avant AY1.3, quand le thème ne voyageait
+> pas : c'est un VRAI bug. La fusion écrivait cette valeur non horodatée dans la
+> base (à chaque poussée d'une AUTRE clé) sans qu'aucun appareil ne l'applique, et
+> un appareil sans choix ne prenait pas celle du compte. Corrigé
+> (`ui/settings/sync.ts`) : une clé « choisie seulement » sans instant n'est plus
+> jamais écrite par un appareil ; un appareil qui n'a RIEN choisi prend celle du
+> compte (sans instant : ce n'est pas son choix) ; deux choix anciens différents
+> ne s'écrasent toujours pas (AY1.3). La section du thème dit désormais en une
+> phrase le thème appliqué ET d'où vient la décision (`themeSourceOf`) : « כהה —
+> נבחר בהגדרות, מסונכרן לכל המכשירים », « בהיר — לפי המכשיר הזה », « … — בחירה
+> ישנה של המכשיר הזה, לא מסונכרנת » avec le geste « לסנכרן לכל המכשירים », et
+> « בחשבון שמור: … · להחיל כאן » quand le compte porte autre chose.
+>
+> **5 · LA MISE À JOUR.** Vérifié : la question partait déjà à chaque retour en
+> avant-plan (`visibilitychange`, `pageshow`, `focus`) et au retour du réseau.
+> Deux trous la rendaient muette sur un téléphone qui sort de veille : aucune
+> limite de temps (une requête pendante au réveil bloquait toutes les suivantes)
+> et aucun nouvel essai après un échec (le prochain était au retour suivant ou au
+> quart d'heure). Désormais 8 s au plus, trois nouveaux essais (3 s, 10 s, 30 s),
+> et `online` demande sans attendre. Le bandeau recharge sans fermer l'app
+> (`applyUpdate`, AJ0). La version qui tourne, en petit, sous le titre des
+> réglages (`AppVersionLine`), avec « גרסה חדשה מוכנה » quand il y en a une.
+>
+> **6 · LA LOCALITÉ DE REPÈRE.** `entities.nearest_locality` (+ `_manual`),
+> calculée depuis le point par la liste de `LocalityField`
+> (`core/nearestLocality.ts`), rangée en base, tenue à jour par le magasin quand
+> le point bouge (`settleAllFarms`) ; une valeur saisie n'est jamais écrasée ; une
+> ferme sans point garde la sienne. Tableau (« ליד … » après la ferme et
+> l'agriculteur, texte secondaire), fiche (éditeur `LocalityField`, « חזרה לחישוב
+> מהנקודה »), aperçu, export (colonne « יישוב קרוב », nommée par le brief : la
+> porte `assoc` l'admet comme quatrième ajout nommé). Les cinq fermes sans point :
+> saisies (dans les données).
+>
+> **7 · LA NATURE DE L'EXPLOITATION.** `entities.branches` / `leads.branches`
+> (jsonb `[{kind, toConfirm}]`, `core/branches.ts`) : neuf natures, plusieurs par
+> fiche, drapeau « à confirmer » ; tableau (colonne « ענפים », « ? » à
+> confirmer), fiche (éditeur : toucher ajoute validé, valide une valeur à
+> confirmer, retire une validée ; « אישור הכל »), aperçu, filtre des fermes (OU
+> dans la famille) ; la piste convertie emporte les siennes.
+>
+> **8 · L'APPEL GARDÉ DANS LA LISTE.** Le mécanisme de BB (`guardCall`,
+> `callTone`) est étendu au contact (`core/calls.ts`, `restrictsCalls`) : la note
+> d'un contact qui restreint son téléphone garde tout bouton d'appel de ce
+> numéro — liste des institutions (contact de tête), menu « ⋯ », aperçu, fiche,
+> et les contacts de ferme (`entity_contacts.restricts_calls`). Une case « ההערה
+> מגבילה את השימוש בטלפון » dans les deux éditeurs. Dans la base : UNE seule note
+> de ce genre (lue), celle du contact de tête de ישיבת דרך חיים.
+>
+> **9 · L'ALIAS.** « ישיבת בית יהודה » retiré des alias de ישיבת ההסדר שדות נגב ;
+> les autres alias restent.
+>
+> **Portes.** Nouvelles : `bcpass` (A411–A417, calcul : plan d'AZ4, sélection ≠
+> bulle et flèches, localité de repère, nature, appel gardé liste + fiche, thème
+> synchronisé, mise à jour au réveil) ; `bcmobile` (A418–A426, au rendu,
+> téléphone 390 et tablette 820 · 1180 : en-tête au repos / défilé, cibles
+> ≥ 44 px et 8 px, aucun défilement de côté, feuille de filtres ouverte /
+> appliquée / refermée sans clé de traduction brute, déclencheur des statuts,
+> pastille et balayage d'un contact, feuille ancrée de la couverture,
+> lisibilité de la ligne au téléphone, phrase du thème et version dans les
+> réglages) ; `bcleak` (ce que le commit emporte ne porte aucune aiguille de
+> tout `private/`). `aymobile` STRICTE (l'exception de BA retirée).
+> ADAPTÉES là où BC change la forme voulue par le brief, et seulement là :
+> `ayscreens` A359, `axui` A354 G1, `azui` A371–A373, `baui` A397–A399, `bbui`
+> A410, `avui` A327, `auui` A315, `aqui` A261/A262/A267, `anui` A228, `atui`
+> AX5, `pills` A71–A74 (la feuille, la forme compacte) et A86 (un « + » effacé
+> n'est sur rien), `rhythm` A60 (une barre de la couleur de la page se lit à
+> ses boutons), `persist`, `bbpass` A404, `assoc`. Rafraîchie : `aqui` A261
+> « tableau » (sélecteur de la grille `.roster-farms` retirée en AY2).
+> Défauts de BC trouvés par les portes et corrigés : l'en-tête du tableau sous
+> la barre à 1 032 px (`azui` A371), le nom à 13,5 px au téléphone (A425), une
+> clé de traduction brute dans le tri des volontaires (`aykeys`), 7 px entre
+> deux lignes de la feuille (`pills` A72 → 10 px).
+> Résultats locaux (batterie complète sur le code final,
+> `docs/bc/portes-rendu2-local.log`) : `aymobile` 48/48 · `ayscreens` 57/57 ·
+> `ayui` 114/114 · `azui` 125/125 · `az5ui` 21/21 · `axui` 116/116 · `bbui`
+> 82/82 · `avui` 51/51 · `auui` 60/60 · `awui` 57/57 · `bcmobile` 246/246 ·
+> `bcpass` 75/75 · pures 25/25 (`docs/bc/portes-pures-local.log`) · `arfiche`
+> 144/144 · `assettings` 20/20 · `aitheme` 18/18 · `ajupdate` 38/38 ; portes du
+> DÉPLOIEMENT en local (`docs/bc/portes-deploiement-local.log`) : `ground`,
+> `backdrop` 38/38, `redraw` 18/18, `overlap` 167/167, `freehand` 30/30, puis
+> build réel + base factice sur 5197 : `zones` 38/38, `agreement` 18/18,
+> `demo` 17/17.
+> Rouges ANTÉRIEURS, mesurés sur le code d'avant BC (worktree de `b2f999f`,
+> `docs/bc/portes-reference-head.md`) et non imputables : `pills` (A85 menus
+> du « + », A71 réglages, A74/A72 grand écran des fermes), `rhythm` (A62),
+> `anui` (A236), `akui` (A199 WebKit), `atui` (salle d'attente, AT4.4, A306),
+> `uipass` (`kpi-strip`), `sheets` (`import-tabs`, AY12), et la course de
+> `amui` A215 (BC 4/8, `HEAD` 5/8 sur le parcours exact ; tâche proposée).
+> Sur le déployé : (à compléter).
+
 > 🏁 **BB — INSTITUTIONS, DEUX ARBITRAGES, DEUX BUGS. 2026-10-12.**
 >
 > ⛔ **DONNÉES RÉELLES.** Aucun nom de personne ni téléphone réel ici ni dans le

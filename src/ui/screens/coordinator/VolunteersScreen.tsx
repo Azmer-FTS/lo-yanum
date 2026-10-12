@@ -34,7 +34,9 @@ import { MapSplit } from '../../components/MapSplit'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { PeopleMap } from '../../components/PeopleMap'
 import { PreviewPanel, PreviewRow, PreviewSection } from '../../components/PreviewPanel'
-import { RegionFilter } from '../../components/RegionFilter'
+import { RegionFilter, regionFilterFamily } from '../../components/RegionFilter'
+import { sortFamily } from '../../components/ListFilters'
+import type { CompactFilters } from '../../components/ListFilters'
 import { TestDataBadge } from '../../components/TestDataBadge'
 import { VolunteerStatusChip } from '../../components/badges'
 import { EmptyState, FilterPill, FilterRow, ListTop, Modal } from '../../components/primitives'
@@ -417,11 +419,65 @@ export function VolunteersScreen() {
   }
   const usedInstitutions = institutions.filter((i) => people.some((p) => p.institution?.id === i.id))
   const perInstitution = (id: string) => counted.filter((p) => p.institution?.id === id).length
+  /* ★★ BC — la forme compacte : « נהגים » reste dans la barre (il ne se replie
+     jamais, AY4.2) ; tout le reste dans la feuille, famille par famille. */
+  const toggle = (key: string, label: string, count: number, active: boolean, onToggle: () => void, testId: string) => ({ key, label, count, active, onToggle, testId })
+  const compactFilters: CompactFilters = {
+    families: [
+      {
+        key: 'status',
+        title: t('filters.family.status'),
+        single: true,
+        options: [
+          toggle('active', t('volunteerStatus.active'), stats.active, status === 'active', () => setStatus(status === 'active' ? null : 'active'), 'people-filter-active'),
+          toggle('inactive', t('volunteerStatus.inactive'), stats.inactive, status === 'inactive', () => setStatus(status === 'inactive' ? null : 'inactive'), 'people-filter-inactive'),
+        ],
+      },
+      {
+        key: 'people',
+        title: t('filters.family.people'),
+        options: [
+          toggle('kosher', t('volunteers.statsKosher'), stats.kosher, kosher, () => setKosher((v) => !v), 'people-filter-kosher'),
+          toggle('smartphone', t('volunteers.statsSmartphone'), stats.smartphone, smartphone, () => setSmartphone((v) => !v), 'people-filter-smartphone'),
+          toggle('licenseCar', t('volunteers.statsLicenseCar'), stats.licenseCar, licenseCar, () => setLicenseCar((v) => !v), 'people-filter-license-car'),
+          ...(onlyDrivers
+            ? [
+                toggle('freeTonight', t('driver.statsFreeTonight'), driverFigures.freeTonight, freeTonight, () => setFreeTonight((v) => !v), 'people-filter-free-tonight'),
+                toggle('sevenPlus', t('driver.statsSevenPlus'), driverFigures.sevenPlus, sevenPlus, () => setSevenPlus((v) => !v), 'people-filter-seven-plus'),
+              ]
+            : []),
+          toggle('never', t('volunteers.statsNeverGuarded'), stats.neverGuarded, neverGuarded, () => setNeverGuarded((v) => !v), 'people-filter-never'),
+        ],
+      },
+      {
+        key: 'institution',
+        title: t('filters.family.institution'),
+        single: true,
+        options: usedInstitutions.map((i) => toggle(i.id, i.name, perInstitution(i.id), institutionId === i.id, () => setInstitutionId(institutionId === i.id ? null : i.id), `people-filter-institution-${i.id}`)),
+      },
+      regionFilterFamily(t, region, setRegion, regionCounts, 'volunteers-region'),
+      {
+        key: 'locality',
+        title: t('filters.family.locality'),
+        options: locality !== null ? [toggle('locality', locality, visible.length, true, () => setLocality(null), 'people-filter-locality')] : [],
+      },
+      sortFamily(t, [{ key: 'name', label: t('volunteers.colName') }, ...columns.filter((c) => c.sort).map((c) => ({ key: c.key, label: c.label }))], sort, setSort, 'people'),
+    ].filter((f) => f.options.length > 0),
+    activeCount: activeFilters - (onlyDrivers ? 1 : 0),
+    onClear: () => {
+      const drivers = onlyDrivers
+      clear()
+      if (drivers) setOnlyDrivers(() => true)
+    },
+    results: visible.filter((p) => !isTestId(p.key)).length,
+  }
   const selectedPerson = people.find((p) => p.key === selected) ?? null
 
   return (
     <>
       <MapSplit
+        /* ★★ BC — écran de liste : liste ↔ carte au téléphone, carte à côté en tablette. */
+        list
         screenKey="volunteers"
         ariaLabel={t('people.mapVolunteers')}
         scroll="page"
@@ -433,6 +489,13 @@ export function VolunteersScreen() {
         {({ mode }) => (
           <>
             <ListTop
+              compactFilters={compactFilters}
+              barExtra={
+                <FilterPill active={onlyDrivers} onClick={() => setOnlyDrivers((v) => !v)} count={driverCount} testId="people-filter-drivers">
+                  <Icon name="steering" size={12} />
+                  {t('people.drivers')}
+                </FilterPill>
+              }
               testId="volunteers-top"
               title={t('people.title')}
               info={<p>{t('people.info')}</p>}

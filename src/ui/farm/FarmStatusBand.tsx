@@ -40,8 +40,40 @@ export function FarmStatusBand({
   gapPercent: number
 }) {
   const { t } = useTranslation()
-  const [open, setOpen] = useState<MarkKey | null>(null)
   const total = counts.reduce((n, k) => n + k.count, 0)
+  return (
+    <div className="flex flex-col gap-1" data-testid="farm-status-band">
+      <div className="flex min-w-0 items-center gap-2 rounded-card bg-surface-high/70 px-2 ring-1 ring-edge-subtle" data-testid="farm-status-row">
+        <span className="shrink-0 text-micro font-semibold text-content-muted">{t('farmMarks.statusTitle')}</span>
+        {/* `ms-auto` sur le premier segment : la rangée se cale sur la GAUCHE de l'écran (le bout de la ligne en hébreu) et reste défilable quand elle déborde — ce que `justify-end` ne permet pas. */}
+        <div className="one-line-row min-w-0 flex-1 [&>:first-child]:ms-auto" role="radiogroup" aria-label={t('farmMarks.statusTitle')} data-testid="farm-status-chips">
+          <StatusSegment active={value === null} onClick={() => onChange(null)} label={t('farms.statusAll')} count={total} testId="farm-status-all" />
+          {counts.map((k) => (
+            <StatusSegment
+              key={k.status}
+              active={value === k.status}
+              onClick={() => onChange(value === k.status ? null : k.status)}
+              label={t(`farmStatus.${k.status}`)}
+              count={k.count}
+              dot={<FarmStatusDot status={k.status} />}
+              testId={`farm-status-${k.status}`}
+            />
+          ))}
+        </div>
+      </div>
+      <FarmMarksLegend neglectDays={neglectDays} gapPercent={gapPercent} />
+    </div>
+  )
+}
+
+/**
+ * ★★ BC — LA LÉGENDE DES TROIS MARQUES, SEULE : sous la rangée des statuts en
+ * forme large, et sous la section des statuts dans la feuille de filtres au
+ * téléphone (`wrap` : les marques passent à la ligne, rien ne défile de côté).
+ */
+export function FarmMarksLegend({ neglectDays, gapPercent, wrap = false }: { neglectDays: number; gapPercent: number; wrap?: boolean }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState<MarkKey | null>(null)
   const sentence: Record<MarkKey, string> = {
     status: t('farmMarks.statusSentence'),
     neglect: t('farmMarks.neglectSentence', { days: neglectDays }),
@@ -64,28 +96,10 @@ export function FarmStatusBand({
     </button>
   )
   return (
-    <div className="flex flex-col gap-1" data-testid="farm-status-band">
-      <div className="flex min-w-0 items-center gap-2 rounded-card bg-surface-high/70 px-2 ring-1 ring-edge-subtle" data-testid="farm-status-row">
-        <span className="shrink-0 text-micro font-semibold text-content-muted">{t('farmMarks.statusTitle')}</span>
-        {/* `ms-auto` sur le premier segment : la rangée se cale sur la GAUCHE de l'écran (le bout de la ligne en hébreu) et reste défilable quand elle déborde — ce que `justify-end` ne permet pas. */}
-        <div className="one-line-row min-w-0 flex-1 [&>:first-child]:ms-auto" role="radiogroup" aria-label={t('farmMarks.statusTitle')} data-testid="farm-status-chips">
-          <StatusSegment active={value === null} onClick={() => onChange(null)} label={t('farms.statusAll')} count={total} testId="farm-status-all" />
-          {counts.map((k) => (
-            <StatusSegment
-              key={k.status}
-              active={value === k.status}
-              onClick={() => onChange(value === k.status ? null : k.status)}
-              label={t(`farmStatus.${k.status}`)}
-              count={k.count}
-              dot={<FarmStatusDot status={k.status} />}
-              testId={`farm-status-${k.status}`}
-            />
-          ))}
-        </div>
-      </div>
+    <div className="flex flex-col gap-1">
       <div className="flex min-w-0 items-center gap-1" data-testid="farm-marks-legend">
         <span className="shrink-0 text-micro font-semibold text-content-muted">{t('farmMarks.legendTitle')}</span>
-        <div className="one-line-row min-w-0 flex-1 !gap-0.5 !py-0">
+        <div className={wrap ? 'flex min-w-0 flex-1 flex-wrap items-center gap-2' : 'one-line-row min-w-0 flex-1 !gap-0.5 !py-0'}>
           {mark('status', <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-pill bg-farm-signed" />, t('farmMarks.status'))}
           {mark(
             'neglect',

@@ -359,7 +359,21 @@ const FILTER_GAP = `(() => {
     const bg = getComputedStyle(row).backgroundColor;
     const alpha = /rgba?\\(([^)]+)\\)/.exec(bg);
     const parts = alpha ? alpha[1].split(',').map((v) => parseFloat(v)) : [];
-    const painted = parts.length >= 3 && (parts.length < 4 || parts[3] > 0.05);
+    /* ★★ BC — UN FOND DE LA COULEUR DE LA PAGE NE SE VOIT PAS. La barre fine
+       collée de la forme compacte est opaque (A58) et de la couleur de la page :
+       l'œil ne voit pas son bord, il voit ses boutons. Lue à son bord, elle
+       mesurait 1 px là où l'écran montre 17 px. Le fond compte quand il diffère
+       de celui qu'il recouvre (la carte de l'agenda, elle, reste un fond). */
+    const behind = (() => {
+      for (let n = row.parentElement; n; n = n.parentElement) {
+        const b = getComputedStyle(n).backgroundColor;
+        const m = /rgba?\\(([^)]+)\\)/.exec(b);
+        const p = m ? m[1].split(',').map((v) => parseFloat(v)) : [];
+        if (p.length >= 3 && (p.length < 4 || p[3] > 0.05)) return b;
+      }
+      return getComputedStyle(document.body).backgroundColor;
+    })();
+    const painted = parts.length >= 3 && (parts.length < 4 || parts[3] > 0.05) && bg !== behind;
     let fb = -Infinity;
     if (painted) fb = rr.bottom;
     else {

@@ -225,7 +225,7 @@ const isBleedPath = (pathname: string) =>
   (/^\/coordinator\/missions\/[^/]+$/.test(pathname) &&
     pathname !== '/coordinator/missions/new')
 
-function Brand({ compact = false }: { compact?: boolean }) {
+function Brand({ compact = false, slim = false }: { compact?: boolean; slim?: boolean }) {
   const { t } = useTranslation()
   return (
     <div
@@ -241,7 +241,10 @@ function Brand({ compact = false }: { compact?: boolean }) {
           <p className="truncate text-heading text-content-primary">
             {t('app.name')}
           </p>
-          <p className="truncate text-micro text-content-muted">
+          {/* ★★ BC — au téléphone, la devise cède : la barre du haut passe de
+              69 à 57 px (chaque pixel du haut est pris aux lignes). Elle reste
+              dans le menu, sur la tablette et l'ordinateur. */}
+          <p className={`truncate text-micro text-content-muted ${slim ? 'hidden md:block' : ''}`}>
             {t('app.tagline')}
           </p>
         </div>
@@ -489,9 +492,11 @@ export function CoordinatorLayout() {
           {/* ⚠️ AL5 — `gap-2` ET NON `gap-1` : huit pixels entre deux cibles
               voisines, le plancher qu'AA1.2 a posé et mesuré. À quatre, deux
               entrées de 44 px se touchent presque. */}
-          <nav className="flex flex-col gap-1" data-testid="rail-nav" data-expanded={expanded}>
+          {/* ★★ BC — `gap-2`, comme l'écrit la note d'AL5 au-dessus : le code était
+              revenu à `gap-1` (4 px entre deux entrées), mesuré par `bcmobile`. */}
+          <nav className="flex flex-col gap-2" data-testid="rail-nav" data-expanded={expanded}>
             {NAV_GROUPS.map((g, gi) => (
-              <div key={gi} className="flex flex-col gap-1" data-testid={g.key ? `rail-group-${g.key}` : undefined}>
+              <div key={gi} className="flex flex-col gap-2" data-testid={g.key ? `rail-group-${g.key}` : undefined}>
                 {g.key && (
                   /* ★★ AX1 — le titre du temps ; compact, un trait et un mot. */
                   <p
@@ -542,7 +547,7 @@ export function CoordinatorLayout() {
                `backdrop-blur` that was hiding it is composited late or not at
                all inside a scroller. Nothing is meant to be visible behind a
                header. */
-            className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-edge-subtle bg-surface-overlay px-4 pb-3 pt-[calc(var(--status-inset)+0.75rem)] lg:hidden"
+            className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-edge-subtle bg-surface-overlay px-4 pb-1.5 pt-[calc(var(--status-inset)+0.375rem)] md:pb-3 md:pt-[calc(var(--status-inset)+0.75rem)] lg:hidden"
           >
             {/**
               * ★★ AB7 (2026-09-08) — THE HAMBURGER MOVES TO THE READING START,
@@ -581,7 +586,7 @@ export function CoordinatorLayout() {
               >
                 <Icon name="menu" />
               </button>
-              <Brand />
+              <Brand slim />
             </div>
             {/* ★★ AE2 — et sur téléphone elle est dans la barre, à l'autre
                 bout : un geste, visible sur chaque écran, et zéro pixel

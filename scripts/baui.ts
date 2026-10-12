@@ -23,6 +23,12 @@ import type { Farm, FarmContact } from '../src/core/types'
  *   A398  les statuts ont LEUR rangée, distincte, hors des filtres, sur une
  *         ligne, calée à gauche ; un statut filtre la liste
  *   A399  la légende des trois marques, et leur phrase au TOUCHER (402 px)
+ *
+ *   ★★ BC — ADAPTÉES au téléphone (A397 · A398 · A399 à 402 px) : le brief BC
+ *   (3b, 3c) range les filtres dans une FEUILLE derrière un seul « סינון » et
+ *   donne aux statuts leur propre déclencheur, qui ouvre la même feuille sur
+ *   leur section (la légende des marques y est, sous les statuts) ; la rangée
+ *   de BA reste en grand écran, vérifiée telle quelle à 1440 et 1032 px.
  *   A400  « טרם נוצר קשר » (filtre + fiche) ; la fiche : contacts ordonnés,
  *         rang 2 avec sa note, gardé en base ; la photo d'une personne
  *         retrouvée par son TÉLÉPHONE (bucket privé, URL signée)
@@ -121,7 +127,7 @@ await guard('A396', async () => {
 // ---------------------------------------------------------------------------
 await guard('A397', async () => {
   section('A397 — les filtres : une rangée, qui défile')
-  for (const width of [1440, 1032, 402]) {
+  for (const width of [1440, 1032]) {
     const o = await open(width, { db: db() })
     await go(o.page, APP, '/coordinator/farms')
     if (width > 700) await tableMode(o.page)
@@ -150,12 +156,36 @@ await guard('A397', async () => {
     await o.page.screenshot({ path: `${SHOTS}/a397-filtres-${width}.png` })
     await o.ctx.close()
   }
+  /* ★★ BC — au téléphone : la barre fine, UN « סינון », la feuille. */
+  const o = await open(402, { db: db() })
+  await go(o.page, APP, '/coordinator/farms')
+  const m = await o.page.evaluate(() => {
+    const bar = document.querySelector('[data-list-top][data-compact]') as HTMLElement | null
+    const row = bar?.firstElementChild as HTMLElement | null
+    return {
+      bar: !!bar,
+      buttons: document.querySelectorAll('[data-testid="filter-sheet-open"]').length,
+      count: document.querySelector('[data-testid="filter-sheet-open"]')?.getAttribute('data-count') ?? null,
+      rowH: row ? Math.round(row.getBoundingClientRect().height) : 0,
+      oldRow: !!document.querySelector('[data-filter-row]'),
+    }
+  })
+  check('A397 402 px : la barre fine, UN bouton « סינון » qui porte le nombre de filtres actifs', m.bar && m.buttons === 1 && m.count !== null && !m.oldRow, JSON.stringify(m))
+  check('A397 402 px : la rangée de la barre ne fait qu’une ligne de haut (≤ 64 px)', m.rowH > 0 && m.rowH <= 64, `${m.rowH} px`)
+  await o.page.locator('[data-testid="filter-sheet-open"]').click()
+  await o.page.waitForTimeout(450)
+  const fams = await o.page.locator('[data-testid="filter-sheet"] section[data-family]').evaluateAll((els) => els.map((e) => e.getAttribute('data-family')))
+  /* La MÊME feuille porte les statuts (brief BC 3c : leur déclencheur l'ouvre
+     sur leur section) ; « סינון » l'ouvre en haut, sur toutes les familles. */
+  check('A397 402 px : la feuille porte toutes les familles (les statuts compris, en section à part)', fams.length >= 4 && fams.includes('status') && fams.includes('region') && fams.includes('sort'), fams.join(','))
+  await o.page.screenshot({ path: `${SHOTS}/a397-feuille-402.png` })
+  await o.ctx.close()
 })
 
 // ---------------------------------------------------------------------------
 await guard('A398', async () => {
   section('A398 — les statuts : leur rangée, à gauche')
-  for (const width of [1440, 402]) {
+  for (const width of [1440]) {
     const o = await open(width, { db: db() })
     await go(o.page, APP, '/coordinator/farms')
     if (width > 700) await tableMode(o.page)
@@ -198,6 +228,31 @@ await guard('A398', async () => {
     await o.page.screenshot({ path: `${SHOTS}/a398-statuts-${width}.png` })
     await o.ctx.close()
   }
+  /* ★★ BC — au téléphone : leur PROPRE déclencheur (statut courant + compte),
+     hors du bouton des filtres ; il ouvre la feuille sur leur section. */
+  const o = await open(402, { db: db() })
+  await go(o.page, APP, '/coordinator/farms')
+  const trig = o.page.locator('[data-testid="status-sheet-open"]')
+  const text = (await trig.innerText().catch(() => '')).replace(/\s+/g, ' ')
+  check('A398 402 px : les statuts ont leur déclencheur, qui dit le statut courant et son compte', (await trig.count()) === 1 && /\d/.test(text), text)
+  await trig.click()
+  await o.page.waitForTimeout(450)
+  const inView = await o.page.evaluate(() => {
+    const sec = document.querySelector('[data-testid="filter-sheet"] section[data-family="status"]') as HTMLElement | null
+    if (!sec) return false
+    const r = sec.getBoundingClientRect()
+    return r.top >= 0 && r.top < innerHeight * 0.6
+  })
+  check('A398 402 px : il ouvre la feuille SUR les statuts', inView)
+  await o.page.locator('[data-testid="farm-status-on_hold-option"]').click()
+  await o.page.waitForTimeout(400)
+  await o.page.locator('[data-testid="filter-sheet-show"]').click()
+  await o.page.waitForTimeout(500)
+  const shown = await o.page.locator('[data-testid^="farm-row-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
+  check('A398 402 px : choisir un statut filtre la liste', shown.length === 1 && shown[0] === `farm-row-${F3.id}`, shown.join(','))
+  check('A398 402 px : … et le déclencheur le dit', (await trig.getAttribute('data-status')) === 'on_hold')
+  await o.page.screenshot({ path: `${SHOTS}/a398-statuts-402.png` })
+  await o.ctx.close()
 })
 
 // ---------------------------------------------------------------------------
@@ -205,6 +260,12 @@ await guard('A399', async () => {
   section('A399 — la légende des trois marques, au toucher')
   const o = await open(402, { db: db(), touch: true })
   await go(o.page, APP, '/coordinator/farms')
+  /* ★★ BC — au téléphone, la légende est SOUS les statuts, dans la feuille
+     qu'ouvre leur déclencheur (un toucher). */
+  if ((await o.page.locator('[data-testid="farm-marks-legend"]').count()) === 0) {
+    await o.page.locator('[data-testid="status-sheet-open"]').tap()
+    await o.page.waitForTimeout(450)
+  }
   const legend = o.page.locator('[data-testid="farm-marks-legend"]')
   check('A399 la légende est là, à 402 px', (await legend.count()) === 1)
   const want: Array<[string, RegExp]> = [

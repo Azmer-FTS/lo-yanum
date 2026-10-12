@@ -1,0 +1,190 @@
+# BC — portes rejouées 2026-10-12T08:53:53.175Z
+
+## aymobile — exit=0
+
+48 PASS, 0 FAIL  (48 écrans à 402 px) → docs/ay/ay2-mobile-local.json
+
+## ayscreens — exit=1
+FAIL  A359 402 px · contacts : la forme commune (tableau étroit, un seul bouton ⋯)  — table true · empilée true · gestes 2
+56 PASS, 1 FAIL
+
+## ayui — exit=0
+
+114 PASS, 0 FAIL
+
+## azui — exit=1
+FAIL  A371 1032 px · fermes : l’en-tête reste en haut, visible, pendant le défilement  — y 0 · au premier plan false · défilé true
+FAIL  A371 1032 px · institutions : l’en-tête reste en haut, visible, pendant le défilement  — y 0 · au premier plan false · défilé true
+FAIL  A371 1032 px · contacts : l’en-tête reste en haut, visible, pendant le défilement  — y 0 · au premier plan false · défilé true
+FAIL  A371 1032 px · volontaires : l’en-tête reste en haut, visible, pendant le défilement  — y 0 · au premier plan false · défilé true
+FAIL  A371 — section interrompue  — boundingBox: Timeout 8000ms exceeded. · - waiting for locator('[data-entity-table]:not([data-tiles]) thead th:first-child, [data-list-top] [data-roster-head]').first()
+FAIL  A372 — section interrompue  — click: Timeout 20000ms exceeded. · - waiting for locator('[data-testid="map-mode-split"]').first()
+FAIL  A373 — section interrompue  — click: Timeout 20000ms exceeded. · - waiting for locator('[data-testid="map-mode-split"]').first()
+90 PASS, 7 FAIL
+
+## az5ui — exit=0
+
+21 PASS, 0 FAIL
+
+## axui — exit=1
+FAIL  A354 G1 changer le statut d’un contact : le geste ABOUTIT après AX  — 1 clic(s)
+115 PASS, 1 FAIL
+
+## baui — exit=1
+FAIL  A397 402 px : la rangée de filtres est en mode « une ligne »  — null
+FAIL  A397 402 px : ses 0 éléments tiennent sur UNE ligne (nowrap, défile)  — lignes=undefined wrap=undefined x=undefined
+FAIL  A397 402 px : la barre ne fait qu’une ligne de haut (≤ 64 px)  — undefined px
+FAIL  A397 402 px : aucun statut dans la rangée des filtres
+FAIL  A398 402 px : une rangée de statuts existe, HORS de la rangée des filtres  — null
+FAIL  A398 402 px : sur UNE ligne
+FAIL  A398 402 px : calée complètement à gauche (ou défilante)  — écart undefinedpx défile=undefined
+FAIL  A398 402 px : visuellement distincte (fond + filet, pastilles de couleur)  — undefined vs undefined
+FAIL  A399 la légende est là, à 402 px
+FAIL  A399 — section interrompue  — boundingBox: Timeout 8000ms exceeded. · - waiting for locator('[data-testid="farm-mark-legend-status"]')
+33 PASS, 10 FAIL
+
+## bbui — exit=1
+FAIL  A410 390 le filtre « תיאום מוקדם » existe
+80 PASS, 1 FAIL
+
+## avui — exit=1
+FAIL  A327 402 /coordinator/farms : un point libre de la carte  — aucun
+FAIL  A327 402 /coordinator/leads : un point libre de la carte  — aucun
+FAIL  A327 402 /coordinator/volunteers : un point libre de la carte  — aucun
+FAIL  A327 402 /coordinator/missions : un point libre de la carte  — aucun
+FAIL  A327 402 /coordinator/incidents : un point libre de la carte  — aucun
+45 PASS, 5 FAIL
+
+## auui — exit=1
+FAIL  A315 bulle — section interrompue  — click: Element is not visible
+58 PASS, 1 FAIL
+
+## awui — exit=0
+
+57 PASS, 0 FAIL
+
+## amui — exit=1
+FAIL  pré-remplie : nom
+FAIL  pré-remplie : portable, mis en forme
+FAIL  pré-remplie : ת״ז, zéro initial compris
+FAIL  enregistrer : une seule ligne de contact, et c'est lui  — 0
+FAIL  rouvrir : toujours une seule carte, courriel retrouvé
+72 passed, 5 failed
+
+## aqui — exit=1
+FAIL  A261 402 — section interrompue  — textContent: Timeout 30000ms exceeded.
+FAIL  1032 — tableau : la demande en tête aussi
+FAIL  1376 — tableau : la demande en tête aussi
+FAIL  402 — la vignette existe
+FAIL  A262 402 — section interrompue  — click: Timeout 30000ms exceeded.
+FAIL  1032 — la vignette existe
+FAIL  A262 1032 — section interrompue  — click: Timeout 30000ms exceeded.
+FAIL  A267 402 split — section interrompue  — click: Timeout 30000ms exceeded.
+FAIL  A267 402 hidden — section interrompue  — click: Timeout 30000ms exceeded.
+FAIL  A267 1032 split — section interrompue  — click: Timeout 30000ms exceeded.
+83 passed, 10 failed
+
+## assettings — exit=0
+
+All 20 checks passed.
+
+## aitheme — exit=0
+
+18 passed · 0 failed
+
+## ajupdate — exit=0
+
+38 passed, 0 failed
+
+## pills — exit=1
+FAIL  A71 · חוות: at least one pill to aim at  — no pill found
+FAIL  A71 · שמירות: at least one pill to aim at  — no pill found
+FAIL  A71 · אירועים: at least one pill to aim at  — no pill found
+FAIL  A71 · הגדרות: at least one pill to aim at  — no pill found
+FAIL  A73 · חוות: the three type pills are on the phone  — group not found
+FAIL  A73 · חוות: the three type pills are the same width
+FAIL  A73 · חוות: the region selector is a drop-down on its own line  — not found
+FAIL  A73 · חוות: the region drop-down carries a downward chevron  — not found
+FAIL  A85 · לוח בקרה: the "+" offers exactly 8  — 9
+FAIL  A85 · לוח בקרה: the menu is farm · moshav · volunteer · driver · mission · visit · meeting · incident and nothing else  — add-farm · add-farmFile · add-institution · add-volunteer · add-driver · mission · visit · meeting · incident
+FAIL  A85 · חוות: the "+" offers exactly 2  — 1
+FAIL  A85 · חוות: the menu is farm · moshav and nothing else  — menu not found
+48 passed, 22 failed  (chromium)
+
+## rhythm — exit=1
+FAIL  A60 · מתנדבים: content does not start glued to the filters (volunteers-top)  — 1px to TABLE.w-full table-fixed border-sepa
+FAIL  A60 · נהגים: content does not start glued to the filters (volunteers-top)  — 1px to TABLE.w-full table-fixed border-sepa
+FAIL  A60 · מתנדבים: content does not start glued to the filters (volunteers-top)  — 1px to TABLE.w-full table-fixed border-sepa
+FAIL  A60 · נהגים: content does not start glued to the filters (volunteers-top)  — 1px to TABLE.w-full table-fixed border-sepa
+FAIL  A60 · מתנדבים: content does not start glued to the filters (volunteers-top)  — 1px to LI.
+FAIL  A60 · נהגים: content does not start glued to the filters (volunteers-top)  — 1px to LI.
+FAIL  A60 · חוות: content does not start glued to the filters (farms-top)  — 1px to TABLE.w-full table-fixed border-sepa
+FAIL  A62 · חוות: no number of the counter is written twice in the header  — also as 14
+FAIL  A60 · חוות: content does not start glued to the filters (farms-top)  — 1px to LI.
+FAIL  A62 · חוות: the counter is short  — "14/1429,650 דונם · 6,340 משוקלל"
+FAIL  A62 · חוות: no number of the counter is written twice in the header  — also as 14
+FAIL  A62 · נהגים: the counter is short  — "18/30657 מקומות ברכבים"
+312 passed, 14 failed  (chromium)
+
+## anui — exit=1
+FAIL  section interrompue  — click: Timeout 8000ms exceeded.
+FAIL  A236 · volontaire (+) : une page (adresse, flèche retour), aucune fenêtre  — {"hash":"#/coordinator/volunteers","dialog":0,"back":false,"title":true}
+FAIL  section interrompue  — click: Timeout 8000ms exceeded.
+144 passed, 3 failed
+
+## akui — exit=1
+
+PASS  A201 · webkit · no field under 16 px — Safari does not zoom  — assoc-farmerName:16 assoc-farmerId:16 assoc-farmerPhone:16 assoc-date:16
+
+## atui — exit=1
+FAIL  AX5 · les statuts sont des FILTRES (pastilles ou « סינון »), aucun onglet
+FAIL  A301 · étroit : le statut est une liste déroulante de la couleur du statut
+FAIL  salle d’attente 402 — section interrompue  — selectOption: Timeout 30000ms exceeded. · - waiting for locator('select[data-testid="lead-status-lead-at-01"]')
+FAIL  AX5 · les statuts sont des FILTRES (pastilles ou « סינון »), aucun onglet
+FAIL  les cinq pistes ouvertes sont dans UNE liste (la « לא רלוונטי » est un filtre)  — 0
+FAIL  A301 · étroit : le statut est une liste déroulante de la couleur du statut
+FAIL  salle d’attente 1032 — section interrompue  — boundingBox: Timeout 30000ms exceeded. · - waiting for locator('tr[data-testid="lead-lead-at-01"]')
+FAIL  les cinq pistes ouvertes sont dans UNE liste (la « לא רלוונטי » est un filtre)  — 0
+FAIL  A301 · étroit : le statut est une liste déroulante de la couleur du statut
+FAIL  salle d’attente 1376 — section interrompue  — boundingBox: Timeout 30000ms exceeded. · - waiting for locator('tr[data-testid="lead-lead-at-01"]')
+FAIL  AT4.4 · tous les blocs dépliés par défaut (fiche neuve sur cet appareil)  — 1 replié(s)
+FAIL  AT4.4 · tous les blocs dépliés par défaut (fiche neuve sur cet appareil)  — 1 replié(s)
+atui : 122 PASS · 17 FAIL
+
+## layout — exit=1
+
+error: script "layout" exited with code 1
+
+## uipass — exit=1
+
+error: script "uipass" exited with code 1
+
+## arfiche — exit=0
+
+144 passed, 0 failed
+
+# BILAN
+OK   aymobile       exit=0 219s  48 PASS, 0 FAIL  (48 écrans à 402 px) → docs/ay/ay2-mobile-local.json
+ROUGE ayscreens      exit=1 195s  56 PASS, 1 FAIL
+OK   ayui           exit=0 523s  114 PASS, 0 FAIL
+ROUGE azui           exit=1 328s  90 PASS, 7 FAIL
+OK   az5ui          exit=0 38s  21 PASS, 0 FAIL
+ROUGE axui           exit=1 301s  115 PASS, 1 FAIL
+ROUGE baui           exit=1 82s  33 PASS, 10 FAIL
+ROUGE bbui           exit=1 138s  80 PASS, 1 FAIL
+ROUGE avui           exit=1 255s  45 PASS, 5 FAIL
+ROUGE auui           exit=1 235s  58 PASS, 1 FAIL
+OK   awui           exit=0 282s  57 PASS, 0 FAIL
+ROUGE amui           exit=1 491s  72 passed, 5 failed
+ROUGE aqui           exit=1 493s  83 passed, 10 failed
+OK   assettings     exit=0 84s  All 20 checks passed.
+OK   aitheme        exit=0 46s  18 passed · 0 failed
+OK   ajupdate       exit=0 88s  38 passed, 0 failed
+ROUGE pills          exit=1 186s  48 passed, 22 failed  (chromium)
+ROUGE rhythm         exit=1 256s  312 passed, 14 failed  (chromium)
+ROUGE anui           exit=1 328s  144 passed, 3 failed
+ROUGE akui           exit=1 55s  PASS  A201 · webkit · no field under 16 px — Safari does not zoom  — assoc-farmerName:16 assoc-farmerId:16 assoc-farmerPhone:16 assoc-date:16
+ROUGE atui           exit=1 317s  atui : 122 PASS · 17 FAIL
+ROUGE layout         exit=1 1s  error: script "layout" exited with code 1
+ROUGE uipass         exit=1 43s  error: script "uipass" exited with code 1
+OK   arfiche        exit=0 240s  144 passed, 0 failed

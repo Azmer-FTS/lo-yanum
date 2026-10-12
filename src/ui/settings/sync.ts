@@ -50,6 +50,35 @@ export const THEME_SYNC_KEY = 'lo-yanum:theme:coordinator'
  */
 export const STAMPED_ONLY_KEYS: ReadonlySet<string> = new Set([THEME_SYNC_KEY])
 
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ BC (2026-10-12) — « ORDINATEUR ET TABLETTE EN SOMBRE, TÉLÉPHONE EN CLAIR ».
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Mesuré dans `user_settings` de `lo-yanum-prod` AVANT de toucher au code : la
+ * clé `lo-yanum:theme:coordinator` EXISTE, valeur `"dark"`, mais SANS instant
+ * dans `__stamps` (qui n'en porte que pour `coverage` et `coverage-map`). Le
+ * sombre de l'ordinateur et de la tablette a été choisi AVANT AY1.3, quand le
+ * thème ne voyageait pas : il n'a jamais reçu d'instant. Deux défauts, et le
+ * PO voyait la somme :
+ *
+ *   1. LA LIGNE MENTAIT. Une poussée déclenchée par une AUTRE clé (la borne de
+ *      couverture, le 2026-10-11 à 15:04) écrivait le bloc entier, thème non
+ *      horodaté compris : la base portait « dark » comme un choix, et aucun
+ *      appareil ne l'appliquait (AY1.3 : sans instant des deux côtés, rien ne
+ *      bouge). Un appareil sans thème local, en poussant, l'aurait même
+ *      EFFACÉ — et le suivant l'aurait remis.
+ *   2. UN APPAREIL QUI N'AVAIT RIEN CHOISI NE RECEVAIT RIEN. Le téléphone, sans
+ *      choix, suivait son système (clair) pendant que le compte disait sombre.
+ *
+ * ★ LA RÈGLE, QUI GARDE CE QU'AY1.3 PROTÉGEAIT : une clé « choisie seulement »
+ *   sans instant n'est JAMAIS écrite par un appareil (le compte garde ce qu'il
+ *   porte) ; un appareil qui n'a RIEN choisi prend ce que le compte porte — il
+ *   n'éteint le choix de personne. Deux choix anciens et différents restent
+ *   chacun sur leur appareil : les réglages le DISENT (`themeSourceOf`) et
+ *   proposent un geste, qui horodate, donc voyage.
+ */
+
 export const SYNCED_SETTING_KEYS: readonly string[] = [
   /* Le programme : cible, seuils, couvertures, rappels. */
   'lo-yanum:target',
@@ -174,7 +203,15 @@ export function mergeSettings(local: SettingsSide, remote: SettingsSide, lastSyn
     const rv = remote.values[key] ?? null
     const ls = local.stamps[key] ?? 0
     const rs = remote.stamps[key] ?? 0
-    if (ls === 0 && rs === 0 && STAMPED_ONLY_KEYS.has(key)) continue
+    if (ls === 0 && rs === 0 && STAMPED_ONLY_KEYS.has(key)) {
+      /* ★★ BC — rien de choisi ici : on prend ce que le compte porte (sans
+         instant — ce n'est pas un choix de CET appareil). */
+      if (lv === null && rv !== null) {
+        next.values[key] = rv
+        applied.push(key)
+      }
+      continue
+    }
     if (rs > ls) {
       if (lv !== rv) {
         next.values[key] = rv
@@ -200,9 +237,11 @@ export function mergeSettings(local: SettingsSide, remote: SettingsSide, lastSyn
   const remoteOut: SettingsBlob = {}
   const stampsOut: Stamps = {}
   for (const key of SYNCED_SETTING_KEYS) {
-    const v = next.values[key]
-    if (typeof v === 'string') remoteOut[key] = v
     const s = Math.max(next.stamps[key] ?? 0, remote.stamps[key] ?? 0)
+    /* ★★ BC — une clé « choisie seulement » sans instant n'est jamais écrite
+       par cet appareil : le compte garde ce qu'il porte (voir l'en-tête BC). */
+    const v = STAMPED_ONLY_KEYS.has(key) && s === 0 ? remote.values[key] : next.values[key]
+    if (typeof v === 'string') remoteOut[key] = v
     if (s > 0) stampsOut[key] = s
   }
   remoteOut[STAMPS_FIELD] = JSON.stringify(stampsOut)
@@ -246,6 +285,39 @@ function localSide(): SettingsSide {
     }
   }
   return { values, stamps: readJson<Stamps>(STAMPS_KEY, {}) }
+}
+
+/** ★★ BC — l'instant posé sur une clé par CET appareil (0 = jamais choisie ici). */
+export function settingStamp(key: string): number {
+  return readJson<Stamps>(STAMPS_KEY, {})[key] ?? 0
+}
+
+/** ★★ BC — ce que le compte portait au dernier cycle (mémoire de la page). */
+let lastRemoteValues: Record<string, string | null> = {}
+export function lastRemoteSetting(key: string): string | null {
+  return lastRemoteValues[key] ?? null
+}
+
+/**
+ * ★★ BC — D'OÙ VIENT LE THÈME APPLIQUÉ, en une phrase que le PO lit dans
+ * הגדרות › תצוגה (PURE ; `bcpass` la rejoue) :
+ *   · `synced`  — choisi (horodaté) : il voyage vers tous les appareils ;
+ *   · `device`  — « לפי המכשיר », choisi ou par défaut : chaque appareil suit
+ *                 son propre système ;
+ *   · `legacy`  — clair ou sombre SANS instant (choisi avant AY1.3, ou reçu du
+ *                 compte par un appareil qui n'avait rien) : il ne voyage pas ;
+ *   · `local`   — build sans compte (jumeau) : rien ne voyage, par construction.
+ * `accountDiffers` : le compte porte un autre choix que celui de l'appareil.
+ */
+export type ThemeSource = 'synced' | 'device' | 'legacy' | 'local'
+export function themeSourceOf(input: { stored: string | null; stamp: number; remote: string | null; connected: boolean }): { source: ThemeSource; accountDiffers: boolean } {
+  const explicit = input.stored === 'light' || input.stored === 'dark'
+  const remoteExplicit = input.remote === 'light' || input.remote === 'dark' || input.remote === 'system'
+  const effective = input.stored ?? 'system'
+  const accountDiffers = input.connected && remoteExplicit && input.remote !== effective
+  if (!input.connected) return { source: explicit ? 'local' : 'device', accountDiffers: false }
+  if (!explicit) return { source: 'device', accountDiffers }
+  return { source: input.stamp > 0 ? 'synced' : 'legacy', accountDiffers }
 }
 
 /** Dernière synchronisation réussie de CET appareil (ms), 0 = jamais. */
@@ -377,7 +449,9 @@ async function cycle(trigger: SyncTrigger): Promise<SyncReport | null> {
     } catch (err) {
       return done({ ok: false, error: reasonOf(err), down, up, conflicts, remoteUpdatedAt: lastSeenRemote ?? null })
     }
-    const merged = mergeSettings(localSide(), readRemoteSide(row.blob), lastSettingsSyncAt())
+    const remoteSide = readRemoteSide(row.blob)
+    lastRemoteValues = { ...remoteSide.values }
+    const merged = mergeSettings(localSide(), remoteSide, lastSettingsSyncAt())
     for (const key of merged.applied) writeRaw(key, merged.local.values[key] ?? null)
     writeRaw(STAMPS_KEY, JSON.stringify(merged.local.stamps))
     if (merged.applied.length > 0) announceSettingsApplied(merged.applied)

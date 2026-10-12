@@ -261,22 +261,34 @@ await guard('A410', async () => {
     const guarded = o.page.locator(`[data-testid="institution-call-guarded-${BLOCKED.id}"]`)
     check(`A410 ${width} le menu : « appeler » remplacé par le texte`, (await guarded.count()) === 1 && (await guarded.innerText()).includes('דרך רכז ההדגמה'))
     await o.page.keyboard.press('Escape')
-    /* Le filtre (à 390 px, la rangée se replie derrière « סינון » : on la déplie). */
-    if ((await o.page.locator('[data-testid="institutions-filter-coordination"]').count()) === 0) {
-      await o.page.locator('[data-testid="filter-dropdown"]').first().click().catch(() => undefined)
-      await o.page.waitForTimeout(400)
+    /* Le filtre. ★★ BC — ADAPTÉE : à 390 px, les filtres sont dans la FEUILLE
+       derrière « סינון » (brief BC 3b) ; la valeur y porte `-option`, et la
+       pastille à croix sous la barre l'enlève. */
+    const sheetMode = (await o.page.locator('[data-testid="institutions-filter-coordination"]').count()) === 0
+    if (sheetMode) {
+      await o.page.locator('[data-testid="filter-sheet-open"]').first().click().catch(() => undefined)
+      await o.page.waitForTimeout(450)
     }
-    const pill = o.page.locator('[data-testid="institutions-filter-coordination"]')
+    const pill = o.page.locator(sheetMode ? '[data-testid="institutions-filter-coordination-option"]' : '[data-testid="institutions-filter-coordination"]')
     check(`A410 ${width} le filtre « תיאום מוקדם » existe`, (await pill.count()) === 1)
     if (await pill.count()) {
       await pill.click()
       await o.page.waitForTimeout(500)
+      if (sheetMode) {
+        await o.page.locator('[data-testid="filter-sheet-show"]').click()
+        await o.page.waitForTimeout(400)
+      }
       const shown = await o.page.locator('[data-testid^="institution-row-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
       check(`A410 ${width} … il ne garde que les fiches marquées`, shown.length === 1 && shown[0] === `institution-row-${BLOCKED.id}`, shown.join(','))
       await o.page.screenshot({ path: `${SHOTS}/a410-filtre-${width}.png` })
-      await pill.click()
+      if (sheetMode) {
+        await o.page.locator('[data-testid="institutions-filter-coordination-chip"]').click()
+      } else {
+        await pill.click()
+        await o.page.waitForTimeout(300)
+        await o.page.locator('[data-testid="institutions-filter-all"]').click().catch(() => undefined)
+      }
       await o.page.waitForTimeout(300)
-      await o.page.locator('[data-testid="institutions-filter-all"]').click().catch(() => undefined)
     }
     /* Un alias. */
     await o.page.locator('[data-testid="list-search-open"]').first().click().catch(() => undefined)

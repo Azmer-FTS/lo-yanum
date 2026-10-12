@@ -1,5 +1,6 @@
 import { useContext } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { FilterFamily } from './ListFilters'
 
 import { regions } from '@core/index'
 import type { RegionId } from '@core/index'
@@ -158,3 +159,33 @@ export function RegionFilter({
     </label>
   )
 }
+
+/**
+ * ★★ BC (2026-10-12) — LA MÊME CHOSE, EN FAMILLE DE LA FEUILLE DE FILTRES :
+ * les treize régions, chacune avec son compte ; une région vide est grisée,
+ * pas masquée (Y8.3). Un seul choix à la fois.
+ */
+export function regionFilterFamily(
+  t: (k: string) => string,
+  value: RegionId | null,
+  onChange: (next: RegionId | null) => void,
+  counts: Partial<Record<RegionId, number>> | undefined,
+  testId = 'region',
+): FilterFamily {
+  return {
+    key: 'region',
+    title: t('filters.family.region'),
+    single: true,
+    testId: `${testId}-family`,
+    options: regions().map((r) => ({
+      key: r.id,
+      label: r.name,
+      count: counts?.[r.id] ?? 0,
+      active: value === r.id,
+      disabled: (counts?.[r.id] ?? 0) === 0,
+      onToggle: () => onChange(value === r.id ? null : r.id),
+      testId: `${testId}-${r.id}`,
+    })),
+  }
+}
+

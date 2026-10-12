@@ -130,6 +130,14 @@ function readFab(): FabState | null {
 function fabCollisions(): string[] {
   const fab = document.querySelector('[data-testid="action-fab"]')
   if (!fab) return []
+  /* ★★ BC — UN BOUTON QUI S'EST EFFACÉ N'EST SUR RIEN. Filtres ouverts, le
+     rail du bas « s'écarte » (`:root[data-filters-open] [data-bottom-rail]` :
+     opacité 0, aucun toucher — AA1.2) : c'est la réponse que A86 attend. Son
+     RECTANGLE, lui, reste là ; le compter contre la feuille montante de BC
+     (ou la rangée des statuts de BA, déjà rouge sur HEAD) mesurait un bouton
+     que personne ne voit ni ne peut toucher. */
+  const cs = getComputedStyle(fab)
+  if (cs.pointerEvents === 'none' && (parseFloat(cs.opacity) === 0 || cs.visibility === 'hidden')) return []
   const f = fab.getBoundingClientRect()
   const hits: string[] = []
 
@@ -232,6 +240,16 @@ async function load(page: Page, hash: string): Promise<void> {
 /** Open the « סינון » panel when the row is in its folded shape. */
 async function openFilters(page: Page): Promise<boolean> {
   const button = page.locator('[data-testid="filter-dropdown"]').first()
+  /* ★★ BC — LA FORME COMPACTE (brief BC 3b) : plus de rangée repliée, une
+     FEUILLE derrière « סינון » ; ses valeurs sont les cibles du pouce. */
+  const sheet = page.locator('[data-testid="filter-sheet-open"]').first()
+  if ((await button.count()) === 0 && (await sheet.count()) > 0 && (await sheet.isVisible())) {
+    if ((await page.locator('[data-sheet-panel]').count()) === 0) {
+      await sheet.click()
+      await page.waitForTimeout(450)
+    }
+    return true
+  }
   if ((await button.count()) === 0) return false
   if ((await page.locator('[data-testid="filter-dropdown-panel"]').count()) > 0) return true
   await button.click()
@@ -258,7 +276,7 @@ interface HitBox {
  *    for us, so the source below is checked by the TypeScript compiler like
  *    any other code in this repository.
  */
-function probePills(limit: number): HitBox[] {
+function probePills({ limit, sel }: { limit: number; sel: string }): HitBox[] {
   /**
    * ═══════════════════════════════════════════════════════════════════════
    * ⚠️★★ AL4.2 (2026-09-16) — UNE RANGÉE QUI DÉFILE TIENT PLUS QUE L'ÉCRAN,
@@ -285,16 +303,23 @@ function probePills(limit: number): HitBox[] {
    *    celui qu'AA1 a été écrite pour trouver. Seules sortent celles qui n'ont
    *    AUCUN pixel à l'écran.
    */
-  const pills = [...document.querySelectorAll('.filter-pill')].filter((el) => {
+  const pills = [...document.querySelectorAll(sel)].filter((el) => {
     const r = el.getBoundingClientRect()
     if (r.width <= 4 || r.height <= 4) return false
     if (r.top <= -1 || r.bottom >= window.innerHeight + 1) return false
+    /* ★★ BC — une valeur de la feuille se mesure quand elle est ENTIÈRE dans
+       sa zone qui défile (pas sous le pied « הצג N תוצאות »). */
+    const body = el.closest('[data-sheet-body]')
+    if (body) {
+      const b = body.getBoundingClientRect()
+      if (r.top < b.top - 0.5 || r.bottom > b.bottom + 0.5) return false
+    }
     return r.right > 0 && r.left < window.innerWidth
   })
 
   const owner = (x: number, y: number): Element | null => {
     const el = document.elementFromPoint(x, y)
-    return el ? el.closest('.filter-pill') : null
+    return el ? el.closest(sel) : null
   }
 
   return pills.map((el, i) => {
@@ -384,7 +409,8 @@ try {
     for (const screen of SCREENS) {
       await load(page, screen.hash)
       await openFilters(page)
-      const pills = (await page.evaluate(probePills, 40)) as HitBox[]
+      const inSheet = (await page.locator('[data-sheet-panel]').count()) > 0
+      const pills = (await page.evaluate(probePills, { limit: 40, sel: inSheet ? '[data-sheet-body] [role^="menuitem"]' : '.filter-pill' })) as HitBox[]
 
       if (pills.length === 0) {
         check(`A71 · ${screen.name}: at least one pill to aim at`, false, 'no pill found')
@@ -447,12 +473,17 @@ try {
     // -----------------------------------------------------------------------
     await load(page, '#/coordinator/farms')
     await openFilters(page)
+    /* ★★ BC — ADAPTÉE : au téléphone, les types et la région sont des FAMILLES
+       de la feuille de filtres (brief BC 3b) : des lignes pleine largeur, la
+       région une valeur à la fois. Mêmes questions : trois types de même
+       largeur ; la région sur sa propre ligne (sa section). */
+    const sheetOpen = (await page.locator('[data-sheet-panel]').count()) > 0
 
-    const types = (await page.evaluate(() =>
-      [...document.querySelectorAll('[data-pill-group="farm-type"] .filter-pill')].map((el) => {
+    const types = (await page.evaluate((compact) =>
+      [...document.querySelectorAll(compact ? '[data-sheet-body] section[data-family="kind"] [data-testid^="farms-type-"]' : '[data-pill-group="farm-type"] .filter-pill')].map((el) => {
         const r = el.getBoundingClientRect()
         return { label: (el.textContent || '').trim().slice(0, 14), w: Math.round(r.width), y: Math.round(r.top) }
-      }),
+      }), sheetOpen,
     )) as { label: string; w: number; y: number }[]
 
     check(
@@ -467,6 +498,21 @@ try {
       types.map((t) => `${t.label}=${t.w}`).join(' · '),
     )
 
+    if (sheetOpen) {
+      const fam = await page.evaluate(() => {
+        const sec = document.querySelector('[data-sheet-body] section[data-family="region"]') as HTMLElement | null
+        if (!sec) return null
+        const body = sec.closest('[data-sheet-body]') as HTMLElement
+        return {
+          w: Math.round(sec.getBoundingClientRect().width),
+          rowW: Math.round(body.clientWidth - parseFloat(getComputedStyle(body).paddingLeft) - parseFloat(getComputedStyle(body).paddingRight)),
+          radios: sec.querySelectorAll('[role="menuitemradio"]').length,
+        }
+      })
+      check('A73 · חוות: the region is a family of its own, on its own line', !!fam && fam.w >= fam.rowW - 2, fam ? `w=${fam.w}/${fam.rowW}` : 'not found')
+      check('A73 · חוות: one region at a time (its values are a single choice)', !!fam && fam.radios >= 2, fam ? `${fam.radios} radios` : 'not found')
+      await context.close()
+    } else {
     const region = (await page.evaluate(() => {
       const el = document.querySelector('[data-testid="farms-region"]')
       if (!el) return null
@@ -509,6 +555,7 @@ try {
     )
 
     await context.close()
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -664,6 +711,8 @@ try {
           available: Number(row ? row.getAttribute('data-fold-available') : NaN),
           required: Number(row ? row.getAttribute('data-fold-required') : NaN),
           folded: document.querySelectorAll('[data-testid="filter-dropdown"]').length,
+          /* ★★ BC — la forme compacte (panneau étroit) : « סינון » ouvre la feuille. */
+          compact: document.querySelectorAll('[data-list-top][data-compact] [data-testid="filter-sheet-open"]').length,
           pills: [...document.querySelectorAll('.filter-pill')].filter((el) => {
             const r = el.getBoundingClientRect()
             return r.width > 4 && r.height > 4
@@ -675,14 +724,19 @@ try {
         available: number
         required: number
         folded: number
+        compact: number
         pills: number
       }
 
       if (!state.found) {
+        /* ★★ BC — ADAPTÉE : un panneau étroit (tablette en mode partagé) prend la
+           forme compacte du brief BC (3b, 3h) : les filtres sont dans la feuille
+           derrière « סינון » — c'est ce qu'AB2 demandait d'une rangée qui ne
+           tient pas : qu'elle se replie. */
         check(
-          `A74 · ${vp.name} · ${screen.name}: has a filter row`,
-          state.pills > 0,
-          `no [data-filter-row]; ${state.pills} pills`,
+          `A74 · ${vp.name} · ${screen.name}: ${state.compact ? 'compact panel: the filters are behind « סינון »' : 'has a filter row'}`,
+          state.pills > 0 || state.compact === 1,
+          `no [data-filter-row]; ${state.pills} pills · compact ${state.compact}`,
         )
         continue
       }
@@ -697,7 +751,7 @@ try {
 
     /* And the hit areas hold at these widths too — an iPad is a touch screen. */
     await load(page, '#/coordinator/farms')
-    const wide = (await page.evaluate(probePills, 40)) as HitBox[]
+    const wide = (await page.evaluate(probePills, { limit: 40, sel: '.filter-pill' })) as HitBox[]
     const small = wide.filter((p) => p.hit.w < MIN_TARGET || p.hit.h < MIN_TARGET)
     check(
       `A72 · ${vp.name} · חוות: every hit area ≥ ${MIN_TARGET}×${MIN_TARGET}`,

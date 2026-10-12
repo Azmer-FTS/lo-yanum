@@ -37,8 +37,12 @@ import {
   isContactEstablished,
   farmPersonName,
   farmPersonPhone,
+  FARM_BRANCHES,
+  branchCounts,
+  matchesBranches,
+  nearestLocalityOf,
 } from '@core/index'
-import type { Farm, FarmCoverage, FarmStatus, FarmType, RegionId } from '@core/index'
+import type { Farm, FarmBranchKind, FarmCoverage, FarmStatus, FarmType, RegionId } from '@core/index'
 
 import { EntityTable } from '../../components/EntityTable'
 import type { EntityColumn, RowAction } from '../../components/EntityTable'
@@ -47,11 +51,14 @@ import { useScreenSettings } from '../../settings/ScreenSettings'
 import { EntityQuickCard } from '../../components/EntityQuickCard'
 import { Icon } from '../../components/Icon'
 import { AreaGapMark } from '../../components/areaGap'
-import { FarmStatusBand } from '../../farm/FarmStatusBand'
+import { FarmStatusBand, FarmMarksLegend } from '../../farm/FarmStatusBand'
+import { BranchChips, branchLabel, branchText } from '../../farm/FarmBranches'
+import type { CompactFilters, FilterFamily } from '../../components/ListFilters'
+import { CallRestrictionChip, callNotices, callTone, confirmCall, guardCall, isCallGuarded } from '../../institutions/institutionUi'
 import { TestDataBadge } from '../../components/TestDataBadge'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import { OverflowMenu } from '../../components/OverflowMenu'
-import { RegionFilter } from '../../components/RegionFilter'
+import { RegionFilter, regionFilterFamily } from '../../components/RegionFilter'
 import {
   ThreatLegend,
   threatVectorShapes,
@@ -202,6 +209,9 @@ export function FarmsListScreen() {
    * (bloc-notes d'avant l'application) à qui personne n'a encore parlé.
    */
   const [notContactedOnly, setNotContactedOnly] = useState(() => params.get('filter') === 'notContacted')
+  /** ★★ BC — la nature de l'exploitation : l'une OU l'autre des natures cochées. */
+  const [branchFilter, setBranchFilter] = useState<FarmBranchKind[]>([])
+  const toggleBranchFilter = (k: FarmBranchKind) => setBranchFilter((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]))
   const neglectedCount = useMemo(
     () => coverage.filter((c) => c.state === 'never' || c.state === 'stale').length,
     [coverage],
@@ -345,6 +355,8 @@ export function FarmsListScreen() {
       if (intakeOnly && farm.status !== 'incoming_request') return false
       /* ★★ BA — « טרם נוצר קשר ». */
       if (notContactedOnly && isContactEstablished(farm)) return false
+      /* ★★ BC — la nature de l'exploitation. */
+      if (!matchesBranches(farm, branchFilter)) return false
       /* AC4.4 — « qui est oublié », as a narrowing of the same roster. */
       if (neglected) {
         const state = coverageOf.get(farm.id)?.state
@@ -359,6 +371,8 @@ export function FarmsListScreen() {
         farm.locality,
         farm.region,
         farm.farmerName ?? '',
+        /* ★★ BC — le repère aussi : « ליד דביר » se cherche par « דביר ». */
+        farm.nearestLocality ?? '',
         ...farm.contacts.map((c) => c.name),
         /* ★★ BA — le numéro aussi, chiffres seuls (« 0526… » trouve « 052-6… »). */
         ...[farm.farmerPhone ?? '', ...farm.contacts.map((c) => c.phone)].map((p) => p.replace(/\D/g, '')).filter(Boolean),
@@ -379,6 +393,7 @@ export function FarmsListScreen() {
     docsOnly,
     intakeOnly,
     notContactedOnly,
+    branchFilter,
     gapThreshold,
     coverageOf,
     query,
@@ -430,6 +445,8 @@ export function FarmsListScreen() {
     { key: 'locality', label: t('volunteers.colLocality'), sub: (f) => f.locality, minWidth: 620, className: 'w-[8rem]', render: (f) => <span className="text-content-secondary">{f.locality || '—'}</span>, title: (f) => f.locality },
     { key: 'region', label: t('farms.colRegion'), sub: (f) => regionLabel(f), minWidth: 660, className: 'w-[7rem]', render: (f) => <span className="text-content-secondary" data-testid="farm-region-cell">{regionLabel(f) || '—'}</span> },
     { key: 'type', label: t('farms.colType'), sub: (f) => t(`farmType.${f.type}`), minWidth: 780, className: 'w-[8rem]', render: (f) => <span className="text-content-secondary">{t(`farmType.${f.type}`)}</span> },
+    /* ★★ BC — la nature de l'exploitation (« ? » = à confirmer) ; sous le nom quand la colonne cède. */
+    { key: 'branches', label: t('branches.title'), sub: (f) => branchText(t, f), minWidth: 700, className: 'w-[9rem]', render: (f) => <BranchChips entity={f} testId={`farm-branches-${f.id}`} />, title: (f) => branchText(t, f) },
     { key: 'status', label: t('farms.colStatus'), sort: () => 0, minWidth: 560, className: 'w-[8.5rem]', render: (f) => <FarmStatusChip status={f.status} /> },
     { key: 'dunams', label: t('farms.colDunams'), sub: (f) => `${dunamsText(effectiveAreas(f).cultivated)} / ${dunamsText(effectiveAreas(f).grazing)}`, minWidth: 900, className: 'w-[7.5rem]', render: (f) => <span className="ltr-nums numeric text-content-secondary">{dunamsText(effectiveAreas(f).cultivated)} / {dunamsText(effectiveAreas(f).grazing)}</span> },
     { key: 'weighted', label: t('farms.colWeighted'), sort: () => 0, minWidth: 600, className: 'w-[6.5rem]', render: (f) => <span className="ltr-nums numeric font-semibold text-content-primary" data-weighted={weightedDunams(f)}>{dunamsText(weightedDunams(f))}</span> },
@@ -449,12 +466,29 @@ export function FarmsListScreen() {
     { key: 'nextVisit', label: t('farms.nextVisit'), sort: () => 0, minWidth: 720, className: 'w-[7rem]', render: (f) => <span className="ltr-nums text-micro text-content-muted">{f.nextVisitAt ? formatDate(f.nextVisitAt, locale) : t('farms.noVisitYet')}</span> },
   ]
   const farmActions = (f: Farm): RowAction[] => {
-    const phoneNo = f.contacts.find((c) => c.phone)?.phone ?? f.farmerPhone
+    const callee = f.contacts.find((c) => c.phone) ?? null
+    const phoneNo = callee?.phone ?? f.farmerPhone
+    /* ★★ BC — un contact dont la note restreint l'usage du téléphone : l'article
+       le dit, et l'appel demande de relire (le garde de BB, `confirmCall`). */
+    const guarded = isCallGuarded(null, callee)
     return [
       { key: 'view', icon: 'eye', label: t('table.view'), inline: true, onClick: () => { setPreviewId(f.id); select(f.id) }, testId: `farm-view-${f.id}` },
       { key: 'edit', icon: 'edit', label: t('table.edit'), inline: true, to: `/coordinator/farms/${f.id}/edit`, testId: `farm-edit-${f.id}` },
       { key: 'open', icon: 'external', label: t('preview.openFull'), inline: true, to: `/coordinator/farms/${f.id}`, testId: `farm-open-${f.id}` },
-      ...(phoneNo ? [{ key: 'call', icon: 'phone' as const, label: t('people.call'), onClick: () => window.open(`tel:${phoneNo.replace(/[^\d+]/g, '')}`, '_self') }] : []),
+      ...(phoneNo
+        ? [
+            {
+              key: 'call',
+              icon: guarded ? ('alert' as const) : ('phone' as const),
+              label: guarded ? callNotices(null, callee, t).join(' · ') : t('people.call'),
+              danger: guarded || undefined,
+              testId: guarded ? `farm-call-guarded-${f.id}` : `farm-call-${f.id}`,
+              onClick: () => {
+                if (confirmCall(null, callee, t)) window.open(`tel:${phoneNo.replace(/[^\d+]/g, '')}`, '_self')
+              },
+            },
+          ]
+        : []),
       { key: 'guard', icon: 'shield', label: t('farms.newGuardHere'), to: `/coordinator/missions/new?farm=${f.id}`, testId: `farm-new-guard-${f.id}` },
       { key: 'visit', icon: 'calendar', label: t('farms.planVisit'), to: `/coordinator/agenda/visit/new?farm=${f.id}` },
       { key: 'center', icon: 'pin', label: t('farms.centerOnMap'), onClick: () => centerOn(f) },
@@ -820,6 +854,7 @@ export function FarmsListScreen() {
   )
 
   const notContactedCount = farms.filter((f) => !isTestId(f.id) && !isContactEstablished(f)).length
+  const branchCountsAll = branchCounts(farms.filter((f) => !isTestId(f.id)))
   const filterRow = (
     <FilterRow
       /* ★★ BA — UNE rangée, qui défile ; les statuts ont la leur (`FarmStatusBand`). */
@@ -838,7 +873,8 @@ export function FarmsListScreen() {
         (renewOnly ? 1 : 0) +
         (docsOnly ? 1 : 0) +
         (intakeOnly ? 1 : 0) +
-        (archivedOnly ? 1 : 0)
+        (archivedOnly ? 1 : 0) +
+        (branchFilter.length > 0 ? 1 : 0)
       }
       onClear={() => {
         setStatus(null)
@@ -853,6 +889,7 @@ export function FarmsListScreen() {
         setNoOutlineOnly(false)
         setDocsOnly(false)
         setArchivedOnly(false)
+        setBranchFilter([])
       }}
     >
       {/* ★★ AX3.4 — le statut, les surfaces, les מושבים : des FILTRES ordinaires
@@ -914,6 +951,12 @@ export function FarmsListScreen() {
           </FilterPill>
         ))}
       </PillGroup>
+      {/* ★★ BC — la nature de l'exploitation : les natures présentes, chacune son compte. */}
+      {FARM_BRANCHES.filter((k) => branchCountsAll[k] > 0).map((k) => (
+        <FilterPill key={k} active={branchFilter.includes(k)} onClick={() => toggleBranchFilter(k)} count={branchCountsAll[k]} testId={`farms-branch-${k}`}>
+          {branchLabel(t, k)}
+        </FilterPill>
+      ))}
       {/**
         * ★★ AK7.3 — « בארכיון », UNE PASTILLE ET NON UNE VIGNETTE.
         *
@@ -949,8 +992,132 @@ export function FarmsListScreen() {
     </FilterRow>
   )
 
+  /**
+   * ═══════════════════════════════════════════════════════════════════════
+   * ★★ BC (2026-10-12) — LES MÊMES FILTRES, DÉCLARÉS : la forme compacte
+   *    (téléphone, panneau étroit) les lit pour la feuille, les pastilles et
+   *    le bouton « סינון » ; la forme large garde la rangée de BA ci-dessus.
+   * ═══════════════════════════════════════════════════════════════════════
+   */
+  const visibleFarmCount = farms.filter((f) => !isTestId(f.id)).length
+  const queue = (key: string, label: string, count: number, active: boolean, onToggle: () => void, icon: 'user' | 'clock' | 'document' | 'landPlot' | 'alert', testId: string) =>
+    count > 0 ? [{ key, label, count, active, onToggle, icon, tone: 'alert' as const, testId }] : []
+  const families: FilterFamily[] = [
+    {
+      key: 'queues',
+      title: t('filters.family.queues'),
+      testId: 'farms-queues-family',
+      options: [
+        ...queue('intake', `${t('intake.queueLine1')} ${t('intake.queueLine2')}`, intakeCount, intakeOnly, () => setIntakeOnly((v) => !v), 'user', 'farms-intake'),
+        ...queue('neglected', t('farms.filterNeglected'), neglectedCount, neglected, () => setNeglected((v) => !v), 'clock', 'farms-neglected'),
+        ...queue('docs', `${t('docs.queueLine1')} ${t('docs.queueLine2')}`, docsCount, docsOnly, () => setDocsOnly((v) => !v), 'document', 'farms-awaiting-docs'),
+        ...queue('renew', t('renewal.title'), renewIds.size, renewOnly, () => setRenewOnly((v) => !v), 'clock', 'farms-renewal'),
+        ...queue('noOutline', t('farms.filterNoOutline'), noOutlineCount, noOutlineOnly, () => setNoOutlineOnly((v) => !v), 'landPlot', 'farms-no-outline'),
+        ...queue('gap', t('farms.filterGap'), gapCount, gapOnly, () => setGapOnly((v) => !v), 'alert', 'farms-area-gap'),
+      ],
+    },
+    {
+      key: 'contact',
+      title: t('filters.family.contact'),
+      options: notContactedCount > 0 ? [{ key: 'notContacted', label: t('farmContacts.notEstablished'), count: notContactedCount, active: notContactedOnly, onToggle: () => setNotContactedOnly((v) => !v), hint: t('farmContacts.filterHint'), testId: 'farms-not-contacted' }] : [],
+    },
+    {
+      key: 'branches',
+      title: t('filters.family.branches'),
+      testId: 'farms-branches-family',
+      options: FARM_BRANCHES.map((k) => ({ key: k, label: branchLabel(t, k), count: branchCountsAll[k], active: branchFilter.includes(k), disabled: branchCountsAll[k] === 0, onToggle: () => toggleBranchFilter(k), testId: `farms-branch-${k}` })),
+    },
+    {
+      key: 'kind',
+      title: t('filters.family.kind'),
+      options: [
+        ...TYPES.map((ft) => ({ key: ft, label: t(`farmType.${ft}`), count: farms.filter((f) => f.type === ft).length, active: type === ft, onToggle: () => setType(type === ft ? null : ft), testId: `farms-type-${ft}` })),
+        ...(moshavim.length > 0 ? [{ key: 'moshav', label: t('farms.kpiMoshavim'), count: moshavim.length, active: moshavOnly, onToggle: () => setMoshavOnly((v) => !v), testId: 'kpi-moshavim' }] : []),
+      ],
+    },
+    {
+      key: 'areas',
+      title: t('filters.family.areas'),
+      options: [{ key: 'withAreas', label: t('farms.withAreas'), count: withAreas.length, active: hasAreas, onToggle: () => setHasAreas((v) => !v), hint: t('farms.withAreasHint'), testId: 'kpi-weighted' }],
+    },
+    regionFilterFamily(t, region, setRegion, regionCounts, 'farms-region'),
+    {
+      key: 'archive',
+      title: t('filters.family.archive'),
+      options: archivedFarms.length > 0 ? [{ key: 'archived', label: t('archive.filter'), count: archivedFarms.length, active: archivedOnly, onToggle: () => setArchivedOnly((v) => !v), hint: t('archive.filterHint'), testId: 'farms-archived' }] : [],
+    },
+    {
+      key: 'sort',
+      title: t('filters.family.sort'),
+      sort: true,
+      single: true,
+      testId: 'farms-sort-family',
+      options: (['name', 'weightedDesc', 'weightedAsc', 'status', 'nextVisit', 'guardsAsc', 'guardsDesc', 'lastGuardOldest', 'areaGapDesc'] as const).map((k) => ({
+        key: k,
+        label: t(k === 'areaGapDesc' ? 'farms.sortGapDesc' : `farms.sort${k.charAt(0).toUpperCase()}${k.slice(1)}`),
+        active: sort === k,
+        onToggle: () => setSort(k),
+        testId: `farms-sort-${k}`,
+      })),
+    },
+  ].filter((fam) => fam.options.length > 0)
+  const compactFilters: CompactFilters = {
+    families,
+    status: {
+      key: 'status',
+      title: t('farmMarks.statusTitle'),
+      single: true,
+      testId: 'farms-status-family',
+      options: statusKpis.map((k) => ({
+        key: k.status,
+        label: t(`farmStatus.${k.status}`),
+        count: k.count,
+        active: status === k.status,
+        onToggle: () => setStatus(status === k.status ? null : k.status),
+        dot: <FarmStatusDot status={k.status} />,
+        testId: `farm-status-${k.status}`,
+      })),
+      /* La légende des trois marques du nom, sous les statuts : une phrase au toucher. */
+      note: <FarmMarksLegend neglectDays={neglectDays} gapPercent={Math.round(gapThreshold * 100)} wrap />,
+    },
+    statusAll: { label: t('farms.statusAll'), count: visibleFarmCount },
+    activeCount:
+      (notContactedOnly ? 1 : 0) +
+      (type !== null ? 1 : 0) +
+      (moshavOnly ? 1 : 0) +
+      (region !== null ? 1 : 0) +
+      (hasAreas ? 1 : 0) +
+      (neglected ? 1 : 0) +
+      (gapOnly ? 1 : 0) +
+      (noOutlineOnly ? 1 : 0) +
+      (renewOnly ? 1 : 0) +
+      (docsOnly ? 1 : 0) +
+      (intakeOnly ? 1 : 0) +
+      (archivedOnly ? 1 : 0) +
+      branchFilter.length,
+    onClear: () => {
+      setStatus(null)
+      setNotContactedOnly(false)
+      setType(null)
+      setMoshavOnly(false)
+      setRegion(null)
+      setHasAreas(false)
+      setNeglected(false)
+      setIntakeOnly(false)
+      setGapOnly(false)
+      setNoOutlineOnly(false)
+      setRenewOnly(false)
+      setDocsOnly(false)
+      setArchivedOnly(false)
+      setBranchFilter([])
+    },
+    results: filtered.filter((f) => !isTestId(f.id)).length,
+  }
+
   const top = (extra?: React.ReactNode) => (
     <ListTop
+      compactFilters={compactFilters}
+      wideChildren={extra}
       testId="farms-top"
       title={t('farms.title')}
       shown={filtered.filter((f) => !isTestId(f.id)).length}
@@ -982,13 +1149,13 @@ export function FarmsListScreen() {
           </ul>
         </>
       }
-    >
-      {extra}
-    </ListTop>
+    />
   )
 
   return (
     <MapPanel
+      /* ★★ BC — écran de liste : liste ↔ carte au téléphone, carte à côté en tablette. */
+      list
       screenKey="farms"
       ariaLabel={t('map.farmsMap')}
       markers={markers}
@@ -1067,6 +1234,8 @@ export function FarmsListScreen() {
                 /* ★★ BA — l'agriculteur (rang 1), sous le nom de la ferme : le PO
                    cherche une PERSONNE autant qu'une exploitation. */
                 person: farmPersonName(f) || undefined,
+                /* ★★ BC — « ליד … », après la ferme et l'agriculteur. */
+                near: nearestLocalityOf(f) ? t('farms.near', { place: nearestLocalityOf(f)!.name }) : undefined,
                 phone: farmPersonPhone(f) || undefined,
                 photo: f.photo,
                 shape: 'square',
@@ -1352,6 +1521,9 @@ function FarmPreview({ farm, posts, coverage, onClose, docked }: { farm: Farm; p
         ))}
       </div>
       <PreviewSection title={t('preview.details')}>
+        {/* ★★ BC — le repère (« ליד … ») et la nature, en lecture ; ils se corrigent sur la fiche. */}
+        <PreviewRow label={t('nearest.short')}>{nearestLocalityOf(farm)?.name ?? ''}</PreviewRow>
+        <PreviewRow label={t('branches.title')}>{(farm.branches ?? []).length > 0 ? <BranchChips entity={farm} testId="farm-preview-branches" /> : ''}</PreviewRow>
         <PreviewRow label={t('farms.colDunams')}>{`${n(areas.cultivated)} / ${n(areas.grazing)}`}</PreviewRow>
         <PreviewRow label={t('livestock.heads')}>{heads ? n(heads) : ''}</PreviewRow>
         <PreviewRow label={t('farms.nextVisit')}>{farm.nextVisitAt ? formatDate(farm.nextVisitAt, locale) : ''}</PreviewRow>
@@ -1364,10 +1536,18 @@ function FarmPreview({ farm, posts, coverage, onClose, docked }: { farm: Farm; p
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-caption font-semibold text-content-primary">{c.name}</span>
                 <span className="muted block truncate text-micro">{c.role || (c.isPrimary ? t('people.primary') : t('people.other'))}</span>
+                <CallRestrictionChip contact={c} full />
               </span>
               {c.phone && (
-                <a href={`tel:${c.phone.replace(/[^\d+]/g, '')}`} className="btn-ghost h-10 w-10 min-w-0 justify-center p-0" aria-label={t('people.call')}>
-                  <Icon name="phone" size={16} />
+                <a
+                  href={`tel:${c.phone.replace(/[^\d+]/g, '')}`}
+                  onClick={guardCall(null, t, c)}
+                  className={`${callTone(null, 'btn-ghost', c)} h-11 w-11 min-w-0 justify-center p-0`}
+                  aria-label={t('people.call')}
+                  data-guarded={isCallGuarded(null, c) ? '' : undefined}
+                  data-testid="farm-preview-contact-call"
+                >
+                  <Icon name={isCallGuarded(null, c) ? 'alert' : 'phone'} size={16} />
                 </a>
               )}
             </div>

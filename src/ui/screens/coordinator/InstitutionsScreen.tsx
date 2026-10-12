@@ -10,6 +10,7 @@ import {
   getInstitutions,
   getVolunteers,
   headRoleKey,
+  institutionHead,
   institutionMatchesQuery,
   isInstitutionHeadMissing,
   needsPriorCoordination,
@@ -31,8 +32,10 @@ import { MapView } from '../../components/MapView'
 import type { MapMarker } from '../../components/MapView'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { FilterPill, FilterRow, ListTop, PageHeader } from '../../components/primitives'
+import { sortFamily } from '../../components/ListFilters'
+import type { CompactFilters } from '../../components/ListFilters'
 import { useCoreValue } from '../../hooks/useCore'
-import { CoordinationBanner, CoordinationChip, ENGAGEMENT_ON, HeadMissingChip, InstitutionContactsList, InstitutionEditor, InstitutionPeople, MinorsChip, RelatedInstitutions, callTone, coordinationText, guardCall, telOf } from '../../institutions/institutionUi'
+import { CallRestrictionChip, CoordinationBanner, CoordinationChip, ENGAGEMENT_ON, HeadMissingChip, InstitutionContactsList, InstitutionEditor, InstitutionPeople, MinorsChip, RelatedInstitutions, callNotices, callTone, confirmCall, guardCall, isCallGuarded, telOf } from '../../institutions/institutionUi'
 import { runUndoable } from '../../components/UndoToast'
 
 /**
@@ -170,22 +173,25 @@ export function InstitutionsScreen() {
       /* ★★ BB — le numéro du contact de tête (jamais la מזכירות) ; avec le
          marqueur « נדרש תיאום מוקדם », le texte l'accompagne et l'appel
          demande de le relire. */
+      /* ★★ BC — et un contact de tête dont la note restreint l'usage de son
+         téléphone : le même garde, dans la LISTE comme sur la fiche. */
       render: (i) =>
         i.contactPhone ? (
           <span className="flex min-w-0 flex-col items-start gap-0.5">
             <a
-              className={`ltr-nums inline-flex min-h-[2.5rem] items-center gap-1 hover:text-accent-ink ${needsPriorCoordination(i) ? 'font-semibold text-status-warn-ink' : 'text-content-secondary'}`}
+              className={`ltr-nums inline-flex min-h-[2.75rem] items-center gap-1 hover:text-accent-ink ${isCallGuarded(i, institutionHead(i)) ? 'font-semibold text-status-warn-ink' : 'text-content-secondary'}`}
               href={telOf(i.contactPhone)}
-              onClick={guardCall(i, t)}
+              onClick={guardCall(i, t, institutionHead(i))}
               dir="ltr"
               data-testid={`institution-call-${i.id}`}
-              data-guarded={needsPriorCoordination(i) ? '' : undefined}
-              title={needsPriorCoordination(i) ? coordinationText(i, t) : undefined}
+              data-guarded={isCallGuarded(i, institutionHead(i)) ? '' : undefined}
+              title={isCallGuarded(i, institutionHead(i)) ? callNotices(i, institutionHead(i), t).join(' · ') : undefined}
             >
-              <Icon name={needsPriorCoordination(i) ? 'alert' : 'phone'} size={14} />
+              <Icon name={isCallGuarded(i, institutionHead(i)) ? 'alert' : 'phone'} size={14} />
               {i.contactPhone}
             </a>
             <CoordinationChip inst={i} />
+            <CallRestrictionChip contact={institutionHead(i)} />
           </span>
         ) : needsPriorCoordination(i) ? (
           <CoordinationChip inst={i} />
@@ -217,14 +223,59 @@ export function InstitutionsScreen() {
     /* ★★ BB — avec le marqueur, l'article dit le texte et l'appel le fait relire. */
     ...(i.contactPhone
       ? [
-          needsPriorCoordination(i)
-            ? { key: 'call', icon: 'alert' as const, label: coordinationText(i, t), danger: true, testId: `institution-call-guarded-${i.id}`, onClick: () => { if (window.confirm(`${coordinationText(i, t)}\n\n${t('institutions.coordinationCallAnyway')}?`)) window.open(telOf(i.contactPhone), '_self') } }
+          isCallGuarded(i, institutionHead(i))
+            ? { key: 'call', icon: 'alert' as const, label: callNotices(i, institutionHead(i), t).join(' · '), danger: true, testId: `institution-call-guarded-${i.id}`, onClick: () => { if (confirmCall(i, institutionHead(i), t)) window.open(telOf(i.contactPhone), '_self') } }
             : { key: 'call', icon: 'phone' as const, label: t('institutions.call'), testId: `institution-call-menu-${i.id}`, onClick: () => window.open(telOf(i.contactPhone), '_self') },
         ]
       : []),
     { key: 'coverage', icon: 'map', label: t('institutionsScreen.seeReach'), to: `/coordinator/coverage?inst=${i.id}`, testId: `institution-coverage-${i.id}` },
     { key: 'volunteer', icon: 'userPlus', label: t('institutionPeople.add'), to: `/coordinator/volunteers/new?institution=${i.id}` },
   ]
+
+  const FILTERS: Filter[] = ['all', ...(counts.toConfirm > 0 ? (['toConfirm'] as const) : []), ...(counts.headMissing > 0 ? (['headMissing'] as const) : []), ...(counts.coordination > 0 ? (['coordination'] as const) : []), ...INSTITUTION_ENGAGEMENTS]
+  /* ★★ BC — la forme compacte : l'engagement a son déclencheur (le statut d'une
+     institution) ; « לבדיקה » (à confirmer, sans rang 1, coordination) et le tri
+     vivent dans la feuille. Un seul choix à la fois, comme la rangée de pastilles. */
+  const engagementKeys = FILTERS.filter((f) => f !== 'all' && f !== 'toConfirm' && f !== 'headMissing' && f !== 'coordination')
+  const flagKeys = (['toConfirm', 'headMissing', 'coordination'] as const).filter((f) => FILTERS.includes(f))
+  const compactFilters: CompactFilters = {
+    status: {
+      key: 'status',
+      title: t('filters.family.status'),
+      single: true,
+      testId: 'institutions-status-family',
+      options: engagementKeys.map((f) => ({
+        key: f,
+        label: t(`institutions.engagementShort.${f}`),
+        count: counts[f],
+        active: filter === f,
+        onToggle: () => setFilter(filter === f ? 'all' : f),
+        dot: <span className="h-2.5 w-2.5 shrink-0 rounded-pill" style={{ backgroundColor: readToken(ENGAGEMENT_TOKEN[f as InstitutionEngagement]) }} aria-hidden />,
+        testId: `institutions-filter-${f}`,
+      })),
+    },
+    statusAll: { label: t('institutions.all'), count: counts.all },
+    families: [
+      {
+        key: 'flags',
+        title: t('filters.family.flags'),
+        single: true,
+        options: flagKeys.map((f) => ({
+          key: f,
+          label: f === 'toConfirm' ? t('institutions.toConfirmTab') : f === 'headMissing' ? t('institutions.headMissingTab') : t('institutions.coordinationTab'),
+          count: counts[f],
+          active: filter === f,
+          onToggle: () => setFilter(filter === f ? 'all' : f),
+          hint: f === 'toConfirm' ? t('institutions.toConfirm') : f === 'headMissing' ? t('institutions.headMissingTitle') : t('institutions.coordinationTitle'),
+          testId: `institutions-filter-${f}`,
+        })),
+      },
+      sortFamily(t, [{ key: 'name', label: t('institutionsScreen.col.name') }, ...columns.filter((c) => c.sort).map((c) => ({ key: c.key, label: c.label }))], sort, setSort, 'institutions'),
+    ],
+    activeCount: (flagKeys as readonly string[]).includes(filter) ? 1 : 0,
+    onClear: () => setFilter('all'),
+    results: visible.filter((i) => !isTestId(i.id)).length,
+  }
 
   const markers: MapMarker[] = institutions
     .filter((i) => i.position)
@@ -239,10 +290,11 @@ export function InstitutionsScreen() {
     }))
   const openInst = institutions.find((i) => i.id === open) ?? null
 
-  const FILTERS: Filter[] = ['all', ...(counts.toConfirm > 0 ? (['toConfirm'] as const) : []), ...(counts.headMissing > 0 ? (['headMissing'] as const) : []), ...(counts.coordination > 0 ? (['coordination'] as const) : []), ...INSTITUTION_ENGAGEMENTS]
 
   return (
     <MapSplit
+      /* ★★ BC — écran de liste : liste ↔ carte au téléphone, carte à côté en tablette. */
+      list
       screenKey="institutions"
       ariaLabel={t('institutionsScreen.mapLabel')}
       breakpoint="xl"
@@ -263,6 +315,7 @@ export function InstitutionsScreen() {
       {({ mode }) => (
         <>
           <ListTop
+            compactFilters={compactFilters}
             title={t('nav.institutions')}
             info={<p>{t('institutionsScreen.info')}</p>}
             shown={visible.filter((i) => !isTestId(i.id)).length}
@@ -362,8 +415,8 @@ function InstitutionPreview({ inst, onClose, docked }: { inst: Institution; onCl
       quick={
         <>
           {inst.contactPhone && (
-            <a className={`${callTone(inst, 'btn-primary')} min-h-11`} href={telOf(inst.contactPhone)} onClick={guardCall(inst, t)} data-testid="institution-preview-call" data-guarded={needsPriorCoordination(inst) ? '' : undefined}>
-              <Icon name={needsPriorCoordination(inst) ? 'alert' : 'phone'} size={16} />
+            <a className={`${callTone(inst, 'btn-primary', institutionHead(inst))} min-h-11`} href={telOf(inst.contactPhone)} onClick={guardCall(inst, t, institutionHead(inst))} data-testid="institution-preview-call" data-guarded={isCallGuarded(inst, institutionHead(inst)) ? '' : undefined}>
+              <Icon name={isCallGuarded(inst, institutionHead(inst)) ? 'alert' : 'phone'} size={16} />
               {t('institutions.call')}
             </a>
           )}

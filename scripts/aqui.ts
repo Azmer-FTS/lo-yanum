@@ -283,6 +283,25 @@ try {
     await guard(`A261 ${vp.name}`, async () => {
       const { ctx, page } = await open(vp, { requests: 1, seen: ['farm-req-aq00000001'] })
       await go(page, '/coordinator/farms')
+      const ROW = '[data-entity-table]:not([data-tiles]) tbody tr[data-row-key]'
+      if (vp.width < 768) {
+        /* ★★ BC — ADAPTÉE : au téléphone, une liste n'a plus de vignettes (liste ↔
+           carte, brief BC 3h ; carte masquée → tableau, règle AZ2 du PO). La
+           demande y est la PREMIÈRE LIGNE du tableau, distincte, nommée. */
+        const row = page.locator(ROW).first()
+        const text = ((await row.textContent()) ?? '').replace(/\s+/g, ' ')
+        check(`${vp.name} — ★ la PREMIÈRE ligne est la demande`, text.includes('חוות הבדיקה') && (await row.getAttribute('data-intake')) === 'true', text.slice(0, 60))
+        check(`${vp.name} — sans aucun filtre actif`, (await page.locator('[data-testid="active-filter-chips"]').count()) === 0)
+        const look = await row.evaluate((el) => {
+          const s = getComputedStyle(el)
+          return { bg: s.backgroundColor, edge: s.borderInlineStartWidth }
+        })
+        check(`${vp.name} — ★ distincte : liseré et fond propres`, look.bg !== 'rgba(0, 0, 0, 0)' && parseFloat(look.edge) >= 3, JSON.stringify(look))
+        check(`${vp.name} — elle se nomme « בקשה נכנסת » avec sa date`, text.includes('בקשה נכנסת') && text.includes('התקבלה'), text.slice(0, 120))
+        check(`${vp.name} — la suivante est une fiche ordinaire`, (await page.locator(ROW).nth(1).getAttribute('data-intake')) !== 'true')
+        await ctx.close()
+        return
+      }
       const tiles = page.locator('[data-testid="farm-tile"]')
       const first = (await tiles.first().textContent()) ?? ''
       check(`${vp.name} — ★ la PREMIÈRE tuile est la demande`, first.includes('חוות הבדיקה'), first.slice(0, 60))
@@ -297,14 +316,17 @@ try {
       check(`${vp.name} — elle se nomme « בקשה נכנסת » avec sa date`, tag.includes('בקשה נכנסת') && tag.includes('התקבלה'), tag)
       const second = (await tiles.nth(1).evaluate((el) => el.className.includes('farm-tile-intake')))
       check(`${vp.name} — la suivante est une fiche ordinaire`, !second)
-      /* Même règle dans le tableau (mode « liste seule »). */
+      /* Même règle dans le tableau (mode « liste seule »).
+         ★★ BC — sélecteur rafraîchi : il visait la grille `.roster-farms`,
+         retirée en AY2 (le tableau des fermes est `EntityTable` : `farm-row-…`,
+         `data-intake`) ; la vérification était rouge depuis, faute de rejeu. */
       const hidden = page.locator('[data-testid="map-mode-hidden"]')
       if (await hidden.count()) {
         await hidden.first().click()
         await page.waitForTimeout(1500)
-        const firstRow = page.locator('.roster-row[data-intake="true"]').first()
-        const rows = await page.locator('.roster-farms .roster-row[type="button"], .roster-farms button.roster-row').allTextContents()
-        check(`${vp.name} — tableau : la demande en tête aussi`, (rows[0] ?? '').includes('חוות הבדיקה') && (await firstRow.count()) === 1, (rows[0] ?? '').slice(0, 40))
+        const firstRow = page.locator(ROW).first()
+        const rowText = ((await firstRow.textContent()) ?? '').replace(/\s+/g, ' ')
+        check(`${vp.name} — tableau : la demande en tête aussi`, rowText.includes('חוות הבדיקה') && (await firstRow.getAttribute('data-intake')) === 'true', rowText.slice(0, 40))
       }
       await ctx.close()
     })
@@ -317,6 +339,41 @@ try {
     await guard(`A262 ${vp.name}`, async () => {
       const { ctx, page } = await open(vp, { requests: 1, seen: ['farm-req-aq00000001'] })
       await go(page, '/coordinator/farms')
+      if ((await page.locator('[data-list-top][data-compact]').count()) > 0) {
+        /* ★★ BC — ADAPTÉE : forme compacte (téléphone, panneau étroit de la
+           tablette) : les files de travail sont DANS LA FEUILLE derrière
+           « סינון », comme tous les filtres (brief BC 3b) ; la demande, elle,
+           se voit sans geste — PREMIÈRE ligne ou vignette, distincte (A261).
+           Ici : « בקשות נכנסות » est la première file de la feuille, avec son
+           compte, entière, découverte, et la toucher filtre. */
+        await page.locator('[data-testid="filter-sheet-open"]').click()
+        await page.waitForTimeout(450)
+        /* La feuille ouvre sur les statuts (« בקשה נכנסת » y est le premier, avec
+           son compte) ; la famille des FILES porte « בקשות נכנסות » en tête. */
+        const first = await page.evaluate(() => {
+          const sheet = document.querySelector('[data-testid="filter-sheet"]')
+          const status = sheet?.querySelector('section[data-family="status"] [data-testid$="-option"]') as HTMLElement | null
+          const fam = sheet?.querySelector('section[data-family="queues"]')
+          const opt = fam?.querySelector('[data-testid$="-option"]') as HTMLElement | null
+          return { status: status?.dataset.testid ?? '', option: opt?.dataset.testid ?? '', text: (opt?.textContent ?? '').replace(/\s+/g, ' ') }
+        })
+        check(`${vp.name} — « בקשות נכנסות » en tête des files de la feuille, avec son compte (et « בקשה נכנסת » en tête des statuts)`, first.option === 'farms-intake-option' && /1/.test(first.text) && first.status === 'farm-status-incoming_request-option', JSON.stringify(first))
+        /* La feuille DÉFILE : on amène la ligne à l'écran comme le doigt le
+           ferait, puis on vérifie que rien ne la recouvre. */
+        await page.locator('[data-testid="farms-intake-option"]').scrollIntoViewIfNeeded()
+        await page.waitForTimeout(250)
+        const ex = await exposure(page, '[data-testid="farms-intake-option"]')
+        check(`${vp.name} — ★ entière dans l'écran, recouverte par RIEN`, !!ex && ex.hits === ex.total && ex.left >= 0 && ex.right <= ex.vw && ex.top >= 0 && ex.bottom <= ex.vh, ex ? `${ex.hits}/${ex.total} ${ex.blockers.join(' ')}` : 'absente')
+        await page.locator('[data-testid="farms-intake-option"]').click()
+        await page.waitForTimeout(400)
+        await page.locator('[data-testid="filter-sheet-show"]').click()
+        await page.waitForTimeout(600)
+        const n = await page.locator('[data-testid^="farm-row-"]').count()
+        check(`${vp.name} — la toucher filtre : une seule fiche`, n === 1, `${n}`)
+        await page.screenshot({ path: `${SHOTS}/a262-vignette-${vp.name}.png` })
+        await ctx.close()
+        return
+      }
       const ex = await exposure(page, '[data-testid="farms-intake"]')
       check(`${vp.name} — la vignette existe`, !!ex)
       if (ex) {
@@ -465,6 +522,23 @@ try {
         if (mode === 'full') {
           /* Carte seule : la liste est repliée, il n'y a pas de champ à recouvrir. */
           check(`${vp.name} carte seule — aucune liste, donc aucun champ (sans objet)`, (await loupe.count()) === 0)
+          await ctx.close()
+          return
+        }
+        if ((await page.locator('[data-list-top][data-compact]').count()) > 0) {
+          /* ★★ BC — ADAPTÉE : forme compacte : la recherche est un champ TOUJOURS
+             ouvert dans la barre fine collée (plus de loupe à toucher) ; mêmes
+             exigences : rien dessus, entier dans l'écran, on y tape. */
+          const ex = await exposure(page, '[data-testid="list-search"]')
+          check(`${vp.name} ${mode} — le champ est là, sans geste`, !!ex)
+          if (ex) {
+            check(`${vp.name} ${mode} — ★ recouvert par RIEN`, ex.hits === ex.total, `${ex.hits}/${ex.total} ${ex.blockers.join(' ')}`)
+            check(`${vp.name} ${mode} — ★ entier dans l'écran`, ex.left >= 0 && ex.right <= ex.vw, `${ex.left}…${ex.right} / ${ex.vw}`)
+          }
+          await page.locator('[data-testid="list-search"]').fill('חוות')
+          await page.waitForTimeout(400)
+          check(`${vp.name} ${mode} — on y tape`, (await page.locator('[data-testid="list-search"]').inputValue()) === 'חוות')
+          await page.screenshot({ path: `${SHOTS}/a267-recherche-${vp.name}-${mode}.png` })
           await ctx.close()
           return
         }

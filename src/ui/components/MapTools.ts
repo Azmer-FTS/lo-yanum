@@ -252,7 +252,8 @@ export class MapTools implements IControl {
   /** One frosted group of the rail. Every one of them is exactly 52 px wide. */
   private pill(testid: string): HTMLDivElement {
     const el = document.createElement('div')
-    el.className = 'glass flex flex-col gap-0.5 rounded-card p-1'
+    /* ★★ BC — 8 px entre deux boutons de la pile (ils étaient à 2 px). */
+    el.className = 'glass flex flex-col gap-2 rounded-card p-1'
     el.dataset.testid = testid
     return el
   }

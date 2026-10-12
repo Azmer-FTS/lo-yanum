@@ -123,7 +123,10 @@ section('A404 — « נדרש תיאום מוקדם »')
     check(`A404 ${f.split('/').pop()} : aucun « tel: » écrit à la main hors telOf`, !/[`'"]tel:/.test(src.replace(/export const telOf[^\n]*/, '')))
   }
   const list = readFileSync('src/ui/screens/coordinator/InstitutionsScreen.tsx', 'utf8')
-  check('A404 le geste « appeler » du menu a une variante gardée qui DIT le texte', /needsPriorCoordination\(i\)\s*\?\s*\{ key: 'call', icon: 'alert'[^}]*label: coordinationText\(i, t\)/.test(list))
+  /* ★★ BC — le garde est étendu au contact dont la note restreint le téléphone :
+     la variante gardée dit désormais TOUS les textes (`callNotices`), la
+     coordination de l'institution d'abord. Même forme, même obligation. */
+  check('A404 le geste « appeler » du menu a une variante gardée qui DIT le texte', /(needsPriorCoordination\(i\)|isCallGuarded\(i, institutionHead\(i\)\))\s*\?\s*\{ key: 'call', icon: 'alert'[^}]*label: (coordinationText\(i, t\)|callNotices\(i, institutionHead\(i\), t\)\.join)/.test(list))
   const ui = readFileSync('src/ui/institutions/institutionUi.tsx', 'utf8')
   const chip = ui.slice(ui.indexOf('export function CoordinationChip'), ui.indexOf('export function CoordinationBanner'))
   check('A404 la puce porte le texte (pas seulement le mot)', chip.includes('coordinationNote') && chip.includes('${note}'))

@@ -462,7 +462,9 @@ try {
             }
           })
         await open(page, '#/coordinator/farms', 4000)
-        for (const mode of ['split', 'full', 'hidden'] as const) {
+        /* ★★ BC — ADAPTÉE : au téléphone, une liste n'a que deux états (liste ↔
+           carte, brief BC 3h) : le mode divisé n'y existe plus pour חוות. */
+        for (const mode of w < 768 ? (['full', 'hidden'] as const) : (['split', 'full', 'hidden'] as const)) {
           await page.locator(`[data-testid="map-mode-${mode}"]`).first().click()
           await page.waitForTimeout(1500)
           const pr = await probe()
@@ -475,7 +477,7 @@ try {
             check(`${w} px · plein : pas de bordure de séparation sans liste à séparer`, pr?.mapBoxBorderRight === '0px', String(pr?.mapBoxBorderRight))
           }
         }
-        await page.locator('[data-testid="map-mode-split"]').first().click()
+        if (w >= 768) await page.locator('[data-testid="map-mode-split"]').first().click()
         await open(page, '#/coordinator/farms/farm-07', 5000)
         await page.locator('[data-testid="map-tool-fullscreen"]:visible').first().click()
         await page.waitForTimeout(1800)

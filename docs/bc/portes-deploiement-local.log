@@ -1,0 +1,28 @@
+# BC — portes rejouées 2026-10-12T12:12:07.692Z
+
+## ground — exit=0
+
+The four proofs are about the NATIONAL archive. Every one must pass.
+
+## backdrop — exit=0
+
+38 passed, 0 failed
+
+## redraw — exit=0
+
+18 passed, 0 failed
+
+## overlap — exit=0
+
+167 passed, 0 failed
+
+## freehand — exit=0
+
+30 passed, 0 failed
+
+# BILAN
+OK   ground         exit=0 36s  The four proofs are about the NATIONAL archive. Every one must pass.
+OK   backdrop       exit=0 128s  38 passed, 0 failed
+OK   redraw         exit=0 72s  18 passed, 0 failed
+OK   overlap        exit=0 198s  167 passed, 0 failed
+OK   freehand       exit=0 45s  30 passed, 0 failed

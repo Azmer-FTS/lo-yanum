@@ -2,6 +2,7 @@ import type { Collection, StoreData } from '@core/backend'
 import type { Tour, TourPlan } from '@core/tours'
 import { splitLegacyDunams } from '@core/fields'
 import { normalizeLeadStatus } from '@core/leads'
+import { normalizeBranches } from '@core/branches'
 import type { Institution, InstitutionContact, PhoneLabel } from '@core/institutions'
 import { INSTITUTION_CONTACT_ROLES, PHONE_LABELS, settleInstitution } from '@core/institutions'
 import type { Landmark } from '@core/landmarks'
@@ -191,6 +192,10 @@ const farmMapping: Mapping<Farm> = {
           farmer_phone: f.farmerPhone ?? null,
           /* ★★ BA — « טרם נוצר קשר » ; absent = établi (défaut de la colonne). */
           contact_established: f.contactEstablished !== false,
+          /* ★★ BC — la localité de repère (calculée ou saisie) et la nature. */
+          nearest_locality: f.nearestLocality ?? null,
+          nearest_locality_manual: f.nearestLocalityManual ?? false,
+          branches: f.branches ?? [],
           farmer_email: f.farmerEmail ?? null,
           /* AF1 — ת״ז / ח״פ, la quatrième case de l'en-tête du הסכם. */
           farmer_id_no: f.farmerId ?? null,
@@ -266,6 +271,8 @@ const farmMapping: Mapping<Farm> = {
         is_primary: c.isPrimary,
         /* ★★ BA — la note d'un contact ; `position` est son RANG (0 = rang 1). */
         note: c.note ?? '',
+        /* ★★ BC — la note restreint l'usage du téléphone. */
+        restricts_calls: c.restrictsCalls ?? false,
         position,
       })),
     },
@@ -351,6 +358,7 @@ const farmMapping: Mapping<Farm> = {
         isPrimary: bool(r.is_primary),
         /* ★★ BA — absente plutôt que vide : l'aller-retour reste une identité. */
         ...(str(r.note) !== '' ? { note: str(r.note) } : {}),
+        ...(r.restricts_calls === true ? { restrictsCalls: true } : {}),
       }),
     ),
     commitments: ordered(kids.entity_commitments).map(
@@ -417,6 +425,10 @@ const farmMapping: Mapping<Farm> = {
     farmerPhone: optStr(p.farmer_phone),
     /* ★★ BA — seul « non établi » est porté ; établi = absent. */
     ...(p.contact_established === false ? { contactEstablished: false } : {}),
+    /* ★★ BC — absentes tant que rien n'est dit : l'aller-retour reste une identité. */
+    ...(optStr(p.nearest_locality) ? { nearestLocality: optStr(p.nearest_locality) } : {}),
+    ...(p.nearest_locality_manual === true ? { nearestLocalityManual: true } : {}),
+    ...(normalizeBranches(p.branches).length > 0 ? { branches: normalizeBranches(p.branches) } : {}),
     farmerEmail: optStr(p.farmer_email),
     farmerId: optStr(p.farmer_id_no),
     liaisonName: optStr(p.liaison_name),
@@ -1163,6 +1175,7 @@ const leadMapping: Mapping<Lead> = {
           converted_farm_id: l.convertedFarmId,
           converted_at: l.convertedAt,
           photo: l.photo ?? null,
+          branches: l.branches ?? [],
           created_at: l.createdAt,
           updated_at: l.updatedAt,
         },
@@ -1187,6 +1200,7 @@ const leadMapping: Mapping<Lead> = {
     convertedFarmId: typeof p.converted_farm_id === 'string' ? p.converted_farm_id : null,
     convertedAt: typeof p.converted_at === 'string' ? ts(p.converted_at) : null,
     ...(typeof p.photo === 'string' && p.photo !== '' ? { photo: p.photo } : {}),
+    ...(normalizeBranches(p.branches).length > 0 ? { branches: normalizeBranches(p.branches) } : {}),
     createdAt: ts(p.created_at),
     updatedAt: ts(p.updated_at),
   }),
@@ -1288,6 +1302,8 @@ function readInstitutionContacts(raw: unknown): InstitutionContact[] {
       name: str(c.name),
       phone: str(c.phone),
       note: str(c.note),
+      /* ★★ BC — la note restreint l'usage du téléphone ; absent = appel ordinaire. */
+      ...(c.restrictsCalls === true ? { restrictsCalls: true } : {}),
       /* ★★ BB — plusieurs numéros ; absent sur une ligne d'avant BB. */
       ...(Array.isArray(c.phones)
         ? {

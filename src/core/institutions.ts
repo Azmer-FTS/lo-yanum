@@ -204,6 +204,13 @@ export interface InstitutionContact {
   phones?: ContactPhone[]
   /** Une note libre, courte. */
   note: string
+  /**
+   * ★★ BC (2026-10-12) — la NOTE restreint l'usage de ce téléphone (une ligne
+   * publique réservée à la halakha, « seulement après 20h »…). Tout bouton
+   * d'appel de ce numéro — dans la LISTE comme sur la fiche — le montre et
+   * demande confirmation, par le mécanisme de « נדרש תיאום מוקדם » (BB).
+   */
+  restrictsCalls?: boolean
 }
 
 /** Le portable (ou un numéro sans étiquette) d'abord ; à rang égal, l'ordre de saisie. */

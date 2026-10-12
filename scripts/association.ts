@@ -232,7 +232,9 @@ check(
  * une porte qui compte ne peut pas distinguer un ajout demandé d'un ajout
  * subi. Elle nomme donc désormais les trois, et refuse toute quatrième.
  */
-const AH8_ADDED = ['ת״ז / ח״פ', 'שם החווה', 'תאריך חתימה']
+/* ★★ BC (2026-10-12) — et UNE quatrième, nommée par le brief BC : « la
+   localité de repère […] dans l'export ». Toujours nommée, jamais subie. */
+const AH8_ADDED = ['ת״ז / ח״פ', 'שם החווה', 'תאריך חתימה', 'יישוב קרוב']
 check(
   'A94/AH8 · le fichier est les dix-huit, plus les TROIS colonnes nommées par le PO',
   headersOut.length === WANTED.length + 1 + AH8_ADDED.length &&

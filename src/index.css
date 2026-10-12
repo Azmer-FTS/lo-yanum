@@ -2632,3 +2632,13 @@ html[data-numpad-open] [data-farm-form] {
 .one-line-row > .contents > * {
   flex-shrink: 0;
 }
+
+/* ★★ BC (2026-10-12) — AU TÉLÉPHONE, PAS DE LIGNE D'EN-TÊTES DE ROSTER. Une
+   colonne seule tient sous 48 rem (le reste est passé sous le nom) : la ligne
+   « חווה » collée sous la barre mangeait 40 px pour nommer cette colonne. Même
+   règle que les tableaux étroits (`EntityTable`). */
+@media (max-width: 47.99rem) {
+  [data-roster-head] {
+    display: none;
+  }
+}

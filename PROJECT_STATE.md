@@ -104,6 +104,56 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BC — LA PASSE QUI DOIT CLORE L'INTERFACE — EN COURS** (2026-10-12).
+  Brief : 9 parties (AZ4, bulle de couverture, MOBILE = cœur, thème, mise à
+  jour, localité de repère, nature d'exploitation, avertissement d'appel,
+  alias à retirer). Récit et portes : `ETAT.md` § BC (en tête).
+  - **BC1 commité (`b2f999f`)** : AZ4 fini ; migration `20261011000300`
+    appliquée + jalon `20261012071847` ; armigrations verte.
+  - **BC2 = tout le reste** (code, portes, migration `20261012000300`
+    APPLIQUÉE par le MCP + jalon `20261012072911`, repair fait) : commité
+    juste après cette mise à jour, puis poussé.
+  - **Thème (réponse factuelle)** : clé `lo-yanum:theme:coordinator` = `"dark"`,
+    PRÉSENTE, SANS instant dans `__stamps` ⇒ vrai bug, corrigé dans
+    `ui/settings/sync.ts` + phrase « thème — d'où vient la décision ».
+  - **Décisions prises en fin de passe (à garder)** :
+    · au téléphone, une liste = « liste ↔ carte » (pas de divisé) ; carte
+      masquée → TABLEAU (règle AZ2 du PO) ; ce tableau étroit reprend la
+      lisibilité des vignettes d'AZ2 (nom 18 px, ce qui situe 16 px, localité
+      13,5 px ; `EntityTable` `leadCell(big)`, grille des gardes `md:`).
+      Porte : `bcmobile` A425 + `azui` A372 à 402 ;
+    · `ListTop` garde le MÊME élément `data-list-top` dans ses deux formes ;
+      `EntityTable` re-cherche l'en-tête s'il est détaché (défaut à 1 032 px) ;
+    · vignette d'un contact : UNE pastille de statut (+ choix compact) au lieu
+      des quatre boutons ; G1 d'AX passe de 2 à 3 clics en mode divisé ; en
+      tableau seul la colonne de statut reste à un toucher ;
+    · forme compacte : la file « בקשות נכנסות » (AQ) est dans la FEUILLE avec
+      les autres files ; la demande elle-même reste visible sans geste —
+      PREMIÈRE ligne / vignette, distincte (A261) ; dans la feuille,
+      « בקשה נכנסת » est aussi la première valeur des statuts. À DIRE AU PO ;
+    · la feuille porte TOUTES les familles, statuts compris (leur déclencheur
+      l'ouvre sur leur section) ; lignes à 10 px d'écart ;
+    · `scripts/bcleak.ts` : avant chaque commit, l'index ne doit porter aucune
+      aiguille de TOUT `private/` — `awpass`/`awui` IMPRIMENT un vrai numéro
+      quand la fiche privée d'AW est sur le disque : les journaux complets
+      (`*-full.log`) vont dans `private/bc/logs/`, jamais dans `docs/`.
+  - **Portes (locales, code final)** : voir `ETAT.md` § BC « Portes » ;
+    rouges ANTÉRIEURS établis sur un worktree de `b2f999f` :
+    `docs/bc/portes-reference-head.md`. Deux tâches proposées au PO (puces) :
+    attendre l'hydratation dans le formulaire d'édition (course `amui` A215),
+    virtualiser `EntityTable` (`layout` A30 volontaires).
+  - **Après le push** : attendre `version.json` = sha ; rejouer sur le
+    déployé (app : `BASE_URL=https://azmer-fts.github.io/lo-yanum` ; jumeau :
+    `…/lo-yanum/demo` pour bcmobile, aymobile, aitheme) ; mesurer l'APRÈS
+    (`BASE_URL=https://azmer-fts.github.io/lo-yanum/demo OUT=docs/bc/bc-entete-apres.json
+    bun run scripts/bcbefore.ts` puis `bun run scripts/bcheadtable.ts`).
+  - **Données (APRÈS déploiement, jamais avant)** : `bun run scripts/bcdata.ts`
+    → `private/bc/data.sql` (44 instructions gardées : 19 repères calculés,
+    5 saisis, 11 natures de ferme, 7 de pistes, l'alias, le drapeau d'appel du
+    contact `ic-bb-01` de `inst-1tztnmz`). Relire l'état AVANT (updated_at),
+    exécuter par le MCP `execute_sql` (org jkqsqykhquutilldvcsv), puis relire.
+  - Mesures d'en-tête AVANT : `docs/bc/bc-entete-avant.json`.
+
 - **BB — INSTITUTIONS, DEUX ARBITRAGES, DEUX BUGS** (2026-10-12). Commit de
   code `8a621ff`, poussé, DÉPLOYÉ et servi (`version.json` = 8a621ff) ;
   sur le déployé : bbui 88/88, amui 77/77, az5ui 21/21, baui 49/49

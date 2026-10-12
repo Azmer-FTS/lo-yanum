@@ -124,7 +124,8 @@ export function ListTile({
       </button>
 
       {action !== undefined && action !== null && (
-        <span className="flex shrink-0 items-center ps-1">{action}</span>
+        /* ★★ BC — 8 px entre le corps de la vignette et ses gestes (ils étaient à 4 px). */
+        <span className="flex shrink-0 items-center ps-2">{action}</span>
       )}
 
       <span className="flex shrink-0 items-center pe-1 text-content-muted/60">

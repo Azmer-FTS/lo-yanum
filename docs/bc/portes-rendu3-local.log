@@ -1,0 +1,29 @@
+# BC — portes rejouées 2026-10-12T12:23:03.508Z
+
+## baui — exit=0
+
+48 PASS, 0 FAIL
+
+## aqui — exit=1
+FAIL  402 — ★ entière dans l'écran, recouverte par RIEN  — 14/21 div[]
+107 passed, 1 failed
+
+## pills — exit=1
+FAIL  A71 · הגדרות: at least one pill to aim at  — no pill found
+FAIL  A85 · לוח בקרה: the "+" offers exactly 8  — 9
+FAIL  A85 · לוח בקרה: the menu is farm · moshav · volunteer · driver · mission · visit · meeting · incident and nothing else  — add-farm · add-farmFile · add-institution · add-volunteer · add-driver · mission · visit · meeting · incident
+FAIL  A85 · חוות: the "+" offers exactly 2  — 1
+FAIL  A85 · חוות: the menu is farm · moshav and nothing else  — menu not found
+FAIL  A85 · מתנדבים: the "+" offers exactly 1  — 2
+FAIL  A85 · מתנדבים: one creation, so the "+" IS it — no menu  — direct=null
+FAIL  A85 · מתנדבים: pressing it opens volunteer straight away  — #/coordinator/volunteers
+FAIL  A85 · נהגים: the "+" offers exactly 1  — 2
+FAIL  A85 · נהגים: one creation, so the "+" IS it — no menu  — direct=null
+FAIL  A74 · desktop · חוות: they do not fit, so they fold  — 643 needed / 391 available · shape=wide
+FAIL  A72 · desktop · חוות: every hit area ≥ 44×44  — ממתינות למסמכים13 1×1 · לחידוש3 1×1 · לתיחום7 1×1 · פערי שטח4 1×1 · עם שטח משוקלל14 1×1 · מושבים2 1×1 · כל האזוריםכל האזור 1×1 · חקלאות7 1×1
+69 passed, 12 failed  (chromium)
+
+# BILAN
+OK   baui           exit=0 82s  48 PASS, 0 FAIL
+ROUGE aqui           exit=1 313s  107 passed, 1 failed
+ROUGE pills          exit=1 191s  69 passed, 12 failed  (chromium)

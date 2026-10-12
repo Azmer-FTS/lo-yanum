@@ -89,6 +89,8 @@ export type AssociationSource =
   | 'farmerId'
   | 'holdingName'
   | 'signedAt'
+  /* ★★ BC (2026-10-12) — la localité de repère, demandée « dans l'export ». */
+  | 'nearestLocality'
 
 export type AssociationFormat = 'text' | 'number' | 'date' | 'phone' | 'coords'
 
@@ -315,6 +317,20 @@ export const ASSOCIATION_COLUMNS: readonly AssociationColumn[] = [
     width: 16,
     ours: 'תאריך ההסכם החתום האחרון',
   },
+  /**
+   * ★★ BC (2026-10-12) — « CETTE FERME EST À CÔTÉ DE … ». La localité de repère
+   * (calculée depuis le point, ou saisie par le PO) : le PO la demande dans
+   * l'export, pour la donner aux administrations. À LA FIN, comme les trois
+   * d'AH8. Lue et ignorée à l'import : c'est une valeur de CETTE app.
+   */
+  {
+    header: 'יישוב קרוב',
+    source: 'nearestLocality',
+    format: 'text',
+    aliases: ['ליד', 'יישוב קרוב (ציון דרך)'],
+    width: 16,
+    ours: 'היישוב הקרוב (ציון דרך)',
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -496,6 +512,8 @@ const SOURCE: Record<AssociationSource, (input: AssociationInput) => string> = {
   farmerId: ({ farm }) => (farm.farmerId ?? '').trim(),
   /* AH8 — le nom du HOLDING (AC1), distinct de `farm.name` que porte שם המקום. */
   holdingName: ({ farm }) => (farm.farmName ?? '').trim(),
+  /* ★★ BC — la localité de repère, telle qu'elle est rangée (jamais recalculée ici). */
+  nearestLocality: ({ farm }) => (farm.nearestLocality ?? '').trim(),
   /**
    * AH8 — la date du DERNIER accord SIGNÉ, jamais celle d'une ligne d'accord
    * créée et laissée sans encre : une date de signature sur un contrat non

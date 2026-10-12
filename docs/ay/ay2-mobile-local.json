@@ -1,7 +1,7 @@
 {
   "app": "http://localhost:5420",
   "width": 402,
-  "at": "2026-10-11T10:56:51.591Z",
+  "at": "2026-10-12T10:51:56.813Z",
   "results": [
     {
       "name": "tableau-de-bord",
@@ -73,7 +73,7 @@
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
-      "tables": 0
+      "tables": 1
     },
     {
       "name": "conducteur-edition",
@@ -109,7 +109,7 @@
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
-      "tables": 0
+      "tables": 1
     },
     {
       "name": "fermes-liste",
@@ -118,7 +118,7 @@
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
-      "tables": 0
+      "tables": 1
     },
     {
       "name": "ferme",
@@ -253,7 +253,7 @@
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
-      "tables": 0
+      "tables": 1
     },
     {
       "name": "contacts",
@@ -262,7 +262,7 @@
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
-      "tables": 0
+      "tables": 1
     },
     {
       "name": "gardes",
@@ -334,7 +334,7 @@
       "docOverflow": 0,
       "scrollers": [],
       "outside": [],
-      "tables": 0
+      "tables": 1
     },
     {
       "name": "volontaire-edition",

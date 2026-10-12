@@ -606,7 +606,16 @@ function gestures(after: boolean): Gesture[] {
       label: 'changer le statut d’un contact',
       run: async (p, db, click) => {
         await click(rail(p, 'leads'))
-        await click(p.locator('[data-testid="lead-status-lead-ax-1-call_back"]'))
+        /* ★★ BC — ADAPTÉE : la vignette (mode divisé, le défaut) ne porte plus la
+           rangée de quatre boutons (brief BC 3e) mais UNE pastille de statut qui
+           ouvre un choix compact. Le clic de plus est COMPTÉ, pas caché ; en
+           tableau seul, la colonne de statut reste à un toucher. */
+        if (after && (await p.locator('[data-testid="lead-status-pill-lead-ax-1-toggle"]').count()) > 0) {
+          await click(p.locator('[data-testid="lead-status-pill-lead-ax-1-toggle"]'))
+          await click(p.locator('[data-testid="lead-status-pill-lead-ax-1-call_back"]'))
+        } else {
+          await click(p.locator('[data-testid="lead-status-lead-ax-1-call_back"]'))
+        }
         await p.waitForTimeout(1200)
         return db.rows('leads').find((r) => r.id === 'lead-ax-1')?.status === 'call_back'
       },

@@ -166,7 +166,10 @@ for (const width of WIDTHS) {
        PO, et ses statuts sont des FILTRES (AX3). Les garanties d'AT restent
        vérifiées une à une : un toucher change le statut, la ligne ne bouge
        pas, le compte du filtre suit, « ביטול » rend l'ancien, les tris. */
-    const filters = page.locator('[data-testid="leads-filters"] .filter-pill, [data-testid="filter-dropdown"]')
+    /* ★★ BC — ADAPTÉE : en forme compacte, les statuts ont LEUR déclencheur et
+       les filtres sont derrière « סינון » (brief BC 3b, 3c) : ce sont toujours
+       des filtres, jamais des onglets. */
+    const filters = page.locator('[data-testid="leads-filters"] .filter-pill, [data-testid="filter-dropdown"], [data-testid="status-sheet-open"], [data-testid="filter-sheet-open"]')
     check('AX5 · les statuts sont des FILTRES (pastilles ou « סינון »), aucun onglet', (await filters.count()) > 0 && (await page.locator('main [role="tab"]').count()) === 0)
     check('aucune colonne kanban : plus de tableau à défiler en deux sens', (await page.locator('[data-testid="leads-board"]').count()) === 0)
     const list = page.locator('[data-testid="leads-table"] tbody tr[data-row-key]')

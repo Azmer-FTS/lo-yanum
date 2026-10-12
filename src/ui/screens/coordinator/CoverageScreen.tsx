@@ -20,6 +20,9 @@ import {
   haversineKm,
   isInstitutionEngaged,
   isInstitutionToConfirm,
+  coverageOrder,
+  coverageSelect,
+  linksOfSelection,
 } from '@core/index'
 import type { CoverageFamily, Farm, Institution, LatLng, Visible } from '@core/index'
 import type { PairRoad } from '@core/roadMesh'
@@ -38,6 +41,8 @@ import { useRouteMargin } from '../../settings/routeMargin'
 import { onSettingsApplied } from '../../settings/applied'
 import { InfoTip } from '../../components/InfoTip'
 import { NumInput } from '../../components/fields'
+import { DockedSheet } from '../../components/Sheet'
+import { useViewportTier } from '../../hooks/useNarrow'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -224,6 +229,13 @@ export function CoverageScreen() {
     return inst ? { kind: 'institution', id: inst } : null
   })
   const [selectKey, setSelectKey] = useState(0)
+  /* ★★ BC — LA BULLE EST UN ÉTAT À ELLE : la fermer garde la sélection (voir
+     `core/coverageSelection.ts`). Ouverte d'office quand l'institution arrive
+     de l'écran מוסדות. */
+  const [bubble, setBubble] = useState<boolean>(() => selected?.kind === 'institution')
+  /** Un nouveau cadrage à chaque flèche (et à l'arrivée par `?inst=`). */
+  const [frameKey, setFrameKey] = useState(() => (selected?.kind === 'institution' ? 1 : 0))
+  const tier = useViewportTier()
   const [routeTo, setRouteTo] = useState<string | null>(null)
   /* ★ AV1 — `null` = automatique : « לאשר » tant qu'il en reste, sinon « הכול ».
      Décidé à CHAQUE rendu et non au premier : l'hydratation arrive après,
@@ -296,7 +308,14 @@ export function CoverageScreen() {
     for (const p of coverage.places) {
       const isSel = selected?.id === p.id
       const pick = () => {
-        setSelected({ kind: p.family === 'leads' ? 'lead' : p.family === 'engaged' || p.family === 'prospect' ? 'institution' : 'farm', id: p.id })
+        const kind = p.family === 'leads' ? 'lead' : p.family === 'engaged' || p.family === 'prospect' ? 'institution' : 'farm'
+        if (kind === 'institution') {
+          /* ★★ BC — toucher l'épingle : sélectionnée, bulle ouverte ; la même
+             épingle, bulle fermée, rouvre la bulle. */
+          const next = coverageSelect({ id: selected?.kind === 'institution' ? selected.id : null, bubble }, { type: 'pick', id: p.id })
+          setBubble(next.bubble)
+        }
+        setSelected({ kind, id: p.id })
         setSelectKey((k) => k + 1)
         setRouteTo(null)
       }
@@ -325,14 +344,13 @@ export function CoverageScreen() {
     }
     return out
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coverage, selected?.id, focus, land, school, institutions])
+  }, [coverage, selected?.id, focus, land, school, institutions, bubble])
 
   const links: MapLink[] = useMemo(
     () =>
-      coverage.links
-        .filter((l) => shownFarm(l.farmId))
-        // Une institution choisie : seuls ses liens, épaissis.
-        .filter((l) => !selectedInst || l.institutionId === selectedInst.id)
+      /* ★★ BC — une institution SÉLECTIONNÉE (bulle ouverte ou fermée) : seuls
+         ses trajets, épaissis. Fermer la bulle ne les rend plus tous. */
+      linksOfSelection(coverage.links.filter((l) => shownFarm(l.farmId)), selectedInst?.id ?? null)
         .map((l) => ({
           from: l.from,
           to: l.to,
@@ -361,6 +379,32 @@ export function CoverageScreen() {
 
   /* ★★ AY7 — les chiffres d'une institution : SES volontaires, les fermes qu'elle dessert. */
   const reachOf = (id: string) => coverage.links.filter((l) => l.institutionId === id && !l.blocked)
+
+  /* ★★ BC — LE PARCOURS : ‹ › passent d'une institution à l'autre (celles que
+     la carte dessine, par nom), la carte recadre sur elle et ses trajets, la
+     bulle garde son état. Le fond de carte ou la croix de la barre désélectionnent. */
+  const order = coverageOrder(coverage.places)
+  const instSel = { id: selectedInst?.id ?? null, bubble }
+  const stepInstitution = (dir: 1 | -1) => {
+    const next = coverageSelect(instSel, { type: 'step', dir, order })
+    if (!next.id) return
+    setSelected({ kind: 'institution', id: next.id })
+    setBubble(next.bubble)
+    setRouteTo(null)
+    setFrameKey((k) => k + 1)
+  }
+  const deselect = () => {
+    setBubble(coverageSelect(instSel, { type: 'deselect' }).bubble)
+    setSelected(null)
+    setRouteTo(null)
+  }
+  const framePoints = useMemo(() => {
+    if (!selectedInst?.position) return []
+    const farmsById = new Map(farms.map((f) => [f.id, f]))
+    const pts = reachOf(selectedInst.id).map((l) => farmPoint(farmsById.get(l.farmId) as Farm)).filter((p): p is LatLng => !!p)
+    return [selectedInst.position, ...pts]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedInst?.id, coverage])
   const volunteersOfInst = (inst: Institution) => peopleOf(inst, volunteers).filter((v) => v.status !== 'inactive').length
   const selectedPlace = selected ? coverage.places.find((p) => p.id === selected.id) : undefined
   const selectedFarm = selected?.kind === 'farm' ? farms.find((f) => f.id === selected.id) : undefined
@@ -368,8 +412,6 @@ export function CoverageScreen() {
 
   const detail: ReactNode = selectedFarm ? (
     <EntityQuickCard farm={selectedFarm} onClose={() => setSelected(null)} situate />
-  ) : selectedInst ? (
-    <InstitutionFigures bubble inst={selectedInst} reach={reachOf(selectedInst.id)} volunteers={volunteersOfInst(selectedInst)} limitText={limitText} onClose={() => setSelected(null)} />
   ) : selectedLead ? (
     <div className="w-[min(18rem,calc(100vw-2rem))] rounded-card bg-surface-overlay/95 p-4 shadow-lift backdrop-blur" data-testid="coverage-lead-card">
       <p className="text-heading text-content-primary">{selectedLead.name}</p>
@@ -384,6 +426,56 @@ export function CoverageScreen() {
   const c = coverage.counts
   const meeting = usage === 'meeting'
 
+  /* ★★ BC — LA BARRE DE RAPPEL : le nom de l'institution sélectionnée et ses
+     chiffres, en une ligne ; ‹ › pour passer à la voisine ; « פרטים » rouvre
+     la bulle fermée ; × désélectionne. Au téléphone, c'est la barre de la
+     feuille ancrée en bas. */
+  const recall = selectedInst && (
+    <div className="flex min-h-11 min-w-0 items-center gap-2" data-testid="coverage-recall" data-inst={selectedInst.id} data-bubble={bubble ? 'open' : 'closed'}>
+      <p className="min-w-0 flex-1 truncate text-caption" data-testid="coverage-recall-line">
+        <span className="font-bold text-content-primary">{selectedInst.name}</span>
+        <span className="text-content-secondary">
+          {' · '}
+          {t('coverage.recallFigures', { volunteers: volunteersOfInst(selectedInst), farms: reachOf(selectedInst.id).length })}
+        </span>
+      </p>
+      <span className="flex shrink-0 items-center gap-2">
+        <button type="button" onClick={() => stepInstitution(-1)} disabled={order.length < 2} aria-label={t('coverage.recallPrev')} title={t('coverage.recallPrev')} data-testid="coverage-recall-prev" className="flex h-11 w-11 items-center justify-center rounded-pill border border-edge-subtle bg-surface-raised text-content-primary hover:bg-surface-high disabled:opacity-40">
+          <Icon name="chevron" size={16} className="ltr:-scale-x-100" />
+        </button>
+        <button type="button" onClick={() => stepInstitution(1)} disabled={order.length < 2} aria-label={t('coverage.recallNext')} title={t('coverage.recallNext')} data-testid="coverage-recall-next" className="flex h-11 w-11 items-center justify-center rounded-pill border border-edge-subtle bg-surface-raised text-content-primary hover:bg-surface-high disabled:opacity-40">
+          <ChevronForward size={16} />
+        </button>
+        {!bubble && tier !== 'phone' && (
+          <button type="button" onClick={() => setBubble(coverageSelect(instSel, { type: 'openBubble' }).bubble)} data-testid="coverage-recall-open" className="flex h-11 items-center gap-1.5 rounded-pill border border-accent bg-accent/15 px-3 text-caption font-semibold text-accent-ink">
+            <Icon name="info" size={15} />
+            {t('coverage.recallOpen')}
+          </button>
+        )}
+        <button type="button" onClick={deselect} aria-label={t('coverage.recallClear')} title={t('coverage.recallClear')} data-testid="coverage-recall-clear" className="flex h-11 w-11 items-center justify-center rounded-pill text-content-muted hover:bg-surface-high hover:text-content-primary">
+          <Icon name="close" size={18} />
+        </button>
+      </span>
+    </div>
+  )
+  const figures = selectedInst && (
+    <InstitutionFigures inst={selectedInst} reach={reachOf(selectedInst.id)} volunteers={volunteersOfInst(selectedInst)} limitText={limitText} bubble={tier !== 'phone'} onClose={tier !== 'phone' ? () => setBubble(coverageSelect(instSel, { type: 'closeBubble' }).bubble) : undefined} />
+  )
+  /* Grand écran : la barre en haut de la carte, la bulle RANGÉE dessous, au
+     coin — plus jamais posée sur l'institution, au milieu de ses trajets. */
+  const overlay =
+    selectedInst && tier !== 'phone' ? (
+      <div className="flex max-w-[34rem] flex-col items-start gap-2">
+        <div className="glass w-full rounded-card px-2 py-1 shadow-lift">{recall}</div>
+        {bubble && figures}
+      </div>
+    ) : undefined
+  /* La place que la barre et la bulle prennent sur la carte : le cadrage la laisse libre. */
+  const framePadding =
+    tier === 'phone'
+      ? { top: 40, bottom: 120, left: 40, right: 40 }
+      : { top: bubble ? 120 : 90, bottom: 56, left: 80, right: bubble ? 470 : 56 }
+
   return (
     <MapPanel
       screenKey="coverage"
@@ -393,7 +485,10 @@ export function CoverageScreen() {
       routeLines={routeLines}
       fit
       detail={detail}
-      detailAt={selectedPlace ? { position: selectedPlace.position, key: selectKey } : undefined}
+      detailAt={selectedPlace && !selectedInst ? { position: selectedPlace.position, key: selectKey } : undefined}
+      overlay={overlay}
+      frameTo={framePoints.length > 0 && frameKey > 0 ? { points: framePoints, key: `${selectedInst?.id}-${frameKey}`, maxZoom: 12, padding: framePadding } : undefined}
+      onBackgroundTap={selectedInst ? deselect : undefined}
     >
       <div data-testid="coverage-screen" data-usage={usage}>
         <PageHeader
@@ -447,13 +542,13 @@ export function CoverageScreen() {
         {/* LES CINQ FAMILLES — les interrupteurs SONT la légende            */}
         {/* ---------------------------------------------------------------- */}
         <div className="mt-4 grid gap-3" data-testid="coverage-families">
-          <fieldset className="min-w-0 rounded-card bg-surface-raised p-3 shadow-card">
+          <fieldset className="min-w-0 rounded-card bg-surface-raised p-3 shadow-card [&>button:not(:first-of-type)]:mt-2">
             <legend className="px-1 text-caption font-bold text-content-secondary">{t('coverage.side.land')}</legend>
             <FamilyToggle family="signed" on={prefs.visible.signed} onChange={setVisible} count={coverage.places.filter((p) => p.family === 'signed').length || countFamily(farms, 'signed')} swatch={<Swatch kind="pin" color={land} />} />
             <FamilyToggle family="pipeline" on={prefs.visible.pipeline} onChange={setVisible} count={countFamily(farms, 'pipeline')} swatch={<Swatch kind="pin" color={land} hollow />} />
             <FamilyToggle family="leads" on={prefs.visible.leads} onChange={setVisible} count={coverage.leadsPlaced} swatch={<Swatch kind="lead" color={leadTone} />} />
           </fieldset>
-          <fieldset className="min-w-0 rounded-card bg-surface-raised p-3 shadow-card">
+          <fieldset className="min-w-0 rounded-card bg-surface-raised p-3 shadow-card [&>button:not(:first-of-type)]:mt-2">
             <legend className="px-1 text-caption font-bold text-content-secondary">{t('coverage.side.institutions')}</legend>
             <FamilyToggle family="engaged" on={prefs.visible.engaged} onChange={setVisible} count={institutions.filter((i) => isInstitutionEngaged(i) && i.position).length} swatch={<Swatch kind="school" color={school} />} />
             <FamilyToggle family="prospect" on={prefs.visible.prospect} onChange={setVisible} count={institutions.filter((i) => !isInstitutionEngaged(i) && i.engagement !== 'not_relevant' && i.position).length} swatch={<Swatch kind="school" color={school} hollow />} />
@@ -485,7 +580,7 @@ export function CoverageScreen() {
               {limitText}
             </span>
           </span>
-          <span role="radiogroup" aria-label={t('coverage.unitLabel')} className="mt-2 flex flex-nowrap gap-1" data-testid="coverage-unit">
+          <span role="radiogroup" aria-label={t('coverage.unitLabel')} className="mt-4 flex flex-nowrap gap-2" data-testid="coverage-unit">
             {(['min', 'km'] as const).map((u) => (
               <button
                 key={u}
@@ -678,6 +773,14 @@ export function CoverageScreen() {
         {/* ---------------------------------------------------------------- */}
         {/* ★★ AY6 — PLUS DE FILTRES EN DOUBLE : l'écran מוסדות a les siens. Ici,
             un raccourci — combien, combien à confirmer — et le chemin. */}
+        {/* ★★ BC — au téléphone, la bulle ne flotte pas au milieu : elle est une
+            feuille ANCRÉE en bas (sa barre = la barre de rappel), qu'on fait
+            glisser pour l'ouvrir ou la réduire. */}
+        {selectedInst && tier === 'phone' && (
+          <DockedSheet expanded={bubble} onExpandedChange={setBubble} header={recall} testId="coverage-sheet">
+            {figures}
+          </DockedSheet>
+        )}
         {!meeting && institutions.length > 0 && (
           <div className="mt-4 flex flex-wrap items-center gap-3 rounded-card bg-surface-raised p-3 shadow-card" data-testid="coverage-institutions-shortcut">
             <span className="numeric text-title font-bold text-content-primary">{institutions.length}</span>

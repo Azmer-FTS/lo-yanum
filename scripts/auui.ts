@@ -154,7 +154,18 @@ const markerKinds = (page: Page) =>
 section('A315 — les épingles s’affichent sur ordinateur, trois largeurs, quatre modes')
 for (const width of WIDTHS) {
   await guard(`A315 ${width}`, async () => {
-    for (const mode of ['split', 'full', 'overlay', 'hidden'] as const) {
+    /* ★★ BC — ADAPTÉE : au téléphone, une liste n'a que deux états (liste ↔
+       carte, brief BC 3h) ; un « divisé » mémorisé y ouvre la LISTE (vérifié
+       ci-dessous). Les épingles s'y comptent donc en « carte », pas en divisé —
+       compter les marqueurs d'une carte masquée ne prouvait rien. */
+    if (width < 768) {
+      const o = await open(width, { storage: { 'lo-yanum:map-mode:farms': 'split' } })
+      await go(o.page, '/coordinator/farms')
+      const shown = await o.page.evaluate(() => [...document.querySelectorAll('.maplibregl-map')].some((e) => (e as HTMLElement).offsetParent !== null && e.getBoundingClientRect().width > 0))
+      check(`A315 ${width} un « divisé » mémorisé ouvre la liste (deux états au téléphone)`, !shown && (await o.page.locator('[data-testid="map-mode-split"]').count()) === 0)
+      await o.ctx.close()
+    }
+    for (const mode of width < 768 ? (['full', 'hidden'] as const) : (['split', 'full', 'overlay', 'hidden'] as const)) {
       const storage: Record<string, string> = { 'lo-yanum:map-mode:farms': mode === 'overlay' ? 'split' : mode }
       const o = await open(width, { storage })
       await go(o.page, '/coordinator/farms')
@@ -203,7 +214,8 @@ await guard('A315 calque éteint', async () => {
 
 await guard('A315 bulle', async () => {
   for (const width of [402, 1032, 1440]) {
-    const o = await open(width)
+    /* ★★ BC — au téléphone, la carte d'une liste est en plein écran (deux états). */
+    const o = await open(width, width < 768 ? { storage: { 'lo-yanum:map-mode:farms': 'full' } } : {})
     await go(o.page, '/coordinator/farms')
     // Toucher une épingle ouvre la bulle ancrée.
     const pin = o.page.locator('.maplibregl-marker[data-marker-kind="farm"]').first()

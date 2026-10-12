@@ -4,6 +4,7 @@ import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-r
 import { formRoutes } from './FormPages'
 
 import {
+  setFarmBranches,
   FARM_PIPELINE,
   LAND_AGREEMENT_OPTIONS,
   LEGAL_ENTITY_OPTIONS,
@@ -102,6 +103,8 @@ import {
 import { FARM_TABS, FarmTabRow, useFarmTab } from '../../farm/farmTabs'
 import { LandDocumentsSection } from '../../farm/LandDocumentsSection'
 import { ContactEstablishedToggle, FarmContactsEditor } from '../../farm/FarmContactsEditor'
+import { BranchEditor } from '../../farm/FarmBranches'
+import { NearestLocalityEditor } from '../../farm/NearestLocality'
 import { useCoreValue } from '../../hooks/useCore'
 import { useHydrated } from '../../hooks/useDataState'
 import { useLocale } from '../../hooks/useLocale'
@@ -784,6 +787,19 @@ function FarmIdentity({ farm }: { farm: Farm }) {
         <StatusStepper status={farm.status} />
       </div>
       <FarmFacts farm={farm} />
+      {/* ★★ BC — LE REPÈRE ET LA NATURE : « ליד … » (calculé depuis le point ou
+          saisi, jamais écrasé) et les natures de l'exploitation, « לאישור »
+          tant que le PO ne les a pas validées. Tous deux se corrigent ici. */}
+      <div className="mt-3 grid gap-4 border-t border-edge-subtle pt-3 sm:grid-cols-2" data-testid="farm-landmark-branches">
+        <div className="flex flex-col gap-1.5">
+          <span className="label">{t('nearest.title')}</span>
+          <NearestLocalityEditor farm={farm} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <span className="label">{t('branches.title')}</span>
+          <BranchEditor value={farm.branches} onChange={(next) => setFarmBranches(farm.id, next)} testId="farm-branches-edit" />
+        </div>
+      </div>
       {/* W6 — the herd, kind by kind. It used to hang off the band's head-count
           card and was the one thing that could make that row 148 px tall on
           one farm and 76 px on the next; here it can be as long as the farm

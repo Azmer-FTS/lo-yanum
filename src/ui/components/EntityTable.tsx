@@ -9,6 +9,8 @@ import { Icon } from './Icon'
 import type { IconName } from './Icon'
 import { ListTile } from './ListTile'
 import { OverflowMenu } from './OverflowMenu'
+import { SwipeCell } from './SwipeCell'
+import type { SwipeAction } from './SwipeCell'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -107,6 +109,11 @@ export interface EntityLead {
   person?: string
   /** ★★ BA — le téléphone de cette personne : sa photo, à défaut d'une photo propre. */
   phone?: string
+  /**
+   * ★★ BC (2026-10-12) — LE REPÈRE (« ליד דביר ») : APRÈS le nom de la ferme
+   * et celui de l'agriculteur, en texte secondaire — un repère, pas un titre.
+   */
+  near?: string
   /** L'identifiant de la ligne `always` sur la vignette (« בקשה נכנסת »…). */
   alwaysTestId?: string
 }
@@ -145,7 +152,17 @@ export function EntityTable<T>({
   tileTestId,
   tileTone,
   groupOf,
+  statusPill,
+  swipe,
 }: {
+  /**
+   * ★★ BC — LE STATUT, CHANGEABLE D'UN TOUCHER, EN UNE PASTILLE : au bout de la
+   * ligne étroite (à la place de `phoneEnd`) et dans la fente d'action de la
+   * vignette (le corps d'une vignette est un bouton : rien d'interactif dedans).
+   */
+  statusPill?: (row: T) => ReactNode
+  /** ★★ BC — les deux gestes de balayage de la ligne (vers la droite, vers la gauche). */
+  swipe?: (row: T) => { right?: SwipeAction; left?: SwipeAction }
   rows: readonly T[]
   rowKey: (row: T) => string
   lead: (row: T) => EntityLead
@@ -209,15 +226,33 @@ export function EntityTable<T>({
     /* ★★ AZ1.2 — l'en-tête se colle SOUS le bandeau de la liste, qui est
        collant lui aussi : on mesure sa hauteur (elle change avec les filtres
        repliés, la recherche ouverte, la largeur). */
-    let top: HTMLElement | null = null
-    for (let n: HTMLElement | null = el.parentElement; n && !top; n = n.parentElement) {
-      top = n.querySelector<HTMLElement>(':scope > [data-list-top]')
+    const findTop = (): HTMLElement | null => {
+      for (let n: HTMLElement | null = el.parentElement; n; n = n.parentElement) {
+        const found = n.querySelector<HTMLElement>(':scope > [data-list-top]')
+        if (found) return found
+      }
+      return null
     }
-    const measure = () => setHeadTop(top ? top.offsetHeight : 0)
+    let top = findTop()
+    const ro2 = new ResizeObserver(() => measure())
+    /* ★★ BC — re-cherché à chaque mesure : un en-tête remplacé (forme compacte ↔
+       large) ne laisse plus une référence vers un nœud détaché. */
+    function measure(): void {
+      if (!top || !top.isConnected) {
+        const next = findTop()
+        if (next && next !== top) {
+          top = next
+          ro.observe(next)
+          ro2.observe(next)
+        }
+      }
+      setHeadTop(top ? top.offsetHeight : 0)
+    }
     measure()
-    if (top) ro.observe(top)
-    const ro2 = new ResizeObserver(measure)
-    if (top) ro2.observe(top)
+    if (top) {
+      ro.observe(top)
+      ro2.observe(top)
+    }
     return () => {
       ro.disconnect()
       ro2.disconnect()
@@ -345,6 +380,13 @@ export function EntityTable<T>({
         ),
       )
 
+  /* ★★ BC — `big` = le tableau ÉTROIT (téléphone, panneau de tablette). Au
+     téléphone c'est désormais LA liste (plus de mode divisé pour les listes),
+     et elle reprend la lisibilité des vignettes d'AZ2 : le nom en 18 px (il
+     était à 13,5 px, la taille dont le PO s'était plaint en AY), ce qui situe
+     la fiche (l'agriculteur, les colonnes repliées) en 16 px, la localité de
+     repère en 13,5 px comme sur la vignette — plus rien à 11,5 px. Le tableau
+     large garde sa densité. Mesuré par `bcmobile` A425 et `azui` A372. */
   const leadCell = (r: T, big: boolean) => {
     const l = lead(r)
     const sub = subOf(r)
@@ -354,18 +396,24 @@ export function EntityTable<T>({
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-1.5">
             {l.dot}
-            <span className="truncate text-caption font-semibold text-content-primary" data-entity-title="">
+            <span className={`truncate font-semibold text-content-primary ${big ? 'text-heading' : 'text-caption'}`} data-entity-title="">
               {l.title}
             </span>
             {l.marks}
           </span>
-          {l.person && (
-            <span className="block truncate text-micro text-content-secondary" title={l.person} data-entity-person="">
-              {l.person}
+          {(l.person || l.near) && (
+            <span className={`block truncate text-content-secondary ${big ? 'text-body leading-snug' : 'text-micro'}`} title={[l.person, l.near].filter(Boolean).join(' · ')}>
+              {l.person && <span data-entity-person="">{l.person}</span>}
+              {l.person && l.near && <span aria-hidden> · </span>}
+              {l.near && (
+                <span className={`text-content-muted ${big ? 'text-caption' : ''}`} data-entity-near="">
+                  {l.near}
+                </span>
+              )}
             </span>
           )}
           {sub && (
-            <span className="muted block truncate text-micro" title={sub} data-entity-sub="">
+            <span className={`muted block truncate ${big ? 'text-body leading-snug' : 'text-micro'}`} title={sub} data-entity-sub="">
               {sub}
             </span>
           )}
@@ -446,6 +494,8 @@ export function EntityTable<T>({
                   {...(rowAttrs?.(r) ?? {})}
                   className={foot ? 'overflow-hidden rounded-card bg-surface-raised shadow-card' : undefined}
                 >
+                  {(() => {
+                    const tile = (
                   <ListTile
                     testId={tileTestId ?? (testId ? `${testId}-tile` : 'entity-tile')}
                     photo={l.photo ?? null}
@@ -456,7 +506,8 @@ export function EntityTable<T>({
                     openLabel={t('table.view')}
                     className={`entity-tile ${foot ? '!rounded-none !shadow-none' : ''} ${tileTone ? (tileTone(r) ?? '') : (rowTone?.(r) ?? '')}`}
                     action={
-                      <span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <span className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        {statusPill?.(r)}
                         {tileAction?.(r)}
                         {menu(r, true)}
                       </span>
@@ -469,13 +520,19 @@ export function EntityTable<T>({
                       </span>
                       {l.marks}
                     </span>
-                    {l.person && (
-                      <span className="truncate text-body text-content-secondary" data-entity-person="" title={l.person}>
-                        {l.person}
+                    {(l.person || l.near) && (
+                      <span className="truncate text-body text-content-secondary" title={[l.person, l.near].filter(Boolean).join(' · ')}>
+                        {l.person && <span data-entity-person="">{l.person}</span>}
+                        {l.person && l.near && <span aria-hidden> · </span>}
+                        {l.near && (
+                          <span className="text-caption text-content-muted" data-entity-near="">
+                            {l.near}
+                          </span>
+                        )}
                       </span>
                     )}
                     <span className="flex min-w-0 items-center gap-2">
-                      {phoneEnd && <span className="shrink-0">{phoneEnd(r)}</span>}
+                      {phoneEnd && !statusPill && <span className="shrink-0">{phoneEnd(r)}</span>}
                       {w && (
                         <span className="truncate text-body text-content-secondary" data-entity-where="" title={w}>
                           {w}
@@ -488,6 +545,15 @@ export function EntityTable<T>({
                       </span>
                     )}
                   </ListTile>
+                    )
+                    return swipe ? (
+                      <SwipeCell {...swipe(r)} className="rounded-card" testId={testId ? `${testId}-swipe-${k}` : undefined}>
+                        {tile}
+                      </SwipeCell>
+                    ) : (
+                      tile
+                    )
+                  })()}
                   {foot && (
                     <div className="border-t border-edge-subtle/70 px-3 py-2" data-tile-foot="">
                       {foot}
@@ -520,6 +586,21 @@ export function EntityTable<T>({
       data-columns={['lead', ...shown.map((c) => c.key)].join(',')}
     >
       <table className="w-full table-fixed border-separate border-spacing-0 text-caption" aria-label={label}>
+        {/* ★★ BC — les largeurs vivent dans un `<colgroup>` : sans ligne
+            d'en-têtes (tableau étroit), `table-fixed` les prenait à la première
+            ligne et le nom tombait à une lettre. */}
+        <colgroup>
+          <col />
+          {shown.map((c) => (
+            <col key={c.key} style={{ width: `${Math.round(colPx(c))}px` }} />
+          ))}
+          <col style={{ width: actionsWidth }} />
+        </colgroup>
+        {/* ★★ BC — TABLEAU ÉTROIT (téléphone) : plus de ligne d'en-têtes. Elle
+            mangeait 56 px collés sous la barre pour dire « חווה » au-dessus
+            d'une seule colonne ; le tri est dans la feuille de filtres
+            (famille « מיון »). */}
+        {!stacked && (
         <thead>
           <tr data-entity-head="">
             <th
@@ -549,6 +630,7 @@ export function EntityTable<T>({
             </th>
           </tr>
         </thead>
+        )}
         <tbody>
           {rows.length === 0 && (
             <tr>
@@ -580,16 +662,31 @@ export function EntityTable<T>({
                 onClick={onPreview ? () => onPreview(r) : undefined}
                 className={`entity-row group transition-colors duration-fast ${onPreview ? 'cursor-pointer' : ''} ${active ? 'bg-accent/10' : ''} ${rowTone?.(r) ?? ''}`}
               >
-                <td className={`${tdBase} overflow-hidden ps-4 pe-2`}>
+                <td className={`${tdBase} overflow-hidden ${stacked && swipe ? 'p-0' : 'ps-4 pe-2'}`}>
+                  {(() => {
+                    const inner = (
                   <span
-                    className="flex min-w-0 items-center gap-2"
+                    className={`flex min-w-0 items-center gap-2 ${stacked && swipe ? 'h-16 ps-4 pe-2' : ''}`}
                     data-row-open={onPreview ? '' : undefined}
                     data-testid={onPreview && testId ? `${testId}-open-${k}` : undefined}
                   >
                     <span className="min-w-0 flex-1">{leadCell(r, stacked)}</span>
                     {/* Au téléphone, l'état se lit au bout du nom quand sa colonne a cédé. */}
-                    {stacked && phoneEnd && !shown.some((c) => c.key === 'status') && <span className="shrink-0">{phoneEnd(r)}</span>}
+                    {stacked && !shown.some((c) => c.key === 'status') && (statusPill ? (
+                      <span className="shrink-0" onClick={(e) => e.stopPropagation()} data-status-pill="">{statusPill(r)}</span>
+                    ) : phoneEnd ? (
+                      <span className="shrink-0">{phoneEnd(r)}</span>
+                    ) : null)}
                   </span>
+                    )
+                    return stacked && swipe ? (
+                      <SwipeCell {...swipe(r)} testId={testId ? `${testId}-swipe-${k}` : undefined}>
+                        {inner}
+                      </SwipeCell>
+                    ) : (
+                      inner
+                    )
+                  })()}
                 </td>
                 {shown.map((c) => (
                   <td

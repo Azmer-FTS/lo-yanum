@@ -74,7 +74,9 @@ export interface MapPanelProps {
    *   the screen with one field — and it was reachable from the farm sheet
    *   only because `MapPanel` did not forward it.
    */
-  frameTo?: { points: LatLng[]; key: string; maxZoom?: number; padding?: number }
+  frameTo?: { points: LatLng[]; key: string; maxZoom?: number; padding?: number | { top: number; bottom: number; left: number; right: number } }
+  /** ★★ BC — un toucher sur le fond de la carte (voir `MapCanvas.onBackgroundTap`). */
+  onBackgroundTap?: () => void
   /** Floating legend, bottom corner of the map. */
   legend?: ReactNode
   /** Floating controls over the top of the map. */
@@ -116,6 +118,8 @@ export interface MapPanelProps {
   contentClassName?: string
   /** AB4.1 — keep the column's own scrollport when the map is hidden. */
   keepPanelScroll?: boolean
+  /** ★★ BC — un écran de liste : voir `MapSplit.list`. */
+  list?: boolean
 }
 
 export function MapPanel({
@@ -141,9 +145,12 @@ export function MapPanel({
   screenKey,
   contentClassName,
   keepPanelScroll,
+  list,
+  onBackgroundTap,
 }: MapPanelProps) {
   return (
     <MapSplit
+      list={list}
       screenKey={screenKey}
       ariaLabel={ariaLabel}
       contentClassName={contentClassName}
@@ -166,6 +173,7 @@ export function MapPanel({
             fit={fit}
             flyTo={flyTo}
             frameTo={frameTo}
+            onBackgroundTap={onBackgroundTap}
             anchored={
               detail && detailAt
                 ? { position: detailAt.position, key: detailAt.key, node: detail }

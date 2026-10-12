@@ -318,11 +318,14 @@ export function MapModePill({
   mode,
   onChange,
   className = '',
+  modes = MODES,
 }: {
   mode: MapMode
   onChange: (mode: MapMode) => void
   /** The breakpoint gate: `hidden lg:flex` / `hidden xl:flex`. */
   className?: string
+  /** ★★ BC — au téléphone, un écran de liste n'en montre que deux : liste et carte. */
+  modes?: readonly MapMode[]
 }) {
   const { t } = useTranslation()
   /* ★★ AH2 — ELLE PUBLIE SA LARGEUR, et la barre d'actions des formulaires la
@@ -347,9 +350,11 @@ export function MapModePill({
          variable pour la même raison. */
       className={`glass fixed bottom-[calc(var(--shell-bottom)+var(--pinned-foot,0px)+1.25rem)]
                   left-[calc(var(--map-rail)+var(--map-rail-w)+var(--map-rail))] z-30
-                  h-[var(--map-rail-w)] flex-row items-center gap-0.5 rounded-card p-1 ${className || 'flex'}`}
+                  h-[var(--map-rail-w)] flex-row items-center gap-2 rounded-card p-1 ${className || 'flex'}`}
     >
-      {MODES.map((m) => (
+      {/* ★★ BC — 8 px ENTRE deux boutons (ils se touchaient à 2 px : « j'appuie
+          sur une et ça appuie sur l'autre », le constat d'AA1). */}
+      {modes.map((m) => (
         <button
           key={m}
           type="button"

@@ -19,6 +19,26 @@ export function currentAddress(): string {
 }
 
 /**
+ * ★★ BC (2026-10-12) — LA VERSION QUI TOURNE, EN PETIT, SOUS LE TITRE DES
+ * RÉGLAGES : jamais repliée, jamais au bout d'une page à faire défiler. Le PO
+ * vérifie lui-même où il en est ; une version prête se dit sur la même ligne.
+ */
+export function AppVersionLine() {
+  const { t, i18n } = useTranslation()
+  const update = useUpdateState()
+  return (
+    <p className="muted -mt-2 mb-4 text-micro" data-testid="settings-version-line" data-version={RUNNING.id}>
+      <span>{t('settings.version.line', { id: isolate(RUNNING.id), date: isolate(formatDateTime(RUNNING.builtAt, i18n.language)) })}</span>
+      {update.available && (
+        <span className="ms-1.5 font-semibold text-accent-ink" data-testid="settings-version-available">
+          · {t('settings.version.lineAvailable', { id: isolate(update.available.id) })}
+        </span>
+      )}
+    </p>
+  )
+}
+
+/**
  * ═══════════════════════════════════════════════════════════════════════════
  * ★★ AJ0 · A190 — SUR QUELLE VERSION SUIS-JE, DIT PAR L'APP ELLE-MÊME.
  * ═══════════════════════════════════════════════════════════════════════════

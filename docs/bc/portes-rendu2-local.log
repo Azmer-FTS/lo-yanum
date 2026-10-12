@@ -1,0 +1,135 @@
+# BC — portes rejouées 2026-10-12T10:48:10.388Z
+
+## aymobile — exit=0
+
+48 PASS, 0 FAIL  (48 écrans à 402 px) → docs/ay/ay2-mobile-local.json
+
+## ayscreens — exit=0
+
+57 PASS, 0 FAIL
+
+## ayui — exit=0
+
+114 PASS, 0 FAIL
+
+## azui — exit=0
+
+125 PASS, 0 FAIL
+
+## az5ui — exit=0
+
+21 PASS, 0 FAIL
+
+## axui — exit=0
+
+116 PASS, 0 FAIL
+
+## baui — exit=1
+FAIL  A397 402 px : la feuille porte toutes les familles, pas les statuts  — status,queues,contact,branches,kind,areas,region,sort
+47 PASS, 1 FAIL
+
+## bbui — exit=0
+
+82 PASS, 0 FAIL
+
+## avui — exit=0
+
+51 PASS, 0 FAIL
+
+## auui — exit=0
+
+60 PASS, 0 FAIL
+
+## awui — exit=0
+
+57 PASS, 0 FAIL
+
+## amui — exit=1
+FAIL  pré-remplie : nom
+FAIL  pré-remplie : portable, mis en forme
+FAIL  pré-remplie : ת״ז, zéro initial compris
+FAIL  enregistrer : une seule ligne de contact, et c'est lui  — 0
+FAIL  rouvrir : toujours une seule carte, courriel retrouvé
+72 passed, 5 failed
+
+## aqui — exit=1
+FAIL  402 — la file « בקשות נכנסות », première de la feuille, avec son compte  — {"family":"status","option":"farm-status-incoming_request-option","text":"בקשה נכנסת1"}
+FAIL  1032 — la file « בקשות נכנסות », première de la feuille, avec son compte  — {"family":"status","option":"farm-status-incoming_request-option","text":"בקשה נכנסת1"}
+106 passed, 2 failed
+
+## pills — exit=1
+FAIL  A72 · חוות: neighbouring hit areas ≥ 8 px apart  — טרם נוצר קשר2/נוצר קשר3 7px · נוצר קשר3/בוקרה2 7px · בוקרה2/מוכן לחתימה1 7px · מוכן לחתימה1/נחתם1 7px · נחתם1/פעילה4 7px · פעילה4/סירבה1 7px
+FAIL  A72 · מתנדבים: neighbouring hit areas ≥ 8 px apart  — פעיל254/לא פעיל46 7px · טלפון כשר130/סמארטפון170 7px · סמארטפון170/רישיון + רכב31 7px · רישיון + רכב31/טרם שמרו6 7px
+FAIL  A72 · נהגים: neighbouring hit areas ≥ 8 px apart  — פעיל254/לא פעיל46 7px · טלפון כשר130/סמארטפון170 7px · סמארטפון170/רישיון + רכב31 7px · רישיון + רכב31/פנויים הלילה6 7px · פנויים הלילה6/7+ מקומות4 7px
+FAIL  A72 · שמירות: neighbouring hit areas ≥ 8 px apart  — קרובות4/עברו21 7px · עברו21/בוטלו1 7px · בביצוע1/מתוכננת3 7px · אילת0/הערבה0 7px
+FAIL  A72 · אירועים: neighbouring hit areas ≥ 8 px apart  — דחוף2/חשוד2 7px · חשוד2/תצפית1 7px · שבוע אחרון4/חודש אחרון5 7px
+FAIL  A71 · הגדרות: at least one pill to aim at  — no pill found
+FAIL  A85 · לוח בקרה: the "+" offers exactly 8  — 9
+FAIL  A85 · לוח בקרה: the menu is farm · moshav · volunteer · driver · mission · visit · meeting · incident and nothing else  — add-farm · add-farmFile · add-institution · add-volunteer · add-driver · mission · visit · meeting · incident
+FAIL  A85 · חוות: the "+" offers exactly 2  — 1
+FAIL  A85 · חוות: the menu is farm · moshav and nothing else  — menu not found
+FAIL  A85 · מתנדבים: the "+" offers exactly 1  — 2
+FAIL  A85 · מתנדבים: one creation, so the "+" IS it — no menu  — direct=null
+59 passed, 22 failed  (chromium)
+
+## rhythm — exit=1
+FAIL  A62 · חוות: no number of the counter is written twice in the header  — also as 14
+FAIL  A62 · חוות: the counter is short  — "14/1429,650 דונם · 6,340 משוקלל"
+FAIL  A62 · חוות: no number of the counter is written twice in the header  — also as 14
+FAIL  A62 · נהגים: the counter is short  — "18/30657 מקומות ברכבים"
+FAIL  A62 · חוות: no number of the counter is written twice in the header  — also as 14
+321 passed, 5 failed  (chromium)
+
+## anui — exit=1
+FAIL  A236 · volontaire (+) : une page (adresse, flèche retour), aucune fenêtre  — {"hash":"#/coordinator/volunteers","dialog":0,"back":false,"title":true}
+FAIL  section interrompue  — click: Timeout 8000ms exceeded.
+148 passed, 2 failed
+
+## akui — exit=1
+
+PASS  A201 · webkit · no field under 16 px — Safari does not zoom  — assoc-farmerName:16 assoc-farmerId:16 assoc-farmerPhone:16 assoc-date:16
+
+## atui — exit=1
+FAIL  A301 · étroit : le statut est une liste déroulante de la couleur du statut
+FAIL  salle d’attente 402 — section interrompue  — selectOption: Timeout 30000ms exceeded. · - waiting for locator('select[data-testid="lead-status-lead-at-01"]')
+FAIL  les cinq pistes ouvertes sont dans UNE liste (la « לא רלוונטי » est un filtre)  — 0
+FAIL  A301 · étroit : le statut est une liste déroulante de la couleur du statut
+FAIL  salle d’attente 1032 — section interrompue  — boundingBox: Timeout 30000ms exceeded. · - waiting for locator('tr[data-testid="lead-lead-at-01"]')
+FAIL  les cinq pistes ouvertes sont dans UNE liste (la « לא רלוונטי » est un filtre)  — 0
+FAIL  A301 · étroit : le statut est une liste déroulante de la couleur du statut
+FAIL  salle d’attente 1376 — section interrompue  — boundingBox: Timeout 30000ms exceeded. · - waiting for locator('tr[data-testid="lead-lead-at-01"]')
+FAIL  AT4.4 · tous les blocs dépliés par défaut (fiche neuve sur cet appareil)  — 1 replié(s)
+FAIL  AT4.4 · tous les blocs dépliés par défaut (fiche neuve sur cet appareil)  — 1 replié(s)
+FAIL  AT4.4 · tous les blocs dépliés par défaut (fiche neuve sur cet appareil)  — 1 replié(s)
+FAIL  A306 · douze tuiles  — 11
+atui : 124 PASS · 15 FAIL
+
+## bcmobile — exit=0
+
+246 PASS · 0 FAIL  → docs/bc/bcmobile-local.json
+
+## bcpass — exit=0
+
+$ bun run scripts/bcpass.ts
+
+# BILAN
+OK   aymobile       exit=0 227s  48 PASS, 0 FAIL  (48 écrans à 402 px) → docs/ay/ay2-mobile-local.json
+OK   ayscreens      exit=0 197s  57 PASS, 0 FAIL
+OK   ayui           exit=0 516s  114 PASS, 0 FAIL
+OK   azui           exit=0 358s  125 PASS, 0 FAIL
+OK   az5ui          exit=0 38s  21 PASS, 0 FAIL
+OK   axui           exit=0 295s  116 PASS, 0 FAIL
+ROUGE baui           exit=1 76s  47 PASS, 1 FAIL
+OK   bbui           exit=0 129s  82 PASS, 0 FAIL
+OK   avui           exit=0 270s  51 PASS, 0 FAIL
+OK   auui           exit=0 243s  60 PASS, 0 FAIL
+OK   awui           exit=0 256s  57 PASS, 0 FAIL
+ROUGE amui           exit=1 480s  72 passed, 5 failed
+ROUGE aqui           exit=1 314s  106 passed, 2 failed
+ROUGE pills          exit=1 184s  59 passed, 22 failed  (chromium)
+ROUGE rhythm         exit=1 260s  321 passed, 5 failed  (chromium)
+ROUGE anui           exit=1 340s  148 passed, 2 failed
+ROUGE akui           exit=1 59s  PASS  A201 · webkit · no field under 16 px — Safari does not zoom  — assoc-farmerName:16 assoc-farmerId:16 assoc-farmerPhone:16 assoc-date:16
+ROUGE atui           exit=1 317s  atui : 124 PASS · 15 FAIL
+OK   bcmobile       exit=0 184s  246 PASS · 0 FAIL  → docs/bc/bcmobile-local.json
+OK   bcpass         exit=0 0s  $ bun run scripts/bcpass.ts

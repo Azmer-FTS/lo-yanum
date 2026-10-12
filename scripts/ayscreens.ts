@@ -53,7 +53,10 @@ await run('A359', async () => {
       const ok = (await t.count()) === 1
       const stacked = ok ? (await t.getAttribute('data-stacked')) !== null : false
       const firstRow = t.locator('[data-row-key]').first()
-      const actions = w >= 1000 ? await firstRow.locator('[data-row-action="view"], [data-row-action="edit"]').count() : await firstRow.locator('[data-testid$="-toggle"]').count()
+      /* ★★ BC — au téléphone, la ligne d'un contact porte AUSSI la pastille de
+         statut (un menu, `lead-status-pill-…-toggle`) : la règle reste « un seul
+         ⋯ », on ne compte que les ⋯ de ligne (`…-menu-…-toggle`). */
+      const actions = w >= 1000 ? await firstRow.locator('[data-row-action="view"], [data-row-action="edit"]').count() : await firstRow.locator('[data-testid*="-menu-"][data-testid$="-toggle"]').count()
       check(
         `A359 ${w} px · ${l.name} : la forme commune${w >= 1000 ? ' (tableau, gestes voir · modifier au bout)' : ' (tableau étroit, un seul bouton ⋯)'}`,
         ok && (w >= 1000 ? !stacked && actions === 2 : stacked && actions === 1),

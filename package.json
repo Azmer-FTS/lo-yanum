@@ -29,6 +29,8 @@
     "baui": "bun run scripts/baui.ts",
     "bbpass": "bun run scripts/bbpass.ts",
     "bbui": "bun run scripts/bbui.ts",
+    "bcpass": "bun run scripts/bcpass.ts",
+    "bcmobile": "bun run scripts/bcmobile.ts",
     "azcaptures": "bun run scripts/azcaptures.ts",
     "aymobile": "bun run scripts/aymobile.ts",
     "aypins": "bun run scripts/aypins.ts",

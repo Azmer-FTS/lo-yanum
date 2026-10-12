@@ -241,7 +241,13 @@ export interface MapViewProps {
    * clamp: a single-point entity gets a farm-scale view, not the whole of
    * MapLibre's zoom range.
    */
-  frameTo?: { points: LatLng[]; key: string; maxZoom?: number; padding?: number }
+  frameTo?: { points: LatLng[]; key: string; maxZoom?: number; padding?: number | { top: number; bottom: number; left: number; right: number } }
+  /**
+   * ★★ BC (2026-10-12) — UN TOUCHER SUR LE FOND DE LA CARTE (ni épingle, ni
+   * contrôle) : la carte de couverture y désélectionne l'institution. Ni curseur
+   * en croix, ni appui long — rien d'« armé » : c'est un toucher ordinaire.
+   */
+  onBackgroundTap?: () => void
   interactive?: boolean
   className?: string
   ariaLabel: string
@@ -940,6 +946,7 @@ export default function MapCanvas({
   className = 'h-full w-full',
   ariaLabel,
   onMapClick,
+  onBackgroundTap,
   onMapDblClick,
   cooperative = false,
   fullscreen,
@@ -1110,6 +1117,8 @@ export default function MapCanvas({
    */
   const clickRef = useRef(onMapClick)
   clickRef.current = onMapClick
+  const bgTapRef = useRef(onBackgroundTap)
+  bgTapRef.current = onBackgroundTap
   const polygonClickRef = useRef(onPolygonClick)
   polygonClickRef.current = onPolygonClick
   const dblClickRef = useRef(onMapDblClick)
@@ -1812,7 +1821,10 @@ export default function MapCanvas({
       if (q.on && (e.type === 'contextmenu' || q.armed)) {
         e.preventDefault()
         q.fire({ lat: e.lngLat.lat, lng: e.lngLat.lng })
+        return
       }
+      /* ★★ BC — un toucher ordinaire sur le fond (les épingles arrêtent le leur). */
+      if (e.type === 'click') bgTapRef.current?.()
     }
     if (dblClickRef.current) map.doubleClickZoom.disable()
     map.on('click', place)

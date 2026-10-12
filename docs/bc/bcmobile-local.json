@@ -1,0 +1,132 @@
+{
+  "app": "http://localhost:5434",
+  "at": "2026-10-12T12:07:14.351Z",
+  "headers": [
+    {
+      "viewport": 844,
+      "screen": "fermes",
+      "rest": 194,
+      "scrolled": 126,
+      "share": 77
+    },
+    {
+      "viewport": 844,
+      "screen": "institutions",
+      "rest": 194,
+      "scrolled": 126,
+      "share": 77
+    },
+    {
+      "viewport": 844,
+      "screen": "contacts",
+      "rest": 190,
+      "scrolled": 132,
+      "share": 77
+    },
+    {
+      "viewport": 844,
+      "screen": "volontaires",
+      "rest": 194,
+      "scrolled": 126,
+      "share": 77
+    },
+    {
+      "viewport": 844,
+      "screen": "gardes",
+      "rest": 210,
+      "scrolled": 152,
+      "share": 75
+    },
+    {
+      "viewport": 844,
+      "screen": "incidents",
+      "rest": 206,
+      "scrolled": 148,
+      "share": 76
+    },
+    {
+      "viewport": 1180,
+      "screen": "fermes",
+      "rest": 206,
+      "scrolled": 158,
+      "share": 83
+    },
+    {
+      "viewport": 1180,
+      "screen": "institutions",
+      "rest": 206,
+      "scrolled": 158,
+      "share": 83
+    },
+    {
+      "viewport": 1180,
+      "screen": "contacts",
+      "rest": 202,
+      "scrolled": 202,
+      "share": 83
+    },
+    {
+      "viewport": 1180,
+      "screen": "volontaires",
+      "rest": 206,
+      "scrolled": 138,
+      "share": 83
+    },
+    {
+      "viewport": 1180,
+      "screen": "gardes",
+      "rest": 206,
+      "scrolled": 206,
+      "share": 83
+    },
+    {
+      "viewport": 1180,
+      "screen": "incidents",
+      "rest": 202,
+      "scrolled": 202,
+      "share": 83
+    },
+    {
+      "viewport": 820,
+      "screen": "fermes",
+      "rest": 136,
+      "scrolled": 88,
+      "share": 83
+    },
+    {
+      "viewport": 820,
+      "screen": "institutions",
+      "rest": 136,
+      "scrolled": 88,
+      "share": 83
+    },
+    {
+      "viewport": 820,
+      "screen": "contacts",
+      "rest": 132,
+      "scrolled": 132,
+      "share": 84
+    },
+    {
+      "viewport": 820,
+      "screen": "volontaires",
+      "rest": 136,
+      "scrolled": 68,
+      "share": 83
+    },
+    {
+      "viewport": 820,
+      "screen": "gardes",
+      "rest": 136,
+      "scrolled": 88,
+      "share": 83
+    },
+    {
+      "viewport": 820,
+      "screen": "incidents",
+      "rest": 132,
+      "scrolled": 112,
+      "share": 84
+    }
+  ]
+}

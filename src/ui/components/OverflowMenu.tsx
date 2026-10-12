@@ -92,11 +92,18 @@ export function OverflowMenu({
   label,
   testId = 'list-menu',
   children,
+  trigger,
 }: {
   items: OverflowItem[]
   /** Names the button; defaults to "פעולות". */
   label?: string
   testId?: string
+  /**
+   * ★★ BC — un autre déclencheur que « ⋯ » : la pastille de statut d'un contact
+   * à traiter ouvre ici son « choix compact » (même menu, même placement,
+   * mêmes touches). Le contenu et la classe du bouton ; le reste ne change pas.
+   */
+  trigger?: { content: ReactNode; className: string }
   /** Extra rows appended under a hairline (rare — prefer `items`). */
   children?: ReactNode
 }) {
@@ -191,14 +198,18 @@ export function OverflowMenu({
         aria-label={name}
         title={name}
         data-testid={`${testId}-toggle`}
-        className={`flex h-11 w-11 items-center justify-center rounded-pill border
+        className={
+          trigger
+            ? trigger.className
+            : `flex h-11 w-11 items-center justify-center rounded-pill border
                     transition-colors duration-fast ${
                       open
                         ? 'border-accent bg-accent/15 text-accent-ink'
                         : 'border-edge-subtle bg-surface-raised text-content-secondary hover:bg-surface-high hover:text-content-primary'
-                    }`}
+                    }`
+        }
       >
-        <Icon name="more" size={18} />
+        {trigger ? trigger.content : <Icon name="more" size={18} />}
       </button>
 
       {open &&

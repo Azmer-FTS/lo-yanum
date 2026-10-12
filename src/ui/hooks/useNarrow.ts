@@ -210,3 +210,48 @@ export function useFilterFold(): {
    */
   return { boxRef, pillsRef, fold, available, required }
 }
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ BC (2026-10-12) — TROIS PALIERS, PAS DEUX.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * « Même en tablette certains écrans sont à l'étroit. » La largeur
+ * intermédiaire est un VRAI palier — ni un grand téléphone, ni un petit
+ * bureau :
+ *
+ *   · `phone`   — sous 48 rem : rien ne défile de côté (AY2), les listes ont
+ *                 leur en-tête repliable et leurs filtres en feuille ;
+ *   · `tablet`  — de 48 à 80 rem : la carte à CÔTÉ de la liste (plus jamais
+ *                 empilée au-dessus d'elle), la liste à moitié de la largeur,
+ *                 et l'en-tête compact tant que SON panneau est étroit ;
+ *   · `desktop` — au-delà : la forme de BA (rangées épinglées).
+ */
+export type ViewportTier = 'phone' | 'tablet' | 'desktop'
+export const PHONE_TIER = '(max-width: 47.99rem)'
+export const DESKTOP_TIER = '(min-width: 80rem)'
+
+function readTier(): ViewportTier {
+  if (typeof window === 'undefined' || !window.matchMedia) return 'desktop'
+  if (window.matchMedia(PHONE_TIER).matches) return 'phone'
+  if (window.matchMedia(DESKTOP_TIER).matches) return 'desktop'
+  return 'tablet'
+}
+
+export function useViewportTier(): ViewportTier {
+  const [tier, setTier] = useState<ViewportTier>(readTier)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const a = window.matchMedia(PHONE_TIER)
+    const b = window.matchMedia(DESKTOP_TIER)
+    const onChange = () => setTier(readTier())
+    onChange()
+    a.addEventListener('change', onChange)
+    b.addEventListener('change', onChange)
+    return () => {
+      a.removeEventListener('change', onChange)
+      b.removeEventListener('change', onChange)
+    }
+  }, [])
+  return tier
+}

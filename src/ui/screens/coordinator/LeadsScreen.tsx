@@ -16,6 +16,7 @@ import {
   regions,
   revertLeadConversion,
   setLeadStatus,
+  setLeadBranches,
   updateLead,
   whatsappHref,
 } from '@core/index'
@@ -33,6 +34,10 @@ import { PositionLinkField } from '../../components/PositionLinkField'
 import type { EntityColumn, RowAction } from '../../components/EntityTable'
 import { PreviewPanel, PreviewRow, PreviewSection } from '../../components/PreviewPanel'
 import { FilterPill, FilterRow, ListTop, Modal, PageHeader } from '../../components/primitives'
+import { OverflowMenu } from '../../components/OverflowMenu'
+import { sortFamily } from '../../components/ListFilters'
+import type { CompactFilters } from '../../components/ListFilters'
+import { BranchChips, BranchEditor, branchText } from '../../farm/FarmBranches'
 import { useCoreValue } from '../../hooks/useCore'
 
 /**
@@ -284,8 +289,34 @@ export function LeadsScreen() {
     { key: 'delete', icon: 'trash', label: t('leads.deleteAsk'), onClick: () => setConfirm({ kind: 'delete', lead: l }), danger: true, testId: `lead-delete-${l.id}` },
   ]
 
+  /* ★★ BC — la forme compacte : les statuts ont leur déclencheur (ce sont les
+     filtres de cet écran), le tri vit dans la feuille. */
+  const compactFilters: CompactFilters = {
+    status: {
+      key: 'status',
+      title: t('filters.family.status'),
+      single: true,
+      testId: 'leads-status-family',
+      options: FILTERS.filter((f): f is LeadStatus => f !== 'open').map((f) => ({
+        key: f,
+        label: t(`leads.short.${f}`),
+        count: counts[f],
+        active: filter === f,
+        onToggle: () => setFilter(filter === f ? 'open' : f),
+        hint: t(`leads.status.${f}`),
+        dot: <span className="h-2.5 w-2.5 shrink-0 rounded-pill" style={{ backgroundColor: readToken(STATUS_TOKEN[f]) }} aria-hidden />,
+        testId: `leads-filter-${f}`,
+      })),
+    },
+    statusAll: { label: t('leads.filterAll'), count: counts.open },
+    families: [sortFamily(t, [{ key: 'name', label: t('leads.col.name') }, ...columns.filter((c) => c.sort).map((c) => ({ key: c.key, label: c.label }))], sort, setSort, 'leads')],
+    activeCount: 0,
+    onClear: () => setFilter('open'),
+    results: visible.length,
+  }
+
   return (
-    <MapSplit screenKey="leads" ariaLabel={t('leads.mapLabel')} breakpoint="xl" contentPercent={66} splitHeight="h-[35dvh]" map={() => mapBody}>
+    <MapSplit list screenKey="leads" ariaLabel={t('leads.mapLabel')} breakpoint="xl" contentPercent={66} splitHeight="h-[35dvh]" map={() => mapBody}>
       {({ mode }) => (
         <>
           <ListTop
@@ -301,6 +332,7 @@ export function LeadsScreen() {
             search={query}
             onSearch={setQuery}
             searchPlaceholder={t('leads.search')}
+            compactFilters={compactFilters}
             testId="leads-top"
             filters={
               <FilterRow activeCount={filter === 'open' ? 0 : 1} onClear={() => setFilter('open')}>
@@ -336,13 +368,23 @@ export function LeadsScreen() {
             activeKey={selected}
             actions={(l) => leadActions(l)}
             phoneEnd={(l) => <span className={`chip border text-micro ${STATUS_ON[l.status]}`}>{t(`leads.short.${l.status}`)}</span>}
+            /* ★★ BC — UNE pastille au bout de la ligne, qui porte le statut et
+               ouvre un choix compact (les quatre boutons pleine largeur d'AZ4
+               sont partis) ; et le balayage, comme une boîte mail : vers la
+               droite « ממתין » (appelé, pas de réponse), vers la gauche « לא
+               רלוונטי ». Les deux restent dans la pastille et dans « ⋯ ». */
+            statusPill={(l) => <LeadStatusPill lead={l} onChange={(s) => changeStatus(l, s)} />}
+            swipe={(l) => ({
+              right: l.status !== 'no_answer' ? { label: t('leads.short.no_answer'), icon: 'clock', tone: 'warn', run: () => changeStatus(l, 'no_answer'), testId: `lead-swipe-noanswer-${l.id}` } : undefined,
+              left: l.status !== 'not_now' ? { label: t('leads.short.not_now'), icon: 'eyeOff', tone: 'muted', run: () => changeStatus(l, 'not_now'), testId: `lead-swipe-notnow-${l.id}` } : undefined,
+            })}
             rowAttrs={(l) => ({ 'data-lead-id': l.id, 'data-testid': `lead-${l.id}`, 'data-status': l.status })}
             empty={t('leads.empty')}
             label={t('leads.title')}
             testId="leads-table"
             tiles={mode !== 'hidden'}
-            /* ★★ AZ4 — le statut, d'un toucher, aussi sur la vignette (AT2.4). */
-            tileFoot={(l) => <StatusCell lead={l} wide onChange={(s) => changeStatus(l, s)} />}
+            /* ★★ AZ4 → BC — le statut d'un toucher sur la vignette : la pastille
+               (`statusPill`) a remplacé la rangée de quatre boutons. */
             where={(l) => [l.place, l.contactName !== l.name ? l.contactName : ''].filter(Boolean).join(' · ')}
             hidden={mode !== 'hidden' && !!selectedLead}
           />
@@ -546,6 +588,16 @@ function useLeadColumns({
       className: 'w-[16.5rem]',
       render: (l, { width }) => <StatusCell lead={l} wide={width === 0 || width >= 760} onChange={(s) => onStatus(l, s)} />,
     },
+    /* ★★ BC — la nature de l'exploitation ; sous le nom quand la colonne cède. */
+    {
+      key: 'branches',
+      label: t('branches.title'),
+      sub: (l) => branchText(t, l),
+      sort: (l) => branchText(t, l),
+      minWidth: 1040,
+      className: 'w-[9rem]',
+      render: (l) => <BranchChips entity={l} testId={`lead-branches-cell-${l.id}`} />,
+    },
     {
       key: 'notes',
       label: t('leads.col.notes'),
@@ -581,6 +633,40 @@ function useLeadColumns({
       render: (l) => <span className="ltr-nums text-content-muted">{dayMonth(l.createdAt)}</span>,
     },
   ]
+}
+
+/**
+ * ★★ BC (2026-10-12) — LA PASTILLE DE STATUT D'UN CONTACT À TRAITER : elle
+ * porte le statut courant (sa couleur, son mot) et ouvre au toucher un choix
+ * compact — le même menu que « ⋯ » (placé, au clavier, Échap) — avec les
+ * statuts et une coche sur l'actuel. Une ligne, pas une rangée de boutons.
+ */
+function LeadStatusPill({ lead, onChange }: { lead: Lead; onChange: (s: LeadStatus) => void }) {
+  const { t } = useTranslation()
+  const choices: LeadStatus[] = ['not_called', 'no_answer', 'call_back', 'meeting_set', 'not_now']
+  return (
+    <OverflowMenu
+      testId={`lead-status-pill-${lead.id}`}
+      label={t('leads.statusLabel')}
+      trigger={{
+        className: `chip min-h-11 gap-1 border px-3 text-caption font-semibold ${STATUS_ON[lead.status]}`,
+        content: (
+          <>
+            {t(`leads.short.${lead.status}`)}
+            <Icon name="chevronDown" size={12} className="opacity-70" />
+          </>
+        ),
+      }}
+      items={choices.map((s) => ({
+        key: s,
+        label: t(`leads.status.${s}`),
+        icon: s === 'not_now' ? 'eyeOff' : s === 'meeting_set' ? 'calendar' : s === 'call_back' ? 'phone' : s === 'no_answer' ? 'clock' : 'user',
+        checked: lead.status === s,
+        onClick: () => s !== lead.status && onChange(s),
+        testId: `lead-status-pill-${lead.id}-${s}`,
+      }))}
+    />
+  )
 }
 
 /**
@@ -769,6 +855,13 @@ function LeadPreview({ lead, regionName, onStatus, onClose, docked }: { lead: Le
           <StatusSegments value={lead.status} onChange={onStatus} testId={`lead-preview-status-${lead.id}`} statuses={LEAD_OPEN_STATUSES} />
         </div>
       </PreviewSection>
+      {/* ★★ BC — la nature de l'exploitation : elle suivra la fiche quand le
+          contact deviendra une ferme. */}
+      <PreviewSection title={t('branches.title')}>
+        <div className="py-2">
+          <BranchEditor value={lead.branches} onChange={(next) => setLeadBranches(lead.id, next)} testId={`lead-branches-${lead.id}`} />
+        </div>
+      </PreviewSection>
       <PreviewSection title={t('preview.details')}>
         <PreviewRow label={t('leads.col.contact')}>{lead.contactName !== lead.name ? lead.contactName : ''}</PreviewRow>
         <PreviewRow label={t('leads.col.phone')}>{lead.phone ? <span dir="ltr" className="ltr-nums">{lead.phone}</span> : ''}</PreviewRow>
@@ -809,6 +902,11 @@ export function LeadEditScreen() {
       <PageHeader title={leadLabel(lead)} back={{ to: '/coordinator/leads', label: t('leads.title') }} />
       <LeadFields lead={lead} />
       <LeadPositionField lead={lead} />
+      {/* ★★ BC — la nature de l'exploitation (בקר, צאן, מטעים…), « לאישור » tant que le PO n'a pas validé. */}
+      <section className="mt-4 flex flex-col gap-2" data-testid="lead-branches">
+        <span className="label">{t('branches.title')}</span>
+        <BranchEditor value={lead.branches} onChange={(next) => setLeadBranches(lead.id, next)} testId={`lead-branches-edit-${lead.id}`} />
+      </section>
       <div className="mt-4">
         <span className="label">{t('leads.col.status')}</span>
         <StatusSegments value={lead.status} onChange={(s) => setLeadStatus(lead.id, s)} testId={`lead-status-${lead.id}`} />

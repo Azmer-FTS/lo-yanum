@@ -24,7 +24,7 @@ import { useScreenSettings } from '../../settings/ScreenSettings'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import type { MapMarker } from '../../components/MapView'
 import { MissionStatusChip, readToken } from '../../components/badges'
-import { RegionFilter } from '../../components/RegionFilter'
+import { RegionFilter, regionFilterFamily } from '../../components/RegionFilter'
 import { ROSTER_ROW_HEIGHT, RosterHead } from '../../components/roster'
 import {
   EmptyState,
@@ -131,6 +131,8 @@ export function MissionsScreen() {
 
   return (
     <MapPanel
+      /* ★★ BC — écran de liste : liste ↔ carte au téléphone, carte à côté en tablette. */
+      list
       screenKey="missions"
       ariaLabel={t('map.missionsMap')}
       markers={markers}
@@ -154,6 +156,36 @@ export function MissionsScreen() {
       <>
       {missionSettings.dialog}
       <ListTop
+        compactFilters={{
+          /* ★★ BC — la forme compacte : l'onglet (à venir · passées · annulées),
+             la région, le statut de la garde — chacun sa famille. */
+          families: [
+            {
+              key: 'time',
+              title: t('filters.family.time'),
+              single: true,
+              tab: true,
+              options: [
+                { key: 'upcoming', label: t('missions.upcoming'), count: upcoming.length, active: tab === 'upcoming', onToggle: () => setTab('upcoming'), testId: 'missions-tab-upcoming' },
+                { key: 'past', label: t('missions.past'), count: past.length, active: tab === 'past', onToggle: () => setTab('past'), testId: 'missions-tab-past' },
+                ...(cancelled.length > 0 ? [{ key: 'cancelled', label: t('missions.cancelledTab'), count: cancelled.length, active: tab === 'cancelled', onToggle: () => { setTab('cancelled'); setStatus(null) }, testId: 'missions-tab-cancelled' }] : []),
+              ],
+            },
+            {
+              key: 'status',
+              title: t('filters.family.status'),
+              single: true,
+              options: STATUSES.map((st) => ({ key: st, label: t(`missionStatus.${st}`), count: byTab[tab].filter((v) => v.mission.status === st).length, active: status === st, onToggle: () => setStatus(status === st ? null : st), testId: `missions-status-${st}` })).filter((o) => o.count > 0 || o.active),
+            },
+            regionFilterFamily(t, region, setRegion, regionCounts, 'missions-region'),
+          ].filter((f) => f.options.length > 0),
+          activeCount: (status !== null ? 1 : 0) + (region !== null ? 1 : 0),
+          onClear: () => {
+            setStatus(null)
+            setRegion(null)
+          },
+          results: list.filter((v) => !isTestId(v.mission.id)).length,
+        }}
         testId="missions-top"
         title={t('missions.title')}
         /* ★★ AY12.3 — délais de silence et SMS de convocation : réglés ICI. */
@@ -445,15 +477,20 @@ function MissionsTable({
               <span className="flex min-w-0 items-center gap-2.5">
                 <Avatar photo={farm.photo} name={farm.name} size="xs" shape="square" />
                 <span className="min-w-0">
+                  {/* ★★ BC — au téléphone la grille EST la liste (plus de mode
+                      divisé pour les listes) : le nom reprend les 18 px des
+                      vignettes d'AZ2.1, ce qui situe la garde les 16 px ; dès
+                      48 rem, la densité du tableau. */}
                   <span
-                    className={`block truncate text-caption font-medium text-content-primary ${
+                    data-entity-title=""
+                    className={`block truncate text-heading font-semibold text-content-primary md:text-caption md:font-medium ${
                       mission.status === 'cancelled' ? 'line-through opacity-70' : ''
                     }`}
                   >
                     {farm.name}
                     <TestDataBadge id={mission.id} />
                   </span>
-                  <span className="muted block truncate">
+                  <span className="muted block truncate text-body leading-snug md:text-caption" data-entity-sub="">
                     <span data-merge="md" style={{ ['--col-display' as string]: 'inline' }}>
                       <span className="ltr-nums">{formatDate(mission.startAt, locale)}</span>
                     </span>
