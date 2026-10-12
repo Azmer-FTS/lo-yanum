@@ -37,6 +37,7 @@ import { ChevronForward, Icon } from './Icon'
  */
 export function ListTile({
   photo,
+  phone,
   name,
   active = false,
   onOpen,
@@ -50,6 +51,8 @@ export function ListTile({
   children,
 }: {
   photo: string | null
+  /** ★★ BA — sans photo propre, celle de ce numéro (bucket `contact-photos`). */
+  phone?: string
   /** Used for the initials fallback and as the photo's accessible name. */
   name: string
   active?: boolean
@@ -93,7 +96,7 @@ export function ListTile({
           data-testid={`${testId}-photo`}
           className="group relative h-auto w-[var(--tile-h)] shrink-0 self-stretch overflow-hidden bg-surface-high"
         >
-          <TilePhoto photo={photo} name={name} />
+          <TilePhoto photo={photo} phone={phone} name={name} />
           <span
             className="absolute bottom-1 start-1 flex h-6 w-6 items-center justify-center rounded-pill bg-surface-overlay/90 text-accent-ink shadow-card
                        transition-transform duration-fast group-hover:scale-110 group-active:scale-95"
@@ -106,7 +109,7 @@ export function ListTile({
           data-testid={`${testId}-photo`}
           className="relative w-[var(--tile-h)] shrink-0 self-stretch overflow-hidden bg-surface-high"
         >
-          <TilePhoto photo={photo} name={name} />
+          <TilePhoto photo={photo} phone={phone} name={name} />
         </span>
       )}
 
@@ -142,10 +145,10 @@ export function ListTile({
  *    next reader sets it and believes the result. A tile's picture is the
  *    TILE's shape, on all five lists.
  */
-function TilePhoto({ photo, name }: { photo: string | null; name: string }) {
+function TilePhoto({ photo, phone, name }: { photo: string | null; phone?: string; name: string }) {
   return (
     <span className="absolute inset-0 flex items-center justify-center [&>*]:h-full [&>*]:w-full [&>*]:rounded-none [&>*]:ring-0 [&>span]:text-heading">
-      <Avatar photo={photo} name={name} size="lg" shape="square" />
+      <Avatar photo={photo} phone={phone} name={name} size="lg" shape="square" />
     </span>
   )
 }

@@ -140,6 +140,11 @@ export async function measure(page: Page): Promise<Omit<MobileMeasure, 'name' | 
       if (inMap(e) || !visible(e)) continue
       const s = getComputedStyle(e)
       if (!['auto', 'scroll'].includes(s.overflowX)) continue
+      /* ★★ BA (2026-10-12) — UNE EXCEPTION NOMMÉE PAR LE PO : la rangée des filtres
+         et celle des statuts de l'écran des fermes tiennent sur UNE ligne et
+         défilent de côté au doigt (« chaque ligne de plus mange l'écran »).
+         Elles portent `.one-line-row` ; tout autre conteneur reste interdit. */
+      if (e.classList.contains('one-line-row')) continue
       if (e.scrollWidth > e.clientWidth + 2) scrollers.push(`${desc(e)} (${e.scrollWidth}/${e.clientWidth})`)
     }
     const outside: string[] = []

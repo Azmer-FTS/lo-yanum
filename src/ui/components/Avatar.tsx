@@ -1,6 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 
 import { avatarHue, initialsOf, photoSource } from '@core/index'
+
+import { contactPhotoUrl, contactPhotosVersion, subscribeContactPhotos } from '../../data/contactPhotos'
+
+/**
+ * ★★ BA — la photo d'une personne retrouvée par son TÉLÉPHONE (bucket privé
+ * `contact-photos`). `null` tant qu'elle n'est pas chargée, ou s'il n'y en a pas.
+ */
+export function useContactPhoto(phone: string | null | undefined): string | null {
+  useSyncExternalStore(subscribeContactPhotos, contactPhotosVersion, contactPhotosVersion)
+  return phone ? contactPhotoUrl(phone) : null
+}
 
 /**
  * Avatar with a graceful fallback: the photo when there is one, otherwise the
@@ -24,8 +35,14 @@ export function Avatar({
   size = 'sm',
   shape = 'circle',
   ring = false,
+  phone,
 }: {
   photo?: string | null
+  /**
+   * ★★ BA — sans photo propre, celle de ce numéro (les photos des contacts
+   * sont reliées par le téléphone, jamais par le nom).
+   */
+  phone?: string | null
   name: string
   size?: AvatarSize
   /** Places (farms) read better as squares, people as circles. */
@@ -36,7 +53,8 @@ export function Avatar({
   const ringClass = ring ? 'ring-2 ring-accent/50' : 'ring-1 ring-edge-subtle'
   const base = `${SIZES[size]} ${radius} ${ringClass} shrink-0 overflow-hidden`
 
-  const src = photoSource(photo)
+  const byPhone = useContactPhoto(photo ? null : phone)
+  const src = photoSource(photo) ?? byPhone
 
   /**
    * ★ X5.3 (2026-09-04) — A MISSING PICTURE IS ALWAYS THE INITIALS DISC,

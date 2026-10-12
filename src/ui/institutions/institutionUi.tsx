@@ -171,6 +171,11 @@ function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institut
   const roleName = t(`institutions.role.${contactRoleKey(inst, contact.role)}`)
   return (
     <li className="rounded-card bg-surface-raised p-2.5 shadow-card" data-testid={`institution-contact-${contact.id}`} data-role={contact.role}>
+      {contact.phone && (
+        <div className="mb-2">
+          <Avatar phone={contact.phone} name={contact.name || '?'} size="sm" />
+        </div>
+      )}
       <div className="grid gap-2 sm:grid-cols-[9.5rem_minmax(0,1fr)_10rem]">
         <label className="flex flex-col gap-1">
           <span className="text-micro font-semibold text-content-muted">{t('institutions.roleLabel')}</span>
@@ -226,6 +231,8 @@ export function InstitutionContactsList({ inst }: { inst: Institution }) {
       )}
       {contacts.map((c) => (
         <li key={c.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-2 text-caption" data-role={c.role} data-testid={`institution-contact-line-${c.id}`}>
+          {/* ★★ BA — la photo de la personne, retrouvée par son téléphone. */}
+          <Avatar phone={c.phone} name={c.name || '?'} size="xs" />
           <span className="w-[5.5rem] shrink-0 text-content-muted">{t(`institutions.role.${contactRoleKey(inst, c.role)}`)}</span>
           <span className="min-w-0 flex-1 font-semibold text-content-primary">{c.name || '—'}</span>
           {c.phone && (

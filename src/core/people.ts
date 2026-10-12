@@ -156,3 +156,112 @@ export function mergePeople(
     contacts: rows,
   }
 }
+
+// ---------------------------------------------------------------------------
+// ★★ BA (2026-10-12) — LES CONTACTS D'UNE FERME, UNE LISTE ORDONNÉE.
+// ---------------------------------------------------------------------------
+
+/**
+ * Le même modèle que les institutions en AZ5, à la mesure d'une ferme : une
+ * liste ORDONNÉE (`contacts`, dans l'ordre de `entity_contacts.position`),
+ * sans hiérarchie de rôles. Le RANG 1 (`contacts[0]`) est l'agriculteur — celui
+ * qui signe — et lui SEUL représente la ferme partout où l'application montre
+ * « le contact » (tableau, vignette, aperçu, garde, urgence). `farmerName` /
+ * `farmerPhone` sont son MIROIR.
+ *
+ * Deux sens d'écriture, et la règle qui les réconcilie (`settleFarmContacts`,
+ * appelée à chaque `commit` du store et au chargement) :
+ *   · la liste a été réordonnée ou modifiée (éditeur de la fiche) → elle
+ *     gagne : le miroir est recopié depuis le rang 1 (`setFarmContacts`) ;
+ *   · un chemin d'avant BA a écrit `farmerName` / `farmerPhone` (import du
+ *     portail, de l'association, formulaire) → l'agriculteur gagne : s'il est
+ *     déjà dans la liste (même téléphone, sinon même nom), il remonte au rang
+ *     1 ; sinon il y ENTRE au rang 1 et l'ancien rang 1 descend au rang 2 —
+ *     jamais écrasé, jamais perdu.
+ * Le rang 1 est le seul `isPrimary` (la connexion de l'agriculteur).
+ *
+ * Renvoie LA MÊME RÉFÉRENCE quand rien ne change : le store compare les
+ * enregistrements pour savoir quoi pousser.
+ */
+export interface FarmPeople {
+  id: string
+  farmerName?: string
+  farmerPhone?: string
+  contacts: FarmContact[]
+}
+
+/** Le rang 1, ou `null`. */
+export const farmRank1 = (f: Pick<FarmPeople, 'contacts'>): FarmContact | null => f.contacts[0] ?? null
+
+/**
+ * Le nom qu'on affiche sous la ferme : le rang 1, sinon le miroir (une fiche
+ * qui n'a encore jamais été réconciliée). Vide quand personne n'est connu.
+ */
+export function farmPersonName(f: Pick<FarmPeople, 'contacts' | 'farmerName'>): string {
+  return (f.contacts[0]?.name ?? '').trim() || (f.farmerName ?? '').trim()
+}
+
+/** Le téléphone du rang 1, même règle. */
+export function farmPersonPhone(f: Pick<FarmPeople, 'contacts' | 'farmerPhone'>): string {
+  return (f.contacts[0]?.phone ?? '').trim() || (f.farmerPhone ?? '').trim()
+}
+
+function sameContactPerson(farmer: { name?: string; phone?: string }, c: FarmContact): boolean {
+  const fp = digits(farmer.phone)
+  const cp = digits(c.phone)
+  if (fp.length >= 7 && cp.length >= 7) return fp.replace(/^972/, '0') === cp.replace(/^972/, '0')
+  return samePerson(farmer, c)
+}
+
+export function settleFarmContacts<T extends FarmPeople>(farm: T): T {
+  const name = (farm.farmerName ?? '').trim()
+  const phone = (farm.farmerPhone ?? '').trim()
+  let contacts = farm.contacts
+  if (name !== '' || phone !== '') {
+    const at = contacts.findIndex((c) => sameContactPerson({ name, phone }, c))
+    if (at === -1) {
+      contacts = [{ id: `fc-${farm.id}-${contacts.length + 1}`, name, phone, email: '', role: '', photo: null, isPrimary: true }, ...contacts]
+    } else {
+      const c = contacts[at]
+      const filled = { ...c, name: name || c.name, phone: phone || c.phone }
+      if (at !== 0 || filled.name !== c.name || filled.phone !== c.phone) {
+        contacts = [filled, ...contacts.filter((_, i) => i !== at)]
+      }
+    }
+  } else {
+    /* Pas de miroir : le contact principal d'avant BA EST l'agriculteur
+       connu ; il prend le rang 1 au lieu de perdre son drapeau. */
+    const at = contacts.findIndex((c) => c.isPrimary)
+    if (at > 0) contacts = [contacts[at], ...contacts.filter((_, i) => i !== at)]
+  }
+  if (contacts.some((c, i) => c.isPrimary !== (i === 0))) {
+    contacts = contacts.map((c, i) => (c.isPrimary === (i === 0) ? c : { ...c, isPrimary: i === 0 }))
+  }
+  const r1 = contacts[0]
+  const mirrorName = r1 ? r1.name : farm.farmerName
+  const mirrorPhone = r1 ? r1.phone : farm.farmerPhone
+  if (contacts === farm.contacts && mirrorName === farm.farmerName && mirrorPhone === farm.farmerPhone) return farm
+  return { ...farm, contacts, farmerName: mirrorName, farmerPhone: mirrorPhone }
+}
+
+/**
+ * L'éditeur de la fiche écrit la LISTE : elle gagne. Le miroir suit le rang 1 ;
+ * une ligne sans nom ni numéro n'est pas gardée.
+ */
+export function withFarmContacts<T extends FarmPeople>(farm: T, list: readonly FarmContact[]): T {
+  const contacts = list
+    .filter((c) => c.name.trim() !== '' || c.phone.trim() !== '')
+    .map((c, i) => ({ ...c, name: c.name.trim(), phone: c.phone.trim(), isPrimary: i === 0 }))
+  const r1 = contacts[0]
+  return { ...farm, contacts, farmerName: r1 ? r1.name : '', farmerPhone: r1 ? r1.phone : '' }
+}
+
+/** ★★ BA — la seule lecture de « נוצר קשר » : absent = établi. */
+export const isContactEstablished = (f: { contactEstablished?: boolean }): boolean => f.contactEstablished !== false
+
+/**
+ * ★★ BA — LA RÈGLE DU PO, MÉCANIQUE, pour une ligne d'export du portail : le
+ * contact est établi si la ligne porte des coordonnées OU une note interne.
+ */
+export const portalContactEstablished = (row: { position: unknown; notes?: string }): boolean =>
+  row.position != null || (row.notes ?? '').trim() !== ''

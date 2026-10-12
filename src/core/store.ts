@@ -18,6 +18,7 @@ import type { Tour } from './tours'
 import type { PortalPlan } from './portalImport'
 import type { Institution, InstitutionContact, InstitutionPlan } from './institutions'
 import { settleInstitution } from './institutions'
+import { settleFarmContacts, withFarmContacts } from './people'
 import type { Landmark } from './landmarks'
 import type {
   Agreement,
@@ -177,6 +178,9 @@ function commit(): void {
     }
     throw new ReadOnlyViolation()
   }
+  /* ★★ BA — le rang 1 des contacts d'une ferme et son miroir, réconciliés
+     ici pour TOUS les chemins d'écriture (même référence si rien ne change). */
+  settleAllFarms(data)
   if (index !== null) {
     const next = indexOf(data)
     const changes = changesBetween(index, next)
@@ -882,7 +886,41 @@ function remeasured(farm: Farm, allZones: readonly FarmZone[]): Farm {
  */
 function remeasureFarms(next: StoreData): StoreData {
   next.farms = next.farms.map((f) => remeasured(f, next.farmZones))
+  settleAllFarms(next)
   return next
+}
+
+/** ★★ BA — voir `settleFarmContacts` (core/people.ts). */
+function settleAllFarms(next: StoreData): void {
+  let changed = false
+  const farms = next.farms.map((f) => {
+    const s = settleFarmContacts(f)
+    if (s !== f) changed = true
+    return s
+  })
+  if (changed) next.farms = farms
+}
+
+/**
+ * ★★ BA (2026-10-12) — L'ÉDITEUR DES CONTACTS D'UNE FERME écrit la LISTE
+ * ORDONNÉE : elle gagne, le miroir `farmerName` / `farmerPhone` suit le rang 1.
+ */
+export function setFarmContacts(farmId: string, contacts: readonly FarmContact[]): void {
+  const index = data.farms.findIndex((f) => f.id === farmId)
+  if (index === -1) return
+  data.farms[index] = withFarmContacts(data.farms[index], contacts)
+  commit()
+}
+
+export const newFarmContactId = (): string => nextId('contact')
+
+/** ★★ BA — « טרם נוצר קשר » ⇄ « נוצר קשר », à la main, sur la fiche. */
+export function setFarmContactEstablished(farmId: string, established: boolean): void {
+  const index = data.farms.findIndex((f) => f.id === farmId)
+  if (index === -1) return
+  const { contactEstablished: _drop, ...rest } = data.farms[index]
+  data.farms[index] = established ? rest : { ...rest, contactEstablished: false }
+  commit()
 }
 
 export function createFarmZone(draft: FarmZoneDraft): FarmZone {
@@ -2507,6 +2545,11 @@ export function applyPortalPlan(
       farm.status = allowedStatus(null, farm.status, farm)
       data.farms = [farm, ...data.farms]
       out.created++
+      /* ★★ BA — la piste au même téléphone est CONVERTIE, pas doublée. */
+      if (action.fromLeadId) {
+        data.leads = data.leads.map((l) => (l.id === action.fromLeadId && !l.convertedFarmId ? { ...l, convertedFarmId: farm.id, convertedAt: stamp, updatedAt: stamp } : l))
+        out.converted++
+      }
     } else if (action.kind === 'farm-to-lead') {
       if (!deletionPlan('entity', action.farmId).allowed) continue
       newLeads.push({ ...action.lead, id: nextId('lead'), rank: newLeads.length })

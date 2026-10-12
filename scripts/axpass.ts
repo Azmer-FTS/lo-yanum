@@ -102,7 +102,7 @@ section('A346 — une seule rangée de filtres par écran')
   const listTop = prim.slice(prim.indexOf('export function ListTop('), prim.indexOf('export function RowLink('))
   check('A346 `ListTop` ne dessine plus de bande de tuiles (kpi-strip) au-dessus des filtres', !/testId="kpi-strip"/.test(listTop))
   const filterRow = prim.slice(prim.indexOf('export function FilterRow('), prim.indexOf('export function PillSelect'))
-  check('A346 les files (`kpis`) entrent DANS la rangée de filtres (KpiSlot), visibles même repliée', /KpiSlot\.Provider/.test(listTop) && (filterRow.match(/data-testid="work-queues"/g) ?? []).length === 2)
+  check('A346 les files (`kpis`) entrent DANS la rangée de filtres (KpiSlot), visibles même repliée', /KpiSlot\.Provider/.test(listTop) && /* ★★ BA — trois formes depuis la rangée « une ligne » de l'écran des fermes. */ (filterRow.match(/data-testid="work-queues"/g) ?? []).length === 3)
   const kpiChip = prim.slice(prim.indexOf('export function KpiChip('), prim.indexOf('const KpiSlot'))
   check('A346 une file a la FORME d’un filtre (FilterPill), plus d’une tuile', /<FilterPill/.test(kpiChip) && !/<KpiFilter/.test(kpiChip))
 }

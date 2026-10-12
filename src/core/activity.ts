@@ -199,8 +199,12 @@ export interface ActivityReportOptions {
 
 /** Personnes joignables sur une fiche. Une seule définition, ici. */
 function reachablePeople(farm: Farm): number {
-  const farmer = farm.farmerPhone && farm.farmerPhone !== '' ? 1 : 0
-  return farmer + farm.contacts.filter((c) => c.phone !== '').length
+  /* ★★ BA — depuis que le rang 1 des contacts EST l'agriculteur (miroir), le
+     compter deux fois ferait d'une fiche réconciliée « un contact gagné ». */
+  const digits = (p: string | undefined): string => (p ?? '').replace(/\D/g, '').replace(/^972/, '0')
+  const phones = new Set(farm.contacts.map((c) => digits(c.phone)).filter((d) => d !== ''))
+  const farmer = digits(farm.farmerPhone) !== '' && !phones.has(digits(farm.farmerPhone)) ? 1 : 0
+  return farmer + phones.size
 }
 
 export function snapshotFarm(farm: Farm): ActivityFarmSnapshot {

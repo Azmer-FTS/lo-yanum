@@ -189,6 +189,8 @@ const farmMapping: Mapping<Farm> = {
           land_agreement_until: f.landAgreementUntil ?? null,
           farmer_name: f.farmerName ?? null,
           farmer_phone: f.farmerPhone ?? null,
+          /* ★★ BA — « טרם נוצר קשר » ; absent = établi (défaut de la colonne). */
+          contact_established: f.contactEstablished !== false,
           farmer_email: f.farmerEmail ?? null,
           /* AF1 — ת״ז / ח״פ, la quatrième case de l'en-tête du הסכם. */
           farmer_id_no: f.farmerId ?? null,
@@ -262,6 +264,8 @@ const farmMapping: Mapping<Farm> = {
         role: c.role,
         photo: c.photo,
         is_primary: c.isPrimary,
+        /* ★★ BA — la note d'un contact ; `position` est son RANG (0 = rang 1). */
+        note: c.note ?? '',
         position,
       })),
     },
@@ -345,6 +349,8 @@ const farmMapping: Mapping<Farm> = {
         role: str(r.role),
         photo: nullableStr(r.photo),
         isPrimary: bool(r.is_primary),
+        /* ★★ BA — absente plutôt que vide : l'aller-retour reste une identité. */
+        ...(str(r.note) !== '' ? { note: str(r.note) } : {}),
       }),
     ),
     commitments: ordered(kids.entity_commitments).map(
@@ -409,6 +415,8 @@ const farmMapping: Mapping<Farm> = {
     landAgreementUntil: optStr(p.land_agreement_until),
     farmerName: optStr(p.farmer_name),
     farmerPhone: optStr(p.farmer_phone),
+    /* ★★ BA — seul « non établi » est porté ; établi = absent. */
+    ...(p.contact_established === false ? { contactEstablished: false } : {}),
     farmerEmail: optStr(p.farmer_email),
     farmerId: optStr(p.farmer_id_no),
     liaisonName: optStr(p.liaison_name),

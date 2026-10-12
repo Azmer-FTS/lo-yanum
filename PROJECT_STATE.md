@@ -104,6 +104,33 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BA — AGRICULTEURS, CONTACTS, MÉNAGE DES FERMES** (2026-10-12). Récit et
+  règles du PO : `ETAT.md` § BA (en tête). Détail nominatif (fusions, écarts
+  CSV ↔ base) : `private/ba/rapport.md` (ignoré). L'essentiel :
+  - **Règles du PO (permanentes)** : (1) toute fiche de l'export du portail
+    devient une FERME (AS3 levée) ; (2) indicateur de premier contact
+    `contact_established` calculé à l'import (coordonnées OU note interne),
+    modifiable à la main, filtre « טרם נוצר קשר » ; (3) contact / photo /
+    fiche se rapprochent par le TÉLÉPHONE E.164, jamais par le nom ;
+    (4) aucune donnée réelle dans le dépôt (A395).
+  - **Base, écrite et relue** : 24 fermes (4 sans contact établi), 26 contacts
+    de ferme, 14 contacts à traiter actifs, 37 photos dans le bucket privé
+    `contact-photos` + table `contact_photos`. Migration
+    `20261012000100_ba_farm_contacts_photos.sql` + jalon `20261011223341`,
+    repair fait. Sauvegarde d'avant : `private/ba/avant/*.json`.
+  - **Code** : `phoneE164`/`pairByPhone` (phone.ts), `settleFarmContacts`
+    (people.ts, appelée dans `commit`), import du portail par téléphone,
+    `data/contactPhotos.ts` + `Avatar phone=`, `ui/farm/FarmContactsEditor.tsx`,
+    `ui/farm/FarmStatusBand.tsx`, `FilterRow oneLine`, coordonnées d'un
+    contact à traiter (`LeadPositionField`).
+  - **Portes** : `bun run bapass` (A390–A395), `bun run baui` (A396–A400).
+  - ⚠️ **Données réelles DÉJÀ dans HEAD avant BA** (41 fichiers, listés par
+    A395 en INFO) : à purger de l'arbre — question au PO.
+  - ⚠️ Le travail AZ4 d'une autre session (plan de tournée : `routing.ts`,
+    `tours.ts`, hunks « plan » de `store.ts` / `rows.ts`, migration
+    `20261011000300` NON appliquée) est TOUJOURS dans l'arbre, non commité ;
+    BA a été commité sans lui (patch filtré, comme AZ5).
+
 - **AZ5 — CONTACTS D'INSTITUTION RANGÉS PAR RÔLE** (2026-10-11, tâche de
   données courte, faite AU MILIEU de la passe AZ). Commit : `27aa409`, poussé, DÉPLOYÉ et servi (`version.json` = 27aa409).
   Récit complet : `ETAT.md` § AZ5 (en tête). L'essentiel :

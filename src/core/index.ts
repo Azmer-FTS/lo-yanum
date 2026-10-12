@@ -163,6 +163,10 @@ export {
   updateInstitution,
   setInstitutionContacts,
   newInstitutionContactId,
+  // ★★ BA — les contacts d'une ferme (liste ordonnée) et « נוצר קשר ».
+  setFarmContacts,
+  setFarmContactEstablished,
+  newFarmContactId,
   createInstitution,
   deleteInstitution,
   // ★★ AV2 — l'épingle posée sur la carte.

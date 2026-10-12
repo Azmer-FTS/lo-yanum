@@ -1,5 +1,7 @@
 import { canonicalPhone } from './association'
 import { FARM_STATUS_OPTIONS, normaliseValue, readOption, typeFromAreas } from './fields'
+import { portalContactEstablished } from './people'
+import { phoneE164 } from './phone'
 import type { Farm, FarmStatus, LandDocument, LatLng, Lead, LeadStatus } from './types'
 
 /**
@@ -53,6 +55,16 @@ import type { Farm, FarmStatus, LandDocument, LatLng, Lead, LeadStatus } from '.
  *   survit dans un libellé. Une FICHE qui existait pour elle est CONVERTIE
  *   en piste — si et seulement si elle n'a encore aucune histoire (signature,
  *   accord, visite, zone) : une histoire ne se perd pas sur une ponctuation.
+ *
+ * ★★ BA (2026-10-12) — TROIS RÈGLES DU PO QUI REMPLACENT CELLES D'AS :
+ *   · TOUTE ligne de l'export devient une FERME (AS3 est levée : une ligne
+ *     étoilée n'est plus une piste). Une piste qui porte le même téléphone
+ *     est CONVERTIE (elle passe dans « הפכו לחוות »), jamais doublée.
+ *   · L'appairage se fait par le TÉLÉPHONE (E.164) d'abord ; le nom ne sert
+ *     qu'en dernier recours, et jamais contre un téléphone qui diffère.
+ *   · Le portail servait de bloc-notes : une fiche CRÉÉE par l'import porte
+ *     « טרם נוצר קשר » sauf si la ligne a des coordonnées ou une note interne
+ *     (`portalContactEstablished`).
  *
  * PUR : ni DOM, ni React, ni Supabase — comme tout /src/core.
  */
@@ -114,6 +126,7 @@ export type PortalField =
   | 'signature'
   | 'address'
   | 'status'
+  | 'notes'
 
 /**
  * L'en-tête tel que le portail l'écrit. Un en-tête RÉPÉTÉ (« איש קשר »,
@@ -130,11 +143,13 @@ export const PORTAL_HEADERS: ReadonlyArray<{ field: PortalField; headers: readon
   { field: 'cultivated', headers: ['שטחים מעובדים'] },
   { field: 'guarded', headers: ['שטחים שמירה'] },
   { field: 'email', headers: ['מייל חקלאי', 'מייל'] },
-  { field: 'idNo', headers: ['תז/ח.פ', 'ת״ז/ח״פ', 'תז / ח.פ'] },
+  { field: 'idNo', headers: ['תז/ח.פ', 'ת״ז/ח״פ', 'תז / ח.פ', 'תז', 'ת״ז'] },
   { field: 'signature', headers: ['חתימה'] },
   { field: 'address', headers: ['כתובת'] },
   /* Absent de l'export du 2026-10-07 ; lu s'il apparaît un jour. */
-  { field: 'status', headers: ['סטטוס חתימה', 'סטטוס'] },
+  { field: 'status', headers: ['סטטוס חתימה', 'סטטוס', 'סטאטוס חתימה', 'סטאטוס'] },
+  /* ★★ BA — la note interne : elle compte dans « נוצר קשר ». */
+  { field: 'notes', headers: ['הערות פנימי', 'הערות פנימיות', 'הערות'] },
 ]
 
 export function portalColumnIndex(headers: readonly string[]): Partial<Record<PortalField, number>> {
@@ -261,6 +276,8 @@ export interface PortalRow {
   signature: string | null
   contract: { url: string | null; mention: boolean } | null
   status: FarmStatus | null
+  /** ★★ BA — « הערות פנימי ». */
+  notes: string
 }
 
 export function readPortalRows(matrix: readonly (readonly string[])[]): {
@@ -315,6 +332,7 @@ export function readPortalRows(matrix: readonly (readonly string[])[]): {
             ? { url: agreement, mention: false }
             : { url: null, mention: true },
       status: statusCell ? ((readOption(statusCell, FARM_STATUS_OPTIONS)?.id as FarmStatus | undefined) ?? null) : null,
+      notes: cell(r, 'notes').trim(),
     })
   })
   return { rows, columns }
@@ -325,6 +343,7 @@ export function readPortalRows(matrix: readonly (readonly string[])[]): {
 // ---------------------------------------------------------------------------
 
 export type PortalWarningCode =
+  | 'notes-differ'
   | 'id-not-9-digits'
   | 'id-differs'
   | 'phone-differs'
@@ -355,7 +374,8 @@ export interface FieldChange {
 
 export type PortalAction =
   | { kind: 'update'; row: PortalRow; farmId: string; pairedBy: 'name' | 'key' | 'phone'; patch: Partial<Farm>; changes: FieldChange[] }
-  | { kind: 'create-farm'; row: PortalRow; farm: Partial<Farm> & { name: string } }
+  /** ★★ BA — `fromLeadId` : la piste au même téléphone, convertie au lieu d'être doublée. */
+  | { kind: 'create-farm'; row: PortalRow; farm: Partial<Farm> & { name: string }; fromLeadId?: string }
   | { kind: 'farm-to-lead'; row: PortalRow; farmId: string; lead: Omit<Lead, 'id' | 'rank'> }
   | { kind: 'lead-update'; row: PortalRow; leadId: string; patch: Partial<Lead>; changes: FieldChange[] }
   | { kind: 'lead-create'; row: PortalRow; lead: Omit<Lead, 'id' | 'rank'> }
@@ -436,7 +456,19 @@ export function planPortalImport(input: PortalPlanInput): PortalPlan {
   for (const r of rows) keyCount.set(pairingName(r.name), (keyCount.get(pairingName(r.name)) ?? 0) + 1)
 
   const findFarm = (row: PortalRow): { farm: Farm; by: 'name' | 'key' | 'phone' } | null => {
-    const free = farms.filter((f) => !takenFarms.has(f.id))
+    /* ★★ BA — LE TÉLÉPHONE D'ABORD, en E.164 (rang 1 ou tout contact de la fiche). */
+    const e = phoneE164(row.phone)
+    const phonesOf = (f: Farm): string[] => [f.farmerPhone ?? '', ...(f.contacts ?? []).map((c) => c.phone)]
+    if (e) {
+      const byE164 = farms.filter((f) => !takenFarms.has(f.id) && phonesOf(f).some((p) => phoneE164(p) === e))
+      if (byE164.length === 1) return { farm: byE164[0], by: 'phone' }
+      if (byE164.length > 1) {
+        warn(row, 'ambiguous', byE164.map((f) => f.name).join(' · '))
+        return null
+      }
+    }
+    /* Le nom, en dernier recours — et jamais contre un téléphone qui diffère. */
+    const free = farms.filter((f) => !takenFarms.has(f.id) && !(e && phonesOf(f).some((p) => phoneE164(p) !== null && phoneE164(p) !== e)))
     const exact = free.filter((f) => comparableName(f.name) === comparableName(row.name))
     if (exact.length === 1) return { farm: exact[0], by: 'name' }
     if (exact.length > 1) {
@@ -456,6 +488,14 @@ export function planPortalImport(input: PortalPlanInput): PortalPlan {
       if (byPhone.length === 1) return { farm: byPhone[0], by: 'phone' }
     }
     return null
+  }
+
+  /* ★★ BA — la piste au même téléphone (E.164), seule. */
+  const leadByPhone = (row: PortalRow): Lead | null => {
+    const e = phoneE164(row.phone)
+    if (!e) return null
+    const found = input.leads.filter((l) => !takenLeads.has(l.id) && !l.convertedFarmId && phoneE164(l.phone) === e)
+    return found.length === 1 ? found[0] : null
   }
 
   const findLead = (row: PortalRow): Lead | null => {
@@ -487,12 +527,17 @@ export function planPortalImport(input: PortalPlanInput): PortalPlan {
 
   /* 1 — les lignes NON étoilées d'abord : ce sont des fermes, et ce sont elles
          qui ont droit à une fiche existante retrouvée par téléphone (AS2). */
-  for (const row of rows.filter((r) => !r.starred)) {
+  /* ★★ BA — une ligne étoilée n'est plus une piste : seule sa jumelle (même
+     téléphone qu'une ligne non étoilée, AS2) reste un vestige. */
+  const isTwin = (r: PortalRow): boolean => r.starred && plainByPhone.has(phoneKey(r.phone))
+  for (const row of rows.filter((r) => !isTwin(r))) {
     if (row.signature) plan.signatures.push({ line: row.line, name: row.name, attached: false })
     if (row.contract) plan.contracts.push({ line: row.line, name: row.name, url: row.contract.url, queued: false })
 
     const found = findFarm(row)
     if (!found) {
+      const fromLead = leadByPhone(row)
+      if (fromLead) takenLeads.add(fromLead.id)
       const status: FarmStatus = row.status ?? (row.signature ? 'signed' : 'verbal_ok')
       const cultivated = row.cultivated ?? 0
       const grazing = row.grazing ?? 0
@@ -515,8 +560,16 @@ export function planPortalImport(input: PortalPlanInput): PortalPlan {
           ? { kind: 'imported', signedAt: null, fileName: input.fileName, importedAt: input.nowIso }
           : undefined,
         landDocuments: row.contract?.url ? [landDocumentOf(row.contract.url, input.nowIso)] : undefined,
+        /* ★★ BA — la note interne, sinon celle de la piste convertie. */
+        notes: row.notes || fromLead?.notes || '',
+        ...(fromLead ? { locality: fromLead.place, regionId: fromLead.regionId } : {}),
+        ...(portalContactEstablished(row) ? {} : { contactEstablished: false }),
       }
-      plan.actions.push({ kind: 'create-farm', row, farm })
+      if (!farm.position && fromLead?.position) {
+        farm.position = fromLead.position
+        farm.positionMissing = false
+      }
+      plan.actions.push({ kind: 'create-farm', row, farm, ...(fromLead ? { fromLeadId: fromLead.id } : {}) })
       markDocs(plan, row, true)
       continue
     }
@@ -564,6 +617,15 @@ export function planPortalImport(input: PortalPlanInput): PortalPlan {
     if (id) patch.farmerId = id
     const email = fill(changes, row, 'farmerEmail', farm.farmerEmail, row.email, 'email-differs', (a, b) => a.toLowerCase() === b.toLowerCase())
     if (email) patch.farmerEmail = email
+    /* ★★ BA — une fiche « טרם נוצר קשר » que le portail situe ou annote passe
+       à « נוצר קשר » ; l'inverse ne se fait jamais à l'import (le PO tranche). */
+    if (farm.contactEstablished === false && portalContactEstablished(row)) {
+      patch.contactEstablished = undefined
+      changes.push({ field: 'contactEstablished', from: 'false', to: 'true' })
+    }
+    /* ★★ BA — la note interne comble un vide ; une note en base n'est jamais écrasée. */
+    const notes = fill(changes, row, 'notes', farm.notes, row.notes, 'notes-differ')
+    if (notes) patch.notes = notes
     /* position — l'épingle du PO gagne */
     if (row.position) {
       if (farm.positionMissing) {
@@ -589,8 +651,8 @@ export function planPortalImport(input: PortalPlanInput): PortalPlan {
     plan.actions.push({ kind: 'update', row, farmId: farm.id, pairedBy: by, patch, changes })
   }
 
-  /* 2 — les lignes étoilées : des pistes. */
-  for (const row of rows.filter((r) => r.starred)) {
+  /* 2 — les lignes étoilées : seules leurs jumelles restent ici (BA). */
+  for (const row of rows.filter((r) => isTwin(r))) {
     const twin = plainByPhone.get(phoneKey(row.phone))
     if (twin) {
       /* AS2 : vestige d'une exploitation déjà présente sans astérisques. Si

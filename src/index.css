@@ -2608,3 +2608,27 @@ html[data-numpad-open] [data-farm-form] {
   width: 4px;
   background-color: rgb(var(--farm-incoming-request));
 }
+
+/* ★★ BA (2026-10-12) — UNE RANGÉE QUI NE PASSE PAS À LA LIGNE. Les filtres
+   de l'écran des fermes (et la rangée des statuts) tiennent sur une ligne et
+   défilent de côté au doigt : la barre est collante, une ligne de plus mange
+   l'écran. Pas de barre de défilement visible ; rien ne rétrécit. */
+.one-line-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-block: 4px;
+}
+.one-line-row::-webkit-scrollbar {
+  display: none;
+}
+.one-line-row > *,
+.one-line-row > .contents > * {
+  flex-shrink: 0;
+}

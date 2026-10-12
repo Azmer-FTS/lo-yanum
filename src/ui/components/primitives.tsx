@@ -1547,8 +1547,17 @@ export function FilterRow({
   activeCount,
   onClear,
   trailing,
+  oneLine = false,
 }: {
   children: ReactNode
+  /**
+   * ★★ BA (2026-10-12) — UNE SEULE RANGÉE, QUI DÉFILE DE CÔTÉ. La barre est
+   * collante : chaque ligne de filtres de plus mange l'écran (mot du PO). Les
+   * pastilles ne passent plus à la ligne ; ce qui ne tient pas se fait
+   * défiler au doigt. Au téléphone, les files restent sur la même ligne que
+   * « סינון » et défilent aussi.
+   */
+  oneLine?: boolean
   /**
    * ★★ AB2.4 — HOW MANY FILTERS ARE ON, NOT WHETHER ANY IS.
    *
@@ -1595,7 +1604,7 @@ export function FilterRow({
    */
   const phone = usePhoneShape()
   const { boxRef, pillsRef, fold: overflow, available, required } = useFilterFold()
-  const fold = phone || overflow
+  const fold = phone || (!oneLine && overflow)
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement | null>(null)
   /** Z3 — the counter `ListTop` built, if this row is inside one. */
@@ -1668,6 +1677,7 @@ export function FilterRow({
       data-filters-active={activeCount}
       data-fold-available={available ?? undefined}
       data-fold-required={required ?? undefined}
+      data-one-line={oneLine ? '' : undefined}
       className="relative"
     >
       {inner}
@@ -1686,7 +1696,7 @@ export function FilterRow({
            *    flow: it grows the sticky header, and the header pushes the
            *    list.
            */
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+          <div className={oneLine ? 'flex flex-wrap items-center gap-x-2 gap-y-2 [&>*:not([role=dialog])]:shrink-0' : 'flex flex-wrap items-center gap-x-2 gap-y-2'}>
             {/**
               * ★★ Z3.2 — LINE 1 IS THE COUNTER AND THE BUTTON, FACE TO FACE.
               * `me-auto` on the counter is the whole of "face à face": in an
@@ -1701,7 +1711,7 @@ export function FilterRow({
             {kpis && (
               /* Entières, jamais coupées par un bord qui défile : elles passent à
                  la ligne DANS la même zone si la largeur manque (AQ1.3). */
-              <div className="flex flex-wrap items-center gap-2" data-testid="work-queues" data-kpis-inline="">
+              <div className={oneLine ? 'one-line-row min-w-0 !shrink' : 'flex flex-wrap items-center gap-2'} style={oneLine ? { flex: '1 1 0' } : undefined} data-testid="work-queues" data-kpis-inline="">
                 {kpis}
               </div>
             )}
@@ -1755,6 +1765,36 @@ export function FilterRow({
    * worse than dropping the word, so it keeps the word and drops the button:
    * the same icon and the same noun, set as the heading of the block it names.
    */
+  if (oneLine) {
+    return (
+      <FilterShape.Provider value={{ phone: false }}>
+        {bar(
+          <div className="flex min-w-0 items-center gap-2">
+            {counter && <span className="flex shrink-0 items-center">{counter}</span>}
+            <span data-filters-title="" className="flex shrink-0 items-center gap-1.5 text-micro font-medium text-content-muted">
+              <Icon name="filter" size={12} />
+              {active && (
+                <span className="filter-count" data-testid="filter-active-count">
+                  {activeCount}
+                </span>
+              )}
+            </span>
+            <div ref={pillsRef} className="one-line-row min-w-0 flex-1" data-testid="filter-one-line">
+              {kpis && (
+                <span className="contents" data-testid="work-queues">
+                  {kpis}
+                </span>
+              )}
+              {children}
+              {clearPill}
+            </div>
+            {trailing && <div className="flex shrink-0 items-center gap-2">{trailing}</div>}
+          </div>,
+        )}
+      </FilterShape.Provider>
+    )
+  }
+
   return (
     <FilterShape.Provider value={{ phone: false }}>
       {bar(

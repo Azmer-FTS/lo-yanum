@@ -29,6 +29,7 @@ import { readToken } from '../../components/badges'
 import { readSortState } from '../../components/DataTable'
 import type { SortState } from '../../components/DataTable'
 import { EntityTable } from '../../components/EntityTable'
+import { PositionLinkField } from '../../components/PositionLinkField'
 import type { EntityColumn, RowAction } from '../../components/EntityTable'
 import { PreviewPanel, PreviewRow, PreviewSection } from '../../components/PreviewPanel'
 import { FilterPill, FilterRow, ListTop, Modal, PageHeader } from '../../components/primitives'
@@ -325,7 +326,7 @@ export function LeadsScreen() {
           <EntityTable
             rows={rows}
             rowKey={(l) => l.id}
-            lead={(l) => ({ title: leadLabel(l), photo: l.photo, dot: <span className="h-2.5 w-2.5 shrink-0 rounded-pill" style={{ backgroundColor: readToken(STATUS_TOKEN[l.status]) }} aria-hidden /> })}
+            lead={(l) => ({ title: leadLabel(l), photo: l.photo, phone: l.phone, dot: <span className="h-2.5 w-2.5 shrink-0 rounded-pill" style={{ backgroundColor: readToken(STATUS_TOKEN[l.status]) }} aria-hidden /> })}
             leadLabel={t('leads.col.name')}
             leadSort={leadLabel}
             columns={columns}
@@ -807,6 +808,7 @@ export function LeadEditScreen() {
     <div className="mx-auto max-w-3xl px-4 py-6" data-testid="lead-edit">
       <PageHeader title={leadLabel(lead)} back={{ to: '/coordinator/leads', label: t('leads.title') }} />
       <LeadFields lead={lead} />
+      <LeadPositionField lead={lead} />
       <div className="mt-4">
         <span className="label">{t('leads.col.status')}</span>
         <StatusSegments value={lead.status} onChange={(s) => setLeadStatus(lead.id, s)} testId={`lead-status-${lead.id}`} />
@@ -820,6 +822,35 @@ export function LeadEditScreen() {
         </button>
       </div>
     </div>
+  )
+}
+
+/**
+ * ★★ BA (2026-10-12) — LES COORDONNÉES D'UN CONTACT À TRAITER. Le PO relève le
+ * point sur le terrain AVANT d'avoir une fiche : il le colle ici (lien Google
+ * Maps / Waze, ou « 31.5, 34.6 »), et la conversion en ferme le reporte tel
+ * quel (`convertLeadToFarm` : `position: lead.position`).
+ */
+function LeadPositionField({ lead }: { lead: Lead }) {
+  const { t } = useTranslation()
+  return (
+    <section className="mt-4 flex flex-col gap-2" data-testid="lead-position" data-has-position={lead.position ? 'true' : 'false'}>
+      <span className="label">{t('leads.position')}</span>
+      {lead.position ? (
+        <p className="flex flex-wrap items-center gap-2 text-caption">
+          <span className="ltr-nums rounded-field bg-surface-high px-2.5 py-1.5 text-content-primary" dir="ltr" data-testid="lead-position-value">
+            {lead.position.lat.toFixed(6)}, {lead.position.lng.toFixed(6)}
+          </span>
+          <button type="button" className="btn-ghost min-h-11" onClick={() => updateLead(lead.id, { position: null })} data-testid="lead-position-clear">
+            <Icon name="close" size={14} />
+            {t('leads.positionClear')}
+          </button>
+        </p>
+      ) : (
+        <p className="muted text-caption">{t('leads.positionNone')}</p>
+      )}
+      <PositionLinkField onResolve={(position) => updateLead(lead.id, { position })} applyLabel={t('leads.positionSet')} />
+    </section>
   )
 }
 

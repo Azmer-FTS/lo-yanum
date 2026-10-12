@@ -98,6 +98,15 @@ export interface EntityLead {
   marks?: ReactNode
   /** Toujours sous le nom, quelle que soit la largeur. */
   always?: string[]
+  /**
+   * ★★ BA (2026-10-12) — LA PERSONNE, juste sous le nom (texte secondaire),
+   * dans le tableau ET la vignette : pour une ferme, l'agriculteur de rang 1.
+   * Le PO cherchait un agriculteur par son nom et ne le trouvait pas : l'écran ne montrait
+   * que le nom de l'exploitation.
+   */
+  person?: string
+  /** ★★ BA — le téléphone de cette personne : sa photo, à défaut d'une photo propre. */
+  phone?: string
   /** L'identifiant de la ligne `always` sur la vignette (« בקשה נכנסת »…). */
   alwaysTestId?: string
 }
@@ -341,7 +350,7 @@ export function EntityTable<T>({
     const sub = subOf(r)
     return (
       <span className="flex min-w-0 items-center gap-2.5">
-        <Avatar photo={l.photo} name={l.title} size={big ? 'sm' : 'xs'} shape={l.shape ?? 'circle'} />
+        <Avatar photo={l.photo} phone={l.phone} name={l.title} size={big ? 'sm' : 'xs'} shape={l.shape ?? 'circle'} />
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-1.5">
             {l.dot}
@@ -350,6 +359,11 @@ export function EntityTable<T>({
             </span>
             {l.marks}
           </span>
+          {l.person && (
+            <span className="block truncate text-micro text-content-secondary" title={l.person} data-entity-person="">
+              {l.person}
+            </span>
+          )}
           {sub && (
             <span className="muted block truncate text-micro" title={sub} data-entity-sub="">
               {sub}
@@ -435,6 +449,7 @@ export function EntityTable<T>({
                   <ListTile
                     testId={tileTestId ?? (testId ? `${testId}-tile` : 'entity-tile')}
                     photo={l.photo ?? null}
+                    phone={l.phone}
                     name={l.title}
                     active={activeKey === k}
                     onOpen={() => onPreview?.(r)}
@@ -454,6 +469,11 @@ export function EntityTable<T>({
                       </span>
                       {l.marks}
                     </span>
+                    {l.person && (
+                      <span className="truncate text-body text-content-secondary" data-entity-person="" title={l.person}>
+                        {l.person}
+                      </span>
+                    )}
                     <span className="flex min-w-0 items-center gap-2">
                       {phoneEnd && <span className="shrink-0">{phoneEnd(r)}</span>}
                       {w && (

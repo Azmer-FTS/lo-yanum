@@ -1,5 +1,114 @@
 # לא ינום — ETAT
 
+> 🏁 **BA — AGRICULTEURS, CONTACTS, ET MÉNAGE DES FERMES. 2026-10-12.**
+>
+> ⛔ **DONNÉES RÉELLES.** Aucun nom de personne, téléphone, ת״ז, signature, lien
+> PDF ni photo réels dans ce fichier ni dans le dépôt : tout est en base et dans
+> le bucket privé `contact-photos`. Le détail nominatif (fusions, écarts CSV ↔
+> base) est dans `private/ba/rapport.md` (ignoré). `bun run bapass` A395
+> vérifie que l'INDEX n'ajoute aucun numéro, ת״ז, signature ou lien du lot privé.
+> ⚠️ **Constat** : HEAD porte DÉJÀ des données réelles d'avant BA (téléphones,
+> ת״ז) dans 41 fichiers (`docs/ao/ao1-prod.sql`, la migration
+> `20260924000300_ao1_data.sql`, `scripts/aodata.ts`, `aspass.ts`,
+> `src/core/fields.ts`, `portalImport.ts`, ce fichier, `PROJECT_STATE.md`,
+> journaux de portes…) — A395 les liste en INFO. Non traité ici (hors brief) :
+> à purger de l'arbre avant que le dépôt redevienne public ; l'historique les
+> garde.
+>
+> **★ RÈGLE DU PO — LE PREMIER CONTACT (2026-10-12).** Le portail de
+> l'association servait de bloc-notes avant l'application : y figurer ne prouve
+> PAS que le contact a eu lieu. **Toute fiche de l'export du portail devient une
+> FERME** (la règle AS3 « un nom étoilé est une piste » est LEVÉE). Chaque ferme
+> porte un indicateur de premier contact (`entities.contact_established`,
+> `Farm.contactEstablished`, lu par `isContactEstablished`), **calculé
+> mécaniquement à l'import** : contact établi si la ligne porte des
+> coordonnées OU une note interne (« הערות פנימי »), sinon « טרם נוצר קשר »
+> (`portalContactEstablished`). Il se modifie à la main sur la fiche (onglet
+> אנשים) ; un réimport ne le rétrograde jamais, il ne fait que le passer à
+> « נוצר קשר » quand le portail ajoute un point ou une note. Filtre
+> « טרם נוצר קשר » dans le tableau des fermes (`?filter=notContacted`). Une
+> fiche créée dans l'application naît « établie ». D'après l'export du
+> 2026-10-12 : 4 fermes sans contact établi.
+>
+> **★ RÈGLE DU PO — L'APPAIRAGE PAR TÉLÉPHONE.** Contact, photo et fiche se
+> rapprochent par le numéro normalisé en E.164 (`phoneE164`, `samePhone`,
+> `pairByPhone`, `duplicatePhones` — `src/core/phone.ts`), JAMAIS par le nom ;
+> deux candidats au même numéro sont un doublon SIGNALÉ, pas un choix.
+> L'import du portail cherche la fiche par téléphone (rang 1 ou tout contact)
+> avant le nom, et ne l'apparie jamais au nom contre un téléphone qui diffère ;
+> une piste au même numéro est CONVERTIE (`create-farm` + `fromLeadId`), pas
+> doublée. Les en-têtes « סטאטוס חתימה », « תז », « הערות פנימי » sont lus.
+>
+> **Contacts d'une ferme** (modèle d'AZ5 à la mesure d'une ferme) : la liste
+> `entity_contacts`, ORDONNÉE par `position` (0 = rang 1), sans rôles imposés ;
+> chaque contact : nom, téléphone, rôle libre, NOTE (colonne neuve). Le rang 1
+> est l'agriculteur, seul `isPrimary`, seul affiché comme « le contact » ;
+> `farmer_name` / `farmer_phone` sont son MIROIR, tenu par
+> `settleFarmContacts` (`people.ts`) à chaque `commit` et au chargement : la
+> liste écrite par l'éditeur gagne (`setFarmContacts`) ; un chemin d'avant BA
+> qui écrit l'agriculteur (import) le fait monter s'il est déjà dans la liste,
+> sinon l'insère au rang 1 et l'ancien rang 1 descend — personne n'est perdu.
+> Éditeur : fiche › אנשים › « עריכת אנשי קשר » (`ui/farm/FarmContactsEditor.tsx`,
+> ↑ pour faire monter, retrait annulable). Le décompte « personnes joignables »
+> du rapport d'activité ne compte plus deux fois l'agriculteur (activity.ts).
+>
+> **Photos** : bucket PRIVÉ `contact-photos` (fichiers nommés par le numéro),
+> table `contact_photos (phone_e164, object_key, kind face|logo)` ; l'app les
+> retrouve par TÉLÉPHONE (`data/contactPhotos.ts`, `Avatar phone=`), une URL
+> signée d'une heure par lot. Fermes (rang 1 et suivants), contacts à traiter,
+> contacts d'institution. 37 photos, dont 2 logos d'exploitation (acceptés par
+> le PO en attendant).
+>
+> **Contacts à traiter** : emplacement des coordonnées sur la fiche
+> (`/coordinator/leads/:id`, lien Google Maps/Waze ou « lat, lng ») ; la
+> conversion en ferme le reporte tel quel (`convertLeadToFarm`). 13 contacts
+> WhatsApp ajoutés (un 14e était déjà là, même numéro).
+>
+> **Tableau des fermes** : (a) le nom de l'agriculteur (rang 1) SOUS le nom de
+> la ferme, dans la cellule de tête et la vignette, en texte secondaire
+> (`EntityLead.person`) ; la recherche trouve aussi les numéros ; (b) les
+> filtres sur UNE rangée qui défile (`FilterRow oneLine`, `.one-line-row`) ;
+> (c) les statuts sortis des filtres, dans LEUR rangée teintée et cerclée,
+> sur une ligne, calée à gauche (`ui/farm/FarmStatusBand.tsx`) ; (d) la
+> légende des trois marques (● statut, ○ négligée vide/pleine, ■ écart de
+> surface) sous les statuts, chaque marque un bouton de 44 px qui déplie sa
+> phrase au toucher ; les phrases aussi dans la légende de la carte.
+>
+> **Base** : migration additive `20261012000100_ba_farm_contacts_photos.sql`
+> (`entities.contact_established`, `entity_contacts.note`, `contact_photos`,
+> bucket `contact-photos` + politique coordinateur ; rien pour `anon`) appliquée
+> par le MCP, jalon `20261011223341`, `repair --status applied 20261012000100`.
+> Données : un bloc SQL gardé (chaque instruction exige UNE ligne, sinon tout
+> est annulé ; `updated_at` de la sauvegarde), déposé tel quel par la clé de
+> service dans une table temporaire fermée puis exécuté par le MCP et la table
+> supprimée (empreinte sha256 vérifiée). Relu : **24 fermes**, 4 sans contact
+> établi, **26 contacts de ferme** (24 rangs 1 + 2 rangs 2), miroir faux 0,
+> préfixes 0, doublons de téléphone 0 ; 3 doublons d'une même ferme fusionnés
+> (`farm-ao1-02/04/06` → `farm-ao1-08`, aucune ligne fille, rien perdu) ;
+> 6 pistes converties (`farm-ba-01…04, 07, 08`), 2 fermes créées
+> (`farm-ba-05, 06`) ; 20 pistes dont 14 actives ; 37 photos reliées (21
+> fermes, 12 pistes, 4 institutions), 0 orpheline ; `inst-limvku` renommée
+> (nom ↔ lieu inversés, ancien nom en alias).
+>
+> **Portes.** `bun run bapass` (A390–A395, pur, numéros inventés) ;
+> `bun run baui` (A396–A400, build réel ou déployé + base factice). Adaptées à
+> la règle levée : `aspass` (A287 par téléphone, A288 étoilée = ferme, le vrai
+> export d'AS : 25 mises à jour), `persist` (étoilée = ferme ; mutations BA
+> conduites), `axpass` A346 (trois formes de `work-queues`), `aymobile` A358
+> (exception NOMMÉE : `.one-line-row`, voulue par le PO ; tout autre défilement
+> de côté reste rouge), `aopass` passe sans changement de la porte
+> (activity.ts réparé).
+>
+> **Résultats (local, build de HEAD + BA seul, worktree).** bapass 38/38 ·
+> baui 49/49 · azui 120/120 · ayui 105/105 · ayscreens 57/57 · axui 116/116 ·
+> avui 51/51 · auui 61/61 · awui 57/57 · az5ui 21/21 · aymobile 48/48 ·
+> persist 145/145 · aspass 84/84 · aopass · mapping · aupass · az5pass ·
+> ampass · akpass · deletion · axpass · tokens · contrast ; déploiement en
+> local : ground, backdrop, redraw, overlap, freehand, zones, agreement, demo.
+> Rouges NON imputables à BA : `amui` 75/77 (le téléphone d'un point libre du
+> planificateur, sans pavé numérique, depuis `62b7afb`) ; `armigrations` 46/47
+> (la migration AZ4 non appliquée de l'autre session).
+
 > 🏁 **AZ5 — LES CONTACTS D'UNE INSTITUTION, RANGÉS PAR RÔLE. 2026-10-11.**
 >
 > **Le modèle.** Une institution porte PLUSIEURS contacts (`institutions.contacts`,

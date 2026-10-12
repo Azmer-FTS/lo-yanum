@@ -66,3 +66,85 @@ export function phoneValue(raw: string): string {
   if (d.length === 9 && /^0[2-489]/.test(d)) return `${d.slice(0, 2)}-${d.slice(2)}`
   return raw.trim()
 }
+
+// ---------------------------------------------------------------------------
+// ★★ BA (2026-10-12) — UN NUMÉRO, UNE FORME : E.164.
+// ---------------------------------------------------------------------------
+
+/**
+ * La règle du PO, sans exception : un contact, une photo et une fiche se
+ * retrouvent par le TÉLÉPHONE, jamais par le nom (l'hébreu en RTL rend la
+ * comparaison des noms peu fiable, et le PO s'y est déjà fait piéger).
+ *
+ * `phoneE164` ramène toute écriture d'un numéro israélien à `+972XXXXXXXXX` :
+ *   0500000123 · 050-000-0123 · (050) 000-0123 · +972 50-000-0123 ·
+ *   972500000123 · 00972500000123  →  +972500000123   (numéro fictif).
+ * Un numéro qui n'a pas la longueur d'un numéro israélien (8 chiffres après
+ * l'indicatif pour un fixe, 9 pour un portable) rend `null` : ni un code
+ * court (*6050), ni un fragment, ni un numéro étranger ne s'apparie au hasard.
+ *
+ * PUR.
+ */
+export function phoneE164(raw: string | null | undefined): string | null {
+  let d = (raw ?? '').replace(/\D/g, '')
+  if (d.startsWith('00')) d = d.slice(2)
+  if (d.startsWith('972')) d = d.slice(3)
+  if (d.startsWith('0')) d = d.slice(1)
+  if (d.length === 9 && /^[57]/.test(d)) return `+972${d}`
+  if (d.length === 8 && /^[2-489]/.test(d)) return `+972${d}`
+  return null
+}
+
+/** Deux écritures désignent-elles le même numéro ? (faux si l'une est illisible) */
+export function samePhone(a: string | null | undefined, b: string | null | undefined): boolean {
+  const x = phoneE164(a)
+  return x !== null && x === phoneE164(b)
+}
+
+/**
+ * ★ L'APPAIRAGE, À UN SEUL ENDROIT. Rend, pour chaque élément de `items`, le
+ * candidat qui porte le même numéro — et SEULEMENT s'il est unique : deux
+ * candidats au même numéro sont un doublon à signaler (`ambiguous`), pas un
+ * choix à faire au hasard. Le nom n'intervient jamais.
+ */
+export function pairByPhone<A, B>(
+  items: readonly A[],
+  candidates: readonly B[],
+  phoneOfItem: (a: A) => string | null | undefined,
+  phonesOfCandidate: (b: B) => ReadonlyArray<string | null | undefined>,
+): { pairs: Array<{ item: A; match: B | null; phone: string | null }>; ambiguous: Array<{ item: A; matches: B[]; phone: string }> } {
+  const byPhone = new Map<string, B[]>()
+  for (const c of candidates) {
+    const seen = new Set<string>()
+    for (const p of phonesOfCandidate(c)) {
+      const k = phoneE164(p)
+      if (!k || seen.has(k)) continue
+      seen.add(k)
+      byPhone.set(k, [...(byPhone.get(k) ?? []), c])
+    }
+  }
+  const pairs: Array<{ item: A; match: B | null; phone: string | null }> = []
+  const ambiguous: Array<{ item: A; matches: B[]; phone: string }> = []
+  for (const item of items) {
+    const k = phoneE164(phoneOfItem(item))
+    const found = k ? byPhone.get(k) ?? [] : []
+    if (k && found.length > 1) ambiguous.push({ item, matches: found, phone: k })
+    pairs.push({ item, match: found.length === 1 ? found[0] : null, phone: k })
+  }
+  return { pairs, ambiguous }
+}
+
+/** Les numéros portés par plusieurs enregistrements : les doublons à signaler. */
+export function duplicatePhones<T>(records: readonly T[], phonesOf: (r: T) => ReadonlyArray<string | null | undefined>): Array<{ phone: string; records: T[] }> {
+  const byPhone = new Map<string, T[]>()
+  for (const r of records) {
+    const seen = new Set<string>()
+    for (const p of phonesOf(r)) {
+      const k = phoneE164(p)
+      if (!k || seen.has(k)) continue
+      seen.add(k)
+      byPhone.set(k, [...(byPhone.get(k) ?? []), r])
+    }
+  }
+  return [...byPhone].filter(([, rs]) => rs.length > 1).map(([phone, rs]) => ({ phone, records: rs }))
+}

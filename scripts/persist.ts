@@ -107,6 +107,9 @@ import {
   applyInstitutionPlan,
   updateInstitution,
   setInstitutionContacts,
+  setFarmContacts,
+  setFarmContactEstablished,
+  newFarmContactId,
   createInstitution,
   deleteInstitution,
   createLandmark,
@@ -1359,7 +1362,8 @@ section("6bis — AH3 · le jeu d'essai produit de vraies écritures")
     nowIso: new Date().toISOString(),
   })
   const applied = drive('applyPortalPlan', () => applyPortalPlan(plan, { lat: 31.5, lng: 34.6 }))
-  check('applyPortalPlan : la ligne étoilée devient une piste', applied.some((c) => c.collection === 'leads' && c.json?.includes('פיסת בדיקה')))
+  /* ★★ BA — toute ligne du portail devient une FERME (AS3 levée par le PO). */
+  check('applyPortalPlan : la ligne étoilée devient une ferme (BA)', applied.some((c) => c.collection === 'farms' && c.json?.includes('פיסת בדיקה')))
   const incoming = _raw().farms[0]
   const before = incoming.status
   ;(incoming as { status: string }).status = 'incoming_request'
@@ -1379,6 +1383,15 @@ section("6bis — AH3 · le jeu d'essai produit de vraies écritures")
   const engaged = drive('updateInstitution', () => updateInstitution(instId, { engagement: 'signed', contactPhone: '050-0000999' }))
   check('updateInstitution : la ligne est réécrite', hit(engaged, 'institutions', instId)?.json?.includes('signed') === true)
   /* ★★ AZ5 — les contacts rangés par rôle : la même ligne, colonne `contacts`. */
+  /* ★★ BA — les contacts d'une ferme (liste ordonnée) et « טרם נוצר קשר ». */
+  const fid = _raw().farms[0].id
+  const fcId = newFarmContactId()
+  const fRanked = drive('setFarmContacts', () => setFarmContacts(fid, [{ id: fcId, name: 'חקלאי בדיקה', phone: '050-0000997', email: '', role: '', photo: null, isPrimary: true, note: 'הערה' }]))
+  check('setFarmContacts : la ferme porte le contact et le miroir du rang 1', (hit(fRanked, 'farms', fid)?.json ?? '').includes('חקלאי בדיקה') && (hit(fRanked, 'farms', fid)?.json ?? '').includes('050-0000997'))
+  /* La fiche née de l'import juste au-dessus est « טרם נוצר קשר » : on BASCULE. */
+  const wasEstablished = _raw().farms[0].contactEstablished !== false
+  const fEst = drive('setFarmContactEstablished', () => setFarmContactEstablished(fid, !wasEstablished))
+  check('setFarmContactEstablished : la ferme est réécrite', hit(fEst, 'farms', fid)?.json != null)
   const ranked = drive('setInstitutionContacts', () => setInstitutionContacts(instId, [{ id: 'ic-p1', role: 'head', name: 'הרב בדיקה', phone: '050-0000998', note: '' }]))
   check('setInstitutionContacts : la ligne porte le contact et le miroir du rang 1', (hit(ranked, 'institutions', instId)?.json ?? '').includes('הרב בדיקה') && (hit(ranked, 'institutions', instId)?.json ?? '').includes('050-0000998'))
   let manualId = ''
@@ -1459,6 +1472,8 @@ section('7 — every mutation @core exports is driven above')
     'testDataCount',
     /* ★★ AZ5 — fabrique un identifiant de contact, n'écrit rien. */
     'newInstitutionContactId',
+    /* ★★ BA — même chose pour un contact de ferme. */
+    'newFarmContactId',
   ])
   const mutations = exported.filter((n) => !NOT_MUTATIONS.has(n))
   const uncovered = mutations.filter((n) => !driven.has(n))

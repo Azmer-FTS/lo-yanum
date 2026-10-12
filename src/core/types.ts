@@ -316,6 +316,11 @@ export interface FarmContact {
   photo: string | null
   /** The contact that may sign in as FARMER for this farm. */
   isPrimary: boolean
+  /**
+   * ★★ BA (2026-10-12) — une note courte sur CE contact (« מטפל בבקר כשהראשי
+   * לא זמין »). Absente sur les fiches d'avant BA.
+   */
+  note?: string
 }
 
 export interface Agreement {
@@ -547,6 +552,17 @@ export interface Farm {
    */
   farmerName?: string
   farmerPhone?: string
+  /**
+   * ★★ BA (2026-10-12) — LE PREMIER CONTACT A-T-IL EU LIEU ?
+   *
+   * Le portail de l'association servait de bloc-notes avant l'application :
+   * y figurer ne prouve PAS que le PO a parlé à quelqu'un. Règle du PO,
+   * MÉCANIQUE, posée à l'import d'un export du portail : établi si la ligne
+   * porte des coordonnées OU une note interne, sinon « טרם נוצר קשר ».
+   * Modifiable à la main sur la fiche. Absent = établi (une fiche créée dans
+   * l'application l'a été après un contact). Lire par `isContactEstablished`.
+   */
+  contactEstablished?: boolean
   /** AC2 — מייל חקלאי, a column of the 32-column workbook since AC2. */
   farmerEmail?: string
   /**

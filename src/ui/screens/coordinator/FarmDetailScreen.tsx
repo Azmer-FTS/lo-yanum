@@ -101,6 +101,7 @@ import {
 } from '../../components/primitives'
 import { FARM_TABS, FarmTabRow, useFarmTab } from '../../farm/farmTabs'
 import { LandDocumentsSection } from '../../farm/LandDocumentsSection'
+import { ContactEstablishedToggle, FarmContactsEditor } from '../../farm/FarmContactsEditor'
 import { useCoreValue } from '../../hooks/useCore'
 import { useHydrated } from '../../hooks/useDataState'
 import { useLocale } from '../../hooks/useLocale'
@@ -645,6 +646,8 @@ function LivestockLines({ farm }: { farm: Farm }) {
  */
 function FarmPeople({ farm }: { farm: Farm }) {
   const { t } = useTranslation()
+  /* ★★ BA — la liste ORDONNÉE se modifie ici (rang 1 = l'agriculteur). */
+  const [editing, setEditing] = useState(false)
   const { farmer, others } = splitPeople(farm)
   const hasFarmer = farmer.name.trim() !== '' || farmer.phone.trim() !== ''
   const count = (hasFarmer ? 1 : 0) + others.length
@@ -655,9 +658,19 @@ function FarmPeople({ farm }: { farm: Farm }) {
       collapseKey="entity-contacts"
       summary={t('people.summary', { count })}
     >
+      <div className="mb-2 flex flex-col gap-2">
+        <ContactEstablishedToggle farm={farm} />
+        <button type="button" className="btn-secondary min-h-11 self-start" onClick={() => setEditing((v) => !v)} aria-expanded={editing} data-testid="farm-contacts-edit">
+          <Icon name="edit" size={16} />
+          {editing ? t('farmContacts.done') : t('farmContacts.edit')}
+        </button>
+      </div>
+      {editing ? (
+        <FarmContactsEditor farm={farm} />
+      ) : (
       <ul className="flex flex-col divide-y divide-edge-subtle/60" data-testid="farm-people">
         <li className="flex items-start gap-3 py-2" data-testid="farm-person-farmer">
-          <Avatar photo={farmer.photo} name={farmer.name || '?'} size="md" />
+          <Avatar photo={farmer.photo} phone={farmer.phone} name={farmer.name || '?'} size="md" />
           <div className="min-w-0 flex-1">
             <p className="muted">{t('people.farmer')}</p>
             {hasFarmer ? (
@@ -694,21 +707,18 @@ function FarmPeople({ farm }: { farm: Farm }) {
           </li>
         )}
         {others.map((contact) => (
-          <li key={contact.id} className="flex items-center gap-3 py-2">
-            <Avatar photo={contact.photo} name={contact.name} size="md" />
+          <li key={contact.id} className="flex items-center gap-3 py-2" data-testid="farm-person-other">
+            <Avatar photo={contact.photo} phone={contact.phone} name={contact.name} size="md" />
             <ContactActions
               className="flex-1"
               name={contact.name}
               phone={contact.phone}
-              role={
-                contact.isPrimary
-                  ? [contact.role, t('people.primary')].filter(Boolean).join(' · ')
-                  : contact.role
-              }
+              role={[contact.role, contact.isPrimary ? t('people.primary') : '', contact.note ?? ''].filter(Boolean).join(' · ')}
             />
           </li>
         ))}
       </ul>
+      )}
     </Section>
   )
 }

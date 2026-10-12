@@ -1,5 +1,6 @@
 import { getSupabase } from './client'
 import { SUPABASE_CONFIGURED } from './config'
+import { clearContactPhotos } from './contactPhotos'
 import { clearSignedUrlCache } from './storage'
 
 /**
@@ -335,5 +336,6 @@ export async function signOut(): Promise<void> {
   // A signed URL outlives the session that minted it (P2.4). On a shared iPad
   // the next person must not inherit an hour of the last one's portraits.
   clearSignedUrlCache()
+  clearContactPhotos()
   // `onAuthStateChange` publishes the new state; nothing to do here.
 }

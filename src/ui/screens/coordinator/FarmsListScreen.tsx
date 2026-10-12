@@ -33,6 +33,10 @@ import {
   formatRelative,
   requestForFarm,
   isTestId,
+  /* ★★ BA — le rang 1 sous le nom, « טרם נוצר קשר ». */
+  isContactEstablished,
+  farmPersonName,
+  farmPersonPhone,
 } from '@core/index'
 import type { Farm, FarmCoverage, FarmStatus, FarmType, RegionId } from '@core/index'
 
@@ -43,6 +47,7 @@ import { useScreenSettings } from '../../settings/ScreenSettings'
 import { EntityQuickCard } from '../../components/EntityQuickCard'
 import { Icon } from '../../components/Icon'
 import { AreaGapMark } from '../../components/areaGap'
+import { FarmStatusBand } from '../../farm/FarmStatusBand'
 import { TestDataBadge } from '../../components/TestDataBadge'
 import { MapPanel, withInteraction } from '../../components/MapPanel'
 import { OverflowMenu } from '../../components/OverflowMenu'
@@ -192,6 +197,11 @@ export function FarmsListScreen() {
   }, [coverage])
   /** AC4.5 — « nous ne sommes pas venus » : actives, never or long ago. */
   const [neglected, setNeglected] = useState(false)
+  /**
+   * ★★ BA (2026-10-12) — « טרם נוצר קשר » : les fiches venues du portail
+   * (bloc-notes d'avant l'application) à qui personne n'a encore parlé.
+   */
+  const [notContactedOnly, setNotContactedOnly] = useState(() => params.get('filter') === 'notContacted')
   const neglectedCount = useMemo(
     () => coverage.filter((c) => c.state === 'never' || c.state === 'stale').length,
     [coverage],
@@ -333,6 +343,8 @@ export function FarmsListScreen() {
       if (docsOnly && !awaitingDocuments(farm)) return false
       /* AP4.1 — les demandes arrivées par la page publique, pas encore traitées. */
       if (intakeOnly && farm.status !== 'incoming_request') return false
+      /* ★★ BA — « טרם נוצר קשר ». */
+      if (notContactedOnly && isContactEstablished(farm)) return false
       /* AC4.4 — « qui est oublié », as a narrowing of the same roster. */
       if (neglected) {
         const state = coverageOf.get(farm.id)?.state
@@ -348,6 +360,8 @@ export function FarmsListScreen() {
         farm.region,
         farm.farmerName ?? '',
         ...farm.contacts.map((c) => c.name),
+        /* ★★ BA — le numéro aussi, chiffres seuls (« 0526… » trouve « 052-6… »). */
+        ...[farm.farmerPhone ?? '', ...farm.contacts.map((c) => c.phone)].map((p) => p.replace(/\D/g, '')).filter(Boolean),
       ])
     })
   }, [
@@ -364,6 +378,7 @@ export function FarmsListScreen() {
     renewIds,
     docsOnly,
     intakeOnly,
+    notContactedOnly,
     gapThreshold,
     coverageOf,
     query,
@@ -804,10 +819,14 @@ export function FarmsListScreen() {
     />
   )
 
+  const notContactedCount = farms.filter((f) => !isTestId(f.id) && !isContactEstablished(f)).length
   const filterRow = (
     <FilterRow
+      /* ★★ BA — UNE rangée, qui défile ; les statuts ont la leur (`FarmStatusBand`). */
+      oneLine
       /* AB2.4 — five independent narrowings on this screen, one each. */
       activeCount={
+        (notContactedOnly ? 1 : 0) +
         (status !== null ? 1 : 0) +
         (type !== null ? 1 : 0) +
         (moshavOnly ? 1 : 0) +
@@ -823,6 +842,7 @@ export function FarmsListScreen() {
       }
       onClear={() => {
         setStatus(null)
+        setNotContactedOnly(false)
         setType(null)
         setMoshavOnly(false)
         setRegion(null)
@@ -840,17 +860,20 @@ export function FarmsListScreen() {
       {/* ★★ AX3.5 — LE STATUT EST UN CHOIX PARMI NEUF : un sélecteur, son compte
           dans chaque option (c'étaient neuf tuiles). Les liens « ?status= » du
           tableau de bord l'ouvrent déjà réglé. */}
-      <PillSelect<FarmStatus | 'all'>
-        value={status ?? 'all'}
-        onChange={(v) => setStatus(v === 'all' ? null : v)}
-        active={status !== null}
-        label={t('farms.statusFilter')}
-        testId="farms-status"
-        options={[
-          { value: 'all', label: t('farms.statusAll') },
-          ...statusKpis.map((k) => ({ value: k.status, label: `${t(`farmStatus.${k.status}`)} · ${k.count}` })),
-        ]}
-      />
+      {/* ★★ BA — LE STATUT N'EST PLUS ICI : il a sa propre rangée, épinglée à
+          gauche (`FarmStatusBand`), pour qu'on voie d'un coup d'œil ce qui est
+          un statut et ce qui est un filtre. « טרם נוצר קשר » ouvre la rangée. */}
+      {notContactedCount > 0 && (
+        <FilterPill
+          active={notContactedOnly}
+          onClick={() => setNotContactedOnly((v) => !v)}
+          count={notContactedCount}
+          title={t('farmContacts.filterHint')}
+          testId="farms-not-contacted"
+        >
+          {t('farmContacts.notEstablished')}
+        </FilterPill>
+      )}
       <KpiChip
         label={t('farms.withAreas')}
         value={withAreas.length}
@@ -988,6 +1011,21 @@ export function FarmsListScreen() {
             </li>
           ))}
         </ul>
+        {/* ★★ BA — les deux autres marques du nom, avec leur phrase écrite :
+            une légende se lit, elle ne se survole pas. */}
+        <ul className="mt-2 flex flex-col gap-1.5 border-t border-edge-subtle pt-2" data-testid="map-legend-marks">
+          <li className="flex items-start gap-2 text-caption text-content-secondary">
+            <span className="mt-1 inline-flex shrink-0 items-center gap-0.5">
+              <span className="inline-block size-2 rounded-pill border border-status-warn-ink/70" />
+              <span className="inline-block size-2 rounded-pill border border-status-warn-ink/70 bg-status-warn-ink/25" />
+            </span>
+            {t('farmMarks.neglectSentence', { days: neglectDays })}
+          </li>
+          <li className="flex items-start gap-2 text-caption text-content-secondary">
+            <span className="mt-1 inline-block size-2 shrink-0 rounded-[2px] border border-status-warn-ink/70 bg-status-warn-ink/45" />
+            {t('farmMarks.gapSentence', { percent: Math.round(gapThreshold * 100) })}
+          </li>
+        </ul>
         </>
       }
       detailAt={selected ? { position: selected.position, key: previewKey } : undefined}
@@ -1009,7 +1047,15 @@ export function FarmsListScreen() {
            liste se resserre en lignes à deux étages. Toucher une ligne ouvre
            l'APERÇU ; la fiche complète est à un geste (↗). */
         <>
-          {top()}
+          {top(
+            <FarmStatusBand
+              counts={statusKpis}
+              value={status}
+              onChange={setStatus}
+              neglectDays={neglectDays}
+              gapPercent={Math.round(gapThreshold * 100)}
+            />,
+          )}
           {filtered.length === 0 ? (
             <EmptyState icon="farm" title={t('farms.empty')} />
           ) : (
@@ -1018,6 +1064,10 @@ export function FarmsListScreen() {
               rowKey={(f) => f.id}
               lead={(f) => ({
                 title: f.name,
+                /* ★★ BA — l'agriculteur (rang 1), sous le nom de la ferme : le PO
+                   cherche une PERSONNE autant qu'une exploitation. */
+                person: farmPersonName(f) || undefined,
+                phone: farmPersonPhone(f) || undefined,
                 photo: f.photo,
                 shape: 'square',
                 dot: <FarmStatusDot status={f.status} />,

@@ -140,30 +140,34 @@ check('… et prend le nom du portail', shlomo?.kind === 'update' && shlomo.patc
 const ghost = action('חוות ישנה')
 check('la ligne étoilée jumelle est ignorée (vestige)', ghost?.kind === 'skip-duplicate')
 check('aucune piste, aucune fiche n’est créée pour le vestige', !plan.actions.some((a) => (a.kind === 'lead-create' || a.kind === 'create-farm' || a.kind === 'farm-to-lead') && a.row.name === 'חוות ישנה'))
-check('l’import suivant, sans la ligne en double, apparie par NOM', (() => {
+/* ★★ BA — le téléphone passe AVANT le nom (règle du PO) : la même fiche, retrouvée par son numéro. */
+check('l’import suivant, sans la ligne en double, apparie par TÉLÉPHONE (BA)', (() => {
   const renamed = FARMS.map((f) => (f.id === 'farm-old' ? { ...f, name: 'החווה של שלמה' } : f))
   const m2 = matrix.filter((r) => !(r[0] ?? '').includes('חוות ישנה'))
   const p = planPortalImport({ matrix: m2, farms: renamed, leads: [], fileName: 'x', nowIso: NOW })
   const a = p.actions.find((y) => y.row.name === 'החווה של שלמה')
-  return a?.kind === 'update' && a.farmId === 'farm-old' && a.pairedBy === 'name'
+  return a?.kind === 'update' && a.farmId === 'farm-old' && a.pairedBy === 'phone'
 })())
 
-section('A288 — les noms à astérisques sont des pistes ; aucune astérisque ; la note est gardée')
+/* ★★ BA (2026-10-12) — LA RÈGLE D'AS3 EST LEVÉE PAR LE PO : « toute fiche de l'export du
+   portail devient une ferme ». Une ligne étoilée retrouve sa fiche par téléphone et la
+   met à jour ; elle n'est plus jamais convertie en piste. */
+section('A288 (BA) — une ligne étoilée est une FERME ; aucune astérisque ; la note est gardée')
 const conv = action('גד״ש בדיקה')
-check('une fiche existante sans histoire est CONVERTIE en piste', conv?.kind === 'farm-to-lead' && conv.farmId === 'farm-st')
-check('la note de la fiche suit la piste', conv?.kind === 'farm-to-lead' && conv.lead.notes === 'יש להם שומר קבוע')
-check('« לא רלוונטי כרגע » devient « לא רלוונטי כרגע » côté piste', conv?.kind === 'farm-to-lead' && conv.lead.status === 'not_now')
+check('BA · la fiche existante est MISE À JOUR (par téléphone), pas convertie en piste', conv?.kind === 'update' && conv.farmId === 'farm-st' && conv.pairedBy === 'phone')
+check('BA · la note de la fiche est gardée (rien ne l’écrase)', conv?.kind === 'update' && conv.patch.notes === undefined)
+check('BA · aucune conversion ferme → piste', !plan.actions.some((a) => a.kind === 'farm-to-lead'))
 const hist = action('גד״ש עם הערה')
-check('une fiche AVEC histoire n’est pas convertie : elle est signalée', hist === undefined && plan.warnings.some((w) => w.code === 'has-history'))
+check('BA · une fiche AVEC histoire reste une ferme, mise à jour', hist?.kind === 'update' && hist.farmId === 'farm-hist')
 const leadNames = plan.actions.flatMap((a) => (a.kind === 'farm-to-lead' || a.kind === 'lead-create' ? [a.lead.name] : []))
 check('aucune astérisque dans un libellé de piste', leadNames.every((n) => !n.includes('*')), leadNames.join(' · '))
-check('aucune ligne étoilée ne devient une ferme', !plan.actions.some((a) => a.row.starred && (a.kind === 'update' || a.kind === 'create-farm')))
+check('BA · les lignes étoilées sans jumelle sont des fermes', plan.actions.filter((a) => a.row.starred && a.kind !== 'skip-duplicate').every((a) => a.kind === 'update' || a.kind === 'create-farm'))
 check('׳׳ et ’’ deviennent ״', rows.every((r) => !/׳׳|’’/u.test(r.name)))
-check('une piste déjà là est mise à jour, pas dupliquée', (() => {
+check('BA · une piste au même téléphone est CONVERTIE en ferme, pas dupliquée', (() => {
   const lead = { id: 'lead-1', name: 'גד״ש בדיקה', contactName: '', phone: '050-0000001', position: null, convertedFarmId: null } as unknown as Lead
   const p = planPortalImport({ matrix, farms: FARMS.filter((f) => f.id !== 'farm-st'), leads: [lead], fileName: 'x', nowIso: NOW })
   const a = p.actions.find((y) => y.row.name === 'גד״ש בדיקה')
-  return a?.kind === 'lead-update' && a.patch.contactName === 'דני'
+  return a?.kind === 'create-farm' && a.fromLeadId === 'lead-1' && a.farm.farmerName === 'דני'
 })())
 
 section('Idempotence — appliquer puis réimporter ne change plus rien')
@@ -283,7 +287,8 @@ if (existsSync(REAL) && existsSync('private/as-db-avant.json')) {
   const { buildPlan } = await import('./asdata')
   const real = buildPlan()
   const s = portalPlanSummary(real)
-  check('19 fiches mises à jour, 6 converties en pistes, 1 vestige, 0 création', s.update === 19 && s['farm-to-lead'] === 6 && s['skip-duplicate'] === 1 && s['create-farm'] === 0, JSON.stringify(s))
+  /* ★★ BA — sous la règle du PO, les six lignes étoilées sont des fermes : 19 + 6 mises à jour. */
+  check('BA · 25 fiches mises à jour, 0 piste, 1 vestige, 0 création', s.update === 25 && s['farm-to-lead'] === 0 && s['skip-duplicate'] === 1 && s['create-farm'] === 0, JSON.stringify(s))
   const z = real.actions.find((a) => a.row.name === 'החווה של צביקה')
   check('צביקה : la fiche d’אורחאן est reprise par téléphone', z?.kind === 'update' && z.farmId === 'farm-ak1-06' && z.pairedBy === 'phone')
   const ids = real.warnings.filter((w) => w.code === 'id-not-9-digits').map((w) => w.detail.split(' ')[0])
