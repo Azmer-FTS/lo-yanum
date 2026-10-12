@@ -1,0 +1,67 @@
+$ bun run scripts/baui.ts
+
+  A396 — l’agriculteur sous le nom de la ferme
+  --------------------------------------------
+  PASS  A396 le tableau montre l’agriculteur dans la ligne  — ישראל הדגמה
+  PASS  A396 … JUSTE SOUS le nom de la ferme (même cellule, en dessous)  — 374.625/19.5625 → 394.1875
+  PASS  A396 … dans la cellule de tête
+  PASS  A396 … en texte SECONDAIRE (plus petit ou d’une autre encre)  — 13.5px/11.5px rgb(23, 29, 38)/rgb(58, 70, 84)
+  PASS  A396 le rang 2 n’est PAS montré comme « le contact »
+  PASS  A396 chercher la PERSONNE retrouve sa ferme  — farm-row-farm-ba-t1
+  PASS  A396 la vignette montre l’agriculteur sous le nom
+  PASS  A396 aucune erreur de page
+
+  A397 — les filtres : une rangée, qui défile
+  -------------------------------------------
+  PASS  A397 1440 px : la rangée de filtres est en mode « une ligne »  — {"oneLine":true,"items":9,"lines":1,"wrap":"nowrap","overflowX":"auto","barH":44,"statusInside":false}
+  PASS  A397 1440 px : ses 9 éléments tiennent sur UNE ligne (nowrap, défile)  — lignes=1 wrap=nowrap x=auto
+  PASS  A397 1440 px : la barre ne fait qu’une ligne de haut (≤ 64 px)  — 44 px
+  PASS  A397 1440 px : aucun statut dans la rangée des filtres
+  PASS  A397 1032 px : la rangée de filtres est en mode « une ligne »  — {"oneLine":true,"items":9,"lines":1,"wrap":"nowrap","overflowX":"auto","barH":44,"statusInside":false}
+  PASS  A397 1032 px : ses 9 éléments tiennent sur UNE ligne (nowrap, défile)  — lignes=1 wrap=nowrap x=auto
+  PASS  A397 1032 px : la barre ne fait qu’une ligne de haut (≤ 64 px)  — 44 px
+  PASS  A397 1032 px : aucun statut dans la rangée des filtres
+  PASS  A397 402 px : la rangée de filtres est en mode « une ligne »  — {"oneLine":true,"items":3,"lines":1,"wrap":"nowrap","overflowX":"auto","barH":44,"statusInside":false}
+  PASS  A397 402 px : ses 3 éléments tiennent sur UNE ligne (nowrap, défile)  — lignes=1 wrap=nowrap x=auto
+  PASS  A397 402 px : la barre ne fait qu’une ligne de haut (≤ 64 px)  — 44 px
+  PASS  A397 402 px : aucun statut dans la rangée des filtres
+
+  A398 — les statuts : leur rangée, à gauche
+  ------------------------------------------
+  PASS  A398 1440 px : une rangée de statuts existe, HORS de la rangée des filtres  — {"segs":4,"out":true}
+  PASS  A398 1440 px : sur UNE ligne
+  PASS  A398 1440 px : calée complètement à gauche (ou défilante)  — écart 0px défile=false
+  PASS  A398 1440 px : visuellement distincte (fond + filet, pastilles de couleur)  — rgba(238, 241, 244, 0.7) vs rgba(0, 0, 0, 0)
+  PASS  A398 toucher un statut filtre la liste  — farm-row-farm-ba-t3
+  PASS  A398 … et le segment se dit choisi
+  PASS  A398 402 px : une rangée de statuts existe, HORS de la rangée des filtres  — {"segs":4,"out":true}
+  PASS  A398 402 px : sur UNE ligne
+  PASS  A398 402 px : calée complètement à gauche (ou défilante)  — écart -113px défile=true
+  PASS  A398 402 px : visuellement distincte (fond + filet, pastilles de couleur)  — rgba(238, 241, 244, 0.7) vs rgba(0, 0, 0, 0)
+
+  A399 — la légende des trois marques, au toucher
+  -----------------------------------------------
+  PASS  A399 la légende est là, à 402 px
+  PASS  A399 « status » : une cible de 44 px  — 44
+  PASS  A399 « status » : toucher déplie SA phrase  — העיגול הצבעוני ליד שם החווה הוא הסטטוס שלה — הצבעים כמו בשורת הסטטוסים.
+  PASS  A399 « neglect » : une cible de 44 px  — 44
+  PASS  A399 « neglect » : toucher déplie SA phrase  — הטבעת היא חווה מוזנחת: טבעת ריקה — החווה לא נשמרה אף פעם; טבעת מלאה — השמירה האחרונה הייתה
+  PASS  A399 « gap » : une cible de 44 px  — 44
+  PASS  A399 « gap » : toucher déplie SA phrase  — הריבוע מסמן פער של יותר מ־10% בין השטח המוצהר לשטח המסומן במפה.
+  PASS  A399 aucune erreur de page
+
+  A400 — « טרם נוצר קשר », la fiche, la photo par téléphone
+  ---------------------------------------------------------
+  PASS  A400 le filtre « טרם נוצר קשר » est dans la rangée des filtres
+  PASS  A400 … il ne garde que la fiche sans contact établi  — farm-row-farm-ba-t2
+  PASS  A400 la photo du rang 1 arrive par son TÉLÉPHONE (bucket privé, URL signée)  — 972500000701.jpg · ntact-photos/972500000701.jpg?token=fake
+  PASS  A400 la fiche dit « טרם נוצר קשר »
+  PASS  A400 … modifiable à la main, et gardé en base  — true
+  PASS  A400 les contacts dans l’ordre : rang 1 l’agriculteur, rang 2 ensuite  — 1:ישראל הדגמה|2:רונית הדגמה
+  PASS  A400 la note du rang 2 est montrée
+  PASS  A400 un rang 3 ajouté est gardé en base, avec sa note, à sa place  — 0:ישראל הדגמה,1:רונית הדגמה,2:חדש הדגמה
+  PASS  A400 le miroir reste le rang 1  — ישראל הדגמה
+  PASS  A400 « ↑ » : le rang 2 devient le rang 1 et « le contact » de la ferme  — רונית הדגמה
+  PASS  A400 aucune erreur de page
+
+  49 PASS, 0 FAIL

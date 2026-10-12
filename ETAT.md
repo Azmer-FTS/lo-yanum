@@ -99,6 +99,12 @@
 > de côté reste rouge), `aopass` passe sans changement de la porte
 > (activity.ts réparé).
 >
+> **Vérifié sur le DÉPLOYÉ `b4ab229`** (`version.json`) : `baui` **49/49**
+> (`docs/ba/baui-deploye-b4ab229.log`, captures `docs/screenshots/ba/deployed/`).
+> Base relue après le déploiement : 24 fermes, 4 sans contact, 26 contacts de
+> ferme, miroir faux 0, primaire hors rang 1 : 0, 14 pistes actives / 20,
+> 37 photos — aucune réécriture par un appareil depuis la pose.
+>
 > **Résultats (local, build de HEAD + BA seul, worktree).** bapass 38/38 ·
 > baui 49/49 · azui 120/120 · ayui 105/105 · ayscreens 57/57 · axui 116/116 ·
 > avui 51/51 · auui 61/61 · awui 57/57 · az5ui 21/21 · aymobile 48/48 ·

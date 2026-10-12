@@ -104,7 +104,9 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **BA — AGRICULTEURS, CONTACTS, MÉNAGE DES FERMES** (2026-10-12). Récit et
+- **BA — AGRICULTEURS, CONTACTS, MÉNAGE DES FERMES** (2026-10-12). Commit de
+  code `b4ab229`, poussé, DÉPLOYÉ et servi (`version.json` = b4ab229) ;
+  `baui` 49/49 sur le déployé (`docs/ba/baui-deploye-b4ab229.log`). Récit et
   règles du PO : `ETAT.md` § BA (en tête). Détail nominatif (fusions, écarts
   CSV ↔ base) : `private/ba/rapport.md` (ignoré). L'essentiel :
   - **Règles du PO (permanentes)** : (1) toute fiche de l'export du portail
