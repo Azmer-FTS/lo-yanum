@@ -270,7 +270,9 @@
       "hesder": "Hesder yeshiva",
       "midrasha": "Midrasha",
       "school": "High school",
-      "other": "Other"
+      "other": "Other",
+      "yeshiva": "Yeshiva gedola",
+      "yeshiva_hs": "Yeshiva high school"
     },
     "audience": {
       "boys": "Boys",
@@ -351,11 +353,13 @@
       "ram": "Ram",
       "coordinator": "Coordinator",
       "assistant": "Assistant",
-      "contact": "Contact"
+      "contact": "Contact",
+      "mechinaHead": "Head of mechina"
     },
     "headMissing": {
       "head": "No rosh yeshiva yet",
-      "principal": "No principal yet"
+      "principal": "No principal yet",
+      "mechinaHead": "No head of mechina"
     },
     "headMissingTab": "No head",
     "headMissingTitle": "Institutions whose head is not entered yet",
@@ -369,7 +373,33 @@
     "minorsLabel": "Minors — ages",
     "minorsFrom": "From",
     "minorsTo": "To",
-    "callContact": "Call {{name}}"
+    "callContact": "Call {{name}}",
+    "phoneLabel": {
+      "mobile": "Mobile",
+      "home": "Home",
+      "office": "Office",
+      "": "—"
+    },
+    "addPhone": "Add a number",
+    "removePhone": "Remove number {{number}}",
+    "callNumber": "Call {{name}} · {{label}}",
+    "office": "Office",
+    "officeTitle": "Institution office",
+    "officeHint": "The institution's own phone and address — not a person. For when the head does not answer.",
+    "officePhone": "Office phone",
+    "officeAddress": "Address",
+    "callOffice": "Call the office",
+    "coordination": "Prior coordination required",
+    "coordinationTab": "Coordinate first",
+    "coordinationTitle": "Institutions not to be contacted directly — coordinate first",
+    "coordinationBy": "Through whom / what to do",
+    "coordinationCall": "Prior coordination required — {{note}}",
+    "coordinationCallAnyway": "Call anyway",
+    "related": "Related institutions",
+    "relatedAdd": "Link an institution…",
+    "relatedRemove": "Remove the link to {{name}}",
+    "heads_other": "{{count}} heads",
+    "heads_one": "1 head"
   },
   "quickPin": {
     "button": "Drop a pin on the map",

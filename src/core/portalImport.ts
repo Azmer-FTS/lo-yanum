@@ -358,6 +358,10 @@ export type PortalWarningCode =
   | 'has-history'
   | 'ambiguous'
   | 'status-column-missing'
+  /** ★★ BB — le statut du portail affirmait plus que le premier contact ne soutient : posé à « ליצירת קשר ». */
+  | 'status-capped-no-contact'
+  /** ★★ BB — le portail aurait fait reculer le statut d'une fiche existante : gardé. */
+  | 'status-not-downgraded'
 
 export interface PortalWarning {
   line: number
@@ -401,6 +405,50 @@ export interface PortalPlanInput {
 }
 
 /** Une ancienne fiche → le statut de piste qui dit la même chose. */
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ BB (2026-10-12) — RÈGLE DU PO : L'INDICATEUR DE PREMIER CONTACT GAGNE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Le portail servait de bloc-notes : un statut y a été saisi par
+ * anticipation, sans appel derrière (quatre fermes « הסכמה בעל פה » sans
+ * aucun contact, BA). Donc :
+ *   · fiche NOUVELLEMENT créée par l'import, sans premier contact établi
+ *     (`portalContactEstablished` faux) : son statut ne peut être que
+ *     « ליצירת קשר » (`to_contact`) — tout autre statut du portail est
+ *     plafonné, et le rapport le dit (`status-capped-no-contact`) ;
+ *   · fiche EXISTANTE : l'import ne la fait JAMAIS reculer. Il ne peut que
+ *     l'avancer sur le chemin ליצירת קשר → נוצר קשר → בוקרה → הסכמה בעל פה →
+ *     נחתם → פעילה ; un recul, ou un statut de côté (לא רלוונטי, בהמתנה…)
+ *     posé par-dessus un statut de l'application, est signalé et non appliqué
+ *     (`status-not-downgraded`). Le statut d'une fiche que le PO a mise à jour
+ *     reste le sien.
+ */
+export const FARM_STATUS_PROGRESS: Partial<Record<FarmStatus, number>> = {
+  incoming_request: 0,
+  to_contact: 0,
+  contacted: 1,
+  visited: 2,
+  verbal_ok: 3,
+  signed: 4,
+  active: 5,
+}
+
+export function statusForNewFarm(status: FarmStatus, contactEstablished: boolean): { status: FarmStatus; capped: boolean } {
+  if (contactEstablished || status === 'to_contact' || status === 'incoming_request') return { status, capped: false }
+  return { status: 'to_contact', capped: true }
+}
+
+/** `true` = l'import peut poser `next` sur une fiche qui porte `current`. */
+export function importMayMoveStatus(current: FarmStatus, next: FarmStatus): boolean {
+  if (current === next) return false
+  const a = FARM_STATUS_PROGRESS[current]
+  const b = FARM_STATUS_PROGRESS[next]
+  if (a === undefined) return false
+  if (b === undefined) return a === 0
+  return b > a
+}
+
 export function leadStatusFromFarm(status: FarmStatus): LeadStatus {
   if (status === 'contacted') return 'call_back'
   if (status === 'not_relevant_now' || status === 'on_hold') return 'not_now'
@@ -538,7 +586,10 @@ export function planPortalImport(input: PortalPlanInput): PortalPlan {
     if (!found) {
       const fromLead = leadByPhone(row)
       if (fromLead) takenLeads.add(fromLead.id)
-      const status: FarmStatus = row.status ?? (row.signature ? 'signed' : 'verbal_ok')
+      /* ★★ BB — l'indicateur de premier contact gagne sur le statut du portail. */
+      const settled = statusForNewFarm(row.status ?? (row.signature ? 'signed' : 'verbal_ok'), portalContactEstablished(row))
+      const status: FarmStatus = settled.status
+      if (settled.capped) warn(row, 'status-capped-no-contact', row.status ?? (row.signature ? 'signed' : 'verbal_ok'))
       const cultivated = row.cultivated ?? 0
       const grazing = row.grazing ?? 0
       const farm: Partial<Farm> & { name: string } = {
@@ -584,10 +635,14 @@ export function planPortalImport(input: PortalPlanInput): PortalPlan {
       patch.name = row.name
       changes.push({ field: 'name', from: farm.name, to: row.name })
     }
-    /* statut — autorité, s'il est dans le fichier */
+    /* statut — il AVANCE la fiche, jamais ne la fait reculer (★★ BB) */
     if (row.status && row.status !== farm.status && !(row.status === 'signed' && farm.status === 'active')) {
-      patch.status = row.status
-      changes.push({ field: 'status', from: farm.status, to: row.status })
+      if (importMayMoveStatus(farm.status, row.status)) {
+        patch.status = row.status
+        changes.push({ field: 'status', from: farm.status, to: row.status })
+      } else {
+        warn(row, 'status-not-downgraded', `${farm.status} ← ${row.status}`)
+      }
     }
     if (!row.status && row.signature && farm.status !== 'signed' && farm.status !== 'active') {
       warn(row, 'signature-without-signed-status', farm.status)

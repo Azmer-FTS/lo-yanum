@@ -157,7 +157,8 @@ walk('src')
    lisent, toujours aucun COMPTEUR (le reste de la section le vérifie). */
 /* ★★ AY4 — l'écran des volontaires (et conducteurs) montre et filtre par
    institution : un ÉCRAN de plus, toujours aucun compteur. */
-check('A321 seuls les écrans des institutions et de leurs volontaires les lisent', callers.every((p) => /CoverageScreen|InstitutionsImportScreen|InstitutionsScreen|AddContactsScreen|FormPages|ImportWizardScreen|VolunteerFormModal|VolunteersScreen|access\.ts/.test(p)), callers.join(', '))
+/* ★★ BB — la fiche liste ses fiches LIÉES (`institutionUi.tsx`) : un écran d'institution. */
+check('A321 seuls les écrans des institutions et de leurs volontaires les lisent', callers.every((p) => /institutionUi|CoverageScreen|InstitutionsImportScreen|InstitutionsScreen|AddContactsScreen|FormPages|ImportWizardScreen|VolunteerFormModal|VolunteersScreen|access\.ts/.test(p)), callers.join(', '))
 
 console.log(`\n  ${passed} PASS, ${failed} FAIL`)
 process.exit(failed === 0 ? 0 : 1)

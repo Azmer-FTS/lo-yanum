@@ -270,7 +270,9 @@
       "hesder": "Yeshivat hesder",
       "midrasha": "Midrasha",
       "school": "Lycée",
-      "other": "Autre"
+      "other": "Autre",
+      "yeshiva": "Yeshiva guevoha",
+      "yeshiva_hs": "Yeshiva lycée"
     },
     "audience": {
       "boys": "Garçons",
@@ -351,11 +353,13 @@
       "ram": "Ram",
       "coordinator": "Rakaz",
       "assistant": "Assistant",
-      "contact": "Contact"
+      "contact": "Contact",
+      "mechinaHead": "Rosh de la mékhina"
     },
     "headMissing": {
       "head": "Rosh yeshiva manquant",
-      "principal": "Directeur manquant"
+      "principal": "Directeur manquant",
+      "mechinaHead": "Rosh de mékhina manquant"
     },
     "headMissingTab": "Chef manquant",
     "headMissingTitle": "Institutions dont le chef n’est pas encore saisi",
@@ -369,7 +373,33 @@
     "minorsLabel": "Mineurs — âges",
     "minorsFrom": "De",
     "minorsTo": "À",
-    "callContact": "Appeler {{name}}"
+    "callContact": "Appeler {{name}}",
+    "phoneLabel": {
+      "mobile": "Portable",
+      "home": "Domicile",
+      "office": "Bureau",
+      "": "—"
+    },
+    "addPhone": "Ajouter un numéro",
+    "removePhone": "Retirer le numéro {{number}}",
+    "callNumber": "Appeler {{name}} · {{label}}",
+    "office": "Secrétariat",
+    "officeTitle": "Secrétariat de l'établissement",
+    "officeHint": "Le téléphone et l'adresse de l'établissement — pas une personne. Quand le rosh ne répond pas.",
+    "officePhone": "Téléphone du secrétariat",
+    "officeAddress": "Adresse",
+    "callOffice": "Appeler le secrétariat",
+    "coordination": "Coordination préalable requise",
+    "coordinationTab": "Coordination préalable",
+    "coordinationTitle": "Établissements à ne pas appeler directement — coordonner d'abord",
+    "coordinationBy": "Par qui / quoi faire",
+    "coordinationCall": "Coordination préalable requise — {{note}}",
+    "coordinationCallAnyway": "Appeler quand même",
+    "related": "Établissements liés",
+    "relatedAdd": "Lier un établissement…",
+    "relatedRemove": "Retirer le lien vers {{name}}",
+    "heads_other": "{{count}} roshim",
+    "heads_one": "1 rosh"
   },
   "quickPin": {
     "button": "Poser une épingle sur la carte",

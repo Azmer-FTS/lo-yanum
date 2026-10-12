@@ -20,6 +20,8 @@ import { mkdirSync } from 'node:fs'
  *         jamais le ר״מ ; la mention « קטינים · 15–18 » ; le filtre « חסר ראש »
  *   A386  la fiche : les contacts rangés par rôle ; en ajouter un, il est
  *         gardé en base, le rang 1 affiché ne change pas
+ *   (★★ BB : chaque contact porte deux select — rôle et étiquette du numéro ;
+ *   le rôle se lit par son data-testid.)
  *   A387  l'aperçu : les contacts rangés ; « להתקשר » appelle le rang 1
  */
 
@@ -92,7 +94,7 @@ await guard('A386', async () => {
   await go(o.page, APP, `/coordinator/institutions/${FULL.id}`)
   const roles = await o.page.locator('[data-testid="institution-contacts"] li[data-role]').evaluateAll((els) => els.map((e) => e.getAttribute('data-role')))
   check('A386 rangés : ראש → ר״מ → רכז → איש קשר', roles.join(',') === 'head,ram,coordinator,contact', roles.join(','))
-  const firstLabel = await o.page.locator('[data-testid="institution-contacts"] li[data-role] select').first().evaluate((s) => (s as HTMLSelectElement).selectedOptions[0]?.text ?? '')
+  const firstLabel = await o.page.locator('[data-testid="institution-contacts"] li[data-role] [data-testid="institution-contact-role"]').first().evaluate((s) => (s as HTMLSelectElement).selectedOptions[0]?.text ?? '')
   check('A386 le rang 1 d’une yeshiva s’appelle « ראש ישיבה »', firstLabel === 'ראש ישיבה', firstLabel)
   await o.page.locator('[data-testid="institution-contact-add"]').click()
   /* La ligne se RANGE dès qu'elle est gardée : on la suit par son identifiant. */
@@ -114,7 +116,7 @@ await guard('A386', async () => {
   check('A386 le rang 1 affiché n’a pas changé', r?.contact_name === 'הרב ראשי' && r?.contact_phone === '050-0000601', `${r?.contact_name} ${r?.contact_phone}`)
   await o.page.screenshot({ path: `${SHOTS}/a386-fiche-contacts.png`, fullPage: true })
   await go(o.page, APP, `/coordinator/institutions/${SCHOOL.id}`)
-  const schoolLabel = await o.page.locator('[data-testid="institution-contacts"] li[data-role="head"] select').evaluate((s) => (s as HTMLSelectElement).selectedOptions[0]?.text ?? '')
+  const schoolLabel = await o.page.locator('[data-testid="institution-contacts"] li[data-role="head"] [data-testid="institution-contact-role"]').evaluate((s) => (s as HTMLSelectElement).selectedOptions[0]?.text ?? '')
   check('A386 le rang 1 d’une école s’appelle « מנהל »', schoolLabel === 'מנהל', schoolLabel)
   check('A386 la fiche de l’école porte « קטינים · 15–18 »', (await o.page.locator(`[data-testid="institution-minors-${SCHOOL.id}"]`).first().innerText()).includes('15–18'))
   const warn = await o.page.locator(`[data-testid="institution-minors-${SCHOOL.id}"]`).first().evaluate((e) => e.className)

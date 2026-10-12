@@ -12,7 +12,7 @@ import { MAPPINGS } from '../src/data/rows'
  *
  *   A380  la hiérarchie : le rang 1 représente l'institution, seul ; sans lui
  *         le contact affiché est VIDE (jamais un ר״מ / רכז promu) ; rangés par
- *         rôle ; un second rang 1 ou רכז est rétrogradé, pas perdu
+ *         rôle ; un second רכז est rétrogradé, pas perdu (★★ BB : plusieurs rangs 1 gardés)
  *   A381  un contact écrit par un chemin d'avant AZ5 (import, fusion .vcf,
  *         /add) entre comme « איש קשר », jamais comme rang 1
  *   A382  la base : `contacts` et « קטינים » font l'aller-retour ; une ligne
@@ -52,7 +52,8 @@ section('A380 — la hiérarchie, le rang 1, le rangement')
   check('A380 sans rang 1 : contact affiché VIDE (ni le ר״מ ni le רכז)', noHead.contactName === '' && noHead.contactPhone === '')
   check('A380 … et marqué « חסר ראש ישיבה »', isInstitutionHeadMissing(noHead) && !isInstitutionHeadMissing(s))
   const two = settleInstitution({ ...base, contacts: [c('1', 'head', 'א'), c('2', 'head', 'ב'), c('3', 'coordinator', 'ג'), c('4', 'coordinator', 'ד')] })
-  check('A380 un second rang 1 / רכז est rétrogradé en איש קשר, pas perdu', two.contacts!.length === 4 && two.contacts!.filter((x) => x.role === 'head').length === 1 && two.contacts!.filter((x) => x.role === 'coordinator').length === 1 && two.contactName === 'א')
+  /* ★★ BB — plusieurs rangs 1 sont GARDÉS (deux ראשי ישיבה) ; le second רכז reste rétrogradé. */
+  check('A380 (BB) deux rangs 1 gardés, un second רכז rétrogradé en איש קשר, personne perdu', two.contacts!.length === 4 && two.contacts!.filter((x) => x.role === 'head').length === 2 && two.contacts!.filter((x) => x.role === 'coordinator').length === 1 && two.contactName === 'א')
   const removed = settleInstitution({ ...s, contacts: s.contacts!.filter((x) => x.role !== 'head') }, s)
   check('A380 retirer le rang 1 vide le contact affiché (pas de remplaçant)', removed.contactName === '' && removed.contactPhone === '')
 }

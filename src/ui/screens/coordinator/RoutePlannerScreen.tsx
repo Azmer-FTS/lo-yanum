@@ -37,6 +37,7 @@ import type { AgendaEvent, Farm, FarmStatus, FreeRoute, LatLng, RegionId, Tour, 
 import { useFreeRoutes } from '../../settings/freeRoutes'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { PositionLinkField } from '../../components/PositionLinkField'
+import { TextField } from '../../components/fields'
 
 import { originLabel, originPosition } from '../../settings/origin'
 import { useConfirmDelete } from '../../components/ConfirmDelete'
@@ -636,10 +637,10 @@ export function RoutePlannerScreen() {
             <span className="label">{t('route.freeName')}</span>
             <input className="input min-h-11" value={freeName} onChange={(e) => setFreeName(e.target.value)} placeholder={t('route.freeNamePlaceholder')} data-testid="route-free-name" />
           </label>
-          <label className="flex flex-col gap-1">
-            <span className="label">{t('form.contactPhone')}</span>
-            <input className="input ltr-nums min-h-11" inputMode="tel" dir="ltr" value={freePhone} onChange={(e) => setFreePhone(e.target.value)} placeholder="05X-XXXXXXX" data-testid="route-free-phone" />
-          </label>
+          {/* ★ BB — le pavé numérique : `inputMode="tel"` brut ouvrait le
+              clavier téléphone (et pas notre pavé sur iPad). Le même champ
+              que partout ailleurs : `TextField kind="phone"`. */}
+          <TextField label={t('form.contactPhone')} kind="phone" value={freePhone} onChange={setFreePhone} placeholder="05X-XXXXXXX" testId="route-free-phone" />
         </div>
         <PositionLinkField className="mt-2" onResolve={addFreeStop} applyLabel={t('route.freeAdd')} />
         {freeStops.length > 0 && (

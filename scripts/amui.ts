@@ -449,6 +449,9 @@ try {
               : /ת["״]?ז|ח["״]?פ/.test(label) ? 'id'
               : /טלפון|נייד|פלאפון|מוקד|כונן/.test(label) ? 'phone'
               : /מייל|דוא["״]?ל|אימייל|email/i.test(label) ? 'email'
+              /* ★ BB — « יעד בדונם משוקלל » est un OBJECTIF en dounams entiers
+                 (TargetSection l'arrondit), pas une surface mesurée : entier. */
+              : /^יעד/.test(label) ? 'integer'
               : /דונם|^שטח (מעובד|מרעה)|^שטחים שמירה/.test(label) ? 'decimal'
               : /סמל יישוב/.test(label) ? 'code'
               : /מקומות|גיל|ראשים|דקות|אחוז|%|ימים|נדרשים|כמות/.test(label) ? 'integer'

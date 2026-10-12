@@ -1,5 +1,123 @@
 # לא ינום — ETAT
 
+> 🏁 **BB — INSTITUTIONS, DEUX ARBITRAGES, DEUX BUGS. 2026-10-12.**
+>
+> ⛔ **DONNÉES RÉELLES.** Aucun nom de personne ni téléphone réel ici ni dans le
+> dépôt : tout est en base. Le SQL de pose et les valeurs « avant » sont dans
+> `private/bb/` (ignoré). Les portes `bbpass` / `bbui` n'utilisent que des noms
+> et numéros INVENTÉS (050-000-07xx/08xx, 08-600-07xx/08xx).
+>
+> **★ MODÈLE (0a) — PLUSIEURS CONTACTS DE TÊTE.** Plusieurs contacts peuvent
+> porter le rôle `head` (deux ראשי ישיבה en parallèle). La fiche les montre
+> TOUS, dans l'ordre de la liste. Les écrans qui n'ont la place que d'un nom
+> (liste, tableau, vignette, aperçu, carte de couverture) lisent le miroir
+> `contactName` / `contactPhone`, qui est désormais le **PREMIER contact de tête
+> qui a un téléphone** (`institutionHead`, `src/core/institutions.ts`) ; à défaut
+> le premier de tête, sans numéro. « חסר ראש ישיבה » ne change pas : aucun
+> contact ne porte le rôle de tête (`isInstitutionHeadMissing`). ⛔ Aucun
+> contact de tête n'est rétrogradé (`SINGLE_CONTACT_ROLES` = `coordinator`
+> seul ; un second רכז reste rétrogradé en איש קשר, comme en AZ5).
+> Le libellé de tête suit la nature : ראש המכינה (`mechina`), מנהל (`school`),
+> ראש ישיבה (les autres).
+>
+> **★ MODÈLE (0b) — PLUSIEURS NUMÉROS PAR CONTACT.** `InstitutionContact.phones`
+> = `[{number, label: 'mobile'|'home'|'office'|''}]` (dans le jsonb `contacts`,
+> sans changement de schéma). Ordre STABLE, portable (ou sans étiquette)
+> d'abord (`contactPhones`) ; `phone` = miroir du premier (`primaryPhone`), qui
+> sert aux boutons d'appel des listes. La fiche montre chaque numéro, chacun
+> appelable ; l'éditeur ajoute / retire un numéro (champ `kind="phone"`, pavé
+> numérique). Une ligne d'avant BB (un seul `phone`) se lit telle quelle.
+>
+> **★ MODÈLE (0c) — LA מזכירות.** `office_phone`, `office_address` : le
+> téléphone et l'adresse de l'ÉTABLISSEMENT, pas une personne, pas de rang,
+> JAMAIS à la place du contact de tête dans une liste (A403). Appelable depuis
+> la fiche (« מזכירות ») et l'aperçu.
+>
+> **★ « נדרש תיאום מוקדם » (12).** Marqueur réutilisable :
+> `coordination_required` + `coordination_note` (PAR QUI passer). Posé, il change
+> TOUS les boutons d'appel de l'institution (teinte d'avertissement, icône ⚠, et
+> l'appel demande de relire le texte : `guardCall`) ; dans le menu « ⋯ » de la
+> ligne, l'article « להתקשר » est REMPLACÉ par le texte. Le texte accompagne
+> toujours le marqueur : puce dans la ligne et la vignette
+> (`CoordinationChip`), bannière en tête de la fiche et de l'aperçu
+> (`CoordinationBanner`), carte de couverture. Filtre « תיאום מוקדם »
+> (`?filter=coordination`). Se pose et se retire sur la fiche.
+>
+> **★ FICHES LIÉES (10).** `related_ids` : מכינת עצם ↔ מכינת כאייל (מוסדות עצם,
+> secrétariat partagé). Lien lu dans les deux sens, montré sur la fiche et
+> l'aperçu, éditable sur la fiche. La note est AUSSI portée sur chaque fiche.
+>
+> **★ RECHERCHE.** `institutionMatchesQuery` : nom, alias, localité, réseau,
+> noms et NUMÉROS des contacts, comparés après normalisation (guillemets,
+> נוה/נווה, קריית/קרית, מיימון/מימון).
+>
+> **★ DEUX NATURES DE PLUS** : `yeshiva` (ישיבה גבוהה), `yeshiva_hs` (ישיבה
+> תיכונית, rang 1 = ראש ישיבה et non מנהל).
+>
+> **★★ RÈGLE DU PO — LE STATUT DU PORTAIL CÈDE À L'INDICATEUR (14a).** Au
+> prochain import du portail :
+>   · une fiche NOUVELLEMENT créée dont l'indicateur de premier contact dit
+>     « טרם נוצר קשר » (`portalContactEstablished` faux) reçoit le statut
+>     « ליצירת קשר » (`to_contact`), quel que soit le statut du portail ; le
+>     rapport le dit (`status-capped-no-contact`) — `statusForNewFarm` ;
+>   · une fiche EXISTANTE n'est JAMAIS rétrogradée par un import : il ne peut
+>     que l'avancer sur ליצירת קשר → נוצר קשר → בוקרה → הסכמה בעל פה → נחתם →
+>     פעילה ; un recul, ou un statut de côté (לא רלוונטי, בהמתנה…) par-dessus un
+>     statut de l'app, est signalé et non appliqué (`status-not-downgraded`) —
+>     `importMayMoveStatus` (`src/core/portalImport.ts`). L'app ne marquant pas
+>     QUI a posé un statut, la règle protège toute fiche existante (donc à
+>     coup sûr celles que le PO a mises à jour).
+>
+> **Bug « ⋯ » (15).** `OverflowMenu` se rend dans un PORTAIL sur
+> `document.body`, en `position: fixed`, placé d'après le
+> `getBoundingClientRect()` du bouton (`placeMenu`) : sous le bouton, ou
+> au-dessus quand la place manque ; accroché au bord « fin » (la gauche en
+> hébreu) puis ramené dans l'écran à 8 px ; replacé au défilement de tout
+> conteneur et au redimensionnement, fermé si le bouton sort de l'écran.
+> Clic extérieur (bouton ou menu exclus), Échap (rend le focus au bouton),
+> focus sur le premier article à l'ouverture, ↑ ↓, `aria-expanded`,
+> `role="menu"`. Les `overflow: hidden` de `.list-tile` et du `<li>`
+> d'`EntityTable` sont GARDÉS. Corrigé une fois, pour toutes les listes.
+>
+> **Bug du pavé (16).** Le téléphone d'un point libre du planificateur était
+> un `<input inputMode="tel">` brut (clavier téléphone, pas le pavé) : c'est
+> désormais `TextField kind="phone"`. Le même balayage `amui` relevait aussi
+> « יעד בדונם משוקלל » (réglages) : un OBJECTIF en dounams entiers
+> (`TargetSection` l'arrondit), que la porte prenait pour une surface ; la
+> règle de la porte le classe désormais en entier (le champ n'a pas changé).
+>
+> **Base.** Migration additive `20261012000200_bb_institutions_office_coordination.sql`
+> (5 colonnes + `kind` élargi ; rien pour `anon`), appliquée par le MCP, jalon
+> `20261012045221`, `repair --status applied 20261012000200`.
+>
+> **Données** (après le déploiement du code, pour qu'aucun appareil resté sur
+> l'ancienne version ne réécrive une fiche sans ses numéros) : un bloc SQL gardé
+> (chaque instruction exige UNE ligne ET l'`updated_at` relu, sinon tout est
+> annulé) — 13 institutions (noms officiels, alias, nature, מזכירות, adresses,
+> rangs, deux rangs 1 sur deux yeshivot, deux numéros sur un contact, notes,
+> lien עצם ↔ כאייל, coordination préalable sur ישיבת נווה, qui repasse
+> « טרם נוצר קשר » : jamais démarchée) ; 4 fermes « הסכמה בעל פה » sans premier
+> contact → « ליצירת קשר » (14a) ; משק שלם : note de vérification, statut
+> inchangé (14b).
+>
+> **Portes.** `bun run bbpass` (A401–A407, pur, 51/51) ; `bun run bbui`
+> (A408–A410, build réel ou déployé + base factice, 88/88). Adaptées :
+> `az5pass` A380 (deux rangs 1 gardés), `az5ui` A386 (deux `select` par
+> contact : le rôle se lit par `data-testid`), `aupass` A317/A321 (aller-retour
+> identique : les champs BB n'apparaissent que remplis ; `institutionUi` lit
+> les institutions pour les fiches liées), `amui` (« יעד… » = entier).
+> Résultats (arbre complet) : bbpass 51 · bbui 88 · amui **77/77** · baui 49 ·
+> azui 120 · ayui 108 · ayscreens 57 · axui 116 · avui 51 · auui 61 · awui 57 ·
+> aymobile 48 · persist 145 · aspass 84 · bapass 38 · az5pass 18 · aupass 47 ·
+> axpass 40 · aopass 113 · avpass 15 · awpass 60 · aypass 25 · tokens ·
+> contrast. Rouge NON imputable à BB : `armigrations` 47/48 (la migration AZ4
+> non appliquée de l'autre session).
+>
+> **Question ouverte au PO** : le titre exact du rosh de ישיבת שומריה לצעירים
+> (« ראש הישיבה » ou « ראש הישיבה ור״מ כיתה י״ב » ; la base portait « מנהל בית
+> הספר »). Affiché aujourd'hui : ראש ישיבה (nature `yeshiva_hs`) ; l'ancien titre
+> et le titre publié sont dans la note du contact.
+
 > 🏁 **BA — AGRICULTEURS, CONTACTS, ET MÉNAGE DES FERMES. 2026-10-12.**
 >
 > ⛔ **DONNÉES RÉELLES.** Aucun nom de personne, téléphone, ת״ז, signature, lien

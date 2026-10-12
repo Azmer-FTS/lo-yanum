@@ -31,7 +31,12 @@ import type { LatLng } from './types'
  *   affiché, pas un sixième statut.
  */
 
-export type InstitutionKind = 'mechina' | 'hesder' | 'midrasha' | 'school' | 'other'
+/**
+ * ★★ BB — deux natures de plus, parce qu'une ישיבה תיכונית n'est pas une école
+ * à « מנהל » et qu'une ישיבה גבוהה n'est pas une ישיבת הסדר :
+ * `yeshiva_hs` (ישיבה תיכונית, rang 1 = ראש ישיבה), `yeshiva` (ישיבה גבוהה).
+ */
+export type InstitutionKind = 'mechina' | 'hesder' | 'yeshiva' | 'yeshiva_hs' | 'midrasha' | 'school' | 'other'
 export type InstitutionAudience = 'boys' | 'girls' | 'mixed' | 'unknown'
 export type InstitutionEngagement = 'not_contacted' | 'contacted' | 'interested' | 'signed' | 'not_relevant'
 
@@ -43,7 +48,7 @@ export const INSTITUTION_ENGAGEMENTS: readonly InstitutionEngagement[] = [
   'not_relevant',
 ] as const
 
-export const INSTITUTION_KINDS: readonly InstitutionKind[] = ['mechina', 'hesder', 'midrasha', 'school', 'other'] as const
+export const INSTITUTION_KINDS: readonly InstitutionKind[] = ['mechina', 'hesder', 'yeshiva', 'yeshiva_hs', 'midrasha', 'school', 'other'] as const
 export const INSTITUTION_AUDIENCES: readonly InstitutionAudience[] = ['boys', 'girls', 'mixed', 'unknown'] as const
 
 export interface Institution {
@@ -99,8 +104,48 @@ export interface Institution {
   positionSource: string
   /** ★★ AV1 — les autres noms, séparés par « · » : l'import les apparie. */
   aliases: string
+  /**
+   * ★★ BB — LE SECRÉTARIAT (מזכירות) : le téléphone et l'adresse de
+   * l'ÉTABLISSEMENT. Ce n'est pas une personne : pas de rang, jamais à la
+   * place du contact de tête dans une liste. Le recours quand le rosh ne
+   * répond pas — appelable depuis la fiche.
+   */
+  officePhone?: string
+  officeAddress?: string
+  /**
+   * ★★ BB — « נדרש תיאום מוקדם » : on ne l'appelle pas directement. Le texte
+   * dit PAR QUI passer ; il accompagne toujours le marqueur, et le bouton
+   * d'appel n'est jamais ordinaire tant que le marqueur est posé.
+   */
+  coordinationRequired?: boolean
+  coordinationNote?: string
+  /** ★★ BB — les fiches liées (même ensemble, même secrétariat…) : leurs `id`. */
+  relatedIds?: string[]
   createdAt: string
   updatedAt: string
+}
+
+/** ★★ BB — la seule définition de « נדרש תיאום מוקדם ». */
+export const needsPriorCoordination = (i: Pick<Institution, 'coordinationRequired'>): boolean => i.coordinationRequired === true
+
+/**
+ * ★★ BB — LA RECHERCHE : nom, autres noms (alias), localité, réseau, contacts
+ * (nom ET numéros). Comparée après normalisation (guillemets, נוה/נווה,
+ * קריית/קרית, מיימון/מימון) : « כרם דיבנה » ou « אפיקי דעת » trouvent leur fiche.
+ */
+export function institutionMatchesQuery(i: Institution, query: string): boolean {
+  const q = query.trim()
+  if (!q) return true
+  const norm = (s: string) => comparableLocality(s).replace(/מיימון/g, 'מימון')
+  const nq = norm(q)
+  const digits = q.replace(/\D/g, '')
+  const hay = norm([i.name, i.aliases, i.locality, i.network, ...(i.contacts ?? []).map((c) => c.name)].join(' · '))
+  if (nq && hay.includes(nq)) return true
+  if (digits.length >= 3) {
+    const nums = [i.officePhone ?? '', ...(i.contacts ?? []).flatMap((c) => contactPhones(c).map((p) => p.number))].map((n) => n.replace(/\D/g, ''))
+    if (nums.some((n) => n.includes(digits) || (digits.startsWith('0') && n.startsWith('972') && n.slice(3).includes(digits.slice(1))))) return true
+  }
+  return false
 }
 
 /** ★★ AV1 — un « חתום » qui attend la confirmation du PO. */
@@ -118,29 +163,60 @@ export const isInstitutionProspect = (i: Pick<Institution, 'engagement'>): boole
 
 /**
  * La hiérarchie est FIXE, et l'application RANGE, elle ne choisit pas :
- *   1. `head` — ראש ישיבה / מנהל. UN SEUL. Il représente l'institution
- *      (liste, tableau, carte, aperçu, export), même s'il décroche rarement.
+ *   1. `head` — ראש ישיבה / ראש המכינה / מנהל. ★★ BB : PLUSIEURS possibles
+ *      (deux ראשי ישיבה en parallèle). La fiche les montre tous, dans l'ordre
+ *      de la liste ; les écrans qui n'ont la place que d'un nom montrent le
+ *      PREMIER qui a un téléphone (`institutionHead`).
  *   2. `ram` — ר״מ, sous son autorité. Zéro, un ou plusieurs.
  *   3. `coordinator` — רכז, désigné pour les volontaires. Zéro ou un.
  *   4. `assistant` / `contact` — עוזר, איש קשר. Zéro ou plusieurs.
  * ⛔ Pas de « premier à appeler » : le PO juge lui-même qui appeler.
- * ⛔ Sans rang 1, l'institution n'a PAS de contact affiché : « חסר ראש
+ * ⛔ Sans aucun rang 1, l'institution n'a PAS de contact affiché : « חסר ראש
  *    ישיבה », jamais le ר״מ ou le רכז promu à sa place.
+ * ⛔ ★★ BB — aucun contact de tête n'est rétrogradé pour faire de la place.
  */
 export type InstitutionContactRole = 'head' | 'ram' | 'coordinator' | 'assistant' | 'contact'
 export const INSTITUTION_CONTACT_ROLES: readonly InstitutionContactRole[] = ['head', 'ram', 'coordinator', 'assistant', 'contact'] as const
 export const CONTACT_ROLE_RANK: Record<InstitutionContactRole, number> = { head: 1, ram: 2, coordinator: 3, assistant: 4, contact: 4 }
-/** Les rôles qui ne se portent qu'une fois par institution. */
-export const SINGLE_CONTACT_ROLES: readonly InstitutionContactRole[] = ['head', 'coordinator'] as const
+/** Les rôles qui ne se portent qu'une fois par institution (★★ BB : plus le rang 1). */
+export const SINGLE_CONTACT_ROLES: readonly InstitutionContactRole[] = ['coordinator'] as const
+
+/**
+ * ★★ BB — UN CONTACT, PLUSIEURS NUMÉROS, chacun avec une étiquette courte.
+ * L'ordre est STABLE et le portable passe d'abord (`contactPhones`) : le
+ * PREMIER est celui des boutons d'appel des listes ; la fiche les montre tous,
+ * chacun appelable. `phone` reste, comme MIROIR du premier.
+ */
+export type PhoneLabel = 'mobile' | 'home' | 'office' | ''
+export const PHONE_LABELS: readonly PhoneLabel[] = ['mobile', 'home', 'office', ''] as const
+export interface ContactPhone {
+  number: string
+  label: PhoneLabel
+}
 
 export interface InstitutionContact {
   id: string
   role: InstitutionContactRole
   name: string
+  /** Le premier numéro (miroir de `phones[0]`), celui des listes. */
   phone: string
+  /** ★★ BB — tous les numéros ; absent = le seul `phone`. */
+  phones?: ContactPhone[]
   /** Une note libre, courte. */
   note: string
 }
+
+/** Le portable (ou un numéro sans étiquette) d'abord ; à rang égal, l'ordre de saisie. */
+const PHONE_RANK: Record<PhoneLabel, number> = { mobile: 0, '': 0, home: 1, office: 1 }
+
+/** ★★ BB — les numéros d'un contact, rangés (portable d'abord, tri stable), vides retirés. */
+export function contactPhones(c: Pick<InstitutionContact, 'phone' | 'phones'>): ContactPhone[] {
+  const list = c.phones && c.phones.length > 0 ? c.phones : c.phone.trim() ? [{ number: c.phone, label: '' as PhoneLabel }] : []
+  return list.filter((p) => p.number.trim() !== '').map((p, n) => ({ p, n })).sort((a, b) => PHONE_RANK[a.p.label] - PHONE_RANK[b.p.label] || a.n - b.n).map(({ p }) => p)
+}
+
+/** ★★ BB — le numéro des boutons d'appel des listes : le premier. */
+export const primaryPhone = (c: Pick<InstitutionContact, 'phone' | 'phones'>): string => contactPhones(c)[0]?.number ?? ''
 
 /** Rangés par rôle ; à rôle égal, l'ordre de saisie est gardé (tri stable). */
 export function sortInstitutionContacts(contacts: readonly InstitutionContact[]): InstitutionContact[] {
@@ -149,17 +225,27 @@ export function sortInstitutionContacts(contacts: readonly InstitutionContact[])
 
 export const institutionContacts = (i: Pick<Institution, 'contacts'>): InstitutionContact[] => sortInstitutionContacts(i.contacts ?? [])
 
-/** Le rang 1, ou `null`. */
-export const institutionHead = (i: Pick<Institution, 'contacts'>): InstitutionContact | null => (i.contacts ?? []).find((c) => c.role === 'head') ?? null
+/** ★★ BB — TOUS les contacts de tête, dans l'ordre de la liste. */
+export const institutionHeads = (i: Pick<Institution, 'contacts'>): InstitutionContact[] => (i.contacts ?? []).filter((c) => c.role === 'head')
 
-/** ★ La seule définition de « חסר ראש ישיבה ». */
-export const isInstitutionHeadMissing = (i: Pick<Institution, 'contacts'>): boolean => institutionHead(i) === null
+/**
+ * ★★ BB — LE contact de tête des écrans étroits : le PREMIER rang 1 qui a un
+ * téléphone ; sinon le premier rang 1 ; sinon `null`.
+ */
+export const institutionHead = (i: Pick<Institution, 'contacts'>): InstitutionContact | null => {
+  const heads = institutionHeads(i)
+  return heads.find((c) => primaryPhone(c) !== '') ?? heads[0] ?? null
+}
+
+/** ★ La seule définition de « חסר ראש ישיבה » : AUCUN contact ne porte le rôle de tête. */
+export const isInstitutionHeadMissing = (i: Pick<Institution, 'contacts'>): boolean => institutionHeads(i).length === 0
 
 /**
  * Le libellé du rang 1 suit la nature de l'établissement : מנהל pour une
- * école, ראש ישיבה pour les autres (clé `institutions.role.head` / `principal`).
+ * école, ראש המכינה pour une מכינה (★★ BB), ראש ישיבה pour les autres
+ * (clé `institutions.role.head` / `principal` / `mechinaHead`).
  */
-export const headRoleKey = (i: Pick<Institution, 'kind'>): 'head' | 'principal' => (i.kind === 'school' ? 'principal' : 'head')
+export const headRoleKey = (i: Pick<Institution, 'kind'>): 'head' | 'principal' | 'mechinaHead' => (i.kind === 'school' ? 'principal' : i.kind === 'mechina' ? 'mechinaHead' : 'head')
 export const contactRoleKey = (i: Pick<Institution, 'kind'>, role: InstitutionContactRole): string => (role === 'head' ? headRoleKey(i) : role)
 
 const digitsOf = (s: string): string => s.replace(/\D/g, '')
@@ -170,15 +256,18 @@ const digitsOf = (s: string): string => s.replace(/\D/g, '')
  *   · un `contactName` / `contactPhone` écrit par un chemin d'avant AZ5
  *     (import d'un classeur, fusion d'une fiche .vcf, /add) ne sait pas QUI
  *     est la personne : elle entre comme « איש קשר », jamais comme rang 1 ;
- *   · le miroir est ensuite recalculé depuis le rang 1 ;
- *   · un deuxième « ראש ישיבה » ou « רכז » est rétrogradé en איש קשר (la
- *     personne n'est pas perdue, le rang reste unique).
+ *   · ★★ BB — les numéros de chaque contact sont rangés (portable d'abord) et
+ *     `phone` devient le premier ;
+ *   · le miroir est ensuite recalculé depuis `institutionHead` (le premier
+ *     rang 1 qui a un téléphone) ;
+ *   · un deuxième « רכז » est rétrogradé en איש קשר ; ★★ BB — plusieurs
+ *     « ראש ישיבה » sont GARDÉS, aucun n'est rétrogradé.
  */
 export function settleInstitution<T extends Institution>(next: T, prev?: Institution): T {
   let contacts = [...(next.contacts ?? [])]
   const mirror = (cs: readonly InstitutionContact[]) => {
-    const h = cs.find((c) => c.role === 'head')
-    return { name: h?.name ?? '', phone: h?.phone ?? '' }
+    const h = institutionHead({ contacts: [...cs] })
+    return { name: h?.name ?? '', phone: h ? primaryPhone(h) : '' }
   }
   const before = mirror(prev ? prev.contacts ?? [] : contacts)
   const legacyName = next.contactName !== before.name && next.contactName.trim() !== '' ? next.contactName.trim() : ''
@@ -186,7 +275,9 @@ export function settleInstitution<T extends Institution>(next: T, prev?: Institu
   const contactsTouched = prev ? next.contacts !== prev.contacts : false
   if (!contactsTouched && (legacyName || legacyPhone)) {
     const known = contacts.some(
-      (c) => (legacyPhone && digitsOf(c.phone) !== '' && digitsOf(c.phone) === digitsOf(legacyPhone)) || (legacyName && !legacyPhone && c.name.trim() === legacyName),
+      (c) =>
+        (legacyPhone && contactPhones(c).some((p) => digitsOf(p.number) !== '' && digitsOf(p.number) === digitsOf(legacyPhone))) ||
+        (legacyName && !legacyPhone && c.name.trim() === legacyName),
     )
     if (!known) {
       contacts.push({ id: `ic-${next.id}-${contacts.length + 1}-${digitsOf(legacyPhone) || legacyName.length}`, role: 'contact', name: legacyName, phone: legacyPhone, note: '' })
@@ -194,10 +285,13 @@ export function settleInstitution<T extends Institution>(next: T, prev?: Institu
   }
   const seen = new Set<InstitutionContactRole>()
   contacts = contacts.map((c) => {
-    if (!SINGLE_CONTACT_ROLES.includes(c.role)) return c
-    if (seen.has(c.role)) return { ...c, role: 'contact' as const }
+    const phones = contactPhones(c)
+    const tidy: InstitutionContact = { ...c, phone: phones[0]?.number ?? '' }
+    if (c.phones !== undefined) tidy.phones = phones
+    if (!SINGLE_CONTACT_ROLES.includes(c.role)) return tidy
+    if (seen.has(c.role)) return { ...tidy, role: 'contact' as const }
     seen.add(c.role)
-    return c
+    return tidy
   })
   contacts = sortInstitutionContacts(contacts)
   const m = mirror(contacts)

@@ -30,7 +30,7 @@ import { ChevronForward, Icon } from '../../components/Icon'
 import { MapPanel } from '../../components/MapPanel'
 import type { MapLink, MapMarker, MapRouteLine } from '../../components/MapView'
 import { PageHeader, Section } from '../../components/primitives'
-import { ENGAGEMENT_ON, HeadMissingChip, MinorsChip, peopleOf } from '../../institutions/institutionUi'
+import { CoordinationChip, ENGAGEMENT_ON, HeadMissingChip, MinorsChip, peopleOf } from '../../institutions/institutionUi'
 import { useCoreValue } from '../../hooks/useCore'
 import { measureMeshPair } from '../../routing/roadNetwork'
 import { meshPair, requestMeshPairs, useRoadMesh } from '../../routing/roadMesh'
@@ -866,6 +866,8 @@ function InstitutionFigures({
             {/* ★★ AZ5 — le contact affiché est le rang 1 ; sans lui, on le dit. */}
             <HeadMissingChip inst={inst} />
             <MinorsChip inst={inst} />
+            {/* ★★ BB — « נדרש תיאום מוקדם », avec son texte. */}
+            <CoordinationChip inst={inst} full />
           </p>
           {(inst.contactName || inst.metOn || inst.students !== null) && (
             <p className="mt-1 text-caption text-content-secondary" data-testid="coverage-institution-facts">

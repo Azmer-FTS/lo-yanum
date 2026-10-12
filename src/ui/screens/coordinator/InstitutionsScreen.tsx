@@ -9,7 +9,10 @@ import {
   comparableInstitutionName,
   getInstitutions,
   getVolunteers,
+  headRoleKey,
+  institutionMatchesQuery,
   isInstitutionHeadMissing,
+  needsPriorCoordination,
   isInstitutionToConfirm,
   updateInstitution,
   isTestId,
@@ -29,7 +32,7 @@ import type { MapMarker } from '../../components/MapView'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { FilterPill, FilterRow, ListTop, PageHeader } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
-import { ENGAGEMENT_ON, HeadMissingChip, InstitutionContactsList, InstitutionEditor, InstitutionPeople, MinorsChip } from '../../institutions/institutionUi'
+import { CoordinationBanner, CoordinationChip, ENGAGEMENT_ON, HeadMissingChip, InstitutionContactsList, InstitutionEditor, InstitutionPeople, MinorsChip, RelatedInstitutions, callTone, coordinationText, guardCall, telOf } from '../../institutions/institutionUi'
 import { runUndoable } from '../../components/UndoToast'
 
 /**
@@ -49,7 +52,7 @@ import { runUndoable } from '../../components/UndoToast'
  * voit enfin rattachés à elle (étape 3).
  */
 
-type Filter = 'all' | 'toConfirm' | 'headMissing' | InstitutionEngagement
+type Filter = 'all' | 'toConfirm' | 'headMissing' | 'coordination' | InstitutionEngagement
 const SORT_KEY = 'lo-yanum:institutions-sort'
 
 const ENGAGEMENT_TOKEN: Record<InstitutionEngagement, string> = {
@@ -74,7 +77,8 @@ export function InstitutionsScreen() {
   /* ★★ AZ5 — et « חסר ראש » (`?filter=headMissing`) : les fiches à relancer. */
   const [filter, setFilter] = useState<Filter>(() => {
     const f = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('filter')
-    return f === 'toConfirm' || f === 'headMissing' ? f : 'all'
+    /* ★★ BB — et « תיאום מוקדם » (`?filter=coordination`). */
+    return f === 'toConfirm' || f === 'headMissing' || f === 'coordination' ? f : 'all'
   })
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState<string | null>(null)
@@ -92,11 +96,12 @@ export function InstitutionsScreen() {
   const counts = useMemo(() => {
     /* ★★ AZ3.4 — le jeu d'essai se voit, marqué, mais ne compte pas. */
     const counted = institutions.filter((i) => !isTestId(i.id))
-    const out: Record<Filter, number> = { all: counted.length, toConfirm: 0, headMissing: 0, not_contacted: 0, contacted: 0, interested: 0, signed: 0, not_relevant: 0 }
+    const out: Record<Filter, number> = { all: counted.length, toConfirm: 0, headMissing: 0, coordination: 0, not_contacted: 0, contacted: 0, interested: 0, signed: 0, not_relevant: 0 }
     for (const i of counted) {
       out[i.engagement] += 1
       if (isInstitutionToConfirm(i)) out.toConfirm += 1
       if (isInstitutionHeadMissing(i)) out.headMissing += 1
+      if (needsPriorCoordination(i)) out.coordination += 1
     }
     return out
   }, [institutions])
@@ -104,8 +109,9 @@ export function InstitutionsScreen() {
 
   const q = query.trim()
   const visible = institutions
-    .filter((i) => filter === 'all' || (filter === 'toConfirm' ? isInstitutionToConfirm(i) : filter === 'headMissing' ? isInstitutionHeadMissing(i) : i.engagement === filter))
-    .filter((i) => !q || `${i.name} ${i.locality} ${i.network} ${(i.contacts ?? []).map((c) => c.name).join(' ')} ${i.aliases}`.includes(q))
+    .filter((i) => filter === 'all' || (filter === 'toConfirm' ? isInstitutionToConfirm(i) : filter === 'headMissing' ? isInstitutionHeadMissing(i) : filter === 'coordination' ? needsPriorCoordination(i) : i.engagement === filter))
+    /* ★★ BB — nom, alias, localité, réseau, contacts et numéros, normalisés. */
+    .filter((i) => institutionMatchesQuery(i, q))
 
   /* ★★ AV1 — confirmer : UN toucher, sans ouvrir la fiche. Dans la colonne
      du tableau, et sur la vignette (★★ AZ4 — il ne doit pas disparaître quand
@@ -145,7 +151,7 @@ export function InstitutionsScreen() {
        lui : « חסר ראש ישיבה », jamais un ר״מ ou un רכז à sa place. */
     {
       key: 'contact',
-      sub: (i) => i.contactName || t(`institutions.headMissing.${i.kind === 'school' ? 'principal' : 'head'}`),
+      sub: (i) => i.contactName || t(`institutions.headMissing.${headRoleKey(i)}`),
       label: t('institutionsScreen.col.contact'),
       sort: (i) => i.contactName,
       title: (i) => i.contactName,
@@ -161,12 +167,28 @@ export function InstitutionsScreen() {
       interactive: true,
       className: 'w-[9.5rem]',
       minWidth: 700,
+      /* ★★ BB — le numéro du contact de tête (jamais la מזכירות) ; avec le
+         marqueur « נדרש תיאום מוקדם », le texte l'accompagne et l'appel
+         demande de le relire. */
       render: (i) =>
         i.contactPhone ? (
-          <a className="ltr-nums inline-flex min-h-[2.5rem] items-center gap-1 text-content-secondary hover:text-accent-ink" href={`tel:${i.contactPhone.replace(/[^\d+]/g, '')}`} dir="ltr">
-            <Icon name="phone" size={14} />
-            {i.contactPhone}
-          </a>
+          <span className="flex min-w-0 flex-col items-start gap-0.5">
+            <a
+              className={`ltr-nums inline-flex min-h-[2.5rem] items-center gap-1 hover:text-accent-ink ${needsPriorCoordination(i) ? 'font-semibold text-status-warn-ink' : 'text-content-secondary'}`}
+              href={telOf(i.contactPhone)}
+              onClick={guardCall(i, t)}
+              dir="ltr"
+              data-testid={`institution-call-${i.id}`}
+              data-guarded={needsPriorCoordination(i) ? '' : undefined}
+              title={needsPriorCoordination(i) ? coordinationText(i, t) : undefined}
+            >
+              <Icon name={needsPriorCoordination(i) ? 'alert' : 'phone'} size={14} />
+              {i.contactPhone}
+            </a>
+            <CoordinationChip inst={i} />
+          </span>
+        ) : needsPriorCoordination(i) ? (
+          <CoordinationChip inst={i} />
         ) : (
           <span className="text-content-muted">—</span>
         ),
@@ -192,7 +214,14 @@ export function InstitutionsScreen() {
   const instActions = (i: Institution): RowAction[] => [
     { key: 'view', icon: 'eye', label: t('table.view'), inline: true, onClick: () => setOpen(i.id), testId: `institution-view-${i.id}` },
     { key: 'edit', icon: 'edit', label: t('table.edit'), inline: true, to: `/coordinator/institutions/${i.id}`, testId: `institution-edit-${i.id}` },
-    ...(i.contactPhone ? [{ key: 'call', icon: 'phone' as const, label: t('institutions.call'), onClick: () => window.open(`tel:${i.contactPhone.replace(/[^\d+]/g, '')}`, '_self') }] : []),
+    /* ★★ BB — avec le marqueur, l'article dit le texte et l'appel le fait relire. */
+    ...(i.contactPhone
+      ? [
+          needsPriorCoordination(i)
+            ? { key: 'call', icon: 'alert' as const, label: coordinationText(i, t), danger: true, testId: `institution-call-guarded-${i.id}`, onClick: () => { if (window.confirm(`${coordinationText(i, t)}\n\n${t('institutions.coordinationCallAnyway')}?`)) window.open(telOf(i.contactPhone), '_self') } }
+            : { key: 'call', icon: 'phone' as const, label: t('institutions.call'), testId: `institution-call-menu-${i.id}`, onClick: () => window.open(telOf(i.contactPhone), '_self') },
+        ]
+      : []),
     { key: 'coverage', icon: 'map', label: t('institutionsScreen.seeReach'), to: `/coordinator/coverage?inst=${i.id}`, testId: `institution-coverage-${i.id}` },
     { key: 'volunteer', icon: 'userPlus', label: t('institutionPeople.add'), to: `/coordinator/volunteers/new?institution=${i.id}` },
   ]
@@ -210,7 +239,7 @@ export function InstitutionsScreen() {
     }))
   const openInst = institutions.find((i) => i.id === open) ?? null
 
-  const FILTERS: Filter[] = ['all', ...(counts.toConfirm > 0 ? (['toConfirm'] as const) : []), ...(counts.headMissing > 0 ? (['headMissing'] as const) : []), ...INSTITUTION_ENGAGEMENTS]
+  const FILTERS: Filter[] = ['all', ...(counts.toConfirm > 0 ? (['toConfirm'] as const) : []), ...(counts.headMissing > 0 ? (['headMissing'] as const) : []), ...(counts.coordination > 0 ? (['coordination'] as const) : []), ...INSTITUTION_ENGAGEMENTS]
 
   return (
     <MapSplit
@@ -259,10 +288,10 @@ export function InstitutionsScreen() {
                     active={filter === f}
                     onClick={() => setFilter(f)}
                     count={counts[f]}
-                    title={f === 'all' ? undefined : f === 'toConfirm' ? t('institutions.toConfirm') : f === 'headMissing' ? t('institutions.headMissingTitle') : t(`institutions.engagement.${f}`)}
+                    title={f === 'all' ? undefined : f === 'toConfirm' ? t('institutions.toConfirm') : f === 'headMissing' ? t('institutions.headMissingTitle') : f === 'coordination' ? t('institutions.coordinationTitle') : t(`institutions.engagement.${f}`)}
                     testId={`institutions-filter-${f}`}
                   >
-                    {f === 'all' ? t('institutions.all') : f === 'toConfirm' ? t('institutions.toConfirmTab') : f === 'headMissing' ? t('institutions.headMissingTab') : t(`institutions.engagementShort.${f}`)}
+                    {f === 'all' ? t('institutions.all') : f === 'toConfirm' ? t('institutions.toConfirmTab') : f === 'headMissing' ? t('institutions.headMissingTab') : f === 'coordination' ? t('institutions.coordinationTab') : t(`institutions.engagementShort.${f}`)}
                   </FilterPill>
                 ))}
               </FilterRow>
@@ -275,6 +304,7 @@ export function InstitutionsScreen() {
             lead={(i) => ({ title: i.name, shape: 'square', dot: <span className="h-2.5 w-2.5 shrink-0 rounded-pill" style={{ backgroundColor: readToken(ENGAGEMENT_TOKEN[i.engagement]) }} aria-hidden />, marks: (
                 <>
                   <TestDataBadge id={i.id} />
+                  <CoordinationChip inst={i} />
                   <MinorsChip inst={i} />
                 </>
               ) })}
@@ -290,7 +320,7 @@ export function InstitutionsScreen() {
             activeKey={open}
             actions={(i) => instActions(i)}
             phoneEnd={(i) => <span className={`chip border text-micro ${ENGAGEMENT_ON[i.engagement]}`}>{t(`institutions.engagementShort.${i.engagement}`)}</span>}
-            rowAttrs={(i) => ({ 'data-testid': `institution-row-${i.id}`, 'data-to-confirm': isInstitutionToConfirm(i) ? '' : undefined })}
+            rowAttrs={(i) => ({ 'data-testid': `institution-row-${i.id}`, 'data-to-confirm': isInstitutionToConfirm(i) ? '' : undefined, 'data-coordination': needsPriorCoordination(i) ? '' : undefined })}
             empty={institutions.length === 0 ? t('institutionsScreen.empty') : t('table.empty')}
             label={t('nav.institutions')}
             testId="institutions-table"
@@ -326,13 +356,14 @@ function InstitutionPreview({ inst, onClose, docked }: { inst: Institution; onCl
         <>
           <span className={`chip border text-micro ${ENGAGEMENT_ON[inst.engagement]}`}>{t(`institutions.engagement.${inst.engagement}`)}</span>
           <MinorsChip inst={inst} />
+          <CoordinationChip inst={inst} full />
         </>
       }
       quick={
         <>
           {inst.contactPhone && (
-            <a className="btn-primary min-h-11" href={`tel:${inst.contactPhone.replace(/[^\d+]/g, '')}`}>
-              <Icon name="phone" size={16} />
+            <a className={`${callTone(inst, 'btn-primary')} min-h-11`} href={telOf(inst.contactPhone)} onClick={guardCall(inst, t)} data-testid="institution-preview-call" data-guarded={needsPriorCoordination(inst) ? '' : undefined}>
+              <Icon name={needsPriorCoordination(inst) ? 'alert' : 'phone'} size={16} />
               {t('institutions.call')}
             </a>
           )}
@@ -343,10 +374,19 @@ function InstitutionPreview({ inst, onClose, docked }: { inst: Institution; onCl
         </>
       }
     >
+      {/* ★★ BB — le marqueur de coordination, avant les contacts et leurs numéros. */}
+      {needsPriorCoordination(inst) && (
+        <div className="py-2">
+          <CoordinationBanner inst={inst} />
+        </div>
+      )}
       {/* ★★ AZ5 — les contacts, rangés par rôle ; le rang 1 en tête. */}
       <PreviewSection title={t('institutions.contacts')}>
         <InstitutionContactsList inst={inst} />
       </PreviewSection>
+      <div className="py-2">
+        <RelatedInstitutions inst={inst} />
+      </div>
       <PreviewSection title={t('institutionPeople.title')}>
         <div className="py-2">
           <InstitutionPeople inst={inst} />

@@ -1,0 +1,12 @@
+bbui exit=0   88 PASS, 0 FAIL
+baui exit=0   49 PASS, 0 FAIL
+az5ui exit=1   17 PASS, 1 FAIL
+azui exit=0   120 PASS, 0 FAIL
+ayui exit=0   108 PASS, 0 FAIL
+ayscreens exit=0   57 PASS, 0 FAIL
+axui exit=0   116 PASS, 0 FAIL
+avui exit=0   51 PASS, 0 FAIL
+auui exit=0   61 PASS, 0 FAIL
+awui exit=0   57 PASS, 0 FAIL
+aymobile exit=0    48 PASS, 0 FAIL  (48 écrans à 402 px) → docs/ay/ay2-mobile-local.json 
+DONE

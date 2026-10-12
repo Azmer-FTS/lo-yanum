@@ -6,13 +6,17 @@ import { Link } from 'react-router-dom'
 import {
   INSTITUTION_CONTACT_ROLES,
   INSTITUTION_ENGAGEMENTS,
+  PHONE_LABELS,
   SINGLE_CONTACT_ROLES,
   comparableInstitutionName,
+  contactPhones,
   contactRoleKey,
   getDrivers,
+  getInstitutions,
   getVolunteers,
   headRoleKey,
   institutionContacts,
+  needsPriorCoordination,
   isInstitutionHeadMissing,
   isInstitutionToConfirm,
   minorsLabel,
@@ -21,10 +25,10 @@ import {
   setVolunteerRideWith,
   updateInstitution,
 } from '@core/index'
-import type { Driver, Institution, InstitutionContact, InstitutionContactRole, InstitutionEngagement, Volunteer } from '@core/index'
+import type { ContactPhone, Driver, Institution, InstitutionContact, InstitutionContactRole, InstitutionEngagement, PhoneLabel, Volunteer } from '@core/index'
 
 import { Avatar } from '../components/Avatar'
-import { NumberField } from '../components/fields'
+import { NumberField, TextField } from '../components/fields'
 import { Icon } from '../components/Icon'
 import { useCoreValue } from '../hooks/useCore'
 import { runUndoable } from '../components/UndoToast'
@@ -100,7 +104,62 @@ export function MinorsChip({ inst }: { inst: Institution }) {
   )
 }
 
-const telOf = (phone: string): string => `tel:${phone.replace(/[^\d+]/g, '')}`
+export const telOf = (phone: string): string => `tel:${phone.replace(/[^\d+]/g, '')}`
+
+/**
+ * ★★ BB — « נדרש תיאום מוקדם ». Le marqueur et SON TEXTE (par qui passer)
+ * vont toujours ensemble ; posé, il change TOUS les boutons d'appel de
+ * l'institution : teinte d'avertissement, et un appel ne part qu'après avoir
+ * relu le texte (`guardCall`). Jamais un bouton d'appel ordinaire.
+ */
+export function coordinationText(inst: Institution, t: (k: string, o?: Record<string, unknown>) => string): string {
+  return t('institutions.coordinationCall', { note: (inst.coordinationNote ?? '').trim() || t('institutions.coordination') })
+}
+
+/** À poser sur le `onClick` d'un lien d'appel : rien quand le marqueur n'est pas posé. */
+export function guardCall(inst: Institution, t: (k: string, o?: Record<string, unknown>) => string) {
+  return (e: { preventDefault: () => void }) => {
+    if (!needsPriorCoordination(inst)) return
+    if (!window.confirm(`${coordinationText(inst, t)}\n\n${t('institutions.coordinationCallAnyway')}?`)) e.preventDefault()
+  }
+}
+
+/** La classe d'un bouton d'appel : ordinaire, ou d'avertissement quand le marqueur est posé. */
+export const callTone = (inst: Institution, ordinary: string): string =>
+  needsPriorCoordination(inst) ? 'btn-secondary border-status-warn bg-status-warn/15 text-status-warn-ink' : ordinary
+
+/** ★★ BB — le marqueur, AVEC son texte. Liste, vignette, aperçu, carte de couverture. */
+export function CoordinationChip({ inst, full = false }: { inst: Institution; full?: boolean }) {
+  const { t } = useTranslation()
+  if (!needsPriorCoordination(inst)) return null
+  const note = (inst.coordinationNote ?? '').trim()
+  return (
+    <span
+      className={`chip border border-status-warn bg-status-warn/15 text-micro font-semibold text-status-warn-ink ${full ? 'whitespace-normal' : 'max-w-full'}`}
+      title={note || undefined}
+      data-testid={`institution-coordination-${inst.id}`}
+      dir="auto"
+    >
+      <Icon name="alert" size={12} className="shrink-0" />
+      <span className={full ? '' : 'truncate'}>{note ? `${t('institutions.coordination')} · ${note}` : t('institutions.coordination')}</span>
+    </span>
+  )
+}
+
+/** ★★ BB — la bannière de la fiche et de l'aperçu : le marqueur, en grand, avant tout bouton d'appel. */
+export function CoordinationBanner({ inst }: { inst: Institution }) {
+  const { t } = useTranslation()
+  if (!needsPriorCoordination(inst)) return null
+  return (
+    <div role="note" className="flex items-start gap-2 rounded-field border border-status-warn bg-status-warn/15 px-3 py-2 text-status-warn-ink" data-testid="institution-coordination-banner">
+      <Icon name="alert" size={18} className="mt-0.5 shrink-0" />
+      <p className="min-w-0 flex-1 text-caption">
+        <span className="font-bold">{t('institutions.coordination')}</span>
+        {(inst.coordinationNote ?? '').trim() && <span className="block" dir="auto">{inst.coordinationNote}</span>}
+      </p>
+    </div>
+  )
+}
 
 /**
  * ★★ AZ5 — LES CONTACTS, RANGÉS PAR RÔLE, ÉDITÉS DEPUIS LA FICHE. Chaque
@@ -157,26 +216,42 @@ export function InstitutionContactsEditor({ inst }: { inst: Institution }) {
 function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institution; contact: InstitutionContact; taken: (r: InstitutionContactRole) => boolean; onSave: (c: InstitutionContact) => void; onRemove: () => void }) {
   const { t } = useTranslation()
   const [name, setName] = useState(contact.name)
-  const [phone, setPhone] = useState(contact.phone)
+  /* ★★ BB — plusieurs numéros, chacun son étiquette ; le premier sert aux listes. */
+  const initialPhones = (): ContactPhone[] => {
+    const list = contactPhones(contact)
+    return list.length ? list : [{ number: '', label: 'mobile' }]
+  }
+  const [phones, setPhones] = useState<ContactPhone[]>(initialPhones)
   const [note, setNote] = useState(contact.note)
+  const phonesKey = JSON.stringify(contactPhones(contact))
   useEffect(() => {
     setName(contact.name)
-    setPhone(contact.phone)
+    setPhones(initialPhones())
     setNote(contact.note)
-  }, [contact.id, contact.name, contact.phone, contact.note])
-  const commit = (patch: Partial<InstitutionContact>) => {
-    const next = { ...contact, name, phone, note, ...patch }
-    if (next.role !== contact.role || next.name !== contact.name || next.phone !== contact.phone || next.note !== contact.note) onSave(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contact.id, contact.name, phonesKey, contact.note])
+  const commit = (patch: Partial<InstitutionContact> = {}, nextPhones: ContactPhone[] = phones) => {
+    const kept = nextPhones.filter((p) => p.number.trim() !== '')
+    const next: InstitutionContact = { ...contact, name, note, phone: kept[0]?.number ?? '', phones: kept, ...patch }
+    const changed =
+      next.role !== contact.role || next.name !== contact.name || next.note !== contact.note || JSON.stringify(contactPhones(next)) !== phonesKey
+    if (changed) onSave(next)
+  }
+  const setPhoneAt = (n: number, p: Partial<ContactPhone>, save = false) => {
+    const next = phones.map((x, k) => (k === n ? { ...x, ...p } : x))
+    setPhones(next)
+    if (save) commit({}, next)
   }
   const roleName = t(`institutions.role.${contactRoleKey(inst, contact.role)}`)
+  const first = phones.find((p) => p.number.trim())?.number ?? ''
   return (
-    <li className="rounded-card bg-surface-raised p-2.5 shadow-card" data-testid={`institution-contact-${contact.id}`} data-role={contact.role}>
-      {contact.phone && (
+    <li className="rounded-card bg-surface-raised p-2.5 shadow-card" data-testid={`institution-contact-${contact.id}`} data-role={contact.role} data-phones={contactPhones(contact).length}>
+      {first && (
         <div className="mb-2">
-          <Avatar phone={contact.phone} name={contact.name || '?'} size="sm" />
+          <Avatar phone={first} name={contact.name || '?'} size="sm" />
         </div>
       )}
-      <div className="grid gap-2 sm:grid-cols-[9.5rem_minmax(0,1fr)_10rem]">
+      <div className="grid gap-2 sm:grid-cols-[9.5rem_minmax(0,1fr)]">
         <label className="flex flex-col gap-1">
           <span className="text-micro font-semibold text-content-muted">{t('institutions.roleLabel')}</span>
           <select className="input min-h-11" value={contact.role} onChange={(e) => commit({ role: e.target.value as InstitutionContactRole })} data-testid="institution-contact-role">
@@ -189,24 +264,75 @@ function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institut
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-micro font-semibold text-content-muted">{t('institutions.contactName')}</span>
-          <input className="input min-h-11" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => commit({})} data-testid="institution-contact-name" />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-micro font-semibold text-content-muted">{t('institutions.contactPhone')}</span>
-          <input className="input ltr-nums min-h-11" inputMode="tel" dir="ltr" placeholder="05X-XXX-XXXX" value={phone} onChange={(e) => setPhone(e.target.value)} onBlur={() => commit({})} data-testid="institution-contact-phone" />
+          <input className="input min-h-11" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => commit()} data-testid="institution-contact-name" />
         </label>
       </div>
+      <ul className="mt-2 flex flex-col gap-2" data-testid="institution-contact-phones">
+        {phones.map((p, n) => (
+          <li key={n} className="flex flex-wrap items-end gap-2" data-testid={`institution-contact-phone-${n}`}>
+            <label className="flex w-[7.5rem] flex-col gap-1">
+              <span className="text-micro font-semibold text-content-muted">{t('institutions.contactPhone')}</span>
+              <select
+                className="input min-h-11"
+                value={p.label}
+                onChange={(e) => setPhoneAt(n, { label: e.target.value as PhoneLabel }, true)}
+                data-testid="institution-contact-phone-label"
+              >
+                {PHONE_LABELS.map((l) => (
+                  <option key={l || 'none'} value={l}>
+                    {t(`institutions.phoneLabel.${l}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="min-w-[10rem] flex-1" onBlur={() => commit()}>
+              <TextField label={`${t('institutions.contactPhone')}${p.label ? ` · ${t(`institutions.phoneLabel.${p.label}`)}` : ''}`} kind="phone" value={p.number} onChange={(v) => setPhoneAt(n, { number: v })} testId="institution-contact-phone" />
+            </div>
+            {p.number.trim() && (
+              <a
+                href={telOf(p.number)}
+                onClick={guardCall(inst, t)}
+                className={`${callTone(inst, 'btn-secondary')} min-h-11`}
+                data-testid="institution-contact-call"
+                data-guarded={needsPriorCoordination(inst) ? '' : undefined}
+                aria-label={t('institutions.callNumber', { name: contact.name || roleName, label: t(`institutions.phoneLabel.${p.label}`) })}
+              >
+                <Icon name="phone" size={16} />
+                {t('institutions.call')}
+              </a>
+            )}
+            {phones.length > 1 && (
+              <button
+                type="button"
+                className="btn-ghost min-h-11"
+                aria-label={t('institutions.removePhone', { number: p.number })}
+                data-testid="institution-contact-phone-remove"
+                onClick={() => {
+                  const next = phones.filter((_, k) => k !== n)
+                  setPhones(next)
+                  commit({}, next)
+                }}
+              >
+                <Icon name="close" size={16} />
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        className="btn-ghost mt-1 min-h-11 text-caption"
+        data-testid="institution-contact-phone-add"
+        onClick={() => setPhones([...phones, { number: '', label: phones.some((x) => x.label === 'mobile') ? 'home' : 'mobile' }])}
+      >
+        <Icon name="plus" size={14} />
+        {t('institutions.addPhone')}
+      </button>
       <div className="mt-2 flex flex-wrap items-end gap-2">
         <label className="flex min-w-[12rem] flex-1 flex-col gap-1">
           <span className="text-micro font-semibold text-content-muted">{t('institutions.contactNote')}</span>
-          <input className="input min-h-11" value={note} onChange={(e) => setNote(e.target.value)} onBlur={() => commit({})} data-testid="institution-contact-note" />
+          <input className="input min-h-11" value={note} onChange={(e) => setNote(e.target.value)} onBlur={() => commit()} data-testid="institution-contact-note" />
         </label>
-        {contact.phone && (
-          <a href={telOf(contact.phone)} className="btn-secondary min-h-11" aria-label={t('institutions.callContact', { name: contact.name || roleName })}>
-            <Icon name="phone" size={16} />
-            {t('institutions.call')}
-          </a>
-        )}
         <button type="button" className="btn-ghost min-h-11" onClick={onRemove} aria-label={t('institutions.removeContact', { name: contact.name || roleName })} data-testid="institution-contact-remove">
           <Icon name="trash" size={16} />
         </button>
@@ -229,22 +355,161 @@ export function InstitutionContactsList({ inst }: { inst: Institution }) {
           <HeadMissingChip inst={inst} />
         </li>
       )}
-      {contacts.map((c) => (
-        <li key={c.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-2 text-caption" data-role={c.role} data-testid={`institution-contact-line-${c.id}`}>
-          {/* ★★ BA — la photo de la personne, retrouvée par son téléphone. */}
-          <Avatar phone={c.phone} name={c.name || '?'} size="xs" />
-          <span className="w-[5.5rem] shrink-0 text-content-muted">{t(`institutions.role.${contactRoleKey(inst, c.role)}`)}</span>
-          <span className="min-w-0 flex-1 font-semibold text-content-primary">{c.name || '—'}</span>
-          {c.phone && (
-            <a className="ltr-nums inline-flex min-h-[2.5rem] items-center gap-1 text-content-secondary hover:text-accent-ink" href={telOf(c.phone)} dir="ltr">
+      {contacts.map((c) => {
+        const phones = contactPhones(c)
+        return (
+          <li key={c.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-2 text-caption" data-role={c.role} data-testid={`institution-contact-line-${c.id}`} data-phones={phones.length}>
+            {/* ★★ BA — la photo de la personne, retrouvée par son téléphone. */}
+            <Avatar phone={phones[0]?.number ?? ''} name={c.name || '?'} size="xs" />
+            <span className="w-[5.5rem] shrink-0 text-content-muted">{t(`institutions.role.${contactRoleKey(inst, c.role)}`)}</span>
+            <span className="min-w-0 flex-1 font-semibold text-content-primary">{c.name || '—'}</span>
+            {/* ★★ BB — chaque numéro, appelable, avec son étiquette ; le premier d'abord. */}
+            {phones.map((p, n) => (
+              <a
+                key={n}
+                className={`ltr-nums inline-flex min-h-[2.5rem] items-center gap-1 hover:text-accent-ink ${needsPriorCoordination(inst) ? 'text-status-warn-ink' : 'text-content-secondary'}`}
+                href={telOf(p.number)}
+                onClick={guardCall(inst, t)}
+                dir="ltr"
+                data-testid="institution-contact-line-call"
+                data-guarded={needsPriorCoordination(inst) ? '' : undefined}
+              >
+                <Icon name="phone" size={14} />
+                {p.number}
+                {p.label && phones.length > 1 && <span className="text-micro text-content-muted">({t(`institutions.phoneLabel.${p.label}`)})</span>}
+              </a>
+            ))}
+            {c.note && <span className="basis-full text-micro text-content-muted" dir="auto">{c.note}</span>}
+          </li>
+        )
+      })}
+      {/* ★★ BB — la מזכירות : pas une personne, pas de rang ; à la fin. */}
+      {(inst.officePhone || inst.officeAddress) && (
+        <li className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-2 text-caption" data-testid="institution-office-line">
+          <span className="w-[5.5rem] shrink-0 text-content-muted">{t('institutions.office')}</span>
+          <span className="min-w-0 flex-1 text-content-secondary" dir="auto">{inst.officeAddress || ''}</span>
+          {inst.officePhone && (
+            <a className={`ltr-nums inline-flex min-h-[2.5rem] items-center gap-1 hover:text-accent-ink ${needsPriorCoordination(inst) ? 'text-status-warn-ink' : 'text-content-secondary'}`} href={telOf(inst.officePhone)} onClick={guardCall(inst, t)} dir="ltr" data-testid="institution-office-call" aria-label={t('institutions.callOffice')}>
               <Icon name="phone" size={14} />
-              {c.phone}
+              {inst.officePhone}
             </a>
           )}
-          {c.note && <span className="basis-full text-micro text-content-muted" dir="auto">{c.note}</span>}
         </li>
-      ))}
+      )}
     </ul>
+  )
+}
+
+/**
+ * ★★ BB — les fiches LIÉES (même ensemble, secrétariat partagé) : le lien est
+ * réciproque à la lecture (une fiche qui me nomme est liée à moi).
+ */
+export function relatedInstitutions(inst: Institution, all: readonly Institution[]): Institution[] {
+  const ids = new Set([...(inst.relatedIds ?? []), ...all.filter((o) => (o.relatedIds ?? []).includes(inst.id)).map((o) => o.id)])
+  ids.delete(inst.id)
+  return all.filter((o) => ids.has(o.id))
+}
+
+export function RelatedInstitutions({ inst, editable = false }: { inst: Institution; editable?: boolean }) {
+  const { t } = useTranslation()
+  const all = useCoreValue(() => getInstitutions())
+  const linked = relatedInstitutions(inst, all)
+  if (!editable && linked.length === 0) return null
+  const unlink = (o: Institution) => {
+    updateInstitution(inst.id, { relatedIds: (inst.relatedIds ?? []).filter((x) => x !== o.id) })
+    if ((o.relatedIds ?? []).includes(inst.id)) updateInstitution(o.id, { relatedIds: (o.relatedIds ?? []).filter((x) => x !== inst.id) })
+  }
+  return (
+    <section className="flex flex-col gap-1.5" data-testid="institution-related" data-count={linked.length}>
+      <h3 className="text-label font-semibold text-content-primary">{t('institutions.related')}</h3>
+      <ul className="flex flex-wrap gap-1.5">
+        {linked.map((o) => (
+          <li key={o.id} className="flex items-center gap-1">
+            <Link to={`/coordinator/institutions/${o.id}`} className="chip min-h-[2.5rem] border border-edge-subtle bg-surface-raised text-caption text-content-primary hover:bg-surface-high" data-testid={`institution-related-${o.id}`}>
+              {o.name}
+            </Link>
+            {editable && (
+              <button type="button" className="btn-ghost min-h-[2.5rem] px-2" onClick={() => unlink(o)} aria-label={t('institutions.relatedRemove', { name: o.name })}>
+                <Icon name="close" size={14} />
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {editable && (
+        <select
+          className="input min-h-11 sm:max-w-[20rem]"
+          value=""
+          onChange={(e) => e.target.value && updateInstitution(inst.id, { relatedIds: [...(inst.relatedIds ?? []), e.target.value] })}
+          data-testid="institution-related-add"
+          aria-label={t('institutions.relatedAdd')}
+        >
+          <option value="">{t('institutions.relatedAdd')}</option>
+          {all
+            .filter((o) => o.id !== inst.id && !linked.some((l) => l.id === o.id))
+            .map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+        </select>
+      )}
+    </section>
+  )
+}
+
+/** ★★ BB — la מזכירות et la coordination préalable, éditables sur la fiche. */
+function OfficeAndCoordinationEditor({ inst }: { inst: Institution }) {
+  const { t } = useTranslation()
+  const [phone, setPhone] = useState(inst.officePhone ?? '')
+  const [address, setAddress] = useState(inst.officeAddress ?? '')
+  const [by, setBy] = useState(inst.coordinationNote ?? '')
+  useEffect(() => {
+    setPhone(inst.officePhone ?? '')
+    setAddress(inst.officeAddress ?? '')
+    setBy(inst.coordinationNote ?? '')
+  }, [inst.id, inst.officePhone, inst.officeAddress, inst.coordinationNote])
+  return (
+    <>
+      <section className="flex flex-col gap-2" data-testid="institution-office">
+        <h3 className="text-label font-semibold text-content-primary">{t('institutions.officeTitle')}</h3>
+        <p className="muted text-micro">{t('institutions.officeHint')}</p>
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
+          <div onBlur={() => phone !== (inst.officePhone ?? '') && updateInstitution(inst.id, { officePhone: phone })}>
+            <TextField label={t('institutions.officePhone')} kind="phone" value={phone} onChange={setPhone} testId="institution-office-phone" />
+          </div>
+          <label className="flex flex-col gap-1">
+            <span className="label">{t('institutions.officeAddress')}</span>
+            <input className="input min-h-11" value={address} onChange={(e) => setAddress(e.target.value)} onBlur={() => address !== (inst.officeAddress ?? '') && updateInstitution(inst.id, { officeAddress: address })} data-testid="institution-office-address" />
+          </label>
+        </div>
+        {inst.officePhone && (
+          <a href={telOf(inst.officePhone)} onClick={guardCall(inst, t)} className={`${callTone(inst, 'btn-secondary')} min-h-11 self-start`} data-testid="institution-office-call" aria-label={t('institutions.callOffice')}>
+            <Icon name="phone" size={16} />
+            {t('institutions.office')}
+            <span className="ltr-nums" dir="ltr">{inst.officePhone}</span>
+          </a>
+        )}
+      </section>
+      <section className="flex flex-col gap-2 rounded-field border border-edge-subtle p-2.5" data-testid="institution-coordination-edit">
+        <label className="flex min-h-11 items-center gap-2 text-caption font-semibold text-content-primary">
+          <input
+            type="checkbox"
+            className="h-5 w-5"
+            checked={needsPriorCoordination(inst)}
+            onChange={(e) => updateInstitution(inst.id, { coordinationRequired: e.target.checked })}
+            data-testid="institution-coordination-toggle"
+          />
+          {t('institutions.coordination')}
+        </label>
+        {needsPriorCoordination(inst) && (
+          <label className="flex flex-col gap-1">
+            <span className="text-micro font-semibold text-content-muted">{t('institutions.coordinationBy')}</span>
+            <input className="input min-h-11" value={by} onChange={(e) => setBy(e.target.value)} onBlur={() => by !== (inst.coordinationNote ?? '') && updateInstitution(inst.id, { coordinationNote: by })} data-testid="institution-coordination-note" dir="auto" />
+          </label>
+        )}
+      </section>
+    </>
   )
 }
 
@@ -257,6 +522,7 @@ export function InstitutionEditor({ inst }: { inst: Institution }) {
   }, [inst.id, inst.notes])
   return (
     <div className="flex flex-col gap-3" data-testid="institution-editor">
+      <CoordinationBanner inst={inst} />
       <p className="muted text-caption">
         {[inst.locality, t(`institutions.kind.${inst.kind}`), t(`institutions.audience.${inst.audience}`), inst.network].filter(Boolean).join(' · ')}
       </p>
@@ -297,6 +563,8 @@ export function InstitutionEditor({ inst }: { inst: Institution }) {
         </dl>
       )}
       <InstitutionContactsEditor inst={inst} />
+      <OfficeAndCoordinationEditor inst={inst} />
+      <RelatedInstitutions inst={inst} editable />
       <label className="flex flex-col gap-1">
         <span className="text-caption font-semibold text-content-secondary">{t('institutions.notes')}</span>
         <textarea className="input min-h-[3.5rem]" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={() => notes !== inst.notes && updateInstitution(inst.id, { notes })} />

@@ -2719,7 +2719,9 @@
       "has-history": "מסומן בכוכביות בפורטל אבל יש לו היסטוריה באפליקציה — נשאר חווה",
       "ambiguous": "התאמה לא חד-משמעית — לבדוק",
       "status-column-missing": "אין בקובץ עמודת „סטטוס חתימה” — הסטטוסים לא שונו",
-      "notes-differ": "הערה פנימית שונה מהאפליקציה — נשארה של האפליקציה"
+      "notes-differ": "הערה פנימית שונה מהאפליקציה — נשארה של האפליקציה",
+      "status-capped-no-contact": "סטטוס הפורטל הוגבל ל„ליצירת קשר” — אין עדות לקשר ראשון",
+      "status-not-downgraded": "הסטטוס באפליקציה נשמר — הקובץ היה מחזיר אותו אחורה"
     },
     "signedKept": "בקובץ אין עמודת סטטוס חתימה: הסטטוס של כל חווה נשאר כפי שהוא באפליקציה (הוא תואם את מסך הפורטל). שינוי סטטוס — מכרטיס החווה."
   },
@@ -2898,7 +2900,9 @@
       "hesder": "ישיבת הסדר",
       "midrasha": "מדרשה",
       "school": "תיכון",
-      "other": "מוסד אחר"
+      "other": "מוסד אחר",
+      "yeshiva": "ישיבה גבוהה",
+      "yeshiva_hs": "ישיבה תיכונית"
     },
     "audience": {
       "boys": "בנים",
@@ -2987,11 +2991,13 @@
       "ram": "ר״מ",
       "coordinator": "רכז",
       "assistant": "עוזר",
-      "contact": "איש קשר"
+      "contact": "איש קשר",
+      "mechinaHead": "ראש המכינה"
     },
     "headMissing": {
       "head": "חסר ראש ישיבה",
-      "principal": "חסר מנהל"
+      "principal": "חסר מנהל",
+      "mechinaHead": "חסר ראש מכינה"
     },
     "headMissingTab": "חסר ראש",
     "headMissingTitle": "מוסדות שעוד חסר בהם ראש הישיבה או המנהל",
@@ -3005,7 +3011,35 @@
     "minorsLabel": "קטינים — גילאים",
     "minorsFrom": "מגיל",
     "minorsTo": "עד גיל",
-    "callContact": "להתקשר אל {{name}}"
+    "callContact": "להתקשר אל {{name}}",
+    "phoneLabel": {
+      "mobile": "נייד",
+      "home": "בית",
+      "office": "משרד",
+      "": "—"
+    },
+    "addPhone": "הוספת מספר",
+    "removePhone": "הסרת המספר {{number}}",
+    "callNumber": "להתקשר אל {{name}} · {{label}}",
+    "office": "מזכירות",
+    "officeTitle": "מזכירות המוסד",
+    "officeHint": "הטלפון והכתובת של המוסד עצמו — לא איש קשר. כשראש הישיבה לא עונה.",
+    "officePhone": "טלפון המזכירות",
+    "officeAddress": "כתובת",
+    "callOffice": "להתקשר למזכירות",
+    "coordination": "נדרש תיאום מוקדם",
+    "coordinationTab": "תיאום מוקדם",
+    "coordinationTitle": "מוסדות שאין לפנות אליהם ישירות — יש לתאם קודם",
+    "coordinationBy": "דרך מי / מה לעשות",
+    "coordinationCall": "נדרש תיאום מוקדם — {{note}}",
+    "coordinationCallAnyway": "להתקשר בכל זאת",
+    "related": "מוסדות קשורים",
+    "relatedAdd": "קישור למוסד…",
+    "relatedRemove": "הסרת הקישור אל {{name}}",
+    "heads_other": "{{count}} ראשי ישיבה",
+    "heads_one": "ראש ישיבה אחד",
+    "heads_two": "{{count}} ראשי ישיבה",
+    "heads_many": "{{count}} ראשי ישיבה"
   },
   "quickPin": {
     "button": "הנחת סיכה על המפה",

@@ -2610,7 +2610,7 @@ export function updateInstitution(id: string, patch: Partial<Omit<Institution, '
  * est réécrite ; `settleInstitution` la range et recalcule le rang 1 affiché.
  */
 export function setInstitutionContacts(id: string, contacts: InstitutionContact[]): void {
-  updateInstitution(id, { contacts: contacts.map((c) => ({ ...c, name: c.name.trim(), phone: c.phone.trim(), note: c.note.trim() })) })
+  updateInstitution(id, { contacts: contacts.map((c) => ({ ...c, name: c.name.trim(), phone: c.phone.trim(), note: c.note.trim(), ...(c.phones ? { phones: c.phones.map((p) => ({ ...p, number: p.number.trim() })) } : {}) })) })
 }
 
 export const newInstitutionContactId = (): string => nextId('ic')

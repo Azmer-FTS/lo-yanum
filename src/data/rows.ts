@@ -2,8 +2,8 @@ import type { Collection, StoreData } from '@core/backend'
 import type { Tour } from '@core/tours'
 import { splitLegacyDunams } from '@core/fields'
 import { normalizeLeadStatus } from '@core/leads'
-import type { Institution, InstitutionContact } from '@core/institutions'
-import { INSTITUTION_CONTACT_ROLES, settleInstitution } from '@core/institutions'
+import type { Institution, InstitutionContact, PhoneLabel } from '@core/institutions'
+import { INSTITUTION_CONTACT_ROLES, PHONE_LABELS, settleInstitution } from '@core/institutions'
 import type { Landmark } from '@core/landmarks'
 import type {
   Agreement,
@@ -1228,6 +1228,12 @@ const institutionMapping: Mapping<Institution> = {
           students: i.students,
           position_source: i.positionSource,
           aliases: i.aliases,
+          /* ★★ BB — le secrétariat, la coordination préalable, les fiches liées. */
+          office_phone: i.officePhone ?? '',
+          office_address: i.officeAddress ?? '',
+          coordination_required: i.coordinationRequired === true,
+          coordination_note: i.coordinationNote ?? '',
+          related_ids: i.relatedIds ?? [],
           created_at: i.createdAt,
           updated_at: i.updatedAt,
         },
@@ -1257,6 +1263,13 @@ const institutionMapping: Mapping<Institution> = {
     students: typeof p.students === 'number' ? p.students : null,
     positionSource: str(p.position_source),
     aliases: str(p.aliases),
+    /* ★★ BB — présents seulement quand ils portent quelque chose : une ligne
+       d'avant BB (ou vide) fait l'aller-retour à l'identique. */
+    ...(str(p.office_phone) ? { officePhone: str(p.office_phone) } : {}),
+    ...(str(p.office_address) ? { officeAddress: str(p.office_address) } : {}),
+    ...(p.coordination_required === true ? { coordinationRequired: true } : {}),
+    ...(str(p.coordination_note) ? { coordinationNote: str(p.coordination_note) } : {}),
+    ...(Array.isArray(p.related_ids) && p.related_ids.length > 0 ? { relatedIds: p.related_ids.filter((x): x is string => typeof x === 'string') } : {}),
     createdAt: ts(p.created_at),
     updatedAt: ts(p.updated_at),
     ...(typeof p.minors_age_min === 'number' && typeof p.minors_age_max === 'number' ? { minorsAge: { min: p.minors_age_min, max: p.minors_age_max } } : {}),
@@ -1275,8 +1288,17 @@ function readInstitutionContacts(raw: unknown): InstitutionContact[] {
       name: str(c.name),
       phone: str(c.phone),
       note: str(c.note),
+      /* ★★ BB — plusieurs numéros ; absent sur une ligne d'avant BB. */
+      ...(Array.isArray(c.phones)
+        ? {
+            phones: (c.phones as unknown[])
+              .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object')
+              .map((x) => ({ number: str(x.number), label: (PHONE_LABEL_SET.has(str(x.label)) ? str(x.label) : '') as PhoneLabel })),
+          }
+        : {}),
     }))
 }
+const PHONE_LABEL_SET = new Set<string>(PHONE_LABELS)
 
 /** ★★ AV2 — les points de repère. Une table, aucune fille. */
 const landmarkMapping: Mapping<Landmark> = {

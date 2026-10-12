@@ -104,6 +104,37 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BB — INSTITUTIONS, DEUX ARBITRAGES, DEUX BUGS** (2026-10-12). Récit et
+  règles du PO : `ETAT.md` § BB (en tête). SQL de données et valeurs « avant » :
+  `private/bb/` (ignoré ; `avant/institutions.json`, `avant/entities.json`).
+  L'essentiel :
+  - **Modèle** (`src/core/institutions.ts`) : plusieurs contacts de tête
+    (`institutionHeads`), les écrans étroits montrent le PREMIER qui a un
+    téléphone (`institutionHead`, miroir `contactName/Phone`), aucune
+    rétrogradation ; plusieurs numéros par contact (`phones`, `contactPhones`,
+    `primaryPhone`, portable d'abord) ; מזכירות (`officePhone`,
+    `officeAddress`, jamais dans une liste) ; « נדרש תיאום מוקדם »
+    (`coordinationRequired` + `coordinationNote`, `needsPriorCoordination`,
+    UI `CoordinationChip` / `CoordinationBanner` / `guardCall`, filtre
+    `?filter=coordination`) ; fiches liées (`relatedIds`) ; recherche par alias
+    (`institutionMatchesQuery`) ; natures `yeshiva`, `yeshiva_hs` ; libellé
+    « ראש המכינה ».
+  - **Règle du PO 14a** (`portalImport.ts`) : `statusForNewFarm` (une fiche
+    neuve sans premier contact → `to_contact`), `importMayMoveStatus` (une
+    fiche existante n'est jamais rétrogradée par un import).
+  - **Bugs** : `OverflowMenu` en portail `fixed` sur `<body>` ; pavé du
+    téléphone d'un point libre (`RoutePlannerScreen` → `TextField kind="phone"`).
+  - **Base** : migration `20261012000200_bb_institutions_office_coordination.sql`
+    + jalon `20261012045221`, repair fait.
+  - **Portes** : `bun run bbpass` (A401–A407), `bun run bbui` (A408–A410).
+    Adaptées : `az5pass` A380 (deux rangs 1 gardés), `az5ui` A386 (le rôle se
+    lit par `data-testid`), `aupass` A321 (`institutionUi` lit les
+    institutions : fiches liées), `amui` (« יעד… » = entier).
+  - **Question ouverte au PO** : le titre exact du rosh de ישיבת שומריה
+    לצעירים (« ראש הישיבה » ou « ראש הישיבה ור״מ כיתה י״ב » ; la base portait
+    « מנהל בית הספר »). Rôle affiché aujourd'hui : ראש ישיבה ; l'ancien titre
+    est dans la note du contact.
+
 - **BA — AGRICULTEURS, CONTACTS, MÉNAGE DES FERMES** (2026-10-12). Commit de
   code `b4ab229`, poussé, DÉPLOYÉ et servi (`version.json` = b4ab229) ;
   `baui` 49/49 sur le déployé (`docs/ba/baui-deploye-b4ab229.log`). Récit et
@@ -777,6 +808,12 @@ cd "/Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM"
 bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
 bun run typecheck && bun run appass && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run contrast && bun run akpass && bun run accept
+
+# LA PASSE BB :
+bun run bbpass                                                     # A401–A407 en pur (51)
+bun run bbui                                                       # A408–A410 au rendu, build local (88)
+BASE_URL=https://azmer-fts.github.io/lo-yanum bun run bbui         # le DÉPLOYÉ
+bun run amui                                                       # 77/77 (pavé du planificateur réparé en BB)
 
 # LA PASSE AY :
 bun run aypass                                                     # pur (25)
