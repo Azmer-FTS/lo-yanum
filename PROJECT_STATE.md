@@ -104,7 +104,13 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **BB — INSTITUTIONS, DEUX ARBITRAGES, DEUX BUGS** (2026-10-12). Récit et
+- **BB — INSTITUTIONS, DEUX ARBITRAGES, DEUX BUGS** (2026-10-12). Commit de
+  code `8a621ff`, poussé, DÉPLOYÉ et servi (`version.json` = 8a621ff) ;
+  sur le déployé : bbui 88/88, amui 77/77, az5ui 21/21, baui 49/49
+  (`docs/bb/*-deploye-8a621ff.log`). Données posées après le déploiement et
+  relues (13 institutions, 19 contacts, miroir faux 0 ; 4 fermes → ליצירת קשר).
+  ⚠️ Le travail AZ4 d'une autre session est TOUJOURS dans l'arbre, non commité
+  (BB commité sans lui, patch filtré). Récit et
   règles du PO : `ETAT.md` § BB (en tête). SQL de données et valeurs « avant » :
   `private/bb/` (ignoré ; `avant/institutions.json`, `avant/entities.json`).
   L'essentiel :

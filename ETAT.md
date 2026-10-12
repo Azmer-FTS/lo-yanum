@@ -113,6 +113,17 @@
 > contrast. Rouge NON imputable à BB : `armigrations` 47/48 (la migration AZ4
 > non appliquée de l'autre session).
 >
+> **Vérifié sur le DÉPLOYÉ `8a621ff`** (`version.json`) : `bbui` **88/88**,
+> `amui` **77/77**, `az5ui` 21/21, `baui` 49/49 (`docs/bb/*-deploye-8a621ff.log`,
+> captures `docs/screenshots/bb/deployed/`). Données posées APRÈS le déploiement
+> (empreinte sha256 vérifiée, table temporaire supprimée). **Base relue** :
+> 13 institutions, 19 contacts dont 15 de tête, deux rangs 1 sur deux fiches
+> (שדות נגב, כרם ביבנה), 1 contact à deux numéros, 8 מזכירות, 1 fiche en
+> coordination préalable, 2 fiches liées, miroir faux 0, מזכירות dans le miroir
+> 0 ; natures : 8 hesder, 2 mechina, 2 yeshiva_hs, 1 yeshiva ; fermes : 24,
+> les 4 sans premier contact en « ליצירת קשר », statut contredisant
+> l'indicateur 0, משק שלם annoté (statut inchangé).
+>
 > **Question ouverte au PO** : le titre exact du rosh de ישיבת שומריה לצעירים
 > (« ראש הישיבה » ou « ראש הישיבה ור״מ כיתה י״ב » ; la base portait « מנהל בית
 > הספר »). Affiché aujourd'hui : ראש ישיבה (nature `yeshiva_hs`) ; l'ancien titre

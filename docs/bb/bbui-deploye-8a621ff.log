@@ -1,0 +1,104 @@
+$ bun run scripts/bbui.ts
+
+  A408 — le menu « ⋯ » n’est plus coupé par sa rangée
+  ---------------------------------------------------
+  PASS  A408 1440 vignette (mode carte), la première : entièrement visible  — 240x378 @942,320, 8 articles
+  PASS  A408 1440 vignette (mode carte), la première : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 1440 vignette (mode carte), la dernière : entièrement visible  — 240x332 @942,408, 7 articles
+  PASS  A408 1440 vignette (mode carte), la dernière : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 1440 le tableau a ses « ⋯ »  — 25
+  PASS  A408 1440 rangée de tableau : entièrement visible  — 240x194 @32,429, 4 articles
+  PASS  A408 1440 rangée de tableau : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 1440 DERNIÈRE rangée : entièrement visible  — 240x194 @32,562, 4 articles
+  PASS  A408 1440 DERNIÈRE rangée : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 1440 aucune erreur de page
+  PASS  A408 1440-sombre vignette (mode carte), la première : entièrement visible  — 240x378 @942,320, 8 articles
+  PASS  A408 1440-sombre vignette (mode carte), la première : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 1440-sombre vignette (mode carte), la dernière : entièrement visible  — 240x332 @942,408, 7 articles
+  PASS  A408 1440-sombre vignette (mode carte), la dernière : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 1440-sombre le tableau a ses « ⋯ »  — 25
+  PASS  A408 1440-sombre rangée de tableau : entièrement visible  — 240x194 @32,429, 4 articles
+  PASS  A408 1440-sombre rangée de tableau : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 1440-sombre DERNIÈRE rangée : entièrement visible  — 240x194 @32,562, 4 articles
+  PASS  A408 1440-sombre DERNIÈRE rangée : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 1440-sombre aucune erreur de page
+  PASS  A408 390 vignette (mode carte), la première : entièrement visible  — 240x378 @34,341, 8 articles
+  PASS  A408 390 vignette (mode carte), la première : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 390 vignette (mode carte), la dernière : entièrement visible  — 240x332 @34,383, 7 articles
+  PASS  A408 390 vignette (mode carte), la dernière : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 390 le tableau a ses « ⋯ »  — 25
+  PASS  A408 390 rangée de tableau : entièrement visible  — 240x332 @28,498, 7 articles
+  PASS  A408 390 rangée de tableau : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 390 DERNIÈRE rangée : entièrement visible  — 240x332 @28,398, 7 articles
+  PASS  A408 390 DERNIÈRE rangée : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 390 aucune erreur de page
+  PASS  A408 390-sombre vignette (mode carte), la première : entièrement visible  — 240x378 @34,341, 8 articles
+  PASS  A408 390-sombre vignette (mode carte), la première : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 390-sombre vignette (mode carte), la dernière : entièrement visible  — 240x332 @34,383, 7 articles
+  PASS  A408 390-sombre vignette (mode carte), la dernière : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 390-sombre le tableau a ses « ⋯ »  — 25
+  PASS  A408 390-sombre rangée de tableau : entièrement visible  — 240x332 @28,498, 7 articles
+  PASS  A408 390-sombre rangée de tableau : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 390-sombre DERNIÈRE rangée : entièrement visible  — 240x332 @28,398, 7 articles
+  PASS  A408 390-sombre DERNIÈRE rangée : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 390-sombre aucune erreur de page
+  PASS  A408 institutions, dernière rangée : entièrement visible  — 240x102 @32,654, 2 articles
+  PASS  A408 institutions, dernière rangée : Échap le ferme et rend le focus au bouton  — {"open":0,"focus":true}
+  PASS  A408 le focus entre dans le menu (premier article), ↓ y reste  — {"first":"menuitem","inMenu":true}
+
+  A409 — la fiche d’une institution
+  ---------------------------------
+  PASS  A409 deux ראשי ישיבה, dans l’ordre, le ר״מ derrière  — head:institution-contact-ic-bb-1,head:institution-contact-ic-bb-2,ram:institution-contact-ic-bb-3
+  PASS  A409 deux numéros sur la fiche du second, chacun appelable, le portable d’abord  — tel:0500000802 tel:086000802
+  PASS  A409 la מזכירות, étiquetée et appelable  — מזכירות
+08-6000801
+  PASS  A409 la note de la fiche est visible
+  PASS  A409 la note d’un contact est visible
+  PASS  A409 la fiche liée (et le lien est réciproque)
+  PASS  A409 la מכינה : ראש המכינה en tête, le ר״מ derrière  — head,ram
+  PASS  A409 … son libellé est « ראש המכינה »  — ראש המכינה
+  PASS  A409 … et la fiche liée y paraît aussi
+  PASS  A409 un second numéro saisi est gardé en base, le portable d’abord  — 0500000805 086000809
+  PASS  A409 … le champ ouvre le pavé numérique  — numeric
+  PASS  A409 aucune erreur de page
+  PASS  A409 deux ראשי ישיבה, dans l’ordre, le ר״מ derrière  — head:institution-contact-ic-bb-1,head:institution-contact-ic-bb-2,ram:institution-contact-ic-bb-3
+  PASS  A409 deux numéros sur la fiche du second, chacun appelable, le portable d’abord  — tel:0500000802 tel:086000802
+  PASS  A409 la מזכירות, étiquetée et appelable  — מזכירות
+08-6000801
+  PASS  A409 la note de la fiche est visible
+  PASS  A409 la note d’un contact est visible
+  PASS  A409 la fiche liée (et le lien est réciproque)
+  PASS  A409 la מכינה : ראש המכינה en tête, le ר״מ derrière  — head,ram
+  PASS  A409 … son libellé est « ראש המכינה »  — ראש המכינה
+  PASS  A409 … et la fiche liée y paraît aussi
+  PASS  A409 aucune erreur de page
+
+  A410 — la liste : tête, מזכירות, coordination préalable, alias
+  --------------------------------------------------------------
+  PASS  A410 1440 la ligne montre le PREMIER rang 1 qui a un téléphone  — יה ישיבת הדגמה שני ראשים הרב שני נתיבות ישיבת הסדר חתום 050-0000802 0 
+  PASS  A410 1440 sans rang 1 : « חסר ראש ישיבה », jamais la מזכירות  — יה ישיבת הדגמה בלי ראש חסר ראש ישיבה נתיבות ישיבת הסדר חתום — 0 
+  PASS  A410 1440 « נדרש תיאום מוקדם » AVEC son texte dans la ligne  — יה ישיבת הדגמה בהמתנה נדרש תיאום מוקדם · יש ליצור קשר דרך רכז ההדגמה לפני כל פנייה. הרב חסום נתיבות ישיבה תיכונית טרם 050-0000806 נדרש תיאום מוקדם · יש ליצור קש
+  PASS  A410 1440 son bouton d’appel n’est pas ordinaire
+  PASS  A410 1440 toucher l’appel montre le texte d’abord  — נדרש תיאום מוקדם — יש ליצור קשר דרך רכז ההדגמה לפני כל פנייה.
+
+להתקשר בכל זאת?
+  PASS  A410 1440 une institution sans marqueur garde un appel ordinaire
+  PASS  A410 1440 le menu : « appeler » remplacé par le texte
+  PASS  A410 1440 le filtre « תיאום מוקדם » existe
+  PASS  A410 1440 … il ne garde que les fiches marquées  — institution-row-inst-bb-block
+  PASS  A410 1440 un alias trouve la fiche  — institution-row-inst-bb-two
+  PASS  A410 1440 aucune erreur de page
+  PASS  A410 390 la ligne montre le PREMIER rang 1 qui a un téléphone  — יה ישיבת הדגמה שני ראשים נתיבות · ישיבת הסדר · הרב שני · 050-0000802 · 0 מתנדבים חתום 
+  PASS  A410 390 sans rang 1 : « חסר ראש ישיבה », jamais la מזכירות  — יה ישיבת הדגמה בלי ראש נתיבות · ישיבת הסדר · חסר ראש ישיבה · 0 מתנדבים חתום 
+  PASS  A410 390 « נדרש תיאום מוקדם » AVEC son texte dans la ligne  — יה ישיבת הדגמה בהמתנה נדרש תיאום מוקדם · יש ליצור קשר דרך רכז ההדגמה לפני כל פנייה. נתיבות · ישיבה תיכונית · הרב חסום · 050-0000806 · 0 מתנדבים טרם 
+  PASS  A410 390 le menu : « appeler » remplacé par le texte
+  PASS  A410 390 le filtre « תיאום מוקדם » existe
+  PASS  A410 390 … il ne garde que les fiches marquées  — institution-row-inst-bb-block
+  PASS  A410 390 un alias trouve la fiche  — institution-row-inst-bb-two
+  PASS  A410 390 aucune erreur de page
+  PASS  A410 l’aperçu : la bannière de coordination et son texte
+  PASS  A410 l’aperçu : l’appel n’est pas ordinaire
+  PASS  A410 l’aperçu : la מזכירות appelable
+  PASS  A410 l’aperçu : les deux rangs 1, le second avec ses deux numéros  — head:0,head:2,ram:1
+
+  88 PASS, 0 FAIL
