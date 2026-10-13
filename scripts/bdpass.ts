@@ -120,7 +120,7 @@ section('A427 — le secrétariat est une entrée étiquetée, pas un champ')
   // Migration SQL.
   const mig = src('supabase/migrations/20261013000200_bd_secretariat_into_contacts.sql').replace(/--[^\n]*/g, '')
   check('A427 la migration SQL replie le numéro (étiquette secretariat, sans nom, mêmes chiffres)', /'label', 'secretariat'/.test(mig) && /'name', ''/.test(mig) && /regexp_replace\(.*\\D/.test(mig))
-  check('A427 … reprend l’adresse, vérifie qu’aucun numéro n’est perdu, PUIS supprime le champ', /set address = office_address/.test(mig) && mig.indexOf('raise exception') < mig.indexOf('drop column office_phone') && /drop column office_address/.test(mig))
+  check('A427 … reprend l’adresse, vérifie qu’aucun numéro n’est perdu, PUIS supprime le champ', /set address = btrim\(office_address\)/.test(mig) && mig.indexOf('raise exception') < mig.indexOf('drop column office_phone') && /drop column office_address/.test(mig))
   check('A427 … et n’ouvre rien à `anon`', !/grant|anon\b/i.test(mig))
   const add = src('supabase/migrations/20261013000100_bd_institution_address.sql').replace(/--[^\n]*/g, '')
   check('A427 la colonne `address` est additive', /add column if not exists address/.test(add) && !/drop|grant/i.test(add))

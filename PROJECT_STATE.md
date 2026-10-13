@@ -104,24 +104,45 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **BD — LA CARTE, LA FICHE D'INSTITUTION, LE TABLEAU DE BORD — EN COURS**
-  (2026-10-13). Branche `main`. Code commité en `997445f` (BD1) + corrections
-  non encore commitées (arbitrage tablette dans `ListTop`, icônes cheval /
-  poule / mouton, cibles à 44 px, bloc des demandes AVANT le titre, portes
-  adaptées). NON poussé, NON déployé. Récit : `ETAT.md` § BD (en tête, écrit).
-  - Base : migration ADDITIVE `20261013000100` (colonne `address`) APPLIQUÉE
-    par le MCP (version `20261012220853`, jalon posé, repair fait).
-    `20261013000200` (secrétariat → entrée, suppression des colonnes) : PAS
-    ENCORE — elle se joue APRÈS le déploiement ; `armigrations` la montre en
-    attente d'ici là.
-  - Portes : `bdpass` 66/66, `bdui` 76/76, pures vertes ; batterie au rendu
-    locale (`private/bd/logs/render-local/bilan.txt`) verte sauf les rouges
-    d'avant BC (`anui` A236 ×2, `atui` 15) et sept portes adaptées à rejouer
-    (`private/bd/logs/render-local2/`).
-  - Reste : rejouer les adaptées, commit, push, déploiement, migration
-    `20261013000200` + repair + jalon, relire la base, portes au rendu sur le
-    déployé, PROJECT_STATE final.
-  Commande de reprise : `cat private/bd/logs/render-local2/bilan.txt`.
+- **BD — LA CARTE, LA FICHE D'INSTITUTION, LE TABLEAU DE BORD — TERMINÉE,
+  POUSSÉE, DÉPLOYÉE, DONNÉES POSÉES** (2026-10-13). Branche `main`. Commits :
+  `997445f` (BD1, code), `d32390d` (BD2, SERVI : `version.json` = d32390d), puis
+  le commit de fin de passe (ETAT, PROJECT_STATE, mesures du déployé, migration
+  `20261013000200` telle qu'appliquée). Récit, grammaire des formulaires,
+  décisions : `ETAT.md` § BD (en tête) — la source de vérité de la passe.
+  - **Fait** : les 8 parties du brief et les trois arbitrages du PO.
+    Migrations `20261013000100` (avant déploiement) et `20261013000200`
+    (après) appliquées par le MCP + jalons `20261012220853`, `20261013002454` ;
+    armigrations 52/52. Relu : `office_*` supprimées, 8 entrées « מזכירות », 5
+    adresses, 2 institutions sans position (au PO de les placer).
+  - **Décisions de fin de passe (permanentes)** :
+    · un besoin que seules quelques fiches ont ne mérite pas un champ à lui ;
+    · la couleur dit le statut, l'icône dit ce qu'il y a sur place
+      (`pinGlyphFor`, `placeMarkers.ts`) ;
+    · un bloc du tableau de bord sans rien à dire ne s'affiche pas
+      (`core/dashboard.ts`) ; chaque compte = sa liste filtrée (même prédicat) ;
+    · LA GRAMMAIRE DES FORMULAIRES (ETAT § BD 7) : familles « lieu » (page à
+      carte, `PlaceFormPage`/`PLACE_FORM_SPLIT`) et « fiche » (page centrée,
+      `Modal presentation="page"`) ; `.form-grid` dans une `panel-scope` ;
+      `FormActions` unique (supprimer … annuler · enregistrer, ou « סיום ») ;
+      champs et cibles à 44 px ; vérifiée par `bdui` A434 ;
+    · tablette = forme compacte (`ListTop`, palier ≠ ordinateur) ;
+    · `EntityTable` fenêtré au-delà de 60 lignes : une porte compte les lignes
+      par `data-rows`, jamais par le DOM ;
+    · un formulaire d'édition ne monte qu'avec sa fiche (`FormWaiting`, `key`).
+  - **Rouges ANTÉRIEURS (non régressions)** : `anui` A236 (2), `atui` (15),
+    plus ceux de BC non rejoués ici (`pills`, `rhythm`, `akui`, `uipass`,
+    `sheets`, `layout` modales). `layout` A30 (volontaires non virtualisés) est
+    traité par 8b mais `layout` n'a pas été rejouée.
+  - **Questions ouvertes au PO** : (1) géocodeur en ligne (OpenStreetMap) pour
+    l'adresse d'un lieu, ou proposition hors ligne seulement ? (2, BB) titre du
+    rosh de ישיבת שומריה לצעירים ; (3, BA) purge des données réelles suivies.
+  - **Écrans de formulaire qui ont changé de forme : 7** (institution, contact
+    à traiter, volontaire, conducteur, visite, rendez-vous, saisie rapide).
+  - Journaux complets : `private/bd/logs/` (jamais `docs/`) ; bilans :
+    `docs/bd/portes-local.md`, `docs/bd/portes-deploye-d32390d.md`.
+  - Reprise : `bun run bdpass && bun run typecheck` ; prochaine passe : lire
+    ETAT § BD 7 avant tout nouveau formulaire.
 
 - **BC — LA PASSE QUI DOIT CLORE L'INTERFACE — TERMINÉE, POUSSÉE, DÉPLOYÉE,
   DONNÉES POSÉES** (2026-10-12). Branche `main`. Commits : `b2f999f` (BC1,

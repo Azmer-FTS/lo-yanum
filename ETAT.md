@@ -164,6 +164,49 @@
 > rendues, deux espaceurs gardent la hauteur ; hauteurs mesurées (une vignette
 > a 2 à 4 lignes) ; la page ou le panneau qui défile, indifféremment ; le retour
 > à la ligne touchée va à sa place même si elle n'est pas rendue.
+>
+> **Base.** `20261013000100` (colonne `address`, additive) appliquée AVANT le
+> déploiement (MCP `20261012220853`, jalon, repair) ; `20261013000200` APRÈS le
+> déploiement de `d32390d` (MCP `20261013002454`, jalon, repair) — `armigrations`
+> 52/52. Valeurs « avant » : `private/bd/avant/institutions-office.json`.
+> **Relu après écriture** : 13 institutions ; `office_phone` / `office_address`
+> SUPPRIMÉES (0 colonne) ; 8 entrées « מזכירות » sans nom créées (les 8 numéros
+> de l'ancien champ, aucun en double d'un contact) ; 5 adresses reprises dans
+> `address` (dont celle que le PO avait tapée sans effet, espaces ôtés) ; 13
+> miroirs de contact de tête inchangés ; 2 institutions toujours SANS position
+> — à placer par le PO lui-même (« אין מיקום · להצבה על המפה »).
+>
+> **Portes.** Nouvelles : `bdpass` (A427–A431, pur, 66/66), `bdui` (A432–A436,
+> au rendu, 76/76 en local ET sur le déployé). ADAPTÉES là où BD change la forme
+> voulue par le brief, et seulement là : `bbpass` A403/A404/A407 et `bbui`
+> A409/A410 (la מזכירות est une entrée, plus un champ), `aupass` A321 (la carte
+> et la liste de travail lisent les institutions, aucun compteur), `baui` A397 et
+> `axui` A348 (la tablette en forme compacte), `auui` A319 (le contact à traiter
+> au combiné), `amui` A221 (l'épingle creuse du contact n'est pas l'épingle
+> pleine mesurée), `bcmobile` A421 (une liste fenêtrée compte par `data-rows`).
+> Défauts trouvés par les portes et corrigés : le bloc des demandes passé sous
+> le titre (`aqui`, AQ1.1), 27 écrans × largeurs à cibles sous 44 px (`bdui`
+> A434 : retour de page, en-têtes repliables, cases à cocher), le cheval et la
+> poule illisibles (rendus et comparés), le titre « אנשי קשר » en double.
+> Résultats : `docs/bd/portes-local.md`, `docs/bd/portes-deploye-d32390d.md` —
+> sur le déployé `d32390d` : jumeau `bcmobile` 246/246, `aymobile` 48/48,
+> `aitheme` 18/18 ; app `bdui` 76, `bbui` 82, `ayscreens` 57, `ayui` 105, `azui`
+> 125, `az5ui` 21, `axui` 116, `baui` 45, `avui` 51, `auui` 60, `awui` 57, `amui`
+> 77, `aqui` 107, `arfiche` 144, `assettings` 20 — tout vert ; `appass` 107/107
+> (surface anonyme inchangée). `amui` A215, la course du formulaire vide, est
+> FERMÉE (77/77 à chaque passage). Rouges antérieurs inchangés : `anui` A236 (2),
+> `atui` (15). Comptes en baisse expliqués : `ayui` 114 → 105 (moins de champs
+> numériques recensés : « טלפון המזכירות » a disparu — le détail par champ du
+> passage BC n'est pas conservé), `baui` 49 → 45 (les quatre mesures de la
+> rangée de BA à 1 032 px deviennent une vérification de forme compacte), `aqui`
+> 108 → 107 (non élucidé).
+>
+> **Questions ouvertes au PO.** Toujours ouvertes d'avant : le titre du rosh de
+> ישיבת שומריה לצעירים (BB), la purge des données réelles déjà suivies par git
+> (BA). Nouvelle : le géocodeur d'adresse est OpenStreetMap (Nominatim), appelé
+> depuis l'appareil sur un geste du PO avec la SEULE adresse d'un lieu — si
+> l'association préfère qu'aucune adresse ne quitte l'appareil, la proposition
+> se limitera aux coordonnées collées et au centre de la localité.
 
 > 🏁 **BC — LA PASSE QUI DOIT CLORE L'INTERFACE. 2026-10-12.**
 >

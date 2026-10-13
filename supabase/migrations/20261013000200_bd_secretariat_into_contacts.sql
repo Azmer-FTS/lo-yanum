@@ -6,7 +6,8 @@
 -- disait déjà (les contacts, chacun ses numéros étiquetés). Appliquée APRÈS le
 -- déploiement du code de BD (qui ne lit plus ces colonnes que pour les replier,
 -- et ne les écrit plus), dans un seul bloc :
---   1. `office_address` → `address` quand l'adresse du lieu est vide ;
+--   1. `office_address` → `address` (espaces de tête et de fin ôtés) quand
+--      l'adresse du lieu est vide ;
 --   2. `office_phone` → une entrée de `contacts` SANS NOM, rôle « contact »,
 --      son numéro étiqueté `secretariat` — sauf si une entrée porte déjà ce
 --      numéro (mêmes chiffres) : c'est exactement `foldLegacyOffice` (core) ;
@@ -17,8 +18,8 @@ declare
   lost int;
 begin
   update public.institutions
-     set address = office_address
-   where coalesce(address, '') = '' and coalesce(office_address, '') <> '';
+     set address = btrim(office_address)
+   where coalesce(address, '') = '' and coalesce(btrim(office_address), '') <> '';
 
   update public.institutions i
      set contacts = coalesce(i.contacts, '[]'::jsonb) || jsonb_build_array(jsonb_build_object(
@@ -48,7 +49,7 @@ begin
   end if;
   select count(*) into lost
     from public.institutions
-   where coalesce(office_address, '') <> '' and address <> office_address and coalesce(address, '') = '';
+   where coalesce(btrim(office_address), '') <> '' and coalesce(address, '') = '';
   if lost > 0 then
     raise exception 'BD 2 : % adresse(s) non reprise(s) — rien n''est supprimé', lost;
   end if;
