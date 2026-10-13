@@ -104,6 +104,21 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BE — L'AGENDA, LES TÂCHES, LA FIN DU COPIER-COLLER — EN COURS**
+  (2026-10-13). Branche `main`. Brief : le message du PO (règle 0 : tout ce
+  qui est daté est dans l'agenda ; la page יומן en deux volets ; tâches ;
+  aide-mémoire ; 24 tâches + 3 entrées + 52 lignes). Fichier du PO :
+  `private/be/seed-be.json` (ignoré, DONNÉES RÉELLES — jamais dans le dépôt).
+  - **Fait** : `07f66da` (BE1, code + portes `bepass` 92/92, `beui` 57/57 en
+    local). Portes pures rejouées vertes (`aupass` A321 adaptée : le
+    sélecteur de lien lit les institutions).
+  - **Reste, dans l'ordre** : (1) appliquer `20261013000300_be_tasks_agenda.sql`
+    par le MCP AVANT le push (additive) + repair + jalon ; (2) rejouer les portes
+    au rendu existantes (mobile, tablette) et adapter celles que BE change ;
+    (3) pousser, attendre `version.json` ; (4) semer la base depuis
+    `private/be/seed-be.json` (SQL privé dans `private/be/`), relire et compter ;
+    (5) `beui` sur le déployé ; (6) ETAT § BE + ce fichier + commit de fin.
+
 - **BD — LA CARTE, LA FICHE D'INSTITUTION, LE TABLEAU DE BORD — TERMINÉE,
   POUSSÉE, DÉPLOYÉE, DONNÉES POSÉES** (2026-10-13). Branche `main`. Commits :
   `997445f` (BD1, code), `d32390d` (BD2, SERVI : `version.json` = d32390d), puis
