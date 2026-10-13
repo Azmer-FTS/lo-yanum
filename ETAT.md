@@ -1,5 +1,157 @@
 # לא ינום — ETAT
 
+> 🏁 **BE — L'AGENDA, LES TÂCHES, ET LA FIN DU COPIER-COLLER. 2026-10-13.**
+>
+> ⛔ **DONNÉES RÉELLES.** Le fichier du PO (`seed-be.json` : 24 tâches, 3
+> entrées, 52 lignes) est dans `private/be/` ; le SQL de pose aussi
+> (`private/be/seed.sql`, produit par `private/be/seed-sql.ts`). Les portes
+> `bepass` / `beui` n'utilisent que des noms INVENTÉS (`scripts/befixture.ts`,
+> `src/core/mock/tasks.ts`) ; `bepass` A444 vérifie qu'AUCUNE phrase du fichier
+> du PO n'est entrée dans le dépôt. Journaux complets : `private/be/logs/`.
+>
+> **0 · ★★ LA RÈGLE 0 — TOUT CE QUI PORTE UNE DATE ET UNE HEURE EST DANS
+> L'AGENDA, TOUT SEUL.** « sinon je vais devoir faire copier-coller, quel est
+> l'intérêt ». ★ **RIEN N'EST RECOPIÉ, JAMAIS** : un REFLET n'est pas une ligne
+> en base, il est CALCULÉ à chaque lecture depuis sa source
+> (`core/reflections.ts`, `getCalendarEvents` dans `access.ts`). Changer l'heure
+> à la source déplace le reflet ; supprimer la source l'efface ; aucun code n'a
+> à « synchroniser ». Deux sortes d'entrées : les RENDEZ-VOUS DU PO (réunion,
+> visite : créés, modifiés, déplacés, supprimés dans l'agenda) et les REFLETS
+> (garde, itinéraire : hachurés, bord en tirets, la flèche de leur source ; ni
+> déplacés, ni allongés, ni modifiés depuis l'agenda — `agendaCanMove /
+> agendaCanResize / agendaCanEdit` ; les ouvrir montre leurs étapes et
+> « פתיחה במסלול / פתיחת המשמרת » mène à leur écran en un geste).
+> ⚠️ Un itinéraire n'est PAS dans `getAgendaEvents` : le planificateur y lit ses
+> heures fixes et l'itinéraire deviendrait un mur devant ses propres étapes.
+> Son retour est l'horaire du planificateur estimé au vol d'oiseau
+> (`buildDayPlan` sans `legOf`), dit « (חזרה משוערת) ».
+>
+> **LA MESURE — tout ce qui porte une date et une heure, et son reflet :**
+>
+> | Source (table) | Dans l'agenda | Comment |
+> |---|---|---|
+> | Garde (`missions.start_at/end_at`) | ✅ REFLET | posé depuis D4, marqué reflet en BE ; annulée → barrée ; s'ouvre sur la garde |
+> | Itinéraire enregistré (`tours.depart_at` + retour calculé) | ✅ REFLET — **NOUVEAU** | du départ au retour, son nom, ses étapes et leurs heures ; s'ouvre sur le planificateur (`?tour=`) |
+> | Visite de ferme (`farm_visits.at`) | ✅ rendez-vous du PO | reliée à sa ferme ; modifiable dans le panneau |
+> | Demande de rendez-vous de la page publique (`farm_visits`, `pending_confirmation`) | ✅ rendez-vous « ⏳ » | **NOUVEAU** : « אישור הפגישה » dans le panneau (le geste manquait depuis AP3.6) |
+> | Réunion / rendez-vous (`general_meetings`) | ✅ rendez-vous du PO | **NOUVEAU** : relié à une institution, une ferme ou un contact à traiter |
+> | Rendez-vous né d'un contact à traiter (`general_meetings.lead_id`, AS6.6) | ✅ rendez-vous du PO | le lien se lit et s'ouvre |
+> | Tâche avec échéance (`tasks.due_on` + `due_time`) | ✅ EN HAUT DU JOUR — **NOUVEAU** | discrète, pas un bloc ; cochée, elle part |
+>
+> Ce qui porte une date SANS heure, ou un instant PASSÉ (un journal), et n'est
+> donc pas une entrée : `institutions.met_on` (date de rencontre), échéance
+> d'un accord foncier (`land_agreement_until`), signature et renouvellement de
+> l'accord, horodatages de la vie d'une garde (arrivée, fin, annulation…),
+> incidents, demandes entrantes (`created_at`), dernière activité d'un
+> volontaire, disponibilités hebdomadaires. `farms.next_visit_at` est un cache
+> des visites, déjà reflétées. **Question au PO** : l'échéance d'un accord
+> foncier doit-elle paraître en haut de son jour, comme une tâche ?
+>
+> **1 · LA PAGE יומן EN DEUX VOLETS.** C'est `MapSplit` (aucune disposition
+> nouvelle) : l'AGENDA à la place de la carte, les TÂCHES à la place de la
+> liste, mêmes proportions (1/3 sur ordinateur, moitié en tablette) ; au
+> téléphone un seul à la fois, la MÊME pilule (`pillLabels` / `pillIcons` :
+> la liste à cocher, le calendrier), le dernier volet retenu
+> (`lo-yanum:map-mode:agenda`). `MapSplit` gagne `bar`, `modeOverride`,
+> `onModeChange` (un mode imposé le temps d'un panneau, sans toucher au mode
+> retenu). ⚠️ AB3 n'est pas perdu : « מפה » montre la carte des rendez-vous de
+> la période AU-DESSUS de la grille, numérotée par jour ; une épingle ouvre le
+> rendez-vous.
+>
+> **2 · L'AGENDA SE MANIPULE.** La grille d'AB4 est gardée ; la manipulation
+> change (`agendaGrid.tsx`, `ui/agenda/EventPanel.tsx`).
+>   a) ouvrir ne quitte pas le calendrier : ordinateur et tablette, un panneau
+>      À CÔTÉ (il prend la colonne des tâches le temps d'être ouvert) ;
+>      téléphone, la feuille ancrée de BC à deux crans (56 % de l'écran, le
+>      bloc ouvert ramené en haut de la grille, le « + » et la pilule écartés).
+>      Consulter → « עריכה » : le MÊME contenant se remplit de champs.
+>   b) toucher un créneau vide crée un rendez-vous d'une heure au QUART
+>      D'HEURE touché, en pointillé dans la grille, le panneau ouvert, le
+>      curseur dans le titre ; seul le titre est obligatoire.
+>   c) champs : titre, jour, début, fin, lieu, fiche reliée (institution,
+>      ferme, contact à traiter — `LinkPicker`, cherche dans la base), personne,
+>      rappel, note, point collé. De la fiche on voit le rendez-vous
+>      (`LinkedAgenda`), du rendez-vous on ouvre la fiche (`LinkChip`).
+>   d) le glisser-déposer, trois causes trouvées et levées : `touch-action`
+>      posé APRÈS l'appui ne sert à rien (un `touchmove` non passif refuse
+>      désormais le défilement tant qu'un bloc est armé) ; l'appui long d'iOS
+>      sélectionnait le texte (`select-none`, sans menu) ; la souris devait
+>      aussi tenir 280 ms (elle s'arme au premier mouvement). Au doigt :
+>      appui tenu 250 ms, vibration, le bloc se soulève, son ancienne place en
+>      pointillé, il annonce « 15:30–17:00 » à chaque quart d'heure, la grille
+>      défile d'elle-même aux bords ; un clic qui suit un glissement n'ouvre
+>      rien. Le BORD INFÉRIEUR (14 px, `touch-action: none`) allonge au quart
+>      d'heure. Au téléphone l'heure fait 56 px (un quart = 14 px). Un reflet ne
+>      s'arme jamais. « ביטול » après chaque déplacement.
+>   e) ni grille refaite, ni vue mois créée (elle existait, gardée).
+>
+> **3 · LES TÂCHES** (`core/tasks.ts`, `ui/tasks/TasksPane.tsx`). Listes en
+> pastilles qui passent à la ligne (+ « + רשימה », renommer, supprimer — la
+> liste emporte ses tâches, confirmation qui dit combien, « ביטול » rend tout) ;
+> une tâche neuve se pose EN TÊTE ; titre seul par défaut, un toucher déplie
+> (note, fiche, échéance, gestes), « לפתוח הכל / לקפל הכל » d'un geste ;
+> réordonner AU DOIGT par la poignée (44 px, `touch-action: none` : pas d'appui
+> long, les voisines s'écartent, une écriture `moveTask`), et ↑ ↓ ; cocher →
+> barrée À SA PLACE 3 s (`LINGER_MS`) → les archives, qui se rouvrent ;
+> archiver sans faire ; modifier SUR PLACE ; changer de liste ; une fiche ou un
+> rendez-vous relié ; une échéance (jour, heure facultative). Créer de
+> n'importe où : le « + » (tableau de bord, agenda), et « + משימה » sur la
+> fiche d'une institution, d'une ferme, d'un contact (`LinkedAgenda`, la
+> feuille, le lien déjà posé).
+>
+> **4 · L'AIDE-MÉMOIRE** (`core/memo.ts`, `ui/tasks/MemoPane.tsx`) : l'onglet
+> « עזר לשיחה » à la suite des listes ; trois banques, deux sections ;
+> l'HÉBREU en 22 px gras, le français en 13,5 px ; une recherche sur les trois
+> banques à la fois (sans niqqud ni gershayim) ; « + שורה », modifier,
+> supprimer (« ביטול ») ; « למשימה » fait une tâche d'un geste dans la
+> dernière liste ouverte. Rien ne s'y archive.
+>
+> **★ LE PO DICTE.** Tout champ de texte de BE est `DictationField`
+> (`fields.tsx`) : un `<textarea>` ordinaire, `dir="auto"`, qui grandit, ne se
+> ferme jamais seul (ni au blanc, ni à « Entrée »). ⛔ **PAS DE BOUTON MICRO
+> DANS L'APPLICATION**, et c'est un choix dit : la reconnaissance vocale du
+> navigateur (`webkitSpeechRecognition`) n'est pas vérifiable sur le Safari
+> d'iPhone installé en application du PO depuis cette machine, et elle y est
+> notoirement absente ou instable en mode « écran d'accueil ». Le micro du
+> clavier du téléphone fait la dictée dans chacun de ces champs.
+>
+> **5 · LES DONNÉES DU PO.** Listes מוסדות, חוות, 15.10, ארגון ; 24 tâches + la
+> demande d'un רב d'אורות אשקלון qui veut visiter seul (§ 5c), qui RESTE une tâche (dans « מוסדות », après
+> l'appel qui la concerne, la liste des fermes proposées dans sa note) : 25 ;
+> deux rendez-vous (15.10 14:30–16:00 relié à מכינת עצם, les trois tâches de
+> 15.10 rattachées ; 14.10 16:00–18:30 relié à ישיבת ההסדר נווה דקלים, les deux
+> tâches de confirmation rattachées) ; 52 lignes. Liens retrouvés par le NOM DE
+> L'ÉTABLISSEMENT (13 institutions, une ferme) — détail dans
+> `private/be/links.txt`.
+>
+> **Base.** `20261013000300_be_tasks_agenda.sql` (additive : `task_lists`,
+> `tasks`, `memo_lines` nées avec leurs droits et leur RLS, rien pour `anon` ;
+> `general_meetings.institution_id` / `entity_id`, liens SOUPLES) appliquée par
+> le MCP AVANT le déploiement (version `20261013100710`, jalon, repair) —
+> `armigrations` 53/53. Données posées APRÈS le déploiement de `28488b3`
+> (`private/be/seed.sql`, `on conflict do nothing`). **Relu après écriture** :
+> 4 listes ; 25 tâches (מוסדות 14 · חוות 4 · 15.10 3 · ארגון 4), l'ordre du PO
+> en rangs contigus ; liens : 13 vers une institution, 1 vers une ferme, 5 vers
+> un rendez-vous (2 + 3), 6 sans lien, **0 lien mort** ; 2 rendez-vous
+> (14.10 16:00–18:30, 15.10 14:30–16:00, heure d'Israël) ; 52 lignes
+> (institutions 10 + 7, agriculteurs 11 + 8, volontaires 8 + 8).
+>
+> **Portes.** Nouvelles : `bepass` (A437–A444, pur, 92/92) et `beui`
+> (A445–A449, au rendu, vrai doigt par CDP, 57/57 en local ET sur le déployé
+> `28488b3`). Adaptées, là où BE change la forme voulue et seulement là :
+> `aupass` A321, `avui` A327, `auui` A316, `mapping` (33 tables), `persist`
+> (12 mutations). Tout le reste rejoué vert — bilan : `docs/be/portes-local.md`,
+> `docs/be/portes-deploye-28488b3.md`. Six rouges du premier passage étaient
+> des délais sur une machine en échange (7,3 Go) : rejouées seules, vertes.
+>
+> **Questions ouvertes au PO.** (1) L'échéance d'un accord foncier doit-elle
+> paraître en haut de son jour, comme une tâche ? (2) Un bouton micro DANS
+> l'application : seulement si le PO veut qu'on le teste sur SON téléphone
+> (aujourd'hui : le micro du clavier). Toujours ouvertes d'avant : le titre du
+> rosh de ישיבת שומריה לצעירים (BB), la purge des données réelles déjà suivies
+> par git (BA), le géocodeur d'adresse en ligne (BD).
+
+
 > 🏁 **BD — LA CARTE, LA FICHE D'INSTITUTION, ET LE TABLEAU DE BORD. 2026-10-13.**
 >
 > ⛔ **DONNÉES RÉELLES.** Aucun nom ni téléphone de personne réelle ici ni dans

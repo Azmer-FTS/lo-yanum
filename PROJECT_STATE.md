@@ -104,20 +104,49 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **BE — L'AGENDA, LES TÂCHES, LA FIN DU COPIER-COLLER — EN COURS**
-  (2026-10-13). Branche `main`. Brief : le message du PO (règle 0 : tout ce
-  qui est daté est dans l'agenda ; la page יומן en deux volets ; tâches ;
-  aide-mémoire ; 24 tâches + 3 entrées + 52 lignes). Fichier du PO :
-  `private/be/seed-be.json` (ignoré, DONNÉES RÉELLES — jamais dans le dépôt).
-  - **Fait** : `07f66da` (BE1, code + portes `bepass` 92/92, `beui` 57/57 en
-    local). Portes pures rejouées vertes (`aupass` A321 adaptée : le
-    sélecteur de lien lit les institutions).
-  - **Reste, dans l'ordre** : (1) appliquer `20261013000300_be_tasks_agenda.sql`
-    par le MCP AVANT le push (additive) + repair + jalon ; (2) rejouer les portes
-    au rendu existantes (mobile, tablette) et adapter celles que BE change ;
-    (3) pousser, attendre `version.json` ; (4) semer la base depuis
-    `private/be/seed-be.json` (SQL privé dans `private/be/`), relire et compter ;
-    (5) `beui` sur le déployé ; (6) ETAT § BE + ce fichier + commit de fin.
+- **BE — L'AGENDA, LES TÂCHES, LA FIN DU COPIER-COLLER — TERMINÉE, POUSSÉE,
+  DÉPLOYÉE, DONNÉES POSÉES** (2026-10-13). Branche `main`. Commits : `07f66da`
+  (BE1, code + portes), `6116fb3` (migration appliquée + jalon), `28488b3`
+  (portes adaptées, SERVI : `version.json` = 28488b3), puis le commit de fin
+  de passe (ETAT, ce fichier, bilans). Récit, mesure de la règle 0, décisions :
+  `ETAT.md` § BE (en tête) — la source de vérité de la passe.
+  - **Fait** : les 6 parties du brief. Migration `20261013000300` appliquée
+    par le MCP AVANT le déploiement (version `20261013100710`, jalon, repair,
+    armigrations 53/53). Données du PO posées APRÈS (SQL privé
+    `private/be/seed.sql`, produit par `private/be/seed-sql.ts` depuis
+    `private/be/seed-be.json` — DONNÉES RÉELLES, jamais dans le dépôt). Relu :
+    4 listes, 25 tâches (24 + la demande d'un רב d'אורות אשקלון, restée tâche),
+    52 lignes, 2 rendez-vous, 0 lien mort.
+  - **Décisions de fin de passe (permanentes)** :
+    · RÈGLE 0 : tout ce qui porte une date et une heure est dans l'agenda ; un
+      REFLET est CALCULÉ à la lecture (`core/reflections.ts`,
+      `getCalendarEvents`), JAMAIS stocké ni recopié ; un itinéraire n'est PAS
+      dans `getAgendaEvents` (il deviendrait un mur du planificateur) ;
+    · ce qui se manipule depuis l'agenda : `agendaCanMove / agendaCanResize /
+      agendaCanEdit` (core) — un reflet, jamais ;
+    · la page יומן = `MapSplit` (agenda à la place de la carte, tâches à la
+      place de la liste), la même pilule (`pillLabels` / `pillIcons`), le
+      panneau d'événement à côté (`modeOverride: 'split'`) ou la feuille ancrée
+      au téléphone ; aucune disposition nouvelle ;
+    · tout champ de texte nouveau est `DictationField` (textarea, `dir=auto`,
+      ne se ferme jamais seul) ; PAS de bouton micro maison (non vérifiable sur
+      le téléphone du PO) ;
+    · une édition sur place a sa barre `InlineActions` (même ordre, mêmes mots
+      que `FormActions`, non épinglée) ;
+    · les liens d'une tâche / d'un rendez-vous sont SOUPLES (aucune clé
+      étrangère) ; une tâche neuve se pose EN TÊTE ; cocher → 3 s visible →
+      archives.
+  - **Rouges ANTÉRIEURS (non régressions)** inchangés : `anui` A236, `atui` ;
+    non rejoués en BE : `pills`, `rhythm`, `akui`, `uipass`, `sheets`, `layout`.
+    `ground` / `backdrop` (archive de fond de carte) : rejouées par le
+    déploiement seulement.
+  - **Questions ouvertes au PO** : (1) échéance d'un accord foncier en haut de
+    son jour ? (2) bouton micro dans l'app, à tester sur SON téléphone ?
+    (3, BD) géocodeur en ligne ; (4, BB) titre du rosh de ישיבת שומריה
+    לצעירים ; (5, BA) purge des données réelles suivies par git.
+  - Journaux complets : `private/be/logs/` ; bilans : `docs/be/portes-local.md`,
+    `docs/be/portes-deploye-28488b3.md`.
+  - Reprise : `bun run bepass && bun run typecheck` ; `bun run beui`.
 
 - **BD — LA CARTE, LA FICHE D'INSTITUTION, LE TABLEAU DE BORD — TERMINÉE,
   POUSSÉE, DÉPLOYÉE, DONNÉES POSÉES** (2026-10-13). Branche `main`. Commits :
