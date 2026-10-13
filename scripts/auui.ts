@@ -240,11 +240,13 @@ for (const [width, height] of [[1440, 900], [1376, 1032]] as const) {
     const o = await open(width, { height })
     for (const route of MAP_ROUTES) {
       await go(o.page, route, 3500)
-      const m = await o.page.evaluate(() => {
-        const map = document.querySelector('.maplibregl-map')
+      /* ★★ BE — ADAPTÉE : l'agenda a pris la place de la carte sur l'écran יומן
+         (deux volets, BE 1) ; le même invariant porte sur ce volet. */
+      const m = await o.page.evaluate((sel) => {
+        const map = document.querySelector(sel)
         const r = map?.getBoundingClientRect()
         return { sh: document.documentElement.scrollHeight, ih: innerHeight, sw: document.documentElement.scrollWidth, iw: innerWidth, top: r ? Math.round(r.top) : -1, bottom: r ? Math.round(r.bottom) : -1 }
-      })
+      }, route === '/coordinator/agenda' ? '[data-map-panel]' : '.maplibregl-map')
       const ok = m.sh <= m.ih + 1 && m.sw <= m.iw + 1 && m.bottom >= m.ih - 2 && m.top <= 1
       check(`A316 ${width}×${height} ${route}`, ok, `page ${m.sh}/${m.ih} · carte ${m.top}→${m.bottom}`)
     }

@@ -918,6 +918,12 @@ bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
 bun run typecheck && bun run appass && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run contrast && bun run akpass && bun run accept
 
+# LA PASSE BE (l'agenda, les tâches, l'aide-mémoire) :
+bun run bepass                                                     # A437–A444 en pur (92) — règle 0, tâches, aide-mémoire, liens, geste, base, dictée, aucune donnée réelle
+bun run beui                                                       # A445–A449 au rendu, build local + base factice (57)
+BASE_URL=https://azmer-fts.github.io/lo-yanum bun run beui         # le DÉPLOYÉ
+bun run private/be/seed-sql.ts                                     # régénère private/be/seed.sql (DONNÉES RÉELLES, jamais dans le dépôt)
+
 # LA PASSE BC :
 bun run bcpass                                                     # A411–A417 en pur (75)
 bun run bcmobile                                                   # A418–A426 au rendu, jumeau local (246)

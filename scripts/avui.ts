@@ -215,10 +215,17 @@ for (const width of [1032, 402]) {
        (liste ↔ carte, brief BC 3h) ; sa carte s'y voit en plein écran, c'est là
        que le doigt pose l'épingle. Les autres écrans à carte gardent le divisé. */
     const PHONE_LISTS = new Set(['farms', 'leads', 'volunteers', 'missions', 'incidents', 'institutions'])
-    const modeOf = (key: string) => (width < 768 && PHONE_LISTS.has(key) ? 'full' : 'split')
+    /* ★★ BE — ADAPTÉE : l'agenda est devenu deux volets (agenda | tâches, BE 1) ;
+       la carte de ses rendez-vous se montre d'un toucher (« מפה », BE 1) dans le
+       volet de l'agenda — au téléphone, ce volet est le mode « plein ». */
+    const modeOf = (key: string) => (width < 768 && (PHONE_LISTS.has(key) || key === 'agenda') ? 'full' : 'split')
     const o = await open(width, { touch: true, storage: Object.fromEntries(MAP_ROUTES.map((r) => r.split('/').pop() || 'dashboard').map((k) => [`lo-yanum:map-mode:${k}`, modeOf(k)])) })
     for (const route of MAP_ROUTES) {
       await go(o.page, route, 3500)
+      if (route === '/coordinator/agenda') {
+        await o.page.locator('[data-testid="agenda-map-toggle"]').click()
+        await o.page.waitForTimeout(2500)
+      }
       const at = await emptySpot(o.page)
       if (!at) {
         check(`A327 ${width} ${route} : un point libre de la carte`, false, 'aucun')
