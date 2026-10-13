@@ -83,6 +83,11 @@ export type IconName =
   | 'flag'
   | 'send'
   | 'logout'
+  /* ★★ BE — les tâches, l'aide-mémoire, l'archive, la poignée de glisser. */
+  | 'checklist'
+  | 'archive'
+  | 'grip'
+  | 'book'
   | 'columns'
   | 'more'
   | 'table'
@@ -264,6 +269,28 @@ const PATHS: Record<IconName, ReactNode> = {
   chevron: <path d="m9.5 5.5 7 6.5-7 6.5" />,
   close: <path d="m5.5 5.5 13 13M18.5 5.5l-13 13" />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  /* ★★ BE — une liste à cocher : trois cases, la première cochée. */
+  checklist: (
+    <>
+      <path d="m3.5 6.5 1.5 1.5 3-3M11 6.5h9.5M11 12h9.5M11 17.5h9.5" />
+      <rect x="3.5" y="10" width="4" height="4" rx="1" />
+      <rect x="3.5" y="15.5" width="4" height="4" rx="1" />
+    </>
+  ),
+  archive: (
+    <>
+      <rect x="3.5" y="4.5" width="17" height="4.5" rx="1" />
+      <path d="M5 9v9.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5V9M10 13h4" />
+    </>
+  ),
+  /* La poignée : six points, ce qu'on saisit pour déplacer une ligne. */
+  grip: <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" strokeWidth={3} />,
+  book: (
+    <>
+      <path d="M4.5 5.5A2 2 0 0 1 6.5 3.5h12v15h-12a2 2 0 0 0-2 2v-15Z" />
+      <path d="M4.5 20.5a2 2 0 0 1 2-2h12v2M9 8h6M9 11h4" />
+    </>
+  ),
   /* P0.1 — the SPLIT state of the map-mode switch: two panes, the narrower
      one lined like a list, so the three icons read as three layouts rather
      than as three unrelated actions. */

@@ -2015,7 +2015,37 @@
     "noneToday": "אין אירועים ביום הזה",
     "onMap": "{{count}} על המפה",
     "focusDay": "מרכוז המפה על היום הזה",
-    "openEvent": "פתיחה"
+    "openEvent": "פתיחה",
+    "addOther": "עוד להוסיף ליום: משמרת, ביקור, מסלול",
+    "both": "יומן ומשימות",
+    "confirm": "אישור הפגישה",
+    "confirmed": "הפגישה אושרה",
+    "createAt": "פגישה חדשה ב־{{when}}",
+    "created": "הפגישה נוספה ליומן",
+    "dayField": "יום",
+    "deleted": "נמחק מהיומן",
+    "editEvent": "עריכת פגישה",
+    "endField": "סיום",
+    "startField": "התחלה",
+    "eventGone": "האירוע כבר לא קיים",
+    "eventGoneHint": "הוא נמחק או הועבר במסך המקור שלו.",
+    "linkField": "קשור ל…",
+    "linkedTasks": "משימות לפגישה",
+    "mapToggle": "מפה",
+    "movedToast": "הפגישה הועברה ל־{{when}}",
+    "resizedToast": "הפגישה מסתיימת עכשיו ב־{{when}}",
+    "newEvent": "פגישה חדשה",
+    "pending": "⏳ ממתין לאישורך — נקבע מהדף הציבורי",
+    "reflection": "שיקוף ממסך אחר",
+    "reflectionHint": "שיקוף: מתעדכן לבד ממסך המקור. נגיעה פותחת אותו.",
+    "reflectionTour": "זה שיקוף של מסלול שמור. הוא זז ונמחק יחד עם המסלול; שינויים — במסך המסלול.",
+    "reflectionMission": "זה שיקוף של משמרת. הוא מתעדכן לבד; שינויים — במסך המשמרת.",
+    "openTour": "פתיחת המסלול",
+    "openMission": "פתיחת המשמרת",
+    "saved": "הפגישה נשמרה",
+    "tourEstimated": "(חזרה משוערת)",
+    "tourUntitled": "מסלול",
+    "visitFarm": "חווה"
   },
   "wizard": {
     "title": "גיוס משמרת",
@@ -3620,5 +3650,96 @@
       "locality": "מרכז היישוב {{label}}, אושר על המפה",
       "coords": "קואורדינטות שהודבקו"
     }
+  },
+  "links": {
+    "kind": {
+      "institution": "מוסד",
+      "farm": "חווה",
+      "lead": "איש קשר לטיפול",
+      "meeting": "פגישה"
+    },
+    "missing": "(הרשומה נמחקה)",
+    "none": "לא נמצא. אפשר לחפש לפי שם או יישוב.",
+    "remove": "הסרת הקישור",
+    "searchPlaceholder": "שם מוסד, חווה או איש קשר…"
+  },
+  "tasks": {
+    "title": "משימות",
+    "new": "משימה חדשה",
+    "add": "משימה",
+    "addList": "רשימה",
+    "listName": "שם הרשימה",
+    "renameList": "שינוי שם",
+    "deleteListConfirm": "למחוק את הרשימה „{{name}}” ואת {{count}} המשימות שבה? אפשר לבטל מיד אחרי.",
+    "listDeleted": "הרשימה „{{name}}” נמחקה",
+    "noListYet": "אין עדיין רשימת משימות. פתחו את היומן ← משימות ← „+ רשימה”.",
+    "empty": "אין משימות פתוחות ברשימה הזו.",
+    "titleField": "המשימה",
+    "noteField": "הערה",
+    "listField": "רשימה",
+    "linkField": "קשורה ל…",
+    "dueOn": "תאריך יעד",
+    "dueTime": "שעה",
+    "untitled": "(ללא כותרת)",
+    "check": "סימון כבוצע",
+    "uncheck": "ביטול הסימון",
+    "drag": "גרירה לשינוי הסדר",
+    "expand": "פתיחה",
+    "collapse": "קיפול",
+    "expandAll": "לפתוח הכל",
+    "collapseAll": "לקפל הכל",
+    "up": "למעלה",
+    "down": "למטה",
+    "toArchive": "לארכיון",
+    "archive": "ארכיון",
+    "archiveEmpty": "הארכיון ריק.",
+    "restore": "להחזיר",
+    "created": "נוספה משימה לרשימה „{{list}}”",
+    "doneToast": "המשימה סומנה כבוצעה",
+    "reopened": "המשימה חזרה לרשימה",
+    "archivedToast": "המשימה הועברה לארכיון",
+    "deletedToast": "המשימה נמחקה",
+    "movedToast": "הסדר עודכן",
+    "movedToList": "המשימה עברה לרשימה „{{list}}”",
+    "savedToast": "המשימה נשמרה"
+  },
+  "memo": {
+    "tab": "עזר לשיחה",
+    "search": "חיפוש בעזר לשיחה",
+    "searchPlaceholder": "חיפוש בשלושת המאגרים…",
+    "banks": "המאגרים",
+    "noResult": "לא נמצאה שורה מתאימה.",
+    "bank": {
+      "institutions": "מוסדות וישיבות",
+      "farmers": "חקלאים",
+      "volunteers": "מתנדבים"
+    },
+    "section": {
+      "institutions": {
+        "questions": "שאלות",
+        "say": "מה להגיד"
+      },
+      "farmers": {
+        "questions": "שאלות",
+        "say": "מה להגיד"
+      },
+      "volunteers": {
+        "questions": "שאלות שהם שואלים, והתשובות",
+        "say": "מה להגיד"
+      }
+    },
+    "addLine": "שורה",
+    "he": "בעברית (מה שמקריאים)",
+    "fr": "Français (pour moi)",
+    "toTask": "למשימה",
+    "openTask": "פתיחה",
+    "saved": "השורה נשמרה",
+    "deleted": "השורה נמחקה"
+  },
+  "linked": {
+    "title": "ביומן ובמשימות",
+    "addTask": "משימה",
+    "addMeeting": "פגישה",
+    "empty": "אין פגישות קרובות ואין משימות פתוחות שקשורות לכאן."
   }
 }

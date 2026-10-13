@@ -48,6 +48,10 @@ export * from './nearestLocality'
 export * from './mapLegend'
 export * from './dashboard'
 export * from './addressPoint'
+// ★★ BE — l'agenda (règle 0 : les reflets), les tâches, l'aide-mémoire.
+export * from './reflections'
+export * from './tasks'
+export * from './memo'
 export * from './branches'
 export * from './calls'
 export * from './coverageSelection'
@@ -185,6 +189,19 @@ export {
   createLandmark,
   updateLandmark,
   deleteLandmark,
+  // ★★ BE — les tâches, leurs listes, l'aide-mémoire.
+  createTaskList,
+  renameTaskList,
+  deleteTaskList,
+  createTask,
+  updateTask,
+  setTaskDone,
+  setTaskArchived,
+  deleteTask,
+  moveTask,
+  createMemoLine,
+  updateMemoLine,
+  deleteMemoLine,
 } from './store'
 export type {
   NewIncidentInput,
@@ -201,6 +218,8 @@ export type {
   TourDraft,
   RemoteSignatureInput,
   LeadDraft,
+  TaskDraft,
+  MemoDraft,
 } from './store'
 
 export {

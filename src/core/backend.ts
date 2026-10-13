@@ -1,5 +1,7 @@
 import type { Institution } from './institutions'
 import type { Landmark } from './landmarks'
+import type { MemoLine } from './memo'
+import type { Task, TaskList } from './tasks'
 import type { Tour } from './tours'
 import type {
   AnchorPoint,
@@ -65,6 +67,10 @@ export interface StoreData {
   incidents: Incident[]
   farmVisits: FarmVisit[]
   tours: Tour[]
+  /** ★★ BE — les listes de tâches du PO, ses tâches, son aide-mémoire. Dans AUCUN compteur. */
+  taskLists: TaskList[]
+  tasks: Task[]
+  memoLines: MemoLine[]
   session: Session
 }
 
@@ -94,6 +100,11 @@ export const COLLECTIONS = [
   'institutions',
   /* AV2 — aucune clé étrangère. */
   'landmarks',
+  /* ★★ BE — `tasks.list_id` → `task_lists` : les listes d'abord. Les liens d'une
+     tâche (fiche, rendez-vous) sont SOUPLES, sans clé étrangère. */
+  'taskLists',
+  'tasks',
+  'memoLines',
 ] as const
 
 export type Collection = (typeof COLLECTIONS)[number]

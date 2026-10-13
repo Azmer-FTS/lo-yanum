@@ -1,8 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { formatTime, formatWeekdayShort, isSameDay, layOutDay, localDayKey } from '@core/index'
-import type { AgendaEvent } from '@core/index'
+import {
+  SNAP_MINUTES,
+  formatTime,
+  formatWeekdayShort,
+  isSameDay,
+  layOutDay,
+  localDayKey,
+  minuteAtOffset,
+  snapMinute,
+} from '@core/index'
+import type { AgendaEvent, Task } from '@core/index'
 
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
@@ -13,50 +22,33 @@ import { useLocale } from '../hooks/useLocale'
  * ★★ AB4 (2026-09-08) — THE AGENDA LOOKS LIKE AN AGENDA.
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * The product owner finds the week view right and badly used:
+ * An HOUR LADDER, and the ladder is the geometry:
  *
- *   « En mode contenu plein écran, la grille de la semaine occupe toute la
- *     hauteur utile : les heures s'étirent, on ne laisse pas de bande vide en
- *     bas. […] ligne de l'heure courante bien visible, aujourd'hui mis en
- *     évidence, chevauchements de rendez-vous côte à côte et non superposés,
- *     défilement qui s'ouvre sur les heures de travail plutôt que sur
- *     minuit. »
- *
- * ★ WHAT WAS THERE, AND WHY IT COULD NOT DO ANY OF THAT. The week was seven
- *   BOXES, each a `min-h-40` column holding a stack of pills. A box has no
- *   time axis, so 09:00 and 21:00 were at whatever height the list reached;
- *   "now" had nowhere to be drawn; two guards at the same hour were one above
- *   the other, which is not what "at the same time" looks like; and the boxes
- *   ended wherever the longest one did, leaving the rest of a full screen
- *   empty. Every one of the product owner's four points is the same missing
- *   thing: THE HOUR IS NOT A POSITION.
- *
- * ★ SO IT IS AN HOUR LADDER, and the ladder is the geometry:
- *
- *     top    = (minutes since 00:00) / 60 × --hour-h
- *     height = duration in minutes    / 60 × --hour-h, floored so a
+ *     top    = (minutes since 00:00) / 60 × hour
+ *     height = duration in minutes    / 60 × hour, floored so a
  *              point-in-time visit is still a readable block
  *
- * ⚠️ TWENTY-FOUR HOURS, NOT SIX-TO-MIDNIGHT, AND THAT IS NOT A DETAIL IN THIS
- *    APP. The old day view drew 06:00–23:00. This programme's whole subject is
- *    NIGHT GUARDS: a shift that starts at 22:00 and ends at 04:00 has half of
- *    itself outside that window, and a 01:00 guard did not exist on the
- *    calendar at all. The ladder is the whole day, and « défilement qui
- *    s'ouvre sur les heures de travail » is then exactly what it says — the
- *    SCROLL opens at `OPEN_AT`, and midnight is above it, one flick away.
+ * ⚠️ TWENTY-FOUR HOURS, NOT SIX-TO-MIDNIGHT: this programme's subject is NIGHT
+ *    guards. The SCROLL opens at `OPEN_AT`, and midnight is one flick above.
+ * ★ The hours stretch only when the agenda has the screen to itself; elsewhere
+ *   the hour keeps a legible fixed band and the ladder scrolls.
  *
- * ★ AND THE HOURS STRETCH ONLY WHEN THERE IS ROOM. In `contentFull` the box
- *   is measured and the hour takes `height / 24`, floored at `MIN_HOUR` so it
- *   never becomes an unreadable band; in a split panel it is `SPLIT_HOUR` and
- *   the ladder scrolls. Either way there is no empty strip at the bottom,
- *   because the ladder is exactly as tall as the hours it draws.
+ * ★★ BE (2026-10-13) — « NE REFAIS PAS LA GRILLE, ELLE CONVIENT. » La grille
+ * ci-dessous est celle d'AB4. Ce qui change est la MANIPULATION :
+ *   · toucher un créneau vide CRÉE un rendez-vous au quart d'heure touché
+ *     (`onCreateAt`) — plus de menu intermédiaire ;
+ *   · le glisser-déposer est franc (voir la note au-dessus de `HOLD_MS`) ;
+ *   · le BORD INFÉRIEUR d'un rendez-vous allonge (ou raccourcit) sa durée ;
+ *   · un REFLET (garde, itinéraire) se dessine à part — hachuré, bord en
+ *     tirets, la flèche de sa source — et ne se déplace pas ;
+ *   · les tâches datées se posent EN HAUT DU JOUR, sous son nom, discrètes.
  */
 
 /** `HH:MM` d'une minute du jour — l'heure que le bloc annonce pendant qu'on le déplace. */
 function clockLabel(minute: number): string {
-  const h = Math.floor(minute / 60)
-  const m = minute % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  const m = Math.max(0, Math.min(24 * 60, minute))
+  const h = Math.floor(m / 60)
+  return `${String(h).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 }
 
 /** Where the scroll opens. Not midnight — the day starts being worked at 06. */
@@ -65,6 +57,13 @@ const OPEN_AT = 6
 const MIN_HOUR = 30
 /** A ladder in a narrow panel scrolls rather than squeezes. */
 const SPLIT_HOUR = 52
+/**
+ * ★★ BE — AU TÉLÉPHONE, L'HEURE FAIT 56 PX. Un quart d'heure y vaut 14 px :
+ * c'est ce qui rend le pas du glisser-déposer atteignable au pouce (à 30 px
+ * l'heure, il en valait 7).
+ */
+const PHONE_HOUR = 56
+
 export interface AgendaTone {
   /** Tailwind classes for the block. */
   block: string
@@ -74,17 +73,14 @@ export interface AgendaTone {
 
 /**
  * How tall an hour is, and whether the ladder scrolls.
- *
- * ⚠️ `useLayoutEffect` FOR THE FIRST MEASUREMENT, then a ResizeObserver. The
- *    ladder's opening scroll position is computed FROM the hour height, so a
- *    height that arrives after the browser has painted means a calendar that
- *    visibly jumps from midnight to six o'clock on every mount.
+ * ⚠️ `useLayoutEffect` FOR THE FIRST MEASUREMENT, then a ResizeObserver: the
+ *    opening scroll position is computed FROM the hour height.
  */
-function useHourHeight(stretch: boolean): {
+function useHourHeight(stretch: boolean, fixed: number): {
   ref: (node: HTMLElement | null) => void
   hour: number
 } {
-  const [hour, setHour] = useState(stretch ? MIN_HOUR : SPLIT_HOUR)
+  const [hour, setHour] = useState(stretch ? MIN_HOUR : fixed)
   const node = useRef<HTMLElement | null>(null)
   const observer = useRef<ResizeObserver | null>(null)
 
@@ -98,8 +94,7 @@ function useHourHeight(stretch: boolean): {
       observer.current = null
       return
     }
-    const measure = (): void =>
-      setHour(stretch ? Math.max(MIN_HOUR, el.clientHeight / 24) : SPLIT_HOUR)
+    const measure = (): void => setHour(stretch ? Math.max(MIN_HOUR, el.clientHeight / 24) : fixed)
     measure()
     observer.current = new ResizeObserver(measure)
     observer.current.observe(el)
@@ -108,13 +103,13 @@ function useHourHeight(stretch: boolean): {
   useLayoutEffect(() => {
     const el = node.current
     if (!el) return
-    setHour(stretch ? Math.max(MIN_HOUR, el.clientHeight / 24) : SPLIT_HOUR)
-  }, [stretch])
+    setHour(stretch ? Math.max(MIN_HOUR, el.clientHeight / 24) : fixed)
+  }, [stretch, fixed])
 
   return { ref, hour }
 }
 
-/** Minutes since midnight, ticking once a minute — the "now" line. */
+/** Minutes since midnight, ticking — the "now" line. */
 function useMinuteOfDay(): number {
   const [minute, setMinute] = useState(() => {
     const d = new Date()
@@ -131,79 +126,109 @@ function useMinuteOfDay(): number {
   return minute
 }
 
+/** ★★ BE — le rendez-vous en cours de création, dessiné en pointillé à sa place. */
+export interface AgendaDraft {
+  dayKey: string
+  from: number
+  to: number
+  label: string
+}
+
 export interface AgendaGridProps {
   /** One column per day: 1 in the day view, 7 in the week view. */
   days: Date[]
   byDay: Map<string, AgendaEvent[]>
   today: Date
-  /** True when the content column has the whole screen (map hidden). */
+  /** True when the agenda has the whole screen. */
   stretch: boolean
+  /** ★★ BE — le téléphone : l'heure fixe à `PHONE_HOUR`. */
+  phone?: boolean
   toneOf: (event: AgendaEvent) => AgendaTone
   selectedId: string | null
   onSelect: (event: AgendaEvent) => void
   /** AB3.3 — the day header is also "put the map on this day". */
   onFocusDay: (day: Date) => void
   focusedDay: string | null
-  /** The empty-slot creation menu, opened on a column's own "+" . */
-  onAddOn: (day: Date, hour: number) => void
-  /**
-   * ★★ AF4.1 (2026-09-09) — DÉPLACER UN RENDEZ-VOUS SUR LA GRILLE.
-   *
-   * Rendu `null` par l'appelant pour un bloc qu'on ne déplace pas — une garde
-   * en est une : c'est une nuit dotée de volontaires et d'un conducteur, pas
-   * un bloc qu'on fait glisser (même règle que le glisser-déposer du mois,
-   * G6.4). L'appelant reçoit le JOUR et la MINUTE de début voulus, et décide.
-   */
+  /** ★★ BE — un toucher sur un créneau vide : le jour et la minute (au quart d'heure). */
+  onCreateAt: (day: Date, minute: number) => void
+  /** ★★ AF4.1 · BE — déplacer : le jour et la minute de début voulus. */
   onMove?: (event: AgendaEvent, day: Date, startMinute: number) => void
-  /** Dit si CE bloc se déplace. Absent = aucun ne se déplace. */
+  /** Dit si CE bloc se déplace. Absent = aucun ne se déplace. Un reflet, jamais. */
   canMove?: (event: AgendaEvent) => boolean
+  /** ★★ BE — allonger par le bord inférieur : la minute de fin voulue. */
+  onResize?: (event: AgendaEvent, endMinute: number) => void
+  canResize?: (event: AgendaEvent) => boolean
+  /** ★★ BE — les tâches datées, par jour, en haut de la colonne. */
+  dueByDay?: Map<string, Task[]>
+  onOpenTask?: (task: Task) => void
+  draft?: AgendaDraft | null
 }
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * ★★ AF4.1 — LE GLISSER-DÉPOSER, AU DOIGT ET AU STYLET.
+ * ★★ AF4.1 · BE (2026-10-13) — LE GLISSER-DÉPOSER, FRANC, AU DOIGT COMME À LA
+ *    SOURIS.
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * « Déplacer un rendez-vous par glisser-déposer sur la grille, sur tablette au
- * doigt et au stylet. Absent aujourd'hui. » Il l'était : G6.4 avait posé un
- * glisser-déposer HTML5 sur les CASES DU MOIS, qui change la date et garde
- * l'heure — et le HTML5 drag-and-drop n'existe pas au toucher. Sur l'iPad du
- * PO, il n'y avait rien.
+ * Le PO y arrivait « très compliqué, très complexe ». Trois causes, trouvées
+ * en relisant le geste d'AF4.1 contre ce que fait un téléphone :
  *
- * ★★ POINTER EVENTS, ET PAS AUTRE CHOSE. C'est la règle du dépôt depuis le
- *    point 9 du PO : une seule voie pour la souris, le doigt et le Pencil, et
- *    `pointerType` disponible quand ça compte. `dragstart` aurait exclu les
- *    deux entrées qui sont justement demandées.
+ *   1. ⚠️ `touch-action` POSÉ APRÈS L'APPUI NE SERT À RIEN. Le navigateur lit
+ *      `touch-action` au moment où le doigt se pose ; le poser à l'armement
+ *      (AF4.1) laissait le défilement décider au premier mouvement — la page
+ *      partait, le navigateur envoyait `pointercancel`, le bloc revenait à sa
+ *      place. Désormais un `touchmove` NON PASSIF, posé une fois sur le
+ *      document, refuse le défilement tant qu'un bloc est armé.
+ *   2. ⚠️ L'APPUI LONG D'iOS sélectionnait le texte du bloc (la loupe, le menu
+ *      « Copier »). Les blocs sont `select-none` et sans menu de rappel.
+ *   3. ⚠️ À LA SOURIS, IL FALLAIT AUSSI TENIR 280 ms. Une souris ne fait pas
+ *      défiler en glissant : elle s'arme au premier mouvement (4 px).
  *
- * ⚠️ UN APPUI MAINTENU ARME LE DÉPLACEMENT, ET C'EST LA GRILLE QUI L'IMPOSE.
- *    La grille DÉFILE verticalement, et un rendez-vous se déplace lui aussi
- *    verticalement : capturer le pointeur dès le contact rendrait la grille
- *    impossible à faire défiler dès qu'on pose le doigt sur un bloc — c'est-à-
- *    dire la moitié de sa surface. 280 ms d'immobilité arment ; un mouvement
- *    avant ce délai est un défilement et le navigateur le garde.
- *
- * ⚠️ ET `touch-action` N'EST POSÉ QU'UNE FOIS ARMÉ. Déclaré `none` en
- *    permanence sur le bloc, il tuerait ce même défilement. Il est posé sur
- *    l'élément au moment où la minuterie tombe, et retiré au relâchement.
- *
- * ★ LE PAS EST DE QUINZE MINUTES. Un agenda qu'on manipule au doigt sur une
- *   échelle de 34 px par heure ne peut pas placer une minute — le pas est ce
- *   qui rend le geste répétable, et c'est le pas auquel un rendez-vous se
- *   fixe de toute façon.
+ * ★ CE QUI RESTE D'AF4.1 : au doigt, un appui maintenu (`HOLD_MS`) arme le
+ *   déplacement — un glissement AVANT ce délai est un défilement de la grille.
+ *   Armé : une vibration courte (là où le téléphone la permet), le bloc se
+ *   soulève, son ancienne place reste en pointillé, et il annonce son heure
+ *   (« 14:30–16:00 ») à chaque quart d'heure franchi. Au bord haut ou bas de
+ *   la grille, elle défile d'elle-même.
+ * ★ LE BORD INFÉRIEUR : une bande de 14 px au pied du bloc (`touch-action:
+ *   none`, donc sans appui long) qui allonge ou raccourcit, au quart d'heure.
+ * ★ Un clic qui SUIT un glissement ne compte pas (il ouvrirait le bloc).
  */
-const HOLD_MS = 280
-const SNAP_MINUTES = 15
-/** Au-delà de ce déplacement avant l'armement, c'est un défilement. */
+const HOLD_MS = 250
+/** Au-delà de ce déplacement avant l'armement, au doigt, c'est un défilement. */
 const SLOP_PX = 8
+/** À la souris ou au stylet, le geste s'arme à ce déplacement. */
+const MOUSE_ARM_PX = 4
+/** La bande, au pied d'un bloc, qui allonge sa durée. */
+const RESIZE_PX = 14
+/** La marge, en haut et en bas de la grille, où elle défile d'elle-même. */
+const EDGE_PX = 44
 
 interface DragState {
   id: string
-  /** Décalage vertical appliqué au bloc, en pixels. */
-  dy: number
+  mode: 'move' | 'resize'
   /** Colonne visée, en index de `days`. */
   dayIndex: number
-  /** Minute de début visée, arrondie au pas. */
+  /** Minute de début visée (déplacement) — au pas. */
   startMinute: number
+  /** Minute de fin visée — au pas. */
+  endMinute: number
+}
+
+interface Gesture {
+  event: AgendaEvent
+  mode: 'move' | 'resize'
+  pointerId: number
+  touch: boolean
+  startX: number
+  startY: number
+  startScroll: number
+  from: number
+  to: number
+  dayIndex: number
+  armed: boolean
+  timer: number
+  element: HTMLElement
 }
 
 export function AgendaGrid({
@@ -211,57 +236,93 @@ export function AgendaGrid({
   byDay,
   today,
   stretch,
+  phone = false,
   toneOf,
   selectedId,
   onSelect,
   onFocusDay,
   focusedDay,
-  onAddOn,
+  onCreateAt,
   onMove,
   canMove,
+  onResize,
+  canResize,
+  dueByDay,
+  onOpenTask,
+  draft,
 }: AgendaGridProps) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const { ref: boxRef, hour } = useHourHeight(stretch)
+  const { ref: boxRef, hour } = useHourHeight(stretch && !phone, phone ? PHONE_HOUR : SPLIT_HOUR)
   const nowMinute = useMinuteOfDay()
   const scroller = useRef<HTMLDivElement | null>(null)
   const opened = useRef(false)
 
   /**
-   * AB4.3 — « défilement qui s'ouvre sur les heures de travail ». Once, on the
-   * first paint that has a real hour height: re-running it on every render
-   * would drag the coordinator back to 06:00 every time he scrolled to a
-   * night guard.
+   * AB4.3 — the scroll opens on the working hours, once.
+   * ⚠️ ★★ BE — UNE GRILLE MONTÉE CACHÉE (le volet de l'agenda au téléphone,
+   *    quand c'est celui des tâches qui est ouvert) a une hauteur nulle : elle
+   *    ne « s'ouvre » qu'au premier instant où elle a une hauteur, sinon elle
+   *    restait à minuit.
    */
-  useLayoutEffect(() => {
+  const openOnce = (): void => {
     const el = scroller.current
-    if (!el || opened.current || hour <= 0) return
-    if (el.scrollHeight <= el.clientHeight + 1) {
-      opened.current = true
-      return
-    }
-    el.scrollTop = OPEN_AT * hour
+    if (!el || opened.current || hour <= 0 || el.clientHeight === 0) return
+    if (el.scrollHeight > el.clientHeight + 1) el.scrollTop = OPEN_AT * hour
     opened.current = true
+  }
+  useLayoutEffect(openOnce, [hour])
+  useEffect(() => {
+    const el = scroller.current
+    if (!el) return
+    const ro = new ResizeObserver(() => openOnce())
+    ro.observe(el)
+    return () => ro.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hour])
+
+  /** ★★ BE — le bloc ouvert (ou le créneau en création) est amené à l'écran. */
+  useEffect(() => {
+    const el = scroller.current
+    if (!el || el.clientHeight === 0) return
+    const target = selectedId
+      ? el.querySelector<HTMLElement>(`[data-event-id="${CSS.escape(selectedId)}"]`)
+      : draft
+        ? el.querySelector<HTMLElement>('[data-testid="agenda-draft"]')
+        : null
+    if (!target) return
+    /* Le haut de la fenêtre de la grille, sous ses en-têtes collés : c'est là
+       que le bloc doit être — au téléphone, la feuille couvre le bas. */
+    const head = el.querySelector<HTMLElement>('.sticky')?.getBoundingClientRect().height ?? 0
+    const rel = target.getBoundingClientRect().top - el.getBoundingClientRect().top - head
+    if (rel < 4 || rel > 96) el.scrollTo({ top: Math.max(0, el.scrollTop + rel - 12), behavior: 'smooth' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, draft?.dayKey, draft?.from])
 
   const ladder = Array.from({ length: 24 }, (_, i) => i)
   const height = hour * 24
 
   // -------------------------------------------------------------------------
-  // AF4.1 — le glisser-déposer. Voir la note au-dessus de `HOLD_MS`.
+  // Le geste. Voir la note au-dessus de `HOLD_MS`.
   // -------------------------------------------------------------------------
   const [drag, setDrag] = useState<DragState | null>(null)
-  const gesture = useRef<{
-    id: string
-    event: AgendaEvent
-    from: number
-    startX: number
-    startY: number
-    armed: boolean
-    timer: number
-    element: HTMLElement
-    touchAction: string
-  } | null>(null)
+  const dragRef = useRef<DragState | null>(null)
+  const gesture = useRef<Gesture | null>(null)
+  const suppressClick = useRef(false)
+
+  const put = (next: DragState | null): void => {
+    dragRef.current = next
+    setDrag(next)
+  }
+
+  /* ★ 1 — le défilement est refusé tant qu'un bloc est armé (voir l'en-tête). */
+  useEffect(() => {
+    const block = (e: TouchEvent): void => {
+      if (gesture.current?.armed) e.preventDefault()
+    }
+    document.addEventListener('touchmove', block, { passive: false })
+    return () => document.removeEventListener('touchmove', block)
+  }, [])
 
   /** Colonne sous une abscisse écran, ou l'actuelle si le doigt sort de la grille. */
   const columnAt = (clientX: number, fallback: number): number => {
@@ -274,22 +335,6 @@ export function AgendaGrid({
     return fallback
   }
 
-  const endGesture = (commit: boolean): void => {
-    const g = gesture.current
-    if (!g) return
-    window.clearTimeout(g.timer)
-    g.element.style.touchAction = g.touchAction
-    gesture.current = null
-    const state = drag
-    setDrag(null)
-    if (!commit || !g.armed || !state || !onMove) return
-    /* Rien à écrire quand rien n'a bougé : un appui long qui repart au même
-       endroit ne doit pas produire une mutation ni un rendu. */
-    const sameDay = days[state.dayIndex] === days[columnIndexOf(g.event)]
-    if (state.startMinute === g.from && sameDay) return
-    onMove(g.event, days[state.dayIndex], state.startMinute)
-  }
-
   /** L'index de colonne où ce bloc est actuellement dessiné. */
   const columnIndexOf = (event: AgendaEvent): number => {
     const key = localDayKey(new Date(event.at))
@@ -297,67 +342,118 @@ export function AgendaGrid({
     return i === -1 ? 0 : i
   }
 
-  const onBlockPointerDown = (
-    e: React.PointerEvent<HTMLButtonElement>,
-    event: AgendaEvent,
-    from: number,
-  ): void => {
-    if (!onMove || !(canMove?.(event) ?? false)) return
-    /* Un clic droit ou un bouton secondaire n'arme rien. */
+  const arm = (g: Gesture): void => {
+    g.armed = true
+    try {
+      g.element.setPointerCapture(g.pointerId)
+    } catch {
+      // Un pointeur déjà relâché : le geste se terminera de lui-même.
+    }
+    try {
+      if (g.touch) navigator.vibrate?.(8)
+    } catch {
+      // Pas de vibreur : rien à dire.
+    }
+    put({ id: g.event.id, mode: g.mode, dayIndex: g.dayIndex, startMinute: g.from, endMinute: g.to })
+  }
+
+  const begin = (e: React.PointerEvent<HTMLElement>, event: AgendaEvent, from: number, to: number, mode: 'move' | 'resize'): void => {
+    const allowed = mode === 'move' ? Boolean(onMove) && (canMove?.(event) ?? false) : Boolean(onResize) && (canResize?.(event) ?? false)
+    if (!allowed) return
     if (e.button !== 0 && e.pointerType === 'mouse') return
-    const element = e.currentTarget
-    const g = {
-      id: event.id,
+    if (mode === 'resize') e.stopPropagation()
+    const touch = e.pointerType === 'touch'
+    const g: Gesture = {
       event,
-      from,
+      mode,
+      pointerId: e.pointerId,
+      touch,
       startX: e.clientX,
       startY: e.clientY,
+      startScroll: scroller.current?.scrollTop ?? 0,
+      from,
+      to,
+      dayIndex: columnIndexOf(event),
       armed: false,
       timer: 0,
-      element,
-      touchAction: element.style.touchAction,
+      element: e.currentTarget,
     }
-    g.timer = window.setTimeout(() => {
-      g.armed = true
-      /* ⚠️ POSÉ MAINTENANT ET PAS DANS LA CLASSE : voir la note d'en-tête. */
-      element.style.touchAction = 'none'
-      try {
-        element.setPointerCapture(e.pointerId)
-      } catch {
-        // Un pointeur déjà relâché : le geste se terminera de lui-même.
-      }
-      setDrag({
-        id: event.id,
-        dy: 0,
-        dayIndex: columnIndexOf(event),
-        startMinute: from,
-      })
-    }, HOLD_MS)
+    /* Au doigt, le DÉPLACEMENT s'arme par l'appui maintenu ; le bord inférieur
+       est `touch-action: none`, il s'arme au premier mouvement comme la souris. */
+    if (touch && mode === 'move') g.timer = window.setTimeout(() => arm(g), HOLD_MS)
     gesture.current = g
   }
 
-  const onBlockPointerMove = (e: React.PointerEvent<HTMLButtonElement>): void => {
+  const autoScroll = (clientY: number): void => {
+    const el = scroller.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    if (clientY < r.top + EDGE_PX) el.scrollTop -= 10
+    else if (clientY > r.bottom - EDGE_PX) el.scrollTop += 10
+  }
+
+  const onPointerMove = (e: React.PointerEvent<HTMLElement>): void => {
+    const g = gesture.current
+    if (!g || e.pointerId !== g.pointerId) return
+    const dx = e.clientX - g.startX
+    const dyScreen = e.clientY - g.startY
+    if (!g.armed) {
+      const far = Math.abs(dx) > SLOP_PX || Math.abs(dyScreen) > SLOP_PX
+      if (g.touch && g.mode === 'move') {
+        /* Un mouvement avant l'armement est un défilement : on rend la main. */
+        if (far) {
+          window.clearTimeout(g.timer)
+          gesture.current = null
+        }
+        return
+      }
+      if (Math.abs(dx) > MOUSE_ARM_PX || Math.abs(dyScreen) > MOUSE_ARM_PX) arm(g)
+      else return
+    }
+    autoScroll(e.clientY)
+    const dy = dyScreen + ((scroller.current?.scrollTop ?? 0) - g.startScroll)
+    const deltaMinutes = Math.round(((dy / hour) * 60) / SNAP_MINUTES) * SNAP_MINUTES
+    if (g.mode === 'move') {
+      const duration = g.to - g.from
+      const startMinute = snapMinute(g.from + deltaMinutes)
+      put({ id: g.event.id, mode: 'move', dayIndex: columnAt(e.clientX, g.dayIndex), startMinute, endMinute: startMinute + duration })
+    } else {
+      const endMinute = Math.max(g.from + SNAP_MINUTES, Math.min(24 * 60, g.to + deltaMinutes))
+      put({ id: g.event.id, mode: 'resize', dayIndex: g.dayIndex, startMinute: g.from, endMinute })
+    }
+  }
+
+  const finish = (commit: boolean): void => {
     const g = gesture.current
     if (!g) return
-    const dy = e.clientY - g.startY
-    const dx = e.clientX - g.startX
-    if (!g.armed) {
-      /* Un mouvement avant l'armement est un défilement : on rend la main. */
-      if (Math.abs(dy) > SLOP_PX || Math.abs(dx) > SLOP_PX) {
-        window.clearTimeout(g.timer)
-        gesture.current = null
-      }
-      return
+    window.clearTimeout(g.timer)
+    gesture.current = null
+    const state = dragRef.current
+    put(null)
+    if (!g.armed) return
+    /* Le clic qui suit un glissement n'ouvre pas le bloc. */
+    suppressClick.current = true
+    window.setTimeout(() => {
+      suppressClick.current = false
+    }, 350)
+    if (!commit || !state) return
+    if (state.mode === 'move') {
+      if (state.startMinute === g.from && state.dayIndex === g.dayIndex) return
+      onMove?.(g.event, days[state.dayIndex], state.startMinute)
+    } else {
+      if (state.endMinute === g.to) return
+      onResize?.(g.event, state.endMinute)
     }
-    const minutes = Math.round((dy / hour) * 60 / SNAP_MINUTES) * SNAP_MINUTES
-    const startMinute = Math.max(0, Math.min(24 * 60 - SNAP_MINUTES, g.from + minutes))
-    setDrag({
-      id: g.id,
-      dy: ((startMinute - g.from) / 60) * hour,
-      dayIndex: columnAt(e.clientX, columnIndexOf(g.event)),
-      startMinute,
-    })
   }
+
+  /** ★★ BE — le créneau touché, au quart d'heure (le clavier : l'heure pleine). */
+  const createAt = (e: React.MouseEvent<HTMLButtonElement>, day: Date, h: number): void => {
+    const column = (e.currentTarget.parentElement as HTMLElement | null)?.getBoundingClientRect()
+    const minute = column && e.clientY > 0 ? minuteAtOffset(e.clientY - column.top, hour) : h * 60
+    onCreateAt(day, minute)
+  }
+
+  const showDue = !!dueByDay && days.some((d) => (dueByDay.get(localDayKey(d)) ?? []).length > 0)
 
   return (
     <div
@@ -367,21 +463,12 @@ export function AgendaGrid({
       }}
       data-testid="agenda-grid"
       data-hour-height={Math.round(hour)}
+      data-dragging={drag ? drag.mode : undefined}
       /* `min-h-0` + `flex-1` on the parent is what makes "the whole useful
-         height" mean the box rather than the content: without it a flex child
-         is as tall as what is inside it, which is the empty band AB4.1 is
-         about. */
-      /* ⚠️ AND A CAP FOR THE STACKED SHAPE. Below the map breakpoint the
-         content column has no height of its own — the shell is a plain
-         column — so `flex-1` resolves to the ladder's own 24 hours and the
-         PAGE scrolls instead of the grid. That is not an empty band, but it
-         does push the view pills off the top. The cap is inert wherever the
-         flex height is smaller, which is every width at and above `lg`. */
-      className="relative max-h-[calc(100dvh-13rem)] min-h-0 flex-1 overflow-y-auto
-                 rounded-card bg-surface-raised shadow-card"
+         height" mean the box rather than the content (AB4.1). */
+      className="relative min-h-0 flex-1 overflow-y-auto rounded-card bg-surface-raised shadow-card"
     >
-      {/* The weekday header rides the top of the scroller, so the columns keep
-          their names while the night hours are scrolled to. */}
+      {/* The weekday header rides the top of the scroller. */}
       <div
         className="sticky top-0 z-20 grid border-b border-edge-subtle bg-surface-raised/95 backdrop-blur"
         style={{ gridTemplateColumns: `3rem repeat(${days.length}, minmax(0, 1fr))` }}
@@ -406,32 +493,59 @@ export function AgendaGrid({
                             focusedDay === key ? 'bg-accent/10' : ''
                           }`}
             >
-              <span className="text-micro text-content-muted">
-                {formatWeekdayShort(day, locale)}
-              </span>
+              <span className="text-micro text-content-muted">{formatWeekdayShort(day, locale)}</span>
               <span
                 className={`numeric flex h-6 min-w-6 items-center justify-center rounded-pill px-1 text-caption font-bold ${
-                  isToday
-                    ? 'bg-accent text-content-on-accent'
-                    : 'text-content-primary'
+                  isToday ? 'bg-accent text-content-on-accent' : 'text-content-primary'
                 }`}
               >
                 {day.getDate()}
               </span>
-              {count > 0 && (
-                <span className="numeric text-micro text-content-muted">{count}</span>
-              )}
+              {count > 0 && <span className="numeric text-micro text-content-muted">{count}</span>}
             </button>
           )
         })}
+
+        {/**
+          * ★★ BE — « UNE TÂCHE AVEC ÉCHÉANCE APPARAÎT EN HAUT DU JOUR DANS
+          * L'AGENDA, DISCRÈTEMENT, ET NON COMME UN RENDEZ-VOUS. » Une rangée
+          * sous les noms des jours, seulement quand la période en a : une case
+          * vide et le titre, en petit ; au-delà de deux, « +N ».
+          */}
+        {showDue && (
+          <>
+            <span aria-hidden="true" className="border-t border-edge-subtle" />
+            {days.map((day) => {
+              const key = localDayKey(day)
+              const due = dueByDay?.get(key) ?? []
+              const shown = days.length > 1 ? due.slice(0, 2) : due.slice(0, 4)
+              return (
+                <div key={`due-${key}`} data-testid="agenda-due" data-day={key} data-count={due.length} className="flex min-w-0 flex-col gap-0.5 border-s border-t border-edge-subtle p-0.5">
+                  {shown.map((task) => (
+                    <button
+                      key={task.id}
+                      type="button"
+                      data-testid="agenda-due-task"
+                      data-task-id={task.id}
+                      onClick={() => onOpenTask?.(task)}
+                      className="flex min-h-7 min-w-0 items-center gap-1 rounded-field px-1 text-start text-micro text-content-secondary hover:bg-surface-high"
+                    >
+                      <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px] border border-content-muted" />
+                      {task.dueTime && <span className="ltr-nums shrink-0 font-semibold">{task.dueTime}</span>}
+                      <span className="min-w-0 truncate">{task.title}</span>
+                    </button>
+                  ))}
+                  {due.length > shown.length && <span className="numeric px-1 text-micro text-content-muted">+{due.length - shown.length}</span>}
+                </div>
+              )
+            })}
+          </>
+        )}
       </div>
 
       <div
         className="relative grid"
-        style={{
-          gridTemplateColumns: `3rem repeat(${days.length}, minmax(0, 1fr))`,
-          height: `${height}px`,
-        }}
+        style={{ gridTemplateColumns: `3rem repeat(${days.length}, minmax(0, 1fr))`, height: `${height}px` }}
       >
         {/* The hour gutter. */}
         <div className="relative border-e border-edge-subtle">
@@ -450,185 +564,176 @@ export function AgendaGrid({
           const key = localDayKey(day)
           const isToday = isSameDay(day, today)
           const laid = layOutDay(byDay.get(key) ?? [], day)
+          const draftHere = draft && draft.dayKey === key ? draft : null
           return (
             <div
               key={key}
               data-testid="agenda-column"
               data-day={key}
-              className={`relative border-s border-edge-subtle ${
-                isToday ? 'bg-accent/5' : ''
+              className={`relative border-s border-edge-subtle ${isToday ? 'bg-accent/5' : ''} ${
+                drag?.mode === 'move' && drag.dayIndex === dayIndex ? 'bg-accent/10' : ''
               }`}
             >
-              {/* The hour lines, and each band is also a create target. */}
+              {/* The hour lines, and each band creates — at the quarter touched. */}
               {ladder.map((h) => (
                 <button
                   key={h}
                   type="button"
-                  aria-label={`${formatWeekdayShort(day, locale)} ${String(h).padStart(2, '0')}:00`}
-                  onClick={() => onAddOn(day, h)}
+                  data-testid="agenda-slot"
+                  data-hour={h}
+                  aria-label={t('agenda.createAt', { when: `${formatWeekdayShort(day, locale)} ${String(h).padStart(2, '0')}:00` })}
+                  onClick={(e) => createAt(e, day, h)}
                   className="absolute inset-x-0 border-t border-edge-subtle/60 hover:bg-accent/5"
                   style={{ top: `${h * hour}px`, height: `${hour}px` }}
                 />
               ))}
 
+              {/* ★★ BE — le rendez-vous en cours de création, en pointillé. */}
+              {draftHere && (
+                <div
+                  data-testid="agenda-draft"
+                  className="pointer-events-none absolute inset-x-0.5 z-10 flex flex-col rounded-field border-2 border-dashed border-accent bg-accent/15 px-1.5 py-0.5"
+                  style={{ top: `${(draftHere.from / 60) * hour}px`, height: `${Math.max(18, ((draftHere.to - draftHere.from) / 60) * hour - 2)}px` }}
+                >
+                  <span className="ltr-nums text-micro font-semibold text-accent-ink">
+                    {clockLabel(draftHere.from)}–{clockLabel(draftHere.to)}
+                  </span>
+                  <span className="truncate text-micro font-medium text-accent-ink">{draftHere.label}</span>
+                </div>
+              )}
+
               {laid.map(({ event, from, to, lane, lanes }) => {
                 const tone = toneOf(event)
                 const selected = selectedId === event.id
-                /**
-                 * ⚠️ A SHORT BLOCK PUTS THE HOUR AND THE NAME ON ONE LINE.
-                 * At a stretched 34 px hour a 45-minute appointment is 25 px
-                 * tall and two 11 px lines do not fit — measured on the
-                 * deployed capture as five blocks showing a time and no name,
-                 * which is the one thing a calendar entry must always say.
-                 */
-                const boxHeight = ((to - from) / 60) * hour
-                const compact = boxHeight < 34
-                /**
-                 * ⚠️ AND A BLOCK THAT SHARES ITS COLUMN IS NARROW WHATEVER ITS
-                 *    HEIGHT. Measured on the deployed twin, iPad landscape: a
-                 *    76 px column split in two leaves 36 px, and « 06:40 »
-                 *    overflowed and was CLIPPED AT ITS INLINE END — the box
-                 *    read « 40 », which is not a time and is worse than no
-                 *    label at all. The kind icon goes (the colour already says
-                 *    which kind it is), and the hour truncates with an ellipsis
-                 *    rather than losing its first half.
-                 */
-                const shared = lanes > 1
-                /* AF4.1 — pendant le geste, le bloc est dessiné à sa nouvelle
-                   place et porte la nouvelle heure : ce que l'on relâche est
-                   ce que l'on voit, pas une prédiction. */
+                const reflection = event.reflection === true
                 const dragging = drag?.id === event.id
-                const movable = Boolean(onMove) && (canMove?.(event) ?? false)
+                const movable = !reflection && Boolean(onMove) && (canMove?.(event) ?? false)
+                const resizable = !reflection && Boolean(onResize) && (canResize?.(event) ?? false)
                 const shownFrom = dragging ? drag.startMinute : from
+                const shownTo = dragging ? drag.endMinute : to
+                const boxHeight = ((shownTo - shownFrom) / 60) * hour
+                /* ⚠️ A SHORT BLOCK PUTS THE HOUR AND THE NAME ON ONE LINE. */
+                const compact = boxHeight < 34
+                /* ⚠️ A BLOCK THAT SHARES ITS COLUMN IS NARROW: the name wins. */
+                const shared = lanes > 1 && !dragging
+                const title = event.title || (event.kind === 'tour' ? t('agenda.tourUntitled') : '')
+                const hourLabel = dragging ? `${clockLabel(shownFrom)}–${clockLabel(shownTo)}` : formatTime(event.at, locale)
                 return (
-                  <button
-                    key={event.id}
-                    type="button"
-                    data-testid="agenda-event"
-                    data-event-id={event.id}
-                    data-lane={lane}
-                    data-lanes={lanes}
-                    data-movable={movable ? '1' : undefined}
-                    data-dragging={dragging ? '1' : undefined}
-                    onPointerDown={(e) => onBlockPointerDown(e, event, from)}
-                    onPointerMove={onBlockPointerMove}
-                    onPointerUp={() => endGesture(true)}
-                    onPointerCancel={() => endGesture(false)}
-                    onLostPointerCapture={() => endGesture(false)}
-                    data-selected={selected ? '1' : undefined}
-                    /* AB3.3 — one press looks, a second opens. The title says
-                       so on the block that is already selected, which is the
-                       only moment the second press means anything. */
-                    title={selected ? t('agenda.openEvent') : event.title}
-                    onClick={() => onSelect(event)}
-                    /* ⚠️ `flex flex-col justify-start`, AND IT IS NOT DECORATION.
-                       A `<button>` CENTRES its content box vertically by the
-                       user-agent stylesheet, so a six-hour guard drew its own
-                       time and title in the middle of the block — measured on
-                       the deployed capture as a label sitting at 09:00 on an
-                       event that starts at 05:11, which reads as the wrong
-                       time on a calendar whose whole subject is the hour. */
-                    className={`absolute flex flex-col justify-start overflow-hidden rounded-field
-                                border-s-[3px] py-0.5 text-start ${compact ? 'px-1' : 'px-1.5'}
-                                transition-all duration-fast ease-out hover:brightness-95 ${tone.block} ${
-                                  selected ? 'ring-2 ring-accent z-10' : ''
-                                }`}
-                    style={{
-                      top: `${(from / 60) * hour}px`,
-                      height: `${Math.max(18, ((to - from) / 60) * hour - 2)}px`,
-                      insetInlineStart: dragging
-                        ? `calc(${(drag.dayIndex - dayIndex) * 100}% + 2px)`
-                        : `calc(${(lane / lanes) * 100}% + 2px)`,
-                      width: dragging ? 'calc(100% - 4px)' : `calc(${100 / lanes}% - 4px)`,
-                      transform: dragging ? `translateY(${drag.dy}px)` : undefined,
-                      zIndex: dragging ? 30 : undefined,
-                      opacity: dragging ? 0.92 : undefined,
-                      boxShadow: dragging ? '0 10px 30px rgb(0 0 0 / 0.25)' : undefined,
-                    }}
-                  >
-                    {/**
-                      * ⚠️ ON A SHARED COLUMN THE HOUR IS THE REDUNDANT DATUM,
-                      *    AND THAT IS THE WHOLE ARGUMENT FOR DROPPING IT.
-                      *
-                      * Measured on the deployed twin, iPad landscape: a 76 px
-                      * column split in two leaves 36 px, and « 06:40 » was
-                      * clipped at its inline end to « 40 » — not a time, and
-                      * worse than nothing. Truncating it instead gives « 0… »,
-                      * which is honest and says nothing at all.
-                      *
-                      * ★ The block's TOP EDGE already states the hour: that is
-                      *   what an hour ladder is for, and it is why this view
-                      *   was rebuilt (AB4). What the ladder cannot say is WHOSE
-                      *   appointment it is. So when there is room for one line,
-                      *   the line is the name.
-                      */}
-                    {shared ? (
-                      <span className="flex min-w-0 items-center gap-1">
-                        {event.position === null && (
-                          <Icon
-                            name="alert"
-                            size={9}
-                            className="shrink-0"
-                            aria-label={t('agenda.missingPosition')}
-                          />
-                        )}
-                        <span
-                          className={`min-w-0 truncate text-micro font-semibold ${
-                            event.missionStatus === 'cancelled' ? 'line-through opacity-80' : ''
-                          }`}
-                        >
-                          {event.title}
-                        </span>
-                      </span>
-                    ) : (
-                      <>
+                  <div key={event.id} className="contents">
+                    {/* ★★ BE — pendant le geste, l'ancienne place reste en pointillé. */}
+                    {dragging && (
+                      <div
+                        aria-hidden
+                        data-testid="agenda-ghost"
+                        className="pointer-events-none absolute rounded-field border-2 border-dashed border-content-muted/60"
+                        style={{
+                          top: `${(from / 60) * hour}px`,
+                          height: `${Math.max(18, ((to - from) / 60) * hour - 2)}px`,
+                          insetInlineStart: `calc(${(lane / lanes) * 100}% + 2px)`,
+                          width: `calc(${100 / lanes}% - 4px)`,
+                        }}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      data-testid="agenda-event"
+                      data-event-id={event.id}
+                      data-kind={event.kind}
+                      data-reflection={reflection ? '1' : undefined}
+                      data-lane={lane}
+                      data-lanes={lanes}
+                      data-movable={movable ? '1' : undefined}
+                      data-resizable={resizable ? '1' : undefined}
+                      data-dragging={dragging ? '1' : undefined}
+                      data-selected={selected ? '1' : undefined}
+                      onPointerDown={(e) => begin(e, event, from, to, 'move')}
+                      onPointerMove={onPointerMove}
+                      onPointerUp={() => finish(true)}
+                      onPointerCancel={() => finish(false)}
+                      onContextMenu={(e) => {
+                        if (movable) e.preventDefault()
+                      }}
+                      title={reflection ? t('agenda.reflectionHint') : title}
+                      onClick={() => {
+                        if (suppressClick.current) return
+                        onSelect(event)
+                      }}
+                      /* ⚠️ `flex flex-col justify-start`: a `<button>` centres its
+                         content by default, which drew a guard's hour mid-block.
+                         ★★ BE — `select-none` + `[-webkit-touch-callout:none]` :
+                         l'appui long d'iOS ne sélectionne plus le texte. */
+                      className={`agenda-block absolute flex select-none flex-col justify-start overflow-hidden rounded-field
+                                  border-s-[3px] py-0.5 text-start [-webkit-touch-callout:none] ${compact ? 'px-1' : 'px-1.5'}
+                                  ${dragging ? '' : 'transition-all duration-fast ease-out'} hover:brightness-95 ${tone.block} ${
+                                    reflection ? 'agenda-reflection' : ''
+                                  } ${selected ? 'z-10 ring-2 ring-accent' : ''} ${movable ? 'cursor-grab' : ''}`}
+                      style={{
+                        top: `${(shownFrom / 60) * hour}px`,
+                        height: `${Math.max(movable ? 24 : 18, boxHeight - 2)}px`,
+                        insetInlineStart: dragging
+                          ? `calc(${(drag.dayIndex - dayIndex) * 100}% + 2px)`
+                          : `calc(${(lane / lanes) * 100}% + 2px)`,
+                        width: dragging ? 'calc(100% - 4px)' : `calc(${100 / lanes}% - 4px)`,
+                        zIndex: dragging ? 30 : undefined,
+                        opacity: dragging ? 0.95 : undefined,
+                        boxShadow: dragging ? '0 12px 32px rgb(0 0 0 / 0.28)' : undefined,
+                        transform: dragging && drag.mode === 'move' ? 'scale(1.02)' : undefined,
+                      }}
+                    >
+                      {shared ? (
                         <span className="flex min-w-0 items-center gap-1">
-                          {!compact && <Icon name={tone.icon} size={9} className="shrink-0" />}
-                          <span className="ltr-nums shrink-0 text-micro font-semibold">
-                            {dragging ? clockLabel(shownFrom) : formatTime(event.at, locale)}
-                          </span>
-                          {event.position === null && (
-                            <Icon
-                              name="alert"
-                              size={9}
-                              className="shrink-0"
-                              aria-label={t('agenda.missingPosition')}
-                            />
+                          {reflection && <Icon name="external" size={9} className="shrink-0" />}
+                          {event.position === null && !reflection && (
+                            <Icon name="alert" size={9} className="shrink-0" aria-label={t('agenda.missingPosition')} />
                           )}
-                          {compact && (
-                            <span
-                              className={`min-w-0 truncate text-micro font-medium ${
-                                event.missionStatus === 'cancelled'
-                                  ? 'line-through opacity-80'
-                                  : ''
-                              }`}
-                            >
-                              {event.title}
+                          <span className={`min-w-0 truncate text-micro font-semibold ${event.missionStatus === 'cancelled' ? 'line-through opacity-80' : ''}`}>
+                            {title}
+                          </span>
+                        </span>
+                      ) : (
+                        <>
+                          <span className="flex min-w-0 items-center gap-1">
+                            {!compact && <Icon name={tone.icon} size={9} className="shrink-0" />}
+                            <span className={`ltr-nums shrink-0 text-micro font-semibold ${dragging ? 'rounded bg-surface-raised/80 px-0.5' : ''}`} data-testid={dragging ? 'agenda-drag-time' : undefined}>
+                              {hourLabel}
+                            </span>
+                            {reflection && <Icon name="external" size={9} className="shrink-0" aria-label={t('agenda.reflection')} />}
+                            {event.position === null && !reflection && (
+                              <Icon name="alert" size={9} className="shrink-0" aria-label={t('agenda.missingPosition')} />
+                            )}
+                            {compact && (
+                              <span className={`min-w-0 truncate text-micro font-medium ${event.missionStatus === 'cancelled' ? 'line-through opacity-80' : ''}`}>
+                                {title}
+                              </span>
+                            )}
+                          </span>
+                          {!compact && (
+                            <span className={`block truncate text-micro font-medium ${event.missionStatus === 'cancelled' ? 'line-through opacity-80' : ''}`}>
+                              {title}
                             </span>
                           )}
+                        </>
+                      )}
+                      {/* ★★ BE — le bord inférieur : il allonge la durée. */}
+                      {resizable && !shared && (
+                        <span
+                          data-testid="agenda-resize"
+                          aria-hidden
+                          onPointerDown={(e) => begin(e, event, from, to, 'resize')}
+                          className="absolute inset-x-0 bottom-0 flex cursor-ns-resize touch-none items-end justify-center"
+                          style={{ height: `${RESIZE_PX}px` }}
+                        >
+                          <span className="mb-0.5 h-1 w-6 rounded-pill bg-current opacity-40" />
                         </span>
-                        {!compact && (
-                          <span
-                            className={`block truncate text-micro font-medium ${
-                              event.missionStatus === 'cancelled' ? 'line-through opacity-80' : ''
-                            }`}
-                          >
-                            {event.title}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </button>
+                      )}
+                    </button>
+                  </div>
                 )
               })}
 
               {/**
-                * ★★ AB4.3 — THE CURRENT HOUR, ON TODAY'S COLUMN ONLY.
-                *
-                * A line drawn across all seven columns says "it is now" about
-                * Tuesday as well as about today, which is exactly the reading
-                * a calendar must not allow. It is `pointer-events-none` so it
-                * never takes a tap that was aimed at the band under it.
+                * ★★ AB4.3 — THE CURRENT HOUR, ON TODAY'S COLUMN ONLY, in the
+                * accent (AL4.1: orange means urgency on this screen).
                 */}
               {isToday && (
                 <span
@@ -637,22 +742,6 @@ export function AgendaGrid({
                   className="pointer-events-none absolute inset-x-0 z-10 flex items-center"
                   style={{ top: `${(nowMinute / 60) * hour}px` }}
                 >
-                  {/**
-                    * ⚠️★★ AL4.1 (2026-09-16) — LA LIGNE DE « MAINTENANT » N'EST
-                    *    PLUS ORANGE, ET C'EST UNE DETTE D'A29 SOLDÉE.
-                    *
-                    * L'orange de cette application a UN sens — l'urgence — et
-                    * sur CET écran il en avait déjà un autre : `AgendaScreen`
-                    * l'emploie pour « retour non confirmé », une vraie alerte.
-                    * Deux sens pour une couleur sur un même écran, c'est
-                    * exactement la dilution qu'A29 existe pour empêcher : le
-                    * rouge-orange qu'on cherche du regard n'est plus un
-                    * signal, c'est un décor.
-                    *
-                    * ★ L'accent dit la même chose que la pastille « aujourd'hui »
-                    *   en tête de la même grille, qui est déjà `bg-accent` : où
-                    *   nous en sommes. Une heure qui passe n'est pas une alerte.
-                    */}
                   <span className="h-0.5 w-full bg-accent" />
                   <span className="absolute -start-1 h-2.5 w-2.5 rounded-pill bg-accent shadow-card" />
                 </span>

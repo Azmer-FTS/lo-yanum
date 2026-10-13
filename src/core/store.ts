@@ -23,6 +23,10 @@ import { settleNearestLocality } from './nearestLocality'
 import { normalizeBranches } from './branches'
 import type { FarmBranch } from './branches'
 import type { Landmark } from './landmarks'
+import type { MemoBank, MemoLine, MemoSection } from './memo'
+import { isMemoLineValid, nextMemoRank } from './memo'
+import type { Task, TaskLink, TaskList } from './tasks'
+import { isListNameValid, normalizeDueOn, normalizeDueTime, reorderedRanks, topRank } from './tasks'
 import type {
   Agreement,
   AnchorPoint,
@@ -1480,6 +1484,9 @@ export interface GeneralMeetingDraft {
   remindMinutes?: number | null
   /** AS6.6 — la piste dont il est né. */
   leadId?: string | null
+  /** ★★ BE — l'institution ou la ferme à laquelle il est relié (un seul lien). */
+  institutionId?: string | null
+  farmId?: string | null
 }
 
 export function createGeneralMeeting(draft: GeneralMeetingDraft): GeneralMeeting {
@@ -2727,4 +2734,207 @@ export function deleteLandmark(id: string): void {
   if (!data.landmarks.some((l) => l.id === id)) return
   data.landmarks = data.landmarks.filter((l) => l.id !== id)
   commit()
+}
+
+// ===========================================================================
+// ★★ BE (2026-10-13) — LES TÂCHES, LEURS LISTES, L'AIDE-MÉMOIRE.
+// ===========================================================================
+//
+// Voir `./tasks` et `./memo` pour les règles. Ici, seulement les écritures :
+// chacune passe par `commit` (donc par le verrou « voir comme », la poussée
+// vers la base et `undoable`), comme toutes les autres.
+
+export function createTaskList(name: string): TaskList | null {
+  if (!isListNameValid(name)) return null
+  const stamp = iso(now())
+  const rank = data.taskLists.length === 0 ? 0 : Math.max(...data.taskLists.map((l) => l.rank)) + 1
+  const list: TaskList = { id: nextId('tl'), name: name.trim(), rank, createdAt: stamp, updatedAt: stamp }
+  data.taskLists = [...data.taskLists, list]
+  commit()
+  return list
+}
+
+export function renameTaskList(id: string, name: string): boolean {
+  const index = data.taskLists.findIndex((l) => l.id === id)
+  if (index === -1 || !isListNameValid(name)) return false
+  data.taskLists[index] = { ...data.taskLists[index], name: name.trim(), updatedAt: iso(now()) }
+  data.taskLists = [...data.taskLists]
+  commit()
+  return true
+}
+
+/**
+ * Supprimer une liste EMPORTE ses tâches (archives comprises) : une tâche
+ * appartient toujours à une liste. Le geste passe par `undoable` dans
+ * l'interface, avec une confirmation qui dit combien de tâches partent.
+ */
+export function deleteTaskList(id: string): boolean {
+  if (!data.taskLists.some((l) => l.id === id)) return false
+  data.tasks = data.tasks.filter((t) => t.listId !== id)
+  data.taskLists = data.taskLists.filter((l) => l.id !== id)
+  commit()
+  return true
+}
+
+export interface TaskDraft {
+  listId: string
+  title: string
+  note?: string
+  link?: TaskLink | null
+  dueOn?: string | null
+  dueTime?: string | null
+}
+
+/** Une tâche neuve se pose EN TÊTE de sa liste (voir `./tasks`). */
+export function createTask(draft: TaskDraft): Task | null {
+  if (!data.taskLists.some((l) => l.id === draft.listId)) return null
+  const stamp = iso(now())
+  const dueOn = normalizeDueOn(draft.dueOn)
+  const task: Task = {
+    id: nextId('task'),
+    listId: draft.listId,
+    title: draft.title.trim(),
+    note: (draft.note ?? '').trim(),
+    rank: topRank(data.tasks, draft.listId),
+    link: draft.link ?? null,
+    dueOn,
+    dueTime: dueOn ? normalizeDueTime(draft.dueTime) : null,
+    doneAt: null,
+    archivedAt: null,
+    createdAt: stamp,
+    updatedAt: stamp,
+  }
+  data.tasks = [...data.tasks, task]
+  commit()
+  return task
+}
+
+/**
+ * Modifier une tâche. Changer de liste la pose EN TÊTE de la liste d'arrivée
+ * (le PO la voit là où il l'a envoyée).
+ */
+export function updateTask(id: string, patch: Partial<Omit<TaskDraft, 'listId'>> & { listId?: string }): boolean {
+  const index = data.tasks.findIndex((t) => t.id === id)
+  if (index === -1) return false
+  const prev = data.tasks[index]
+  const listId = patch.listId && data.taskLists.some((l) => l.id === patch.listId) ? patch.listId : prev.listId
+  const dueOn = patch.dueOn !== undefined ? normalizeDueOn(patch.dueOn) : prev.dueOn
+  const next: Task = {
+    ...prev,
+    ...(patch.title !== undefined ? { title: patch.title.trim() } : {}),
+    ...(patch.note !== undefined ? { note: patch.note.trim() } : {}),
+    ...(patch.link !== undefined ? { link: patch.link } : {}),
+    listId,
+    rank: listId !== prev.listId ? topRank(data.tasks, listId) : prev.rank,
+    dueOn,
+    dueTime: dueOn ? (patch.dueTime !== undefined ? normalizeDueTime(patch.dueTime) : prev.dueTime) : null,
+    updatedAt: iso(now()),
+  }
+  if (JSON.stringify(next) === JSON.stringify({ ...prev, updatedAt: next.updatedAt })) return false
+  data.tasks[index] = next
+  data.tasks = [...data.tasks]
+  commit()
+  return true
+}
+
+/** Cocher (faite) ou décocher (de nouveau à faire, À SA PLACE). */
+export function setTaskDone(id: string, done: boolean): boolean {
+  const index = data.tasks.findIndex((t) => t.id === id)
+  if (index === -1) return false
+  const prev = data.tasks[index]
+  if ((prev.doneAt !== null) === done && (done || prev.archivedAt === null)) return false
+  const stamp = iso(now())
+  data.tasks[index] = { ...prev, doneAt: done ? stamp : null, archivedAt: done ? prev.archivedAt : null, updatedAt: stamp }
+  data.tasks = [...data.tasks]
+  commit()
+  return true
+}
+
+/** Archiver (sans la faire) ou sortir des archives. */
+export function setTaskArchived(id: string, archived: boolean): boolean {
+  const index = data.tasks.findIndex((t) => t.id === id)
+  if (index === -1) return false
+  const prev = data.tasks[index]
+  const stamp = iso(now())
+  const next: Task = archived
+    ? { ...prev, archivedAt: prev.archivedAt ?? stamp, updatedAt: stamp }
+    : { ...prev, archivedAt: null, doneAt: null, updatedAt: stamp }
+  if (next.archivedAt === prev.archivedAt && next.doneAt === prev.doneAt) return false
+  data.tasks[index] = next
+  data.tasks = [...data.tasks]
+  commit()
+  return true
+}
+
+export function deleteTask(id: string): boolean {
+  if (!data.tasks.some((t) => t.id === id)) return false
+  data.tasks = data.tasks.filter((t) => t.id !== id)
+  commit()
+  return true
+}
+
+/**
+ * ★ L'ORDRE DU PO : la tâche va à `toIndex` parmi les tâches à faire de
+ * `listId` (sa liste, ou une autre). Tous les rangs de la liste d'arrivée sont
+ * réécrits 0…n-1, une seule écriture.
+ */
+export function moveTask(id: string, toIndex: number, listId?: string): boolean {
+  const target = listId && data.taskLists.some((l) => l.id === listId) ? listId : undefined
+  const ranks = reorderedRanks(data.tasks, id, toIndex, target)
+  if (!ranks) return false
+  const stamp = iso(now())
+  const moving = data.tasks.find((t) => t.id === id) as Task
+  const dest = target ?? moving.listId
+  data.tasks = data.tasks.map((t) => {
+    const rank = ranks.get(t.id)
+    if (rank === undefined) return t
+    if (t.id === id) return { ...t, listId: dest, rank, updatedAt: stamp }
+    return t.rank === rank ? t : { ...t, rank, updatedAt: stamp }
+  })
+  commit()
+  return true
+}
+
+export interface MemoDraft {
+  bank: MemoBank
+  section: MemoSection
+  he: string
+  fr: string
+}
+
+export function createMemoLine(draft: MemoDraft): MemoLine | null {
+  if (!isMemoLineValid(draft)) return null
+  const stamp = iso(now())
+  const line: MemoLine = {
+    id: nextId('memo'),
+    bank: draft.bank,
+    section: draft.section,
+    he: draft.he.trim(),
+    fr: draft.fr.trim(),
+    rank: nextMemoRank(data.memoLines, draft.bank, draft.section),
+    createdAt: stamp,
+    updatedAt: stamp,
+  }
+  data.memoLines = [...data.memoLines, line]
+  commit()
+  return line
+}
+
+export function updateMemoLine(id: string, patch: Partial<Pick<MemoLine, 'he' | 'fr'>>): boolean {
+  const index = data.memoLines.findIndex((l) => l.id === id)
+  if (index === -1) return false
+  const prev = data.memoLines[index]
+  const next = { ...prev, ...(patch.he !== undefined ? { he: patch.he.trim() } : {}), ...(patch.fr !== undefined ? { fr: patch.fr.trim() } : {}) }
+  if (!isMemoLineValid(next) || (next.he === prev.he && next.fr === prev.fr)) return false
+  data.memoLines[index] = { ...next, updatedAt: iso(now()) }
+  data.memoLines = [...data.memoLines]
+  commit()
+  return true
+}
+
+export function deleteMemoLine(id: string): boolean {
+  if (!data.memoLines.some((l) => l.id === id)) return false
+  data.memoLines = data.memoLines.filter((l) => l.id !== id)
+  commit()
+  return true
 }

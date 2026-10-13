@@ -6,6 +6,10 @@ import { normalizeBranches } from '@core/branches'
 import type { Institution, InstitutionContact, PhoneLabel } from '@core/institutions'
 import { INSTITUTION_CONTACT_ROLES, foldLegacyOffice, settleInstitution } from '@core/institutions'
 import type { Landmark } from '@core/landmarks'
+import type { MemoLine } from '@core/memo'
+import { MEMO_BANK_KEYS } from '@core/memo'
+import type { Task, TaskLinkKind, TaskList } from '@core/tasks'
+import { TASK_LINK_KINDS } from '@core/tasks'
 import type {
   Agreement,
   AnchorPoint,
@@ -1121,6 +1125,9 @@ const generalMeetingMapping: Mapping<GeneralMeeting> = {
           remind_minutes: m.remindMinutes ?? null,
           /* AS6.6 — la piste dont ce rendez-vous est né. */
           lead_id: m.leadId ?? null,
+          /* ★★ BE — l'institution ou la ferme reliée (liens souples). */
+          institution_id: m.institutionId ?? null,
+          entity_id: m.farmId ?? null,
         },
       ],
     },
@@ -1143,6 +1150,9 @@ const generalMeetingMapping: Mapping<GeneralMeeting> = {
         : undefined,
     remindMinutes: typeof p.remind_minutes === 'number' ? p.remind_minutes : undefined,
     leadId: typeof p.lead_id === 'string' ? p.lead_id : undefined,
+    /* ★★ BE — absents quand la colonne est vide : l'aller-retour reste une identité. */
+    ...(typeof p.institution_id === 'string' ? { institutionId: p.institution_id } : {}),
+    ...(typeof p.entity_id === 'string' ? { farmId: p.entity_id } : {}),
   }),
 }
 
@@ -1338,6 +1348,89 @@ const landmarkMapping: Mapping<Landmark> = {
   }),
 }
 
+// ===========================================================================
+// ★★ BE (2026-10-13) — les listes de tâches, les tâches, l'aide-mémoire.
+// Trois tables, aucune fille. Les liens d'une tâche sont SOUPLES (`link_kind`
+// + `link_id`, sans clé étrangère) : une fiche supprimée ne supprime pas la
+// tâche du PO.
+// ===========================================================================
+
+const taskListMapping: Mapping<TaskList> = {
+  table: 'task_lists',
+  children: [],
+  toRows: (l) => [{ table: 'task_lists', rows: [{ id: l.id, name: l.name, rank: l.rank, created_at: l.createdAt, updated_at: l.updatedAt }] }],
+  fromRows: (p): TaskList => ({ id: str(p.id), name: str(p.name), rank: num(p.rank), createdAt: ts(p.created_at), updatedAt: ts(p.updated_at) }),
+}
+
+const LINK_KINDS = new Set<string>(TASK_LINK_KINDS)
+
+const taskMapping: Mapping<Task> = {
+  table: 'tasks',
+  children: [],
+  toRows: (t) => [
+    {
+      table: 'tasks',
+      rows: [
+        {
+          id: t.id,
+          list_id: t.listId,
+          title: t.title,
+          note: t.note,
+          rank: t.rank,
+          link_kind: t.link?.kind ?? null,
+          link_id: t.link?.id ?? null,
+          due_on: t.dueOn,
+          due_time: t.dueTime,
+          done_at: t.doneAt,
+          archived_at: t.archivedAt,
+          created_at: t.createdAt,
+          updated_at: t.updatedAt,
+        },
+      ],
+    },
+  ],
+  fromRows: (p): Task => ({
+    id: str(p.id),
+    listId: str(p.list_id),
+    title: str(p.title),
+    note: str(p.note),
+    rank: num(p.rank),
+    link:
+      LINK_KINDS.has(str(p.link_kind)) && str(p.link_id) !== ''
+        ? { kind: str(p.link_kind) as TaskLinkKind, id: str(p.link_id) }
+        : null,
+    dueOn: typeof p.due_on === 'string' && p.due_on !== '' ? day(p.due_on) : null,
+    dueTime: typeof p.due_time === 'string' && p.due_time !== '' ? p.due_time.slice(0, 5) : null,
+    doneAt: tsOrNull(p.done_at),
+    archivedAt: tsOrNull(p.archived_at),
+    createdAt: ts(p.created_at),
+    updatedAt: ts(p.updated_at),
+  }),
+}
+
+const MEMO_BANKS_SET = new Set<string>(MEMO_BANK_KEYS)
+
+const memoLineMapping: Mapping<MemoLine> = {
+  table: 'memo_lines',
+  children: [],
+  toRows: (l) => [
+    {
+      table: 'memo_lines',
+      rows: [{ id: l.id, bank: l.bank, section: l.section, he: l.he, fr: l.fr, rank: l.rank, created_at: l.createdAt, updated_at: l.updatedAt }],
+    },
+  ],
+  fromRows: (p): MemoLine => ({
+    id: str(p.id),
+    bank: (MEMO_BANKS_SET.has(str(p.bank)) ? str(p.bank) : 'institutions') as MemoLine['bank'],
+    section: (str(p.section) === 'say' ? 'say' : 'questions') as MemoLine['section'],
+    he: str(p.he),
+    fr: str(p.fr),
+    rank: num(p.rank),
+    createdAt: ts(p.created_at),
+    updatedAt: ts(p.updated_at),
+  }),
+}
+
 function planOf(raw: unknown): TourPlan | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
   const r = raw as Record<string, unknown>
@@ -1413,6 +1506,9 @@ export const MAPPINGS: { [K in Collection]: Mapping<StoreData[K][number]> } = {
   tours: tourMapping,
   institutions: institutionMapping,
   landmarks: landmarkMapping,
+  taskLists: taskListMapping,
+  tasks: taskMapping,
+  memoLines: memoLineMapping,
 }
 
 /** Every table an aggregate of this collection lives in, parent first. */

@@ -1473,6 +1473,16 @@ export interface GeneralMeeting {
   id: string
   /** ★ AS6.6 — la piste dont ce rendez-vous est né, s'il y en a une. */
   leadId?: string | null
+  /**
+   * ★★ BE (2026-10-13) — LE LIEN VERS UNE FICHE : une institution ou une ferme
+   * (la piste a déjà `leadId`). UN SEUL des trois à la fois — l'interface le
+   * garantit, `meetingLink` le lit. C'est ce qui rend l'agenda utile : de la
+   * fiche on voit le rendez-vous, du rendez-vous on ouvre la fiche.
+   * ⚠️ Lien SOUPLE (aucune clé étrangère) : une fiche supprimée laisse un
+   *    rendez-vous intact, dont le lien ne mène plus nulle part.
+   */
+  institutionId?: string | null
+  farmId?: string | null
   title: string
   at: string
   endAt: string
@@ -1568,7 +1578,19 @@ export interface Lead {
 }
 
 /** D4 — one entry in the agenda, whatever kind of thing it is. */
-export type AgendaEventKind = 'mission' | 'visit' | 'meeting'
+/**
+ * ★★ BE (2026-10-13) — `tour` : un itinéraire enregistré, REFLÉTÉ dans l'agenda.
+ * Deux sortes d'entrées : les RENDEZ-VOUS du PO (`meeting`, `visit`), qu'il
+ * modifie dans l'agenda ; les REFLETS (`mission`, `tour`), qui viennent
+ * d'ailleurs, suivent leur source et s'ouvrent sur son écran.
+ */
+export type AgendaEventKind = 'mission' | 'visit' | 'meeting' | 'tour'
+
+/** Le lien d'un rendez-vous vers une fiche. */
+export interface AgendaLink {
+  kind: 'institution' | 'farm' | 'lead'
+  id: string
+}
 
 export interface AgendaEvent {
   id: string
@@ -1609,6 +1631,16 @@ export interface AgendaEvent {
    *               place a meeting's whereabouts is ever written down.
    */
   position: LatLng | null
+  /**
+   * ★★ BE — UN REFLET : il vient d'ailleurs (une garde, un itinéraire), occupe
+   * son créneau, ne se déplace ni ne se modifie depuis l'agenda ; l'ouvrir
+   * mène à son écran d'origine (`href`). Absent = rendez-vous du PO.
+   */
+  reflection?: boolean
+  /** ★★ BE — les étapes d'un reflet d'itinéraire, dans l'ordre, avec leur heure. */
+  steps?: Array<{ label: string; at: string | null }>
+  /** ★★ BE — la fiche à laquelle ce rendez-vous est relié. */
+  link?: AgendaLink | null
 }
 
 /** G14d — the driver roster's KPI-filters, computed at the accessor. */

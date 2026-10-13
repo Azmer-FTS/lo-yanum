@@ -10,6 +10,7 @@ import { FARM_VISITS, GENERAL_MEETINGS } from './mock/visits'
 import { FARM_ZONES } from './mock/zones'
 import { LEADS } from './mock/leads'
 import { INSTITUTIONS } from './mock/institutions'
+import { MEMO_LINES, TASKS, TASK_LISTS } from './mock/tasks'
 
 /**
  * P2.6 — THE DEMO IMPLEMENTATION OF THE STORE INTERFACE.
@@ -60,6 +61,9 @@ export const DEMO_BACKEND: StoreBackend = {
       incidents: clone(INCIDENTS),
       farmVisits: clone(FARM_VISITS),
       tours: clone(TOURS),
+      taskLists: clone(TASK_LISTS),
+      tasks: clone(TASKS),
+      memoLines: clone(MEMO_LINES),
       session: { role: 'coordinator', entityId: null },
     }),
 }
@@ -88,6 +92,9 @@ export const emptyData = (): StoreData => ({
   incidents: [],
   farmVisits: [],
   tours: [],
+  taskLists: [],
+  tasks: [],
+  memoLines: [],
   session: { role: 'coordinator', entityId: null },
 })
 

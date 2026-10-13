@@ -2,6 +2,10 @@ import { DAY, addDays, fromDayKey, isTonight, localDayKey, now } from './clock'
 import type { Lead } from './types'
 import type { Institution } from './institutions'
 import type { Landmark } from './landmarks'
+import type { MemoLine } from './memo'
+import { meetingLink, tourReflection } from './reflections'
+import type { Task, TaskList } from './tasks'
+import { dueTasksByDay } from './tasks'
 import type { AssociationInput } from './association'
 import { effectiveAreas, guardedDunamsOf, weightedDunams } from './fields'
 import { isTestId } from './testData'
@@ -714,6 +718,8 @@ export function getAgendaEvents(from: Date, to: Date): AgendaEvent[] {
       // group physically stands, and it is what the missions map already
       // plots (C1.4).
       position: view.anchorPoint.position,
+      /* ★★ BE — une garde est un REFLET : elle se modifie dans son écran. */
+      reflection: true,
     })
   }
 
@@ -755,6 +761,8 @@ export function getAgendaEvents(from: Date, to: Date): AgendaEvent[] {
       position:
         meeting.position ??
         (meeting.location.trim() === '' ? null : positionOfLocality(meeting.location)),
+      /* ★★ BE — la fiche à laquelle il est relié. */
+      link: meetingLink(meeting),
     })
   }
 
@@ -786,12 +794,62 @@ export function getAgendaEvents(from: Date, to: Date): AgendaEvent[] {
       // AA4.4 — a farm parked at HOME_BASE by a sheet with no coordinates is
       // not a farm anybody can drive to, so the visit is מיקום חסר too.
       position: farm.positionMissing ? null : farm.position,
+      link: { kind: 'farm', id: farm.id },
     })
   }
 
   return events.sort(
     (a, b) => new Date(a.at).getTime() - new Date(b.at).getTime(),
   )
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ BE (2026-10-13) — L'AGENDA DU PO : SES RENDEZ-VOUS ET TOUS LES REFLETS.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * `getAgendaEvents` (gardes, visites, rendez-vous) PLUS le reflet de chaque
+ * itinéraire enregistré dont le départ tombe dans la période. Les itinéraires
+ * ne sont PAS dans `getAgendaEvents` : le planificateur lit celui-ci pour ses
+ * heures fixes, et un itinéraire y deviendrait un mur devant ses propres
+ * étapes. Les reflets sont calculés à la lecture (voir `./reflections`) :
+ * rien n'est recopié.
+ */
+export function getCalendarEvents(from: Date, to: Date): AgendaEvent[] {
+  const base = getAgendaEvents(from, to)
+  if (getSession().role !== 'coordinator') return base
+  const fromMs = from.getTime()
+  const toMs = to.getTime()
+  const farms = getVisibleFarms()
+  const out = [...base]
+  for (const tour of _raw().tours) {
+    const at = Date.parse(tour.departAt)
+    if (!Number.isFinite(at) || at < fromMs || at >= toMs) continue
+    const day = fromDayKey(localDayKey(new Date(at)))
+    const dayEvents = getAgendaEvents(day, addDays(day, 1))
+    out.push(tourReflection(tour, farms, dayEvents))
+  }
+  return out.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+}
+
+/** ★★ BE — les listes de tâches du PO, dans son ordre : coordinateur seulement. */
+export function getTaskLists(): TaskList[] {
+  return getSession().role === 'coordinator' ? [..._raw().taskLists].sort((a, b) => a.rank - b.rank || a.id.localeCompare(b.id)) : []
+}
+
+/** ★★ BE — toutes les tâches (archives comprises) : coordinateur seulement. */
+export function getTasks(): Task[] {
+  return getSession().role === 'coordinator' ? _raw().tasks : []
+}
+
+/** ★★ BE — les tâches à faire dont l'échéance tombe dans la période, par jour. */
+export function getDueTasks(from: Date, to: Date): Map<string, Task[]> {
+  return dueTasksByDay(getTasks(), localDayKey(from), localDayKey(to))
+}
+
+/** ★★ BE — l'aide-mémoire : coordinateur seulement. */
+export function getMemoLines(): MemoLine[] {
+  return getSession().role === 'coordinator' ? _raw().memoLines : []
 }
 
 /** The next few entries from now on — the dashboard's compact agenda strip. */

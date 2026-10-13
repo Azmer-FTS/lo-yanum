@@ -47,6 +47,7 @@ import { sortFamily } from '../../components/ListFilters'
 import type { CompactFilters } from '../../components/ListFilters'
 import { BranchChips, BranchEditor, branchText } from '../../farm/FarmBranches'
 import { useCoreValue } from '../../hooks/useCore'
+import { LinkedAgenda } from '../../tasks/LinkedAgenda'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -970,6 +971,8 @@ export function LeadEditScreen() {
               <LeadDetails lead={lead} />
             </div>
           </FormSection>
+          {/* ★★ BE — les rendez-vous et les tâches de ce contact, et les deux gestes. */}
+          <LinkedAgenda kind="lead" id={lead.id} />
         </>
       )}
     </PlaceFormPage>

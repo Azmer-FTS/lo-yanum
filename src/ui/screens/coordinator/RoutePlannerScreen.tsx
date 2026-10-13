@@ -71,6 +71,7 @@ const EVENT_ICON: Record<AgendaEvent['kind'], IconName> = {
   mission: 'shield',
   visit: 'pin',
   meeting: 'users',
+  tour: 'route',
 }
 
 /** `HH:MM` (local wall clock) of an ISO instant — the time input's language. */

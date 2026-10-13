@@ -75,6 +75,7 @@ import type { MapMode } from '../../components/mapMode'
 import { ThreatPanel } from '../../components/ThreatPanel'
 import { AgreementActions } from '../../components/AgreementViewer'
 import { AssociationFormModal } from '../../components/AssociationFormModal'
+import { LinkedAgenda } from '../../tasks/LinkedAgenda'
 /* ★★ AG3.1 · AG5 · AG6.3 — le lien permanent de l'agriculteur, l'échéance de
    son accord, et les documents qu'il a fournis ou non. */
 import { FarmerLinkBlock, FarmerLinkModal } from '../../components/FarmerLinkBlock'
@@ -1370,6 +1371,9 @@ export function FarmDetailScreen() {
               justSigned={justSigned}
               onOpenForm={() => setFormOpen(true)}
             />
+
+            {/* ★★ BE — les rendez-vous et les tâches de cette ferme, et les deux gestes. */}
+            <LinkedAgenda kind="farm" id={farm.id} />
 
             {/* G14c — the numbers first, big; the long reading below.
                 ★ AM3 — sous l'intitulé du bloc d'édition qui les saisit. */}

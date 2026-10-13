@@ -118,6 +118,18 @@ import {
   createLandmark,
   updateLandmark,
   deleteLandmark,
+  createTaskList,
+  renameTaskList,
+  deleteTaskList,
+  createTask,
+  updateTask,
+  setTaskDone,
+  setTaskArchived,
+  deleteTask,
+  moveTask,
+  createMemoLine,
+  updateMemoLine,
+  deleteMemoLine,
 } from '../src/core/store'
 import { planPortalImport } from '../src/core/portalImport'
 import { planInstitutionImport } from '../src/core/institutions'
@@ -1422,6 +1434,50 @@ section("6bis — AH3 · le jeu d'essai produit de vraies écritures")
   check('updateLandmark : la ligne est réécrite', hit(renamed, 'landmarks', lmId)?.json?.includes('שער חדש') === true)
   const lmGone = drive('deleteLandmark', () => deleteLandmark(lmId))
   check('deleteLandmark : la ligne disparaît', lmGone.some((c) => c.collection === 'landmarks' && c.id === lmId && c.json == null))
+}
+
+{
+  // ★★ BE — les listes, les tâches, l'aide-mémoire.
+  let listId = ''
+  let otherId = ''
+  const l1 = drive('createTaskList', () => {
+    listId = createTaskList('רשימת בדיקה')!.id
+  })
+  check('createTaskList : une ligne `task_lists`', hit(l1, 'taskLists', listId)?.json != null)
+  otherId = createTaskList('רשימה שנייה')!.id
+  const l2 = drive('renameTaskList', () => renameTaskList(listId, 'שם חדש'))
+  check('renameTaskList : la ligne est réécrite', hit(l2, 'taskLists', listId)?.json?.includes('שם חדש') === true)
+  let a = ''
+  let b = ''
+  const t1 = drive('createTask', () => {
+    a = createTask({ listId, title: 'משימה א' })!.id
+  })
+  check('createTask : une ligne `tasks`', hit(t1, 'tasks', a)?.json != null)
+  b = createTask({ listId, title: 'משימה ב' })!.id
+  const t2 = drive('updateTask', () => updateTask(a, { note: 'הערה' }))
+  check('updateTask : la ligne est réécrite', hit(t2, 'tasks', a)?.json?.includes('הערה') === true)
+  const t3 = drive('setTaskDone', () => setTaskDone(a, true))
+  check('setTaskDone : `done_at` posé', JSON.parse(hit(t3, 'tasks', a)?.json ?? '{}').doneAt != null)
+  const t4 = drive('setTaskArchived', () => setTaskArchived(b, true))
+  check('setTaskArchived : `archived_at` posé', JSON.parse(hit(t4, 'tasks', b)?.json ?? '{}').archivedAt != null)
+  setTaskArchived(b, false)
+  setTaskDone(a, false)
+  const t5 = drive('moveTask', () => moveTask(a, 0, otherId))
+  check('moveTask : la tâche change de liste (une écriture)', JSON.parse(hit(t5, 'tasks', a)?.json ?? '{}').listId === otherId)
+  const t6 = drive('deleteTask', () => deleteTask(b))
+  check('deleteTask : la ligne disparaît', t6.some((c) => c.collection === 'tasks' && c.id === b && c.json == null))
+  const l3 = drive('deleteTaskList', () => deleteTaskList(otherId))
+  check('deleteTaskList : la liste ET ses tâches disparaissent', l3.some((c) => c.collection === 'taskLists' && c.id === otherId && c.json == null) && l3.some((c) => c.collection === 'tasks' && c.id === a && c.json == null))
+  deleteTaskList(listId)
+  let m = ''
+  const m1 = drive('createMemoLine', () => {
+    m = createMemoLine({ bank: 'farmers', section: 'questions', he: 'שאלה לבדיקה', fr: 'question de test' })!.id
+  })
+  check('createMemoLine : une ligne `memo_lines`', hit(m1, 'memoLines', m)?.json != null)
+  const m2 = drive('updateMemoLine', () => updateMemoLine(m, { he: 'שאלה אחרת' }))
+  check('updateMemoLine : la ligne est réécrite', hit(m2, 'memoLines', m)?.json?.includes('שאלה אחרת') === true)
+  const m3 = drive('deleteMemoLine', () => deleteMemoLine(m))
+  check('deleteMemoLine : la ligne disparaît', m3.some((c) => c.collection === 'memoLines' && c.id === m && c.json == null))
 }
 
 // --- 7. Coverage: no mutation added without a line in this file ------------

@@ -35,6 +35,7 @@ import type { MapMarker } from '../../components/MapView'
 import { OverflowMenu } from '../../components/OverflowMenu'
 import { FilterPill, FilterRow, FormWaiting, ListTop } from '../../components/primitives'
 import { FormActions, FormSection } from '../../components/fields'
+import { LinkedAgenda } from '../../tasks/LinkedAgenda'
 import { ENGAGEMENT_TOKEN, institutionPin, useContextMarkers } from '../../components/placeMarkers'
 import { AddressPointField, NoPositionButton, PlaceFormPage, PlaceOnArrival } from '../../components/formPage'
 import { useHydrated } from '../../hooks/useDataState'
@@ -559,6 +560,8 @@ export function InstitutionEditScreen() {
               <InstitutionPeople inst={inst} />
             </div>
           </FormSection>
+          {/* ★★ BE — les rendez-vous et les tâches de ce lieu, et les deux gestes. */}
+          <LinkedAgenda kind="institution" id={inst.id} />
         </>
       )}
     </PlaceFormPage>

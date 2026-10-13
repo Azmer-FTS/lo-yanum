@@ -1,100 +1,96 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { formRoutes } from './FormPages'
 
 import {
   MONTH_GRID_DAYS,
-  updateFarmVisit,
-  updateGeneralMeeting,
-  getFarmVisit,
-  getGeneralMeeting,
   addDays,
   addMonths,
+  agendaCanMove,
+  agendaCanResize,
   atTimeOn,
   formatDate,
   formatMonthYear,
   formatTime,
   formatWeekdayShort,
-  getAgendaEvents,
+  getCalendarEvents,
+  getDueTasks,
+  getFarmVisit,
+  getGeneralMeeting,
   isSameDay,
   localDayKey,
   monthGridStart,
+  movedSpan,
   now,
+  resizedEnd,
   startOfWeek,
+  updateFarmVisit,
+  updateGeneralMeeting,
 } from '@core/index'
-import type { AgendaEvent, LatLng, MissionStatus } from '@core/index'
+import type { AgendaEvent, AgendaLink, LatLng, MissionStatus, Task } from '@core/index'
 
 import { AgendaGrid } from '../../components/agendaGrid'
-import type { AgendaTone } from '../../components/agendaGrid'
-import { TitleWithInfo } from '../../components/InfoTip'
+import type { AgendaDraft, AgendaTone } from '../../components/agendaGrid'
 import { Icon } from '../../components/Icon'
-import { MapPanel, withInteraction } from '../../components/MapPanel'
+import { TitleWithInfo } from '../../components/InfoTip'
+import { MapSplit } from '../../components/MapSplit'
+import { MapView } from '../../components/MapView'
 import type { MapMarker } from '../../components/MapView'
-import { readToken } from '../../components/badges'
+import { withInteraction } from '../../components/MapPanel'
 import { MyDayBlock } from '../../components/MyDayBlock'
+import { DockedSheet } from '../../components/Sheet'
+import { readToken } from '../../components/badges'
+import { runUndoable } from '../../components/UndoToast'
 import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
+import { useViewportTier } from '../../hooks/useNarrow'
+import { EventPanel, findCalendarEvent, whenLabel } from '../../agenda/EventPanel'
+import type { EventRef, PanelState } from '../../agenda/EventPanel'
+import { TasksPane } from '../../tasks/TasksPane'
 
 /**
- * D4 · ★★ AB3 · AB4 (2026-09-08) — THE AGENDA, WITH ITS GEOGRAPHY AND ITS
- * HOURS.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ BE (2026-10-13) — LA PAGE יומן : L'AGENDA ET LES TÂCHES.
+ * ═══════════════════════════════════════════════════════════════════════════
  *
- * Two things the product owner asked for in the same breath:
+ * Deux volets, et AUCUNE disposition nouvelle : c'est `MapSplit`, le partage
+ * de toutes les listes à carte. L'AGENDA est à la place de la carte (à gauche),
+ * les TÂCHES à la place de la liste (à droite), dans les mêmes proportions ;
+ * au téléphone, un seul à la fois, et la même pilule pour passer de l'un à
+ * l'autre (ses icônes : la liste à cocher, le calendrier). Le dernier volet
+ * ouvert est retenu (`lo-yanum:map-mode:agenda`).
  *
- *   « j'aimerais voir où se situent géographiquement mes rendez-vous. »   AB3
- *   « la vue semaine est juste, mais mal exploitée en surface. »          AB4
+ * ★ OUVRIR UN ÉVÉNEMENT NE QUITTE PAS LE CALENDRIER (`EventPanel`) : sur
+ *   tablette et ordinateur, le panneau prend la colonne des tâches le temps
+ *   qu'il est ouvert (le partage est imposé, le mode retenu n'est pas touché) ;
+ *   au téléphone, la feuille ancrée de BC, à deux crans.
+ * ★ TOUCHER UN CRÉNEAU VIDE crée un rendez-vous au quart d'heure touché et
+ *   ouvre le même panneau, le curseur dans le titre.
+ * ★ RÈGLE 0 : la grille montre `getCalendarEvents` — les rendez-vous du PO ET
+ *   les reflets (gardes, itinéraires), plus les tâches datées en haut du jour.
  *
- * ★ AB3.1 — IT IS THE SAME GABARIT AS EVERY OTHER SCREEN, NOT A NEW ONE. Map
- *   physically left, content right, the three remembered modes, the draggable
- *   seam, and « סנכרון פריסה » applying here as everywhere — all of that comes
- *   from `MapPanel` / `MapSplit` and none of it is written again here. The
- *   agenda was the last major coordinator screen outside the gabarit.
- *
- * ★ AB3.2 — THE MARKERS ARE NUMBERED PER DAY, IN THE ORDER OF THAT DAY. « en
- *   marqueurs numérotés dans l'ordre chronologique de la journée » — so the
- *   first appointment of Tuesday is 1 and so is the first of Wednesday. A
- *   single running number over a whole week would be a number nobody could
- *   read off the calendar, and the number's job is to say « you drive to 1,
- *   then to 2 » on the day being looked at.
- *
- * ★ AB3.3 — AND THE LINK IS BOTH WAYS. Pressing a day's heading frames the map
- *   on that day's points (`frameTo`, W6's own box-fitting); pressing a marker
- *   selects the appointment, which rings it in the grid and scrolls it into
- *   view; pressing an appointment selects it too, which is what emphasises its
- *   marker. One `selectedId`, read by both sides.
- *
- * ⚠️ AB3.4 — AN APPOINTMENT WITH NO KNOWN PLACE IS IN THE LIST AND NOT ON THE
- *    MAP. `AgendaEvent.position` is `null` for it (see the note on the type),
- *    and the panel carries a « מיקום חסר » block naming each one. The
- *    alternative — a pin on the farm's council, or on HOME_BASE — is a claim
- *    about where somebody has to drive, made up by the app.
+ * ⚠️ AB3 (« où se situent mes rendez-vous ») N'EST PAS PERDU : la carte des
+ *    rendez-vous de la période se montre d'un toucher (« מפה ») AU-DESSUS de
+ *    la grille, numérotée dans l'ordre de chaque jour comme avant ; toucher
+ *    une épingle ouvre le rendez-vous.
  */
 
 type View = 'day' | 'week' | 'month'
 
 /** Event colour, resolved from the same status tokens the rest of the app uses. */
 const MISSION_TONE: Record<MissionStatus, string> = {
-  // G4 — a guard still being staffed reads amber wherever it appears.
   recruiting: 'border-s-status-warn bg-status-warn/10 text-status-warn-ink',
   planned: 'border-s-status-info bg-status-info/10 text-status-info-ink',
-  in_progress:
-    'border-s-status-success bg-status-success/10 text-status-success-ink',
+  in_progress: 'border-s-status-success bg-status-success/10 text-status-success-ink',
   completed: 'border-s-content-muted bg-content-muted/10 text-content-muted',
-  // F4 — critical state: a group that has not confirmed it got home.
-  return_not_confirmed:
-    'border-s-critical bg-critical/10 text-status-danger-ink',
-  // G9bis — struck through and muted, but still ON the calendar: the night
-  // was planned, and an empty slot would say it never was.
+  return_not_confirmed: 'border-s-critical bg-critical/10 text-status-danger-ink',
   cancelled: 'border-s-content-muted bg-content-muted/10 text-content-muted',
 }
 
-const VISIT_TONE =
-  'border-s-status-violet bg-status-violet/10 text-status-violet-ink'
-
-/** G6 — the third event type, in the magenta the palette already audits. */
-const MEETING_TONE =
-  'border-s-farm-visited bg-farm-visited/10 text-farm-visited-ink'
+const VISIT_TONE = 'border-s-status-violet bg-status-violet/10 text-status-violet-ink'
+const MEETING_TONE = 'border-s-farm-visited bg-farm-visited/10 text-farm-visited-ink'
+/** ★★ BE — l'itinéraire : la couleur de l'accent, hachuré comme tout reflet. */
+const TOUR_TONE = 'border-s-accent bg-accent/10 text-accent-ink'
 
 const DOT_TONE: Record<MissionStatus, string> = {
   recruiting: 'bg-status-warn',
@@ -105,7 +101,6 @@ const DOT_TONE: Record<MissionStatus, string> = {
   cancelled: 'bg-content-muted',
 }
 
-/** The marker's colour, from the same tokens the block is tinted with. */
 const MISSION_TOKEN: Record<MissionStatus, string> = {
   recruiting: '--status-warn',
   planned: '--status-info',
@@ -115,24 +110,13 @@ const MISSION_TOKEN: Record<MissionStatus, string> = {
   cancelled: '--text-muted',
 }
 
-const KIND_ICON = {
-  mission: 'shield',
-  visit: 'pin',
-  meeting: 'users',
-} as const
+const KIND_ICON = { mission: 'shield', visit: 'pin', meeting: 'users', tour: 'route' } as const
 
 function toneOf(event: AgendaEvent): AgendaTone {
+  if (event.kind === 'tour') return { block: TOUR_TONE, dot: 'bg-accent', icon: 'route' }
   return {
-    block: event.missionStatus
-      ? MISSION_TONE[event.missionStatus]
-      : event.kind === 'meeting'
-        ? MEETING_TONE
-        : VISIT_TONE,
-    dot: event.missionStatus
-      ? DOT_TONE[event.missionStatus]
-      : event.kind === 'meeting'
-        ? 'bg-farm-visited'
-        : 'bg-status-violet',
+    block: event.missionStatus ? MISSION_TONE[event.missionStatus] : event.kind === 'meeting' ? MEETING_TONE : VISIT_TONE,
+    dot: event.missionStatus ? DOT_TONE[event.missionStatus] : event.kind === 'meeting' ? 'bg-farm-visited' : 'bg-status-violet',
     icon: KIND_ICON[event.kind],
   }
 }
@@ -142,138 +126,254 @@ function markerColour(event: AgendaEvent): string {
   return readToken(event.kind === 'meeting' ? '--farm-visited' : '--status-violet')
 }
 
-/** G6.2 — the three things a coordinator can put on an empty slot. */
-function SlotMenu({
-  day,
-  onClose,
-  onPlanVisit,
-  onPlanMeeting,
-}: {
-  day: Date
-  onClose: () => void
-  onPlanVisit: (day: Date) => void
-  onPlanMeeting: (day: Date) => void
-}) {
+/** Le rendez-vous et le reflet : qui se déplace, qui s'allonge (la règle est dans le cœur). */
+const canMove = agendaCanMove
+const canResize = agendaCanResize
+
+/** G6.2 — what else can be put on a day: a guard, a visit, a route. */
+function DayMenu({ day, onClose }: { day: Date; onClose: () => void }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-
-  const row = (icon: 'shield' | 'pin' | 'users' | 'route', tint: string, label: string, act: () => void) => (
+  const row = (icon: 'shield' | 'pin' | 'route', tint: string, label: string, to: string) => (
     <button
       type="button"
-      className="flex min-h-11 w-full items-center gap-2 rounded-field px-2 py-1.5 text-start text-micro
-                 font-medium text-content-primary hover:bg-surface-high"
+      className="flex min-h-11 w-full items-center gap-2 rounded-field px-2 py-1.5 text-start text-micro font-medium text-content-primary hover:bg-surface-high"
       onClick={() => {
         onClose()
-        act()
+        navigate(to)
       }}
     >
       <Icon name={icon} size={13} className={tint} />
       {label}
     </button>
   )
-
   return (
-    <div
-      data-testid="agenda-slot-menu"
-      className="absolute inset-x-1 top-full z-30 mt-1 animate-fade-in rounded-field border
-                 border-edge-strong bg-surface-overlay p-1 shadow-lift"
-    >
-      {row('shield', 'text-accent-ink', t('missions.create'), () =>
-        navigate(`/coordinator/missions/new?date=${localDayKey(day)}`),
-      )}
-      {row('pin', 'text-status-violet-ink', t('agenda.planVisit'), () => onPlanVisit(day))}
-      {row('users', 'text-farm-visited-ink', t('meeting.new'), () => onPlanMeeting(day))}
-      {/* G7bis.4 / A50 — from any day, in any view, straight to that day's
-          route: the planner opens parameterised on the date. */}
-      {row('route', 'text-accent-ink', t('myday.createRoute'), () =>
-        navigate(`/coordinator/route?date=${localDayKey(day)}`),
-      )}
+    <div data-testid="agenda-slot-menu" className="absolute end-0 top-full z-30 mt-1 w-60 animate-fade-in rounded-field border border-edge-strong bg-surface-overlay p-1 shadow-lift">
+      {row('shield', 'text-accent-ink', t('missions.create'), `/coordinator/missions/new?date=${localDayKey(day)}`)}
+      {row('pin', 'text-status-violet-ink', t('agenda.planVisit'), `/coordinator/agenda/visit/new?at=${encodeURIComponent(atTimeOn(day, 10, 0))}`)}
+      {row('route', 'text-accent-ink', t('myday.createRoute'), `/coordinator/route?date=${localDayKey(day)}`)}
     </div>
   )
 }
 
+/** `kind:id` d'une adresse (`?event=meeting:abc`). */
+function parseRef(raw: string | null): EventRef | null {
+  if (!raw) return null
+  const at = raw.indexOf(':')
+  if (at <= 0) return null
+  const kind = raw.slice(0, at)
+  const id = raw.slice(at + 1)
+  if (kind !== 'meeting' && kind !== 'visit' && kind !== 'mission' && kind !== 'tour') return null
+  return { kind, id: kind === 'tour' && !id.startsWith('tour:') ? `tour:${id}` : id }
+}
+
+function parseLink(raw: string | null): AgendaLink | null {
+  if (!raw) return null
+  const at = raw.indexOf(':')
+  const kind = raw.slice(0, at)
+  const id = raw.slice(at + 1)
+  return (kind === 'institution' || kind === 'farm' || kind === 'lead') && id ? { kind, id } : null
+}
+
 export function AgendaScreen() {
   const { t } = useTranslation()
-  const locale = useLocale()
+  const tier = useViewportTier()
+  const phone = tier === 'phone'
+  const [panel, setPanel] = useState<PanelState | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(true)
+  const [focusTask, setFocusTask] = useState<string | null>(null)
+  const [composeTask, setComposeTask] = useState(false)
+  const [forceMode, setForceMode] = useState<'hidden' | 'full' | null>(null)
+  const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
 
+  const openPanel = useCallback((next: PanelState | null) => {
+    setPanel(next)
+    setSheetOpen(true)
+  }, [])
+
   /**
-   * ★ AB4.4 — « Sur téléphone, la vue jour est le défaut ; la semaine reste
-   *   accessible. » Seven columns on 402 px are seven 50 px columns, which is
-   *   a grid nobody can read a title in. The initial value only — switching to
-   *   the week on a phone is one tap and is never fought by a re-render.
+   * ★★ AB1.1 · BE — LES ADRESSES : `?new=meeting` (le « + »), `?new=task`,
+   * `?event=meeting:<id>` (une fiche, une tâche reliée), `?link=institution:<id>`
+   * (un rendez-vous déjà relié). Lues une fois, puis effacées.
    */
-  const [view, setView] = useState<View>(() =>
-    typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches
-      ? 'day'
-      : 'week',
+  useEffect(() => {
+    const asked = params.get('new')
+    const ref = parseRef(params.get('event'))
+    if (!asked && !ref) return
+    if (asked === 'visit') {
+      navigate(`/coordinator/agenda/visit/new?at=${encodeURIComponent(atTimeOn(now(), 10, 0))}`, { replace: true, state: { returnTo: '/coordinator/agenda' } })
+      return
+    }
+    if (asked === 'meeting') {
+      const at = params.get('at') ?? atTimeOn(now(), 10, 0)
+      openPanel({ mode: 'new', at, endAt: new Date(Date.parse(at) + 3_600_000).toISOString(), link: parseLink(params.get('link')) })
+      if (phone) setForceMode('full')
+    } else if (asked === 'task') {
+      setForceMode(phone ? 'hidden' : null)
+      setComposeTask(true)
+    } else if (ref) {
+      openPanel({ mode: 'view', ref })
+      if (phone) setForceMode('full')
+    }
+    setParams({}, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params])
+
+  const desktopPanel = !!panel && !phone
+
+  /* ★ Au téléphone, la feuille ouverte écarte le « + » et la pilule (comme la
+     feuille des filtres, AA1.2) : montés au-dessus d'elle, ils se posaient sur
+     le titre de l'agenda. */
+  useEffect(() => {
+    if (!(panel && phone)) return
+    const root = document.documentElement
+    root.setAttribute('data-filters-open', '')
+    return () => root.removeAttribute('data-filters-open')
+  }, [panel, phone])
+
+  return (
+    <>
+      <MapSplit
+        screenKey="agenda"
+        ariaLabel={t('agenda.title')}
+        list
+        bar={false}
+        keepPanelScroll
+        contentClassName="flex min-h-0 flex-col"
+        modeOverride={desktopPanel ? 'split' : (forceMode ?? undefined)}
+        onModeChange={() => {
+          setForceMode(null)
+          if (!phone) setPanel(null)
+        }}
+        pillLabels={{ hidden: t('tasks.title'), split: t('agenda.both'), full: t('agenda.title') }}
+        pillIcons={{ hidden: 'checklist', split: 'columns', full: 'calendar' }}
+        map={(state) => (
+          <AgendaPane
+            stretch={state.mode === 'full'}
+            phone={phone}
+            panel={panel}
+            onPanel={openPanel}
+            onOpenTask={(task) => {
+              setFocusTask(task.id)
+              if (phone) setForceMode('hidden')
+              else setPanel(null)
+            }}
+          />
+        )}
+      >
+        {() =>
+          desktopPanel && panel ? (
+            <div className="pb-6" data-testid="agenda-side-panel">
+              <EventPanel
+                panel={panel}
+                onPanel={openPanel}
+                onClose={() => setPanel(null)}
+                onOpenTask={(id) => {
+                  setPanel(null)
+                  setFocusTask(id)
+                }}
+              />
+            </div>
+          ) : (
+            <TasksPane
+              focusTask={focusTask}
+              onFocusHandled={() => setFocusTask(null)}
+              compose={composeTask}
+              onComposeHandled={() => setComposeTask(false)}
+            />
+          )
+        }
+      </MapSplit>
+
+      {/* Au téléphone : la feuille ancrée, à deux crans, le calendrier au-dessus. */}
+      {panel && phone && (
+        <DockedSheet
+          expanded={sheetOpen}
+          onExpandedChange={setSheetOpen}
+          maxHeight={0.56}
+          testId="agenda-sheet"
+          header={<SheetHeader panel={panel} onClose={() => setPanel(null)} />}
+        >
+          <EventPanel
+            bare
+            panel={panel}
+            onPanel={openPanel}
+            onClose={() => setPanel(null)}
+            onOpenTask={(id) => {
+              setPanel(null)
+              setFocusTask(id)
+              setForceMode('hidden')
+            }}
+          />
+        </DockedSheet>
+      )}
+    </>
   )
+}
+
+/** La barre de la feuille réduite : le titre et l'heure, et la croix. */
+function SheetHeader({ panel, onClose }: { panel: PanelState; onClose: () => void }) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const event = useCoreValue(() => (panel.mode === 'new' ? null : findCalendarEvent(panel.ref)))
+  const title = panel.mode === 'new' ? t('agenda.newEvent') : (event?.title || (event?.kind === 'tour' ? t('agenda.tourUntitled') : ''))
+  const when = panel.mode === 'new' ? whenLabel(panel.at, panel.endAt, locale) : event ? whenLabel(event.at, event.endAt, locale) : ''
+  return (
+    <div className="flex items-center gap-2" data-testid="agenda-sheet-bar">
+      <div className="min-w-0 flex-1">
+        <p dir="auto" className="truncate text-caption font-semibold text-content-primary">{title}</p>
+        <p className="numeric truncate text-micro text-content-muted">{when}</p>
+      </div>
+      <button type="button" onClick={onClose} aria-label={t('common.close')} data-testid="agenda-sheet-close" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-field text-content-secondary hover:bg-surface-high">
+        <Icon name="close" size={18} />
+      </button>
+    </div>
+  )
+}
+
+function AgendaPane({
+  stretch,
+  phone,
+  panel,
+  onPanel,
+  onOpenTask,
+}: {
+  stretch: boolean
+  phone: boolean
+  panel: PanelState | null
+  onPanel: (next: PanelState | null) => void
+  onOpenTask: (task: Task) => void
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+
+  /* AB4.4 — au téléphone, le jour par défaut ; la semaine ailleurs. */
+  const [view, setView] = useState<View>(() => (typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches ? 'day' : 'week'))
   const [anchor, setAnchor] = useState(() => now())
-  const [openSlot, setOpenSlot] = useState<string | null>(null)
-  /* ★ AN11 — rendez-vous et événements s'ouvrent en PAGE (FormPages.tsx). */
-  const setVisitAt = (at: string | null) => at && navigate(formRoutes.newVisit({ at }))
-  const setEditVisitId = (id: string | null) => id && navigate(formRoutes.editVisit(id))
-  const setMeetingAt = (at: string | null) => at && navigate(formRoutes.newMeeting({ at }))
-  const setEditMeetingId = (id: string | null) => id && navigate(formRoutes.editMeeting(id))
-  /** AB3.3 — the one selection both the grid and the map read. */
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [dayMenu, setDayMenu] = useState(false)
+  const [mapOn, setMapOn] = useState(false)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [focusedDay, setFocusedDay] = useState<string | null>(null)
-  const [unplacedOpen, setUnplacedOpen] = useState(false)
   const [frame, setFrame] = useState<{ points: LatLng[]; key: string } | null>(null)
-
   const today = now()
-
-  /**
-   * ★★ AB1.1 — `?new=visit` / `?new=meeting`, THE SEAM THE "+" ASKS THROUGH.
-   *
-   * Both appointments open a modal this screen owns, so the shell's floating
-   * button cannot call their setter. It navigates here with a parameter, this
-   * reads it once and clears it — the same seam the two rosters have used
-   * since W4, and it works from the dashboard as well as from here.
-   */
-  const [params] = useSearchParams()
-  const asked = params.get('new')
-  useEffect(() => {
-    if (asked !== 'visit' && asked !== 'meeting') return
-    const at = atTimeOn(now(), 10, 0)
-    /* ★ AN11 — REMPLACE l'adresse `?new=…` par la page : effacer le paramètre
-       après coup réécrivait l'agenda par-dessus la page ouverte. */
-    navigate(asked === 'visit' ? formRoutes.newVisit({ at }) : formRoutes.newMeeting({ at }), {
-      replace: true,
-      state: { returnTo: '/coordinator/agenda' },
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [asked])
 
   const { days, from, to } = useMemo(() => {
     if (view === 'day') {
-      const start = new Date(
-        anchor.getFullYear(),
-        anchor.getMonth(),
-        anchor.getDate(),
-      )
+      const start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate())
       return { days: [start], from: start, to: addDays(start, 1) }
     }
     if (view === 'week') {
       const start = startOfWeek(anchor)
-      return {
-        days: Array.from({ length: 7 }, (_, i) => addDays(start, i)),
-        from: start,
-        to: addDays(start, 7),
-      }
+      return { days: Array.from({ length: 7 }, (_, i) => addDays(start, i)), from: start, to: addDays(start, 7) }
     }
     const start = monthGridStart(anchor)
-    return {
-      days: Array.from({ length: MONTH_GRID_DAYS }, (_, i) => addDays(start, i)),
-      from: start,
-      to: addDays(start, MONTH_GRID_DAYS),
-    }
+    return { days: Array.from({ length: MONTH_GRID_DAYS }, (_, i) => addDays(start, i)), from: start, to: addDays(start, MONTH_GRID_DAYS) }
   }, [view, anchor])
 
-  const events = useCoreValue(() => getAgendaEvents(from, to))
+  const events = useCoreValue(() => getCalendarEvents(from, to))
+  const due = useCoreValue(() => getDueTasks(from, to))
 
-  /** Events bucketed by local day key — one pass instead of one filter per cell. */
   const byDay = useMemo(() => {
     const map = new Map<string, AgendaEvent[]>()
     for (const event of events) {
@@ -282,17 +382,11 @@ export function AgendaScreen() {
       if (list) list.push(event)
       else map.set(key, [event])
     }
-    for (const list of map.values()) {
-      list.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
-    }
+    for (const list of map.values()) list.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
     return map
   }, [events])
 
-  /**
-   * ★★ AB3.2 — THE NUMBER IS THE RANK WITHIN ITS OWN DAY.
-   * `byDay` is already in start order, so the index in that list IS the
-   * chronological rank, and it is computed once for the whole period.
-   */
+  /** AB3.2 — the marker number is the rank within its own day. */
   const rankOf = useMemo(() => {
     const rank = new Map<string, number>()
     for (const list of byDay.values()) {
@@ -306,44 +400,11 @@ export function AgendaScreen() {
     return rank
   }, [byDay])
 
-  /** AB3.4 — the entries the map cannot show, named rather than dropped. */
-  const unplaced = useMemo(
-    () => events.filter((e) => e.position === null),
-    [events],
-  )
+  const selectedId = panel && panel.mode !== 'new' ? panel.ref.id : null
 
-  const openEvent = (event: AgendaEvent) => {
-    if (event.kind === 'visit') setEditVisitId(event.id)
-    else if (event.kind === 'meeting') setEditMeetingId(event.id)
-    else navigate(event.href)
-  }
-
-  /**
-   * ★★ AB3.3 — THE FIRST PRESS SELECTS, THE SECOND OPENS.
-   *
-   * « Cliquer un marqueur met en évidence le rendez-vous dans la liste. La
-   *   liaison marche dans les deux sens. »
-   *
-   * ⚠️ AND SELECTING CANNOT ALSO OPEN, WHICH IS WHAT THE FIRST ATTEMPT DID.
-   *    A guard's `href` is another screen: pressing its block selected it and
-   *    then navigated away, so the emphasis on its marker existed for one
-   *    frame on a page nobody was looking at any more — measured by `bun run
-   *    abpass` as « nothing selected ». The link the product owner asked for
-   *    only exists if the gesture that makes it STAYS on the agenda.
-   *
-   * ★ SO IT IS THE CALENDAR GESTURE, which is also what he already knows from
-   *   every other calendar: one press to look at it — the block is ringed, its
-   *   marker grows, the map is framed on it — and a second press on the SAME
-   *   block to open the record. Nothing else on the screen changed meaning:
-   *   the day heading still frames the day, the hour bands still create.
-   */
-  const selectAndOpen = (event: AgendaEvent) => {
-    if (selectedId === event.id) {
-      openEvent(event)
-      return
-    }
-    setSelectedId(event.id)
-    if (event.position) setFrame({ points: [event.position], key: `${event.id}-${Date.now()}` })
+  const open = (event: AgendaEvent): void => {
+    onPanel({ mode: 'view', ref: { kind: event.kind, id: event.id } })
+    if (event.position && mapOn) setFrame({ points: [event.position], key: `${event.id}-${Date.now()}` })
   }
 
   const markers: MapMarker[] = useMemo(
@@ -362,523 +423,254 @@ export function AgendaScreen() {
               badge: String(rankOf.get(event.id) ?? ''),
             },
             { hoveredId, selectedId },
-            {
-              onHover: setHoveredId,
-              /* AB3.3, the map → list direction: selecting is all it does. The
-                 grid rings the block and scrolls it into view; opening the
-                 record from here would take the coordinator off the map he is
-                 reading. */
-              onSelect: () => setSelectedId(event.id),
-            },
+            { onHover: setHoveredId, onSelect: () => open(event) },
           ),
         ),
-    [events, rankOf, hoveredId, selectedId, locale],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [events, rankOf, hoveredId, selectedId, locale, mapOn],
   )
 
-  /** AB3.3 — the selected block is scrolled into view in the grid. */
-  const gridBox = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    if (!selectedId) return
-    const el = gridBox.current?.querySelector(
-      `[data-event-id="${CSS.escape(selectedId)}"]`,
-    )
-    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [selectedId, view])
-
-  /** AB3.3 — pressing a day frames the map on that day's own points. */
-  const focusDay = (day: Date) => {
+  const focusDay = (day: Date): void => {
     const key = localDayKey(day)
     setFocusedDay(key)
-    const points = (byDay.get(key) ?? [])
-      .map((e) => e.position)
-      .filter((p): p is LatLng => p !== null)
+    const points = (byDay.get(key) ?? []).map((e) => e.position).filter((p): p is LatLng => p !== null)
     if (points.length > 0) setFrame({ points, key: `${key}-${Date.now()}` })
   }
 
-  const step = (direction: number) =>
-    setAnchor((d) =>
-      view === 'day'
-        ? addDays(d, direction)
-        : view === 'week'
-          ? addDays(d, 7 * direction)
-          : addMonths(d, direction),
-    )
+  const step = (direction: number): void =>
+    setAnchor((d) => (view === 'day' ? addDays(d, direction) : view === 'week' ? addDays(d, 7 * direction) : addMonths(d, direction)))
 
-  /**
-   * G6.4 — moving an event, desktop half: HTML drag-and-drop onto another
-   * day keeps the time of day and changes the date. Guards are deliberately
-   * NOT draggable — a staffed night is a commitment with volunteers and a
-   * driver attached, not a block to slide. The mobile half is the date field
-   * in each event's own modal.
-   */
-  const dropOnDay = (payload: string, day: Date) => {
-    const [kind, id] = payload.split(':')
-    const moveTo = (iso: string) => {
-      const src = new Date(iso)
-      return atTimeOn(day, src.getHours(), src.getMinutes())
-    }
-    if (kind === 'visit') {
-      const visit = getFarmVisit(id)
-      if (visit) updateFarmVisit(id, { ...visit, at: moveTo(visit.at) })
-    } else if (kind === 'meeting') {
-      const meeting = getGeneralMeeting(id)
-      if (meeting) {
-        const delta =
-          new Date(meeting.endAt).getTime() - new Date(meeting.at).getTime()
-        const at = moveTo(meeting.at)
-        updateGeneralMeeting(id, {
-          at,
-          endAt: new Date(new Date(at).getTime() + delta).toISOString(),
-        })
-      }
-    }
+  /** ★★ BE — toucher un créneau vide : un rendez-vous d'une heure, au quart d'heure. */
+  const createAt = (day: Date, minute: number): void => {
+    const at = atTimeOn(day, Math.floor(minute / 60), minute % 60)
+    onPanel({ mode: 'new', at, endAt: new Date(Date.parse(at) + 3_600_000).toISOString(), link: null })
   }
 
-  /**
-   * ═══════════════════════════════════════════════════════════════════════════
-   * ★★ AF4.1 (2026-09-09) — LE MÊME DÉPLACEMENT, MAIS AVEC L'HEURE.
-   * ═══════════════════════════════════════════════════════════════════════════
-   *
-   * `dropOnDay` ci-dessus change la DATE et garde l'heure ; c'est ce que les
-   * cases du mois savent dire. Sur la grille, la hauteur EST l'heure, donc le
-   * geste porte les deux — et c'est ce que le PO demandait : « déplacer un
-   * rendez-vous par glisser-déposer sur la grille ».
-   *
-   * ⚠️ LA DURÉE EST CONSERVÉE, JAMAIS RECALCULÉE. Une visite est un point dans
-   *    le temps ; une réunion a un début et une fin, et faire glisser son
-   *    début sans déplacer sa fin transformerait une heure de rendez-vous en
-   *    trois. Le delta est repris tel quel.
-   *
-   * ⚠️ ET UNE GARDE NE SE DÉPLACE PAS, comme dans le mois et pour la même
-   *    raison (G6.4) : c'est une nuit dotée de volontaires et d'un conducteur,
-   *    pas un bloc qu'on fait glisser. `canMove` le dit à la grille, qui
-   *    n'arme même pas le geste — plutôt que de le laisser s'armer et d'en
-   *    ignorer le résultat, ce qui donnerait un bloc qui bouge sous le doigt
-   *    et revient à sa place.
-   */
-  const moveOnGrid = (event: AgendaEvent, day: Date, startMinute: number) => {
-    const at = atTimeOn(day, Math.floor(startMinute / 60), startMinute % 60)
+  /** AF4.1 · BE — déplacer : la durée est conservée. */
+  const moveOnGrid = (event: AgendaEvent, day: Date, startMinute: number): void => {
     if (event.kind === 'visit') {
       const visit = getFarmVisit(event.id)
-      if (visit) updateFarmVisit(event.id, { ...visit, at })
+      if (!visit) return
+      const { at } = movedSpan(visit.at, visit.at, day, startMinute)
+      runUndoable(t('agenda.movedToast', { when: `${formatWeekdayShort(day, locale)} ${formatTime(at, locale)}` }), () => updateFarmVisit(event.id, { ...visit, at }))
       return
     }
-    if (event.kind === 'meeting') {
-      const meeting = getGeneralMeeting(event.id)
-      if (!meeting) return
-      const delta =
-        new Date(meeting.endAt).getTime() - new Date(meeting.at).getTime()
-      updateGeneralMeeting(event.id, {
-        at,
-        endAt: new Date(new Date(at).getTime() + delta).toISOString(),
-      })
+    const meeting = getGeneralMeeting(event.id)
+    if (!meeting) return
+    const span = movedSpan(meeting.at, meeting.endAt, day, startMinute)
+    runUndoable(t('agenda.movedToast', { when: `${formatWeekdayShort(day, locale)} ${formatTime(span.at, locale)}` }), () => updateGeneralMeeting(event.id, span))
+  }
+
+  /** ★★ BE — allonger par le bord inférieur. */
+  const resizeOnGrid = (event: AgendaEvent, endMinute: number): void => {
+    const meeting = getGeneralMeeting(event.id)
+    if (!meeting) return
+    const endAt = resizedEnd(meeting.at, endMinute)
+    runUndoable(t('agenda.resizedToast', { when: formatTime(endAt, locale) }), () => updateGeneralMeeting(event.id, { endAt }))
+  }
+
+  /** G6.4 — the month cells: drop onto another day keeps the hour. */
+  const dropOnDay = (payload: string, day: Date): void => {
+    const [kind, id] = payload.split(':')
+    if (kind === 'visit') {
+      const visit = getFarmVisit(id)
+      if (visit) moveOnGrid({ kind: 'visit', id } as AgendaEvent, day, new Date(visit.at).getHours() * 60 + new Date(visit.at).getMinutes())
+    } else if (kind === 'meeting') {
+      const meeting = getGeneralMeeting(id)
+      if (meeting) moveOnGrid({ kind: 'meeting', id } as AgendaEvent, day, new Date(meeting.at).getHours() * 60 + new Date(meeting.at).getMinutes())
     }
   }
 
-  const periodLabel =
-    view === 'day'
-      ? formatDate(days[0].toISOString(), locale)
-      : view === 'week'
-        ? `${formatMonthYear(days[0], locale)}`
-        : formatMonthYear(addDays(from, 10), locale)
+  const draft: AgendaDraft | null =
+    panel?.mode === 'new'
+      ? (() => {
+          const s = new Date(panel.at)
+          const e = new Date(panel.endAt)
+          const fromMin = s.getHours() * 60 + s.getMinutes()
+          return { dayKey: localDayKey(s), from: fromMin, to: Math.max(fromMin + 15, isSameDay(s, e) ? e.getHours() * 60 + e.getMinutes() : 24 * 60), label: t('agenda.newEvent') }
+        })()
+      : null
 
-  const controls = (
-    /* Z1 — mb-4 IS `--list-rhythm`, and it is a plain margin rather than
-       `.filters-gap` because this bar is itself a flex row: the class's
-       zero-height guard would become a flex item and buy an extra `gap-2`. */
-    <div
-      data-testid="agenda-controls"
-      /* Z1 · A60 — `mb-4` IS `--list-rhythm`, and this bar is one of the rows
-         `bun run rhythm` measures the gap under. Twelve pixels reads as 11
-         once the browser has snapped the boxes, which is under the floor. */
-      className="mb-4 flex flex-wrap items-center gap-2 rounded-card bg-surface-overlay p-2 shadow-card"
-    >
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          aria-label={t('agenda.previous')}
-          onClick={() => step(-1)}
-          /* ⚠️ AL5 — 44 px : « le jour d'avant » et « le jour d'après » sont
-             les deux gestes les plus fréquents de cet écran, et ils
-             mesuraient 28×28 au pouce. L'encre ne change pas. */
-          className="flex h-11 w-11 items-center justify-center rounded-field text-content-secondary hover:bg-surface-high hover:text-content-primary"
-        >
-          <Icon name="chevron" size={16} className="ltr:-scale-x-100" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setAnchor(now())}
-          className="filter-pill"
-        >
-          {t('common.today')}
-        </button>
-        <button
-          type="button"
-          aria-label={t('agenda.next')}
-          onClick={() => step(1)}
-          /* ⚠️ AL5 — 44 px : « le jour d'avant » et « le jour d'après » sont
-             les deux gestes les plus fréquents de cet écran, et ils
-             mesuraient 28×28 au pouce. L'encre ne change pas. */
-          className="flex h-11 w-11 items-center justify-center rounded-field text-content-secondary hover:bg-surface-high hover:text-content-primary"
-        >
-          <Icon name="chevron" size={16} className="rtl:-scale-x-100" />
-        </button>
-      </div>
-
-      <p className="text-caption font-semibold text-content-primary">{periodLabel}</p>
-
-      {/* AA1.2 — pills under the same thumb as every other row of pills.
-          AB4.2 — three views, and the week is the default everywhere but on a
-          phone (AB4.4). */}
-      <div className="pill-row ms-auto" data-testid="agenda-views">
-        {(['day', 'week', 'month'] as const).map((v) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => setView(v)}
-            aria-pressed={view === v}
-            data-view={v}
-            className={`filter-pill ${view === v ? 'filter-pill-active' : ''}`}
-          >
-            {t(`agenda.${v}`)}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-
-  const legend = (
-    <ul className="flex flex-col gap-1.5">
-      {(
-        [
-          ['planned', 'missionStatus.planned'],
-          ['in_progress', 'missionStatus.in_progress'],
-          ['return_not_confirmed', 'missionStatus.return_not_confirmed'],
-        ] as const
-      ).map(([status, key]) => (
-        <li key={status} className="flex items-center gap-2">
-          <span className={`inline-block h-2.5 w-2.5 rounded-pill ${DOT_TONE[status]}`} />
-          <span className="text-caption text-content-secondary">{t(key)}</span>
-        </li>
-      ))}
-      <li className="flex items-center gap-2">
-        <span className="inline-block h-2.5 w-2.5 rounded-pill bg-status-violet" />
-        <span className="text-caption text-content-secondary">{t('agenda.visit')}</span>
-      </li>
-      <li className="flex items-center gap-2">
-        <span className="inline-block h-2.5 w-2.5 rounded-pill bg-farm-visited" />
-        <span className="text-caption text-content-secondary">{t('meeting.title')}</span>
-      </li>
-    </ul>
-  )
-
-  const monthGrid = (
-    <div className="grid grid-cols-7 gap-1.5">
-      {days.slice(0, 7).map((d) => (
-        <div
-          key={`head-${d.toISOString()}`}
-          className="pb-1 text-center text-micro font-semibold uppercase tracking-wide text-content-muted"
-        >
-          {formatWeekdayShort(d, locale)}
-        </div>
-      ))}
-
-      {days.map((day) => {
-        const key = localDayKey(day)
-        const dayEvents = byDay.get(key) ?? []
-        const isToday = isSameDay(day, today)
-        const outside = day.getMonth() !== addDays(from, 10).getMonth()
-
-        return (
-          <div
-            key={key}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault()
-              dropOnDay(e.dataTransfer.getData('text/plain'), day)
-            }}
-            className={`relative flex min-h-24 flex-col rounded-field border p-1.5 transition-colors duration-fast ${
-              isToday ? 'border-accent bg-accent/5' : 'border-edge-subtle bg-surface-raised'
-            } ${outside ? 'opacity-45' : ''}`}
-          >
-            <div className="mb-1 flex items-center justify-between gap-1">
-              <button
-                type="button"
-                data-testid="agenda-day-head"
-                data-day={key}
-                data-today={isToday ? '1' : undefined}
-                onClick={() => {
-                  focusDay(day)
-                  setAnchor(day)
-                }}
-                className={`numeric rounded-field px-1 text-caption font-bold transition-colors duration-fast hover:bg-surface-high ${
-                  isToday ? 'text-accent-ink' : 'text-content-primary'
-                }`}
-              >
-                {day.getDate()}
-              </button>
-            </div>
-
-            <div className="flex flex-1 flex-col gap-1">
-              {dayEvents.slice(0, 2).map((event) => {
-                const tone = toneOf(event)
-                return (
-                  <button
-                    key={event.id}
-                    type="button"
-                    data-testid="agenda-event"
-                    data-event-id={event.id}
-                    data-selected={selectedId === event.id ? '1' : undefined}
-                    title={selectedId === event.id ? t('agenda.openEvent') : event.title}
-                    onClick={() => selectAndOpen(event)}
-                    className={`w-full rounded-field border-s-[3px] px-1.5 py-1 text-start
-                                transition-all duration-fast ease-out hover:brightness-95 ${tone.block} ${
-                                  selectedId === event.id ? 'ring-2 ring-accent' : ''
-                                }`}
-                  >
-                    <span className="flex items-center gap-1">
-                      <Icon name={tone.icon} size={10} />
-                      <span className="ltr-nums text-micro font-semibold">
-                        {formatTime(event.at, locale)}
-                      </span>
-                    </span>
-                    <span
-                      className={`mt-0.5 block truncate text-micro font-medium ${
-                        event.missionStatus === 'cancelled' ? 'line-through opacity-80' : ''
-                      }`}
-                    >
-                      {event.title}
-                    </span>
-                  </button>
-                )
-              })}
-              {dayEvents.length > 2 && (
-                <span className="numeric text-micro text-content-muted">
-                  +{dayEvents.length - 2}
-                </span>
-              )}
-            </div>
-
-            <button
-              type="button"
-              aria-label={t('agenda.addOn', { date: formatDate(day.toISOString(), locale) })}
-              onClick={() => setOpenSlot(openSlot === key ? null : key)}
-              className={`mt-1 flex items-center justify-center gap-1 rounded-field border border-dashed
-                          border-edge-subtle py-1 text-micro text-content-muted transition-all duration-fast
-                          hover:border-accent hover:text-accent-ink ${
-                            dayEvents.length > 0 ? 'opacity-0 focus:opacity-100 hover:opacity-100' : ''
-                          }`}
-            >
-              <Icon name="plus" size={11} />
-              {dayEvents.length === 0 && t('common.add')}
-            </button>
-
-            {openSlot === key && (
-              <>
-                <button
-                  type="button"
-                  aria-label={t('common.close')}
-                  className="fixed inset-0 z-20 cursor-default"
-                  onClick={() => setOpenSlot(null)}
-                />
-                <SlotMenu
-                  day={day}
-                  onClose={() => setOpenSlot(null)}
-                  onPlanVisit={(d) => setVisitAt(atTimeOn(d, 10, 0))}
-                  onPlanMeeting={(d) => setMeetingAt(atTimeOn(d, 10, 0))}
-                />
-              </>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
+  const periodLabel = view === 'day' ? formatDate(days[0].toISOString(), locale) : view === 'week' ? formatMonthYear(days[0], locale) : formatMonthYear(addDays(from, 10), locale)
+  const unplaced = events.filter((e) => e.position === null && !e.reflection)
 
   return (
-    <>
-      <MapPanel
-        screenKey="agenda"
-        ariaLabel={t('map.agendaMap')}
-        markers={markers}
-        frameTo={frame ? { points: frame.points, key: frame.key, maxZoom: 13 } : undefined}
-        legend={legend}
-        contentWidth="half"
-        /* AB4.1 — see the note on `MapSplit.contentClassName`: this is what
-           makes `flex-1` below mean the column's height rather than the
-           ladder's own. */
-        contentClassName="flex h-full min-h-0 flex-col"
-        /* AB4.1 — and the column keeps its own scrollport when the map is
-           hidden, so "the whole useful height" is a real box. See the note on
-           `MapSplit.keepPanelScroll`; this screen has no window-virtualised
-           table, which is the only reason that rule exists. */
-        keepPanelScroll
-      >
-        {(state) => (
-          /**
-           * ★★ AB4.1 — « la grille occupe toute la hauteur utile ».
-           *
-           * The column is a flex COLUMN with `min-h-0`, and the grid inside it
-           * is `flex-1`. `min-h-0` is the whole of it: a flex item's default
-           * `min-height: auto` refuses to shrink below its content, so without
-           * it the grid is as tall as twenty-four hours at their full height
-           * and the "useful height" is whatever the page happens to be. The
-           * MONTH view is deliberately NOT stretched — it is a grid of days,
-           * not of hours, and stretching six rows of dates buys nothing.
-           */
-          <div
-            ref={gridBox}
-            data-testid="agenda-panel"
-            data-map-mode={state.mode}
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            <header className="mb-3">
-              <TitleWithInfo as="span" info={t('agenda.subtitle')} className="text-title text-content-primary">
-                <h1>{t('agenda.title')}</h1>
-              </TitleWithInfo>
-            </header>
+    <div data-testid="agenda-panel" data-view={view} className="flex h-full min-h-0 flex-col px-3 pb-[var(--float-reserve)] pt-4 md:px-4">
+      <header className="mb-2 flex items-center gap-2">
+        <TitleWithInfo as="span" info={t('agenda.subtitle')} className="text-title text-content-primary">
+          <h1>{t('agenda.title')}</h1>
+        </TitleWithInfo>
+      </header>
 
-            {controls}
+      <div data-testid="agenda-controls" className="mb-3 flex flex-wrap items-center gap-2 rounded-card bg-surface-overlay p-2 shadow-card">
+        <div className="flex items-center gap-1">
+          <button type="button" aria-label={t('agenda.previous')} onClick={() => step(-1)} className="flex h-11 w-11 items-center justify-center rounded-field text-content-secondary hover:bg-surface-high hover:text-content-primary">
+            <Icon name="chevron" size={16} className="ltr:-scale-x-100" />
+          </button>
+          <button type="button" onClick={() => setAnchor(now())} className="filter-pill min-h-11">
+            {t('common.today')}
+          </button>
+          <button type="button" aria-label={t('agenda.next')} onClick={() => step(1)} className="flex h-11 w-11 items-center justify-center rounded-field text-content-secondary hover:bg-surface-high hover:text-content-primary">
+            <Icon name="chevron" size={16} className="rtl:-scale-x-100" />
+          </button>
+        </div>
+        <p className="text-caption font-semibold text-content-primary" data-testid="agenda-period">{periodLabel}</p>
+        <div className="pill-row ms-auto" data-testid="agenda-views">
+          {(['day', 'week', 'month'] as const).map((v) => (
+            <button key={v} type="button" onClick={() => setView(v)} aria-pressed={view === v} data-view={v} className={`filter-pill min-h-11 ${view === v ? 'filter-pill-active' : ''}`}>
+              {t(`agenda.${v}`)}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          aria-pressed={mapOn}
+          data-testid="agenda-map-toggle"
+          onClick={() => setMapOn((v) => !v)}
+          className={`filter-pill min-h-11 ${mapOn ? 'filter-pill-active' : ''}`}
+          title={t('agenda.mapToggle')}
+        >
+          <Icon name="map" size={15} />
+          <span className="sr-only md:not-sr-only">{t('agenda.mapToggle')}</span>
+        </button>
+        <div className="relative">
+          <button type="button" aria-expanded={dayMenu} data-testid="agenda-day-menu" onClick={() => setDayMenu((v) => !v)} className="filter-pill min-h-11" aria-label={t('agenda.addOther')} title={t('agenda.addOther')}>
+            <Icon name="plus" size={15} />
+          </button>
+          {dayMenu && (
+            <>
+              <button type="button" aria-label={t('common.close')} className="fixed inset-0 z-20 cursor-default" onClick={() => setDayMenu(false)} />
+              <DayMenu day={days[0]} onClose={() => setDayMenu(false)} />
+            </>
+          )}
+        </div>
+      </div>
 
-            {/* G9 — the day as it will be DRIVEN, above the day as it is
-                booked. Same block as the dashboard, keyed on the viewed date. */}
-            {view === 'day' && (
-              <div className="mb-3 shrink-0">
-                <MyDayBlock dayKey={localDayKey(days[0])} />
+      {/* ★ AB3 — la carte de la période, d'un toucher, au-dessus de la grille. */}
+      {mapOn && (
+        <div className="relative mb-3 h-[32dvh] min-h-48 shrink-0 overflow-hidden rounded-card shadow-card" data-testid="agenda-map">
+          <MapView
+            ariaLabel={t('map.agendaMap')}
+            className="h-full w-full"
+            markers={markers}
+            frameTo={frame ? { points: frame.points, key: frame.key, maxZoom: 13 } : undefined}
+          />
+          {unplaced.length > 0 && (
+            <p className="absolute inset-x-2 bottom-2 rounded-field bg-surface-overlay/90 px-2 py-1 text-micro text-content-secondary" data-testid="agenda-unplaced" data-count={unplaced.length}>
+              <Icon name="alert" size={12} className="me-1 inline text-status-warn-ink" />
+              {t('agenda.missingPosition')} · {unplaced.length}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* G9 — the day as it will be DRIVEN, above the day as it is booked. */}
+      {view === 'day' && !phone && (
+        <div className="mb-3 shrink-0">
+          <MyDayBlock dayKey={localDayKey(days[0])} />
+        </div>
+      )}
+
+      {view === 'month' ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="grid grid-cols-7 gap-1.5">
+            {days.slice(0, 7).map((d) => (
+              <div key={`head-${d.toISOString()}`} className="pb-1 text-center text-micro font-semibold uppercase tracking-wide text-content-muted">
+                {formatWeekdayShort(d, locale)}
               </div>
-            )}
-
-            {view === 'month' ? (
-              <div className="min-h-0 flex-1 overflow-y-auto">{monthGrid}</div>
-            ) : (
-              <AgendaGrid
-                days={days}
-                byDay={byDay}
-                today={today}
-                /* AB4.1 — the hours stretch only when the content column has
-                   the screen; in a split panel they keep a legible fixed band
-                   and the ladder scrolls. */
-                stretch={state.mode === 'hidden'}
-                toneOf={toneOf}
-                selectedId={selectedId}
-                onSelect={selectAndOpen}
-                onFocusDay={focusDay}
-                focusedDay={focusedDay}
-                onAddOn={(day, hour) => setOpenSlot(`${localDayKey(day)}-${hour}`)}
-                onMove={moveOnGrid}
-                canMove={(event) => event.kind !== 'mission'}
-              />
-            )}
-
-            {/**
-              * ★★ AB3.4 — « Un rendez-vous sans lieu connu apparaît dans la
-              *    liste, marqué מיקום חסר, et n'est pas placé sur la carte. »
-              *
-              * It is a BLOCK rather than a badge on each entry, because the
-              * question it answers is asked of the map, not of the entry:
-              * "the map shows four and I have five" is what a coordinator
-              * notices, and this is where he finds the fifth.
-              */}
-            {unplaced.length > 0 && (
-              <div
-                data-testid="agenda-unplaced"
-                data-count={unplaced.length}
-                data-open={unplacedOpen ? '1' : '0'}
-                /* AL4.1 — le fond FAIT déjà le détachement (A57) : le trait
-                   qui l'accompagnait était une redondance, pas une limite. */
-                className="mt-2 shrink-0 rounded-card bg-surface-raised"
-              >
-                {/**
-                  * ⚠️ FOLDED BY DEFAULT, AND THAT IS AB4.1 ARBITRATING AB3.4.
-                  * Open, this block was 150 px of a content-full column —
-                  * measured — which came straight off the hour ladder the
-                  * product owner asked to have the whole height. The entries
-                  * are ALREADY marked in the grid itself (the ⚠ beside their
-                  * hour), so what is folded here is the roll-call, not the
-                  * marking. One line says how many, which is the question the
-                  * map raises: « la carte en montre quatre et j'en ai cinq ».
-                  */}
-                <button
-                  type="button"
-                  data-testid="agenda-unplaced-toggle"
-                  aria-expanded={unplacedOpen}
-                  onClick={() => setUnplacedOpen((v) => !v)}
-                  className="flex min-h-11 w-full items-center gap-2 px-3 text-start"
+            ))}
+            {days.map((day) => {
+              const key = localDayKey(day)
+              const dayEvents = byDay.get(key) ?? []
+              const dayDue = due.get(key) ?? []
+              const isToday = isSameDay(day, today)
+              const outside = day.getMonth() !== addDays(from, 10).getMonth()
+              return (
+                <div
+                  key={key}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    dropOnDay(e.dataTransfer.getData('text/plain'), day)
+                  }}
+                  className={`relative flex min-h-24 flex-col rounded-field border p-1.5 ${isToday ? 'border-accent bg-accent/5' : 'border-edge-subtle bg-surface-raised'} ${outside ? 'opacity-45' : ''}`}
                 >
-                  <Icon name="alert" size={14} className="shrink-0 text-status-warn-ink" />
-                  <span className="text-micro font-semibold text-content-secondary">
-                    {t('agenda.missingPosition')}
-                  </span>
-                  <span className="filter-count">{unplaced.length}</span>
-                  <Icon
-                    name="chevronDown"
-                    size={14}
-                    className={`ms-auto shrink-0 text-content-muted ${
-                      unplacedOpen ? '' : 'ltr:-rotate-90 rtl:rotate-90'
-                    }`}
-                  />
-                </button>
-                {unplacedOpen && (
-                  <div className="px-3 pb-3">
-                    <p className="muted">{t('agenda.missingPositionHint')}</p>
-                    <ul className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
-                      {unplaced.map((event) => (
-                        <li key={event.id}>
-                          <button
-                            type="button"
-                            data-testid="agenda-unplaced-row"
-                            onClick={() => selectAndOpen(event)}
-                            className="flex min-h-11 w-full items-center gap-2 rounded-field px-2 text-start
-                                       hover:bg-surface-high"
-                          >
-                            <Icon
-                              name={KIND_ICON[event.kind]}
-                              size={13}
-                              className="shrink-0 text-content-muted"
-                            />
-                            <span className="ltr-nums shrink-0 text-micro text-content-muted">
-                              {formatDate(event.at, locale)} {formatTime(event.at, locale)}
-                            </span>
-                            <span className="min-w-0 flex-1 truncate text-caption text-content-primary">
-                              {event.title}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                  <button
+                    type="button"
+                    data-testid="agenda-day-head"
+                    data-day={key}
+                    data-today={isToday ? '1' : undefined}
+                    onClick={() => {
+                      focusDay(day)
+                      setAnchor(day)
+                      setView('day')
+                    }}
+                    className={`numeric mb-1 self-start rounded-field px-1 text-caption font-bold hover:bg-surface-high ${isToday ? 'text-accent-ink' : 'text-content-primary'}`}
+                  >
+                    {day.getDate()}
+                  </button>
+                  {dayDue.length > 0 && (
+                    <span className="mb-0.5 flex items-center gap-1 text-micro text-content-muted" data-testid="agenda-due" data-day={key} data-count={dayDue.length}>
+                      <span aria-hidden className="h-2 w-2 rounded-[2px] border border-content-muted" />
+                      {dayDue.length}
+                    </span>
+                  )}
+                  <div className="flex flex-1 flex-col gap-1">
+                    {dayEvents.slice(0, 2).map((event) => {
+                      const tone = toneOf(event)
+                      return (
+                        <button
+                          key={event.id}
+                          type="button"
+                          data-testid="agenda-event"
+                          data-event-id={event.id}
+                          data-kind={event.kind}
+                          data-reflection={event.reflection ? '1' : undefined}
+                          data-selected={selectedId === event.id ? '1' : undefined}
+                          draggable={canMove(event)}
+                          onDragStart={(e) => e.dataTransfer.setData('text/plain', `${event.kind}:${event.id}`)}
+                          onClick={() => open(event)}
+                          className={`w-full rounded-field border-s-[3px] px-1.5 py-1 text-start ${tone.block} ${event.reflection ? 'agenda-reflection' : ''} ${selectedId === event.id ? 'ring-2 ring-accent' : ''}`}
+                        >
+                          <span className="flex items-center gap-1">
+                            <Icon name={tone.icon} size={10} />
+                            <span className="ltr-nums text-micro font-semibold">{formatTime(event.at, locale)}</span>
+                          </span>
+                          <span className={`mt-0.5 block truncate text-micro font-medium ${event.missionStatus === 'cancelled' ? 'line-through opacity-80' : ''}`}>
+                            {event.title || (event.kind === 'tour' ? t('agenda.tourUntitled') : '')}
+                          </span>
+                        </button>
+                      )
+                    })}
+                    {dayEvents.length > 2 && <span className="numeric text-micro text-content-muted">+{dayEvents.length - 2}</span>}
                   </div>
-                )}
-              </div>
-            )}
-
-            {/* The hour bands open the same creation menu the month cells do;
-                it is rendered here so it is never clipped by the scroller. */}
-            {openSlot !== null && view !== 'month' && (
-              <>
-                <button
-                  type="button"
-                  aria-label={t('common.close')}
-                  className="fixed inset-0 z-30 cursor-default"
-                  onClick={() => setOpenSlot(null)}
-                />
-                <div className="relative">
-                  <SlotMenu
-                    day={new Date(`${openSlot.slice(0, 10)}T00:00:00`)}
-                    onClose={() => setOpenSlot(null)}
-                    onPlanVisit={(d) =>
-                      setVisitAt(atTimeOn(d, Number(openSlot.slice(11)) || 10, 0))
-                    }
-                    onPlanMeeting={(d) =>
-                      setMeetingAt(atTimeOn(d, Number(openSlot.slice(11)) || 10, 0))
-                    }
-                  />
                 </div>
-              </>
-            )}
+              )
+            })}
           </div>
-        )}
-      </MapPanel>
-
-    </>
+        </div>
+      ) : (
+        <AgendaGrid
+          days={days}
+          byDay={byDay}
+          today={today}
+          stretch={stretch}
+          phone={phone}
+          toneOf={toneOf}
+          selectedId={selectedId}
+          onSelect={open}
+          onFocusDay={focusDay}
+          focusedDay={focusedDay}
+          onCreateAt={createAt}
+          onMove={moveOnGrid}
+          canMove={canMove}
+          onResize={resizeOnGrid}
+          canResize={canResize}
+          dueByDay={due}
+          onOpenTask={onOpenTask}
+          draft={draft}
+        />
+      )}
+    </div>
   )
 }

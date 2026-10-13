@@ -120,6 +120,26 @@ const NEW_MEETING: FabAction = {
   testId: 'fab-meeting-new',
 }
 
+/**
+ * ★★ BE — dans l'agenda, le rendez-vous s'ouvre DANS LE PANNEAU à côté du
+ * calendrier (le calendrier reste visible) ; la tâche, dans le volet des tâches.
+ */
+const NEW_MEETING_HERE: FabAction = {
+  key: 'meeting-here',
+  to: '/coordinator/agenda?new=meeting',
+  labelKey: 'meeting.new',
+  icon: 'users',
+  testId: 'fab-meeting-new',
+}
+
+const NEW_TASK: FabAction = {
+  key: 'task',
+  to: '/coordinator/agenda?new=task',
+  labelKey: 'tasks.new',
+  icon: 'checklist',
+  testId: 'fab-task-new',
+}
+
 /** AB1 — מסלול: a step is a farm added to the day, not a new record. */
 const NEW_STEP: FabAction = {
   key: 'step',
@@ -166,6 +186,7 @@ const CREATIONS: Record<string, readonly FabAction[]> = {
     NEW_MISSION,
     NEW_VISIT,
     NEW_MEETING,
+    NEW_TASK,
     NEW_INCIDENT,
   ],
   '/coordinator/farms': [addOf('farmFile', 'farms.new', 'farm')],
@@ -174,7 +195,7 @@ const CREATIONS: Record<string, readonly FabAction[]> = {
   '/coordinator/volunteers': [addOf('volunteer', 'volunteers.new', 'userPlus'), addOf('driver', 'add.type.driver', 'steering')],
   '/coordinator/missions': [NEW_MISSION],
   '/coordinator/incidents': [NEW_INCIDENT],
-  '/coordinator/agenda': [NEW_VISIT, NEW_MEETING, NEW_MISSION],
+  '/coordinator/agenda': [NEW_MEETING_HERE, NEW_TASK, NEW_VISIT, NEW_MISSION],
   '/coordinator/route': [NEW_STEP],
 }
 

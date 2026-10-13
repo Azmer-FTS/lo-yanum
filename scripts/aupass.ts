@@ -163,7 +163,10 @@ walk('src')
    de TRAVAIL (`core/dashboard.ts`, qu'il lit par `getInstitutions`) : ni l'un
    ni l'autre n'est un compteur d'objectif, de dounams ou de rapport (la
    première moitié de cette section le vérifie dans `access.ts`). */
-check('A321 seuls les écrans des institutions et de leurs volontaires les lisent', callers.every((p) => /institutionUi|CoverageScreen|InstitutionsImportScreen|InstitutionsScreen|AddContactsScreen|FormPages|ImportWizardScreen|VolunteerFormModal|VolunteersScreen|placeMarkers|access\.ts/.test(p)), callers.join(', '))
+/* ★★ BE — un rendez-vous ou une tâche se RELIE à une institution : le
+   sélecteur et la puce du lien (`ui/agenda/links.tsx`) la cherchent et la
+   nomment. Un écran, toujours aucun compteur. */
+check('A321 seuls les écrans des institutions et de leurs volontaires les lisent', callers.every((p) => /institutionUi|CoverageScreen|InstitutionsImportScreen|InstitutionsScreen|AddContactsScreen|FormPages|ImportWizardScreen|VolunteerFormModal|VolunteersScreen|placeMarkers|agenda\/links|access\.ts/.test(p)), callers.join(', '))
 {
   const dash = readFileSync('src/core/dashboard.ts', 'utf8')
   const imports = (dash.match(/^import[^\n]*$/gm) ?? []).join('\n')

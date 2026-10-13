@@ -147,9 +147,10 @@ check(
     // `mission_checkpoints`. 28 tables in the schema, minus `app_users`, which
     // is who a login speaks for rather than data the app writes. ★★ AS6 added
     // `leads` (the waiting room), hence 28. ★★ AU3 added `institutions`: 29.
-    // ★★ AV2 added `landmarks`: 30.
-    tables.size === 30,
-    `${tables.size} tables (31 minus app_users, which is identity, not data)`,
+    // ★★ AV2 added `landmarks`: 30. ★★ BE added `task_lists`, `tasks`,
+    // `memo_lines`: 33.
+    tables.size === 33,
+    `${tables.size} tables (34 minus app_users, which is identity, not data)`,
   )
   check(
     'app_users is NOT one of them',

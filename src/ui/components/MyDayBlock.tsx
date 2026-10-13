@@ -28,6 +28,7 @@ const EVENT_ICON: Record<AgendaEvent['kind'], IconName> = {
   mission: 'shield',
   visit: 'pin',
   meeting: 'users',
+  tour: 'route',
 }
 
 const km = (v: number) => v.toFixed(1)

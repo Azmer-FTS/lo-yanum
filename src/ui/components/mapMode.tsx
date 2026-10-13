@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { usePublishedWidth } from '../hooks/useShellMetrics'
 import { Icon } from './Icon'
+import type { IconName } from './Icon'
 
 /**
  * P0.1 — THE MAP IS MODULAR ON EVERY MAP-FIRST SCREEN.
@@ -319,6 +320,8 @@ export function MapModePill({
   onChange,
   className = '',
   modes = MODES,
+  labels,
+  icons,
 }: {
   mode: MapMode
   onChange: (mode: MapMode) => void
@@ -326,6 +329,12 @@ export function MapModePill({
   className?: string
   /** ★★ BC — au téléphone, un écran de liste n'en montre que deux : liste et carte. */
   modes?: readonly MapMode[]
+  /**
+   * ★★ BE — la même pilule pour deux volets qui ne sont pas une carte (l'agenda
+   * et ses tâches) : ses mots et ses icônes, rien d'autre ne change.
+   */
+  labels?: Partial<Record<MapMode, string>>
+  icons?: Partial<Record<MapMode, IconName>>
 }) {
   const { t } = useTranslation()
   /* ★★ AH2 — ELLE PUBLIE SA LARGEUR, et la barre d'actions des formulaires la
@@ -360,8 +369,8 @@ export function MapModePill({
           type="button"
           onClick={() => onChange(m)}
           aria-pressed={mode === m}
-          aria-label={t(`map.mode.${m}`)}
-          title={t(`map.mode.${m}`)}
+          aria-label={labels?.[m] ?? t(`map.mode.${m}`)}
+          title={labels?.[m] ?? t(`map.mode.${m}`)}
           data-testid={`map-mode-${m}`}
           className={`flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-fast ${
             mode === m
@@ -369,7 +378,7 @@ export function MapModePill({
               : 'text-content-secondary hover:bg-surface-high hover:text-content-primary'
           }`}
         >
-          <Icon name={MODE_ICON[m]} size={18} />
+          <Icon name={icons?.[m] ?? MODE_ICON[m]} size={18} />
         </button>
       ))}
     </div>

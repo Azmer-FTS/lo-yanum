@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ReactNode } from 'react'
 
@@ -925,4 +925,153 @@ export function FormActions({
 export function isValidPhone(raw: string): boolean {
   const digits = raw.replace(/\D/g, '')
   return /^0\d{8,9}$/.test(digits)
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ BE (2026-10-13) — LE PO NE TAPE PAS, IL DICTE.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Un champ de texte ORDINAIRE (`<textarea>`), sur plusieurs lignes, qui grandit
+ * avec ce qu'on lui dicte, et qui ne se referme JAMAIS tout seul : ni au
+ * blanc, ni à la perte du focus, ni à « Entrée ». Le micro du clavier du
+ * téléphone fait la dictée ; il n'y a pas de reconnaissance vocale maison, et
+ * pas de bouton micro dans l'application (il n'aurait pas pu être vérifié sur
+ * le navigateur du PO — voir ETAT § BE).
+ *
+ * `dir="auto"` : l'hébreu et le français dictés s'écrivent chacun dans leur
+ * sens. `data-dictation` : la porte au rendu les compte.
+ */
+export function DictationField({
+  label,
+  value,
+  onChange,
+  rows = 1,
+  autoFocus = false,
+  placeholder,
+  hint,
+  error,
+  required,
+  className = '',
+  inputClassName = '',
+  testId,
+  id,
+  hideLabel = false,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  /** Le nombre de lignes au repos ; le champ grandit au-delà. */
+  rows?: number
+  autoFocus?: boolean
+  placeholder?: string
+  hint?: string
+  error?: string
+  required?: boolean
+  className?: string
+  inputClassName?: string
+  testId?: string
+  id?: string
+  /** Le libellé reste pour le lecteur d'écran, sans prendre de ligne. */
+  hideLabel?: boolean
+}) {
+  const ref = useRef<HTMLTextAreaElement | null>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.max(44, el.scrollHeight + 2)}px`
+  }, [value])
+  useEffect(() => {
+    if (!autoFocus) return
+    /* Après la première peinture : iOS ignore un focus posé pendant le montage.
+       Deux images : une feuille (`Sheet`) pose le sien sur sa croix à la
+       première ; le champ passe après elle. */
+    let inner = 0
+    const id = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => {
+        const el = ref.current
+        if (!el) return
+        el.focus({ preventScroll: false })
+        const end = el.value.length
+        el.setSelectionRange(end, end)
+      })
+    })
+    return () => {
+      cancelAnimationFrame(id)
+      cancelAnimationFrame(inner)
+    }
+  }, [autoFocus])
+  const area = (
+    <textarea
+      ref={ref}
+      id={id}
+      data-dictation=""
+      data-testid={testId}
+      dir="auto"
+      rows={rows}
+      autoCapitalize="sentences"
+      autoCorrect="on"
+      spellCheck
+      aria-label={hideLabel ? label : undefined}
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`input min-h-11 resize-none overflow-hidden leading-snug ${error ? 'border-status-danger' : ''} ${inputClassName}`}
+    />
+  )
+  if (hideLabel) return <div className={className}>{area}</div>
+  return (
+    <Field label={label} error={error} hint={hint} required={required} className={className}>
+      {area}
+    </Field>
+  )
+}
+
+/**
+ * ★★ BE — LA BARRE D'UNE ÉDITION SUR PLACE (une tâche, une ligne de
+ * l'aide-mémoire, un rendez-vous dans son panneau). Hors des deux familles de
+ * BD 7 — elle n'est pas épinglée au bas de l'écran — mais la MÊME grammaire :
+ * de la fin vers le début [שמירה] [ביטול] … [מחיקה], les mêmes mots, 44 px.
+ */
+export function InlineActions({
+  onSubmit,
+  onCancel,
+  onDelete,
+  submitLabel,
+  disabled,
+  submitTestId = 'inline-save',
+  cancelTestId = 'inline-cancel',
+  deleteTestId = 'inline-delete',
+  className = '',
+}: {
+  onSubmit: () => void
+  onCancel?: () => void
+  onDelete?: () => void
+  submitLabel?: string
+  disabled?: boolean
+  submitTestId?: string
+  cancelTestId?: string
+  deleteTestId?: string
+  className?: string
+}) {
+  const { t } = useTranslation()
+  return (
+    <div data-inline-actions="" className={`flex flex-wrap items-center justify-end gap-2 pt-2 ${className}`}>
+      {onDelete && (
+        <button type="button" className="btn-ghost me-auto min-h-11 text-status-danger-ink" onClick={onDelete} data-testid={deleteTestId} data-form-action="delete">
+          <Icon name="trash" size={16} />
+          {t('common.delete')}
+        </button>
+      )}
+      {onCancel && (
+        <button type="button" className="btn-secondary min-h-11" onClick={onCancel} data-testid={cancelTestId} data-form-action="cancel">
+          {t('common.cancel')}
+        </button>
+      )}
+      <button type="button" className="btn-primary min-h-11" onClick={onSubmit} disabled={disabled} data-testid={submitTestId} data-form-action="save">
+        {submitLabel ?? t('common.save')}
+      </button>
+    </div>
+  )
 }

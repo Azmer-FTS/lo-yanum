@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 
 import { MapModePill, clampRatio, useMapMode, useMapRatio } from './mapMode'
+import type { IconName } from './Icon'
 import type { MapMode } from './mapMode'
 import { useViewportTier } from '../hooks/useNarrow'
 import { PullToRefresh } from './PullToRefresh'
@@ -334,6 +335,22 @@ export interface MapSplitProps {
    *   · ordinateur — inchangé.
    */
   list?: boolean
+  /**
+   * ★★ BE (2026-10-13) — LE MÊME PARTAGE POUR DEUX VOLETS QUI NE SONT PAS UNE
+   * CARTE. L'écran יומן met l'AGENDA à la place de la carte et les TÂCHES à la
+   * place de la liste : mêmes proportions, même pilule (ses mots et ses icônes
+   * à lui), même mémoire du dernier volet ouvert. Aucune troisième disposition.
+   *   · `bar={false}` : pas de barre de titre au-dessus du volet de gauche (il a
+   *     la sienne) ;
+   *   · `modeOverride` : un mode IMPOSÉ le temps d'un geste (un rendez-vous
+   *     ouvert à côté du calendrier), sans toucher au mode retenu.
+   */
+  bar?: boolean
+  modeOverride?: MapMode
+  pillLabels?: Partial<Record<MapMode, string>>
+  pillIcons?: Partial<Record<MapMode, IconName>>
+  /** ★★ BE — prévenu quand le PO touche la pilule (pour lever un `modeOverride`). */
+  onModeChange?: (mode: MapMode) => void
 }
 
 export function MapSplit({
@@ -350,13 +367,21 @@ export function MapSplit({
   contentClassName = '',
   keepPanelScroll = false,
   list = false,
+  bar = true,
+  modeOverride,
+  pillLabels,
+  pillIcons,
+  onModeChange,
 }: MapSplitProps) {
   const tier = useViewportTier()
   const raw = useMapMode(screenKey)
   /* ★★ BC — au téléphone, un écran de liste n'a que deux états (voir `list`). */
   const phoneTwoState = list && tier === 'phone'
-  const mode: MapMode = phoneTwoState && raw.mode === 'split' ? 'hidden' : raw.mode
-  const setMode = raw.setMode
+  const mode: MapMode = modeOverride ?? (phoneTwoState && raw.mode === 'split' ? 'hidden' : raw.mode)
+  const setMode = (next: MapMode): void => {
+    raw.setMode(next)
+    onModeChange?.(next)
+  }
   const state: MapModeState = { mode, setMode }
   const ratioState = useMapRatio(screenKey, list && tier === 'tablet' ? 50 : contentPercent)
   const { ratio } = ratioState
@@ -466,7 +491,7 @@ export function MapSplit({
       >
         <div
           className={`items-center justify-between gap-2 border-b border-edge-subtle bg-surface-overlay px-4 py-2 ${
-            mode === 'full' ? 'flex' : c.bar
+            !bar ? 'hidden' : mode === 'full' ? 'flex' : c.bar
           }`}
         >
           <span className="truncate text-caption font-medium text-content-secondary">
@@ -501,7 +526,14 @@ export function MapSplit({
           fill the map and it has to exist at every width. It is `raised`
           above the unified "+" in the same corner, and `data-overlay` says
           what it has always said: it is deliberately over things. */}
-      <MapModePill mode={mode} onChange={setMode} className={c.pill} modes={phoneTwoState ? ['hidden', 'full'] : undefined} />
+      <MapModePill
+        mode={mode}
+        onChange={setMode}
+        className={c.pill}
+        modes={phoneTwoState ? ['hidden', 'full'] : undefined}
+        labels={pillLabels}
+        icons={pillIcons}
+      />
     </div>
   )
 }

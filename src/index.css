@@ -2652,3 +2652,18 @@ html[data-numpad-open] [data-farm-form] {
     display: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★★ BE (2026-10-13) — UN REFLET SE DISTINGUE D'UN RENDEZ-VOUS.
+   Une garde ou un itinéraire, reflétés dans l'agenda, viennent d'ailleurs : ils
+   sont HACHURÉS et leur bord est en TIRETS — lisible sans la couleur, dans les
+   deux thèmes (le hachurage prend la couleur du texte du bloc).
+   ═══════════════════════════════════════════════════════════════════════════ */
+.agenda-reflection {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 6px,
+    color-mix(in srgb, currentColor 16%, transparent) 6px 8px
+  );
+  border-style: dashed;
+}
