@@ -479,12 +479,12 @@ const GLYPH: Partial<Record<string, string>> = {
      tout le reste, lisible à 18 px dans la tête de l'épingle :
      בקר une tête de vache (cornes, oreilles, mufle) · צאן une tête de mouton
      (laine en nuage) · מטעים un arbre à fruits · כרם une grappe · גד״ש un épi
-     · ירקות une feuille · חווה טיפולית une tête de cheval · לול une poule.
+     · ירקות une feuille · חווה טיפולית une tête de cheval (le cavalier des échecs) · לול une poule.
      ═════════════════════════════════════════════════════════════════════ */
   cattle:
     'M3.5 4.5c0 2.6 2 4 4.5 4M20.5 4.5c0 2.6-2 4-4.5 4M8 9.5 4 10.5M16 9.5l4 1M8 8.5h8v6M8 8.5v6M8.5 14.5h7a2.6 2.6 0 0 1 0 5.2h-7a2.6 2.6 0 0 1 0-5.2zM10.6 17.1h.01M13.4 17.1h.01',
   sheep:
-    'M6 9.6a2.6 2.6 0 0 1 1.8-4.4 2.7 2.7 0 0 1 4.2-1.4 2.7 2.7 0 0 1 4.2 1.4A2.6 2.6 0 0 1 18 9.6M7.6 10.6 3.8 12.2M16.4 10.6l3.8 1.6M8 9.6c0 5.2 1.8 10 4 10s4-4.8 4-10M10.2 12.6h.01M13.8 12.6h.01',
+    'M7.2 7.4a2.4 2.4 0 0 1 3.6-2.6 2.4 2.4 0 0 1 4.4 0 2.4 2.4 0 0 1 3.6 2.6 2.4 2.4 0 0 1-.6 4.4M7.2 7.4a2.4 2.4 0 0 0-.6 4.4M7.4 10.4 3.6 11.8M16.6 10.4l3.8 1.4M8.2 10.2c0 5.1 1.7 9.6 3.8 9.6s3.8-4.5 3.8-9.6M10.3 13h.01M13.7 13h.01M11 17.4h2',
   orchards: 'M12 21.5v-7.5M12 14l-2.6-2.2M12 2.8a6.2 6.2 0 0 0-6.2 6.2c0 2.9 2.8 5 6.2 5s6.2-2.1 6.2-5A6.2 6.2 0 0 0 12 2.8zM9.4 8.6h.01M14.6 10.2h.01M12.4 6.2h.01',
   vineyard:
     'M12 2.5v3.2M12 4.4c1.6-1.6 3.8-1.6 5.4 0M8.4 9.2m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M15.6 9.2m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M12 9.2m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M10.2 12.8m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M13.8 12.8m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M12 16.4m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
@@ -492,9 +492,9 @@ const GLYPH: Partial<Record<string, string>> = {
     'M12 22V4.5M12 9c-2 0-3.6-1.6-3.6-3.6 2 0 3.6 1.6 3.6 3.6zM12 9c2 0 3.6-1.6 3.6-3.6-2 0-3.6 1.6-3.6 3.6zM12 13.6c-2 0-3.6-1.6-3.6-3.6 2 0 3.6 1.6 3.6 3.6zM12 13.6c2 0 3.6-1.6 3.6-3.6-2 0-3.6 1.6-3.6 3.6zM12 18.2c-2 0-3.6-1.6-3.6-3.6 2 0 3.6 1.6 3.6 3.6zM12 18.2c2 0 3.6-1.6 3.6-3.6-2 0-3.6 1.6-3.6 3.6z',
   vegetables: 'M4.5 19.5C4.5 11 10 4.8 20 4c0 10.4-6.4 15.5-15.5 15.5zM4.5 19.5l8.5-8.5M9.2 14.8h4M12 12V8.6',
   therapeutic:
-    'M8.5 21.5v-4.8C6.6 15.6 5 13.6 5 11.2L7.2 6 6.4 2.8l3 1.6 2.2-1.4H14c3.6 0 6.6 3 6.6 7.2v1.4l-2.6 1.6-2.2-1.6h-1.4L13.6 17v4.5M10.6 8.4h.01M9 4.8c-1.1 2-1.1 4.2 0 6.2',
+    'M7 21.2h11M9 21.2c-.4-2.9.6-5.1 2.8-6.7-2.4.5-4.6.2-5.6-.9-.8-.9-.6-2.4.4-3.4L9.8 7c.4-2.1 1.9-3.9 3.9-4.5l.5-1.7 1.6 1.9c2.2 1.2 3.7 3.8 3.7 7.3v11.2M12.6 7.2h.01',
   poultry:
-    'M7.5 21h6.5M10.6 21v-2.6M6 8.2A3.2 3.2 0 0 1 9.2 5h.6a3.2 3.2 0 0 1 3.2 3.2v2l5.4-3.2c1.2 4.2-.6 8.6-4.8 10.2h-3.4A5.2 5.2 0 0 1 5 12V9.8L3.2 8.6 6 8.2zM7.6 4.2c.5-1.6 2-1.6 2.6 0 .5-1.6 2-1.6 2.6 0M8.8 8.4h.01',
+    'M4.5 10.2 6.7 9V7.6a3 3 0 0 1 3-3 3 3 0 0 1 3 3v1.6c1.6.1 3 .7 4.2 1.7l2.9-3.4c1 4.8.2 8.6-2.9 10.2a6 6 0 0 1-2.9.7h-1.3a5.9 5.9 0 0 1-5.9-5.9v-1.3zM8 4.5c.2-1.3 1.6-1.9 2.6-.9.6-1.1 2.2-.9 2.5.4M10.3 18.5V21.3M14 18.5V21.3M9.4 7.8h.01',
   /* ★★ BD 3 — le contact à traiter : un combiné (l'icône `phone`), en contour. */
   lead: 'M6.5 3.5h3l1.5 4-2 1.5a12 12 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2.2 2A17 17 0 0 1 4.5 5.7a2 2 0 0 1 2-2.2z',
   // G16 — a moshav is a VILLAGE: two rooftops on its disc, not one barn.
@@ -594,7 +594,9 @@ function markerElement(marker: MapMarker): HTMLElement {
    */
   el.dataset.markerKind = kind
   /* ★★ BD 3 — l'icône et la sélection, sur l'élément : `bdmap` les lit. */
-  if (marker.glyph) el.dataset.glyph = marker.glyph
+  /* Le contact à traiter porte toujours son combiné, que l'écran le dise ou non. */
+  const glyphKey = marker.glyph ?? (kind === 'lead' ? 'lead' : undefined)
+  if (glyphKey) el.dataset.glyph = glyphKey
   if (marker.emphasis) el.dataset.selected = ''
   const ring = readToken('--surface-base')
   // P0.3 — filled in by whichever branch draws the marker, then handed to
@@ -746,7 +748,7 @@ function markerElement(marker: MapMarker): HTMLElement {
     /* ★★ BD 3 — l'icône de la nature (`glyph`), sinon celle du genre ; le
        contact à traiter est toujours en contour (creux). Sélectionnée, la tête
        grandit d'un tiers et prend un anneau : lisible sans la couleur. */
-    const glyphPath = GLYPH[marker.glyph ?? kind]
+    const glyphPath = GLYPH[glyphKey ?? kind]
     const hollow = marker.hollow || (kind as MarkerKind) === 'lead'
     const headPx = marker.emphasis ? Math.round(SIZE[kind] * 1.3) : SIZE[kind]
     // La goutte (`car`) remplit déjà 1…23 × 1…31 : sa boîte reste 24 × 32.

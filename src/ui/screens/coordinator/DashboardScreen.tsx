@@ -791,6 +791,9 @@ export function DashboardScreen() {
           e) les courbes · f) היום שלי — puis, quand il y en a : les alertes,
           les gardes de ce soir, l'agenda, les dounams par région.
           ═══════════════════════════════════════════════════════════════════ */}
+      {/* a) — les demandes arrivées par la page publique (absent sans demande),
+          AVANT le titre, comme AQ1.1 l'a voulu. */}
+      <IntakeDashboardBlock />
       <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           {/* ★★ AX4 — l'accroche passe derrière ⓘ. */}
@@ -812,9 +815,6 @@ export function DashboardScreen() {
           <ReportButton recipient={readReportRecipient()} />
         </div>
       </header>
-
-      {/* a) — les demandes arrivées par la page publique (absent sans demande). */}
-      <IntakeDashboardBlock />
 
       {/* b) — la liste de travail : chaque ligne, son compte, sa liste filtrée. */}
       {blocks.work && <WorkBlock items={work} />}

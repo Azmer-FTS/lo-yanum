@@ -38,6 +38,7 @@ import { runUndoable } from '../../components/UndoToast'
 import { Avatar } from '../../components/Avatar'
 
 import { Icon } from '../../components/Icon'
+import { TextField } from '../../components/fields'
 import { PageHeader } from '../../components/primitives'
 import { InfoTip, TitleWithInfo } from '../../components/InfoTip'
 import { useCoreValue } from '../../hooks/useCore'
@@ -500,8 +501,11 @@ function ManualDetails({
     setConfirmDup(false)
   }
   return (
-    <div className="flex flex-col gap-3 rounded-card bg-surface-raised p-4 shadow-card" data-testid="add-path-form">
-      <div className="grid gap-3 sm:grid-cols-2">
+    /* ★★ BD 7 — la saisie rapide suit la grammaire des champs : `form-grid`
+       (deux colonnes dès 30 rem de CARTE), les champs partagés (le portable a
+       son pavé, l'iPad n'en a pas d'autre). */
+    <div className="panel-scope flex flex-col gap-3 rounded-card bg-surface-raised p-4 shadow-card" data-testid="add-path-form" data-form-family="quick">
+      <div className="form-grid">
         <Field label={t('add.form.phone')} value={phone} onChange={(v) => setPhone(formatPhoneTyping(v))} testId="add-form-phone" type="tel" ltr />
         {kind !== 'volunteer' && <Field label={t(`add.form.other.${kind}`)} value={other} onChange={setOther} testId="add-form-org" />}
       </div>
@@ -691,16 +695,9 @@ function LocationEcho({ text }: { text: string }) {
   )
 }
 
-function Field({ label, value, onChange, testId, type = 'text', ltr = false, required = false }: { label: string; value: string; onChange: (v: string) => void; testId: string; type?: string; ltr?: boolean; required?: boolean }) {
-  return (
-    <label className="flex min-w-0 flex-col gap-1">
-      <span className="text-caption font-semibold text-content-secondary">
-        {label}
-        {required && <span aria-hidden="true" className="text-status-danger-ink"> *</span>}
-      </span>
-      <input className={`input min-h-11 ${ltr ? 'ltr-nums' : ''}`} type={type} inputMode={type === 'tel' ? 'tel' : undefined} value={value} onChange={(e) => onChange(e.target.value)} dir={ltr ? 'ltr' : 'auto'} data-testid={testId} />
-    </label>
-  )
+/** ★★ BD 7 — le champ de la saisie rapide EST le champ partagé (`TextField`). */
+function Field({ label, value, onChange, testId, type = 'text', required = false }: { label: string; value: string; onChange: (v: string) => void; testId: string; type?: string; ltr?: boolean; required?: boolean }) {
+  return <TextField label={label} value={value} onChange={onChange} testId={testId} required={required} kind={type === 'tel' ? 'phone' : 'text'} />
 }
 
 // ---------------------------------------------------------------------------

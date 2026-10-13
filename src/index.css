@@ -1224,6 +1224,14 @@
   transform: scale(1.25);
 }
 
+/* ★★ BD 7 — LA GRAMMAIRE DES FORMULAIRES (ETAT.md § BD 7) : dans un
+   formulaire, une case à cocher ou un choix se touche sur toute sa ligne, à
+   44 px — comme un champ et comme un bouton. */
+[data-form-family] label:has(> input[type='checkbox']),
+[data-form-family] label:has(> input[type='radio']) {
+  min-height: 2.75rem;
+}
+
 /* A form section is its own measuring box: two columns when IT is wide
    enough, one when it is not, whether it sits in a 50 % panel or a modal. */
 .form-grid {

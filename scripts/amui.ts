@@ -664,7 +664,10 @@ try {
             const needle = /a9 9 0 1 1/.test(d) || svg.getAttribute('data-pin-style') === 'ay8'
             const stroke = Number(paths[0]?.getAttribute('stroke-width') ?? 0)
             return {
-              needle,
+              /* ★★ BD 4 — les contacts à traiter (épingle CREUSE, anneau de
+                 couleur voulu) sont en contexte sur cette carte : ils ne sont
+                 pas l'épingle pleine que cette section mesure. */
+              needle: needle && (svg.closest('[data-marker-kind]') as HTMLElement | null)?.dataset.markerKind !== 'lead',
               outlines: paths.length,
               halo: svg.innerHTML.includes('rgba(0,0,0,.45)'),
               headTopInBox: vb[1] <= 8.93 - 9 - stroke / 2 + 1e-6,

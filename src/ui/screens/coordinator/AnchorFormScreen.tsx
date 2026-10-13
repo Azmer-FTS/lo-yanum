@@ -161,14 +161,15 @@ function AnchorForm() {
       map={() => mapBody}
     >
       {() => (
-        <>
+        /* ★★ BD 7 — la page entière (en-tête compris) est le formulaire de lieu. */
+        <div data-form-family="lieu" data-form-screen="anchor-form">
       <PageHeader
         title={t(isEdit ? 'anchor.edit' : 'anchor.new')}
         subtitle={farm.name}
         back={{ to: `/coordinator/farms/${farm.id}`, label: farm.name }}
       />
 
-      <div className="flex flex-col gap-4" data-form-family="lieu" data-form-screen="anchor-form">
+      <div className="flex flex-col gap-4">
         <FormSection title={t('anchor.title')}>
           <TextField
             label={t('form.anchorName')}
@@ -211,7 +212,7 @@ function AnchorForm() {
           onSubmit={submit}
         />
       </div>
-        </>
+        </div>
       )}
     </MapSplit>
   )

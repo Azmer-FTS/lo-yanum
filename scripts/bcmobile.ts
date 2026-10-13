@@ -297,7 +297,12 @@ try {
             await page.waitForTimeout(450)
             const chips = page.locator('[data-testid="active-filter-chips"] button')
             const after = Number(await page.locator('[data-testid="filter-sheet-open"]').first().getAttribute('data-count'))
-            const rows = await page.evaluate(() => document.querySelectorAll('[data-row-key], .roster-row:not([data-roster-head]), .pair-grid > li').length)
+            /* ★★ BD 8b — une liste longue est FENÊTRÉE : son nombre de lignes est
+               `data-rows` (le DOM n'en pose qu'une fenêtre). */
+            const rows = await page.evaluate(() => {
+              const v = document.querySelector<HTMLElement>('[data-entity-table][data-virtual]:not([hidden])')
+              return v ? Number(v.dataset.rows) : document.querySelectorAll('[data-row-key], .roster-row:not([data-roster-head]), .pair-grid > li').length
+            })
             const n = Number((label.match(/\d+/) ?? ['1'])[0])
             check(`A421 ${vp.label} ${s.name} : cocher applique — pastille, compte du bouton, « הצג N »`, (await chips.count()) >= 1 && after === before + 1 && (label.includes('אחת') ? rows === 1 : n === rows || rows >= 20), `pastilles ${await chips.count()} · bouton ${before}→${after} · « ${label} » · lignes ${rows}`)
             if (SHOTS && s.name === 'fermes') await page.screenshot({ path: `${SHOT_DIR}/a421-pastilles-${s.name}-${vp.label}.png` })

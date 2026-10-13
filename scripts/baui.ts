@@ -127,7 +127,9 @@ await guard('A396', async () => {
 // ---------------------------------------------------------------------------
 await guard('A397', async () => {
   section('A397 — les filtres : une rangée, qui défile')
-  for (const width of [1440, 1032]) {
+  /* ★★ BD — arbitrage du PO : la rangée de BA ne reste que sur l'ordinateur
+     (≥ 80 rem) ; la tablette en « liste seule » prend la forme compacte. */
+  for (const width of [1440]) {
     const o = await open(width, { db: db() })
     await go(o.page, APP, '/coordinator/farms')
     if (width > 700) await tableMode(o.page)
@@ -156,7 +158,17 @@ await guard('A397', async () => {
     await o.page.screenshot({ path: `${SHOTS}/a397-filtres-${width}.png` })
     await o.ctx.close()
   }
-  /* ★★ BC — au téléphone : la barre fine, UN « סינון », la feuille. */
+  /* ★★ BC — au téléphone : la barre fine, UN « סינון », la feuille.
+     ★★ BD — et en tablette « liste seule » (1032 px), la même. */
+  {
+    const t = await open(1032, { db: db() })
+    await go(t.page, APP, '/coordinator/farms')
+    await tableMode(t.page)
+    const tm = await t.page.evaluate(() => ({ compact: !!document.querySelector('[data-list-top][data-compact]'), sheet: document.querySelectorAll('[data-testid="filter-sheet-open"]').length, oldRow: !!document.querySelector('[data-filter-row]') }))
+    check('A397 1032 px, liste seule : la FORME COMPACTE (arbitrage du PO), plus la rangée de BA', tm.compact && tm.sheet === 1 && !tm.oldRow, JSON.stringify(tm))
+    await t.page.screenshot({ path: `${SHOTS}/a397-compacte-1032.png` })
+    await t.ctx.close()
+  }
   const o = await open(402, { db: db() })
   await go(o.page, APP, '/coordinator/farms')
   const m = await o.page.evaluate(() => {

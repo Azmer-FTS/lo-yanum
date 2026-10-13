@@ -246,10 +246,12 @@ export function InstitutionContactsEditor({ inst }: { inst: Institution }) {
     )
   return (
     <section className="flex flex-col gap-2" data-testid="institution-contacts" data-count={contacts.length}>
-      <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-label font-semibold text-content-primary">{t('institutions.contacts')}</h3>
-        <HeadMissingChip inst={inst} />
-      </div>
+      {/* ★★ BD 7 — le titre est celui de la section (`FormSection`) : la puce seule. */}
+      {isInstitutionHeadMissing(inst) && (
+        <div className="flex flex-wrap items-center gap-2">
+          <HeadMissingChip inst={inst} />
+        </div>
+      )}
       {contacts.length === 0 && !draft && <p className="muted text-caption">{t('institutions.noContacts')}</p>}
       <ul className="flex flex-col gap-2">
         {[...contacts, ...(draft ? [draft] : [])].map((c) => (
@@ -322,7 +324,7 @@ function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institut
   const roleName = secretariat ? t('institutions.phoneLabel.secretariat') : t(`institutions.role.${contactRoleKey(inst, contact.role)}`)
   const first = phones.find((p) => p.number.trim())?.number ?? ''
   return (
-    <li className="rounded-card bg-surface-raised p-2.5 shadow-card" data-testid={`institution-contact-${contact.id}`} data-role={contact.role} data-phones={contactPhones(contact).length}>
+    <li className="rounded-card bg-surface-raised p-2.5 shadow-card" data-testid={`institution-contact-${contact.id}`} data-role={contact.role} data-secretariat={secretariat ? '' : undefined} data-phones={contactPhones(contact).length}>
       {first && (
         <div className="mb-2">
           <Avatar phone={first} name={contact.name || '?'} size="sm" />
@@ -476,7 +478,7 @@ export function InstitutionContactsList({ inst }: { inst: Institution }) {
       {contacts.map((c) => {
         const phones = contactPhones(c)
         return (
-          <li key={c.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-2 text-caption" data-role={c.role} data-testid={`institution-contact-line-${c.id}`} data-phones={phones.length}>
+          <li key={c.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-2 text-caption" data-role={c.role} data-secretariat={isSecretariatEntry(c) ? '' : undefined} data-testid={`institution-contact-line-${c.id}`} data-phones={phones.length}>
             {/* ★★ BA — la photo de la personne, retrouvée par son téléphone. */}
             <Avatar phone={phones[0]?.number ?? ''} name={c.name || '?'} size="xs" />
             {/* ★★ BD — une entrée « מזכירות » n'a ni rôle ni nom : son étiquette les remplace. */}
@@ -536,11 +538,11 @@ export function RelatedInstitutions({ inst, editable = false }: { inst: Institut
       <ul className="flex flex-wrap gap-1.5">
         {linked.map((o) => (
           <li key={o.id} className="flex items-center gap-1">
-            <Link to={`/coordinator/institutions/${o.id}`} className="chip min-h-[2.5rem] border border-edge-subtle bg-surface-raised text-caption text-content-primary hover:bg-surface-high" data-testid={`institution-related-${o.id}`}>
+            <Link to={`/coordinator/institutions/${o.id}`} className="chip min-h-11 border border-edge-subtle bg-surface-raised text-caption text-content-primary hover:bg-surface-high" data-testid={`institution-related-${o.id}`}>
               {o.name}
             </Link>
             {editable && (
-              <button type="button" className="btn-ghost min-h-[2.5rem] px-2" onClick={() => unlink(o)} aria-label={t('institutions.relatedRemove', { name: o.name })}>
+              <button type="button" className="btn-ghost min-h-11 px-2" onClick={() => unlink(o)} aria-label={t('institutions.relatedRemove', { name: o.name })}>
                 <Icon name="close" size={14} />
               </button>
             )}
@@ -763,7 +765,7 @@ export function InstitutionPeople({ inst, compact = false }: { inst: Institution
                   <label className="flex min-w-[11rem] items-center gap-1.5 text-micro text-content-muted">
                     <span className="shrink-0">{t('institutionPeople.ridesWith')}</span>
                     <select
-                      className="input min-h-[2.5rem] flex-1 py-1 text-caption"
+                      className="input min-h-11 flex-1 py-1 text-caption"
                       value={v.rideWith ?? ''}
                       onChange={(e) => setVolunteerRideWith(v.id, e.target.value || null)}
                       data-testid={`institution-ride-${v.id}`}

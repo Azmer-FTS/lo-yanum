@@ -753,7 +753,8 @@ export function FormSection({
             onClick={toggle}
             aria-expanded={shown}
             data-testid={`section-${storageKey}`}
-            className="group flex min-w-0 flex-1 items-center gap-1.5 text-start"
+            /* ★★ BD 7 — l'en-tête d'une section repliable est une cible : 44 px. */
+            className="group flex min-h-11 min-w-0 flex-1 items-center gap-1.5 text-start"
           >
             <span
               className={`text-content-muted transition-transform duration-fast group-hover:text-content-primary ${

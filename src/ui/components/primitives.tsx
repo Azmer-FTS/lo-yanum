@@ -404,7 +404,8 @@ export function PageHeader({
               aria-label={back.label}
               title={back.label}
               data-testid="page-back"
-              className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-pill
+              /* ★★ BD 7 — 44 px, comme toute cible (il en faisait 40). */
+              className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-pill
                          border border-edge-subtle bg-surface-raised text-content-secondary
                          shadow-card transition-colors duration-fast
                          hover:bg-surface-high hover:text-content-primary"
@@ -1273,12 +1274,13 @@ export function ListTop({
    * measures 880–1224 and always does.
    */
   const { ref: widthRef, narrow } = useNarrow(30 * 16)
-  /* ★★ BC — LA FORME COMPACTE : au téléphone, toujours ; en tablette, tant que
-     le panneau de la liste est étroit (sous 40 rem) ; jamais sur ordinateur
-     (la forme de BA y reste). Décidé sur la largeur RÉELLE du panneau (AB2). */
+  /* ★★ BC — LA FORME COMPACTE : au téléphone, toujours ; jamais sur ordinateur
+     (la forme de BA y reste). ★★ BD — ARBITRAGE DU PO : en tablette AUSSI, y
+     compris en « liste seule » pleine largeur — la rangée de statuts de BA ne
+     reste que sur l'ordinateur, à partir de 80 rem (`useViewportTier`). */
   const tier = useViewportTier()
-  const { ref: panelRef, narrow: panelNarrow } = useNarrow(40 * 16)
-  const compact = !!compactFilters && (tier === 'phone' || (tier === 'tablet' && panelNarrow !== false))
+  const { ref: panelRef } = useNarrow(40 * 16)
+  const compact = !!compactFilters && tier !== 'desktop'
   const sheet = useFilterSheet()
   const tip = useInfoTip(info, { testId: 'list-info' })
   const hasCount = typeof shown === 'number' && typeof total === 'number'

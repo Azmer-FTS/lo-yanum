@@ -5,7 +5,12 @@ import type { Page } from 'playwright'
 import { FakeDb } from './fake-supabase'
 import { REMOTE, check, finish, go, guard, open, section, seed, serveBuild } from './ayharness'
 import { MAPPINGS } from '../src/data/rows'
-import type { Institution } from '../src/core/institutions'
+import type { Institution, InstitutionContact } from '../src/core/institutions'
+
+/* ★★ BD — la מזכירות est une ENTRÉE sans nom, son numéro étiqueté « secretariat ».
+   Elle se range APRÈS les personnes : les ordres de rôles se lisent sans elle
+   (`:not([data-secretariat])`), sa place est vérifiée à part. */
+const office = (id: string, number: string): InstitutionContact => ({ id, role: 'contact', name: '', phone: number, phones: [{ number, label: 'secretariat' }], note: '' })
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -42,27 +47,29 @@ const inst = (over: Partial<Institution>): Institution => ({
   positionSource: '', aliases: '', createdAt: at, updatedAt: at, contacts: [], ...over,
 })
 const TWO = inst({
-  id: 'inst-bb-two', name: 'ישיבת הדגמה שני ראשים', aliases: 'ישיבת כפר הדגמה · כפר הדגמה', notes: 'הישיבה שוכנת זמנית במקום אחר.', officePhone: '08-6000801', officeAddress: 'רח׳ הדגמה 1',
+  id: 'inst-bb-two', name: 'ישיבת הדגמה שני ראשים', aliases: 'ישיבת כפר הדגמה · כפר הדגמה', notes: 'הישיבה שוכנת זמנית במקום אחר.', address: 'רח׳ הדגמה 1',
   contacts: [
     { id: 'ic-bb-1', role: 'head', name: 'הרב ראשון בלי טלפון', phone: '', note: '' },
     { id: 'ic-bb-2', role: 'head', name: 'הרב שני', phone: '', note: 'רב היישוב', phones: [{ number: '08-6000802', label: 'home' }, { number: '050-0000802', label: 'mobile' }] },
     { id: 'ic-bb-3', role: 'ram', name: 'הרב רם הדגמה', phone: '050-0000803', note: '' },
+    office('ic-bb-o1', '08-6000801'),
   ],
   relatedIds: ['inst-bb-mech'],
 })
 const MECH = inst({
-  id: 'inst-bb-mech', name: 'מכינת הדגמה', kind: 'mechina', position: { lat: 31.3, lng: 34.62 }, officePhone: '08-6000804',
+  id: 'inst-bb-mech', name: 'מכינת הדגמה', kind: 'mechina', position: { lat: 31.3, lng: 34.62 },
   contacts: [
+    office('ic-bb-o2', '08-6000804'),
     { id: 'ic-bb-4', role: 'ram', name: 'הרב אלבז הדגמה', phone: '050-0000805', note: 'נציג ראש המכינה מול הארגון' },
     { id: 'ic-bb-5', role: 'head', name: 'הרב ראש מכינה', phone: '050-0000804', note: '' },
   ],
 })
 const BLOCKED = inst({
   id: 'inst-bb-block', name: 'ישיבת הדגמה בהמתנה', kind: 'yeshiva_hs', engagement: 'not_contacted', position: { lat: 31.25, lng: 34.4 },
-  coordinationRequired: true, coordinationNote: 'יש ליצור קשר דרך רכז ההדגמה לפני כל פנייה.', officePhone: '08-6000806',
-  contacts: [{ id: 'ic-bb-6', role: 'head', name: 'הרב חסום', phone: '050-0000806', note: '' }],
+  coordinationRequired: true, coordinationNote: 'יש ליצור קשר דרך רכז ההדגמה לפני כל פנייה.',
+  contacts: [{ id: 'ic-bb-6', role: 'head', name: 'הרב חסום', phone: '050-0000806', note: '' }, office('ic-bb-o3', '08-6000806')],
 })
-const OFFICE_ONLY = inst({ id: 'inst-bb-office', name: 'ישיבת הדגמה בלי ראש', position: { lat: 31.6, lng: 34.7 }, officePhone: '08-6000807', contacts: [{ id: 'ic-bb-7', role: 'ram', name: 'הרב רם לבד', phone: '050-0000807', note: '' }] })
+const OFFICE_ONLY = inst({ id: 'inst-bb-office', name: 'ישיבת הדגמה בלי ראש', position: { lat: 31.6, lng: 34.7 }, contacts: [{ id: 'ic-bb-7', role: 'ram', name: 'הרב רם לבד', phone: '050-0000807', note: '' }, office('ic-bb-o4', '08-6000807')] })
 const ALL = [TWO, MECH, BLOCKED, OFFICE_ONLY]
 
 const db = (): FakeDb => {
@@ -189,20 +196,22 @@ await guard('A409', async () => {
     const o = await open(1440, { db: db(), dark })
     await go(o.page, APP, `/coordinator/institutions/${TWO.id}`)
     const box = o.page.locator('[data-testid="institution-contacts"]')
-    const roles = await box.locator('[data-testid^="institution-contact-ic-"]').evaluateAll((els) => els.map((e) => `${e.getAttribute('data-role')}:${e.getAttribute('data-testid')}`))
+    const roles = await box.locator('[data-testid^="institution-contact-ic-"]:not([data-secretariat])').evaluateAll((els) => els.map((e) => `${e.getAttribute('data-role')}:${e.getAttribute('data-testid')}`))
     check('A409 deux ראשי ישיבה, dans l’ordre, le ר״מ derrière', roles.join(',') === 'head:institution-contact-ic-bb-1,head:institution-contact-ic-bb-2,ram:institution-contact-ic-bb-3', roles.join(','))
     const two = o.page.locator('[data-testid="institution-contact-ic-bb-2"]')
     const calls = await two.locator('[data-testid="institution-contact-call"]').evaluateAll((els) => els.map((e) => e.getAttribute('href')))
     check('A409 deux numéros sur la fiche du second, chacun appelable, le portable d’abord', calls.join(' ') === 'tel:0500000802 tel:086000802', calls.join(' '))
-    const office = o.page.locator('[data-testid="institution-office"] [data-testid="institution-office-call"]')
-    check('A409 la מזכירות, étiquetée et appelable', (await office.count()) === 1 && (await office.getAttribute('href')) === 'tel:086000801' && (await office.innerText()).includes('מזכירות'), await office.innerText().catch(() => '∅'))
+    /* ★★ BD — la מזכירות est une entrée de la liste des contacts, sans nom, étiquetée. */
+    const officeRow = o.page.locator('[data-testid="institution-editor"] li[data-secretariat]')
+    const officeCall = officeRow.locator('[data-testid="institution-contact-call"]')
+    check('A409 la מזכירות, étiquetée et appelable', (await officeRow.count()) === 1 && (await officeCall.getAttribute('href')) === 'tel:086000801' && (await officeRow.innerText()).includes('מזכירות'), await officeRow.innerText().catch(() => '∅'))
     const notes = await o.page.locator('[data-testid="institution-editor"] textarea').first().inputValue()
     check('A409 la note de la fiche est visible', notes.includes('שוכנת זמנית'))
     check('A409 la note d’un contact est visible', (await two.locator('[data-testid="institution-contact-note"]').inputValue()) === 'רב היישוב')
     check('A409 la fiche liée (et le lien est réciproque)', (await o.page.locator(`[data-testid="institution-related-${MECH.id}"]`).count()) === 1)
     await o.page.screenshot({ path: `${SHOTS}/a409-fiche${dark ? '-sombre' : ''}.png`, fullPage: true })
     await go(o.page, APP, `/coordinator/institutions/${MECH.id}`)
-    const mech = await o.page.locator('[data-testid="institution-contacts"] [data-testid^="institution-contact-ic-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-role')))
+    const mech = await o.page.locator('[data-testid="institution-contacts"] [data-testid^="institution-contact-ic-"]:not([data-secretariat])').evaluateAll((els) => els.map((e) => e.getAttribute('data-role')))
     check('A409 la מכינה : ראש המכינה en tête, le ר״מ derrière', mech.join(',') === 'head,ram', mech.join(','))
     const label = await o.page.locator('[data-testid="institution-contact-ic-bb-5"] [data-testid="institution-contact-role"] option:checked').innerText()
     check('A409 … son libellé est « ראש המכינה »', label.trim() === 'ראש המכינה', label)
@@ -309,11 +318,11 @@ await guard('A410', async () => {
   const prev = p.page.locator('[data-testid="institution-preview"]').first()
   check('A410 l’aperçu : la bannière de coordination et son texte', (await prev.locator('[data-testid="institution-coordination-banner"]').innerText()).includes('דרך רכז ההדגמה'))
   check('A410 l’aperçu : l’appel n’est pas ordinaire', (await prev.locator('[data-testid="institution-preview-call"]').getAttribute('data-guarded')) === '')
-  check('A410 l’aperçu : la מזכירות appelable', (await prev.locator('[data-testid="institution-office-call"]').getAttribute('href')) === 'tel:086000806')
+  check('A410 l’aperçu : la מזכירות appelable', (await prev.locator('li[data-secretariat] [data-testid="institution-contact-line-call"]').getAttribute('href')) === 'tel:086000806')
   await p.page.screenshot({ path: `${SHOTS}/a410-apercu.png` })
   await p.page.locator(`[data-testid="institution-view-${TWO.id}"]`).first().click()
   await p.page.waitForTimeout(800)
-  const lines = await prev.locator('[data-testid^="institution-contact-line-ic-"]').evaluateAll((els) => els.map((e) => `${e.getAttribute('data-role')}:${e.getAttribute('data-phones')}`))
+  const lines = await prev.locator('[data-testid^="institution-contact-line-ic-"]:not([data-secretariat])').evaluateAll((els) => els.map((e) => `${e.getAttribute('data-role')}:${e.getAttribute('data-phones')}`))
   check('A410 l’aperçu : les deux rangs 1, le second avec ses deux numéros', lines.join(',') === 'head:0,head:2,ram:1', lines.join(','))
   await p.ctx.close()
 })

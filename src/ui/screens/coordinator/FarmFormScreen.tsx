@@ -941,7 +941,8 @@ function FarmForm() {
       map={() => mapBody}
     >
       {() => (
-        <>
+        /* ★★ BD 7 — la page entière (en-tête compris) est le formulaire de lieu. */
+        <div data-form-family="lieu" data-form-screen="farm-form">
       <PageHeader
         title={t(isEdit ? 'farms.edit' : 'farms.new')}
         subtitle={isEdit ? existing?.name : undefined}
@@ -1015,7 +1016,7 @@ function FarmForm() {
         * incidents, visites) n'ont pas de rang ici. `bun run amui` (A217)
         * compare les deux listes d'intitulés.
         */}
-      <div className="flex flex-col gap-4" data-farm-form="" data-form-family="lieu" data-form-screen="farm-form">
+      <div className="flex flex-col gap-4" data-farm-form="">
         {/* L'en-tête de la fiche : la photo et le nom. */}
         <FormSection title={t('form.sectionIdentity')} testId="farm-block-identity">
           <div className="col-span-full">
@@ -1961,7 +1962,7 @@ function FarmForm() {
           }
         />
       </div>
-        </>
+        </div>
       )}
     </MapSplit>
   )

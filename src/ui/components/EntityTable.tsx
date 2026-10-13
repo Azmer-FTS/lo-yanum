@@ -297,8 +297,9 @@ export function EntityTable<T>({
     return { head, hidden: closedGroups.has(g) }
   }
   /* ★★ BD 8b — la fenêtre de lignes (voir `useRowWindow`). */
-  const virtual = !tiles && !groupOf && rows.length > VIRTUAL_FROM
-  const rowWin = useRowWindow(virtual, wrapRef, rows.length)
+  const virtual = !groupOf && rows.length > VIRTUAL_FROM
+  const rowKeys = rows.map(rowKey)
+  const rowWin = useRowWindow(virtual, wrapRef, rowKeys, tiles ? 'ul' : 'tbody')
   const groupButton = (g: string) => (
     <button
       type="button"
@@ -479,12 +480,16 @@ export function EntityTable<T>({
         data-entity-table=""
         data-tiles=""
         data-table-width={Math.round(width)}
+        data-rows={rows.length}
+        data-virtual={virtual ? `${rowWin.start}-${rowWin.end}` : undefined}
       >
         {rows.length === 0 ? (
           <p className="px-2 py-8 text-center text-body text-content-muted">{empty ?? t('table.empty')}</p>
         ) : (
           <ul aria-label={label} className="flex flex-col gap-2">
-            {rows.map((r, i) => {
+            {virtual && rowWin.start > 0 && <li aria-hidden="true" data-virtual-pad="top" style={{ height: Math.max(0, rowWin.padTop - rowWin.gap) }} />}
+            {(virtual ? rows.slice(rowWin.start, rowWin.end) : rows).map((r, n) => {
+              const i = virtual ? rowWin.start + n : n
               const k = rowKey(r)
               const l = lead(r)
               const w = whereOf(r)
@@ -576,6 +581,7 @@ export function EntityTable<T>({
                 </Fragment>
               )
             })}
+            {virtual && rowWin.end < rows.length && <li aria-hidden="true" data-virtual-pad="bottom" style={{ height: Math.max(0, rowWin.padBottom - rowWin.gap) }} />}
           </ul>
         )}
       </div>
@@ -655,7 +661,7 @@ export function EntityTable<T>({
             </tr>
           )}
           {virtual && rowWin.start > 0 && (
-            <tr aria-hidden="true" data-virtual-pad="top" style={{ height: rowWin.start * rowWin.rowPx }}>
+            <tr aria-hidden="true" data-virtual-pad="top" style={{ height: rowWin.padTop }}>
               <td colSpan={shown.length + 2} className="p-0" />
             </tr>
           )}
@@ -730,7 +736,7 @@ export function EntityTable<T>({
             )
           })}
           {virtual && rowWin.end < rows.length && (
-            <tr aria-hidden="true" data-virtual-pad="bottom" style={{ height: (rows.length - rowWin.end) * rowWin.rowPx }}>
+            <tr aria-hidden="true" data-virtual-pad="bottom" style={{ height: rowWin.padBottom }}>
               <td colSpan={shown.length + 2} className="p-0" />
             </tr>
           )}
@@ -759,41 +765,78 @@ export function EntityTable<T>({
  *   hauteur fixe (`h-16`) : la première rendue donne le pas.
  */
 export const VIRTUAL_FROM = 60
-const OVERSCAN = 10
+const OVERSCAN_PX = 900
 
-function viewportOf(el: HTMLElement): { top: number; height: number } {
+function scrollerOf(el: HTMLElement): HTMLElement | null {
   for (let p = el.parentElement; p; p = p.parentElement) {
     const oy = getComputedStyle(p).overflowY
-    if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) {
-      const r = p.getBoundingClientRect()
-      return { top: Math.max(0, r.top), height: Math.min(window.innerHeight, r.bottom) - Math.max(0, r.top) }
-    }
+    if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) return p
+  }
+  return null
+}
+
+function viewportOf(el: HTMLElement): { top: number; height: number } {
+  const p = scrollerOf(el)
+  if (p) {
+    const r = p.getBoundingClientRect()
+    return { top: Math.max(0, r.top), height: Math.min(window.innerHeight, r.bottom) - Math.max(0, r.top) }
   }
   return { top: 0, height: window.innerHeight }
 }
 
-function useRowWindow(enabled: boolean, wrapRef: { current: HTMLDivElement | null }, count: number): { start: number; end: number; rowPx: number } {
-  const [win, setWin] = useState({ start: 0, end: Math.min(count, VIRTUAL_FROM), rowPx: 65 })
+/**
+ * La fenêtre d'éléments : les hauteurs RENDUES sont mesurées (une vignette a
+ * deux à quatre lignes ; une ligne de tableau en a une), les autres estimées à
+ * la moyenne des mesurées ; `container` est le `<tbody>` ou le `<ul>`.
+ */
+function useRowWindow(
+  enabled: boolean,
+  wrapRef: { current: HTMLDivElement | null },
+  keys: readonly string[],
+  container: string,
+): { start: number; end: number; padTop: number; padBottom: number; gap: number } {
+  const heights = useRef(new Map<string, number>())
+  const [win, setWin] = useState({ start: 0, end: Math.min(keys.length, VIRTUAL_FROM), padTop: 0, padBottom: 0, gap: 0 })
+  const keysRef = useRef(keys)
+  keysRef.current = keys
+  const computeRef = useRef<() => void>(() => {})
+  computeRef.current = () => {
+    const wrap = wrapRef.current
+    const box = wrap?.querySelector<HTMLElement>(container)
+    if (!wrap || !box) return
+    const gap = parseFloat(getComputedStyle(box).rowGap) || 0
+    for (const el of box.querySelectorAll<HTMLElement>(':scope > [data-row-key]')) {
+      heights.current.set(el.dataset.rowKey ?? '', el.getBoundingClientRect().height + gap)
+    }
+    const ks = keysRef.current
+    const known = [...heights.current.values()]
+    const avg = known.length ? known.reduce((x, y) => x + y, 0) / known.length : 65
+    const h = (k: string) => heights.current.get(k) ?? avg
+    const view = viewportOf(wrap)
+    const above = view.top - box.getBoundingClientRect().top
+    const from = above - OVERSCAN_PX
+    const to = above + view.height + OVERSCAN_PX
+    let y = 0
+    let start = 0
+    while (start < ks.length && y + h(ks[start]) < from) y += h(ks[start++])
+    const padTop = y
+    let end = start
+    while (end < ks.length && y < to) y += h(ks[end++])
+    let rest = 0
+    for (let i = end; i < ks.length; i++) rest += h(ks[i])
+    const next = { start, end, padTop: Math.round(padTop), padBottom: Math.round(rest), gap }
+    setWin((p) => (p.start === next.start && p.end === next.end && p.padTop === next.padTop && p.padBottom === next.padBottom ? p : next))
+  }
+  useLayoutEffect(() => {
+    if (enabled) computeRef.current()
+  })
   useLayoutEffect(() => {
     if (!enabled) return
     let raf = 0
-    const compute = () => {
-      const wrap = wrapRef.current
-      const body = wrap?.querySelector('tbody')
-      if (!wrap || !body) return
-      const row = body.querySelector<HTMLElement>('tr[data-row-key]')
-      const rowPx = Math.max(24, Math.round(row?.getBoundingClientRect().height ?? 65))
-      const view = viewportOf(wrap)
-      const above = view.top - body.getBoundingClientRect().top
-      const start = Math.max(0, Math.min(count, Math.floor(above / rowPx) - OVERSCAN))
-      const end = Math.max(start, Math.min(count, Math.ceil((above + view.height) / rowPx) + OVERSCAN))
-      setWin((p) => (p.start === start && p.end === end && p.rowPx === rowPx ? p : { start, end, rowPx }))
-    }
     const schedule = () => {
       cancelAnimationFrame(raf)
-      raf = requestAnimationFrame(compute)
+      raf = requestAnimationFrame(() => computeRef.current())
     }
-    compute()
     document.addEventListener('scroll', schedule, { capture: true, passive: true })
     window.addEventListener('resize', schedule)
     return () => {
@@ -801,24 +844,19 @@ function useRowWindow(enabled: boolean, wrapRef: { current: HTMLDivElement | nul
       document.removeEventListener('scroll', schedule, { capture: true })
       window.removeEventListener('resize', schedule)
     }
-  }, [enabled, count, wrapRef])
-  return enabled ? win : { start: 0, end: count, rowPx: win.rowPx }
+  }, [enabled])
+  return enabled ? win : { start: 0, end: keys.length, padTop: 0, padBottom: 0, gap: 0 }
 }
 
 /** ★★ BD 8b — amener la ligne `idx` au milieu de ce qui défile, rendue ou non. */
 function scrollToRow(wrap: HTMLDivElement, idx: number): void {
-  const body = wrap.querySelector('tbody')
-  const row = body?.querySelector<HTMLElement>('tr[data-row-key]')
+  const body = wrap.querySelector<HTMLElement>('tbody, ul')
+  const row = body?.querySelector<HTMLElement>('[data-row-key]')
   if (!body) return
   const rowPx = row?.getBoundingClientRect().height ?? 65
   const view = viewportOf(wrap)
   const delta = body.getBoundingClientRect().top + idx * rowPx - (view.top + view.height / 2)
-  for (let p = wrap.parentElement; p; p = p.parentElement) {
-    const oy = getComputedStyle(p).overflowY
-    if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) {
-      p.scrollBy({ top: delta })
-      return
-    }
-  }
-  window.scrollBy({ top: delta })
+  const p = scrollerOf(wrap)
+  if (p) p.scrollBy({ top: delta })
+  else window.scrollBy({ top: delta })
 }

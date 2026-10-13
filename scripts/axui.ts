@@ -278,7 +278,9 @@ await guard('A348', async () => {
     const table = o.page.locator('[data-testid="leads-table"] table')
     check(`A348 ${w} px : un TABLEAU, avec ses en-têtes de colonnes`, (await table.count()) === 1 && (await table.locator('thead th').count()) >= 4)
     const filters = await o.page.locator('[data-testid^="leads-filter-"]').count()
-    const shownFilters = filters > 0 ? filters : await o.page.locator('[data-testid="filter-dropdown"]').count()
+    /* ★★ BD — arbitrage du PO : la tablette (sous 80 rem) prend la forme COMPACTE ;
+       les statuts sont alors derrière leur déclencheur et la feuille de filtres. */
+    const shownFilters = filters > 0 ? filters : (await o.page.locator('[data-testid="filter-dropdown"]').count()) + (await o.page.locator('[data-list-top][data-compact] [data-testid="filter-sheet-open"]').count())
     check(`A348 ${w} px : les statuts sont des FILTRES en haut (pas des onglets)`, shownFilters > 0 && (await o.page.locator('main [role="tab"]').count()) === 0, `${filters} pastille(s)`)
     // ★★ AY3 (adapté) — la ligne finit par SES GESTES (voir, modifier, ⋯), plus par « פרטים ».
     const views = o.page.locator('[data-testid="leads-table"] [data-row-action="view"]')

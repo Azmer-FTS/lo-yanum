@@ -104,6 +104,25 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BD — LA CARTE, LA FICHE D'INSTITUTION, LE TABLEAU DE BORD — EN COURS**
+  (2026-10-13). Branche `main`. Code commité en `997445f` (BD1) + corrections
+  non encore commitées (arbitrage tablette dans `ListTop`, icônes cheval /
+  poule / mouton, cibles à 44 px, bloc des demandes AVANT le titre, portes
+  adaptées). NON poussé, NON déployé. Récit : `ETAT.md` § BD (en tête, écrit).
+  - Base : migration ADDITIVE `20261013000100` (colonne `address`) APPLIQUÉE
+    par le MCP (version `20261012220853`, jalon posé, repair fait).
+    `20261013000200` (secrétariat → entrée, suppression des colonnes) : PAS
+    ENCORE — elle se joue APRÈS le déploiement ; `armigrations` la montre en
+    attente d'ici là.
+  - Portes : `bdpass` 66/66, `bdui` 76/76, pures vertes ; batterie au rendu
+    locale (`private/bd/logs/render-local/bilan.txt`) verte sauf les rouges
+    d'avant BC (`anui` A236 ×2, `atui` 15) et sept portes adaptées à rejouer
+    (`private/bd/logs/render-local2/`).
+  - Reste : rejouer les adaptées, commit, push, déploiement, migration
+    `20261013000200` + repair + jalon, relire la base, portes au rendu sur le
+    déployé, PROJECT_STATE final.
+  Commande de reprise : `cat private/bd/logs/render-local2/bilan.txt`.
+
 - **BC — LA PASSE QUI DOIT CLORE L'INTERFACE — TERMINÉE, POUSSÉE, DÉPLOYÉE,
   DONNÉES POSÉES** (2026-10-12). Branche `main`. Commits : `b2f999f` (BC1,
   AZ4), `590220d` (BC2, tout le reste, SERVI : `version.json` = 590220d), puis

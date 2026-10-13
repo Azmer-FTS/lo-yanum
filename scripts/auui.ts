@@ -352,11 +352,14 @@ await guard('A319', async () => {
         fill: svgPath?.getAttribute('fill') ?? getComputedStyle(drawn).backgroundColor,
         border: getComputedStyle(drawn).borderStyle,
         label: e.querySelector('[data-marker-label]')?.textContent ?? '',
+        glyph: e.dataset.glyph ?? '',
       }
     }),
   )
   const fills = (kind: string) => new Set(shape.filter((s) => s.kind === kind).map((s) => s.fill))
-  check('A319 cinq familles : épingle pleine ET creuse, carré plein ET creux, rond pointillé', fills('farm').size >= 2 && fills('institution').size >= 2 && shape.some((s) => s.kind === 'lead' && s.border === 'dashed'), `fermes ${fills('farm').size} remplissages · institutions ${fills('institution').size} · pistes ${shape.filter((s) => s.kind === 'lead').length}`)
+  /* ★★ BD 3 — le contact à traiter n'est plus un rond pointillé : une épingle
+     CREUSE (tête blanche) au combiné (`glyph` = lead), demandée par le PO. */
+  check('A319 cinq familles : épingle pleine ET creuse, carré plein ET creux, épingle creuse au combiné', fills('farm').size >= 2 && fills('institution').size >= 2 && shape.some((s) => s.kind === 'lead' && s.glyph === 'lead' && s.fill === '#ffffff'), `fermes ${fills('farm').size} remplissages · institutions ${fills('institution').size} · pistes ${shape.filter((s) => s.kind === 'lead').length}`)
   /* ★★ AY7.3 (adapté) — le PO l'a retourné : le nom permanent MASQUAIT la carte.
      Il n'apparaît plus qu'au toucher (vérifié par ayui A364). */
   const labels = shape.filter((s) => s.kind === 'institution' && s.label).length

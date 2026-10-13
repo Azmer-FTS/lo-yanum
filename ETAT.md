@@ -1,5 +1,170 @@
 # לא ינום — ETAT
 
+> 🏁 **BD — LA CARTE, LA FICHE D'INSTITUTION, ET LE TABLEAU DE BORD. 2026-10-13.**
+>
+> ⛔ **DONNÉES RÉELLES.** Aucun nom ni téléphone de personne réelle ici ni dans
+> le dépôt. Les portes `bdpass` / `bdui` n'utilisent que des noms et numéros
+> INVENTÉS (050-000-10xx/11xx, 08-600-10xx). Journaux complets : `private/bd/logs/`.
+>
+> **Arbitrages du PO (fin de BC), appliqués.** Tablette en liste seule : la
+> FORME COMPACTE (`ListTop` : compacte dès que le palier n'est pas « ordinateur »,
+> `useViewportTier` ; la rangée de statuts de BA ne reste qu'à partir de 80 rem —
+> `baui` A397 à 1 032 px adaptée). Pas de pastille permanente pour les
+> demandes entrantes : la demande en première ligne suffit. Les trois clics pour
+> changer un statut depuis une vignette sont acceptés (le balayage raccourcit
+> les deux statuts fréquents).
+>
+> **1 · LA FICHE D'INSTITUTION EST UN LIEU.** Elle était une colonne centrée
+> sans carte, et son seul champ « כתובת » était celui de la מזכירות : le PO y
+> tapait l'adresse trouvée sur Google, rien ne se passait. Elle a désormais la
+> forme d'une fiche de ferme (`PlaceFormPage`, `components/formPage.tsx`, les
+> MÊMES réglages de partage que `FarmFormScreen` : `PLACE_FORM_SPLIT`) : la carte
+> à la même place (≥ 80 rem à gauche, en dessous au-dessus du formulaire, la
+> même feuille au téléphone), la modification du même côté.
+>   · `institutions.address` (migration additive `20261013000100`) ; saisir
+>     l'adresse puis quitter le champ (ou « חיפוש במפה ») PROPOSE un point
+>     (`core/addressPoint.ts`, `ui/geocode.ts`) : coordonnées ou lien collés ;
+>     sinon l'adresse cherchée en ligne (OpenStreetMap/Nominatim, un appel par
+>     geste, 8 s au plus, la rue sans numéro en second essai) ; sinon le centre
+>     de la localité de l'adresse ou de la fiche (répertoire national hors
+>     ligne), dit « משוער ». « רחוב », « שדרות », « דרך » en tête d'un morceau
+>     d'adresse sont des mots de rue (ce sont aussi des localités).
+>   · la proposition est une épingle CREUSE, déplaçable, et un bandeau
+>     « אישור הנקודה · ביטול » : rien n'est posé sans le PO ; validée, la source
+>     est écrite (`positionSource`).
+>   · l'APPUI LONG pose le point (`MapCanvas.onLongPress`, 550 ms, ou clic
+>     droit), qu'il y en ait un ou non ; l'épingle se GLISSE ; « הסרת המיקום ».
+>     C'est aussi le geste de la fiche de ferme (même `PinMap`).
+>   · sans position, la fiche le dit par un BOUTON (« אין מיקום · להצבה על
+>     המפה ») qui montre la carte (la sort au téléphone), et met le curseur dans
+>     l'adresse ; l'aperçu porte le même lien (`?place=1`, le geste d'emblée),
+>     et la colonne « מיקום » du tableau aussi.
+>   Le contact à traiter, lieu lui aussi, a pris la même forme (son « מקום »
+>   propose le point).
+>
+> **2 · LE CHAMP מזכירות DISPARAÎT DANS LE MÉCANISME GÉNÉRIQUE.**
+> ★ **LE PRINCIPE : UN BESOIN QUE SEULES QUELQUES FICHES ONT NE MÉRITE PAS UN
+> CHAMP À LUI. ON L'EXPRIME AVEC CE QUI EXISTE DÉJÀ.**
+>   · les étiquettes de numéro : נייד · בית · משרד · מזכירות, et la liste est
+>     OUVERTE : « תווית אחרת… » saisit une étiquette, gardée telle quelle et
+>     proposée ensuite partout (`phoneLabelChoices`) — sans toucher au code ;
+>   · une entrée peut n'avoir AUCUN nom de personne : c'est un secrétariat
+>     (`isSecretariatEntry` : sans nom, numéros tous étiquetés מזכירות) — « הוספת
+>     מזכירות » la crée ; sans rôle (pas de sélecteur), sans rang : jamais un
+>     contact de tête (`institutionHeads` la saute), jamais le רכז unique, rangée
+>     APRÈS les personnes, jamais à la place du contact de tête dans une liste ;
+>   · migration : la lecture replie une ligne d'avant BD (`foldLegacyOffice`) ;
+>     la migration `20261013000200` (APRÈS le déploiement) fait la même chose en
+>     base, VÉRIFIE qu'aucun numéro ni adresse n'est perdu, puis supprime
+>     `office_phone` et `office_address`. L'adresse de la מזכירות devient celle
+>     du lieu.
+>
+> **3 · LES ÉPINGLES.** ★ **LA COULEUR DIT LE STATUT, L'ICÔNE DIT CE QU'IL Y A
+> SUR PLACE.** `pinGlyphFor` (core) : une nature → son icône, deux → la PREMIÈRE
+> de la liste (l'ordre de `FARM_BRANCHES`), aucune ou « אחר » → la grange ; un
+> moshav garde son village ; pas d'icône composite. Neuf icônes au trait
+> (`GLYPH`, MapCanvas) : vache, mouton, arbre à fruits, grappe, épi, feuille,
+> cheval (le cavalier des échecs : la tête de profil dessinée d'abord ne se
+> lisait pas, rendue et comparée), poule, grange ; l'institution garde l'école
+> (le carré à toque) ; le contact à traiter devient une épingle CREUSE au
+> combiné. Têtes de 26 → 38 px (34 pour l'institution et le contact), pointe
+> fine gardée ; la sélectionnée grandit d'un tiers et prend un ANNEAU (lisible
+> sans la couleur) ; on regroupe plus tôt (32 px). La grange remplace la maison
+> au menu « חוות » (même tracé). Les écrans des institutions et des contacts
+> dessinaient leurs points avec la grange : corrigé (`placeMarkers.ts`).
+>
+> **4 · COMPOSER SA CARTE.** Dans la même légende, de la même façon : « חוות
+> ומושבים », « מוסדות », « אנשי קשר לטיפול », indépendants ; sous les fermes, un
+> repli par nature (`branch:*`, « ללא ענף ») avec « רק » et « להציג הכל » ; sous
+> les institutions, « חתומים » / « שאר המוסדות ». Chaque carte de liste (fermes,
+> institutions, contacts, tableau de bord) reçoit les deux autres familles en
+> CONTEXTE (`useContextMarkers`). Le choix vit dans `lo-yanum:map-layers`, gardé
+> d'un écran à l'autre, d'une session à l'autre et synchronisé avec le compte
+> comme les autres réglages d'écran. Défaut : tout allumé (« la vue la plus
+> complète »). Le bandeau « N fermes cachées » compte aussi celles qu'un repli
+> cache.
+>
+> **5 · LA LÉGENDE NE LISTE PLUS LE VIDE.** `statusLegend` + `StatusLegend` :
+> les statuts PRÉSENTS sur la carte, avec leur compte, dans l'ordre du modèle ;
+> les autres derrière « הצג את כל הסטטוסים (N ריקים) » (déplié : mémorisé).
+> Aucun statut supprimé.
+>
+> **6 · LE TABLEAU DE BORD SUIT L'ÉTAPE.** ★ **UN BLOC QUI N'A RIEN À DIRE NE
+> S'AFFICHE PAS ; IL RÉAPPARAÎT LE JOUR OÙ IL A DU SENS.** (`core/dashboard.ts`.)
+> Dans l'ordre : a) « בקשות חדשות » (la plus récente en haut ; nom, lieu, date ;
+> chacune mène à sa fiche ; absent sans demande) ; b) « מה לעשות » : institutions
+> sans רכז, fermes « טרם נוצר קשר », accords prêts à signer (הסכמה בעל פה),
+> institutions « נדרש תיאום מוקדם » pas encore approchées, contacts ouverts
+> depuis plus de 14 jours — chaque ligne son compte, sa liste filtrée (MÊME
+> prédicat : `?filter=noCoordinator`, `?filter=notContacted`, `?status=verbal_ok`,
+> `?filter=coordinationPending`, `?filter=stale`), une catégorie vide disparaît ;
+> c) l'entonnoir en une ligne (contacts → fermes → prêtes à signer → signées →
+> actives), qui remplace la rangée de chiffres isolés ; d) le dounam (la barre
+> vers l'objectif, la date butoir) ; e) la courbe des dounams signés, celle des
+> gardes dès la PREMIÈRE garde ; f) היום שלי. Puis, s'il y en a : les dounams
+> sous garde, les alertes, les gardes de ce soir, l'agenda, les dounams par
+> région. Rien de nouveau n'est saisi pour ce tableau.
+>
+> **7 · ★★ LA GRAMMAIRE DES FORMULAIRES — À NE PAS REDÉCOUVRIR.**
+>   **Familles et lieu d'ouverture** (le même pour toute la famille, à toute largeur) :
+>   · LIEU — ferme/moshav, point de garde, institution, contact à traiter : une
+>     PAGE À CARTE (`PlaceFormPage` / `PLACE_FORM_SPLIT` : `MapSplit` `xl`, 50 %) ;
+>     ≥ 80 rem la carte à gauche, le formulaire à droite ; en dessous la carte
+>     au-dessus (42 dvh), le formulaire dessous. `data-form-family="lieu"`.
+>   · FICHE — volontaire, conducteur, visite, rendez-vous : une PAGE CENTRÉE de
+>     48 rem (`Modal presentation="page"`), l'en-tête de page, une carte de
+>     champs `panel-scope`. `data-form-family="record"`.
+>   · Hors de ces deux familles, et c'est voulu : l'ASSISTANT d'une garde (ses
+>     étapes, sa barre précédent/suivant), les CONFIRMATIONS et DOCUMENTS
+>     (supprimer, archiver, annuler, signer, accord d'association, repère
+>     rapide : une fenêtre, au bas du téléphone, centrée ailleurs), l'ÉDITION
+>     SUR PLACE d'une fiche (contacts de ferme, notes d'aperçu, enregistrées en
+>     quittant le champ), les RÉGLAGES (une section, son « שמירה »), la SAISIE
+>     RAPIDE (`/add`, `data-form-family="quick"`, qui suit la règle des champs).
+>   **Champs.** Toujours dans `.form-grid` (dans une `panel-scope`, `FormSection`
+>   ou la carte de page) : UNE colonne tant que la carte fait moins de 30 rem,
+>   DEUX au-delà — la règle unique, jamais `sm:grid-cols-2` au cas par cas ; un
+>   champ long (texte libre, choix multiples, adresse, lien, photo, cases)
+>   prend la ligne (`col-span-full`). Les champs partagés (`TextField`,
+>   `SelectField`, `TextArea`, `NumberField` : `.label`, `.input`), le
+>   téléphone en `kind="phone"` (le pavé de l'iPad).
+>   **Boutons.** Une seule barre, `FormActions`, au bas de la fenêtre, pour
+>   tous : de la fin vers le début de la ligne [שמירה] [ביטול] … [מחיקה] (la
+>   suppression à l'autre bout, en rouge) ; un formulaire qui enregistre champ
+>   par champ n'a qu'un bouton, « סיום ». Libellés FIXES : `common.save`
+>   (שמירה), `common.cancel` (ביטול), `common.delete` (מחיקה), `form.done`
+>   (סיום) — la même action porte le même mot.
+>   **Mesures.** Champs à 44 px (dates comprises, elles en faisaient 40) ;
+>   cibles à 44 px, zone tactile comprise (le retour de page en faisait 40, les
+>   en-têtes de sections repliables 20, les cases à cocher 20) ; marges des
+>   `FormSection` (`card-pad`, 16 px entre sections).
+>   **La vérification** : `bun run bdui` A434, sur chaque famille, à 390 · 820 ·
+>   1440 (famille, lieu d'ouverture, barre unique et fixe, ordre et libellés,
+>   champs et cibles à 44 px, deux colonnes exactement quand la carte fait
+>   30 rem).
+>   **ÉCRANS DE FORMULAIRE QUI ONT CHANGÉ DE FORME : 7** — fiche d'institution
+>   (colonne sans carte → page de lieu), contact à traiter (idem), volontaire,
+>   conducteur, visite, rendez-vous (boutons en fin de carte, trois écritures
+>   différentes → la barre du bas ; grille bloquée à une colonne faute de
+>   `panel-scope` → la règle des deux colonnes), saisie rapide (`sm:grid-cols-2`
+>   et champ maison → `form-grid` et champs partagés). La ferme, le moshav et le
+>   point de garde étaient déjà la forme de référence : ils n'ont changé que
+>   par la garde de 8a et les cibles à 44 px.
+>
+> **8a · LE FORMULAIRE QUI S'OUVRAIT VIDE.** Les champs naissaient de la fiche
+> AU MONTAGE ; ouvert avant l'arrivée des données, le formulaire montait vide et
+> « שמירה » pouvait écraser la fiche. Tant que la fiche n'est pas là : l'attente
+> (`FormWaiting`), aucun champ ; arrivée, le formulaire monte une fois, rempli
+> (`key`). Ferme, point de garde (même défaut, trouvé à l'inventaire),
+> volontaire, conducteur, visite, rendez-vous ; institution et contact par
+> `useHydrated`.
+>
+> **8b · LE TABLEAU VIRTUALISÉ.** `EntityTable` (tableau ET vignettes), au-delà
+> de 60 lignes et sans groupes : seules les lignes visibles (± 900 px) sont
+> rendues, deux espaceurs gardent la hauteur ; hauteurs mesurées (une vignette
+> a 2 à 4 lignes) ; la page ou le panneau qui défile, indifféremment ; le retour
+> à la ligne touchée va à sa place même si elle n'est pas rendue.
+
 > 🏁 **BC — LA PASSE QUI DOIT CLORE L'INTERFACE. 2026-10-12.**
 >
 > ⛔ **DONNÉES RÉELLES.** Aucun nom ni téléphone de personne réelle ici ni dans
