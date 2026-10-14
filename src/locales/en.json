@@ -88,6 +88,8 @@
     }
   },
   "map": {
+    "hiddenZones_one": "1 shape hidden by the legend",
+    "hiddenZones_other": "{{count}} shapes hidden by the legend",
     "hiddenEntities_one": "1 farm hidden by the legend",
     "hiddenEntities_other": "{{count}} farms hidden by the legend",
     "showHidden": "Show",

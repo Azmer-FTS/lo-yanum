@@ -973,7 +973,18 @@
     "undo": "ביטול פעולה",
     "minVertices": "צורה צריכה לפחות 3 נקודות — אי אפשר למחוק עוד נקודה.",
     "editHint": "גררו נקודה כדי להזיז · גררו נקודה חלולה כדי להוסיף · לחיצה ארוכה על נקודה מוחקת אותה",
-    "newShape": "צורה חדשה"
+    "newShape": "צורה חדשה",
+    "draftKept": "טיוטה שמורה במכשיר: {{name}} · {{count}} פינות",
+    "draftKept_one": "טיוטה שמורה במכשיר: {{name}} · פינה אחת",
+    "draftKeptHint": "הציור לא נסגר. הוא נשמר במכשיר הזה בלבד עד שסוגרים את הפוליגון — ציור חדש לא מוחק אותו.",
+    "draftResume": "המשך ציור",
+    "draftDiscard": "מחיקת הטיוטה",
+    "draftDiscardConfirm": "למחוק את הטיוטה?",
+    "draftDiscardYes": "כן, למחוק",
+    "draftMore_one": "ועוד טיוטה אחת",
+    "draftMore_two": "ועוד {{count}} טיוטות",
+    "draftMore_many": "ועוד {{count}} טיוטות",
+    "draftMore_other": "ועוד {{count}} טיוטות"
   },
   "agreement": {
     "openTab": "פתיחה בכרטיסייה חדשה",
@@ -1106,6 +1117,10 @@
     },
     "attribution": "מקורות המפה",
     "agendaMap": "מפת היומן",
+    "hiddenZones_one": "צורה אחת מוסתרת במקרא",
+    "hiddenZones_other": "{{count}} צורות מוסתרות במקרא",
+    "hiddenZones_two": "{{count}} צורות מוסתרות במקרא",
+    "hiddenZones_many": "{{count}} צורות מוסתרות במקרא",
     "hiddenEntities_one": "חווה אחת מוסתרת במקרא",
     "hiddenEntities_other": "{{count}} חוות מוסתרות במקרא",
     "showHidden": "הצגה",
@@ -2621,7 +2636,8 @@
       "coordinator": "כרטיס הרכז",
       "origin": "נקודת יציאה",
       "free-routes": "מסלולים חופשיים",
-      "route-margin": "מרווח זמני נסיעה"
+      "route-margin": "מרווח זמני נסיעה",
+      "map-layers": "שכבות המפה"
     }
   },
   "farmTabs": {
@@ -3897,5 +3913,87 @@
     "errorDate": "המסמך לא הופק: נמצא בו תאריך, והכלל הוא שאין תאריכים במסמך.",
     "errorPublish": "המסמך לא נשמר. בדקו את החיבור ונסו שוב.",
     "timesNoteNight": "המרחקים והזמנים נמדדו בדרך הנסיעה מהמוסד. הזמנים כוללים מרווח של {{margin}}% ותוספת של {{night}}% לנסיעת לילה."
+  },
+  "diagnostic": {
+    "title": "אבחון המכשיר",
+    "open": "אבחון",
+    "openLong": "פתיחת האבחון",
+    "intro": "כשמכשיר אחד מציג משהו אחרת ממכשיר אחר — פותחים כאן, לוחצים „העתקה” ושולחים את הטקסט. אין צורך בשום דבר נוסף.",
+    "copy": "העתקה",
+    "copyHint": "ומדביקים בהודעה",
+    "textLabel": "טקסט האבחון",
+    "pending": "בבדיקה…",
+    "servedError": "לא נקראה ({{reason}})",
+    "workerNone": "לא נתמך",
+    "workerOn": "פעיל ושולט בדף",
+    "workerOff": "רשום, אינו שולט בדף",
+    "standalone": "אפליקציה מותקנת",
+    "browser": "דפדפן",
+    "noBase": "אין מסד נתונים בגרסה זו",
+    "never": "עדיין לא ({{status}})",
+    "neverShort": "עדיין לא",
+    "stale": "מהזיכרון המקומי, טרם אושר מול השרת",
+    "shapesVertices": "{{shapes}} צורות · {{vertices}} פינות",
+    "shapesCount": "{{count}} צורות",
+    "shapesCount_one": "צורה אחת",
+    "shapesCount_two": "{{count}} צורות",
+    "shapesCount_many": "{{count}} צורות",
+    "shapesCount_other": "{{count}} צורות",
+    "kind": {
+      "farm_boundary": "גבול",
+      "grazing_area": "מרעה"
+    },
+    "noFarm": "אין כרטיס חווה פתוח",
+    "noMap": "אין מפה פתוחה כרגע",
+    "drawnOf": "{{drawn}} מתוך {{shapes}} צורות החווה נמסרו למפה ({{total}} בסך הכול)",
+    "drawnTotal": "{{total}} צורות נמסרו למפה",
+    "zoneLayersOn": "מוצגות (גבולות ומרעה)",
+    "zoneLayersOff": "מוסתרות: {{list}}",
+    "none": "אין",
+    "layersSynced": "נבחרו ב-{{at}} ומסונכרנות עם החשבון",
+    "layersLocal": "ברירת מחדל או הגדרה ישנה של המכשיר — לא מסונכרנות",
+    "migrated": "ב-{{at}} הודלקו מחדש במכשיר הזה: {{list}} (היו כבויות)",
+    "notMigrated": "לא היה צורך",
+    "ground": {
+      "vector": "מפה",
+      "satellite": "לוויין"
+    },
+    "theme": {
+      "light": "בהיר",
+      "dark": "כהה"
+    },
+    "verdict": {
+      "stale-bundle": "פועלת כאן גרסה ישנה מזו שהשרת מגיש — יש לעדכן (הגדרות › גרסה)",
+      "no-data-read": "הנתונים טרם נקראו מהשרת במכשיר הזה",
+      "farm-no-shapes": "לחווה הפתוחה אין צורות בזיכרון של המכשיר הזה",
+      "hidden-by-layers": "צורות החווה בזיכרון, אך מוסתרות בשכבות המקרא — {{drawn}} מתוך {{shapes}} מוצגות",
+      "map-missing-shapes": "צורות בזיכרון שלא נמסרו למפה: {{drawn}} מתוך {{shapes}}",
+      "no-map": "{{shapes}} צורות בזיכרון; אין מפה פתוחה כרגע",
+      "ok": "כל {{shapes}} צורות החווה מצוירות על המפה",
+      "no-farm": "אין כרטיס חווה פתוח — הנתונים הכלליים בלבד"
+    },
+    "rows": {
+      "verdict": "מסקנה",
+      "running": "גרסה פועלת",
+      "served": "גרסה מוגשת (version.json)",
+      "worker": "Service worker",
+      "mode": "אופן פתיחה",
+      "address": "כתובת",
+      "device": "דפדפן ומסך",
+      "lastRead": "קריאה אחרונה שהצליחה",
+      "pending": "שינויים ממתינים לשליחה",
+      "memory": "צורות בזיכרון",
+      "farm": "החווה הפתוחה",
+      "drawn": "נמסרו למפה",
+      "zoneLayers": "שכבות הצורות",
+      "layersOff": "שכבות כבויות",
+      "layersSource": "מקור השכבות",
+      "migration": "הדלקה מחדש (BI)",
+      "ground": "רקע המפה",
+      "theme": "ערכת נושא",
+      "viewAs": "„צפייה בתור”",
+      "settingsSync": "סנכרון הגדרות אחרון",
+      "at": "נמדד ב-"
+    }
   }
 }

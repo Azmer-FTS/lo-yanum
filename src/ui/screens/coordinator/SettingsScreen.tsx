@@ -14,6 +14,7 @@ import { readReportRecipient, writeReportRecipient } from '../../report/recipien
 import { DisplaySection, RegionsEditSection } from '../../settings/DisplaySection'
 import { SampleDataSection } from '../../settings/SampleDataSection'
 import { AppVersionLine, AppVersionSection } from '../../settings/AppVersionSection'
+import { DeviceDiagnosticSection } from '../../diagnostic/DeviceDiagnostic'
 import { SettingsSyncSection } from '../../settings/SettingsSyncSection'
 import { GeoDiagnosticsSection } from '../../settings/GeoDiagnosticsSection'
 import { TargetSection } from '../../settings/TargetSection'
@@ -849,6 +850,8 @@ export function SettingsScreen() {
       <AppVersionSection />
       {/* ★★ AT1.5 — la synchronisation des réglages, lisible : quand, quoi, l'erreur. */}
       <SettingsSyncSection />
+      {/* ★★ BI — le relevé de CET appareil, à copier et envoyer. */}
+      <DeviceDiagnosticSection />
 
       {/* ⚠️ `<DisplayDiagnostics />` WAS HERE AND IS GONE (PO return
           2026-09-02). It was PO point 1's instrument: a temporary panel

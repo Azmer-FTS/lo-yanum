@@ -72,8 +72,6 @@ export const MAP_LAYERS: readonly MapLayerKey[] = [
 
 export type MapLayerVisibility = Record<MapLayerKey, boolean>
 
-const STORAGE_KEY = 'lo-yanum:map-layers'
-
 /**
  * ★ X2 (2026-09-04) — THE THREAT LAYERS START OFF, and that is not a taste.
  *   Until now the farms screen carried its own "שכבת איומים" pill whose
@@ -103,18 +101,143 @@ const DEFAULTS: MapLayerVisibility = {
   regionColors: false,
 }
 
-let current: MapLayerVisibility = read()
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★ BI (2026-10-15) — « SUR L'IPAD LA FORME EST LÀ, SUR L'ORDINATEUR ELLE
+ *    N'APPARAÎT PAS ». CE RÉGLAGE ÉTAIT LE SEUL ÉTAT D'APPAREIL QUI LE FAIT.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * Rejoué sur le bundle DÉPLOYÉ, deux formes de 31 et 29 sommets en base : thème
+ * sombre, satellite, carte pleine, 1 920 px — les deux anneaux sont dessinés.
+ * `boundaries` / `grazing` à `false` dans CETTE clé : zéro anneau, et rien à
+ * l'écran ne le disait (la légende est repliée par défaut ; AU1 avait mis une
+ * pastille pour les FERMES cachées, pas pour les formes). Et la clé ne voyageait
+ * pas (`LOCAL_ONLY_KEYS`), alors que le commentaire de BD 4 l'affirmait : le
+ * motif du thème de BC, un réglage qui décide de l'affichage, vivant sur un
+ * seul appareil, sans instant.
+ *
+ * ★ LA RÈGLE QUI EN DÉCOULE, ET QUE CE MODULE APPLIQUE : PAR DÉFAUT, ON MONTRE.
+ *   1. Absente, illisible, d'une forme inconnue, une valeur non booléenne :
+ *      la couche prend son défaut — et le défaut des formes est « montrées ».
+ *   2. Une valeur écrite AVANT BI (sans `__v`) a ses couches de FORMES
+ *      rallumées, une fois, au démarrage (`migrateMapLayers`) — elle avait été
+ *      posée sans que rien ne la rappelle ensuite. La trace est gardée
+ *      (`lo-yanum:map-layers-bi`) : le panneau de diagnostic dit si CET
+ *      appareil les avait éteintes. Les autres couches restent ce qu'elles
+ *      étaient.
+ *   3. Depuis BI, la clé VOYAGE avec le compte (`SYNCED_SETTING_KEYS`), mais
+ *      seulement une fois choisie (instant posé, `STAMPED_ONLY_KEYS`) : la
+ *      valeur d'avant BI d'un appareil n'éteint pas l'autre.
+ *   4. Une forme cachée par une couche SE VOIT sur la carte (MapCanvas,
+ *      `map-hidden-zones`), avec le geste qui la rend.
+ */
+export const MAP_LAYERS_KEY = 'lo-yanum:map-layers'
+const STORAGE_KEY = MAP_LAYERS_KEY
+/** ★★ BI — la forme de la valeur ; sans elle, la valeur est d'avant BI. */
+export const MAP_LAYERS_FORMAT = 2
+/** ★★ BI — la trace de la réactivation : `{ at, restored: ['boundaries', …] }`. */
+export const MAP_LAYERS_MIGRATION_KEY = 'lo-yanum:map-layers-bi'
+/** ★★ BI — les couches qui décident si une FORME (contour, pâturage) est dessinée. */
+export const ZONE_LAYERS: readonly MapLayerKey[] = ['boundaries', 'grazing']
+
+export interface ParsedMapLayers {
+  layers: MapLayerVisibility
+  /** Une valeur existait, écrite avant BI (sans `__v`). */
+  legacy: boolean
+  /** Les couches de formes rallumées parce que la valeur était d'avant BI. */
+  restored: MapLayerKey[]
+}
+
+/**
+ * ★★ BI — LIRE LA VALEUR STOCKÉE, PURE (`bipass` la rejoue). Seules les clés
+ * connues ET booléennes comptent ; tout le reste prend le défaut.
+ */
+export function parseMapLayers(raw: string | null): ParsedMapLayers {
+  const layers: MapLayerVisibility = { ...DEFAULTS }
+  if (raw === null) return { layers, legacy: false, restored: [] }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return { layers, legacy: false, restored: [] }
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { layers, legacy: false, restored: [] }
+  const obj = parsed as Record<string, unknown>
+  for (const key of Object.keys(DEFAULTS) as MapLayerKey[]) {
+    if (typeof obj[key] === 'boolean') layers[key] = obj[key] as boolean
+  }
+  const legacy = obj.__v !== MAP_LAYERS_FORMAT
+  const restored: MapLayerKey[] = []
+  if (legacy) {
+    for (const key of ZONE_LAYERS) {
+      if (layers[key] === false) {
+        layers[key] = true
+        restored.push(key)
+      }
+    }
+  }
+  return { layers, legacy, restored }
+}
+
+/** ★★ BI — la forme écrite, toujours datée de son format. */
+export function serializeMapLayers(layers: MapLayerVisibility): string {
+  return JSON.stringify({ __v: MAP_LAYERS_FORMAT, ...layers })
+}
+
+/**
+ * ★★ BI — AU DÉMARRAGE, AVANT LA SYNCHRONISATION DES RÉGLAGES (main.tsx) :
+ * une valeur d'avant BI est réécrite au format, couches de formes rallumées.
+ * Écrite AVANT que `startSettingsSync` n'enveloppe `localStorage`, elle ne
+ * reçoit pas d'instant : ce n'est pas un choix, elle ne voyage pas.
+ */
+export function migrateMapLayers(): ParsedMapLayers | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw === null) return null
+    const parsed = parseMapLayers(raw)
+    if (!parsed.legacy) return parsed
+    localStorage.setItem(STORAGE_KEY, serializeMapLayers(parsed.layers))
+    if (parsed.restored.length > 0) {
+      localStorage.setItem(MAP_LAYERS_MIGRATION_KEY, JSON.stringify({ at: Date.now(), restored: parsed.restored }))
+    }
+    current = parsed.layers
+    for (const l of listeners) l()
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+/** ★★ BI — ce que la réactivation a fait sur CET appareil, pour le diagnostic. */
+export function mapLayersMigration(): { at: number; restored: MapLayerKey[] } | null {
+  try {
+    const raw = localStorage.getItem(MAP_LAYERS_MIGRATION_KEY)
+    if (!raw) return null
+    const v = JSON.parse(raw) as { at?: unknown; restored?: unknown }
+    return typeof v.at === 'number' && Array.isArray(v.restored) ? { at: v.at, restored: v.restored as MapLayerKey[] } : null
+  } catch {
+    return null
+  }
+}
+
 const listeners = new Set<() => void>()
+let current: MapLayerVisibility = read()
 
 function read(): MapLayerVisibility {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return DEFAULTS
-    const parsed = JSON.parse(raw) as Partial<MapLayerVisibility>
-    return { ...DEFAULTS, ...parsed }
+    return parseMapLayers(localStorage.getItem(STORAGE_KEY)).layers
   } catch {
-    return DEFAULTS
+    return { ...DEFAULTS }
   }
+}
+
+/**
+ * ★★ BI — UNE VALEUR ARRIVÉE D'UN AUTRE APPAREIL (la synchronisation l'a
+ * écrite) : le cache est relu et les cartes ouvertes suivent, sans rechargement.
+ */
+export function reloadMapLayers(): void {
+  current = read()
+  for (const l of listeners) l()
 }
 
 export function getMapLayers(): MapLayerVisibility {
@@ -129,7 +252,7 @@ export function setMapLayer(key: MapLayerKey, on: boolean): void {
 export function setMapLayers(patch: Partial<MapLayerVisibility>): void {
   current = { ...current, ...patch }
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(current))
+    localStorage.setItem(STORAGE_KEY, serializeMapLayers(current))
   } catch {
     // A remembered layer set is a convenience, not a requirement.
   }

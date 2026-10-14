@@ -88,6 +88,8 @@
     }
   },
   "map": {
+    "hiddenZones_one": "1 forme masquée par la légende",
+    "hiddenZones_other": "{{count}} formes masquées par la légende",
     "hiddenEntities_one": "1 ferme masquée par la légende",
     "hiddenEntities_other": "{{count}} fermes masquées par la légende",
     "showHidden": "Afficher",

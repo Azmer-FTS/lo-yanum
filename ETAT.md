@@ -1,5 +1,78 @@
 # לא ינום — ETAT
 
+> 🏁 **BI — POURQUOI L'ORDINATEUR NE DESSINAIT PAS LES FORMES. 2026-10-15.**
+>
+> ⛔ **DONNÉES RÉELLES.** `bipass` / `biui` / `biexplore` n'utilisent que des
+> formes INVENTÉES (31 et 29 sommets, comme farm-ak1-11) sur des fermes du banc
+> REBAPTISÉES. La base réelle n'a été que COMPTÉE (sommets, emprise) et les
+> journaux du serveur LUS ; rien n'en est copié.
+>
+> **LA RÉPONSE (`docs/bi/diagnostic.md`, les cinq états un par un).** Ce qui
+> diffère entre l'iPad et l'ordinateur : **`lo-yanum:map-layers`**, les cases
+> « גבולות יישויות » / « שטחי מרעה » de la légende — un réglage LOCAL (dans
+> `LOCAL_ONLY_KEYS`, sans instant ; le commentaire de BD 4 affirmait le
+> contraire). `MapCanvas` retire de la carte toute forme dont la case est
+> décochée, et RIEN ne le disait (légende repliée ; la pastille d'AU1 ne
+> comptait que les fermes). Les 77 sommets étaient en mémoire, jamais donnés à
+> la carte. **Reproduit sur le bundle DÉPLOYÉ `9575112`** (service worker aux
+> commandes, rechargement complet, Chrome 1 440 à la souris, thème sombre) :
+> 0 anneau dans la fiche et dans l'écran des fermes
+> (`private/bi/logs/biui-A504-deploye-9575112-AVANT.log`) ; thème, satellite,
+> plein écran, 1 920 px : 2 anneaux. ⚠️ Non prouvable d'ici : que l'ordinateur
+> du PO a bien ces cases décochées — c'est le SEUL état qui reproduit, et ce même
+> ordinateur a eu le même symptôme pour les épingles en AU1. Depuis BI, il le
+> dit lui-même (ligne « הדלקה מחדש (BI) » du diagnostic).
+>
+> **CE QUI CHANGE — LA RÈGLE : PAR DÉFAUT, ON MONTRE.**
+> - `mapLayers.ts` : `parseMapLayers` (pur) — absent, illisible, inconnu, non
+>   booléen → défaut (formes montrées) ; valeur écrite au format `__v: 2`.
+>   `migrateMapLayers()` (`main.tsx`, AVANT `startSettingsSync`, donc sans
+>   instant) : une valeur d'avant BI a ses couches de FORMES rallumées une fois,
+>   les autres couches gardées, trace `lo-yanum:map-layers-bi`.
+> - `sync.ts` : `lo-yanum:map-layers` VOYAGE (`SYNCED_SETTING_KEYS`), « choisie
+>   seulement » (`STAMPED_ONLY_KEYS`, comme le thème) ; `appliedHooks` relit le
+>   cache à l'arrivée (`reloadMapLayers`).
+> - `MapCanvas` : la pastille `map-hidden-zones` (« N צורות מוסתרות במקרא ·
+>   הצגה ») ; `recordDrawnZones` (`mapProbe.ts`) inscrit ce que la source `zones`
+>   reçoit.
+> - **Le panneau de diagnostic** (`ui/diagnostic/`, coordinateur) : הגדרות ›
+>   אבחון המכשיר, ou « אבחון » au pied de toute légende. Version exécutée /
+>   servie, service worker, dernière relecture réussie (`DataState.loadedAt`,
+>   nouveau), formes et sommets en mémoire, formes de la fiche ouverte, reçues
+>   par la carte, couches, réactivation BI, fond, thème, « voir comme » ; une
+>   phrase (`diagnosticVerdict`, pure) ; « העתקה ».
+> - **Point 6 — 403 / 441.** Même formule des deux côtés (`ringAreaDunams`).
+>   403 = la forme EN BASE (tuile « מדוד », `remeasured`) ; 441 = la forme de la
+>   session d'édition (carte et barre), écrite seulement à « סיום עריכה ». Le
+>   chiffre juste à cet instant pour la base était 403, celui de la forme à
+>   l'écran 441 : le défaut était le retard d'écriture. **Chaque geste et chaque
+>   annulation sont désormais écrits** (`commitRing`) : barre = étiquette =
+>   tuile = base. `bhui` A491 (« rien n'est encore écrit ») est réécrit en
+>   conséquence.
+> - **Point 7 — le brouillon** (`ui/farm/zoneDraft.ts`) : chaque sommet d'un
+>   tracé non fermé est écrit dans `lo-yanum:zone-draft:<ferme>` (local, une
+>   LISTE : un brouillon par tracé, chacun son `id`) ; seuls « סגור פוליגון »,
+>   le retrait de son dernier sommet et « מחיקת הטיוטה » (confirmé) effacent
+>   UN brouillon — ni Échap, ni « ביטול », ni un autre écran, ni une page tuée.
+>   Hors tracé, une bande nomme le plus récent (« גבול החווה · <ferme> · N
+>   פינות », « ועוד N טיוטות ») : « המשך ציור » / « מחיקת הטיוטה ». ⚠️ Première
+>   version : un brouillon à la fois, boutons de tracé éteints tant qu'il
+>   attendait — `freehand` A87 l'a refusée (un trait raté, Échap, on
+>   recommence : c'est un geste du PO). D'où la liste : rien n'est bloqué, et
+>   un second tracé ne remplace jamais le premier. `?draw=` n'arme pas tant
+>   qu'un brouillon attend (la bande passe d'abord).
+>
+> **Portes** (`docs/bi/portes-local.md`). `bipass` (A498–A503) 71/71 ;
+> `biui` (A504–A510) 45/45 — rejoué AVANT correctif sur le déployé `9575112`,
+> A504 y était ROUGE (0 anneau) : c'est la reproduction. Toutes les portes de
+> BB à BH et du déploiement vertes (axui A347, freehand A87 attrapés pendant
+> la passe et corrigés ; `bhui` A491 réécrit pour la règle du point 6).
+>
+> **Le PO, s'il faut le relever** : fiche de la ferme → « מקרא » → « אבחון » →
+> « העתקה », coller dans un message (`biui` A508 fait ce parcours).
+>
+---
+
 > 🏁 **BH — LE DESSIN DES ZONES : RETOUCHER, ANNULER, NE JAMAIS RECOMMENCER PAR
 > ERREUR. 2026-10-14.**
 >

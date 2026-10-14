@@ -104,6 +104,45 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BI — POURQUOI L'ORDINATEUR NE DESSINAIT PAS LES FORMES — CODE ET PORTES
+  VERTS EN LOCAL** (2026-10-15). Branche `main`. Aucune migration. Récit :
+  `ETAT.md` § BI (en tête) ; diagnostic a–e : `docs/bi/diagnostic.md` ; portes :
+  `docs/bi/portes-local.md`. ⚠️ Déploiement + replay sur le déployé : voir la
+  ligne « ÉTAT DU DÉPLOIEMENT BI » ci-dessous.
+  - **Cause** : `lo-yanum:map-layers` (cases « גבולות יישויות » / « שטחי מרעה »)
+    LOCAL à l'appareil ; `MapCanvas` retirait les formes décochées sans rien
+    dire. Reproduit sur le déployé `9575112` (biui A504 rouge AVANT : 0 anneau).
+    Non prouvé d'ici que l'ordinateur du PO avait ces cases décochées : seul
+    état qui reproduit ; il le dira lui-même (diagnostic, ligne « הדלקה מחדש
+    (BI) »).
+  - **Décisions (permanentes)** :
+    · PAR DÉFAUT, ON MONTRE : un réglage d'affichage absent / illisible /
+      inconnu prend le défaut, et le défaut montre les données
+      (`parseMapLayers`) ;
+    · une valeur de couches d'avant BI (sans `__v`) a ses couches de FORMES
+      rallumées une fois au démarrage, AVANT la synchro (`migrateMapLayers`
+      dans `main.tsx`), trace `lo-yanum:map-layers-bi` ;
+    · `lo-yanum:map-layers` VOYAGE, « choisie seulement » (STAMPED_ONLY, comme
+      le thème) ;
+    · une forme cachée par une couche SE VOIT (pastille `map-hidden-zones`) ;
+    · panneau de diagnostic (`ui/diagnostic/`) : הגדרות › אבחון המכשיר, ou
+      « אבחון » au pied de toute légende ; coordinateur seulement ;
+    · point 6 : CHAQUE GESTE d'édition d'une forme est écrit (`commitRing`) —
+      403 (base, tuile) / 441 (session) venait du retard d'écriture, pas du
+      calcul (même `ringAreaDunams`) ;
+    · point 7 : brouillons de tracé non fermé dans `lo-yanum:zone-draft:<ferme>`
+      (liste, un par tracé) ; effacés seulement par « סגור פוליגון », le retrait
+      de son dernier sommet, « מחיקת הטיוטה » confirmé ; jamais de bouton bloqué.
+  - **Rouges ANTÉRIEURS** : inchangés depuis BH (`adui` A115 ; `anui` A236,
+    `atui` de BG ; non rejoués : `pills`, `rhythm`, `akui`, `uipass`, `sheets`,
+    `layout`).
+  - **Questions au PO** : relever le diagnostic sur l'ordinateur (fiche → « מקרא »
+    → « אבחון » → « העתקה ») si les formes n'y apparaissent toujours pas après
+    la mise à jour. Plus celles de BG et d'avant.
+  - Reprise : `bun run bipass && bun run typecheck` ; `bun run biui` ;
+    `BASE_URL=https://azmer-fts.github.io/lo-yanum bun run biui` (déployé).
+  - ÉTAT DU DÉPLOIEMENT BI : non commité, non déployé (mis à jour à chaque étape).
+
 - **BH — LE DESSIN DES ZONES — TERMINÉE, POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE
   DÉPLOYÉ** (2026-10-14). Branche `main`. Aucune migration. Commits : `0dc6cd1`
   (code + portes, SERVI : `version.json` = 0dc6cd1), puis le commit de fin de

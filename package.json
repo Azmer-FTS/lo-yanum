@@ -41,6 +41,8 @@
     "bgui": "bun run scripts/bgui.ts",
     "bhpass": "bun run scripts/bhpass.ts",
     "bhui": "bun run scripts/bhui.ts",
+    "bipass": "bun run scripts/bipass.ts",
+    "biui": "bun run scripts/biui.ts",
     "azcaptures": "bun run scripts/azcaptures.ts",
     "aymobile": "bun run scripts/aymobile.ts",
     "aypins": "bun run scripts/aypins.ts",

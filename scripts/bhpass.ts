@@ -143,7 +143,8 @@ section('A488 — le chemin d’écriture du tracé')
     const i = store.indexOf(h)
     return i >= 0 && store.slice(i, i + 900).includes('commit()')
   }))
-  check('A488 aucune copie de la forme ailleurs que dans le magasin (pas de brouillon local persistant)', !/localStorage|sessionStorage|indexedDB/.test(readFileSync('src/ui/components/AnchorMap.tsx', 'utf8')))
+  /* ★★ BI — le tracé NON FERMÉ a désormais un brouillon local (`ui/farm/zoneDraft.ts`, A502) ; une FORME, elle, ne vit que dans le magasin. */
+  check('A488 aucune copie de la forme ailleurs que dans le magasin (l’écran ne stocke rien lui-même)', !/localStorage|sessionStorage|indexedDB/.test(readFileSync('src/ui/components/AnchorMap.tsx', 'utf8')))
 }
 
 console.log(`\n  ${passed} PASS, ${failed} FAIL`)

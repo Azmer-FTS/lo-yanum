@@ -48,7 +48,15 @@ export const THEME_SYNC_KEY = 'lo-yanum:theme:coordinator'
  * gagner le premier appareil synchronisé — le téléphone pourrait éteindre le
  * sombre de l'ordinateur. Rien ne bouge tant que le PO n'a pas choisi.
  */
-export const STAMPED_ONLY_KEYS: ReadonlySet<string> = new Set([THEME_SYNC_KEY])
+/**
+ * ★★ BI (2026-10-15) — LES COUCHES DE LA CARTE VOYAGENT, ELLES AUSSI « CHOISIES
+ * SEULEMENT ». Restées locales jusqu'ici, elles éteignaient les formes de
+ * l'ordinateur pendant que l'iPad les dessinait (voir `mapLayers.ts`). Une
+ * valeur d'avant BI n'a pas d'instant : elle reste sur son appareil, et
+ * n'éteint jamais celui d'à côté ; un choix fait depuis BI voyage.
+ */
+export const MAP_LAYERS_SYNC_KEY = 'lo-yanum:map-layers'
+export const STAMPED_ONLY_KEYS: ReadonlySet<string> = new Set([THEME_SYNC_KEY, MAP_LAYERS_SYNC_KEY])
 
 /*
  * ═══════════════════════════════════════════════════════════════════════════
@@ -119,6 +127,8 @@ export const SYNCED_SETTING_KEYS: readonly string[] = [
      Le CHOIX voyage (clair · sombre · « selon l'appareil ») ; « selon
      l'appareil » continue de suivre CHAQUE appareil. */
   THEME_SYNC_KEY,
+  /* ★★ BI — les couches de la carte (contours, pâturages, fermes…). */
+  MAP_LAYERS_SYNC_KEY,
 ]
 
 /**
@@ -140,7 +150,9 @@ export const LOCAL_ONLY_KEYS: ReadonlyArray<{ key: string; why: string }> = [
   { key: 'lo-yanum:leads-sort, lo-yanum:institutions-sort', why: 'tri des tableaux (AX5) : disposition d’écran' },
   { key: 'lo-yanum:free-route-draft', why: 'l’itinéraire libre EN COURS (AX8) ; les itinéraires ENREGISTRÉS, eux, voyagent (free-routes)' },
   { key: 'lo-yanum:coverage-band, lo-yanum:coverage-farm-card', why: 'bandeau des réglages replié, fiche de ferme dépliée (BG) : disposition d’écran' },
-  { key: 'map-mode, map-ratio, map-last, map-layers, map-base, layout-sync, block:*, numpad', why: 'disposition d’écran et de carte' },
+  { key: 'map-mode, map-ratio, map-last, map-base, layout-sync, block:*, numpad', why: 'disposition d’écran et de carte (★★ BI : map-layers VOYAGE désormais, voir STAMPED_ONLY_KEYS)' },
+  { key: 'lo-yanum:map-layers-bi', why: 'trace de la réactivation des couches de formes sur CET appareil (BI), lue par le diagnostic' },
+  { key: 'lo-yanum:zone-draft:<ferme>', why: 'le tracé NON TERMINÉ d’une forme (BI) : local jusqu’à la fermeture du polygone' },
   { key: 'last-fix, geo-granted, geo-diag, map-attempt', why: 'localisation et diagnostics de CET appareil' },
   { key: 'update-pending, update-verdict', why: 'mise à jour du build de CET appareil (AJ)' },
   { key: 'last-session, last-email, lo-yanum:auth', why: 'la session elle-même' },

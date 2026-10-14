@@ -238,7 +238,11 @@ await guard('A490', async () => {
   const after = (await mapRings(o.page))[ZONE]
   check('A491 PENDANT le glissement, la forme a déjà changé (en direct)', !!during && !sameRing(during, before))
   check('A491 lâché : un sommet a bougé, et un seul', !!after && !!before && after.length === before.length && after.filter((q, i) => q[0] !== before[i][0] || q[1] !== before[i][1]).length === 1)
-  check('A491 rien n’est encore écrit (on enregistre à « סיום »)', sameRing(dbRing(db, ZONE), before))
+  /* ★★ BI — la règle a changé (point 6 de BI) : le geste est ÉCRIT dès qu'il
+     est fait, pour que la tuile « מדוד » et la base ne retardent plus sur la
+     carte (403 / 441 en BH). Cette ligne disait « rien n'est encore écrit ». */
+  await o.page.waitForTimeout(1500)
+  check('A491 ★ BI : le geste est ÉCRIT dès le lâcher (plus d’écart carte / base)', sameRing(dbRing(db, ZONE), after))
 
   // A492 — tirer une demi-poignée crée un sommet.
   const n0 = await vertexCount(o.page)

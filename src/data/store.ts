@@ -76,9 +76,14 @@ export interface DataState {
   stale: boolean
   /** The last error, for the shell to show and for the console. */
   message: string | null
+  /**
+   * ★★ BI (2026-10-15) — L'INSTANT DE LA DERNIÈRE RELECTURE RÉUSSIE (ms), pour
+   * le panneau de diagnostic : « cet appareil a-t-il relu, et quand ? ».
+   */
+  loadedAt: number | null
 }
 
-let state: DataState = { status: 'idle', pending: 0, stale: false, message: null }
+let state: DataState = { status: 'idle', pending: 0, stale: false, message: null, loadedAt: null }
 const listeners = new Set<() => void>()
 
 function publish(next: Partial<DataState>): void {
@@ -87,7 +92,8 @@ function publish(next: Partial<DataState>): void {
     merged.status === state.status &&
     merged.pending === state.pending &&
     merged.stale === state.stale &&
-    merged.message === state.message
+    merged.message === state.message &&
+    merged.loadedAt === state.loadedAt
   ) {
     return
   }
@@ -404,7 +410,7 @@ export function installSupabaseStore(): void {
       return
     }
     await cache.put('aggregates', snapshotRecords(merged, new Date().toISOString()))
-    publish({ status: 'ready', stale: false, message: null })
+    publish({ status: 'ready', stale: false, message: null, loadedAt: Date.now() })
   }
 
   const sync = (): void => {

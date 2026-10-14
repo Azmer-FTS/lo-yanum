@@ -17,6 +17,7 @@ import { QuickPinSheet, pinHref } from './QuickPin'
 import type { PinCreated } from './QuickPin'
 import { useCoreValue } from '../hooks/useCore'
 import { BRANCH_LAYERS, MARKER_LAYER, markerShown, setMapLayers, useMapLayers } from './mapLayers'
+import { recordDrawnZones } from './mapProbe'
 import { MAP_MAX_BOUNDS, buildBasemapStyle, registerPmtilesProtocol, resolvedThemeOf } from './basemap'
 import { regionById, regionOf, regions } from '@core/index'
 import type { BasemapBase } from './basemap'
@@ -1153,6 +1154,15 @@ export default function MapCanvas({
         }),
     [allMarkers, layers],
   )
+  /**
+   * ★★ BI (2026-10-15) — UNE FORME CACHÉE PAR UNE COUCHE SE VOIT AUSSI. AU1
+   * l'avait fait pour les fermes ; les formes, filtrées par les mêmes cases,
+   * disparaissaient sans un mot — l'ordinateur du PO ne dessinait pas ce que
+   * son iPad dessinait (`mapLayers.ts`). Le compte est dit, un geste les rend.
+   */
+  const hiddenZones = (allPolygons ?? []).filter(
+    (p) => (p.kind === 'grazing_area' && !layers.grazing) || (p.kind === 'farm_boundary' && !layers.boundaries),
+  ).length
   const polygons = useMemo(
     () =>
       allPolygons?.filter((p) =>
@@ -2145,6 +2155,7 @@ export default function MapCanvas({
         map.getContainer().querySelector('.maplibregl-canvas-container')?.remove()
       }
       mapRef.current = null
+      recordDrawnZones(null)
     }
     // Mount-only, plus `glGeneration`: later prop changes are handled by the
     // effects below, which is far cheaper than tearing the GL context down.
@@ -3343,6 +3354,24 @@ export default function MapCanvas({
           </button>,
           noticeHost,
         )}
+      {interactive && noticeHost && hiddenZones > 0 &&
+        createPortal(
+          <button
+            type="button"
+            data-testid="map-hidden-zones"
+            data-count={hiddenZones}
+            onClick={() => setMapLayers({ boundaries: true, grazing: true })}
+            className={`glass pointer-events-auto absolute start-1/2 z-[3] flex min-h-11 max-w-[min(26rem,calc(100%-7rem))] -translate-x-1/2 items-center gap-2 rounded-pill px-4 py-2 text-caption font-semibold text-content-primary shadow-card rtl:translate-x-1/2 ${
+              /* Sous l'avis d'imagerie et sous la pastille des fermes, s'il y en a. */
+              ['top-3', 'top-16', 'top-[7.25rem]'][(imagery !== 'ok' ? 1 : 0) + (hiddenEntities > 0 ? 1 : 0)]
+            }`}
+          >
+            <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 rounded-pill bg-status-warn" />
+            {t('map.hiddenZones', { count: hiddenZones })}
+            <span className="text-accent-ink">{t('map.showHidden')}</span>
+          </button>,
+          noticeHost,
+        )}
       {/* ★★ BF — « מרכוז מחדש » : seulement quand le PO a pris la caméra et
           qu'il y a quelque chose à quoi revenir. Le style des pastilles de la
           carte (« הצגה » des fiches cachées), 44 px. AU-DESSUS de la bande du
@@ -3550,10 +3579,12 @@ function applyPolygons(
 ): void {
   const source = map.getSource('zones') as maplibregl.GeoJSONSource | undefined
   if (!source) return
+  const drawable = (polygons ?? []).filter((p) => p.ring.length >= 3)
+  /* ★★ BI — ce qui part à l'écran, pour le panneau de diagnostic. */
+  recordDrawnZones(drawable.map((p) => ({ id: p.id, vertices: p.ring.length })))
   source.setData({
     type: 'FeatureCollection',
-    features: (polygons ?? [])
-      .filter((p) => p.ring.length >= 3)
+    features: drawable
       .map((p) => ({
         type: 'Feature',
         properties: {

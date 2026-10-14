@@ -25,6 +25,7 @@ import { startThemeController } from './ui/theme'
 import { startUpdateWatcher } from './ui/update'
 import { UpdateBanner } from './ui/components/UpdateBanner'
 import { SettingsSyncNotice } from './ui/settings/SettingsSyncNotice'
+import { migrateMapLayers } from './ui/components/mapLayers'
 
 /**
  * P2.6b — WHICH STORE THIS BUILD RUNS ON, DECIDED BEFORE ANYTHING RENDERS.
@@ -43,6 +44,13 @@ import { SettingsSyncNotice } from './ui/settings/SettingsSyncNotice'
  * `null` en mode démonstration : il n'y a pas de compte.
  */
 let settingsReady: Promise<void> | null = null
+
+/**
+ * ★★ BI (2026-10-15) — LES COUCHES DE FORMES D'AVANT BI SONT RALLUMÉES, ICI,
+ * AVANT que la synchronisation n'enveloppe `localStorage` : la réécriture n'est
+ * pas un choix et ne reçoit pas d'instant (voir `mapLayers.ts`).
+ */
+migrateMapLayers()
 
 if (SUPABASE_CONFIGURED) {
   installBackend(EMPTY_BACKEND)

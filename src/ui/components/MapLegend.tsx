@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Icon } from './Icon'
 import { MapAttribution } from './MapAttribution'
+import { DeviceDiagnosticButton } from '../diagnostic/DeviceDiagnostic'
 import { MAP_LAYERS, SUB_LAYERS, setMapLayers, useMapLayers } from './mapLayers'
 import type { MapLayerKey } from './mapLayers'
 import { readBlockOpen, writeBlockOpen } from './primitives'
@@ -113,6 +114,10 @@ export function MapLegend({
           <div className="flex flex-col gap-1 [&>div]:!border-0 [&>div]:!bg-transparent [&>div]:!px-0 [&>div]:!py-0 [&>div]:!shadow-none [&>div]:!backdrop-blur-0 [&>ul]:gap-1">
             {children}
           </div>
+          {/* ★★ BI — « אבחון » : ce que CET appareil a en mémoire et dessine. */}
+          <div className="mt-2 border-t border-edge-subtle pt-1.5">
+            <DeviceDiagnosticButton className="min-h-8 text-micro text-accent-ink" />
+          </div>
         </div>
       )}
     </div>
@@ -130,8 +135,10 @@ export function MapLegend({
  * Dans le même panneau et de la même façon que les couches : des cases, sous
  * la couche qu'elles détaillent, repliées derrière un bouton (mémorisé comme
  * la légende). « רק » ne garde que cette valeur ; « הכל » les rallume toutes.
- * Le choix voyage avec les autres couches (`lo-yanum:map-layers`, synchronisé
- * avec le compte comme les autres réglages d'écran).
+ * Le choix vit avec les autres couches (`lo-yanum:map-layers`).
+ * ⚠️ BI — CETTE PHRASE DISAIT « synchronisé avec le compte », et c'était
+ *    faux : la clé était dans `LOCAL_ONLY_KEYS`. Elle voyage depuis BI, une
+ *    fois choisie (voir `mapLayers.ts`).
  */
 function subLabel(key: MapLayerKey, t: (k: string) => string): string {
   if (key === 'branch:none') return t('map.layers.branchNone')

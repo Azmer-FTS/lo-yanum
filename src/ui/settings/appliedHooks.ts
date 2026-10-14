@@ -1,6 +1,7 @@
 import { notifyCoordinatorChanged, notifyDerivedChange } from '@core/index'
 import { onSettingsApplied } from './applied'
 import { loadRegionEdits } from './regionEdits'
+import { MAP_LAYERS_KEY, reloadMapLayers } from '../components/mapLayers'
 
 /**
  * ★ AS4 — les deux réglages dont le module n'est pas dans `ui/settings/` avec
@@ -17,4 +18,6 @@ export function installSettingsAppliedHooks(): void {
     notifyDerivedChange()
   })
   onSettingsApplied(['lo-yanum:coordinator'], () => notifyCoordinatorChanged())
+  /* ★★ BI — les couches de la carte, choisies sur un autre appareil. */
+  onSettingsApplied([MAP_LAYERS_KEY], () => reloadMapLayers())
 }
