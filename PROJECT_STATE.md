@@ -104,11 +104,12 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **BI — POURQUOI L'ORDINATEUR NE DESSINAIT PAS LES FORMES — CODE ET PORTES
-  VERTS EN LOCAL** (2026-10-15). Branche `main`. Aucune migration. Récit :
+- **BI — POURQUOI L'ORDINATEUR NE DESSINAIT PAS LES FORMES — TERMINÉE, POUSSÉE,
+  DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-15). Branche `main`. Aucune
+  migration. Commits : `bfdc2e8` (code + portes, SERVI : `version.json` =
+  bfdc2e8), puis le commit de fin de passe (`docs/bi/portes-deploye-bfdc2e8.md`). Récit :
   `ETAT.md` § BI (en tête) ; diagnostic a–e : `docs/bi/diagnostic.md` ; portes :
-  `docs/bi/portes-local.md`. ⚠️ Déploiement + replay sur le déployé : voir la
-  ligne « ÉTAT DU DÉPLOIEMENT BI » ci-dessous.
+  `docs/bi/portes-local.md` ; déployé : `docs/bi/portes-deploye-bfdc2e8.md`.
   - **Cause** : `lo-yanum:map-layers` (cases « גבולות יישויות » / « שטחי מרעה »)
     LOCAL à l'appareil ; `MapCanvas` retirait les formes décochées sans rien
     dire. Reproduit sur le déployé `9575112` (biui A504 rouge AVANT : 0 anneau).
@@ -141,7 +142,9 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
     la mise à jour. Plus celles de BG et d'avant.
   - Reprise : `bun run bipass && bun run typecheck` ; `bun run biui` ;
     `BASE_URL=https://azmer-fts.github.io/lo-yanum bun run biui` (déployé).
-  - ÉTAT DU DÉPLOIEMENT BI : non commité, non déployé (mis à jour à chaque étape).
+  - Déployé `bfdc2e8` : biui 45, bhui 34, bgui 90, bfui 52, beui 57, bdui 76,
+    bbui 82 (app) ; bcmobile 246, aymobile 48 (jumeau) — tout vert. A504, rouge
+    sur `9575112` avec le même profil, est vert.
 
 - **BH — LE DESSIN DES ZONES — TERMINÉE, POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE
   DÉPLOYÉ** (2026-10-14). Branche `main`. Aucune migration. Commits : `0dc6cd1`

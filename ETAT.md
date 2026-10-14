@@ -68,6 +68,10 @@
 > BB à BH et du déploiement vertes (axui A347, freehand A87 attrapés pendant
 > la passe et corrigés ; `bhui` A491 réécrit pour la règle du point 6).
 >
+> **Déployé `bfdc2e8`** : biui 45/45 (A504 vert — il était rouge sur
+> `9575112`), bhui 34, bgui 90, bfui 52, beui 57, bdui 76, bbui 82 ; bcmobile
+> 246, aymobile 48 (`docs/bi/portes-deploye-bfdc2e8.md`).
+>
 > **Le PO, s'il faut le relever** : fiche de la ferme → « מקרא » → « אבחון » →
 > « העתקה », coller dans un message (`biui` A508 fait ce parcours).
 >
