@@ -2,7 +2,18 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
+  applyGesture,
+  canUndo,
+  edgeMidpoint,
   entityKindOf,
+  insertVertex,
+  isDirty,
+  isValidRing,
+  moveVertex,
+  openSession,
+  removeVertex,
+  translateRing,
+  undoGesture,
   ringAreaDunams,
   ringCenter,
   simplifyRing,
@@ -11,6 +22,7 @@ import {
 } from '@core/index'
 import type {
   AnchorPoint,
+  EditSession,
   Farm,
   FarmZone,
   FarmZoneKind,
@@ -234,6 +246,81 @@ export function AnchorMap({
       ? (zones.find((z) => z.id === selectedZoneId) ?? null)
       : null
 
+  /**
+   * ═════════════════════════════════════════════════════════════════════════
+   * ★★ BH (2026-10-14) — RETOUCHER UNE FORME : UNE SESSION D'ÉDITION.
+   * ═════════════════════════════════════════════════════════════════════════
+   *
+   * Sélectionner une forme ouvre une session (`core/zoneEdit.ts`) : l'anneau
+   * courant et la pile des gestes. Chaque geste — déplacer un sommet, tirer
+   * une demi-poignée, retirer un sommet d'un appui long, déplacer la forme —
+   * passe par la session ; « ביטול פעולה » revient d'un geste, autant de fois
+   * qu'il y en a eu. Pendant un glissement, seul le POLYGONE suit le doigt
+   * (`live`) : la liste des marqueurs ne change pas sous la main.
+   *
+   * ★ L'ENREGISTREMENT : « סיום עריכה » écrit la forme (le magasin, puis la
+   *   file d'écriture, comme tout le reste). Et RIEN NE SE PERD : quitter la
+   *   forme autrement (une autre sélection, Échap, un autre écran) l'écrit
+   *   aussi. Une forme qui n'a pas changé n'écrit rien.
+   */
+  const [session, setSessionState] = useState<EditSession | null>(null)
+  const sessionRef = useRef<EditSession | null>(null)
+  const setSession = (next: EditSession | null) => {
+    sessionRef.current = next
+    setSessionState(next)
+  }
+  const [live, setLive] = useState<LatLng[] | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  /** Un toucher qui suit un glissement de demi-poignée ne réinsère pas. */
+  const draggedAt = useRef(0)
+  const saveSession = (s: EditSession | null) => {
+    if (s && isDirty(s) && isValidRing(s.ring)) onZoneRingChange?.(s.zoneId, s.ring)
+  }
+  useEffect(() => {
+    const prev = sessionRef.current
+    if (prev && prev.zoneId !== selectedZone?.id) saveSession(prev)
+    if (!selectedZone) {
+      if (prev) setSession(null)
+    } else if (!prev || prev.zoneId !== selectedZone.id) {
+      setSession(openSession(selectedZone.id, selectedZone.ring))
+    }
+    setLive(null)
+    setNotice(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedZone?.id])
+  /* Une relecture qui apporte une autre forme pendant qu'on n'y a pas touché :
+     la session la reprend. Touchée, la session garde la main du PO. */
+  useEffect(() => {
+    const s = sessionRef.current
+    if (!s || !selectedZone || s.zoneId !== selectedZone.id || isDirty(s)) return
+    const same = s.original.length === selectedZone.ring.length && s.original.every((p, i) => p.lat === selectedZone.ring[i].lat && p.lng === selectedZone.ring[i].lng)
+    if (!same) setSession(openSession(selectedZone.id, selectedZone.ring))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedZone?.ring])
+  /* Quitter l'écran en pleine édition : la forme est écrite. */
+  useEffect(
+    () => () => saveSession(sessionRef.current),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+  const gesture = (ring: LatLng[]) => {
+    const s = sessionRef.current
+    if (!s) return
+    setLive(null)
+    setNotice(null)
+    setSession(applyGesture(s, ring))
+  }
+  const undo = () => {
+    const s = sessionRef.current
+    if (!s) return
+    setLive(null)
+    setNotice(null)
+    setSession(undoGesture(s))
+  }
+  /** La forme sélectionnée telle qu'elle est à l'écran (session, ou glissement en cours). */
+  const editRing: LatLng[] | null = selectedZone ? (live ?? (session?.zoneId === selectedZone.id ? session.ring : selectedZone.ring)) : null
+  const sessionRing: LatLng[] | null = selectedZone ? (session?.zoneId === selectedZone.id ? session.ring : selectedZone.ring) : null
+
   useEffect(() => {
     if (mode.kind === 'idle' && !selectedZoneId) return
     const onKey = (e: KeyboardEvent) => {
@@ -259,9 +346,15 @@ export function AnchorMap({
    *    l'outil que la file a demandé.
    */
   useEffect(() => {
-    if (armZone && zonesEditable) setMode({ kind: 'drawing', zone: armZone, draft: [] })
+    /* ★★ BH — LE LIEN « לתיחום » (`?draw=`) N'ARME PLUS LE DESSIN QUAND LA
+       FORME EXISTE DÉJÀ : il la SÉLECTIONNE. Sinon, à chaque retour par ce
+       lien, le premier toucher sur la forme existante posait le premier
+       sommet d'une NOUVELLE forme par-dessus — le symptôme du PO. */
+    const existing = armZone ? zones.find((z) => z.kind === armZone) : undefined
+    if (armZone && zonesEditable && !existing) setMode({ kind: 'drawing', zone: armZone, draft: [] })
     else setMode({ kind: 'idle' })
-    setSelectedZoneId(null)
+    setSelectedZoneId(existing && zonesEditable ? existing.id : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [farm.id, armZone, zonesEditable])
 
   /**
@@ -275,8 +368,8 @@ export function AnchorMap({
   const draftKey = drawing
     ? drawing.draft.map((v) => `${v.lat},${v.lng}`).join(';')
     : ''
-  const selectedRingKey = selectedZone
-    ? selectedZone.ring.map((v) => `${v.lat},${v.lng}`).join(';')
+  const selectedRingKey = sessionRing
+    ? sessionRing.map((v) => `${v.lat},${v.lng}`).join(';')
     : ''
   const signature = [
     farm.id,
@@ -395,71 +488,93 @@ export function AnchorMap({
           : undefined,
       })),
       // G1 — the selected zone's vertices, draggable to reshape it. Emphasis
-      // separates a REAL vertex from the smaller G15 midpoint grips between.
-      ...(selectedZone?.ring ?? []).map((v, i) => ({
-        id: `vertex-${selectedZone?.id}-${i}`,
-        position: v,
-        color: zoneColor(selectedZone?.kind ?? 'farm_boundary', entity),
-        title: t('zone.vertex'),
-        kind: 'vertex' as const,
-        emphasis: true,
-        draggable: Boolean(onZoneRingChange),
-        onDragEnd: onZoneRingChange
-          ? (position: LatLng) => {
-              if (!selectedZone) return
-              const ring = selectedZone.ring.map((p, j) =>
-                j === i ? position : p,
-              )
-              onZoneRingChange(selectedZone.id, ring)
-            }
-          : undefined,
-      })),
-      // G15 — a small grip on the MIDDLE of each edge: clicking it inserts a
-      // vertex right there, ready to drag. This is how a 5-point sketch grows
-      // into the field's real shape without redrawing it.
-      ...(selectedZone && onZoneRingChange
-        ? selectedZone.ring.map((v, i) => {
-            const next = selectedZone.ring[(i + 1) % selectedZone.ring.length]
-            const mid = {
-              lat: (v.lat + next.lat) / 2,
-              lng: (v.lng + next.lng) / 2,
-            }
+      // separates a REAL vertex from the smaller midpoint half-grips between.
+      // ★★ BH — glisser redessine EN DIRECT (`onDrag` → `live`) ; lâcher est
+      // un geste de la session ; un appui LONG retire le sommet (refusé sous
+      // trois, et l'écran dit pourquoi).
+      ...(selectedZone && sessionRing
+        ? sessionRing.map((v, i) => ({
+            id: `vertex-${selectedZone.id}-${i}`,
+            position: v,
+            color: zoneColor(selectedZone.kind, entity),
+            title: t('zone.vertex'),
+            kind: 'vertex' as const,
+            emphasis: true,
+            draggable: Boolean(onZoneRingChange),
+            onDrag: onZoneRingChange
+              ? (position: LatLng) => {
+                  const s = sessionRef.current
+                  if (s) setLive(moveVertex(s.ring, i, position))
+                }
+              : undefined,
+            onDragEnd: onZoneRingChange
+              ? (position: LatLng) => {
+                  const s = sessionRef.current
+                  if (s) gesture(moveVertex(s.ring, i, position))
+                }
+              : undefined,
+            onLongPress: onZoneRingChange
+              ? () => {
+                  const s = sessionRef.current
+                  if (!s) return
+                  const r = removeVertex(s.ring, i)
+                  if (r.ok) gesture(r.ring)
+                  else setNotice(t('zone.minVertices'))
+                }
+              : undefined,
+          }))
+        : []),
+      // G15 / ★★ BH — LA DEMI-POIGNÉE au milieu de chaque arête : on la TIRE,
+      // et un sommet naît là où on la lâche (un toucher l'insère au milieu).
+      ...(selectedZone && sessionRing && onZoneRingChange
+        ? sessionRing.map((_, i) => {
+            const mid = edgeMidpoint(sessionRing, i)
             return {
               id: `midpoint-${selectedZone.id}-${i}`,
               position: mid,
               color: zoneColor(selectedZone.kind, entity),
               title: t('zone.addVertex'),
               kind: 'vertex' as const,
+              draggable: true,
+              onDrag: (position: LatLng) => {
+                const s = sessionRef.current
+                if (s) setLive(insertVertex(s.ring, i, position))
+              },
+              onDragEnd: (position: LatLng) => {
+                const s = sessionRef.current
+                draggedAt.current = Date.now()
+                if (s) gesture(insertVertex(s.ring, i, position))
+              },
               onSelect: () => {
-                const ring = [...selectedZone.ring]
-                ring.splice(i + 1, 0, mid)
-                onZoneRingChange(selectedZone.id, ring)
+                if (Date.now() - draggedAt.current < 400) return
+                const s = sessionRef.current
+                if (s) gesture(insertVertex(s.ring, i, edgeMidpoint(s.ring, i)))
               },
             }
           })
         : []),
       // G15 — the whole-polygon MOVE handle at the ring's centre: dragging it
       // translates every vertex by the same delta.
-      ...(selectedZone && onZoneRingChange
+      ...(selectedZone && sessionRing && onZoneRingChange
         ? [
             {
               id: `zone-move-${selectedZone.id}`,
-              position: ringCenter(selectedZone.ring),
+              position: ringCenter(sessionRing),
               color: zoneColor(selectedZone.kind, entity),
               title: t('zone.moveZone'),
               kind: 'move' as const,
               draggable: true,
+              onDrag: (position: LatLng) => {
+                const s = sessionRef.current
+                if (!s) return
+                const from = ringCenter(s.ring)
+                setLive(translateRing(s.ring, position.lat - from.lat, position.lng - from.lng))
+              },
               onDragEnd: (position: LatLng) => {
-                const from = ringCenter(selectedZone.ring)
-                const dLat = position.lat - from.lat
-                const dLng = position.lng - from.lng
-                onZoneRingChange(
-                  selectedZone.id,
-                  selectedZone.ring.map((p) => ({
-                    lat: p.lat + dLat,
-                    lng: p.lng + dLng,
-                  })),
-                )
+                const s = sessionRef.current
+                if (!s) return
+                const from = ringCenter(s.ring)
+                gesture(translateRing(s.ring, position.lat - from.lat, position.lng - from.lng))
               },
             },
           ]
@@ -482,10 +597,11 @@ export function AnchorMap({
         ? [
             {
               id: `zone-area-${selectedZone.id}`,
-              position: ringCenter(selectedZone.ring),
+              /* ★★ BH — la surface de la forme TELLE QU'ELLE EST ÉDITÉE (la session). */
+              position: ringCenter(sessionRing ?? selectedZone.ring),
               color: zoneColor(selectedZone.kind, entity),
               title: t('zone.areaDunams', {
-                n: Math.round(ringAreaDunams(selectedZone.ring)).toLocaleString('he-IL'),
+                n: Math.round(ringAreaDunams(sessionRing ?? selectedZone.ring)).toLocaleString('he-IL'),
               }),
               kind: 'label' as const,
             },
@@ -500,7 +616,9 @@ export function AnchorMap({
     () => [
       ...zones.map((z) => ({
         id: z.id,
-        ring: z.ring,
+        /* ★★ BH — la forme en cours d'édition se dessine telle qu'elle est À
+           L'ÉCRAN (session, ou glissement en direct). */
+        ring: z.id === selectedZone?.id && editRing ? editRing : z.ring,
         kind: z.kind,
         color: zoneColor(z.kind, entity),
         // U5 — the frank tint the zone takes over satellite imagery.
@@ -527,6 +645,7 @@ export function AnchorMap({
         .map((z) => z.ring.map((v) => `${v.lat},${v.lng}`).join(';'))
         .join('|'),
       selectedZoneId,
+      editRing ? editRing.map((v) => `${v.lat},${v.lng}`).join(';') : '',
       drawing ? `${drawing.zone}:${draftKey}` : '',
     ],
   )
@@ -713,9 +832,13 @@ export function AnchorMap({
               ? () => closeThreatDraft(true)
               : undefined
         }
+        /* ★★ BH — un appui sur une forme la SÉLECTIONNE ; re-toucher la forme
+           déjà sélectionnée la GARDE (avant BH il la désélectionnait : un
+           appui long sur un sommet, ou un doigt qui revient sur la forme,
+           faisait perdre l'édition en cours). On en sort par « סיום עריכה ». */
         onPolygonClick={
           zonesEditable && !active
-            ? (id) => setSelectedZoneId((cur) => (cur === id ? null : id))
+            ? (id) => setSelectedZoneId(id)
             : undefined
         }
         fullscreen={{ active: fullscreen.active, onToggle: fullscreen.toggle }}
@@ -955,6 +1078,17 @@ export function AnchorMap({
                   <Icon name="check" size={13} />
                   {t('zone.closePolygon')}
                 </button>
+                {/* ★★ BH — annuler le dernier sommet posé. */}
+                <button
+                  type="button"
+                  onClick={() => setMode({ ...drawing, draft: drawing.draft.slice(0, -1) })}
+                  disabled={drawing.draft.length === 0}
+                  data-testid="draw-undo"
+                  className="btn-secondary shrink-0 py-1.5 text-micro"
+                >
+                  <Icon name="undo" size={13} />
+                  {t('zone.undo')}
+                </button>
                 <button
                   type="button"
                   onClick={() => setMode({ kind: 'idle' })}
@@ -982,6 +1116,9 @@ export function AnchorMap({
           {selectedZone && !active && (
             <div
               data-testid="zone-selected"
+              data-zone={selectedZone.id}
+              data-vertices={editRing?.length ?? selectedZone.ring.length}
+              data-undo={session && canUndo(session) ? session.past.length : 0}
               className="glass pointer-events-auto mt-2 flex flex-wrap items-center gap-2
                          rounded-card px-3.5 py-2.5 shadow-glow ring-1 ring-accent"
             >
@@ -993,19 +1130,35 @@ export function AnchorMap({
                 {t(zoneLabelKey(selectedZone.kind, entity))}
                 <span className="numeric ltr-nums">
                   {t('zone.areaDunams', {
-                    n: Math.round(ringAreaDunams(selectedZone.ring)).toLocaleString(
+                    n: Math.round(ringAreaDunams(editRing ?? selectedZone.ring)).toLocaleString(
                       'he-IL',
                     ),
                   })}
                 </span>
               </span>
+              {/* ★★ BH — annuler le dernier geste, autant de fois qu'il y en a eu. */}
+              <button
+                type="button"
+                onClick={undo}
+                disabled={!session || !canUndo(session)}
+                data-testid="zone-undo"
+                className="btn-secondary min-h-11 py-1.5 text-micro"
+              >
+                <Icon name="undo" size={13} />
+                {t('zone.undo')}
+              </button>
               <button
                 type="button"
                 onClick={() => {
+                  /* La suppression est confirmée par l'écran (la forme NOMMÉE) ;
+                     la session est abandonnée, rien n'est écrit avant. */
+                  sessionRef.current = null
+                  setSessionState(null)
                   onZoneDelete?.(selectedZone.id)
                   setSelectedZoneId(null)
                 }}
-                className="btn-secondary min-h-[36px] py-1.5 text-micro text-status-danger-ink"
+                data-testid="zone-delete"
+                className="btn-secondary min-h-11 py-1.5 text-micro text-status-danger-ink"
               >
                 <Icon name="trash" size={13} />
                 {t('zone.deleteZone')}
@@ -1013,11 +1166,20 @@ export function AnchorMap({
               <button
                 type="button"
                 onClick={() => setSelectedZoneId(null)}
-                className="btn-secondary min-h-[36px] py-1.5 text-micro"
+                data-testid="zone-done"
+                className="btn-primary min-h-11 py-1.5 text-micro"
               >
                 <Icon name="check" size={13} />
                 {t('zone.doneEditing')}
               </button>
+              <span className="basis-full text-micro text-content-muted" data-testid="zone-edit-hint">
+                {t('zone.editHint')}
+              </span>
+              {notice && (
+                <span role="status" className="basis-full text-micro font-semibold text-status-warn-ink" data-testid="zone-notice">
+                  {notice}
+                </span>
+              )}
             </div>
           )}
           </div>
@@ -1073,7 +1235,7 @@ export function AnchorMap({
               can draw a polygon: הוסף נקודה used to live in the long bar and
               this is where it went. */}
           {(zonesEditable || onCreate) && !active && (
-            <DrawToolsFab>
+            <DrawToolsFab label={zonesEditable ? t('zone.newShape') : undefined}>
               {zonesEditable && (
               <>
               {/* ★★ PO POINT 9b — ציור חופשי, AND IT IS A MODE SWITCH RATHER
@@ -1183,7 +1345,7 @@ export function AnchorMap({
  * button carries `data-keep-open`, the freehand switch, which is a setting
  * rather than an action); a tap anywhere else, or Escape, folds it too.
  */
-function DrawToolsFab({ children }: { children: React.ReactNode }) {
+function DrawToolsFab({ children, label }: { children: React.ReactNode; label?: string }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement | null>(null)
@@ -1230,11 +1392,13 @@ function DrawToolsFab({ children }: { children: React.ReactNode }) {
         aria-label={t(open ? 'map.tools.drawClose' : 'map.tools.drawOpen')}
         title={t('map.tools.draw')}
         data-testid="draw-tools-toggle"
-        className={`glass flex h-11 w-11 items-center justify-center rounded-pill transition-colors duration-fast ${
+        className={`glass flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-pill transition-colors duration-fast ${label ? 'px-3.5' : 'w-11'} ${
           open ? 'bg-accent text-content-on-accent' : 'text-content-primary hover:text-accent-ink'
         }`}
       >
         <Icon name={open ? 'close' : 'edit'} size={19} />
+        {/* ★★ BH — « צורה חדשה » : commencer une forme est un geste EXPLICITE. */}
+        {label && !open && <span className="text-caption font-semibold" data-testid="zone-new">{label}</span>}
       </button>
     </div>
   )

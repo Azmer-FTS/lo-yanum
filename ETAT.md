@@ -1,5 +1,77 @@
 # לא ינום — ETAT
 
+> 🏁 **BH — LE DESSIN DES ZONES : RETOUCHER, ANNULER, NE JAMAIS RECOMMENCER PAR
+> ERREUR. 2026-10-14.**
+>
+> ⛔ **DONNÉES RÉELLES.** `bhpass` / `bhui` n'utilisent que des formes INVENTÉES
+> sur des fermes du banc REBAPTISÉES. Les géométries réelles du PO n'ont été
+> que COMPTÉES en base (sommets, rangs, horodatages), jamais copiées.
+>
+> **LE DIAGNOSTIC — l'hypothèse « jamais écrit » est FAUSSE**
+> (`docs/bh/portes-local.md`, point par point). La ferme du PO
+> (`farm-ak1-11`) porte en base ses deux formes, complètes : `farm_boundary`
+> 31 sommets (16:41 UTC) et `grazing_area` 29 sommets (16:47). Les journaux du
+> serveur montrent l'iPad (Safari) les écrire au moment du tracé, sans échec,
+> et les DEUX appareils les relire (77 sommets) toutes les 3 minutes dès
+> 16:49/16:50. Le dernier rechargement complet de l'ordinateur avant 16:41
+> était à 16:28. Sur le code servi, « écrit → relu → affiché » est sain
+> (rejoué : affichage à 1 440 et 1 032, et à chaud après une relecture). Ce
+> qui reste compatible avec la base et les journaux : un tracé NON terminé
+> (« סגור פוליגון » pas encore pressé) ressemble à une forme dès trois sommets
+> mais n'existe que dans l'état de l'écran.
+>
+> **LE SYMPTÔME A, LUI, ÉTAIT DANS LE CODE.** Le lien de la file « לתיחום »
+> (`?draw=farm_boundary`, AD3.3) ARMAIT le dessin à chaque ouverture, même
+> quand la ferme avait déjà sa forme : le premier appui sur la forme existante
+> posait le premier sommet d'une NOUVELLE forme. Et re-toucher une forme
+> sélectionnée la désélectionnait. Aucun retrait de sommet, aucune annulation.
+>
+> **CE QUI CHANGE (`AnchorMap`, `MapCanvas`, `core/zoneEdit.ts`, `store`) :**
+> - **Toucher une forme existante ne commence JAMAIS une nouvelle forme** : un
+>   appui la SÉLECTIONNE (re-toucher la garde) ; `?draw=` sur une ferme qui a
+>   déjà ce genre de forme la sélectionne au lieu d'armer (sans forme, il arme
+>   toujours : AD3.3 gardé). Commencer une forme : le bouton « צורה חדשה »
+>   (le crayon de la carte, désormais libellé), puis le genre.
+> - **La session d'édition** (`core/zoneEdit.ts`, pur) : sélectionner ouvre
+>   une session (l'anneau courant + la pile des gestes, 100 au plus).
+>   Glisser un sommet : la forme suit EN DIRECT (`MapMarker.onDrag`, seul le
+>   polygone bouge, la liste des marqueurs ne change pas sous le doigt) ;
+>   TIRER une demi-poignée (creuse, au milieu de chaque arête) crée un sommet
+>   là où on la lâche (un appui l'insère au milieu) ; APPUI LONG (600 ms,
+>   `MapMarker.onLongPress`) retire un sommet — refusé sous trois, et la barre
+>   dit « צורה צריכה לפחות 3 נקודות » ; déplacer toute la forme par sa
+>   poignée centrale ; « ביטול פעולה » annule le dernier geste, autant de fois
+>   qu'il y en a eu ; « סיום עריכה » ENREGISTRE (une forme inchangée n'écrit
+>   rien) — et rien ne se perd : quitter la forme autrement (autre sélection,
+>   Échap, autre écran) l'enregistre aussi ; supprimer la forme passe par une
+>   confirmation qui la NOMME (« גבול החווה · <ferme> », `zoneDisplayName`).
+> - **Les poignées** : 44 px de zone tactile (inchangé), point visible de 18 px
+>   (12 avant), anneau blanc ET contour sombre — lisibles sur une photo claire.
+> - **La persistance** : inchangée, et c'est voulu — le tracé passe par la même
+>   file que les champs de la ferme (aucun chemin parallèle). ⛔ Le magasin
+>   REFUSE désormais une forme de moins de trois sommets distincts
+>   (`isValidRing` : `createFarmZone` rend `null`, `updateFarmZoneRing` rend
+>   `false`, rien n'est écrit). Aucun changement de format de stockage.
+> - **La caméra** (BF) : entrer en édition ne recadre pas (`bhui` A489).
+>
+> **Portes.** `bhpass` (A482–A488) 24/24 ; `bhui` (A489–A497, tablette, au
+> doigt) 34/34, dont A497 : tracer au doigt, écrit côté serveur, navigateur
+> neuf sans cache, la même forme ; modifiée, écrite, relue. Toutes les portes
+> de BB à BG et celles du déploiement rejouées vertes ; `adui` A115 rouge
+> AVANT et APRÈS (prouvé sur `HEAD`), son test de `?draw=` repris dans `bhui`.
+>
+> **Ce qui n'a PAS été fait.** (1) Pas de brouillon de tracé conservé sur
+> l'appareil : un tracé non terminé reste perdu si l'on quitte l'écran (le
+> bandeau dit « סגור פוליגון » ; le conserver serait un chemin parallèle).
+> (2) Les zones de menace (G18) gardent leur édition d'avant. (3) Pas de
+> regroupement des écritures pendant l'édition : la forme s'écrit à « סיום ».
+>
+> **Questions au PO.** (1) Vérifier sur l'ordinateur que ses deux formes de
+> `farm-ak1-11` sont visibles (elles sont en base et l'ordinateur les reçoit) ;
+> si ce n'est pas le cas, nous dire l'écran exact. (2) Un tracé non terminé
+> doit-il être gardé sur l'appareil ?
+
+
 > 🏁 **BG — LA FICHE D'INSTITUTION DEVIENT UN POSTE DE TRAVAIL. 2026-10-14.**
 >
 > ⛔ **DONNÉES RÉELLES.** `bgpass` / `bgui` n'utilisent que des fiches

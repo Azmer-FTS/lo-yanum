@@ -244,5 +244,7 @@ export * from './farmName'
 export * from './farmLinks'
 export * from './reachOrder'
 export * from './institutionDoc'
+// ★★ BH — retoucher une forme (pur).
+export * from './zoneEdit'
 // ★★ BF — la recherche globale (pure).
 export * from './search'

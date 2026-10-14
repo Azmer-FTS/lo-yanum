@@ -104,6 +104,28 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BH — LE DESSIN DES ZONES — CODE ET PORTES LOCALES VERTES ; COMMIT +
+  DÉPLOIEMENT EN COURS** (2026-10-14). Branche `main`. Aucune migration.
+  Récit, diagnostic, décisions : `ETAT.md` § BH (en tête) et
+  `docs/bh/portes-local.md` (le diagnostic 2.1 point par point).
+  - **Diagnostic** : les formes du PO SONT en base (farm-ak1-11 : 31 + 29
+    sommets, écrites par l'iPad à 16:41 / 16:47 UTC) et les deux appareils les
+    relisent ; le défaut réel était l'édition (`?draw=` armait le dessin sur
+    une forme existante ; pas de retrait de sommet ni d'annulation).
+  - **Décisions (permanentes)** : toucher une forme la SÉLECTIONNE, jamais
+    une nouvelle forme ; une forme neuve = « צורה חדשה » ; session d'édition
+    pure (`core/zoneEdit.ts`) avec annulation ; « סיום עריכה » enregistre, et
+    quitter la forme enregistre aussi ; le magasin refuse < 3 sommets ;
+    `MapMarker.onDrag` / `onLongPress` (MapCanvas) ; la suppression nomme la
+    forme (`zoneDisplayName`).
+  - **Rouges ANTÉRIEURS** : `adui` A115 (prouvé sur HEAD 1a4ecf6), plus ceux
+    de BG (`anui` A236, `atui` ; non rejoués : `pills`, `rhythm`, `akui`,
+    `uipass`, `sheets`, `layout`).
+  - **Questions au PO** : formes visibles sur l'ordinateur ? garder un tracé
+    non terminé sur l'appareil ? Plus celles de BG et d'avant.
+  - Journaux complets : `private/bh/logs/` ; bilan : `docs/bh/portes-local.md`.
+  - Reprise : `bun run bhpass && bun run typecheck` ; `bun run bhui`.
+
 - **BG — LA FICHE D'INSTITUTION DEVIENT UN POSTE DE TRAVAIL — TERMINÉE,
   POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-14). Branche `main`.
   Commits : `9a50ae5` (code + portes + bilans locaux, SERVI : `version.json` =
@@ -138,8 +160,6 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
     ancrée sur l'épingle plutôt qu'au coin ? Plus celles de BF, BE, BD, BB, BA.
   - Journaux complets : `private/bg/logs/` ; bilan : `docs/bg/portes-local.md`.
   - Reprise : `bun run bgpass && bun run typecheck` ; `bun run bgui`.
-  - **Ensuite (demandé par le PO)** : passe BH — le dessin des zones (tracé non
-    persisté ? édition d'une forme existante).
 
 - **BF — LA CARTE OBÉIT, ET LA RECHERCHE GLOBALE — TERMINÉE, POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-14).
   Branche `main`. Commits : `cc83268` (code + portes + bilans locaux, SERVI : `version.json` = cc83268), puis le commit de fin de passe (mesures du déployé : `docs/bf/portes-deploye-cc83268.md`, tout vert). Récit, coupable mesuré, décisions :

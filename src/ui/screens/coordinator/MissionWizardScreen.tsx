@@ -1,4 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { zoneDisplayName } from '../../components/zones'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -1228,9 +1229,11 @@ export function MissionWizardScreen() {
                   farm && createFarmZone({ farmId: farm.id, kind, ring })
                 }
                 onZoneRingChange={updateFarmZoneRing}
-                onZoneDelete={(id) =>
-                  del.ask('farmZone', id, () => deleteFarmZoneChecked(id))
-                }
+                onZoneDelete={(id) => {
+                  /* ★★ BH — la confirmation NOMME la forme. */
+                  const z = zones.find((x) => x.id === id)
+                  del.ask('farmZone', id, () => deleteFarmZoneChecked(id), z && farm ? { label: zoneDisplayName(z, farm, t) } : undefined)
+                }}
                 // G18 — the layer's whole point on this screen: a guard post
                 // is placed FACING the approach, and the coordinator cannot
                 // do that from memory. Read-only here — the wizard is not

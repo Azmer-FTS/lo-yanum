@@ -115,6 +115,18 @@ export interface MapMarker {
    */
   draggable?: boolean
   onDragEnd?: (position: LatLng) => void
+  /**
+   * ★★ BH — pendant le glissement, à chaque mouvement : la forme se redessine
+   * EN DIRECT sous le doigt. ⚠️ L'appelant ne doit PAS changer la liste des
+   * marqueurs pendant ce temps (elle serait reconstruite sous le doigt) : seul
+   * le polygone suit.
+   */
+  onDrag?: (position: LatLng) => void
+  /**
+   * ★★ BH — un appui LONG (600 ms sans bouger de plus de 8 px). Le clic qui
+   * suit le relâchement est avalé, et aucun glissement ne démarre ensuite.
+   */
+  onLongPress?: () => void
   onSelect?: () => void
   onHover?: (id: string | null) => void
 }
@@ -714,7 +726,10 @@ function markerElement(marker: MapMarker): HTMLElement {
     // a ring of them does not bury the polygon, but the hit area is the full
     // 44 px a fingertip needs (G11): the button is padded and transparent, the
     // handle is an inner dot.
-    const visual = marker.emphasis ? SIZE.vertex + 4 : SIZE.vertex
+    /* ★★ BH — lisibles sur une photo satellite CLAIRE : le sommet (emphase)
+       est un disque de 18 px, anneau blanc ET contour sombre ; la
+       demi-poignée du milieu d'une arête est plus petite et CREUSE. */
+    const visual = marker.emphasis ? 18 : SIZE.vertex
     el.style.cssText = [
       'width:44px',
       'height:44px',
@@ -731,9 +746,9 @@ function markerElement(marker: MapMarker): HTMLElement {
       `width:${visual}px`,
       `height:${visual}px`,
       'border-radius:var(--radius-pill)',
-      `background:${marker.color}`,
-      `border:2.5px solid ${ring}`,
-      'box-shadow:0 1px 6px rgba(0,0,0,.45)',
+      `background:${marker.emphasis ? marker.color : '#ffffff'}`,
+      `border:${marker.emphasis ? `3px solid #ffffff` : `2.5px solid ${marker.color}`}`,
+      `box-shadow:0 0 0 1.5px ${PIN_OUTLINE}, 0 1px 6px rgba(0,0,0,.5)`,
       'pointer-events:none',
       'transition:width 120ms,height 120ms',
     ].join(';')
@@ -2463,12 +2478,66 @@ export default function MapCanvas({
         .setLngLat([marker.position.lng, marker.position.lat])
         .addTo(map)
 
+      /* ★★ BH — l'appui long : un minuteur armé au contact, levé par un
+         mouvement de plus de 8 px ou par le relâchement. Quand il part, le
+         glissement est coupé (on rend le marqueur fixe le temps du geste) et
+         le clic qui suivra est avalé. */
+      let longFired = false
+      if (marker.onLongPress) {
+        let timer: number | undefined
+        let start: { x: number; y: number } | null = null
+        const cancel = () => {
+          window.clearTimeout(timer)
+          timer = undefined
+          start = null
+        }
+        el.addEventListener('pointerdown', (e) => {
+          longFired = false
+          start = { x: e.clientX, y: e.clientY }
+          window.clearTimeout(timer)
+          timer = window.setTimeout(() => {
+            timer = undefined
+            longFired = true
+            instance.setDraggable(false)
+            try {
+              navigator.vibrate?.(30)
+            } catch {
+              /* pas de vibreur : rien */
+            }
+            marker.onLongPress?.()
+          }, 600)
+        })
+        el.addEventListener('pointermove', (e) => {
+          if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 8) cancel()
+        })
+        el.addEventListener('pointerup', cancel)
+        el.addEventListener('pointercancel', cancel)
+        el.addEventListener(
+          'click',
+          (e) => {
+            if (!longFired) return
+            longFired = false
+            e.stopImmediatePropagation()
+            e.preventDefault()
+          },
+          true,
+        )
+        el.addEventListener('contextmenu', (e) => e.preventDefault())
+      }
+
       if (marker.draggable) {
         instance.on('dragstart', () => {
           el.style.cursor = 'grabbing'
         })
+        if (marker.onDrag) {
+          instance.on('drag', () => {
+            const { lat, lng } = instance.getLngLat()
+            marker.onDrag?.({ lat, lng })
+          })
+        }
         instance.on('dragend', () => {
           el.style.cursor = 'grab'
+          if (longFired) return
           const { lat, lng } = instance.getLngLat()
           marker.onDragEnd?.({ lat, lng })
         })

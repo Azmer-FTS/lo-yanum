@@ -129,3 +129,16 @@ export function ZoneLegend({
     </div>
   )
 }
+
+/**
+ * ★★ BH — LE NOM D'UNE FORME, pour la confirmation de sa suppression : « גבול
+ * החווה · חוות X ». Une forme n'a pas de nom à elle (c'est un GENRE tracé sur
+ * une ferme) ; sans ceci la boîte affichait son identifiant technique.
+ */
+export function zoneDisplayName(
+  zone: { kind: FarmZoneKind },
+  farm: { name: string } & Parameters<typeof entityKindOf>[0],
+  t: (key: string) => string,
+): string {
+  return `${t(zoneLabelKey(zone.kind, entityKindOf(farm)))} · ${farm.name}`
+}

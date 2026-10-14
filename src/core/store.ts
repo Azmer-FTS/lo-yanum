@@ -27,6 +27,7 @@ import type { MemoBank, MemoLine, MemoSection } from './memo'
 import { isMemoLineValid, nextMemoRank } from './memo'
 import type { Task, TaskLink, TaskList } from './tasks'
 import { applyLink, applyUnlink, isFarmLinked, planLink } from './farmLinks'
+import { isValidRing } from './zoneEdit'
 import type { LinkChoice, LinkPlan } from './farmLinks'
 import { isListNameValid, normalizeDueOn, normalizeDueTime, reorderedRanks, topRank } from './tasks'
 import type {
@@ -971,7 +972,12 @@ export function setFarmContactEstablished(farmId: string, established: boolean):
   commit()
 }
 
-export function createFarmZone(draft: FarmZoneDraft): FarmZone {
+/**
+ * ★★ BH — une forme à moins de trois sommets n'est PAS enregistrée
+ * (`isValidRing`) : rien n'est écrit, et l'appelant reçoit `null`.
+ */
+export function createFarmZone(draft: FarmZoneDraft): FarmZone | null {
+  if (!isValidRing(draft.ring)) return null
   const zone: FarmZone = { id: nextId('zone'), ...draft }
   data.farmZones = [...data.farmZones, zone]
   remeasureFarm(draft.farmId)
@@ -980,12 +986,15 @@ export function createFarmZone(draft: FarmZoneDraft): FarmZone {
 }
 
 /** A drag knows the whole ring it produced; replacing it is the mutation. */
-export function updateFarmZoneRing(zoneId: string, ring: LatLng[]): void {
+export function updateFarmZoneRing(zoneId: string, ring: LatLng[]): boolean {
   const index = data.farmZones.findIndex((z) => z.id === zoneId)
-  if (index === -1) return
+  if (index === -1) return false
+  /* ★★ BH — jamais une forme à deux sommets en base. */
+  if (!isValidRing(ring)) return false
   data.farmZones[index] = { ...data.farmZones[index], ring }
   remeasureFarm(data.farmZones[index].farmId)
   commit()
+  return true
 }
 
 export function deleteFarmZone(zoneId: string): void {

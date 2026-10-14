@@ -81,7 +81,7 @@ import { LinkedAgenda } from '../../tasks/LinkedAgenda'
    son accord, et les documents qu'il a fournis ou non. */
 import { FarmerLinkBlock, FarmerLinkModal } from '../../components/FarmerLinkBlock'
 import { AreaGapNote } from '../../components/areaGap'
-import { zoneColor, zoneLabelKey } from '../../components/zones'
+import { zoneColor, zoneDisplayName, zoneLabelKey } from '../../components/zones'
 import { Timeline } from '../../components/Timeline'
 import type { TimelineEntry } from '../../components/Timeline'
 import {
@@ -1186,7 +1186,11 @@ export function FarmDetailScreen() {
         createFarmZone({ farmId: farm.id, kind, ring })
       }
       onZoneRingChange={updateFarmZoneRing}
-      onZoneDelete={(id) => del.ask('farmZone', id, () => deleteFarmZoneChecked(id))}
+      onZoneDelete={(id) => {
+        /* ★★ BH — la confirmation NOMME la forme (« גבול החווה · X »). */
+        const z = zones.find((x) => x.id === id)
+        del.ask('farmZone', id, () => deleteFarmZoneChecked(id), z ? { label: zoneDisplayName(z, farm, t) } : undefined)
+      }}
       armZone={armZone}
     />
   )
