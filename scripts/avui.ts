@@ -197,10 +197,14 @@ await guard('A322', async () => {
   const fixed = o.db.rows('institutions').find((r) => r.id === other.id)
   check('A322 corriger le statut en un toucher (מעוניין) le confirme', fixed?.engagement === 'interested' && fixed?.engagement_confirmed === true, JSON.stringify({ engagement: fixed?.engagement, confirmed: fixed?.engagement_confirmed }))
   await go(o.page, `/coordinator/coverage?inst=${other.id}`)
-  await o.page.locator('[data-testid="coverage-institution-card"] [data-testid="coverage-institution-info-toggle"]').first().click().catch(() => undefined)
+  /* ★★ BG 3 — sur ordinateur, le panneau de droite MONTRE l'institution : la
+     bulle de la carte ferait doublon et ne s'ouvre plus. La fiche du panneau
+     porte le même contenu (le nom, quatre chiffres, le reste derrière ⓘ). */
+  const fiche = '[data-testid="coverage-selected"]'
+  await o.page.locator(`${fiche} [data-testid="coverage-institution-info-toggle"]`).first().click().catch(() => undefined)
   await o.page.waitForTimeout(500)
-  const facts = await o.page.locator('[data-testid="coverage-institution-card"]').innerText().catch(() => '')
-  check('A322 la bulle : le nom, quatre chiffres ; le responsable et la date derrière ⓘ', facts.includes('יונתן רום') && facts.includes('08.10.2026') && (await o.page.locator('[data-testid="coverage-institution-card"] [data-testid^="coverage-fig-"]').count()) === 4, facts.replace(/\s+/g, ' ').slice(0, 140))
+  const facts = await o.page.locator(fiche).innerText().catch(() => '')
+  check('A322 la fiche : le nom, quatre chiffres ; le responsable et la date derrière ⓘ', facts.includes('יונתן רום') && facts.includes('08.10.2026') && (await o.page.locator(`${fiche} [data-testid^="coverage-fig-"]`).count()) === 4 && (await o.page.locator('[data-testid="coverage-institution-card"]').count()) === 0, facts.replace(/\s+/g, ' ').slice(0, 140))
   if (CAPTURES) await o.page.screenshot({ path: `${SHOTS}/a322-a-confirmer-1440.png` })
   check('A322 aucune erreur de page', o.errors.length === 0, o.errors.slice(0, 2).join(' | '))
   await o.ctx.close()

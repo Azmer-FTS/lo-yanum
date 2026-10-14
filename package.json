@@ -37,6 +37,8 @@
     "beui": "bun run scripts/beui.ts",
     "bfpass": "bun run scripts/bfpass.ts",
     "bfui": "bun run scripts/bfui.ts",
+    "bgpass": "bun run scripts/bgpass.ts",
+    "bgui": "bun run scripts/bgui.ts",
     "azcaptures": "bun run scripts/azcaptures.ts",
     "aymobile": "bun run scripts/aymobile.ts",
     "aypins": "bun run scripts/aypins.ts",

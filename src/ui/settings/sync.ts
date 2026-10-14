@@ -107,6 +107,8 @@ export const SYNCED_SETTING_KEYS: readonly string[] = [
   'lo-yanum:free-routes',
   /* AI3.2 — la marge des durées de roulage. */
   'lo-yanum:route-margin',
+  /* ★★ BG — le site, le mail et le téléphone du pied du document d'institution. */
+  'lo-yanum:institution-doc',
   /* ★★ AY1.3 (2026-10-11) — LE THÈME DU COORDINATEUR VOYAGE.
      AI6 l'avait gardé « pour CET écran ». Le PO dit l'inverse, et depuis
      Z5.2 : « je passe en sombre sur l'ordinateur, le téléphone ne suit pas ;
@@ -137,6 +139,7 @@ export const LOCAL_ONLY_KEYS: ReadonlyArray<{ key: string; why: string }> = [
   { key: 'lo-yanum:rail:expanded', why: 'rail déplié ou compact (AX1) : une affaire d’écran' },
   { key: 'lo-yanum:leads-sort, lo-yanum:institutions-sort', why: 'tri des tableaux (AX5) : disposition d’écran' },
   { key: 'lo-yanum:free-route-draft', why: 'l’itinéraire libre EN COURS (AX8) ; les itinéraires ENREGISTRÉS, eux, voyagent (free-routes)' },
+  { key: 'lo-yanum:coverage-band, lo-yanum:coverage-farm-card', why: 'bandeau des réglages replié, fiche de ferme dépliée (BG) : disposition d’écran' },
   { key: 'map-mode, map-ratio, map-last, map-layers, map-base, layout-sync, block:*, numpad', why: 'disposition d’écran et de carte' },
   { key: 'last-fix, geo-granted, geo-diag, map-attempt', why: 'localisation et diagnostics de CET appareil' },
   { key: 'update-pending, update-verdict', why: 'mise à jour du build de CET appareil (AJ)' },

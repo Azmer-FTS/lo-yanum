@@ -258,7 +258,31 @@
       "institutions": "institutions on the map",
       "toConfirm": "{{count}} to confirm",
       "open": "Institutions screen"
-    }
+    },
+    "farmCard": {
+      "less": "Fewer details",
+      "more": "More details",
+      "km": "{{km}} km",
+      "min": "{{min}} min",
+      "night": "night +{{night}}%",
+      "calc": "{{base}} min on empty roads, with a {{margin}}% margin and {{night}}% for the night — {{min}} min",
+      "from": "from {{name}}",
+      "branch": "Branch:",
+      "areas": "Area:"
+    },
+    "band": {
+      "upToMin": "Up to {{min}} minutes",
+      "upToKm": "Up to {{km}} km",
+      "byTime": "by time",
+      "byDistance": "by distance",
+      "edit": "Change",
+      "apply": "Done"
+    },
+    "openFull": "Open the full file of {{name}}",
+    "openFiche": "Open the institution file",
+    "reachInside": "Within your range ({{count}})",
+    "reachInsideNone": "No farm within your range.",
+    "reachOutside": "Beyond your range ({{count}})"
   },
   "institutions": {
     "title_one": "1 institution",
@@ -419,7 +443,8 @@
     "noCoordinatorTab": "No coordinator",
     "noCoordinatorTitle": "No coordinator named for the volunteers",
     "coordinationPendingTab": "Coordination to do",
-    "coordinationPendingTitle": "Prior coordination needed, not yet contacted"
+    "coordinationPendingTitle": "Prior coordination needed, not yet contacted",
+    "contactEmail": "Email"
   },
   "quickPin": {
     "button": "Drop a pin on the map",
@@ -926,5 +951,92 @@
     "farms_other": "{{count}} farms",
     "institutions_one": "one institution",
     "institutions_other": "{{count}} institutions"
+  },
+  "sponsor": {
+    "multi": "Linked to {{count}} institutions: {{names}}",
+    "multiShort": "{{count}} institutions",
+    "elsewhere": "Linked to {{name}}",
+    "conflictTitle": "This farm is already linked to another institution",
+    "conflictBody": "“{{farm}}” is already linked to:",
+    "conflictAsk": "What should happen with the link to {{inst}}?",
+    "replace": "Replace",
+    "add": "Add",
+    "replaceHint": "Replace — the existing link is removed and the farm is linked to this institution only. Add — the farm is linked to both.",
+    "unlinkTitle": "Remove the link?",
+    "unlinkBody": "“{{farm}}” will no longer be linked to {{inst}}.",
+    "unlink": "Unlink",
+    "unlinkAria": "{{farm}} is linked to {{inst}} — unlink",
+    "linkAria": "Link {{farm}} to {{inst}}",
+    "label": "Institution:"
+  },
+  "instDoc": {
+    "kicker": "Artzenu · Guards on the farms — a partnership proposal",
+    "factsTitle": "Institution details",
+    "fact": {
+      "kind": "Type",
+      "locality": "Locality",
+      "address": "Address",
+      "audience": "Audience",
+      "network": "Network",
+      "students": "Students"
+    },
+    "contactsTitle": "Contacts",
+    "contactsEmpty": "No contact recorded.",
+    "fillTitle": "For the institution to fill in",
+    "fillIntro": "Please fill this in and send it back — we will match the right farms together.",
+    "fillField": {
+      "coordinator": "Programme coordinator at the institution",
+      "phone": "Phone",
+      "email": "Email",
+      "volunteers": "Estimated number of volunteers",
+      "nights": "Preferred nights per week",
+      "notes": "Notes"
+    },
+    "col": {
+      "name": "Farm",
+      "locality": "Locality",
+      "km": "km",
+      "min": "min"
+    },
+    "linkedTitle": "Farms linked to the institution ({{count}})",
+    "linkedEmpty": "No farm linked yet.",
+    "proposedTitle": "Proposed farms within {{limit}} ({{count}})",
+    "proposedEmpty": "No further farm within {{limit}}.",
+    "timesNote": "Distances and times are measured along the road from the institution. Times include a {{margin}}% margin.",
+    "box1Title": "How it works",
+    "box1Line1": "Volunteers reach the farm before dark and guard it through the night, arranged in advance with the farmer.",
+    "box1Line2": "Artzenu supports the institution: matching farms, arranging arrival, staying in touch with the farmers.",
+    "box1Line3": "Every farm on the list was measured along the actual road from the institution.",
+    "box2Title": "Next steps",
+    "box2Line1": "Send us the form above, and we will set the first farms together.",
+    "box2Line2": "The link to this document always shows its latest version.",
+    "author": "Artzenu · Lo Yanum",
+    "blockTitle": "Institution document",
+    "generate": "Generate the document",
+    "regenerate": "Generate again",
+    "generating": "Generating…",
+    "done": "Document updated. A link sent earlier already shows the new version.",
+    "open": "Open the document",
+    "copyLink": "Copy the link",
+    "memoryOnly": "Demo: the document lives only in this browser, and its link cannot be sent.",
+    "sendAfter": "Once generated, send buttons for the contacts appear here.",
+    "mailSubject": "{{inst}} — farms to guard",
+    "message": "Hello {{who}}, here is the link to the {{inst}} document — linked farms and proposed farms within range: {{url}}",
+    "sendMail": "Email the document to {{who}}",
+    "sendWhatsapp": "Send the link to {{who}} on WhatsApp",
+    "versions": "Version history ({{count}})",
+    "current": "current",
+    "first": "first",
+    "openVersion": "Open this version",
+    "identityTitle": "Association details in the document footer",
+    "identity": {
+      "site": "Website",
+      "email": "Email",
+      "phone": "Phone"
+    },
+    "identityNoPhone": "No phone — it will not appear in the footer.",
+    "errorDate": "Not generated: a date was found, and the rule is no dates in the document.",
+    "errorPublish": "The document was not saved. Check the connection and try again.",
+    "timesNoteNight": "Distances and times are measured along the road from the institution. Times include a {{margin}}% margin and {{night}}% for night driving."
   }
 }

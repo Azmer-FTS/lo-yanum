@@ -178,14 +178,17 @@ await run('A364', async () => {
   // Le toucher sur le marqueur (la boîte de 44 px est transparente : on clique l'élément lui-même).
   await o.page.locator('.maplibregl-marker[data-marker-kind="institution"]').first().evaluate((e) => (e as HTMLElement).click())
   await o.page.waitForTimeout(1500)
-  const card = o.page.locator('[data-testid="coverage-institution-card"]')
+  /* ★★ BG 3 — le panneau de droite montre l'institution touchée : c'est SA
+     fiche qu'on lit (la bulle de la carte ferait doublon, elle se tait). */
+  const card = o.page.locator('[data-testid="coverage-selected"]')
   const figs = await card.locator('[data-testid^="coverage-fig-"]').count()
   const big = await card.locator('[data-testid="coverage-fig-volunteers"] p').first().evaluate((e) => parseFloat(getComputedStyle(e).fontSize))
   check('A364 toucher l’institution : son nom et QUATRE chiffres, gros', figs === 4 && big >= 30, `${figs} chiffres · ${big}px`)
   check('A364 … et son nom apparaît alors sur la carte', (await o.page.locator('.maplibregl-marker[data-marker-kind="institution"] [data-marker-label]').count()) === 1)
   check('A364 le reste est derrière ⓘ (fermé)', (await card.locator('[data-testid="coverage-institution-info"]').count()) === 0 && (await card.locator('[data-testid="coverage-institution-info-toggle"]').count()) === 1)
   await o.page.screenshot({ path: `${SHOTS}/a364-fiche-institution-1440.png` })
-  check('A363 la carte de couverture n’a plus de filtres d’engagement, mais un raccourci', (await o.page.locator('[data-testid="institutions-filter"], [data-testid^="institutions-filter-"]').count()) === 0 && (await o.page.locator('[data-testid="coverage-institutions-shortcut"]').count()) === 1)
+  /* ★★ BG 8 — le raccourci du bas vers TOUTES les institutions est retiré ; en haut de la fiche, CETTE institution. */
+  check('A363 la carte de couverture n’a plus de filtres d’engagement ; l’accès est en haut de la fiche', (await o.page.locator('[data-testid="institutions-filter"], [data-testid^="institutions-filter-"]').count()) === 0 && (await o.page.locator('[data-testid="coverage-institutions-shortcut"]').count()) === 0 && (await o.page.locator('[data-testid="coverage-open-institution"]').count()) === 1)
   check('A364 aucune erreur de page', o.errors.length === 0, o.errors.slice(0, 2).join(' | '))
   await o.ctx.close()
 })

@@ -104,6 +104,40 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BG — LA FICHE D'INSTITUTION DEVIENT UN POSTE DE TRAVAIL — CODE ET PORTES
+  LOCALES VERTES, MIGRATION APPLIQUÉE ; COMMIT + DÉPLOIEMENT EN COURS**
+  (2026-10-14). Branche `main`. Récit, forme de la table, hébergement du
+  document, décisions : `ETAT.md` § BG (en tête) — la source de vérité.
+  - **Fait** : les 8 parties du brief. Migration `20261014000100`
+    (`farm_institution_links` + bucket public `institution-docs`) appliquée par
+    le MCP AVANT le déploiement (version `20261014124915`, jalon, repair,
+    armigrations 54/54). Aucune donnée à poser.
+  - **Décisions (permanentes)** :
+    · l'écran de couverture a DEUX sélections : l'institution (`instId`) et la
+      fiche compacte d'une ferme par-dessus (`card`) ; une ferme touchée dans
+      un maillage ne change ni la caméra ni les trajets ;
+    · le pop-up d'une institution se décide sur la PLACE RÉELLE
+      (`useLaidOut`) : panneau montrant l'institution → pas de bulle ;
+    · la liste des fermes d'une institution : dans le seuil (trié par LE
+      critère), puis le complément exact, replié (`core/reachOrder.ts`) ;
+    · plusieurs institutions par ferme EN BASE (aucune unicité) ; la règle
+      « une ferme, une institution » est dans l'APP (`core/farmLinks.ts`, la
+      boîte להחליף · להוסיף · ביטול) ; `created_by` est posé par la base ;
+    · le document d'institution : charte du PO (bandeau page 1 au bord, en-tête
+      et pied dès la page 2, « n / N » partout, aucune date, aucun alpha —
+      JPEG opaques) ; adresse stable `institution-docs/<id>/document.pdf`
+      écrasée, versions `…/versions/AAAAMMJJ-HHMMSS.pdf` ;
+    · un nouveau champ facultatif `email` dans les contacts d'institution (JSON).
+  - **Rouges ANTÉRIEURS (non régressions)** inchangés : `anui` A236, `atui` ;
+    non rejoués : `pills`, `rhythm`, `akui`, `uipass`, `sheets`, `layout`.
+  - **Questions ouvertes au PO** : (1) textes de la case à remplir et des deux
+    encadrés du document ; (2) téléphone du pied de page ; (3) fiche de ferme
+    ancrée sur l'épingle plutôt qu'au coin ? Plus celles de BF, BE, BD, BB, BA.
+  - Journaux complets : `private/bg/logs/` ; bilan : `docs/bg/portes-local.md`.
+  - Reprise : `bun run bgpass && bun run typecheck` ; `bun run bgui`.
+  - **Ensuite (demandé par le PO)** : passe BH — le dessin des zones (tracé non
+    persisté ? édition d'une forme existante).
+
 - **BF — LA CARTE OBÉIT, ET LA RECHERCHE GLOBALE — TERMINÉE, POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-14).
   Branche `main`. Commits : `cc83268` (code + portes + bilans locaux, SERVI : `version.json` = cc83268), puis le commit de fin de passe (mesures du déployé : `docs/bf/portes-deploye-cc83268.md`, tout vert). Récit, coupable mesuré, décisions :
   `ETAT.md` § BF (en tête) — la source de vérité de la passe. Aucune migration.

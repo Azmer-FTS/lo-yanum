@@ -130,6 +130,8 @@ import {
   createMemoLine,
   updateMemoLine,
   deleteMemoLine,
+  linkFarmToInstitution,
+  unlinkFarmFromInstitution,
 } from '../src/core/store'
 import { planPortalImport } from '../src/core/portalImport'
 import { planInstitutionImport } from '../src/core/institutions'
@@ -1478,6 +1480,18 @@ section("6bis — AH3 · le jeu d'essai produit de vraies écritures")
   check('updateMemoLine : la ligne est réécrite', hit(m2, 'memoLines', m)?.json?.includes('שאלה אחרת') === true)
   const m3 = drive('deleteMemoLine', () => deleteMemoLine(m))
   check('deleteMemoLine : la ligne disparaît', m3.some((c) => c.collection === 'memoLines' && c.id === m && c.json == null))
+
+  /* ★★ BG — le parrainage : lier écrit UNE ligne `farm_institution_links`,
+     délier la retire. */
+  const raw = _raw()
+  const farmId = raw.farms[0].id
+  const instId = raw.institutions[0].id
+  raw.farmInstitutionLinks = raw.farmInstitutionLinks.filter((l) => l.farmId !== farmId)
+  const k1 = drive('linkFarmToInstitution', () => linkFarmToInstitution(farmId, instId))
+  const made = k1.find((c) => c.collection === 'farmInstitutionLinks' && c.json != null)
+  check('linkFarmToInstitution : une ligne `farm_institution_links`', k1.length === 1 && !!made && JSON.parse(made.json ?? '{}').farmId === farmId)
+  const k2 = drive('unlinkFarmFromInstitution', () => unlinkFarmFromInstitution(farmId, instId))
+  check('unlinkFarmFromInstitution : la ligne disparaît, et elle seule', k2.length === 1 && k2[0].collection === 'farmInstitutionLinks' && k2[0].id === made?.id && k2[0].json == null)
 }
 
 // --- 7. Coverage: no mutation added without a line in this file ------------

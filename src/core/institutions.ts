@@ -221,6 +221,12 @@ export interface InstitutionContact {
   /** Une note libre, courte. */
   note: string
   /**
+   * ★★ BG (2026-10-14) — le mail, quand on le connaît : il fait paraître
+   * l'icône d'envoi du document de l'institution à ce contact. Absent = pas
+   * d'icône (jamais de bouton mort).
+   */
+  email?: string
+  /**
    * ★★ BC (2026-10-12) — la NOTE restreint l'usage de ce téléphone (une ligne
    * publique réservée à la halakha, « seulement après 20h »…). Tout bouton
    * d'appel de ce numéro — dans la LISTE comme sur la fiche — le montre et

@@ -258,7 +258,31 @@
       "institutions": "institutions sur la carte",
       "toConfirm": "{{count}} à confirmer",
       "open": "Écran des institutions"
-    }
+    },
+    "farmCard": {
+      "less": "Moins de détails",
+      "more": "Plus de détails",
+      "km": "{{km}} km",
+      "min": "{{min}} min",
+      "night": "nuit +{{night}} %",
+      "calc": "{{base}} min sur route vide, avec une marge de {{margin}} % et {{night}} % pour la nuit — {{min}} min",
+      "from": "depuis {{name}}",
+      "branch": "Branche :",
+      "areas": "Surface :"
+    },
+    "band": {
+      "upToMin": "Jusqu’à {{min}} minutes",
+      "upToKm": "Jusqu’à {{km}} km",
+      "byTime": "par le temps",
+      "byDistance": "par la distance",
+      "edit": "Modifier",
+      "apply": "Terminé"
+    },
+    "openFull": "Ouvrir la fiche complète de {{name}}",
+    "openFiche": "Ouvrir la fiche de l’institution",
+    "reachInside": "Dans votre seuil ({{count}})",
+    "reachInsideNone": "Aucune ferme dans votre seuil.",
+    "reachOutside": "Au-delà de votre seuil ({{count}})"
   },
   "institutions": {
     "title_one": "1 institution",
@@ -419,7 +443,8 @@
     "noCoordinatorTab": "Sans רכז",
     "noCoordinatorTitle": "Aucun רכז désigné pour les volontaires",
     "coordinationPendingTab": "Coordination à faire",
-    "coordinationPendingTitle": "Coordination préalable requise, pas encore approchée"
+    "coordinationPendingTitle": "Coordination préalable requise, pas encore approchée",
+    "contactEmail": "E-mail"
   },
   "quickPin": {
     "button": "Poser une épingle sur la carte",
@@ -926,5 +951,92 @@
     "farms_other": "{{count}} fermes",
     "institutions_one": "un établissement",
     "institutions_other": "{{count}} établissements"
+  },
+  "sponsor": {
+    "multi": "Liée à {{count}} institutions : {{names}}",
+    "multiShort": "{{count}} institutions",
+    "elsewhere": "Liée à {{name}}",
+    "conflictTitle": "Cette ferme est déjà liée à une autre institution",
+    "conflictBody": "« {{farm}} » est déjà liée à :",
+    "conflictAsk": "Que faire du lien avec {{inst}} ?",
+    "replace": "Remplacer",
+    "add": "Ajouter",
+    "replaceHint": "Remplacer — le lien existant est supprimé, la ferme n’est liée qu’à cette institution. Ajouter — la ferme est liée aux deux.",
+    "unlinkTitle": "Délier ?",
+    "unlinkBody": "« {{farm}} » ne sera plus liée à {{inst}}.",
+    "unlink": "Délier",
+    "unlinkAria": "{{farm}} est liée à {{inst}} — délier",
+    "linkAria": "Lier {{farm}} à {{inst}}",
+    "label": "Institution :"
+  },
+  "instDoc": {
+    "kicker": "Artzenu · Gardes dans les fermes — proposition de partenariat",
+    "factsTitle": "L’institution",
+    "fact": {
+      "kind": "Type",
+      "locality": "Localité",
+      "address": "Adresse",
+      "audience": "Public",
+      "network": "Réseau",
+      "students": "Élèves"
+    },
+    "contactsTitle": "Contacts",
+    "contactsEmpty": "Aucun contact saisi.",
+    "fillTitle": "À remplir par l’institution",
+    "fillIntro": "Merci de remplir et de nous renvoyer — nous choisirons ensemble les fermes.",
+    "fillField": {
+      "coordinator": "Coordinateur du programme dans l’institution",
+      "phone": "Téléphone",
+      "email": "E-mail",
+      "volunteers": "Nombre estimé de volontaires",
+      "nights": "Nuits préférées par semaine",
+      "notes": "Notes"
+    },
+    "col": {
+      "name": "Ferme",
+      "locality": "Localité",
+      "km": "km",
+      "min": "min"
+    },
+    "linkedTitle": "Fermes liées à l’institution ({{count}})",
+    "linkedEmpty": "Aucune ferme liée pour l’instant.",
+    "proposedTitle": "Fermes proposées à {{limit}} ({{count}})",
+    "proposedEmpty": "Aucune autre ferme à {{limit}}.",
+    "timesNote": "Distances et durées mesurées par la route depuis l’institution. Les durées comprennent une marge de {{margin}} %.",
+    "box1Title": "Comment ça marche",
+    "box1Line1": "Les volontaires arrivent à la ferme avant la nuit et la gardent jusqu’au matin, en accord avec l’agriculteur.",
+    "box1Line2": "Artzenu accompagne l’institution : choix des fermes, arrivée, lien avec les agriculteurs.",
+    "box1Line3": "Chaque ferme de la liste a été mesurée par la route réelle depuis l’institution.",
+    "box2Title": "La suite",
+    "box2Line1": "Renvoyez-nous le formulaire ci-dessus, et fixons ensemble les premières fermes.",
+    "box2Line2": "Le lien vers ce document montre toujours sa dernière version.",
+    "author": "Artzenu · Lo Yanum",
+    "blockTitle": "Document de l’institution",
+    "generate": "Générer le document",
+    "regenerate": "Générer à nouveau",
+    "generating": "Génération…",
+    "done": "Document mis à jour. Un lien envoyé avant montre déjà la nouvelle version.",
+    "open": "Ouvrir le document",
+    "copyLink": "Copier le lien",
+    "memoryOnly": "Démo : le document ne vit que dans ce navigateur, son lien ne s’envoie pas.",
+    "sendAfter": "Une fois le document généré, les boutons d’envoi aux contacts apparaissent ici.",
+    "mailSubject": "{{inst}} — les fermes à garder",
+    "message": "Bonjour {{who}}, voici le lien vers le document de {{inst}} — fermes liées et fermes proposées : {{url}}",
+    "sendMail": "Envoyer le document par e-mail à {{who}}",
+    "sendWhatsapp": "Envoyer le lien à {{who}} par WhatsApp",
+    "versions": "Historique des versions ({{count}})",
+    "current": "actuelle",
+    "first": "première",
+    "openVersion": "Ouvrir cette version",
+    "identityTitle": "Coordonnées de l’association en pied de page",
+    "identity": {
+      "site": "Site",
+      "email": "E-mail",
+      "phone": "Téléphone"
+    },
+    "identityNoPhone": "Pas de téléphone — il n’apparaîtra pas en pied de page.",
+    "errorDate": "Non généré : une date a été trouvée, et la règle est : aucune date dans le document.",
+    "errorPublish": "Le document n’a pas été enregistré. Vérifiez la connexion et réessayez.",
+    "timesNoteNight": "Distances et durées mesurées par la route depuis l’institution. Les durées comprennent une marge de {{margin}} % et {{night}} % pour la nuit."
   }
 }

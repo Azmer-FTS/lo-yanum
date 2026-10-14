@@ -399,7 +399,10 @@ try {
     }
 
     /* A424 — la carte de couverture. */
-    const cov = await open(browser, vp, '/coordinator/coverage?inst=inst-demo-02', { 'lo-yanum:map-mode:coverage': 'split' })
+    /* ★★ BG 3 — la bulle (et la feuille du téléphone) ne s'ouvre que là où le
+       panneau ne montre PAS déjà l'institution : on l'examine donc carte
+       pleine. En mode partagé, c'est `bgui` A474 qui vérifie qu'elle se tait. */
+    const cov = await open(browser, vp, '/coordinator/coverage?inst=inst-demo-02', { 'lo-yanum:map-mode:coverage': 'full' })
     try {
       const page = cov.page
       const recall = page.locator('[data-testid="coverage-recall"]').first()
@@ -435,10 +438,22 @@ try {
         check(`A424 ${vp.label} : « פרטים » rouvre la bulle`, (await page.locator('[data-testid="coverage-institution-card"]').count()) === 1)
       }
       /* Toucher le fond de la carte : désélectionne. Un point du canevas sans épingle. */
-      const canvas = page.locator('.maplibregl-canvas').first()
-      const cb = await canvas.boundingBox()
-      if (cb) {
-        await page.mouse.click(cb.x + 12, cb.y + cb.height - 12)
+      /* ★★ BG — carte pleine, la feuille du téléphone couvre le bas du canevas :
+         on vise un point où le CANEVAS est vraiment sous le doigt. */
+      const free = await page.evaluate(() => {
+        const c = document.querySelector('.maplibregl-canvas') as HTMLElement | null
+        if (!c) return null
+        const r = c.getBoundingClientRect()
+        for (const fy of [0.92, 0.5, 0.35, 0.65, 0.2])
+          for (const fx of [0.92, 0.08, 0.5, 0.75, 0.25]) {
+            const x = r.left + r.width * fx
+            const y = r.top + r.height * fy
+            if (document.elementFromPoint(x, y) === c) return { x, y }
+          }
+        return null
+      })
+      if (free) {
+        await page.mouse.click(free.x, free.y)
         await page.waitForTimeout(450)
       }
       check(`A424 ${vp.label} : toucher le fond de la carte désélectionne`, (await page.locator('[data-testid="coverage-recall"]').count()) === 0)

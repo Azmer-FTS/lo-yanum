@@ -202,6 +202,8 @@ export {
   createMemoLine,
   updateMemoLine,
   deleteMemoLine,
+  linkFarmToInstitution,
+  unlinkFarmFromInstitution,
 } from './store'
 export type {
   NewIncidentInput,
@@ -238,5 +240,9 @@ export * from './institutions'
 export * from './coverage'
 export * from './landmarks'
 export * from './farmName'
+// ★★ BG — le parrainage ferme ↔ institution, l'ordre des fermes d'une fiche.
+export * from './farmLinks'
+export * from './reachOrder'
+export * from './institutionDoc'
 // ★★ BF — la recherche globale (pure).
 export * from './search'

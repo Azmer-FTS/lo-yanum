@@ -106,7 +106,10 @@ const toast = read('src/ui/components/UndoToast.tsx')
 check('A362 une bande « ביטול » pour toute l’application, 8 secondes', /8000/.test(toast) && read('src/ui/App.tsx').includes('<UndoToast />'))
 const cov = read('src/ui/screens/coordinator/CoverageScreen.tsx')
 check('A363 la carte de couverture n’a plus de filtres d’engagement', !/institutions-filter/.test(cov) && !/INSTITUTION_ENGAGEMENTS\.map/.test(cov))
-check('A363 … mais un RACCOURCI : un compte et le chemin vers מוסדות', /coverage-institutions-shortcut/.test(cov) && /to="\/coordinator\/institutions"/.test(cov))
+/* ★★ BG 8 (décision du PO) — le raccourci du bas vers TOUTES les institutions
+   est retiré (« le PO sait y aller par le menu ») ; à sa place, en haut de la
+   fiche, l'accès à la fiche complète de CETTE institution. */
+check('A363 … plus de raccourci vers TOUTES les institutions ; en haut de la fiche, CETTE institution', !/coverage-institutions-shortcut/.test(cov) && !/to="\/coordinator\/institutions"/.test(cov) && /coverage-open-institution/.test(cov) && /to=\{`\/coordinator\/institutions\/\$\{selectedInst\.id\}`\}/.test(cov))
 check('A364 le nom d’une institution n’est écrit sur la carte qu’au toucher', /label: isSel \? p\.name : undefined/.test(cov))
 check('A364 la fiche tient en quatre chiffres (volontaires, fermes, distance, borne)', ['coverage-fig-volunteers', 'coverage-fig-farms', 'coverage-fig-nearest', 'coverage-fig-limit'].every((x) => cov.includes(x)))
 

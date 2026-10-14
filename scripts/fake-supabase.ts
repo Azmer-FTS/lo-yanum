@@ -95,6 +95,11 @@ export class FakeDb {
    * mapper, so the fake forgets children exactly where Postgres would.
    */
   cascades = new Map<string, Array<{ table: string; fk: string }>>()
+  /**
+   * ★★ BG — le STOCKAGE, au plus simple : `<bucket>/<chemin>` → les octets
+   * (le PDF extrait du corps multipart de supabase-js) et l'instant d'écriture.
+   */
+  objects = new Map<string, { bytes: Uint8Array; at: string; type: string }>()
 
   rows(table: string): Row[] {
     let list = this.tables.get(table)
@@ -255,6 +260,55 @@ export function installFakeSupabase(context: BrowserContext, db: FakeDb): Promis
       }
       if (url.pathname.endsWith('/logout')) {
         await route.fulfill({ status: 204, headers: CORS, body: '' })
+        return
+      }
+      await route.fulfill({ status: 404, headers: CORS, body: '{}' })
+      return
+    }
+
+    /* ★★ BG — le stockage : téléverser (POST/PUT), lister, lire en public. */
+    if (url.pathname.includes('/storage/v1/')) {
+      const path = url.pathname.replace(/^.*\/storage\/v1\//, '')
+      if (path.startsWith('object/list/') && method === 'POST') {
+        const bucket = path.slice('object/list/'.length)
+        const q = JSON.parse(request.postData() ?? '{}') as { prefix?: string }
+        const prefix = `${bucket}/${(q.prefix ?? '').replace(/\/$/, '')}/`
+        const out: Array<Record<string, unknown>> = []
+        for (const [key, o] of db.objects) {
+          if (!key.startsWith(prefix)) continue
+          const rest = key.slice(prefix.length)
+          if (rest.includes('/')) continue
+          out.push({ name: rest, id: key, updated_at: o.at, created_at: o.at, metadata: { size: o.bytes.length, mimetype: o.type } })
+        }
+        db.log.push(`LIST ${prefix} ${out.length}`)
+        await route.fulfill({ status: 200, headers: { ...CORS, 'content-type': 'application/json' }, body: JSON.stringify(out) })
+        return
+      }
+      if (path.startsWith('object/public/') && (method === 'GET' || method === 'HEAD')) {
+        const key = decodeURIComponent(path.slice('object/public/'.length))
+        const o = db.objects.get(key)
+        if (!o) {
+          await route.fulfill({ status: 404, headers: CORS, body: '{"error":"not found"}' })
+          return
+        }
+        await route.fulfill({ status: 200, headers: { ...CORS, 'content-type': o.type }, body: Buffer.from(o.bytes) })
+        return
+      }
+      if (path.startsWith('object/') && (method === 'POST' || method === 'PUT')) {
+        const key = decodeURIComponent(path.slice('object/'.length))
+        const raw = new Uint8Array(request.postDataBuffer() ?? Buffer.alloc(0))
+        const text = Buffer.from(raw).toString('latin1')
+        const a = text.indexOf('%PDF-')
+        const b = text.lastIndexOf('%%EOF')
+        const bytes = a >= 0 && b > a ? raw.slice(a, b + 5) : raw
+        const upsert = (request.headers()['x-upsert'] ?? '') === 'true'
+        if (db.objects.has(key) && !upsert) {
+          await route.fulfill({ status: 409, headers: { ...CORS, 'content-type': 'application/json' }, body: '{"statusCode":"409","error":"Duplicate","message":"The resource already exists"}' })
+          return
+        }
+        db.objects.set(key, { bytes, at: new Date().toISOString(), type: 'application/pdf' })
+        db.log.push(`UPLOAD ${key} ${bytes.length}`)
+        await route.fulfill({ status: 200, headers: { ...CORS, 'content-type': 'application/json' }, body: JSON.stringify({ Key: key, Id: key }) })
         return
       }
       await route.fulfill({ status: 404, headers: CORS, body: '{}' })

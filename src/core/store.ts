@@ -26,6 +26,8 @@ import type { Landmark } from './landmarks'
 import type { MemoBank, MemoLine, MemoSection } from './memo'
 import { isMemoLineValid, nextMemoRank } from './memo'
 import type { Task, TaskLink, TaskList } from './tasks'
+import { applyLink, applyUnlink, isFarmLinked, planLink } from './farmLinks'
+import type { LinkChoice, LinkPlan } from './farmLinks'
 import { isListNameValid, normalizeDueOn, normalizeDueTime, reorderedRanks, topRank } from './tasks'
 import type {
   Agreement,
@@ -2935,6 +2937,41 @@ export function updateMemoLine(id: string, patch: Partial<Pick<MemoLine, 'he' | 
 export function deleteMemoLine(id: string): boolean {
   if (!data.memoLines.some((l) => l.id === id)) return false
   data.memoLines = data.memoLines.filter((l) => l.id !== id)
+  commit()
+  return true
+}
+
+// ---------------------------------------------------------------------------
+// ★★ BG — LE PARRAINAGE : LIER ET DÉLIER UNE FERME À UNE INSTITUTION.
+// ---------------------------------------------------------------------------
+
+/**
+ * Lier `farmId` à `institutionId`. Sur une ferme déjà liée AILLEURS, rien ne
+ * se fait sans `choice` (la boîte « להחליף · להוסיף · ביטול », 5.3) : la
+ * fonction rend alors le plan, que l'écran montre au PO. Rend aussi le plan
+ * quand le geste a abouti, pour que l'écran sache ce qui s'est passé.
+ */
+export function linkFarmToInstitution(farmId: string, institutionId: string, choice: LinkChoice | null = null): { plan: LinkPlan; changed: boolean } {
+  const plan = planLink(data.farmInstitutionLinks, farmId, institutionId)
+  if (!data.farms.some((f) => f.id === farmId) || !data.institutions.some((i) => i.id === institutionId)) return { plan, changed: false }
+  if (plan.kind === 'already') return { plan, changed: false }
+  if (plan.kind === 'conflict' && (choice === null || choice === 'cancel')) return { plan, changed: false }
+  const next = applyLink(data.farmInstitutionLinks, farmId, institutionId, choice, () => ({
+    id: nextId('fil'),
+    farmId,
+    institutionId,
+    createdAt: iso(now()),
+    createdBy: null,
+  }))
+  data.farmInstitutionLinks = next
+  commit()
+  return { plan, changed: true }
+}
+
+/** Délier CE lien, et uniquement lui. */
+export function unlinkFarmFromInstitution(farmId: string, institutionId: string): boolean {
+  if (!isFarmLinked(data.farmInstitutionLinks, farmId, institutionId)) return false
+  data.farmInstitutionLinks = applyUnlink(data.farmInstitutionLinks, farmId, institutionId)
   commit()
   return true
 }

@@ -436,7 +436,9 @@ await guard('A460', async () => {
   check('A460 le tableau a ses « ⋯ »', toggles.length > 3, String(toggles.length))
   await o.ctx.close()
 
-  const c = await open(1440, { db: bfDb(), height: 900 })
+  /* ★★ BG 3 — la bulle ne s'ouvre que là où le panneau ne montre pas déjà
+     l'institution : carte pleine. */
+  const c = await open(1440, { db: bfDb(), height: 900, init: { 'lo-yanum:map-mode:coverage': 'full' } })
   await go(c.page, APP, `/coordinator/coverage?inst=${INST_A.id}`, 4500)
   await waitMap(c.page)
   await c.page.waitForTimeout(1500)

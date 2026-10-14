@@ -1,5 +1,181 @@
 # לא ינום — ETAT
 
+> 🏁 **BG — LA FICHE D'INSTITUTION DEVIENT UN POSTE DE TRAVAIL. 2026-10-14.**
+>
+> ⛔ **DONNÉES RÉELLES.** `bgpass` / `bgui` n'utilisent que des fiches
+> INVENTÉES ou REBAPTISÉES (`bgui` renomme les fermes du banc, comme `bfui` ;
+> contacts « רב בדיקה », mail `head@example.invalid`, numéros 050-000-…).
+> Aucune capture ni aucun journal commité ne montre un nom réel ; journaux
+> complets : `private/bg/logs/`. Le site et le mail du pied de page du
+> document sont ceux, PUBLICS, de la page d'accueil d'ארצנו
+> (`artzenu.org.il`, `office@artzenu.org.il`) ; le téléphone n'y est pas
+> publié : il reste VIDE tant que le PO ne l'a pas saisi (réglage synchronisé).
+>
+> **1 · UNE FERME DANS UN MAILLAGE N'EST PLUS UN CHANGEMENT DE CONTEXTE.**
+> La cause : l'écran n'avait qu'UNE sélection (`selected`, ferme OU
+> institution) ; toucher une ferme remplaçait l'institution — ses trajets
+> laissaient place à ceux de tout le monde, et la bulle ancrée de la ferme
+> déplaçait la caméra quand l'épingle était près du bord. Désormais DEUX états
+> (`CoverageScreen`) : `instId` (l'institution, son maillage, sa fiche) et
+> `card` (la fiche compacte d'une ferme ou d'une piste, PAR-DESSUS). Dans un
+> maillage, la fiche de ferme est RANGÉE AU COIN (`MapPanel.detail` sans
+> `detailAt`) : aucun mouvement de caméra possible. La fermer n'efface rien ;
+> le fond de carte ferme d'abord la fiche, ensuite seulement désélectionne.
+> Sans institution choisie, la fiche reste ancrée sur l'épingle (comme avant).
+>
+> **2 · LA FICHE COMPACTE** (`ui/institutions/CoverageFarmCard.tsx`, à la
+> place d'`EntityQuickCard` sur CET écran seulement) : 17 rem (20 et 28
+> avant) ; repliée = nom, pastille de statut, localité · agriculteur, et — une
+> institution étant choisie — distance et minutes CÔTE À CÔTE depuis elle.
+> ★ **CHOIX DIT : la nuit.** Son pourcentage est SUR LA LIGNE DES MINUTES
+> (« 🌙 תוספת לילה 15% », seulement s'il est > 0) : c'est la seule chose qui
+> explique qu'une durée dépasse la route ; le CALCUL entier (« 32 דק׳ בכביש
+> פנוי, עם מרווח של 15% ותוספת לילה של 15% — 42 דק׳ ») est dans la partie
+> dépliée. La ligne repliée reste lisible d'un coup d'œil. La flèche déplie
+> téléphone, branche(s), surfaces, notes, le chaînon et « פתיחת החווה » ;
+> l'état est retenu (`lo-yanum:coverage-farm-card`, local). Cibles ≥ 44 px.
+>
+> **3 · LE POP-UP DE L'INSTITUTION** — la règle se décide sur la PLACE RÉELLE :
+> `useLaidOut(selRef)` (la fiche du panneau est-elle mise en page — aucun
+> ancêtre en `display:none`, une largeur ; un `ResizeObserver` suit les
+> bascules de mode). Panneau monté et montrant l'institution → AUCUNE bulle,
+> pas de « פרטים », le marqueur seul se met en évidence (la barre de rappel
+> ‹ › × reste : ce n'est pas un pop-up). Panneau caché (carte pleine,
+> téléphone en mode carte) → la bulle (ordinateur) ou la feuille ancrée
+> (téléphone), celle-ci RÉDUITE : nom · type · village dans sa barre, et
+> « פתיחת כרטיס המוסד », qui bascule le téléphone sur le panneau et y défile.
+>
+> **4 · L'ORDRE DES FERMES** (`core/reachOrder.ts`, pur) : `splitReach` rend
+> d'abord celles DANS le seuil, triées selon le critère du PO (minutes
+> croissantes, marge et nuit comprises ; ou kilomètres croissants), puis le
+> COMPLÉMENT EXACT (au-delà, sans route, pas encore mesurées) dans une section
+> REPLIÉE « מעבר לטווח שבחרת (N) » ; chaque titre compte. Avant BG la liste
+> était triée en km même quand le seuil était en minutes, et le hors-seuil s'y
+> mêlait, grisé. Une ferme dont la seule route franchit la Ligne verte mais
+> tient dans la borne est DANS le seuil (la borne parle de temps et de
+> distance) et garde sa pastille rouge ; la couverture ne la compte toujours
+> pas. Une ferme LIÉE reste dans la fiche même au-delà du vol d'oiseau.
+>
+> **5 · LIER ET DÉLIER — LA BASE.** Table `farm_institution_links` (migration
+> `20261014000100`, appliquée par le MCP AVANT le déploiement, version
+> `20261014124915`, jalon, repair ; `armigrations` 54/54) :
+>
+> | colonne | type | |
+> |---|---|---|
+> | `id` | text, clé primaire | `fil-…` (le client) |
+> | `farm_id` | text not null → `entities(id)` on delete cascade | index `farm_institution_links_farm_idx` |
+> | `institution_id` | text not null → `institutions(id)` on delete cascade | index `farm_institution_links_institution_idx` |
+> | `created_at` | timestamptz not null default now() | |
+> | `created_by` | uuid default `auth.uid()` | posé PAR LA BASE (déclencheur `private.farm_institution_links_stamp` : à l'insertion `coalesce(new, auth.uid())`, ensuite figé avec `created_at`) |
+>
+> ⛔ AUCUNE contrainte d'unicité (ni par ferme, ni par paire : deux appareils
+> hors ligne qui lient la même paire ne doivent pas bloquer la file
+> d'écriture). RLS activée ET forcée, `private.is_coordinator()` pour tout ;
+> `revoke all … from anon` (vérifié : 42501). La RÈGLE DE TRAVAIL (une ferme,
+> une institution) est tenue par l'application : `core/farmLinks.ts` (pur :
+> `planLink` → `already` / `create` / `conflict` avec les institutions en
+> place ; `applyLink` ; `applyUnlink`), le magasin (`linkFarmToInstitution`,
+> `unlinkFarmFromInstitution`), la collection `farmInstitutionLinks` (après
+> `farms` et `institutions` dans `COLLECTIONS`), la lecture filtre les liens
+> morts (`getFarmInstitutionLinks`).
+>
+> **LE GESTE** (`ui/institutions/FarmLinking.tsx`) : au bout de chaque ligne
+> de la liste, un chaînon de 44 px — FERMÉ (plein, teinte d'accent) = liée à
+> CETTE institution ; OUVERT (maillons écartés, bord en tirets) = non. Ouvert →
+> lier (aucun lien ailleurs : un geste) ; déjà liée AILLEURS → la boîte
+> « החווה כבר משויכת למוסד אחר », qui NOMME l'institution en place (bandeau
+> orangé), et trois boutons dans cet ordre : « להחליף » (primaire), « להוסיף »,
+> « ביטול ». Fermé → « לנתק את השיוך? » (confirmation brève), CE lien seul.
+> **5.4** : une ferme liée à plus d'une institution porte « 2 מוסדות » dans la
+> liste et dans sa fiche compacte, et une ligne « 2 מוסדות : X · Y » (teinte
+> d'avertissement) sous l'en-tête de SA fiche (`FarmSponsorLine`, la seule
+> ligne ajoutée à `FarmDetailScreen`) ; liée à une seule, ailleurs : « משויכת
+> ל־X » sous son nom dans la liste.
+>
+> **6 · LE DOCUMENT DE L'INSTITUTION** (`ui/institutions/institutionDoc.ts`,
+> `InstitutionDocBlock.tsx`, `core/institutionDoc.ts`, `data/institutionDocs.ts`).
+> Contenu : bandeau (logo, « ארצנו · שומרים בחוות — הצעה לשיתוף פעולה », le
+> nom, type · localité) ; פרטי המוסד ; אנשי קשר (rôle, nom, numéros, mail) ;
+> la case « למילוי המוסד » (six lignes à remplir) ; « החוות המשויכות למוסד (N) »
+> et « חוות מוצעות בטווח … (N) » (חווה · יישוב · ק״מ · דקות, dans l'ordre du
+> critère) ; la note de calcul ; les deux encadrés « איך זה עובד » et
+> « ממשיכים מכאן ». ⚠️ Les TEXTES de la case et des deux encadrés sont une
+> proposition (question au PO).
+> **La charte**, tenue et mesurée (`bgui` A478) : page 1 = bandeau photo
+> PLEINE LARGEUR posé en y = 0 (pixels : la première ligne est sombre), logo
+> BLANC de 62 pt (24 pt dans l'en-tête), AUCUNE en-tête ; en-tête (logo vert,
+> nom, filet) et pied (filet ; site · mail · téléphone ; « n / N ») sur chaque
+> page dès la 2 ; « n / N » sur TOUTES les pages (seul en bas de la page 1) ;
+> marges : contenu entre 88 pt (260 pt en page 1) et H − 72 pt, un bloc qui ne
+> tient pas ouvre une page, un tableau répète son en-tête, les encadrés ne
+> sont jamais coupés ; AUCUNE date — le texte posé passe par `hasDate` et le
+> document REFUSE de se faire s'il en trouve une, et le PDF n'a ni
+> `CreationDate` ni `ModDate`. ★ **Le voile vert est APLATI** dans
+> `public/doc/institution-band.jpg` (composé par `scripts/bgband.py` : photo
+> des volontaires d'AP1, voile #0B3D2C de 55 à 90 % calculé pixel par pixel,
+> JPEG RGB sans alpha) ; et chaque page part en JPEG opaque (technique
+> d'AF1/`report/pdf.ts`) : le fichier n'a ni masque, ni groupe de
+> transparence, ni opacité (mesuré dans les octets).
+> **L'hébergement** : bucket PUBLIC `institution-docs` (même migration ;
+> écritures et liste : coordinateur ; anonyme : liste vide, dépôt refusé —
+> vérifié sur la production). Adresse STABLE `<id>/document.pdf`, ÉCRASÉE à
+> chaque génération (`cacheControl` 60 s) ; chaque génération est d'abord
+> écrite à côté, horodatée dans son NOM : `<id>/versions/AAAAMMJJ-HHMMSS.pdf`
+> (UTC) ; la fiche liste « היסטוריית הגרסאות (N) », la plus récente
+> « נוכחית », la plus ancienne « ראשונה ». Le lien public pointe toujours sur
+> `document.pdf`. Le jumeau sans Supabase garde les fichiers en mémoire de la
+> page, et le dit.
+> **L'envoi** : par contact, l'icône mail SI le contact a un mail (nouveau
+> champ facultatif `email` des contacts d'institution, dans le JSON `contacts`,
+> sans migration ; saisi dans la fiche complète), l'icône WhatsApp SI un
+> numéro — le message pré-rédigé porte LE LIEN ; aucune icône tant qu'aucun
+> document n'existe. Le pied (site, mail, téléphone) est un réglage
+> synchronisé (`lo-yanum:institution-doc`), au bas du bloc.
+>
+> **7 · LE BANDEAU DES RÉGLAGES SE REPLIE** dès qu'une institution est ouverte
+> (`coverage-band-folded`, une ligne « עד 35 דקות · לפי זמן · שינוי ») ; un
+> clic le rouvre, « סיום » le referme ; l'état est retenu
+> (`lo-yanum:coverage-band`, local). Replié, la barre de progression du calcul
+> des routes reste visible tant qu'il tourne. La fiche de l'institution vient
+> JUSTE DESSOUS (avant les compteurs) : la hauteur gagnée lui revient.
+>
+> **8 · LE LIEN DU BAS** vers TOUTES les institutions est retiré ; en haut de
+> la fiche, une icône de 44 px (`coverage-open-institution`) ouvre la fiche
+> complète de CETTE institution.
+>
+> **Ce qui n'a PAS été fait, et pourquoi.** (1) Pas d'unicité en base (le
+> brief), ni même sur la paire (file d'écriture hors ligne). (2) Le PDF n'a pas
+> de texte sélectionnable : même technique que le contrat et le rapport (le
+> navigateur façonne l'hébreu ; aucune chaîne de polices + bidi à la main) —
+> c'est aussi ce qui garantit « aucune transparence ». (3) Pas de pièce jointe
+> par WhatsApp ni par mail (`mailto:` ne joint rien) : le lien. (4) L'adresse
+> du document est bâtie sur l'identifiant (le brief) : qui a le lien lit le
+> document ; aucun listing anonyme possible. (5) Le cadrage d'arrivée d'une
+> institution (`?inst=`) reste celui de BF (une fois, sur l'institution) : le
+> maillage complet n'est pas recadré quand les routes arrivent — règle de BF
+> « une valeur déjà servie ne rebouge rien ». (6) La fiche compacte n'a pas
+> remplacé `EntityQuickCard` ailleurs (« ne touche à rien d'autre »). (7) Pas
+> de dépôt RÉEL sur la production depuis la porte (pas de clé de service sur
+> la machine, et aucun mot de passe saisi) : le chemin est prouvé sur le
+> stockage factice (octets, écrasement, versions), le bucket et ses droits sur
+> la production (lecture SQL et requêtes anonymes).
+>
+> **Portes.** Nouvelles : `bgpass` (A461–A471, pur, 53/53) et `bgui`
+> (A472–A481, au rendu, 90/90). Adaptées là où BG change la forme voulue :
+> `aupass` A321, `aypass` A363, `mapping` (34 tables), `persist` (deux
+> mutations), `bcmobile` A424 / `bfui` A460 (la bulle se vérifie carte
+> pleine ; `bcmobile` vise un point du canevas libre, la feuille couvrant le
+> bas), `avui` A322 / `ayscreens` A364 (la fiche du panneau au lieu de la
+> bulle). Le faux Supabase des portes sait désormais le stockage
+> (`scripts/fake-supabase.ts`). Bilan : `docs/bg/portes-local.md`.
+>
+> **Questions au PO.** (1) Les textes de la case à remplir et des deux
+> encadrés de fin (une proposition). (2) Le téléphone du pied de page (vide
+> tant qu'il n'est pas saisi). (3) Ancrer la fiche de ferme sur son épingle
+> sans bouger la caméra (aujourd'hui au coin) ? Toujours ouvertes : celles de
+> BF, BE, BD, BB, BA.
+
+
 > 🏁 **BF — LA CARTE OBÉIT, ET UNE RECHERCHE GLOBALE COMME SPOTLIGHT. 2026-10-14.**
 >
 > ⛔ **DONNÉES RÉELLES.** `bfpass` / `bfui` n'utilisent que des personnes et des

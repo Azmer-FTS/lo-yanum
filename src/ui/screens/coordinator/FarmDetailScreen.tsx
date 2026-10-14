@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { FarmSponsorLine } from '../../institutions/FarmLinking'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { formRoutes } from './FormPages'
@@ -1285,6 +1286,8 @@ export function FarmDetailScreen() {
               </ActionPill>
             }
           />
+          {/* ★★ BG 5.4 — l'institution de la ferme ; plus d'une se signale. */}
+          <FarmSponsorLine farm={farm} />
 
           {archiveOpen && (
             <ArchiveModal

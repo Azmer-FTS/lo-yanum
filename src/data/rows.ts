@@ -7,6 +7,7 @@ import type { Institution, InstitutionContact, PhoneLabel } from '@core/institut
 import { INSTITUTION_CONTACT_ROLES, foldLegacyOffice, settleInstitution } from '@core/institutions'
 import type { Landmark } from '@core/landmarks'
 import type { MemoLine } from '@core/memo'
+import type { FarmInstitutionLink } from '@core/farmLinks'
 import { MEMO_BANK_KEYS } from '@core/memo'
 import type { Task, TaskLinkKind, TaskList } from '@core/tasks'
 import { TASK_LINK_KINDS } from '@core/tasks'
@@ -1314,6 +1315,8 @@ function readInstitutionContacts(raw: unknown): InstitutionContact[] {
       name: str(c.name),
       phone: str(c.phone),
       note: str(c.note),
+      /* ★★ BG — le mail ; absent tant qu'il n'est pas saisi. */
+      ...(str(c.email).trim() !== '' ? { email: str(c.email).trim() } : {}),
       /* ★★ BC — la note restreint l'usage du téléphone ; absent = appel ordinaire. */
       ...(c.restrictsCalls === true ? { restrictsCalls: true } : {}),
       /* ★★ BB — plusieurs numéros ; absent sur une ligne d'avant BB. */
@@ -1431,6 +1434,29 @@ const memoLineMapping: Mapping<MemoLine> = {
   }),
 }
 
+/**
+ * ★★ BG — le parrainage. `created_by` est posé PAR LA BASE (`auth.uid()`, un
+ * déclencheur qui le fixe à l'insertion et le garde ensuite) : le client
+ * l'envoie tel qu'il l'a lu, `null` pour un lien neuf, et la base décide.
+ */
+const farmInstitutionLinkMapping: Mapping<FarmInstitutionLink> = {
+  table: 'farm_institution_links',
+  children: [],
+  toRows: (l) => [
+    {
+      table: 'farm_institution_links',
+      rows: [{ id: l.id, farm_id: l.farmId, institution_id: l.institutionId, created_at: l.createdAt, created_by: l.createdBy }],
+    },
+  ],
+  fromRows: (p): FarmInstitutionLink => ({
+    id: str(p.id),
+    farmId: str(p.farm_id),
+    institutionId: str(p.institution_id),
+    createdAt: ts(p.created_at),
+    createdBy: typeof p.created_by === 'string' && p.created_by !== '' ? p.created_by : null,
+  }),
+}
+
 function planOf(raw: unknown): TourPlan | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
   const r = raw as Record<string, unknown>
@@ -1509,6 +1535,7 @@ export const MAPPINGS: { [K in Collection]: Mapping<StoreData[K][number]> } = {
   taskLists: taskListMapping,
   tasks: taskMapping,
   memoLines: memoLineMapping,
+  farmInstitutionLinks: farmInstitutionLinkMapping,
 }
 
 /** Every table an aggregate of this collection lives in, parent first. */

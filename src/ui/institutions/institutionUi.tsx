@@ -297,6 +297,7 @@ function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institut
   }
   const [phones, setPhones] = useState<ContactPhone[]>(initialPhones)
   const [note, setNote] = useState(contact.note)
+  const [email, setEmail] = useState(contact.email ?? '')
   const [customAt, setCustomAt] = useState<number | null>(null)
   /* ★★ BD — les étiquettes connues, puis toutes celles déjà saisies dans la base. */
   const labelChoices = useCoreValue(() => phoneLabelChoices(getInstitutions()))
@@ -305,13 +306,22 @@ function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institut
     setName(contact.name)
     setPhones(initialPhones())
     setNote(contact.note)
+    setEmail(contact.email ?? '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contact.id, contact.name, phonesKey, contact.note])
+  }, [contact.id, contact.name, phonesKey, contact.note, contact.email])
   const commit = (patch: Partial<InstitutionContact> = {}, nextPhones: ContactPhone[] = phones) => {
     const kept = nextPhones.filter((p) => p.number.trim() !== '')
-    const next: InstitutionContact = { ...contact, name, note, phone: kept[0]?.number ?? '', phones: kept, ...patch }
+    const mail = email.trim()
+    const { email: _old, ...rest } = contact
+    void _old
+    const next: InstitutionContact = { ...rest, name, note, phone: kept[0]?.number ?? '', phones: kept, ...(mail ? { email: mail } : {}), ...patch }
     const changed =
-      next.role !== contact.role || next.name !== contact.name || next.note !== contact.note || next.restrictsCalls !== contact.restrictsCalls || JSON.stringify(contactPhones(next)) !== phonesKey
+      next.role !== contact.role ||
+      next.name !== contact.name ||
+      next.note !== contact.note ||
+      (next.email ?? '') !== (contact.email ?? '') ||
+      next.restrictsCalls !== contact.restrictsCalls ||
+      JSON.stringify(contactPhones(next)) !== phonesKey
     if (changed) onSave(next)
   }
   const setPhoneAt = (n: number, p: Partial<ContactPhone>, save = false) => {
@@ -435,6 +445,11 @@ function ContactRow({ inst, contact, taken, onSave, onRemove }: { inst: Institut
         <Icon name="plus" size={14} />
         {t('institutions.addPhone')}
       </button>
+      {/* ★★ BG — le mail : il fait paraître l'icône d'envoi du document. */}
+      <label className="mt-2 flex flex-col gap-1">
+        <span className="text-micro font-semibold text-content-muted">{t('institutions.contactEmail')}</span>
+        <input className="input min-h-11" type="email" inputMode="email" dir="ltr" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} onBlur={() => commit()} data-testid="institution-contact-email" />
+      </label>
       <div className="mt-2 flex flex-wrap items-end gap-2">
         <label className="flex min-w-[12rem] flex-1 flex-col gap-1">
           <span className="text-micro font-semibold text-content-muted">{t('institutions.contactNote')}</span>

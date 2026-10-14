@@ -1,6 +1,7 @@
 import type { Institution } from './institutions'
 import type { Landmark } from './landmarks'
 import type { MemoLine } from './memo'
+import type { FarmInstitutionLink } from './farmLinks'
 import type { Task, TaskList } from './tasks'
 import type { Tour } from './tours'
 import type {
@@ -71,6 +72,8 @@ export interface StoreData {
   taskLists: TaskList[]
   tasks: Task[]
   memoLines: MemoLine[]
+  /** ★★ BG — les liens ferme ↔ institution (le parrainage). Dans AUCUN compteur de couverture. */
+  farmInstitutionLinks: FarmInstitutionLink[]
   session: Session
 }
 
@@ -105,6 +108,9 @@ export const COLLECTIONS = [
   'taskLists',
   'tasks',
   'memoLines',
+  /* ★★ BG — après `farms` et `institutions` : `farm_institution_links` porte
+     deux clés étrangères (on delete cascade). */
+  'farmInstitutionLinks',
 ] as const
 
 export type Collection = (typeof COLLECTIONS)[number]

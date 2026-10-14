@@ -166,7 +166,9 @@ walk('src')
 /* ★★ BE — un rendez-vous ou une tâche se RELIE à une institution : le
    sélecteur et la puce du lien (`ui/agenda/links.tsx`) la cherchent et la
    nomment. Un écran, toujours aucun compteur. */
-check('A321 seuls les écrans des institutions et de leurs volontaires les lisent', callers.every((p) => /institutionUi|CoverageScreen|InstitutionsImportScreen|InstitutionsScreen|AddContactsScreen|FormPages|ImportWizardScreen|VolunteerFormModal|VolunteersScreen|placeMarkers|agenda\/links|access\.ts/.test(p)), callers.join(', '))
+/* ★★ BG — le chaînon et la boîte « להחליף · להוסיף · ביטול » NOMMENT
+   l'institution déjà en place (`FarmLinking.tsx`) : un écran, aucun compteur. */
+check('A321 seuls les écrans des institutions et de leurs volontaires les lisent', callers.every((p) => /institutionUi|FarmLinking|CoverageScreen|InstitutionsImportScreen|InstitutionsScreen|AddContactsScreen|FormPages|ImportWizardScreen|VolunteerFormModal|VolunteersScreen|placeMarkers|agenda\/links|access\.ts/.test(p)), callers.join(', '))
 {
   const dash = readFileSync('src/core/dashboard.ts', 'utf8')
   const imports = (dash.match(/^import[^\n]*$/gm) ?? []).join('\n')

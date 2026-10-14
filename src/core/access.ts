@@ -3,6 +3,7 @@ import type { Lead } from './types'
 import type { Institution } from './institutions'
 import type { Landmark } from './landmarks'
 import type { MemoLine } from './memo'
+import type { FarmInstitutionLink } from './farmLinks'
 import { meetingLink, tourReflection } from './reflections'
 import type { Task, TaskList } from './tasks'
 import { dueTasksByDay } from './tasks'
@@ -850,6 +851,19 @@ export function getDueTasks(from: Date, to: Date): Map<string, Task[]> {
 /** ★★ BE — l'aide-mémoire : coordinateur seulement. */
 export function getMemoLines(): MemoLine[] {
   return getSession().role === 'coordinator' ? _raw().memoLines : []
+}
+
+/**
+ * ★★ BG — les liens ferme ↔ institution : coordinateur seulement. Un lien dont
+ * la ferme ou l'institution n'est plus là (supprimée sur un autre appareil,
+ * avant la relecture) n'est pas rendu.
+ */
+export function getFarmInstitutionLinks(): FarmInstitutionLink[] {
+  if (getSession().role !== 'coordinator') return []
+  const raw = _raw()
+  const farms = new Set(raw.farms.map((f) => f.id))
+  const insts = new Set(raw.institutions.map((i) => i.id))
+  return raw.farmInstitutionLinks.filter((l) => farms.has(l.farmId) && insts.has(l.institutionId))
 }
 
 /** The next few entries from now on — the dashboard's compact agenda strip. */

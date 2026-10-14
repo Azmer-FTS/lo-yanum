@@ -52,6 +52,8 @@ export type IconName =
   | 'camera'
   | 'switch'
   | 'external'
+  | 'link'
+  | 'unlink'
   | 'moon'
   | 'phoneBasic'
   | 'edit'
@@ -401,6 +403,21 @@ const PATHS: Record<IconName, ReactNode> = {
   switch: (
     <>
       <path d="M4 8h13l-3-3M20 16H7l3 3" />
+    </>
+  ),
+  /* ★★ BG — le chaînon : FERMÉ = la ferme est liée à cette institution ;
+     OUVERT (deux maillons écartés, un trait de coupe) = elle ne l'est pas. */
+  link: (
+    <>
+      <path d="M10 13.5a4.2 4.2 0 0 0 6 .2l3-3a4.2 4.2 0 0 0-6-6l-1.2 1.2" />
+      <path d="M14 10.5a4.2 4.2 0 0 0-6-.2l-3 3a4.2 4.2 0 0 0 6 6l1.2-1.2" />
+    </>
+  ),
+  unlink: (
+    <>
+      <path d="M15.5 11.8 18.2 9a3.8 3.8 0 0 0-5.4-5.4L10.4 6" />
+      <path d="M8.5 12.2 5.8 15a3.8 3.8 0 0 0 5.4 5.4l2.4-2.4" />
+      <path d="M8.5 3v2.5M3 8.5h2.5M15.5 21v-2.5M21 15.5h-2.5" />
     </>
   ),
   external: (
