@@ -238,3 +238,5 @@ export * from './institutions'
 export * from './coverage'
 export * from './landmarks'
 export * from './farmName'
+// ★★ BF — la recherche globale (pure).
+export * from './search'

@@ -151,7 +151,12 @@ export function FarmsListScreen() {
   const [moshavOnly, setMoshavOnly] = useState(false)
   // X12.4 — the standard region, as a filter. `null` is "every region".
   const [region, setRegion] = useState<RegionId | null>(null)
-  const [query, setQuery] = useState('')
+  /* ★★ BF — `?q=` : une localité choisie dans la recherche globale. */
+  const [query, setQuery] = useState(() => params.get('q') ?? '')
+  const askedQuery = params.get('q')
+  useEffect(() => {
+    if (askedQuery !== null) setQuery(askedQuery)
+  }, [askedQuery])
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   /**
@@ -1164,6 +1169,8 @@ export function FarmsListScreen() {
       screenKey="farms"
       ariaLabel={t('map.farmsMap')}
       markers={markers}
+      /* ★★ BF — seul un filtre recadre ; une relecture, jamais. */
+      fitScope={JSON.stringify([status, type, moshavOnly, region, hasAreas, neglected, gapOnly, noOutlineOnly, renewOnly, docsOnly, intakeOnly, notContactedOnly, branchFilter, query.trim()])}
       polygons={zonePolygons(zones, farms)}
       threatZones={threatZoneShapes(threatZones)}
       threatVectors={threatVectorShapes(threatVectors)}

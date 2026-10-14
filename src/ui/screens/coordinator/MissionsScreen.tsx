@@ -136,6 +136,8 @@ export function MissionsScreen() {
       screenKey="missions"
       ariaLabel={t('map.missionsMap')}
       markers={markers}
+      /* ★★ BF — seul un filtre recadre ; une relecture, jamais. */
+      fitScope={`${tab}|${status}|${region}`}
       legend={
         <ul className="flex flex-col gap-1.5">
           {STATUSES.map((s) => (

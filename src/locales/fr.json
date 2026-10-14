@@ -91,6 +91,7 @@
     "hiddenEntities_one": "1 ferme masquée par la légende",
     "hiddenEntities_other": "{{count}} fermes masquées par la légende",
     "showHidden": "Afficher",
+    "recenter": "Recentrer",
     "nearLocality": "Près de {{name}} · {{km}} km",
     "layers": {
       "entities": "Fermes et moshavim",
@@ -889,5 +890,41 @@
   },
   "intake": {
     "dashTitleNew": "Nouvelles demandes"
+  },
+  "search": {
+    "open": "Rechercher",
+    "label": "Rechercher dans tout le programme",
+    "placeholder": "Ferme, établissement, contact, itinéraire, tâche…",
+    "close": "Fermer la recherche",
+    "shortcut": "⌘K",
+    "group": {
+      "farm": "Fermes",
+      "institution": "Établissements",
+      "contact": "Contacts",
+      "tour": "Itinéraires",
+      "task": "Tâches",
+      "event": "Événements",
+      "locality": "Localités"
+    },
+    "kind": {
+      "farm": "Ferme",
+      "institution": "Établissement",
+      "contact": "Contact",
+      "tour": "Itinéraire",
+      "task": "Tâche",
+      "event": "Événement",
+      "locality": "Localité"
+    },
+    "more": "{{count}} résultats de plus",
+    "recent": "Consultés récemment",
+    "none": "Aucun résultat pour « {{query}} »",
+    "farmContact": "Contact de la ferme",
+    "secretariat": "Secrétariat",
+    "stops_one": "une étape",
+    "stops_other": "{{count}} étapes",
+    "farms_one": "une ferme",
+    "farms_other": "{{count}} fermes",
+    "institutions_one": "un établissement",
+    "institutions_other": "{{count}} établissements"
   }
 }

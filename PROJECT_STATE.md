@@ -104,6 +104,39 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BF — LA CARTE OBÉIT, ET LA RECHERCHE GLOBALE — CODE ET PORTES LOCALES VERTS, POUSSÉ, DÉPLOIEMENT À VÉRIFIER** (2026-10-14).
+  Branche `main`. Commits : le commit BF (code + portes + bilans locaux) ; puis le commit de fin de passe (mesures du déployé). Récit, coupable mesuré, décisions :
+  `ETAT.md` § BF (en tête) — la source de vérité de la passe. Aucune migration.
+  - **Fait** : tâche 1 (la caméra appartient au PO : garde d'interaction,
+    effets de caméra sur des primitives, `fit` une fois + `fitScope`,
+    « מרכוז מחדש ») et tâche 2 (recherche ⌘K / Ctrl+K / loupe, `core/search.ts`
+    pur, `ui/search/GlobalSearch.tsx`).
+  - **Le coupable du dézoom** : l'effet `fit` de `MapCanvas` gardé sur une
+    `frameKey` ORDONNÉE ; chaque relecture (3 min, retour sur l'app) remplace
+    le magasin deux fois (cache trié par clé, puis Postgres sans `order by`) →
+    autre ordre → `fitBounds` sur tout. Prouvé par `bfui` A457 sur
+    `dist-bf-before` (z12,47 → z8,09 / z9,14) ; vert sur BF.
+  - **Décisions (permanentes)** :
+    · seul un geste ou une DEMANDE bouge la caméra : nouvelle clé `frameTo` /
+      `flyTo` / `anchored`, autre centre, autre `fitScope`, « מרכוז מחדש » ;
+      une valeur déjà servie ne rebouge rien ; une relecture, jamais ;
+    · un écran dont les filtres changent la carte passe `fitScope` ;
+    · un bouton de carte qui bouge la caméra appelle `onUserCamera` ;
+    · la recherche ne lit que la mémoire (aucune requête), est celle du
+      coordinateur, et ses portes n'impriment ni ne capturent de nom réel
+      (`bfui` rebaptise le banc).
+  - **Rouges ANTÉRIEURS (non régressions)** inchangés : `anui` A236, `atui` ;
+    non rejoués : `pills`, `rhythm`, `akui`, `uipass`, `sheets`, `layout`.
+  - **Questions ouvertes au PO** : (1) ע ≡ א dans la recherche (pris au mot du
+    brief : « אופ » trouve aussi « עופר ») — à garder ? (2) l'approchant sous
+    3 lettres est coupé (sinon tout répond) ; (3, BE) échéance d'un accord
+    foncier en haut de son jour ? (4, BE) bouton micro ? (5, BD) géocodeur en
+    ligne ; (6, BB) titre du rosh de ישיבת שומריה לצעירים ; (7, BA) purge des
+    données réelles suivies par git.
+  - Journaux complets : `private/bf/logs/` ; bilans : `docs/bf/portes-local.md`,
+    `docs/bf/portes-deploye-*.md`.
+  - Reprise : `bun run bfpass && bun run typecheck` ; `bun run bfui`.
+
 - **BE — L'AGENDA, LES TÂCHES, LA FIN DU COPIER-COLLER — TERMINÉE, POUSSÉE,
   DÉPLOYÉE, DONNÉES POSÉES** (2026-10-13). Branche `main`. Commits : `07f66da`
   (BE1, code + portes), `6116fb3` (migration appliquée + jalon), `28488b3`

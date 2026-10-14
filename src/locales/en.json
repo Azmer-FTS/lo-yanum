@@ -91,6 +91,7 @@
     "hiddenEntities_one": "1 farm hidden by the legend",
     "hiddenEntities_other": "{{count}} farms hidden by the legend",
     "showHidden": "Show",
+    "recenter": "Recenter",
     "nearLocality": "Near {{name}} · {{km}} km",
     "layers": {
       "entities": "Farms and moshavim",
@@ -889,5 +890,41 @@
   },
   "intake": {
     "dashTitleNew": "New requests"
+  },
+  "search": {
+    "open": "Search",
+    "label": "Search the whole programme",
+    "placeholder": "Farm, institution, contact, route, task…",
+    "close": "Close search",
+    "shortcut": "⌘K",
+    "group": {
+      "farm": "Farms",
+      "institution": "Institutions",
+      "contact": "Contacts",
+      "tour": "Routes",
+      "task": "Tasks",
+      "event": "Events",
+      "locality": "Localities"
+    },
+    "kind": {
+      "farm": "Farm",
+      "institution": "Institution",
+      "contact": "Contact",
+      "tour": "Route",
+      "task": "Task",
+      "event": "Event",
+      "locality": "Locality"
+    },
+    "more": "{{count}} more results",
+    "recent": "Recently viewed",
+    "none": "No results for “{{query}}”",
+    "farmContact": "Farm contact",
+    "secretariat": "Office",
+    "stops_one": "one stop",
+    "stops_other": "{{count}} stops",
+    "farms_one": "one farm",
+    "farms_other": "{{count}} farms",
+    "institutions_one": "one institution",
+    "institutions_other": "{{count}} institutions"
   }
 }

@@ -18,6 +18,7 @@ import { DevToolbar } from './DevToolbar'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
 import { ThemeToggle } from './ThemeToggle'
+import { GlobalSearch, SearchButton } from '../search/GlobalSearch'
 
 interface NavItem {
   to: string
@@ -489,6 +490,13 @@ export function CoordinatorLayout() {
             )}
           </button>
 
+          {/* ★★ BF — la recherche globale, sous le logo comme dans l'en-tête du
+              téléphone : la loupe, et ⌘K écrit à côté quand le rail est large. */}
+          <SearchButton
+            withLabel={expanded}
+            className={`-mt-1 w-full border border-edge-subtle ${expanded ? 'justify-start px-3' : ''}`}
+          />
+
           {/* ⚠️ AL5 — `gap-2` ET NON `gap-1` : huit pixels entre deux cibles
               voisines, le plancher qu'AA1.2 a posé et mesuré. À quatre, deux
               entrées de 44 px se touchent presque. */}
@@ -591,7 +599,12 @@ export function CoordinatorLayout() {
             {/* ★★ AE2 — et sur téléphone elle est dans la barre, à l'autre
                 bout : un geste, visible sur chaque écran, et zéro pixel
                 partagé avec le « + » qui vit en bas. */}
-            <EmergencyLink expanded={false} />
+            {/* ★★ BF — la loupe de la recherche globale, 44 px, à côté ; 8 px
+                entre les deux (le plancher d'AA1.2, `bcmobile` A419). */}
+            <div className="flex shrink-0 items-center gap-2">
+              <SearchButton />
+              <EmergencyLink expanded={false} />
+            </div>
           </header>
           )}
 
@@ -627,6 +640,8 @@ export function CoordinatorLayout() {
             at 03:00, which is A86's defect in the one place it costs an
             intervention. */}
         {!solo && pathname !== EMERGENCY_ROUTE && <ActionFab />}
+        {/* ★★ BF — la recherche globale : ⌘K / Ctrl+K partout dans la coquille. */}
+        <GlobalSearch />
       </div>
 
       {/*

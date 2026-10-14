@@ -80,6 +80,12 @@ export interface MapToolsOptions {
    * suivant pose l'épingle. Absent hors du rôle coordinateur.
    */
   pin?: { label: string; armedLabel: string; onToggle: () => void }
+  /**
+   * ★★ BF — UN GESTE DU PO SUR LA CAMÉRA PASSÉ PAR UN BOUTON (± et מיקומי).
+   * Ces mouvements sont lancés par du code, donc sans `originalEvent` ; la
+   * carte doit pourtant savoir que c'est LUI qui a bougé la caméra.
+   */
+  onUserCamera?: () => void
 }
 
 /** 24×24 stroke paths, the same silhouettes as `Icon.tsx`. */
@@ -227,12 +233,18 @@ export class MapTools implements IControl {
 
     if (this.options.locate) zoom.append(this.rule())
 
-    const zoomIn = this.button('map-tool-zoom-in', () => map.zoomIn({ duration: 240 }))
+    const zoomIn = this.button('map-tool-zoom-in', () => {
+      this.options.onUserCamera?.()
+      map.zoomIn({ duration: 240 })
+    })
     zoomIn.innerHTML = icon('plus')
     zoomIn.title = this.options.labels.zoomIn
     zoomIn.setAttribute('aria-label', this.options.labels.zoomIn)
 
-    const zoomOut = this.button('map-tool-zoom-out', () => map.zoomOut({ duration: 240 }))
+    const zoomOut = this.button('map-tool-zoom-out', () => {
+      this.options.onUserCamera?.()
+      map.zoomOut({ duration: 240 })
+    })
     zoomOut.innerHTML = icon('minus')
     zoomOut.title = this.options.labels.zoomOut
     zoomOut.setAttribute('aria-label', this.options.labels.zoomOut)
@@ -509,6 +521,7 @@ export class MapTools implements IControl {
     if (recentre) {
       // ★ NEVER ZOOMS OUT. A coordinator at z16 on a farm who taps מיקומי wants
       //   to be centred, not pulled back to a national view.
+      this.options.onUserCamera?.()
       map.easeTo({ center: point, zoom: Math.max(map.getZoom(), 15), duration: 500 })
     }
   }

@@ -1,5 +1,110 @@
 # לא ינום — ETAT
 
+> 🏁 **BF — LA CARTE OBÉIT, ET UNE RECHERCHE GLOBALE COMME SPOTLIGHT. 2026-10-14.**
+>
+> ⛔ **DONNÉES RÉELLES.** `bfpass` / `bfui` n'utilisent que des personnes et des
+> numéros INVENTÉS (050-000-0123…) ; le numéro donné en exemple dans le brief
+> n'est PAS recopié (le dépôt est public). `bfui` REBAPTISE les fiches du banc
+> de base (`ayharness`, qui portent des noms réels d'avant BA) pour qu'aucune
+> de ses captures n'en montre. Journaux complets : `private/bf/logs/`.
+>
+> **1 · LA CARTE NE DÉCIDE PLUS À LA PLACE DU PO.** « Quand je reste longtemps
+> sur un élément, la map revient en arrière, elle fait un dézoom toute seule. »
+>
+> ★ **LE COUPABLE, MESURÉ** : l'effet `fit` de `MapCanvas.tsx` (avant BF,
+> l. 2901-2915 : `useEffect(… map.fitBounds(tout, maxZoom 13) …, [frameKey, fit])`),
+> où `frameKey` était la chaîne ORDONNÉE des positions des marqueurs. Chaque
+> relecture des données (`useForegroundRefresh` : toutes les 3 minutes page
+> visible, et à chaque retour sur l'app — `focus`, `visibilitychange`,
+> `pageshow`, 10 s au plus souvent) remplace le magasin DEUX fois
+> (`data/store.ts` `load`) : d'abord par le cache IndexedDB, que `getAll` rend
+> TRIÉ PAR CLÉ, puis par Postgres, dans l'ordre PHYSIQUE de la table
+> (`selectAll` sans `order by`). Mêmes fiches, autre ordre → autre `frameKey`
+> → `fitBounds` sur l'ensemble au z13 au plus : le dézoom, deux fois par
+> relecture, et dès l'hydratation du démarrage. Tous les écrans à `fit`
+> (`MapPanel` le met par défaut : tableau de bord, fermes, gardes, incidents,
+> couverture, planificateur ; et institutions, contacts à traiter).
+> **Preuve** (`bfui` A457, même porte, même base) — build d'avant BF :
+> institutions z12,47 → **z8,09**, couverture z12,47 → **z9,14** en 25 s sans
+> un geste ; build BF : identiques au 1e-7 près. Aucun remontage de la carte
+> (`MapSplit` la garde, `display:none` ; aucune `key`), aucun autre effet.
+>
+> **La règle, à un seul endroit (`MapCanvas`, « LA CAMÉRA APPARTIENT AU PO »)** :
+> `userControlledRef` passe à vrai sur `movestart / zoomstart / rotatestart /
+> pitchstart / dragstart` QUI PORTENT `originalEvent` (un doigt, une souris, le
+> clavier), et sur les gestes lancés par un bouton de la carte (±, מיקומי —
+> `MapTools.onUserCamera` — et le toucher d'un regroupement). Ne bouge plus la
+> caméra que ce qui est une DEMANDE : une nouvelle clé `frameTo` / `flyTo` /
+> `anchored`, un autre centre demandé, un autre `fitScope` (les filtres), et
+> « מרכוז מחדש ». Chacune garde la dernière valeur servie dans une ref (la même
+> ne rebouge rien) et rend la main (`releaseCamera`). `fit` cadre UNE FOIS, à
+> l'arrivée des données (et pas du tout si le PO a déjà bougé la carte) ; il
+> ne recadre ensuite que si `fitScope` change — passé par les écrans à filtres
+> (fermes, gardes, incidents, couverture). `frameKey` est désormais un ENSEMBLE
+> (trié). Une relecture ne change aucune de ces valeurs : elle ne bouge jamais
+> la caméra.
+>
+> **« מרכוז מחדש »** : une pastille de la carte (le style de « הצגה » des fiches
+> cachées), 44 px, au centre, AU-DESSUS de la bande du bas (pilule des modes,
+> « + »), seulement quand le PO a la main et qu'il y a de quoi revenir : sur la
+> sélection (son cadre, son point), sinon l'ensemble, sinon le centre demandé.
+>
+> **2 · LA RECHERCHE GLOBALE** (`core/search.ts` pur, `ui/search/GlobalSearch.tsx`).
+> ⌘K / Ctrl+K partout dans la coquille du coordinateur, même depuis un champ
+> (lu par `code` : sur un clavier hébreu, K écrit « ל »), sauf par-dessus une
+> fenêtre bloquante ; la loupe dans l'en-tête du téléphone et en haut du rail
+> (avec « ⌘K » quand il est large), 44 px. Une fenêtre PAR-DESSUS l'écran : le
+> voile et la surface des fenêtres de l'app (`Modal`), rien ne bouge derrière.
+> Échap, un toucher dehors, le bouton retour (une entrée d'historique posée à
+> l'ouverture ; choisir un résultat la REMPLACE par la fiche) ; le focus revient.
+>
+> Cherché, depuis ce que l'app a DÉJÀ en mémoire (aucune requête) : fermes (nom,
+> nom de l'exploitation, agriculteur, localité, repère, contacts, numéros),
+> institutions (nom, noms alternatifs, localité, réseau, adresse, contacts,
+> numéros), contacts d'une ferme ou d'une institution, itinéraires (nom,
+> fermes), tâches ouvertes (titre, note, liste), rendez-vous et gardes de
+> l'agenda (−120 j à +365 j), localités où le programme a quelque chose.
+> Normalisation des deux côtés : minuscules, niqqud, geresh / gershayim /
+> apostrophes, tirets (maqaf compris) et espaces, finales, ע ≡ א ; numéros en
+> chiffres seuls, `00` / `972` / `0` retirés. Classement strict : préfixe du
+> champ > préfixe d'un mot > sous-chaîne > approchant MOT À MOT (Levenshtein
+> ≤ 1 jusqu'à 5 lettres, ≤ 2 au-delà ; aucun sous 3 lettres) ; le nom avant les
+> autres champs ; à score égal, les 10 derniers ouverts devant. Débounce 120 ms.
+> Groupes en hébreu avec leur compte, rangés par leur meilleur score, 5 lignes
+> puis « עוד N תוצאות » ; une ligne : le nom en gras, la pastille de statut
+> (`FarmStatusDot`) d'une ferme, la pastille de type (`.chip`), la ligne de
+> contexte, la portion trouvée surlignée ; 48 px au moins. ↑ ↓ à travers les
+> groupes, Entrée, `combobox` / `listbox` / `option` / `aria-activedescendant`.
+> Champ vide : « נצפו לאחרונה » ; rien : « לא נמצאו תוצאות עבור «…» », rien
+> d'autre. Choisir : la fiche, comme depuis sa liste — une ferme (sa fiche, la
+> carte cadrée sur elle), une institution (`?open=…&at=…` : l'écran déjà monté
+> l'ouvre et la carte y va, même après un geste du PO), un contact (sa fiche),
+> un itinéraire (`?tour=`), une tâche (`?task=`, NOUVEAU dans l'agenda), un
+> rendez-vous (`?event=`), une localité (la liste des fermes, ou des
+> institutions, filtrée : `?q=`, NOUVEAU).
+>
+> **Ce qui n'a PAS été fait, et pourquoi.** (1) L'ordre des lignes rendu par
+> Postgres n'a pas été stabilisé (`order by` dans `selectAll`) : la caméra ne
+> dépend plus de l'ordre, et toucher l'hydratation dépassait les deux sujets.
+> (2) Pas d'approchant sous trois lettres (il rejoindrait presque tout). (3)
+> Pas de recherche dans les autres rôles : c'est celle du coordinateur (les
+> autres n'ont pas ces données). (4) Pas de
+> Fuse.js : `boundedDistance` (AF2.2) suffit. (5) Le même écran rouvert sur la
+> même ferme ne recadre pas (même clé : c'est la règle).
+>
+> **Portes.** Nouvelles : `bfpass` (A450–A452, pur) et `bfui` (A453–A460, au
+> rendu) : la preuve de la tâche 1 est A457 (25 s, deux relectures, l'ordre
+> des fiches remué côté serveur) — rouge sur le build d'avant BF, vert sur BF.
+> Toutes les portes pures et au rendu existantes rejouées vertes ; `bcmobile`
+> A419 a attrapé une vraie régression (la loupe à 4 px du bouton d'urgence),
+> corrigée. Bilan : `docs/bf/portes-local.md`.
+>
+> **Questions au PO.** (1) ע ≡ א (pris au mot du brief) : « אופ » trouve aussi
+> « עופר » — à garder ? (2) L'approchant est coupé sous trois lettres — d'accord ?
+> Toujours ouvertes : celles de BE, BD, BB, BA.
+
+
+
 > 🏁 **BE — L'AGENDA, LES TÂCHES, ET LA FIN DU COPIER-COLLER. 2026-10-13.**
 >
 > ⛔ **DONNÉES RÉELLES.** Le fichier du PO (`seed-be.json` : 24 tâches, 3

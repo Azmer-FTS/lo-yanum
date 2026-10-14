@@ -61,6 +61,8 @@ export interface MapPanelProps {
   center?: LatLng
   zoom?: number
   fit?: boolean
+  /** ★★ BF — les filtres de l'écran : seul leur changement recadre (voir `MapCanvas.fitScope`). */
+  fitScope?: string
   /** U8 — centre the map on a tile's entity (see MapCanvas). */
   flyTo?: { position: LatLng; key: number; zoom?: number }
   /**
@@ -133,6 +135,7 @@ export function MapPanel({
   center,
   zoom,
   fit = true,
+  fitScope,
   flyTo,
   frameTo,
   legend,
@@ -171,6 +174,7 @@ export function MapPanel({
             center={center}
             zoom={zoom}
             fit={fit}
+            fitScope={fitScope}
             flyTo={flyTo}
             frameTo={frameTo}
             onBackgroundTap={onBackgroundTap}

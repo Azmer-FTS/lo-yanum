@@ -484,6 +484,8 @@ export function CoverageScreen() {
       links={links}
       routeLines={routeLines}
       fit
+      /* ★★ BF — les familles affichées et le focus : un geste du PO. */
+      fitScope={JSON.stringify([prefs.visible, focus])}
       detail={detail}
       detailAt={selectedPlace && !selectedInst ? { position: selectedPlace.position, key: selectKey } : undefined}
       overlay={overlay}

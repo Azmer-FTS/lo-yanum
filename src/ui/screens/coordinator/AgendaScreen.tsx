@@ -200,6 +200,15 @@ export function AgendaScreen() {
   useEffect(() => {
     const asked = params.get('new')
     const ref = parseRef(params.get('event'))
+    /* ★★ BF — `?task=<id>` : la recherche globale ouvre une tâche, comme l'agenda. */
+    const askedTask = params.get('task')
+    if (askedTask) {
+      setPanel(null)
+      setFocusTask(askedTask)
+      if (phone) setForceMode('hidden')
+      setParams({}, { replace: true })
+      return
+    }
     if (!asked && !ref) return
     if (asked === 'visit') {
       navigate(`/coordinator/agenda/visit/new?at=${encodeURIComponent(atTimeOn(now(), 10, 0))}`, { replace: true, state: { returnTo: '/coordinator/agenda' } })

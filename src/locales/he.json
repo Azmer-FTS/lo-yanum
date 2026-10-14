@@ -1105,6 +1105,7 @@
     "hiddenEntities_one": "חווה אחת מוסתרת במקרא",
     "hiddenEntities_other": "{{count}} חוות מוסתרות במקרא",
     "showHidden": "הצגה",
+    "recenter": "מרכוז מחדש",
     "nearLocality": "ליד {{name}} · {{km}} ק״מ",
     "hiddenEntities_two": "{{count}} חוות מוסתרות במקרא",
     "hiddenEntities_many": "{{count}} חוות מוסתרות במקרא",
@@ -3741,5 +3742,44 @@
     "addTask": "משימה",
     "addMeeting": "פגישה",
     "empty": "אין פגישות קרובות ואין משימות פתוחות שקשורות לכאן."
+  },
+  "search": {
+    "open": "חיפוש",
+    "label": "חיפוש בכל התוכנית",
+    "placeholder": "חווה, מוסד, איש קשר, מסלול, משימה…",
+    "close": "סגירת החיפוש",
+    "shortcut": "⌘K",
+    "group": {
+      "farm": "חוות",
+      "institution": "מוסדות",
+      "contact": "אנשי קשר",
+      "tour": "מסלולים",
+      "task": "משימות",
+      "event": "אירועים",
+      "locality": "יישובים"
+    },
+    "kind": {
+      "farm": "חווה",
+      "institution": "מוסד",
+      "contact": "איש קשר",
+      "tour": "מסלול",
+      "task": "משימה",
+      "event": "אירוע",
+      "locality": "יישוב"
+    },
+    "more": "עוד {{count}} תוצאות",
+    "recent": "נצפו לאחרונה",
+    "none": "לא נמצאו תוצאות עבור «{{query}}»",
+    "farmContact": "איש קשר בחווה",
+    "secretariat": "מזכירות",
+    "stops_one": "תחנה אחת",
+    "stops_two": "{{count}} תחנות",
+    "stops_other": "{{count}} תחנות",
+    "farms_one": "חווה אחת",
+    "farms_two": "{{count}} חוות",
+    "farms_other": "{{count}} חוות",
+    "institutions_one": "מוסד אחד",
+    "institutions_two": "{{count}} מוסדות",
+    "institutions_other": "{{count}} מוסדות"
   }
 }

@@ -10,6 +10,7 @@ import { HOME_BASE, bearingDeg, boundsOf, getLandmarks, getSession } from '@core
 import type { LatLng, Landmark } from '@core/index'
 
 import { readToken } from './badges'
+import { Icon } from './Icon'
 import { readStoredBase, writeStoredBase } from './mapBase'
 import { MapTools } from './MapTools'
 import { QuickPinSheet, pinHref } from './QuickPin'
@@ -211,6 +212,14 @@ export interface MapViewProps {
   zoom?: number
   /** Frame all markers instead of using center/zoom. */
   fit?: boolean
+  /**
+   * ★★ BF (2026-10-14) — CE QUE L'ÉCRAN MONTRE, EN UNE CHAÎNE (ses filtres).
+   * `fit` cadre l'ensemble UNE FOIS, à l'arrivée des données ; il ne recadre
+   * ensuite que si cette chaîne change — un filtre, c'est-à-dire un geste du
+   * PO. Une relecture des données ne la change pas, donc ne bouge jamais la
+   * caméra. Voir la note « LA CAMÉRA APPARTIENT AU PO » plus bas.
+   */
+  fitScope?: string
   /**
    * U8 (2026-09-02) — "centre on the map" from a list tile. A NEW `key` moves
    * the camera once; the same position twice is two requests, so the key is
@@ -983,6 +992,7 @@ export default function MapCanvas({
   center,
   zoom = 8,
   fit = false,
+  fitScope,
   flyTo,
   anchored,
   frameTo,
@@ -1230,6 +1240,49 @@ export default function MapCanvas({
     bearing: number
     pitch: number
   } | null>(null)
+
+  /**
+   * ═════════════════════════════════════════════════════════════════════════
+   * ★★ BF (2026-10-14) — LA CAMÉRA APPARTIENT AU PO.
+   * ═════════════════════════════════════════════════════════════════════════
+   *
+   * « Quand je sélectionne quelque chose et que je reste longtemps sur un
+   *   élément, la map revient en arrière, elle fait un dézoom toute seule. »
+   *
+   * ⚠️ LE COUPABLE (mesuré par `bfui` A452 sur le build d'avant BF) : l'effet
+   *    `fit` ci-dessous, gardé sur `frameKey` — la chaîne ORDONNÉE des
+   *    positions des marqueurs. Chaque relecture des données (toutes les
+   *    3 minutes, et à chaque retour sur l'app : `useForegroundRefresh`)
+   *    remplace le magasin DEUX fois : d'abord par le cache IndexedDB, que
+   *    `getAll` rend trié par CLÉ, puis par la réponse de Postgres, dans
+   *    l'ordre physique de la table (aucun `order by`). Mêmes fermes, mêmes
+   *    institutions, autre ORDRE : autre `frameKey`, donc `fitBounds` sur
+   *    l'ensemble au `maxZoom` 13 — le dézoom, deux fois par relecture.
+   *
+   * ★ LA RÈGLE, À UN SEUL ENDROIT : une fois que le PO a touché la carte
+   *   (`userControlledRef`, posé par un événement qui porte `originalEvent`,
+   *   ou par un bouton de la carte), plus aucun mouvement automatique. Et
+   *   « automatique » est défini par ce qui NE l'est PAS : un VRAI changement
+   *   de sélection (`frameTo.key`, `flyTo.key`, `anchored.key`, le centre
+   *   demandé), un changement de filtre (`fitScope`), « מרכוז מחדש ». Chacun
+   *   garde la dernière valeur qu'il a servie dans une ref et ne bouge rien
+   *   pour la même valeur ; chacun rend la main (`releaseCamera`). Une
+   *   relecture ne change aucune de ces valeurs, donc ne bouge jamais rien.
+   */
+  const userControlledRef = useRef(false)
+  const [userControlled, setUserControlled] = useState(false)
+  const takeCamera = (): void => {
+    if (userControlledRef.current) return
+    userControlledRef.current = true
+    setUserControlled(true)
+  }
+  const releaseCamera = (): void => {
+    if (!userControlledRef.current) return
+    userControlledRef.current = false
+    setUserControlled(false)
+  }
+  const takeCameraRef = useRef(takeCamera)
+  takeCameraRef.current = takeCamera
 
 
   // Double-click has one meaning at a time: close the ring, or zoom. The
@@ -1843,6 +1896,16 @@ export default function MapCanvas({
       applyLine(map, lineRef.current, routeLinesRef.current)
     }
 
+    /**
+     * ★★ BF — LE GESTE DU PO PREND LA CAMÉRA. Seuls les événements qui portent
+     *   `originalEvent` viennent d'un doigt, d'une souris ou du clavier ; nos
+     *   propres `fitBounds` / `easeTo` n'en ont pas et ne comptent donc pas.
+     */
+    const userGesture = (e: { originalEvent?: unknown }): void => {
+      if (e.originalEvent) takeCameraRef.current()
+    }
+    for (const type of ['movestart', 'zoomstart', 'rotatestart', 'pitchstart', 'dragstart'] as const) map.on(type, userGesture)
+
     map.on('load', () => {
       // A handle for the verification scripts. Published on LOAD, not on
       // create: React's dev-mode double mount creates a map, tears it down and
@@ -1989,6 +2052,8 @@ export default function MapCanvas({
           getSession().role === 'coordinator'
             ? { label: t('quickPin.button'), armedLabel: t('quickPin.buttonArmed'), onToggle: () => quickRef.current.on && quickRef.current.toggle() }
             : undefined,
+        /* ★★ BF — ± et מיקומי sont des gestes du PO sur la caméra. */
+        onUserCamera: () => takeCameraRef.current(),
       })
       toolsRef.current = tools
       map.addControl(tools, 'top-left')
@@ -2547,6 +2612,8 @@ export default function MapCanvas({
           }
           const spread = Math.max(east - west, north - south)
           if (spread > 0.00005 && map.getZoom() < map.getMaxZoom() - 0.5) {
+            /* ★★ BF — toucher un regroupement EST un geste sur la caméra. */
+            takeCameraRef.current()
             map.fitBounds([[west, south], [east, north]], { padding: 80, duration: 400, maxZoom: map.getMaxZoom() })
             return
           }
@@ -2890,20 +2957,23 @@ export default function MapCanvas({
    * produce a brand-new markers array on every pointer move; re-running
    * fitBounds on that made the map re-frame continuously and never let the
    * tiles settle. The set of positions is what should drive framing.
+   *
+   * ★★ BF — ET C'EST UN ENSEMBLE, DONC TRIÉ. Non trié, l'ordre des fiches
+   *   (que chaque relecture change, voir « LA CAMÉRA APPARTIENT AU PO ») en
+   *   faisait une autre clé pour le même contenu.
    */
   const frameKey = useMemo(
     () =>
-      [...markers.map((m) => `${m.position.lat},${m.position.lng}`), (line ?? []).length]
+      [...markers.map((m) => `${m.position.lat},${m.position.lng}`).sort(), (line ?? []).length]
         .join('|'),
     [markers, line],
   )
 
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !fit) return
+  /** Tout ce que la carte montre, cadré. Faux s'il n'y a rien à cadrer. */
+  const frameAll = (map: maplibregl.Map): boolean => {
     const points = [...markers.map((m) => m.position), ...(line ?? [])]
     const b = boundsOf(points)
-    if (!b) return
+    if (!b) return false
     map.fitBounds(
       [
         [b[0], b[1]],
@@ -2911,8 +2981,32 @@ export default function MapCanvas({
       ],
       { padding: 48, duration: 400, maxZoom: 13 },
     )
+    return true
+  }
+
+  /**
+   * ★★ BF — `fit` CADRE UNE FOIS, à l'arrivée des données, puis à chaque
+   *   changement de `fitScope` (un filtre : un geste du PO). Jamais sur une
+   *   relecture : `frameKey` peut changer (une fiche ajoutée ailleurs), la
+   *   caméra non. Et si le PO a déjà bougé la carte avant que les données
+   *   n'arrivent, même le premier cadrage n'a pas lieu.
+   */
+  const fittedRef = useRef(false)
+  const fitScopeRef = useRef(fitScope)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !fit) return
+    if (fittedRef.current) {
+      if (fitScopeRef.current === fitScope) return
+      fitScopeRef.current = fitScope
+      releaseCamera()
+    } else {
+      fitScopeRef.current = fitScope
+      if (userControlledRef.current) return
+    }
+    if (frameAll(map)) fittedRef.current = true
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frameKey, fit])
+  }, [frameKey, fit, fitScope])
 
   /**
    * Centring is keyed on the CENTRE, not on the markers.
@@ -2922,25 +3016,26 @@ export default function MapCanvas({
    * snapped the view back — so the user's own edit undid their pan. The centre
    * changing is the only thing that should move the camera on a centred map;
    * `fit` maps keep their own effect above.
+   *
+   * ★★ BF — la carte NAÎT à ce centre ; seul un AUTRE centre demandé la
+   *   déplace (une autre fiche, l'adresse choisie). Le même centre relu, ou
+   *   `fit` qui passe de vrai à faux, ne la touche plus.
    */
-  const centreKey = center ? `${center.lat},${center.lng}` : ''
+  const centreKey = center ? `${center.lat},${center.lng}@${zoom}` : ''
+  const centredRef = useRef(centreKey)
 
   useEffect(() => {
     const map = mapRef.current
     if (!map || fit || !center) return
+    if (centredRef.current === centreKey) return
+    centredRef.current = centreKey
+    releaseCamera()
     map.jumpTo({ center: [center.lng, center.lat], zoom })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [centreKey, zoom, fit])
+  }, [centreKey, fit])
 
-  /**
-   * W6 — one framing per entity. Keyed on `frameTo.key` ALONE, deliberately:
-   * the point list changes on every drawn vertex, and re-framing under a
-   * hand that is drawing is the defect the `fit` effect above already
-   * documents.
-   */
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !frameTo || frameTo.points.length === 0) return
+  /** W6 — the box of an entity's own geometry, framed close (see `frameTo`). */
+  const frameBox = (map: maplibregl.Map, target: NonNullable<MapViewProps['frameTo']>): void => {
     /**
      * ⚠️ THE BOX IS COMPUTED HERE AND NOT WITH `boundsOf`, AND THAT IS THE
      *    WHOLE OF THIS FIX. `boundsOf` floors its padding at 0.02° PER SIDE
@@ -2955,11 +3050,11 @@ export default function MapCanvas({
      *    screen-pixel `padding` below is what keeps the geometry clear of
      *    the controls floating over the canvas.
      */
-    let west = frameTo.points[0].lng
+    let west = target.points[0].lng
     let east = west
-    let south = frameTo.points[0].lat
+    let south = target.points[0].lat
     let north = south
-    for (const p of frameTo.points) {
+    for (const p of target.points) {
       if (p.lng < west) west = p.lng
       if (p.lng > east) east = p.lng
       if (p.lat < south) south = p.lat
@@ -2974,15 +3069,40 @@ export default function MapCanvas({
         [west - padLng, south - padLat],
         [east + padLng, north + padLat],
       ],
-      { padding: frameTo.padding ?? 44, duration: 500, maxZoom: frameTo.maxZoom ?? 16 },
+      { padding: target.padding ?? 44, duration: 500, maxZoom: target.maxZoom ?? 16 },
     )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [frameTo?.key])
+  }
 
-  // U8 — one camera move per request key (see the prop).
+  /**
+   * W6 — one framing per entity. Keyed on `frameTo.key` ALONE, deliberately:
+   * the point list changes on every drawn vertex, and re-framing under a
+   * hand that is drawing is the defect the `fit` effect above already
+   * documents.
+   *
+   * ★★ BF — la clé déjà cadrée est gardée : la même clé ne recadre JAMAIS
+   *   (pas même si `frameTo` disparaît le temps d'une relecture et revient) ;
+   *   une nouvelle clé est une nouvelle sélection, qui rend la main.
+   */
+  const framedRef = useRef<string | null>(null)
+  const frameReady = (frameTo?.points.length ?? 0) > 0
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !frameTo || frameTo.points.length === 0) return
+    if (framedRef.current === frameTo.key) return
+    framedRef.current = frameTo.key
+    releaseCamera()
+    frameBox(map, frameTo)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameTo?.key, frameReady])
+
+  // U8 — one camera move per request key (see the prop). ★★ BF — une fois par clé.
+  const flownRef = useRef<number | null>(null)
   useEffect(() => {
     const map = mapRef.current
     if (!map || !flyTo) return
+    if (flownRef.current === flyTo.key) return
+    flownRef.current = flyTo.key
+    releaseCamera()
     map.easeTo({
       center: [flyTo.position.lng, flyTo.position.lat],
       zoom: Math.max(map.getZoom(), flyTo.zoom ?? 13),
@@ -2992,11 +3112,41 @@ export default function MapCanvas({
   }, [flyTo?.key])
 
   /**
+   * ★★ BF — « מרכוז מחדש » : le seul mouvement sans changement de sélection,
+   *   et c'est le PO qui le demande. Sur la sélection (son cadre, son point),
+   *   sinon sur l'ensemble, sinon sur le centre demandé.
+   */
+  const recenterTarget: 'frame' | 'fly' | 'anchored' | 'fit' | 'center' | null =
+    frameTo && frameTo.points.length > 0
+      ? 'frame'
+      : flyTo
+        ? 'fly'
+        : anchored
+          ? 'anchored'
+          : fit && markers.length + (line?.length ?? 0) > 0
+            ? 'fit'
+            : center
+              ? 'center'
+              : null
+  const recenter = (): void => {
+    const map = mapRef.current
+    if (!map) return
+    releaseCamera()
+    if (recenterTarget === 'frame' && frameTo) frameBox(map, frameTo)
+    else if (recenterTarget === 'fly' && flyTo)
+      map.easeTo({ center: [flyTo.position.lng, flyTo.position.lat], zoom: Math.max(map.getZoom(), flyTo.zoom ?? 13), duration: 600 })
+    else if (recenterTarget === 'anchored' && anchored) map.easeTo({ center: [anchored.position.lng, anchored.position.lat], duration: 500 })
+    else if (recenterTarget === 'fit') frameAll(map)
+    else if (recenterTarget === 'center' && center) map.easeTo({ center: [center.lng, center.lat], zoom, duration: 500 })
+  }
+
+  /**
    * X4.3 — THE ANCHORED PREVIEW. One popup instance, moved rather than
    * recreated; the React content lives in `popupHost` and is portalled in, so
    * it re-renders with the rest of the app while MapLibre keeps owning the
    * geometry.
    */
+  const anchoredKeyRef = useRef<number | null>(null)
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
@@ -3017,6 +3167,12 @@ export default function MapCanvas({
     }
     const point: [number, number] = [anchored.position.lng, anchored.position.lat]
     popupRef.current.setLngLat(point).addTo(map)
+
+    /* ★★ BF — la même clé (la carte rouverte après une relecture) ne bouge
+       rien ; une nouvelle clé est un toucher du PO, qui rend la main. */
+    if (anchoredKeyRef.current === anchored.key) return
+    anchoredKeyRef.current = anchored.key
+    releaseCamera()
 
     /**
      * ⚠️ PAN, NEVER ZOOM. The whole point of this gesture is that the frame
@@ -3115,6 +3271,30 @@ export default function MapCanvas({
             <span aria-hidden="true" className="inline-block h-2 w-2 shrink-0 rounded-pill bg-status-warn" />
             {t('map.hiddenEntities', { count: hiddenEntities })}
             <span className="text-accent-ink">{t('map.showHidden')}</span>
+          </button>,
+          noticeHost,
+        )}
+      {/* ★★ BF — « מרכוז מחדש » : seulement quand le PO a pris la caméra et
+          qu'il y a quelque chose à quoi revenir. Le style des pastilles de la
+          carte (« הצגה » des fiches cachées), 44 px. AU-DESSUS de la bande du
+          bas, où vivent la pilule des modes et le « + » (une colonne de carte
+          étroite les met au milieu), et au-dessus de l'avis du repère rapide. */}
+      {interactive && noticeHost && userControlled && recenterTarget !== null &&
+        createPortal(
+          <button
+            type="button"
+            data-testid="map-recenter"
+            data-target={recenterTarget}
+            onClick={(e) => {
+              e.stopPropagation()
+              recenter()
+            }}
+            className={`glass pointer-events-auto absolute start-1/2 z-[3] flex min-h-11 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-pill px-4 py-2 text-caption font-semibold text-content-primary shadow-card rtl:translate-x-1/2 ${
+              pinArmed || pinDone ? 'bottom-[8.5rem]' : 'bottom-[5.25rem]'
+            }`}
+          >
+            <Icon name="navigation" size={16} className="text-accent-ink" />
+            {t('map.recenter')}
           </button>,
           noticeHost,
         )}

@@ -128,6 +128,8 @@ export function IncidentsScreen() {
       screenKey="incidents"
       ariaLabel={t('map.incidentsMap')}
       markers={markers}
+      /* ★★ BF — seul un filtre recadre ; une relecture, jamais. */
+      fitScope={`${severity}|${since}|${openOnly}`}
       legend={
         <ul className="flex flex-col gap-1.5">
           {SEVERITIES.map((s) => (

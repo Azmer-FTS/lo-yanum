@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { TestDataBadge } from '../../components/TestDataBadge'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -96,11 +96,25 @@ export function InstitutionsScreen() {
     /* ★★ BB — et « תיאום מוקדם » (`?filter=coordination`). */
     return isFlag(f) ? f : 'all'
   })
-  const [query, setQuery] = useState('')
   /* ★★ BD 4 — arrivé d'une autre carte (`?open=`), l'aperçu de l'institution touchée. */
   const [listParams] = useSearchParams()
+  /* ★★ BF — `?q=` : une localité choisie dans la recherche globale. */
+  const [query, setQuery] = useState(() => listParams.get('q') ?? '')
+  const askedQuery = listParams.get('q')
+  useEffect(() => {
+    if (askedQuery !== null) setQuery(askedQuery)
+  }, [askedQuery])
   const [open, setOpen] = useState<string | null>(() => listParams.get('open'))
   const [flyKey, setFlyKey] = useState(0)
+  /* ★★ BF — la recherche globale ouvre une institution sur cet écran DÉJÀ
+     monté : un nouvel `?open=` est une nouvelle sélection, la carte y va. */
+  const askedOpen = listParams.get('open')
+  const askedAt = listParams.get('at')
+  useEffect(() => {
+    if (!askedOpen || !askedAt) return
+    setOpen(askedOpen)
+    setFlyKey((k) => k + 1)
+  }, [askedOpen, askedAt])
   const [sort, setSortState] = useState<SortState>(() => readSortState(SORT_KEY, { key: 'name', dir: 'asc' }))
   const setSort = (s: SortState) => {
     setSortState(s)
