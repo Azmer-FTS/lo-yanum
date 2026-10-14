@@ -104,9 +104,12 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **BG — LA FICHE D'INSTITUTION DEVIENT UN POSTE DE TRAVAIL — CODE ET PORTES
-  LOCALES VERTES, MIGRATION APPLIQUÉE ; COMMIT + DÉPLOIEMENT EN COURS**
-  (2026-10-14). Branche `main`. Récit, forme de la table, hébergement du
+- **BG — LA FICHE D'INSTITUTION DEVIENT UN POSTE DE TRAVAIL — TERMINÉE,
+  POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-14). Branche `main`.
+  Commits : `9a50ae5` (code + portes + bilans locaux, SERVI : `version.json` =
+  9a50ae5), puis le commit de fin de passe (`docs/bg/portes-deploye-9a50ae5.md` :
+  bgui 90, bfui 52, beui 57, bdui 76, bbui 82, auui 60, avui 51, ayscreens 57 ;
+  bcmobile 246, aymobile 48 — tout vert). Récit, forme de la table, hébergement du
   document, décisions : `ETAT.md` § BG (en tête) — la source de vérité.
   - **Fait** : les 8 parties du brief. Migration `20261014000100`
     (`farm_institution_links` + bucket public `institution-docs`) appliquée par
