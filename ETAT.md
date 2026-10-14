@@ -97,7 +97,9 @@
 > des fiches remué côté serveur) — rouge sur le build d'avant BF, vert sur BF.
 > Toutes les portes pures et au rendu existantes rejouées vertes ; `bcmobile`
 > A419 a attrapé une vraie régression (la loupe à 4 px du bouton d'urgence),
-> corrigée. Bilan : `docs/bf/portes-local.md`.
+> corrigée. Bilan : `docs/bf/portes-local.md`. **Déployé `cc83268`** : bfui 52,
+> beui 57, bdui 76, bbui 82, auui 60, avui 51 (app) ; bcmobile 246, aymobile 48
+> (jumeau) — `docs/bf/portes-deploye-cc83268.md`.
 >
 > **Questions au PO.** (1) ע ≡ א (pris au mot du brief) : « אופ » trouve aussi
 > « עופר » — à garder ? (2) L'approchant est coupé sous trois lettres — d'accord ?

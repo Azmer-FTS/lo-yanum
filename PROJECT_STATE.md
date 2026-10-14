@@ -104,8 +104,8 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **BF — LA CARTE OBÉIT, ET LA RECHERCHE GLOBALE — CODE ET PORTES LOCALES VERTS, POUSSÉ, DÉPLOIEMENT À VÉRIFIER** (2026-10-14).
-  Branche `main`. Commits : le commit BF (code + portes + bilans locaux) ; puis le commit de fin de passe (mesures du déployé). Récit, coupable mesuré, décisions :
+- **BF — LA CARTE OBÉIT, ET LA RECHERCHE GLOBALE — TERMINÉE, POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-14).
+  Branche `main`. Commits : `cc83268` (code + portes + bilans locaux, SERVI : `version.json` = cc83268), puis le commit de fin de passe (mesures du déployé : `docs/bf/portes-deploye-cc83268.md`, tout vert). Récit, coupable mesuré, décisions :
   `ETAT.md` § BF (en tête) — la source de vérité de la passe. Aucune migration.
   - **Fait** : tâche 1 (la caméra appartient au PO : garde d'interaction,
     effets de caméra sur des primitives, `fit` une fois + `fitScope`,
@@ -134,7 +134,7 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
     ligne ; (6, BB) titre du rosh de ישיבת שומריה לצעירים ; (7, BA) purge des
     données réelles suivies par git.
   - Journaux complets : `private/bf/logs/` ; bilans : `docs/bf/portes-local.md`,
-    `docs/bf/portes-deploye-*.md`.
+    `docs/bf/portes-deploye-cc83268.md`.
   - Reprise : `bun run bfpass && bun run typecheck` ; `bun run bfui`.
 
 - **BE — L'AGENDA, LES TÂCHES, LA FIN DU COPIER-COLLER — TERMINÉE, POUSSÉE,
