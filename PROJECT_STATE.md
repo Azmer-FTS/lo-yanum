@@ -104,8 +104,11 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **BH — LE DESSIN DES ZONES — CODE ET PORTES LOCALES VERTES ; COMMIT +
-  DÉPLOIEMENT EN COURS** (2026-10-14). Branche `main`. Aucune migration.
+- **BH — LE DESSIN DES ZONES — TERMINÉE, POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE
+  DÉPLOYÉ** (2026-10-14). Branche `main`. Aucune migration. Commits : `0dc6cd1`
+  (code + portes, SERVI : `version.json` = 0dc6cd1), puis le commit de fin de
+  passe (`docs/bh/portes-deploye-0dc6cd1.md` : bhui 34, bgui 90, bfui 52,
+  beui 57, bdui 76, bbui 82 ; bcmobile 246, aymobile 48 — tout vert).
   Récit, diagnostic, décisions : `ETAT.md` § BH (en tête) et
   `docs/bh/portes-local.md` (le diagnostic 2.1 point par point).
   - **Diagnostic** : les formes du PO SONT en base (farm-ak1-11 : 31 + 29
