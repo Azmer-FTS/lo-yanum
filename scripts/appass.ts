@@ -415,9 +415,14 @@ section('A260 — les deux moitiés d\'une même règle sont égales')
   /* ⚠️ ET LA SURCHARGE DU PO EST LUE SOUS SA VRAIE CLÉ. Une faute de frappe
      ici rendrait `null` pour toujours, et la page afficherait éternellement le
      texte livré sans que rien ne le signale. */
-  check('A260 · la fonction SQL lit la clé exacte de `ui/settings/sync.ts`',
+  /* ★★★ BJ — la clé est déclarée dans le REGISTRE (portée « compte »), et la
+     fonction lit d'abord la table où l'app l'écrit désormais. */
+  const BJ_TEMPLATE = readFileSync('supabase/migrations/20261015000200_bj_public_agreement_template.sql', 'utf8')
+  check('A260 · la fonction SQL lit la clé exacte du registre (`storage/registry.ts`)',
     MIGRATION.includes("'lo-yanum:agreement-doc-template'") &&
-      readFileSync('src/ui/settings/sync.ts', 'utf8').includes("'lo-yanum:agreement-doc-template'"))
+      /\{ \.\.\.ACCOUNT, key: 'lo-yanum:agreement-doc-template'/.test(readFileSync('src/storage/registry.ts', 'utf8')))
+  check('A260 · ★★★ BJ — et la lit LÀ OÙ L’APP L’ÉCRIT : `user_setting_values` d’abord, l’ancien bloc à défaut',
+    BJ_TEMPLATE.includes("from public.user_setting_values v") && BJ_TEMPLATE.includes("v.key = 'lo-yanum:agreement-doc-template'") && BJ_TEMPLATE.includes('from public.user_settings s') && /grant execute on function public\.public_agreement_template\(\) to anon/.test(BJ_TEMPLATE))
 
   /* La table des claviers : UNE, dans le cœur, lue par les deux produits. */
   const fields = readFileSync('src/ui/components/fields.tsx', 'utf8')

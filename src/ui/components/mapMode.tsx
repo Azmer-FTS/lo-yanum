@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { usePublishedWidth } from '../hooks/useShellMetrics'
 import { Icon } from './Icon'
 import type { IconName } from './Icon'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * P0.1 — THE MAP IS MODULAR ON EVERY MAP-FIRST SCREEN.
@@ -89,7 +90,7 @@ const syncListeners = new Set<() => void>()
 
 export function readLayoutSync(): LayoutSync {
   try {
-    return localStorage.getItem(SYNC_KEY) === 'synced' ? 'synced' : 'free'
+    return readSetting(SYNC_KEY) === 'synced' ? 'synced' : 'free'
   } catch {
     return 'free'
   }
@@ -118,20 +119,25 @@ export function readLayoutSync(): LayoutSync {
 export function writeLayoutSync(next: LayoutSync): void {
   try {
     if (next === 'free') {
-      localStorage.removeItem(SYNC_KEY)
+      writeSetting(SYNC_KEY, null)
     } else {
-      const from = localStorage.getItem(LAST_KEY)
+      const from = readSetting(LAST_KEY)
       if (from) {
-        const mode = localStorage.getItem(storageKey(from))
-        if (mode !== null) localStorage.setItem(storageKey(SHARED), mode)
-        const ratio = localStorage.getItem(ratioKey(from))
-        if (ratio !== null) localStorage.setItem(ratioKey(SHARED), ratio)
+        const mode = readSetting(storageKey(from))
+        if (mode !== null) writeSetting(storageKey(SHARED), mode)
+        const ratio = readSetting(ratioKey(from))
+        if (ratio !== null) writeSetting(ratioKey(SHARED), ratio)
       }
-      localStorage.setItem(SYNC_KEY, 'synced')
+      writeSetting(SYNC_KEY, 'synced')
     }
   } catch {
     // Persistence is a convenience; the switch still takes effect this session.
   }
+  for (const fn of syncListeners) fn()
+}
+
+/** ★★★ BJ — « מסונכרן » choisi sur un autre appareil (arrivé du compte) : les écrans relisent. */
+export function reloadLayoutSync(): void {
   for (const fn of syncListeners) fn()
 }
 
@@ -150,7 +156,7 @@ const storageKey = (screenKey: string) => `lo-yanum:map-mode:${screenKey}`
 
 function readMode(screenKey: string): MapMode {
   try {
-    const raw = localStorage.getItem(storageKey(screenKey))
+    const raw = readSetting(storageKey(screenKey))
     return MODES.includes(raw as MapMode) ? (raw as MapMode) : 'split'
   } catch {
     // Private mode, or storage disabled. The default is a working screen.
@@ -189,7 +195,7 @@ export const clampRatio = (value: number) =>
 
 function readRatio(screenKey: string, fallback: number): number {
   try {
-    const raw = localStorage.getItem(ratioKey(screenKey))
+    const raw = readSetting(ratioKey(screenKey))
     if (raw === null) return fallback
     const n = Number(raw)
     return Number.isFinite(n) ? clampRatio(n) : fallback
@@ -221,7 +227,7 @@ export function useMapRatio(screenKey: string, fallback: number): MapRatioState 
       const clamped = clampRatio(next)
       setRatioState(clamped)
       try {
-        localStorage.setItem(ratioKey(scope), String(Math.round(clamped * 10) / 10))
+        writeSetting(ratioKey(scope), String(Math.round(clamped * 10) / 10))
       } catch {
         // See useMapMode: persistence is a convenience.
       }
@@ -232,7 +238,7 @@ export function useMapRatio(screenKey: string, fallback: number): MapRatioState 
   const reset = useCallback(() => {
     setRatioState(fallback)
     try {
-      localStorage.removeItem(ratioKey(scope))
+      writeSetting(ratioKey(scope), null)
     } catch {
       // Same.
     }
@@ -250,7 +256,7 @@ export function useMapMode(screenKey: string): MapModeState {
      a layout to spread when synchronisation is switched on. */
   useEffect(() => {
     try {
-      localStorage.setItem(LAST_KEY, screenKey)
+      writeSetting(LAST_KEY, screenKey)
     } catch {
       // Same as every other write here: a convenience, never a requirement.
     }
@@ -264,7 +270,7 @@ export function useMapMode(screenKey: string): MapModeState {
     (next: MapMode) => {
       setModeState(next)
       try {
-        localStorage.setItem(storageKey(scope), next)
+        writeSetting(storageKey(scope), next)
       } catch {
         // Persistence is a convenience; losing it must not break the screen.
       }

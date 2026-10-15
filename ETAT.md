@@ -1,5 +1,93 @@
 # לא ינום — ETAT
 
+> 🏁 **BJ — LES RÉGLAGES SUIVENT LE COMPTE, UNE FOIS POUR TOUTES. 2026-10-15.**
+>
+> ⛔ **DONNÉES RÉELLES.** `bjpass` / `bjui` n'utilisent que des valeurs
+> INVENTÉES sur des fermes du banc REBAPTISÉES. La base réelle n'a été que
+> COMPTÉE (11 clés dans l'ancien bloc ; les couches y MONTRENT les formes ;
+> thème « dark ») et éprouvée dans des transactions ANNULÉES (exception levée
+> en fin de bloc : 0 ligne restée).
+>
+> **LE DÉFAUT DE CONCEPTION (trois pannes : BC thème, AU1 épingles, BI
+> couches).** Ce qui voyageait était une liste écrite à la main
+> (`SYNCED_SETTING_KEYS`, 18 clés) ; tout le reste — 24 clés et familles de réglage et
+> d'affichage — naissait sur l'appareil. Et l'instant qui départageait deux
+> appareils était `Date.now()` de l'APPAREIL (`__stamps`).
+>
+> **CE QUI CHANGE.**
+> - **Le registre** (`src/storage/registry.ts`, pur) : 69 entrées (42 de compte, 27 d'appareil), une par clé
+>   ou famille (`map-mode:<écran>`…), avec portée, contenu, défaut (qui MONTRE)
+>   et validateur. **Par défaut : compte.** Sur l'appareil seulement : brouillon
+>   de tracé, files hors ligne (réglages, `outbox`, copie hors ligne, caches du
+>   service worker), session (Supabase, laissez-passer, temporisation des liens),
+>   drapeaux de diagnostic (dont « voir comme ») — et 4 clés « machine » (GPS,
+>   autorisation de localisation, build en cours de mise à jour, cache de
+>   trajets calculés) laissées sur l'appareil ET soumises à l'arbitrage.
+> - **Le seul accès au stockage** : `src/storage/local.ts` (localStorage),
+>   `src/storage/idb.ts` (IndexedDB, déplacé de `data/cache.ts`). Une clé non
+>   déclarée n'est ni lue ni écrite (refus compté, montré au diagnostic) ; une
+>   valeur illisible rend le défaut. supabase-js range sa session par
+>   l'adaptateur `authStorage`. Plus de `sessionStorage` nulle part.
+> - **Le moteur** (`src/storage/account.ts`) et la table `user_setting_values`
+>   (migration `20261015000100`, MCP `20261015183102`) : une ligne par réglage ;
+>   `updated_at` (le choix) et `written_at` (l'arrivée) posés par un
+>   DÉCLENCHEUR serveur ; un instant revendiqué est borné à `now()` ; une
+>   écriture plus ancienne que la valeur en place est ignorée (`return old`).
+>   Toute modification part dans les 300 ms ; hors ligne, elle attend dans
+>   `lo-yanum:settings-queue` et part avec l'instant du geste corrigé de
+>   l'écart d'horloge mesuré ; une relecture qui trouve une valeur choisie
+>   APRÈS le geste retire la file (et le PO est averti « הוחלף »). Relecture au
+>   démarrage (le premier rendu l'attend, 2,5 s au plus), à la connexion, au
+>   retour en avant-plan, au retour du réseau, au battement de 30 s
+>   (`written_at` seul).
+> - **La migration de chaque appareil** (une fois par compte, tracée dans
+>   `lo-yanum:settings-migration`, montrée au diagnostic avec sa date) : le
+>   compte a une valeur → elle gagne ; sinon l'ancien bloc `user_settings`,
+>   sinon la valeur locale, est promue (insertion « si absente ») ; illisible →
+>   défaut. ⚠️ **Conséquence chez le PO** : l'ancien bloc porte « dark » →
+>   TOUS ses appareils passent en sombre au premier démarrage de BJ (ses
+>   couches de l'ancien bloc montrent les formes : rien ne disparaît).
+> - **La page publique** : `public_agreement_template()` lit désormais
+>   `user_setting_values` d'abord (migration `20261015000200`, MCP
+>   `20261015183349`) — sans quoi une modification du gabarit faite après BJ
+>   n'aurait jamais atteint la page publique (trouvé par `appass` A260).
+> - **Le diagnostic** (« אבחון המכשיר ») : un tableau, une ligne par réglage —
+>   portée, valeur de l'appareil, valeur du COMPTE (relue à l'ouverture), date
+>   de la dernière synchronisation ; une différence est DITE en clair ; la
+>   migration avec sa date ; les refus. « העתקה » emporte le bloc. ⛔ Une clé
+>   d'authentification (session, laissez-passer, mail) n'y montre que sa
+>   LONGUEUR — la première version affichait le jeton (attrapé sur capture).
+> - **Deux textes mentaient** : `settings.display.hint` (« נשמרות במכשיר הזה
+>   בלבד ») et `settings.vigil.intro` (« נשמרים במכשיר הזה » — faux depuis
+>   AS4) ; et `regionEdits.ts` / `core/store.ts` disaient « setting of this
+>   device » pour une clé de compte. Corrigés, relevés dans
+>   `docs/bj/reglages.md`.
+>
+> **LA PORTE QUI VERROUILLE** : `bun run bjguard` (A511, pure) — tout accès
+> brut au stockage hors `src/storage/`, toute clé non déclarée (résolue :
+> littéral, constante, gabarit, fonction de clé), tout cache de service worker
+> non déclaré. Auto-contrôle sur 9 violations fabriquées, et preuve sur une
+> copie de `src/` piégée : `docs/bj/bjguard-rouge.log` (exit=1, les deux
+> violations nommées).
+>
+> **Portes.** `bjguard` (A511) 19/19 · `bjpass` (A512–A517) 55/55 ·
+> `bjui` (A518–A525, deux profils de navigateur = deux appareils d'un compte)
+> 56/56. Base RÉELLE éprouvée par le MCP (transactions annulées) : horodatage
+> serveur, file plus ancienne ignorée, instant futur borné, autre compte 0
+> ligne / 42501, `anon` 42501, page publique lisant la nouvelle table.
+> Non-régression : 33 pures et 31 au rendu, toutes vertes ; portes RÉÉCRITES
+> parce que la règle a changé : `aspass` A290, `aypass` A357, `bcpass` A416,
+> `bipass` A499/A503, `assettings`, `atsync`, `axpass`, `appass` A260
+> (`docs/bj/portes-local.md`).
+>
+> **Ce qui n'est PAS prouvé** : la démonstration à deux appareils tourne sur le
+> bundle servi mais contre une base FACTICE (le mot de passe du PO n'est pas
+> demandé) ; la base réelle n'a été éprouvée que par SQL. Et un appareil resté
+> sur un build d'avant BJ continue d'écrire l'ancien bloc : ses changements ne
+> voyagent plus jusqu'à sa mise à jour (AJ la propose au retour).
+>
+---
+
 > 🏁 **BI — POURQUOI L'ORDINATEUR NE DESSINAIT PAS LES FORMES. 2026-10-15.**
 >
 > ⛔ **DONNÉES RÉELLES.** `bipass` / `biui` / `biexplore` n'utilisent que des

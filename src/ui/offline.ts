@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { readSetting, writeSetting } from '../storage/local'
 
 /**
  * P2.5a — THE OFFLINE SHELL, FROM THE PAGE'S SIDE.
@@ -108,7 +109,7 @@ const ATTEMPT_KEY = 'lo-yanum:map-attempt'
 
 function readAttempt(): MapAttempt | null {
   try {
-    const raw = localStorage.getItem(ATTEMPT_KEY)
+    const raw = readSetting(ATTEMPT_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as MapAttempt
     return typeof parsed?.at === 'number' ? parsed : null
@@ -119,7 +120,7 @@ function readAttempt(): MapAttempt | null {
 
 function writeAttempt(attempt: MapAttempt): void {
   try {
-    localStorage.setItem(ATTEMPT_KEY, JSON.stringify(attempt))
+    writeSetting(ATTEMPT_KEY, JSON.stringify(attempt))
   } catch {
     // Private browsing, or a full device. The in-memory copy still shows.
   }

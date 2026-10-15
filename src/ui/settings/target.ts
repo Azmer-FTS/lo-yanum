@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 import { WEIGHTED_DUNAM_TARGET, localDayKey, now } from '@core/index'
 import { onSettingsApplied } from './applied'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -98,7 +99,7 @@ const readTarget = (raw: unknown): Target | null => {
 
 function read(): TargetState {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (!raw) return defaultTarget()
     const parsed = JSON.parse(raw) as Partial<TargetState>
     const current = readTarget(parsed.current)
@@ -139,7 +140,7 @@ onSettingsApplied([KEY], () => {
 function publish(next: TargetState): void {
   current = next
   try {
-    localStorage.setItem(KEY, JSON.stringify(next))
+    writeSetting(KEY, JSON.stringify(next))
   } catch {
     // The screen still works for this session; nothing worth failing over.
   }

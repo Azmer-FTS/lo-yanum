@@ -47,8 +47,9 @@ let settingsReady: Promise<void> | null = null
 
 /**
  * ★★ BI (2026-10-15) — LES COUCHES DE FORMES D'AVANT BI SONT RALLUMÉES, ICI,
- * AVANT que la synchronisation n'enveloppe `localStorage` : la réécriture n'est
- * pas un choix et ne reçoit pas d'instant (voir `mapLayers.ts`).
+ * AVANT que la synchronisation ne démarre : la réécriture n'est pas un geste
+ * du PO (voir `mapLayers.ts`). ★★★ BJ — la migration de l'appareil la promeut
+ * ensuite sur le compte si le compte n'a encore rien (le défaut montre).
  */
 migrateMapLayers()
 
@@ -72,20 +73,28 @@ if (SUPABASE_CONFIGURED) {
    *    local reste ce qu'il était — c'est-à-dire l'état d'avant cette passe.
    */
   settingsReady = (async () => {
-    const sync = await import('./ui/settings/sync')
-    const remote = await import('./data/settings')
+    /* ★★★ BJ — le moteur des réglages de COMPTE (`storage/account.ts`) : une
+       ligne par réglage dans `user_setting_values`, horodatée par le serveur.
+       Un cycle complet ici (migration de l'appareil la première fois, relecture,
+       envoi de la file), puis à la connexion, au retour en avant-plan, au retour
+       du réseau, au battement de 30 s, et 300 ms après chaque modification. */
+    const account = await import('./storage/account')
+    const values = await import('./data/settingValues')
+    const legacy = await import('./data/settings')
     const hooks = await import('./ui/settings/appliedHooks')
     hooks.installSettingsAppliedHooks()
-    /* ★★ AS4 — un cycle complet (lire, fusionner, appliquer, écrire), puis la
-       même chose à la connexion, au retour en avant-plan et après chaque
-       changement local. Voir `ui/settings/sync.ts` pour les cinq trous. */
-    sync.startSettingsSync({
-      load: remote.loadRemoteSettingsRowStrict,
-      save: remote.saveRemoteSettingsIfStrict,
-      stamp: remote.loadRemoteSettingsStamp,
+    account.startAccountSync({
+      userId: values.settingsUserId,
+      pull: values.pullSettingValues,
+      head: values.headSettingValues,
+      push: values.pushSettingValues,
+      insertMissing: values.insertMissingSettingValues,
+      /* L'ancien bloc d'AH11.2, lu UNE fois par la migration : « ce que le
+         compte portait » avant BJ. */
+      legacy: async () => (await legacy.loadRemoteSettingsRowStrict()).blob,
     })
-    void remote.onSignedIn(() => void sync.syncSettings('sign-in'))
-    await sync.syncSettings('boot')
+    void legacy.onSignedIn(() => void account.syncAccountSettings('sign-in'))
+    await account.syncAccountSettings('boot')
   })()
 }
 

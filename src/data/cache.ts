@@ -2,6 +2,8 @@ import { COLLECTIONS } from '@core/backend'
 import type { Collection, StoreChange, StoreData } from '@core/backend'
 import { emptyData } from '@core/demo'
 
+import { openKeyValueDb } from '../storage/idb'
+
 /**
  * P2.5b — THE OFFLINE DATA LAYER: A READ CACHE AND A WRITE OUTBOX.
  *
@@ -60,6 +62,7 @@ export const keyOf = (record: { collection: Collection; id: string }): string =>
 
 const DB_NAME = 'lo-yanum'
 const DB_VERSION = 1
+const STORES = ['aggregates', 'outbox'] as const
 
 /**
  * ★ WHY INDEXEDDB AND NOT `localStorage`. The snapshot is ~500 kB with 300
@@ -69,78 +72,24 @@ const DB_VERSION = 1
  *   IndexedDB is asynchronous, quota-generous, and — the part that matters
  *   here — it stores structured values, so an aggregate goes in as a record
  *   rather than as a string somebody has to remember to parse.
+ *
+ * ★★★ BJ — la base elle-même est ouverte par `storage/idb.ts`, le seul module
+ *   autorisé à toucher IndexedDB ; elle est déclarée dans le registre
+ *   (portée « appareil », raison « hors ligne »).
  */
 export function openIndexedDbCache(): Promise<CacheStore | null> {
-  if (typeof indexedDB === 'undefined') return Promise.resolve(null)
-
-  return new Promise<CacheStore | null>((resolve) => {
-    let request: IDBOpenDBRequest
-    try {
-      request = indexedDB.open(DB_NAME, DB_VERSION)
-    } catch {
-      // Safari in a private window throws rather than failing. A cache that
-      // cannot open is a slower app, not a broken one.
-      resolve(null)
-      return
+  return openKeyValueDb<CacheRecord>(DB_NAME, DB_VERSION, STORES).then((db) => {
+    if (!db) return null
+    const store: CacheStore = {
+      getAll: (name) => db.getAll(name),
+      put: (name, records) => db.put(name, records.map((r) => [keyOf(r), r] as [string, CacheRecord])),
+      remove: (name, keys) => db.remove(name, keys),
+      async clear(name) {
+        for (const n of name ? [name] : STORES) await db.clear(n)
+      },
     }
-
-    request.onupgradeneeded = () => {
-      const db = request.result
-      for (const name of ['aggregates', 'outbox'] as const) {
-        if (!db.objectStoreNames.contains(name)) db.createObjectStore(name)
-      }
-    }
-    request.onerror = () => {
-      resolve(null)
-    }
-    request.onsuccess = () => {
-      resolve(wrap(request.result))
-    }
+    return store
   })
-}
-
-function wrap(db: IDBDatabase): CacheStore {
-  const run = <T>(
-    store: CacheStoreName,
-    mode: IDBTransactionMode,
-    body: (s: IDBObjectStore) => IDBRequest<T> | null,
-  ): Promise<T | undefined> =>
-    new Promise((resolve, reject) => {
-      const tx = db.transaction(store, mode)
-      const request = body(tx.objectStore(store))
-      tx.onerror = () => {
-        reject(tx.error ?? new Error(`${store}: transaction failed`))
-      }
-      tx.oncomplete = () => {
-        resolve(request?.result)
-      }
-    })
-
-  return {
-    async getAll(store) {
-      return ((await run<CacheRecord[]>(store, 'readonly', (s) => s.getAll())) ??
-        []) as CacheRecord[]
-    },
-    async put(store, records) {
-      if (records.length === 0) return
-      await run(store, 'readwrite', (s) => {
-        for (const record of records) s.put(record, keyOf(record))
-        return null
-      })
-    },
-    async remove(store, keys) {
-      if (keys.length === 0) return
-      await run(store, 'readwrite', (s) => {
-        for (const key of keys) s.delete(key)
-        return null
-      })
-    },
-    async clear(store) {
-      for (const name of store ? [store] : (['aggregates', 'outbox'] as const)) {
-        await run(name, 'readwrite', (s) => s.clear())
-      }
-    },
-  }
 }
 
 /** The same contract, in memory. What `bun run sync` drives. */

@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 import { challengeStatus } from '@core/index'
 import type { ChallengeStatus } from '@core/index'
+import { readSetting, writeSetting } from '../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -50,7 +51,7 @@ let cache: Book | undefined
 
 function load(): Book {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (!raw) return {}
     const parsed = JSON.parse(raw) as unknown
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
@@ -79,7 +80,7 @@ function book(): Book {
 function save(next: Book): void {
   cache = next
   try {
-    localStorage.setItem(KEY, JSON.stringify(next))
+    writeSetting(KEY, JSON.stringify(next))
   } catch {
     /* L'appareil refuse le stockage : la porte fonctionne pour cette session
        et reposera la question à la prochaine. Dégradé, pas cassé. */

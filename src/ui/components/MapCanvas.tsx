@@ -85,7 +85,8 @@ export interface MapMarker {
   /**
    * ★★ AU1 (2026-10-08) — LE SUJET DE L'ÉCRAN. Jamais masqué par un calque du
    * מקרא : la ferme ouverte, la ferme sélectionnée. Le PO avait éteint
-   * « ישויות » sur l'ordinateur (mémorisé par appareil) et sa fiche se
+   * « ישויות » sur l'ordinateur (mémorisé par appareil — par compte depuis BJ)
+   * et sa fiche se
    * centrait… sur rien. Un marqueur mis en avant (`emphasis`) survit aussi.
    */
   essential?: boolean

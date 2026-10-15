@@ -104,6 +104,56 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BJ — LES RÉGLAGES SUIVENT LE COMPTE (REGISTRE, TABLE PAR RÉGLAGE, PORTE
+  QUI VERROUILLE) — TERMINÉE EN LOCAL, POUSSÉE ; voir « Déployé » ci-dessous** (2026-10-15). Branche `main`. DEUX migrations,
+  appliquées par le MCP AVANT le déploiement : `20261015000100` (table
+  `user_setting_values`, MCP `20261015183102`) et `20261015000200`
+  (`public_agreement_template()` lit la nouvelle table, MCP `20261015183349`) ;
+  jalons + `repair` faits, `armigrations` 56/56. Récit : `ETAT.md` § BJ (en
+  tête) ; inventaire : `docs/bj/reglages.md` (généré : `bun run
+  scripts/bjinventory.ts`) ; portes : `docs/bj/portes-local.md` ; preuve rouge
+  de la porte : `docs/bj/bjguard-rouge.log`.
+  - **Décisions (permanentes)** :
+    · **un réglage suit le COMPTE par défaut** ; l'appareil n'est admis que pour
+      un brouillon de tracé, une file hors ligne (et la copie hors ligne), la
+      session, un drapeau de diagnostic — plus 4 clés « machine » à arbitrer ;
+    · `src/storage/registry.ts` est la SEULE source de vérité (69 entrées) ; seuls
+      `src/storage/{local,idb,account}.ts` touchent le stockage ; une clé non
+      déclarée est refusée à l'exécution ; `bun run bjguard` (A511) refuse le
+      code qui contourne — **toute nouvelle clé se déclare là, avec sa portée** ;
+    · table `user_setting_values` : une ligne par clé ; `updated_at` (choix) et
+      `written_at` (arrivée) posés par le déclencheur serveur ; instant
+      revendiqué borné à `now()` ; plus ancien que l'existant → ignoré ;
+    · envoi dans les 300 ms ; file `lo-yanum:settings-queue` hors ligne, partie
+      avec l'instant du geste corrigé de l'écart d'horloge ; relecture au
+      démarrage (avant le premier rendu, 2,5 s max), connexion, avant-plan,
+      réseau, battement 30 s (`written_at`) ;
+    · migration par appareil et par compte : compte > ancien bloc
+      `user_settings` > appareil ; illisible → défaut (qui MONTRE) ; tracée
+      (`lo-yanum:settings-migration`) et montrée au diagnostic ;
+    · « choisie seulement » (AY1.3 / BC / BI) est ABOLI ; `user_settings`
+      n'est plus écrit (gardé pour les builds d'avant BJ et la migration) ;
+    · le diagnostic (« אבחון המכשיר ») montre chaque réglage : portée, appareil,
+      compte (relu à l'ouverture), date ; différence dite ; « העתקה » l'emporte.
+  - **Conséquence chez le PO au premier démarrage** : l'ancien bloc porte le
+    thème « dark » → tous ses appareils passent en sombre ; ses couches
+    (ancien bloc) MONTRENT les formes.
+  - **Portes réécrites (la règle a changé, pas un contournement)** : `aspass`
+    A290, `aypass` A357, `bcpass` A416, `bipass` A499/A503 (fusion d'appareil →
+    `planPull`/`planMigration`) ; `assettings`, `atsync` (nouvelle table ;
+    gestes à l'écran au lieu de `localStorage.setItem`) ; `axpass`, `appass`
+    A260 (lisent le registre ; A260 vérifie aussi la nouvelle fonction SQL).
+  - **Rouges ANTÉRIEURS** : inchangés depuis BI (non rejoués ici : `adui`
+    A115, `anui` A236, `atui`, `pills`, `rhythm`, `akui`, `uipass`, `sheets`,
+    `layout`).
+  - **Questions au PO** : trancher la liste « à arbitrer » de
+    `docs/bj/reglages.md` (12 clés ; recommandations : `map-ratio` et
+    `rail:expanded` → appareil ; `farm-form-*` → par type ; `activity-reports`
+    → lire la table). Plus celles de BI et d'avant.
+  - Reprise : `bun run bjguard && bun run bjpass && bun run typecheck` ;
+    `bun run bjui` ; `BASE_URL=https://azmer-fts.github.io/lo-yanum bun run bjui` (déployé).
+  - Déployé : EN ATTENTE (rejouer `BASE_URL=… bun run bjui`, puis biui, bhui, bgui, bfui, beui, bdui, bbui ; bcmobile, aymobile sur `/demo`).
+
 - **BI — POURQUOI L'ORDINATEUR NE DESSINAIT PAS LES FORMES — TERMINÉE, POUSSÉE,
   DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-15). Branche `main`. Aucune
   migration. Commits : `bfdc2e8` (code + portes, SERVI : `version.json` =
@@ -1081,6 +1131,14 @@ cd "/Users/clyoapple/Desktop/CLAUDE PROJECT/LO YANOUM"
 bun install
 lsof -nP -iTCP -sTCP:LISTEN | grep -E '519[0-9]|53[0-9][0-9]'   # aucun preview oublié
 bun run typecheck && bun run appass && bun run aodata && bun run aopass && bun run aoui && bun run anpass && bun run anui && bun run ampass && bun run alpass && bun run tokens && bun run contrast && bun run akpass && bun run accept
+
+# LA PASSE BJ (les réglages suivent le compte) :
+bun run bjguard                                                    # A511 — LA RÈGLE : aucun accès au stockage hors src/storage/, toute clé déclarée (19)
+BJGUARD_ROOT=<copie de l'arbre> bun run bjguard                    # la juger sur un autre arbre (preuve rouge : docs/bj/bjguard-rouge.log)
+bun run bjpass                                                     # A512–A517 en pur (55)
+bun run bjui                                                       # A518–A525, deux appareils, build local + base factice (56)
+BASE_URL=https://azmer-fts.github.io/lo-yanum bun run bjui         # le DÉPLOYÉ (A525 vise /demo)
+bun run scripts/bjinventory.ts                                     # régénère docs/bj/reglages.md depuis le registre
 
 # LA PASSE BE (l'agenda, les tâches, l'aide-mémoire) :
 bun run bepass                                                     # A437–A444 en pur (92) — règle 0, tâches, aide-mémoire, liens, geste, base, dictée, aucune donnée réelle

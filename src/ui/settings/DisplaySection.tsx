@@ -14,6 +14,7 @@ import { resolvedThemeOf } from '../components/basemap'
 import { useTheme } from '../theme'
 import { SUPABASE_CONFIGURED } from '../../data/config'
 import { THEME_SYNC_KEY, lastRemoteSetting, lastSettingsSyncReport, settingStamp, subscribeSettingsSync, themeSourceOf } from './sync'
+import { readSetting } from '../../storage/local'
 
 const THEME_ICON: Record<ThemeChoice, IconName> = {
   light: 'sun',
@@ -43,9 +44,11 @@ const SYNC_ICON: Record<LayoutSync, IconName> = {
  *        Default `free`, which is the behaviour that shipped: a device that
  *        never opens this section behaves exactly as it did.
  *
- * ★ AND BOTH ARE PER DEVICE, deliberately. A coordinator's iPad in a truck and
- *   the same coordinator's laptop at a desk want different answers to both
- *   questions, and neither is a fact about the programme.
+ * ★ AND BOTH WERE PER DEVICE, deliberately — until BJ (2026-10-15). The PO's
+ *   rule overrode it: « par défaut, un réglage suit le compte ». The theme and
+ *   the layout sync now follow the account like every `account` entry of
+ *   `storage/registry.ts`; the panel says so (`settings.display.hint`, which
+ *   claimed « במכשיר הזה בלבד » and was false from BJ on).
  */
 export function DisplaySection() {
   const { t } = useTranslation()
@@ -63,7 +66,7 @@ export function DisplaySection() {
   useSyncExternalStore(subscribeSettingsSync, lastSettingsSyncReport, lastSettingsSyncReport)
   const stored = (() => {
     try {
-      return localStorage.getItem(THEME_SYNC_KEY)
+      return readSetting(THEME_SYNC_KEY)
     } catch {
       return null
     }

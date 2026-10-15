@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 
 import { draftsFromVcfFile, findDuplicates, mergePatch, parseVcf, photoOfCard } from '../src/core/contacts'
 import type { ContactDraft } from '../src/core/contacts'
-import { mergeSettings, STAMPED_ONLY_KEYS, SYNCED_SETTING_KEYS, THEME_SYNC_KEY } from '../src/ui/settings/sync'
+import { STAMPED_ONLY_KEYS, SYNCED_SETTING_KEYS, THEME_SYNC_KEY } from '../src/ui/settings/sync'
+import { planMigration, planPull } from '../src/storage/account'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -35,20 +36,18 @@ const read = (p: string) => readFileSync(p, 'utf8')
 section('A357 — le thème du coordinateur voyage entre appareils')
 // ---------------------------------------------------------------------------
 check('A357 la clé du thème du coordinateur est synchronisée', SYNCED_SETTING_KEYS.includes(THEME_SYNC_KEY))
-check('A357 … et ne voyage qu’une fois CHOISIE (instant posé)', STAMPED_ONLY_KEYS.has(THEME_SYNC_KEY))
+/* ★★★ BJ (2026-10-15) — « choisie seulement » (AY1.3) est ABOLI par la règle du
+   PO : à la migration le compte gagne, ensuite chaque choix voyage. Les trois
+   intentions d'A357 sont rejouées sur le nouveau moteur. */
+check('A357 … et voyage dès qu’il est choisi (BJ : « choisie seulement » n’existe plus)', STAMPED_ONLY_KEYS.size === 0)
 {
-  const blank = Object.fromEntries(SYNCED_SETTING_KEYS.map((k) => [k, null])) as Record<string, string | null>
-  // Ordinateur : le PO vient de choisir « sombre » (instant posé). Téléphone : « clair », jamais choisi ici.
-  const desk = { values: { ...blank, [THEME_SYNC_KEY]: 'dark' }, stamps: { [THEME_SYNC_KEY]: 2000 } }
-  const phone = { values: { ...blank, [THEME_SYNC_KEY]: 'light' }, stamps: {} }
-  const up = mergeSettings(desk, { values: blank, stamps: {} }, 0)
-  check('A357 l’ordinateur fait monter son choix', up.push && up.pushed.includes(THEME_SYNC_KEY))
-  const remote = { values: { ...blank, [THEME_SYNC_KEY]: 'dark' }, stamps: { [THEME_SYNC_KEY]: 2000 } }
-  const down = mergeSettings(phone, remote, 0)
-  check('A357 le téléphone reçoit le sombre', down.applied.includes(THEME_SYNC_KEY) && down.local.values[THEME_SYNC_KEY] === 'dark')
-  // Avant AY : aucun instant nulle part — rien ne bouge (le premier appareil ne gagne pas par hasard).
-  const legacy = mergeSettings(phone, { values: { ...blank, [THEME_SYNC_KEY]: 'dark' }, stamps: {} }, 0)
-  check('A357 un thème jamais choisi (sans instant) n’écrase rien', !legacy.applied.includes(THEME_SYNC_KEY) && !legacy.pushed.includes(THEME_SYNC_KEY))
+  const at = '2026-10-15T10:00:00.000Z'
+  const up = planPull([], () => 'dark', { [THEME_SYNC_KEY]: { value: 'dark', at: Date.parse(at), offline: false } }, 0, null)
+  check('A357 l’ordinateur fait monter son choix (il est en file, rien ne l’en retire)', !up.dropQueue.includes(THEME_SYNC_KEY))
+  const down = planPull([{ key: THEME_SYNC_KEY, value: 'dark', updated_at: at, written_at: at }], () => 'light', {}, 0, null)
+  check('A357 le téléphone reçoit le sombre', down.apply.some((a) => a.key === THEME_SYNC_KEY && a.value === 'dark'))
+  const legacy = planMigration({ rows: [], legacy: { [THEME_SYNC_KEY]: 'dark' }, local: { [THEME_SYNC_KEY]: 'light' } })
+  check('A357 ★ BJ — un thème d’avant (sans instant) sur le compte : le COMPTE gagne à la migration (règle du PO, remplace AY1.3)', legacy.apply.some((a) => a.key === THEME_SYNC_KEY && a.value === 'dark'))
 }
 
 // ---------------------------------------------------------------------------

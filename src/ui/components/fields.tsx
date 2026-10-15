@@ -8,6 +8,7 @@ import { usePublishedHeight } from '../hooks/useShellMetrics'
 import { useAnchoredBar } from './anchoredBar'
 import { Icon } from './Icon'
 import { useInfoTip } from './InfoTip'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /** ★★ AX4 — au-delà, une aide de champ n'est plus « une ligne » à 402 px. */
 export const HINT_LINE = 56
@@ -726,7 +727,7 @@ export function FormSection({
   const [open, setOpen] = useState<boolean>(() => {
     if (!storageKey) return true
     try {
-      const stored = sessionStorage.getItem(storageKey)
+      const stored = readSetting(storageKey)
       return stored !== null ? stored === '1' : defaultOpen
     } catch {
       return defaultOpen
@@ -737,7 +738,7 @@ export function FormSection({
   const toggle = () =>
     setOpen((v) => {
       try {
-        sessionStorage.setItem(storageKey ?? '', v ? '0' : '1')
+        writeSetting(storageKey ?? '', v ? '0' : '1')
       } catch {
         // Private browsing: the section still opens, it just does not remember.
       }

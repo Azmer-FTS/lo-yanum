@@ -1,6 +1,7 @@
 import { permissionStatus } from './geolocate'
 import type { PermissionStatus } from './geolocate'
 import { isStandalone } from './standalone'
+import { readSetting, writeSetting } from '../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -81,7 +82,7 @@ let cache: GeoDiagRow[] | undefined
 function read(): GeoDiagRow[] {
   if (cache !== undefined) return cache
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     const parsed = raw ? (JSON.parse(raw) as unknown) : []
     cache = Array.isArray(parsed) ? (parsed as GeoDiagRow[]) : []
   } catch {
@@ -93,7 +94,7 @@ function read(): GeoDiagRow[] {
 function write(rows: GeoDiagRow[]): void {
   cache = rows.slice(-MAX_ROWS)
   try {
-    localStorage.setItem(KEY, JSON.stringify(cache))
+    writeSetting(KEY, JSON.stringify(cache))
   } catch {
     // Un appareil qui refuse le stockage ne peut pas être diagnostiqué ainsi.
   }
@@ -114,7 +115,7 @@ export function geoDiagRows(): GeoDiagRow[] {
 export function clearGeoDiag(): void {
   cache = []
   try {
-    localStorage.removeItem(KEY)
+    writeSetting(KEY, null)
   } catch {
     // Idem.
   }

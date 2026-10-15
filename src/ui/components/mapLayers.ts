@@ -2,6 +2,7 @@ import { useCallback, useSyncExternalStore } from 'react'
 
 import { FARM_BRANCHES } from '@core/index'
 import type { FarmBranchKind } from '@core/index'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * U4.3 (2026-09-02) — THE MAP'S LAYERS, SWITCHABLE ONE BY ONE, REMEMBERED.
@@ -125,9 +126,11 @@ const DEFAULTS: MapLayerVisibility = {
  *      (`lo-yanum:map-layers-bi`) : le panneau de diagnostic dit si CET
  *      appareil les avait éteintes. Les autres couches restent ce qu'elles
  *      étaient.
- *   3. Depuis BI, la clé VOYAGE avec le compte (`SYNCED_SETTING_KEYS`), mais
- *      seulement une fois choisie (instant posé, `STAMPED_ONLY_KEYS`) : la
- *      valeur d'avant BI d'un appareil n'éteint pas l'autre.
+ *   3. Depuis BI, la clé VOYAGE avec le compte. ★★★ BJ : comme tout réglage de
+ *      portée « compte » du registre (`storage/registry.ts`) — horodatée par
+ *      le serveur, envoyée dès le geste ; « choisie seulement » n'existe plus
+ *      (à la migration de l'appareil, le compte gagne ; sinon la valeur
+ *      réparée ci-dessous est promue, et elle MONTRE).
  *   4. Une forme cachée par une couche SE VOIT sur la carte (MapCanvas,
  *      `map-hidden-zones`), avec le geste qui la rend.
  */
@@ -187,18 +190,19 @@ export function serializeMapLayers(layers: MapLayerVisibility): string {
 /**
  * ★★ BI — AU DÉMARRAGE, AVANT LA SYNCHRONISATION DES RÉGLAGES (main.tsx) :
  * une valeur d'avant BI est réécrite au format, couches de formes rallumées.
- * Écrite AVANT que `startSettingsSync` n'enveloppe `localStorage`, elle ne
- * reçoit pas d'instant : ce n'est pas un choix, elle ne voyage pas.
+ * ★★★ BJ — écrite avant `startAccountSync`, elle n'est pas mise en file (ce
+ * n'est pas un geste du PO) ; la migration de l'appareil la promeut ensuite
+ * si le compte n'a encore rien.
  */
 export function migrateMapLayers(): ParsedMapLayers | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = readSetting(STORAGE_KEY)
     if (raw === null) return null
     const parsed = parseMapLayers(raw)
     if (!parsed.legacy) return parsed
-    localStorage.setItem(STORAGE_KEY, serializeMapLayers(parsed.layers))
+    writeSetting(STORAGE_KEY, serializeMapLayers(parsed.layers))
     if (parsed.restored.length > 0) {
-      localStorage.setItem(MAP_LAYERS_MIGRATION_KEY, JSON.stringify({ at: Date.now(), restored: parsed.restored }))
+      writeSetting(MAP_LAYERS_MIGRATION_KEY, JSON.stringify({ at: Date.now(), restored: parsed.restored }))
     }
     current = parsed.layers
     for (const l of listeners) l()
@@ -211,7 +215,7 @@ export function migrateMapLayers(): ParsedMapLayers | null {
 /** ★★ BI — ce que la réactivation a fait sur CET appareil, pour le diagnostic. */
 export function mapLayersMigration(): { at: number; restored: MapLayerKey[] } | null {
   try {
-    const raw = localStorage.getItem(MAP_LAYERS_MIGRATION_KEY)
+    const raw = readSetting(MAP_LAYERS_MIGRATION_KEY)
     if (!raw) return null
     const v = JSON.parse(raw) as { at?: unknown; restored?: unknown }
     return typeof v.at === 'number' && Array.isArray(v.restored) ? { at: v.at, restored: v.restored as MapLayerKey[] } : null
@@ -225,7 +229,7 @@ let current: MapLayerVisibility = read()
 
 function read(): MapLayerVisibility {
   try {
-    return parseMapLayers(localStorage.getItem(STORAGE_KEY)).layers
+    return parseMapLayers(readSetting(STORAGE_KEY)).layers
   } catch {
     return { ...DEFAULTS }
   }
@@ -252,7 +256,7 @@ export function setMapLayer(key: MapLayerKey, on: boolean): void {
 export function setMapLayers(patch: Partial<MapLayerVisibility>): void {
   current = { ...current, ...patch }
   try {
-    localStorage.setItem(STORAGE_KEY, serializeMapLayers(current))
+    writeSetting(STORAGE_KEY, serializeMapLayers(current))
   } catch {
     // A remembered layer set is a convenience, not a requirement.
   }

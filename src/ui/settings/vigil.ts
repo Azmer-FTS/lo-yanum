@@ -7,6 +7,7 @@ import {
 } from '@core/index'
 import type { VigilThresholds } from '@core/index'
 import { onSettingsApplied } from './applied'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ★★ AE3.2 · AE3.3 (2026-09-08) — LES TROIS DÉLAIS, RÉGLABLES.
@@ -43,7 +44,7 @@ const positive = (v: unknown, fallback: number): number => {
 function read(): VigilThresholds {
   const d = defaultVigil()
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (!raw) return d
     const p = JSON.parse(raw) as Partial<VigilThresholds>
     return {
@@ -71,7 +72,7 @@ onSettingsApplied([KEY], () => {
 function publish(next: VigilThresholds): void {
   current = next
   try {
-    localStorage.setItem(KEY, JSON.stringify(next))
+    writeSetting(KEY, JSON.stringify(next))
   } catch {
     // Navigation privée ; l'écran fonctionne pour cette session.
   }

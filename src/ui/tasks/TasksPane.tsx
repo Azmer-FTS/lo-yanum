@@ -28,6 +28,7 @@ import { useLocale } from '../hooks/useLocale'
 import { LINK_ICON, LinkChip, LinkPicker } from '../agenda/links'
 import { MemoPane } from './MemoPane'
 import { TaskQuickAdd, readLastList, writeLastList } from './TaskQuickAdd'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -53,7 +54,7 @@ export const MEMO_TAB = 'memo'
 
 function readTab(): string | null {
   try {
-    return localStorage.getItem(TAB_KEY)
+    return readSetting(TAB_KEY)
   } catch {
     return null
   }
@@ -61,7 +62,7 @@ function readTab(): string | null {
 
 function writeTab(tab: string): void {
   try {
-    localStorage.setItem(TAB_KEY, tab)
+    writeSetting(TAB_KEY, tab)
   } catch {
     // Une commodité.
   }

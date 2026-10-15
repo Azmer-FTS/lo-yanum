@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 import { missingSummonsTokens } from '@core/index'
 import { onSettingsApplied } from './applied'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ★★ AE4 (2026-09-08) — LE GABARIT DU SMS DE CONVOCATION, MODIFIABLE.
@@ -35,7 +36,7 @@ onSettingsApplied([KEY], () => {
 
 function load(): string | null {
   try {
-    return localStorage.getItem(KEY)
+    return readSetting(KEY)
   } catch {
     return null
   }
@@ -61,7 +62,7 @@ export function writeSummonsTemplate(next: string): SummonsSaveResult {
   if (missing.length > 0) return { ok: false, missing }
   cache = next
   try {
-    localStorage.setItem(KEY, next)
+    writeSetting(KEY, next)
   } catch {
     // Navigation privée.
   }
@@ -73,7 +74,7 @@ export function writeSummonsTemplate(next: string): SummonsSaveResult {
 export function resetSummonsTemplate(): void {
   cache = null
   try {
-    localStorage.removeItem(KEY)
+    writeSetting(KEY, null)
   } catch {
     // Idem.
   }

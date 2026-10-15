@@ -2,6 +2,7 @@ import { getSupabase } from './client'
 import { SUPABASE_CONFIGURED } from './config'
 import { clearContactPhotos } from './contactPhotos'
 import { clearSignedUrlCache } from './storage'
+import { readSetting, writeSetting } from '../storage/local'
 
 /**
  * THE SESSION, AS THE APP SEES IT (P2.3).
@@ -87,7 +88,7 @@ interface LastSession {
 
 function readLastSession(): LastSession | null {
   try {
-    const raw = localStorage.getItem(LAST_SESSION_KEY)
+    const raw = readSetting(LAST_SESSION_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<LastSession>
     return typeof parsed.userId === 'string'
@@ -100,8 +101,8 @@ function readLastSession(): LastSession | null {
 
 function writeLastSession(value: LastSession | null): void {
   try {
-    if (value === null) localStorage.removeItem(LAST_SESSION_KEY)
-    else localStorage.setItem(LAST_SESSION_KEY, JSON.stringify(value))
+    if (value === null) writeSetting(LAST_SESSION_KEY, null)
+    else writeSetting(LAST_SESSION_KEY, JSON.stringify(value))
   } catch {
     // A browser refusing storage is a browser that cannot survive offline.
     // It can still sign in, which is the part that must not break.
@@ -135,7 +136,7 @@ const LAST_EMAIL_KEY = 'lo-yanum:last-email'
 
 export function readRememberedEmail(): string {
   try {
-    return localStorage.getItem(LAST_EMAIL_KEY) ?? ''
+    return readSetting(LAST_EMAIL_KEY) ?? ''
   } catch {
     return ''
   }
@@ -143,7 +144,7 @@ export function readRememberedEmail(): string {
 
 function rememberEmail(email: string | null): void {
   try {
-    if (email && email.trim() !== '') localStorage.setItem(LAST_EMAIL_KEY, email.trim())
+    if (email && email.trim() !== '') writeSetting(LAST_EMAIL_KEY, email.trim())
   } catch {
     // A browser refusing storage still signs in; it just never prefills.
   }

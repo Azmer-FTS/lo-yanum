@@ -1,5 +1,6 @@
 import { defaultRing, notifyDerivedChange, regionRings, setRegionRings } from '@core/index'
 import type { LatLng, RegionId } from '@core/index'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -11,7 +12,9 @@ import type { LatLng, RegionId } from '@core/index'
  *
  * ★ WHY `localStorage` AND NOT THE STORE. The outlines are not a row: they
  *   describe how the association reads its own country, they are the same on
- *   every screen and for every user of this device, and the demo backend
+ *   every screen and for every user of this device (★★★ BJ — this said « of
+ *   this device » while the key had travelled with the account since AH11.2;
+ *   it is an `account` entry of `storage/registry.ts`), and the demo backend
  *   persists nothing at all. A store mutation would also mean a Supabase
  *   column, an RLS policy and a migration for something that is, today,
  *   thirteen arrays. When the boundaries become an association-wide setting
@@ -44,7 +47,7 @@ function sane(value: unknown): Ring | null {
 
 function read(): Partial<Record<RegionId, Ring>> {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (!raw) return {}
     const parsed = JSON.parse(raw) as Record<string, unknown>
     const out: Partial<Record<RegionId, Ring>> = {}
@@ -60,8 +63,8 @@ function read(): Partial<Record<RegionId, Ring>> {
 
 function write(next: Partial<Record<RegionId, Ring>>): void {
   try {
-    if (Object.keys(next).length === 0) localStorage.removeItem(KEY)
-    else localStorage.setItem(KEY, JSON.stringify(next))
+    if (Object.keys(next).length === 0) writeSetting(KEY, null)
+    else writeSetting(KEY, JSON.stringify(next))
   } catch {
     // A full or blocked storage must not lose the edit that is on screen; it
     // is applied either way and simply does not survive a reload.

@@ -93,19 +93,26 @@ section('A499 — le réglage voyage une fois choisi')
 {
   const K = layers.MAP_LAYERS_KEY
   check('A499 la clé des couches est synchronisée', sync.SYNCED_SETTING_KEYS.includes(K))
-  check('A499 … « choisie seulement » (comme le thème)', sync.STAMPED_ONLY_KEYS.has(K))
+  /* ★★★ BJ (2026-10-15) — « choisie seulement » est ABOLI (le compte gagne à
+     la migration, puis chaque choix voyage) ; la protection de BI — une valeur
+     d'avant BI n'éteint pas l'autre appareil — tient AUTREMENT : la valeur est
+     RÉPARÉE (formes rallumées) avant d'être promue. Rejoué sur le nouveau moteur. */
+  check('A499 … « choisie seulement » n’existe plus (BJ) : un choix voyage dès qu’il est fait', sync.STAMPED_ONLY_KEYS.size === 0)
   check('A499 … et n’est plus listée comme locale', !sync.LOCAL_ONLY_KEYS.some((e) => /(^|[ ,])map-layers(,|$)/.test(e.key)))
-  const side = (v: string | null, stamp = 0) => ({ values: { [K]: v }, stamps: stamp ? { [K]: stamp } : {} })
+  const { planMigration, planPull } = await import('../src/storage/account')
+  const repaired = layers.serializeMapLayers(layers.parseMapLayers('{"boundaries":false,"grazing":false,"entities":false}').layers)
+  const m1 = planMigration({ rows: [], legacy: null, local: { [K]: repaired } })
+  const promoted = layers.parseMapLayers(m1.insert.find((x) => x.key === K)?.value ?? null).layers
+  check('A499 ★ valeur d’avant BI, compte vide : promue RÉPARÉE — l’autre appareil n’est jamais éteint', m1.promoted.includes(K) && promoted.boundaries && promoted.grazing)
   const old = '{"__v":2,"boundaries":true,"grazing":true,"entities":false}'
-  const m1 = sync.mergeSettings(side(old), side(null), 0)
-  check('A499 valeur sans instant, compte vide : RIEN ne monte (l’autre appareil n’est pas éteint)', !m1.pushed.includes(K) && m1.remote[K] === undefined)
-  const m2 = sync.mergeSettings(side(null), side(old), 0)
-  check('A499 appareil sans réglage, compte qui en porte un : il le prend', m2.applied.includes(K) && m2.local.values[K] === old)
+  const at = '2026-10-15T10:00:00.000Z'
+  const m2 = planPull([{ key: K, value: old, updated_at: at, written_at: at }], () => null, {}, 0, null)
+  check('A499 appareil sans réglage, compte qui en porte un : il le prend', m2.apply.some((a) => a.key === K && a.value === old))
   const pick = '{"__v":2,"boundaries":true,"grazing":false}'
-  const m3 = sync.mergeSettings(side(pick, 2000), side(old, 1000), 1500)
-  check('A499 un choix plus récent ICI monte vers le compte', m3.push && m3.pushed.includes(K) && m3.remote[K] === pick)
-  const m4 = sync.mergeSettings(side(old, 1000), side(pick, 2000), 1500)
-  check('A499 un choix plus récent AILLEURS est appliqué ici', m4.applied.includes(K) && m4.local.values[K] === pick)
+  const m3 = planPull([{ key: K, value: old, updated_at: at, written_at: at }], () => pick, { [K]: { value: pick, at: Date.parse(at) + 2000, offline: true } }, 0, null)
+  check('A499 un choix plus récent ICI garde son tour vers le compte', !m3.dropQueue.includes(K) && !m3.apply.some((a) => a.key === K))
+  const m4 = planPull([{ key: K, value: pick, updated_at: at, written_at: at }], () => old, {}, 0, null)
+  check('A499 un choix plus récent AILLEURS est appliqué ici', m4.apply.some((a) => a.key === K && a.value === pick))
 }
 
 // ===========================================================================
@@ -238,7 +245,7 @@ section('A503 — les branchements')
 {
   const main = readFileSync('src/main.tsx', 'utf8')
   const mig = main.indexOf('migrateMapLayers()')
-  check('A503 la réactivation part AVANT la synchronisation des réglages', mig > 0 && mig < main.indexOf('sync.startSettingsSync('))
+  check('A503 la réactivation part AVANT la synchronisation des réglages', mig > 0 && mig < main.indexOf('account.startAccountSync('))
   const canvas = readFileSync('src/ui/components/MapCanvas.tsx', 'utf8')
   check('A503 une forme cachée par une couche se voit (pastille `map-hidden-zones`)', canvas.includes('data-testid="map-hidden-zones"') && /setMapLayers\(\{ boundaries: true, grazing: true \}\)/.test(canvas))
   check('A503 la carte inscrit ce qu’elle reçoit (`recordDrawnZones`) et l’efface en partant', (canvas.match(/recordDrawnZones\(/g) ?? []).length === 2)

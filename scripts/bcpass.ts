@@ -13,7 +13,9 @@ import { TOUR_STOP_MINUTES, buildDayPlan } from '../src/core/tours'
 import type { Tour } from '../src/core/tours'
 import type { Farm } from '../src/core/types'
 import { MAPPINGS } from '../src/data/rows'
-import { THEME_SYNC_KEY, mergeSettings, SYNCED_SETTING_KEYS, themeSourceOf } from '../src/ui/settings/sync'
+import { THEME_SYNC_KEY, themeSourceOf } from '../src/ui/settings/sync'
+import { planMigration, planPull } from '../src/storage/account'
+import { FakeDb } from './fake-supabase'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -242,25 +244,25 @@ section('A415 — l’avertissement d’appel, dans la liste comme sur la fiche'
 section('A416 — le thème : la ligne ne ment plus, un appareil sans choix suit le compte')
 // ---------------------------------------------------------------------------
 {
-  const blank = Object.fromEntries(SYNCED_SETTING_KEYS.map((k) => [k, null])) as Record<string, string | null>
-  // L'ordinateur : sombre choisi AVANT AY1.3 (aucun instant) ; il pousse une AUTRE clé.
-  const desk = { values: { ...blank, [THEME_SYNC_KEY]: 'dark', 'lo-yanum:coverage-map': '{"minutes":35}' }, stamps: { 'lo-yanum:coverage-map': 5000 } }
-  const pushed = mergeSettings(desk, { values: blank, stamps: {} }, 0)
-  check('A416 une poussée pour une autre clé n’écrit PAS le thème jamais horodaté', pushed.push && pushed.remote[THEME_SYNC_KEY] === undefined, String(pushed.remote[THEME_SYNC_KEY]))
-  // La base porte « dark » sans instant (l'état mesuré en BC) ; le téléphone n'a rien choisi.
-  const remote = { values: { ...blank, [THEME_SYNC_KEY]: 'dark' }, stamps: {} }
-  const phone = mergeSettings({ values: blank, stamps: {} }, remote, 0)
-  check('A416 un appareil SANS choix prend le sombre du compte', phone.applied.includes(THEME_SYNC_KEY) && phone.local.values[THEME_SYNC_KEY] === 'dark')
-  check('A416 … sans lui poser d’instant (ce n’est pas SON choix)', !phone.local.stamps[THEME_SYNC_KEY])
-  const legacyPhone = mergeSettings({ values: { ...blank, [THEME_SYNC_KEY]: 'light' }, stamps: {} }, remote, 0)
-  check('A416 deux choix anciens différents ne s’écrasent pas (AY1.3 tient)', !legacyPhone.applied.includes(THEME_SYNC_KEY) && legacyPhone.local.values[THEME_SYNC_KEY] === 'light' && legacyPhone.remote[THEME_SYNC_KEY] === 'dark')
-  const chosen = mergeSettings({ values: { ...blank, [THEME_SYNC_KEY]: 'dark' }, stamps: { [THEME_SYNC_KEY]: 9000 } }, { values: { ...blank, [THEME_SYNC_KEY]: 'light' }, stamps: {} }, 0)
-  check('A416 un choix horodaté monte et gagne', chosen.push && chosen.remote[THEME_SYNC_KEY] === 'dark' && JSON.parse(chosen.remote.__stamps as string)[THEME_SYNC_KEY] === 9000)
+  /* ★★★ BJ (2026-10-15) — rejoué sur le nouveau moteur : une ligne par
+     réglage, l'instant posé par le serveur ; et la règle du PO (le compte
+     gagne à la migration) remplace « deux choix anciens ne s'écrasent pas ». */
+  const db = new FakeDb()
+  db.handle('POST', new URL('https://x.supabase.co/rest/v1/user_setting_values?on_conflict=user_id,key'), { prefer: 'resolution=merge-duplicates,return=representation' }, JSON.stringify([{ user_id: 'u', key: 'lo-yanum:coverage-map', value: '{"minutes":35}', client_at: null }]))
+  check('A416 ★ écrire une AUTRE clé n’écrit JAMAIS le thème (une ligne par réglage)', db.rows('user_setting_values').length === 1 && !db.rows('user_setting_values').some((r) => r.key === THEME_SYNC_KEY))
+  const at = '2026-10-12T15:04:00.000Z'
+  const phone = planMigration({ rows: [{ key: THEME_SYNC_KEY, value: 'dark', updated_at: at, written_at: at }], legacy: null, local: {} })
+  check('A416 un appareil SANS choix prend le sombre du compte', phone.apply.some((a) => a.key === THEME_SYNC_KEY && a.value === 'dark'))
+  check('A416 … sans que ce soit compté comme « remplacé » (il n’avait rien)', !phone.accountWon.includes(THEME_SYNC_KEY))
+  const legacyPhone = planMigration({ rows: [], legacy: { [THEME_SYNC_KEY]: 'dark' }, local: { [THEME_SYNC_KEY]: 'light' } })
+  check('A416 ★ BJ — deux choix anciens différents : le COMPTE gagne (règle du PO ; remplace « AY1.3 tient »)', legacyPhone.apply.some((a) => a.key === THEME_SYNC_KEY && a.value === 'dark') && legacyPhone.legacy.includes(THEME_SYNC_KEY))
+  const chosen = planPull([{ key: THEME_SYNC_KEY, value: 'light', updated_at: at, written_at: at }], () => 'dark', { [THEME_SYNC_KEY]: { value: 'dark', at: Date.parse(at) + 9000, offline: true } }, 0, null)
+  check('A416 un choix plus récent ici monte et gagne', !chosen.dropQueue.includes(THEME_SYNC_KEY) && !chosen.apply.some((a) => a.key === THEME_SYNC_KEY))
   const src1 = themeSourceOf({ stored: 'dark', stamp: 9000, remote: 'dark', connected: true })
   const src2 = themeSourceOf({ stored: null, stamp: 0, remote: null, connected: true })
   const src3 = themeSourceOf({ stored: 'light', stamp: 0, remote: 'dark', connected: true })
   const src4 = themeSourceOf({ stored: 'system', stamp: 9000, remote: 'system', connected: true })
-  check('A416 « נבחר בהגדרות, מסונכרן » / « לפי המכשיר » / « בחירה ישנה » : la phrase sait d’où vient le thème', src1.source === 'synced' && src2.source === 'device' && src3.source === 'legacy' && src4.source === 'device')
+  check('A416 « נבחר בהגדרות, מסונכרן » / « לפי המכשיר » : la phrase sait d’où vient le thème (★★★ BJ : un choix connecté VOYAGE toujours — « בחירה ישנה » n’existe plus)', src1.source === 'synced' && src2.source === 'device' && src3.source === 'synced' && src4.source === 'device')
   check('A416 le compte porte un autre choix : dit (et un geste l’applique)', src3.accountDiffers && !src1.accountDiffers)
   const ds = src('src/ui/settings/DisplaySection.tsx')
   check('A416 l’écran des réglages imprime la phrase et propose le geste', /data-testid="theme-source"/.test(ds) && /theme-sync-now/.test(ds) && /theme-apply-account/.test(ds))

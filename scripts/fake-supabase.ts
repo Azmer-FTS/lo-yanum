@@ -100,6 +100,33 @@ export class FakeDb {
    * (le PDF extrait du corps multipart de supabase-js) et l'instant d'écriture.
    */
   objects = new Map<string, { bytes: Uint8Array; at: string; type: string }>()
+  /**
+   * ★★★ BJ — l'HORLOGE DU SERVEUR (celle du processus de la porte) et les
+   * DÉCLENCHEURS `before insert or update`, table par table. Le seul installé
+   * d'office est celui de `user_setting_values`, copie exacte de
+   * `private.user_setting_values_stamp()` (migration 20261015000100).
+   */
+  private lastNow = 0
+  clock(): number {
+    const t = Math.max(Date.now(), this.lastNow + 1)
+    this.lastNow = t
+    return t
+  }
+  triggers = new Map<string, (incoming: Row, existing: Row | null) => Row>([
+    [
+      'user_setting_values',
+      (incoming, existing) => {
+        const now = this.clock()
+        const claimed = typeof incoming.client_at === 'string' ? Date.parse(incoming.client_at) : NaN
+        const eff = Math.min(Number.isFinite(claimed) ? claimed : now, now)
+        if (existing) {
+          if (eff <= Date.parse(String(existing.updated_at))) return existing
+          return { ...existing, ...incoming, user_id: existing.user_id, key: existing.key, updated_at: new Date(eff).toISOString(), written_at: new Date(now).toISOString() }
+        }
+        return { ...incoming, updated_at: new Date(eff).toISOString(), written_at: new Date(now).toISOString() }
+      },
+    ],
+  ])
 
   rows(table: string): Row[] {
     let list = this.tables.get(table)
@@ -132,6 +159,9 @@ export class FakeDb {
         if (!new RegExp(`^${pattern}$`).test(String(row[key]))) return false
       } else if (value.startsWith('is.null')) {
         if (row[key] != null) return false
+      } else if (value.startsWith('gt.')) {
+        /* ★★★ BJ — le curseur de relecture (`written_at=gt.<instant>`). */
+        if (!(String(row[key] ?? '') > decodeURIComponent(value.slice(3)))) return false
       }
     }
     return true
@@ -159,6 +189,12 @@ export class FakeDb {
 
     if (method === 'GET' || method === 'HEAD') {
       const all = this.rows(table).filter((r) => this.matches(r, params))
+      /* ★★★ BJ — `order=col.asc|desc` (le battement demande la plus récente arrivée). */
+      const order = params.get('order')
+      if (order) {
+        const [col, dir] = order.split('.')
+        all.sort((a, b) => (String(a[col] ?? '') < String(b[col] ?? '') ? -1 : String(a[col] ?? '') > String(b[col] ?? '') ? 1 : 0) * (dir === 'desc' ? -1 : 1))
+      }
       const offset = Number(params.get('offset') ?? 0)
       const limit = params.has('limit') ? Number(params.get('limit')) : all.length
       const page = all.slice(offset, offset + limit)
@@ -193,16 +229,21 @@ export class FakeDb {
       const list = this.rows(table)
       const merge = prefer.includes('merge-duplicates')
       const ignore = prefer.includes('ignore-duplicates')
-      const conflict = params.get('on_conflict') ?? 'id'
+      /* ★★★ BJ — une clé de conflit COMPOSÉE (`user_id,key`). */
+      const conflict = (params.get('on_conflict') ?? 'id').split(',')
+      const same = (a: Row, b: Row) => conflict.every((c) => a[c] === b[c])
+      const trigger = this.triggers.get(table)
       const written: Row[] = []
       for (const row of rows) {
-        const index = merge || ignore ? list.findIndex((r) => r[conflict] === row[conflict]) : -1
+        const index = merge || ignore ? list.findIndex((r) => same(r, row)) : -1
         if (index === -1) {
-          list.push({ ...row })
-          written.push(row)
+          const stored = trigger ? trigger({ ...row }, null) : { ...row }
+          list.push(stored)
+          written.push(trigger ? stored : row)
         } else if (!ignore) {
-          list[index] = { ...list[index], ...row }
-          written.push(row)
+          const stored = trigger ? trigger({ ...row }, list[index]) : { ...list[index], ...row }
+          list[index] = stored
+          written.push(trigger ? stored : row)
         }
       }
       this.log.push(`POST ${table} +${rows.length}${merge ? ' (upsert)' : ''}`)

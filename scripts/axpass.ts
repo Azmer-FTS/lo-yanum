@@ -176,8 +176,9 @@ section('Au passage — deux réglages ne partagent plus une clé')
   const cov = read('src/ui/screens/coordinator/CoverageScreen.tsx')
   check('la carte de couverture écrit `lo-yanum:coverage-map`, plus `lo-yanum:coverage`', /PREFS_KEY = 'lo-yanum:coverage-map'/.test(cov))
   check('…et ne l’écrit plus au montage (une clé synchronisée réécrite à chaque ouverture écrase l’autre appareil)', !/useEffect\(\(\) => writePrefs\(prefs\)/.test(cov))
-  const sync = read('src/ui/settings/sync.ts')
-  check('…et la nouvelle clé voyage entre les appareils', /'lo-yanum:coverage-map'/.test(sync))
+  /* ★★★ BJ — la liste de ce qui voyage est le REGISTRE (`storage/registry.ts`), plus `sync.ts`. */
+  const registry = read('src/storage/registry.ts')
+  check('…et la nouvelle clé voyage entre les appareils (portée « compte » du registre)', /\{ \.\.\.ACCOUNT, key: 'lo-yanum:coverage-map'/.test(registry))
   const wiz = read('src/ui/screens/coordinator/ImportWizardScreen.tsx')
   check('la fin d’un import renvoie à la liste DU TYPE importé', /navigate\(back\.to\)/.test(wiz) && !/navigate\('\/coordinator\/volunteers'\)/.test(wiz))
 }

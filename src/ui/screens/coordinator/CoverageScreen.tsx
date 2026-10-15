@@ -52,6 +52,7 @@ import { InfoTip } from '../../components/InfoTip'
 import { NumInput } from '../../components/fields'
 import { DockedSheet } from '../../components/Sheet'
 import { useViewportTier } from '../../hooks/useNarrow'
+import { readSetting, writeSetting } from '../../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -131,7 +132,7 @@ function parsePrefs(raw: string | null): Partial<Prefs> | null {
 }
 function readPrefs(): Prefs {
   try {
-    const p = parsePrefs(localStorage.getItem(PREFS_KEY)) ?? parsePrefs(localStorage.getItem(LEGACY_PREFS_KEY)) ?? {}
+    const p = parsePrefs(readSetting(PREFS_KEY)) ?? parsePrefs(readSetting(LEGACY_PREFS_KEY)) ?? {}
     const minutes = Number(p.minutes)
     const night = Number(p.nightPct)
     return {
@@ -148,7 +149,7 @@ function readPrefs(): Prefs {
 }
 function writePrefs(p: Prefs): void {
   try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify(p))
+    writeSetting(PREFS_KEY, JSON.stringify(p))
   } catch {
     /* idem */
   }
@@ -209,20 +210,20 @@ export function useTimeFactor(nightPct: number): number {
 
 /**
  * ★★ BG — le bandeau des réglages se REPLIE dès qu'une institution est
- * ouverte ; son état (replié / déplié) est mémorisé. Un état d'écran de CET
- * appareil : il ne voyage pas.
+ * ouverte ; son état (replié / déplié) est mémorisé. ★★★ BJ — et il suit le
+ * COMPTE (registre, portée « compte ») : il voyageait pas avant BJ.
  */
 export const BAND_KEY = 'lo-yanum:coverage-band'
 function readBandOpen(): boolean {
   try {
-    return localStorage.getItem(BAND_KEY) === 'open'
+    return readSetting(BAND_KEY) === 'open'
   } catch {
     return false
   }
 }
 function writeBandOpen(open: boolean): void {
   try {
-    localStorage.setItem(BAND_KEY, open ? 'open' : 'folded')
+    writeSetting(BAND_KEY, open ? 'open' : 'folded')
   } catch {
     /* un état d'écran perdu n'est qu'un repli */
   }

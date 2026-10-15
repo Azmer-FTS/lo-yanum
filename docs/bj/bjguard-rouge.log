@@ -1,0 +1,37 @@
+
+  BJ — A511 · la règle « un réglage suit le compte » est-elle infranchissable ?
+
+  A511 · auto-contrôle — la porte MORD sur des violations fabriquées
+  ------------------------------------------------------------------
+  PASS  écriture directe dans localStorage → refusée
+  PASS  écriture directe dans sessionStorage → refusée
+  PASS  ouverture IndexedDB hors du registre → refusée
+  PASS  accès déguisé `window["localStorage"]` → refusé
+  PASS  clé non déclarée, par une constante → refusée
+  PASS  famille non déclarée, par un gabarit → refusée
+  PASS  littéral `lo-yanum:` non déclaré → refusé
+  PASS  clé non résolue (un paramètre libre) → refusée
+  PASS  cache du service worker non déclaré → refusé
+  PASS  un commentaire ne déclenche rien
+  PASS  une clé déclarée, par le registre → admise
+
+  A511 · le registre est bien formé
+  ---------------------------------
+  PASS  aucun doublon, chaque « appareil » a sa raison admise et sa justification, chaque défaut passe son validateur
+  PASS  les raisons d’appareil sont les quatre du PO, plus « machine » soumise à l’arbitrage
+  PASS  « compte » est le défaut : plus de réglages de compte que d’appareil hors raisons techniques
+
+  A511 · l’arbre /private/tmp/claude-501/-Users-clyoapple-Desktop-CLAUDE-PROJECT-LO-YANOUM/710f7c40-c439-427a-93b2-3fc8cc98d4b7/scratchpad/tree (src/, public/sw.js)
+  ------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  FAIL  aucun accès direct au stockage hors de src/storage/ (358 fichiers)  — src/ui/components/mapPins.ts:5 return localStorage.getItem(PINS_KEY) !== '0'
+          src/ui/components/mapPins.ts:8 localStorage.setItem(PINS_KEY, on ? '1' : '0')
+  FAIL  chaque clé employée est déclarée dans le registre  — src/ui/components/mapPins2.ts:3 writeSetting('lo-yanum:map-labels') → lo-yanum:map-labels
+          src/ui/components/mapPins2.ts:3 'lo-yanum:map-labels'
+          src/ui/components/mapPins.ts:3 'lo-yanum:map-pins'
+  PASS  chaque clé employée se résout (aucun paramètre libre non vérifié)
+  PASS  le service worker n’ouvre que des caches déclarés
+  PASS  le registre et ses modules d’accès sont tout src/storage/  — src/storage/account.ts, src/storage/idb.ts, src/storage/local.ts, src/storage/registry.ts
+
+  17 PASS · 2 FAIL
+
+exit=1

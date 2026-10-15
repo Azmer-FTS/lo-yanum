@@ -9,6 +9,7 @@ import type { PairRoad } from '@core/roadMesh'
 import { FarmStatusDot } from '../components/badges'
 import { ChevronForward, Icon } from '../components/Icon'
 import { useLocale } from '../hooks/useLocale'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -41,7 +42,7 @@ export const FARM_CARD_KEY = 'lo-yanum:coverage-farm-card'
 
 function readOpen(): boolean {
   try {
-    return localStorage.getItem(FARM_CARD_KEY) === 'open'
+    return readSetting(FARM_CARD_KEY) === 'open'
   } catch {
     return false
   }
@@ -78,7 +79,7 @@ export function CoverageFarmCard({
   const setOpen = (v: boolean) => {
     setOpenState(v)
     try {
-      localStorage.setItem(FARM_CARD_KEY, v ? 'open' : 'closed')
+      writeSetting(FARM_CARD_KEY, v ? 'open' : 'closed')
     } catch {
       /* un état d'écran perdu n'est qu'un retour au repli */
     }

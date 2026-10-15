@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 import { ROUTE_MARGIN_INITIAL } from '@core/index'
 import { onSettingsApplied } from './applied'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ★★ AI3.2 (2026-09-14) — LA MARGE DES DURÉES DE ROULAGE.
@@ -20,7 +21,7 @@ export const ROUTE_MARGIN_MAX = 100
 
 function read(): number {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (raw === null) return ROUTE_MARGIN_INITIAL
     const n = Number(raw)
     if (!Number.isFinite(n) || n < 0 || n > ROUTE_MARGIN_MAX) return ROUTE_MARGIN_INITIAL
@@ -45,8 +46,8 @@ onSettingsApplied([KEY], () => {
 export function writeRouteMargin(percent: number | null): void {
   current = percent === null ? ROUTE_MARGIN_INITIAL : Math.round(percent)
   try {
-    if (percent === null) localStorage.removeItem(KEY)
-    else localStorage.setItem(KEY, String(current))
+    if (percent === null) writeSetting(KEY, null)
+    else writeSetting(KEY, String(current))
   } catch {
     // Private browsing; the value still applies for this session.
   }

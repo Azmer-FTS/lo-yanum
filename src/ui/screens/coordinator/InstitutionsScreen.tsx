@@ -44,6 +44,7 @@ import type { CompactFilters } from '../../components/ListFilters'
 import { useCoreValue } from '../../hooks/useCore'
 import { CallRestrictionChip, CoordinationBanner, CoordinationChip, ENGAGEMENT_ON, HeadMissingChip, InstitutionContactsList, InstitutionEditor, InstitutionPeople, MinorsChip, RelatedInstitutions, callNotices, callTone, confirmCall, guardCall, isCallGuarded, telOf } from '../../institutions/institutionUi'
 import { runUndoable } from '../../components/UndoToast'
+import { writeSetting } from '../../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -119,7 +120,7 @@ export function InstitutionsScreen() {
   const setSort = (s: SortState) => {
     setSortState(s)
     try {
-      localStorage.setItem(SORT_KEY, JSON.stringify(s))
+      writeSetting(SORT_KEY, JSON.stringify(s))
     } catch {
       /* navigation privée */
     }

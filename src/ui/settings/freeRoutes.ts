@@ -3,6 +3,7 @@ import { useSyncExternalStore } from 'react'
 import { DEFAULT_VISIT_MINUTES, FREE_ROUTE_ORIGIN, newFreeRouteId } from '@core/index'
 import type { FreeRoute } from '@core/index'
 import { onSettingsApplied } from './applied'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ★★ AH9.6 (2026-09-09) — « L'ITINÉRAIRE S'ENREGISTRE ET SE REPREND. »
@@ -31,7 +32,7 @@ onSettingsApplied([KEY], () => {
 
 function load(): FreeRoute[] {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (!raw) return []
     const parsed: unknown = JSON.parse(raw)
     return Array.isArray(parsed) ? (parsed as FreeRoute[]) : []
@@ -52,7 +53,7 @@ function write(next: FreeRoute[]): void {
   cache = next
   snapshot = next
   try {
-    localStorage.setItem(KEY, JSON.stringify(next))
+    writeSetting(KEY, JSON.stringify(next))
   } catch {
     // Navigation privée : la tournée vit le temps de l'onglet.
   }
@@ -92,14 +93,15 @@ export function useFreeRoutes(): FreeRoute[] {
 }
 
 // ---------------------------------------------------------------------------
-// ★★ AX8 — le brouillon de l'écran (local, non synchronisé : un travail en cours)
+// ★★ AX8 — le brouillon de l'écran (un travail en cours). ★★★ BJ : il suit le
+// COMPTE (« à arbitrer » dans `storage/registry.ts`) — commencé au bureau, repris au téléphone.
 // ---------------------------------------------------------------------------
 
 const DRAFT_KEY = 'lo-yanum:free-route-draft'
 
 export function readFreeRouteDraft(): FreeRoute | null {
   try {
-    const raw = localStorage.getItem(DRAFT_KEY)
+    const raw = readSetting(DRAFT_KEY)
     if (!raw) return null
     const r = JSON.parse(raw) as FreeRoute
     return r && typeof r.id === 'string' && Array.isArray(r.stops) ? r : null
@@ -110,7 +112,7 @@ export function readFreeRouteDraft(): FreeRoute | null {
 
 export function writeFreeRouteDraft(route: FreeRoute): void {
   try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(route))
+    writeSetting(DRAFT_KEY, JSON.stringify(route))
   } catch {
     /* navigation privée */
   }

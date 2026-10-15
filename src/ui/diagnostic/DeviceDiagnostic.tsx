@@ -13,11 +13,14 @@ import { MAP_LAYERS, MAP_LAYERS_KEY, ZONE_LAYERS, getMapLayers, mapLayersMigrati
 import { drawnZones } from '../components/mapProbe'
 import { useDataState } from '../hooks/useDataState'
 import { lastSettingsSyncAt, settingStamp } from '../settings/sync'
+import { SUPABASE_CONFIGURED } from '../../data/config'
+import { accountSyncStarted, fingerprint, migrationRecord, refreshAccountView, settingsView } from '../../storage/account'
+import { refusedSettings } from '../../storage/local'
 import { useViewAs } from '../settings/viewAs'
 import { isStandalone } from '../standalone'
 import { RUNNING, checkForUpdate, isolate, useUpdateState } from '../update'
-import type { DiagnosticShape, DiagnosticSnapshot } from './report'
-import { diagnosticLines, diagnosticText, diagnosticVerdict } from './report'
+import type { DiagnosticShape, DiagnosticSnapshot, SettingsDiagnostic } from './report'
+import { diagnosticLines, diagnosticText, diagnosticVerdict, differsText, shortValue } from './report'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -66,6 +69,9 @@ export function useDiagnosticSnapshot(open: boolean): DiagnosticSnapshot | null 
       if (o.kind === 'current' || o.kind === 'available') setServed({ id: o.remote.id, builtAt: o.remote.builtAt })
       else setServed({ error: o.kind === 'error' ? o.reason : o.kind })
     })
+    /* ★★★ BJ — la valeur du COMPTE, relue à l'ouverture (et pas seulement
+       celle du dernier cycle) : c'est elle que le panneau met en face. */
+    if (accountSyncStarted()) void refreshAccountView().then(() => live && setTick((n) => n + 1))
     /* Le relevé suit ce qui bouge pendant qu'il est ouvert (une relecture, une case). */
     const timer = window.setInterval(() => setTick((n) => n + 1), 1000)
     return () => {
@@ -110,6 +116,26 @@ export function useDiagnosticSnapshot(open: boolean): DiagnosticSnapshot | null 
     },
     viewAs: viewAs ? `${viewAs.role} · ${viewAs.name}` : null,
     settingsSyncAt: lastSettingsSyncAt(),
+    settings: settingsDiagnostic(),
+  }
+}
+
+/** ★★★ BJ — le bloc des réglages : tiré du registre et de la mémoire de synchronisation. */
+export function settingsDiagnostic(): SettingsDiagnostic {
+  const m = migrationRecord()
+  return {
+    connected: SUPABASE_CONFIGURED,
+    rows: settingsView().map((v) => ({
+      ...v,
+      /* ⛔ Une clé d'AUTHENTIFICATION (session, laissez-passer, mail de connexion)
+         n'est JAMAIS montrée ni copiée : seulement sa longueur. Le texte de
+         « העתקה » part dans un message. */
+      device: v.reason === 'auth' && v.device !== null ? `#h:${fingerprint(v.device)}:${v.device.length}` : v.device,
+      account: SUPABASE_CONFIGURED ? v.account : undefined,
+      differs: SUPABASE_CONFIGURED && v.differs,
+    })),
+    migration: m ? { at: m.at, promoted: m.promoted.length, legacy: m.legacy.length, accountWon: m.accountWon.length, defaulted: m.defaulted.length, lostRace: m.lostRace.length } : null,
+    refused: [...new Set(refusedSettings().map((r) => r.key))],
   }
 }
 
@@ -142,6 +168,55 @@ export function DeviceDiagnosticDialog({ onClose }: { onClose: () => void }) {
           </div>
         ))}
       </dl>
+      {/* ★★★ BJ — CHAQUE RÉGLAGE : où il vit, ce que l'appareil porte, ce que
+          le compte porte, quand ils se sont accordés. Une différence est DITE. */}
+      <h3 className="mt-4 text-caption font-semibold text-content-primary">{t('diagnostic.settings.title')}</h3>
+      <div className="mt-1 max-h-72 overflow-auto rounded-field border border-edge-subtle">
+        <table className="w-full text-micro" data-testid="diagnostic-settings">
+          <thead className="sticky top-0 bg-surface-high text-content-secondary">
+            <tr>
+              <th className="px-2 py-1 text-start">{t('diagnostic.settings.columns.key')}</th>
+              <th className="px-2 py-1 text-start">{t('diagnostic.settings.columns.scope')}</th>
+              <th className="px-2 py-1 text-start">{t('diagnostic.settings.columns.device')}</th>
+              <th className="px-2 py-1 text-start">{t('diagnostic.settings.columns.account')}</th>
+              <th className="px-2 py-1 text-start">{t('diagnostic.settings.columns.sync')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {snap.settings.rows.map((r) => (
+              <tr
+                key={r.key}
+                data-key={r.key}
+                data-scope={r.scope}
+                data-differs={r.differs ? '1' : '0'}
+                data-pending={r.pending ? '1' : '0'}
+                className={`border-t border-edge-subtle align-top ${r.differs ? 'bg-status-warn/10' : ''}`}
+              >
+                <td className="px-2 py-1 font-mono break-all" dir="ltr">{r.key}</td>
+                <td className="px-2 py-1">
+                  {r.scope === 'account' ? t('diagnostic.settings.scope.account') : `${t('diagnostic.settings.scope.device')} · ${t(`diagnostic.settings.reason.${r.reason ?? 'diagnostic'}`)}`}
+                </td>
+                <td className="px-2 py-1 break-all" data-cell="device">{shortValue(r.device, t)}</td>
+                <td className="px-2 py-1 break-all" data-cell="account">{r.scope === 'account' ? shortValue(r.account, t) : '—'}</td>
+                <td className="px-2 py-1">
+                  {r.scope === 'account'
+                    ? r.pending
+                      ? t('diagnostic.settings.pendingSince')
+                      : r.syncedAt > 0
+                        ? t('diagnostic.settings.synced', { at: when(r.syncedAt) })
+                        : t('diagnostic.settings.neverSynced')
+                    : '—'}
+                  {r.differs && (
+                    <span className="mt-0.5 block font-semibold text-status-warn-ink" data-testid="diagnostic-setting-differs">
+                      {differsText(r, t)}
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <CopyButton value={text} label={t('diagnostic.copy')} className="btn-primary min-h-11" />
         <span className="muted text-micro">{t('diagnostic.copyHint')}</span>

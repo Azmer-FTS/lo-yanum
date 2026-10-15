@@ -194,31 +194,41 @@ function applyInMemory(farms: Farm[], p: PortalPlan): { farms: Farm[]; leads: Le
   return { farms: out, leads }
 }
 
-section('A290 · AS4 — la fusion des réglages, clé par clé (pure)')
+section('A290 · AS4 — la fusion des réglages, clé par clé (pure) — ★★★ réécrite en BJ sur le nouveau moteur')
 {
-  const { mergeSettings, readRemoteSide, SYNCED_SETTING_KEYS, LOCAL_ONLY_KEYS } = await import('../src/ui/settings/sync')
+  /* ★★★ BJ (2026-10-15) — `mergeSettings` (instants d'APPAREIL, bloc entier)
+     n'existe plus. Chaque intention d'AS4 est rejouée sur `planPull` /
+     `planMigration` (storage/account.ts) : une ligne par réglage, l'instant
+     posé par le SERVEUR, une file pour ce qui n'est pas encore parti. */
+  const { SYNCED_SETTING_KEYS, LOCAL_ONLY_KEYS } = await import('../src/ui/settings/sync')
+  const { planPull, planMigration } = await import('../src/storage/account')
+  const { FakeDb } = await import('./fake-supabase')
   const T = 'lo-yanum:target'
   const C = 'lo-yanum:coordinator'
-  const side = (values: Record<string, string | null>, stamps: Record<string, number>) => ({ values, stamps })
-  let m = mergeSettings(side({ [T]: 'old' }, { [T]: 100 }), side({ [T]: 'new' }, { [T]: 200 }), 150)
-  check('distant plus récent → appliqué ici, sans conflit (rien changé ici depuis la synchro)', m.local.values[T] === 'new' && m.applied.includes(T) && m.conflicts.length === 0 && !m.push)
-  m = mergeSettings(side({ [T]: 'mine' }, { [T]: 180 }), side({ [T]: 'theirs' }, { [T]: 200 }), 150)
-  check('changé ici ET plus récent ailleurs → le plus récent gagne, CONFLIT signalé', m.local.values[T] === 'theirs' && m.conflicts.includes(T))
-  m = mergeSettings(side({ [T]: 'mine' }, { [T]: 300 }), side({ [T]: 'theirs' }, { [T]: 200 }), 150)
-  check('local plus récent → il MONTE, le distant ne l’écrase pas', m.local.values[T] === 'mine' && m.push && m.remote[T] === 'mine')
-  m = mergeSettings(side({ [T]: 'a', [C]: 'stale' }, { [T]: 300, [C]: 10 }), side({ [T]: 'b', [C]: 'fresh' }, { [T]: 200, [C]: 250 }), 260)
-  check('un appareil aux valeurs d’hier ne pousse QUE ce qu’il a changé', m.remote[T] === 'a' && m.remote[C] === 'fresh' && m.local.values[C] === 'fresh')
-  m = mergeSettings(side({ [C]: null }, { [C]: 300 }), side({ [C]: 'card' }, { [C]: 200 }), 250)
-  check('un EFFACEMENT plus récent monte (la clé quitte le bloc)', m.push && m.remote[C] === undefined)
-  m = mergeSettings(side({ [T]: 'local' }, {}), side({ [T]: 'server' }, {}), 0)
-  check('réglages d’avant AS4 (aucun instant) : le compte gagne, comme AH11.2', m.local.values[T] === 'server')
-  m = mergeSettings(side({ [T]: 'local' }, {}), side({}, {}), 0)
-  check('… et un compte vide reçoit ce que l’appareil porte', m.push && m.remote[T] === 'local')
-  check('le bloc porte ses instants (`__stamps`)', typeof m.remote.__stamps === 'string')
-  check('readRemoteSide lit un bloc d’avant AS4 sans instants', readRemoteSide({ [T]: 'x' }).values[T] === 'x')
+  const iso = (ms: number) => new Date(ms).toISOString()
+  const row = (key: string, value: string | null, at: number) => ({ key, value, updated_at: iso(at), written_at: iso(at) })
+  let p = planPull([row(T, 'new', 200)], () => 'old', {}, 0, null)
+  check('distant plus récent → appliqué ici, sans conflit (rien en file ici)', p.apply.some((a) => a.key === T && a.value === 'new') && p.conflicts.length === 0)
+  p = planPull([row(T, 'theirs', 200)], () => 'mine', { [T]: { value: 'mine', at: 180, offline: true } }, 0, null)
+  check('changé ici ET plus récent ailleurs → le plus récent gagne, CONFLIT signalé', p.apply.some((a) => a.key === T && a.value === 'theirs') && p.conflicts.includes(T) && p.dropQueue.includes(T))
+  p = planPull([row(T, 'theirs', 200)], () => 'mine', { [T]: { value: 'mine', at: 300, offline: true } }, 0, null)
+  check('local plus récent → il garde son tour (il MONTERA), le distant ne l’écrase pas', !p.apply.some((a) => a.key === T) && !p.dropQueue.includes(T))
+  p = planPull([row(C, 'fresh', 250)], (k) => (k === C ? 'stale' : 'a'), { [T]: { value: 'a', at: 300, offline: false } }, 0, null)
+  check('un appareil aux valeurs d’hier ne pousse QUE ce qu’il a changé (sa file), et reçoit le reste', p.apply.some((a) => a.key === C && a.value === 'fresh') && !p.dropQueue.includes(T))
+  p = planPull([row(C, 'card', 200)], () => null, { [C]: { value: null, at: 300, offline: true } }, 0, null)
+  check('un EFFACEMENT plus récent garde son tour (il montera : `null` = retour au défaut)', !p.dropQueue.includes(C) && !p.apply.some((a) => a.key === C))
+  let m = planMigration({ rows: [row(T, 'server', 1)], legacy: null, local: { [T]: 'local' } })
+  check('réglages d’avant (aucune ligne horodatée ici) : le compte gagne, comme AH11.2', m.apply.some((a) => a.key === T && a.value === 'server') && m.accountWon.includes(T))
+  m = planMigration({ rows: [], legacy: null, local: { [T]: '{"fermes":12}' } })
+  check('… et un compte vide reçoit ce que l’appareil porte', m.insert.some((x) => x.key === T && x.value === '{"fermes":12}'))
+  const db = new FakeDb()
+  const stamped = db.triggers.get('user_setting_values')!({ user_id: 'u', key: T, value: 'x', client_at: null }, null)
+  check('chaque ligne porte SON instant, posé par le serveur (plus de `__stamps` d’appareil)', typeof stamped.updated_at === 'string' && stamped.updated_at === stamped.written_at)
+  m = planMigration({ rows: [], legacy: { [T]: '{"fermes":9}', __stamps: '{}' }, local: {} })
+  check('l’ancien bloc d’avant AS4/BJ est lu (une fois, à la migration)', m.legacy.includes(T))
   const want = ['lo-yanum:target', 'lo-yanum:coverage', 'lo-yanum:vigil', 'lo-yanum:area-gap', 'lo-yanum:summons-template', 'lo-yanum:agreement-doc-template', 'lo-yanum:region-rings', 'lo-yanum:coordinator', 'lo-yanum:origin']
   check('carte, seuils, gabarits, régions, objectif, point de départ VOYAGENT', want.every((k) => SYNCED_SETTING_KEYS.includes(k)))
-  check('laissez-passer et temporisation restent LOCAUX', !SYNCED_SETTING_KEYS.some((k) => /farmer-pass|guard-pass|link-unlock|theme:(volunteer|farmer|driver)/.test(k)) && LOCAL_ONLY_KEYS.some((l) => l.key === 'lo-yanum:farmer-pass') && LOCAL_ONLY_KEYS.some((l) => l.key === 'lo-yanum:link-unlock'))
+  check('laissez-passer et temporisation restent LOCAUX (raison « authentification » du registre)', !SYNCED_SETTING_KEYS.some((k) => /farmer-pass|guard-pass|link-unlock/.test(k)) && LOCAL_ONLY_KEYS.some((l) => l.key === 'lo-yanum:farmer-pass') && LOCAL_ONLY_KEYS.some((l) => l.key === 'lo-yanum:link-unlock'))
 }
 
 section('A292 · AS6 — un bloc collé de plusieurs contacts → autant de pistes')

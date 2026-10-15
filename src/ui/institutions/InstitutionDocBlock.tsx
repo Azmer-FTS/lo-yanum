@@ -12,6 +12,7 @@ import { useLocale } from '../hooks/useLocale'
 import { onSettingsApplied } from '../settings/applied'
 import { DocHasDateError, institutionDocPdf } from './institutionDoc'
 import type { DocLayout, InstitutionDocInput } from './institutionDoc'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -44,7 +45,7 @@ const DEFAULT_IDENTITY: DocIdentity = { site: 'artzenu.org.il', email: 'office@a
 
 function readIdentity(): DocIdentity {
   try {
-    const raw = JSON.parse(localStorage.getItem(DOC_IDENTITY_KEY) ?? 'null') as Partial<DocIdentity> | null
+    const raw = JSON.parse(readSetting(DOC_IDENTITY_KEY) ?? 'null') as Partial<DocIdentity> | null
     return { ...DEFAULT_IDENTITY, ...(raw ?? {}) }
   } catch {
     return DEFAULT_IDENTITY
@@ -56,7 +57,7 @@ function useDocIdentity(): [DocIdentity, (next: DocIdentity) => void] {
   const set = (next: DocIdentity) => {
     setState(next)
     try {
-      localStorage.setItem(DOC_IDENTITY_KEY, JSON.stringify(next))
+      writeSetting(DOC_IDENTITY_KEY, JSON.stringify(next))
     } catch {
       /* idem */
     }

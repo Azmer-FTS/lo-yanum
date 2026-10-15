@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { readSetting, writeSetting } from '../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -104,7 +105,7 @@ const INTERVAL_MS = 15 * 60 * 1000
 
 function readJson<T>(key: string): T | null {
   try {
-    const raw = localStorage.getItem(key)
+    const raw = readSetting(key)
     return raw ? (JSON.parse(raw) as T) : null
   } catch {
     return null
@@ -113,8 +114,8 @@ function readJson<T>(key: string): T | null {
 
 function writeJson(key: string, value: unknown): void {
   try {
-    if (value === null) localStorage.removeItem(key)
-    else localStorage.setItem(key, JSON.stringify(value))
+    if (value === null) writeSetting(key, null)
+    else writeSetting(key, JSON.stringify(value))
   } catch {
     /* private mode or a full device: the in-memory state still shows */
   }

@@ -44,6 +44,7 @@ import { useCoreValue } from '../../hooks/useCore'
 import { useLocale } from '../../hooks/useLocale'
 import { formRoutes } from './FormPages'
 import { runUndoable } from '../../components/UndoToast'
+import { readSetting, writeSetting } from '../../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -143,7 +144,7 @@ export function VolunteersScreen() {
   /* ★★ AZ4 — « קיבוץ לפי ישיבה », remis (gardé sur l'appareil). */
   const [grouped, setGroupedState] = useState(() => {
     try {
-      return localStorage.getItem('lo-yanum:people-grouped') === '1'
+      return readSetting('lo-yanum:people-grouped') === '1'
     } catch {
       return false
     }
@@ -151,7 +152,7 @@ export function VolunteersScreen() {
   const setGrouped = (v: boolean) => {
     setGroupedState(v)
     try {
-      localStorage.setItem('lo-yanum:people-grouped', v ? '1' : '0')
+      writeSetting('lo-yanum:people-grouped', v ? '1' : '0')
     } catch {
       /* navigation privée */
     }
@@ -169,7 +170,7 @@ export function VolunteersScreen() {
   const setSort = (s: SortState) => {
     setSortState(s)
     try {
-      localStorage.setItem('lo-yanum:people-sort', JSON.stringify(s))
+      writeSetting('lo-yanum:people-sort', JSON.stringify(s))
     } catch {
       /* navigation privée */
     }

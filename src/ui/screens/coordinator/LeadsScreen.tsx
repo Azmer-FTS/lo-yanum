@@ -48,6 +48,7 @@ import type { CompactFilters } from '../../components/ListFilters'
 import { BranchChips, BranchEditor, branchText } from '../../farm/FarmBranches'
 import { useCoreValue } from '../../hooks/useCore'
 import { LinkedAgenda } from '../../tasks/LinkedAgenda'
+import { readSetting, writeSetting } from '../../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -116,7 +117,7 @@ const LEGACY_SORT: Record<string, SortState> = {
 }
 function readSort(): SortState {
   try {
-    const legacy = LEGACY_SORT[localStorage.getItem(SORT_KEY) ?? '']
+    const legacy = LEGACY_SORT[readSetting(SORT_KEY) ?? '']
     if (legacy) return legacy
   } catch {
     /* navigation privée */
@@ -166,7 +167,7 @@ export function LeadsScreen() {
   const setSort = (s: SortState) => {
     setSortState(s)
     try {
-      localStorage.setItem(SORT_KEY, JSON.stringify(s))
+      writeSetting(SORT_KEY, JSON.stringify(s))
     } catch {
       /* navigation privée */
     }

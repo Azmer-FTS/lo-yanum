@@ -2,6 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react'
 
 import type { IntakeRequest } from '@core/index'
 import { SUPABASE_CONFIGURED } from '../../data/config'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -18,7 +19,8 @@ import { SUPABASE_CONFIGURED } from '../../data/config'
  *    avec ou sans vignette. D'où `useForegroundRefresh` ci-dessous : au
  *    démarrage ET à chaque retour, l'app redemande (AQ2.1).
  *
- * ★ LE « DÉJÀ VU » VIT SUR L'APPAREIL (`localStorage`), ET C'EST VOULU. Il ne
+ * ★ LE « DÉJÀ VU » VIVAIT SUR L'APPAREIL (AQ). ★★★ BJ : il suit le COMPTE (une
+ *   demande vue au bureau ne réapparaît plus sur le téléphone). Il ne
  *   commande que la répétition du BANDEAU ; ce qui compte — la demande reste
  *   en tête tant qu'elle n'est pas traitée — est en base, dans le statut de
  *   la fiche. Perdre le « déjà vu » (navigation privée, données effacées) fait
@@ -46,9 +48,15 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
+/** ★★★ BJ — les demandes vues sur un autre appareil (arrivées du compte). */
+export function reloadIntakeSeen(): void {
+  seen = readSeen()
+  emit()
+}
+
 function readSeen(): ReadonlySet<string> {
   try {
-    const raw = localStorage.getItem(SEEN_KEY)
+    const raw = readSetting(SEEN_KEY)
     const list = raw ? (JSON.parse(raw) as unknown) : []
     return new Set(Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string') : [])
   } catch {
@@ -72,7 +80,7 @@ export function markIntakeSeen(farmIds: readonly string[]): void {
   seen = next
   try {
     /* Borné : deux cents identifiants suffisent à des années de demandes. */
-    localStorage.setItem(SEEN_KEY, JSON.stringify([...next].slice(-200)))
+    writeSetting(SEEN_KEY, JSON.stringify([...next].slice(-200)))
   } catch {
     /* Stockage refusé : le bandeau reviendra une fois, rien ne se perd. */
   }

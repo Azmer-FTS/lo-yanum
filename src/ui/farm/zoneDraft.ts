@@ -1,4 +1,5 @@
 import type { FarmZoneKind, LatLng } from '@core/index'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -74,7 +75,7 @@ export function parseZoneDrafts(raw: string | null): ZoneDraft[] {
 
 export function readZoneDrafts(farmId: string): ZoneDraft[] {
   try {
-    return parseZoneDrafts(localStorage.getItem(zoneDraftKey(farmId)))
+    return parseZoneDrafts(readSetting(zoneDraftKey(farmId)))
   } catch {
     return []
   }
@@ -82,8 +83,8 @@ export function readZoneDrafts(farmId: string): ZoneDraft[] {
 
 function store(farmId: string, list: ZoneDraft[]): void {
   try {
-    if (list.length === 0) localStorage.removeItem(zoneDraftKey(farmId))
-    else localStorage.setItem(zoneDraftKey(farmId), JSON.stringify(list))
+    if (list.length === 0) writeSetting(zoneDraftKey(farmId), null)
+    else writeSetting(zoneDraftKey(farmId), JSON.stringify(list))
   } catch {
     /* Navigation privée : le tracé vit au moins dans l'écran. */
   }

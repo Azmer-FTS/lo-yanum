@@ -50,13 +50,41 @@ export interface DiagnosticSnapshot {
     zonesOff: string[]
     /** Toutes les couches éteintes, pour le texte. */
     off: string[]
-    /** Instant du choix sur CET appareil (0 : jamais choisi depuis BI). */
+    /** ★★★ BJ — instant SERVEUR de la valeur du compte (0 : le compte n'a rien). */
     stamp: number
     /** La réactivation de BI, si elle a eu lieu ici. */
     migration: { at: number; restored: string[] } | null
   }
   viewAs: string | null
   settingsSyncAt: number
+  /** ★★★ BJ — chaque réglage : portée, appareil, compte, dernière synchronisation. */
+  settings: SettingsDiagnostic
+}
+
+/** ★★★ BJ — une ligne du bloc des réglages. */
+export interface SettingDiagRow {
+  key: string
+  scope: 'account' | 'device'
+  /** Pour « appareil » : la raison admise (draft · offline · auth · diagnostic · machine). */
+  reason: string | null
+  /** Valeur brute sur l'appareil (`null` = absente → défaut). */
+  device: string | null
+  /** Valeur du compte au dernier contact ; `undefined` = inconnue. Une longue valeur arrive en empreinte `#h:…:<longueur>`. */
+  account: string | null | undefined
+  accountAt: string | null
+  pending: boolean
+  differs: boolean
+  /** Dernière synchronisation réussie couvrant la clé (ms, 0 = jamais). */
+  syncedAt: number
+}
+
+export interface SettingsDiagnostic {
+  /** Le build parle à un compte (faux pour le jumeau). */
+  connected: boolean
+  rows: SettingDiagRow[]
+  migration: { at: number; promoted: number; legacy: number; accountWon: number; defaulted: number; lostRace: number } | null
+  /** Accès refusés (clé non déclarée, valeur illisible) depuis l'ouverture de la page. */
+  refused: string[]
 }
 
 export type VerdictCode =
@@ -179,11 +207,78 @@ export function diagnosticLines(s: DiagnosticSnapshot, t: Translate, when: (ms: 
   lines.push(L('theme', t(`diagnostic.theme.${s.theme}`)))
   lines.push(L('viewAs', s.viewAs ?? t('diagnostic.none')))
   lines.push(L('settingsSync', s.settingsSyncAt > 0 ? when(s.settingsSyncAt) : t('diagnostic.neverShort')))
+  lines.push(...settingsLines(s, t, when))
   lines.push(L('at', when(s.at)))
   return lines
 }
 
-/** Le texte copié : un titre, puis une ligne par entrée. */
+// ---------------------------------------------------------------------------
+// ★★★ BJ — LE BLOC DES RÉGLAGES
+// ---------------------------------------------------------------------------
+
+/** Une valeur, lisible en une ligne (une longue valeur est résumée, jamais recopiée). */
+export function shortValue(v: string | null | undefined, t: Translate): string {
+  if (v === undefined) return t('diagnostic.settings.unknown')
+  if (v === null) return t('diagnostic.settings.absent')
+  const fp = /^#h:[0-9a-f]+:(\d+)$/.exec(v)
+  if (fp) return t('diagnostic.settings.bytes', { n: Number(fp[1]) })
+  const flat = v.replace(/\s+/g, ' ')
+  return flat.length > 60 ? `${flat.slice(0, 57)}… (${t('diagnostic.settings.bytes', { n: v.length })})` : flat
+}
+
+/** ★ Les deux valeurs diffèrent : la phrase, en clair. */
+export function differsText(r: SettingDiagRow, t: Translate): string {
+  if (r.pending) return t('diagnostic.settings.differsPending')
+  return t('diagnostic.settings.differs', { device: shortValue(r.device, t), account: shortValue(r.account, t) })
+}
+
+/** Une ligne de réglage, telle que le texte copié la porte. */
+export function settingRowText(r: SettingDiagRow, t: Translate, when: (ms: number | string) => string): string {
+  const scope = r.scope === 'account' ? t('diagnostic.settings.scope.account') : `${t('diagnostic.settings.scope.device')} · ${t(`diagnostic.settings.reason.${r.reason ?? 'diagnostic'}`)}`
+  const parts = [`${r.key} [${scope}]`, `${t('diagnostic.settings.columns.device')}: ${shortValue(r.device, t)}`]
+  if (r.scope === 'account') {
+    parts.push(`${t('diagnostic.settings.columns.account')}: ${shortValue(r.account, t)}`)
+    parts.push(r.pending ? t('diagnostic.settings.pendingSince') : r.syncedAt > 0 ? t('diagnostic.settings.synced', { at: when(r.syncedAt) }) : t('diagnostic.settings.neverSynced'))
+    if (r.differs) parts.push(differsText(r, t))
+  }
+  return parts.join(' · ')
+}
+
+/** Les lignes de synthèse du bloc (le détail réglage par réglage suit dans le texte copié). */
+export function settingsLines(s: DiagnosticSnapshot, t: Translate, when: (ms: number | string) => string): DiagnosticLine[] {
+  const L = (key: string, value: string): DiagnosticLine => ({ key, label: t(`diagnostic.rows.${key}`), value })
+  const st = s.settings
+  if (!st) return []
+  const account = st.rows.filter((r) => r.scope === 'account')
+  const differ = account.filter((r) => r.differs)
+  const out: DiagnosticLine[] = [
+    L(
+      'settingsSummary',
+      st.connected
+        ? t('diagnostic.settings.summary', { account: account.length, device: st.rows.length - account.length, differ: differ.length, pending: account.filter((r) => r.pending).length })
+        : t('diagnostic.settings.noAccount'),
+    ),
+    L('settingsDiffer', differ.length === 0 ? t('diagnostic.settings.noneDiffer') : differ.map((r) => `${r.key} — ${differsText(r, t)}`).join(' ; ')),
+    L(
+      'settingsMigration',
+      !st.connected
+        ? t('diagnostic.settings.noAccount')
+        : st.migration
+          ? t('diagnostic.settings.migration', { at: when(st.migration.at), promoted: st.migration.promoted, legacy: st.migration.legacy, won: st.migration.accountWon, defaulted: st.migration.defaulted })
+          : t('diagnostic.settings.notMigratedYet'),
+    ),
+  ]
+  if (st.refused.length > 0) out.push(L('refused', t('diagnostic.settings.refused', { count: st.refused.length, list: st.refused.join(', ') })))
+  return out
+}
+
+/** Le texte copié : un titre, puis une ligne par entrée, puis ★ BJ le bloc des réglages. */
 export function diagnosticText(s: DiagnosticSnapshot, t: Translate, when: (ms: number | string) => string): string {
-  return [t('diagnostic.title'), ...diagnosticLines(s, t, when).map((l) => `${l.label}: ${l.value}`)].join('\n')
+  return [
+    t('diagnostic.title'),
+    ...diagnosticLines(s, t, when).map((l) => `${l.label}: ${l.value}`),
+    '',
+    t('diagnostic.settings.title'),
+    ...(s.settings?.rows ?? []).map((r) => settingRowText(r, t, when)),
+  ].join('\n')
 }

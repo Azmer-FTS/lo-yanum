@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 import { decodeFarmerToken, encodeFarmerToken } from '@core/index'
 import type { FarmerToken } from '@core/index'
+import { readSetting, writeSetting } from '../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -47,7 +48,7 @@ let cache: FarmerToken | null | undefined
 
 function load(): FarmerToken | null {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (!raw) return null
     /* ⚠️ RELU PAR `decodeFarmerToken` ET NON PAR `JSON.parse`, ET LA RAISON EST
        CELLE D'AF3.3 : `localStorage` est éditable par n'importe qui avec les
@@ -68,7 +69,7 @@ export function readFarmerPass(): FarmerToken | null {
 export function writeFarmerPass(token: FarmerToken): void {
   cache = token
   try {
-    localStorage.setItem(KEY, encodeFarmerToken(token))
+    writeSetting(KEY, encodeFarmerToken(token))
   } catch {
     /* Navigation privée : l'espace fonctionne pour cette session et l'icône ne
        le retrouvera pas. Dégradé, pas cassé. */
@@ -79,7 +80,7 @@ export function writeFarmerPass(token: FarmerToken): void {
 export function clearFarmerPass(): void {
   cache = null
   try {
-    localStorage.removeItem(KEY)
+    writeSetting(KEY, null)
   } catch {
     // Idem.
   }

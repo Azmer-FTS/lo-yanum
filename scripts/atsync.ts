@@ -104,8 +104,10 @@ async function device(name: string, preset: Record<string, string>, width: numbe
   const d: Device = { name, ctx, page: await ctx.newPage(), settingsReads: { stamp: 0, full: 0 } }
   d.page.on('request', (r) => {
     const u = r.url()
-    if (r.method() !== 'GET' || !u.includes('/rest/v1/user_settings')) return
-    if (decodeURIComponent(u).includes('select=updated_at')) d.settingsReads.stamp++
+    /* ★★★ BJ — la table des réglages est `user_setting_values` ; la question
+       légère du battement ne demande que `written_at`. */
+    if (r.method() !== 'GET' || !u.includes('/rest/v1/user_setting_values')) return
+    if (/select=written_at(&|$)/.test(decodeURIComponent(u))) d.settingsReads.stamp++
     else d.settingsReads.full++
   })
   await d.page.goto(`${APP}/?at=${Date.now()}#/coordinator/settings`, { waitUntil: 'load' })
@@ -113,10 +115,11 @@ async function device(name: string, preset: Record<string, string>, width: numbe
 }
 
 const card = async (d: Device) => JSON.parse((await d.page.evaluate(() => localStorage.getItem('lo-yanum:coordinator'))) ?? '{}') as { name?: string; phone?: string; role?: string }
-const remoteRow = () => db.rows('user_settings').find((r) => r.user_id === USER_ID)
+/* ★★★ BJ — le compte : une ligne par réglage dans `user_setting_values`. */
+const remoteRow = () => db.rows('user_setting_values').find((r) => r.user_id === USER_ID)
 const remoteCard = (): { name?: string } => {
   try {
-    return JSON.parse(((remoteRow()?.data as Record<string, string>) ?? {})['lo-yanum:coordinator'] ?? '{}')
+    return JSON.parse(String(db.rows('user_setting_values').find((r) => r.user_id === USER_ID && r.key === 'lo-yanum:coordinator')?.value ?? '{}'))
   } catch {
     return {}
   }
@@ -147,10 +150,10 @@ async function openSyncPanel(d: Device): Promise<void> {
 let code = 0
 try {
   section('1 — la séquence du 2026-10-07 : l’iPad crée la ligne, l’iPhone écrit après, l’iPad reste ouvert')
-  check('avant : aucune ligne de réglages en base', remoteRow() === undefined)
+  check('avant : aucun réglage en base', remoteRow() === undefined)
   const iPad = await device('iPad', { 'lo-yanum:area-gap': '{"gapPercent":20}' }, 1032)
   await iPad.page.waitForTimeout(4000)
-  check('l’iPad (ouvert le premier) a créé la ligne', remoteRow() !== undefined)
+  check('l’iPad (ouvert le premier) a écrit ses réglages (migration BJ : promus)', remoteRow() !== undefined)
   check('… sans nom (il n’en a pas)', !remoteCard().name, JSON.stringify(remoteCard()))
   const iPhone = await device('iPhone', { 'lo-yanum:coordinator': PO_CARD }, 402)
   const wrote = await within(10_000, async () => remoteCard().name === 'רכז לדוגמה')
@@ -173,10 +176,10 @@ try {
   await iPad.page.screenshot({ path: `${SHOTS}/a298-ipad-panneau-recu.png` })
 
   section('3 — un changement sur l’iPhone descend seul sur l’iPad (aucun événement)')
-  await iPhone.page.evaluate(() => {
-    const c = JSON.parse(localStorage.getItem('lo-yanum:coordinator') ?? '{}')
-    localStorage.setItem('lo-yanum:coordinator', JSON.stringify({ ...c, phone: '052-0000000' }))
-  })
+  /* ★★★ BJ — par l'écran : l'app n'écrit plus jamais `localStorage` en direct. */
+  await iPhone.page.locator('[data-testid="coordinator-phone"]').scrollIntoViewIfNeeded().catch(() => undefined)
+  await iPhone.page.fill('[data-testid="coordinator-phone"]', '052-0000000')
+  await iPhone.page.click('[data-testid="coordinator-save"]')
   const up = await within(10_000, async () => (remoteCard() as { phone?: string }).phone === '052-0000000')
   check('l’iPhone a fait monter le téléphone changé (≤ 10 s)', up !== null, `${up ?? '—'} ms`)
   await openSyncPanel(iPhone)
@@ -191,7 +194,7 @@ try {
   await iPad.page.waitForTimeout(65_000)
   const after = iPad.settingsReads
   check(
-    'en 65 s sans changement : ≥ 2 questions légères (updated_at), 0 relecture de la ligne',
+    'en 65 s sans changement : ≥ 2 questions légères (written_at), 0 relecture des lignes',
     after.stamp - before.stamp >= 2 && after.full - before.full === 0,
     `légères +${after.stamp - before.stamp}, entières +${after.full - before.full}`,
   )

@@ -38,6 +38,7 @@ import type {
 
 import { Icon } from '../../components/Icon'
 import { SelectField } from '../../components/fields'
+import { readSetting, writeSetting } from '../../../storage/local'
 /** Les trois fichiers de l'association (l'écran d'import unique, AY12.1, choisit lequel). */
 export type SheetKind = 'prospection' | 'signatures' | 'association'
 import { Callout, EmptyState, PageHeader, Section } from '../../components/primitives'
@@ -87,7 +88,7 @@ const MAPPING_KEY = (kind: SheetKind) => `lo-yanum:sheet-mapping:${kind}`
  */
 function readRemembered(kind: SheetKind): Record<string, string> {
   try {
-    const raw = localStorage.getItem(MAPPING_KEY(kind))
+    const raw = readSetting(MAPPING_KEY(kind))
     const parsed: unknown = raw ? JSON.parse(raw) : null
     return parsed && typeof parsed === 'object' ? (parsed as Record<string, string>) : {}
   } catch {
@@ -102,7 +103,7 @@ function remember(kind: SheetKind, headers: string[], mapping: string[]): void {
       const key = normaliseValue(header)
       if (key !== '' && mapping[i] && mapping[i] !== 'ignore') map[key] = mapping[i]
     })
-    localStorage.setItem(MAPPING_KEY(kind), JSON.stringify(map))
+    writeSetting(MAPPING_KEY(kind), JSON.stringify(map))
   } catch {
     /* A browser with no storage still imports; it just does not remember. */
   }
@@ -110,7 +111,7 @@ function remember(kind: SheetKind, headers: string[], mapping: string[]): void {
 
 function forget(kind: SheetKind): void {
   try {
-    localStorage.removeItem(MAPPING_KEY(kind))
+    writeSetting(MAPPING_KEY(kind), null)
   } catch {
     /* nothing to do */
   }

@@ -6,6 +6,7 @@ import {
   loadRemoteActivityReports,
   saveRemoteActivityReport,
 } from '../../data/activityReports'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -49,7 +50,7 @@ const KEEP = 24
 
 function read(): ActivityReportRecord[] {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) return []
@@ -85,7 +86,7 @@ const listeners = new Set<() => void>()
 function publish(next: ActivityReportRecord[]): void {
   current = order(next)
   try {
-    localStorage.setItem(KEY, JSON.stringify(current))
+    writeSetting(KEY, JSON.stringify(current))
   } catch {
     /* L'écran marche encore pour cette session ; rien qui mérite d'échouer. */
   }

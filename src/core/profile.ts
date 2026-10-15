@@ -1,4 +1,5 @@
 import { COORDINATOR } from './config'
+import { readSetting, writeSetting } from '../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -46,7 +47,7 @@ export const COORDINATOR_DEFAULT: CoordinatorProfile = {
  */
 export function readCoordinator(): CoordinatorProfile {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (!raw) return COORDINATOR_DEFAULT
     const parsed = JSON.parse(raw) as Partial<CoordinatorProfile>
     return {
@@ -63,7 +64,7 @@ export function readCoordinator(): CoordinatorProfile {
 
 export function writeCoordinator(next: CoordinatorProfile): void {
   try {
-    localStorage.setItem(
+    writeSetting(
       KEY,
       JSON.stringify({
         name: next.name.trim(),
@@ -80,7 +81,7 @@ export function writeCoordinator(next: CoordinatorProfile): void {
 /** Back to the shipped card. */
 export function resetCoordinator(): void {
   try {
-    localStorage.removeItem(KEY)
+    writeSetting(KEY, null)
   } catch {
     // Same.
   }

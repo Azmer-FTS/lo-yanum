@@ -6,6 +6,7 @@ import type { LatLng } from '@core/types'
 
 import { BASEMAP_URL } from '../components/basemap'
 import { loadBreakdown, measureMeshPair, preloadCorridors, roadGraphStats } from './roadNetwork'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -39,7 +40,7 @@ function load(): Map<string, PairRoad> {
   if (cache) return cache
   cache = new Map()
   try {
-    const raw = localStorage.getItem(STORE_KEY)
+    const raw = readSetting(STORE_KEY)
     if (raw) {
       const s = JSON.parse(raw) as Store
       if (s.archive === archiveId) {
@@ -59,7 +60,7 @@ function persist(): void {
   const pairs: Record<string, string> = {}
   for (const [k, v] of cache) pairs[k] = packPair(v)
   try {
-    localStorage.setItem(STORE_KEY, JSON.stringify({ archive: archiveId, pairs } satisfies Store))
+    writeSetting(STORE_KEY, JSON.stringify({ archive: archiveId, pairs } satisfies Store))
   } catch {
     /* stockage plein ou interdit : la mémoire de la page suffit */
   }
@@ -172,7 +173,7 @@ export function useRoadMesh(): { version: number; progress: MeshProgress } {
 export function forgetRoadMesh(): void {
   cache = new Map()
   try {
-    localStorage.removeItem(STORE_KEY)
+    writeSetting(STORE_KEY, null)
   } catch {
     /* rien */
   }

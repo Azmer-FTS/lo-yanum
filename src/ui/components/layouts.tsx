@@ -19,6 +19,7 @@ import { Icon } from './Icon'
 import type { IconName } from './Icon'
 import { ThemeToggle } from './ThemeToggle'
 import { GlobalSearch, SearchButton } from '../search/GlobalSearch'
+import { readSetting, writeSetting } from '../../storage/local'
 
 interface NavItem {
   to: string
@@ -96,14 +97,14 @@ const NAV_GROUPS: NavGroup[] = [
 export const COORDINATOR_NAV: NavItem[] = NAV_GROUPS.flatMap((g) => g.items)
 
 /**
- * ★★ AX1 — LE RAIL DÉPLIÉ OU COMPACT, ET LE CHOIX EST GARDÉ (par appareil :
- * c'est une affaire d'écran, pas de compte). Compact, chaque entrée porte
+ * ★★ AX1 — LE RAIL DÉPLIÉ OU COMPACT, ET LE CHOIX EST GARDÉ (★★★ BJ : sur le
+ * COMPTE, provisoirement — « à arbitrer » dans `storage/registry.ts`). Compact, chaque entrée porte
  * quand même son nom, sous l'icône.
  */
 const RAIL_KEY = 'lo-yanum:rail:expanded'
 function readRailExpanded(): boolean {
   try {
-    const v = localStorage.getItem(RAIL_KEY)
+    const v = readSetting(RAIL_KEY)
     if (v === '1') return true
     if (v === '0') return false
   } catch {
@@ -114,7 +115,7 @@ function readRailExpanded(): boolean {
 }
 function writeRailExpanded(v: boolean): void {
   try {
-    localStorage.setItem(RAIL_KEY, v ? '1' : '0')
+    writeSetting(RAIL_KEY, v ? '1' : '0')
   } catch {
     /* stockage indisponible */
   }

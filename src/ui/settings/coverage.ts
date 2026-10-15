@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 import { NEGLECT_DAYS_INITIAL } from '@core/index'
 import { onSettingsApplied } from './applied'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -41,7 +42,7 @@ export function defaultCoverage(): CoverageSettings {
 
 function read(): CoverageSettings {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (!raw) return defaultCoverage()
     const parsed = JSON.parse(raw) as Partial<CoverageSettings>
     const days = Number(parsed.neglectDays)
@@ -66,7 +67,7 @@ onSettingsApplied([KEY], () => {
 function publish(next: CoverageSettings): void {
   current = next
   try {
-    localStorage.setItem(KEY, JSON.stringify(next))
+    writeSetting(KEY, JSON.stringify(next))
   } catch {
     // Private browsing; the screen still works for this session.
   }

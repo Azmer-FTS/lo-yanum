@@ -3,6 +3,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Icon } from './Icon'
+import { readSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -49,7 +50,7 @@ export interface SortState {
 
 export function readSortState(storageKey: string, fallback: SortState): SortState {
   try {
-    const raw = localStorage.getItem(storageKey)
+    const raw = readSetting(storageKey)
     if (raw && raw.startsWith('{')) {
       const v = JSON.parse(raw) as SortState
       if (v && typeof v.key === 'string' && (v.dir === 'asc' || v.dir === 'desc')) return v

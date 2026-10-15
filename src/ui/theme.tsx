@@ -11,6 +11,7 @@ import {
 import type { Role, ThemeChoice } from '@core/index'
 import { onSettingsApplied } from './settings/applied'
 import { THEME_SYNC_KEY } from './settings/sync'
+import { readSetting, writeSetting } from '../storage/local'
 
 /**
  * Theme application — the DOM half of the theme system.
@@ -74,7 +75,7 @@ function systemPrefersDark(): boolean {
 
 function readStored(role: Role): ThemeChoice {
   try {
-    const raw = localStorage.getItem(themeStorageKey(role))
+    const raw = readSetting(themeStorageKey(role))
     if (isThemeChoice(raw)) return raw
   } catch {
     // Private browsing / disabled storage: fall through to the role default.
@@ -212,7 +213,7 @@ const getSnapshot = (): Snapshot => snapshot
 function setChoice(next: ThemeChoice): void {
   const role = getSession().role
   try {
-    localStorage.setItem(themeStorageKey(role), next)
+    writeSetting(themeStorageKey(role), next)
   } catch {
     // Storage unavailable — the choice still applies for this session.
     applyToDocument(next)

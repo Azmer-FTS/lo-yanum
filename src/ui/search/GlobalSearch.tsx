@@ -27,6 +27,7 @@ import { FarmStatusDot } from '../components/badges'
 import { Icon } from '../components/Icon'
 import type { IconName } from '../components/Icon'
 import { useCoreValue } from '../hooks/useCore'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -69,7 +70,7 @@ export function openGlobalSearch(): void {
 
 function readRecent(): string[] {
   try {
-    const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]') as unknown
+    const v = JSON.parse(readSetting(RECENT_KEY) ?? '[]') as unknown
     return Array.isArray(v) ? v.filter((k): k is string => typeof k === 'string') : []
   } catch {
     return []
@@ -77,7 +78,7 @@ function readRecent(): string[] {
 }
 function writeRecent(list: string[]): void {
   try {
-    localStorage.setItem(RECENT_KEY, JSON.stringify(list))
+    writeSetting(RECENT_KEY, JSON.stringify(list))
   } catch {
     /* navigation privée : la liste vit le temps de la page */
   }

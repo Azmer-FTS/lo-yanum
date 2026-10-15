@@ -9,6 +9,7 @@ import { Sheet } from '../components/Sheet'
 import { offerUndo } from '../components/UndoToast'
 import { useCoreValue } from '../hooks/useCore'
 import { LinkChip } from '../agenda/links'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ★★ BE (2026-10-13) — CRÉER UNE TÂCHE D'UN GESTE, DE N'IMPORTE OÙ.
@@ -23,7 +24,7 @@ const LAST_LIST_KEY = 'lo-yanum:tasks:list'
 
 export function readLastList(): string | null {
   try {
-    return localStorage.getItem(LAST_LIST_KEY)
+    return readSetting(LAST_LIST_KEY)
   } catch {
     return null
   }
@@ -31,7 +32,7 @@ export function readLastList(): string | null {
 
 export function writeLastList(id: string): void {
   try {
-    localStorage.setItem(LAST_LIST_KEY, id)
+    writeSetting(LAST_LIST_KEY, id)
   } catch {
     // Une commodité : sans elle, la première liste.
   }

@@ -109,7 +109,19 @@ async function resume(d: Device): Promise<void> {
 
 const ls = (d: Device, key: string) => d.page.evaluate((k) => localStorage.getItem(k), key)
 const card = async (d: Device) => JSON.parse((await ls(d, 'lo-yanum:coordinator')) ?? '{}') as { name?: string; role?: string }
-const remoteBlob = (): Record<string, string> => (db.rows('user_settings').find((r) => r.user_id === USER_ID)?.data as Record<string, string>) ?? {}
+/* ★★★ BJ — le compte est désormais `user_setting_values` (une ligne par réglage,
+   `null` = retour au défaut) ; on le relit sous la forme d'un bloc pour garder
+   les intentions d'AS4 telles quelles. */
+const remoteBlob = (): Record<string, string> =>
+  Object.fromEntries(db.rows('user_setting_values').filter((r) => r.user_id === USER_ID && typeof r.value === 'string').map((r) => [String(r.key), String(r.value)]))
+async function openBlocks(p: Page): Promise<void> {
+  for (let i = 0; i < 40; i++) {
+    const closed = p.locator('main [data-testid^="block-"][aria-expanded="false"]')
+    if ((await closed.count()) === 0) break
+    await closed.first().click().catch(() => undefined)
+    await p.waitForTimeout(80)
+  }
+}
 const remoteCard = (): { name?: string; role?: string } => {
   try {
     return JSON.parse(remoteBlob()['lo-yanum:coordinator'] ?? '{}')
@@ -158,14 +170,16 @@ try {
   check('… et B l’applique', (await ls(B, 'lo-yanum:coordinator')) === null, String(await ls(B, 'lo-yanum:coordinator')))
 
   section('4 — un appareil aux valeurs d’hier n’écrase pas ce qu’il n’a pas touché')
-  /* A pose un objectif ; B, sans avoir relu, change sa marge de route. */
-  await A.page.evaluate(() => localStorage.setItem('lo-yanum:route-margin', '25'))
+  /* A pose une marge de route ; B, sans avoir relu, change le rôle de sa carte.
+     ★★★ BJ — par l'écran (l'app n'écrit plus jamais `localStorage` en direct). */
+  await openBlocks(A.page)
+  await A.page.fill('[data-testid="route-margin"]', '25')
+  await A.page.click('[data-testid="route-margin-save"]')
   await A.page.waitForTimeout(2600)
   check('la marge de A est dans la base', remoteBlob()['lo-yanum:route-margin'] === '25', String(remoteBlob()['lo-yanum:route-margin']))
-  await B.page.evaluate(() => localStorage.setItem('lo-yanum:origin', JSON.stringify({ label: 'נתיבות', position: { lat: 31.42, lng: 34.59 } })))
-  await B.page.waitForTimeout(2600)
+  await saveCard(B, { role: 'תפקיד ישן' })
   check('A289 · l’écriture de B n’a PAS effacé la marge posée par A', remoteBlob()['lo-yanum:route-margin'] === '25', String(remoteBlob()['lo-yanum:route-margin']))
-  check('… et le point de départ de B est monté', (remoteBlob()['lo-yanum:origin'] ?? '').includes('נתיבות'))
+  check('… et la carte de B est montée', remoteCard().role === 'תפקיד ישן', JSON.stringify(remoteCard()))
 
   section('5 — deux appareils en conflit : la plus récente gagne, et le PO le sait')
   /* B perd le réseau (lui seul), change son rôle ; A, en ligne, change le
@@ -186,12 +200,14 @@ try {
   await B.page.screenshot({ path: `${SHOTS}/as4-ipad-conflit.png` })
 
   section('6 — A290 · ce qui ne doit jamais monter')
+  /* Les clés d'APPAREIL posées à la main (ce qu'un lien d'agriculteur ferait) ;
+     le thème, lui, par son bouton. */
   await A.page.evaluate(() => {
-    localStorage.setItem('lo-yanum:theme:coordinator', 'dark')
     localStorage.setItem('lo-yanum:farmer-pass', '{"token":"x"}')
     localStorage.setItem('lo-yanum:link-unlock', '{"x":1}')
-    localStorage.setItem('lo-yanum:route-margin', '30')
   })
+  await openBlocks(A.page)
+  await A.page.locator('[data-testid="settings-theme-dark"]').first().click()
   await A.page.waitForTimeout(2600)
   const keys = Object.keys(remoteBlob())
   check('ni laissez-passer, ni temporisation dans la base', !keys.some((k) => /farmer-pass|link-unlock|guard-pass/.test(k)), keys.join(','))

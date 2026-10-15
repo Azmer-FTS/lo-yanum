@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 import type { GuardPass } from '@core/index'
+import { readSetting, writeSetting } from '../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -37,7 +38,7 @@ let cache: GuardPass | null | undefined
 
 function load(): GuardPass | null {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as GuardPass
     /* Une forme plus ancienne, ou un stockage abîmé : on se tait plutôt que de
@@ -62,7 +63,7 @@ export function readGuardPass(): GuardPass | null {
 export function writeGuardPass(pass: GuardPass): void {
   cache = pass
   try {
-    localStorage.setItem(KEY, JSON.stringify(pass))
+    writeSetting(KEY, JSON.stringify(pass))
   } catch {
     /* Navigation privée : l'écran fonctionne pour cette session, il ne
        survivra pas à une fermeture. C'est dégradé, pas cassé. */
@@ -73,7 +74,7 @@ export function writeGuardPass(pass: GuardPass): void {
 export function clearGuardPass(): void {
   cache = null
   try {
-    localStorage.removeItem(KEY)
+    writeSetting(KEY, null)
   } catch {
     // Idem.
   }

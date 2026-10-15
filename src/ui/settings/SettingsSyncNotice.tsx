@@ -17,7 +17,7 @@ import { THEME_SYNC_KEY } from './sync'
  * S'empile sous la mise à jour et les demandes (même mécanique qu'AQ2).
  */
 export function SettingsSyncNotice() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [applied, setApplied] = useState<string[]>([])
   const [conflicts, setConflicts] = useState<string[]>([])
   const ref = useRef<HTMLDivElement | null>(null)
@@ -30,20 +30,25 @@ export function SettingsSyncNotice() {
   )
 
   useEffect(() => {
-    // ★ AY1.3 — le thème se VOIT changer : inutile de l'annoncer.
+    /* ★ AY1.3 — le thème se VOIT changer : inutile de l'annoncer.
+       ★★★ BJ — et depuis que TOUT voyage (plis de blocs, tris, onglets,
+       disposition de carte), seuls les réglages qui ont un NOM pour le PO
+       (`settingsSync.keys.*`) sont annoncés ; les états d'écran suivent sans
+       bandeau. Le diagnostic, lui, les montre tous. */
+    const named = (k: string): boolean => k !== THEME_SYNC_KEY && i18n.exists(`settingsSync.keys.${k.replace('lo-yanum:', '')}`)
     const offA = onSettingsApplied(null, (keys) => {
-      const shown = keys.filter((k) => k !== THEME_SYNC_KEY)
+      const shown = keys.filter(named)
       if (shown.length > 0) setApplied((prev) => [...new Set([...prev, ...shown])])
     })
     const offC = onSettingsConflict((keys) => {
-      const shown = keys.filter((k) => k !== THEME_SYNC_KEY)
+      const shown = keys.filter(named)
       if (shown.length > 0) setConflicts((prev) => [...new Set([...prev, ...shown])])
     })
     return () => {
       offA()
       offC()
     }
-  }, [])
+  }, [i18n])
 
   useEffect(() => {
     if (applied.length === 0 || conflicts.length > 0) return

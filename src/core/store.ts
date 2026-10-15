@@ -261,7 +261,8 @@ export function undoable<R>(fn: () => R): { result: R; changed: number; undo: ()
  *
  * ⚠️ NOT a mutation, and it must not become one. It writes nothing, so the
  *    Supabase backend sees no change and nothing is pushed — which is right:
- *    the outlines are a setting of this device, not a row.
+ *    the outlines are a setting, not a row (★★★ BJ — an ACCOUNT setting, see
+ *    `storage/registry.ts`; « of this device » was already false since AH11.2).
  */
 export function notifyDerivedChange(): void {
   /* AG1 — pas par `commit` non plus : ce repeint n'écrit rien (la note

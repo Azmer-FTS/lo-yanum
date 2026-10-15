@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 import { presetToSession, setReadOnly, setSession } from '@core/index'
 import type { Role, SessionPreset } from '@core/index'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -95,7 +96,7 @@ export interface ViewAs {
 
 function read(): ViewAs | null {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<ViewAs>
     if (!parsed.role || parsed.role === 'coordinator') return null
@@ -116,8 +117,8 @@ const listeners = new Set<() => void>()
 function publish(next: ViewAs | null): void {
   current = next
   try {
-    if (next) localStorage.setItem(KEY, JSON.stringify(next))
-    else localStorage.removeItem(KEY)
+    if (next) writeSetting(KEY, JSON.stringify(next))
+    else writeSetting(KEY, null)
   } catch {
     // The banner still works for this session; nothing worth failing over.
   }

@@ -1,5 +1,6 @@
 import { HOME_BASE, LOCALITY_POSITIONS, parsePositionInput } from '@core/index'
 import type { LatLng } from '@core/index'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * PO RETURN, 2026-09-02 — "נקודת מוצא" IN הגדרות.
@@ -65,7 +66,7 @@ export function originSuggestions(): string[] {
 
 export function readOrigin(): MapOrigin | null {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<MapOrigin> & Partial<LatLng>
     const lat = parsed.position?.lat
@@ -81,8 +82,8 @@ export function readOrigin(): MapOrigin | null {
 
 export function writeOrigin(origin: MapOrigin | null): void {
   try {
-    if (origin === null) localStorage.removeItem(KEY)
-    else localStorage.setItem(KEY, JSON.stringify(origin))
+    if (origin === null) writeSetting(KEY, null)
+    else writeSetting(KEY, JSON.stringify(origin))
   } catch {
     // A preference, never a requirement.
   }

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 
 import { TabBar } from '../components/TabBar'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -38,7 +39,7 @@ const isTab = (v: string | null): v is FarmTab => v !== null && (FARM_TABS as re
 
 export function readFarmTab(farmId: string): FarmTab {
   try {
-    const v = localStorage.getItem(key(farmId))
+    const v = readSetting(key(farmId))
     return isTab(v) ? v : 'farm'
   } catch {
     return 'farm'
@@ -60,7 +61,7 @@ export function useFarmTab(farmId: string): [FarmTab, (t: FarmTab) => void] {
   const setTab = (t: FarmTab): void => {
     setTabState(t)
     try {
-      localStorage.setItem(key(farmId), t)
+      writeSetting(key(farmId), t)
     } catch {
       /* navigation privée */
     }

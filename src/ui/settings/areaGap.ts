@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 import { AREA_GAP_THRESHOLD_INITIAL } from '@core/index'
 import { onSettingsApplied } from './applied'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -39,7 +40,7 @@ export function defaultAreaGap(): AreaGapSettings {
 
 function read(): AreaGapSettings {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (!raw) return defaultAreaGap()
     const parsed = JSON.parse(raw) as Partial<AreaGapSettings>
     const pct = Number(parsed.gapPercent)
@@ -65,7 +66,7 @@ onSettingsApplied([KEY], () => {
 function publish(next: AreaGapSettings): void {
   current = next
   try {
-    localStorage.setItem(KEY, JSON.stringify(next))
+    writeSetting(KEY, JSON.stringify(next))
   } catch {
     // Navigation privée ; l'écran fonctionne quand même pour cette session.
   }

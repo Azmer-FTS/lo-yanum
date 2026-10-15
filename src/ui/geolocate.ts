@@ -1,4 +1,5 @@
 import type { LatLng } from '@core/index'
+import { readSetting, writeSetting } from '../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -79,7 +80,7 @@ let cached: Fix | null | undefined
 
 function load(): Fix | null {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (!raw) return null
     const p = JSON.parse(raw) as Partial<Fix> & { position?: Partial<LatLng> }
     const lat = Number(p.position?.lat)
@@ -104,7 +105,7 @@ export function lastFix(): Fix | null {
 /** Ce que l'appareil nous a répondu la dernière fois qu'il a répondu. */
 function rememberGranted(): void {
   try {
-    localStorage.setItem(GRANTED_KEY, String(Date.now()))
+    writeSetting(GRANTED_KEY, String(Date.now()))
   } catch {
     // Navigation privée : l'observation vit pour cette session.
   }
@@ -113,7 +114,7 @@ function rememberGranted(): void {
 /** A-t-on déjà obtenu un relevé de cet appareil ? */
 export function everGranted(): boolean {
   try {
-    return localStorage.getItem(GRANTED_KEY) !== null
+    return readSetting(GRANTED_KEY) !== null
   } catch {
     return false
   }
@@ -128,7 +129,7 @@ function remember(position: GeolocationPosition): Fix {
   cached = fix
   rememberGranted()
   try {
-    localStorage.setItem(KEY, JSON.stringify(fix))
+    writeSetting(KEY, JSON.stringify(fix))
   } catch {
     // Navigation privée : le point vit pour cette session, ce qui suffit.
   }

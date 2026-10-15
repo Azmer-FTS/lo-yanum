@@ -1,3 +1,5 @@
+import { readSetting, writeSetting } from '../../storage/local'
+
 /**
  * PO POINT 7b — WHERE THE REPORT GOES, AND WHY IT IS A LOCAL SETTING.
  *
@@ -16,12 +18,19 @@
  *   cannot read a browser's localStorage, so when the monthly email is built
  *   this becomes a row (a `settings` table, or a column on `app_users`) and
  *   this module becomes its cache. Noted here rather than discovered then.
+ *
+ * ★★★ BJ (2026-10-15) — IT IS NOW AN ACCOUNT SETTING (`storage/registry.ts`),
+ *   and both reasons above still hold: the value is kept on the device as the
+ *   account's local copy (so it is there with no network), and it is the
+ *   `user_setting_values` row P3.3bis asked for. The PO's rule — « par défaut,
+ *   un réglage suit le compte » — overrode « one person's preference about his
+ *   own device ».
  */
 const KEY = 'lo-yanum:report-recipient'
 
 export function readReportRecipient(): string {
   try {
-    return localStorage.getItem(KEY)?.trim() ?? ''
+    return readSetting(KEY)?.trim() ?? ''
   } catch {
     // Private browsing, or storage disabled: no recipient, and the button
     // says so rather than failing.
@@ -32,8 +41,8 @@ export function readReportRecipient(): string {
 export function writeReportRecipient(email: string): void {
   try {
     const v = email.trim()
-    if (v === '') localStorage.removeItem(KEY)
-    else localStorage.setItem(KEY, v)
+    if (v === '') writeSetting(KEY, null)
+    else writeSetting(KEY, v)
   } catch {
     // Nothing to do: the value is a convenience, never a requirement.
   }

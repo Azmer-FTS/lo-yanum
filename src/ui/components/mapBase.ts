@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 import type { BasemapBase } from './basemap'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * WHICH GROUND THE MAP COMES UP ON — the stored preference, and the network
@@ -37,7 +38,7 @@ const STORE_KEY = 'lo-yanum:map-base'
  */
 export function readStoredBase(): BasemapBase {
   try {
-    if (localStorage.getItem(STORE_KEY) === 'satellite') return 'satellite'
+    if (readSetting(STORE_KEY) === 'satellite') return 'satellite'
   } catch {
     // Private browsing. The default is the right default.
   }
@@ -47,7 +48,7 @@ export function readStoredBase(): BasemapBase {
 export function writeStoredBase(base: BasemapBase): void {
   current = base
   try {
-    localStorage.setItem(STORE_KEY, base)
+    writeSetting(STORE_KEY, base)
   } catch {
     // Nothing to do and nothing worth failing a map over.
   }
@@ -65,6 +66,12 @@ export function writeStoredBase(base: BasemapBase): void {
  */
 let current: BasemapBase = readStoredBase()
 const listeners = new Set<() => void>()
+
+/** ★★★ BJ — le fond choisi sur un autre appareil (arrivé du compte) : relu, et les cartes suivent. */
+export function reloadStoredBase(): void {
+  current = readStoredBase()
+  for (const l of listeners) l()
+}
 
 const getBase = (): BasemapBase => current
 

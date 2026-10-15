@@ -11,6 +11,7 @@ import type { CompactFilters } from './ListFilters'
 import { BandCard } from './band'
 import { ChevronForward, Icon } from './Icon'
 import type { IconName } from './Icon'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ★★ Z3 (2026-09-07) — THE COUNTER IS ONE THING, AND THE FILTER ROW HOLDS IT.
@@ -649,7 +650,7 @@ const BLOCK_PREFIX = 'lo-yanum:block:'
 
 export function readBlockOpen(key: string, fallback: boolean): boolean {
   try {
-    const stored = localStorage.getItem(BLOCK_PREFIX + key)
+    const stored = readSetting(BLOCK_PREFIX + key)
     return stored !== null ? stored === '1' : fallback
   } catch {
     return fallback
@@ -658,7 +659,7 @@ export function readBlockOpen(key: string, fallback: boolean): boolean {
 
 export function writeBlockOpen(key: string, open: boolean): void {
   try {
-    localStorage.setItem(BLOCK_PREFIX + key, open ? '1' : '0')
+    writeSetting(BLOCK_PREFIX + key, open ? '1' : '0')
   } catch {
     // A remembered fold is a convenience, not a requirement.
   }

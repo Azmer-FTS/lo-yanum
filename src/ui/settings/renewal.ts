@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 import { RENEWAL_WINDOW_DAYS_DEFAULT } from '@core/index'
 import { onSettingsApplied } from './applied'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ★★ AG5.1 (2026-09-09) — LE DÉLAI DE RENOUVELLEMENT, RÉGLABLE, SUR CET
@@ -29,7 +30,7 @@ export const RENEWAL_WINDOW_MAX = 365
 
 export function renewalWindowDays(): number {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = readSetting(KEY)
     if (raw === null) return RENEWAL_WINDOW_DAYS_DEFAULT
     const n = Number(raw)
     if (!Number.isFinite(n)) return RENEWAL_WINDOW_DAYS_DEFAULT
@@ -41,7 +42,7 @@ export function renewalWindowDays(): number {
 
 export function writeRenewalWindowDays(days: number): void {
   try {
-    localStorage.setItem(KEY, String(Math.round(days)))
+    writeSetting(KEY, String(Math.round(days)))
   } catch {
     // Navigation privée : la valeur par défaut continue de servir.
   }
@@ -65,7 +66,7 @@ const PHOTO_KEY = 'lo-yanum:require-id-photo'
 
 export function requiresIdPhoto(): boolean {
   try {
-    return localStorage.getItem(PHOTO_KEY) === '1'
+    return readSetting(PHOTO_KEY) === '1'
   } catch {
     return false
   }
@@ -73,8 +74,8 @@ export function requiresIdPhoto(): boolean {
 
 export function writeRequiresIdPhoto(required: boolean): void {
   try {
-    if (required) localStorage.setItem(PHOTO_KEY, '1')
-    else localStorage.removeItem(PHOTO_KEY)
+    if (required) writeSetting(PHOTO_KEY, '1')
+    else writeSetting(PHOTO_KEY, null)
   } catch {
     // Idem.
   }

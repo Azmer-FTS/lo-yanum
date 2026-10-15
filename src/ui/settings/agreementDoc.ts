@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { onSettingsApplied } from './applied'
 
 import { plainText, unknownAgreementVars } from '@core/index'
+import { readSetting, writeSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -58,7 +59,7 @@ let templateCache: string | null | undefined
 export function readTemplateOverride(): string | null {
   if (templateCache === undefined) {
     try {
-      templateCache = localStorage.getItem(TEMPLATE_KEY)
+      templateCache = readSetting(TEMPLATE_KEY)
     } catch {
       templateCache = null
     }
@@ -84,7 +85,7 @@ export function writeAgreementTemplate(next: string): TemplateSaveResult {
   if (unknown.length > 0) return { ok: false, unknown }
   templateCache = next
   try {
-    localStorage.setItem(TEMPLATE_KEY, next)
+    writeSetting(TEMPLATE_KEY, next)
   } catch {
     // Navigation privée : le gabarit s'applique, il ne survit pas à l'onglet.
   }
@@ -95,7 +96,7 @@ export function writeAgreementTemplate(next: string): TemplateSaveResult {
 export function resetAgreementTemplate(): void {
   templateCache = null
   try {
-    localStorage.removeItem(TEMPLATE_KEY)
+    writeSetting(TEMPLATE_KEY, null)
   } catch {
     /* idem */
   }
@@ -116,7 +117,7 @@ onSettingsApplied([TEMPLATE_KEY, LOGO_KEY], () => {
 export function readAgreementLogo(): AgreementLogo {
   if (logoCache === undefined) {
     try {
-      const raw = localStorage.getItem(LOGO_KEY)
+      const raw = readSetting(LOGO_KEY)
       logoCache = raw ? sanitise(JSON.parse(raw) as Partial<AgreementLogo>) : DEFAULT_LOGO
     } catch {
       logoCache = DEFAULT_LOGO
@@ -139,7 +140,7 @@ export function writeAgreementLogo(patch: Partial<AgreementLogo>): AgreementLogo
   const next = sanitise({ ...readAgreementLogo(), ...patch })
   logoCache = next
   try {
-    localStorage.setItem(LOGO_KEY, JSON.stringify(next))
+    writeSetting(LOGO_KEY, JSON.stringify(next))
   } catch {
     /* idem */
   }
@@ -151,7 +152,7 @@ export function writeAgreementLogo(patch: Partial<AgreementLogo>): AgreementLogo
 export function resetAgreementLogo(): void {
   logoCache = DEFAULT_LOGO
   try {
-    localStorage.removeItem(LOGO_KEY)
+    writeSetting(LOGO_KEY, null)
   } catch {
     /* idem */
   }

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+import { authStorage } from '../storage/local'
 import { SUPABASE_CONFIGURED, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from './config'
 
 /**
@@ -47,6 +48,9 @@ export function getSupabase(): Promise<SupabaseClient | null> {
          */
         detectSessionInUrl: false,
         storageKey: 'lo-yanum:auth',
+        /* ★★★ BJ — même la bibliothèque écrit par le registre : la session est
+           une clé DÉCLARÉE (portée « appareil », raison « authentification »). */
+        storage: authStorage,
       },
     }),
   )

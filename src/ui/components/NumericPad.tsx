@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Icon } from './Icon'
+import { readSetting } from '../../storage/local'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -49,7 +50,7 @@ const FORCE_KEY = 'lo-yanum:numpad'
 export function isIPadLike(): boolean {
   if (typeof navigator === 'undefined') return false
   try {
-    const forced = localStorage.getItem(FORCE_KEY)
+    const forced = readSetting(FORCE_KEY)
     if (forced === 'on') return true
     if (forced === 'off') return false
   } catch {

@@ -814,7 +814,8 @@ function FarmIdentity({ farm }: { farm: Farm }) {
 /**
  * ★★ AD3.3 — ET LA CARTE DOIT ÊTRE VISIBLE POUR QU'ON PUISSE TRACER DESSUS.
  *
- * La disposition carte/contenu est mémorisée par appareil (P0.1) et « מוסתר »
+ * La disposition carte/contenu est mémorisée (par appareil en P0.1, par compte
+ * depuis BJ) et « מוסתר »
  * est un choix légitime qu'un coordinateur peut avoir fait il y a des
  * semaines. Arriver par la file « לתיחום » sur une carte en `display:none`
  * serait un geste direct vers un outil invisible, ce qui est pire qu'un geste
