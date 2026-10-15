@@ -105,7 +105,11 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 ## Où en est-on
 
 - **BJ — LES RÉGLAGES SUIVENT LE COMPTE (REGISTRE, TABLE PAR RÉGLAGE, PORTE
-  QUI VERROUILLE) — TERMINÉE EN LOCAL, POUSSÉE ; voir « Déployé » ci-dessous** (2026-10-15). Branche `main`. DEUX migrations,
+  QUI VERROUILLE) — TERMINÉE, POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-15/16).
+  Commits : `0fab57d` (code + portes ; déploiement ARRÊTÉ par `zones` en CI,
+  jamais servi), `5c5a9b0` (contrôle de `zones` réécrit — SERVI :
+  `version.json` = 5c5a9b0), puis le commit de fin de passe
+  (`docs/bj/portes-deploye-5c5a9b0.md`). Branche `main`. DEUX migrations,
   appliquées par le MCP AVANT le déploiement : `20261015000100` (table
   `user_setting_values`, MCP `20261015183102`) et `20261015000200`
   (`public_agreement_template()` lit la nouvelle table, MCP `20261015183349`) ;
@@ -152,7 +156,12 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
     → lire la table). Plus celles de BI et d'avant.
   - Reprise : `bun run bjguard && bun run bjpass && bun run typecheck` ;
     `bun run bjui` ; `BASE_URL=https://azmer-fts.github.io/lo-yanum bun run bjui` (déployé).
-  - Déployé : EN ATTENTE (rejouer `BASE_URL=… bun run bjui`, puis biui, bhui, bgui, bfui, beui, bdui, bbui ; bcmobile, aymobile sur `/demo`).
+  - Déployé `5c5a9b0` : bjui 56/56 (deux profils, trois réglages + migration +
+    heure serveur + file hors ligne + diagnostic + jumeau), biui 45, bhui 34,
+    bgui 90, bfui 52, beui 57, bdui 76, bbui 82, assettings 20, atsync 17
+    (app) ; bcmobile 246, aymobile 48 (jumeau) — tout vert.
+  - `zones` (CI) réécrit : à l'ouverture, aucune écriture de DONNÉES (les
+    réglages du compte montent désormais — c'est la règle).
 
 - **BI — POURQUOI L'ORDINATEUR NE DESSINAIT PAS LES FORMES — TERMINÉE, POUSSÉE,
   DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-15). Branche `main`. Aucune

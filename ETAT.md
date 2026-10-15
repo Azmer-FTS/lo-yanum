@@ -86,6 +86,11 @@
 > sur un build d'avant BJ continue d'écrire l'ancien bloc : ses changements ne
 > voyagent plus jusqu'à sa mise à jour (AJ la propose au retour).
 >
+> **Déployé `5c5a9b0`** (`0fab57d` arrêté en CI par `zones`, contrôle réécrit) :
+> bjui 56/56, biui 45, bhui 34, bgui 90, bfui 52, beui 57, bdui 76, bbui 82,
+> assettings 20, atsync 17 ; bcmobile 246, aymobile 48 (jumeau)
+> (`docs/bj/portes-deploye-5c5a9b0.md`).
+>
 ---
 
 > 🏁 **BI — POURQUOI L'ORDINATEUR NE DESSINAIT PAS LES FORMES. 2026-10-15.**
