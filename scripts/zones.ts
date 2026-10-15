@@ -307,7 +307,12 @@ try {
   )
   check(
     'the app hydrated from the fake PostgREST (app_users was asked)',
-    db.log.length === 0 && (await bodyText(page)).length > 0,
+    /* ★★★ BJ — opening the app now legitimately pushes this device's SETTINGS
+       to the account (`user_setting_values`: the per-device migration, then
+       the map layout it remembers). What must not happen at the door is a
+       DATA write — farms, zones, agreements. */
+    db.log.filter((l) => !l.includes('user_setting_values')).length === 0 && (await bodyText(page)).length > 0,
+    db.log.filter((l) => !l.includes('user_setting_values')).join(' ; '),
   )
 
   // ---- 1. create an entity through the form ------------------------------

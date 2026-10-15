@@ -134,6 +134,15 @@ overlap 167 · zones 38 · agreement 18 · demo 17.
 
 ## Ce que les portes ont attrapé pendant la passe
 
+- **Au déploiement** (run 38801434419, `0fab57d` jamais servi) : `zones`
+  37/38 — « the app hydrated… » exigeait AUCUNE écriture à l'ouverture
+  (`db.log.length === 0`). Depuis BJ, l'ouverture fait monter les réglages de
+  l'appareil (migration, disposition de carte) : écriture légitime, et en
+  local la course tombait du bon côté. Contrôle réécrit : aucune écriture de
+  DONNÉES à l'ouverture (`user_setting_values` exclu, et nommé s'il échoue).
+  Rejoué comme la CI (build réel, `vite preview` 5197) : zones 38, agreement
+  18, demo 17.
+
 - `appass` A260 : la page publique lisait le gabarit dans `user_settings`,
   que BJ n'écrit plus → migration `20261015000200`.
 - `bjui` A522 : hors ligne, le bouton de fond de carte se retire (AK6) — le
