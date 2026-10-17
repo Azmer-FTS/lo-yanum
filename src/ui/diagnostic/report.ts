@@ -65,7 +65,7 @@ export interface DiagnosticSnapshot {
 export interface SettingDiagRow {
   key: string
   scope: 'account' | 'device'
-  /** Pour « appareil » : la raison admise (draft · offline · auth · diagnostic · machine). */
+  /** Pour « appareil » : la raison admise (draft · offline · auth · diagnostic · machine · screen). */
   reason: string | null
   /** Valeur brute sur l'appareil (`null` = absente → défaut). */
   device: string | null
@@ -85,6 +85,10 @@ export interface SettingsDiagnostic {
   migration: { at: number; promoted: number; legacy: number; accountWon: number; defaulted: number; lostRace: number } | null
   /** Accès refusés (clé non déclarée, valeur illisible) depuis l'ouverture de la page. */
   refused: string[]
+  /** ★★ BK — les comptes rendus : file hors ligne, ancienne clé encore là, et ce qu'a fait sa vidange. */
+  activity?: { pending: number; legacy: number; drained: { at: string; sent: number; kept: number; erased: boolean } | null }
+  /** ★★ BK — les plis par ferme d'avant BK (`farm-form-…`) encore rangés ici : abandonnés, jamais lus. */
+  abandonedFolds?: number
 }
 
 export type VerdictCode =
@@ -268,6 +272,20 @@ export function settingsLines(s: DiagnosticSnapshot, t: Translate, when: (ms: nu
           : t('diagnostic.settings.notMigratedYet'),
     ),
   ]
+  if (st.activity) {
+    const a = st.activity
+    out.push(
+      L(
+        'activityReports',
+        [
+          t('diagnostic.settings.activityPending', { count: a.pending }),
+          a.legacy > 0 ? t('diagnostic.settings.activityLegacy', { count: a.legacy }) : t('diagnostic.settings.activityNoLegacy'),
+          ...(a.drained ? [t(a.drained.erased ? 'diagnostic.settings.activityErased' : 'diagnostic.settings.activityKept', { at: when(a.drained.at), sent: a.drained.sent, kept: a.drained.kept })] : []),
+        ].join(' · '),
+      ),
+    )
+  }
+  if (st.abandonedFolds !== undefined) out.push(L('foldsAbandoned', st.abandonedFolds === 0 ? t('diagnostic.settings.foldsNone') : t('diagnostic.settings.foldsAbandoned', { count: st.abandonedFolds })))
   if (st.refused.length > 0) out.push(L('refused', t('diagnostic.settings.refused', { count: st.refused.length, list: st.refused.join(', ') })))
   return out
 }

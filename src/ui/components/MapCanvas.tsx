@@ -1,7 +1,7 @@
 import maplibregl from 'maplibre-gl'
 import type { ExpressionSpecification } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +12,7 @@ import type { LatLng, Landmark } from '@core/index'
 import { readToken } from './badges'
 import { Icon } from './Icon'
 import { readStoredBase, writeStoredBase } from './mapBase'
+import { MapViewScope, readMapView, writeMapView } from './mapCamera'
 import { MapTools } from './MapTools'
 import { QuickPinSheet, pinHref } from './QuickPin'
 import type { PinCreated } from './QuickPin'
@@ -1297,6 +1298,10 @@ export default function MapCanvas({
    */
   const userControlledRef = useRef(false)
   const [userControlled, setUserControlled] = useState(false)
+  /** ★★ BK — l'écran de carte général qui m'entoure (`mapCamera.ts`), ou `null`. */
+  const viewScope = useContext(MapViewScope)
+  const viewScopeRef = useRef(viewScope)
+  viewScopeRef.current = viewScope
   const takeCamera = (): void => {
     if (userControlledRef.current) return
     userControlledRef.current = true
@@ -1382,6 +1387,10 @@ export default function MapCanvas({
      */
     const restore = cameraRestoreRef.current
     cameraRestoreRef.current = null
+    /* ★★ BK — LA ZONE QUE LE PO REGARDAIT sur cet écran, ici ou sur un autre
+       appareil (`lo-yanum:map-view`, compte). Retrouvée, elle est À LUI : la
+       caméra est prise, et l'arrivée des données ne la recadre pas (BF). */
+    const storedView = !restore && viewScopeRef.current ? readMapView(viewScopeRef.current) : null
 
     const map = new maplibregl.Map({
       container: containerRef.current,
@@ -1389,8 +1398,8 @@ export default function MapCanvas({
       //   `readStoredBase`. A device left in satellite mode and opened with no
       //   coverage comes up on the vector archive it is holding.
       style: buildBasemapStyle(resolvedThemeOf(), initialGround),
-      center: restore?.center ?? [center?.lng ?? HOME_BASE.lng, center?.lat ?? HOME_BASE.lat],
-      zoom: restore?.zoom ?? zoom,
+      center: restore?.center ?? (storedView ? [storedView.lng, storedView.lat] : [center?.lng ?? HOME_BASE.lng, center?.lat ?? HOME_BASE.lat]),
+      zoom: restore?.zoom ?? storedView?.zoom ?? zoom,
       bearing: restore?.bearing ?? 0,
       pitch: restore?.pitch ?? 0,
       interactive,
@@ -1931,6 +1940,26 @@ export default function MapCanvas({
       if (e.originalEvent) takeCameraRef.current()
     }
     for (const type of ['movestart', 'zoomstart', 'rotatestart', 'pitchstart', 'dragstart'] as const) map.on(type, userGesture)
+    if (storedView) {
+      userControlledRef.current = true
+      setUserControlled(true)
+    }
+    /* ★★ BK — la zone regardée, gardée une seconde après un mouvement DU PO. */
+    let viewTimer: ReturnType<typeof setTimeout> | undefined
+    map.on('moveend', () => {
+      const screen = viewScopeRef.current
+      if (!screen || !userControlledRef.current) return
+      clearTimeout(viewTimer)
+      viewTimer = setTimeout(() => {
+        try {
+          const c = map.getCenter()
+          writeMapView({ screen, lng: c.lng, lat: c.lat, zoom: map.getZoom() })
+        } catch {
+          /* une carte démontée entre-temps : rien à garder */
+        }
+      }, 1000)
+    })
+    map.on('remove', () => clearTimeout(viewTimer))
 
     map.on('load', () => {
       // A handle for the verification scripts. Published on LOAD, not on

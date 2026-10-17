@@ -46,6 +46,8 @@
     "bjguard": "bun run scripts/bjguard.ts",
     "bjpass": "bun run scripts/bjpass.ts",
     "bjui": "bun run scripts/bjui.ts",
+    "bkpass": "bun run scripts/bkpass.ts",
+    "bkui": "bun run scripts/bkui.ts",
     "azcaptures": "bun run scripts/azcaptures.ts",
     "aymobile": "bun run scripts/aymobile.ts",
     "aypins": "bun run scripts/aypins.ts",

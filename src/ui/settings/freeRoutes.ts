@@ -93,8 +93,8 @@ export function useFreeRoutes(): FreeRoute[] {
 }
 
 // ---------------------------------------------------------------------------
-// ★★ AX8 — le brouillon de l'écran (un travail en cours). ★★★ BJ : il suit le
-// COMPTE (« à arbitrer » dans `storage/registry.ts`) — commencé au bureau, repris au téléphone.
+// ★★ AX8 — le brouillon de l'écran (un travail en cours). ★★ BK : il suit le
+// COMPTE (tranché par le PO) — commencé au bureau, repris au téléphone.
 // ---------------------------------------------------------------------------
 
 const DRAFT_KEY = 'lo-yanum:free-route-draft'

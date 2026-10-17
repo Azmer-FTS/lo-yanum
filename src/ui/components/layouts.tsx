@@ -97,8 +97,9 @@ const NAV_GROUPS: NavGroup[] = [
 export const COORDINATOR_NAV: NavItem[] = NAV_GROUPS.flatMap((g) => g.items)
 
 /**
- * ★★ AX1 — LE RAIL DÉPLIÉ OU COMPACT, ET LE CHOIX EST GARDÉ (★★★ BJ : sur le
- * COMPTE, provisoirement — « à arbitrer » dans `storage/registry.ts`). Compact, chaque entrée porte
+ * ★★ AX1 — LE RAIL DÉPLIÉ OU COMPACT, ET LE CHOIX EST GARDÉ (★★ BK : sur
+ * l'APPAREIL — il dépend de la largeur de l'écran ; tranché par le PO dans
+ * `storage/registry.ts`, raison `screen`). Compact, chaque entrée porte
  * quand même son nom, sous l'icône.
  */
 const RAIL_KEY = 'lo-yanum:rail:expanded'

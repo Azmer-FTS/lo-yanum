@@ -16,6 +16,7 @@ import { activityReportText, activityReportTitle, heDay } from './activityText'
 import { drawActivityReport } from './activityDraw'
 import { canvasesToPdfFile } from './pdf'
 import {
+  activityOfflineState,
   keepActivityReport,
   previousReportFor,
   syncActivityReports,
@@ -63,6 +64,13 @@ export function ActivityReportButton({ className = 'btn-secondary' }: { classNam
   useEffect(() => {
     if (open) void syncActivityReports()
   }, [open])
+
+  /* ★★ BK — l'ancienne clé d'avant BK se vide dans la table dès que le bouton
+     paraît, sans attendre que le PO ouvre la fenêtre (et ne s'efface qu'après
+     la preuve : voir `activityHistory.ts`). */
+  useEffect(() => {
+    if (activityOfflineState().legacy > 0 || activityOfflineState().pending > 0) void syncActivityReports()
+  }, [])
 
   const period: ActivityPeriod = useMemo(() => {
     if (periodId !== 'custom') return periodFor(periodId)

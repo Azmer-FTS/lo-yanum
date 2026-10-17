@@ -21,9 +21,14 @@
  *                        (et la copie hors ligne qui la sert) ;
  *       · `auth`       — la session d'authentification ;
  *       · `diagnostic` — un drapeau de développement ou de diagnostic.
- *     Et une cinquième, que le PO tranchera (`machine`) : ce qui décrit la
- *     machine elle-même (sa position GPS, le build qu'elle exécute, un calcul
- *     fait sur SA carte téléchargée). Chacune est listée « à arbitrer ».
+ *     Et deux autres, admises par le PO en BK (2026-10-18) :
+ *       · `machine`    — ce qui décrit la machine elle-même (sa position GPS,
+ *                        le build qu'elle exécute, un calcul fait sur SA carte
+ *                        téléchargée) ;
+ *       · `screen`     — ce qui dépend de la TAILLE DE L'ÉCRAN (la séparation
+ *                        carte / contenu, le mode d'un écran de carte, le rail) :
+ *                        « carte seule » choisi au téléphone ne doit pas
+ *                        s'appliquer à l'ordinateur.
  *   ★ AUCUNE ÉCRITURE DANS `localStorage`, `sessionStorage` OU IndexedDB HORS
  *     DE `src/storage/`. `bun run bjguard` le vérifie sur tout `src/`, et
  *     vérifie que chaque clé employée est déclarée ICI.
@@ -33,7 +38,7 @@
  */
 
 export type SettingScope = 'account' | 'device'
-export type DeviceReason = 'draft' | 'offline' | 'auth' | 'diagnostic' | 'machine'
+export type DeviceReason = 'draft' | 'offline' | 'auth' | 'diagnostic' | 'machine' | 'screen'
 /** Où l'appareil range la valeur (sa copie locale, pour un réglage de compte). */
 export type SettingArea = 'local' | 'idb' | 'cache'
 
@@ -47,8 +52,12 @@ export interface SettingDef {
   reason?: DeviceReason
   /** Pour `scope: 'device'` : la justification, en une phrase. */
   why?: string
-  /** ★ « À ARBITRER » : la recommandation, pour que le PO tranche. */
-  arbitrate?: string
+  /**
+   * ★★ BK (2026-10-18) — LA DÉCISION DU PO sur une entrée que BJ avait laissée
+   * « à arbitrer ». Plus aucune entrée n'est à arbitrer : chacune des douze
+   * porte ici sa destination définitive et la raison qu'en a donnée le PO.
+   */
+  decided?: string
   /** Ce que la valeur contient, et son type. */
   label: string
   /** Le défaut quand la valeur est absente, illisible ou inconnue — toujours celui qui MONTRE. */
@@ -103,9 +112,13 @@ const sortState = (raw: string): boolean => {
 const themeChoice = oneOf('light', 'dark', 'system')
 const bit = oneOf('1', '0')
 const mapMode = oneOf('hidden', 'split', 'full')
+const mapView = (raw: string): boolean => {
+  const v = parse(raw)
+  return isObject(v) && typeof v.screen === 'string' && [v.lng, v.lat, v.zoom].every((n) => typeof n === 'number' && Number.isFinite(n))
+}
 
 /** Les validateurs, exportés pour les portes (`bjpass` A512). */
-export const VALIDATORS = { any, nonEmpty, oneOf, num, jsonObject, jsonArray, jsonNumber, sortState, themeChoice, bit, mapMode }
+export const VALIDATORS = { any, nonEmpty, oneOf, num, jsonObject, jsonArray, jsonNumber, sortState, themeChoice, bit, mapMode, mapView }
 
 // ---------------------------------------------------------------------------
 // LE REGISTRE
@@ -137,15 +150,13 @@ export const SETTINGS: readonly SettingDef[] = [
   { ...ACCOUNT, key: 'lo-yanum:map-layers', label: 'couches de la carte (JSON objet `__v: 2`, couche → booléen)', fallback: null, fallbackNote: 'toutes les formes et fermes MONTRÉES', validate: jsonObject, owner: 'src/ui/components/mapLayers.ts', syncedBefore: 'partial', lie: 'MapLegend.tsx (BD 4) disait « synchronisé avec le compte » alors que la clé était dans LOCAL_ONLY_KEYS — relevé et corrigé en BI' },
 
   // ══════════ NOUVEAUX SUR LE COMPTE (BJ) — restaient sur l'appareil ══════════
-  { ...ACCOUNT, key: 'lo-yanum:theme:', family: true, label: 'thème des autres rôles (volontaire, agriculteur, chauffeur) : light | dark | system', fallback: null, fallbackNote: 'sombre (rôles de terrain)', validate: themeChoice, owner: 'src/ui/theme.tsx', syncedBefore: 'no', arbitrate: 'compte — mais ces rôles entrent sans compte (lien d’agriculteur, de gardien) : sans session, la valeur reste dans la copie locale ; elle ne voyage que pour un rôle connecté' },
+  { ...ACCOUNT, key: 'lo-yanum:theme:', family: true, label: 'thème des autres rôles (volontaire, agriculteur, chauffeur) : light | dark | system', fallback: null, fallbackNote: 'sombre (rôles de terrain)', validate: themeChoice, owner: 'src/ui/theme.tsx', syncedBefore: 'no', decided: 'compte (BK, PO) — un rôle entré sans compte (lien d’agriculteur, de gardien) n’a pas de session : sa valeur reste dans la copie locale et ne voyage que pour un rôle connecté' },
   { ...ACCOUNT, key: 'lo-yanum:map-base', label: 'fond de carte : vector | satellite', fallback: null, fallbackNote: 'vector (plan)', validate: oneOf('satellite', 'vector'), owner: 'src/ui/components/mapBase.ts', syncedBefore: 'no' },
   { ...ACCOUNT, key: 'lo-yanum:layout-sync', label: 'disposition commune à tous les écrans de carte : « synced » ou absente', fallback: null, fallbackNote: 'chaque écran garde la sienne', validate: oneOf('synced'), owner: 'src/ui/components/mapMode.tsx', syncedBefore: 'no', lie: 'he.json settings.display.hint disait « ההגדרות האלה נשמרות במכשיר הזה בלבד » — vrai avant BJ, faux depuis ; et « מסונכרן » y désigne les ÉCRANS, pas les appareils' },
-  { ...ACCOUNT, key: 'lo-yanum:map-last', label: 'dernier écran de carte ouvert (identifiant d’écran)', fallback: null, fallbackNote: 'aucun (rien à répandre)', validate: nonEmpty, owner: 'src/ui/components/mapMode.tsx', syncedBefore: 'no', arbitrate: 'compte — sert seulement à répandre une disposition quand on passe en « מסונכרן » ; aucun inconvénient connu à le partager' },
-  { ...ACCOUNT, key: 'lo-yanum:map-mode:', family: true, label: 'mode d’un écran de carte : hidden | split | full (par écran)', fallback: null, fallbackNote: 'split (carte ET contenu)', validate: mapMode, owner: 'src/ui/components/mapMode.tsx', syncedBefore: 'no', arbitrate: 'compte — mais un téléphone et un ordinateur n’ont pas la même place : un « carte seule » choisi au téléphone s’applique à l’ordinateur. Recommandation : compte (règle du PO) ; si gênant, passer à « appareil » ou à une valeur par largeur' },
-  { ...ACCOUNT, key: 'lo-yanum:map-ratio:', family: true, label: 'largeur de la colonne de contenu, en % (25–75, par écran)', fallback: null, fallbackNote: 'largeur propre à chaque écran', validate: num(25, 75), owner: 'src/ui/components/mapMode.tsx', syncedBefore: 'no', arbitrate: 'compte, provisoirement — recommandation : APPAREIL. Un pourcentage choisi sur un écran de 27″ n’a pas de sens sur un iPad (lié à la taille physique de l’écran)' },
-  { ...ACCOUNT, key: 'lo-yanum:rail:expanded', label: 'rail latéral déplié (« 1 ») ou compact (« 0 »)', fallback: null, fallbackNote: 'déplié au-delà de 1 600 px, compact en dessous', validate: bit, owner: 'src/ui/components/layouts.tsx', syncedBefore: 'no', arbitrate: 'compte, provisoirement — recommandation : APPAREIL (dépend de la largeur de l’écran ; le défaut s’y adapte déjà)' },
+  { ...ACCOUNT, key: 'lo-yanum:map-last', label: 'dernier écran de carte ouvert (identifiant d’écran)', fallback: null, fallbackNote: 'aucun (rien à répandre)', validate: nonEmpty, owner: 'src/ui/components/mapMode.tsx', syncedBefore: 'no', decided: 'compte (BK, PO). ⚠️ Ce n’est qu’un identifiant d’ÉCRAN (il sert à répandre une disposition en « מסונכרן ») : la ZONE regardée, que le PO veut retrouver sur son téléphone, n’était mémorisée nulle part — elle l’est désormais dans `lo-yanum:map-view`, sur le compte' },
+  { ...ACCOUNT, key: 'lo-yanum:map-view', label: 'la zone regardée sur un écran de carte général (JSON {screen, lng, lat, zoom})', fallback: null, fallbackNote: 'la carte cadre ses données, comme avant', validate: mapView, owner: 'src/ui/components/mapCamera.ts', syncedBefore: 'n/a', decided: 'compte (BK, PO) — « je quitte mon bureau en regardant une zone et je retrouve la même zone sur mon téléphone » ; née en BK, c’est ce que le PO entendait par `map-last`' },
   { ...ACCOUNT, key: 'lo-yanum:block:', family: true, label: 'bloc replié ou déplié, par TYPE de bloc (« 1 » / « 0 »)', fallback: null, fallbackNote: 'ouverture par défaut du bloc', validate: bit, owner: 'src/ui/components/primitives.tsx', syncedBefore: 'no' },
-  { ...ACCOUNT, key: 'farm-form-', family: true, label: 'section du formulaire de ferme repliée (« 1 » ouverte / « 0 », par section et par ferme)', fallback: null, fallbackNote: 'ouverte', validate: bit, owner: 'src/ui/components/fields.tsx', syncedBefore: 'no', arbitrate: 'compte, provisoirement (était sessionStorage : oublié à la fermeture de l’onglet). Recommandation : compte, mais par TYPE de section comme `block:` plutôt que par ferme — une ligne par ferme et par section s’accumule' },
+  { ...ACCOUNT, key: 'lo-yanum:farm-section:', family: true, label: 'section du formulaire de ferme repliée, par TYPE de section (status | details | people | emergency | commitments | agreements | notes) : « 1 » ouverte / « 0 »', fallback: null, fallbackNote: 'l’ouverture par défaut de la section', validate: bit, owner: 'src/ui/screens/coordinator/FarmFormScreen.tsx', syncedBefore: 'no', decided: 'compte, PAR TYPE DE SECTION (BK, PO) — « je travaille toujours avec les contacts repliés », pas « j’ai replié les contacts de la ferme 7 ». Remplace `farm-form-<section>:<ferme>` (BJ), ABANDONNÉE : ni lue, ni convertie, ni écrite ; ses copies restent inertes sur les appareils (0 ligne sur le compte, mesuré le 2026-10-18)' },
   { ...ACCOUNT, key: 'lo-yanum:farm-tab:', family: true, label: 'onglet ouvert d’une fiche de ferme (farm | people | guards | terrain | docs | log)', fallback: null, fallbackNote: 'farm', validate: oneOf('farm', 'people', 'guards', 'terrain', 'docs', 'log'), owner: 'src/ui/farm/farmTabs.tsx', syncedBefore: 'no' },
   { ...ACCOUNT, key: 'lo-yanum:leads-sort', label: 'tri du tableau des pistes (JSON {key, dir}, ou mot d’avant AX5)', fallback: null, fallbackNote: 'plus récentes d’abord', validate: nonEmpty, owner: 'src/ui/screens/coordinator/LeadsScreen.tsx', syncedBefore: 'no' },
   { ...ACCOUNT, key: 'lo-yanum:institutions-sort', label: 'tri du tableau des institutions (JSON {key, dir})', fallback: null, fallbackNote: 'tri livré', validate: sortState, owner: 'src/ui/screens/coordinator/InstitutionsScreen.tsx', syncedBefore: 'no' },
@@ -159,8 +170,12 @@ export const SETTINGS: readonly SettingDef[] = [
   { ...ACCOUNT, key: 'lo-yanum:sheet-mapping:', family: true, label: 'correspondance des colonnes du dernier fichier importé (JSON objet, par type)', fallback: null, fallbackNote: 'devinée depuis l’en-tête', validate: jsonObject, owner: 'src/ui/screens/coordinator/SheetImportScreen.tsx', syncedBefore: 'no' },
   { ...ACCOUNT, key: 'lo-yanum:intake:seen', label: 'demandes entrantes déjà vues (JSON tableau d’identifiants, 200 au plus)', fallback: null, fallbackNote: 'aucune vue (le bandeau s’affiche)', validate: jsonArray, owner: 'src/ui/intake/intakeState.ts', syncedBefore: 'no' },
   { ...ACCOUNT, key: 'lo-yanum:report-recipient', label: 'destinataire du compte rendu (adresse)', fallback: null, fallbackNote: 'aucun (le bouton le dit)', validate: any, owner: 'src/ui/report/recipient.ts', syncedBefore: 'no' },
-  { ...ACCOUNT, key: 'lo-yanum:activity-reports', label: 'historique des comptes rendus générés (JSON tableau, 24 au plus)', fallback: null, fallbackNote: 'vide', validate: jsonArray, owner: 'src/ui/report/activityHistory.ts', syncedBefore: 'no', arbitrate: 'compte, provisoirement — recommandation : lire l’historique dans la table `activity_reports` (la base en garde déjà la trace) et retirer cette clé' },
-  { ...ACCOUNT, key: 'lo-yanum:free-route-draft', label: 'itinéraire libre EN COURS de composition (JSON objet)', fallback: null, fallbackNote: 'aucun', validate: jsonObject, owner: 'src/ui/settings/freeRoutes.ts', syncedBefore: 'no', arbitrate: 'compte, provisoirement — c’est un travail en cours, pas un tracé au doigt : commencé au bureau, il se reprend au téléphone. Recommandation : compte' },
+  { ...ACCOUNT, key: 'lo-yanum:free-route-draft', label: 'itinéraire libre EN COURS de composition (JSON objet)', fallback: null, fallbackNote: 'aucun', validate: jsonObject, owner: 'src/ui/settings/freeRoutes.ts', syncedBefore: 'no', decided: 'compte (BK, PO) — un itinéraire commencé sur un appareil se continue sur un autre' },
+
+  // ══════════ SUR L'APPAREIL — la taille de l'écran (BK, PO) ══════════
+  { key: 'lo-yanum:map-mode:', family: true, area: 'local', scope: 'device', reason: 'screen', why: 'le mode d’affichage est dicté par la taille de l’écran : « carte seule » choisi au téléphone ne doit pas s’appliquer à l’ordinateur', label: 'mode d’un écran de carte : hidden | split | full (par écran)', fallback: null, fallbackNote: 'split (carte ET contenu)', validate: mapMode, owner: 'src/ui/components/mapMode.tsx', syncedBefore: 'no', decided: 'appareil (BK, PO) — CONTRAIRE à la recommandation de BJ (compte), pour la raison que BJ signalait lui-même : « carte seule » choisi au téléphone s’appliquerait à l’ordinateur' },
+  { key: 'lo-yanum:map-ratio:', family: true, area: 'local', scope: 'device', reason: 'screen', why: 'un pourcentage choisi sur un écran de 27″ n’a pas de sens sur un iPad : il dépend de la taille physique de l’écran', label: 'largeur de la colonne de contenu, en % (25–75, par écran)', fallback: null, fallbackNote: 'largeur propre à chaque écran', validate: num(25, 75), owner: 'src/ui/components/mapMode.tsx', syncedBefore: 'no', decided: 'appareil (BK, PO) — dépend de la taille de l’écran' },
+  { key: 'lo-yanum:rail:expanded', area: 'local', scope: 'device', reason: 'screen', why: 'replié ou déplié selon la largeur de CET écran ; le défaut s’y adapte déjà', label: 'rail latéral déplié (« 1 ») ou compact (« 0 »)', fallback: null, fallbackNote: 'déplié au-delà de 1 600 px, compact en dessous', validate: bit, owner: 'src/ui/components/layouts.tsx', syncedBefore: 'no', decided: 'appareil (BK, PO) — dépend de la taille de l’écran' },
 
   // ══════════ SUR L'APPAREIL — les quatre raisons admises ══════════
   { key: 'lo-yanum:zone-draft:', family: true, area: 'local', scope: 'device', reason: 'draft', why: 'le tracé NON fermé d’une forme appartient au geste en cours sur cet écran (BI, point 7)', label: 'brouillons de tracé d’une ferme (JSON tableau)', fallback: null, fallbackNote: 'aucun brouillon', validate: jsonArray, owner: 'src/ui/farm/zoneDraft.ts', syncedBefore: 'no' },
@@ -174,6 +189,8 @@ export const SETTINGS: readonly SettingDef[] = [
   { key: 'lo-yanum:last-email', area: 'local', scope: 'device', reason: 'auth', why: 'le mail pré-rempli de l’écran de connexion de cet appareil', label: 'dernier mail saisi (texte)', fallback: null, fallbackNote: 'vide', validate: any, owner: 'src/data/auth.ts', syncedBefore: 'n/a' },
   { key: 'lo-yanum:farmer-pass', area: 'local', scope: 'device', reason: 'auth', why: 'laissez-passer d’un agriculteur entré par son lien : la session de cet appareil, sans compte', label: 'jeton du lien d’agriculteur (texte encodé)', fallback: null, fallbackNote: 'aucun', validate: any, owner: 'src/ui/farmerPass.ts', syncedBefore: 'no' },
   { key: 'lo-yanum:guard-pass', area: 'local', scope: 'device', reason: 'auth', why: 'laissez-passer d’un gardien : idem', label: 'jeton du lien de garde (JSON objet)', fallback: null, fallbackNote: 'aucun', validate: jsonObject, owner: 'src/ui/guardPass.ts', syncedBefore: 'no' },
+  { key: 'lo-yanum:activity-offline', area: 'local', scope: 'device', reason: 'offline', why: 'les comptes rendus SORTIS que la table `activity_reports` n’a pas encore reçus (vidés à chaque envoi réussi), et la copie de la dernière lecture de la table pour comparer sans réseau ; la source est la table', label: 'comptes rendus hors ligne (JSON {pending, copy})', fallback: null, fallbackNote: 'vide (relu depuis la table)', validate: jsonObject, owner: 'src/ui/report/activityHistory.ts', syncedBefore: 'n/a' },
+  { key: 'lo-yanum:activity-reports', area: 'local', scope: 'device', reason: 'offline', why: 'RETIRÉE (BK) : l’ancienne copie locale de l’historique ; lue une fois, ce que la table n’a pas y est envoyé, puis elle est effacée — seulement quand la table porte TOUT ce qu’elle contenait', label: 'historique d’avant BK (JSON tableau) — jamais plus écrit', fallback: null, fallbackNote: 'absente', validate: jsonArray, owner: 'src/ui/report/activityHistory.ts', syncedBefore: 'no', decided: 'supprimée (BK, PO) — l’historique est lu dans la table `activity_reports` ; la clé n’est effacée d’un appareil qu’après que la table a reçu chacun de ses rapports' },
   { key: 'lo-yanum:link-unlock', area: 'local', scope: 'device', reason: 'auth', why: 'compte des échecs aux quatre chiffres d’un lien (AG2) : l’envoyer ailleurs annulerait la temporisation', label: 'déverrouillages et échecs par lien (JSON objet)', fallback: null, fallbackNote: 'aucun échec', validate: jsonObject, owner: 'src/ui/challenge.ts', syncedBefore: 'no' },
   { key: 'lo-yanum:view-as', area: 'local', scope: 'device', reason: 'diagnostic', why: '« voir comme » est un aperçu du coordinateur ; partagé, il ouvrirait le téléphone en vue de volontaire', label: 'aperçu « voir comme » (JSON {role, name, detail})', fallback: null, fallbackNote: 'vue du coordinateur', validate: jsonObject, owner: 'src/ui/settings/viewAs.ts', syncedBefore: 'no' },
   { key: 'lo-yanum:numpad', area: 'local', scope: 'device', reason: 'diagnostic', why: 'drapeau de test qui force le pavé numérique (on | off) ; aucun écran ne l’écrit', label: 'pavé numérique forcé (on | off)', fallback: null, fallbackNote: 'décidé sur l’appareil (iPad → pavé)', validate: oneOf('on', 'off'), owner: 'src/ui/components/NumericPad.tsx', syncedBefore: 'no' },
@@ -187,11 +204,11 @@ export const SETTINGS: readonly SettingDef[] = [
   { key: 'lo-yanum:settings-stamps', area: 'local', scope: 'device', reason: 'diagnostic', why: 'instants d’APPAREIL d’avant BJ (AS4) : lus une fois par la migration, puis effacés', label: 'instants d’avant BJ (JSON objet)', fallback: null, fallbackNote: 'aucun', validate: jsonObject, owner: 'src/storage/account.ts', syncedBefore: 'n/a' },
   { key: 'lo-yanum:settings-synced-at', area: 'local', scope: 'device', reason: 'diagnostic', why: 'dernière synchronisation d’avant BJ : effacée par la migration', label: 'instant (nombre)', fallback: null, fallbackNote: 'aucun', validate: jsonNumber, owner: 'src/storage/account.ts', syncedBefore: 'n/a' },
 
-  // ══════════ SUR L'APPAREIL — « la machine elle-même » : À ARBITRER ══════════
-  { key: 'lo-yanum:last-fix', area: 'local', scope: 'device', reason: 'machine', why: 'la dernière position GPS de CET appareil : celle du téléphone n’est pas celle de l’ordinateur', label: 'dernier relevé GPS (JSON {position, accuracy, at})', fallback: null, fallbackNote: 'aucun', validate: jsonObject, owner: 'src/ui/geolocate.ts', syncedBefore: 'no', arbitrate: 'appareil, recommandé : une position est celle d’une machine physique' },
-  { key: 'lo-yanum:geo-granted', area: 'local', scope: 'device', reason: 'machine', why: 'CET navigateur a-t-il déjà accordé la localisation (une autorisation du navigateur, qui ne voyage pas)', label: 'instant du premier relevé accordé (nombre)', fallback: null, fallbackNote: 'jamais', validate: any, owner: 'src/ui/geolocate.ts', syncedBefore: 'no', arbitrate: 'appareil, recommandé : c’est l’autorisation de CE navigateur' },
-  { key: 'lo-yanum:update-pending', area: 'local', scope: 'device', reason: 'machine', why: 'la version vers laquelle CET appareil est en train de se mettre à jour (AJ)', label: 'mise à jour en cours (JSON)', fallback: null, fallbackNote: 'aucune', validate: any, owner: 'src/ui/update.ts', syncedBefore: 'no', arbitrate: 'appareil, recommandé : c’est le build installé sur cette machine' },
-  { key: 'lo-yanum:road-mesh:v1', area: 'local', scope: 'device', reason: 'machine', why: 'distances routières CALCULÉES sur la carte téléchargée par CET appareil (recalculables, plusieurs centaines de ko)', label: 'mémoire des trajets calculés (JSON {archive, pairs})', fallback: null, fallbackNote: 'recalculé', validate: jsonObject, owner: 'src/ui/routing/roadMesh.ts', syncedBefore: 'no', arbitrate: 'appareil, recommandé : un cache de calcul, pas un réglage — le partager enverrait des centaines de ko pour rien' },
+  // ══════════ SUR L'APPAREIL — « la machine elle-même » (BK, PO) ══════════
+  { key: 'lo-yanum:last-fix', area: 'local', scope: 'device', reason: 'machine', why: 'la dernière position GPS de CET appareil : celle du téléphone n’est pas celle de l’ordinateur', label: 'dernier relevé GPS (JSON {position, accuracy, at})', fallback: null, fallbackNote: 'aucun', validate: jsonObject, owner: 'src/ui/geolocate.ts', syncedBefore: 'no', decided: 'appareil (BK, PO) — une position est celle d’une machine physique' },
+  { key: 'lo-yanum:geo-granted', area: 'local', scope: 'device', reason: 'machine', why: 'CET navigateur a-t-il déjà accordé la localisation (une autorisation du navigateur, qui ne voyage pas)', label: 'instant du premier relevé accordé (nombre)', fallback: null, fallbackNote: 'jamais', validate: any, owner: 'src/ui/geolocate.ts', syncedBefore: 'no', decided: 'appareil (BK, PO) — c’est l’autorisation de CE navigateur' },
+  { key: 'lo-yanum:update-pending', area: 'local', scope: 'device', reason: 'machine', why: 'la version vers laquelle CET appareil est en train de se mettre à jour (AJ)', label: 'mise à jour en cours (JSON)', fallback: null, fallbackNote: 'aucune', validate: any, owner: 'src/ui/update.ts', syncedBefore: 'no', decided: 'appareil (BK, PO) — c’est le build installé sur cette machine' },
+  { key: 'lo-yanum:road-mesh:v1', area: 'local', scope: 'device', reason: 'machine', why: 'distances routières CALCULÉES sur la carte téléchargée par CET appareil (recalculables, plusieurs centaines de ko)', label: 'mémoire des trajets calculés (JSON {archive, pairs})', fallback: null, fallbackNote: 'recalculé', validate: jsonObject, owner: 'src/ui/routing/roadMesh.ts', syncedBefore: 'no', decided: 'appareil (BK, PO) — un cache de calcul, pas un réglage — le partager enverrait des centaines de ko pour rien' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -229,5 +246,8 @@ export const ACCOUNT_KEYS: readonly string[] = SETTINGS.filter((d) => d.scope ==
 /** Les clés d'avant BJ que l'ancien bloc `user_settings` portait (lues une fois à la migration). */
 export const LEGACY_BLOB_KEYS: readonly string[] = SETTINGS.filter((d) => d.syncedBefore === 'yes' || d.syncedBefore === 'partial').map((d) => d.key)
 
-/** ★ Les réglages « à arbitrer », pour le PO. */
-export const TO_ARBITRATE: readonly SettingDef[] = SETTINGS.filter((d) => d.arbitrate !== undefined)
+/** ★★ BK — les entrées que le PO a tranchées (les douze « à arbitrer » de BJ, plus `map-view`). */
+export const DECIDED: readonly SettingDef[] = SETTINGS.filter((d) => d.decided !== undefined)
+
+/** ★★ BK — les clés ABANDONNÉES : jamais lues, jamais écrites, jamais déclarées. */
+export const ABANDONED_PREFIXES: readonly string[] = ['farm-form-']

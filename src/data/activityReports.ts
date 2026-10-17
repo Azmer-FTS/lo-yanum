@@ -73,6 +73,31 @@ export async function loadRemoteActivityReports(
 }
 
 /**
+ * ★★ BK (2026-10-18) — RELIRE DES RAPPORTS PRÉCIS, pour PROUVER que la table
+ *    porte ce que l'ancienne clé locale contenait avant de l'effacer. `null` =
+ *    la question n'a pas pu être posée (hors ligne, sans session) : on n'efface
+ *    rien sur une absence de réponse.
+ */
+export async function loadRemoteActivityReportsByIds(
+  ids: readonly string[],
+): Promise<ActivityReportRecord[] | null> {
+  if (ids.length === 0) return []
+  if (!SUPABASE_CONFIGURED) return null
+  const client = await getSupabase()
+  if (!client) return null
+  const { data: user } = await client.auth.getUser()
+  const id = user.user?.id
+  if (!id) return null
+  const { data, error } = await client
+    .from('activity_reports')
+    .select('id, period_from, period_to, generated_at, previous_id, payload, body')
+    .eq('user_id', id)
+    .in('id', [...ids])
+  if (error || !data) return null
+  return (data as Row[]).map(toRecord).filter((r): r is ActivityReportRecord => r !== null)
+}
+
+/**
  * ⚠️ `upsert` ET `user_id` ÉCRIT EXPLICITEMENT, pour la même raison que dans
  *    `data/settings.ts` : la politique d'insertion exige `user_id = auth.uid()`
  *    et un `upsert` sans la colonne serait refusé au premier rapport d'un

@@ -11,8 +11,8 @@ import { applyAccountValue, onSettingWritten, peekSetting, readSettingJson, stor
  * change, et pourquoi :
  *
  *   1. CE QUI VOYAGE N'EST PLUS UNE LISTE ÉCRITE À LA MAIN : c'est tout ce que
- *      le registre déclare `account` — y compris les familles (`map-mode:*`,
- *      `block:*`, `farm-tab:*`…). Une clé nouvelle naît sur le compte.
+ *      le registre déclare `account` — y compris les familles (`block:*`,
+ *      `farm-tab:*`, `farm-section:*`…). Une clé nouvelle naît sur le compte.
  *   2. L'INSTANT QUI DÉPARTAGE EST CELUI DU SERVEUR. Avant BJ, chaque appareil
  *      posait `Date.now()` dans `__stamps` : un iPad à l'heure fausse gagnait.
  *      Ici, la base pose `updated_at` (déclencheur `user_setting_values_stamp`).

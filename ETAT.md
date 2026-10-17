@@ -1,5 +1,62 @@
 # לא ינום — ETAT
 
+> 🏁 **BK (chantier 1) — LES DOUZE ARBITRAGES DE BJ, APPLIQUÉS. 2026-10-18.**
+>
+> Le PO a tranché les douze entrées que BJ avait laissées « à arbitrer ».
+> Le registre (`src/storage/registry.ts`) reste la SEULE source : chaque entrée
+> tranchée porte sa décision (`decided`), et `bjguard` refuse désormais une
+> entrée « à arbitrer » comme une raison d'appareil (`machine`, `screen`) sans
+> décision. Inventaire régénéré : `docs/bj/reglages.md` (0 ligne « à arbitrer »).
+>
+> | Clé | Destination appliquée |
+> |---|---|
+> | `map-ratio:<écran>` | appareil — raison `screen` (taille de l'écran) |
+> | `rail:expanded` | appareil — `screen` |
+> | `map-mode:<écran>` | appareil — `screen` — ★ CONTRAIRE à la recommandation de BJ (compte) : « carte seule » au téléphone s'appliquait à l'ordinateur |
+> | `last-fix`, `geo-granted`, `update-pending`, `road-mesh:v1` | appareil — `machine` |
+> | `theme:<rôle>` | compte (un rôle sans session garde sa copie locale) |
+> | `map-last` | compte — ⚠️ ce n'est qu'un identifiant d'ÉCRAN ; la zone regardée n'était mémorisée nulle part → NOUVELLE clé de compte `lo-yanum:map-view` ({screen, lng, lat, zoom}) |
+> | `free-route-draft` | compte |
+> | `farm-form-<section>:<ferme>` | → `lo-yanum:farm-section:<type>` (compte, PAR TYPE de section) ; l'ancienne famille est ABANDONNÉE |
+> | `activity-reports` | supprimée : l'historique se lit dans la table `activity_reports` |
+>
+> **Migration, réglage par réglage.**
+> - `map-mode`, `map-ratio`, `rail` (compte → appareil) : chaque appareil
+>   GARDE la valeur qu'il porte (depuis BJ, celle du compte au dernier
+>   contact). Les lignes du compte (11 + 11 + 1, mesuré le 2026-10-18) restent
+>   en table, INERTES : ni lues (la relecture ignore une clé d'appareil) ni
+>   écrites. Rien n'est effacé.
+> - `theme:<rôle>`, `map-last`, `free-route-draft` : étaient déjà de compte
+>   (provisoirement) → rien ne bouge.
+> - `farm-form-…` : **choix énoncé : abandonnées**. Ni lues, ni converties, ni
+>   écrites ; 0 ligne sur le compte (mesuré) ; les copies d'appareil restent
+>   inertes (le diagnostic en dit le nombre). Le PO retrouve chaque section
+>   ouverte jusqu'à ce qu'il la replie une fois — pour toutes les fermes.
+> - `activity-reports` : ★ L'ORDRE EXIGÉ EST TENU. (1) Contrôle sur la base
+>   réelle : le compte porte 0 valeur pour cette clé, la table 1 rapport
+>   complet (période, totaux, instantané de 25 fermes, texte) → la table porte
+>   tout ce que le compte portait. (2) Sur chaque appareil qui porte encore la
+>   clé : ses rapports sont envoyés à la table, RELUS par identifiant,
+>   comparés champ par champ (`sameReport`), et la clé n'est effacée que si
+>   TOUS sont identiques (`judgeDrain`) ; un seul manquant ou différent, ou pas
+>   de réponse → elle reste, et le diagnostic le dit. Hors ligne, les rapports
+>   sortis attendent dans `lo-yanum:activity-offline` (appareil, raison
+>   `offline`) avec la copie de la dernière lecture de la table.
+>
+> **Textes devenus inexacts, corrigés** : `settings.display.hint` et
+> `syncHint_*` (la disposition se garde DANS CET APPAREIL) ; commentaires du
+> rail, du brouillon d'itinéraire, du moteur. **Diagnostic** : raison
+> « גודל המסך », ligne « דוחות פעילות » (file, ancienne clé, vidange),
+> ligne « קיפול מקטעים » (anciens plis par ferme encore rangés).
+>
+> **Portes** : `bkpass` 46 (pure) ; `bkui` 31 (rendu, deux profils : zone
+> regardée retrouvée, pli par type sur toutes les fermes, preuve INVERSE du
+> mode de carte, contrôle « aucune clé farm-form- », vidange de l'historique
+> et son refus) ; réécrites (la règle a changé) : `bjguard`, `bjpass` A512/A513,
+> `bjui` A521 (le rail n'est plus de compte : le bandeau de couverture le
+> remplace dans l'exemple). Attrapé par `axui` A347 : l'aide de « סנכרון
+> פריסה » allongée dépassait 80 caractères affichés d'office → raccourcie.
+
 > 🏁 **BJ — LES RÉGLAGES SUIVENT LE COMPTE, UNE FOIS POUR TOUTES. 2026-10-15.**
 >
 > ⛔ **DONNÉES RÉELLES.** `bjpass` / `bjui` n'utilisent que des valeurs

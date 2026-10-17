@@ -60,20 +60,20 @@ const { FakeDb } = await import('./fake-supabase')
 // ===========================================================================
 section('A512 — le registre : portée, défaut, validateur ; rien de non déclaré')
 {
-  const { SETTINGS, settingDef, ACCOUNT_KEYS, TO_ARBITRATE } = reg
+  const { SETTINGS, settingDef, ACCOUNT_KEYS, DECIDED } = reg
   check(`A512 ${SETTINGS.length} entrées, ${SETTINGS.filter((d) => d.scope === 'account').length} de compte, ${SETTINGS.filter((d) => d.scope === 'device').length} d’appareil`, SETTINGS.length >= 60)
   check('A512 les réglages qui avaient causé les trois pannes sont de COMPTE (thème, couches, fond)', ['lo-yanum:theme:coordinator', 'lo-yanum:map-layers', 'lo-yanum:map-base'].every((k) => settingDef(k)?.scope === 'account'))
   check('A512 les 18 clés qui voyageaient avant BJ voyagent toujours', ['lo-yanum:target', 'lo-yanum:coverage', 'lo-yanum:coverage-map', 'lo-yanum:vigil', 'lo-yanum:renewal-window', 'lo-yanum:area-gap', 'lo-yanum:require-id-photo', 'lo-yanum:summons-template', 'lo-yanum:agreement-doc-template', 'lo-yanum:agreement-doc-logo', 'lo-yanum:region-rings', 'lo-yanum:coordinator', 'lo-yanum:origin', 'lo-yanum:free-routes', 'lo-yanum:route-margin', 'lo-yanum:institution-doc', 'lo-yanum:theme:coordinator', 'lo-yanum:map-layers'].every((k) => ACCOUNT_KEYS.includes(k)))
-  check('A512 une famille se résout (`map-mode:<écran>`, `farm-tab:<ferme>`, `zone-draft:<ferme>`)', settingDef('lo-yanum:map-mode:farms')?.scope === 'account' && settingDef('lo-yanum:farm-tab:farm-x')?.scope === 'account' && settingDef('lo-yanum:zone-draft:farm-x')?.scope === 'device')
+  check('A512 une famille se résout (`farm-section:<type>`, `farm-tab:<ferme>`, `zone-draft:<ferme>` ; ★★ BK : `map-mode:<écran>` sur l’appareil)', settingDef('lo-yanum:farm-section:people')?.scope === 'account' && settingDef('lo-yanum:map-mode:farms')?.scope === 'device' && settingDef('lo-yanum:farm-tab:farm-x')?.scope === 'account' && settingDef('lo-yanum:zone-draft:farm-x')?.scope === 'device')
   check('A512 la clé exacte passe avant la famille (`theme:coordinator` vs `theme:<rôle>`)', settingDef('lo-yanum:theme:coordinator')?.family !== true && settingDef('lo-yanum:theme:volunteer')?.family === true)
   check('A512 une clé inconnue n’est PAS déclarée', settingDef('lo-yanum:inventee') === null && settingDef('lo-yanum:map-mode:') === null)
   check('A512 les brouillons de tracé, la file, la session, les drapeaux : sur l’appareil, chacun avec sa raison', ['lo-yanum:zone-draft:f', 'lo-yanum:settings-queue', 'lo-yanum:auth', 'lo-yanum:view-as'].map((k) => settingDef(k)?.reason).join() === 'draft,offline,auth,diagnostic')
-  check(`A512 ★ ${TO_ARBITRATE.length} réglages « à arbitrer », chacun avec une recommandation`, TO_ARBITRATE.length > 0 && TO_ARBITRATE.every((d) => (d.arbitrate ?? '').length > 20))
+  check(`A512 ★★ BK — plus aucun réglage « à arbitrer » ; ${DECIDED.length} portent la décision du PO`, SETTINGS.every((d) => !('arbitrate' in d)) && DECIDED.length >= 12 && DECIDED.every((d) => (d.decided ?? '').length > 20))
 
   mem.clear()
-  mem.set('lo-yanum:rail:expanded', 'peut-être')
+  mem.set('lo-yanum:people-grouped', 'peut-être')
   mem.set('lo-yanum:map-base', 'satellite')
-  check('A512 ★ valeur illisible → défaut (le module montre son défaut) ; lisible → rendue', local.readSetting('lo-yanum:rail:expanded') === null && local.readSetting('lo-yanum:map-base') === 'satellite')
+  check('A512 ★ valeur illisible → défaut (le module montre son défaut) ; lisible → rendue', local.readSetting('lo-yanum:people-grouped') === null && local.readSetting('lo-yanum:map-base') === 'satellite')
   check('A512 une clé non déclarée n’est pas lue', local.readSetting('lo-yanum:inventee') === null)
   check('A512 ★ une clé non déclarée n’est PAS écrite', local.writeSetting('lo-yanum:inventee', '1') === false && !mem.has('lo-yanum:inventee'))
   check('A512 une valeur que le validateur refuse n’est pas écrite', local.writeSetting('lo-yanum:map-base', 'lune') === false && mem.get('lo-yanum:map-base') === 'satellite')
@@ -92,11 +92,11 @@ section('A513 — ★ la migration d’un appareil')
 {
   const row = (key: string, value: string | null, at = '2026-10-15T10:00:00.000Z') => ({ key, value, updated_at: at, written_at: at })
   const plan = acc.planMigration({
-    rows: [row('lo-yanum:rail:expanded', '0'), row('lo-yanum:map-mode:farms', 'full')],
+    rows: [row('lo-yanum:people-grouped', '0'), row('lo-yanum:farm-tab:farm-x', 'people')],
     legacy: { 'lo-yanum:theme:coordinator': 'dark', 'lo-yanum:vigil': '{"a":1}', 'lo-yanum:route-margin': 'pas-un-nombre', __stamps: '{}' },
     local: {
-      'lo-yanum:rail:expanded': '1',
-      'lo-yanum:map-mode:farms': 'full',
+      'lo-yanum:people-grouped': '1',
+      'lo-yanum:farm-tab:farm-x': 'people',
       'lo-yanum:theme:coordinator': 'light',
       'lo-yanum:map-base': 'satellite',
       'lo-yanum:route-margin': '20',
@@ -108,8 +108,8 @@ section('A513 — ★ la migration d’un appareil')
   })
   const applied = (k: string) => plan.apply.find((a) => a.key === k)
   const inserted = (k: string) => plan.insert.find((a) => a.key === k)
-  check('A513 ★ le compte a une valeur différente → elle GAGNE, la locale est remplacée', plan.accountWon.includes('lo-yanum:rail:expanded') && applied('lo-yanum:rail:expanded')?.value === '0' && !inserted('lo-yanum:rail:expanded'))
-  check('A513 le compte a la même valeur → rien à faire', !plan.accountWon.includes('lo-yanum:map-mode:farms') && !applied('lo-yanum:map-mode:farms'))
+  check('A513 ★ le compte a une valeur différente → elle GAGNE, la locale est remplacée', plan.accountWon.includes('lo-yanum:people-grouped') && applied('lo-yanum:people-grouped')?.value === '0' && !inserted('lo-yanum:people-grouped'))
+  check('A513 le compte a la même valeur → rien à faire', !plan.accountWon.includes('lo-yanum:farm-tab:farm-x') && !applied('lo-yanum:farm-tab:farm-x'))
   check('A513 ★ l’ancien bloc portait le thème → c’est « le compte » : promu, et il remplace la locale', plan.legacy.includes('lo-yanum:theme:coordinator') && inserted('lo-yanum:theme:coordinator')?.value === 'dark' && applied('lo-yanum:theme:coordinator')?.value === 'dark')
   check('A513 une valeur ILLISIBLE de l’ancien bloc est ignorée : la valeur de l’appareil passe', !plan.legacy.includes('lo-yanum:route-margin') && plan.promoted.includes('lo-yanum:route-margin') && inserted('lo-yanum:route-margin')?.value === '20')
   check('A513 ★ le compte n’a rien, l’appareil oui → PROMUE (y compris une famille : un pli de bloc)', plan.promoted.includes('lo-yanum:map-base') && plan.promoted.includes('lo-yanum:block:settings-display'))
@@ -127,7 +127,7 @@ section('A514 — ★ la relecture et la file')
   const rows = [
     { key: 'lo-yanum:map-base', value: 'satellite', updated_at: '2026-10-15T10:00:05.000Z', written_at: '2026-10-15T10:00:05.000Z' },
     { key: 'lo-yanum:theme:coordinator', value: 'dark', updated_at: '2026-10-15T10:00:01.000Z', written_at: '2026-10-15T10:00:06.000Z' },
-    { key: 'lo-yanum:rail:expanded', value: '0', updated_at: '2026-10-15T10:00:09.000Z', written_at: '2026-10-15T10:00:09.000Z' },
+    { key: 'lo-yanum:people-grouped', value: '0', updated_at: '2026-10-15T10:00:09.000Z', written_at: '2026-10-15T10:00:09.000Z' },
     { key: 'cle-retiree-du-registre', value: 'x', updated_at: '2026-10-15T10:00:10.000Z', written_at: '2026-10-15T10:00:10.000Z' },
   ]
   const queue = {
@@ -136,11 +136,11 @@ section('A514 — ★ la relecture et la file')
     /* Geste plus RÉCENT que la valeur du compte (10:00:01) → garde son tour. */
     'lo-yanum:theme:coordinator': { value: 'light', at: at('2026-10-15T10:00:04.000Z'), offline: true },
   }
-  const localValues: Record<string, string | null> = { 'lo-yanum:map-base': 'vector', 'lo-yanum:theme:coordinator': 'light', 'lo-yanum:rail:expanded': '1' }
+  const localValues: Record<string, string | null> = { 'lo-yanum:map-base': 'vector', 'lo-yanum:theme:coordinator': 'light', 'lo-yanum:people-grouped': '1' }
   const p = acc.planPull(rows, (k) => localValues[k] ?? null, queue, 0, '2026-10-15T09:00:00.000Z')
   check('A514 ★ une valeur choisie ailleurs APRÈS le geste en file : la file cède, la valeur s’applique, c’est un conflit DIT', p.dropQueue.includes('lo-yanum:map-base') && p.apply.some((a) => a.key === 'lo-yanum:map-base' && a.value === 'satellite') && p.conflicts.includes('lo-yanum:map-base'))
   check('A514 ★ une valeur choisie ailleurs AVANT le geste en file : la file garde son tour, rien n’est écrasé ici', !p.dropQueue.includes('lo-yanum:theme:coordinator') && !p.apply.some((a) => a.key === 'lo-yanum:theme:coordinator'))
-  check('A514 sans file : la valeur du compte s’applique', p.apply.some((a) => a.key === 'lo-yanum:rail:expanded' && a.value === '0'))
+  check('A514 sans file : la valeur du compte s’applique', p.apply.some((a) => a.key === 'lo-yanum:people-grouped' && a.value === '0'))
   check('A514 une clé que le registre ne connaît plus est ignorée (mais le curseur avance)', !p.apply.some((a) => a.key === 'cle-retiree-du-registre') && p.cursor === '2026-10-15T10:00:10.000Z')
   check('A514 le curseur est l’ARRIVÉE (`written_at`), pas l’instant du choix', p.cursor! > rows[1].updated_at)
   /* La correction d'horloge : un appareil en avance d'une heure, écart mesuré −1 h. */

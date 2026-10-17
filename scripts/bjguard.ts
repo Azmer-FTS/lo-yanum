@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
-import { SETTINGS, settingDef } from '../src/storage/registry'
+import { ABANDONED_PREFIXES, DECIDED, SETTINGS, settingDef } from '../src/storage/registry'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -332,14 +332,17 @@ export function judge(files: Map<string, string>, sw: string | null): Violation[
 export function registryProblems(): string[] {
   const out: string[] = []
   const seen = new Set<string>()
-  const REASONS = new Set(['draft', 'offline', 'auth', 'diagnostic', 'machine'])
+  const REASONS = new Set(['draft', 'offline', 'auth', 'diagnostic', 'machine', 'screen'])
   for (const d of SETTINGS) {
     const id = `${d.key}${d.family ? '<…>' : ''}`
     if (seen.has(id)) out.push(`doublon : ${id}`)
     seen.add(id)
     if (d.scope === 'device' && (!d.reason || !REASONS.has(d.reason))) out.push(`« appareil » sans raison admise : ${id}`)
     if (d.scope === 'device' && !(d.why && d.why.length > 10)) out.push(`« appareil » sans justification : ${id}`)
-    if (d.scope === 'device' && d.reason === 'machine' && !d.arbitrate) out.push(`« machine » non soumise à l'arbitrage : ${id}`)
+    /* ★★ BK — « machine » et « écran » sont des raisons que le PO a admises UNE PAR UNE : chacune porte sa décision. */
+    if (d.scope === 'device' && (d.reason === 'machine' || d.reason === 'screen') && !d.decided) out.push(`« ${d.reason} » sans décision du PO : ${id}`)
+    if ('arbitrate' in d) out.push(`encore « à arbitrer » (le PO a tranché en BK) : ${id}`)
+    for (const p of ABANDONED_PREFIXES) if (d.key.startsWith(p)) out.push(`clé abandonnée redéclarée : ${id}`)
     if (d.scope === 'account' && d.reason) out.push(`« compte » avec une raison d'appareil : ${id}`)
     if (d.fallback !== null && !d.validate(d.fallback)) out.push(`le défaut est refusé par son validateur : ${id}`)
     if (!d.label || !d.fallbackNote || !d.owner) out.push(`déclaration incomplète : ${id}`)
@@ -397,8 +400,9 @@ if (import.meta.main) {
     const problems = registryProblems()
     check('aucun doublon, chaque « appareil » a sa raison admise et sa justification, chaque défaut passe son validateur', problems.length === 0, problems.join(' ; '))
     const device = SETTINGS.filter((d) => d.scope === 'device')
-    check('les raisons d’appareil sont les quatre du PO, plus « machine » soumise à l’arbitrage', device.every((d) => ['draft', 'offline', 'auth', 'diagnostic', 'machine'].includes(d.reason ?? '')))
-    check('« compte » est le défaut : plus de réglages de compte que d’appareil hors raisons techniques', SETTINGS.filter((d) => d.scope === 'account').length > device.filter((d) => d.reason === 'machine').length)
+    check('les raisons d’appareil sont les quatre du PO, plus « machine » et « écran » admises en BK', device.every((d) => ['draft', 'offline', 'auth', 'diagnostic', 'machine', 'screen'].includes(d.reason ?? '')))
+    check('« compte » est le défaut : plus de réglages de compte que d’appareil hors raisons techniques', SETTINGS.filter((d) => d.scope === 'account').length > device.filter((d) => d.reason === 'machine' || d.reason === 'screen').length)
+    check('★ BK — plus aucune entrée « à arbitrer » : chacune porte sa décision', SETTINGS.every((d) => !('arbitrate' in d)) && DECIDED.length >= 12)
   }
 
   const ROOT = process.env.BJGUARD_ROOT ?? '.'

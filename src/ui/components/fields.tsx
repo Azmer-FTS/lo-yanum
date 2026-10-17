@@ -693,14 +693,17 @@ export function SelectOrCreateField({
  *   away. A collapsible section that says nothing when closed is a section the
  *   coordinator opens every time to check whether it was empty.
  *
- * `sessionStorage`, like `CollapsibleSection`: reopening the same farm mid-shift
- * keeps his arrangement without persisting a stale layout into next month.
+ * ★★ BK (2026-10-18) — LE PLI SUIT LE COMPTE, PAR TYPE DE SECTION. Plus de
+ * `sessionStorage` (BJ l'avait déjà retiré) ni de clé par ferme : la fiche de
+ * ferme passe `lo-yanum:farm-section:<type>` — « je travaille toujours avec les
+ * contacts repliés », et cela vaut pour toutes les fermes et tous les appareils.
  */
 export function FormSection({
   title,
   children,
   action,
   storageKey,
+  toggleTestId,
   defaultOpen = true,
   summary,
   testId,
@@ -720,6 +723,12 @@ export function FormSection({
   action?: ReactNode
   /** Present = collapsible. Absent = the plain section it has always been. */
   storageKey?: string
+  /**
+   * ★★ BK — l'identifiant de test de l'en-tête, quand il n'est plus la clé : la
+   * fiche de ferme range ses plis PAR TYPE de section (`lo-yanum:farm-section:<type>`),
+   * mais ses portes visent toujours une ferme (`section-farm-form-<type>:<ferme>`).
+   */
+  toggleTestId?: string
   defaultOpen?: boolean
   /** Shown in the heading while CLOSED — the fact, without the editing. */
   summary?: ReactNode
@@ -753,7 +762,8 @@ export function FormSection({
             type="button"
             onClick={toggle}
             aria-expanded={shown}
-            data-testid={`section-${storageKey}`}
+            data-testid={toggleTestId ?? `section-${storageKey}`}
+            data-fold-key={storageKey}
             /* ★★ BD 7 — l'en-tête d'une section repliable est une cible : 44 px. */
             className="group flex min-h-11 min-w-0 flex-1 items-center gap-1.5 text-start"
           >

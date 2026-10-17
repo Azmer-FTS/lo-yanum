@@ -40,6 +40,13 @@ import { readSetting, writeSetting } from '../../storage/local'
  *
  * The state is per SCREEN and persisted in localStorage (sessionStorage would
  * lose it every time iPadOS reaps the tab, which is most of the day).
+ *
+ * ★★ BK (2026-10-18) — ET IL RESTE SUR L'APPAREIL, comme la largeur de la
+ *   séparation (`map-ratio`) : le PO l'a tranché contre la recommandation de
+ *   BJ, parce que « carte seule » choisi au téléphone s'appliquait à
+ *   l'ordinateur. Le choix « מסונכרן » (`layout-sync`), lui, suit le compte :
+ *   il dit « une disposition pour tous mes écrans de carte », et chaque
+ *   appareil l'applique avec SA disposition.
  */
 export type MapMode = 'hidden' | 'split' | 'full'
 
@@ -79,7 +86,8 @@ const SHARED = '__all__'
 /**
  * ★★ Z5.3 (2026-09-07) — WHICH LAYOUT "THE LAYOUT" IS.
  *
- * The last map screen this device was on. See `writeLayoutSync`: turning
+ * The last map screen the coordinator was on (★★ BK : sur le COMPTE — c'est un
+ * identifiant d'écran, PAS la zone regardée ; la zone est `mapCamera.ts`). See `writeLayoutSync`: turning
  * synchronisation ON has to spread a layout, and the only honest candidate is
  * the one the coordinator was last looking at — הגדרות has no map of its own
  * to read the answer from.

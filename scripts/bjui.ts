@@ -257,11 +257,12 @@ await guard('A521', async () => {
     data: { 'lo-yanum:theme:coordinator': 'dark', 'lo-yanum:vigil': JSON.stringify({ arrivalMinutes: 25, checkpointMinutes: 90 }), __stamps: '{}' },
     updated_at: new Date(Date.now() - 86_400_000).toISOString(),
   })
-  /* Un compte qui a DÉJÀ, en table, le rail replié (posé par un autre appareil migré avant). */
-  db.rows('user_setting_values').push(db.triggers.get('user_setting_values')!({ user_id: USER_ID, key: 'lo-yanum:rail:expanded', value: '0', client_at: null }, null))
+  /* Un compte qui a DÉJÀ, en table, le bandeau de couverture replié (posé par un autre appareil migré avant).
+     ★★ BK : c'était le rail — il est passé sur l'APPAREIL (taille de l'écran). */
+  db.rows('user_setting_values').push(db.triggers.get('user_setting_values')!({ user_id: USER_ID, key: 'lo-yanum:coverage-band', value: 'folded', client_at: null }, null))
   const pre: Record<string, string> = {
     'lo-yanum:theme:coordinator': 'light',
-    'lo-yanum:rail:expanded': '1',
+    'lo-yanum:coverage-band': 'open',
     'lo-yanum:map-base': 'satellite',
     'lo-yanum:people-grouped': '1',
     'lo-yanum:map-layers': '{boundaries:false',
@@ -271,7 +272,7 @@ await guard('A521', async () => {
   const C = await device(db, DESK, '/coordinator', pre)
   const mig = JSON.parse(String(await ls(C.page, 'lo-yanum:settings-migration'))) as { at: number; accountWon: string[]; legacy: string[]; promoted: string[]; defaulted: string[] }
   check('A521 la migration a eu lieu, datée', typeof mig?.at === 'number' && Math.abs(Date.now() - mig.at) < 120_000, JSON.stringify(mig))
-  check('A521 ★ le compte avait une valeur (rail replié) → elle GAGNE, la locale est remplacée', mig.accountWon.includes('lo-yanum:rail:expanded') && (await ls(C.page, 'lo-yanum:rail:expanded')) === '0')
+  check('A521 ★ le compte avait une valeur (bandeau replié) → elle GAGNE, la locale est remplacée', mig.accountWon.includes('lo-yanum:coverage-band') && (await ls(C.page, 'lo-yanum:coverage-band')) === 'folded')
   check('A521 ★ l’ancien bloc portait le thème « dark » → il est le compte : promu, et il gagne sur « light » de l’appareil', mig.legacy.includes('lo-yanum:theme:coordinator') && accountValue(db, 'lo-yanum:theme:coordinator') === 'dark' && (await themeOf(C.page)) === 'dark', `${accountValue(db, 'lo-yanum:theme:coordinator')} · ${await themeOf(C.page)}`)
   check('A521 l’ancien bloc portait la vigilance → promue sur la table', mig.legacy.includes('lo-yanum:vigil') && typeof accountValue(db, 'lo-yanum:vigil') === 'string')
   check('A521 ★ le compte n’avait rien, l’appareil oui → PROMUE (fond satellite, volontaires groupés)', mig.promoted.includes('lo-yanum:map-base') && mig.promoted.includes('lo-yanum:people-grouped') && accountValue(db, 'lo-yanum:map-base') === 'satellite' && accountValue(db, 'lo-yanum:people-grouped') === '1')

@@ -104,6 +104,35 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BK — CHANTIER 1 : LES DOUZE ARBITRAGES DE BJ, APPLIQUÉS** (2026-10-18).
+  Branche `main`. Aucune migration. Commit séparé (le chantier 2 — l'éditeur de
+  tracés — vient dans un second commit). Récit : `ETAT.md` § BK (en tête) ;
+  inventaire régénéré : `docs/bj/reglages.md` (0 ligne « à arbitrer ») ;
+  portes : `docs/bk/portes-c1-local.md`.
+  - **Décisions (permanentes)** :
+    · `map-mode:*`, `map-ratio:*`, `rail:expanded` → APPAREIL, raison `screen`
+      (taille de l'écran ; `map-mode` CONTRE la recommandation de BJ) ;
+      `last-fix`, `geo-granted`, `update-pending`, `road-mesh:v1` → appareil,
+      `machine` ; `theme:<rôle>`, `map-last`, `free-route-draft` → compte ;
+    · `map-last` n'est qu'un identifiant d'écran : la ZONE regardée est la
+      nouvelle clé de compte `lo-yanum:map-view` (`ui/components/mapCamera.ts`),
+      restaurée sur le MÊME écran de carte général (`VIEW_SCREENS` ; jamais une
+      fiche), écrite une seconde après un geste DU PO seulement ;
+    · plis de la fiche de ferme : `lo-yanum:farm-section:<type>` (compte, par
+      TYPE) ; `farm-form-<section>:<ferme>` ABANDONNÉE (ni lue, ni convertie,
+      ni écrite ; `ABANDONED_PREFIXES` ; `bjguard` refuse sa redéclaration) ;
+    · `activity-reports` supprimée : l'historique se lit dans `activity_reports` ;
+      l'ancienne clé ne s'efface d'un appareil qu'après relecture IDENTIQUE de
+      chacun de ses rapports dans la table (`judgeDrain`) ; hors ligne :
+      `lo-yanum:activity-offline` (appareil, `offline`) ;
+    · `bjguard` : plus d'entrée « à arbitrer » ; `machine`/`screen` exigent une
+      décision (`decided`) ; toute nouvelle clé se déclare au registre.
+  - Mesures de la base réelle (2026-10-18) : `user_setting_values` 47 lignes
+    (1 compte) dont map-mode 11, map-ratio 11, rail 1 (désormais inertes),
+    farm-form 0, activity-reports 0 ; `activity_reports` 1 rapport complet.
+  - Reprise : `bun run bjguard && bun run bkpass && bun run bjpass` ;
+    `bun run bkui` ; `BASE_URL=https://azmer-fts.github.io/lo-yanum bun run bkui`.
+
 - **BJ — LES RÉGLAGES SUIVENT LE COMPTE (REGISTRE, TABLE PAR RÉGLAGE, PORTE
   QUI VERROUILLE) — TERMINÉE, POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-15/16).
   Commits : `0fab57d` (code + portes ; déploiement ARRÊTÉ par `zones` en CI,

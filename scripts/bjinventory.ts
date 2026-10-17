@@ -113,7 +113,8 @@ const look = (m: Map<string, Site[]>, d: SettingDef): Site[] => {
     /* Une clé exacte écrite par la fonction de sa famille (`themeStorageKey(role)`). */
     if (!d.family && SETTINGS.some((f) => f.family && f.key === k && d.key.startsWith(f.key))) out.push(...list)
     if (d.key.endsWith('-sort') && k.startsWith('(tri')) out.push(...list.map((s) => ({ ...s })))
-    if (d.key === 'farm-form-' && k === 'farm-form-') out.push(...list)
+    /* ★★ BK — le même site (`fields.tsx`) : `farm-form-<section>:<ferme>` avant, `farm-section:<type>` après. */
+    if (d.key === 'lo-yanum:farm-section:' && k === 'farm-form-') out.push(...list)
     if ((d.key === 'lo-yanum:update-pending' || d.key === 'lo-yanum:update-verdict') && k.startsWith('(update')) out.push(...list)
     if (d.key === 'lo-yanum:block:' && k === 'lo-yanum:block:') out.push(...list)
   }
@@ -122,39 +123,45 @@ const look = (m: Map<string, Site[]>, d: SettingDef): Site[] => {
 
 const SYNC: Record<SettingDef['syncedBefore'], string> = { yes: 'oui', no: '**non**', partial: 'partiel¹', 'n/a': '—' }
 const AREA: Record<SettingDef['area'], string> = { local: 'localStorage', idb: 'IndexedDB', cache: 'Cache Storage' }
-const REASON: Record<string, string> = { draft: 'brouillon', offline: 'hors ligne', auth: 'authentification', diagnostic: 'diagnostic', machine: '**machine — à arbitrer**' }
+const REASON: Record<string, string> = { draft: 'brouillon', offline: 'hors ligne', auth: 'authentification', diagnostic: 'diagnostic', machine: 'machine (BK)', screen: 'taille de l’écran (BK)' }
 
 const lines: string[] = []
-lines.push('# BJ — Inventaire des réglages et de l’état persistant côté client')
+lines.push('# BJ — Inventaire des réglages et de l’état persistant côté client (arbitrages appliqués en BK)')
 lines.push('')
 lines.push(`> Généré par \`bun run scripts/bjinventory.ts\` depuis \`src/storage/registry.ts\` (la source de vérité) et le code : « avant » = le commit \`${BEFORE}\` (accès directs à \`localStorage\` / \`sessionStorage\`), « après » = les appels au registre. Lignes résolues par la mécanique de \`bjguard\`.`)
 lines.push('')
 lines.push('Légende — **Sync avant BJ** : la clé voyageait-elle d’un appareil à l’autre avant cette passe. ¹ *partiel* = « choisie seulement » (AY1.3 / BI) : ne voyageait qu’une fois choisie DEPUIS la passe concernée, une valeur plus ancienne restait sur l’appareil. **Destination** : `compte` = table `user_setting_values`, horodatée par le serveur ; `appareil` = reste sur cette machine, avec sa raison.')
 lines.push('')
-lines.push('| # | Clé | Contenu (type) | Où | Écrite par (avant → après) | Lue par (avant → après) | Sync avant BJ | Destination | Justification « appareil » · arbitrage |')
+lines.push('| # | Clé | Contenu (type) | Où | Écrite par (avant → après) | Lue par (avant → après) | Sync avant BJ | Destination | Justification « appareil » · décision du PO (BK) |')
 lines.push('|---|---|---|---|---|---|---|---|---|')
 SETTINGS.forEach((d, i) => {
   const b = look(before, d)
   const a = look(after, d)
   const key = `\`${keyOf(d)}${d.family ? '<…>' : ''}\``
-  const dest = d.scope === 'account' ? (d.arbitrate ? 'compte — **à arbitrer**' : 'compte') : `appareil · ${REASON[d.reason ?? 'diagnostic']}`
-  const why = d.scope === 'device' ? `${d.why ?? ''}${d.arbitrate ? ` — *${d.arbitrate}*` : ''}` : d.arbitrate ? `*${d.arbitrate}*` : ''
+  const dest = d.scope === 'account' ? (d.decided ? 'compte — **tranché (BK)**' : 'compte') : `appareil · ${REASON[d.reason ?? 'diagnostic']}${d.decided ? ' — **tranché (BK)**' : ''}`
+  const why = d.scope === 'device' ? `${d.why ?? ''}${d.decided ? ` — *${d.decided}*` : ''}` : d.decided ? `*${d.decided}*` : ''
   const w = d.area === 'local' ? `${fmt(b, 'w')} → ${fmt(a, 'w')}` : `\`${d.owner.replace('src/', '')}\``
   const r = d.area === 'local' ? `${fmt(b, 'r')} → ${fmt(a, 'r')}` : `\`${d.owner.replace('src/', '')}\``
   lines.push(`| ${i + 1} | ${key} | ${cell(d.label)} | ${AREA[d.area]} | ${w} | ${r} | ${SYNC[d.syncedBefore]} | ${dest} | ${cell(why)} |`)
 })
 lines.push('')
-lines.push('## À arbitrer par le PO')
+lines.push('## Les douze arbitrages du PO (BK, 2026-10-18)')
 lines.push('')
-lines.push('Rangées **provisoirement** selon la règle (« dans le doute, compte »), sauf celles qui décrivent la machine elle-même (raison `machine`), laissées sur l’appareil parce que les envoyer sur le compte n’aurait pas de sens — elles sont listées ici pour que le PO tranche.')
+lines.push('BJ avait laissé douze entrées en suspens. Le PO a tranché ; il n’en reste aucune (`bjguard` refuse une entrée sans décision). `lo-yanum:map-view` est née en BK pour le scénario que le PO attribuait à `map-last`.')
 lines.push('')
-lines.push('| Clé | Rangée aujourd’hui | Recommandation |')
+lines.push('| Clé | Destination appliquée | Décision |')
 lines.push('|---|---|---|')
-for (const d of SETTINGS.filter((x) => x.arbitrate)) lines.push(`| \`${d.key}${d.family ? '<…>' : ''}\` | ${d.scope === 'account' ? 'compte' : 'appareil (machine)'} | ${cell(d.arbitrate ?? '')} |`)
+const destOf = (d: SettingDef) => ((d.decided ?? '').startsWith('supprimée') ? '**supprimée** → table `activity_reports` (vidée puis effacée sur chaque appareil)' : d.scope === 'account' ? 'compte' : `appareil (${REASON[d.reason ?? 'diagnostic']})`)
+for (const d of SETTINGS.filter((x) => x.decided)) lines.push(`| \`${d.key}${d.family ? '<…>' : ''}\` | ${destOf(d)} | ${cell(d.decided ?? '')} |`)
 lines.push('')
-lines.push('## Restent sur l’appareil — les quatre raisons admises')
+lines.push('## Clés abandonnées (BK)')
 lines.push('')
-for (const r of ['draft', 'offline', 'auth', 'diagnostic'] as const) {
+lines.push('- `farm-form-<section>:<ferme>` — le pli d’une section du formulaire de ferme, PAR FERME (BJ, portée compte provisoire ; `sessionStorage` avant BJ). Remplacée par `lo-yanum:farm-section:<type>`, par TYPE de section. **Choix énoncé : abandonnée** — ni lue, ni convertie, ni écrite. Sur le compte : 0 ligne (mesuré le 2026-10-18). Sur les appareils : les copies restent inertes (quelques octets) ; le diagnostic en dit le nombre. Le PO retrouve chaque section ouverte jusqu’à ce qu’il la replie une fois — pour toutes les fermes.')
+lines.push('- `lo-yanum:activity-reports` — l’historique des comptes rendus. Lu désormais dans la table `activity_reports`. La clé n’est plus jamais écrite ; sur chaque appareil qui la porte encore, ses rapports sont envoyés à la table, RELUS, comparés champ par champ, et la clé n’est effacée que si TOUS sont identiques dans la table (`judgeDrain`). Sur le compte : 0 ligne (mesuré) ; la table : 1 rapport.')
+lines.push('')
+lines.push('## Restent sur l’appareil — les raisons admises')
+lines.push('')
+for (const r of ['draft', 'offline', 'auth', 'diagnostic', 'screen', 'machine'] as const) {
   lines.push(`- **${REASON[r]}** : ${SETTINGS.filter((d) => d.scope === 'device' && d.reason === r).map((d) => `\`${d.key}${d.family ? '<…>' : ''}\``).join(', ')}`)
 }
 lines.push('')
@@ -165,7 +172,7 @@ lines.push('- **Service worker** (`public/sw.js`) : Cache Storage `lo-yanum-shel
 lines.push('- **IndexedDB** : la seule base est `lo-yanum` (`aggregates` + `outbox`), ouverte désormais par `src/storage/idb.ts` (déplacée de `src/data/cache.ts`).')
 lines.push('- **MapLibre GL, pmtiles** : aucune écriture dans `localStorage`, `sessionStorage`, IndexedDB ni Cache Storage (recherché dans `node_modules/maplibre-gl/dist/maplibre-gl.js` : 0 occurrence).')
 lines.push('- **Cookies** : aucun (`document.cookie` n’apparaît nulle part ; GitHub Pages n’en pose pas).')
-lines.push('- **sessionStorage** : un seul usage avant BJ, les sections repliées du formulaire de ferme (`fields.tsx`, `farm-form-*`) ; passé au registre (portée compte, à arbitrer). Plus aucun usage.')
+lines.push('- **sessionStorage** : un seul usage avant BJ, les sections repliées du formulaire de ferme (`fields.tsx`, `farm-form-*`) ; passé au registre en BJ, par type de section en BK (`lo-yanum:farm-section:<type>`). Plus aucun usage.')
 lines.push('')
 lines.push('## Commentaires et textes qui mentaient')
 lines.push('')

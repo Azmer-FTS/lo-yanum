@@ -1048,7 +1048,8 @@ function FarmForm() {
         <FormSection
           title={t('form.sectionStatusAreas')}
           testId="farm-block-statusAreas"
-          storageKey={`farm-form-status:${farmId ?? 'new'}`}
+          storageKey="lo-yanum:farm-section:status"
+          toggleTestId={`section-farm-form-status:${farmId ?? 'new'}`}
           defaultOpen
           forceOpen={touched && !!errors.status}
           summary={
@@ -1296,7 +1297,8 @@ function FarmForm() {
         <FormSection
           title={t('common.details')}
           testId="farm-block-details"
-          storageKey={`farm-form-details:${farmId ?? 'new'}`}
+          storageKey="lo-yanum:farm-section:details"
+          toggleTestId={`section-farm-form-details:${farmId ?? 'new'}`}
           defaultOpen={!isEdit}
           forceOpen={touched && !!errors.localityCode}
           summary={
@@ -1538,7 +1540,8 @@ function FarmForm() {
         <FormSection
           title={t('people.section')}
           testId="farm-block-people"
-          storageKey={`farm-form-people:${farmId ?? 'new'}`}
+          storageKey="lo-yanum:farm-section:people"
+          toggleTestId={`section-farm-form-people:${farmId ?? 'new'}`}
           defaultOpen
           forceOpen={
             touched &&
@@ -1661,7 +1664,8 @@ function FarmForm() {
         <FormSection
           title={t('settings.emergencyFields.title')}
           testId="farm-block-emergency"
-          storageKey={`farm-form-emergency:${farmId ?? 'new'}`}
+          storageKey="lo-yanum:farm-section:emergency"
+          toggleTestId={`section-farm-form-emergency:${farmId ?? 'new'}`}
           /* AT4.4 — déplié par défaut dans son onglet ; le pli du PO (collapseKey) prime. */
           forceOpen={touched && !!errors.standbyPhone}
           summary={
@@ -1716,7 +1720,8 @@ function FarmForm() {
           title={t('commitment.title')}
           testId="farm-block-commitments"
           /* ★ AM3 — replié par défaut, COMME AU DÉTAIL (et A30 : 390 px). */
-          storageKey={`farm-form-commitments:${farmId ?? 'new'}`}
+          storageKey="lo-yanum:farm-section:commitments"
+          toggleTestId={`section-farm-form-commitments:${farmId ?? 'new'}`}
           /* AT4.4 — déplié par défaut dans son onglet ; le pli du PO (collapseKey) prime. */
           summary={
             <span className="chip ms-2 bg-surface-high text-content-secondary">
@@ -1809,7 +1814,8 @@ function FarmForm() {
         <FormSection
           title={t('farms.agreements')}
           testId="farm-block-agreements"
-          storageKey={`farm-form-agreements:${farmId ?? 'new'}`}
+          storageKey="lo-yanum:farm-section:agreements"
+          toggleTestId={`section-farm-form-agreements:${farmId ?? 'new'}`}
           /* AT4.4 — déplié par défaut dans son onglet ; le pli du PO (collapseKey) prime. */
           summary={
             <span className="chip ms-2 bg-surface-high text-content-secondary">
@@ -1885,7 +1891,8 @@ function FarmForm() {
         <FormSection
           title={t('common.notes')}
           testId="farm-block-notes"
-          storageKey={`farm-form-notes:${farmId ?? 'new'}`}
+          storageKey="lo-yanum:farm-section:notes"
+          toggleTestId={`section-farm-form-notes:${farmId ?? 'new'}`}
           /* AT4.4 — déplié par défaut dans son onglet ; le pli du PO (collapseKey) prime. */
           summary={
             <span className="ms-2 min-w-0 truncate text-caption text-content-muted">

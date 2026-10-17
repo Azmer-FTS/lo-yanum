@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 
 import { MapModePill, clampRatio, useMapMode, useMapRatio } from './mapMode'
+import { MapViewScope, VIEW_SCREENS } from './mapCamera'
 import type { IconName } from './Icon'
 import type { MapMode } from './mapMode'
 import { useViewportTier } from '../hooks/useNarrow'
@@ -510,7 +511,8 @@ export function MapSplit({
             mode === 'full' ? 'min-h-0 flex-1' : splitHeight
           }`}
         >
-          {map(state)}
+          {/* ★★ BK — la carte sait sur quel écran général elle est : elle y retrouve la zone regardée (`mapCamera.ts`). */}
+          <MapViewScope.Provider value={VIEW_SCREENS.has(screenKey) ? screenKey : null}>{map(state)}</MapViewScope.Provider>
         </div>
       </div>
 

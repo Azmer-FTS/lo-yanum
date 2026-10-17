@@ -15,7 +15,9 @@ import { useDataState } from '../hooks/useDataState'
 import { lastSettingsSyncAt, settingStamp } from '../settings/sync'
 import { SUPABASE_CONFIGURED } from '../../data/config'
 import { accountSyncStarted, fingerprint, migrationRecord, refreshAccountView, settingsView } from '../../storage/account'
-import { refusedSettings } from '../../storage/local'
+import { refusedSettings, storedKeys } from '../../storage/local'
+import { ABANDONED_PREFIXES } from '../../storage/registry'
+import { activityOfflineState } from '../report/activityHistory'
 import { useViewAs } from '../settings/viewAs'
 import { isStandalone } from '../standalone'
 import { RUNNING, checkForUpdate, isolate, useUpdateState } from '../update'
@@ -136,6 +138,8 @@ export function settingsDiagnostic(): SettingsDiagnostic {
     })),
     migration: m ? { at: m.at, promoted: m.promoted.length, legacy: m.legacy.length, accountWon: m.accountWon.length, defaulted: m.defaulted.length, lostRace: m.lostRace.length } : null,
     refused: [...new Set(refusedSettings().map((r) => r.key))],
+    activity: activityOfflineState(),
+    abandonedFolds: storedKeys().filter((k) => ABANDONED_PREFIXES.some((p) => k.startsWith(p))).length,
   }
 }
 
