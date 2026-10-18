@@ -1058,7 +1058,9 @@
     "penAddMiss": "Tap the shape's outline itself to add a point there.",
     "penRemoveMiss": "Tap a point to delete it.",
     "convertMiss": "Tap a point to turn a corner into a curve, or drag from it to pull out handles.",
-    "noNode": "No point selected"
+    "noNode": "No point selected",
+    "snapOn": "Snap to roads is on — a point released near a road jumps onto it",
+    "snapNoRoads": "There is no road in this view to snap to. Zoom in on an area with roads."
   },
   "regionEdit": {
     "pickHint": "Choose a region in the row above, or tap it on the map, to edit its boundary.",

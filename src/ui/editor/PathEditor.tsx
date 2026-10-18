@@ -37,7 +37,7 @@ import type { History, LatLng, PathModel } from '@core/index'
 
 import { Icon } from '../components/Icon'
 import type { IconName } from '../components/Icon'
-import { roadSegments, snapLngLat } from './roadSnap'
+import { SNAP_PX, roadSegments, snapLngLat, snapPoint } from './roadSnap'
 import type { RoadSegments } from './roadSnap'
 import { ToolButton } from './ToolButton'
 
@@ -223,6 +223,13 @@ export function PathEditor(props: PathEditorProps) {
   const [trace, setTrace] = useState<LatLng[] | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [snap, setSnap] = useState(false)
+  /**
+   * ★★ BL — L'ACCROCHE SE VOIT. Pendant le geste, la route visée S'ÉCLAIRE et
+   * une cible marque le point où le nœud ira ; au lâcher, le nœud SAUTE sur la
+   * route, et un cercle qui s'élargit montre le saut (`pulse`).
+   */
+  const [snapHint, setSnapHint] = useState<{ x: number; y: number; line: Array<[number, number]> } | null>(null)
+  const [pulse, setPulse] = useState<{ x: number; y: number; key: number } | null>(null)
   /** ★★ BL — la forme d'origine (pointillés) : montrée par défaut, le PO la masque d'un bouton. */
   const [showGhost, setShowGhost] = useState(true)
   const [picker, setPicker] = useState<{ x: number; y: number; ids: string[] } | null>(null)
@@ -490,8 +497,34 @@ export function PathEditor(props: PathEditorProps) {
   }
   const roadsRef = useRef<RoadSegments | null>(null)
   const snapped = (p: LatLng): LatLng => (map && latest.current.snap ? snapLngLat(map, roadsRef.current, p) : p)
+  const snappedAt = snapped
   const loadRoads = () => {
     roadsRef.current = map && latest.current.snap ? roadSegments(map) : null
+  }
+  /** La route que vise (x, y), à l'écran — pour l'éclairer pendant le geste. */
+  const hintAt = (x: number, y: number) => {
+    const roads = roadsRef.current
+    if (!latest.current.snap || !roads) return null
+    const q = snapPoint(roads, x, y, SNAP_PX)
+    return q ? { x: q.x, y: q.y, line: roads.lines[q.line] ?? [] } : null
+  }
+  /** Le saut, montré : un cercle qui s'élargit là où le point a atterri sur la route. */
+  const showJump = (from: LatLng, to: LatLng) => {
+    if (Math.abs(from.lat - to.lat) < 1e-12 && Math.abs(from.lng - to.lng) < 1e-12) return
+    const q = project(to)
+    setPulse({ x: q.x, y: q.y, key: Date.now() })
+  }
+  useEffect(() => {
+    if (!pulse) return
+    const id = window.setTimeout(() => setPulse(null), 1100)
+    return () => window.clearTimeout(id)
+  }, [pulse])
+  const toggleSnap = () => {
+    const on = !latest.current.snap
+    setSnap(on)
+    setNotice(null)
+    /* Rien à quoi s'accrocher dans la vue (une zone pas encore chargée, un zoom trop lointain) : on le DIT. */
+    if (on && map && roadSegments(map).segs.length === 0) setNotice(t('editor.snapNoRoads'))
   }
 
   // -------------------------------------------------------------------------
@@ -589,7 +622,11 @@ export function PathEditor(props: PathEditorProps) {
         setLive(null)
         if (g.moved) {
           /* Un point posé à la plume n'est pas sélectionné : Échap sort du tracé (le brouillon reste), comme avant. */
-          if (!m.closed) commit(appendNode(m, snapped(g.at), unproject(local(e).x, local(e).y)), null)
+          if (!m.closed) {
+            const at = snapped(g.at)
+            commit(appendNode(m, at, unproject(local(e).x, local(e).y)), null)
+            showJump(g.at, at)
+          }
           return
         }
         penTap(m, g.at, g.x, g.y)
@@ -663,7 +700,9 @@ export function PathEditor(props: PathEditorProps) {
           return
         }
       }
-      commit(appendNode(m, snapped(at)), null)
+      const to = snapped(at)
+      commit(appendNode(m, to), null)
+      showJump(at, to)
       return
     }
     /* Forme fermée : toucher le contour ajoute un nœud là. */
@@ -843,10 +882,12 @@ export function PathEditor(props: PathEditorProps) {
    * vite que React ne dessine, et le point lâché retardait de plusieurs
    * mouvements (31 m, attrapé par `bkeditui` A553 au doigt).
    */
-  const dragModel = (d: Drag, x: number, y: number): PathModel | null => {
+  const dragModel = (d: Drag, x: number, y: number, final = true): PathModel | null => {
     const base = sessionRef.current?.h.present
     if (!base) return null
     const at = unproject(x, y)
+    /* ★★ BL — pendant le geste le point suit le DOIGT (la route visée s'éclaire) ; il saute sur la route au lâcher. */
+    const snapped = (q: LatLng) => (final ? snappedAt(q) : q)
     if (d.type === 'node') {
       if (d.tool === 'penRemove') return null
       if (d.tool === 'convert') {
@@ -870,8 +911,9 @@ export function PathEditor(props: PathEditorProps) {
     const p = local(e)
     if (!d.moved && Math.hypot(p.x - d.x0, p.y - d.y0) > 4) d.moved = true
     if (!d.moved) return
-    const next = dragModel(d, p.x, p.y)
+    const next = dragModel(d, p.x, p.y, false)
     if (next) setLive(next)
+    if (d.type === 'node' || d.type === 'mid') setSnapHint(d.type === 'node' && d.tool === 'convert' ? null : hintAt(p.x, p.y))
   }
 
   const onDragEnd = (e: React.PointerEvent) => {
@@ -881,6 +923,7 @@ export function PathEditor(props: PathEditorProps) {
     e.stopPropagation()
     const base = sessionRef.current?.h.present
     if (!base) return
+    setSnapHint(null)
     if (d.moved) {
       const p = local(e)
       const m = dragModel(d, p.x, p.y)
@@ -890,6 +933,10 @@ export function PathEditor(props: PathEditorProps) {
       }
       const keep = d.type === 'node' || d.type === 'handle' ? d.index : d.type === 'mid' ? d.inserted : latest.current.selected
       commit(m, keep)
+      if ((d.type === 'node' && d.tool !== 'convert') || d.type === 'mid') {
+        const i = d.type === 'node' ? d.index : (d.inserted ?? -1)
+        if (i >= 0 && m.nodes[i]) showJump(unproject(p.x, p.y), m.nodes[i])
+      }
       return
     }
     setLive(null)
@@ -971,6 +1018,7 @@ export function PathEditor(props: PathEditorProps) {
     if (!d || e.pointerId !== d.pointerId) return
     drag.current = null
     setLive(null)
+    setSnapHint(null)
   }
   const handlers = { onPointerMove: onDragMove, onPointerUp: onDragEnd, onPointerCancel: onDragCancel }
   /**
@@ -995,6 +1043,26 @@ export function PathEditor(props: PathEditorProps) {
                 <g data-testid="editor-ghost" data-ring={ghostRing?.length ?? 0}>
                   <path d={ghostD} fill="none" stroke="#fff" strokeOpacity={0.85} strokeWidth={4} strokeLinejoin="round" />
                   <path d={ghostD} fill="none" stroke="#1f2937" strokeWidth={2} strokeDasharray="7 5" strokeLinejoin="round" />
+                </g>
+              )}
+              {snapHint && snapHint.line.length > 1 && (
+                /* ★★ BL — la route visée, ÉCLAIRÉE, et la cible où le point va sauter. */
+                <g data-testid="editor-snap-road" data-x={snapHint.x.toFixed(2)} data-y={snapHint.y.toFixed(2)}>
+                  <path d={pathD(snapHint.line.map(([x, y]) => ({ x, y })), false)} fill="none" stroke="#fff" strokeOpacity={0.9} strokeWidth={11} strokeLinecap="round" strokeLinejoin="round" />
+                  <path d={pathD(snapHint.line.map(([x, y]) => ({ x, y })), false)} fill="none" stroke="#f59e0b" strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" />
+                  <g data-testid="editor-snap-target" transform={`translate(${snapHint.x},${snapHint.y})`}>
+                    <circle r={13} fill="none" stroke="#fff" strokeWidth={4} />
+                    <circle r={13} fill="none" stroke="#b45309" strokeWidth={2} strokeDasharray="4 3" />
+                    <circle r={3.5} fill="#b45309" />
+                  </g>
+                </g>
+              )}
+              {pulse && (
+                <g key={pulse.key} data-testid="editor-snap-pulse" transform={`translate(${pulse.x},${pulse.y})`}>
+                  <circle r={10} fill="none" stroke="#f59e0b" strokeWidth={3}>
+                    <animate attributeName="r" from="8" to="34" dur="0.7s" fill="freeze" />
+                    <animate attributeName="opacity" from="1" to="0" dur="0.9s" fill="freeze" />
+                  </circle>
                 </g>
               )}
               {model && d && (
@@ -1169,23 +1237,27 @@ export function PathEditor(props: PathEditorProps) {
       {sep}
       {/* 3. Ce qui change la vue ou l'accroche : l'aimant, la forme d'origine. */}
       <div className="flex items-center gap-0.5">
-        <ToolButton testId="editor-snap" kind="toggle" icon="magnet" label={t('editor.snap')} active={on && snap} disabled={!on} onClick={() => setSnap((v) => !v)} />
+        <ToolButton testId="editor-snap" kind="toggle" icon="magnet" label={t('editor.snap')} active={on && snap} disabled={!on} onClick={toggleSnap} />
         <ToolButton testId="editor-ghost-toggle" kind="toggle" icon="ghostShape" label={t(showGhost ? 'editor.ghostHide' : 'editor.ghostShow')} active={on && showGhost && !!ghostRing} disabled={!on || !ghostRing} onClick={() => setShowGhost((v) => !v)} />
       </div>
       {/* 4. Le point sélectionné. ★ Sa place est TOUJOURS réservée (éteinte sans point) : la barre ne
              change pas de hauteur quand on touche un point, donc la carte ne bouge pas sous le doigt. */}
       {sep}
-      <span className="flex items-center gap-0.5" data-testid={on && model && sel !== null ? 'editor-node-actions' : 'editor-node-slot'}>
-        <span className="min-w-[4.5rem] px-1 text-micro font-semibold text-content-primary">{on && model && sel !== null ? t('editor.nodeN', { n: sel + 1 }) : <span className="text-content-muted">{t('editor.noNode')}</span>}</span>
-        <ToolButton
-          testId="editor-node-kind"
-          icon={on && model && sel !== null && model.nodes[sel].kind === 'smooth' ? 'nodeCorner' : 'nodeSmooth'}
-          label={t(on && model && sel !== null && model.nodes[sel].kind === 'smooth' ? 'editor.toCorner' : 'editor.toSmooth')}
-          disabled={!on || !model || sel === null}
-          onClick={toggleSelected}
-        />
-        <ToolButton testId="editor-node-delete" icon="trash" danger label={t('editor.deleteNode')} shortcut="⌫" disabled={!on || !model || sel === null} onClick={deleteSelected} />
-      </span>
+      {/* ⚠️ Sans point sélectionné, les mêmes boutons, ÉTEINTS, sous un autre nom : `editor-node-*` reste le
+             nom des points de la carte (et des actions d'un point sélectionné), comme en BK. */}
+      {on && model && sel !== null ? (
+        <span className="flex items-center gap-0.5" data-testid="editor-node-actions">
+          <span className="min-w-[4.5rem] px-1 text-micro font-semibold text-content-primary">{t('editor.nodeN', { n: sel + 1 })}</span>
+          <ToolButton testId="editor-node-kind" icon={model.nodes[sel].kind === 'smooth' ? 'nodeCorner' : 'nodeSmooth'} label={t(model.nodes[sel].kind === 'smooth' ? 'editor.toCorner' : 'editor.toSmooth')} onClick={toggleSelected} />
+          <ToolButton testId="editor-node-delete" icon="trash" danger label={t('editor.deleteNode')} shortcut="⌫" onClick={deleteSelected} />
+        </span>
+      ) : (
+        <span className="flex items-center gap-0.5" data-testid="editor-point-slot">
+          <span className="min-w-[4.5rem] px-1 text-micro font-semibold text-content-muted">{t('editor.noNode')}</span>
+          <ToolButton testId="editor-point-kind-off" icon="nodeSmooth" label={t('editor.toSmooth')} disabled onClick={() => undefined} />
+          <ToolButton testId="editor-point-delete-off" icon="trash" danger label={t('editor.deleteNode')} disabled onClick={() => undefined} />
+        </span>
+      )}
       {on && model && !model.closed && (
         <button type="button" data-testid="editor-close-path" className="btn-primary min-h-11 py-1.5 text-micro" disabled={model.nodes.length < 3} onClick={closeNow}>
           <Icon name="check" size={13} />
@@ -1297,7 +1369,14 @@ export function PathEditor(props: PathEditorProps) {
 
       {/* 4. Ce qui est dit — UNE ligne, toujours là (sa hauteur ne bouge pas) : un avis s'il y en a un,
              sinon la forme d'origine nommée. Puis ce que l'hôte ajoute. */}
-      <div className="flex min-h-5 items-center gap-1.5 text-micro" data-testid="editor-message-line">
+      <div className="flex min-h-5 items-center gap-2 text-micro" data-testid="editor-message-line">
+        {snap && !notice && (
+          /* ★★ BL — l'accroche est DITE tant qu'elle est active : une accroche silencieuse est une accroche cassée. */
+          <span data-testid="editor-snap-status" className="flex shrink-0 items-center gap-1 rounded-pill bg-surface-high px-2 py-0.5 font-semibold text-accent-ink ring-1 ring-accent">
+            <Icon name="magnet" size={13} />
+            {t('editor.snapOn')}
+          </span>
+        )}
         {notice ? (
           <p role="status" data-testid="editor-notice" className="min-w-0 truncate font-semibold text-status-warn-ink">
             {notice}

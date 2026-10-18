@@ -1,5 +1,34 @@
 # לא ינום — ETAT
 
+> 🏁 **BL (chantier 2) — L'ACCROCHE AUX ROUTES SE VOIT. 2026-10-18.**
+>
+> « Quand tu dis de le connecter à la route, je clique dessus, mais il ne se
+> passe rien. » — le PO
+>
+> **Tranché par l'observation** (sonde sur le build de BK, fond plan ET
+> satellite) : l'accroche MARCHAIT — lâché à 9 px d'une route, le point finissait
+> à 0,00 px. Mais l'option vivait dans « פעולות », dont le menu se refermait au
+> clic sans que rien ne change ; rien ne disait qu'elle était active ; aucune
+> route ne s'éclairait ; le point collait à la route sans jamais sauter. Une
+> accroche silencieuse est une accroche cassée (`docs/bl/accroche.md`).
+>
+> - L'**aimant** est dans la barre (bascule cerclée quand active) et la barre le
+>   DIT (« הצמדה לכבישים פעילה… ») ; sans route dans la vue, elle le dit aussi.
+> - En approchant (18 px), **la route visée s'éclaire** et une **cible** marque
+>   l'arrivée ; le nœud suit le doigt ; **au lâcher, il saute** sur la route
+>   (un cercle qui s'élargit montre le saut). Plume et « + » aussi.
+> - Corrigé au passage : sans point sélectionné, les boutons du point (toujours
+>   présents depuis le chantier 1) portaient le préfixe `editor-node-` des
+>   points de la carte → `editor-point-*-off`.
+>
+> **Portes** : `blui` A581–A584 (souris ET doigt ; en base, le sommet lâché à
+> 9 px est sur le segment de route à moins d'un mètre ; accroche coupée : il
+> reste où on l'a lâché) — `blui` entière 192/192 sur l'arbre du chantier 2.
+> Réécrites (la barre au-dessus de la carte) : `bhui` A489 (juge ce qui bouge À
+> L'ÉCRAN, plus le centre numérique de la caméra) et A497 (son toucher tombait
+> sur l'épingle) — ⚠️ toutes deux ROUGES sur le build du commit du chantier 1,
+> contrairement à ce que dit son message (`docs/bl/portes-c2-local.md`).
+
 > 🏁 **BL (chantier 1) — LA BARRE D'OUTILS REMONTE EN HAUT, AU NIVEAU D'ILLUSTRATOR. 2026-10-18.**
 >
 > « Ma map est superposée de plein d'outils, c'est vraiment embêtant pour

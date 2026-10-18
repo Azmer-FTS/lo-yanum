@@ -194,11 +194,21 @@ await guard('A489', async () => {
   const zones0 = db.rows('zones').length
   const cam0 = await camera(o.page)
   const p = await insideZone(o.page, db)
+  /* ★★ BL — la barre d'édition paraît AU-DESSUS de la carte, qui rétrécit d'autant : la caméra est
+     décalée de ce qu'il faut pour que RIEN ne bouge à l'écran. « Ne recadre pas » se juge donc à
+     l'écran (le point touché reste sous le doigt, même zoom), plus au centre numérique. */
+  const anchor = await o.page.evaluate(({ x, y }) => {
+    const m = (window as unknown as { __loYanumMap: { unproject(a: [number, number]): { lat: number; lng: number }; getContainer(): HTMLElement } }).__loYanumMap
+    const r = m.getContainer().getBoundingClientRect()
+    const ll = m.unproject([x - r.left, y - r.top])
+    return { lat: ll.lat, lng: ll.lng }
+  }, p)
   await tap(o.cdp, p.x, p.y)
   await o.page.waitForTimeout(800)
   check('A489 un appui sur la forme existante la SÉLECTIONNE', (await selected(o.page).count()) === 1 && (await selected(o.page).getAttribute('data-shape')) === ZONE)
   check('A489 … aucun tracé neuf, aucune forme neuve', (await o.page.locator('[data-testid="shape-editor"][data-mode="new"]').count()) === 0 && db.rows('zones').length === zones0)
-  check('A489 entrer en édition ne recadre pas', sameCamera(cam0, await camera(o.page)))
+  const after = await project(o.page, anchor)
+  check(`A489 entrer en édition ne recadre pas : le point touché est resté sous le doigt (${Math.hypot(after.x - p.x, after.y - p.y).toFixed(1)} px), même zoom`, Math.hypot(after.x - p.x, after.y - p.y) < 1.5 && Math.abs((await camera(o.page)).zoom - cam0.zoom) < 1e-6)
   await o.page.screenshot({ path: `${SHOTS}/a489-forme-selectionnee-1032.png` })
   /* Re-toucher la forme (sélectionnée) n'en commence pas une non plus. */
   await tap(o.cdp, p.x, p.y)
@@ -383,7 +393,18 @@ await guard('A497', async () => {
   /* La modifier, et l'enregistrer. */
   const ring = dbRing(db, id)
   const c = ring.reduce((a, q) => [a[0] + q[0] / ring.length, a[1] + q[1] / ring.length], [0, 0])
-  const inside = await project(r.page, { lng: c[0] + (ring[0][0] - c[0]) * 0.3, lat: c[1] + (ring[0][1] - c[1]) * 0.3 })
+  /* ★★ BL — un point de la forme où le doigt tombe sur la CARTE (pas sur l'épingle de la ferme) : la
+     barre d'édition au-dessus de la carte a déplacé le tracé à l'écran, et le premier essai (30 %
+     vers le premier sommet) tombait désormais sur l'épingle. */
+  let inside = await project(r.page, { lng: c[0] + (ring[0][0] - c[0]) * 0.3, lat: c[1] + (ring[0][1] - c[1]) * 0.3 })
+  for (const k of [0, 1, 2, 3]) {
+    const q = await project(r.page, { lng: c[0] + (ring[k][0] - c[0]) * 0.45, lat: c[1] + (ring[k][1] - c[1]) * 0.45 })
+    const onCanvas = await r.page.evaluate(([px, py]) => (document.elementFromPoint(px, py) as HTMLElement | null)?.classList.contains('maplibregl-canvas') ?? false, [q.x, q.y])
+    if (onCanvas) {
+      inside = q
+      break
+    }
+  }
   await tap(r.cdp, inside.x, inside.y)
   await r.page.waitForTimeout(700)
   check('A497 relue, elle se SÉLECTIONNE (c’est une forme existante)', (await selected(r.page).getAttribute('data-shape').catch(() => null)) === id)

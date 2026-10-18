@@ -48,6 +48,17 @@ import type { LatLng } from '../src/core/index'
  *         ne déborde pas, chaque outil reste entier à l'écran
  *   A580  « שרטוט מחדש » : la forme remplacée n'est plus un aplat, mais les
  *         pointillés nommés
+ *
+ * CHANTIER 2 — L'ACCROCHE AUX ROUTES SE VOIT (souris ET doigt) :
+ *   A581  ★ l'aimant est DANS la barre ; actif, il se voit (bouton cerclé) et
+ *         la barre le DIT ; sans route dans la vue, la barre le dit aussi
+ *   A582  ★ en approchant d'une route, elle S'ÉCLAIRE, et une cible marque le
+ *         point où le nœud ira ; loin des routes, rien ne s'éclaire
+ *   A583  ★ lâché à 9 px d'une route, le point finit EXACTEMENT sur la route
+ *         (à l'écran, et en base : le sommet est sur le segment de route, au
+ *         mètre près) ; le saut se voit (un cercle qui s'élargit)
+ *   A584  ★ accroche coupée : lâché au même endroit, le point ne bouge PAS (il
+ *         reste à 9 px de la route, là où on l'a lâché)
  */
 
 const OUT = process.env.DIST ?? 'dist-bl'
@@ -118,6 +129,8 @@ interface Hand {
   tap(x: number, y: number): Promise<void>
   press(x: number, y: number, ms: number): Promise<void>
   drag(x0: number, y0: number, x1: number, y1: number, steps?: number): Promise<void>
+  /** Glisser SANS lâcher ; la fonction rendue lâche. */
+  hold(x0: number, y0: number, x1: number, y1: number, steps?: number): Promise<() => Promise<void>>
 }
 
 async function hand(o: Opened, dev: Device): Promise<Hand> {
@@ -166,6 +179,25 @@ async function hand(o: Opened, dev: Device): Promise<Hand> {
         await page.mouse.up()
       }
       await page.waitForTimeout(450)
+    },
+    async hold(x0, y0, x1, y1, steps = 12) {
+      if (dev.touch) {
+        await touch('touchStart', [{ x: x0, y: y0 }])
+        for (let i = 1; i <= steps; i++) {
+          await touch('touchMove', [{ x: x0 + ((x1 - x0) * i) / steps, y: y0 + ((y1 - y0) * i) / steps }])
+          await page.waitForTimeout(16)
+        }
+      } else {
+        await page.mouse.move(x0, y0)
+        await page.mouse.down()
+        await page.mouse.move(x1, y1, { steps })
+      }
+      await page.waitForTimeout(300)
+      return async () => {
+        if (dev.touch) await touch('touchEnd', [])
+        else await page.mouse.up()
+        await page.waitForTimeout(450)
+      }
     },
   }
 }
@@ -685,6 +717,194 @@ await guard('A580', async () => {
   check('A580 le bouton la masque aussi ici', (await ghost.count()) === 0)
   await o.ctx.close()
 })
+
+
+// ===========================================================================
+// CHANTIER 2 — L'ACCROCHE AUX ROUTES SE VOIT
+// ===========================================================================
+/** Une route chargée à l'écran, assez longue, au milieu de la carte : ses deux bouts en pixels de page et en degrés. */
+async function findRoad(page: Page) {
+  return page.evaluate(() => {
+    const m = (window as unknown as { __loYanumMap: { querySourceFeatures(s: string, o: unknown): Array<{ geometry: GeoJSON.Geometry }>; project(p: [number, number]): { x: number; y: number }; getContainer(): HTMLElement } }).__loYanumMap
+    const r = m.getContainer().getBoundingClientRect()
+    let best: { ax: number; ay: number; bx: number; by: number; a: [number, number]; b: [number, number]; d: number } | null = null
+    for (const f of m.querySourceFeatures('protomaps', { sourceLayer: 'roads' })) {
+      const lines = f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.type === 'MultiLineString' ? f.geometry.coordinates : []
+      for (const l of lines)
+        for (let i = 1; i < l.length; i++) {
+          const a = m.project(l[i - 1] as [number, number])
+          const b = m.project(l[i] as [number, number])
+          const mx = (a.x + b.x) / 2
+          const my = (a.y + b.y) / 2
+          if (Math.hypot(a.x - b.x, a.y - b.y) < 70 || mx < 150 || mx > r.width - 150 || my < 120 || my > r.height - 120) continue
+          const d = Math.hypot(mx - r.width / 2, my - r.height / 2)
+          if (!best || d < best.d) best = { ax: a.x + r.left, ay: a.y + r.top, bx: b.x + r.left, by: b.y + r.top, a: l[i - 1] as [number, number], b: l[i] as [number, number], d }
+        }
+    }
+    return best
+  })
+}
+/** La distance (en mètres) d'un point (degrés) à un segment de route (degrés), dans un plan local. */
+function metresToSegment(p: LatLng, a: [number, number], b: [number, number]): number {
+  const kx = 111_320 * Math.cos((p.lat * Math.PI) / 180)
+  const ky = 110_574
+  const ax = (a[0] - p.lng) * kx
+  const ay = (a[1] - p.lat) * ky
+  const bx = (b[0] - p.lng) * kx
+  const by = (b[1] - p.lat) * ky
+  const vx = bx - ax
+  const vy = by - ay
+  const u = Math.max(0, Math.min(1, -(ax * vx + ay * vy) / (vx * vx + vy * vy)))
+  return Math.hypot(ax + u * vx, ay + u * vy)
+}
+const pxToLine = (q: { x: number; y: number }, R: { ax: number; ay: number; bx: number; by: number }) =>
+  Math.abs((R.bx - R.ax) * (R.ay - q.y) - (R.ax - q.x) * (R.by - R.ay)) / Math.hypot(R.bx - R.ax, R.by - R.ay)
+
+/** La ferme du banc, la limite ouverte, la carte reculée (zoom 14) pour avoir des routes autour. */
+async function openForRoads(dev: Device) {
+  const { db, bCenter } = blDb()
+  const { o, h } = await openFarm(db, dev)
+  await openBoundary(h, bCenter)
+  await frame(o.page, bCenter, 14)
+  await o.page.waitForTimeout(1500)
+  return { db, o, h, bCenter }
+}
+
+for (const dev of devices) {
+  const D = dev.name
+  await guard(`A581-${D}`, async () => {
+    section(`A581 (${D}) — ★ l’aimant, dans la barre, et visible quand il est actif`)
+    const { o, h } = await openForRoads(dev)
+    check(`A581 (${D}) l’aimant est dans la barre, sans ouvrir de menu`, await o.page.locator('[data-testid="editor-snap"]').isVisible())
+    check(`A581 (${D}) éteint par défaut (et rien n’en parle)`, (await o.page.locator('[data-testid="editor-snap"]').getAttribute('aria-pressed')) === 'false' && (await o.page.locator('[data-testid="editor-snap-status"]').count()) === 0)
+    const sn = await centreOf(o.page, '[data-testid="editor-snap"]')
+    await h.tap(sn.x, sn.y)
+    const st = o.page.locator('[data-testid="editor-snap-status"]')
+    check(`A581 (${D}) ★ un toucher : l’aimant est ENFONCÉ (cerclé), et la barre DIT « ${(await st.innerText().catch(() => '')).trim()} »`, (await o.page.locator('[data-testid="editor-snap"]').getAttribute('aria-pressed')) === 'true' && (await attr(o.page, 'data-snap')) === '1' && /הצמדה לכבישים פעילה/.test(await st.innerText().catch(() => '')))
+    const ring = await o.page.locator('[data-testid="editor-snap"]').evaluate((e) => getComputedStyle(e).boxShadow)
+    check(`A581 (${D}) son état se voit (un anneau d’accent)`, ring !== 'none' && ring.length > 0, ring)
+    await o.page.screenshot({ path: `${SHOTS}/a581-${D}-aimant.png` })
+    await h.tap(sn.x, sn.y)
+    check(`A581 (${D}) un second toucher l’éteint, et la mention s’en va`, (await o.page.locator('[data-testid="editor-snap"]').getAttribute('aria-pressed')) === 'false' && (await st.count()) === 0)
+    /* Sans route dans la vue (en pleine mer) : c'est dit. */
+    await frame(o.page, { lat: 32.2, lng: 34.3 }, 13)
+    await h.tap(sn.x, sn.y)
+    check(`A581 (${D}) sans route dans la vue : la barre le dit (« ${(await o.page.locator('[data-testid="editor-notice"]').innerText().catch(() => '')).trim()} »)`, /אין כביש/.test(await o.page.locator('[data-testid="editor-notice"]').innerText().catch(() => '')))
+    await o.ctx.close()
+  })
+
+  await guard(`A582-${D}`, async () => {
+    section(`A582 (${D}) — ★ en approchant, la route s’éclaire`)
+    const { o, h } = await openForRoads(dev)
+    const R = await findRoad(o.page)
+    check(`A582 (${D}) une route est chargée près de la ferme (couche « roads »)`, R !== null)
+    if (!R) return
+    const sn = await centreOf(o.page, '[data-testid="editor-snap"]')
+    await h.tap(sn.x, sn.y)
+    const len = Math.hypot(R.bx - R.ax, R.by - R.ay)
+    const nx = -(R.by - R.ay) / len
+    const ny = (R.bx - R.ax) / len
+    const tx = (R.ax + R.bx) / 2 + nx * 9
+    const ty = (R.ay + R.by) / 2 + ny * 9
+    const p = await nodeAt(o.page, 2)
+    /* Loin de toute route d'abord : rien ne s'éclaire. */
+    const release = await h.hold(p.x, p.y, p.x + 6, p.y + 6, 4)
+    const lit0 = await o.page.locator('[data-testid="editor-snap-road"]').count()
+    await release()
+    const undo = await centreOf(o.page, '[data-testid="editor-undo"]')
+    await h.tap(undo.x, undo.y)
+    const roadsNearNode = await o.page.evaluate(({ x, y }) => {
+      const m = (window as unknown as { __loYanumMap: { querySourceFeatures(s: string, o: unknown): Array<{ geometry: GeoJSON.Geometry }>; project(p: [number, number]): { x: number; y: number }; getContainer(): HTMLElement } }).__loYanumMap
+      const r = m.getContainer().getBoundingClientRect()
+      let min = Infinity
+      for (const f of m.querySourceFeatures('protomaps', { sourceLayer: 'roads' })) {
+        const lines = f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.type === 'MultiLineString' ? f.geometry.coordinates : []
+        for (const l of lines)
+          for (let i = 1; i < l.length; i++) {
+            const a = m.project(l[i - 1] as [number, number])
+            const b = m.project(l[i] as [number, number])
+            const vx = b.x - a.x
+            const vy = b.y - a.y
+            const px = x + 6 - r.left
+            const py = y + 6 - r.top
+            const u = Math.max(0, Math.min(1, ((px - a.x) * vx + (py - a.y) * vy) / (vx * vx + vy * vy || 1)))
+            min = Math.min(min, Math.hypot(px - a.x - u * vx, py - a.y - u * vy))
+          }
+      }
+      return min
+    }, p)
+    check(`A582 (${D}) loin des routes (${Math.round(roadsNearNode)} px) : rien ne s’éclaire`, roadsNearNode < 20 || lit0 === 0)
+    /* Puis tout près de la route, sans lâcher. */
+    const p2 = await nodeAt(o.page, 2)
+    const release2 = await h.hold(p2.x, p2.y, tx, ty)
+    const lit = o.page.locator('[data-testid="editor-snap-road"]')
+    const target = o.page.locator('[data-testid="editor-snap-target"]')
+    const tb = await target.boundingBox()
+    const tc = tb ? { x: tb.x + tb.width / 2, y: tb.y + tb.height / 2 } : { x: -1, y: -1 }
+    check(`A582 (${D}) ★ à 9 px d’une route, AVANT de lâcher : la route S’ÉCLAIRE`, (await lit.count()) === 1)
+    check(`A582 (${D}) ★ … et une cible marque le point d’arrivée, SUR la route (${pxToLine(tc, R).toFixed(1)} px)`, (await target.count()) === 1 && pxToLine(tc, R) < 1.5)
+    const live = await nodeAt(o.page, 2)
+    check(`A582 (${D}) pendant le geste, le point suit le doigt (${Math.round(Math.hypot(live.x - tx, live.y - ty))} px du doigt)`, Math.hypot(live.x - tx, live.y - ty) < 3)
+    await o.page.screenshot({ path: `${SHOTS}/a582-${D}-route-eclairee.png` })
+    await release2()
+    check(`A582 (${D}) lâché : la route s’éteint`, (await lit.count()) === 0)
+    await o.ctx.close()
+  })
+
+  await guard(`A583-${D}`, async () => {
+    section(`A583 (${D}) — ★ lâché près d’une route, le point finit EXACTEMENT dessus`)
+    const { db, o, h } = await openForRoads(dev)
+    const R = await findRoad(o.page)
+    check(`A583 (${D}) une route est chargée`, R !== null)
+    if (!R) return
+    const sn = await centreOf(o.page, '[data-testid="editor-snap"]')
+    await h.tap(sn.x, sn.y)
+    const len = Math.hypot(R.bx - R.ax, R.by - R.ay)
+    const nx = -(R.by - R.ay) / len
+    const ny = (R.bx - R.ax) / len
+    const tx = (R.ax + R.bx) / 2 + nx * 9
+    const ty = (R.ay + R.by) / 2 + ny * 9
+    const p = await nodeAt(o.page, 2)
+    await h.drag(p.x, p.y, tx, ty)
+    const pulse = await o.page.locator('[data-testid="editor-snap-pulse"]').count()
+    const q = await nodeAt(o.page, 2)
+    check(`A583 (${D}) ★ à l’écran : le point est SUR la route (${pxToLine(q, R).toFixed(2)} px ; lâché à 9 px)`, pxToLine(q, R) < 1)
+    check(`A583 (${D}) ★ le saut se voit (un cercle qui s’élargit là où il a atterri)`, pulse === 1)
+    await until(() => db.rows('zones').some((z) => z.id === B && z.path))
+    await Bun.sleep(600)
+    const v = dbRing(db, B)[2]
+    const m = metresToSegment(v, R.a, R.b)
+    check(`A583 (${D}) ★ en BASE : le sommet est sur le segment de route (${m.toFixed(2)} m)`, m < 1, `${v.lat.toFixed(6)},${v.lng.toFixed(6)}`)
+    await o.page.screenshot({ path: `${SHOTS}/a583-${D}-accroche.png` })
+    await o.ctx.close()
+  })
+
+  await guard(`A584-${D}`, async () => {
+    section(`A584 (${D}) — ★ accroche coupée : le point ne bouge pas`)
+    const { db, o, h } = await openForRoads(dev)
+    const R = await findRoad(o.page)
+    check(`A584 (${D}) une route est chargée`, R !== null)
+    if (!R) return
+    check(`A584 (${D}) l’aimant est éteint`, (await o.page.locator('[data-testid="editor-snap"]').getAttribute('aria-pressed')) === 'false')
+    const len = Math.hypot(R.bx - R.ax, R.by - R.ay)
+    const nx = -(R.by - R.ay) / len
+    const ny = (R.bx - R.ax) / len
+    const tx = (R.ax + R.bx) / 2 + nx * 9
+    const ty = (R.ay + R.by) / 2 + ny * 9
+    const p = await nodeAt(o.page, 2)
+    const release = await h.hold(p.x, p.y, tx, ty)
+    check(`A584 (${D}) pendant le geste, aucune route ne s’éclaire`, (await o.page.locator('[data-testid="editor-snap-road"]').count()) === 0)
+    await release()
+    const q = await nodeAt(o.page, 2)
+    check(`A584 (${D}) ★ le point est resté là où on l’a lâché (${Math.hypot(q.x - tx, q.y - ty).toFixed(2)} px), à ${pxToLine(q, R).toFixed(1)} px de la route`, Math.hypot(q.x - tx, q.y - ty) < 1 && pxToLine(q, R) > 7)
+    check(`A584 (${D}) pas de saut`, (await o.page.locator('[data-testid="editor-snap-pulse"]').count()) === 0)
+    await until(() => db.rows('zones').some((z) => z.id === B && z.path))
+    await Bun.sleep(600)
+    const m = metresToSegment(dbRing(db, B)[2], R.a, R.b)
+    check(`A584 (${D}) en base : le sommet est À CÔTÉ de la route (${m.toFixed(1)} m)`, m > 5)
+    await o.ctx.close()
+  })
+}
 
 // ===========================================================================
 /* Les captures du rapport : l'écran des régions sur iPad, la région ouverte. */

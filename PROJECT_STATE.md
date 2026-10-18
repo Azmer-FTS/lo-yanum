@@ -109,9 +109,12 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
   - **Chantier 1 — COMMITÉ** (barre d'outils en haut, outils d'Illustrator,
     recentrage dans la pile, forme d'origine, « שחזור המקור » dans « ⋯ »).
     Récit : `ETAT.md` § BL chantier 1 ; portes : `docs/bl/portes-c1-local.md`.
-  - Chantier 2 (accroche visible) et chantier 3 (mer, frontières, recouvrements,
-    poussage) : en cours dans l'arbre — voir la suite de cette entrée quand
-    elle sera écrite.
+  - **Chantier 2 — COMMITÉ** (l'accroche aux routes : elle marchait, rien ne
+    le montrait ; aimant dans la barre, route éclairée, saut visible).
+    Récit : `ETAT.md` § BL chantier 2, `docs/bl/accroche.md` ; portes :
+    `docs/bl/portes-c2-local.md`.
+  - Chantier 3 (mer, frontières, recouvrements, poussage) : en cours dans
+    l'arbre — voir la suite de cette entrée quand elle sera écrite.
   - **Base réelle, AVANT la passe (mesuré le 2026-10-18 par le MCP)** :
     `lo-yanum:region-rings` = 5 régions redessinées (carmel-coast 6, galilee
     25, golan 5, jezreel 5, samaria 6 sommets ; écrites le 2026-10-18 06:51

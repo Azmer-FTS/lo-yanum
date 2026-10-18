@@ -1058,7 +1058,9 @@
     "penAddMiss": "Touchez le contour de la forme pour y ajouter un point.",
     "penRemoveMiss": "Touchez un point pour le supprimer.",
     "convertMiss": "Touchez un point pour passer du coin à la courbe, ou tirez depuis lui pour sortir ses poignées.",
-    "noNode": "Aucun point choisi"
+    "noNode": "Aucun point choisi",
+    "snapOn": "Accroche aux routes active — un point lâché près d'une route saute dessus",
+    "snapNoRoads": "Aucune route dans cette vue à laquelle s'accrocher. Rapprochez-vous d'une zone avec des routes."
   },
   "regionEdit": {
     "pickHint": "Choisissez une région dans la rangée du haut, ou touchez-la sur la carte, pour modifier sa limite.",
