@@ -165,7 +165,7 @@ const INIT = { 'lo-yanum:map-mode:farm-detail': 'full', [`lo-yanum:farm-tab:${FA
 async function openFarm(o: Opened): Promise<void> {
   await go(o.page, APP, `/coordinator/farms/${FARM}`, 7000)
 }
-/** Ouvrir la limite et la déplacer d'un geste (✥) : UNE écriture. */
+/** Ouvrir la limite et la déplacer d'un geste (outil de déplacement, ✥ avant BL) : UNE écriture. */
 async function moveBoundary(page: Page, bCenter: LatLng, dx: number, reframe = true): Promise<void> {
   if (reframe) {
     await page.evaluate((c) => (window as unknown as { __loYanumMap: { jumpTo(o: unknown): void } }).__loYanumMap.jumpTo({ center: [c.lng, c.lat], zoom: 15.5 }), bCenter)
@@ -180,9 +180,11 @@ async function moveBoundary(page: Page, bCenter: LatLng, dx: number, reframe = t
       await page.waitForTimeout(700)
     }
   }
-  const b = (await page.locator('[data-testid="editor-move"]').boundingBox())!
-  const x = b.x + b.width / 2
-  const y = b.y + b.height / 2
+  /* ★★ BL — la poignée ✥ est devenue l'outil « הזזת הצורה כולה » de la barre : on le prend, puis on
+     saisit la forme en son centre (n'importe où dans la forme fait l'affaire). */
+  const tool = page.locator('[data-testid="editor-tool-move"]')
+  if ((await tool.getAttribute('aria-checked')) !== 'true') await tool.click()
+  const { x, y } = await project(page, bCenter)
   await page.mouse.move(x, y)
   await page.mouse.down()
   await page.mouse.move(x + dx, y + 20, { steps: 10 })

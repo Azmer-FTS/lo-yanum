@@ -5,7 +5,7 @@ import type { CDPSession, Page } from 'playwright'
 import { REMOTE, check, finish, go, guard, open, section, seed, serveBuild } from './ayharness'
 import type { Opened } from './ayharness'
 import { FakeDb } from './fake-supabase'
-import { defaultRing, parsePath, ringAreaDunams } from '../src/core/index'
+import { defaultRing, landDunams, parsePath } from '../src/core/index'
 import type { LatLng } from '../src/core/index'
 
 /**
@@ -450,8 +450,9 @@ for (const dev of devices) {
     section(`A574 (${D}) — ★ les surfaces, une fois, en haut`)
     const { o, h } = await openRegions(dev)
     const pills = await o.page.locator('[data-testid^="region-area-"]').evaluateAll((els) => els.map((e) => ({ id: (e as HTMLElement).dataset.testid!.replace('region-area-', ''), n: Number((e as HTMLElement).innerText.replace(/[^\d]/g, '')) })))
-    const exact = pills.every((p) => Math.abs(p.n - Math.round(ringAreaDunams((defaultRing(p.id as never) ?? []).map(([lng, lat]) => ({ lat, lng }))))) <= 1)
-    check(`A574 (${D}) ★ chaque pastille de région porte SA surface (13), égale au calcul`, pills.length === 13 && exact, pills.slice(0, 3).map((p) => `${p.id} ${p.n}`).join(' · '))
+    /* ★★ BL (3.1) — la surface d'une région est celle de sa TERRE (la mer est coupée d'office). */
+    const exact = pills.every((p) => Math.abs(p.n - Math.round(landDunams((defaultRing(p.id as never) ?? []).map(([lng, lat]) => ({ lat, lng }))))) <= 1)
+    check(`A574 (${D}) ★ chaque pastille de région porte SA surface sur terre (13), égale au calcul`, pills.length === 13 && exact, pills.slice(0, 3).map((p) => `${p.id} ${p.n}`).join(' · '))
     await pickRegion(h, 'negev')
     check(`A574 (${D}) ★ plus de rangée de surfaces dans le panneau (le doublon d’en bas)`, (await o.page.locator('[data-testid="editor-shapes"]').count()) === 0)
     const neg = pills.find((p) => p.id === 'negev')!.n
@@ -531,9 +532,9 @@ for (const dev of devices) {
     check(`A577 (${D}) dans « ⋯ » : présent, ÉTEINT tant que la région n’a pas été redessinée`, (await o.page.locator('[data-testid="region-restore"]').isDisabled()) && /לא צויר/.test(await o.page.locator('[data-testid="region-restore"]').innerText()))
     /* Refermer le menu par son bouton (Échap, lui, fermerait l'édition). */
     await h.tap(mb.x, mb.y)
-    /* Redessiner : un point déplacé, enregistré. */
-    const p = await nodeAt(o.page, 3)
-    await h.drag(p.x, p.y, p.x + 50, p.y - 40)
+    /* Redessiner : un point déplacé vers le large (le sud-ouest, où aucune région ne serait poussée), enregistré. */
+    const p = await nodeAt(o.page, 0)
+    await h.drag(p.x, p.y, p.x - 40, p.y + 30)
     const sv = await centreOf(o.page, '[data-testid="region-save"]')
     await h.tap(sv.x, sv.y)
     await o.page.waitForTimeout(800)

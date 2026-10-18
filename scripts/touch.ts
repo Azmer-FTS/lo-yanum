@@ -602,14 +602,19 @@ await scrollToMap(page)
 section('7 — moving the whole polygon')
 
 const areaBefore = await edNum(page, 'data-area')
-const handle = page.locator('[data-testid="editor-move"]').first()
-const handleFrom = await centreOf(handle)
+/* ★★ BL — la poignée ✥ du centre est devenue l'outil « הזזת הצורה כולה » de la barre : on le prend au
+   doigt, puis on glisse la forme où qu'on la saisisse (ici, au milieu de deux de ses points). */
+check('the move tool is reachable by finger', await tapTestId(page, cdp, 'editor-tool-move'))
+const m0 = await centreOf(editorNodes(page).first())
+const m2 = await centreOf(editorNodes(page).nth(2))
+const handleFrom = { x: (m0.x + m2.x) / 2, y: (m0.y + m2.y) / 2 }
 await touchDrag(cdp, handleFrom, { x: handleFrom.x + 80, y: handleFrom.y + 70 })
 await page.waitForTimeout(1400)
-const handleTo = await centreOf(page.locator('[data-testid="editor-move"]').first())
+const m0After = await centreOf(editorNodes(page).first())
+const handleTo = { x: handleFrom.x + (m0After.x - m0.x), y: handleFrom.y + (m0After.y - m0.y) }
 const areaAfter = await edNum(page, 'data-area')
 check(
-  'the centre handle translates the ring',
+  'the move tool translates the ring',
   Math.abs(handleTo.x - handleFrom.x) > 25 || Math.abs(handleTo.y - handleFrom.y) > 25,
   `Δ ${Math.round(handleTo.x - handleFrom.x)}, ${Math.round(handleTo.y - handleFrom.y)}`,
 )

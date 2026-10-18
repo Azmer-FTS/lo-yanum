@@ -3,8 +3,8 @@ import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
-import { readCoordinator, regionIsEdited, regions, ringAreaDunams, ringCenter } from '@core/index'
-import type { LatLng, PathModel, RegionId } from '@core/index'
+import { defaultRing, landDunams, landOf, modelForRing, overlapsOf, planResolutions, readCoordinator, regionIsEdited, regions, ringCenter, seaDunams, shapeRings } from '@core/index'
+import type { LatLng, PathModel, RegionGeom, RegionId } from '@core/index'
 
 import { ChevronForward, Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
@@ -12,7 +12,8 @@ import { ScrollRow } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { PathEditor } from '../../editor/PathEditor'
 import type { EditorShape, StartRequest } from '../../editor/PathEditor'
-import { pathOf, ringOf, resetRegionRing, saveRegionPath } from '../../settings/regionEdits'
+import { pathOf, ringOf, resetRegionRing, saveRegionPaths } from '../../settings/regionEdits'
+import { OverlapsOverlay, OverlapsPanel } from './RegionOverlaps'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -70,6 +71,27 @@ export function RegionsEditScreen() {
   const [restoreAsk, setRestoreAsk] = useState(false)
   const [replacing, setReplacing] = useState<string | null>(null)
   const nonce = useRef(0)
+  /** ★★ BL — la région en cours de « שרטוט מחדש », de la confirmation à la fermeture du tracé neuf. */
+  const replaceTarget = useRef<string | null>(null)
+  /**
+   * ★★★ BL (3.4) — les voisines que la région ouverte a POUSSÉES (pas encore
+   * enregistrées) : dessinées à leur nouveau bord, enregistrées AVEC elle
+   * (« שמור גבול », ou « סיום »), oubliées avec elle (« בטל שינויים »).
+   */
+  const [pushed, setPushed] = useState<Record<string, LatLng[]>>({})
+  /** ★★★ BL (3.3) — le panneau des recouvrements : ouvert, partages refusés, conflit montré. */
+  const [resolving, setResolving] = useState(false)
+  const [refused, setRefused] = useState<Set<string>>(new Set())
+  const [focus, setFocus] = useState<string | null>(null)
+  const [lastApply, setLastApply] = useState<Array<{ id: RegionId; ring: LatLng[]; model: PathModel; wasEdited: boolean }> | null>(null)
+  const [applied, setApplied] = useState<string | null>(null)
+
+  /** Les régions telles qu'elles sont enregistrées : ce que mesurent les recouvrements. */
+  const geoms: RegionGeom[] = useMemo(() => all.map((r) => ({ id: r.id, ring: ringOf(r.id), drawn: regionIsEdited(r.id) })), [all])
+  const conflictCount = useMemo(() => overlapsOf(geoms).length, [geoms])
+  const plan = useMemo(() => (resolving ? planResolutions(geoms, refused) : null), [resolving, geoms, refused])
+  /** ★★ BL (3.1) — les aplats : la région SUR TERRE (la mer retirée), sans réécrire le tracé. */
+  const ringNow = (id: RegionId): LatLng[] => (id === selected && draft ? draft.ring : (pushed[id] ?? ringOf(id)))
 
   /**
    * ⚠️ COORDINATOR ONLY, AND IT IS A REDIRECT RATHER THAN A HIDDEN BUTTON.
@@ -85,11 +107,11 @@ export function RegionsEditScreen() {
           id: r.id,
           label: r.name,
           color: `rgb(${r.rgb})`,
-          ring: own ? draft.ring : ringOf(r.id),
-          path: own ? draft.model : pathOf(r.id),
+          ring: own ? draft.ring : (pushed[r.id] ?? ringOf(r.id)),
+          path: own ? draft.model : pushed[r.id] ? undefined : pathOf(r.id),
         }
       }),
-    [all, selected, draft],
+    [all, selected, draft, pushed],
   )
 
   if (!coordinator) return null
@@ -97,23 +119,58 @@ export function RegionsEditScreen() {
   const open = (id: string | null): void => {
     setSelected(id as RegionId | null)
     setDraft(null)
+    setPushed({})
     setReplaceAsk(false)
     setRestoreAsk(false)
     opened.current = id ? JSON.stringify(pathOf(id as RegionId)) : ''
   }
 
-  const dirty = selected !== null && draft !== null && JSON.stringify(draft.model) !== opened.current
+  /** Une voisine poussée n'est « à enregistrer » que si son bord diffère de l'enregistré. */
+  const pushedDirty = Object.entries(pushed).filter(([id, ring]) => JSON.stringify(ring) !== JSON.stringify(ringOf(id as RegionId)))
+  const dirty = selected !== null && ((draft !== null && JSON.stringify(draft.model) !== opened.current) || pushedDirty.length > 0)
 
+  /** ★★★ BL — la région ET ses voisines poussées, en UNE écriture. */
   const save = (): void => {
-    if (!selected || !draft || draft.ring.length < 3) return
-    saveRegionPath(selected, draft.ring, draft.model)
-    opened.current = JSON.stringify(draft.model)
+    if (!selected) return
+    const list: Array<{ id: RegionId; ring: LatLng[]; model: PathModel }> = []
+    if (draft && draft.ring.length >= 3) list.push({ id: selected, ring: draft.ring, model: draft.model })
+    for (const [id, ring] of pushedDirty) list.push({ id: id as RegionId, ring, model: modelForRing(ring, null).model })
+    if (list.length === 0) return
+    /* Une région revenue EXACTEMENT à son tracé livré (une annulation) redevient « livrée », pas « redessinée » :
+       la règle de partage (3.3) ne doit pas la traiter comme un dessin du PO. */
+    const isDefault = (x: { id: RegionId; ring: LatLng[] }) => {
+      const d = defaultRing(x.id)
+      return !!d && d.length === x.ring.length && d.every(([lng, lat], i) => lng === x.ring[i].lng && lat === x.ring[i].lat)
+    }
+    for (const x of list) if (isDefault(x) && regionIsEdited(x.id)) resetRegionRing(x.id)
+    saveRegionPaths(list.filter((x) => !isDefault(x)))
+    if (draft) opened.current = JSON.stringify(draft.model)
     setDraft(null)
   }
 
   const discard = (): void => {
     setDraft(null)
+    setPushed({})
     setEpoch((n) => n + 1)
+  }
+
+  /* ★★★ BL (3.3) — appliquer les partages acceptés : les perdants, en une écriture ; réversible. */
+  const applyResolutions = (): void => {
+    if (!plan) return
+    const losers = new Set(plan.steps.filter((st) => st.result.ok && !refused.has(st.key)).map((st) => st.loser as RegionId))
+    if (losers.size === 0) return
+    const before = [...losers].map((id) => ({ id, ring: ringOf(id), model: pathOf(id), wasEdited: regionIsEdited(id) }))
+    saveRegionPaths([...losers].map((id) => ({ id, ring: plan.rings[id], model: modelForRing(plan.rings[id], null).model })))
+    setLastApply(before)
+    setApplied(t('regionEdit.applied', { count: plan.steps.filter((st) => st.result.ok && !refused.has(st.key)).length }))
+    setFocus(null)
+  }
+  const revertResolutions = (): void => {
+    if (!lastApply) return
+    for (const b of lastApply) if (!b.wasEdited) resetRegionRing(b.id)
+    saveRegionPaths(lastApply.filter((b) => b.wasEdited))
+    setLastApply(null)
+    setApplied(t('regionEdit.reverted'))
   }
 
   /**
@@ -145,13 +202,16 @@ export function RegionsEditScreen() {
    */
   const polygons = all
     .filter((r) => r.id !== replacing)
-    .map((r) => ({
-      id: `region-${r.id}`,
-      /* La région ouverte : son tracé EN COURS (pas encore enregistré), sous le contour de l'éditeur. */
-      ring: r.id === selected && draft ? draft.ring : ringOf(r.id),
-      color: r.id === selected ? `rgb(${r.rgb})` : `rgb(${r.rgb} / 0.28)`,
-      emphasis: r.id === selected,
-    }))
+    .flatMap((r) =>
+      /* La région ouverte : son tracé EN COURS (pas encore enregistré), sous le contour de l'éditeur.
+         ★★ BL (3.1) — et chaque aplat s'arrête à la côte : ce qui dépasse dans la mer ne se peint pas. */
+      shapeRings(landOf(ringNow(r.id))).map((ring, k) => ({
+        id: `region-${r.id}${k ? `-${k}` : ''}`,
+        ring,
+        color: r.id === selected ? `rgb(${r.rgb})` : `rgb(${r.rgb} / 0.28)`,
+        emphasis: r.id === selected,
+      })),
+    )
 
   const centre = selected ? ringCenter(ringOf(selected)) : undefined
 
@@ -201,6 +261,27 @@ export function RegionsEditScreen() {
           <h1 data-page-title="" className="min-w-[6rem] flex-1 truncate text-title text-content-primary">
             {t('regionEdit.title')}
           </h1>
+          {/* ★★★ BL (3.3) — les recouvrements : comptés en permanence, résolus SEULEMENT à la demande. */}
+          <button
+            type="button"
+            data-testid="regions-overlaps"
+            data-count={conflictCount}
+            aria-pressed={resolving}
+            disabled={dirty}
+            title={dirty ? t('regionEdit.saveFirst') : undefined}
+            onClick={() => {
+              if (!resolving) open(null)
+              setResolving((v) => !v)
+              setApplied(null)
+              setFocus(null)
+            }}
+            className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-pill px-3 text-micro font-semibold disabled:opacity-40 ${
+              resolving ? 'bg-accent text-content-on-accent' : conflictCount > 0 ? 'bg-surface-high text-status-danger-ink ring-1 ring-status-danger' : 'bg-surface-high text-content-secondary'
+            }`}
+          >
+            <Icon name="overlaps" size={16} />
+            {t('regionEdit.overlapsButton', { count: conflictCount })}
+          </button>
         </div>
 
         {/* ★ Z4.4 — a swipable row like every other one: the same edge fade on
@@ -226,7 +307,7 @@ export function RegionsEditScreen() {
               />
               <span className="whitespace-nowrap">{r.name}</span>
               <bdi className="numeric whitespace-nowrap text-micro text-content-muted" data-testid={`region-area-${r.id}`}>
-                {t('editor.area', { n: Math.round(ringAreaDunams(r.id === selected && draft ? draft.ring : ringOf(r.id))).toLocaleString('he-IL') })}
+                {t('editor.area', { n: Math.round(landDunams(ringNow(r.id))).toLocaleString('he-IL') })}
               </bdi>
               {regionIsEdited(r.id) && <Icon name="check" size={11} />}
             </button>
@@ -237,6 +318,42 @@ export function RegionsEditScreen() {
             Sans région ouverte elle reste là, outils éteints, et dit quoi faire :
             rien ne saute quand on en ouvre une. Plus rien ne flotte sur la carte. */}
         <div className="mt-2" data-testid="region-toolbar">
+          {resolving && plan ? (
+            <div className="pb-2">
+              <OverlapsPanel
+                regions={all}
+                steps={plan.steps}
+                refused={refused}
+                focus={focus}
+                onFocus={(key) => {
+                  setFocus(key)
+                  const st = plan.steps.find((x) => x.key === key)
+                  if (!st || !map) return
+                  const pts = st.shape.flat(2)
+                  const xs = pts.map((q) => q[0])
+                  const ys = pts.map((q) => q[1])
+                  map.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: 60, duration: 500, maxZoom: 11 })
+                }}
+                onToggle={(key) =>
+                  setRefused((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(key)) next.delete(key)
+                    else next.add(key)
+                    return next
+                  })
+                }
+                onApply={applyResolutions}
+                onClose={() => {
+                  setResolving(false)
+                  setFocus(null)
+                  setApplied(null)
+                }}
+                canRevert={lastApply !== null}
+                onRevert={revertResolutions}
+                done={applied}
+              />
+            </div>
+          ) : (
           <PathEditor
             key={epoch}
             map={map}
@@ -247,6 +364,19 @@ export function RegionsEditScreen() {
             kinds={[{ kind: 'region', label: selectedRegion?.name ?? t('regionEdit.entity'), color: selectedRegion ? `rgb(${selectedRegion.rgb})` : '#2563eb' }]}
             activeId={selected}
             onActiveChange={(id) => {
+              /**
+               * ★★ BL — « שרטוט מחדש » : l'éditeur lâche la région le temps du tracé neuf (`null`), puis
+               *   la rouvre une fois le tracé fermé. Ni l'un ni l'autre n'est un changement de région :
+               *   traité comme tel, le premier désélectionnait la région, et le second effaçait le tracé
+               *   neuf (trouvé par `settings` A53, réécrite pour l'éditeur).
+               */
+              if (replaceTarget.current) {
+                if (id === null) return
+                if (id === replaceTarget.current) {
+                  replaceTarget.current = null
+                  return
+                }
+              }
               /* « סיום » ou une autre région : le tracé en cours est ENREGISTRÉ, jamais perdu en silence. */
               if (id === selected) return
               if (dirty) save()
@@ -254,7 +384,20 @@ export function RegionsEditScreen() {
             }}
             start={startReq}
             onBusyChange={setBusy}
-            onSessionChange={(s) => setReplacing(s?.replaceId ?? null)}
+            onSessionChange={(s) => {
+              setReplacing(s?.replaceId ?? null)
+              /* Un tracé neuf abandonné (Échap, « סיום ») : la région n'est plus ouverte. */
+              if (!s && replaceTarget.current) {
+                replaceTarget.current = null
+                open(null)
+              }
+            }}
+            areaOf={landDunams}
+            /* ★★★ BL (3.4) — la région ouverte pousse ses voisines, en direct. */
+            topology={{
+              neighbors: all.filter((r) => r.id !== selected).map((r) => ({ id: r.id, label: r.name, color: `rgb(${r.rgb})`, ring: pushed[r.id] ?? ringOf(r.id) })),
+              onNeighbors: (rings) => setPushed(rings),
+            }}
             onChange={(_id, model, ring) => setDraft({ model, ring })}
             onCreate={(_kind, model, ring, replaceId) => {
               if (!replaceId) return null
@@ -288,6 +431,12 @@ export function RegionsEditScreen() {
             }
             notes={
               <>
+                {selected && seaDunams(ringNow(selected)) >= 1 && (
+                  /* ★★ BL (3.1) — la côte coupe d'office : ce qui sort dans la mer ne compte pas, et c'est dit. */
+                  <p data-testid="region-sea-note" className="text-micro text-content-muted">
+                    {t('regionEdit.seaNote', { n: Math.round(seaDunams(ringNow(selected))).toLocaleString('he-IL') })}
+                  </p>
+                )}
                 {replaceAsk &&
                   selectedRegion &&
                   confirmBox(
@@ -298,6 +447,7 @@ export function RegionsEditScreen() {
                       label: t('regionEdit.replaceYes'),
                       onClick: () => {
                         setReplaceAsk(false)
+                        replaceTarget.current = selectedRegion.id
                         nonce.current += 1
                         setStartReq({ nonce: nonce.current, kind: 'region', tool: 'pen', replaceId: selectedRegion.id })
                       },
@@ -311,7 +461,7 @@ export function RegionsEditScreen() {
                     t('regionEdit.restoreConfirm', {
                       name: selectedRegion.name,
                       points: ringOf(selectedRegion.id).length,
-                      area: Math.round(ringAreaDunams(ringOf(selectedRegion.id))).toLocaleString('he-IL'),
+                      area: Math.round(landDunams(ringOf(selectedRegion.id))).toLocaleString('he-IL'),
                     }),
                     { testId: 'region-restore-yes', label: t('regionEdit.restoreYes'), onClick: restore, danger: true },
                     () => setRestoreAsk(false),
@@ -319,10 +469,12 @@ export function RegionsEditScreen() {
               </>
             }
           />
+          )}
         </div>
       </div>
 
       <div className="relative -mx-4 min-h-0 flex-1 lg:-mx-5">
+        {resolving && plan && <OverlapsOverlay map={map} steps={plan.steps} refused={refused} focus={focus} regions={all} />}
         <MapView
           ariaLabel={t('regionEdit.mapLabel')}
           polygons={polygons}

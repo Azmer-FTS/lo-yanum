@@ -247,5 +247,7 @@ export * from './institutionDoc'
 // ★★ BH — retoucher une forme (pur).
 export * from './zoneEdit'
 export * from './path'
+// ★★ BL — la topologie des régions : la mer, les recouvrements, le poussage (pur).
+export * from './topology'
 // ★★ BF — la recherche globale (pure).
 export * from './search'

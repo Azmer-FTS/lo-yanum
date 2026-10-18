@@ -1,5 +1,62 @@
 # לא ינום — ETAT
 
+> 🏁 **BL (chantier 3) — LES RÉGIONS SE TIENNENT ENTRE ELLES. 2026-10-18.**
+>
+> « Celle qui dépasse dans la mer, aucun intérêt. Et entre elles, il ne faut
+> pas qu'il y ait de superposition. » — le PO. Récit et chiffres :
+> `docs/bl/topologie.md` ; frontières : `docs/bl/frontieres.md`.
+>
+> - **3.5 d'abord** : la base réelle porte **5 régions redessinées** (חוף הכרמל,
+>   הגליל, רמת הגולן, עמק יזרעאל, שומרון, écrites le 18 à 06:51 UTC) et leurs 5
+>   tracés ; 4 formes de fermes. La passe n'écrit RIEN dans la base.
+> - **3.1 La mer, un masque** : `src/core/sea.json` (polygones `ocean` des
+>   tuiles de la carte, `scripts/blsea.ts`) est retiré des surfaces, des aplats
+>   de l'écran d'édition, des recouvrements et du poussage — le tracé du PO
+>   n'est jamais réécrit (« N דונם מהציור נמצאים בים… » dans la barre). Les lacs
+>   restent dans les régions.
+> - **3.2 Les frontières terrestres : PROPOSÉES, NON APPLIQUÉES.** Jeu de
+>   données : OpenStreetMap via Protomaps (`borders.json`, déjà dans l'app), qui
+>   étiquette `disputed` la Ligne verte, le Jourdain le long de la
+>   Judée-Samarie et les lignes du Golan. Sud (Égypte, Jordanie, mer Morte,
+>   non disputées) : 2 775 km² retirés — proposé. Option A (lignes extérieures,
+>   Judée-Samarie et Golan dedans) : 4 136 km² ; option B (+ Ligne verte et
+>   Golan) : 11 808 km². En attente du PO.
+> - **3.3 La règle** : « le terrain que deux régions se partagent reste à celle
+>   que vous avez dessinée vous-même ; si les deux l'ont été, ou aucune, à la
+>   plus petite. » Panneau « חפיפות (N) » : chaque conflit montré (régions,
+>   surface, gagnant, perte), terrain hachuré, refus possible, rien d'écrit
+>   avant « החלה ושמירה », « ביטול הפתרון ». Sur les régions du PO : 10
+>   recouvrements, 2 022 km² (6,5 %) → 0, tous résolubles.
+> - **3.4 Le poussage en direct** (`PathEditor`, prop `topology`, écran des
+>   régions seulement) : la région éditée gagne ; ce qu'elle gagne est retiré
+>   des voisines PENDANT le geste ; un geste et son recoupage s'annulent
+>   ensemble ; le recul laisse un vide hachuré, nommé, comblé d'un bouton ; une
+>   voisine qui serait coupée en deux, percée ou réduite sous le dixième arrête
+>   le poussage (et le point) avec la raison dite ; la région et ses voisines
+>   s'enregistrent en UNE écriture (`saveRegionPaths`) ; une région revenue
+>   exactement à son tracé livré redevient « livrée ».
+>
+> - **La forme ouverte reste en vue** (complément du chantier 1, attrapé par
+>   `zones` en CI locale) : la barre qui paraît au-dessus de la carte lui prend
+>   sa bande du haut ; une forme qui s'y trouvait (ouverte depuis la liste)
+>   sortait de la carte au moment où on l'ouvrait. Après la compensation, la
+>   carte descend juste assez pour la montrer — jamais un recadrage ni un zoom.
+> - **« שרטוט מחדש » sur l'écran des régions** : le début du tracé neuf
+>   désélectionnait la région (`onActiveChange(null)`), et sa fermeture effaçait
+>   le tracé neuf. Corrigé de deux côtés, le même jour : par la session BK
+>   parallèle dans `PathEditor` (props lues au moment du délai, `aecdda3`), et
+>   ici dans `RegionsEditScreen` (`replaceTarget` : ni le lâcher ni la
+>   réouverture d'un remplacement ne sont des changements de région).
+>
+> **Portes** : `blpass` 48 (pure, A585–A592) · `bltopo` 65 (rendu, A593–A600,
+> souris ET doigt). `settings` et `touch` : réécrites pour l'éditeur de BK par
+> la session parallèle (`77d6658`, arrivé sur `main` pendant cette passe ;
+> rebasé dessus) et ADAPTÉES ici à BL (« שחזור הגבול המקורי » dans « ⋯ » avec
+> confirmation ; la poignée ✥ devenue l'outil « הזזת הצורה כולה »). `freehand`
+> et `bhui` A489 jugent désormais « la carte n'a pas bougé » À L'ÉCRAN (la barre
+> au-dessus de la carte décale la caméra pour que rien ne bouge). Batterie :
+> `docs/bl/portes-local.md`.
+
 > 🏁 **BL (chantier 2) — L'ACCROCHE AUX ROUTES SE VOIT. 2026-10-18.**
 >
 > « Quand tu dis de le connecter à la route, je clique dessus, mais il ne se

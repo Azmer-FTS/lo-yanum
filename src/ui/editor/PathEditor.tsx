@@ -11,8 +11,11 @@ import {
   densify,
   emptyPath,
   extendWithStroke,
+  fillGap,
   fitStroke,
+  gapsOf,
   historyOf,
+  landDunams,
   insertNode,
   modelForRing,
   moveHandle,
@@ -21,19 +24,21 @@ import {
   pathAreaDunams,
   pointInRing,
   pushHistory,
+  pushNeighbors,
   redoHistory,
   redrawSection,
   removeNode,
   ringAreaDunams,
   segmentControls,
   segmentCount,
+  shapeRings,
   simplifyToleranceM,
   toggleNodeKind,
   tracedRingIsClosed,
   translatePath,
   undoHistory,
 } from '@core/index'
-import type { History, LatLng, PathModel } from '@core/index'
+import type { Gap, History, LatLng, PathModel } from '@core/index'
 
 import { Icon } from '../components/Icon'
 import type { IconName } from '../components/Icon'
@@ -153,6 +158,20 @@ export interface StartRequest {
   resume?: { model: PathModel; draftId: string }
 }
 
+/**
+ * ★★★ BL (3.4) — LES VOISINES D'UNE FORME QUI NE DOIT EN RECOUVRIR AUCUNE (les
+ * régions). La forme éditée GAGNE : ce qu'elle gagne est retiré, en direct,
+ * de chaque voisine qu'elle touche ; un geste et son recoupage s'annulent
+ * ENSEMBLE ; une voisine qui serait coupée en deux ou presque effacée arrête
+ * le geste ; un recul laisse un VIDE, montré, que le PO comble d'un bouton.
+ */
+export interface EditorTopology {
+  /** Les autres formes, telles qu'elles sont à l'ouverture (lues une fois par session). */
+  neighbors: Array<{ id: string; label: string; color: string; ring: LatLng[] }>
+  /** Les voisines recoupées (ou comblées) par la session, à chaque geste, annulation, rétablissement. */
+  onNeighbors: (rings: Record<string, LatLng[]>) => void
+}
+
 /** Ce que l'éditeur dit de sa session à l'hôte. */
 export interface EditorSessionInfo {
   mode: 'edit' | 'new'
@@ -192,10 +211,14 @@ export interface PathEditorProps {
   idleHint?: ReactNode
   /** ★★ BL — ce que l'hôte veut dire dans la barre, sous les outils (une confirmation, un avis). */
   notes?: ReactNode
+  /** ★★ BL — la surface affichée (les régions : sur TERRE, la mer ne compte pas). Défaut : celle du tracé. */
+  areaOf?: (ring: LatLng[]) => number
+  /** ★★★ BL — les voisines à pousser (les régions). Absent : aucune (les formes d'une ferme s'emboîtent). */
+  topology?: EditorTopology
 }
 
 type Session =
-  | { mode: 'edit'; id: string; h: History<PathModel> }
+  | { mode: 'edit'; id: string; h: History<PathModel>; p?: History<Record<string, LatLng[]>> }
   | { mode: 'new'; kind: string; draftId: string; replaceId?: string; h: History<PathModel> }
 
 type Drag =
@@ -230,6 +253,8 @@ export function PathEditor(props: PathEditorProps) {
    */
   const [snapHint, setSnapHint] = useState<{ x: number; y: number; line: Array<[number, number]> } | null>(null)
   const [pulse, setPulse] = useState<{ x: number; y: number; key: number } | null>(null)
+  /** ★★★ BL — les voisines recoupées PENDANT le geste (aperçu) ; `null` = celles de l'historique. */
+  const [livePushed, setLivePushed] = useState<Record<string, LatLng[]> | null>(null)
   /** ★★ BL — la forme d'origine (pointillés) : montrée par défaut, le PO la masque d'un bouton. */
   const [showGhost, setShowGhost] = useState(true)
   const [picker, setPicker] = useState<{ x: number; y: number; ids: string[] } | null>(null)
@@ -237,6 +262,12 @@ export function PathEditor(props: PathEditorProps) {
   const [host, setHost] = useState<HTMLElement | null>(null)
 
   const sessionRef = useRef<Session | null>(null)
+  /** ★★★ BL — l'état des voisines à l'ouverture de la session (édition) : la référence du poussage et des vides. */
+  const topoRef = useRef<{ active: LatLng[]; neighbors: Record<string, LatLng[]>; start: Record<string, number>; labels: Record<string, string>; colors: Record<string, string>; touched: Set<string> } | null>(null)
+  /** Le dernier aperçu ACCEPTÉ du geste en cours : où le poussage s'arrête. */
+  const lastValidLive = useRef<PathModel | null>(null)
+  /** Pourquoi le poussage s'est arrêté pendant le geste en cours (dit encore APRÈS le lâcher). */
+  const blockedRef = useRef<{ id: string; reason: string } | null>(null)
   /** ★★ BL — la forme telle qu'elle était à l'ouverture de la session (édition). */
   const originRef = useRef<LatLng[] | null>(null)
   const setSession = (s: Session | null) => {
@@ -316,6 +347,7 @@ export function PathEditor(props: PathEditorProps) {
     const m = modelForRing(shape.ring, shape.path).model
     /* Une forme qu'on vient de FERMER garde l'origine de son tracé : rien (c'est une forme neuve). */
     originRef.current = s?.mode === 'new' ? null : densify(m)
+    openTopo(m)
     setSession({ mode: 'edit', id: shape.id, h: historyOf(m) })
     setSelected(null)
     setLive(null)
@@ -341,6 +373,7 @@ export function PathEditor(props: PathEditorProps) {
     const fresh = modelForRing(activeShape.ring, activeShape.path).model
     if (JSON.stringify(fresh) !== JSON.stringify(s.h.present)) {
       if (originRef.current) originRef.current = densify(fresh)
+      openTopo(fresh)
       setSession({ ...s, h: historyOf(fresh) })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -350,6 +383,7 @@ export function PathEditor(props: PathEditorProps) {
     if (!start) return
     const draftId = start.resume?.draftId ?? newDraftId()
     originRef.current = null
+    tapAnchor.current = null
     setSession({ mode: 'new', kind: start.kind, draftId, replaceId: start.replaceId, h: historyOf(start.resume?.model ?? emptyPath()) })
     setTool(start.tool)
     setSelected(null)
@@ -392,6 +426,7 @@ export function PathEditor(props: PathEditorProps) {
            l'ancienne fermeture de RegionsEditScreen (où `selected` vaut encore null) rappelait
            `open()`, qui vidait le brouillon — « שרטוט מחדש » perdait sa forme neuve (settings A53). */
         setTimeout(() => latest.current.props.onActiveChange(id), 0)
+        openTopo(next)
         return { mode: 'edit', id, h: historyOf(next) }
       }
       /* Refusée (moins de trois points DISTINCTS) : la forme reste ouverte, et c'est dit. */
@@ -402,14 +437,102 @@ export function PathEditor(props: PathEditorProps) {
     return s
   }
 
+  // -------------------------------------------------------------------------
+  // ★★★ BL (3.4) — le poussage : les voisines suivent, et s'annulent avec le geste
+  // -------------------------------------------------------------------------
+  function openTopo(m: PathModel): void {
+    const tp = latest.current.props.topology
+    if (!tp) {
+      topoRef.current = null
+      return
+    }
+    topoRef.current = {
+      active: densify(m),
+      neighbors: Object.fromEntries(tp.neighbors.map((n) => [n.id, n.ring])),
+      start: Object.fromEntries(tp.neighbors.map((n) => [n.id, landDunams(n.ring)])),
+      labels: Object.fromEntries(tp.neighbors.map((n) => [n.id, n.label])),
+      colors: Object.fromEntries(tp.neighbors.map((n) => [n.id, n.color])),
+      touched: new Set(),
+    }
+  }
+  const pOf = (s: Session | null): History<Record<string, LatLng[]>> => (s?.mode === 'edit' && s.p ? s.p : historyOf({}))
+  /** Ce que deviendraient les voisines si la forme devenait `next` (le poussage, depuis l'ouverture). */
+  const computePush = (next: PathModel) => {
+    const tr = topoRef.current
+    const s = sessionRef.current
+    if (!tr || s?.mode !== 'edit' || !next.closed || next.nodes.length < 3) return { rings: {} as Record<string, LatLng[]>, blocked: null }
+    const cur = pOf(s).present
+    const nbs = Object.keys(tr.neighbors).map((id) => ({ id, ring: cur[id] ?? tr.neighbors[id], startDunams: tr.start[id] }))
+    return pushNeighbors(tr.active, densify(next), nbs)
+  }
+  const blockedText = (b: { id: string; reason: string }) => t('editor.pushBlocked', { name: topoRef.current?.labels[b.id] ?? b.id, why: t(`editor.pushWhy.${b.reason}`) })
+  /** Un aperçu de geste : accepté (la forme et ses voisines bougent ensemble) ou refusé (le poussage s'arrête là). */
+  const tryLive = (next: PathModel): void => {
+    if (!topoRef.current || sessionRef.current?.mode !== 'edit') {
+      setLive(next)
+      return
+    }
+    const r = computePush(next)
+    if (r.blocked) {
+      blockedRef.current = r.blocked
+      setNotice(blockedText(r.blocked))
+      return
+    }
+    lastValidLive.current = next
+    setLive(next)
+    setLivePushed({ ...pOf(sessionRef.current).present, ...r.rings })
+  }
+  /**
+   * ⚠️ TOUTE voisine touchée pendant la session est rendue, même revenue à son
+   *    bord d'ouverture par une annulation : si le PO a enregistré entre-temps,
+   *    c'est ce bord d'ouverture que l'hôte doit réenregistrer — un « rien »
+   *    laisserait la voisine recoupée sur le disque alors que l'écran l'a rendue.
+   */
+  const emitNeighbors = (s: Session) => {
+    const tr = topoRef.current
+    if (s.mode !== 'edit' || !tr) return
+    const present = pOf(s).present
+    for (const id of Object.keys(present)) tr.touched.add(id)
+    latest.current.props.topology?.onNeighbors(Object.fromEntries([...tr.touched].map((id) => [id, present[id] ?? tr.neighbors[id]])))
+  }
+
+  /**
+   * Le geste et le recoupage de ses voisines, en UNE entrée d'historique — ou
+   * `null` : il recouperait une voisine en deux, ou l'effacerait ; il n'est
+   * pas appliqué, et c'est dit.
+   */
+  const withPush = (s: Session, next: PathModel): Session | null => {
+    if (s.mode !== 'edit' || !topoRef.current) return { ...s, h: pushHistory(s.h, next) } as Session
+    const r = computePush(next)
+    if (r.blocked) {
+      setNotice(blockedText(r.blocked))
+      return null
+    }
+    return { ...s, h: pushHistory(s.h, next), p: pushHistory(pOf(s), { ...pOf(s).present, ...r.rings }) }
+  }
+
   const commit = (next: PathModel, select: number | null = latest.current.selected) => {
     const s = sessionRef.current
     if (!s) return
     setLive(null)
+    setLivePushed(null)
     setNotice(null)
-    const pushed = { ...s, h: pushHistory(s.h, next) } as Session
-    setSession(persist(pushed, next))
+    const pushed = withPush(s, next)
+    if (!pushed) return
+    const after = persist(pushed, next)
+    setSession(after)
+    emitNeighbors(after)
     setSelected(select !== null && select < next.nodes.length ? select : null)
+  }
+
+  /** Un geste qui ne touche QUE les voisines (combler un vide) : une entrée d'historique, comme les autres. */
+  const commitNeighbors = (rings: Record<string, LatLng[]>) => {
+    const s = sessionRef.current
+    if (!s || s.mode !== 'edit') return
+    const next = { ...s, h: pushHistory(s.h, s.h.present), p: pushHistory(pOf(s), rings) }
+    setSession(next)
+    emitNeighbors(next)
+    setNotice(null)
   }
 
   const undo = () => {
@@ -417,8 +540,12 @@ export function PathEditor(props: PathEditorProps) {
     if (!s || s.h.past.length === 0) return
     const h = undoHistory(s.h)
     setLive(null)
+    setLivePushed(null)
     setNotice(null)
-    setSession(persist({ ...s, h } as Session, h.present))
+    /* ★ Un geste, une annulation : la forme ET le recoupage de ses voisines reviennent ensemble. */
+    const after = persist({ ...s, h, ...(s.mode === 'edit' && s.p ? { p: undoHistory(s.p) } : {}) } as Session, h.present)
+    setSession(after)
+    emitNeighbors(after)
     setSelected(null)
   }
   const redo = () => {
@@ -426,7 +553,10 @@ export function PathEditor(props: PathEditorProps) {
     if (!s || s.h.future.length === 0) return
     const h = redoHistory(s.h)
     setLive(null)
-    setSession(persist({ ...s, h } as Session, h.present))
+    setLivePushed(null)
+    const after = persist({ ...s, h, ...(s.mode === 'edit' && s.p ? { p: redoHistory(s.p) } : {}) } as Session, h.present)
+    setSession(after)
+    emitNeighbors(after)
     setSelected(null)
   }
 
@@ -469,6 +599,7 @@ export function PathEditor(props: PathEditorProps) {
     setPicker(null)
     setTool('select')
     originRef.current = null
+    tapAnchor.current = null
     /* ⚠️ Les props d'à présent : l'effet clavier (Échap) garde le `finish` du rendu d'OUVERTURE, et
        l'`onActiveChange` de ce rendu-là croyait la région intacte — la retouche partait sans être
        enregistrée (settings A53). Même lecture pour « סיום » et l'effet `activeExists`. */
@@ -550,6 +681,7 @@ export function PathEditor(props: PathEditorProps) {
     const cancelGesture = () => {
       gesture = null
       setLive(null)
+      setLivePushed(null)
       setTrace(null)
     }
     const down = (e: PointerEvent) => {
@@ -567,6 +699,8 @@ export function PathEditor(props: PathEditorProps) {
         /* voir MapCanvas (freehand) : la capture est une commodité */
       }
       loadRoads()
+      lastValidLive.current = sessionRef.current?.h.present ?? null
+      blockedRef.current = null
       const p = local(e)
       const at = unproject(p.x, p.y)
       gesture = { id: e.pointerId, x: p.x, y: p.y, moved: false, at, pts: [at], lx: e.clientX, ly: e.clientY }
@@ -587,7 +721,7 @@ export function PathEditor(props: PathEditorProps) {
       if (k === 'move') {
         if (gesture.moved && m) {
           const at = unproject(p.x, p.y)
-          setLive(translatePath(m, at.lat - gesture.at.lat, at.lng - gesture.at.lng))
+          tryLive(translatePath(m, at.lat - gesture.at.lat, at.lng - gesture.at.lng))
         }
         return
       }
@@ -615,7 +749,11 @@ export function PathEditor(props: PathEditorProps) {
         setLive(null)
         if (!g.moved) return
         const at = unproject(local(e).x, local(e).y)
-        commit(translatePath(m, at.lat - g.at.lat, at.lng - g.at.lng))
+        const wanted = translatePath(m, at.lat - g.at.lat, at.lng - g.at.lng)
+        /* Le poussage s'est arrêté pendant le geste : la forme s'arrête là où il s'est arrêté. */
+        const stopped = topoRef.current ? computePush(wanted).blocked : null
+        commit(stopped ? (lastValidLive.current ?? m) : wanted)
+        if (stopped) setNotice(blockedText(stopped))
         return
       }
       if (k === 'pen') {
@@ -787,6 +925,7 @@ export function PathEditor(props: PathEditorProps) {
       }
       const active = s?.mode === 'edit' ? s.id : null
       if (active && hits[0].id === active) return
+      tapAnchor.current = p
       if (hits.length === 1) {
         cur.props.onActiveChange(hits[0].id)
         return
@@ -873,6 +1012,8 @@ export function PathEditor(props: PathEditorProps) {
       /* commodité */
     }
     loadRoads()
+    lastValidLive.current = sessionRef.current?.h.present ?? null
+    blockedRef.current = null
     drag.current = d
   }
 
@@ -912,7 +1053,7 @@ export function PathEditor(props: PathEditorProps) {
     if (!d.moved && Math.hypot(p.x - d.x0, p.y - d.y0) > 4) d.moved = true
     if (!d.moved) return
     const next = dragModel(d, p.x, p.y, false)
-    if (next) setLive(next)
+    if (next) tryLive(next)
     if (d.type === 'node' || d.type === 'mid') setSnapHint(d.type === 'node' && d.tool === 'convert' ? null : hintAt(p.x, p.y))
   }
 
@@ -926,13 +1067,18 @@ export function PathEditor(props: PathEditorProps) {
     setSnapHint(null)
     if (d.moved) {
       const p = local(e)
-      const m = dragModel(d, p.x, p.y)
+      let m = dragModel(d, p.x, p.y)
       if (!m) {
         setLive(null)
         return
       }
+      /* ★★★ BL — le poussage s'est arrêté pendant le geste : le point s'arrête là où il s'est arrêté. */
+      const stopped = topoRef.current && sessionRef.current?.mode === 'edit' ? computePush(m).blocked : null
+      if (stopped) m = lastValidLive.current ?? m
       const keep = d.type === 'node' || d.type === 'handle' ? d.index : d.type === 'mid' ? d.inserted : latest.current.selected
       commit(m, keep)
+      /* ★★★ BL — le poussage s'est arrêté : c'est ENCORE dit après le lâcher (le point s'est arrêté là). */
+      if (stopped) setNotice(blockedText(stopped))
       if ((d.type === 'node' && d.tool !== 'convert') || d.type === 'mid') {
         const i = d.type === 'node' ? d.index : (d.inserted ?? -1)
         if (i >= 0 && m.nodes[i]) showJump(unproject(p.x, p.y), m.nodes[i])
@@ -1007,6 +1153,31 @@ export function PathEditor(props: PathEditorProps) {
   const ghostDiffers = !!ghostRing && (ghostRing.length !== ring.length || ghostRing.some((p, i) => Math.abs(p.lat - ring[i].lat) > 1e-12 || Math.abs(p.lng - ring[i].lng) > 1e-12))
   const ghostD = ghostRing && showGhost ? pathD(ghostRing.map(project), true) : ''
 
+  /* ★★★ BL (3.4) — les voisines recoupées (en direct pendant le geste), et les vides qu'un recul laisse. */
+  const committedPushed = useMemo(() => (session?.mode === 'edit' && session.p ? session.p.present : {}), [session])
+  const shownPushed = livePushed ?? committedPushed
+  const pushedIds = Object.keys(shownPushed)
+  const committedModel = session?.h.present ?? null
+  const gaps: Gap[] = useMemo(() => {
+    const tr = topoRef.current
+    if (!tr || session?.mode !== 'edit' || !committedModel?.closed || Object.keys(committedPushed).length === 0) return []
+    const start = Object.fromEntries(Object.keys(committedPushed).map((id) => [id, tr.neighbors[id]]))
+    return gapsOf(densify(committedModel), start, committedPushed)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [committedModel, committedPushed])
+  const fill = (g: Gap) => {
+    const cur = pOf(sessionRef.current).present
+    if (!cur[g.id]) return
+    const r = fillGap(cur[g.id], g)
+    if (!r.ok) {
+      setNotice(t('editor.fillRefused'))
+      return
+    }
+    commitNeighbors({ ...cur, [g.id]: r.ring })
+  }
+  const nameOf = (id: string) => topoRef.current?.labels[id] ?? id
+  const colorOf = (id: string) => topoRef.current?.colors[id] ?? '#64748b'
+
   /**
    * ⛔ UNE ANNULATION N'EST PAS UN LÂCHER. Le navigateur annule un geste
    *    (`pointercancel`) quand il le reprend pour lui : ses coordonnées sont
@@ -1018,6 +1189,7 @@ export function PathEditor(props: PathEditorProps) {
     if (!d || e.pointerId !== d.pointerId) return
     drag.current = null
     setLive(null)
+    setLivePushed(null)
     setSnapHint(null)
   }
   const handlers = { onPointerMove: onDragMove, onPointerUp: onDragEnd, onPointerCancel: onDragCancel }
@@ -1038,6 +1210,22 @@ export function PathEditor(props: PathEditorProps) {
       ? createPortal(
           <>
             <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none', touchAction: 'none' }} aria-hidden={!session}>
+              <defs>
+                <pattern id="bl-gap-hatch" patternUnits="userSpaceOnUse" width="9" height="9" patternTransform="rotate(45)">
+                  <rect width="9" height="9" fill="rgba(220,38,38,0.14)" />
+                  <line x1="0" y1="0" x2="0" y2="9" stroke="#dc2626" strokeWidth="2.5" />
+                </pattern>
+              </defs>
+              {pushedIds.map((id) => (
+                /* ★★★ BL — une voisine recoupée : son NOUVEAU bord, qui suit le geste en direct. */
+                <path key={`nb${id}`} data-testid={`editor-neighbor-${id}`} data-ring={shownPushed[id].length} d={pathD(shownPushed[id].map(project), true)} fill={colorOf(id)} fillOpacity={0.25} stroke={colorOf(id)} strokeWidth={2.5} strokeLinejoin="round" />
+              ))}
+              {gaps.flatMap((g) =>
+                shapeRings(g.shape).map((r, k) => (
+                  /* ★★★ BL — le VIDE qu'un recul laisse : à personne, hachuré, jusqu'à ce que le PO le comble. */
+                  <path key={`gap${g.id}${k}`} data-testid={`editor-gap-${g.id}`} data-dunams={Math.round(g.dunams)} d={pathD(r.map(project), true)} fill="url(#bl-gap-hatch)" stroke="#dc2626" strokeWidth={1.5} strokeDasharray="5 3" />
+                )),
+              )}
               {ghostD && (
                 /* La forme d'origine : un pointillé sombre sur un liseré clair, lisible sur une photo comme sur le plan. */
                 <g data-testid="editor-ghost" data-ring={ghostRing?.length ?? 0}>
@@ -1159,7 +1347,7 @@ export function PathEditor(props: PathEditorProps) {
                     >
                       <span className="inline-block h-3 w-3 shrink-0 rounded-pill" style={{ backgroundColor: sh.color }} />
                       <span className="min-w-0 flex-1 truncate text-start">{sh.label}</span>
-                      <bdi className="numeric text-micro text-content-muted">{t('editor.area', { n: fmt(ringAreaDunams(sh.ring), i18n.language) })}</bdi>
+                      <bdi className="numeric text-micro text-content-muted">{t('editor.area', { n: fmt((props.areaOf ?? ringAreaDunams)(sh.ring), i18n.language) })}</bdi>
                     </button>
                   )
                 })}
@@ -1174,7 +1362,7 @@ export function PathEditor(props: PathEditorProps) {
   // La barre
   // -------------------------------------------------------------------------
   const shapeLabel = session?.mode === 'edit' ? (activeShape?.label ?? '') : session?.mode === 'new' ? t('editor.newShape', { kind: kindOf?.label ?? '' }) : ''
-  const area = model?.closed ? pathAreaDunams(model) : 0
+  const area = model?.closed ? (props.areaOf ? props.areaOf(ring) : pathAreaDunams(model)) : 0
   const others = useMemo(() => shapes, [shapes])
   const [menu, setMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -1203,6 +1391,8 @@ export function PathEditor(props: PathEditorProps) {
    *   le bas est fixe.
    */
   const barRef = useRef<HTMLDivElement | null>(null)
+  /** Le point touché sur la carte pour ouvrir la forme (sinon : ouverte depuis une liste, ou neuve). */
+  const tapAnchor = useRef<LatLng | null>(null)
   useEffect(() => {
     const el = barRef.current
     if (!el || !map || typeof ResizeObserver === 'undefined') return
@@ -1211,7 +1401,33 @@ export function PathEditor(props: PathEditorProps) {
       const next = el.getBoundingClientRect().height
       const d = next - h
       h = next
-      if (Math.abs(d) >= 0.5) map.panBy([0, d / 2], { animate: false })
+      if (Math.abs(d) < 0.5) return
+      /* La carte a pris (ou rendu) sa nouvelle hauteur : MapLibre la mesure d'abord, puis on décale. */
+      map.resize()
+      map.panBy([0, d / 2], { animate: false })
+      /**
+       * ⚠️ MAIS LA FORME OUVERTE RESTE EN VUE. Garder tout immobile cache la bande
+       *    du haut de la carte, que la barre vient de prendre : une forme qui y
+       *    était (ouverte depuis la liste, ou touchée tout en haut) serait sortie
+       *    de la carte au moment même où on l'ouvre (attrapé par `zones` : ses
+       *    points étaient sous la barre). On descend alors juste assez pour la
+       *    montrer — un déplacement minimal, jamais un recadrage ni un zoom.
+       */
+      const margin = 32
+      /* Ouverte d'un toucher sur la carte : le point touché reste sous le doigt — sauf s'il tombait dans la bande prise. */
+      const anchor = tapAnchor.current
+      if (anchor) {
+        const y = map.project([anchor.lng, anchor.lat]).y
+        if (y < margin) map.panBy([0, y - margin], { animate: false })
+        return
+      }
+      const m = sessionRef.current?.h.present
+      if (!m || m.nodes.length === 0) return
+      const ys = densify(m).map((p) => map.project([p.lng, p.lat]).y)
+      const top = Math.min(...ys)
+      const bottom = Math.max(...ys)
+      const room = map.getContainer().clientHeight
+      if (top < margin && bottom - top < room - 2 * margin) map.panBy([0, top - margin], { animate: false })
     })
     ro.observe(el)
     return () => ro.disconnect()
@@ -1377,6 +1593,12 @@ export function PathEditor(props: PathEditorProps) {
             {t('editor.snapOn')}
           </span>
         )}
+        {pushedIds.length > 0 && !notice && (
+          /* ★★★ BL — les voisines que la forme a poussées dans cette session (enregistrées avec elle). */
+          <span data-testid="editor-pushed" data-ids={pushedIds.join(',')} className="flex shrink-0 items-center gap-1 rounded-pill bg-surface-high px-2 py-0.5 font-semibold text-content-primary">
+            {t('editor.pushedChip', { names: pushedIds.map(nameOf).join(', ') })}
+          </span>
+        )}
         {notice ? (
           <p role="status" data-testid="editor-notice" className="min-w-0 truncate font-semibold text-status-warn-ink">
             {notice}
@@ -1390,6 +1612,15 @@ export function PathEditor(props: PathEditorProps) {
           </p>
         ) : null}
       </div>
+      {gaps.map((g) => (
+        <div key={`gapnote${g.id}`} data-testid={`editor-gap-note-${g.id}`} className="flex flex-wrap items-center gap-2 rounded-card bg-surface-high px-3 py-1.5 text-micro ring-1 ring-status-danger">
+          <span className="font-semibold text-content-primary">{t('editor.gapNote', { name: nameOf(g.id), n: fmt(g.dunams, i18n.language) })}</span>
+          <button type="button" data-testid={`editor-fill-gap-${g.id}`} className="btn-secondary min-h-11 py-1.5 text-micro" onClick={() => fill(g)}>
+            <Icon name="gapFill" size={14} />
+            {t('editor.fillGap', { name: nameOf(g.id) })}
+          </button>
+        </div>
+      ))}
       {props.notes}
     </div>
   )

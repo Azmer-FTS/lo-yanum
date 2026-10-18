@@ -1060,13 +1060,42 @@
     "convertMiss": "Touchez un point pour passer du coin à la courbe, ou tirez depuis lui pour sortir ses poignées.",
     "noNode": "Aucun point choisi",
     "snapOn": "Accroche aux routes active — un point lâché près d'une route saute dessus",
-    "snapNoRoads": "Aucune route dans cette vue à laquelle s'accrocher. Rapprochez-vous d'une zone avec des routes."
+    "snapNoRoads": "Aucune route dans cette vue à laquelle s'accrocher. Rapprochez-vous d'une zone avec des routes.",
+    "pushBlocked": "Le poussage s'arrête ici : « {{name}} » {{why}}.",
+    "pushWhy": {
+      "split": "serait coupée en deux",
+      "hole": "garderait un trou",
+      "tiny": "tomberait sous le dixième de sa surface",
+      "empty": "disparaîtrait"
+    },
+    "pushedChip": "Déplacées avec la limite : {{names}}",
+    "gapNote": "Un vide de {{n}} dounams contre « {{name}} » — il n'appartient à aucune région",
+    "fillGap": "Combler : « {{name}} » s'étend jusqu'à la nouvelle limite",
+    "fillRefused": "Impossible de combler ce vide sans créer un recouvrement ou un trou."
   },
   "regionEdit": {
     "pickHint": "Choisissez une région dans la rangée du haut, ou touchez-la sur la carte, pour modifier sa limite.",
     "restore": "Restaurer la limite d'origine…",
     "restoreNothing": "Restaurer la limite d'origine (région jamais redessinée)",
     "restoreConfirm": "Effacer la limite que vous avez tracée pour « {{name}} » ({{points}} points, {{area}} dounams) et revenir à la limite d'origine de l'application ? Une forme sera effacée : « {{name}} ». Impossible à annuler.",
-    "restoreYes": "Oui, effacer et restaurer"
+    "restoreYes": "Oui, effacer et restaurer",
+    "overlapsButton": "Recouvrements ({{count}})",
+    "overlapsTitle": "Recouvrements entre régions — {{count}}",
+    "overlapsNone": "Aucun recouvrement : aucune région n'en couvre une autre.",
+    "rule": "La règle : le terrain que deux régions se partagent reste à celle que vous avez dessinée vous-même ; si les deux l'ont été, ou aucune — à la plus petite.",
+    "ruleWhy": "Ainsi une limite que vous avez tracée n'est jamais rognée au profit de l'approximation d'origine, et entre égales la plus petite est la plus précise — la plus grande cède la plus petite part d'elle-même.",
+    "disputed": "{{n}} dounams en litige",
+    "goesTo": "Reste à « {{winner}} » · « {{loser}} » perd {{n}} dounams",
+    "cannot": "Impossible à résoudre automatiquement : « {{loser}} » {{why}}. Ajustez la limite à la main.",
+    "accepted": "Sera résolu",
+    "refused": "Je déciderai",
+    "manualOnly": "À la main",
+    "apply": "Appliquer et enregistrer ({{count}})",
+    "revert": "Annuler la résolution",
+    "nothingSaved": "Rien n'est enregistré avant « Appliquer et enregistrer ».",
+    "applied": "{{count}} recouvrements résolus et enregistrés.",
+    "reverted": "Résolution annulée : les régions sont revenues comme avant.",
+    "saveFirst": "Enregistrez ou annulez d'abord les modifications de la région ouverte.",
+    "seaNote": "{{n}} dounams du dessin sont en mer : ni comptés ni peints — le trait de côte les coupe."
   }
 }

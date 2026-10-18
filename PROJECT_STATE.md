@@ -104,29 +104,55 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **BL — EN COURS** (2026-10-18). Brief en trois chantiers (barre d'outils en
-  haut ; accroche aux routes visible ; topologie des régions). Branche `main`.
-  - **Chantier 1 — COMMITÉ** (barre d'outils en haut, outils d'Illustrator,
-    recentrage dans la pile, forme d'origine, « שחזור המקור » dans « ⋯ »).
-    Récit : `ETAT.md` § BL chantier 1 ; portes : `docs/bl/portes-c1-local.md`.
-  - **Chantier 2 — COMMITÉ** (l'accroche aux routes : elle marchait, rien ne
-    le montrait ; aimant dans la barre, route éclairée, saut visible).
-    Récit : `ETAT.md` § BL chantier 2, `docs/bl/accroche.md` ; portes :
-    `docs/bl/portes-c2-local.md`.
-  - Chantier 3 (mer, frontières, recouvrements, poussage) : en cours dans
-    l'arbre — voir la suite de cette entrée quand elle sera écrite.
-  - **Base réelle, AVANT la passe (mesuré le 2026-10-18 par le MCP)** :
-    `lo-yanum:region-rings` = 5 régions redessinées (carmel-coast 6, galilee
-    25, golan 5, jezreel 5, samaria 6 sommets ; écrites le 2026-10-18 06:51
-    UTC) ; `lo-yanum:region-paths` = les 5 mêmes ; `zones` = 4 formes
-    (farm-ak1-11 : limite 31, limite 367 [tracé], pâturage 147 [tracé] ;
-    farm-ak1-13 : limite 17). Le compte a la couche « regions » ALLUMÉE.
-  - **Décisions (permanentes)** : la barre de `PathEditor` est TOUJOURS hors de
-    la carte, en haut ; un outil = une icône (`Icon.tsx`) + infobulle
-    hébraïque (`ToolButton.tsx`) ; un seul bouton plein (l'outil actif) ; le
-    recentrage vit dans `MapTools` ; l'écran des régions ne dessine pas la
-    couche « regions » de la légende ; la barre compense sa hauteur (`panBy`).
-  - Reprise : `bun run blui` (≈ 25 min) ; `bun run bkeditui`.
+- **BL — LES TROIS CHANTIERS COMMITÉS ; DÉPLOIEMENT ET REJEU AU DÉPLOYÉ : voir
+  la ligne « Déployé » ci-dessous** (2026-10-18/19). Branche `main`, REBASÉE sur
+  le travail parallèle de la session BK (`aecdda3`…`0fb247c`, arrivé sur
+  `origin/main` pendant la passe). Aucune migration ; la base réelle n'a PAS
+  été écrite. Récit : `ETAT.md` § BL (trois entrées en tête) ; batterie :
+  `docs/bl/portes-local.md`.
+  - **Chantier 1** (barre d'outils en haut, outils d'Illustrator, recentrage
+    dans la pile, forme d'origine, « שחזור המקור » dans « ⋯ ») — `docs/bl/portes-c1-local.md`.
+  - **Chantier 2** (l'accroche aux routes marchait, rien ne le montrait : aimant
+    dans la barre, route éclairée, saut visible) — `docs/bl/accroche.md`.
+  - **Chantier 3** (mer coupée d'office comme un MASQUE ; frontières terrestres
+    PROPOSÉES, NON appliquées ; règle de partage + panneau « חפיפות » ;
+    poussage en direct) — `docs/bl/topologie.md`, `docs/bl/frontieres.md`.
+  - **Base réelle, AVANT la passe (MCP, 2026-10-18)** : `lo-yanum:region-rings`
+    = 5 régions redessinées (carmel-coast 6, galilee 25, golan 5, jezreel 5,
+    samaria 6 sommets ; écrites le 18 à 06:51 UTC) ; `region-paths` = les 5
+    mêmes ; `zones` = 4 formes (farm-ak1-11 : 31, 367, 147 ; farm-ak1-13 : 17).
+    Le compte a la couche « regions » ALLUMÉE et le fond satellite.
+  - **Décisions (permanentes)** :
+    · la barre de `PathEditor` est TOUJOURS hors de la carte, en haut ; un outil
+      = une icône (`Icon.tsx`) + infobulle hébraïque (`ToolButton.tsx`) ; un
+      seul bouton plein (l'outil actif) ; le recentrage vit dans `MapTools` ;
+      l'écran des régions ne dessine pas la couche « regions » de la légende ;
+    · la barre compense sa hauteur (`panBy`) ; une forme ouverte depuis une
+      liste reste en vue ; une forme ouverte d'un toucher garde le point touché
+      sous le doigt ;
+    · l'accroche aux routes se voit (route éclairée, cible, saut) — 18 px ;
+    · la MER (`src/core/sea.json`, `scripts/blsea.ts`) est un masque de MESURE
+      et d'AFFICHAGE ; le tracé du PO n'est jamais réécrit pour elle ;
+    · règle de partage : la région DESSINÉE par le PO gagne ; entre égales, la
+      plus petite (`core/topology.ts` `winnerOf`) ; jamais au chargement ;
+      rien d'écrit avant « החלה ושמירה » ; « ביטול הפתרון » ;
+    · poussage (`PathEditor` prop `topology`, régions seulement) : ce que la
+      région GAGNE depuis l'ouverture est retiré des voisines ; un geste = une
+      annulation ; arrêt si une voisine serait coupée en deux, percée ou sous
+      le dixième ; vide montré et comblé d'un bouton ; région + voisines en UNE
+      écriture (`saveRegionPaths`) ; une région revenue à son tracé livré
+      redevient « livrée ».
+  - **Questions au PO** : (1) 3.2 — appliquer le SUD (Égypte, Jordanie, mer
+    Morte : 2 775 km²) ? et pour le reste : option A (lignes extérieures,
+    Judée-Samarie et Golan dedans, 4 136 km² en tout), ou rien ? (B n'est pas
+    proposée) ; (2) lancer lui-même « חפיפות » (10 recouvrements sur ses
+    régions, tous résolubles) ; (3) les questions de BK restent ouvertes.
+  - **Non prouvé** : sur l'iPad réel (les portes jouent un iPad émulé) ; la
+    résolution et le poussage sur SES régions (prouvés sur les régions livrées,
+    calculés sur les siennes hors dépôt : `private/bl/real-plan.json`).
+  - Reprise : `bun run blpass && bun run typecheck` ; `bun run blui` (≈ 25
+    min), `bun run bltopo` (≈ 15 min) ; au déployé :
+    `BASE_URL=https://azmer-fts.github.io/lo-yanum bun run blui` (et `bltopo`).
 - **BK — UN AGRÉGAT EN UNE TRANSACTION, ET LA BOÎTE D'ENVOI SE RELANCE**
   (2026-10-18). Branche `main`. UNE migration, appliquée par le MCP AVANT le
   déploiement : `20261018000200_bk_write_aggregate.sql` (MCP

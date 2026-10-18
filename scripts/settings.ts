@@ -591,7 +591,10 @@ try {
     await page.waitForTimeout(2400)
     await page.locator('[data-testid="region-pick-negev"]').click()
     await page.waitForTimeout(1200)
+    /* ★★ BL — « שחזור הגבול המקורי » a quitté la barre : menu « ⋯ », puis une confirmation. */
+    await page.locator('[data-testid="editor-menu"]').click()
     await page.locator('[data-testid="region-restore"]').click()
+    await page.locator('[data-testid="region-restore-yes"]').click()
     await page.waitForTimeout(1200)
     await page.goto(`${base}/#/coordinator/farms`, { waitUntil: 'load' })
     await page.waitForTimeout(2600)
@@ -649,7 +652,10 @@ try {
     )
     await page.locator('[data-testid="region-pick-negev"]').click()
     await page.waitForTimeout(1200)
+    /* ★★ BL — « שחזור הגבול המקורי » a quitté la barre : menu « ⋯ », puis une confirmation. */
+    await page.locator('[data-testid="editor-menu"]').click()
     await page.locator('[data-testid="region-restore"]').click()
+    await page.locator('[data-testid="region-restore-yes"]').click()
     await page.waitForTimeout(1200)
   }
 

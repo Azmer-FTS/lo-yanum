@@ -153,8 +153,25 @@ export function pathOf(id: RegionId): PathModel {
 
 /** Enregistrer une région redessinée : l'anneau (ce que tout le reste lit) ET son tracé. */
 export function saveRegionPath(id: RegionId, ring: LatLng[], model: PathModel): void {
+  saveRegionPaths([{ id, ring, model }])
+}
+
+/**
+ * ★★ BL — PLUSIEURS régions d'un coup : la région éditée ET les voisines que
+ * son geste a poussées (3.4), ou les perdants d'une résolution de
+ * recouvrements (3.3). UNE écriture de chaque clé, UNE annonce : jamais un
+ * état intermédiaire où la région est enregistrée et pas sa voisine.
+ */
+export function saveRegionPaths(list: ReadonlyArray<{ id: RegionId; ring: LatLng[]; model: PathModel }>): void {
+  if (list.length === 0) return
   const paths = readPaths()
-  paths[id] = model
+  const next = regionRings()
+  for (const { id, ring, model } of list) {
+    paths[id] = model
+    next[id] = ring.map((p) => [p.lng, p.lat] as [number, number])
+  }
   writePaths(paths)
-  saveRegionRing(id, ring)
+  setRegionRings(next)
+  write(next)
+  notifyDerivedChange()
 }

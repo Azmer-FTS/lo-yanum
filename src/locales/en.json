@@ -1060,13 +1060,42 @@
     "convertMiss": "Tap a point to turn a corner into a curve, or drag from it to pull out handles.",
     "noNode": "No point selected",
     "snapOn": "Snap to roads is on — a point released near a road jumps onto it",
-    "snapNoRoads": "There is no road in this view to snap to. Zoom in on an area with roads."
+    "snapNoRoads": "There is no road in this view to snap to. Zoom in on an area with roads.",
+    "pushBlocked": "The push stops here: «{{name}}» {{why}}.",
+    "pushWhy": {
+      "split": "would be cut in two",
+      "hole": "would be left with a hole",
+      "tiny": "would shrink below a tenth of its area",
+      "empty": "would disappear"
+    },
+    "pushedChip": "Moved with the boundary: {{names}}",
+    "gapNote": "A gap of {{n}} dunams next to «{{name}}» — it belongs to no region",
+    "fillGap": "Fill the gap: «{{name}}» extends to the new boundary",
+    "fillRefused": "The gap cannot be filled without creating an overlap or a hole."
   },
   "regionEdit": {
     "pickHint": "Choose a region in the row above, or tap it on the map, to edit its boundary.",
     "restore": "Restore the original boundary…",
     "restoreNothing": "Restore the original boundary (this region was not redrawn)",
     "restoreConfirm": "Delete the boundary you drew for «{{name}}» ({{points}} points, {{area}} dunams) and go back to the app's original boundary? One shape will be deleted: «{{name}}». This cannot be undone.",
-    "restoreYes": "Yes, delete and restore"
+    "restoreYes": "Yes, delete and restore",
+    "overlapsButton": "Overlaps ({{count}})",
+    "overlapsTitle": "Overlaps between regions — {{count}}",
+    "overlapsNone": "No overlaps: no region covers another.",
+    "rule": "The rule: ground two regions share stays with the one you drew yourself; if both were drawn, or neither — with the smaller one.",
+    "ruleWhy": "So a boundary you drew is never cut in favour of the app's original approximation, and between equals the smaller region is the more precise one — and the larger gives up the smallest share of itself.",
+    "disputed": "{{n}} dunams disputed",
+    "goesTo": "Stays with «{{winner}}» · «{{loser}}» shrinks by {{n}} dunams",
+    "cannot": "Cannot be resolved automatically: «{{loser}}» {{why}}. Fix the boundary by hand.",
+    "accepted": "Will be resolved",
+    "refused": "I'll decide",
+    "manualOnly": "Manual only",
+    "apply": "Apply and save ({{count}})",
+    "revert": "Undo the resolution",
+    "nothingSaved": "Nothing is saved until you press «Apply and save».",
+    "applied": "{{count}} overlaps resolved and saved.",
+    "reverted": "Resolution undone: the regions are back as they were.",
+    "saveFirst": "Save or discard the changes to the open region first.",
+    "seaNote": "{{n}} dunams of the drawing are in the sea: they are neither counted nor painted — the coastline cuts them."
   }
 }

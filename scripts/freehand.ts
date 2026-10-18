@@ -239,10 +239,24 @@ try {
     const cy = box.y + box.height / 2
     const radius = Math.min(box.width, box.height) / 5
 
-    const before = await mapCentre(page)
+    /* ★★ BL — la barre d'édition, au-dessus de la carte, change de hauteur quand la forme se ferme
+       (tracé neuf → forme ouverte) ; la caméra est alors décalée de ce qu'il faut pour que RIEN ne
+       bouge À L'ÉCRAN. « La carte n'a pas bougé sous le trait » se juge donc à l'écran : le point
+       sous le centre du trait y est resté. */
+    const anchor = await page.evaluate(({ x, y }) => {
+      const m = (window as unknown as { __loYanumMap: { unproject(a: [number, number]): { lat: number; lng: number }; getContainer(): HTMLElement } }).__loYanumMap
+      const r = m.getContainer().getBoundingClientRect()
+      const ll = m.unproject([x - r.left, y - r.top])
+      return { lat: ll.lat, lng: ll.lng }
+    }, { x: cx, y: cy })
     await stroke(cdp, circle(cx, cy, radius))
     await page.waitForTimeout(900)
-    const after = await mapCentre(page)
+    const back = await page.evaluate((q) => {
+      const m = (window as unknown as { __loYanumMap: { project(a: [number, number]): { x: number; y: number }; getContainer(): HTMLElement } }).__loYanumMap
+      const r = m.getContainer().getBoundingClientRect()
+      const p = m.project([q.lng, q.lat])
+      return { x: p.x + r.left, y: p.y + r.top }
+    }, anchor)
 
     /**
      * ★★ THE PAN IS SUSPENDED, MEASURED RATHER THAN CONFIGURED. A stroke that
@@ -251,10 +265,11 @@ try {
      *    failure. A few metres of tolerance covers float noise, nothing more.
      */
     check(
-      '★★ the map did NOT move under the stroke',
-      metresApart(before, after) < 5,
-      `${metresApart(before, after).toFixed(1)} m`,
+      '★★ the map did NOT move under the stroke (the point under its centre stayed put on screen)',
+      Math.hypot(back.x - cx, back.y - cy) < 2,
+      `${Math.hypot(back.x - cx, back.y - cy).toFixed(1)} px`,
     )
+
 
     /**
      * ★★ BK — LE TRAIT REVENU À SON DÉPART EST UNE FORME FERMÉE, SIMPLIFIÉE EN
