@@ -54,6 +54,7 @@ l'écran ET la base. `bkedit` éprouve le modèle sans navigateur.
 | Accroche aux routes (option) : lâché à 9 px d'une route, le point est dessus | A567 | — (même code) | — |
 | Deux doigts en mode plume : un pincement, jamais un point | — | A568 | — |
 | Le panneau : entité, forme, points, surface ; rien de technique ; RTL | A550 | A550 | — |
+| ★ Une forme tracée PENDANT les relectures du démarrage ne quitte jamais la carte (correctif de `data/store.ts`) | A569 (rouge sur l'ancien code, vert après) | — | — |
 | Le diagnostic n'est plus sur les cartes (reste dans הגדרות) | A565, `biui` A508 | — | `bipass` A503 |
 
 ## L'accroche aux routes

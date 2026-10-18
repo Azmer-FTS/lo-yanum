@@ -64,8 +64,26 @@
 > insertion + modification de `path` sous l'identité du PO (RLS) → 0 ligne
 > restée.
 >
-> **Portes** : `bkedit` 51 (pure), `bkeditui` 150 (chaque geste, souris ET
-> doigt, écran ET base). Réécrites (la règle a changé) : `bhui` (A491 « en
+> **★ ATTRAPÉ PAR LE DÉPLOIEMENT (run 39090191840, `bfb75ab` jamais servi)** :
+> `zones` 6 — une forme tracée PENDANT l'hydratation disparaissait de l'écran
+> (3 au lieu de 4), revenue au rechargement suivant. Vert en local cinq fois
+> (processeur ×1 à ×6). LA CAUSE, ANTÉRIEURE À BK : deux relectures partent à
+> chaque démarrage (cache mémoire, puis IndexedDB ; `refreshData` en ajoute
+> une sans attendre), et un enregistrement GLOBAL des modifications « pendant
+> la relecture » était remplacé par la seconde ; la première, si elle
+> répondait en dernier, réinstallait un instantané sans la forme. S'y
+> ajoutaient deux fenêtres non enregistrées (lecture de l'identité, et entre la
+> réponse et la fusion). L'éditeur crée la forme plus tôt qu'avant (dès que le
+> trait se referme) et tombait dans la course. CORRECTIF (`data/store.ts`) :
+> un enregistrement PAR relecture, ouvert dès sa première ligne, fermé après
+> l'installation de sa fusion ; chaque modification va dans tous ceux qui sont
+> ouverts. Preuve : `bkeditui` A569 (six à huit rechargements, une forme tracée
+> pendant chaque relecture lente, la carte relevée toutes les 200 ms) — ROUGE
+> sur l'ancien `store.ts` (essai 5 : 7 formes attendues, 6 vues), VERT avec le
+> correctif (8 essais, 0 perte).
+>
+> **Portes** : `bkedit` 51 (pure), `bkeditui` 151 (chaque geste, souris ET
+> doigt, écran ET base ; + A569). Réécrites (la règle a changé) : `bhui` (A491 « en
 > direct » sur le contour, A493 sélectionner puis supprimer), `biui` (A508
 > diagnostic depuis הגדרות, A509/A510 sur l'éditeur), `bipass` A501–A503,
 > `freehand` et `zones` (CI). Tableau geste → porte : `docs/bk/editeur.md`.

@@ -122,7 +122,22 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
       long de BH n'existe plus) ; supprimer : bouton ou Suppr/⌫ ;
     · plusieurs formes sous le doigt → un CHOIX nommé, la plus petite d'abord ;
     · « אבחון » n'est plus sur les cartes (seulement הגדרות) ;
-    · l'ouverture d'une forme ne recadre pas (BF/BH) ; chaque geste est écrit (BI).
+    · l'ouverture d'une forme ne recadre pas (BF/BH) ; chaque geste est écrit (BI) ;
+    · ★ `data/store.ts` : UN enregistrement des modifications PAR relecture
+      (`recordings`), ouvert dès la première ligne de `load`, fermé après
+      l'installation de sa fusion — deux relectures partent à chaque
+      démarrage (cache mémoire, puis IndexedDB) et `refreshData` en ajoute
+      sans attendre ; l'ancien enregistrement global faisait disparaître une
+      forme tracée pendant l'hydratation (attrapé par `zones` 6 au
+      déploiement de `bfb75ab`, jamais servi ; prouvé par `bkeditui` A569).
+  - **Commits** : `bfb75ab` (éditeur ; déploiement ARRÊTÉ par `zones` 6 en CI,
+    jamais servi), puis le correctif de la couche de données (servi si la CI
+    passe : vérifier `version.json`).
+  - **Rouges ANTÉRIEURS** : `offline` (sélecteur périmé
+    `nav a[href*="#/coordinator"]`, rouge à l'identique sur `bfb75ab`) ; et
+    ceux de BJ (`adui` A115, `anui` A236, `atui`, `pills`, `rhythm`, `akui`,
+    `uipass`, `sheets`, `layout`) ; `settings` et `touch` exercent l'ancien
+    éditeur (hors batterie).
   - **Non couvert** : les zones de menace (ancien outil) ; la touche Entrée
     (fermer) existe sans porte.
   - **Questions au PO** : (1) le diagnostic doit-il quitter AUSSI הגדרות ? (il

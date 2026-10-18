@@ -807,4 +807,56 @@ await guard('A568', async () => {
   await o.ctx.close()
 })
 
+// ===========================================================================
+await guard('A569', async () => {
+  section('A569 — ★ une forme tracée PENDANT les relectures du démarrage ne quitte jamais la carte')
+  /**
+   * ★★★ BK — `zones` (CI) a vu une forme tracée pendant l'hydratation
+   *   disparaître de l'écran : deux relectures partent à chaque démarrage (cache
+   *   mémoire, puis IndexedDB), et la seconde écrasait l'enregistrement de la
+   *   première ; celle qui répondait en dernier décidait. Un tirage à pile ou
+   *   face : on recharge SIX fois, on trace à chaque fois pendant la relecture
+   *   lente, et on regarde la carte toutes les 200 ms jusqu'à la fin.
+   */
+  const { db, center } = bkDb()
+  const dev = DEVICES[0]
+  const { o, h } = await openFarm(db, dev)
+  const drawn = () =>
+    o.page.evaluate(() => {
+      const m = (window as unknown as { __loYanumMap?: { getSource(id: string): { _data?: { features?: unknown[] } } | undefined } }).__loYanumMap
+      return (m?.getSource('zones')?._data?.features ?? []).length
+    })
+  let lost = 0
+  let created = 0
+  for (let k = 0; k < Number(process.env.A569_TRIALS ?? 6); k++) {
+    const before = zoneIds(db).length
+    db.slowReads = 4000
+    await o.page.reload({ waitUntil: 'load' })
+    await o.page.waitForFunction(() => Boolean((window as unknown as { __loYanumMap?: unknown }).__loYanumMap), undefined, { timeout: 15_000 })
+    await o.page.waitForTimeout(600)
+    await frame(o.page, center, 14)
+    const tog = await centreOf(o.page, '[data-testid="draw-tools-toggle"]')
+    await h.tap(tog.x, tog.y)
+    const gz = await centreOf(o.page, '[data-testid="draw-grazing"]')
+    await h.tap(gz.x, gz.y)
+    const c = await project(o.page, { lat: center.lat + 0.004 + (k % 3) * 0.003, lng: center.lng - 0.006 + Math.floor(k / 3) * 0.006 })
+    for (const p of [{ x: c.x - 40, y: c.y - 30 }, { x: c.x + 40, y: c.y - 30 }, { x: c.x, y: c.y + 30 }]) await h.tap(p.x, p.y)
+    const first = await nodeAt(o.page, 0)
+    await h.tap(first.x, first.y)
+    if (zoneIds(db).length === before + 1 || (await until(() => zoneIds(db).length === before + 1, 3000))) created++
+    await done(o.page)
+    let min = Infinity
+    for (let t = 0; t < 12_000; t += 200) {
+      min = Math.min(min, await drawn())
+      await o.page.waitForTimeout(200)
+    }
+    db.slowReads = 0
+    if (min < before + 1) lost++
+    console.log(`    essai ${k + 1} : ${before + 1} formes attendues, minimum vu sur la carte ${min}`)
+  }
+  check(`A569 chaque essai a bien créé sa forme (${created})`, created === Number(process.env.A569_TRIALS ?? 6))
+  check(`A569 ★ la forme n’a JAMAIS quitté la carte pendant les relectures (${lost} essai(s) perdu(s))`, lost === 0)
+  await o.ctx.close()
+})
+
 await finish()

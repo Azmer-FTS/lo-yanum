@@ -16,11 +16,40 @@ Tableau geste → porte : `docs/bk/editeur.md`.
   sous trois) ; la plume, la main levée (carré tremblé → 4 coins ; arc →
   arrondis ; portion remplacée du bon côté ; prolonger un tracé ouvert) ;
   trente annulations / trente « refaire » exacts.
-- **`bkeditui` (A550–A568, rendu) 150/150** — chaque geste DEUX fois,
+- **`bkeditui` (A550–A569, rendu) 152/152** — chaque geste DEUX fois,
   « souris » (1 440, souris + clavier) et « doigt » (iPad 1 032 × 1 376,
   touchers CDP réels), vérifié à l'écran ET en base factice. Sur la
   configuration réelle de `farm-ak1-11` (limite dans le pâturage) : le choix
   propose LES DEUX, la plus petite d'abord, et ouvre la limite.
+
+## ★ Attrapé par le DÉPLOIEMENT (run 39090191840, `bfb75ab` jamais servi)
+
+`zones` 6 en CI : « a zone drawn while the app is still hydrating » → 3 au
+lieu de 4 sur la liste et la carte, 4 en base, 4 après un rechargement. Vert
+en local (cinq passages, processeur ralenti ×1 à ×6, copie de la porte).
+
+- **Horodatages du journal de CI** : rechargement 02:38:09.6, forme tracée
+  entre 14.2 et 18.2, contrôle à 27.2 (relectures lentes de 6 s).
+- **La cause, antérieure à BK** (`data/store.ts`) : DEUX relectures partent à
+  chaque démarrage — l'une sur le cache mémoire, l'autre quand IndexedDB
+  s'ouvre (`openIndexedDbCache().then(… sync())`) ; `refreshData` en relance
+  une sans attendre. L'enregistrement des modifications faites « pendant la
+  relecture » était UNE variable globale : la seconde relecture la
+  remplaçait, la forme n'était enregistrée que pour elle, et quand la
+  première répondait en dernier — un tirage — elle installait un instantané
+  sans la forme. Deux fenêtres de plus n'étaient pas enregistrées : la
+  lecture de l'identité, et l'intervalle entre la réponse et la fusion.
+- **Pourquoi maintenant** : l'éditeur écrit la forme dès que le trait se
+  referme (l'ancien outil attendait « סגור פוליגון ») — plus tôt dans la
+  relecture.
+- **Correctif** : un enregistrement PAR relecture, ouvert dès sa première
+  ligne, fermé après l'installation de sa fusion ; chaque modification va
+  dans tous les enregistrements ouverts ; ce qui est tracé pendant la lecture
+  du cache est aussi reposé sur le cache restauré.
+- **Preuve, rouge puis vert, même banc** : `bkeditui` A569 (rechargements
+  successifs, une forme tracée pendant chaque relecture lente, carte relevée
+  toutes les 200 ms). Ancien `store.ts` : essai 5, 7 formes attendues, **6**
+  vues → ROUGE. Correctif : 8 essais, 0 perte → VERT.
 
 ## Attrapé par les portes et les sondes pendant la passe
 
@@ -61,9 +90,15 @@ bipass 73 · bhpass 24 · bgpass 53 · bfpass 51 · bepass 92 · bdpass 66 ·
 bcpass 75 · bbpass 51 · bapass 38 · az5pass 18 · aypass 25 · axpass 40 ·
 awpass 60 · avpass 15 · aupass 48 · aspass · appass 108 · aopass 113 ·
 aodata 82 · anpass 27 · ampass 50 · alpass 40 · akpass 56 · adpass 46 ·
-accept · tokens · contrast · persist · mapping · deletion · armigrations 57.
+accept · tokens · contrast · persist · mapping · deletion · armigrations 57 ·
+sync.
 
-Au rendu : bkeditui 150 · bkui 31 · bjui 56 · biui 45 · bhui 35 · bgui 90 ·
+Batterie REJOUÉE ENTIÈRE après le correctif de `data/store.ts` (codes de
+sortie) — chiffres ci-dessous. `bjui` A525 est tombée une fois sur un serveur
+de prévisualisation oublié sur son port 5499 (lancé depuis le worktree du
+chantier 1, supprimé depuis) ; port libéré, rejouée seule : 56/56.
+
+Au rendu : bkeditui 152 · bkui 31 · bjui 56 · biui 45 · bhui 35 · bgui 90 ·
 bfui 52 · beui 57 · bdui 76 · bbui 82 · bcmobile 246 · aymobile 48 ·
 assettings · atsync 17 · aitheme 18 · azui 125 · axui 116 · avui 51 · auui 60 ·
 ayscreens 57 · ayui 105 · az5ui 21 · baui 45 · awui 57 · arfiche 144 ·
@@ -83,6 +118,10 @@ d'une forme avec `path`, modification de `path` → réussies ; après : 3 forme
 aucune sonde restée.
 
 ## Non rejouées (antérieures à BK, hors de la batterie de BJ)
+
+`offline` : ROUGE, et rouge À L'IDENTIQUE sur le code commité `bfb75ab`
+(worktree de HEAD) — elle attend `nav a[href*="#/coordinator"]`, un sélecteur
+périmé : antérieur, sans rapport. `sync` (qui pilote `applyRecords`) : verte.
 
 `settings` (ancien écran des régions : `region-pencil`, `region-dunams`…) et
 `touch` exercent l'ANCIEN éditeur et ne sont plus à jour ; elles étaient déjà

@@ -178,12 +178,32 @@ async function writeThrough(changes: StoreChange[]): Promise<void> {
 
 /**
  * N1 (2026-09-02) — the changes made WHILE a hydration is in flight, keyed
- * like the outbox so six edits to one guard are one entry. Null when no load
- * is running. Recorded synchronously at mutation time — before the serial
- * queue, before the cache — because the race is against a fetch that has
- * already left, and nothing later would be early enough. See `applyRecords`.
+ * like the outbox so six edits to one guard are one entry. Recorded
+ * synchronously at mutation time — before the serial queue, before the cache —
+ * because the race is against a fetch that has already left, and nothing
+ * later would be early enough. See `applyRecords`.
+ *
+ * ★★★ BK (2026-10-18) — ONE RECORDING PER LOAD, AND IT COVERS THE WHOLE LOAD.
+ *   It was ONE global, set just before the fetch and cleared as soon as the
+ *   fetch returned. Three holes, and the deploy gate fell into the first:
+ *     1. TWO LOADS RUN AT EVERY COLD START — one on the in-memory cache, one
+ *        when IndexedDB opens (`openIndexedDbCache().then(… sync())`), and
+ *        `refreshData` starts another without waiting. The second REPLACED
+ *        the global: a zone drawn then was recorded in the second load only,
+ *        and when the first answered last it installed a server snapshot
+ *        without the zone. On screen and in the cache the zone was gone until
+ *        the next reload — a coin flip on which load answered first (`zones`
+ *        6 in CI, 2026-10-18; never locally in five runs).
+ *     2. Nothing was recorded while the grant was read and the outbox flushed,
+ *        though the screen is usable from the cache by then.
+ *     3. Nothing was recorded between the fetch returning and the merge (an
+ *        IndexedDB read in between).
+ *   Now each load opens its own recording as soon as the screen is usable, and
+ *   closes it only once its merged snapshot is installed; every mutation goes
+ *   into every open recording. Re-applying a change the server already has is
+ *   the same value twice — harmless.
  */
-let sinceLoadBegan: Map<string, StoreChange> | null = null
+const recordings = new Set<Map<string, StoreChange>>()
 
 const SUPABASE_BACKEND: StoreBackend = {
   name: 'supabase',
@@ -193,7 +213,7 @@ const SUPABASE_BACKEND: StoreBackend = {
   // correct answer rather than a placeholder for one.
   seed: emptyData,
   onChange: (changes) => {
-    if (sinceLoadBegan) for (const c of changes) sinceLoadBegan.set(keyOf(c), c)
+    for (const recording of recordings) for (const c of changes) recording.set(keyOf(c), c)
     queue = queue.then(() => writeThrough(changes)).catch((error: unknown) => {
       // writeThrough handles its own failures; anything reaching here is the
       // cache itself refusing, which must not break the serial chain.
@@ -337,10 +357,26 @@ export function installSupabaseStore(): void {
    *   was ever seen — and is why the check is worth keeping exactly as it is.
    */
   const load = async (userId: string): Promise<void> => {
+    /**
+     * ★★★ BK — this load's own recording, open from its first line to the
+     * install of its merged snapshot (see `recordings`). Every exit closes it.
+     */
+    const recording = new Map<string, StoreChange>()
+    recordings.add(recording)
+    try {
+      await loadRecorded(userId, recording)
+    } finally {
+      recordings.delete(recording)
+    }
+  }
+
+  const loadRecorded = async (userId: string, recording: Map<string, StoreChange>): Promise<void> => {
     /** Has the session this load belongs to ended while we were waiting? */
     const abandoned = () => loadedFor !== userId
 
-    const restored = restoreSnapshot(await cache.getAll('aggregates'))
+    const restoredFromCache = restoreSnapshot(await cache.getAll('aggregates'))
+    /* ★★★ BK — what was drawn while the cache was being read is laid over it too. */
+    const restored = restoredFromCache ? applyRecords(restoredFromCache, [...recording.values()]) : null
     if (restored) {
       replaceSnapshot(restored)
       // Ready, from the cache. If the network then answers, this is replaced
@@ -377,16 +413,9 @@ export function installSupabaseStore(): void {
 
     await flushPending()
 
-    // N1 — from here until the snapshot is on screen, every mutation is also
-    // recorded, and laid back over the server's answer below.
-    const recording = new Map<string, StoreChange>()
-    sinceLoadBegan = recording
-    let fresh: StoreData
-    try {
-      fresh = await hydrateFrom(client)
-    } finally {
-      if (sinceLoadBegan === recording) sinceLoadBegan = null
-    }
+    // N1 — every mutation since this load began is recorded (★★★ BK : since
+    // its FIRST line, not from here), and laid back over the server's answer.
+    const fresh: StoreData = await hydrateFrom(client)
     // The last and only place it matters: everything above this line is a READ.
     if (abandoned()) return
     /**
