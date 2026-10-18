@@ -456,11 +456,89 @@ try {
 
     await page.locator('[data-testid="region-pick-negev"]').click()
     await page.waitForTimeout(2000)
-    const opened = await page.locator('[data-testid="region-dunams"]').textContent()
-    check('a region opens with its own outline and a live area', Boolean(opened), opened ?? '')
+    /*
+     * ★★★ BK (2026-10-18) — RÉÉCRITE SUR L'ÉDITEUR DE TRACÉS, PAS CONTOURNÉE.
+     *   L'écran des régions n'a plus son propre crayon (`region-pencil`), ni sa
+     *   surface (`region-dunams`), ni ses annuler/refaire (`region-undo|redo`) :
+     *   c'est `PathEditor`, le même que les fermes. Les intentions d'A53 tiennent
+     *   toutes, au STYLET comme avant ; deux gestes ont changé par décision
+     *   (docs/bk/diagnostic.md) :
+     *     · un trait à main levée sur une forme FERMÉE remplace la PORTION entre
+     *       ses deux bouts (il commence et finit sur la forme) — c'est ce trait
+     *       qui arme « ביטול » et que « ביצוע מחדש » rejoue ;
+     *     · « tout redessiner » est « פעולות → שרטוט מחדש », confirmé ; la forme
+     *       neuve, une fois fermée, REMPLACE la région, et c'est elle qui rend
+     *       le rattachement observable (une petite boîte dans un coin).
+     *   La surface se lit sur le panneau (`data-area`), plus sur une étiquette.
+     */
+    const editor = page.locator('[data-testid="shape-editor"]')
+    const ed = async (a: string) => (await editor.getAttribute(a, { timeout: 2000 }).catch(() => null)) ?? ''
+    const opened = await ed('data-area')
+    check(
+      'a region opens in the path editor, with its own outline and a live area',
+      (await ed('data-shape')) === 'negev' && (await ed('data-mode')) === 'edit' && Number(opened) > 0,
+      `${opened} ד׳`,
+    )
 
-    await page.locator('[data-testid="region-pencil"]').click()
+    await page.locator('[data-testid="editor-tool-pencil"]').click()
+    await page.waitForTimeout(400)
+    check('« יד חופשית » is the tool', (await ed('data-tool')) === 'pencil')
+    /* Deux points de la région, à l'écran et loin des bords : le trait part de l'un, finit sur l'autre, bombé au dehors. */
+    const canvasBox = (await page.locator('.maplibregl-canvas').boundingBox())!
+    const onScreen = (await page.evaluate(() =>
+      [...document.querySelectorAll('g[data-testid^="editor-node-"]')].map((e) => {
+        const r = e.getBoundingClientRect()
+        return { i: Number(e.getAttribute('data-testid')!.slice(12)), x: r.left + r.width / 2, y: r.top + r.height / 2 }
+      }),
+    )) as Array<{ i: number; x: number; y: number }>
+    const inside = onScreen.filter(
+      (q) => q.x > canvasBox.x + 80 && q.x < canvasBox.x + canvasBox.width - 80 && q.y > canvasBox.y + 80 && q.y < canvasBox.y + canvasBox.height * 0.6,
+    )
+    const a = inside[0]
+    const b = inside.find((q) => q.i >= (a?.i ?? 0) + 2 && Math.hypot(q.x - a.x, q.y - a.y) > 60)
+    check('two points of the region are under the stylus', !!a && !!b, `${inside.length} on screen`)
+    if (a && b) {
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+      const nx = -(b.y - a.y)
+      const ny = b.x - a.x
+      const k = 70 / Math.hypot(nx, ny)
+      const ctrl = { x: mid.x + nx * k, y: mid.y + ny * k }
+      const arc: Array<[number, number]> = []
+      for (let s = 0; s <= 24; s++) {
+        const t = s / 24
+        arc.push([
+          (1 - t) * (1 - t) * a.x + 2 * (1 - t) * t * ctrl.x + t * t * b.x - canvasBox.x,
+          (1 - t) * (1 - t) * a.y + 2 * (1 - t) * t * ctrl.y + t * t * b.y - canvasBox.y,
+        ])
+      }
+      const stroke = await page.evaluate(`${PEN_STROKE}(${JSON.stringify(arc)})`)
+      check('★ A53 — the Apple Pencil stroke is accepted', stroke === 'ok', String(stroke))
+    }
+    await page.waitForTimeout(900)
+    const traced = await ed('data-area')
+    check(
+      '★ A53 — and it redrew the outline (the live area changed)',
+      Boolean(traced) && traced !== opened,
+      `${opened} → ${traced} ד׳ ${(await page.locator('[data-testid="editor-notice"]').textContent().catch(() => '')) ?? ''}`,
+    )
+
+    const undo = page.locator('[data-testid="editor-undo"]')
+    check('undo is armed by the stroke', !(await undo.isDisabled()) && Number(await ed('data-undo')) > 0)
+    await undo.click()
+    await page.waitForTimeout(600)
+    check('and it puts the previous outline back', (await ed('data-area')) === opened, `${await ed('data-area')} ד׳`)
+    await page.locator('[data-testid="editor-redo"]').click()
+    await page.waitForTimeout(600)
+    check('redo brings the traced one back', (await ed('data-area')) === traced, `${await ed('data-area')} ד׳`)
+
+    /* « שרטוט מחדש » : toute la région, retracée au stylet. */
+    await page.locator('[data-testid="editor-menu"]').click()
+    await page.locator('[data-testid="editor-replace"]').click()
+    await page.locator('[data-testid="region-replace-yes"]').click()
     await page.waitForTimeout(500)
+    check('« שרטוט מחדש » opens a new outline for the region', (await ed('data-mode')) === 'new')
+    await page.locator('[data-testid="editor-tool-pencil"]').click()
+    await page.waitForTimeout(400)
     /**
      * ★ A SMALL BOX, IN A CORNER, AND THE SIZE IS THE POINT. A stroke that
      *   roughly retraces the outline proves the pencil works and proves
@@ -469,35 +547,24 @@ try {
      *   is what makes "rattachement recalculé" observable — farms leave it,
      *   and the number beside its name in the filter has to follow.
      */
-    const stroke = await page.evaluate(
+    const box = await page.evaluate(
       `${PEN_STROKE}([[300,250],[430,250],[440,300],[430,360],[300,360],[290,300],[300,255]])`,
     )
-    check('★ A53 — the Apple Pencil stroke is accepted', stroke === 'ok', String(stroke))
+    check('★ A53 — the Apple Pencil box is accepted', box === 'ok', String(box))
     await page.waitForTimeout(900)
-    const traced = await page.locator('[data-testid="region-dunams"]').textContent()
+    const small = await ed('data-area')
     check(
-      '★ A53 — and it replaced the outline (the live area changed)',
-      Boolean(traced) && traced !== opened,
-      `${opened} → ${traced}`,
-    )
-
-    const undo = page.locator('[data-testid="region-undo"]')
-    check('undo is armed by the stroke', !(await undo.isDisabled()))
-    await undo.click()
-    await page.waitForTimeout(600)
-    check(
-      'and it puts the previous outline back',
-      (await page.locator('[data-testid="region-dunams"]').textContent()) === opened,
-    )
-    await page.locator('[data-testid="region-redo"]').click()
-    await page.waitForTimeout(600)
-    check(
-      'redo brings the traced one back',
-      (await page.locator('[data-testid="region-dunams"]').textContent()) === traced,
+      '★ A53 — closed, it REPLACED the region (the live area shrank)',
+      (await ed('data-mode')) === 'edit' && (await ed('data-shape')) === 'negev' && Number(small) > 0 && Number(small) < Number(traced) / 4,
+      `${traced} → ${small} ד׳`,
     )
 
     await page.screenshot({ path: `${SHOTS}/region-edit-${ENGINE_NAME}.png` })
-    await page.locator('[data-testid="region-save"]').click()
+    const save = page.locator('[data-testid="region-save"]')
+    const saveArmed = !(await save.isDisabled())
+    check('« שמור גבול » is armed by the new outline', saveArmed)
+    /* Un bouton éteint est un contrôle ROUGE ci-dessus, pas une attente de 30 s : la suite se joue et dit le reste. */
+    if (saveArmed) await save.click()
     await page.waitForTimeout(900)
 
     await page.goto(`${base}/#/coordinator/farms`, { waitUntil: 'load' })
@@ -524,6 +591,56 @@ try {
       JSON.stringify(restored) === JSON.stringify(before),
       `${JSON.stringify(restored ?? {}).slice(0, 90)}`,
     )
+
+    /*
+     * ★★ Échap NE PERD PAS UNE RETOUCHE. Avant le correctif, l'effet clavier
+     *   gardait le `finish` du rendu d'ouverture : Échap refermait l'éditeur des
+     *   régions SANS enregistrer, quand « סיום » enregistrait. Une retouche (un
+     *   point supprimé), Échap, et la région doit être écrite — son anneau ET
+     *   son tracé. Puis « שחזר ברירת מחדל » la remet, pour la suite.
+     */
+    await page.goto(`${base}/#/coordinator/settings/regions`, { waitUntil: 'load' })
+    await page.waitForTimeout(2400)
+    await page.locator('[data-testid="region-pick-negev"]').click()
+    await page.waitForTimeout(1500)
+    const n0 = Number(await ed('data-nodes'))
+    const free = (await page.evaluate(() => {
+      for (const e of document.querySelectorAll('g[data-testid^="editor-node-"]')) {
+        const r = e.getBoundingClientRect()
+        const x = r.left + r.width / 2
+        const y = r.top + r.height / 2
+        const hit = document.elementFromPoint(x, y)
+        if (hit && (hit === e || e.contains(hit))) return { x, y }
+      }
+      return null
+    })) as { x: number; y: number } | null
+    if (free) await page.mouse.click(free.x, free.y)
+    await page.waitForTimeout(300)
+    await page.locator('[data-testid="editor-node-delete"]').click({ timeout: 5000 }).catch(() => undefined)
+    await page.waitForTimeout(300)
+    const retouched = Number(await ed('data-nodes'))
+    check(
+      'a retouch: one point of the region deleted, « שמור גבול » armed',
+      retouched === n0 - 1 && !(await page.locator('[data-testid="region-save"]').isDisabled()),
+      `${n0} → ${retouched}`,
+    )
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(900)
+    const stored = (await page.evaluate(() => ({
+      rings: JSON.parse(localStorage.getItem('lo-yanum:region-rings') ?? '{}') as Record<string, unknown[]>,
+      paths: JSON.parse(localStorage.getItem('lo-yanum:region-paths') ?? '{}') as Record<string, { nodes: unknown[] }>,
+    }))) as { rings: Record<string, unknown[]>; paths: Record<string, { nodes: unknown[] }> }
+    check(
+      '★★ Escape closes the editor AND the retouch is written (region-rings and region-paths)',
+      (await editor.count()) === 0 &&
+        stored.rings?.negev?.length === retouched &&
+        stored.paths?.negev?.nodes?.length === retouched,
+      `anneau ${stored.rings?.negev?.length ?? 'absent'} · tracé ${stored.paths?.negev?.nodes?.length ?? 'absent'} · attendu ${retouched}`,
+    )
+    await page.locator('[data-testid="region-pick-negev"]').click()
+    await page.waitForTimeout(1200)
+    await page.locator('[data-testid="region-restore"]').click()
+    await page.waitForTimeout(1200)
   }
 
   // -------------------------------------------------------------------------
@@ -534,8 +651,9 @@ try {
     for (const screen of ['farms', 'volunteers', 'missions']) {
       await page.goto(`${base}/#/coordinator/${screen}`, { waitUntil: 'load' })
       await page.waitForTimeout(2200)
+      /* ★ BK — les points de l'éditeur de tracés (`editor-node-*`) ; les anciennes poignées aussi, pour qu'aucune ne revienne. */
       grips += await page.evaluate(
-        () => document.querySelectorAll('[data-marker-kind="vertex"]').length,
+        () => document.querySelectorAll('[data-marker-kind="vertex"], g[data-testid^="editor-node-"]').length,
       )
     }
     check(

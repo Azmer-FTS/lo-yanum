@@ -266,6 +266,11 @@ async function tapTestId(page: Page, cdp: CDPSession, testid: string): Promise<b
 
 /** U1 — unfold the zone list (a folded block by default) with a finger tap. */
 async function unfoldZones(page: Page, cdp: CDPSession): Promise<void> {
+  /* ★ AS — la fiche est en ONGLETS, et la liste des formes (et ses « ערוך ») est sous « שטח » : on y va au doigt. */
+  if ((await page.locator('[data-testid="farm-tab-terrain"]').getAttribute('aria-selected').catch(() => null)) === 'false') {
+    await tapTestId(page, cdp, 'farm-tab-terrain')
+    await page.waitForTimeout(600)
+  }
   const open = await page.evaluate(() => document.querySelector('[data-block="entity-zones"]')?.getAttribute('data-open'))
   if (open === '0') await tapTestId(page, cdp, 'block-entity-zones')
 }
@@ -289,6 +294,58 @@ const anchorPins = (page: Page): Locator =>
   page.locator(
     '.maplibregl-marker:has(svg[data-pin-svg]):not(:has(path[d^="M5 11"]))',
   )
+
+/**
+ * ★★★ BK (2026-10-18) — L'ÉDITEUR DE TRACÉS. Les formes se tracent et se
+ *   retouchent dans `PathEditor` (le même que l'écran des régions) : son
+ *   panneau `[data-testid="shape-editor"]` dit le mode (`new`/`edit`), les
+ *   points (`data-nodes`), la fermeture, la surface (`data-area`), le point
+ *   sélectionné ; ses points sont `editor-node-<i>` (une surcouche SVG, plus des
+ *   marqueurs MapLibre « פינת אזור »), les « + » des segments `editor-mid-<s>`,
+ *   la poignée centrale ✥ `editor-move`. Les sections 4–7 et 10c–10d ont été
+ *   RÉÉCRITES sur cette grammaire parce que la règle a changé, pas pour passer :
+ *   chaque intention d'A63 est gardée, au doigt et au stylet.
+ */
+const editorPanel = (page: Page): Locator => page.locator('[data-testid="shape-editor"]')
+const ed = async (page: Page, a: string): Promise<string> =>
+  (await editorPanel(page).getAttribute(a, { timeout: 2000 }).catch(() => null)) ?? ''
+const edNum = async (page: Page, a: string): Promise<number> => Number((await ed(page, a)) || NaN)
+/** Les points de la forme éditée (des `<g>` SVG ; pas les boutons `editor-node-delete|kind`). */
+const editorNodes = (page: Page): Locator => page.locator('g[data-testid^="editor-node-"]')
+/**
+ * Le point qu'un doigt touche VRAIMENT (rien par-dessus : ni le panneau, ni une
+ * épingle), le plus près du centre de la carte — comme `bhui` (`centralGrip`).
+ */
+async function freeNode(page: Page): Promise<{ i: number; x: number; y: number } | null> {
+  const box = await mapBox(page)
+  const free = await page.evaluate(() =>
+    [...document.querySelectorAll('g[data-testid^="editor-node-"]')]
+      .map((e) => {
+        const r = e.getBoundingClientRect()
+        const x = r.left + r.width / 2
+        const y = r.top + r.height / 2
+        const hit = document.elementFromPoint(x, y)
+        return { i: Number(e.getAttribute('data-testid')!.slice(12)), x, y, ok: !!hit && (hit === e || e.contains(hit)) }
+      })
+      .filter((q) => q.ok),
+  )
+  const cx = box.x + box.width / 2
+  const cy = box.y + box.height / 2
+  return free.sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0] ?? null
+}
+/** Un « + » de segment qu'un doigt touche vraiment. */
+async function freeMid(page: Page): Promise<{ x: number; y: number } | null> {
+  return page.evaluate(() => {
+    for (const e of document.querySelectorAll('g[data-testid^="editor-mid-"]')) {
+      const r = e.getBoundingClientRect()
+      const x = r.left + r.width / 2
+      const y = r.top + r.height / 2
+      const hit = document.elementFromPoint(x, y)
+      if (hit && (hit === e || e.contains(hit))) return { x, y }
+    }
+    return null
+  })
+}
 
 /** Every marker's hit box, so a target under 44 px is a named failure. */
 async function undersizedTargets(page: Page): Promise<string[]> {
@@ -448,7 +505,11 @@ check('the frosted tools button unfolds the tools', await tapTestId(page, cdp, '
 check('"צייר שטח מרעה" is reachable', await tapText(page, cdp, 'צייר שטח מרעה'))
 await page.waitForTimeout(600)
 await scrollToMap(page)
-check('the drawing mode is armed', (await bodyText(page)).includes('מציירים שטח מרעה'))
+check(
+  'the drawing mode is armed (a new shape, the pen)',
+  (await ed(page, 'data-mode')) === 'new' && (await ed(page, 'data-tool')) === 'pen',
+  `${await ed(page, 'data-mode')} · ${await ed(page, 'data-tool')}`,
+)
 
 await scrollToMap(page)
 const drawMap = await mapBox(page)
@@ -462,23 +523,23 @@ for (const [fx, fy] of corners) {
   await tap(cdp, drawMap.x + drawMap.width * fx, drawMap.y + drawMap.height * fy)
   await page.waitForTimeout(600)
 }
+check('four taps are four corners', (await edNum(page, 'data-nodes')) === 4, `${await ed(page, 'data-nodes')} נקודות`)
+/* ★ BK — tant qu'elle est ouverte, le panneau dit « הצורה עוד לא סגורה » au lieu d'une surface ; la surface vient à la fermeture. */
 check(
-  'four taps are four corners',
-  (await bodyText(page)).includes('4 פינות'),
-  (await bodyText(page)).match(/\d+ פינות/)?.[0] ?? '—',
-)
-check(
-  'the live area reads while drawing',
-  /[\d,]+ דונם/.test(await bodyText(page)),
+  'while open, the panel says the shape is not closed yet',
+  (await ed(page, 'data-closed')) === '0' && (await editorPanel(page).innerText()).includes('הצורה עוד לא סגורה'),
 )
 
-check('"סגור פוליגון" closes it by finger', await tapText(page, cdp, 'סגור פוליגון'))
+check('"סגירת הצורה" closes it by finger', await tapTestId(page, cdp, 'editor-close-path'))
 await scrollToMap(page)
 await page.waitForTimeout(1500)
 check(
-  'the zone joined the farm',
-  !(await bodyText(page)).includes('מציירים שטח מרעה'),
+  'the zone joined the farm (closed, and now an existing shape with an area)',
+  (await ed(page, 'data-mode')) === 'edit' && (await ed(page, 'data-closed')) === '1' && (await edNum(page, 'data-area')) > 0,
+  `${await ed(page, 'data-shape')} · ${await ed(page, 'data-area')} דונם`,
 )
+check('"סיום" closes the editor by finger', await tapTestId(page, cdp, 'editor-done'))
+await page.waitForTimeout(600)
 
 // --- 5-7. editing an existing zone -------------------------------------------
 
@@ -489,50 +550,64 @@ check('"ערוך" opens the zone for editing', await tapText(page, cdp, 'ערו�
 await page.waitForTimeout(1200)
 await scrollToMap(page)
 
-const grips = page.locator('.maplibregl-marker[aria-label*="פינת אזור"]')
-const gripsBefore = await grips.count()
-check('the ring shows its vertex grips', gripsBefore > 0, `${gripsBefore}`)
+const gripsBefore = await editorNodes(page).count()
+check('the ring shows its points', gripsBefore > 0 && (await ed(page, 'data-mode')) === 'edit', `${gripsBefore}`)
 
-const inserts = page.locator('.maplibregl-marker[aria-label*="הוספת פינה"]')
-const insertsBefore = await inserts.count()
-check('and a midpoint grip on every edge', insertsBefore > 0, `${insertsBefore}`)
+const midsBefore = await page.locator('g[data-testid^="editor-mid-"]').count()
+check('and a "+" on every segment', midsBefore > 0, `${midsBefore}`)
 
-const gripFrom = await centreOf(grips.first())
-await touchDrag(cdp, gripFrom, { x: gripFrom.x - 70, y: gripFrom.y + 55 })
-await page.waitForTimeout(1200)
-const gripTo = await centreOf(grips.first())
+const gripFrom = await freeNode(page)
+check('a point is free under the finger', gripFrom !== null)
+if (gripFrom) {
+  await touchDrag(cdp, gripFrom, { x: gripFrom.x - 70, y: gripFrom.y + 55 })
+  await page.waitForTimeout(1200)
+  const gripTo = await centreOf(page.locator(`g[data-testid="editor-node-${gripFrom.i}"]`))
+  check(
+    'a point follows the finger',
+    Math.abs(gripTo.x - gripFrom.x) > 25 || Math.abs(gripTo.y - gripFrom.y) > 25,
+    `Δ ${Math.round(gripTo.x - gripFrom.x)}, ${Math.round(gripTo.y - gripFrom.y)}`,
+  )
+}
+
+section('6 — inserting a point on a segment, selecting one, deleting one')
+
+const n6 = await edNum(page, 'data-nodes')
+const midpoint = await freeMid(page)
+check('a "+" is free under the finger', midpoint !== null)
+if (midpoint) {
+  await tap(cdp, midpoint.x, midpoint.y)
+  await page.waitForTimeout(1200)
+}
+check('tapping a "+" adds a point', (await edNum(page, 'data-nodes')) === n6 + 1, `${n6} → ${await ed(page, 'data-nodes')}`)
+
+/* ★ BK — toucher un point le SÉLECTIONNE, il ne le supprime pas ; « מחיקת הנקודה » le supprime. */
+const n6b = await edNum(page, 'data-nodes')
+const pick = await freeNode(page)
+if (pick) {
+  await tap(cdp, pick.x, pick.y)
+  await page.waitForTimeout(600)
+}
 check(
-  'a vertex follows the finger',
-  Math.abs(gripTo.x - gripFrom.x) > 25 || Math.abs(gripTo.y - gripFrom.y) > 25,
-  `Δ ${Math.round(gripTo.x - gripFrom.x)}, ${Math.round(gripTo.y - gripFrom.y)}`,
+  '★ a finger tap on a point SELECTS it, and removes nothing',
+  !!pick && (await edNum(page, 'data-nodes')) === n6b && (await ed(page, 'data-selected-node')) === String(pick.i),
+  `point ${pick?.i} · sélection « ${await ed(page, 'data-selected-node')} » · ${await ed(page, 'data-nodes')} נקודות`,
 )
-
-section('6 — inserting a vertex on an edge')
-
-const midpoint = await centreOf(inserts.first())
-await tap(cdp, midpoint.x, midpoint.y)
-await page.waitForTimeout(1200)
-check(
-  'tapping a midpoint grip adds a corner',
-  (await grips.count()) === gripsBefore + 1,
-  `${gripsBefore} → ${await grips.count()}`,
-)
+check('"מחיקת הנקודה" is reachable by finger', await tapTestId(page, cdp, 'editor-node-delete'))
+await scrollToMap(page)
+await page.waitForTimeout(600)
+check('and it removes that point', (await edNum(page, 'data-nodes')) === n6b - 1, `${n6b} → ${await ed(page, 'data-nodes')}`)
+check('"ביטול" by finger puts it back', (await tapTestId(page, cdp, 'editor-undo')) && (await edNum(page, 'data-nodes')) === n6b)
+await scrollToMap(page)
 
 section('7 — moving the whole polygon')
 
-const areaOf = async () => {
-  const m = (await bodyText(page)).match(/([\d,]+) דונם/)
-  return m ? Number(m[1].replace(/,/g, '')) : NaN
-}
-const areaBefore = await areaOf()
-const handle = page.locator('.maplibregl-marker[aria-label*="הזזת האזור"]').first()
+const areaBefore = await edNum(page, 'data-area')
+const handle = page.locator('[data-testid="editor-move"]').first()
 const handleFrom = await centreOf(handle)
 await touchDrag(cdp, handleFrom, { x: handleFrom.x + 80, y: handleFrom.y + 70 })
 await page.waitForTimeout(1400)
-const handleTo = await centreOf(
-  page.locator('.maplibregl-marker[aria-label*="הזזת האזור"]').first(),
-)
-const areaAfter = await areaOf()
+const handleTo = await centreOf(page.locator('[data-testid="editor-move"]').first())
+const areaAfter = await edNum(page, 'data-area')
 check(
   'the centre handle translates the ring',
   Math.abs(handleTo.x - handleFrom.x) > 25 || Math.abs(handleTo.y - handleFrom.y) > 25,
@@ -542,9 +617,11 @@ check(
   'a translation preserves the area',
   Number.isFinite(areaBefore) &&
     Number.isFinite(areaAfter) &&
+    areaBefore > 0 &&
     Math.abs(areaAfter - areaBefore) / Math.max(1, areaBefore) < 0.06,
   `${areaBefore} → ${areaAfter} דונם`,
 )
+await tapTestId(page, cdp, 'editor-done')
 
 // --- 8. the roster bubbles ---------------------------------------------------
 
@@ -690,6 +767,15 @@ check(
   penTypes.join(', ') || 'nothing at all',
 )
 
+/* ★ BK (BH A489) — un toucher sur une forme existante la SÉLECTIONNE : si la
+   sonde est tombée sur une forme de la ferme, l'éditeur s'est ouvert, et c'est
+   juste ; on le referme au stylet pour retrouver les outils de la carte. */
+if ((await editorPanel(page).count()) > 0) {
+  check('a STYLUS tap on an existing shape opens it, and « סיום » closes it', await penTapTestId(page, cdp, 'editor-done'))
+  await page.waitForTimeout(600)
+  await scrollToMap(page)
+}
+
 // --- 10a. placing a pin with the stylus -------------------------------------
 
 const penPostsBefore = await anchorPins(page).count()
@@ -736,7 +822,8 @@ await page.waitForTimeout(600)
 await scrollToMap(page)
 check(
   'the drawing mode arms under the stylus',
-  (await bodyText(page)).includes('מציירים שטח מרעה'),
+  (await ed(page, 'data-mode')) === 'new' && (await ed(page, 'data-tool')) === 'pen',
+  `${await ed(page, 'data-mode')} · ${await ed(page, 'data-tool')}`,
 )
 
 const penDrawMap = await mapBox(page)
@@ -749,63 +836,78 @@ for (const [fx, fy] of [
   await penTap(cdp, penDrawMap.x + penDrawMap.width * fx, penDrawMap.y + penDrawMap.height * fy)
   await page.waitForTimeout(600)
 }
-check(
-  '★ four STYLUS taps are four corners',
-  (await bodyText(page)).includes('4 פינות'),
-  (await bodyText(page)).match(/\d+ פינות/)?.[0] ?? '—',
-)
+check('★ four STYLUS taps are four corners', (await edNum(page, 'data-nodes')) === 4, `${await ed(page, 'data-nodes')} נקודות`)
 
 /**
  * ★ AND IT CLOSES WITHOUT A DOUBLE-TAP, which is the product owner's condition
- *   in so many words. The double-tap shortcut still exists for a finger; the
- *   button is what a stylus uses, and it is what this asserts.
+ *   in so many words. ★ BK : deux chemins, ni l'un ni l'autre un double appui —
+ *   « סגירת הצורה », ou un appui sur le PREMIER point (la plume le cercle en
+ *   pointillé). Le stylet prend le second, le bouton est prouvé au doigt (4).
  */
-check(
-  '★ "סגור פוליגון" closes the ring by STYLUS — no double-tap required',
-  await penTapText(page, cdp, 'סגור פוליגון'),
-)
+const penFirst = await centreOf(page.locator('g[data-testid="editor-node-0"]'))
+await penTap(cdp, penFirst.x, penFirst.y)
 await scrollToMap(page)
 await page.waitForTimeout(1500)
 check(
-  'the zone joined the farm',
-  !(await bodyText(page)).includes('מציירים שטח מרעה'),
+  '★ a STYLUS tap on the first point closes the ring — no double-tap required',
+  (await ed(page, 'data-mode')) === 'edit' && (await ed(page, 'data-closed')) === '1' && (await edNum(page, 'data-area')) > 0,
+  `${await ed(page, 'data-mode')} · ${await ed(page, 'data-area')} דונם`,
 )
+await penTapTestId(page, cdp, 'editor-done')
+await page.waitForTimeout(600)
 
-// --- 10d. editing a vertex with the stylus ----------------------------------
+// --- 10d. editing a point with the stylus -----------------------------------
 
 await unfoldZones(page, cdp)
 check('"ערוך" opens the ring by STYLUS', await penTapText(page, cdp, 'ערוך'))
 await page.waitForTimeout(1200)
 await scrollToMap(page)
 
-const penGrips = page.locator('.maplibregl-marker[aria-label*="פינת אזור"]')
-const penGripsBefore = await penGrips.count()
-check('the ring shows its vertex grips', penGripsBefore > 0, `${penGripsBefore}`)
+const penGripsBefore = await editorNodes(page).count()
+check('the ring shows its points', penGripsBefore > 0 && (await ed(page, 'data-mode')) === 'edit', `${penGripsBefore}`)
 
-const penGripFrom = await centreOf(penGrips.first())
-await penDrag(cdp, penGripFrom, { x: penGripFrom.x - 70, y: penGripFrom.y + 55 })
-await page.waitForTimeout(1200)
-const penGripTo = await centreOf(penGrips.first())
-check(
-  '★ a vertex follows the STYLUS',
-  Math.abs(penGripTo.x - penGripFrom.x) > 25 ||
-    Math.abs(penGripTo.y - penGripFrom.y) > 25,
-  `Δ ${Math.round(penGripTo.x - penGripFrom.x)}, ${Math.round(penGripTo.y - penGripFrom.y)}`,
-)
+const penGripFrom = await freeNode(page)
+check('a point is free under the stylus', penGripFrom !== null)
+if (penGripFrom) {
+  await penDrag(cdp, penGripFrom, { x: penGripFrom.x - 70, y: penGripFrom.y + 55 })
+  await page.waitForTimeout(1200)
+  const penGripTo = await centreOf(page.locator(`g[data-testid="editor-node-${penGripFrom.i}"]`))
+  check(
+    '★ a point follows the STYLUS',
+    Math.abs(penGripTo.x - penGripFrom.x) > 25 || Math.abs(penGripTo.y - penGripFrom.y) > 25,
+    `Δ ${Math.round(penGripTo.x - penGripFrom.x)}, ${Math.round(penGripTo.y - penGripFrom.y)}`,
+  )
+}
 
-const penInserts = page.locator('.maplibregl-marker[aria-label*="הוספת פינה"]')
-if ((await penInserts.count()) > 0) {
-  const penMid = await centreOf(penInserts.first())
+const penN = await edNum(page, 'data-nodes')
+const penMid = await freeMid(page)
+if (penMid) {
   await penTap(cdp, penMid.x, penMid.y)
   await page.waitForTimeout(1200)
-  check(
-    '★ a STYLUS tap on a midpoint grip inserts a corner',
-    (await penGrips.count()) === penGripsBefore + 1,
-    `${penGripsBefore} → ${await penGrips.count()}`,
-  )
-} else {
-  check('★ a STYLUS tap on a midpoint grip inserts a corner', false, 'no midpoint grips found')
 }
+check(
+  '★ a STYLUS tap on a "+" inserts a point',
+  !!penMid && (await edNum(page, 'data-nodes')) === penN + 1,
+  penMid ? `${penN} → ${await ed(page, 'data-nodes')}` : 'no free "+" found',
+)
+
+/* ★ BK — au stylet aussi : toucher un point le sélectionne ; « מחיקת הנקודה » le supprime. */
+const penN2 = await edNum(page, 'data-nodes')
+const penPick = await freeNode(page)
+if (penPick) {
+  await penTap(cdp, penPick.x, penPick.y)
+  await page.waitForTimeout(600)
+}
+check(
+  '★ a STYLUS tap on a point SELECTS it, and removes nothing',
+  !!penPick && (await edNum(page, 'data-nodes')) === penN2 && (await ed(page, 'data-selected-node')) === String(penPick.i),
+  `point ${penPick?.i} · sélection « ${await ed(page, 'data-selected-node')} »`,
+)
+check('"מחיקת הנקודה" is reachable by STYLUS', await penTapTestId(page, cdp, 'editor-node-delete'))
+await page.waitForTimeout(600)
+check('and it removes that point', (await edNum(page, 'data-nodes')) === penN2 - 1, `${penN2} → ${await ed(page, 'data-nodes')}`)
+await penTapTestId(page, cdp, 'editor-done')
+await page.waitForTimeout(600)
 
 // --- 10e. the SIGNATURE, with the stylus --------------------------------------
 
@@ -830,7 +932,17 @@ await page.waitForTimeout(3500)
 // The agreements section is far down a long form.
 // ★ AM3 — et REPLIÉE par défaut, comme au détail : on la déplie au stylet,
 //   comme le PO (le même geste qu'AL4 impose aux portes des réglages).
-check('"הסכמים" unfolds by STYLUS', await tapTestId(page, cdp, 'section-farm-form-agreements:farm-01'))
+/* ★★ BK (constaté en réécrivant 4–7) — la section s'ouvre désormais DÉPLIÉE
+   (le pli suit `lo-yanum:farm-section:<type>`, ouvert par défaut) : la toucher
+   la REPLIAIT, et la suite cherchait « חתום » dans une section fermée. On la
+   déplie au stylet seulement si elle est repliée, et on dit dans quel état elle était. */
+const agreementsFolded =
+  (await page.locator('[data-testid="section-farm-form-agreements:farm-01"]').getAttribute('aria-expanded')) === 'false'
+check(
+  '"הסכמים" is open, or unfolds by STYLUS',
+  !agreementsFolded || (await penTapTestId(page, cdp, 'section-farm-form-agreements:farm-01')),
+  agreementsFolded ? 'repliée → dépliée au stylet' : 'déjà dépliée',
+)
 await page.waitForTimeout(500)
 // ★★ AN5 (2026-09-16) — UN GESTE. « הוספת הסכם » puis « חתימה » étaient deux
 //   étapes (et un nom et une date à saisir entre les deux) ; le bouton

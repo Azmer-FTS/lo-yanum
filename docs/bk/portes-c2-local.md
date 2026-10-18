@@ -129,3 +129,132 @@ réel (écran de connexion, « nav introuvable »). Port libéré : verte. `sync
 `touch` exercent l'ANCIEN éditeur et ne sont plus à jour ; elles étaient déjà
 hors de la batterie de BJ. Rouges antérieurs inchangés : `adui` A115, `anui`
 A236, `atui`, `pills`, `rhythm`, `akui`, `uipass`, `sheets`, `layout`.
+
+## `settings` et `touch` réécrites sur l'éditeur de tracés (après 253ae7e)
+
+La RÈGLE a changé en BK (un éditeur, `PathEditor` ; toucher un point le
+SÉLECTIONNE, « מחיקת הנקודה » / Suppr le supprime) : les deux portes ont été
+réécrites sur la nouvelle grammaire, chaque intention gardée. Ce n'est pas un
+contournement : rien n'a été retiré sans être remplacé par le même geste.
+
+### Sur `HEAD` (253ae7e), avant réécriture — build local, ports libres
+
+`lsof -nP -iTCP -sTCP:LISTEN` : aucun `vite preview` en écoute. ⚠️ Un premier
+passage était FAUX : le worktree n'avait pas `public/basemap/` (non versionné),
+la carte ne finissait jamais de charger (`map.on('load')` jamais tiré, pas
+d'éditeur). Archive copiée depuis le dépôt principal, diagnostic rejoué :
+
+- `settings` : 16 contrôles verts (A55, A54, A56, A65, A68), puis ARRÊT à A53 :
+  `region-dunams` n'existe plus (30 s d'attente, exit 1). Rien d'après A53 ne
+  jouait (Y2.7, A66, A69).
+- `touch` : 15 verts, 6 rouges, puis ARRÊT : section 4 (« מציירים שטח מרעה »,
+  « 4 פינות », « סגור פוליגון » disparus), section 5 (« ערוך » introuvable,
+  0 poignée `פינת אזור`), plantage sur `.maplibregl-marker[aria-label*="פינת אזור"]`.
+  Deux contrôles de la section 4 étaient verts PAR VIDE (« la surface se lit »
+  trouvait n'importe quel « דונם » ; « la forme a rejoint la ferme » testait
+  l'ABSENCE d'un texte qui n'existe plus).
+
+### Ce qui a été réécrit
+
+`settings` A53 (la région redessinée au STYLET, `pointerType: 'pen'`) :
+- la région s'ouvre dans l'éditeur (`data-shape=negev`, `data-mode=edit`) ; la
+  surface se lit sur `data-area` (plus `region-dunams`) ;
+- outil « יד חופשית » (`editor-tool-pencil`, plus `region-pencil`) ; un trait
+  au stylet d'un point de la région à un autre REMPLACE la portion entre eux
+  (règle BK sur une forme fermée) → la surface change ; `editor-undo` armé
+  (`data-undo`) la remet, `editor-redo` la rejoue ;
+- « tout redessiner » = `editor-menu` → `editor-replace` → `region-replace-yes`,
+  puis la petite boîte au stylet (inchangée : c'est sa petitesse qui rend le
+  rattachement observable) ; fermée, elle doit REMPLACER la région ; « שמור
+  גבול » ; les comptes du filtre de חוות doivent bouger ; « שחזר ברירת מחדל »
+  les remet ;
+- AJOUT : une retouche (un point supprimé), puis **Échap** — `region-rings` ET
+  `region-paths` doivent être écrits (défaut 2 ci-dessous), puis « שחזר ברירת
+  מחדל » ;
+- Y2.7 compte aussi les points de l'éditeur (`g[data-testid^="editor-node-"]`),
+  sinon il était vert par vide.
+
+`touch` (au doigt, puis au stylet) :
+- 4 / 10c : mode armé = `data-mode=new` + `data-tool=pen` ; quatre touchers =
+  `data-nodes=4` ; ouverte, le panneau dit « הצורה עוד לא סגורה » (la surface ne
+  vient qu'à la fermeture — c'est la règle BK, le contrôle a changé de sens) ;
+  fermer : `editor-close-path` au doigt, un toucher sur le PREMIER point au
+  stylet (aucun des deux n'est un double appui) ; la forme a rejoint la ferme =
+  `data-mode=edit`, fermée, `data-area>0` ;
+- 5–7 / 10d : « ערוך » est sous l'onglet « שטח » (fiche en onglets depuis AS —
+  rouge déjà sur HEAD, indépendant de BK) : la porte y va au doigt ; points
+  `editor-node-<i>`, « + » `editor-mid-<s>`, ✥ `editor-move` ; on vise un point
+  que le doigt touche VRAIMENT (`elementFromPoint`, comme `bhui`) ;
+- AJOUT (la nouvelle règle, au doigt et au stylet) : toucher un point le
+  SÉLECTIONNE (`data-selected-node`, rien de retiré), « מחיקת הנקודה »
+  (`editor-node-delete`) le retire, « ביטול » le remet ;
+- 10 : la touche-sonde du stylet tombe sur une forme de farm-02 et l'OUVRE
+  (règle BH A489) ; « סיום » la referme au stylet avant les outils ;
+- 10e (signature, hors éditeur) : la section « הסכמים » s'ouvre désormais
+  DÉPLIÉE ; la porte (AM3 : « repliée par défaut ») la REPLIAIT, puis cherchait
+  « חתום » dans une section fermée. Dépliée seulement si repliée ; état dit.
+
+### Après réécriture
+
+- `touch` (build local `--outDir`, `vite preview` 5233) : **69/69, exit 0**.
+- `settings` : sur l'app de 253ae7e, 40 verts et **4 rouges** — deux défauts de
+  l'APPLICATION, pas de la porte (section suivante ; le contrôle Échap a été
+  AJOUTÉ pour le second). Après le correctif : **44/44, exit 0**.
+
+## Attrapé par `settings` A53 : deux retouches de région perdues en silence
+
+Deux cas, une même classe de défaut — des props CAPTURÉES au rendu
+d'ouverture de l'éditeur — et une même règle trahie (« jamais perdu en
+silence », `RegionsEditScreen`). **Aucune forme déjà enregistrée n'était en
+jeu** : seule la retouche EN COURS, sur l'écran des régions, se perdait. Les
+fermes ne sont pas touchées (`bkeditui` A562 ; chaque geste y est écrit, BI).
+
+**1. « פעולות → שרטוט מחדש » perdait la région neuve.** La nouvelle forme se
+trace et se ferme (6 points, 1 060 532 ד׳), puis, **6 ms plus tard**, l'ancien
+contour revient (7 points) ; « שמור גבול » reste éteint ; les comptes du filtre
+de חוות ne bougent pas. Cause : `PathEditor.persist`, à la fermeture, appelle
+`onCreate` (l'hôte change : `setSelected`, `setDraft`), puis
+`setTimeout(() => p.onActiveChange(id), 0)` avec `p` capturé AVANT le rendu de
+l'hôte. Pour `RegionsEditScreen` c'est l'ancienne fermeture, où `selected` vaut
+encore `null` (le départ du tracé a appelé `open(null)`) : `id !== selected`,
+donc `open('negev')`, qui VIDE le brouillon ; l'effet `activeRingKey` reprend
+alors l'ancien contour.
+
+**2. Échap refermait l'éditeur des régions SANS enregistrer.** L'effet clavier
+(deps `[session !== null, picker]`) garde le `finish()` du rendu d'OUVERTURE,
+qui appelait l'`onActiveChange` de ce rendu-là — où `dirty` vaut `false` : la
+retouche (un point supprimé, « שמור גבול » allumé) partait sans `save()`
+(`lo-yanum:region-rings` et `region-paths` non écrits), quand « סיום »
+enregistrait. Le PO travaille au doigt sur iPad : seule la touche, avec un
+clavier, y menait.
+
+**Le correctif** (`src/ui/editor/PathEditor.tsx`, deux lignes) : le délai de
+`persist` et `finish` lisent `latest.current.props.onActiveChange` au moment
+où ils partent. `finish` sert aussi à « סיום » et à l'effet `activeExists`
+(deps `[activeExists]`) : les trois chemins passent par la même lecture.
+**Les autres appels différés, relus** : sains — le `setTimeout(setNotice)` (un
+setter), le clic sur la carte (`cur.props`), les gestes de la plume, de la
+main levée et du glisser (`latest.current`, `sessionRef`).
+
+**Rouge, puis vert, sur le même banc** (`settings` réécrite, build local
+`dist-settings`, 5209 libre) : `docs/bk/settings-a53-rouge-avant.log` (40 + 4
+rouges : « closed, it REPLACED the region » 8 081 731 → 8 081 731 ; « שמור
+גבול is armed » ; « the counts moved » ; « Escape … the retouch is written » :
+anneau absent, tracé absent) puis `docs/bk/settings-a53-vert-apres.log`
+(44/44 : 8 081 731 → 1 057 441 ד׳, comptes déplacés puis rétablis ; Échap :
+anneau 6, tracé 6).
+
+### La batterie, en série, après le correctif (build local)
+
+Codes de sortie, `lsof` relevé avant chaque porte (seul autre écouteur : le
+`vite preview` d'une autre session, `dist-bl`, sur 5541 puis 5471 — aucun de
+nos ports) : typecheck 0 · bjguard 20/20 · bkedit 51/51 · bipass 73/73 ·
+**bkeditui 152/152** (souris et doigt, A569 compris) · bhui 35/35 · biui 45/45 ·
+settings 44/44 · freehand 30/30 · touch 69/69 · zones 38/38 (build réel
+`--mode real`, `vite preview` 5197, comme la CI).
+
+⚠️ `biui` est d'abord sortie en 1 dans la série : A510 « section interrompue »,
+`net::ERR_CONNECTION_REFUSED` sur 5497 — son serveur avait DISPARU en cours de
+route (aucune assertion n'a échoué ; l'autre session arrêtait et relançait ses
+propres serveurs à ce moment-là). Rejouée seule, son port relevé toutes les
+5 s du début à la fin : 45/45, serveur vivant tout du long.
