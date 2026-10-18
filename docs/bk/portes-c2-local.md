@@ -119,9 +119,11 @@ aucune sonde restée.
 
 ## Non rejouées (antérieures à BK, hors de la batterie de BJ)
 
-`offline` : ROUGE, et rouge À L'IDENTIQUE sur le code commité `bfb75ab`
-(worktree de HEAD) — elle attend `nav a[href*="#/coordinator"]`, un sélecteur
-périmé : antérieur, sans rapport. `sync` (qui pilote `applyRecords`) : verte.
+`offline` : VERTE (exit 0). ⚠️ Un premier passage l'avait donnée rouge, « à
+l'identique sur `bfb75ab` » : FAUX — les deux passages visaient MON propre
+`vite preview` resté sur 5197 (des essais de `zones`), qui servait un build
+réel (écran de connexion, « nav introuvable »). Port libéré : verte. `sync`
+(qui pilote `applyRecords`) : verte.
 
 `settings` (ancien écran des régions : `region-pencil`, `region-dunams`…) et
 `touch` exercent l'ANCIEN éditeur et ne sont plus à jour ; elles étaient déjà

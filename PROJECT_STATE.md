@@ -104,7 +104,14 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **BK — CHANTIER 2 : L'ÉDITEUR DE TRACÉS** (2026-10-18). Second commit de BK.
+- **BK — TERMINÉE, POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-18).
+  Branche `main`. Commits : `1713468` (chantier 1, servi et vérifié), `bfb75ab`
+  (chantier 2, jamais servi), `0feda54` (correctif de données, SERVI), puis le
+  commit de fin de passe (docs). Rien en cours ; reste : les questions au PO
+  ci-dessous. Reprise d'une passe suivante : lire `ETAT.md` § BK, puis
+  `bun run bjguard && bun run bkpass && bun run bkedit && bun run typecheck`.
+
+- **BK — CHANTIER 2 : L'ÉDITEUR DE TRACÉS** (2026-10-18).
   UNE migration, appliquée par le MCP AVANT le déploiement :
   `20261018000100_bk_zones_path.sql` (colonne `zones.path` jsonb, nullable ;
   MCP `20261017234659`) ; `repair` + jalon faits, `armigrations` 57/57.
@@ -131,13 +138,18 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
       forme tracée pendant l'hydratation (attrapé par `zones` 6 au
       déploiement de `bfb75ab`, jamais servi ; prouvé par `bkeditui` A569).
   - **Commits** : `bfb75ab` (éditeur ; déploiement ARRÊTÉ par `zones` 6 en CI,
-    jamais servi), puis le correctif de la couche de données (servi si la CI
-    passe : vérifier `version.json`).
-  - **Rouges ANTÉRIEURS** : `offline` (sélecteur périmé
-    `nav a[href*="#/coordinator"]`, rouge à l'identique sur `bfb75ab`) ; et
-    ceux de BJ (`adui` A115, `anui` A236, `atui`, `pills`, `rhythm`, `akui`,
-    `uipass`, `sheets`, `layout`) ; `settings` et `touch` exercent l'ancien
-    éditeur (hors batterie).
+    jamais servi), `0feda54` (correctif de la couche de données — SERVI :
+    `version.json` = 0feda54), puis le commit de fin de passe
+    (`docs/bk/portes-c2-deploye-0feda54.md`).
+  - **Déployé `0feda54`, tout vert** : bkeditui 152 (souris ET doigt, A569
+    compris), bkui 31, bjui 56, biui 45, bhui 35, bgui 90, bfui 52, beui 57,
+    bdui 76, bbui 82, assettings, atsync 17 (app) ; bcmobile 246, aymobile 48
+    (jumeau).
+  - **Rouges ANTÉRIEURS** : ceux de BJ, inchangés (`adui` A115, `anui` A236,
+    `atui`, `pills`, `rhythm`, `akui`, `uipass`, `sheets`, `layout`) ;
+    `settings` et `touch` exercent l'ANCIEN éditeur (hors batterie, à
+    réécrire si on les rejoue). `offline` est VERTE (un rouge vu pendant la
+    passe venait d'un `vite preview` oublié sur 5197).
   - **Non couvert** : les zones de menace (ancien outil) ; la touche Entrée
     (fermer) existe sans porte.
   - **Questions au PO** : (1) le diagnostic doit-il quitter AUSSI הגדרות ? (il
