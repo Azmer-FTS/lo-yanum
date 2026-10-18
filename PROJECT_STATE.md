@@ -104,6 +104,44 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BK — UN AGRÉGAT EN UNE TRANSACTION, ET LA BOÎTE D'ENVOI SE RELANCE**
+  (2026-10-18). Branche `main`. UNE migration, appliquée par le MCP AVANT le
+  déploiement : `20261018000200_bk_write_aggregate.sql` (MCP
+  `20261018110736`) ; `repair` + jalon faits, `armigrations` 58/58.
+  Commits : `e9838b2` (la mesure), puis le correctif (ce commit), puis la fin
+  de passe (déployé). Récit : `ETAT.md` § « BK — transaction » (en tête) ;
+  `docs/bk/ecriture-transaction.md` ; mesure d'avant :
+  `docs/bk/ecriture-non-transactionnelle.md`.
+  - **Décisions (permanentes)** :
+    · un agrégat À SOUS-LIGNES s'écrit par `public.write_aggregate(p_table,
+      p_rows, p_children)` — une transaction : effacer les sous-lignes, upsert
+      des parents (colonnes envoyées), insérer ; `SECURITY INVOKER`,
+      `search_path` vide, liste blanche EN DUR = `MAPPINGS` (6 agrégats :
+      entities, zones, threat_zones, missions, incidents, tours), `%I`,
+      `jsonb_populate_recordset`, execute à `authenticated` seulement ;
+    · ⚠️ **toute table à sous-lignes ajoutée à `MAPPINGS` doit l'être aussi à
+      la fonction (nouvelle migration) et à `FakeDb.AGGREGATES`** — `bun run
+      bkecriture` A620 refuse l'écart ;
+    · la boîte d'envoi se relance seule : un minuteur, 2 → 4 → 8 → 16 → 30 →
+      60 s (borné), annulé dès qu'elle est vide, jamais deux, rien hors ligne
+      (`online` reprend) ;
+    · la base factice : `rpc/write_aggregate` (tout ou rien) et
+      `FakeDb.failInsert` (la panne « au milieu »).
+  - **Base réelle** : 4 formes (17, 31, 147, 367 sommets — le PO a retouché le
+    pâturage et tracé une limite ce matin à 06 h 28 UTC avec l'éditeur BK ; la
+    consigne parlait encore de 3 formes) ; essai ANNULÉ de la fonction (panne
+    au milieu : rien ne change ; RLS 42501 hors des droits ; anon 42501) ;
+    intactes après la migration.
+  - **Porte** : `bkecriture` (A620–A626) ROUGE avant (10/30, exit 1), VERTE
+    après (30/30) ; batterie entière verte (bkeditui 152, A557 non assouplie).
+  - ⚠️ **Une autre session (BL) travaille dans le dépôt principal** : deux
+    commits LOCAUX (`7c0fafe`, `b32c418`) bâtis sur `253ae7e`, qui réécrivent
+    aussi `settings` A53 et `touch` et corrigent « שרטוט מחדש » à sa façon —
+    elle devra intégrer `aecdda3`, `77d6658`, `e9838b2` et ce commit. Ses
+    batteries tournent sur les MÊMES ports : `lsof` avant toute conclusion.
+  - Reprise : `bun run bkecriture && bun run typecheck && bun run armigrations` ;
+    `BASE_URL=https://azmer-fts.github.io/lo-yanum bun run bkecriture` (déployé).
+
 - **BK — SUITE : `settings` ET `touch` RÉÉCRITES, DEUX RETOUCHES DE RÉGION
   PERDUES EN SILENCE, CORRIGÉES** (2026-10-18). Branche `main`. Aucune
   migration. Commits : `aecdda3` (correctif d'app), `77d6658` (portes), puis
@@ -126,7 +164,7 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
     zone de menace). C'est la cause d'A557 intermittente au déployé.
     **Décision du PO (2026-10-18)** : une seule transaction côté base (fonction
     Postgres par migration via le MCP) pour toutes les tables à sous-lignes,
-    plus une relance automatique de la boîte d'envoi — passe suivante.
+    plus une relance automatique de la boîte d'envoi — FAIT (entrée ci-dessus).
   - **Décisions (permanentes)** :
     · dans `PathEditor`, tout appel DIFFÉRÉ (timeout) ou gardé par un effet
       (clavier, `activeExists`) vers l'hôte lit `latest.current.props`, jamais

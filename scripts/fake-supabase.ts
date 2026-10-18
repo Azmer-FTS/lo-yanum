@@ -85,6 +85,21 @@ export class FakeDb {
    */
   hang = false
   held: Route[] = []
+  /**
+   * ★★★ BK — UNE PANNE « AU MILIEU » D'UNE ÉCRITURE : les `n` prochaines
+   *   insertions dans cette table échouent (500). Sur l'ancien chemin (trois
+   *   requêtes PostgREST) les sous-lignes sont alors DÉJÀ effacées ; dans
+   *   `write_aggregate` la transaction est ANNULÉE. C'est la même panne pour
+   *   les deux : seule l'écriture change.
+   */
+  failInsert = new Map<string, number>()
+  private takeFailure(table: string): boolean {
+    const n = this.failInsert.get(table) ?? 0
+    if (n <= 0) return false
+    this.failInsert.set(table, n - 1)
+    this.log.push(`FAIL insert ${table}`)
+    return true
+  }
   async release(): Promise<void> {
     const list = this.held.splice(0)
     for (const r of list) await r.abort('timedout').catch(() => undefined)
@@ -177,6 +192,63 @@ export class FakeDb {
     }
   }
 
+  /**
+   * ★★★ BK — `public.write_aggregate(p_table, p_rows, p_children)`, la même
+   *   sémantique que la migration 20261018000200 : liste blanche (recopiée du
+   *   SQL), effacer les sous-lignes (ordre inverse), upsert des parents sur les
+   *   colonnes envoyées, insérer les sous-lignes ; TOUT OU RIEN — une panne
+   *   remet les tables touchées dans leur état d'avant l'appel.
+   */
+  static readonly AGGREGATES: Record<string, Array<{ t: string; fk: string }>> = {
+    entities: [{ t: 'entity_contacts', fk: 'entity_id' }, { t: 'entity_commitments', fk: 'entity_id' }, { t: 'entity_livestock', fk: 'entity_id' }, { t: 'agreements', fk: 'entity_id' }],
+    zones: [{ t: 'zone_vertices', fk: 'zone_id' }],
+    threat_zones: [{ t: 'threat_zone_vertices', fk: 'threat_zone_id' }],
+    missions: [{ t: 'mission_guard_posts', fk: 'mission_id' }, { t: 'mission_assignments', fk: 'mission_id' }, { t: 'presence_marks', fk: 'mission_id' }, { t: 'mission_drivers', fk: 'mission_id' }, { t: 'mission_driver_passengers', fk: 'mission_id' }, { t: 'mission_checkpoints', fk: 'mission_id' }, { t: 'cancel_notices', fk: 'mission_id' }],
+    incidents: [{ t: 'incident_entries', fk: 'incident_id' }],
+    tours: [{ t: 'tour_stops', fk: 'tour_id' }],
+  }
+  private writeAggregate(body: string): { status: number; body: string } {
+    const refuse = (code: string, message: string) => ({ status: 400, body: JSON.stringify({ code, message, details: null, hint: null }) })
+    const args = JSON.parse(body || '{}') as { p_table?: string; p_rows?: Row[]; p_children?: Record<string, Row[]> }
+    const table = String(args.p_table ?? '')
+    const kids = FakeDb.AGGREGATES[table]
+    if (!kids) return refuse('22023', `write_aggregate: table refusée (${table})`)
+    const parents = Array.isArray(args.p_rows) ? args.p_rows : []
+    if (parents.length === 0) return refuse('22023', 'write_aggregate: aucune ligne parente')
+    const children = args.p_children ?? {}
+    const stray = Object.keys(children).find((k) => !kids.some((c) => c.t === k))
+    if (stray) return refuse('22023', `write_aggregate: sous-table refusée (${stray}) pour ${table}`)
+    const ids = parents.map((r) => r.id)
+    if (ids.some((id) => id == null)) return refuse('22023', 'write_aggregate: une ligne parente sans id')
+    for (const c of kids) {
+      if ((children[c.t] ?? []).some((r) => !ids.includes(r[c.fk] as never))) return refuse('22023', `write_aggregate: une ligne de ${c.t} n'appartient à aucun parent écrit`)
+    }
+    const touched = [table, ...kids.map((c) => c.t)]
+    const before = new Map(touched.map((t) => [t, this.rows(t).map((r) => ({ ...r }))]))
+    const rollback = () => {
+      for (const [t, rows] of before) this.tables.set(t, rows)
+    }
+    for (const c of [...kids].reverse()) this.tables.set(c.t, this.rows(c.t).filter((r) => !ids.includes(r[c.fk] as never)))
+    const list = this.rows(table)
+    for (const row of parents) {
+      const i = list.findIndex((r) => r.id === row.id)
+      if (i === -1) list.push({ ...row })
+      else list[i] = { ...list[i], ...row }
+    }
+    for (const c of kids) {
+      const rows = children[c.t] ?? []
+      if (rows.length === 0) continue
+      if (this.takeFailure(c.t)) {
+        rollback()
+        this.log.push(`ROLLBACK write_aggregate ${table}`)
+        return { status: 500, body: JSON.stringify({ code: 'XX000', message: `panne injectée (insert ${c.t}) — transaction annulée`, details: null, hint: null }) }
+      }
+      for (const r of rows) this.rows(c.t).push({ ...r })
+    }
+    this.log.push(`RPC write_aggregate ${table} +${parents.length}`)
+    return { status: 200, body: 'null' }
+  }
+
   handle(method: string, url: URL, headers: Record<string, string>, body: string): {
     status: number
     body: string
@@ -223,7 +295,10 @@ export class FakeDb {
       return { status: 204, body: '', headers: { 'content-range': `*/${removed}` } }
     }
 
+    if (method === 'POST' && table === 'rpc/write_aggregate') return this.writeAggregate(body)
+
     if (method === 'POST') {
+      if (this.takeFailure(table)) return { status: 500, body: JSON.stringify({ code: 'XX000', message: `panne injectée (insert ${table})`, details: null, hint: null }) }
       const incoming = JSON.parse(body || '[]') as Row | Row[]
       const rows = Array.isArray(incoming) ? incoming : [incoming]
       const list = this.rows(table)

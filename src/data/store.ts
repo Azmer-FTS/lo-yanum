@@ -138,6 +138,45 @@ async function sendChanges(changes: StoreChange[]): Promise<void> {
 // --- The backend -----------------------------------------------------------
 
 /**
+ * ★★★ BK (2026-10-18) — LA BOÎTE D'ENVOI SE RELANCE TOUTE SEULE.
+ *
+ *   Jusqu'ici une écriture en échec n'attendait que trois choses : un
+ *   rechargement, le retour du réseau (`online`), ou « tirer pour
+ *   rafraîchir ». Sur un iPad resté ouvert, avec le réseau « présent » mais
+ *   une requête tombée, rien ne repartait (mesuré :
+ *   docs/bk/ecriture-non-transactionnelle.md — 0 essai en 30 s). Décision du
+ *   PO : une relance automatique.
+ *
+ *   UN SEUL minuteur pour tout le module : un délai croissant et BORNÉ
+ *   (2, 4, 8, 16, 30, puis 60 s), réarmé après chaque échec ; annulé — et
+ *   remis au premier délai — dès que la boîte est vide, quel qu'en soit
+ *   l'auteur (une écriture, un rechargement, `online`, un rafraîchissement) ;
+ *   jamais deux à la fois. Hors ligne (`navigator.onLine === false`) il ne
+ *   relance pas : c'est `online` qui reprend, et la batterie n'est pas
+ *   dépensée à interroger un réseau absent.
+ */
+const RETRY_DELAYS_MS = [2_000, 4_000, 8_000, 16_000, 30_000, 60_000] as const
+let retryTimer: ReturnType<typeof setTimeout> | null = null
+let retryStep = 0
+
+function settleRetry(pending: number): void {
+  if (pending === 0) {
+    if (retryTimer !== null) clearTimeout(retryTimer)
+    retryTimer = null
+    retryStep = 0
+    return
+  }
+  if (retryTimer !== null) return
+  const delay = RETRY_DELAYS_MS[Math.min(retryStep, RETRY_DELAYS_MS.length - 1)]
+  retryStep += 1
+  retryTimer = setTimeout(() => {
+    retryTimer = null
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+    void flushPending()
+  }, delay)
+}
+
+/**
  * ★ ONE WRITE, AND THE THREE THINGS IT DOES IN THIS ORDER.
  *
  *   1. THE READ CACHE IS UPDATED FIRST, ALWAYS, whether or not the network is
@@ -161,18 +200,23 @@ async function writeThrough(changes: StoreChange[]): Promise<void> {
 
   if ((await pendingCount()) > 0) {
     await cache.put('outbox', records)
-    publish({ pending: await pendingCount() })
+    const pending = await pendingCount()
+    publish({ pending })
+    settleRetry(pending)
     return
   }
   try {
     await sendChanges(changes)
     await cache.remove('outbox', records.map(keyOf))
+    settleRetry(await pendingCount())
   } catch (error: unknown) {
     await cache.put('outbox', records)
+    const pending = await pendingCount()
     publish({
-      pending: await pendingCount(),
+      pending,
       message: error instanceof Error ? error.message : String(error),
     })
+    settleRetry(pending)
   }
 }
 
@@ -268,6 +312,7 @@ export function refreshData(): Promise<void> {
 export async function clearLocalData(): Promise<void> {
   await cache.clear()
   publish({ pending: 0, stale: false, message: null })
+  settleRetry(0)
   /* The reload is the CALLER's next line (`refreshData`), which re-runs the
      whole load and re-records the cache from the emptied server. Resetting the
      load guard is that function's business and it lives inside the closure
@@ -278,6 +323,7 @@ export function flushPending(): Promise<void> {
   queue = queue.then(async () => {
     const result = await flushOutbox(cache, sendChanges)
     publish({ pending: result.pending, message: result.failed })
+    settleRetry(result.pending)
   })
   return queue
 }
@@ -316,6 +362,7 @@ export function installSupabaseStore(): void {
     loadedFor = null
     await cache.clear()
     publish({ pending: 0, stale: false, message: null })
+    settleRetry(0)
   })
 
   /**
@@ -501,9 +548,10 @@ export function installSupabaseStore(): void {
   subscribeAuth(sync)
   sync()
 
-  // The network coming back is the one moment worth retrying on: a timer would
-  // spend a farm track's worth of battery asking a question whose answer has
-  // not changed.
+  // The network coming back is a moment worth retrying on AT ONCE. ★★★ BK —
+  // it is no longer the only one: `settleRetry` relaunches a failed write on a
+  // bounded, growing delay, and stands down while the device is offline, so
+  // the battery is not spent asking a question whose answer has not changed.
   if (typeof window !== 'undefined') {
     window.addEventListener('online', () => {
       void flushPending()

@@ -129,33 +129,44 @@ async function writeCollection(
   }
   if (upserted.length === 0) return
 
-  const ids = upserted.map((c) => c.id)
   const written: TableRows[][] = upserted.map((c) =>
     mapping.toRows(JSON.parse(c.json as string)),
   )
   const rowsFor = (table: string): Row[] =>
     written.flatMap((w) => w.find((t) => t.table === table)?.rows ?? [])
 
-  // Children first, in REVERSE — `presence_marks` references
-  // `mission_assignments` and `mission_driver_passengers` references
-  // `mission_drivers`, so a forward delete would be refused.
-  for (const child of [...mapping.children].reverse()) {
-    const { error } = await client.from(child.table).delete().in(child.fk, ids)
-    if (error) throw new Error(`clear ${child.table}: ${error.message}`)
+  /**
+   * ★★★ BK (2026-10-18) — UN AGRÉGAT À SOUS-LIGNES S'ÉCRIT EN UNE TRANSACTION.
+   *   Les trois requêtes d’avant (effacer, upsert, insérer) laissaient, sur
+   *   une panne entre deux, le parent en base SANS ses sous-lignes — une forme
+   *   sans sommet, relue ainsi par les autres appareils
+   *   (docs/bk/ecriture-non-transactionnelle.md). `write_aggregate` (migration
+   *   20261018000200) fait les trois pas en UN appel : tout, ou rien ; et un
+   *   échec laisse l'agrégat dans la boîte d'envoi, comme avant. La liste
+   *   blanche de la fonction est celle de `MAPPINGS` (`bun run bkecriture`
+   *   les compare). Les agrégats SANS sous-lignes gardent l'upsert, qui est
+   *   déjà une requête unique.
+   */
+  if (mapping.children.length > 0) {
+    const children: Record<string, Row[]> = {}
+    for (const child of mapping.children) {
+      const rows = rowsFor(child.table)
+      if (rows.length > 0) children[child.table] = rows
+    }
+    const { error } = await client.rpc('write_aggregate', {
+      p_table: mapping.table,
+      p_rows: rowsFor(mapping.table),
+      p_children: children,
+    })
+    if (error) throw new Error(`write_aggregate ${mapping.table}: ${error.message}`)
+    return
   }
 
+  // Sans sous-lignes : un upsert, une requête.
   const { error: parentError } = await client
     .from(mapping.table)
     .upsert(rowsFor(mapping.table), { onConflict: 'id' })
   if (parentError) throw new Error(`upsert ${mapping.table}: ${parentError.message}`)
-
-  // Then forward, so each child's own dependency already exists.
-  for (const child of mapping.children) {
-    const rows = rowsFor(child.table)
-    if (rows.length === 0) continue
-    const { error } = await client.from(child.table).insert(rows)
-    if (error) throw new Error(`insert ${child.table}: ${error.message}`)
-  }
 }
 
 export async function applyChanges(

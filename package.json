@@ -48,6 +48,7 @@
     "bjui": "bun run scripts/bjui.ts",
     "bkedit": "bun run scripts/bkedit.ts",
     "bkeditui": "bun run scripts/bkeditui.ts",
+    "bkecriture": "bun run scripts/bkecriture.ts",
     "bkpass": "bun run scripts/bkpass.ts",
     "bkui": "bun run scripts/bkui.ts",
     "azcaptures": "bun run scripts/azcaptures.ts",

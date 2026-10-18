@@ -1,37 +1,74 @@
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, readFileSync } from 'node:fs'
 
-import type { BrowserContext, Page, Route } from 'playwright'
+import type { BrowserContext, Page } from 'playwright'
 
-import { check, finish, go, open, section, seed, serveBuild } from './ayharness'
+import { REMOTE, check, finish, go, guard, open, section, seed, serveBuild } from './ayharness'
 import type { Opened } from './ayharness'
 import { FakeDb } from './fake-supabase'
+import { MAPPINGS } from '../src/data/rows'
 import type { LatLng } from '../src/core/index'
 
 /**
- * BK — MESURE (pas une porte) : l'écriture NON TRANSACTIONNELLE d'une forme.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * BK — UN AGRÉGAT S'ÉCRIT EN UNE TRANSACTION, ET LA BOÎTE D'ENVOI SE RELANCE.
+ *      A620 … A626
+ * ═══════════════════════════════════════════════════════════════════════════
  *
- *   bun run scripts/bkecriture.ts
+ *   bun run bkecriture
+ *   BASE_URL=https://azmer-fts.github.io/lo-yanum bun run bkecriture   (déployé)
+ *   DIST=<dossier d'un build> SKIP_BUILD=1 bun run bkecriture         (un autre build)
  *
- * `src/data/write.ts` réécrit une forme en trois requêtes : effacer ses
- * sommets, upsert de la forme, insérer les sommets. Ici, sur la base FACTICE
- * seulement, l'insert des sommets rend 500 (une route posée APRÈS la base
- * factice, donc prioritaire ; tout le reste passe par elle), et l'on relève :
- * la base, la boîte d'envoi (IndexedDB), le nombre d'essais, l'anneau à
- * l'écran, sur l'appareil qui écrit et sur un second profil.
- * Récit : docs/bk/ecriture-non-transactionnelle.md.
+ * D'abord une MESURE (docs/bk/ecriture-non-transactionnelle.md) : `write.ts`
+ * réécrivait un agrégat en trois requêtes (effacer les sous-lignes, upsert,
+ * insérer) ; une panne entre deux laissait la forme en base SANS sommet, un
+ * second appareil la voyait disparaître, et rien ne relançait l'écriture sans
+ * rechargement ni retour du réseau. Décision du PO : une transaction côté base
+ * (`public.write_aggregate`, migration 20261018000200) pour toutes les tables à
+ * sous-lignes, et une relance automatique.
+ *
+ * LA PANNE est la même pour l'ancien et le nouveau code : la base factice fait
+ * échouer la prochaine INSERTION dans une table de sous-lignes
+ * (`FakeDb.failInsert`) — par PostgREST, les sous-lignes sont alors DÉJÀ
+ * effacées ; dans `write_aggregate`, la transaction est annulée. Cette porte
+ * est ROUGE sur le code d'avant le correctif, VERTE après : les deux sorties
+ * sont dans docs/bk/ecriture-transaction.md.
+ *
+ *   A620  (pur) la liste blanche de la fonction SQL est EXACTEMENT celle de
+ *         `MAPPINGS` (parents, sous-tables, ordre, clés) et celle de la base
+ *         factice ; la fonction est SECURITY INVOKER, search_path vide,
+ *         identifiants par %I, execute à `authenticated` seulement
+ *   A621  une panne AU MILIEU de l'écriture d'une forme la laisse ENTIÈRE en
+ *         base, à l'ANCIENNE position
+ *   A622  un second profil qui relit pendant l'attente ne voit JAMAIS 0 point :
+ *         l'ancienne forme entière ; puis la nouvelle, une fois rejouée
+ *   A623  la boîte d'envoi rejoue SEULE — sans rechargement, sans `online` —
+ *         en moins de N secondes ; la base porte alors la nouvelle position
+ *   A624  la relance : délais CROISSANTS et bornés, un seul essai à la fois,
+ *         un second geste remplace l'entrée, plus rien après le succès
+ *   A625  une FICHE DE FERME (contacts, engagements) : une panne au milieu ne
+ *         lui enlève ni ses contacts ni rien ; rejouée, la modification passe
+ *         et les contacts sont toujours là
+ *   A626  une ZONE DE MENACE : une panne au milieu la laisse entière ; rejouée,
+ *         la nouvelle intensité passe, ses sommets intacts
  */
 
-const APP = await serveBuild(process.env.DIST ?? 'dist-bkedit', Number(process.env.PORT ?? 5508), process.env.SKIP_BUILD !== '1')
-const SHOTS = 'docs/screenshots/bk/ecriture'
+const APP = REMOTE ?? (await serveBuild(process.env.DIST ?? 'dist-bkecriture', Number(process.env.PORT ?? 5508), process.env.SKIP_BUILD !== '1'))
+const SHOTS = `docs/screenshots/bk/ecriture-${REMOTE ? 'deployed' : 'local'}`
 mkdirSync(SHOTS, { recursive: true })
+
+/** La relance doit avoir rejoué en moins de N secondes (premier délai : 2 s). */
+const N_SECONDS = 10
 
 const FARM = 'farm-ak1-11'
 const B = 'zone-bk-boundary'
 const G = 'zone-bk-grazing'
+const T = 'threat-bk-ecriture'
 
 function ringOf(c: LatLng, n: number, rLat: number, rLng: number): LatLng[] {
   return Array.from({ length: n }, (_, i) => ({ lat: c.lat + rLat * Math.sin((i / n) * 2 * Math.PI), lng: c.lng + rLng * Math.cos((i / n) * 2 * Math.PI) }))
 }
+
+/** Une ferme d'essai : une limite (12 sommets), un pâturage, deux contacts, deux engagements, une zone de menace (6 sommets). Rien de réel. */
 function db0(): { db: FakeDb; bCenter: LatLng } {
   const d = new FakeDb()
   seed(d)
@@ -42,80 +79,50 @@ function db0(): { db: FakeDb; bCenter: LatLng } {
   const f = d.rows('entities').find((r) => r.id === FARM)!
   const center = { lat: Number(f.lat), lng: Number(f.lng) }
   const bCenter = { lat: center.lat + 0.0006, lng: center.lng + 0.0008 }
+  const at = new Date().toISOString()
   const put = (id: string, kind: string, ring: LatLng[]) => {
-    const at = new Date().toISOString()
     d.rows('zones').push({ id, entity_id: FARM, kind, created_at: at, updated_at: at })
     ring.forEach((v, position) => d.rows('zone_vertices').push({ zone_id: id, position, lat: v.lat, lng: v.lng }))
   }
   put(B, 'farm_boundary', ringOf(bCenter, 12, 0.0016, 0.0023))
   put(G, 'grazing_area', ringOf(center, 10, 0.016, 0.018))
+  for (const [position, name] of ['איש קשר ראשון', 'איש קשר שני'].entries()) {
+    d.rows('entity_contacts').push({ id: `contact-bk-${position}`, entity_id: FARM, name, phone: `050-000-99${position}0`, email: '', role: 'בעלים', photo: null, is_primary: position === 0, note: '', restricts_calls: false, position })
+  }
+  for (const position of [0, 1]) d.rows('entity_commitments').push({ id: `${FARM}:c${position}`, entity_id: FARM, kind: 'other', detail: `התחייבות ${position + 1}`, fulfilled: false, position })
+  d.rows('threat_zones').push({ id: T, entity_id: FARM, intensity: 'medium', note: '', updated_at: at })
+  ringOf({ lat: center.lat - 0.004, lng: center.lng - 0.004 }, 6, 0.002, 0.0025).forEach((v, position) => d.rows('threat_zone_vertices').push({ threat_zone_id: T, position, lat: v.lat, lng: v.lng }))
   d.cascades.set('zones', [{ table: 'zone_vertices', fk: 'zone_id' }])
   return { db: d, bCenter }
 }
 
-/** La panne : les `n` prochains POST sur `zone_vertices` rendent 500. Chaque essai est compté. */
-interface Fault {
-  fail: number
-  attempts: Array<{ at: number; ok: boolean }>
-}
-async function inject(ctx: BrowserContext, fault: Fault): Promise<void> {
-  await ctx.route('**/*.supabase.co/rest/v1/zone_vertices*', async (route: Route) => {
-    if (route.request().method() !== 'POST') return route.fallback()
-    if (fault.fail > 0) {
-      fault.fail--
-      fault.attempts.push({ at: Date.now(), ok: false })
-      await route.fulfill({ status: 500, headers: { 'access-control-allow-origin': '*', 'content-type': 'application/json' }, body: JSON.stringify({ code: 'XX000', message: 'panne injectée (mesure BK)', details: null, hint: null }) })
-      return
-    }
-    fault.attempts.push({ at: Date.now(), ok: true })
-    return route.fallback()
+const verts = (db: FakeDb, table: string, fk: string, id: string) =>
+  db
+    .rows(table)
+    .filter((v) => v[fk] === id)
+    .sort((a, b) => Number(a.position) - Number(b.position))
+    .map((v) => ({ lat: Number(v.lat), lng: Number(v.lng) }))
+const ringB = (db: FakeDb) => verts(db, 'zone_vertices', 'zone_id', B)
+const sameRing = (a: LatLng[], b: LatLng[]) => a.length === b.length && a.every((p, i) => Math.abs(p.lat - b[i].lat) < 1e-12 && Math.abs(p.lng - b[i].lng) < 1e-12)
+
+/** Les écritures qui partent (l'ancien insert PostgREST OU la RPC), datées. */
+function watchWrites(ctx: BrowserContext): number[] {
+  const at: number[] = []
+  ctx.on('request', (r) => {
+    if (r.method() === 'POST' && /\/rest\/v1\/(rpc\/write_aggregate|zone_vertices|entity_contacts|threat_zone_vertices)/.test(r.url())) at.push(Date.now())
   })
+  return at
 }
 
-const dbCount = (db: FakeDb, id: string) => db.rows('zone_vertices').filter((v) => v.zone_id === id).length
-const dbHasZone = (db: FakeDb, id: string) => db.rows('zones').some((z) => z.id === id)
-const dbFirst = (db: FakeDb, id: string) => {
-  const v = db.rows('zone_vertices').filter((x) => x.zone_id === id).sort((a, b) => Number(a.position) - Number(b.position))[0]
-  return v ? Number(v.lat) : null
-}
-
-/** L'anneau que la carte dessine (source `zones`), par forme : nombre de sommets et premier sommet. */
+/** L'anneau que la carte dessine (source `zones`) pour une forme : son nombre de sommets et son premier sommet. */
 const screenRing = (page: Page, id: string) =>
   page.evaluate((zid) => {
     const m = (window as unknown as { __loYanumMap?: { getSource(id: string): { _data?: { features: Array<{ id?: string; properties?: Record<string, unknown>; geometry: { coordinates: number[][][] } }> } } | undefined } }).__loYanumMap
     const f = (m?.getSource('zones')?._data?.features ?? []).find((x) => String(x.properties?.id ?? x.id ?? '') === zid)
-    if (!f) return { n: -1, lat: null as number | null }
+    if (!f) return { n: 0, lat: null as number | null }
     const ring = f.geometry.coordinates[0].slice(0, -1)
     return { n: ring.length, lat: ring[0]?.[1] ?? null }
   }, id)
-
-/** La boîte d'envoi et le cache, lus dans IndexedDB (`lo-yanum`). */
-const idb = (page: Page) =>
-  page.evaluate(
-    () =>
-      new Promise<{ outbox: string[]; zoneB: number | null }>((resolve) => {
-        const req = indexedDB.open('lo-yanum')
-        req.onerror = () => resolve({ outbox: ['(idb illisible)'], zoneB: null })
-        req.onsuccess = () => {
-          const d = req.result
-          if (!d.objectStoreNames.contains('outbox')) return resolve({ outbox: ['(pas de magasin)'], zoneB: null })
-          const tx = d.transaction(['outbox', 'aggregates'], 'readonly')
-          const keys = tx.objectStore('outbox').getAllKeys()
-          const agg = tx.objectStore('aggregates').get('farmZones/zone-bk-boundary')
-          tx.oncomplete = () => {
-            const rec = agg.result as { json?: string | null } | undefined
-            let n: number | null = null
-            try {
-              n = rec?.json ? ((JSON.parse(rec.json) as { ring?: unknown[] }).ring?.length ?? null) : null
-            } catch {
-              n = null
-            }
-            resolve({ outbox: (keys.result as IDBValidKey[]).map(String), zoneB: n })
-            d.close()
-          }
-        }
-      }),
-  )
 
 async function project(page: Page, p: LatLng) {
   return page.evaluate((q) => {
@@ -125,13 +132,16 @@ async function project(page: Page, p: LatLng) {
     return { x: r.left + s.x, y: r.top + s.y }
   }, p)
 }
+const INIT = { 'lo-yanum:map-mode:farm-detail': 'full', [`lo-yanum:farm-tab:${FARM}`]: 'terrain' }
 async function openFarm(o: Opened): Promise<void> {
   await go(o.page, APP, `/coordinator/farms/${FARM}`, 7000)
 }
 /** Ouvrir la limite et la déplacer d'un geste (✥) : UNE écriture. */
-async function moveBoundary(page: Page, bCenter: LatLng, dx: number): Promise<void> {
-  await page.evaluate((c) => (window as unknown as { __loYanumMap: { jumpTo(o: unknown): void } }).__loYanumMap.jumpTo({ center: [c.lng, c.lat], zoom: 15.5 }), bCenter)
-  await page.waitForTimeout(900)
+async function moveBoundary(page: Page, bCenter: LatLng, dx: number, reframe = true): Promise<void> {
+  if (reframe) {
+    await page.evaluate((c) => (window as unknown as { __loYanumMap: { jumpTo(o: unknown): void } }).__loYanumMap.jumpTo({ center: [c.lng, c.lat], zoom: 15.5 }), bCenter)
+    await page.waitForTimeout(900)
+  }
   if ((await page.locator('[data-testid="shape-editor"]').count()) === 0) {
     const p = await project(page, { lat: bCenter.lat, lng: bCenter.lng + 0.0012 })
     await page.mouse.click(p.x, p.y)
@@ -148,149 +158,194 @@ async function moveBoundary(page: Page, bCenter: LatLng, dx: number): Promise<vo
   await page.mouse.down()
   await page.mouse.move(x + dx, y + 20, { steps: 10 })
   await page.mouse.up()
-  await page.waitForTimeout(2500)
+  await page.waitForTimeout(300)
 }
-async function state(label: string, page: Page | null, db: FakeDb, fault: Fault) {
-  const s = page ? await screenRing(page, B) : { n: NaN, lat: null }
-  const i = page ? await idb(page) : { outbox: [], zoneB: null }
-  const line = `base : forme ${dbHasZone(db, B) ? 'présente' : 'ABSENTE'}, ${dbCount(db, B)} sommet(s) · écran : ${s.n} sommet(s) · boîte d'envoi : [${i.outbox.join(', ')}] · cache : ${i.zoneB ?? '—'} sommet(s) · essais d'insert : ${fault.attempts.length} (${fault.attempts.filter((a) => !a.ok).length} en échec)`
-  console.log(`  ·  ${label} — ${line}`)
-  return { screen: s, idb: i, db: dbCount(db, B) }
+async function until(f: () => boolean, ms: number): Promise<number | null> {
+  const t0 = Date.now()
+  for (;;) {
+    if (f()) return Date.now() - t0
+    if (Date.now() - t0 > ms) return null
+    await Bun.sleep(100)
+  }
 }
-
-// ===========================================================================
-section('Q1 / Q2 — l’appareil qui écrit : la boîte d’envoi, les essais, les relectures')
-{
-  const { db, bCenter } = db0()
-  const fault: Fault = { fail: 0, attempts: [] }
-  const a = await open(1440, { db, height: 900, init: { 'lo-yanum:map-mode:farm-detail': 'full', [`lo-yanum:farm-tab:${FARM}`]: 'terrain' } })
-  await inject(a.ctx, fault)
-  await openFarm(a)
-  const s0 = await state('ouverture', a.page, db, fault)
-  check('Q1 départ : 12 sommets en base et à l’écran', s0.db === 12 && s0.screen.n === 12)
-
-  fault.fail = 1
-  await moveBoundary(a.page, bCenter, -60)
-  const s1 = await state('UN geste (✥), l’insert rend 500', a.page, db, fault)
-  const movedLat = s1.screen.lat
-  check('Q1 la fenêtre est réelle : la forme est en base SANS sommet', dbHasZone(db, B) && s1.db === 0)
-  check('Q1 l’écriture est GARDÉE dans la boîte d’envoi', s1.idb.outbox.includes(`farmZones/${B}`), s1.idb.outbox.join(', '))
-  check('Q1 l’écran garde la forme déplacée, 12 sommets', s1.screen.n === 12)
-  await a.page.screenshot({ path: `${SHOTS}/q1-apres-echec.png` })
-
-  /* Pas de minuterie : rien ne repart tout seul. */
-  await a.page.waitForTimeout(30_000)
-  const s1b = await state('30 s plus tard, sans rien faire', a.page, db, fault)
-  check('Q1 sans déclencheur, AUCUN nouvel essai en 30 s', fault.attempts.length === 1 && s1b.db === 0, `${fault.attempts.length} essai(s)`)
-
-  /* Un second geste pendant l'attente : il attend derrière (l'ordre), il ne part pas. */
-  await moveBoundary(a.page, bCenter, -40)
-  const s1c = await state('un SECOND geste pendant l’attente', a.page, db, fault)
-  check('Q1 un second geste ne part pas : il rejoint la boîte d’envoi (une entrée par forme)', fault.attempts.length === 1 && s1c.idb.outbox.filter((k) => k === `farmZones/${B}`).length === 1)
-  const latestLat = s1c.screen.lat
-
-  /* La page des réglages dit-elle qu'une écriture attend ? */
-  await a.page.evaluate(() => {
-    window.location.hash = '#/coordinator/settings'
-  })
-  await a.page.waitForTimeout(1500)
-  const badge = await a.page.locator('[data-testid="sync-state"]').innerText().catch(() => '(absent)')
-  console.log(`  ·  הגדרות dit : « ${badge} »`)
-  check('Q1 הגדרות dit qu’une écriture attend', /1/.test(badge) && badge !== '(absent)', badge)
-  await a.page.screenshot({ path: `${SHOTS}/q1-reglages-en-attente.png` })
-
-  /* Q2 — une relecture (rechargement : démarrage à froid → vider la boîte → relire) dont le vidage
-     ÉCHOUE encore : la relecture lit la forme SANS sommet en base. Écrase-t-elle l'anneau local ? */
-  fault.fail = 1
-  await openFarm(a)
-  const s2 = await state('rechargement, le rejeu échoue encore, relecture d’une forme vide', a.page, db, fault)
-  check('Q2 la relecture n’écrase PAS l’anneau local : 12 sommets à l’écran, la dernière position', s2.screen.n === 12 && s2.screen.lat === latestLat, `écran ${s2.screen.n}, Δlat ${s2.screen.lat !== null && latestLat !== null ? (s2.screen.lat - latestLat).toExponential(1) : '—'}`)
-  check('Q2 … et le cache garde 12 sommets ; la boîte d’envoi garde l’écriture', s2.idb.zoneB === 12 && s2.idb.outbox.includes(`farmZones/${B}`))
-  check('Q2 la base, elle, est toujours vide', s2.db === 0)
-  await a.page.screenshot({ path: `${SHOTS}/q2-relecture-forme-vide.png` })
-
-  /* Le retour du réseau (`online`) : le seul autre déclencheur. */
-  await a.ctx.setOffline(true)
-  await a.page.waitForTimeout(500)
-  await a.ctx.setOffline(false)
-  await a.page.waitForTimeout(3000)
-  const s3 = await state('événement « online »', a.page, db, fault)
-  check('Q1 le retour du réseau rejoue l’écriture : la base a 12 sommets, la dernière position', s3.db === 12 && dbFirst(db, B) === latestLat && s3.idb.outbox.length === 0, `${fault.attempts.length} essai(s) au total`)
-  console.log(`  ·  essais : ${fault.attempts.map((x) => (x.ok ? 'OK' : '500')).join(' → ')} (latitude d’écran avant/après : ${movedLat} / ${latestLat})`)
-  await a.ctx.close()
+const toggleNetwork = async (ctx: BrowserContext) => {
+  await ctx.setOffline(true)
+  await Bun.sleep(300)
+  await ctx.setOffline(false)
 }
 
 // ===========================================================================
-section('Q1 — l’onglet fermé, puis rouvert')
-{
-  const { db, bCenter } = db0()
-  const fault: Fault = { fail: 0, attempts: [] }
-  const a = await open(1440, { db, height: 900, init: { 'lo-yanum:map-mode:farm-detail': 'full', [`lo-yanum:farm-tab:${FARM}`]: 'terrain' } })
-  await inject(a.ctx, fault)
-  await openFarm(a)
-  fault.fail = 1
-  await moveBoundary(a.page, bCenter, -60)
-  const s1 = await state('geste, insert en 500', a.page, db, fault)
-  const lat = s1.screen.lat
-  await a.page.close()
-  console.log(`  ·  onglet FERMÉ — base : ${dbCount(db, B)} sommet(s)`)
-  const page2 = await a.ctx.newPage()
-  page2.setDefaultTimeout(8000)
-  const b: Opened = { ...a, page: page2 }
-  await openFarm(b)
-  const s2 = await state('onglet rouvert (même profil)', page2, db, fault)
-  check('Q1 la boîte d’envoi survit à l’onglet fermé : à la réouverture, l’écriture part, 12 sommets en base', s2.db === 12 && dbFirst(db, B) === lat && s2.idb.outbox.length === 0, `${fault.attempts.length} essai(s)`)
-  await a.ctx.close()
-}
+await guard('A620', async () => {
+  section('A620 — la liste blanche : SQL = MAPPINGS = base factice')
+  const sql = (() => {
+    try {
+      return readFileSync('supabase/migrations/20261018000200_bk_write_aggregate.sql', 'utf8')
+    } catch {
+      return ''
+    }
+  })()
+  check('A620 la migration de `write_aggregate` existe', sql.length > 0)
+  const fromSql = new Map<string, string>()
+  for (const m of sql.matchAll(/when '([a-z_]+)' then '(\[[^']*\])'::jsonb/g)) {
+    const kids = JSON.parse(m[2]) as Array<{ t: string; fk: string }>
+    fromSql.set(m[1], kids.map((k) => `${k.t}.${k.fk}`).join(' '))
+  }
+  const fromMappings = new Map<string, string>()
+  for (const mapping of Object.values(MAPPINGS) as Array<{ table: string; children: ReadonlyArray<{ table: string; fk: string }> }>) {
+    if (mapping.children.length > 0) fromMappings.set(mapping.table, mapping.children.map((c) => `${c.table}.${c.fk}`).join(' '))
+  }
+  const fake = (FakeDb as unknown as { AGGREGATES?: Record<string, Array<{ t: string; fk: string }>> }).AGGREGATES ?? {}
+  const fromFake = new Map(Object.entries(fake).map(([t, kids]) => [t, kids.map((k) => `${k.t}.${k.fk}`).join(' ')]))
+  const show = (m: Map<string, string>) => [...m.entries()].sort().map(([k, v]) => `${k}: ${v}`).join(' | ')
+  check(`A620 ★ toute table à sous-lignes de MAPPINGS (${fromMappings.size}) est dans la liste blanche SQL, sous-tables et ORDRE compris`, fromMappings.size > 0 && show(fromSql) === show(fromMappings), `SQL ${show(fromSql).slice(0, 120) || '(rien)'}`)
+  check('A620 … et la base factice porte la même liste', show(fromFake) === show(fromMappings))
+  check('A620 SECURITY INVOKER, search_path vide', /security invoker/.test(sql) && /set search_path = ''/.test(sql) && !/security definer/.test(sql))
+  check('A620 identifiants dynamiques par %I seulement ; lignes par jsonb_populate_recordset', /format\(/.test(sql) && !/public\.%s/.test(sql) && /jsonb_populate_recordset\(null::public\.%I, \$1\)/.test(sql))
+  check(
+    'A620 execute : révoqué à public et à anon, accordé à authenticated seulement',
+    /revoke all on function public\.write_aggregate\(text, jsonb, jsonb\) from public;/.test(sql) &&
+      /revoke all on function public\.write_aggregate\(text, jsonb, jsonb\) from anon;/.test(sql) &&
+      [...sql.matchAll(/grant execute on function public\.write_aggregate[^;]* to ([a-z_]+);/g)].map((m) => m[1]).join(',') === 'authenticated',
+  )
+  const write = readFileSync('src/data/write.ts', 'utf8')
+  check('A620 `write.ts` passe par la RPC pour un agrégat à sous-lignes', /client\.rpc\('write_aggregate'/.test(write) && !/\.from\(child\.table\)\.insert/.test(write))
+})
 
 // ===========================================================================
-section('Q3 / Q4 — un SECOND profil qui relit pendant la fenêtre ; l’appareil qui ne revient pas')
-{
+await guard('A621', async () => {
+  section('A621 · A622 · A623 — une forme : la panne au milieu, le second profil, la relance seule')
   const { db, bCenter } = db0()
-  const fault: Fault = { fail: 0, attempts: [] }
-  const a = await open(1440, { db, height: 900, init: { 'lo-yanum:map-mode:farm-detail': 'full', [`lo-yanum:farm-tab:${FARM}`]: 'terrain' } })
-  await inject(a.ctx, fault)
-  const b = await open(1440, { db, height: 900, init: { 'lo-yanum:map-mode:farm-detail': 'full', [`lo-yanum:farm-tab:${FARM}`]: 'terrain' } })
+  const a = await open(1440, { db, height: 900, init: INIT })
+  const sent = watchWrites(a.ctx)
+  const b = await open(1440, { db, height: 900, init: INIT })
   await openFarm(a)
   await openFarm(b)
-  const b0 = await state('profil B, avant', b.page, db, fault)
-  check('Q3 B voit la forme entière avant la fenêtre (12 sommets, en cache)', b0.screen.n === 12 && b0.idb.zoneB === 12)
+  const before = ringB(db)
+  check('A621 départ : la limite a 12 sommets en base, à l’écran de A et de B', before.length === 12 && (await screenRing(a.page, B)).n === 12 && (await screenRing(b.page, B)).n === 12)
 
-  fault.fail = 1
+  db.failInsert.set('zone_vertices', 1)
   await moveBoundary(a.page, bCenter, -60)
-  const aLat = (await screenRing(a.page, B)).lat
-  await openFarm(b)
-  const b1 = await state('profil B relit PENDANT la fenêtre', b.page, db, fault)
-  const zonesText = await b.page.locator('[data-block="entity-zones"]').innerText().catch(() => '(bloc absent)')
-  console.log(`  ·  B, liste des formes : « ${zonesText.replace(/\s+/g, ' ').slice(0, 160)} »`)
-  check('Q3 B ne plante pas', b.errors.length === 0, b.errors.slice(0, 2).join(' | '))
-  console.log(`  ·  B voit : ${b1.screen.n === -1 ? 'forme ABSENTE de la carte' : `${b1.screen.n} sommet(s) sur la carte`} ; son cache : ${b1.idb.zoneB ?? '—'} sommet(s)`)
-  await b.page.screenshot({ path: `${SHOTS}/q3-profil-b-pendant.png` })
+  const newLat = (await screenRing(a.page, B)).lat
+  await until(() => sent.length >= 1, 3000)
+  await a.page.waitForTimeout(400)
+  const during = ringB(db)
+  check('A621 ★ la panne au milieu laisse la forme ENTIÈRE en base, à l’ANCIENNE position', during.length === 12 && sameRing(during, before), `${during.length} sommet(s) en base`)
+  check('A621 … et A garde à l’écran la nouvelle position (12 sommets)', (await screenRing(a.page, B)).n === 12 && newLat !== before[0].lat)
 
-  /* A rejoue (retour du réseau) ; B relit. */
-  await a.ctx.setOffline(true)
-  await a.page.waitForTimeout(300)
-  await a.ctx.setOffline(false)
-  await a.page.waitForTimeout(3000)
-  await openFarm(b)
-  const b2 = await state('A a rejoué ; B relit', b.page, db, fault)
-  check('Q3 une fois l’écriture rejouée, B retrouve la forme ENTIÈRE, à la position de A', b2.screen.n === 12 && b2.screen.lat === aLat)
-  await b.page.screenshot({ path: `${SHOTS}/q3-profil-b-apres.png` })
+  /* B relit PENDANT que A attend sa relance. */
+  await go(b.page, APP, `/coordinator/farms/${FARM}`, 1500)
+  const bDuring = await screenRing(b.page, B)
+  check('A622 ★ le second profil, relisant pendant l’attente, ne voit PAS 0 point : la forme entière, ancienne position', bDuring.n === 12 && bDuring.lat !== null && Math.abs(bDuring.lat - before[0].lat) < 1e-9, `${bDuring.n} sommet(s)`)
+  await b.page.screenshot({ path: `${SHOTS}/a622-profil-b-pendant.png` })
 
-  /* Q4 — A ne revient JAMAIS : sa boîte d'envoi disparaît avec lui. */
-  fault.fail = 1
-  await moveBoundary(a.page, bCenter, 50)
-  const a4 = await state('A : un geste en échec, puis A disparaît', a.page, db, fault)
+  /* A623 — sans rechargement, sans `online` : la boîte d'envoi rejoue seule. */
+  const t0 = Date.now()
+  const took = await until(() => ringB(db).length === 12 && Math.abs(ringB(db)[0].lat - (newLat ?? NaN)) < 1e-9, N_SECONDS * 1000)
+  check(`A623 ★ la boîte d’envoi a rejoué SEULE, en moins de ${N_SECONDS} s (ni rechargement, ni « online »)`, took !== null, took === null ? `rien après ${N_SECONDS} s · ${sent.length} essai(s)` : `${((Date.now() - t0) / 1000).toFixed(1)} s · ${sent.length} essai(s)`)
+  check('A623 … la base porte la NOUVELLE position, 12 sommets', ringB(db).length === 12 && ringB(db)[0].lat === newLat)
+
+  await go(b.page, APP, `/coordinator/farms/${FARM}`, 4000)
+  const bAfter = await screenRing(b.page, B)
+  check('A622 … puis B relit la nouvelle forme, entière', bAfter.n === 12 && bAfter.lat !== null && Math.abs(bAfter.lat - (newLat ?? NaN)) < 1e-9)
+  check('A621 aucune erreur de page', a.errors.length === 0 && b.errors.length === 0, [...a.errors, ...b.errors].slice(0, 2).join(' | '))
   await a.ctx.close()
-  console.log(`  ·  A FERMÉ pour de bon (profil détruit, boîte d’envoi perdue) — boîte qu’il avait : [${a4.idb.outbox.join(', ')}]`)
-  await Bun.sleep(5000)
-  await openFarm(b)
-  const b4s = await screenRing(b.page, B)
-  const b4i = await idb(b.page)
-  console.log(`  ·  B voit : ${b4s.n === -1 ? 'forme ABSENTE de la carte' : `${b4s.n} sommet(s)`} ; cache de B : ${b4i.zoneB ?? '—'} ; base : forme ${dbHasZone(db, B) ? 'présente' : 'absente'}, ${dbCount(db, B)} sommet(s)`)
-  check('Q4 (constat) : sans A, la forme reste en base SANS sommet', dbHasZone(db, B) && dbCount(db, B) === 0)
-  await b.page.screenshot({ path: `${SHOTS}/q4-profil-b-sans-a.png` })
   await b.ctx.close()
-}
+})
+
+// ===========================================================================
+await guard('A624', async () => {
+  section('A624 — la relance : croissante, bornée, une à la fois, éteinte au succès')
+  const { db, bCenter } = db0()
+  const a = await open(1440, { db, height: 900, init: INIT })
+  const sent = watchWrites(a.ctx)
+  await openFarm(a)
+  db.failInsert.set('zone_vertices', 3)
+  await moveBoundary(a.page, bCenter, -60)
+  await until(() => sent.length >= 1, 3000)
+  /* Un second geste pendant l'attente (sans recadrer : il doit finir AVANT la première relance, à 2 s) :
+     il remplace l'entrée, il ne part pas tout de suite. */
+  const n1 = sent.length
+  await moveBoundary(a.page, bCenter, -30, false)
+  const gestureAt = (Date.now() - sent[0]) / 1000
+  check('A624 un second geste pendant l’attente ne part pas : il rejoint la boîte d’envoi', gestureAt < 1.9 && sent.length === n1, `${n1} → ${sent.length} essai(s), geste fini à ${gestureAt.toFixed(1)} s`)
+  const lastLat = (await screenRing(a.page, B)).lat
+  const done = await until(() => ringB(db).length === 12 && ringB(db)[0].lat === lastLat, 25_000)
+  const gaps = sent.slice(1).map((t, i) => (t - sent[i]) / 1000)
+  check('A624 ★ trois échecs, puis le succès — SANS rechargement ni « online »', done !== null && sent.length === 4, `${sent.length} essai(s) ; écarts ${gaps.map((g) => g.toFixed(1)).join(' · ')} s`)
+  check('A624 ★ les délais CROISSENT (≈ 2, 4, 8 s)', gaps.length === 3 && gaps[0] >= 1.5 && gaps[1] > gaps[0] + 1 && gaps[2] > gaps[1] + 2, gaps.map((g) => g.toFixed(1)).join(' · '))
+  check('A624 … et la base porte le DERNIER geste', ringB(db).length === 12 && ringB(db)[0].lat === lastLat)
+  const nDone = sent.length
+  await a.page.waitForTimeout(20_000)
+  check('A624 ★ après le succès, plus AUCUN essai (20 s)', sent.length === nDone, `${nDone} → ${sent.length}`)
+  /* Le retour du réseau pendant une attente ne double pas la relance. */
+  db.failInsert.set('zone_vertices', 1)
+  await moveBoundary(a.page, bCenter, 40)
+  const lat3 = (await screenRing(a.page, B)).lat
+  await until(() => sent.length >= nDone + 1, 3000)
+  await toggleNetwork(a.ctx)
+  await until(() => ringB(db)[0]?.lat === lat3, 6000)
+  const nNet = sent.length
+  await a.page.waitForTimeout(6000)
+  check('A624 « online » rejoue ; le minuteur, annulé, n’ajoute RIEN ensuite', ringB(db)[0]?.lat === lat3 && sent.length === nNet, `${nNet - nDone} essai(s) pour ce geste`)
+  await a.ctx.close()
+})
+
+// ===========================================================================
+await guard('A625', async () => {
+  section('A625 — une fiche de ferme (contacts, engagements)')
+  const { db } = db0()
+  const a = await open(1440, { db, height: 900, init: INIT })
+  const sent = watchWrites(a.ctx)
+  const contacts0 = db.rows('entity_contacts').filter((r) => r.entity_id === FARM).length
+  const commit0 = db.rows('entity_commitments').filter((r) => r.entity_id === FARM).length
+  const name0 = String(db.rows('entities').find((r) => r.id === FARM)?.name)
+  check('A625 départ : 2 contacts, 2 engagements', contacts0 === 2 && commit0 === 2)
+  await go(a.page, APP, `/coordinator/farms/${FARM}/edit`, 5000)
+  const field = a.page.locator('[data-testid="farm-form-name"] input, input[data-testid="farm-form-name"]').first()
+  await field.fill(`${name0} (שונה)`)
+  db.failInsert.set('entity_contacts', 1)
+  await a.page.getByRole('button', { name: 'שמירה', exact: true }).first().click()
+  await until(() => sent.length >= 1, 4000)
+  await a.page.waitForTimeout(400)
+  const contacts1 = db.rows('entity_contacts').filter((r) => r.entity_id === FARM).length
+  const commit1 = db.rows('entity_commitments').filter((r) => r.entity_id === FARM).length
+  const name1 = String(db.rows('entities').find((r) => r.id === FARM)?.name)
+  check('A625 ★ la panne au milieu ne retire à la ferme NI ses contacts NI ses engagements', sent.length >= 1 && contacts1 === 2 && commit1 === 2, `${sent.length} écriture(s) · ${contacts1} contact(s), ${commit1} engagement(s) en base`)
+  check('A625 … et la fiche reste ENTIÈRE à l’ancienne version (tout ou rien)', sent.length >= 1 && name1 === name0, name1)
+  const took = await until(() => String(db.rows('entities').find((r) => r.id === FARM)?.name) === `${name0} (שונה)`, N_SECONDS * 1000)
+  /* Le formulaire range aussi l'exploitant en carte de contact (« חקלאי … ») : on juge les deux contacts D'ORIGINE, par identifiant. */
+  const kept = db.rows('entity_contacts').filter((r) => r.entity_id === FARM).map((r) => String(r.id))
+  check(
+    `A625 rejouée seule (< ${N_SECONDS} s) : le nouveau nom passe, les deux contacts d’origine et les engagements toujours là`,
+    took !== null && kept.includes('contact-bk-0') && kept.includes('contact-bk-1') && db.rows('entity_commitments').filter((r) => r.entity_id === FARM).length === 2,
+    `${sent.length} essai(s) · contacts [${kept.join(', ')}]`,
+  )
+  check('A625 aucune erreur de page', a.errors.length === 0, a.errors.slice(0, 2).join(' | '))
+  await a.ctx.close()
+})
+
+// ===========================================================================
+await guard('A626', async () => {
+  section('A626 — une zone de menace')
+  const { db } = db0()
+  /* La carte en vue PARTAGÉE : en plein écran, elle cache le panneau des menaces. */
+  const a = await open(1440, { db, height: 900, init: { ...INIT, 'lo-yanum:map-mode:farm-detail': 'split' } })
+  const sent = watchWrites(a.ctx)
+  await openFarm(a)
+  const ring0 = verts(db, 'threat_zone_vertices', 'threat_zone_id', T)
+  check('A626 départ : la zone de menace a 6 sommets, intensité « בינוני »', ring0.length === 6 && db.rows('threat_zones')[0]?.intensity === 'medium')
+  const high = a.page.getByRole('button', { name: 'גבוה', exact: true }).first()
+  await high.scrollIntoViewIfNeeded()
+  db.failInsert.set('threat_zone_vertices', 1)
+  await high.click()
+  await until(() => sent.length >= 1, 4000)
+  await a.page.waitForTimeout(400)
+  const ring1 = verts(db, 'threat_zone_vertices', 'threat_zone_id', T)
+  check('A626 ★ la panne au milieu laisse la zone de menace ENTIÈRE (6 sommets, intensité d’avant)', sent.length >= 1 && ring1.length === 6 && sameRing(ring1, ring0) && db.rows('threat_zones').find((r) => r.id === T)?.intensity === 'medium', `${sent.length} écriture(s) · ${ring1.length} sommet(s), ${db.rows('threat_zones').find((r) => r.id === T)?.intensity}`)
+  const took = await until(() => db.rows('threat_zones').find((r) => r.id === T)?.intensity === 'high', N_SECONDS * 1000)
+  check(`A626 rejouée seule (< ${N_SECONDS} s) : « גבוה » passe, les 6 sommets intacts`, took !== null && sameRing(verts(db, 'threat_zone_vertices', 'threat_zone_id', T), ring0), `${sent.length} essai(s)`)
+  check('A626 aucune erreur de page', a.errors.length === 0, a.errors.slice(0, 2).join(' | '))
+  await a.ctx.close()
+})
 
 await finish()

@@ -639,7 +639,8 @@ for (const dev of devices) {
     const writes: string[] = []
     const { o, h } = await openFarm(db, dev)
     o.page.on('request', (r) => {
-      if (r.method() !== 'GET' && /\/rest\/v1\/(zones|zone_vertices)/.test(r.url())) writes.push(`${r.method()} ${r.url().split('/rest/v1/')[1].slice(0, 30)}`)
+      /* ★ BK (transaction) — une forme s'écrit désormais par `rpc/write_aggregate` : sans elle ici, « rien n'est écrit » serait vrai par vide. */
+      if (r.method() !== 'GET' && /\/rest\/v1\/(zones|zone_vertices|rpc\/write_aggregate)/.test(r.url())) writes.push(`${r.method()} ${r.url().split('/rest/v1/')[1].slice(0, 30)}`)
     })
     const r0 = dbRing(db, B)
     await openBoundary(h, bCenter)

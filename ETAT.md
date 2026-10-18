@@ -1,5 +1,33 @@
 # לא ינום — ETAT
 
+> 🏁 **BK — TRANSACTION : UN AGRÉGAT S'ÉCRIT EN UNE FOIS, ET LA BOÎTE D'ENVOI SE RELANCE. 2026-10-18.**
+>
+> Décision du PO, après la mesure (`docs/bk/ecriture-non-transactionnelle.md`) :
+> « une seule transaction côté base … pour toutes les tables qui ont des
+> sous-lignes, plus une relance automatique de la boîte d'envoi. Porte rouge
+> avant, verte après. »
+>
+> **La fonction** `public.write_aggregate(p_table, p_rows, p_children)`
+> (migration `20261018000200`, MCP `20261018110736`) : effacer les sous-lignes
+> (ordre inverse), upsert des parents sur les colonnes envoyées, insérer —
+> tout ou rien. `SECURITY INVOKER` (la RLS s'applique), `search_path` vide,
+> liste blanche EN DUR recopiée de `MAPPINGS` (entities, zones, threat_zones,
+> missions, incidents, tours), `%I` et `jsonb_populate_recordset`, execute à
+> `authenticated` seulement. Éprouvée sur la base réelle dans un bloc ANNULÉ
+> (panne au milieu : rien ne change ; RLS et anon : 42501), puis appliquée ;
+> les 4 formes réelles (17, 31, 147, 367 — le PO en a retouché une et tracé une
+> autre ce matin) intactes ; advisors : rien sur la fonction.
+>
+> **L'app** : `write.ts` écrit un agrégat à sous-lignes par la RPC ;
+> `store.ts` relance la boîte d'envoi seule (2 → 4 → 8 → 16 → 30 → 60 s,
+> annulée quand elle se vide, jamais deux, rien hors ligne). La base factice
+> implémente la RPC (tout ou rien) et la panne « au milieu ».
+>
+> **La porte** `bkecriture` (A620–A626) : ROUGE sur le code d'avant (10/30 :
+> forme vidée en base, second profil à 0 point, aucune relance, ferme sans
+> contacts ni engagements, zone de menace vidée), VERTE après (30/30). Batterie
+> entière verte. Récit : `docs/bk/ecriture-transaction.md`.
+
 > 🏁 **BK — SUITE : DEUX RETOUCHES DE RÉGION PERDUES EN SILENCE. 2026-10-18.**
 >
 > Les portes `settings` et `touch`, hors de la batterie de BJ, exerçaient

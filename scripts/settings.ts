@@ -57,20 +57,30 @@ console.log(`  A53 · A54 · A55 · A56 — הגדרות (${ENGINE_NAME})`)
 console.log('  ===================================================')
 
 const env = { ...process.env, VITE_SUPABASE_URL: '', VITE_SUPABASE_PUBLISHABLE_KEY: '' }
-const build = Bun.spawn(['bun', 'x', 'vite', 'build', '--outDir', OUT_DIR], {
-  env,
-  stdout: 'ignore',
-  stderr: 'pipe',
-})
-if ((await build.exited) !== 0) {
-  console.error(await new Response(build.stderr).text())
-  throw new Error('vite build failed')
+/*
+ * ★ BK — `BASE_URL` vise un serveur DÉJÀ en route, sans build ni preview. Le
+ *   banc déployé fidèle est le jumeau `/demo` (construit, comme celui-ci, SANS
+ *   Supabase) : `BASE_URL=https://azmer-fts.github.io/lo-yanum/demo`. L'app
+ *   déployée elle-même est un build réel, derrière l'écran de connexion.
+ */
+const REMOTE = process.env.BASE_URL?.replace(/\/$/, '') ?? ''
+let serve: ReturnType<typeof Bun.spawn> | null = null
+if (!REMOTE) {
+  const build = Bun.spawn(['bun', 'x', 'vite', 'build', '--outDir', OUT_DIR], {
+    env,
+    stdout: 'ignore',
+    stderr: 'pipe',
+  })
+  if ((await build.exited) !== 0) {
+    console.error(await new Response(build.stderr as ReadableStream).text())
+    throw new Error('vite build failed')
+  }
+  serve = Bun.spawn(
+    ['bun', 'x', 'vite', 'preview', '--outDir', OUT_DIR, '--port', String(PORT), '--strictPort'],
+    { env, stdout: 'ignore', stderr: 'ignore' },
+  )
 }
-const serve = Bun.spawn(
-  ['bun', 'x', 'vite', 'preview', '--outDir', OUT_DIR, '--port', String(PORT), '--strictPort'],
-  { env, stdout: 'ignore', stderr: 'ignore' },
-)
-const base = `http://localhost:${PORT}`
+const base = REMOTE || `http://localhost:${PORT}`
 {
   const deadline = Date.now() + 40_000
   for (;;) {
@@ -784,7 +794,7 @@ try {
   }
 } finally {
   await browser?.close()
-  serve.kill()
+  serve?.kill()
 }
 
 console.log('')
