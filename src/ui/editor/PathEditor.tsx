@@ -316,7 +316,10 @@ export function PathEditor(props: PathEditorProps) {
       p.onDraft?.(s.kind, s.draftId, null)
       if (id) {
         setTool('select')
-        setTimeout(() => p.onActiveChange(id), 0)
+        /* ⚠️ Les props lues QUAND le délai part, pas `p` : `onCreate` vient de changer l'hôte, et
+           l'ancienne fermeture de RegionsEditScreen (où `selected` vaut encore null) rappelait
+           `open()`, qui vidait le brouillon — « שרטוט מחדש » perdait sa forme neuve (settings A53). */
+        setTimeout(() => latest.current.props.onActiveChange(id), 0)
         return { mode: 'edit', id, h: historyOf(next) }
       }
       /* Refusée (moins de trois points DISTINCTS) : la forme reste ouverte, et c'est dit. */
@@ -390,7 +393,10 @@ export function PathEditor(props: PathEditorProps) {
     setNotice(null)
     setPicker(null)
     setTool('select')
-    onActiveChange(null)
+    /* ⚠️ Les props d'à présent : l'effet clavier (Échap) garde le `finish` du rendu d'OUVERTURE, et
+       l'`onActiveChange` de ce rendu-là croyait la région intacte — la retouche partait sans être
+       enregistrée (settings A53). Même lecture pour « סיום » et l'effet `activeExists`. */
+    latest.current.props.onActiveChange(null)
   }
 
   // -------------------------------------------------------------------------

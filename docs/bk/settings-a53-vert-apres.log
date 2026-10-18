@@ -1,0 +1,78 @@
+
+  A53 · A54 · A55 · A56 — הגדרות (chromium)
+  ===================================================
+
+  A55 — THE THEME LEFT THE RAIL
+  -----------------------------
+  PASS  ★ A55 — no theme switch in the coordinator rail  — absent
+  PASS  ★ A55 — and it is in הגדרות
+  PASS  ★ A55 — and the three values are three different documents  — dark/11 17 25  ·  light/243 244 246  ·  —/243 244 246
+
+  A54 — THE ROLE SWITCH IS FINDABLE, AND HAS FOUR ROLES
+  -----------------------------------------------------
+  PASS  ★ A54 — מצב תצוגה lists the four roles  — פרופיל ותפקיד · יעד · ספים והתראות · מפה ואזורים · תצוגה · נתונים · רכז · חקלאי4 · מתנדב10 · נהג6 · להשאיר את היעד המושג ולברך · לעבור אוטומטית ליעד הבא · בהיר · כהה · מערכת · חופשי · מסונכרן
+  PASS  ★ A54 — and all three simulated roles are reachable, with a way back  — 3/3
+
+  A56 — SYNCHRONISED, AND FREE
+  ----------------------------
+  PASS  ★ A56 — free: a layout set on חוות is not the layout on מתנדבים  — farms=hidden, volunteers=split
+  PASS  ★★ A67 — switching it on spreads the layout already in use, not the default  — חוות was hidden; the others read hidden, hidden, hidden
+  PASS  ★ A56 — synced: the layout chosen on one screen is the layout on all  — full, full, full
+
+  A65 — THE SEAM GRIP, THE WAY IT WAS BEFORE Y9 TURNED IT ROUND
+  -------------------------------------------------------------
+  PASS  A65 — the seam has a grip
+  PASS  A65 — and it is VERTICAL: taller than it is wide  — 20×56
+  PASS  A65 — square against the bar, rounded towards the map  — radii l 14/14, r 0/0
+  PASS  A65 — and it sits on the map side of the rule  — tab right 859px, rule left 859px
+
+  A68 — עריכת אזורים TAKES THE WHOLE DEVICE
+  -----------------------------------------
+  PASS  A68 — no side rail, no shell header, no split while a region is edited  — rail=false header=false split=false
+  PASS  A68 — and the map is the width of the device  — 1376px of 1376px
+
+  A53 — A REGION, REDRAWN WITH A STYLUS
+  -------------------------------------
+  PASS  the region filter prints a count per region  — {"all":"כל האזורים","eilat":"אילת","arava":"הערבה (2)","dead-sea":"ים המלח","jordan-valley":"בקעת הירדן","golan":"רמת הגולן","galilee":"הגלי
+  PASS  ★ עריכת אזורים opens on the full-screen map
+  PASS  a region opens in the path editor, with its own outline and a live area  — 8621847 ד׳
+  PASS  « יד חופשית » is the tool
+  PASS  two points of the region are under the stylus  — 5 on screen
+  PASS  ★ A53 — the Apple Pencil stroke is accepted  — ok
+  PASS  ★ A53 — and it redrew the outline (the live area changed)  — 8621847 → 8081731 ד׳ 
+  PASS  undo is armed by the stroke
+  PASS  and it puts the previous outline back  — 8621847 ד׳
+  PASS  redo brings the traced one back  — 8081731 ד׳
+  PASS  « שרטוט מחדש » opens a new outline for the region
+  PASS  ★ A53 — the Apple Pencil box is accepted  — ok
+  PASS  ★ A53 — closed, it REPLACED the region (the live area shrank)  — 8081731 → 1057441 ד׳
+  PASS  « שמור גבול » is armed by the new outline
+  PASS  ★★ A53 — and the entities are re-filed: the counts moved  — {"all":"כל האזורים","eilat":"אילת","arava":"הערבה (2)","dead-sea":"ים המלח","jordan-valley → {"all":"כל האזורים","eilat":"אילת","arava":"הערבה (2)","dead-sea":"ים המלח","jordan-valley
+  PASS  ★ שחזר ברירת מחדל puts the original outline — and the original counts — back  — {"all":"כל האזורים","eilat":"אילת","arava":"הערבה (2)","dead-sea":"ים המלח","jordan-valley
+  PASS  a retouch: one point of the region deleted, « שמור גבול » armed  — 7 → 6
+  PASS  ★★ Escape closes the editor AND the retouch is written (region-rings and region-paths)  — anneau 6 · tracé 6 · attendu 6
+
+  Y2.7 — THE ZONES ARE NOT EDITABLE ANYWHERE ELSE
+  -----------------------------------------------
+  PASS  ★ no vertex grip exists outside עריכת אזורים  — 0 grips across three list screens
+
+  A66 — THE DEVICE DECIDES THE THEME, AND IT DECIDES IT LIVE
+  ----------------------------------------------------------
+  PASS  A66 — a first launch on a dark device draws dark  — --surface-base 11 17 25, data-theme (none)
+  PASS  A66 — and it follows the device changing, with no reload  — 11 17 25 → 243 244 246
+  PASS  A66 — and an explicit light still beats a dark device  — data-theme light, --surface-base 243 244 246
+  PASS  A66 — a first launch on a light device draws light  — --surface-base 243 244 246, data-theme (none)
+  PASS  A66 — and it follows the device changing, with no reload  — 243 244 246 → 11 17 25
+  PASS  A66 — and an explicit light still beats a dark device  — data-theme light, --surface-base 243 244 246
+
+  A69 — THE ROLE SWITCH FOLDS AWAY ON A PHONE
+  -------------------------------------------
+  PASS  A69 — iphone: the role switch is folded behind a button  — toggle=true inlineSelect=false
+  PASS  A69 — and it is a 44 px target in a corner the map controls leave free  — 44×44 at 346,810
+  PASS  A69 — and the 62 px it used to take are given back to the app  — --shell-foot 0px
+  PASS  A69 — a tap opens it, with the roles inside
+  PASS  A69 — ipad: the role switch is the bar it has always been  — toggle=false inlineSelect=true
+
+  44 passed, 0 failed  (chromium)
+
+exit=0
