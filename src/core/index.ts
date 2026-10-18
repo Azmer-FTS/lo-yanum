@@ -246,5 +246,6 @@ export * from './reachOrder'
 export * from './institutionDoc'
 // ★★ BH — retoucher une forme (pur).
 export * from './zoneEdit'
+export * from './path'
 // ★★ BF — la recherche globale (pure).
 export * from './search'

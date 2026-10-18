@@ -1,5 +1,5 @@
-import { defaultRing, notifyDerivedChange, regionRings, setRegionRings } from '@core/index'
-import type { LatLng, RegionId } from '@core/index'
+import { defaultRing, modelForRing, notifyDerivedChange, regionRings, setRegionRings } from '@core/index'
+import type { LatLng, PathModel, RegionId } from '@core/index'
 import { readSetting, writeSetting } from '../../storage/local'
 
 /**
@@ -28,6 +28,8 @@ import { readSetting, writeSetting } from '../../storage/local'
  *    region that contains nothing and silently empties every filter.
  */
 const KEY = 'lo-yanum:region-rings'
+/** ★★ BK — les tracés éditables (nœuds, poignées) des régions redessinées. */
+const PATHS_KEY = 'lo-yanum:region-paths'
 
 type Ring = Array<[number, number]>
 
@@ -106,9 +108,53 @@ export function saveRegionRing(id: RegionId, ring: LatLng[]): void {
 
 /** "שחזר ברירת מחדל" — delete the edit; the literal in `regions.ts` returns. */
 export function resetRegionRing(id: RegionId): void {
+  const paths = readPaths()
+  if (id in paths) {
+    delete paths[id]
+    writePaths(paths)
+  }
   const next = regionRings()
   delete next[id]
   setRegionRings(next)
   write(next)
   notifyDerivedChange()
+}
+
+// ---------------------------------------------------------------------------
+// ★★ BK — LE TRACÉ ÉDITABLE D'UNE RÉGION
+// ---------------------------------------------------------------------------
+
+function readPaths(): Record<string, unknown> {
+  try {
+    const raw = readSetting(PATHS_KEY)
+    if (!raw) return {}
+    const v = JSON.parse(raw) as unknown
+    return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {}
+  } catch {
+    return {}
+  }
+}
+
+function writePaths(next: Record<string, unknown>): void {
+  try {
+    writeSetting(PATHS_KEY, Object.keys(next).length === 0 ? null : JSON.stringify(next))
+  } catch {
+    /* Le tracé n'est pas perdu à l'écran ; il se reprendra en coins au prochain chargement. */
+  }
+}
+
+/**
+ * Le tracé à éditer pour une région : son modèle enregistré s'il redonne
+ * exactement l'anneau en vigueur, sinon l'anneau repris en coins.
+ */
+export function pathOf(id: RegionId): PathModel {
+  return modelForRing(ringOf(id), readPaths()[id]).model
+}
+
+/** Enregistrer une région redessinée : l'anneau (ce que tout le reste lit) ET son tracé. */
+export function saveRegionPath(id: RegionId, ring: LatLng[], model: PathModel): void {
+  const paths = readPaths()
+  paths[id] = model
+  writePaths(paths)
+  saveRegionRing(id, ring)
 }

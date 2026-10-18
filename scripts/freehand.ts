@@ -226,10 +226,11 @@ try {
     await page.locator('[data-testid="draw-grazing"]').click()
     await page.waitForTimeout(400)
 
-    const body = await page.locator('body').innerText()
+    /* ★★ BK — la forme s'ouvre dans l'éditeur de tracés, outil « יד חופשית » déjà choisi. */
     check(
-      'the banner says the map is now a drawing surface',
-      body.includes('ציור חופשי'),
+      'the editor opens on a new shape with « יד חופשית » chosen',
+      (await page.locator('[data-testid="shape-editor"]').getAttribute('data-tool')) === 'pencil' &&
+        (await page.locator('[data-testid="editor-tool-pencil"]').getAttribute('aria-checked')) === 'true',
     )
 
     const box = await page.locator('[role="application"]').first().boundingBox()
@@ -255,37 +256,26 @@ try {
       `${metresApart(before, after).toFixed(1)} m`,
     )
 
-    const traced = await page.locator('body').innerText()
+    /**
+     * ★★ BK — LE TRAIT REVENU À SON DÉPART EST UNE FORME FERMÉE, SIMPLIFIÉE EN
+     *    NŒUDS ÉDITABLES (coins aux virages, arrondis ailleurs) : elle est
+     *    écrite, et l'éditeur reste ouvert dessus pour la retoucher.
+     */
+    const editor = page.locator('[data-testid="shape-editor"]')
+    const nodes = Number(await editor.getAttribute('data-nodes'))
     check(
-      '★★ the stroke became a SIMPLIFIED polygon, not 57 vertices',
-      /הקו פושט ל־\d+ נקודות/.test(traced),
-      (traced.match(/הקו פושט ל־\d+ נקודות/) ?? ['<no read-out>'])[0],
-    )
-    const vertexCount = Number((traced.match(/הקו פושט ל־(\d+) נקודות/) ?? ['', '0'])[1])
-    check(
-      'and the count is a number somebody can edit by hand',
-      vertexCount >= 4 && vertexCount <= 40,
-      `${vertexCount} vertices`,
+      '★★ the stroke became a SIMPLIFIED closed shape, not 57 points',
+      (await editor.getAttribute('data-closed')) === '1' && nodes >= 4 && nodes <= 40,
+      `${nodes} nodes`,
     )
     check(
       '★★ the surface is calculated and shown, in dunams',
-      /[\d,]+ דונם/.test(traced),
-      (traced.match(/([\d,]+) דונם/) ?? ['<none>'])[0],
+      /[\d,]+ דונם/.test(await editor.innerText()),
+      ((await editor.innerText()).match(/([\d,]+) דונם/) ?? ['<none>'])[0],
     )
-
-    /**
-     * ★ AND THE VERTICES ARE GRIPS. PO point 9b's third condition is that
-     *   after simplification the shape goes into normal editing — so the draft
-     *   markers must be draggable, which is what MapLibre's own class says.
-     */
-    const grips = await page.evaluate(
-      () => document.querySelectorAll('.maplibregl-marker[aria-label="פינת אזור"]').length,
-    )
-    check(
-      '★ the simplified vertices are on the map as grips',
-      grips >= 4,
-      `${grips} vertex markers`,
-    )
+    const grips = await page.locator('[data-testid^="editor-node-"]').count()
+    check('★ the nodes are on the map as grips, one per node', grips === nodes, `${grips} grips`)
+    check('and it is now in editing, the selection tool back', (await editor.getAttribute('data-mode')) === 'edit' && (await editor.getAttribute('data-tool')) === 'select')
 
     await page.screenshot({ path: `${SHOTS}/${viewport.name}-traced.png` })
 
@@ -301,8 +291,8 @@ try {
     await page.keyboard.press('Escape')
     await page.waitForTimeout(600)
     check(
-      'Escape leaves the draft and brings the tool row back',
-      (await page.locator('[data-testid="draw-tools"]').count()) === 1,
+      'Escape leaves the editor and brings the tool row back',
+      (await page.locator('[data-testid="draw-tools"]').count()) === 1 && (await page.locator('[data-testid="shape-editor"]').count()) === 0,
     )
 
     const restBefore = await mapCentre(page)
@@ -344,7 +334,7 @@ try {
 
     // ---- 3. a bad stroke cancels cleanly ---------------------------------
     const zonesBefore = await page.evaluate(
-      () => document.querySelectorAll('[data-testid="zone-selected"]').length,
+      () => ((window as unknown as { __loYanumMap?: { getSource(id: string): { _data?: { features?: unknown[] } } | undefined } }).__loYanumMap?.getSource('zones')?._data?.features ?? []).length,
     )
     /**
      * ★ AND HERE IS THE STICKY PART, CHECKED RATHER THAN ASSUMED. Freehand is
@@ -363,20 +353,19 @@ try {
     await openTools(page)
     await page.locator('[data-testid="draw-boundary"]').click()
     await page.waitForTimeout(400)
-    const cancel = page.locator('[data-testid="freehand-cancel"]')
-    check('a בטל is offered before anything is committed', (await cancel.count()) === 1)
+    const cancel = page.locator('[data-testid="editor-done"]')
+    check('a way out (« סיום ») is offered before anything is drawn', (await cancel.count()) === 1)
     await cancel.click()
     await page.waitForTimeout(400)
-    const afterCancel = await page.locator('body').innerText()
     check(
-      '★ cancelling leaves no armed mode and no draft behind',
-      !afterCancel.includes('ציור חופשי — סמנו את הקו') &&
-        !/הקו פושט ל־\d+ נקודות/.test(afterCancel),
+      '★ leaving before drawing leaves no editor and no draft behind',
+      (await page.locator('[data-testid="shape-editor"]').count()) === 0 &&
+        (await page.locator('[data-testid="zone-draft-banner"]').count()) === 0,
     )
     check(
-      'and no zone was created by the abandoned stroke',
+      'and no zone was created',
       (await page.evaluate(
-        () => document.querySelectorAll('[data-testid="zone-selected"]').length,
+        () => ((window as unknown as { __loYanumMap?: { getSource(id: string): { _data?: { features?: unknown[] } } | undefined } }).__loYanumMap?.getSource('zones')?._data?.features ?? []).length,
       )) === zonesBefore,
     )
 

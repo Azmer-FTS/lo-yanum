@@ -829,6 +829,8 @@ export interface FarmZoneDraft {
   farmId: string
   kind: FarmZoneKind
   ring: LatLng[]
+  /** ★★ BK — le tracé éditable qui a produit `ring` (voir `FarmZone.path`). */
+  path?: unknown
 }
 
 /**
@@ -986,13 +988,20 @@ export function createFarmZone(draft: FarmZoneDraft): FarmZone | null {
   return zone
 }
 
-/** A drag knows the whole ring it produced; replacing it is the mutation. */
-export function updateFarmZoneRing(zoneId: string, ring: LatLng[]): boolean {
+/**
+ * A drag knows the whole ring it produced; replacing it is the mutation.
+ * ★★ BK — avec le tracé éditable qui l'a produit, quand l'éditeur l'a ; sans
+ * lui (un appelant d'avant BK), le modèle enregistré ne correspond plus à
+ * l'anneau : il est RETIRÉ, et la forme se reprendra en coins.
+ */
+export function updateFarmZoneRing(zoneId: string, ring: LatLng[], path?: unknown): boolean {
   const index = data.farmZones.findIndex((z) => z.id === zoneId)
   if (index === -1) return false
   /* ★★ BH — jamais une forme à deux sommets en base. */
   if (!isValidRing(ring)) return false
-  data.farmZones[index] = { ...data.farmZones[index], ring }
+  const { path: _old, ...rest } = data.farmZones[index]
+  void _old
+  data.farmZones[index] = path === undefined ? { ...rest, ring } : { ...rest, ring, path }
   remeasureFarm(data.farmZones[index].farmId)
   commit()
   return true

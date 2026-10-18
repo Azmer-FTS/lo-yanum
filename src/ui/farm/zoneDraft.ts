@@ -28,6 +28,11 @@ export interface ZoneDraft {
   zone: FarmZoneKind
   draft: LatLng[]
   traced?: true
+  /**
+   * ★★ BK — le TRACÉ du brouillon (nœuds, poignées : `core/path.ts`), ouvert.
+   * `draft` en reste la ligne densifiée, pour les lecteurs d'avant BK.
+   */
+  path?: unknown
   /** Instant du dernier sommet posé (ms). */
   at: number
 }
@@ -54,6 +59,7 @@ function parseOne(v: Partial<ZoneDraft> | null | undefined, fallbackId: string):
     zone: v.zone,
     draft,
     ...(v.traced ? { traced: true as const } : {}),
+    ...(v.path && typeof v.path === 'object' ? { path: v.path } : {}),
     at: typeof v.at === 'number' ? v.at : 0,
   }
 }

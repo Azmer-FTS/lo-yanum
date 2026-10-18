@@ -1225,8 +1225,8 @@ export function MissionWizardScreen() {
                 onCreate={createAnchorAt}
                 onMove={(id, position) => patchAnchorPoint(id, { position })}
                 zones={zones}
-                onZoneCreate={(kind, ring) =>
-                  farm && createFarmZone({ farmId: farm.id, kind, ring })
+                onZoneCreate={(kind, ring, path) =>
+                  farm && createFarmZone({ farmId: farm.id, kind, ring, path })
                 }
                 onZoneRingChange={updateFarmZoneRing}
                 onZoneDelete={(id) => {

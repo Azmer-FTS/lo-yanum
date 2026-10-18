@@ -65,6 +65,25 @@ async function openTools(page: Page): Promise<void> {
   await page.waitForTimeout(250)
 }
 
+/**
+ * ★★ BK (2026-10-18) — L'ÉDITEUR DE TRACÉS. Un trait revenu à son départ est
+ * déjà une forme FERMÉE (écrite) ; un tracé point par point se ferme par
+ * « סגירת הצורה ». Dans les deux cas l'éditeur reste ouvert sur la forme :
+ * « סיום » le referme.
+ */
+async function finishShape(page: Page): Promise<void> {
+  const ed = page.locator('[data-testid="shape-editor"]')
+  if ((await ed.count()) === 0) return
+  if ((await ed.getAttribute('data-closed')) === '0') {
+    await page.locator('[data-testid="editor-close-path"]').click()
+    await page.waitForTimeout(600)
+  }
+  if ((await page.locator('[data-testid="editor-done"]').count()) > 0) {
+    await page.locator('[data-testid="editor-done"]').click()
+    await page.waitForTimeout(400)
+  }
+}
+
 let passed = 0
 let failed = 0
 
@@ -355,9 +374,12 @@ try {
     await stroke(cdp, circle(box.x + box.width / 2, box.y + box.height / 2, Math.min(box.width, box.height) / 3))
     await page.waitForTimeout(900)
   }
-  const traced = await bodyText(page)
-  check('the stroke became a simplified ring', /הקו פושט ל־\d+ נקודות/.test(traced), (traced.match(/הקו פושט ל־\d+ נקודות/) ?? ['—'])[0])
-  await page.getByRole('button', { name: he.zone.closePolygon, exact: true }).first().click()
+  {
+    const ed = page.locator('[data-testid="shape-editor"]')
+    const n = Number(await ed.getAttribute('data-nodes'))
+    check('the stroke became a simplified closed shape (BK : écrite, l’éditeur dessus)', (await ed.getAttribute('data-closed')) === '1' && n >= 4 && n <= 60, `${n} nodes`)
+  }
+  await finishShape(page)
   await page.waitForTimeout(1500)
   check('the boundary joined the list', (await zoneRows(page).count()) === 1, `${await zoneRows(page).count()} rows`)
 
@@ -380,7 +402,7 @@ try {
       await page.waitForTimeout(350)
     }
   }
-  await page.getByRole('button', { name: he.zone.closePolygon, exact: true }).first().click()
+  await finishShape(page)
   await page.waitForTimeout(1500)
   check('the grazing area joined the list', (await zoneRows(page).count()) === 2, `${await zoneRows(page).count()} rows`)
 
@@ -439,7 +461,7 @@ try {
   await zoneRows(page).nth(1).click()
   await page.waitForTimeout(1200)
   await page.evaluate(() => window.scrollTo({ top: 0 }))
-  const grips = page.locator('.maplibregl-marker[aria-label*="פינת אזור"]')
+  const grips = page.locator('[data-testid^="editor-node-"]')
   check('the ring shows its grips', (await grips.count()) > 0, `${await grips.count()}`)
   /**
    * The grip nearest the map's centre: a vertex that landed next to the
@@ -464,7 +486,7 @@ try {
   const gx = grip.x + grip.width / 2
   const gy = grip.y + grip.height / 2
   console.log('    grip info: ' + JSON.stringify(await page.evaluate(() => {
-    const el = document.querySelector('.maplibregl-marker[aria-label*="פינת אזור"]') as HTMLElement
+    const el = document.querySelector('[data-testid^="editor-node-"]') as HTMLElement
     const r = el.getBoundingClientRect()
     const under = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
     return { pe: getComputedStyle(el).pointerEvents, cursor: el.style.cursor, under: under?.className, underTag: under?.tagName, rect: [r.x, r.y, r.width, r.height], scrollY: window.scrollY }
@@ -503,7 +525,7 @@ try {
     }
   }
   check('★ the ring in the store changed under the drag', ringBefore !== ringAfter)
-  await page.getByRole('button', { name: he.zone.doneEditing, exact: true }).first().click()
+  await page.locator('[data-testid="editor-done"]').click()
   await page.waitForTimeout(1500)
   const after = verticesInDb(boundary?.id).map((v) => `${v.lat},${v.lng}`).join(';')
   check('★ the moved vertex reached the database', after !== before && after.length > 0)
@@ -533,10 +555,11 @@ try {
   await page.waitForTimeout(400)
   {
     const box = await mapBox(page)
-    await stroke(cdp, circle(box.x + box.width * 0.75, box.y + box.height * 0.7, Math.min(box.width, box.height) / 7))
+    /* ★★ BK — plus haut qu'avant : le bas de la carte porte le panneau de l'éditeur pendant un tracé. */
+    await stroke(cdp, circle(box.x + box.width * 0.75, box.y + box.height * 0.4, Math.min(box.width, box.height) / 7))
     await page.waitForTimeout(900)
   }
-  await page.getByRole('button', { name: he.zone.closePolygon, exact: true }).first().click()
+  await finishShape(page)
   await page.waitForTimeout(1500)
   check('the third zone is on the list while offline', (await zoneRows(page).count()) === 3, `${await zoneRows(page).count()}`)
   const offlineBody = await bodyText(page)
@@ -581,10 +604,11 @@ try {
   await page.waitForTimeout(300)
   {
     const box = await mapBox(page)
-    await stroke(cdp, circle(box.x + box.width * 0.3, box.y + box.height * 0.72, Math.min(box.width, box.height) / 8))
+    /* ★★ BK — au-dessus du panneau de l'éditeur. */
+    await stroke(cdp, circle(box.x + box.width * 0.3, box.y + box.height * 0.42, Math.min(box.width, box.height) / 8))
     await page.waitForTimeout(600)
   }
-  await page.getByRole('button', { name: he.zone.closePolygon, exact: true }).first().click()
+  await finishShape(page)
   await page.waitForTimeout(800)
   check('the fourth zone is on the list, drawn during the hydration', (await zoneRows(page).count()) === 4, `${await zoneRows(page).count()}`)
   await page.waitForTimeout(9000)

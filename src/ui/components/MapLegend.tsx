@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 
 import { Icon } from './Icon'
 import { MapAttribution } from './MapAttribution'
-import { DeviceDiagnosticButton } from '../diagnostic/DeviceDiagnostic'
 import { MAP_LAYERS, SUB_LAYERS, setMapLayers, useMapLayers } from './mapLayers'
 import type { MapLayerKey } from './mapLayers'
 import { readBlockOpen, writeBlockOpen } from './primitives'
@@ -114,10 +113,10 @@ export function MapLegend({
           <div className="flex flex-col gap-1 [&>div]:!border-0 [&>div]:!bg-transparent [&>div]:!px-0 [&>div]:!py-0 [&>div]:!shadow-none [&>div]:!backdrop-blur-0 [&>ul]:gap-1">
             {children}
           </div>
-          {/* ★★ BI — « אבחון » : ce que CET appareil a en mémoire et dessine. */}
-          <div className="mt-2 border-t border-edge-subtle pt-1.5">
-            <DeviceDiagnosticButton className="min-h-8 text-micro text-accent-ink" />
-          </div>
+          {/* ★★ BK — le lien « אבחון » (BI) N'EST PLUS ICI : c'est un panneau de diagnostic
+              technique, et il s'ouvrait au pied de la légende de TOUTE carte, en pleine
+              édition d'une forme (docs/bk/diagnostic.md § 3). Il reste dans
+              הגדרות › אבחון המכשיר, « לתמיכה טכנית ». */}
         </div>
       )}
     </div>

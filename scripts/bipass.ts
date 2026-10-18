@@ -199,9 +199,17 @@ section('A501 — la surface : un seul nombre')
     const i = src.indexOf(`const ${name} = `)
     return i < 0 ? '' : src.slice(i, i + 400)
   }
-  check('A501 ★ chaque GESTE d’édition est écrit (pas seulement « סיום עריכה »)', fnBody('gesture').includes('commitRing(next)'))
-  check('A501 … chaque ANNULATION aussi', fnBody('undo').includes('commitRing(next)'))
-  check('A501 la barre et l’étiquette lisent la même fonction de surface', (src.match(/ringAreaDunams\(/g) ?? []).length >= 4 && !/turf|area\(/.test(src.replace(/ringAreaDunams\(/g, '')))
+  void fnBody
+  /* ★★ BK — l'édition est dans l'éditeur de tracés (`ui/editor/PathEditor.tsx`) : la règle de BI y est relue. */
+  const ed = readFileSync('src/ui/editor/PathEditor.tsx', 'utf8')
+  const edFn = (name: string) => {
+    const i = ed.indexOf(`const ${name} = `)
+    return i < 0 ? '' : ed.slice(i, i + 700)
+  }
+  check('A501 ★ chaque GESTE d’édition est écrit (pas seulement « סיום ») — `commit` passe par `persist`, qui écrit', edFn('commit').includes('persist(') && /if \(s\.mode === 'edit'\) \{\s*if \(next\.closed && next\.nodes\.length >= 3\) p\.onChange\(/.test(edFn('persist')))
+  check('A501 … chaque ANNULATION aussi (et chaque « refaire »)', edFn('undo').includes('persist(') && edFn('redo').includes('persist('))
+  check('A501 … et la carte d’une ferme l’envoie au magasin (`onZoneRingChange`)', /onChange=\{\(id, model, ring\) => onZoneRingChange\?\.\(id, ring, model\)\}/.test(src))
+  check('A501 la barre et l’étiquette lisent la même fonction de surface (la forme réelle, densifiée)', /pathAreaDunams\(model\)/.test(ed) && /ringAreaDunams\(editedZone\.ring\)/.test(src) && !/turf/.test(src + ed))
 }
 
 // ===========================================================================
@@ -233,8 +241,10 @@ section('A502 — le brouillon du tracé')
   check('A502 seul le geste nommé l’efface ; la clé part avec le dernier', draftMod.readZoneDrafts('farm-a').length === 0 && !mem.has(draftMod.zoneDraftKey('farm-a')))
   check('A502 une valeur d’un seul objet (forme de la première écriture) se lit encore', draftMod.parseZoneDrafts('{"zone":"grazing_area","draft":[{"lat":1,"lng":2}],"at":1}').length === 1)
   const src = readFileSync('src/ui/components/AnchorMap.tsx', 'utf8')
-  const clears = (src.match(/clearZoneDraft\(/g) ?? []).length
-  check('A502 trois effacements, tous nommés : polygone fermé, dernier sommet retiré, « מחיקת הטיוטה »', clears === 3 && /onZoneCreate\?\.\(drawing\.zone, ring\)[^]{0,200}clearZoneDraft\(farm\.id, draftIdRef\.current\)/.test(src))
+  const ed = readFileSync('src/ui/editor/PathEditor.tsx', 'utf8')
+  /* ★★ BK — l'éditeur dit « plus de brouillon » (`onDraft(…, null)`) en deux cas nommés : la forme FERMÉE, le dernier point retiré ;
+     la carte d'une ferme l'efface alors, et « מחיקת הטיוטה » / « ניקוי כל הטיוטות » confirmés effacent le reste. */
+  check('A502 trois effacements, tous nommés : forme fermée, dernier point retiré, « מחיקת הטיוטה » (et son « tout » confirmé)', /if \(next\.closed\) \{[^]{0,200}p\.onDraft\?\.\(s\.kind, s\.draftId, null\)/.test(ed) && /p\.onDraft\?\.\(s\.kind, s\.draftId, next\.nodes\.length > 0 \? next : null\)/.test(ed) && /else clearZoneDraft\(farm\.id, draftId\)/.test(src) && /confirmDiscard === 'all'\) for \(const d of storedDrafts\) clearZoneDraft/.test(src) && (src.match(/clearZoneDraft\(/g) ?? []).length === 3)
   check('A502 aucun bouton de tracé n’est bloqué par un brouillon (on recommence un trait raté)', !/disabled=\{storedDraft/.test(src))
   check('A502 le lien « לתיחום » n’arme pas un tracé neuf par-dessus un brouillon (la bande passe d’abord)', /!existing && readZoneDrafts\(farm\.id\)\.length === 0/.test(src))
   check('A502 la clé est déclarée locale dans la liste des réglages', sync.LOCAL_ONLY_KEYS.some((e) => e.key.includes('zone-draft')))
@@ -252,7 +262,10 @@ section('A503 — les branchements')
   const hooks = readFileSync('src/ui/settings/appliedHooks.ts', 'utf8')
   check('A503 une valeur arrivée d’un autre appareil est relue sans rechargement', hooks.includes('reloadMapLayers()'))
   const legend = readFileSync('src/ui/components/MapLegend.tsx', 'utf8')
-  check('A503 la légende ne prétend plus une synchronisation qui n’existait pas', !/synchronisé\s*\n?\s*\*?\s*avec le compte comme les autres réglages d'écran/.test(legend) && legend.includes('DeviceDiagnosticButton'))
+  check('A503 la légende ne prétend plus une synchronisation qui n’existait pas', !/synchronisé\s*\n?\s*\*?\s*avec le compte comme les autres réglages d'écran/.test(legend))
+  /* ★★ BK — « אבחון » a QUITTÉ la légende des cartes (docs/bk/diagnostic.md § 3) ; il reste dans הגדרות. */
+  const diag = readFileSync('src/ui/diagnostic/DeviceDiagnostic.tsx', 'utf8')
+  check('A503 ★ BK : la légende n’ouvre plus le diagnostic ; הגדרות l’ouvre toujours', !legend.includes('DeviceDiagnosticButton') && /export function DeviceDiagnosticSection[^]{0,600}<DeviceDiagnosticButton/.test(diag))
 }
 
 console.log(`\n  ${passed} PASS, ${failed} FAIL`)

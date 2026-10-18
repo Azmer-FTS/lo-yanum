@@ -40,6 +40,15 @@ import { ringAreaDunams } from '../src/core/geo'
  *         rend les douze, « סגור פוליגון » l'écrit ; « מחיקת הטיוטה » le jette
  *   A510  ★ la surface : après un sommet tiré, la barre, l'étiquette de la
  *         carte, la tuile « מדוד » et la base disent le même nombre
+ *
+ * ★★★ BK (2026-10-18) — RÉÉCRITE OÙ LA RÈGLE A CHANGÉ, PAS CONTOURNÉE :
+ *   · A508 — le lien « אבחון » N'EST PLUS au pied de la légende des cartes
+ *     (c'était le « panneau écrit n'importe comment » que le PO ouvrait en
+ *     pleine édition, docs/bk/diagnostic.md § 3) ; le panneau s'ouvre depuis
+ *     הגדרות. Sans fiche ouverte, il ne dit plus ce qu'une carte de ferme a
+ *     dessiné : la phrase est « אין חווה פתוחה », et c'est vérifié comme tel ;
+ *   · A509 / A510 — les formes se tracent et se retouchent dans l'éditeur de
+ *     tracés (`ui/editor/`) : mêmes intentions, nouveaux gestes.
  */
 
 const OUT = process.env.DIST ?? 'dist-biui'
@@ -221,27 +230,34 @@ await guard('A508', async () => {
   await seen(o.page)
   await o.page.locator('[data-testid="map-legend-toggle"]').first().click()
   await o.page.waitForTimeout(300)
+  check('A508 ★ BK : la légende de la carte n’offre plus « אבחון »', (await o.page.locator('[data-testid="diagnostic-open"]').count()) === 0)
+  await go(o.page, APP, '/coordinator/settings', 3500)
+  for (let i = 0; i < 40; i++) {
+    const closed = o.page.locator('main [data-testid^="block-"][aria-expanded="false"]')
+    if ((await closed.count()) === 0) break
+    await closed.first().click().catch(() => undefined)
+    await o.page.waitForTimeout(60)
+  }
   await o.page.locator('[data-testid="diagnostic-open"]').first().click()
   const dlg = o.page.locator('[data-testid="device-diagnostic"]')
   await dlg.waitFor()
   await o.page.waitForTimeout(2500)
   const row = (k: string) => o.page.locator(`[data-row="${k}"]`).getAttribute('data-value')
   const verdict = await o.page.locator('[data-testid="diagnostic-verdict"]').getAttribute('data-code')
-  check('A508 la phrase : « toutes les formes sont dessinées »', verdict === 'ok', String(verdict))
+  check('A508 ★ BK : ouvert depuis הגדרות, la phrase dit qu’aucune fiche n’est ouverte', verdict === 'no-farm', String(verdict))
   const running = String(await row('running'))
   const served = String(await row('served'))
   check('A508 la version qui TOURNE et celle qui est SERVIE, toutes deux lues', running.length > 6 && served.length > 6 && running.split(' · ')[0] === served.split(' · ')[0], `${running} | ${served}`)
   check('A508 la dernière relecture réussie est datée', /\d/.test(String(await row('lastRead'))), String(await row('lastRead')))
   check('A508 en mémoire : 2 formes, 60 sommets', String(await row('memory')).includes('2') && String(await row('memory')).includes('60'), String(await row('memory')))
   const farmRow = String(await row('farm'))
-  check('A508 la ferme ouverte : ses deux formes, 31 et 29 sommets', farmRow.includes(FARM) && farmRow.includes('31') && farmRow.includes('29'), farmRow)
-  check('A508 ce que la carte a reçu : 2 sur 2', String(await row('drawn')).startsWith('2 מתוך 2'), String(await row('drawn')))
+  check('A508 ★ BK : la ligne « ferme » dit qu’aucune n’est ouverte (plus de lecture de carte depuis הגדרות)', !farmRow.includes(FARM) && farmRow.length > 0, farmRow)
   check('A508 ★ et ce qui s’est passé sur CET appareil : les couches de formes rallumées par BI', /גבולות|מרעה/.test(String(await row('migration'))), String(await row('migration')))
   await o.page.screenshot({ path: `${SHOTS}/a508-diagnostic-1440.png` })
   await o.page.locator('[data-testid="device-diagnostic"] [data-testid="copy-button"]').click()
   await o.page.waitForTimeout(500)
   const copied = await o.page.evaluate(() => navigator.clipboard.readText()).catch(() => '')
-  check('A508 « העתקה » copie le relevé entier', copied.includes(running.split(' · ')[0]) && copied.includes(FARM) && copied.split('\n').length >= 15, `${copied.split('\n').length} lignes`)
+  check('A508 « העתקה » copie le relevé entier', copied.includes(running.split(' · ')[0]) && copied.split('\n').length >= 15, `${copied.split('\n').length} lignes`)
   check('A508 aucune erreur de page', o.errors.length === 0, o.errors.slice(0, 2).join(' | '))
   await o.ctx.close()
 })
@@ -320,7 +336,7 @@ await guard('A509', async () => {
   await o.page.locator('[data-testid="draw-boundary"]').click()
   const placed = await placeVertices(o.page, o.cdp, 12)
   check('A509 douze appuis sur le canevas', placed === 12, String(placed))
-  check('A509 douze sommets posés au doigt', (await o.page.getByText('12 פינות').count()) > 0)
+  check('A509 douze points posés au doigt (l’éditeur les compte)', (await o.page.locator('[data-testid="shape-editor"]').getAttribute('data-nodes')) === '12')
   check('A509 rien n’est écrit en base tant que le polygone n’est pas fermé', db.rows('zones').length === 0)
   /* L'appel qui entre, l'écran qui se verrouille : la page part sans rien demander. */
   await o.page.close({ runBeforeUnload: false })
@@ -334,7 +350,8 @@ await guard('A509', async () => {
   await r.page.locator('[data-testid="draw-tools-toggle"]').click()
   await r.page.waitForTimeout(250)
   await r.page.locator('[data-testid="draw-grazing"]').click()
-  check('A509 aucun bouton de tracé n’est bloqué par le brouillon : un tracé neuf commence', (await r.page.locator('[data-testid="draw-context-bar"]').count()) === 1)
+  await r.page.waitForTimeout(400)
+  check('A509 aucun bouton de tracé n’est bloqué par le brouillon : un tracé neuf commence', (await r.page.locator('[data-testid="shape-editor"][data-mode="new"]').count()) === 1)
   await placeVertices(r.page, r.cdp, 3, 60)
   await r.page.keyboard.press('Escape')
   await r.page.waitForTimeout(600)
@@ -345,11 +362,12 @@ await guard('A509', async () => {
   check('A509 le second jeté : le brouillon de douze revient en tête', (await banner.getAttribute('data-vertices')) === '12' && (await banner.getAttribute('data-drafts')) === '1')
   await r.page.locator('[data-testid="zone-draft-resume"]').click()
   await r.page.waitForTimeout(600)
-  check('A509 « המשך ציור » : les douze sommets sont là', (await r.page.getByText('12 פינות').count()) > 0)
-  await r.page.getByRole('button', { name: 'סגור פוליגון', exact: true }).first().click()
+  check('A509 « המשך ציור » : les douze points sont là', (await r.page.locator('[data-testid="shape-editor"]').getAttribute('data-nodes')) === '12')
+  await r.page.locator('[data-testid="editor-close-path"]').click()
   await r.page.waitForTimeout(2500)
   const zones = db.rows('zones').filter((z) => z.entity_id === FARM)
   check('A509 fermé : la forme est écrite, douze sommets', zones.length === 1 && dbRing(db, String(zones[0]?.id)).length === 12)
+  await r.page.locator('[data-testid="editor-done"]').click().catch(() => undefined)
   await r.page.reload({ waitUntil: 'load' })
   await r.page.waitForTimeout(5000)
   check('A509 … et le brouillon n’est plus proposé', (await r.page.locator('[data-testid="zone-draft-banner"]').count()) === 0)
@@ -394,12 +412,12 @@ await guard('A510', async () => {
   }, { lat: center.lat + 0.004, lng: center.lng + 0.005 - 0.0015 })
   await tap(o.cdp, centerPt.x, centerPt.y)
   await o.page.waitForTimeout(800)
-  check('A510 la forme est sélectionnée', (await o.page.locator('[data-testid="zone-selected"]').count()) === 1)
+  check('A510 la forme est sélectionnée', (await o.page.locator('[data-testid="shape-editor"][data-mode="edit"]').count()) === 1)
   const grip = await o.page.evaluate(() => {
     const box = document.querySelector('[role="application"]')!.getBoundingClientRect()
     const cx = box.left + box.width / 2
     const cy = box.top + box.height / 2
-    const all = [...document.querySelectorAll<HTMLElement>('.maplibregl-marker[data-marker-kind="vertex"][aria-label="פינת אזור"]')].map((e) => {
+    const all = [...document.querySelectorAll<SVGGElement>('[data-testid^="editor-node-"]')].map((e) => {
       const r = e.getBoundingClientRect()
       const x = r.left + r.width / 2
       const y = r.top + r.height / 2
@@ -410,10 +428,10 @@ await guard('A510', async () => {
   })
   await drag(o.cdp, o.page, grip, { x: grip.x - 70, y: grip.y + 50 })
   await o.page.waitForTimeout(1800)
-  const bar = await o.page.locator('[data-testid="zone-selected"]').innerText()
+  const bar = await o.page.locator('[data-testid="editor-summary"]').innerText()
   const barN = Number((/([\d,]+)\s*דונם/.exec(bar)?.[1] ?? '').replace(/,/g, ''))
   const labelN = await o.page.evaluate(() => {
-    const el = [...document.querySelectorAll<HTMLElement>('.maplibregl-marker')].find((e) => /דונם/.test(e.textContent ?? '') && !e.closest('[data-testid="zone-selected"]'))
+    const el = [...document.querySelectorAll<HTMLElement>('.maplibregl-marker')].find((e) => /דונם/.test(e.textContent ?? '') && !e.closest('[data-testid="shape-editor"]'))
     return Number(((el?.textContent ?? '').match(/([\d,]+)\s*דונם/)?.[1] ?? '').replace(/,/g, ''))
   })
   const baseN = Math.round(ringAreaDunams(dbRing(db, B)))

@@ -96,6 +96,13 @@ export type IconName =
   | 'region'
   | 'navigation'
   | 'info'
+  /* ★★ BK — l'éditeur de tracés : flèche de sélection, plume, main levée, coin, arrondi, remplacer. */
+  | 'pointer'
+  | 'penNib'
+  | 'freehand'
+  | 'nodeCorner'
+  | 'nodeSmooth'
+  | 'replace'
 
 type Props = SVGProps<SVGSVGElement> & { name: IconName; size?: number }
 
@@ -287,6 +294,29 @@ const PATHS: Record<IconName, ReactNode> = {
   ),
   /* La poignée : six points, ce qu'on saisit pour déplacer une ligne. */
   grip: <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" strokeWidth={3} />,
+  pointer: <path d="M6 3.5 18.5 12l-5.6 1.4 3.3 6.1-2.4 1.3-3.3-6.1L6 18.6V3.5Z" />,
+  penNib: (
+    <>
+      <path d="M12 3.5 18.5 12 14 20.5h-4L5.5 12 12 3.5Z" />
+      <path d="M12 3.5V11M10 20.5h4" />
+      <circle cx="12" cy="12.5" r="1.4" />
+    </>
+  ),
+  freehand: <path d="M3.5 16c2.5-6 5-6 6.5-2.5S14 18 16 12.5s3-6.5 4.5-6" />,
+  nodeCorner: <rect x="6.5" y="6.5" width="11" height="11" rx="1" />,
+  nodeSmooth: (
+    <>
+      <circle cx="12" cy="12" r="4.5" />
+      <path d="M3.5 12h4M16.5 12h4" />
+    </>
+  ),
+  replace: (
+    <>
+      <path d="M4.5 9a7.5 7.5 0 0 1 13.6-3.4L20 7.5" />
+      <path d="M20 3.5v4h-4M19.5 15a7.5 7.5 0 0 1-13.6 3.4L4 16.5" />
+      <path d="M4 20.5v-4h4" />
+    </>
+  ),
   book: (
     <>
       <path d="M4.5 5.5A2 2 0 0 1 6.5 3.5h12v15h-12a2 2 0 0 0-2 2v-15Z" />

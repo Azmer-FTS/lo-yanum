@@ -1,24 +1,18 @@
+import type maplibregl from 'maplibre-gl'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
-import {
-  ringAreaDunams,
-  ringCenter,
-  simplifyRing,
-  simplifyToleranceM,
-  readCoordinator,
-  regionById,
-  regionIsEdited,
-  regions,
-} from '@core/index'
-import type { LatLng, RegionId } from '@core/index'
+import { readCoordinator, regionIsEdited, regions, ringCenter } from '@core/index'
+import type { LatLng, PathModel, RegionId } from '@core/index'
 
 import { ChevronForward, Icon } from '../../components/Icon'
 import { MapView } from '../../components/MapView'
 import { ScrollRow } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
-import { ringOf, resetRegionRing, saveRegionRing } from '../../settings/regionEdits'
+import { PathEditor } from '../../editor/PathEditor'
+import type { EditorShape, StartRequest } from '../../editor/PathEditor'
+import { pathOf, ringOf, resetRegionRing, saveRegionPath } from '../../settings/regionEdits'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -33,15 +27,15 @@ import { ringOf, resetRegionRing, saveRegionRing } from '../../settings/regionEd
  * teaching map, and the person holding the map is the only one who can correct
  * them. This screen hands him the pencil.
  *
- * ★ TWO WAYS TO EDIT, AND THEY ARE THE SAME TWO THE FARM POLYGONS HAVE — same
- *   engine, same tolerance, same feel:
- *
- *     · every vertex is a grip he can drag, and a small grip on the middle of
- *       each edge inserts a vertex there. A long-press on a vertex removes it.
- *     · or he traces the whole outline in one stroke with the Pencil, and
- *       `simplifyRing` turns four hundred sampled points into a polygon —
- *       with the tolerance derived from the zoom the stroke was drawn at,
- *       because a pixel is worth a different number of metres at every zoom.
+ * ★★★ BK (2026-10-18) — ET C'EST L'ÉDITEUR DE TRACÉS QUI EST ICI, LE MÊME QUE
+ *   SUR LA CARTE D'UNE FERME (`ui/editor/PathEditor.tsx`). Avant BK, cet écran
+ *   avait sa propre grammaire, CONTRAIRE à celle de la ferme : un simple clic
+ *   sur un point le supprimait, et les poignées de milieu d'arête, identiques
+ *   aux points, en ajoutaient (`docs/bk/diagnostic.md` § 2). Désormais : un
+ *   toucher SÉLECTIONNE, « מחיקת הנקודה » ou Suppr supprime, la plume, la main
+ *   levée, les points arrondis et leurs poignées, annuler / refaire sans fin.
+ *   Les treize régions se recouvrent (7,5 % de leur surface, mesuré) : un
+ *   toucher là où plusieurs s'empilent demande laquelle on veut.
  *
  * ★ THE OTHER TWELVE STAY ON SCREEN, DIMMED. A boundary is a boundary WITH
  *   something: redrawing the Negev's northern edge without seeing where the
@@ -55,9 +49,6 @@ import { ringOf, resetRegionRing, saveRegionRing } from '../../settings/regionEd
  *    the back arrow.
  */
 
-/** How many steps back the pencil can go. Twenty gestures is a real session. */
-const HISTORY = 40
-
 export function RegionsEditScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -65,15 +56,17 @@ export function RegionsEditScreen() {
   const all = useCoreValue(() => regions())
 
   const [selected, setSelected] = useState<RegionId | null>(null)
-  const [draft, setDraft] = useState<LatLng[]>([])
-  const [past, setPast] = useState<LatLng[][]>([])
-  const [future, setFuture] = useState<LatLng[][]>([])
-  const [pencil, setPencil] = useState(false)
-  const [live, setLive] = useState<LatLng[] | null>(null)
-  /** The ring as it was when this region was opened — "האם השתנה". */
+  /** Ce que le PO a tracé et pas encore enregistré, pour la région ouverte. */
+  const [draft, setDraft] = useState<{ model: PathModel; ring: LatLng[] } | null>(null)
+  /** Le tracé tel qu'il était à l'ouverture — « האם השתנה ». */
   const opened = useRef<string>('')
-
-  const region = selected ? regionById(selected) : null
+  const [map, setMap] = useState<maplibregl.Map | null>(null)
+  const [busy, setBusy] = useState(false)
+  /** « בטל שינויים » repart du tracé enregistré : l'éditeur est remonté. */
+  const [epoch, setEpoch] = useState(0)
+  const [startReq, setStartReq] = useState<StartRequest | null>(null)
+  const [replaceAsk, setReplaceAsk] = useState(false)
+  const nonce = useRef(0)
 
   /**
    * ⚠️ COORDINATOR ONLY, AND IT IS A REDIRECT RATHER THAN A HIDDEN BUTTON.
@@ -81,132 +74,65 @@ export function RegionsEditScreen() {
    *    must land somewhere real, not on an editor for boundaries that decide
    *    which of his neighbours are counted with him.
    */
-  if (!coordinator) return null
-
-  const open = (id: RegionId): void => {
-    const ring = ringOf(id)
-    setSelected(id)
-    setDraft(ring)
-    setPast([])
-    setFuture([])
-    setPencil(false)
-    setLive(null)
-    opened.current = JSON.stringify(ring)
-  }
-
-  const push = (next: LatLng[]): void => {
-    setPast((p) => [...p, draft].slice(-HISTORY))
-    setFuture([])
-    setDraft(next)
-  }
-
-  const undo = (): void => {
-    setPast((p) => {
-      if (p.length === 0) return p
-      setFuture((f) => [draft, ...f].slice(0, HISTORY))
-      setDraft(p[p.length - 1])
-      return p.slice(0, -1)
-    })
-  }
-
-  const redo = (): void => {
-    setFuture((f) => {
-      if (f.length === 0) return f
-      setPast((p) => [...p, draft].slice(-HISTORY))
-      setDraft(f[0])
-      return f.slice(1)
-    })
-  }
-
-  const dirty = selected !== null && JSON.stringify(draft) !== opened.current
-  /**
-   * The live figure while a stroke is in flight, the draft's the rest of the
-   * time. "Surface vivante en dounams pendant le tracé."
-   */
-  const dunams = Math.round(ringAreaDunams(live && live.length > 2 ? live : draft))
-
-  /**
-   * The washes. The one being edited keeps its own colour at full strength;
-   * every other one is dimmed to a quarter, which is enough to read a seam
-   * against and not enough to argue with the line under the finger.
-   */
-  const polygons = useMemo(
+  const shapes: EditorShape[] = useMemo(
     () =>
-      all.map((r) => ({
-        id: `region-${r.id}`,
-        ring:
-          r.id === selected
-            ? draft
-            : r.ring.map(([lng, lat]) => ({ lat, lng })),
-        color:
-          r.id === selected
-            ? `rgb(${r.rgb})`
-            : `rgb(${r.rgb} / 0.28)`,
-        emphasis: r.id === selected,
-      })),
+      all.map((r) => {
+        const own = r.id === selected && draft
+        return {
+          id: r.id,
+          label: r.name,
+          color: `rgb(${r.rgb})`,
+          ring: own ? draft.ring : ringOf(r.id),
+          path: own ? draft.model : pathOf(r.id),
+        }
+      }),
     [all, selected, draft],
   )
 
-  /**
-   * ★ EVERY VERTEX IS A GRIP, AND SO IS EVERY EDGE'S MIDDLE. The same G15
-   *   pattern the farm zones use: a big grip moves a corner, a small one
-   *   between two corners becomes a corner when you touch it. Nothing else has
-   *   to be learned to go from a thirteen-point sketch to a real outline.
-   */
-  const markers = useMemo(() => {
-    if (!selected || pencil) return []
-    const out = draft.map((point, i) => ({
-      id: `v-${i}`,
-      position: point,
-      color: `rgb(${region?.rgb ?? '0 0 0'})`,
-      title: t('regionEdit.vertex', { n: i + 1 }),
-      kind: 'vertex' as const,
-      draggable: true,
-      onDragEnd: (position: LatLng) => {
-        push(draft.map((p, j) => (j === i ? position : p)))
-      },
-      onSelect: () => {
-        // A corner with three left is the last triangle; removing it would
-        // leave a region that cannot contain anything.
-        if (draft.length <= 3) return
-        push(draft.filter((_, j) => j !== i))
-      },
-    }))
-    const mids = draft.map((point, i) => {
-      const next = draft[(i + 1) % draft.length]
-      const mid = { lat: (point.lat + next.lat) / 2, lng: (point.lng + next.lng) / 2 }
-      return {
-        id: `m-${i}`,
-        position: mid,
-        color: `rgb(${region?.rgb ?? '0 0 0'} / 0.55)`,
-        title: t('regionEdit.addVertex'),
-        kind: 'vertex' as const,
-        onSelect: () => {
-          const next2 = [...draft]
-          next2.splice(i + 1, 0, mid)
-          push(next2)
-        },
-      }
-    })
-    return [...out, ...mids]
-  }, [draft, selected, pencil, region, t, push])
+  if (!coordinator) return null
+
+  const open = (id: string | null): void => {
+    setSelected(id as RegionId | null)
+    setDraft(null)
+    setReplaceAsk(false)
+    opened.current = id ? JSON.stringify(pathOf(id as RegionId)) : ''
+  }
+
+  const dirty = selected !== null && draft !== null && JSON.stringify(draft.model) !== opened.current
 
   const save = (): void => {
-    if (!selected || draft.length < 3) return
-    saveRegionRing(selected, draft)
-    opened.current = JSON.stringify(draft)
+    if (!selected || !draft || draft.ring.length < 3) return
+    saveRegionPath(selected, draft.ring, draft.model)
+    opened.current = JSON.stringify(draft.model)
+    setDraft(null)
+  }
+
+  const discard = (): void => {
+    setDraft(null)
+    setEpoch((n) => n + 1)
   }
 
   const restore = (): void => {
     if (!selected) return
     resetRegionRing(selected)
     open(selected)
+    setEpoch((n) => n + 1)
   }
 
-  const centre = useMemo(
-    () => (draft.length > 2 ? ringCenter(draft) : undefined),
-    [draft],
-  )
+  /**
+   * The washes. The one being edited is drawn by the editor, on top; every
+   * other one is dimmed to a quarter, which is enough to read a seam against
+   * and not enough to argue with the line under the finger.
+   */
+  const polygons = all.map((r) => ({
+      id: `region-${r.id}`,
+      /* La région ouverte : son tracé EN COURS (pas encore enregistré), sous le contour de l'éditeur. */
+      ring: r.id === selected && draft ? draft.ring : ringOf(r.id),
+      color: r.id === selected ? `rgb(${r.rgb})` : `rgb(${r.rgb} / 0.28)`,
+      emphasis: r.id === selected,
+  }))
+
+  const centre = selected ? ringCenter(ringOf(selected)) : undefined
 
   return (
     /**
@@ -244,8 +170,7 @@ export function RegionsEditScreen() {
         </div>
 
         {/* ★ Z4.4 — a swipable row like every other one: the same edge fade on
-            the side that has more, and the same chevron. It was a bare
-            `.scroll-row` div, so it had neither. */}
+            the side that has more, and the same chevron. */}
         <ScrollRow
           className="min-w-0"
           testId="region-chooser"
@@ -276,115 +201,79 @@ export function RegionsEditScreen() {
         <MapView
           ariaLabel={t('regionEdit.mapLabel')}
           polygons={polygons}
-          markers={markers}
+          markers={[]}
           center={centre}
           fit={false}
           zoom={selected ? 8 : 7}
-          freehand={
-            selected && pencil
-              ? {
-                  active: true,
-                  color: `rgb(${region?.rgb ?? '0 0 0'})`,
-                  onTrace: (points: LatLng[]) => setLive(points),
-                  onEnd: (points: LatLng[], zoom: number) => {
-                    setLive(null)
-                    if (points.length < 3) return
-                    /**
-                     * ★ THE SAME ENGINE AS A FARM POLYGON, and the tolerance
-                     *   comes from the zoom the stroke was DRAWN at — a screen
-                     *   pixel is 150 m at z9 and 5 m at z14, so a fixed metre
-                     *   figure would either shave a whole valley off or keep
-                     *   every tremor of the hand.
-                     */
-                    const tolerance = simplifyToleranceM(zoom, points[0].lat)
-                    push(simplifyRing(points, tolerance))
-                    setPencil(false)
-                  },
-                }
-              : undefined
-          }
+          onMapInstance={setMap}
+          quickPin={false}
         />
 
-        {selected === null ? (
-          <div className="pointer-events-none absolute inset-x-4 bottom-4 rounded-card bg-surface-overlay p-4 shadow-lift">
-            <p className="text-caption text-content-secondary">{t('regionEdit.pickHint')}</p>
-          </div>
-        ) : (
-          <div
-            data-testid="region-edit-bar"
-            className="absolute inset-x-3 bottom-3 flex flex-wrap items-center gap-2 rounded-card
-                       bg-surface-overlay p-3 shadow-lift"
-          >
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-caption font-semibold text-content-primary">
-                {region?.name}
-              </p>
-              <p className="muted numeric" data-testid="region-dunams">
-                {t('regionEdit.area', { dunams: dunams.toLocaleString('en-US') })}
-                {' · '}
-                {t('regionEdit.vertices', { count: draft.length })}
-              </p>
+        <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-col gap-2">
+          {selected === null && !busy && (
+            <div className="rounded-card bg-surface-overlay p-4 shadow-lift">
+              <p className="text-caption text-content-secondary">{t('regionEdit.pickHint')}</p>
             </div>
-
-            <button
-              type="button"
-              data-testid="region-pencil"
-              onClick={() => setPencil((v) => !v)}
-              aria-pressed={pencil}
-              className={`filter-pill ${pencil ? 'filter-pill-active' : ''}`}
-            >
-              <Icon name="edit" size={13} />
-              {t('regionEdit.redraw')}
-            </button>
-            <button
-              type="button"
-              data-testid="region-undo"
-              onClick={undo}
-              disabled={past.length === 0}
-              className="filter-pill disabled:opacity-40"
-            >
-              <Icon name="undo" size={13} />
-              {t('common.undo')}
-            </button>
-            <button
-              type="button"
-              data-testid="region-redo"
-              onClick={redo}
-              disabled={future.length === 0}
-              className="filter-pill disabled:opacity-40"
-            >
-              <Icon name="redo" size={13} />
-              {t('common.redo')}
-            </button>
-            <button
-              type="button"
-              data-testid="region-restore"
-              onClick={restore}
-              className="filter-pill"
-            >
-              <Icon name="history" size={13} />
-              {t('regionEdit.restore')}
-            </button>
-            <button
-              type="button"
-              data-testid="region-discard"
-              onClick={() => selected && open(selected)}
-              disabled={!dirty}
-              className="btn-secondary py-1.5 text-micro disabled:opacity-40"
-            >
-              {t('regionEdit.discard')}
-            </button>
-            <button
-              type="button"
-              data-testid="region-save"
-              onClick={save}
-              disabled={!dirty || draft.length < 3}
-              className="btn-primary py-1.5 text-micro disabled:opacity-40"
-            >
-              {t('regionEdit.save')}
-            </button>
-          </div>
-        )}
+          )}
+          {replaceAsk && selected && (
+            <div role="alertdialog" data-testid="region-replace-confirm" className="glass pointer-events-auto flex flex-wrap items-center gap-2 self-start rounded-card px-3.5 py-2.5 shadow-glow ring-1 ring-status-warn">
+              <span className="basis-full text-caption font-semibold text-content-primary">{t('regionEdit.replaceConfirm', { name: all.find((r) => r.id === selected)?.name ?? '' })}</span>
+              <button
+                type="button"
+                data-testid="region-replace-yes"
+                className="btn-primary min-h-11 py-1.5 text-micro"
+                onClick={() => {
+                  setReplaceAsk(false)
+                  nonce.current += 1
+                  setStartReq({ nonce: nonce.current, kind: 'region', tool: 'pen', replaceId: selected })
+                }}
+              >
+                {t('regionEdit.replaceYes')}
+              </button>
+              <button type="button" className="btn-secondary min-h-11 py-1.5 text-micro" onClick={() => setReplaceAsk(false)}>
+                {t('common.cancel')}
+              </button>
+            </div>
+          )}
+          <PathEditor
+            key={epoch}
+            map={map}
+            entityLabel={t('regionEdit.entity')}
+            shapes={shapes}
+            kinds={[{ kind: 'region', label: all.find((r) => r.id === selected)?.name ?? t('regionEdit.entity'), color: selected ? `rgb(${all.find((r) => r.id === selected)?.rgb ?? '0 0 0'})` : '#2563eb' }]}
+            activeId={selected}
+            onActiveChange={(id) => {
+              /* « סיום » ou une autre région : le tracé en cours est ENREGISTRÉ, jamais perdu en silence. */
+              if (id === selected) return
+              if (dirty) save()
+              open(id)
+            }}
+            start={startReq}
+            onBusyChange={setBusy}
+            onChange={(_id, model, ring) => setDraft({ model, ring })}
+            onCreate={(_kind, model, ring, replaceId) => {
+              if (!replaceId) return null
+              setSelected(replaceId as RegionId)
+              setDraft({ model, ring })
+              return replaceId
+            }}
+            onReplace={() => setReplaceAsk(true)}
+            extraActions={
+              <>
+                <button type="button" data-testid="region-restore" onClick={restore} className="btn-secondary min-h-11 py-1.5 text-micro">
+                  <Icon name="history" size={13} />
+                  {t('regionEdit.restore')}
+                </button>
+                <button type="button" data-testid="region-discard" onClick={discard} disabled={!dirty} className="btn-secondary min-h-11 py-1.5 text-micro disabled:opacity-40">
+                  {t('regionEdit.discard')}
+                </button>
+                <button type="button" data-testid="region-save" onClick={save} disabled={!dirty} className="btn-primary min-h-11 py-1.5 text-micro disabled:opacity-40">
+                  {t('regionEdit.save')}
+                </button>
+              </>
+            }
+          />
+        </div>
       </div>
     </div>
   )

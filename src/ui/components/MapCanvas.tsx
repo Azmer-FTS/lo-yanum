@@ -354,6 +354,13 @@ export interface MapViewProps {
      */
     onEnd: (points: LatLng[], zoom: number) => void
   }
+  /**
+   * ★★ BK — l'instance de la carte, pour l'éditeur de tracés (`ui/editor/`),
+   * qui dessine ses nœuds et ses poignées dans sa propre surcouche, au-dessus
+   * de la toile. Appelé au chargement, puis avec `null` quand la carte meurt
+   * (y compris à une reconstruction après une perte du contexte GL).
+   */
+  onMapInstance?: (map: maplibregl.Map | null) => void
 }
 
 const SIZE: Record<MarkerKind, number> = {
@@ -1026,6 +1033,7 @@ export default function MapCanvas({
   locate = true,
   freehand,
   quickPin = true,
+  onMapInstance,
 }: MapViewProps) {
   const { t } = useTranslation()
   /**
@@ -1217,6 +1225,8 @@ export default function MapCanvas({
   locateRef.current = locate
   const freehandRef = useRef(freehand)
   freehandRef.current = freehand
+  const onMapInstanceRef = useRef(onMapInstance)
+  onMapInstanceRef.current = onMapInstance
   const toolsRef = useRef<MapTools | null>(null)
 
   /**
@@ -1969,6 +1979,7 @@ export default function MapCanvas({
       ;(window as unknown as { __loYanumMap?: maplibregl.Map }).__loYanumMap = map
 
       installProgrammeLayers()
+      onMapInstanceRef.current?.(map)
     })
 
     // F2 — placing a point. `contextmenu` is the same gesture on a phone: a
@@ -2186,6 +2197,7 @@ export default function MapCanvas({
       }
       mapRef.current = null
       recordDrawnZones(null)
+      onMapInstanceRef.current?.(null)
     }
     // Mount-only, plus `glGeneration`: later prop changes are handled by the
     // effects below, which is far cheaper than tearing the GL context down.

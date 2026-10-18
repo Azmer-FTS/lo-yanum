@@ -377,6 +377,9 @@ await guard('A523', async () => {
   await network(A, false)
   await box.uncheck()
   await A.page.waitForTimeout(500)
+  /* ★★ BK — « אבחון » a quitté la légende des cartes : il s'ouvre depuis הגדרות (sans recharger, toujours hors ligne). */
+  await hashTo(A.page, '#/coordinator/settings', 1500)
+  await openBlocks(A.page)
   await A.page.locator('[data-testid="diagnostic-open"]').first().click()
   await A.page.locator('[data-testid="device-diagnostic"]').waitFor()
   await A.page.waitForTimeout(1500)

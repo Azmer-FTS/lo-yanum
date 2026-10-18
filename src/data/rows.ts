@@ -566,7 +566,8 @@ const farmZoneMapping: Mapping<FarmZone> = {
   table: 'zones',
   children: [{ table: 'zone_vertices', fk: 'zone_id' }],
   toRows: (z) => [
-    { table: 'zones', rows: [{ id: z.id, entity_id: z.farmId, kind: z.kind }] },
+    /* ★★ BK — `path` : le tracé éditable (jsonb, nullable). `null` l'efface quand l'anneau a été changé sans lui. */
+    { table: 'zones', rows: [{ id: z.id, entity_id: z.farmId, kind: z.kind, path: z.path ?? null }] },
     { table: 'zone_vertices', rows: ringRows('zone_id', z.id, z.ring) },
   ],
   fromRows: (p, kids): FarmZone => ({
@@ -574,6 +575,7 @@ const farmZoneMapping: Mapping<FarmZone> = {
     farmId: str(p.entity_id),
     kind: str(p.kind, 'farm_boundary') as FarmZone['kind'],
     ring: ringOf(kids.zone_vertices),
+    ...(p.path !== undefined && p.path !== null ? { path: p.path } : {}),
   }),
 }
 

@@ -32,6 +32,14 @@ import { FakeDb } from './fake-supabase'
  *         écrite côté serveur, vider le cache local (un navigateur neuf),
  *         relire : la MÊME forme ; la modifier : la modification est écrite,
  *         et relue à son tour
+ *
+ * ★★★ BK (2026-10-18) — RÉÉCRITE SUR L'ÉDITEUR DE TRACÉS, PAS CONTOURNÉE. Les
+ *   intentions de BH tiennent toutes ; trois gestes ont CHANGÉ par décision
+ *   (docs/bk/diagnostic.md) : l'appui long ne supprime plus un point (le PO
+ *   « clique sur un point et il ne l'enlève pas » : désormais un toucher le
+ *   SÉLECTIONNE et « מחיקת הנקודה » le supprime) ; le « en direct » se lit sur
+ *   le contour de l'éditeur (la carte reçoit chaque geste écrit) ; la forme
+ *   neuve se ferme en touchant son premier point (ou « סגירת הצורה »).
  */
 
 const OUT = process.env.DIST ?? 'dist-bhui'
@@ -131,26 +139,26 @@ async function drag(cdp: CDPSession, page: Page, from: { x: number; y: number },
   await page.waitForTimeout(500)
 }
 
-const selected = (page: Page) => page.locator('[data-testid="zone-selected"]')
-const vertexCount = async (page: Page) => Number((await selected(page).getAttribute('data-vertices')) ?? -1)
-/** Les poignées de la forme sélectionnée : sommets (emphase) et demi-poignées. */
+/* ★★ BK — l'éditeur de tracés : son panneau, ses points (une surcouche SVG). */
+const selected = (page: Page) => page.locator('[data-testid="shape-editor"][data-mode="edit"]')
+const vertexCount = async (page: Page) => Number((await page.locator('[data-testid="shape-editor"]').getAttribute('data-nodes').catch(() => null)) ?? -1)
+/** Les points (`vertex`) et les « + » des segments (`midpoint`) de la forme éditée. */
 const grips = (page: Page, kind: 'vertex' | 'midpoint') =>
   page.evaluate((k) => {
-    const label = k === 'vertex' ? 'פינת אזור' : 'הוספת פינה על הצלע'
-    return [...document.querySelectorAll<HTMLElement>(`.maplibregl-marker[data-marker-kind="vertex"][aria-label="${label}"]`)].map((e) => {
+    const sel = k === 'vertex' ? '[data-testid^="editor-node-"]' : '[data-testid^="editor-mid-"]'
+    return [...document.querySelectorAll<SVGGElement>(sel)].map((e) => {
       const r = e.getBoundingClientRect()
-      const dot = (e.firstElementChild as HTMLElement | null)?.getBoundingClientRect()
+      const shapes = [...e.querySelectorAll<SVGGraphicsElement>('rect, circle')].filter((c) => c.getAttribute('fill') !== 'transparent' && c.getAttribute('fill') !== 'none')
+      const dot = shapes[0]?.getBoundingClientRect()
       return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height, dot: dot ? Math.min(dot.width, dot.height) : 0 }
     })
   }, kind)
-/** La poignée la plus près du centre de la carte (loin des boutons des bords). */
+/** La poignée la plus près du centre de la carte (loin des boutons des bords), et qu'un doigt touche VRAIMENT. */
 async function centralGrip(page: Page, kind: 'vertex' | 'midpoint') {
   const box = await page.locator('[role="application"]').first().boundingBox()
-  /* Seulement les poignées qu'un doigt touche VRAIMENT (rien par-dessus :
-     ni l'épingle de la ferme, ni une autre poignée, ni une barre). */
   const free = await page.evaluate((k) => {
-    const label = k === 'vertex' ? 'פינת אזור' : 'הוספת פינה על הצלע'
-    return [...document.querySelectorAll<HTMLElement>(`.maplibregl-marker[data-marker-kind="vertex"][aria-label="${label}"]`)].map((e) => {
+    const sel = k === 'vertex' ? '[data-testid^="editor-node-"]' : '[data-testid^="editor-mid-"]'
+    return [...document.querySelectorAll<SVGGElement>(sel)].map((e) => {
       const r = e.getBoundingClientRect()
       const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
       return !!hit && (hit === e || e.contains(hit))
@@ -161,6 +169,8 @@ async function centralGrip(page: Page, kind: 'vertex' | 'midpoint') {
   const cy = (box?.y ?? 0) + (box?.height ?? 0) / 2
   return list.sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy))[0]
 }
+/** Le contour que l'éditeur dessine sous le doigt (le « en direct »). */
+const liveOutline = (page: Page) => page.locator('[data-testid="editor-shape"]').getAttribute('d').catch(() => null)
 
 async function openFarm(width: number, db: FakeDb, hash = `/coordinator/farms/${FARM}`) {
   const o = await open(width, { db, height: H, touch: true, init: { 'lo-yanum:map-mode:farm-detail': 'split' } })
@@ -186,22 +196,22 @@ await guard('A489', async () => {
   const p = await insideZone(o.page, db)
   await tap(o.cdp, p.x, p.y)
   await o.page.waitForTimeout(800)
-  check('A489 un appui sur la forme existante la SÉLECTIONNE', (await selected(o.page).count()) === 1 && (await selected(o.page).getAttribute('data-zone')) === ZONE)
-  check('A489 … aucun mode de dessin, aucune forme neuve', (await o.page.locator('[data-testid="draw-undo"]').count()) === 0 && db.rows('zones').length === zones0)
+  check('A489 un appui sur la forme existante la SÉLECTIONNE', (await selected(o.page).count()) === 1 && (await selected(o.page).getAttribute('data-shape')) === ZONE)
+  check('A489 … aucun tracé neuf, aucune forme neuve', (await o.page.locator('[data-testid="shape-editor"][data-mode="new"]').count()) === 0 && db.rows('zones').length === zones0)
   check('A489 entrer en édition ne recadre pas', sameCamera(cam0, await camera(o.page)))
   await o.page.screenshot({ path: `${SHOTS}/a489-forme-selectionnee-1032.png` })
   /* Re-toucher la forme (sélectionnée) n'en commence pas une non plus. */
   await tap(o.cdp, p.x, p.y)
   await o.page.waitForTimeout(600)
-  check('A489 re-toucher : toujours aucune forme neuve', db.rows('zones').length === zones0 && (await o.page.locator('[data-testid="draw-undo"]').count()) === 0)
-  check('A489 « צורה חדשה » est un bouton explicite', (await o.page.locator('[data-testid="zone-new"]').count()) + (await o.page.locator('[data-testid="zone-selected"]').count()) >= 1)
+  check('A489 re-toucher : toujours aucune forme neuve, toujours la même ouverte', db.rows('zones').length === zones0 && (await selected(o.page).getAttribute('data-shape')) === ZONE)
+  check('A489 « צורה חדשה » est un bouton explicite', (await o.page.locator('[data-testid="zone-new"]').count()) + (await selected(o.page).count()) >= 1)
   check('A489 aucune erreur de page', o.errors.length === 0, o.errors.slice(0, 2).join(' | '))
   await o.ctx.close()
 
   /* Le lien de la file « לתיחום » sur une ferme qui a DÉJÀ sa forme. */
   const { db: d2 } = bhDb()
   const q = await openFarm(W, d2, `/coordinator/farms/${FARM}?draw=farm_boundary`)
-  check('A489 `?draw=` sur une forme existante : elle est SÉLECTIONNÉE, rien n’est armé', (await selected(q.page).getAttribute('data-zone').catch(() => null)) === ZONE && (await q.page.locator('[data-testid="draw-undo"]').count()) === 0)
+  check('A489 `?draw=` sur une forme existante : elle est SÉLECTIONNÉE, rien n’est armé', (await selected(q.page).getAttribute('data-shape').catch(() => null)) === ZONE && (await q.page.locator('[data-testid="shape-editor"][data-mode="new"]').count()) === 0)
   const p2 = await insideZone(q.page, d2)
   await tap(q.cdp, p2.x, p2.y)
   await q.page.waitForTimeout(800)
@@ -211,7 +221,7 @@ await guard('A489', async () => {
   /* … et sur une ferme SANS forme, le même lien arme toujours le dessin (AD3.3). */
   const { db: d3 } = bhDb(false)
   const n = await openFarm(W, d3, `/coordinator/farms/${FARM}?draw=farm_boundary`)
-  check('A489 `?draw=` sur une ferme sans forme : le dessin est ARMÉ (AD3.3 gardé)', (await n.page.locator('[data-testid="draw-undo"]').count()) === 1 && (await selected(n.page).count()) === 0)
+  check('A489 `?draw=` sur une ferme sans forme : le dessin est ARMÉ (AD3.3 gardé)', (await n.page.locator('[data-testid="shape-editor"][data-mode="new"]').count()) === 1 && (await selected(n.page).count()) === 0)
   await n.ctx.close()
 })
 
@@ -231,12 +241,14 @@ await guard('A490', async () => {
   // A491 — glisser un sommet ; la forme suit EN DIRECT.
   const before = (await mapRings(o.page))[ZONE]
   const g = await centralGrip(o.page, 'vertex')
-  let during: Ring | undefined
+  const outline0 = await liveOutline(o.page)
+  let during: string | null = null
   await drag(o.cdp, o.page, { x: g.x, y: g.y }, { x: g.x - 60, y: g.y + 45 }, async () => {
-    during = (await mapRings(o.page))[ZONE]
+    during = await liveOutline(o.page)
   })
+  await o.page.waitForTimeout(1200)
   const after = (await mapRings(o.page))[ZONE]
-  check('A491 PENDANT le glissement, la forme a déjà changé (en direct)', !!during && !sameRing(during, before))
+  check('A491 PENDANT le glissement, le contour a déjà changé (en direct, sous le doigt)', !!during && during !== outline0)
   check('A491 lâché : un sommet a bougé, et un seul', !!after && !!before && after.length === before.length && after.filter((q, i) => q[0] !== before[i][0] || q[1] !== before[i][1]).length === 1)
   /* ★★ BI — la règle a changé (point 6 de BI) : le geste est ÉCRIT dès qu'il
      est fait, pour que la tuile « מדוד » et la base ne retardent plus sur la
@@ -250,51 +262,58 @@ await guard('A490', async () => {
   await drag(o.cdp, o.page, { x: m.x, y: m.y }, { x: m.x + 30, y: m.y + 30 })
   check('A492 tirer la demi-poignée : un sommet de plus', (await vertexCount(o.page)) === n0 + 1, `${n0} → ${await vertexCount(o.page)}`)
 
-  // A493 — l'appui long retire un sommet.
+  // A493 — ★★ BK : toucher un point le SÉLECTIONNE (même longuement) ; « מחיקת הנקודה » le retire.
   const n1 = await vertexCount(o.page)
   const g2 = await centralGrip(o.page, 'vertex')
   await longPress(o.cdp, o.page, g2.x, g2.y)
   await o.page.waitForTimeout(500)
-  check('A493 appui long : un sommet de moins', (await vertexCount(o.page)) === n1 - 1, `${n1} → ${await vertexCount(o.page)}`)
+  check('A493 ★ BK : un appui (même long) SÉLECTIONNE le point, ne le retire pas', (await vertexCount(o.page)) === n1 && (await o.page.locator('[data-testid="shape-editor"]').getAttribute('data-selected-node')) !== '')
+  const del = (await o.page.locator('[data-testid="editor-node-delete"]').boundingBox())!
+  await tap(o.cdp, del.x + del.width / 2, del.y + del.height / 2)
+  await o.page.waitForTimeout(500)
+  check('A493 « מחיקת הנקודה » : un sommet de moins', (await vertexCount(o.page)) === n1 - 1, `${n1} → ${await vertexCount(o.page)}`)
   await o.page.screenshot({ path: `${SHOTS}/a493-edition-1032.png` })
 
   // A495 — dix gestes, puis dix annulations.
   const open0 = (await mapRings(o.page))[ZONE]
-  const undo0 = Number(await selected(o.page).getAttribute('data-undo'))
+  const undo0 = Number(await o.page.locator('[data-testid="shape-editor"]').getAttribute('data-undo'))
   for (let k = 0; k < 10; k++) {
     const mm = await centralGrip(o.page, 'midpoint')
     await tap(o.cdp, mm.x, mm.y)
     await o.page.waitForTimeout(250)
   }
   const n10 = await vertexCount(o.page)
-  check('A495 dix gestes posés', Number(await selected(o.page).getAttribute('data-undo')) === undo0 + 10, `${n10} sommets`)
+  check('A495 dix gestes posés', Number(await o.page.locator('[data-testid="shape-editor"]').getAttribute('data-undo')) === undo0 + 10, `${n10} sommets`)
   for (let k = 0; k < 10; k++) {
-    await o.page.locator('[data-testid="zone-undo"]').click()
+    await o.page.locator('[data-testid="editor-undo"]').click()
     await o.page.waitForTimeout(120)
   }
+  await o.page.waitForTimeout(1200)
   check('A495 dix annulations de suite : la forme d’avant les dix gestes, exactement', sameRing((await mapRings(o.page))[ZONE], open0))
-  for (let k = 0; k < undo0; k++) await o.page.locator('[data-testid="zone-undo"]').click()
-  await o.page.waitForTimeout(200)
-  check('A495 … et jusqu’à la forme d’ouverture ; le bouton s’éteint', sameRing((await mapRings(o.page))[ZONE], before) && (await o.page.locator('[data-testid="zone-undo"]').isDisabled()))
+  for (let k = 0; k < undo0; k++) await o.page.locator('[data-testid="editor-undo"]').click()
+  await o.page.waitForTimeout(1200)
+  check('A495 … et jusqu’à la forme d’ouverture ; le bouton s’éteint', sameRing((await mapRings(o.page))[ZONE], before) && (await o.page.locator('[data-testid="editor-undo"]').isDisabled()))
 
   // A493 (bis) — à trois sommets, le retrait est refusé et l'écran le dit.
-  let guardN = 0
-  while ((await vertexCount(o.page)) > 3 && guardN++ < 10) {
+  const removeOne = async () => {
     const gg = await centralGrip(o.page, 'vertex')
-    await longPress(o.cdp, o.page, gg.x, gg.y)
+    await tap(o.cdp, gg.x, gg.y)
+    await o.page.waitForTimeout(300)
+    const b = await o.page.locator('[data-testid="editor-node-delete"]').boundingBox()
+    if (b) await tap(o.cdp, b.x + b.width / 2, b.y + b.height / 2)
     await o.page.waitForTimeout(350)
   }
-  const g3 = await centralGrip(o.page, 'vertex')
-  await longPress(o.cdp, o.page, g3.x, g3.y)
-  await o.page.waitForTimeout(400)
-  const notice = await o.page.locator('[data-testid="zone-notice"]').innerText().catch(() => '')
+  let guardN = 0
+  while ((await vertexCount(o.page)) > 3 && guardN++ < 10) await removeOne()
+  await removeOne()
+  const notice = await o.page.locator('[data-testid="editor-notice"]').innerText().catch(() => '')
   check('A493 à trois sommets : REFUSÉ, et l’écran dit pourquoi', (await vertexCount(o.page)) === 3 && notice.includes('3'), notice)
 
   // A496 — « סיום עריכה » enregistre.
   const shown = (await mapRings(o.page))[ZONE]
-  await o.page.locator('[data-testid="zone-done"]').click()
+  await o.page.locator('[data-testid="editor-done"]').click()
   await o.page.waitForTimeout(2000)
-  check('A496 « סיום עריכה » : la base porte la forme modifiée, sommet pour sommet', sameRing(dbRing(db, ZONE), shown), `${dbRing(db, ZONE).length} sommets en base`)
+  check('A496 « סיום » : la base porte la forme modifiée, sommet pour sommet', sameRing(dbRing(db, ZONE), shown), `${dbRing(db, ZONE).length} sommets en base`)
   check('A496 aucune erreur de page', o.errors.length === 0, o.errors.slice(0, 2).join(' | '))
   await o.ctx.close()
 })
@@ -307,7 +326,8 @@ await guard('A494', async () => {
   const p = await insideZone(o.page, db)
   await tap(o.cdp, p.x, p.y)
   await o.page.waitForTimeout(700)
-  await o.page.locator('[data-testid="zone-delete"]').click()
+  await o.page.locator('[data-testid="editor-menu"]').click()
+  await o.page.locator('[data-testid="editor-delete-shape"]').click()
   await o.page.waitForTimeout(400)
   const dialog = await o.page.locator('[role="dialog"]').last().innerText().catch(() => '')
   check('A494 une confirmation s’ouvre, et NOMME la forme', dialog.includes('גבול החווה') && dialog.includes(name), dialog.replace(/\s+/g, ' ').slice(0, 90))
@@ -346,8 +366,8 @@ await guard('A497', async () => {
     await tap(o.cdp, x, y)
     await o.page.waitForTimeout(250)
   }
-  check('A497 « צורה חדשה » : quatre appuis, quatre sommets posés', (await o.page.getByText('4 פינות').count()) > 0)
-  await o.page.getByRole('button', { name: 'סגור פוליגון', exact: true }).first().click()
+  check('A497 « צורה חדשה » : quatre appuis, quatre points posés', (await vertexCount(o.page)) === 4)
+  await o.page.locator('[data-testid="editor-close-path"]').click()
   await o.page.waitForTimeout(2500)
   const zones = db.rows('zones').filter((z) => z.entity_id === FARM)
   check('A497 la forme est écrite CÔTÉ SERVEUR (une ligne `zones`, quatre sommets)', zones.length === 1 && dbRing(db, String(zones[0]?.id)).length === 4)
@@ -366,11 +386,12 @@ await guard('A497', async () => {
   const inside = await project(r.page, { lng: c[0] + (ring[0][0] - c[0]) * 0.3, lat: c[1] + (ring[0][1] - c[1]) * 0.3 })
   await tap(r.cdp, inside.x, inside.y)
   await r.page.waitForTimeout(700)
-  check('A497 relue, elle se SÉLECTIONNE (c’est une forme existante)', (await selected(r.page).getAttribute('data-zone').catch(() => null)) === id)
+  check('A497 relue, elle se SÉLECTIONNE (c’est une forme existante)', (await selected(r.page).getAttribute('data-shape').catch(() => null)) === id)
   const g = await centralGrip(r.page, 'vertex')
   await drag(r.cdp, r.page, { x: g.x, y: g.y }, { x: g.x + 50, y: g.y - 40 })
+  await r.page.waitForTimeout(1200)
   const edited = (await mapRings(r.page))[id]
-  await r.page.locator('[data-testid="zone-done"]').click()
+  await r.page.locator('[data-testid="editor-done"]').click()
   await r.page.waitForTimeout(2500)
   check('A497 la MODIFICATION est écrite côté serveur', !sameRing(dbRing(db, id), ring) && sameRing(dbRing(db, id), edited))
   await r.ctx.close()

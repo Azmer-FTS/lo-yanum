@@ -852,6 +852,13 @@ export interface FarmZone {
   kind: FarmZoneKind
   /** Vertex ring, implicitly closed — the last vertex joins the first. */
   ring: LatLng[]
+  /**
+   * ★★ BK — le TRACÉ ÉDITABLE dont `ring` est la forme réelle (nœuds, coins ou
+   * arrondis, poignées : `core/path.ts`). Absent pour une forme d'avant BK, ou
+   * illisible : l'éditeur reprend alors `ring` en coins (`modelForRing`). Toutes
+   * les mesures lisent `ring`, jamais ceci.
+   */
+  path?: unknown
 }
 
 // ---------------------------------------------------------------------------

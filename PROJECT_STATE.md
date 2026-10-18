@@ -104,6 +104,35 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BK — CHANTIER 2 : L'ÉDITEUR DE TRACÉS** (2026-10-18). Second commit de BK.
+  UNE migration, appliquée par le MCP AVANT le déploiement :
+  `20261018000100_bk_zones_path.sql` (colonne `zones.path` jsonb, nullable ;
+  MCP `20261017234659`) ; `repair` + jalon faits, `armigrations` 57/57.
+  Récit : `ETAT.md` § BK chantier 2 ; diagnostic d'avant :
+  `docs/bk/diagnostic.md` ; gestes → portes : `docs/bk/editeur.md` ; portes :
+  `docs/bk/portes-c2-local.md`.
+  - **Décisions (permanentes)** :
+    · UN éditeur (`src/ui/editor/PathEditor.tsx`) pour régions, limites,
+      pâturages ; le modèle pur est `src/core/path.ts` ;
+    · le TRACÉ (nœuds, poignées) est rangé à côté de la FORME RÉELLE (anneau
+      densifié) : `zones.path`, `lo-yanum:region-paths` ; toutes les mesures
+      lisent l'anneau ; le tracé n'est repris que s'il redonne l'anneau à
+      10⁻⁹ près, sinon l'anneau en coins (`modelForRing`) ;
+    · toucher un point le SÉLECTIONNE (plus jamais il ne le supprime ; l'appui
+      long de BH n'existe plus) ; supprimer : bouton ou Suppr/⌫ ;
+    · plusieurs formes sous le doigt → un CHOIX nommé, la plus petite d'abord ;
+    · « אבחון » n'est plus sur les cartes (seulement הגדרות) ;
+    · l'ouverture d'une forme ne recadre pas (BF/BH) ; chaque geste est écrit (BI).
+  - **Non couvert** : les zones de menace (ancien outil) ; la touche Entrée
+    (fermer) existe sans porte.
+  - **Questions au PO** : (1) le diagnostic doit-il quitter AUSSI הגדרות ? (il
+    y reste « לתמיכה טכנית », car BI/BJ s'en servent pour recevoir un relevé) ;
+    (2) voulez-vous que les zones de menace passent sur le même éditeur ?
+    (3) l'accroche aux routes est désactivée par défaut : la garder ainsi ?
+  - Reprise : `bun run bkedit && bun run bkpass && bun run bipass` ;
+    `bun run bkeditui` (≈ 15 min) ;
+    `BASE_URL=https://azmer-fts.github.io/lo-yanum bun run bkeditui` (déployé).
+
 - **BK — CHANTIER 1 : LES DOUZE ARBITRAGES DE BJ, APPLIQUÉS** (2026-10-18).
   Branche `main`. Aucune migration. Commit séparé (le chantier 2 — l'éditeur de
   tracés — vient dans un second commit). Récit : `ETAT.md` § BK (en tête) ;

@@ -1,5 +1,75 @@
 # לא ינום — ETAT
 
+> 🏁 **BK (chantier 2) — UN VRAI ÉDITEUR DE TRACÉS, LE MÊME PARTOUT. 2026-10-18.**
+>
+> « Très compliqué à éditer. Plusieurs formes l'une par-dessus l'autre, je ne
+> sais pas comment en supprimer une. Quand je clique sur un point, il ne
+> l'enlève pas. Un panneau s'ouvre, c'est écrit n'importe comment. » — le PO
+>
+> **Diagnostic d'abord** (`docs/bk/diagnostic.md`, écrit avant toute
+> correction) : deux éditeurs à grammaires CONTRAIRES (régions : un clic
+> supprime, et les « + » ressemblent aux points ; ferme : un clic ne fait rien,
+> seul un appui long de 600 ms supprime) ; aucune notion de point
+> sélectionné ; sur la ferme réelle `farm-ak1-11`, la limite (90 dounams) est
+> ENTIÈREMENT dans le pâturage (5 042) et un toucher sur elle choisit le
+> pâturage 7 fois sur 8 (0 fois la limite) ; les 13 régions se recouvrent
+> (7,5 %) ; 0 région jamais enregistrée ; et le « panneau » le plus probable
+> est le diagnostic de BI/BJ (au pied de toute légende), dont l'ouverture est
+> dans le journal du serveur pendant la séance du PO (20 h 45 UTC).
+>
+> **Ce qui change.**
+> - **Deux représentations liées** (`src/core/path.ts`, pur) : le TRACÉ
+>   (nœuds coin/arrondi, poignées, ouvert/fermé) et la FORME RÉELLE (anneau
+>   densifié, qui seule est mesurée et dessinée). Une arête entre deux coins
+>   n'est pas densifiée : une forme d'avant BK se reprend en coins, sommet
+>   pour sommet. Le tracé est rangé à côté de l'anneau — `zones.path`
+>   (migration `20261018000100`, MCP `20261017234659`, additive, nullable) et
+>   `lo-yanum:region-paths` (compte) — et n'est repris que s'il redonne
+>   exactement l'anneau (sinon l'anneau gagne, en coins).
+> - **Un seul éditeur** (`src/ui/editor/PathEditor.tsx`) pour la carte d'une
+>   ferme (limite, pâturages ; fiche et assistant de mission) et l'écran des
+>   régions. Une surcouche SVG dans le conteneur de la carte, HORS de sa
+>   toile : un doigt posé sur un point n'atteint jamais MapLibre. Toucher un
+>   point le SÉLECTIONNE ; « מחיקת הנקודה » / Suppr / ⌫ le supprime ; deux
+>   touchers l'arrondissent (poignées alignées, l'autre garde sa longueur) ;
+>   le « + » creux d'un segment ajoute un point (de Casteljau : la courbe ne
+>   bouge pas) ; ✥ déplace la forme ; outils « בחירה », « עט » (toucher = point,
+>   toucher tiré = point arrondi, premier point = fermer), « יד חופשית » (un
+>   trait → des points ; sur une forme, un trait d'un point à un autre en
+>   remplace la portion) — changeables à tout moment ; annuler / refaire 500
+>   gestes, ⌘Z / ⇧⌘Z / Ctrl+Y ; chaque geste est ÉCRIT (règle de BI).
+> - **Les superpositions** : la forme éditée est dessinée par-dessus ; un
+>   toucher là où plusieurs formes s'empilent ouvre un CHOIX qui les nomme, la
+>   plus petite d'abord ; le panneau liste les formes de l'entité ; supprimer
+>   une forme (confirmation qui la nomme) ; « שרטוט מחדש » (la nouvelle remplace
+>   l'ancienne une fois fermée) ; « ניקוי כל הטיוטות » (brouillons d'appareil,
+>   confirmé, jamais une forme enregistrée).
+> - **Le panneau** : l'entité, la forme, les points, la surface, les actions.
+>   Le lien « אבחון » a QUITTÉ les légendes de carte (il reste dans הגדרות,
+>   « לתמיכה טכנית »).
+> - **Au doigt** : cibles de 44 px, points visibles de 16 px (BH) ; une
+>   poignée saisie ne fait jamais défiler la page (`touchstart` non passif) ;
+>   ⛔ un geste ANNULÉ par le navigateur (`pointercancel`, coordonnées 0,0)
+>   n'est plus traité comme un lâcher — il aurait posé le point au coin de la
+>   carte (trouvé en sonde) ; deux doigts en mode plume = un pincement.
+> - **L'accroche aux routes** : possible sans rien télécharger — la couche
+>   `roads` des tuiles déjà chargées (aussi en fond satellite). Option
+>   « הצמדה לכבישים », 16 px, géométrie du zoom 14.
+> - **Non couvert, dit** : les zones de menace gardent l'ancien outil ;
+>   l'ouverture d'une forme ne recadre pas la carte (BF/BH).
+>
+> **Aucune perte** : les 3 formes réelles (17, 31, 23 sommets) n'ont pas été
+> touchées par la migration (`path` nul) ; ouvrir une forme sans geste n'écrit
+> rien (`bkeditui` A563). Épreuve sur la base réelle, transaction ANNULÉE :
+> insertion + modification de `path` sous l'identité du PO (RLS) → 0 ligne
+> restée.
+>
+> **Portes** : `bkedit` 51 (pure), `bkeditui` 150 (chaque geste, souris ET
+> doigt, écran ET base). Réécrites (la règle a changé) : `bhui` (A491 « en
+> direct » sur le contour, A493 sélectionner puis supprimer), `biui` (A508
+> diagnostic depuis הגדרות, A509/A510 sur l'éditeur), `bipass` A501–A503,
+> `freehand` et `zones` (CI). Tableau geste → porte : `docs/bk/editeur.md`.
+
 > 🏁 **BK (chantier 1) — LES DOUZE ARBITRAGES DE BJ, APPLIQUÉS. 2026-10-18.**
 >
 > Le PO a tranché les douze entrées que BJ avait laissées « à arbitrer ».

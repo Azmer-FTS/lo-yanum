@@ -46,6 +46,8 @@
     "bjguard": "bun run scripts/bjguard.ts",
     "bjpass": "bun run scripts/bjpass.ts",
     "bjui": "bun run scripts/bjui.ts",
+    "bkedit": "bun run scripts/bkedit.ts",
+    "bkeditui": "bun run scripts/bkeditui.ts",
     "bkpass": "bun run scripts/bkpass.ts",
     "bkui": "bun run scripts/bkui.ts",
     "azcaptures": "bun run scripts/azcaptures.ts",

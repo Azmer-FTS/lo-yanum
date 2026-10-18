@@ -1183,10 +1183,17 @@ export function FarmDetailScreen() {
       }}
       onMove={(id, position) => patchAnchorPoint(id, { position })}
       zones={zones}
-      onZoneCreate={(kind, ring) =>
-        createFarmZone({ farmId: farm.id, kind, ring })
+      onZoneCreate={(kind, ring, path) =>
+        createFarmZone({ farmId: farm.id, kind, ring, path })
       }
       onZoneRingChange={updateFarmZoneRing}
+      /* ★★ BK — « שרטוט מחדש » : la nouvelle forme, fermée, prend la place de l'ancienne
+         (le PO l'a confirmé avant de tracer ; l'ancienne reste tant que la nouvelle n'est pas fermée). */
+      onZoneReplace={(oldId, kind, ring, path) => {
+        const made = createFarmZone({ farmId: farm.id, kind, ring, path })
+        if (made) deleteFarmZoneChecked(oldId)
+        return made
+      }}
       onZoneDelete={(id) => {
         /* ★★ BH — la confirmation NOMME la forme (« גבול החווה · X »). */
         const z = zones.find((x) => x.id === id)
