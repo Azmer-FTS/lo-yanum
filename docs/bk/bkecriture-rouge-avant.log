@@ -11,18 +11,18 @@
 
   A621 · A622 · A623 — une forme : la panne au milieu, le second profil, la relance seule
   ---------------------------------------------------------------------------------------
-  PASS  A621 départ : la limite a 12 sommets en base, à l’écran de A et de B
+  PASS  A621 départ : la limite a 12 sommets en base, à l’écran de A et de B  — base 12 · A 12 (carte chargée, 2 forme(s), #/coordinator/farms/farm-ak1-11) · B 12 (carte chargée, 2 forme(s), #/coordinator/farms/farm-ak1-11) · erreurs B 
   FAIL  A621 ★ la panne au milieu laisse la forme ENTIÈRE en base, à l’ANCIENNE position  — 0 sommet(s) en base
   PASS  A621 … et A garde à l’écran la nouvelle position (12 sommets)
-  FAIL  A622 ★ le second profil, relisant pendant l’attente, ne voit PAS 0 point : la forme entière, ancienne position  — 0 sommet(s)
-  FAIL  A623 ★ la boîte d’envoi a rejoué SEULE, en moins de 10 s (ni rechargement, ni « online »)  — rien après 10 s · 1 essai(s)
+  FAIL  A622 ★ le second profil, relisant pendant l’attente, ne voit PAS 0 point : la forme entière, ancienne position  — 0 sommet(s) · carte de B prête · A avait déjà rejoué
+  FAIL  A623 ★ la boîte d’envoi a rejoué SEULE après trois échecs, en moins de 20 s (ni rechargement, ni « online »)  — rien après 20 s · 1 essai(s)
   FAIL  A623 … la base porte la NOUVELLE position, 12 sommets
   FAIL  A622 … puis B relit la nouvelle forme, entière
   PASS  A621 aucune erreur de page
 
   A624 — la relance : croissante, bornée, une à la fois, éteinte au succès
   ------------------------------------------------------------------------
-  PASS  A624 un second geste pendant l’attente ne part pas : il rejoint la boîte d’envoi  — 1 → 1 essai(s), geste fini à 0.9 s
+  PASS  A624 un second geste pendant l’attente ne part pas : il rejoint la boîte d’envoi  — 1 → 1 essai(s), geste fini 0.8 s après l’échec
   FAIL  A624 ★ trois échecs, puis le succès — SANS rechargement ni « online »  — 1 essai(s) ; écarts  s
   FAIL  A624 ★ les délais CROISSENT (≈ 2, 4, 8 s)
   FAIL  A624 … et la base porte le DERNIER geste

@@ -108,8 +108,8 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
   (2026-10-18). Branche `main`. UNE migration, appliquée par le MCP AVANT le
   déploiement : `20261018000200_bk_write_aggregate.sql` (MCP
   `20261018110736`) ; `repair` + jalon faits, `armigrations` 58/58.
-  Commits : `e9838b2` (la mesure), puis le correctif (ce commit), puis la fin
-  de passe (déployé). Récit : `ETAT.md` § « BK — transaction » (en tête) ;
+  Commits : `e9838b2` (la mesure), `5781fba` (le correctif — SERVI :
+  `version.json` = 5781fba), puis la fin de passe (porte affinée, déployé). Récit : `ETAT.md` § « BK — transaction » (en tête) ;
   `docs/bk/ecriture-transaction.md` ; mesure d'avant :
   `docs/bk/ecriture-non-transactionnelle.md`.
   - **Décisions (permanentes)** :
@@ -134,6 +134,9 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
     intactes après la migration.
   - **Porte** : `bkecriture` (A620–A626) ROUGE avant (10/30, exit 1), VERTE
     après (30/30) ; batterie entière verte (bkeditui 152, A557 non assouplie).
+  - **Déployé `5781fba`, vert** : bkeditui 152 (A557 souris ET doigt),
+    settings 44 (`/demo`), bkecriture 30 ; base réelle : 4 formes intactes,
+    aucune forme sans sommet.
   - ⚠️ **Une autre session (BL) travaille dans le dépôt principal** : deux
     commits LOCAUX (`7c0fafe`, `b32c418`) bâtis sur `253ae7e`, qui réécrivent
     aussi `settings` A53 et `touch` et corrigent « שרטוט מחדש » à sa façon —

@@ -42,7 +42,7 @@ import type { LatLng } from '../src/core/index'
  *   A622  un second profil qui relit pendant l'attente ne voit JAMAIS 0 point :
  *         l'ancienne forme entière ; puis la nouvelle, une fois rejouée
  *   A623  la boîte d'envoi rejoue SEULE — sans rechargement, sans `online` —
- *         en moins de N secondes ; la base porte alors la nouvelle position
+ *         après trois échecs, en moins de 20 s ; la base porte alors la nouvelle position
  *   A624  la relance : délais CROISSANTS et bornés, un seul essai à la fois,
  *         un second geste remplace l'entrée, plus rien après le succès
  *   A625  une FICHE DE FERME (contacts, engagements) : une panne au milieu ne
@@ -106,10 +106,19 @@ const ringB = (db: FakeDb) => verts(db, 'zone_vertices', 'zone_id', B)
 const sameRing = (a: LatLng[], b: LatLng[]) => a.length === b.length && a.every((p, i) => Math.abs(p.lat - b[i].lat) < 1e-12 && Math.abs(p.lng - b[i].lng) < 1e-12)
 
 /** Les écritures qui partent (l'ancien insert PostgREST OU la RPC), datées. */
+const WRITE = /\/rest\/v1\/(rpc\/write_aggregate|zone_vertices|entity_contacts|threat_zone_vertices)/
 function watchWrites(ctx: BrowserContext): number[] {
   const at: number[] = []
   ctx.on('request', (r) => {
-    if (r.method() === 'POST' && /\/rest\/v1\/(rpc\/write_aggregate|zone_vertices|entity_contacts|threat_zone_vertices)/.test(r.url())) at.push(Date.now())
+    if (r.method() === 'POST' && WRITE.test(r.url())) at.push(Date.now())
+  })
+  return at
+}
+/** L'heure de chaque RÉPONSE en échec : c'est elle qui arme la relance (2 s plus tard). */
+function watchFailures(ctx: BrowserContext): number[] {
+  const at: number[] = []
+  ctx.on('response', (r) => {
+    if (r.request().method() === 'POST' && WRITE.test(r.url()) && r.status() >= 400) at.push(Date.now())
   })
   return at
 }
@@ -123,6 +132,26 @@ const screenRing = (page: Page, id: string) =>
     const ring = f.geometry.coordinates[0].slice(0, -1)
     return { n: ring.length, lat: ring[0]?.[1] ?? null }
   }, id)
+
+/**
+ * La carte de cette page montre-t-elle les formes de la ferme ? (le pâturage `G` est TOUJOURS là.)
+ * ★ Sans cette attente, une relecture sur le déployé était lue avant que la carte ne soit publiée :
+ *   « 0 point » alors que la forme était entière en base (A622, 1 fois sur 3 au rejeu de 5781fba).
+ */
+async function mapShows(page: Page, ms = 15_000): Promise<boolean> {
+  const t0 = Date.now()
+  while (Date.now() - t0 < ms) {
+    const ok = await page
+      .evaluate((g) => {
+        const m = (window as unknown as { __loYanumMap?: { getSource(id: string): { _data?: { features: Array<{ id?: string; properties?: Record<string, unknown> }> } } | undefined } }).__loYanumMap
+        return (m?.getSource('zones')?._data?.features ?? []).some((f) => String(f.properties?.id ?? f.id ?? '') === g)
+      }, G)
+      .catch(() => false)
+    if (ok) return true
+    await page.waitForTimeout(200)
+  }
+  return false
+}
 
 async function project(page: Page, p: LatLng) {
   return page.evaluate((q) => {
@@ -221,9 +250,16 @@ await guard('A621', async () => {
   await openFarm(a)
   await openFarm(b)
   const before = ringB(db)
-  check('A621 départ : la limite a 12 sommets en base, à l’écran de A et de B', before.length === 12 && (await screenRing(a.page, B)).n === 12 && (await screenRing(b.page, B)).n === 12)
+  const seen = async (p: Page) => p.evaluate(() => {
+    const m = (window as unknown as { __loYanumMap?: { getSource(id: string): { _data?: { features: unknown[] } } | undefined; loaded(): boolean } }).__loYanumMap
+    return `carte ${m ? (m.loaded() ? 'chargée' : 'en cours') : 'ABSENTE'}, ${m?.getSource('zones')?._data?.features.length ?? '—'} forme(s), ${location.hash}`
+  })
+  const a0 = await screenRing(a.page, B)
+  const b0 = await screenRing(b.page, B)
+  check('A621 départ : la limite a 12 sommets en base, à l’écran de A et de B', before.length === 12 && a0.n === 12 && b0.n === 12, `base ${before.length} · A ${a0.n} (${await seen(a.page)}) · B ${b0.n} (${await seen(b.page)}) · erreurs B ${b.errors.slice(0, 1).join('')}`)
 
-  db.failInsert.set('zone_vertices', 1)
+  /* TROIS échecs : A reste en attente ≈ 14 s (relances à 2, 4, 8 s) — B relit DANS cette fenêtre. */
+  db.failInsert.set('zone_vertices', 3)
   await moveBoundary(a.page, bCenter, -60)
   const newLat = (await screenRing(a.page, B)).lat
   await until(() => sent.length >= 1, 3000)
@@ -233,18 +269,21 @@ await guard('A621', async () => {
   check('A621 … et A garde à l’écran la nouvelle position (12 sommets)', (await screenRing(a.page, B)).n === 12 && newLat !== before[0].lat)
 
   /* B relit PENDANT que A attend sa relance. */
-  await go(b.page, APP, `/coordinator/farms/${FARM}`, 1500)
+  await go(b.page, APP, `/coordinator/farms/${FARM}`, 500)
+  const bReady = await mapShows(b.page)
   const bDuring = await screenRing(b.page, B)
-  check('A622 ★ le second profil, relisant pendant l’attente, ne voit PAS 0 point : la forme entière, ancienne position', bDuring.n === 12 && bDuring.lat !== null && Math.abs(bDuring.lat - before[0].lat) < 1e-9, `${bDuring.n} sommet(s)`)
+  const stillWaiting = ringB(db).length === 12 && sameRing(ringB(db), before)
+  check('A622 ★ le second profil, relisant pendant l’attente, ne voit PAS 0 point : la forme entière, ancienne position', bReady && bDuring.n === 12 && bDuring.lat !== null && Math.abs(bDuring.lat - before[0].lat) < 1e-9, `${bDuring.n} sommet(s) · carte de B ${bReady ? 'prête' : 'JAMAIS prête'} · ${stillWaiting ? 'A attendait encore sa relance' : 'A avait déjà rejoué'}`)
   await b.page.screenshot({ path: `${SHOTS}/a622-profil-b-pendant.png` })
 
   /* A623 — sans rechargement, sans `online` : la boîte d'envoi rejoue seule. */
   const t0 = Date.now()
-  const took = await until(() => ringB(db).length === 12 && Math.abs(ringB(db)[0].lat - (newLat ?? NaN)) < 1e-9, N_SECONDS * 1000)
-  check(`A623 ★ la boîte d’envoi a rejoué SEULE, en moins de ${N_SECONDS} s (ni rechargement, ni « online »)`, took !== null, took === null ? `rien après ${N_SECONDS} s · ${sent.length} essai(s)` : `${((Date.now() - t0) / 1000).toFixed(1)} s · ${sent.length} essai(s)`)
+  const took = await until(() => ringB(db).length === 12 && Math.abs(ringB(db)[0].lat - (newLat ?? NaN)) < 1e-9, 20_000)
+  check('A623 ★ la boîte d’envoi a rejoué SEULE après trois échecs, en moins de 20 s (ni rechargement, ni « online »)', took !== null && sent.length === 4, took === null ? `rien après 20 s · ${sent.length} essai(s)` : `${((Date.now() - t0) / 1000).toFixed(1)} s de plus · ${sent.length} essai(s)`)
   check('A623 … la base porte la NOUVELLE position, 12 sommets', ringB(db).length === 12 && ringB(db)[0].lat === newLat)
 
-  await go(b.page, APP, `/coordinator/farms/${FARM}`, 4000)
+  await go(b.page, APP, `/coordinator/farms/${FARM}`, 500)
+  await mapShows(b.page)
   const bAfter = await screenRing(b.page, B)
   check('A622 … puis B relit la nouvelle forme, entière', bAfter.n === 12 && bAfter.lat !== null && Math.abs(bAfter.lat - (newLat ?? NaN)) < 1e-9)
   check('A621 aucune erreur de page', a.errors.length === 0 && b.errors.length === 0, [...a.errors, ...b.errors].slice(0, 2).join(' | '))
@@ -258,16 +297,17 @@ await guard('A624', async () => {
   const { db, bCenter } = db0()
   const a = await open(1440, { db, height: 900, init: INIT })
   const sent = watchWrites(a.ctx)
+  const failed = watchFailures(a.ctx)
   await openFarm(a)
   db.failInsert.set('zone_vertices', 3)
   await moveBoundary(a.page, bCenter, -60)
-  await until(() => sent.length >= 1, 3000)
-  /* Un second geste pendant l'attente (sans recadrer : il doit finir AVANT la première relance, à 2 s) :
-     il remplace l'entrée, il ne part pas tout de suite. */
+  await until(() => failed.length >= 1, 4000)
+  /* Un second geste pendant l'attente (sans recadrer : il doit finir AVANT la première relance, 2 s
+     après la RÉPONSE en échec) : il remplace l'entrée, il ne part pas tout de suite. */
   const n1 = sent.length
   await moveBoundary(a.page, bCenter, -30, false)
-  const gestureAt = (Date.now() - sent[0]) / 1000
-  check('A624 un second geste pendant l’attente ne part pas : il rejoint la boîte d’envoi', gestureAt < 1.9 && sent.length === n1, `${n1} → ${sent.length} essai(s), geste fini à ${gestureAt.toFixed(1)} s`)
+  const gestureAt = (Date.now() - failed[0]) / 1000
+  check('A624 un second geste pendant l’attente ne part pas : il rejoint la boîte d’envoi', gestureAt < 1.9 && sent.length === n1, `${n1} → ${sent.length} essai(s), geste fini ${gestureAt.toFixed(1)} s après l’échec`)
   const lastLat = (await screenRing(a.page, B)).lat
   const done = await until(() => ringB(db).length === 12 && ringB(db)[0].lat === lastLat, 25_000)
   const gaps = sent.slice(1).map((t, i) => (t - sent[i]) / 1000)

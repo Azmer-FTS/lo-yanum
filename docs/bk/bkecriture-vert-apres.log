@@ -12,20 +12,20 @@ $ bun run scripts/bkecriture.ts
 
   A621 · A622 · A623 — une forme : la panne au milieu, le second profil, la relance seule
   ---------------------------------------------------------------------------------------
-  PASS  A621 départ : la limite a 12 sommets en base, à l’écran de A et de B
+  PASS  A621 départ : la limite a 12 sommets en base, à l’écran de A et de B  — base 12 · A 12 (carte chargée, 2 forme(s), #/coordinator/farms/farm-ak1-11) · B 12 (carte chargée, 2 forme(s), #/coordinator/farms/farm-ak1-11) · erreurs B 
   PASS  A621 ★ la panne au milieu laisse la forme ENTIÈRE en base, à l’ANCIENNE position  — 12 sommet(s) en base
   PASS  A621 … et A garde à l’écran la nouvelle position (12 sommets)
-  PASS  A622 ★ le second profil, relisant pendant l’attente, ne voit PAS 0 point : la forme entière, ancienne position  — 12 sommet(s)
-  PASS  A623 ★ la boîte d’envoi a rejoué SEULE, en moins de 10 s (ni rechargement, ni « online »)  — 0.0 s · 2 essai(s)
+  PASS  A622 ★ le second profil, relisant pendant l’attente, ne voit PAS 0 point : la forme entière, ancienne position  — 12 sommet(s) · carte de B prête · A attendait encore sa relance
+  PASS  A623 ★ la boîte d’envoi a rejoué SEULE après trois échecs, en moins de 20 s (ni rechargement, ni « online »)  — 10.4 s de plus · 4 essai(s)
   PASS  A623 … la base porte la NOUVELLE position, 12 sommets
   PASS  A622 … puis B relit la nouvelle forme, entière
   PASS  A621 aucune erreur de page
 
   A624 — la relance : croissante, bornée, une à la fois, éteinte au succès
   ------------------------------------------------------------------------
-  PASS  A624 un second geste pendant l’attente ne part pas : il rejoint la boîte d’envoi  — 1 → 1 essai(s), geste fini à 1.1 s
-  PASS  A624 ★ trois échecs, puis le succès — SANS rechargement ni « online »  — 4 essai(s) ; écarts 2.1 · 4.0 · 8.0 s
-  PASS  A624 ★ les délais CROISSENT (≈ 2, 4, 8 s)  — 2.1 · 4.0 · 8.0
+  PASS  A624 un second geste pendant l’attente ne part pas : il rejoint la boîte d’envoi  — 1 → 1 essai(s), geste fini 1.1 s après l’échec
+  PASS  A624 ★ trois échecs, puis le succès — SANS rechargement ni « online »  — 4 essai(s) ; écarts 2.2 · 4.0 · 8.0 s
+  PASS  A624 ★ les délais CROISSENT (≈ 2, 4, 8 s)  — 2.2 · 4.0 · 8.0
   PASS  A624 … et la base porte le DERNIER geste
   PASS  A624 ★ après le succès, plus AUCUN essai (20 s)  — 4 → 4
   PASS  A624 « online » rejoue ; le minuteur, annulé, n’ajoute RIEN ensuite  — 2 essai(s) pour ce geste

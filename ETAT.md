@@ -26,7 +26,9 @@
 > **La porte** `bkecriture` (A620–A626) : ROUGE sur le code d'avant (10/30 :
 > forme vidée en base, second profil à 0 point, aucune relance, ferme sans
 > contacts ni engagements, zone de menace vidée), VERTE après (30/30). Batterie
-> entière verte. Récit : `docs/bk/ecriture-transaction.md`.
+> entière verte. **Déployé `5781fba`** : bkeditui 152 (A557 verte au doigt,
+> sans assouplissement), settings 44, bkecriture 30 ; base réelle intacte.
+> Récit : `docs/bk/ecriture-transaction.md`.
 
 > 🏁 **BK — SUITE : DEUX RETOUCHES DE RÉGION PERDUES EN SILENCE. 2026-10-18.**
 >

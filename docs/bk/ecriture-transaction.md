@@ -92,8 +92,8 @@ envoyées, insérer les sous-lignes (ordre de la liste). Tout, ou rien.
 A620 (pur) liste blanche SQL = `MAPPINGS` = base factice, sécurité de la
 fonction, `write.ts` par la RPC · A621 une panne au milieu laisse la forme
 ENTIÈRE à l'ancienne position · A622 un second profil ne voit jamais 0 point
-· A623 la boîte d'envoi rejoue SEULE (ni rechargement, ni `online`) en moins
-de 10 s · A624 délais croissants (mesurés 2,0 · 4,0 · 8,0 s), un second geste
+· A623 la boîte d'envoi rejoue SEULE (ni rechargement, ni `online`), après
+trois échecs, en moins de 20 s · A624 délais croissants (mesurés 2,0 · 4,0 · 8,0 s), un second geste
 ne part pas, plus rien après le succès, `online` ne double pas la relance ·
 A625 une fiche de ferme : ni contacts ni engagements perdus, tout ou rien,
 rejouée seule · A626 une zone de menace : entière, rejouée seule.
@@ -106,6 +106,7 @@ rejouée seule · A626 une zone de menace : entière, rejouée seule.
   essai ; A625 « 0 contact, 0 engagement en base » et la fiche à moitié
   écrite (nom neuf) ; A626 « 0 sommet, high ».
 - Après : **30 PASS, 0 FAIL, exit 0** — `docs/bk/bkecriture-vert-apres.log`.
+- Déployé `5781fba` : **30/30** — `docs/bk/bkecriture-deploye-5781fba.log`.
 
 Deux contrôles ont été compris avant d'être corrigés (la porte, pas l'app) :
 A624 voyait un 2e essai pendant le second geste — c'était la relance de 2 s
@@ -155,3 +156,29 @@ session — elle mesurait donc SON build ; et cette session a tué mon serveur
 échec). Les deux rejouées seules, ports libres : bjui 56/56, settings 44/44.
 Aucune autre porte n'a démarré avec son port pris (l'autre batterie avait
 plusieurs portes d'avance, sur d'autres ports).
+
+## Déployé `5781fba`
+
+CI verte ; `version.json` (app et jumeau) = `5781fba`.
+
+- **`bkeditui` 152/152**, A557 verte à la souris ET au doigt — sans
+  assouplissement : la fenêtre « zéro sommet » qu'elle lisait n'existe plus.
+- `settings` 44/44 sur le jumeau `/demo`.
+- **`bkecriture` 30/30** (version finale de la porte, ci-dessous).
+- **Base réelle** après déploiement : 4 formes, 17, 31, 147 et 367 sommets,
+  mêmes dates qu'avant ; aucune forme ni zone de menace sans sommet ; aucun
+  reste de l'essai annulé.
+
+**Le premier rejeu de `bkecriture` sur le déployé était à 26/30, et c'était
+la porte.** A621 « départ » et A622 lisaient l'écran du second profil B après
+1,5 s : sur le déployé, sa carte n'était pas toujours publiée, et la lecture
+rendait « 0 point » alors que la forme était entière en base au même instant
+(A621 seule : 1 rouge sur 3). La porte lit désormais B quand SA carte montre
+les formes de la ferme (le pâturage, toujours là — sur l'ancien code B le voit
+mais pas la limite : le contrôle reste rouge), et garde A en attente ≈ 14 s
+(trois échecs) pour que B relise PENDANT l'attente ; A623 juge donc la relance
+seule après trois échecs, sous 20 s. A624 jugeait le second geste fini 2,4 s
+après l'ENVOI en échec : la relance part 2 s après la RÉPONSE ; la garde se
+mesure désormais depuis la réponse. Puis, avec cette version finale : A621
+3/3 sur le déployé ; porte entière ROUGE 10/20 sur l'ancien code, VERTE 30/30
+en local, VERTE 30/30 sur le déployé.
