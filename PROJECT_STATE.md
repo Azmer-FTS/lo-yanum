@@ -104,6 +104,47 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BK — SUITE : `settings` ET `touch` RÉÉCRITES, DEUX RETOUCHES DE RÉGION
+  PERDUES EN SILENCE, CORRIGÉES** (2026-10-18). Branche `main`. Aucune
+  migration. Commits : `aecdda3` (correctif d'app), `77d6658` (portes), puis
+  le commit de mesure (docs). **Déployé `77d6658`** (CI verte) : `settings` 44/44 sur le jumeau
+  `/demo` (seul banc déployé sans Supabase, comme son build ; `BASE_URL` de
+  `settings` non commité), `bkeditui` 150/151 — A557 au doigt INTERMITTENTE :
+  voir la mise en garde ci-dessous. Récit : `ETAT.md` § « BK — suite »
+  (en tête) ; `docs/bk/portes-c2-local.md` (deux dernières sections) ;
+  preuve : `docs/bk/settings-a53-rouge-avant.log` → `…-vert-apres.log`.
+  - ⚠️ **MISE EN GARDE — L'ÉCRITURE D'UN AGRÉGAT N'EST PAS TRANSACTIONNELLE**
+    (`src/data/write.ts`, depuis A76) : effacer les sous-lignes, upsert du
+    parent, insérer les sous-lignes — trois requêtes. Mesuré sur la base
+    factice (`docs/bk/ecriture-non-transactionnelle.md`, `scripts/bkecriture.ts`) :
+    une panne entre les deux laisse la forme EN BASE SANS SOMMET ; l'appareil
+    qui écrit garde l'anneau (boîte d'envoi, rejouée au rechargement / au
+    retour du réseau seulement, sans minuterie) ; un second appareil voit la
+    forme disparaître (« 0 דונם ») et son cache est écrasé ; si l'appareil
+    écrivain est perdu, la forme reste vide pour toujours. Même schéma pour
+    TOUT agrégat à sous-lignes (fiche de ferme, mission, événement, tournée,
+    zone de menace). C'est la cause d'A557 intermittente au déployé.
+    **Décision du PO (2026-10-18)** : une seule transaction côté base (fonction
+    Postgres par migration via le MCP) pour toutes les tables à sous-lignes,
+    plus une relance automatique de la boîte d'envoi — passe suivante.
+  - **Décisions (permanentes)** :
+    · dans `PathEditor`, tout appel DIFFÉRÉ (timeout) ou gardé par un effet
+      (clavier, `activeExists`) vers l'hôte lit `latest.current.props`, jamais
+      une prop capturée : l'hôte change entre-temps (`RegionsEditScreen` :
+      `selected`, `dirty`) ;
+    · `settings` et `touch` portent la grammaire BK (`shape-editor` data-*,
+      `editor-*`) ; `settings` A53 vérifie aussi qu'Échap ENREGISTRE.
+  - **Le défaut** : à l'écran des régions, « שרטוט מחדש » perdait la région
+    neuve 6 ms après sa fermeture, et Échap refermait sans enregistrer. Aucune
+    forme déjà enregistrée n'était en jeu ; les fermes ne sont pas touchées.
+  - **Piège de worktree** : `public/basemap/` et `basemap/` ne sont pas versionnés
+    — sans eux la carte ne charge jamais (`map.on('load')`), pas d'éditeur ;
+    `private/` aussi — sans lui `bcleak` est vert PAR VIDE ; le copier (pas un
+    lien : `bapass` A395 échoue à travers un lien symbolique).
+  - Reprise : `bun run settings && bun run typecheck` ; `touch` exige un
+    serveur : build `--outDir <dossier>` + `vite preview`, puis
+    `BASE_URL=http://localhost:<port> bun run touch`.
+
 - **BK — TERMINÉE, POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-18).
   Branche `main`. Commits : `1713468` (chantier 1, servi et vérifié), `bfb75ab`
   (chantier 2, jamais servi), `0feda54` (correctif de données, SERVI), puis le
@@ -147,8 +188,8 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
     (jumeau).
   - **Rouges ANTÉRIEURS** : ceux de BJ, inchangés (`adui` A115, `anui` A236,
     `atui`, `pills`, `rhythm`, `akui`, `uipass`, `sheets`, `layout`) ;
-    `settings` et `touch` exercent l'ANCIEN éditeur (hors batterie, à
-    réécrire si on les rejoue). `offline` est VERTE (un rouge vu pendant la
+    `settings` et `touch` RÉÉCRITES depuis (voir « BK — suite » ci-dessus).
+    `offline` est VERTE (un rouge vu pendant la
     passe venait d'un `vite preview` oublié sur 5197).
   - **Non couvert** : les zones de menace (ancien outil) ; la touche Entrée
     (fermer) existe sans porte.

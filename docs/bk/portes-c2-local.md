@@ -258,3 +258,13 @@ settings 44/44 · freehand 30/30 · touch 69/69 · zones 38/38 (build réel
 route (aucune assertion n'a échoué ; l'autre session arrêtait et relançait ses
 propres serveurs à ce moment-là). Rejouée seule, son port relevé toutes les
 5 s du début à la fin : 45/45, serveur vivant tout du long.
+
+## Déployé `77d6658`
+
+CI verte, `version.json` = `77d6658`. `settings` 44/44 sur le jumeau `/demo`
+déployé (le seul banc déployé construit, comme le sien, sans Supabase ; la
+lecture de `BASE_URL` ajoutée à `settings` n'est pas encore commitée).
+`bkeditui` 150/151 : A557 au doigt « section interrompue », `dbRing(db, B)[0]`
+indéfini — rejouée seule : 1 rouge sur 3. Le sondage lisait la base factice
+PENDANT l'écriture d'un déplacement : l'écriture d'un agrégat n'est pas
+transactionnelle. Mesure : `docs/bk/ecriture-non-transactionnelle.md`.

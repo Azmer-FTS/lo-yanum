@@ -1,5 +1,44 @@
 # לא ינום — ETAT
 
+> 🏁 **BK — SUITE : DEUX RETOUCHES DE RÉGION PERDUES EN SILENCE. 2026-10-18.**
+>
+> Les portes `settings` et `touch`, hors de la batterie de BJ, exerçaient
+> encore l'ANCIEN éditeur (sur 253ae7e : `settings` arrêtée à A53 sur
+> `region-dunams`, `touch` arrêtée en section 5 sur `פינת אזור`, deux de ses
+> contrôles verts par vide). Réécrites sur la grammaire BK parce que la
+> RÈGLE a changé, chaque intention gardée au doigt et au stylet — et `settings`
+> A53 réécrite a attrapé un défaut d'application.
+>
+> **Le défaut** (même classe, deux cas : `PathEditor` lisait des props
+> CAPTURÉES au rendu d'ouverture ; la règle « jamais perdu en silence » de
+> `RegionsEditScreen` trahie). (1) « פעולות → שרטוט מחדש » : la région neuve,
+> fermée, cédait 6 ms plus tard à l'ancien contour (le `setTimeout` de
+> `persist` rappelait l'ancienne fermeture de l'hôte, où `selected` vaut
+> `null` : `open()` vidait le brouillon). (2) Échap refermait l'éditeur des
+> régions SANS enregistrer (l'effet clavier gardait le `finish` du rendu
+> d'ouverture, où `dirty` vaut `false`) ; « סיום » enregistrait. **Aucune forme
+> déjà enregistrée n'était en jeu** ; les fermes ne sont pas touchées.
+>
+> **Le correctif** (`aecdda3`, deux lignes) : le délai de `persist` et
+> `finish` lisent `latest.current.props.onActiveChange`. Les autres appels
+> différés relus : sains. `settings` A53 ROUGE avant (40 + 4 rouges), VERTE
+> après (44/44), même banc ; batterie en série verte (bkeditui 152, bhui 35,
+> biui 45, settings 44, freehand 30, touch 69, zones 38, bkedit 51, bipass 73,
+> bjguard 20, typecheck). Portes : `77d6658`, servi
+> et vérifié : `settings` 44/44 sur le jumeau `/demo` déployé ; `bkeditui`
+> 150/151 — A557 au doigt intermittente.
+>
+> ⚠️ **Et A557 a montré une fenêtre plus vieille que BK** : l'écriture d'un
+> agrégat n'est pas transactionnelle (`write.ts`, depuis A76 : effacer les
+> sous-lignes, upsert, insérer). Mesuré sur la base factice
+> (`docs/bk/ecriture-non-transactionnelle.md`) : une panne entre les deux
+> laisse la forme en base SANS SOMMET ; l'appareil qui écrit est protégé par
+> sa boîte d'envoi (sans minuterie : rechargement ou retour du réseau) ; un
+> second appareil voit la forme disparaître, cache écrasé ; si l'écrivain est
+> perdu, la forme reste vide. **Décision du PO** : une transaction côté base
+> pour toutes les tables à sous-lignes, et une relance automatique.
+> Récit : `docs/bk/portes-c2-local.md`.
+
 > 🏁 **BK (chantier 2) — UN VRAI ÉDITEUR DE TRACÉS, LE MÊME PARTOUT. 2026-10-18.**
 >
 > « Très compliqué à éditer. Plusieurs formes l'une par-dessus l'autre, je ne
