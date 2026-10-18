@@ -36,8 +36,10 @@ import {
 import type { History, LatLng, PathModel } from '@core/index'
 
 import { Icon } from '../components/Icon'
+import type { IconName } from '../components/Icon'
 import { roadSegments, snapLngLat } from './roadSnap'
 import type { RoadSegments } from './roadSnap'
+import { ToolButton } from './ToolButton'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -53,44 +55,59 @@ import type { RoadSegments } from './roadSnap'
  * éditeurs d'avant (l'écran des régions et la carte d'une ferme), qui avaient
  * deux grammaires de geste contraires.
  *
- * ★ LA GRAMMAIRE, UNE SEULE, CELLE D'ILLUSTRATOR, AU DOIGT COMME À LA SOURIS :
- *   · toucher un NŒUD le SÉLECTIONNE (jamais il ne le supprime) ; le glisser le
- *     déplace ; le toucher deux fois le fait passer de coin à arrondi ;
- *   · un nœud sélectionné se supprime par « מחיקת הנקודה » OU la touche Suppr /
- *     ⌫ — le PO travaille aussi sur iPad, où il n'y a pas de touche ;
- *   · un nœud ARRONDI montre ses deux poignées ; on les tire pour régler la
- *     courbe, l'autre reste alignée (`core/path.ts`, `moveHandle`) ;
- *   · le petit « + » au milieu d'un segment ajoute un nœud là (touché) ou là
- *     où on le lâche (glissé) — il ne ressemble PAS à un nœud ;
- *   · la poignée ✥ au centre déplace la forme entière ;
- *   · les outils : « בחירה » (la carte se déplace normalement), « עט » (chaque
- *     toucher pose un nœud, un toucher tiré pose un nœud arrondi, le premier
- *     nœud ferme ; sur une forme fermée, toucher le contour ajoute un nœud),
- *     « יד חופשית » (un trait devient des nœuds ; sur une forme fermée, un
- *     trait qui part du contour et y revient en remplace la portion) — et on
- *     passe de l'un à l'autre À TOUT MOMENT, y compris en cours de tracé ;
- *   · annuler / refaire sans limite pratique (500 gestes), boutons et
- *     ⌘Z / ⇧⌘Z / Ctrl+Y.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ★★★ BL (2026-10-18) — LA BARRE D'OUTILS REMONTE EN HAUT, AU NIVEAU D'ILLUSTRATOR.
+ * ═══════════════════════════════════════════════════════════════════════════
  *
- * ★ AU DOIGT : les nœuds, les poignées et la poignée ✥ sont des cibles de
- *   44 px ; ils vivent dans une surcouche SVG posée DANS le conteneur de la
- *   carte mais HORS de sa toile — un doigt posé sur un nœud ne parvient jamais
- *   à MapLibre, la carte ne peut pas glisser sous lui. Avec « עט » et
- *   « יד חופשית », un doigt dessine et la carte ne glisse plus ; deux doigts
- *   pincent toujours, et la barre d'espace déplace la carte à la souris.
+ *   « Ma map est superposée de plein d'outils, c'est vraiment embêtant pour
+ *     retracer ma map. J'aimerais que mes outils se trouvent dans le header. »
+ *                                                                   — le PO
  *
- * ★ LES SUPERPOSITIONS : la forme en cours d'édition est dessinée PAR-DESSUS
- *   les autres ; un toucher là où plusieurs formes s'empilent ouvre un CHOIX
- *   qui les nomme (la plus petite d'abord : c'est elle qu'on ne peut pas
- *   atteindre autrement) ; et le panneau liste toutes les formes de l'entité.
+ * ★ PLUS RIEN NE FLOTTE SUR LA CARTE PENDANT L'ÉDITION. Ce composant rend UNE
+ *   barre, que l'hôte pose EN HAUT, hors de la carte (l'écran des régions :
+ *   sous la rangée des régions ; la carte d'une ferme : au-dessus d'elle). Sur
+ *   la carte ne restent que les points, les poignées et les « + » — ce qu'on
+ *   édite — et la pile de MapLibre (le recentrage y est désormais une icône).
+ *   La poignée ✥ qui flottait au centre de la forme est devenue un OUTIL.
  *
- * ★ LE PANNEAU DIT : l'entité, la forme, le nombre de points, la surface, les
- *   actions. Rien d'autre (le diagnostic de BI/BJ n'est plus sur les cartes).
+ * ★ LES OUTILS SONT CEUX D'ILLUSTRATOR, DESSINÉS EN SVG (`Icon.tsx`) :
+ *   · בחירה (V)        — la flèche : toucher un point le sélectionne, le
+ *                        glisser le déplace, deux touchers l'arrondissent ;
+ *                        le « + » d'un segment y ajoute un point ;
+ *   · עט (P)           — la plume : chaque toucher pose un point, un toucher
+ *                        tiré un point arrondi, le premier point ferme ;
+ *   · הוספת נקודה (+)  — la plume « + » : toucher le contour y ajoute un point ;
+ *   · מחיקת נקודה (−)  — la plume « − » : toucher un point le supprime ;
+ *   · המרת נקודה (⇧C)  — la conversion : toucher un point le fait passer de
+ *                        coin à arrondi (et retour), le tirer en sort les
+ *                        poignées ;
+ *   · עיפרון (N)       — le crayon : la main levée ;
+ *   · הזזת הצורה (M)   — la croix : glisser n'importe où déplace la forme.
+ *   L'outil actif est PLEIN (fond d'accent) et nommé dans la ligne du haut.
+ *   Chaque outil porte son nom en hébreu en infobulle (survol, appui long).
+ *
+ * ★ LA FORME D'ORIGINE, DITE. Une forme rouverte garde sous elle, en
+ *   POINTILLÉS, la forme telle qu'elle était à l'ouverture (pour un « שרטוט
+ *   מחדש », la forme qu'on remplace) — pour comparer. Le PO a mis du temps à
+ *   comprendre ce qu'était ce trait : il est maintenant NOMMÉ dans la barre, et
+ *   un bouton l'affiche ou le masque.
+ *
+ * ★ LES ACTIONS DESTRUCTRICES SONT DANS « ⋯ » (שרטוט מחדש, מחיקת הצורה, et
+ *   celles de l'hôte, comme « שחזור המקור » des régions) ; annuler / refaire
+ *   restent dans la barre.
  *
  * L'hôte (la carte d'une ferme, l'écran des régions) garde la DONNÉE : il dit
  * quelles formes existent, et reçoit chaque geste (`onChange`), chaque forme
  * fermée (`onCreate`), chaque brouillon (`onDraft`), chaque suppression
  * demandée (`onDelete`, qu'il fait CONFIRMER). Chaque geste est écrit (BI).
+ *
+ * ★ AU DOIGT : les points et les poignées sont des cibles de 44 px, dans une
+ *   surcouche SVG posée DANS le conteneur de la carte mais HORS de sa toile —
+ *   un doigt posé sur un point ne parvient jamais à MapLibre. Les outils de
+ *   la barre font 44 px ; la barre passe à la ligne plutôt que de déborder
+ *   (iPad en écran partagé). Avec la plume, le crayon et le déplacement, un
+ *   doigt agit et la carte ne glisse plus ; deux doigts pincent toujours, et
+ *   la barre d'espace déplace la carte à la souris.
  */
 
 export interface EditorShape {
@@ -110,7 +127,21 @@ export interface EditorKind {
   color: string
 }
 
-export type EditorTool = 'select' | 'pen' | 'pencil'
+export type EditorTool = 'select' | 'pen' | 'penAdd' | 'penRemove' | 'convert' | 'pencil' | 'move'
+
+/** La barre, dans l'ordre d'Illustrator : sélection, plumes, conversion, crayon, déplacement. */
+const TOOLS: ReadonlyArray<{ id: EditorTool; icon: IconName; key: string }> = [
+  { id: 'select', icon: 'pointer', key: 'V' },
+  { id: 'pen', icon: 'pen', key: 'P' },
+  { id: 'penAdd', icon: 'penAdd', key: '+' },
+  { id: 'penRemove', icon: 'penRemove', key: '−' },
+  { id: 'convert', icon: 'anchorConvert', key: '⇧C' },
+  { id: 'pencil', icon: 'pencil', key: 'N' },
+  { id: 'move', icon: 'moveShape', key: 'M' },
+]
+
+/** Les outils qui prennent le doigt sur la toile : la carte ne glisse plus sous eux. */
+const CANVAS_TOOLS: ReadonlySet<EditorTool> = new Set(['pen', 'pencil', 'move'])
 
 /** Une demande de l'hôte : commencer une forme (de ce type, avec cet outil), ou reprendre un brouillon. */
 export interface StartRequest {
@@ -120,6 +151,13 @@ export interface StartRequest {
   /** La forme qu'elle remplacera une fois fermée (confirmé par l'hôte AVANT). */
   replaceId?: string
   resume?: { model: PathModel; draftId: string }
+}
+
+/** Ce que l'éditeur dit de sa session à l'hôte. */
+export interface EditorSessionInfo {
+  mode: 'edit' | 'new'
+  id: string | null
+  replaceId: string | null
 }
 
 export interface PathEditorProps {
@@ -133,6 +171,8 @@ export interface PathEditorProps {
   start?: StartRequest | null
   /** Une session est ouverte (édition ou tracé neuf) — l'hôte range ses autres outils. */
   onBusyChange?: (busy: boolean) => void
+  /** ★★ BL — la session (pour qu'un « שרטוט מחדש » montre l'ancienne forme en pointillés, pas en aplat). */
+  onSessionChange?: (s: EditorSessionInfo | null) => void
   onChange: (id: string, model: PathModel, ring: LatLng[]) => void
   /** Une forme neuve FERMÉE : l'hôte l'écrit et rend son identifiant. */
   onCreate: (kind: string, model: PathModel, ring: LatLng[], replaceId?: string) => string | null
@@ -142,8 +182,16 @@ export interface PathEditorProps {
   onDelete?: (id: string) => void
   /** « שרטוט מחדש » : l'hôte confirme, puis renvoie un `start` avec `replaceId`. */
   onReplace?: (id: string) => void
-  /** Des actions propres à l'hôte (l'écran des régions : שמירה, ביטול שינויים…). */
+  /** Des actions propres à l'hôte, DANS la barre (l'écran des régions : ביטול שינויים, שמירה). */
   extraActions?: ReactNode
+  /** ★★ BL — des entrées propres à l'hôte dans le menu « ⋯ » (les régions : שחזור המקור). */
+  menuItems?: ReactNode
+  /** ★★ BL — la liste des formes de l'entité dans la barre. Faux quand l'hôte les montre déjà (les régions). */
+  showShapeList?: boolean
+  /** ★★ BL — sans session : la barre reste à sa place, outils éteints, avec cette ligne (les régions). */
+  idleHint?: ReactNode
+  /** ★★ BL — ce que l'hôte veut dire dans la barre, sous les outils (une confirmation, un avis). */
+  notes?: ReactNode
 }
 
 type Session =
@@ -151,10 +199,9 @@ type Session =
   | { mode: 'new'; kind: string; draftId: string; replaceId?: string; h: History<PathModel> }
 
 type Drag =
-  | { type: 'node'; index: number; pointerId: number; x0: number; y0: number; moved: boolean }
+  | { type: 'node'; index: number; tool: EditorTool; pointerId: number; x0: number; y0: number; moved: boolean }
   | { type: 'handle'; index: number; which: 'in' | 'out'; pointerId: number; x0: number; y0: number; moved: boolean }
   | { type: 'mid'; seg: number; pointerId: number; x0: number; y0: number; moved: boolean; inserted: number | null }
-  | { type: 'move'; pointerId: number; x0: number; y0: number; moved: boolean; from: LatLng }
 
 const HIT = 22
 /** Deux touchers en moins de 400 ms sur le même point : un double toucher (un doigt est plus lent qu'une souris). */
@@ -176,11 +223,15 @@ export function PathEditor(props: PathEditorProps) {
   const [trace, setTrace] = useState<LatLng[] | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [snap, setSnap] = useState(false)
+  /** ★★ BL — la forme d'origine (pointillés) : montrée par défaut, le PO la masque d'un bouton. */
+  const [showGhost, setShowGhost] = useState(true)
   const [picker, setPicker] = useState<{ x: number; y: number; ids: string[] } | null>(null)
   const [, setTick] = useState(0)
   const [host, setHost] = useState<HTMLElement | null>(null)
 
   const sessionRef = useRef<Session | null>(null)
+  /** ★★ BL — la forme telle qu'elle était à l'ouverture de la session (édition). */
+  const originRef = useRef<LatLng[] | null>(null)
   const setSession = (s: Session | null) => {
     sessionRef.current = s
     setSessionState(s)
@@ -240,7 +291,7 @@ export function PathEditor(props: PathEditorProps) {
   // -------------------------------------------------------------------------
   // Ouvrir / fermer selon l'hôte
   // -------------------------------------------------------------------------
-  const shapeById = (id: string | null) => (id ? (props.shapes.find((s) => s.id === id) ?? null) : null)
+  const shapeById = (id: string | null | undefined) => (id ? (props.shapes.find((s) => s.id === id) ?? null) : null)
 
   useEffect(() => {
     const s = sessionRef.current
@@ -255,7 +306,10 @@ export function PathEditor(props: PathEditorProps) {
     if (s?.mode === 'edit' && s.id === activeId) return
     const shape = shapeById(activeId)
     if (!shape) return
-    setSession({ mode: 'edit', id: shape.id, h: historyOf(modelForRing(shape.ring, shape.path).model) })
+    const m = modelForRing(shape.ring, shape.path).model
+    /* Une forme qu'on vient de FERMER garde l'origine de son tracé : rien (c'est une forme neuve). */
+    originRef.current = s?.mode === 'new' ? null : densify(m)
+    setSession({ mode: 'edit', id: shape.id, h: historyOf(m) })
     setSelected(null)
     setLive(null)
     setNotice(null)
@@ -278,13 +332,17 @@ export function PathEditor(props: PathEditorProps) {
     const s = sessionRef.current
     if (!s || s.mode !== 'edit' || !activeShape || s.h.past.length > 0 || s.h.future.length > 0) return
     const fresh = modelForRing(activeShape.ring, activeShape.path).model
-    if (JSON.stringify(fresh) !== JSON.stringify(s.h.present)) setSession({ ...s, h: historyOf(fresh) })
+    if (JSON.stringify(fresh) !== JSON.stringify(s.h.present)) {
+      if (originRef.current) originRef.current = densify(fresh)
+      setSession({ ...s, h: historyOf(fresh) })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRingKey])
 
   useEffect(() => {
     if (!start) return
     const draftId = start.resume?.draftId ?? newDraftId()
+    originRef.current = null
     setSession({ mode: 'new', kind: start.kind, draftId, replaceId: start.replaceId, h: historyOf(start.resume?.model ?? emptyPath()) })
     setTool(start.tool)
     setSelected(null)
@@ -300,6 +358,13 @@ export function PathEditor(props: PathEditorProps) {
     props.onBusyChange?.(busy)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busy])
+
+  const sessionKey = session ? `${session.mode}:${session.mode === 'edit' ? session.id : `${session.kind}:${session.replaceId ?? ''}`}` : ''
+  useEffect(() => {
+    const s = sessionRef.current
+    props.onSessionChange?.(s ? { mode: s.mode, id: s.mode === 'edit' ? s.id : null, replaceId: s.mode === 'new' ? (s.replaceId ?? null) : null } : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionKey])
 
   // -------------------------------------------------------------------------
   // Écrire un geste
@@ -358,16 +423,19 @@ export function PathEditor(props: PathEditorProps) {
     setSelected(null)
   }
 
-  const deleteSelected = () => {
-    const m = latest.current.model
-    const i = latest.current.selected
-    if (!m || i === null) return
+  const removeAt = (i: number) => {
+    const m = sessionRef.current?.h.present
+    if (!m) return
     const r = removeNode(m, i)
     if (!r.ok) {
       setNotice(t('editor.minNodes'))
       return
     }
     commit(r.model, null)
+  }
+  const deleteSelected = () => {
+    const i = latest.current.selected
+    if (i !== null) removeAt(i)
   }
 
   const toggleSelected = () => {
@@ -393,10 +461,18 @@ export function PathEditor(props: PathEditorProps) {
     setNotice(null)
     setPicker(null)
     setTool('select')
+    originRef.current = null
     /* ⚠️ Les props d'à présent : l'effet clavier (Échap) garde le `finish` du rendu d'OUVERTURE, et
        l'`onActiveChange` de ce rendu-là croyait la région intacte — la retouche partait sans être
        enregistrée (settings A53). Même lecture pour « סיום » et l'effet `activeExists`. */
     latest.current.props.onActiveChange(null)
+  }
+
+  const chooseTool = (k: EditorTool) => {
+    setTool(k)
+    setNotice(null)
+    setPicker(null)
+    if (k === 'penAdd' || k === 'penRemove' || k === 'pencil' || k === 'move') setSelected(null)
   }
 
   // -------------------------------------------------------------------------
@@ -419,10 +495,10 @@ export function PathEditor(props: PathEditorProps) {
   }
 
   // -------------------------------------------------------------------------
-  // La plume et la main levée : sur la toile de la carte
+  // La plume, le crayon, le déplacement : sur la toile de la carte
   // -------------------------------------------------------------------------
   useEffect(() => {
-    if (!map || !session || tool === 'select') return
+    if (!map || !session || !CANVAS_TOOLS.has(tool)) return
     const canvas = map.getCanvas()
     const panWas = map.dragPan.isEnabled()
     const rotateWas = map.dragRotate.isEnabled()
@@ -430,8 +506,9 @@ export function PathEditor(props: PathEditorProps) {
     map.dragRotate.disable()
     const prevTouch = canvas.style.touchAction
     const prevCursor = canvas.style.cursor
+    const cursor = tool === 'move' ? 'move' : 'crosshair'
     canvas.style.touchAction = 'none'
-    canvas.style.cursor = 'crosshair'
+    canvas.style.cursor = cursor
 
     const pointers = new Set<number>()
     let gesture: { id: number; x: number; y: number; moved: boolean; at: LatLng; pts: LatLng[]; lx: number; ly: number } | null = null
@@ -469,8 +546,16 @@ export function PathEditor(props: PathEditorProps) {
       if (!gesture.moved && Math.hypot(p.x - gesture.x, p.y - gesture.y) > 6) gesture.moved = true
       /* ⚠️ Le modèle ENREGISTRÉ, jamais l'aperçu (`live`) : sinon chaque mouvement ajouterait un nœud de plus. */
       const m = sessionRef.current?.h.present ?? null
-      if (latest.current.tool === 'pen') {
+      const k = latest.current.tool
+      if (k === 'pen') {
         if (gesture.moved && m && !m.closed) setLive(appendNode(m, snapped(gesture.at), unproject(p.x, p.y)))
+        return
+      }
+      if (k === 'move') {
+        if (gesture.moved && m) {
+          const at = unproject(p.x, p.y)
+          setLive(translatePath(m, at.lat - gesture.at.lat, at.lng - gesture.at.lng))
+        }
         return
       }
       if (Math.hypot(e.clientX - gesture.lx, e.clientY - gesture.ly) < 2) return
@@ -492,7 +577,15 @@ export function PathEditor(props: PathEditorProps) {
       }
       const m = sessionRef.current?.h.present ?? null
       if (!m) return
-      if (latest.current.tool === 'pen') {
+      const k = latest.current.tool
+      if (k === 'move') {
+        setLive(null)
+        if (!g.moved) return
+        const at = unproject(local(e).x, local(e).y)
+        commit(translatePath(m, at.lat - g.at.lat, at.lng - g.at.lng))
+        return
+      }
+      if (k === 'pen') {
         setLive(null)
         if (g.moved) {
           /* Un point posé à la plume n'est pas sélectionné : Échap sort du tracé (le brouillon reste), comme avant. */
@@ -521,7 +614,7 @@ export function PathEditor(props: PathEditorProps) {
       if (e.code === 'Space' && spacePan) {
         spacePan = false
         map.dragPan.disable()
-        canvas.style.cursor = 'crosshair'
+        canvas.style.cursor = cursor
       }
     }
     canvas.addEventListener('pointerdown', down)
@@ -548,6 +641,17 @@ export function PathEditor(props: PathEditorProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, session !== null, tool])
 
+  /* Les outils de point (plume +, plume −, conversion) : la carte glisse, le curseur dit l'outil. */
+  useEffect(() => {
+    if (!map || !session || (tool !== 'penAdd' && tool !== 'penRemove' && tool !== 'convert')) return
+    const canvas = map.getCanvas()
+    const prev = canvas.style.cursor
+    canvas.style.cursor = tool === 'penAdd' ? 'copy' : 'pointer'
+    return () => {
+      canvas.style.cursor = prev
+    }
+  }, [map, session !== null, tool])
+
   /** Un toucher de la plume (sans glisser). */
   const penTap = (m: PathModel, at: LatLng, x: number, y: number) => {
     if (!m.closed) {
@@ -563,16 +667,18 @@ export function PathEditor(props: PathEditorProps) {
       return
     }
     /* Forme fermée : toucher le contour ajoute un nœud là. */
+    if (!insertOnOutline(m, at, x, y)) setNotice(t('editor.penOnClosed'))
+  }
+
+  /** Toucher le contour à (x, y) : un point y naît, sélectionné. Faux si le toucher est loin du contour. */
+  const insertOnOutline = (m: PathModel, at: LatLng, x: number, y: number): boolean => {
     const near = nearestOnPath(m, at)
-    if (near) {
-      const q = project(near.point)
-      if (Math.hypot(q.x - x, q.y - y) <= HIT) {
-        const r = insertNode(m, near.seg, near.t)
-        commit(r.model, r.index)
-        return
-      }
-    }
-    setNotice(t('editor.penOnClosed'))
+    if (!near) return false
+    const q = project(near.point)
+    if (Math.hypot(q.x - x, q.y - y) > HIT) return false
+    const r = insertNode(m, near.seg, near.t)
+    commit(r.model, r.index)
+    return true
   }
 
   /** La fin d'un trait de main levée. */
@@ -605,15 +711,29 @@ export function PathEditor(props: PathEditorProps) {
   }
 
   // -------------------------------------------------------------------------
-  // Toucher la carte (outil « בחירה ») : choisir une forme, même empilée
+  // Toucher la carte : choisir une forme (בחירה), ajouter un point (plume +)
   // -------------------------------------------------------------------------
   useEffect(() => {
     if (!map) return
     const onClick = (e: maplibregl.MapMouseEvent) => {
       const s = sessionRef.current
-      if (s?.mode === 'new' || latest.current.tool !== 'select') return
-      const p = { lat: e.lngLat.lat, lng: e.lngLat.lng }
       const cur = latest.current
+      const k = cur.tool
+      if (s && k === 'penAdd') {
+        const m = s.h.present
+        if (!insertOnOutline(m, { lat: e.lngLat.lat, lng: e.lngLat.lng }, e.point.x, e.point.y)) setNotice(t('editor.penAddMiss'))
+        return
+      }
+      if (s && k === 'penRemove') {
+        setNotice(t('editor.penRemoveMiss'))
+        return
+      }
+      if (s && k === 'convert') {
+        setNotice(t('editor.convertMiss'))
+        return
+      }
+      if (s?.mode === 'new' || k !== 'select') return
+      const p = { lat: e.lngLat.lat, lng: e.lngLat.lng }
       const all = cur.props.shapes
       const ringFor = (sh: EditorShape): Array<[number, number]> =>
         s?.mode === 'edit' && s.id === sh.id && cur.model ? densify(cur.model).map((q) => [q.lng, q.lat] as [number, number]) : ringOfShape(sh)
@@ -638,6 +758,7 @@ export function PathEditor(props: PathEditorProps) {
     return () => {
       map.off('click', onClick)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map])
 
   // -------------------------------------------------------------------------
@@ -681,10 +802,17 @@ export function PathEditor(props: PathEditorProps) {
         }
         return
       }
-      const k = e.key.toLowerCase()
-      if (k === 'v') setTool('select')
-      else if (k === 'p') setTool('pen')
-      else if (k === 'n') setTool('pencil')
+      /* Les raccourcis d'Illustrator. */
+      if (e.key === '+' || e.key === '=') chooseTool('penAdd')
+      else if (e.key === '-') chooseTool('penRemove')
+      else if (e.shiftKey && e.key.toLowerCase() === 'c') chooseTool('convert')
+      else {
+        const k = e.key.toLowerCase()
+        if (k === 'v') chooseTool('select')
+        else if (k === 'p') chooseTool('pen')
+        else if (k === 'n') chooseTool('pencil')
+        else if (k === 'm') chooseTool('move')
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -692,7 +820,7 @@ export function PathEditor(props: PathEditorProps) {
   }, [session !== null, picker])
 
   // -------------------------------------------------------------------------
-  // Glisser un nœud, une poignée, un « + », la forme
+  // Glisser un nœud, une poignée, un « + »
   // -------------------------------------------------------------------------
   const drag = useRef<Drag | null>(null)
   const lastTap = useRef<{ index: number; at: number } | null>(null)
@@ -719,9 +847,17 @@ export function PathEditor(props: PathEditorProps) {
     const base = sessionRef.current?.h.present
     if (!base) return null
     const at = unproject(x, y)
-    if (d.type === 'node') return moveNode(base, d.index, snapped(at))
+    if (d.type === 'node') {
+      if (d.tool === 'penRemove') return null
+      if (d.tool === 'convert') {
+        /* La conversion TIRÉE d'un point : ses poignées sortent, symétriques (Illustrator). */
+        const n = base.nodes[d.index]
+        const bare = n.kind === 'corner' ? { ...base, nodes: base.nodes.map((q, i) => (i === d.index ? { lat: q.lat, lng: q.lng, kind: 'smooth' as const } : q)) } : base
+        return moveHandle(bare, d.index, 'out', at)
+      }
+      return moveNode(base, d.index, snapped(at))
+    }
     if (d.type === 'handle') return moveHandle(base, d.index, d.which, at)
-    if (d.type === 'move') return translatePath(base, at.lat - d.from.lat, at.lng - d.from.lng)
     const r = insertNode(base, d.seg, 0.5)
     d.inserted = r.index
     return moveNode(r.model, r.index, snapped(at))
@@ -747,8 +883,11 @@ export function PathEditor(props: PathEditorProps) {
     if (!base) return
     if (d.moved) {
       const p = local(e)
-      const m = dragModel(d, p.x, p.y) ?? latest.current.model
-      if (!m) return
+      const m = dragModel(d, p.x, p.y)
+      if (!m) {
+        setLive(null)
+        return
+      }
       const keep = d.type === 'node' || d.type === 'handle' ? d.index : d.type === 'mid' ? d.inserted : latest.current.selected
       commit(m, keep)
       return
@@ -756,8 +895,15 @@ export function PathEditor(props: PathEditorProps) {
     setLive(null)
     /* Un TOUCHER, pas un glissé. */
     if (d.type === 'node') {
-      const tool = latest.current.tool
-      if (tool === 'pen' && !base.closed && d.index === 0 && base.nodes.length >= 3) {
+      if (d.tool === 'penRemove') {
+        removeAt(d.index)
+        return
+      }
+      if (d.tool === 'convert') {
+        commit(toggleNodeKind(base, d.index), d.index)
+        return
+      }
+      if (d.tool === 'pen' && !base.closed && d.index === 0 && base.nodes.length >= 3) {
         closeNow()
         return
       }
@@ -786,18 +932,19 @@ export function PathEditor(props: PathEditorProps) {
   const color = session?.mode === 'edit' ? (activeShape?.color ?? '#2563eb') : (kindOf?.color ?? '#2563eb')
   const ring = model ? densify(model) : []
   const screen = ring.map(project)
-  const d = screen.length ? `M${screen.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L')}${model?.closed ? 'Z' : ''}` : ''
+  const pathD = (pts: Array<{ x: number; y: number }>, closed: boolean) => (pts.length ? `M${pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L')}${closed ? 'Z' : ''}` : '')
+  const d = pathD(screen, !!model?.closed)
   const nodes = model ? model.nodes.map(project) : []
   const sel = selected !== null && model && selected < model.nodes.length ? selected : null
   const showHandlesFor = new Set<number>()
-  if (model && sel !== null) {
+  if (model && sel !== null && (tool === 'select' || tool === 'convert' || tool === 'pen')) {
     const n = model.nodes.length
     showHandlesFor.add(sel)
     if (model.closed || sel > 0) showHandlesFor.add((sel - 1 + n) % n)
     if (model.closed || sel < n - 1) showHandlesFor.add((sel + 1) % n)
   }
   const mids =
-    model && tool !== 'pencil'
+    model && (tool === 'select' || tool === 'penAdd')
       ? Array.from({ length: segmentCount(model) }, (_, s) => {
           const c = segmentControls(model, s)
           const a = project(c[0])
@@ -806,8 +953,12 @@ export function PathEditor(props: PathEditorProps) {
           return { s, x: m.x, y: m.y, long: Math.hypot(a.x - b.x, a.y - b.y) > 64 }
         }).filter((x) => x.long)
       : []
-  const centre = nodes.length ? { x: nodes.reduce((s, p) => s + p.x, 0) / nodes.length, y: nodes.reduce((s, p) => s + p.y, 0) / nodes.length } : null
-  const traceD = trace && trace.length > 1 ? `M${trace.map(project).map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L')}` : ''
+  const traceD = trace && trace.length > 1 ? pathD(trace.map(project), false) : ''
+
+  /* ★★ BL — la forme d'origine : à l'ouverture (édition), ou celle qu'on remplace (שרטוט מחדש). */
+  const ghostRing: LatLng[] | null = session ? (session.mode === 'edit' ? originRef.current : (shapeById(session.replaceId)?.ring ?? null)) : null
+  const ghostDiffers = !!ghostRing && (ghostRing.length !== ring.length || ghostRing.some((p, i) => Math.abs(p.lat - ring[i].lat) > 1e-12 || Math.abs(p.lng - ring[i].lng) > 1e-12))
+  const ghostD = ghostRing && showGhost ? pathD(ghostRing.map(project), true) : ''
 
   /**
    * ⛔ UNE ANNULATION N'EST PAS UN LÂCHER. Le navigateur annule un geste
@@ -826,15 +977,26 @@ export function PathEditor(props: PathEditorProps) {
    * ⚠️ EN MAIN LEVÉE, LES POINTS LAISSENT PASSER LE TRAIT. Reprendre un tracé
    *    ou redessiner une portion, c'est COMMENCER le trait sur un point : capté
    *    par le point, le trait le déplaçait au lieu de dessiner (attrapé par
-   *    `bkeditui` A560 / A561, à la souris).
+   *    `bkeditui` A560 / A561, à la souris). ★★ BL — de même pour la
+   *    croix de déplacement (on saisit la forme n'importe où, même sur un
+   *    point) et la plume « + » (on touche le contour, même près d'un point).
    */
-  const grab = { pointerEvents: tool === 'pencil' ? ('none' as const) : ('all' as const), touchAction: 'none' as const, cursor: 'grab' }
+  const nodesGrab = tool !== 'pencil' && tool !== 'move' && tool !== 'penAdd'
+  const grab = (on: boolean, cursor = 'grab') => ({ pointerEvents: on ? ('all' as const) : ('none' as const), touchAction: 'none' as const, cursor })
+  const nodeCursor = tool === 'penRemove' ? 'pointer' : tool === 'convert' ? 'crosshair' : 'grab'
 
   const overlay =
     host && map
       ? createPortal(
           <>
             <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0, overflow: 'visible', pointerEvents: 'none', touchAction: 'none' }} aria-hidden={!session}>
+              {ghostD && (
+                /* La forme d'origine : un pointillé sombre sur un liseré clair, lisible sur une photo comme sur le plan. */
+                <g data-testid="editor-ghost" data-ring={ghostRing?.length ?? 0}>
+                  <path d={ghostD} fill="none" stroke="#fff" strokeOpacity={0.85} strokeWidth={4} strokeLinejoin="round" />
+                  <path d={ghostD} fill="none" stroke="#1f2937" strokeWidth={2} strokeDasharray="7 5" strokeLinejoin="round" />
+                </g>
+              )}
               {model && d && (
                 /* Une forme enregistrée a déjà son remplissage sur la carte : ici, le CONTOUR en direct. */
                 <path d={d} fill={model.closed && session?.mode === 'new' ? color : 'none'} fillOpacity={0.18} stroke={color} strokeWidth={3.5} strokeLinejoin="round" data-testid="editor-shape" data-ring={ring.length} />
@@ -843,7 +1005,7 @@ export function PathEditor(props: PathEditorProps) {
               {/* Les « + » au milieu des segments : creux, petits, jamais confondus avec un nœud. */}
               {session &&
                 mids.map((m) => (
-                  <g key={`m${m.s}`} data-grip="" data-testid={`editor-mid-${m.s}`} transform={`translate(${m.x},${m.y})`} style={grab} onPointerDown={(e) => startDrag(e, { type: 'mid', seg: m.s, pointerId: e.pointerId, x0: local(e).x, y0: local(e).y, moved: false, inserted: null })} {...handlers}>
+                  <g key={`m${m.s}`} data-grip="" data-testid={`editor-mid-${m.s}`} transform={`translate(${m.x},${m.y})`} style={grab(true)} onPointerDown={(e) => startDrag(e, { type: 'mid', seg: m.s, pointerId: e.pointerId, x0: local(e).x, y0: local(e).y, moved: false, inserted: null })} {...handlers}>
                     <circle r={18} fill="transparent" />
                     <circle r={7} fill="rgba(255,255,255,0.85)" stroke={color} strokeWidth={1.5} strokeDasharray="2 2" />
                     <path d="M-3.5,0H3.5M0,-3.5V3.5" stroke={color} strokeWidth={1.6} strokeLinecap="round" />
@@ -863,7 +1025,7 @@ export function PathEditor(props: PathEditorProps) {
                       return (
                         <g key={`h${i}${w}`} data-testid={`editor-handle-${i}-${w}`}>
                           <line x1={at.x} y1={at.y} x2={h.x} y2={h.y} stroke={color} strokeWidth={1.5} />
-                          <g data-grip="" transform={`translate(${h.x},${h.y})`} style={grab} onPointerDown={(e) => startDrag(e, { type: 'handle', index: i, which: w, pointerId: e.pointerId, x0: local(e).x, y0: local(e).y, moved: false })} {...handlers}>
+                          <g data-grip="" transform={`translate(${h.x},${h.y})`} style={grab(true)} onPointerDown={(e) => startDrag(e, { type: 'handle', index: i, which: w, pointerId: e.pointerId, x0: local(e).x, y0: local(e).y, moved: false })} {...handlers}>
                             <circle r={HIT} fill="transparent" />
                             <circle r={6} fill={color} stroke="#fff" strokeWidth={2} />
                           </g>
@@ -888,8 +1050,8 @@ export function PathEditor(props: PathEditorProps) {
                       data-kind={n.kind}
                       data-selected={on ? '1' : '0'}
                       transform={`translate(${p.x},${p.y})`}
-                      style={grab}
-                      onPointerDown={(e) => startDrag(e, { type: 'node', index: i, pointerId: e.pointerId, x0: local(e).x, y0: local(e).y, moved: false })}
+                      style={grab(nodesGrab, nodeCursor)}
+                      onPointerDown={(e) => startDrag(e, { type: 'node', index: i, tool, pointerId: e.pointerId, x0: local(e).x, y0: local(e).y, moved: false })}
                       {...handlers}
                     >
                       <circle r={HIT} fill="transparent" />
@@ -902,23 +1064,6 @@ export function PathEditor(props: PathEditorProps) {
                     </g>
                   )
                 })}
-              {/* ✥ — déplacer la forme entière. */}
-              {session && model?.closed && centre && tool === 'select' && (
-                <g
-                  data-grip=""
-                  data-testid="editor-move"
-                  transform={`translate(${centre.x},${centre.y})`}
-                  style={{ ...grab, cursor: 'move' }}
-                  onPointerDown={(e) => {
-                    const p = local(e)
-                    startDrag(e, { type: 'move', pointerId: e.pointerId, x0: p.x, y0: p.y, moved: false, from: unproject(p.x, p.y) })
-                  }}
-                  {...handlers}
-                >
-                  <circle r={HIT} fill="rgba(255,255,255,0.9)" stroke={color} strokeWidth={2} />
-                  <path d="M0,-11V11M-11,0H11M0,-11l-3.5,3.5M0,-11l3.5,3.5M0,11l-3.5,-3.5M0,11l3.5,-3.5M-11,0l3.5,-3.5M-11,0l3.5,3.5M11,0l-3.5,-3.5M11,0l-3.5,3.5" stroke={color} strokeWidth={2} strokeLinecap="round" fill="none" />
-                </g>
-              )}
             </svg>
             {picker && (
               <div
@@ -958,33 +1103,133 @@ export function PathEditor(props: PathEditorProps) {
       : null
 
   // -------------------------------------------------------------------------
-  // Le panneau
+  // La barre
   // -------------------------------------------------------------------------
   const shapeLabel = session?.mode === 'edit' ? (activeShape?.label ?? '') : session?.mode === 'new' ? t('editor.newShape', { kind: kindOf?.label ?? '' }) : ''
   const area = model?.closed ? pathAreaDunams(model) : 0
   const others = useMemo(() => shapes, [shapes])
-
-  /**
-   * ★ LE PANNEAU EST COURT, PARCE QUE LA CARTE D'UNE FICHE L'EST. Sur l'iPad en
-   *   portrait, la carte d'une fiche fait 45 % de l'écran : un panneau de trois
-   *   cents pixels cachait la forme qu'il éditait (mesuré, première capture).
-   *   Une ligne dit QUOI (l'entité, la forme, ses points, sa surface) ; une
-   *   ligne porte les outils, annuler / refaire et le point sélectionné ; les
-   *   actions sur la forme entière (rares, et deux sont destructrices) sont
-   *   derrière « פעולות ». Les formes de l'entité, quand il y en a plusieurs,
-   *   ont leur propre ligne : c'est là qu'on passe de l'une à l'autre.
-   */
   const [menu, setMenu] = useState(false)
-  const panelRef = useRef<HTMLDivElement | null>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!menu) return
+    const away = (e: PointerEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenu(false)
+    }
+    window.addEventListener('pointerdown', away)
+    return () => window.removeEventListener('pointerdown', away)
+  }, [menu])
 
   /* ⚠️ L'ouverture d'une forme NE RECADRE PAS la carte : « la caméra appartient au PO » (BF), et
-     « entrer en édition ne recadre pas » (BH, `bhui` A489). Le panneau est court pour cette raison. */
+     « entrer en édition ne recadre pas » (BH, `bhui` A489). */
 
-  const iconBtn = 'btn-secondary min-h-11 min-w-11 justify-center px-2.5 py-1.5 text-micro'
+  /**
+   * ★★ BL — LA BARRE EST AU-DESSUS DE LA CARTE, DONC SA HAUTEUR EST CELLE QUE LA
+   *   CARTE PERD. Quand elle paraît (une forme ouverte), grandit (une
+   *   confirmation) ou s'en va, la carte change de hauteur par le HAUT, et
+   *   MapLibre garde son centre : tout ce qu'elle montre glissait de la moitié
+   *   de la différence — sous le doigt du PO (11 px mesurés par `blui` A578,
+   *   quand la ligne du point sélectionné paraissait). La barre réserve donc la
+   *   place de ce qui va et vient (le point sélectionné, la ligne d'avis), et ce
+   *   qui reste est COMPENSÉ ici : la carte est décalée d'autant, rien ne bouge
+   *   à l'écran. Les deux hôtes posent la barre juste au-dessus d'une carte dont
+   *   le bas est fixe.
+   */
+  const barRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = barRef.current
+    if (!el || !map || typeof ResizeObserver === 'undefined') return
+    let h = el.getBoundingClientRect().height
+    const ro = new ResizeObserver(() => {
+      const next = el.getBoundingClientRect().height
+      const d = next - h
+      h = next
+      if (Math.abs(d) >= 0.5) map.panBy([0, d / 2], { animate: false })
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [map])
+
+  const toolLabel = (k: EditorTool) => t(`editor.tool.${k}`)
+  const sep = <span aria-hidden className="mx-0.5 h-7 w-px shrink-0 bg-edge-subtle" />
+
+  const toolRow = (on: boolean) => (
+    <div className="flex flex-wrap items-center gap-1" data-testid="editor-toolbar-row">
+      {/* 1. Les outils — un groupe radio, l'actif est PLEIN. */}
+      <div role="radiogroup" aria-label={t('editor.toolsLabel')} data-testid="editor-tools" className="flex flex-wrap items-center gap-0.5 rounded-card bg-surface-high p-0.5">
+        {TOOLS.map((k) => (
+          <ToolButton key={k.id} testId={`editor-tool-${k.id}`} kind="radio" icon={k.icon} label={toolLabel(k.id)} shortcut={k.key} active={on && tool === k.id} disabled={!on} onClick={() => chooseTool(k.id)} />
+        ))}
+      </div>
+      {sep}
+      {/* 2. Annuler / refaire. */}
+      <div className="flex items-center gap-0.5">
+        <ToolButton testId="editor-undo" icon="undo" label={t('editor.undo')} shortcut="⌘Z" disabled={!on || !session || session.h.past.length === 0} onClick={undo} />
+        <ToolButton testId="editor-redo" icon="redo" label={t('editor.redo')} shortcut="⇧⌘Z" disabled={!on || !session || session.h.future.length === 0} onClick={redo} />
+      </div>
+      {sep}
+      {/* 3. Ce qui change la vue ou l'accroche : l'aimant, la forme d'origine. */}
+      <div className="flex items-center gap-0.5">
+        <ToolButton testId="editor-snap" kind="toggle" icon="magnet" label={t('editor.snap')} active={on && snap} disabled={!on} onClick={() => setSnap((v) => !v)} />
+        <ToolButton testId="editor-ghost-toggle" kind="toggle" icon="ghostShape" label={t(showGhost ? 'editor.ghostHide' : 'editor.ghostShow')} active={on && showGhost && !!ghostRing} disabled={!on || !ghostRing} onClick={() => setShowGhost((v) => !v)} />
+      </div>
+      {/* 4. Le point sélectionné. ★ Sa place est TOUJOURS réservée (éteinte sans point) : la barre ne
+             change pas de hauteur quand on touche un point, donc la carte ne bouge pas sous le doigt. */}
+      {sep}
+      <span className="flex items-center gap-0.5" data-testid={on && model && sel !== null ? 'editor-node-actions' : 'editor-node-slot'}>
+        <span className="min-w-[4.5rem] px-1 text-micro font-semibold text-content-primary">{on && model && sel !== null ? t('editor.nodeN', { n: sel + 1 }) : <span className="text-content-muted">{t('editor.noNode')}</span>}</span>
+        <ToolButton
+          testId="editor-node-kind"
+          icon={on && model && sel !== null && model.nodes[sel].kind === 'smooth' ? 'nodeCorner' : 'nodeSmooth'}
+          label={t(on && model && sel !== null && model.nodes[sel].kind === 'smooth' ? 'editor.toCorner' : 'editor.toSmooth')}
+          disabled={!on || !model || sel === null}
+          onClick={toggleSelected}
+        />
+        <ToolButton testId="editor-node-delete" icon="trash" danger label={t('editor.deleteNode')} shortcut="⌫" disabled={!on || !model || sel === null} onClick={deleteSelected} />
+      </span>
+      {on && model && !model.closed && (
+        <button type="button" data-testid="editor-close-path" className="btn-primary min-h-11 py-1.5 text-micro" disabled={model.nodes.length < 3} onClick={closeNow}>
+          <Icon name="check" size={13} />
+          {t('editor.closePath')}
+        </button>
+      )}
+      {props.extraActions && <div className="flex flex-wrap items-center gap-1.5">{props.extraActions}</div>}
+      {/* 5. Le menu « ⋯ » : ce qui détruit, loin des outils. */}
+      {on && (
+      <div ref={menuRef} className="relative ms-auto">
+        <ToolButton testId="editor-menu" icon="more" label={t('editor.actions')} active={menu} kind="toggle" onClick={() => setMenu((v) => !v)} />
+        {menu && (
+          <div
+            role="menu"
+            data-testid="editor-menu-panel"
+            className="glass absolute end-0 top-full z-30 mt-2 flex w-64 flex-col gap-1 rounded-card p-1.5 shadow-lift"
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest('button')) setMenu(false)
+            }}
+          >
+            {session?.mode === 'edit' && props.onReplace && (
+              <button type="button" role="menuitem" data-testid="editor-replace" className="btn-secondary min-h-11 justify-start py-1.5 text-micro" onClick={() => props.onReplace?.(session.id)}>
+                <Icon name="replace" size={13} />
+                {t('editor.replace')}
+              </button>
+            )}
+            {props.menuItems}
+            {session?.mode === 'edit' && props.onDelete && (
+              <button type="button" role="menuitem" data-testid="editor-delete-shape" className="btn-secondary min-h-11 justify-start py-1.5 text-micro text-status-danger-ink" onClick={() => props.onDelete?.(session.id)}>
+                <Icon name="trash" size={13} />
+                {t('editor.deleteShape')}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+      )}
+    </div>
+  )
+
+  const shell = 'pointer-events-auto flex w-full flex-col gap-1.5 rounded-card border border-edge-subtle bg-surface-overlay px-2.5 py-2 shadow-card'
 
   const panel = session && model && (
     <div
-      ref={panelRef}
       dir="rtl"
       data-testid="shape-editor"
       data-mode={session.mode}
@@ -993,12 +1238,14 @@ export function PathEditor(props: PathEditorProps) {
       data-closed={model.closed ? '1' : '0'}
       data-area={Math.round(area)}
       data-tool={tool}
+      data-snap={snap ? '1' : '0'}
+      data-ghost={ghostD ? '1' : '0'}
       data-selected-node={sel ?? ''}
       data-undo={session.h.past.length}
       data-redo={session.h.future.length}
-      className="glass pointer-events-auto flex w-full max-w-[48rem] flex-col gap-1.5 self-start rounded-card px-3 py-2 shadow-glow ring-1 ring-accent"
+      className={shell}
     >
-      {/* 1. Quelle entité, quelle forme, combien de points, quelle surface. */}
+      {/* 1. Quelle entité, quelle forme, combien de points, quelle surface — et l'outil en main. */}
       <div className="flex items-center gap-2">
         <span className="inline-block h-3 w-3 shrink-0 rounded-pill" style={{ backgroundColor: color }} />
         <p className="min-w-0 flex-1 truncate text-caption text-content-secondary" data-testid="editor-summary">
@@ -1014,14 +1261,21 @@ export function PathEditor(props: PathEditorProps) {
           {' · '}
           {model.closed ? <bdi className="numeric">{t('editor.area', { n: fmt(area, i18n.language) })}</bdi> : <span>{t('editor.notClosed')}</span>}
         </p>
+        <span data-testid="editor-active-tool" data-tool={tool} className="hidden shrink-0 items-center gap-1 rounded-pill bg-surface-high px-2.5 py-1 text-micro font-semibold text-accent-ink ring-1 ring-accent sm:flex">
+          <Icon name={TOOLS.find((k) => k.id === tool)?.icon ?? 'pointer'} size={14} />
+          {toolLabel(tool)}
+        </span>
         <button type="button" data-testid="editor-done" className="btn-primary min-h-11 shrink-0 py-1.5 text-micro" onClick={finish}>
           <Icon name="check" size={13} />
           {t('editor.done')}
         </button>
       </div>
 
-      {/* 2. Les formes de l'entité : on passe de l'une à l'autre sans ambiguïté. */}
-      {session.mode === 'edit' && others.length > 1 && (
+      {/* 2. La barre d'outils. */}
+      {toolRow(true)}
+
+      {/* 3. Les formes de l'entité, quand l'hôte ne les montre pas déjà. */}
+      {session.mode === 'edit' && props.showShapeList !== false && others.length > 1 && (
         <div className="flex items-center gap-1.5 overflow-x-auto" data-testid="editor-shapes" data-count={others.length}>
           <span className="shrink-0 text-micro text-content-muted">{t('editor.shapesHere', { count: others.length })}</span>
           {others.map((sh) => (
@@ -1041,102 +1295,43 @@ export function PathEditor(props: PathEditorProps) {
         </div>
       )}
 
-      {/* 3. Les outils, annuler / refaire, le point sélectionné, les actions sur la forme. */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <div role="radiogroup" aria-label={t('editor.toolsLabel')} className="flex items-center gap-0.5 rounded-pill bg-surface-high p-0.5">
-          {(['select', 'pen', 'pencil'] as const).map((k) => (
-            <button
-              key={k}
-              type="button"
-              role="radio"
-              aria-checked={tool === k}
-              title={t(`editor.hint.${k}`)}
-              data-testid={`editor-tool-${k}`}
-              onClick={() => {
-                setTool(k)
-                setNotice(null)
-              }}
-              className={`flex min-h-11 items-center gap-1 rounded-pill px-2.5 text-micro font-semibold transition-colors duration-fast ${
-                tool === k ? 'bg-accent text-content-on-accent' : 'text-content-secondary hover:text-content-primary'
-              }`}
-            >
-              <Icon name={k === 'select' ? 'pointer' : k === 'pen' ? 'penNib' : 'freehand'} size={14} />
-              {t(`editor.tool.${k}`)}
-            </button>
-          ))}
-        </div>
-        <button type="button" data-testid="editor-undo" title={t('editor.undo')} aria-label={t('editor.undo')} className={iconBtn} disabled={session.h.past.length === 0} onClick={undo}>
-          <Icon name="undo" size={15} />
-        </button>
-        <button type="button" data-testid="editor-redo" title={t('editor.redo')} aria-label={t('editor.redo')} className={iconBtn} disabled={session.h.future.length === 0} onClick={redo}>
-          <Icon name="redo" size={15} />
-        </button>
-        {sel !== null && (
-          <span className="flex items-center gap-1.5" data-testid="editor-node-actions">
-            <span className="text-micro font-semibold text-content-primary">{t('editor.nodeN', { n: sel + 1 })}</span>
-            <button type="button" data-testid="editor-node-kind" className={iconBtn} onClick={toggleSelected}>
-              <Icon name={model.nodes[sel].kind === 'smooth' ? 'nodeCorner' : 'nodeSmooth'} size={14} />
-              {t(model.nodes[sel].kind === 'smooth' ? 'editor.toCorner' : 'editor.toSmooth')}
-            </button>
-            <button type="button" data-testid="editor-node-delete" className={`${iconBtn} text-status-danger-ink`} onClick={deleteSelected}>
-              <Icon name="trash" size={14} />
-              {t('editor.deleteNode')}
-            </button>
-          </span>
-        )}
-        {!model.closed && (
-          <button type="button" data-testid="editor-close-path" className="btn-primary min-h-11 py-1.5 text-micro" disabled={model.nodes.length < 3} onClick={closeNow}>
-            <Icon name="check" size={13} />
-            {t('editor.closePath')}
-          </button>
-        )}
-        <div className="relative ms-auto">
-          <button type="button" data-testid="editor-menu" aria-expanded={menu} className={iconBtn} onClick={() => setMenu((v) => !v)}>
-            <Icon name="more" size={15} />
-            {t('editor.actions')}
-          </button>
-          {menu && (
-            <div
-              role="menu"
-              data-testid="editor-menu-panel"
-              className="glass absolute bottom-full end-0 z-20 mb-2 flex w-56 flex-col gap-1 rounded-card p-1.5 shadow-lift"
-              onClick={(e) => {
-                if ((e.target as HTMLElement).closest('button')) setMenu(false)
-              }}
-            >
-              <button type="button" role="menuitemcheckbox" aria-checked={snap} data-testid="editor-snap" className={`min-h-11 justify-start py-1.5 text-micro ${snap ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setSnap((v) => !v)}>
-                <Icon name="route" size={13} />
-                {t('editor.snap')}
-              </button>
-              {session.mode === 'edit' && props.onReplace && (
-                <button type="button" role="menuitem" data-testid="editor-replace" className="btn-secondary min-h-11 justify-start py-1.5 text-micro" onClick={() => props.onReplace?.(session.id)}>
-                  <Icon name="replace" size={13} />
-                  {t('editor.replace')}
-                </button>
-              )}
-              {session.mode === 'edit' && props.onDelete && (
-                <button type="button" role="menuitem" data-testid="editor-delete-shape" className="btn-secondary min-h-11 justify-start py-1.5 text-micro text-status-danger-ink" onClick={() => props.onDelete?.(session.id)}>
-                  <Icon name="trash" size={13} />
-                  {t('editor.deleteShape')}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+      {/* 4. Ce qui est dit — UNE ligne, toujours là (sa hauteur ne bouge pas) : un avis s'il y en a un,
+             sinon la forme d'origine nommée. Puis ce que l'hôte ajoute. */}
+      <div className="flex min-h-5 items-center gap-1.5 text-micro" data-testid="editor-message-line">
+        {notice ? (
+          <p role="status" data-testid="editor-notice" className="min-w-0 truncate font-semibold text-status-warn-ink">
+            {notice}
+          </p>
+        ) : ghostD && ghostDiffers ? (
+          <p data-testid="editor-ghost-note" className="flex min-w-0 items-center gap-1.5 text-content-muted">
+            <svg width="26" height="8" aria-hidden="true" className="shrink-0">
+              <path d="M1 4H25" stroke="currentColor" strokeWidth={2} strokeDasharray="5 3" />
+            </svg>
+            <span className="truncate">{t(session.mode === 'new' ? 'editor.ghostNoteReplace' : 'editor.ghostNote')}</span>
+          </p>
+        ) : null}
       </div>
-      {props.extraActions && <div className="flex flex-wrap items-center gap-1.5">{props.extraActions}</div>}
-      {notice && (
-        <p role="status" data-testid="editor-notice" className="text-micro font-semibold text-status-warn-ink">
-          {notice}
-        </p>
-      )}
+      {props.notes}
+    </div>
+  )
+
+  /* ★★ BL — sans session, la barre reste à sa place (l'écran des régions) : rien ne saute sous le doigt. */
+  const idle = !session && props.idleHint !== undefined && (
+    <div dir="rtl" data-testid="shape-editor-idle" className={shell}>
+      <p className="flex min-h-11 items-center text-caption text-content-secondary">{props.idleHint}</p>
+      {toolRow(false)}
+      {/* La même ligne d'avis que la barre ouverte : la hauteur ne change pas à l'ouverture d'une forme. */}
+      <div className="min-h-5" aria-hidden="true" />
+      {props.notes}
     </div>
   )
 
   return (
     <>
       {overlay}
-      {panel}
+      <div ref={barRef} data-testid="path-editor-bar" className={panel || idle ? 'pb-2' : undefined}>
+        {panel || idle}
+      </div>
     </>
   )
 }

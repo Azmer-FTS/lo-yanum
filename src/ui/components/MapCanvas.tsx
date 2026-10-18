@@ -10,7 +10,6 @@ import { HOME_BASE, bearingDeg, boundsOf, getLandmarks, getSession } from '@core
 import type { LatLng, Landmark } from '@core/index'
 
 import { readToken } from './badges'
-import { Icon } from './Icon'
 import { readStoredBase, writeStoredBase } from './mapBase'
 import { MapViewScope, readMapView, writeMapView } from './mapCamera'
 import { MapTools } from './MapTools'
@@ -223,6 +222,14 @@ export interface MapViewProps {
   links?: MapLink[]
   /** ★★ AV2 — poser une épingle (appui long, clic droit, bouton). Vrai par défaut. */
   quickPin?: boolean
+  /**
+   * ★★ BL — la couche « אזורים » de la légende. Faux : jamais dessinée sur cette
+   * carte, quel que soit le réglage. L'écran d'édition des régions dessine
+   * lui-même les régions ; la couche, elle, montrait l'ancienne version
+   * ENREGISTRÉE sous celle qu'on éditait — « la forme derrière » que le PO a
+   * mis du temps à comprendre.
+   */
+  regionsLayer?: boolean
   center?: LatLng
   zoom?: number
   /** Frame all markers instead of using center/zoom. */
@@ -1033,6 +1040,7 @@ export default function MapCanvas({
   locate = true,
   freehand,
   quickPin = true,
+  regionsLayer = true,
   onMapInstance,
 }: MapViewProps) {
   const { t } = useTranslation()
@@ -1127,6 +1135,9 @@ export default function MapCanvas({
    */
   const layersRef = useRef(layers)
   layersRef.current = layers
+  const regionsOn = layers.regions && regionsLayer
+  const regionsOnRef = useRef(regionsOn)
+  regionsOnRef.current = regionsOn
   /**
    * ★★ AU1 — UN CALQUE ÉTEINT SE VOIT SUR LA CARTE. « ישויות » éteint
    * vidait toutes les cartes de CET appareil sans un mot (le PO : « aucune
@@ -1346,7 +1357,7 @@ export default function MapCanvas({
     const map = mapRef.current
     if (!map) return
     const apply = () => {
-      const on = layers.regions ? 'visible' : 'none'
+      const on = regionsOn ? 'visible' : 'none'
       for (const id of ['regions-fill', 'regions-line', 'regions-label']) {
         if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on)
       }
@@ -1356,7 +1367,7 @@ export default function MapCanvas({
     return () => {
       map.off('styledata', apply)
     }
-  }, [layers.regions, glGeneration])
+  }, [regionsOn, glGeneration])
   // Latest requested polyline. Held in a ref so the map's own `load` handler
   // can apply it the moment the source exists, whatever order things mounted in.
   const lineRef = useRef<LatLng[] | undefined>(line)
@@ -1503,7 +1514,7 @@ export default function MapCanvas({
           })),
         },
       })
-      const regionsVisible = layersRef.current.regions ? 'visible' : 'none'
+      const regionsVisible = regionsOnRef.current ? 'visible' : 'none'
 
       /**
        * ★★ Y8.2 (2026-09-04) — THE REGIONS ARE CUT BY THE BASEMAP'S OWN
@@ -2120,6 +2131,8 @@ export default function MapCanvas({
             : undefined,
         /* ★★ BF — ± et מיקומי sont des gestes du PO sur la caméra. */
         onUserCamera: () => takeCameraRef.current(),
+        /* ★★ BL — « מרכוז מחדש » est une icône de la pile (plus une pastille au milieu de la carte). */
+        recenter: { label: t('map.recenter'), onClick: () => recenterRef.current() },
       })
       toolsRef.current = tools
       map.addControl(tools, 'top-left')
@@ -3261,6 +3274,12 @@ export default function MapCanvas({
     else if (recenterTarget === 'fit') frameAll(map)
     else if (recenterTarget === 'center' && center) map.easeTo({ center: [center.lng, center.lat], zoom, duration: 500 })
   }
+  /* ★★ BL — la pile de la carte (créée une fois) appelle TOUJOURS le recentrage courant. */
+  const recenterRef = useRef(recenter)
+  recenterRef.current = recenter
+  useEffect(() => {
+    toolsRef.current?.setRecenter(interactive && userControlled && recenterTarget !== null ? recenterTarget : null)
+  }, [interactive, userControlled, recenterTarget, glGeneration])
 
   /**
    * X4.3 — THE ANCHORED PREVIEW. One popup instance, moved rather than
@@ -3415,29 +3434,11 @@ export default function MapCanvas({
           noticeHost,
         )}
       {/* ★★ BF — « מרכוז מחדש » : seulement quand le PO a pris la caméra et
-          qu'il y a quelque chose à quoi revenir. Le style des pastilles de la
-          carte (« הצגה » des fiches cachées), 44 px. AU-DESSUS de la bande du
-          bas, où vivent la pilule des modes et le « + » (une colonne de carte
-          étroite les met au milieu), et au-dessus de l'avis du repère rapide. */}
-      {interactive && noticeHost && userControlled && recenterTarget !== null &&
-        createPortal(
-          <button
-            type="button"
-            data-testid="map-recenter"
-            data-target={recenterTarget}
-            onClick={(e) => {
-              e.stopPropagation()
-              recenter()
-            }}
-            className={`glass pointer-events-auto absolute start-1/2 z-[3] flex min-h-11 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-pill px-4 py-2 text-caption font-semibold text-content-primary shadow-card rtl:translate-x-1/2 ${
-              pinArmed || pinDone ? 'bottom-[8.5rem]' : 'bottom-[5.25rem]'
-            }`}
-          >
-            <Icon name="navigation" size={16} className="text-accent-ink" />
-            {t('map.recenter')}
-          </button>,
-          noticeHost,
-        )}
+          qu'il y a quelque chose à quoi revenir. ★★ BL — ce n'est plus une
+          pastille posée en bas au milieu de la carte (« un bloc qui flotte en
+          plein milieu », le PO, qui la voyait par-dessus la barre d'édition) :
+          c'est UNE icône, en haut à gauche, dans la pile de la carte
+          (`MapTools.setRecenter`, effet plus haut). */}
       {interactive && noticeHost && imagery !== 'ok' &&
         createPortal(
           <div

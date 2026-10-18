@@ -1040,5 +1040,31 @@
     "errorDate": "Not generated: a date was found, and the rule is no dates in the document.",
     "errorPublish": "The document was not saved. Check the connection and try again.",
     "timesNoteNight": "Distances and times are measured along the road from the institution. Times include a {{margin}}% margin and {{night}}% for night driving."
+  },
+  "editor": {
+    "tool": {
+      "select": "Select",
+      "pen": "Pen",
+      "penAdd": "Add point",
+      "penRemove": "Delete point",
+      "convert": "Convert point (corner ↔ curve)",
+      "pencil": "Pencil — freehand",
+      "move": "Move the whole shape"
+    },
+    "ghostShow": "Show the previous shape",
+    "ghostHide": "Hide the previous shape",
+    "ghostNote": "Dashed line: the shape as it was when opened — for comparison only",
+    "ghostNoteReplace": "Dashed line: the shape being replaced — for comparison only; it is replaced when you close the new one",
+    "penAddMiss": "Tap the shape's outline itself to add a point there.",
+    "penRemoveMiss": "Tap a point to delete it.",
+    "convertMiss": "Tap a point to turn a corner into a curve, or drag from it to pull out handles.",
+    "noNode": "No point selected"
+  },
+  "regionEdit": {
+    "pickHint": "Choose a region in the row above, or tap it on the map, to edit its boundary.",
+    "restore": "Restore the original boundary…",
+    "restoreNothing": "Restore the original boundary (this region was not redrawn)",
+    "restoreConfirm": "Delete the boundary you drew for «{{name}}» ({{points}} points, {{area}} dunams) and go back to the app's original boundary? One shape will be deleted: «{{name}}». This cannot be undone.",
+    "restoreYes": "Yes, delete and restore"
   }
 }

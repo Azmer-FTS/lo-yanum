@@ -292,6 +292,8 @@ export function AnchorMap({
   }
   /* « שרטוט מחדש » : confirmé ici, avant de tracer — la forme actuelle reste jusqu'à ce que la nouvelle soit fermée. */
   const [replaceAsk, setReplaceAsk] = useState<string | null>(null)
+  /** ★★ BL — la forme en cours de remplacement (« שרטוט מחדש ») : en pointillés, plus en aplat. */
+  const [replacingId, setReplacingId] = useState<string | null>(null)
 
   /** Les formes de la ferme, nommées sans ambiguïté (deux « שטח מרעה » deviennent 1 et 2). */
   const editorShapes: EditorShape[] = useMemo(() => {
@@ -470,7 +472,9 @@ export function AnchorMap({
       /* ★★ BK — la carte dessine TOUTES les formes (la forme éditée comprise : son
          remplissage suit chaque geste écrit) ; l'éditeur trace par-dessus le
          contour EN DIRECT, sous le doigt. */
-      ...zones.map((z) => ({
+      /* ★★ BL — pendant un « שרטוט מחדש », la forme remplacée n'a plus d'aplat : l'éditeur la
+         montre en POINTILLÉS, nommés dans sa barre, et le PO peut les masquer. */
+      ...zones.filter((z) => z.id !== replacingId).map((z) => ({
         id: z.id,
         ring: z.ring,
         kind: z.kind,
@@ -487,6 +491,7 @@ export function AnchorMap({
         .map((z) => z.ring.map((v) => `${v.lat},${v.lng}`).join(';'))
         .join('|'),
       selectedZoneId,
+      replacingId,
     ],
   )
 
@@ -609,7 +614,72 @@ export function AnchorMap({
   )
 
   return (
-    <div className={fullscreenShell(fullscreen.active, `relative ${className}`)}>
+    <div className={`${fullscreenShell(fullscreen.active, `relative ${className}`)} flex flex-col`}>
+      {/* ★★★ BL — LA BARRE D'ÉDITION EST AU-DESSUS DE LA CARTE, PLUS DESSUS.
+          « Ma map est superposée de plein d'outils » (le PO). L'éditeur de
+          tracés rend sa barre ICI, hors de la carte, pendant une édition ; ses
+          points, poignées et « + » restent sur la carte (surcouche). La carte
+          rétrécit de la hauteur de la barre : elle reste entière et libre. */}
+      {zonesEditable && (
+        <div className="relative z-20 shrink-0" data-testid="map-edit-bar">
+          {zonesEditable && (
+            <PathEditor
+              map={mapInstance}
+              entityLabel={farm.name}
+              shapes={editorShapes}
+              kinds={(['farm_boundary', 'grazing_area'] as const).map((k) => ({ kind: k, label: t(zoneLabelKey(k, entity)), color: zoneColor(k, entity) }))}
+              activeId={selectedZoneId}
+              onActiveChange={setSelectedZoneId}
+              start={startReq}
+              onBusyChange={setEditorBusy}
+              onChange={(id, model, ring) => onZoneRingChange?.(id, ring, model)}
+              onCreate={(kind, model, ring, replaceId) => {
+                const made = replaceId && onZoneReplace ? onZoneReplace(replaceId, kind as FarmZoneKind, ring, model) : onZoneCreate?.(kind as FarmZoneKind, ring, model)
+                return made ? made.id : null
+              }}
+              onDraft={(kind, draftId, model) => {
+                if (model) writeZoneDraft(farm.id, { id: draftId, zone: kind as FarmZoneKind, draft: densify(model), path: model })
+                else clearZoneDraft(farm.id, draftId)
+              }}
+              onDelete={
+                onZoneDelete
+                  ? (id) => {
+                      /* La suppression est confirmée par l'écran, qui NOMME la forme. */
+                      onZoneDelete(id)
+                    }
+                  : undefined
+              }
+              onReplace={onZoneReplace ? (id) => setReplaceAsk(id) : undefined}
+              onSessionChange={(x) => setReplacingId(x?.replaceId ?? null)}
+              notes={
+                replaceAsk ? (
+                  <div role="alertdialog" data-testid="zone-replace-confirm" className="flex flex-wrap items-center gap-2 rounded-card bg-surface-high px-3 py-2 ring-1 ring-status-warn">
+                    <span className="basis-full text-caption font-semibold text-content-primary">
+                      {t('zone.replaceConfirm', { name: editorShapes.find((x) => x.id === replaceAsk)?.label ?? '' })}
+                    </span>
+                    <button
+                      type="button"
+                      data-testid="zone-replace-yes"
+                      className="btn-primary min-h-11 py-1.5 text-micro"
+                      onClick={() => {
+                        const z = zones.find((x) => x.id === replaceAsk)
+                        setReplaceAsk(null)
+                        if (z) startShape(z.kind, { replaceId: z.id })
+                      }}
+                    >
+                      {t('zone.replaceYes')}
+                    </button>
+                    <button type="button" data-testid="zone-replace-no" className="btn-secondary min-h-11 py-1.5 text-micro" onClick={() => setReplaceAsk(null)}>
+                      {t('common.cancel')}
+                    </button>
+                  </div>
+                ) : undefined
+              }
+            />
+          )}
+        </div>
+      )}
+      <div className="relative min-h-0 flex-1">
       <MapView
         ariaLabel={t('a11y.map')}
         className={`h-full w-full transition-shadow duration-base ${
@@ -906,59 +976,6 @@ export function AnchorMap({
           </div>
           )}
 
-          {/* ★★★ BK — L'ÉDITEUR DE TRACÉS : son panneau ici, ses nœuds sur la carte. */}
-          {zonesEditable && replaceAsk && (
-            <div role="alertdialog" data-testid="zone-replace-confirm" className="glass pointer-events-auto mb-2 flex w-auto max-w-full flex-wrap items-center gap-2 self-start rounded-card px-3.5 py-2.5 shadow-glow ring-1 ring-status-warn sm:max-w-[30rem]">
-              <span className="basis-full text-caption font-semibold text-content-primary">
-                {t('zone.replaceConfirm', { name: editorShapes.find((x) => x.id === replaceAsk)?.label ?? '' })}
-              </span>
-              <button
-                type="button"
-                data-testid="zone-replace-yes"
-                className="btn-primary min-h-11 py-1.5 text-micro"
-                onClick={() => {
-                  const z = zones.find((x) => x.id === replaceAsk)
-                  setReplaceAsk(null)
-                  if (z) startShape(z.kind, { replaceId: z.id })
-                }}
-              >
-                {t('zone.replaceYes')}
-              </button>
-              <button type="button" data-testid="zone-replace-no" className="btn-secondary min-h-11 py-1.5 text-micro" onClick={() => setReplaceAsk(null)}>
-                {t('common.cancel')}
-              </button>
-            </div>
-          )}
-          {zonesEditable && (
-            <PathEditor
-              map={mapInstance}
-              entityLabel={farm.name}
-              shapes={editorShapes}
-              kinds={(['farm_boundary', 'grazing_area'] as const).map((k) => ({ kind: k, label: t(zoneLabelKey(k, entity)), color: zoneColor(k, entity) }))}
-              activeId={selectedZoneId}
-              onActiveChange={setSelectedZoneId}
-              start={startReq}
-              onBusyChange={setEditorBusy}
-              onChange={(id, model, ring) => onZoneRingChange?.(id, ring, model)}
-              onCreate={(kind, model, ring, replaceId) => {
-                const made = replaceId && onZoneReplace ? onZoneReplace(replaceId, kind as FarmZoneKind, ring, model) : onZoneCreate?.(kind as FarmZoneKind, ring, model)
-                return made ? made.id : null
-              }}
-              onDraft={(kind, draftId, model) => {
-                if (model) writeZoneDraft(farm.id, { id: draftId, zone: kind as FarmZoneKind, draft: densify(model), path: model })
-                else clearZoneDraft(farm.id, draftId)
-              }}
-              onDelete={
-                onZoneDelete
-                  ? (id) => {
-                      /* La suppression est confirmée par l'écran, qui NOMME la forme. */
-                      onZoneDelete(id)
-                    }
-                  : undefined
-              }
-              onReplace={onZoneReplace ? (id) => setReplaceAsk(id) : undefined}
-            />
-          )}
           </div>
         )}
 
@@ -1000,6 +1017,8 @@ export function AnchorMap({
           * draws on it — and the physical left is left to the band alone.
           */}
         <div className="flex flex-wrap items-end justify-start gap-2">
+          {/* ★★ BL — pendant une édition de forme, la légende se retire : plus rien sur la carte. */}
+          {!editorBusy && (
           <MapLegend defaultOpen={false}>
             {/* G7bis.1 — one legend stack: what the point shapes mean, then
                 what the painted ground means, then the assessment. */}
@@ -1007,6 +1026,7 @@ export function AnchorMap({
             <ZoneLegend zones={zones} entity={entity} />
             <ThreatLegend zones={threatZones} vectors={threatVectors} />
           </MapLegend>
+          )}
           {/* ★ W5 — THE PENCIL IS THE ONLY WAY IN NOW, so it has to exist on
               every map that can create ANYTHING, not only on the ones that
               can draw a polygon: הוסף נקודה used to live in the long bar and
@@ -1111,6 +1131,7 @@ export function AnchorMap({
             </DrawToolsFab>
           )}
         </div>
+      </div>
       </div>
     </div>
   )

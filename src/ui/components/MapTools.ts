@@ -86,6 +86,13 @@ export interface MapToolsOptions {
    * carte doit pourtant savoir que c'est LUI qui a bougé la caméra.
    */
   onUserCamera?: () => void
+  /**
+   * ★★ BL — « מרכוז מחדש » : UNE ICÔNE DANS CETTE PILE, plus une pastille qui
+   * flottait au milieu de la carte (« un bloc qui flotte en plein milieu »,
+   * le PO). Elle n'existe que quand il y a de quoi revenir (BF : le PO a pris
+   * la caméra) — `setRecenter`, posé par la carte.
+   */
+  recenter?: { label: string; onClick: () => void }
 }
 
 /** 24×24 stroke paths, the same silhouettes as `Icon.tsx`. */
@@ -107,6 +114,9 @@ const PATHS: Record<string, string> = {
   /** ★★ AV2 — une épingle et un « + » : poser un lieu. */
   pinAdd: '<path d="M12 21s-6-5.6-6-10.5a6 6 0 0 1 12 0C18 15.4 12 21 12 21z"/><path d="M12 7.5v6M9 10.5h6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  /** ★★ BL — le recentrage : un cadre de visée et son centre (le même dessin que `Icon.tsx`). */
+  recenter:
+    '<path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/><circle cx="12" cy="12" r="2.4"/>',
   minus: '<path d="M5 12h14"/>',
 }
 
@@ -129,6 +139,8 @@ export class MapTools implements IControl {
   private locateButton: HTMLButtonElement | null = null
   private pinButton: HTMLButtonElement | null = null
   private pinArmed = false
+  /** ★★ BL — sa propre pastille, AU BOUT de la pile : elle paraît sans rien déplacer au-dessus d'elle. */
+  private recenterPill: HTMLDivElement | null = null
 
   private base: BasemapBase
   private locateState: LocateState = 'idle'
@@ -276,6 +288,7 @@ export class MapTools implements IControl {
     this.stopWatching()
     this.meMarker?.remove()
     this.meMarker = null
+    this.recenterPill = null
     this.container?.remove()
     this.container = null
     this.map = null
@@ -307,6 +320,32 @@ export class MapTools implements IControl {
       if (!b.disabled) onClick()
     })
     return b
+  }
+
+  /**
+   * ★★ BL — le recentrage paraît (`target` : sur quoi il ramène) ou disparaît
+   * (`null`). Retiré du DOM, pas caché : « il n'y en a pas » doit être vrai.
+   */
+  setRecenter(target: string | null): void {
+    const rc = this.options.recenter
+    if (!this.container || !rc || target === null) {
+      this.recenterPill?.remove()
+      this.recenterPill = null
+      return
+    }
+    if (!this.recenterPill) {
+      const pill = this.pill('map-tools-recenter')
+      const b = this.button('map-recenter', () => this.options.recenter?.onClick())
+      b.innerHTML = icon('recenter')
+      b.title = rc.label
+      b.setAttribute('aria-label', rc.label)
+      b.classList.add('text-accent-ink')
+      pill.append(b)
+      this.container.append(pill)
+      this.recenterPill = pill
+    }
+    const b = this.recenterPill.querySelector('button')
+    if (b) b.dataset.target = target
   }
 
   /** ★★ AV2 — l'état « armé » du bouton d'épingle, posé par la carte. */

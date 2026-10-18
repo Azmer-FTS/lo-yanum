@@ -41,7 +41,8 @@ import type { LatLng } from '../src/core/index'
  *         rouverte après rechargement a GARDÉ ses poignées
  *   A556  ★ annuler / refaire : quatre gestes, quatre annulations → la base
  *         revient EXACTEMENT à l'anneau d'origine ; quatre « refaire »
- *   A557  déplacer la forme entière (✥)
+ *   A557  déplacer la forme entière (★★ BL : l'outil « הזזת הצורה כולה » de la
+ *         barre — la poignée ✥ au centre de la forme n'existe plus)
  *   A558  ★ supprimer une forme entière, avec confirmation qui la nomme
  *   A559  ★ une forme neuve à la plume : des touchers, un toucher tiré (point
  *         arrondi), le premier point la ferme
@@ -472,7 +473,11 @@ for (const dev of devices) {
     const { o, h } = await openFarm(db, dev)
     await openBoundary(h, bCenter)
     const r0 = dbRing(db, B)
-    const mv = await centreOf(o.page, '[data-testid="editor-move"]')
+    /* ★★ BL — la poignée ✥ qui flottait au centre de la forme est devenue un OUTIL de la barre
+       (« הזזת הצורה כולה ») : on le prend, puis on glisse la forme où qu'on la saisisse. */
+    const tool = await centreOf(o.page, '[data-testid="editor-tool-move"]')
+    await h.tap(tool.x, tool.y)
+    const mv = await project(o.page, bCenter)
     await h.drag(mv.x, mv.y, mv.x - 50, mv.y + 30)
     await until(() => dbRing(db, B)[0].lat !== r0[0].lat)
     const r1 = dbRing(db, B)
@@ -764,8 +769,7 @@ await guard('A567', async () => {
   })
   check('A567 ★ la géométrie des routes est DÉJÀ dans les tuiles chargées (couche `roads`)', road !== null)
   if (road) {
-    const menu = await centreOf(o.page, '[data-testid="editor-menu"]')
-    await h.tap(menu.x, menu.y)
+    /* ★★ BL — l'aimant est dans la barre (il était caché dans « פעולות »). */
     await o.page.locator('[data-testid="editor-snap"]').click()
     const mx = (road.ax + road.bx) / 2
     const my = (road.ay + road.by) / 2
@@ -840,7 +844,9 @@ await guard('A569', async () => {
     await h.tap(tog.x, tog.y)
     const gz = await centreOf(o.page, '[data-testid="draw-grazing"]')
     await h.tap(gz.x, gz.y)
-    const c = await project(o.page, { lat: center.lat + 0.004 + (k % 3) * 0.003, lng: center.lng - 0.006 + Math.floor(k / 3) * 0.006 })
+    /* ★★ BL — la barre d'édition est désormais AU-DESSUS de la carte, qui perd sa bande du haut : les
+       formes sont tracées sous le centre (au-dessus, le troisième essai tombait sur la barre). */
+    const c = await project(o.page, { lat: center.lat - 0.002 - (k % 3) * 0.003, lng: center.lng - 0.006 + Math.floor(k / 3) * 0.006 })
     for (const p of [{ x: c.x - 40, y: c.y - 30 }, { x: c.x + 40, y: c.y - 30 }, { x: c.x, y: c.y + 30 }]) await h.tap(p.x, p.y)
     const first = await nodeAt(o.page, 0)
     await h.tap(first.x, first.y)

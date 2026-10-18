@@ -1,5 +1,49 @@
 # לא ינום — ETAT
 
+> 🏁 **BL (chantier 1) — LA BARRE D'OUTILS REMONTE EN HAUT, AU NIVEAU D'ILLUSTRATOR. 2026-10-18.**
+>
+> « Ma map est superposée de plein d'outils, c'est vraiment embêtant pour
+> retracer ma map. J'aimerais que mes outils se trouvent dans le header. » — le PO
+>
+> - **Plus rien ne flotte sur la carte pendant l'édition.** `PathEditor` rend
+>   UNE barre que l'hôte pose EN HAUT, hors de la carte : sous la rangée des
+>   régions (`RegionsEditScreen`, où elle reste à sa place même sans région
+>   ouverte, outils éteints) ; au-dessus de la carte d'une ferme (`AnchorMap`,
+>   qui devient une colonne : barre, puis carte ; la légende se retire pendant
+>   l'édition). Sur la carte ne restent que les points, poignées et « + ».
+> - **Sept outils, icônes SVG dessinées dans `Icon.tsx`** (pas de texte, pas
+>   d'émoji, 44 px) : בחירה (V), עט (P), הוספת נקודה (+), מחיקת נקודה (−),
+>   המרת נקודה (⇧C : toucher = coin ↔ arrondi, tirer = poignées symétriques),
+>   עיפרון (N, la main levée), הזזת הצורה כולה (M : saisir n'importe où ; la
+>   poignée ✥ du centre n'existe plus). Infobulle hébraïque à nous
+>   (`ToolButton.tsx`) : survol à la souris, appui long au doigt — qui ne
+>   choisit pas l'outil. Un seul bouton PLEIN : l'outil actif, aussi nommé
+>   dans la barre ; les bascules (aimant, forme d'origine) sont cerclées.
+> - **Les surfaces, une fois, en haut** : sur les pastilles des régions ; la
+>   rangée « 13 צורות » du panneau (doublon) est retirée sur cet écran.
+> - **Le recentrage** : une icône au bout de la pile de la carte, en haut à
+>   gauche (`MapTools.setRecenter`), sur TOUTES les cartes ; même règle que BF
+>   (paraît quand le PO a pris la caméra). La pastille du milieu n'existe plus.
+> - **La forme d'origine** : la forme telle qu'elle était à l'ouverture (ou
+>   celle qu'on remplace, « שרטוט מחדש », qui n'a plus d'aplat) en pointillés,
+>   NOMMÉE dans la barre, et un bouton pour la masquer. ★ Ce que le PO voyait
+>   « derrière » sur l'écran des régions était la couche « אזורים » de la
+>   légende — ALLUMÉE sur son compte (mesuré en base) — qui dessinait la
+>   version ENREGISTRÉE sous celle qu'il éditait : elle n'est plus dessinée sur
+>   cet écran (`MapView regionsLayer={false}`).
+> - **« שחזור המקור »** sort de la barre : menu « ⋯ », confirmation qui nomme
+>   la région, ses points, sa surface et le nombre de formes effacées (une).
+> - ★ **La carte ne bouge pas sous le doigt.** La barre étant au-dessus de la
+>   carte, sa hauteur est celle que la carte perd ; MapLibre garde son centre,
+>   donc tout glissait de la moitié de la différence (11 px, attrapé par `blui`
+>   A578 quand la ligne du point sélectionné paraissait). La barre réserve la
+>   place de ce qui va et vient, et le reste est compensé (`panBy`).
+>
+> **Portes** : `blui` A570–A580 148/148 (souris, doigt, écran partagé 678 et
+> 507) ; réécrites (la règle a changé) : `bkeditui` A557, A567, A569 ;
+> rejouées : bkeditui 152, bhui 35, biui 45, bfui 52 (`docs/bl/portes-c1-local.md`).
+> Avant / après sur iPad : `docs/screenshots/bl/avant/ipad-barre-avant.png`,
+> `docs/screenshots/bl/c1-local/ipad-barre-apres.png`.
 > 🏁 **BK — TRANSACTION : UN AGRÉGAT S'ÉCRIT EN UNE FOIS, ET LA BOÎTE D'ENVOI SE RELANCE. 2026-10-18.**
 >
 > Décision du PO, après la mesure (`docs/bk/ecriture-non-transactionnelle.md`) :

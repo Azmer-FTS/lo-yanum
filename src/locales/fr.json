@@ -1040,5 +1040,31 @@
     "errorDate": "Non généré : une date a été trouvée, et la règle est : aucune date dans le document.",
     "errorPublish": "Le document n’a pas été enregistré. Vérifiez la connexion et réessayez.",
     "timesNoteNight": "Distances et durées mesurées par la route depuis l’institution. Les durées comprennent une marge de {{margin}} % et {{night}} % pour la nuit."
+  },
+  "editor": {
+    "tool": {
+      "select": "Sélection",
+      "pen": "Plume",
+      "penAdd": "Ajout de point",
+      "penRemove": "Suppression de point",
+      "convert": "Conversion de point (coin ↔ courbe)",
+      "pencil": "Crayon — main levée",
+      "move": "Déplacer la forme entière"
+    },
+    "ghostShow": "Afficher la forme précédente",
+    "ghostHide": "Masquer la forme précédente",
+    "ghostNote": "Pointillés : la forme telle qu'elle était à l'ouverture — pour comparer seulement",
+    "ghostNoteReplace": "Pointillés : la forme remplacée — pour comparer seulement ; elle est remplacée quand vous fermez la nouvelle",
+    "penAddMiss": "Touchez le contour de la forme pour y ajouter un point.",
+    "penRemoveMiss": "Touchez un point pour le supprimer.",
+    "convertMiss": "Touchez un point pour passer du coin à la courbe, ou tirez depuis lui pour sortir ses poignées.",
+    "noNode": "Aucun point choisi"
+  },
+  "regionEdit": {
+    "pickHint": "Choisissez une région dans la rangée du haut, ou touchez-la sur la carte, pour modifier sa limite.",
+    "restore": "Restaurer la limite d'origine…",
+    "restoreNothing": "Restaurer la limite d'origine (région jamais redessinée)",
+    "restoreConfirm": "Effacer la limite que vous avez tracée pour « {{name}} » ({{points}} points, {{area}} dounams) et revenir à la limite d'origine de l'application ? Une forme sera effacée : « {{name}} ». Impossible à annuler.",
+    "restoreYes": "Oui, effacer et restaurer"
   }
 }

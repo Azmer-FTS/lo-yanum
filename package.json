@@ -51,6 +51,7 @@
     "bkecriture": "bun run scripts/bkecriture.ts",
     "bkpass": "bun run scripts/bkpass.ts",
     "bkui": "bun run scripts/bkui.ts",
+    "blui": "bun run scripts/blui.ts",
     "azcaptures": "bun run scripts/azcaptures.ts",
     "aymobile": "bun run scripts/aymobile.ts",
     "aypins": "bun run scripts/aypins.ts",

@@ -104,6 +104,26 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BL — EN COURS** (2026-10-18). Brief en trois chantiers (barre d'outils en
+  haut ; accroche aux routes visible ; topologie des régions). Branche `main`.
+  - **Chantier 1 — COMMITÉ** (barre d'outils en haut, outils d'Illustrator,
+    recentrage dans la pile, forme d'origine, « שחזור המקור » dans « ⋯ »).
+    Récit : `ETAT.md` § BL chantier 1 ; portes : `docs/bl/portes-c1-local.md`.
+  - Chantier 2 (accroche visible) et chantier 3 (mer, frontières, recouvrements,
+    poussage) : en cours dans l'arbre — voir la suite de cette entrée quand
+    elle sera écrite.
+  - **Base réelle, AVANT la passe (mesuré le 2026-10-18 par le MCP)** :
+    `lo-yanum:region-rings` = 5 régions redessinées (carmel-coast 6, galilee
+    25, golan 5, jezreel 5, samaria 6 sommets ; écrites le 2026-10-18 06:51
+    UTC) ; `lo-yanum:region-paths` = les 5 mêmes ; `zones` = 4 formes
+    (farm-ak1-11 : limite 31, limite 367 [tracé], pâturage 147 [tracé] ;
+    farm-ak1-13 : limite 17). Le compte a la couche « regions » ALLUMÉE.
+  - **Décisions (permanentes)** : la barre de `PathEditor` est TOUJOURS hors de
+    la carte, en haut ; un outil = une icône (`Icon.tsx`) + infobulle
+    hébraïque (`ToolButton.tsx`) ; un seul bouton plein (l'outil actif) ; le
+    recentrage vit dans `MapTools` ; l'écran des régions ne dessine pas la
+    couche « regions » de la légende ; la barre compense sa hauteur (`panBy`).
+  - Reprise : `bun run blui` (≈ 25 min) ; `bun run bkeditui`.
 - **BK — UN AGRÉGAT EN UNE TRANSACTION, ET LA BOÎTE D'ENVOI SE RELANCE**
   (2026-10-18). Branche `main`. UNE migration, appliquée par le MCP AVANT le
   déploiement : `20261018000200_bk_write_aggregate.sql` (MCP

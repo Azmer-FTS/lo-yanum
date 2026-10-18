@@ -103,6 +103,20 @@ export type IconName =
   | 'nodeCorner'
   | 'nodeSmooth'
   | 'replace'
+  /* ★★ BL — la barre d'outils d'Illustrator, dessinée ici dans le trait de l'application :
+     plume, plume +, plume −, conversion de point, crayon, déplacement, aimant (accroche aux
+     routes), forme d'origine (pointillés), recentrage, recouvrements, combler un vide. */
+  | 'pen'
+  | 'penAdd'
+  | 'penRemove'
+  | 'anchorConvert'
+  | 'pencil'
+  | 'moveShape'
+  | 'magnet'
+  | 'ghostShape'
+  | 'recenter'
+  | 'overlaps'
+  | 'gapFill'
 
 type Props = SVGProps<SVGSVGElement> & { name: IconName; size?: number }
 
@@ -308,6 +322,96 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <circle cx="12" cy="12" r="4.5" />
       <path d="M3.5 12h4M16.5 12h4" />
+    </>
+  ),
+  /**
+   * ★★ BL — LA PLUME D'ILLUSTRATOR : un bec de plume penché à 45°, pointe en bas
+   *   à gauche. Ses deux variantes portent un « + » / « − » dans le coin libre
+   *   (en bas à droite), exactement comme les outils « Ajout / Suppression de
+   *   point d'ancrage » ; la plume est alors décalée vers le haut à gauche pour
+   *   lui laisser la place.
+   */
+  pen: (
+    <g transform="rotate(45 12 12)">
+      <path d="M12 21.5 7.5 13 9 8.5h6l1.5 4.5Z" />
+      <path d="M12 21.5V15" />
+      <circle cx="12" cy="13.6" r="1.25" />
+      <path d="M9 8.5V5h6v3.5" />
+    </g>
+  ),
+  penAdd: (
+    <>
+      <g transform="translate(-2 -2) rotate(45 12 12)">
+        <path d="M12 21.5 7.5 13 9 8.5h6l1.5 4.5Z" />
+        <path d="M12 21.5V15" />
+        <circle cx="12" cy="13.6" r="1.25" />
+        <path d="M9 8.5V5h6v3.5" />
+      </g>
+      <path d="M16.5 19h5M19 16.5v5" strokeWidth={2} />
+    </>
+  ),
+  penRemove: (
+    <>
+      <g transform="translate(-2 -2) rotate(45 12 12)">
+        <path d="M12 21.5 7.5 13 9 8.5h6l1.5 4.5Z" />
+        <path d="M12 21.5V15" />
+        <circle cx="12" cy="13.6" r="1.25" />
+        <path d="M9 8.5V5h6v3.5" />
+      </g>
+      <path d="M16.5 19h5" strokeWidth={2} />
+    </>
+  ),
+  /* L'outil « Conversion de point d'ancrage » : le chevron d'Illustrator, son sommet est un point. */
+  anchorConvert: (
+    <>
+      <path d="M4.5 19 12 6.5 19.5 19" />
+      <rect x="10.4" y="4.9" width="3.2" height="3.2" rx=".4" />
+      <path d="M8.5 19.5h-3M18.5 19.5h-3" />
+    </>
+  ),
+  /* Le crayon : la main levée. */
+  pencil: (
+    <>
+      <path d="M15.5 4.5 19.5 8.5 8.5 19.5 4 20l.5-4.5Z" />
+      <path d="M13.5 6.5l4 4M4.5 15.5l4 4" />
+    </>
+  ),
+  /* La croix de déplacement : la forme entière. */
+  moveShape: (
+    <>
+      <path d="M12 3v18M3 12h18" />
+      <path d="M12 3 9.5 5.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5" />
+    </>
+  ),
+  /* L'aimant : l'accroche aux routes. */
+  magnet: (
+    <>
+      <path d="M5.5 4h4v7.5a2.5 2.5 0 0 0 5 0V4h4v7.5a6.5 6.5 0 0 1-13 0Z" />
+      <path d="M5.5 7.5h4M14.5 7.5h4" />
+    </>
+  ),
+  /* La forme d'origine : un contour en pointillés. */
+  ghostShape: <path d="M4.5 8 11 4.5l8.5 3.5-1.5 10.5-11 1.5Z" strokeDasharray="2.6 2.4" />,
+  /* Le recentrage : un cadre de visée et son centre. */
+  recenter: (
+    <>
+      <path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" />
+      <circle cx="12" cy="12" r="2.4" />
+    </>
+  ),
+  /* Deux formes qui se recouvrent. */
+  overlaps: (
+    <>
+      <path d="M3.5 6.5h10v10h-10Z" />
+      <path d="M10.5 7.5h10v10h-10Z" />
+      <path d="M10.5 10.5l3-3M10.5 14l3-3M11.5 16.5l2-2" />
+    </>
+  ),
+  /* Combler un vide : deux bords, et la flèche qui les rejoint. */
+  gapFill: (
+    <>
+      <path d="M4.5 4v16M19.5 4v16" />
+      <path d="M8 12h8M13.5 9.5 16 12l-2.5 2.5" />
     </>
   ),
   replace: (

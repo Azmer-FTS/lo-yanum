@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
-import { readCoordinator, regionIsEdited, regions, ringCenter } from '@core/index'
+import { readCoordinator, regionIsEdited, regions, ringAreaDunams, ringCenter } from '@core/index'
 import type { LatLng, PathModel, RegionId } from '@core/index'
 
 import { ChevronForward, Icon } from '../../components/Icon'
@@ -61,11 +61,14 @@ export function RegionsEditScreen() {
   /** Le tracé tel qu'il était à l'ouverture — « האם השתנה ». */
   const opened = useRef<string>('')
   const [map, setMap] = useState<maplibregl.Map | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [, setBusy] = useState(false)
   /** « בטל שינויים » repart du tracé enregistré : l'éditeur est remonté. */
   const [epoch, setEpoch] = useState(0)
   const [startReq, setStartReq] = useState<StartRequest | null>(null)
   const [replaceAsk, setReplaceAsk] = useState(false)
+  /** ★★ BL — la confirmation de « שחזור המקור », et la région en cours de « שרטוט מחדש ». */
+  const [restoreAsk, setRestoreAsk] = useState(false)
+  const [replacing, setReplacing] = useState<string | null>(null)
   const nonce = useRef(0)
 
   /**
@@ -95,6 +98,7 @@ export function RegionsEditScreen() {
     setSelected(id as RegionId | null)
     setDraft(null)
     setReplaceAsk(false)
+    setRestoreAsk(false)
     opened.current = id ? JSON.stringify(pathOf(id as RegionId)) : ''
   }
 
@@ -112,27 +116,56 @@ export function RegionsEditScreen() {
     setEpoch((n) => n + 1)
   }
 
+  /**
+   * ★★ BL — « שחזור המקור » N'EST PLUS DANS LA BARRE. C'est une action
+   *   destructrice (elle efface le tracé du PO pour cette région) : elle vit
+   *   dans « ⋯ », derrière une confirmation qui NOMME ce qui sera effacé et
+   *   combien de formes sont concernées. Annuler, dans la barre, couvre le
+   *   besoin courant.
+   */
   const restore = (): void => {
     if (!selected) return
     resetRegionRing(selected)
+    setRestoreAsk(false)
     open(selected)
     setEpoch((n) => n + 1)
   }
+
+  const selectedRegion = all.find((r) => r.id === selected) ?? null
+  const selectedEdited = selected ? regionIsEdited(selected) : false
 
   /**
    * The washes. The one being edited is drawn by the editor, on top; every
    * other one is dimmed to a quarter, which is enough to read a seam against
    * and not enough to argue with the line under the finger.
+   *
+   * ★★ BL — pendant un « שרטוט מחדש », la région remplacée n'a plus d'aplat :
+   *   l'éditeur la montre en POINTILLÉS, nommés dans la barre (« la forme
+   *   d'origine »), et le PO peut la masquer.
    */
-  const polygons = all.map((r) => ({
+  const polygons = all
+    .filter((r) => r.id !== replacing)
+    .map((r) => ({
       id: `region-${r.id}`,
       /* La région ouverte : son tracé EN COURS (pas encore enregistré), sous le contour de l'éditeur. */
       ring: r.id === selected && draft ? draft.ring : ringOf(r.id),
       color: r.id === selected ? `rgb(${r.rgb})` : `rgb(${r.rgb} / 0.28)`,
       emphasis: r.id === selected,
-  }))
+    }))
 
   const centre = selected ? ringCenter(ringOf(selected)) : undefined
+
+  const confirmBox = (testId: string, text: string, yes: { testId: string; label: string; onClick: () => void; danger?: boolean }, no: () => void) => (
+    <div role="alertdialog" data-testid={testId} className="flex flex-wrap items-center gap-2 rounded-card bg-surface-high px-3 py-2 ring-1 ring-status-warn">
+      <span className="basis-full text-caption font-semibold text-content-primary">{text}</span>
+      <button type="button" data-testid={yes.testId} className={`min-h-11 py-1.5 text-micro ${yes.danger ? 'btn-secondary text-status-danger-ink' : 'btn-primary'}`} onClick={yes.onClick}>
+        {yes.label}
+      </button>
+      <button type="button" className="btn-secondary min-h-11 py-1.5 text-micro" onClick={no}>
+        {t('common.cancel')}
+      </button>
+    </div>
+  )
 
   return (
     /**
@@ -150,7 +183,8 @@ export function RegionsEditScreen() {
     >
       {/* The chooser. One pill per region, its own colour, and a mark on the
           ones he has already redrawn — so "which of these is still X12's
-          guess" is answerable at a glance. */}
+          guess" is answerable at a glance. ★★ BL — et SA SURFACE : elle
+          était répétée en bas, dans le panneau ; elle n'est plus qu'ici. */}
       <div className="sticky-top -mx-4 px-4 lg:-mx-5 lg:px-5" style={{ top: 'var(--shell-top, 0px)' }}>
         <div data-title-row="" className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
           <button
@@ -183,64 +217,34 @@ export function RegionsEditScreen() {
               data-testid={`region-pick-${r.id}`}
               onClick={() => open(r.id)}
               aria-pressed={selected === r.id}
-              className={`filter-pill ${selected === r.id ? 'filter-pill-active' : ''}`}
+              className={`filter-pill h-auto min-h-11 flex-wrap gap-x-1.5 gap-y-0 py-1 ${selected === r.id ? 'filter-pill-active' : ''}`}
             >
               <span
                 aria-hidden
                 className="h-2.5 w-2.5 shrink-0 rounded-pill"
                 style={{ background: `rgb(${r.rgb})` }}
               />
-              {r.name}
+              <span className="whitespace-nowrap">{r.name}</span>
+              <bdi className="numeric whitespace-nowrap text-micro text-content-muted" data-testid={`region-area-${r.id}`}>
+                {t('editor.area', { n: Math.round(ringAreaDunams(r.id === selected && draft ? draft.ring : ringOf(r.id))).toLocaleString('he-IL') })}
+              </bdi>
               {regionIsEdited(r.id) && <Icon name="check" size={11} />}
             </button>
           ))}
         </ScrollRow>
-      </div>
 
-      <div className="relative -mx-4 mt-3 min-h-0 flex-1 lg:-mx-5">
-        <MapView
-          ariaLabel={t('regionEdit.mapLabel')}
-          polygons={polygons}
-          markers={[]}
-          center={centre}
-          fit={false}
-          zoom={selected ? 8 : 7}
-          onMapInstance={setMap}
-          quickPin={false}
-        />
-
-        <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-col gap-2">
-          {selected === null && !busy && (
-            <div className="rounded-card bg-surface-overlay p-4 shadow-lift">
-              <p className="text-caption text-content-secondary">{t('regionEdit.pickHint')}</p>
-            </div>
-          )}
-          {replaceAsk && selected && (
-            <div role="alertdialog" data-testid="region-replace-confirm" className="glass pointer-events-auto flex flex-wrap items-center gap-2 self-start rounded-card px-3.5 py-2.5 shadow-glow ring-1 ring-status-warn">
-              <span className="basis-full text-caption font-semibold text-content-primary">{t('regionEdit.replaceConfirm', { name: all.find((r) => r.id === selected)?.name ?? '' })}</span>
-              <button
-                type="button"
-                data-testid="region-replace-yes"
-                className="btn-primary min-h-11 py-1.5 text-micro"
-                onClick={() => {
-                  setReplaceAsk(false)
-                  nonce.current += 1
-                  setStartReq({ nonce: nonce.current, kind: 'region', tool: 'pen', replaceId: selected })
-                }}
-              >
-                {t('regionEdit.replaceYes')}
-              </button>
-              <button type="button" className="btn-secondary min-h-11 py-1.5 text-micro" onClick={() => setReplaceAsk(false)}>
-                {t('common.cancel')}
-              </button>
-            </div>
-          )}
+        {/* ★★ BL — LA BARRE D'OUTILS, ICI, EN HAUT, ET TOUJOURS À SA PLACE.
+            Sans région ouverte elle reste là, outils éteints, et dit quoi faire :
+            rien ne saute quand on en ouvre une. Plus rien ne flotte sur la carte. */}
+        <div className="mt-2" data-testid="region-toolbar">
           <PathEditor
             key={epoch}
             map={map}
             entityLabel={t('regionEdit.entity')}
             shapes={shapes}
-            kinds={[{ kind: 'region', label: all.find((r) => r.id === selected)?.name ?? t('regionEdit.entity'), color: selected ? `rgb(${all.find((r) => r.id === selected)?.rgb ?? '0 0 0'})` : '#2563eb' }]}
+            showShapeList={false}
+            idleHint={t('regionEdit.pickHint')}
+            kinds={[{ kind: 'region', label: selectedRegion?.name ?? t('regionEdit.entity'), color: selectedRegion ? `rgb(${selectedRegion.rgb})` : '#2563eb' }]}
             activeId={selected}
             onActiveChange={(id) => {
               /* « סיום » ou une autre région : le tracé en cours est ENREGISTRÉ, jamais perdu en silence. */
@@ -250,6 +254,7 @@ export function RegionsEditScreen() {
             }}
             start={startReq}
             onBusyChange={setBusy}
+            onSessionChange={(s) => setReplacing(s?.replaceId ?? null)}
             onChange={(_id, model, ring) => setDraft({ model, ring })}
             onCreate={(_kind, model, ring, replaceId) => {
               if (!replaceId) return null
@@ -258,12 +263,21 @@ export function RegionsEditScreen() {
               return replaceId
             }}
             onReplace={() => setReplaceAsk(true)}
+            menuItems={
+              <button
+                type="button"
+                role="menuitem"
+                data-testid="region-restore"
+                disabled={!selectedEdited}
+                onClick={() => setRestoreAsk(true)}
+                className="btn-secondary min-h-11 justify-start py-1.5 text-micro text-status-danger-ink disabled:opacity-40"
+              >
+                <Icon name="history" size={13} />
+                {selectedEdited ? t('regionEdit.restore') : t('regionEdit.restoreNothing')}
+              </button>
+            }
             extraActions={
               <>
-                <button type="button" data-testid="region-restore" onClick={restore} className="btn-secondary min-h-11 py-1.5 text-micro">
-                  <Icon name="history" size={13} />
-                  {t('regionEdit.restore')}
-                </button>
                 <button type="button" data-testid="region-discard" onClick={discard} disabled={!dirty} className="btn-secondary min-h-11 py-1.5 text-micro disabled:opacity-40">
                   {t('regionEdit.discard')}
                 </button>
@@ -272,8 +286,54 @@ export function RegionsEditScreen() {
                 </button>
               </>
             }
+            notes={
+              <>
+                {replaceAsk &&
+                  selectedRegion &&
+                  confirmBox(
+                    'region-replace-confirm',
+                    t('regionEdit.replaceConfirm', { name: selectedRegion.name }),
+                    {
+                      testId: 'region-replace-yes',
+                      label: t('regionEdit.replaceYes'),
+                      onClick: () => {
+                        setReplaceAsk(false)
+                        nonce.current += 1
+                        setStartReq({ nonce: nonce.current, kind: 'region', tool: 'pen', replaceId: selectedRegion.id })
+                      },
+                    },
+                    () => setReplaceAsk(false),
+                  )}
+                {restoreAsk &&
+                  selectedRegion &&
+                  confirmBox(
+                    'region-restore-confirm',
+                    t('regionEdit.restoreConfirm', {
+                      name: selectedRegion.name,
+                      points: ringOf(selectedRegion.id).length,
+                      area: Math.round(ringAreaDunams(ringOf(selectedRegion.id))).toLocaleString('he-IL'),
+                    }),
+                    { testId: 'region-restore-yes', label: t('regionEdit.restoreYes'), onClick: restore, danger: true },
+                    () => setRestoreAsk(false),
+                  )}
+              </>
+            }
           />
         </div>
+      </div>
+
+      <div className="relative -mx-4 min-h-0 flex-1 lg:-mx-5">
+        <MapView
+          ariaLabel={t('regionEdit.mapLabel')}
+          polygons={polygons}
+          markers={[]}
+          center={centre}
+          fit={false}
+          zoom={selected ? 8 : 7}
+          onMapInstance={setMap}
+          quickPin={false}
+          regionsLayer={false}
+        />
       </div>
     </div>
   )
