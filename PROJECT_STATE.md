@@ -148,8 +148,23 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
       d'origine, boutons du point), selon la largeur MESURÉE de la ligne ;
     · sous 48 rem, les pastilles des régions sont un sélecteur ;
     · les confirmations s'ouvrent accrochées sous la barre (plus dans la barre).
-  - **Déploiement** : voir l'entrée de rejeu ci-dessous (à compléter après le
-    push).
+  - **DÉPLOYÉ `dc7bc6b` (les deux chantiers), VÉRIFIÉ** (`docs/bm/portes-deploye-dc7bc6b.md`) :
+    bmui 80, blui 105 + 105, bltopo 72, bkecriture 30, bkeditui 152, bkui 31,
+    bjui 56, biui 45, bhui 35, bgui 90, bfui 52, beui 57, bdui 76, bbui 82,
+    assettings, atsync 17 (app) ; bcmobile 246, aymobile 48 (jumeau). Base
+    réelle : rien d'écrit (5 régions, 5 tracés, 4 formes, 0 sans sommet).
+  - **Non prouvé (chantier 2)** : sur l'iPad RÉEL (les portes jouent un iPad
+    émulé) ; une fois sur cinq, à 507 px au déployé, le dépli du sélecteur de
+    région n'a pas paru en 8 s (rejouée : verte ; cause non élucidée).
+  - **Questions au PO** : (1) les images avant/après (frontières, barre) ;
+    (2) la confirmation de « שחזור המקור » accrochée SOUS la barre (et non plus
+    dedans) lui convient-elle ? (3) le nombre de points n'est plus écrit sur
+    l'écran des régions — le veut-il quelque part ? (4) celles de BL (lancer
+    « חפיפות » ; questions de BK).
+  - Reprise : `bun run bmpass && bun run typecheck` ; `bun run bmui` (≈ 3 min) ;
+    au déployé : `BASE_URL=https://azmer-fts.github.io/lo-yanum bun run bmui`.
+    Batteries : `private/bm/battery2.sh` (toutes les portes, chacune via
+    `private/bm/calmrun.sh`).
 
 - **BL — TERMINÉE, POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-18/19).
   Commits `c830389` (chantier 1), `03199cc` (chantier 2), `1742066` (chantier

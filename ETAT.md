@@ -29,7 +29,10 @@
 >   panneau des recouvrements garde sa hauteur.
 >
 > **Portes** : `bmui` 80 (A636–A641) ; `blui` A573/A577 réécrites ; batterie
-> entière verte (`docs/bm/portes-local-c2.md`). Images :
+> entière verte (`docs/bm/portes-local-c2.md`). **Déployé `dc7bc6b`, vérifié**
+> (bmui 80, blui 210, bltopo 72, bkeditui 152, la batterie BB→BK ; bcmobile 246,
+> aymobile 48 au jumeau) ; base réelle : rien d'écrit
+> (`docs/bm/portes-deploye-dc7bc6b.md`). Images :
 > `docs/bm/img/barre-{1032,678,507}-avant-apres.jpg`. Récit : `docs/bm/barre.md`.
 
 > 🏁 **BM (chantier 1) — DES FRONTIÈRES JUSTES, PAS APPROCHÉES. 2026-10-19.**
