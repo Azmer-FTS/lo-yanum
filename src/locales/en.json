@@ -1096,6 +1096,15 @@
     "applied": "{{count}} overlaps resolved and saved.",
     "reverted": "Resolution undone: the regions are back as they were.",
     "saveFirst": "Save or discard the changes to the open region first.",
-    "seaNote": "{{n}} dunams of the drawing are in the sea: they are neither counted nor painted — the coastline cuts them."
+    "seaNote": "{{n}} dunams of the drawing are in the sea: they are neither counted nor painted — the coastline cuts them.",
+    "abroadNote": "Beyond the border — neither counted nor painted: {{list}}.",
+    "abroadItem": "{{n}} dunams in {{where}}",
+    "abroad": {
+      "egypt": "Egypt",
+      "jordan": "Jordan",
+      "syria": "Syria",
+      "lebanon": "Lebanon",
+      "gaza": "the Gaza Strip"
+    }
   }
 }

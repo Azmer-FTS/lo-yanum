@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 
 import { REGIONS } from '../src/core/regions'
-import { landDunams, overlapsOf, planResolutions, seaDunams } from '../src/core/topology'
+import { abroadDunams, landDunams, overlapsOf, planResolutions, seaDunams } from '../src/core/topology'
 import type { RegionGeom } from '../src/core/topology'
 import { ringAreaDunams } from '../src/core/geo'
 
@@ -19,8 +19,12 @@ const regions: RegionGeom[] = REGIONS.map((r) => {
 })
 const name = (id: string) => REGIONS.find((r) => r.id === id)?.name ?? id
 const km2 = (d: number) => Math.round(d / 1000).toLocaleString('fr-FR')
-console.log('région | redessinée | surface tracée km² | dans la mer km² | sur terre km²')
-for (const r of regions) console.log(`${name(r.id)} (${r.id}) | ${r.drawn ? 'oui' : 'non'} | ${km2(ringAreaDunams(r.ring))} | ${km2(seaDunams(r.ring))} | ${km2(landDunams(r.ring))}`)
+console.log('région | redessinée | surface tracée km² | dans la mer km² | au-delà (option A) km² | dans le pays km²')
+for (const r of regions) {
+  const ab = abroadDunams(r.ring)
+  const abTxt = Object.entries(ab).filter(([, n]) => (n ?? 0) >= 1000).map(([k, n]) => `${k} ${km2(n ?? 0)}`).join(', ') || '0'
+  console.log(`${name(r.id)} (${r.id}) | ${r.drawn ? 'oui' : 'non'} | ${km2(ringAreaDunams(r.ring))} | ${km2(seaDunams(r.ring))} | ${abTxt} | ${km2(landDunams(r.ring))}`)
+}
 const ov = overlapsOf(regions)
 const totalLand = regions.reduce((s, r) => s + landDunams(r.ring), 0)
 const totalOv = ov.reduce((s, o) => s + o.dunams, 0)

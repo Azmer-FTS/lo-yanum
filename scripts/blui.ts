@@ -532,9 +532,10 @@ for (const dev of devices) {
     check(`A577 (${D}) dans « ⋯ » : présent, ÉTEINT tant que la région n’a pas été redessinée`, (await o.page.locator('[data-testid="region-restore"]').isDisabled()) && /לא צויר/.test(await o.page.locator('[data-testid="region-restore"]').innerText()))
     /* Refermer le menu par son bouton (Échap, lui, fermerait l'édition). */
     await h.tap(mb.x, mb.y)
-    /* Redessiner : un point déplacé vers le large (le sud-ouest, où aucune région ne serait poussée), enregistré. */
-    const p = await nodeAt(o.page, 0)
-    await h.drag(p.x, p.y, p.x - 40, p.y + 30)
+    /* Redessiner : le point ouest du Néguev déplacé vers l'ouest (aucune région n'y serait poussée), enregistré.
+       (Pas le point 0, au sud : la barre au-dessus de la carte le met hors de l'écran à 1 440 × 900.) */
+    const p = await nodeAt(o.page, 6)
+    await h.drag(p.x, p.y, p.x - 40, p.y)
     const sv = await centreOf(o.page, '[data-testid="region-save"]')
     await h.tap(sv.x, sv.y)
     await o.page.waitForTimeout(800)

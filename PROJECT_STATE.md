@@ -148,11 +148,12 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
       le dixième ; vide montré et comblé d'un bouton ; région + voisines en UNE
       écriture (`saveRegionPaths`) ; une région revenue à son tracé livré
       redevient « livrée ».
-  - **Questions au PO** : (1) 3.2 — appliquer le SUD (Égypte, Jordanie, mer
-    Morte : 2 775 km²) ? et pour le reste : option A (lignes extérieures,
-    Judée-Samarie et Golan dedans, 4 136 km² en tout), ou rien ? (B n'est pas
-    proposée) ; (2) lancer lui-même « חפיפות » (10 recouvrements sur ses
-    régions, tous résolubles) ; (3) les questions de BK restent ouvertes.
+  - **3.2 — OPTION A DÉCIDÉE PAR LE PO (2026-10-19) ET APPLIQUÉE** : Égypte,
+    Jordanie (Jourdain compris), Syrie, Liban, Gaza retirés comme la mer
+    (`src/core/abroad.json`, `scripts/blabroad.ts`) ; Judée-Samarie et Golan
+    dedans. Masque, jamais réécriture. `ETAT.md` § « BL (3.2, option A) ».
+  - **Questions au PO** : (1) lancer lui-même « חפיפות » (10 recouvrements sur
+    ses régions, tous résolubles) ; (2) les questions de BK restent ouvertes.
   - **Non prouvé** : sur l'iPad réel (les portes jouent un iPad émulé) ; la
     résolution et le poussage sur SES régions (prouvés sur les régions livrées,
     calculés sur les siennes hors dépôt : `private/bl/real-plan.json`).

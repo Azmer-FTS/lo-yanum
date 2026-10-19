@@ -1,8 +1,11 @@
-# BL — 3.2 : couper les régions à une frontière terrestre ? PROPOSITION, NON APPLIQUÉE
+# BL — 3.2 : couper les régions à une frontière terrestre
 
-> « Ce point est politique et tu ne l'appliques pas de ta propre autorité. »
-> — le brief. **Rien de ce qui suit n'est appliqué.** Tout est mesuré, dessiné,
-> et attend la réponse du PO.
+> ★★ **DÉCISION DU PO (2026-10-19) : « Applique l'option A : le sud, plus la
+> Jordanie le long du Jourdain, la Syrie, le Liban et Gaza ; la Judée-Samarie
+> et le Golan restent dedans. » — APPLIQUÉE** (voir « L'application », en bas).
+>
+> Ce qui suit, jusqu'à « L'application », est la proposition telle qu'elle a
+> été présentée AVANT la décision.
 
 ## Le jeu de données : celui que la carte charge déjà
 
@@ -85,3 +88,26 @@ La grille sert à MESURER. Pour couper, il faudra construire les polygones à
 partir des lignes de `borders.json` (même source) et les retirer comme la mer
 (`core/topology.ts`, un masque comme `landOf` : le tracé du PO n'est pas
 réécrit). Rien de cela n'est fait tant que le PO n'a pas choisi.
+
+## ★★ L'application (après la décision du PO, 2026-10-19)
+
+- **Des lignes aux surfaces** : `scripts/blabroad.ts` reprend la grille, plus
+  fine (0,0015°, ~150 m), avec les mêmes murs (toutes les lignes + la mer) et
+  les mêmes points témoins ; il S'ARRÊTE si une zone au-delà rejoint Tel-Aviv
+  (ligne trouée) ou si la Judée-Samarie ou le Golan tombent dans une zone
+  retirée. Les composantes Égypte, Jordanie, Syrie, Liban, Gaza deviennent des
+  polygones (Douglas–Peucker à 100 m) : `src/core/abroad.json` (54 Ko).
+  Précision : ~150 m le long des lignes.
+- **Un masque, comme la mer** (`core/topology.ts`, `landOf`) : retiré des
+  surfaces, des aplats (écran des régions ET couche « אזורים » de toutes les
+  cartes), des recouvrements et du poussage. **Le tracé du PO n'est pas
+  réécrit** : revenir sur la décision, c'est retirer une zone du fichier.
+- **La barre le dit** sur l'écran des régions : « מעבר לגבול — לא נספר ולא
+  נצבע: 825,523 דונם בירדן » (par pays).
+- Ce que retire l'application (mesure exacte sur les polygones, vos 13
+  régions) : אילת 160 km² (Jordanie 151, Égypte 9) · הערבה 721 · ים המלח 840 ·
+  בקעת הירדן 826 · רמת הגולן 460 (Syrie) · הגליל 10 (Liban) · עמק יזרעאל 4 ·
+  מישור החוף 72 (Gaza) · הנגב 1 153 (Égypte 1 116, Gaza 37) — **4 246 km²**
+  (la grille de mesure de la proposition disait 4 136 ; `blpass` A601 tient
+  l'écart sous 6 % par région).
+- Portes : `blpass` A601, `bltopo` A602.

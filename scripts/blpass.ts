@@ -23,6 +23,10 @@
  *   A591  ★ le poussage s'arrête : une voisine coupée en deux, ou réduite à
  *         moins du dixième, n'est pas recoupée — et l'on sait laquelle
  *   A592  gagner sur la mer ne pousse personne
+ *   A601  ★ 3.2 OPTION A (décision du PO) : l'Égypte, la Jordanie (Jourdain
+ *         compris), la Syrie, le Liban et Gaza sont retirés comme la mer ; la
+ *         Judée-Samarie et le Golan restent DEDANS ; les surfaces retirées
+ *         rejoignent la mesure indépendante de la grille (`blborders`, ±6 %)
  */
 import * as topo from '../src/core/topology'
 import { REGIONS } from '../src/core/regions'
@@ -227,6 +231,41 @@ section('A592 — gagner sur la mer ne pousse personne')
   const activeLand = [...rect(32.0, 34.6, 32.05, 34.85).slice(0, 2), { lat: 32.07, lng: 34.85 }, { lat: 32.05, lng: 34.6 }]
   const q = topo.pushNeighbors(active0, activeLand, [{ id: 'n', ring: neighbor, startDunams: topo.landDunams(neighbor) }])
   check('A592 … la même avancée qui mord sur la TERRE, elle, la recoupe', !!q.rings.n && !q.blocked)
+}
+
+// ===========================================================================
+section('A601 — ★ 3.2 option A : les frontières retenues, retirées comme la mer')
+{
+  const R = (id: string) => REGIONS.find((r) => r.id === id)!.ring.map(([lng, lat]) => ({ lat, lng }))
+  const near6 = (a: number, b: number) => Math.abs(a - b) <= b * 0.06
+  const sinai = rect(30.0, 34.3, 30.3, 34.6)
+  check(`A601 un carré dans le Sinaï : plus rien sur le « pays » (${Math.round(topo.landDunams(sinai))} ד׳)`, topo.landDunams(sinai) < 1 && (topo.abroadDunams(sinai).egypt ?? 0) > 0.99 * area(sinai))
+  const westBank = rect(31.85, 35.15, 31.95, 35.3)
+  check('A601 ★ la Judée-Samarie reste DEDANS (rien de retiré autour de Ramallah)', Object.keys(topo.abroadDunams(westBank)).length === 0 && topo.landDunams(westBank) === area(westBank))
+  const golan = rect(32.95, 35.7, 33.05, 35.78)
+  check('A601 ★ le Golan reste DEDANS (rien de retiré au centre du plateau)', Object.keys(topo.abroadDunams(golan)).length === 0 && topo.landDunams(golan) === area(golan))
+  const expected: Array<[string, topo.AbroadZone, number]> = [
+    ['jordan-valley', 'jordan', 799_000],
+    ['dead-sea', 'jordan', 827_000],
+    ['arava', 'jordan', 693_000],
+    ['negev', 'egypt', 1_099_000],
+    ['golan', 'syria', 481_000],
+    ['galilee', 'lebanon', 819_000],
+    ['coastal-plain', 'gaza', 71_000],
+  ]
+  for (const [id, z, grid] of expected) {
+    const got = topo.abroadDunams(R(id))[z] ?? 0
+    check(`A601 « ${id} » : ${Math.round(got / 1000)} km² en ${z} (grille de mesure : ${Math.round(grid / 1000)})`, near6(got, grid))
+  }
+  /* (À la maille de la grille près — ~150 m : quelques centaines de m² au coin de la mer Morte.) */
+  const noise = (id: string) => Object.values(topo.abroadDunams(R(id))).every((n) => (n ?? 0) < 10)
+  check(`A601 la Judée et la Samarie livrées : rien au-delà, à la maille près (${JSON.stringify(topo.abroadDunams(R('judea')))})`, noise('judea') && noise('samaria'))
+  const jv = R('jordan-valley')
+  const sum = topo.landDunams(jv) + topo.seaDunams(jv) + Object.values(topo.abroadDunams(jv)).reduce((a, b) => a + (b ?? 0), 0)
+  check('A601 pays + mer + au-delà = surface tracée (rien n’est compté deux fois)', near(sum, area(jv), 0.001))
+  const before = JSON.stringify(jv)
+  topo.landOf(jv)
+  check('A601 ★ le tracé n’est pas réécrit (un masque, comme la mer)', JSON.stringify(jv) === before)
 }
 
 console.log(`\n  ${passed} PASS, ${failed} FAIL`)

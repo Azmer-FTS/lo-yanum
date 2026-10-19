@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
-import { defaultRing, landDunams, landOf, modelForRing, overlapsOf, planResolutions, readCoordinator, regionIsEdited, regions, ringCenter, seaDunams, shapeRings } from '@core/index'
+import { defaultRing, landDunams, landOf, modelForRing, overlapsOf, planResolutions, readCoordinator, regionIsEdited, regions, ringCenter, seaDunams, abroadDunams, shapeRings } from '@core/index'
 import type { LatLng, PathModel, RegionGeom, RegionId } from '@core/index'
 
 import { ChevronForward, Icon } from '../../components/Icon'
@@ -186,6 +186,27 @@ export function RegionsEditScreen() {
     setRestoreAsk(false)
     open(selected)
     setEpoch((n) => n + 1)
+  }
+
+  /**
+   * ★★ BL (3.1, 3.2 option A) — ce que la côte et les frontières retenues retirent de la région ouverte,
+   *   DIT dans la barre : la mer, puis chaque pays (le tracé n'est pas réécrit, il est masqué).
+   */
+  const cutNote = (ring: LatLng[]) => {
+    const sea = seaDunams(ring)
+    const abroad = Object.entries(abroadDunams(ring)).filter(([, n]) => (n ?? 0) >= 1)
+    if (sea < 1 && abroad.length === 0) return null
+    const fmt = (n: number) => Math.round(n).toLocaleString('he-IL')
+    return (
+      <p data-testid="region-sea-note" className="truncate text-micro text-content-muted">
+        {sea >= 1 && <span data-testid="region-sea-part">{t('regionEdit.seaNote', { n: fmt(sea) })} </span>}
+        {abroad.length > 0 && (
+          <span data-testid="region-abroad-part" data-zones={abroad.map(([k]) => k).join(',')}>
+            {t('regionEdit.abroadNote', { list: abroad.map(([k, n]) => t('regionEdit.abroadItem', { n: fmt(n ?? 0), where: t(`regionEdit.abroad.${k}`) })).join(' · ') })}
+          </span>
+        )}
+      </p>
+    )
   }
 
   const selectedRegion = all.find((r) => r.id === selected) ?? null
@@ -431,12 +452,10 @@ export function RegionsEditScreen() {
             }
             notes={
               <>
-                {selected && seaDunams(ringNow(selected)) >= 1 && (
-                  /* ★★ BL (3.1) — la côte coupe d'office : ce qui sort dans la mer ne compte pas, et c'est dit. */
-                  <p data-testid="region-sea-note" className="text-micro text-content-muted">
-                    {t('regionEdit.seaNote', { n: Math.round(seaDunams(ringNow(selected))).toLocaleString('he-IL') })}
-                  </p>
-                )}
+                {/* Une ligne TOUJOURS réservée (même sans région, même sans mer ni frontière) : la barre ne change pas de hauteur. */}
+                <div className="min-h-5" data-testid="region-cut-line">
+                  {selected && cutNote(ringNow(selected))}
+                </div>
                 {replaceAsk &&
                   selectedRegion &&
                   confirmBox(

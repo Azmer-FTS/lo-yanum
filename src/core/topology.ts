@@ -2,6 +2,7 @@ import polygonClipping from 'polygon-clipping'
 import type { MultiPolygon, Polygon } from 'polygon-clipping'
 
 import { ringAreaDunams } from './geo'
+import abroadData from './abroad.json'
 import seaData from './sea.json'
 import type { LatLng } from './types'
 
@@ -28,6 +29,13 @@ import type { LatLng } from './types'
  *   poussage, aplats de l'écran d'édition. Le tracé enregistré du PO n'est pas
  *   réécrit — comme un masque d'écrêtage d'Illustrator : ce qui dépasse dans
  *   la mer ne compte pas et ne se voit pas, et rien n'est perdu.
+ *
+ * ★ 3.2 — L'AU-DELÀ DES FRONTIÈRES, OPTION A (DÉCIDÉE PAR LE PO, 2026-10-19) :
+ *   « le sud, plus la Jordanie le long du Jourdain, la Syrie, le Liban et
+ *   Gaza ; la Judée-Samarie et le Golan restent dedans ». `abroad.json`
+ *   (`scripts/blabroad.ts`, depuis les lignes de la carte) est retiré EXACTEMENT
+ *   comme la mer : un masque de mesure et d'affichage, jamais une réécriture
+ *   du tracé — revenir sur la décision, c'est retirer une zone du fichier.
  *
  * ★ 3.3 — LA RÈGLE DE PARTAGE, EN UNE PHRASE (`winnerOf`) :
  *     « Le terrain que deux régions se disputent reste à celle que vous avez
@@ -60,6 +68,11 @@ export const MIN_OVERLAP_DUNAMS = 1
 export const MIN_SHARE = 0.1
 
 const SEA = (seaData as { sea: number[][][][] }).sea as unknown as MultiPolygon
+
+/** ★★ BL (3.2, option A) — les zones au-delà des frontières retenues, chacune nommée. */
+export type AbroadZone = 'egypt' | 'jordan' | 'syria' | 'lebanon' | 'gaza'
+const ABROAD = (abroadData as unknown as { zones: Record<AbroadZone, MultiPolygon> }).zones
+export const ABROAD_ZONES = Object.keys(ABROAD) as AbroadZone[]
 
 // ---------------------------------------------------------------------------
 // Conversions et mesures
@@ -117,25 +130,61 @@ function boxOf(rings: ReadonlyArray<ReadonlyArray<readonly [number, number] | nu
 }
 const meets = (a: Box, b: Box) => a.w <= b.e && b.w <= a.e && a.s <= b.n && b.s <= a.n
 const SEA_BOXES = SEA.map((p) => boxOf(p))
+/** Tout ce qui n'est pas « le pays » : la mer, puis chaque zone au-delà. */
+const MASKS: Array<{ kind: 'sea' | AbroadZone; poly: Polygon; box: Box }> = [
+  ...SEA.map((poly, i) => ({ kind: 'sea' as const, poly, box: SEA_BOXES[i] })),
+  ...ABROAD_ZONES.flatMap((k) => ABROAD[k].map((poly) => ({ kind: k, poly, box: boxOf(poly) }))),
+]
+const masksMeeting = (b: Box, kinds?: ReadonlySet<string>) => MASKS.filter((m) => (!kinds || kinds.has(m.kind)) && meets(b, m.box)).map((m) => m.poly)
 
 // ---------------------------------------------------------------------------
 // 3.1 — la mer
 // ---------------------------------------------------------------------------
 
-/** La région sans ce qui sort dans la mer (la Méditerranée, le golfe d'Eilat). */
+/** La région sans ce qui sort dans la mer (la Méditerranée, le golfe d'Eilat) ni au-delà des frontières (3.2, option A). */
 export function landOf(ring: readonly LatLng[]): Shape {
   if (ring.length < 3) return []
   const poly = toPolygon(ring)
-  const b = boxOf(poly)
-  const seas = SEA.filter((_, i) => meets(b, SEA_BOXES[i]))
-  if (seas.length === 0) return [poly]
-  return polygonClipping.difference(poly, ...seas)
+  const masks = masksMeeting(boxOf(poly))
+  if (masks.length === 0) return [poly]
+  return polygonClipping.difference(poly, ...masks)
+}
+
+/** `landOf`, gardé en mémoire par anneau : la couche des régions de TOUTES les cartes le redemande à chaque style. */
+const landCache = new Map<string, Shape>()
+export function landOfCached(ring: readonly LatLng[]): Shape {
+  const key = ring.map((p) => `${p.lng},${p.lat}`).join(';')
+  let v = landCache.get(key)
+  if (!v) {
+    v = landOf(ring)
+    if (landCache.size > 200) landCache.clear()
+    landCache.set(key, v)
+  }
+  return v
 }
 
 /** Ce qu'une région perd dans la mer, en dounams. */
 export function seaDunams(ring: readonly LatLng[]): number {
   if (ring.length < 3) return 0
-  return Math.max(0, ringAreaDunams([...ring]) - shapeDunams(landOf(ring)))
+  const poly = toPolygon(ring)
+  const seas = masksMeeting(boxOf(poly), new Set(['sea']))
+  if (seas.length === 0) return 0
+  return shapeDunams(polygonClipping.intersection(poly, seas))
+}
+
+/** ★★ BL (3.2) — ce qu'une région perd au-delà de chaque frontière, en dounams (zones touchées seulement). */
+export function abroadDunams(ring: readonly LatLng[]): Partial<Record<AbroadZone, number>> {
+  const out: Partial<Record<AbroadZone, number>> = {}
+  if (ring.length < 3) return out
+  const poly = toPolygon(ring)
+  const b = boxOf(poly)
+  for (const k of ABROAD_ZONES) {
+    const ms = masksMeeting(b, new Set([k]))
+    if (ms.length === 0) continue
+    const d = shapeDunams(polygonClipping.intersection(poly, ms))
+    if (d >= SLIVER_DUNAMS) out[k] = d
+  }
+  return out
 }
 
 /** La surface d'une région SUR TERRE : ce que l'application affiche et compare. */
@@ -156,16 +205,25 @@ export type CutResult =
  */
 export function cutRing(target: readonly LatLng[], cutter: Shape, minDunams = 0): CutResult {
   if (cutter.length === 0) return { ok: true, ring: [...target], lostDunams: 0, slivers: 0 }
-  const before = ringAreaDunams([...target])
+  const before = landDunams(target)
   const diff = polygonClipping.difference(toPolygon(target), cutter)
-  const pieces = diff.filter((p) => ringAreaDunams(ringLatLng(p[0])) >= SLIVER_DUNAMS)
+  /**
+   * ★★ BL (3.2) — UN MORCEAU SE JUGE À SA TERRE. Un bout de tracé resté dans
+   *   la mer ou au-delà d'une frontière (masqués) n'est pas un morceau de la
+   *   région : le compter coupait « en deux » une région qui ne l'était pas sur
+   *   le pays (attrapé par `blpass` A589 : עמק יזרעאל gardait une langue en
+   *   Jordanie). Il est abandonné, et compté avec les éclats.
+   */
+  const raw = diff.filter((p) => ringAreaDunams(ringLatLng(p[0])) >= SLIVER_DUNAMS)
+  /* (La terre ne se mesure que s'il y a plusieurs morceaux : c'est le cas rare, et la mesure coûte.) */
+  const pieces = raw.length > 1 ? raw.filter((p) => landDunams(ringLatLng(p[0])) >= SLIVER_DUNAMS) : raw
   const slivers = diff.length - pieces.length
   if (pieces.length === 0) return { ok: false, reason: 'empty', pieces: 0 }
   if (pieces.length > 1) return { ok: false, reason: 'split', pieces: pieces.length }
-  const holes = pieces[0].slice(1).filter((h) => ringAreaDunams(ringLatLng(h)) >= SLIVER_DUNAMS)
+  const holes = pieces[0].slice(1).filter((h) => landDunams(ringLatLng(h)) >= SLIVER_DUNAMS)
   if (holes.length > 0) return { ok: false, reason: 'hole', pieces: 1 }
   const ring = ringLatLng(pieces[0][0])
-  const after = ringAreaDunams(ring)
+  const after = landDunams(ring)
   if (after < minDunams) return { ok: false, reason: 'tiny', pieces: 1 }
   return { ok: true, ring, lostDunams: Math.max(0, before - after), slivers }
 }
@@ -256,7 +314,8 @@ export function planResolutions(regions: readonly RegionGeom[], refused: Readonl
     const winner = winnerOf(byId.get(o.a)!, byId.get(o.b)!, (id) => startArea.get(id) ?? 0)
     const loser = winner === o.a ? o.b : o.a
     const isRefused = refused.has(key)
-    const result = cutRing(rings[loser], landOf(rings[winner]), MIN_SHARE * (startArea.get(loser) ?? 0))
+    /* Le perdant perd le TRACÉ du gagnant : ce qui en dépasse dans la mer ou au-delà est masqué de toute façon. */
+    const result = cutRing(rings[loser], [toPolygon(rings[winner])], MIN_SHARE * (startArea.get(loser) ?? 0))
     if (result.ok && !isRefused) rings[loser] = result.ring
     steps.push({ key, a: o.a, b: o.b, dunams: o.dunams, shape: o.shape, winner, loser, result, refused: isRefused })
   }
@@ -293,8 +352,8 @@ export function pushNeighbors(start: readonly LatLng[], now: readonly LatLng[], 
   const gainedAll = start.length >= 3 ? polygonClipping.difference(toPolygon(now), toPolygon(start)) : [toPolygon(now)]
   if (shapeDunams(gainedAll) < SLIVER_DUNAMS) return { rings, blocked: null }
   const gb = boxOf(gainedAll.flat())
-  const seas = SEA.filter((_, i) => meets(gb, SEA_BOXES[i]))
-  const gained = seas.length ? polygonClipping.difference(gainedAll, ...seas) : gainedAll
+  const masks = masksMeeting(gb)
+  const gained = masks.length ? polygonClipping.difference(gainedAll, ...masks) : gainedAll
   if (gained.length === 0) return { rings, blocked: null }
   for (const n of neighbors) {
     if (n.ring.length < 3 || !meets(gb, boxOf(toPolygon(n.ring)))) continue

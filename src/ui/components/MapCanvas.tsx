@@ -19,7 +19,7 @@ import { useCoreValue } from '../hooks/useCore'
 import { BRANCH_LAYERS, MARKER_LAYER, markerShown, setMapLayers, useMapLayers } from './mapLayers'
 import { recordDrawnZones } from './mapProbe'
 import { MAP_MAX_BOUNDS, buildBasemapStyle, registerPmtilesProtocol, resolvedThemeOf } from './basemap'
-import { regionById, regionOf, regions } from '@core/index'
+import { landOfCached, regionById, regionOf, regions } from '@core/index'
 import type { BasemapBase } from './basemap'
 
 /**
@@ -1504,12 +1504,14 @@ export default function MapCanvas({
         type: 'geojson',
         data: {
           type: 'FeatureCollection',
+          /* ★★ BL (3.1, 3.2 option A) — chaque région s'arrête à la côte ET aux frontières retenues
+             (Égypte, Jordanie, Syrie, Liban, Gaza) : un masque, le tracé enregistré n'est pas réécrit. */
           features: regions().map((r) => ({
             type: 'Feature' as const,
             properties: { id: r.id, name: r.name, color: `rgb(${r.rgb})` },
             geometry: {
-              type: 'Polygon' as const,
-              coordinates: [[...r.ring, r.ring[0]]],
+              type: 'MultiPolygon' as const,
+              coordinates: landOfCached(r.ring.map(([lng, lat]) => ({ lat, lng }))),
             },
           })),
         },

@@ -7,7 +7,7 @@ import { REMOTE, check, finish, go, guard, open, section, seed, serveBuild } fro
 import type { Opened } from './ayharness'
 import { FakeDb, USER_ID } from './fake-supabase'
 import { REGIONS } from '../src/core/regions'
-import { landDunams, landOf, overlapsOf, planResolutions, seaDunams, shapeDunams, toPolygon } from '../src/core/topology'
+import { abroadDunams, landDunams, landOf, overlapsOf, planResolutions, seaDunams, shapeDunams, toPolygon } from '../src/core/topology'
 import type { LatLng } from '../src/core/index'
 
 /**
@@ -40,6 +40,10 @@ import type { LatLng } from '../src/core/index'
  *         tout ; « שמור גבול » écrit la région ET ses voisines poussées
  *   A600  ★ aucune perte : ouvrir chaque région sans geste n'écrit rien ; les
  *         formes d'une ferme (emboîtées) ne se poussent JAMAIS
+ *   A602  ★ 3.2 OPTION A : la région s'arrête aux frontières retenues — sur
+ *         l'écran des régions (pastille, barre, aplat, et la barre DIT ce qui
+ *         est retiré et où) ET sur les autres cartes (la couche « אזורים ») ;
+ *         rien n'est écrit
  */
 
 const OUT = process.env.DIST ?? 'dist-bltopo'
@@ -425,6 +429,46 @@ await guard('A600', async () => {
   await q.page.mouse.up()
   await q.page.waitForTimeout(1500)
   check('A600 ★ ferme : la limite déplacée, le pâturage qui l’entoure n’est PAS recoupé (formes emboîtées)', JSON.stringify(db.rows('zone_vertices').filter((v) => v.zone_id === 'zone-tp-g')) === g0 && (await q.page.locator('[data-testid^="editor-neighbor-"]').count()) === 0)
+  await q.ctx.close()
+})
+
+// ===========================================================================
+await guard('A602', async () => {
+  section('A602 — ★ 3.2 option A : les frontières retenues coupent les régions, partout')
+  const { o, h } = await openRegions(DEVICES[1])
+  const jv = RING('jordan-valley')
+  const land = Math.round(landDunams(jv))
+  const pill = Number((await o.page.locator('[data-testid="region-area-jordan-valley"]').innerText()).replace(/[^\d]/g, ''))
+  check(`A602 ★ « ${NAME('jordan-valley')} » : la pastille dit sa surface EN DEÇÀ du Jourdain (${pill} = ${land} ; au-delà : ${Math.round((abroadDunams(jv).jordan ?? 0) / 1000)} km²)`, Math.abs(pill - land) <= 1)
+  await pickRegion(h, 'jordan-valley')
+  check('A602 la barre dit la même surface', Number(await attr(o.page, 'data-area')) === land)
+  const part = o.page.locator('[data-testid="region-abroad-part"]')
+  check(`A602 ★ et elle DIT ce qui est retiré, et où (« ${(await part.innerText().catch(() => '')).trim()} »)`, (await part.getAttribute('data-zones').catch(() => '')) === 'jordan' && /ירדן/.test(await part.innerText().catch(() => '')))
+  const wash = await o.page.evaluate(() => {
+    const m = (window as unknown as { __loYanumMap: { getSource(id: string): { _data?: { features?: Array<{ properties?: { id?: string }; geometry: { coordinates: number[][][] } }> } } | undefined } }).__loYanumMap
+    return (m.getSource('zones')?._data?.features ?? []).filter((x) => String(x.properties?.id ?? '').startsWith('region-jordan-valley')).map((x) => x.geometry.coordinates[0])
+  })
+  const washArea = wash.reduce((sum, r) => sum + landDunams(r.map(([lng, lat]) => ({ lat, lng }))), 0)
+  check(`A602 ★ l’aplat s’arrête au Jourdain (${Math.round(washArea)} / ${land})`, wash.length >= 1 && Math.abs(washArea - land) / land < 0.002)
+  await pickRegion(h, 'judea')
+  check('A602 ★ « יהודה » (Judée-Samarie gardée) : rien au-delà, aucune mention', (await part.count()) === 0)
+  await o.page.screenshot({ path: `${SHOTS}/a602-frontiere.png` })
+  check('A602 rien n’est écrit', (await stored(o.page)) === null)
+  await o.ctx.close()
+
+  /* Les autres cartes : la couche « אזורים » de la légende, allumée. */
+  const db = new FakeDb()
+  seed(db)
+  const q = await open(1440, { db, height: 900, init: { 'lo-yanum:map-layers': JSON.stringify({ __v: 2, regions: true, regionColors: true, entities: true }) } })
+  await go(q.page, APP, '/coordinator/farms', 6000)
+  const layer = await q.page.evaluate(() => {
+    const m = (window as unknown as { __loYanumMap?: { getSource(id: string): { _data?: { features?: Array<{ properties?: { id?: string }; geometry: { type: string; coordinates: number[][][][] } }> } } | undefined } }).__loYanumMap
+    const f = (m?.getSource('regions')?._data?.features ?? []).find((x) => x.properties?.id === 'golan')
+    return f ? { type: f.geometry.type, polys: f.geometry.coordinates.map((p) => p[0]) } : null
+  })
+  const golanLand = landDunams(RING('golan'))
+  const got = (layer?.polys ?? []).reduce((sum, r) => sum + landDunams(r.map(([lng, lat]) => ({ lat, lng }))), 0)
+  check(`A602 ★ la couche « אזורים » des autres cartes : רמת הגולן s’arrête au cessez-le-feu (${Math.round(got / 1000)} / ${Math.round(golanLand / 1000)} km² ; tracée ${Math.round(landDunams(RING('golan')) / 1000 + (abroadDunams(RING('golan')).syria ?? 0) / 1000)})`, layer?.type === 'MultiPolygon' && Math.abs(got - golanLand) / golanLand < 0.002)
   await q.ctx.close()
 })
 

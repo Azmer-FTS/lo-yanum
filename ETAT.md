@@ -1,5 +1,32 @@
 # לא ינום — ETAT
 
+> 🏁 **BL (3.2, option A) — LES FRONTIÈRES RETENUES PAR LE PO, APPLIQUÉES. 2026-10-19.**
+>
+> « Applique l'option A : le sud, plus la Jordanie le long du Jourdain, la
+> Syrie, le Liban et Gaza ; la Judée-Samarie et le Golan restent dedans. » — le PO
+>
+> - `scripts/blabroad.ts` tire des lignes de la carte (`borders.json`) les
+>   SURFACES au-delà : Égypte, Jordanie, Syrie, Liban, Gaza (grille ~150 m,
+>   contrôle d'étanchéité, Judée-Samarie et Golan vérifiés dedans) →
+>   `src/core/abroad.json`.
+> - Retirées EXACTEMENT comme la mer (`core/topology.ts`, `landOf`) : un masque
+>   de mesure et d'affichage — surfaces, aplats de l'écran des régions ET de la
+>   couche « אזורים » de toutes les cartes, recouvrements, poussage. Le tracé
+>   du PO n'est jamais réécrit (rien n'est écrit en base).
+> - La barre le dit, par pays (« … דונם בירדן »).
+> - Sur ses 13 régions : 4 246 km² retirés (sud 2 837 : l'Égypte 1 125 et
+>   la Jordanie 1 712 ; le long du Jourdain 830 ; Syrie 460 ; Gaza 109 ; Liban
+>   10). Recouvrements : 10, 2 016 km² → 0 avec la règle de partage.
+> - ⚠️ Attrapé : un morceau de tracé resté au-delà d'une frontière comptait
+>   comme un morceau de région, et coupait « en deux » des régions qui ne
+>   l'étaient pas (`blpass` A589) → un morceau se juge à sa TERRE ; le perdant
+>   d'un partage perd le TRACÉ du gagnant.
+>
+> **Portes** : `blpass` 61 (A601 : chaque pays retiré à 6 % près de la mesure
+> indépendante ; Judée-Samarie et Golan intacts ; pays + mer + au-delà =
+> surface tracée) · `bltopo` A602 (écran des régions et couche des autres
+> cartes). Batterie : `docs/bl/portes-local-a.md`.
+
 > 🏁 **BL (chantier 3) — LES RÉGIONS SE TIENNENT ENTRE ELLES. 2026-10-18.**
 >
 > **Déployé `1742066`, vérifié** : blui 192, bltopo 65, bkecriture 30, bkeditui

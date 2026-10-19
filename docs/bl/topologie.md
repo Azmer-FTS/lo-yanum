@@ -51,28 +51,28 @@ d'elle-même. La règle est écrite dans le panneau, avec sa raison.
   le perdant en deux, le percerait ou le réduirait sous le dixième est
   « ידני בלבד » ; « ביטול הפתרון » remet tout comme avant.
 
-Les 13 régions du PO, sur terre (km²) :
+Les 13 régions du PO, dans le pays (km² ; ★★ depuis le 2026-10-19 : sans la mer
+NI l'au-delà des frontières de l'option A — `docs/bl/frontieres.md`) :
 
 | Région | Avant | Après |
 |---|---|---|
-| אילת | 395 | 395 |
-| הערבה | 3 958 | 3 958 |
-| ים המלח | 1 920 | 1 920 |
-| בקעת הירדן | 2 271 | 1 868 |
-| רמת הגולן ✎ | 1 542 | 1 542 |
-| הגליל ✎ | 2 375 | 2 283 |
-| עמק יזרעאל ✎ | 1 370 | 1 370 |
+| אילת | 235 | 235 |
+| הערבה | 3 237 | 3 237 |
+| ים המלח | 1 080 | 1 080 |
+| בקעת הירדן | 1 445 | 1 046 |
+| רמת הגולן ✎ | 1 082 | 1 082 |
+| הגליל ✎ | 2 365 | 2 272 |
+| עמק יזרעאל ✎ | 1 367 | 1 367 |
 | חוף הכרמל ✎ | 438 | 438 |
 | השרון | 536 | 536 |
-| מישור החוף | 2 436 | 2 417 |
+| מישור החוף | 2 364 | 2 344 |
 | שומרון ✎ | 2 271 | 2 150 |
 | יהודה | 3 069 | 2 422 |
-| הנגב | 8 622 | 7 896 |
+| הנגב | 7 469 | 6 746 |
 
-✎ = redessinée par le PO. **Avant : 10 recouvrements, 2 022 km² (6,5 %) ;
-après : 0.** Les 10 partages, le plus grand d'abord : יהודה↔הנגב 593 km² → à
-יהודה ; ים המלח↔יהודה 535 → à ים המלח ; בקעת הירדן↔עמק יזרעאל 329 → à עמק
-יזרעאל (dessinée) ; מישור החוף↔הנגב 133 → à מישור החוף ; עמק יזרעאל↔שומרון 121 →
+✎ = redessinée par le PO. **Avant : 10 recouvrements, 2 016 km² ; après : 0.** Les 10 partages, le plus grand d'abord : יהודה↔הנגב 593 km² → à
+יהודה ; ים המלח↔יהודה 535 → à ים המלח ; בקעת הירדן↔עמק יזרעאל 325 → à עמק
+יזרעאל (dessinée) ; מישור החוף↔הנגב 130 → à מישור החוף ; עמק יזרעאל↔שומרון 121 →
 à עמק יזרעאל (deux dessinées, la plus petite) ; רמת הגולן↔הגליל 93 → à רמת הגולן
 (deux dessinées) ; בקעת הירדן↔שומרון 86 → à שומרון (dessinée) ; מישור החוף↔יהודה
 70 → à מישור החוף ; בקעת הירדן↔יהודה 42 → à בקעת הירדן ; מישור החוף↔שומרון 20 → à

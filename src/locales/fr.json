@@ -1096,6 +1096,15 @@
     "applied": "{{count}} recouvrements résolus et enregistrés.",
     "reverted": "Résolution annulée : les régions sont revenues comme avant.",
     "saveFirst": "Enregistrez ou annulez d'abord les modifications de la région ouverte.",
-    "seaNote": "{{n}} dounams du dessin sont en mer : ni comptés ni peints — le trait de côte les coupe."
+    "seaNote": "{{n}} dounams du dessin sont en mer : ni comptés ni peints — le trait de côte les coupe.",
+    "abroadNote": "Au-delà de la frontière — ni compté ni peint : {{list}}.",
+    "abroadItem": "{{n}} dounams en {{where}}",
+    "abroad": {
+      "egypt": "Égypte",
+      "jordan": "Jordanie",
+      "syria": "Syrie",
+      "lebanon": "Liban",
+      "gaza": "bande de Gaza"
+    }
   }
 }
