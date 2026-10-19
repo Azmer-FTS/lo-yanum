@@ -22,6 +22,10 @@
 >   l'étaient pas (`blpass` A589) → un morceau se juge à sa TERRE ; le perdant
 >   d'un partage perd le TRACÉ du gagnant.
 >
+> **Déployé `c16bc0b`, vérifié** (blui 192, bltopo 72, bkecriture 30, bkeditui
+> 152, la batterie BB→BK ; bcmobile 246, aymobile 48 au jumeau). Base réelle :
+> rien d'écrit (`docs/bl/portes-deploye-c16bc0b.md`).
+>
 > **Portes** : `blpass` 61 (A601 : chaque pays retiré à 6 % près de la mesure
 > indépendante ; Judée-Samarie et Golan intacts ; pays + mer + au-delà =
 > surface tracée) · `bltopo` A602 (écran des régions et couche des autres

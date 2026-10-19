@@ -148,7 +148,8 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
       le dixième ; vide montré et comblé d'un bouton ; région + voisines en UNE
       écriture (`saveRegionPaths`) ; une région revenue à son tracé livré
       redevient « livrée ».
-  - **3.2 — OPTION A DÉCIDÉE PAR LE PO (2026-10-19) ET APPLIQUÉE** : Égypte,
+  - **3.2 — OPTION A DÉCIDÉE PAR LE PO (2026-10-19), APPLIQUÉE, DÉPLOYÉE
+    (`c16bc0b`) ET VÉRIFIÉE SUR LE DÉPLOYÉ** (`docs/bl/portes-deploye-c16bc0b.md`) : Égypte,
     Jordanie (Jourdain compris), Syrie, Liban, Gaza retirés comme la mer
     (`src/core/abroad.json`, `scripts/blabroad.ts`) ; Judée-Samarie et Golan
     dedans. Masque, jamais réécriture. `ETAT.md` § « BL (3.2, option A) ».
