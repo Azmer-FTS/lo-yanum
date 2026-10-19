@@ -104,8 +104,14 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
-- **BL — LES TROIS CHANTIERS COMMITÉS ; DÉPLOIEMENT ET REJEU AU DÉPLOYÉ : voir
-  la ligne « Déployé » ci-dessous** (2026-10-18/19). Branche `main`, REBASÉE sur
+- **BL — TERMINÉE, POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-18/19).
+  Commits `c830389` (chantier 1), `03199cc` (chantier 2), `1742066` (chantier
+  3 — SERVI : `version.json` = 1742066), puis le commit de fin de passe
+  (`docs/bl/portes-deploye-1742066.md`). Déployé : blui 192, bltopo 65,
+  bkecriture 30, bkeditui 152, bkui 31, bjui 56, biui 45, bhui 35, bgui 90,
+  bfui 52, beui 57, bdui 76, bbui 82, assettings, atsync 17 (app) ; bcmobile
+  246, aymobile 48 (jumeau). Base réelle après : 5 régions et 5 tracés
+  inchangés, 4 formes, 0 sans sommet. Branche `main`, REBASÉE sur
   le travail parallèle de la session BK (`aecdda3`…`0fb247c`, arrivé sur
   `origin/main` pendant la passe). Aucune migration ; la base réelle n'a PAS
   été écrite. Récit : `ETAT.md` § BL (trois entrées en tête) ; batterie :

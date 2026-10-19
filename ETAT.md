@@ -2,6 +2,10 @@
 
 > 🏁 **BL (chantier 3) — LES RÉGIONS SE TIENNENT ENTRE ELLES. 2026-10-18.**
 >
+> **Déployé `1742066`, vérifié** : blui 192, bltopo 65, bkecriture 30, bkeditui
+> 152 et la batterie BB→BK au déployé ; bcmobile 246, aymobile 48 au jumeau
+> (`docs/bl/portes-deploye-1742066.md`). Base réelle : rien d'écrit.
+>
 > « Celle qui dépasse dans la mer, aucun intérêt. Et entre elles, il ne faut
 > pas qu'il y ait de superposition. » — le PO. Récit et chiffres :
 > `docs/bl/topologie.md` ; frontières : `docs/bl/frontieres.md`.
