@@ -1,5 +1,5 @@
 import type maplibregl from 'maplibre-gl'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
@@ -11,9 +11,11 @@ import { MapView } from '../../components/MapView'
 import { ScrollRow } from '../../components/primitives'
 import { useCoreValue } from '../../hooks/useCore'
 import { PathEditor } from '../../editor/PathEditor'
-import type { EditorShape, StartRequest } from '../../editor/PathEditor'
+import type { EditorMention, EditorShape, StartRequest } from '../../editor/PathEditor'
 import { pathOf, ringOf, resetRegionRing, saveRegionPaths } from '../../settings/regionEdits'
 import { OverlapsOverlay, OverlapsPanel } from './RegionOverlaps'
+
+const NARROW = '(max-width: 47.99rem)'
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════
@@ -192,21 +194,38 @@ export function RegionsEditScreen() {
    * ★★ BL (3.1, 3.2 option A) — ce que la côte et les frontières retenues retirent de la région ouverte,
    *   DIT dans la barre : la mer, puis chaque pays (le tracé n'est pas réécrit, il est masqué).
    */
-  const cutNote = (ring: LatLng[]) => {
+  /**
+   * ★★ BL (3.1, 3.2) — ce que le masque retire de la région ouverte (la mer, l'au-delà des frontières).
+   * ★★ BM — une MENTION de la ligne 2, condensée (« 8 356 דונם בים · מעבר לגבול: … בירדן ») ; la
+   *   phrase entière est dans le dépli.
+   */
+  const cutMentions = (ring: LatLng[]): EditorMention[] => {
     const sea = seaDunams(ring)
     const abroad = Object.entries(abroadDunams(ring)).filter(([, n]) => (n ?? 0) >= 1)
-    if (sea < 1 && abroad.length === 0) return null
+    if (sea < 1 && abroad.length === 0) return []
     const fmt = (n: number) => Math.round(n).toLocaleString('he-IL')
-    return (
-      <p data-testid="region-sea-note" className="truncate text-micro text-content-muted">
-        {sea >= 1 && <span data-testid="region-sea-part">{t('regionEdit.seaNote', { n: fmt(sea) })} </span>}
-        {abroad.length > 0 && (
-          <span data-testid="region-abroad-part" data-zones={abroad.map(([k]) => k).join(',')}>
-            {t('regionEdit.abroadNote', { list: abroad.map(([k, n]) => t('regionEdit.abroadItem', { n: fmt(n ?? 0), where: t(`regionEdit.abroad.${k}`) })).join(' · ') })}
-          </span>
-        )}
-      </p>
-    )
+    const list = abroad.map(([k, n]) => t('regionEdit.abroadItem', { n: fmt(n ?? 0), where: t(`regionEdit.abroad.${k}`) })).join(' · ')
+    const text = [sea >= 1 ? t('regionEdit.seaNote', { n: fmt(sea) }) : '', abroad.length > 0 ? t('regionEdit.abroadNote', { list }) : ''].filter(Boolean).join(' ')
+    return [
+      {
+        key: 'cut',
+        testId: 'region-sea-note',
+        icon: 'water',
+        tone: 'muted',
+        text,
+        content: (
+          <>
+            {sea >= 1 && <span data-testid="region-sea-part">{t('regionEdit.seaShort', { n: fmt(sea) })}</span>}
+            {sea >= 1 && abroad.length > 0 && ' · '}
+            {abroad.length > 0 && (
+              <span data-testid="region-abroad-part" data-zones={abroad.map(([k]) => k).join(',')}>
+                {t('regionEdit.abroadShort', { list })}
+              </span>
+            )}
+          </>
+        ),
+      },
+    ]
   }
 
   const selectedRegion = all.find((r) => r.id === selected) ?? null
@@ -248,6 +267,123 @@ export function RegionsEditScreen() {
     </div>
   )
 
+  /* ★★ BM — sous 48 rem (l'iPad en écran partagé), les pastilles se replient dans un sélecteur. */
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia(NARROW).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(NARROW)
+    const on = () => setNarrow(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  const [picking, setPicking] = useState(false)
+  const regionPill = (r: (typeof all)[number]) => (
+    <button
+      key={r.id}
+      type="button"
+      data-testid={`region-pick-${r.id}`}
+      onClick={() => {
+        setPicking(false)
+        open(r.id)
+      }}
+      aria-pressed={selected === r.id}
+      className={`filter-pill min-h-11 shrink-0 flex-nowrap gap-x-1.5 py-1 ${selected === r.id ? 'filter-pill-active' : ''}`}
+    >
+      <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-pill" style={{ background: `rgb(${r.rgb})` }} />
+      <span className="whitespace-nowrap">{r.name}</span>
+      <bdi className="numeric whitespace-nowrap text-micro text-content-muted" data-testid={`region-area-${r.id}`}>
+        {t('editor.area', { n: Math.round(landDunams(ringNow(r.id))).toLocaleString('he-IL') })}
+      </bdi>
+      {regionIsEdited(r.id) && <Icon name="check" size={11} />}
+    </button>
+  )
+  /* Le dépli du sélecteur (étroit) : les treize, sous la barre, par-dessus la carte. */
+  const pickerList = narrow && picking && (
+    <div data-testid="region-picker-list" className="glass flex flex-wrap gap-1.5 rounded-card p-2 shadow-lift">
+      {all.map(regionPill)}
+    </div>
+  )
+
+  /**
+   * ★★ BM — LA LIGNE 1 DE LA BARRE : retour, titre, les pastilles des régions (leur nom et leur
+   *   surface : la barre ne la répète plus), les recouvrements. Posée DANS la barre de l'éditeur,
+   *   sous le même fond que les outils : un seul bloc, deux lignes.
+   */
+  const header = (
+    <div className="flex min-w-0 flex-1 items-center gap-1" data-testid="regions-header">
+          <button
+            type="button"
+            /* ★★ AX2.4 — on revient d'où l'on vient (les fermes ou les réglages). */
+            onClick={() => (((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0 ? navigate(-1) : navigate('/coordinator/settings'))}
+            aria-label={t('common.back')}
+            data-testid="regions-back"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-pill
+                       text-content-secondary hover:bg-surface-high"
+          >
+            <ChevronForward />
+          </button>
+          {/* ★★ BM — étroit : le titre reste pour les lecteurs d'écran, la place va aux pastilles. */}
+          <h1 data-page-title="" className="sr-only text-title text-content-primary md:not-sr-only md:max-w-[10rem] md:shrink-0 md:truncate">
+            {t('regionEdit.title')}
+          </h1>
+        {narrow ? (
+          /* ★★ BM — étroit (l'iPad en écran partagé) : sous 48 rem rien ne défile de côté (Z4) — la rangée
+             deviendrait une grille de plusieurs lignes. Un seul bouton : la région ouverte, sa surface ; un
+             toucher déplie les treize, SOUS la barre, par-dessus la carte. */
+          <button
+            type="button"
+            data-testid="region-picker"
+            aria-expanded={picking}
+            onClick={() => setPicking((v) => !v)}
+            className="filter-pill min-h-11 min-w-0 flex-1 justify-between gap-1.5 py-1"
+          >
+            <span className="flex min-w-0 items-center gap-1.5">
+              {selectedRegion && <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-pill" style={{ background: `rgb(${selectedRegion.rgb})` }} />}
+              {/* Le nom d'abord : c'est la surface qui se tronque quand la place manque. */}
+              <span className="max-w-full shrink-0 truncate">{selectedRegion ? selectedRegion.name : t('regionEdit.pickShort')}</span>
+              {selectedRegion && (
+                <bdi className="numeric min-w-0 truncate text-micro text-content-muted" data-testid="region-picker-area">
+                  {t('editor.area', { n: Math.round(landDunams(ringNow(selectedRegion.id))).toLocaleString('he-IL') })}
+                </bdi>
+              )}
+            </span>
+            <Icon name="chevronDown" size={14} className="shrink-0" />
+          </button>
+        ) : (
+          /* ★ Z4.4 — a swipable row like every other one: the same edge fade on
+             the side that has more, and the same chevron. */
+          <div className="min-w-0 flex-1 [--content-pad:2px]">
+            <ScrollRow className="min-w-0" testId="region-chooser">
+              {all.map(regionPill)}
+            </ScrollRow>
+          </div>
+        )}
+          {/* ★★★ BL (3.3) — les recouvrements : comptés en permanence, résolus SEULEMENT à la demande. */}
+          <button
+            type="button"
+            data-testid="regions-overlaps"
+            data-count={conflictCount}
+            aria-pressed={resolving}
+            disabled={dirty}
+            title={dirty ? t('regionEdit.saveFirst') : undefined}
+            onClick={() => {
+              if (!resolving) open(null)
+              setResolving((v) => !v)
+              setApplied(null)
+              setFocus(null)
+            }}
+            aria-label={t('regionEdit.overlapsButton', { count: conflictCount })}
+            className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-pill px-2.5 text-micro font-semibold disabled:opacity-40 ${
+              resolving ? 'bg-accent text-content-on-accent' : conflictCount > 0 ? 'bg-surface-high text-status-danger-ink ring-1 ring-status-danger' : 'bg-surface-high text-content-secondary'
+            }`}
+          >
+            <Icon name="overlaps" size={16} />
+            {/* ★★ BM — étroit : l'icône et le compte ; le mot revient quand la place revient. */}
+            <span className="hidden md:inline">{t('regionEdit.overlapsButton', { count: conflictCount })}</span>
+            <bdi className="numeric md:hidden">{conflictCount}</bdi>
+          </button>
+    </div>
+  )
+
   return (
     /**
      * ★ Z5.4 (2026-09-07) — AND THE SCREEN CARRIES ITS OWN MARGIN NOW.
@@ -266,81 +402,14 @@ export function RegionsEditScreen() {
           ones he has already redrawn — so "which of these is still X12's
           guess" is answerable at a glance. ★★ BL — et SA SURFACE : elle
           était répétée en bas, dans le panneau ; elle n'est plus qu'ici. */}
-      <div className="sticky-top -mx-4 px-4 lg:-mx-5 lg:px-5" style={{ top: 'var(--shell-top, 0px)' }}>
-        <div data-title-row="" className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-          <button
-            type="button"
-            /* ★★ AX2.4 — on revient d'où l'on vient (les fermes ou les réglages). */
-            onClick={() => (((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0 ? navigate(-1) : navigate('/coordinator/settings'))}
-            aria-label={t('common.back')}
-            data-testid="regions-back"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-pill
-                       text-content-secondary hover:bg-surface-high"
-          >
-            <ChevronForward />
-          </button>
-          <h1 data-page-title="" className="min-w-[6rem] flex-1 truncate text-title text-content-primary">
-            {t('regionEdit.title')}
-          </h1>
-          {/* ★★★ BL (3.3) — les recouvrements : comptés en permanence, résolus SEULEMENT à la demande. */}
-          <button
-            type="button"
-            data-testid="regions-overlaps"
-            data-count={conflictCount}
-            aria-pressed={resolving}
-            disabled={dirty}
-            title={dirty ? t('regionEdit.saveFirst') : undefined}
-            onClick={() => {
-              if (!resolving) open(null)
-              setResolving((v) => !v)
-              setApplied(null)
-              setFocus(null)
-            }}
-            className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-pill px-3 text-micro font-semibold disabled:opacity-40 ${
-              resolving ? 'bg-accent text-content-on-accent' : conflictCount > 0 ? 'bg-surface-high text-status-danger-ink ring-1 ring-status-danger' : 'bg-surface-high text-content-secondary'
-            }`}
-          >
-            <Icon name="overlaps" size={16} />
-            {t('regionEdit.overlapsButton', { count: conflictCount })}
-          </button>
-        </div>
-
-        {/* ★ Z4.4 — a swipable row like every other one: the same edge fade on
-            the side that has more, and the same chevron. */}
-        <ScrollRow
-          className="min-w-0"
-          testId="region-chooser"
-          style={{ marginTop: 'calc(var(--list-rhythm) - var(--row-shadow-room))' }}
-        >
-          {all.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              data-testid={`region-pick-${r.id}`}
-              onClick={() => open(r.id)}
-              aria-pressed={selected === r.id}
-              className={`filter-pill h-auto min-h-11 flex-wrap gap-x-1.5 gap-y-0 py-1 ${selected === r.id ? 'filter-pill-active' : ''}`}
-            >
-              <span
-                aria-hidden
-                className="h-2.5 w-2.5 shrink-0 rounded-pill"
-                style={{ background: `rgb(${r.rgb})` }}
-              />
-              <span className="whitespace-nowrap">{r.name}</span>
-              <bdi className="numeric whitespace-nowrap text-micro text-content-muted" data-testid={`region-area-${r.id}`}>
-                {t('editor.area', { n: Math.round(landDunams(ringNow(r.id))).toLocaleString('he-IL') })}
-              </bdi>
-              {regionIsEdited(r.id) && <Icon name="check" size={11} />}
-            </button>
-          ))}
-        </ScrollRow>
-
-        {/* ★★ BL — LA BARRE D'OUTILS, ICI, EN HAUT, ET TOUJOURS À SA PLACE.
-            Sans région ouverte elle reste là, outils éteints, et dit quoi faire :
-            rien ne saute quand on en ouvre une. Plus rien ne flotte sur la carte. */}
-        <div className="mt-2" data-testid="region-toolbar">
+      {/* ★★ BM — UN SEUL BLOC, DEUX LIGNES : le titre, les pastilles et les outils sous le même fond. */}
+      <div className="sticky-top -mx-4 px-2 pb-2 md:px-4 lg:-mx-5 lg:px-5" style={{ top: 'var(--shell-top, 0px)' }}>
+        <div data-testid="region-toolbar">
           {resolving && plan ? (
-            <div className="pb-2">
+            /* Les recouvrements : un mode que le PO ouvre et referme ; le panneau prend la place des outils. */
+            <div dir="rtl" data-testid="regions-resolving" className="pointer-events-auto relative flex w-full flex-col gap-1 rounded-card bg-surface-overlay px-2 py-1.5 shadow-card">
+              <div className="flex min-h-11 min-w-0 items-center gap-1.5">{header}</div>
+              {pickerList && <div className="absolute inset-x-0 top-full z-30 mt-1">{pickerList}</div>}
               <OverlapsPanel
                 regions={all}
                 steps={plan.steps}
@@ -381,6 +450,8 @@ export function RegionsEditScreen() {
             entityLabel={t('regionEdit.entity')}
             shapes={shapes}
             showShapeList={false}
+            header={header}
+            mentions={selected ? cutMentions(ringNow(selected)) : []}
             idleHint={t('regionEdit.pickHint')}
             kinds={[{ kind: 'region', label: selectedRegion?.name ?? t('regionEdit.entity'), color: selectedRegion ? `rgb(${selectedRegion.rgb})` : '#2563eb' }]}
             activeId={selected}
@@ -442,20 +513,20 @@ export function RegionsEditScreen() {
             }
             extraActions={
               <>
-                <button type="button" data-testid="region-discard" onClick={discard} disabled={!dirty} className="btn-secondary min-h-11 py-1.5 text-micro disabled:opacity-40">
-                  {t('regionEdit.discard')}
+                {/* ★★ BM — étroit (l'iPad en écran partagé) : l'icône, le mot dans aria-label et l'infobulle. */}
+                <button type="button" data-testid="region-discard" onClick={discard} disabled={!dirty} aria-label={t('regionEdit.discard')} title={t('regionEdit.discard')} className="btn-secondary min-h-11 min-w-11 justify-center px-2.5 py-1.5 text-micro disabled:opacity-40">
+                  <Icon name="close" size={14} className="md:hidden" />
+                  <span className="hidden md:inline">{t('regionEdit.discard')}</span>
                 </button>
-                <button type="button" data-testid="region-save" onClick={save} disabled={!dirty} className="btn-primary min-h-11 py-1.5 text-micro disabled:opacity-40">
-                  {t('regionEdit.save')}
+                <button type="button" data-testid="region-save" onClick={save} disabled={!dirty} aria-label={t('regionEdit.save')} title={t('regionEdit.save')} className="btn-primary min-h-11 min-w-11 justify-center px-2.5 py-1.5 text-micro disabled:opacity-40">
+                  <Icon name="save" size={14} className="md:hidden" />
+                  <span className="hidden md:inline">{t('regionEdit.save')}</span>
                 </button>
               </>
             }
             notes={
               <>
-                {/* Une ligne TOUJOURS réservée (même sans région, même sans mer ni frontière) : la barre ne change pas de hauteur. */}
-                <div className="min-h-5" data-testid="region-cut-line">
-                  {selected && cutNote(ringNow(selected))}
-                </div>
+                {pickerList}
                 {replaceAsk &&
                   selectedRegion &&
                   confirmBox(

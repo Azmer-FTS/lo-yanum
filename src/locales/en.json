@@ -1071,7 +1071,8 @@
     "pushedChip": "Moved with the boundary: {{names}}",
     "gapNote": "A gap of {{n}} dunams next to «{{name}}» — it belongs to no region",
     "fillGap": "Fill the gap: «{{name}}» extends to the new boundary",
-    "fillRefused": "The gap cannot be filled without creating an overlap or a hole."
+    "fillRefused": "The gap cannot be filled without creating an overlap or a hole.",
+    "statusMore": "{{count}} notes — tap to read"
   },
   "regionEdit": {
     "pickHint": "Choose a region in the row above, or tap it on the map, to edit its boundary.",
@@ -1105,6 +1106,9 @@
       "syria": "Syria",
       "lebanon": "Lebanon",
       "gaza": "the Gaza Strip"
-    }
+    },
+    "seaShort": "{{n}} dunams at sea",
+    "abroadShort": "Across the border: {{list}}",
+    "pickShort": "Pick a region"
   }
 }

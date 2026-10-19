@@ -1,5 +1,37 @@
 # לא ינום — ETAT
 
+> 🏁 **BM (chantier 2) — LA BARRE TIENT EN DEUX LIGNES, SOUS UN SEUL FOND. 2026-10-20.**
+>
+> « Je me retrouve avec quatre lignes au-dessus de la carte. Il y a moyen de
+> réduire tout ça à deux lignes max. Et de mettre tout ça sous le même fond. »
+> — le PO
+>
+> - **Un seul bloc, deux lignes** (`PathEditor`, prop `header` ; l'écran des
+>   régions y pose retour, titre, pastilles, « חפיפות ») : ligne 1 = l'hôte puis
+>   « בטל שינויים », « שמור גבול », « סיום », « ⋯ » ; ligne 2 = les sept outils,
+>   annuler/refaire, l'aimant, la forme d'origine, le point choisi, puis les
+>   MENTIONS. La carte commence à 138 px au lieu de 308 (iPad 1 032), 518
+>   (678) et 728 (507).
+> - **Redondances retirées** : l'outil actif n'est plus écrit (icône pleine) ;
+>   la surface n'est plus que sur la pastille ; le résumé de l'écran des
+>   régions disparaît (⚠️ le nombre de points n'y est plus écrit).
+> - **Les mentions** (mer, au-delà, aimant, forme d'origine, voisines poussées,
+>   vide à combler, poussage arrêté, forme non fermée) sont des pastilles de la
+>   ligne 2, tronquées ensemble, dépliées d'un toucher SOUS la barre ; à
+>   l'étroit, repliées en une (icône + compte).
+> - **Écran partagé** : les pastilles deviennent un sélecteur (Z4 : rien ne
+>   défile de côté sous 48 rem) ; enregistrer/annuler/terminer en icônes ;
+>   « ביצוע מחדש », la forme d'origine, les boutons du point passent dans
+>   « ⋯ » quand la ligne 2 manque de place (MESURÉE) — rien n'est retiré.
+> - **Exceptions** : le téléphone (402 px) passe à trois lignes (neuf boutons
+>   de base ne tiennent pas en 368 px) ; les confirmations s'ouvrent accrochées
+>   SOUS la barre (elles étaient une ligne de plus : `blui` A577 réécrite) ; le
+>   panneau des recouvrements garde sa hauteur.
+>
+> **Portes** : `bmui` 80 (A636–A641) ; `blui` A573/A577 réécrites ; batterie
+> entière verte (`docs/bm/portes-local-c2.md`). Images :
+> `docs/bm/img/barre-{1032,678,507}-avant-apres.jpg`. Récit : `docs/bm/barre.md`.
+
 > 🏁 **BM (chantier 1) — DES FRONTIÈRES JUSTES, PAS APPROCHÉES. 2026-10-19.**
 >
 > « Il n'a pas vraiment pris la moitié du Jourdain, il n'a pas pris les vraies

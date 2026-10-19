@@ -105,7 +105,8 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 ## Où en est-on
 
 - **BM — FRONTIÈRES JUSTES (chantier 1) ET BARRE EN DEUX LIGNES (chantier 2)**
-  (2026-10-19). Branche `main`. Deux commits séparés (consigne du PO).
+  (2026-10-19/20). Branche `main`. Deux commits séparés (consigne du PO) :
+  `88fc64c` (chantier 1), puis le chantier 2.
   - **Chantier 1 — commité** : les masques `src/core/sea.json` et
     `src/core/abroad.json` viennent des polygones des voisins et du trait de
     côte d'OpenStreetMap (`geodata/osm-borders.json`, relevé le 2026-10-19) :
@@ -133,6 +134,22 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
   - **Non prouvé** : la précision d'OSM lui-même face au terrain (aucune source
     officielle numérique) ; 97 m d'écart dans OSM entre frontière et lit du
     Jourdain à 32,54 N (cause non tranchée).
+  - **Chantier 2 — commité** : la barre de `PathEditor` = UN bloc de DEUX
+    lignes (`header` de l'hôte + actions de fin ; outils + mentions). Récit :
+    `docs/bm/barre.md` ; portes : `docs/bm/portes-local-c2.md` ; `bun run bmui`
+    (A636–A641, ≈ 3 min).
+  - **Décisions (permanentes)** :
+    · au-dessus de la carte, deux lignes sur l'iPad (1 032, 678, 507) ; trois
+      seulement sur un téléphone (402) ;
+    · l'outil actif n'est plus écrit ; la surface n'est que sur la pastille ;
+    · une mention n'est jamais une ligne : pastille de la ligne 2, dépliée sous
+      la barre ; repliée (icône + compte) quand la place manque ;
+    · ce qui ne tient pas sur la ligne 2 va dans « ⋯ » (refaire, forme
+      d'origine, boutons du point), selon la largeur MESURÉE de la ligne ;
+    · sous 48 rem, les pastilles des régions sont un sélecteur ;
+    · les confirmations s'ouvrent accrochées sous la barre (plus dans la barre).
+  - **Déploiement** : voir l'entrée de rejeu ci-dessous (à compléter après le
+    push).
 
 - **BL — TERMINÉE, POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-18/19).
   Commits `c830389` (chantier 1), `03199cc` (chantier 2), `1742066` (chantier

@@ -1,5 +1,5 @@
 import type maplibregl from 'maplibre-gl'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -179,6 +179,34 @@ export interface EditorSessionInfo {
   replaceId: string | null
 }
 
+/**
+ * ★★ BM — une MENTION de la ligne 2 : une pastille (icône + texte), tronquée quand la place manque,
+ * dépliée en entier d'un toucher. `content` remplace le texte dans la pastille (l'hôte peut y mettre
+ * ses propres repères) ; `text` est ce que dit le dépli.
+ */
+export type MentionTone = 'warn' | 'danger' | 'accent' | 'muted' | 'plain'
+export interface EditorMention {
+  key: string
+  testId: string
+  icon: IconName
+  tone: MentionTone
+  text: string
+  content?: ReactNode
+  action?: ReactNode
+  role?: string
+  data?: Record<string, string>
+}
+const MENTION_PILL = 'flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap rounded-pill bg-surface-high px-2 py-0.5 text-micro font-semibold'
+const MENTION_TONE: Record<MentionTone, string> = {
+  warn: 'text-status-warn-ink ring-1 ring-status-warn',
+  danger: 'text-content-primary ring-1 ring-status-danger',
+  accent: 'text-accent-ink ring-1 ring-accent',
+  muted: 'text-content-muted',
+  plain: 'text-content-primary',
+}
+/** La place gardée aux mentions, même quand la ligne 2 est étroite : une icône se voit toujours. */
+const STATUS_MIN = 40
+
 export interface PathEditorProps {
   map: maplibregl.Map | null
   /** L'entité dont on édite les formes : « חוות בדיקה 11 », « אזורי הארץ ». */
@@ -209,8 +237,15 @@ export interface PathEditorProps {
   showShapeList?: boolean
   /** ★★ BL — sans session : la barre reste à sa place, outils éteints, avec cette ligne (les régions). */
   idleHint?: ReactNode
-  /** ★★ BL — ce que l'hôte veut dire dans la barre, sous les outils (une confirmation, un avis). */
+  /**
+   * ★★ BL — ce que l'hôte veut dire (une confirmation). ★★ BM : posé SOUS la barre, par-dessus la
+   * carte — ce n'est plus une ligne de la barre.
+   */
   notes?: ReactNode
+  /** ★★ BM — la ligne 1 de l'hôte (les régions : retour, titre, pastilles, chevauchements) ; sinon le résumé de la forme. */
+  header?: ReactNode
+  /** ★★ BM — les mentions de l'hôte (la mer, l'au-delà des frontières), condensées avec les autres sur la ligne 2. */
+  mentions?: EditorMention[]
   /** ★★ BL — la surface affichée (les régions : sur TERRE, la mer ne compte pas). Défaut : celle du tracé. */
   areaOf?: (ring: LatLng[]) => number
   /** ★★★ BL — les voisines à pousser (les régions). Absent : aucune (les formes d'une ferme s'emboîtent). */
@@ -1434,138 +1469,266 @@ export function PathEditor(props: PathEditorProps) {
   }, [map])
 
   const toolLabel = (k: EditorTool) => t(`editor.tool.${k}`)
-  const sep = <span aria-hidden className="mx-0.5 h-7 w-px shrink-0 bg-edge-subtle" />
 
-  const toolRow = (on: boolean) => (
-    <div className="flex flex-wrap items-center gap-1" data-testid="editor-toolbar-row">
-      {/* 1. Les outils — un groupe radio, l'actif est PLEIN. */}
-      <div role="radiogroup" aria-label={t('editor.toolsLabel')} data-testid="editor-tools" className="flex flex-wrap items-center gap-0.5 rounded-card bg-surface-high p-0.5">
+  /**
+   * ═════════════════════════════════════════════════════════════════════════
+   * ★★ BM (chantier 2) — LA BARRE TIENT EN DEUX LIGNES, SOUS UN SEUL FOND.
+   * ═════════════════════════════════════════════════════════════════════════
+   *
+   *   « Je me retrouve avec quatre lignes au-dessus de la carte. Il y a moyen
+   *     de réduire tout ça à deux lignes max. Et de mettre tout ça sous le même
+   *     fond, les outils et les noms des sections, pour que ça fasse un seul
+   *     bloc. »                                                       — le PO
+   *
+   *   ligne 1 — ce que l'hôte y pose (`header` : les régions, leurs pastilles),
+   *             sinon le résumé de la forme ; puis les actions de fin (les
+   *             siennes, « סגירת הצורה », « סיום », « ⋯ »).
+   *   ligne 2 — les outils, annuler, l'aimant, la forme d'origine, le point
+   *             choisi ; puis les MENTIONS, condensées sur ce qui reste.
+   *
+   * ★ PLUS DE REDONDANCE. L'outil actif n'est plus écrit (son icône est pleine,
+   *   son nom est dans l'infobulle) ; la surface est sur la pastille de l'hôte.
+   * ★ LES MENTIONS NE FONT JAMAIS DE TROISIÈME LIGNE. Chacune est une pastille
+   *   (icône + texte) ; à plusieurs, elles se partagent la place et se
+   *   tronquent jusqu'à l'icône ; un toucher les déplie, en entier, SOUS la
+   *   barre, par-dessus la carte (comme les confirmations de l'hôte, `notes`).
+   * ★ RIEN NE DISPARAÎT. Quand la ligne 2 est trop étroite (l'iPad en écran
+   *   partagé), « ביצוע מחדש », la forme d'origine et les boutons du point
+   *   passent dans « ⋯ », dans cet ordre, et en reviennent quand la place
+   *   revient — mesurée (`line2W`), pas devinée d'après l'écran.
+   */
+  const [line2W, setLine2W] = useState(10_000)
+  const line2Obs = useRef<ResizeObserver | null>(null)
+  /* Une référence STABLE : recréée à chaque rendu, elle rebranchait un observateur à chaque rendu. */
+  const line2Ref = useCallback((el: HTMLDivElement | null) => {
+    line2Obs.current?.disconnect()
+    line2Obs.current = null
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => setLine2W(el.clientWidth))
+    ro.observe(el)
+    line2Obs.current = ro
+  }, [])
+  useEffect(() => () => line2Obs.current?.disconnect(), [])
+  const [statusOpen, setStatusOpen] = useState(false)
+
+  /* Ce que coûte chaque groupe sur la ligne 2 (boutons de 44 px). */
+  const BTN = 44
+  const pointOn = !!(model && sel !== null)
+  const needBase = 7 * BTN + 2 * BTN + STATUS_MIN + 3 * 4
+  /* ★ Un TÉLÉPHONE (402 px : 368 utiles) n'a pas la place des neuf boutons de base : là seulement, la ligne 2
+     passe à la ligne plutôt que de déborder de l'écran (`aymobile` A358). L'iPad, lui, tient en deux lignes. */
+  const wrap2 = line2W < needBase
+  let room = line2W - needBase
+  const fits = (w: number) => (room >= w ? ((room -= w), true) : false)
+  const showRedo = fits(BTN + 4)
+  const showGhostBtn = fits(BTN + 4)
+  const showPoint = !pointOn || fits(2 * BTN + 8)
+  const seps = fits(3 * 13)
+  const sep = seps ? <span aria-hidden className="mx-0.5 h-7 w-px shrink-0 bg-edge-subtle" /> : null
+  /* Ce qui reste aux mentions, une fois les boutons posés. */
+  const statusRoom = room + STATUS_MIN
+
+  /* ---------------------------------------------------------------- ligne 2 : les outils */
+  const redoBtn = <ToolButton testId="editor-redo" icon="redo" label={t('editor.redo')} shortcut="⇧⌘Z" disabled={!session || session.h.future.length === 0} onClick={redo} />
+  const ghostBtn = (on: boolean) => (
+    <ToolButton testId="editor-ghost-toggle" kind="toggle" icon="ghostShape" label={t(showGhost ? 'editor.ghostHide' : 'editor.ghostShow')} active={on && showGhost && !!ghostRing} disabled={!on || !ghostRing} onClick={() => setShowGhost((v) => !v)} />
+  )
+  const tools = (on: boolean) => (
+    <>
+      {/* Les outils — un groupe radio, l'actif est PLEIN (son nom : l'infobulle et aria). */}
+      <div role="radiogroup" aria-label={t('editor.toolsLabel')} data-testid="editor-tools" className={`flex shrink-0 items-center rounded-card bg-surface-high ${seps ? 'gap-0.5 p-0.5' : ''}`}>
         {TOOLS.map((k) => (
           <ToolButton key={k.id} testId={`editor-tool-${k.id}`} kind="radio" icon={k.icon} label={toolLabel(k.id)} shortcut={k.key} active={on && tool === k.id} disabled={!on} onClick={() => chooseTool(k.id)} />
         ))}
       </div>
       {sep}
-      {/* 2. Annuler / refaire. */}
-      <div className="flex items-center gap-0.5">
+      <div className="flex shrink-0 items-center gap-0.5">
         <ToolButton testId="editor-undo" icon="undo" label={t('editor.undo')} shortcut="⌘Z" disabled={!on || !session || session.h.past.length === 0} onClick={undo} />
-        <ToolButton testId="editor-redo" icon="redo" label={t('editor.redo')} shortcut="⇧⌘Z" disabled={!on || !session || session.h.future.length === 0} onClick={redo} />
+        {showRedo && (on ? redoBtn : <ToolButton testId="editor-redo" icon="redo" label={t('editor.redo')} disabled onClick={() => undefined} />)}
       </div>
       {sep}
-      {/* 3. Ce qui change la vue ou l'accroche : l'aimant, la forme d'origine. */}
-      <div className="flex items-center gap-0.5">
+      <div className="flex shrink-0 items-center gap-0.5">
         <ToolButton testId="editor-snap" kind="toggle" icon="magnet" label={t('editor.snap')} active={on && snap} disabled={!on} onClick={toggleSnap} />
-        <ToolButton testId="editor-ghost-toggle" kind="toggle" icon="ghostShape" label={t(showGhost ? 'editor.ghostHide' : 'editor.ghostShow')} active={on && showGhost && !!ghostRing} disabled={!on || !ghostRing} onClick={() => setShowGhost((v) => !v)} />
+        {showGhostBtn && ghostBtn(on)}
       </div>
-      {/* 4. Le point sélectionné. ★ Sa place est TOUJOURS réservée (éteinte sans point) : la barre ne
-             change pas de hauteur quand on touche un point, donc la carte ne bouge pas sous le doigt. */}
-      {sep}
-      {/* ⚠️ Sans point sélectionné, les mêmes boutons, ÉTEINTS, sous un autre nom : `editor-node-*` reste le
-             nom des points de la carte (et des actions d'un point sélectionné), comme en BK. */}
-      {on && model && sel !== null ? (
-        <span className="flex items-center gap-0.5" data-testid="editor-node-actions">
-          <span className="min-w-[4.5rem] px-1 text-micro font-semibold text-content-primary">{t('editor.nodeN', { n: sel + 1 })}</span>
-          <ToolButton testId="editor-node-kind" icon={model.nodes[sel].kind === 'smooth' ? 'nodeCorner' : 'nodeSmooth'} label={t(model.nodes[sel].kind === 'smooth' ? 'editor.toCorner' : 'editor.toSmooth')} onClick={toggleSelected} />
-          <ToolButton testId="editor-node-delete" icon="trash" danger label={t('editor.deleteNode')} shortcut="⌫" onClick={deleteSelected} />
-        </span>
-      ) : (
-        <span className="flex items-center gap-0.5" data-testid="editor-point-slot">
-          <span className="min-w-[4.5rem] px-1 text-micro font-semibold text-content-muted">{t('editor.noNode')}</span>
-          <ToolButton testId="editor-point-kind-off" icon="nodeSmooth" label={t('editor.toSmooth')} disabled onClick={() => undefined} />
-          <ToolButton testId="editor-point-delete-off" icon="trash" danger label={t('editor.deleteNode')} disabled onClick={() => undefined} />
-        </span>
+      {/* Le point choisi : ses boutons paraissent avec lui (la ligne ne change pas de hauteur). */}
+      {on && pointOn && showPoint && (
+        <>
+          {sep}
+          <span className="flex shrink-0 items-center gap-0.5" data-testid="editor-node-actions" data-node={sel! + 1}>
+            <ToolButton testId="editor-node-kind" icon={model!.nodes[sel!].kind === 'smooth' ? 'nodeCorner' : 'nodeSmooth'} label={`${t('editor.nodeN', { n: sel! + 1 })} — ${t(model!.nodes[sel!].kind === 'smooth' ? 'editor.toCorner' : 'editor.toSmooth')}`} onClick={toggleSelected} />
+            <ToolButton testId="editor-node-delete" icon="trash" danger label={`${t('editor.nodeN', { n: sel! + 1 })} — ${t('editor.deleteNode')}`} shortcut="⌫" onClick={deleteSelected} />
+          </span>
+        </>
       )}
-      {on && model && !model.closed && (
-        <button type="button" data-testid="editor-close-path" className="btn-primary min-h-11 py-1.5 text-micro" disabled={model.nodes.length < 3} onClick={closeNow}>
-          <Icon name="check" size={13} />
-          {t('editor.closePath')}
-        </button>
+    </>
+  )
+
+  /* ---------------------------------------------------------------- ligne 2 : les mentions */
+  const pill = (tone: MentionTone) => `${MENTION_PILL} ${MENTION_TONE[tone]}`
+  const mentions: EditorMention[] = []
+  if (session && model) {
+    if (notice) mentions.push({ key: 'notice', testId: 'editor-notice', icon: 'alert', tone: 'warn', text: notice, role: 'status' })
+    for (const g of gaps) {
+      const text = t('editor.gapNote', { name: nameOf(g.id), n: fmt(g.dunams, i18n.language) })
+      mentions.push({
+        key: `gap-${g.id}`,
+        testId: `editor-gap-note-${g.id}`,
+        icon: 'gapFill',
+        tone: 'danger',
+        text,
+        action: <ToolButton testId={`editor-fill-gap-${g.id}`} icon="gapFill" label={t('editor.fillGap', { name: nameOf(g.id) })} onClick={() => fill(g)} />,
+      })
+    }
+    if (pushedIds.length > 0) mentions.push({ key: 'pushed', testId: 'editor-pushed', icon: 'overlaps', tone: 'plain', text: t('editor.pushedChip', { names: pushedIds.map(nameOf).join(', ') }), data: { 'data-ids': pushedIds.join(',') } })
+    for (const m of props.mentions ?? []) mentions.push(m)
+    if (!model.closed && props.header) mentions.push({ key: 'open', testId: 'editor-not-closed', icon: 'penNib', tone: 'muted', text: t('editor.notClosed') })
+    if (ghostD && ghostDiffers) mentions.push({ key: 'ghost', testId: 'editor-ghost-note', icon: 'ghostShape', tone: 'muted', text: t(session.mode === 'new' ? 'editor.ghostNoteReplace' : 'editor.ghostNote') })
+    if (snap) mentions.push({ key: 'snap', testId: 'editor-snap-status', icon: 'magnet', tone: 'accent', text: t('editor.snapOn') })
+  }
+  /**
+   * ★ À l'étroit (507 px, cinq mentions : ~70 px pour toutes), les pastilles ne tiennent plus côte à
+   *   côte, ni le bouton « מילוי הרווח ». Elles se REPLIENT en une seule : l'icône de la première et le
+   *   compte ; un toucher les déplie, en entier, avec leurs boutons. Elles restent lues (sr-only).
+   */
+  const inlineNeed = mentions.reduce((sum, m) => sum + 30 + (m.action ? 46 : 0), 0)
+  const collapsed = mentions.length > 0 && statusRoom < inlineNeed
+  const mentionNode = (m: EditorMention) => (
+    <span data-testid={m.testId} role={m.role} className={pill(m.tone)} {...(m.data ?? {})}>
+      <Icon name={m.icon} size={13} className="shrink-0" />
+      <span className="min-w-0 truncate">{m.content ?? m.text}</span>
+    </span>
+  )
+  const status = (hint?: ReactNode) => (
+    <div
+      data-testid="editor-status"
+      data-count={mentions.length}
+      data-collapsed={collapsed ? '1' : '0'}
+      className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden"
+      style={{ minWidth: STATUS_MIN }}
+      onClick={() => mentions.length > 0 && setStatusOpen((v) => !v)}
+      role={mentions.length > 0 ? 'button' : undefined}
+      aria-expanded={mentions.length > 0 ? statusOpen : undefined}
+      aria-label={mentions.length > 0 ? t('editor.statusMore', { count: mentions.length }) : undefined}
+    >
+      {mentions.length === 0 && hint && <p className="min-w-0 truncate text-caption text-content-secondary">{hint}</p>}
+      {collapsed && (
+        <>
+          <span data-testid="editor-status-folded" className={pill(mentions[0].tone)}>
+            <Icon name={mentions[0].icon} size={13} className="shrink-0" />
+            <bdi className="numeric">{mentions.length}</bdi>
+          </span>
+          <span className="sr-only">{mentions.map((m) => <span key={m.key}>{mentionNode(m)}</span>)}</span>
+        </>
       )}
-      {props.extraActions && <div className="flex flex-wrap items-center gap-1.5">{props.extraActions}</div>}
-      {/* 5. Le menu « ⋯ » : ce qui détruit, loin des outils. */}
-      {on && (
-      <div ref={menuRef} className="relative ms-auto">
-        <ToolButton testId="editor-menu" icon="more" label={t('editor.actions')} active={menu} kind="toggle" onClick={() => setMenu((v) => !v)} />
-        {menu && (
-          <div
-            role="menu"
-            data-testid="editor-menu-panel"
-            className="glass absolute end-0 top-full z-30 mt-2 flex w-64 flex-col gap-1 rounded-card p-1.5 shadow-lift"
-            onClick={(e) => {
-              if ((e.target as HTMLElement).closest('button')) setMenu(false)
-            }}
-          >
-            {session?.mode === 'edit' && props.onReplace && (
-              <button type="button" role="menuitem" data-testid="editor-replace" className="btn-secondary min-h-11 justify-start py-1.5 text-micro" onClick={() => props.onReplace?.(session.id)}>
-                <Icon name="replace" size={13} />
-                {t('editor.replace')}
+      {!collapsed && mentions.map((m) => (
+        <span key={m.key} className="flex min-w-[1.75rem] shrink items-center gap-0.5 overflow-hidden">
+          {mentionNode(m)}
+          {m.action && (
+            <span className="shrink-0" onClick={(e) => e.stopPropagation()}>
+              {m.action}
+            </span>
+          )}
+        </span>
+      ))}
+    </div>
+  )
+  /* Déplié : chaque mention en entier, SOUS la barre, par-dessus la carte. */
+  const statusPanel = statusOpen && mentions.length > 0 && (
+    <div data-testid="editor-status-panel" className="glass flex flex-col gap-1.5 rounded-card p-2 text-micro shadow-lift">
+      {mentions.map((m) => (
+        <div key={m.key} className="flex items-center gap-1.5">
+          <Icon name={m.icon} size={14} className="shrink-0" />
+          <span className="min-w-0 flex-1 font-semibold text-content-primary">{m.text}</span>
+          {/* Repliées, leurs boutons sont ICI (déplié, ils sont sur la ligne 2). */}
+          {collapsed && m.action}
+        </div>
+      ))}
+      <button type="button" className="btn-secondary min-h-11 self-start py-1.5 text-micro" onClick={() => setStatusOpen(false)}>
+        {t('common.close')}
+      </button>
+    </div>
+  )
+  useEffect(() => {
+    if (mentions.length === 0 && statusOpen) setStatusOpen(false)
+  })
+
+  /* ---------------------------------------------------------------- ligne 1 : la fin */
+  const menuBlock = (
+    <div ref={menuRef} className="relative shrink-0">
+      <ToolButton testId="editor-menu" icon="more" label={t('editor.actions')} active={menu} kind="toggle" onClick={() => setMenu((v) => !v)} />
+      {menu && (
+        <div
+          role="menu"
+          data-testid="editor-menu-panel"
+          className="glass absolute end-0 top-full z-30 mt-2 flex w-64 flex-col gap-1 rounded-card p-1.5 shadow-lift"
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest('button')) setMenu(false)
+          }}
+        >
+          {/* Ce que la ligne 2 n'a pas eu la place de montrer : RIEN ne disparaît. */}
+          {!showRedo && (
+            <button type="button" role="menuitem" data-testid="editor-redo" disabled={!session || session.h.future.length === 0} className="btn-secondary min-h-11 justify-start py-1.5 text-micro disabled:opacity-40" onClick={redo}>
+              <Icon name="redo" size={13} />
+              {t('editor.redo')}
+            </button>
+          )}
+          {!showGhostBtn && (
+            <button type="button" role="menuitem" data-testid="editor-ghost-toggle" aria-pressed={showGhost && !!ghostRing} disabled={!ghostRing} className="btn-secondary min-h-11 justify-start py-1.5 text-micro disabled:opacity-40" onClick={() => setShowGhost((v) => !v)}>
+              <Icon name="ghostShape" size={13} />
+              {t(showGhost ? 'editor.ghostHide' : 'editor.ghostShow')}
+            </button>
+          )}
+          {pointOn && !showPoint && (
+            <>
+              <button type="button" role="menuitem" data-testid="editor-node-kind" className="btn-secondary min-h-11 justify-start py-1.5 text-micro" onClick={toggleSelected}>
+                <Icon name={model!.nodes[sel!].kind === 'smooth' ? 'nodeCorner' : 'nodeSmooth'} size={13} />
+                {`${t('editor.nodeN', { n: sel! + 1 })} — ${t(model!.nodes[sel!].kind === 'smooth' ? 'editor.toCorner' : 'editor.toSmooth')}`}
               </button>
-            )}
-            {props.menuItems}
-            {session?.mode === 'edit' && props.onDelete && (
-              <button type="button" role="menuitem" data-testid="editor-delete-shape" className="btn-secondary min-h-11 justify-start py-1.5 text-micro text-status-danger-ink" onClick={() => props.onDelete?.(session.id)}>
+              <button type="button" role="menuitem" data-testid="editor-node-delete" className="btn-secondary min-h-11 justify-start py-1.5 text-micro text-status-danger-ink" onClick={deleteSelected}>
                 <Icon name="trash" size={13} />
-                {t('editor.deleteShape')}
+                {`${t('editor.nodeN', { n: sel! + 1 })} — ${t('editor.deleteNode')}`}
               </button>
-            )}
-          </div>
-        )}
-      </div>
+            </>
+          )}
+          {session?.mode === 'edit' && props.onReplace && (
+            <button type="button" role="menuitem" data-testid="editor-replace" className="btn-secondary min-h-11 justify-start py-1.5 text-micro" onClick={() => props.onReplace?.(session.id)}>
+              <Icon name="replace" size={13} />
+              {t('editor.replace')}
+            </button>
+          )}
+          {props.menuItems}
+          {session?.mode === 'edit' && props.onDelete && (
+            <button type="button" role="menuitem" data-testid="editor-delete-shape" className="btn-secondary min-h-11 justify-start py-1.5 text-micro text-status-danger-ink" onClick={() => props.onDelete?.(session.id)}>
+              <Icon name="trash" size={13} />
+              {t('editor.deleteShape')}
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
 
-  const shell = 'pointer-events-auto flex w-full flex-col gap-1.5 rounded-card border border-edge-subtle bg-surface-overlay px-2.5 py-2 shadow-card'
-
-  const panel = session && model && (
-    <div
-      dir="rtl"
-      data-testid="shape-editor"
-      data-mode={session.mode}
-      data-shape={session.mode === 'edit' ? session.id : `new:${session.kind}`}
-      data-nodes={model.nodes.length}
-      data-closed={model.closed ? '1' : '0'}
-      data-area={Math.round(area)}
-      data-tool={tool}
-      data-snap={snap ? '1' : '0'}
-      data-ghost={ghostD ? '1' : '0'}
-      data-selected-node={sel ?? ''}
-      data-undo={session.h.past.length}
-      data-redo={session.h.future.length}
-      className={shell}
-    >
-      {/* 1. Quelle entité, quelle forme, combien de points, quelle surface — et l'outil en main. */}
-      <div className="flex items-center gap-2">
-        <span className="inline-block h-3 w-3 shrink-0 rounded-pill" style={{ backgroundColor: color }} />
-        <p className="min-w-0 flex-1 truncate text-caption text-content-secondary" data-testid="editor-summary">
-          <span className="font-semibold text-content-primary" data-testid="editor-entity">
-            {entityLabel}
-          </span>
-          {' · '}
-          <span className="font-semibold text-content-primary" data-testid="editor-shape-label">
-            {shapeLabel}
-          </span>
-          {' · '}
-          <bdi className="numeric">{t('editor.points', { count: model.nodes.length })}</bdi>
-          {' · '}
-          {model.closed ? <bdi className="numeric">{t('editor.area', { n: fmt(area, i18n.language) })}</bdi> : <span>{t('editor.notClosed')}</span>}
-        </p>
-        <span data-testid="editor-active-tool" data-tool={tool} className="hidden shrink-0 items-center gap-1 rounded-pill bg-surface-high px-2.5 py-1 text-micro font-semibold text-accent-ink ring-1 ring-accent sm:flex">
-          <Icon name={TOOLS.find((k) => k.id === tool)?.icon ?? 'pointer'} size={14} />
-          {toolLabel(tool)}
+  /* Le résumé, quand l'hôte ne pose rien sur la ligne 1 (la carte d'une ferme). */
+  const summary = session && model && (
+    <div className="flex min-w-0 flex-1 items-center gap-2">
+      <span className="inline-block h-3 w-3 shrink-0 rounded-pill" style={{ backgroundColor: color }} />
+      <p className="min-w-0 flex-1 truncate text-caption text-content-secondary" data-testid="editor-summary">
+        <span className="font-semibold text-content-primary" data-testid="editor-entity">
+          {entityLabel}
         </span>
-        <button type="button" data-testid="editor-done" className="btn-primary min-h-11 shrink-0 py-1.5 text-micro" onClick={finish}>
-          <Icon name="check" size={13} />
-          {t('editor.done')}
-        </button>
-      </div>
-
-      {/* 2. La barre d'outils. */}
-      {toolRow(true)}
-
-      {/* 3. Les formes de l'entité, quand l'hôte ne les montre pas déjà. */}
+        {' · '}
+        <span className="font-semibold text-content-primary" data-testid="editor-shape-label">
+          {shapeLabel}
+        </span>
+        {' · '}
+        <bdi className="numeric">{t('editor.points', { count: model.nodes.length })}</bdi>
+        {' · '}
+        {model.closed ? <bdi className="numeric">{t('editor.area', { n: fmt(area, i18n.language) })}</bdi> : <span>{t('editor.notClosed')}</span>}
+      </p>
+      {/* Les formes de l'entité, quand l'hôte ne les montre pas déjà : sur la MÊME ligne, elles défilent. */}
       {session.mode === 'edit' && props.showShapeList !== false && others.length > 1 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto" data-testid="editor-shapes" data-count={others.length}>
-          <span className="shrink-0 text-micro text-content-muted">{t('editor.shapesHere', { count: others.length })}</span>
+        <div className="flex min-w-0 max-w-[55%] shrink items-center gap-1.5 overflow-x-auto" data-testid="editor-shapes" data-count={others.length}>
           {others.map((sh) => (
             <button
               key={sh.id}
@@ -1582,64 +1745,82 @@ export function PathEditor(props: PathEditorProps) {
           ))}
         </div>
       )}
+    </div>
+  )
 
-      {/* 4. Ce qui est dit — UNE ligne, toujours là (sa hauteur ne bouge pas) : un avis s'il y en a un,
-             sinon la forme d'origine nommée. Puis ce que l'hôte ajoute. */}
-      <div className="flex min-h-5 items-center gap-2 text-micro" data-testid="editor-message-line">
-        {snap && !notice && (
-          /* ★★ BL — l'accroche est DITE tant qu'elle est active : une accroche silencieuse est une accroche cassée. */
-          <span data-testid="editor-snap-status" className="flex shrink-0 items-center gap-1 rounded-pill bg-surface-high px-2 py-0.5 font-semibold text-accent-ink ring-1 ring-accent">
-            <Icon name="magnet" size={13} />
-            {t('editor.snapOn')}
-          </span>
-        )}
-        {pushedIds.length > 0 && !notice && (
-          /* ★★★ BL — les voisines que la forme a poussées dans cette session (enregistrées avec elle). */
-          <span data-testid="editor-pushed" data-ids={pushedIds.join(',')} className="flex shrink-0 items-center gap-1 rounded-pill bg-surface-high px-2 py-0.5 font-semibold text-content-primary">
-            {t('editor.pushedChip', { names: pushedIds.map(nameOf).join(', ') })}
-          </span>
-        )}
-        {notice ? (
-          <p role="status" data-testid="editor-notice" className="min-w-0 truncate font-semibold text-status-warn-ink">
-            {notice}
-          </p>
-        ) : ghostD && ghostDiffers ? (
-          <p data-testid="editor-ghost-note" className="flex min-w-0 items-center gap-1.5 text-content-muted">
-            <svg width="26" height="8" aria-hidden="true" className="shrink-0">
-              <path d="M1 4H25" stroke="currentColor" strokeWidth={2} strokeDasharray="5 3" />
-            </svg>
-            <span className="truncate">{t(session.mode === 'new' ? 'editor.ghostNoteReplace' : 'editor.ghostNote')}</span>
-          </p>
-        ) : null}
-      </div>
-      {gaps.map((g) => (
-        <div key={`gapnote${g.id}`} data-testid={`editor-gap-note-${g.id}`} className="flex flex-wrap items-center gap-2 rounded-card bg-surface-high px-3 py-1.5 text-micro ring-1 ring-status-danger">
-          <span className="font-semibold text-content-primary">{t('editor.gapNote', { name: nameOf(g.id), n: fmt(g.dunams, i18n.language) })}</span>
-          <button type="button" data-testid={`editor-fill-gap-${g.id}`} className="btn-secondary min-h-11 py-1.5 text-micro" onClick={() => fill(g)}>
-            <Icon name="gapFill" size={14} />
-            {t('editor.fillGap', { name: nameOf(g.id) })}
-          </button>
-        </div>
-      ))}
+  /* ★ UN SEUL FOND : la carte de la barre englobe les deux lignes (et la rangée de l'hôte). */
+  const shell = 'pointer-events-auto relative flex w-full flex-col gap-1 rounded-card border border-edge-subtle bg-surface-overlay px-2 py-1.5 shadow-card'
+  const floating = (props.notes || statusPanel) && (
+    <div className="pointer-events-none absolute inset-x-0 top-full z-30 mt-1 flex flex-col gap-1 [&>*]:pointer-events-auto">
+      {statusPanel}
       {props.notes}
+    </div>
+  )
+
+  const panel = session && model && (
+    <div
+      dir="rtl"
+      data-testid="shape-editor"
+      data-mode={session.mode}
+      data-shape={session.mode === 'edit' ? session.id : `new:${session.kind}`}
+      data-nodes={model.nodes.length}
+      data-closed={model.closed ? '1' : '0'}
+      data-area={Math.round(area)}
+      data-tool={tool}
+      data-snap={snap ? '1' : '0'}
+      data-ghost={ghostD ? '1' : '0'}
+      data-selected-node={sel ?? ''}
+      data-undo={session.h.past.length}
+      data-redo={session.h.future.length}
+      data-lines="2"
+      className={shell}
+    >
+      <div data-testid="editor-line-1" className="flex min-h-11 min-w-0 items-center gap-1.5">
+        {props.header ?? summary}
+        {!model.closed && (
+          <button type="button" data-testid="editor-close-path" className="btn-primary min-h-11 shrink-0 py-1.5 text-micro" disabled={model.nodes.length < 3} onClick={closeNow}>
+            <Icon name="check" size={13} />
+            {t('editor.closePath')}
+          </button>
+        )}
+        {props.extraActions && <div className="flex shrink-0 items-center gap-1">{props.extraActions}</div>}
+        <button type="button" data-testid="editor-done" aria-label={t('editor.done')} className="btn-primary min-h-11 min-w-11 shrink-0 justify-center px-2.5 py-1.5 text-micro" onClick={finish}>
+          <Icon name="check" size={13} />
+          <span className="hidden md:inline">{t('editor.done')}</span>
+        </button>
+        {menuBlock}
+      </div>
+      <div ref={line2Ref} data-testid="editor-line-2" data-room={line2W} className={`flex min-h-11 min-w-0 items-center gap-1 ${wrap2 ? 'flex-wrap' : 'flex-nowrap'}`}>
+        {tools(true)}
+        {status()}
+      </div>
+      {floating}
     </div>
   )
 
   /* ★★ BL — sans session, la barre reste à sa place (l'écran des régions) : rien ne saute sous le doigt. */
   const idle = !session && props.idleHint !== undefined && (
-    <div dir="rtl" data-testid="shape-editor-idle" className={shell}>
-      <p className="flex min-h-11 items-center text-caption text-content-secondary">{props.idleHint}</p>
-      {toolRow(false)}
-      {/* La même ligne d'avis que la barre ouverte : la hauteur ne change pas à l'ouverture d'une forme. */}
-      <div className="min-h-5" aria-hidden="true" />
-      {props.notes}
+    <div dir="rtl" data-testid="shape-editor-idle" data-lines="2" className={shell}>
+      <div data-testid="editor-line-1" className="flex min-h-11 min-w-0 items-center gap-1.5">
+        {props.header}
+        {props.extraActions && <div className="flex shrink-0 items-center gap-1">{props.extraActions}</div>}
+      </div>
+      <div ref={line2Ref} data-testid="editor-line-2" data-room={line2W} className={`flex min-h-11 min-w-0 items-center gap-1 ${wrap2 ? 'flex-wrap' : 'flex-nowrap'}`}>
+        {tools(false)}
+        {status(props.idleHint)}
+      </div>
+      {props.notes && (
+        <div className="pointer-events-none absolute inset-x-0 top-full z-30 mt-1 flex flex-col gap-1 [&>*]:pointer-events-auto">
+          {props.notes}
+        </div>
+      )}
     </div>
   )
 
   return (
     <>
       {overlay}
-      <div ref={barRef} data-testid="path-editor-bar" className={panel || idle ? 'pb-2' : undefined}>
+      <div ref={barRef} data-testid="path-editor-bar">
         {panel || idle}
       </div>
     </>

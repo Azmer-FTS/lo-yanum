@@ -168,6 +168,11 @@ async function openRegions(dev: Device): Promise<{ o: Opened; h: Hand; db: FakeD
   return { o, h: await hand(o, dev), db }
 }
 async function pickRegion(h: Hand, id: string): Promise<void> {
+  /* ★★ BM — étroit (l'iPad en écran partagé) : les pastilles sont repliées dans un sélecteur ; on le déplie. */
+  if ((await h.page.locator('[data-testid="region-picker"]').count()) > 0 && (await h.page.locator('[data-testid="region-picker-list"]').count()) === 0) {
+    const pk = await centreOf(h.page, '[data-testid="region-picker"]')
+    await h.tap(pk.x, pk.y)
+  }
   await h.page.locator(`[data-testid="region-pick-${id}"]`).scrollIntoViewIfNeeded()
   await h.page.waitForTimeout(300)
   const pill = await centreOf(h.page, `[data-testid="region-pick-${id}"]`)

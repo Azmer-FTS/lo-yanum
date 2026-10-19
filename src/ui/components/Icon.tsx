@@ -117,6 +117,7 @@ export type IconName =
   | 'recenter'
   | 'overlaps'
   | 'gapFill'
+  | 'save'
 
 type Props = SVGProps<SVGSVGElement> & { name: IconName; size?: number }
 
@@ -405,6 +406,13 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M3.5 6.5h10v10h-10Z" />
       <path d="M10.5 7.5h10v10h-10Z" />
       <path d="M10.5 10.5l3-3M10.5 14l3-3M11.5 16.5l2-2" />
+    </>
+  ),
+  /* ★★ BM — enregistrer : la disquette (Lucide `save`), pour « שמור גבול » quand la barre est étroite. */
+  save: (
+    <>
+      <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+      <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7M7 3v4a1 1 0 0 0 1 1h7" />
     </>
   ),
   /* Combler un vide : deux bords, et la flèche qui les rejoint. */

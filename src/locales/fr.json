@@ -1071,7 +1071,8 @@
     "pushedChip": "Déplacées avec la limite : {{names}}",
     "gapNote": "Un vide de {{n}} dounams contre « {{name}} » — il n'appartient à aucune région",
     "fillGap": "Combler : « {{name}} » s'étend jusqu'à la nouvelle limite",
-    "fillRefused": "Impossible de combler ce vide sans créer un recouvrement ou un trou."
+    "fillRefused": "Impossible de combler ce vide sans créer un recouvrement ou un trou.",
+    "statusMore": "{{count}} mentions — touchez pour lire"
   },
   "regionEdit": {
     "pickHint": "Choisissez une région dans la rangée du haut, ou touchez-la sur la carte, pour modifier sa limite.",
@@ -1105,6 +1106,9 @@
       "syria": "Syrie",
       "lebanon": "Liban",
       "gaza": "bande de Gaza"
-    }
+    },
+    "seaShort": "{{n}} dounams en mer",
+    "abroadShort": "Au-delà de la frontière : {{list}}",
+    "pickShort": "Choisir une région"
   }
 }

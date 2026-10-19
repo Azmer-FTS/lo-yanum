@@ -31,8 +31,9 @@ import type { LatLng } from '../src/core/index'
  *         chacun un SVG sans texte, 44 px, nommé en hébreu
  *   A572  ★ l'infobulle hébraïque : au survol (souris) ; à l'appui long
  *         (doigt), qui NE choisit PAS l'outil ; bornée à l'écran
- *   A573  ★ l'outil actif se voit : UN seul bouton plein, son nom dans la
- *         barre ; les raccourcis d'Illustrator (V P + − ⇧C N M)
+ *   A573  ★ l'outil actif se voit : UN seul bouton plein (★★ BM : son nom
+ *         n'est plus écrit, l'icône pleine suffit — il reste dans l'infobulle
+ *         et aria) ; les raccourcis d'Illustrator (V P + − ⇧C N M)
  *   A574  ★ les surfaces, UNE fois, en haut : sur les pastilles des régions,
  *         plus de rangée de surfaces dans le panneau
  *   A575  ★ le recentrage : une icône dans la pile en haut à gauche, un clic
@@ -42,6 +43,7 @@ import type { LatLng } from '../src/core/index'
  *         version enregistrée) n'est plus dessinée sous l'éditeur
  *   A577  ★ « שחזור המקור » : hors de la barre, dans « ⋯ », derrière une
  *         confirmation qui nomme la région et compte les formes effacées
+ *         (★★ BM : accrochée SOUS la barre, qui garde ses deux lignes)
  *   A578  ★ les nouveaux outils, geste par geste (souris ET doigt), écran ET
  *         base : plume +, plume −, conversion (toucher, tirer), déplacement
  *   A579  ★ l'iPad en écran partagé (678, 507) : la barre passe à la ligne,
@@ -261,6 +263,11 @@ async function openRegions(dev: Device, w = dev.w, hgt = dev.h, init: Record<str
   return { o, h: await hand(o, dev) }
 }
 async function pickRegion(h: Hand, id: string): Promise<void> {
+  /* ★★ BM — étroit (l'iPad en écran partagé) : les pastilles sont repliées dans un sélecteur ; on le déplie. */
+  if ((await h.page.locator('[data-testid="region-picker"]').count()) > 0 && (await h.page.locator('[data-testid="region-picker-list"]').count()) === 0) {
+    const pk = await centreOf(h.page, '[data-testid="region-picker"]')
+    await h.tap(pk.x, pk.y)
+  }
   await h.page.locator(`[data-testid="region-pick-${id}"]`).scrollIntoViewIfNeeded()
   await h.page.waitForTimeout(300)
   const pill = await centreOf(h.page, `[data-testid="region-pick-${id}"]`)
@@ -429,8 +436,11 @@ for (const dev of devices) {
       return [...root.querySelectorAll('button')].filter((b) => getComputedStyle(b).backgroundColor === accent).map((b) => (b as HTMLElement).dataset.testid ?? b.textContent)
     })
     check(`A573 (${D}) ★ dans toute la barre, UN seul bouton a le fond plein de l’outil actif`, filled.length === 1, filled.join(', '))
-    const chip = o.page.locator('[data-testid="editor-active-tool"]')
-    check(`A573 (${D}) le nom de l’outil en main est écrit dans la barre (« ${(await chip.innerText().catch(() => '')).trim()} »)`, (await chip.isVisible()) && /הזזת הצורה/.test(await chip.innerText()))
+    /* ★★ BM — l'icône pleine SUFFIT (le PO) : son nom n'est plus écrit sur une ligne à part ; il reste
+       dans l'infobulle (A572) et dans aria-label, que lit un lecteur d'écran. */
+    const barText = await ed(o.page).innerText()
+    check(`A573 (${D}) ★ le nom de l’outil en main n’est PLUS écrit dans la barre (l’icône pleine le dit)`, (await o.page.locator('[data-testid="editor-active-tool"]').count()) === 0 && !barText.includes('הזזת הצורה'))
+    check(`A573 (${D}) … et il reste nommé pour un lecteur d’écran`, /הזזת הצורה/.test((await o.page.locator('[data-testid="editor-tool-move"]').getAttribute('aria-label')) ?? ''))
     if (!dev.touch) {
       const keys: Array<[string, string]> = [['p', 'pen'], ['+', 'penAdd'], ['-', 'penRemove'], ['Shift+C', 'convert'], ['n', 'pencil'], ['m', 'move'], ['v', 'select']]
       const got: string[] = []
@@ -548,7 +558,11 @@ for (const dev of devices) {
     const cf = o.page.locator('[data-testid="region-restore-confirm"]')
     const text = (await cf.innerText().catch(() => '')).replace(/\s+/g, ' ')
     check(`A577 (${D}) ★ la confirmation NOMME ce qui sera effacé (« הנגב », ses points, sa surface) et COMPTE les formes (une)`, (await cf.count()) === 1 && /הנגב/.test(text) && /\d+ נקודות/.test(text) && /דונם/.test(text) && /צורה אחת/.test(text), text)
-    check(`A577 (${D}) la confirmation est dans la barre, pas sur la carte`, !overlaps((await cf.boundingBox())!, await mapBox(o.page)))
+    /* ★★ BM — deux lignes au plus (le PO) : la confirmation ne s'AJOUTE plus à la barre comme une ligne ; elle
+       s'ouvre ACCROCHÉE sous elle, comme le menu « ⋯ » dont elle vient, le temps de la réponse. */
+    const cb = (await cf.boundingBox())!
+    const eb = (await o.page.locator('[data-testid="shape-editor"]').boundingBox())!
+    check(`A577 (${D}) la confirmation s’ouvre accrochée sous la barre (${Math.round(cb.y - (eb.y + eb.height))} px), et la barre garde DEUX lignes`, cb.y >= eb.y + eb.height - 0.5 && cb.y - (eb.y + eb.height) <= 12 && (await o.page.locator('[data-testid="shape-editor"] [data-testid^="editor-line-"]').count()) === 2)
     await o.page.screenshot({ path: `${SHOTS}/a577-${D}-confirmation.png` })
     await o.page.locator('[data-testid="region-restore-confirm"] button', { hasText: 'ביטול' }).click()
     await o.page.waitForTimeout(300)
