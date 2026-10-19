@@ -6,6 +6,11 @@ import polygonClipping from 'polygon-clipping'
 import type { MultiPolygon, Polygon } from 'polygon-clipping'
 
 /**
+ * ⛔ REMPLACÉ EN BM (2026-10-19) par `scripts/bmsea.ts` (polygones et trait de côte d'OpenStreetMap à
+ *    pleine résolution : `docs/bm/frontieres.md`). Gardé pour mémoire : le relancer RÉÉCRIRAIT
+ *    les masques de BL, approchés à ~150 m (au-delà) ou ~25 m (mer).
+ */
+/**
  * ═══════════════════════════════════════════════════════════════════════════
  * ★★ BL (chantier 3.1) — LA MER, TIRÉE DES TUILES QUE LA CARTE CHARGE DÉJÀ.
  * ═══════════════════════════════════════════════════════════════════════════

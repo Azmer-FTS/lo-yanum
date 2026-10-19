@@ -451,7 +451,12 @@ await guard('A602', async () => {
   const washArea = wash.reduce((sum, r) => sum + landDunams(r.map(([lng, lat]) => ({ lat, lng }))), 0)
   check(`A602 ★ l’aplat s’arrête au Jourdain (${Math.round(washArea)} / ${land})`, wash.length >= 1 && Math.abs(washArea - land) / land < 0.002)
   await pickRegion(h, 'judea')
-  check('A602 ★ « יהודה » (Judée-Samarie gardée) : rien au-delà, aucune mention', (await part.count()) === 0)
+  /* ★★ BM — la frontière précise montre ce que la grille de BL avalait : le tracé LIVRÉ de « יהודה » passe
+     la ligne médiane de la mer Morte de quelques mètres (2 975 m² à 31,35 N 35,45 E, en Jordanie). La
+     Judée-Samarie, elle, n'est jamais retirée : moins de 10 dounams, et seulement la Jordanie (`blpass` A601). */
+  const judeaAbroad = abroadDunams(RING('judea'))
+  const judeaZones = (await part.count()) === 0 ? '' : ((await part.getAttribute('data-zones')) ?? '')
+  check(`A602 ★ « יהודה » (Judée-Samarie gardée) : rien de la Judée-Samarie n’est retiré (${JSON.stringify(judeaAbroad)} ; mention : ${judeaZones || 'aucune'})`, Object.entries(judeaAbroad).every(([k, n]) => k === 'jordan' && (n ?? 0) < 10) && (judeaZones === '' || judeaZones === 'jordan'))
   await o.page.screenshot({ path: `${SHOTS}/a602-frontiere.png` })
   check('A602 rien n’est écrit', (await stored(o.page)) === null)
   await o.ctx.close()

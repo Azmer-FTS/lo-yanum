@@ -23,8 +23,9 @@ import type { LatLng } from './types'
  * différence ou une intersection (les SURFACES, elles, sont mesurées par
  * `ringAreaDunams`, sur la sphère).
  *
- * ★ 3.1 — LA MER EST UN MASQUE, PAS UNE RÉÉCRITURE. `sea.json` (la mer des
- *   tuiles de la carte, `scripts/blsea.ts`) est retirée de chaque région
+ * ★ 3.1 — LA MER EST UN MASQUE, PAS UNE RÉÉCRITURE. `sea.json` (★★ BM : le
+ *   trait de côte d'OpenStreetMap à pleine résolution, `scripts/bmsea.ts` ;
+ *   en BL, les tuiles de la carte) est retirée de chaque région
  *   quand on la MESURE ou qu'on la COMPARE (`landOf`) : surfaces, recouvrements,
  *   poussage, aplats de l'écran d'édition. Le tracé enregistré du PO n'est pas
  *   réécrit — comme un masque d'écrêtage d'Illustrator : ce qui dépasse dans
@@ -33,7 +34,8 @@ import type { LatLng } from './types'
  * ★ 3.2 — L'AU-DELÀ DES FRONTIÈRES, OPTION A (DÉCIDÉE PAR LE PO, 2026-10-19) :
  *   « le sud, plus la Jordanie le long du Jourdain, la Syrie, le Liban et
  *   Gaza ; la Judée-Samarie et le Golan restent dedans ». `abroad.json`
- *   (`scripts/blabroad.ts`, depuis les lignes de la carte) est retiré EXACTEMENT
+ *   (★★ BM : les polygones des pays voisins d'OpenStreetMap, `scripts/bmabroad.ts`,
+ *   à 2 m près ; en BL, une grille de 150 m sur les lignes de la carte) est retiré EXACTEMENT
  *   comme la mer : un masque de mesure et d'affichage, jamais une réécriture
  *   du tracé — revenir sur la décision, c'est retirer une zone du fichier.
  *
@@ -130,7 +132,17 @@ function boxOf(rings: ReadonlyArray<ReadonlyArray<readonly [number, number] | nu
 }
 const meets = (a: Box, b: Box) => a.w <= b.e && b.w <= a.e && a.s <= b.n && b.s <= a.n
 const SEA_BOXES = SEA.map((p) => boxOf(p))
-/** Tout ce qui n'est pas « le pays » : la mer, puis chaque zone au-delà. */
+/**
+ * Tout ce qui n'est pas « le pays » : la mer, puis chaque zone au-delà.
+ *
+ * ★★ BM — chaque masque est DÉCOUPÉ en cases de 0,1° (`scripts/bmtiles.ts`) : à pleine résolution,
+ *   soustrait d'un bloc, il rendait `landOf` 4 fois plus lent. Les morceaux sont disjoints et
+ *   bord à bord. ⚠️ La part d'une région DANS un masque se mesure par DIFFÉRENCE (la région moins
+ *   le masque), jamais en sommant les intersections morceau par morceau : chaque couture coupe
+ *   une longue arête de la région en un point interpolé en degrés, et `ringAreaDunams` (Chamberlain–
+ *   Duquette) mesure l'arête comme une droite en (λ, sin φ) — la somme dérivait de 0,1 % (4 km² sur
+ *   la Arava). La différence, elle, ne garde aucune couture : c'est le calcul de `landOf`.
+ */
 const MASKS: Array<{ kind: 'sea' | AbroadZone; poly: Polygon; box: Box }> = [
   ...SEA.map((poly, i) => ({ kind: 'sea' as const, poly, box: SEA_BOXES[i] })),
   ...ABROAD_ZONES.flatMap((k) => ABROAD[k].map((poly) => ({ kind: k, poly, box: boxOf(poly) }))),
@@ -163,13 +175,17 @@ export function landOfCached(ring: readonly LatLng[]): Shape {
   return v
 }
 
+/** La part d'un polygone dans des morceaux de masque, en dounams : le polygone moins ce qui en reste hors du masque. */
+function piecewise(poly: Polygon, pieces: Polygon[]): number {
+  if (pieces.length === 0) return 0
+  return Math.max(0, shapeDunams([poly]) - shapeDunams(polygonClipping.difference(poly, ...pieces)))
+}
+
 /** Ce qu'une région perd dans la mer, en dounams. */
 export function seaDunams(ring: readonly LatLng[]): number {
   if (ring.length < 3) return 0
   const poly = toPolygon(ring)
-  const seas = masksMeeting(boxOf(poly), new Set(['sea']))
-  if (seas.length === 0) return 0
-  return shapeDunams(polygonClipping.intersection(poly, seas))
+  return piecewise(poly, masksMeeting(boxOf(poly), new Set(['sea'])))
 }
 
 /** ★★ BL (3.2) — ce qu'une région perd au-delà de chaque frontière, en dounams (zones touchées seulement). */
@@ -181,7 +197,7 @@ export function abroadDunams(ring: readonly LatLng[]): Partial<Record<AbroadZone
   for (const k of ABROAD_ZONES) {
     const ms = masksMeeting(b, new Set([k]))
     if (ms.length === 0) continue
-    const d = shapeDunams(polygonClipping.intersection(poly, ms))
+    const d = piecewise(poly, ms)
     if (d >= SLIVER_DUNAMS) out[k] = d
   }
   return out

@@ -3,6 +3,11 @@ import polygonClipping from 'polygon-clipping'
 import type { MultiPolygon, Polygon } from 'polygon-clipping'
 
 /**
+ * ⛔ REMPLACÉ EN BM (2026-10-19) par `scripts/bmabroad.ts` (polygones et trait de côte d'OpenStreetMap à
+ *    pleine résolution : `docs/bm/frontieres.md`). Gardé pour mémoire : le relancer RÉÉCRIRAIT
+ *    les masques de BL, approchés à ~150 m (au-delà) ou ~25 m (mer).
+ */
+/**
  * ═══════════════════════════════════════════════════════════════════════════
  * ★★ BL (3.2, OPTION A — DÉCIDÉE PAR LE PO LE 2026-10-19) — L'AU-DELÀ DES
  *    FRONTIÈRES, EN POLYGONES.

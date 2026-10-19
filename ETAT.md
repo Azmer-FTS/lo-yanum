@@ -1,5 +1,38 @@
 # לא ינום — ETAT
 
+> 🏁 **BM (chantier 1) — DES FRONTIÈRES JUSTES, PAS APPROCHÉES. 2026-10-19.**
+>
+> « Il n'a pas vraiment pris la moitié du Jourdain, il n'a pas pris les vraies
+> frontières de la map. » — le PO
+>
+> - **Le tour du périmètre** (`scripts/bmmeasure.ts`, `docs/bm/ecarts.json`) :
+>   BL tombait de 194 à 667 m au pire endroit selon le segment (moyenne 75 à
+>   115 m) ; le Jourdain au pire (667 m : un méandre coupé en corde) ; la côte
+>   jusqu'à 176 m (ports). Ce n'était PAS la source (la ligne des tuiles au
+>   zoom 12 était à 16 m) mais la méthode : grille de 150 m puis 100 m de
+>   simplification, et une bande de 150 m laissée dans le pays le long de
+>   chaque frontière.
+> - **La source** : les POLYGONES des pays voisins d'OpenStreetMap (Égypte,
+>   Jordanie, Syrie, Liban, bande de Gaza) et son trait de côte, à pleine
+>   résolution, récupérés une fois (`scripts/bmfetch.ts`) et rangés dans
+>   `geodata/osm-borders.json`. Dans OSM le Golan est dans Israël (la
+>   revendication syrienne est une relation `claim` à part) et la Judée-Samarie
+>   n'est dans aucun voisin : l'option A exactement, sans correction.
+> - **Les masques** (`scripts/bmsea.ts`, `scripts/bmabroad.ts`) : à 2 m de la
+>   référence partout ; le Jourdain suit son cours (5 m en moyenne, comme la
+>   frontière d'OSM elle-même) ; découpés en cases de 0,1° (`bmtiles.ts`) :
+>   13 régions en 75 ms (BL 101). Toujours un MASQUE, rien d'écrit en base.
+> - Sur les 13 régions du PO : 62,7 km² de moins comptés sur le pays, aucune
+>   région ne gagne ; la Judée et la Samarie ne bougent pas.
+> - Attrapé : les îlots d'OSM perçaient la voisine pendant un poussage
+>   (`blpass` A592) → laissés en mer, comme en BL ; la somme morceau par
+>   morceau d'un masque découpé dérivait de 0,1 % → mesurée par différence.
+>
+> **Portes** : `bmpass` 52 (A630–A635) ; `bltopo` A602 adaptée (la mer Morte) ;
+> batterie entière verte (`docs/bm/portes-local-c1.md`). Images avant/après :
+> `docs/bm/img/{jourdain,gaza,syrie,cote}-avant-apres.jpg`. Récit :
+> `docs/bm/frontieres.md`.
+
 > 🏁 **BL (3.2, option A) — LES FRONTIÈRES RETENUES PAR LE PO, APPLIQUÉES. 2026-10-19.**
 >
 > « Applique l'option A : le sud, plus la Jordanie le long du Jourdain, la

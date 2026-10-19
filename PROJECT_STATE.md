@@ -104,6 +104,36 @@ même en `--dry-run`, pour « vérifier » : `migration list` suffit.
 
 ## Où en est-on
 
+- **BM — FRONTIÈRES JUSTES (chantier 1) ET BARRE EN DEUX LIGNES (chantier 2)**
+  (2026-10-19). Branche `main`. Deux commits séparés (consigne du PO).
+  - **Chantier 1 — commité** : les masques `src/core/sea.json` et
+    `src/core/abroad.json` viennent des polygones des voisins et du trait de
+    côte d'OpenStreetMap (`geodata/osm-borders.json`, relevé le 2026-10-19) :
+    `bun run scripts/bmfetch.ts` (télécharge si `private/bm/osm/` est vide, puis
+    assemble), `bmsea.ts`, `bmabroad.ts`, `bmmeasure.ts` (le rapport),
+    `bun run bmpass` (A630–A635). `blabroad.ts`/`blsea.ts` sont REMPLACÉS (les
+    relancer réécrirait les masques approchés de BL). Récit et chiffres :
+    `docs/bm/frontieres.md` ; portes : `docs/bm/portes-local-c1.md`.
+  - **Décisions (permanentes)** :
+    · la référence des frontières est OSM à pleine résolution ; le masque est à
+      2 m (Douglas–Peucker) ; il reste un MASQUE (`core/topology.ts`, `landOf`),
+      jamais une réécriture du tracé du PO ;
+    · Judée-Samarie et Golan dedans : vérifié par les générateurs (témoins) et
+      `bmpass` A633 ; la ligne médiane de la mer Morte compte (le tracé LIVRÉ de
+      יהודה y perd 2 975 m², c'est juste) ;
+    · les îlots (< 0,1 km²) restent de la mer ;
+    · les masques sont découpés en cases de 0,1° ; la part d'une région dans un
+      masque se mesure par DIFFÉRENCE (jamais en sommant des intersections) ;
+    · ⚠️ un worktree de portes doit avoir `public/basemap/*.pmtiles.png` (le nom
+      que charge l'app), `basemap/`, `supabase/.temp`, `.env.real` ; `private`
+      en lien symbolique fait tomber `bapass` A395 (la jouer depuis l'arbre
+      principal) ;
+    · ⚠️ 8 Go : rien de lourd à côté d'une batterie ; rejouer sous
+      `private/bm/calmrun.sh` (charge < 14 trois fois, rejouée au-delà de 40).
+  - **Non prouvé** : la précision d'OSM lui-même face au terrain (aucune source
+    officielle numérique) ; 97 m d'écart dans OSM entre frontière et lit du
+    Jourdain à 32,54 N (cause non tranchée).
+
 - **BL — TERMINÉE, POUSSÉE, DÉPLOYÉE, VÉRIFIÉE SUR LE DÉPLOYÉ** (2026-10-18/19).
   Commits `c830389` (chantier 1), `03199cc` (chantier 2), `1742066` (chantier
   3 — SERVI : `version.json` = 1742066), puis le commit de fin de passe
